@@ -941,6 +941,7 @@ again:	if (lstat(dir, &sb1)) {
 			lines = addLine(lines, strdup(e->d_name));
 		}
 	}
+	closedir(d);
 	if (lstat(dir, &sb2)) {
 		perror(dir);
 		freeLines(lines);
