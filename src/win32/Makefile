@@ -56,5 +56,4 @@ install: all blat data/bk.ico
 	cd pub/patch && make BINDIR=$(BINDIR) install
 	cd pub/winctl && make BINDIR=$(BINDIR) install
 	cd util && make BINDIR=$(BINDIR) install
-	cd dlls && make BINDIR=$(BINDIR) install
 	make MSYSBIN=$(BINDIR)/gnu msys	
