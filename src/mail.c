@@ -81,10 +81,10 @@ lconfig_main(int ac, char **av)
 	r->isSocket = 1;
 	m = mopen(config_log, "r");
 	assert(m);
-	rc = http_send(r, m->where, msize(m), 0, "webmail", WEB_MAIL_CGI);
+	rc = http_send(r, m->where, msize(m), 0, "bk_config", BK_CONFIG_CGI);
 	mclose(m);
 	skip_http_hdr(r);
-	unless (rc) rc = get_ok(r, 0, 0);
+	unless (rc) rc = get_ok(r, 0, debug);
 	disconnect(r, 2);
 	unlink(config_log);
 	unless (rc) updLogMarker(1, debug);
