@@ -1036,7 +1036,22 @@ apply:
 				    p->resyncFile);
 				return -1;
 			}
-			if (perfile) sccscopy(s, perfile);
+			if (perfile) {
+				sccscopy(s, perfile);
+				/*
+				 * For takepatch performance
+				 * turn off compression when we are in 
+				 * takepatch.
+				 * 
+				 * Note: Since this is a new file from remote,
+				 * there is no local setting. We save the 
+				 * compression setting of the remote file
+				 * and use that as the new local file when
+				 * when takepatch is done.
+				 */
+				encoding = s->encoding; /* save for later */
+				s->encoding &= ~E_GZIP;
+			}
 			if (p->initFile) {
 				iF = mopen(p->initFile, "b");
 			} else {
