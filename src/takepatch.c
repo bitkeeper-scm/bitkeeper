@@ -171,7 +171,7 @@ usage:		system("bk help -s takepatch");
 			mdbm_close(goneDB);
 			mdbm_close(idDB);
 
-			spawnvp_ex(_P_NOWAIT, "bk", applyall);
+			spawnvp(_P_DETACH, "bk", applyall);
 			return(0);
 		}
 	}

@@ -103,7 +103,7 @@ t_revtool(resolve *rs)
 	av[++i] = revs[1];
 	av[++i] = rs->s->gfile;
 	av[++i] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 

@@ -97,7 +97,7 @@ c_helptool(resolve *rs)
 	av[1] = "helptool";
 	av[2] = "merge";
 	av[3] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 
@@ -203,7 +203,7 @@ c_revtool(resolve *rs)
 	av[++i] = revs[2];
 	av[++i] = rs->s->gfile;
 	av[++i] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 
 	return (0);
 }
@@ -222,7 +222,7 @@ c_fm3tool(resolve *rs)
 	av[++i] = rs->revs->remote;
 	av[++i] = rs->s->gfile;
 	av[++i] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 
@@ -241,7 +241,7 @@ c_fmtool(resolve *rs)
 	av[3] = n->remote;
 	av[4] = rs->s->gfile;
 	av[5] = 0;
-	spawnvp_ex(_P_NOWAIT, "bk", av);
+	spawnvp(_P_DETACH, "bk", av);
 	return (0);
 }
 
