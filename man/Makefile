@@ -22,9 +22,12 @@ manball: get
 	do (cat ../bk-macros; grep -v bk-macros $$i) > ../bk-man/man1/$$i; \
 	done
 	cd bk-man/man1; \
-	ls -1 bk-* | sed s/bk-// | while read x; do ln -s bk-$$x $$x; done
+	ls -1 bk-* | sed s/bk-// | while read x; \
+	do	ln bk-$$x $$x 2>/dev/null || cp bk-$$x $$x; \
+	done
 
 install: manball
+	/bin/rm -rf $(BINDIR)/man
 	cp -R bk-man $(BINDIR)/man
 
 dist:
