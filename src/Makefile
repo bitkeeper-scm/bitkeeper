@@ -471,13 +471,21 @@ install-nolinks: all
 	then cd win32 && $(MAKE) BINDIR=$(BINDIR) install; \
 	fi
 
+# Win32 note: Wise install script does not respect the BINDIR env variable
+# It picks up the image at C:/Program Files/BitKeeper
 image: all
-	@-rm -rf tmp
+	@if uname -s | grep _NT; \
+	then \
+	${MAKE} -e install-nolinks; \
+	cd utils && bk get -qS mkbk x86-win32.wse && ./mkbk; \
+	else \
+	rm -rf tmp/bitkeeper; \
 	DIR=`pwd`/tmp/bitkeeper; set -e; \
-	BINDIR=$$DIR $(MAKE) -e install-nolinks; \
+	BINDIR=$$DIR ${MAKE} -e install-nolinks; \
 	BINDIR=$$DIR $(MAKE) -e bklinks; \
-	cd utils && BINDIR=$$DIR $(MAKE) -e image 
-	@-rm -rf tmp
+	cd utils && BINDIR=$$DIR ${MAKE} -e image; \
+	rm -rf tmp; \
+	fi
 
 # Rules for test builds.
 HOSTS	= `chosts build`

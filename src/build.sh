@@ -48,9 +48,17 @@ ms_env()
 	# in the Makefile.
 	XTRA=win32
 	INSTALL=install-nolinks
+
+	#
+	# XXX Need to set the VC++ path when we build via rsh
+	# XXX change this if you install VC++ to non-standard path
+	#
+	PATH=$PATH:'/cygdrive/c/Program Files/Microsoft Visual Studio/VC98/bin'
+	PATH=$PATH:'/cygdrive/c/Program Files/Microsoft Visual Studio/Common/MSDev98/Bin'
+
 	export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
 	export INCLUDE LIB CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
-	export BK UWT_H WIN_UTIL BINDIR XTRA INSTALL
+	export BK UWT_H WIN_UTIL BINDIR XTRA INSTALL PATH
 }
 
 #Set up environment for cygwin tools
