@@ -642,7 +642,7 @@ csetlist(cset_t *cs, sccs *cset)
 			if (copts.serial) {
 				d = sfind(cset, atoi(buf));
 			} else {
-				d = findrev(cset, buf);
+				d = sccs_getrev(cset, buf, NULL, 0);
 			}
 			unless (d) {
 				fprintf(stderr,

@@ -1,0 +1,66 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+bk clone $Q $HERE/project $HERE/copy
+mkdir src
+cd src
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i bar.c h.h
+bk commit $S -a -yCset
+bk tag $Q proj1
+mkdir $HERE/copy/src
+cd $HERE/copy/src
+echo foo > foo.c
+bk new $Q foo.c
+bk commit $Q -yfoo
+bk tag $Q copy1
+echo OK
+
+echo $N "check push -lk" ..............................................$NL
+bk push -lk $HERE/project | bk -R key2rev ChangeSet > push.out
+bk undos > ref1 <<EOF
+1.2
+1.2
+EOF
+cmp -s push.out ref1 || { echo failed; exit 1; }
+echo OK
+echo $N "check push -lr" ..............................................$NL
+bk push -lr $HERE/project > push.out
+bk undos > ref2 <<EOF
+1.2
+copy1
+EOF
+cmp -s push.out ref2 || { echo failed; exit 1; }
+echo OK
+echo $N "check pull -lk" ..............................................$NL
+bk pull -lk $HERE/project | \
+		( cd $HERE/project && bk key2rev ChangeSet ) > push.out
+cmp -s push.out ref1 || { echo failed; exit 1; }
+echo OK
+echo $N "check pull -lr" ..............................................$NL
+bk pull -lr $HERE/project > push.out
+bk undos > ref3 <<EOF
+1.2
+proj1
+EOF
+cmp -s push.out ref3 || { echo failed; exit 1; }
+echo OK
+
+echo $N make sure bk send xfer tag correctly ........................$NL
+bk send $Q -u$HERE/project  - > $HERE/patch
+cd $HERE/project
+bk takepatch -qa -vv < $HERE/patch > /dev/null 2>&1
+bk prs -hn -d:TAG: | grep copy1 > /dev/null
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK

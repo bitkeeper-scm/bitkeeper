@@ -104,7 +104,10 @@ sccs_d2tag(sccs *s, delta *d)
 
 	unless (d->flags & D_SYMBOLS) return (NULL);
 	for (sym = s->symbols; sym; sym = sym->next) {
-		if (d == sym->d) return (sym->symname);
+		if (d == sym->d) {
+			assert(!strchr(sym->symname, '|'));
+			return (sym->symname);
+		}
 	}
 	return (NULL); /* we should never get here */
 }
@@ -386,10 +389,6 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 			if (sccs_istagkey(k)) {
 				rtags++;
 			} else {
-				if (flags & PK_RKEY) {
-					write(outfd, k, strlen(k));
-					write(outfd, "\n", 1);
-				}
 				if (flags & PK_RREV) {
 					p = strchr(key, '|');
 					assert(p);
@@ -403,11 +402,21 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 				}
 				rcsets++;
 			}
+			if (flags & PK_RKEY) {
+				write(outfd, k, strlen(k));
+				write(outfd, "\n", 1);
+			}
 		}
 	}
 
 	/*
 	 * Print remote tags
+	 * XXX: TODO we need a way to handle multiple tags on the same delta
+	 * May be we should extent the format 
+	 * 	from "rev | tag | key"
+	 * 	to   "rev | tag, tag .. | key"
+	 * However, if we are just using it to feed "bk makepatch"
+	 * or "bk change", we probably don't care.
 	 */
 	if (flags & PK_RREV) {
 		int	i;
@@ -548,7 +557,7 @@ synckeys(remote *r, int flags)
 	if (get_ok(r, buf, 1)) return (-1);
 
 	/*
-	 * What we want is: "remote => bk _prunekey => /dev/null
+	 * What we want is: "remote => bk _prunekey => stdout
 	 */
 	s = sccs_init(s_cset, 0, 0);
 	flags |= PK_REVPREFIX;
@@ -614,14 +623,14 @@ synckeys_main(int ac, char **av)
 	assert(r);
 
 	if (sccs_cd2root(0, 0)) { 
-		fprintf(stderr, "push: cannot find package root.\n"); 
+		fprintf(stderr, "synckeys: cannot find package root.\n"); 
 		exit(1);
 	}
 
 	if ((bk_mode() == BK_BASIC) &&
 	    !isLocalHost(r->host) && exists(BKMASTER)) {
 		fprintf(stderr, 
-		    "Cannot push from master repository: %s", upgrade_msg);
+		    "Cannot sync from master repository: %s", upgrade_msg);
 		exit(1);
 	}
 

@@ -9,22 +9,32 @@
  * Side effect: This function also update the sendlog
  */
 private	char *
-getNewRevs(char *to, char *rev)
+getNewRevs(char *to, char *rev, char *url)
 {
 	char	x_sendlog[MAXPATH], here[MAXPATH];
 	char	buf[MAXLINE];
-	static	char revsFile[MAXPATH];
+	static	char keysFile[MAXPATH];
 	FILE	*f;
 	FILE	*fprs;
 	int	empty = 1;
 
-	assert(!streq(to, "-"));
+	assert(url || !streq(to, "-"));
 
 	unless (isdir(BK_LOG)) mkdirp(BK_LOG);
 	sprintf(x_sendlog, "%s/send-%s", BK_LOG, to);
-	gettemp(here, "bk_here");
-	sprintf(revsFile, "%s/bk_revs%d", TMP_PATH, getpid());
+	unless (url) gettemp(here, "bk_here");
+	sprintf(keysFile, "%s/bk_keys%d", TMP_PATH, getpid());
 	close(open(x_sendlog, O_CREAT, 0660));
+
+	if (url) {
+		sprintf(buf, "bk synckeys -lk %s > %s", url, keysFile);
+		system(buf);
+		if (size(keysFile) == 0) {
+			unlink(keysFile);
+			return (0);
+		}
+		return (keysFile);
+	}
 
 	if (rev == NULL) {
 		sprintf(buf, "bk prs -hd':KEY:\n' ChangeSet | bk _sort > %s", here);
@@ -34,12 +44,20 @@ getNewRevs(char *to, char *rev)
 		    rev, here);
 	}
 	system(buf);
-	sprintf(buf, "bk _sort -u < %s | comm -23 %s - | bk key2rev ChangeSet > %s",
-		x_sendlog, here, revsFile);
+
+	/*
+	 * XXX TODO:
+	 * For historical reason, we store the revs in x_sendlog
+	 * We should reallly store the keys, because the rev notation
+	 * does not record if tags are transfered
+	 */
+	sprintf(buf, "bk _sort -u < %s | comm -23 %s - > %s",
+		x_sendlog, here, keysFile);
 	system(buf);
 	sprintf(buf, "cp %s %s", x_sendlog, here);
 	system(buf);
-	f = fopen(revsFile, "rt");
+	sprintf(buf, "bk key2rev ChangeSet < %s", keysFile);
+	f = popen(buf, "r");
 	sprintf(buf, "bk prs -hd':KEY:\n' - >> %s", here);
 	fprs = popen(buf, "w");
 	while (fgets(buf, sizeof(buf), f)) {
@@ -47,16 +65,16 @@ getNewRevs(char *to, char *rev)
 		fprintf(fprs, "ChangeSet|%s\n", buf);
 		empty = 0;
 	}
-	fclose(f);
+	pclose(f);
 	pclose(fprs);
 	sprintf(buf, "bk _sort -u < %s > %s", here, x_sendlog);
 	system(buf);
 	unlink(here);
 	if (empty) {
-		unlink(revsFile);
+		unlink(keysFile);
 		return (0);
 	}
-	return (revsFile);
+	return (keysFile);
 }
 
 private void
@@ -101,6 +119,7 @@ send_main(int ac,  char **av)
 	char	*to, *p, *out, *cmd, *dflag = "", *qflag = "-vv";
 	char	*wrapper = 0,*patch = 0, *revsFile = 0, *revArgs = 0;
 	char	*wrapperArgs = "", *rev = "1.0..";
+	char	*url = NULL;
 	FILE	*f;
 
 	if (bk_mode() == BK_BASIC) {
@@ -111,13 +130,14 @@ send_main(int ac,  char **av)
 		system("bk help send");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "dfqr:w:")) != -1) {
+	while ((c = getopt(ac, av, "dfqr:u:w:")) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;		/* doc 2.0 */
 		    case 'f':	force++; break;			/* doc 2.0 */
 		    case 'q':	qflag = ""; break;		/* doc 2.0 */
 		    case 'r': 	rev = optarg; break;		/* doc 2.0 */
 		    case 'w': 	wrapper = optarg; break;	/* doc 2.0 */
+		    case 'u': 	url = optarg; break;
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
 			system("bk help -s send");
@@ -140,12 +160,12 @@ send_main(int ac,  char **av)
 	/*
 	 * Set up rev list for makepatch
 	 */
-	if (!streq(to, "-") && !force) {
+	if ((url || !streq(to, "-")) && !force) {
 		/*
 	 	 * We are sending a patch to some host,
 		 * subtract the cset(s) we already sent eailer
 		 */
-		revsFile = getNewRevs(to, rev);
+		revsFile = getNewRevs(to, rev, url);
 		if (revsFile == NULL) {
 			printf("Nothing to send to %s, use -f to force.\n", to);
 			exit(0);
