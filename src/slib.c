@@ -15,6 +15,7 @@ WHATSTR("@(#)%K%");
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, int flags, delta *d);
 private int	samebranch(delta *a, delta *b);
+private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s);
 private int	printstate(const serlist *state, const ser_t *slist);
@@ -746,7 +747,7 @@ dinsert(sccs *s, int flags, delta *d)
 		debug((stderr, " -> %s (kid)\n", p->rev));
 
 	} else if ((p->kid->type == 'D') &&
-	    samebranch(p, p->kid)) {	/* in right place */
+	    samebranch_bk(p, p->kid, 1)) { /* in right place */
 		/*
 		 * If there are siblings, add d at the end.
 		 */
@@ -1184,6 +1185,19 @@ private int
 samebranch(delta *a, delta *b)
 {
 	if (!a->r[2] && !b->r[2]) return (1);
+	return ((a->r[0] == b->r[0]) &&
+		(a->r[1] == b->r[1]) &&
+		(a->r[2] == b->r[2]));
+}
+
+/*
+ * This one assumes SCCS style branch numbering, i.e., x.y.z.d
+ */
+private int
+samebranch_bk(delta *a, delta *b, int bk_mode)
+{
+	if (!a->r[2] && !b->r[2])
+		return (bk_mode? (a->r[0] == b->r[0]) : 1);
 	return ((a->r[0] == b->r[0]) &&
 		(a->r[1] == b->r[1]) &&
 		(a->r[2] == b->r[2]));
@@ -1746,11 +1760,9 @@ private char *
 defbranch(sccs *s)
 {
 	if (s->defbranch) return (s->defbranch);
-	if (s->tree->lod) {
-		return (s->tree->lod->name);
-	} else {
-		return ("100000");
-	}
+	if (s->tree->lod) return (s->tree->lod->name);
+	if (s->state & S_BITKEEPER) return ("1");
+	return ("100000");
 }
 
 /*
@@ -1811,7 +1823,8 @@ delta *
 findrev(sccs *s, char *rev)
 {
 	u16	a = 0, b = 0, c = 0, d = 0;
-	delta	*e;
+	u16	max = 0;
+	delta	*e = 0, *f = 0;
 	char	buf[20];
 	lod	*l;
 
@@ -1825,14 +1838,28 @@ findrev(sccs *s, char *rev)
 	if (name2rev(s, &rev)) return (0);
 	switch (scanrev(rev, &a, &b, &c, &d)) {
 	    case 1:
-		for (e = s->tree, l = s->tree->lod;
-		    e->kid &&
-		    (l == e->kid->lod) &&
-		    (e->kid->type == 'D') &&
-		    (e->kid->r[2] == 0) &&
-		    (e->kid->r[0] <= a);
-		    e = e->kid)
-			;
+		/* XXX: what does -r0 mean?? */
+		unless (a) {
+			fprintf(stderr, "Illegal revision 0\n");
+			debug((stderr, " BAD rev %s\n", e->rev));
+			return (0);
+		}
+		/* get max X.Y that is on same branch or tip of biggest */
+		for (e = s->table; e; e = e->next) {
+			if (e->type != 'D'
+			    || (e->r[2] != 0)
+			    || (e->r[0] > a))  continue;
+
+			if (e->r[0] == a) break; /* first is it! */
+
+			/* else save max of lesser releases */
+			if (e->r[0] > max) {
+				f = e;
+				max = e->r[0];
+			}
+		}
+		unless (e) e = f;	/* can't find, use max of lesser */
+		assert(e);
 		debug((stderr, "findrev(%s) =  %s\n", rev, e->rev));
 		return (e);
 	    case 2:
@@ -1990,9 +2017,10 @@ isbranch(delta *d)
 }
 
 private inline int
-morekids(delta *d)
+morekids(delta *d, int bk_mode)
 {
-	return (d->kid && (d->kid->type != 'R') && samebranch(d, d->kid));
+	return (d->kid && (d->kid->type != 'R')
+		&& samebranch_bk(d, d->kid, bk_mode));
 }
 
 /*
@@ -2050,7 +2078,7 @@ ok:
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	if (!branch && !morekids(e)) {
+	if (!branch && !morekids(e, (s->state & S_BITKEEPER))) {
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -9039,6 +9067,46 @@ abort:		fclose(sfile);
 	return (0);
 }
 
+/* return the next available release */
+
+private u16
+getnextlod(sccs *s)
+{
+	u16	lod = 0;
+	delta	*d;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->r[0] > lod) lod = d->r[0];
+	}
+	if (lod) lod++; /* leave lod 0 == 0 meaning error */
+	return (lod);
+}
+
+/*
+ * see if the delta->rev is x.1 node.  If yes, then figure out number
+ * to check in as new LOD
+ */
+private int
+chknewlod(sccs *s, delta *d)
+{
+	u16	lod;
+	char	buf[MAXPATH];
+
+	unless (d->rev) return (0);
+
+	unless (d->r[0] != 1 && d->r[1] == 1 && d->r[2] == 0) {
+		free(d->rev);
+		d->rev = 0;
+		return (0);
+	}
+	lod = getnextlod(s);
+	sprintf(buf, "%d.1", lod);
+	free(d->rev);
+	d->rev = strdup(buf);
+	explode_rev(d);
+	return (0);
+}
+
 /*
  * delta the specified file.
  *
@@ -9100,8 +9168,11 @@ out:
 			unless (flags & NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
-				free(prefilled->rev);
-				prefilled->rev = 0;
+				/* if x.1 then ensure new LOD */
+				chknewlod(s, prefilled); 
+				/* free(prefilled->rev);
+				 * prefilled->rev = 0;
+				 */
 			}
 		}
 	}
@@ -11224,6 +11295,51 @@ gca2(sccs *s, delta *left, delta *right)
 	}
 	free(slist);
 	return (d);
+}
+
+private int
+samelod(sccs *s, delta *a, delta *b)
+{
+	assert(s && a && b);
+	return (a->r[0] == b->r[0]);
+}
+
+private u16
+sccs_nextlod(sccs *s)
+{
+	delta	*d;
+	u16	next = 0;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->type == 'D' && d->r[0] > next)
+			next = d->r[0];
+	}
+	next++;
+	return (next);
+}
+
+private delta **
+sccs_lodmap(sccs *s)
+{
+	delta	**lodmap;
+	delta	*d;
+	u16	next;
+	next = sccs_nextlod(s);
+	/* next now equals one more than greatest that exists
+	 * make room for having a lodmap[next] slot by extending it by one
+	 */
+	next++;
+	unless (lodmap = calloc(next, sizeof(lodmap))) {
+		perror("calloc lodmap");
+		return(0);
+	}
+
+	for (d = s->table; d; d->next) {
+		if (d->type == 'D' && d->r[1] == 1 && d->r[2] == 0)
+			lodmap[d->r[0]] = d;
+	}
+
+	return (lodmap);
 }
 
 /*
