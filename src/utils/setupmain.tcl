@@ -86,9 +86,33 @@ proc initGlobals {} \
 		set i 0
 	}
 	set ::runtime(destination) [lindex $runtime(places) $i]
-
+	set ::runtime(hasAdminPrivs) [hasAdminPrivs]
 }
 
+proc hasAdminPrivs {} \
+{
+	# registry command isn't available to bkgui, so we have to 
+	# spawn tclsh
+	set script {
+		if {[catch {
+			set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
+			append key "\\Control\\Session Manager\\Environment"
+			set path [registry get $key Path]
+			# if this fails, it's almost certainly because the
+			# user doesn't have admin privs.
+			registry set $key Path $path
+		} result]} {
+			puts 0
+		} else {
+			puts 1
+		}
+		exit 0
+	}
+	set exe [info nameofexecutable]
+	set tclsh [string map {bkgui tclsh} [info nameofexecutable]]
+	set hasAdminPrivs [exec $tclsh << $script]
+	return $hasAdminPrivs
+}
 # this is where the actual install takes place
 proc install {} \
 {
@@ -97,9 +121,11 @@ proc install {} \
 	set installfrom [pwd]
 
 	set command [list doCommand bk install -vf]
-	if {$runtime(enableSccDLL)}	   {lappend command -s}
-	if {$runtime(enableShellxLocal)}   {lappend command -l}
-	if {$runtime(enableShellxNetwork)} {lappend command -n}
+	if {$runtime(hasAdminPrivs)} {
+		if {$runtime(enableSccDLL)}	   {lappend command -s}
+		if {$runtime(enableShellxLocal)}   {lappend command -l}
+		if {$runtime(enableShellxNetwork)} {lappend command -n}
+	}
 	# destination must be normalized, otherwise we run into a 
 	# bug in the msys shell where mkdir -p won't work with 
 	# DOS-style (backward-slash) filenames.
@@ -330,42 +356,41 @@ proc widgets {} \
 	    -body {
 		    set w [$this info workarea]
 		    set bk [file join $::runtime(destination)/bk]
-		    set map [list \
-				 %D $::runtime(destination) \
-				 %B $::runtime(symlinkDir)\
-				]
-		    lappend map %bk $bk
 
-		    set d [string map $map $::strings(InstallDLLs)]
-		    $this stepconfigure InstallDLLs -description [unwrap $d]
+		    if {$runtime(hasAdminPrivs)} {
+			    $this stepconfigure InstallDLLs \
+				-description [unwrap $::strings(InstallDLLs)]
+			    checkbutton $w.shellx-local \
+				-anchor w \
+				-text "Enable Explorer integration on LOCAL drives" \
+				-borderwidth 1 \
+				-variable ::runtime(enableShellxLocal) \
+				-onvalue 1 \
+				-offvalue 0 
+			    checkbutton $w.shellx-remote \
+				-anchor w \
+				-text "Enable Explorer integration on NETWORK drives" \
+				-borderwidth 1 \
+				-variable ::runtime(enableShellxNetwork) \
+				-onvalue 1 \
+				-offvalue 0 
+			    checkbutton $w.bkscc \
+				-anchor w \
+				-text "Enable VC++ integration" \
+				-borderwidth 1 \
+				-variable ::runtime(enableSccDLL) \
+				-onvalue 1 \
+				-offvalue 0 
 
-		    checkbutton $w.shellx-local \
-			-anchor w \
-			-text "Enable Explorer integration on LOCAL drives" \
-			-borderwidth 1 \
-			-variable ::runtime(enableShellxLocal) \
-			-onvalue 1 \
-			-offvalue 0 
-		    checkbutton $w.shellx-remote \
-			-anchor w \
-			-text "Enable Explorer integration on NETWORK drives" \
-			-borderwidth 1 \
-			-variable ::runtime(enableShellxNetwork) \
-			-onvalue 1 \
-			-offvalue 0 
-		    checkbutton $w.bkscc \
-			-anchor w \
-			-text "Enable VC++ integration" \
-			-borderwidth 1 \
-			-variable ::runtime(enableSccDLL) \
-			-onvalue 1 \
-			-offvalue 0 
-
-		    frame $w.spacer1 -height 8 -borderwidth 0 
-		    pack $w.spacer1 -side top -fill x
-		    pack $w.shellx-local -side top -fill x -anchor w
-		    pack $w.shellx-remote -side top -fill x -anchor w
-		    pack $w.bkscc -side top -fill x -anchor w
+			    frame $w.spacer1 -height 8 -borderwidth 0 
+			    pack $w.spacer1 -side top -fill x
+			    pack $w.shellx-local -side top -fill x -anchor w
+			    pack $w.shellx-remote -side top -fill x -anchor w
+			    pack $w.bkscc -side top -fill x -anchor w
+		    } else {
+			    $this stepconfigure InstallDLLs \
+				-description [unwrap $::strings(InstallDLLsNoAdmin)]
+		    }
 	    }
 
 	#-----------------------------------------------------------------------
@@ -932,6 +957,21 @@ set strings(PickPlace.windows) {
 set strings(Overwrite) {
 	BitKeeper appears to already be installed in %D. 
 	Please confirm the removal of the existing version before continuing.
+}
+
+set strings(InstallDLLsNoAdmin) {
+	BitKeeper includes optional integration with Windows Explorer
+	and Visual Studio (but not Visual Studio.net, that's coming soon).
+
+	You do not have sufficient privileges on this machine to install 
+	these features. These features must be must be installed from a user 
+	account that has Administrator privileges. 
+
+	These features are only available to commercial users of BitKeeper.
+	If you are evaluating BitKeeper for commercial use please make
+	sure you have received an evaluation key to enable these
+	features. See http://www.bitkeeper.com for information on
+	getting an evaluation key or a commercial license key.
 }
 
 set strings(InstallDLLs) {
