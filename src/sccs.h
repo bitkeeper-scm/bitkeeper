@@ -148,6 +148,7 @@
 #define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
 #define	S_SCCS		0x20000000	/* expand SCCS keywords */
 #define	S_SINGLE	0x40000000	/* inherit user/host */
+#define	S_ALWAYS_EDIT	0x80000000	/* stays in edit mode after delta/ci */
 #define S_XFLAGS	(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|S_SCCS|S_SINGLE)
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
@@ -189,6 +190,7 @@
 #define	X_HASH		0x00000040	/* mdbm file */
 #define	X_SCCS		0x00000080	/* SCCS keywords */
 #define	X_SINGLE	0x00000100	/* single user, inherit user/host */
+#define	X_ALWAYS_EDIT	0x00000200	/* stays in edit mode after delta/ci */
 #define X_XFLAGS	(X_RCS|X_YEAR4|X_ISSHELL|X_EXPAND1|X_HASH|X_SCCS|X_SINGLE)
 
 			/* users can change these */
