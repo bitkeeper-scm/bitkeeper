@@ -62,11 +62,11 @@ usage:			fprintf(stderr,
 
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	if (rev) {
-		sprintf(buf, "%sbk cset -D -t%s %s %s > %s",
-				bin, rev, include, exclude, file_rev);
+		sprintf(buf, "bk cset -D -t%s %s %s > %s",
+					rev, include, exclude, file_rev);
 	} else {
-		sprintf(buf, "%sbk cset -D -t+  %s %s> %s",
-					bin, include, exclude, file_rev);
+		sprintf(buf, "bk cset -D -t+  %s %s> %s",
+						include, exclude, file_rev);
 	}
 	system(buf);
 	f = fopen(file_rev, "rt");

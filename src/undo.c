@@ -46,8 +46,7 @@ undo_main(int ac,  char **av)
 	clean_file(rmlist, rev);
 
 	sprintf(undolist, "%s/bk_undolist%d",  TMP_PATH, getpid());
-	sprintf(buf, "%sbk stripdel -Ccr%s ChangeSet 2> %s",
-							bin, rev, undolist);
+	sprintf(buf, "bk stripdel -Ccr%s ChangeSet 2> %s", rev, undolist);
 	if (system(buf) != 0) {
 		gethelp("undo_error", bin, stdout);
 		cat(undolist);
@@ -71,8 +70,7 @@ undo_main(int ac,  char **av)
 		unless (isdir(BK_TMP)) {
 			mkdirp(BK_TMP);
 		}
-		sprintf(buf, "%sbk cset %s -ffm%s > %s",
-						bin, vflag, rev, BK_UNDO);
+		sprintf(buf, "bk cset %s -ffm%s > %s", vflag, rev, BK_UNDO);
 		system(buf);
 		if (size(BK_UNDO) <= 0) {
 			printf("Failed to create undo backup %s\n", BK_UNDO);
@@ -93,7 +91,7 @@ undo_main(int ac,  char **av)
 		assert(p);
 		*p++ = 0;
 		fprintf(f1, "%s\n", buf);
-		sprintf(buf1, "%sbk stripdel %s -Cr%s %s", bin, qflag, p, buf);
+		sprintf(buf1, "bk stripdel %s -Cr%s %s", qflag, p, buf);
 		if (system(buf1) != 0) {
 			fprintf(stderr, "Undo of %s@%s failed\n", buf, p);
 			fclose(f);
@@ -112,8 +110,8 @@ undo_main(int ac,  char **av)
 	 * Also, run all files through renumber.
 	 */
 	sprintf(renamelist, "%s/bk_renaemlist%d",  TMP_PATH, getpid());
-	sprintf(buf, "%sbk prs -hr+ -d':PN: :SPN:' - < %s > %s",
-						bin, mvlist, renamelist);
+	sprintf(buf, "bk prs -hr+ -d':PN: :SPN:' - < %s > %s",
+							mvlist, renamelist);
 	system(buf);
 	f = fopen(renamelist, "rt");
 	sprintf(buf, "bk renumber %s -", qflag);
@@ -148,8 +146,7 @@ undo_main(int ac,  char **av)
 		    BK_UNDO);
 	}
 	if (streq(qflag, "")) printf("Running consistency check...\n");
-	sprintf(buf, "%sbk sfiles -r", bin);
-	system(buf);
+	system("bk sfiles -r");
 	sprintf(buf, "bk -r check -a");
 	if ((rc = system(buf)) == 2) { /* 2 mean try again */
 		if (streq(qflag, "")) {
@@ -193,7 +190,7 @@ clean_file(char *rmlist, char *rev)
 	char	*p;
 
 	sprintf(cleanlist, "%s/bk_cleanlist%d",  TMP_PATH, getpid());
-	sprintf(buf, "%sbk cset -ffl%s > %s", bin, rev, rmlist);
+	sprintf(buf, "bk cset -ffl%s > %s", rev, rmlist);
 	system(buf);
 	if (size(rmlist) == 0) {
 		printf("undo: nothing to undo in \"%s\"\n", rev);
@@ -212,7 +209,7 @@ clean_file(char *rmlist, char *rev)
 	}
 	fclose(f);
 	fclose(f1);
-	sprintf(buf, "%sbk clean - < %s", bin, cleanlist);
+	sprintf(buf, "bk clean - < %s", cleanlist);
 	if (system(buf) != 0) {
 		printf("Undo aborted.\n");
 		unlink(rmlist);

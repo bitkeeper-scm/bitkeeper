@@ -13044,13 +13044,11 @@ sccs_ino(sccs *s)
 int
 sccs_reCache(void)
 {
-	char buf[MAXPATH];
 	char	*av[4];
 
 	/* sfiles -r */
-	sprintf(buf, "%sbk", getenv("BK_BIN"));
-	av[0] = buf,   av[1] = "sfiles"; av[2] = "-r"; av[3] = 0;
-	return spawnvp_ex(_P_WAIT, buf, av);
+	av[0] = "bk";  av[1] = "sfiles"; av[2] = "-r"; av[3] = 0;
+	return spawnvp_ex(_P_WAIT, av[0], av);
 }
 
 /*
@@ -13074,7 +13072,7 @@ loadDB(char *file, int (*want)(char *), int style)
 	int	first = 1;
 	int	flags;
 	char	buf[MAXLINE];
-	char	*av[4];
+	char	*av[5];
 
 	// XXX awc->lm: we should check the z lock here
 	// someone could be updating the file...
@@ -13087,9 +13085,9 @@ again:	unless (f = fopen(file, "rt")) {
 		if (first && streq(file, GONE) && exists(SGONE)) {
 			first = 0;
 			/* get -s */
-			sprintf(buf, "%s%s", getenv("BK_BIN"), GET);
-			av[0] = GET; av[1] = "-s"; av[2] = GONE; av[3] = 0;
-			spawnvp_ex(_P_WAIT, buf, av);
+			av[0] = "bk"; av[1] = "get"; av[2] = "-q";
+			av[3] = GONE; av[4] = 0;
+			spawnvp_ex(_P_WAIT, av[0], av);
 			goto again;
 		}
 out:		if (f) fclose(f);

@@ -161,8 +161,7 @@ passes(opts *opts)
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
 	 */
 	opts->pass = 1;
-	sprintf(buf, "%sbk sfiles .", bin);
-	unless (p = popen(buf, "r")) {
+	unless (p = popen("bk sfiles .", "r")) {
 		perror("popen of bk sfiles");
 		return (1);
 	}
@@ -861,8 +860,8 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	t = sccs2name(sfile);
-	sprintf(buf, "%sbk delta %s -y'Merge rename: %s -> %s' %s",
-	    bin, rs->opts->log ? "" : "-q", d->pathname, t, sfile);
+	sprintf(buf, "bk delta %s -y'Merge rename: %s -> %s' %s",
+	    rs->opts->log ? "" : "-q", d->pathname, t, sfile);
 	free(t);
 	system(buf);
 }
@@ -920,8 +919,8 @@ type_delta(resolve *rs,
 		exit(1);
 	}
 	free(g);
-	sprintf(buf, "%sbk delta -q -y'Merge file types: %s -> %s' %s",
-	    bin, mode2FileType(o->mode), mode2FileType(n->mode), sfile);
+	sprintf(buf, "bk delta -q -y'Merge file types: %s -> %s' %s",
+	    mode2FileType(o->mode), mode2FileType(n->mode), sfile);
 	if (system(buf)) {
 		fprintf(stderr, "%s failed\n", buf);
 		exit(1);
@@ -956,8 +955,8 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 		    sfile, d->rev, a, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
-	sprintf(buf, "%sbk delta %s -y'Change mode to %s' -M%s %s",
-	    bin, rs->opts->log ? "" : "-q", a, a, sfile);
+	sprintf(buf, "bk delta %s -y'Change mode to %s' -M%s %s",
+	    rs->opts->log ? "" : "-q", a, a, sfile);
 	if (system(buf)) {
 		fprintf(stderr, "%s failed\n", buf);
 		exit(1);
@@ -994,7 +993,7 @@ flags_delta(resolve *rs,
 		    sfile, d->rev, bits, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
-	sprintf(buf, "%sbk clean %s", bin, sfile);
+	sprintf(buf, "bk clean %s", sfile);
 	system(buf);
 	strcpy(buf, bin);
 	strcat(buf, "bk admin -r");
@@ -1048,8 +1047,8 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 		fprintf(stderr, "edit_tip(%s %s %s)\n",
 		    sfile, d->rev, abs(which) == LOCAL ? "local" : "remote");
 	}
-	sprintf(buf, "%sbk get -e%s%s -r%s %s",
-	    bin, which < 0 ? "g" : "", rs->opts->log ? "" : "q", d->rev, sfile);
+	sprintf(buf, "bk get -e%s%s -r%s %s",
+	    which < 0 ? "g" : "", rs->opts->log ? "" : "q", d->rev, sfile);
 	system(buf);
 	if (which) {
 		t = strrchr(sfile, '/');
@@ -1194,8 +1193,7 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * do an sfiles, open up each file, check for conflicts, and
 	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
-	sprintf(buf, "%sbk sfiles .", bin);
-	unless (p = popen(buf, "r")) {
+	unless (p = popen("bk sfiles .", "r")) {
 		perror("popen of sfiles");
 		exit (1);
 	}
@@ -1267,8 +1265,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	/*
 	 * Since we are about to commit, clean up the r.files
 	 */
-	sprintf(buf, "%sbk sfiles .", bin);
-	unless (p = popen(buf, "r")) {
+	unless (p = popen("bk sfiles .", "r")) {
 		perror("popen of sfiles");
 		exit (1);
 	}
@@ -1320,8 +1317,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * in textonly mode, because an earlier partial run could have
 	 * been in a different mode.  So be safe.
 	 */
-	sprintf(buf, "%sbk sfiles -c", bin);
-	unless (p = popen(buf, "r")) {
+	unless (p = popen("bk sfiles -c", "r")) {
 		perror("popen of find");
 		exit (1);
 	}
@@ -1336,8 +1332,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		exit(1);
 	}
 
-	sprintf(buf, "%sbk sfiles -C", bin);
-	unless (p = popen(buf, "r")) {
+	unless (p = popen("bk sfiles -C", "r")) {
 		perror("popen of find");
 		exit (1);
 	}
@@ -1650,8 +1645,7 @@ pending()
 	FILE	*f;
 	int	ret;
 
-	sprintf(buf, "%sbk sfiles -C", bin);
-	f = popen(buf, "r");
+	f = popen("bk sfiles -C", "r");
 	ret = fgetc(f) != EOF;
 	pclose(f);
 	return (ret);
@@ -1666,8 +1660,7 @@ pendingCheckins()
 	char	buf[MAXPATH];
 	FILE	*f;
 
-	sprintf(buf, "%sbk sfiles -c", bin);
-	f = popen(buf, "r");
+	f = popen("bk sfiles -c", "r");
 
 	while (fnext(buf, f)) {
 		chop(buf);
@@ -1788,7 +1781,7 @@ pass4_apply(opts *opts)
 	gettemp(orig, "orig");
 	save = fopen(orig, "w+");
 	chdir(RESYNC2ROOT);
-	sprintf(key, "%sbk sfiles %s", bin, ROOT2RESYNC);
+	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		perror("popen of bk sfiles");
 		fclose(save); unlink(orig);
@@ -1876,7 +1869,7 @@ pass4_apply(opts *opts)
 	/*
 	 * Pass 4c - apply the files.
 	 */
-	sprintf(key, "%sbk sfiles %s", bin, ROOT2RESYNC);
+	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		unbackup(save);
 		unlink(orig);
@@ -1920,14 +1913,12 @@ pass4_apply(opts *opts)
 		    "resolve: applied %d files in pass 4\n", opts->applied);
 		fprintf(stdlog, "resolve: rebuilding caches...\n");
 	}
-	sprintf(buf, "%sbk sfiles -r", bin);
-	system(buf);
+	system("bk sfiles -r");
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
-	sprintf(buf, "%sbk sfiles | %sbk check -a -", bin, bin);
-	unless (system(buf) == 0) {
+	unless (system("bk sfiles | bk check -a -") == 0) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
 		fclose(save);
 		unlink(orig);

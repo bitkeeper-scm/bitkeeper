@@ -3,9 +3,9 @@
 #include <time.h>
 
 
-char	*editor = 0, *pager = 0, *bin = 0;
-char	*bk_dir = "BitKeeper/";
-int	resync = 0, quiet = 0;
+extern char	*editor, *pager, *bin;
+extern char	*bk_dir;
+extern int	resync, quiet;
 
 int	get(char *path, int flags, char *output);
 int	bkusers();
@@ -203,16 +203,14 @@ logChangeSet(char *rev)
 	header(f);
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
-	sprintf(buf, "%sbk sccslog -r%s ChangeSet >> %s", bin, rev, commit_log);
+	sprintf(buf, "bk sccslog -r%s ChangeSet >> %s", rev, commit_log);
 	system(buf);
-	sprintf(buf, "%sbk cset -r+ | %sbk sccslog - >> %s",
-							bin, bin, commit_log);
+	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", commit_log);
 	system(buf);
 	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
-	sprintf(buf, "%sbk cset -c -r%s..%s >> %s",
-					bin, start_rev, rev, commit_log);
+	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
 	system(buf);
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending ChangeSet to %s...\n", logAddr());
@@ -281,10 +279,9 @@ notify()
 	f = fopen(notify_log, "wb");
 	header(f);
 	fclose(f);
-	sprintf(buf, "%sbk sccslog -r+ ChangeSet >> %s", bin, notify_log);
+	sprintf(buf, "bk sccslog -r+ ChangeSet >> %s", notify_log);
 	system(buf);
-	sprintf(buf,
-	    "%sbk cset -r+ | %sbk sccslog - >> %s", bin, bin, notify_log);
+	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", notify_log);
 	system(buf);
 	projectname = project_name();
 	if (projectname[0]) {
@@ -361,12 +358,9 @@ mail(char *to, char *subject, char *file)
 void
 remark(int quiet)
 {
-	char	buf[MAXLINE];
-
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
 	unless (quiet) gethelp("consistency_check", "", stdout);
-	sprintf(buf, "%sbk cset -M1.0..", bin);
-	system(buf);
+	system("bk cset -M1.0..");
 	close(open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC, 0664));
 	unless(quiet) {
 		printf("Consistency check completed, thanks for waiting.\n\n");
@@ -407,21 +401,21 @@ status(int verbose, char *status_log)
 			fprintf(f, "User:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -x > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Extra:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%sbk sfiles -cg > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -cg > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Modified:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%sbk sfiles -Cg > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -Cg > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -432,25 +426,25 @@ status(int verbose, char *status_log)
 		int i;
 
 		fprintf(f, "%6d people have made deltas.\n", bkusers(1, 0, 0));
-		sprintf(buf, "%sbk sfiles > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0; fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files under revision control.\n", i);
-		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -x > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files not under revision control.\n", i);
-		sprintf(buf, "%sbk sfiles -c > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -c > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files modified and not checked in.\n", i);
-		sprintf(buf, "%sbk sfiles -C > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -C > %s", tmp_file);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0;  fgets(buf, sizeof (buf), f); i++);
 		fclose(f1);
@@ -501,6 +495,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	return (found);
 }
 
+#ifdef OLD
 void
 platformInit()
 {
@@ -511,7 +506,7 @@ platformInit()
 		"/usr/lib/bitkeeper/",
 		"/usr/bitkeeper/",
 		"/opt/bitkeeper/",
-		"/usr/local/bitkeepe/",
+		"/usr/local/bitkeeper/",
 		"/usr/local/bin/bitkeeper/",
 		"/usr/bin/bitkeeper/",
 		0
@@ -545,6 +540,7 @@ platformInit()
 	bin = strdup("/usr/libexec/bitkeeper/");
 	return;
 }
+#endif
 
 int
 checkLog()

@@ -49,7 +49,7 @@ commit_main(int ac, char **av)
 	}
 	unless(resync) remark(quiet);
 	sprintf(list, "%s/bk_list%d", TMP_PATH, getpid());
-	sprintf(buf, "%sbk sfiles -CA > %s", bin, list);
+	sprintf(buf, "bk sfiles -CA > %s", list);
 	if (system(buf) != 0) {
 		unlink(list);
 		unlink(commit_file);
@@ -64,7 +64,7 @@ commit_main(int ac, char **av)
 	}
 	if (getcomment) {
 		sprintf(buf,
-			"%sbk sccslog -C - < %s > %s", bin, list, commit_file);
+			"bk sccslog -C - < %s > %s", list, commit_file);
 		system(buf);
 	}
 	unlink(list);
@@ -127,10 +127,10 @@ do_commit()
 	}
 	sprintf(commit_list, "%s/commit_list%d", TMP_PATH, getpid());
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
-	sprintf(buf, "%sbk sfiles -C > %s", bin, commit_list);
+	sprintf(buf, "bk sfiles -C > %s", commit_list);
 	system(buf);
-	sprintf(buf, "%sbk cset %s %s %s %s%s < %s",
-		bin, lod ? "-L": "", quiet ? "-q" : "", sym_opt,
+	sprintf(buf, "bk cset %s %s %s %s%s < %s",
+		lod ? "-L": "", quiet ? "-q" : "", sym_opt,
 		hasComment? "-Y" : "", hasComment ? commit_file : "",
 		commit_list);
 	rc = system(buf);

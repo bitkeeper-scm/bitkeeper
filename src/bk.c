@@ -3,9 +3,12 @@
 
 #define BK "bk"
 
-extern char *bin;
-char *find_wish();
-char *find_perl5();
+char	*editor = 0, *pager = 0, *bin = 0;
+char	*bk_dir = "BitKeeper/";
+int	resync = 0, quiet = 0;
+
+char	*find_wish();
+char	*find_perl5();
 
 int unedit_main(int, char **);
 int unlock_main(int, char **);
@@ -199,7 +202,7 @@ main(int ac, char **av)
 				char buf[MAXLINE];
 				char *p, *q;
 
-				sprintf(buf, "%sbk sfiles | %sbk", bin, bin);
+				strcpy(buf, "bk sfiles | bk");
 				p = &buf[strlen(buf)];
 				for (i = 1; q = av[i]; i++) {
 					*p++ = ' ';
@@ -345,6 +348,37 @@ main(int ac, char **av)
 }
 
 char *
+find_prog(char *prog)
+{
+	char *p, *s;
+	char path[MAXLINE];
+	static char prog_path[MAXPATH];
+	int more = 1;
+
+	p  = getenv("PATH");
+	if (p) {;
+		sprintf(path, "%s:/usr/local/bin", p);
+		localName2bkName(path, path);
+	} else {
+		strcpy(path, "/usr/local/bin");
+	}
+	p = path;
+	while (more) {
+		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
+		if (*s == '\0') more = 0;
+		*s = '\0';
+#ifdef WIN32
+		sprintf(prog_path, "%s/%s.exe", p, prog);
+#else
+		sprintf(prog_path, "%s/%s", p, prog);
+#endif
+		if (exists(prog_path)) return (prog_path);
+		p = ++s;
+	}
+	return (0);
+}
+
+char *
 find_wish()
 {
 	char *p, *s;
@@ -419,3 +453,39 @@ next:		p = ++s;
 	exit(1);
 }
 
+void
+platformInit()
+{
+	char	buf[MAXPATH], *p, *q;
+	char	link[MAXPATH];
+	int	i = -1, len;
+
+	if (bin) return;
+#ifdef	WIN32
+	setmode(1, _O_BINARY);
+	setmode(2, _O_BINARY);
+#endif
+	if ((editor = getenv("EDITOR")) == NULL) editor = "vi";
+	if ((pager = getenv("PAGER")) == NULL) pager = "more";
+
+	if ((bin = getenv("BK_BIN")) != NULL) {
+		char	buf[MAXPATH];
+		sprintf(buf, "%sbk", bin);
+		if (exists(buf)) return;
+	}
+
+	if (q = find_prog("bk")) {
+		int len;
+		char link[MAXPATH];
+		if ((len = readlink(q, link, sizeof(link))) != -1) {
+			assert(len < sizeof(link));
+			sprintf(buf, "%s/", dirname(link));
+		}  else {
+			sprintf(buf, "%s/", dirname(q));
+		}
+		bin = strdup(buf);
+		return;
+	}
+	bin = strdup("/usr/libexec/bitkeeper/");
+	return;
+}

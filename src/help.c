@@ -13,22 +13,22 @@ help_main(int ac,  char **av)
 
 	platformInit();
 	if (ac == 1) {
-		sprintf(buf, "%sbk gethelp help | %s", bin, pager);
+		sprintf(buf, "bk gethelp help | %s", pager);
 		system(buf);
 		return (0);
 	}
 	sprintf(help_out, "%s/bk_help%d", TMP_PATH, getpid());
 	while (av[++i]) {
-		sprintf(buf, "%sbk gethelp help_%s %s > %s",
-						bin, av[i], bin, help_out);
+		sprintf(buf, "bk gethelp help_%s %s > %s",
+							av[i], bin, help_out);
 		if (system(buf) != 0) {
 			if (is_command(av[i])) {
 				f = fopen(help_out, "ab");
 				fprintf(f,
 	"		-------------- %s help ---------------\n\n", av[i]);
 				fclose(f);
-				sprintf(buf, "%sbk %s --help >> %s 2>&1",
-							bin, av[i], help_out);
+				sprintf(buf, "bk %s --help >> %s 2>&1",
+							    av[i], help_out);
 				system(buf);
 			} else {
 				f = fopen(help_out, "ab");

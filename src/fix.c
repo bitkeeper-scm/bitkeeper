@@ -44,8 +44,7 @@ fix_main(int ac,  char **av)
 		assert(s);
 		d = findrev(s, NULL);
 		assert(d);
-		sprintf(buf, "%sbk stripdel %s -r%s %s",
-					bin, qflag, d->rev, av[i]);
+		sprintf(buf, "bk stripdel %s -r%s %s", qflag, d->rev, av[i]);
 		sccs_free(s);
 		if (system(buf) == 0) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;

@@ -40,6 +40,6 @@ usage:			fprintf(stderr,
 			exit(1);
 		}
 	}
-	sprintf(buf, "%sbk unwrap | %sbk takepatch %s", bin, bin, opts);
+	sprintf(buf, "bk unwrap | bk takepatch %s", opts);
 	return (system(buf));
 }

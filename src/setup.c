@@ -73,8 +73,7 @@ setup_main(int ac, char **av)
 		fputs(project_name, f);
 		fclose(f);
 	}
-	sprintf(buf, "%sbk cset -siDescription .", getenv("BK_BIN"));
-	system(buf);
+	system("bk cset -siDescription .");
 
 	f = fopen("Description", "rt");
 	fgets(buf, sizeof(buf), f);
@@ -114,20 +113,15 @@ setup_main(int ac, char **av)
 		system(buf);
 	}
 	// XXX FIXME: This should be replaced with a direct C function call
-	sprintf(buf, "%sbk ci -qi config", bin);
-	system(buf);
-	sprintf(buf, "%sbk get -q config", bin);
-	system(buf);
+	system("bk ci -qi config");
+	system("bk get -q config");
 
-	if (logsetup) {
-		sprintf(buf, "%sbk sendconfig setups@openlogging.org", bin);
-	}
+	if (logsetup) system("bk sendconfig setups@openlogging.org");
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
-	sprintf(buf, "%sbk sfiles -C > %s", bin, setup_files);
+	sprintf(buf, "bk sfiles -C > %s", setup_files);
 	system(buf);
 	sprintf(buf,
-		"%sbk cset -q -y\"Initial repository create\" -  < %s",
-		bin, setup_files);
+	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);
 	system(buf);
 	unlink(setup_files);
 	return (0);
