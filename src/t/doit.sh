@@ -433,6 +433,7 @@ echo ''
 		if [ $EXIT -ne 0 ]
 		then	echo ERROR: Test ${i#t.} failed with error $EXIT
 		else	echo ERROR: Test ${i#t.} failed with unexpected output
+			EXIT=2
 		fi
 		test $KEEP_GOING = NO && exit $EXIT
 		FAILED="$i $FAILED"
@@ -442,7 +443,7 @@ done
 rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
 test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
 echo
-EXIT=2	# Because I'm paranoid
+EXIT=100	# Because I'm paranoid
 echo ------------------------------------------------
 if [ "X$FAILED" = X ]
 then
