@@ -420,8 +420,6 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	mclose(m);
 	unlink(msgfile);
 	unlink(rev_list);
-	unless (opts.autopull) return (0);
-	pull(opts, r); /* pull does not return */
 	return (0);
 }
 
@@ -497,7 +495,7 @@ push_part2(char **av, opts opts,
 {
 
 	char	buf[4096];
-	int	n, status, rc = 0, done = 0;
+	int	n, status, rc = 0, done = 0, do_pull = 0;
 
 	if (ret == 0){
 		putenv("BK_OUTGOING=NOTHING");
@@ -506,6 +504,7 @@ push_part2(char **av, opts opts,
 	} else if (ret == 1) {
 		putenv("BK_OUTGOING=CONFLICT");
 		send_end_msg(opts, r, "@CONFLICT@\n", rev_list, envVar);
+		if (opts.autopull) do_pull = 1;
 		done = 1;
 	} else {
 		/*
@@ -596,6 +595,7 @@ done:	if (!opts.metaOnly) {
 	if (rev_list[0]) unlink(rev_list);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);
+	if (do_pull) pull(opts, r); /* pull does not return */
 	return (rc);
 }
 
