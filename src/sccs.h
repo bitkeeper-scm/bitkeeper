@@ -531,7 +531,7 @@ extern	char *upgrade_msg;
 typedef struct loc {
 	char	*p;		/* first byte of the data */
 	u32	len;		/* think 4GB is big enough? */
-	u8	isPatch:1;	/* this entry came from the patch file */
+	ser_t	serial;
 } loc;
 
 /*
@@ -584,6 +584,7 @@ typedef	struct sccs {
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
 	loc	*locs;		/* for cset data */ 
+	u32	iloc;		/* index to element in *loc */ 
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
 	u32	cksumok:1;	/* check sum was ok */
@@ -795,6 +796,7 @@ delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 int	sccs_addSym(sccs *, u32 flags, char *);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
+void	sccs_inherit(sccs *s, u32 flags, delta *d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,

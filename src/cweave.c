@@ -81,31 +81,9 @@ cset_map(sccs *s, int extras)
 	assert(s);
 	assert(s->state & S_CSET);
 	assert(!s->locs);
-	s->nloc = s->nextserial + extras;
+	s->iloc = 1;
+	s->nloc = extras + 1;
 	s->locs = calloc(s->nloc, sizeof(loc));
-	assert(s->encoding == E_ASCII);
-	unless (s->size) return (0);
-
-	p = s->mmap + s->data; /* set p to start of delta body */
-	while (p < (s->mmap + s->size)) {
-		assert(strneq(p, "\001I ", 3));
-		p += 3;
-		ser = atoi2(&p);
-		assert(ser < s->nloc);
-		assert(*p == '\n');
-		p++;
-		s->locs[ser].p = p;
-		for (len = newline = 1; p < (s->mmap + s->size); p++, len++) {
-			if (newline) {
-				if (*p == '\001') break;
-				newline = 0;
-			}
-			if (*p == '\n') newline = 1;
-		}
-		assert(strneq(p, "\001E ", 3));
-		if (len) s->locs[ser].len = len - 1;
-		while (*p++ != '\n');
-	}
 	return (0);
 }
 
@@ -190,19 +168,12 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 			}
 			p = p->next;
 		}
-
-		/*
-		 * Move all serial numbers that is above
-		 * the insertion point up one slot.
-		 */
-		memmove(&(s->locs[serial+1]), &(s->locs[serial]),
-			(s->table->serial - serial + 1) * sizeof(loc));  
-
 		/*
 		 * Update all reference to the moved serial numbers 
 		 */
 		for (e = s->table; e; e = e->next) {
 			int	i;
+			if (e->serial < serial) break; /* optimization */
 
 			if (e->serial >= serial) e->serial++;
 			if (e->pserial >= serial) e->pserial++;
@@ -221,17 +192,24 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		}
 	}
 	s->nextserial++;
-	assert(s->table->serial <= s->nloc);
 
 	/*
 	 *  Fix up d->pserial and d->same
 	 */
 	if (parentKey) {
+		delta	**kp, *k;
 		p = sccs_findKey(s, parentKey); /* find parent delta */
 		assert(p);
 		d->pserial = p->serial;
 		d->parent = p;
+		for (kp = &p->kid; (k = *kp) != 0; kp = &k->kid) {
+			assert (k->serial != d->serial);
+			if (k->serial > d->serial) break;
+		}
+		d->siblings = k;
+		*kp = d;
 	}
+	sccs_inherit(s, 0, d);
 	if ((d->type == 'D') && (s->tree != d)) d->same = 1;
 
 	/*
@@ -244,12 +222,13 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 * Save dF info, used by cset_write() later
 	 * Note: meta delta have NULL dF
 	 */
-	s->locs[serial].p = NULL;
-	s->locs[serial].len = 0;
-	s->locs[serial].isPatch = 1;
+	assert(s->iloc < s->nloc);
+	s->locs[s->iloc].p = NULL;
+	s->locs[s->iloc].len = 0;
+	s->locs[s->iloc].serial = serial;
 	if (dF && dF->where) {
-		s->locs[serial].p = dF->where;
-		s->locs[serial].len = dF->size;
+		s->locs[s->iloc].p = dF->where;
+		s->locs[s->iloc].len = dF->size;
 
 		/*
 		 * Fix up d->added
@@ -259,6 +238,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		while ( t <= r) if (*t++ == '\n') added++;
 		d->added = added - 1;
 	}
+	s->iloc++;
 
 	/*
 	 * Fix up tag/symbols
@@ -275,6 +255,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	if (syms) freeLines(syms);
 }
 
+extern int sccs_csetPatchWeave(sccs *s, FILE *f);
 
 /*
  * Write out the new ChangeSet file.
@@ -283,16 +264,11 @@ int
 cset_write(sccs *s)
 {
 	FILE	*f;
-	delta	*d;
-	size_t	n;
-	u32	sum = 0;
-	u8	*p, *e;
-	char	buf[100];
-	u32	chunk = 0;
 
 	assert(s);
 	assert(s->state & S_CSET);
 	assert(s->locs);
+
 	unless (f = fopen(sccs_Xfile(s, 'x'), "w")) {
 		perror(sccs_Xfile(s, 'x'));
 		return (-1);
@@ -303,68 +279,7 @@ cset_write(sccs *s)
 		fclose(f);
 		return (-1);
 	}
-	for (d = s->table; d; d = d->next) {
-		unless (d->type == 'D') continue;
-		unless (s->locs[d->serial].len) continue;
-
-		/*
-		 * We want the output to look like:
-		 * ^AI serial
-		 * key
-		 * key
-		 * ^AE
-		 */
-		sprintf(buf, "\001I %u\n", d->serial);
-		fputs(buf, f);
-		for (p = buf; *p; sum += *p++);
-
-		/*
-		 * Patch format is a little different, it looks like
-		 * 0a1
-		 * > key
-		 * > key
-		 * 
-		 * We need to strip out all the non-key stuff: 
-		 * a) "0a0"
-		 * b) "> "
-		 */
-		if (s->locs[d->serial].isPatch) {
-			p = s->locs[d->serial].p;
-			assert(strneq(p, "0a0\n> ", 6));
-			e = p + s->locs[d->serial].len - 1;
-			p += 6; /* skip "0a0\n" */
-			
-			while (1) {
-				fputc(*p, f);
-				sum += *p;
-				if (p == e) break;
-				if (*p == '\n') {
-					assert(strneq("\n> ", p, 3));
-					p += 3; /* skip "> " */
-				} else {
-					p++;
-				}
-			}
-			
-		} else {
-			n = fwrite(s->locs[d->serial].p,
-						1, s->locs[d->serial].len, f);
-			unless (n == s->locs[d->serial].len) {
-				perror("fwrite");
-				fclose(f);
-				return (-1);
-			}
-			for (p = s->locs[d->serial].p; n--; sum += *p++);
-		}
-		sprintf(buf, "\001E %u\n", d->serial);
-		fputs(buf, f);
-		for (p = buf; *p; sum += *p++);
-		++chunk;
-	}
-	strcpy(buf, "\001I 1\n\001E 1\n");
-	fputs(buf, f);
-	for (p = buf; *p; sum += *p++);
-	s->cksum += sum;
+	if (sccs_csetPatchWeave(s, f)) return (-1);
 	fseek(f, 0L, SEEK_SET);
 	fprintf(f, "\001H%05u\n", s->cksum);
 	if (fclose(f)) perror(sccs_Xfile(s, 'x'));

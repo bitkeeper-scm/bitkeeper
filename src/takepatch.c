@@ -8,6 +8,7 @@ left||right->path == s->gfile.
 #include "sccs.h"
 #include "logging.h"
 #include "zlib/zlib.h"
+#include <time.h>
 WHATSTR("@(#)%K%");
 
 /*
@@ -875,6 +876,8 @@ fixLod(sccs *s)
 	u32	flags = SILENT;
 	u32	lodflags = LOD_NORENAME|LOD_CHECK|LOD_RENUMBER;
 
+	return(0);
+
 	if (s->state & S_CSET) {
 		assert(!lodstruct);
 		lodstruct = lod_init(s, 0, flags|lodflags, "takepatch");
@@ -931,25 +934,41 @@ chkEmpty(sccs *s, MMAP *dF)
 /*
  * Most of the code in this function is copied from applyPatch
  * We may want to merge the two function later.
+ * 
+ * This tries within a reasonable amount of effort to write the
+ * SCCS file only once.  This can be done because the sccs struct
+ * is in memory and can be fiddled with carefully.  The weaving
+ * of new information is done when we are done fiddling with the sccs
+ * file and write out the table, then weave the new deltas into the
+ * body.  While this is doable for the general weave case, it is
+ * very doable for the ChangeSet file (or any hash file) because
+ * the weave is an ordered set of blocks, youngest to oldest.
+ * So by building a table of blocks to weave, as well as a way to
+ * know how to increment the serial number of existing blocks, it
+ * is possible to only write the file once.
+ *
+ * What we do in this files: 
  */
 private	int
 applyCsetPatch(char *localPath,
 			int nfound, int flags, sccs *perfile, project *proj)
 {
-	patch	*p = patchList;
+	patch	*p;
 	MMAP	*iF;
 	MMAP	*dF;
 	sccs	*s = 0;
 	delta	*d = 0;
 	int	n = 0;
-	char	lodkey[MAXKEY];
-	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
 	int	confThisFile;
 	FILE	*csets = 0;
 	char	csets_in[MAXPATH];
 
-	unless (p) return (0);
-	lodkey[0] = 0;
+# define MTm(x) fprintf(stderr, " " x " %lu\n", time(0));
+
+    MTm("START applyCsetPatch");
+
+	unless (p = patchList) return (0);
+
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
@@ -961,7 +980,12 @@ applyCsetPatch(char *localPath,
 		}
 		goto apply;
 	}
+	/* NOTE: the "goto" above .. skip the next block if no ChangeSet */
+
+    MTm("START prep work for existing ChangeSet file");
+
 	fileCopy2(localPath, p->resyncFile);
+	/* Open up the cset file */
 	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
@@ -996,41 +1020,8 @@ applyCsetPatch(char *localPath,
 			return -1;
 		}
 	}
-	/* convert to uncompressed, it's faster, we saved the mode above */
-	if (s->encoding & E_GZIP) s = expand(s, proj);
-	unless (s) return (-1);
-
-	/* save current LOD setting, as it might change */
-	if (d = sccs_top(s)) {
-		sccs_sdelta(s, d, lodkey);
-		if (s->defbranch) {
-			u8	*ptr;
-			/* XXX: handle symbols? */
-			lodbranch = 1;
-			for (ptr = s->defbranch; *ptr; ptr++) {
-				unless (*ptr == '.') continue;
-				lodbranch = 1 - lodbranch;
-			}
-			free(s->defbranch);
-			s->defbranch = 0;
-			sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
-			unless (sccs_restart(s)) {
-				perror("restart");
-				exit(1);
-			}
-		}
-	}
-	s->proj = 0; sccs_free(s);
-	/* sccs_restart does not rebuild the graph and we just pruned it,
-	 * so do a hard restart.
-	 */
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
-		SHOUT();
-		fprintf(stderr,
-		    "takepatch: can't open %s\n", p->resyncFile);
-		return -1;
-	}
 apply:
+    MTm("Top of 'apply:' ChangeSet file");
 	p = patchList;
 	if (p && p->pid) cset_map(s, nfound);
 	while (p) {
@@ -1047,8 +1038,8 @@ apply:
 					fprintf(stderr, " \n");
 				}
 				ahead(p->pid, s->sfile);
+				/* Can not reach */
 			}
-			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (isLogPatch) {
 				s->state |= S_FORCELOGGING;
 				s->xflags |= X_LOGS_ONLY;
@@ -1088,8 +1079,6 @@ apply:
 				 * and use that as the new local file when
 				 * when takepatch is done.
 				 */
-				encoding = s->encoding; /* save for later */
-				s->encoding &= ~E_GZIP;
 			}
 			iF = p->initMmap;
 			dF = p->diffMmap;
@@ -1104,18 +1093,33 @@ apply:
 		}
 		p = p->next;
 	}
-	cset_write(s);
+    MTm("before renumber");
+	sccs_renumber(s, 0, 0, 0, 0, 0);
+    MTm("before cset_write");
+	if (cset_write(s)) {
+		SHOUT();
+		fprintf(stderr, "takepatch: can't write %s\n", p->resyncFile);
+		return -1;
+	}
+    MTm("after cset_write");
 
+#if 0
 	s->proj = 0; sccs_free(s);
-
 	/*
 	 * Fix up d->rev, there is probaply a better way to do this.
+	 * XXX: not only renumbers, but collapses inheritance on
+	 * items brought in from patch.  Could call inherit.
+	 * For now, leave at this and watch performance.
 	 */
+	fprintf(stderr, " before renumber %u\n", time(0));
 	sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
+	fprintf(stderr, " after renumber %u\n", time(0));
 
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s && s->tree);
+#endif
 
+    MTm("before csets_in write");
 	p = patchList;
 	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	csets = fopen(csets_in, "w");
@@ -1126,22 +1130,17 @@ apply:
 		d = sccs_findKey(s, p->me);
 		assert(d);
 		unless (p->meta) fprintf(csets, "%s\n", d->rev);
+		/*
+		 * XXX: mclose take a null arg?
+		 * meta doesn't have a diff block
+		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
 		p = p->next;
 	}
 	fclose(csets);
+    MTm("after csets_in write");
 
-	if (encoding & E_GZIP) s = unexpand(s);
-	if (lodkey[0]) { /* restore LOD setting */
-		unless (d = sccs_findKey(s, lodkey)) {
-			fprintf(stderr, "takepatch: can't find lod key %s\n",
-				lodkey);
-			return (-1);
-		}
-		setlod(s, d, lodbranch);
-		unless (sccs_restart(s)) { perror("restart"); exit(1); }
-	}
-
+    MTm("before LOCAL/REMOTE write");
 	/*
 	 * XXX What does this code do ??
 	 * this code seems to be setup the D_LOCAL ANd D_REMOTE flags 
@@ -1164,15 +1163,12 @@ apply:
 		d->flags |= p->local ? D_LOCAL : D_REMOTE;
 	}
 
-	/* must have restored defbranch (setlod above) before fixing */
-	if (fixLod(s)) {
-		s->proj = 0; sccs_free(s);
-		return (-1);
-	}
+    MTm("after LOCAL/REMOTE write");
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		s->proj = 0; sccs_free(s);
 		return (-1);
 	}
+    MTm("after resolveFiles");
 	if (!confThisFile && (s->state & S_CSET) && 
 	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
@@ -1184,6 +1180,7 @@ apply:
 	freePatchList();
 	patchList = 0;
 	fileNum = 0;
+    MTm("end of applycset");
 	return (0);
 }
 

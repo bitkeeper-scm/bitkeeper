@@ -29,7 +29,6 @@ private serlist *allocstate(serlist *old, int oldsize, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
 private int	getflags(sccs *s, char *buf);
-private void	inherit(sccs *s, int flags, delta *d);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
 private sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
 private int	fflushdata(sccs *s, FILE *out);
@@ -598,8 +597,8 @@ sccs_freetable(delta *t)
  * is already correct.	As in dinsert().
  * Make sure to keep this up for all inherited fields.
  */
-private void
-inherit(sccs *s, int flags, delta *d)
+void
+sccs_inherit(sccs *s, u32 flags, delta *d)
 {
 	delta	*p;
 
@@ -749,7 +748,7 @@ dinsert(sccs *s, int flags, delta *d, int fixDate)
 		debug((stderr, " -> %s (kid, moved sib %s)\n",
 		    p->rev, d->siblings->rev));
 	}
-	inherit(s, flags, d);
+	sccs_inherit(s, flags, d);
 	if (fixDate) uniqDelta(s);
 }
 
@@ -3595,7 +3594,7 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
-	inherit(s, flags, d);
+	sccs_inherit(s, flags, d);
 	d = d->kid;
 	s->tree->kid = 0;
 	while (d) {
@@ -11335,6 +11334,119 @@ newcmd:
 	return (0);
 }
 
+/*
+ * Patch format is a little different, it looks like
+ * 0a0
+ * > key
+ * > key
+ * 
+ * We need to strip out all the non-key stuff: 
+ * a) "0a0"
+ * b) "> "
+ *
+ * We want the output to look like:
+ * ^AI serial
+ * key
+ * key
+ * ^AE
+ */
+private void
+patchweave(sccs *s, u8 *p, u32 len, u8 *buf, FILE *f)
+{
+	u8	*stop;
+
+	fputdata(s, "\001I ", f);
+	fputdata(s, buf, f);
+	fputdata(s, "\n", f);
+	if (p) {
+		stop = p + len;
+		assert(strneq(p, "0a0\n> ", 6));
+		p += 6; /* skip "0a0\n" */
+		while (1) {
+			fputdata(s, p, f);
+			while (*p++ != '\n') { /* null body */ }
+			if (p == stop) break;
+			assert(strneq("> ", p, 2));
+			p += 2; /* skip "> " */
+		}
+	}
+	fputdata(s, "\001E ", f);
+	fputdata(s, buf, f);
+	fputdata(s, "\n", f);
+}
+
+/*
+ * sccs_csetPatchWeave()
+ * This is similar to delta body, and makes use of many of the I/O
+ * functions, which is why it is here.  The purpose is to weave in
+ * patch items to the weave as it is copied to the output file.
+ * This is useful for fast-takepatch operation for cset file.
+ */
+
+int
+sccs_csetPatchWeave(sccs *s, FILE *f)
+{
+	u8	buf[20];
+	u8	*line;
+	u32	i;
+	u32	ser;
+	loc	*lp;
+
+	assert(s);
+	assert(s->state & S_CSET);
+	assert(s->locs);
+	lp = s->locs;
+	i = s->iloc - 1; /* set index to final element in array */
+	assert(i > 0); /* base 1 data structure */
+
+	seekto(s, s->data);
+	if (s->encoding & E_GZIP) {
+		zgets_init(s->where, s->size - s->data);
+		zputs_init();
+	}
+	while (line = nextdata(s)) {
+		assert(strneq(line, "\001I ", 3));
+		ser = atoi(&line[3]);
+
+		for ( ; i ; i--) {
+			if (ser + i > lp[i].serial) break;
+			unless (lp[i].p || lp[i].serial == 1) continue;
+			sertoa(buf, lp[i].serial);
+			patchweave(s, lp[i].p, lp[i].len, buf, f);
+		}
+		unless (i) break;
+
+		/* bump the serial number up by # of items we have left */
+		ser += i;
+		sertoa(buf, ser);
+		fputdata(s, "\001I ", f);
+		fputdata(s, buf, f);
+		fputdata(s, "\n", f);
+		while (line = nextdata(s)) {
+			if (*line == '\001') break;
+			fputdata(s, line, f);
+		}
+		assert(strneq(line, "\001E ", 3));
+		fputdata(s, "\001E ", f);
+		fputdata(s, buf, f);
+		fputdata(s, "\n", f);
+	}
+	assert(!(i && line));
+	/* Print out remaining, forcing serial 1 block at the end */
+	for ( ; i ; i--) {
+		unless (lp[i].p || lp[i].serial == 1) continue;
+		sertoa(buf, lp[i].serial);
+		patchweave(s, lp[i].p, lp[i].len, buf, f);
+	}
+	/* No translation of serial numbers needed for remainder of file */
+	for ( ; line; line = nextdata(s)) {
+		fputdata(s, line, f);
+	}
+	if (s->encoding & E_GZIP) zgets_done();
+	if (fflushdata(s, f)) return (-1);
+	return (0);
+}
+
 int
 sccs_hashcount(sccs *s)
 {
@@ -14871,94 +14983,54 @@ sccs_resolveFiles(sccs *s)
 	FILE	*f = 0;
 	delta	*p, *d, *g = 0, *a = 0, *b = 0;
 	char	*n[3];
-	u8	*lodmap = 0;
-	ser_t	next;
-	ser_t	defbranch;
 	int	retcode = -1;
 
-	unless (next = sccs_nextlod(s)) {
-		fprintf(stderr, "resolveFiles: out of lods\n");
-		goto err;
-	}
-	if (next == 1) {
-		fprintf(stderr, "resolveFiles: no lods present\n");
-		goto err;
-	}
-	/* next now equals one more than greatest that exists
-	 * so last entry in array is lodmap[next-1] which is 
-	 * is current max.
-	 */
-	unless (lodmap = calloc(next, sizeof(lodmap))) {
-		perror("calloc lodmap");
-		goto err;
-	}
-
-	/*
-	 * if defbranch is 2 or 4 digit, then defbranch is really
-	 * next lod which hasn't been created yet, so assign it
-	 * to next so that this code will make sure all other
-	 * lods have only one open tip
-	 */
-
-	defbranch = next - 1;
 	if (s->defbranch) {
-		int	branch = 1;
-		char	*ptr;
-
-		for (ptr = s->defbranch; *ptr; ptr++) {
-			if (*ptr != '.') continue;
-			branch = 1 - branch;
-		}
-		if (branch) {
-			defbranch = atoi(s->defbranch);
-		} else {
-			/* defbranch doesn't exist, so preload 'a' */
-			defbranch = next;
-			a = sccs_top(s);
-		}
+		fprintf(stderr, "resolveFiles: defbranch set.  "
+			"LODs are no longer supported.\n"
+			"Please contact support@bitmover.com for "
+			"assistance.\n");
+err:
+		return (retcode);
 	}
 
 	/*
 	 * b is that branch which needs to be merged.
 	 * At any given point there should be exactly one of these.
-	 * LODXXX - can be two if there are LODs.
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue;
 		unless (isleaf(s, d)) continue;
-		if (d->r[0] == defbranch) {
-			if (!a) {
-				a = d;
-			} else {
-				assert(LOGS_ONLY(s) || !b);
-				b = d;
-				/* Could break but I like the error checking */
+		if (!a) {
+			a = d;
+		} else {
+			assert(LOGS_ONLY(s) || !b);
+			b = d;
+			if (a->r[0] != b->r[0]) {
+				fprintf(stderr, "resolveFiles: Found tips on "
+				 	"different LODs.\n"
+					"LODs are no longer supported.\n"
+					"Please contact support@bitmover.com "
+					"for assistance.\n");
+				goto err;
 			}
-			continue;
+			/* Could break but I like the error checking */
 		}
-		unless (lodmap[d->r[0]]++) continue; /* if first leaf */
-
-		fprintf(stderr, "\ntakepatch: ERROR: conflict on lod %d\n",
-			d->r[0]);
-		goto err;
+		continue;
 	}
 
 	/*
 	 * If we have no conflicts, then make sure the paths are the same.
 	 * What we want to compare is whatever the tip path is with the
-	 * whatever the path is in the most recent delta in this LOD.
-	 * XXX - Rick, I don't do the lod stuff yet.
-	 * XXX - Larry, I think I handle the lod stuff for this case.
+	 * whatever the path is in the most recent delta.
 	 */
 	unless (b) {
 		for (p = s->table; p; p = p->next) {
-			if ((p->type == 'D') && !(p->flags & D_REMOTE)
-			    && (p->r[0] == defbranch)) {
+			if ((p->type == 'D') && !(p->flags & D_REMOTE)) {
 				break;
 			}
 		}
 		if (!p || streq(p->pathname, a->pathname)) {
-			free(lodmap);
 			return (0);
 		}
 		b = a;
@@ -15009,8 +15081,6 @@ rename:		n[1] = name2sccs(g->pathname);
 		free(n[2]);
 	}
 	/* retcode set above */
-err:
-	if (lodmap) free(lodmap);
 	return (retcode);
 }
 
