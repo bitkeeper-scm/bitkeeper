@@ -1522,24 +1522,23 @@ http_index(char *page)
 	out("<tr><td><a href=http://www.bitkeeper.com/bkweb/help.html>Help"
 	    "</a></td></tr>\n");
 #endif
+	out("<tr><td align=middle>"
+	    "<form method=get action=search/>\n"
+	    "<INPUT size=26 type=text name=expr><br>\n"
+	    "<table><tr><td><font size=2>\n"
+	    "<input type=radio name=search "
+	    "value=\"ChangeSet comments\" checked>"
+	    "Changeset comments<br>\n"
+	    "<input type=radio name=search value=\"file comments\">"
+	    "File comments<br>\n");
 	unless (isLoggingTree) {
-		out("<tr><td align=middle>"
-		    "<form method=get action=search/>\n"
-		    "<INPUT size=26 type=text name=expr><br>\n"
-		    "<table><tr><td><font size=2>\n"
-		    "<input type=radio name=search "
-		    "value=\"ChangeSet comments\" checked>"
-		    "Changeset comments<br>\n"
-		    "<input type=radio name=search value=\"file comments\">"
-		    "File comments<br>\n"
-		    "<input type=radio name=search value=\"file contents\">"
-		    "File contents<br>\n"
-		    "</td><td align=right>"
-		    "<input type=submit value=Search><br>"
-		    "<input type=reset value=\"Clear search\">\n"
-		    "</font></td></tr></table></form>\n");
-
+		out("<input type=radio name=search value=\"file contents\">"
+		    "File contents<br>\n");
 	}
+	out("</td><td align=right>"
+	    "<input type=submit value=Search><br>"
+	    "<input type=reset value=\"Clear search\">\n"
+	    "</font></td></tr></table></form>\n");
 	out("</table>");
 	out("</table>");
 	if (!embedded) trailer(0);
