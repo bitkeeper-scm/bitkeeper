@@ -29,25 +29,25 @@ prs_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "abc;C;d:hmMnor|x:vY")) != -1) {
 		switch (c) {
-		    case 'a':
+		    case 'a':	/* doc 2.0 */
 			/* think: -Ma, the -M set expand already */
 			if (expand < 2) expand = 2;
 			flags |= PRS_ALL;
 			break;
-		    case 'b': reverse++; break;
-		    case 'C': cset = optarg; break;
-		    case 'd': dspec = optarg; break;
-		    case 'h': doheader = 0; break;
-		    case 'm': flags |= PRS_META; break;
-		    case 'M': expand = 3; break;
-		    case 'n': nflag++; break;
-		    case 'o': opposite = 1; doheader = 0; break;
-		    case 'x': xrev = optarg; break;
-		    case 'v': noisy = 1; break;
-		    case 'Y': year4 = strdup("BK_YEAR4=1");
+		    case 'b': reverse++; break;	/* doc 2.0 */
+		    case 'C': cset = optarg; break;	/* doc 2.0 */
+		    case 'd': dspec = optarg; break;	/* doc 2.0 */
+		    case 'h': doheader = 0; break;	/* doc 2.0 */
+		    case 'm': flags |= PRS_META; break;	/* doc 2.0 */
+		    case 'M': expand = 3; break;	/* doc 2.0 */
+		    case 'n': nflag++; break;	/* doc 2.0 */
+		    case 'o': opposite = 1; doheader = 0; break;	/* doc 2.0 */
+		    case 'x': xrev = optarg; break;	/* doc 2.0 */
+		    case 'v': noisy = 1; break;	/* doc 2.0 */
+		    case 'Y': year4 = strdup("BK_YEAR4=1");	/* undoc? 2.0 */
 			      putenv(year4);
 			      break;
-		    RANGE_OPTS('c', 'r');
+		    RANGE_OPTS('c', 'r');	/* doc 2.0 */
 		    default:
 usage:			system("bk help -s prs");
 			if (year4) free(year4);

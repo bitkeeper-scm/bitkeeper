@@ -31,14 +31,14 @@ undo_main(int ac,  char **av)
 	}
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {
-		    case 'a':
+		    case 'a':	/* doc 2.0 */
 		    	rev = getrev(optarg);
 			unless (rev) return (0); /* we are done */
 			break;
-		    case 'f': force  =  1; break;
-		    case 'q': qflag = "-q"; vflag = ""; break;
-		    case 'r': rev = optarg; ckRev++; break;
-		    case 's': save = 0; break;
+		    case 'f': force  =  1; break;	/* doc 2.0 */
+		    case 'q': qflag = "-q"; vflag = ""; break;	/* doc 2.0 */
+		    case 'r': rev = optarg; ckRev++; break;	/* doc 2.0 */
+		    case 's': save = 0; break;	/* doc 2.0 */
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
 usage:			system("bk help -s undo");

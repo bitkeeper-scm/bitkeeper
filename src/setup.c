@@ -22,7 +22,7 @@ setup_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "c:f")) != -1) {
 		switch (c) {
-		    case 'c':	
+		    case 'c':	/* doc 2.0 */
 		    	unless(exists(optarg)) {
 				fprintf(stderr, 
 				    "setup: %s doesn't exist. Exiting\n",
@@ -32,7 +32,7 @@ setup_main(int ac, char **av)
 			localName2bkName(optarg, optarg);
 			config_path = fullname(optarg, 0);
 			break;
-		    case 'f':
+		    case 'f':	/* doc 2.0 */
 			force = 1;
 			break;
 		    default:

@@ -165,104 +165,104 @@ struct command cmdtbl[] = {
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
 	{"_unlink", unlink_main },
-	{"abort", abort_main},
-	{"admin", admin_main},
-	{"annotate", annotate_main},
-	{"bkd", bkd_main },
-	{"changes", changes_main},
-	{"check", check_main},
-	{"chksum", chksum_main},
-	{"ci", delta_main},
-	{"clean", clean_main},
-	{"clone", clone_main},
-	{"co", get_main},
-	{"commit", commit_main},
-	{"config", config_main},
-	{"createlod", createlod_main},
-	{"cset", cset_main},
-	{"delta", delta_main},
-	{"diffs", diffs_main},
-	{"edit", get_main},		/* aliases */
-	{"export", export_main},
-	{"fdiff", fdiff_main},		/* undocumented */
-	{"fix", fix_main},
-	{"gca", gca_main},
-	{"get", get_main},
-	{"gethelp", gethelp_main},	/* undocumented */
-	{"gethost", gethost_main},
-	{"getmsg", getmsg_main},
-	{"getuser", getuser_main},
-	{"gnupatch", gnupatch_main},
-	{"gone", gone_main},
-	{"graft", graft_main},		/* undocumented */
-	{"grep", grep_main},
-	{"help", help_main},
-	{"helpsearch", helpsearch_main},
-	{"helptopics", helptopics_main},
-	{"idcache", idcache_main},
-	{"info", sinfo_main},
-	{"isascii", isascii_main},
-	{"key2rev", key2rev_main},
-	{"lock", lock_main},
-	{"lod", lod_main},
-	{"makepatch", makepatch_main},
-	{"merge", merge_main},
-	{"mklock", mklock_main},	/* for regression test only, undoc */
-	{"mtime", mtime_main},		/* for regression test only, undoc */
-	{"mv", mv_main},
-	{"names", names_main},
-	{"new", delta_main},		/* aliases */
-	{"oclone", oclone_main},
-	{"opull", opull_main},		/* old pull protocol */
-	{"opush", opush_main},		/* old pull protocol */
-	{"parent", parent_main},
-	{"park", park_main},
-	{"pending", pending_main},
-	{"prs", prs_main},
-	{"pull", pull_main},
-	{"push", push_main},
-	{"pwd", pwd_main},		/* for regression test only, undoc */
-	{"r2c", r2c_main},
-	{"range", range_main},
-	{"rcs2sccs", rcs2sccs_main},
-	{"rcsparse", rcsparse_main},
-	{"receive", receive_main},
-	{"rechksum", rechksum_main},
-	{"renumber", renumber_main},
-	{"repo", repo_main},		/* obsolete, undocumented */
-	{"resolve", resolve_main},
-	{"rev2cset", r2c_main},		/* alias, documented as r2c */
-	{"rm", rm_main},
-	{"rmdel", rmdel_main},
-	{"root", root_main},
-	{"rset", rset_main},
-	{"sane", sane_main},
-	{"sccscat", sccscat_main},
-	{"sccslog", sccslog_main},
-	{"sccsmv", mv_main},		/* alias, documented as mv */
-	{"sccsrm", rm_main},		/* alias, documented as rm */
-	{"send", send_main},
-	{"sendbug", sendbug_main},
-	{"setlod", setlod_main},
-	{"setup", setup_main },
-	{"sfiles", sfind_main}, 	/* aliases */
-	{"sfind", sfind_main},
-	{"sfio", sfio_main},
-	{"sinfo", sinfo_main},		/* alias, documented as info */
-	{"status", status_main},
-	{"stripdel", stripdel_main},
-	{"takepatch", takepatch_main},
-	{"undo", undo_main},
-	{"undos", undos_main},
-	{"unedit", unedit_main},
-	{"unget", unedit_main},		/* aliases */
-	{"unlock", unlock_main },
-	{"unpark", unpark_main},
-	{"unwrap", unwrap_main},
-	{"users", users_main},
-	{"version", version_main},
-	{"what", what_main},
-	{"zone", zone_main},
+	{"abort", abort_main},		/* doc 2.0 */	
+	{"admin", admin_main},		/* doc 2.0 */
+	{"annotate", annotate_main},		/* doc 2.0 */
+	{"bkd", bkd_main },			/* doc 2.0 */
+	{"changes", changes_main},	/* doc 2.0 */
+	{"check", check_main},		/* doc 2.0 */
+	{"chksum", chksum_main},	/* doc 2.0 */
+	{"ci", delta_main},			/* doc 2.0 */
+	{"clean", clean_main},		/* doc 2.0 */
+	{"clone", clone_main},		/* doc 2.0 */
+	{"co", get_main},			/* doc 2.0 */
+	{"commit", commit_main},	/* doc 2.0 */
+	{"config", config_main},	/* doc 2.0 */
+	{"createlod", createlod_main},	/* undoc? 2.0 */
+	{"cset", cset_main},		/* doc 2.0 */
+	{"delta", delta_main},		/* doc 2.0 */
+	{"diffs", diffs_main},		/* doc 2.0 */
+	{"edit", get_main},			/* aliases */		/* doc 2.0 */
+	{"export", export_main},	/* doc 2.0 */
+	{"fdiff", fdiff_main},		/* undoc? 2.0 */
+	{"fix", fix_main},			/* doc 2.0 */
+	{"gca", gca_main},			/* doc 2.0 */
+	{"get", get_main},			/* doc 2.0 */
+	{"gethelp", gethelp_main},	/* undoc? 2.0 */
+	{"gethost", gethost_main},	/* doc 2.0 */
+	{"getmsg", getmsg_main},	/* undoc? 2.0 */
+	{"getuser", getuser_main},	/* doc 2.0 */
+	{"graft", graft_main},		/* undocumented */ /* undoc? 2.0 */
+	{"grep", grep_main},		/* doc 2.0 */
+	{"gnupatch", gnupatch_main},	/* doc 2.0 */
+	{"gone", gone_main},		/* doc 2.0 */
+	{"help", help_main},		/* doc 2.0 */
+	{"helpsearch", helpsearch_main},	/* undoc? 2.0 */
+	{"helptopics", helptopics_main},	/* undoc? 2.0 */
+	{"info", sinfo_main},		/* doc 2.0 */
+	{"idcache", idcache_main},	/* undoc? 2.0 */
+	{"isascii", isascii_main},	/* doc 2.0 */
+	{"key2rev", key2rev_main},	/* doc 2.0 */
+	{"lock", lock_main},		/* doc 2.0 */
+	{"lod", lod_main},			/* XXX - doc 2.0 - says doesn't work yet */
+	{"makepatch", makepatch_main},		/* doc 2.0 */
+	{"merge", merge_main},		/* doc 2.0 */
+	{"mklock", mklock_main},	/* for regression test only */ /* undoc 2.0 */
+	{"mtime", mtime_main},		/* for regression test only */ /* undoc 2.0 */
+	{"mv", mv_main},			/* doc 2.0 */
+	{"names", names_main},		/* doc 2.0 */
+	{"new", delta_main},		/* aliases */		/* doc 2.0 */
+	{"oclone", oclone_main},	/* undoc? 2.0 */
+	{"opull", opull_main},		/* old pull protocol */ /* undoc? 2.0 */
+	{"opush", opush_main},		/* old pull protocol */ /* undoc? 2.0 */
+	{"parent", parent_main},	/* doc 2.0 */
+	{"park", park_main},		/* doc 2.0 */
+	{"pending", pending_main},	/* doc 2.0 */
+	{"prs", prs_main},			/* doc 2.0 */
+	{"pull", pull_main},		/* doc 2.0 */
+	{"push", push_main},		/* doc 2.0 */
+	{"pwd", pwd_main},			/* for regression test only */ /* undoc? 2.0 */
+	{"r2c", r2c_main},			/* doc 2.0 */
+	{"range", range_main},		/* XXX - doc 2.0 exists, but wrong see amy*/
+	{"rcs2sccs", rcs2sccs_main},	/* doc 2.0 */
+	{"rcsparse", rcsparse_main},	/* doc 2.0 */
+	{"receive", receive_main},	/* doc 2.0 */
+	{"rechksum", rechksum_main},	/* doc 2.0 */
+	{"renumber", renumber_main},	/* doc 2.0 */
+	{"repo", repo_main},		/* obsolete, undocumented */ /* undoc 2.0 */
+	{"resolve", resolve_main},	/* doc 2.0 */
+	{"rev2cset", r2c_main},		/* alias */	/* doc 2.0 as r2c */
+	{"root", root_main},		/* doc 2.0 */
+	{"rset", rset_main},		/* doc 2.0 */
+	{"rm", rm_main},			/* doc 2.0 */
+	{"rmdel", rmdel_main},		/* doc 2.0 */
+	{"sane", sane_main},		/* doc 2.0 */
+	{"sccscat", sccscat_main},	/* doc 2.0 as annotate */
+	{"sccslog", sccslog_main},	/* doc 2.0 */
+	{"sccsmv", mv_main},		/* alias */	/* doc 2.0 as mv */
+	{"sccsrm", rm_main},		/* alias */	/* doc 2.0 as mv */
+	{"send", send_main},		/* doc 2.0 */
+	{"sendbug", sendbug_main},	/* doc 2.0 */
+	{"setlod", setlod_main},	/* doc 2.0 as lod */
+	{"setup", setup_main },		/* doc 2.0 */
+	{"sfiles", sfind_main}, 	/* aliases */ /* doc 2.0 */
+	{"sfind", sfind_main},		/* doc 2.0 as sfiles */
+	{"sfio", sfio_main},		/* doc 2.0 */
+	{"sinfo", sinfo_main},		/* alias */	/* doc 2.0 as info */
+	{"status", status_main},	/* doc 2.0 */
+	{"stripdel", stripdel_main},	/* doc 2.0 */
+	{"takepatch", takepatch_main},	/* doc 2.0 */
+	{"undo", undo_main},		/* doc 2.0 */
+	{"undos", undos_main},		/* doc 2.0 */
+	{"unedit", unedit_main},	/* doc 2.0 */
+	{"unget", unedit_main},		/* aliases */	/* doc 2.0 as unedit */
+	{"unlock", unlock_main },	/* doc 2.0 */
+	{"unpark", unpark_main},	/* doc 2.0 */
+	{"unwrap", unwrap_main},	/* doc 2.0 */
+	{"users", users_main},		/* doc 2.0 */
+	{"version", version_main},	/* doc 2.0 */
+	{"what", what_main},		/* doc 2.0 */
+	{"zone", zone_main},		/* doc 2.0 */
 
 	{0, 0},
 };

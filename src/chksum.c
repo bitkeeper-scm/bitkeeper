@@ -30,7 +30,7 @@ chksum_main(int ac, char **av)
 		return (1);
 	}
 
-	if (av[1] && (strncmp(av[1], "-o", 2) == 0)) {
+	if (av[1] && (strncmp(av[1], "-o", 2) == 0)) {	/* -o doc 2.0 */
 		if (av[1][2]) {
 			off = atoi(&av[1][2]);
 			av++, ac--;

@@ -71,68 +71,68 @@ delta_main(int ac, char **av)
 			   "1abcdD:E|fg;GhI;ilm|M;npPqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
-		    case 'n': dflags |= DELTA_SAVEGFILE; break;
-		    case 'p': dflags |= PRINT; break;
-		    case 'y':
+		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
+		    case 'p': dflags |= PRINT; break; /* doc 2.0 */
+		    case 'y': /* doc 2.0 */
 comment:		comments_save(optarg);
 			dflags |= DELTA_DONTASK;
 			break;
-		    case 's': /* fall through */
+		    case 's': /* fall through */	/* undoc 2.0 */
 
 		    /* RCS flags */
-		    case 'q': dflags |= SILENT; gflags |= SILENT; break;
-		    case 'f': dflags |= DELTA_FORCE; break;
-		    case 'i': dflags |= NEWFILE;
+		    case 'q': dflags |= SILENT; gflags |= SILENT; break; /* doc 2.0 */
+		    case 'f': dflags |= DELTA_FORCE; break;	/* doc 2.0 - ci */
+		    case 'i': dflags |= NEWFILE; /* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
 			      break;
-		    case 'l': gflags |= GET_SKIPGET|GET_EDIT;
+		    case 'l': gflags |= GET_SKIPGET|GET_EDIT; /* doc 2.0 */
 		    	      dflags |= DELTA_SAVEGFILE;
 			      checkout = 1;
 			      break;
-		    case 'u': gflags |= GET_EXPAND;
+		    case 'u': gflags |= GET_EXPAND; /* doc 2.0 */
 			      checkout = 1;
 			      break;
 
 		    /* flags with different meaning in RCS and SCCS */
-		    case 'm':
+		    case 'm':	/* undoc? 2.0 */
 			    if (isci) goto comment;
 			    /* else fall through */
 
 		    /* obsolete SCCS flags */
-		    case 'g':
-		    case 'r':
+		    case 'g':	/* undoc 2.0 */
+		    case 'r':	/* undoc 2.0 */
 			    fprintf(stderr, "-%c not implemented.\n", c);
 			    goto usage;
 
 		    /* LM flags */
-		    case '1': iflags |= INIT_ONEROOT; break;
-		    case 'a':
+		    case '1': iflags |= INIT_ONEROOT; break;	/* undoc? 2.0 */
+		    case 'a':	/* doc 2.0 */
 		    	dflags |= DELTA_AUTO;
 			dflags &= ~DELTA_FORCE;
 			break;
-		    case 'b':	/* -b == -Ebinary */
+		    case 'b':	/* -b == -Ebinary */	/* doc 2.0 - new */
 			if (streq(name, "new")) {
 		    		enc = E_BINARY;
 			} else {
 				goto usage;
 			}
 			break;
-		    case 'c': iflags |= INIT_NOCKSUM; break;
-		    case 'd': /* internal interface, do not document */
+		    case 'c': iflags |= INIT_NOCKSUM; break; /* doc 2.0 */
+		    case 'd': /* internal interface, do not document */ /* undoc 2.0 */
 			      dflags |= DELTA_NOPENDING; break;
-		    case 'D': diffsFile = optarg;
+		    case 'D': diffsFile = optarg; /* doc 2.0 */
 			      sflags = ~(SF_GFILE | SF_WRITE_OK);
 			      break;
-		    case 'G': iflags |= INIT_GTIME; break;
-		    case 'h': dflags |= DELTA_HASH; break;
-		    case 'I': initFile = optarg; break;
-		    case 'M': mode = optarg; break;
-		    case 'P': ignorePreference = 1;  break;
-		    case 'R': dflags |= DELTA_PATCH; break;
-		    case 'S': syms = addLine(syms, strdup(optarg)); break;
-		    case 'Y': dflags |= DELTA_DONTASK; break;
-		    case 'Z': compp = optarg ? optarg : "gzip"; break;
-		    case 'E': encp = optarg; break;
+		    case 'G': iflags |= INIT_GTIME; break;	/* undoc? 2.0 */
+		    case 'h': dflags |= DELTA_HASH; break; /* doc 2.0 */
+		    case 'I': initFile = optarg; break; /* doc 2.0 */
+		    case 'M': mode = optarg; break; /* doc 2.0 */
+		    case 'P': ignorePreference = 1;  break;	/* undoc? 2.0 */
+		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
+		    case 'S': syms = addLine(syms, strdup(optarg)); break; /* doc 2.0 */
+		    case 'Y': dflags |= DELTA_DONTASK; break; /* doc 2.0 */
+		    case 'Z': compp = optarg ? optarg : "gzip"; break; /* doc 2.0 */
+		    case 'E': encp = optarg; break; /* doc 2.0 */
 
 		    default:
 usage:			sprintf(buf, "bk help -s %s", name);

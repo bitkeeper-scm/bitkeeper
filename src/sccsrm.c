@@ -24,7 +24,7 @@ rm_main(int ac, char **av)
 	if (streq(basenm(av[0]), "rm")) useCommonDir = 1;
         while ((c = getopt(ac, av, "d")) != -1) {
                 switch (c) {
-                    case 'd': useCommonDir++; break;
+                    case 'd': useCommonDir++; break;	/* undoc? 2.0 */
                     default:
 usage:			system("bk help -s rm");
                         return (1);
@@ -124,7 +124,7 @@ gone_main(int ac, char **av)
 
 	while ((c =  getopt(ac, av, "q")) != -1) { 
 		switch (c) {
-		    case 'q': quiet++; break;
+		    case 'q': quiet++; break;	/* doc 2.0 */
 		    default: 
 usage:			      system("bk help -s gone");
 			      return (1);

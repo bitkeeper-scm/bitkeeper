@@ -21,8 +21,8 @@ _rmdel_main(int ac, char **av, char *out)
 	}
 	while ((c = getopt(ac, av, "qr;")) != -1) {
 		switch (c) {
-		    case 'q': flags |= SILENT; break;
-		    case 'r': rev = optarg; break;
+		    case 'q': flags |= SILENT; break;	/* doc 2.0 */
+		    case 'r': rev = optarg; break;	/* doc 2.0 */
 		    default:
 			system("bk help -s rmdel");
 			return (1);
