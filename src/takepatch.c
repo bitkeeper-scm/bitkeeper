@@ -325,7 +325,19 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags)
 	/*
 	 * This code assumes that the patch order is 1.1..1.100
 	 */
-	if (parent = sccs_findKey(s, buf)) unless (gca) gca = parent;
+	if (parent = sccs_findKey(s, buf)) {
+		unless (gca) {
+			gca = parent;
+			/*
+			 * This could be the continuation of something which
+			 * is a branch in this repository (but the trunk in
+			 * the other repository).  So work you way back up
+			 * until you are on the trunk.
+			 * LOD-XXX - this will need to get reworked for LODs.
+			 */
+			while (gca->r[2]) gca = gca->parent;
+		}
+	}
 
 	/* go get the delta table entry for this delta */
 delta:	off = ftell(f);
