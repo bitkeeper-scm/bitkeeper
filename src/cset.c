@@ -422,7 +422,7 @@ header(sccs *cset, int diffs)
 	sccs_prsdelta(cset, cset->tree, 0, dspec, stdout);
 	printf("# User:\t%s\n", sccs_getuser());
 	printf("# Host:\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
-	getcwd(pwd, sizeof(pwd));
+	getRealCwd(pwd, sizeof(pwd));
 	printf("# Root:\t%s\n", pwd);
 	//printf("# Date:\t%s", ctime(&t)); /* detele this line for http push */
 	cset->state = save;

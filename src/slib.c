@@ -1434,9 +1434,9 @@ _relativeName(char *gName, int isDir,
 {
 	char	*t, *s, *top, tmp[MAXPATH];
 	int	i, j;
-	static	char buf[MAXPATH];
+	static  char buf[MAXPATH];
 
-	strcpy(tmp, fullname(gName, 0));
+	getRealName(fullname(gName, 0), NULL, tmp);
 	t = tmp;
 
 	if (proj && proj->root) {
@@ -3572,7 +3572,7 @@ nup:		remote_free(r);
 			free(bk_proj->root);
 			bk_proj->root = strdup(t);
 		}
-		unless (streq(r->path, bk_proj->root)) goto nup;
+		unless (patheq(r->path, bk_proj->root)) goto nup;
 	}
 
 	remote_free(r);
@@ -7328,7 +7328,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
 		char *r = _relativeName(s->gfile, 0, 0, 1, s->proj, 0);
-		if (r && !patheq(d->pathname, r)) RET(1);
+		if (r && !streq(d->pathname, r)) RET(1);
 	}
 
 	/*
@@ -8156,7 +8156,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			hostArg(d, sccs_gethost());
 		}
 		unless (d->pathname && s) {
-			char *p, *q;;
+			char *p, *q;
 
 			/*
 			 * Get the relativename of the sfile, _not_ the gfile,

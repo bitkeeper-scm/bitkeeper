@@ -98,6 +98,9 @@ getRealName(char *path, MDBM *db, char *realname)
 	
 #ifdef WIN32 /* dos colon handling */
 	if (q[1] == ':') {
+		/*
+		 * XXX This will break if we are on a different drive
+		 */
 		q[0] = toupper(q[0]); /* store drive letter in upper case */
 		assert(!islower(q[0]));
 		q = &q[3];
@@ -138,7 +141,8 @@ getRealName(char *path, MDBM *db, char *realname)
 		q = ++p;
 	}
 	if (getRealBaseName(mypath, realname, db, name))  goto err;
-	sprintf(r, "/%s", name);
+	*r = 0;
+	concat_path(realname, realname, name);
 	return (1);
 err:	fprintf(stderr, "getRealName failed: mypath=%s\n", mypath);
 	return (0);
