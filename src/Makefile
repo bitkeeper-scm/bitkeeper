@@ -358,40 +358,48 @@ bkdsubstr: bkd.h
 	rm _bkdvers
 	chmod +x bkdsubstr
 
-sccstool: gui/search.tcl gui/sccstool.tcl gui/common.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl \
+sccstool: gui/search.tcl gui/config.tcl gui/sccstool.tcl gui/common.tcl \
+    	port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/search.tcl gui/sccstool.tcl > sccstool
 
 citool: gui/citool.tcl gui/common.tcl gui/progress.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/progress.tcl \
 	    gui/citool.tcl > citool
 
-_citool: gui/_citool.tcl gui/common.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl gui/_citool.tcl > _citool
+_citool: gui/_citool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	    gui/_citool.tcl > _citool
 
-setuptool: gui/setuptool.tcl gui/common.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl \
+setuptool: gui/setuptool.tcl gui/config.tcl gui/common.tcl \
+	port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/common.tcl gui/config.tcl \
 	    gui/setuptool.tcl > setuptool
 
-helptool: gui/helptool.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl gui/helptool.tcl > helptool
+helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	    gui/helptool.tcl > helptool
 
-difftool: gui/search.tcl gui/difftool.tcl port/$(SYS)_platform.tcl
-	cat gui/search.tcl port/$(SYS)_platform.tcl gui/common.tcl \
-	    gui/difftool.tcl > difftool
+difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
+	port/$(SYS)_platform.tcl
+	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
+	    gui/common.tcl gui/difftool.tcl > difftool
 
-csettool: gui/csettool.tcl gui/common.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl gui/csettool.tcl > csettool
+csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
+	port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	    gui/csettool.tcl > csettool
 
-renametool: gui/renametool.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl \
+renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/renametool.tcl > renametool
 
-fmtool: gui/fmtool.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl gui/fmtool.tcl > fmtool
+fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	    gui/fmtool.tcl > fmtool
 
-fm3tool: gui/fm3tool.tcl
-	cat gui/common.tcl gui/fm3tool.tcl > fm3tool
+fm3tool: gui/fm3tool.tcl gui/config.tcl
+	cat gui/config.tcl gui/common.tcl gui/fm3tool.tcl > fm3tool
 
 # Touch this and die.  --lm
 install: install-nolinks
