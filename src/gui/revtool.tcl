@@ -156,15 +156,10 @@ proc revMap {file} \
 	catch { close $fid }
 }
 
-# If in annotated diff output, find parent and diff between parent 
-# and selected rev.
-#
-# If only a node in the graph is selected, then do the diff between it 
-# and its parent
-#
+# Diff between a rev and its parent
 proc diffParent {} \
 {
-	global w file rev1 rev2
+	global w file rev1 rev2 ttype
 
 	set rev ""
 	set b ""
@@ -193,18 +188,8 @@ proc diffParent {} \
 		}
 	}
 	#puts "id=($id) rev=($rev)"
-	set selectedLine [$w(aptext) tag ranges select]
-	if {$selectedLine != ""} {
-		set l [lindex $selectedLine 0]
-		set line [$w(aptext) get $l "$l lineend - 1 char"]
-		if {[regexp \
-		    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line m user rev]} {
-			set parent [exec bk prs -d:PARENT:  -hr${rev} $file]
-			#puts "if: line=($line)"
-			#puts "rev=($rev) parent=($parent) f=($file)"
-			displayDiff $parent $rev
-		}
-	} elseif {$rev != ""} {
+
+	if {$rev != ""} {
 		set rev1 [exec bk prs -d:PARENT: -hr${rev} $file]
 		set rev2 $rev
 		set base [file tail $file]
