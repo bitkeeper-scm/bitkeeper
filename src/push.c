@@ -207,6 +207,7 @@ updLogMarker(int ptype, int verbose, FILE *vf)
 	char	s_cset[] = CHANGESET, rev[MAXREV+1];
 	int	i;
 
+	cset_lock();
 	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
 
 		/*
@@ -237,6 +238,7 @@ updLogMarker(int ptype, int verbose, FILE *vf)
 				s_cset, buf);
 		}
 	}
+	cset_unlock();
 }
 
 private int

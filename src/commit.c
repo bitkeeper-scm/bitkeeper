@@ -538,6 +538,7 @@ out:		if (commentFile) unlink(commentFile);
 		rc = 1;
 		goto done;
 	}
+	cset_lock();
 	i = 2;
 	if (opts.quiet) cset[i++] = "-q";
 	if (sym) {
@@ -574,6 +575,7 @@ out:		if (commentFile) unlink(commentFile);
 	} else if (rc = WEXITSTATUS(status)) {
 		putenv("BK_STATUS=FAILED");
 	}
+	cset_unlock();
 	trigger(av, "post");
 done:	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);

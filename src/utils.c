@@ -887,3 +887,31 @@ spawn_cmd(int flag, char **av)
 	}
 	return (WEXITSTATUS(ret));
 }
+
+cset_lock()
+{
+	char	*uniq = aprintf("SCCS/csetlock%u", getpid());
+	struct	stat sbuf;
+
+	assert(exists(CHANGESET));
+	assert(streq(CHANGESET, "SCCS/s.ChangeSet"));
+	assert(!exists(uniq));
+	close(creat(uniq, 0444));
+	for (;;) {
+		unless (link(uniq, "SCCS/csetlock")) break;
+		perror(uniq);
+		stat(uniq, &sbuf);
+		if (sbuf.st_nlink == 2) break;
+		fprintf(stderr, "%u waits for cset lock\n", getpid());
+		usleep(500000);
+	} 
+	unlink(uniq);
+	free(uniq);
+}
+
+cset_unlock()
+{
+	assert(exists(CHANGESET));
+	assert(exists("SCCS/csetlock"));
+	unlink("SCCS/csetlock");
+}
