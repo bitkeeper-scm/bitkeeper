@@ -77,18 +77,22 @@ check_path()
 
 check_tar()
 {
-	tar --version | grep -q "^tar (GNU tar) 1.13"
-	if [ $? -ne 0 ]
+	mkdir /tmp/tar_tst$$
+	echo data > /tmp/tar_tst$$/file
+	chmod 0444 /tmp/tar_tst$$/file
+	(cd / && tar cf /tmp/tar_tst$$.tar tmp/tar_tst$$)
+	rm -rf /tmp/tar_tst$$
+	(cd / && tar xf /tmp/tar_tst$$.tar)
+	if [ -w /tmp/tar_tst$$/file ]
 	then
 		T_VER=`tar --version | grep "^tar" | cut -f4 -d' '`
 		echo "========================================================"
-		echo "The tar package ($T_VER) you have installed may not work"
-		echo "with the BitKeeper regression test.  Tar package later"
-		echo "than version 1.13 is known to be broken becuase it does"
-		echo "not preserve the permission bit correctly. To run"
-		echo "the BitKeeper regression test correctly, you need to "
-		echo "install tar package version 1.13, This is included in"
-		echo "the BitKeeper install package"
+		echo "The tar package you have installed does not preserve"
+		echo "file permission. This wlll not work with the BitKeeper"
+		echo "BitKeeper regression test becuase we depend on this"
+		echo "feature. To run the BitKeeper regression test correctly,"
+		echo "you need to install tar package included in the BitKeeper"
+		echo " install package"
 		echo "========================================================"
 		exit 1
 	fi
