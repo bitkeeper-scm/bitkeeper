@@ -2,7 +2,8 @@
 BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  cset g2sccs range zone gethost undos chksum rechksum \
-	  sccsmv sccsrm sccscat key2rev check fdiff adler32
+	  sccsmv sccsrm sccscat key2rev check fdiff adler32 \
+	  nextsecond
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
@@ -59,7 +60,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  rechksum.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
 	  key2rev.c rcs.c comments.c user.c host.c localtm.c \
 	  check.c bkhelp.txt config.h.in configure substvars.in \
-	  bitkeeper.config install.in
+	  bitkeeper.config install.in nextsecond.c
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \

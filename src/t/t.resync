@@ -337,14 +337,12 @@ bk ci $Q -y merge.c
 bk commit $S -y"abc"
 cd $HERE/copy/src
 bk co $Q -l merge.c
-sed -e "s/333/333-new/"  merge.c > merge.tmp
+sed -e "s/333/333-newer/"  merge.c > merge.tmp
 mv merge.tmp merge.c
-# make sure time stamp is different
-sleep 1
 bk ci $Q -y merge.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy 
-bk resolve $Q -f - $HERE/copy <<EOF  > /dev/null 2>&1
+bk resolve $Q -f - $HERE/copy <<EOF  > $DEV_NULL 2>&1
 m
 C
 EOF
@@ -358,12 +356,11 @@ bk co $Q merge.c
 ${CAT} > merge.ref <<EOF
 111-new
 222
-333-new
+333-newer
 EOF
 cmp -s merge.c merge.ref
 if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
-
 # TEST: Check for parallel work winds up losing a file
 echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE
@@ -404,7 +401,7 @@ bk commit $S -yab << EOF > /dev/null 2>&1
 y
 EOF
 # make sure the time stamp is different
-sleep 1             
+nextsecond
 cd $HERE/copy/src
 for i in bbb.c ccc.c
 do
@@ -427,6 +424,23 @@ C
 EOF
 bk pending | grep -q "aaa.c"
 if [ $? -eq 0 ]; then echo "fail: disappeared"; exit 1; fi
+echo OK
+echo $N Make sure that we update gfiles appropriately ...............$NL
+cd $HERE/copy/src
+bk co $Q
+cd $HERE/project/src
+bk edit -q aaa.c
+echo "NEW NEW NEW" >> aaa.c
+bk ci -q -yaaa.c aaa.c
+bk commit -q -yaaa.c
+cd $HERE
+bk resync -a $Q project copy 
+cd copy/src
+if [ ! -f aaa.c ]; then echo Failed to get aaa.c; exit 1; fi
+if [ "`bk co -qp aaa.c | diff - aaa.c`" != "" ]
+then	echo Failed to update aaa.c
+	exit 1
+fi
 echo OK
 
 
