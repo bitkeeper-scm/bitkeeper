@@ -192,7 +192,7 @@ _get_socks_proxy(char **proxies)
 int
 getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen)
 {
-        int rc;
+        int	rc;
         HKEY    hKey;
         DWORD   valType = REG_SZ;
 
@@ -201,6 +201,24 @@ getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen)
         if (rc != ERROR_SUCCESS) return (0);
 
         rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, buflen);
+        if (rc != ERROR_SUCCESS) return (0);
+        RegCloseKey(hKey);
+        return (1);
+}
+
+int
+getRegDWord(HKEY hive, char *key, char *valname, DWORD *val)
+{
+        int	rc;
+        HKEY    hKey;
+        DWORD   valType = REG_DWORD;
+	int	buflen = sizeof (DWORD);
+
+        rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
+        if (rc != ERROR_SUCCESS) return (0);
+
+        rc = RegQueryValueEx(hKey,valname, NULL,
+				&valType, (LPBYTE)val, &buflen);
         if (rc != ERROR_SUCCESS) return (0);
         RegCloseKey(hKey);
         return (1);
@@ -242,13 +260,20 @@ char **
 _get_http_proxy_reg(char **proxies)
 {
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
-	char *p, *q, *type, buf[MAXLINE] = "", proxy_host[MAXPATH];
-	int proxy_port, len = sizeof(buf);
+	char	*p, *q, *type, buf[MAXLINE] = "", proxy_host[MAXPATH];
+	int	proxy_port, len = sizeof(buf);
+	int	proxyEnable = 0;
 
 	getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len);
 	if (buf[0]) {
 		proxies = get_config(buf, proxies);
 	} else {
+		if (getRegDWord(HKEY_CURRENT_USER,
+				KEY, "ProxyEnable", &proxyEnable) == 0) {
+			goto done;
+		}
+		if (proxyEnable == 0) goto done;
+	
 		len = sizeof(buf);  /* important */
 		if (getReg(HKEY_CURRENT_USER,
 					KEY, "ProxyServer", buf, &len) == 0) {
@@ -298,7 +323,7 @@ _get_http_proxy_reg(char **proxies)
 			}
 		}
 	}
-	return (proxies);
+done:	return (proxies);
 }
 #endif
 
