@@ -327,7 +327,7 @@ csetlist(sccs *cset)
 	kv.key.dsize = strlen(buf) + 1;
 	kv.val = mdbm_fetch(db, kv.key);
 	
-	while (kv.key.dsize) {
+	while (kv.val.dsize) {
 		k = kv.key;
 retry:		v = mdbm_fetch(idDB, k);
 		unless (v.dsize) {

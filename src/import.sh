@@ -87,7 +87,6 @@ function import {
 BitKeeper can currently handle the following types of files:
 
     plain	- these are regular files which are not under revision control
-    RCS		- RCS files which will be converted to SCCS files
     SCCS	- SCCS files which are not presently under revision control
 
 If the files you wish to import do not match any of these forms, you will
@@ -170,6 +169,27 @@ EOF
 	import_finish $FROM $TO $type
 }
 
+# This function figures out what sort of tar include / files_from facility
+# If you don't support -T (aka --files-from) or -I include, then add the
+# thing you do support here and fix the case below where this gets called.
+function get_tar {
+	tar --help > /tmp/help$$ 2>&1
+	grep -q 'files-from=NAME' /tmp/help$$
+	if [ $? -eq 0 ]
+	then	/bin/rm /tmp/help$$
+		echo "GNU"
+		return
+	fi
+	grep -q '[-I include-file]' /tmp/help$$
+	if [ $? -eq 0 ]
+	then	/bin/rm /tmp/help$$
+		echo "SunOS"
+		return
+	fi
+	echo UNKNOWN
+	return
+}
+
 function import_finish {
 	FROM=$1
 	TO=$2
@@ -178,6 +198,7 @@ function import_finish {
 	echo
 	echo $N "Would you like to edit the list of $NFILES files to be imported? " $NL
 	read x
+	echo ""
 	case X"$x" in
 	    Xy*)
 		echo $N "Editor to use [$EDITOR] " $NL
@@ -190,8 +211,24 @@ function import_finish {
 		NFILES=`wc -l < /tmp/import$$ | sed 's/ //g'`
 	esac
 	echo Importing files from $FROM to $TO
-	echo "cpio -p -dmLV --quiet $TO < /tmp/import$$ "
-	cpio -p -dmLV --quiet $TO < /tmp/import$$ 
+	# XXX - this should go try the various tar options until it can make
+	# one work and use that.
+	TAR=`get_tar`
+	case $TAR in
+	    GNU)
+		tar cpfT - /tmp/import$$ | (cd $TO && tar xpf -)
+		;;
+	    SunOS)
+		tar cpf - -I /tmp/import$$ | (cd $TO && tar xpf -)
+	    	;;
+	    *)
+	    	echo "Imports currently supported GNU and Solaris tar."
+	    	echo "You need to edit the import script and add your"
+	    	echo "and tar configuration."
+		echo "Please mail the diffs to bitkeeper@bitmover.com"
+		exit 1;
+		;;
+	esac
 	cd $TO
 	echo "Checking in $NFILES files"
 	grep -v 'SCCS/s\.' /tmp/import$$ | bk ci -is -

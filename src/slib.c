@@ -4913,6 +4913,47 @@ deflate(sccs *s, char *tmpfile)
 	return (0);
 }
 
+
+/*
+ * if the file is non-empty & not LF terminated
+ * force a LF
+ */
+private int
+fix_lf(char *gfile)
+{
+	int	fd;
+	struct	stat sb;
+	char	c;
+	
+	if (stat(gfile, &sb)) {
+		fprintf(stderr, "stat: ");
+		perror(gfile);
+		return (-1);
+	}               
+	if (sb.st_size > 0) {
+		if ((fd = open(gfile, 2, 0660)) == -1) {
+			perror(gfile);
+			return (-1);
+		}
+		if (lseek(fd, sb.st_size - 1, 0) != sb.st_size - 1) {
+			perror(gfile);
+			close(fd); return (-1);
+		} else {
+			if (read(fd, &c, 1) != 1) {
+				perror(gfile);
+				close(fd); return (-1);
+			} else if (c != '\n') {
+				if (write(fd, "\n", 1) != 1) {
+					perror(gfile);
+					close(fd); return (-1);
+				}
+			}
+		}
+		close(fd);
+	}
+	return 0;
+}
+
 /*
 * Returns:
 *	-1 for some already bitched about error
@@ -4943,6 +4984,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 			}
 		}
 	} else {
+		if (fix_lf(s->gfile) == -1) return (-1); 
 		strcpy(new, s->gfile);
 	}
 	sprintf(old, "%s/get%d", TMP_PATH, getpid());
@@ -5269,7 +5311,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	FILE	*id, *sfile, *gfile;
 	delta	*n;
 	int	added = 0;
-	int	popened;
+	int	popened, len;
 	char	*t;
 	char	buf[1024];
 	admin	l[2];
@@ -5363,6 +5405,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	}
 	addLod("delta", s, flags, l, 0);
 	delta_table(s, sfile, 1);
+	buf[0] = 0;
 	fputsum(s, "\001I 1\n", sfile);
 	s->dsum = 0;
 	if (s->encoding > E_ASCII) {
@@ -5383,6 +5426,13 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 				s->dsum += fputsum(s, buf, sfile);
 				added++;
 			}
+		}
+		/*
+		 * For ascii files, add missing line feeds automagically.
+		 */
+		len = strlen(buf);
+		if (len && (buf[len - 1] != '\n')) {
+			s->dsum += fputsum(s, "\n", sfile);
 		}
 	}
 	fputsum(s, "\001E 1\n", sfile);

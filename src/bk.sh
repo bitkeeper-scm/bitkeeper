@@ -787,7 +787,7 @@ function resync {
 		exit 1
 	fi
 	cd $FROM
-	if [ $INIT = "-i" ]
+	if [ "X$INIT" = "X-i" ]
 	then	bk prs -hd:I: ChangeSet | while read x
 		do	bk cset -l$x
 		done | sort -u > /tmp/list$$
