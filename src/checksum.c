@@ -1,12 +1,12 @@
 #include "system.h"
 #include "sccs.h"
 #include "zlib/zlib.h"
+#include "logging.h"
 
 WHATSTR("@(#)%K%");
 
 private	int	do_chksum(int fd, int off, int *sump);
 private	int	chksum_sccs(char **files, char *offset);
-private	int	cset_resum(sccs *s, int diags, int fix);
 private	int	do_file(char *file, int off);
 
 /*
@@ -360,7 +360,7 @@ add_ins(HASH *h, char *root, int len, ser_t ser, u16 sum)
 }
 
 /* same semantics as sccs_resum() except one call for all deltas */
-private int
+int
 cset_resum(sccs *s, int diags, int fix)
 {
 	HASH	*root2map = hash_new();
@@ -388,7 +388,7 @@ cset_resum(sccs *s, int diags, int fix)
 			sum = 0;
 			e = p;
 			do {
-				sum += *e;
+				sum += *(unsigned char *)e;
 			} while (*e++ != '\n');
 			add_ins(root2map, p, q-p, ins_ser, sum);
 		}
@@ -408,6 +408,10 @@ cset_resum(sccs *s, int diags, int fix)
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		unless (d->added || d->include || d->exclude) continue;
+		if (SET(s) && !(d->flags & D_SET)) {
+			d->flags &= ~D_SET;	/* clean up as we go */
+			continue;
+		}
 
 		slist = sccs_set(s, d, 0, 0); /* slow */
 		sum = 0;
@@ -462,6 +466,7 @@ cset_resum(sccs *s, int diags, int fix)
 			++found;
 		}
 	}
+	s->state &= ~S_SET;	/* if set, then done with it: clean up */
 	for (i = 0; i < cnt; i++) free(map[i]);
 	free(map);
 	hash_free(root2map);
@@ -480,7 +485,8 @@ cset_fixLinuxKernelChecksum(sccs *s)
 	char	key[MAXKEY];
 
 	sccs_sdelta(s, sccs_ino(s), key);
-	unless (streq(key, LINUX_ROOTKEY)) return (s);
+	unless (streq(key, LINUX_ROOTKEY)) return (s); /* linux only */
+	if (exists(LOG_TREE)) return (s); /* don't fix openlogging */
 	unless (d = sccs_findMD5(s, BADKEY)) return (s);
 
 	if (sccs_findMD5(s, GOODKEY)) {

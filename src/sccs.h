@@ -523,7 +523,7 @@ extern	char *upgrade_msg;
 typedef struct loc {
 	char	*p;		/* first byte of the data */
 	u32	len;		/* think 4GB is big enough? */
-	u8	isPatch:1;	/* this entry came from the patch file */
+	ser_t	serial;
 } loc;
 
 /*
@@ -576,6 +576,7 @@ typedef	struct sccs {
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
 	loc	*locs;		/* for cset data */ 
+	u32	iloc;		/* index to element in *loc */ 
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
 	u32	cksumok:1;	/* check sum was ok */
@@ -824,6 +825,7 @@ int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
+int	cset_resum(sccs *s, int diags, int fix);
 int	sccs_newchksum(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);

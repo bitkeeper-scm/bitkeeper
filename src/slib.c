@@ -11456,6 +11456,119 @@ newcmd:
 	return (0);
 }
 
+/*
+ * Patch format is a little different, it looks like
+ * 0a0
+ * > key
+ * > key
+ * 
+ * We need to strip out all the non-key stuff: 
+ * a) "0a0"
+ * b) "> "
+ *
+ * We want the output to look like:
+ * ^AI serial
+ * key
+ * key
+ * ^AE
+ */
+private void
+patchweave(sccs *s, u8 *p, u32 len, u8 *buf, FILE *f)
+{
+	u8	*stop;
+
+	fputdata(s, "\001I ", f);
+	fputdata(s, buf, f);
+	fputdata(s, "\n", f);
+	if (p) {
+		stop = p + len;
+		assert(strneq(p, "0a0\n> ", 6));
+		p += 6; /* skip "0a0\n" */
+		while (1) {
+			fputdata(s, p, f);
+			while (*p++ != '\n') { /* null body */ }
+			if (p == stop) break;
+			assert(strneq("> ", p, 2));
+			p += 2; /* skip "> " */
+		}
+	}
+	fputdata(s, "\001E ", f);
+	fputdata(s, buf, f);
+	fputdata(s, "\n", f);
+}
+
+/*
+ * sccs_csetPatchWeave()
+ * This is similar to delta body, and makes use of many of the I/O
+ * functions, which is why it is here.  The purpose is to weave in
+ * patch items to the weave as it is copied to the output file.
+ * This is useful for fast-takepatch operation for cset file.
+ */
+
+int
+sccs_csetPatchWeave(sccs *s, FILE *f)
+{
+	u8	buf[20];
+	u8	*line;
+	u32	i;
+	u32	ser;
+	loc	*lp;
+
+	assert(s);
+	assert(s->state & S_CSET);
+	assert(s->locs);
+	lp = s->locs;
+	i = s->iloc - 1; /* set index to final element in array */
+	assert(i > 0); /* base 1 data structure */
+
+	seekto(s, s->data);
+	if (s->encoding & E_GZIP) {
+		zgets_init(s->where, s->size - s->data);
+		zputs_init();
+	}
+	while (line = nextdata(s)) {
+		assert(strneq(line, "\001I ", 3));
+		ser = atoi(&line[3]);
+
+		for ( ; i ; i--) {
+			if (ser + i > lp[i].serial) break;
+			unless (lp[i].p || lp[i].serial == 1) continue;
+			sertoa(buf, lp[i].serial);
+			patchweave(s, lp[i].p, lp[i].len, buf, f);
+		}
+		unless (i) break;
+
+		/* bump the serial number up by # of items we have left */
+		ser += i;
+		sertoa(buf, ser);
+		fputdata(s, "\001I ", f);
+		fputdata(s, buf, f);
+		fputdata(s, "\n", f);
+		while (line = nextdata(s)) {
+			if (*line == '\001') break;
+			fputdata(s, line, f);
+		}
+		assert(strneq(line, "\001E ", 3));
+		fputdata(s, "\001E ", f);
+		fputdata(s, buf, f);
+		fputdata(s, "\n", f);
+	}
+	assert(!(i && line));
+	/* Print out remaining, forcing serial 1 block at the end */
+	for ( ; i ; i--) {
+		unless (lp[i].p || lp[i].serial == 1) continue;
+		sertoa(buf, lp[i].serial);
+		patchweave(s, lp[i].p, lp[i].len, buf, f);
+	}
+	/* No translation of serial numbers needed for remainder of file */
+	for ( ; line; line = nextdata(s)) {
+		fputdata(s, line, f);
+	}
+	if (s->encoding & E_GZIP) zgets_done();
+	if (fflushdata(s, f)) return (-1);
+	return (0);
+}
+
 int
 sccs_hashcount(sccs *s)
 {

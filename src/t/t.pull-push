@@ -348,7 +348,7 @@ echo another foo > foo
 bk delta $Q -yfoo foo
 bk commit $Q -yfoo
 cd ../badclone
-bk pull $Q ../badsrc 2> ERR && {
+bk pull -R $Q ../badsrc 2> ERR && {
 	echo Failed
 	exit 1
 }

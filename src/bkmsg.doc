@@ -366,7 +366,6 @@ $
 #takepatch-chksum
 Error: A checksum in the patch for the ChangeSet file does not match
 the checksum of the data in the patch.
-Expected:Received -- #BKARG#
 Please verify the integrity of the source and destination repositories
 by running "bk -r check -acv" in each.  If that passes, and a pull still
 fails, run in the source repository "bk -R checksum ChangeSet".  If the
