@@ -20,4 +20,5 @@ rm -rf $REPO
 set -e
 PREFER_RSH=YES bk clone $HOST:/home/bk/$TREE $REPO > LOG-$USER 2>&1
 cd $REPO/src
-time $MAKE CC=$CC $XLIBS production >> ../../LOG-$USER 2>&1
+$MAKE CC=$CC $XLIBS production >> ../../LOG-$USER 2>&1
+bk regression >> ../../LOG-$USER 2>&1 
