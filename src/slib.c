@@ -10777,6 +10777,11 @@ out:
 		}
 		ALLOC_D();
 		addMode("admin", sc, d, m);
+		if (HAS_GFILE(sc) && HAS_PFILE(sc)) {
+			chmod(sc->gfile, m);
+		} else if (HAS_GFILE(sc)) {
+			chmod(sc->gfile, m & ~0222);
+		}
 		flags |= NEWCKSUM;
 	}
 

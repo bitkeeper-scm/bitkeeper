@@ -18,6 +18,20 @@ then
 	exit 0;
 fi
 
+checkperm()
+{
+    PERM=$1
+    FILE=$2
+    P=`/bin/ls -l $FILE`
+    case "$P" in
+	${1}*)
+	    ;;
+	*)
+	    echo failed to set permissions correctly; ls -l prog; exit 1
+	    ;;
+    esac
+}
+
 no_logging project
 echo $N Check in an executable file .................................$NL
 touch prog
@@ -28,25 +42,11 @@ if [ $? -ne 0 ]; then echo Failed to add permissions; exit 1; fi
 echo OK
 echo $N Check permissions on checked out file .......................$NL
 bk co $Q prog
-P=`/bin/ls -l prog`
-case "$P" in
-    -r-xr-x--x*)
-    	;;
-    *)
-    	echo failed to set permissions correctly; ls -l prog; exit 1
-	;;
-esac
+checkperm -r-xr-x--x prog
 echo OK
 echo $N Check permissions on locked file ............................$NL
 bk co -l $Q prog
-P=`/bin/ls -l prog`
-case "$P" in
-    -rwxrwx--x*)
-    	;;
-    *)
-    	echo failed to set permissions correctly; ls -l prog; exit 1
-	;;
-esac
+checkperm -rwxrwx--x prog
 echo OK
 echo $N Change permissions and check in .............................$NL
 chmod 777 prog
@@ -55,8 +55,10 @@ grep -q '^.cO-rwxrwxrwx' SCCS/s.prog
 if [ $? -eq 0 ]; then echo added permissions and should not have; exit 1; fi
 if [ -f "SCCS/p.prog" ]; then echo Failed to remove p.prog; exit 1; fi
 echo OK
-echo $N Change permissions with admin . .............................$NL
+echo $N Change permissions with admin ...............................$NL
+bk get $Q prog
 bk admin -m-rwx------ prog
+checkperm -r-x------ prog
 REV=`bk prs -h -r+ -d":I:" prog`
 if [ "$REV" != "1.3" ]; then echo fail to create a new delta; exit 1; fi 
 COMMENT=`bk prs -h -r+ -d":C:" prog`
@@ -66,48 +68,34 @@ if [ $? -ne 0 ]; then echo failed to add permissions; exit 1; fi
 echo OK
 echo $N Check new permissions on checked out file ...................$NL
 bk co $Q prog
-P=`/bin/ls -l prog`
-case "$P" in
-    -r-x------*)
-    	;;
-    *)
-    	echo failed to set permissions correctly; ls -l prog; exit 1
-	;;
-esac
+checkperm -r-x------ prog
 echo OK
 echo $N Check old permissions on checked out file ...................$NL
 bk co -r1.1 $Q -Gprog prog
-P=`/bin/ls -l prog`
-case "$P" in
-    -r-xr-x--x*)
-    	;;
-    *)
-    	echo failed to set permissions correctly; ls -l prog; exit 1
-	;;
-esac
+checkperm -r-xr-x--x prog
 echo OK
 echo $N Check permissions on locked file ............................$NL
 bk co -l $Q prog
-P=`/bin/ls -l prog`
-case "$P" in
-    -rwx------*)
-    	;;
-    *)
-    	echo failed to set permissions correctly; ls -l prog; exit 1
-	;;
-esac
+checkperm -rwx------ prog
+echo OK
+echon Check changing permissions on locked file ...................
+bk admin -m-rwxrw---x prog
+checkperm -rwxrw---x prog
+echo OK
+echon Check cumulative changes to file permissions ................
+bk unedit prog
+bk admin -m-rw-rw-r-- prog
+bk chmod o+w prog
+bk chmod o+x prog
+bk co $Q prog
+checkperm -r--r--r-x prog
+bk co -l $Q prog
+checkperm -rw-rw-rwx prog
 echo OK
 
 echo $N Make sure we can not remove owner read/write permission .....$NL
 bk clean prog
 bk chmod 0 prog 2>/dev/null
 bk edit $Q prog
-P=`/bin/ls -l prog`
-case "$P" in
-    -rw-------*)
-    	;;
-    *)
-    	echo failed to set permissions correctly; ls -l prog; exit 1
-	;;
-esac
+checkperm -rw------- prog
 echo OK
