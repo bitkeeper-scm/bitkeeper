@@ -294,6 +294,7 @@ enforceConfigLog(int l)
 {
 	int	ptype;
 
+	ptype = 1;
 	if (logs_pending(ptype, 1, 7) == 0)  return (0);
 
 	/*
@@ -325,7 +326,7 @@ enforceConfigLog(int l)
 		    !(l&LOG_LIC_EXPIRED) &&
 		    !isEvalLicense()) {
 			/*
-			 * Massage for paying customer
+			 * Message for paying customer
 			 */
 			printf(
 "============================================================================\n"
@@ -339,7 +340,7 @@ enforceConfigLog(int l)
 			);
 		} else {
 			/*
-			 * Massage for non-paying customer
+			 * Message for non-paying customer
 			 */
 			printf(
 "============================================================================\n"
