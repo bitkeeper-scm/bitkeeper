@@ -1232,10 +1232,7 @@ __init
 
 # On Windows convert the original Windows PATH variable to
 # something that will map the same in the shell.
-test "X$OSTYPE" = "Xmsys" && {
-	BK_OLDPATH=$(echo $BK_OLDPATH | \
-		sed -e 's,\(.\):,/\1,g' -e 's,;,:,g' -e 's,\\,/,g')
-}
+test "X$OSTYPE" = "Xmsys" && BK_OLDPATH=$(win2msys "$BK_OLDPATH")
 
 if type "_$1" >/dev/null 2>&1
 then	cmd=_$1

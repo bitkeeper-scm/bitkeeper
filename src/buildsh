@@ -12,47 +12,57 @@
 # spawn a new windows that is running the new MSYS shell.  BK can then
 # be built and tested in that shell
 
-D=tmp/build
-rm -rf $D || {
-	echo can remove $D
-	exit 1
-}
-
 # restrict path do only things of interest
-# XXX  need to extra offical windows directory name
-PATH=/bin:/c/WINNT/system32:/c/WINNT
+PATH=/bin	# for sed
+MSYSWINDIR=$(echo $WINDIR | sed 's,\(.\):\\,/\1/,')
+PATH=/bin:$MSYSWINDIR/system32:$MSYSWINDIR
 # Add bk to end of PATH
 BK_PATH=$(mount | tr 'A-Z' 'a-z' | sed -ne 's,\(.\):,/\1,' -e 's,\\,/,g' -e 's,/gnu/bin,,' -e 's, on /bin type.*,,p') 
 PATH=$PATH:$BK_PATH
 
-# build and install new msys
-(cd win32; make MSYSBIN=../$D msys)
+mkdir -p /c/build
+D=/c/build/buildenv
+echo removing old buildenv
+rm -rf $D || {
+	echo cannot remove $D
+	exit 1
+}
 
-test -d win32tools || bk clone bk://data.bitmover.com/win32tools win32tools
-bk sfiles -Ug win32tools | bk get -S -
+# build and install new msys
+(cd win32; make MSYSBIN=$D msys)
+
+W32TOOLS=/c/build/win32tools
+test -d $W32TOOLS || bk clone bk://data.bitmover.com/win32tools $W32TOOLS
+bk sfiles -Ug $W32TOOLS | bk get -S -
 
 # build mingw
 echo extracting MinGW
 mkdir $D/mingw
-tar -C$D/mingw -xzf win32tools/binutils-2.13.90-20030111-1.tar.gz
-tar -C$D/mingw -xzf win32tools/mingw-runtime-3.2.tar.gz
-tar -C$D/mingw -xzf win32tools/gcc-core-3.3.1-20030804-1.tar.gz
-tar -C$D/mingw -xzf win32tools/gcc-g++-3.3.1-20030804-1.tar.gz
-tar -C$D/mingw -xzf win32tools/w32api-2.5.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/binutils-2.13.90-20030111-1.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/mingw-runtime-3.2.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/gcc-core-3.3.1-20030804-1.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/gcc-g++-3.3.1-20030804-1.tar.gz
+tar -C$D/mingw -xzf $W32TOOLS/w32api-2.5.tar.gz
 
 echo extract perl
-tar -C$D -xzf win32tools/perl.tar.gz
+tar -C$D -xzf $W32TOOLS/perl.tar.gz
 
 echo extract groff
-tar -C$D -xzf win32tools/cygwin.tar.gz
+mkdir $D/groff
+tar -C$D/groff -xzf $W32TOOLS/groff-1.19.1-alpha-bin.tar.gz
 
 # create custom startup scripts with fixed PATH
 rm -f $D/etc/profile
-echo PATH=/bin:/mingw/bin:$BK_PATH:/perl/bin:/cygwin/bin:/c/WINNT/system32:/c/WINNT > $D/etc/profile
+echo PATH=/bin:/mingw/bin:$BK_PATH:/perl/bin:/groff/bin:$MSYSWINDIR/system32:$MSYSWINDIR > $D/etc/profile
+echo HOME=`pwd` >> $D/etc/profile
+
+WD=`cd $D; bk pwd -s`
+echo "export GROFF_TMAC_PATH='$WD/groff/share/groff/site-tmac;$WD/groff/share/groff/1.19.1/tmac'" >> $D/etc/profile
+echo "export GROFF_FONT_PATH=$WD/groff/share/groff/1.19.1/font" >> $D/etc/profile
+echo "export GRAP_DEFINES=$WD/groff/share/grap/grap.defines" >> $D/etc/profile
 
 # setup mountpoints
 mkdir -p $D/build
-mkdir -p /c/build
 rm -f $D/etc/fstab
 echo "c:/build /build" > $D/etc/fstab
 
@@ -62,4 +72,3 @@ cp $D/bin/sh.exe $D/bin/bash.exe
 # start new cmd shell window with new shell
 #   XXX probably fails on win98
 cmd //c start $D/bin/sh --login
-

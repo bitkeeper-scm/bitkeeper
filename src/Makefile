@@ -1,7 +1,7 @@
 # Makefile for BitKeeper.
 # @(#) %K%
 HERE    := $(shell pwd)
-REPO    := $(shell basename `bk root`)
+REPO    := $(shell basename "`bk root`")
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
@@ -257,7 +257,7 @@ rebuild:
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
-	-@rm -rf tmp/bitkeeper
+	-@rm -rf tmp
 	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib tomcrypt; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
 	done
