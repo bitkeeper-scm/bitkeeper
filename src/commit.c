@@ -870,20 +870,6 @@ config(FILE *f)
 	}
 	fprintf(f, "User List:\n");
 	bkusers(0, 0, "\t", f);
-	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
-	if (exists(buf)) {
-		fprintf(f, "Alias  List:\n");
-		gettemp(tmpfile, "bk_aliases");
-		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
-		get(buf, SILENT|PRINT, tmpfile);
-		f1 = fopen(tmpfile, "r");
-		while (fgets(buf, sizeof(buf), f1)) {
-			if ((buf[0] == '#') || (buf[0] == '\n')) continue;
-			fprintf(f, "\t%s", buf);
-		}
-		fclose(f1);
-		unlink(tmpfile);
-	}
 }
 
 int
