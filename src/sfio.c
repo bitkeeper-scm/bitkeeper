@@ -20,7 +20,7 @@
 #undef	unlink		/* I know the files are writable, I created them */
 WHATSTR("@(#)%K%");
 
-#define	SFIO_VERS	"SFIO v 1.1"
+#define	SFIO_VERS	"SFIO v 1.2"
 #define	u32		unsigned int
 
 int	sfio_out(void);
@@ -94,8 +94,6 @@ out(char *file)
 	}
 	sprintf(buf, "%010u", sum);
 	writen(1, buf, 10);
-	sprintf(buf, "%03o", sb.st_mode & 0777);
-	writen(1, buf, 3);
 	close(fd);
 	return (0);
 }
@@ -196,15 +194,7 @@ in(char *file, int todo, int extract)
 		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
 		goto err;
 	}
-	if (readn(0, buf, 3) != 3) {
-		perror("mode read");
-		goto err;
-	}
-	sscanf(buf, "%03o", &mode);
-	if (extract) {
-		close(fd);
-		chmod(file, mode & 0777);
-	}
+	if (extract) close(fd);
 	fprintf(stderr, "%s\n", file);
 	return (0);
 
