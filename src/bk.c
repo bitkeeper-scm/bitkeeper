@@ -348,7 +348,6 @@ usage()
 }
 
 #define	MAXARGS	1024
-#define	u64	unsigned long long
 
 char *
 milli(void)
