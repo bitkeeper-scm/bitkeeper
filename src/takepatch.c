@@ -962,8 +962,9 @@ init(FILE *p, int flags, char **resyncRootp)
 		 * and record we're working on it.
 		 */
 		if (!isdir("PENDING") && (mkdir("PENDING", 0775) == -1)) {
+			SHOUT();
 			perror("PENDING");
-			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+			cleanup(CLEAN_RESYNC);
 		}
 		/* Force this group writable */
 		(void)chmod("PENDING", 0775);
