@@ -47,8 +47,9 @@ cmd_chg_part1(int ac, char **av)
 	out("@CHANGES INFO@\n");
 	while (fnext(buf, f)) {
 		sprintf(buf2, "%c%s", BKD_DATA, buf);
-		out(buf2);
+		if (out(buf2) <= 0) break;
 	}
+	fclose(f);
 	out("@END@\n");
 	return (0);
 }
@@ -148,7 +149,7 @@ cmd_chg_part2(int ac, char **av)
 	assert(f);
 	while (fnext(buf, f)) {
 		outc(BKD_DATA);
-		out(buf);
+		if (out(buf) <= 0) break;
 	}
 	fclose(f);
 	out("@END@\n");

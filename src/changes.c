@@ -1,4 +1,5 @@
 #include "bkd.h"
+#define	MAXARGS 100
 
 typedef struct {
 	u32     verbose:1;
@@ -12,6 +13,8 @@ typedef struct {
 
 private int	doit(opts, int dash);
 private int	doit_remote(opts opts, char **av, int optind);
+private void	line2av(char *cmd, char **av);
+private int	mkpager();
 
 private void
 usage()
@@ -23,7 +26,7 @@ usage()
 int
 changes_main(int ac, char **av)
 {
-	int	c;
+	int	c, rc;
 	char	cmd[MAXLINE];
 	opts	opts;
 
@@ -98,8 +101,42 @@ changes_main(int ac, char **av)
 		if (WIFEXITED(status)) return(WEXITSTATUS(status));
 		return (1); /* interrupted */
 	} else {
-		return(doit_remote(opts, av, optind)); 
+		int	fd1;
+
+		fd1 = mkpager();
+		rc = doit_remote(opts, av, optind); 
+		if (fd1 > 0) { dup2(fd1, 1); close(fd1); }
+		return (rc);
 	}
+}
+
+/*
+ * Set up page and connect it to our stdout
+ */
+private int
+mkpager()
+{
+	/*
+	 * What we want is: this process | pager
+	 */
+	int	fd1, pfd;
+	pid_t	pid;
+	char	*pager_av[MAXARGS];
+	char	*cmd;
+	extern 	char *pager;
+
+	/* "cat" is a no-op pager used in bkd */
+	if (streq("cat", pager)) return (-1);
+
+	signal(SIGPIPE, SIG_IGN);
+	cmd = strdup(pager); /* line2av stomp */
+	line2av(cmd, pager_av); /* win32 pager is "less -E" */
+	pid = spawnvp_wPipe(pager_av, &pfd, 0);
+	fd1 = dup(1);
+	dup2(pfd, 1);
+	close(pfd);
+	free(cmd);
+	return (fd1);
 }
 
 
@@ -117,7 +154,6 @@ line2av(char *cmd, char **av)
 	int	i = 0;
 #define isQuote(q) (strchr("\"\'", *q) && q[-1] != '\\')
 #define isDelim(c) isspace(c)
-#define	MAXARGS 100
 
 	p = cmd;
 	while (isspace(*p)) p++; 
@@ -219,15 +255,9 @@ doit(opts opts, int dash)
 	}
 
 	/*
-	 * What we want is: "bk prs opts | this process | pager
+	 * What we want is: this process | pager
 	 */
-	signal(SIGPIPE, SIG_IGN);
-	strcpy(tmpfile, pager); /* line2av stomp */
-	line2av(tmpfile, pager_av); /* because pager is "less -E" on win32 */
-	pid = spawnvp_wPipe(pager_av, &pfd, 0);
-	fd1 = dup(1);
-	dup2(pfd, 1);
-	close(pfd);
+	fd1= mkpager();
 	f = fdopen(1, "wb"); /* needed by sccs_prsdelta() below */
 
 	gettemp(tmpfile, "changes");
@@ -235,7 +265,7 @@ doit(opts opts, int dash)
 	for (d = s->table; d; d = d->next) {
 		if (SET(s) && !(d->flags & D_SET)) continue;
 		sccs_prsdelta(s, d, 0, spec, f);
-		fflush(f);
+		if (fflush(f) || feof(f)) break; /* for early pager exit */
 		if (opts.verbose) {
 			sprintf(cmd,
 			    "bk cset -Hr%s | bk _sort | bk sccslog -i%d - > %s",
@@ -248,7 +278,7 @@ doit(opts opts, int dash)
 	close(1);
 	waitpid(pid, 0, 0);
 	unlink(tmpfile);
-	dup2(fd1, 1); close(fd1);
+	if (fd1 > 0) { dup2(fd1, 1); close(fd1); }
 	return (0);
 }
 
@@ -388,8 +418,13 @@ changes_part1(remote *r, opts opts, char **av, int optind, char *key_list)
 		}
 		while (getline2(r, buf, sizeof(buf)) > 0) {
 			if (streq("@END@", buf)) break;
-			write(1, &buf[1], strlen(buf) - 1);
-			write(1, "\n", 1);
+			
+			/*
+			 * Check for write error, in case
+			 * our pager terminate early
+			 */
+			if (write(1, &buf[1], strlen(buf) - 1) < 0) break;
+			if (write(1, "\n", 1) < 0) break;
 		}
 		return (0);
 	}
@@ -462,7 +497,9 @@ changes_part2(remote *r, opts opts,
 	}
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq("@END@", buf)) break;
-		write(1, &buf[1], strlen(buf) - 1);
+		if (write(1, &buf[1], strlen(buf) - 1) < 0) {
+			break;
+		}
 		write(1, "\n", 1);
 	}
 	
