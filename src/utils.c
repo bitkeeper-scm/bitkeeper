@@ -543,7 +543,7 @@ drainNonStandardMsg(remote *r, char *buf, int bsize)
 
 	do {
 		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) break;
-		if (strneq("ERROR-BAD CMD: @END@", buf, 20)) break; /*for push*/
+		if (strneq("ERROR-BAD CMD: @END", buf, 19)) break; /*for push*/
 		if (strneq("ERROR-BAD CMD:", buf, 14)) continue;
 		if (streq("OK-root OK", buf)) continue;
 		fprintf(stderr, "%s\n", buf);
