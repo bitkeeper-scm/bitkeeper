@@ -3,7 +3,7 @@
 # %K%
 
 ${RM} -rf bar SCCS
-cset -is .
+cset -i -s .
 ${ECHO} Hallo > date
 admin $Q -n -idate date; ${RM} date
 echo $N Check for path in initial checkin ...........................$NL

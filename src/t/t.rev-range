@@ -5,7 +5,7 @@
 BASE=37
 BASE2=`expr $BASE + 71`
 ${RM} -rf foo SCCS A
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 ${CAT} > SAVE <<EOF
 Hi there, this is file foo.
 Hi there, this is file foo.
@@ -52,7 +52,7 @@ set `wc -w SCCS/s.stdin`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 ${RM} -rf foo SCCS
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 echo $N Creating an empty file with rel 3.1 .........................$NL
 admin $Q -r3.1 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
@@ -61,7 +61,7 @@ grep -q 'd D 3.1 ' SCCS/s.empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 ${RM} -rf SCCS
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 echo $N Creating an empty file with rel 1.2.3.4 .....................$NL
 admin $Q -r1.2.3.4 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
@@ -70,25 +70,25 @@ grep -q 'd D 1.2.3.4 ' SCCS/s.empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 ${RM} -rf SCCS
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 echo $N Attempting bad create with rel 1.2.3 ........................$NL
 admin $Q -r1.2.3 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 ${RM} -rf SCCS
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 echo $N Attempting bad create with rel 1.2.3.4.9999 .................$NL
 admin $Q -r1.2.3.4.9999 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 ${RM} -rf SCCS
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 echo This is the description. > D
 echo $N Creating a file with description ............................$NL
 admin $Q -n -tD foo
 if [ ! -f SCCS/s.foo ]; then echo Failed.; exit 1; fi
 set `wc -w SCCS/s.foo`
-if [ $1 -ne `expr $BASE + 4` ]; then echo Failed - wrong size.; exit 1; fi
+if [ $1 -ne `expr $BASE + 13` ]; then echo Failed - wrong size.; exit 1; fi
 grep -q "`cat D`" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
@@ -97,21 +97,21 @@ cp SCCS/s.foo SCCS/s.bar
 admin $Q -t foo
 admin $Q -T bar
 set `wc -w SCCS/s.foo`
-if [ $1 -ne $BASE ]; then echo Failed - wrong size $1 $BASE ; exit 1; fi
+if [ $1 -ne `expr $BASE + 27` ]; then echo Failed - wrong size $1 ; exit 1; fi
 set `wc -w SCCS/s.bar`
-if [ $1 -ne $BASE ]; then echo Failed - wrong size $1 $BASE ; exit 1; fi
+if [ $1 -ne `expr $BASE + 28` ]; then echo Failed - wrong size $1 ; exit 1; fi
 echo OK
 echo $N And putting it back .........................................$NL
 admin $Q -tD bar
 set `wc -w SCCS/s.bar`
-if [ $1 -ne `expr $BASE + 4` ]; then echo Failed - wrong size.; exit 1; fi
+if [ $1 -ne `expr $BASE + 54` ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 echo $N One last text test ..........................................$NL
 admin $Q -n -t junk 2>ERR
 if [ $? -eq 0 ]; then echo Failed.; exit 1; fi
 echo OK
 ${RM} -rf SCCS foo
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 cp SAVE foo
 echo $N Creating a file with a comment ..............................$NL
 admin $Q -n -y'THIS IS THE COMMENT' foo
@@ -119,7 +119,7 @@ grep -q "c THIS IS THE COMMENT" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 ${RM} -rf SCCS foo
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 echo $N File w/ comment, text, release ..............................$NL
 admin $Q -n -tD -r1.2 -y'THIS IS THE COMMENT' foo
 grep -q "c THIS IS THE COMMENT" SCCS/s.foo
@@ -235,7 +235,7 @@ echo OK
 # test a graph which has a branch merged into a branch
 echo $N Check that range connect on a branch works ..................$NL
 ${RM} -rf foo SCCS
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 touch foo
 bk ci $Q -i foo
 bk co $Q -l foo

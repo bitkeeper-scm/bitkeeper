@@ -2,7 +2,7 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-cset -is .
+cset -i -s .
 ${RM} -rf FILE SCCS
 echo $N Check ci -i -l ..............................................$NL
 echo HHHH > FILE

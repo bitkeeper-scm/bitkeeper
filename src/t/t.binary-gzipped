@@ -3,7 +3,7 @@
 # %K%
 
 ${RM} -rf foo SCCS A
-mkdir SCCS; cset -is .
+mkdir SCCS; cset -i -s .
 echo $N Trying to check in some binary data .........................$NL
 cp ${binary_data} ${data}
 chmod u+w ${data}
