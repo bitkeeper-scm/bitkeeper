@@ -194,7 +194,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	}
 	cfile(s, revs);
 	sccs_free(s);
-	sprintf(buf, "bk stripdel %s %s -r%s %s", qflag, force, revs, file);
+	sprintf(buf, "bk stripdel %s %s -r%s '%s'", qflag, force, revs, file);
 	if (system(buf)) {
 		unlink(fixfile);
 	} else {
