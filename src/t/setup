@@ -64,7 +64,7 @@ waitForUnlock() {
 	do      test -d $1/BitKeeper/readers && sleep 1
 	done
 	test -d $1/BitKeeper/readers && {
-        	echo failed to clean up writer directory
+        	echo failed to clean up reader directory
         	exit 1
 	}
 }

@@ -147,7 +147,7 @@ import() {
 	rm -f ${TMP}sccs$$
 	cd "$TO"
 	eval validate_$type \"$FROM\" \"$TO\"
-	transfer_$type "$FROM" "$TO"
+	transfer_$type "$FROM" "$TO" "$TYPE"
 	eval import_$type \"$FROM\" \"$TO\"
 	import_finish "$TO"
 }
@@ -440,6 +440,20 @@ import_RCS () {
 		mv ${TMP}import$$ ${TMP}Attic$$
 		sed 's|Attic/||' < ${TMP}Attic$$ | sort -u > ${TMP}import$$
 		rm ${TMP}Attic$$
+	fi
+	if [ $TYPE = RCS ]
+	then	msg Moving RCS files out of RCS directories
+		HERE=`pwd`
+		find . -type d | grep 'RCS$' | while read x
+		do	cd $x
+			mv *,v ..
+			cd ..
+			rmdir RCS
+			cd $HERE
+		done
+		mv ${TMP}import$$ ${TMP}rcs$$
+		sed 's!RCS/!!' < ${TMP}rcs$$ > ${TMP}import$$
+		rm ${TMP}rcs$$
 	fi
 	msg Converting RCS files.
 	msg WARNING: Branches will be discarded.

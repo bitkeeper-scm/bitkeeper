@@ -204,18 +204,19 @@ The following are the Unix environment variable options available for use.
 .ARG port_number
 .LP
 .Bc http_proxy= 
+.Bc http://
 .ARGc host :
 .ARG port
 .LP
-.Bc SOCKS_HOST
+.Bc SOCKS_HOST=
 .ARG host_name
 .br
-.Bc SOCKS_PORT
+.Bc SOCKS_PORT=
 .ARG port_number
 .LP
-.Bc SOCKS_SERVER
+.Bc SOCKS_SERVER=
 .ARGc host :
-.ARG port .
+.ARG port
 .RE
 .LP
 Note: if HTTP_PROXY_HOST is set, HTTP_PROXY_PORT must also be set.  Likewise

@@ -2,7 +2,7 @@
 # does not work.  
 
 # For win32, WIN32_GS_PATH should points to the install directory of Ghost Script
-WIN32_GS_PATH=//c/gs/gs7.00
+WIN32_GS_PATH=/cygdrive/c/gs/gs7.00
 
 .SCCS_GET:
 	bk get -q $@
@@ -20,7 +20,7 @@ bk_refcard.pdf: bk_refcard.tr bk_refcard.ps
 	if uname -s | grep -q NT; \
 	then \
 		PATH="${WIN32_GS_PATH}/lib:${WIN32_GS_PATH}/bin" \
-		//c/winnt/system32/cmd /c ps2pdf12.bat bk_refcard.ps; \
+		c:/winnt/system32/cmd /c ps2pdf12.bat bk_refcard.ps; \
 	else \
 		ps2pdf bk_refcard.ps; \
 	fi
