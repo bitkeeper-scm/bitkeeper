@@ -1244,17 +1244,24 @@ unsafe_path(char *s)
  * Otherwise do a full check.
  */
 int
-run_check(char *partial)
+run_check(char *partial, int fix)
 {
 	int	ret;
 	struct	stat sb;
 	time_t	now = time(0);
+	char	*fixopt;
 
+ again:
+	fixopt = (fix ? "-f" : "--");
 	if (!partial || stat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
-		ret = sys("bk", "-r", "check", "-ac", SYS);
+		ret = sys("bk", "-r", "check", "-ac", fixopt, SYS);
 	} else {
-		ret = sysio(partial, 0, 0, "bk", "check", "-", SYS);
+		ret = sysio(partial, 0, 0, "bk", "check", fixopt, "-", SYS);
 	}
-	unless (WIFEXITED(ret))  return (1);  /* fail */
-	return (WEXITSTATUS(ret) != 0);   
+	ret = WIFEXITED(ret) ? WEXITSTATUS(ret) : 1;
+	if (fix && ret == 2) {
+		fix = 0;
+		goto again;
+	}
+	return (ret);
 }

@@ -178,19 +178,23 @@ cmd_rclone_part2(int ac, char **av)
 		goto done;
 	}
 	/* remove any uncommited stuff */
-	sccs_rmUncommitted(!opts.verbose);
-
-	/* remove any later stuff */
-	if (opts.rev) after(!opts.verbose, opts.rev);
-
-	/* clean up empty directories */
-	rmEmptyDirs(!opts.verbose);
+	sccs_rmUncommitted(!opts.verbose, 0);
 
 	/*
 	 * XXX TODO: set up parent pointer
 	 */
 
-	consistency(!opts.verbose);
+	/* remove any later stuff */
+	if (opts.rev) {
+		after(!opts.verbose, opts.rev);
+	} else {
+		/* undo already runs check so we only need this case */
+		if (opts.verbose) {
+			fprintf(stderr, "Running consistency check ...\n");
+		}
+		run_check(0, 1);
+	}
+
 	/* restore original stderr */
 	dup2(fd2, 2); close(fd2);
 	fputc(BKD_NUL, stdout);

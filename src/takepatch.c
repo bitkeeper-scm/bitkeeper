@@ -520,11 +520,10 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			}
 			goto again;
 		}
-		if (!newFile && isLogPatch) {
+		if (isLogPatch) {
 	skip:		skipPatch(p);
 			return (0);
-		}
-		unless (newFile) {
+		} else {
 			SHOUT();
 			fprintf(stderr,
 			   "takepatch: can't find key '%s' in id cache\n", t);
