@@ -279,9 +279,11 @@ do_commit(char **av, c_opts opts, char *sym,
 				system("bk _lconfig");
 			}
 			if ((logs_pending(ptype) >= MAX_PENDING_LOG)) {
+			unless (getenv("_BK_IGNORE_PENDING")) {
 				printf(
 				  "max pending log exceeded, commit aborted\n");
 				return (1);
+			}
 			}
 		}
 	}
