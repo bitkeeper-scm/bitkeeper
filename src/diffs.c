@@ -144,13 +144,8 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
 		 */
-		if (kind == DF_GNU_PATCH) {
-			rc = new_sccs_diffs(s, r1, r2,
-				ex|flags, kind, stdout, lLabel, rLabel);
-		} else {
-			rc = sccs_diffs(s, r1, r2,
-				ex|flags, kind, stdout, lLabel, rLabel);
-		}
+		rc = sccs_diffs(s, r1, r2,
+			ex|flags, kind, stdout, lLabel, rLabel);
 		switch (rc) { 
 		    case -2:
 		    case -3:
