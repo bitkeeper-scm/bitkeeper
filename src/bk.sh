@@ -1136,6 +1136,11 @@ __keysort()
     bk _sort "$@"
 }
 
+__quoteSpace()
+{
+        echo "$1" | sed 's, ,\\ ,g'
+}
+
 __findRegsvr32()
 {
 	REGSVR32=""
@@ -1152,7 +1157,7 @@ __findRegsvr32()
 		done
 	fi
 
-	for drv in c d e f g h i j k l m n o p q r s t vu v w x y z
+	for drv in c d e f g h i j k l m n o p q r s t u v w x y z
 	do
 		for dir in WINDOWS/system32 WINDOWS/system WINNT/system32
 		do
@@ -1173,6 +1178,90 @@ __register_dll()
 	test X"$REGSVR32" = X && return; 
 
 	"$REGSVR32" -s "$1"
+}
+
+# For win32: extract the UninstallString from the registry
+__uninstall_cmd()
+{
+        if [ -f "$1/bk.exe" ]
+        then
+		VER=`"$1/bk.exe" version | head -1 | awk '{ print $4 }'`
+		case "$VER" in
+		    bk-*)
+			VERSION="$VER";
+			;;
+		    *)
+			VERSION="bk-$VER"
+		esac
+		"$SRC/gui/bin/tclsh" "$SRC/getuninstall.tcl" "$VERSION"
+        else
+		echo ""
+        fi
+}
+
+__do_win32_uninstall()
+{
+	SRC="$1"
+	DEST="$2"
+	OBK="$3"
+	OLOG="$OBK/install.log"
+	ODLL="$OBK/BkShellX.dll"
+	__uninstall_cmd "$2" > "$TEMP/bkuninstall_tmp$$"
+	UNINSTALL_CMD=`cat "$TEMP/bkuninstall_tmp$$"`
+
+	case "$UNINSTALL_CMD" in
+	    *UNWISE.EXE*)	# Uninstall bk3.0.x
+		mv "$DEST" "$OBK"
+
+		mkdir "$DEST"
+		for i in UNWISE.EXE UNWISE.INI INSTALL.LOG
+		do
+			cp "$OBK"/$i "$DEST"/$i
+		done
+
+		rm -rf "$OBK" 2> /dev/null
+		if [ -f "$ODLL" ]
+		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
+		    		 "BitKeeper$$" "\"$DEST/bkuninstall.exe\" \
+						  	-R \"$ODLL\" \"$OBK\""
+		fi
+
+		# *NOTE* UNWISE.EXE runs as a background process!
+		eval $UNINSTALL_CMD
+
+		#Busy wait: wait for UNWISE.EXE to exit
+		cnt=0;
+		while [ -d "$DEST" ]
+		do
+			cnt=`expr $cnt + 1` 	
+			if [ "$cnt" -gt 60 ]; then break; fi
+			echo -n "."
+			sleep 2
+		done
+		if [ $cnt -gt 60 ]; then exit 2; fi; # force installtool to exit
+		;;
+	    *bkuninstall*)	# Uninstall bk3.2.x
+		mv "$DEST" "$OBK"
+
+		# replace $DEST with $OBK
+		X1=`__quoteSpace "$DEST"`
+		Y1=`__quoteSpace "$OBK"`
+		sed "s,$X1,$Y1,Ig" "$TEMP/bkuninstall_tmp$$" > "$TEMP/bk_cmd$$"
+		BK_INSTALL_DIR="$OBK"
+		export BK_INSTALL_DIR
+		sh "$TEMP/bk_cmd$$" > /dev/null 2>&1
+		rm -f "$TEMP/bkuninstall_tmp$$" "$TEMP/bk_cmd$$"
+		;;
+	    *)	
+		mv "$DEST" "$OBK"
+		rm -rf "$OBK" 2> /dev/null
+		if [ -f "$ODLL" ]
+		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
+		    		 "BitKeeper$$" "\"$DEST/bkuninstall.exe\" \
+						  	-R \"$ODLL\" \"$OBK\""
+		fi
+		;;
+	esac
 }
 
 # usage: install dir
@@ -1210,6 +1299,7 @@ _install()
 	DEST="$1"
 	SRC=`bk bin`
 
+	OBK="$DEST.old$$"
 	test -d "$DEST" && {
 		DEST=`cd "$DEST"; bk pwd`	
 		test "$DEST" = "$SRC" && {
@@ -1224,21 +1314,7 @@ _install()
 		chmod -R +w "$DEST" 2> /dev/null
 		if [ "X$OSTYPE" = "Xmsys" ]
 		then
-			OBK="$DEST.old$$"
-			OLOG="$OBK/install.log"
-			ODLL="$OBK/BkShellX.dll"
-			mv "$DEST" "$OBK"
-			if [ -f "$OBK/bkuninstall.exe" -a -f "$OLOG" ]
-			then
-				"$OBK/bkuninstall.exe" -i -S -f "$OBK" "$OLOG" 2> /dev/null 1>&2
-			else
-				rm -rf "$OBK" 2> /dev/null
-				if [ -f "$ODLL" ]
-				then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
-				     "BitKeeper$$" "\"$DEST/bkuninstall.exe\" \
-							-R \"$ODLL\" \"$OBK\""
-				fi
-			fi
+			__do_win32_uninstall "$SRC" "$DEST" "$OBK"
 		else
 			rm -rf "$DEST"/* || {
 			    echo "bk install: failed to remove $DEST"
@@ -1305,6 +1381,7 @@ _install()
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 
+		ODLL="$OBK/BkShellX.dll"
 		test -f "$ODLL" && {
 			"$DEST"/bkuninstall.exe -b 2>nul 1>&2 &
 			exit 2		# this forces installtool to exit

@@ -77,7 +77,7 @@ proc registry_install {destination} \
 	# Also need to use / rather than \ because we may execute this
 	# in an msys shell.
 	reg set $HKLMS\\$MWC\\Uninstall\\$id UninstallString \
-	    "[shortname $destination]/bkuninstall -S \"$destination\\install.log\""
+	    "[shortname $destination]/bkuninstall -S \"$destination/install.log\""
 	reg set $HKLMS\\$MWC\\Uninstall\\$id URLInfoAbout \
 		 "http://www.bitkeeper.com"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id HelpLink \
@@ -98,7 +98,7 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 	progman AddItem "$bk helptool,BitKeeper Documentation,,,,,,,1"
 	progman AddItem "$bk sendbug,Submit bug report,,,,,,,1"
 	progman AddItem "$bk support,Request BitKeeper Support,,,,,,,1"
-	progman AddItem "$uninstall -r -S \"$installlog\",Uninstall BitKeeper,,,,,,,1"
+	progman AddItem "$uninstall -S \"$installlog\",Uninstall BitKeeper,,,,,C:\\,,1"
 	progman AddItem "$dest\\bk_refcard.pdf,Quick Reference,,,,,,,1"
 	progman AddItem "$dest\\gnu\\msys.bat,Msys Shell,,,,,,,1"
 	progman AddItem "http://www.bitkeeper.com,BitKeeper on the Web,,,,,,,1"

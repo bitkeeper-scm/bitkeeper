@@ -1158,7 +1158,7 @@ int
 launch_wish(char *script, char **av)
 {
 	char	*path;
-	int	i, j, ret;
+	int	i, ret;
 	pid_t	pid;
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
@@ -1207,8 +1207,9 @@ launch_wish(char *script, char **av)
 	 * since we won't be using it.  This is so that we don't have
 	 * a unused console windows in the background of the GUIs.
 	 * WARNING: after this we shouldn't try to do any console IO.
+	 * This does not work on Win/Me (probably also Win/98)
 	 */
-	FreeConsole();
+	unless (isWin98()) FreeConsole();
 #endif
 	if (waitpid(pid, &ret, 0) < 0) {
 		return (126);
