@@ -39,7 +39,7 @@ enum {
 	RIGHT
 };
 
-#define VALID(lines, i) ((lines) && (lines)[i])
+#define VALID(lines, i) ((lines) && (i) < (int)(lines)[0] && (lines)[i])
 
 private	char	*revs[3];
 private	char	*file;
