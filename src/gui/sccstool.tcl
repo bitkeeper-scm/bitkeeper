@@ -858,34 +858,12 @@ proc sccstool {name} \
 	busy 0
 }
 
-
-
-proc platformPath {} \
-{
-	global bin env
-	# BK_BIN is set by bk.sh
-	set bin $env(BK_BIN)
-
-	#XXX TODO: make bk_tagfile a config variable
-	#XXX       for NT, it should be "sccslog.exe"
-	set bk_tagfile "sccslog"
-
-	set tmp [file join $bin $bk_tagfile]
-	if  [ file executable $tmp ] {
-		return
-	} else {
-		puts "Installation problem: $tmp does not exist or not executable"
-		exit
-	}
-}
-
 proc init {} \
 {
 	global bin bk_prs bk_cset bk_get bk_renumber bk_sfiles
 	global bk_lines
 
-	platformPath
-	platformInit
+	bk_init
 	set bk_prs [file join $bin prs]
 	set bk_cset [file join $bin cset]
 	set bk_get [file join $bin get]
