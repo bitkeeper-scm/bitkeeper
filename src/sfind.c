@@ -652,6 +652,7 @@ int
 isIgnored(char *file)
 {
 	char *gfile, *p, *q, save;
+	struct stat sbuf;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
 	unless (opts.aflg) {
@@ -687,6 +688,13 @@ isIgnored(char *file)
 			if (save == 0) break;
 			p = ++q;
 		}
+
+		/* ignore special file e.g. char/block/fifo file */
+		if (lstat(gfile, &sbuf)) {
+			perror(gfile);
+			return (1);
+		}
+		unless (sbuf.st_mode && S_IFREG|S_IFLNK) return (1);
 	}
 
 	/*
@@ -696,6 +704,7 @@ isIgnored(char *file)
 	 * these file will show up. It is probably OK.
 	 */
 	if (strneq("BitKeeper/log/", gfile, 14)) return (1);
+	
 	return (0);
 }
 
