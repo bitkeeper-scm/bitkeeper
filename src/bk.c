@@ -300,6 +300,16 @@ main(int ac, char **av)
 		printf("%s\n", getenv("PATH"));
 		exit(0);
 	}
+#ifdef WIN32
+	if (av[1] && streq(av[1], "_realpath") && !av[2]) {
+		char buf[MAXPATH], real[MAXPATH];
+
+		getcwd(buf, sizeof(buf));
+		getRealName(buf, NULL, real);
+		printf("%s => %s\n", buf, real);
+		exit(0);
+	}
+#endif
 	if (av[1] && streq(av[1], "--help") && !av[2]) {
 		system("bk help bk");
 		exit(0);

@@ -1449,7 +1449,13 @@ getRealName(char *path, MDBM *db, char *realname)
 	
 #ifdef WIN32
 	if (q[1] == ':') {
+		q[0] = toupper(q[0]); /* store drive letter in upper case */
+		assert(!islower(q[0]));
 		q = &q[3];
+		if (*q == 0) {
+			strcpy(realname, mypath);
+			return (0);
+		}
 #else
 	if (q[0] == '/') {
 		q = &q[1];
