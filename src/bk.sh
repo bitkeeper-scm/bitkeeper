@@ -516,7 +516,8 @@ _repair()
 	bk idcache 	# Must be up-to-date
 		 	# Otherwise we get false resolve conflict
 	echo "Parking edited files"
-	bk park		# otherwise edited file will failed the pull
+	bk park	-y"park for repair"	# otherwise edited file will
+					# failed the pull
 	echo "pulling a jumbo patch.."
 	bk pull -F ${_MASTER} || exit 1
 	echo "bk repair have resurrected all files not-gone in the remote"

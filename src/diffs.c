@@ -121,22 +121,30 @@ usage:			system("bk help -s diffs");
 	}
 
 	if (cset) {
-		char	*cmd = aprintf("bk rset -l%s", cset);
+		char	*rev = aprintf("-r%s", cset);
+		char	*diff_opt;
+		int	rc;
 
-		if (av[optind]) {
-			fprintf(stderr, "%s: No files with -C\n", av[0]);
-			free(cmd);
-			return(1);
+		/*
+		 * "bk diffs -u -Crev1,rev2" is same as
+		 * "bk export -tpatch -h -du -rrev1,rev2"
+		 */
+		switch (kind) { /* translate diff style option for bk export */
+		    case DF_DIFF:	/*
+					 * Force the "null" diff style
+					 * we need this becuase bk export
+					 * default to -du
+					 */
+					diff_opt = "-d?";
+					break;
+		    case DF_RCS:	diff_opt = "-dn"; break;
+		    case DF_UNIFIED:	diff_opt = "-du"; break;
+		    case DF_SDIFF:	diff_opt = "-dy"; break;
+		    default:		assert("bad diff style" == 0);
 		}
-		if (sccs_cd2root(0, 0) == -1) {
-			fprintf(stderr, "Cannot find repository root.\n");
-			return (1);
-		}
-		gettemp(rset, "rset");
-		cmd = aprintf("bk rset -l%s > %s", cset, rset);
-		system(cmd);
-		free(cmd);
-		freopen(rset, "r", stdin);
+		rc = sys("bk", "export", "-tpatch", "-h", diff_opt, rev, SYS);
+		free(rev);
+		return (rc);
 	}
 		
 	/* XXX - if we are doing boundaries | diffs

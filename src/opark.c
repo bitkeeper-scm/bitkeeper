@@ -8,7 +8,7 @@ private int listParkFile(void);
 private int purgeParkFile(int id);
 
 int
-park_main(int ac, char **av)
+opark_main(int ac, char **av)
 {
 	char	parkfile[MAXPATH] = "", changedfile[MAXPATH] = "";
 	char	*diffsopts, *comment = 0;
@@ -163,7 +163,7 @@ do_unpark(int id)
 }
 
 int
-unpark_main(int ac, char **av)
+ounpark_main(int ac, char **av)
 {
 	struct	dirent *e;
 	DIR	*dh;

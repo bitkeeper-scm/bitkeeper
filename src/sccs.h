@@ -217,6 +217,8 @@
 #define	IS_WRITABLE(s)	((s)->mode & 0200)
 #define IS_EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && IS_WRITABLE(s))
 #define IS_LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
+#define IS_TEXT(s)	(((s)->encoding & E_DATAENC) == E_ASCII)
+#define IS_BINARY(s)	(((s)->encoding & E_DATAENC) == E_UUENCODE)
 #define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile(s->mode))
 #define	CSET(s)		((s)->state & S_CSET)
 #define	CONFIG(s)	((s)->state & S_CONFIG)
@@ -332,6 +334,9 @@
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
+#define PARENT		"BitKeeper/log/parent"
+#define PUSH_PARENT	"BitKeeper/log/push-parent"
+#define PULL_PARENT	"BitKeeper/log/pull-parent"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
@@ -424,6 +429,7 @@ typedef struct delta {
 					/* open tips, so maintained always */
 } delta;
 #define	TAG(d)	((d)->type == 'R')
+#define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 /*
  * Rap on lod/symbols wrt deltas.
@@ -1075,6 +1081,7 @@ int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
 char	**getdir(char *); 
 char	*getParent(void);
+char	**getParentList(char *, char **);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 MDBM	*generateTimestampDB(project *p);
 int	timeMatch(char *gfile, char *sfile, MDBM *timestamps);
@@ -1133,6 +1140,7 @@ void	comments_cleancfile(char *file);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 int	run_check(char *partial);
+char	*key2path(char *key, MDBM *idDB);
 void	set_timestamps(sccs *s);
 
 extern char *bk_vers;

@@ -14,6 +14,8 @@
 #include "logging.h"
 WHATSTR("@(#)%K%");
 
+#define	VSIZE 4096
+
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, int flags, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
@@ -6716,7 +6718,7 @@ getLinkBody(sccs *s,
 	unless (f) return 2;
 	
 	/*
-	 * What we want is to just checksum the symnlink.
+	 * What we want is to just checksum the symlink.
 	 * However due two bugs in old binary, we do not have valid check if:
 	 * a) It is a 1.1 delta
 	 * b) It is 1.1.* delta (the 1.1 delta got moved after a merge)
@@ -12852,7 +12854,7 @@ show_d(sccs *s, delta *d, FILE *out, char *vbuf, char *format, int num)
 		sprintf(dbuf, format, num);
 		assert(strlen(dbuf) < 512);
 		strcat(vbuf, dbuf);
-		assert(strlen(vbuf) < 1024);
+		assert(strlen(vbuf) < VSIZE);
 	}
 }
 
@@ -12865,7 +12867,7 @@ show_s(sccs *s, delta *d, FILE *out, char *vbuf, char *str)
 	}
 	if (vbuf) {
 		strcat(vbuf, str);
-		assert(strlen(vbuf) < 1024);
+		assert(strlen(vbuf) < VSIZE);
 	}
 }
 
@@ -14210,7 +14212,6 @@ extractStatement(const char *b, const char *end)
 #define NUM_GE	6
 #define NUM_LE	7
 #define	NUM_NE	8
-#define	VSIZE 1024
 
 private char *
 extractOp(const char *q, const char *end,

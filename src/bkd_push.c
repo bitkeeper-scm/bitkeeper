@@ -121,15 +121,16 @@ int
 cmd_push_part2(int ac, char **av)
 {
 	int	fd2, pfd, c, rc = 0, gzip = 0, metaOnly = 0;
-	int	status, debug = 0, nothing = 0, conflict = 0;
+	int	i, status, debug = 0, nothing = 0, conflict = 0;
+	int	quiet = 0;
 	pid_t	pid;
 	char	buf[4096];
 	char	bkd_nul = BKD_NUL;
-	static	char *takepatch[] = { "bk", "takepatch", "-vvv", "-c", 0};
+	static	char *takepatch[5] = { "bk", "takepatch"};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
 	signal(SIGCHLD, SIG_DFL);
-	while ((c = getopt(ac, av, "deGnz|")) != -1) {
+	while ((c = getopt(ac, av, "deGnqz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -139,6 +140,7 @@ cmd_push_part2(int ac, char **av)
 		    case 'e': metaOnly = 1; break;
 		    case 'G': takepatch[2] = "-vv"; break;
 		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
+		    case 'q': quiet = 1; break;
 		    default: break;
 		}
 	}
@@ -186,7 +188,11 @@ cmd_push_part2(int ac, char **av)
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
-	if (metaOnly) takepatch[3] = 0; /* allow conflict in logging patch */
+	i = 2;
+	if (metaOnly && !debug) quiet = 1; /* force quiet for logging code */
+	unless (quiet) takepatch[i++] = "-vvv";
+	unless (metaOnly) takepatch[i++] = "-c"; /* normal patch no conflict */
+	takepatch[i] = 0;
 	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
 	dup2(fd2, 2); close(fd2);
 	gunzipAll2fd(0, pfd, gzip, 0, 0);

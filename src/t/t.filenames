@@ -195,6 +195,8 @@ test -f 'S P A C E S,v' && {
 }
 echo OK
 
+if [ $PLATFORM != "WIN32" ]
+then #-----------------------------------------------------------------
 echo $N Test RCS import of a file with a backslash in the name ......$NL
 cd $HERE
 rm -rf project import_dir
@@ -237,6 +239,7 @@ test -f 'I\ m,v' && {
 	exit 1
 }
 echo OK
+fi #-------------------------------------------------------------------
 
 echo $N Test RCS import of a file starting with - ...................$NL
 cd $HERE
@@ -276,6 +279,8 @@ test -f SCCS/s.-dash || { echo failed; exit 1; }
 test -f "-dash,v" && { echo failed to remove ,v file; ls; exit 1; }
 echo OK
 
+if [ $PLATFORM != "WIN32" ]
+then #-----------------------------------------------------------------
 echo $N Test RCS import of a file with double quotes in the name ....$NL
 cd $HERE
 rm -rf project import_dir
@@ -313,3 +318,4 @@ cd $HERE/project/src
 test -f SCCS/s.'I"m a little teacup' || { echo failed; exit 1; }
 test -f 'I"m a little teacup,v' && { echo failed to remove ,v file; ls; exit 1; }
 echo OK
+fi #-------------------------------------------------------------------

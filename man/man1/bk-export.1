@@ -70,6 +70,26 @@ Do not expand keywords (default is to expand keywords).
 .OPTreq \-r rev
 Export the tree as of revision 
 .ARG rev .
+if rev equal to ".", it means export the checked out file.
+If option "-tpatch" is specified,
+.ARG rev
+should be in the form
+.ARG rev1,rev2 ;
+this cause bk export to
+output the diffs between revison
+.ARG rev1
+and
+.ARG rev2 .
+if
+.ARG rev2
+is absent,
+bk export output the diffs of
+.ARG rev1
+against its parent revision. if
+.ARG rev2
+is ".", bk export output the diffs of the checked out files against
+revision
+.ARG rev1 . 
 .tp
 .B \-T
 Set gfile modification time to check-in time.

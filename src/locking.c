@@ -446,19 +446,19 @@ repository_lockcleanup(void)
 
 	if (repository_mine('r')) {
 		ttyprintf(
-"WARNING: process %d is exiting and it has left the repository at
-%s read locked!!  This is the result of a process that has been
-killed prematurely or is a bug.
-The stale lock will be removed.\n",
+"WARNING: process %d is exiting and it has left the repository at\n"
+"%s read locked!!  This is the result of a process that has been\n"
+"killed prematurely or is a bug.\n"
+"The stale lock will be removed.\n",
 			getpid(), root);
 		repository_rdunlock(0);
 	}
 
 	if (repository_mine('w')) {
 		ttyprintf(
-"ERROR: process %d is exiting and it has left the repository at
-%s write locked!!  This is the result of a process that has been
-killed prematurely or is a bug.\n",
+"ERROR: process %d is exiting and it has left the repository at\n"
+"%s write locked!!  This is the result of a process that has been\n"
+"killed prematurely or is a bug.\n",
 			getpid(), root);
 		/*
 		 * No need to keep the lock if we also have a RESYNC dir

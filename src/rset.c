@@ -9,6 +9,7 @@ typedef struct {
 	u32	hide_cset:1;	/* hide ChangeSet file from file list */
 	u32	rflg:1;		/* diff two rset */
 	u32	lflg:1;		/* list a rset */
+	u32	isDot:1;	/* we got a rev  = "." */
 } options;
 
 private project *proj;
@@ -121,6 +122,8 @@ process(char *root, char *start, char *end,
 	char	*rev1, *rev2, *path1, *path2;
 	char	c = BK_FS; /* field seperator */
 
+	if (is_same(start, end) && !opts.isDot)  return;
+
 	s = sccs_keyinit(root,
 	    INIT_NOGCHK|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	unless (s) {
@@ -131,6 +134,10 @@ process(char *root, char *start, char *end,
 		fprintf(stderr, "Cannot keyinit %s\n", root);
 		return;
 	}
+	if (opts.isDot && is_same(start, end) && !sccs_hasDiffs(s, 0, 0)) {
+		goto done;
+	}
+
 	if (start && *start) {
 		d1 = sccs_findKey(s, start);
 		rev1 = d1->rev;
@@ -141,8 +148,13 @@ process(char *root, char *start, char *end,
 	}
 	if (end && *end) {
 		d2 = sccs_findKey(s, end);
-		rev2 = d2->rev;
-		path2 = d2->pathname;
+		if (opts.isDot) {
+			rev2 = ".";
+			path2 = s->gfile; /* in case of un-delta'ed rename */
+		} else {
+			rev2 = d2->rev;
+			path2 = d2->pathname;
+		}
 	} else {
 		/* XXX - this is weird */
 		rev2 = "1.0";
@@ -222,10 +234,7 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
 		start_key = kv.val.dptr;
 		strcpy(root_key2, root_key); /* because find_key stomps */
 		end_key = find_key(db2, root_key2, &short2long);
-		unless (is_same(start_key, end_key))  {
-			process(root_key, start_key, end_key,
-						    idDB, &goneDB, opts);
-		}
+		process(root_key, start_key, end_key, idDB, &goneDB, opts);
 		/*
 		 * Delete the entry from db2, so we don't 
 		 * re-process it in the next loop
@@ -248,6 +257,24 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
 	mdbm_close(idDB);
 	if (short2long) mdbm_close(short2long);
 	if (goneDB) mdbm_close(goneDB);
+	if (opts.isDot) {
+		//XX TODO list the extra files...
+		FILE	*f;
+		char	buf[MAXPATH];
+		char	c = BK_FS;
+
+		f = popen("bk -R sfiles -xg", "r");
+		while (fnext(buf, f)) {
+			chomp(buf);
+			unless (opts.show_path) {
+				printf("%s%c1.0...\n", buf, c);
+			} else {
+				printf("%s%c%s%c%s%c%s%c%s\n",
+			     buf, c, buf, c, "1.0", c, buf, c, ".");
+			}
+		}
+		pclose(f);
+	}
 }
 
 private void
@@ -339,7 +366,11 @@ parse_rev(sccs *s, char *args,
 		if (*p == '.') *p++ = 0;
 		*p++ = 0;
 		*rev2 = p;
-		if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
+		if (streq(".", p)) {
+			strcpy(rev_buf, p);
+		} else {
+			if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
+		}
 	} else {
 		*rev2 = args;
 		if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
@@ -360,8 +391,10 @@ rset_main(int ac, char **av)
 	char	rbuf[20];
 	sccs	*s = 0;
 	MDBM	*db1, *db2 = 0, *idDB;
-	options	opts = { 0, 0, 0, 0};
+	//options	opts = { 0, 0, 0, 0};
+	options	opts;
 
+	bzero(&opts, sizeof (options));
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help rset");
 		return (0);
@@ -416,7 +449,15 @@ usage:				system("bk help -s rset");
 	db1 = s->mdbm; s->mdbm = NULL;
 	assert(db1);
 	if (rev2) {
-		if (csetIds(s, rev2)) {
+		char 	*r = streq(".", rev2) ? "+" : rev2;
+
+		if (streq(".", rev2)) {
+			r = "+";
+			opts.isDot = 1;
+		} else {
+			r = rev2;
+		}
+		if (csetIds(s, r)) {
 			fprintf(stderr,
 			    "Cannot get ChangeSet for revision %s\n", rev2);
 			return (1);

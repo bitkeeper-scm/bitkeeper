@@ -1,11 +1,12 @@
 #!/bin/sh
 # name: $1, domain: $2, Subject: $3, Explanation: $4, diff-file: stdin
 # test checkin
-export BK_PATCH_IMPORT=YES
-export BK_USER="$1"
-export BK_HOST="$2"
-export SUBJECT=`echo "$3" | sed 's/\(\[[^]]*\]\)* *\(.*\)/\2/'`
-export CMITMSG="[PATCH] $SUBJECT
+BK_PATCH_IMPORT=YES
+BK_USER="$1"
+BK_HOST="$2"
+export BK_PATCH_IMPORT BK_USER BK_HOST
+SUBJECT=`echo "$3" | sed 's/\(\[[^]]*\]\)* *\(.*\)/\2/'`
+CMITMSG="[PATCH] $SUBJECT
 
 $4"
 REJECTS=../REJECTS

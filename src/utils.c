@@ -739,7 +739,7 @@ next:		if (getline2(r, buf, bsize) <= 0) break;
 		    "Remote seems to be running a older BitKeeper release\n");
 	}
 	freeLines(lines);
-	exit(1);
+	return;
 }
 
 int
@@ -1021,13 +1021,16 @@ mkpager()
 	char	*cmd;
 	extern 	char *pager;
 
+	/* win32 treats "nul" as a tty, in this case we don't care */
+	unless (isatty(1)) return (0);
+
 	/* "cat" is a no-op pager used in bkd */
 	if (streq("cat", pager)) return (0);
 
 	fflush(stdout);
 	signal(SIGPIPE, SIG_IGN);
 	cmd = strdup(pager); /* line2av stomp */
-	line2av(cmd, pager_av); /* win32 pager is "less -E" */
+	line2av(cmd, pager_av); /* win32 pager is "less -X -E" */
 	pid = spawnvp_wPipe(pager_av, &pfd, 0);
 	dup2(pfd, 1);
 	close(pfd);

@@ -26,12 +26,20 @@ private	int	push(char **av, remote *r, char **envVar);
 private	void	pull(remote *r);
 private	void	listIt(sccs *s, int list);
 
+private void
+usage(void)
+{
+	system("bk help -s push");
+}
+
 int
 push_main(int ac, char **av)
 {
-	int	c, rc, i = 1;
+	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
+	int	rc = 0, print_title = 0;
 	char	**envVar = 0;
+	char	**pList = NULL;
 	remote 	*r;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -56,58 +64,93 @@ push_main(int ac, char **av)
 		    case 'l': opts.list++; break;		/* doc 2.0 */
 		    case 'n': opts.doit = 0; break;		/* doc 2.0 */
 		    case 'q': opts.verbose = 0; break;		/* doc 2.0 */
-		    case 'o': opts.out = fopen(optarg, "w"); break;
+		    case 'o': opts.out = fopen(optarg, "w"); 
+			      unless (opts.out) perror(optarg);
+			      break;
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;
 		    default:
-usage:			system("bk help -s push");
+			usage();
 			return (1);
 		}
 	}
 
 	loadNetLib();
 	has_proj("push");
-	r = remote_parse(av[optind], 0);
-	unless (r) goto usage;
-	if (opts.debug) r->trace = 1;
-	for (;;) {
-		rc = push(av, r, envVar);
-		if (rc != -2) break; /* -2 means locked */
-		if (try == 0) break;
-		if (bk_mode() == BK_BASIC) {
-			if (try > 0) {
-				fprintf(opts.out,
-			    "push: retry request detected: %s", upgrade_msg);
+
+	/*
+	 * Get push parent(s)
+	 */
+	if (av[optind]) {
+		while (av[optind]) {
+			pList = addLine(pList, strdup(av[optind++]));
+		}
+	} else {
+		pList = getParentList(PARENT, pList);
+		pList = getParentList(PUSH_PARENT, pList);
+		if (opts.verbose) print_title = 1;
+	}
+
+	unless (pList) {
+err:		freeLines(envVar);
+		usage();
+		if (opts.out && (opts.out != stderr)) fclose(opts.out);
+		return (1);
+	}
+	
+
+	EACH (pList) {
+		r = remote_parse(pList[i], 0);
+		unless (r) goto err;
+		if (opts.debug) r->trace = 1;
+		opts.lcsets = opts.rcsets = opts.rtags = 0;
+		if (print_title) {
+			if (i > 1)  printf("\n");
+			printf("%s:\n", pList[i]);
+		}
+		for (;;) {
+			rc = push(av, r, envVar);
+			if (rc != -2) break; /* -2 means locked */
+			if (try == 0) break;
+			if (bk_mode() == BK_BASIC) {
+				if (try > 0) {
+					fprintf(opts.out,
+				    	    "push: retry request detected: %s",
+				    	    upgrade_msg);
+				}
+				break;
 			}
-			break;
+			if (try != -1) --try;
+			if (opts.verbose) {
+				fprintf(opts.out,
+				    "push: remote locked, trying again...\n");
+			}
+			disconnect(r, 2); /* close fd before we retry */
+			/*
+			 * if we are sendng via the pipe, reap the child
+			 */
+			if (r->pid)  {
+				waitpid(r->pid, NULL, 0);	
+				r->pid = 0;
+			}
+			sleep(min((j++ * 2), 10)); /* auto back off */
 		}
-		if (try != -1) --try;
-		if (opts.verbose) {
-			fprintf(opts.out,
-				"push: remote locked, trying again...\n");
+		remote_free(r);
+		if (opts.debug) {
+			fprintf(opts.out, "lcsets=%d rcsets=%d rtags=%d\n",
+			    opts.lcsets, opts.rcsets, opts.rtags);
 		}
-		disconnect(r, 2); /* close fd before we retry */
-		/*
-		 * if we are sendng via the pipe, reap the child
-		 */
-		if (r->pid)  {
-			waitpid(r->pid, NULL, 0);	
-			r->pid = 0;
-		}
-		sleep(min((i++ * 2), 10)); /* auto back off */
+		if (!opts.metaOnly && (opts.rcsets || opts.rtags)) rc = 1;
+		if (rc == -2) rc = 1; /* if retry failed, set exit code to 1 */
+		if (rc) break;
 	}
-	if (rc == -2) rc = 1; /* if retry failed, reset exit code to 1 */
-	remote_free(r);
+
+	freeLines(pList);
 	freeLines(envVar);
-	if (opts.debug) {
-		fprintf(opts.out, "lcsets=%d rcsets=%d rtags=%d\n",
-		    opts.lcsets, opts.rcsets, opts.rtags);
-	}
-	if (!opts.metaOnly && (opts.rcsets || opts.rtags)) return (1);
-	unless (opts.out == stderr) fclose(opts.out);
+	if (opts.out && (opts.out != stderr)) fclose(opts.out);
 	return (rc);
 }
 
@@ -194,6 +237,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		exit(1);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
@@ -208,7 +252,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	s = sccs_init(s_cset, 0, 0);
-	rc = prunekey(s, r, fd, PK_LSER,
+	rc = prunekey(s, r, NULL, fd, PK_LSER,
 		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
@@ -424,6 +468,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.metaOnly) fprintf(f, " -e");
+	if (!opts.verbose) fprintf(f, " -q");
 	if (opts.nospin) {
 		char	*tt = getenv("BKD_TIME_T");
 

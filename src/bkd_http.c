@@ -50,7 +50,6 @@ private int	expires = 0;
 #define OUTER_END	"</td></tr></table>\n"
 
 #define BKWEB_SERVER_VERSION	"0.3"
-#define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 private char	arguments[MAXPATH];
 private char	navbar[MAXPATH];

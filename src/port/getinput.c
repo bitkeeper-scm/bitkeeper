@@ -11,9 +11,10 @@
  * 		Unix  version  of sccs_getXXXX
  * -------------------------------------------------------------
  */
-private jmp_buf	jmp;
+private jmp_buf	jmp,jmp2;
 private	handler	old;
 private	void	abort_ci(int dummy) { longjmp(jmp, 1); }
+private	void	abort_park(int dummy) { longjmp(jmp2, 1); }
 
 int
 sccs_getComments(char *file, char *rev, delta *n)
@@ -102,6 +103,34 @@ sccs_getUserName(delta *n)
 	}
 	return (0);
 }
+
+char **
+getParkComment(int *err)
+{
+        char    buf2[1024];
+	char	**comments = NULL;
+	handler old;
+
+        fprintf(stderr,
+            "End comments with \".\" by itself, "
+            "blank line, or EOF.\n");
+        fprintf(stderr, "parkfile>>  ");
+        if (setjmp(jmp2)) {
+                fprintf(stderr,
+                    "\nPark aborted due to interrupt.\n");
+                sig_catch(old);
+		*err = 1;
+		return (NULL);
+        }
+        old = sig_catch((handler)abort_park);
+        while (getline(0, buf2, sizeof(buf2)) > 0) {
+                if ((buf2[0] == 0) || streq(buf2, "."))
+                        break;
+                comments = addLine(comments, strdup(buf2));
+        	fprintf(stderr, "parkfile>>  ");
+        }
+        return (comments);
+}
 #else /* WIN32 */
 /*
  * -------------------------------------------------------------
@@ -112,6 +141,9 @@ sccs_getUserName(delta *n)
 #include "../sccs.h"
 WHATSTR("%K%");
 
+/*
+ * XXX TODO factor out all the raw mode procesing code to a shared function
+ */
 int
 sccs_getComments(char *file, char *rev, delta *n)
 {
@@ -377,5 +409,91 @@ gotInterrupt:
 	return (-1);
 
 }
-#endif	/* WIN32 */
 
+char **
+getParkComment(int *err)
+{
+#define	BUF_SIZE 1024
+	char	**comments = NULL;
+	char	buf2[BUF_SIZE];
+	HANDLE	fh;
+	DWORD	len;
+	char	*p;
+	DWORD	consoleMode;
+	int	more;
+#define	CNTL_C 0x03
+#define	BACKSPACE 0x08
+	int do_echo;
+
+	unless (hasConsole()) {
+err:		*err = 1;
+		return (NULL);
+	}
+
+	/*
+	 * XXX isatty() return ture if the the input a pipe
+	 */
+	do_echo = isatty(fileno(stdin));
+
+	fflush(stdin);
+	fh = (HANDLE) _get_osfhandle(fileno(stdin));
+	if (fh == INVALID_HANDLE_VALUE) goto err;
+	GetConsoleMode(fh, &consoleMode); /* save old mode */
+	SetConsoleMode(fh, 0); /* drop into raw mode */
+
+	fprintf(stderr,
+	    "End comments with \".\" by itself, "
+	    "blank line, or EOF.\n");
+        fprintf(stderr, "parkfile>>  ");
+	for (p = buf2, more = 1; more; ) {
+		if (p < &buf2[BUF_SIZE-1]) {
+			if (ReadFile(fh, p, 1, (LPDWORD) &len, 0) == 0) {
+				len = 0; /* i/o error or eof */
+			}
+		} else {
+			*p = 0; /* buffer full */
+			len = 1;
+		}
+		if (len == 0) { /* eof */
+			*p = 0;
+			more = 0;
+		}
+		if (*p == CNTL_C) goto gotInterrupt;
+		if (do_echo && *p) { /* echo */
+			fputc(*p, stderr);
+			if (*p == '\r') fputc('\n', stderr);
+		}
+		switch (*p) {
+		    case '\r':;
+		    case '\n':
+			*p = 0;
+			break;
+		    case BACKSPACE:
+			if (p > buf2) {
+				p--;
+				fputs(" \b", stderr);
+				continue;
+			}
+			break;
+		}
+		if (*p) {p++; continue; }
+		if (streq(buf2, "") || streq(buf2, ".")) break;
+
+		comments = addLine(comments, strdup(buf2));
+		p = buf2;
+		*p = 0;
+        	fprintf(stderr, "parkfile>>  ");
+	}
+
+	SetConsoleMode(fh, consoleMode); /* restore old mode */
+	fflush(stdin);
+	return (comments);
+
+gotInterrupt:
+	fprintf(stderr, "\nPark aborted due to interrupt.\n");
+	SetConsoleMode(fh, consoleMode); /* restore old mode */
+	fflush(stdin);
+	*err = 1;
+	return (NULL);
+}
+#endif /* WIN32 */
