@@ -60,7 +60,7 @@ typedef	struct cset {
 	MDBM	*base;
 } cset_t;
 
-int	csetCreate(sccs *cset, int flags, char *sym, int newlod);
+int	csetCreate(sccs *cset, int flags, char **syms, int newlod);
 int	csetInit(sccs *cset, int flags, char *text);
 void	csetlist(cset_t *cs, sccs *cset);
 void	csetList(sccs *cset, char *rev, int ignoreDeleted);
@@ -100,7 +100,7 @@ main(int ac, char **av)
 	sccs	*cset;
 	int	flags = 0;
 	int	c, list = 0;
-	char	*sym = 0, *text = 0;
+	char	**syms = 0, *text = 0;
 	int	cFile = 0, ignoreDeleted = 0;
 	char	allRevs[6] = "1.0..";
 	int	newlod = 0;
@@ -182,7 +182,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 			cFile++;
 			break;
 		    case 'L': newlod++; break; /* XXX: someday with sym */
-		    case 'S': sym = optarg; break;
+		    case 'S': syms = addLine(syms, strdup(optarg)); break;
 
 		    default:
 			goto usage;
@@ -232,7 +232,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	 * XXX - descriptive text.
 	 */
 	if (flags & NEWFILE) {
-		if (sym) {
+		if (syms) {
 			fprintf(stderr, "cset: no symbols allowed with -i.\n");
 			cset_exit(1);
 		}
@@ -268,12 +268,14 @@ usage:		fprintf(stderr, "%s", cset_help);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(comment);
+		freeLines(syms);
 		purify_list();
 		return (0);
 	    case 2:
 	    	csetList(cset, r[0], ignoreDeleted);
 		sccs_free(cset);
 		if (cFile) free(comment);
+		freeLines(syms);
 		purify_list();
 		return (0);
 	}
@@ -284,8 +286,9 @@ next:		sccs_free(cset);
 	 * XXX - should allow them to pick and choose for multiple
 	 * changesets from one pending file.
 	 */
-	c = csetCreate(cset, flags, sym, newlod);
+	c = csetCreate(cset, flags, syms, newlod);
 	if (cFile) free(comment);
+	freeLines(syms);
 	purify_list();
 	return (c);
 }
@@ -361,6 +364,7 @@ int
 csetInit(sccs *cset, int flags, char *text)
 {
 	delta	*d = 0;
+	char	*sym[2];
 
 	/*
 	 * Create BitKeeper root.
@@ -378,7 +382,8 @@ csetInit(sccs *cset, int flags, char *text)
 	if (flags & DELTA_DONTASK) unless (d = getComments(d)) goto intr;
 	unless(d = getHostName(d)) goto intr;
 	unless(d = getUserName(d)) goto intr;
-	d->sym = strdup(KEY_FORMAT2);
+	sym[0] = (char *)1ul;
+	sym[1] = strdup(KEY_FORMAT2);
 	cset->state |= S_CSET|S_KEY2;
 	if (text) {
 		FILE    *desc; 
@@ -395,13 +400,14 @@ csetInit(sccs *cset, int flags, char *text)
 		}
 		fclose(desc);
 	}
-	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
+	if (sccs_delta(cset, flags, d, 0, 0, sym) == -1) {
 intr:		sccs_whynot("cset", cset);
 error:		sccs_free(cset);
 		sfileDone();
 		commentsDone(saved);
 		hostDone();
 		userDone();
+		free(sym[1]);
 		purify_list();
 		return (1);
 	}
@@ -411,6 +417,7 @@ error:		sccs_free(cset);
 	hostDone();
 	userDone();
 	sfileDone();
+	free(sym[1]);
 	purify_list();
 	return (0);
 }
@@ -1309,7 +1316,7 @@ unlock(char *lockName)
  */
 
 int
-csetCreate(sccs *cset, int flags, char *sym, int newlod)
+csetCreate(sccs *cset, int flags, char **syms, int newlod)
 {
 	delta	*d;
 	int	error = 0;
@@ -1336,7 +1343,6 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 		cset_exit(1);
 	}
 
-	if (sym) d->sym = strdup(sym);
 	d->flags |= D_CSET;	/* XXX: longrun, don't tag cset file */
 
 	if (newlod) {
@@ -1356,7 +1362,7 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 	close(0);
 	open(DEV_TTY, 0, 0);
 	if (flags & DELTA_DONTASK) d = getComments(d);
-	if (sccs_delta(cset, flags, d, 0, diffs) == -1) {
+	if (sccs_delta(cset, flags, d, 0, diffs, syms) == -1) {
 		sccs_whynot("cset", cset);
 		error = -1;
 		goto out;

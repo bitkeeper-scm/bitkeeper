@@ -119,7 +119,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		goto out;
 	}
 
-	if (sccs_delta(s, flags, d, 0, 0) == -1) error = 1;
+	if (sccs_delta(s, flags, d, 0, 0, 0) == -1) error = 1;
 out:	if (s) sccs_free(s);
 	free(destfile); free(sfile); free(gfile);
 	return (error);

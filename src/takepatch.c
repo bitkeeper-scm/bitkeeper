@@ -184,7 +184,7 @@ delta *
 getRecord(MMAP *f)
 {
 	int	e = 0;
-	delta	*d = sccs_getInit(0, 0, f, 1, &e, 0);
+	delta	*d = sccs_getInit(0, 0, f, 1, &e, 0, 0);
 
 	if (!d || e) {
 		fprintf(stderr,
@@ -789,7 +789,7 @@ apply:
 				newflags = (echo > 2) ?
 				    DELTA_FORCE|DELTA_PATCH :
 				    DELTA_FORCE|DELTA_PATCH|SILENT;
-				if (sccs_delta(s, newflags, 0, iF, dF)) {
+				if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
 					perror("delta");
 					return -1;
 				}
@@ -838,7 +838,7 @@ apply:
 			newflags = (echo > 2) ?
 			    NEWFILE|DELTA_FORCE|DELTA_PATCH :
 			    NEWFILE|DELTA_FORCE|DELTA_PATCH|SILENT;
-			if (sccs_delta(s, newflags, d, iF, dF)) {
+			if (sccs_delta(s, newflags, d, iF, dF, 0)) {
 				perror("delta");
 				return -1;
 			}

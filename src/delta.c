@@ -46,7 +46,7 @@ main(int ac, char **av)
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*name;
-	char	*sym = 0;
+	char	**syms = 0;
 	char	*compp = 0, *encp = 0;
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
@@ -122,7 +122,7 @@ help:		fputs(delta_help, stderr);
 		    case 'h': dflags |= DELTA_HASH; break;
 		    case 'I': initFile = optarg; break;
 		    case 'R': dflags |= DELTA_PATCH; break;
-		    case 'S': sym = optarg; break;
+		    case 'S': syms = addLine(syms, strdup(optarg)); break;
 		    case 'Y': dflags |= DELTA_DONTASK; break;
 		    case 'Z': compp = optarg ? optarg : "gzip"; break;
 		    case 'E': encp = optarg; break;
@@ -187,10 +187,6 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			}
 		}
 
-		if (sym) {
-			if (!d) d = calloc(1, sizeof(*d));
-			d->sym = strdup(sym);
-		}
 		nrev = NULL;
 		unless (dflags & NEWFILE) {
 			if (checkout && (newrev(s, &pf) == -1)) {
@@ -199,7 +195,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			nrev = pf.newrev;
 		}
 		s->encoding = sccs_encoding (s, encp, compp);
-		rc = sccs_delta(s, dflags, d, init, diffs);
+		rc = sccs_delta(s, dflags, d, init, diffs, syms);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
 			sccs_whynot("delta", s);
@@ -207,6 +203,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			sccs_free(s);
 			commentsDone(saved);
 			sfileDone();
+			freeLines(syms);
 			purify_list();
 			return (1);
 		}
@@ -236,6 +233,7 @@ next:		if (init) mclose(init);
 	}
 	sfileDone();
 	commentsDone(saved);
+	freeLines(syms);
 	purify_list();
 	return (0);
 }

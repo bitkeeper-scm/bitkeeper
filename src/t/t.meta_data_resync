@@ -91,7 +91,7 @@ bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
-if [ $? -ne 0 ]; then echo failed; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cd $HERE/project/src
 admin $Q -FRCS -FYEAR4 bar.c
 bk commit $Q -yabc
@@ -99,7 +99,7 @@ bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
-if [ $? -ne 0 ]; then echo failed; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check propagation of flags \& permission .....................$NL
 cd $HERE/project/src
@@ -109,7 +109,7 @@ bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
-if [ $? -ne 0 ]; then echo failed; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check propagation of text field .............................$NL
 cd $HERE/project/src
@@ -121,7 +121,7 @@ bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
-if [ $? -ne 0 ]; then echo failed; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cd $HERE/project/src
 admin -T h.h
 bk commit $Q -yabc
@@ -129,7 +129,7 @@ bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
-if [ $? -ne 0 ]; then echo failed; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check propagation of text, flags \& permission ...............$NL
 cd $HERE/project/src
@@ -139,7 +139,7 @@ bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
-if [ $? -ne 0 ]; then echo failed; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 prs -r+ -h -d":MODE:\n:FD:" h.h > CMP1
 ${CAT} > CMP2 <<EOF
 100722

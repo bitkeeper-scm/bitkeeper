@@ -297,7 +297,6 @@ typedef struct delta {
 	/* In memory only stuff */
 	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	time_t	date;			/* date - conversion from sdate/zone */
-	char	*sym;			/* used only for getInit(), see above */
 	struct	delta *parent;		/* parent delta above me */
 	struct	delta *kid;		/* next delta on this branch */
 	struct	delta *siblings;	/* pointer to other branches */
@@ -494,7 +493,7 @@ typedef struct patch {
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
-int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs);
+int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs, char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *);
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
@@ -519,8 +518,8 @@ int	sccs_addSym(sccs *, u32 flags, char *);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
 int	sccs_hasDiffs(sccs *s, u32 flags);
 void	sccs_print(delta *d);
-delta	*sccs_getInit(sccs *s,
-		delta *d, MMAP *f, int patch, int *errorp, int *linesp);
+delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
+		      int *errorp, int *linesp, char ***symsp);
 delta	*sccs_ino(sccs *);
 int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);

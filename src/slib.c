@@ -474,7 +474,6 @@ freedelta(delta *d)
 	if (d->include) free(d->include);
 	if (d->exclude) free(d->exclude);
 	if (d->ignore) free(d->ignore);
-	if (d->sym) free(d->sym);
 	if (d->symlink && !(d->flags & D_DUPLINK)) free(d->symlink);
 	if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
 	if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
@@ -6615,12 +6614,13 @@ updatePending(sccs *s, delta *d)
  */
 /* ARGSUSED */
 private int
-checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs)
+checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs, char **syms)
 {
 	FILE	*sfile, *gfile = 0;
 	delta	*n0 = 0, *n, *first;
 	int	added = 0;
 	int	popened = 0, len;
+	int	i;
 	char	*t;
 	char	buf[MAXLINE];
 	admin	l[2];
@@ -6742,13 +6742,11 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs)
 	}
 	dinsert(s, flags, n);
 	s->numdeltas++;
-	if (n->sym) {
-		addsym(s, n, n, n->rev, n->sym);
-		free(n->sym);
-		n->sym = 0;
+	EACH (syms) {
+		addsym(s, n, n, n->rev, syms[i]);
 	}
 	/* need random set before the call to sccs_sdelta */
-	/* XXX: changes n, so must be after n->sym stuff */
+	/* XXX: changes n, so must be after syms stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
 		randomBits(buf);
 		if (buf[0]) s->random = strdup(buf);
@@ -7613,6 +7611,9 @@ private int
 addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 {
 	int	added = 0, i, error = 0;
+	char	*rev;
+	char	*sym;
+	delta	*d, *n = 0;
 
 	/*
 	 * "sym" means TOT of current LOD.
@@ -7622,10 +7623,7 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 	 * "sym;" and the other forms mean do it only if symbol not present.
 	 */
 	for (i = 0; s && s[i].flags; ++i) {
-		char	*rev;
-		char	*sym = strdup(s[i].thing);
-		delta	*d, *n;
-
+		sym = strdup(s[i].thing);
 		if ((rev = strrchr(sym, ':'))) {
 			*rev++ = 0;
 		}
@@ -7650,17 +7648,24 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
 			goto sym_err;
 		}
-		n = calloc(1, sizeof(delta));
-		n->next = sc->table;
-		sc->table = n;
-		n = sccs_dInit(n, 'R', sc, 0);
-		n->sum = almostUnique(1);
-		n->rev = strdup(d->rev);
-		explode_rev(n);
-		n->pserial = d->serial;
-		n->serial = sc->nextserial++;
-		sc->numdeltas++;
-		dinsert(sc, 0, n);
+		/* If we already have a meta delta and it's for the same
+		 * rev as the current one, don't make another.  This
+		 * optimizes admin -Sa:1.2 -Sc:1.2 -Sb:1.3 but not
+		 * admin -Sa:1.2 -Sb:1.3 -Sc:1.2.
+		 */
+		unless (n && streq(n->rev, d->rev)) {
+			n = calloc(1, sizeof(delta));
+			n->next = sc->table;
+			sc->table = n;
+			n = sccs_dInit(n, 'R', sc, 0);
+			n->sum = almostUnique(1);
+			n->rev = strdup(d->rev);
+			explode_rev(n);
+			n->pserial = d->serial;
+			n->serial = sc->nextserial++;
+			sc->numdeltas++;
+			dinsert(sc, 0, n);
+		}
 		if (addsym(sc, d, n, rev, sym) == 0) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
@@ -8490,7 +8495,8 @@ newcmd:
  * XXX - this needs to track sccs_prsdelta/do_patch closely.
  */
 delta *
-sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp)
+sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
+	     char ***symsp)
 {
 	char	*s, *t;
 	char	*buf;
@@ -8498,6 +8504,7 @@ sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp)
 	int	error = 0;
 	int	lines = 0;
 	char	type = '?';
+	char	**syms = 0;
 
 	unless (f) {
 		if (errorp) *errorp = 0;
@@ -8665,18 +8672,18 @@ skip:
 	/* Random bits are used only for 1.0 deltas in conversion scripts */
 	if (WANT('R')) {
 		unless (streq("1.0", d->rev)) {
-			fprintf(stderr, "sccs_getInit: ramdom only on 1.0\n");
+			fprintf(stderr, "sccs_getInit: random only on 1.0\n");
 		} else if (sc) {
 			sc->random = strnonldup(&buf[2]);
 		} else {
-			fprintf(stderr, "sccs_getInit: ramdom needs sccs\n");
+			fprintf(stderr, "sccs_getInit: random needs sccs\n");
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* symbols are optional */
-	if (WANT('S')) {
-		d->sym = strdup(&buf[2]);
+	while (WANT('S')) {
+		if (symsp) syms = addLine(syms, strdup(&buf[2]));
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -8733,6 +8740,7 @@ out:	if (d) {
 	}
 	*errorp = error;
 	if (linesp) *linesp += lines;
+	if (symsp) *symsp = syms;
 	return (d);
 }
 
@@ -8873,11 +8881,12 @@ int
 sccs_meta(sccs *s, delta *parent, MMAP *iF)
 {
 	delta	*m;
-	int	e = 0;
+	int	i, e = 0;
 	FILE	*sfile = 0;
 	char	*sccsXfile();
 	char	*t;
 	char	*buf;
+	char	**syms;
 
 	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr,
@@ -8890,7 +8899,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF)
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
-	m = sccs_getInit(s, 0, iF, 1, &e, 0);
+	m = sccs_getInit(s, 0, iF, 1, &e, 0, &syms);
 	mclose(iF);
 	if (m->rev) free(m->rev);
 	m->rev = strdup(parent->rev);
@@ -8901,11 +8910,10 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF)
 	s->table = m;
 	s->numdeltas++;
 	dinsert(s, 0, m);
-	if (m->sym) {
-		addsym(s, m, m, m->rev, m->sym);
-		free(m->sym);
-		m->sym = 0;
+	EACH (syms) {
+		addsym(s, m, m, m->rev, syms[i]);
 	}
+	freeLines(syms);
 
 	/*
 	 * Do the delta table & misc.
@@ -9001,7 +9009,7 @@ chknewlod(sccs *s, delta *d)
  *	-3 = not DELTA_AUTO or DELTA_FORCE and no diff in gfile (gfile unlinked)
  */
 int
-sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs)
+sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs, char **syms)
 {
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, error = 0, fixDate = 1;
@@ -9021,6 +9029,7 @@ sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs)
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);
+		if (init) freeLines(syms);
 		if (sfile) fclose(sfile);
 		if (diffs) mclose(diffs);
 		free_pfile(&pf);
@@ -9034,8 +9043,14 @@ out:
 	if (init) {
 		int	e;
 
+		if (syms) {
+			fprintf(stderr, "delta: init or symbols, not both\n");
+			init = 0;  /* prevent double free */
+			goto out;
+		}
 		prefilled =
-		    sccs_getInit(s, prefilled, init, flags&DELTA_PATCH, &e, 0);
+		    sccs_getInit(s, prefilled, init, flags&DELTA_PATCH,
+				 &e, 0, &syms);
 		unless (prefilled && !e) {
 			fprintf(stderr, "delta: bad init file\n");
 			goto out;
@@ -9094,7 +9109,7 @@ out:
 	}
 
 	if ((flags & NEWFILE) || (!HAS_SFILE(s) && HAS_GFILE(s))) {
-		return (checkin(s, flags, prefilled, init != 0, diffs));
+		return (checkin(s, flags, prefilled, init != 0, diffs, syms));
 	}
 
 	unless (HAS_SFILE(s) && s->tree) {
@@ -9258,16 +9273,14 @@ out:
 	dinsert(s, flags, n);
 	s->numdeltas++;
 
-	if (n->sym) {
-		if (dupSym(s->symbols, n->sym, 0)) {
+	EACH (syms) {
+		if (dupSym(s->symbols, syms[i], 0)) {
 			fprintf(stderr,
 			    "delta: symbol %s exists in %s\n",
-			    n->sym, s->sfile);
+			    syms[i], s->sfile);
 			fprintf(stderr, "use admin to override old value\n");
 		} else {
-			addsym(s, n, n, n->rev, n->sym);
-			free(n->sym);
-			n->sym = 0;
+			addsym(s, n, n, n->rev, syms[i]);
 		}
 	}
 
