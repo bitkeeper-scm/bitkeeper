@@ -79,10 +79,11 @@ _setup() {
 	${BIN}cset -si .
 	${BIN}admin -qtDescription ChangeSet
 	/bin/rm -f Description D.save
-	cp ${BIN}/bitkeeper.config BitKeeper/etc/config
 	cd BitKeeper/etc
 	if [ "X$CONFIG" = X ]
 	then	_gethelp setup_3
+		cp ${BIN}/bitkeeper.config config
+		chmod u+w config
 		while true
 		do	echo $N "Editor to use [$EDITOR] " $NL
 			read editor
@@ -236,7 +237,7 @@ _status() {
 	fi
 }
 
-_resync() {
+_oldresync() {
 	V=-vv
 	v=
 	REV=1.0..
@@ -814,9 +815,16 @@ _init() {
 	VERSION=unknown
 
 	# XXXX Must be last.
+	# We find the internal binaries like this:  If BK_BIN is set
+	# and points at a directory containing an `sccslog' executable,
+	# use it.  Otherwise, look through a list of places where the
+	# executables might be found, and use the first one that exists.
+	# In both cases we export BK_BIN so that subcommands don't have to
+	# go through all this rigmarole.  (See e.g. resolve.perl.)
 	BIN=
 	if [ X$BK_BIN != X -a -x $BK_BIN/sccslog ]
 	then	BIN="$BK_BIN/"
+		export BK_BIN
 		return
 	fi
 	for i in @libexecdir@/bitkeeper /usr/bitkeeper /usr/bitsccs \
@@ -824,16 +832,14 @@ _init() {
 	    /usr/bin
 	do	if [ -x $i/sccslog ]
 		then	BIN="$i/"
+			BK_BIN=$BIN
+			export BK_BIN
 			return
 		fi
 	done
 
 	echo "Installation problem: cannot find binary directory" >&2
 	exit 1
-}
-
-_printpath () {
-	echo $BIN
 }
 
 # ------------- main ----------------------
@@ -848,8 +854,8 @@ case "$1" in
 	exit 1
 	;;
     setup|changes|pending|commit|sendbug|send|\
-    mv|resync|edit|unedit|man|undo|save|docs|rm|new|version|\
-    root|status|export|import|printpath)
+    mv|oldresync|edit|unedit|man|undo|save|docs|rm|new|version|\
+    root|status|export|import)
 	cmd=$1
     	shift
 	_$cmd "$@"
@@ -889,7 +895,7 @@ then	_cd2root
 	shift
 fi
 if [ $SFILES = yes ]
-then	bk sfiles | bk "$@" -
+then	${BIN}sfiles | bk "$@" -
 	exit $?
 fi
 cmd=$1

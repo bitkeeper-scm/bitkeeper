@@ -84,7 +84,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (streq(av[0], "makepatch")) makepatch++;
 
-	while ((c = getopt(ac, av, "c|d|Dim|t;pr|R|sS;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "c|d|Dim|t;pqr|R|sS;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
@@ -119,6 +119,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 			things += tokens(optarg);
 			break;
 		    case 'p': flags |= PRINT; break;
+		    case 'q':
 		    case 's': flags |= SILENT; break;
 		    case 'v': verbose++; break;
 		    case 'y':

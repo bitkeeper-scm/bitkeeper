@@ -3,7 +3,7 @@ BINS	= delta get ci co admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel makepatch takepatch \
 	  smark cset g2sccs range zone gethost undos chksum rechksum \
 	  cset_todo sccsmv sccsrm sccscat csetmark key2rev edit unedit sdiffs
-SCRIPTS	= rcs2sccs testfast regression bk import resolve
+SCRIPTS	= rcs2sccs testfast regression bk import resolve resync
 GUIBIN	= gui/fdiff
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
@@ -300,6 +300,11 @@ resolve: resolve.perl substvars
 	./substvars resolve.perl >resolve.T
 	chmod +x resolve.T
 	mv -f resolve.T resolve
+
+resync: resync.perl substvars
+	./substvars resync.perl >resync.T
+	chmod +x resync.T
+	mv -f resync.T resync
 
 gui/sccstool: gui/sccstool.tcl substvars
 	./substvars gui/sccstool.tcl >gui/sccstool.T
