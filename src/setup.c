@@ -3,14 +3,14 @@
 
 extern char *editor, *pager, *bin;
 
+int
 setup_main(int ac, char **av)
 {
-	int	force = 0, c, logsetup;
+	int	force = 0, c;
 	char	*project_name = 0, *project_path = 0, *config_path = 0;
 	char	buf[1024], my_editor[1024], setup_files[MAXPATH];
 	FILE	*f;
-
-	platformInit();
+	sccs	*s;
 
 	while ((c = getopt(ac, av, "c:fn:")) != -1) {
 		switch (c) {
@@ -78,7 +78,6 @@ setup_main(int ac, char **av)
 	f = fopen("Description", "rt");
 	fgets(buf, sizeof(buf), f);
 	fclose(f);
-	logsetup = strneq(buf, "BitKeeper Test", 14) ? 0 : 1;
 	unlink("Description"); unlink("D.save");
 	if (chdir("BitKeeper/etc") != 0) {
 		perror("cd BitKeeper/etc");
@@ -86,7 +85,7 @@ setup_main(int ac, char **av)
 	}
 	if (config_path == NULL) {
 		gethelp("setup_3", "", stdout);
-		sprintf(buf, "cp %sbitkeeper.config config", bin);
+		sprintf(buf, "cp %s/bitkeeper.config config", bin);
 		system(buf);
 		chmod("config", 0664);
 		while (1) {
@@ -101,7 +100,7 @@ setup_main(int ac, char **av)
 				sprintf(buf, "%s config", editor);
 			}
 			system(buf);
-			sprintf(buf, "cmp -s %sbitkeeper.config config", bin);
+			sprintf(buf, "cmp -s %s/bitkeeper.config config", bin);
 			if (system(buf)) {
 				break;
 			} else {
@@ -112,11 +111,14 @@ setup_main(int ac, char **av)
 		sprintf(buf, "cp %s config", config_path);
 		system(buf);
 	}
-	// XXX FIXME: This should be replaced with a direct C function call
-	system("bk ci -qi config");
-	system("bk get -q config");
+	s = sccs_init("SCCS/s.config", SILENT, NULL);
+	assert(s);
+	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
+	s = sccs_restart(s);
+	assert(s);
+	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
+	sccs_free(s);
 
-	if (logsetup) system("bk sendconfig setups@openlogging.org");
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
 	sprintf(buf, "bk sfiles -C > %s", setup_files);
 	system(buf);
@@ -124,5 +126,6 @@ setup_main(int ac, char **av)
 	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);
 	system(buf);
 	unlink(setup_files);
+	system("bk sendconfig -Q0 setups@openlogging.org");
 	return (0);
 }

@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin, *pager;
+extern char *pager;
 
 int
 pending_main(int ac, char **av)
@@ -11,7 +11,6 @@ pending_main(int ac, char **av)
 ":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\\n\
 $each(:C:){  (:C:)} \\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}";
 
-	platformInit();
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "pending: can not find project root\n");
 		exit(1);

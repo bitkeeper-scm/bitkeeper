@@ -4,7 +4,9 @@
 extern char *bin;
 private char	*getrev(char *);
 private void	clean_file(char *, char *);
+extern	void	cat(char *);
 
+int
 undo_main(int ac,  char **av)
 {
 	int	c, rc;
@@ -17,8 +19,6 @@ undo_main(int ac,  char **av)
 #define	LINE "---------------------------------------------------------\n"
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo"
-
-	platformInit();
 
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {

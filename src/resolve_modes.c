@@ -58,6 +58,7 @@ finish the resolve, and then do a \"bk chmod <mode> file\".\n\
 }
 
 /* add the local modes to the remote file */
+int
 m_local(resolve *rs)
 {
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
@@ -69,6 +70,7 @@ m_local(resolve *rs)
 }
 
 /* add the remote modes to the local file */
+int
 m_remote(resolve *rs)
 {
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);

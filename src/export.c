@@ -1,15 +1,12 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin;
-
 int
 export_main(int ac,  char **av)
 {
 	int	c, count;
 	int	vflag = 0, kflag = 0, tflag = 0, wflag = 0;
 	char	*rev = NULL;
-	char	s_cset[MAXPATH] = CHANGESET;
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
 	char	include[MAXLINE] = "", exclude[MAXLINE] =  "";
@@ -19,8 +16,6 @@ export_main(int ac,  char **av)
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
-
-	platformInit();
 
 	while ((c = getopt(ac, av, "Dktwvi:x:r:")) != -1) {
 		switch (c) {

@@ -245,7 +245,7 @@ renumber(sccs *s, MDBM *lodDb, int flags)
 			s->defbranch = 0;
 		}
 	}
-ret:
+	free(map);
 	mdbm_close(db);
 }
 

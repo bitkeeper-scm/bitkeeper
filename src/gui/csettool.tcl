@@ -201,10 +201,9 @@ proc right {r l n} \
 # Get the sdiff, making sure it has no \r's from fucking dos in it.
 proc sdiff {L R} \
 {
-	global	rmList sdiffw bin
+	global	rmList sdiffw
 
 	set rmList ""
-	set undos [file join $bin undos]
 	# we need the extra quote arounf $R $L
 	# because win32 path may have space in it
 	set a [open "| grep {\r$} \"$L\"" r]
@@ -223,7 +222,7 @@ proc sdiff {L R} \
 		set tail [file tail $L]
 		set dotL [file join $dir .$tail]
 	}
-	exec $undos $L > $dotL
+	exec bk undos $L > $dotL
 	set dir [file dirname $R]
 	if {"$dir" == ""} {
 		set dotR .$R
@@ -231,7 +230,7 @@ proc sdiff {L R} \
 		set tail [file tail $R]
 		set dotR [file join $dir .$tail]
 	}
-	exec $undos $R > $dotR
+	exec bk undos $R > $dotR
 	set rmList [list $dotL $dotR]
 	return [open "| $sdiffw $dotL $dotR"]
 }
@@ -433,7 +432,7 @@ proc dotFile {} \
 
 proc getFiles {revs} \
 {
-	global	fileCount lastFile Files line2File file_start_stop bk_fs
+	global	fileCount lastFile Files line2File file_start_stop
 	global  RealFiles
 
 	busy 1
@@ -454,7 +453,7 @@ proc getFiles {revs} \
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
 			set done 0
-			set pattern "(.*) (.*)($bk_fs.*)\$"
+			set pattern "(.*) (.*)(@.*)\$"
 			if {[regexp $pattern $buf dummy oldName newName revs]} {
 				set RealFiles($fileCount) "  $newName$revs"
 				set buf "$oldName$revs"
@@ -466,7 +465,7 @@ proc getFiles {revs} \
 			} else {
 				set revs $start..$stop
 			}
-			set buf "$file$bk_fs$revs"
+			set buf "$file@$revs"
 			if {$done == 0} {
 				set RealFiles($fileCount) "  $buf"
 			}

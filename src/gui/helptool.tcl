@@ -77,8 +77,6 @@ proc doSelect {x} \
 
 proc bkhelp {topic} \
 {
-	global	bin
-
 	if {$topic == ""} {
 		set msg "BitKeeper Help"
 	} else {
@@ -86,8 +84,7 @@ proc bkhelp {topic} \
 		set msg "BitKeeper help -- $topic"
 	}
 	wm title . $msg
-	set bk [file join $bin bk]
-	set f [open "| $bk help $topic"]
+	set f [open "| bk help $topic"]
 	.text.help configure -state normal
 	.text.help delete 1.0 end
 	set first 1
@@ -255,11 +252,10 @@ proc busy {busy} \
 
 proc getHelp {} \
 {
-	global	bin nTopics argv line
+	global	nTopics argv line
 
 	set nTopics 0
-	set bk [file join $bin bk]
-	set f [open "| $bk gethelp help_topiclist"]
+	set f [open "| bk gethelp help_topiclist"]
 	.ctrl.topics configure -state normal
 	while {[gets $f topic] >= 0} {
 		.ctrl.topics insert end "$topic\n"

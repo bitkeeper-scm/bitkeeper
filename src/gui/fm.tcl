@@ -529,10 +529,9 @@ proc ok_file {f} \
 # Check to make sure it is newline terminated.
 proc sdiff {L R} \
 {
-	global	rmList sdiffw bin
+	global	rmList sdiffw
 
 	set rmList ""
-	set undos [file join $bin undos]
 	# we need the extra quote arounf $R $L
 	# because win32 path may have space in it
 	set a_ok [ok_file $L]
@@ -547,7 +546,7 @@ proc sdiff {L R} \
 		set tail [file tail $L]
 		set dotL [file join $dir .$tail]
 	}
-	exec $undos $L > $dotL
+	exec bk undos $L > $dotL
 	set dir [file dirname $R]
 	if {"$dir" == ""} {
 		set dotR .$R
@@ -555,7 +554,7 @@ proc sdiff {L R} \
 		set tail [file tail $R]
 		set dotR [file join $dir .$tail]
 	}
-	exec $undos $R > $dotR
+	exec bk undos $R > $dotR
 	set rmList [list $dotL $dotR]
 	return [open "| $sdiffw $dotL $dotR"]
 }
@@ -990,7 +989,7 @@ proc confirm {msg l} \
 # --------------- main ------------------
 proc main {} \
 {
-	global argv0 argv argc bin dev_null done lfile rfile outputFile
+	global argv0 argv argc dev_null done lfile rfile outputFile
 
 	if {(($argc != 0) && ($argc != 3))} {
 		puts "usage: $argv0 left right output\n\or\n$argv0"

@@ -1,15 +1,13 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin;
-
 #define	BK_LOG "BitKeeper/log"
 
 private	char *
 sendlog(char *to, char *rev)
 {
 	char	x_sendlog[MAXPATH], here[MAXPATH], has[MAXPATH];
-	char	revs[MAXPATH], rev2s[MAXPATH];
+	char	revs[MAXPATH];
 	char	buf[MAXLINE];
 	static	char revbuf[MAXLINE] = "";
 	FILE	*f;
@@ -60,9 +58,10 @@ sendlog(char *to, char *rev)
 	return (revbuf);
 }
 
+int
 send_main(int ac,  char **av)
 {
-	int	c, rc, use_stdout = 0;
+	int	c, use_stdout = 0;
 	int	force = 0;
 	char	*dflag = "", *qflag = "-vv";
 	char	*wrapper = NULL;
@@ -71,8 +70,6 @@ send_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	char	patch[MAXPATH], out[MAXPATH];
 	FILE	*f;
-
-	platformInit();
 
 	while ((c = getopt(ac, av, "dfqr:w:")) != -1) {
 		switch (c) {

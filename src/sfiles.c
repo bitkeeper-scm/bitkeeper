@@ -39,8 +39,6 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
  */
 private	int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg;
 private	int	Dflg, Aflg, Rflg, kFlg, xFlg, uFlg;
-private	int	error;
-private	FILE	*pending_cache;
 private	FILE	*id_cache;
 private	void	keys(char *file);
 private	MDBM	*idDB;
@@ -56,6 +54,7 @@ private	void	file(char *f, lftw_func func);
 private	void	lftw(const char *dir, lftw_func func);
 private	void	process(const char *filename, int mode);
 private	void	caches(const char *filename, int mode);
+private	project	*proj = 0;
 
 int
 sfiles_main(int ac, char **av)
@@ -67,7 +66,7 @@ sfiles_main(int ac, char **av)
 	platformSpecificInit(NULL);
 	if ((ac > 1) && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfiles_usage);
-		exit(0);
+		return (0);
 	}
 	while ((c = getopt(ac, av, "aAcCdDgklpPrRuvx")) != -1) {
 		switch (c) {
@@ -92,22 +91,23 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 	}
 	if (xFlg && (Aflg|cFlg|Cflg|dFlg|Dflg|lFlg|pFlg|Pflg|uFlg)) {
 		fprintf(stderr, "sfiles: -x must be standalone.\n");
-		exit(1);
+		return (1);
 	}
 	if (rFlg || Cflg) {
 		if (av[optind]) {
 			fprintf(stderr, "%s: -%c must be stand alone.\n",
 				av[0], rFlg ? 'r' : 'C');
-			exit(1);
+			return (1);
 		}
 		/* perror is in sccs_root, don't do it twice */
 		unless (sccs_cd2root(0, 0) == 0) {
 			purify_list();
-			exit(1);
+			return (1);
 		}
 		rebuild();
+		if (proj) proj_free(proj);
 		purify_list();
-		exit(dups ? 1 : 0);
+		return (dups ? 1 : 0);
 	}
 	if (!av[optind]) {
 		path = xFlg ? "." : sPath(".", 1);
@@ -136,8 +136,18 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		}
 	}
 	if (kFlg) uniq_close();
+	if (proj) proj_free(proj);
 	purify_list();
-	exit(0);
+	return (0);
+}
+
+private inline sccs *
+init(char *name, int flags)
+{
+	sccs	*s = sccs_init(name, flags|INIT_SAVEPROJ, proj);
+
+	if (s && !proj) proj = s->proj;
+	return (s);
 }
 
 /*
@@ -311,7 +321,7 @@ name(char *sfile)
 private	int
 hasDiffs(char *file)
 {
-	sccs	*s = sccs_init(file, INIT_NOCKSUM, 0);
+	sccs	*s = init(file, INIT_NOCKSUM);
 
 	if (!s) return (0);
 	if (sccs_hasDiffs(s, 0) >= 1) {
@@ -341,7 +351,7 @@ isSccs(char *s)
 private	void
 keys(char *file)
 {
-	sccs	*s = sccs_init(file, INIT_NOCKSUM, 0);
+	sccs	*s = init(file, INIT_NOCKSUM);
 	delta	*d;
 	static	time_t	cutoff;
 	static	char *host;
@@ -385,7 +395,7 @@ rebuild()
 	int	i;
 	char	csetName[128] = CHANGESET;
 
-	unless (cset = sccs_init(csetName, 0, 0)) {
+	unless (cset = init(csetName, 0)) {
 		perror("sfiles: can't init ChangeSet");
 		exit(1);
 	}
@@ -478,7 +488,7 @@ caches(const char *filename, int mode)
 	if (S_ISDIR(mode)) return;
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	unless (sccs_filetype(file) == 's') return;
-	unless (sc = sccs_init(file, INIT_NOCKSUM, 0)) return;
+	unless (sc = init(file, INIT_NOCKSUM)) return;
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);
 		return;
@@ -638,7 +648,7 @@ lftw(const char *dir, lftw_func func)
 {
 	FILE		*ignoref;
 	globv		ignore = NULL;
-	char		*root;
+	char		*root = 0;
 	char		path[MAXPATH];
 	struct stat	st;
 
@@ -649,7 +659,11 @@ lftw(const char *dir, lftw_func func)
 			fclose(ignoref);
 		}
 		free(root);
+		root = 0;
 	}
+if (root != 0) {
+	fprintf(stderr, "aflg=%d\n", aFlg);
+}
 
 	strcpy(path, dir);
 	/*

@@ -175,15 +175,14 @@ remote_print(remote *r, FILE *f)
 pid_t
 bkd(int compress, remote *r, int *sock)
 {
-	char	*t;
+	char	*t, *freeme = 0;
 	char	*remsh = "ssh";
 	char	*remopts = compress ? "-C" : 0;
-	char	*cmd[100], bkd_path[MAXPATH];
+	char	*cmd[100];
 	int	i;
 	pid_t	p;
 	int	inout[2];
 	int	findprog(char *);
-	extern	char *bin;
 
 	if (r->port) {
 		assert(r->host);
@@ -211,7 +210,7 @@ bkd(int compress, remote *r, int *sock)
 			do {
 				while (*t && !isspace(*t)) t++;
 				if (isspace(*t)) {
-					*t = 0; 
+					*t++ = 0; 
 					while (*t && isspace(*t)) t++;
 					if (*t && !isspace(*t)) cmd[++i] = t;
 				}
@@ -225,19 +224,21 @@ bkd(int compress, remote *r, int *sock)
 			cmd[++i] = "-l";
 			cmd[++i] = r->user;
 		}
-		/* for regression tests */
-		if (bin && streq(r->host, "localhost")) {
-			/*
-			 * Pick up the bkd in the $BK_BIN directory
-			 * In regression test $BK_BIN is set to the
-			 * test directory.
-			 */
-			sprintf(bkd_path, "%sbk bkd -e", bin);
-			cmd[++i] = bkd_path;
-		} else {
-			/* pick up the bkd in the installed directory */
-			cmd[++i] = "bk bkd -e";
+
+		/*
+		 * This cute hack should work if you have a sh or a csh.
+		 * Thanks to David Sharnoff for this idea.
+		 *
+		 * It doesn't do this except in the localhost case because
+		 * the paths may not be the same on both hosts.
+		 */
+		if (streq(r->host, "localhost") && (t = getenv("PATH"))) {
+			freeme = malloc(strlen(t) + 20);
+			sprintf(freeme, "PATH=%s", t);
+			cmd[++i] = "env";
+			cmd[++i] = freeme;
 		}
+		cmd[++i] = "bk bkd -e";
 		cmd[++i] = 0;
 	} else {
 		cmd[0] = "bk";
@@ -258,6 +259,7 @@ bkd(int compress, remote *r, int *sock)
 		signal(SIGCHLD, SIG_DFL);
 		close(inout[1]);
 		*sock = inout[0];
+		if (freeme) free(freeme);
 	    	return (p);
     	}
 }

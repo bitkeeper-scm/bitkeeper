@@ -32,7 +32,7 @@ private	int	create(resolve *rs);
 private	void	edit_tip(resolve *rs, char *sf, delta *d, char *rf, int which);
 private	void	freeStuff(opts *opts);
 private	int	nameOK(opts *opts, sccs *s);
-private int	open_and_delta(opts *opts, char *sfile);
+private void	open_and_delta(opts *opts, char *sfile);
 private	void	pass1_renames(opts *opts, sccs *s);
 private	int	pass2_renames(opts *opts);
 private	int	pass3_resolve(opts *opts);
@@ -55,9 +55,6 @@ resolve_main(int ac, char **av)
 	int	c;
 	int	comment = 0;	/* set if they used -y */
 	static	opts opts;	/* so it is zero */
-	extern	char *bk_dir;
-
-	platformInit();
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
@@ -112,9 +109,6 @@ resolve_main(int ac, char **av)
 		opts.comment = "Merge";
 	}
 
-	/* for commit */
-	bk_dir = "../BitKeeper/";
-
 	c = passes(&opts);
 	return (c);
 }
@@ -125,7 +119,7 @@ resolve_main(int ac, char **av)
 private	int
 passes(opts *opts)
 {
-	sccs	*s;
+	sccs	*s = 0;
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
 	FILE	*p;
@@ -190,7 +184,10 @@ passes(opts *opts)
 		}
 
 		/* skip stuff we've already moved */
-		if (strneq("BitKeeper/RENAMES/SCCS/s.", buf, 25)) continue;
+		if (strneq("BitKeeper/RENAMES/SCCS/s.", buf, 25)) {
+			sccs_free(s);
+			continue;
+		}
 
 		pass1_renames(opts, s);
 	}
@@ -451,7 +448,7 @@ private	int
 pass2_renames(opts *opts)
 {
 	char	path[MAXPATH];
-	sccs	*s;
+	sccs	*s = 0;
 	FILE	*f;
 	int	n = 0;
 	resolve	*rs;
@@ -995,9 +992,7 @@ flags_delta(resolve *rs,
 	edit_tip(rs, sfile, d, rfile, which);
 	sprintf(buf, "bk clean %s", sfile);
 	system(buf);
-	strcpy(buf, bin);
-	strcat(buf, "bk admin -r");
-	strcat(buf, d->rev);
+	sprintf(buf, "bk admin -r%s", d->rev);
 #define	add(s)		{ strcat(buf, " -f"); strcat(buf, s); }
 #define	del(s)		{ strcat(buf, " -F"); strcat(buf, s); }
 #define	doit(f,s)	if (bits&f) add(s) else del(s)
@@ -1127,6 +1122,7 @@ slotTaken(opts *opts, char *slot)
 			chdir(ROOT2RESYNC);
 			return (GFILE_CONFLICT);
 		}
+		free(gfile);
 	}
 	chdir(ROOT2RESYNC);
 	if (opts->debug) fprintf(stderr, "0\n");
@@ -1345,15 +1341,17 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	return (0);
 }
 
-private int
+private void
 open_and_delta(opts *opts, char *sfile)
 {
 	sccs	*s = sccs_init(sfile, INIT, opts->resync_proj);
 
+	assert(s);
 	do_delta(opts, s);
+	sccs_free(s);
 }
 
-int
+void
 do_delta(opts *opts, sccs *s)
 {
 	int	flags = DELTA_FORCE;
@@ -1538,7 +1536,7 @@ automerge(resolve *rs, names *n)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	sprintf(cmd, "%s%s %s %s %s %s", bin,
+	sprintf(cmd, "%s/%s %s %s %s %s", bin,
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
 	ret = system(cmd) & 0xffff;
 	if (do_free) {
@@ -1641,7 +1639,6 @@ pendingRenames()
 private	int
 pending()
 {
-	char	buf[MAXPATH];
 	FILE	*f;
 	int	ret;
 
@@ -1682,9 +1679,11 @@ private	void
 commit(opts *opts)
 {
 	int	i;
-	char	*cmds[10];
+	char	*cmds[10], *cmt = 0;
+	extern	char *BitKeeper;
 
-	if (checkLog()) {
+	BitKeeper = "../BitKeeper/";
+	if (checkLog(opts->quiet)) {
 		fprintf(stderr, "Commit aborted, no changes applied");
 		exit(1);
 	}
@@ -1694,13 +1693,17 @@ commit(opts *opts)
 	cmds[++i] = "-RFf";
 	if (opts->quiet) cmds[++i] = "-s";
 	if (opts->comment) {
-		char	*s = malloc(strlen(opts->comment) + 10);
+		cmt = malloc(strlen(opts->comment) + 10);
 
-		sprintf(s, "-y%s", opts->comment);
-		cmds[++i] = s;
+		sprintf(cmt, "-y%s", opts->comment);
+		cmds[++i] = cmt;
 	}
 	cmds[++i] = 0;
-	unless (spawnvp(_P_WAIT, "bk", cmds)) return;
+	unless (spawnvp(_P_WAIT, "bk", cmds)) {
+		if (cmt) free(cmt);
+		return;
+	}
+	if (cmt) free(cmt);
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
 	exit(1);
 }
@@ -1711,6 +1714,7 @@ commit(opts *opts)
  * for all of them, we'll come back and remove these.
  * Otherwise, we put these back.
  */
+int
 backup(opts *opts, char *sfile, MDBM *backups, FILE *save)
 {
 	char	buf[MAXPATH];
@@ -1911,9 +1915,7 @@ pass4_apply(opts *opts)
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
-		fprintf(stdlog, "resolve: rebuilding caches...\n");
 	}
-	system("bk sfiles -r");
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");

@@ -20,12 +20,13 @@ sub doMerge
 	local($out, $opt) = ("", "");
 
 	$opt = "-d" if $debug;
-	open(PIPE_FD, "${BIN}bk fdiff -s $opt $lfile $gca $rfile |")
+	open(PIPE_FD, "bk fdiff -s $opt $lfile $gca $rfile |")
 	    || die "can not popen fdiff\n";
 
 	@flist = &getdiff();
 	close(PIPE_FD);
-	$out = "${tmp}merge$$";
+	$out = "${lfile}_new$$";
+	die "tmp file conflict, $out already exist\n" if (-e $out);
 	&mkMerge(@flist, $out);
 	&mv($out, $lfile);
 	foreach $f (@flist) { &force_unlink($f); };
@@ -649,11 +650,13 @@ sub mv
 
         # No?  Create the dir and try again.
         ($dir = $to) =~ s|/[^/]+$||;
-        &mkdirp($dir, 0775);
-        if (&force_rename($from, $to)) {
-                print "rename($from,$to) worked\n" if $debug;
-                return $OK;
-        }
+	unless ($dir eq $to) {
+        	&mkdirp($dir, 0775) unless $dir eq $to;
+        	if (&force_rename($from, $to)) {
+               		print "rename($from,$to) worked\n" if $debug;
+                	return $OK;
+        	}
+	}
 
         # Still didn't work?  Try copying it.
         &force_unlink($to);
@@ -748,7 +751,6 @@ EOF
 
 sub init
 {
-	$BIN = &platformPath();
 	&platformInit;
 	$ENOENT = 2; $EEXIST = 17;      # errnos for mkdirp
 	$OK = 1; $debug = $quiet = $hideMarker = $wantGca = 0;
@@ -780,19 +782,4 @@ sub init
 		# again diff3 output.
 		$um= "";
 	}
-}
-
-# compute include path
-sub platformPath
-{
-        local ($BIN);
-
-        # bk.sh has probably set BK_BIN for us, but if it isn't,
-        # guess at /usr/bitkeeper.  In any case, normalize the number
-        # of trailing slashes and make sure BK_BIN is set in %ENV.
-        $BIN = $ENV{BK_BIN} || '/usr/bitkeeper/';
-        $BIN =~ s|/*$|/|;
-        $BIN =~ s|/|\\|g if (&is_windows); # WIN32 wants back slash
-        $ENV{BK_BIN} = $BIN;
-        return ($BIN);
 }
