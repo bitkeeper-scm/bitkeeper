@@ -2019,6 +2019,50 @@ proc prevDiff {conflict} \
 	nextCommon
 }
 
+proc nextPart {diff start lines} \
+{
+	set top [.diffs.left index @1,1]
+	set next [.diffs.left index "$start + $lines lines"]
+	set maxscroll [expr {int($next - $top)-1}]
+
+	set count 1
+	set scroll 0
+	set done 0
+	while 1 {
+		if {[visible .diffs.left "e$diff"]} {
+			set done 1
+			break
+		}
+		set index [.diffs.left index "$next + $count lines"]
+		if {![visible .diffs.left "$index + 1 line"]} {
+			.diffs.left yview scroll 1 units
+			.diffs.right yview scroll 1 units
+			# the after is so there's a visible scroll effect
+			update idletasks; after 5
+			if {[incr scroll] >= $maxscroll} break
+		}
+		incr count
+	}
+	return $done
+}
+
+# test if a line is fully visible. This assumes that the line at
+# the top of the widget is fully visible (which I think is always
+# true if the widget itself is visible)
+proc visible {w i} \
+{
+	set dl [$w dlineinfo $i]
+	if {$dl eq ""} {return 0}
+	# dlineinfo will report only the height of the visible portion;
+	# if the first line has a greater height than the line in 
+	# question we can assume the line in question is only partially
+	# visible since all lines should be of the same height
+	set h1 [lindex [$w dlineinfo @1,1] 3]
+	set h2 [lindex $dl 3]
+	if {$h1 == $h2} {return 1}
+	return 0
+}
+
 proc nextDiff {conflict} \
 {
 	global	lastDiff diffCount
@@ -2420,6 +2464,7 @@ proc click {win block replace} \
 		.diffs.right see $b
 	}
 	change $lines $replace 0 $annotate
+	nextPart $lastDiff $b $l
 }
 
 proc fm3tool {} \

@@ -16,31 +16,25 @@
 test -d $HERE/home || mkdir $HERE/home
 export BK_TEST_HOME=$HERE/home
 
-echo $N Create test data ............................................$NL
+echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+
+echo $N Create some data ............................................$NL
+cd $HERE/project/BitKeeper/etc
 mkdir $HERE/project/src
 cd $HERE/project/src
-cat >file1 <<EOF
-1: this is file1
-2: this is part of the original file
-3: this is part of the original file
-4: this is part of the original file
-5: this is part of the original file
-6: this is part of the original file
-7: this is part of the original file
-EOF
-cat >file2 <<EOF
-1: this is file2
-2: this is part of the original file
-3: this is part of the original file
-4: this is part of the original file
-5: this is part of the original file
-6: this is part of the original file
-7: this is part of the original file
-EOF
-bk ci $Q -i file1 file2
+#awk 'BEGIN {for (i = 1; i <= 200; i++) 
+#	printf "%3s: this is part of the original file\n", i}' > file1
+perl -e '
+for ($i = 1; $i <= 400; $i++) {
+    printf "%3s: this is part of the original file\n", $i;
+}' > file1
+bk ci $Q -i file1
 bk commit $Q -y"initial checkin"
 if [ ! -f SCCS/s.file1 ]; then echo failed to create history; exit 1; fi
 # create clones
@@ -50,30 +44,54 @@ bk clone $Q $HERE/project $HERE/local
 # introduce conflicts
 cd $HERE/remote/src
 bk get $Q -e file1
-cat >file1 <<EOF
-1: this is file1
-2: this has changed in the remote project
-3: this has changed in the remote project
-4: this is part of the original file
-   this has been added in the remote project
-   this has been added in the remote project
-5: this is part of the original file
-6: this has changed in both the local and remote project
-7: this is part of the original file
-EOF
+# There's no science here; I just played around until I got a jumbled mess
+sed '4s/this.*/expect to see a conflict through line 10/;
+5,10s/this.*$/this was changed in the remote/;
+29s/this.*/expect to see a conflict through line 45/;
+30,45s/this.*$/this was changed in the remote/;
+70s/this.*/this is a single line change in the remote/;
+75s/this.*/this was changed in the remote/;
+76s/this.*/this was changed in the remote/;
+77i\
+     this was added in the remote\
+     this was added in the remote\
+     this was added in the remote\
+     this was added in the remote\
+     this was added in the remote\
+     this was added in the remote\
+     this was added in the remote;
+99s/this.*/expect to see a conflict through line 175/;
+100,175s/this.*$/this was changed in the remote/;
+300,310s/this.*$/this was changed in the remote/;
+' file1 > tmp
+mv tmp file1
 bk ci $Q -y"introduced conflicts" file1
 bk commit $Q -y"introduced conflicts in file1"
 cd $HERE/local/src
 bk get $Q -e file1
-cat >file1 <<EOF
-1: this is file1
-2: this has changed in the local project
-3: this is part of the original file
-4: this is part of the original file
-5: this is part of the original file
-6: this has changed in both the local and remote project
-7: this is part of the original file
-EOF
+sed '4s/this.*/expect to see a conflict through line 10/;
+5,10s/this.*$/this was changed in the local/;
+29s/this.*/expect to see a conflict through line 45/;
+30,45s/this.*$/this was changed in the local/;
+70s/this.*/this is a single line change in the local/;
+75s/this.*/this was changed in the local/;
+76i\
+     this was added in the local\
+     this was added in the local\
+     this was added in the local\
+     this was added in the local\
+     this was added in the local\
+ 76: this is part of the original file\
+     this was added in the local;
+77i\
+     this was added in the local\
+     this was added in the local\
+     this was added in the local\
+     this was added in the local;
+76s/this.*/this was changed in the local/;
+99s/this.*/expect to see a conflict through line 175/;
+100,175s/this.*$/this was changed in the local/' file1 > tmp
+mv tmp file1
 bk ci $Q -y"introduced conflicts" file1
 bk commit $Q -y"introduced conflicts in file1"
 # pushing remote changes to parent
@@ -87,5 +105,5 @@ echo OK
 
 echo $N "Starting fm3tool interactively; you must quit manually.......$NL"
 cd $HERE/local/RESYNC
-bk fm3tool -f 1.1.1.1 1.1 1.2 src/file1
+bk fm3tool -geometry 800x600 -o merge.raw -f 1.1.1.1 1.1 1.2 src/file1
 echo OK
