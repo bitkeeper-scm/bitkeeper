@@ -297,12 +297,15 @@ win32: FORCE
 win32/uwtlib/libuwt.a: FORCE
 	cd win32/uwtlib && $(MAKE) 
 zlib/libz.a: $(ZLIBOBJ)
+	rm -f $@
 	$(AR) cr zlib/libz.a $(ZLIBOBJ)
 	-$(RANLIB) zlib/libz.a
 mdbm/libmdbm.a: $(MDBMOBJ)
+	rm -f $@
 	$(AR) cr mdbm/libmdbm.a $(MDBMOBJ)
 	-$(RANLIB) mdbm/libmdbm.a
 libsccs.a: $(OBJ) shell.o
+	rm -f $@
 	$(AR) cr libsccs.a $(OBJ) shell.o
 	-$(RANLIB) libsccs.a
 
