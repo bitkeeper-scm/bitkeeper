@@ -141,6 +141,20 @@ usage:		fprintf(stderr, "%s", check_help);
 			continue;
 		}
 
+		unless (HAS_PFILE(s)) {
+			if (((s->mode == 0) || S_ISREG(s->mode)) &&
+			    IS_WRITABLE(s)) {
+				fprintf(stderr,
+"===========================================================================\n\
+check: %s writable but not checked out, this usually means that you have\n\
+modified a file without first doing a \"bk edit\". To fix the problem,\n\
+do a \"bk edit -g %s\" to change the file to checked out status.\n\
+===========================================================================\n",
+				    s->gfile, s->gfile);
+				errors |= 32; 
+			}
+		}
+
 		/*
 		 * Store the full length key and only if we are in mixed mode,
 		 * also store the short key.  We want all of them to be
