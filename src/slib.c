@@ -4272,7 +4272,7 @@ sccs_init(char *name, u32 flags, project *proj)
 		if (bad) {
 			fprintf(stderr,
 "Unable to proceed.  ChangeSet file corrupted.  error=57\n"
-"Please contact support@bitmover.com for help.\n");
+"Please run 'bk support' to request assistance.\n");
 			goto err;
 		}
 	}
@@ -15381,7 +15381,7 @@ sccs_resolveFiles(sccs *s)
 	if (s->defbranch) {
 		fprintf(stderr, "resolveFiles: defbranch set.  "
 			"LODs are no longer supported.\n"
-			"Please contact support@bitmover.com for "
+			"Please run 'bk support' to request "
 			"assistance.\n");
 err:
 		return (retcode);
@@ -15403,8 +15403,8 @@ err:
 				fprintf(stderr, "resolveFiles: Found tips on "
 				 	"different LODs.\n"
 					"LODs are no longer supported.\n"
-					"Please contact support@bitmover.com "
-					"for assistance.\n");
+					"Please run 'bk support' to "
+					"request assistance.\n");
 				goto err;
 			}
 			/* Could break but I like the error checking */

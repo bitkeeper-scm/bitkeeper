@@ -106,7 +106,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
-	slib.o smerge.o status.o stripdel.o synckeys.o sys.o \
+	slib.o smerge.o status.o stripdel.o support.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o \
@@ -125,7 +125,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o tomcrypt/hmac.o
 GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
 	  renametool setuptool 
-SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
+SCRIPTS	= applypatch bk.script import resync $(GUI) bugform supportform \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap \
 	$(BINLINKS)
@@ -169,7 +169,8 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/progress.tcl gui/search.tcl gui/msgtool.tcl gui/bugform.tcl\
+	  gui/progress.tcl gui/search.tcl gui/msgtool.tcl \
+	  gui/bugform.tcl gui/supportform.tcl \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -549,6 +550,13 @@ difftool: tclwrap gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	     gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
 	     gui/difftool.tcl) \
 	 | $(TCLWRAP) > difftool
+
+supportform: tclwrap gui/search.tcl gui/config.tcl gui/supportform.tcl \
+	port/$(SYS)_platform.tcl gui/common.tcl gui/supportlib.tcl \
+	gui/appState.tcl 
+	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
+	    gui/common.tcl gui/supportlib.tcl gui/appState.tcl \
+	    gui/supportform.tcl | $(TCLWRAP) > supportform
 
 bugform: tclwrap gui/search.tcl gui/config.tcl gui/bugform.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl \
