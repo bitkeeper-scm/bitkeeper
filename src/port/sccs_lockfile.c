@@ -1,6 +1,10 @@
 #include "../system.h"
 #include "../sccs.h"
 
+#ifdef	WIN32
+private int	link(const char *from, const char *to);
+#endif
+
 private	char	*uniqfile(const char *file);
 private	int	linkcount(const char *file);
 private int	share_open(const char *file);

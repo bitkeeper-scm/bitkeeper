@@ -10,7 +10,7 @@ then
 else
         MSYSVER=`bk changes -r+ -nd:KEY: bk://data.bitmover.com/msys`
 fi
-bk edit -q MSYSVER 2>/dev/null
+bk edit -q MSYSKEY 2>/dev/null
 echo '# Always delta this if there are diffs' > MSYSKEY
 echo $MSYSVER >> MSYSKEY
 

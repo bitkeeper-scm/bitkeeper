@@ -95,8 +95,8 @@ long
 almostUnique(int harder)
 {
 	LARGE_INTEGER val;
-	GUID guid;
-	u32 h1, h2,l1, l2;
+	GUID	guid;
+	u32	h1;
 
 	if (QueryPerformanceCounter(&val)) {
 		return (val.QuadPart % 100000);
