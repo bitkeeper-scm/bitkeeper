@@ -356,6 +356,17 @@ $
 If this field is set, all checkins will appear to be made on this host.
 
 $
+#config_license
+
+A license key is required when not using openlogging. If the logging
+entry is set to "logging@openlogging.org", you do not need a license
+key.
+
+If you would like an evaluation license key, please send email to our
+license autoresponder at bk_license@bitmover.com. You will receive
+a key that is good for 90 days.
+
+$
 #config_template
 description
 category
@@ -373,6 +384,7 @@ phone
 cell
 pager
 hours
+license
 $
 #warn_poly
 Warning: this repository has been found to have deltas which
