@@ -93,13 +93,28 @@ pending_main(int ac, char **av)
 	if (opts.cset && opts.unique) opts.seen = mdbm_mem();
 	pid = mkpager();
 	if (av[optind]) {
-		while (av[optind]) {
-			if (!opts.skip_allheader && (opts.verbose > V_QUIET)) {
-				printf("%s\n", av[optind]);
-				fflush(stdout); /* for error path */
+		if (streq("-", av[optind])) {
+			char buf[MAXPATH];
+
+			while (fnext(buf, stdin)) {
+				chomp(buf);
+				if (!opts.skip_allheader &&
+				    (opts.verbose > V_QUIET)) {
+					printf("%s\n", buf);
+					fflush(stdout); /* for error path */
+				}
+				pending |= doit(&opts, buf);
 			}
-			pending |= doit(&opts, av[optind]);
-			optind++;
+		} else {
+			while (av[optind]) {
+				if (!opts.skip_allheader &&
+				    (opts.verbose > V_QUIET)) {
+					printf("%s\n", av[optind]);
+					fflush(stdout); /* for error path */
+				}
+				pending |= doit(&opts, av[optind]);
+				optind++;
+			}
 		}
 	} else {
 		pending |= doit_local(&opts);
