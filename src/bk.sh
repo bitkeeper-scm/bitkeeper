@@ -420,7 +420,7 @@ __status() {
 		echo "`${BIN}sfiles | wc -l` files under revision control."
 		echo "`${BIN}sfiles -x | wc -l` files not under revision control."
 		echo "`${BIN}sfiles -c | wc -l` files modified and not checked in."
-		echo "`${BIN}sfiles -C | wc -l` files with uncommitted deltas."
+		echo "`${BIN}sfiles -C | wc -l` files with checked in but uncommitted deltas."
 	fi
 }
 
@@ -450,8 +450,40 @@ _rm() {
 	${BIN}sccsrm "$@"
 }
 
+_info() {
+	${BIN}sinfo "$@"
+}
+
 _sdiffs() {
 	${BIN}diffs -s "$@"
+}
+
+# Usage: fix file
+_fix() {
+	Q=-q
+	while getopts qv opt
+	do	case "$opt" in
+		q) ;;
+		v) Q=;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	for f in $*
+	do	# XXX - need to make sure they are not in a cset already
+		if [ -w $f ]
+		then	echo $f is already edited
+			continue
+		fi
+		if [ -f "${f}-.fix" ]
+		then	echo ${f}-.fix exists, skipping that file
+			continue
+		fi
+		${BIN}get $Q -kp $f > "${f}-.fix"
+		REV=`${BIN}prs -hr+ -d:REV: $f`
+		${BIN}rmdel $Q -D$REV $f
+		${BIN}get $Q -eg $f
+		mv "${f}-.fix" $f
+	done
 }
 
 # Usage: undo cset,cset,cset
@@ -905,7 +937,7 @@ _commandHelp() {
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
 		unlock|unedit|check|import|sdiffs|resync|pull|push|parent|\
-		clone)
+		clone|fix|info)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
@@ -1053,7 +1085,7 @@ case "$1" in
     setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
-    pull|push|parent|diffr)
+    pull|push|parent|diffr|fix|info)
 	cmd=$1
     	shift
 	_$cmd "$@"
@@ -1086,7 +1118,10 @@ then	if [ X$2 != X -a -d $2 ]
 	else	_cd2root
 	fi
 	shift
-	SFILES=YES
+	# Allow "bk -r sfiles -c" strangeness.
+	if [ "X$1" != Xsfiles ]
+	then	SFILES=YES
+	fi
 fi
 if [ X$1 = X-R ]
 then	_cd2root
