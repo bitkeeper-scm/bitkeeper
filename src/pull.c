@@ -105,6 +105,13 @@ pull_main(int ac, char **av)
 			    "pull: remote locked, trying again...\n");
 		}
 		disconnect(r, 2);
+		/*
+		 * if we are sending via the pipe, reap the child
+		 */
+		if (r->pid)  {
+			waitpid(r->pid, NULL, 0);	
+			r->pid = 0; /* just in case */
+		}
 		sleep(min((i++ * 2), 10));
 	}
 	if (rc == -2) rc = 1; /* if retry failed, rest exit code to 1 */
