@@ -415,16 +415,6 @@ out:		if (commentFile) unlink(commentFile);
 		putenv(buf);
 	}
 	trigger(av, "post");
-/*
- * Do not enable this until
- * new BK binary is fully deployed
- */
-#ifdef NEXT_RELEASE
-	unless (opts.resync) {
-		sprintf(buf, "%setc/SCCS/x.dfile", BitKeeper);
-		close(open(buf, O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
-	}
-#endif
 done:	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);
 	if (pendingFiles2[0]) {

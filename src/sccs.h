@@ -317,6 +317,7 @@
 #define	GLOGGING_OK	"BitKeeper/etc/logging_ok"
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
+#define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
 
@@ -987,6 +988,7 @@ char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
 char	*aprintf(char *fmt, ...);
+void	enableFastPendingScan();
 
 extern char *bk_vers;
 extern char *bk_utc;

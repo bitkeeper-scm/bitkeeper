@@ -320,6 +320,10 @@ uncommitted(opts opts)
 		fprintf(stderr,
 		    "Looking for, and removing, any uncommitted deltas...\n");
     	}
+	/*
+	 * "sfile -p" should run in "slow scan" mode because sfio did not
+	 * copy over the d.file and x.dfile
+	 */
 	unless (in = popen("bk sfiles -pAC", "r")) {
 		perror("popen of bk sfiles -pAC");
 		exit(1);
@@ -347,6 +351,11 @@ uncommitted(opts opts)
 		did++;
 	}
 	pclose(in);
+
+	/*
+	 * We have a clean tree, enable the "fast scan" mode for pending file
+	 */
+	enableFastPendingScan();
 	return (did);
 }
 

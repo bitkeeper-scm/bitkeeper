@@ -63,6 +63,7 @@ setup_main(int ac, char **av)
 		exit(1);
 	}
 	sccs_mkroot(".");
+	enableFastPendingScan();
 	if (config_path == NULL) {
 		FILE 	*f;
 

@@ -29,6 +29,7 @@ typedef struct {
 	u32     splitRoot:1;   		/* split root mode	*/
 	u32     dfile:1;   		/* use d.file to find 	*/
 					/* pending delta	*/
+	u32	fixdfile:1;		/* fix up  the dfile tag */
 	u32	progress:1;		/* if set, send progress to stdout */
 	FILE	*out;			/* send output here */
 	u32     summarize:1;     	/* summarize output only */
@@ -182,7 +183,7 @@ sfind_main(int ac, char **av)
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aAcCdDeEgijklno:p|rRs:SuUvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDeEgijklno:p|P|rRs:SuUvx")) != -1) {
 		switch (c) {
 		    case 'a':	opts.all = 1; break;
 		    case 'A':	opts.pending = opts.Aflg = 1; break;
@@ -213,6 +214,8 @@ sfind_main(int ac, char **av)
 				}
 				opts.progress = 1;
 				break;
+		    case 'P':	opts.fixdfile = 1;	  /* 2.0 undoc */
+				/* fall thru */
 		    case 'p':	opts.pending =1;
 				for (s = optarg; s && *s; s++) {
 					if (*s == 'A') {
@@ -350,7 +353,8 @@ chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
 {
 	delta	*d;
 	int	local_s = 0, printed = 0;
-	char	buf[MAXPATH];
+	char	buf[MAXPATH], *dfile = 0, *p;
+
 
 	if (opts.dfile) {
 		if (sDB) {
@@ -362,9 +366,7 @@ chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
 				return;
 			}
 		} else {
-			char *dfile = name2sccs(gfile);
-			char *p;
-
+			dfile = name2sccs(gfile);
 			p = basenm(dfile);
 			*p = 'd';
 			unless (exists(dfile)) {
@@ -373,7 +375,6 @@ chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
 				do_print(state, gfile, 0);
 				return;
 			}
-			free(dfile);
 		}
 	}
 
@@ -383,10 +384,17 @@ chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
 		unless (s && s->tree) {
 			fprintf(stderr, "sfiles: %s: bad sfile\n", sfile);
 			if (s) sccs_free(s);
+			if (dfile) free(dfile);
 			return;
 		}
 		free(sfile);
 		local_s = 1;
+	}
+
+	unless (dfile) {
+		dfile = name2sccs(gfile);
+		p = basenm(dfile);
+		*p = 'd';
 	}
 	
 	/*
@@ -431,17 +439,15 @@ out:	unless (printed) do_print(state, gfile, 0);
 	 * Do not sccs_free() if it is passed in from outside 
 	 */
 	if (local_s) sccs_free(s);
-	if (opts.dfile) {
+	if (opts.fixdfile) {
 		/* No pending delta, remove redundant d.file */
 		unless (state[PSTATE] == 'p') {
-			char *p, *dfile = name2sccs(gfile);
-
-			p = basenm(dfile);
-			*p = 'd';
 			unlink(dfile);
-			free(dfile);
+		} else {
+			close(open(dfile, O_CREAT|O_WRONLY, 0666));
 		}
 	}
+	if (dfile) free(dfile);
 }
 
 private void
@@ -557,8 +563,15 @@ walk(char *dir, int level)
         ino_t	lastInode = 0;
 #endif                                 
 
+	/*
+	 * Special processing for .bk_skip file
+	 */
 	sprintf(buf, "%s/.bk_skip", dir);
-	if (exists(buf)) return;
+	if (exists(buf)) {
+		sprintf(buf, "%s/SCCS/s..bk_skip", dir);
+		if (exists(buf)) file(buf);
+		return;
+	}
 
 	if (level == 0) {
 		char tmp[MAXPATH];
@@ -578,8 +591,10 @@ walk(char *dir, int level)
 					fclose(ignoref);
 				}
 			}           
-			sprintf(tmp, "%s/BitKeeper/etc/SCCS/x.dfile", buf);
-			opts.dfile = exists(tmp);
+			unless (opts.fixdfile) {
+				sprintf(tmp, "%s/%s", buf, DFILE);
+				opts.dfile = exists(tmp);
+			}
 		} else {
 			/*
 			 * Dir is not a BitKeeper repository,
@@ -644,6 +659,13 @@ done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
 		if (proj) proj_free(proj); proj = 0;
 		if (opts.summarize) print_summary();
+
+		/*
+		 * We only enable fast scan mode if we stated at the root
+		 */
+		if (opts.fixdfile && isdir("BitKeeper/etc/SCCS")) {
+			enableFastPendingScan();
+		}
 	}
 	if (opts.progress) progress(0);
 }
@@ -1124,4 +1146,14 @@ skip:			mdbm_close(gDB);
 		walk(buf, level + 1);
 		free(p);
 	}
+}
+
+/*
+ * Enable fast scan mode for pending file (base on d.file) 
+ * Caller must ensure we at at the project root
+ */
+void
+enableFastPendingScan()
+{
+	close(open(DFILE, O_CREAT|O_WRONLY, 0666));
 }

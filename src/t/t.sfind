@@ -306,6 +306,7 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Test sfind with zero length sfile ...........................$NL
 touch SCCS/s.zero
+touch SCCS/d.zero
 bk sfind -xcpA > /dev/null 2>sfind.err
 grep -q "s.zero: bad sfile" sfind.err
 if [ $? -ne 0 ]; then echo failed; cat sfind.err; exit 1; fi

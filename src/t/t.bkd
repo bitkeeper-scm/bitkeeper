@@ -35,6 +35,7 @@ echo OK
 echo $N clone the workspace .........................................$NL
 bk clone $Q $HERE/project $HERE/copy
 cd $HERE/copy
+if [ ! -f "BitKeeper/etc/SCCS/x.dfile" ]; then echo failed; exit 1; fi
 P=50000
 bk bkd -q -d -p$P -c1 
 while [ $? -eq 2 ]
