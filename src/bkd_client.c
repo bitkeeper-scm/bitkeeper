@@ -1,5 +1,8 @@
 #include "bkd.h"
 
+remote	*nfs_parse(char *p);
+remote	*url_parse(char *p);
+
 /*
  * Turn either
  *	bk://user@host:port/pathname
@@ -10,9 +13,6 @@
 remote *
 remote_parse(char *p)
 {
-	remote	*r;
-	char	*s;
-	int	url = 0;	/* default style is NFS style */
 	char	buf[MAXPATH+256];
 
 	unless (p) {
@@ -33,49 +33,73 @@ remote_parse(char *p)
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
 		p += 5;
-		url = 1;
+		return (url_parse(p));
+	} else {
+		return (nfs_parse(p));
 	}
+}
+
+/* [[user@]host:]path */
+remote *
+nfs_parse(char *p)
+{
+	remote	*r;
+	char	*s;
+	
 	unless (*p) return (0);
 	new(r);
+	/* user@host:path */
 	if (s = strchr(p, '@')) {
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
 	}
+	/* just path */
 	unless (s = strchr(p, ':')) {
-		if (r->user || url) {
+		if (r->user) {
 			remote_free(r);
 			return (0);
 		}
-		if (!r->host || streq(r->host, sccs_gethost()) ||
-		    streq(r->host, "localhost") ||
-		    streq(r->host, "localhost.localdomain")) {
-		    	r->path = strdup(fullname(p, 0));
-		} else {
-			r->path = strdup(p);
-		}
+		r->path = strdup(fullname(p, 0));
 		return (r);
 	}
 	*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 	unless (*p) p = ".";	/* we like having a path */
 
-	unless (url) {
-		if (!r->host || streq(r->host, sccs_gethost()) ||
-		    streq(r->host, "localhost") ||
-		    streq(r->host, "localhost.localdomain")) {
-		    	r->path = strdup(fullname(p, 0));
-		} else {
-			r->path = strdup(p);
-		}
-		return (r);
+	if (streq(r->host, sccs_gethost()) || streq(r->host, "localhost") ||
+	    streq(r->host, "localhost.localdomain")) {
+		    r->path = strdup(fullname(p, 0));
+	} else {
+		r->path = strdup(p);
 	}
+	return (r);
+}
+
+/* host[:port]/path */
+remote *
+url_parse(char *p)
+{
+	remote	*r;
+	char	*s;
+
+	unless (*p) return (0);
+	new(r);
 	if (s = strchr(p, ':')) {
-		*s = 0; r->port = atoi(p); p = s + 1; *s = ':';
+		*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 	}
-	unless (*p == '/') {
+	unless (s = strchr(p, '/')) {
 		remote_free(r);
 		return (0);
 	}
-	p++;
-	if (*p) r->path = strdup(p);
+	*s = 0;
+	if (r->host) {
+		r->port = atoi(p);
+	} else {
+		r->port = BK_PORT;
+		r->host = strdup(p);
+	}
+	p = s;
+	*s = '/';
+	unless (*p) p = ".";	/* we like having a path */
+	r->path = strdup(p);
 	return (r);
 }
 
@@ -98,10 +122,11 @@ remote_unparse(remote *r)
 		}
 		assert(r->host);
 		strcat(buf, r->host);
-		strcat(buf, ":");
-		sprintf(port, "%u", r->port);
-		strcat(buf, port);
-		strcat(buf, "/");
+		if (r->port != BK_PORT) {
+			strcat(buf, ":");
+			sprintf(port, "%u", r->port);
+			strcat(buf, port);
+		}
 		strcat(buf, r->path);
 		return (strdup(buf));
 	}
@@ -130,7 +155,7 @@ void
 remote_print(remote *r, FILE *f)
 {
 	unless (r) return;
-	fprintf(f, "R=0x%x ", r);
+	fprintf(f, "R=0x%x ", (unsigned int)r);
 	if (r->user) fprintf(f, "USER=%s ", r->user);
 	if (r->host) fprintf(f, "HOST=%s ", r->host);
 	if (r->port) fprintf(f, "PORT=%u ", r->port);
@@ -144,7 +169,7 @@ remote_print(remote *r, FILE *f)
  * password prompts and other commands may use it for status.
  */
 pid_t
-bkd(int compress, remote *r, int fds[2])
+bkd(int compress, remote *r, int *sock)
 {
 	char	*t;
 	char	*remsh = "ssh";
@@ -156,11 +181,13 @@ bkd(int compress, remote *r, int fds[2])
 	int	findprog(char *);
 
 	if (r->port) {
-		fprintf(stderr, "TCP ports not done yet.\n");
-err:		return ((pid_t)-1);
+		assert(r->host);
+		*sock = tcp_connect(r->host, r->port);
+		return ((pid_t)0);
 	}
-	if (tcp_pair(inout) == -1) goto err;
-	if (r->host) {
+	if (tcp_pair(inout) == -1) return ((pid_t)-1);
+	t = sccs_gethost();
+	if (r->host && (!t || !streq(t, r->host))) { 
 		if (((t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
 		    !findprog("ssh")) {
 #ifdef	hpux
@@ -212,23 +239,24 @@ err:		return ((pid_t)-1);
 		exit(1);
 	    default:
 		close(inout[1]);
-		fds[0] = fds[1] = inout[0];
+		*sock = inout[0];
 	    	return (p);
     	}
 }
 
 void
-bkd_reap(pid_t resync, int fds[2])
+bkd_reap(pid_t resync, int sock)
 {
 	int	i;
 
-	close(fds[0]);
-	close(fds[1]);
-	kill(resync, SIGTERM);
-	for (i = 0; i < 100; ++i) {
-		if (waitpid(resync, 0, WNOHANG)) break;
-		usleep(10000);
+	close(sock);
+	if (resync) {
+		kill(resync, SIGTERM);
+		for (i = 0; i < 100; ++i) {
+			if (waitpid(resync, 0, WNOHANG)) break;
+			usleep(10000);
+		}
+		kill(resync, SIGKILL);
+		waitpid(resync, 0, 0);
 	}
-	kill(resync, SIGKILL);
-	waitpid(resync, 0, 0);
 }

@@ -3,9 +3,10 @@
 #include "sccs.h"
 WHATSTR("%W%");
 
-char *getRelativeName(char *);
-void rmDir(char *);
-int mv(char *, char *);
+char	*getRelativeName(char *);
+void	rmDir(char *);
+int	mv(char *, char *);
+void	update_idcache(sccs *s);
 
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
@@ -50,7 +51,8 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		fprintf(stderr, "sccsmv: destination %s exists\n", gfile);
 		return (1);
 	}
-	sccs_close(s); /* close the file before we move it - win32 restriction */
+	/* close the file before we move it - win32 restriction */
+	sccs_close(s);
 	oldpath = getRelativeName(name);
 	if (isDelete) {
 		sprintf(commentBuf, "Delete: %s", oldpath);
@@ -119,10 +121,80 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		goto out;
 	}
 
-	if (sccs_delta(s, flags, d, 0, 0, 0) == -1) error = 1;
+	if (sccs_delta(s, flags, d, 0, 0, 0) == -1) {
+		error = 1;
+		goto out;
+	}
+
+	update_idcache(s);
+
 out:	if (s) sccs_free(s);
 	free(destfile); free(sfile); free(gfile);
 	return (error);
+}
+
+/*
+ * Update the idcache for this file.
+ */
+void
+update_idcache(sccs *s)
+{
+	project	*p;
+	char	path[MAXPATH];
+	char	key[MAXKEY];
+	int	fd;
+	char	*name;
+	FILE	*f;
+	extern	char *relativeName(sccs *sc, int withsccs, int mustHaveRmarker);
+
+	unless ((p = s->proj) || (p = proj_init(s))) {
+		fprintf(stderr,
+		    "can't find project root, idcache not updated\n");
+		s->proj = p;
+		return;
+	}
+
+	if (streq(".", p->root)) {
+		name = s->gfile;
+	} else {
+		name = relativeName(s, 0, 1);
+	}
+	assert(name);
+
+	/*
+	 * run sfiles -r if anything is weird.
+	 */
+	unless (streq(name, s->tree->pathname)) {
+		system("bk sfiles -r");
+		return;
+	}
+
+	/*
+	 * This code ripped off from sfiles -r.
+	 */
+	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
+	unless ((fd = open(path, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
+		perror(path);
+		fprintf(stderr, "sccsmv: can't lock id cache\n");
+		return;
+	}
+	close(fd);	/* unlink it when we are done */
+	sprintf(path, "%s/%s", p->root, IDCACHE);
+	f = fopen(path, "a");
+	sccs_sdelta(s, sccs_ino(s), key);
+	unless (streq(".", p->root)) {
+		char	*p = relativeName(s, 0, 1);
+
+		assert(p);
+		fprintf(f, "%s %s\n", key, p);
+	} else {
+		fprintf(f, "%s %s\n", key, s->gfile);
+	}
+	fclose(f);
+	chmod(path, 0666);
+	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
+	unlink(path);
+	return (0);
 }
 
 char *

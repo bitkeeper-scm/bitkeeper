@@ -1,0 +1,52 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 1999 Andrew Chang
+# %K%
+
+# XXX still need to test propagation of:
+# descriptive text
+# permissions
+# LODs
+# per file information (flags, etc.)
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+${ECHO} "logging: none" > $HERE/c
+${ECHO} "seats: 1" >>$HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N test idcache update in chaining rename ......................$NL
+# commit the config file
+mkdir src
+cd $HERE/project/src
+echo foo1 > foo.c
+bk ci $Q -i foo.c
+bk mv foo.c bar.c
+echo foo2 >  foo.c
+bk ci $Q -i foo.c
+if [ "`bk prs -hr1.0 -d:KEY: bar.c`" = "`bk prs -hr1.0 -d:KEY: foo.c`" ]
+then	echo Failed to prevent duplicate root keys
+	bk prs -r1.0 -d:KEY:  bar.c fooc.
+	exit 1
+fi
+bk commit $S -f -y"abc" 
+if [ $? != 0 ]
+then	echo commit failed
+	exit 1
+fi
+echo OK
