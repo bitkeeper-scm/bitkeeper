@@ -343,7 +343,6 @@ cmd_pull_part2(int ac, char **av)
 	remote	r;
 	FILE	*f;
 	pid_t	pid;
-	extern	int want_eof;
 
 	while ((c = getopt(ac, av, "delnqw|z|")) != -1) {
 		switch (c) {
@@ -491,6 +490,5 @@ done:	unlink(serials); free(serials);
 	 */
 	if (!metaOnly) trigger(av, "post");
 	if (delay > 0) sleep(delay);
-	if (delay == 0) want_eof = 1;
 	return (rc);
 }

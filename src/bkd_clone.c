@@ -94,7 +94,6 @@ cmd_clone(int ac, char **av)
 	 * We should not need this if ssh is working correctly 
 	 */
 	if (delay > 0) sleep(delay);
-	if (delay == 0) want_eof = 1;
 	return (rc);
 }
 	    
