@@ -5,7 +5,7 @@ int
 export_main(int ac,  char **av)
 {
 	int	c, count;
-	int	vflag = 0, hflag = 1, kflag = 0, tflag = 0, wflag = 0;
+	int	vflag = 0, hflag = 0, kflag = 0, tflag = 0, wflag = 0;
 	char	*rev = NULL, *diff_style = NULL;
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];

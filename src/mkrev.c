@@ -73,10 +73,22 @@ find_key(MDBM *db, char *rootkey, MDBM *s2l)
 }
 
 /*
+ * return true if file is deleted
+ */
+isNullFile(char *rev, char *file)
+{
+	if ((strlen(basenm(file)) >= 6) && strneq(basenm(file), ".del-", 5)) {
+		return (1);
+	}
+	if (streq(rev, "1.0")) return (1);
+	return (0);
+}
+
+/*
  * Convert root/start/end keys to sfile@path1@rev1@path2@rev2 format
  */
 private void
-process(char *root, char *start, char *end, MDBM *idDB)
+process(char *root, char *start, char *end, MDBM *idDB, int show_all)
 {
 	sccs	*s;
 	delta 	*d1, *d2;
@@ -84,7 +96,10 @@ process(char *root, char *start, char *end, MDBM *idDB)
 	char	c = '@'; /* field seperator */
 
 	s  = sccs_keyinit(root, INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
-	assert(s);
+	unless (s) {
+		fprintf(stderr, "Cannot keyinit %s\n", root);
+		return;
+	}
 	if (start && *start) {
 		d1 = sccs_findKey(s, start);
 		rev1 = d1->rev;
@@ -101,15 +116,23 @@ process(char *root, char *start, char *end, MDBM *idDB)
 		rev2 = "1.0";
 		path2 = s->table->pathname;
 	}
+
 	/*
 	 * Do not print the ChangeSet file
 	 * we already printed it as the first entry
 	 */
-	if (!streq(s->sfile, CHANGESET)) { 
-		printf("%s%c%s%c%s%c%s%c%s\n",
-			s->sfile, c, path1, c,  rev1, c, path2, c, rev2);
+	if (streq(s->sfile, CHANGESET))  goto done; 
+
+	/*
+	 * If the file is null in both Change Sets, skip it
+	 */
+	if (!show_all && isNullFile(rev1, path1) && isNullFile(rev2, path2)) {
+		goto done;
 	}
-	sccs_close(s);
+
+	printf("%s%c%s%c%s%c%s%c%s\n",
+				s->sfile, c, path1, c, rev1, c, path2, c, rev2);
+done:	sccs_close(s);
 }
 
 
@@ -118,7 +141,7 @@ process(char *root, char *start, char *end, MDBM *idDB)
  */
 mkrev_main(int ac, char **av)
 {
-	int	c;
+	int	c, show_all = 0;
 	char	*rev1, *rev2, tmpf1[MAXPATH], tmpf2[MAXPATH];
 	char	*root_key, *start_key, *end_key, s_cset[] = CHANGESET;
 	sccs	*s;
@@ -131,8 +154,9 @@ mkrev_main(int ac, char **av)
 		exit(1);
 	} 
 
-	while ((c = getopt(ac, av, "r:")) != -1) {
+	while ((c = getopt(ac, av, "ar:")) != -1) {
 		switch (c) {
+		case 'a':	show_all = 1; break; /* show all files */
 		case 'r':	rev1 = optarg;
 				unless (rev2 = strchr(rev1, ',')) {
 					goto usage;
@@ -140,7 +164,7 @@ mkrev_main(int ac, char **av)
 				*rev2++ = 0;
 				break;
 		default:
-usage:				fprintf(stderr, "Usage: mkrev -rrev1,rev2\n");
+usage:				fprintf(stderr, "Usage: mkrev [-a] -rrev1,rev2\n");
 				return (1);
 		}
 	}
@@ -152,8 +176,24 @@ usage:				fprintf(stderr, "Usage: mkrev -rrev1,rev2\n");
 	 */
 	s = sccs_init(s_cset, SILENT|INIT_SAVEPROJ, 0);
 	assert(s);
-	csetIds(s, rev1); db1 = s->mdbm; s->mdbm = NULL;
-	csetIds(s, rev2); db2 = s->mdbm; s->mdbm = NULL;
+	unless (findrev(s, rev1)) {
+		fprintf(stderr, "Cannot find revision %s\n", rev1);
+		return (1);
+	}
+	unless (findrev(s, rev2)) {
+		fprintf(stderr, "Cannot find revsion %s\n", rev2);
+		return (1);
+	}
+	if (csetIds(s, rev1)) {
+		fprintf(stderr, "Cannot get ChangeSet for revision %s\n", rev1);
+		return (1);
+	}
+	db1 = s->mdbm; s->mdbm = NULL;
+	if (csetIds(s, rev2)) {
+		fprintf(stderr, "Cannot get ChangeSet for revsion %s\n", rev2);
+		return (1);
+	}
+	db2 = s->mdbm; s->mdbm = NULL;
 	proj = s->proj;
 	mixed = !(s->state & S_KEY2);
 	sccs_close(s);
@@ -192,7 +232,7 @@ usage:				fprintf(stderr, "Usage: mkrev -rrev1,rev2\n");
 		strcpy(root_key2, root_key); /* because find_key stomps */
 		end_key = find_key(db2, root_key2, short2long);
 		unless (is_same(start_key, end_key))  {
-			process(root_key, start_key, end_key, idDB);
+			process(root_key, start_key, end_key, idDB, show_all);
 		}
 		/*
 		 * Delete the entry from db2, so we don't 
@@ -208,7 +248,7 @@ usage:				fprintf(stderr, "Usage: mkrev -rrev1,rev2\n");
 	for (kv = mdbm_first(db2); kv.key.dsize != 0; kv = mdbm_next(db2)) {
 		root_key = kv.key.dptr;
 		end_key = kv.val.dptr;
-		process(root_key, NULL, end_key, idDB);
+		process(root_key, NULL, end_key, idDB, show_all);
 	}
 	mdbm_close(db1);
 	mdbm_close(db2);
