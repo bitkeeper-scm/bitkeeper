@@ -7,7 +7,7 @@ all:
 munge: munge.c
 	$(CC) -O munge.c -o munge
 
-image: munge mkbk extractor.c bitkeeper.sh gnu-os
+image: munge mkbk extractor.c bitkeeper.sh gnu-os os
 	./mkbk
 
 clobber clean:
