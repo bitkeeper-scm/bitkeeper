@@ -1,6 +1,6 @@
 #include "bkd.h"
 
-static	char *cmd[] = { "bk", "-r", "sfio", "-o", 0, 0 };
+private	char *cmd[] = { "bk", "-r", "sfio", "-o", 0, 0 };
 private void uncompressed();
 private void compressed(int);
 

@@ -2,9 +2,10 @@
 #ifdef WIN32
 #include <stdlib.h>
 #endif
+#define	private	static
 
-void undos(char *s);
-extern void platformSpecificInit(char *);
+private	void	undos(char *s);
+extern	void	platformSpecificInit(char *);
 
 int
 undos_main(int ac, char **av)
@@ -32,7 +33,7 @@ undos_main(int ac, char **av)
 }
 
 /* kill the newline and the \r */
-void
+private	void
 undos(register char *s)
 {	
 	static char last = '\0';

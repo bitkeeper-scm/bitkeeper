@@ -2,7 +2,7 @@
 #include "sccs.h" 
 
 extern char *editor, *pager, *bin; 
-int is_command(char *file);
+private	int is_command(char *file);
 
 help_main(int ac,  char **av)
 {
@@ -44,7 +44,7 @@ help_main(int ac,  char **av)
 	return (0);
 }
 
-int
+private	int
 is_command(char *cmd)
 {
         int i;

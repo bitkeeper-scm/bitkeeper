@@ -2,8 +2,8 @@
 #include "sccs.h" 
 
 extern char *bin;
-private char *getrev(char *);
-private void clean_file(char *, char *);
+private char	*getrev(char *);
+private void	clean_file(char *, char *);
 
 undo_main(int ac,  char **av)
 {
@@ -33,7 +33,7 @@ undo_main(int ac,  char **av)
 			exit(1);
 		}
 	}
-	cd2root();
+	sccs_cd2root(0, 0);
 	unless (rev) {
 		fprintf(stderr, "usage bk undo [-afqs] -rcset-revision\n");
 		exit(1);

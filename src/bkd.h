@@ -82,6 +82,6 @@ int	out(char *s);
 int	readn(int from, char *buf, int size);
 void	remote_free(remote *r);
 void	remote_print(remote *r, FILE *f);
-int	writen(int fd, char *s);
+int	outfd(int fd, char*buf);
 
 #endif

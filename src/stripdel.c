@@ -4,7 +4,7 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
-char	*stripdel_help = "\n\
+private	char	*stripdel_help = "\n\
 usage: stripdel [-bcq] -r<rev> filename\n\n\
     -b		strip all branch deltas\n\
     -c		checks if the specified rev[s] can be stripped\n\
@@ -12,7 +12,7 @@ usage: stripdel [-bcq] -r<rev> filename\n\n\
     -q		run quietly\n\
     -r<rev>	set of revisions to be removed\n\n";
 
-delta	*checkCset(sccs *s);
+private	delta	*checkCset(sccs *s);
 
 int
 stripdel_main(int ac, char **av)
@@ -147,7 +147,7 @@ usage:		fprintf(stderr, stripdel_help);
 next:	return (1);
 }
 
-delta	*
+private	delta	*
 checkCset(sccs *s)
 {
 	delta	*d, *e;

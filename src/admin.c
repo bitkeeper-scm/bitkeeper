@@ -3,7 +3,7 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-static const char help[] = "\n\
+private const char help[] = "\n\
 usage: admin options [- | file file file...]\n\
 \n\
     -0			add a 1.0 delta if there is not one already\n\
@@ -55,13 +55,13 @@ usage: admin options [- | file file file...]\n\
 			exit(1); \
 		    }
 
-int	do_checkin(char *nm, char *ep, char *cp, int fl,
+private	int	do_checkin(char *nm, char *ep, char *cp, int fl,
 		   char *rev, char *newf, char *com);
-void	clearCset(sccs *s, int flags, int which);
-void	clearPath(sccs *s, int flags);
-void	touch(sccs *s);
-int	setMerge(sccs *sc, char *merge, char *rev);
-int     newrev(sccs *s, pfile *pf); 
+private	void	clearCset(sccs *s, int flags, int which);
+private	void	clearPath(sccs *s, int flags);
+private	void	touch(sccs *s);
+private	int	setMerge(sccs *sc, char *merge, char *rev);
+extern	int     newrev(sccs *s, pfile *pf); 
 
 int
 admin_main(int ac, char **av)
@@ -326,7 +326,7 @@ usage:	fprintf(stderr, "admin: usage error, try `admin --help' for info.\n");
 	return (1);
 }
 
-void
+private	void
 clearCset(sccs *s, int flags, int which)
 {
 	delta	*d;
@@ -361,7 +361,7 @@ clearCset(sccs *s, int flags, int which)
  * gfile name can be different than the init file.  The real answer should be
  * to stuff the initFile into the sccs* and have checkin() respect that.
  */
-int
+private	int
 do_checkin(char *name, char *encp, char *compp,
 	   int flags, char *rev, char *newfile, char *comment)
 {
@@ -443,7 +443,7 @@ do_checkin(char *name, char *encp, char *compp,
 	return (error);
 }
 
-int
+private	int
 setMerge(sccs *sc, char *merge, char *rev)
 {
 	delta *d, *p;
@@ -462,7 +462,7 @@ setMerge(sccs *sc, char *merge, char *rev)
 	return 0;
 }
 
-void
+private	void
 touch(sccs *s)
 {
 	struct utimbuf ut;

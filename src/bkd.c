@@ -1,16 +1,16 @@
 #include "bkd.h"
 
-void	bkd_server(void);
-void	do_cmds(void);
-void	exclude(char *cmd);
-int	findcmd(int ac, char **av);
-int	getav(int *acp, char ***avp);
-void	log_cmd(int i, int ac, char **av);
-void	reap(int sig);
-void	usage();
+private	void	bkd_server(void);
+private	void	do_cmds(void);
+private	void	exclude(char *cmd);
+private	int	findcmd(int ac, char **av);
+private	int	getav(int *acp, char ***avp);
+private	void	log_cmd(int i, int ac, char **av);
+private	void	reap(int sig);
+private	void	usage();
 
 int
-main(int ac, char **av)
+bkd_main(int ac, char **av)
 {
 	int	c;
 
@@ -46,21 +46,21 @@ main(int ac, char **av)
 	}
 }
 
-void
+private	void
 usage()
 {
 	system("bk help bkd");
 	exit(1);
 }
 
-void
+private	void
 reap(int sig)
 {
 	while (waitpid((pid_t)-1, 0, WNOHANG) > 0);
 	signal(SIGCHLD, reap);
 }
 
-void
+private	void
 bkd_server()
 {
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
@@ -99,7 +99,7 @@ bkd_server()
 	}
 }
 
-void
+private	void
 do_cmds()
 {
 	int	ac;
@@ -129,7 +129,7 @@ do_cmds()
 	}
 }
 
-void
+private	void
 log_cmd(int i, int ac, char **av)
 {
 	time_t	t;
@@ -145,7 +145,7 @@ log_cmd(int i, int ac, char **av)
 }
 
 /* remove the specified command from the cmds array */
-void
+private	void
 exclude(char *cmd)
 {
 	struct	cmd c[100];
@@ -171,7 +171,7 @@ exclude(char *cmd)
 	}
 }
 
-int
+private	int
 findcmd(int ac, char **av)
 {
 	int	i;
@@ -183,7 +183,7 @@ findcmd(int ac, char **av)
 	return (-1);
 }
 
-int
+private	int
 getav(int *acp, char ***avp)
 {
 	static	char buf[2500];		/* room for two keys */

@@ -2,14 +2,14 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-void	prevs(sccs *d);
-void	branches(delta *d);
-void	renumber(delta *d);
-void	p(delta *d);
-int	flags;
-sccs	*s;
-int	sort;	/* append -timet */
-int	ser;
+private void	prevs(sccs *d);
+private void	branches(delta *d);
+private void	renumber(delta *d);
+private void	p(delta *d);
+private int	flags;
+private sccs	*s;
+private int	sort;	/* append -timet */
+private int	ser;
 
 int
 lines_main(int ac, char **av)
@@ -43,7 +43,7 @@ lines_main(int ac, char **av)
  * - starts at 0, not 1
  * - increments only for real deltas, not meta
  */
-void
+private void
 renumber(delta *d)
 {
 	if (d->next) renumber(d->next);
@@ -61,14 +61,14 @@ renumber(delta *d)
  * XXX - youngest is only an approximately right answer.  The real
  * deal is that I want the leaf with the oldest done node.
  */
-void
+private void
 prevs(sccs *s)
 {
 	p(s->tree);
 	branches(s->tree);
 }
 
-void
+private void
 branches(delta *d)
 {
 	if (!d) return;
@@ -80,7 +80,7 @@ branches(delta *d)
 	branches(d->siblings);
 }
 
-void
+private void
 pd(char *prefix, delta *d)
 {
 	printf("%s%s", prefix, d->rev);
@@ -97,7 +97,7 @@ pd(char *prefix, delta *d)
 	}
 }
 
-void
+private void
 p(delta *d)
 {
 	char	*prefix = "";

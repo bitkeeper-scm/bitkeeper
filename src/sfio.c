@@ -17,7 +17,7 @@
  * repeats, except for the version number.
  */
 #include "system.h"
-#include <zlib.h>	/* for adler32 */
+#include "zlib/zlib.h"
 #undef	unlink		/* I know the files are writable, I created them */
 WHATSTR("@(#)%K%");
 
@@ -26,20 +26,14 @@ WHATSTR("@(#)%K%");
 #define	SFIO_VERS	(doModes ? SFIO_VERSMODE : SFIO_VERSNOMODE)
 #define	u32		unsigned int
 
-int	sfio_out(void);
+private	int	sfio_out(void);
 private int	out(char *file);
-char	chop(register char *s);
-int	sfio_in(int extract);
+private	int	sfio_in(int extract);
 private int	in(char *file, int todo, int extract);
-int	mkfile(char *file);
-int	mkdirp(char *dir);
-int	mkdirf(char *file);
-int	isdir(char *s);
-private int	readn(int from, char *buf, int size);
-private int	writen(int from, char *buf, int size);
-extern	void platformSpecificInit(char *name);
+private	int	mkfile(char *file);
+extern	void	platformSpecificInit(char *name);
 
-static const char help[] = "\
+private	 const char help[] = "\
 usage:	sfio [-q] [-m] -i | -p < archive\n\
 or:	sfio [-q] [-m] -o < filelist\n\
 \n\
@@ -49,8 +43,8 @@ or:	sfio [-q] [-m] -o < filelist\n\
   -p	list contents of archive\n\
   -q	quiet mode\n";
 
-static	int quiet;
-static	int doModes;
+private	int	quiet;
+private	int	doModes;
 
 #define M_IN	1
 #define M_OUT	2
@@ -275,87 +269,4 @@ again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 		goto again;
 	}
 	return (-1);
-}
-
-
-#ifdef OLD
-/*
- * Given a pathname, make the directory.
- */
-int
-mkdirp(char *dir)
-{
-	char	*t;
-
-	if ((mkdir(dir, 0777) == 0) || (errno == EEXIST)) return (0);
-	for (t = dir; *t; t++) {
-		unless (*t == '/') continue;
-		*t = 0;
-		mkdir(dir, 0777);
-		*t = '/';
-	}
-	return (mkdir(dir, 0777));
-}
-
-/*
- * given a pathname, create the dirname if it doesn't exist.
- */
-int
-mkdirf(char *file)
-{
-	char	*s;
-	int	ret;
-
-	unless (s = strrchr(file, '/')) return (0);
-	*s = 0;
-	if (isdir(file)) {
-		*s = '/';
-		return (0);
-	}
-	ret = mkdirp(file);
-	*s = '/';
-	return (ret);
-}
-
-
-int
-isdir(char *s)
-{
-	struct	stat sbuf;
-
-	if (lstat(s, &sbuf) == -1) return 0;
-	return (S_ISDIR(sbuf.st_mode));
-}
-#endif
-
-private int
-readn(int from, char *buf, int size)
-{
-	int	done;
-	int	n;
-
-	for (done = 0; done < size; ) {
-		n = read(from, buf + done, size - done);
-		if (n <= 0) {
-			break;
-		}
-		done += n;
-	}
-	return (done);
-}
-
-private int
-writen(int from, char *buf, int size)
-{
-	int	done;
-	int	n;
-
-	for (done = 0; done < size; ) {
-		n = write(from, buf + done, size - done);
-		if (n <= 0) {
-			break;
-		}
-		done += n;
-	}
-	return (done);
 }

@@ -13,15 +13,15 @@ WHATSTR("@(#)%K%");
  *
  * Copyright (c) 1999 L.W.McVoy
  */
-char	*sum_help = "\n\
+private	char	*sum_help = "\n\
 usage: rechksum [-cfo] file file | -\n\n\
     -c		check existing checksums but do not correct them\n\
     -f		force a regeneration of the checksum\n\
     -o		go from v2 to old v1 sum format\n\
     -v		verbose\n\n";
 
-int	resum(sccs *s, delta *d, int flags, int old7bit, int dont);
-int	sumit(char *path, int *old, int *new, int old7bit);
+private	int	resum(sccs *s, delta *d, int flags, int old7bit, int dont);
+private	int	sumit(char *path, int *old, int *new, int old7bit);
 
 int
 rechksum_main(int ac, char **av)
@@ -86,7 +86,7 @@ usage:		fprintf(stderr, "%s", sum_help);
 	return (0);
 }
 
-int
+private	int
 resum(sccs *s, delta *d, int flags, int old7bit, int dont)
 {
 	int	old, new;
@@ -150,7 +150,7 @@ resum(sccs *s, delta *d, int flags, int old7bit, int dont)
 	assert("Not reached" == 0);
 }
 
-int
+private	int
 sumit(char *path, int *old, int *new, int old7bit)
 {
 	unsigned char buf[16<<10];

@@ -597,8 +597,8 @@ void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);
 int	sccs_getComments(char *, char *, delta *);
-int	sccs_getHostName(char *, char *, delta *);
-int	sccs_getUserName(char *, char *, delta *);
+int	sccs_getHostName(delta *);
+int	sccs_getUserName(delta *);
 void	sfileUnget(void);
 char	*sfileNext(void);
 char	*sfileRev(void);
@@ -637,7 +637,6 @@ char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, char kind, char *out);
 char	**addLine(char **space, char *line);
 void	freeLines(char **space);
-int	roundType(char *r);
 int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
@@ -714,9 +713,6 @@ int	gethelp(char *help_name, char *bkarg, FILE *f);
 void	status(int verbose, char *status_log);
 void	notify();
 char	*logAddr();
-char	*project_name(); 
-void	init_aliases();
-char	*cname_user(char *username); 
 int	bkusers(int countOnly, int raw, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 char	*match_globs(char *string, globv globs);
@@ -729,5 +725,17 @@ int	repository_rdlock(void);
 int	repository_wrlock(void);
 int	repository_rdunlock(int force);
 int	repository_wrunlock(void);
+int	repository_stale(char *path, int discard);
+
+void	comments_save(char *s);
+int	comments_got(void);
+void	comments_done(void);
+delta	*comments_get(delta *d);
+
+void	host_done();
+delta	*host_get(delta *);
+
+void	user_done();
+delta	*user_get(delta *);
 
 #endif	/* _SCCS_H_ */

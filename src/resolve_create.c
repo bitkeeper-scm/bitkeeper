@@ -89,6 +89,7 @@ res_diffCommon(resolve *rs, rfunc differ)
 	return (0);
 }
 
+int
 do_diff(resolve *rs, char *left, char *right)
 {
 	char	cmd[MAXPATH*3];
@@ -97,6 +98,7 @@ do_diff(resolve *rs, char *left, char *right)
 	system(cmd);
 }
 
+int
 do_sdiff(resolve *rs, char *left, char *right)
 {
 	char	cmd[MAXPATH*3];

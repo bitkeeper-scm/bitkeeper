@@ -7,7 +7,7 @@ WHATSTR("@(#)%K%");
  *
  * TODO - make it find only files locked by a particular user
  */
-char *sfiles_usage = "\n\
+private	char *sfiles_usage = "\n\
 usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
     -a		examine all files, even if listed in BitKeeper/etc/ignore\n\
     -A		when used with -C, list all revs, not just the tip\n\
@@ -37,26 +37,25 @@ usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
  * XXX - what should be done here is all the flags should be a bitmask
  * and then we can easily check for the combinations we accept.
  */
-int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg, xFlg, uFlg;
-int	Dflg, Aflg, Rflg, kFlg;
-int	error;
-FILE	*pending_cache;
-FILE	*id_cache;
-void	keys(char *file);
-MDBM	*idDB;
-int	dups;
-int	mixed;		/* running in mixed long/short mode */
-int	hasDiffs(char *file);
-int	isSccs(char *s);
-void	rebuild(void);
-char	*name(char *);
-sccs	*cset;
-
-typedef	void (*lftw_func)(const char *path, int mode);
-void	file(char *f, lftw_func func);
-void	lftw(const char *dir, lftw_func func);
-void	process(const char *filename, int mode);
-void	caches(const char *filename, int mode);
+private	int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg;
+private	int	Dflg, Aflg, Rflg, kFlg, xFlg, uFlg;
+private	int	error;
+private	FILE	*pending_cache;
+private	FILE	*id_cache;
+private	void	keys(char *file);
+private	MDBM	*idDB;
+private	int	dups;
+private	int	mixed;		/* running in mixed long/short mode */
+private	int	hasDiffs(char *file);
+private	int	isSccs(char *s);
+private	void	rebuild(void);
+private	char	*name(char *);
+private	sccs	*cset;
+typedef	void	(*lftw_func)(const char *path, int mode);
+private	void	file(char *f, lftw_func func);
+private	void	lftw(const char *dir, lftw_func func);
+private	void	process(const char *filename, int mode);
+private	void	caches(const char *filename, int mode);
 
 int
 sfiles_main(int ac, char **av)
@@ -144,13 +143,13 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 /*
  * Skip files which we don't want to consider as crud.
  */
-inline void
+private	inline void
 xprint(char *f)
 {
 	if (!strneq("BitKeeper/log/", f, 14)) printf("%s\n", f);
 }
 
-void
+private	void
 xfile(char *file)
 {
 	char	*sfile = name2sccs(file);
@@ -166,7 +165,7 @@ xfile(char *file)
 /*
  * Handle a single file.
  */
-void
+private	void
 file(char *f, lftw_func func)
 {
 	struct	stat sb;
@@ -197,7 +196,7 @@ file(char *f, lftw_func func)
 	free(g);
 }
 
-void
+private	void
 process(const char *filename, int mode)
 {
 	register char *file = (char *)filename;
@@ -290,7 +289,7 @@ process(const char *filename, int mode)
 	printf("%s\n", name(file));
 }
 
-char	*
+private	char	*
 name(char *sfile)
 {
 	static	char	buf[MAXPATH];
@@ -309,7 +308,7 @@ name(char *sfile)
 	return (buf);
 }
 
-int
+private	int
 hasDiffs(char *file)
 {
 	sccs	*s = sccs_init(file, INIT_NOCKSUM, 0);
@@ -323,7 +322,7 @@ hasDiffs(char *file)
 	return (0);
 }
 
-int
+private	int
 isSccs(char *s)
 {
 	int	fd = open(s, 0, 0);
@@ -339,7 +338,7 @@ isSccs(char *s)
 /*
  * XXX - not lib safe.  Needs to have state reset.
  */
-void
+private	void
 keys(char *file)
 {
 	sccs	*s = sccs_init(file, INIT_NOCKSUM, 0);
@@ -380,7 +379,7 @@ keys(char *file)
 /*
  * rebuild the caches.
  */
-void
+private	void
 rebuild()
 {
 	int	i;
@@ -435,14 +434,14 @@ c:	lftw(".", caches);
 	mdbm_close(idDB);
 }
 
-void
+private	void
 visit(delta *d)
 {
 	d->flags |= D_VISITED;
 	if (d->parent) visit(d->parent);
 }
 
-void
+private	void
 save(sccs *sc, MDBM *idDB, char *buf)
 {
 	if (mdbm_store_str(idDB, buf, sc->gfile, MDBM_INSERT)) {
@@ -458,7 +457,7 @@ save(sccs *sc, MDBM *idDB, char *buf)
 	}
 }
 
-void
+private	void
 pr(sccs *sc, delta *d)
 {
 	if (!d || !d->parent) return;
@@ -467,7 +466,7 @@ pr(sccs *sc, delta *d)
 	    gFlg ? sc->gfile : sc->sfile, BK_FS, d->parent->rev, d->rev);
 }
 
-void
+private	void
 caches(const char *filename, int mode)
 {
 	char	*file = (char *)filename;
@@ -562,7 +561,7 @@ out:
  */
 #define GFILE(s) ((isalpha((s)[0]) && (s)[1] == '.') ? (s)+2 : (s))
 
-void
+private	void
 lftw_inner(char *path, char *base, struct stat *sb,
 	   globv ignore, lftw_func func)
 {
@@ -634,7 +633,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 	closedir(d);
 }
 
-void
+private	void
 lftw(const char *dir, lftw_func func)
 {
 	FILE		*ignoref;

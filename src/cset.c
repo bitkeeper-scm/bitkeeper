@@ -2,15 +2,11 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
-#include "zlib.h"
-
-#include "comments.c"
-#include "host.c"
-#include "user.c"
+#include "zlib/zlib.h"
 
 WHATSTR("@(#)%K%");
 
-char	*cset_help = "\n\
+private	char	*cset_help = "\n\
 usage: cset [opts]\n\n\
     -c		like -m, except generate only ChangeSet diffs\n\
     -d<range>	do unified diffs for the range\n\
@@ -64,35 +60,34 @@ typedef	struct cset {
 	MDBM	*base;
 } cset_t;
 
-int	csetCreate(sccs *cset, int flags, char **syms, int newlod);
-int	csetInit(sccs *cset, int flags, char *text);
-void	csetlist(cset_t *cs, sccs *cset);
-void	csetList(sccs *cset, char *rev, int ignoreDeleted);
-int	marklist(char *file, int newlod, MDBM *tot, MDBM *base);
-void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
-void	dump(MDBM *db, FILE *out);
-int	sameState(const char *file, const struct stat *sb);
-void	lock(char *);
-void	unlock(char *);
-delta	*mkChangeSet(sccs *cset, FILE *diffs);
-void	explodeKey(char *key, char *parts[4]);
-char	*file2str(char *f);
-void	doRange(cset_t *cs, sccs *sc);
-void	doEndpoints(cset_t *cs, sccs *sc);
-void	doSet(sccs *sc);
-void	doMarks(cset_t *cs, sccs *sc);
-void	doDiff(sccs *sc, int kind);
-void	sccs_patch(sccs *, cset_t *);
-void	cset_exit(int n);
-
+private	int	csetCreate(sccs *cset, int flags, char **syms, int newlod);
+private	int	csetInit(sccs *cset, int flags, char *text);
+private	void	csetlist(cset_t *cs, sccs *cset);
+private	void	csetList(sccs *cset, char *rev, int ignoreDeleted);
+private	int	marklist(char *file, int newlod, MDBM *tot, MDBM *base);
+private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
+private	void	dump(MDBM *db, FILE *out);
+private	int	sameState(const char *file, const struct stat *sb);
+private	void	lock(char *);
+private	void	unlock(char *);
+private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
+private	char	*file2str(char *f);
+private	void	doRange(cset_t *cs, sccs *sc);
+private	void	doEndpoints(cset_t *cs, sccs *sc);
+private	void	doSet(sccs *sc);
+private	void	doMarks(cset_t *cs, sccs *sc);
+private	void	doDiff(sccs *sc, int kind);
+private	void	sccs_patch(sccs *, cset_t *);
+private	void	cset_exit(int n);
 private void	mklod(sccs *s, delta *start, delta *stop);
+extern	void	explodeKey(char *key, char *parts[4]);
 
-FILE	*id_cache;
-MDBM	*idDB = 0;
-char	csetFile[] = CHANGESET; /* for win32, need writable	*/
+private	FILE	*id_cache;
+private	MDBM	*idDB = 0;
+private	char	csetFile[] = CHANGESET; /* for win32, need writable	*/
 				/* buffer for name convertion	*/
 
-cset_t	copts;		/* an easy way to create a local that is zeroed */
+private	cset_t	copts;	/* an easy way to create a local that is zeroed */
 private char	*spin = "|/-\\";
 
 /*
@@ -105,7 +100,8 @@ cset_main(int ac, char **av)
 	int	flags = 0;
 	int	c, list = 0;
 	char	**syms = 0, *text = 0;
-	int	cFile = 0, ignoreDeleted = 0;
+	int	ignoreDeleted = 0;
+	char	*cFile = 0;
 	char	allRevs[6] = "1.0..";
 	int	newlod = 0;
 	RANGE_DECL;
@@ -177,15 +173,12 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 's': flags |= SILENT; break;
 		    case 'v': copts.verbose++; break;
 		    case 'y':
-			comment = optarg;
-			gotComment = 1;
+			comments_save(optarg);
 			flags |= DELTA_DONTASK;
 			break;
 		    case 'Y':
-			comment = file2str(optarg);
+			comments_save(cFile = file2str(optarg));
 			flags |= DELTA_DONTASK;
-			gotComment = 1;
-			cFile++;
 			break;
 		    case 'L': newlod++; break; /* XXX: someday with sym */
 		    case 'S': syms = addLine(syms, strdup(optarg)); break;
@@ -282,14 +275,14 @@ usage:		fprintf(stderr, "%s", cset_help);
 		}
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
-		if (cFile) free(comment);
+		if (cFile) free(cFile);
 		freeLines(syms);
 		purify_list();
 		return (0);
 	    case 2:
 	    	csetList(cset, r[0], ignoreDeleted);
 		sccs_free(cset);
-		if (cFile) free(comment);
+		if (cFile) free(cFile);
 		freeLines(syms);
 		purify_list();
 		return (0);
@@ -302,13 +295,13 @@ next:		sccs_free(cset);
 	 * changesets from one pending file.
 	 */
 	c = csetCreate(cset, flags, syms, newlod);
-	if (cFile) free(comment);
+	if (cFile) free(cFile);
 	freeLines(syms);
 	purify_list();
 	return (c);
 }
 
-void
+private void
 cset_exit(int n)
 {
 	if (copts.pid) {
@@ -326,7 +319,7 @@ cset_exit(int n)
  * line.
  *
  */
-pid_t
+private pid_t
 spawn_checksum_child(void)
 {
 	int	p[2], fd0, rc;
@@ -375,7 +368,7 @@ spawn_checksum_child(void)
 	return pid;
 }
 
-int
+private int
 csetInit(sccs *cset, int flags, char *text)
 {
 	delta	*d = 0;
@@ -394,9 +387,9 @@ csetInit(sccs *cset, int flags, char *text)
 		fprintf(stderr, "cset: must be -i ChangeSet\n");
 		cset_exit(1);
 	}
-	if (flags & DELTA_DONTASK) unless (d = getComments(d)) goto intr;
-	unless(d = getHostName(d)) goto intr;
-	unless(d = getUserName(d)) goto intr;
+	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
+	unless(d = host_get(d)) goto intr;
+	unless(d = user_get(d)) goto intr;
 	sym[0] = (char *)1ul;
 	sym[1] = strdup(KEY_FORMAT2);
 	cset->state |= S_CSET|S_KEY2;
@@ -419,25 +412,25 @@ csetInit(sccs *cset, int flags, char *text)
 intr:		sccs_whynot("cset", cset);
 error:		sccs_free(cset);
 		sfileDone();
-		commentsDone(saved);
-		hostDone();
-		userDone();
+		comments_done();
+		host_done();
+		user_done();
 		free(sym[1]);
 		purify_list();
 		return (1);
 	}
 	close(creat(IDCACHE, GROUP_MODE));
 	sccs_free(cset);
-	commentsDone(saved);
-	hostDone();
-	userDone();
+	comments_done();
+	host_done();
+	user_done();
 	sfileDone();
 	free(sym[1]);
 	purify_list();
 	return (0);
 }
 
-void
+private void
 csetList(sccs *cset, char *rev, int ignoreDeleted)
 {
 	MDBM	*idDB;				/* db{fileId} = pathname */
@@ -504,7 +497,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 /*
  * Do whatever it is they want.
  */
-void
+private void
 doit(cset_t *cs, sccs *sc)
 {
 	static	int first = 1;
@@ -561,7 +554,7 @@ header(sccs *cset, int diffs)
  * mark all deltas in this cset, or
  * just mark the cset boundry.
  */
-void
+private void
 markThisCset(cset_t *cs, sccs *s, delta *d)
 {
 	if (cs->mark || (cs->range == RANGE_ENDPOINTS)) {
@@ -585,7 +578,7 @@ markThisCset(cset_t *cs, sccs *s, delta *d)
  * If we are in KEY_FORMAT2 it's easy, they match or they don't.
  * Otherwise we'll try short versions.
  */
-int
+private int
 sameFile(cset_t *cs, char *key1, char *key2)
 {
 	char	*a, *b;
@@ -601,7 +594,7 @@ sameFile(cset_t *cs, char *key1, char *key2)
 	return (ret);
 }
 
-int
+private int
 doKey(cset_t *cs, char *key, char *val)
 {
 	static	MDBM *idDB;
@@ -732,7 +725,7 @@ Please stand by.\n\n", stderr);
  * Mark the deltas listed in the diff file.  Ignore first line.
  * XXX: change from 0a0 format to I0 0 format
  */
-int
+private int
 marklist(char *file, int newlod, MDBM *tot, MDBM *base)
 {
 	char	*t;
@@ -779,7 +772,7 @@ marklist(char *file, int newlod, MDBM *tot, MDBM *base)
  * List all the revisions which make up a range of changesets.
  * The list is sorted for performance.
  */
-void
+private void
 csetlist(cset_t *cs, sccs *cset)
 {
 	char	*t;
@@ -928,7 +921,7 @@ fail:
 /*
  * Spit out the diffs.
  */
-void
+private void
 doDiff(sccs *sc, int kind)
 {
 	delta	*d, *e = 0;
@@ -959,7 +952,7 @@ doDiff(sccs *sc, int kind)
  * Print the oldest..youngest
  * XXX - does not make sure that they are both on the trunk.
  */
-void
+private void
 doRange(cset_t *cs, sccs *sc)
 {
 	delta	*d, *e = 0;
@@ -985,7 +978,7 @@ doRange(cset_t *cs, sccs *sc)
  * Print a range suitable for diffs.
  * XXX - does not make sure that they are both on the trunk.
  */
-void
+private void
 doEndpoints(cset_t *cs, sccs *sc)
 {
 	delta	*d, *earlier = 0, *later = 0;
@@ -1076,7 +1069,7 @@ mkNewlod(cset_t *cs, sccs *s, delta *d)
 	mklod(s, t, d);
 }
 
-void
+private void
 doMarks(cset_t *cs, sccs *s)
 {
 	delta	*d;
@@ -1116,7 +1109,7 @@ doMarks(cset_t *cs, sccs *s)
 	}
 }
 
-void
+private void
 doSet(sccs *sc)
 {
 	delta	*d;
@@ -1139,7 +1132,7 @@ doSet(sccs *sc)
 /*
  * Print out everything leading from start to d, not including start.
  */
-void
+private void
 csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d)
 {
 	int	i;
@@ -1211,7 +1204,7 @@ add(FILE *diffs, char *buf)
  * leave the file sorted.
  * Close the cset sccs* when done.
  */
-delta	*
+private delta	*
 mkChangeSet(sccs *cset, FILE *diffs)
 {
 	delta	*d;
@@ -1280,7 +1273,7 @@ dump(MDBM *db, FILE *out)
 	}
 }
 
-void
+private	void
 updateIdCacheEntry(sccs *sc, const char *filename)
 {
 	char	*path;
@@ -1304,7 +1297,7 @@ updateIdCacheEntry(sccs *sc, const char *filename)
  *
  * should hanlde lock fail with re-try
  */
-void
+private	void
 lock(char *lockName)
 {
 	int	i;
@@ -1316,7 +1309,7 @@ lock(char *lockName)
 	close(i);
 }
 
-void
+private	void
 unlock(char *lockName)
 {
 	if (unlink(lockName)) {
@@ -1333,7 +1326,7 @@ unlock(char *lockName)
  *   to a LOD: make new changeset start new LOD.
  */
 
-int
+private	int
 csetCreate(sccs *cset, int flags, char **syms, int newlod)
 {
 	delta	*d;
@@ -1379,7 +1372,7 @@ csetCreate(sccs *cset, int flags, char **syms, int newlod)
 #undef	open
 	close(0);
 	open(DEV_TTY, 0, 0);
-	if (flags & DELTA_DONTASK) d = getComments(d);
+	if (flags & DELTA_DONTASK) d = comments_get(d);
 	if (sccs_delta(cset, flags, d, 0, diffs, syms) == -1) {
 		sccs_whynot("cset", cset);
 		error = -1;
@@ -1452,11 +1445,11 @@ out:	sccs_free(cset);
 	if (totdb) mdbm_close(totdb);
 	if (basedb) mdbm_close(basedb);
 	unlink(filename);
-	commentsDone(saved);
+	comments_done();
 	return (error);
 }
 
-char	*
+private	char	*
 file2str(char *f)
 {
 	struct	stat sb;
@@ -1488,7 +1481,7 @@ file2str(char *f)
  * All the deltas we want are marked so print them out.
  * Note: takepatch depends on table order so don't change that.
  */
-void
+private	void
 sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;

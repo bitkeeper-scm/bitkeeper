@@ -8,7 +8,7 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private int print_id(char *file);
+private	int	print_id(char *file);
 
 int
 what_main(int ac, char **av)

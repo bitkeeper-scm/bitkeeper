@@ -27,21 +27,21 @@ WHATSTR("@(#)%K%");
  * It is a fatal error to call sfileFirst() without calling sfileDone() or
  * before sfileNext() returned NULL.
  */
-static	int flags;		/* saved flags */
-static	char **av;		/* saved copy of argv */
-static	int ac;			/* where we are - starts at 0 */
-static	FILE *flist;		/* set if getting files from stdin */
-static	DIR *d;			/* directory we are reading */
-static	char prefix[MAXPATH];	/* path/to/dir/SCCS/ */
-static	char buf[MAXPATH];	/* pathname we actually pass back */
-static	int unget;		/* if set, return path again */
-static	char *prog;		/* av[0], sort of */
-static	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
+private	int flags;		/* saved flags */
+private	char **av;		/* saved copy of argv */
+private	int ac;			/* where we are - starts at 0 */
+private	FILE *flist;		/* set if getting files from stdin */
+private	DIR *d;			/* directory we are reading */
+private	char prefix[MAXPATH];	/* path/to/dir/SCCS/ */
+private	char buf[MAXPATH];	/* pathname we actually pass back */
+private	int unget;		/* if set, return path again */
+private	char *prog;		/* av[0], sort of */
+private	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
 
 private	int oksccs(char *s, int flags, int complain);
 void concat_path(char *buf, char *first, char *second);
 
-int
+private int
 isDelete(char *s)
 {
 	char	*t = strrchr(s, '/');
@@ -220,12 +220,6 @@ sfileFirst(char *cmd, char **Av, int Flags)
 }
 
 void
-sfileUnget()
-{
-	unget = 1;
-}
-
-void
 sfileDone()
 {
 	if (av) {
@@ -285,7 +279,8 @@ oksccs(char *sfile, int flags, int complain)
  * TODO: This function should be grouped with cleanPath() and put in
  *	 the same file.
  */
-void concat_path(char *buf, char *first, char *second)
+void
+concat_path(char *buf, char *first, char *second)
 {
 	int len;
 	if (buf != first) strcpy(buf, first);

@@ -2,7 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
-const char get_help[] = "\
+private	const char get_help[] = "\
 usage: get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]\n\
    -b		force branch\n\
    -c<date>	get the latest revision before the date\n\

@@ -8,7 +8,13 @@ bkdopts	Opts;	/* has to be declared here, other people use this code */
 int
 out(char *buf)
 {
-	return (writen(1, buf));
+	return (outfd(1, buf));
+}
+
+int
+outfd(int to, char *buf)
+{
+	return (write(to, buf, strlen(buf)));
 }
 
 int
@@ -18,11 +24,19 @@ in(char *buf, int n)
 }
 
 int
-writen(int fd, char *buf)
+writen(int to, char *buf, int size)
 {
-	assert(fd >= 0);
-	assert(buf);
-	return (write(fd, buf, strlen(buf)));
+	int	done;
+	int	n;
+
+	for (done = 0; done < size; ) {
+		n = write(to, buf + done, size - done);
+		if (n <= 0) {
+			break;
+		}
+		done += n;
+	}
+	return (done);
 }
 
 int

@@ -10,8 +10,9 @@ char	*getlog(char *user);
 int	get(char *path, int flags, char *output);
 int	bkusers();
 int	setlog(char *user);
+private char	*project_name();
 
-void
+private	void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 {
 	sccs *s;
@@ -139,7 +140,7 @@ sendConfig(char *to)
 	unlink(config_log);
 }
 
-void
+private void
 header(FILE *f)
 {
 	char	parent_file[MAXPATH];
@@ -239,13 +240,14 @@ get(char *path, int flags, char *output)
 	return (ret ? -1 : 0);
 }
 
-char *
+private char *
 project_name()
 {
-	sccs *s;
-	static char pname[MAXLINE] = "";
-	char changeset[MAXPATH] = CHANGESET;
-	cd2root();
+	sccs	*s;
+	static	char pname[MAXLINE] = "";
+	char	changeset[MAXPATH] = CHANGESET;
+
+	sccs_cd2root(0, 0);
 	s = sccs_init(changeset, 0, 0);
 	if (s && s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
 	sccs_free(s);
@@ -257,7 +259,7 @@ notify()
 {
 	char	buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
 	char	subject[MAXLINE], *projectname;
-	FILE *f;
+	FILE	*f;
 
 	sprintf(notify_file, "%setc/notify", bk_dir);
 	unless (exists(notify_file)) {
@@ -275,7 +277,8 @@ notify()
 	fclose(f);
 	sprintf(buf, "%sbk sccslog -r+ ChangeSet >> %s", bin, notify_log);
 	system(buf);
-	sprintf(buf, "%sbk cset -r+ | %sbk sccslog - >> %s", bin, bin, notify_log);
+	sprintf(buf,
+	    "%sbk cset -r+ | %sbk sccslog - >> %s", bin, bin, notify_log);
 	system(buf);
 	projectname = project_name();
 	if (projectname[0]) {
@@ -340,7 +343,8 @@ mail(char *to, char *subject, char *file)
 	if (strstr(ubuf.sysname, "IRIX")) {
 		sprintf(buf, "%s %s < %s", mail, to, file);
 	} else if (strstr(ubuf.sysname, "Windows")) {
-		sprintf(buf, "%s/%s -s \"%s\" %s < %s", bin, mail, subject, to, file);
+		sprintf(buf,
+		    "%s/%s -s \"%s\" %s < %s", bin, mail, subject, to, file);
 	}  else {
 		sprintf(buf, "%s -s \"%s\" %s < %s", mail, subject, to, file);
 	}
@@ -421,31 +425,32 @@ status(int verbose, char *status_log)
 	} else {
 		int i;
 
-		fprintf(f, "%d people have made deltas.\n", bkusers(1, 0, 0));
+		fprintf(f, "%6d people have made deltas.\n", bkusers(1, 0, 0));
 		sprintf(buf, "%sbk sfiles > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
 		fclose(f1);
-		fprintf(f, "%d files under revision control.\n", i);
+		fprintf(f, "%6d files under revision control.\n", i);
 		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
 		fclose(f1);
-		fprintf(f, "%d files not under revision control.\n", i);
+		fprintf(f, "%6d files not under revision control.\n", i);
 		sprintf(buf, "%sbk sfiles -c > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
 		fclose(f1);
-		fprintf(f, "%d files modified and not checked in.\n", i);
+		fprintf(f, "%6d files modified and not checked in.\n", i);
 		sprintf(buf, "%sbk sfiles -C > %s", bin, tmp_file);
 		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f); i++);
 		fclose(f1);
 		fprintf( f,
-		   "%d files with checked in, but not committed, deltas.\n", i);
+		   "%6d files with checked in, but not committed, deltas.\n",
+		   i);
 	}
 	unlink(tmp_file);
 	fclose(f);
@@ -454,9 +459,10 @@ status(int verbose, char *status_log)
 int
 gethelp(char *help_name, char *bkarg, FILE *outf)
 {
-	char buf[MAXLINE], pattern[MAXLINE];
-	FILE *f;
-	int found = 0;
+	char	buf[MAXLINE], pattern[MAXLINE];
+	FILE	*f;
+	int	found = 0;
+	int	first = 1;
 
 	if (bkarg == NULL) bkarg = "";
 	sprintf(buf, "%sbkhelp.txt", bin);
@@ -472,6 +478,8 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	while (fgets(buf, sizeof(buf), f)) {
 		char *p;
 
+		if (first && (buf[0] == '#')) continue;
+		first = 0;
 		if (streq("$\n", buf)) break;
 		p = strstr(buf, "#BKARG#");
 		if (p) {
@@ -485,23 +493,6 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	}
 	fclose(f);
 	return (found);
-}
-
-
-void 
-cd2root()
-{
-	char *root = sccs_root(0);
-	
-	unless (root) {
-		fprintf(stderr, "Can not find root.\n");
-		exit(1);
-	}
-	if (chdir(root) != 0) {
-		perror(root);
-		exit(1);
-	}
-	free(root);
 }
 
 void

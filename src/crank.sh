@@ -15,7 +15,7 @@ rm -rf $REPO
 set -e
 PREFER_RSH=YES bk clone $TREE_HOST:/home/bk/$TREE $REPO
 cd $REPO/src
-get build.sh || exit 1
+bk get build.sh || exit 1
 cp build.sh build
 chmod +x build
 ./build production

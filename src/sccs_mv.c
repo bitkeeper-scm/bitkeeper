@@ -3,10 +3,10 @@
 #include "sccs.h"
 WHATSTR("%W%");
 
-char	*getRelativeName(char *);
-void	rmDir(char *);
-int	mv(char *, char *);
-int	update_idcache(sccs *s, char *old, char *new);
+private	char	*getRelativeName(char *);
+private	void	rmDir(char *);
+private	int	mv(char *, char *);
+private	int	update_idcache(sccs *s, char *old, char *new);
 
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
@@ -141,7 +141,7 @@ out:	if (s) sccs_free(s);
 /*
  * Update the idcache for this file.
  */
-int
+private	int
 update_idcache(sccs *s, char *old, char *new)
 {
 	project	*p;
@@ -214,10 +214,10 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	chmod(path, 0666);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	unlink(path);
-	return;
+	return (0);
 }
 
-char *
+private	char *
 getRelativeName(char *name)
 {
 	char	*t, *rpath;
@@ -229,7 +229,7 @@ getRelativeName(char *name)
 	return rpath;
 }
 
-int
+private	int
 mv(char *src, char *dest)
 {
 	debug((stderr, "moving %s -> %s\n", src, dest));
@@ -251,7 +251,7 @@ mv(char *src, char *dest)
 	return (0);
 }
 
-void
+private	void
 rmDir(char *dir)
 {
 	if (streq(".", dir) || samepath(".", dir)) return;

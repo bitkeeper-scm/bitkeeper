@@ -9,6 +9,10 @@
 #include "system.h"
 #include "sccs.h"
 
+private	 void	pass1(sccs *s);
+private	 void	pass2(void);
+private	 int	try_rename(sccs *s, delta *d, int dopass1);
+
 int
 names_main(int ac, char **av)
 {
@@ -52,8 +56,9 @@ names_main(int ac, char **av)
 	return (error);
 }
 
-static	int filenum = 0;
+private	int filenum = 0;
 
+private	void
 pass1(sccs *s)
 {
 	char	path[MAXPATH];
@@ -68,6 +73,7 @@ pass1(sccs *s)
 	}
 }
 
+private	void
 pass2()
 {
 	char	path[MAXPATH];
@@ -111,7 +117,7 @@ pass2()
  * Just for fun, see if the place where this wants to go is taken.
  * If not, just move it there.  We should be clean so just do the s.file.
  */
-int
+private	int
 try_rename(sccs *s, delta *d, int dopass1)
 {
 	char	*sfile = name2sccs(d->pathname);

@@ -22,9 +22,32 @@
  * 	RESYNC directory or the RENAMES directory under <path>.
  */
 #include "resolve.h"
-#include "comments.c"
 
 extern	char	*bin;
+
+private	void	commit(opts *opts);
+private	void	conflict(opts *opts, char *rfile);
+private	int	create(resolve *rs);
+private	int	create(resolve *rs);
+private	void	edit_tip(resolve *rs, char *sf, delta *d, char *rf, int which);
+private	void	freeStuff(opts *opts);
+private	int	nameOK(opts *opts, sccs *s);
+private int	open_and_delta(opts *opts, char *sfile);
+private	void	pass1_renames(opts *opts, sccs *s);
+private	int	pass2_renames(opts *opts);
+private	int	pass3_resolve(opts *opts);
+private	int	pass4_apply(opts *opts);
+private	int	passes(opts *opts);
+private	int	pending();
+private	int	pending(void);
+private	int	pendingCheckins(void);
+private	int	pendingRenames();
+private	int	pendingRenames(void);
+private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
+private	int	rename_file(resolve *rs);
+private	int	rename_file(resolve *rs);
+private	void	restore(FILE *f);
+private	void	unbackup(FILE *f);
 
 int
 resolve_main(int ac, char **av)
@@ -99,7 +122,7 @@ resolve_main(int ac, char **av)
 /*
  * Do the setup and then work through the passes.
  */
-int
+private	int
 passes(opts *opts)
 {
 	sccs	*s;
@@ -291,7 +314,7 @@ saveKey(opts *opts, char *key, char *file)
  * If there is no matching file in local (both path slot and key slot), then
  * return 0.
  */
-int
+private	int
 nameOK(opts *opts, sccs *s)
 {
 	char	path[MAXPATH];
@@ -358,7 +381,7 @@ nameOK(opts *opts, sccs *s)
 /*
  * Pass 1 - move to RENAMES
  */
-void
+private	void
 pass1_renames(opts *opts, sccs *s)
 {
 	char	path[MAXPATH];
@@ -427,7 +450,7 @@ pass1_renames(opts *opts, sccs *s)
  * This routine may be called multiple times in each pass, until it gets to
  * a pass where it does no work.
  */
-int
+private	int
 pass2_renames(opts *opts)
 {
 	char	path[MAXPATH];
@@ -558,7 +581,7 @@ out:		fclose(f);
  * The lower level routines may make space for us and ask us to move it
  * with EAGAIN.
  */
-int
+private	int
 create(resolve *rs)
 {
 	char	buf[MAXKEY];
@@ -662,7 +685,7 @@ freenames(names *names, int free_struct)
  * May be called twice on the same file, when called with resolveNames
  * set, then we have to resolve the file somehow.
  */
-int
+private	int
 rename_file(resolve *rs)
 {
 	opts	*opts = rs->opts;
@@ -828,7 +851,7 @@ move_remote(resolve *rs, char *sfile)
 /*
  * Add a null rename delta to the specified tip.
  */
-void
+private	void
 rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 {
 	char	*t;
@@ -940,7 +963,7 @@ flags_delta(resolve *rs,
  * If which is set, update the r.file with the new data.
  *	which == LOCAL means do local rev, REMOTE means do remote rev.
  */
-void
+private	void
 edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 {
 	char	buf[MAXPATH+100];
@@ -1059,7 +1082,7 @@ slotTaken(opts *opts, char *slot)
  * for the r.ChangeSet, or for any modified files, or for any files with
  * pending deltas.
  */
-int
+private	int
 pass3_resolve(opts *opts)
 {
 	char	buf[MAXPATH];
@@ -1254,6 +1277,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	return (0);
 }
 
+private int
 open_and_delta(opts *opts, char *sfile)
 {
 	sccs	*s = sccs_init(sfile, INIT, opts->resync_proj);
@@ -1261,11 +1285,12 @@ open_and_delta(opts *opts, char *sfile)
 	do_delta(opts, s);
 }
 
+int
 do_delta(opts *opts, sccs *s)
 {
 	int	flags = DELTA_FORCE;
 
-	gotComment = 0;
+	comments_done();	/* force them to provide them */
 	if (opts->quiet) flags |= SILENT;
 	if (sccs_delta(s, flags, 0, 0, 0, 0)) {
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
@@ -1281,7 +1306,7 @@ do_delta(opts *opts, sccs *s)
  * The symbol case is weird: a conflict is when the same symbol name
  * is in both branches without one below the trunk.
  */
-void
+private	void
 conflict(opts *opts, char *sfile)
 {
 	sccs	*s;
@@ -1420,9 +1445,8 @@ automerge(resolve *rs, names *n)
 			    "Content merge of %s OK\n", rs->s->gfile);
 		}
 		if (!IS_LOCKED(rs->s) && edit(rs)) return;
-		comment = "Auto merged";
-		gotComment = 1;
-		d = getComments(0);
+		comments_save("Auto merged");
+		d = comments_get(0);
 		sccs_restart(rs->s);
 		flags = DELTA_DONTASK|DELTA_FORCE|(rs->opts->quiet? SILENT : 0);
 		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
@@ -1483,7 +1507,7 @@ edit(resolve *rs)
 
 /* ---------------------------- Pass4 stuff ---------------------------- */
 
-int
+private	int
 pendingRenames()
 {
 	DIR	*dir;
@@ -1504,7 +1528,7 @@ pendingRenames()
 /*
  * Return true if there are pending deltas.
  */
-int
+private	int
 pending()
 {
 	char	buf[MAXPATH];
@@ -1521,7 +1545,7 @@ pending()
 /*
  * Return true if there are pending checkins other than the cset file
  */
-int
+private	int
 pendingCheckins()
 {
 	char	buf[MAXPATH];
@@ -1547,7 +1571,7 @@ pendingCheckins()
  *
  * XXX - need to check logging.
  */
-void
+private	void
 commit(opts *opts)
 {
 	int	i;
@@ -1578,7 +1602,7 @@ commit(opts *opts)
  * Make sure there are no edited files, no RENAMES, and {r,m}.files and
  * apply all files.
  */
-int
+private	int
 pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
@@ -1748,7 +1772,7 @@ pass4_apply(opts *opts)
 /*
  * Go through and remove the backup files.
  */
-void
+private	void
 unbackup(FILE *f)
 {
 	char	*t;
@@ -1768,7 +1792,7 @@ unbackup(FILE *f)
 /*
  * Go through and put everything back.
  */
-void
+private	void
 restore(FILE *f)
 {
 	char	*t;
@@ -1813,7 +1837,7 @@ You must move them into place by hand before the repository is usable.\n\
 	}
 }
 
-void
+private	void
 freeStuff(opts *opts)
 {
 	/*

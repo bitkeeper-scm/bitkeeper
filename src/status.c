@@ -17,7 +17,7 @@ status_main(int ac, char **av)
 		}
 	}
 	if (project_path = av[optind]) chdir(project_path);
-	cd2root();
+	sccs_cd2root(0, 0);
 	sprintf(status_log, "%s/bk_status%d", TMP_PATH, getpid());
 	status(verbose, status_log);
 	f = fopen(status_log, "r");

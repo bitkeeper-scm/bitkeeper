@@ -1,7 +1,7 @@
 #include "bkd.h"
 
-remote	*nfs_parse(char *p);
-remote	*url_parse(char *p);
+private	remote	*nfs_parse(char *p);
+private	remote	*url_parse(char *p);
 
 /*
  * Turn either
@@ -45,7 +45,7 @@ remote_parse(char *p)
 }
 
 /* [[user@]host:]path */
-remote *
+private	remote *
 nfs_parse(char *p)
 {
 	remote	*r;
@@ -79,7 +79,7 @@ nfs_parse(char *p)
 }
 
 /* host[:port]/path or host:port */
-remote *
+private	remote *
 url_parse(char *p)
 {
 	remote	*r;
@@ -232,7 +232,7 @@ bkd(int compress, remote *r, int *sock)
 			 * In regression test $BK_BIN is set to the
 			 * test directory.
 			 */
-			sprintf(bkd_path, "%sbkd -e", bin);
+			sprintf(bkd_path, "%sbk bkd -e", bin);
 			cmd[++i] = bkd_path;
 		} else {
 			/* pick up the bkd in the installed directory */

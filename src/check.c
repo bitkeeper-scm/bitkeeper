@@ -7,29 +7,29 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
-char	*check_help = "\n\
+private	char	*check_help = "\n\
 usage: check [-av]\n\n\
     -a		warn if the files listed are a subset of the repository\n\
     -f		fix any fixable errors\n\
     -c		check file checksum\n\
     -v		list each file which is OK\n\n";
 
-MDBM	*buildKeys();
-char	*csetFind(char *key);
-int	check(sccs *s, MDBM *db, MDBM *marks);
-char	*getRev(char *root, char *key, MDBM *idDB);
-char	*getFile(char *root, MDBM *idDB);
-void	listMarks(MDBM *db);
-int	checkAll(MDBM *db);
-void	listFound(MDBM *db);
-void	listCsetRevs(char *key);
+private	MDBM	*buildKeys();
+private	char	*csetFind(char *key);
+private	int	check(sccs *s, MDBM *db, MDBM *marks);
+private	char	*getRev(char *root, char *key, MDBM *idDB);
+private	char	*getFile(char *root, MDBM *idDB);
+private	void	listMarks(MDBM *db);
+private	int	checkAll(MDBM *db);
+private	void	listFound(MDBM *db);
+private	void	listCsetRevs(char *key);
 
-int	verbose;
-int	all;		/* if set, check every darn entry in the ChangeSet */
-int	fix;		/* if set, fix up anything we can */
-int	names;		/* if set, we need to fix names */
-int	mixed;
-project	*proj;
+private	int	verbose;
+private	int	all;	/* if set, check every darn entry in the ChangeSet */
+private	int	fix;	/* if set, fix up anything we can */
+private	int	names;	/* if set, we need to fix names */
+private	int	mixed;
+private	project	*proj;
 private char	csetFile[] = CHANGESET;
 private int	flags = INIT_SAVEPROJ|INIT_NOCKSUM;
 
@@ -157,7 +157,7 @@ usage:		fprintf(stderr, "%s", check_help);
  * is in the ChangeSet file.  This will always fail if you are doing a partial
  * check.
  */
-int
+private int
 checkAll(MDBM *db)
 {
 	FILE	*keys = popen("bk sccscat -h ChangeSet", "r");
@@ -217,7 +217,7 @@ checkAll(MDBM *db)
 	return (errors);
 }
 
-void
+private void
 listFound(MDBM *db)
 {
 	kvpair	kv;
@@ -237,7 +237,7 @@ listFound(MDBM *db)
  * We'll use this later for making sure that all the keys in a file
  * are there.
  */
-MDBM	*
+private MDBM	*
 buildKeys()
 {
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -340,7 +340,7 @@ buildKeys()
 /*
  * List all revisions which have the specified key.
  */
-void
+private void
 listCsetRevs(char *key)
 {
 	FILE	*keys = popen("bk sccscat -hm ChangeSet", "r");
@@ -376,7 +376,7 @@ listCsetRevs(char *key)
 out:	pclose(keys);
 }
 
-char	*
+private char	*
 getFile(char *root, MDBM *idDB)
 {
 	sccs	*s = sccs_keyinit(root, flags, proj, idDB);
@@ -388,7 +388,7 @@ getFile(char *root, MDBM *idDB)
 	return (t);
 }
 
-char	*
+private char	*
 getRev(char *root, char *key, MDBM *idDB)
 {
 	sccs	*s = sccs_keyinit(root, flags, proj, idDB);
@@ -414,7 +414,7 @@ getRev(char *root, char *key, MDBM *idDB)
 	
 	4) check that the file is in the recorded location
 */
-int
+private int
 check(sccs *s, MDBM *db, MDBM *marks)
 {
 	delta	*d;
@@ -516,7 +516,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	return (errors);
 }
 
-void
+private void
 listMarks(MDBM *db)
 {
 	kvpair	kv;
@@ -532,7 +532,7 @@ listMarks(MDBM *db)
 	}
 }
 
-char	*
+private char	*
 csetFind(char *key)
 {
 	char	buf[MAXPATH*2];

@@ -1,8 +1,8 @@
 #include "system.h"
 #include "sccs.h"
-#include <zlib.h>
+#include "zlib/zlib.h"
 
-void do_checksum(void);
+private	void do_checksum(void);
 
 int
 adler32_main(void)
@@ -22,7 +22,7 @@ adler32_main(void)
  *
  * adler32() is in zlib.
  */
-void
+private void
 do_checksum(void)
 {
 	char buf[2*MAXPATH];

@@ -22,7 +22,7 @@ WHATSTR("@(#)%K%");
  *	diffs -dalpha1
  * to behave differently.
  */
-char	*diffs_help = "\n\
+private	char	*diffs_help = "\n\
 usage: diffs [-acDMPsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -a		do diffs on all sfiles\n\
     -c		do context diffs\n\

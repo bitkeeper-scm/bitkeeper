@@ -5,7 +5,7 @@ extern char *bin;
 
 #define BK_LOG "BitKeeper/log"
 
-char *
+private	char *
 sendlog(char *to, char *rev)
 {
 	char x_sendlog[MAXPATH], here[MAXPATH], has[MAXPATH], revs[MAXPATH];
@@ -94,7 +94,7 @@ send_main(int ac,  char **av)
 		exit(1);
 	}
 
-	cd2root();
+	sccs_cd2root(0, 0);
 	if (!streq(to, "-") && !force) {
 #ifdef OLD
 		char rev_tmp[MAXPATH];

@@ -12,7 +12,7 @@ parent_main(int ac,  char **av)
 	int c, i = 0, do_remove = 0, quiet = 0;
 
 	platformInit();  
-	cd2root();
+	sccs_cd2root(0, 0);
 	
 	while ((c = getopt(ac, av, "qr")) != -1) {
 		switch(c) {

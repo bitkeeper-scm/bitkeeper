@@ -11,7 +11,9 @@ int force = 0, lod = 0;
 int checklog = 1, getcomment = 1;
 char *sym = 0;
 
-void make_comment(char *cmt);
+private	void	make_comment(char *cmt);
+private int	do_commit();
+private	int	checkConfig();
 
 commit_main(int ac, char **av)
 {
@@ -43,7 +45,7 @@ commit_main(int ac, char **av)
 				break;
 		}
 	}
-	cd2root();
+	sccs_cd2root(0, 0);
 	unless(resync) remark(quiet);
 	sprintf(list, "%s/bk_list%d", TMP_PATH, getpid());
 	sprintf(buf, "%sbk sfiles -CA > %s", bin, list);
@@ -101,6 +103,7 @@ cat(char *file)
 	mclose(m);
 }
 
+private int
 do_commit()
 {
 	int hasComment =  (exists(commit_file) && (size(commit_file) > 0));
@@ -119,7 +122,7 @@ do_commit()
 	if (checklog) {
 		if (checkLog() != 0) {
 			unlink(commit_file);
-			exit (1);
+			exit(1);
 		}
 	}
 	sprintf(commit_list, "%s/commit_list%d", TMP_PATH, getpid());
@@ -141,6 +144,7 @@ do_commit()
 	return(rc);
 }
 
+private	int
 checkConfig()
 {
 	char buf[MAXLINE];
@@ -151,19 +155,19 @@ checkConfig()
 	sprintf(g_config, "%setc/config", bk_dir);
 	unless (exists(s_config)) {
 		gethelp("chkconfig_missing", bin, stdout);
-		return 1;
+		return (1);
 	}
 	if (exists(g_config)) do_clean(s_config, SILENT);
 	get(s_config, SILENT, 0);
 	sprintf(buf, "cmp -s %setc/config %sbitkeeper.config", bk_dir, bin);
 	if (system(buf) == 0) {
 		gethelp("chkconfig_inaccurate", bin, stdout);
-		return 1;
+		return (1);
 	}
-	return 0;
+	return (0);
 }
 
-void
+private	void
 make_comment(char *cmt)
 {
 	int fd;

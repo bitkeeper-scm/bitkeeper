@@ -7,6 +7,7 @@ extern char *bin;
 char *find_wish();
 char *find_perl5();
 
+int bkd_main(int, char **);
 int setup_main(int, char **);
 int commit_main(int, char **);
 int status_main(int, char **);
@@ -74,6 +75,7 @@ int repo_main(int, char **);
 int pull_main(int, char **);
 
 struct command cmdtbl[100] = {
+	{"bkd", bkd_main },
 	{"setup", setup_main },
 	{"commit", commit_main},
 	{"status", status_main},
@@ -178,11 +180,11 @@ main(int ac, char **av)
 				chdir(av[2]);
 				av++; ac--;
 			} else {
-				cd2root();
+				sccs_cd2root(0, 0);
 			}
 			av++; ac--;
 			if (streq(av[1], "-R")) {
-				cd2root();
+				sccs_cd2root(0, 0);
 				av++; ac--;
 			}
 			unless (streq(av[1], "sfiles")) {
@@ -207,7 +209,7 @@ main(int ac, char **av)
 			}
 		}
 		if (streq(av[1], "-R")) {
-			cd2root();
+			sccs_cd2root(0, 0);
 			av++; ac--;
 		}
 		av++; ac--;

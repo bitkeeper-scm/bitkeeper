@@ -5,6 +5,9 @@
 #include <unistd.h>
 #endif
 #define	streq(a,b)	!strcmp(a,b)
+#define	private		static
+
+private int	do_chksum(int fd, int off);
 
 /*
  * Calculate the same checksum as is used in BitKeeper.
@@ -47,7 +50,7 @@ chksum_main(int ac, char **av)
 	exit(0);
 }
 
-int
+private int
 do_chksum(int fd, int off)
 {
 	unsigned char buf[16<<10];

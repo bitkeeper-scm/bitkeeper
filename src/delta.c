@@ -8,7 +8,7 @@ WHATSTR("@(#)%K%");
    -R		respect rev (?)\n\
    -s		same as -q\n\
 */
-char	*delta_help = "\n\
+private	char	*delta_help = "\n\
 usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
    -a		check in new work automatically\n\
    -c		don't verify file checksum\n\
@@ -30,9 +30,7 @@ usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
 		gzip	like gzip(1)\n\
 		none	no compression\n";
 
-#include "comments.c"
 int	newrev(sccs *s, pfile *pf);
-project	*proj;
 
 int
 delta_main(int ac, char **av)
@@ -55,6 +53,7 @@ delta_main(int ac, char **av)
 	MMAP	*init = 0;
 	pfile	pf;
 	int	dash;
+	project	*proj = 0;
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -84,8 +83,7 @@ help:		fputs(delta_help, stderr);
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;
 		    case 'p': dflags |= PRINT; break;
 		    case 'y':
-comment:		comment = optarg;
-			gotComment = 1;
+comment:		comments_save(optarg);
 			dflags |= DELTA_DONTASK;
 			break;
 		    case 's': /* fall through */
@@ -156,7 +154,8 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 	}
 
 	/* force them to do something sane */
-	if (!comment && dash && name && !(dflags & NEWFILE) && sfileNext()) {
+	if (!comments_got() &&
+	    dash && name && !(dflags & NEWFILE) && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified without a checkin comment\n", av[0]);
 		goto usage;
@@ -187,7 +186,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		char	*nrev;
 
 		if (dflags & DELTA_DONTASK) {
-			unless (d = getComments(0)) goto usage;
+			unless (d = comments_get(0)) goto usage;
 		}
 		if (mode) d = sccs_parseArg(d, 'O', mode, 0);
 		unless (s = sccs_init(name, iflags, proj)) {
@@ -218,7 +217,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			sccs_whynot("delta", s);
 			if (init) mclose(init);
 			sccs_free(s);
-			commentsDone(saved);
+			comments_done();
 			sfileDone();
 			freeLines(syms);
 			purify_list();
@@ -249,7 +248,7 @@ next:		if (init) mclose(init);
 		name = sfileNext();
 	}
 	sfileDone();
-	commentsDone(saved);
+	comments_done();
 	freeLines(syms);
 	if (proj) proj_free(proj);
 	purify_list();

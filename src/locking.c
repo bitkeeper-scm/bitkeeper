@@ -7,15 +7,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-int	repository_locked(project *p);
-int	repository_lockers(project *p);
-int	repository_cleanLocks(project *p, int force);
-int	repository_rdlock(void);
-int	repository_wrlock(void);
-int	repository_rdunlock(int force);
-int	repository_wrunlock(void);
-int	repository_stale(char *path, int discard);
-
 int
 repository_locked(project *p)
 {
@@ -26,6 +17,10 @@ repository_locked(project *p)
 	unless (p) {
 		unless (p = proj_init(0)) return (0);
 		freeit = 1;
+	}
+	unless (p->root) {
+		if (freeit) proj_free(p);
+		return (0);
 	}
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	ret = exists(path) && !emptyDir(path);
@@ -51,6 +46,10 @@ repository_lockers(project *p)
 	unless (p) {
 		unless (p = proj_init(0)) return (0);
 		freeit = 1;
+	}
+	unless (p->root) {
+		if (freeit) proj_free(p);
+		return (0);
 	}
 	unless (repository_locked(p)) {
 		fprintf(stderr, "Entire repository is locked\n");
@@ -105,6 +104,10 @@ repository_cleanLocks(project *p, int force)
 	unless (p) {
 		unless (p = proj_init(0)) return (-1);
 		freeit = 1;
+	}
+	unless (p->root) {
+		if (freeit) proj_free(p);
+		return (0);
 	}
 
 	unless (host = sccs_gethost()) {
@@ -177,6 +180,10 @@ repository_rdlock()
 	project	*p;
 
 	unless (p = proj_init(0)) return (-1);
+	unless (p->root) {
+		proj_free(p);
+		return (0);
+	}
 
 	/*
 	 * We go ahead and create the lock and then see if there is a
@@ -219,6 +226,10 @@ repository_wrlock()
 	struct	stat sbuf;
 
 	unless (p = proj_init(0)) return (-1);
+	unless (p->root) {
+		proj_free(p);
+		return (0);
+	}
 
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	if (exists(path) && !emptyDir(path)) {
@@ -277,6 +288,10 @@ repository_rdunlock(int force)
 	project	*p;
 
 	unless (p = proj_init(0)) return (-1);
+	unless (p->root) {
+		proj_free(p);
+		return (0);
+	}
 
 	/* clean out our lock, if any */
 	sprintf(path,
@@ -306,6 +321,10 @@ repository_wrunlock()
 	struct	dirent *d;
 
 	unless (p = proj_init(0)) return (-1);
+	unless (p->root) {
+		proj_free(p);
+		return (0);
+	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	unless (exists(path)) goto out;
 	unless (D = opendir(path)) {

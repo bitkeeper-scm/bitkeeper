@@ -59,16 +59,11 @@ sccs_getComments(char *file, char *rev, delta *n)
 }
 
 int
-sccs_getHostName(char *file, char *rev, delta *n)
+sccs_getHostName(delta *n)
 {
 	char	buf2[1024];
 
-	assert(file);
-	if (rev) {
-		fprintf(stderr, "%s@%s>>  ", file, rev);
-	} else {
-		fprintf(stderr, "%s>>  ", file);
-	}
+	fprintf(stderr, "Hostname of your machine>>  ");
 #ifdef	ANSIC
 	if (setjmp(jmp)) {
 		fprintf(stderr,
@@ -84,7 +79,8 @@ sccs_getHostName(char *file, char *rev, delta *n)
 			n->hostname = strdup(buf2);
 			break;
 		}
-		fprintf(stderr, "hostname of your machine>>  ");
+		fprintf(stderr, "%s is not a valid hostname\n", buf2);
+		fprintf(stderr, "Hostname of your machine>>  ");
 	}
 #ifndef	ANSIC
 	if (sig(CAUGHT, SIGINT)) {
@@ -99,16 +95,10 @@ sccs_getHostName(char *file, char *rev, delta *n)
 
 
 int
-sccs_getUserName(char *file, char *rev, delta *n)
+sccs_getUserName(delta *n)
 {
 	char	buf2[1024];
 
-	assert(file);
-	if (rev) {
-		fprintf(stderr, "%s@%s>>  ", file, rev);
-	} else {
-		fprintf(stderr, "%s>>  ", file);
-	}
 #ifdef	ANSIC
 	if (setjmp(jmp)) {
 		fprintf(stderr,
@@ -119,6 +109,7 @@ sccs_getUserName(char *file, char *rev, delta *n)
 #else
 	sig(UNBLOCK, SIGINT);
 #endif
+	fprintf(stderr, "User name>>  ");
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		char	*t;
 
@@ -129,7 +120,8 @@ sccs_getUserName(char *file, char *rev, delta *n)
 			n->user = strdup(buf2);
 			break;
 		}
-		fprintf(stderr, "user name>>  ");
+		fprintf(stderr, "%s is not a valid user name\n", buf2);
+		fprintf(stderr, "User name>>  ");
 	}
 #ifndef	ANSIC
 	if (sig(CAUGHT, SIGINT)) {
@@ -241,7 +233,7 @@ gotInterrupt:
 }
 
 int
-sccs_getHostName(char *file, char *rev, delta *n)
+sccs_getHostName(delta *n)
 {
 #define	BUF_SIZE 1024
 	char	buf2[BUF_SIZE];
@@ -264,12 +256,7 @@ sccs_getHostName(char *file, char *rev, delta *n)
 	GetConsoleMode(fh, &consoleMode); /* save old mode */
 	SetConsoleMode(fh, 0); /* drop into raw mode */
 
-	assert(file);
-	if (rev) {
-		fprintf(stderr, "%s %s>>  ", file, rev);
-	} else {
-		fprintf(stderr, "%s>>  ", file);
-	}
+	fprintf(stderr, "Hostname of your machine>>  ");
 
 	for (p = buf2, more = 1; more; ) {
 		if (p < &buf2[BUF_SIZE-1]) {
@@ -305,7 +292,7 @@ sccs_getHostName(char *file, char *rev, delta *n)
 			n->hostname = strdup(buf2);
 			break;
 		}
-		fprintf(stderr, "hostname of your machine>>   ");
+		fprintf(stderr, "Hostname of your machine>>  ");
 	}
 
 	SetConsoleMode(fh, consoleMode); /* restore old mode */
@@ -320,7 +307,7 @@ gotInterrupt:
 
 }
 
-sccs_getUserName(char *file, char *rev, delta *n)
+sccs_getUserName(delta *n)
 {
 #define	BUF_SIZE 1024
 	char	buf2[BUF_SIZE];
@@ -343,13 +330,7 @@ sccs_getUserName(char *file, char *rev, delta *n)
 	GetConsoleMode(fh, &consoleMode); /* save old mode */
 	SetConsoleMode(fh, 0); /* drop into raw mode */
 
-	assert(file);
-	if (rev) {
-		fprintf(stderr, "%s %s>>  ", file, rev);
-	} else {
-		fprintf(stderr, "%s>>  ", file);
-	}
-
+	fprintf(stderr, "User name>>   ");
 	for (p = buf2, more = 1; more; ) {
 		if (p < &buf2[BUF_SIZE-1]) {
 			ReadFile(fh, p, 1, (LPDWORD) &len, 0);
@@ -387,7 +368,8 @@ sccs_getUserName(char *file, char *rev, delta *n)
 			n->user = strdup(buf2);
 			break;
 		}
-		fprintf(stderr, "user name>>   ");
+		fprintf(stderr, "%s is not a valid user name\n", buf2);
+		fprintf(stderr, "User name>>   ");
 	}
 
 	SetConsoleMode(fh, consoleMode); /* restore old mode */

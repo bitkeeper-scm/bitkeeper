@@ -3,7 +3,7 @@
 #include "sccs.h"
 #include "range.h"
 WHATSTR("@(#)%K%");
-char	*prs_help = "\n\
+private	char	*prs_help = "\n\
 usage: prs [-abhmMv] [-c<date>] [-C<rev>] [-r<rev>] [files...]\n\n\
     -a		print info on all deltas, not just data deltas\n\
     -b		reverse the order of the printed deltas\n\

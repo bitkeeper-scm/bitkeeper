@@ -20,10 +20,10 @@
 WHATSTR("@(#)%K%");
 
 private void	renumber(sccs *s, int flags);
-void	newRev(sccs *s, int flags, MDBM *db, delta *d);
-void	remember(MDBM *db, delta *d);
-int	taken(MDBM *db, delta *d);
-int	redo(sccs *s, delta *d, MDBM *db, int flags, int release);
+private	void	newRev(sccs *s, int flags, MDBM *db, delta *d);
+private	void	remember(MDBM *db, delta *d);
+private	int	taken(MDBM *db, delta *d);
+private	int	redo(sccs *s, delta *d, MDBM *db, int flags, int release);
 
 int
 renumber_main(int ac, char **av)
@@ -99,7 +99,7 @@ renumber(sccs *s, int flags)
 	mdbm_close(db);
 }
 
-void
+private	void
 newRev(sccs *s, int flags, MDBM *db, delta *d)
 {
 	char	buf[100];
@@ -118,7 +118,7 @@ newRev(sccs *s, int flags, MDBM *db, delta *d)
 	remember(db, d);
 }
 
-void
+private	void
 remember(MDBM *db, delta *d)
 {
 	datum	key, val;
@@ -130,7 +130,7 @@ remember(MDBM *db, delta *d)
 	mdbm_store(db, key, val, 0);
 }
 
-int
+private	int
 taken(MDBM *db, delta *d)
 {
 	datum	key, val;
@@ -144,7 +144,7 @@ taken(MDBM *db, delta *d)
 /*
  * XXX - does not yet handle default branch
  */
-int
+private	int
 redo(sccs *s, delta *d, MDBM *db, int flags, int release)
 {
 	delta	*p;

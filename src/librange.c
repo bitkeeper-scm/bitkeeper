@@ -304,25 +304,6 @@ tokens(char *s)
 	return (1);
 }
 
-inline char
-last(register char *s)
-{
-	unless (s && *s) return 0;
-	while (*s++);
-	return (s[-1]);
-}
-
-int
-roundType(char *s)
-{
-	if (!s || !*s) return (EXACT);
-	switch (*s) {
-	    case '+':	return (ROUNDUP);
-	    case '-':	return (ROUNDDOWN);
-	    default:	return (EXACT);
-	}
-}
-
 /*
  * Translate from the range info in the options to a range specification
  * in the sccs structure.

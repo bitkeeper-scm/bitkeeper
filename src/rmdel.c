@@ -2,12 +2,11 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
-char	*rmdel_help = "\n\
+
+private	char	*rmdel_help = "\n\
 usage: rmdel [-q] [-r<rev>] file\n\n\
     -q		run quietly\n\
     -r<r>	rmdel revision <r>\n\n";
-
-void	rmcaches(void);
 
 /*
  * The weird setup is so that I can #include this file into sccssh.c

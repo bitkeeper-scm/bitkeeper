@@ -7,7 +7,8 @@
 #include "sccs.h"
 #include "range.h"
 WHATSTR("@(#)%K%");
-char	*log_help = "\n\
+
+private	char	*log_help = "\n\
 usage: sccslog [-hpv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
     -c<dates>	Cut off dates.  See range(1) for details.\n\
     -C		produce comments for a changeset\n\
@@ -22,17 +23,17 @@ usage: sccslog [-hpv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
     -d9207..92	    prints all deltas from July 1 '92 to Dec 31 '92\n\
     -d92..92	    prints all deltas from Jan 1 '92 to Dec 31 '92\n\n";
 
-int	compar(const void *a, const void *b);
-void	sortlog(int flags);
-void	printlog(void);
-void	sccslog(sccs *s);
-void	stealTree(delta *d, delta *stop);
-void	freelog(void);
+private	int	compar(const void *a, const void *b);
+private	void	sortlog(int flags);
+private	void	printlog(void);
+private	void	sccslog(sccs *s);
+private	void	stealTree(delta *d, delta *stop);
+private	void	freelog(void);
 
-delta	*list, **sorted;
-int	n;
-int	pflag;		/* do basenames */
-int	Cflg;		/* comments for changesets */
+private	delta	*list, **sorted;
+private	int	n;
+private	int	pflag;		/* do basenames */
+private	int	Cflg;		/* comments for changesets */
 
 int
 sccslog_main(int ac, char **av)
@@ -86,7 +87,8 @@ next:		sccs_free(s);
 	return (0);
 }
 
-int compar(const void *a, const void *b)
+private	int
+compar(const void *a, const void *b)
 {
 	register	delta *d1, *d2;
 
@@ -95,7 +97,7 @@ int compar(const void *a, const void *b)
 	return (d2->date - d1->date);
 }
 
-void
+private	void
 sortlog(int flags)
 {
 	int	i = n;
@@ -119,7 +121,7 @@ sortlog(int flags)
 	verbose((stderr, "done.\n"));
 }
 
-void
+private	void
 printlog()
 {
 	int	i, j;
@@ -161,7 +163,7 @@ printlog()
  * If one revision specified (r1 == r2), save just that.
  * Otherwise, save everything from r1 down, pruning at r2.
  */
-void
+private	void
 sccslog(sccs *s)
 {
 	delta	*d, *e;
@@ -211,7 +213,7 @@ sccslog(sccs *s)
  * Take all the deltas from start down, pruning at stop.
  * Put them on the list (destroying the delta table list).
  */
-void
+private	void
 stealTree(delta *d, delta *stop)
 {
 	if (d->zone) {
@@ -234,7 +236,7 @@ stealTree(delta *d, delta *stop)
 	if (d->siblings) stealTree(d->siblings, stop);
 }
 
-void
+private	void
 freelog()
 {
 	delta	*d;

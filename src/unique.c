@@ -32,9 +32,9 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-extern	char *findTmp();
-private	int dirty;	/* set if we updated the db */
-private MDBM *db;
+extern	char	*findTmp();
+private	int	dirty;	/* set if we updated the db */
+private	MDBM	*db;
 
 /*
  * XXX Note: This locking scheme will not work if the lock directory is

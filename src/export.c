@@ -54,7 +54,7 @@ usage:			fprintf(stderr,
 		exit(1);
 	}
 	chdir(src);
-	cd2root();
+	sccs_cd2root(0, 0);
 	strcpy(src_path, fullname(src, 0));
 	strcpy(dst_path, fullname(dst, 0));
 

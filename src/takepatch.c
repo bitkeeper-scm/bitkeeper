@@ -6,7 +6,7 @@ left||right->path == s->gfile.
 /* Copyright (c) 1999 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
-#include "zlib.h"
+#include "zlib/zlib.h"
 WHATSTR("@(#)%K%");
 
 /*
@@ -49,38 +49,40 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 	fputs("------------------------------------------------------\n",\
 	stderr);
 
-delta	*getRecord(MMAP *f);
-int	extractPatch(char *name, MMAP *p, int flags, int fast, project *proj);
-int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
-int	applyPatch(char *local, int flags, sccs *perfile, project *proj);
-int	getLocals(sccs *s, delta *d, char *name);
-void	insertPatch(patch *p);
-void	initProject(void);
-MMAP	*init(char *file, int flags, project **p);
-void	rebuild_id(char *id);
-void	cleanup(int what);
-void	changesetExists(void);
-void	notfirst(void);
-void	goneError(char *key);
-void	freePatchList();
-void	fileCopy2(char *from, char *to);
-void	badpath(sccs *s, delta *tot);
+private	delta	*getRecord(MMAP *f);
+private	int	extractPatch(char *name, MMAP *p, int flags, int fast, project *proj);
+private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
+private	int	applyPatch(char *local, int flags, sccs *perfile, project *proj);
+private	int	getLocals(sccs *s, delta *d, char *name);
+private	void	insertPatch(patch *p);
+private	void	initProject(void);
+private	MMAP	*init(char *file, int flags, project **p);
+private	void	rebuild_id(char *id);
+private	void	cleanup(int what);
+private	void	changesetExists(void);
+private	void	notfirst(void);
+private	void	goneError(char *key);
+private	void	freePatchList();
+private	void	fileCopy2(char *from, char *to);
+private	void	badpath(sccs *s, delta *tot);
 
-int	echo = 0;	/* verbose level, higher means more diagnostics */
-int	mkpatch = 0;	/* act like makepatch verbose */
-int	line;		/* line number in the patch file */
-int	fileNum;	/* counter for the Nth init/diff file */
-patch	*patchList = 0;	/* list of patches for a file, list len == fileNum */
-int	conflicts;	/* number of conflicts over all files */
-int	newProject;	/* command line option to create a new repository */
-int	saveDirs;	/* save directories even if errors */
-MDBM	*idDB;		/* key to pathname database, set by init or rebuilt */
-MDBM	*goneDB;	/* key to gone database */
-delta	*tableGCA;	/* predecessor to the oldest delta found in the patch */
-int	noConflicts;	/* if set, abort on conflicts */
-char	pendingFile[MAXPATH];
-char	*input;		/* input file name, either "-" or a patch file */
-char	*spin = "|/-\\";
+private	int	echo = 0;	/* verbose level, more means more diagnostics */
+private	int	mkpatch = 0;	/* act like makepatch verbose */
+private	int	line;		/* line number in the patch file */
+private	int	fileNum;	/* counter for the Nth init/diff file */
+private	patch	*patchList = 0;	/* patches for a file, list len == fileNum */
+private	int	conflicts;	/* number of conflicts over all files */
+private	int	newProject;	/* command line opt to create a new repo */
+private	int	saveDirs;	/* save directories even if errors */
+private	MDBM	*idDB;		/* key to pathname db, set by init or rebuilt */
+private	MDBM	*goneDB;	/* key to gone database */
+private	delta	*tableGCA;	/* predecessor to the oldest delta found
+				 * in the patch */
+private	int	noConflicts;	/* if set, abort on conflicts */
+private	char	pendingFile[MAXPATH];
+private	char	*input;		/* input file name,
+				 * either "-" or a patch file */
+private	char	*spin = "|/-\\";
 
 int
 takepatch_main(int ac, char **av)
@@ -193,7 +195,7 @@ usage:		fprintf(stderr, takepatch_help);
 	exit(0);
 }
 
-delta *
+private	delta *
 getRecord(MMAP *f)
 {
 	int	e = 0;
@@ -215,7 +217,7 @@ getRecord(MMAP *f)
  * "name" is the cset name, i.e., the most recent name in the csets being
  * sent; it might be different than the local name.
  */
-int
+private	int
 extractPatch(char *name, MMAP *p, int flags, int fast, project *proj)
 {
 	delta	*tmp;
@@ -382,7 +384,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 	return (nfound);
 }
 
-int
+private	int
 sccscopy(sccs *to, sccs *from)
 {
 	unless (to && from) return (-1);
@@ -407,7 +409,7 @@ sccscopy(sccs *to, sccs *from)
  * Extract one delta from the patch file.
  * Deltas end on the first blank line.
  */
-int
+private	int
 extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
 {
 	delta	*d, *parent = 0, *tmp;
@@ -502,7 +504,7 @@ delta1:	off = mtell(f);
 	return (0);
 }
 
-void
+private	void
 changesetExists(void)
 {
 	SHOUT();
@@ -516,7 +518,7 @@ the changeset ID at the top of the patch:\n\
     	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
-void
+private	void
 goneError(char *buf)
 {
 	SHOUT();
@@ -529,7 +531,7 @@ Contact BitMover for assistance, we'll have a tool to do this soon.\n", buf);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
-void
+private	void
 noconflicts(void)
 {
 	SHOUT();
@@ -540,7 +542,7 @@ stderr);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
-void
+private	void
 notfirst(void)
 {
 	SHOUT();
@@ -557,7 +559,7 @@ stderr);
 	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
-void
+private	void
 ahead(char *pid, char *sfile)
 {
 	SHOUT();
@@ -570,7 +572,7 @@ and get a patch that is based on a common ancestor.\n", stderr);
 	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
-void
+private	void
 badpath(sccs *s, delta *tot)
 {
 	SHOUT();
@@ -584,7 +586,7 @@ and retry the patch.  The patch has been saved in the PENDING directory\n",
 stderr);
 }
 
-void
+private	void
 nothingtodo(void)
 {
 	SHOUT();
@@ -596,7 +598,7 @@ the same as the software accepting the patch.  We were looking for\n\
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
-void
+private	void
 noversline(char *name)
 {
 	SHOUT();
@@ -609,7 +611,7 @@ the same as the software accepting the patch.  We were looking for\n\
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
-void
+private	void
 badXsum(int a, int b)
 {
 	SHOUT();
@@ -622,7 +624,7 @@ badXsum(int a, int b)
 	/* XXX - should clean up everything if this was takepatch -i */
 }
 
-void
+private	void
 uncommitted(char *file)
 {
 	SHOUT();
@@ -632,13 +634,13 @@ Please commit pending changes with `bk commit' and reapply the patch.\n",
 		file);
 }
 
-void
+private	void
 oldformat(void)
 {
 	fputs("takepatch: warning: patch is in obsolete format\n", stderr);
 }
 
-void
+private	void
 setlod(sccs *s, delta *d, int branch)
 {
 	u16	maxlod;
@@ -670,7 +672,7 @@ setlod(sccs *s, delta *d, int branch)
  * If the file does exist, copy it, rip out the old stuff, and then apply
  * the list.
  */
-int
+private	int
 applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 {
 	patch	*p = patchList;
@@ -921,7 +923,7 @@ apply:
 /*
  * Include up to but not including tableGCA in the list.
  */
-int
+private	int
 getLocals(sccs *s, delta *g, char *name)
 {
 	FILE	*t;
@@ -993,7 +995,7 @@ getLocals(sccs *s, delta *g, char *name)
 /*
  * Return true if 'a' is earlier than 'b'
  */
-int
+private	int
 earlier(patch *a, patch *b)
 {
 	int ret;
@@ -1010,7 +1012,7 @@ earlier(patch *a, patch *b)
 /*
  * Insert the delta in the list in sorted time order.
  */
-void
+private	void
 insertPatch(patch *p)
 {
 	patch	*t;
@@ -1038,7 +1040,7 @@ insertPatch(patch *p)
 	t->next = p;
 }
 
-void
+private	void
 freePatchList()
 {
 	patch	*p;
@@ -1066,7 +1068,7 @@ freePatchList()
 /*
  * Create enough stuff that the tools can find the project root.
  */
-void
+private	void
 initProject()
 {
 	unless (emptyDir(".")) {
@@ -1089,7 +1091,7 @@ initProject()
  * Put our pid in that dir so that we can figure out if
  * we are still here.
  */
-MMAP	*
+private	MMAP	*
 init(char *inputFile, int flags, project **pp)
 {
 	char	buf[MAXPATH];		/* used ONLY for input I/O */
@@ -1364,13 +1366,13 @@ init(char *inputFile, int flags, project **pp)
 	return (m);
 }
 
-void
+private	void
 fileCopy2(char *from, char *to)
 {
 	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
 }
 
-void
+private	void
 rebuild_id(char *id)
 {
 	char	*s;
@@ -1400,7 +1402,7 @@ rebuild_id(char *id)
 	}
 }
 
-void
+private	void
 cleanup(int what)
 {
 	if (patchList) freePatchList();

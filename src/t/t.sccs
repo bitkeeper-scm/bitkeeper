@@ -35,3 +35,12 @@ if [ $? != 0 ]; then echo admin -h failed; bk admin -h FILE; echo $?; exit 1; fi
 bk admin -qH FILE 2> $DEV_NULL
 if [ $? != 1 ]; then echo admin -H failed to error; bk admin -H FILE; exit 1; fi
 echo OK
+
+echo $N Make sure we can check in a file without a repo root ........$NL
+rm -rf *
+ls > LS
+bk new $Q LS
+if [ ! -f SCCS/s.LS ]
+then	echo failed; exit 1
+fi
+echo OK

@@ -1,25 +1,42 @@
-/* Copyright (c) 1998 L.W.McVoy */
+/* Copyright (c) 1998-2000 L.W.McVoy */
+#include "system.h"
+#include "sccs.h"
 
-/*
- * globals because it was easier for getComments.
- */
-char	**saved;	/* saved copy of comments across files */
-char	*comment;
-int	gotComment;
-int	sccs_getComments(char *file, char *rev, delta *n);
+private	char	**saved;	/* saved copy of comments across files */
+private	char	*comment;	/* a placed to parse the comment from */
+private	int	gotComment;	/* seems redundant but it isn't, this is
+				 * is how we know we have a null comment.
+				 */
 
-private void
-commentsDone(char **s)
+void
+comments_save(char *s)
+{
+	comment = s;
+	gotComment = 1;
+}
+
+int
+comments_got()
+{
+	return (gotComment);
+}
+
+void
+comments_done()
 {
 	int	i;
 
-	if (!s) return;
-	EACH(s) free(s[i]);
-	free(s);
+	if (!saved) return;
+	EACH(saved) free(saved[i]);
+	free(saved);
+	saved = 0;
+	gotComment = 0;
+	comment = 0;
+	/* XXX - NULL comment as well? */
 }
 
-private delta *
-getComments(delta *d)
+delta *
+comments_get(delta *d)
 {
 	int	i;
 

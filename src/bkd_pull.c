@@ -1,11 +1,11 @@
 #include "bkd.h"
 
-void	listIt(sccs *s);
-void	listrev(delta *d);
-private int uncompressed(char *tmpfile);
-private int compressed(int gzip, char *tmpfile);
+private	void	listIt(sccs *s);
+private	void	listrev(delta *d);
+private int	uncompressed(char *tmpfile);
+private int	compressed(int gzip, char *tmpfile);
 
-static	char *cset[] = { "bk", "cset", "-m", "-", 0 };
+private	char	*cset[] = { "bk", "cset", "-m", "-", 0 };
 
 int
 cmd_pull(int ac, char **av)
@@ -220,7 +220,7 @@ err:		repository_rdunlock(0);
 	}
 }
 
-void
+private void
 listIt(sccs *s)
 {
 	delta	*d;
@@ -230,7 +230,7 @@ listIt(sccs *s)
 	}
 }
 
-void
+private void
 listrev(delta *d)
 {
 	char	*t;

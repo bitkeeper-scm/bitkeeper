@@ -10,14 +10,6 @@ old2new(delta *d, delta *stop)
 	fprintf(stderr, " %s", d->rev);
 }
 
-void
-new2old(delta *d, delta *stop)
-{
-	unless (d) return;
-	fprintf(stderr, " %s", d->rev);
-	unless (d == stop) old2new(d->next, stop);
-}
-
 int
 range_main(int ac, char **av)
 {
