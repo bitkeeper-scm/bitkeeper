@@ -267,12 +267,15 @@ cmd_push_part2(int ac, char **av)
 	sendServerInfoBlock();
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
-	if (streq(buf, "@NOTHING TO SEND@")) {
-		goto done;
-	}
 	if (streq(buf, "@ABORT@")) {
-		goto done;
+		/*
+		 * Client pre-trigger canceled the push operation 
+		 * This is a null event for us, do not goto done. 
+		 * Just return without firing the post trigger
+		 */
+		return (0);
 	}
+	if (streq(buf, "@NOTHING TO SEND@")) goto done;
 	if (!streq(buf, "@PATCH@")) {
 		fprintf(stderr, "expect @PATHCH@, got <%s>\n", buf);
 		rc = 1;
@@ -349,6 +352,7 @@ cmd_push_part2(int ac, char **av)
 done:	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
-	if (!metaOnly) trigger(av,  "post", rc);
+	if (metaOnly) av[0] = "remote log push";
+	trigger(av,  "post", rc);
 	return (rc);
 }

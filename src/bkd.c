@@ -29,21 +29,6 @@ bkd_main(int ac, char **av)
 
 	loadNetLib();
 
-        if (streq(basenm(av[0]), "web_bkd")) {
-		/*
-		 * We do not do option processing in cgi environment
-		 */
-		want_http_hdr = 1;
-		Opts.errors_exit = 1;
-		/*
-		 * Work around for security: disable pull & clone for now
-		 * We need a way to allow a limited "cd" command.
-		 * user can only cd to a approved list of directory
-		 */
-		exclude("pull"); 
-		exclude("clone"); 
-		goto doit;
-        }
 
 	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
@@ -72,6 +57,13 @@ bkd_main(int ac, char **av)
 		    default: usage();
 	    	}
 	}
+
+	if (logRoot && !IsFullPath(logRoot)) {
+		fprintf(stderr,
+		    "bad log root: %s: must be a full path name\n", logRoot);
+		return (1);
+	}
+
 	if (Opts.port) {
 		Opts.daemon = 1;
 		if (Opts.interactive) {
@@ -98,7 +90,7 @@ bkd_main(int ac, char **av)
 			alarm(Opts.alarm);
 #endif
 		}
-doit:		do_cmds(want_http_hdr);
+		do_cmds(want_http_hdr);
 		return (0);
 	}
 }

@@ -252,7 +252,6 @@ struct command cmdtbl[] = {
 	{"unwrap", unwrap_main},
 	{"users", users_main},
 	{"version", version_main},
-	{"web_bkd", bkd_main},		/* aliases, for cgi environment */
 	{"what", what_main},
 	{"zone", zone_main},
 
