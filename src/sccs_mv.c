@@ -21,6 +21,34 @@ mkXfile(char *sfile, char type)
 	return (tmp);
 }
 
+/*
+ * Return TRUE if s has cset derived root key
+ */
+int
+sccs_hasCsetDerivedKey(sccs *s)
+{
+	sccs	*sc;
+	char 	buf1[MAXKEY], buf2[MAXKEY], *p;
+	delta	*d1, *d2;
+
+	d1 = findrev(s, "1.0");
+	assert(d1);
+	sccs_sdelta(s, d1, buf1);
+
+	sprintf(buf2, "%s/%s", s->proj->root, CHANGESET);
+	sc = sccs_init(buf2, INIT_SAVEPROJ, s->proj);
+	assert(sc);
+	d2 = findrev(sc, "1.0");
+	assert(d2);
+	p = d2->pathname;
+	d2->pathname = d1->pathname;
+	sccs_sdelta(sc, d2, buf2);
+	d2->pathname = p;
+	sccs_free(sc);
+
+	return (streq(buf1, buf2));
+}
+
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
@@ -78,27 +106,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	newpath = getRelativeName(destfile, s->proj);
 	if ((strlen(oldpath) > 14) && strneq(oldpath, "BitKeeper/etc/", 14) ||
 	    (strlen(newpath) > 14) && strneq(newpath, "BitKeeper/etc/", 14)) {
-			sccs	*sc;
-			char 	buf1[MAXKEY], buf2[MAXKEY], *p;
-			delta	*d1 = findrev(s, "1.0"), *d2;
-
-			assert(d1);
-			sccs_sdelta(s, d1, buf1);
-
-			/* check if it has the changset based root key */
-			sprintf(buf2, "%s/%s", s->proj->root, CHANGESET);
-			sc = sccs_init(buf2, INIT_SAVEPROJ, s->proj);
-			assert(sc);
-			d2 = findrev(sc, "1.0");
-			assert(d2);
-			p = d2->pathname;
-			d2->pathname = d1->pathname;
-			sccs_sdelta(sc, d2, buf2);
-			d2->pathname = p;
-			sccs_free(sc);
-			
-
-			if (streq(buf1, buf2)) {
+			if (sccs_hasCsetDerivedKey(s)) {
 				fprintf(stderr,
 					"sccsmv: %s -> %s:\n"
 					"moving/removing file in "

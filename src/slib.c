@@ -8457,6 +8457,7 @@ abort:		if (sfile) fclose(sfile);
 			t, s->sfile, t);
 		goto abort;
 	}
+	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	Chmod(s->sfile, 0444);
 	if (s->state & S_BITKEEPER) updatePending(s);

@@ -50,8 +50,9 @@ private	void	restore(opts *o);
 private void	auto_sortmerge(resolve *rs);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj);
+private int	writeCheck(sccs *s, MDBM *db);
 #ifdef WIN32_FILE_SYSTEM
-private MDBM	*localDB;		/* real name cache for local tree */
+private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 #endif
 
@@ -1870,6 +1871,7 @@ get_revs(resolve *rs, names *n)
 	}
 	return (0);
 }
+
 
 /*
  * Try to automerge.
