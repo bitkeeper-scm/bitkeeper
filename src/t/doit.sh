@@ -27,6 +27,10 @@ win32_common_setup()
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$USER = XAdministrator ]; then USER=Administrator-test; fi
 	if [ X$USER = Xadministrator ]; then USER=administrator-test; fi
+
+	# don't run remote regressions on NT
+	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
+	export DO_REMOTE
 }
 
 unix_common_setup()
@@ -50,9 +54,9 @@ unix_common_setup()
 	MALLOC_OPTIONS=Z
 	export MALLOC_OPTIONS
 
-	# unset htyp proxy env var, it confuses the regression test
-	unset http_proxy HTTP_PROXY_HOST HTTP_PROXY_PORT
-	unset SOCKS_SERVER SOCKS_PORT SOCKS_HOST
+	# do run remote regressions on UNIX
+	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
+	export DO_REMOTE
 }
 
 # Make sure we don't pick up the DOS "find" command in the PATH

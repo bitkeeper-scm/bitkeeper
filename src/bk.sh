@@ -799,6 +799,7 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 # the defaule is -l
 _regression() {		# /* doc 2.0 */
 	PREFER_RSH=YES
+	DO_REMOTE=NO	# don't run remote by default
 	V=
 	X=
 	while getopts lsvx OPT

@@ -12,8 +12,6 @@
 # This file test push pull between when one reposity is compressed
 # and the other is not.
 
-if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
-
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
 no_logging project

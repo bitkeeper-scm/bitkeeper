@@ -9,8 +9,6 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
-
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
 no_logging project
