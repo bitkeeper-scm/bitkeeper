@@ -1,5 +1,7 @@
 #include "system.h"
 #include "sccs.h"
+#include "resolve.h" 
+
 #define	CTMP	"BitKeeper/tmp/CONTENTS"
 
 private int	converge(char *file, int resync);
@@ -154,7 +156,11 @@ resync_list(char *gfile)
 
 	for (kv = mdbm_first(pvals); kv.key.dptr; kv = mdbm_next(pvals)) {
 		if (mdbm_fetch_str(vals, kv.key.dptr)) {
-			mdbm_delete_str(pvals, kv.key.dptr);
+			/*
+			 * Do not delete entry when you are in
+			 * the first next loop
+			 */
+			//mdbm_delete_str(pvals, kv.key.dptr);
 			continue;
 		}
 		unless (exists(kv.val.dptr)) {
@@ -165,6 +171,7 @@ resync_list(char *gfile)
 			mdbm_store_str(vals, kv.key.dptr, kv.val.dptr, 0);
 			continue;
 		}
+		// XXX FIXME - delete name should have random and date
 		base = basenm(gfile);
 		sprintf(newpath, "BitKeeper/deleted/SCCS/s..del-%s", base);
 		i = 0;
@@ -274,6 +281,19 @@ converge(char *gfile, int resync)
 			sprintf(key, "bk delta -qy'Auto converge' %s", gfile);
 			sys(key);
 		} else {
+			/*
+			 *	awc -> lm
+			 *	we should probably do this up above
+			 *	I am doing it here to highlight the cause
+			 * 	This happen when you have only the csetbase
+			 *	file and no winner. You are about to
+			 * 	create a new file, but you need to
+			 * 	bk rm the existing cset base file first.
+			 */
+			if (exists(sfile)) {
+				sprintf(key, "bk rm %s", gfile);
+				sys(key);
+			}
 			sprintf(key, "sort -u < %s > %s", CTMP, gfile);
 			sys(key);
 			sprintf(key,
