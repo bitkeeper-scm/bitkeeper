@@ -314,7 +314,7 @@ mkline(char *p)
 	unless (p) return (0);
 	for (s = buf; (*s++ = *p++) != '\n'; );
 	s[-1] = 0;
-	assert((s - buf) < MAXLINE);
+	assert((s - buf) <= MAXLINE);
 	return (buf);
 }
 

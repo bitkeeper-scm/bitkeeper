@@ -1,0 +1,73 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2003 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echon Max line length .............................................
+no_logging project
+awk 'BEGIN {for (i = 0; i < 2047; i++) printf "."; printf "\n"}' >long
+cp long foo
+bk new $Q foo || exit 1
+bk commit $Q -ylong || exit 1
+bk check -c foo || exit 1
+bk get $Q foo || exit 1
+cmp -s foo long || {
+	echo file changed
+	exit 1
+}
+echo OK
+
+echon Max line length compressed ..................................
+cp long bar
+bk new $Q -Zgzip bar || exit 1
+bk commit $Q -ylong2 || exit 1
+bk check -c bar || exit 1
+bk get $Q bar || exit 1
+cmp -s foo long || {
+	echo file changed
+	exit 1
+}
+echo OK
+
+echon Test creating tags with spaces ..............................
+bk tag $Q -r1.2 'a b' || exit 1
+rev=`bk prs -r'a b' -hnd:REV: ChangeSet`
+test $rev = '1.2' || {
+	echo failed
+	exit 1
+}
+cd $HERE
+bk clone $Q -r'a b' project copy || exit 1
+cd copy
+rev=`bk prs -r+ -hnd:REV: ChangeSet`
+test $rev = '1.2' || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echon Try pulling files will really long lines and edited gfile ...
+bk pull $Q || exit 1
+cd $HERE/project
+LONGER=$HERE/longer
+awk 'BEGIN {for (i = 0; i < 7000; i++) printf "."; printf "\n"}' > $LONGER
+bk edit $Q foo || exit 1
+cat $LONGER > foo
+bk delta $Q -ylonger foo || exit 1
+bk commit $Q -ylonger || exit 1
+cd $HERE/copy
+bk edit $Q foo || exit 1
+echo 1 > foo
+bk pull $Q 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "SCCS/s.foo is edited and modified" ERR || exit 1
+grep -q "Assertion" ERR && exit 1
+echo OK

@@ -137,7 +137,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (gzip) fprintf(f, " -z%d", gzip);
-	if (opts.rev) fprintf(f, " -r%s", opts.rev);
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev);
 	if (opts.quiet) fprintf(f, " -q");
 	if (opts.delay) fprintf(f, " -w%d", opts.delay);
 	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");

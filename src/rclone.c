@@ -151,7 +151,7 @@ send_part1_msg(opts opts, remote *r, char **envVar)
 	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part1");
 	if (gzip) fprintf(f, " -z%d", gzip);
-	if (opts.rev) fprintf(f, " -r%s", opts.rev); 
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (r->path) fprintf(f, " %s", r->path);
 	fputs("\n", f);
@@ -248,7 +248,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part2");
 	if (gzip) fprintf(f, " -z%d", gzip);
-	if (opts.rev) fprintf(f, " -r%s", opts.rev); 
+	if (opts.rev) fprintf(f, " '-r%s'", opts.rev); 
 	if (opts.verbose) fprintf(f, " -v");
 	if (r->path) fprintf(f, " %s", r->path);
 	fputs("\n", f);

@@ -40,7 +40,7 @@ getNewRevs(char *to, char *rev, char *url)
 		sprintf(buf, "bk prs -hd':KEY:\n' ChangeSet | bk _sort > %s", here);
 	} else {
 		sprintf(buf,
-		    "bk prs -hd':KEY:\n' -r%s ChangeSet | bk _sort > %s",
+		    "bk prs -hd':KEY:\n' -r'%s' ChangeSet | bk _sort > %s",
 		    rev, here);
 	}
 	system(buf);
