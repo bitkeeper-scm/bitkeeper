@@ -92,8 +92,6 @@ trigger(char **av, char *when)
 		return (0);
 	}
 
-	if ((bk_mode() == BK_BASIC) && !strneq("commit", t, 6)) return (0);
-
 	unless (isdir(triggerDir)) return (0);
 	sys("bk", "get", "-q", triggerDir, SYS);
 
@@ -187,6 +185,11 @@ localTrigger(char **triggers)
 {
 	int	i, rc = 0;
 
+	/*
+	 * BK/basic does not support client side trigger
+	 */
+	if ((bk_mode() == BK_BASIC)) return (0);
+
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
 		rc = runit(triggers[i], 0);
@@ -201,6 +204,11 @@ remotePreTrigger(char **triggers)
 	int	i, rc = 0;
 	char	output[MAXPATH], buf[MAXLINE];
 	FILE	*f;
+
+	/*
+	 * BK/basic only support bkd trigger on master repository
+	 */
+	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) return (0);
 
 	gettemp(output, "trigger");
 	fputs("@TRIGGER INFO@\n", stdout);
@@ -259,6 +267,11 @@ private int
 remotePostTrigger(char **triggers)
 {
 	int	fd1, i, rc = 0;
+
+	/*
+	 * BK/basic only support bkd trigger on master repository
+	 */
+	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) return (0);
 
 	/*
 	 * Process post trigger for remote client
