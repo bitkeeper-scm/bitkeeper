@@ -10,7 +10,7 @@ proc doNext {x} \
 	if {$x == 1 && $line == 0.0} {
 		set l 1.0
 	} else {
-		set l [.text.topics index "$line + $x lines"]
+		set l [.ctrl.topics index "$line + $x lines"]
 	}
 	if {$l > $nTopics} { return }
 	set line $l
@@ -27,25 +27,25 @@ proc doNextSection {x} \
 		doSelect $x
 		return
 	} 
-	set l [.text.topics index "$line + $x lines"]
+	set l [.ctrl.topics index "$line + $x lines"]
 	if {$l > $nTopics} { return }
-	set topic [.text.topics get $l "$l lineend"]
+	set topic [.ctrl.topics get $l "$l lineend"]
 	while {[regexp {^ } $topic]} {
-		set l [.text.topics index "$l + $x lines"]
+		set l [.ctrl.topics index "$l + $x lines"]
 		if {$l > $nTopics} { return }
-		set topic [.text.topics get $l "$l lineend"]
+		set topic [.ctrl.topics get $l "$l lineend"]
 	}
 	set line $l
 
 	# If going backwards, go back to the first line.
 	if {$x == -1 && $line != 1.0} {
-		set line [.text.topics index "$line + $x lines"]
-		set topic [.text.topics get $line "$line lineend"]
+		set line [.ctrl.topics index "$line + $x lines"]
+		set topic [.ctrl.topics get $line "$line lineend"]
 		while {[regexp {^ } $topic]} {
-			set line [.text.topics index "$line + $x lines"]
-			set topic [.text.topics get $line "$line lineend"]
+			set line [.ctrl.topics index "$line + $x lines"]
+			set topic [.ctrl.topics get $line "$line lineend"]
 		}
-		.text.topics see $line
+		.ctrl.topics see $line
 	}
 	doNext 1
 }
@@ -54,7 +54,7 @@ proc doPixSelect {x y} \
 {
 	global	line
 
-	set line [.text.topics index "@$x,$y linestart"]
+	set line [.ctrl.topics index "@$x,$y linestart"]
 	doSelect 1
 }
 
@@ -63,14 +63,14 @@ proc doSelect {x} \
 	global	nTopics line
 
 	busy 1
-	.text.topics see $line
-	set topic [.text.topics get $line "$line lineend"]
+	.ctrl.topics see $line
+	set topic [.ctrl.topics get $line "$line lineend"]
 	if {[regexp {^ } $topic] == 0} {
 		doNext $x
 		return
 	}
-	.text.topics tag remove "select" 1.0 end
-	.text.topics tag add "select" $line "$line lineend + 1 char"
+	.ctrl.topics tag remove "select" 1.0 end
+	.ctrl.topics tag add "select" $line "$line lineend + 1 char"
 	bkhelp $topic
 	busy 0
 }
@@ -152,50 +152,50 @@ proc widgets {} \
 	}
 	wm title . "BitKeeper Help"
 
-	frame .text -borderwidth 1 -relief raised
-		text .text.topics -spacing1 1 -spacing3 1 -wrap none \
-		    -background #c0c0c0 -font $font -width 14 \
-		    -xscrollcommand { .text.x1scroll set } \
-		    -yscrollcommand { .text.y1scroll set }
-		    scrollbar .text.x1scroll -orient horiz \
-			-width $swid -command ".text.topics xview"
-		    scrollbar .text.y1scroll -width $swid \
-			-command ".text.topics yview"
-		text .text.help -wrap none -font $font \
-		    -width 78 -height $height -padx 4 \
-		    -background #c0c0c0 \
-		    -xscrollcommand { .text.x2scroll set } \
-		    -yscrollcommand { .text.y2scroll set }
-		    scrollbar .text.x2scroll -orient horiz \
-			-width $swid -command ".text.help xview"
-		    scrollbar .text.y2scroll -width $swid \
-			-command ".text.help yview"
-		grid .text.topics -row 0 -column 0 -sticky nsew
-		grid .text.y1scroll -row 0 -column 1 -sticky nse -rowspan 2
-		grid .text.x1scroll -row 1 -column 0 -sticky ew
-
-		grid .text.help -row 0 -column 2 -sticky nsew
-		grid .text.y2scroll -row 0 -column 3 -sticky nse -rowspan 2
-		grid .text.x2scroll -row 1 -column 2 -sticky ew
-
-	frame .menu
-	    button .menu.done -text "Dismiss" -font 7x13bold -borderwid 1 \
+	frame .ctrl -borderwidth 0 -relief flat
+	    button .ctrl.done -text "Dismiss" -font 7x13bold -borderwid 1 \
 		-pady 1 -background grey -command { exit }
-	    grid .menu.done -sticky ew
+	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
+		-background #c0c0c0 -font $font -width 14 \
+		-yscrollcommand { .ctrl.topicscroll set }
+	    scrollbar .ctrl.topicscroll -width $swid \
+		-command ".ctrl.topics yview"
 
-	grid .text -row 0 -column 0 -sticky nsew
-	grid .menu -row 1 -column 0 -sticky ew
+	    grid .ctrl.done -row 0 -column 0 -sticky ew -columnspan 2
+	    grid .ctrl.topics -row 1 -column 1 -sticky nsew
+	    grid .ctrl.topicscroll -row 1 -column 0 -sticky nse
+
+	    grid rowconfigure .ctrl 0 -weight 0
+	    grid rowconfigure .ctrl 1 -weight 1
+	    grid columnconfigure .ctrl 0 -weight 0
+
+	frame .text -borderwidth 0 -relief flat
+	    text .text.help -wrap none -font $font \
+		-width 78 -height $height -padx 4 \
+		-background #c0c0c0 \
+		-xscrollcommand { .text.x2scroll set } \
+		-yscrollcommand { .text.y2scroll set }
+	    scrollbar .text.x2scroll -orient horiz \
+		-width $swid -command ".text.help xview"
+	    scrollbar .text.y2scroll -width $swid \
+		-command ".text.help yview"
+
+	    grid .text.help -row 0 -column 1 -sticky nsew
+	    grid .text.y2scroll -row 0 -column 0 -sticky nse
+	    grid .text.x2scroll -row 1 -column 0 -sticky ew -columnspan 2
+
+	    grid rowconfigure .text 0 -weight 1
+	    grid columnconfigure .text 0 -weight 0
+	    grid columnconfigure .text 1 -weight 1
+
+	grid .ctrl -row 0 -column 0 -sticky nsew
+	grid .text -row 0 -column 1 -sticky nsew
 
 	grid rowconfigure . 0 -weight 1
-	grid rowconfigure .text 0 -weight 1
-	grid rowconfigure . 1 -weight 0
-	grid rowconfigure .menu 0 -weight 0
+	grid columnconfigure . 0 -weight 0
+	grid columnconfigure . 1 -weight 1
 
-	grid columnconfigure . 0 -weight 1
-	grid columnconfigure .text 2 -weight 1
-	grid columnconfigure .menu 0 -weight 1
-
-	bind .text.topics <ButtonPress> { doPixSelect %x %y }
+	bind .ctrl.topics <ButtonPress> { doPixSelect %x %y }
 	bind . <Control-e>	".text.help yview scroll 1 units; break"
 	bind . <Control-y>	".text.help yview scroll -1 units; break"
 	bind . <Down>		"doNext 1"
@@ -222,7 +222,7 @@ proc widgets {} \
 		set x [expr $x / $pixelsPerLine]
 		set height $x
 	}
-	.text.topics tag configure "select" -background yellow \
+	.ctrl.topics tag configure "select" -background yellow \
 	    -relief ridge -borderwid 1
 	.text.help tag configure "title" -background #8080c0 \
 	    -relief groove -borderwid 2
@@ -233,11 +233,11 @@ proc busy {busy} \
 	if {$busy != 0} {
 		. configure -cursor watch
 		.text.help configure -cursor watch
-		.text.topics configure -cursor watch
+		.ctrl.topics configure -cursor watch
 	} else {
 		. configure -cursor hand2
 		.text.help configure -cursor gumby
-		.text.topics configure -cursor hand2
+		.ctrl.topics configure -cursor hand2
 	}
 	update
 }
@@ -249,15 +249,15 @@ proc getHelp {} \
 	set nTopics 0
 	set bk [file join $bin bk]
 	set f [open "| $bk topics"]
-	.text.topics configure -state normal
+	.ctrl.topics configure -state normal
 	while {[gets $f topic] >= 0} {
-		.text.topics insert end "$topic\n"
+		.ctrl.topics insert end "$topic\n"
 		regsub "^  " $topic "" topic
 		set lines($topic) $nTopics
 		incr nTopics 1
 	}
 	catch {close $f} dummy
-	.text.topics configure -state disabled
+	.ctrl.topics configure -state disabled
 	.text.help configure -state disabled
 	if {$argv != ""} {
 		set l ""
@@ -266,7 +266,7 @@ proc getHelp {} \
 			puts "No help for $argv"
 			exit
 		}
-		set line [.text.topics index "1.0 + $l lines"]
+		set line [.ctrl.topics index "1.0 + $l lines"]
 	} else {
 		set line 1.0
 	}

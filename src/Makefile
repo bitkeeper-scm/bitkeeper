@@ -4,8 +4,7 @@
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines prs range rechksum renumber	 \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
-	  sinfo stripdel smoosh takepatch undos what gca
-PRIVATE	= nextsecond mtime zone
+	  sinfo stripdel smoosh takepatch undos what gca mtime zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex \
 	  mkdiffs
@@ -18,7 +17,7 @@ LINKTO	= ci delta co get edit get unedit clean unget clean fmtool fm \
 	  fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
 
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PRIVATE) $(PSCR) $(DATA)
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA)
 
 CFLAGS	= -g -O -Wall -Wno-parentheses -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
 CPPFLAGS= -Izlib
@@ -42,7 +41,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
 	  zlib/inflate.o zlib/infblock.o zlib/inftrees.o zlib/infcodes.o \
 	  zlib/infutil.o zlib/inffast.o
-BINOBJ	= $(BINS:=.o) $(PRIVATE:=.o)
+BINOBJ	= $(BINS:=.o)
 
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
 	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c)
@@ -129,7 +128,7 @@ clean-obj: FORCE
 		$(LIBS) a.out core
 
 clean-bin: FORCE
-	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(PSCR) $(LINKS) MANIFEST
+	-/bin/rm -f $(BINS) $(SCRIPTS) $(PSCR) $(LINKS) MANIFEST
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars config.status \
@@ -187,7 +186,7 @@ test tests rsh rshtest:
 realtest: $(ALL) t/doit
 	@if [ ! -d tmp ]; then mkdir tmp; chmod 777 tmp; fi
 	@rm -f tmp/keys
-	-@get -q t/SCCS/s.t.* t/setup t/cleanup
+	-get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
@@ -280,8 +279,6 @@ undos: undos.o port/platforminit.o
 	$(CC) $(CFLAGS) undos.o port/platforminit.o -o undos
 chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
-nextsecond: nextsecond.o
-	$(CC) $(CFLAGS) nextsecond.o -o nextsecond
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
 
@@ -441,7 +438,13 @@ substvars: substvars.in config.status
 # Touch this and die.  --lm
 install: all 
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(prefix)
-	./chksum $(BINS) $(SCRIPTS) $(DATA) | sort > $(prefix)/MANIFEST
+	@if [ ! -d $(prefix)/t ]; \
+	then	mkdir $(prefix)/t; \
+	fi
+	-get -q t/SCCS/s.t.* t/setup t/cleanup
+	cp -f t/doit t/t.* t/setup t/cleanup $(prefix)/t
+	./chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup t/cleanup \
+		| sort > $(prefix)/MANIFEST
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
 	do	rm -f $(prefix)/$$1; \
@@ -504,9 +507,8 @@ takepatch.o:	takepatch.c $(sccsdeps)
 undos.o:	undos.c
 what.o:		what.c $(sccsdeps)
 
-# 'Private' executables
+# These are used only by the test suite.
 zone.o:		zone.c $(commondeps)
-nextsecond.o:	nextsecond.c
 mtime.o:	mtime.c
 
 # libsccs
