@@ -5,7 +5,7 @@
 .SCCS_GET:
 	bk get -q $@
 
-all image: munge mkbk extractor.c bitkeeper.sh gnu-os os
+all image: munge mkbk extractor.c bitkeeper.sh gnu-os os installer.tcl
 	./mkbk
 
 munge: munge.c ../unix.h

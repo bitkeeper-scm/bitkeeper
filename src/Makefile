@@ -125,7 +125,8 @@ GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
 	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
-	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
+	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap \
+	$(BINLINKS)
 LOCALSCR= testfast build
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
@@ -134,7 +135,7 @@ LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf bklicense.pub
 LINKTO	= fm fmtool fm3 fm3tool
-BINLINKS= bk admin get delta unget rmdel prs
+BINLINKS= admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA)
 
@@ -245,7 +246,7 @@ production_image: rebuild p image
 # Read the checkin comments on this delta before changing this.
 clean-obj: FORCE
 	-@rm -f bk bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
-		$(TOMCRYPTOBJ) 
+		$(TOMCRYPTOBJ) $(SCRIPTS)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) shell.c bkdsubstr bkmsg.txt bkhelp.txt a.out
 	-@rm -f core $(WIN_TMP)
@@ -289,13 +290,6 @@ get-e: FORCE
 	-@bk get -es `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1 | sort -u`
 	$(MAKE) tags
 
-log: FORCE
-	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
-	then PAGER=less; \
-	else PAGER=more; \
-	fi; \
-	bk sccslog $(SRCS) $(HDRS) | $${PAGER}
-
 tags: FORCE
 	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
 	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
@@ -332,7 +326,7 @@ FORCE:
 
 gnu: $(BK) FORCE
 	@bk get -sS gnu/Makefile
-	@if uname -s | grep -q _NT; \
+	@if [ $(SYS) = win32 ]; \
 	then cd gnu && cmd /c $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
 	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
@@ -366,6 +360,18 @@ bk.res: win32/data/bk.rc win32/data/bk.ico
 
 $(BK): bk.o $(LIBS) $(RESOURCE) bklicense.pub
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
+	if [ $(SYS) = win32 ]; \
+	then	$(MAKE) link; \
+		for file in $(BINLINKS); \
+		do	rm -f $$file; \
+			cp link.exe $$file.exe; \
+		done; \
+	else \
+		for file in $(BINLINKS); \
+		do	rm -f $$file; \
+			ln bk $$file; \
+		done; \
+	fi
 
 testfast: testfast.perl
 	rm -f testfast
@@ -566,53 +572,25 @@ fm3tool: tclwrap gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
 msgtool: gui/msgtool.tcl
 	cp gui/msgtool.tcl msgtool
 
-#rpm:	bk.spec production
-#	rpm -bb bk.spec
-rpm: g pkg
-
-pkg: g epmhelper.sh
-	rm -rf tmp/bitkeeper; \
-	DIR=`pwd`/tmp/bitkeeper; set -e; \
-	BINDIR=$$DIR ${MAKE} -e install-nolinks; \
-	BINDIR=$$DIR $(MAKE) -e bklinks; \
-	./epmhelper.sh -l -d $(BINDIR) -s $$DIR; \
-	./epmhelper.sh -r -d $(BINDIR) -s $$DIR
-
-# Touch this and die.  --lm
-install: install-nolinks bklinks binlinks
-
-bklinks:
-	@if uname -s | grep -q _NT; \
-	then	LN=cp; EXE=.exe; \
-	else	LN=ln; EXE=; \
-	fi; \
-	for file in $(BINLINKS); \
-	do	if [ $$file != bk ]; \
-		then	rm -f $(BINDIR)/$$file$$EXE; \
-			$$LN $(BINDIR)/bk$$EXE $(BINDIR)/$$file$$EXE; \
-		fi; \
-	done
+install: install-nolinks binlinks
 
 binlinks:
-	@if uname -s | grep -q _NT; \
-	then	LN=cp; EXE=.exe; \
-	else	LN=ln; EXE=; \
-	fi; \
 	if [ -w /usr/bin ]; \
 	then	for file in $(BINLINKS); \
 		do	rm -f /usr/bin/$$file; \
 			ln -s $(BINDIR)/$$file /usr/bin/$$file; \
 		done; \
-	fi; \
+	fi
 
-install-nolinks:
+install-nolinks: $(BINLINKS)
 	@-if [ $(BINDIR) = "/usr/libexec/bitkeeper" ]; then \
 		rm -rf /usr/libexec/bitkeeper 2>/dev/null; \
 		test -d /usr/libexec/bitkeeper && \
 		    mv /usr/libexec/bitkeeper /usr/libexec/BKJUNK$$$$; \
 	fi
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
-	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
+	tar cf - $(BINS) $(SCRIPTS) | (cd $(BINDIR) && tar xf -)
+	cp $(DATA) $(BINDIR)
 	test -x /build/.wish/tk/bin/bkgui || exit 1
 	@rm -rf $(BINDIR)/tk
 	@cp -rp /build/.wish/tk $(BINDIR)
@@ -623,13 +601,13 @@ install-nolinks:
 		ln $(BINDIR)/$$2 $(BINDIR)/$$1; \
 		shift; shift; \
 	done
-	@if uname -s | grep -q _NT; \
+	@if [ $(SYS) = win32 ]; \
 	then cd gnu && $(MAKE) install BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
 	else (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
 	     bk get -S ../man/Makefile; \
 	     cd ../man && $(MAKE) install BINDIR=$(BINDIR) ;\
 	fi
-	@if uname -s | grep -q _NT; \
+	@if [ $(SYS) = win32 ]; \
 	then cd win32 && $(MAKE) BINDIR=$(BINDIR) install; \
 	fi
 	-@find $(BINDIR) -type d -print | xargs chmod ug+w
@@ -639,12 +617,13 @@ trial_image trial-image:
 	$(MAKE) -e trial _image
 
 image:
-	$(MAKE) -e all _image
+	test -x $(BK) || $(MAKE) p || exit 1
+	$(MAKE) -e _image
 
 # Win32 note: Wise install script does not respect the BINDIR env variable
 # It picks up the image at C:/Program Files/BitKeeper
 _image:
-	@if uname -s | grep -q _NT; \
+	@if [ $(SYS) = win32 ]; \
 	then	${MAKE} -e install-nolinks; \
 		cd utils && bk get -qS mkbk x86-win32.wse && ./mkbk; \
 	else \
@@ -652,7 +631,6 @@ _image:
 		DIR=`pwd`/tmp/bitkeeper; set -e; \
 		BINDIR=$$DIR ${MAKE} -e install-nolinks; \
 		for i in $(BINS); do $(STRIP) $$DIR/$$i; done; \
-		BINDIR=$$DIR $(MAKE) -e bklinks; \
 		cd utils && BINDIR=$$DIR ${MAKE} -e image; \
 		rm -rf tmp; \
 	fi
