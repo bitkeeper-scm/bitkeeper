@@ -55,6 +55,8 @@ void	sccs_patch(sccs *);
 
 FILE	*id_cache;
 MDBM	*idDB = 0;
+char	csetFile[] = CHANGESET; /* for win32, need writable	*/
+				/* buffer for name convertion	*/
 int	verbose = 0;
 int	mixed;		/* if set, we are doing both long and short keys */
 int	csetOnly;	/* if set, do logging ChangeSet */
@@ -188,7 +190,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: can not find project root.\n");
 		return (1);
 	}
-	cset = sccs_init(CHANGESET, flags, 0);
+	cset = sccs_init(csetFile, flags, 0);
 	if (!cset) return (101);
 	mixed = !(cset->state & S_KEY2);
 
@@ -1114,7 +1116,7 @@ csetCreate(sccs *cset, int flags, char *sym)
 #undef	close
 #undef	open
 	close(0);
-	open("/dev/tty", 0, 0);
+	open(DEV_TTY, 0, 0);
 	if (flags & DELTA_DONTASK) d = getComments(d);
 	if (sccs_delta(cset, flags, d, 0, diffs) == -1) {
 		sccs_whynot("cset", cset);

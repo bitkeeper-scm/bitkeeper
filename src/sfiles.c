@@ -97,6 +97,7 @@ again:
 			return (0);
 		}
 		strcpy(buf, name);
+		localName2bkName(buf, buf);
 		debug((stderr, "sfiles::AV got %s\n", buf));
 	}
 	if (flags & SF_HASREVS)  {
@@ -152,11 +153,9 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	sfileDone();
 	rev[0] = 0;
 	prog = cmd;
-	flags = Flags|SF_HASREVS;
+	flags = Flags|SF_HASREVS; /* this cause problem with win32 path */
 	if (Av[0]) {
-#ifdef WIN32
-		nt2bmfname(Av[0], Av[0]);
-#endif
+		localName2bkName(Av[0], Av[0]);
 		if (streq("-", Av[0])) {
 			if (Av[1]) {
 				fprintf(stderr,
@@ -174,6 +173,9 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			flags |= SF_DELETES;
 			return (sfileNext());
 		}
+#ifdef WIN32
+		flags &= ~SF_HASREVS; /* workaround for bug 1999-08-17-002 */
+#endif
 		if (isdir(Av[0])) {
 			if (flags & SF_NODIREXPAND) return (0);
 			if (Av[1]) {

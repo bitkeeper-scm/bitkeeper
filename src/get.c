@@ -27,14 +27,14 @@ usage: get [-bdeFgHkmnpqsu] [-c<date>] [-G<name>] \n\
     -h		reverse the files sense of hash (turn on if off)\n\
     -k		don't expand keywords\n\
     -m		prefix each line with revision number\n\
-    -M<rev>	merge with revision <rev>\n
+    -M<rev>	merge with revision <rev>\n\
     -n		prefix each line with file name\n\
     -N		prefix each line with a line number\n\
     -p		print file to stdout\n\
     -P		print file even if there are file format errors.\n\
     -q		run quietly\n\
     -r<r>	get revision <r>\n\
-    -R		revision is part of pathname, i.e., foo.c:1.2\n
+    -R		revision is part of pathname, i.e., foo.c:1.2\n\
     -s		run quietly\n\
     -T		make output file modification same as\n\
 		its corresponding delta\n\
