@@ -15287,7 +15287,19 @@ sccs_findMD5(sccs *s, char *md5)
 int
 isKey(char *key)
 {
-	return (strchr(key, '|') || (isxdigit(key[0]) && (strlen(key) == 30)));
+	int	i;
+
+	if (strchr(key, '|')) return (1);
+	if (isxdigit(key[0]) && (strlen(key) == 30)) {
+		for (i = 1; i < 8; i++) unless (isxdigit(key[i])) return (0);
+		for (; i < 30; i++) {
+			unless (isalnum(key[i]) || (key[i] == '-') || (key[i] == '_')) {
+				return (0);
+			}
+		}
+		return (1);
+	}
+	return (0);
 }
 
 /*
