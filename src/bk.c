@@ -639,6 +639,9 @@ private	struct {
 	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
+	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"chg_part1", CMD_RDLOCK},
+	{"chg_part2", CMD_RDUNLOCK},
 	{ 0, 0 },
 };
 

@@ -6,6 +6,7 @@ typedef struct {
 	u32     ldiff:1;	/* want the new local csets */
 	u32     rdiff:1;	/* want the new remote csets */ 
 	char	*rev;
+	char	*srch;		/* search string against comments list */
 	int	indent;
 } opts;
 
@@ -32,7 +33,7 @@ changes_main(int ac, char **av)
 	}   
 	
 	bzero(&opts, sizeof(opts));
-	while ((c = getopt(ac, av, "tLRr|v|")) != -1) {
+	while ((c = getopt(ac, av, "tLRr|s;v|")) != -1) {
 		switch (c) {
 		    /*
 		     * Note: do not add option 'k', it is reserved
@@ -46,6 +47,7 @@ changes_main(int ac, char **av)
 			opts.indent = optarg ? atoi(optarg) : 2;
 			break;
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
+		    case 's': opts.srch = optarg; break;
 		    case 'L': opts.ldiff = 1; break;
 		    case 'R': opts.rdiff = 1; break;
 		    default:
@@ -161,25 +163,30 @@ doit(opts opts, int dash)
 	FILE	*f;
 	char	cmd[MAXKEY];
 	char	tmpfile[MAXPATH];
-	char	dashfile[MAXPATH];
 	char	s_cset[] = CHANGESET;
 	char	buf[100];
 	char	*spec = opts.tagOnly ? TSPEC : DSPEC;
+	char 	*end;
 	pid_t	pid;
 	extern	char *pager;
 	char	*pager_av[MAXARGS];
-	int	pfd;
+	int	i, fd1, pfd;
 	sccs	*s;
 	delta	*d;
 
-	dashfile[0] = 0;
+	s = sccs_init(s_cset, SILENT, 0);
+	assert(s && s->tree);
 	if (opts.rev) {
-		sprintf(cmd, "bk prs -Yhd'%s' -r%s ChangeSet", spec, opts.rev);
+		if (opts.srch) {
+			fprintf(stderr, "Warning: -s option ignored\n");
+		}
+		s->state |= S_SET;
+		d = findrev(s, opts.rev);
+		assert(d);
+		if (d) d->flags |= D_SET;
+		
 	} else if (dash) {
-		gettemp(dashfile, "dash");
-		f = fopen(dashfile, "w");
-		s = sccs_init(s_cset, SILENT, 0);
-		assert(s && s->tree);
+		s->state |= S_SET;
 		while (fgets(cmd, sizeof(cmd), stdin)) {
 			/* ignore blank lines and comments */
 			if ((*cmd == '#') || (*cmd == '\n')) continue;
@@ -189,66 +196,59 @@ doit(opts opts, int dash)
 				fprintf(stderr, "Illegal line: %s", cmd);
 				sccs_free(s);
 				fclose(f);
-				unlink(dashfile);
 				return (1);
 			}
 			while (d->type == 'R') {
 				d = d->parent;
 				assert(d);
 			}
-			if (d->flags & D_SET) continue;
 			d->flags |= D_SET;
-			fprintf(f, "ChangeSet%c%s\n", BK_FS, d->rev);
 		}
-		sccs_free(s);
-		fclose(f);
-		sprintf(cmd, "bk prs -Yhd'%s' - < %s", spec, dashfile);
+	} else if (opts.srch) {
+		s->state |= S_SET;
+		for (d = s->table; d; d = d->next) {
+			if (d->type != 'D')  continue;
+			EACH(d->comments) {
+				if (match_one(d->comments[i], opts.srch, 1)) {
+					d->flags |= D_SET;
+				}
+			}
+		}
 	} else {
-		sprintf(cmd, "bk prs -Yhd'%s' ChangeSet", spec);
+		s->state &= ~S_SET; /* probably redundant */
 	}
-	unless (opts.verbose) {
-		strcat(cmd, " | ");
-		strcat(cmd, pager);
-		system(cmd);
-		if (dashfile[0]) unlink(dashfile);
-		return (0);
-	}
+
+	/*
+	 * What we want is: "bk prs opts | this process | pager
+	 */
 	signal(SIGPIPE, SIG_IGN);
 	strcpy(tmpfile, pager); /* line2av stomp */
 	line2av(tmpfile, pager_av); /* because pager is "less -E" on win32 */
 	pid = spawnvp_wPipe(pager_av, &pfd, 0);
-	close(1);
+	fd1 = dup(1);
 	dup2(pfd, 1);
 	close(pfd);
+	f = fdopen(1, "wb"); /* needed by sccs_prsdelta() below */
 
 	gettemp(tmpfile, "changes");
-	f = popen(cmd, "r");
-	while (fgets(cmd, sizeof(cmd), f)) {
-		if (strneq(cmd, "ChangeSet@", 10)) {
-			char	*p = strchr(cmd, ',');
-			*p = 0;
-			strcpy(buf, &cmd[10]);
-			*p = ',';
-		}
-		fputs(cmd, stdout);
-		if (streq(cmd, "\n")) {
-			if (fflush(stdout)) break;
-			/*
-			 * XXX - this part gets mucho faster when we have
-			 * the logging cache.
-			 */
+	s->xflags |= X_YEAR4;
+	for (d = s->table; d; d = d->next) {
+		if (SET(s) && !(d->flags & D_SET)) continue;
+		sccs_prsdelta(s, d, 0, spec, f);
+		fflush(f);
+		if (opts.verbose) {
 			sprintf(cmd,
 			    "bk cset -Hr%s | bk _sort | bk sccslog -i%d - > %s",
-			    buf, opts.indent, tmpfile);
+			    d->rev, opts.indent, tmpfile);
 			system(cmd);
 			if (cat(tmpfile)) break;
 		}
 	}
+	sccs_free(s);
 	close(1);
-	pclose(f);
 	waitpid(pid, 0, 0);
 	unlink(tmpfile);
-	if (dashfile[0]) unlink(dashfile);
+	dup2(fd1, 1); close(fd1);
 	return (0);
 }
 
