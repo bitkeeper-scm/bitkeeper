@@ -315,7 +315,25 @@ do_commit(char **av, c_opts opts, char *sym,
 			}
 			if ((logs_pending(ptype, 1) >= MAX_PENDING_LOG)) {
 				printf(
-				  "max pending log exceeded, commit aborted\n");
+"============================================================================\n"
+"Error: Max pending log exceeded, commit aborted\n\n"
+"This error indicates that the BitKeeper program is unable to contact \n"
+"www.openlogging.org to send the ChangeSet log. The number of unlogged \n"
+"changesets have exceeded the allowed threshold of %d changesets. \n"
+"\n"
+"There are two possible causes for this error:\n"
+"a) Network connectivity problem\n"
+"b) Problems in the logging tree at www.openlogging.org\n"
+"\n"
+"Please run the logging command in debug mode to see what the problem is:\n"
+"\t\"bk _log  -d\"\n\n"
+"If you have ruled out a network connectivity problem at your local network,\n"
+"please email the following information to support@bitmover.com:\n"
+"a) Output of the above logging command\n"
+"b) Root key of your project using the following command:\n"
+"\t\"bk -R inode ChangeSet\" command.\n"
+"============================================================================\n"
+, MAX_PENDING_LOG);
 				return (1);
 			}
 		}
