@@ -587,7 +587,7 @@ send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
 			cgi = r->path + 8;
 		}
-		if (http_send(r, msg, mlen, extra, "BitKeeper", cgi)) {
+		if (http_send(r, msg, mlen, extra, "send", cgi)) {
 			fprintf(stderr, "http_send failed\n");
 			return (-1);
 		}
