@@ -110,6 +110,7 @@ _keysync() {
 }
 
 __keysync() {
+	cd $HERE >/dev/null
 	cd "$1" >/dev/null
 	bk _probekey > /tmp/sync1$$
 	cd $HERE >/dev/null

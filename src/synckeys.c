@@ -106,8 +106,10 @@ listkey_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*d = 0;
-	int	c, debug = 0, quiet = 0, nomatch = 1, fastkey;
-	char	key[MAXKEY] = "", rootkey[MAXKEY], s_cset[] = CHANGESET;
+	int	i, c, debug = 0, quiet = 0, nomatch = 1, fastkey;
+	char	key[MAXKEY], rootkey[MAXKEY];
+	char	s_cset[] = CHANGESET;
+	char	**lines = 0;
 
 	while ((c = getopt(ac, av, "dq")) != -1) {
 		switch (c) {
@@ -148,36 +150,66 @@ listkey_main(int ac, char **av)
 
 	if (debug) fprintf(stderr, "listkey: looking for match key\n");
 	if (exists(LOG_TREE)) unlink(LOG_KEYS);
+
+	/*
+	 * Save the data in a lines list and then reprocess it.
+	 * We need two passes because we need to know if the root key
+	 * matched.
+	 */
 	while (getline(0, key, sizeof(key)) > 0) {
-		if (streq("@END PROBE@", key)) break;
-		if (streq("@TAG PROBE@", key)) break;
-		if (streq("@LOD PROBE@", key)) {
+		lines = addLine(lines, strdup(key));
+		if (streq("@END PROBE@", key) || streq("@TAG PROBE@", key)) {
+			break;
+		}
+	}
+	unless (lines && lines[1]) goto mismatch;	/* sort of */
+
+	/*
+	 * Make sure that one of the keys match the root key and that the
+	 * next item is one of the @ commands.
+	 */
+	nomatch = 1;
+	EACH(lines) {
+		unless (streq(lines[i], rootkey)) continue;
+		unless (lines[i+1]) break;
+		if (streq(lines[i+1], "@END PROBE@") ||
+		    streq(lines[i+1], "@TAG PROBE@") ||
+		    streq(lines[i+1], "@LOD PROBE@")) {
+		    	nomatch = 0;
+		}
+	}
+	if (nomatch) {
+mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
+		out("@NO MATCH@\n");
+		out("@END@\n");
+		return (1); /* package key mismatch */
+	}
+
+	/*
+	 * Now do the real processing.
+	 */
+	nomatch = 1;
+	EACH(lines) {
+		if (streq("@LOD PROBE@", lines[i])) {
 			d = 0;
 			continue;
 		}
-		if (!fastkey && !streq(key, rootkey)) continue;
-		if (!d && (d = sccs_findKey(s, key))) {
+		if (!fastkey && !streq(lines[i], rootkey)) continue;
+		if (!d && (d = sccs_findKey(s, lines[i]))) {
 			if (exists(LOG_TREE)) addLogKey(d);
 			sccs_color(s, d);
 			if (debug) {
 				fprintf(stderr, "listkey: found a match key\n");
 			}
 			if (nomatch) out("@LOD MATCH@\n");	/* aka first */
-			sccs_sdelta(s, d, key);
-			out(key);
+			out(lines[i]);
 			out("\n");
 			nomatch = 0;
-
 		}
 	}
-	if (nomatch) {
-		if (debug) fprintf(stderr, "listkey: no match key\n");
-		out("@NO MATCH@\n");
-		out("@END@\n");
-		return (1); /* package key mismatch */
-	}
+	freeLines(lines);
 
-	if (streq("@TAG PROBE@", key)) {
+	if (streq("@TAG PROBE@", lines[--i])) {
 		d = 0;
 		while (getline(0, key, sizeof(key)) > 0) {
 			if (streq("@END PROBE@", key)) break;

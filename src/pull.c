@@ -193,13 +193,16 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	rc = WEXITSTATUS(status);
 	if (opts.debug) fprintf(stderr, "listkey returned %d\n", rc);
 	switch (rc) {
-	    case 0:	break;
-	    case 1:	fprintf(stderr,
-			    "You are trying to pull from an unrelated package\n"
-			    "Please check the pathnames and try again.\n");
-			break;
-	    default:	unlink(msg_file);
-			return (-1);
+	    case 0:
+		break;
+	    case 1:
+		fprintf(stderr,
+		    "You are trying to pull from an unrelated package.\n"
+		    "Please check the pathnames and try again.\n");
+		    break;
+	    default:
+		unlink(msg_file);
+		return (-1);
 	}
 
 	rc = send_file(r, msg_file, 0, opts.gzip);	

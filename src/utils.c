@@ -395,9 +395,9 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	if (streq(p, "@OK@")) return (0); /* ok */
 	if (verbose) {
 		i = 0;
-		fprintf(stderr, "remote: %s\n", p);
+		if (p && *p) fprintf(stderr, "remote: %s\n", p);
 		while (getline2(r, buf, sizeof(buf)) > 0) {
-			fprintf(stderr, "remote: %s\n", buf);
+			if (buf[0]) fprintf(stderr, "remote: %s\n", buf);
 			if (streq(buf, "@END@")) break;
 			/*
 			 * 20 lines of error message should be enough
