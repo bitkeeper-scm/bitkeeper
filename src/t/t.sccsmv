@@ -69,14 +69,14 @@ if [ ! -d C ]; then echo failed; exit 1; fi
 bk -r check -a || exit 1
 echo OK
 echo $N Test sccsmv to directory that does not exist ................$NL
-sccsmv B BBBB || { echo error; exit 1; }
+bk sccsmv B BBBB || { echo error; exit 1; }
 if [ ! -f BBBB/SCCS/s.file4 ]
 then	echo failed to move file; exit 1
 fi
 bk -r check -a || exit 1
 echo OK
 echo $N And move it back ............................................$NL
-sccsmv BBBB B || { echo error; exit 1; }
+bk sccsmv BBBB B || { echo error; exit 1; }
 echo OK
 echo $N Test sccsrm w/ p locked file ................................$NL
 bk get $Q -e B/file1
