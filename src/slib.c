@@ -5949,6 +5949,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	serlist *state = 0;
 	ser_t	*slist = 0;
 	int	lines = 0, print = 0, popened = 0, error = 0;
+	int	seq;
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
 	unsigned int sum;
 	FILE 	*out;
@@ -6066,9 +6067,11 @@ out:			if (slist) free(slist);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	sum = 0;
+	seq = 0;
 	while (buf = nextdata(s)) {
 		register u8 *e, *e1, *e2;
 
+		++seq;
 		e1= e2 = 0;
 		if (isData(buf)) {
 			if (buf[0] == CNTLA_ESCAPE) {
@@ -6130,6 +6133,8 @@ out:			if (slist) free(slist);
 					    "%-*s ", s->revLen, tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d ", lines);
+				if (flags&GET_SEQ)
+					fprintf(out, "%6d ", seq);
 				fprintf(out, align);
 			} else if (flags & GET_PREFIX) {
 				delta *tmp = sfind(s, (ser_t) print);
@@ -6144,6 +6149,8 @@ out:			if (slist) free(slist);
 					fprintf(out, "%s\t", tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d\t", lines);
+				if (flags&GET_SEQ)
+					fprintf(out, "%6d\t", seq);
 			}
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;

@@ -47,7 +47,7 @@ _get_main(int ac, char **av, char *out)
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	while ((c =
-	    getopt(ac, av, "ac;CdDefFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
+	    getopt(ac, av, "ac;CdDefFgG:hHi;klmM|nNOpPqr;RSstTux;")) != -1) {
 		switch (c) {
 		    case 'a': flags |= GET_ALIGN; break;	/* doc 2.0 */
 		    case 'c': cdate = optarg; break;		/* doc 2.0 */
@@ -68,6 +68,7 @@ _get_main(int ac, char **av, char *out)
 		    case 'M': mRev = optarg; break;		/* doc 2.0 */
 		    case 'n': flags |= GET_MODNAME; break;	/* doc 2.0 */
 		    case 'N': flags |= GET_LINENUM; break;	/* doc 2.0 */
+		    case 'O': flags |= GET_SEQ; break;		/* undoc */
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
 		    case 'q': flags |= SILENT; break;		/* doc 2.0 */

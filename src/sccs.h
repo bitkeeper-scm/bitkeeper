@@ -59,8 +59,10 @@
 #define GET_DIFFTOT	0x00000800	/* hasDiffs() false if !TOT */
 #define	GET_FULLPATH	0x00000010	/* like GET_MODNAME but full relative */
 #define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
+#define	GET_SEQ		0x00000040	/* get -O: prefix with sequence no */
 #define	GET_PREFIX	\
-    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|GET_FULLPATH|GET_PREFIXDATE)
+    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
+     GET_FULLPATH|GET_PREFIXDATE|GET_SEQ)
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
