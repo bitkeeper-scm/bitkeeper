@@ -72,7 +72,7 @@ usage:		fprintf(stderr,
 	    
 	    case 'l':
 		repository_lockers(0);
-		exit (0);
+		/* fall through */
 	    
 	    default:
 		if (repository_locked(0)) exit(1);

@@ -350,27 +350,20 @@ repository_stale(char *path, int discard)
 	char	*s = strrchr(path, '/');
 	char	host[256];
 	char	*thisHost = sccs_gethost();
-	int	slp, tries, flags = 0;
+	int	flags = 0;
 	u32	pid;
 
 	unless (thisHost) return (0);
 	if (s) s++; else s = path;
 	sscanf(s, "%d@%s", &pid, host);
-	/* short timeouts to get past races */
-	for (slp = 5000, tries = 0; tries < 8; tries++, slp <<= 1) {
-		if (streq(host, thisHost) &&
-		    (kill((pid_t)pid, 0) != 0) && (errno == ESRCH)) {
-			if (discard && exists(path)) {
-		    		verbose((stderr,
-				    "bk: discarding stale lock %s\n",
-				    path));
-				unlink(path);
-			}
-			return (1);
+	if (streq(host, thisHost) &&
+	    (kill((pid_t)pid, 0) != 0) && (errno == ESRCH)) {
+		if (discard) {
+		    	verbose((stderr, "bk: discarding stale lock %s\n",
+			    path));
+			unlink(path);
 		}
-		unless (tries) fprintf(stderr, "\n");	/* for regressions */
-		fprintf(stderr, "Sleeping %dms for %s\n", slp/1000, path);
-		usleep(slp);
+		return (1);
 	}
 	return (0);
 }

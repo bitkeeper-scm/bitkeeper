@@ -108,14 +108,17 @@ cmd_pull(int ac, char **av)
 
 			d->flags |= D_SET;
 		} else if (verbose) {
+			unless (bytes) {
+				out("OK-");
+			} else {
+				out(" ");
+			}
 			out(kv.key.dptr);
 		}
 		bytes += kv.key.dsize;
 		if (bytes >= 50) {
-			if (verbose) out("\nOK-");
+			if (verbose) out("\n");
 			bytes = 0;
-		} else {
-			if (verbose) out(" ");
 		}
 	}
 	if (verbose || list) {

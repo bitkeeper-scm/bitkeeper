@@ -86,6 +86,7 @@ if [ -d project2/src ]; then echo failed; exit 1; fi
 echo OK
 cores
 echo $N Check circular rename .......................................$NL
+bk repo || sleep 2
 cd $HERE/project/src
 echo "File 1" > a.c
 echo "File 2" > b.c
