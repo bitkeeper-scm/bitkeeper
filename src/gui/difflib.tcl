@@ -549,7 +549,7 @@ proc readFiles {L R {O {}}} \
 	}; #end fmtool stuff
 
 	. configure -cursor watch
-	update
+	update idletasks
 	set lineNo 1; set diffCount 0; set nextDiff 1; set saved 0
 	array set DiffsEnd {}
 	array set Diffs {}

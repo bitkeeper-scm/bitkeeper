@@ -88,6 +88,7 @@ proc getConfig {prog} \
 
 	set _d(cset.listHeight) 12
 	set _d(cset.annotation) ""   ;# annotation options (eg: "-aum")
+	set _d(cset.doubleclick) 100 ;# XXX: NOTDOC
 
 	set _d(diff.diffHeight) 50
 	set _d(diff.searchColor) $LIGHTBLUE	;# highlight for search matches
