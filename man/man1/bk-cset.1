@@ -11,6 +11,8 @@ bk cset \- creates and manipulates changesets
 .Bc ] [
 .OPTreq \-M range
 .Bc ] [
+.OPTreq \-r rev
+.Bc ] [
 .OPTreq \-S sym
 .Bc ] [
 .OPTreq \-x list
@@ -47,6 +49,10 @@ Print the list of deltas being added to the cset.
 .tp
 .B \-q
 Run quietly.
+.tp
+.OPTreq \-r rev
+Print the list of deltas in ChangeSet revision,
+.ARG rev .
 .tp
 .OPTreq \-S sym
 Set
