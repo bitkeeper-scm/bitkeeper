@@ -6,14 +6,14 @@ set -x
 
 # We start in the src subdir
 cd ..
-TREE=`pwd`
-TREE=`basename $TREE`
+BKR=`pwd`
+TREE=`basename $BKR`
 TREE_HOST=work
 REPO=$TREE-$USER
 cd /build || exit 1
 rm -rf $REPO
 set -e
-BK_LICENSE=ACCEPTED PREFER_RSH=YES bk clone $TREE_HOST:/home/bk/$TREE $REPO
+BK_LICENSE=ACCEPTED PREFER_RSH=YES bk clone $TREE_HOST:$BKR $REPO
 cd $REPO/src
 cat <<EOF | bk -R get -qS -
 src/build.sh
@@ -32,5 +32,9 @@ TST_DIR=/build
 TMPDIR=/build
 TMP_DIR=/build
 export TST_DIR TMPDIR TMP_DIR
-./build production
-./bk regression 
+if [ $# -gt 0 ]; then
+    eval $*
+else
+    ./build production
+    ./bk regression 
+fi
