@@ -19,7 +19,7 @@ private	delta	*tree;	/* oldest node we're displaying */
 int
 lines_main(int ac, char **av)
 {
-	int	c;
+	int	c, rc = 1;
 	char	*name;
 	delta	*e;
 	RANGE_DECL;
@@ -57,7 +57,10 @@ usage:			fprintf(stderr,
 			prevs(e);
 		} else if (rev) {
 			e = sccs_getrev(s, rev, 0, 0);
-			assert(e);
+			unless (e) {
+				fprintf(stderr, "bad rev %s\n", rev);
+				goto next;
+			}
 			printf("%s", e->rev);
 			if (flags & GET_USER) {
 				putchar('-');
@@ -67,10 +70,11 @@ usage:			fprintf(stderr,
 		} else {
 			prevs(s->tree);
 		}
+		rc = 0;
 next:		sccs_free(s);
 	}
 	sfileDone();
-	return (0);
+	return (rc);
 }
 
 /*
