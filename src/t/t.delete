@@ -52,3 +52,34 @@ if [ $? -ne 0 ]
 then	echo Failed to catch moved file; exit 1
 fi
 echo OK
+echo $N Test by-hand resolve after resolve -a fails .................$NL
+# This tests the following: Suppose we have one file moved in one place,
+# and another file with a conflict.  resolve -a will give up because
+# of the conflict, but it will resolve the moved file.  A subsequent
+# by-hand resolve needs to pick that up.
+# what we did above
+cd $HERE/clone/src
+mv SCCS/s.moved.c SCCS/s.bar.c
+# set up this scenario
+cd $HERE/project/src
+bk rm -d foo.c
+bk edit $Q h.h
+echo i > h.h
+bk ci -yi $Q h.h
+bk commit $Q -ycset1
+cd $HERE/clone/src
+bk edit $Q h.h
+echo j > h.h
+bk ci -yj $Q h.h
+bk commit $Q -ycset2
+cd $HERE
+bk resync $Q -A project clone >resync.log 2>&1
+if [ $? -ne 0 ]; then echo failed; cat resync.log; exit 1; fi
+cd clone
+if [ ! -d RESYNC ]; then echo failed: resolved already; exit 1; fi
+bk resolve -F -f - <<EOF >resolve.out 2>&1
+m
+C
+EOF
+if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
+echo OK

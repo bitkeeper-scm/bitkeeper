@@ -129,6 +129,151 @@ _setup() {
 	exit $?
 }
 
+_track() {
+	Q=
+	V=v
+	RENAMES=YES
+	SYMBOL=
+	while getopts sS:qr opt
+	do	case $opt in
+		[qs])	Q=-q
+			V=
+			;;
+		r)	RENAMES=NO;;
+		S)	SYMBOL=-S$OPTARG;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	PRJ=$1
+	TAR=$2
+	if [ X"$PRJ" = X ] || [ X"$TAR" = X ]
+	then	echo usage: bk track [-qr] [-Ssym] project tarball >&2
+		exit 1
+	fi
+	TDIR=`dirname $TAR`
+	TAR=`basename $TAR`
+	TDIR=`cd $TDIR && pwd`
+	case $TAR in
+	    *.tar.gz | *.tgz | *.tar.Z )	ZCAT=zcat ;;
+	    *.tar.bz2 )				ZCAT=bzcat ;;
+	    *.tar )				ZCAT= ;;
+	    * )
+		echo $TAR does not appear to be a tarball >&2
+		exit 1
+		;;
+	esac
+
+	if [ -e $PRJ ] && [ ! -d $PRJ ]
+	then	echo track: $PRJ exists and is not a directory >&2
+		exit 1
+	fi
+	if [ -d $PRJ ]
+	then	if [ ! -d $PRJ/pristine ]
+		then	echo track: $PRJ is not a tracking repository >&2
+			exit 1
+		fi
+		__track_update
+	else	__track_setup
+	fi
+}
+
+__track_setup() {
+	mkdir -p $PRJ
+	cd $PRJ
+	${BIN}bk setup -f pristine
+	cd pristine
+	if [ -n "$V" ]; then echo Extracting files...; fi
+	if [ -n "$ZCAT" ]
+	then	$ZCAT $TDIR/$TAR | tar xp${V}f -
+	else	tar xp${V}f $TDIR/$TAR
+	fi
+	if [ -n "$V" ]; then echo Checking in files...; fi
+	${BIN}sfiles -x |grep -v '^BitKeeper/' | ${BIN}ci $Q -Gi -
+
+	${BIN}sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
+	if [ -s ${TMP}extras$$ ]
+	then	echo "There were extra files, here is the list"
+		cat ${TMP}extras$$
+		rm -f ${TMP}extras$$
+		echo
+		echo "Track aborted, you must clean up by hand"
+		exit 1
+    	fi
+	rm -f ${TMP}extras$$
+
+	if [ -n "$V" ]; then echo Creating changeset for $TAR...; fi
+	${BIN}sfiles -C | ${BIN}cset $Q $SYMBOL -y"Import $TAR" -
+	if [ -n "$V" ]; then echo Marking changeset in s.files...; fi
+	${BIN}cset -M1.0..
+	touch "BitKeeper/etc/SCCS/x.marked"
+
+	if [ -n "$V" ]; then echo Copying pristine to shared...; fi
+	cd ..
+	_clone $Q pristine shared
+	# Delete parent pointer so push in shared won't clobber pristine.
+	rm -f shared/BitKeeper/log/parent
+	if [ -n "$V" ]
+	then	echo Tracking setup for `pwd` complete.
+		echo Normal users should clone from `pwd`/shared.
+		echo To update this tree, run bk track again with
+		echo the same project and a new tarball.
+	fi
+}
+
+__track_update() {
+	cd $PRJ/pristine
+	${BIN}sfiles | egrep -v '^(BitKeeper|ChangeSet)' | ${BIN}get $Q -eg -
+	if [ -n "$V" ]; then echo Extracting files...; fi
+	if [ -n "$ZCAT" ]
+	then	$ZCAT $TDIR/$TAR | tar xp${V}f -
+	else	tar xp${V}f $TDIR/$TAR
+	fi
+	if [ -n "$V" ]; then echo Locating deletions...; fi
+	find . -name 'p.*' | sed -n 's|^\./||; s|SCCS/p.||p' |
+	egrep -v '^(BitKeeper|ChangeSet)' | while read gfile
+	do	if [ -f $gfile ]
+		then	echo $gfile >>BitKeeper/log/mod$$
+		else	echo $gfile >>BitKeeper/log/del$$
+			if [ -n "$V" ]; then echo $gfile; fi
+		fi
+	done
+
+	if [ -n "$V" ]; then echo Checking in modified files...; fi
+	${BIN}ci $Q -G -y"Import tarball $TAR" - <BitKeeper/log/mod$$
+	rm -f BitKeeper/log/mod$$
+	bk sfiles -x |grep -v BitKeeper >BitKeeper/log/cre$$
+
+	if [ $RENAMES = YES ]
+	then (	cat BitKeeper/log/del$$
+		echo
+		cat BitKeeper/log/cre$$ ) | bk renametool
+	else	if [ -n "$V" ]; then echo Executing creates and deletes...; fi
+		find . -name 'p.*' |grep SCCS |xargs rm
+		${BIN}sccsrm $Q -d - <BitKeeper/log/del$$
+		${BIN}ci $Q -Gi <BitKeeper/log/cre$$
+	fi
+	rm -f BitKeeper/log/del$$
+	rm -f BitKeeper/log/cre$$
+
+	if [ -n "$V" ]; then echo Creating changeset for $TAR...; fi
+	${BIN}sfiles -C | ${BIN}cset $Q $SYMBOL -y"Import $TAR" -
+
+	cd ..
+	if [ -n "$V" ]; then echo Creating merge area...; fi
+	(_clone $Q `pwd`/shared `pwd`/merge) || exit 1
+	cd merge
+	(_pull $Q ../pristine)
+	if [ -d RESYNC ]
+	then	bk resolve
+	fi
+	if [ $? -ne 0 ]; then exit 1; fi
+	if [ -n "$V" ]; then echo Pushing back to shared...; fi
+	(_push) || exit 1
+	cd ..
+	rm -rf merge
+	if [ -n "$V" ]; then echo Merge complete.; fi
+}
+
 # This will go find the root if we aren't at the top
 _changes() {
 	__cd2root
