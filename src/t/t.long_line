@@ -130,12 +130,12 @@ cd $HERE/copy2
 cset $Q -m1.0.. > ../PATCH
 mkdir $HERE/copy3
 cd $HERE/copy3
-takepatch -aif ../PATCH
-cd $HERE/copy2/src
+takepatch -atif ../PATCH
+cd $HERE/copy2/src || exit 1
 co $Q long1
 cmp -s long1 $HERE/project/src/long1.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/copy3/src
+cd $HERE/copy3/src || exit 1
 co $Q long1
 cmp -s long1 $HERE/project/src/long1.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
