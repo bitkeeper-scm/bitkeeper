@@ -213,6 +213,14 @@ cset_boundries(sccs *s, char *rev)
 		}
 		d = d->parent;
 	}
-	assert(s->rstop);
+	/*
+	 * If they picked a delta which is pending, use the last delta
+	 * as the boundry.
+	 */
+	unless (s->rstop) {
+		for (d = s->rstart;
+		    d && d->kid && (d->kid->type == 'D'); d = d->kid);
+		s->rstop = d;
+	}
 	return (0);
 }
