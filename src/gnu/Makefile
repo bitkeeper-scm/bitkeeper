@@ -27,17 +27,10 @@ install: all
 		(cd $$D && ../../../chksum $$F); \
 	done >> $(BKBIN)/MANIFEST; \
 
-clean clean-obj: os
-	-@OS=$(OS); \
-	for i in $(DIRS); \
-	do	test -f $$i/$$OS/Makefile || continue; \
-		(cd $$i && make clean); \
-	done
-	-bk -r . clean
-
-clobber: os
+clobber clean clean-obj: os
 	-@OS=$(OS); set -x; \
 	for i in $(DIRS); \
 	do	(cd $$i && rm -rf BIN-*); \
 	done
 	-bk -r . clean
+	-rm -rf bin
