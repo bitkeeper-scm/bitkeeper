@@ -604,7 +604,7 @@ sccs_inherit(sccs *s, u32 flags, delta *d)
 
 	unless (d) return;
 	unless (p = d->parent) {
-		getDate(d);
+		DATE(d);
 		return;
 	}
 
@@ -634,7 +634,7 @@ sccs_inherit(sccs *s, u32 flags, delta *d)
 		d->mode = p->mode;
 		CHK_DUP(symlink, D_DUPLINK, "symlink");
 	}
-	getDate(d);
+	DATE(d);
 	if (d->merge) {
 		d = sfind(s, d->merge);
 		assert(d);
@@ -931,7 +931,7 @@ sccs_date2time(char *date, char *zone)
 private void
 fixDates(delta *prev, delta *d)
 {
-	unless (d->date) (void)getDate(d);
+	DATE(d);
 
 	/* recurse forwards first */
 	if (d->next) fixDates(d, d->next);
@@ -993,7 +993,7 @@ uniqRoot(sccs *s)
 
 	assert(s->tree == s->table);
 	d = s->tree;
-	unless (d->date) (void)getDate(d);
+	DATE(d);
 
 	unless (uniq_open() == 0) return;	// XXX - no error?
 	sccs_shortKey(s, sccs_ino(s), buf);
@@ -1022,7 +1022,7 @@ uniqDelta(sccs *s)
 	d = s->table;
 	next = d->next;
 	assert(d != s->tree);
-	unless (d->date) (void)getDate(d);
+	DATE(d);
 
 	/*
 	 * This is kind of a hack.  We aren't in BK mode yet we are fudging.
@@ -3806,7 +3806,7 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	sym->metad = metad;
 	d->flags |= D_SYMBOLS;
 	metad->flags |= D_SYMBOLS;
-	if (!d->date) getDate(d);
+	DATE(d);
 	CHKDATE(d);
 
 	/*
@@ -4847,7 +4847,7 @@ date(delta *d, time_t tt)
 	d->sdate = strdup(time2date(tt));
 	zoneArg(d, sccs_zone(tt));
 
-	getDate(d);
+	DATE(d);
 	if (d->date != tt) {
 		fprintf(stderr, "Date=[%s%s] d->date=%lu tt=%lu\n",
 		    d->sdate, d->zone, d->date, tt);
@@ -9927,7 +9927,7 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 		sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
 		d->zone = strdup(tmp);
 	}
-	getDate(d);
+	DATE(d);
 	return (d);
 }
 #undef	getit
@@ -13921,7 +13921,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "UTC-FUDGE")) {
 		char	*utcTime;
 
-		getDate(d);
+		DATE(d);
 		d->date -= d->dateFudge;
 		if (utcTime = sccs_utctime(d)) {
 			fs(utcTime);
@@ -14831,7 +14831,7 @@ private inline int
 samekey(delta *d, char *user, char *host, char *path, time_t date,
 	sum_t *cksump)
 {
-	getDate(d);
+	DATE(d);
 	if (d->date != date) {
 		debug((stderr, "samekey: No date match %s: %d (%s%s) vs %d\n",
 		    d->rev, d->date, d->sdate,

@@ -173,8 +173,12 @@ purify:
 	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
 PURIFY:
 	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=1" all
-gprof:
+prof:
 	$(MAKE) CFLAGS="$G -pg -O2" LDFLAGS=-pg all
+gprof:
+	$(MAKE) CFLAGS="$G -DPROFILE -pg -O2" LDFLAGS=-pg all
+ggprof:
+	$(MAKE) CFLAGS="$G -DPROFILE -pg" LDFLAGS=-pg all
 # Debugging...
 d:
 	$(MAKE) CFLAGS="$G -DDEBUG" all
