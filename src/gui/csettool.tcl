@@ -241,7 +241,7 @@ proc getFiles {revs file_rev} \
 	}
 	catch { close $r }
 	if {$fileCount == 0} {
-		displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
+		#displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
 		exit
 	}
 	.l.filelist.t configure -state disabled
@@ -618,9 +618,6 @@ proc main {} \
 	set argindex 0
 	set file_rev ""
 
-	if {$argv == ""} {
-		set revs "+"
-	}
 	while {$argindex < $argc} {
 		set arg [lindex $argv $argindex]
 		switch -regexp -- $arg {
@@ -635,14 +632,18 @@ proc main {} \
 		}
 		incr argindex
 	}
-	#puts "revs=$revs file=$file_rev"
+	if {$revs == ""} {
+		set revs "+"
+	}
+	#displayMessage "csetttool: revs=($revs) file=($file_rev)"
 	bk_init
 	cd2root
 	set dspec "-d\$if(:Li: -gt 0){(:I:)\n}"
 	set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]
-	# Only need to read the first line to know whether there is content
+	# Only need to read first line to know whether there is content
 	gets $fd prs
 	if {$prs == ""} {
+		catch {wm withdraw .}
 		displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
 		exit
 	}
