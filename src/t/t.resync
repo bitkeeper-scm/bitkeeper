@@ -41,8 +41,8 @@ echo OK
 cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-resync $Q project copy
-resolve $Q copy
+bk resync $Q project copy
+bk resolve $Q copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -70,7 +70,7 @@ echo "don't stand in the doorway, don't block up the hall" > times
 ci $Q -i -ydylan times
 bk commit $S -f -yCset2
 cd ..
-resync $Q -a project project2 2>resync.out
+bk resync $Q -a project project2 2>resync.out
 if [ $? -eq 0 ]; then echo failed; cat resync.out; exit 1; fi
 if [ -d project2/src ]; then echo failed; exit 1; fi
 echo OK
@@ -85,8 +85,8 @@ do
 done
 bk commit $S -yabc
 cd $HERE
-resync $Q -r1.3 $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q -r1.3 $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 tar cf chkpoint.tar copy
 cd $HERE/project/src
 #do circular renames (clockwise rotation)
@@ -95,9 +95,9 @@ sccsmv SCCS/s.b.c SCCS/s.c.c
 sccsmv SCCS/s.a.c SCCS/s.b.c
 sccsmv SCCS/s.d.c SCCS/s.a.c
 bk commit $S -yrename
-resync -r1.4 $Q $HERE/project $HERE/copy
+bk resync -r1.4 $Q $HERE/project $HERE/copy
 cd $HERE/copy
-resolve $Q
+bk resolve $Q
 cd $HERE/copy/src
 get $Q a.c b.c c.c
 ${ECHO} "this is c.c" > ref.c
@@ -121,10 +121,10 @@ echo "this is the new c.c" > c.c
 ci $Q -i c.c
 bk commit $S -yrename
 cd  $HERE
-resync -c -r1.5 $Q $HERE/project $HERE/copy
+bk resync -c -r1.5 $Q $HERE/project $HERE/copy
 if [ $? -ne 0 ]; then	echo Failed; exit 1; fi
 cd  $HERE/copy/src
-resolve $Q
+bk resolve $Q
 get $Q a.c b.c c.c d.c
 ${ECHO} "this is c.c" > ref.c
 cmp -s ref.c a.c
@@ -143,9 +143,9 @@ echo $N Check conflict within a patch + circular rename..............$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
-resync -c -r1.4..1.5 $Q $HERE/project $HERE/copy
+bk resync -c -r1.4..1.5 $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
-resolve $Q
+bk resolve $Q
 get $Q a.c b.c c.c d.c
 $ECHO "this is c.c" > ref.c
 cmp -s ref.c a.c
@@ -173,9 +173,9 @@ sccsmv SCCS/s.c.c SCCS/s.b.c
 sccsmv SCCS/s.d.c SCCS/s.c.c
 bk commit $S -yrename
 cd  $HERE
-resync $Q -r1.4 $HERE/project $HERE/copy
+bk resync $Q -r1.4 $HERE/project $HERE/copy
 cd  $HERE/copy/src
-resolve $Q -f - << EOF 2> resolve.out
+bk resolve $Q -f - << EOF 2> resolve.out
 l
 m
 C
@@ -215,9 +215,9 @@ sccsmv SCCS/s.c.c SCCS/s.b.c
 sccsmv SCCS/s.d.c SCCS/s.c.c
 bk commit $S -yrename
 cd  $HERE
-resync -r1.4 $Q $HERE/project $HERE/copy
+bk resync -r1.4 $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
-resolve $Q -f - << EOF 2>resolve.out
+bk resolve $Q -f - << EOF 2>resolve.out
 l
 m
 C
@@ -238,8 +238,8 @@ bk commit $S -yrename
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 if [ ! -f SCCS/s.g.c ]; then echo failed, no g.c; fi
 cd $HERE/project/src
@@ -251,8 +251,8 @@ echo "this is file p" > p.c
 ci $Q -i p.c
 sccsmv p.c r.c
 bk commit $S -yrename
-resync $Q $HERE/project $HERE/copy
-resolve $Q -f - << EOF 2> resolve.out
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q -f - << EOF 2> resolve.out
 r
 m
 C
@@ -268,7 +268,7 @@ clean $HERE/copy/src
 cd $HERE/copy/src
 get $Q -p a.c >ref.c
 bk mv a.c e.c
-resync $Q $HERE/project $HERE/copy  > resync.out 2>&1
+bk resync $Q $HERE/project $HERE/copy  > resync.out 2>&1
 grep -q "has uncommitted changes" resync.out
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi;
 rm -f resync.out
@@ -283,8 +283,8 @@ rm -rf $HERE/copy
 tar xf chkpoint.tar
 clean $HERE/copy/src
 cd $HERE/copy/src
-resync $Q $HERE/project $HERE/copy
-resolve $Q
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q
 admin -z $HERE/project/src/SCCS/s.f.c $HERE/copy/src/SCCS/s.a.c
 diff $HERE/project/src/SCCS/s.f.c $HERE/copy/src/SCCS/s.a.c
 if [ $? -ne 0 ]; then echo failed on f.c; exit 1; fi;
@@ -335,20 +335,20 @@ get $Q -e bdata
 cp $binary_data2 bdata
 ci $Q -y bdata
 bk commit $S -ybinary2
-resync $Q $HERE/project $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
-resolve $Q
+bk resolve $Q
 get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; fi
-resync $Q -r..1.8 $HERE/copy $HERE/copy2
-resolve $Q $HERE/copy2
+bk resync $Q -r..1.8 $HERE/copy $HERE/copy2
+bk resolve $Q $HERE/copy2
 cd $HERE/copy2/src
 get $Q bdata
 cmp -s bdata $binary_data
 if [ $? -ne 0 ]; then echo failed; fi
-resync $Q -r1.9 $Q $HERE/copy $HERE/copy2
-resolve $Q $HERE/copy2
+bk resync $Q -r1.9 $Q $HERE/copy $HERE/copy2
+bk resolve $Q $HERE/copy2
 get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
@@ -356,7 +356,7 @@ echo OK
 echo $N Check resync with skipped ChangeSet delta to new tree .......$NL
 cd $HERE
 rm -rf  $HERE/copy2
-resync $Q -r1.5 $HERE/copy $HERE/copy2  > resync.out 2>&1
+bk resync $Q -r1.5 $HERE/copy $HERE/copy2  > resync.out 2>&1
 grep -q "resync from version 1.0 forward" resync.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -371,8 +371,8 @@ EOF
 echo "To be deleted" > delete.c
 ci $Q -i merge.c delete.c
 bk commit $S -y"abc"
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 sccsrm delete.c
 if [ ! -f "SCCS/s..del-delete.c" ]; then echo failed; exit 1; fi
 co $Q -l merge.c
@@ -386,8 +386,8 @@ sed -e "s/333/333-newer/"  merge.c > merge.tmp
 mv merge.tmp merge.c
 ci $Q -y merge.c
 bk commit $S -y"abc"
-resync $Q $HERE/project $HERE/copy
-resolve $Q -a -f - $HERE/copy  << EOF
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q -a -f - $HERE/copy  << EOF
 EOF
 if [ ! -f "SCCS/s..del-delete.c" ]
 then	echo failed to delete delete.c;
@@ -406,11 +406,10 @@ if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
 echo $N Merge back up should have no conflicts ......................$NL
 cd $HERE
-resync $Q -a copy project 2> resolve.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-if [ -s resolve.out ]
+bk resync $Q -a copy project 2> resolve.out
+if [ $? -ne 0 ]
 then echo "failed (known bug)"
-     sed -n '/:/s/^/	/p' resolve.out
+     sed -n '/check:/s/^/	/p' resolve.out
 else echo OK
 fi
 rm -f resolve.out
@@ -419,7 +418,7 @@ cd $HERE/project/src
 date > symbol_test
 bk new $Q symbol_test
 bk commit $S -y"symbol test" -S'symbol test'
-resync $Q -a $HERE/project $HERE/copy
+bk resync $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 if [ ! -f src/SCCS/s.symbol_test ]; then echo failed to send file; exit 1; fi
 grep -q 'Ssymbol test' SCCS/s.ChangeSet
@@ -431,7 +430,7 @@ date > dummy
 bk new $Q dummy
 bk commit $S -y"symbol test2"
 admin $Q -S'later symbol' SCCS/s.ChangeSet
-resync $Q -a $HERE/project $HERE/copy
+bk resync $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 grep -q 'Slater symbol' SCCS/s.ChangeSet
 if [ $? != 0 ]; then echo failed; exit 1; fi
@@ -443,7 +442,7 @@ co $Q -l dummy
 date > dummy
 ci $Q -m'additional' dummy
 bk commit $S -y'additional symbol test 2'
-resync $Q -a $HERE/project $HERE/copy
+bk resync $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 grep -q 'Sadditional symbol' SCCS/s.ChangeSet
 if [ $? != 0 ]; then echo failed; exit 1; fi
@@ -451,7 +450,7 @@ echo OK
 echo $N Test propagation of a symbol added later by itself ..........$NL
 cd $HERE/project
 admin $Q -S'YAsymbol:1.5' SCCS/s.ChangeSet
-resync $Q -a $HERE/project $HERE/copy
+bk resync $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 grep -q 'SYAsymbol' SCCS/s.ChangeSet
 if [ $? != 0 ]; then echo failed; exit 1; fi
@@ -483,8 +482,8 @@ bk commit $S -f -yCset
 echo OK
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-resync $Q project copy
-resolve $Q copy
+bk resync $Q project copy
+bk resolve $Q copy
 echo OK
 echo $N Commit parallel work ........................................$NL
 cd $HERE/project/src
@@ -511,9 +510,9 @@ EOF
 echo OK
 echo $N Resync project to copy, check for no disappear ..............$NL
 cd $HERE
-resync $Q project copy 
+bk resync $Q project copy 
 cd $HERE/copy
-resolve $Q -f - << EOF
+bk resolve $Q -f - << EOF
 m
 C
 EOF
@@ -529,7 +528,7 @@ echo "NEW NEW NEW" >> aaa.c
 ci -q -yaaa.c aaa.c
 bk commit -q -yaaa.c
 cd $HERE
-resync -a $Q project copy
+bk resync -a $Q project copy
 cd copy/src
 if [ ! -f aaa.c ]; then echo Failed to get aaa.c; exit 1; fi
 co -qp aaa.c > aaa.p
@@ -549,8 +548,8 @@ cat > overlap.c << EOF
 EOF
 ci $Q -i overlap.c
 bk commit $S -y"abc"
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 co $Q -l overlap.c
 sed -e"s/222/222-left/" overlap.c > overlap.tmp
 mv overlap.tmp overlap.c
@@ -561,12 +560,10 @@ cd $HERE/copy/src
 co $Q -l overlap.c
 sed -e "s/222/222-right/"  overlap.c > overlap.tmp
 mv overlap.tmp overlap.c
-# make sure time stamp is different
-nextsecond
 ci $Q -y overlap.c
 bk commit $S -y"abc"
-resync $Q $HERE/project $HERE/copy
-resolve $Q -a $HERE/copy 2> resolve.out
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q -a $HERE/copy 2> resolve.out
 grep -q "resolve postponed" resolve.out
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
 echo OK

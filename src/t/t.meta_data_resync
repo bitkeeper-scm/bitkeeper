@@ -36,8 +36,8 @@ echo OK
 cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-resync $Q project copy
-resolve $Q copy
+bk resync $Q project copy
+bk resolve $Q copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -47,8 +47,8 @@ echo $N Check propagation of permission .............................$NL
 cd $HERE/project/src
 admin -m-rwx------ foo.c
 bk commit $S -yperm1
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.foo.c  $HERE/copy/src/SCCS/s.foo.c
 if [ $? -ne 0 ]; then echo failed to propagate permissions; exit 1; fi
@@ -60,8 +60,8 @@ bk commit $S -yperm2
 cd $HERE/copy/src
 admin -m-rwx-w---- foo.c
 bk commit $S -yperm3
-resync $Q $HERE/project $HERE/copy
-resolve $Q -f - $HERE/copy << EOF
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q -f - $HERE/copy << EOF
 r
 C
 EOF
@@ -87,16 +87,16 @@ bk clone $Q $HERE/project $HERE/copy
 cd $HERE/project/src
 admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; fi
 cd $HERE/project/src
 admin $Q -FRCS -FYEAR4 bar.c
 bk commit $Q -yabc
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; fi
@@ -105,8 +105,8 @@ echo $N Check propagation of flags \& permission .....................$NL
 cd $HERE/project/src
 admin $Q -fRCS -m-rwx-r--r-- bar.c
 bk commit $Q -yabc
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; fi
@@ -117,16 +117,16 @@ echo "this is a text entry line 1" > text
 echo "this is a text entry line 2" >> text
 admin -ttext h.h
 bk commit $Q -yabc
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; fi
 cd $HERE/project/src
 admin -T h.h
 bk commit $Q -yabc
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; fi
@@ -135,8 +135,8 @@ echo $N Check propagation of text, flags \& permission ...............$NL
 cd $HERE/project/src
 admin -ttext -fYEAR4 -m-rwx-w--w- h.h
 bk commit $Q -yabc
-resync $Q $HERE/project $HERE/copy
-resolve $Q $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; fi

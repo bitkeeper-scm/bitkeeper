@@ -311,7 +311,7 @@ _clone() {
 	then	echo "clone: $TO exists" >&2
 		exit 1
 	fi
-	exec ${BIN}resync -ap "$@"
+	exec perl ${BIN}resync -ap "$@"
 }
 
 # Advertise this repository for remote lookup
@@ -366,14 +366,14 @@ _parent() {
 # changes (like cvs update).
 _pull() {
 	__cd2root
-	exec ${BIN}resync -A "$@"
+	exec perl ${BIN}resync -A "$@"
 }
 
 # Push: send changes back to parent.  If parent is ahead of you, this
 # pulls down those changes and stops; you have to merge and try again.
 _push() {
 	__cd2root
-	exec ${BIN}resync -Ab "$@"
+	exec perl ${BIN}resync -Ab "$@"
 }
 
 _diffr() {
@@ -421,11 +421,11 @@ _diffr() {
 	RIGHT=`pwd`
 	if [ $LEFTONLY = YES ]
 	then	RREVS=
-	else	RREVS=`${BIN}resync -n $RIGHT $LEFT 2>&1 | grep '[0-9]'`
+	else	RREVS=`perl ${BIN}resync -n $RIGHT $LEFT 2>&1 | grep '[0-9]'`
 	fi
 	if [ $RIGHTONLY = YES ]
 	then	LREVS=
-	else	LREVS=`${BIN}resync -n $LEFT $RIGHT 2>&1 | grep '[0-9]'`
+	else	LREVS=`perl ${BIN}resync -n $LEFT $RIGHT 2>&1 | grep '[0-9]'`
 	fi
 	if [ $ALL = NO -a "X$LREVS" = X -a "X$RREVS" = X ]
 	then	echo $1 and $2 have the same changesets.
@@ -1462,7 +1462,7 @@ cmd=$1
 shift
 
 case $cmd in
-    resync|resolve)
+    resync|resolve|pmerge)
 	exec perl ${BIN}$cmd "$@";;
     citool|sccstool|vitool|fm|fmtool|fm3|fm3tool|difftool|helptool|csettool)
 	exec $wish -f ${BIN}${cmd}${tcl} "$@";;

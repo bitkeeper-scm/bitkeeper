@@ -46,7 +46,7 @@ get $Q -e bar.c
 delta -ywhatever $Q bar.c
 bk commit $Q -ywhatever
 cd $HERE
-resync $Q project clone 2>ERROR
+bk resync $Q project clone 2>ERROR
 grep -q 'This file is not where BitKeeper thinks it should be' ERROR
 if [ $? -ne 0 ]
 then	echo Failed to catch moved file; exit 1

@@ -26,7 +26,22 @@ a) deletes & renames.  Need a modifed version of patch which does not delete
    new files.  We need a post processor which goes over the set of deletes
    and creates and detects renames.
 
+[ZW] A decent first approximation is to co -l every s.file in the
+tree, apply the patch as normal, then recursively ci every modified
+file.  If a file disappeared, that's a delete.  If a file appeared,
+that's a create.  A rename shows up as a delete plus a create, which
+is no worse than CVS.  A slight improvement is to compare the list of
+deletes to the list of creates and try to detect renames - I wrote
+code several months ago that does this fairly well.  A performance
+tweak is to preparse the patch and only checkout the files it touches.
+
+Importing a tarball into an existing tree works exactly the same
+except that you replace the gfiles with the ones from the tarball.
+get -g can be used in this case to speed things up.
+
 b) big chunks which fail - postpone this for now.
+
+[ZW] Shouldn't have to worry about this given a pristine LOD.
 
 WORKING PRACTICE
 ----------------
@@ -46,6 +61,8 @@ c) New release comes from Linus.
    This says "take this tarball, apply to top of trunk of the Linux LOD,
    tagging it with linux-2.3.134".
    .rej not allowed in this case.
+
+[ZW] You can't detect rejects with a tarball; you can with a patch.
 
 d) Make sure it worked:
        bk export /proj/import /tmp/export
@@ -76,8 +93,68 @@ e) Bring the linux changes into Walt's LOD
           LOD unless Walt's LOD also moved, in which case prompt w/ conflict.
        4) Create a changeset recording the merge.
 
+[ZW] All this seems sane to me.  There's a lot of steps, though.  I
+take it 'include' is the general command to merge from one LOD to another?
+
 BK ISSUES
 ---------
 
 bk diffs -u needs to generate exactly what diff would generate, we apparently
 get the headers wrong.
+
+[ZW] This is a horrible can of worms.  If you restrict yourself to gnu
+patch and gnu diffutils, there's still four or five subtly different
+versions of each in widespread use.  You don't even want to consider
+supporting the diff and patch shipped with most commercial Unixes.
+
+That said, we're not that bad.  There's six rules for getting
+mostly-predictable behavior:
+
+1. Put exactly one line that cannot possibly be part of a patch chunk
+or header in between file diffs.  The content is immaterial, it just
+has to match /^[^-+@ IP]/.
+2. Never generate Index: or Prereq: headers.
+3. The pathnames on the --- and +++ lines must be identical.
+4. The date stamp on the +++ line must be strictly after the date stamp
+on the --- line.  (Except when deleting files - see below).
+5. The date stamps on each line must be ctime() format, and must
+both be in the same time zone.
+6. There can be no text between the pathname and the timestamp.
+
+We get only #6 wrong.
+
+===== resync.perl 1.51 vs edited =====
+--- resync.perl 1.51    Thu Oct 21 14:30:21 1999
++++ resync.perl Thu Oct 21 14:18:03 1999
+
+should be
+
+===== resync.perl 1.51 vs edited =====
+--- resync.perl Thu Oct 21 14:30:21 1999	1.51
++++ resync.perl Thu Oct 21 14:18:03 1999
+
+We may also want to handle creating and deleting files with diffs.
+patch creates a file when it sees a diff like this:
+
+===========================
+--- new-file	     Wed Dec 31 16:00:00 1969
++++ new-file	     Thu Oct 21 14:45:16 1999
+@@ -0,0 +1,4 @@
++ each
++ line in the
++ new
++ file
+
+and deletes one when it sees a diff like this:
+
+===========================
+--- new-file	     Thu Oct 21 14:45:16 1999
++++ new-file	     Wed Dec 31 16:00:00 1969
+@@ -1,4 +0,0 @@
+- each
+- line in the
+- old
+- file
+
+'Wed Dec 31 16:00:00 1969' is ctime() of the epoch.  A delete is the
+only time the +++ timestamp can be before the --- timestamp.

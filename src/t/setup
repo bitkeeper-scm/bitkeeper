@@ -55,6 +55,8 @@ then
 	PATH=$_BK_BIN:$PATH
 	BK_BIN="$BK_BIN/"
 	export PATH BK_BIN
+	# It is unlikely that ssh/rsh to localhost will work on NT.
+	DO_REMOTE=NO
 else
 	# we are on a unix box
 	PLATFORM="UNIX"
@@ -88,6 +90,18 @@ else
 	else USR_TMP=`pwd`	# better than nothing.
 	fi
 	unset CDPATH
+	if [ X$PREFER_RSH != X ]
+	then	if type rsh >/dev/null 2>&1
+		then	DO_REMOTE=YES
+		elif type ssh >/dev/null 2>&1
+		then	DO_REMOTE=YES
+			unset PREFER_RSH
+		fi
+	else	if type ssh >/dev/null 2>&1 || type rsh >/dev/null 2>&1
+		then	DO_REMOTE=YES
+		else	DO_REMOTE=NO
+		fi
+	fi
 fi
 export TST_DIR CORES BK_BIN
 

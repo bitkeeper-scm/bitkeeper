@@ -101,7 +101,6 @@ set `grep -v "^.cF" SCCS/s.bar | wc -w`
 if [ $1 -ne `expr $BASE + 26` ]; then echo Failed - wrong size $1 ; exit 1; fi
 echo OK
 echo $N And putting it back .........................................$NL
-nextsecond
 admin $Q -tD bar
 set `grep -v "^.cF" SCCS/s.bar | wc -w`
 if [ $1 -ne `expr $BASE + 51` ]; then echo Failed - wrong size.; exit 1; fi
