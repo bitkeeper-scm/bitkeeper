@@ -10,6 +10,8 @@ sub platformInit
 	$tty = "/dev/tty";
 	$pager = $ENV{'PAGER'} || "more";
 	$editor = $ENV{'EDITOR'} || "vi";
+	$exe = "";   # win3 has ".exe" extension for executable, unix does'nt
+	$exe = "" if 0;
 }
 
 sub cd2root

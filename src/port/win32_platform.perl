@@ -11,9 +11,11 @@ sub platformInit
 				# a open() call must have back slash
 	$dev_null = "nul";
 	$tty = "con";
+	$exe = ".exe";
 	$pager = $ENV{'PAGER'} || "less";
 	$editor = $ENV{'EDITOR'} || "vim";
 	$dev_null = "nul" if 0;
+	$exe = "" if 0;
 }
 
 sub cd2root
@@ -64,6 +66,7 @@ sub doExec
 	}
 	return -2 if ($bin eq "");
 	exit(system($cmd));
+
 }
 
 # Convert path to "standard" format
