@@ -36,7 +36,7 @@ all: $(PROGRAMS)
 COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -I. -I../../uwtlib -I$(srcdir) $(CFLAGS) -Fo$@
 
 .c.o:
-	$(COMPILE) $< 
+	$(COMPILE) $(srcdir)/$< 
 
 diff_o = diff.o analyze.o cmpbuf.o dir.o io.o regex.o alloca.o util.o \
 	context.o ed.o ifdef.o normal.o side.o \
@@ -74,6 +74,14 @@ sdiff.o: sdiff.c config.h
 
 util.o: util.c
 	$(COMPILE) -DPR_PROGRAM=\"$(PR_PROGRAM)\" $(srcdir)/util.c
+
+# We compile the regex.c and alloac.c in Makefile.here
+# becuase we need to turn off the VPATH
+regex.o:
+	make -f Makefile.here regex.o
+
+alloca.o: 
+	make -f Makefile.here alloca.o
 
 TAGS: $(srcs)
 	etags $(srcs)

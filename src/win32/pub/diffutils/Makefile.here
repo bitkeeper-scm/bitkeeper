@@ -1,0 +1,9 @@
+# This Makefile is for building regex.o and alloca.o
+# We need this Makefile becuase we need to turn off the VPATH variable.
+CC=cl
+CFLAGS = -W0 -O2 -G3 -Og -Oi -Oy -DWIN32 -D_WIN32 -D_MT -D_DLL -MD
+
+COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -I. -I../../uwtlib $(CFLAGS) -Fo$@
+
+.c.o: 
+	$(COMPILE) $<

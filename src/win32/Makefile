@@ -1,6 +1,7 @@
 all:
 	cd uwtlib && make
 	cd util && make
+	cd pub/diffutils && unset MAKEFLAGS && make
 
 clean clean-obj:
 	-if uname -s | grep _NT; \
@@ -27,7 +28,7 @@ blat: FORCE
 diffutils: FORCE
 	cd pub/diffutils && unset MAKEFLAGS && make
 
-install: all blat diffutils pub/vim/src/vim.exe
+install: all blat pub/vim/src/vim.exe
 	cd util && make BINDIR=$(BINDIR) install
 	cd pub/blat && make BINDIR=$(BINDIR) install
 	cd pub/diffutils && make BINDIR=$(BINDIR) install

@@ -609,14 +609,29 @@ gotit:
 				strcat(buf, "/");
 				strcat(buf, av[0]);
 			} else {
+#ifdef WIN32
+				/*
+				 * On win32, If the BitKeeper path is not
+				 * the first path , add it to the fornt.
+				 * This ensure we pick up the correct binary
+				 * such as "patch.exe" and "diff.exe"
+				 *
+				 * XXX We should probable do this for Unix too
+				 * but we don't want to change the unix
+				 * until after release 1.0
+				 */
+				int len = strlen(buf);
+				add2path = (strncmp(s, p, len) != 0);
+#else
 				add2path = 0;
+#endif
 			}
 			if (t) *t = PATH_DELIM;
 			goto gotit;
 			
 		}
 		if (t) {
-			*t = ':';
+			*t = PATH_DELIM;
 			s = t + 1;
 		} else {
 			break;

@@ -78,6 +78,9 @@ bkd_install_service(bkdopts *opts)
 			if (StartService(schService, 0, NULL) == 0) {
 				fprintf(stderr, "%s can not start service.\n",
 							    SERVICEDISPLAYNAME);
+			} else {
+				fprintf(stderr, "%s started.\n",
+							    SERVICEDISPLAYNAME);
 			}
 			CloseServiceHandle(schService);
 		}

@@ -1,9 +1,10 @@
 _OS=`sh os`
 DIRS=patch diffutils
 EXE=`sh exe`
-BINS=patch/$(_OS)/patch$(EXE) diffutils/$(_OS)/diff$(EXE) \
-	diffutils/$(_OS)/diff3$(EXE) diffutils/$(_OS)/sdiff$(EXE) \
-	diffutils/$(_OS)/cmp$(EXE)
+PATCH_BINS=patch/$(_OS)/patch$(EXE)
+DIFF_BINS= diffutils/$(_OS)/diff$(EXE) diffutils/$(_OS)/diff3$(EXE) \
+	diffutils/$(_OS)/sdiff$(EXE)  diffutils/$(_OS)/cmp$(EXE)
+BINS=$(PATCH_BINS) $(DIFF_BINS)
 CONFIG=--cache-file=../../../config.cache --quiet
 
 # Override Solaris make.rules

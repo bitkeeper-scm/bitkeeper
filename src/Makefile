@@ -254,7 +254,11 @@ t/doit: t/doit.sh substvars
 FORCE:
 
 gnu: $(BK) FORCE
-	cd gnu && $(MAKE) BINDIR=$(BINDIR)
+	@if uname -s | grep _NT; \
+	then cd gnu && $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
+	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
+	fi
+
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
 win32/uwtlib/libuwt.a: FORCE
@@ -466,7 +470,10 @@ install-nolinks: all
 		ln $(BINDIR)/$$2 $(BINDIR)/$$1; \
 		shift; shift; \
 	done
-	@cd gnu && $(MAKE) BINDIR=$(BINDIR) install
+	@if uname -s | grep _NT; \
+	then cd gnu && $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
+	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
+	fi
 	@if uname -s | grep _NT; \
 	then cd win32 && $(MAKE) BINDIR=$(BINDIR) install; \
 	fi
