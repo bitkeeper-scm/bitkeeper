@@ -287,6 +287,18 @@ void
 remote_free(remote *r)
 {
 	unless (r) return;
+	if ((r->rfd != -1) || (r->wfd != -1)) {
+		/*
+		 * This shouldn't happen.  If we opened a connection to
+		 * a remote bkd then we should disconnect before calling
+		 * remote_free().
+		 */
+#if 0
+		fprintf(stderr,
+"remote_free(): freeing struct with open connection, disconnecting...\n");
+#endif
+		disconnect(r, 2);
+	}
 	if (r->user) free(r->user);
 	if (r->host) free(r->host);
 	if (r->path) free(r->path);

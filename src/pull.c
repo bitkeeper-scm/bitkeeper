@@ -105,7 +105,7 @@ pull_main(int ac, char **av)
 		 * if we are sending via the pipe, reap the child
 		 */
 		if (r->pid)  {
-			waitpid(r->pid, NULL, 0);	
+			waitpid(r->pid, NULL, 0);
 			r->pid = 0; /* just in case */
 		}
 		sleep(min((i++ * 2), 10));
@@ -203,7 +203,10 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		return (1);
 	}
 	if (opts.dont) putenv("BK_STATUS=DRYRUN");
-	if (!opts.metaOnly && trigger(av[0], "pre")) return (1);
+	if (!opts.metaOnly && trigger(av[0], "pre")) {
+		disconnect(r, 2);
+		return (1);
+	}
 	bktmp(probe_list, "pullprobe");
 	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);

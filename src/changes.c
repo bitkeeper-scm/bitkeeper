@@ -664,6 +664,8 @@ doit_remote(char **av, char *url)
 	rc = changes_part1(r, av, key_list);
 	if (rc >= 0 && opts.remote) {
 		rc = changes_part2(r, av, key_list, rc);
+	} else {
+		disconnect(r, 1);
 	}
 	remote_free(r);
 	if (key_list[0]) unlink(key_list);

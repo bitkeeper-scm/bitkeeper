@@ -594,6 +594,7 @@ void
 disconnect(remote *r, int how)
 {
 	assert((how >= 0) && (how <= 2));
+
 	switch (how) {
 	    case 0:	if (r->rfd == -1) return;
 			if (r->isSocket) {
@@ -615,6 +616,21 @@ disconnect(remote *r, int how)
 			if (r->wfd >= 0) close(r->wfd);
 			r->rfd = r->wfd = -1;
 			break;
+	}
+	if (r->pid && (r->rfd == -1) && (r->wfd == -1)) {
+		/*
+		 * We spawned a bkd in the background to handle this
+		 * connection. When it get here it SHOULD be finished
+		 * already, but just in case we close the connections
+		 * and wait for that process to exit.
+		 */
+		if (getenv("BK_SHOWPROC")) {
+			fprintf(stderr,
+			    "disconnect(): pid %u waiting for %u...\n",
+			    getpid(), r->pid);
+		}
+		waitpid(r->pid, 0, 0);
+		r->pid = 0;
 	}
 }
 
@@ -914,7 +930,7 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 {
 	int	bkd_msg = 0, i;
 	char	**lines = 0;
-	
+
 	lines = addLine(lines, strdup(buf));
 	if (strneq("ERROR-BAD CMD: putenv", buf, 21)) {
 		bkd_msg = 1;
@@ -928,7 +944,7 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 	while (1) {
 		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) {
 			fprintf(stderr,
-			    "Remote dose not understand \"pull_part1\""
+			    "Remote does not understand \"pull_part1\""
 			    "command\n"
 			    "There are two possibilities:\n"
 			    "a) Remote bkd has disabled \"pull\" command.\n"
@@ -940,7 +956,7 @@ drainErrorMsg(remote *r, char *buf, int bsize)
 		 * Comment the following code out, it is causing problem
 		 * when we have case 4.
 		 * And I don't remember why I need it in the first place.
-		 * 
+		 *
 		 * if (strneq("ERROR-BAD CMD:", buf, 14)) goto next;
 		 */
 		if (streq("OK-root OK", buf)) goto next;
