@@ -7724,6 +7724,7 @@ name2xflg(char *fl)
 		return X_YEAR4;
 	}
 	assert("bad flag" == 0);
+	return (-1); /* keep compiler happy */
 }
 
 private delta *

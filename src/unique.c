@@ -40,7 +40,7 @@ private MDBM *db;
  *     is NFS mounted, and two process is runing on different host
  */
 /* -1 means error, 0 means OK */
-private int
+int
 uniq_lock()
 {
 	char	*bin;
@@ -136,7 +136,7 @@ uniq_lock()
 #endif
 }
 
-private int
+int
 uniq_unlock()
 {
 	char	*bin;
