@@ -18,6 +18,9 @@
 .if n .sp
 .if t .sp .5
 ..
+.de XR
+\&\\fB\\$1\\fR\\s-1(\\$2)\\s0\\$3
+..
 .if n \{\
 .	ds BM BitMover
 .	ds BS BitSCCS
@@ -27,6 +30,7 @@
 .	ds S SCCS
 .	ds RCS RCS
 .	ds BKS BitKeeper SCCS
+.	ds UN UNIX
 .\}
 .if t \{\
 .	ds BM \s-1B\s0\s-2IT\s0\s-1M\s0\s-2OVER\s0
@@ -37,5 +41,6 @@
 .	ds S \s-1SCCS\s0
 .	ds RCS \s-1RCS\s0
 .	ds BKS \s-1B\s0\s-2IT\s0\s-1K\s0\s-2EEPER\s0 \s-1SCCS\s0
+.	ds UN \s-1UNIX\s0
 .	fam H
 .\}

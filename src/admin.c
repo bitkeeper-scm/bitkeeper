@@ -3,42 +3,46 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private	char	*help = "\n\
-usage: admin options [-] OR [file file file...]\n\n\
-    A very useful thing to note is that\n\
+static const char help[] = "\n\
+usage: admin options [- | file file file...]\n\
+\n\
+    A useful thing to note is that\n\
 	    bk sfiles | bk admin -what -ever -\n\
-    works.  Note the trailing \"-\" which says to read files from stdin.\n\n\
-    -a<u>|<g>		add user/group\n\
-    -A<u>|<g>		delete user/group\n\n\
-    -b			force binary encoding (uuencode)\n\
-    -B			make the landing pad bigger\n\
-    -C			remove the changeset information\n\
-    -d<f>		delete flag (ATT compat)\n\
-    -e<u>|<g>		delete user/group (ATT compat)\n\
+    will apply -what -ever to every file in the source tree.\n\
+    -q, -s		run quietly\n\
+    -r<rev>		revision to add or modify\n\
+    -y<comment>		comment for change\n\
+    -n			create new SCCS history file\n\
+    -i[<file>]		read initial text from <file> (default stdin)\n\
+    -b			force file to be treated as binary\n\
+    -g			same as -b, but compress file before checking in\n\
+    -t[<file>]		read description from <file>\n\
+    -T			clear description\n\
+    -h			check s.file structure\n\
+    -H			same as -h, plus check file contents are 7-bit ASCII\n\
+    -z			recalculate file checksum\n\
+\n\
     -f<f><val>		set flag (value is optional)\n\
-    -F<f>		delete flag\n\n\
-    			Flags can be symbolic, i.e., RCS, YEAR4, BITKEEPER\n\
-    -g			force gzipped binary encoding (gzip | uuencode)\n\
-    -h			check s.file format for correctness\n\
-    -H			check the s.file format, insisting on 7 bit ascii.\n\
-    -i<file>		initial text in <file> or stdin for -n\n\
-    -l<a|r, r>		unlock releases (not implemented)\n\
-    -L<lod>:<rev>	creat a new LOD parented at <rev>\n\
+    -F<f>		delete flag\n\
+    -d<f>		delete flag (ATT compat)\n\
+\n\
     -m<mode>		set the mode of the file\n\
     -M<merge>		Merge branch <merge> into TOT or <rev>\n\
-    -n			create a new SCCS file\n\
-    -p<path>		set the initial pathname of the file to <path>\n\
-    -P			remove all pathname information (DANGEROUS)\n\
-    -q			run quietly\n\
-    -r<rev>		revision number of new file or effected delta\n\
-    -s<sym>:<rev>	set symbol associated with rev, no rev means TOT\n\
-    -t<file>		set or (if no file) delete descriptive text\n\
-    -T			delete descriptive text\n\
+    -L<lod>:<rev>	create a new LOD parented at <rev>\n\
+    -S<sym>:<rev>	associate <sym> with <rev>\n\
+    -p<path>:<rev>	set/change path of <rev> to <path>\n\
+    -P<rev>		revert to default path for <rev>\n\
+\n\
+    -B			make the landing pad bigger\n\
+    -C			remove the changeset information\n\
+    -Z			compress stored s.file\n\
+    -U			uncompres stored s.file (undoes -Z)\n\
     -u			make sure that all dates are increasing\n\
-    -U			turn the file into an uncompressed file (!-Z)\n\
-    -y<com>		initial checkin comment\n\
-    -Z			turn the file into a gzipped file\n\
-    -z			recompute checksum\n\n";
+\n\
+    -a<u>|<g>		add user/group (ATT compat)\n\
+    -e<u>|<g>		delete user/group (ATT compat)\n\
+    -A<u>|<g>		delete user/group (ATT compat)\n";
+
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
 			W[next##W].thing = V; \
@@ -68,7 +72,7 @@ main(int ac, char **av, char **ev)
 	char	*name;
 	int	encoding, *encp = 0, error = 0;
 	int	bigpad = 0;
-	int	fastSymOK = 1, fastSym, dopath = 0, rmCset = 0, rmPath = 0;
+	int	fastSym, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 
@@ -82,7 +86,7 @@ main(int ac, char **av, char **ev)
 	bzero(s, sizeof(s));
 	bzero(l, sizeof(l));
 	while ((c =
-	    getopt(ac, av, "a;A;e;f;F;d;i|L;m;M;np|r;y|s;STt|BbCghHPquUzZ")) != -1) {
+	    getopt(ac, av, "a;A;e;f;F;d;i|L;m;M;np|r;y|sS;Tt|BbCghHPquUzZ")) != -1) {
 		switch (c) {
 		/* user|group */
 		    case 'a':	OP(u, optarg, A_ADD); break;
@@ -100,6 +104,7 @@ main(int ac, char **av, char **ev)
 		    case 'y':	comment = optarg; break;
 		    case 'M':	merge = optarg; flags |= NEWCKSUM; break;
 		/* mode */
+		/* XXX should accept octal modes too */
 		    case 'm':	m = optarg;
 		    		switch (m[0]) {
 				    case '-':
@@ -126,7 +131,7 @@ main(int ac, char **av, char **ev)
 		/* Pathname info */
 		    case 'P':	rmPath = 1; flags |= NEWCKSUM; break;
 		/* symbols */
-		    case 's':	OP(s, optarg, A_ADD); break;
+		    case 'S':	OP(s, optarg, A_ADD); break;
 		/* text */
 		    case 't':	text = optarg ? optarg : ""; break;
 		    case 'T':	text = ""; break;
@@ -137,7 +142,7 @@ main(int ac, char **av, char **ev)
 		    case 'h':	flags |= ADMIN_FORMAT; break;
 		    case 'H':	flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
 				break;
-		    case 'S':	fastSymOK = 0; break;
+		    case 's':
 		    case 'q':	flags |= SILENT; break;
 		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;
 		    case 'U':	encp = &encoding;
@@ -195,8 +200,7 @@ main(int ac, char **av, char **ev)
 	 * If we are adding exactly one symbol, do it quickly.
 	 */
 	fastSym = !(flags & ~SILENT) && !nextf && !nextu && !nextp &&
-	    !rev && nexts && (s[0].flags == A_ADD) && !s[1].flags &&
-	    fastSymOK;
+	    !rev && nexts && (s[0].flags == A_ADD) && !s[1].flags;
 	if (fastSym) init_flags |= (INIT_MAPWRITE|INIT_NOCKSUM);
 	while (name) {
 		if (flags & NEWFILE) {
@@ -210,7 +214,8 @@ main(int ac, char **av, char **ev)
 		sc = sccs_init(name, init_flags);
 		unless (sc) { name = sfileNext(); continue; }
 		unless (sc->tree) {
-			fprintf(stderr, "admin: can't read delta table in %s\n",
+			fprintf(stderr,
+				"admin: can't read delta table in %s\n",
 			    sc->sfile);
 			sccs_free(sc);
 			name = sfileNext();
