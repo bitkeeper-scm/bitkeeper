@@ -354,7 +354,7 @@ delta:	off = ftell(f);
 		}
 		c = line;
 		while (fnext(buf, f) && !streq("\n", buf)) {
-			fputs((buf[0] == '\\') ? &buf[1] : buf, t);
+			fputs(buf, t);
 			line++;
 			if (echo>4) fprintf(stderr, "%s", buf);
 		}
