@@ -281,9 +281,9 @@ clone2(opts opts, remote *r)
 	bk_proj = proj_init(0);
 	p = user_preference("checkout");
 	if (strieq(p, "edit")) {
-		sys("bk", "-r", "edit", "-q", SYS);
+		sys("bk", "-Ur", "edit", "-q", SYS);
 	} else if (strieq(p, "get")) {
-		sys("bk", "-r", "get", "-q", SYS);
+		sys("bk", "-Ur", "get", "-q", SYS);
 	}
 	return (0);
 }
