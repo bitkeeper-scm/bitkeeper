@@ -21,6 +21,9 @@ sub main
 			$MAN = "-mgan";
 		}
 	}
+	if (-d "/opt/groff/share/groff/1.17.1/tmac") {
+		$MAN = "-mgan";
+	}
 
 	foreach $page (@ARGV) {
 		&man2help;
@@ -38,7 +41,7 @@ sub man2help
 	if (-e $output && (stat($output))[9] > (stat($page))[9]) {
 		return;
 	}
-	warn "PAGE $page ( $name . $section )\n" if $debug;
+	warn "Format $page ( $name . $section )\n" if $debug;
 	open(O, ">$output") || die "open of $output";
 	if ($name =~ /^${prefix}(.*)/o) {
 		print O "help://$1\n";
