@@ -11,7 +11,7 @@ LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
 DATA	= bitkeeper.config bkhelp.txt
 
-LINKTO	= delta:ci get:co get:edit clean:unedit clean:unget
+LINKTO	= ci:delta co:get edit:get unedit:clean unget:clean
 BINLINKS= bk admin get delta unget rmdel prs
 
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PRIVATE) $(DATA)
@@ -165,9 +165,14 @@ tags: srcs
 TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
-test tests: $(ALL)
-	-get -q t
+test tests: $(ALL) t/doit
+	-get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit
+
+t/doit: t/doit.sh substvars
+	./substvars t/doit.sh >t/doit.T
+	chmod +x t/doit.T
+	mv t/doit.T t/doit
 
 FORCE:
 
@@ -389,7 +394,7 @@ install-bin: install.sh MANIFEST
 MANIFEST: Makefile
 	for file in $(BINS) $(SCRIPTS); do echo "$$file 0755"; done >M
 	for file in $(DATA); do echo "$$file 0644"; done >>M
-	for pair in $(LINKTO); do echo $${pair#*:} - $${pair%:*}; done >>M
+	for pair in $(LINKTO); do echo $$pair; done | sed 's/:/ - /' >>M
 	mv -f M MANIFEST
 
 install-links:
