@@ -16,12 +16,14 @@ typedef struct {
 } opts;
 
 private int	clone(char **, opts, remote *, char *, char **);
+private	int	clone2(opts opts, remote *r);
 private void	parent(opts opts, remote *r);
 private int	sfio(opts opts, int gz, remote *r);
 private void	usage(void);
 private int	initProject(char *root);
 private void	usage(void);
-private	void	do_lclone(char **av);
+private	void	lclone(opts, remote *, char *to);
+private int	linkdir(char *from, char *to, char *dir);
 extern	int	rclone_main(int ac, char **av);
 
 int
@@ -31,7 +33,7 @@ clone_main(int ac, char **av)
 	opts	opts;
 	char	**envVar = 0;
 	remote 	*r = 0,  *l = 0;
-	int	lclone = 0;
+	int	link = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help clone");
@@ -45,7 +47,7 @@ clone_main(int ac, char **av)
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 			envVar = addLine(envVar, strdup(optarg)); break;
-		    case 'l': lclone = 1; break;		/* doc 2.0 */
+		    case 'l': link = 1; break;			/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
 		    case 'w': opts.delay = atoi(optarg); break; /* undoc 2.0 */
@@ -60,8 +62,6 @@ clone_main(int ac, char **av)
 	license();
 	unless (av[optind]) usage();
 
-	if (lclone) do_lclone(av);		
-
 	loadNetLib();
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger
@@ -69,6 +69,10 @@ clone_main(int ac, char **av)
 	 */
 	r = remote_parse(av[optind], 1);
 	unless (r) usage();
+	if (link) {
+		lclone(opts, r, av[optind+1]);
+		/* NOT REACHED */
+	}
 	if (av[optind + 1]) {
 		l = remote_parse(av[optind + 1], 1);
 		unless (l) {
@@ -200,37 +204,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 	}
 
-	/* remove any uncommited stuff */
-	sccs_rmUncommitted(opts.quiet);
-
-	/* remove any later stuff */
-	if (opts.rev && after(opts.quiet, opts.rev)) {
-		fprintf(stderr, "Undo failed, repository left locked.\n");
-		goto done;
-	}
-
-	/* clean up empty directories */
-	rmEmptyDirs(opts.quiet);
-
-	parent(opts, r);
-
-	if (consistency(opts.quiet)) {
-		fprintf(stderr,
-			"Consistency check failed, repository left locked.\n");
-		goto done;
-	}
-
-	/*
-	 * Invalidate the project cache, we have changed directory
-	 */
-	if (bk_proj) proj_free(bk_proj);
-	bk_proj = proj_init(0);
-	p = user_preference("checkout");
-	if (strieq(p, "edit")) {
-		sys("bk", "-r", "edit", "-q", SYS);
-	} else if (strieq(p, "get")) {
-		sys("bk", "-r", "get", "-q", SYS);
-	}
+	if (clone2(opts, r)) goto done;
 
 	if (r->port && isLocalHost(r->host) && (bk_mode() == BK_BASIC)) {
 		mkdir(BKMASTER, 0775);
@@ -263,6 +237,45 @@ done:	if (rc) {
 		fprintf(stderr, "Clone completed successfully.\n");
 	}
 	return (rc);
+}
+
+private	int
+clone2(opts opts, remote *r)
+{
+	char	*p;
+
+	/* remove any uncommited stuff */
+	sccs_rmUncommitted(opts.quiet);
+
+	/* remove any later stuff */
+	if (opts.rev && after(opts.quiet, opts.rev)) {
+		fprintf(stderr, "Undo failed, repository left locked.\n");
+		return (-1);
+	}
+
+	/* clean up empty directories */
+	rmEmptyDirs(opts.quiet);
+
+	parent(opts, r);
+
+	if (consistency(opts.quiet)) {
+		fprintf(stderr,
+			"Consistency check failed, repository left locked.\n");
+		return (-1);
+	}
+
+	/*
+	 * Invalidate the project cache, we have changed directory
+	 */
+	if (bk_proj) proj_free(bk_proj);
+	bk_proj = proj_init(0);
+	p = user_preference("checkout");
+	if (strieq(p, "edit")) {
+		sys("bk", "-r", "edit", "-q", SYS);
+	} else if (strieq(p, "get")) {
+		sys("bk", "-r", "get", "-q", SYS);
+	}
+	return (0);
 }
 
 private int
@@ -463,19 +476,131 @@ rmEmptyDirs(int quiet)
 	} while (n);
 }
 
+/*
+ * Hard link from the source to the destination.
+ */
 private void
-do_lclone(char **av)
+lclone(opts opts, remote *r, char *to)
 {
-	char	*nav[30];
-	int	i = 0;
+	char	here[MAXPATH];
+	char	from[MAXPATH];
+	char	dest[MAXPATH];
+	char	buf[MAXPATH];
+	char	skip[MAXPATH];
+	FILE	*f;
+	char	*p;
+	char	*av[2] = { "remote clone", 0 };
 
-	nav[i++] = "bk";
-	nav[i++] = "lclone";
-	
-	++av;
-	while ((nav[i++] = *av++));
+	assert(r);
+	unless (r->type == ADDR_FILE) {
+		p = remote_unparse(r);
+		fprintf(stderr, "clone: invalid parent %s\n", p);
+		free(p);
+out1:		remote_free(r);
+		exit(1);
+	}
+	getRealCwd(here, MAXPATH);
+	unless (chdir(r->path) == 0) {
+		fprintf(stderr, "clone: cannot chdir to %s\n", r->path);
+		goto out1;
+	}
+	getRealCwd(from, MAXPATH);
+	unless (exists(BKROOT)) {
+		fprintf(stderr, "clone: %s is not a package root\n", from);
+		goto out1;
+	}
+	if (repository_rdlock()) {
+		fprintf(stderr, "clone: unable to readlock %s\n", from);
+		goto out1;
+	}
+	chdir(here);
+	unless (to) to = basenm(r->path);
+	if (exists(to)) {
+		fprintf(stderr, "clone: %s exists\n", to);
+out:		chdir(from);
+		repository_rdunlock(0);
+		remote_free(r);
+		putenv("BK_STATUS=FAILED");
+		trigger(av, "post");
+		exit(1);
+	}
+	if (mkdirp(to)) {
+		perror(to);
+		goto out;
+	}
+	chdir(to);
+	getRealCwd(dest, MAXPATH);
+	sccs_mkroot(".");
+	mkdir("RESYNC", 0777);		/* lock it */
+	chdir(from);
+	unless (f = popen("bk sfiles -d", "r")) goto out;
+	chdir(dest);
+	while (fnext(buf, f)) {
+		chomp(buf);
+		unless (streq(buf, ".")) {
+			sprintf(skip, "%s/%s/%s", from, buf, BKROOT);
+			if (exists(skip)) continue;
+		}
+		sprintf(skip, "%s/%s/%s", from, buf, BKSKIP);
+		if (exists(skip)) continue;
+		unless (opts.quiet || streq(".", buf)) {
+			fprintf(stderr, "Linking %s\n", buf);
+		}
+		if (linkdir(from, dest, buf)) {
+			pclose(f);
+			goto out;	/* don't unlock RESYNC */
+		}
+	}
+	pclose(f);
+	chdir(from);
+	chdir("BitKeeper/etc/SCCS");
+	/* the 2 redirect works, we're on Unix */
+	p = aprintf("cp x.* %s/BitKeeper/etc/SCCS 2>/dev/null", dest);
+	system(p);
+	free(p);
+	chdir(from);
+	repository_rdunlock(0);
+	chdir(dest);
+	rmdir("RESYNC");		/* undo wants it gone */
+	if (clone2(opts, r)) {
+		mkdir("RESYNC", 0777);
+		goto out;
+	}
+	chdir(from);
+	putenv("BK_STATUS=OK");
+	trigger(av, "post");
+	exit(0);
+}
 
-	execvp("bk", nav);
-	perror(nav[1]);
-	exit(1);
+private int
+linkdir(char *from, char *to, char *dir)
+{
+	char	buf[MAXPATH];
+	char	dest[MAXPATH];
+	DIR	*d;
+	struct	dirent *e;
+
+	sprintf(buf, "%s/SCCS", dir);
+	if (mkdirp(buf)) {
+		perror(buf);
+		return (-1);
+	}
+	sprintf(buf, "%s/%s/SCCS", from, dir);
+	unless (d = opendir(buf)) {
+		perror(buf);
+		return (-1);
+	}
+	unless (d) return (0);
+	while (e = readdir(d)) {
+		unless (e->d_name[0] == 's') continue;
+		sprintf(buf, "%s/%s/SCCS/%s", from, dir, e->d_name);
+		sprintf(dest, "%s/SCCS/%s", dir, e->d_name);
+		if (link(buf, dest)) {
+			perror(dest);
+			closedir(d);
+			return (-1);
+		}
+	}
+	closedir(d);
+	return (0);
 }
