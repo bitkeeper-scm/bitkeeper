@@ -42,7 +42,7 @@ proc initGlobals {} \
 	if {$tcl_platform(platform) == "windows"} {
 		set runtime(enableSccDLL) 1
 		set runtime(enableShellxLocal) 1
-		set runtime(enableShellxNetwork) 1
+		set runtime(enableShellxNetwork) 0
 		set runtime(places) \
 		    [list [normalize {C:/Program Files/BitKeeper}]]
 		set runtime(symlinkDir) ""
@@ -338,8 +338,6 @@ proc widgets {} \
 
 		    set d [string map $map $::strings(InstallDLLs)]
 		    $this stepconfigure InstallDLLs -description [unwrap $d]
-
-		    set ::runtime(installDLLs) 1
 
 		    checkbutton $w.shellx-local \
 			-anchor w \
@@ -933,13 +931,19 @@ set strings(Overwrite) {
 }
 
 set strings(InstallDLLs) {
-	BitKeeper includes optional integration with Windows explorer
-	and Visual C++ 6.0. 
+	BitKeeper includes optional integration with Windows Explorer
+	and Visual Studio (but not Visual Studio.net, that's coming soon).
 
-	The explorer integration can be enabled separately for local
+	The Explorer integration can be enabled separately for local
 	and remote hard drives.  Enabling this option on remote drives
 	can lead to performance problems if you have a slow or
 	unreliable network. 
+
+	These features are only available to commercial users of BitKeeper.
+	If you are evaluating BitKeeper for commercial use please make
+	sure you have received an evaluation key to enable these
+	features. See http://www.bitkeeper.com for information on
+	getting an evaluation key or a commercial license key.
 }
 
 set strings(Install) {
