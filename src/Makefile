@@ -376,8 +376,11 @@ lodset: lodset.sh
 # force bk.ver (and thus the bk script) to be regenerated.
 bk.ver: stamp-ver
 stamp-ver:: ../SCCS/s.ChangeSet utils/os utils/gnu-os
-	( echo `utils/os` \
-	  `./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` ) >bk.v
+	( echo \
+	  `./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` \
+	  for \
+	  `utils/os` \
+	) >bk.v
 	mv -f bk.v bk.ver
 	touch stamp-ver
 stamp-ver:: prs
