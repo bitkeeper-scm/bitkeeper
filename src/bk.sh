@@ -1254,8 +1254,8 @@ __do_win32_uninstall()
 		Y1=`__quoteSpace "$OBK"`
 		sed "s,$X1,$Y1,Ig" "$TEMP/bkuninstall_tmp$$" > "$TEMP/bk_cmd$$"
 		BK_INSTALL_DIR="$OBK"
-		export BK_INSTALL_DIR
-		sh "$TEMP/bk_cmd$$" > /dev/null 2>&1
+		export BK_INSTALL_DIR TEMP
+		TMP="$TEMP" sh "$TEMP/bk_cmd$$" > /dev/null 2>&1
 		rm -f "$TEMP/bkuninstall_tmp$$" "$TEMP/bk_cmd$$"
 		;;
 	    *)	

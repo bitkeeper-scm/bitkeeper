@@ -23,7 +23,7 @@ win32_common_setup()
 	BK_FS="|"
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
-	touch `msys2win $TEMP`/BitKeeper_null
+	touch `msys2win $TEMP`/BitKeeper_nul
 	BK_USER=`bk getuser`
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
