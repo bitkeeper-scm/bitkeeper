@@ -658,6 +658,40 @@ proc readFiles {L R {O {}}} \
 } ;# readFiles
 
 # --------------- Window stuff ------------------
+# this is used to save/restore the current view; handy when 
+# programs cause the diff to be redone for the same files (think:
+# turning annotations on/off in csettool)
+proc diffView {{viewData {}}} \
+{
+	global lastDiff
+
+	if {$viewData == {}} {
+		lappend result [.diffs.left  xview]
+		lappend result [.diffs.left  yview]
+		lappend result [.diffs.right xview]
+		lappend result [.diffs.right yview]
+		lappend result $lastDiff
+
+	} else {
+		
+		# The user may have centered on a diff then scrolled
+		# around, so the call to dot resets the notion of the
+		# current diff, then we manually scroll back to 
+		# what the user was looking at.
+		set lastDiff [lindex $viewData 4]
+		dot
+
+		.diffs.left  xview moveto [lindex [lindex $viewData 0] 0]
+		.diffs.left  yview moveto [lindex [lindex $viewData 1] 0]
+		.diffs.right xview moveto [lindex [lindex $viewData 2] 0]
+		.diffs.right yview moveto [lindex [lindex $viewData 3] 0]
+
+		set result {}
+	}
+
+	return $result
+}
+
 proc yscroll { a args } \
 {
 	eval { .diffs.left yview $a } $args
