@@ -477,13 +477,13 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
+	    pack .menu.mb -side left -fill y
 	    pack .menu.prevFile -side left -fill y
 	    pack .menu.fmb -side left -fill y
 	    pack .menu.nextFile -side left -fill y
 	    pack .menu.prev -side left -fill y
 	    pack .menu.dot -side left
 	    pack .menu.next -side left -fill y
-	    pack .menu.mb -side left -fill y
 	    # Add the search widgets to the menu bar
 	    search_widgets .menu .diffs.right
 
