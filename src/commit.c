@@ -24,7 +24,7 @@ private int	do_commit(c_opts opts, char *sym,
 int
 commit_main(int ac, char **av)
 {
-	int	c, rc, doit = 0, force = 0, getcomment = 1;
+	int	c, doit = 0, force = 0, getcomment = 1;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 	char	commentFile[MAXPATH], pendingFiles[MAXPATH];
 	char	*sym = 0;
@@ -213,6 +213,24 @@ ok_commit(int l, int alreadyAsked)
 }
 
 private int
+pending(char *sfile)
+{
+	sccs	*s = sccs_init(sfile, 0, 0);
+	delta	*d;
+	int	ret;
+
+	unless (s) return (0);
+	unless (s->tree) {
+		sccs_free(s);
+		return (0);
+	}
+	d = sccs_top(s);
+	ret = (d->flags & D_CSET) == 0;	/* pending if not set */
+	sccs_free(s);
+	return (ret);
+}
+
+private int
 do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
@@ -230,7 +248,18 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
+	if (pending(LOGGING_OK)) {
+		int	len = strlen(LOGGING_OK);
 
+		f = fopen(pendingFiles, "rt+");
+		while (fnext(buf, f)) {
+			if (strneq(LOGGING_OK, buf, len) && buf[len] == '@') {
+				goto out;
+			}
+		}
+		fprintf(f, "%s@+\n", LOGGING_OK);
+out:		fclose(f);
+	}
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
 	sprintf(buf, "bk cset %s %s %s %s%s < %s",
 		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,

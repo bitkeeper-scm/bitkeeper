@@ -240,7 +240,7 @@ done:		mdbm_close(vals);
 	for (kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
 		s = sccs_init(kv.val.dptr, 0, 0);
 		if (hasCsetDerivedKey(s)) {
-			sccs_close(s);
+			sccs_free(s);
 			continue;	/* don't want that one */
 		}
 		unless (winner) {
@@ -249,10 +249,23 @@ done:		mdbm_close(vals);
 		}
 		/* if this is an older one, it  becomes the winner */
 		if (sccs_ino(s)->date < sccs_ino(winner)->date) {
-			sccs_close(winner);
+			sccs_free(winner);
 			winner = s;
+		} else if (sccs_ino(s)->date == sccs_ino(winner)->date) {
+			char	key2[MAXKEY];
+
+			sccs_sdelta(s, sccs_ino(s), key);
+			sccs_sdelta(winner, sccs_ino(winner), key2);
+			if (strcmp(key, key2) < 0) {
+				/* we use lesser values to mean older,
+				 * just like the time_t.
+				 */
+				sccs_free(winner);
+				winner = s;
+			}
+
 		} else {
-			sccs_close(s);
+			sccs_free(s);
 		}
 	}
 	sfile = name2sccs(gfile);
