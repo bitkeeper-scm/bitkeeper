@@ -77,7 +77,7 @@ PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a $(UWTLIB)
 LINKS	= ci co edit unget
-DATA	= bitkeeper.config bkhelp.txt bkmsg.txt bklogo.gif
+DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= bk admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -111,7 +111,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  port/win32_platform.perl port/win32_platform.tcl \
 	  port/win32_platform.sh gui/renametool.tcl \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh
-MISC	= bkhelp.doc bkmsg.doc bitkeeper.config t/doit.sh
+MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 default:
 	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
@@ -182,7 +182,7 @@ production_image: rebuild p image
 clean-obj: FORCE
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
-	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out core $(WIN_TMP)
+	-@rm -f $(LIBS) shell.c bkdsubstr bkmsg.txt bkhelp.txt a.out core $(WIN_TMP)
 	-@cd gnu && $(MAKE) clean-obj
 	-@cd win32 && $(MAKE) clean-obj
 
@@ -284,16 +284,16 @@ bk.script: bk.sh port/$(SYS)_platform.sh substvars
 	./substvars port/$(SYS)_platform.sh bk.sh > bk.script
 	chmod +x bk.script 
 
-bkhelp.txt: bkhelp.doc bk.ver helpcheck.pl Makefile
-	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
-	sed "s/@built_date@/`date`/" > bkhelp.txt
-	-perl helpcheck.pl
-
 bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
 	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt
+
+bkhelp.txt: ../man/man2help/helptxt
+	cp ../man/man2help/helptxt bkhelp.txt
+
+../man/man2help/helptxt:
+	cd ../man/man2help && make helptxt
 
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't
