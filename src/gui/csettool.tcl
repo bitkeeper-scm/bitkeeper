@@ -63,7 +63,6 @@ proc dotFile {{line {}}} \
 	global	RealFiles file finfo
 	global gc
 
-	busy 1
 	set finfo(lt) ""
 	set finfo(rt) ""
 	if {$line != ""} { set lastFile $line }
@@ -83,6 +82,13 @@ proc dotFile {{line {}}} \
 	.l.filelist.t tag remove select 1.0 end
 	.l.filelist.t tag add select $line "$line lineend + 1 char"
 	set file $RealFiles($lastFile)
+
+	clearInfo "Working..."
+
+	# busy is put after we change the selection. This is because busy
+	# causes a screen update and we want the selection set quickly to make
+	# the user think we're responsive.
+	busy 1
 	if {[regexp "^  $file_start_stop" "$file" dummy file start stop] == 0} {
 		regexp "^  $file_stop" "$file" dummy f stop
 		set start $stop
@@ -115,8 +121,15 @@ proc dotFile {{line {}}} \
 	} else {
 		set annotate ""
 	}
-	catch { exec bk get -qkpr$parent $annotate "$file" > $l}
-	catch { exec bk get -qkpr$stop $annotate "$file" > $r}
+
+	if {$annotate == ""} {
+		catch { exec bk get -qkpr$parent "$file" > $l}
+		catch { exec bk get -qkpr$stop "$file" > $r}
+	} else {
+		catch { exec bk get -qkpr$parent $annotate "$file" > $l}
+		catch { exec bk get -qkpr$stop $annotate "$file" > $r}
+	}
+
 	displayInfo $file $file $parent $stop 
 	readFiles $l $r
 	catch {file delete $l $r}
@@ -242,6 +255,25 @@ proc getFiles {revs {file_rev {}}} \
 }
 
 # --------------- Window stuff ------------------
+
+# the purpose is to clear out all the widgets; typically right before
+# filling them back up again.
+proc clearInfo {{message ""}} \
+{
+	.diffs.status.middle configure -text $message
+	.diffs.status.l configure -text ""
+	.diffs.status.r configure -text ""
+	.diffs.left configure -state normal
+	.diffs.right configure -state normal
+	.l.sccslog.t configure -state normal
+	.diffs.left delete 1.0 end
+	.diffs.right delete 1.0 end
+	.l.sccslog.t delete 1.0 end
+	.diffs.left configure -state disabled
+	.diffs.right configure -state disabled
+	.l.sccslog.t configure -state disabled
+}
+
 proc busy {busy} \
 {
 	set oldCursor [. cget -cursor]
@@ -266,7 +298,7 @@ proc busy {busy} \
 	}
 }
 
-proc pixSelect {x y {bindtype {}}} \
+proc pixSelect {x y} \
 {
 	global	lastFile line2File file
 
@@ -274,13 +306,11 @@ proc pixSelect {x y {bindtype {}}} \
 	set x [.l.filelist.t get "$line linestart" "$line linestart +2 chars"]
 	if {$x != "  "} { return }
 	set line [lindex [split $line "."] 0]
+	# if we aren't changing which line we're on there's no point in
+	# calling dotFile since it is a time consuming process
+	if {$line2File($line) == $lastFile} {return}
 	set lastFile $line2File($line)
-	if {$bindtype == "B1"} {	
-		dotFile
-	} else {
-		#puts stderr "D1 lastFile=($lastFile) file=($file)"
-		file_history
-	}
+	dotFile
 }
 
 proc adjustHeight {diff list} \
@@ -508,6 +538,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 proc keyboard_bindings {} \
 {
 	global gc search tcl_platform
+	global afterId
 
 	bind all <Control-b> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Control-f> { if {[Page "yview"  1 0] == 1} { break } }
@@ -541,6 +572,7 @@ proc keyboard_bindings {} \
 	bind all <space>		next
 	bind all <n>			next
 	bind all <p>			prev
+	bind all <r>			file_history
 	bind all <period>		dot
 	bind all <Control-n>		nextFile
 	bind all <Control-p>		prevFile
@@ -553,8 +585,25 @@ proc keyboard_bindings {} \
 		bind all <Button-4>	prev
 		bind all <Button-5>	next
 	}
-	bind .l.filelist.t <Button-1> { pixSelect %x %y "B1"; break}
-	bind .l.filelist.t <Double-1> { pixSelect %x %y "D1"; break }
+	# note that the "after" is required for windows. Without
+	# it we often never see the double-1 events. 
+	bind .l.filelist.t <1> { 
+		set afterId \
+		    [after idle [list after $gc(cset.doubleclick) \
+				     pixSelect %x %y]]
+		break
+	}
+	# the idea is, if we detect a double click we'll cancel the 
+	# single click, then make sure we perform the single and double-
+	# click actions in order
+	bind .l.filelist.t <Double-1> {
+		if {[info exists afterId]} {
+			after cancel $afterId
+		}
+		pixSelect %x %y
+		file_history
+		break
+	}
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
 }
