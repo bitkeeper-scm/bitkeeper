@@ -4,6 +4,8 @@ proc main {} \
 {
 	init
 	widgets
+
+	after idle [list wm deiconify .]
 }
 
 proc init {} \

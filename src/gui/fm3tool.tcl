@@ -752,7 +752,6 @@ proc readSmerge {} \
 	close $fd
 	.merge.hi configure -state disabled
 	.menu.conflict configure -text "$conf_todo conf_todo"
-	wm deiconify .
 }
 
 # Take a like
@@ -1038,14 +1037,8 @@ proc widgets {} \
 	set gc(bw) 1
 	if {$tcl_platform(platform) == "windows"} {
 		set gc(py) -2; set gc(px) 1
-		if {("$g" == "1x1+0+0") && ("$gc(fm3.geometry)" != "")} {
-			wm geometry . $gc(fm3.geometry)
-		}
 	} else {
 		set gc(py) 1; set gc(px) 4
-		# We iconify here so that the when we finally deiconify, all
-		# of the widgets are correctly sized. Fixes irritating 
-		# behaviour on ctwm.
 	}
 	createDiffWidgets .diffs
 
@@ -1302,9 +1295,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	}
 	searchreset
 	. configure -background $gc(BG)
-	if {("$g" == "1x1+0+0") && ("$gc(fm3.geometry)" != "")} {
-		wm geometry . $gc(fm3.geometry)
-	}
 	focus .
 }
 
@@ -1941,10 +1931,12 @@ proc fm3tool {} \
 	widgets
 
 	loadState
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	if {[info exists State(geometry@$res)]} {
-		after idle [list wm geometry . $State(geometry@$res)]
-	}
+	restoreGeometry fm3
+
+	.prs.left insert 1.0 "Loading..."
+	.prs.right insert 1.0 "Loading..."
+	after idle [list wm deiconify .]
+	update idletasks
 
 	readFile
 

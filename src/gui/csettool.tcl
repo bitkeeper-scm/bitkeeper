@@ -308,12 +308,6 @@ proc widgets {} \
 		set gc(py) 1; set gc(px) 4
 	}
 
-	set g [wm geometry .]
-	if {("$g" == "1x1+0+0") && ("$gc(cset.geometry)" != "")} {
-		wm geometry . $gc(cset.geometry)
-	}
-	wm title . "Cset Tool"
-
 	frame .l
 	frame .l.filelist -background $gc(BG)
 	    text .l.filelist.t -height $gc(cset.listHeight) -width 30 \
@@ -569,6 +563,8 @@ proc main {} \
 {
 	global argv0 argv argc app showAnnotations gc
 
+	wm title . "Cset Tool"
+
 	# Set 'app' so that the difflib code knows which global config
 	# vars to read
 	set revs ""
@@ -618,7 +614,7 @@ proc main {} \
 	}
 
 	loadState
-	restoreGeometry
+	restoreGeometry cset
 
 	widgets
 
@@ -637,32 +633,8 @@ proc main {} \
 			saveState
 		}
 	}
-}
 
-proc restoreGeometry {} \
-{
-	global State
-
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	if {![info exists State(geometry@$res)]} return
-
-	# Setting the propagate value to zero is essential; bindings
-	# in difflib will try to coerce the widgets to a particular
-	# size, resulting in much thrashing about.
-	grid propagate . 0
-
-	# We have to do a little dance because the geometry in 
-	# state is pixel-based, but the window is actually gridded
-	# (look for a widget with the -setgrid option). When a
-	# window is gridded, geometry specifications are assumed to
-	# be in grid units. So, if we set the geomtry to 200x200, 
-	# we end up with 200x200 characters rather than pixels.
-	catch {
-		set geometry $State(geometry@$res)
-		regexp {([0-9]+)x([0-9]+)(.*)} $geometry -> width height pos
-		. configure -width $width -height $height
-		wm geometry . $pos
-	}
+	after idle [list wm deiconify .]
 }
 
 proc loadState {} \

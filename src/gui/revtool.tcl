@@ -19,6 +19,22 @@ array set month {
 	"12"	"DEC"
 }
 
+
+proc main {} \
+{
+	wm title . "revtool"
+
+	init
+	arguments
+	widgets
+	loadState
+
+	restoreGeometry "help" 
+	after idle [list wm deiconify .]
+
+	startup
+}
+
 # Return width of text widget
 proc wid {id} \
 {
@@ -1801,10 +1817,6 @@ proc widgets {} \
 		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
 	}
 	set Opts(line_time)  "-R-$gc(rev.showHistory)"
-	if {"$gc(rev.geometry)" != ""} {
-		wm geometry . $gc(rev.geometry)
-	}
-	wm title . "revtool"
 
 	frame .menus
 	    button .menus.quit -font $gc(rev.buttonFont) -relief raised \
@@ -2098,7 +2110,6 @@ proc widgets {} \
 	# in the search.tcl lib) <remove if all goes well> -ask
 	#bindtags $search(text) { .cmd.search Entry }
 
-	wm deiconify .
 	focus $w(graph)
 	. configure -background $gc(BG)
 } ;# proc widgets
@@ -2379,11 +2390,6 @@ proc startup {} \
 	global file merge diffpair dfile
 	global State percent preferredGraphSize
 
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	if {[info exists State(geometry@$res)]} {
-		after idle [list wm geometry . $State(geometry@$res)]
-	}
-
 	if {$gca != ""} {
 		set merge(G) $gca
 		set merge(l) $rev1
@@ -2472,10 +2478,4 @@ proc saveState {} \
 	}
 }
 
-
-init
-arguments
-widgets
-loadState
-startup
-
+main
