@@ -80,11 +80,22 @@ doit(char *file)
 	}
 	if (undos) {
 		char	path[MAXPATH];
+		FILE	*f = fopen(file, "r");
+		int	convert = 1;
 
-		sprintf(path, "%s%d", file, getpid());
-		rename(file, path);
-		sysio(0, file, 0, "bk", "undos", "-n", path, SYS);
-		unlink(path);
+		while (fnext(path, f)) {
+			if (strneq("date", path, 4)) break;
+			if (strneq("expand", path, 6)) {
+				if (strstr(path, "@b@")) convert = 0;
+			}
+		}
+		fclose(f);
+		if (convert) {
+			sprintf(path, "%s%d", file, getpid());
+			rename(file, path);
+			sysio(0, file, 0, "bk", "undos", "-n", path, SYS);
+			unlink(path);
+		}
 	}
 	unless (r = rcs_init(file)) {
 		fprintf(stderr, "Can't parse %s\n", file);
