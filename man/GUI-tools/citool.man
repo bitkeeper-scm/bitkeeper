@@ -77,11 +77,10 @@ example, if you are working on a file and have made changes to it
 want these changes to propogate when you push your work to another
 repository. To exclude files from the changeset, use the mouse to click
 on the file-type icon.  If the file can be excluded, the icon will
-change to a circle with a slash through it. If you try to exclude
-a pending file while a modified version of the file exists, both
-the pending and the modified file will be excluded. It is possible
-to exclude the modified file, while keeping the pending file in an
-included state.
+change to a red X. If you try to exclude a pending file while a modified 
+version of the file exists, both the pending and the modified file will 
+be excluded. It is possible to exclude the modified file, while keeping 
+the pending file in an included state.
 .LP
 When you move to a file, the differences for this file are shown in the
 bottom window.  When entering comments, it is normal to want to scroll
