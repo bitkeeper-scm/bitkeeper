@@ -5,7 +5,6 @@
  * %sccs.include.redist.c%
  */
 
-#include <sys/cdefs.h>
 #include <string.h>
 #include <stdio.h>
 
