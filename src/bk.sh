@@ -23,13 +23,12 @@ qecho() {
 }
 
 __cd2root() {
-	while [ ! -d "BitKeeper/etc" ]
-	do	cd ..
-		if [ `pwd` = "/" ]
-		then	echo "bk: can not find package root."
-			exit 1
-		fi
-	done
+	root="`bk root 2> /dev/null`"
+	test $? -ne 0 && {
+		echo "bk: cannot find package root."
+		exit 1
+	}
+	cd "$root"
 }
 
 # shorthand to dig out renames
