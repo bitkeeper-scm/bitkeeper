@@ -49,7 +49,6 @@ private int	copyAndGet(opts *opts, char *from, char *to);
 private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
-private	void	log_cleanup(void);
 private void	save_checkout_state(MDBM *DB, sccs *s);
 private void	restore_checkouts(opts *opts);
 
@@ -2679,43 +2678,6 @@ csets_in(opts *opts)
 	}
 }
 
-/*
- * Move the RESYNC dir off to the side and try an undo if we can.
- */
-private void
-log_cleanup()
-{
-	FILE	*f;
-	char	buf[MAXPATH];
-	char	subject[MAXPATH*2];
-	char	save[MAXPATH];
-
-	savefile(".", "RESYNC-", save);
-	if (rename("RESYNC", save)) return;
-	unless (f = fopen(LOG_KEYS, "r")) return;
-	strcpy(buf, "-a");
-	while (fgets(&buf[2], sizeof(buf) - 2, f)) {
-		chop(&buf[2]);
-		if (sys("bk", "undo", "-f", buf, SYS)) {
-			sprintf(subject, "LOGGING: undo -f %s in ", buf);
-			getcwd(buf, sizeof(buf));
-			strcat(subject, buf);
-			strcat(subject, " failed; left ");
-			strcat(subject, save);
-			mail("dev@bitmover.com", subject, LOG_KEYS);
-		} else {
-			sprintf(subject, "LOGGING: undo -f %s in ", buf);
-			getcwd(buf, sizeof(buf));
-			strcat(subject, buf);
-			strcat(subject, " worked; left ");
-			strcat(subject, save);
-			mail("dev@bitmover.com", subject, LOG_KEYS);
-		}
-	}
-	fclose(f);
-	unlink(LOG_KEYS);
-}
-
 void
 resolve_cleanup(opts *opts, int what)
 {
@@ -2758,20 +2720,16 @@ resolve_cleanup(opts *opts, int what)
 		unlink(dir);
 		sys("mv", "RESYNC", dir, SYS);
 	} else {
-		if (exists(LOG_TREE)) {
-			log_cleanup();
-		} else {
-			if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
-				assert(!exists("RESYNC/ChangeSet"));
-				unlink(ROOT2RESYNC "/SCCS/p.ChangeSet");
-				rename(ROOT2RESYNC "/BitKeeper/tmp/r.ChangeSet",
-				    ROOT2RESYNC "/SCCS/r.ChangeSet");
-			}
-			fprintf(stderr,
-			    "resolve: RESYNC directory left intact.\n");
+		if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
+			assert(!exists("RESYNC/ChangeSet"));
+			unlink(ROOT2RESYNC "/SCCS/p.ChangeSet");
+			rename(ROOT2RESYNC "/BitKeeper/tmp/r.ChangeSet",
+			    ROOT2RESYNC "/SCCS/r.ChangeSet");
 		}
+		fprintf(stderr,
+		    "resolve: RESYNC directory left intact.\n");
 	}
-	
+
 	if (what & CLEAN_PENDING) {
 		if (pendingFile[0] && !getenv("TAKEPATCH_SAVEDIRS")) {
 			unlink(pendingFile);
