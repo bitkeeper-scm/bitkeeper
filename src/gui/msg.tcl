@@ -1,36 +1,333 @@
-proc msg {msg OK} \
-{
-	set w .error
-	frame $w -background darkblue -bd 4 -relief flat
-	button $w.ok -text $OK -command "exit"
+set usage "Usage: bk msg ?--title title? ?--ok label?\
+	    ?--cancel label? message"
+
+proc main {} {
+
+	init
+	widgets
+}
+
+proc init {} {
+	global argv
+	global options
+
+	# the last argument is the message (or "-" for stdin);
+	# strip it off; the rest are all options
+	set message [lindex $argv end]
+	set nextToLast [expr {[llength $argv]-2}]
+	set argv [lrange $argv 0 $nextToLast]
+
+	# These are defaults; note that if the -cancel option
+	# is null, no cancel button will be shown. 
+	set options(-ok) "OK"
+	set options(-cancel) ""
+	set options(-title) "BitKeeper message"
+
+	set error 0
+	while {[llength $argv] > 0} {
+		set key [pop argv]
+		switch -exact -- $key {
+
+			-o -
+			--ok {
+				set value [pop argv]
+				set options(-ok) $value
+			}
+
+			-c -
+			--cancel {
+				set value [pop argv]
+				set options(-cancel) $value
+			}
+
+			-T -
+			--title {
+				set value [pop argv]
+				set options(-title) $value
+			}
+
+			default {
+				# The intent is to reset the options
+				# and then display the error message
+				# as if it was what the user wanted
+				set options(-message) \
+				    "illegal option $key\n\n$::usage"
+				set options(-cancel) ""
+				set options(-ok) "OK"
+				set error 1
+				break
+			}
+		}				       
+	}
+
+	if {!$error} {
+		if {[string match "-" $message]} {
+			set options(-message) ""
+			set maxWidth 0
+
+			while {[gets stdin line] != -1} {
+				set l [string length $line]
+				if {$l > $maxWidth} {
+					set maxWidth $l
+				}
+				append options(-message) "$line\n"
+			}
+			set options(-maxWidth) $maxWidth
+
+		} else {
+			set options(-message) $message
+		}
+	}
+}
+
+# This program hard-codes the toplevel to ".", but ultimately, most
+# of this code should be in a library so that it can be used by other
+# apps without having to do an exec to display a message
+proc widgets {} {
+	global options
+	global widgets
+
+	set widgets(toplevel) .
+	set w ""
+
+	# If the user closes the window via the window manager, treat
+	# that as if they pressed cancel even if no cancel button is
+	# displayed. This way, the calling program can still distinguish
+	# between the user clicking "ok" or not clicking "ok"
+	wm protocol $widgets(toplevel) WM_DELETE_WINDOW {
+		doCommand cancel
+	}
+
+	wm title $widgets(toplevel) $options(-title)
+
+	$widgets(toplevel) configure -borderwidth 4 -relief flat 
+
+	# Any widgets that get referenced outside of this
+	# proc need to be defined here, so that if the layout
+	# or widget names change it won't affect any other procs.
+	set widgets(message) $w.message
+	set widgets(text) $widgets(message).text
+	set widgets(sbx)  $widgets(message).sbx
+	set widgets(sby)  $widgets(message).sby
+	set widgets(logo) $w.logo
+	set widgets(buttonFrame) $w.buttons
+	set widgets(ok) $widgets(buttonFrame).ok
+	set widgets(cancel) $widgets(buttonFrame).cancel
+
+	## Bk Logo
 	catch {exec bk bin} bin
 	set image [file join $bin "bklogo.gif"]
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
-		label $w.logo -image $bklogo -background white \
-		    -bd 3 -relief raised
-		pack $w.ok -side bottom -fill x
-		pack $w.logo -side top -fill x 
+		label $widgets(logo) \
+		    -highlightthickness 0 \
+		    -image $bklogo \
+		    -background #FFFFFF \
+		    -bd 2 \
+		    -relief groove
 	} else {
-		pack $w.ok -side bottom -fill x 
+		# No logo? That should never happen. But if it does,
+		# we still want the user to know this is a bitkeeper
+		# dialog so we'll fake a logo
+		label $widgets(logo) \
+		    -text "BitKeeper" \
+		    -background #FFFFFF \
+		    -bd 2 \
+		    -relief groove
+
+		array set font [font actual [$widgets(logo) cget -font]]
+		incr font(-size) 4
+		$widgets(logo) configure -font [array get font]
 	}
-	message $w.m -background #f8f8f8 \
-	    -text $msg -aspect 400 -width 800 -bd 6 -relief flat
-	pack $w.m -side top -fill both
-	pack $w -fill both
+
+	## The widget(s) to display the message
+	# The display of the message depends on it's relative size.
+	# The number 10 is picked out of a hat. Most messages will
+	# either be one line, or many.
+	set lines [split $options(-message) \n]
+	if {[llength $lines] < 10} {
+		message $widgets(message) \
+		    -bd 1 \
+		    -relief sunken \
+		    -aspect 400 \
+		    -background #f8f8f8 \
+		    -text "\n$options(-message)\n"
+	} else {
+		if {[llength $lines] > 20} {
+			set height 20
+		} else {
+			set height [llength $lines]
+		}
+
+		frame $widgets(message) \
+		    -borderwidth 1 \
+		    -relief sunken \
+		    -background #f8f8f8 
+		text $widgets(text) \
+		    -highlightthickness 0 \
+		    -borderwidth 0 \
+		    -width $options(-maxWidth) \
+		    -height $height \
+		    -wrap none \
+		    -borderwidth 0 \
+		    -background #f8f8f8 
+
+		# this little bit of shenanigans attempts to set
+		# the font family to Courier, but keep all the other
+		# defaults, such as font size.
+		array set font [font actual [$widgets(text) cget -font]]
+		set font(-family) Courier
+		$widgets(text) configure -font [array get font]
+
+		scrollbar $widgets(sby) \
+		    -command [list $widgets(text) yview] \
+		    -borderwidth 1 \
+		    -orient vertical \
+		    -highlightthickness 0 \
+		    -takefocus 0 
+
+		scrollbar $widgets(sbx) \
+		    -command [list $widgets(text) xview] \
+		    -borderwidth 1 \
+		    -orient horizontal \
+		    -highlightthickness 0 \
+		    -takefocus 0
+
+		$w.message.text configure \
+		    -xscrollcommand [list scroll x] \
+		    -yscrollcommand [list scroll y] 
+
+		# The newlines are added to give a little bit of a 
+		# top and bottom margin
+		$widgets(text) insert end "\n$options(-message)\n"
+		$widgets(text) configure -state disabled
+
+		grid $widgets(text) \
+		    -in $widgets(message) -row 0 -column 1 \
+		    -sticky nsew
+		# note that we purposefully do not add the
+		# scrollbars; they are added by the scroll proc
+		# only if needed
+
+		grid rowconfigure $widgets(message) 0 -weight 1
+		grid rowconfigure $widgets(message) 1 -weight 0
+
+		# note that the window has two invisible columns that
+		# have a defined -minsize. These add a little margin
+		# to the text widget, so text isn't scrunched up to 
+		# the edges of the widget
+		grid columnconfigure $widgets(message) 0 -weight 0 -minsize 12
+		grid columnconfigure $widgets(message) 1 -weight 1
+		grid columnconfigure $widgets(message) 2 -weight 0 -minsize 12
+		grid columnconfigure $widgets(message) 3 -weight 0
+
+		# The text widget won't have focus since it's disabled,
+		# but we want some common and expected bindings for 
+		# scrolling around.
+		bind . <space> [list doCommand scroll pagedown ]
+		bind . <Down> [list doCommand scroll down]
+		bind . <Up> [list doCommand scroll up]
+		bind . <Prior> [list doCommand scroll pageup]
+		bind . <Next> [list doCommand scroll pagedown]
+		bind . <Home> [list doCommand scroll home]
+		bind . <End> [list doCommand scroll end]
+	}
+
+	## Buttons
+	frame $widgets(buttonFrame) -borderwidth 0
+
+	button $widgets(ok) \
+	    -text $options(-ok) \
+	    -borderwidth 1 \
+	    -padx 8 \
+	    -relief raised \
+	    -command [list doCommand ok]
+	
+	if {[string length $options(-cancel)] > 0} {
+		button $widgets(cancel) \
+		    -text $options(-cancel) \
+		    -borderwidth 1 \
+		    -relief raised \
+		    -command [list doCommand cancel]
+
+		frame $widgets(buttonFrame).spacer \
+		    -width 16 \
+		    -background [$widgets(buttonFrame) cget -background]
+
+		pack $widgets(ok) -side right -fill x -expand y
+		pack $widgets(buttonFrame).spacer -side right -fill y
+		pack $widgets(cancel) -side left -fill x -expand y
+
+	} else {
+
+		pack $widgets(ok) -side top -fill x -expand y
+	}
+
+	frame $w.spacer1 -height 4 -bg #00008b
+	frame $w.spacer2 -height 4
+
+	pack $widgets(logo) -side top -fill x
+	pack $w.spacer1 -side top -fill x -padx 1 -pady 1
+	pack $widgets(buttonFrame) -side bottom -fill x
+	pack $w.spacer2 -side bottom -fill x -padx 1 -pady 1
+	pack $widgets(message) -side top -fill both -expand y
+
 }
 
-set msg ""
-set arg [lindex $argv 0]
-if {$arg == "-"} {
-	while {[gets stdin buf] >= 0} {
-		if {$msg == ""} {
-			set msg $buf
-		} else {
-			set msg "$msg\n$buf"
+proc doCommand {command args} {
+	global widgets
+
+	switch -exact -- $command {
+		ok 		{exit 0}
+		cancel 		{exit 1}
+		scroll {
+			set what [lindex $args 0]
+
+			switch -exact $what {
+				up       {$widgets(text) yview scroll -1 units}
+				down     {$widgets(text) yview scroll  1 units}
+				pageup   {$widgets(text) yview scroll -1 page}
+				pagedown {$widgets(text) yview scroll  1 page}
+				home     {$widgets(text) see 1.0}
+				end      {$widgets(text) see end}
+			}
 		}
 	}
-} else {
-	set msg $arg
 }
-msg $msg OK
+
+# the purpose of this is twofold: 
+# 1) scroll the text widget appropriately
+# 2) hide the scrollbars if they aren't needed
+proc scroll {dimension offset size} {
+	global widgets
+
+	if {$offset != 0.0 || $size != 1.0} {
+		if {$dimension == "x"} {
+			grid $widgets(sbx) \
+			    -row 1 -column 0 -sticky ew -columnspan 3
+			$widgets(sbx) set $offset $size
+		} else {
+			grid $widgets(sby) -row 0 -column 3 -sticky ns
+			$widgets(sby) set $offset $size
+		}
+	} else {
+		# Everything fits; hide the scrollbar
+		after idle [list grid forget $widgets(sb$dimension)]
+	} 
+}
+
+proc pop {listVariable} {
+	upvar $listVariable list
+	set value [lindex $list 0]
+	set list [lrange $list 1 end]
+	return $value
+}
+
+if {[llength $::argv] == 0} {
+	lappend ::argv --title "bk msg usage"
+	lappend ::argv --ok    "Ok"
+	lappend ::argv $::usage
+}
+
+main
+
