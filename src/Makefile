@@ -301,7 +301,7 @@ bk: bk.sh port/platform.sh substvars prs
 	./substvars port/platform.sh > platform.sh.T
 	cat platform.sh.T bk.T > bk.T2
 	chmod +x bk.T2
-	/bin/rm -f bk.ver platfrom.sh.T bk.T
+	/bin/rm -f bk.ver platform.sh.T bk.T
 	mv -f bk.T2 bk
 
 import: import.sh substvars
