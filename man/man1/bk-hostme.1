@@ -1,0 +1,70 @@
+.so bk-macros
+.TH "bk hostme" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk hostme \- host a project on a BKCentral server
+.SH SYNOPSIS
+.B bk hostme [-qd] 
+.OPTreq -p project 
+\ 
+.Bc [
+.OPTreq -h host
+.B ] [
+.OPTreq -r repository
+.Bc ] [
+.OPTreq -s key_file
+]
+.SH DESCRIPTION
+.LP
+The bk hostme command is used to host a project on a site running
+BK-Central. The hostme command is run from within a bitkeeper
+repository.
+.LP
+Without the -h argument, the hostme command will host the project
+on hostme.bitkeeper.com.  The project name is the encompassing name
+for the work you are doing whereas the repository name is the name
+for a specific repository within project. For example, you might
+be working on a project that blocks spam and you name the project
+'antispam'. You will want to have multiple repositories for things
+such as development, stable, and bugfix branches.
+.LP
+If hostme is called without the repository name argument, only the
+project is configured.
+.SH OPTIONS
+.TP
+.OPTreq -p project
+Project name for the hosted project
+.tp
+.OPTreq -h host
+Server on which to host the project
+.tp
+.OPTreq -r repository
+Name of the repository
+.tp
+.OPTreq -s key_file
+Location of the file containing the identity.pub ssh key, usually
+~/.ssh/identity.pub
+.tp
+.B -q
+Quit
+.tp
+.B -d
+Debug output
+.SH "EXIT STATUS"
+.TP
+.B 0
+Command completed successfully
+.tp
+.B 1
+Repository name taken 
+.\" (determined by a different ssh key??? If so, how does the
+.\" user update the key? Use the admin shell?)
+.tp
+.B 2
+Project name taken
+.tp
+.B 3
+Invalid key for the specified project
+./" help://bkserver
+.\" help://bkhost
+.\" help://BKCentral
+.\" help://bkcentral

@@ -107,7 +107,7 @@ commit_main(int ac, char **av)
 		char	*cmd, *p;
 		FILE	*f, *f1;
 
-		cmd = aprintf("bk _sort -u | bk sccslog -CA - > %s",
+		cmd = aprintf("bk _sort -u | bk sccslog -fA - > %s",
 								commentFile);
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");

@@ -27,6 +27,7 @@ if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+bk level 3
 echo OK
 cores
 echo $N rClone via pipe .............................................$NL
@@ -37,6 +38,8 @@ bk _rclone $Q $HERE/project file:$SLASH$HERE/copy || { echo failed; exit 1; }
 bk _rclone $Q -r1.1 $HERE/project $HERE/copy2 || { echo failed; exit 1; }
 [ -d copy2 ] || { echo failed; exit 1; }
 [ ! -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+cd $HERE/copy2
+if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
 echo OK
 # In this test we call the rclone code via the bk clone interface
 echo $N rClone via bk:// ............................................$NL
@@ -50,10 +53,16 @@ do      P=`expr $P + 1`
 done 
 bk clone $Q $HERE/project bk://localhost:$P/$HERE/copy
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+cd $HERE/copy
+if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
 echo OK
 echo $N rClone via http:// ..........................................$NL
+cd $HERE
 bk clone $Q $HERE/project http://localhost:$P/$HERE/copy2
 [ -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+cd $HERE/copy2
+if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
+cd $HERE
 bk clone -r1.1 $Q project http://localhost:$P/copy3
 [ -d copy3 ] || { echo failed; exit 1; }
 [ ! -f copy3/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }

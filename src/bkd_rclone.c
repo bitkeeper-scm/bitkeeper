@@ -31,7 +31,7 @@ rclone_common(int ac, char **av, opts *opts)
 	}
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock();
+	sendServerInfoBlock(1);
 
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
@@ -143,8 +143,8 @@ cmd_rclone_part2(int ac, char **av)
 
 	sccs_mkroot(".");
 	repository_wrlock();
-	if (getenv("BKD_LEVEL")) {
-		setlevel(atoi(getenv("BKD_LEVEL")));
+	if (getenv("BK_LEVEL")) {
+		setlevel(atoi(getenv("BK_LEVEL")));
 	}
 
 	/*

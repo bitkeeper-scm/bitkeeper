@@ -24,7 +24,9 @@ cygwinPath()
 #define KEY "Software\\Cygnus Solutions\\Cygwin\\mounts v2\\/usr/bin"
 
 	if (cygwinPath) return (cygwinPath);
-	getReg(HKEY_LOCAL_MACHINE, KEY, "native", buf, &len);
+	if (getReg(HKEY_LOCAL_MACHINE, KEY, "native", buf, &len) == 0) {
+		return ("");
+	}
 	GetShortPathName(buf, tmp, MAXPATH);
 	localName2bkName(tmp, tmp);
 	cygwinPath = strdup(tmp);
@@ -36,7 +38,8 @@ cygwinPath()
 private int
 insertCygwinPath(char *bkpath, char *pathList)
 {
-	char *p, *q, *r, *t;
+	char	*p, *q, *r, *t, *anchor;
+	int	offset;
 
 	/*
 	 * Force everything to lower case for easier compare
@@ -46,16 +49,25 @@ insertCygwinPath(char *bkpath, char *pathList)
 
 	/*
 	 * Insert cygwin path after bk path
+	 * If there is a gnu/bin path, insert cygwin path after that.
+	 * The gnu/bin processsing is mainly for the regression test environment
 	 */
-	p = strstr(pathList, bkpath);
+	anchor = aprintf("%s;%s/gnu/bin", bkpath, bkpath);
+	offset = strlen(anchor);
+	p = strstr(pathList, anchor);
+	unless (p) {
+		p = strstr(pathList, bkpath);
+		offset = strlen(bkpath);
+	}
+	free(anchor);
 	if (p) {
-		t = strchr(p, ';');
-		if (t) {
+		t = &p[offset];
+		if (*t) {
 			*t++ = '\0';
 		} else {
 			t = "";
 		}
-		if (streq(t, cygwinPath())) return; /* already got cygwinpath */
+		if (streq(t, cygwinPath())) return(0); /* already got it */
 		q = aprintf("PATH=%s;%s;%s", pathList, cygwinPath(), t);
 		putenv(q);
 		return (0);
