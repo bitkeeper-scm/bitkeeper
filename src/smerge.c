@@ -375,12 +375,13 @@ popLine(char **lines)
 	if (show_seq) {
 		ret = lines[1];
 	} else {
+		char	*trail = strchr(lines[1], '\t') + 1;
 		if (mode == MODE_2WAY) {
-			ret = strchr(lines[1], '\t');
+			ret = trail;
 		} else {
 			ret = malloc(strlen(lines[1]));
 			ret[0] = lines[1][0];
-			strcpy(ret + 1, strchr(lines[1], '\t'));
+			strcpy(ret + 1, trail);
 			free(lines[1]);
 		}
 	}
