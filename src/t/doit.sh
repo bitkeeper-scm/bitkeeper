@@ -28,11 +28,11 @@ win32_common_setup()
 	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
 	if [ X$BK_USER = Xadministrator ]; then BK_USER=administrator-test; fi
 	USER="$BK_USER"	# some regression test uses $USER
+	export BK_USER
 
 	# don't run remote regressions on NT
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
 	export DO_REMOTE
-
 	export BK_USER
 }
 
@@ -198,7 +198,7 @@ setup_env()
 	check_w
 	chech_enclosing_repo
 
-	# turn off pager - needed in win98
+	# turn off pager
 	BK_PAGER=cat
 	export BK_PAGER
 

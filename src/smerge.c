@@ -902,6 +902,7 @@ diffwalk_return(difwalk *dw)
 private void
 diffwalk_free(difwalk *dw)
 {
+	pclose(dw->diff);
 	mclose(dw->right);
 	assert(dw->lines == 0);
 	free(dw);

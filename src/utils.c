@@ -309,11 +309,10 @@ prompt(char *msg, char *buf)
 
 	caught = 0;
 	sig_catch(abort_prompt);
-	fflush(stdout);
 
 	flush_fd0(); /* for Win/98 and Win/ME */
-	write(1, msg, strlen(msg));
-	write(1, " ", 1);
+	write(2, msg, strlen(msg));
+	write(2, " ", 1);
 	ret = getline(0, buf, MAXPATH) > 1;
 	if (caught) {
 		fprintf(stderr, "\n(interrupted)\n");
@@ -331,11 +330,10 @@ confirm(char *msg)
 
 	caught = 0;
 	sig_catch(abort_prompt);
-	fflush(stdout);
 
 	flush_fd0(); /* for Win/98 and Win/Me */
-	write(1, msg, strlen(msg));
-	write(1, " (y/n) ", 7);
+	write(2, msg, strlen(msg));
+	write(2, " (y/n) ", 7);
 	gotsome = getline(0, buf, sizeof(buf)) > 1;
 	if (caught) {
 		fprintf(stderr, "\n(interrupted)\n");
@@ -355,9 +353,11 @@ prompt_main(int ac, char **av)
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
 	char	*cmd;
-	FILE	*in, *out = 0;
+	FILE	*in;
 	char	msgtmp[MAXPATH];
+	char	buf[1024];
 	extern	char *pager;
+	char	**lines = 0;
 
 	while ((c = getopt(ac, av, "cegiowxf:n:p:t:y:")) != -1) {
 		switch (c) {
@@ -380,7 +380,7 @@ prompt_main(int ac, char **av)
 	    (av[optind] && av[optind+1]) || (file && prog)) {
 err:		system("bk help -s prompt");
 		if (file == msgtmp) unlink(msgtmp);
-		if (out) pclose(out);
+		if (lines) freeLines(lines, free);
 		exit(1);
 	}
 	if (prog) {
@@ -423,9 +423,8 @@ err:		system("bk help -s prompt");
 		exit(2);
 	}
 
-	out = popen(pager, "w");
 	if (type) {
-		int	len, half;
+		int	j, len, half;
 
 		switch (type[1]) {
 		    case 'x': type = 0; break;
@@ -435,36 +434,52 @@ err:		system("bk help -s prompt");
 		}
 		len = strlen(type) + 4;
 		half = (76 - len) / 2;
-		for (i = 0; i < half; ++i) fputc('=', out);
-		fputc(' ', out);
-		fputc(' ', out);
-		fputs(type, out);
-		fputc(' ', out);
-		fputc(' ', out);
-		if (len & 1) fputc(' ', out);
-		for (i = 0; i < half; ++i) fputc('=', out);
-		fputc('\n', out);
-		fflush(out);
+		for (j = i = 0; i < half; ++i) buf[j++] = '=';
+		buf[j++] = ' ';
+		buf[j++] = ' ';
+		for (i = 0; type[i]; buf[j++] = type[i++]);
+		buf[j++] = ' ';
+		buf[j++] = ' ';
+		if (len & 1) buf[j++] = ' ';
+		for (i = 0; i < half; ++i) buf[j++] = '=';
+		buf[j++] = '\n';
+		buf[j++] = 0;
+		lines = addLine(lines, strdup(buf));
 	}
 	if (file) {
-		char	buf[MAXLINE];
-
 		unless (in = fopen(file, "r")) goto err;
 		while (fnext(buf, in)) {
-			fputs(buf, out);
+			lines = addLine(lines, strdup(buf));
 		}
 		fclose(in);
 	} else if (streq(av[optind], "-")) {
 		goto err;
 	} else {
-		fputs(av[optind], out);
-		fputc('\n', out);
+		lines = addLine(lines, strdup(av[optind]));
+		lines = addLine(lines, strdup("\n"));
 	}
 	if (type) {
-		for (i = 0; i < 76; ++i) fputc('=', out);
-		fputc('\n', out);
+		for (i = 0; i < 76; ++i) buf[i] = '=';
+		buf[i++] = '\n';
+		buf[i++] = 0;
+		lines = addLine(lines, strdup(buf));
 	}
-	pclose(out);
+	if (nLines(lines) <= 24) {
+		EACH(lines) {
+			fprintf(stderr, "%s", lines[i]);
+		}
+		fflush(stderr); /* for win32 */
+	} else {
+		FILE	*out;
+
+		sprintf(buf, "%s 1>&2", pager);
+		out = popen(buf, "w");
+		EACH(lines) {
+			fprintf(out, "%s", lines[i]);
+		}
+		pclose(out);
+	}
+	if (lines) freeLines(lines, free);
 	if (prog) unlink(msgtmp);
 	/* No exit status if no prompt */
 	unless (ask) exit(0);

@@ -2304,6 +2304,9 @@ proc arguments {} \
 	if {($gca != "") && (($rev2 == "") || ($rev1 == ""))} {
 		puts stderr "error: GCA options requires -l and -r"
 		exit
+	} elseif {"$rev1" == "" && "$rev2" != ""} {
+		set rev1 $rev2
+		set rev2 ""
 	}
 
 	# regexes for valid revision numbers. This probably should be
@@ -2393,10 +2396,12 @@ proc startup {} \
 		set merge(G) $gca
 		set merge(l) $rev1
 		set merge(r) $rev2
-	} elseif {$rev2 != ""} { 
-		set diffpair(left) $rev2
+		revtool $fname
+	} else {
+		if {$rev1 != ""} {set diffpair(left) $rev1}
+		if {$rev2 != ""} {set diffpair(right) $rev2}
+		revtool $fname $rev1
 	}
-	revtool $fname 
 	if {[info exists diffpair(left)]} {
 		doDiff
 	}

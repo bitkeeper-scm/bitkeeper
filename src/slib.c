@@ -420,7 +420,6 @@ private inline void
 freedelta(delta *d)
 {
 	freeLines(d->comments, free);
-	freeLines(d->mr, free);
 	freeLines(d->text, free);
 
 	if (d->rev) free(d->rev);
@@ -428,7 +427,6 @@ freedelta(delta *d)
 	if (d->sdate) free(d->sdate);
 	if (d->include) free(d->include);
 	if (d->exclude) free(d->exclude);
-	if (d->ignore) free(d->ignore);
 	if (d->symlink && !(d->flags & D_DUPLINK)) free(d->symlink);
 	if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
 	if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
@@ -3274,6 +3272,7 @@ checkTags(sccs *s, int flags)
  * The buffer looks like ^Ac<T>data where <T> is one character type.
  * B - cset file root key
  * C - cset boundry
+ * D - dangling delta
  * E - ??
  * F - date fudge
  * H - host name
@@ -3298,6 +3297,9 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'C':
 		d->flags |= D_CSET;
+		break;
+	    case 'D':
+		d->dangling = 1;
 		break;
 	    case 'E':
 		/* OLD, ignored */
@@ -3545,12 +3547,14 @@ bad:
 				d->exclude = getserlist(s, 1, &buf[3], 0);
 				break;
 			    case 'g':
-				d->ignore = getserlist(s, 1, &buf[3], 0);
+		    		s->state |= S_READ_ONLY;
+				fprintf(stderr, "ignore serials unsupported\n");
 				break;
 			    case 'e':
 				goto done;
-			    case 'm':	/* save MR's and pass them through */
-				d->mr = addLine(d->mr, strnonldup(buf));
+			    case 'm':
+		    		s->state |= S_READ_ONLY;
+				fprintf(stderr, "mr records unsupported\n");
 				break;
 			    default:
 				fprintf(stderr, "Bad file format: ");
@@ -7736,15 +7740,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 			putserlist(s, d->exclude, out);
 			fputmeta(s, "\n", out);
 		}
-		if (d->ignore) {
-			fputmeta(s, "\001g ", out);
-			putserlist(s, d->ignore, out);
-			fputmeta(s, "\n", out);
-		}
-		EACH(d->mr) {
-			fputmeta(s, d->mr[i], out);
-			fputmeta(s, "\n", out);
-		}
 		EACH(d->comments) {
 			/* metadata */
 			p = fmts(buf, "\001c ");
@@ -7773,6 +7768,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(d->type == 'D');
 			fputmeta(s, "\001cC\n", out);
 		}
+		if (d->dangling) fputmeta(s, "\001cD\n", out);
 		if (d->dateFudge) {
 			p = fmts(buf, "\001cF");
 			p = fmttt(p, d->dateFudge);
@@ -8001,17 +7997,15 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
  * This is an expensive call but not as expensive as running diff.
  * flags is same as get flags.
  */
-int
-sccs_hasDiffs(sccs *s, u32 flags, int inex)
+private int
+_hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 {
 	MMAP	*gfile = 0;
 	MDBM	*ghash = 0;
 	MDBM	*shash = 0;
-	pfile	pf;
 	serlist *state = 0;
 	ser_t	*slist = 0;
 	int	print = 0, different;
-	delta	*d;
 	char	sbuf[MAXLINE];
 	char	*name = 0, *mode = "rb";
 	int	tmpfile = 0;
@@ -8027,13 +8021,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 
 	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
 
-	bzero(&pf, sizeof(pf));
-	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
-	if (inex && (pf.mRev || pf.iLst || pf.xLst)) RET(2);
-	unless (d = findrev(s, pf.oldrev)) {
-		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
-		RET(-1);
-	}
+	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 	/* A questionable feature for diffs */
 	if ((flags & GET_DIFFTOT) && (d != findrev(s, 0))) RET(1);
 
@@ -8078,7 +8066,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 		RET(-1);
 	}
 	assert(s->state & S_SOPEN);
-	slist = serialmap(s, d, pf.iLst, pf.xLst, &error);
+	slist = serialmap(s, d, pf->iLst, pf->xLst, &error);
 	assert(!error);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
@@ -8227,10 +8215,34 @@ out:
 		if (tmpfile) unlink(name);
 		free(name);
 	}
-	free_pfile(&pf);
 	if (slist) free(slist);
 	if (state) free(state);
 	return (different);
+}
+
+int
+sccs_hasDiffs(sccs *s, u32 flags, int inex)
+{
+	pfile	pf;
+	int	ret;
+	delta	*d;
+
+	bzero(&pf, sizeof(pf));
+	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
+	unless (d = findrev(s, pf.oldrev)) {
+		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
+		free_pfile(&pf);
+		return (-1);
+	}
+	ret = _hasDiffs(s, d, flags, inex, &pf);
+	if ((ret == 1) && MONOTONIC(s) && d->dangling && !s->tree->dangling) {
+		while (d->next && (d->dangling || TAG(d))) d = d->next;
+		assert(d->next);
+		strcpy(pf.oldrev, d->rev);
+		ret = _hasDiffs(s, d, flags, inex, &pf);
+	}
+	free_pfile(&pf);
+	return (ret);
 }
 
 private inline int
@@ -8455,7 +8467,6 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
 		unlink(new);		/* careful */
 	}
-
 	switch (ret) {
 	    case 0:	/* no diffs */
 		return (1);
@@ -9537,17 +9548,18 @@ sccs_isleaf(sccs *s, delta *d)
 
 /*
  * Check open branch
+ * XXX: Assumes D_RED is clear ; exits with D_RED clear
  */
 private int
 checkOpenBranch(sccs *s, int flags)
 {
-	delta	*d;
+	delta	*d, *m, *tip = 0, *symtip = 0;
 	int	ret = 0, tips = 0, symtips = 0;
 
 	/* Allow open branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
 
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; (d->flags &= ~D_RED), d = d->next) {
 		/*
 		 * This order is important:
 		 * Skip 1.0,
@@ -9563,27 +9575,44 @@ checkOpenBranch(sccs *s, int flags)
 				    s->sfile, d->rev));
 				ret = 1;
 			}
-			if (d->symLeaf && !(d->flags & D_GONE)) symtips++;
+			if (d->symLeaf && !(d->flags & D_GONE)) {
+				if (symtips) {
+					if (symtips == 1) {
+					    verbose((stderr,
+			    			"%s: unmerged symleaf %s\n",
+						s->sfile, symtip->rev));
+					}
+					verbose((stderr,
+			    		    "%s: unmerged symleaf %s\n",
+					    s->sfile, d->rev));
+					ret = 1;
+				}
+				symtip = d;
+				symtips++;
+			}
 		}
-		if (d->flags & D_GONE) continue;
-		if (isleaf(s, d)) tips++;
-	}
-
-	unless ((tips > 1) || (symtips > 1)) return (ret);
-
-	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_GONE) continue;
-		if (streq(d->rev, "1.0")) continue;
-		if ((symtips > 1) && d->symLeaf) {
-			verbose((stderr,
-			    "%s: unmerged symleaf %s\n", s->sfile, d->rev));
-			ret = 1;
+		if ((d->flags & D_GONE) || (d->type == 'R')) continue;
+		unless (d->flags & D_RED) {
+			if (tips) {
+				if (tips == 1) {
+				    verbose((stderr,
+		    			"%s: unmerged leaf %s\n",
+					s->sfile, tip->rev));
+				}
+				verbose((stderr,
+		    		    "%s: unmerged leaf %s\n",
+				    s->sfile, d->rev));
+				ret = 1;
+			}
+			tip = d;
+			tips++;
 		}
-		if (isleaf(s, d)) {
-			verbose((stderr,
-			    "%s: unmerged leaf %s\n", s->sfile, d->rev));
+		if (d->parent) d->parent->flags |= D_RED;
+		if (d->merge) {
+			m = sfind(s, d->merge);
+			assert(m);
+			m->flags |= D_RED;
 		}
-		ret = 1;
 	}
 	return (ret);
 }
@@ -10423,6 +10452,8 @@ name2xflg(char *fl)
 		return X_KV;
 	} else if (streq(fl, "NOMERGE")) {
 		return X_NOMERGE;
+	} else if (streq(fl, "MONOTONIC")) {
+		return X_MONOTONIC;
 	}
 	return (0);			/* lint */
 }
@@ -10545,7 +10576,6 @@ adjust_serials(delta *d, int amount)
 	if (d->merge) d->merge += amount;
 	EACH(d->include) d->include[i] += amount;
 	EACH(d->exclude) d->exclude[i] += amount;
-	EACH(d->ignore) d->ignore[i] += amount;
 }
 
 /*
@@ -10813,7 +10843,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 
 	/*
-	 * flags, unkwown single letter passed through.
+	 * flags, unknown single letter passed through.
 	 */
 	for (i = 0; f && f[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
@@ -10826,13 +10856,20 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (v) *v++ = '\0';
 			if (v && *v == '\0') v = 0;
 
+			if ((name2xflg(fl) & X_MONOTONIC) &&
+			    sccs_top(sc)->dangling) {
+			    	fprintf(stderr, "admin: "
+				    "must remove danglers first (monotonic)\n");
+				error = 1;
+				sc->state |= S_WARNED;
+				continue;
+			}
 			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				ALLOC_D();
 				flagsChanged +=
 				    changeXFlag(sc, d, flags, add, fl);
-			}
-			else if (streq(fl, "DEFAULT")) {
+			} else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
 				flagsChanged++;
@@ -10852,7 +10889,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		noval:	fprintf(stderr,
 			    "admin: flag %s can't have a value\n", fl);
 			error = 1;
-			sc->state = S_WARNED;
+			sc->state |= S_WARNED;
 		} else {
 			char	*buf;
 
@@ -11061,7 +11098,6 @@ out:
 		if (d->merge) d->merge = remap[d->merge];
 		EACH(d->include) d->include[i] = remap[d->include[i]];
 		EACH(d->exclude) d->exclude[i] = remap[d->exclude[i]];
-		EACH(d->ignore) d->ignore[i] = remap[d->ignore[i]];
 	}
 
 	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
@@ -11626,6 +11662,7 @@ sccs_hashcount(sccs *s)
  * R/D/M - delta type
  * B - cset file key
  * C - cset boundry marker
+ * D - dangle marker
  * c - comments
  * E - ignored for now
  * F - date fudge
@@ -11737,6 +11774,12 @@ skip:
 	/* Cset marker */
 	if ((buf[0] == 'C') && !buf[1]) {
 		d->flags |= D_CSET;
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
+	/* Dangle marker */
+	if ((buf[0] == 'D') && !buf[1]) {
+		d->dangling = 1;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -12325,6 +12368,13 @@ out:
 		OUT;
 	}
 
+	/* Refuse to make deltas to 100% dangling files */
+	if (s->tree->dangling && !(flags & DELTA_PATCH)) {
+		fprintf(stderr,
+		    "delta: entire file %s is dangling, abort.\n", s->gfile);
+		OUT;
+	}
+
 	/*
 	 * OK, checking done, start the delta.
 	 */
@@ -12348,6 +12398,18 @@ out:
 		strcpy(pf.newrev, rev);
 	}
 
+	if (MONOTONIC(s) && d->dangling) {
+		if (diffs && !(flags & DELTA_PATCH)) {
+			fprintf(stderr,
+			    "delta: dangling deltas may not be "
+			    "combined with diffs\n");
+			OUT;
+		}
+		while (d->next && (d->dangling || TAG(d))) d = d->next;
+		assert(d->next);
+		strcpy(pf.oldrev, d->rev);
+	}
+
 	if (pf.mRev || pf.xLst || pf.iLst) flags |= DELTA_FORCE;
 	debug((stderr, "delta found rev\n"));
 	if (diffs) {
@@ -12358,9 +12420,10 @@ out:
 			if (flags & DELTA_FORCE) {
 				break;     /* forced 0 sized delta */
 			}
-			if (!(flags & SILENT))
+			unless (flags & SILENT) {
 				fprintf(stderr,
 				    "Clean %s (no diffs)\n", s->gfile);
+			}
 			if (flags & DELTA_AUTO) {
 				error = -2;
 				goto out;
@@ -13829,6 +13892,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (flags & X_NOMERGE) {
 			if (comma) fs(","); fs("NOMERGE"); comma = 1;
 		}
+		if (flags & X_MONOTONIC) {
+			if (comma) fs(","); fs("MONOTONIC"); comma = 1;
+		}
 		return (strVal);
 	}
 
@@ -14284,6 +14350,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "DANGLING")) {
+		if (MONOTONIC(s) && d->dangling) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	return notKeyword;
 }
 
@@ -14705,6 +14779,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	 */
 	if (d->csetFile) fprintf(out, "B %s\n", d->csetFile);
 	if (d->flags & D_CSET) fprintf(out, "C\n");
+	if (d->dangling) fprintf(out, "D\n");
 	EACH(d->comments) {
 		assert(d->comments[i][0] != '\001');
 		fprintf(out, "c %s\n", d->comments[i]);

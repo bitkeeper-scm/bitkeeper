@@ -1048,11 +1048,7 @@ usage:			system("bk help cmdlog");
 		    version ? version : "", 1+p);
 nextline:	;
 	}
-	if (all) {
-		pclose(f);
-	} else {
-		fclose(f);
-	}
+	fclose(f);
 }
 
 int

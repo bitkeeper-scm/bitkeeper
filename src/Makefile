@@ -312,7 +312,7 @@ nonet nonet_test localtest:
 
 realtest: $(ALL) t/doit
 	-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
-	cd t && ./doit
+	cd t && ./doit -i
 
 t/doit: t/doit.sh substvars
 	./substvars t/doit.sh > t/doit
