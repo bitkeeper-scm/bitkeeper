@@ -61,17 +61,24 @@ options.
 .SH OPTIONS
 .if t .TP .8i
 .if n .TP 1.4i
-.OPTreq \-/ pat /[i]
+.OPTreq \-/ str \fB/\fP[\fBi\fP]
 List only those changesets whose comments contain the string
-.ARG pat .
+.ARG str .
 If there is a trailing "i" then ignore case in the search.
 .tp
 .B \-a
-List all deltas, including tag deltas.  Implies -e.
+List all deltas, including tag deltas.  Implies
+.BR \-e .
+An additional
+.B \-e
+after this option will turn off the listing of the empty merge deltas (the
+.B \-e 
+option is inverted from its previous value each time the option is seen).
 .tp
 .OPTreq \-c dates
-Specifies the changesets to be listed as a date range, i.e., -c-6W lists
-the last 6 weeks worth of changes.
+Specifies the changesets to be listed as a date range, i.e.,
+.BI -c -6W
+lists the last 6 weeks worth of changes.
 .tp
 .OPTreq \-d dspec
 Override the default dspec, allows for arbitrary output formats.
@@ -89,32 +96,28 @@ Produce html as output.  May not be combined with
 .tp
 .B \-k
 Produce a list of matching changeset keys, usually for scripts.
-Implies -a which implies
-.BR \-e .
-If you really do not want the empty merge keys, another
-.B \-e 
-option 
-.B after 
-this option will turn off the listing of the empty merge keys (the
-.B \-e 
-option is inverted from its previous value each time the option is seen).
+Equivalent to 
+.BI \-and :KEY:
 .tp
 .B \-L
-List only those changesets which are unique to the local repository;
-requires a BK url or a valid repository parent.
+List only those changesets which are unique to the local repository,
+i.e., those which would be sent back with a bk push.
+Requires either a BK url or a valid repository parent.
 .tp
 .B \-m
-Do not show any merge changesets.
+Do not show any merge changesets, empty or not.
 .tp
 .B \-n
-add a newline to each printed record (sometimes useful with -d).
+add a newline to each printed record (sometimes useful with
+.BR -d ).
 .tp
 .OPTreq \-r revs
 Specifies the changesets to be listed, i.e., 1.100..
 .tp
 .B \-R
-List only those changesets which are unique to the remote repository;
-requires a BK url or a valid repository parent.
+List only those changesets which are unique to the remote repository,
+i.e., those which would be brought over with a bk pull.
+Requires either a BK url or a valid repository parent.
 .tp
 .B \-t
 Only list changesets which are tagged.
@@ -150,8 +153,10 @@ The -u/-U options should take lists of users.
 .SA commit 1
 .SA pending 1
 .SA prs 1
+.SA pull 1
+.SA push 1
+.SA revtool 1
 .SA sccslog 1
 .SA set 1
-.SA revtool 1
 .SH CATEGORY
 .B Repository

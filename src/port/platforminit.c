@@ -92,6 +92,7 @@ platformInit(char **av)
 
 	if (bin) return;
 	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
+	if (p = getenv("BK_PAGER")) safe_putenv("PAGER=%s", p);
 	unless (pager || (pager = getenv("PAGER"))) pager = PAGER;
 	m = umask(0) & 002;
 	umask(m);
