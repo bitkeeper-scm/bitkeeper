@@ -20,6 +20,7 @@ or\n\
 	unlock [-frsw]\n";
 private	int	doit(sccs *s, char which);
 private int	repo(u32 flags);
+private void	dont(sccs *s, char c);
 
 int
 unlock_main(int ac, char **av)
@@ -76,7 +77,7 @@ usage:			system("bk help -s unlock");
 		s = sccs_init(name, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj);
 		if (s) {
 			unless (proj) proj = s->proj;
-			if (flags & BLOCK) c |= doit(s, 'b');
+			if (flags & BLOCK) c |= doit(s, 'b'); else dont(s, 'b');
 			if (flags & PLOCK) {
 				if (!force && HAS_GFILE(s)) {
 					fprintf(stderr,
@@ -87,8 +88,8 @@ usage:			system("bk help -s unlock");
 					c |= doit(s, 'p');
 				}
 			}
-			if (flags & XLOCK) c |= doit(s, 'x');
-			if (flags & ZLOCK) c |= doit(s, 'z');
+			if (flags & XLOCK) c |= doit(s, 'x'); else dont(s, 'x');
+			if (flags & ZLOCK) c |= doit(s, 'z'); else dont(s, 'z');
 			sccs_free(s);
 		}
 		name = sfileNext();
@@ -96,6 +97,16 @@ usage:			system("bk help -s unlock");
 	sfileDone();
 	if (proj) proj_free(proj);
 	return (c);
+}
+
+private void 
+dont(sccs *s, char c)
+{
+	char	*lock = sccs_Xfile(s, c);
+
+	if (exists(lock)) {
+		fprintf(stderr, "Warning: %c-lock still on %s\n", c, s->gfile);
+	}
 }
 
 private int
