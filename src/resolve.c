@@ -1377,17 +1377,14 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	pclose(p);
 
 	/*
-	 * Go ask about logging if we need to.  We never ask on a push.
-	 */
-	ok_commit(logging(0, 0, 0), opts->noconflicts);
-
-	/*
 	 * Always do autocommit if there are no pending changes.
 	 * We supply a default comment because there is little point
 	 * in bothering a user for a merge.
+	 * Go ask about logging if we need to.  We never ask on a push.
 	 */
 	unless (!mustCommit || pending() || pendingCheckins()) {
 		unless (opts->comment) opts->comment = "Merge";
+		unless (opts->noconflicts) ok_commit(logging(0, 0, 0), 0);
 		commit(opts);
 		return (0);
 	}
@@ -1441,7 +1438,11 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	while (fnext(buf, p)) n++;
 	pclose(p);
 
-	if (n) commit(opts);
+	if (n) {
+		assert(!opts->noconflicts);
+		ok_commit(logging(0, 0, 0), 0);
+		commit(opts);
+	}
 
 	return (0);
 }
@@ -1835,7 +1836,7 @@ commit(opts *opts)
 	int	i;
 	char	*cmds[10], *cmt = 0;
 
-	unless (ok_commit(logging(0, 0, 0), opts->noconflicts)) {
+	unless (ok_commit(logging(0, 0, 0), 1)) {
 		fprintf(stderr,
 		   "Commit aborted because of licensing, no changes applied\n");
 		exit(1);
