@@ -49,6 +49,7 @@ int	isSccs(char *s);
 void	rebuild(void);
 int	caches(const char *filename, struct stat *sb, int flag);
 char	*name(char *);
+sccs	*cset;
 int	lftw(const char *dir,
 	    int(*func)(const char *file, struct stat *sb, int flag), int depth);
 

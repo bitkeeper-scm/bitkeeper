@@ -30,6 +30,7 @@ usage: takepatch [-cFiv] [-f file]\n\n\
     -F		(fast) do rebuild id cache when creating files\n\
     -f<file>	take the patch from <file> and do not save it\n\
     -i		initial patch, create a new repository\n\
+    -S		save RESYNC and or PENDING directories even if errors\n\
     -v		verbose level, more is more verbose, -vv is suggested.\n\n";
 
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
@@ -62,6 +63,7 @@ int	fileNum;	/* counter for the Nth init/diff file */
 patch	*patchList = 0;	/* list of patches for a file, list len == fileNum */
 int	conflicts;	/* number of conflicts over all files */
 int	newProject;	/* command line option to create a new repository */
+int	saveDirs;	/* save directories even if errors */
 MDBM	*idDB;		/* key to pathname database, set by init or rebuilt */
 MDBM	*goneDB;	/* key to gone database */
 delta	*gca;		/* The oldest parent found in the patch */
@@ -88,12 +90,12 @@ main(int ac, char **av)
 	platformSpecificInit(NULL); 
 	input = stdin;
 	debug_main(av);
-	while ((c = getopt(ac, av, "acFf:iqsv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:iqsSv")) != -1) {
 		switch (c) {
 		    case 'q':
 		    case 's':
-		    /* Ignored for option consistency.  */
-		    break;
+			/* Ignored for option consistency.  */
+			break;
 		    case 'a': resolve++; break;
 		    case 'c': noConflicts++; break;
 		    case 'F': fast++; break;
@@ -106,6 +108,7 @@ main(int ac, char **av)
 			    }
 			    break;
 		    case 'i': newProject++; break;
+		    case 'S': saveDirs++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
 		}
@@ -656,10 +659,9 @@ applyPatch(
 	assert(gca);
 	assert(gca->rev);
 	assert(gca->pathname);
-	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n",
-			      gca->rev, s->sfile);
+	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n", gca->rev, s->sfile);
 	if (d = sccs_next(s, sccs_getrev(s, gca->rev, 0, 0))) {
-		if (sccs_rmdel(s, d, 1, SILENT)) {
+		if (sccs_rmdel(s, d, 1, (echo > 4) ? 0 : SILENT)) {
 			SHOUT();
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,
@@ -704,6 +706,7 @@ apply:
 				    	perror("get");
 					cleanup(CLEAN_RESYNC);
 				}
+				sccs_restart(s);
 				if (echo > 6) {
 					char	buf[MAXPATH];
 
@@ -1261,6 +1264,11 @@ rebuild_id(char *id)
 void
 cleanup(int what)
 {
+	if (saveDirs) {
+		fprintf(stderr, "takepatch: neither directory removed.\n");
+		SHOUT2();
+		exit(1);
+	}
 	if (what & CLEAN_RESYNC) {
 		char cmd[1024];
 		assert(exists("RESYNC"));

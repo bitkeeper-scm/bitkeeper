@@ -3161,6 +3161,7 @@ err:			free(s->gfile);
 		}
 	} else {
 		s->state &= ~S_GFILE;
+		s->mode = 0;
 	}
 	return (s);
 }
@@ -4554,6 +4555,7 @@ write_pfile(sccs *s, int flags, delta *d,
 	write(fd, tmp, strlen(tmp));
 	close(fd);
 	free(tmp);
+	s->state |= S_PFILE|S_ZFILE;
 	return (0);
 }
 
@@ -4947,7 +4949,11 @@ sccs_get(sccs *s, char *rev,
 	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
 err:		if (i2) free(i2);
-		if (locked) { sccs_unlock(s, 'p'); sccs_unlock(s, 'z'); }
+		if (locked) {
+			sccs_unlock(s, 'p');
+			sccs_unlock(s, 'z');
+			s->state &= ~(S_PFILE|S_ZFILE);
+		}
 		return (-1);
 	}
 	unless (s->cksumok) {
@@ -4983,6 +4989,11 @@ err:		if (i2) free(i2);
 			    rev, s->sfile);
 			s->state |= S_WARNED;
 		}
+		if (flags & PRINT) {
+			fprintf(stderr, "get: can't combine edit and print\n");
+			s->state |= S_WARNED;
+			d = 0;
+		}
 	} else {
 		d = findrev(s, rev);
 		if (!d) {
@@ -5000,10 +5011,21 @@ err:		if (i2) free(i2);
 		}
 		locked = 1;
 	}
-	if (flags&GET_SKIPGET)  goto skip_get;
+	if (flags & GET_SKIPGET) {
+		/*
+		 * XXX - need to think about this for various file types.
+		 * Remove read only files if we are editing.
+		 * Do not error if there is a writable gfile, they may have
+		 * wanted that.
+		 */
+		if ((flags & GET_EDIT) && HAS_GFILE(s) && !IS_WRITABLE(s)) {
+			unlink(s->gfile);
+		}
+		goto skip_get;
+	}
 
 	/*
-	 * Base on the file type,
+	 * Based on the file type,
 	 * we call the appropriate function to get the body
  	 */
 	switch (fileType(d->mode)) {
@@ -5022,7 +5044,10 @@ err:		if (i2) free(i2);
 	debug((stderr, "GET done\n"));
 
 skip_get:
-	if (flags&GET_EDIT) sccs_unlock(s, 'z');
+	if (flags & GET_EDIT) {
+		sccs_unlock(s, 'z');
+		s->state &= ~S_ZFILE;
+	}
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, d->rev);
 		if (flags & GET_EDIT) {
@@ -8315,8 +8340,13 @@ getHashSum(sccs *sc, delta *n, FILE *diffs)
 		perror("fseek for hash checksum");
 		return (-1);
 	}
-	unless (fnext(buf, diffs) && streq(buf, "0a0\n")) {
-bad:		fprintf(stderr, "bad diffs: %s\n", buf);
+	unless (fnext(buf, diffs)) {
+		/* there are no diffs, we have the checksum, it's OK */
+		return (0);
+	}
+	unless (streq(buf, "0a0\n")) {
+		fprintf(stderr, "Missing 0a0, ");
+bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 		return (-1);
 	}
 	while (fnext(buf, diffs)) {
@@ -9052,38 +9082,41 @@ out:
 		return (checkin(s, flags, prefilled, init != 0, diffs));
 	}
 
-	if (!HAS_PFILE(s) && HAS_SFILE(s) && HAS_GFILE(s) && IS_WRITABLE(s)) {
-		fprintf(stderr,
-		    "delta: %s writable but not checked out?\n", s->gfile);
+	unless (HAS_SFILE(s) && s->tree) {
+		fprintf(stderr, "delta: %s is not an SCCS file\n", s->sfile);
 		s->state |= S_WARNED;
 		OUT;
 	}
-	if (HAS_GFILE(s)) {
-		if (diffs) {
+
+	unless (HAS_PFILE(s)) {
+		if (IS_WRITABLE(s)) {
 			fprintf(stderr,
-			    "delta: diffs or gfile, but not both.\n");
+			    "delta: %s writable but not checked out?\n",
+			    s->gfile);
 			s->state |= S_WARNED;
 			OUT;
-		}
-	} else unless (diffs) {
-		goto out;
-	}
-	unless (IS_WRITABLE(s) || diffs) {
-		unless (HAS_PFILE(s)) {
-			verbose((stderr, "Clean %s (not edited)\n", s->gfile));
-			unlink(s->pfile);
-			unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);
+		} else {
+			verbose((stderr,
+			    "delta: %s is not locked.\n", s->sfile);
 			goto out;
 		}
-		verbose((stderr,
-		    "delta warning: %s is locked but not writable.\n",
-		    s->gfile));
 	}
-	unless (s->tree) {
-		fprintf(stderr, "delta: bad delta table in %s\n", s->sfile);
+
+	unless (IS_WRITABLE(s) || diffs) {
+		fprintf(stderr,
+		    "delta: %s is locked but not writable.\n", s->gfile));
+		s->state |= S_WARNED;
 		OUT;
 	}
 
+	if (HAS_GFILE(s) && diffs) {
+		fprintf(stderr,
+		    "delta: diffs or gfile for %s, but not both.\n",
+		    s->gfile);
+		s->state |= S_WARNED;
+		OUT;
+	}
+	
 	/*
 	 * OK, checking done, start the delta.
 	 */

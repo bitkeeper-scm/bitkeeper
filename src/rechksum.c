@@ -17,7 +17,8 @@ char	*sum_help = "\n\
 usage: rechksum [-cfo] file file | -\n\n\
     -c		check existing checksums but do not correct them\n\
     -f		force a regeneration of the checksum\n\
-    -o		go from v2 to old v1 sum format\n\n";
+    -o		go from v2 to old v1 sum format\n\
+    -v		verbose\n\n";
 
 int	resum(sccs *s, delta *d, int flags, int old7bit, int dont);
 int	sumit(char *path, int *old, int *new, int old7bit);
@@ -32,17 +33,19 @@ main(int ac, char **av)
 	int	flags = 0;
 	int	old = 0;
 	int	dont = 0;
+	int	verbose = 0;
 	int	c;
 
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sum_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "foc")) != -1) {
+	while ((c = getopt(ac, av, "cfov")) != -1) {
 		switch (c) {
 		    case 'c': dont++; break;
 		    case 'f': flags |= GET_FORCE; break;
 		    case 'o': old++; break;
+		    case 'v': verbose++; break;
 		    default:  goto usage;
 		}
 	}
@@ -60,7 +63,7 @@ usage:		fprintf(stderr, "%s", sum_help);
 				doit += resum(s, d, flags, old, dont);
 			}
 		}
-		if (dont > 1) {
+		if (verbose) {
 			fprintf(stderr, "%s: %d bad delta checksums\n",
 			    s->gfile, doit);
 		}
