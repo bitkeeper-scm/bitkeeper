@@ -222,33 +222,12 @@ that license by saying "bk help license" in another window.
 
 If you have been asked before it is because we ask once per host.
 $
-#closed_log_query
-This repository is configured to send ChangeSet summaries to
-	#BKARG#
-This address is not an Open Logging server, it is a private 
-server, probably inside your company.  If you don't wish to
-send summaries to that server, change the logging field in the
-BitKeeper/etc/config file.
-
-In order to create this changeset, you need to confirm that it
-is OK to send logs to this host.
-
-If you have been asked before it is because we ask once per host.
-$
 #log_abort
 Bitkeeper is aborting this commit.
 
 This repository is for projects which wish to publish their progress via
 Open Logging.  To purchase a copy of Bitkeeper without the Open Logging
 feature, please contact sales@bitmover.com.  Thank you.
-$
-#close_log_abort
-Bitkeeper is aborting this commit.
-
-This repository has been configured to send log messages and unless you
-agree to do so BitKeeper will not commit changes.  This is the policy of
-the owner of this repository, not a BitMover policy.  Please consult the
-repository owner/maintainer to resolve the issue.  Thank you.
 $
 #seat_info
 Your user count have exceeded the number of purchased licenses.
