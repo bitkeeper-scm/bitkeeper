@@ -934,6 +934,7 @@ size_t	msize(MMAP *m);
 MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
 int 	licenseAccept(int prompt);
+int	licenseAcceptOne(int prompt, char *lic);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);

@@ -826,6 +826,9 @@ sendServerInfoBlock(int is_rclone)
         sprintf(buf, "TIME_T=%s\n", bk_time);
 	out(buf);
 
+	out("LICTYPE=");
+	out(is_commercial(0) ? "bkcl\n" : "bkl\n");
+
 	/*
 	 * When we are doing a rclone, there is no tree in the bkd sode yet
 	 * Do not try to get the level of the server tree.
