@@ -120,16 +120,13 @@ process(char *root, char *start, char *end,
 	char	*rev1, *rev2, *path1, *path2;
 	char	c = BK_FS; /* field seperator */
 
-	s  = sccs_keyinit(root, INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
+	s = sccs_keyinit(root,
+	    INIT_NOGCHK|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	unless (s) {
 		unless (*goneDB) {
 			*goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 		}
-		if (gone(root, *goneDB)) {
-			fprintf(stderr,
-				"Warning: \"%s\" is a gone key, ignored\n", root);
-			return;
-		}
+		if (gone(root, *goneDB)) return;
 		fprintf(stderr, "Cannot keyinit %s\n", root);
 		return;
 	}
@@ -139,15 +136,16 @@ process(char *root, char *start, char *end,
 		path1 = d1->pathname;
 	} else {
 		rev1 = "1.0";
-		path1 = s->table->pathname;
+		path1 = s->tree->pathname;
 	}
 	if (end && *end) {
 		d2 = sccs_findKey(s, end);
 		rev2 = d2->rev;
 		path2 = d2->pathname;
 	} else {
+		/* XXX - this is weird */
 		rev2 = "1.0";
-		path2 = s->table->pathname;
+		path2 = sccs_top(s)->pathname;
 	}
 
 	/*
@@ -327,8 +325,13 @@ parse_rev(sccs *s, char *args,
 
 	unless (args) args = "+";
 	p = strchr(args, ',');
+	unless (p) {
+		for (p = strchr(args, '.');
+		    p && (p[1] != '.'); p = strchr(p+1, '.'));
+	}
 	if (p) {
 		*rev1 = args;
+		if (*p == '.') *p++ = 0;
 		*p++ = 0;
 		*rev2 = p;
 		fix_rev(s, rev2, rev_buf);
