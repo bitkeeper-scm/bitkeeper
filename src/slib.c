@@ -9607,7 +9607,7 @@ mkTag(char kind, char *label, char *rev, char *path, char tag[])
  * helper function for sccs_diffs
  */
 private void
-mkDiffHdr(char kind, char tag[], char *buf, FILE *out, char *rev)
+mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
 {
 	char	*marker, *date;
 
@@ -9680,9 +9680,9 @@ doDiff(sccs *s, u32 flags, char kind, char *leftf, char *rightf,
 				fprintf(out, "\n");
 			}
 			first = 0;
-			mkDiffHdr(kind, ltag, buf, out, lrev);
+			mkDiffHdr(kind, ltag, buf, out);
 			unless (fnext(buf, diffs)) break;
-			mkDiffHdr(kind, rtag, buf, out, rrev);
+			mkDiffHdr(kind, rtag, buf, out);
 		} else	fputs(buf, out);
 	}
 	if (kind == DF_SDIFF) {

@@ -1,4 +1,4 @@
-# @(#) %K%
+# @(#) awc@etp2.bitmover.com|src/port/unix_platform.perl|19991025205424
 # Platform specific setup for perl scripts
 # Copyright (c) 1999 Andrew Chang
 
@@ -11,9 +11,12 @@ sub platformInit
 	$pager = $ENV{'PAGER'} || "more";
 	$editor = $ENV{'EDITOR'} || "vi";
 	$exe = "";   # win3 has ".exe" extension for executable, unix does'nt
+	$bk_fs = ":";
 
 	# needed for -w mode
-	if (0) { $tmp = $dev_null = $tty = $pager = $editor = $exe = ""; }
+	if (0) {
+	    $tmp = $dev_null = $tty = $pager = $editor = $exe = $bk_fs = "";
+	}
 }
 
 sub cd2root
