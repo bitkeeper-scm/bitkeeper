@@ -447,12 +447,14 @@ main(int ac, char **av, char **env)
 	char	sopts[30];
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen(DEV_TTY, "w");
+		FILE	*f;
 
-		fprintf(f, "BK (%u t: %5s)", getpid(), milli());
-		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
-		fprintf(f, "\n");
-		fclose(f);
+		if (f = fopen(DEV_TTY, "w")) {
+			fprintf(f, "BK (%u t: %5s)", getpid(), milli());
+			for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
+			fprintf(f, "\n");
+			fclose(f);
+		}
 	}
 
 	unless (getenv("BK_TMP")) bktmpenv();
@@ -948,11 +950,13 @@ cmdlog_end(int ret)
 	}
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen(DEV_TTY, "w");
+		FILE	*f;
 
-		fprintf(f, "END(%u t: %5s)", getpid(), milli());
-		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
-		fclose(f);
+		if (f = fopen(DEV_TTY, "w")) {
+			fprintf(f, "END(%u t: %5s)", getpid(), milli());
+			fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
+			fclose(f);
+		}
 	}
 	len = strlen(cmdlog_buffer) + 20;
 	EACH_KV (notes) len += kv.key.dsize + kv.val.dsize;
