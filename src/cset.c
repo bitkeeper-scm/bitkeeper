@@ -440,7 +440,6 @@ intr:		sccs_whynot("cset", cset);
 void
 csetList(sccs *cset, char *rev, int ignoreDeleted)
 {
-	MDBM	*db = csetIds(cset, rev, 1);	/* db{fileId} = csetId */
 	MDBM	*idDB;				/* db{fileId} = pathname */
 	kvpair	kv;
 	char	*t;
@@ -448,7 +447,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 	delta	*d;
 	int  	doneFullRebuild = 0;
 
-	if (!db) {
+	if (csetIds(cset, rev)) {
 		fprintf(stderr,
 		    "Can't find changeset %s in %s\n", rev, cset->sfile);
 		exit(1);
@@ -462,7 +461,8 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 			exit(1);
 		}
 	}
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+	for (kv = mdbm_first(cset->mdbm);
+	    kv.key.dsize != 0; kv = mdbm_next(cset->mdbm)) {
 		t = kv.key.dptr;
 		unless (sc = sccs_keyinit(t, INIT_NOCKSUM, idDB)) {
 			fprintf(stderr, "cset: init of %s failed\n", t);
@@ -493,7 +493,6 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 		sccs_free(sc);
 	}
 	mdbm_close(idDB);
-	mdbm_close(db);
 }
 
 /*
@@ -673,9 +672,18 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 			goto retry;
 		}
 		fprintf(stderr, "cset: missing id %s, sfile removed?\n", key);
-		return (-1);
+		free(lastkey);
+		lastkey = 0;
+		return (force ? 0 : -1);
 	}
-	unless (sc->state & S_CSETMARKED) {
+
+	/*
+ 	 * Unless we are here to mark the file, if it isn't marked,
+	 * go do that first.  We skip ChangeSet files because the code
+	 * path which does the work also seems to skip them (because it
+	 * is used for other operations which don't want them).
+	 */
+	if (!(sc->state & S_CSET) && !(sc->state & S_CSETMARKED) && !mark) {
 		char	buf[MAXPATH];
 
 		if (doneFullRemark) {
@@ -684,6 +692,8 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 			    sc->sfile);
 			return (-1);
 		}
+		fprintf(stderr,
+		    "cset: %s has no ChangeSet marks\n\n", sc->sfile);
 		fputs(
 "\nBitKeeper has found a file which is missing some metadata.  That metadata\n\
 is being automatically generated and added to all files.  If your repository\n\
@@ -732,6 +742,7 @@ csetlist(sccs *cset)
 	pid_t	pid = -1;
 	int	status;
 	delta	*d;
+	MDBM	*goneDB = 0;
 
 	if (dash) {
 		while(fgets(buf, sizeof(buf), stdin)) {
@@ -767,6 +778,7 @@ csetlist(sccs *cset)
 			sprintf(buf, "cat %s", csort);
 			system(buf);
 		}
+		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	} else {
 		close(creat(csort, 0666));
 	}
@@ -796,6 +808,7 @@ again:	/* doDiffs can make it two pass */
 			if (doKey(csetid, buf)) goto fail;
 		}
 	}
+
 	/*
 	 * Now do the real data.
 	 */
@@ -804,6 +817,7 @@ again:	/* doDiffs can make it two pass */
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
 		if (sameFile(csetid, buf)) continue;
+		if (gone(buf, goneDB)) continue;
 		if (doKey(buf, t)) goto fail;
 	}
 	if (doDiffs && makepatch) {
@@ -842,11 +856,13 @@ again:	/* doDiffs can make it two pass */
 	}
 	unlink(csort);
 	free(csetid);
+	if (goneDB) mdbm_close(goneDB);
 	return;
 
 fail:
 	unlink(csort);
 	free(csetid);
+	if (goneDB) mdbm_close(goneDB);
 	exit(1);
 }
 
@@ -923,9 +939,16 @@ doMarks(sccs *s)
 			}
 		}
 	}
-	if (did) sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0);
-	if (verbose > 1) {
-		fprintf(stderr, "Marked %d csets in %s\n", did, s->gfile);
+	if (did || !(s->state & S_CSETMARKED)) {
+		s->state |= S_CSETMARKED;
+		sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0);
+		if ((verbose > 1) && did) {
+			fprintf(stderr,
+			    "Marked %d csets in %s\n", did, s->gfile);
+		} else if (verbose > 1) {
+			fprintf(stderr,
+			    "Set CSETMARKED flag in %s\n", s->sfile);
+		}
 	}
 }
 

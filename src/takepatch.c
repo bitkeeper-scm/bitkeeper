@@ -54,6 +54,7 @@ void	rebuild_id(char *id);
 void	cleanup(int what);
 void	changesetExists(void);
 void	notfirst(void);
+void	goneError(char *key);
 
 int	echo = 0;	/* verbose level, higher means more diagnostics */
 int	line;		/* line number in the patch file */
@@ -62,6 +63,7 @@ patch	*patchList = 0;	/* list of patches for a file, list len == fileNum */
 int	conflicts;	/* number of conflicts over all files */
 int	newProject;	/* command line option to create a new repository */
 MDBM	*idDB;		/* key to pathname database, set by init or rebuilt */
+MDBM	*goneDB;	/* key to gone database */
 delta	*gca;		/* The oldest parent found in the patch */
 int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
@@ -136,6 +138,8 @@ usage:		fprintf(stderr, takepatch_help);
 	}
 	fclose(p);
 	free(resyncRoot);
+	if (idDB) mdbm_close(idDB);
+	if (goneDB) mdbm_close(goneDB);
 	purify_list();
 	if (echo) {
 		fprintf(stderr,
@@ -224,12 +228,15 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
 	 *
+	 * If the file is gone, it's an error to get updates to that file.
+	 *
 	 * XXX - we need some test cases in the regression scripts for this.
 	 * a) move the file and make sure it finds it
 	 * b) move the file and send a new file over and make sure it finds
 	 *    it.
 	 */
 	unless (s || newProject || (newFile && fast)) {
+		if (gone(buf, goneDB)) goneError(buf);
 		unless (rebuilt++) {
 			rebuild_id(buf);
 			goto again;
@@ -481,6 +488,19 @@ following command at the top of each repository until you get a match with\n\
 the changeset ID at the top of the patch:\n\
     bk prs -hr1.0 -d:LONGKEY: ChangeSet\n\n", stderr);
     	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+}
+
+void
+goneError(char *buf)
+{
+	SHOUT();
+	fprintf(stderr,
+"File %s\n\
+is marked as gone in this repository and therefor can not accept updates.\n\
+The fact that you are getting updates indicates that the file is not gone\n\
+in the other repository and could be restored in this repository.\n\
+Contact BitMover for assistance, we'll have a tool to do this soon.\n", buf);
+	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
 void
@@ -1152,6 +1172,9 @@ init(FILE *p, int flags, char **resyncRootp)
 		}
 		return (f);
 	}
+
+	/* OK if this returns NULL */
+	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 
 	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 		perror("SCCS/x.id_cache");

@@ -39,9 +39,9 @@ int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
 MDBM	*idDB;
-MDBM	*csetDB;	/* database of {file if, tip id} */
 int	dups;
 int	mixed;		/* running in mixed long/short mode */
+sccs	*cset;
 int	file(char *f, int (*func)());
 int	func(const char *filename, struct stat *sb, int flag);
 int	hasDiffs(char *file);
@@ -50,9 +50,7 @@ void	rebuild(void);
 int	caches(const char *filename, struct stat *sb, int flag);
 char	*name(char *);
 int	lftw(const char *dir,
-	    int(*func)(const char *file, struct stat *sb, int flag),
-	    int depth);
-
+	    int(*func)(const char *file, struct stat *sb, int flag), int depth);
 
 int
 main(int ac, char **av)
@@ -279,8 +277,7 @@ void
 rebuild()
 {
 	int	i;
-	sccs	*cset;
-	char	csetName[512] = "SCCS/s.ChangeSet";
+	char	csetName[128] = CHANGESET;
 
 	unless (cset = sccs_init(csetName, 0, 0)) {
 		perror("sfiles: can't init ChangeSet");
@@ -294,7 +291,7 @@ rebuild()
 	mixed = !(cset->state & S_KEY2);
 
 	if (Cflg) {
-		unless (csetDB = csetIds(cset, 0, 1)) {
+		if (csetIds(cset, 0)) {
 			perror("sfiles: can't init ChangeSet DB");
 			sccs_free(cset);
 			exit(1);
@@ -326,6 +323,7 @@ c:	lftw(".", caches, 15);
 		unlink("SCCS/z.id_cache");
 	}
 	sccs_free(cset);
+	mdbm_close(idDB);
 }
 
 visit(delta *d)
@@ -334,7 +332,6 @@ visit(delta *d)
 	if (d->parent) visit(d->parent);
 }
 
-#ifdef	CRAZY_WOW
 /*
  * Print out everything leading from start to d, not including start.
  * XXX - stolen from cset.c - both copies need to go in slib.c.
@@ -361,7 +358,6 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	// Is this an issue?  I think makepatch handles them.
 	if (d->type == 'D') printf("%s:%s\n", sc->sfile, d->rev);
 }
-#endif
 
 save(sccs *sc, MDBM *idDB, char *buf)
 {
@@ -418,7 +414,7 @@ caches(const char *filename, struct stat *sb, int flag)
 		}
 	}
 
-	unless (Cflg) {
+	unless (Cflg && !(sc->state & S_CSET)) {
 		sccs_free(sc);
 		return (0);
 	}
@@ -430,27 +426,12 @@ caches(const char *filename, struct stat *sb, int flag)
 		return (0);
 	}
 
-	/*
-	 * If it's marked, we're done.
-	 */
-	if (d->flags & D_CSET) {
-		sccs_free(sc);
-		return (0);
-	}
-
-	printf("%s:%s\n", sc->sfile, d->rev);
-	while (aFlg && d->parent && !(d->parent->flags & D_CSET)) {
-		d = d->parent;
-		printf("%s:%s\n", sc->sfile, d->rev);
-	}
-
-#ifdef	CRAZY_WOW
 	/* Go look for long and short versions in the cset */
 	sccs_sdelta(sc, sccs_ino(sc), buf);
-	unless (t = mdbm_fetch_str(csetDB, buf)) {
+	unless (t = mdbm_fetch_str(cset->mdbm, buf)) {
 		if (t = sccs_iskeylong(buf)) {
 			*t = 0;
-			t = mdbm_fetch_str(csetDB, buf);
+			t = mdbm_fetch_str(cset->mdbm, buf);
 		}
 	}
 	if (t) {
@@ -472,7 +453,6 @@ caches(const char *filename, struct stat *sb, int flag)
 			printf("%s:%s\n", sc->sfile, d->rev);
 		}
 	}
-#endif
 	sccs_free(sc);
 	return (0);
 }

@@ -27,9 +27,11 @@ usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -a		do diffs on all sfiles\n\
     -c		do context diffs\n\
     -d<dates>	diff using date or symbol\n\
-    -h		don't print headers\n\
     -D		prefix lines with dates\n\
+    -f		prefix lines with file names\n\
+    -h		don't print headers\n\
     -M		prefix lines with revision numbers\n\
+    -n		do RCS style diffs\n\
     -p		procedural diffs, like diff -p\n\
     -r<r>	diff revision <r>\n\
     -s		do side by side\n\
@@ -64,12 +66,13 @@ main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "acd;DhMnpr|suUv")) != -1) {
+	while ((c = getopt(ac, av, "acd;DfhMnpr|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'h': flags &= ~DIFF_HEADER; break;
 		    case 'c': kind = DF_CONTEXT; break;
 		    case 'D': flags |= GET_PREFIXDATE; break;
+		    case 'f': flags |= GET_MODNAME; break;
 		    case 'M': flags |= GET_REVNUMS; break;
 		    case 'p': kind = DF_PDIFF; break;
 		    case 'n': kind = DF_RCS; break;

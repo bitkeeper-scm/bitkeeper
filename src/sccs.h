@@ -216,18 +216,20 @@
 #define	CLEAR		0x0040		/* forget about past catches */
 
 /*
- * Hash behaviour.
+ * Hash behaviour.  Bitmask.
  */
 #define DB_NODUPS       1		/* keys must be unique */
 #define DB_USEFIRST     2		/* use the first key found */
-#define DB_USELAST      3		/* use the last key found */
+#define DB_USELAST      4		/* use the last key found */
+#define	DB_KEYSONLY	8		/* boolean hashes */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
 #define	SCCSTMP		"SCCS/T.SCCSTMP"	/* XXX - .SCCS for Linus? */
 #define	BKROOT		"BitKeeper/etc"
+#define	GONE		"BitKeeper/etc/gone"
+#define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	CHANGESET	"SCCS/s.ChangeSet"	/* Ditto */
-#define	PENDING		"SCCS/x.pending_cache"	/* Ditto */
 #define	IDCACHE		"SCCS/x.id_cache"	/* Ditto */
 
 #define	UNKNOWN_USER	"anon"
@@ -597,10 +599,10 @@ int	roundType(char *r);
 sccs	*check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
-MDBM	*csetIds(sccs *cset, char *rev, int all);
 #ifndef ANSIC
 int     sig(int, int);
 #endif                                 
+int	csetIds(sccs *cset, char *rev);
 void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);
 char	*sPath(char *name, int isDir);
