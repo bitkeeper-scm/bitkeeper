@@ -1,30 +1,36 @@
 .so bk-macros
 .TH "bk sendbug" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk sendbug \- file a \*(BK bug report
+bk sendbug \- file a bug report
 .SH SYNOPSIS
-.B bk sendbug
+.Bc bk sendbug [\-t] [
+.ARG email@host ]
 .SH DESCRIPTION
+.LP
+File a bug or request for enhancement (RFE) against a project.
+.LP
+The default behaviour is to display the graphical version of sendbug
+when the DISPLAY environment variable is set (UNIX) or if it is
+run on a Windows operating system.  To
+use a text editor rather than the gui, use the -t option.
+.LP
+If email address is specified, the bug will be sent to that email address.
 .LP
 This command should be used to file a bug report rather then sending
 mail to one of the developers.
 .LP
-This is a interactive command, a template will be displayed in your editor,
-and you fill in the details.
+The \*(BK bug database is online at
+.B http://www.bitkeeper.com/bugs
 .LP
-The bug database is online at
-.B http://www.bitkeeper.com/ 
-scroll down and click on the
-.B Bug Database
-entry.  
 The bug database is also available via email, consult the web page for
 more information.
-.SH FUTURE DIRECTIONS
-At some point, we will offer a more polished version of the bug system
-as a \*(BK add on.  Everyone wants a bug system which ties into changesets,
-we know that, we want it too.
+.SH OPTIONS
+.TP
+.B \-t
+Use a text editor rather than the default graphical tool to fill out a bug
+report.
 .SH EXAMPLE
-An example template looks like this:
+An example text template looks like this:
 .sp
 .nf
 Bug/RFE:
