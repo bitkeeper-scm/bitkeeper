@@ -352,34 +352,45 @@ strnonleq(register char *s, register char *t)
 }
 #endif
 
+/* remove last character from string and return it */
 char
-chop(register char *s)
+chop(char *s)
 {
 	char	c;
 
-	while (*s++);
-	c = s[-2];
-	s[-2] = 0;
+	assert(s);
+	unless (*s) return (0);
+	s += strlen(s) - 1;
+	c = *s;
+	*s = 0;
 	return (c);
 }
 
 /*
- * Remove any trailing newline or CR from a string. 
+ * Remove any trailing newline or CR from a string.
+ * Returns true if anything stripped.
  */
-void
-chomp(char *s) 
+int
+chomp(char *s)
 {
-	while (*s) ++s;
-	while (s[-1] == '\n' || s[-1] == '\r') --s;
-	*s = 0;
+	int	any = 0;
+	char	*p;
+
+	assert(s);
+	p = s + strlen(s);
+	while ((p > s) && ((p[-1] == '\n') || (p[-1] == '\r'))) --p, any = 1;
+	*p = 0;
+	return (any);
 }
 
 /* chop if there is a trailing slash */
 void
-chopslash(register char *s)
+chopslash(char *s)
 {
-	while (*s++);
-	if (s[-2] == '/') s[-2] = 0;
+	assert(s);
+	unless (*s) return;
+	s += strlen(s) - 1;
+	if (*s == '/') *s = 0;
 }
 
 /*
