@@ -12547,6 +12547,11 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	/* ======== BITKEEPER SPECIFIC KEYWORDS ========== */
+	if (streq(kw, "N")) {
+		fd(s->numdeltas);
+		return (strVal);
+	}
+
 	if (streq(kw, "ODD")) {
 		return (s->prs_odd ? strVal : nullVal);
 	}

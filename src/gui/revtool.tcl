@@ -14,7 +14,7 @@ proc wid {id} \
 	return [expr {$x2 - $x1}]
 }
 
-# Return height of text widget
+# Returns the height of the graph canvas
 proc ht {id} \
 {
 	global w
@@ -444,6 +444,7 @@ proc centerRev {revname} \
 {
 	global cdim w
 
+	#print_stacktrace
 	set bbox [$w(graph) bbox $revname]
 	set b_x1 [lindex $bbox 0]
 	set b_x2 [lindex $bbox 2]
@@ -638,6 +639,7 @@ proc line {s width ht} \
 {
 	global	wid revX revY gc where yspace line_rev screen w
 
+	set last ""; set first ""
 	# space for node and arrow
 	set xspace [expr {$width + 8}]
 	set l [split $s]
@@ -802,7 +804,7 @@ proc setScrollRegion {} \
 	#puts "bb_all=>($bb_all)"
 }
 
-proc listRevs {range file} \
+proc listRevs {r file {N {}}} \
 {
 	global	bad Opts merges dev_null ht screen stacked gc w
 
@@ -811,11 +813,11 @@ proc listRevs {range file} \
 	set screen(maxx) 0
 	set screen(maxy) 0
 	set lines ""
+	set n ""
 
 	$w(graph) delete all
 	$w(graph) configure -scrollregion {0 0 0 0}
 
-	#puts "in listRevs range=($range) file=($file)"
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
 	#$w(graph) create text 0 0 -anchor nw -text " "
@@ -823,7 +825,8 @@ proc listRevs {range file} \
 	# Figure out the biggest node and its length.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| bk _lines $Opts(line) $range \"$file\" 2>$dev_null" "r"]
+	if {$N != ""} { set n "-n$N" }
+	set d [open "| bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -1151,11 +1154,11 @@ proc displayDiff {rev1 rev2} \
 #
 proc gotoRev {f hrev} \
 {
-	global srev rev1 rev2
+	global srev rev1 rev2 gc dev_null
 
 	set rev1 $hrev
 	#displayMessage "gotoRev hrev=($hrev) f=($f) rev1=($rev1)"
-	revtool $f $hrev
+	revtool $f $hrev $gc(rev.showRevs)
 	set hrev [lineOpts $hrev]
 	highlight $hrev "old"
 	catch {exec bk prs -hr$hrev -d:I:-:P: $f 2>$dev_null} out
@@ -1836,8 +1839,9 @@ proc getHistory {} \
 # Arguments:
 #  lfname	filename that we want to view history
 #  R		Revision or time period that we want to view
+#  N		Number of revs to show
 #
-proc revtool {lfname R} \
+proc revtool {lfname R {N {}}} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  srev Opts gc file rev2rev_name cdim firstnode fname
@@ -1883,7 +1887,7 @@ select a new file to view"
 		set Opts(line_time) "-R$R"
 	}
 	# If valid time range given, do the graph
-	if {[listRevs $Opts(line_time) "$file"] == 0} {
+	if {[listRevs $Opts(line_time) "$file" $N] == 0} {
 		revMap "$file"
 		dateSeparate
 		setScrollRegion
@@ -1934,7 +1938,7 @@ The file $lfname was last modified ($ago) ago."
 	focus $w(graph)
 	busy 0
 	return
-} ;#histool
+} ;#revtool
 
 proc init {} \
 {
@@ -2053,6 +2057,8 @@ proc startup {} \
 	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
 	global file merge diffpair
 
+	set ids 0
+
 	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
 	if {$gca != ""} {
 		set merge(G) $gca
@@ -2062,14 +2068,15 @@ proc startup {} \
 		set diffpair(right) $rev2 
 	}
 	if {$srev != ""} {  ;# If -l option without the -r -G
-		revtool $fname "-$srev"
+		revtool $fname "-$srev" $gc(rev.showRevs)
 		set rev1 [lineOpts $srev]
 		highlight $rev1 "old"
 		set file [exec bk sfiles -g $fname 2>$dev_null]
 		highlightTextRev $rev1 $fname
 		.menus.cset configure -state normal 
 	} elseif {$rev1 == ""} { ;# if no arguments
-		revtool $fname "-$gc(rev.showHistory)"
+		# If called with no args, show the last 200 revs
+		revtool $fname "-$gc(rev.showHistory)" $gc(rev.showRevs)
 	} else { ;# if -l argument
 		set diffpair(left) $rev1
 		set srev $rev1
