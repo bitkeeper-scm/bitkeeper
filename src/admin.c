@@ -194,7 +194,7 @@ admin_main(int ac, char **av)
 
 	ckopts = user_preference("checkout");
 	if (streq("GET", ckopts) || streq("EDIT", ckopts)) {
-		flags |= ADMIN_FIXMTIME;
+		init_flags |= INIT_FIXSTIME;
 	}
 
 	/*

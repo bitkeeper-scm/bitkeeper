@@ -36,6 +36,9 @@ bk get $Q foo.c
 sleep 1
 bk admin -fRCS foo.c
 bk commit $Q -ynew_stuff
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ -w foo.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
@@ -47,6 +50,55 @@ bk edit $Q foo.c
 sleep 1
 bk admin -FRCS foo.c
 bk commit $Q -ynew_stuff
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ ! -w foo.c ]; then echo failed; exit 1; fi
+if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+echo $N checkout:EDIT w delta .......................................$NL
+echo new >> foo.c
+bk delta $Q -ynew foo.c
+bk commit $Q -ynew_stuff
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ ! -w foo.c ]; then echo failed; exit 1; fi
+if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:GET w delta ........................................$NL
+bk unedit $HERE/project/BitKeeper/etc/config
+bk edit $Q $HERE/project/BitKeeper/etc/config
+echo "checkout:GET" >> $HERE/project/BitKeeper/etc/config
+sleep 1
+bk admin -FSCCS foo.c
+echo new2 >> foo.c
+bk delta $Q -ynew foo.c
+bk commit $Q -ynew_stuff
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ -w foo.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:GET w clone ........................................$NL
+bk delta $Q -ycheckout_GET $HERE/project/BitKeeper/etc/config
+bk commit $Q -ycheckout_GET
+bk clone $Q $HERE/project $HERE/copy
+if [ ! -f $HERE/copy/src/foo.c ]; then echo failed; exit 1; fi
+if [ -w $HERE/copy/src/foo.c ]; then echo failed; exit 1; fi
+if [ -f $HERE/copy/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:EDIT w clone .......................................$NL
+bk undo -sqfr+
+bk unedit $HERE/project/BitKeeper/etc/config
+bk edit $Q $HERE/project/BitKeeper/etc/config
+echo "checkout:EDIT" >> $HERE/project/BitKeeper/etc/config
+bk delta $Q -ycheckout_EDIT $HERE/project/BitKeeper/etc/config
+bk commit $Q -ycheckout_EDIT
+bk clone $Q $HERE/project $HERE/copy2
+if [ ! -f $HERE/copy2/src/foo.c ]; then echo failed 1; exit 1; fi
+if [ ! -w $HERE/copy2/src/foo.c ]; then echo failed 2; exit 1; fi
+if [ ! -f $HERE/copy2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
+echo OK
+# TODO add support for bk undo ?

@@ -20,7 +20,7 @@
 
 #define	INIT_MAPWRITE	0x10000000	/* map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
-#define INIT_GTIME	0x40000000	/* use g file mod time as time stamp */
+#define	INIT_FIXDTIME	0x40000000	/* use g file mod time as delat time */
 #define	INIT_SAVEPROJ	0x80000000	/* project is loaned, do not free it */
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
 #define	INIT_HAScFILE	0x02000000	/* has c.file */
@@ -30,7 +30,7 @@
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
 #define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
-#define	INIT_FIXMTIME	0x00100000	/* force sfile mtime < gfile mtime */
+#define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -76,7 +76,6 @@
 #define	DELTA_FORCE	0x02000000	/* delta -f: force a delta */
 #define	DELTA_HASH	0x04000000	/* treat as hash (MDBM) file */
 #define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
-#define	DELTA_FIXMTIME	0x00100000	/* force sfile mtime < gfile mtime */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 #define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
@@ -86,7 +85,6 @@
 #define	ADMIN_GONE	0x02000000	/* check integrity w/o GONE deltas */
 #define	ADMIN_ADD1_0	0x04000000	/* insert a 1.0 delta */
 #define	ADMIN_RM1_0	0x08000000	/* remove a 1.0 delta */
-#define	ADMIN_FIXMTIME	0x00100000	/* force sfile mtime < gfile mtime */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 

@@ -152,6 +152,14 @@ bk xflags -s || {
 	exit 1
 }
 echo OK
+echo $N Turning off a flag already in off state  .....................$NL
+REV1=`bk prs -hr+ -d:I: xflags`
+bk admin -FSCCS xflags 2> admin.out 
+grep -q "SCCS flag is already off"  admin.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+REV2=`bk prs -hr+ -d:I: xflags`
+if [ X"$REV1" != X"$REV2" ]; then echo failed; exit 1; fi
+echo OK
 
 echo $N Rip out all the flags, put them back, check it ..............$NL
 grep -v cX SCCS/s.xflags | grep -v 'f x ' > SCCS/s.bad

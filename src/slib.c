@@ -1107,6 +1107,32 @@ date2time(char *asctime, char *z, int roundup)
 }
 
 /*
+ * Force sfile's mod time to be one second before gfile's mod time
+ */
+private void
+fix_stime(sccs *s)
+{
+	struct	utimbuf	ut;
+
+	unless (s->gtime) return;
+	/*
+	 * To prevent the "make" command from doing a "get" due to 
+	 * sfile's newer modification time, and then fail due to the
+	 * editable gfile, adjust sfile's modification to be just
+	 * before that of gfile's.
+	 * Note: It is ok to do this, because we've already recorded
+	 * the time of the delta in the delta table.
+	 * A potential pitfall would be that it may confuse the backup
+	 * program to skip the sfile when doing a incremental backup.
+	 * This is why we we only do this when the user set the
+	 * INIT_FIXSTIME flag.
+	 */
+	ut.actime = time(0);
+	ut.modtime = s->gtime - 1;
+	utime(s->sfile, &ut);
+}
+
+/*
  * Diff can give me
  *	10a12, 14	-> 10 a
  *	10, 12d13	-> 10 d
@@ -8522,7 +8548,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	assert(s);
 	if (BITKEEPER(s) && (type == 'D')) d->flags |= D_CKSUM;
 	unless (d->sdate) {
-		if (s->gtime) {
+		if (s->initFlags & INIT_FIXDTIME) {
 			date(d, s->gtime);
 
 			/*
@@ -9032,35 +9058,12 @@ no_config:
 	}
 	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
-	Chmod(s->sfile, 0444);
 	if ((flags & DELTA_SAVEGFILE) &&
-	    (flags & DELTA_FIXMTIME) &&
+	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
-		struct	stat	sb;
-		struct	utimbuf	ut;
-
-		/*
-		 * To prevent the "make" command from doing a "get" due to 
-		 * sfile's newer modification time, and then fail due to the
-		 * editable gfile, adjust sfile's modification to be just
-		 * before that of gfile's.
-		 * Note: It is ok to do this, because we've already recorded
-		 * the time of the delta in the delta table.
-		 * A potential pitfall would be that it may confuse the backup
-		 * program to skip the sfile when doing a incremental backup.
-		 * This is why we we only do this when the user set the
-		 * DELTA_FIXMTIME flag.
-		 */
-		if (lstat(s->gfile, &sb) == 0) {
-			ut.actime = time(0);
-			ut.modtime = sb.st_mtime - 1;
-			utime(s->sfile, &ut);
-		} else {
-			/* We should never get here */
-			perror(s->gfile);
-		}
-		
+		fix_stime(s);
 	}
+	Chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
 	if (db) mdbm_close(db);
 	sccs_unlock(s, 'z');
@@ -10025,7 +10028,7 @@ addMode(char *me, sccs *sc, delta *n, char *mode)
 	n = modeArg(n, newmode);
 }
 
-void
+private int
 changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 {
 	char	buf[50];
@@ -10042,7 +10045,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 			verbose((stderr,
 				"admin: warning: %s %s flag is already on\n",
 				sc->sfile, flag));
-			return;
+			return (0);
 		} 
 		xflags |= mask;
 	} else {
@@ -10050,7 +10053,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 			verbose((stderr,
 				"admin: warning: %s %s flag is already off\n",
 				sc->sfile, flag));
-			return;
+			return (0);
 		}
 		xflags &= ~mask;
 	}
@@ -10060,6 +10063,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	n->xflags = xflags;
 	sprintf(buf, "Turn %s %s flag", add ? "on": "off", flag);
 	n->comments = addLine(n->comments, strdup(buf));
+	return (1);
 }
 
 int
@@ -10210,6 +10214,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 {
 	FILE	*sfile = 0;
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
+	int	flagsChanged = 0;
 	char	*t;
 	char	*buf;
 	delta	*d = 0;
@@ -10352,7 +10357,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
 		char	*v = &f[i].thing[1];
 
-		flags |= NEWCKSUM;
+		//flags |= NEWCKSUM;
 		if (isupper(f[i].thing[0])) {
 			char *fl = f[i].thing;
 
@@ -10363,7 +10368,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				ALLOC_D();
-				changeXFlag(sc, d, flags, add, fl);
+				flagsChanged += changeXFlag(sc, d, flags, add, fl);
 			}
 #if 0
 			else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
@@ -10377,6 +10382,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
+				flagsChanged++;
 			} else {
 				if (v) fprintf(stderr,
 					       "admin: unknown flag %s=%s\n",
@@ -10395,11 +10401,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			sc->state = S_WARNED;
 		} else {
 			switch (f[i].thing[0]) {
-				//char	buf[500];
 				char	*buf;
 			    case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
+				flagsChanged++;
 				break;
 			    case 'e':
 				if (BITKEEPER(sc)) {
@@ -10408,11 +10414,12 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					if (*v) new_enc = atoi(v);
 					verbose((stderr,
 					    "New encoding %d\n", new_enc));
+					flagsChanged++;
 				}
 		   		break;
 			    default:
-				//sprintf(buf, "%c %s", v[-1], v);
 				buf = aprintf("%c %s", v[-1], v);
+				flagsChanged++;
 				if (add) {
 					sc->flags =
 						addLine(sc->flags, strdup(buf));
@@ -10430,6 +10437,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			}
 		}
 	}
+	if (flagsChanged) flags |= NEWCKSUM;
 
 	if (flags & ADMIN_ADD1_0) {
 		insert_1_0(sc);
@@ -10509,22 +10517,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 
-	if (sc->initFlags & INIT_FIXMTIME) flags |= ADMIN_FIXMTIME;
-	if (flags & ADMIN_FIXMTIME) {
-		struct  stat    sb;
-		struct  utimbuf ut;
-
-		/*
-		 * To prevent the "make" command from doing a "get" due to 
-		 * sfile's newer modification time adjust sfile's modification
-		 * to be just before that of gfile's.
-		 */
-		if (lstat(sc->gfile, &sb) == 0) {
-			ut.actime = time(0);
-			ut.modtime = sb.st_mtime - 1;
-			utime(sc->sfile, &ut);
-		}
-	}
+	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) fix_stime(sc);
 	Chmod(sc->sfile, 0444);
 	goto out;
 #undef	OUT
@@ -11968,30 +11961,10 @@ out:
 		OUT;
 	}
 	unlink(s->pfile);
-	if (s->initFlags & INIT_FIXMTIME) flags |= DELTA_FIXMTIME;
 	if ((flags & DELTA_SAVEGFILE) &&
-	    (flags & DELTA_FIXMTIME) &&
+	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
-		struct	stat	sb;
-		struct	utimbuf	ut;
-
-		/*
-		 * To prevent the "make" command from doing a "get" due to 
-		 * sfile's newer modification time, and then fail due to the
-		 * editable gfile, adjust sfile's modification to be just
-		 * before that of gfile's.
-		 * Note: It is ok to do this, because we've already recorded
-		 * the time of the delta in the delta table.
-		 * A potential pitfall would be that it may confuse the backup
-		 * program to skip the sfile when doing a incremental backup.
-		 * This is why we we only do this when the user set the
-		 * DELTA_FIXMTIME flag.
-		 */
-		if (lstat(s->gfile, &sb) == 0) {
-			ut.actime = time(0);
-			ut.modtime = sb.st_mtime - 1;
-			utime(s->sfile, &ut);
-		}
+		fix_stime(s);
 	}
 	Chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
