@@ -1279,7 +1279,7 @@ apply:
 	}
 	s->state |= S_SET;
 	if (cset_resum(s, 0, 0)) {
-		getMsg("takepatch-chksum", 0, 0, '=', stderr);
+		getMsg("takepatch-chksum", 0, '=', stderr);
 		return (-1);
 	}
 
