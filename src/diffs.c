@@ -153,7 +153,8 @@ usage:			system("bk help -s diffs");
 
 		name = sfileFirst("diffs", nav, SF_GFILE);
 	} else {
-		name = sfileFirst("diffs", &av[optind], SF_GFILE|SF_WRITE_OK);
+		name = sfileFirst("diffs",
+			    &av[optind], SF_SILENT|SF_GFILE|SF_WRITE_OK);
 	}
 	while (name) {
 		int	ex = 0;
