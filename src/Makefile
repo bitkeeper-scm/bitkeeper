@@ -55,7 +55,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o rset.o \
 	  sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o setup.o \
-	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
+	  sfiles.o sfind.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
 	  version.o what.o zgets.o zone.o license.o trigger.o

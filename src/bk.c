@@ -94,6 +94,7 @@ int sendbug_main(int, char **);
 int setlod_main(int, char **);
 int setup_main(int, char **);
 int sfiles_main(int, char **);
+int sfind_main(int, char **);
 int sfio_main(int, char **);
 int sids_main(int, char **);
 int sinfo_main(int, char **);
@@ -191,6 +192,7 @@ struct command cmdtbl[] = {
 	{"setlod", setlod_main},
 	{"setup", setup_main },
 	{"sfiles", sfiles_main},
+	{"sfind", sfind_main},
 	{"sfio", sfio_main},
 	{"sids", sids_main},
 	{"sinfo", sinfo_main},
