@@ -125,7 +125,6 @@ resolve_main(int ac, char **av)
 
 	if (opts.automerge) {
 		unless (comment || opts.comment) opts.comment = "Automerge";
-		opts.textOnly = 1;	/* Good idea??? */
 	}
 	unless (comment || opts.comment) {
 		opts.comment = "Merge";
@@ -1586,10 +1585,35 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	}
 
 	if (opts->hadConflicts) {
+		char	*nav[20];
+		int	i;
+
+		if (getenv("BK_REGRESSION") &&
+		    !getenv("BK_FORCE_RESOLVE_RERUN")) {
+			fprintf(stderr,
+			    "resolve: %d unresolved conflicts, "
+			    "nothing is applied.\n",
+			    opts->hadConflicts);
+			resolve_cleanup(opts, 0);
+			exit(1);	/* Shouldn't get here */
+	    	}
+
+		nav[i=0] = "bk";
+		nav[++i] = "resolve";
+		if (opts->mergeprog) {
+			nav[++i] = aprintf("-m%s", opts->mergeprog);
+		}
+		if (opts->quiet) nav[++i] = "-q";
+		if (opts->textOnly) nav[++i] = "-t";
+		if (opts->comment) nav[++i] = aprintf("-y%s", opts->comment);
+		nav[++i] = 0;
 		fprintf(stderr,
-		    "resolve: %d unresolved conflicts, nothing is applied.\n",
+		    "resolve: %d unresolved conflicts, "
+		    "starting manual resolve process.\n",
 		    opts->hadConflicts);
-		resolve_cleanup(opts, 0);
+		chdir(RESYNC2ROOT);
+		execvp("bk", nav);
+		exit(1);
 	}
 
 	/*
@@ -1968,7 +1992,7 @@ same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 		comments_save("Auto merged");
 		d = comments_get(0);
 		sccs_restart(rs->s);
-		flags = DELTA_DONTASK|DELTA_FORCE|(rs->opts->quiet? SILENT : 0);
+		flags = DELTA_DONTASK|DELTA_FORCE|SILENT;
 		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
 			sccs_whynot("delta", rs->s);
 			rs->opts->errors = 1;
@@ -2004,7 +2028,7 @@ same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 int
 edit(resolve *rs)
 {
-	int	flags = GET_EDIT|GET_SKIPGET;
+	int	flags = GET_EDIT|GET_SKIPGET|SILENT;
 	char	*branch;
 
 	branch = strchr(rs->revs->local, '.');
@@ -2014,7 +2038,6 @@ edit(resolve *rs)
 	} else {
 		branch = rs->revs->remote;
 	}
-	if (rs->opts->quiet) flags |= SILENT;
 	if (sccs_get(rs->s, 0, branch, 0, 0, flags, "-")) {
 		fprintf(stderr,
 		    "resolve: cannot edit/merge %s\n", rs->s->sfile);

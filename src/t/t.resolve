@@ -188,6 +188,7 @@ grep -q "VERSION 3" VR || {
 	exit 1
 }
 echo OK
+
 echo $N Check pass1 to see if dups when no dup.......................$NL
 cd $HERE
 export CLOCK_DRIFT=1
@@ -226,6 +227,30 @@ bk pull -qR ../p1dtmp
 bk resolve $Q -234 2> ERR || {
 	echo Fail
 	cat ERR
+	exit 1
+}
+echo OK
+
+echo $N Make sure resolve reruns when there are conflicts ...........$NL
+cd $HERE/proj
+bk abort -f
+cd $HERE
+bk clone $Q proj conflict
+for i in proj conflict
+do
+	cd $HERE/$i
+	bk edit $Q foo
+	echo $i >> foo
+	bk delta $Q -y$i foo
+	bk commit $Q -y$i 
+done
+cd $HERE/conflict
+( echo '?'
+  echo q
+) | BK_FORCE_RESOLVE_RERUN=YES bk pull > OUT 2>&1
+grep -q 'starting manual resolve process.' OUT || {
+	echo Did not restart resolve
+	cat OUT
 	exit 1
 }
 echo OK
