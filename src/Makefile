@@ -14,8 +14,8 @@ BKOBJ	= bkmain.o adler32.o admin.o check.o chksum.o clean.o cset.o delta.o \
 	  logaddr.o logchangeset.o names.o parent.o push.o r2c.o receive.o \
 	  send.o sendconfig.o setlog.o setup.o status.o unwrap.o version.o \
 	  sendbug.o export.o pending.o bkd_client.o lib_tcp.o repo.o pull.o \
-	  clone.o
-SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
+	  clone.o undo.o
+SCRIPTS	= rcs2sccs testfast bk.script import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build crank resync merge \
 	  gzip_uuwrap ungzip_uuwrap
@@ -225,7 +225,7 @@ libsccs.a: $(SCCSOBJ) $(PORTOBJ)
 
 sccssh: sccssh.o rcs.o $(LIBS)
 	$(CC) $(CFLAGS) sccssh.o $(LINK) -o sccssh
-bk: ${BKOBJ} ${RESOBJ}
+bk: ${BKOBJ} ${RESOBJ} $(LIBS)
 	$(CC) $(CFLAGS) ${BKOBJ} ${RESOBJ} $(LINK) -o bk
 pull: pull.o $(BKLIB) $(LIBS)
 	$(CC) $(CFLAGS) pull.o $(BKLIB) $(LINK) -o pull

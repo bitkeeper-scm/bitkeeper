@@ -19,7 +19,7 @@ int send_main(int, char **);
 int unwrap_main(int, char **);
 int receive_main(int, char **);
 int fix_main(int, char **);
-//int undo_main(int, char **);
+int undo_main(int, char **);
 int sendbug_main(int, char **);
 int export_main(int, char **);
 int setlog_main(int, char **);
@@ -86,7 +86,7 @@ struct command cmdtbl[100] = {
 	{"unwrap", unwrap_main},
 	{"receive", receive_main},
 	{"fix", fix_main},
-//	{"undo", undo_main},
+	{"undo", undo_main},
 	{"sendbug", sendbug_main},
 	{"export", export_main},
 	{"setlog", setlog_main},

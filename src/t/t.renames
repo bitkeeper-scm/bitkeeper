@@ -1379,10 +1379,13 @@ echo OK
 echo $N Undo that last cset .........................................$NL
 bk undo -fqsr+
 if [ ! -f SCCS/s.A ]
-then	echo failed to bring back A; exit 1
+then	echo failed to bring back s.A; exit 1
 fi
 if [ -f SCCS/s.Z ]
-then	echo failed to delete Z; exit 1
+then	echo failed to delete s.Z; exit 1
+fi
+if [ -f Z ]
+then	echo "failed to delete Z"; exit 1
 fi
 echo OK
 echo $N Do some work in Z/A and resync ..............................$NL
