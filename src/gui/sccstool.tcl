@@ -770,8 +770,8 @@ proc sccstool {name} \
 proc platformPath {} \
 {
 	global bin env
-	# BKBIN is set by bk.sh
-	set bin $env(BKBIN)
+	# BK_BIN is set by bk.sh
+	set bin $env(BK_BIN)
 
 	#XXX TODO: make bk_tagfile a config variable
 	#XXX       for NT, it should be "sccslog.exe"

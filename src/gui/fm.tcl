@@ -936,7 +936,7 @@ proc platformPath {} \
 {
 	global bin env
 	
-	set bin $env(BKBIN)
+	set bin $env(BK_BIN)
 
 	#XXX TODO: make bk_tagfile a config variable
 	#XXX       for NT, it should be "sccslog.exe"

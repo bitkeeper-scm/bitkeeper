@@ -969,7 +969,7 @@ for w in citool sccstool vitool fm fm3
 do	if [ $cmd = $w ]
 	then	
 		# pick up our own wish shell if it exist
-		BKBIN=$BIN PATH=$BIN:$PATH exec $wish -f ${BIN}${cmd}${tcl} "$@"
+		PATH=$BIN:$PATH exec $wish -f ${BIN}${cmd}${tcl} "$@"
 	fi
 done
 
