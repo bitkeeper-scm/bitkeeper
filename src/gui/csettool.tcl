@@ -515,6 +515,10 @@ proc keyboard_bindings {} \
 {
 	global gc search tcl_platform
 
+	bind all <Control-b> { if {[Page "yview" -1 0] == 1} { break } }
+	bind all <Control-f> { if {[Page "yview"  1 0] == 1} { break } }
+	bind all <Control-e> { if {[Page "yview"  1 1] == 1} { break } }
+	bind all <Control-y> { if {[Page "yview" -1 1] == 1} { break } }
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
 	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
