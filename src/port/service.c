@@ -82,15 +82,20 @@ bkd_install_service(bkdopts *opts)
 			 * currently unknown. User must
 			 * make sure the bk binary is on a local disk
 			 */
-			fprintf(stderr, "%s installed.\n", SERVICEDISPLAYNAME);
+			unless (Opts.quiet) {
+				fprintf(stderr,
+					"%s installed.\n", SERVICEDISPLAYNAME);
+			}
 			if (StartService(schService, 0, NULL) == 0) {
 				fprintf(stderr,
 					"%s can not start service. %s\n",
 					SERVICEDISPLAYNAME,
 					getError(err, 256));
 			} else {
-				fprintf(stderr, "%s started.\n",
+				unless (Opts.quiet) {
+					fprintf(stderr, "%s started.\n",
 							    SERVICEDISPLAYNAME);
+				}
 			}
 			CloseServiceHandle(schService);
 		}

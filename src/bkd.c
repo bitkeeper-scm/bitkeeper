@@ -29,7 +29,7 @@ bkd_main(int ac, char **av)
 	loadNetLib();
 
 
-	while ((c = getopt(ac, av, "c:dDeE:hHil|L:p:P:Rs:St:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:hHil|L:p:P:qRs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;
@@ -45,6 +45,7 @@ bkd_main(int ac, char **av)
 			logRoot = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;
 		    case 'P': Opts.pidfile = optarg; break;
+		    case 'q': Opts.quiet = 1; break; /* need doc */
 #ifdef WIN32
 		    case 'E': putenv((strdup)(optarg)); break;
 		    case 's': Opts.startDir = optarg; break;
