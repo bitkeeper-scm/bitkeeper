@@ -56,7 +56,7 @@ pull_main(int ac, char **av)
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;
 		    default:
-usage:			system("bk help -s push");
+usage:			system("bk help -s pull");
 			return (1);
 		}
 	}
@@ -135,7 +135,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		getServerInfoBlock(r, "_OUTGOING");
 		getline2(r, buf, sizeof(buf));
 	} else {
-		drainNonStandardMsg(r, buf, sizeof(buf));
+		drainErrorMsg(r, buf, sizeof(buf));
 	}
 	if (getenv("BK_OUTGOING_LEVEL") &&
 	    (atoi(getenv("BK_OUTGOING_LEVEL")) > getlevel())) {

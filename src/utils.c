@@ -630,13 +630,14 @@ flush2remote(remote *r)
 
 
 /*
- * Drain non-standard message:
- * There are two possibilities:
+ * Drain error message:
+ * There are three possibilities:
  * 1) remote is running a version 1.2 (i.e. old) bkd
  * 2) remote is not running a bkd.
+ * 3) remote is running a current bkd, but have some type of config/path error
  */
 void
-drainNonStandardMsg(remote *r, char *buf, int bsize)
+drainErrorMsg(remote *r, char *buf, int bsize)
 {
 	int bkd_msg = 0;
 
@@ -654,8 +655,10 @@ drainNonStandardMsg(remote *r, char *buf, int bsize)
 		if (strneq("ERROR-BAD CMD:", buf, 14)) continue;
 		if (streq("OK-root OK", buf)) continue;
 		if (streq("ERROR-exiting", buf)) exit(1);
-		fprintf(stderr,
-			"drainNonStandardMsg: Unexpected response: %s\n", buf);
+		if (!strneq("ERROR-", buf, 6)) {
+			fprintf(stderr, "drainErrorMsg: Unexpected response: ");
+		}
+		fprintf(stderr, "%s\n", buf);
 		break;
 	} while (getline2(r, buf, bsize) > 0);
 

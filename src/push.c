@@ -227,7 +227,7 @@ needLogMarker(opts opts, remote *r)
 private void
 send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 {
-	char	cmd[500], buf[MAXPATH];
+	char	*cmd, buf[MAXPATH];
 	FILE 	*f;
 	int	gzip;
 
@@ -249,8 +249,9 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	sprintf(cmd, "bk _probekey  >> %s", buf);
+	cmd = aprintf("bk _probekey  >> %s", buf);
 	system(cmd);
+	free(cmd);
 
 	send_file(r, buf, 0, opts.gzip);	
 	unlink(buf);
@@ -283,7 +284,7 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 		}
 		getline2(r, buf, sizeof(buf));
 	} else {
-		drainNonStandardMsg(r, buf, sizeof(buf));
+		drainErrorMsg(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
@@ -572,7 +573,7 @@ push_part2(char **av, opts opts,
 		 * script wants it.
 		 */
 		sprintf(buf, "BK_CSETLIST=%s", rev_list);
-		putenv(buf); 
+		putenv(buf);  /* XXX should we strdup this buffer ?? */
 		if (!opts.metaOnly && trigger(av, "pre")) {
 			send_end_msg(opts, r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
