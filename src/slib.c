@@ -3497,7 +3497,7 @@ sccs_filetype(char *name)
 #ifdef	ATT_SCCS
 	return ((int)s[1]);
 #endif
-	if ((name <= &s[-4]) && PathnEqual("SCCS", &s[-4], 4)) {
+	if ((name <= &s[-4]) && pathneq("SCCS", &s[-4], 4)) {
 		return ((int)s[1]);
 	}
 	return (0);
@@ -5971,7 +5971,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
 		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
-		if (r && !PathEqual(d->pathname, r)) RET(1);
+		if (r && !patheq(d->pathname, r)) RET(1);
 	}
 
 	/* 
@@ -6150,7 +6150,7 @@ diff_gmode(sccs *s, pfile *pf)
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
 		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
-		if (r && !PathEqual(d->pathname, r)) return (3);
+		if (r && !patheq(d->pathname, r)) return (3);
 	}
 
 	unless (sameFileType(s, d)) return (1);

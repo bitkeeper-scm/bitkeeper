@@ -491,12 +491,13 @@ lftw(const char *dir,
 		    (strcmp(e->d_name, "..") == 0))
 			continue;  /* skip "." && ".." */
 
+#ifndef WIN32
 		/*
 		 * Linux 2.3.x NFS bug, skip repeats.
-		 * lm -> awc will this work on NT?
 		 */
 		if (lastInode == e->d_ino) continue;
 		lastInode = e->d_ino;
+#endif
 
 		/* now we do the real work */
 		sprintf(tmp_buf, "%s%s%s", dir, slash, e->d_name);

@@ -27,7 +27,7 @@ _logCommand() {
 	do	if [ -d $PREFIX$DIR ]
 		then	LDIR=${PREFIX}BitKeeper/log
 			if [ ! -d $LDIR ]
-			then	mkdir $LDIR || { pwd; ls . BitKeeper; exit 1 }
+			then	mkdir $LDIR || { pwd; ls . BitKeeper; exit 1;}
 			fi
 			echo "${USER}: $@" >> ${LDIR}/cmd 2>/dev/null
 			return
