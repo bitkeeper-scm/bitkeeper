@@ -174,12 +174,14 @@ proc update_info {field value} \
 	global w
 }
 
-proc read_bkrc {} \
+proc read_bkrc {config} \
 {
 	global env st_cinfo debug st_g w gc
 
-	set fid [open $st_g(bkrc) "r"]
+	set fid [open $config "r"]
 	while { [ gets $fid line ] != -1 } {
+		if {[regexp -- {^\ *#} $line d]} {continue}
+		if {[regexp -- {^\ *$} $line d]} {continue}
 		set col [string first ":" $line ]
 		set key [string range $line 0 [expr {$col - 1}]]
 		set val [string range $line [expr {$col + 1}] \
@@ -214,9 +216,12 @@ proc create_repo {} \
 
 	wm withdraw .
 	regsub -all {\ } $st_cinfo(description) {\\ }  escaped_desc
-	# save config info back to users .bkrc file
-	save_config_info
-	# write out config file from user-entered data
+	# We don't want to save the a local .bkrc if a global config
+	# template exists. May want to revisit this policy later
+	if {![info exists st_g(bktemplate)] || ($st_g(bktemplate) == "")} {
+		save_config_info
+	}
+	# Create a temp config file from user-entered data 
 	set pid [pid]
 	set cfile [file join $tmp_dir "config.$pid"]
 	set cfid [open "$cfile" w]
@@ -244,9 +249,11 @@ proc get_config_info {} \
 {
 	global env st_cinfo st_g
 
-	if {[file exists $st_g(bkrc)]} {
+	if {[info exists st_g(bktemplate)] && ($st_g(bktemplate) != "")} {
+		read_bkrc $st_g(bktemplate)
+	} elseif {[file exists $st_g(bkrc)]} {
 		#puts "found file .bkrc"
-		read_bkrc
+		read_bkrc $st_g(bkrc)
 		return 
 	} else {
 		#puts "didn't find file .bkrc"
@@ -392,8 +399,8 @@ proc create_config {widget} \
 		    message $w(msg) \
 			-width 200 \
 			-bg $gc(setup.mandatoryColor) \
-			-text "The highlighted items on the right are \
-			    mandatory  fields"
+			-text "The items highlighted in blue on the right are \
+			    required fields"
 		    pack $w(msg) -side bottom  -pady 10
 		# create button bar at the bottom of the app
 		frame $w(buttonbar) -bg $gc(setup.BG)
@@ -499,17 +506,35 @@ proc setbkdir {} \
 {
 	global st_g tcl_platform env
 
+	set HKCU "HKEY_CURRENT_USER"
+	set HKLM "HKEY_LOCAL_MACHINE"
+	set l {Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders}
+	set tfile "/etc/BitKeeper/etc/config.template"
+
         if {$tcl_platform(platform) == "windows"} {
 		package require registry
-		set appdir [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
+		set appdir [registry get "$HKLM\\$l" {Common AppData}]
+		set ct [file join $appdir BitKeeper etc config.template]
+		if {[file exists $ct]} {
+			set st_g(bktemplate) $ct
+			#puts "template exist ct=($ct)"
+		} else {
+			#puts "template does not exist ct=($ct)"
+		}
+		set appdir [registry get "$HKCU\\$l" {AppData}]
 		set st_g(bkdir) [file join $appdir BitKeeper]
 		if {![file isdirectory $st_g(bkdir)]} {
 			catch {file mkdir $st_g(bkdir)} err
 		}
 		set st_g(bkrc) [file join $st_g(bkdir) _bkrc]
-	} elseif {[info exists env(HOME)]} {
-		set st_g(bkdir) $env(HOME)
-		set st_g(bkrc) [file join $st_g(bkdir) .bkrc]
+	} elseif {$tcl_platform(platform) == "unix"} {
+		if {[file exists $tfile]} {
+			set st_g(bktemplate) $tfile
+		}
+		if {[info exists env(HOME)]} {
+			set st_g(bkdir) $env(HOME)
+			set st_g(bkrc) [file join $st_g(bkdir) .bkrc]
+		}
 	} else {
 		displayMessage "HOME environment variable not set"
 		exit 1

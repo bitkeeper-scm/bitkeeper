@@ -307,7 +307,7 @@ mkconfig(FILE *out, MDBM *flist)
 	/*
 	 * If there is a local config file template, use that
 	 */
-	sprintf(confTemplate, "%s/BitKeepet/etc/config.template", globalroot());
+	sprintf(confTemplate, "%s/BitKeeper/etc/config.template", globalroot());
 	if (in = fopen(confTemplate, "rt")) {
 		while (fnext(buf, in))	printField(out, flist, buf);
 		fclose(in);
