@@ -2,6 +2,7 @@
  * Copyright (c) 2000, Larry McVoy & Andrew Chang
  */
 #include "bkd.h"
+#include "logging.h"
 
 /*
  * Send the probe keys for this lod.
@@ -91,6 +92,15 @@ sccs_tagcolor(sccs *s, delta *d)
         d->flags |= D_VISITED;
 }                 
 
+private void
+addLogKey(delta *d)
+{
+	FILE	*f = fopen(LOG_KEYS, "a");
+
+	fprintf(f, "%s\n", d->rev);
+	fclose(f);
+}
+
 int
 listkey_main(int ac, char **av)
 {
@@ -137,6 +147,7 @@ listkey_main(int ac, char **av)
 	}
 
 	if (debug) fprintf(stderr, "listkey: looking for match key\n");
+	if (exists(LOG_TREE)) unlink(LOG_KEYS);
 	while (getline(0, key, sizeof(key)) > 0) {
 		if (streq("@END PROBE@", key)) break;
 		if (streq("@TAG PROBE@", key)) break;
@@ -146,6 +157,7 @@ listkey_main(int ac, char **av)
 		}
 		if (!fastkey && !streq(key, rootkey)) continue;
 		if (!d && (d = sccs_findKey(s, key))) {
+			if (exists(LOG_TREE)) addLogKey(d);
 			sccs_color(s, d);
 			if (debug) {
 				fprintf(stderr, "listkey: found a match key\n");

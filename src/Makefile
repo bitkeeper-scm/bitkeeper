@@ -446,7 +446,7 @@ binlinks:
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
-	@cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
+	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t/t.*
 	@if [ ! -d $(BINDIR)/t ]; \
 	then	mkdir $(BINDIR)/t; \
@@ -473,7 +473,8 @@ install-nolinks: all
 image: all
 	@-rm -rf tmp
 	DIR=`pwd`/tmp/bitkeeper; set -e; \
-	BINDIR=$$DIR $(MAKE) -e install-nolinks bklinks; \
+	BINDIR=$$DIR $(MAKE) -e install-nolinks; \
+	BINDIR=$$DIR $(MAKE) -e bklinks; \
 	cd utils && BINDIR=$$DIR $(MAKE) -e image 
 	@-rm -rf tmp
 
