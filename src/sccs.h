@@ -732,6 +732,7 @@ typedef struct {
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
+	int	contentlen;	/* len from http header (recieve only) */
 } remote;
 
 #define	ADDR_NFS	0x000	/* host:/path */

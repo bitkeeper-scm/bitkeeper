@@ -332,6 +332,7 @@ getav(int *acp, char ***avp, int *httpMode)
 #define	MAX_AV	50
 	static	char buf[MAXKEY * 2];		/* room for two keys */
 	static	char *av[MAX_AV];
+	static	int  len = -1;		/* content-length from http header */
 	remote	r;
 	int	i, inspace = 1, inQuote = 0;
 	int	ac;
@@ -342,7 +343,8 @@ getav(int *acp, char ***avp, int *httpMode)
 	 * XXX TODO need to handle escaped quote character in args 
 	 */
 	if (Opts.interactive) out("BK> ");
-	for (ac = i = 0; in(&buf[i], 1) == 1; i++) {
+	for (ac = i = 0; len != 0 && in(&buf[i], 1) == 1; i++) {
+		--len;
 		if (i >= sizeof(buf) - 1) {
 			out("ERROR-command line too long\n");
 			return (0);
@@ -364,7 +366,12 @@ getav(int *acp, char ***avp, int *httpMode)
 			inQuote = 1;
 			continue;
 		}
-		if ((buf[i] == '\r') || (buf[i] == '\n')) {
+		/* skip \r */
+		if (buf[i] == '\r') {
+			in(&buf[i], 1);
+			--len;
+		}
+		if (buf[i] == '\n') {
 			buf[i] = 0;
 			av[ac] = 0;
 
@@ -376,6 +383,7 @@ getav(int *acp, char ***avp, int *httpMode)
 			 */
 			if ((ac >= 1) && streq("POST", av[0])) {
 				skip_http_hdr(&r);
+				len = r.contentlen;
 				http_hdr();
 				*httpMode = 1;
 				ac = i = 0;
