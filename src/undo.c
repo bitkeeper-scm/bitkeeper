@@ -207,9 +207,9 @@ do_rename(MDBM *fileList, char *qflag)
 	sccs	*s;
 	project *proj = 0;
 	kvpair  kv;
-	FILE	*f;
-	char	rc, renum_list[MAXPATH], buf[MAXLINE];
-	int 	warned = 0;
+	FILE	*f, *f1;
+	char	renum_list[MAXPATH], rename_list[MAXPATH], buf[MAXLINE];
+	int 	rc, status, warned = 0;
 	char	*msg =
 "===========================================================================\n\
 file rename event detected: to reconstruct this tree correctly,\n\
@@ -217,8 +217,10 @@ you need to upgrade to BitKeeper Profeesional, for more info\n\
 please contact sales@bitmover.com\n\
 ===========================================================================\n";
 
-	sprintf(renum_list, "%s/bk_renum_list%d",  TMP_PATH, getpid());
+	bktemp(renum_list);
+	bktemp(rename_list);
 	f = fopen(renum_list, "wb"); assert(f);
+	f1 = fopen(rename_list, "wb"); assert(f1);
 	for (kv = mdbm_first(fileList); kv.key.dsize;
 						kv = mdbm_next(fileList)) {
 		char	*sfile, *old_path;
@@ -243,34 +245,25 @@ please contact sales@bitmover.com\n\
 				if (++warned == 1) fputs(msg, stderr);
 				continue;
 			}
-			if (exists(old_path)) {
-				printf("Unable to mv %s %s, %s exists\n",
-						    sfile, old_path, old_path);
-			} else {
-				mkdirf(old_path);
-				if (streq(qflag, "")) {
-					printf("mv %s %s\n", sfile, old_path);
-				}
-				if (rename(sfile, old_path) != 0) {
-					sprintf(buf, "mv %s %s",
-							    sfile, old_path);
-					assert(strlen(buf) < sizeof(buf));
-					if (system(buf) != 0) {
-						perror("rename failed");
-						exit(1);
-					}
-				}
-			}
+			fprintf(f1, "%s\n", sfile);
 		}
-		/* must be AFTER the move */
 		fprintf(f, "%s\n", old_path);
 		free(sfile);
 		free(old_path);
 	}
 	if (proj) proj_free(proj);
 	fclose(f);
-	sprintf(buf, "bk renumber %s -  < %s ", qflag, renum_list);
-	rc = system(buf);
+	fclose(f1);
+
+	sprintf(buf, "bk names %s -  < %s", qflag, rename_list);
+	status = system(buf);
+	rc = WEXITSTATUS(status);
+	if (rc) goto done;
+
+	sprintf(buf, "bk renumber %s -  < %s", qflag, renum_list);
+	status = system(buf);
+	rc = WEXITSTATUS(status);
+done:	unlink(rename_list);
 	unlink(renum_list);
 	return rc;
 }
