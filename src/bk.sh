@@ -587,16 +587,23 @@ _mvdir() {		# /* doc 2.0 */
 		exit 1;
 		;;
 	esac
-	if [ X"$1" = X"--help" ]; then bk help mvdir; exit 0; fi
-	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
-	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
-	if [ ! -d "$1" ]; then echo "$1" is not a directory; exit 1; fi
-	if [ -f "$2" ]; then echo "$2" is a file; exit 1; fi
-	if [ -d "$2" ]
-	then
+	test X"$1" = X"--help" && { bk help mvdir; exit 0; }
+	test X"$2" = X  && { bk help -s mvdir; exit 1; }
+	test X"$3" != X  && { bk help -s mvdir; exit 1; }
+	test ! -d "$1"  && { echo "$1" is not a directory; exit 1; }
+	test -f "$1"  && { echo "$2" is a file; exit 1; }
+	test `basename "$1"` = SCCS && {
+		echo "bk mvdir: $1 is not a movable directory"
+		exit 1
+	}
+	test `basename "$2"` = SCCS && {
+		echo "bk mvdir: $2 is not a legal destination"
+		exit 1
+	}
+	test -d "$2" && {
 		bk mvdir "$1" "$2/`basename $1`"
 		return $?
-	fi
+	}
 
 	__bkfiles "$1" "Moving"
 	
