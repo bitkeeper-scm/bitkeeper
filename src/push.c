@@ -110,7 +110,7 @@ log_main(int ac, char **av)
 		    case 'q':	qflag = 1; break;
 		    case 'p':	pflag = 1; break;
 		    default:	fprintf(stderr,
-				    "usage: bk _log [-dqp] [-c count] [url]");
+				    "usage: bk log [-dqp] [-c count] [url]");
 				return (1);
 		}
 	}
@@ -139,6 +139,12 @@ log_main(int ac, char **av)
 		fopen(DEV_NULL, "wt");	/* stderr */
 	}
 
+	if (dflag) {
+		char 	buf[MAXKEY];
+
+		fprintf(stderr, "bk log: Root Key = \"%s\"\n", rootkey(buf));
+	}
+
 	i = 2;
 	if (dflag) log_av[i++] = "-d";
 	if (qflag) log_av[i++] = "-q";
@@ -161,7 +167,7 @@ log_main(int ac, char **av)
 
 			log_av[i] = log_ip;
 			unless (qflag) {
-				fprintf(stderr, "bk _log: trying %s\n", log_ip);
+				fprintf(stderr, "bk log: trying %s\n", log_ip);
 			}
 			getoptReset();
 			return (push_main(i, log_av));

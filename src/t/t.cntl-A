@@ -38,6 +38,8 @@ grep -q "bad delta cksum"  get.out
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 cmp -s data data.ref_inst
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk admin -hhh data
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N check text file /w leading and trailing cntl-A \(change\)......$NL
 bk edit $Q -g data
@@ -60,6 +62,8 @@ cp data data.ref_chg
 bk delta $Q -yinsert data
 bk edit $Q data
 cmp -s data data.ref_chg
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk admin -hhh data
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N check cnt-A when generating diff ............................$NL
