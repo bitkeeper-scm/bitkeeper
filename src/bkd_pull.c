@@ -76,7 +76,7 @@ cmd_pull(int ac, char **av)
 		if (verbose || list) out(
 "OK--------------------- Sending the following csets ---------------------\n");
 		f = fopen(CSETS_OUT, "w");
-		assert(f);
+		unless (f) perror(CSETS_OUT);
 	} else {
 		putenv("BK_OUTGOING=DRYRUN");
 		if (verbose || list) out(
@@ -121,6 +121,7 @@ cmd_pull(int ac, char **av)
 	unless (doit) goto out;
 
 	fclose(f); f = 0;
+	chmod(CSETS_OUT, 0666);
 
 	if (gzip) {
 		error = compressed(gzip, CSETS_OUT);
