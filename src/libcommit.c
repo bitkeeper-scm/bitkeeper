@@ -11,7 +11,7 @@ void cd2root();
 void platformInit();
 void mail(char *to, char *subject, char *file);
 void logChangeSet(char *rev);
-void gethelp(char *help_name, char *bkarg);
+void gethelp(char *help_name, char *bkarg, FILE *f);
 void status(int verbose, char *status_log);
 void notify();
 char *logAddr(); 
@@ -50,16 +50,11 @@ sendConfig(char *to)
 {
 	char *dspec;
 	char config_log[MAXPATH], buf[MAXLINE];
-	FILE *f;
+	FILE *f, *pipef;
 	time_t tm;
 	extern int bkusers();
 
 	if (bkusers(1, 1) <= 1) return;
-	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
-		printf("sending config file...\n");
-		return;
-	}
-
 	sprintf(config_log, "%s/bk_config%d", TMP_PATH, getpid());
 	if (exists(config_log)) {
 		fprintf(stderr, "Error %s already exist", config_log);
@@ -76,11 +71,13 @@ sendConfig(char *to)
 	fprintf(f, "Root:\t%s\n", fullname(".", 0));
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm)); 
-	fclose(f);
-	sprintf(buf, "%sget -pq %setc/config | grep -v '^#' | grep '^$' >> %s",
-						       bin, bk_dir, config_log);
-	system(buf);
-	f = fopen(config_log, "a");
+	sprintf(buf, "%sget -pq %setc/config", bin, bk_dir);
+	pipef = popen(buf, "r");
+	while (fgets(buf, sizeof(buf), pipef)) {
+		if ((buf[0] == '#') || (buf[0] == '\n')) continue;
+		fputs(buf, f);
+	}
+	pclose(pipef);
 	fprintf(f, "User List:\n");
 	fclose(f);
 	sprintf(buf, "%sbkusers >> %s", bin, config_log);
@@ -92,16 +89,20 @@ sendConfig(char *to)
 	if (exists(buf)) {
 		f = fopen(config_log, "a");
 		fprintf(f, "Alias  List:\n");
-		fclose(f);
-		sprintf(buf,
-		    "%sget -pq %setc/aliases | grep -v '^#' | grep -v '^$' >> %s",
-						       bin, bk_dir, config_log);
-		system(buf);
-		f = fopen(config_log, "a");
+		sprintf(buf, "%sget -pq %setc/aliases", bin, bk_dir);
+		pipef = popen(buf, "r");
+		while (fgets(buf, sizeof(buf), pipef)) {
+			if ((buf[0] == '#') || (buf[0] == '\n')) continue;
+			fputs(buf, f);
+		}
+		pclose(pipef);
 		fprintf(f, "=====\n");
 		fclose(f);
 	}
 
+	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
+		printf("sending config file...\n");
+	}
 	sprintf(buf, "BitKeeper config: %s", project_name());
 	mail(to, buf, config_log);
 	unlink(config_log);
@@ -122,9 +123,6 @@ logChangeSet(char *rev)
 	chop(buf);
 	pclose(pipe);
 	unless (streq("commit_and_maillog", buf))  return;
-	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
-		printf("sending ChangeSet to %s...\n", logAddr());
-	}
 
 	// XXX TODO  Determine if this is the first rev where logging is active.
 	// if so, send all chnage log from 1.0
@@ -153,6 +151,9 @@ logChangeSet(char *rev)
 	sprintf(buf, "%scset -c -r%s..%s >> %s",
 					bin, start_rev, rev, commit_log);
 	system(buf);
+	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
+		printf("sending ChangeSet to %s...\n", logAddr());
+	}
 	mail(logAddr(), project_name(), commit_log);
 	unlink(commit_log);
 }
@@ -198,9 +199,8 @@ notify()
 	}
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
-	sprintf(buf, "%sbk version > %s", bin, notify_log);
-	system(buf);
 	f = fopen(notify_log, "w");
+	gethelp("version", 0, f);
 	fprintf(f, "BitKeeper repository %s : %s\n",
 					sccs_gethost(), fullname(".", 0));
 	sprintf(parent_file, "%slog/parent", bk_dir);
@@ -248,7 +248,7 @@ mail(char *to, char *subject, char *file)
 		"/bin",
 		0
 	};
-	
+
 	if (streq("BitKeeper Test repository", project_name()) &&
 	    (bkusers(1,1) <= 5)) {
 		return;
@@ -291,7 +291,7 @@ remark(int quiet)
 	char buf[MAXLINE];
 
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
-	unless (quiet) gethelp("consistency_check", "");
+	unless (quiet) gethelp("consistency_check", "", stdout);
 	sprintf(buf, "%scset -M1.0..", bin);
 	system(buf);
 	close(open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC, 0664));
@@ -309,11 +309,7 @@ status(int verbose, char *status_log)
 
 	f = fopen(status_log, "a");
 	fprintf(f,"Status for BitKeeper repository %s\n",  fullname(".", 0));
-	fclose(f);
-
-	sprintf(buf, "%sbk version >> %s", bin, status_log);
-	system(buf);
-	f = fopen(status_log, "a");
+	gethelp("version", 0, f);
 	sprintf(parent_file, "%slog/parent", bk_dir);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
@@ -359,7 +355,7 @@ status(int verbose, char *status_log)
 }
 
 void
-gethelp(char *help_name, char *bkarg)
+gethelp(char *help_name, char *bkarg, FILE *outf)
 {
 	char buf[MAXLINE], pattern[MAXLINE];
 	FILE *f;
@@ -367,6 +363,7 @@ gethelp(char *help_name, char *bkarg)
 	if (bkarg == NULL) bkarg = "";
 	sprintf(buf, "%sbkhelp.txt", bin);
 	f = fopen(buf, "r");
+	assert(f);
 	sprintf(pattern, "#%s\n", help_name);
 	while (fgets(buf, sizeof(buf), f)) {
 		if (streq(pattern, buf)) break;
@@ -378,11 +375,11 @@ gethelp(char *help_name, char *bkarg)
 		p = strstr(buf, "#BKARG#");
 		if (p) {
 			*p = 0;
-			fputs(buf, stdout);
-			fputs(bkarg, stdout);
-			fputs(&p[7], stdout);
+			fputs(buf, outf);
+			fputs(bkarg, outf);
+			fputs(&p[7], outf);
 		} else {
-			fputs(buf, stdout);
+			fputs(buf, outf);
 		}
 	}
 	fclose(f);

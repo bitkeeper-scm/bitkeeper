@@ -1,6 +1,8 @@
 #include "system.h"
 #include "sccs.h"
 
+void gethelp(char *help_name, char *bkarg, FILE *f);
+
 int
 main(int ac, char **av)
 {
@@ -9,6 +11,6 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "usage: gethelp help_name bkarg\n");
 		exit(1);
 	}
-	gethelp(av[1], av[2]);
+	gethelp(av[1], av[2], stdout);
 	return (0);
 }

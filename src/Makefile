@@ -10,7 +10,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
 	  isascii resyncwrap r2c rename setlog getlog setup commit status \
-	  bkusers gethelp logaddr sendconfig logchangeset
+	  bkusers gethelp logaddr sendconfig logchangeset version
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build
@@ -67,7 +67,7 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
 	  port/win32_platform.sh gui/renametool.tcl
-MISC	= bkhelp.txt config.h.in configure substvars.in bitkeeper.config \
+MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
 
 all: $(ALL)
@@ -147,7 +147,7 @@ solaris:
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-		$(LIBS) a.out core
+		$(LIBS) bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
 
 clean-bin: FORCE
@@ -327,6 +327,8 @@ sendconfig: sendconfig.o $(LIBS)
 	$(CC) $(CFLAGS) sendconfig.o $(LINK) -o sendconfig
 logchangeset: logchangeset.o $(LIBS)
 	$(CC) $(CFLAGS) logchangeset.o $(LINK) -o logchangeset
+version: version.o $(LIBS)
+	$(CC) $(CFLAGS) version.o $(LINK) -o version
 
 # Links.
 ci: delta
@@ -356,13 +358,14 @@ testfast: testfast.perl substvars
 	chmod +x testfast.T
 	mv -f testfast.T testfast
 
-bk: bk.sh bk.ver port/unix_platform.sh substvars 
-	./substvars port/unix_platform.sh bk.sh | \
-		sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" | \
-		sed "s?BUILDER=unknown?BUILDER=\"`./getuser`@`./gethost`\"?" | \
-		sed "s/BUILT_DATE=unknown/BUILT_DATE=\"`date`\"/" > bk.T
-	chmod +x bk.T
-	mv -f bk.T bk
+bk: bk.sh port/unix_platform.sh substvars 
+	./substvars port/unix_platform.sh bk.sh > bk
+	chmod +x bk
+
+bkhelp.txt: bkhelp.doc bk.ver
+	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
+	sed "s?@builder@?`./getuser`@`./gethost`?" | \
+	sed "s/@built_date@/`date`/" > bkhelp.txt
 
 lodset: lodset.sh
 	cp -f lodset.sh lodset
@@ -378,6 +381,7 @@ stamp-ver:: ../SCCS/s.ChangeSet
 	touch stamp-ver
 stamp-ver:: prs
 	touch stamp-ver
+
 
 uuwrap: uuwrap.sh substvars
 	./substvars uuwrap.sh > uuwrap.T

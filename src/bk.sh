@@ -837,12 +837,6 @@ _man() {
 	exit 1
 }
 
-_version() {
-	echo "BitKeeper version is $VERSION"
-	echo "Built by: $BUILDER"
-	echo "Built date: $BUILT_DATE"
-}
-
 _root() {
 	if [ X$1 = X -o X$1 = X--help ]
 	then	echo usage: root pathname
@@ -1046,10 +1040,6 @@ __init() {
 	else    NL=
 		N=-n
 	fi
-
-	VERSION=unknown
-	BUILDER=unknown
-	BUILT_DATE=unknown
 }
 
 __platformPath() {

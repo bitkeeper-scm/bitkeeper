@@ -15,6 +15,7 @@ void cd2root();
 char * logAddr();
 void make_comment(char *cmt);
 void cp_comment(char *file);
+void gethelp(char *help_name, char *bkarg, FILE *f);
 
 main(int ac, char **av)
 {
@@ -52,7 +53,7 @@ main(int ac, char **av)
 	if (system(buf) != 0) {
 		unlink(list);
 		unlink(commit_file);
-		gethelp("duplicate_IDs", "");
+		gethelp("duplicate_IDs", "", stdout);
 		exit (1);
 	}
 	if ((force == 0) && (size(list) == 0)) {
@@ -140,7 +141,7 @@ checkLog()
 	chop(buf);
 	pclose(pipe);
 	if (strneq("ask_open_logging:", buf, 17)) {
-		gethelp("open_log_query", logAddr());
+		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
 		fgets(buf, sizeof(buf), stdin);
 		if ((buf[0] == 'Y') || (buf[0] == 'y')) {
@@ -150,11 +151,11 @@ checkLog()
 			system(buf2);
 			return (0);
 		} else {
-			gethelp("log_abort", logAddr());
+			gethelp("log_abort", logAddr(), stdout);
 			return (1);
 		}
 	} else if (strneq("ask_close_logging:", buf, 18)) {
-		gethelp("close_log_query", logAddr());
+		gethelp("close_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
 		fgets(buf, sizeof(buf), stdin);
 		if ((buf[0] == 'Y') || (buf[0] == 'y')) {
@@ -168,7 +169,7 @@ checkLog()
 			return (0);
 		}
 	} else if (streq("need_seats", buf)) {
-		gethelp("seat_info", "");
+		gethelp("seat_info", "", stdout);
 		return (1);
 	} else if (streq("commit_and_mailcfg", buf)) {
 		sendConfig("config@openlogging.org");
@@ -188,7 +189,7 @@ checkConfig()
 	
 	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
 	unless (exists(buf)) {
-		gethelp("chkconfig_missing", bin);
+		gethelp("chkconfig_missing", bin, stdout);
 		return 1;
 	}
 	sprintf(buf, "%setc/config", bk_dir);
@@ -200,7 +201,7 @@ checkConfig()
 	system(buf);
 	sprintf(buf, "cmp -s %setc/config %sbitkeeper.config", bk_dir, bin);
 	if (system(buf) == 0) {
-		gethelp("chkconfig_inaccurate", bin);
+		gethelp("chkconfig_inaccurate", bin, stdout);
 		return 1;
 	}
 	return 0;
