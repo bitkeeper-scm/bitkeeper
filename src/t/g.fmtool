@@ -1,0 +1,51 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Aaron Kushner
+# %K%
+
+# Things that need to be added
+# 
+MYHOST=`bk gethost`
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+cd $HERE/project/BitKeeper/etc
+mkdir $HERE/project/src
+cd $HERE/project/src
+echo foo > foo
+echo foo > foobar
+echo foo > foobaz
+echo foobaz >> foobaz
+echo foobar >> foobar
+
+bk ci $Q -i foo foobar foobaz
+if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
+echo OK
+echo "Use Left then Undo -- the Use Left/Right should then be available again."
+echo
+echo $N Check fmtool for undo problems .............................$NL
+cd $HERE/project/src
+bk co
+bk fmtool foobar foobaz foo_output
+# Should make a set of test cases that walk the tester through the
+# steps and then do a compare to make sure the output is correct
+if [ -f foo_output ]; then
+    cat foo_output
+fi
+echo OK
