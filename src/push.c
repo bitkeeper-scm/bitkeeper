@@ -100,6 +100,12 @@ push_main(int ac, char **av)
 
 	unless (urls) {
 		urls = parent_pushp();
+		unless (urls) {
+			freeLines(envVar, free);
+			getMsg("missing_parent", 0, 0, stderr);
+			return (1);
+		}
+
 		if (opts.verbose) print_title = 1;
 	}
 

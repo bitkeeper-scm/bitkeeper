@@ -1396,7 +1396,7 @@ needs to be repaired manually.  If at all possible please delete this
 repository and clone a new copy.  Otherwise contact BitMover and
 request assistance.
 $
-#changes_no_parent
+#missing_parent
 This repository has no parent.  You must set a parent with "bk parent" or
-specify a repository on the command line for "bk changes -[LR]" to work.
+specify a repository on the command line for this command to work.
 $
