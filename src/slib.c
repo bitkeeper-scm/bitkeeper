@@ -15589,7 +15589,6 @@ sccs_istagkey(char *key)
  *      s->findkeydb = 0;
  *   }
  */
-
 MDBM	*
 sccs_findKeyDB(sccs *s, u32 flags)
 {
@@ -15597,7 +15596,6 @@ sccs_findKeyDB(sccs *s, u32 flags)
 	datum	k, v;
 	MDBM	*findkey;
 	char	key[MAXKEY];
-	int	mixed = LONGKEY(s) == 0;
 
 	if (s->findkeydb) {	/* do not know if different selection crit */
 		mdbm_close(s->findkeydb);
@@ -15613,16 +15611,8 @@ sccs_findKeyDB(sccs *s, u32 flags)
 		v.dptr = (void*)&d;
 		v.dsize = sizeof(d);
 		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
-			fprintf(stderr, "fk cache: insert error for %s\n", key);
-			perror("insert");
-			mdbm_close(findkey);
-			return (0);
-		}
-		unless (mixed) continue;
-		*strrchr(key, '|') = 0;
-		k.dsize = strlen(key) + 1;
-		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
-			fprintf(stderr, "fk cache: insert error for %s\n", key);
+			fprintf(stderr,
+			    "findkey cache: insert error for %s\n", key);
 			perror("insert");
 			mdbm_close(findkey);
 			return (0);
@@ -15700,9 +15690,10 @@ sccs_findKey(sccs *s, char *key)
 		k.dptr = key;
 		k.dsize = strlen(key) + 1;
 		v = mdbm_fetch(s->findkeydb, k);
-		e = 0;
-		if (v.dsize) bcopy(v.dptr, &e, sizeof(e));
-		return (e);
+		if (v.dsize) {
+			bcopy(v.dptr, &e, sizeof(e));
+			return (e);
+		}
 	}
 	strcpy(buf, key);
 	explodeKey(buf, parts);
@@ -15716,6 +15707,10 @@ sccs_findKey(sccs *s, char *key)
 	date = date2time(&parts[3][2], 0, EXACT);
 	if (!date && !streq(&parts[3][2], "700101000000")) return (0);
 	if (parts[4]) {
+		/* If we went into the findkeyDB with a long key and failed
+		 * then we aren't supposed to find this key.
+		 */
+		if (s->findkeydb) return (0);
 		cksum = atoi(parts[4]);
 		cksump = &cksum;
 	}
