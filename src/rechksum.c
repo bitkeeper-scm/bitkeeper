@@ -56,6 +56,12 @@ rechksum_main(int ac, char **av)
 			    av[0], s->sfile);
 			continue;
 		}
+		unless (s->state & S_BITKEEPER) {
+			fprintf(stderr,
+			    "%s: \"%s\" is not a BitKeeper file, ignored\n",
+			    av[0], s->sfile);
+			continue;
+		}
 		for (doit = 0, d = s->table; d; d = d->next) {
 			if ((d->type == 'D') && 
 			    ((s->state & S_CSET) || d->added ||

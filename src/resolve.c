@@ -159,6 +159,7 @@ removePathConflict(opts *opts, resolve *rs)
 		    "BitKeeper/conflicts/SCCS/%s~%d", basenm(rs->dname), n++);
 	}
 	mkdirf(path);
+	sccs_close(rs->s); /* for win32 */
 	if (rename(rs->s->sfile, path)) {
 		perror(path);
 		resolve_cleanup(opts, CLEAN_RESYNC);
