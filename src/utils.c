@@ -638,8 +638,15 @@ get_ok(remote *r, char *read_ahead, int verbose)
 char *
 repo_id(void)
 {
-	char	*repoid = loadfile(REPO_ID, 0);
+	char	*root = sccs_root(0);
+	char	*file;
+	char	*repoid;
 
+	unless (root) return (0);
+	file = aprintf("%s/" REPO_ID, root);
+	free(root);
+	repoid = loadfile(file, 0);
+	free(file);
 	unless (repoid) return (0);
 	chomp(repoid);
 	return (repoid);
@@ -775,6 +782,9 @@ getServerInfoBlock(remote *r)
 			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
 			safe_putenv("BKD_%s", buf);
+			if (strneq(buf, "REPO_ID=", 8)) {
+				cmdlog_addnote("rmts", buf+8);
+			}
 		}
 	}
 	return (1); /* protocol error, never saw @END@ */

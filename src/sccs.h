@@ -1023,7 +1023,7 @@ off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
-void	cmdlog_addnote(char *note);
+void	cmdlog_addnote(char *key, char *val);
 int	cmdlog_end(int ret);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 off_t	get_byte_count(void);

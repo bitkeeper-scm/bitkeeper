@@ -712,8 +712,8 @@ private	struct {
 	 * This is a hack because we short circuit part2 in changes.c.
 	 * It opens a tiny race.
 	 */
-	{"chg_part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"chg_part2", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{ 0, 0 },
 };
 
@@ -756,19 +756,11 @@ cmdlog_start(char **av, int httpMode)
 
 	unless (bk_proj && bk_proj->root) return;
 
-	if (cmdlog_repo) {
-		sprintf(cmdlog_buffer,
-		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
-	}
 	for (len = 1, i = 0; av[i]; i++) {
 		len += strlen(av[i]) + 1;
 		if (len >= sizeof(cmdlog_buffer)) continue;
-		if (i || cmdlog_repo) {
-			strcat(cmdlog_buffer, " ");
-			strcat(cmdlog_buffer, av[i]);
-		} else {
-			strcpy(cmdlog_buffer, av[i]);
-		}
+		if (i) strcat(cmdlog_buffer, " ");
+		strcat(cmdlog_buffer, av[i]);
 	}
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
@@ -841,14 +833,19 @@ cmdlog_start(char **av, int httpMode)
 		}
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
+	if (strneq("remote ", av[0], 7)) {
+		char	*repoid = getenv("BK_REPO_ID");
+		if (repoid) cmdlog_addnote("rmtc", repoid);
+	}
 }
 
-private	char	**notes = 0;
+private	MDBM	*notes = 0;
 
 void
-cmdlog_addnote(char *note)
+cmdlog_addnote(char *key, char *val)
 {
-	notes = addLine(notes, strdup(note));
+	unless (notes) notes = mdbm_mem();
+	mdbm_store_str(notes, key, val, MDBM_REPLACE);
 }
 
 int
@@ -896,12 +893,21 @@ int
 cmdlog_end(int ret)
 {
 	int	flags = cmdlog_flags & CMD_FAST_EXIT;
-	char	*log, *newlog;
-	int	i, len;
+	char	*log;
+	int	len, savelen;
+	kvpair	kv;
 
 	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) {
 		return (flags);
+	}
+
+	/* add last minute notes */
+	if (cmdlog_repo && (cmdlog_flags&CMD_BYTES)) {
+		char	buf[20];
+
+		sprintf(buf, "%u", (u32)get_byte_count());
+		cmdlog_addnote("xfered", buf);
 	}
 
 	if (getenv("BK_SHOWPROC")) {
@@ -911,31 +917,27 @@ cmdlog_end(int ret)
 		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
 		fclose(f);
 	}
-	log = malloc(strlen(cmdlog_buffer) + 100);
+	len = strlen(cmdlog_buffer) + 20;
+	EACH_KV (notes) len += kv.key.dsize + kv.val.dsize;
+	log = malloc(len);
 	if (ret == LOG_BADEXIT) {
 		sprintf(log, "%s = ?", cmdlog_buffer);
 	} else {
 		sprintf(log, "%s = %d", cmdlog_buffer, ret);
 	}
-	if (cmdlog_repo) {
-		if (cmdlog_flags&CMD_BYTES) {
-			sprintf(&log[strlen(log)],
-			    " xfered=%u", (u32)get_byte_count());
-		}
-	}
+	savelen = len;
 	len = strlen(log);
-	EACH (notes) len += 1 + strlen(notes[i]);
-	newlog = malloc(len+1);
-	strcpy(newlog, log);
-	free(log);
-	log = newlog;
-	len = strlen(log);
-	EACH (notes) {
+	EACH_KV (notes) {
 	    	log[len++] = ' ';
-		strcpy(&log[len], notes[i]);
-		len += strlen(notes[i]);
+		strcpy(&log[len], kv.key.dptr);
+		len += kv.key.dsize - 1;
+	    	log[len++] = '=';
+		strcpy(&log[len], kv.val.dptr);
+		len += kv.val.dsize - 1;
 	}
-	freeLines(notes);
+	assert(len < savelen);
+	mdbm_close(notes);
+	notes = 0;
 	if (write_log(bk_proj->root, "cmd_log", 0, "%s", log)) {
 		return (flags);
 	}
