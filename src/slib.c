@@ -219,7 +219,7 @@ int
 fileType (mode_t m)
 {
 	// XXX this code may not be portable
-	return (m & 0170000);
+	return (m & S_IFMT);
 }
 
 int
@@ -4193,7 +4193,7 @@ write_pfile(sccs *s, int flags, delta *d,
 	int	fd, len;
 	char	*tmp, *tmp2;
 
-	if (IS_WRITABLE(s) && !(flags & SKIPGET) && !S_ISLNK(s->mode)) {
+	if (badWriteMode(s) && !(flags & SKIPGET)) {
 		fprintf(stderr,
 		    "Writeable %s exists, skipping it.\n", s->gfile);
 		s->state |= WARNED;
@@ -4255,6 +4255,144 @@ write_pfile(sccs *s, int flags, delta *d,
 	return (0);
 }
 
+private int
+getRegBody(sccs *s, char *printOut, int flags, delta *d, int *ln, int encoding, ser_t *slist,
+	char *base, serlist *state)
+{
+	int	lines = 0, print = 0, popened; 
+	sum_t	sum;
+	FILE 	*out;
+	BUF	(buf);
+	char 	*f = (flags & PRINT) ? printOut : s->gfile;
+	
+	popened = openOutput(encoding, f, &out);
+	unless (out) {
+		fprintf(stderr, "Can't open %s for writing\n", f);
+		return 1;
+	}
+	seekto(s, s->data);
+	sum = 0;
+	while (next(buf, s)) {
+		register char *e;
+
+		if (isData(buf)) {
+			if (!print) continue;
+			lines++;
+			if (flags & NEWCKSUM) {
+				for (e = buf; *e != '\n'; sum += *e++);
+				sum += '\n';
+			}
+			if (flags & (LINENUM|PREFIXDATE|REVNUMS|USER|MODNAME)) {
+				delta *tmp = sfind(s, print);
+
+				if (flags&MODNAME)
+					fprintf(out, "%s\t", base);
+				if (flags&PREFIXDATE)
+					fprintf(out, "%.8s\t", tmp->sdate);
+				if (flags&USER)
+					fprintf(out, "%s\t", tmp->user);
+				if (flags&REVNUMS)
+					fprintf(out, "%s\t", tmp->rev);
+				if (flags&LINENUM)
+					fprintf(out, "%6d\t", lines);
+			}
+			e = buf;
+			if (flags & EXPAND) {
+				for (e = buf; *e != '%' && *e != '\n'; e++);
+				if (*e == '%') {
+					e = expand(s, d, buf);
+				} else {
+					e = buf;
+				}
+			}
+			if (flags & RCSEXPAND) {
+				char	*t;
+
+				for (t = buf; *t != '$' && *t != '\n'; t++);
+				if (*t == '$') {
+					e = rcsexpand(s, d, e);
+				}
+			}
+			if (encoding != E_ASCII) {
+				uchar	obuf[50];
+				int	n = uudecode1(e, obuf);
+
+				fwrite(obuf, n, 1, out);
+			} else {
+				fnlputs(e, out);
+			}
+			continue;
+		}
+
+		debug2((stderr, "%.*s", linelen(buf), buf));
+		changestate(state, buf[1], atoi(&buf[3]));
+		print = printstate((const serlist*)state, (const ser_t*)slist);
+	}
+	if ((flags & NEWCKSUM) && lines && (sum != d->sum)) {
+		fprintf(stderr,
+		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
+		    d->sum, sum, d->rev, s->sfile);
+	}
+
+	if (popened) {
+		pclose(out);
+	} else if (flags & PRINT) {
+		unless (streq("-", printOut)) fclose(out);
+	} else fclose(out);
+
+	if (flags&EDIT) {
+		if (d->mode) {
+			chmod(s->gfile, UMASK(d->mode));
+		} else {
+			chmod(s->gfile, UMASK(0666));
+		}
+	} else if (!(flags&PRINT)) {
+		if (d->mode) {
+			chmod(s->gfile, UMASK(d->mode & ~0222));
+		} else {
+			chmod(s->gfile, UMASK(0444));
+		}
+	}
+#ifdef ISSHELL
+	if ((s->state & ISSHELL) && ((flags & PRINT) == 0)) {
+		char cmd[1024], *t;
+
+		t = strrchr(s->gfile, '/');
+		if (t) {
+			*t = 0;
+			sprintf(cmd, "cd %s; sh %s -o", s->gfile, &t[1]);
+			*t = '/';
+		} else  sprintf(cmd, "sh %s -o", s->gfile);
+		system(cmd);
+	}
+#endif
+	*ln = lines;
+	return 0;
+}
+
+private int
+getLinkBody(sccs *s,
+	char *printOut, int flags, delta *d, int *ln, int encoding)
+{
+	int	popened; 
+
+	if (flags & PRINT) {
+		FILE 	*out;
+
+		popened = openOutput(encoding, printOut, &out);
+		fprintf(out, "SYMLINK -> %s\n", d->glink);
+		unless (streq("-", printOut)) fclose(out);
+		*ln = 1;
+	} else {
+		unless (symlink(d->glink, s->gfile) == 0 ) {
+			perror(s->gfile);
+			return 1;
+		}
+		*ln = 0;
+	}
+	return 0;
+}
+
 /*
  * get the specified revision.
  * The output file is passed in so that callers can redirect it.
@@ -4267,14 +4405,9 @@ sccs_get(sccs *s, char *rev,
 	serlist *state = 0;
 	ser_t	*slist = 0;
 	delta	*d;
-	int	print = 0;
-	int	lines = 0;
-	FILE	*out = 0;
-	int	popened = 0;
+	int	lines = 0; int	error = 0;
 	int	encoding = (flags&FORCEASCII) ? E_ASCII : s->encoding;
-	int	error = 0;
 	char	*lrev = 0, *tmp, *base, *i2 = 0;
-	sum_t	sum;
 	BUF	(buf);
 
 	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
@@ -4350,38 +4483,22 @@ err:		if (slist) free(slist);
 			goto err;
 		}
 	}
+
 	if (flags & EDIT) {
 		if (write_pfile(s, flags, d, rev, lrev, iLst, i2, xLst, mRev)) {
 			goto err;
 		}
-		if (flags & SKIPGET) goto skip_get;
-		unlinkGfile(s);
-		unless (S_ISLNK(d->mode))  {
-			popened = openOutput(encoding, s->gfile, &out);
-			if (!out) {
-				fprintf(stderr, "Can't open %s for writing\n",
-				    s->gfile);
-				unlock(s, 'p');
-				unlock(s, 'z');
-				goto err;
-			}
-		}
-	} else if (flags&SKIPGET) {
-		goto skip_get;
-	} else if (flags & PRINT) {
-		popened = openOutput(encoding, printOut, &out);
-	} else if (S_ISLNK(d->mode)) {
-		unlinkGfile(s);
-	} else {
-		if (IS_WRITABLE(s)) {
-			fprintf(stderr,
-				"Writeable %s exists\n", s->gfile);
+	}
+	if (flags&SKIPGET)  goto skip_get;
+	if ((flags & PRINT) == 0) {
+		if (badWriteMode(s)) {
+			fprintf(stderr, "Writeable %s exists\n", s->gfile);
 			s->state |= WARNED;
 			goto err;
 		}
-		unlinkGfile(s);
-		popened = openOutput(encoding, s->gfile, &out);
 	}
+	if (!(flags & PRINT)) unlinkGfile(s);
+
 	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
 	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst && !i2) {
 		flags |= NEWCKSUM;
@@ -4392,118 +4509,33 @@ err:		if (slist) free(slist);
 	}
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & MODNAME) base = basenm(s->gfile);
-	unless (out)  goto skip_data;
-	if (S_ISLNK(d->mode) && (flags & PRINT)) {
-		char tmp[1024];
-		fprintf(out, "SYMLINK -> %s\n", d->glink);
-		goto get_done;
+	/*
+	 * Base on the file type,
+	 * we call the appropriate function to get the body
+ 	 */
+	switch (fileType(d->mode)) {
+		case 0:	      /* uninitialized mode, assume regular file */
+		case S_IFREG: /* regular file */
+		    error = getRegBody(s, printOut,
+					flags, d, &lines, encoding,
+					slist, base, state);
+		    break;
+		case S_IFLNK: /* symlink */
+		    error = getLinkBody(s, printOut,
+					flags, d, &lines, encoding);
+		    break;
+		default:
+			assert("unsupported file type" == 0);
 	}
-	seekto(s, s->data);
-	sum = 0;
-	while (next(buf, s)) {
-		register char *e;
-
-		if (isData(buf)) {
-			if (!print) continue;
-			lines++;
-			if (flags & NEWCKSUM) {
-				for (e = buf; *e != '\n'; sum += *e++);
-				sum += '\n';
-			}
-			if (flags & (LINENUM|PREFIXDATE|REVNUMS|USER|MODNAME)) {
-				delta *tmp = sfind(s, print);
-
-				if (flags&MODNAME)
-					fprintf(out, "%s\t", base);
-				if (flags&PREFIXDATE)
-					fprintf(out, "%.8s\t", tmp->sdate);
-				if (flags&USER)
-					fprintf(out, "%s\t", tmp->user);
-				if (flags&REVNUMS)
-					fprintf(out, "%s\t", tmp->rev);
-				if (flags&LINENUM)
-					fprintf(out, "%6d\t", lines);
-			}
-			e = buf;
-			if (flags & EXPAND) {
-				for (e = buf; *e != '%' && *e != '\n'; e++);
-				if (*e == '%') {
-					e = expand(s, d, buf);
-				} else {
-					e = buf;
-				}
-			}
-			if (flags & RCSEXPAND) {
-				char	*t;
-
-				for (t = buf; *t != '$' && *t != '\n'; t++);
-				if (*t == '$') {
-					e = rcsexpand(s, d, e);
-				}
-			}
-			if (encoding != E_ASCII) {
-				uchar	obuf[50];
-				int	n = uudecode1(e, obuf);
-
-				fwrite(obuf, n, 1, out);
-			} else {
-				fnlputs(e, out);
-			}
-			continue;
+	if (error) {
+		if (flags & EDIT) {
+			unlock(s, 'p');
+			unlock(s, 'z');
 		}
-
-		debug2((stderr, "%.*s", linelen(buf), buf));
-		changestate(state, buf[1], atoi(&buf[3]));
-		print = printstate((const serlist*)state, (const ser_t*)slist);
+		goto err;
 	}
-	if ((flags & NEWCKSUM) && lines && (sum != d->sum)) {
-		fprintf(stderr,
-		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
-		    d->sum, sum, d->rev, s->sfile);
-	}
-get_done:
 	debug((stderr, "GET done\n"));
-	if (popened) {
-		pclose(out);
-	} else if (flags & PRINT) {
-		unless (streq("-", printOut)) fclose(out);
-	} else fclose(out);
 
-	if (flags&EDIT) {
-		if (d->mode) {
-			chmod(s->gfile, UMASK(d->mode));
-		} else {
-			chmod(s->gfile, UMASK(0666));
-		}
-	} else if (!(flags&PRINT)) {
-		if (d->mode) {
-			chmod(s->gfile, UMASK(d->mode & ~0222));
-		} else {
-			chmod(s->gfile, UMASK(0444));
-		}
-	}
-
-#ifdef ISSHELL
-	if ((s->state & ISSHELL) && ((flags & PRINT) == 0)) {
-		char cmd[1024], *t;
-
-		t = strrchr(s->gfile, '/');
-		if (t) {
-			*t = 0;
-			sprintf(cmd, "cd %s; sh %s -o", s->gfile, &t[1]);
-			*t = '/';
-		} else  sprintf(cmd, "sh %s -o", s->gfile);
-		system(cmd);
-	}
-#endif
-skip_data:
-	if ((S_ISLNK(d->mode)) && !(flags & PRINT)){
-		unless (symlink(d->glink, s->gfile) == 0 ) {
-			perror(s->gfile);
-			if (flags&EDIT) unlock(s, 'z');
-			goto err;
-		}
-	}
 skip_get:
 	if (flags&EDIT) {
 		unlock(s, 'z');
@@ -5355,7 +5387,7 @@ sccs_clean(sccs *s, int flags)
 	}
 	unless (s->tree) return (-1);
 	unless (HAS_PFILE(s)) {
-		if (S_ISLNK(s->mode) || !IS_WRITABLE(s)) {
+		unless (badWriteMode(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unlinkGfile(s);
 			return (0);

@@ -250,6 +250,7 @@ extern	char *strdup(char *s);
 #define	BEEN_WARNED(s)	((s)->state & WARNED)
 #define	IS_WRITABLE(s)	((s)->mode & 0200)
 #define IS_EDITED(s)	((((s)->state & EDITED) == EDITED) && IS_WRITABLE(s))
+#define badWriteMode(s)	(IS_WRITABLE(s) && !S_ISLNK(s->mode))
 
 #define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)
 
