@@ -10495,7 +10495,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		    t, sc->sfile, t);
 		OUT;
 	}
-	Chmod(sc->sfile, 0444);
 
 	if (sc->initFlags & INIT_FIXMTIME) flags |= ADMIN_FIXMTIME;
 	if (flags & ADMIN_FIXMTIME) {
@@ -10513,6 +10512,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			utime(sc->sfile, &ut);
 		}
 	}
+	Chmod(sc->sfile, 0444);
 	goto out;
 #undef	OUT
 }
@@ -11968,7 +11968,6 @@ out:
 		    t, s->sfile, t);
 		OUT;
 	}
-	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
 	if (s->initFlags & INIT_FIXMTIME) flags |= DELTA_FIXMTIME;
 	if ((flags & DELTA_SAVEGFILE) &&
@@ -11993,11 +11992,9 @@ out:
 			ut.actime = time(0);
 			ut.modtime = sb.st_mtime - 1;
 			utime(s->sfile, &ut);
-		} else {
-			/* We should never get here */
-			perror(s->gfile);
 		}
 	}
+	Chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
 	}
