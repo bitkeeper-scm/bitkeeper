@@ -910,103 +910,36 @@ sccs_fixDates(sccs *s)
 }
 
 char	*
-age(time_t when)
+age(time_t when, char *space)
 {
-	if (when <= (10*60)) {
-		return ("10 minutes");
-	} else if (when <= (15*60)) {
-		return ("15 minutes");
-	} else if (when <= (30*60)) {
-		return ("30 minutes");
-	} else if (when <= (45*60)) {
-		return ("45 minutes");
-	} else if (when <= (60*60)) {
-		return ("60 minutes");
-	} else if (when <= (2*60*60)) {
-		return ("2 hours");
-	} else if (when <= (3*60*60)) {
-		return ("3 hours");
-	} else if (when <= (4*60*60)) {
-		return ("4 hours");
-	} else if (when <= (5*60*60)) {
-		return ("5 hours");
-	} else if (when <= (6*60*60)) {
-		return ("6 hours");
-	} else if (when <= (7*60*60)) {
-		return ("7 hours");
-	} else if (when <= (8*60*60)) {
-		return ("8 hours");
-	} else if (when <= (12*60*60)) {
-		return ("12 hours");
-	} else if (when <= (24*60*60)) {
-		return ("24 hours");
-	} else if (when <= (2*24*60*60)) {
-		return ("2 days");
-	} else if (when <= (3*24*60*60)) {
-		return ("3 days");
-	} else if (when <= (4*24*60*60)) {
-		return ("4 days");
-	} else if (when <= (5*24*60*60)) {
-		return ("5 days");
-	} else if (when <= (6*24*60*60)) {
-		return ("6 days");
-	} else if (when <= (7*24*60*60)) {
-		return ("7 days");
-	} else if (when <= (14*24*60*60)) {
-		return ("2 weeks");
-	} else if (when <= (21*24*60*60)) {
-		return ("3 weeks");
-	} else if (when <= (28*24*60*60)) {
-		return ("4 weeks");
-#define	MONTH	2628000
-	} else if (when <= (2*MONTH)) {
-		return ("2 months");
-	} else if (when <= (3*MONTH)) {
-		return ("3 months");
-	} else if (when <= (4*MONTH)) {
-		return ("4 months");
-	} else if (when <= (5*MONTH)) {
-		return ("5 months");
-	} else if (when <= (6*MONTH)) {
-		return ("6 months");
-	} else if (when <= (7*MONTH)) {
-		return ("7 months");
-	} else if (when <= (8*MONTH)) {
-		return ("8 months");
-	} else if (when <= (9*MONTH)) {
-		return ("9 months");
-	} else if (when <= (10*MONTH)) {
-		return ("10 months");
-	} else if (when <= (11*MONTH)) {
-		return ("11 months");
-	} else if (when <= (12*MONTH)) {
-		return ("12 months");
+	int	i;
+	static	char buf[100];
+
+#define	MINUTE	60
+#define	HOUR	(60*MINUTE)
+#define	DAY	(24*HOUR)
+#define	WEEK	(7*DAY)
+#define	MONTH	2628000		/* average */
 #define	YEAR	31536000
-	} else if (when <= (2*YEAR)) {
-		return ("2 years");
-	} else if (when <= (3*YEAR)) {
-		return ("3 years");
-	} else if (when <= (4*YEAR)) {
-		return ("4 years");
-	} else if (when <= (5*YEAR)) {
-		return ("5 years");
-	} else if (when <= (6*YEAR)) {
-		return ("6 years");
-	} else if (when <= (7*YEAR)) {
-		return ("7 years");
-	} else if (when <= (8*YEAR)) {
-		return ("8 years");
-	} else if (when <= (9*YEAR)) {
-		return ("9 years");
-	} else if (when <= (10*YEAR)) {
-		return ("10 years");
-	} else if (when <= (11*YEAR)) {
-		return ("11 years");
-	} else if (when <= (12*YEAR)) {
-		return ("12 years");
-	} else {
-		return ("more than twelve years");
+#define	DECADE	315360000
+#define	DOIT(SMALL, BIG, UNITS) \
+	if (when <= 3*BIG) {		/* first 3 BIG as SMALL */	\
+		for (i = 0; i <= 3*BIG; i += SMALL) {			\
+			if (when <= i) {				\
+				sprintf(buf, 				\
+				    "%d%s%s", i/SMALL, space, UNITS);	\
+				if (i/SMALL == 1) chop(buf);		\
+				return (buf);				\
+			}						\
+		}							\
 	}
+
+	DOIT(HOUR, DAY, "hours");		/* first 3 days as hours */
+	DOIT(DAY, WEEK, "days");		/* first 3 weeks as days */
+	DOIT(WEEK, MONTH, "weeks");		/* first 3 months as days */
+	DOIT(MONTH, YEAR, "months");		/* first 3 years as months */
+	DOIT(YEAR, DECADE, "years");		/* first 3 decades as years */
+	return ("more than 30 years");
 }
 
 private void
@@ -11987,6 +11920,27 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "HTML_C")) {
+		int	i;
+
+		unless (d->comments && (int)(long)(d->comments[0])) {
+			fs("&nbsp;");
+		} else {
+			EACH(d->comments) {
+				if (d->comments[i][0] == '\001') continue;
+				if (i > 1) fs("<br>");
+				if (d->comments[i][0] == '\t') {
+					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
+					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
+					fs(&d->comments[i][1]);
+				} else {
+					fs(d->comments[i]);
+				}
+			}
+		}
+		return (strVal);
+	}
+
 	if (streq(kw, "UN")) {
 		/* users name(s) */
 		/* XXX this is a multi-line text field, definition unknown */
@@ -12481,7 +12435,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "AGE")) {	/* how recently modified */
 		time_t	when = time(0) - (d->date - d->dateFudge);
 
-		fs(age(when));
+		fs(age(when, " "));
+		return (strVal);
+	}
+
+	if (streq(kw, "HTML_AGE")) {	/* how recently modified */
+		time_t	when = time(0) - (d->date - d->dateFudge);
+
+		fs(age(when, "&nbsp;"));
 		return (strVal);
 	}
 
@@ -12539,6 +12500,15 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			fs("SCCS");
 		}
 		return (strVal);
+	}
+
+	if (streq(kw, "RENAME")) {
+		/* per delta path name if the pathname is a rename */
+		if (d->pathname && !(d->flags & D_DUPPATH)) {
+			fs(d->pathname);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	if (streq(kw, "DPN")) {

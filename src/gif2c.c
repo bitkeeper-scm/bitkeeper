@@ -12,5 +12,5 @@ main(int ac, char **av)
 		len++;
 	}
 	printf("};\n");
-	printf("int %s_len = %d;\n", av[1]);
+	printf("int %s_len = %d;\n", av[1], len);
 }
