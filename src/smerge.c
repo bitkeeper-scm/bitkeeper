@@ -16,7 +16,6 @@ private void	usage(void);
 private int	resolve_conflict(conflct *curr);
 private diffln	*unidiff(conflct *curr, int left, int right);
 private void	show_examples(void);
-private	int	parse_range(char *range, u32 *start, u32 *end);
 private int	sameline(ld_t *left, ld_t *right);
 private	int	file_init(char *file, char *rev, char *anno, file_t *f);
 private	void	file_free(file_t *f);
@@ -79,6 +78,7 @@ private	int	mode;
 private	int	fdiff;
 private	char	*anno = 0;
 #ifdef	SHOW_SEQ
+private	int	parse_range(char *range, u32 *start, u32 *end);
 private	int	show_seq;
 #endif
 
@@ -214,7 +214,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 	int	flags = GET_SEQ|SILENT|PRINT;
 	int	i;
 	char	*sfile = name2sccs(file);
-	char	bktmp[MAXPATH];
+	char	tmp[MAXPATH];
 
 	if (anno) {
 		flags |= GET_ALIGN;
@@ -232,8 +232,8 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 		}
 	}
 
-	bktmp(bktmp, "smerge");
-	f->tmpfile = strdup(bktmp);
+	bktmp(tmp, "smerge");
+	f->tmpfile = strdup(tmp);
 	s = sccs_init(sfile, 0, 0);
 	unless (s && s->tree) return (-1);
 	free(sfile);
@@ -257,8 +257,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 		f->lines[i-1].seq = (u32)seqlist[i];
 		seqlist[i] = 0;
 	}
-	// XXX freeLines(seqlist, 0)
-	freeLines(seqlist);
+	freeLines(seqlist, 0);
 	seqlist = 0;
 
 	l = 0;
@@ -1686,6 +1685,7 @@ default		(3 way format (shows gca))\n\
 ", stdout);
 }
 
+#ifdef SHOW_SEQ
 /*
  * Parse a range string from the command line.
  * Valid formats:
@@ -1708,6 +1708,7 @@ parse_range(char *range, u32 *start, u32 *end)
 	}
 	return(0);
 }
+#endif
 
 /*--------------------------------------------------------------------
  * Automerge functions
