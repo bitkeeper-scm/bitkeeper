@@ -63,9 +63,9 @@ Data 1.2 20/03/11 00:00:02 butthead${HOST} +1 -0
 
 
 EOF
-bk sccslog -p a/b/c/Data | grep -v ${USER}@ | grep -v 'created on' | ${CAT} > CMP2
+bk sccslog -p a/b/c/Data | grep -v ${USER}@ | grep -v 'BitKeeper file' | ${CAT} > CMP2
 cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Checking sccslog with no options ............................$NL
 ${CAT} > CMP1 <<EOF

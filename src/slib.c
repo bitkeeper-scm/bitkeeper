@@ -7471,13 +7471,14 @@ checkin(sccs *s,
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
+		delta	*d = n0 ? n0 : n;
+
 		randomBits(buf);
 		if (buf[0]) s->random = strdup(buf);
-		if (n0) n = n0;
-		unless (hasComments(n)) {
+		unless (hasComments(d)) {
 			sprintf(buf, "BitKeeper file %s",
 			    fullname(s->gfile, 0));
-			n->comments = addLine(n->comments, strdup(buf));
+			n->comments = addLine(d->comments, strdup(buf));
 		}
 	}
 	unless (s->state & S_NOSCCSDIR) {
