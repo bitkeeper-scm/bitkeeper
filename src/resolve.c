@@ -2294,15 +2294,15 @@ pass4_apply(opts *opts)
 "\n\
 ============================================================================\n\
 BitKeeper have detected a \"Case-Folding file system\". e.g. FAT and NTFS.\n\
-What this mean is that your file system ignore case differences when it looks\n\
+What this mean is that your file system ignores case differences when it looks\n\
 for directories and files. This also means that it is not possible to rename\n\
-a path correctly if there exist a similar path with only upper/lower case\n\
+a path correctly if there exists a similar path with only upper/lower case\n\
 differences.\n\
 BitKeeper wants to rename:\n\
     %s -> %s\n\
 Your file system is changing it to:\n\
     %s -> %s\n\
-BitKeeper consider this an error, since this may not be what you have\n\
+BitKeeper considers this an error, since this may not be what you have\n\
 intended. The recommended work around for this problem is as follows:\n\
 a) Exit from this resolve session.\n\
 b) Run \"bk mv\" to move the directory or file with upper/lower case\n\
@@ -2311,7 +2311,7 @@ c) Run \"bk mv\" again to move from the temporary location to\n\
    %s\n\
 d) Run \"bk commit\" to record the new location in a changeset.\n\
 e) Run \"bk resolve\" or \"bk pull\" again.\n\
-f) You should also inform owner of other repositories to aviod using path\n\
+f) You should also inform owners of other repositories to aviod using path\n\
    of similar names.\n\
 ============================================================================\n";
 			char	*unknown_err =
