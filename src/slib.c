@@ -13,7 +13,7 @@
 WHATSTR("@(#)%K%");
 
 private delta	*rfind(sccs *s, char *rev);
-private void	dinsert(sccs *s, int flags, delta *d);
+private void	dinsert(sccs *s, int flags, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
 private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
@@ -47,7 +47,7 @@ delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
-private int	delta_table(sccs *s, FILE *out, int willfix, int fixDate);
+private int	delta_table(sccs *s, FILE *out, int willfix);
 private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
 private time_t	date2time(char *asctime, char *z, int roundup);
@@ -69,6 +69,9 @@ private u32	state2xflags(u32 state);
 private u32	xflags2state(u32 xflags);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
 private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
+private	void	uniqDelta(sccs *s);
+private	void	uniqRoot(sccs *s);
+
 
 private unsigned int u_mask;
 
@@ -602,7 +605,7 @@ reinherit(sccs *s, delta *d)
  * invariant that a delta in the graph is always correct.
  */
 private void
-dinsert(sccs *s, int flags, delta *d)
+dinsert(sccs *s, int flags, delta *d, int fixDate)
 {
 	delta	*p;
 
@@ -611,6 +614,7 @@ dinsert(sccs *s, int flags, delta *d)
 		s->tree = d;
 		s->lastinsert = d;
 		debug((stderr, " -> ROOT\n"));
+		if (fixDate) uniqRoot(s);
 		return;
 	}
 	if (s->lastinsert && (s->lastinsert->serial == d->pserial)) {
@@ -651,6 +655,7 @@ dinsert(sccs *s, int flags, delta *d)
 		    p->rev, d->siblings->rev));
 	}
 	inherit(s, flags, d);
+	if (fixDate) uniqDelta(s);
 }
 
 /*
@@ -836,18 +841,55 @@ sccs_fixDates(sccs *s)
 	fixDates(0, s->table);
 }
 
+private void
+shortKey(sccs *s, delta *d, char *buf)
+{
+	sccs_sdelta(s, d, buf);
+	buf = strchr(buf, '|');
+	buf = strchr(buf+1, '|');
+	buf = strchr(buf+1, '|');
+	*buf = 0;
+}
+
+private void
+uniqRoot(sccs *s)
+{
+	delta	*d;
+	char	buf[MAXPATH+100];
+
+	assert(s->tree == s->table);
+	d = s->tree;
+	assert(!d->dateFudge);
+	unless (d->date) (void)getDate(d);
+
+	uniq_open();
+	shortKey(s, sccs_ino(s), buf);
+	while (uniq_root(buf)) {
+//fprintf(stderr, "COOL: caught a duplicate root: %s\n", buf);
+		d->dateFudge++;
+		d->date++;
+		shortKey(s, d, buf);
+	}
+	uniq_update(buf, d->date);
+	uniq_close();
+	return;
+}
+
 /*
  * Fix the date in a new delta.
  * Make sure date is increasing
  */
-void
-fixNewDate(sccs *s)
+private void
+uniqDelta(sccs *s)
 {
 	delta	*next, *d;
 	time_t	last;
 	char	buf[MAXPATH+100];
 
+	assert(s->tree != s->table);
 	d = s->table;
+	next = d->next;
+	assert(d != s->tree);
 	assert(!d->dateFudge);
 	unless (d->date) (void)getDate(d);
 
@@ -867,38 +909,23 @@ fixNewDate(sccs *s)
 	}
 
 	uniq_open();
-	sccs_sdelta(s, sccs_ino(s), buf);
-	/*
-	 * If we are the first delta, make sure our key doesn't exist.
-	 */
-	unless (next = d->next) {
-		while (uniq_root(buf)) {
-//fprintf(stderr, "COOL: caught a duplicate root: %s\n", buf);
-			d->dateFudge++;
-			d->date++;
-			sccs_sdelta(s, d, buf);
-		}
-		uniq_update(buf, d->date);
-		uniq_close();
-		return;
-	}
 	CHKDATE(next);
 	if (d->date <= next->date) {
 		d->dateFudge = (next->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
+	shortKey(s, d, buf);
 	if ((last = uniq_time(buf)) && (last >= d->date)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
 		while (d->date <= last) {
 			d->date++;
 			d->dateFudge++;
 		}
+		shortKey(s, d, buf);
 	}
 	uniq_update(buf, d->date);
 	uniq_close();
 }
-
-
 
 private int
 monthDays(int year, int month)
@@ -2800,7 +2827,7 @@ done:		;	/* CSTYLED */
 		delta	*therest = d->kid;
 
 		d->kid = 0;
-		dinsert(s, flags, d);
+		dinsert(s, flags, d, 0);
 		d = therest;
 	}
 	if (checkrevs(s, flags) & 1) s->state |= S_BADREVS;
@@ -6150,7 +6177,7 @@ fmttt(char *p, time_t d)
  * New in Feb, '99: remove duplicates of metadata.
  */
 private int
-delta_table(sccs *s, FILE *out, int willfix, int fixDate)
+delta_table(sccs *s, FILE *out, int willfix)
 {
 	delta	*d;
 	int	i;	/* used by EACH */
@@ -6164,8 +6191,6 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 	fputs("\001hXXXXX\n", out);
 	s->cksum = 0;
 
-	if (fixDate) fixNewDate(s);
-	
 	for (d = s->table; d; d = d->next) {
 		if ((d->next == NULL) && (s->state & S_FAKE_1_0)) {
 			/* If the 1.0 delta is a fake, skip it */
@@ -7601,7 +7626,7 @@ checkin(sccs *s,
 		s->table = n0;
 		n0->flags |= D_CKSUM;
 		n0->sum = (unsigned short) almostUnique(1);
-		dinsert(s, flags, n0);
+		dinsert(s, flags, n0, !(flags & DELTA_PATCH));
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
 		n->next = n0;
@@ -7654,7 +7679,7 @@ checkin(sccs *s,
 	}
 	first->flags |= D_XFLAGS;
 	first->xflags = state2xflags(s->state);
-	dinsert(s, flags, n);
+	dinsert(s, flags, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 	EACH (syms) {
 		addsym(s, n, n, n->rev, syms[i]);
@@ -7693,7 +7718,7 @@ checkin(sccs *s,
 		}
 	}
 	if (flags & DELTA_HASH) s->state |= S_HASH;
-	if (delta_table(s, sfile, 1, (flags & DELTA_PATCH) == 0)) {
+	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto abort;
 	}
@@ -8585,7 +8610,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			n->pserial = d->serial;
 			n->serial = sc->nextserial++;
 			sc->numdeltas++;
-			dinsert(sc, 0, n);
+			dinsert(sc, 0, n, 1);
 		}
 		if (addsym(sc, d, n, rev, sym) == 0) {
 			verbose((stderr,
@@ -8640,7 +8665,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->sum = (unsigned short) almostUnique(0);
 		n->flags |= D_CKSUM;
 	}
-	dinsert(sc, 0, n);
+	dinsert(sc, 0, n, 1);
 	return n;
 }
 
@@ -8875,7 +8900,6 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
 	char	*t;
 	char	*buf;
-	int	fixDate = 0;
 	delta	*d = 0;
 
 	assert(!z); /* XXX used to be LOD item */
@@ -8907,7 +8931,6 @@ out:
 #define	ALLOC_D()	\
 	unless (d) { \
 		unless (d = sccs_newDelta(sc, p, 1)) OUT; \
-		fixDate = 1; \
 	}
 
 	unless (HAS_SFILE(sc)) {
@@ -8940,7 +8963,6 @@ out:
 
 	if (addSym("admin", sc, flags, s, &error)) {
 		flags |= NEWCKSUM;
-		fixDate = 1;
 	}
 	if (mode) {
 		ALLOC_D();
@@ -9173,7 +9195,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	old_enc = sc->encoding;
 	sc->encoding = new_enc;
-	if (delta_table(sc, sfile, 0, fixDate)) {
+	if (delta_table(sc, sfile, 0)) {
 		sccs_unlock(sc, 'x');
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
@@ -10000,7 +10022,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF)
 	m->next = s->table;
 	s->table = m;
 	s->numdeltas++;
-	dinsert(s, 0, m);
+	dinsert(s, 0, m, 0);
 	EACH (syms) {
 		addsym(s, m, m, m->rev, syms[i]);
 	}
@@ -10015,7 +10037,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF)
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
-	if (delta_table(s, sfile, 0, 0)) {
+	if (delta_table(s, sfile, 0)) {
 abort:		fclose(sfile);
 		sccs_unlock(s, 'x');
 		return (-1);
@@ -10111,7 +10133,7 @@ sccs_delta(sccs *s,
     	u32 flags, delta *prefilled, MMAP *init, MMAP *diffs, char **syms)
 {
 	FILE	*sfile = 0;	/* the new s.file */
-	int	i, error = 0, fixDate = 1;
+	int	i, error = 0;
 	char	*t;
 	delta	*d = 0, *n = 0;
 	char	*tmpfile = 0;
@@ -10158,7 +10180,6 @@ out:
 		}
 		debug((stderr, "delta got prefilled %s\n", prefilled->rev));
 		if (flags & DELTA_PATCH) {
-			fixDate = 0;
 			if (prefilled->pathname &&
 			    streq(prefilled->pathname, "ChangeSet")) {
 				s->state |= S_CSET;
@@ -10376,7 +10397,7 @@ out:
 		 */
 		if (sccs_getComments(s->gfile, pf.newrev, n)) OUT;
 	}
-	dinsert(s, flags, n);
+	dinsert(s, flags, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 
 	EACH (syms) {
@@ -10411,7 +10432,7 @@ out:
 		OUT;
 	}
 
-	if (delta_table(s, sfile, 1, fixDate)) {
+	if (delta_table(s, sfile, 1)) {
 		fclose(sfile); sfile = NULL;
 		sccs_unlock(s, 'x');
 		goto out;	/* not OUT - we want the warning */
@@ -13433,7 +13454,7 @@ out:
 	}
 
 	/* write out upper half */
-	if (delta_table(s, sfile, 0, 0)) {  /* 0 means as-is, so chksum works */
+	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so chksum works */
 		fprintf(stderr,
 		    "%s: can't write delta table for %s\n", who, s->sfile);
 		sccs_unlock(s, 'x');

@@ -25,14 +25,39 @@ adler32_main(void)
 private void
 do_checksum(void)
 {
-	char buf[2*MAXPATH];
-	int len;
-	int doXsum = 0;
-	uLong sum = 0;
+	char	buf[2*MAXPATH];
+	int	len;
+	int	doXsum = 0;
+	uLong	sum = 0;
+	int	type = 0;
 #define EOT 0x04
 
 	while (fnext(buf, stdin)) {
-		if (buf[0] == EOT) break; /* EOF ndicator  */
+		if (streq(buf, PATCH_ABORT)) {
+			type = -1;
+		} else if (streq(buf, PATCH_OK)) {
+			type = 1;
+		} else {
+			type = 0;
+		}
+
+		/*
+		 * Might be embedded data, in which case we pass it.
+		 */
+		if (type && fnext(buf, stdin)) {
+			char	*t = (type == -1) ? PATCH_ABORT : PATCH_OK;
+			if (doXsum) {
+				len = strlen(t);
+				sum = adler32(sum, t, len);
+			}
+			fputs(t, stdout);
+		} else if (type == -1) {
+			fprintf(stderr, "adler32: aborting\n");
+			exit(1);
+		} else if (type == 1) {
+			break;
+		}
+
 		if (streq(buf, PATCH_CURRENT)) {
 			if (!doXsum) doXsum = 1;
 			else {
@@ -48,7 +73,10 @@ do_checksum(void)
 			sum = adler32(sum, buf, len);
 		}
 		fputs(buf, stdout);
-		if (feof(stdin)) break;
+		if (feof(stdin)) {
+			fprintf(stderr, "adler32: did not see patch EOF\n");
+			exit(1);
+		}
 	}
 	printf("# Patch checksum=%.8lx\n", sum);
 }

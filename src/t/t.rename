@@ -137,4 +137,4 @@ if [ $? -ne 0 ]; then
 else
 	echo OK
 fi
-
+set +e

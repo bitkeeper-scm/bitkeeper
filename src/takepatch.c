@@ -42,9 +42,9 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
 #define	SHOUT() \
-	fputs("===================== ERROR ========================\n", stderr);
+	fputs("\n==================== ERROR =======================\n", stderr);
 #define	SHOUT2() \
-	fputs("====================================================\n", stderr);
+	fputs("==================================================\n\n", stderr);
 #define	NOTICE() \
 	fputs("------------------------------------------------------\n",\
 	stderr);
@@ -1103,7 +1103,7 @@ init(char *inputFile, int flags, project **pp)
 	int	i, len, havexsum = 0;	/* XXX - right default? */
 	int	started = 0;
 	FILE	*f, *g;
-	MMAP	*m;
+	MMAP	*m = 0;
 	uLong	sumC = 0, sumR = 0;
 	project	*p = 0;
 	int	line = 0, first = 1, j = 0;
@@ -1228,7 +1228,7 @@ init(char *inputFile, int flags, project **pp)
 		fprintf(g, "%s\n", pendingFile);
 		fclose(g);
 
-		do {
+		for (;;) {
 			if (!started) {
 				if (streq(buf, PATCH_CURRENT)) {
 					havexsum = 1;
@@ -1251,6 +1251,7 @@ init(char *inputFile, int flags, project **pp)
 				}
 				if (strneq(buf, "# Patch checksum=", 17)) {
 					sumR = strtoul(buf+17, 0, 16);
+					assert(sumR != 0);
 					break;
 				}
 
@@ -1259,7 +1260,10 @@ init(char *inputFile, int flags, project **pp)
 				/*
 				 * Status.
 				 */
-				unless (mkpatch) continue;
+				unless (mkpatch) {
+					unless (fnext(buf, stdin)) goto missing;
+					continue;
+				}
 #define	DIVIDER	"------------------------------------------------\n"
 				if (strneq("== ", buf, 3)) {
 					char	*t = strchr(&buf[3], ' ');
@@ -1286,7 +1290,8 @@ init(char *inputFile, int flags, project **pp)
 					fprintf(stderr, "Discard: %s", buf);
 				}
 			}
-		} while (fnext(buf, stdin));
+			unless (fnext(buf, stdin)) goto missing;
+		}
 		unless (started) nothingtodo();
 		if (mkpatch) fprintf(stderr, "\b: %d deltas\n", j);
 		if (fclose(f)) {
@@ -1338,11 +1343,13 @@ init(char *inputFile, int flags, project **pp)
 		} while (!strneq(t, "# Patch checksum=", 17));
 		t = mkline(t);
 		sumR = strtoul(t+17, 0, 16);
+		assert(sumR != 0);
 	}
 
 	if (havexsum && !sumR) {
+missing:	
 		SHOUT();
-		fputs("takepatch: missing trailer line on patch\n",
+		fputs("takepatch: missing checksum line in patch, aborting.\n",
 		      stderr);
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
@@ -1379,7 +1386,7 @@ fileCopy2(char *from, char *to)
 private	void
 rebuild_id(char *id)
 {
-	char	*s;
+	char	*s = 0;
 
 	if (echo > 0) {
 

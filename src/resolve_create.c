@@ -3,6 +3,11 @@
  */
 #include "resolve.h"
 
+int	do_diff(resolve *rs, char *left, char *right);
+int	do_sdiff(resolve *rs, char *left, char *right);
+int	do_difftool(resolve *rs, char *left, char *right);
+int	prs_common(resolve *rs, sccs *s, char *a, char *b);
+
 int
 res_abort(resolve *rs)
 {
@@ -96,6 +101,7 @@ do_diff(resolve *rs, char *left, char *right)
 
 	sprintf(cmd, "bk diff %s %s | %s", left, right, rs->pager);
 	sys(cmd, rs->opts);
+	return (0);
 }
 
 int
@@ -110,9 +116,10 @@ do_sdiff(resolve *rs, char *left, char *right)
 
 	sprintf(cmd, "bk sdiff -w %d %s %s | %s", cols, left, right, rs->pager);
 	sys(cmd, rs->opts);
+	return (0);
 }
 
-int	
+int
 do_difftool(resolve *rs, char *left, char *right)
 {
 	char	*av[10];
@@ -180,6 +187,7 @@ res_mr(resolve *rs)
 	return (1);
 }
 
+int
 more(resolve *rs, char *file)
 {
 	char	cmd[MAXPATH];
@@ -252,6 +260,7 @@ res_hr(resolve *rs)
 }
 
 /* XXX - this is so lame, it should mark the list and call sccs_prs */
+int
 prs_common(resolve *rs, sccs *s, char *a, char *b)
 {
 	char	cmd[2*MAXPATH];
@@ -261,7 +270,7 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 	if (strlen(list) > MAXPATH) {	/* too big */
 		free(list);
 		sccs_prs(s, 0, 0, 0, stdout);
-		return;
+		return (0);
 	}
 	sprintf(cmd, "bk prs -r%s %s | %s", list, rs->s->gfile, rs->pager);
 	sys(cmd, rs->opts);

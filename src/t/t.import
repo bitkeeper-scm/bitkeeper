@@ -108,4 +108,5 @@ cd $HERE/project/src
 bk get $Q bar.c $HERE/import_sccs/src/bar.c
 cmp -s bar.c $HERE/import_sccs/src/bar.c
 echo OK
+set +e
 trap '' 0

@@ -8,10 +8,11 @@
 WHATSTR("@(#)%K%");
 
 private	char	*check_help = "\n\
-usage: check [-av]\n\n\
+usage: check [-acfRv]\n\n\
     -a		warn if the files listed are a subset of the repository\n\
-    -f		fix any fixable errors\n\
     -c		check file checksum\n\
+    -f		fix any fixable errors\n\
+    -R		only do checks which make sense in the RESYNC dir\n\
     -v		list each file which is OK\n\n";
 
 private	MDBM	*buildKeys();
@@ -28,6 +29,7 @@ private int	checkKeys(sccs *s, char *root);
 
 private	int	verbose;
 private	int	all;	/* if set, check every darn entry in the ChangeSet */
+private	int	resync;	/* called in resync dir */
 private	int	fix;	/* if set, fix up anything we can */
 private	int	names;	/* if set, we need to fix names */
 private	int	mixed;	/* mixed short/long keys */
@@ -76,11 +78,12 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acfv")) != -1) {
+	while ((c = getopt(ac, av, "acfRv")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'f': fix++; break;
 		    case 'c': flags = INIT_SAVEPROJ; break;
+		    case 'R': resync++; break;
 		    case 'v': verbose++; break;
 		    default:
 			goto usage;
@@ -550,7 +553,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	unless (d = sccs_getrev(s, "+", 0, 0)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->sfile);
 		errors++;
-	} else if (!streq(s->gfile, d->pathname)) {
+	} else unless (resync || streq(s->gfile, d->pathname)) {
 		fprintf(stderr,
 		    "check: %s should be %s\n", s->gfile, d->pathname);
 		errors++;
@@ -576,7 +579,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	/*
 	 * Make sure we have no open branches
 	 */
-	if (sccs_admin(s, 0,
+	if (!resync && sccs_admin(s, 0,
 	    SILENT|ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0, 0)) {
 	    	errors++;
 	}

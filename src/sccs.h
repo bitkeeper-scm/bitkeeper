@@ -528,9 +528,12 @@ typedef struct patch {
  * Patch file format strings.
  *
  * 0.8 = 0x flags and V version.
+ * 0.9 = Positive termination.
  */
-#define PATCH_CURRENT	"# Patch vers:\t0.8\n"
+#define PATCH_CURRENT	"# Patch vers:\t0.9\n"
 #define PATCH_NOSUM	"# Patch vers:\t0.5\n"
+#define	PATCH_ABORT	"# Patch abort\n"
+#define	PATCH_OK	"# Patch OK\n"
 
 /*
  * Internal to takepatch
