@@ -58,4 +58,4 @@ no_logging() {
 }
 
 cd "$BK_REGRESSION" || exit 1
-HERE=`pwd`
+HERE=`bk pwd`

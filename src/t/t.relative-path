@@ -41,7 +41,7 @@ P=`bk prs -r1.2 -h -d':DPN:' symlink/foo`
 if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
 bk co $Q -l symlink/foo
 echo "new-stuff" > symlink/foo
-HERE=`${CWD}`
+HERE=`bk pwd`
 bk delta $Q -ysym-path $HERE/symlink/foo
 P=`bk prs -r1.3 -h -d':DPN:' symlink/foo`
 if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
