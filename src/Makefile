@@ -9,7 +9,6 @@ BINDIR	= /usr/libexec/bitkeeper
 # These default values are for unix
 SYS	=unix
 BK=	bk 
-BKMERGE=bkmerge
 CC_OUT	=-o $@
 LD_OUT	=-o $@
 LD	=cc
@@ -43,7 +42,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
 	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o log.o logging.o mkdir.o mklock.o mmap.o \
+	  lod.o log.o logging.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/mail.o port/platforminit.o \
@@ -105,7 +104,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl bkmerge.sh \
+	  port/win32_platform.sh gui/renametool.tcl \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh
 MISC	= bkhelp.doc bitkeeper.config t/doit.sh
 
@@ -174,7 +173,7 @@ production_image: rebuild p image
 
 # Cleanup targets.
 clean clean-obj: FORCE
-	-rm -f bk.o bkmerge.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
+	-rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
 	-cd gnu && $(MAKE) clean-obj
 	-cd win32 && $(MAKE) clean-obj
@@ -267,8 +266,6 @@ libsccs.a: $(OBJ) shell.o
 	-$(RANLIB) libsccs.a
 $(BK): bk.o $(LIBS)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB)
-$(BKMERGE): bkmerge.o $(LIBS)
-	$(LD) $(LDFLAGS) $(LD_OUT) bkmerge.o $(LINK_LIB)
 
 testfast: testfast.perl
 	rm -f testfast
@@ -542,6 +539,7 @@ log.o:		log.c $(H)
 logging.o:	logging.c $(H)
 lod.o:		lod.c $(H) range.h $(Z)
 logaddr.o:	logaddr.c $(H)
+merge.o:	merge.c $(H)
 mkdir.o:	mkdir.c $(H)
 mmap.o:		mmap.c $(H)
 mtime.o:	mtime.c

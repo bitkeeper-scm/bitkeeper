@@ -3,7 +3,7 @@
 
 /* usage bk merge L G R M */
 int
-main(int ac, char **av)
+merge_main(int ac, char **av)
 {
 	char	*new_av[8];
 	int	rc, fd, fd1;
@@ -33,6 +33,6 @@ main(int ac, char **av)
 	rc = spawnvp_ex(_P_WAIT, new_av[0], new_av);
 	/* restore parent's stdout */
 	close(1); dup2(fd1, 1);
-	exit (rc);
+	return (rc);
 }
 

@@ -24,7 +24,6 @@
 #include "resolve.h"
 
 extern	char	*bin;
-
 private	void	commit(opts *opts);
 private	void	conflict(opts *opts, char *rfile);
 private	int	create(resolve *rs);
@@ -90,7 +89,7 @@ resolve_main(int ac, char **av)
 			exit(1);
 		}
     	}
-	unless (opts.mergeprog) opts.mergeprog = "bkmerge";
+	unless (opts.mergeprog) opts.mergeprog = "merge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
 #ifndef WIN32
@@ -1654,7 +1653,7 @@ automerge(resolve *rs, names *n)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	sprintf(cmd, "%s/%s %s %s %s %s", bin,
+	sprintf(cmd, "bk %s %s %s %s %s",
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
 	ret = sys(cmd, rs->opts);
 	if (do_free) {

@@ -417,6 +417,9 @@ typedef struct {
 } project;
 
 extern	project	*bk_proj;	/* bk.c sets this up */
+extern	jmp_buf	exit_buf;
+
+#define	exit(e)	longjmp(exit_buf, e + 1000)
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
@@ -844,6 +847,7 @@ MDBM *	loadOK();
 void	config(char *rev, FILE *f);
 int	ok_commit(int l, int alreadyAsked);
 int	cset_setup(int flags);
+off_t	fsize(int fd);
 char	*separator(char *);
 
 #endif	/* _SCCS_H_ */

@@ -1,7 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include <setjmp.h>
-#define	exit(e)		longjmp(exit_buf, e)
 
 WHATSTR("@(#)%K%");
 
@@ -59,7 +57,6 @@ private	void	lftw(const char *dir, lftw_func func);
 private	void	process(const char *filename, int mode);
 private	void	caches(const char *filename, int mode);
 private	project	*proj = 0;
-private	jmp_buf	exit_buf;
 
 int
 sfiles_main(int ac, char **av)
@@ -94,7 +91,6 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    default: goto usage;
 		}
 	}
-	if (i = setjmp(exit_buf)) return (i);
 	if (xFlg && (Aflg|cFlg|Cflg|dFlg|Dflg|lFlg|pFlg|Pflg|uFlg)) {
 		fprintf(stderr, "sfiles: -x must be standalone.\n");
 		return (1);
