@@ -860,7 +860,6 @@ buildKeys()
 		assert(t);
 		*t++ = 0;
 		r = strchr(t, '\n');
-		//if (r[-1] == '\r') r[-1] = 0; /* remove DOS '\r' */
 		*r++ = 0;
 		assert(t);
 		if (mdbm_store_str(db, t, s, MDBM_INSERT)) {
@@ -893,7 +892,7 @@ buildKeys()
 				fprintf(stderr, "KEY='%s' VAL='%s'\n", t, s);
 				perror("mdbm_store_str");
 			}
-			e++;
+			if (polyList) e++;
 		}
 		unless (streq(buf, s)) {
 			/* mark the file boundries */
@@ -970,7 +969,6 @@ listCsetRevs(char *key)
 			fprintf(stderr, "bad data: <%s>\n", buf);
 			goto out;
 		}
-		//fprintf(stderr, "BUF %s\n", buf);
 		t = separator(buf); assert(t); *t++ = 0;
 		unless (streq(t, key)) continue;
 		for (t = buf; *t && !isspace(*t); t++);
@@ -1233,10 +1231,11 @@ chk_merges(sccs *s)
 }
 
 private int
-isGone(sccs *s)
+isGone(sccs *s, char *key)
 {
 	char	buf[MAXKEY];
 
+	if (key) return (mdbm_fetch_str(goneDB, key) != 0);
 	sccs_sdelta(s, sccs_ino(s), buf);
 	return (mdbm_fetch_str(goneDB, buf) != 0);
 }
@@ -1290,13 +1289,14 @@ checkKeys(sccs *s, char *root)
 		v = mdbm_fetch(findkey, k);
 		if (v.dsize) bcopy(v.dptr, &d, sizeof(d));
 		unless (v.dsize) {
+			if (isGone(s, csetKeys.deltas[i])) continue;
 			a = csetFind(csetKeys.deltas[i]);
-			if (isGone(s)) fprintf(stderr, "Warning: ");
+			if (isGone(s, 0)) fprintf(stderr, "Warning: ");
 			fprintf(stderr,
 			    "key %s is in\n\tChangeSet|%s\n\tbut not in %s\n",
 			    csetKeys.deltas[i], a, s->sfile);
 			free(a);
-			if (isGone(s)) {
+			if (isGone(s, 0)) {
 				fprintf(stderr,
 "This file: %s\n\
 was probably deleted in another repository, perhaps your parent.\n\
