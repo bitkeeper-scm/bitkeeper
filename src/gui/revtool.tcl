@@ -2277,6 +2277,7 @@ proc init {} \
 proc arguments {} \
 {
 	global anchor rev1 rev2 dfile argv argc fname gca errorCode
+	global searchString startingLineNumber
 
 	set rev1 ""
 	set rev2 ""
@@ -2303,6 +2304,18 @@ proc arguments {} \
 		    "^-d.*" {
 			set dfile [string range $arg 2 end]
 		    }
+		    {^\-@[0-9]+$} {
+			    set startingLineNumber \
+				[string range $arg 2 end]
+		    }
+		    {^-/.+/?$} {
+			    # we're a bit forgiving and don't strictly
+			    # require the trailing slash. 
+			    if {![regexp -- {-/(.+)/$} $arg -- searchString]} {
+				    set searchString \
+					[string range $arg 2 end]
+			    }
+		    }
 		    default {
 		    	incr fnum
 			set opts(file,$fnum) $arg
@@ -2320,6 +2333,22 @@ proc arguments {} \
 		set rev2 ""
 	}
 
+	# By the time we get to here, rev1 will be set if either -l or
+	# -r was specified on the command line, and rev2 will be set
+	# if _both_ -l and -r were specified on the command line.
+	if {($rev2 != "" ) && 
+	    ([info exists startingLineNumber] ||
+	     [info exists searchString])} {
+		if {[info exists startingLineNumber]} {
+			puts stderr "error: you cannot specify a\
+				     line number with both -l and -r"
+		} else {
+			puts stderr "error: you cannot specify a\
+				      search string with both -l and -r"
+		}
+		exit
+	}
+
 	# regexes for valid revision numbers. This probably should be
 	# a function that uses a bk command to check whether the revision
 	# exists.
@@ -2328,14 +2357,16 @@ proc arguments {} \
 	set d1 ""; set d2 ""
 	if {[info exists rev1] && $rev1 != ""} {
 		if {![regexp -- $r2 $rev1 d1] &&
-		    ![regexp -- $r4 $rev1 d2]} {
+		    ![regexp -- $r4 $rev1 d2] &&
+		    $rev1 != "+"} {
 			puts stderr "\"$rev1\" is not a valid revision number."
 			exit 1
 		}
 	}
 	if {[info exists rev2] && $rev2 != ""} {
 		if {![regexp -- $r2 $rev2 d1] &&
-		    ![regexp -- $r4 $rev2 d2]} {
+		    ![regexp -- $r4 $rev2 d2] &&
+		    $rev2 != "+"} {
 			puts stderr "\"$rev2\" is not a valid revision number."
 			exit 1
 		}
@@ -2397,6 +2428,7 @@ proc startup {} \
 	global fname rev2rev_name w rev1 rev2 gca errorCode gc dev_null
 	global file merge diffpair dfile
 	global State percent preferredGraphSize
+	global startingLineNumber searchString
 
 	if {$gca != ""} {
 		set merge(G) $gca
@@ -2408,7 +2440,36 @@ proc startup {} \
 		if {$rev2 != ""} {set diffpair(right) $rev2}
 		revtool $fname $rev1
 	}
-	if {[info exists diffpair(left)]} {
+	if {[info exists startingLineNumber] ||
+	    [info exists searchString]} {
+
+		# if the user is viewing the history of a file we want
+		# to display the annotated listing before doing the 
+		# search or goto-line. We won't do this for the ChangeSet
+		# file
+		set base [file tail $file]
+		if {![string equal $base "ChangeSet"]} {
+			if {![info exists rev1]} {
+				set rev1 "+"
+			}
+			selectNode id
+		}
+
+		if {[info exists startingLineNumber]} {
+			if {![info exists searchString]} {
+				searchnew : $startingLineNumber
+			}
+			set index $startingLineNumber.0
+			centerTextLine $w(aptext) $index
+		} else {
+			set index 1.0
+		}
+
+		if {[info exists searchString]} {
+			after idle [list searchnew / $searchString $index]
+		}
+
+	} elseif {[info exists diffpair(left)]} {
 		doDiff
 	}
 	if {[info exists dfile] && ($dfile != "")} {

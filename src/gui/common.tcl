@@ -141,6 +141,24 @@ proc centerWindow {w args} \
 	bindtags $w $bindtags
 }
 
+# this proc attempts to center a given line number in a text widget;
+# similar to the widget's "see" option but with the requested line
+# always centered, if possible. The text widget "see" command only
+# attempts to center a line if it is "far out of view", so we first
+# try to scroll the requested line as far away as possible, then
+# scroll it back. Kludgy, but it seems to work.
+proc centerTextLine {w line} \
+{
+	set midline "[expr {int([$w index end-1c] / 2)}].0"
+	if {$line > $midline} {
+		$w see 1.0
+	} else {
+		$w see end
+	}
+	update idletasks
+	$w see $line
+}
+
 # From a Cameron Laird post on usenet
 proc print_stacktrace {} \
 {

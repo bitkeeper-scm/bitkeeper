@@ -121,6 +121,26 @@ proc searchactive {} \
 	return 0
 }
 
+# initiates a new search on the given string starting at the given index
+proc searchnew {direction string {startIndex ""}} {
+	global search 
+
+	search $direction
+
+	$search(text) delete 0 end
+	$search(text) insert 0 $string
+
+	if {$startIndex != ""} {
+		set search(start) $startIndex
+	} elseif {$search(dir) == "?"} {
+		set search(start) "end"
+	} else {
+		set search(start) "1.0"
+	}
+
+	searchstring
+}
+
 proc searchstring {} \
 {
 	global	search lastDiff
