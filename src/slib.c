@@ -2910,6 +2910,40 @@ sccs_tagConflicts(sccs *s)
 	return (db);
 }
 
+private delta *
+tagwalk(sccs *s, delta *d)
+{
+	unless (d) return ((delta*)1);	/* this is an error case */
+	if (d->ptag) if (tagwalk(s, sfind(s, d->ptag))) return (d);
+	if (d->mtag) if (tagwalk(s, sfind(s, d->mtag))) return (d);
+	return (0);
+}
+
+private int
+checktags(sccs *s, delta *leaf, int flags)
+{
+	delta	*d, *e;
+
+	unless (leaf) return(0);
+	unless (d = tagwalk(s, leaf)) return (0);
+	if (d == (delta*)1) {
+		verbose((stderr,
+		    "Corrupted tag graph in %s\n", s->gfile));
+		return (1);
+	}
+	unless (e = sfind(s, d->ptag)) {
+		verbose((stderr,
+		    "Cannot find serial %u, tag parent for %s:%u, in %s\n",
+		    d->ptag, d->rev, d->serial, s->gfile));
+	} else {
+		assert(d->mtag);
+		verbose((stderr,
+		    "Cannot find serial %u, tag parent for %s:%u, in %s\n",
+		    d->mtag, d->rev, d->serial, s->gfile));
+	}
+	return (1);
+}
+
 /*
  * Make sure that the tag graph has one open tip per lod.
  */
@@ -2923,7 +2957,9 @@ checkSymGraph(sccs *s, int flags)
 	if (s->state & S_LOGS_ONLY) return (0);
 
 	if (tagleaves(s, &l1, &l2)) return (128);
+	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
 	unless (l1 && l2) return (0);
+	if ((l1->flags & D_GONE) || (l2->flags & D_GONE)) return (0);
 	for (s1 = s->symbols; s1; s1 = s1->next) {
 		if (s1->metad == l1) break;
 	}
