@@ -153,10 +153,8 @@ grep -q BK_CSETS=1.0..1.1 $HERE/post-outgoing || {
 	echo failed to put cset list in the env
 	exit 1
 }
-grep BKD_REPO_ID= $HERE/post-outgoing | sed s/BKD_REPO_// > $HERE/tmp
-ID=
-. $HERE/tmp
-test "$project_repoid" = "$ID" || {
+grep BKD_REPO_ID= $HERE/post-outgoing > $HERE/tmp
+fgrep "$project_repoid" $HERE/tmp > /dev/null || {
 	echo "failed to record where we came from which is $project_repoid"
 	cat $HERE/post-outgoing
 	exit 1
@@ -261,10 +259,8 @@ test -f $HERE/post-incoming-clone || {
 	echo failed to run post-incoming trigger
 	exit 1
 }
-grep BKD_REPO_ID= $HERE/post-incoming-clone | sed s/BKD_REPO_// > $HERE/tmp
-ID=
-. $HERE/tmp
-test "$project_repoid" = "$ID" || {
+grep BKD_REPO_ID= $HERE/post-incoming-clone > $HERE/tmp
+fgrep "$project_repoid" $HERE/tmp > /dev/null || {
 	echo "failed to record where we came from which is $project_repoid"
 	cat $HERE/post-incoming-clone
 	exit 1
@@ -578,17 +574,13 @@ grep -q ChangeSet@1.3 $HERE/changes || {
 	echo failed to list the ChangeSet
 	exit 1
 }
-grep BKD_REPO_ID= $HERE/post-incoming | sed s/BKD_REPO_// > $HERE/tmp
-ID=
-. $HERE/tmp
-test "$project_repoid" = "$ID" || {
+grep BKD_REPO_ID= $HERE/post-incoming > $HERE/tmp
+fgrep "$project_repoid" $HERE/tmp > /dev/null || {
 	echo failed to record where we came from
 	exit 1
 }
-grep BK_REPO_ID= $HERE/post-incoming | sed s/BK_REPO_// > $HERE/tmp
-ID=
-. $HERE/tmp
-test "$clone_repoid" = "$ID" || {
+grep BK_REPO_ID= $HERE/post-incoming > $HERE/tmp
+fgrep "$clone_repoid" $HERE/tmp > /dev/null || {
 	echo failed to record where we are
 	exit 1
 }
