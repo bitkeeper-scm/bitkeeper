@@ -24,12 +24,13 @@ grep_main(int ac, char **av)
 	*s++ = '-';
 	*g++ = '-';
 	rev[0] = range[0] = 0;
-	while ((c = getopt(ac, av, "ac|deimnNur|R|")) != -1) {
+	while ((c = getopt(ac, av, "ac|defimnNur|R|")) != -1) {
 		switch (c) {
 		    case 'a':	/* doc 2.0 */
 			none = 1;
 			break;
 		    case 'd':	/* doc 2.0 */
+		    case 'f':
 		    case 'm':	/* doc 2.0 */
 		    case 'n':	/* doc 2.0 */
 		    case 'N':	/* doc 2.0 */

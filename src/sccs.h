@@ -7,7 +7,7 @@
 /*
  * Flags that modify some operation (passed to sccs_*).
  *
- * There are two ranges of values, 0x000000ff and 0xffffff00.
+ * There are two ranges of values, 0x0000000f and 0xfffffff0.
  * The first is for flags which may be meaningful to all functions.
  * The second is for flags which are function specific.
  * Be VERY CAREFUL to not mix and match.  If I see a DELTA_ in sccs_get()
@@ -15,8 +15,8 @@
  */
 #define	SILENT		0x00000001	/* do work quietly */
 #define	PRINT		0x00000002	/* get/delta/clean [diffs] to stdout */
-#define	NEWFILE		0x00000008	/* delta -i: create initial file */
-#define	NEWCKSUM	0x00000010	/* Redo checksum */
+#define	NEWFILE		0x00000004	/* delta -i: create initial file */
+#define	NEWCKSUM	0x00000008	/* Redo checksum */
 
 #define	INIT_MAPWRITE	0x10000000	/* map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
@@ -48,8 +48,6 @@
 #define	GET_FORCE	0x00020000	/* do it even with errors */
 #define	GET_HEADER	0x00040000	/* diff: print header */
 #define	DIFF_HEADER	GET_HEADER
-#define	GET_PREFIX	\
-	    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|GET_PREFIXDATE)
 #define	GET_DTIME	0x00080000	/* gfile get delta's mode time */
 #define	GET_NOHASH	0x00001000	/* force regular file, ignore S_HASH */
 #define	GET_HASHONLY	0x00002000	/* skip the file */
@@ -59,6 +57,9 @@
 #define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 #define GET_DIFFTOT	0x00000800	/* hasDiffs() false if !TOT */
+#define	GET_FULLPATH	0x00000010	/* like GET_MODNAME but full relative */
+#define	GET_PREFIX	\
+    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|GET_FULLPATH|GET_PREFIXDATE)
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
