@@ -161,7 +161,7 @@ doit(sccs *s, s_opts opts)
 	/*
 	 * Handle checkout modes
 	 */
-	if (getFlags) {
+	if (getFlags && !CSET(s)) {
 		sccs	*s2 = sccs_init(s->sfile, 0, 0);
 		sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
 		sccs_free(s2);

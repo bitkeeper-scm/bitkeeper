@@ -36,7 +36,7 @@ proc createDiffWidgets {w} \
 		    -font $gc($app.fixedFont) \
 		    -relief sunken -borderwid 2
 		label .diffs.status.middle \
-		    -foreground black \
+		    -foreground $gc($app.textFG) \
 		    -background $gc($app.statusColor) \
 		    -font $gc($app.fixedFont) \
 		    -wid 15 \
