@@ -77,7 +77,6 @@ Accept: text/html\n\n",
 path);
 	send_request(fd, header, strlen(header));
 	while (recv(fd, buf, sizeof(buf), 0)) {
-fprintf(stderr, "auto config file =<%s>\n", buf);
 		proxies = extract(buf, "\"PROXY ", proxies);
 		proxies = extract(buf, "\"SOCKS ", proxies);
 	}
@@ -163,7 +162,13 @@ get_http_proxy()
 			proxies = addLine(proxies, strdup(buf));
 		}
 	}
-done:	q = getenv("SOCKS_PORT");
+done:	p = getenv("HTTP_PROXY_HOST"); 
+	q = getenv("HTTP_PROXY_PORT"); 
+	if (p && *p) {
+		sprintf(buf, "PROXY %s:%s\n", p, q ? q : "8000");
+		proxies = addLine(proxies, strdup(buf));
+	}
+	q = getenv("SOCKS_PORT");
 	p = getenv("SOCKS_HOST"); 
 	if (p && *p) {
 		sprintf(buf, "SOCKS %s:%s\n", p, q ? q : "1080");
