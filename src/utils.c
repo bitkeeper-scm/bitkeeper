@@ -909,6 +909,12 @@ cset_unlock()
 }
 
 
+/*
+ * The semantics of this interface is that it must return a NON-NULL list
+ * even if the list is empty.  The NULL return value is reserved for errors.
+ * This removes all duplicates, ".", and "..".
+ * It also checks for updates to the dir and retries if it sees one.
+ */
 char	**
 getdir(char *dir)
 {
@@ -916,7 +922,7 @@ getdir(char *dir)
 	DIR	*d;
 	struct	dirent   *e;
 	struct  stat sb1, sb2;
-	int	i, j;
+	int	i;
 
 again:	if (lstat(dir, &sb1)) {
 		if (errno == ENOENT) return (NULL);
@@ -927,8 +933,13 @@ again:	if (lstat(dir, &sb1)) {
 		perror(dir);
 		return(NULL);
 	}
+	lines = addLine(lines, "f");
+	assert(streq("f", lines[1]));
+	removeLineN(lines, 1);
 	while (e = readdir(d)) {
-		lines = addLine(lines, strdup(e->d_name));
+		unless (streq(e->d_name, ".") || streq(e->d_name, "..")) {
+			lines = addLine(lines, strdup(e->d_name));
+		}
 	}
 	if (lstat(dir, &sb2)) {
 		perror(dir);
@@ -943,23 +954,11 @@ again:	if (lstat(dir, &sb1)) {
 	}
 	sortLines(lines);
 
-	/*
-	 * Remove duplicate files that can result on some filesystems.
-	 * Also remove "." and ".." they always exist and are usually 
-	 * ignored.
-	 */
-	j = 1;
+	/* Remove duplicate files that can result on some filesystems.  */
 	EACH(lines) {
-		if ((i > 1 && streq(lines[i-1], lines[i])) ||
-		    streq(lines[i], ".") ||
-		    streq(lines[i], "..")) {
-			free(lines[i]);
-			continue;
+		while ((i > 1) && streq(lines[i-1], lines[i])) {
+			removeLineN(lines, i);
 		}
-		if (j < i) lines[j] = lines[i];
-		++j;
 	}
-	lines[j] = 0;
-
 	return (lines);
 }
