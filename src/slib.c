@@ -56,6 +56,7 @@ void		explodeKey(char *key, char *parts[4]);
 private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
 private time_t	date2time(char *asctime, char *z, int roundup);
+private int	gettimezone(time_t when);
 private	char	*sccsrev(delta *d);
 private int	addLod(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
@@ -3675,6 +3676,36 @@ sccsXfile(sccs *sccs, char type)
 }
 
 /*
+ * Given a time_t, compute the timezone in effect at our
+ * present location as of the time it refers to.
+ * Returns minutes east or west of GMT; west is negative.  Directly
+ * opposite Greenwich is considered positive (matches date -R).
+ *
+ * This implementation may look a bit silly, but it is
+ * maximally portable.
+ *
+ * Yes, there are timezones that aren't a whole number of hours
+ * off of GMT.  Try Pacific/Pitcairn, for example.
+ */
+private int
+gettimezone(time_t when)
+{
+	struct	tm *tm;
+	struct	tm gt, lt;
+	int	delta;
+
+	tm = gmtime(&when);
+	gt = *tm;
+	tm = localtime(&when);
+	lt = *tm;
+
+	delta = (lt.tm_hour - gt.tm_hour)*60 + (lt.tm_min - gt.tm_min);
+	if (delta > 12*60) delta = -(24*60 - delta);
+	return delta;
+}
+	
+
+/*
  * Get the date as YY/MM/DD HH:MM:SS.mmm
  * and get timezone as minutes west of GMT
  */
@@ -3683,39 +3714,23 @@ date(delta *d, time_t tt)
 {
 	struct	tm *tm;
 	char	tmp[50];
-	extern	long timezone;
-	extern	int daylight;
-	int	hwest, mwest;
-	char	sign = '-';
+	int    	mwest;
+	div_t	tz;
+	char	sign = '+';
 
 	// XXX - fix this before release 1.0 - make it be 4 digits
 	tm = localtime(&tt);
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
 	d->sdate = strdup(tmp);
-	strftime(tmp, sizeof(tmp), "%z", tm);
-	if (strlen(tmp) == 5) {
-		tmp[6] = 0;
-		tmp[5] = tmp[4];
-		tmp[4] = tmp[3];
-		tmp[3] = ':';
-	} else {
-		/*
-		 * What I want is to have 8 hours west of GMT to be -08:00.
-		 */
-		hwest = timezone / 3600;
-		mwest = timezone % 3600;
-		if (hwest < 0) {
-			sign = '+';
-			hwest = -hwest;
-			mwest = -mwest;
-		}
-		/*
-		 * XXX - I have not thought this through.
-		 * This is blindly following what /bin/date does.
-		 */
-		if (daylight) hwest--;
-		sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
+
+	mwest = gettimezone(tt);
+	if (mwest < 0) {
+		sign = '-';
+		mwest = -mwest;
 	}
+	tz = div(mwest, 60);
+	sprintf(tmp, "%c%02d:%02d", sign, tz.quot, tz.rem);
+
 	zoneArg(d, tmp);
 	getDate(d);
 }
@@ -6873,11 +6888,10 @@ private delta *
 dateArg(delta *d, char *arg, int defaults)
 {
 	char	*save = arg;
-	struct	tm *tm;
-	time_t	tt;
 	char	tmp[50];
-	extern	long timezone;
 	int	year, month, day, hour, minute, second, msec, hwest, mwest;
+	div_t	tz;
+	char	sign = ' ';
 	int	rcs = 0;
 	int	gotZone = 0;
 
@@ -6914,11 +6928,14 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 	if (*arg && arg[2] == '.') {
 		getit(msec);
 		if (arg[-1] == '-') {
+			gotZone++;
+			sign = '-';
 			getit(hwest);
 			getit(mwest);
 		}
 	} else if (*arg && arg[2] == '-') {
 		gotZone++;
+		sign = '-';
 		getit(hwest);
 		/* I don't know if RCS ever puts in the minutes, but I'll
 		 * take 'em if they give 'em.
@@ -6926,42 +6943,34 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 		if (*arg && arg[2] == ':') getit(mwest);
 	} else if (*arg && arg[2] == '+') {
 		gotZone++;
+		sign = '+';
 		getit(hwest);
 		/* I don't know if RCS ever puts in the minutes, but I'll
 		 * take 'em if they give 'em.
 		 */
 		if (*arg && arg[2] == ':') getit(mwest);
-		hwest = -hwest;
-		mwest = -mwest;
-	} else if (rcs) {	/* then UTC */
+	} else if (rcs || defaults) {
 		/* This is a bummer because we can't figure out in which
 		 * timezone the delta was performed.
 		 * So we assume here.
 		 * XXX - maybe not the right answer?
 		 */
 		gotZone++;
-		tt = time(0);
-		tm = localtime(&tt);
-		hwest = timezone/3600;
-		mwest = timezone%3600;
-	} else if (defaults) {		/* then local time */
-		gotZone++;
-		tt = time(0);
-		tm = localtime(&tt);
-		hwest = timezone/3600;
-		mwest = timezone%3600;
+		mwest = gettimezone(time(0));
+		if (mwest < 0) {
+			mwest = -mwest;
+			sign = '-';
+		} else {
+			sign = '+';
+		}
+		tz = div(mwest, 60);
+		hwest = tz.quot;
+		mwest = tz.rem;
 	}
 	sprintf(tmp, "%02d/%02d/%02d %02d:%02d:%02d",
 	    year, month, day, hour, minute, second);
 	d->sdate = strdup(tmp);
 	if (gotZone) {
-		char	sign = '-';
-
-		if (hwest <= 0) {
-			hwest = -hwest;
-			mwest = -mwest;
-			sign = '+';
-		}
 		sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
 		d->zone = strdup(tmp);
 	}
