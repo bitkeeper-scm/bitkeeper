@@ -94,12 +94,12 @@ rdlockfile(char *root, char *path)
 int
 repository_hasLocks(char *root, char *dir)
 {
-	char	**lines = lockers(dir);
+	char	**lines;
 	int	i, n = 0;
 	char	path[MAXPATH];
 
 	sprintf(path, "%s/%s", root ? root : ".", dir);
-	lines = lockers(dir);
+	lines = lockers(path);
 	EACH(lines) {
 		sprintf(path, "%s/%s/%s", root ? root : ".", dir, lines[i]);
 		unless (sccs_stalelock(path, 1)) n++;
@@ -150,8 +150,6 @@ repository_locked(project *p)
 			ldebug(("repository_locked(%s) = 0\n", p->root));
 			return (0);
 		}
-		sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
-		if (exists(path)) return (1);
 		ret = repository_hasLocks(p->root, WRITER_LOCK_DIR);
 		unless (ret) {
 			sprintf(path, "%s/%s", p->root, ROOT2RESYNC);

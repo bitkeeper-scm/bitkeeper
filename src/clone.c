@@ -234,7 +234,7 @@ done:	if (rc) {
 	disconnect(r, 1);
 
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
-	unless (rc) repository_wrunlock(0);
+	unless (rc) repository_unlock(0);
 	unless (rc || opts.quiet) {
 		fprintf(stderr, "Clone completed successfully.\n");
 	}
