@@ -468,6 +468,6 @@ proc searchsee {location} \
 	scrollDiffs $location $location
 }
 
-widgets
 bk_init
+widgets
 getFiles

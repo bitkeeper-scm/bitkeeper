@@ -421,8 +421,9 @@ fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/difflib.tcl gui/fmtool.tcl > fmtool
 
-fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl
-	cat gui/config.tcl gui/common.tcl gui/fm3tool.tcl > fm3tool
+fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl 
+	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	    gui/fm3tool.tcl > fm3tool
 
 msg: gui/msg.tcl
 	cat gui/msg.tcl > msg

@@ -2187,7 +2187,6 @@ proc printCanvas {} \
 	exit
 }
 
-wm withdraw .
 init
 arguments
 widgets

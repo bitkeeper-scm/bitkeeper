@@ -8,6 +8,11 @@ proc bk_init {} \
 	global	file_start_stop file_stop line_rev keytmp file_old_new
 	global 	bk_fs
 
+	if [catch {wm withdraw .} err] {
+		puts "DISPLAY variable not set correctly or not running X"
+		exit 1
+	}
+
 	set sdiffw [list "sdiff" "-w1" ]
 	set dev_null "/dev/null"
 	set wish "wish"

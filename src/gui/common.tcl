@@ -17,10 +17,7 @@ proc cd2root { {startpath {}} } \
 		set dir [file join $dir ..]
 		incr n -1
 	}
-	set dir [pwd]
-	displayMessage \
-		"Unable to find the project root.\nCurrent directory is $dir" \
-		1
+	return -1
 }
 
 proc displayMessage {msg {exit {}}} \
