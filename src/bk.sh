@@ -29,7 +29,7 @@ Documentation topics:
     ranges	- information about specifying ranges of revisions
     tags	- information about symbolic tags
     changesets	- information about grouping of deltas into a feature
-    merging	- information about merging changes from another repository
+    merge	- information about merging changes from another repository
     renames	- information about file renames
     gui		- information about the graphical user interface tools
     path	- information about setting your path for BitKeeper
@@ -50,23 +50,26 @@ Command topics:
     edit	- synonym for "co -l" or "get -e"
     get		- checks out files (SCCS version of co)
     import	- import a set of files into a project
-    mv		- move (also delete) files
+    mv		- move file[s]
     pending	- list deltas which need to be in a changeset
     prs		- prints revision history (like RCS rlog)
     regression	- regression test
     renumber	- repairs files damaged by Sun's Teamware product
     resolve	- resolve a patch
     resync	- resync two BitKeeper projects in the local file system
-    rm		- remove a file (or list of files)
+    rm		- remove file[s]
     rmdel	- removes deltas
+    root	- given a file, print the path name to the root of the project
     save	- save a changeset
     sccslog	- like prs except it sorts deltas by date across all files
     send	- send a patch
     sendbug	- how to report a bug
     sfiles	- generates lists of revision control files
+    status	- show repository status
     takepatch	- take a patch
     undo	- undo a changeset
     unedit	- synonym for "clean -u"
+    version	- print BitKeeper version
     what	- looks for SCCS keywords and prints them
 EOF
 	exit 0
@@ -480,7 +483,7 @@ This means that the minimal set of steps to send out a change is
     $ bk co -l foo.c
     $ bk ci foo.c
     $ bk commit
-    $ bk send 1.2 user@host.com
+    $ bk send -r1.2 user@host.com
 
 Alternatively, if the destination is in the local file system, you can send 
 the changes by running
@@ -530,7 +533,7 @@ help_resync() {
 	cat <<EOF
     ====================== BitKeeper resyncs ======================
 
-Usage: bk resync [-cCqSv] [-rRevs] from to
+Usage: bk resync [-acCqSv] [-rRevs] from to
 
 You specify the paths to the tops of the repositories like so:
 
@@ -578,11 +581,52 @@ SEE ALSO
 EOF
 }
 
-help_merging() {
+help_merge() {
 	cat <<EOF
-    ====================== merging differences ======================
+    ====================== Resolving differences ======================
 
-No merge help yet, type help in resolve for more info.
+When a resync or a takepatch creates a repository with conflicts, you
+need to merge those conflicts before the changes are moved from the
+RESYNC directory to your repository.  Sometimes the merging process is
+harder than others and we give you ways to deal with it.
+
+The first thing to do is to hit return when you are at the resolve 
+prompt.  This shows the various options you have to figure out what
+you need to do.  It is possible to merge with or without using the 
+GUI tools.  
+
+Take a look at the various diff commands.  If you want to see the diffs
+you can use the "d" command.  If you like side by side diffs, use the
+"sd" command.  You can also diff one or the other branches against the
+common ancestor using "dr" or "dl".  If the diffs are not helpful or 
+are too confusing, use the "p" command to start the graphical file 
+browser.  Then click the left mouse on the earlier rev (for example,
+the place where the two rightmost branches come together) and the
+right mouse on a later rev.  The bottom of the screen will show the
+diffs.
+
+The merge process is not complete until you commit the file with the
+"C" command at the resolve prompt.  This means you can merge repeatedly
+until you are happy with the results.
+
+The easiest merge is one with no overlapping lines, you can merge that
+using the "m" command.  That command runs the RCS merge command which
+does a threeway diff and merge, warning you if there are overlapping
+lines.  If there are overlaps, you have to edit the merged file (use
+the "e" command) and find the markers which look like "<<<<" or
+">>>>".
+
+If the merge looks complicated, a good approach is to start up the 
+file browser with "p" and start up a side by side filemerge with "f".
+Then you can walk through the diffs, picking and choosing.  If you 
+get confused about who added what, you can go to the browser and left
+click on the common ancestor and right click on each of the two tips of
+the trunk/branch to see who added what.  Try it - it works better than
+this description makes it sound.
+
+When you are happy with your merged file, click done in filemerge, 
+quit in the file browser, and hit "C" and the prompt to commit to 
+that file and move on to the next one.
 
 EOF
 }
@@ -781,7 +825,7 @@ help_send() {
     =============== Sending BitKeeper patches ===============
 
 USAGE
-    bk send [-d] [-q] [revs] user@host.com
+    bk send [-dq] [-pcmd] [-rrevs] user@host.com
 
 While the easiest way to keep two repositories in sync is to use resync,
 that requires an ssh connection to the other host.   Send is what you
@@ -797,11 +841,11 @@ If you happen to know that you want to send a specific change (and you know
 that the other repository has the changes leading up to the change you want 
 to send), you can do this
 
-    $ bk send beta.. user@host.com
+    $ bk send -rbeta.. user@host.com
 
 or
 
-    $ bk send 1.10.. user@host.com
+    $ bk send -r1.10.. user@host.com
 
 Send remembers the changesets it has sent in BitKeeper/log/<address>
 where <address> is like user@host.com .  When you don't specify a list
@@ -821,6 +865,8 @@ OPTIONS
     -d		prepend the patch with unified diffs.  This is because some
     		people (Hi Linus!) like looking at the diffs to decide if 
 		they want the patch or not.
+    -pcmd	pipe the patch through <cmd> before sending it.
+    -rrevs	specify the list of changesets to send
     -q		be quiet
 
 SEE ALSO
@@ -846,6 +892,52 @@ When reporting a bug, you can use "bk sendbug" or try
 If at all possible, include a reproducible test case.
 
 Thanks.
+EOF
+}
+
+help_status() {
+	cat <<EOF
+    =============== Getting BitKeeper status ===============
+
+USAGE
+    bk status [-v] [repository]
+
+The status command tells you what is going in the the tree.  The default
+output looks something like:
+
+    Status for BitKeeper repository /tmp/merge
+    BitKeeper version is 19990319224848
+    125 files not under revision control
+    9 files modified and not checked in
+    0 files with uncommitted deltas
+
+OPTIONS
+    -v	list each file name and file type
+
+EOF
+}
+
+help_version() {
+	cat <<EOF
+    =============== Getting BitKeeper version ===============
+
+The version command tells you what version of BitKeeper you are running.
+If the version is symbolically named (most are), the version will look
+like 
+
+    beta 19990319224848
+
+The second part of the version is the date and time the release was created.
+
+EOF
+}
+
+help_root() {
+	cat <<EOF
+    =============== Getting BitKeeper root ===============
+
+The root command prints the pathname to the root of the repository.
+
 EOF
 }
 
@@ -985,23 +1077,27 @@ changes() {
 send() {
 	V=-vv
 	D=
-	while getopts dq opt
+	PIPE=cat
+	REV=
+	while getopts dp:qr: opt
 	do	case "$opt" in
-		    q) V=;;
 		    d) D=-d;;
+		    p) PIPE="$OPTARG"; CMD="$OPTARG";;
+		    q) V=;;
+		    r) REV=$OPTARG;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	if [ X$1 = X ]
-	then	echo "usage: bk send [-dq] [cset_revs] user@host|-"
+	if [ X$1 = X -o X$2 != X ]
+	then	echo "usage: bk send [-dq] [-ppipe] [-rcset_revs] user@host|-"
 		exit 1
 	fi
 	cd2root
 	if [ ! -d BitKeeper/log ]; then	mkdir BitKeeper/log; fi
-	if [ X$2 = X ]
+	OUTPUT=$1
+	if [ X$REV = X ]
 	then	
-		OUTPUT=$1
-		if [ X$1 != X- ]
+		if [ X$OUTPUT != X- ]
 		then	LOG=BitKeeper/log/$1
 			if [ -f $LOG ]
 			then	sort -u < $LOG > /tmp/has$$
@@ -1025,8 +1121,7 @@ send() {
 			fi
 	    		${BIN}prs -hd:ID: ChangeSet > $LOG
 		fi
-	else	REV=$1
-		OUTPUT=$2
+	else	
 		LOG=BitKeeper/log/$OUTPUT
 		if [ -f $LOG ]
 		then	(cat $LOG; ${BIN}prs -hd:ID: -r$REV ChangeSet) |
@@ -1037,14 +1132,17 @@ send() {
 		fi
 	fi
 	case X$OUTPUT in
-	    X-)	${BIN}cset $D -m$REV $V
+	    X-)	MAIL=cat
 	    	;;
-	    *)	( echo "This patch contains the following changesets:";
-	    	  echo "$REV" | sed 's/,/ /g' | fmt -1 | sort -n | fmt;
-	          ${BIN}cset $D -m$REV $V ) |
-		    mail -s "BitKeeper patch" $OUTPUT
+	    *)	MAIL="mail -s 'BitKeeper patch' $OUTPUT"
 	    	;;
 	esac
+	( if [ "X$PIPE" != Xcat ]
+	  then	echo "Wrapped with $PIPE"
+	  fi
+	  echo "This patch contains the following changesets:";
+	  echo "$REV" | sed 's/,/ /g' | fmt -1 | sort -n | fmt;
+	  ${BIN}cset $D -m$REV $V | eval $PIPE ) | eval $MAIL
 }
 
 save() {
@@ -1069,6 +1167,38 @@ save() {
 	fi
 	${BIN}cset -m$REV $V > $OUTPUT
 	exit $?
+}
+
+# Show repository status
+status() {
+	V=no
+	while getopts v opt
+	do	case "$opt" in
+		v) V=yes;;
+		esac
+	done
+	if [ X$1 != X -a -d "$1" ]
+	then	cd $1
+	fi
+	cd2root
+	echo Status for BitKeeper repository `pwd`
+	bk version
+	if [ -d RESYNC ]
+	then	echo Resync in progress
+	else	if [ -d PENDING ]
+		then	echo Pending patches awaiting resync
+		fi
+	fi
+	# List counts or file states
+	if [ $V = yes ]
+	then	( bk sfiles -x | sed 's/^/Extra:		/'
+		  bk sfiles -cg | sed 's/^/Modified:	/'
+		  bk sfiles -Cg | sed 's/^/Uncommitted:	/'
+		) | sort
+	else	echo `bk sfiles -x | wc -l` files not under revision control.
+		echo `bk sfiles -c | wc -l` files modified and not checked in.
+		echo `bk sfiles -C | wc -l` files with uncommitted deltas.
+	fi
 }
 
 resync() {
@@ -1513,8 +1643,19 @@ man() {
 	exit 1
 }
 
-commitmerge() {
-	exec ${BIN}sfiles -C | ${BIN}cset -yMerge $@ -
+version() {
+	echo "BitKeeper version is $VERSION"
+}
+
+root() {
+	if [ X$1 = X -o X$1 = X--help ]
+	then	echo usage: root pathname
+		exit 1
+	fi
+	cd `dirname $1`
+	cd2root
+	pwd
+	exit 0
 }
 
 sendbug() {
@@ -1608,7 +1749,7 @@ EOF
 docs() {
 	for i in admin backups basics changes changesets chksum ci clean \
 	    co commit cset cset_todo debug delta differences diffs docs \
-	    edit get gui history import makepatch man merging overview \
+	    edit get gui history import makepatch man merge overview \
 	    path pending prs range ranges rechksum regression renames \
 	    renumber resolve resync rmdel save sccslog sdiffs send \
 	    sendbug setup sfiles sids sinfo smoosh tags takepatch terms \
@@ -1633,11 +1774,11 @@ commandHelp() {
 				${BIN}$i --help
 			else	case $i in
 				    overview|setup|basics|import|differences|\
-				    history|tags|changesets|resync|merging|\
+				    history|tags|changesets|resync|merge|\
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
-				    resync|changes|undo|save|docs|\
-				    sccsmv|mv|sccsrm|rm|RCS)
+				    resync|changes|undo|save|docs|RCS|status|\
+				    sccsmv|mv|sccsrm|rm|version|root)
 					help_$i | $PAGER
 					;;
 				    *)
@@ -1667,6 +1808,8 @@ init() {
 	then	PAGER=more
 	fi
 
+	VERSION=unknown
+
 	# XXXX Must be last.
 	BIN=
 	for i in /usr/bitkeeper /usr/bitsccs /usr/local/bitkeeper \
@@ -1692,8 +1835,9 @@ case "$1" in
 	echo Running regression is currently broken
 	exit 1
 	;;
-    setup|changes|pending|commit|commitmerge|sendbug|send|\
-    mv|resync|edit|unedit|man|undo|save|docs|rm|new)
+    setup|changes|pending|commit|sendbug|send|\
+    mv|resync|edit|unedit|man|undo|save|docs|rm|new|version|\
+    root|status)
 	cmd=$1
     	shift
 	$cmd "$@"

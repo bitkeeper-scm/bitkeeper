@@ -39,6 +39,15 @@ static	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
 private	int oksccs(char *s, int flags, int complain);
 void concat_path(char *buf, char *first, char *second);
 
+int
+isDelete(char *s)
+{
+	char	*t = strrchr(s, '/');
+
+	t = t ? t+1 : s;
+	return (strneq("s..del-", t, 5));
+}
+
 /*
  * Get the next file and munge it into an s.file name.
  */
@@ -74,7 +83,7 @@ again:
 			 */
 			concat_path(buf, prefix, e->d_name);
 			unless (oksccs(buf, flags, 0)) continue;
-			return (buf);
+			goto norev;
 		}
 		closedir(d);
 		d = 0;
@@ -94,7 +103,8 @@ again:
 		*r++ = 0;
 		strcpy(rev, r);
 	}
-norev:	if (!is_sccs(buf)) {
+norev:	
+	if (!is_sccs(buf)) {
 #ifdef	ATT_SCCS
 		fprintf(stderr, "Not an SCCS file: %s\n", buf);
 		goto again;
@@ -102,6 +112,12 @@ norev:	if (!is_sccs(buf)) {
 		name = name2sccs(buf);
 		strcpy(buf, name);
 		free(name);
+	}
+	/*
+	 * Don't expand deleted file names unless they asked.
+	 */
+	if (isDelete(buf) && !(flags & SF_DELETES)) {
+		goto again;
 	}
 	if (oksccs(buf, flags, !(flags & SF_SILENT))) {
 		return (buf);
@@ -163,6 +179,10 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			}
 			return (sfileNext());
 		}
+		/*
+		 * If they specify a file in argv then they must mean it.
+		 */
+		flags |= SF_DELETES;
 		av = Av;
 		ac = 0;
 		return (sfileNext());

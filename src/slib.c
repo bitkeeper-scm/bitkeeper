@@ -9662,10 +9662,25 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	if (streq(kw, "SYMBOL")) {
+		symbol	*sym;
+		int	j = 0;
+
+		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
+		for (sym = s->symbols; sym; sym = sym->next) {
+			unless (sym->d == d) continue;
+			j++;
+			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
+			fs(sym->name);
+			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
+		}
+		if (j) return (strVal);
+		return (nullVal);
+	}
+
 	if (streq(kw, "GFILE")) {
 		if (s->gfile) {
 			fs(s->gfile);
-			return (strVal);
 		}
 		return (strVal);
 	}
@@ -10520,6 +10535,7 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 	/*
 	 * b is that branch which needs to be merged.
 	 * At any given point there should be exactly one of these.
+	 * LODXXX - can be two if there are LODs.
 	 */
 	for (d = s->table; d; d = d->next) {
 		d->flags &= ~D_VISITED;
@@ -10543,7 +10559,11 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 			perror("r.file");
 			return (-1);
 		}
-		if (samebranch(d, a)) {
+		/*
+		 * Always put the local stuff on the left, if there
+		 * is any.
+		 */
+		if (a->flags & D_LOCAL) {
 			fprintf(f, "merge deltas %s %s %s %s %s\n",
 				a->rev, d->rev, b->rev, getuser(), now());
 		} else {
@@ -10724,9 +10744,6 @@ loadDB(char *file, int (*want)(char *))
 again:	unless (f = fopen(file, "rt")) {
 		if (first) {
 			first = 0;
-			fprintf(stderr,
-			    "loadDB(%s) failed, rebuilding caches...\n",
-			    file);
 			system("bk sfiles -r");
 			goto again;
 		}

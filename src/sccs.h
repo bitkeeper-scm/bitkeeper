@@ -192,6 +192,7 @@ extern	char *strdup(char *s);
 #define	PRS_META	0x10000000	/* show metadata */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
 #define	PRS_PATCH	0x40000000	/* print in patch format */
+
 /*
  * flags passed to sfileFirst
  */
@@ -200,7 +201,7 @@ extern	char *strdup(char *s);
 #define	SF_NODIREXPAND	0x00000004	/* don't auto expand directories */
 #define	SF_HASREVS	0x00000008	/* sfiles - filename:rev */
 #define	SF_SILENT	0x00000010	/* sfiles - don't complain */
-
+#define	SF_DELETES	0x00000020	/* expand files like .del-whatever */
 
 /*
  * Flags (s->state) that indicate the state of a file.  Set up in init.
@@ -315,6 +316,7 @@ extern	char *strdup(char *s);
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
 #define	D_CSET		0x08000000	/* this delta is marked in cset file */
 #define D_DUPLINK	0x10000000	/* this symlink pointer is shared */
+#define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
 
 /*
  * Signal handling.

@@ -34,8 +34,8 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 #define	CLEAN_PENDING	2
 
 delta	*getRecord(FILE *f);
-int	extractPatch(char *name, FILE *p, int flags);
-int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags);
+int	extractPatch(char *name, FILE *p, int flags, int fast);
+int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int, int*);
 int	applyPatch(char *local, char *remote, int flags, sccs *perfile);
 int	getLocals(sccs *s, delta *d, char *name);
 void	insertPatch(patch *p);
@@ -44,20 +44,17 @@ FILE	*init(FILE *p, int flags);
 int	mkdirp(char *file);
 int	fileCopy(char *from, char *to);
 
-int	echo = 0;
-int	line;
-int	no;
-patch	*patchList = 0;
-int	files, remote, conflicts;
-int	newProject;
-MDBM	*idDB;
+int	echo = 0;	/* verbose level, higher means more diagnostics */
+int	line;		/* line number in the patch file */
+int	fileNum;	/* counter for the Nth init/diff file */
+patch	*patchList = 0;	/* list of patches for a file, list len == fileNum */
+int	conflicts;	/* number of conflicts over all files */
+int	newProject;	/* command line option to create a new repository */
+MDBM	*idDB;		/* key to pathname database, set by init or rebuilt */
 delta	*gca;		/* The oldest parent found in the patch */
-int	nfound;
 int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
-FILE	*input;
-int	fast;		/* skip idcache rebuilds for new files */
-int	resolve;
+FILE	*input;		/* input file pointer, either stdin or a patch file */
 
 int
 main(int ac, char **av)
@@ -66,7 +63,12 @@ main(int ac, char **av)
 	FILE	*p;
 	int	c;
 	int	flags = SILENT;
+	int	files = 0;
 	char	*t;
+	int	remote = 0;
+	int	resolve = 0;
+	int	fast = 0;	/* undocumented switch for scripts, 
+				 * skips cache rebuilds on file creates */
 
 	input = stdin;
 	debug_main(av);
@@ -103,7 +105,8 @@ usage:		fprintf(stderr, takepatch_help);
 			cleanup(CLEAN_RESYNC);
 		}
 		*t = 0;
-		extractPatch(&buf[3], p, flags);
+		files++;
+		remote += extractPatch(&buf[3], p, flags, fast);
 	}
 	fclose(p);
 	purify_list();
@@ -148,13 +151,14 @@ getRecord(FILE *f)
  * sent; it might be different than the local name.
  */
 int
-extractPatch(char *name, FILE *p, int flags)
+extractPatch(char *name, FILE *p, int flags, int fast)
 {
 	delta	*tmp;
 	sccs	*s = 0;
 	sccs	*perfile = 0;
 	int	newFile = 0;
 	char	*gfile;
+	int	nfound = 0;
 	static	int rebuilt = 0;	/* static - do it once only */
 	char	buf[1200];
 
@@ -175,7 +179,6 @@ extractPatch(char *name, FILE *p, int flags)
 	 * D 1.1 99/02/23 00:29:01-08:00 lm@lm.bitmover.com +128 -0
 	 * etc.
 	 */
-	files++;
 	fnext(buf, p); chop(buf);
 	line++;
 	name = name2sccs(name);
@@ -232,18 +235,18 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 		if (s->state & S_PFILE) {
 			fprintf(stderr, 
 			    "takepatch: %s is locked.\n", s->sfile);
-			exit(1);
+			cleanup(CLEAN_RESYNC);
 		}
 		unless (tmp = sccs_findKey(s, buf)) {
 			fprintf(stderr,
 			    "takepatch: can't find root delta '%s' in %s\n",
 			    buf, name);
-			exit(1);
+			cleanup(CLEAN_RESYNC);
 		}
 		unless (s->tree == tmp) {
 			fprintf(stderr,
 		    	"takepatch: root deltas do not match in %s\n", name);
-			exit(1);
+			cleanup(CLEAN_RESYNC);
 		}
 	} else {	/* create a new file */
 		/*
@@ -254,13 +257,9 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 		 * it is safe to assume there is no
 		 * name conflict for the ChangeSet file.
 		 */
-		if (streq(name, "SCCS/s.ChangeSet")) {
-			/*
-			 * If we are about to create a new ChangeSet file,
-			 * this better be the very first and only
-			 * ChangeSet file.
-			 */
-			assert(!exists("SCCS/s.ChangeSet"));
+		if (streq(name, "SCCS/s.ChangeSet") &&
+		    exists("SCCS/s.ChangeSet")) {
+			changesetExists();
 		}
 		if (echo > 2) {
 			fprintf(stderr,
@@ -268,11 +267,9 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 		}
 	}
 	gca = 0;
-	nfound = 0;
-	while (extractDelta(name, s, newFile, p, flags)) {
+	while (extractDelta(name, s, newFile, p, flags, &nfound)) {
 		if (newFile) newFile = 2;
 	}
-	remote += nfound;
 	gfile = sccs2name(name);
 	if (echo>1) {
 		fprintf(stderr, "takepatch: %3d new in %s ", nfound, gfile);
@@ -285,7 +282,7 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 	if (s) sccs_free(s);
 	free(gfile);
 	free(name);
-	return (0);
+	return (nfound);
 }
 
 int
@@ -310,7 +307,7 @@ sccscopy(sccs *to, sccs *from)
  * Deltas end on the first blank line.
  */
 int
-extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags)
+extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags, int *np)
 {
 	FILE	*t;
 	delta	*d, *parent = 0, *tmp;
@@ -356,7 +353,7 @@ delta:	off = ftell(f);
 		}
 		skip++;
 	} else {
-		no++;
+		fileNum++;
 	}
 	fseek(f, off, 0);
 	if (skip) {
@@ -368,7 +365,7 @@ delta:	off = ftell(f);
 		while (fnext(buf, f) && !streq("\n", buf)) line++;
 		line++;
 	} else {
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", no);
+		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", fileNum);
 		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
 			exit(0);
@@ -393,7 +390,7 @@ delta:	off = ftell(f);
 		p->localFile = s ? strdup(s->sfile) : 0;
 		sprintf(tmpf, "RESYNC/%s", name);
 		p->resyncFile = strdup(tmpf);
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", no);
+		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", fileNum);
 		p->diffFile = strdup(tmpf);
 		p->order = parent == d ? 0 : d->date;
 		if (echo>5) fprintf(stderr, "REM: %s %s %u\n", d->rev, p->me, p->order);
@@ -417,7 +414,7 @@ delta:	off = ftell(f);
 		line++;
 		if (echo>4) fprintf(stderr, "\n");
 		fclose(t);
-		nfound++;
+		(*np)++;
 		insertPatch(p);
 	}
 	sccs_freetree(d);
@@ -426,6 +423,18 @@ delta:	off = ftell(f);
 		return (c != '=');
 	}
 	return (0);
+}
+
+changesetExists()
+{
+	fprintf(stderr, 
+"You are trying to create a ChangeSet file in a repository which already has\n\
+one.  This usually means you are trying to apply a patch intended for a\n\
+different repository.  You can find the correct repository by running the\n\
+following command at the top of each repository until you get a match with\n\
+the changeset ID at the top of the patch:\n\
+    bk prs -hr1.0 -d:LONGKEY: ChangeSet\n\n");
+    	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
 noconflicts()
@@ -624,6 +633,13 @@ apply:
 		    localPath, remotePath, gcaPath, gca ? gca->rev : ""));
 		/* local != remote */
 		assert(gcaPath);
+		for (p = patchList; p; p = p->next) {
+			unless (p->flags & PATCH_LOCAL) continue;
+			assert(p->me);
+			d = sccs_findKey(s, p->me);
+			assert(d);
+			d->flags |= D_LOCAL;
+		}
 		conflicts +=
 		    sccs_resolveFile(s, localPath, gcaPath, remotePath);
 	}
@@ -646,7 +662,7 @@ apply:
 		p = next;
 	}
 	patchList = 0;
-	no = 0;
+	fileNum = 0;
 	if (gcaPath) free(gcaPath);
 	return (0);
 }
@@ -669,7 +685,7 @@ getLocals(sccs *s, delta *g, char *name)
 	}
 	for (d = s->table; d != g; d = d->next) {
 		assert(d);
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++no);
+		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
 		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
 			exit(0);
@@ -688,7 +704,7 @@ getLocals(sccs *s, delta *g, char *name)
 		p->localFile = strdup(name);
 		sprintf(tmpf, "RESYNC/%s", name);
 		p->resyncFile = strdup(tmpf);
-		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", no);
+		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", fileNum);
 		unless (d->flags & D_META) {
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
@@ -712,7 +728,6 @@ getLocals(sccs *s, delta *g, char *name)
 			    "LOCAL: %s %s %u\n", d->rev, p->me, p->order);
 		}
 		insertPatch(p);
-		nfound++;
 		n++;
 	}
 	return (n);
@@ -800,8 +815,8 @@ tree:
 		}
 		fclose(f);
 		chop(buf);
-		f = fopen("RESYNC/BitKeeper/tmp/patch", "r");
-		if (fnext(file, f)) {
+		if ((f = fopen("RESYNC/BitKeeper/tmp/patch", "r")) &&
+		    fnext(file, f)) {
 			chop(file);
 			fprintf(stderr,
 			    "takepatch: RESYNC dir locked by %s for patch %s\n",
@@ -893,6 +908,7 @@ the same as the software accepting the patch.  We were looking for\n\
 		f = p;
 	}
 	fnext(buf, f);		/* skip version number */
+	line = 1;
 
 	if (newProject) {
 		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {

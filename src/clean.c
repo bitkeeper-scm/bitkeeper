@@ -56,7 +56,7 @@ usage:		fprintf(stderr, clean_help);
 			exit(1);
 		}
 	} else {
-		name = sfileFirst("clean", &av[optind], SF_GFILE);
+		name = sfileFirst("clean", &av[optind], SF_DELETES|SF_GFILE);
 	}
 	while (name) {
 		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM))) {

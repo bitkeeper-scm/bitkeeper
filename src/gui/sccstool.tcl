@@ -611,7 +611,7 @@ proc widgets {} \
 	set background #9fb6b8
 	set geometry ""
 	set lineOpts ""
-	if {[file readable ~/.citoolrc]} {
+	if {[file readable ~/.sccstoolrc]} {
 		source ~/.sccstoolrc
 	}
 	if {"$geometry" != ""} {
@@ -623,13 +623,14 @@ proc widgets {} \
 		-pady $pady -text "Quit" -command done
 	    button .menus.help -font $bfont -width 7 -relief raised \
 		-pady $pady -text "Help" -command { exec bk bithelp sccs & }
-	    button .menus.new -font $bfont -width 7 -relief raised \
-		-pady $pady -text "Open" -command openFile
-	    button .menus.prev -font $bfont -width 7 -relief raised \
-		-pady $pady -text "Prev" -state disabled -command "next -1"
-	    button .menus.next -font $bfont -width 7 -relief raised \
-		-pady $pady -text "Next" -command "next 1"
-	    pack .menus.new .menus.help .menus.quit .menus.prev .menus.next -side left
+#	    button .menus.new -font $bfont -width 7 -relief raised \
+#		-pady $pady -text "Open" -command openFile
+#	    button .menus.prev -font $bfont -width 7 -relief raised \
+#		-pady $pady -text "Prev" -state disabled -command "next -1"
+#	    button .menus.next -font $bfont -width 7 -relief raised \
+#		-pady $pady -text "Next" -command "next 1"
+#	    pack .menus.new .menus.help .menus.quit .menus.prev .menus.next -side left
+	    pack .menus.help .menus.quit -side right
 
 	frame .info
 	    label .info.l -pady $pady -font $bfont -width 73 -relief groove
@@ -751,7 +752,6 @@ proc sccstool {name} \
 {
 	global	file bad revX revY cmd_text
 
-	
 	.p.top.c delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
@@ -768,4 +768,7 @@ widgets
 if {"$argv" != ""} {
 	set next 0
 	sccstool [lindex $argv $next]
+} else {
+	puts "Usage: sccstool file"
+	exit
 }
