@@ -18,8 +18,20 @@ private	void	freelog(void);
 private	delta	*list, **sorted;
 private	int	n;
 private	int	pflag;		/* do basenames */
-private	int	Cflg;		/* comments for changesets */
+private	int	Cflg;		/* comment format used by bk resolve */
 private	int	Aflg;		/* select all uncomitted deltas in a file */
+private	int	fflg;		/*
+				 * factor out common comments from 
+				 * different delta
+				 */
+
+private int isBlank(char *p);
+private char **str2line(char **lines, char *prefix, char *str);
+private char *line2str(char **comments);
+private char **db2line(MDBM *db);
+private int sameStr(char *s1, char *s2);
+private void saveComment(MDBM *db, char *rev, char *comment_str, char *gfile);
+private void freeComment(MDBM *db);
 
 int
 sccslog_main(int ac, char **av)
@@ -36,10 +48,11 @@ sccslog_main(int ac, char **av)
 		system("bk help sccslog");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "ACc;i;pr|v")) != -1) {
+	while ((c = getopt(ac, av, "ACc;fi;pr|v")) != -1) {
 		switch (c) {
 		    case 'A': Aflg++; break;			/* doc 2.0 */
 		    case 'C': Cflg++; break;			/* doc 2.0 */
+		    case 'f': fflg++; break;
 		    case 'i': indent = atoi(optarg); break;	/* doc 2.0 */
 		    case 'p': pflag++; break;			/* doc 2.0 */
 		    case 'v': flags &= ~SILENT; break;		/* doc 2.0 */
@@ -118,8 +131,33 @@ sortlog(int flags)
 	verbose((stderr, "done.\n"));
 }
 
+private void
+printConsolidatedLog(int indent)
+{
+	int	i, j;
+	delta	*d;
+	MDBM	*db = mdbm_mem();
+	char	**lines;
+
+	assert(db);
+	for (j = 0; j < n; ++j) {
+		d = sorted[j];
+		unless (d->type == 'D') continue;
+		unless (d->comments) continue;
+		saveComment(db, d->rev, line2str(d->comments), d->pathname);
+	}
+
+	lines = db2line(db);
+	
+	EACH (lines) {
+		printf("%s\n", lines[i]);
+	}
+	freeLines(lines);
+	freeComment(db);
+}
+
 private	void
-printlog(int indent)
+printSortedLog(int indent)
 {
 	int	i, j;
 	delta	*d;
@@ -155,6 +193,16 @@ printlog(int indent)
 			printf("  %s\n", d->comments[i]);
 		}
 		printf("\n");
+	}
+}
+
+private	void
+printlog(int indent)
+{
+	if (fflg) {
+		printConsolidatedLog(indent);
+	} else {
+		printSortedLog(indent);
 	}
 }
 
@@ -250,4 +298,215 @@ freelog()
 		sccs_freetree(d);
 	}
 	if (sorted) free(sorted);
+}
+
+
+
+
+
+
+/*
+ * This code below is gotten from findcset.c in the 2.1 dev tree
+ */
+#define EACH_KV(d)      for (kv = mdbm_first(d); \
+					 kv.key.dsize; kv = mdbm_next(d))
+
+/*
+ * Return true if blank line
+ */
+private int
+isBlank(char *p)
+{
+	while (*p) {
+		unless (isspace(*p++))  return (0);
+	}
+	return (1);
+}
+
+/*
+ * Convert a string into line array
+ */
+private char **
+str2line(char **lines, char *prefix, char *str)
+{
+	char	*p, *q;
+
+	q = p = str;
+	while (1) {
+		if (!*q) {
+			if ((&q[-1] >= str) && (q[-1] != '\n')) {
+				lines = addLine(lines,
+						aprintf("%s%s", prefix, p));
+			}
+			break;
+		}
+		if (*q == '\n') {
+			*q = 0;
+			lines = addLine(lines, aprintf("%s%s", prefix, p));
+			*q++ = '\n';
+			p = q;
+		} else {
+			q++;
+		}
+	}
+	return (lines);
+}
+
+/*
+ * Convert line array into a regular string
+ */
+private char *
+line2str(char **comments)
+{
+	int	i, len = 0;
+	char	*buf, *p, *q;
+
+	EACH(comments) {
+		len += strlen(comments[i]) + 1;
+	}
+
+	p = buf = malloc(++len);
+	EACH(comments) {
+		q = comments[i];
+		if (isBlank(q)) continue; /* skip blank line */
+		while (*q) *p++ = *q++;
+		*p++ = '\n';
+	}
+	*p = 0;
+	assert(buf + len > p);
+	return (buf);
+}
+
+/*
+ * Convert cset commnent strore in a mdbm into lines format
+ */
+private char **
+db2line(MDBM *db)
+{
+	kvpair	kv;
+	char	**lines = 0;
+	char	*comment, *gfiles, *lastg, *p, *q;
+	char	*many = "Many files:";
+	int	i, len = 0;
+	MDBM	*gDB;
+
+	lastg = "";
+	EACH_KV(db) {
+		/*
+		 * Compute length of file list
+		 */
+		comment = kv.key.dptr;
+		memcpy(&gDB, kv.val.dptr, sizeof (MDBM *));
+		len = 0;
+		EACH_KV(gDB) {
+			len += strlen(kv.key.dptr) + 2;
+		}
+		len += 2;
+
+		/*
+		 * Extract gfile list and set it as the section header
+		 * Skip gfile list if too long
+		 */
+		if (len <= 80) {
+			p = gfiles = malloc(len);
+			i = 1;
+			EACH_KV(gDB) {
+				q = kv.key.dptr;
+				if (i++ > 1) {
+					*p++ = ',';
+					*p++ = ' ';
+				}
+				while (*q) *p++ = *q++;
+			}
+			*p++ = ':';
+			*p = 0;
+			assert(gfiles + len > p);
+
+		} else {
+			gfiles = strdup(many);
+		}
+
+		/*
+		 * If gfile list is same as previous, skip
+		 */
+		if (!streq(lastg, gfiles)) {
+			lines = addLine(lines, gfiles);
+		}
+		lastg = gfiles;
+
+		/*
+		 * Now extract the comment block
+		 */
+		lines = str2line(lines, "  ", comment);
+	}
+	return (lines);
+}
+
+/*
+ * Return TURE if s1 is same as s2
+ */
+private int
+sameStr(char *s1, char *s2)
+{
+	if (s1 == NULL) {
+		if (s2 == NULL) return (1);
+		return (0);
+	}
+
+	/* When we get here, s1 != NULL */
+	if (s2 == NULL) return (0);
+
+	/* When we get here, s1 != NULL && s2 != NULL */
+	return (streq(s1, s2));
+}
+
+
+
+/*
+ * We dump the comments into a mdbm to factor out repeated comments
+ * that came from different files.
+ */
+private void
+saveComment(MDBM *db, char *rev, char *comment_str, char *gfile)
+{
+	datum	k, v, tmp;
+	MDBM	*gDB = 0;
+	int	ret;
+
+#define	BK_REV_1_0_DEFAULT_COMMENT	"BitKeeper file "
+
+	if (isBlank(comment_str)) return;
+	if ((streq("1.0", rev)) &&
+	    strneq(BK_REV_1_0_DEFAULT_COMMENT, comment_str, 15)) {
+		comment_str = "new file";
+	}
+
+	k.dptr = (char *) comment_str;
+	k.dsize = strlen(comment_str) + 1;
+	tmp = mdbm_fetch(db, k);
+	if (tmp.dptr) memcpy(&gDB, tmp.dptr, sizeof (MDBM *));
+	unless (gDB) gDB = mdbm_mem();
+	ret = mdbm_store_str(gDB, basenm(gfile), "", MDBM_INSERT);
+	/* This should work, or it will be another file with the same
+	 * basename.
+	 */
+	assert(ret == 0 || (ret == 1 && errno == EEXIST));
+	unless (tmp.dptr) {
+		v.dptr = (char *) &gDB;
+		v.dsize = sizeof (MDBM *);
+		ret = mdbm_store(db, k, v, MDBM_REPLACE);
+	}
+}
+
+private void
+freeComment(MDBM *db)
+{
+	kvpair	kv;
+	MDBM	*gDB;
+
+	EACH_KV(db) {
+		memcpy(&gDB, kv.val.dptr, sizeof (MDBM *));
+		mdbm_close(gDB);
+	}
+	mdbm_close(db);
 }
