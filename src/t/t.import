@@ -20,7 +20,7 @@ echo foo > X
 bk undos X > import_dir/src/foo.c
 rm -f X
 touch import_dir/src/boo.c
-trap 'echo failed; cat $HERE/import.out' 0
+trap 'echo some command failed to exit 0; cat $HERE/import.out' 0
 set -e
 ( echo plain; echo no ) | bk import import_dir project > import.out 2>&1
 cd $HERE/project/src
@@ -45,7 +45,7 @@ touch import_dir/src/boo.c
 cd import_dir/src
 ln -s foo.c link
 cd $HERE
-trap 'echo failed; cat $HERE/import.out' 0
+trap 'echo some command failed to exit 0; cat $HERE/import.out' 0
 set -e
 ( echo plain; echo no ) | bk import import_dir symlink > import.out 2>&1
 cd $HERE/symlink/src
@@ -131,3 +131,55 @@ echo OK
 fi   #----------------------------------------------------------------
 set +e
 trap '' 0
+
+cd $HERE
+rm -rf project A B
+echo $N Create initial repository ...................................$NL
+echo "logging: logging@openlogging.org" > $HERE/c
+echo "logging_ok: a@b" >> $HERE/c
+echo "logging_ok: b@b" >> $HERE/c
+echo "logging_ok: c@b" >> $HERE/c
+echo "logging_ok: d@b" >> $HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c
+echo "email:		nobody@nowhere.bk" >> $HERE/c
+bk setup -f -c$HERE/c project
+cd project 
+touch BitKeeper/etc/SCCS/x.marked
+ls > LS
+bk new $Q LS
+bk _loggingaccepted
+bk commit $Q -ywhatever 
+echo OK
+
+echo $N Import a patch which deletes the logging_ok file ............$NL
+bk export $HERE/A
+bk export $HERE/B
+cd $HERE
+rm B/BitKeeper/etc/logging_ok
+diff -Nur A B > P
+rm -rf SAVE
+cp -rp project SAVE
+echo no | bk import $Q -tpatch P project > OUT 2>&1
+grep -q 'Bitkeeper is aborting this commit' OUT || {
+	echo failed to produce error message
+	cat OUT
+	exit 1
+}
+cd $HERE
+echo yes | bk import $Q -tpatch P SAVE > OUT 2>&1
+grep -q 'Creating changeset for P' OUT || {
+	echo failed to produce OK message
+	cat OUT
+	exit 1
+}
+cd SAVE/BitKeeper
+test -f deleted/SCCS/s..del-logging_ok || {
+	echo failed to delete logging ok file
+	find .
+	exit 1
+}
+test -f etc/SCCS/s.logging_ok || {
+	echo failed to create logging ok file
+	exit 1
+}
+echo OK
