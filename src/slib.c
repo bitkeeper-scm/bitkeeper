@@ -10198,6 +10198,18 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			    me, sym);
 			goto sym_err;
 		}
+		if (strchr(sym, ',')) {
+			verbose((stderr,
+				    "%s: symbol %s cannot contain ','\n",
+				    me, sym));
+			goto sym_err;
+		}
+		if (strstr(sym, "..")) {
+			verbose((stderr,
+				    "%s: symbol %s cannot contain '..'\n",
+				    me, sym));
+			goto sym_err;
+		}			
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
