@@ -133,7 +133,7 @@ private	void
 bkd_server()
 {
 	fd_set	fds;
-	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
+	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT, Opts.quiet);
 	remote	r;
 	int	maxfd;
 	time_t	now;
@@ -190,10 +190,6 @@ bkd_server()
 				} else if (req[0] == 'S') {
 					/* set license: usage is Sddd */
 					req[4] = 0;
-					fprintf(stderr,
-					    "license expires in %d minutes\n",
-					    atoi(1+req));
-
 					licenseEnd = now + (60*atoi(1+req));
 				}
 			}
@@ -607,7 +603,28 @@ ids(char *uid)
 private void
 requestWebLicense()
 {
-	fprintf(stderr, "requestWebLicense (ha ha you lose)\n");
-	/* later on this will set a flag, fork off, and send a web page
-	 * to somewhere @bitmover */
+
+#define LICENSE_HOST	"india.pell.portland.or.us"
+#define	LICENSE_PORT	80
+#define LICENSE_REQUEST	"/request-license"
+
+	int f;
+	char buf[MAXPATH];
+	extern char *url(char*);
+
+	time(&requestEnd);
+	requestEnd += 60;
+
+	if (fork() == 0) {
+		if ((f = tcp_connect(LICENSE_HOST, LICENSE_PORT)) != -1) {
+			sprintf(buf, "GET %s?license=%s:%u\n\n",
+			    LICENSE_REQUEST,
+			    sccs_gethost(), Opts.port);
+			write(f, buf, strlen(buf));
+			read(f, buf, sizeof buf);
+			close(f);
+		}
+
+		exit(0);
+	}
 }
