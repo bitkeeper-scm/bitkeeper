@@ -183,11 +183,11 @@ if [ -f p..del-G ]; then echo Failed to rm p..del-G; exit 1; fi
 echo OK
 echo $N Test bk rmdir ...............................................$NL
 date > B/B1/fileB2
-bk rmdir B | grep -q "unchecked"
+bk rmdir B | grep "unchecked" > /dev/null
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk delta $Q -i -l B/B1/fileB2
 echo new > B/B1/fileB2
-bk rmdir B | grep -q "edited"
+bk rmdir B | grep "edited" > /dev/null
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk delta $Q -y B/B1/fileB2
 bk rmdir B
