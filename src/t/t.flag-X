@@ -31,6 +31,8 @@ bk clean test_script.sh
 bk co $Q test_script.sh
 if [ -f CMP1 ]; then echo failed; exit 1; fi
 echo OK
+
+test "$PLATFORM" != "WIN32" && {
 echo $N Test symlink create .........................................$NL
 echo "xx" > symfile
 ln -s symfile symlink
@@ -46,4 +48,5 @@ diff symfile file > /dev/null
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 rm -rf file symfile symlink SCCS
-
+}
+exit 0

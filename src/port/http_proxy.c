@@ -180,8 +180,8 @@ char **
 _get_http_proxy_reg(char **proxies)
 {
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\internet Settings"
-	char	*p, *q, *type, buf[MAXLINE] = "", proxy_host[MAXPATH];
-	int	proxy_port, len = sizeof(buf);
+	char	*p, *q, buf[MAXLINE] = "";
+	int	len = sizeof(buf);
 	int	proxyEnable = 0;
 
 	if (getRegDWord(HKEY_CURRENT_USER,

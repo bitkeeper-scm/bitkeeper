@@ -29,7 +29,7 @@ mnext(register MMAP *m)
 	register char	*s, *p;
 	register int	text_mode = 1;
 	static char *buf = 0;
-	static buf_size = 0;
+	static int buf_size = 0;
 
 	assert(m);
 	if (m->where >= m->end) return (0);

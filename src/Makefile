@@ -5,19 +5,25 @@ REPO    := $(shell basename `bk root`)
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
+
 ifeq "$(OSTYPE)" "cygwin"
 	SYS=win32
 	EXE=.exe
 	XTRA=win32
-	STRIP=true
 	BKLINK=bklink.exe
+	UWT=win32/uwtlib
+	UWTLIB=$(UWT)/libuwt.a
+	UWT_H=$(patsubst %,win32/uwtlib/%.h, \
+		dirent misc re_map sys/wait stat utsname ftw \
+	 	mman re_map_decl times)
+	W32LIBS=-lws2_32 -lole32
 else
 	SYS=unix
 	EXE=
 	XTRA=gnu
-	STRIP=strip
 	BKLINK=
 endif
+STRIP=strip
 
 # You can set this to anywhere you like and do a "build production" and you'll
 # have an installed BitKeeper.
@@ -55,9 +61,6 @@ CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$G -DLINT $(WARNINGS)
 INSTALL=install
-#UWTLIB is used on win32 only - passed in from build.sh
-UWTLIB	=
-UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
 BINS	= $(BK)
 RESOURCE=
@@ -135,7 +138,6 @@ SCRIPTS	= applypatch bk.script import resync \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
 PSCR	= t/doit
-UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
@@ -146,7 +148,6 @@ CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
 	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
 CPPFLAGS= -Izlib -Imdbm
 # For extra libraries required by the system, e.g. libnsl.
-XLIBS	=
 LINK_LIB= $(XLIBS) $(LSCCS) $(LMDBM) $(LZLIB) $(LTOMCRYPT)
 LSCCS	= -L. -lsccs
 LMDBM	= -Lmdbm -lmdbm
@@ -337,8 +338,8 @@ gnu: $(BK) FORCE
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
-win32/uwtlib/libuwt.a: FORCE
-	cd win32/uwtlib && $(MAKE) 
+$(UWT)/libuwt.a: FORCE
+	cd $(UWT) && $(MAKE) 
 zlib/libz.a: $(ZLIBOBJ)
 	rm -f $@
 	$(AR) cr zlib/libz.a $(ZLIBOBJ)
@@ -363,10 +364,11 @@ bk.res: win32/data/bk.rc win32/data/bk.ico
 	rc.exe -fo bk.res -r win32/data/bk.rc
 
 bklink.exe: bklink.c
-	$(CC) bklink.c
+	$(CC) $(CFLAGS) -c bklink.c
+	$(LD) $(LDFLAGS) $(LD_OUT) bklink.o $(W32LIBS)
 
 $(BK): bk.o $(LIBS) $(RESOURCE)
-	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
+	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LIBS) $(W32LIBS) $(RESOURCE)
 
 testfast: testfast.perl
 	rm -f testfast
@@ -384,7 +386,7 @@ bkmsg.txt: bkmsg.doc bk.ver Makefile
 
 bkhelp.txt: build FRC
 	@bk get -S ../man/man2help/Makefile
-	@cd ../man/man2help && ../../src/build -u helptxt
+	@cd ../man/man2help && ../../src/build helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 ../doc/bk_refcard.pdf: build FRC

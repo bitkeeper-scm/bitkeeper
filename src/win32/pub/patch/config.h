@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <io.h>
@@ -42,11 +43,12 @@
 #define PARAMS(args)	args
 #define popen(c, m)	safe_popen(c, m)
 #define pclose(f)	safe_pclose(f)
-#define	strncasecmp(a, b, n) stricmp(a, b, n)
+#define	strncasecmp(a, b, n) strnicmp(a, b, n)
 
 #define malloc(a)	rpl_malloc(a)
 #define realloc(p, n)	rpl_realloc(p, n)
+#define	mkdir(f, m)	nt_mkdir(f)
 
 #define HAVE_MKTEMP	1
-
-typedef int mode_t;
+#define HAVE_VPRINTF	1
+#define	HAVE_STRERROR	1

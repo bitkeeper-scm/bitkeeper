@@ -223,7 +223,7 @@ bk diff --ignore-trailing-cr a b > DIFF || {
 	cat DIFF
 	exit 1
 }
-echo '' > b
+printf "\r\n" > b
 bk diff --ignore-trailing-cr a b > DIFF || {
 	echo Fail simple
 	echo output of diff:
@@ -236,7 +236,7 @@ bk diff --ignore-trailing-cr b a > DIFF || {
 	cat DIFF
 	exit 1
 }
-echo '' > b
+printf "\r\r\n" > b
 bk diff --ignore-trailing-cr a b > DIFF || {
 	echo Fail multiple cr
 	echo output of diff:
@@ -249,8 +249,8 @@ bk diff --ignore-trailing-cr b a > DIFF || {
 	cat DIFF
 	exit 1
 }
-echo 'a' > a
-echo 'a' > b
+printf "\ra\r\n" > a
+printf "\r\ra\r\n" > b
 bk diff -q --ignore-trailing-cr a b > DIFF && {
 	echo Fail multiple cr
 	echo output of diff:
@@ -263,10 +263,10 @@ bk diff -q --ignore-trailing-cr b a > DIFF && {
 	cat DIFF
 	exit 1
 }
-echo 'a' > a
+printf "\ra\r\n" > a
 bk new $Q a
 bk edit $Q a
-echo 'a' > a
+printf "\ra\r\r\r\n" > a
 bk clean $Q a || {
 	echo Fail clean
 	exit 1
@@ -309,8 +309,8 @@ cmp -s DIFF CMP || {
 	cat DIFF
 	exit 1
 }
-echo this is a xax text '' > a
-echo this is b xbx text '' > b
+printf "this is a xax text \r\r\r\n" > a
+printf "this is b xbx text \r\n" > b
 bk diff --ignore-to-str='x ' --ignore-trailing-cr a b > DIFF || {
 	echo Fail
 	echo Same string with ignore-trailing set

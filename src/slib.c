@@ -16440,8 +16440,8 @@ smartRename(char *old, char *new)
 int
 smartMkdir(char *dir, mode_t mode)
 {
-	if (isdir(dir)) return 0;
-	return ((mkdir)(dir, mode));
+	if (isdir(dir)) return (0);
+	return (realmkdir(dir, mode));
 }
 
 #if	defined(linux) && defined(sparc)

@@ -13,11 +13,7 @@
 
 #define	uchar	unsigned char
 #define	OUTPUT	"_data.c"
-#ifdef	WIN32
-#define	OBJ	"_data.obj"
-#else
 #define	OBJ	"_data.o"
-#endif
 
 /*
  * Layout in _data.c
@@ -141,14 +137,8 @@ main(int ac, char **av)
 	d_size = setup(out, "data", data);
 	close(out);
 
-#ifdef WIN32
-	sprintf(buf,
-	    "cl -c -W0 -O2 -G3 -Og -Oi -Oy -DWIN32 -D_WIN32 "
-	    "-D_MT -D_DLL -MD %s ", OUTPUT); 
-#else
 	if (!(cc = getenv("CC"))) cc = "cc";
 	sprintf(buf, "%s -c %s", cc, OUTPUT);
-#endif
 	system(buf);
 	out = open(OBJ, 2, 0);
 	setmode(out, _O_BINARY);

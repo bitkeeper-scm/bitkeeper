@@ -1962,7 +1962,7 @@ resync_lock(void)
 	 * Note: we need the real mkdir, not the so called smart one, we need
 	 * to fail if it exists.
 	 */
-	if ((mkdir)("RESYNC", 0777)) {
+	if (realmkdir("RESYNC", 0777)) {
 		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
 		repository_lockers(0);
 		cleanup(0);

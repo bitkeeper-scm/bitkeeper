@@ -198,9 +198,10 @@ setup_env()
 	if [ -x $OSTYPE ]; then OSTYPE=`uname -s`; fi
 	case X$OSTYPE in
 	    Xcygwin|Xcygwin32|XCYGWIN*)
-		win32_common_setup
-		BK_BIN=`cd .. && ./bk pwd -sc`
+		BK_BIN=`cd .. && ./bk pwd -s`
+		BK_BIN=`cygpath $BK_BIN`
 		PATH=/bin:$BK_BIN:$PATH
+		win32_common_setup
 		check_mount_mode
 		check_path
 		;;

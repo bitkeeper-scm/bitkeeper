@@ -9,7 +9,7 @@
 char *
 getHomeDir(void)
 {
-        char	*homeDir, *t;
+        char	*homeDir;
 	char	home_buf[MAXPATH], tmp[MAXPATH];
 	int	len = MAXPATH;
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"

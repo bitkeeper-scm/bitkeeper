@@ -218,14 +218,13 @@ bkd_server(char **not_used)
 static SERVICE_STATUS		srvStatus;
 static SERVICE_STATUS_HANDLE	statusHandle;
 static HANDLE			hServerStopEvent = NULL;
-static int			err_num = 0;
 static char			err[256];
 int				bkd_quit = 0; /* global */
 
 static void WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
 static char *getError(char *buf, int len);
 void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
-void bkd_remove_service();
+void bkd_remove_service(int verbose);
 void bkd_install_service(bkdopts *opts, char **xcmds);
 void bkd_start_service(void (*service_func)(int, char**));
 void logMsg(char *msg);
@@ -236,7 +235,7 @@ void
 bkd_service_loop(int ac, char **av)
 {
 	SOCKET	sock = 0;
-	int	i, j, n, err = 0;
+	int	i, j, n;
 	char	pipe_size[50], socket_handle[20];
 	char	*bkd_av[100] = {
 		"bk", "_socket2pipe",
@@ -245,7 +244,7 @@ bkd_service_loop(int ac, char **av)
 		"bk", "bkd", "-z",	/* bkd command */
 		0};
 	extern	int bkd_quit; /* This is set by the helper thread */
-	extern	int bkd_register_ctrl();
+	extern	int bkd_register_ctrl(void);
 	extern	void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
 	extern	void logMsg(char *);
 	SERVICE_STATUS_HANDLE   sHandle;
@@ -368,7 +367,7 @@ bkd_install_service(bkdopts *opts, char **xcmds)
 
 	char	path[1024], here[1024];
 	char	*start_dir, *cmd, *p, *q;
-	int	i, j, len, try = 0;
+	int	i, len, try = 0;
 
 	if (GetModuleFileName(NULL, path, sizeof(path)) == 0) {
 		fprintf(stderr, "Unable to install %s - %s\n",
@@ -574,7 +573,7 @@ helper(LPVOID param)
 }
 
 int
-bkd_register_ctrl()
+bkd_register_ctrl(void)
 {
 	DWORD threadId;
 	/*
