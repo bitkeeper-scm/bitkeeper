@@ -136,9 +136,9 @@ proc license_check {}  \
 	if {[info exist bkaccepted]} {
 		#puts "exist bkaccepted"
 		if {[catch {open $bkaccepted w} fid]} {
-			puts stderr "Cannot open $bkaccepted"
+			puts "Cannot open $bkaccepted"
 		} else {
-			#puts stderr "touching .bkaccepted"
+			#puts "touching .bkaccepted"
 			puts $fid "ACCEPTED"
 			catch { close $fid }
 	    	}
@@ -157,7 +157,7 @@ proc save_config_info {} \
 
 	#puts "Writing config file: $env(HOME)"
 	if {[catch {open $st_g(bkrc) w} fid]} {
-		puts stderr "Cannot open $st_g(bkrc)"
+		puts "Cannot open $st_g(bkrc)"
 	} else {
 		foreach el [lsort [array names st_cinfo]] {
 			puts $fid "${el}: $st_cinfo($el)"
@@ -608,7 +608,7 @@ name contains spaces, please put the name in quotes.\nFor example:\n\tbk setupto
 
 	tkwait variable st_dlg_button
 	if {$st_dlg_button != 0} {
-		puts stderr "Cancelling creation of repository"
+		puts "Cancelling creation of repository"
 		exit
 	}
 	if {[create_repo] == 0} {
