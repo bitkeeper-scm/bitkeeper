@@ -161,6 +161,10 @@ ok_commit(int l, c_opts opts)
 		return (0);
 	}
 
+	if ((l & (LOG_OPEN|LOG_OK)) == (LOG_OPEN|LOG_OK)) {
+		return (1);
+	}
+
 	/*
 	 * We're interactive so it is OK to ask if we need to.
 	 */
