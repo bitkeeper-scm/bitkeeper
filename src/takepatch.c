@@ -196,9 +196,9 @@ extractPatch(FILE *p, int flags)
 		}
 		remote += nfound;
 	}
-	free(gfile);
-	sccs_free(s);
 	applyPatch(flags);
+	sccs_free(s);
+	free(gfile);
 	free(name);
 	return (0);
 }
@@ -372,6 +372,7 @@ applyPatch(int flags)
 		exit(1);
 	}
 	assert(gca);
+	assert(gca->rev);
 	if (sccs_rmdel(s, gca->rev, 1, 0)) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "rmdel of %s failed.\n", p->resyncFile);

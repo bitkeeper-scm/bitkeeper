@@ -40,13 +40,14 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "il;L;sS;y|")) != -1) {
+	while ((c = getopt(ac, av, "il;L;psS;y|")) != -1) {
 		switch (c) {
 		    case 'i':
 			flags |= EMPTY|NEWFILE; 
 		    	break;
 		    case 'l': list = 1; rev = optarg; break;
 		    case 'L': list = 2; rev = optarg; break;
+		    case 'p': flags|= PRINT; break;
 		    case 's': flags |= SILENT; break;
 		    case 'y':
 			flags |= DONTASK;
