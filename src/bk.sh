@@ -574,6 +574,11 @@ _tag() {
 	${BIN}admin -S${1}$REV ChangeSet
 }
 
+_keys() {
+	_cd2root
+	${BIN}sfiles -k
+}
+
 # usage: gone key [key ...]
 _gone() {
 	_cd2root
@@ -1204,7 +1209,7 @@ _commandHelp() {
 		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
 		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
 		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
-		    csettool|difftool|merging|tag|gone|chmod)
+		    csettool|difftool|merging|tag|gone|chmod|keys)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		    *)
@@ -1348,7 +1353,7 @@ case "$1" in
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
     pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics|chmod|gone|tag)
+    topics|chmod|gone|tag|keys)
 	cmd=$1
     	shift
 	_$cmd "$@"

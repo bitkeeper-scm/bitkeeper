@@ -59,7 +59,6 @@ echo $N Check permission conflict ...................................$NL
 cd $HERE/project/src
 admin -m-rwxr----- foo.c
 bk commit $S -yperm2
-nextsecond
 cd $HERE/copy/src
 admin -m-rwx-w---- foo.c
 bk commit $S -yperm3

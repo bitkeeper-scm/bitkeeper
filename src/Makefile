@@ -32,7 +32,7 @@ RANLIB	= ranlib
 
 SCCSOBJ	= dirname.o filecopy.o getopt.o gettemp.o glob.o libdiff.o librange.o \
 	  libsfiles.o localtm.o mkdir.o mmap.o newrev.o popen.o purify.o      \
-	  rcs.o sccs_mv.o slib.o zgets.o
+	  rcs.o sccs_mv.o slib.o zgets.o unique.o findbin.o
 PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
 	  port/disksp.o
@@ -177,7 +177,9 @@ TAGS: srcs
 	@echo etags completed
 
 test tests: $(ALL) t/doit
-	-get -q t/SCCS/s.t.* t/setup t/cleanup
+	@if [ ! -d tmp ]; then mkdir tmp; fi
+	@rm -f tmp/keys
+	-@get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars

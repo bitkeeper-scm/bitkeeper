@@ -866,18 +866,57 @@ sccs_fixDates(sccs *s)
 void
 fixNewDate(sccs *s)
 {
-	delta *next, *d;
+	delta	*next, *d;
+	time_t	last;
+	char	buf[MAXPATH+100];
 
 	d = s->table;
 	assert(!d->dateFudge);
 	unless (d->date) (void)getDate(d);
-	next = d->next;
-	unless (next) return;
+
+	/*
+	 * This is kind of a hack.  We aren't in BK mode yet we are fudging.
+	 * It keeps BK happy, I guess.
+	 */
+	unless (s->state & S_BITKEEPER) {
+		unless (next = d->next) return;
+		while (next->date >= d->date) {
+			d->date++;
+			d->dateFudge++;
+		}
+		return;
+	}
+
+	uniq_open();
+	sccs_sdelta(s, sccs_ino(s), buf);
+	/*
+	 * If we are the first delta, make sure our key doesn't exist.
+	 */
+	unless (next = d->next) {
+		while (uniq_root(buf)) {
+//fprintf(stderr, "COOL: caught a duplicate root: %s\n", buf);
+			d->dateFudge++;
+			d->date++;
+			sccs_sdelta(s, d, buf);
+		}
+		uniq_update(buf, d->date);
+		uniq_close();
+		return;
+	}
 	assert(next->date);
 	if (d->date <= next->date) {
 		d->dateFudge = (next->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
+	if ((last = uniq_time(buf)) && (last >= d->date)) {
+//fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
+		while (d->date <= last) {
+			d->date++;
+			d->dateFudge++;
+		}
+	}
+	uniq_update(buf, d->date);
+	uniq_close();
 }
 
 
@@ -5380,6 +5419,10 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 		}
 
 		assert(d->date);
+		/*
+		 * XXX Whoa, nelly.  This is wrong, we must allow these if
+		 * we are doing a takepatch.
+		 */
 		if (d->parent && (s->state & S_BITKEEPER) &&
 		    (d->date <= d->parent->date)) {
 		    	s->state |= S_READ_ONLY;
@@ -6516,7 +6559,7 @@ updatePending(sccs *s, delta *d)
 }
 
 /*
- * Check in initial gfile.
+ * Check in initial sfile.
  *
  * XXX - need to make sure that they do not check in binary files in
  * gzipped format - we can't handle that yet.
@@ -6674,7 +6717,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs)
 		}
 	}
 	if (flags & DELTA_HASH) s->state |= S_HASH;
-	if (delta_table(s, sfile, 1, 1)) {
+	if (delta_table(s, sfile, 1, (flags & DELTA_PATCH) == 0)) {
 		error++;
 		goto abort;
 	}
@@ -9934,6 +9977,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			return (strVal);
 		}
 		return (nullVal);
+	}
+
+	if (streq(kw, "TIME_T")) {
+		char	buf[20];
+
+		sprintf(buf, "%d", (int)d->date);
+		fs(buf);
+		return (strVal);
 	}
 
 	if (streq(kw, "UTC")) {

@@ -443,8 +443,6 @@ done
 bk commit $S -yab << EOF > /dev/null 2>&1
 y
 EOF
-# make sure the time stamp is different
-nextsecond
 cd $HERE/copy/src
 for i in bbb.c ccc.c
 do

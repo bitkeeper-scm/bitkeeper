@@ -1,0 +1,32 @@
+[Thu Oct 14 13:57:29 PDT 1999]
+
+In order to ensure that delta keys are unique, we're going to try the following:
+
+Create in $BK_BIN/tmp/keys.mdbm an mdbm where db{ROOTKEY} = timestamp
+of TOT if the timestamp is less than CLOCK_DRIFT seconds ago, again only
+for those keys created on this host.
+
+The database is updated whenever we create a delta, and whenever we resolve
+incoming work.
+
+Note that the list is not going to grow without bound - we are only
+interested in keys which were created on this host, and for timestamp
+values in the last CLOCK_DRIFT seconds.  We'll start out with a
+CLOCK_DRIFT of 48 hours and see if we need to shrink it.  The 48 hours
+is because sometimes people screw up their daylight savings time plus
+a generous amount of slop.
+
+LOCKING
+-------
+
+The rules for locking are:
+
+    1) the lock file is $BK_BIN/tmp/keys.lock
+    2) the lock file contains the pid (in ascii) of the process locking the db
+    3) if the pid is gone, the lock is broken
+
+GOTCHAS
+-------
+
+Have citool be sure it can find BK_BIN before taking in any comments on 
+BK files.
