@@ -40,7 +40,12 @@ chk_host()
 	if (host && strchr(host, '.') && !strneq(host, "localhost", 9)) {
 		return (0);
 	}
-	fprintf(stderr, "sane: bad host name: %s\n", host ? host : "<empty>");
+	fprintf(stderr,
+"=============================================================================\n"
+"sane: bad host name: \"%s\". BitKeeper wants a fully qualified hostname. Names\n"
+"such as \"localhost.*\" is also illegal.\n"
+"=============================================================================\n",
+	host ? host : "<empty>");
 	return (1);
 }
 
