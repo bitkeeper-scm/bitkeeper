@@ -2419,7 +2419,7 @@ unapply(FILE *f)
 	rewind(f);
 	while (fnext(buf, f)) {
 		chop(buf);
-		unlink(buf);	// XXX -> rm_sfile()
+		rm_sfile(buf);
 	}
 	fclose(f);
 }
@@ -2435,7 +2435,9 @@ restore(opts *o)
 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\
 Your repository is only partially restored.   This is an error.  Please \n\
 examine the list of failures above and find out why they were not renamed.\n\
-You must move them into place by hand before the repository is usable.\n\
+You must move them into place by hand before the repository is usable.\n");
+		fprintf(stderr, "\nA backup sfio is in %s\n", BACKUP_SFIO);
+		fprintf(stderr, "\
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 	} else {
 		fprintf(stderr,

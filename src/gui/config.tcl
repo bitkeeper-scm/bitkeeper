@@ -53,7 +53,8 @@ proc getConfig {prog} \
 
 	set _d(help.linkColor) blue	;# hyperlinks
 	set _d(help.topicsColor) orange	;# highlight for topic search matches
-	set _d(help.height) 50		;# number of rows to displace
+	set _d(help.height) 50		;# number of rows to display
+	set _d(help.width) 72		;# number of columns to display
 
 	set _d(rename.listHeight) 8
 

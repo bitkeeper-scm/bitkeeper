@@ -106,7 +106,7 @@ proc stackReset {} \
 }
 
 # Pop up the stack one if we can.
-proc back {} \
+proc upStack {} \
 {
 	global	line stack stackMax stackPos
 
@@ -119,7 +119,7 @@ proc back {} \
 	}
 }
 
-proc forw {} \
+proc downStack {} \
 {
 	global	line stack stackMax stackPos
 
@@ -150,7 +150,7 @@ proc bkhelp {topic} \
 			embedded_tag "$help"
 		}
 
-		if {[regexp {^[ \t\nA-Z]+$} $help]} {
+		if {[regexp {^[A-Z][ \t\nA-Z.?\-]+$} $help]} {
 			set i "$lineno.0"
 			.text.help tag add "bold" $i "$i lineend"
 		}
@@ -305,13 +305,11 @@ proc widgets {} \
 		set py 1
 	}
 	getConfig "help"
+	if {"$gc(help.geometry)" != ""} { wm geometry . $gc(help.geometry) }
 	option add *background $gc(BG)
 
 	set rootX [winfo screenwidth .]
 	set rootY [winfo screenheight .]
-	if {"$gc(help.geometry)" != ""} {
-		wm geometry . $gc(help.geometry)
-	}
 	wm title . "BitKeeper Help"
 	set firstConfig 1
 
@@ -330,10 +328,10 @@ proc widgets {} \
 		}
 	    button .menu.back -text "Back" -font $gc(help.buttonFont) \
 		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
-		-state disabled -command { back }
+		-state disabled -command { upStack }
 	    button .menu.forw -text "Forw" -font $gc(help.buttonFont) \
 		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
-		-state disabled -command { forw }
+		-state disabled -command { downStack }
 	    button .menu.clear -text "Clear search" -font $gc(help.buttonFont) \
 		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command { clearSearch }
@@ -353,6 +351,7 @@ proc widgets {} \
 	    grid columnconfigure .menu 7 -weight 1
 	frame .ctrl -borderwidth 0 -relief flat
 	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
+		-height $gc(help.height) \
 		-font $gc(help.fixedFont) -width 14 \
 		-background $gc(help.listBG) \
 		-yscrollcommand { .ctrl.yscroll set } \
@@ -374,7 +373,7 @@ proc widgets {} \
 
 	frame .text -borderwidth 0 -relief flat
 	    text .text.help -wrap none -font $gc(help.fixedFont) \
-		-width 65 -height $gc(help.height) -padx 4 \
+		-width $gc(help.width) -height $gc(help.height) -padx 4 \
 		-background $gc(help.textBG) -fg $gc(help.textFG) \
 		-xscrollcommand { .text.x2scroll set } \
 		-yscrollcommand { .text.y2scroll set }
@@ -403,23 +402,28 @@ proc widgets {} \
 	grid columnconfigure . 0 -weight 0
 	grid columnconfigure . 1 -weight 1
 
-	bind .ctrl.topics <ButtonPress> { doPixSelect %x %y }
-	bind . <Control-e>	{ scroll "line" 1 }
-	bind . <Control-y>	{ scroll "line" -1 }
-	bind . <Down>		{ scroll "line" 1 }
-	bind . <Up>		{ scroll "line" -1 }
-	bind . <Left>		"doNextSection -1"
-	bind . <Right>		"doNextSection 1"
-	bind . <Prior>		{ scroll "page" -1 }
-	bind . <Next>		{ scroll "page" 1 }
-	bind . <Alt-Left>	{ back }
-	bind . <Alt-Right>	{ forw }
-	bind . <Home>		 ".text.help yview -pickplace 1.0"
-	bind . <End>		 ".text.help yview -pickplace end"
-	bind . <Escape>		{ exit }
-	bind . <Button-4> { scroll "page" -1 }
-	bind . <Button-5> { scroll "page" 1 }
+	bind .ctrl.topics <ButtonPress> { doPixSelect %x %y; break }
+	bind all <Control-e>	{ scroll "line" 1 }
+	bind all <Control-y>	{ scroll "line" -1 }
+	bind all <Down>		{ scroll "line" 1; break }
+	bind all <Up>		{ scroll "line" -1; break }
+	bind all <Left>		".text.help xview scroll -1 units; break"
+	bind all <Right>	".text.help xview scroll 1 units; break"
+	bind all <Prior>	{ scroll "page" -1; break }
+	bind all <Next>		{ scroll "page" 1; break }
+	bind all <Home>		 ".text.help yview -pickplace 1.0; break"
+	bind all <End>		 ".text.help yview -pickplace end; break"
+	bind all <Control-Up>	{ doNext -1 }
+	bind all <Control-Down>	{ doNext 1 }
+	bind all <Control-Left>	"doNextSection -1"
+	bind all <Control-Right> "doNextSection 1"
+	bind all <Alt-Left>	{ upStack }
+	bind all <Alt-Right>	{ downStack }
+	bind all <Escape>	{ exit }
+	bind all <Button-4> 	{ scroll "page" -1; break }
+	bind all <Button-5> 	{ scroll "page" 1; break }
 	bind .menu.entry <Return> { search }
+	bindtags .menu.entry { all .menu.entry Entry . }
 	bind .text.help <Configure> {
 		global	gc pixelsPerLine firstConfig
 
