@@ -951,8 +951,8 @@ __checkLog() {
 		case X$x in
 	    	    X[Yy]*)
 			${BIN}clean ${BK_ETC}config
-			${BIN}get -seg {BK_ETC}config
-			${BIN}get -kps {BK_ETC}config |
+			${BIN}get -seg ${BK_ETC}config
+			${BIN}get -kps ${BK_ETC}config |
 			sed -e '/^logging:/a\
 logging_ok:	to '$LOGADDR > ${BK_ETC}config
 			${BIN}delta -y'Logging OK' ${BK_ETC}config
