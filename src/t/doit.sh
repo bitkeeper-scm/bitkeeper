@@ -71,6 +71,25 @@ check_path()
 	rm -f $TMP/cmp1$$ $TMP/cmp2$$
 }
 
+check_tar()
+{
+	tar --version | grep -q "^tar (GNU tar) 1.13"
+	if [ $? -ne 0 ]
+	then
+		T_VER=`tar --version | grep "^tar" | cut -f4 -d' '`
+		echo "========================================================"
+		echo "The tar package ($T_VER) you have installed may not work"
+		echo "with the BitKeeper regression test.  Tar package later"
+		echo "than version 1.13 is known to be broken becuase it does"
+		echo "not preserve the permission bit correctly. To run"
+		echo "the BitKeeper regression test correctly, you need to "
+		echo "install tar package version 1.13, This is included in"
+		echo "the BitKeeper install package"
+		echo "========================================================"
+		exit 1
+	fi
+}
+
 # Make sure the "if [ -w ... ]" construct works under this id.
 check_w()
 {
@@ -100,7 +119,8 @@ setup_env()
 		win32_common_setup
 		BK_BIN=`cd .. && ./bk pwd -sc`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
-		check_path;
+		check_path
+		check_tar
 		;;
 	    Xmks)
 		win32_common_setup
