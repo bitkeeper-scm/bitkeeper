@@ -2,9 +2,6 @@
  * Simple TCP server.
  */
 #include "bkd.h"
-extern	char *vRootPrefix;
-
-private	int	cd2vroot(void);
 
 int
 cmd_eof(int ac, char **av)
@@ -28,74 +25,91 @@ cmd_help(int ac, char **av)
 	return (0);
 }
 
-
-private int
-cd2vroot()
+char *
+vpath_translate(const char *path)
 {
-	char	*vhost, *vroot, *p;
+	char	*vhost;
+	char	buf[MAXPATH];
+	const char	*s;
+	char	*t;
 
-	/*
-	 * Get first token in BK_VHOST
-	 */
-	unless (vhost = getenv("BK_VHOST")) {
-		out("ERROR-BK_VHOST missing\n");
-err:		drain();
-		return (1);
+	unless (path && (vhost = getenv("BK_VHOST"))) return (strdup("."));
+	s = path;
+	t = buf;
+	while (*s) {
+		if (*s != '%') {
+			*t++ = *s++;
+		} else {
+			char	*p;
+			s++;
+			switch (*s) {
+			    case '%': *t++ = '%'; break;
+			    case 'c': *t++ = vhost[0]; break;
+			    case 'h':
+				p = vhost;
+				while (*p && *p != '.') *t++ = *p++;
+				break;
+			    case 'H':
+				p = vhost;
+				while (*p) *t++ = *p++;
+				break;
+			    default:
+				fprintf(stderr,
+					"Unknown escape %%%c in -V path\n",
+					*s);
+				exit(1);
+			}
+			s++;
+		}
 	}
-	unless (p = strchr(vhost, '.')) {
-		out("ERROR-BK_VHOST should have more then one token\n");
-		goto err;
-	}
-	*p = 0;
-	assert(vRootPrefix);
-	vroot = aprintf("%s/%c/%s/bk", vRootPrefix, vhost[0], vhost);
-	*p = '.';
-	mkdirp(vroot);
-	assert(IsFullPath(vroot));
-	if (chdir(vroot)) {
-		out("ERROR-cannot cd to virtual root\n");
-		goto err;
-	}
-	free(vroot);
-	return (0);
+	*t = 0;
+
+	return (strdup(buf));
 }
 
 int
 cmd_putenv(int ac, char **av)
 {
 	char	*p;
-	int	len;
+	char	*oldenv;
+	char	*var;
 
-	unless (av[1])  return (1);
+	unless (av[1]) return (1);
+	unless (p = strchr(av[1], '=')) return (1);
 
-	p = strchr(av[1], '=');
-	unless (p) return (1);
-	len = p - av[1];
+	var = strdup_tochar(av[1], '=');
 	/*
-	 * For security, we dis-allow setting PATH and IFS
 	 * We also disallow anything not starting with one of
 	 * _BK_, BK_, or BKD_.  Not sure we need the BKD_, but hey.
+	 * Also disable BK_HOST, this screws up the locks.
 	 */
-	if ((len == 3) && strneq(av[1], "IFS", 3)) return (1);
-	if ((len == 4) && strneq(av[1], "PATH", 4)) return (1);
-	unless (strneq("BK_", av[1], 3) ||
-	    strneq("BKD_", av[1], 4) || strneq("_BK_", av[1], 4)) {
+	if (streq("BK_HOST", var)) return (1);
+	unless (strneq("BK_", var, 3) ||
+	    strneq("BKD_", var, 4) || strneq("_BK_", var, 4)) {
 	    	return (1);
 	}
-	if (strneq("BK_USER=", av[1], 8)) sccs_resetuser();
-	if (strneq("_BK_USER=", av[1], 9)) {
-		sccs_resetuser();
-		putenv(&av[1][1]);	/* convert to BK_USER */
-	} else {
-		putenv(av[1]); 
-	}
 
-	/*
-	 * Special processing for virtual host/root
-	 */
-	if (vRootPrefix && (len == 8) && strneq(av[1], "BK_VHOST", 8)) {
-		if (cd2vroot()) return (1);
+	oldenv = getenv(var);
+	unless (oldenv && streq(oldenv, p+1)) {
+		if (streq(var, "_BK_USER")) {
+			sccs_resetuser();
+			putenv(&av[1][1]);	/* convert to BK_USER */
+		} else {
+			putenv(av[1]);
+		}
+
+		if (streq(var, "BK_VHOST")) {
+			/*
+			 * Lookup new vhost, do path translation and cd to new
+			 * bkd root.  only do this once!
+			 */
+			char	*newpath = vpath_translate(Opts.vhost_dirpath);
+			chdir(newpath);
+			free(newpath);
+		}
 	}
+	free(var);
+
 	return (0);
 }
 

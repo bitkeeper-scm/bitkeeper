@@ -7,7 +7,7 @@ private	void	log_cmd(int i, int ac, char **av);
 private	void	usage(void);
 private	char	**xcmds = 0;		/* excluded command */
 
-char 		*logRoot, *vRootPrefix;
+char 		*logRoot;
 int		licenseServer[2];	/* bkweb license pipe */
 time_t		licenseEnd = 0;		/* when a temp bk license expires */
 time_t		requestEnd = 0;
@@ -53,7 +53,7 @@ bkd_main(int ac, char **av)
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
 		    case 'V':	/* XXX - should be documented */
-			vRootPrefix = strdup(optarg); break;
+			Opts.vhost_dirpath = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
@@ -85,11 +85,7 @@ bkd_main(int ac, char **av)
 		return (1);
 	}
 
-	if (vRootPrefix && !IsFullPath(vRootPrefix)) {
-		fprintf(stderr,
-		    "bad vroot: %s: must be a full path name\n", vRootPrefix);
-		return (1);
-	}
+	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
 	if (Opts.port) {
 		Opts.daemon = 1;

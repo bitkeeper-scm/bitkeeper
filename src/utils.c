@@ -1036,6 +1036,23 @@ ttyprintf(char *fmt, ...)
 	if (f != stderr) fclose(f);
 }
 
+char *
+strdup_tochar(const char *s, int c)
+{
+	char	*p;
+	char	*ret;
+
+	if (p = strchr(s, c)) {
+		ret = malloc(p - s + 1);
+		p = ret;
+		while (*s != c) *p++ = *s++;
+		*p = 0;
+	} else {
+		ret = strdup(s);
+	}
+	return (ret);
+}
+
 int
 isLocalHost(char *h)
 {

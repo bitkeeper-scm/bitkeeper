@@ -1065,6 +1065,7 @@ int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
 char	*aprintf(char *fmt, ...);
 char	*vaprintf(const char *fmt, va_list ptr);
+char	*strdup_tochar(const char *s, int c);
 void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
