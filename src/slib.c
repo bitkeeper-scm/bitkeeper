@@ -12106,6 +12106,30 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	if (streq(kw, "HASHCOUNT")) {
+		int	n;
+		kvpair	kv;
+
+		unless (s->state & S_HASH) return (nullVal);
+		if (sccs_get(s, "+", 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+			sccs_whynot("get", s);
+			return (-1);
+		}
+		/* count the number of long keys in the *values* since those
+		 * are far more likely to be current.
+		 */
+		for (n = 0, kv = mdbm_first(s->mdbm);
+		    kv.key.dsize; kv = mdbm_next(s->mdbm)) {
+			unless (s->state & S_CSET) {
+				n++;
+				continue;
+			}
+			if (sccs_iskeylong(kv.val.dptr)) n++;
+		}
+		fprintf(out, "%d\n", n);
+		return (strVal);
+	}
+
 	if (streq(kw, "KEY")) {
 		if (out) sccs_pdelta(s, d, out);
 		return (strVal);

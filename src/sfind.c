@@ -22,6 +22,7 @@ usage: sfiles [-aAcCeEgjlmpux] [directories]\n\n\
     -l		list locked files (p.file and/or z.file)\n\
     -m		annotate the output with state markers\n\
     -n		list unchanged (no-change) files\n\
+    -o<file>	send the file list to <file>, and progress info to stdout\n\
     -u		list unlocked files\n\
     -p		list files with pending delta(s)\n\
     -x		list files which have no revision control files\n\
@@ -48,6 +49,8 @@ typedef struct {
 	u32     splitRoot:1;   		/* split root mode	*/
 	u32     dfile:1;   		/* use d.file to find 	*/
 					/* pending delta	*/
+	u32	progress:1;		/* if set, send progress to stdout */
+	FILE	*out;			/* send output here */
 } options;
 
 typedef struct _q_item {
@@ -63,6 +66,8 @@ typedef struct {
 private project *proj;
 private options	opts;
 private globv	ignore; 
+private u32	 s_count, x_count; /* progress counter */
+private u32	 s_last, x_last; /* progress counter */
 
 private void do_print(char state[4], char *file, char *rev);
 private void walk(char *dir, int level);
@@ -144,7 +149,7 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aAcCeEgjlmpux")) != -1) {
+	while ((c = getopt(ac, av, "aAcCeEgjlmo:pux")) != -1) {
 		switch (c) {
 		    case 'a':	opts.aflg = 1; break;
 		    case 'A':	opts.Aflg = 1; break;
@@ -153,6 +158,12 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 		    case 'j':	opts.jflg = 1; break;
 		    case 'l':	opts.lflg = 1; break;
 		    case 'n':	opts.nflg = 1; break;
+		    case 'o':	unless (opts.out = fopen(optarg, "w")) {
+		    			perror(optarg);
+					exit(1);
+				}
+				opts.progress = 1;
+				break;
 		    case 'C':	opts.Cflg = 1; 
 				opts.pflg = 1;
 				break; /* backward compat */
@@ -171,6 +182,8 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 		    default: 	goto usage;
 		}
 	}
+	unless (opts.out) opts.out = stdout;
+	s_count = x_count = 0;
 
 	/*
 	 * If user did not select any option,
@@ -208,6 +221,8 @@ usage:		fprintf(stderr, "%s", sfind_usage);
                         }
                 }
 	}
+	if (opts.out) fclose(opts.out);
+	if (opts.progress) progress();
 	return (0);
 }
 
@@ -505,6 +520,16 @@ done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
 		if (proj) proj_free(proj); proj = 0;
 	}
+	if (opts.progress) progress();
+}
+
+progress()
+{
+	if (s_last == s_count && x_last == x_count) return;
+	printf("%d %d\n", s_count, x_count);
+	fflush(stdout);
+	s_last = s_count;
+	x_last = x_count;
 }
 
 private int
@@ -572,9 +597,9 @@ print_it(char state[4], char *file, char *rev)
 	char *sfile, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	if (opts.show_markers) printf("%s ", state);
+	if (opts.show_markers) fprintf(opts.out, "%s ", state);
 	if (opts.gflg || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
-		fputs(gfile, stdout);	/* print gfile name */
+		fputs(gfile, opts.out);	/* print gfile name */
 	} else {
 		sfile = name2sccs(gfile);
 		/*
@@ -582,17 +607,22 @@ print_it(char state[4], char *file, char *rev)
 		 * we should be able to better optimized the sPath() code
 		 * e.g. we could pass project struct into sPath()
 		 */
-		fputs(opts.splitRoot ? sPath(sfile, 0) : sfile, stdout);
+		fputs(opts.splitRoot ? sPath(sfile, 0) : sfile, opts.out);
 		free(sfile);
 	}
-	if (rev) printf("@%s", rev);
-	fputs("\n", stdout);
+	if (rev) fprintf(opts.out, "@%s", rev);
+	fputs("\n", opts.out);
 }
 
 private void
 do_print(char state[4], char *file, char *rev)
 {
 
+	if (state[CSTATE] == 'x') {
+		unless (isIgnored(file)) x_count++;
+	} else if (state[CSTATE] != 'j') {
+		s_count++;
+	}
 	if ((state[PSTATE] == 'p') && opts.pflg) goto print;
 
 	switch (state[LSTATE]) {
