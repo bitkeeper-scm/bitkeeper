@@ -747,7 +747,7 @@ next:		if (getline2(r, buf, bsize) <= 0) break;
 	if (bkd_msg) {
 		fprintf(stderr,
 			"Remote seems to be running a older BitKeeper release\n"
-			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
+			"Try \"bk opush\" or \"bk opull\"\n");
 	}
 	freeLines(lines);
 	exit(1);

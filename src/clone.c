@@ -200,8 +200,10 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 	}
 
-	/* remove any uncommited stuff */
-	sccs_rmUncommitted(opts.quiet);
+	/*
+	 * We have a clean tree, enable the "fast scan" mode for pending file
+	 */
+	enableFastPendingScan();
 
 	/* remove any later stuff */
 	if (opts.rev && after(opts.quiet, opts.rev)) {
@@ -214,23 +216,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	parent(opts, r);
 
-	if (consistency(opts.quiet)) {
-		fprintf(stderr,
-			"Consistency check failed, repository left locked.\n");
-		goto done;
-	}
-
 	/*
 	 * Invalidate the project cache, we have changed directory
 	 */
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
-	p = user_preference("checkout");
-	if (strieq(p, "edit")) {
-		sys("bk", "-r", "edit", "-q", SYS);
-	} else if (strieq(p, "get")) {
-		sys("bk", "-r", "get", "-q", SYS);
-	}
+	
 
 	if (r->port && isLocalHost(r->host) && (bk_mode() == BK_BASIC)) {
 		mkdir(BKMASTER, 0775);
@@ -286,24 +277,19 @@ private int
 sfio(opts opts, int gzip, remote *r)
 {
 	int	n, status;
-	pid_t	pid;
-	int	pfd;
-	char	*cmds[10];
+	char	*cmd;
+	FILE	*fh;
 
-	cmds[n = 0] = "bk";
-	cmds[++n] = "sfio";
-	cmds[++n] = "-i";
-	if (opts.quiet) cmds[++n] = "-q";
-	cmds[++n] = 0;
-	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
-	if (pid == -1) {
-		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
-		return(1);
-	}
+	cmd = aprintf("bk sfio -ie%s | bk _clonedo %s -", 
+	    opts.quiet ? "q" : "",
+	    opts.quiet ? "-q" : "");
+	
+	fh = popen(cmd, "w");
+	free(cmd);
+	unless (fh) return(101);
 	signal(SIGCHLD, SIG_DFL);
-	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
-	close(pfd);
-	waitpid(pid, &status, 0);
+	gunzipAll2fd(r->rfd, fileno(fh), gzip, &(opts.in), &(opts.out));
+	status = pclose(fh);
 	if (gzip && !opts.quiet) {
 		fprintf(stderr,
 		    "%u bytes uncompressed to %u, ", opts.in, opts.out);
@@ -314,57 +300,6 @@ sfio(opts opts, int gzip, remote *r)
 		return (WEXITSTATUS(status));
 	}
 	return (100);
-}
-
-void
-sccs_rmUncommitted(int quiet)
-{
-	FILE	*in;
-	char	buf[MAXPATH+MAXREV];
-	char	rev[MAXREV];
-	char	*cmds[10];
-	char	*s;
-	int	i;
-
-	unless (quiet) {
-		fprintf(stderr,
-		    "Looking for, and removing, any uncommitted deltas...\n");
-    	}
-	/*
-	 * "sfile -p" should run in "slow scan" mode because sfio did not
-	 * copy over the d.file and x.dfile
-	 */
-	unless (in = popen("bk sfiles -pAC", "r")) {
-		perror("popen of bk sfiles -pAC");
-		exit(1);
-	}
-	while (fnext(buf, in)) {
-		chop(buf);
-		s = strrchr(buf, BK_FS);
-		assert(s);
-		*s++ = 0;
-		cmds[i = 0] = "bk";
-		cmds[++i] = "stripdel";
-		if (quiet) cmds[++i] = "-q";
-		sprintf(rev, "-r%s", s);
-		cmds[++i] = rev;
-		cmds[++i] = buf;
-		cmds[++i] = 0;
-		i = spawnvp_ex(_P_WAIT, "bk", cmds);
-		if (!WIFEXITED(i) || WEXITSTATUS(i)) {
-			fprintf(stderr, "Failed:");
-			for (i = 0; cmds[i]; i++) {
-				fprintf(stderr, " %s", cmds[i]);
-			}
-			fprintf(stderr, "\n");
-		}
-	}
-	pclose(in);
-
-	/*
-	 * We have a clean tree, enable the "fast scan" mode for pending file
-	 */
-	enableFastPendingScan();
 }
 
 int
@@ -390,32 +325,6 @@ after(int quiet, char *rev)
 	return (WEXITSTATUS(i));
 }
 
-int
-consistency(int quiet)
-{
-	char	*cmds[10];
-	int	ret, i;
-
-	unless (quiet) {
-		fprintf(stderr, "Running consistency check ...\n");
-	}
-	cmds[i = 0] = "bk";
-	cmds[++i] = "-r";
-	cmds[++i] = "check";
-	cmds[++i] = "-acf";
-	cmds[++i] = 0;
-	ret = spawnvp_ex(_P_WAIT, "bk", cmds);
-	unless (WIFEXITED(ret)) return (-1);
-	ret = WEXITSTATUS(ret);
-	unless (ret == 2) return (ret);
-	unless (quiet) {
-		fprintf(stderr, "Running consistency check again ...\n");
-	}
-	cmds[i-1] = 0;
-	i = spawnvp_ex(_P_WAIT, "bk", cmds);
-	unless (WIFEXITED(i))  return (-1);
-	return (WEXITSTATUS(i));
-}
 
 private void
 parent(opts opts, remote *r)
@@ -478,4 +387,173 @@ do_lclone(char **av)
 	execvp("bk", nav);
 	perror(nav[1]);
 	exit(1);
+}
+
+private	int	clonedo_quiet;
+
+/*
+ * Do any work that needs to be done for every file as the file
+ * gets unpacked from the sfio.  This prevents trashing the diskcache.
+ */
+private int
+perfile_work(char *sfile)
+{
+	sccs	*s;
+	delta	*d;
+	static	int	checkout_mode = -1;
+	int	gflags = SILENT;
+
+ again:
+	s = sccs_init(sfile, 0, 0);
+	unless (s && HASGRAPH(s)) return (0);
+
+	/* check for pending deltas */
+	d = sccs_getrev(s, "+", 0, 0);
+	if (d && !(d->flags & D_CSET)) {
+		/* need to strip delta */
+		int	status;
+		char	*cmds[10];
+		char	rev[MAXREV];
+		int	i;
+
+		cmds[i = 0] = "bk";
+		cmds[++i] = "stripdel";
+		if (clonedo_quiet) cmds[++i] = "-q";
+		sprintf(rev, "-r%s", d->rev);
+		cmds[++i] = rev;
+		cmds[++i] = sfile;
+		cmds[++i] = 0;
+
+		sccs_free(s);
+		
+		status = spawnvp_ex(_P_WAIT, "bk", cmds);
+		if (!WIFEXITED(status) || WEXITSTATUS(status)) {
+			int	i;
+			fprintf(stderr, "Failed:");
+			for (i = 0; cmds[i]; i++) {
+				fprintf(stderr, " %s", cmds[i]);
+			}
+			fprintf(stderr, "\n");
+			/* XXX what now? */
+		} else {
+			goto again;
+		}
+	}
+
+	/* get gfile if needed */
+	if (checkout_mode) {
+		char	*p = user_preference("checkout");
+		if (strieq(p, "edit")) {
+			checkout_mode = 2;
+		} else if (strieq(p, "get")) {
+			checkout_mode = 1;
+		} else {
+			checkout_mode = 0;
+		}
+	}
+	if (checkout_mode == 2) {
+		gflags |= GET_EDIT;
+	} else if (checkout_mode == 1) {
+		gflags |= GET_EXPAND;
+	}
+	if (checkout_mode) sccs_get(s, 0, 0, 0, 0, gflags, "-");
+	
+	/* fixup timestamps */
+	set_timestamps(s);
+	sccs_free(s);
+	return (1);
+}
+
+private FILE *
+start_check(char **list)
+{
+	int	i;
+	FILE	*fd;
+	
+	EACH(list) {
+		perfile_work(list[i]);
+	}
+	fd = popen("bk check -acf -", "w");
+	unless (fd) {
+		fprintf(stderr, "ERROR: failed to run check\n");
+		exit(3);
+	}
+	EACH(list) {
+		/* stripdel might have removed a file */
+		if (exists(list[i])) fprintf(fd, "%s\n", list[i]);
+	}
+	freeLines(list);
+	return (fd);
+}
+
+int
+clonedo_main(int ac, char **av)
+{
+	char	*name;
+	char	**list = 0;
+	int	ok = 0;		/* +1 for cset +1 for BitKeeper */
+	int	inbk = 0;
+	FILE	*fd = 0;
+	int	status;
+	int	c;
+
+	while ((c = getopt(ac, av, "q")) != -1) {
+		switch (c) {
+		    case 'q': clonedo_quiet = 1; break;
+		    default:
+			fprintf(stderr, "ERROR: bad options\n");
+			exit(3);
+		}
+	}
+
+	for (name = sfileFirst("clonedo", &av[optind], 0);
+	     name; name = sfileNext()) {
+		if (ok >= 2) {
+			if (perfile_work(name)) fprintf(fd, "%s\n", name);
+		} else {
+			list = addLine(list, strdup(name));
+			
+			if (streq(name, CHANGESET)) ++ok;
+			if (strneq(name, "BitKeeper", 9)) {
+				inbk = 1;
+			} else {
+				if (inbk) {
+					++ok;
+					inbk = 0;
+				}
+			}
+			if (ok >= 2) fd = start_check(list);
+		}
+	}
+	/* if BitKeeper dir was last */
+	if (ok == 1 && inbk) {
+		fd = start_check(list);
+	} else if (ok < 2) {
+		fprintf(stderr, 
+		    "clockdo ERROR: never saw ChangeSet and BitKeeper dir\n");
+		exit(4);
+	}
+	status = pclose(fd);
+
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 2) {
+		char	*cmds[10];
+		int	i;
+
+		unless (clonedo_quiet) {
+			fprintf(stderr, 
+			    "Running consistency check again...\n");
+		}
+		cmds[i = 0] = "bk";
+		cmds[++i] = "-r";
+		cmds[++i] = "check";
+		cmds[++i] = "-acf";
+		cmds[++i] = 0;
+		status = spawnvp_ex(_P_WAIT, "bk", cmds);
+	}
+	status = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+	if (status != 0) {
+		fprintf(stderr, "ERROR: check exited with %d\n", status);
+	}
+	sfileDone();
+	return (status);
 }

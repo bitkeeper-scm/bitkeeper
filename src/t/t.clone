@@ -1,0 +1,34 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for  clone.
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir src
+cd src
+echo foo > 'F!O#O$ B%A^R&RR(R)RR'
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+echo OK
+echo $N Clone with all pending deltas................................$NL
+cd $HERE
+bk clone $Q project copy || exit 1
+# the entire src directory should be gone
+[ -d copy/src ] && exit 1
+echo OK
