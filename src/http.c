@@ -226,6 +226,12 @@ connect_socks4_srv(char *host, int port, char *url, int trace)
 	return (-1);
 }
 
+void
+catch_alarm(int sig)
+{
+	/* no op */
+}
+
 
 private int
 http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
@@ -234,6 +240,8 @@ http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
 	char	bk_url[MAXPATH];
 
 
+	alarm(10);
+	signal(SIGALRM, catch_alarm);
 	sprintf(bk_url, "http://%s/cgi-bin/%s", host, cgi_script);
 	if (streq(type, "DIRECT")) {
 		fd = connect_srv(host, port, trace);
@@ -243,9 +251,9 @@ http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
 		fd = connect_socks4_srv(host, port, bk_url, trace);
 	} else {
 		fprintf(stderr, "unknown proxy type %s\n", type);
-		return (-1);
+		fd = -1;
 	}
-	return fd;
+	return (fd);
 }
 
 int
@@ -254,17 +262,9 @@ http_connect(remote *r, char *cgi_script)
 	int	i, port;
 	char	proxy_host[MAXPATH], type[50], *p, **proxies;
 
-	if (r->trace) {
-		fprintf(stderr, "Trying direct connection\n");
-		fflush(stderr);
-	}
-	r->wfd = r->rfd = http_connect_srv("DIRECT", r->host,
-						r->port, cgi_script, r->trace);
-	if (r->rfd >= 0) {
-		if (r->trace) fprintf(stderr, "Connected\n");
-		return (0);
-	}
-
+	/*
+	 * Try proxy connection if available
+	 */
 	proxies = get_http_proxy();
 	EACH(proxies) {
 		if (r->trace) {
@@ -286,6 +286,21 @@ http_connect(remote *r, char *cgi_script)
 		}
 	}
 	freeLines(proxies);
+
+	/*
+	 * Try direct connection
+	 */
+	if (r->trace) {
+		fprintf(stderr, "Trying direct connection\n");
+		fflush(stderr);
+	}
+	r->wfd = r->rfd = http_connect_srv("DIRECT", r->host,
+						r->port, cgi_script, r->trace);
+	if (r->rfd >= 0) {
+		if (r->trace) fprintf(stderr, "Connected\n");
+		return (0);
+	}
+
 	if (r->trace) fprintf(stderr, "connection failed\n");
 	r->rfd = r->wfd = -1;
 	return (-1);

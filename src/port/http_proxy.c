@@ -22,7 +22,7 @@ save_cached_proxy(char *proxy)
 }
 
 char **
-get_cached_proxy(char **proxies)
+_get_cached_proxy(char **proxies)
 {
 	char *p = sccs_root(0);
 	char buf[MAXPATH];
@@ -121,21 +121,26 @@ get_config(char *url, char **proxies)
 }
 
 #ifndef WIN32
-char **
-get_http_proxy()
+
+#if	0
+/*
+ * XXX TODO: This is broken, it picks up proxy entries even if they
+ *           are disabled.
+ */
+private char **
+_get_netscape_proxy(char **proxies)
 {
-	char *p, *q, buf[MAXLINE], autoconfig[MAXPATH] = "";
-	char proxy_host[MAXPATH], socks_server[MAXPATH];
-	char **proxies = NULL;
-	int proxy_port = -1, proxy_type = -1, socks_port = 1080;
-	FILE *f;
+	char	*p, *q, buf[MAXLINE], autoconfig[MAXPATH] = "";
+	char	proxy_host[MAXPATH], socks_server[MAXPATH];
+	int	proxy_port = -1, proxy_type = -1, socks_port = 1080;
+	FILE	*f;
 	extern char *getHomeDir();
-	
+
 	p = getHomeDir();
 	assert(p);
 	sprintf(buf, "%s/.netscape/preferences.js", p);
 	f = fopen(buf, "rt");
-	if (f == NULL) goto done;
+	if (f == NULL) return (proxies);
 	while (fgets(buf, sizeof(buf), f)) {
 		if (strneq("user_pref(\"network.proxy.http\",", buf, 31)) {
 			p = &buf[33];
@@ -144,33 +149,38 @@ get_http_proxy()
 			while (*p && *p != '\"') *q++ = *p++;
 			assert(*p == '\"');
 			*q = 0;
-		} else if (strneq("user_pref(\"network.proxy.http_port\",", buf, 36)) {
+		} else if (strneq("user_pref(\"network.proxy.http_port\",",
+								    buf, 36)) {
 			p = &buf[37];
 			proxy_port = atoi(p);
 			assert(proxy_port >= 0);
-		} else if (strneq("user_pref(\"network.proxy.type\",", buf, 30)) {
+		} else if (strneq("user_pref(\"network.proxy.type\",",
+								    buf, 30)) {
 			p = &buf[31];
 			proxy_type = atoi(p);
-		} else if (strneq("user_pref(\"network.proxy.autoconfig_url\",", buf, 41)) {
+		} else if (strneq("user_pref(\"network.proxy.autoconfig_url\",",
+								    buf, 41)) {
 			p = &buf[43];
 			q = autoconfig;
 			while (*p && *p != '\"') *q++ = *p++;
 			assert(*p == '\"');
 			*q = 0;
-		} else if (strneq("user_pref(\"network.hosts.socks_server\",", buf, 39)) {
+		} else if (strneq("user_pref(\"network.hosts.socks_server\",",
+								    buf, 39)) {
 			p = &buf[41];
 			q = socks_server;
 			while (*p && *p != '\"') *q++ = *p++;
 			assert(*p == '\"');
 			*q = 0;
-		} else if (strneq("user_pref(\"network.hosts.socks_serverport\",", buf, 43)) {
+		} else if (strneq(
+				"user_pref(\"network.hosts.socks_serverport\",",
+								     buf, 43)) {
 			p = &buf[44];
 			socks_port = atoi(p);
 			assert(socks_port >= 0);
 		}
 	}
 	fclose(f);
-	proxies = get_cached_proxy(proxies);
 	if (proxy_type == 2) {
 		proxies = get_config(autoconfig, proxies);
 	} else {
@@ -184,23 +194,66 @@ get_http_proxy()
 			proxies = addLine(proxies, strdup(buf));
 		}
 	}
-done:	p = getenv("HTTP_PROXY_HOST"); 
-	q = getenv("HTTP_PROXY_PORT"); 
-	if (p && *p) {
-		sprintf(buf, "PROXY %s:%s", p, q ? q : "8000");
-		proxies = addLine(proxies, strdup(buf));
-	}
+	return (proxies);
+}
+#endif 
+
+private char **
+_get_socks_proxy(char **proxies)
+{
+	char	*p, *q, buf[MAXLINE];
+
 	q = getenv("SOCKS_PORT");
 	p = getenv("SOCKS_HOST"); 
 	if (p && *p) {
 		sprintf(buf, "SOCKS %s:%s", p, q ? q : "1080");
 		proxies = addLine(proxies, strdup(buf));
 	}
+
 	p = getenv("SOCKS_SERVER");
+	q = NULL;
 	if (p && *p) {
 		sprintf(buf, "SOCKS %s:%s", p, q ? q : "1080");
 		proxies = addLine(proxies, strdup(buf));
 	}
+	return (proxies);
+}
+
+private char **
+_get_http_proxy(char **proxies)
+{
+	char	*p, *q, buf[MAXLINE];
+	char	proxy_host[MAXPATH];
+	int	proxy_port = -1;
+
+	p = getenv("http_proxy");  /* http://proxy.host:8080 */
+	if (p && *p && strneq("http://", p, 7) && (q = strchr(&p[7], ':'))) {
+		p = &p[7];
+		*q++ = 0; 
+		sprintf(buf, "PROXY %s:%s", p, q);
+		q[-1] = ':'; 
+		proxies = addLine(proxies, strdup(buf));
+	}
+
+	p = getenv("HTTP_PROXY_HOST"); 
+	q = getenv("HTTP_PROXY_PORT"); 
+	if (p && *p) {
+		sprintf(buf, "PROXY %s:%s", p, q ? q : "8000");
+		proxies = addLine(proxies, strdup(buf));
+	}
+
+	return (proxies);
+}
+
+char **
+get_http_proxy()
+{
+	char	**proxies = NULL;
+	
+	proxies = _get_cached_proxy(proxies);
+	proxies = _get_socks_proxy(proxies);
+	proxies = _get_http_proxy(proxies);
+	//proxies = _get_netscape_proxy(proxies);
 	return (proxies);
 }
 
