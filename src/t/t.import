@@ -87,7 +87,7 @@ bk import -tpatch BitKeeper/tmp/P . > BitKeeper/tmp/PLOG 2>&1 && {
 	cat BitKeeper/tmp/PLOG
 	exit 1
 }
-grep -q 'File foo seems to be modified already' BitKeeper/tmp/PLOG || {
+grep -q 'Cannot import to modified file:' BitKeeper/tmp/PLOG || {
 	echo Failed to flag that foo was modified
 	cat BitKeeper/tmp/PLOG
 	exit 1
@@ -118,7 +118,7 @@ bk import -tpatch BitKeeper/tmp/P . > BitKeeper/tmp/PLOG 2>&1 && {
 	cat BitKeeper/tmp/PLOG
 	exit 1
 }
-grep -q 'File extra is not under BitKeeper control' BitKeeper/tmp/PLOG || {
+grep -q 'Cannot import to existing extra file' BitKeeper/tmp/PLOG || {
 	echo Failed to flag that extra is not a BK file
 	cat BitKeeper/tmp/PLOG
 	exit 1
@@ -134,6 +134,68 @@ cmp -s extra BitKeeper/tmp/extra || {
 	cat BitKeeper/tmp/PLOG
 	exit 1
 }
+echo OK
+rm -f extra
+bk unedit $Q foo
+
+echo $N Make sure a patch undo a patch delete when patch failded ....$NL
+# make a patch
+cd $HERE
+bk export -tplain -r+ $HERE/EDIT $HERE/A
+bk export -tplain -r+ $HERE/EDIT $HERE/B
+chmod +w $HERE/A/bar
+cat > $HERE/A/bar <<EOF
+1
+2
+3
+4
+EOF
+chmod +w $HERE/B/bar
+cat > $HERE/B/bar <<EOF
+1
+4
+EOF
+# force a delete event for "foo"
+rm -f $HERE/B/foo
+diff -Nur A B > $HERE/patch
+cd $HERE/EDIT
+bk get $Q -r+ -p foo > foo.ref
+bk import $Q -tpatch  $HERE/patch  $HERE/EDIT > BitKeeper/tmp/PLOG
+if [ $? -eq 0 ]; then echo failed to reject bad patch; exit 1; fi
+grep -q 'hunk FAILED -- saving rejects to file bar.rej' BitKeeper/tmp/PLOG
+if [ $? -ne 0 ]; then echo failed to reject bad patch; exit 1; fi
+bk get $Q -r+ -p foo > foo.now
+cmp -s foo.now foo.ref || { echo failed; exit 1; }
+rm -f foo.now foo.ref bar.ref
+if [ -f bar ]; then echo failed; exit 1; fi
+echo OK
+rm -rf $HERE/A $HERE/B $HERE/EDIT/*.rej
+echo $N Make sure we allow a file to be patched multiple times ......$NL
+# make a patch
+cd $HERE
+bk export -tplain -r+ $HERE/EDIT $HERE/A
+bk export -tplain -r+ $HERE/EDIT $HERE/B
+chmod +w $HERE/A/bar $HERE/B/bar $HERE/B/foo
+echo E >> $HERE/B/bar
+diff -Nur A B > $HERE/patch
+echo E >> $HERE/A/bar
+cat >$HERE/B/bar <<EOF
+B
+C
+D
+E
+EOF
+diff -Nur A B >> $HERE/patch
+cd $HERE/EDIT
+bk import $Q -tpatch  $HERE/patch  $HERE/EDIT
+cat > bar.ref <<EOF
+B
+C
+D
+E
+EOF
+bk get $Q bar
+cmp -s bar bar.ref || { echo failed; exit 1; }
 echo OK
 
 echo $N Test import of an email patch ...............................$NL

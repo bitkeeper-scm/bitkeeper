@@ -1259,7 +1259,8 @@ sccs_patch(sccs *s, cset_t *cs)
 		deltas++;
 	}
 	if (cs->verbose == 2) {
-		fprintf(stderr, "%d revisions\n", deltas);
+		fprintf(stderr, "%d revisions\r", deltas);
+		fprintf(stderr, "%79s\r", "");
 	} else if (cs->verbose > 1) {
 		fprintf(stderr, "\n");
 	}
