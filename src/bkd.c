@@ -70,7 +70,7 @@ bkd_main(int ac, char **av)
 			Opts.start = 1; Opts.daemon = 1; break;
 
 		    case 'R': 					/* doc 2.0 */
-			unless (win32()) usage;
+			unless (win32()) usage();
 			Opts.remove = Opts.daemon = 1;
 			break;
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
