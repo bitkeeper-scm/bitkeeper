@@ -10,7 +10,7 @@ TREE=`pwd`
 TREE=`basename $TREE`
 TREE_HOST=work
 REPO=$TREE-$USER
-cd /tmp || exit 1
+cd /build || exit 1
 rm -rf $REPO
 set -e
 BK_LICENSE=ACCEPTED PREFER_RSH=YES bk clone $TREE_HOST:/home/bk/$TREE $REPO
@@ -19,4 +19,6 @@ bk get build.sh || exit 1
 cp build.sh build
 chmod +x build
 ./build production
-./bk regression
+TST_DIR=/build
+export TST_DIR
+./bk regression 

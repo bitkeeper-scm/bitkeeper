@@ -102,8 +102,11 @@ else
 	binary_data2=/bin/rm
 	data="data"
 	uuencode="uuencode"
-	TST_DIR=/tmp
-	TMP=/tmp
+	if [ X$TST_DIR = X ]
+	then	TST_DIR=/tmp
+		TMP=/tmp
+	else	TMP=$TST_DIR
+	fi
 	export PATH
 	unset CDPATH
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
