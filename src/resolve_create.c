@@ -706,7 +706,7 @@ res_loggingok(resolve *rs)
 			rs->opts->errors = 1;
 			return (-1);
 		}
-		if (sccs_rm(LOGGING_OK, 1)) {
+		if (sccs_rm(LOGGING_OK, NULL, 1)) {
 			rs->opts->errors = 1;
 			return (-1);
 		}
@@ -731,7 +731,7 @@ res_loggingok(resolve *rs)
 			return (-1);
 		}
 		sprintf(cmd, "BitKeeper/tmp/%s", basenm(GLOGGING_OK));
-		if (sccs_rm(cmd, 1)) {
+		if (sccs_rm(cmd, NULL, 1)) {
 			rs->opts->errors = 1;
 			return (-1);
 		}

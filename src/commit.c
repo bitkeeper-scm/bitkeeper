@@ -11,6 +11,7 @@ typedef struct {
 	u32	quiet:1;
 	u32	lod:1;
 	u32	resync:1;
+	u32	no_autoupgrade:1;
 } c_opts;
 
 extern	char	*editor, *bin, *BitKeeper;
@@ -27,7 +28,7 @@ commit_main(int ac, char **av)
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 	char	commentFile[MAXPATH], pendingFiles[MAXPATH];
 	char	*sym = 0;
-	c_opts	opts  = {0, 0, 0, 0};
+	c_opts	opts  = {0, 0, 0, 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
 		system("bk help commit");
@@ -35,7 +36,7 @@ commit_main(int ac, char **av)
 	}
 
 	sprintf(commentFile, "%s/bk_commit%d", TMP_PATH, getpid());
-	while ((c = getopt(ac, av, "adFLRqsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "aAdFLRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;
 		    case 'd': 	doit = 1; break;
@@ -55,6 +56,9 @@ commit_main(int ac, char **av)
 		    case 'Y':	doit = 1; getcomment = 0;
 				strcpy(commentFile, optarg);
 				break;
+		    case 'A':	/* internal option for regression test only */
+				/* do not document			    */
+				opts.no_autoupgrade = 1; break;
 		    default:	system("bk help -s commit");
 				return (1);
 		}
@@ -213,13 +217,75 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
 	int	rc;
-	int	l = logging(0, 0, 0);
+	int	l;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
 	char	s_cset[MAXPATH] = CHANGESET;
 	sccs	*s;
 	delta	*d;
 	FILE 	*f;
 
+	
+	/*
+	 * Auto upgarde old logging_ok file to new logging_ok file
+	 * which has a cset-drived root key
+	 */
+	if (!opts.resync && !opts.no_autoupgrade) {
+		s = sccs_init(LOGGING_OK, 0, 0);
+		if (s && s->tree && !sccs_hasCsetDerivedKey(s)) {
+			char buf2[MAXPATH], buf3[MAXPATH], buf4[MAXPATH];
+
+			unless (HAS_GFILE(s)) {
+				sccs_get(s, 0, 0 ,0 ,0, SILENT, "-");
+			}
+			sccs_free(s); s = 0;
+			assert(exists(GLOGGING_OK));
+			mkdirp("BitKeeper/tmp/SCCS"); 
+			sprintf(buf, "BitKeeper/tmp/SCCS/%s",
+							basenm(LOGGING_OK));
+			if (rename(LOGGING_OK, buf)) {
+				fprintf(stderr,
+					"cannot move %s\n", LOGGING_OK);
+				perror(buf);
+				return (1);
+			}
+			if (sccs_rm(buf, buf2, 1)) {
+				fprintf(stderr, "Cannot \"bk rm %s\"\n", buf);
+				return (1);
+			}
+
+			/* becuase sccs_rm removed empty dir */
+			mkdirp("BitKeeper/tmp");
+
+			assert(exists(GLOGGING_OK));
+			assert(!exists(LOGGING_OK));
+			if (system("bk new -q " GLOGGING_OK)) {
+				fprintf(stderr,
+					"cannot \"bk new %s\"\n", GLOGGING_OK);
+				return (1);
+			}
+
+			/*
+			 * Add the old and new logging_ok file to 
+		  	 * the pendingFiles
+			 */
+			gettemp(buf3, "pending1");
+			sprintf(buf, "bk sfiles -pC %s %s >> %s",
+					    LOGGING_OK, buf2, buf3);
+			system(buf);
+			gettemp(buf4, "pending2");
+			sprintf(buf, "egrep -v \"^%s@[^@]*$\" %s > %s",
+					LOGGING_OK, pendingFiles, buf4);
+			system(buf);
+			sprintf(buf, "sort -u %s %s > %s", 
+						buf3, buf4, pendingFiles);
+			system(buf);
+			unlink(buf3);
+			unlink(buf4);
+		}
+		if (s) sccs_free(s);
+	}
+
+	l =  logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
 		if (pendingFiles) unlink(pendingFiles);

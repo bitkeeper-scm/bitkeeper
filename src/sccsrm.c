@@ -3,8 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-int	sccs_rm(char *name, int useCommonDir);	/* XXX - mv to slib.c? */
-
 /*
  * Emulate rm(1)
  *
@@ -36,14 +34,14 @@ usage:			system("bk help -s rm");
 
 	for (name = sfileFirst("sccsrm",&av[optind], 0);
 	    name; name = sfileNext()) {
-		errors |= sccs_rm(name, useCommonDir);
+		errors |= sccs_rm(name, NULL, useCommonDir);
 	}
 	sfileDone();
 	return (errors);
 }
 
 int
-sccs_rm(char *name, int useCommonDir)
+sccs_rm(char *name, char *del_name, int useCommonDir)
 {
 	char	path[MAXPATH], root[MAXPATH];
 	char	*sfile;
@@ -76,6 +74,7 @@ sccs_rm(char *name, int useCommonDir)
 		}
 		unless (exists(path)) break;
 	}
+	if (del_name) strcpy(del_name, path);
 	error |= sccs_mv(sfile, path, 0, 1);
 	free(sfile);
 	return (error);
