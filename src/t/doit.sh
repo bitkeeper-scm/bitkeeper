@@ -228,7 +228,6 @@ setup_env()
 	export BK_GEOM
 
 	unset BK_BIN _BK_GMODE_DEBUG
-	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
 	HERE=`cd $TST_DIR; bk pwd`/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp
@@ -315,7 +314,7 @@ init_main_loop()
 	fi
 
 	BK_PATH=$PATH
-	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
+	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD
 	export USER BK_FS BK_REGRESSION HERE BK_TMP TMPDIR NL N Q S CORES
 	export RM
 	export NXL NX
@@ -402,6 +401,9 @@ echo ''
 
 	mkdir -p $BK_TMP || exit 1
 	mkdir -p $BK_DOTBK || exit 1
+
+	bk license -a bkl || exit 1
+	bk license -a bkcl || exit 1
 
 	# Let's be safe out there boys and girls
 	case $TMPDIR in

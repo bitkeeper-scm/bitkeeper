@@ -143,7 +143,6 @@ again:		flush_fd0(); /* for Win/98 and Win/ME */
 		exit(1);
 	}
 	checkSingle();
-	unless (licenseAccept(2)) exit(1);
 	unless (mdbm_fetch_str(m, "description")) {
 		fprintf(stderr, "Setup: must provide a description.\n");
 		if (config_path) {
@@ -223,6 +222,7 @@ err:			unlink("BitKeeper/etc/config");
 	mdbm_close(m);
 
 	if (cset_setup(SILENT, ask)) goto err;
+	unless (licenseAccept(2)) exit(1);
 	s = sccs_init(s_config, SILENT);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
