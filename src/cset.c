@@ -346,7 +346,7 @@ retry:		v = mdbm_fetch(idDB, k);
 			fprintf(stderr,
 				"cset: missing id %s, sfile removed?\n",
 				kv.key.dptr);
-			continue;
+			goto next;
 		}
 		t = name2sccs(v.dptr);
 		unless (sc = sccs_init(t, 0)) {
@@ -378,7 +378,7 @@ retry:		v = mdbm_fetch(idDB, k);
 			csetDeltas(sc, 0, d);
 		}
 		sccs_free(sc);
-		if (first) {
+next:		if (first) {
 			kv = mdbm_first(db);
 			first = 0;
 		} else {

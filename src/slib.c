@@ -6825,6 +6825,7 @@ comments:
 	if (WANT('K')) {
 		d = sumArg(d, &buf[2]);
 		unless (fnext(buf, f)) goto out;
+		d->flags |= D_ICKSUM;
 		lines++;
 		chop(buf);
 	}
@@ -7570,10 +7571,18 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	sprintf(buf, "\001s %05d/%05d/%05d\n", add, del, same);
 	fputsum(s, buf, out);
 	if (s->state & BITKEEPER) {
-		if (!add && !del && !same) s->dsum = almostUnique();
+		if ((add || del || same) && (n->flags & D_ICKSUM)) {
+			assert(s->dsum == n->sum);
+		}
+		unless (n->flags & D_ICKSUM) {
+			if (!add && !del && !same) {
+				n->sum = almostUnique();
+			} else {
+				n->sum = s->dsum;
+			}
+		}
 		fseek(out, s->sumOff, SEEK_SET);
-		sprintf(buf, "%05u", s->dsum);
-		n->sum = s->dsum;
+		sprintf(buf, "%05u", n->sum);
 		fputsum(s, buf, out);
 	}
 	fseek(out, 0L, SEEK_SET);

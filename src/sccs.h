@@ -282,6 +282,7 @@ extern	char *strdup(char *s);
 #define	D_DUPLOD	0x00200000	/* shared ->lod */
 #define	D_LODSTR	0x00400000	/* lod pointer is a string: getInit() */
 #define	D_GONE		0x00800000	/* this delta is gone, don't print */
+#define D_ICKSUM	0x01000000	/* use checksum from init file */
 
 /*
  * Signal handling.
