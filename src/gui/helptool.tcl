@@ -113,7 +113,7 @@ proc bkhelp {topic} \
 	.text.help configure -state disabled
 }
 
-proc scroll {dir} \
+proc scroll {what dir} \
 {
 	global	height line
 
@@ -123,10 +123,12 @@ proc scroll {dir} \
 		doNext 1
 	} elseif {$dir == -1 && $a == 0 && $line > 1.0} {
 		doNext -1
-	} else {
+	} elseif {$what == "page"} {
 		set x [expr $height - 1]
 		set x [expr $x * $dir]
 		.text.help yview scroll $x units
+	} else {
+		.text.help yview scroll $dir units
 	}
 }
 
@@ -205,15 +207,15 @@ proc widgets {} \
 	grid columnconfigure . 1 -weight 1
 
 	bind .ctrl.topics <ButtonPress> { doPixSelect %x %y }
-	bind . <Control-e>	".text.help yview scroll 1 units; break"
-	bind . <Control-y>	".text.help yview scroll -1 units; break"
-	bind . <Down>		".text.help yview scroll 1 units; break"
-	bind . <Up>		".text.help yview scroll -1 units; break"
+	bind . <Control-e>	{ scroll "line" 1 }
+	bind . <Control-y>	{ scroll "line" -1 }
+	bind . <Down>		{ scroll "line" 1 }
+	bind . <Up>		{ scroll "line" -1 }
 	bind . <Left>		"doNextSection -1"
 	bind . <Right>		"doNextSection 1"
-	bind . <Prior>		{ scroll -1 }
-	bind . <Next>		{ scroll 1 }
-	bind . <space>		{ scroll 1 }
+	bind . <Prior>		{ scroll "page" -1 }
+	bind . <Next>		{ scroll "page" 1 }
+	bind . <space>		{ scroll "page" 1 }
 
 	bind . <Home>		 ".text.help yview -pickplace 1.0"
 	bind . <End>		 ".text.help yview -pickplace end"
