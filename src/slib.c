@@ -1479,7 +1479,8 @@ _relativeName(char *gName, int isDir,
 			 */
 			if (root) root[0] = 0;
 			if (mustHaveRmarker) return (0);
-			return (t); /* return full path name */
+			strcpy(buf, t);
+			return (buf); /* return full path name */
 		}
 		/* s -> / in .../foo/SCCS/s.foo.c */
 		for (--s; (*s != '/') && (s > top); s--);

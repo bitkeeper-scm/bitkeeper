@@ -130,10 +130,8 @@ cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
 echo OK
-# Check bk_std mode behaviour
+# Check bk basic mode behaviour
 echo $N Make sure bk/basic limits access to master repository only ..$NL
-# XXX STUB: fake a bk std key
-touch $HERE/copy/bk_std
 cd $HERE/copy/BitKeeper/etc
 bk edit $Q config
 echo "description: BitKeeper Test repository" > config

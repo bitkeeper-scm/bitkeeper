@@ -6,7 +6,7 @@ private project *proj;
 
 private void
 mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
-					int fix_mod_time, MDBM *db)
+							int fix_mod_time)
 {
 	char *p, tmp_path[MAXPATH];
 	delta *d;
@@ -18,35 +18,29 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	if ((strlen(path) >= 10) && strneq(path, "BitKeeper/", 10)) return;
 
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
-	if (isNullFile(rev, path)) {
-		char key[MAXPATH];
-
-		sprintf(key, "%s/%s", tag, path);
-		mdbm_store_str(db, key, "", MDBM_INSERT);
-	} else {
-		d = findrev(s, rev);
-		assert(d);
-		unless ((d->mode == 0) || S_ISREG(d->mode)) {
-			fprintf(stderr,
-	    "%s is not regular file, converted to empty file\n", d->pathname);
-			return;
-		}
-		free(s->gfile);
-		s->gfile = strdup(tmp_path);
-		check_gfile(s, 0);
-		mkdirf(tmp_path);
-		if (fix_mod_time) flags |= GET_DTIME;
-		if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
-			fprintf(stderr, "Cannot get %s, rev %s\n",
-								s->sfile, rev);
-			exit(1);
-		}
+	if (isNullFile(rev, path))  return;
+	d = findrev(s, rev);
+	assert(d);
+	unless ((d->mode == 0) || S_ISREG(d->mode)) {
+		fprintf(stderr,
+    "%s is not regular file, converted to empty file\n", d->pathname);
+		return;
+	}
+	free(s->gfile);
+	s->gfile = strdup(tmp_path);
+	check_gfile(s, 0);
+	mkdirf(tmp_path);
+	if (fix_mod_time) flags |= GET_DTIME;
+	if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
+		fprintf(stderr, "Cannot get %s, rev %s\n",
+							s->sfile, rev);
+		exit(1);
 	}
 }
 
 private void
 process(char *sfile, char *path1, char *rev1,
-	char *path2, char *rev2, char *tmpdir, int fix_mod_time, MDBM *db)
+		char *path2, char *rev2, char *tmpdir, int fix_mod_time)
 {
 	sccs *s;
 
@@ -56,8 +50,8 @@ process(char *sfile, char *path1, char *rev1,
 	unless ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 		fprintf(stderr, "Warning: %s is not a text file\n", s->sfile);
 	}
-	mkgfile(s, rev1, path1, tmpdir, "a", fix_mod_time, db);
-	mkgfile(s, rev2, path2, tmpdir, "b", fix_mod_time, db);
+	mkgfile(s, rev1, path1, tmpdir, "a", fix_mod_time);
+	mkgfile(s, rev2, path2, tmpdir, "b", fix_mod_time);
 	sccs_close(s);
 }
 
@@ -66,7 +60,7 @@ process(char *sfile, char *path1, char *rev1,
  * fix the "diff -Nur" header line to show "/dev/null ..."
  */
 private void
-fix_header(char *buf, MDBM *db)
+fix_header(char *buf)
 {
 	char *p, *line;
 
@@ -88,7 +82,7 @@ fix_header(char *buf, MDBM *db)
 	buf[3] = 0;
 	fputs(buf, stdout); fputs(" ", stdout);
 	*p = 0;
-	if (mdbm_fetch_str(db, line)) {
+	unless (exists(line)) {
 		/* /dev/null must be printed with EPOC time */
 		fputs("/dev/null\t", stdout);
 		memmove(++p,"Wed Dec 31 16:00:00 1969", 24);
@@ -175,7 +169,6 @@ gnupatch_main(int ac, char **av)
 	char *clean_av[] = { "rm", "-rf", tmpdir, 0 };
 	int  c, rfd, header = 1, fix_mod_time = 0, got_start_header = 0;
 	FILE *pipe;
-	MDBM *db;
 
 	while ((c = getopt(ac, av, "hTd:")) != -1) { 
 		switch (c) {
@@ -205,7 +198,6 @@ gnupatch_main(int ac, char **av)
                 fprintf(stderr, "gnupatch: cannot mkdir%s.\n", buf);
 		exit(1);
 	}
-	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE); /* db for null file */
 	if (header) print_title();
 
 	/*
@@ -235,8 +227,7 @@ gnupatch_main(int ac, char **av)
 		/*
 		 * populate the left & right tree
 		 */
-		process(sfile, path1, rev1, path2, rev2, tmpdir,
-							fix_mod_time, db);
+		process(sfile, path1, rev1, path2, rev2, tmpdir, fix_mod_time);
 	}
 
 	if (header) print_cset_log(cset1, cset2);
@@ -257,7 +248,7 @@ gnupatch_main(int ac, char **av)
 #endif
 		if (got_start_header) {
 			got_start_header--;
-			fix_header(buf, db);
+			fix_header(buf);
 			continue;
 		}
 	
@@ -274,7 +265,6 @@ gnupatch_main(int ac, char **av)
 	/*
 	 * all done, clean up
 	 */
-	mdbm_close(db);
 	if (proj) proj_free(proj);
 	if (cset1) free(cset1);
 	if (cset2) free(cset2);
