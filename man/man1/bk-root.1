@@ -3,12 +3,19 @@
 .SH NAME
 bk root \- print the path name to the root of the repository
 .SH SYNOPSIS
-.B bk root
+.Bc bk root [
+.ARG directory 
+.B |
+.ARG file ]
 .SH DESCRIPTION
 This command prints the full pathname to the root of the repository.
-The following will do the same thing:
+The following commands are equivalent:
 .DS
+bk root
 bk -R pwd
 .DE
+.LP
+If a directory or file is specified, bk root will try to find the 
+project root of that file or directory.
 .SH CATEGORY
 .B Admin
