@@ -1138,6 +1138,10 @@ with a current commercial license and run:
 	bk lease renew
 and then repeat this upgrade command.
 $
+#upgrade-commercial-needrepo
+To upgrade a commercial version of BitKeeper the current directory needs
+to be in a repository with a valid commercial license.
+$
 #comments-badfmt
 Illegal format for input to the 'bk comments' command.  Lines should
 match this format:
