@@ -51,21 +51,8 @@
 #include "range.h"
 #include "zlib/zlib.h"
 
-/*
- * Initialize the structure used by cset_insert according to how
- * many csets are going to be added.
- */
-int
-cweave_init(sccs *s, int extras)
-{
-	assert(s);
-	assert(s->state & S_CSET);
-	assert(!s->locs);
-	s->iloc = 1;
-	s->nloc = extras + 1;
-	s->locs = calloc(s->nloc, sizeof(loc));
-	return (0);
-}
+private	int	cweave_chk(sccs *s, delta *d);
+private	int	found(MDBM *db, char *key, int len);
 
 /*
  * Given an open sccs *, scan the data and map it.
@@ -221,13 +208,21 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 			}
 			p = p->next;
 		}
+
+		/*
+		 * Move all serial numbers that is above
+		 * the insertion point up one slot.
+		 */
+		memmove(&(s->locs[serial+1]), &(s->locs[serial]),
+			(s->table->serial - serial + 1) * sizeof(loc));  
+
 		/*
 		 * Update all reference to the moved serial numbers 
 		 */
 		for (e = s->table; e; e = e->next) {
 			int	i;
-			if (e->serial < serial) break; /* optimization */
 
+			if (e->serial < serial) break; /* optimization */
 			if (e->serial >= serial) e->serial++;
 			if (e->pserial >= serial) e->pserial++;
 			if (e->merge >= serial) e->merge++;
@@ -242,6 +237,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		}
 	}
 	s->nextserial++;
+	assert(s->table->serial <= s->nloc);
 
 	/*
 	 *  Fix up d->pserial and d->same
@@ -252,9 +248,9 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		assert(p);
 		d->pserial = p->serial;
 		d->parent = p;
-		for (kp = &p->kid; (k = *kp) != 0; kp = &k->kid) {
+		for (kp = &p->kid; (k = *kp); kp = &k->siblings) {
 			assert (k->serial != d->serial);
-			if (k->serial > d->serial) break;
+			if ((d->type == 'D') && (k->serial > d->serial)) break;
 		}
 		d->siblings = k;
 		*kp = d;
@@ -272,13 +268,12 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 * Save dF info, used by cset_write() later
 	 * Note: meta delta have NULL dF
 	 */
-	assert(s->iloc < s->nloc);
-	s->locs[s->iloc].p = NULL;
-	s->locs[s->iloc].len = 0;
-	s->locs[s->iloc].serial = serial;
+	s->locs[serial].p = NULL;
+	s->locs[serial].len = 0;
+	s->locs[serial].isPatch = 1;
 	if (dF && dF->where) {
-		s->locs[s->iloc].p = dF->where;
-		s->locs[s->iloc].len = dF->size;
+		s->locs[serial].p = dF->where;
+		s->locs[serial].len = dF->size;
 
 		/*
 		 * Fix up d->added
@@ -288,7 +283,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		while ( t <= r) if (*t++ == '\n') added++;
 		d->added = added - 1;
 	}
-	s->iloc++;
 
 	/*
 	 * Fix up tag/symbols
@@ -303,10 +297,16 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	 */
 	EACH (syms) addsym(s, d, d, 0, NULL, syms[i]);
 	if (syms) freeLines(syms, free);
+	/*
+	 * Verify checksum -- can't use existing routines, like getRegBody()
+	 * because the weave file is virtual.  So call custom routine.
+	 */
+	if (d->type == 'D') {
+		if (cweave_chk(s, d)) return (0);
+	}
 	return (d);
 }
 
-extern int sccs_csetPatchWeave(sccs *s, FILE *f);
 
 /*
  * Write out the new ChangeSet file.
@@ -315,11 +315,16 @@ int
 cset_write(sccs *s)
 {
 	FILE	*f;
+	delta	*d;
+	size_t	n;
+	u32	sum = 0;
+	u8	*p, *e;
+	char	buf[100];
+	u32	chunk = 0;
 
 	assert(s);
 	assert(s->state & S_CSET);
 	assert(s->locs);
-
 	unless (f = fopen(sccs_Xfile(s, 'x'), "w")) {
 		perror(sccs_Xfile(s, 'x'));
 		return (-1);
@@ -330,7 +335,68 @@ cset_write(sccs *s)
 		fclose(f);
 		return (-1);
 	}
-	if (sccs_csetPatchWeave(s, f)) return (-1);
+	for (d = s->table; d; d = d->next) {
+		unless (d->type == 'D') continue;
+		unless (s->locs[d->serial].len) continue;
+
+		/*
+		 * We want the output to look like:
+		 * ^AI serial
+		 * key
+		 * key
+		 * ^AE
+		 */
+		sprintf(buf, "\001I %u\n", d->serial);
+		fputs(buf, f);
+		for (p = buf; *p; sum += *p++);
+
+		/*
+		 * Patch format is a little different, it looks like
+		 * 0a1
+		 * > key
+		 * > key
+		 * 
+		 * We need to strip out all the non-key stuff: 
+		 * a) "0a0"
+		 * b) "> "
+		 */
+		if (s->locs[d->serial].isPatch) {
+			p = s->locs[d->serial].p;
+			assert(strneq(p, "0a0\n> ", 6));
+			e = p + s->locs[d->serial].len - 1;
+			p += 6; /* skip "0a0\n" */
+			
+			while (1) {
+				fputc(*p, f);
+				sum += *p;
+				if (p == e) break;
+				if (*p == '\n') {
+					assert(strneq("\n> ", p, 3));
+					p += 3; /* skip "> " */
+				} else {
+					p++;
+				}
+			}
+			
+		} else {
+			n = fwrite(s->locs[d->serial].p,
+						1, s->locs[d->serial].len, f);
+			unless (n == s->locs[d->serial].len) {
+				perror("fwrite");
+				fclose(f);
+				return (-1);
+			}
+			for (p = s->locs[d->serial].p; n--; sum += *p++);
+		}
+		sprintf(buf, "\001E %u\n", d->serial);
+		fputs(buf, f);
+		for (p = buf; *p; sum += *p++);
+		++chunk;
+	}
+	strcpy(buf, "\001I 1\n\001E 1\n");
+	fputs(buf, f);
+	for (p = buf; *p; sum += *p++);
+	s->cksum += sum;
 	fseek(f, 0L, SEEK_SET);
 	fprintf(f, "\001H%05u\n", s->cksum);
 	if (fclose(f)) perror(sccs_Xfile(s, 'x'));
@@ -342,5 +408,100 @@ cset_write(sccs *s)
 	}
 	/* We don't want ChangeSet files compressed */
 	if (s->encoding & E_GZIP) sccs_unzip(s);
+	return (0);
+}
+
+/*
+ * XXX: perf optimization
+ * pass a third param to found which lsum.
+ * then save the mdbm in the s->mdbm stash and
+ * make a s->saveparentserial stash for the serial
+ * if next delta is not a merge and has this delta as the parent
+ * then all that needs to be processed is the block for this delta only.
+ * if a mdbm entry is there for the key, subract the value,
+ * then add in the value here, and update the mdbm and s->saveparentserial
+ * I haven't done benchmarks to see if this is worth it.  Wanted to
+ * write down the design in case it is.
+ */
+
+private	int
+cweave_chk(sccs *s, delta *d)
+{
+	int	i, offset;
+	char	*p, *e, *key, *sep;
+	ser_t	*slist = 0;
+	MDBM	*db = 0;
+	int	ret = 1;
+	sum_t	lsum, sum = 0;
+
+	/*
+	 * Save effort: if nothing went on,
+	 * there is no way to compute this one
+	 * list of things to check from getCksumDelta()
+	 * XXX: d->merge?  Need to check when we go to merge pointers.
+	 */
+	unless (d->include || d->exclude || d->added || d->deleted) {
+		s->dsum = d->sum;
+		return (0);
+	}
+	unless (slist = sccs_set(s, d, 0, 0)) goto done;
+	unless (db = mdbm_mem()) goto done;
+
+	for (i = d->serial; i; i--) {
+		/* active and not empty */
+		unless (slist[i] && s->locs[i].len) continue;
+
+		p = s->locs[i].p;
+		e = p + s->locs[i].len;
+		offset = 0;
+		if (s->locs[i].isPatch) {
+			assert(((e - p) > 6) && strneq(p, "0a0\n> ", 6));
+			p += 4;
+			offset = 2;
+		}
+		for ( ; p < e; p++) {
+			p += offset;
+			key = p;
+			lsum = 0;
+			for ( ; p < e; p++) {
+				lsum += *p;
+				if (*p == '\n') break;
+			}
+			unless ((*p == '\n') && (sep = separator(key))
+			    && (sep < e)) {
+				fprintf(stderr,
+				    "takepatch: badly formed key\n");
+				goto done;
+			}
+			unless (found(db, key, sep - key)) sum += lsum;
+		}
+	}
+	s->dsum = sum;
+	unless (d->sum == sum) {
+		char	string[20];	/* two checksums and a ':' */
+
+		sprintf(string, "%u:%u", d->sum, sum);
+		getMsg("takepatch-chksum", string, 0, '=', stderr);
+		goto done;
+	}
+	ret = 0;
+
+done:	if (slist) free(slist);
+	if (db) mdbm_close(db);
+	return (ret);
+}
+
+private	int
+found(MDBM *db, char *key, int len)
+{
+	datum	k, v = {0, 0};
+
+	k.dptr = key;
+	k.dsize = len;
+	if (mdbm_store(db, k, v, MDBM_INSERT)) {
+		if (errno == EEXIST) return (1);
+		fprintf(stderr, "takepatch: insert error for %*s\n", len, key);
+		return (-1);
+	}
 	return (0);
 }
