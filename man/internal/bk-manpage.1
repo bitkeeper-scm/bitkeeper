@@ -1,5 +1,5 @@
-.so ../macros
-.TH "bk manpage" 1 08/18/00 "\*(BC" "\*(UM"
+.so bk-macros
+.TH "bk manpage" 1 20%E% "\*(BC" "\*(UM"
 .\" General notes:
 .\" When writing troff docs, I find it nice to keep the lines short.
 .\" It makes editing them easier.  If you can, putting each sentence
@@ -11,16 +11,22 @@
 .\" 5678901234567890123456789012345678901234567890123456789012345
 .nr RS .3i
 .SH NAME
-man - how to write a BitKeeper man page
+man - how to write a \*(BK man page
 .SH SYNOPSIS
 .B bk man man
 .SH DESCRIPTION
 .LP
-The BitKeeper man pages are used to document commands and
-features in the BitKeeper source management system.
-This man page is an example of how to write a BitKeeper man page.
+The \*(BK man pages are used to document commands and
+features in the \*(BK source management system.
+This man page is an example of how to write a \*(BK man page.
 .LP
-BitKeeper uses names rather than numbers to group man pages.
+\*(BK uses numbers to group man pages similar to traditional
+man page systems.
+.LP
+XXX - This totally has to be redone to reflect
+how we organize our man pages.  Do we still want to
+have a list of the CATEGORIES??
+.br
 The list of names is the list of directories under the 
 .B man 
 directory, and is currently the following list 
@@ -39,7 +45,7 @@ All licensing related issues.
 The licenses themselves, docs on open logging, etc.
 .IP Basics
 Basic introduction to revision control in general,
-and BitKeeper specifically.
+and \*(BK specifically.
 This should be a short list of commands which people need to use
 to get started with BitKeeper.
 It's enough to be useful, but nothing advanced.
@@ -105,7 +111,7 @@ section which makes the rules clear.
 .I manual
 The title of the manual.  Until someone thinks up a better idea, this is
 always just
-.IR BitKeeper .
+.IR \*(BK .
 .RE
 .LP
 .SH SECTIONS
@@ -115,7 +121,7 @@ followed by the heading name.
 If the name contains spaces and appears on the same line as
 .BR \&.SH ,
 then place the heading in double quotes.
-Section headings used by BitKeeper include:  NAME,
+Section headings used by \*(BK include:  NAME,
 SYNOPSIS, AVAILABILITY, DESCRIPTION, OPTIONS, EXAMPLES, FILES, DIAGNOSTICS,
 ALIASES, BUGS, and SEE ALSO.
 .LP
@@ -130,7 +136,7 @@ line by the command name and a one line description of the program:
 .sp
 \&.SH NAME
 .br
-man \\- how to write a BitKeeper man page
+man \\- how to write a \*(BK man page
 .sp
 Both the command and beginning of description begin
 with a lower case letter.
@@ -200,10 +206,13 @@ There is a MACROS file that will be included in
 man pages that define all the different ways that
 options can be presented.  Include this file by
 .sp
-\&.SO ../Admin/MACROS
+\&.SO bk-macros
 .sp
 Use the macros in that file so all pages can be changed
-at once if need be.
+at once if need be.  See MACROS section for a list of
+all 
+.BK 
+macros and defined strings.
 .TP
 .B EXAMPLES
 Please put lots of examples in the man pages.
@@ -260,6 +269,151 @@ yields
 .br
 .B bk help undo
 .sp
+.SH MACROS
+.LP
+There are macros and defined strings particular for building
+.BK  
+ manpages.  The main reason for our custom macros is 
+text changes depending on the method of displaying the man page.
+For example, in the OPTIONS section many of the option-argument
+pairs fall into a few distinct patterns.
+These will be displayed differently, depending on
+the medium.  Options are always bold.  Arguments or symbolic names
+are italicized for groff and in angle brackets, <>, for nroff.
+.br
+XXX This needs a better explanation - Amy's plate
+.LP
+Defined strings:
+.TP
+.B \&.BC
+BitMover, Inc
+.tp
+.B \&.BM
+BitMover
+.tp
+.B \&.BS
+BitSCCS
+.tp
+.B \&.BK
+BitKeeper
+.tp
+.B \&.UM
+.BK 
+\ User's Manual
+.tp
+.B \&.AT
+ATT SCCS
+.tp
+.B \&.S
+SCCS
+.tp
+.B \&.R
+RCS
+.tp
+.B \&.UN
+UNIX
+.LP
+.BK
+ macros:
+.TP
+.B \&.DS/\&.DE
+Display Start/Display End.  Used primarily for examples
+or those things the user must type in. 
+.tp
+.B \&.SP
+Defines a space (essentially a blank line.)
+.tp
+.B \&.Vb/\&.Ve
+XXX  Don't know what these are for.  lm??
+.tp
+.B \&.XR
+XXX  Don't know what these are for.  lm??
+.tp
+.B \&.AI
+
+.tp
+.B \&.SA
+
+.tp
+.B \&.BU
+Define bullets.  An actual bullet in groff, a + in nroff.
+.tp
+.B \&.tp
+Defines spacing between \&.TP lines.
+If there are many options, as in bk admin, for example,
+you will use \&.TP for the first item and \&.tp for the
+subsequent ones.  For example, the OPTIONS section from
+bk clean looks like this:
+.RS 1i
+.DS
+\&.TP
+\&.B -p
+Prints diffs for all modified files. The diffs are printed
+in the least readable diff format; you may prefer to use
+bk diffs -u
+\&.tp
+\&.B -q
+Run quietly.
+\&.tp
+\&.B -v
+Run verbosely.  List files deleted 
+as well as modified files.
+.RE
+.LP
+Macros for common formats in the OPTIONS sections:
+.TP
+.B \&.AN
+Option character with a required argument, REQUIRED, with 
+no space between option character and argument.
+.br
+USAGE: \&.AN c REQUIRED
+.br
+RESULT: -c
+.I REQUIRED 
+ or -c<REQUIRED>
+.tp
+.B \&.AS
+Option character with a required argument, REQUIRED, 
+with a space between the option and argument.
+.br
+USAGE: \&.AS c REQUIRED
+.br
+RESULT: -c 
+.I REQUIRED 
+or -c<REQUIRED>
+.tp
+.B \&.AL
+
+.tp
+.B \&.AB
+Option character with optional argument, OPTIONAL,
+with no space.  
+.br
+USAGE: \&.AB c OPTIONAL
+.br
+RESULT: -c[
+.I OPTIONAL
+] or -c[<OPTIONAL>]
+.LP
+Macros for common formats in the SYNOPSIS sections:
+.tp
+.B \&.OA
+Option character with optional argument, OPTIONAL, no space.
+.br
+USAGE: \&.OA c OPTIONAL
+.br
+RESULT: [-c
+.I OPTIONAL
+] or [-c<OPTIONAL>]
+.tp
+.B \&.SO
+Option character with a optional argument, OPTIONAL, with a space.
+.br
+USAGE: \&.SO c OPTIONAL
+.br
+DISPLAYED: -c [
+.I OPTIONAL
+] or -c [<OPTIONAL>]
 .SH FONTS
 XXX - is this correct?
 .br

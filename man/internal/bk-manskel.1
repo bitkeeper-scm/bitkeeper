@@ -1,0 +1,98 @@
+.so ../bk-macros
+.TH "bk command" 1 20%E% "\*(BC" "\*(UM"
+.\"    ============ Aborting a failed pull/push/resync  ============
+.SH NAME
+bk command \- command description
+.SH SYNOPSIS
+.\"
+.B bk command [\-option] [
+.ARG argument
+.B ]
+.\"
+.br
+.B bk command [\-options]
+[
+.OPTreq \-c rev
+]
+.\"
+.br
+.B bk command [\-options]
+.OB \-c rev
+.\"
+.br
+.B bk command [\-options]
+.ARG argument
+.\"
+.SH DESCRIPTION
+.LP
+Longer description.
+Narrative overview of the command's external behaviour.
+.LP
+For on screen examples,
+.DS
+all text from
+examples here
+.DE
+.SH OPTIONS
+.\" Pick the longest word in the TP's for this.  Note that in variable
+.\" width fonts, you may need a little padding for "big lettered" words.
+.if n .TP \w'\-c\ <arg1>:<arg2>\ 'u
+.if t .TP .8i
+.B \-option
+Usage:
+.B .B \e\-option
+.br
+Explanation of what using option does.
+.tp
+.OPTreq \-c REQ
+Usage:
+.B .OPTreq \e\-c REQ
+.br
+Explanation of \-c option with required argument,
+.ARG REQ ,
+with no space.
+.tp
+.OPT_req \-c REQ
+Usage:
+.B .OPT_req \e\-c REQ
+.br
+Explanation of \-c option with required argument, 
+.ARG REQ ,
+with a space.
+.tp
+.OPTopt \-c OPT
+Usage: 
+.B .OPTopt \e\-c OPT
+.br
+Explanation of \-c option with optional argument, 
+.ARG OPT ,
+with no space.
+.tp
+.OPT_opt \-c OPT
+Usage: 
+.B .OPT_opt \e\-c OPT
+.br
+Explanation of \-c option with optional argument, 
+.ARG OPT ,
+with a space.
+.tp
+.OPTcolon \-c arg1 arg2
+Usage: 
+.B .OPTcolon \e\-c arg1 arg2
+.br
+Explanation of \-c option with colon seperated required
+arguments
+.ARG arg1 \ and
+.ARG arg2 .
+.SH BUGS
+.LP
+Abort could go look to see if you have done any work and refuse to
+abort without
+.B \-f
+if you have.
+.SH "SEE ALSO"
+.SA pull 1
+.SA push 1
+.SA resync 1
+.SH CATEGORY
+.B Repository

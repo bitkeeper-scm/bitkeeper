@@ -22,3 +22,5 @@ clean:
 clobber:
 	@make clean
 	/bin/rm -f PS PS2 PS4
+	-@cd man2help && make clobber
+	-@cd man2html && make clobber
