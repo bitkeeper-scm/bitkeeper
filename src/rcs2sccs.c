@@ -91,10 +91,13 @@ doit(char *file)
 		}
 		fclose(f);
 		if (convert) {
+			mode_t	m = mode(file);
+
 			sprintf(path, "%s%d", file, getpid());
 			rename(file, path);
 			sysio(0, file, 0, "bk", "undos", "-n", path, SYS);
 			unlink(path);
+			chmod(file, m);
 		}
 	}
 	unless (r = rcs_init(file)) {
@@ -422,10 +425,10 @@ R %s\n", ++seq, m, g, r);
 private	mode_t
 mode(char *file)
 {
-	mode_t	m = 0664;
-	
-	if (executable(file)) m |= 0111;
-	return (m);
+        struct  stat sbuf;
+
+        if (stat(file, &sbuf) == -1) return 0;
+        return (sbuf.st_mode & 0777);
 }
 
 private	int

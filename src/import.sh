@@ -38,7 +38,7 @@ import() {
 		S) SYMBOL=-S$OPTARG;;	# /* doc 2.0 */
 		r) RENAMES=NO;;			# /* doc 2.0 */
 		t) TYPE=$OPTARG;;		# /* doc 2.0 */
-		q) QUIET=-q; export _BK_SHUT_UP=YES;;	# /* doc 2.0 */
+		q) QUIET=-qq; export _BK_SHUT_UP=YES;;	# /* doc 2.0 */
 		u) UNDOS=-u;;			# /* doc 2.0 */
 		v) VERBOSE=;;			# /* doc 2.0 */
 		esac

@@ -180,7 +180,25 @@ test -f etc/SCCS/s.logging_ok || {
 }
 echo OK
 
-test -d /home/bk/tmp/import_data && {
+TESTDATA=/home/bk/test_data
+test -d $TESTDATA/import-RCS+x && {
+echo $N Make import w/ undos does not lose execute bits .............$NL
+cd $HERE
+no_logging import-RCS+x
+bk import -quftRCS $TESTDATA/import-RCS+x .
+bk get -q 
+test -x ixadm.cgi || {
+	echo lost execute bits on ixadm.cgi
+	exit 1
+}
+test -x ixupdate.pl || {
+	echo lost execute bits on ixupdate.pl
+	exit 1
+}
+echo OK
+}
+
+test -d $TESTDATA/import_data && {
 echo $N Multiple parallel imports ...................................$NL
 cd $HERE
 no_logging import
@@ -191,7 +209,7 @@ do	cp -rp import import$i
 done
 mv import import0
 for i in 0 $LIST
-do	( cd import$i && bk import -tplain -f $Q /home/bk/tmp/import_data . ) &
+do	( cd import$i && bk import -tplain -f $Q $TESTDATA/import_data . ) &
 done; wait
 cd import0
 bk sfiles | sort > ../LIST
