@@ -1174,6 +1174,62 @@ function pending {
 	exec ${BIN}sfiles -Ca | ${BIN}sccslog -p - | $PAGER
 }
 
+function doLog {
+	cd2root
+	if [ ! -f  BitKeeper/etc/SCCS/s.config ]
+	then
+		echo "Con not find BitKeeper/etc/SCCS/s.config"
+		/bin/rm -f /tmp/comments$$
+		exit 1
+	fi
+	bk get -q BitKeeper/etc/config 
+	LOG=`grep "^logging:" BitKeeper/etc/config | tr -d '[\t, ]'`	
+	case  ${LOG} in 
+	logging:*)
+		LOGADDR=${LOG#*:} 
+		echo $LOGADDR | grep -q "@openlogging.org$"
+		if [ $? -eq 0 ]
+		then 
+			cat << EOF
+BitKeeper is about to publish a summary of this ChangeSet (not the source code)
+at $LOGADDR. Do you want to proceed?
+EOF
+			read x
+			case X$x in
+		    	    X[Yy]*) 
+			    bk clean BitKeeper/etc/config
+			    return
+			    ;;
+				*)
+			    cat << EOF
+Bitkeeper is aborting this commit session now. 
+This version of Bitkeeper is intended for project that wishes to publish
+their progress via open-logging. To purchase a copy of Bitkeeper with
+no open-logging feature, please contact Bitmover Inc. at 415-821-5758,
+or email sales@bitmover.com and ask for BitKeeperPro.
+Thank you for using Bitkeeper.
+EOF
+		 	/bin/rm -f /tmp/comments$$
+			exit 1
+			esac
+			
+		else
+			cat BitKeeper/etc/config | \
+					/bin/mail commerical@openlogging.org
+			bk clean BitKeeper/etc/config
+			return
+		fi
+		;;
+	*)	echo "Bad config file, can not find logging entry"
+		/bin/rm -f /tmp/comments$$
+		bk clean BitKeeper/etc/config
+		exit 1 
+		;;
+	esac
+	# we should never get here
+	exit 1
+}
+
 function commit {
 	DOIT=no
 	GETIT=yes
@@ -1206,10 +1262,15 @@ function commit {
 	then	if [ -s /tmp/comments$$ ]
 		 then	COMMENTS="-Y/tmp/comments$$"
 		 fi
+		 doLog;
 		 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		 EXIT=$?
 		 /bin/rm -f /tmp/comments$$
 		 ${BIN}csetmark -r+
+		 # Assume top of trunk is the right rev
+		 # XXX TODO: Needs to account for LOD when it is implemented
+		 REV=`${BIN}prs -hr+  -d:I: ChangeSet`
+		 ${BIN}cset -c$REV | /bin/mail $LOGADDR
 		 exit $EXIT;
 	fi
 	while true
@@ -1226,9 +1287,14 @@ function commit {
 			 if [ -s /tmp/comments$$ ]
 			 then	COMMENTS="-Y/tmp/comments$$"
 			 fi
+			 doLog;
 			 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 			 EXIT=$?
 			 /bin/rm -f /tmp/comments$$
+			 # Assume top of trunk is the right rev
+			 # XXX TODO: Needs to account for LOD when it is implemented
+			 REV=`${BIN}prs -hr+  -d:I: ChangeSet`
+			 ${BIN}cset -c$REV | /bin/mail $LOGADDR
 	    	 	 exit $EXIT;
 		 	 ;;
 		    Xe*) $EDITOR /tmp/comments$$
