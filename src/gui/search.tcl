@@ -286,6 +286,16 @@ proc search_widgets {w s} \
 
 	search_init $w $s
 
+	image create photo prevImage \
+	    -format gif -data {
+R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
+WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
+}
+	image create photo nextImage \
+	    -format gif -data {
+R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
+XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
+}
 	label $search(plabel) -font $gc($app.buttonFont) -width 11 \
 	    -relief flat \
 	    -textvariable search(prompt)
