@@ -44,7 +44,9 @@ All triggers for a particular class must be named with
 the class name and prefix, for example \f(CWpre-incoming\fP.
 More than one trigger per event class is allowed; each trigger program
 has the class name and prefix and a suffix of your choosing.  The trigger
-programs are sorted and run alphabetically (C locale sort order).  In order
+programs are sorted and run alphabetically (C locale sort order).  
+Files ending in ~ are ignored to avoid editor backup files.
+In order
 to avoid name space conflicts, the typical approach is to use the reason
 for the trigger as the suffix, i.e.,
 .DS

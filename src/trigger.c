@@ -148,7 +148,6 @@ trigger(char *cmd, char *when)
 	 * Sort it and run the triggers
 	 */
 	unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
-	sortLines(triggers);
 	unless (strneq(cmd, "remote ", 7))  {
 		rc = localTrigger(event, what, triggers);
 	} else if (streq(when, "pre")) {
@@ -161,25 +160,30 @@ trigger(char *cmd, char *when)
 	return (rc);
 }
 
+/*
+ * returns lines array of all filenames in directory that start with
+ * the given prefix.
+ * The array is sorted.
+ */
 char	**
 getTriggers(char *dir, char *prefix)
 {
-	struct	dirent *e;
-	DIR	*dh;
 	int	len = strlen(prefix);
+	char	**files;
 	char	**lines = 0;
+	int	i;
 
-	unless (dh = opendir(dir)) return (0);
-	while (e = readdir(dh)) {
-		if ((strlen(e->d_name) >= len) &&
-		    strneq(e->d_name, prefix, len)) {
-			char	file[MAXPATH];
-
-			sprintf(file, "%s/%s",  dir, e->d_name);
-			lines = addLine(lines, strdup(file));
-		}
+	files = getdir(dir);
+	unless (files) return (0);
+	EACH (files) {
+		int	flen = strlen(files[i]);
+		/* skip files that don't match prefix */
+		unless (flen >= len && strneq(files[i], prefix, len)) continue;
+		/* skip emacs backup files */
+		if (files[i][flen - 1] == '~') continue;
+		lines = addLine(lines, aprintf("%s/%s", dir, files[i]));
 	}
-	closedir(dh);
+	freeLines(files);
 	return (lines);
 }
 
