@@ -537,6 +537,15 @@ print_it(char state[4], char *file, char *rev)
 	}
 
 	/*
+	 * For backward compat with "bk sfiles"
+	 * match basename against ignore list again.
+	 */
+	if (!opts.aflg && match_globs(basenm(gfile), ignore)) {
+		debug((stderr, "SKIP\t%s\n", gfile));
+		return;
+	}
+
+	/*
 	 * HACK to hide stuff in the log directory & BitKeeper/etc/SCCS/x.*
 	 * This assumes the sfind is ran from project root
 	 * If you run "bk sfind" under <project root>/BitKeeper directory
