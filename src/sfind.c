@@ -599,6 +599,18 @@ chk_ig: if (isIgnored(file)) return;
 	print_it(state, file, rev);
 }
 
+char *
+append_rev(MDBM *db, char *name, char *rev, char *buf)
+{
+	char *t;
+
+	t = mdbm_fetch_str(db, name);
+	unless (t) return (rev);
+	sprintf(buf, "%s,%s", t, rev);
+	assert(strlen(buf) < MAXPATH);
+	return (buf);
+}
+
 /*
  * Called for each directory that has an SCCS subdirectory
  */
@@ -689,17 +701,20 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 		if (strneq("s.", e->d_name, 2)) {
 			enqueue(&slist, e->d_name);
 		} else {
-			if (strneq("c.", e->d_name, 2)) {
+			if (strneq("c.", e->d_name, 2) &&
+			    (p = strrchr(e->d_name, '@'))) {
 				/*
-				 * XXX TODO; store the @rev part
-				 * as the value field * so we can report
-				 * the c.file@rev name * if it turns out
-				 * to be a junk file
+				 * Special handling for c.file@rev entry
+				 * append the @rev part to the value field
+				 * so we can print the correct file
+				 * name if it turns out to be a junk file. 
 				 */
-				p = strrchr(e->d_name, '@');
-				if (p) *p = 0;
-			}
-			mdbm_store_str(sDB, e->d_name, "", MDBM_INSERT);
+				*p++ = 0;
+				p = append_rev(sDB, e->d_name, p, buf);
+			} else {
+				p = "";
+			} 
+			mdbm_store_str(sDB, e->d_name, p, MDBM_INSERT);
 		}
 	}
 	closedir(sccs_dh);
@@ -782,13 +797,33 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 	 * XXX TODO: Do we consider the r.file and m.file "junk" file?
 	 */
 	if (opts.jflg) {
+		kvpair  kv;
 		concat_path(buf, dir, "SCCS");
-		for (k = mdbm_firstkey(sDB); k.dsize != 0;
-						    k = mdbm_nextkey(sDB)) {
+		for (kv = mdbm_first(sDB); kv.key.dsize != 0;
+						    kv = mdbm_next(sDB)) {
 			char buf1[MAXPATH];
 
-			concat_path(buf1, buf, k.dptr);
-			do_print(" j ", buf1, 0);
+			concat_path(buf1, buf, kv.key.dptr);
+			if (kv.val.dsize -= 0) {
+				do_print(" j ", buf1, 0);
+			} else {
+				/*
+				 * We only get here when we get 
+				 * c.file@rev entries. Extract the @rev part
+				 * from kv.val.ptr and append it to buf1 to
+				 * reconstruct the correct file name.
+				 */
+				p = kv.val.dptr;
+				while (p) {
+					char *q;
+
+					q = strchr(p, ',');
+					if (q) *q++ = 0;
+					concat_path(buf1, buf1, p);
+					do_print(" j ", buf1, 0);
+					p = q;
+				}
+			}
 		}
 	}
 
