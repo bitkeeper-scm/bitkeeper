@@ -17,8 +17,8 @@ hostme_main(int ac, char **av)
 {
 	int	c, rc;
 	opts	opts;
-	char	*url = BK_HOSTME_URL;
-	char	*hostme_info;
+	char	url[] = BK_HOSTME_URL;
+	char	hostme_info[MAXLINE];
 	char	*public_key;
 	int	fd;
 	FILE	*f;
@@ -61,15 +61,18 @@ hostme_main(int ac, char **av)
 	public_key[i] = 0;
 	close(fd);
 
-	unless (hostme_info = bktmp(0, "hinfo")) {
+	if (gettemp(hostme_info, "hinfo")) {
 		fprintf(stderr, "Can't allocate temp file\n");
 		usage();
 	}
 	unless (f = fopen(hostme_info, "wb")) return (1);
 
-	fprintf(f, "type=%s\n", opts.project);
-	fprintf(f, "repo=%s\n", opts.repository);
-	fprintf(f, "key=%s\n", public_key);
+	fprintf(f, "version=1.0\n");
+	fprintf(f, "type=PROJECT\n");
+	fprintf(f, "project=%s\n", opts.project);
+	fprintf(f, "repository=%s\n", opts.repository);
+	fprintf(f, "sshkey=%s", public_key);
+	fprintf(f, "end=end\n");
 	fclose(f);
 
 	r = remote_parse(url, 0);
@@ -84,7 +87,7 @@ hostme_main(int ac, char **av)
 	    m->where, msize(m), 0, "BitKeeper/hostme", HOSTME_CGI);
 	mclose(m);
 	skip_http_hdr(r);
-	unless (rc) rc = get_ok(r, 0, 0);
+	unless (rc) rc = get_ok(r, 0, opts.debug);
 	disconnect(r, 2);
 	if (!opts.debug) unlink(hostme_info);
 	return (rc);

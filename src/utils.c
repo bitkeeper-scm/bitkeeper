@@ -443,7 +443,7 @@ int
 get_ok(remote *r, char *read_ahead, int verbose)
 {
 	int 	i, ret;
-	char	buf[200], *p;
+	char	buf[512], *p;
 
 	if (read_ahead) {
 		p = read_ahead;
