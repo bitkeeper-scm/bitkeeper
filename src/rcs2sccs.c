@@ -214,8 +214,8 @@ verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
 	int     ret;
 	
 	if (exists(g)) unlink(g);	// DANGER
-	sprintf(cmd, "co -q -kk -r%s %s && bk get -kpqr%s %s | diff %s -",
-	    d->rev, g, d->sccsrev, g, g);
+	sprintf(cmd, "co -q %s -r%s %s && bk get -kpqr%s %s | diff %s -",
+	    rcs->kk, d->rev, g, d->sccsrev, g, g);
 	ret = system(cmd);
 	if (exists(g)) unlink(g);	// DANGER
 	return (ret);
@@ -237,7 +237,7 @@ verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
 	av[i = 0] = co_prog;
 	av[++i] = "-q";
 	av[++i] = "-p";
-	av[++i] = "-kk";
+	av[++i] = rcs->kk;
 	sprintf(buf, "-r%s", d->rev);
 	av[++i] = buf;
 	av[++i] = g;
@@ -334,7 +334,8 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 
 	unless (buf) buf = malloc(buflen = 64<<10);
 #ifdef	WIN32
-	sprintf(buf, "co -q -p -kk -r%s %s > %s", d->rev, rcs->file, s->gfile);
+	sprintf(buf,
+	    "co -q -p %s -r%s %s > %s", rcs->kk, d->rev, rcs->file, s->gfile);
 	if (system(buf) != 0) {
 		fprintf(stderr, "[%s] failed\n", buf);
 		return (1);
@@ -356,7 +357,7 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 		av[i = 0] = co_prog;
 		av[++i] = "-q";
 		av[++i] = "-p";
-		av[++i] = "-kk";
+		av[++i] = rcs->kk;
 		sprintf(buf, "-r%s", d->rev);
 		av[++i] = buf;
 		av[++i] = rcs->file;
@@ -466,7 +467,9 @@ R %s\n", ++seq, m, g, r);
 		unless (t[-1] == '\n') *t++ = '\n';
 		*t = 0;
 	}
-	sprintf(t, "X 0x3\n------------------------------------------------\n");
+	sprintf(t,
+	    "X 0x%x\n------------------------------------------------\n",
+	    streq(rcs->kk, "kk") ? 3 : 1);
 //fprintf(stderr, "%s", buf);
 	init = mrange(buf, &buf[strlen(buf)], "b");
 
