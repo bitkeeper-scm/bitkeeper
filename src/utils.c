@@ -932,6 +932,7 @@ again:	if (lstat(dir, &sb1)) {
 	}
 	if (lstat(dir, &sb2)) {
 		perror(dir);
+		freeLines(lines);
 		return(NULL);
 	}
 	if ((sb1.st_mtime != sb2.st_mtime) || 
