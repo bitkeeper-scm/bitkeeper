@@ -135,7 +135,6 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			}
 		}
 	}
-	if (kFlg) keys(0);
 	if (proj) proj_free(proj);
 	purify_list();
 	return (0);
@@ -355,14 +354,7 @@ keys(char *file)
 	delta	*d;
 	static	time_t	cutoff;
 	static	char *host;
-	static	u32 sum = 0;
 
-	if (file == 0) {
-		printf("u32checksum=%u\n", sum);
-		cutoff = 0;
-		sum = 0;
-		return;
-	}
 	unless (s = init(file, SILENT|INIT_NOCKSUM)) return;
 	unless (s->table) {
 		sccs_free(s);
@@ -382,7 +374,6 @@ keys(char *file)
 
 			sccs_shortKey(s, sccs_ino(s), buf);
 			printf("%s %lu\n", buf, d->date);
-			for (p = buf; *p; sum += *p++);
 			break;
 		}
 	}

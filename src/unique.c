@@ -215,15 +215,6 @@ uniq_regen()
 	return (uniq_open());
 }
 
-private	u32
-u32sum(u8 *buf)
-{
-	u32	sum = 0;
-
-	while (*buf) sum += *buf++;
-	return (sum);
-}
-
 int
 uniq_open()
 {
@@ -231,8 +222,8 @@ uniq_open()
 	FILE	*f;
 	time_t	t, cutoff = time(0) - uniq_drift();
 	datum	k, v;
-	u32	sum = 0;
 	char	path[MAXPATH*2];
+	int	pipes;
 
 	unless (uniq_lock() == 0) return (-1);
 	unless (tmp = findTmp()) {
@@ -243,22 +234,16 @@ uniq_open()
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (f = fopen(path, "r")) return (0);
 	while (fnext(path, f)) {
-		if (strneq(path, "u32checksum=", 12)) {
-			u32	filesum = 0;
-
-			sscanf(path, "u32checksum=%u\n", &filesum);
-			if ((sum == filesum) && !fnext(path, f)) {
-				fclose(f);
-				return (0);
-			}
+		for (pipes = 0, s = path; *s && (*s != ' '); s++) {
+			if (*s == '|') pipes++;
+		}
+		unless ((pipes == 2) &&
+		    s && isdigit(s[1]) && (chop(path) == '\n')) {
 bad:			fprintf(stderr, "%s/keys is corrupted, fixing.\n", tmp);
 			mdbm_close(db);
 			fclose(f);
 			return (uniq_regen());
 		}
-		sum += u32sum(path);
-		s = strchr(path, ' ');
-		if (!s || (chop(path) != '\n')) goto bad;
 		*s++ = 0;
 		t = (time_t)strtoul(s, 0, 0);
 
@@ -290,13 +275,8 @@ bad:			fprintf(stderr, "%s/keys is corrupted, fixing.\n", tmp);
 			if (t > t2) mdbm_store(db, k, v, MDBM_REPLACE);
 		}
 	}
-	
-	/*
-	 * Whoops, hit a DB without a checksum.
-	 */
-	mdbm_close(db);
 	fclose(f);
-	return (uniq_regen());
+	return (0);
 }
 
 /*
@@ -331,17 +311,6 @@ uniq_update(char *key, time_t t)
 	return (0);
 }
 
-private	inline u32
-fputsum(FILE *f, u8 *buf)
-{
-	u8	*p;
-	u32	sum;
-
-	for (p = buf, sum = 0; *p; sum += *p++);
-	fputs(buf, f);
-	return (sum);
-}
-
 /*
  * Rewrite the file.  The database is locked.
  */
@@ -351,7 +320,6 @@ uniq_close()
 	FILE	*f;
 	kvpair	kv;
 	time_t	t;
-	u32	sum = 0;
 	char	*tmp;
 	u8	path[MAXKEY];
 
@@ -369,10 +337,8 @@ uniq_close()
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		assert(sizeof(time_t) == kv.val.dsize);
 		memcpy(&t, kv.val.dptr, sizeof(time_t));
-		sprintf(path, "%s %lu\n", kv.key.dptr, t);
-		sum += fputsum(f, path);
+		fprintf(f, "%s %lu\n", kv.key.dptr, t);
 	}
-	fprintf(f, "u32checksum=%u\n", sum);
 	fclose(f);
 close:  mdbm_close(db);
 	db = 0;
