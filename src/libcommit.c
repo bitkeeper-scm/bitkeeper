@@ -426,27 +426,28 @@ platformInit()
 	};
 
 	char buf[MAXPATH];
+	int i = -1;
+
+	if ((editor = getenv("EDITOR")) == NULL) editor="vi";
+	if ((pager = getenv("PAGER")) == NULL) pager="more";
 
 #define TAG_FILE "sccslog"
 	if ((bin = getenv("BK_BIN")) != NULL) {
 		char buf[MAXPATH];
 		sprintf(buf, "%s%s", bin, TAG_FILE);
 		if (exists(buf)) return;
-	} else {
-		int i = -1;
-		while (paths[++i]) {
-			sprintf(buf, "%s%s", paths[i], TAG_FILE);
-			if (exists(buf)){
-				bin =  strdup(paths[i]);
-				sprintf(buf, "BK_BIN=%s", paths[i]);
-				putenv(buf);
-				sprintf(buf, "PATH=%s:/usr/xpg4/bin:%s",
-						    paths[i], getenv("PATH"));
-				putenv(buf);
-			}
+	}
+
+	while (paths[++i]) {
+		sprintf(buf, "%s%s", paths[i], TAG_FILE);
+		if (exists(buf)){
+			bin =  strdup(paths[i]);
+			sprintf(buf, "BK_BIN=%s", paths[i]);
+			putenv(buf);
+			sprintf(buf, "PATH=%s:/usr/xpg4/bin:%s",
+					    paths[i], getenv("PATH"));
+			putenv(buf);
 		}
 	}
-	if ((editor = getenv("EDITOR")) == NULL) editor="vi";
-	if ((pager = getenv("PAGER")) == NULL) pager="more";
 }
 
