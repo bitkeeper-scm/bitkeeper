@@ -2472,21 +2472,18 @@ csets_in(opts *opts)
 private void
 log_cleanup()
 {
-	int	i;
+	int	i = 0;
 	FILE	*f;
 	char	buf[MAXPATH];
 	char	subject[MAXPATH*2];
+	struct  tm *tm;
+	char    save[100];
+	time_t  now = time(0);
 
-	for (i = 1; i < 100; i++) {
-		struct  tm *tm;
-		time_t  now = time(0);
-		char    save[100];
-
-		tm = localtime(&now);
-		strftime(save, sizeof(save), "RESYNC-%Y-%m-%d", tm);
-		if (exists(save)) continue;
-		if (rename("RESYNC", save)) return;
-	}
+	do {
+		sprintf(save, "RESYNC-%u", now);
+	} while (exists(save) && (++i < 100));
+	if (rename("RESYNC", save)) return;
 	unless (f = fopen(LOG_KEYS, "r")) return;
 	strcpy(buf, "-a");
 	while (fgets(&buf[2], sizeof(buf) - 2, f)) {
@@ -2495,13 +2492,15 @@ log_cleanup()
 			sprintf(subject, "LOGGING: undo -f %s in ", buf);
 			getcwd(buf, sizeof(buf));
 			strcat(subject, buf);
-			strcat(subject, " failed");
+			strcat(subject, " failed; left ");
+			strcat(subject, save);
 			mail("dev@bitmover.com", subject, LOG_KEYS);
 		} else {
 			sprintf(subject, "LOGGING: undo -f %s in ", buf);
 			getcwd(buf, sizeof(buf));
 			strcat(subject, buf);
-			strcat(subject, " worked");
+			strcat(subject, " worked; left ");
+			strcat(subject, save);
 			mail("dev@bitmover.com", subject, LOG_KEYS);
 		}
 	}
