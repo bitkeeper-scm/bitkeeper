@@ -5,6 +5,9 @@
 
 #define	BK "bk"
 
+extern	int	test_release;
+extern	unsigned build_timet;
+
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
@@ -443,6 +446,17 @@ main(int ac, char **av, char **env)
 		printf("%s\n", getenv("PATH"));
 		exit(0);
 	}
+
+	/*
+	 * Determine if this should be a trial version of bk.
+	 * Add versions that are not tagged will automaticly expire
+	 * in 2 weeks.
+	 */
+	if (test_release && (time(0) > (time_t)build_timet + 3600*24*14)) {
+		version_main(0, 0);
+		exit(1);
+	}
+
 	/* bk _realpath is mainly for win32 */
 	if (av[1] && streq(av[1], "_realpath") && !av[2]) {
 		char buf[MAXPATH], real[MAXPATH];
