@@ -62,6 +62,7 @@ cmd_pull(int ac, char **av)
 	unless (me = csetKeys(them)) {
 		putenv("BK_OUTGOING=NOTHING");
 		out("OK-Nothing to send.\n");
+		out("OK-Unlocked\n"); /* lock is relaesed when we return */
 		goto out;
 	}
 	out("OK-something to send.\n");
