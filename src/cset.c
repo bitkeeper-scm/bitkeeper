@@ -427,7 +427,7 @@ header(sccs *cset, int diffs)
 	printf("# Host:\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
 	getcwd(pwd, sizeof(pwd));
 	printf("# Root:\t%s\n", pwd);
-	printf("# Date:\t%s", ctime(&t));
+	//printf("# Date:\t%s", ctime(&t)); /* detele this line for http push */
 	cset->state = save;
 }
 
