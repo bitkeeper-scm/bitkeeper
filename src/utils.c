@@ -2,6 +2,20 @@
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
+int
+cat(char *file)
+{
+	MMAP	*m = mopen(file, "r");
+
+	unless (m) return (-1);
+	unless (write(1, m->mmap, m->size) == m->size) {
+		mclose(m);
+		return (-1);
+	}
+	mclose(m);
+	return (0);
+}
+
 /*
  * Write the data to either the gzip channel or to 1.
  */
