@@ -41,6 +41,7 @@ push_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.doit = opts.verbose = 1;
+	opts.out = stderr;
 
 	while ((c = getopt(ac, av, "ac:deE:Gilno;qtz|")) != -1) {
 		switch (c) {
@@ -66,7 +67,6 @@ usage:			system("bk help -s push");
 			return (1);
 		}
 	}
-	unless (opts.out) opts.out = stderr;
 
 	loadNetLib();
 	has_proj("push");
@@ -113,6 +113,7 @@ log_main(int ac, char **av)
 	char	retry[10] = "-c",  log_url[] = OPENLOG_URL;
 	char	*log_av[MAXARG] = {"push", "-ie"};
 
+	opts.out = stderr;
 	while ((c = getopt(ac, av, "dqpc:")) != -1) {
 		switch (c) {
 		    case 'c':	strcpy(&retry[2], optarg);
@@ -137,9 +138,7 @@ log_main(int ac, char **av)
 							logs_pending(0, 0, 0));
 		return (0);
 	}
-
-	
-
+       
 	/*
 	 * WIN32 note:
 	 * a) Win32 wish shell maps the console to a to a invisiable window,
