@@ -4,16 +4,15 @@
 WHATSTR("@(#)%K%");
 
 char *clean_help = 
-"\nclean - clean up files.\n\
+"usage: clean [-punv] [files...]\n\
+    -p	print, i.e., show diffs of modified files\n\
+    -u	clean even modified files, discarding changes (DANGEROUS)\n\
+    -n  leave the working copy of the file in place\n\
+    -v	list files being cleaned\n\n\
 \n\
 The default behaviour is to clean up all checked out files,\n\
 locked or unlocked.  Files are cleaned if they are unmodified,\n\
-so a \"co -l; clean\" is a null operation.\n\
-\n\
-usage: clean [-puv] [files...]\n\
-    -p	print, i.e., show diffs of modified files\n\
-    -u	clean even modified files, discarding changes (DANGEROUS).\n\
-    -v	list files being cleaned\n\n";
+so \"bk get -e; bk clean\" is a null operation.\n";
 
 /*
  * This works even if there isn't a gfile.
@@ -28,17 +27,24 @@ main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, clean_help);
+usage:		fputs(clean_help, stderr);
 		return (1);
 	}
-	if (streq("unedit", av[0])) {
+	if (streq("unedit", av[0]) || streq("unget", av[0])) {
 		flags |= CLEAN_UNEDIT;
 	}
-	while ((c = getopt(ac, av, "puv")) != -1) {
+	while ((c = getopt(ac, av, "npqr:suv")) != -1) {
 		switch (c) {
 		    case 'p': flags |= PRINT; break;
 		    case 'u': flags |= CLEAN_UNEDIT; break;
+		    case 'n': flags |= CLEAN_UNLOCK; break;
 		    case 'v': flags &= ~SILENT; break;
+
+		    case 'r':
+		    case 's':
+		    case 'q':
+			/* Ignored for ATT compatibility.  */
+			break;
 		    default:
 			goto usage;
 		}

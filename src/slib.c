@@ -6175,7 +6175,7 @@ sccs_clean(sccs *s, u32 flags)
 	unless (HAS_PFILE(s)) {
 		unless (WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
-			unlinkGfile(s);
+			unless (flags & CLEAN_UNLOCK) unlinkGfile(s);
 			return (0);
 		}
 		fprintf(stderr, "%s writable but not edited?\n", s->gfile);
@@ -6183,7 +6183,7 @@ sccs_clean(sccs *s, u32 flags)
 	}
 	if (flags & CLEAN_UNEDIT) {
 		unlink(s->pfile);
-		unlinkGfile(s);
+		unless (flags & CLEAN_UNLOCK) unlinkGfile(s);
 		return (0);
 	}
 	unless (HAS_GFILE(s)) {
