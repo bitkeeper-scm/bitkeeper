@@ -222,7 +222,7 @@ usage:		fprintf(stderr, "%s", sfind_usage);
                 }
 	}
 	if (opts.out) fclose(opts.out);
-	if (opts.progress) progress(1);
+	if (opts.progress) progress(2);
 	return (0);
 }
 
@@ -525,6 +525,18 @@ done:	if (level == 0) {
 
 progress(int force)
 {
+	static	struct timeval tv;
+	struct	timeval now;
+	int	msec;
+
+	if (force <= 1) {
+		gettimeofday(&now, 0);
+		msec = (now.tv_sec - tv.tv_sec) * 1000;
+		msec += now.tv_usec / 1000;
+		msec -= tv.tv_usec / 1000;
+		if (tv.tv_sec && (msec < 11)) return;
+		tv = now;
+	}
 	if (!force && (s_last == s_count) && (x_last == x_count)) return;
 	printf("%d %d %d\n", s_count, x_count, d_count);
 	fflush(stdout);
