@@ -49,7 +49,9 @@ getline(int in, char *buf, int size)
 {
 	int	i = 0;
 	char	c;
+	static	int echo = -1;
 
+	if (echo == -1) echo = getenv("BK_GETLINE") != 0;
 	buf[0] = 0;
 	size--;
 	unless (size) return (-3);
@@ -58,6 +60,7 @@ getline(int in, char *buf, int size)
 		    case 1:
 			if ((buf[i] = c) == '\n') {
 				buf[i] = 0;
+				if (echo) fprintf(stderr, "[%s]\n", buf);
 				return (i + 1);	/* we did read a newline */
 			}
 			if (++i == size) {

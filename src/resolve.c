@@ -19,7 +19,7 @@
  *
  * Invariants:
  * opts->rootDB{key} = <path>.  If the key is there then the inode is in the
- * 	RESYNC directory under <path>.
+ * 	RESYNC directory or the RENAMES directory under <path>.
  */
 #include "resolve.h"
 #include "comments.c"
@@ -30,6 +30,7 @@ int
 resolve_main(int ac, char **av)
 {
 	int	c;
+	int	comment = 0;	/* set if they used -y */
 	static	opts opts;	/* so it is zero */
 	extern	char *bk_dir;
 
@@ -37,12 +38,12 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
-	while ((c = getopt(ac, av, "l|y;m;aAcdFqrtv1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;
 		    case 'A': opts.advance = 1; break;
-		    case 'd': opts.debug = 1; break;
 		    case 'c': opts.noconflicts = 1; break;
+		    case 'd': opts.debug = 1; break;
 		    case 'F': opts.force = 1; break;
 		    case 'l':
 		    	if (optarg) {
@@ -55,8 +56,7 @@ resolve_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;
 		    case 'r': opts.remerge = 1; break;
 		    case 't': opts.textOnly = 1; break;
-		    case 'v': opts.verbose = 1; break;
-		    case 'y': opts.comment = optarg; break;
+		    case 'y': opts.comment = optarg; comment = 1; break;
 		    case '1': opts.pass1 = 0; break;
 		    case '2': opts.pass2 = 0; break;
 		    case '3': opts.pass3 = 0; break;
@@ -82,8 +82,11 @@ resolve_main(int ac, char **av)
 	}
 
 	if (opts.automerge) {
-		unless (opts.comment) opts.comment = "Automerge";
+		unless (comment || opts.comment) opts.comment = "Automerge";
 		opts.textOnly = 1;	/* Good idea??? */
+	}
+	unless (comment || opts.comment) {
+		opts.comment = "Merge";
 	}
 
 	/* for commit */
@@ -1421,8 +1424,7 @@ automerge(resolve *rs, names *n)
 		gotComment = 1;
 		d = getComments(0);
 		sccs_restart(rs->s);
-		flags =
-		    DELTA_DONTASK|DELTA_FORCE|(rs->opts->verbose ? 0: SILENT);
+		flags = DELTA_DONTASK|DELTA_FORCE|(rs->opts->quiet? SILENT : 0);
 		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
 			sccs_whynot("delta", rs->s);
 			rs->opts->errors = 1;
@@ -1468,7 +1470,7 @@ edit(resolve *rs)
 	} else {
 		branch = rs->revs->remote;
 	}
-	if (rs->opts->quiet || !rs->opts->verbose) flags |= SILENT;
+	if (rs->opts->quiet) flags |= SILENT;
 	if (sccs_get(rs->s, 0, branch, 0, 0, flags, "-")) {
 		fprintf(stderr,
 		    "resolve: can not edit/merge %s\n", rs->s->sfile);
@@ -1548,28 +1550,27 @@ pendingCheckins()
 void
 commit(opts *opts)
 {
-	int	ret;
-	char	*s = malloc(100 + (opts->comment ? strlen(opts->comment) : 0));
+	int	i;
+	char	*cmds[10];
 
 	if (checkLog()) {
 		fprintf(stderr, "Commit aborted, no changes applied");
 		exit(1);
 	}
 
-	sprintf(s, "%sbk commit -RFf%s %s%s",
-	    bin, opts->quiet ? "s" : "",
-	    opts->comment ? "-y" : "",
-	    opts->comment ? opts->comment : "");
-	if (opts->debug) fprintf(stderr, "%s\n", s);
-	ret = system(s) & 0xffff;
-	free(s);
-	unless (ret) return;
-	if (ret == 0xff00) {
-	    	fprintf(stderr, "Can not execute '%s'\n", s);
-		exit(1);
+	cmds[i = 0] = "bk";
+	cmds[++i] = "commit";
+	cmds[++i] = "-RFf";
+	if (opts->quiet) cmds[++i] = "-s";
+	if (opts->comment) {
+		char	*s = malloc(strlen(opts->comment) + 10);
+
+		sprintf(s, "-y%s", opts->comment);
+		cmds[++i] = s;
 	}
-	ret >>= 8;
-	fprintf(stderr, "Commit aborted, no changes applied.\n", ret);
+	cmds[++i] = 0;
+	unless (spawnvp(_P_WAIT, "bk", cmds)) return;
+	fprintf(stderr, "Commit aborted, no changes applied.\n");
 	exit(1);
 }
 

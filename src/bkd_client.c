@@ -14,6 +14,10 @@ remote *
 remote_parse(char *p)
 {
 	char	buf[MAXPATH+256];
+	static	echo = -1;
+	remote	*r;
+
+	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
 	unless (p) {
 		FILE	*f = popen("bk parent", "r");
@@ -32,11 +36,12 @@ remote_parse(char *p)
 	}
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
-		p += 5;
-		return (url_parse(p));
+		r = url_parse(p + 5);
 	} else {
-		return (nfs_parse(p));
+		r = nfs_parse(p);
 	}
+	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
+	return (r);
 }
 
 /* [[user@]host:]path */
@@ -73,7 +78,7 @@ nfs_parse(char *p)
 	return (r);
 }
 
-/* host[:port]/path */
+/* host[:port]/path or host:port */
 remote *
 url_parse(char *p)
 {
@@ -82,24 +87,20 @@ url_parse(char *p)
 
 	unless (*p) return (0);
 	new(r);
-	if (s = strchr(p, ':')) {
+	if (s = strchr(p, ':')) {		/* host:port[/path] */
 		*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
-	}
-	unless (s = strchr(p, '/')) {
-		remote_free(r);
-		return (0);
-	}
-	*s = 0;
-	if (r->host) {
 		r->port = atoi(p);
-	} else {
+		p = strchr(p, '/');
+		if (p) r->path = strdup(p);
+	} else if (s = strchr(p, '/')) {	/* host/path */
+		*s = 0;
 		r->port = BK_PORT;
 		r->host = strdup(p);
+		*s = '/';
+		r->path = strdup(s);
+	} else {
+		return (0);
 	}
-	p = s;
-	*s = '/';
-	unless (*p) p = ".";	/* we like having a path */
-	r->path = strdup(p);
 	return (r);
 }
 
@@ -127,17 +128,20 @@ remote_unparse(remote *r)
 			sprintf(port, "%u", r->port);
 			strcat(buf, port);
 		}
-		strcat(buf, r->path);
+		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
 	}
 	if (r->user) {
 		assert(r->host);
-		sprintf(buf, "%s@%s:%s", r->user, r->host, r->path);
+		sprintf(buf, "%s@%s", r->user, r->host);
+		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
 	} else if (r->host) {
-		sprintf(buf, "%s:%s", r->host, r->path);
+		sprintf(buf, "%s:", r->host);
+		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
 	}
+	assert(r->path);
 	return (strdup(r->path));
 }
 
@@ -174,11 +178,12 @@ bkd(int compress, remote *r, int *sock)
 	char	*t;
 	char	*remsh = "ssh";
 	char	*remopts = compress ? "-C" : 0;
-	char	*cmd[100];
+	char	*cmd[100], bkd_path[MAXPATH];
 	int	i;
 	pid_t	p;
 	int	inout[2];
 	int	findprog(char *);
+	extern	char *bin;
 
 	if (r->port) {
 		assert(r->host);
@@ -220,7 +225,19 @@ bkd(int compress, remote *r, int *sock)
 			cmd[++i] = "-l";
 			cmd[++i] = r->user;
 		}
-		cmd[++i] = "bk bkd -e";
+		/* for regression tests */
+		if (bin && streq(r->host, "localhost")) {
+			/*
+			 * Pick up the bkd in the $BK_BIN directory
+			 * In regression test $BK_BIN is set to the
+			 * test directory.
+			 */
+			sprintf(bkd_path, "%sbkd -e", bin);
+			cmd[++i] = bkd_path;
+		} else {
+			/* pick up the bkd in the installed directory */
+			cmd[++i] = "bk bkd -e";
+		}
 		cmd[++i] = 0;
 	} else {
 		cmd[0] = "bk";

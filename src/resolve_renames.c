@@ -173,7 +173,6 @@ rfuncs	r_funcs[] = {
     { "d", "diff", "diff the local file against the remote file", res_diff },
     { "D", "difftool",
 	"run graphical difftool on local and remote", res_difftool },
-    { "e", "explain", "explain the choices", r_explain },
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "H", "helptool", "run helptool", r_helptool },
@@ -184,6 +183,7 @@ rfuncs	r_funcs[] = {
     { "r", "use remote", "use the remote file name", r_r },
     { "vl", "view local", "view the local file", res_vl },
     { "vr", "view remote", "view the remote file", res_vr },
+    { "x", "explain", "explain the choices", r_explain },
     { 0, 0, 0, 0 }
 };
 

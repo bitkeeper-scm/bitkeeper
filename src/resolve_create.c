@@ -560,7 +560,6 @@ rfuncs	gc_funcs[] = {
     { "?", "help", "print this help", gc_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "d", "diff", "diff the local file against the remote file", res_diff },
-    { "e", "explain", "explain the choices", gc_explain },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "ml", "move local", "move the local file to someplace else", gc_ml },
     { "mr", "move remote", "move the remote file to someplace else", res_mr },
@@ -570,6 +569,7 @@ rfuncs	gc_funcs[] = {
       "side by side diff of the local file vs. the remote file", res_sdiff },
     { "vl", "view local", "view the local file", res_vl },
     { "vr", "view remote", "view the remote file", res_vr },
+    { "x", "explain", "explain the choices", gc_explain },
     { 0, 0, 0, 0 }
 };
 
@@ -577,7 +577,6 @@ rfuncs	sc_funcs[] = {
     { "?", "help", "print this help", sc_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "d", "diff", "diff the local file against the remote file", res_diff },
-    { "e", "explain", "explain the choices", sc_explain },
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     /* XXX - should have a move local to RENAMES and come back to it */
@@ -589,6 +588,7 @@ rfuncs	sc_funcs[] = {
       "side by side diff of the local file vs. the remote file", res_sdiff },
     { "vl", "view local", "view the local file", res_vl },
     { "vr", "view remote", "view the remote file", res_vr },
+    { "x", "explain", "explain the choices", sc_explain },
     { 0, 0, 0, 0 }
 };
 

@@ -14,7 +14,6 @@
 
 bk cset -i -s .
 echo $N Test sccsmv w/ p locked file ................................$NL
-rm -rf A B C D
 mkdir A B D E
 echo "This is file 1" > A/file1
 echo "This is file 2" > B/file2
@@ -34,17 +33,19 @@ do
 	bk ci $Q -yrev1.$i -l A/file1 B/file2 A/file3 A/file4 B/file4 D/file5
 done
 bk sfiles -l A B | bk clean -
-bk co $Q -l -r1.2  A/file1
+bk co $Q -l A/file1
 bk mv A/file1 B/file1
 # The file should have been moved, but not checked in.
 if [ ! -f B/file1 ]; then echo failed; exit 1; fi
 if [ ! -f B/SCCS/s.file1 ]; then echo failed; exit 1; fi
 if [ ! -f B/SCCS/p.file1 ]; then echo failed; exit 1; fi
 if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit 1; fi
-DPATH=`bk prs -hr1.2.1.1 -d:DPN: B/file1`
+# XXX - I think this is right but am not sure.
+DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
 if [ ${DPATH}X != ""X ]; then echo failed; exit 1; fi
 # Now check it in so later tests aren't confused.
 bk ci $Q -yrename B/file1
+bk -r check -a || exit 1
 echo OK
 echo $N Test sccsmv w/ unlocked file ................................$NL
 bk mv B/file2 C/file3
@@ -55,6 +56,7 @@ DPATH=`bk prs -hr+ -d:DPN: C/file3`
 if [ ${DPATH}X != "C/file3"X ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hr1.1 -d:DPN: C/file3`
 if [ ${DPATH}X != "B/file2"X ]; then echo failed; exit 1; fi
+bk -r check -a || exit 1
 echo OK
 echo $N Test sccsmv to directory ....................................$NL
 bk mv B/file1 B/file4 C
@@ -64,6 +66,17 @@ if [ -d B ]; then echo failed; exit 1; fi
 mkdir B
 bk mv C/file1 C/file4 B
 if [ ! -d C ]; then echo failed; exit 1; fi
+bk -r check -a || exit 1
+echo OK
+echo $N Test sccsmv to directory that does not exist ................$NL
+sccsmv B BBBB || { echo error; exit 1; }
+if [ ! -f BBBB/SCCS/s.file4 ]
+then	echo failed to move file; exit 1
+fi
+bk -r check -a || exit 1
+echo OK
+echo $N And move it back ............................................$NL
+sccsmv BBBB B || { echo error; exit 1; }
 echo OK
 echo $N Test sccsrm w/ p locked file ................................$NL
 bk get $Q -e B/file1
@@ -71,7 +84,7 @@ bk sccsrm B/file1
 if [ -f B/SCCS/p..del-file1 ]; then echo failed 1; exit 1; fi
 if [ ! -f B/SCCS/s..del-file1 ]; then echo failed 2; exit 1; fi
 REV=`bk prs -hr+ -d:I: B/.del-file1`
-if [ ${REV}X != "1.7"X ]; then echo failed 3 $REV; exit 1; fi
+if [ ${REV}X != "1.10"X ]; then echo failed 3 $REV; exit 1; fi
 echo OK
 echo $N Test sccsrm w non p-locked file .............................$NL
 bk sccsrm C/file3
@@ -123,7 +136,7 @@ echo $N Test sccsrm w/ -d \& duplicate name ..........................$NL
 bk rm B/file4
 if [ ! -f ${DDIR}/SCCS/s..del-file4~1 ]; then echo failed; exit 1; fi
 REV=`bk prs -hr+ -d:I: ${DDIR}/.del-file4~1`
-if [ ${REV}X != "1.7"X ]; then echo failed; exit 1; fi
+if [ ${REV}X != "1.9"X ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/.del-file4~1`
 if [ ${DPATH}X != "${DDIR}/.del-file4~1"X ]; then echo failed; exit 1; fi
 echo OK

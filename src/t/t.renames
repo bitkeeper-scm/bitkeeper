@@ -236,7 +236,7 @@ echo OK
 echo $N '  resolve by renaming remote file but abort commit ..........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L -t copy >/dev/null 2>&1 <<EOF
+bk resolve -t -y $Q $L copy >LOG 2>&1 <<EOF
 mr
 REMOTE
 a
@@ -249,10 +249,12 @@ then	echo Bad data in local file; cat copy/CONFLICT; exit 1
 fi
 if [ -f copy/SCCS/s.REMOTE -o -f copy/REMOTE ]
 then	echo Should not have applied REMOTE
+	cat LOG
 	exit 1
 fi
 if [ ! -d copy/PENDING -o ! -d copy/RESYNC ]
 then	echo should not have cleaned up PENDING/RESYNC
+	cat LOG
 	exit 1
 fi
 echo OK
@@ -261,7 +263,7 @@ echo OK
 echo $N '  resolve by renaming remote file using default comments ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L -t copy >/dev/null 2>&1 <<EOF
+bk resolve $Q $L -t copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 u
@@ -288,11 +290,10 @@ then	echo 'Failed to add changeset for remote rename'; exit 1
 fi
 echo OK
 
-
 echo $N '  resolve by renaming remote file passing in comments .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve $Q $L -t -yYO_BABY_YO_BABY copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -315,6 +316,11 @@ then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
 if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
 then	echo 'Failed to add changeset for remote rename'; exit 1
+fi
+if [ `prs -hr+ -d:C: copy/ChangeSet` != "YO_BABY_YO_BABY" ]
+then	echo 'Failed to add passed in comments to cset'
+	prs -r+ -d:C: copy/ChangeSet
+	exit 1
 fi
 echo OK
 

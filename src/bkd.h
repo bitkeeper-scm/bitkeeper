@@ -10,7 +10,7 @@
 #include "sccs.h"
 #include "zlib/zlib.h"
 
-#define	BKD_VERSION	"bkd version 1"
+#define	BKD_VERSION	"BKD version 1.1"
 
 /*
  * Functions take (int ac, char **av)
@@ -18,12 +18,14 @@
  * Commands are allowed to read/write state from the global Opts.
  */
 typedef	int (*func)(int, char **);
+int	cmd_cd(int ac, char **av);
 int	cmd_clone(int ac, char **av);
 int	cmd_eof(int ac, char **av);
 int	cmd_help(int ac, char **av);
 int	cmd_pull(int ac, char **av);
 int	cmd_push(int ac, char **av);
-int	cmd_root(int ac, char **av);
+int	cmd_pwd(int ac, char **av);
+int	cmd_rootkey(int ac, char **av);
 int	cmd_status(int ac, char **av);
 int	cmd_verbose(int ac, char **av);
 int	cmd_version(int ac, char **av);
@@ -32,14 +34,12 @@ struct cmd {
 	char	*name;		/* command name */
 	char	*description;	/* one line description for help */
 	func	cmd;		/* function pointer which does the work */
-	u32	readonly:1;	/* if set, then this is a readonly command */
 };
 
 typedef struct {
 	u32	interactive:1;		/* show prompts, etc */
 	u32	errors_exit:1;		/* exit on any error */
 	u32	daemon:1;		/* listen for TCP connections */
-	u32	readonly:1;		/* do read only commands exclusively */
 	FILE	*log;			/* if set, log commands to here */
 	u16	port;			/* listen on this port */
 	char	remote[16];		/* a.b.c.d of client */

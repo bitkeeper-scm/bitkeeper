@@ -2,18 +2,19 @@
 
 void	bkd_server(void);
 void	do_cmds(void);
+void	exclude(char *cmd);
 int	findcmd(int ac, char **av);
 int	getav(int *acp, char ***avp);
 void	log_cmd(int i, int ac, char **av);
-void	readonly(void);
 void	reap(int sig);
+void	usage();
 
 int
 main(int ac, char **av)
 {
 	int	c;
 
-	while ((c = getopt(ac, av, "deil|p;r")) != -1) {
+	while ((c = getopt(ac, av, "deil|p;x;")) != -1) {
 		switch (c) {
 		    case 'd': Opts.daemon = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
@@ -22,10 +23,18 @@ main(int ac, char **av)
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
 		    case 'p': Opts.port = atoi(optarg); break;
-		    case 'r': Opts.readonly = 1; break;
+		    case 'x': exclude(optarg); break;
+		    default: usage();
 	    	}
 	}
-	if (Opts.readonly) readonly();
+	if (Opts.port) {
+		Opts.daemon = 1;
+		if (Opts.interactive) {
+			fprintf(stderr,
+			    "Disabling interactive in daemon mode\n");
+		    	Opts.interactive = 0;
+		}
+	}
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
 		bkd_server();
@@ -35,6 +44,13 @@ main(int ac, char **av)
 		do_cmds();
 		return (0);
 	}
+}
+
+void
+usage()
+{
+	system("bk help bkd");
+	exit(1);
 }
 
 void
@@ -49,6 +65,8 @@ bkd_server()
 {
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
 
+	if (fork()) exit(0);
+	setsid();	/* lose the controlling tty */
 	signal(SIGCHLD, reap);
 	while (1) {
 		int	n = tcp_accept(sock);
@@ -102,10 +120,10 @@ do_cmds()
 				}
 			}
 		} else if (av[0]) {
-			if (Opts.interactive) out("ERROR-BAD CMD: ");
-			if (Opts.interactive) out(av[0]);
-			if (Opts.interactive) out(", Try help\n");
-		} else if (Opts.interactive) {
+			out("ERROR-BAD CMD: ");
+			out(av[0]);
+			out(", Try help\n");
+		} else {
 			out("ERROR-Try help\n");
 		}
 	}
@@ -126,23 +144,31 @@ log_cmd(int i, int ac, char **av)
 	fprintf(Opts.log, "\n");
 }
 
-/* remove all write commands from the cmds array */
+/* remove the specified command from the cmds array */
 void
-readonly()
+exclude(char *cmd)
 {
 	struct	cmd c[100];
 	int	i, j;
+	int	foundit = 0;
 
 	for (i = 0; cmds[i].name; i++);
 	assert(i < 99);
 	for (i = j = 0; cmds[i].name; i++) {
-		if (cmds[i].readonly) c[j++] = cmds[i];
+		unless (streq(cmd, cmds[i].name)) {
+			c[j++] = cmds[i];
+		} else {
+			foundit++;
+		}
 	}
 	for (i = 0; i < j; i++) {
 		cmds[i] = c[i];
 	}
 	cmds[i].name = 0;
 	cmds[i].cmd = 0;
+	unless (foundit) {
+		fprintf(stderr, "bkd: command '%s' not found\n", cmd);
+	}
 }
 
 int

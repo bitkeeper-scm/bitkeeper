@@ -6,12 +6,12 @@ WHATSTR("%W%");
 char	*getRelativeName(char *);
 void	rmDir(char *);
 int	mv(char *, char *);
-void	update_idcache(sccs *s);
+int	update_idcache(sccs *s, char *old, char *new);
 
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
-	char 	*p, *q, *t, *destfile, *oldpath;
+	char 	*p, *q, *t, *destfile, *oldpath, *newpath;
 	char	*gfile, *sfile;
 	char	buf[1024], commentBuf[MAXPATH*2];
 	sccs	*s;
@@ -19,6 +19,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	int	error = 0;
 	int	flags = SILENT|DELTA_FORCE;
 
+//fprintf(stderr, "sccs_mv(%s, %s, %d, %d)\n", name, dest, isDir, isDelete);
 	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) return (1);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
@@ -26,6 +27,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		return (1);
 	}
 
+	/* XXX - shouldn't this call sccs_clean()? */
 	if (HAS_PFILE(s) && !HAS_GFILE(s)){
 		unlink(s->pfile);	
 		s->state &= ~S_PFILE;
@@ -54,18 +56,20 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	/* close the file before we move it - win32 restriction */
 	sccs_close(s);
 	oldpath = getRelativeName(name);
+	newpath = getRelativeName(destfile);
 	if (isDelete) {
 		sprintf(commentBuf, "Delete: %s", oldpath);
 	} else {
-		char *newpath;
-
-		newpath = getRelativeName(destfile);
 		sprintf(commentBuf, "Rename: %s -> %s", oldpath, newpath);
-		free(newpath);
 	}
-	free(oldpath);
 
-	error |= mv(s->sfile, sfile);
+	error = mv(s->sfile, sfile);
+//fprintf(stderr, "mv(%s, %s) = %d\n", s->sfile, sfile, error);
+	if (!error && (error = update_idcache(s, oldpath, newpath))) {
+		fprintf(stderr, "Idcache failure\n");
+		goto out;
+	}
+	/* This is kind of bogus, we don't move the sfile back. */
 	if (!error && exists(s->gfile)) error = mv(s->gfile, gfile);
 	if (HAS_PFILE(s) && !error) {
 		p = strrchr(sfile, '/');
@@ -76,6 +80,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		*p = 's';
 	}
 	if (error) goto out;
+
 	/*
 	 * Remove the parent directory of "name",
 	 * If it is empty after the moves.
@@ -103,7 +108,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	if (HAS_PFILE(s) && !isDelete) goto out;
 	sccs_free(s);
 	/* For split root config; We recompute sfile here */
-	/* we do'nt want the sPath() adjustment		  */
+	/* we don't want the sPath() adjustment		  */
 	free(sfile);
 	sfile = name2sccs(destfile);
 	unless (s = sccs_init(sfile, 0, 0)) { error++; goto out; }
@@ -126,9 +131,9 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		goto out;
 	}
 
-	update_idcache(s);
-
 out:	if (s) sccs_free(s);
+	free(newpath);
+	free(oldpath);
 	free(destfile); free(sfile); free(gfile);
 	return (error);
 }
@@ -136,61 +141,76 @@ out:	if (s) sccs_free(s);
 /*
  * Update the idcache for this file.
  */
-void
-update_idcache(sccs *s)
+int
+update_idcache(sccs *s, char *old, char *new)
 {
 	project	*p;
 	char	path[MAXPATH];
 	char	key[MAXKEY];
+	kvpair	kv;
+	char	*t;
 	int	fd;
-	char	*name;
 	FILE	*f;
+	MDBM	*idDB;
 	extern	char *relativeName(sccs *sc, int withsccs, int mustHaveRmarker);
 
 	unless ((p = s->proj) || (p = proj_init(s))) {
 		fprintf(stderr,
 		    "can't find project root, idcache not updated\n");
 		s->proj = p;
-		return;
-	}
-
-	if (streq(".", p->root)) {
-		name = s->gfile;
-	} else {
-		name = relativeName(s, 0, 1);
-	}
-	assert(name);
-
-	/*
-	 * run sfiles -r if anything is weird.
-	 */
-	unless (streq(name, s->tree->pathname)) {
-		system("bk sfiles -r");
-		return;
+		return (1);
 	}
 
 	/*
 	 * This code ripped off from sfiles -r.
 	 */
-	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
+again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	unless ((fd = open(path, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
 		perror(path);
 		fprintf(stderr, "sccsmv: can't lock id cache\n");
-		return;
+		return (1);
 	}
 	close(fd);	/* unlink it when we are done */
 	sprintf(path, "%s/%s", p->root, IDCACHE);
-	f = fopen(path, "a");
+	unless (idDB = loadDB(path, 0, DB_NODUPS)) {
+		fprintf(stderr, "No idcache?  Creating one.\n");
+		idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	}
 	sccs_sdelta(s, sccs_ino(s), key);
-	unless (streq(".", p->root)) {
-		char	*p = relativeName(s, 0, 1);
-
-		assert(p);
-		fprintf(f, "%s %s\n", key, p);
-	} else {
-		fprintf(f, "%s %s\n", key, s->gfile);
+	if ((t = mdbm_fetch_str(idDB, key)) &&
+	    !streq(t, old) && !streq(t, new)) {
+		t = name2sccs(t);
+		sprintf(path, "%s/%s", p->root, t);
+		unless (exists(path)) {
+			fprintf(stderr,
+			    "Out of date idcache detected, updating...\n");
+			sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
+			unlink(path);
+			sprintf(path, "%s/%s", p->root, IDCACHE);
+			unlink(path);
+			mdbm_close(idDB);
+			system("bk sfiles -r");
+			goto again;
+		}
+		fprintf(stderr, "Key %s exists for %s\n", key, t);
+		mdbm_close(idDB);
+		sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
+		unlink(path);
+		return (1);
+	}
+	mdbm_store_str(idDB, key, new, MDBM_REPLACE);
+	f = fopen(path, "w");
+	fprintf(f,
+"# This is a BitKeeper cache file.\n\
+# If you suspect that the file is corrupted, simply remove it and \n\
+# and it will be rebuilt as needed.\n\
+# The format of the file is <ID> <PATHNAME>\n\
+# The file is used for performance during makepatch/takepatch commands.\n");
+	for (kv = mdbm_first(idDB); kv.key.dsize != 0; kv = mdbm_next(idDB)) {
+		fprintf(f, "%s %s\n", kv.key.dptr, kv.val.dptr);
 	}
 	fclose(f);
+	mdbm_close(idDB);
 	chmod(path, 0666);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	unlink(path);
