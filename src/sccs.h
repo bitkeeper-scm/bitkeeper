@@ -126,6 +126,7 @@ extern	char *strdup(char *s);
 #define	BUF(b)		char *b
 #define	EACH(s)		for (i = 1; (s) && (i < (int)(s[0])) && (s[i]); i++)
 #define	LPAD_SIZE	70
+#define	GOOD_PSIZE	16<<10
 
 /*
  * Flags that modify some operation (passed to sccs_*).
@@ -671,6 +672,7 @@ void	sccs_mkroot(char *root);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, char *initFile);
 int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
+sccs	*sccs_keyinit(char *key,int flags, MDBM *idDB);
 int	zgets_init(char *map, int len);
 int	zcat(char *map, int len);
 int	zeof(void);

@@ -133,7 +133,7 @@ extractPatch(FILE *p, int flags)
 	sccs	*s = 0;
 	sccs	*perfile = 0;
 	datum	k, v;
-	char	*name;
+	char	*name = 0;
 	int	newFile = 0;
 	char	*gfile;
 	static	int rebuilt = 0;	/* static - do it once only */
@@ -168,10 +168,8 @@ extractPatch(FILE *p, int flags)
 		line++;
 	}
 	if (echo>3) fprintf(stderr, "%s\n", buf);
-	k.dptr = buf;
-	k.dsize = strlen(buf) + 1;
-again:	v = mdbm_fetch(idDB, k);
-	unless (v.dptr || newFile) {
+again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
+	unless (s || newFile) {
 		unless (rebuilt++) {
 			rebuild_id();
 			goto again;
@@ -185,16 +183,13 @@ again:	v = mdbm_fetch(idDB, k);
 	 * They may have sent us a patch from 1.1, so the patch looks like a
 	 * new file.  But if we have a match, we want to use it.
 	 */
-	if (v.dptr) {
-		name = name2sccs(v.dptr);
-		unless ((s = sccs_init(name, flags)) && HAS_SFILE(s)) {
-			fprintf(stderr,
-			    "takepatch: can't find file '%s'\n", name);
-			exit(1);
-		}
+	if (s) {
+		if (name) free(name);
+		name = strdup(s->sfile);
 		if (newFile && (echo > 3)) {
 			fprintf(stderr,
 			    "takepatch: new file %s already exists.\n", name);
+			newFile = 0;
 		}
 		if (IS_EDITED(s)) {
 			fprintf(stderr,
@@ -867,11 +862,10 @@ tree:
 	fnext(buf, f);		/* skip version number */
 
 	if (newProject) {
-		unless (idDB = mdbm_open(NULL, 0, 0, 4096)) {
+		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 			perror("mdbm_open");
 			exit(1);
 		}
-		mdbm_pre_split(idDB, 1<<10);
 		return (f);
 	}
 

@@ -140,17 +140,98 @@ new2old(delta *d, delta *stop)
 	unless (d == stop) old2new(d->next, stop);
 }
 
+char **
+rsave(char **revs, char *rev)
+{
+	int	i;
+
+	if (!revs) {
+		revs = calloc(16, sizeof(char **));
+		(int)revs[0] = 16;
+	}
+	if (revs[(int)revs[0] - 1]) {
+		int	len = (int)revs[0];
+		char	**tmp = calloc(len * 2, sizeof(char **));
+
+		for (i = 0; ++i < len; tmp[i] = revs[i]);
+		(int)tmp[0] = len * 2;
+	}
+	for (i = (int)revs[0]; revs[--i] == 0; );
+	revs[++i] = strdup(rev);
+	return (revs);
+}
+
+int	marked;
+
+range_print(delta *d)
+{
+	unless (d) return (0);
+	if (d->flags & D_VISITED) {
+		marked--;
+		unless (d->parent) {
+			printf("..");
+		} else unless (d->parent->flags & D_VISITED) {
+			printf("%s..", d->rev);
+		}
+		unless (d->flags & D_MERGED) {
+			unless (d->kid) {
+				printf("%s\n", d->rev);
+				d->flags &= ~D_VISITED;
+				return (1);
+			} else unless (d->kid->flags & D_VISITED) {
+				printf("%s\n", d->rev);
+				d->flags &= ~D_VISITED;
+				return (1);
+			}
+		}
+	}
+	if (range_print(d->kid)) {
+		d->flags &= ~D_VISITED;
+		return (1);
+	}
+	if (range_print(d->siblings)) {
+		d->flags &= ~D_VISITED;
+		return (1);
+	}
+	return (0);
+}
+
+/* XXX - this is busted */
+dorevs(sccs *s, char **revs)
+{
+	delta	*d;
+	int	i;
+
+	for (i = 1; revs[i]; i++) {
+		unless (d = findrev(s, revs[i])) {
+			fprintf(stderr, "No rev like %s in %s\n",
+			    revs[i], s->gfile);
+			exit(1);
+		}
+		d->flags |= D_VISITED;
+		marked++;
+	}
+	/*
+	 * Now print out all contig regions
+	 */
+	while (marked) range_print(s->tree);
+}
+
 main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*e;
 	char	*name;
 	int	c;
+	char	**revs = 0;
 	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "c;r;")) != -1) {
+	while ((c = getopt(ac, av, "s;c;r;")) != -1) {
 		switch (c) {
 		    RANGE_OPTS('c', 'r');
+		    case 's':
+			revs = rsave(revs, optarg);
+			break;
 		    default:
 usage:			fprintf(stderr,
 			    "usage: %s [-r<rev>] [-c<date>]\n", av[0]);
@@ -163,6 +244,10 @@ usage:			fprintf(stderr,
 			continue;
 		}
 		if (!s->tree) goto next;
+		if (revs) {
+			dorevs(s, revs);
+			continue;
+		}
 		RANGE("range", s, 1, 1);
 		fprintf(stderr, "%s %s..%s:",
 		    s->gfile, s->rstart->rev, s->rstop->rev);

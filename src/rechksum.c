@@ -13,7 +13,7 @@ WHATSTR("%W%");
  * Copyright (c) 1999 L.W.McVoy
  */
 
-int	resum(sccs *s, delta *d);
+int	resum(sccs *s, delta *d, int flags);
 int	sumit(char *path, int *old, int *new);
 
 int
@@ -23,8 +23,15 @@ main(int ac, char **av)
 	delta	*d;
 	int	doit;
 	char	*name;
+	int	flags = 0;
+	int	c;
 
-	for (name = sfileFirst("rechksum", &av[1], 0);
+	while ((c = getopt(ac, av, "f")) != -1) {
+		switch (c) {
+		    case 'f': flags |= FORCE;
+		}
+	}
+	for (name = sfileFirst("rechksum", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, 0);
 		if (!s) continue;
@@ -35,7 +42,7 @@ main(int ac, char **av)
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
 			if (d->type == 'D') {
-				doit += resum(s, d);
+				doit += resum(s, d, flags);
 			}
 		}
 		if (doit) {
@@ -57,7 +64,7 @@ main(int ac, char **av)
 }
 
 int
-resum(sccs *s, delta *d)
+resum(sccs *s, delta *d, int flags)
 {
 	int	old, new;
 	int	encoding = s->encoding;
@@ -97,7 +104,7 @@ resum(sccs *s, delta *d)
 
 	if (d->sum == new) return (0);
 	if (d->sum != old) {
-		if (d->flags & D_CKSUM) {
+		if ((d->flags & D_CKSUM) && !(flags & FORCE)) {
 			fprintf(stderr,
 			    "Bad checksum %d:%d:%d in %s:%s NOT corrected\n",
 			    d->sum, old, new, s->sfile, d->rev);

@@ -38,6 +38,9 @@ char	idCache[] = "SCCS/x.id_cache";
 char	zidCache[] = "SCCS/z.id_cache";
 char	csetFile[] = "SCCS/s.ChangeSet";
 char	zcsetFile[] = "SCCS/z.ChangeSet";
+int	verbose = 0;
+int	dash, ndeltas;
+char	*spin = "|/-\\";
 
 /*
  * cset.c - changeset comand
@@ -60,7 +63,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "+il;t;psS;y|Y|")) != -1) {
+	while ((c = getopt(ac, av, "+il|t;psS;vy|Y|")) != -1) {
 		switch (c) {
 		    case '+': plus++; break;
 		    case 'i':
@@ -68,8 +71,10 @@ usage:		fprintf(stderr, "%s", cset_help);
 			break;
 		    case 'l':
 		    	list |= 1;
-			r[rd++] = notnull(optarg);
-			things += tokens(notnull(optarg));
+			if (optarg) {
+				r[rd++] = notnull(optarg);
+				things += tokens(notnull(optarg));
+			}
 			break;
 		    case 't':
 			list |= 2;
@@ -78,6 +83,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 			break;
 		    case 'p': flags |= PRINT; break;
 		    case 's': flags |= SILENT; break;
+		    case 'v': verbose++; break;
 		    case 'y':
 			comment = optarg;
 			gotComment = 1;
@@ -106,7 +112,10 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    "%s: only one rev allowed with -t\n", av[0]);
 		goto usage;
 	}
-	if (av[optind] && streq(av[optind], "-")) optind++;
+	if (av[optind] && streq(av[optind], "-")) {
+		optind++;
+		dash++;
+	}
 
 	if (av[optind]) {
 		unless (isdir(av[optind])) {
@@ -140,7 +149,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	/*
 	 * List a specific rev.
 	 */
-	if (list && (things < 1)) {
+	if (list && (things < 1) && !dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
 		purify_list();
@@ -244,6 +253,9 @@ csetList(sccs *cset, char *rev)
 	delta	*d;
 	int  	doneFullRebuild = 0;
 
+	fprintf(stderr, "cset -t currently unimplemented\n");
+	exit(1);
+
 	if (!db) {
 		fprintf(stderr,
 		    "Can't find changeset %s in %s\n", rev, cset->sfile);
@@ -294,54 +306,107 @@ retry:		v = mdbm_fetch(idDB, k);
 	mdbm_close(db);
 }
 
+/*
+ * List all the revisions which make up a range of changesets.
+ * The list is sorted for performance.
+ */
 void
 csetlist(sccs *cset)
 {
 	MDBM	*db;			/* db{fileId} = csetId */
-	MDBM	*pdb;
+	MDBM	*pdb = 0;
 	MDBM	*idDB;			/* db{fileId} = pathname */
 	kvpair	kv;
 	datum	k, v;
-	char	*t;
+	char	*t, *p;
 	sccs	*sc;
 	delta	*d, *prev;
 	int  	doneFullRebuild = 0;
 	int	first = 1;
 	char	*rev;
-	char	buf[MAXPATH];
+	FILE	*sort;
+	char	buf[MAXPATH*2];
+	char	*csetid;
 
+	if (dash) {
+		delta	*d;
+		delta	*last = 0;
+
+		while(fgets(buf, sizeof(buf), stdin)) {
+			chop(buf);
+			unless (d = findrev(cset, buf)) {
+				fprintf(stderr,
+				    "cset: no rev like %s in %s\n",
+				    buf, cset->gfile);
+				exit(1);
+			}
+			d->flags |= D_VISITED;
+		}
+		cset->rstart = cset->rstop = 0;
+		for (d = cset->table; d; d = d->next) {
+			unless (d->flags & D_VISITED) continue;
+			unless (cset->rstop) {
+				cset->rstop = d;
+			}
+			last = d;
+		}
+		cset->rstart = last;
+	}
 	assert(cset->rstart);
 	unless (cset->rstop) cset->rstop = cset->rstart;
-	db = csetIds(cset, rev = cset->rstop->rev, 1);
+	db = csetIds(cset, cset->rstop->rev, 1);
 	if (!db) {
 		fprintf(stderr,
-		    "Can't find changeset %s in %s\n", rev, cset->sfile);
+		    "Can't find changeset %s in %s\n",
+		    cset->rstop->rev, cset->sfile);
 		exit(1);
 	}
 	if (cset->rstart->parent) {
 		unless (sccs_restart(cset)) { perror("restart"); exit(1); }
 		pdb = csetIds(cset, cset->rstart->parent->rev, 1);
-	} else {
-		pdb = 0;
 	}
+	sccs_sdelta(buf, sccs_ino(cset));
+	csetid = strdup(buf);
+
+	/*
+	 * List all files as file:rev..rev or file:..rev
+	 * Don't do ChangeSet, we'll come back to that one.
+	 */
+	sprintf(buf, "sort -t'|' +1 > /tmp/csort%d", getpid());
+	sort = popen(buf, "w");
+	for (kv = mdbm_first(db); kv.val.dsize; kv = mdbm_next(db)) {
+		if (streq(csetid, kv.key.dptr)) continue;
+		/* skip identicals */
+		if (pdb) {
+			char	*key = mdbm_fetch_str(pdb, kv.key.dptr);
+			if (key && streq(key, kv.val.dptr)) continue;
+		}
+		fprintf(sort, "%s %s\n", kv.key.dptr, kv.val.dptr);
+	}
+	pclose(sort);
+	sprintf(buf, "/tmp/csort%d", getpid());
+	sort = fopen(buf, "r");
+	kv.key.dptr = csetid;
+	kv.key.dsize = strlen(csetid) + 1;
+	kv.val = mdbm_fetch(db, kv.key);
+	assert(kv.val.dsize);
+	sprintf(buf, "%s %s\n", csetid, kv.val.dptr);
+	mdbm_close(db);
 
 	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 		perror("idcache");
+		sprintf(buf, "/tmp/csort%d", getpid()); unlink(buf);
 		exit(1);
 	}
 
 	/*
 	 * List the ChangeSet first.
 	 */
-	sccs_sdelta(buf, sccs_ino(cset));
-	kv.key.dptr = buf;
-	kv.key.dsize = strlen(buf) + 1;
-	kv.val = mdbm_fetch(db, kv.key);
-	
-	while (kv.val.dsize) {
-		k = kv.key;
-retry:		v = mdbm_fetch(idDB, k);
-		unless (v.dsize) {
+	do {
+		for (t = buf; *t != ' '; t++);
+		*t++ = 0;
+retry:		sc = sccs_keyinit(buf, NOCKSUM, idDB);
+		unless (sc) {
 			/* cache miss, rebuild cache */
 			unless (doneFullRebuild) {
 				mdbm_close(idDB);
@@ -350,37 +415,32 @@ retry:		v = mdbm_fetch(idDB, k);
 				doneFullRebuild = 1;
 				unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 					perror("idcache");
+					sprintf(buf, "/tmp/csort%d", getpid());
+					unlink(buf);
 					exit(1);
 				}
 				goto retry;
 			}
 			fprintf(stderr,
-				"cset: missing id %s, sfile removed?\n",
-				kv.key.dptr);
+				"cset: missing id %s, sfile removed?\n", buf);
 			goto next;
 		}
-		t = name2sccs(v.dptr);
-		unless (sc = sccs_init(t, NOCKSUM)) {
-			fprintf(stderr, "cset: init of %s failed\n", t);
-			exit(1);
-		}
-		free(t);
-		unless (d = sccs_findKey(sc, kv.val.dptr)) {
+		unless (d = sccs_findKey(sc, t)) {
 			fprintf(stderr,
-			    "cset: can't find key '%s' in %s\n",
-			    kv.val.dptr, sc->sfile);
+			    "cset: can't find key '%s' in %s\n", t, sc->sfile);
+			sprintf(buf, "/tmp/csort%d", getpid()); unlink(buf);
 			exit(1);
 		}
 		if (pdb) {
-			v = mdbm_fetch(pdb, k);
-			if (v.dsize) {
-				unless (prev = sccs_findKey(sc, v.dptr)) {
+			if (p = mdbm_fetch_str(pdb, buf)) {
+				unless (prev = sccs_findKey(sc, p)) {
 					fprintf(stderr,
 					    "cset: can't find '%s' in %s\n",
-					    v.dptr, sc->sfile);
+					    p, sc->sfile);
+					sprintf(buf, "/tmp/csort%d", getpid());
+					unlink(buf);
 					exit(1);
 				}
-				visit(prev);
 				csetDeltas(sc, prev, d);
 			} else {
 				csetDeltas(sc, 0, d);
@@ -388,18 +448,21 @@ retry:		v = mdbm_fetch(idDB, k);
 		} else {
 			csetDeltas(sc, 0, d);
 		}
-		sccs_free(sc);
-next:		if (first) {
-			kv = mdbm_first(db);
+		if (first) {
+			printf("%s", PATCH_VERSION);
 			first = 0;
-		} else {
-			do {
-				kv = mdbm_next(db);
-			} while (kv.key.dsize && streq(buf, kv.key.dptr));
 		}
-	}
+		sccs_patch(sc);
+		sccs_free(sc);
+next:
+	} while (fgets(buf, sizeof(buf), sort));
 	mdbm_close(idDB);
-	mdbm_close(db);
+	mdbm_close(pdb);
+	sprintf(buf, "/tmp/csort%d", getpid()); unlink(buf);
+	if (verbose) {
+		fprintf(stderr,
+		    "makepatch: patch contains %d revisions\n", ndeltas);
+	}
 }
 
 visit(delta *d)
@@ -433,7 +496,7 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	}
 	// XXX - fixme - removed deltas not done.
 	// Is this an issue?  I think makepatch handles them.
-	if (d->type == 'D') printf("%s:%s\n", sc->gfile, d->rev);
+	//if (d->type == 'D') printf("%s:%s\n", sc->gfile, d->rev);
 }
 
 /*
@@ -655,4 +718,90 @@ file2str(char *f)
 	read(fd, s, sb.st_size);
 	close(fd);
 	return (s);
+}
+
+/*
+ * All the deltas we want are marked so print them out.
+ */
+int
+sccs_patch(sccs *s)
+{
+	delta	*d, *e;
+	char	*path;
+	int	deltas = 0;
+	int	i, n;
+	delta	**list;
+
+	if (verbose) fprintf(stderr, "makepatch: %s ", s->gfile);
+	/*
+	 * This is a hack which picks up metadata deltas.
+	 * This is sorta OK because we know the graph parent is
+	 * there.
+	 */
+	for (n = 0, e = s->table; e; e = e->next) {
+		if (e->flags & D_VISITED) n++;
+		unless (e->flags & D_META) continue;
+		for (d = e->parent; d->type != 'D'; d = d->parent);
+		if (d->flags & D_VISITED) {
+			e->flags |= D_VISITED;
+			n++;
+		}
+	}
+
+	/*
+	 * Build a list of the deltas we're sending
+	 */
+	list = calloc(n, sizeof(delta*));
+	for (i = 0, d = s->table; d; d = d->next) {
+		if (d->flags & D_VISITED) {
+			assert(i < n);
+			list[i++] = d;
+		}
+	}
+
+	/*
+	 * For each file, spit out file seperators when the filename
+	 * changes.
+	 * Spit out the root rev so we can find if it has moved.
+	 */
+	for (i = n - 1; i >= 0; i--) {
+		d = list[i];
+		if (verbose > 2) fprintf(stderr, "%s ", d->rev);
+		if (verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
+		if (i == n - 1) {
+			unless (d->pathname) {
+				fprintf(stderr, "\n%s:%s has no path\n",
+				    s->gfile, d->rev);
+				exit(1);
+			}
+			printf("== %s ==\n", d->pathname);
+			if (s->tree->flags & D_VISITED) {
+				printf("New file: %s\n", d->pathname);
+				sccs_perfile(s, stdout);
+			}
+			s->rstop = s->rstart = s->tree;
+			sccs_pdelta(s->tree, stdout);
+			printf("\n");
+		}
+
+		/*
+		 * For each file, also eject the parent of the rev.
+		 */
+		if (d->parent) {
+			sccs_pdelta(d->parent, stdout);
+			printf("\n");
+		}
+		s->rstop = s->rstart = d;
+		sccs_prs(s, PATCH|SILENT, 0, NULL, stdout);
+		printf("\n");
+		if (d->type == 'D') sccs_getdiffs(s, d->rev, 0, "-");
+		printf("\n");
+		deltas++;
+	}
+	if (verbose == 2) {
+		fprintf(stderr, "%d revisions\n", deltas);
+	} else if (verbose) {
+		fprintf(stderr, "\n");
+	}
+	ndeltas += deltas;
 }

@@ -844,8 +844,8 @@ EOF
 	read editor
 	echo 
 	if [ X$editor != X ]
-	then	eval $editor Description
-	else	eval $EDITOR Description
+	then	$editor Description
+	else	$EDITOR Description
 	fi
 	# XXX - Make sure that they changed it.
 	${BIN}cset -i .
@@ -866,8 +866,8 @@ EOF
 	read editor
 	echo 
 	if [ X$editor != X ]
-	then	eval $editor config
-	else	eval $EDITOR config
+	then	$editor config
+	else	$EDITOR config
 	fi
 	# XXX - Make sure that they changed it.
 	${BIN}ci -i config
@@ -901,10 +901,9 @@ function send {
 	then	echo "Sending ChangeSet $REV to $OUTPUT"
 	fi
 	case X$OUTPUT in
-	    X-)	${BIN}cset -l$REV | csetSort | ${BIN}makepatch $V - 
+	    X-)	${BIN}cset -l$REV $V
 	    	;;
-	    *)	${BIN}cset -l$REV | csetSort | ${BIN}makepatch $V - | \
-	    	mail -s "BitKeeper patch $REV" $OUTPUT
+	    *)	${BIN}cset -l$REV $V | mail -s "BitKeeper patch $REV" $OUTPUT
 	    	;;
 	esac
 }
@@ -929,11 +928,12 @@ function save {
 	if [ X$V != X ]
 	then	echo "Saving ChangeSet $REV in $OUTPUT"
 	fi
-	${BIN}cset -l$REV | csetSort | ${BIN}makepatch $V - > $OUTPUT
+	${BIN}cset -l$REV $V > $OUTPUT
 	exit $?
 }
 
 # The ChangeSet file should always be first.
+# The sort -u is because we can call cset multiple times
 function csetSort {
 	sort -u > /tmp/save$$
 	grep '^ChangeSet:' < /tmp/save$$ 
@@ -945,10 +945,12 @@ function resync {
 	V=-vv
 	REV=1.0..
 	C=
+	QUIET=no
 	# XXX - how portable is this?  Seems like it is a ksh construct
-	while getopts qcr: opt
+	while getopts qQcr: opt
 	do	case "$opt" in
 		q) V=;;
+		Q) QUIET=yes;;
 		c) C=-c;;
 		r) REV=$OPTARG
 		esac
@@ -964,16 +966,13 @@ function resync {
 		FDIR=${1#*:}
 		PRS="ssh -x $FHOST 
 		    'cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet'"
-		GEN_LIST="ssh -x $FHOST 
-		    'cd $FDIR && while read x; do bk cset -l\$x; done'"
-		MKPATCH="ssh -x $FHOST 'cd $FDIR && exec bk makepatch $V -'"
+		GEN_LIST="ssh -x $FHOST 'cd $FDIR && bk cset -l $V -'"
 		;;
 	*)
 		FHOST=
 		FDIR=$1
 		PRS="(cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet)"
-		GEN_LIST="(cd $FDIR && while read x; do bk cset -l\$x; done)"
-		MKPATCH="(cd $FDIR && exec bk makepatch $V -)"
+		GEN_LIST="(cd $FDIR && bk cset -l $V -)"
 		;;
 	esac
 	case $2 in
@@ -1023,27 +1022,23 @@ function resync {
 	esac
 
 	if [ "X$INIT" = "X-i" ]
-	then	echo $REV | eval $GEN_LIST | csetSort > /tmp/list$$
-	else
-		eval $PRS  > /tmp/from$$
-		eval $PRS2 > /tmp/to$$
-		REV=`bk cset_todo /tmp/from$$ /tmp/to$$`
-		if [ X"$REV" != X ]
-		then	echo --------- ChangeSets being sent -----------
-			echo "$REV"
-			echo -------------------------------------------
-		fi
-		#/bin/rm /tmp/from$$ /tmp/to$$
-		if [ X$V != X ]
-		then echo Generating list of revisions to send, please wait ...
-		fi
-		if [ "X$REV" != X ]
-		then	echo "$REV" | eval $GEN_LIST | csetSort > /tmp/list$$
-		else	touch /tmp/list$$
-		fi
+	then	touch /tmp/to$$
+	else	eval $PRS2 > /tmp/to$$
+	fi
+	eval $PRS  > /tmp/from$$
+	REV=`bk cset_todo /tmp/from$$ /tmp/to$$`
+	if [ X$V != X ]
+	then	echo --------- ChangeSets being sent -----------
+		echo "$REV"
+		echo -------------------------------------------
+	fi
+	/bin/rm /tmp/from$$ /tmp/to$$
+	if [ "X$REV" != X ]
+	then	echo "$REV" | eval $GEN_LIST > /tmp/list$$
+	else	touch /tmp/list$$
 	fi
 	if [ -s /tmp/list$$ ]
-	then	eval $MKPATCH < /tmp/list$$ | eval $TKPATCH
+	then	eval $TKPATCH < /tmp/list$$
 	else	echo "resync: nothing to resync from $1 to $2"
 	fi
 	/bin/rm /tmp/list$$
@@ -1062,124 +1057,6 @@ function mv {
 	sccsmv "$@"
 }
 
-# Use sfiles to figure out the gfile name and the sfile name of each file
-# then move them and put a null delta on them.
-function sccsmv {
-	if [ "X$1" = X ]
-	then	echo "usage: sccsmv from to"
-		exit 1
-	fi
-	LIST=
-	DEST=
-	SFILES=
-	while [ "X$1" != X ]
-	do	LIST="$LIST$DEST"
-		DEST=" $1"
-		shift
-	done
-	if [ -e $DEST -a ! -d $DEST ]
-	then	echo "sccsmv: $DEST exists"
-		exit 1
-	fi
-	if [ ! -d $DEST ]
-	then	S=`bk sfiles $DEST`
-		if [ "X$S" != X ]
-		then	echo "sccsmv: $S exists"
-			exit 1
-		fi
-	fi
-	if [ X"$LIST" = X ]
-	then	echo 'sccsmv what?'
-		exit 1
-	fi
-	DIDONE=0
-	for i in $LIST
-	do 	if [ -d $i ]
-		then	echo "sccsmv: can not handle directories yet."
-		else	
-			S=`bk sfiles $i`
-			if [ X"$S" = X ]
-			then	echo "sccsmv: not an sccsfile: $i"
-			else	
-				E=`bk sfiles -c $i`
-				if [ X"$E" != X ]
-				then	echo "sccsmv: can't move edited $i"
-					exit 1
-				fi
-				SFILES="$SFILES$S "
-				DIDONE=`expr $DIDONE + 1`
-			fi
-		fi
-	done
-	if [ X$DIDONE = X ]
-	then	exit 0
-	fi
-	if [ $DIDONE -gt 1 -a ! -d $DEST ]
-	then	echo "sccsmv: destination must be a directory"
-		exit 1
-	fi
-	#echo "sccsmv ${SFILES}to$DEST"
-	if [ -d $DEST ]
-	then	B=`basename $DEST`
-		if [ $B != SCCS ]
-		then	SDEST=$DEST/SCCS
-			GDEST=$DEST
-			if [ ! -d $SDEST ]
-			then	mkdir $SDEST
-				if [ ! -d $SDEST ]
-				then	exit 1
-				fi
-			fi
-		else	SDEST=$DEST/SCCS
-		fi
-	else	case $DEST in
-		*SCCS/s.*)
-		    GDEST=`echo $DEST | sed 's,SCCS/s.,,'`
-		    SDEST=$DEST
-		    ;;
-		*)
-		    GDEST=$DEST
-		    SDEST=`bk g2sccs $DEST`
-		    ;;
-		esac
-	fi
-	for s in $SFILES
-	do	SBASE=`basename $s`
-		G=`bk sfiles -g $s`
-		GBASE=`basename $G`
-		if [ -d $DEST ]
-		then	if [ -e $SDEST/$SBASE ]
-			then	echo $SDEST/$SBASE exists
-				exit 1
-			fi
-			if [ -e $GDEST/$GBASE ]
-			then	echo GDEST/$GBASE exists
-				exit 1
-			fi
-			echo sccsmv $s $SDEST/$SBASE
-			/bin/mv $s $SDEST/$SBASE
-			if [ -f $G ]
-			then	echo sccsmv $G $GDEST/$GBASE
-				/bin/mv $G $GDEST/$GBASE
-			fi
-			bk get -se $SDEST/$SBASE
-			bk delta -yRenamed $SDEST/$SBASE
-		else	# destination is a regular file
-			echo "sccsmv $s $SDEST"
-			/bin/mv $s $SDEST
-			if [ -f $G ]
-			then	echo "sccsmv $G $GDEST"
-				/bin/mv $G $GDEST
-			fi
-			bk get -se $SDEST
-			bk delta -yRenamed $SDEST
-		fi
-	done
-	# XXX - this needs to update the idcache
-	# I currently do it in resolve.perl
-	exit 0
-}
-	
 # Usage: undo [-f] [-F]
 function undo {
 	cd2root
@@ -1243,9 +1120,33 @@ function pending {
 }
 
 function commit {
-	${BIN}sfiles -Ca | ${BIN}sccslog -C - > /tmp/comments$$
+	DOIT=no
+	GETIT=yes
+	COPTS=
+	while getopts dsS:y:Y: opt
+	do	case "$opt" in
+		d) DOIT=yes;;
+		s) COPTS="-s $COPTS";;
+		S) COPTS="-S'$OPTARG' $COPTS";;
+		y) DOIT=yes; GETIT=no; echo "$OPTARG" > /tmp/comments$$;;
+		Y) DOIT=yes; GETIT=no; cp "$OPTARG" /tmp/comments$$;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ $GETIT = yes ]
+	then	${BIN}sfiles -Ca | ${BIN}sccslog -C - > /tmp/comments$$
+	fi
 	COMMENTS=
 	L=----------------------------------------------------------------------
+	if [ $DOIT = yes ]
+	then	if [ -s /tmp/comments$$ ]
+		 then	COMMENTS="-Y/tmp/comments$$"
+		 fi
+		 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
+		 ERR=$?
+		 rm -f /tmp/comments$$
+		 exit $EXIT;
+	fi
 	while true
 	do	
 		echo ""
@@ -1260,14 +1161,14 @@ function commit {
 			 if [ -s /tmp/comments$$ ]
 			 then	COMMENTS="-Y/tmp/comments$$"
 			 fi
-			 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $@ -
+			 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 			 ERR=$?
-			 rm -f /tmp/comment$$
+			 rm -f /tmp/comments$$
 	    	 	 exit $EXIT;
 		 	 ;;
 		    Xe*) $EDITOR /tmp/comments$$
 			 ;;
-		    Xa*) rm -f /tmp/comment$$
+		    Xa*) rm -f /tmp/comments$$
 			 echo Commit aborted.
 			 exit 0
 			 ;;
@@ -1435,6 +1336,9 @@ function init {
 			return
 		fi
 	done
+	if [ X$BK_BIN != X -a -x $BK_BIN/sccslog ]
+	then	BIN="$BK_BIN/"
+	fi
 }
 
 # ------------- main ----------------------
@@ -1449,10 +1353,10 @@ case "$1" in
 	exit $?
 	;;
     setup|changes|pending|commit|commitmerge|sendbug|send|\
-    sccsmv|mv|resync|edit|unedit|man|undo|save|docs)
+    mv|resync|edit|unedit|man|undo|save|docs)
 	cmd=$1
     	shift
-	eval $cmd "$@"
+	$cmd "$@"
 	exit $?
 	;;
     g|debug)

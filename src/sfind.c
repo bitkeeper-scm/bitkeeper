@@ -243,7 +243,6 @@ rebuild()
 {
 	int	i;
 	sccs	*cset;
-	MDBM	*csetIds();
 
 	unless (cset = sccs_init("SCCS/s.ChangeSet", 0)) {
 		perror("sfiles: can't init ChangeSet");
@@ -280,9 +279,8 @@ rebuild()
 # and it will be rebuilt as needed.  \n\
 # The format of the file is <ID> <PATHNAME>\n\
 # The file is used for performance during makepatch/takepatch commands.\n");
-	idDB = mdbm_open(NULL, 0, 0, 4096);
+	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(idDB);
-	mdbm_pre_split(idDB, 1<<10);
 c:	lftw(".", caches, 15);
 	if (rFlg) {
 		fclose(id_cache);
@@ -332,7 +330,6 @@ caches(const char *filename, const struct stat *sb, int flag)
 	register char *s;
 	sccs	*sc;
 	register delta *d, *e;
-	char	*path;
 	datum	k, v;
 	char	buf[MAXPATH*2];
 
@@ -349,24 +346,25 @@ caches(const char *filename, const struct stat *sb, int flag)
 	if (vFlg) printf("%s\n", sc->gfile);
 
 	if (rFlg) {
-		/* update the id cache */
+		delta	*ino = sccs_ino(sc);
+
 		sccs_sdelta(buf, sccs_ino(sc));
-		if (sc->tree->pathname &&
-		    streq(sc->tree->pathname, sc->gfile)) {
-			path = sc->tree->pathname;
-		} else {
-			path = sc->gfile;
+		/* update the id cache if 
+		 * a) there is no path for the root - BAD, or
+		 * b) if the root path != current path.
+		 */
+		if (!ino->pathname || !streq(ino->pathname, sc->gfile)) {
+			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 		}
-		fprintf(id_cache, "%s %s\n", buf, path);
 		k.dptr = buf;
 		k.dsize = strlen(buf) + 1;
-		v.dptr = path;
-		v.dsize = strlen(path) + 1;
+		v.dptr = sc->gfile;
+		v.dsize = strlen(sc->gfile) + 1;
 		if (mdbm_store(idDB, k, v, MDBM_INSERT)) {
 			v = mdbm_fetch(idDB, k);
 			fprintf(stderr,
 		    	"Duplicate id '%s' for %s\n  Used by %s\n",
-		    	buf, path, v.dptr);
+		    	buf, sc->gfile, v.dptr);
 				dups++;
 		}
 	}

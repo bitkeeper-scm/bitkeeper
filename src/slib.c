@@ -4857,8 +4857,9 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 		s->state |= S_WARNED;
 	}
 	unless (d) return (-1);
-	sprintf(tmpfile, "/tmp/gdiffsU%d", getpid());
+	sprintf(tmpfile, "/tmp/%s-%s-%d", basenm(s->gfile), d->rev, getpid());
 	unless (lbuf = fopen(tmpfile, "w+")) {
+		perror(tmpfile);
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
 		s->state |= S_WARNED;
 		return (-1);
@@ -10191,9 +10192,8 @@ out:		if (f) fclose(f);
 		if (DB) mdbm_close(DB);
 		return (0);
 	}
-	DB = mdbm_open(NULL, 0, 0, 4096);
+	DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(DB);
-	mdbm_pre_split(DB, 1<<10);
 	while (fnext(buf, f)) {
 		if (buf[0] == '#') continue;
 		if (want && !want(buf)) continue;
@@ -10258,6 +10258,46 @@ all:		if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
 	db = loadDB(name, findpipe);
 	unlink(name);
 	return (db);
+}
+
+/*
+ * Translate a key into an sccs struct.
+ * If it is in the idDB, use that, otherwise use the name in the key.
+ * Return NULL if we can't find (i.e., if there is no s.file).
+ * Return NULL if the file is there but does not have the same root inode.
+ */
+sccs	*
+sccs_keyinit(char *key,int flags, MDBM *idDB)
+{
+	datum	k, v;
+	char	*p;
+	sccs	*s;
+	char	buf[MAXPATH];
+
+	k.dptr = key;
+	k.dsize = strlen(key) + 1;
+	v = mdbm_fetch(idDB, k);
+	if (v.dsize) {
+		p = name2sccs(v.dptr);
+	} else {
+		char	*t, *r;
+
+		for (t = k.dptr; *t++ != '|'; );
+		for (r = t; *r != '|'; r++);
+		assert(*r == '|');
+		*r = 0;
+		p = name2sccs(t);
+		*r = '|';
+	}
+	s = sccs_init(p, flags);
+	free(p);
+	unless (s && HAS_SFILE(s)) return (0);
+	sccs_sdelta(buf, sccs_ino(s));
+	unless (streq(buf, key)) {
+		sccs_free(s);
+		return (0);
+	}
+	return (s);
 }
 
 /*
