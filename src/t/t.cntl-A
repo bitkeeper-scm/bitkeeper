@@ -14,9 +14,15 @@
 
 no_logging project
 echo $N check text file /w leading and trailing cntl-A \(append\)......$NL
-echo "hi mom" > data
+echo -e "\001\001\001\001" > data 
+echo "hi mom" >> data
 echo "hi dad" >> data
-bk ci $Q -il data
+cp data data.ref_new
+bk new $Q data
+bk get $Q data
+cmp -s data data.ref_new
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk edit $Q data
 echo -e "\001this is a line with one leading cntl-A" >> data
 echo -e "\001\001this is a line with two leading cntl-A" >> data
 echo -e "this is a line with trailing cntl-A\001" >> data
@@ -49,7 +55,7 @@ bk admin -Zgzip data
 bk edit $Q data
 echo "hi mom" > data
 echo -e "\001this is new cntl-A line" >> data
-echo -e "more new stuff for comoress mode" >> data
+echo -e "more new stuff for compress mode" >> data
 cp data data.ref_chg
 bk delta $Q -yinsert data
 bk edit $Q data
