@@ -1,0 +1,69 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 1999 Andrew Chang
+# %K%
+
+# Things that need to be added
+# 
+MYHOST=`bk gethost`
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+cd $HERE/project/BitKeeper/etc
+mkdir $HERE/project/src
+cd $HERE/project/src
+echo foo > foo.c
+echo bar > bar.c
+bk ci $Q -i foo.c bar.c
+echo h > h.h
+bk ci $Q -i h.h
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+echo OK
+echo "Discard newfile{1,2,3} and make sure that the counts decrement"
+echo "correctly and the file content is listed in the bottom pane"
+echo
+echo $N Check citool for delete problems .............................$NL
+cd $HERE/project/src
+echo new > newfile1
+echo new > newfile2
+echo new > newfile3
+bk citool 
+echo OK
+echo $N Check citool for argument problems during resolve.............$NL
+cd $HERE
+bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
+cd $HERE/project/src
+bk get $Q -e foo.c
+sed 's/foo/fool/' < foo.c > foo.x
+mv foo.x foo.c
+bk delta $Q -yrogue1 foo.c
+cd ..
+bk commit $Q -yrogue1
+cd $HERE/copy/src
+bk get $Q -e foo.c
+sed 's/foo/food/' < foo.c > foo.x
+mv foo.x foo.c
+bk delta $Q -yrogue2 foo.c
+cd ..
+bk commit $Q -yrogue2
+bk pull $Q
+bk resolve <<EOF
+ul
+EOF
+echo OK
