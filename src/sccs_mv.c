@@ -104,8 +104,8 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 					"moving/removing file in "
 					"BitKeeper/etc is ileggal\n",
 					oldpath, newpath);
+				return (1);
 			}
-			return (1);
 	}
 	if (isDelete) {
 		sprintf(commentBuf, "Delete: %s", oldpath);
