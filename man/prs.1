@@ -1,0 +1,382 @@
+.so .bitmacros
+.TH PRS 1 "July, 1998" "Bitmover, Inc." BitSCCS
+.SH NAME
+prs \- print internal information of an SCCS file
+.SH SYNOPSIS
+.B prs
+.B -abCehlmv
+.BI -c date
+.BI -r range
+.BI -d spec
+.IB files .\|.\|.
+.SH DESCRIPTION
+.B prs
+dumps the internal structure of an SCCS file or files with associated
+information.
+.PP
+For each file listed on the command line,
+.B prs
+examines the revisions specified by the
+.I range
+options, or all of them if no range is specified.  By default,
+revisions are scanned from newest to oldest.  It prints information on
+each revision; by default this is roughly the same as the
+information displayed by
+.XR sccslog 1 .
+The
+.BI -d spec
+option controls exactly what is displayed; see below for details.
+.PP
+If a file on the command line is actually a directory,
+.B prs
+will examine every SCCS file in that directory.  If no files at all
+are given, it will examine every SCCS file in the current directory.
+Finally, if the file list is a single dash (\fB-\fP) then
+.B prs
+will read the list of files to examine from standard input.
+(That list cannot contain any directories.)
+.SH OPTIONS
+.TP
+.B -v
+Verbose mode.  This enables extra diagnostic messages.
+.TP
+.B -b
+Output revisions from oldest to newest.
+.TP
+.B -C
+If the range endpoints are on different branches, include in the
+output only those revisions that are in the path along the delta graph
+between the endpoints.  Without
+.BR -C , 
+.B prs
+will include all of the revisions that occurred between the endpoints
+irrespective of the branch they are on.
+.TP
+.B -h
+Don't print a header listing the range of revisions examined.
+.TP
+.B -m
+Include metadata revisions in the output; they are normally skipped.
+.TP
+.B -a
+Include removed revisions in the output; they are normally skipped.
+.TP
+.BI -r range
+Specify the range of revisions to examine.  See
+.XR range 5 .
+.TP
+.BI -c date
+Specify the date range of revisions to examine.
+.TP
+.B -e
+Display all revs earlier than this one.
+.br
+\fB-r\fIrev\fR \fB-e\fP is equivalent to \fB-r\fB..\fIrev\fR.
+.TP
+.B -l
+Display all revs later than this one.
+.br
+\fB-r\fIrev\fR \fB-l\fP is equivalent to \fB-r\fIrev\fB..\fR.
+.TP
+.BI -d spec
+Print the information requested by
+.I spec
+instead of the default.
+.SH SPECS
+The argument to the
+.B -d
+option is a
+.I spec
+which controls the output of \fBprs\fR.  A
+.I spec
+consists of raw text interspersed with
+.I keywords
+each of which is substituted with some data from the \fBs.\fPfile.
+Some keywords may expand to multiple lines of text.  The raw text may
+contain white space and newlines (quoted to protect it from the shell,
+of course).  In addition, \fB\en\fP and \fB\et\fP expand to a newline
+and a tab respectively.
+.PP
+In \*[BS], there are also two conditional expressions:
+.BI "$if(" keyword "){" text "}"
+and
+.BI "$each(" keyword "){" text "}\fR.\fP"
+.PP
+.B $if
+expands to
+.I text
+if the expansion of
+.I keyword
+is not the empty string.  For example,
+.br
+	\fB$if(\fP:DPN:\fB){\fPP :DPN:\en\fB}\fP
+.br
+expands to ``P '' followed by the delta path name and a newline, if
+this delta has a path name.
+.PP
+.B $each
+is used to add prefixes or suffixes to each line of a multi-line
+keyword expansion.  The
+.I text
+must contain exactly one instance of the same
+.I keyword
+as in the parentheses; it must be surrounded by parentheses.  The text
+on either side of the parentheses is placed around each line of the
+keyword expansion.
+For example,
+.br
+	\fB$each(\fP:C:\fB){\fP[ (:C:) ]\fB}\fP
+.br
+would expand to the text of the comments with each line surrounded by
+brackets.
+.PP
+The default spec, if no
+.B -d
+option is given to
+.BR prs ,
+is
+.na
+.br
+.ft CW
+	D :I: :D: :T::TZ: :P:$if(:HT){@:HT:} :DS: :DP: :DL:
+.br
+	$if(:DPN:){P :DPN:\en}$each(:C:){C (:C:)}
+.br
+	------------------------------------------------
+.ad
+.ft R
+.PP
+These are all the keywords supported by \*[BS] which are also known to
+\*[ATT].
+.TP
+.B :Dt:
+Delta information \- :DT: :I: :D: :T: :P: :DS: :DP:
+.PD 0
+.TP
+.B :DT:
+Delta type (D, R, or M)
+.TP
+.B :I:
+Revision number (a.b or a.b.c.d)
+.TP
+.B :D:
+Date delta was created \- :Dy:/:Dm:/:Dd:
+.TP
+.B :T:
+Time delta was created \- :Th:::Tm:::Ts:
+.TP
+.B :P:
+User (programmer) who created delta
+.TP
+.B :DS:
+Serial number of delta
+.TP
+.B :DP:
+Serial number of delta's parent
+.TP
+.B :C:
+Comments for delta
+.TP
+.B :DL:
+Delta line statistics \- :Li:/:Ld:/:Lu:
+.TP
+.B :W:
+Shorthand for :Z::M:\et:I:
+.TP
+.B :A:
+Shorthand for :Z::Y: :M: :I::Z:
+.TP
+.B :Z:
+The \fBwhat\fP marker, \fB@(#)\fP.
+.TP
+.B :M:
+Module name (same as gfile name)
+.TP
+.B :F:
+\fBs.\fPfile name
+.TP
+.B :PN:
+\fBs.\fPfile pathname
+.TP
+.B :Li:
+Lines inserted in this delta
+.TP
+.B :Ld:
+Lines deleted in this delta
+.TP
+.B :Lu:
+Lines unchanged in this delta
+.TP
+.B :R:
+Release number (a in a.b.c.d)
+.TP
+.B :L:
+Level number (b in a.b.c.d)
+.TP
+.B :B:
+Branch number (c in a.b.c.d)
+.TP
+.B :S:
+Sequence number (d in a.b.c.d)
+.TP
+.B :Dy:
+Year delta was created (two digits only!)
+.TP
+.B :Dm:
+Month delta was created
+.TP
+.B :Dd:
+Day delta was created
+.TP
+.B :Th:
+Hour delta was created
+.TP
+.B :Tm:
+Minute delta was created
+.TP
+.B :Ts:
+Second delta was created
+.TP
+.B :DI:
+Serial numbers of the included, excluded, and ignored deltas
+.TP
+.B :Dn:
+Serial numbers of the included deltas
+.TP
+.B :Dx:
+Serial numbers of the excluded deltas
+.TP
+.B :Dg:
+Serial numbers of the ignored deltas
+.TP
+.B :FL:
+Flags set (as a hexadecimal number)
+.TP
+.B :ND:
+Null delta flag
+.TP
+.B :FD:
+File descriptive text
+.TP
+.B :GB:
+Gotten body
+.PD
+.PP
+These are keywords known to \*[ATT] but which correspond to features
+discarded from \*[BS].
+.TP
+.B :BD:
+Body
+.PD 0
+.TP
+.B :BF:
+Branch flag
+.TP
+.B :CB:
+Ceiling boundary
+.TP
+.B :Ds:
+Default revision
+.TP
+.B :FB:
+Floor boundary
+.TP
+.B :J:
+Joint edit flag
+.TP
+.B :KF:
+Keyword error flag
+.TP
+.B :KV:
+Keyword validation string
+.TP
+.B :LK:
+Locked releases
+.TP
+.B :MF:
+MR validation flag
+.TP
+.B :MP:
+MR validation program
+.TP
+.B :MR:
+MR (Modification Request) numbers for this delta
+.TP
+.B :Q:
+User defined keyword
+.TP
+.B :UN:
+User names allowed to make deltas
+.TP
+.B :Y:
+Module type flag
+.PD
+.PP
+These keywords are specific to \*[BS].
+.TP 16
+.B :REV:
+Same as :I:
+.PD 0
+.TP 16
+.B :LOD:
+Line of development
+.TP 16
+.B :KEY:
+ChangeSet key
+.TP 16
+.B :SHORTKEY:
+``Short key'' \- the file timestamp as a hex number
+.TP 16
+.B :LONGKEY:
+Extended ChangeSet key (includes checksum)
+.TP 16
+.B :SYMBOL:
+Symbols on this revision
+.TP 16
+.B :GFILE:
+gfile name
+.TP 16
+.B :HT:
+Host where this delta was created
+.TP 16
+.B :TZ:
+Time zone where this delta was created
+.TP 16
+.B :UTC:
+Delta timestamp, in UTC
+.TP 16
+.B :UTC-FUDGE:
+Fudged delta timestamp (see 
+.XR admin 1 )
+.TP 16
+.B :FUDGE:
+Timestamp fudge
+.TP 16
+.B :CHKSUM:
+Per-delta checksum
+.TP 16
+.B :MODE:
+File permission mode
+.TP 16
+.B :TYPE:
+Whether the \fBs.\fPfile contains \*[BK] extensions
+.TP 16
+.B :DPN:
+pathname of this delta's gfile
+.TP 16
+.B :SPN:
+pathname of this delta's \fBs.\fPfile
+.TP 16
+.B :MGP:
+serial number of the merge parent
+.TP 16
+.B :DFB:
+default branch
+.PD
+.SH "SEE ALSO"
+.XR admin 1 ,
+.XR delta 1 ,
+.XR get 1 ,
+.XR sccslog 1 ,
+.XR what 1 ,
+.XR range 5
