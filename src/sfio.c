@@ -96,6 +96,7 @@ out(char *file)
 	writen(1, buf, 10);
 	sprintf(buf, "%03o", sb.st_mode & 0777);
 	writen(1, buf, 3);
+	close(fd);
 	return (0);
 }
 
