@@ -168,6 +168,7 @@ echo $N Check sets of characters in globs ...........................$NL
 cd `bk root`
 bk gfiles '[bf]*' | bk _sort > GOT
 cat > WANT <<EOF
+BitKeeper/etc/bkstate
 src/bar.c
 src/foo.c
 EOF

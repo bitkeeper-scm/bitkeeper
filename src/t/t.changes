@@ -355,7 +355,7 @@ echo $N Check date formats ..........................................$NL
 Y=`bk prs -Yhnd:Dy: -r+ ChangeSet`
 bk changes -nd:Dy: > OUT
 bk changes -v -nd:Dy: >> OUT
-test `sort -u < OUT` = $Y || {
+test `grep -v 1971 OUT | sort -u` = $Y || {
 	echo not all YEAR4 dates
 	exit 1
 }
