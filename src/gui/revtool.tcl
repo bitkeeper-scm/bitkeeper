@@ -177,13 +177,13 @@ proc diffParent {} \
 		set line [$w(aptext) get $l "$l lineend - 1 char"]
 		if {[regexp \
 		    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line m user rev]} {
-			set parent [exec prs -d:PARENT:  -hr${rev} $file]
+			set parent [exec bk prs -d:PARENT:  -hr${rev} $file]
 			#puts "if: line=($line)"
 			#puts "rev=($rev) parent=($parent) f=($file)"
 			displayDiff $parent $rev
 		}
 	} elseif {$rev != ""} {
-		set rev1 [exec prs -d:PARENT: -hr${rev} $file]
+		set rev1 [exec bk prs -d:PARENT: -hr${rev} $file]
 		set rev2 $rev
 		set base [file tail $file]
 		if {$base == "ChangeSet"} {
@@ -329,7 +329,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		# node is not in the view, get and display it, but
 		# don't mess with the lower windows.
 
-		set parent [exec prs -d:PARENT:  -hr${rev} $file]
+		set parent [exec bk prs -d:PARENT:  -hr${rev} $file]
 		if {$parent != 0} { 
 			set prev $parent
 		} else {
