@@ -102,8 +102,9 @@ mail(char *to, char *subject, char *file)
 	 */
 	sprintf(buf, "%s/blat.exe", bin);
 	if (exists(buf)) {
-		char *av[] = {"blat", file, "-t", to, "-s", subject, "-q", 0};
+		char *av[] = {"blat", file, "-t", to, "-s", subject, 0, 0};
 
+		av[6] = getenv("BK_MAIL_DEBUG")  ? "-debug" : "-q";
 		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
 		if (pid != -1) return (pid);
 	}

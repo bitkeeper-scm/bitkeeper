@@ -36,8 +36,14 @@ sendbug_main(int ac,  char **av)
 				exit(1);
 			}
 			waitpid(pid, &status, 0);
-			unlink(bug);
-			printf("Your bug has been sent, thank you.\n");
+			if (status == 0) {
+				printf("Your bug has been sent, thank you.\n");
+				unlink(bug);
+			} else {
+				printf(
+				    "mailer failed: bug report saved in %s\n",
+				    bug);
+			}
 			exit(0);
 		    case 'e':
 			sprintf(buf, "%s %s", editor, bug);
