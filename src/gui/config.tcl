@@ -107,6 +107,9 @@ proc getConfig {prog} \
 
 	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
 
+	set _d(bug.mandatoryColor) #deeaf4 ;# Color of mandatory fields
+	set _d(bug.BG) white 		   ;# Color of mandatory fields
+
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry
 		set gc(appdir) [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
