@@ -296,6 +296,7 @@ wrlock(void)
 
 	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
 	if (exists(path)) {
+		proj_free(p);
 		sccs_unlockfile(lock);
 		ldebug(("WRLOCK by %d failed, RESYNC won\n"));
 		return (LOCKERR_LOST_RACE);
@@ -305,6 +306,7 @@ wrlock(void)
 	 * Make sure no readers sneaked in
 	 */
 	if (repository_hasLocks(p->root, READER_LOCK_DIR)) {
+		proj_free(p);
 	    	sccs_unlockfile(lock);
 		ldebug(("WRLOCK by %d failed, readers won\n", getpid()));
 		return (LOCKERR_LOST_RACE);
@@ -354,6 +356,7 @@ repository_downgrade()
 		return (-2); /* possible permission problem */
 	}
 	repository_wrunlock(0);
+	proj_free(p);
 	return (0);
 }
 

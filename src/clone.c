@@ -590,6 +590,7 @@ out:		chdir(from);
 	in_trigger("BK_STATUS=OK", opts.rev, from);
 	chdir(from);
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
+	remote_free(r);
 	exit(0);
 }
 

@@ -667,6 +667,7 @@ rcs_free(RCS *r)
 		next = d->next;
 		if (d->comments) free(d->comments);
 		if (d->snext) free(d->snext);
+		if (d->sccsrev) free(d->sccsrev);
 		free(d->rev);
 		free(d->sdate);
 		free(d->author);

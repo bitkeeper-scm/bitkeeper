@@ -640,5 +640,6 @@ synckeys_main(int ac, char **av)
 	}
 
 	synckeys(r, flags);
+	remote_free(r);
 	return (0);
 }

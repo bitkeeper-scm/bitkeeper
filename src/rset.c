@@ -179,7 +179,7 @@ process(char *root, char *start, char *end,
 			printf("%s%c%s%c%s\n", s->gfile, c, path2, c, rev2);
 		}
 	}
-done:	sccs_close(s);
+done:	sccs_free(s);
 }
 
 /*
@@ -390,7 +390,7 @@ rset_main(int ac, char **av)
 				break;
 		default:
 usage:				system("bk help -s rset");
-				if (s) sccs_close(s);
+				if (s) sccs_free(s);
 				return (1);
 		}
 	}
@@ -421,7 +421,7 @@ usage:				system("bk help -s rset");
 	}
 	proj = s->proj;
 	mixed = !LONGKEY(s);
-	sccs_close(s);
+	sccs_free(s);
 
 	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
 	assert(idDB);

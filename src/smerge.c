@@ -328,18 +328,22 @@ find_gca(char *file, char *left, char *right)
 	char	*inc = 0, *exc = 0;
 	char	buf[MAXLINE];
 
-	unless (s = sccs_init(sfile, INIT_NOCKSUM, 0)) {
+	s = sccs_init(sfile, INIT_NOCKSUM, 0);
+	free(sfile);
+	unless (s) {
 		perror(file);
 		exit(2);
 	}
 	dl = sccs_getrev(s, left, 0, 0);
 	unless (dl) {
 		fprintf(stderr, "ERROR: couldn't find %s in %s\n", left, file);
+		sccs_free(s);
 		exit(2);
 	}
 	dr = sccs_getrev(s, right, 0, 0);
 	unless (dr) {
 		fprintf(stderr, "ERROR: couldn't find %s in %s\n", right, file);
+		sccs_free(s);
 		exit(2);
 	}
 	dg = sccs_gca(s, dl, dr, &inc, &exc, 1);
@@ -355,7 +359,6 @@ find_gca(char *file, char *left, char *right)
 		free(exc);
 	}
 	sccs_free(s);
-	free(sfile);
 	return (strdup(buf));
 }	
 

@@ -56,7 +56,7 @@ process(char *path0, char *path1, char *rev1,
 	}
 	mkgfile(s, rev1, path1, tmpdir, "a", fix_mod_time, db);
 	mkgfile(s, rev2, path2, tmpdir, "b", fix_mod_time, db);
-	sccs_close(s);
+	sccs_free(s);
 }
 
 /*

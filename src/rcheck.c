@@ -37,7 +37,12 @@ usage:			//system("bk help -s rcheck");
 			fprintf(stderr, "Cannot parse \"%s\"\n", av[optind]);
 			return (1);
 		}
-		if (r->host) return (remoteCheck(r));
+		if (r->host) {
+			int	ret = remoteCheck(r);
+			remote_free(r);
+			return (ret);
+		}
+		remote_free(r);
 	}
 	fprintf(stderr, "rcheck: bad argument\n");
 	return (1);
