@@ -616,7 +616,7 @@ delta1:	off = mtell(f);
 		line++;
 		if (echo>4) fprintf(stderr, "\n");
 		p = calloc(1, sizeof(patch));
-		p->flags = PATCH_REMOTE;
+		p->remote = 1;
 		p->pid = pid;
 		sccs_sdelta(s, d, buf);
 		p->me = strdup(buf);
@@ -635,7 +635,7 @@ delta1:	off = mtell(f);
 			if (echo>4) fprintf(stderr, "%.*s", linelen(b), b);
 		}
 		if (d->flags & D_META) {
-			p->flags |= PATCH_META;
+			p->meta = 1;
 			assert(c == line);
 		} else {
 			p->diffMmap = mrange(start, stop, "b");
@@ -1049,13 +1049,13 @@ apply:
 			}
 			if (echo>8) {
 				fprintf(stderr, "Child of %s", d->rev);
-				if (p->flags & PATCH_META) {
+				if (p->meta) {
 					fprintf(stderr, " meta\n");
 				} else {
 					fprintf(stderr, " data\n");
 				}
 			}
-			if (p->flags & PATCH_META) {
+			if (p->meta) {
 				MMAP	*m = p->initMmap;
 
 				unless (m) m = mopen(p->initFile, "b");
@@ -1094,8 +1094,7 @@ apply:
 				}
 				if (s->bad_dsum || s->io_error) return -1;
 				mclose(iF);
-				if ((s->state & S_CSET) && 
-				    !(p->flags & PATCH_LOCAL))  {
+				if ((s->state & S_CSET) && !p->local) {
 					static	int first = 1;
 					delta	*d = sccs_findKey(s, p->me);
 
@@ -1192,8 +1191,17 @@ apply:
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
+		/*
+		 * XXX - this is probably an incomplete fix.
+		 * The problem was that we got a patch with a meta delta
+		 * with no content in it and delta_table() tossed it out.
+		 * So when we go looking for it, we don't find it.
+		 * What is not being checked here is if the delta was
+		 * indeed empty.
+		 */
+		if (!d && p->meta) continue;
 		assert(d);
-		d->flags |= (p->flags & PATCH_LOCAL) ? D_LOCAL : D_REMOTE;
+		d->flags |= p->local ? D_LOCAL : D_REMOTE;
 		if (s->state & S_CSET) continue;
 		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) pending++;
 	}
@@ -1266,7 +1274,7 @@ getLocals(sccs *s, delta *g, char *name)
 		fclose(t);
 
 		p = calloc(1, sizeof(patch));
-		p->flags = PATCH_LOCAL;
+		p->local = 1;
 		p->initFile = strdup(tmpf);
 		p->localFile = strdup(name);
 		sprintf(tmpf, "RESYNC/%s", name);
@@ -1285,7 +1293,7 @@ getLocals(sccs *s, delta *g, char *name)
 				cleanup(CLEAN_RESYNC);
 			}
 		} else {
-			p->flags |= PATCH_META;
+			p->meta = 1;
 		}
 		unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
 			assert(d->date);
