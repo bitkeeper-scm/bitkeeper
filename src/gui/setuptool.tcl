@@ -92,8 +92,7 @@ proc license_check {}  \
 	    [string compare $env(BK_LICENSE) "ACCEPTED"] == 0} {
 		return
         } elseif {$tcl_platform(platform) == "windows"} {
-		#set bkaccepted [file join $st_g(bkdir) _bkaccepted]
-		set bkaccepted [file join $st_g(bkdir) .bkaccepted]
+		set bkaccepted [file join $st_g(bkdir) _bkaccepted]
 		if {[file exists $bkaccepted]} {return}
 	} elseif {[info exists env(HOME)]} {
 		set bkaccepted [file join $st_g(bkdir) .bkaccepted]
@@ -211,8 +210,9 @@ proc read_bkrc {} \
 # Generate etc/config file and then create the repository
 proc create_repo {} \
 {
-	global st_cinfo env st_repo_name tmp_dir debug st_g force_setup
+	global st_cinfo env st_repo_name tmp_dir debug st_g opts
 
+	wm withdraw .
 	regsub -all {\ } $st_cinfo(description) {\\ }  escaped_desc
 	# save config info back to users .bkrc file
 	save_config_info
@@ -226,7 +226,7 @@ proc create_repo {} \
 	}
 	catch { close $cfid }
 	set repo $st_cinfo(repository)
-	if {$force_setup == 1} {
+	if {$opts(dir_override) == 1} {
 		catch { exec bk setup -e -f -c$cfile $repo } msg
 	} else {
 		catch { exec bk setup -f -c$cfile $repo } msg
@@ -336,7 +336,7 @@ proc createCatMenu {w} \
 	    -relief raised \
 	    -bg $gc(setup.BG) \
 	    -text "Please Select a Category" \
-	    -width 30 \
+	    -width 28 \
 	    -state normal \
 	    -menu $gc(catmenu).menu 
 	set cmenu [menu $gc(catmenu).menu]
@@ -352,7 +352,7 @@ proc createCatMenu {w} \
 proc create_config {widget} \
 {
 	global st_cinfo st_g rootDir st_dlg_button logo w
-	global gc tcl_platform
+	global gc tcl_platform opts
 
 	catch {exec bk bin} bin
 	set logo [file join $bin "bklogo.gif"]
@@ -381,7 +381,6 @@ proc create_config {widget} \
 	set w(help)      $w(main).t.t.t
 	set w(info)      $w(main).t.info
 	set w(msg)       $w(main).t.info.msg
-	set w(entry)     $w(main).t.e
 
 	frame $w(main) -bg $gc(setup.BG)
 	    frame $w(main).t -bd 2 -relief raised -bg $gc(setup.BG)
@@ -389,7 +388,6 @@ proc create_config {widget} \
 		    -text "Configuration Info" \
 		    -bg $gc(setup.BG)
 		frame $w(label) -bg $gc(setup.BG)
-		frame $w(entry) -bg $gc(setup.BG)
 		frame $w(info) -bg $gc(setup.BG)
 		    message $w(msg) \
 			-width 200 \
@@ -416,7 +414,7 @@ proc create_config {widget} \
 	frame $w(main).t.t -bg $gc(setup.BG)
 	    text $w(help) \
 		-width 80 \
-		-height 10 \
+		-height 5 \
 		-wrap word \
 		-background $gc(setup.mandatoryColor) \
 		-yscrollcommand " $w(main).t.t.scrl set " 
@@ -427,69 +425,69 @@ proc create_config {widget} \
         pack $w(main).t.t.scrl -side left -fill both
 	pack $w(buttonbar) -side bottom  -fill x -expand 1
 	pack $w(main).t.t -side bottom -fill both -expand 1
-	pack $w(entry) -side right -ipady 10 -ipadx 10
 	pack $w(label) -side right -fill both -ipadx 5
 	pack $w(info) -side right -fill both -expand yes -ipady 10 -ipadx 10
 
 	foreach desc $st_g(topics) {
 		    #puts "desc: ($desc) desc: ($desc)"
-		    label $w(label).$desc \
+		    label $w(label).l_$desc \
 			-text "$desc" \
 			-justify right \
 			-bg $gc(setup.BG) \
-			-font $gc(setup.fixedFont)
+			-font $gc(setup.buttonFont)
 		    if {$desc == "category"} {
-			    createCatMenu $w(main).t.e.$desc
+			    createCatMenu $w(label).e_$desc
 		    } else {
-			    entry $w(entry).$desc \
+			    entry $w(label).e_$desc \
 				-width 30 -relief sunken \
 				-bd 2 -bg $gc(setup.BG) \
 				-textvariable st_cinfo($desc) \
 				-font $gc(fixedFont)
 		    }
-		    if {$tcl_platform(platform) == "windows"} {
-			    grid $w(entry).$desc  -pady 1
-		    } else {
-			    grid $w(entry).$desc
-		    }
-		    grid $w(label).$desc  -pady 1 -sticky e -ipadx 3
-		    bind $w(entry).$desc <FocusIn> "
+		    grid $w(label).l_$desc $w(label).e_$desc
+		    grid $w(label).l_$desc -sticky e -padx 3
+		    grid $w(label).e_$desc -sticky ns -pady 2
+		    bind $w(label).e_$desc <FocusIn> "
 			$w(help) configure -state normal;\
 			$w(help) delete 1.0 end;\
 			$w(help) insert insert \$st_g($desc);\
 			$w(help) configure -state disabled"
 	}
-	# Highlight mandatory fields
-	$w(entry).repository config -bg $gc(setup.mandatoryColor)
-	$w(entry).description config -bg $gc(setup.mandatoryColor)
-	$w(entry).logging config -bg $gc(setup.mandatoryColor)
-	$w(entry).email config -bg $gc(setup.mandatoryColor)
-	$w(entry).category config -bg $gc(setup.mandatoryColor)
 
-	bind $w(entry).repository <KeyRelease> {
+	if {$opts(force_repo) == 1} {
+		$w(label).e_repository config -state disabled
+	}
+	# Highlight mandatory fields
+	$w(label).e_repository config -bg $gc(setup.mandatoryColor)
+	$w(label).e_description config -bg $gc(setup.mandatoryColor)
+	$w(label).e_logging config -bg $gc(setup.mandatoryColor)
+	$w(label).e_email config -bg $gc(setup.mandatoryColor)
+	$w(label).e_category config -bg $gc(setup.mandatoryColor)
+
+	bind $w(label).e_repository <KeyRelease> {
 		check_config
 	}
-	bind $w(entry).category <ButtonRelease> {
+	bind $w(label).e_category <ButtonRelease> {
 		check_config
 	}
-	bind $w(entry).description <KeyRelease> {
+	bind $w(label).e_description <KeyRelease> {
 		check_config
 	}
-	bind $w(entry).email <KeyRelease> {
+	bind $w(label).e_email <KeyRelease> {
 		check_config
 	}
-	bind $w(entry).logging <KeyRelease> {
+	bind $w(label).e_logging <KeyRelease> {
 		check_config
 	}
-	bind $w(entry).repository <FocusIn> {
+	bind $w(label).e_repository <FocusIn> {
 		check_config
 	}
 	$w(main).t config -background black
-	bind $w(entry) <Tab> {tk_focusNext %W}
-	bind $w(entry) <Shift-Tab> {tk_focusPrev %W}
-	bind $w(entry) <Control-n> {tk_focusNext %W}
-	bind $w(entry) <Control-p> {tk_focusPrev %W}
-	focus $w(entry).repository
+	bind $w(label) <Tab> {tk_focusNext %W}
+	bind $w(label) <Shift-Tab> {tk_focusPrev %W}
+	bind $w(label) <Control-n> {tk_focusNext %W}
+	bind $w(label) <Control-p> {tk_focusPrev %W}
+	focus $w(label).e_repository
 	pack $w(main).t
 	pack $w(main)
 	wm protocol . WM_DELETE_WINDOW "handle_close ."
@@ -555,14 +553,15 @@ proc getMessages {} \
 proc main {} \
 {
 	global env argc argv st_repo_name st_dlg_button st_cinfo st_g w
-	global gc force_setup
+	global gc opts
 
 	setbkdir
 	license_check
 	getMessages
 
 	set repo ""
-	set force_setup 0
+	set opts(dir_override) 0
+	set opts(force_repo) 0
 	set argindex 0
 	set fnum 0
 
@@ -573,7 +572,10 @@ proc main {} \
 	    set arg [lindex $argv $argindex]
 	    switch -regexp -- $arg {
 		"^-e" {
-		    set force_setup 1
+		    set opts(dir_override) 1
+		}
+		"^-F" {
+		    set opts(force_repo) 1
 		}
 		default {
 		    incr fnum
@@ -586,6 +588,11 @@ proc main {} \
 	if {$fnum > 1} {
 		displayMessage "Wrong number of arguments. If the repository
 name contains spaces, please put the name in quotes.\nFor example:\n\tbk setuptool \"test repo\""
+		exit
+	}
+	if {($opts(force_repo) == 1) && ($repo == "")} {
+		displayMessage \
+		    "A repo name is required if you use the -F option"
 		exit
 	}
 
