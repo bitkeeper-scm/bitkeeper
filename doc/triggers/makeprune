@@ -3,6 +3,7 @@
 # Copyright (c) 2003 BitMover Inc.
 # No warranty expressed or implied.
 # DO NOT USE WITHOUT UNDERSTANDING!! ASK QUESTIONS!!
+# Mail: support@bitmover.com
 #
 # User is free to modify and use.
 # User must not redistribute in either unchanged or modified form.
@@ -10,6 +11,8 @@
 
 # Make a prune repo -- has a trigger which fires when pulled to
 # prune a list of files, as well as the trigger.
+
+rev="%K%"
 
 usage="Usage: makeprune keylist repo newrepo (where newrepo does not exist)"
 
@@ -56,8 +59,26 @@ strig=BitKeeper/triggers/SCCS/s.post-incoming.zzzprune
 cat <<'MKEOF' > trig
 #!/bin/sh
 
+# Copyright (c) 2003 BitMover Inc.
+# No warranty expressed or implied.
+# DO NOT USE WITHOUT UNDERSTANDING!! ASK QUESTIONS!!
+# Mail: support@bitmover.com
+#
+# User is free to modify and use.
+# User must not redistribute in either unchanged or modified form.
+# User may return changes made to BitMover
+
 # zzzprune -  because triggers are in alphabetical order
 # this one goes last.  (Does that matter?  It does an unlock)
+#
+MKEOF
+####### Maketrig script resumes
+
+# insert revision into trigger script
+echo "# rev: $rev" >> trig
+
+####### contineu writing trigger
+cat <<'MKEOF' >> trig
 
 trig=BitKeeper/triggers/post-incoming.zzzprune
 tmp=BitKeeper/tmp
