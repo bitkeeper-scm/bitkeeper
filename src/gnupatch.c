@@ -4,16 +4,6 @@
 
 private project *proj;
 
-private int
-is_nullfile(char *path, char *rev)
-{
-	if (streq(rev, "1.0") ||
-	    ((strlen(path) > 4) && strneq(".del-", basenm(path), 5))) {
-		return (1);
-	}
-	return (0);
-}
-
 private void
 mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 					int fix_mod_time, MDBM *db)
@@ -23,7 +13,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	int flags = SILENT;
 
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
-	if (is_nullfile(path, rev)) {
+	if (isNullFile(rev, path)) {
 		char key[MAXPATH];
 
 		sprintf(key, "%s/%s", tag, path);
@@ -107,16 +97,16 @@ private void
 print_moved(char *path1, char *rev1, char *path2, char *rev2)
 {
 	printf("#\t"); 
-	if (is_nullfile(path1, rev1)) {
+	if (isNullFile(rev1, path1)) {
 		printf("%20s\t%-7s", "(new)", "");
 	} else {
 		printf("%20s\t%-7s", path1, rev1);
 	}
 	printf(" -> ");
-	if (is_nullfile(path2, rev2)) {
+	if (isNullFile(rev2, path2)) {
 		printf("%-7s %-15s\n", "", "(deleted)");
 	} else {
-		if (is_nullfile(path1, rev1)) {
+		if (isNullFile(rev1, path1)) {
 			printf("%-7s %-15s\n", rev2,  path2);
 		} else {
 			printf("%-7s %-15s (moved)\n", rev2,  path2);

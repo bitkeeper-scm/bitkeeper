@@ -164,7 +164,8 @@ mkrev_main(int ac, char **av)
 				*rev2++ = 0;
 				break;
 		default:
-usage:				fprintf(stderr, "Usage: mkrev [-a] -rrev1,rev2\n");
+usage:				fprintf(stderr,
+					"Usage: mkrev [-a] -rrev1,rev2\n");
 				return (1);
 		}
 	}
@@ -176,14 +177,6 @@ usage:				fprintf(stderr, "Usage: mkrev [-a] -rrev1,rev2\n");
 	 */
 	s = sccs_init(s_cset, SILENT|INIT_SAVEPROJ, 0);
 	assert(s);
-	unless (findrev(s, rev1)) {
-		fprintf(stderr, "Cannot find revision %s\n", rev1);
-		return (1);
-	}
-	unless (findrev(s, rev2)) {
-		fprintf(stderr, "Cannot find revsion %s\n", rev2);
-		return (1);
-	}
 	if (csetIds(s, rev1)) {
 		fprintf(stderr, "Cannot get ChangeSet for revision %s\n", rev1);
 		return (1);
