@@ -11,89 +11,93 @@ char	*find_perl5();
 extern	void getoptReset();
 void platformInit(char **av);
 
-int unedit_main(int, char **);
-int unlock_main(int, char **);
-int find_main(int, char **);
-int bkd_main(int, char **);
-int setup_main(int, char **);
-int commit_main(int, char **);
-int status_main(int, char **);
-int version_main(int, char **);
-int help_main(int, char **);
-int users_main(int, char **);
-int parent_main(int, char **);
-int clone_main(int, char **);
-int send_main(int, char **);
-int unwrap_main(int, char **);
-int receive_main(int, char **);
-int fix_main(int, char **);
-int undo_main(int, char **);
-int sendbug_main(int, char **);
-int export_main(int, char **);
-int setlod_main(int, char **);
-int setlog_main(int, char **);
-int getlog_main(int, char **);
-int gethelp_main(int, char **);
-int logaddr_main(int, char **);
-int sendconfig_main(int, char **);
-int takepatch_main(int, char **);
-int clean_main(int, char **);
-int prs_main(int, char **);
-int mv_main(int, char **);
-int rm_main(int, char **);
-int get_main(int, char **);
-int delta_main(int, char **);
-int sinfo_main(int, char **);
-int sccscat_main(int, char **);
-int cset_main(int, char **);
-int diffs_main(int, char **);
-int sccslog_main(int, char **);
-int rmdel_main(int, char **);
-int getuser_main(int, char **);
-int gethost_main(int, char **);
+int _createlod_main(int, char **);
+int abort_main(int, char **);
+int adler32_main(int, char **);
 int admin_main(int, char **);
+int bkd_main(int, char **);
+int check_main(int, char **);
+int chksum_main(int, char **);
+int clean_main(int, char **);
+int clone_main(int, char **);
+int commit_main(int, char **);
+int createlod_main(int, char **);
+int cset_main(int, char **);
+int delta_main(int, char **);
+int diffs_main(int, char **);
+int export_main(int, char **);
+int fdiff_main(int, char **);
+int find_main(int, char **);
+int fix_main(int, char **);
 int g2sccs_main(int, char **);
+int gca_main(int, char **);
+int get_main(int, char **);
+int gethelp_main(int, char **);
+int gethost_main(int, char **);
+int getuser_main(int, char **);
+int graft_main(int, char **);
+int help_main(int, char **);
+int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int lines_main(int, char **);
+int lock_main(int, char **);
+int lod_main(int, char **);
+int log_main(int, char **);
+int logging_main(int, char **);
+int loggingask_main(int ac, char **av);
+int loggingaccepted_main(int ac, char **av);
+int loggingto_main(int, char **);
+int mklock_main(int, char **);
+int mtime_main(int, char **);
+int mv_main(int, char **);
+int names_main(int, char **);
+int parent_main(int, char **);
+int pending_main(int, char **);
+int prs_main(int, char **);
+int pull_main(int, char **);
+int push_main(int, char **);
+int r2c_main(int, char **);
+int range_main(int, char **);
+int rcs2sccs_main(int, char **);
+int rcsparse_main(int, char **);
+int receive_main(int, char **);
+int rechksum_main(int, char **);
+int renumber_main(int, char **);
+int repo_main(int, char **);
+int resolve_main(int, char **);
+int rm_main(int, char **);
+int rmdel_main(int, char **);
+int sccscat_main(int, char **);
+int sccslog_main(int, char **);
+int send_main(int, char **);
+int sendbug_main(int, char **);
+int setlod_main(int, char **);
+int setup_main(int, char **);
 int sfiles_main(int, char **);
 int sfio_main(int, char **);
 int sids_main(int, char **);
-int check_main(int, char **);
-int chksum_main(int, char **);
-int fdiff_main(int, char **);
-int adler32_main(int, char **);
-int lod_main(int, char **);
-int createlod_main(int, char **);
-int _createlod_main(int, char **);
-int range_main(int, char **);
-int rechksum_main(int, char **);
-int renumber_main(int, char **);
-int stripdel_main(int, char **);
+int sinfo_main(int, char **);
 int smoosh_main(int, char **);
+int status_main(int, char **);
+int stripdel_main(int, char **);
+int takepatch_main(int, char **);
+int undo_main(int, char **);
 int undos_main(int, char **);
+int unedit_main(int, char **);
+int unlock_main(int, char **);
+int unwrap_main(int, char **);
+int users_main(int, char **);
+int version_main(int, char **);
 int what_main(int, char **);
-int gca_main(int, char **);
-int mtime_main(int, char **);
 int zone_main(int, char **);
-int isascii_main(int, char **);
-int r2c_main(int, char **);
-int pending_main(int, char **);
-int resolve_main(int, char **);
-int push_main(int, char **);
-int names_main(int, char **);
-int lock_main(int, char **);
-int repo_main(int, char **);
-int pull_main(int, char **);
-int log_main(int, char **);
-int abort_main(int, char **);
-int graft_main(int, char **);
-int mklock_main(int, char **);
-int rcsparse_main(int, char **);
-int rcs2sccs_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"_createlod", _createlod_main},
 	{"_find", find_main }, /* internal helper function */
+	{"_logging", logging_main},
+	{"_loggingask", loggingask_main},
+	{"_loggingaccepted", loggingaccepted_main},
+	{"_loggingto", loggingto_main},
 	{"abort", abort_main},
 	{"adler32", adler32_main},
 	{"admin", admin_main},
@@ -118,7 +122,6 @@ struct command cmdtbl[100] = {
 	{"get", get_main},
 	{"gethelp", gethelp_main},
 	{"gethost", gethost_main},
-	{"getlog", getlog_main},
 	{"getuser", getuser_main},
 	{"graft", graft_main},
 	{"help", help_main},
@@ -129,7 +132,6 @@ struct command cmdtbl[100] = {
 	{"lock", lock_main},
 	{"lod", lod_main},
 	{"log", log_main},
-	{"logaddr", logaddr_main},
 	{"mklock", mklock_main}, /* for regression test only */
 	{"mtime", mtime_main},
 	{"mv", mv_main},
@@ -158,9 +160,7 @@ struct command cmdtbl[100] = {
 	{"sccsrm", rm_main},
 	{"send", send_main},
 	{"sendbug", sendbug_main},
-	{"sendconfig", sendconfig_main},
 	{"setlod", setlod_main},
-	{"setlog", setlog_main},
 	{"setup", setup_main },
 	{"sfiles", sfiles_main},
 	{"sfio", sfio_main},

@@ -101,8 +101,8 @@ setup_env()
 
 	unset BK_BIN
 	BK_LICENSE=ACCEPTED
-	REGRESSION=$TST_DIR/.regression-$USER
-	BK_TMP=$REGRESSION/.tmp
+	BK_REGRESSION=$TST_DIR/.regression-$USER
+	BK_TMP=$BK_REGRESSION/.tmp
 
 	# check echo -n options
 	if [ '-n foo' = "`echo -n foo`" ]
@@ -116,13 +116,13 @@ setup_env()
 
 clean_up()
 {
-        find $REGRESSION -name core -print > $REGRESSION/cores
+        find $BK_REGRESSION -name core -print > $BK_REGRESSION/cores
         if [ -s cores ]
-        then    ls -l `cat $REGRESSION/cores`
-                file `cat $REGRESSION/cores`
+        then    ls -l `cat $BK_REGRESSION/cores`
+                file `cat $BK_REGRESSION/cores`
                 exit 10
 	fi
-	rm -rf $REGRESSION
+	rm -rf $BK_REGRESSION
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
 	diff $TMP/T.${USER}-new $TMP/T.${USER}
@@ -131,10 +131,10 @@ clean_up()
 init_main_loop()
 {
 	touch $TST_DIR/T.${USER} $TST_DIR/T.${USER}-new
-	if [ -d $REGRESSION ]; then rm -rf $REGRESSION; fi
+	if [ -d $BK_REGRESSION ]; then rm -rf $BK_REGRESSION; fi
 
 	# XXX: Do we really need this ?
-	if [ -d $REGRESSION/SCCS ]
+	if [ -d $BK_REGRESSION/SCCS ]
 	then echo "There should be no SCCS directory here."; exit 1;
 	fi
 
@@ -143,7 +143,7 @@ init_main_loop()
 	ls -a $TMP > $TST_DIR/T.${USER}
 
 	export PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
-	export USER REGRESSION BK_TMP NL N Q S CORES
+	export USER BK_REGRESSION BK_TMP NL N Q S CORES
 }
 
 #
@@ -184,7 +184,7 @@ init_main_loop
 # Main Loop #
 for i in $list
 do	echo ------------ ${i#t.} test
-	mkdir -p $REGRESSION/.tmp || exit 1
+	mkdir -p $BK_REGRESSION/.tmp || exit 1
 	cat setup $i | @FAST_SH@ $dashx
 	EXIT=$?
 	if [ $EXIT != 0 ]

@@ -81,6 +81,7 @@ echo OK
 echo $N Create a repository with two files ..........................$NL
 cd $HERE
 rm -fr stripdel proj copy1 copy2 left right
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c proj
 cd proj

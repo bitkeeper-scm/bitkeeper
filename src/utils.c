@@ -123,8 +123,9 @@ confirm(char *msg)
 {
 	char	buf[100];
 
-	write(2, msg, strlen(msg));
-	write(2, " (y/n) ", 7);
+	fflush(stdout);
+	write(1, msg, strlen(msg));
+	write(1, " (y/n) ", 7);
 	if (getline(0, buf, sizeof(buf)) <= 1) return (0);
 	return ((buf[0] == 'y') || (buf[0] == 'Y'));
 }

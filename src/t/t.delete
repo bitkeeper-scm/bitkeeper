@@ -14,8 +14,8 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
-echo "seats: 1" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -34,7 +34,7 @@ bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
-bk commit $S -f -y"This is a \"Change Set\""
+bk commit $S -a -y"This is a \"Change Set\""
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
@@ -94,6 +94,13 @@ Whatever dude.
 .
 u
 EOF
-if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
+if [ $? -ne 0 ]
+then	echo failed
+	cat resolve.out
+	bk _logging
+	cd RESYNC
+	bk _logging
+	exit 1
+fi
 checkLocks
 echo OK

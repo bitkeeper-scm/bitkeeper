@@ -3257,12 +3257,12 @@ err:			free(s->gfile);
 
 /*
  * Parse a line from the config file
- * a) reject all line without a ':' character
+ * a) reject all lines without a ':' character
  * b) remove all whitespace between ':' and first !whitespace
  * c) replace ':' with space as field seperator.
- * d) reject the "logging_ok" field; MDBM does not like dup keys.
+ * d) skip the "logging_ok" field; MDBM does not like dup keys.
  */
-private int
+int
 parseConfig(char *buf)
 {
 	char *p, *q;
@@ -3270,7 +3270,10 @@ parseConfig(char *buf)
 	p = strchr(buf, ':');
 	unless (p) return 0;
 	*p++ = ' ';
-	if (strneq(buf, "logging_ok ", 11)) return 0;
+	if (strneq(buf, "logging_ok ", 11)) {
+		strcpy(buf, "CONVERT ME PLEASE\n");
+		return (1);
+	}
 	unless (isspace(*p)) return (1);	/* we're done */
 	for (q = p; *q && isspace(*q); q++);
 	unless (*q) return (0);			/* garbage */
@@ -3286,12 +3289,8 @@ parseConfig(char *buf)
  * Another form of potential recursion is:
  * 	Doing a "bk clean" on  config file (from upper level) may
  * 	actually trigger the config file to be checked out.
- * Note: We currently do not test if we are called from the RESYNC directory.
- * (If so, we should probably get the config file from the parent of RESYNC)
- * This may be important someday if we are trying to control attribute
- * during "resync" processing.
  */
-private MDBM *
+MDBM *
 loadConfig(char *root)
 {
 	MDBM	*DB = 0;
@@ -3300,6 +3299,7 @@ loadConfig(char *root)
 	char 	x_config[MAXPATH];
 	sccs	*s1;
 	project *proj = 0;
+	char	*t;
 
 	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
 	sprintf(g_config, "%s/BitKeeper/etc/config", root);
@@ -3307,7 +3307,10 @@ loadConfig(char *root)
 	 * If the config is already checked out, use that.
 	 * Otherwise, check it out.
 	 */
-	if (exists(g_config)) return (loadDB(g_config, parseConfig, DB_NODUPS));
+	if (exists(g_config)) {
+		DB = loadDB(g_config, parseConfig, DB_USELAST);
+		goto check;
+	}
 	unless (exists(s_config)) return 0;
 
 	/*
@@ -3330,10 +3333,15 @@ loadConfig(char *root)
 		sccs_free(s1);
 		return (0);
 	}
-	DB = loadDB(x_config, parseConfig, DB_NODUPS);
+	DB = loadDB(x_config, parseConfig, DB_USELAST);
 	unlink(x_config);
 	sccs_free(s1);
-	return DB;
+check:	if ((t = mdbm_fetch_str(DB, "CONVERT")) &&
+	    streq("ME PLEASE", t) && (config2logging(root) == 0)) {
+		mdbm_close(DB);
+		return (loadConfig(root));
+	}
+	return (DB);
 }
 
 /*
@@ -3357,7 +3365,9 @@ proj_init(sccs *s)
 	unless (root = sccs_root(s)) return (0);
 	p = calloc(1, sizeof(*p));
 	p->root = root;
+#ifdef	NOT_USED
 	p->config = loadConfig(root);
+#endif
 	return (p);
 }
 

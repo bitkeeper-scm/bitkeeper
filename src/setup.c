@@ -147,11 +147,9 @@ setup_main(int ac, char **av)
 	system(buf);
 	unlink(setup_files);
  	if (sccs_cd2root(0, 0) == -1) {
-                fprintf(stderr, "sendconfig: can not find package root.\n");
+                fprintf(stderr, "setup: can not find package root.\n");
                 exit(1);
         }                           
-#ifdef OLD_LICENSE
-	sendConfig("setups@openlogging.org", 1, 0);
-#endif
+	sendConfig("setups@openlogging.org");
 	return (0);
 }

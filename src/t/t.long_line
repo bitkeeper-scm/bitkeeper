@@ -14,6 +14,7 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
@@ -91,7 +92,7 @@ cmp -s long2 long2.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
-bk commit $S -f -yCset
+bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
@@ -116,7 +117,7 @@ sed -e's/\%I\%/1.2/g' < tmp > X
 bk undos X > long1.ref
 cmp -s long1 long1.ref
 if [ $? -ne 0 ]; then echo failed; diff long1 long1.ref; exit 1; fi
-bk commit $S -f -yCset
+bk commit $S -a -yCset
 bk send $Q -r1.3 - | (cd $HERE/copy; bk takepatch) 
 cd $HERE/copy/src
 bk resolve -t $Q

@@ -100,6 +100,7 @@ cd $HERE
 mkdir resync
 cd resync
 HERE=$HERE/resync
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 cd project

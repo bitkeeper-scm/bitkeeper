@@ -274,6 +274,8 @@
 #define	GROUP_MODE	0664
 
 #define	UNKNOWN_USER	"anon"
+#define	BK_FREEUSER	"bk"
+#define	BK_FREEHOST	"free.bk"
 
 #define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)
@@ -765,7 +767,7 @@ int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
 void	cd2root();
 pid_t	mail(char *to, char *subject, char *file);
-void	logChangeSet(char *rev, int q);
+void	logChangeSet(int, char *rev, int q);
 char	*getlog(char *u, int q);
 int	setlog(char *u);
 int	checkLog(int quiet, int resync);
@@ -783,7 +785,7 @@ void	free_globs(globv globs);
 char	*prog2path(char *prog);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
-void	sendConfig(char *, int, int);
+void	sendConfig(char *);
 int	writen(int to, char *buf, int size);
 char	chop(register char *s);
 int	mkdirp(char *dir);

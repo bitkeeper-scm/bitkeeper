@@ -12,11 +12,11 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo $N Check bk fix to re-edit a file ..............................$NL
 echo "BitKeeper Test repository" > Description
 bk cset -snDescription .
 echo "logging: none" > BitKeeper/etc/config
-echo "seats: 1" >> BitKeeper/etc/config
 bk ci -i $Q BitKeeper/etc/config
 date > FILE
 bk ci $Q -i FILE

@@ -255,7 +255,7 @@ commit(int quiet, delta *d)
 	sccs_freetree(d);
 	cmds[i=0] = "bk";
 	cmds[++i] = "commit";
-	cmds[++i] = "-dFf";
+	cmds[++i] = "-dFa";
 	if (quiet) cmds[++i] = "-s";
 	cmds[++i] = comment;
 	cmds[++i] = 0;

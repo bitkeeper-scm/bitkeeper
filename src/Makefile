@@ -39,11 +39,11 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  clean.o clone.o comments.o commit.o compress.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
-	  gca.o get.o gethelp.o gethost.o getlog.o getopt.o \
+	  gca.o get.o gethelp.o gethost.o getopt.o \
 	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
 	  key2rev.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o log.o logaddr.o logchangeset.o mkdir.o mklock.o mmap.o \
+	  lod.o log.o logging.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/mail.o port/platforminit.o \
@@ -55,7 +55,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o \
 	  sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
-	  send.o sendbug.o sendconfig.o setlog.o setup.o \
+	  send.o sendbug.o setup.o \
 	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlock.o unwrap.o user.o utils.o \
@@ -74,7 +74,7 @@ PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a $(UWTLIB)
 LINKS	= ci co edit unget
-DATA	= bitkeeper.config bkhelp.txt
+DATA	= bitkeeper.config bkhelp.txt bklogo.gif
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= bk admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -93,7 +93,7 @@ LZLIB	= -Lzlib -lz
 # Override this if you don't have it.
 RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) 
-HDRS	= bkd.h lib_tcp.h mmap.h purify.h range.h resolve.h sccs.h \
+HDRS	= bkd.h lib_tcp.h mmap.h logging.h purify.h range.h resolve.h sccs.h \
 	  system.h $(SYS).h mdbm/common.h mdbm/mdbm.h mdbm/tune.h zgets.h \
 	  zlib/deflate.h zlib/infblock.h zlib/infcodes.h zlib/inffast.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
@@ -468,7 +468,7 @@ crank: crank.sh
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
-H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h mmap.h $(UWT_H)
+H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h logging.h mmap.h $(UWT_H)
 B=bkd.h lib_tcp.h
 M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
@@ -520,7 +520,6 @@ gethelp.o:	gethelp.c $(H)
 gethost.o:	gethost.c
 gethost.o:	port/gethost.c $(H)
 getinput.o:	port/getinput.c $(H)
-getlog.o:	getlog.c $(H)
 getopt.o:	getopt.c $(H)
 gettemp.o:	gettemp.c $(H)
 getuser.o:	getuser.c
@@ -542,9 +541,9 @@ localtm.o:	localtm.c $(H)
 lock.o:		lock.c $(H)
 locking.o:	locking.c $(H)
 log.o:		log.c $(H)
+logging.o:	logging.c $(H)
 lod.o:		lod.c $(H) range.h $(Z)
 logaddr.o:	logaddr.c $(H)
-logchangeset.o:	logchangeset.c $(H)
 mkdir.o:	mkdir.c $(H)
 mmap.o:		mmap.c $(H)
 mtime.o:	mtime.c
@@ -593,8 +592,6 @@ sccsmv.o:	sccsmv.c $(H)
 sccsrm.o:	sccsrm.c $(H)
 send.o:		send.c $(H)
 sendbug.o:	sendbug.c $(H)
-sendconfig.o:	sendconfig.c $(H)
-setlog.o:	setlog.c $(H)
 setup.o:	setup.c $(H)
 sfiles.o:	sfiles.c $(H)
 sfio.o:		sfio.c $(H) $(Z)

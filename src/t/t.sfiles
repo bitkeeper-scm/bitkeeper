@@ -12,6 +12,7 @@
 echo $N Setup .......................................................$NL
 set -e
 trap 'echo failed' 0
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 bk cset $Q -n .
 echo "logging: none" > BitKeeper/etc/config
 bk ci -i $Q BitKeeper/etc/config

@@ -14,8 +14,8 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
-echo "seats: 1" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -29,17 +29,17 @@ cd $HERE/project
 echo foo.c > foo.c
 echo bar.c > bar.c
 bk new $Q foo.c bar.c
-bk commit $S -f -SCSET1 -y'foo.c and bar.c'
+bk commit $S -a -SCSET1 -y'foo.c and bar.c'
 echo OK
 echo $N Create 2nd changeset with a change to bar.c .................$NL
 bk edit $Q bar.c
 echo bar.c version 2 > bar.c
 bk delta $Q -ywhatever bar.c
-bk commit $S -f -SCSET2 -y'bar.c v2'
+bk commit $S -a -SCSET2 -y'bar.c v2'
 echo OK
 echo $N Create 3rd changeset in which we bk rm foo.c ................$NL
 bk rm foo.c
-bk commit $S -f -y'rm foo.c'
+bk commit $S -a -y'rm foo.c'
 if [ -f SCCS/s.foo.c ]
 then	echo failed to remove foo.c; exit 1
 fi
@@ -52,7 +52,7 @@ fi
 echo OK
 echo $N Create 4th changeset in which we bk rm -d bar.c .............$NL
 bk rm -d bar.c
-bk commit $S -f -y'rm -d bar.c'
+bk commit $S -a -y'rm -d bar.c'
 if [ -f SCCS/s.bar.c ]
 then	echo failed to remove bar.c; exit 1
 fi

@@ -15,6 +15,7 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
@@ -38,7 +39,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set with a symbol with spaces in it .........$NL
-bk commit $S -f -yCset -S"Hi there this is a changeset"
+bk commit $S -a -yCset -S"Hi there this is a changeset"
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 bk -R get $S -p ChangeSet > TOT

@@ -15,6 +15,7 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
@@ -35,7 +36,7 @@ bk sfiles -x | bk ci $Q -i -
 if [ ! -f d3/sub2/SCCS/s.a ]; then echo failed to create files; exit 1; fi
 echo OK
 echo $N Commit the data .............................................$NL
-bk commit $S -f -yCset
+bk commit $S -a -yCset
 if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
@@ -45,7 +46,7 @@ bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
 do	echo more data >> $x
 done
 bk -r ci $Q -ycset2
-bk commit $S -f -yCset2
+bk commit $S -a -yCset2
 if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
@@ -55,7 +56,7 @@ bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
 do	echo more data >> $x
 done
 bk -r ci $Q -ycset3
-bk commit $S -f -yCset3
+bk commit $S -a -yCset3
 if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK
@@ -70,7 +71,7 @@ bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
 do	echo more data >> $x
 done
 bk -r ci $Q -ycset4
-bk commit $S -f -yCset4
+bk commit $S -a -yCset4
 if [ `bk sfiles -C | wc -l` -ne 0 ];
 then	echo failed to commit all files; exit 1; fi
 echo OK

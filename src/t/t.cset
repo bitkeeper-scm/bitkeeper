@@ -14,9 +14,10 @@
 # %K%
 
 echo $N Create initial repository using cset ........................$NL
-mkdir easy
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
+echo "logging: none" > c
+bk setup -f -n'BitKeeper Test repository' -cc easy
 cd easy
-bk cset $Q -n .
 if [ ! -f SCCS/s.ChangeSet ]; then	echo no ChangeSet; exit 1; fi
 echo OK
 echo $N Check for long keys only ....................................$NL

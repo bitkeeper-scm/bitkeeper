@@ -230,6 +230,7 @@ rm -rf symlink symfile newlink file file1 file2 file3 dir1 SCCS
 # Test resyncing and resolving symlink <-> file conflicts
 echo $N Create initial repository for symlink resync ................$NL
 cd $HERE
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/config
 bk setup -f -n'BitKeeper Test repository' -c$HERE/config SL
 if [ ! -d SL ]; then echo failed to make top level directory; exit 1; fi
@@ -240,7 +241,7 @@ cd SL
 ln -s dangling/symlink link
 echo i am a file > file
 bk ci $Q -i link file
-bk commit $S -f -y"This is a \"Change Set\""
+bk commit $S -a -y"This is a \"Change Set\""
 echo OK
 cores
 bk -r check -a

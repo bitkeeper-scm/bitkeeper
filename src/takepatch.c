@@ -66,6 +66,7 @@ private	void	goneError(char *key);
 private	void	freePatchList();
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
+private void	get_configs();
 
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
 private	int	mkpatch = 0;	/* act like makepatch verbose */
@@ -181,7 +182,9 @@ usage:		fprintf(stderr, takepatch_help);
 		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
 		    remote, remote == 1 ? "" : "s", conflicts, files);
 	}
-	unless (remote) {
+	if (remote) {
+		get_configs();
+	} else {
 		cleanup(CLEAN_RESYNC | CLEAN_PENDING);
 	}
 	if (resolve) {
@@ -196,6 +199,28 @@ usage:		fprintf(stderr, takepatch_help);
 		}
 	}
 	exit(0);
+}
+
+/*
+ * If either of the logging_ok or config files are not present, copy them
+ * into the tree.
+ */
+private void
+get_configs()
+{
+	unless (exists("RESYNC/BitKeeper/etc/SCCS/s.config")) {
+		assert(exists("BitKeeper/etc/SCCS/s.config"));
+		mkdirp("RESYNC/BitKeeper/etc/SCCS");
+		system("cp BitKeeper/etc/SCCS/s.config "
+		    "RESYNC/BitKeeper/etc/SCCS/s.config");
+		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.config"));
+	}
+	unless (exists("RESYNC/BitKeeper/etc/SCCS/s.config")) {
+		unless (exists("BitKeeper/etc/SCCS/s.logging_ok")) return;
+		system("cp BitKeeper/etc/SCCS/s.logging_ok "
+		    "RESYNC/BitKeeper/etc/SCCS/s.logging_ok");
+		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok"));
+	}
 }
 
 private	delta *

@@ -1839,7 +1839,7 @@ commit(opts *opts)
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";
-	cmds[++i] = "-RFf";
+	cmds[++i] = "-RFa";
 	if (opts->quiet) cmds[++i] = "-s";
 	if (opts->comment) {
 		cmt = malloc(strlen(opts->comment) + 10);

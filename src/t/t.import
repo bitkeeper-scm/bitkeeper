@@ -14,6 +14,7 @@
 
 echo $N Test import of a plain file .................................$NL
 HERE=`pwd`
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 mkdir -p import_dir/src
@@ -72,7 +73,7 @@ bk get $Q foo.c
 diff -u foo.c $HERE/import_new/src/foo.c
 cmp -s foo.c $HERE/import_new/src/foo.c
 U=`bk prs -r+ -h -d:P: foo.c`
-if [ X$U != Xpatch ] 
+if [ X$U != Xpatch -a X$U != Xbk ] 
 then
 	echo "failed: bad user: $U"
 	exit 1

@@ -6,7 +6,7 @@
 extern char	*editor, *pager, *bin;
 extern char	*BitKeeper;
 
-private	void
+void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 {
 	sccs *s;
@@ -30,40 +30,7 @@ do_clean(char *file, int flags)
 	sccs_free(s);
 }
 
-char *
-logAddr()
-{
-	static char buf[MAXLINE];
-	static char *logaddr = NULL;
-	char	config[MAXPATH];
-	FILE	*f1;
-
-	if (logaddr) return logaddr;
-	sprintf(config, "%s/bk_configY%d", TMP_PATH, getpid());
-	sprintf(buf, "%setc/SCCS/s.config", BitKeeper);
-	get(buf, SILENT|PRINT, config);
-	assert(exists(config));
-
-	f1 = fopen(config, "rt");
-	assert(f1);
-	while (fgets(buf, sizeof(buf), f1)) {
-		if (strneq("logging:", buf, 8)) {
-			char	*p, *q;
-			for (p = &buf[8]; (*p == ' ' || *p == '\t'); p++);
-			q = &p[1];
-			while (strchr(" \t\n", *q) == 0) q++;
-			*q = 0;
-			logaddr = p;
-			goto done;
-		}
-	}
-	logaddr = "";
-done:	fclose(f1);
-	unlink(config);
-	return logaddr;
-}
-
-private void
+void
 header(FILE *f)
 {
 	char	parent_file[MAXPATH];

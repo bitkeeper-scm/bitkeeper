@@ -13,8 +13,7 @@
 # %K%
 
 SAVE=`bk getuser`
-BK_USER=bk
-export BK_USER
+BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
 rm -rf bar SCCS
 bk cset -n -s .
 echo Hallo > date
