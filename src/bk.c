@@ -706,6 +706,7 @@ cmdlog_dump(int ac, char **av)
 	FILE	*f;
 	time_t	t;
 	char	*p;
+	char	*version;
 	char	buf[4096];
 
 	
@@ -728,10 +729,18 @@ cmdlog_dump(int ac, char **av)
 	while (fgets(buf, sizeof(buf), f)) {
 		for (p = buf; (*p != ' ') && (*p != '@'); p++);
 		*p++ = 0;
-		t = strtoul(p, 0, 0);
-		unless (p = strchr(p, ':')) continue;
-		p++;
-		printf("%s %.19s%s", buf, ctime(&t), p);
+		t = strtoul(p, &version, 0);
+		while (isspace(*version)) ++version;
+		if (*version == ':') {
+			p = version;
+			*p = 0;
+			version = 0;
+		} else {
+			unless (p = strchr(p, ':')) continue;
+			*p = 0;
+		}
+		printf("%s %.19s %14s %s", buf, ctime(&t),
+		    version ? version : "", 1+p);
 	}
 	if (av[1] && streq(av[1], "-a")) {
 		pclose(f);

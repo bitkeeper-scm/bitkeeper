@@ -46,7 +46,7 @@ private int	expires = 0;
 #define	COLOR_PATCH	"lightblue"	/* patch */
 
 #define	OUTER_TABLE "<table width=100% bgcolor=#808080 cellspacing=0 border=0 cellpadding=0><tr><td>\n"
-#define INNER_TABLE	"<table width=100% bgcolor=#808080 cellpadding=3 cellspacing=1 border=0 bgcolor=white>"
+#define INNER_TABLE	"<table width=100% cellpadding=3 cellspacing=1 border=0 bgcolor=white>"
 #define OUTER_END	"</td></tr></table>\n"
 #define	INNER_END	"</table>"
 
@@ -1885,8 +1885,8 @@ http_tags(char *page)
 	    "  <td align=right>:HTML_AGE:</td>\n"
 	    "  <td align=center bgcolor=yellow>\n"
 	    "      <a href=\"cset@:REV:%s\">:TAG:</a></td>\n"
-	    "  <td><a href=\"ChangeSet@:REV:..%s\">later CSets</a></td>\n"
 	    "  <td><a href=\"ChangeSet@..:REV:%s\">earlier CSets</a></td>\n"
+	    "  <td><a href=\"ChangeSet@:REV:..%s\">later CSets</a></td>\n"
 	    "  <td>:HTML_C:</td>\n"
 	    "</tr>}%s", prefix, navbar, navbar, navbar, suffix);
 

@@ -605,9 +605,9 @@ private void
 requestWebLicense()
 {
 
-#define LICENSE_HOST	"bitmover.com"
+#define LICENSE_HOST	"licenses.bitkeeper.com"
 #define	LICENSE_PORT	80
-#define LICENSE_REQUEST	"/cgi-bin/request-license.cgi"
+#define LICENSE_REQUEST	"/cgi-bin/bkweb-license.cgi"
 
 	int f;
 	char buf[MAXPATH];
