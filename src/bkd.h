@@ -23,6 +23,26 @@
 #define	BKD_NUL		'\0'
 
 /*
+ * Options for prunekey()
+ */
+#define	PK_REVPREFIX	0x00001 /* input key has rev + tag prefix */
+#define	PK_LSER		0x00002 /* want local cset in serial format */
+#define	PK_LREV		0x00004 /* want local cset in rev/tag format */
+#define	PK_LKEY		0x00008 /* want local cset in key format */
+#define	PK_RSER		0x00010	/* want remote cset in serial format */
+#define	PK_RREV		0x00020	/* want remote cset in rev/tag format */
+#define	PK_RKEY		0x00040	/* want remote cset in key format */
+
+
+/*
+ * push/pull -l option output format
+ */
+#define	LISTCMT 	1	/* list cset comment */
+#define	LISTDETAIL	2	/* list detail comment */
+#define	LISTKEY		3	/* list key only */
+#define	LISTREV		4	/* list rev only */
+
+/*
  * Functions take (int ac, char **av)
  * do whatever, and return 0 or -1.
  * Commands are allowed to read/write state from the global Opts.
@@ -48,6 +68,7 @@ int	cmd_push_part1(int ac, char **av);
 int	cmd_push_part2(int ac, char **av);
 int	cmd_pull_part1(int ac, char **av);
 int	cmd_pull_part2(int ac, char **av);
+int	cmd_synckeys(int ac, char **av);
 
 int	cmd_rclone_part1(int ac, char **av);
 int	cmd_rclone_part2(int ac, char **av);
@@ -129,7 +150,7 @@ void	disconnect(remote *r, int how);
 void	drain();
 char	**getClientInfoBlock();
 void	sendServerInfoBlock(int);
-int	prunekey(sccs *, remote *, int, int, int *, int *, int *);
+int	prunekey(sccs *, remote *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
@@ -144,4 +165,5 @@ void	try_clone1_2(int quiet, int gzip,
 int	remote_lock_fail(char *buf, int verbose);
 unsigned long ns_sock_host2ip(char, int);
 void	drainErrorMsg(remote *r, char *buf, int bsize);
+int	listType(char *type);
 #endif

@@ -94,6 +94,21 @@ sccs_tagcolor(sccs *s, delta *d)
 	d->flags |= D_RED;
 }                 
 
+/*
+ * Given a delta pointer 'd', return the tag
+ */
+private char *
+sccs_d2tag(sccs *s, delta *d)
+{
+	symbol	*sym;
+
+	unless (d->flags & D_SYMBOLS) return (NULL);
+	for (sym = s->symbols; sym; sym = sym->next) {
+		if (d == sym->d) return (sym->symname);
+	}
+	return (NULL); /* we should never get here */
+}
+
 private void
 addLogKey(delta *d)
 {
@@ -109,14 +124,17 @@ listkey_main(int ac, char **av)
 	sccs	*s;
 	delta	*d = 0;
 	int	i, c, debug = 0, quiet = 0, nomatch = 1, fastkey;
+	int	sndRev = 0;
 	char	key[MAXKEY], rootkey[MAXKEY];
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;
+	char	*tag;
 
-	while ((c = getopt(ac, av, "dq")) != -1) {
+	while ((c = getopt(ac, av, "dqr")) != -1) {
 		switch (c) {
 		    case 'd':	debug = 1; break;
 		    case 'q':	quiet = 1; break;
+		    case 'r':	sndRev = 1; break;
 		    default:	fprintf(stderr,
 					"usage: bk _listkey [-d] [-q]\n");
 				return (5);
@@ -204,6 +222,13 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 				fprintf(stderr, "listkey: found a match key\n");
 			}
 			if (nomatch) out("@LOD MATCH@\n");	/* aka first */
+			if (sndRev) {
+				assert(d->rev);
+				out(d->rev);
+				out("|");
+				if (tag = sccs_d2tag(s, d)) out(tag);
+				out("|");
+			}
 			out(lines[i]);
 			out("\n");
 			nomatch = 0;
@@ -217,6 +242,13 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 			if (!d && (d = sccs_findKey(s, key))) {
 				sccs_tagcolor(s, d);
 				out("@TAG MATCH@\n");
+				if (sndRev) {
+					assert(d->rev);
+					out(d->rev);
+					out("|");
+					if (tag = sccs_d2tag(s, d)) out(tag);
+					out("|");
+				}
 				sccs_sdelta(s, d, key);
 				out(key);
 				out("\n");
@@ -231,12 +263,32 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
+		if (sndRev) {
+			assert(d->rev);
+			out(d->rev);
+			out("|");
+			if (tag = sccs_d2tag(s, d)) out(tag);
+			out("|");
+		}
 		sccs_sdelta(s, d, key);
 		out(key);
 		out("\n");
 	}
 	out("@END@\n");
 	return (0);
+}
+
+private char *
+get_key(char *buf, int flags)
+{
+	char	*p;
+
+	unless (flags & PK_REVPREFIX)  return (buf);
+	p = strchr(buf, '|'); /* skip rev */
+	assert(p);
+	p = strchr(++p, '|'); /* skip tag */
+	assert(p);
+	return (++p);
 }
 
 /*
@@ -254,13 +306,14 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
  * @END@
  */
 int
-prunekey(sccs *s, remote *r, int outfd,
+prunekey(sccs *s, remote *r, int outfd, int flags,
 	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
-	char	key[MAXKEY] = "";
+	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
 	delta	*d;
 	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
-	char	*p;
+	char	*p, *k;
+	char	**tags = NULL;
 
 	unless (getline2(r, key, sizeof(key)) > 0) {
 		unless (quiet) {
@@ -296,7 +349,8 @@ prunekey(sccs *s, remote *r, int outfd,
 			exit(2);
 		}
 		if (key[0] == '@') break;
-		d = sccs_findKey(s, key);
+		k = get_key(key, flags);
+		d = sccs_findKey(s, k);
 		assert(d);
 		sccs_color(s, d);
 	}
@@ -309,7 +363,8 @@ prunekey(sccs *s, remote *r, int outfd,
 				exit(2);
 			}
 			if (key[0] == '@') break;
-			d = sccs_findKey(s, key);
+			k = get_key(key, flags);
+			d = sccs_findKey(s, k);
 			assert(d);
 			sccs_tagcolor(s, d);
 		}
@@ -324,22 +379,78 @@ prunekey(sccs *s, remote *r, int outfd,
 			exit(2);
 		}
 		if (streq("@END@", key)) break;
-		if (d = sccs_findKey(s, key)) {
+		k = get_key(key, flags);
+		if (d = sccs_findKey(s, k)) {
 			d->flags |= D_RED;
 		} else {
-			if (sccs_istagkey(key)) {
+			if (sccs_istagkey(k)) {
 				rtags++;
 			} else {
+				if (flags & PK_RKEY) {
+					write(outfd, k, strlen(k));
+					write(outfd, "\n", 1);
+				}
+				if (flags & PK_RREV) {
+					p = strchr(key, '|');
+					assert(p);
+					*p++ = 0;
+					write(outfd, key, strlen(key));
+					write(outfd, "\n", 1);
+					if (*p != '|') {
+						k[-1] = 0;
+						tags = addLine(tags, strdup(p));
+					}
+				}
 				rcsets++;
 			}
 		}
 	}
 
+	/*
+	 * Print remote tags
+	 */
+	if (flags & PK_RREV) {
+		int	i;
+		EACH(tags) {
+			write(outfd, tags[i], strlen(tags[i]));
+			write(outfd, "\n", 1);
+		}
+		freeLines(tags);
+	}
+
 empty:	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
-		sprintf(key, "%u\n", d->serial);
-		write(outfd, key, strlen(key));
+		if (flags & PK_LSER) {
+			sprintf(key, "%u\n", d->serial);
+			write(outfd, key, strlen(key));
+		}
+		if (flags & PK_LREV) {
+			if (d->type == 'D') {
+				sprintf(key, "%s\n", d->rev);
+				write(outfd, key, strlen(key));
+			}
+		}
+		if (flags & PK_LKEY) {
+			sccs_sdelta(s, d, key);
+			write(outfd, key, strlen(key));
+			write(outfd, "\n", 1);
+		}
 		local++;
+	}
+	if (flags & PK_LREV) { /* list the tags */
+		for (d = s->table; d; d = d->next) {
+			symbol	*sym;
+			char	*tag;
+			
+			if (d->flags & D_RED) continue;
+			unless (d->flags & D_SYMBOLS) continue;
+			tag = sccs_d2tag(s, d);
+			if (tag) {
+				write(outfd, tag, strlen(tag));
+				write(outfd, "\n", 1);
+			}
+			
+		}
 	}
 	if (remote_csets) *remote_csets = rcsets;
 	if (remote_tags) *remote_tags = rtags;
@@ -376,7 +487,7 @@ prunekey_main(int ac, char **av)
 	r.wfd = -1;
 	sccs_cd2root(0, 0);
 	s = sccs_init(path, 0, 0);
-	prunekey(s, &r, -1, 0, 0, 0, 0);
+	prunekey(s, &r, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
@@ -386,4 +497,134 @@ prunekey_main(int ac, char **av)
 	}
 	sccs_free(s);
 	exit(0);
+}
+
+
+private void
+send_sync_msg(remote *r)
+{
+	char	*cmd, buf[MAXPATH];
+	FILE 	*f;
+
+	bktemp(buf);
+	f = fopen(buf, "w");
+	assert(f);
+	sendEnv(f, NULL, r, 0);
+	if (r->path) add_cd_command(f, r);
+	fprintf(f, "synckeys");
+	fputs("\n", f);
+	fclose(f);
+
+	cmd = aprintf("bk _probekey  >> %s", buf);
+	system(cmd);
+	free(cmd);
+
+	send_file(r, buf, 0, 0);	
+	unlink(buf);
+}
+
+private int
+synckeys(remote *r, int flags)
+{
+	char	buf[MAXPATH], s_cset[] = CHANGESET;
+	int	fd, rc, n;
+	sccs	*s;
+	delta	*d;
+
+	if (bkd_connect(r, 0, 1)) return (-1);
+	send_sync_msg(r);
+	if (r->rfd < 0) return (-1);
+
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
+	if ((rc = remote_lock_fail(buf, 1))) {
+		return (rc); /* -2 means locked */
+	} else if (streq(buf, "@SERVER INFO@")) {
+		getServerInfoBlock(r);
+		getline2(r, buf, sizeof(buf));
+	} else {
+		drainErrorMsg(r, buf, sizeof(buf));
+	}
+	if (get_ok(r, buf, 1)) return (-1);
+
+	/*
+	 * What we want is: "remote => bk _prunekey => /dev/null
+	 */
+	s = sccs_init(s_cset, 0, 0);
+	flags |= PK_REVPREFIX;
+	rc = prunekey(s, r, 1, flags, 0, NULL, NULL, NULL);
+	if (rc < 0) {
+		switch (rc) {
+		    case -2:
+			printf(
+"You are trying to sync to an unrelated package. The root keys for the\n\
+ChangeSet file do not match.  Please check the pathnames and try again.\n");
+			close(fd);
+			sccs_free(s);
+			return (1); /* needed to force bkd unlock */
+		    case -3:
+			printf("You are syncing to an empty directory\n");
+			sccs_free(s);
+			return (1); /* empty dir */
+			break;
+		}
+		close(fd);
+		disconnect(r, 2);
+		sccs_free(s);
+		return (-1);
+	}
+	close(fd);
+	sccs_free(s);
+	if (r->type == ADDR_HTTP) disconnect(r, 2);
+	return (0);
+}
+
+
+int
+synckeys_main(int ac, char **av)
+{
+	char	c;
+	remote  *r;
+	int 	flags = 0;
+
+	while ((c = getopt(ac, av, "l|r|")) != -1) {
+		switch (c) {
+		    case 'l':	if (optarg && (optarg[0] == 'k')) {
+					flags |= PK_LKEY;
+				} else {
+					flags |= PK_LREV;
+				}
+				break;
+		    case 'r':	if (optarg && (optarg[0] == 'k')) {
+					flags |= PK_RKEY;
+				} else {
+					flags |= PK_RREV;
+				}
+				break;
+		    default:  fprintf(stderr, "bad option %c\n", c);
+			      exit(1);
+		}
+	}
+
+
+
+	loadNetLib();
+	has_proj("synckeys");
+	r = remote_parse(av[optind], 0);
+	assert(r);
+
+	if (sccs_cd2root(0, 0)) { 
+		fprintf(stderr, "push: cannot find package root.\n"); 
+		exit(1);
+	}
+
+	if ((bk_mode() == BK_BASIC) &&
+	    !isLocalHost(r->host) && exists(BKMASTER)) {
+		fprintf(stderr, 
+		    "Cannot push from master repository: %s", upgrade_msg);
+		exit(1);
+	}
+
+	synckeys(r, flags);
+	return (0);
 }
