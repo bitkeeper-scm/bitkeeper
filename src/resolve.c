@@ -1216,11 +1216,10 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 		    sfile, d->rev, a, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
-	/* bk delta [-q] -Py'Change mode to {a}' -M{a} sfile */
-	sprintf(buf, "-PyChange mode to %s", a);
+	/* bk delta -[q]Py'Change mode to {a}' -M{a} sfile */
+	sprintf(buf, "-%sPyChange mode to %s", rs->opts->log ? "" : "q", a);
 	sprintf(opt, "-M%s", a);
-	if (sys("bk",
-	    "delta", rs->opts->log ? "" : "-q", buf, opt, sfile, SYS)) {
+	if (sys("bk", "delta", buf, opt, sfile, SYS)) {
 		syserr("failed\n");
 		resolve_cleanup(rs->opts, 0);
 	}
