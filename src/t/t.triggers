@@ -152,6 +152,9 @@ test -z "$DUMP_VARS" || {
 	cat $HERE/post-outgoing
 }
 
+# win32 cannot support lclone
+if [ "$PLATFORM" != "WIN32" ]
+then #-----------------------------------------------------------------
 echo $N Make sure clone -l is passed the right variables ............$NL
 cd $HERE/project
 cat > BitKeeper/triggers/pre-outgoing <<EOF
@@ -214,6 +217,7 @@ cmp -s $HERE/post-outgoing $HERE/post-outgoing-l || {
 	exit 1
 }
 echo OK
+fi #---------------------------------------------------------------------
 
 # Make a post-incoming trigger be checked in, see if clone runs it.
 echo $N Test post-incoming in a clone ...............................$NL

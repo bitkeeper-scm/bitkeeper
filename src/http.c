@@ -315,6 +315,7 @@ http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
 		fprintf(stderr, "unknown proxy type %s\n", type);
 		fd = -1;
 	}
+	alarm(0);
 	return (fd);
 }
 

@@ -6,6 +6,51 @@ private	int	sccs_stalelock(const char *file, int discard);
 /*
  * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
  */
+
+
+
+#ifdef WIN32
+/*
+ * TODO Move this inteface into the uwtlib
+ * after we fixed all other code which uses
+ * link() as a "fast copy" inteface.
+ */
+private int
+link(const char *from, const char *to)
+{
+	errno = EPERM;
+	return (-1);
+}
+#endif
+
+
+
+
+#ifdef WIN32
+private int
+linkcount(const char *file)
+{
+	/*
+	 * stat() is a _very_ expensive call on win32
+	 * since no win32 FS supports hard links, just return 1
+	 */
+	return (1);
+}
+#else
+private int
+linkcount(const char *file)
+{
+	struct	stat sb;
+
+	if (stat(file, &sb) != 0) return (-1);
+	return (sb.st_nlink);
+
+}
+#endif
+
+
+
+
 private char *
 uniqfile(const char *file)
 {
@@ -70,7 +115,7 @@ sccs_lockfile(const char *file, int waitsecs, int rm, int quiet)
 			}
 		}
 		/* not true on windows file systems */
-		if ((stat(uniq, &sb) == 0) && (sb.st_nlink == 2)) {
+		if (linkcount(uniq) == 2) {
 			if (rm) unlink(uniq);
 			free(uniq);
 			free(p);

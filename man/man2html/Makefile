@@ -24,12 +24,16 @@ install:
 	@make clean
 	@make all
 	@/bin/rm -f $(DIR)/*
+	@make index
 	@make cp
 
 cp:
-	/bin/rm -f $(DIR)/*.html
+	/bin/rm -f $(DIR)/*
 	mkdir -p $(DIR)
-	cp *.html $(DIR)
+	cp index.db *.html $(DIR)
+
+index:
+	@mkindex *.html
 
 links:
 	-bk co -q ../man1
