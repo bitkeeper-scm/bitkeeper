@@ -469,8 +469,10 @@ proc widgets {} \
 	bind .ctrl.topics <Button-3>	{ doPixSelect %x %y; break }
 	bind .ctrl.topics <Motion>	"break"
 	bind .text.help <ButtonPress>	"focus .text.help"
-	bind all <Control-e>		{ scroll "line" 1 }
-	bind all <Control-y>		{ scroll "line" -1 }
+	bind all <Control-e>		{ scroll "line" 1; break }
+	bind all <Control-y>		{ scroll "line" -1; break }
+	bind all <Control-b>		{ scroll "page" -1 ; break}
+	bind all <Control-f>		{ scroll "page"  1 ; break}
 	bind all <Down>			{ scroll "line" 1; break }
 	bind all <Up>			{ scroll "line" -1; break }
 	bind .text.help <Down>		{ scroll "line" 1; break }
