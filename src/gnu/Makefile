@@ -1,7 +1,7 @@
 OS=`sh os`
 DIRS=patch
 BINS=patch/$(OS)/patch
-BKBIN=/usr/bitkeeper
+BK_BIN=/usr/bitkeeper
 CACHE=--cache-file=../../../config.cache
 
 all: os
@@ -10,7 +10,7 @@ all: os
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
-		cd $$i; bk get -q checkout; sh checkout; \
+		cd $$i; ../../get -q checkout; sh checkout; \
 		cd $$OS; test -f Makefile || ../configure $(CACHE); \
 		$(MAKE) \
 		); \
@@ -20,24 +20,17 @@ all: os
 	cp $(BINS) bin
 
 install: all
-	cp $(BINS) $(BKBIN)
+	cp $(BINS) $(BK_BIN)
 	@set -x; for i in $(BINS); \
 	do	D=`dirname $$i`; \
 		F=`basename $$i`; \
 		(cd $$D && ../../../chksum $$F); \
-	done >> $(BKBIN)/MANIFEST; \
+	done >> $(BK_BIN)/MANIFEST; \
 
-clean clean-obj: os
-	-@OS=$(OS); \
-	for i in $(DIRS); \
-	do	test -f $$i/$$OS/Makefile || continue; \
-		(cd $$i && make clean); \
-	done
-	-bk -r . clean
-
-clobber: os
+clobber clean clean-obj: os
 	-@OS=$(OS); set -x; \
 	for i in $(DIRS); \
 	do	(cd $$i && rm -rf BIN-*); \
 	done
 	-bk -r . clean
+	-rm -rf bin

@@ -275,7 +275,7 @@ proc currentLine {array index} \
 
 proc highlightDiffs {} \
 {
-	global	rDiff leftColor rightColor boldFont
+	global	rDiff leftColor rightColor diffbFont
 
 	.diffs.left tag delete d
 	.diffs.right tag delete d
@@ -283,8 +283,8 @@ proc highlightDiffs {} \
 		.diffs.left tag add d $Diff $End
 		.diffs.right tag add d $Diff $End
 	}
-	.diffs.left tag configure d -foreground black -font $boldFont
-	.diffs.right tag configure d -foreground black -font $boldFont
+	.diffs.left tag configure d -foreground black -font $diffbFont
+	.diffs.right tag configure d -foreground black -font $diffbFont
 }
 
 proc topLine {} \
@@ -295,7 +295,7 @@ proc topLine {} \
 # This works much better than that 0..1 shit.
 proc scrollDiffs {where} \
 {
-	global	rDiff nextDiff leftColor rightColor boldFont diffHeight
+	global	rDiff nextDiff leftColor rightColor diffbFont diffHeight
 
 	.diffs.left see "$where.0"
 	.diffs.right see "$where.0"
@@ -330,9 +330,9 @@ proc scrollDiffs {where} \
 	.diffs.right tag delete highLight
 	.diffs.left tag add highLight $Diff $End
 	.diffs.right tag add highLight $Diff $End
-	.diffs.left tag configure highLight -font $boldFont \
+	.diffs.left tag configure highLight -font $diffbFont \
 	    -foreground black -background lightyellow
-	.diffs.right tag configure highLight -font $boldFont \
+	.diffs.right tag configure highLight -font $diffbFont \
 	    -foreground black -background lightyellow
 }
 
@@ -755,21 +755,31 @@ proc computeHeight {w} \
 
 proc widgets {L R O} \
 {
-	global	leftColor rightColor scroll boldFont diffHeight mergeHeight
-	global	buttonFont wish bithelp
+	global	leftColor rightColor scroll diffbFont diffHeight mergeHeight
+	global	buttonFont wish tcl_platform
 
-	set diffFont {clean 12 roman}
-	set diffWidth 55
+	if {$tcl_platform(platform) == "windows"} {
+		set diffFont {terminal 9 roman}
+		set mergeFont {terminal 9 roman}
+		set diffbFont {helvetica 9 roman bold}
+		set buttonFont {helvetica 9 roman bold}
+		set swid 18
+	} else {
+		set diffFont {fixed 12 roman}
+		set mergeFont {fixed 12 roman}
+		set diffbFont {fixed 12 roman bold}
+		set buttonFont {times 12 roman bold}
+		set swid 12
+	}
+	set textBG #c0c0d0
+	set diffWidth 65
 	set diffHeight 30
 	set mergeWidth 80
 	set mergeHeight 20
-	set mergeFont {clean 12 roman}
 	set tcolor lightseagreen
 	set leftColor orange
 	set rightColor yellow
-	set swid 12
-	set boldFont {clean 12 roman bold}
-	set buttonFont {clean 10 roman bold}
+	set bcolor #d0d0d0
 	set geometry ""
 	if {[file readable ~/.fmrc]} {
 		source ~/.fmrc
@@ -792,10 +802,12 @@ proc widgets {L R O} \
 	    label .diffs.r -background $rightColor \
 		-font $buttonFont
 	    text .diffs.left -width $diffWidth -height $diffHeight \
+		-background $textBG \
 		-state disabled -wrap none -font $diffFont \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -width $diffWidth -height $diffHeight \
+		-background $textBG \
 		-state disabled -wrap none -font $diffFont
 	    scrollbar .diffs.xscroll -wid $swid -troughcolor $tcolor \
 		-orient horizontal -command { xscroll }
@@ -813,6 +825,7 @@ proc widgets {L R O} \
 	    label .merge.l -background slategrey \
 		-font $buttonFont
 	    text .merge.t -width $mergeWidth -height $mergeHeight \
+		-background $textBG \
 		-wrap none -font $mergeFont \
 		-xscrollcommand { .merge.xscroll set } \
 		-yscrollcommand { .merge.yscroll set }
@@ -821,41 +834,41 @@ proc widgets {L R O} \
 	    scrollbar .merge.yscroll -wid $swid -troughcolor $tcolor \
 		-orient vertical -command { .merge.t yview }
 	    frame .merge.menu
-		button .merge.menu.open -width 7 -bg grey \
+		button .merge.menu.open -width 7 -bg $bcolor \
 		    -font $buttonFont -text "Open" \
 		    -command selectFiles
-		button .merge.menu.restart -font $buttonFont -bg grey \
+		button .merge.menu.restart -font $buttonFont -bg $bcolor \
 		    -text "Restart" -width 7 -state disabled -command restart
-		button .merge.menu.undo -font $buttonFont -bg grey \
+		button .merge.menu.undo -font $buttonFont -bg $bcolor \
 		    -text "Undo" -width 7 -state disabled -command undo
-		button .merge.menu.redo -font $buttonFont -bg grey \
+		button .merge.menu.redo -font $buttonFont -bg $bcolor \
 		    -text "Redo" -width 7 -state disabled -command redo
-		button .merge.menu.skip -font $buttonFont -bg grey \
+		button .merge.menu.skip -font $buttonFont -bg $bcolor \
 		    -text "Skip" -width 7 -state disabled -command skip
-		button .merge.menu.left -font $buttonFont -bg grey \
+		button .merge.menu.left -font $buttonFont -bg $bcolor \
 		    -text "Use\nLeft" -width 7 -state disabled -command useLeft
-		button .merge.menu.right -font $buttonFont -bg grey \
+		button .merge.menu.right -font $buttonFont -bg $bcolor \
 		    -text "Use\nright" -width 7 -state disabled -command useRight
-		label .merge.menu.l -font $buttonFont -bg grey \
+		label .merge.menu.l -font $buttonFont -bg $bcolor \
 		    -width 20 -relief groove -pady 2
-		button .merge.menu.save -font $buttonFont -bg grey \
+		button .merge.menu.save -font $buttonFont -bg $bcolor \
 		    -text "Done" -width 7 -command save -state disabled
-		button .merge.menu.help -width 7 -bg grey \
+		button .merge.menu.help -width 7 -bg $bcolor \
 		    -font $buttonFont -text "Help" \
-		    -command { exec $wish -f $bithelp fm & }
-		button .merge.menu.quit -font $buttonFont -bg grey \
+		    -command { exec bk helptool fmtool & }
+		button .merge.menu.quit -font $buttonFont -bg $bcolor \
 		    -text "Quit" -width 7 -command cmd_done
 		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
-		grid .merge.menu.open -row 1
-		grid .merge.menu.restart -row 1 -column 1
-		grid .merge.menu.undo -row 2 -column 0
-		grid .merge.menu.redo -row 2 -column 1
-		grid .merge.menu.skip -row 3 -column 0
-		grid .merge.menu.save -row 3 -column 1
-		grid .merge.menu.left -row 4 -column 0
-		grid .merge.menu.right -row 4 -column 1
-		grid .merge.menu.help -row 5 -column 0
-		grid .merge.menu.quit -row 5 -column 1
+		grid .merge.menu.open -row 1 -sticky ew
+		grid .merge.menu.restart -row 1 -column 1 -sticky ew
+		grid .merge.menu.undo -row 2 -column 0 -sticky ew
+		grid .merge.menu.redo -row 2 -column 1 -sticky ew
+		grid .merge.menu.skip -row 3 -column 0 -sticky ew
+		grid .merge.menu.save -row 3 -column 1 -sticky ew
+		grid .merge.menu.left -row 4 -column 0 -sticky ew
+		grid .merge.menu.right -row 4 -column 1 -sticky ew
+		grid .merge.menu.help -row 5 -column 0 -sticky ew
+		grid .merge.menu.quit -row 5 -column 1 -sticky ew
 	    grid .merge.l -row 0 -column 0 -columnspan 2 -sticky ew
 	    grid .merge.t -row 1 -column 0 -sticky nsew
 	    grid .merge.yscroll -row 1 -column 1 -sticky ns
@@ -885,51 +898,19 @@ proc widgets {L R O} \
 
 	bind .merge <Configure> { computeHeight "merge" }
 	bind .diffs <Configure> { computeHeight "diffs" }
-	bind .merge.menu.open <Enter> {
-		.status configure -text \
-		"Open Left and Right Files"
-	}
-	bind .merge.menu.open <Leave> { .status configure -text "" }
-	bind .merge.menu.restart <Enter> {
-		.status configure -text \
-		"(Alt-r)  Restart, discarding any resolves so far"
-	}
-	bind .merge.menu.restart <Leave> { .status configure -text "" }
-	bind .merge.menu.undo <Enter> {
-		.status configure -text "(Alt-u)  Undo last resolve"
-	}
-	bind .merge.menu.undo <Leave> { .status configure -text "" }
-	bind .merge.menu.redo <Enter> {
-		.status configure -text "(Alt-a)  Redo last undo"
-	}
-	bind .merge.menu.redo <Leave> { .status configure -text "" }
-	bind .merge.menu.skip <Enter> {
-		.status configure -text \
-		"(Alt-s)  Skip this diff, adding neither left nor right changes"
-	}
-	bind .merge.menu.skip <Leave> { .status configure -text "" }
-	bind .merge.menu.save <Enter> {
-		.status configure -text "(Control-s)  Save merged file"
-	}
-	bind .merge.menu.save <Leave> { .status configure -text "" }
-	bind .merge.menu.left <Enter> {
-		.status configure -text \
-		"(Alt-l)  Use the highlighted change from the left"
-	}
-	bind .merge.menu.left <Leave> { .status configure -text "" }
-	bind .merge.menu.right <Enter> {
-		.status configure -text \
-		"(Alt-r)  Use the highlighted change from the right"
-	}
-	bind .merge.menu.right <Leave> { .status configure -text "" }
-	bind .merge.menu.quit <Enter> {
-		.status configure -text "(Alt-q)  Quit filemerge"
-	}
-	bind .merge.menu.quit <Leave> { .status configure -text "" }
-	bind .merge.menu.l <Enter> {
-		.status configure -text "Shows how much more work you have left"
-	}
-	bind .merge.menu.l <Leave> { .status configure -text "" }
+	bindhelp .merge.menu.restart "Discard all merges and restart"
+	bindhelp .merge.menu.save "Save merges and exit"
+	bindhelp .merge.menu.help "Run helptool to get detailed help"
+	bindhelp .merge.menu.quit "Quit without saving any merges"
+	bindhelp .merge.menu.redo "Redo last undo"
+	bindhelp .merge.menu.open "Open Left and Right Files"
+	bindhelp .merge.menu.undo "(Control-Up)  undo the last diff selection"
+	bindhelp .merge.menu.skip \
+	"(Control-Down)  Skip this diff, adding neither left nor right changes"
+	bindhelp .merge.menu.left \
+	    "(Control-Left)  Use the highlighted change from the left"
+	bindhelp .merge.menu.right \
+	    "(Control-Right)  Use the highlighted change from the right"
 	.merge.menu.redo configure -state disabled
 	foreach w {.diffs.left .diffs.right .merge.t} {
 		bindtags $w {all Text .}
@@ -937,6 +918,12 @@ proc widgets {L R O} \
 	set foo [bindtags .diffs.left]
 	computeHeight "diffs"
 	computeHeight "merge"
+}
+
+proc bindhelp {w msg} \
+{
+	eval "bind $w <Enter> { .status configure -text \"$msg\" }"
+	eval "bind $w <Leave> { .status configure -text {} }"
 }
 
 # Set up keyboard accelerators.
@@ -954,11 +941,6 @@ proc keyboard_bindings {} \
 	bind all <Control-Right> {useRight}
 	bind all <Control-Down> {skip}
 	bind all <Control-Up> {undo}
-	bind all <End> { .merge.t yview moveto 1 }
-	bind all <Home> {
-		scrollDiffs [currentLine rBoth nextBoth]
-		.merge.t yview moveto 1
-	}
 }
 
 proc confirm {msg l} \

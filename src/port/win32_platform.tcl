@@ -1,5 +1,3 @@
-#! /usr/bin/wish -f
-
 # Platform specific setup for tcl scripts
 # Copyright (c) 1999 Andrew Chang
 # %W% %@%
@@ -18,7 +16,10 @@ proc bk_init {} \
 	}
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
 	set dev_null "nul"
-	set wish "wish.exe"
+	# XXX wish shell change name with each release
+	#     we are now using tcl/tk 8.1
+	# TODO: get the wish shell name from registry
+	set wish "wish81.exe"
 	set bithelp [file join $bin bithelp.tcl]
 	set difftool [file join $bin difftool.tcl]
 	set helptool [file join $bin helptool.tcl]

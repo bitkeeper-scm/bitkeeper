@@ -4449,12 +4449,12 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		if (WRITABLE(s) && writable(s->gfile)) {
 			fprintf(stderr, "Writeable %s exists\n", s->gfile);
 			s->state |= S_WARNED;
-			return (char *)-1;
+			return ((flags & GET_NOREGET) ? 0 : (char *)-1);
 		} else if ((flags & GET_NOREGET) && exists(s->gfile)) {
 			verbose((stderr,
 			    "%s is already checked out\n", s->gfile));
 			s->state |= S_WARNED;
-			return 0;
+			return (0);
 		}
 		f = s->gfile;
 		unlinkGfile(s);
@@ -4584,7 +4584,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	unless (flags & GET_HASHONLY) {
 		f = d ? setupOutput(s, printOut, flags, d) : printOut;
-		unless (f) {
+		if ((f == (char *) 0) || (f == (char *)-1)) {
 out:			if (slist) free(slist);
 			if (state) free(state);
 			if (DB) mdbm_close(DB);

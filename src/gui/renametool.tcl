@@ -807,20 +807,33 @@ proc adjustHeight {diff list} \
 proc widgets {} \
 {
 	global	leftColor rightColor scroll boldFont diffHeight
-	global	buttonFont wish bithelp listHt
+	global	buttonFont wish listHt tcl_platform
 
-	set boldFont {clean 12 roman bold}
-	set listFont {clean 12 roman }
-	set buttonFont {clean 12 roman bold}
-	set diffFont {clean 12 roman}
+	if {$tcl_platform(platform) == "windows"} {
+		set boldFont {helvetica 9 roman bold}
+		set listFont {helvetica 9 roman }
+		set buttonFont {helvetica 9 roman bold}
+		set diffFont {helvetica 9 roman}
+		set swid 18
+		set y 0
+		set filesHt 9
+	} else {
+		set boldFont {fixed 12 roman bold}
+		set listFont {fixed 12 roman }
+		set buttonFont {times 12 roman bold}
+		set diffFont {fixed 12 roman}
+		set swid 12
+		set y 1
+		set filesHt 7
+	}
 	set leftWid 60
 	set rightWid 60
 	set diffHeight 20
 	set tcolor lightseagreen
 	set leftColor orange
 	set rightColor yellow
-	set swid 12
 	set listHt 8
+	set bcolor #d0d0d0
 	set geometry ""
 	if {[file readable ~/.renametoolrc]} {
 		source ~/.renametoolrc
@@ -835,44 +848,44 @@ proc widgets {} \
 	set px 4
 	set bw 2
 	frame .menu -background #b0b0c0
-	    button .menu.prev -font $buttonFont -bg grey \
+	    button .menu.prev -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "<< Diff" -state disabled -command prev
-	    button .menu.next -font $buttonFont -bg grey \
+	    button .menu.next -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> Diff" -state disabled -command next
-	    button .menu.history -font $buttonFont -bg grey \
+	    button .menu.history -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "History" -state disabled \
 		-command history
-	    button .menu.delete -font $buttonFont -bg grey \
+	    button .menu.delete -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Delete" -state disabled -command "Delete 1"
-	    button .menu.deleteAll -font $buttonFont -bg grey \
+	    button .menu.deleteAll -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Delete All" -command DeleteAll
-	    button .menu.guess -font $buttonFont -bg grey \
+	    button .menu.guess -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Guess" -command Guess 
-	    button .menu.rename -font $buttonFont -bg grey \
+	    button .menu.rename -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Rename" -state disabled -command Rename 
-	    button .menu.create -font $buttonFont -bg grey \
+	    button .menu.create -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Create" -state disabled -command "Create 1"
-	    button .menu.createAll -font $buttonFont -bg grey \
+	    button .menu.createAll -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Create All" -command CreateAll
-	    button .menu.undo -font $buttonFont -bg grey \
+	    button .menu.undo -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Undo" -state disabled -command Undo
-	    button .menu.apply -font $buttonFont -bg grey \
+	    button .menu.apply -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Apply" -state disabled -command Apply
-	    button .menu.quit -font $buttonFont -bg grey \
+	    button .menu.quit -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command exit 
-	    button .menu.help -bg grey \
+	    button .menu.help -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-font $buttonFont -text "Help" \
 		-command { exec bk helptool renametool & }
@@ -1065,10 +1078,8 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc bin dev_null
+	global argv0 argv argc
 
-	set bin "/usr/bitkeeper"
-	set dev_null "/dev/null"
 	bk_init
 	widgets
 	getFiles

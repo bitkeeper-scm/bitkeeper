@@ -77,14 +77,14 @@ proc dot {} \
 
 proc highlightDiffs {start stop} \
 {
-	global	boldFont
+	global	diffbFont
 
 	.diffs.left tag delete d
 	.diffs.right tag delete d
 	.diffs.left tag add d $start $stop
 	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -foreground black -font $boldFont
-	.diffs.right tag configure d -foreground black -font $boldFont
+	.diffs.left tag configure d -font $diffbFont
+	.diffs.right tag configure d -font $diffbFont
 }
 
 proc topLine {} \
@@ -425,7 +425,7 @@ proc getFiles {revs} \
 	set line 0
 	set r [open "| bk -R prs -bhr$revs -d:I: ChangeSet" r]
 	while {[gets $r cset] > 0} {
-		.diffs.status.middle configure -text "Processing cset $cset"
+		.diffs.status.middle configure -text "Getting cset $cset"
 		update
 		incr line
 		.filelist.t insert end "ChangeSet $cset\n" cset
@@ -538,20 +538,35 @@ proc computeHeight {} \
 
 proc widgets {} \
 {
-	global	leftColor rightColor scroll boldFont diffHeight
-	global	buttonFont wish bithelp
+	global	leftColor rightColor scroll diffbFont diffHeight
+	global	buttonFont wish tcl_platform
 
-	set boldFont {clean 12 roman bold}
-	set listFont {clean 12 roman }
-	set buttonFont {helvetica 12 roman bold}
-	set diffFont {clean 12 roman}
-	set leftWid 56
-	set rightWid 80
+	if {$tcl_platform(platform) == "windows"} {
+		set listFont {helvetica 9 roman}
+		set buttonFont {helvetica 9 roman bold}
+		set diffFont {terminal 9 roman}
+		set diffbFont {terminal 9 roman bold}
+		set lFont {helvetica 9 roman bold}
+		set leftWid 40
+		set rightWid 80
+		set py 0; set px 1; set bw 2
+		set swid 18
+	} else {
+		set listFont {fixed 12 roman}
+		set buttonFont {times 12 roman bold}
+		set diffFont {fixed 12 roman}
+		set diffbFont {fixed 12 roman bold}
+		set lFont {fixed 12 roman bold}
+		set leftWid 55
+		set rightWid 80
+		set py 1; set px 4; set bw 2
+		set swid 12
+	}
 	set diffHeight 30
+	set bcolor #d0d0d0
 	set tcolor lightseagreen
 	set leftColor orange
 	set rightColor yellow
-	set swid 12
 	set listHt 12
 	set geometry ""
 	if {[file readable ~/.difftoolrc]} {
@@ -592,11 +607,11 @@ proc widgets {} \
 	frame .diffs
 	    frame .diffs.status
 		label .diffs.status.l -background $leftColor \
-		    -font $buttonFont -relief sunken -borderwid 2
+		    -font $lFont -relief sunken -borderwid 2
 		label .diffs.status.middle -background lightblue \
-		    -font $buttonFont -wid 26 -relief sunken -borderwid 2
+		    -font $lFont -wid 26 -relief sunken -borderwid 2
 		label .diffs.status.r -background $rightColor \
-		    -font $buttonFont -relief sunken -borderwid 2
+		    -font $lFont -relief sunken -borderwid 2
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
@@ -618,35 +633,32 @@ proc widgets {} \
 	    grid .diffs.xscroll -columnspan 3
 
 	set menuwid 7
-	set py 1
-	set px 4
-	set bw 2
 	frame .menu
-	    button .menu.prevCset -font $buttonFont -bg grey \
+	    button .menu.prevCset -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "<< Cset" -width $menuwid -command prevCset
-	    button .menu.nextCset -font $buttonFont -bg grey \
+	    button .menu.nextCset -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> Cset" -width $menuwid -command nextCset
-	    button .menu.prevFile -font $buttonFont -bg grey \
+	    button .menu.prevFile -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "<< File" -width $menuwid -command prevFile
-	    button .menu.nextFile -font $buttonFont -bg grey \
+	    button .menu.nextFile -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> File" -width $menuwid -command nextFile
-	    button .menu.prev -font $buttonFont -bg grey \
+	    button .menu.prev -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "<< Diff" -width $menuwid -state disabled -command prev
-	    button .menu.next -font $buttonFont -bg grey \
+	    button .menu.next -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> Diff" -width $menuwid -state disabled -command next
-	    button .menu.history -font $buttonFont -bg grey \
+	    button .menu.history -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "ChangeSet History" -command "exec bk sccstool &"
-	    button .menu.quit -font $buttonFont -bg grey \
+	    button .menu.quit -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -width $menuwid -command exit 
-	    button .menu.help -width $menuwid -bg grey \
+	    button .menu.help -width $menuwid -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-font $buttonFont -text "Help" \
 		-command { exec bk helptool csettool & }
@@ -656,7 +668,7 @@ proc widgets {} \
 	    grid .menu.nextFile -row 1 -column 1
 	    grid .menu.prev  -row 2 -column 0
 	    grid .menu.next -row 2 -column 1
-	    grid .menu.history -row 3 -column 0 -columnspan 2
+	    grid .menu.history -row 3 -column 0 -columnspan 2 -sticky ew
 	    grid .menu.quit -row 4 -column 0 
 	    grid .menu.help -row 4 -column 1
 
@@ -736,14 +748,12 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc bin dev_null
+	global argv0 argv argc
 
 	if {[regexp {^[ \t]*-r(.*)} $argv dummy revs] == 0} {
 		puts "Usage: csettool -r<revs>"
 		exit 1
 	}
-	set bin "/usr/bitkeeper"
-	set dev_null "/dev/null"
 	bk_init
 	widgets
 	getFiles $revs

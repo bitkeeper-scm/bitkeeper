@@ -1,5 +1,3 @@
-#! /usr/bin/wish -f
-
 # Platform specific setup for tcl scripts
 # Copyright (c) 1999 Andrew Chang
 # %W% %@%
@@ -14,7 +12,27 @@ proc bk_init {} \
 	if {[info exists env(BK_BIN)]} {
 		set bin $env(BK_BIN)
 	} else {
-		set bin "/usr/bitkeeper"
+		set bin ""
+		# This list must match the list in bk.sh and
+		# utils/extractor.c
+		foreach dir {@bitkeeper_bin@ \
+		    /usr/libexec/bitkeeper \
+		    /usr/lib/bitkeeper \
+		    /usr/bitkeeper \
+		    /opt/bitkeeper \
+		    /usr/local/bitkeeper \
+		    /usr/local/bin/bitkeeper \
+		    /usr/bin/bitkeeper \
+		} {
+		    	if {[file exists [file join $dir sccstool]]} {
+				set bin $dir
+				break
+			}
+		}
+		if {$bin == ""} {
+			puts "Can not find bitkeeper binaries."
+			exit 1
+		}
 	}
 	set sdiffw [list "sdiff" "-w1" ]
 	set dev_null "/dev/null"

@@ -136,11 +136,13 @@ _csets() {
 	if [ -f RESYNC/BitKeeper/etc/csets ]
 	then	echo Viewing RESYNC/BitKeeper/etc/csets
 		cd RESYNC
-		exec ${BIN}csettool "$@" -r`cat BitKeeper/etc/csets`
+		exec $wish -f \
+		    ${BIN}csettool${tcl} "$@" -r`cat BitKeeper/etc/csets`
 	fi
 	if [ -f BitKeeper/etc/csets ]
 	then	echo Viewing BitKeeper/etc/csets
-		exec ${BIN}csettool "$@" -r`cat BitKeeper/etc/csets`
+		exec $wish -f \
+		    ${BIN}csettool${tcl} "$@" -r`cat BitKeeper/etc/csets`
 	fi
 	echo "Can not find csets to view."
 	exit 1
@@ -334,6 +336,7 @@ _advertise()
 }
 
 # Manually set the parent pointer for a repository.
+# With no args, print the parent pointer.
 _parent() {
 	__cd2root
 	case "X$1" in
@@ -345,7 +348,11 @@ _parent() {
 		;;
 	esac
 	if [ "X$1" = X ]
-	then	echo "Must specify parent root directory"
+	then	if [ -f BitKeeper/log/parent ]
+		then	echo Parent repository is `cat BitKeeper/log/parent`
+			exit 0
+		fi
+		echo "Must specify parent root directory"
 		exit 1
 	fi
 	if [ ! -d "$1/BitKeeper/etc" ]
@@ -1204,7 +1211,32 @@ _sendbug() {
 	done
 }
 
+# Make links in /usr/bin
+_links() {
+	test -x ${BK_BIN}sccslog || { echo Can not find bin directory; exit 1; }
+	echo Creating links from /usr/bin/ to $BK_BIN ...
+	for i in admin get delta unget rmdel prs bk
+	do	/bin/rm -f /usr/bin/$i
+		ln -s ${BK_BIN}$i /usr/bin/$i
+		echo "    $i"
+	done
+	echo Done.
+}
+
+# usage: regression [-s]
+# -s says use ssh
+# -l says local only (don't do remote).
 _regression() {
+	DO_REMOTE=YES
+	PREFER_RSH=YES
+	while getopts ls OPT
+	do	case $OPT in
+		l)	DO_REMOTE=NO;;
+		s)	PREFER_RSH=;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	export DO_REMOTE PREFER_RSH
 	cd ${BIN}t && exec ./doit "$@"
 }
 
@@ -1367,10 +1399,18 @@ __platformPath() {
 		return
 	fi
 	# The following  path  list only works in unix, on win32 we must find it
-	# in @libexecdir@/bitkeeper
-	for i in @libexecdir@/bitkeeper /usr/bitkeeper /usr/bitsccs \
-	    /usr/local/bitkeeper /usr/local/bin/bitkeeper /usr/bin/bitkeeper \
-	    /usr/bin
+	# in @bitkeeper_bin@
+	#
+	# This list must match the list in port/unix_platform.tcl and 
+	# utils/extractor.c
+	for i in @bitkeeper_bin@ \
+	    /usr/libexec/bitkeeper \
+	    /usr/lib/bitkeeper \
+	    /usr/bitkeeper \
+	    /opt/bitkeeper \
+	    /usr/local/bitkeeper \
+	    /usr/local/bin/bitkeeper \
+	    /usr/bin/bitkeeper
 	do	if [ -x $i/$bk_tagfile ]
 		then	BIN="$i/"
 			BK_BIN=$BIN
@@ -1433,7 +1473,7 @@ shift
 case $cmd in
     resync|resolve|pmerge|rcs2sccs)
 	exec perl ${BIN}$cmd "$@";;
-    citool|sccstool|vitool|fm|fmtool|fm3|fm3tool|difftool|helptool|csettool)
+    fm|fm3|citool|sccstool|fmtool|fm3tool|difftool|helptool|csettool|renametool)
 	exec $wish -f ${BIN}${cmd}${tcl} "$@";;
     *)	exec $cmd "$@";;	# will be found in $BIN by path search.
 esac
