@@ -501,6 +501,7 @@ typedef	struct sccs {
 	int	userLen;	/* maximum length of any user name */
 	int	revLen;		/* maximum length of any rev name */
 	u32	cksumok:1;	/* check sum was ok */
+	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
 } sccs;
 

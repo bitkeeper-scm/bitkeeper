@@ -3816,7 +3816,7 @@ sccs_init(char *name, u32 flags, project *proj)
 		if ((errno == ENOENT) || (errno == ENOTDIR)) {
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
-			s->cksumok = -1;
+			s->cksumok = 1;		/* but not done */
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -5437,8 +5437,8 @@ write_pfile(sccs *s, int flags, delta *d,
 	char	*tmp, *tmp2;
 
 	if (WRITABLE(s) && !(flags & GET_SKIPGET)) {
-		fprintf(stderr,
-		    "Writeable %s exists, skipping it.\n", s->gfile);
+		verbose((stderr,
+		    "Writeable %s exists, skipping it.\n", s->gfile));
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -6557,7 +6557,8 @@ badcksum(sccs *s, int flags)
 	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
 	seekto(s, 0);
-	filesum = atoi(&s->mmap[2]);
+	s->cksum = filesum = atoi(&s->mmap[2]);
+	s->cksumdone = 1;
 	debug((stderr, "File says sum is %d\n", filesum));
 	t = s->mmap + 8;
 	end -= 16;
@@ -11902,19 +11903,19 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "Y")) {
 		/* moudle type, not implemented */
-		fs("??");
+		fs("");
 		return (strVal);
 	}
 
 	if (streq(kw, "MF")) {
 		/* MR validation flag, not implemented	*/
-		fs("??");
+		fs("");
 		return (strVal);
 	}
 
 	if (streq(kw, "MP")) {
 		/* MR validation pgm name, not implemented */
-		fs("??");
+		fs("");
 		return (strVal);
 	}
 
@@ -11989,7 +11990,13 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "Ds")) {
-		return (KW("I"));
+		/* default branch or "none", see also DFB */
+		if (s->defbranch) {
+			fs(s->defbranch);
+		} else {
+			fs("none");
+		}
+		return (strVal);
 	}
 
 	if (streq(kw, "ND")) {
@@ -12133,6 +12140,39 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 		sprintf(buf, "0x%x", sccs_getxflags(d));
 		fs(buf);
+		return (strVal);
+	}
+
+	if (streq(kw, "CSETFILE")) {
+		if (s->tree->csetFile) {
+			fs(s->tree->csetFile);
+			return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "RANDOM")) {
+		if (s->tree->random) {
+			fs(s->tree->random);
+			return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "ENC")) {
+		switch (s->encoding) {
+		    case E_ASCII:
+			fs("ascii"); return (strVal);
+		    case E_UUENCODE:
+			fs("binary"); return (strVal);
+		    case E_UUGZIP:
+			fs("uugzip"); return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "VERSION")) {
+		fd(s->version);
 		return (strVal);
 	}
 
@@ -12345,12 +12385,32 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "CHKSUM")) {
+	if (streq(kw, "DSUM")) {
 		if (d->flags & D_CKSUM) {
 			char	buf[20];
 
 			sprintf(buf, "%d", (int)d->sum);
 			fs(buf);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "FSUM")) {
+		unless (s->cksumdone) badcksum(s, SILENT);
+		if (s->cksumok) {
+			char	buf[20];
+
+			sprintf(buf, "%d", (int)s->cksum);
+			fs(buf);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "SYMLINK")) {
+		if (d->symlink) {
+			fs(d->symlink);
 			return (strVal);
 		}
 		return (nullVal);
@@ -12473,7 +12533,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "TIP")) {
-		unless (sccs_isleaf(s, d)) {
+		if (sccs_isleaf(s, d)) {
 			fs(d->rev);
 			return (strVal);
 		}
