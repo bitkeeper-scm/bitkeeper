@@ -35,6 +35,7 @@ int	mkdirf(char *file);
 int	isdir(char *s);
 int	readn(int from, char *buf, int size);
 int	writen(int from, char *buf, int size);
+extern	void platformSpecificInit(char *name);
 
 static const char help[] = "\
 usage:	sfio [-q] -i | -p < archive\n\
@@ -56,6 +57,7 @@ main(int ac, char **av)
 {
 	int	c, mode = 0;
 
+	platformSpecificInit(NULL);
 	if (ac == 2 && streq(av[1], "--help")) goto usage;
 	while ((c = getopt(ac, av, "iopqs")) != -1) {
 		switch (c) {
