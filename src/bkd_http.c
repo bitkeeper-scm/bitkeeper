@@ -208,6 +208,7 @@ navbutton(int bold, int tag, char *start, char *end)
 				break;
 			    case 'p':	/* patch */
 				out("Patch for ");
+				break;
 			    default:
 				goto regular;
 			}
@@ -233,8 +234,8 @@ printnavbar()
 
 	out("<!-- [");out(navbar);out("] -->\n");
 	/* put in a navigation bar */
-	out("<font>\n"
-	    "<table border=1>\n"
+	out("<font >\n"
+	    "<table bgcolor=yellow border=1>\n"
 	    "<tr>\n");
 
 	if (strneq(navbar, "nav=", 4)) {
@@ -936,9 +937,9 @@ http_patch(char *rev)
 	whoami("patch@%s|@p%s", rev, rev);
 
 	header("rev", COLOR_PATCH,
-	    "Patch for ChangeSet <a href=cset@%s>%s</a>",
 	    "Patch for ChangeSet %s",
-	    rev, rev);
+	    "<a href=cset@%s?%s>Patch for ChangeSet %s</a>",
+	    rev, navbar, rev);
 
 	out("<pre><font size=2>");
 	sprintf(buf, "bk export -T -h -x -tpatch -r%s", rev);
