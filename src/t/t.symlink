@@ -273,9 +273,8 @@ rm link
 echo convert link to file > link
 bk ci $Q -y'link -> file' link
 bk commit $Q -y'link -> file' 
-cd $HERE
-bk resync $Q -at SL copy
-cd copy
+cd $HERE/copy
+bk pull -t $Q $HERE/SL
 bk co $Q link
 if [ ! -f link ]
 then	echo failed to upgrade file to a regular file; exit 1
@@ -297,9 +296,8 @@ rm file
 ln -s another/dangling/link file
 bk ci $Q -y'file -> link' file
 bk commit $Q -y'file -> link' 
-cd $HERE
-bk resync $Q -at SL copy
-cd copy
+cd $HERE/copy
+bk pull -t $Q $HERE/SL
 bk co $Q file
 if [ -f file ]
 then	echo failed to upgrade file to a link; exit 1
@@ -330,8 +328,8 @@ bk ci $Q -ywhatever link
 bk commit $Q -ywhatever
 cd $HERE
 tar cf SAVE2 SL copy
-bk resync $Q -t SL copy
 cd copy
+bk pull -R -t $Q $HERE/SL
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
 r
 u
@@ -352,8 +350,8 @@ echo $N Check symlink to file, choosing symlink .....................$NL
 cd $HERE
 rm -rf SL copy
 tar xf SAVE2
-bk resync $Q -t SL copy
 cd copy
+bk pull -R -t $Q $HERE/SL
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
 l
 u
@@ -387,8 +385,8 @@ bk ci $Q -ywhatever link
 bk commit $Q -ywhatever
 cd $HERE
 tar cf SAVE2 SL copy
-bk resync $Q -t copy SL
 cd SL
+bk pull -R -t $Q $HERE/copy
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
 l
 u
@@ -409,8 +407,8 @@ echo $N Check file to symlink, choosing symlink .....................$NL
 cd $HERE
 rm -rf SL copy
 tar xf SAVE2
-bk resync $Q -t copy SL
 cd SL
+bk pull -R -t $Q $HERE/copy
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
 r
 u
@@ -431,9 +429,8 @@ tar xf SAVE2
 cd copy
 bk mv link renamed
 bk commit $Q -ymv
-cd $HERE
-bk resync $Q -t copy SL
-cd SL
+cd $HERE/SL
+bk pull -R -t $Q $HERE/copy
 bk resolve -t $Q <<EOF >RESOLVE 2>&1
 r
 u
@@ -457,8 +454,9 @@ bk commit $Q -ymv
 cd $HERE/SL
 bk mv link SL
 bk commit $Q -ymv
+cd $HERE/SL
+bk pull -R -t $Q $HERE/copy
 cd $HERE
-bk resync $Q -t copy SL
 tar cf SAVE3 SL
 cd SL
 # At this point
@@ -494,8 +492,9 @@ bk commit $Q -ymv
 cd $HERE/SL
 bk mv link SL
 bk commit $Q -ymv
+cd $HERE/SL
+bk pull -R -t $Q $HERE/copy
 cd $HERE
-bk resync $Q -t copy SL
 tar cf SAVE3 SL
 cd SL
 # At this point

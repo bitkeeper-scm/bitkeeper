@@ -8,16 +8,18 @@ OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "cygwin"
 	SYS=win32
 	EXE=.exe
+	XTRA=win32
 else
 	SYS=unix
 	EXE=
+	XTRA=gnu
 endif
 
 # You can set this to anywhere you like and do a "build production" and you'll
 # have an installed BitKeeper.
 BINDIR	= /usr/libexec/bitkeeper
 
-GET=	bk get
+GET=	bk get -s
 BK=	bk 
 CC_OUT	=-o $@
 LD_OUT	=-o $@
@@ -48,7 +50,6 @@ CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$G -DLINT $(WARNINGS)
 INSTALL=install
-XTRA=
 #UWTLIB is used on win32 only - passed in from build.sh
 UWTLIB	=
 UWT_H	=
@@ -70,10 +71,11 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
 	export.o fdiff.o file_gif.o \
-	find.o findkey.o fix.o fixlod.o g2sccs.o gca.o get.o gethelp.o \
+	find.o findkey.o fix.o fixlod.o \
+	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	isascii.o key2rev.o key2path.o keysort.o kvfile.o \
+	isascii.o key2rev.o key2path.o kvfile.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
@@ -84,7 +86,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	pending.o preference.o port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
 	port/filecopy.o port/fileinfo.o port/findpid.o \
-	port/findprog.o port/flushsocket.o \
+	port/flushsocket.o \
 	port/fullname.o port/gethomedir.o \
 	port/gethost.o port/getinput.o port/getnull.o \
 	port/getrealcwd.o port/getrealname.o port/globalroot.o port/gui.o \
@@ -96,6 +98,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o port/socket2pipe.o \
 	port/spawn.o port/system.o \
+	port/tty.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \
 	r2c.o range.o rcheck.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
 	receive.o renumber.o resolve.o \
@@ -105,12 +108,12 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	resolve_renames.o resolve_tags.o rmdel.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
-	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
-	slib.o smerge.o status.o stripdel.o synckeys.o sys.o \
+	set.o setup.o sfiles.o sfind.o sfio.o shellcmd.o shrink.o sinfo.o \
+	slib.o smerge.o sort.o status.o stripdel.o support.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o \
-	user.o utils.o uu.o version.o what.o xflags.o zgets.o \
+	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
 	zone.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
@@ -123,9 +126,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/md5.o tomcrypt/ctr.o tomcrypt/aes.o tomcrypt/hash.o \
 	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o tomcrypt/hmac.o
-GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
-	  renametool setuptool 
-SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
+SCRIPTS	= applypatch bk.script import resync \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap \
 	$(BINLINKS)
@@ -136,11 +137,8 @@ LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
-LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= admin$(EXE) get$(EXE) delta$(EXE) unget$(EXE) rmdel$(EXE) prs$(EXE)
-# Note: $(XTRA) must be listed after "gnu"
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA) \
-	  tcltk
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
 CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
@@ -167,16 +165,11 @@ HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
 	  zlib/zconf.h zlib/zlib.h zlib/zutil.h
 
 SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
-	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
-	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
-	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/progress.tcl gui/search.tcl gui/msgtool.tcl gui/bugform.tcl\
-	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
-	  port/unix_platform.perl gui/csettool.tcl \
-	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl \
-	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh \
-	  b64wrap.sh gzip_b64wrap.sh unb64wrap.sh ungzip_b64wrap.sh
+	  uuwrap.sh unuuwrap.sh port/unix_platform.sh \
+	  port/unix_platform.perl port/win32_platform.perl \
+	  port/win32_platform.sh gzip_uuwrap.sh ungzip_uuwrap.sh \
+	  resync.sh substvars.sh b64wrap.sh gzip_b64wrap.sh \
+	  unb64wrap.sh ungzip_b64wrap.sh
 
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
@@ -253,10 +246,12 @@ clean-obj: FORCE
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out
 	-@rm -f core $(WIN_TMP)
-	-@cd gnu && $(MAKE) clean-obj
-	-@cd win32 && $(MAKE) clean-obj
-	-@cd tcltk && $(MAKE) clean-obj
 	-@cd ../doc && $(MAKE) clean-obj
+	-@cd ../man && $(MAKE) clean
+	-@cd gnu && $(MAKE) clean 
+	-@cd gui && $(MAKE) clean 
+	-@cd utils && $(MAKE) clean clean-obj
+	-@cd win32 && $(MAKE) clean
 	-@$(MAKE) clean-gcov
 
 clean-gcov: FORCE
@@ -264,14 +259,16 @@ clean-gcov: FORCE
 
 clean-bin: FORCE
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
+	-@cd ../doc && $(MAKE) clean-obj
+	-@cd ../man && $(MAKE) clean
 	-@cd gnu && $(MAKE) clean 
+	-@cd gui && $(MAKE) clean 
+	-@cd utils && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean
-	-@cd tcltk && $(MAKE) clean
 
 clean clobber distclean: rebuild FORCE
 	-@bk -r clean
 	-@rm -f tags TAGS
-	-@cd ../man/man2help && $(MAKE) clobber
 
 rebuild:
 	-@rm -f *.bb *.bbg *.da *.gcov bklink.[eo]??
@@ -281,10 +278,13 @@ rebuild:
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
-	-@cd gnu && $(MAKE) clean clean-obj
-	-@cd win32 && $(MAKE) clean clean-obj
-	-@cd tcltk && $(MAKE) clean clean-obj
-	-@cd ../doc && $(MAKE) clean clean-obj
+	-@rm -rf tmp
+	-@cd ../doc && $(MAKE) clean-obj
+	-@cd ../man && $(MAKE) clean
+	-@cd gnu && $(MAKE) clean 
+	-@cd gui && $(MAKE) clean 
+	-@cd utils && $(MAKE) clean clean-obj
+	-@cd win32 && $(MAKE) clean
 
 srcs src: FORCE
 	-bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
@@ -332,13 +332,7 @@ FORCE:
 
 gnu: $(BK) FORCE
 	@bk get -sS gnu/Makefile
-	@if [ $(SYS) = win32 ]; \
-	then cd gnu && cmd /c $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
-	fi
-
-tcltk: FORCE
-	cd tcltk && $(MAKE)
+	cd gnu && $(MAKE) BINDIR=$(BINDIR)
 
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
@@ -511,93 +505,11 @@ bkdsubstr: bkd.h
 	chmod +x bkdsubstr
 
 # Quick and dirty target so we can make all the gui tools without the rest
-Gui GUI: $(GUI)
+GUI: FORCE
+	@cd gui && make gui
 
 gui-nowrap GUI-nowrap:
-	rm -f $(GUI)
-	$(MAKE) TCLWRAP=cat GUI
-
-revtool: tclwrap gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/search.tcl gui/appState.tcl gui/revtool.tcl) \
-	| $(TCLWRAP) > revtool
-
-citool: tclwrap gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
-	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl \
-	gui/appState.tcl
-	(echo 'wm withdraw .' ; \
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/progress.tcl gui/search.tcl gui/ciedit.tcl \
-	     gui/appState.tcl gui/citool.tcl) \
-	| $(TCLWRAP) > citool
-
-setuptool: tclwrap gui/setuptool.tcl gui/lib/tkwizard.tcl \
-	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl
-	   (echo 'wm withdraw .' ;\
-	    cat port/$(SYS)_platform.tcl gui/config.tcl \
-	        gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl) \
-	   | $(TCLWRAP) > setuptool
-
-helptool: tclwrap gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl gui/appState.tcl
-	(echo "wm withdraw ." ; \
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl \
-	     gui/helptool.tcl)\
-	 | $(TCLWRAP) > helptool
-
-difftool: tclwrap gui/search.tcl gui/config.tcl gui/difftool.tcl \
-	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \
-	gui/appState.tcl
-	(echo "wm withdraw .";\
-	 cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	     gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
-	     gui/difftool.tcl) \
-	 | $(TCLWRAP) > difftool
-
-bugform: tclwrap gui/search.tcl gui/config.tcl gui/bugform.tcl \
-	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl \
-	gui/appState.tcl 
-	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/buglib.tcl gui/appState.tcl \
-	    gui/bugform.tcl | $(TCLWRAP) > bugform
-
-csettool: tclwrap gui/csettool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl \
-	gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	     gui/common.tcl gui/difflib.tcl gui/appState.tcl \
-	     gui/csettool.tcl)\
-	| $(TCLWRAP) > csettool
-
-renametool: tclwrap \
-	gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl gui/renametool.tcl) \
-	| $(TCLWRAP) > renametool
-
-fmtool: tclwrap gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl gui/difflib.tcl gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl) \
-	| $(TCLWRAP) > fmtool
-
-fm3tool: tclwrap gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl gui/fm3tool.tcl) \
-	| $(TCLWRAP) > fm3tool
-
-msgtool: gui/msgtool.tcl
-	(echo "wm withdraw ."; cat gui/msgtool.tcl) \
-	| $(TCLWRAP) > msgtool
+	@cd gui && make nowrap
 
 install: install-nolinks binlinks
 
@@ -611,27 +523,21 @@ binlinks:
 
 install-nolinks: $(BINLINKS)
 	@-if [ $(BINDIR) = "/usr/libexec/bitkeeper" ]; then \
-		rm -rf /usr/libexec/bitkeeper 2>/dev/null; \
-		test -d /usr/libexec/bitkeeper && \
-		    mv /usr/libexec/bitkeeper /usr/libexec/BKJUNK$$$$; \
+		find $(BINDIR) -type d | xargs chmod +w; \
+		/bin/rm -rf $(BINDIR)/* 2>/dev/null; \
+		test -d $(BINDIR) && \
+		    mv $(BINDIR) /usr/libexec/BKJUNK$$$$; \
 	fi
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	tar cf - $(BINS) $(SCRIPTS) | (cd $(BINDIR) && tar xf -)
 	cp $(DATA) $(BINDIR)
-	test -x tcltk/bin/bkgui || exit 1
+	test -x gui/bin/bkgui || exit 1
 	@rm -rf $(BINDIR)/gui
 	mkdir $(BINDIR)/gui
-	@cp -rp tcltk/bin tcltk/lib $(BINDIR)/gui
+	@cp -rp gui/bin gui/lib $(BINDIR)/gui
 	@-rm -rf $(BINDIR)/t
-	@set `echo $(LINKTO)`; \
-	while [ "X$$1" != X ]; \
-	do	rm -f $(BINDIR)/$$1; \
-		ln $(BINDIR)/$$2 $(BINDIR)/$$1; \
-		shift; shift; \
-	done
-	@if [ $(SYS) = win32 ]; \
-	then cd gnu && $(MAKE) install BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
-	else (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
+	@if [ $(SYS) = unix ]; \
+	then (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
 	     bk get -S ../man/Makefile; \
 	     cd ../man && $(MAKE) install BINDIR=$(BINDIR) ;\
 	fi
@@ -660,7 +566,6 @@ _image:
 		BINDIR=$$DIR ${MAKE} -e install-nolinks; \
 		for i in $(BINS); do $(STRIP) $$DIR/$$i; done; \
 		cd utils && BINDIR=$$DIR ${MAKE} -e image; \
-		rm -rf tmp; \
 	fi
 
 crankturn: crank.sh remote.sh

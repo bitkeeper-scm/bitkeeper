@@ -334,7 +334,7 @@ bkd(int compress, remote *r)
 		if ((r->type == ADDR_RSH) ||
 		    (r->type == ADDR_NFS &&
 			(t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
-		    !findprog("ssh")) {
+		    !which("ssh", 0, 1)) {
 			remsh = "rsh";
 #ifdef	hpux
 			remsh = "remsh";

@@ -339,21 +339,26 @@ int
 c_shell(resolve *rs)
 {
 	names	*n = rs->tnames;
+	int	i;
+	char	*path = strdup(getenv("PATH"));
 	char	*av[10];
 
 	safe_putenv("BK_GCA=%s", n->gca);
 	safe_putenv("BK_LOCAL=%s", n->local);
 	safe_putenv("BK_REMOTE=%s", n->remote);
 	safe_putenv("BK_MERGE=%s", rs->s->gfile);
+	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
+	av[i=0] = "sh";
 	unless (rs->shell && rs->shell[0]) {
-		system("sh -i");
-		return (0);
+		av[++i] = "-i";
+	} else {
+		av[++i] = "-c";
+		av[++i] = rs->shell;
 	}
-	av[0] = "sh";
-	av[1] = "-c";
-	av[2] = rs->shell;
-	av[3] = 0;
+	av[++i] = 0;
 	spawnvp_ex(_P_WAIT, av[0], av);
+	safe_putenv("PATH=%s", path);
+	free(path);
 	return (0);
 }
 

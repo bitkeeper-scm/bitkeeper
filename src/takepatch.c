@@ -734,8 +734,7 @@ metaUnionResyncFile(char *from, char *to)
 	unless (exists(from)) return;
 
 	unless (exists(to)) {
-		sprintf(buf, "cp %s %s", from, to);
-		system(buf);
+		fileCopy(from, to);
 		chmod(to, 0444);
 		return;
 	}
@@ -754,8 +753,7 @@ metaUnionResyncFile(char *from, char *to)
 	fclose(w);
 	chmod(temp, 0444);
 	unlink(to);
-	sprintf(buf, "cp %s %s", temp, to);
-	system(buf);
+	fileCopy(temp, to);
 }
 
 private void

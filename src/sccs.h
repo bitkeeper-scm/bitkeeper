@@ -729,6 +729,12 @@ struct command
         int (*func)(int, char **);
 };      
 
+struct tool
+{
+	char	*prog;	/* fm3tool */
+	char	*alias;	/* fm3 or 0 */
+};
+
 /*
  * BK "URL" formats are:
  *	bk://user@host:port/pathname
@@ -993,7 +999,8 @@ char	*match_globs(char *string, globv globs, int ignorecase);
 void	free_globs(globv globs);
 int	searchMatch(char *s, search search);
 search	searchParse(char *str);
-char	*prog2path(char *prog);
+char	*whichp(char *prog, int internal, int external);
+int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);
 void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
@@ -1176,6 +1183,8 @@ void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
 char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
+char	*find_prog(char *);
+char	*pager(void);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));

@@ -651,7 +651,7 @@ csetlist(cset_t *cs, sccs *cset)
 			unlink(cat);
 			goto fail;
 		}
-		if (sysio(cat, csort, 0, "bk", "_keysort", SYS)) {
+		if (sysio(cat, csort, 0, "bk", "_sort", SYS)) {
 			unlink(cat);
 			goto fail;
 		}

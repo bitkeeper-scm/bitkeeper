@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *editor, *pager, *bin;
+extern char *editor, *bin;
 
 int
 help_main(int ac,  char **av)
@@ -15,7 +15,7 @@ help_main(int ac,  char **av)
 	char 	*new_av[2] = {"help", 0 };
 
 	if (ac == 2 && streq("--help", av[1])) {
-		sprintf(buf, "bk help help | %s", pager);
+		sprintf(buf, "bk help help | %s", pager());
 		system(buf);
 		return (0);
 	}
@@ -75,7 +75,7 @@ help_main(int ac,  char **av)
 	}
 print:
 	if (use_pager) {
-		sprintf(buf, "%s %s", pager, out);
+		sprintf(buf, "%s %s", pager(), out);
 		system(buf);
 	} else {
 		f = fopen(out, "rt");

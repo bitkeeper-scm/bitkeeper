@@ -156,7 +156,11 @@ get_input_file (char const *filename, char const *outname)
 		    (instat.st_mode & (S_IWUSR|S_IWGRP|S_IWOTH)) == 0
 		    /* Only the owner (who's not me) can write to it.  */
 		    || ((instat.st_mode & (S_IWGRP|S_IWOTH)) == 0
+#ifndef WIN32
 			&& instat.st_uid != geteuid ()))))
+#else
+			))))
+#endif
 	&& (invc = !! (cs = (version_controller
 			     (filename, elsewhere,
 			      inerrno ? (struct stat *) 0 : &instat,
@@ -233,8 +237,8 @@ plan_a (char const *filename)
      When creating files, the files do not actually exist.  */
   if (size)
     {
-#ifdef __CYGWIN__
-      int ifd = open (filename, O_RDONLY|O_TEXT);
+#if defined(__CYGWIN__) || defined(WIN32)
+      int ifd = open (filename, O_RDONLY|O_TEXT, 0);
 #else
       int ifd = open (filename, O_RDONLY);
 #endif

@@ -240,7 +240,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 		}
 		close(fd);
 		unlink(rev_list);
-		disconnect(r, 2);
+		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		sccs_free(s);
 		return (-1);
 	}

@@ -4,7 +4,7 @@
 #include <time.h>
 
 
-extern char	*editor, *pager, *bin;
+extern char	*editor, *bin;
 extern char	*BitKeeper;
 
 void

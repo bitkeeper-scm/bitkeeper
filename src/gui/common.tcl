@@ -307,6 +307,38 @@ proc restoreGeometry {app {w .} {force 0}} \
 	}
 }
 
+# this removes hardcoded newlines from paragraphs so that the paragraphs
+# will wrap when placed in a widget that wraps (such as the description
+# of a step)
+proc wrap {text} \
+{
+	if {$::tcl_version >= 8.2} {
+		set text [string map [list \n\n \001 \n { }] $text]
+		set text [string map [list \001 \n\n] $text]
+	} else {
+		regsub -all "\n\n" $text \001 text
+		regsub -all "\n" $text { } text
+		regsub -all "\001" $text \n\n text
+	}
+	return $text
+}
+
+# get a message from the bkmsg.doc message catalog
+proc getmsg {key args} \
+{
+	# do we want to return something like "lookup failed for xxx"
+	# if the lookup fails? What we really need is something more
+	# like real message catalogs, where I can supply messages that
+	# have defaults.
+	set data ""
+	set cmd [list bk getmsg $key]
+	if {[llength $args] > 0} {
+		lappend cmd [lindex $args 0]
+	}
+	set err [catch {set data [eval exec $cmd]}]
+	return $data
+}
+
 # usage: bgExec ?options? command ?arg? ?arg ..?
 #
 # this command exec's a program, waits for it to finish, and returns

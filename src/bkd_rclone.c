@@ -82,6 +82,7 @@ cmd_rclone_part1(int ac, char **av)
 	if (isDaemon(Opts) || Opts.safe_cd) {
 		char	cwd[MAXPATH];
 		char	*new = fullname(path, 0);
+		localName2bkName(new, new);
 		getcwd(cwd, sizeof(cwd));
 		unless ((strlen(new) >= strlen(cwd)) && 
 		    pathneq(cwd, new, strlen(cwd))) {
