@@ -349,7 +349,7 @@ int
 send_file(remote *r, char *file, int extra, int gzip)
 {
 	int	fd, rc, len = size(file);
-	char	*p = (char *) malloc(len);
+	char	*p = malloc(len);
 
 	assert(p);
 	fd = open(file, O_RDONLY, 0);
