@@ -733,8 +733,8 @@ explain_tag_problem ()
     	bk rcsparse -d -t $BRANCH - < ${TMP}import$$ |
 		grep "^-${B}_BASE " > ${TMP}tagdbg$$
 
-	file1=`bk _sort -k2 -nr < ${TMP}tagdbg$$ | sed -n '1{p;q}' | sed -e 's/.*|//'`
-	file2=`bk _sort -k3 -n < ${TMP}tagdbg$$ | sed -n '1{p;q}' | sed -e 's/.*|//'`
+	file1=`bk _sort -k2 -nr < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
+	file2=`bk _sort -k3 -n < ${TMP}tagdbg$$ | sed 1q | sed -e 's/.*|//'`
 	echo "       The files $file1 and $file2 don't agree when"
 	echo "       the branch $B was created!"
 	rm -f ${TMP}tagdbg$$
