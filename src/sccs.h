@@ -778,5 +778,6 @@ delta	*host_get(delta *);
 
 void	user_done();
 delta	*user_get(delta *);
+char	*shell();
 
 #endif	/* _SCCS_H_ */

@@ -326,11 +326,7 @@ main(int ac, char **av)
 	 */
 	if (streq(av[0], "resync") || 
 		streq(av[0], "import")) {
-#ifdef WIN32
-		argv[0] = "bash"; /* because the script uses getopt */
-#else
-		argv[0] = "/bin/sh";
-#endif
+		argv[0] = shell();
 		sprintf(cmd_path, "%s/%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
@@ -357,11 +353,7 @@ main(int ac, char **av)
 	 * b) external program/script
 	 * XXX This is slow because we are going thru the shell
 	 */
-#ifdef WIN32
-	argv[0] = "bash"; /* because the script uses getopt */
-#else
-	argv[0] = "/bin/sh";
-#endif
+	argv[0] = shell();
 	sprintf(cmd_path, "%s/bk.script", bin);
 	argv[1] = cmd_path;
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];

@@ -179,7 +179,7 @@ production_image: rebuild p image
 # Cleanup targets.
 clean clean-obj: FORCE
 	-rm -f bk.o bkmerge.o $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
-	-rm -f $(LIBS) bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
+	-rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
 	-cd gnu && $(MAKE) clean-obj
 	-cd win32 && $(MAKE) clean-obj
 
@@ -266,8 +266,8 @@ zlib/libz.a: $(ZLIBOBJ)
 mdbm/libmdbm.a: $(MDBMOBJ)
 	$(AR) cr mdbm/libmdbm.a $(MDBMOBJ)
 	-$(RANLIB) mdbm/libmdbm.a
-libsccs.a: $(OBJ)
-	$(AR) cr libsccs.a $(OBJ)
+libsccs.a: $(OBJ) shell.o
+	$(AR) cr libsccs.a $(OBJ) shell.o
 	-$(RANLIB) libsccs.a
 $(BK): bk.o $(LIBS)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB)
@@ -470,6 +470,10 @@ H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h mmap.h $(UWT_H)
 B=bkd.h lib_tcp.h
 M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
+
+shell.o: substvars
+	echo 'char *shell() { return ("@SH@"); }' | ./substvars > shell.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c
 
 abort.o:	abort.c $(H) $(Z)
 adler32.o:	adler32.c $(H) $(Z)
