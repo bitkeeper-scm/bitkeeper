@@ -11,7 +11,10 @@ bk cp \- create a copy of a file preserving its revision history
 .LP
 Use bk cp to copy an existing file and its revision history to a new file.
 The new file will have a changed root identifier so that it is a different
-inode.
+inode.  The new file will be distinct from the old file moving forward,
+but will have the revision history from the old file preserved.
+.\"XXX should i be explicit in saying the old file will get updates from
+.\" the file in other repos or is this enough?
 .SH "SEE ALSO"
 .SA mv 1
 man cp
