@@ -300,7 +300,7 @@ enforceConfigLog(int l)
 	/*
 	 * Try to force and the log and re-check pending log
 	 */
-	system("bk _lconfig");
+	if (logs_pending(ptype, 1, 60) > 10)  system("bk _lconfig");
 	if (logs_pending(ptype, 1, 60) > 10)  {
 			printf(
 "============================================================================\n"
