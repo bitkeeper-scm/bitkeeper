@@ -276,14 +276,12 @@ usage:		fprintf(stderr, "%s", cset_help);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
-		freeLines(syms);
 		purify_list();
 		return (0);
 	    case 2:
 	    	csetList(cset, r[0], ignoreDeleted);
 		sccs_free(cset);
 		if (cFile) free(cFile);
-		freeLines(syms);
 		purify_list();
 		return (0);
 	}
@@ -296,7 +294,6 @@ next:		sccs_free(cset);
 	 */
 	c = csetCreate(cset, flags, syms, newlod);
 	if (cFile) free(cFile);
-	freeLines(syms);
 	purify_list();
 	return (c);
 }
@@ -388,7 +385,7 @@ csetInit(sccs *cset, int flags, char *text)
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
 	unless (d = host_get(d)) goto intr;
 	unless (d = user_get(d)) goto intr;
-	syms = addLine(0, KEY_FORMAT2);
+	syms = addLine(0, strdup(KEY_FORMAT2));
 	cset->state |= S_CSET|S_KEY2;
 	if (text) {
 		FILE    *desc; 
@@ -412,7 +409,6 @@ error:		sccs_free(cset);
 		comments_done();
 		host_done();
 		user_done();
-		freeLines(syms);
 		purify_list();
 		return (1);
 	}

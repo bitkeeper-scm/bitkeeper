@@ -3169,14 +3169,7 @@ loadConfig(char *root)
 	char 	s_config[MAXPATH];
 	char 	g_config[MAXPATH];
 	sccs 	*s1 = 0;
-	project *proj;
-
-	/*
-	 * Hand make a project struct, so sccs_init(s_config, ..) below
-	 * won'nt call us again, otherwise we end up in a loop.
-	 */
-	proj = calloc(1, sizeof(*proj));
-	proj->root = strdup(root);
+	project *proj = 0;
 
 	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
 	sprintf(g_config, "%s/BitKeeper/etc/config", root);
@@ -3185,8 +3178,17 @@ loadConfig(char *root)
 	 * Otherwise, check it out.
 	 */
 	if (exists(s_config) && !exists(g_config)) {
+		/*
+		 * Hand make a project struct, so sccs_init(s_config, ..) below
+		 * won'nt call us again, otherwise we end up in a loop.
+		 */
+		proj = calloc(1, sizeof(*proj));
+		proj->root = strdup(root);
 		s1 = sccs_init(s_config, SILENT, proj);
-		unless (s1) return 0;
+		unless (s1) {
+			proj_free(proj);
+			return 0;
+		}
 		if (sccs_get(s1, 0, 0, 0, 0, SILENT, 0)) {
 			sccs_free(s1);
 			return (0);
@@ -7490,6 +7492,7 @@ checkin(sccs *s,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
+		freeLines(syms);
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -7499,6 +7502,7 @@ checkin(sccs *s,
 			perror(s->gfile);
 			sccs_unlock(s, 'z');
 			if (prefilled) sccs_freetree(prefilled);
+			freeLines(syms);
 			return (-1);
 		}
 	}
@@ -7506,6 +7510,7 @@ checkin(sccs *s,
 	if (exists(s->sfile)) {
 		fprintf(stderr, "delta: lost checkin race on %s\n", s->sfile);
 		if (prefilled) sccs_freetree(prefilled);
+		freeLines(syms);
 		if (gfile && (gfile != stdin)) {
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
@@ -7522,6 +7527,7 @@ checkin(sccs *s,
 			"delta: %s: filename must not contain \":/@\"\n" , t);
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
+		freeLines(syms);
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -7614,6 +7620,7 @@ checkin(sccs *s,
 	EACH (syms) {
 		addsym(s, n, n, n->rev, syms[i]);
 	}
+	freeLines(syms);
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
@@ -7624,7 +7631,7 @@ checkin(sccs *s,
 		unless (hasComments(d)) {
 			sprintf(buf, "BitKeeper file %s",
 			    fullname(s->gfile, 0));
-			n->comments = addLine(d->comments, strdup(buf));
+			d->comments = addLine(d->comments, strdup(buf));
 		}
 	}
 	unless (s->state & S_NOSCCSDIR) {
@@ -9514,6 +9521,7 @@ newcmd:
 	return (0);
 }
 
+
 /*
  * Initialize as much as possible from the file.
  * Don't override any information which is already set.
@@ -10083,10 +10091,10 @@ sccs_delta(sccs *s,
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);
-		if (init) freeLines(syms);
 		if (sfile) fclose(sfile);
 		if (diffs) mclose(diffs);
 		free_pfile(&pf);
+		freeLines(syms);
 		if (tmpfile  && !streq(tmpfile, DEV_NULL)) unlink(tmpfile);
 		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));

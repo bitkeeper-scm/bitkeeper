@@ -322,8 +322,7 @@ main(int ac, char **av)
 	/*
 	 * Is it a known C program ?
 	 */
-	if (streq(av[0], "bkd") ||
-	    streq(av[0], "patch")) {
+	if (streq(av[0], "patch")) {
 		return (spawnvp_ex(_P_WAIT, av[0], av));
 	}
 
@@ -523,7 +522,7 @@ private void
 platformInit(char **av)
 {
 	char	*p, *t, *s;
-	char	buf[MAXPATH];
+	static	char buf[MAXPATH];
 	char	link[MAXPATH];
 	int	add2path = 1;
 
@@ -548,10 +547,14 @@ gotit:
 		if (readlink(buf, link, sizeof(link)) != -1) strcpy(buf, link);
 		t = strrchr(buf, '/');
 		*t = 0;
-		s = malloc(strlen(buf) + strlen(p) + 10);
+		/*
+		 * Hide the malloc from purify,
+		 * We can not free it until we exit anyway.
+		 */
+		s = (malloc)(strlen(buf) + strlen(p) + 10);
 		sprintf(s, "PATH=%s:%s", buf, p);
 		putenv(s);
-		bin = strdup(buf);
+		bin = buf; /* buf is static */
 		return;
 	}
 

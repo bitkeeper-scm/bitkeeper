@@ -54,7 +54,7 @@ private	void	file(char *f, lftw_func func);
 private	void	lftw(const char *dir, lftw_func func);
 private	void	process(const char *filename, int mode);
 private	void	caches(const char *filename, int mode);
-private	project	*proj;
+private	project	*proj = 0;
 
 int
 sfiles_main(int ac, char **av)
@@ -105,6 +105,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			return (1);
 		}
 		rebuild();
+		if (proj) proj_free(proj);
 		purify_list();
 		return (dups ? 1 : 0);
 	}
@@ -135,6 +136,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		}
 	}
 	if (kFlg) uniq_close();
+	if (proj) proj_free(proj);
 	purify_list();
 	return (0);
 }
@@ -646,7 +648,7 @@ lftw(const char *dir, lftw_func func)
 {
 	FILE		*ignoref;
 	globv		ignore = NULL;
-	char		*root;
+	char		*root = 0;
 	char		path[MAXPATH];
 	struct stat	st;
 
@@ -657,7 +659,11 @@ lftw(const char *dir, lftw_func func)
 			fclose(ignoref);
 		}
 		free(root);
+		root = 0;
 	}
+if (root != 0) {
+	fprintf(stderr, "aflg=%d\n", aFlg);
+}
 
 	strcpy(path, dir);
 	/*

@@ -119,7 +119,7 @@ resolve_main(int ac, char **av)
 private	int
 passes(opts *opts)
 {
-	sccs	*s;
+	sccs	*s = 0;
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
 	FILE	*p;
@@ -184,7 +184,10 @@ passes(opts *opts)
 		}
 
 		/* skip stuff we've already moved */
-		if (strneq("BitKeeper/RENAMES/SCCS/s.", buf, 25)) continue;
+		if (strneq("BitKeeper/RENAMES/SCCS/s.", buf, 25)) {
+			sccs_free(s);
+			continue;
+		}
 
 		pass1_renames(opts, s);
 	}
@@ -445,7 +448,7 @@ private	int
 pass2_renames(opts *opts)
 {
 	char	path[MAXPATH];
-	sccs	*s;
+	sccs	*s = 0;
 	FILE	*f;
 	int	n = 0;
 	resolve	*rs;
@@ -1119,6 +1122,7 @@ slotTaken(opts *opts, char *slot)
 			chdir(ROOT2RESYNC);
 			return (GFILE_CONFLICT);
 		}
+		free(gfile);
 	}
 	chdir(ROOT2RESYNC);
 	if (opts->debug) fprintf(stderr, "0\n");
@@ -1342,7 +1346,9 @@ open_and_delta(opts *opts, char *sfile)
 {
 	sccs	*s = sccs_init(sfile, INIT, opts->resync_proj);
 
+	assert(s);
 	do_delta(opts, s);
+	sccs_free(s);
 }
 
 void
@@ -1673,7 +1679,7 @@ private	void
 commit(opts *opts)
 {
 	int	i;
-	char	*cmds[10];
+	char	*cmds[10], *cmt = 0;
 	extern	char *BitKeeper;
 
 	BitKeeper = "../BitKeeper/";
@@ -1687,13 +1693,17 @@ commit(opts *opts)
 	cmds[++i] = "-RFf";
 	if (opts->quiet) cmds[++i] = "-s";
 	if (opts->comment) {
-		char	*s = malloc(strlen(opts->comment) + 10);
+		cmt = malloc(strlen(opts->comment) + 10);
 
-		sprintf(s, "-y%s", opts->comment);
-		cmds[++i] = s;
+		sprintf(cmt, "-y%s", opts->comment);
+		cmds[++i] = cmt;
 	}
 	cmds[++i] = 0;
-	unless (spawnvp(_P_WAIT, "bk", cmds)) return;
+	unless (spawnvp(_P_WAIT, "bk", cmds)) {
+		if (cmt) free(cmt);
+		return;
+	}
+	if (cmt) free(cmt);
 	fprintf(stderr, "Commit aborted, no changes applied.\n");
 	exit(1);
 }
