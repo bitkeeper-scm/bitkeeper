@@ -40,13 +40,11 @@ if [ ! -f SCCS/z.A ]; then echo failed, removed zlock; exit 1; fi
 if [ ! -w A ]; then echo failed, removed A; exit 1; fi
 echo OK
 echo $N Make sure stale zlocks are discarded ........................$NL
-# Fork a process to use up a pid, then use that in the lock file
-# because we know kill(pid, 0) will fail.  lm->awc, works on NT?
-/bin/echo foo > /dev/null &
-echo "$! `bk gethost`" > SCCS/z.A
-bk delta $Q -y'should work' A > /dev/null 2>&1
-if [ -f SCCS/z.A ]; then echo failed toremove zlock; exit 1; fi
-if [ -w A ]; then echo failed to remove A; exit 1; fi
+bk mklock > SCCS/z.A 
+#bk delta $Q -y'should work' A > /dev/null 2>&1
+bk delta $Q -y'should work' A 
+if [ -f SCCS/z.A ]; then echo failed to remove zlock; exit 1; fi
+if [ -f A ]; then echo failed to remove A; exit 1; fi
 echo OK
 echo $N Check edit with existing stale read lock ....................$NL
 bk lock -r &
@@ -72,7 +70,8 @@ bk lock -r &
 while bk lock; do true; done
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 bk edit $Q A
-if [ ! -w A ]; then echo failed to lock A; fi
+#if [ ! -w A ]; then echo failed to lock A; fi
+writable A || { echo failed to lock A; }
 echo OK
 echo $N Make sure delta fails with existing read lock ...............$NL
 bk delta $Q -yXXX A 2> /dev/null
@@ -86,7 +85,7 @@ echo $N Check edit with existing valid write lock ...................$NL
 bk unlock -r
 bk lock -w &
 while bk lock; do true; done
-rm BitKeeper/writer/lock
+rm -f BitKeeper/writer/lock
 mv BitKeeper/writer/* BitKeeper/writer/1234@nowhere.nowhere
 ln BitKeeper/writer/1234@nowhere.nowhere BitKeeper/writer/lock
 bk edit $Q A
@@ -104,10 +103,10 @@ echo OK
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
 cd $HERE/project
 P=50000
-bk bkd -d -p$P -t120 2>/dev/null
+bk bkd -d -p$P -c1 2>/dev/null
 while [ $? -eq 2 ]
 do	P=`expr $P + 1`
-	bk bkd -d -p$P -t120 2>/dev/null
+	bk bkd -d -p$P -c1 2>/dev/null
 done
 cd $HERE
 bk clone $Q bk://localhost:$P clone 2>/dev/null
@@ -128,7 +127,8 @@ if [ ! -f clone/BitKeeper/log/parent ]; then echo clone failed to set parent; ex
 echo OK
 echo $N Make sure clone works with existing read lock in source \#2 ..$NL
 cd $HERE
-bk clone $Q bk://localhost:$P clone2 2>/dev/null
+#bk clone $Q bk://localhost:$P clone2 2>/dev/null
+bk clone $Q project clone2
 EXIT=$?
 if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
 if [ ! -d clone2 -o ! -f clone2/SCCS/s.A ]; then echo clone2 failed; exit 1; fi

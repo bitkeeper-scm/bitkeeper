@@ -13,12 +13,12 @@
 # %K%
 
 echo $N Make sure delta -i works ....................................$NL
-${ECHO} hi there > init
+echo hi there > init
 bk delta $S -i init
 if [ ! -f SCCS/s.init ]; then echo Failed to create s.file; exit 1; fi
 echo OK
 echo $N Check delta -i works w/ existing file .......................$NL
-${ECHO} hi there again > init
+echo hi there again > init
 bk delta $S -i init > ${DEV_NULL} 2>&1
 if [ $? -eq 0 ]; then echo Failed; exit 1; fi
 if [ -f SCCS/z.init ]; then echo Failed, fail to clean zlock; exit 1; fi
@@ -42,9 +42,9 @@ if [ ! -f SCCS/s.init2 ]; then echo failed to create file; exit 1; fi
 if [ ! -f SCCS/p.init2 ]; then echo failed to lock file; exit 1; fi
 bk clean init2
 echo OK
-${RM} -f SCCS/p.T T
+rm -f SCCS/p.T T
 echo $N Make sure delta -I works with good file .....................$NL
-${CAT} > INITX <<EOF
+cat > INITX <<EOF
 D 1.1 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0
 c This is revision 1.1
 P this/is/the/pathname
@@ -66,7 +66,7 @@ bk delta $Q -IINITX init_test 2>${DEV_NULL}
 if [ $? != 0 ]; then echo Failed - delta did not error; cat INITX; exit 1; fi
 echo OK
 echo $N Make sure delta -I works w/ blank comments ..................$NL
-${CAT} > INITX <<EOF
+cat > INITX <<EOF
 D 1.2 97/05/28 23:49:57 joe_user@joes_hostname 0 0 0/0/0
 c This is revision 1.2
 c
@@ -89,7 +89,7 @@ if [ ! -f T ]; then echo Failed to save file; exit 1; fi
 if writable T; then :; else echo Failed to save file writeable; exit 1; fi
 echo OK
 echo $N Make sure delta prompts for comments ........................$NL
-${RM} -f T
+rm -f T
 bk get $S -e T
 echo "I am the comment" | bk delta $S T 2> ${DEV_NULL}
 grep -q '^.c I am the comment$' SCCS/s.T
@@ -143,7 +143,7 @@ if writable init2; then echo File not read only.; exit 1; fi
 echo OK
 echo $N Make sure delta -G works ....................................$NL
 # Figure out which kind of touch we have
-${ECHO} "G change data" > init3
+echo "G change data" > init3
 touch -t 0102030489 init3 > ${DEV_NULL} 2>&1
 TOUCH=NO
 if [ `bk mtime init3` != 1989-01-02-03:04:00 ]

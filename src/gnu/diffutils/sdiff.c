@@ -689,8 +689,12 @@ static int const sigs[] = {
 #ifdef SIGXFSZ
        SIGXFSZ,
 #endif
+#ifdef SIGPIPE
        SIGINT,
        SIGPIPE
+#else
+       SIGINT
+#endif
 };
 
 /* Prefer `sigaction' if it is available, since `signal' can lose signals.  */

@@ -58,7 +58,12 @@ nfs_parse(char *p)
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
 	}
 	/* just path */
+#ifdef WIN32
+	/* Account for Dos path e.g c:/path */
+	unless ((s = strchr(p, ':')) && (s != &p[1])) {
+#else
 	unless (s = strchr(p, ':')) {
+#endif
 		if (r->user) {
 			remote_free(r);
 			return (0);
@@ -133,7 +138,7 @@ remote_unparse(remote *r)
 	}
 	if (r->user) {
 		assert(r->host);
-		sprintf(buf, "%s@%s", r->user, r->host);
+		sprintf(buf, "%s@%s:", r->user, r->host);
 		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
 	} else if (r->host) {
@@ -167,13 +172,30 @@ remote_print(remote *r, FILE *f)
 	fprintf(f, "\n");
 }
 
+#ifdef WIN32
+pid_t
+tcp_pipe(char *host, int port, int *r_pipe, int *w_pipe)
+{
+	char *av[4];
+	char pbuf[50];
+		
+	sprintf(pbuf, "%d", port);
+	av[0] = "socket_helper";
+	av[1] = host;
+	av[2] = pbuf;
+	av[3] = 0;
+	return spawnvp_rwPipe(av, r_pipe, w_pipe);
+}
+#endif
+
+
 /*
  * Return the pid of a connected to daemon with stdin/out put in fds[].
  * Stderr is left alone, we don't want to touch that - ssh needs it for
  * password prompts and other commands may use it for status.
  */
 pid_t
-bkd(int compress, remote *r, int *sock)
+bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 {
 	char	*t, *freeme = 0;
 	char	*remsh = "ssh";
@@ -181,15 +203,20 @@ bkd(int compress, remote *r, int *sock)
 	char	*cmd[100];
 	int	i;
 	pid_t	p;
-	int	inout[2];
+	int	wpipe[2];
+	int	rpipe[2];
 	int	findprog(char *);
+	int	fd0, fd1;
 
 	if (r->port) {
 		assert(r->host);
-		*sock = tcp_connect(r->host, r->port);
+#ifdef WIN32
+		tcp_pipe(r->host, r->port, r_pipe, w_pipe);
+#else
+		*r_pipe = *w_pipe = tcp_connect(r->host, r->port);
+#endif
 		return ((pid_t)0);
 	}
-	if (tcp_pair(inout) == -1) return ((pid_t)-1);
 	t = sccs_gethost();
 	if (r->host && (!t || !streq(t, r->host))) { 
 		if (((t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
@@ -198,6 +225,23 @@ bkd(int compress, remote *r, int *sock)
 			remsh = "remsh";
 #else
 			remsh = "rsh";
+#endif
+#ifdef WIN32
+			if (!(t = prog2path(remsh)) ||
+			    strstr(t, "system32/rsh")) {
+				fprintf(stderr, "Can not find %s.\n", remsh);
+				fprintf(stderr,
+"=========================================================================\n\
+The programs rsh/ssh are not bundled with the BitKeeper distribution.\n\
+The recommended way for transfering BitKeeper files on Windows is via\n\
+the bkd daemon. (If you have a bkd daemon configured on the remote host,\n\
+try \"bk push/pull bk://HOST:PORT\".), If you prefer to transfer BitKeeper\n\
+files via a rsh/ssh connection, you can install the rsh/ssh programs\n\
+seperately. Please Note that the rsh command bundled with Windows NT is\n\
+not compatible with Unix rshd.\n\
+=========================================================================\n");
+				return (-1);
+			}
 #endif
 			remopts = 0;
 		}
@@ -246,31 +290,42 @@ bkd(int compress, remote *r, int *sock)
 		cmd[2] = "-e";
 		cmd[3] = 0;
     	}
-	switch (p = fork()) {
-	    case -1: perror("fork"); return (-1);
-	    case 0:
-		close(0);
-		dup(inout[1]);
-		close(1);
-		dup(inout[1]);
-	    	execvp(cmd[0], cmd);
-		exit(1);
-	    default:
-		signal(SIGCHLD, SIG_DFL);
-		close(inout[1]);
-		*sock = inout[0];
-		if (freeme) free(freeme);
-	    	return (p);
-    	}
+	if (pipe(wpipe) == -1) return ((pid_t)-1);
+	if (pipe(rpipe) == -1) return ((pid_t)-1);
+	fd0 = dup(0); close(0);
+	fd1 = dup(1); close(1);
+	dup2(wpipe[0], 0); close(wpipe[0]);
+	dup2(rpipe[1], 1); close(rpipe[1]);
+	make_fd_uninheritable(wpipe[1]);
+	make_fd_uninheritable(rpipe[0]);
+#ifndef WIN32
+	signal(SIGCHLD, SIG_DFL);
+#endif
+	p = spawnvp_ex(_P_NOWAIT, cmd[0], cmd);
+	/*
+	 * for parent: restore fd0 fd1
+	 */
+	close(0); dup2(fd0, 0);
+	close(1); dup2(fd1, 1);
+
+	*w_pipe = wpipe[1];
+	*r_pipe = rpipe[0];
+	if (freeme) free(freeme);
+	return (p);
 }
 
 void
-bkd_reap(pid_t resync, int sock)
+bkd_reap(pid_t resync, int r_pipe, int w_pipe)
 {
-	int	i;
-
-	close(sock);
+	close(w_pipe);
+	close(r_pipe);
 	if (resync > 0) {
+	/*
+	 * win32 does not support the WNOHANG options
+	 */
+#ifndef WIN32
+		int	i;
+
 		/* give it a bit for the protocol to close */
 		for (i = 0; i < 20; ++i) {
 			if (waitpid(resync, 0, WNOHANG) == resync) return;
@@ -282,6 +337,7 @@ bkd_reap(pid_t resync, int sock)
 			usleep(10000);
 		}
 		kill(resync, SIGKILL);
+#endif
 		waitpid(resync, 0, 0);
 	}
 }

@@ -8,15 +8,17 @@
 
 usage() {
 	cat <<EOF
-Usage: import [-efirv] [-l<list>] [-t<type] from_dir to_dir
+Usage: import [-efirv] [-j<n>] [-l<list>] [-t<type] from_dir to_dir
 
-	-e	prompts for regular expression to exclude from file list
-	-f	force the import to not ask questions
-	-i	prompts for regular expression to include from file list
-	-l<l>	list of files to import is in <l>
-	-t<t>	type of imported files is <t> where t is plain|patch|RCS|CVS
-	-r	do not do renames when doing patch imports
-	-v	be more verbose
+    -c<TAG>	do not import anything after <TAG> (RCS/CVS only)
+    -e		prompts for regular expression to exclude from file list
+    -f		force the import to not ask questions
+    -i		prompts for regular expression to include from file list
+    -j<n>	do <n>-way parallelism if possible (RCS/CVS only)
+    -l<l>	list of files to import is in <l>
+    -t<t>	type of imported files is <t> where t is plain|patch|RCS|CVS
+    -r		do not do renames when doing patch imports
+    -v		be more verbose
 EOF
 	exit 0
 }
@@ -36,11 +38,17 @@ import() {
 	QUIET=-q
 	SYMBOL=
 	FORCE=NO
-	while getopts efil:LrS:t:v opt
+	PARALLEL=1
+	VERIFY=-h
+	CUTOFF=
+	while getopts c:efHij:l:LrS:t:v opt
 	do	case "$opt" in
+		c) CUTOFF=-c$OPTARG;;
 		e) EX=YES;;
 		f) FORCE=YES;;
+		H) VERIFY=;;
 		i) INC=YES;;
+		j) PARALLEL=$OPTARG;;
 		l) LIST=$OPTARG;;
 		L) NEWLOD=-L;;
 		S) SYMBOL=-S$OPTARG;;
@@ -124,8 +132,8 @@ import() {
 		fi
 	fi
 	if [ $TYPE != patch ]
-	then	echo Checking to make sure there are no files
-		echo already in $TO
+	then	echo Checking to make sure there are no files already in
+		echo "	$TO"
 		cd $TO
 		while read x
 		do	if [ -e $x ]
@@ -209,8 +217,8 @@ BitKeeper can currently handle the following types of imports:
     CVS		- files controlled by CVS
 
 If the files you wish to import do not match any of these forms, you will
-have to write your own conversion scripts.  See the rcs2sccs perl script
-for an example.  If you write such a script, please consider contributing
+have to write your own conversion scripts.  See the rcs2sccs program for
+an example.  If you write such a script, please consider contributing
 it to the BitKeeper project.
 
 EOF
@@ -260,7 +268,7 @@ transfer() {
 			NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 		esac
 	fi
-	echo Importing files
+	echo Transfering files
 	echo "	from $FROM"
 	echo "	to   $TO"
 	cd $FROM
@@ -273,6 +281,7 @@ import_patch() {
 	PNAME=`basename $PATCH`
 	SAVE=$USER
 	USER=patch
+	export USER
 	Q=$QUIET
 	cd $2
 	echo Locking files in `pwd` ...
@@ -332,6 +341,7 @@ import_patch() {
 	if [ X$Q = X ]
 	then	bk -r clean -q
 	fi
+
 	bk -r ci $Q -G -y"Import patch $PNAME"
 
 	bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
@@ -362,9 +372,18 @@ import_RCS () {
 	cd $2
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
-	echo Ignore errors relating to missing newlines at EOF.
-	bk rcs2sccs -hst - < ${TMP}import$$ || exit 1
-	xargs rm -f < ${TMP}import$$
+	if [ $PARALLEL -eq 1 ]
+	then	bk rcs2sccs $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ || exit 1
+		xargs rm -f < ${TMP}import$$
+		return
+	fi
+	LINES=`wc -l < ${TMP}import$$`
+	LINES=`expr $LINES / $PARALLEL`
+	split -$LINES ${TMP}import$$ ${TMP}split$$
+	for i in ${TMP}split$$*
+	do	bk rcs2sccs $CUTOFF $VERIFY $QUIET -q - < $i &
+	done
+	wait
 }
 
 import_SCCS () {

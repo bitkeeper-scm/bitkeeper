@@ -1131,13 +1131,31 @@ init(char *inputFile, int flags, project **pp)
 {
 	char	buf[MAXPATH];		/* used ONLY for input I/O */
 	char	*root, *t;
-	int	i, len, havexsum = 0;	/* XXX - right default? */
-	int	started = 0;
+	int	i, len;
 	FILE	*f, *g;
 	MMAP	*m = 0;
 	uLong	sumC = 0, sumR = 0;
 	project	*p = 0;
+	struct	{
+		u32	newline:1;	/* current line is a newline */
+		u32	preamble_nl:1;	/* previous line was a newline */
+		u32	preamble:1;	/* looking for patch version */
+		u32	version:1;	/* previous line was Patch vers: ... */
+		u32	versionblank:1;	/* previous line was \n after vers */
+		u32	filename:1;	/* previous line was == file == */
+		u32	first:1;	/* previous line was == file == */
+		u32	perfile:1;	/* previous line was perfile stuff */
+		u32	perblank:1;	/* previous line was per blank */
+		u32	metadata:1;	/* previous line was meta data block */
+		u32	metaline:1;	/* previous line was 48x- */
+		u32	metablank:1;	/* previous line was \n after meta */
+		u32	diffs:1;	/* previous line was diffs */
+		u32	diffsblank:1;	/* previous line was \n after diffs */
+	}	st;
 	int	line = 0, first = 1, j = 0;
+
+	bzero(&st, sizeof(st));
+	st.preamble = 1;
 
 	/*
 	 * If we are reading from stdin and we get ERROR/Nothing,
@@ -1260,67 +1278,168 @@ init(char *inputFile, int flags, project **pp)
 		fclose(g);
 
 		for (;;) {
-			if (!started) {
-				if (streq(buf, PATCH_CURRENT)) {
-					havexsum = 1;
-					started = 1;
+			st.newline = streq("\n", buf);
+			if (echo > 9) {
+				fprintf(stderr, "ST: ");
+				if (st.newline) fprintf(stderr, "nl ");
+				if (st.preamble_nl) fprintf(stderr, "p_nl ");
+				if (st.preamble) fprintf(stderr, "p ");
+				if (st.version) fprintf(stderr, "v ");
+				if (st.versionblank) fprintf(stderr, "vb ");
+				if (st.filename) fprintf(stderr, "f ");
+				if (st.first) fprintf(stderr, "1 ");
+				if (st.perfile) fprintf(stderr, "pf ");
+				if (st.perblank) fprintf(stderr, "pb ");
+				if (st.metadata) fprintf(stderr, "m ");
+				if (st.metaline) fprintf(stderr, "ml ");
+				if (st.metablank) fprintf(stderr, "mb ");
+				if (st.diffs) fprintf(stderr, "d ");
+				if (st.diffsblank) fprintf(stderr, "db ");
+			}
+			if (echo > 6) fprintf(stderr, "P: %s", buf);
+	
+			if (st.preamble) {
+				if (st.newline) {
+					st.preamble_nl = 1;
+				}
+				if (st.preamble_nl &&
+				    streq(buf, PATCH_CURRENT)) {
+					st.version = 1;
+					st.preamble = 0;
+					st.preamble_nl = 0;
+				}
+			} else if (st.version) {
+				if (st.newline) {
+					st.version = 0;
+					st.versionblank = 1;
+				} else {	/* false alarm */
+					rewind(f);
+					st.preamble = 1;
+					st.version = 0;
+				}
+			} else if (st.versionblank) {
+				if (strneq("== ", buf, 3)) {
+					st.versionblank = 0;
+					st.filename = 1;
+					st.first = 1;
 				} else {
-					if (strneq("# Patch vers:", buf, 13)) {
-						fprintf(stderr,
-						    "Bad vers: %s", buf);
-					}
+					fprintf(stderr, "Expected '== f =='\n");
+error:					fprintf(stderr, "GOT: %s", buf);
+					cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+				}
+			} else if (st.filename) {
+				if (st.newline) {
+					fprintf(stderr, "Expected metadata\n");
+					goto error;
+				} else if (strneq(buf, "New file: ", 10)) {
+					st.perfile = 1;
+				} else {
+					st.metadata = 1;
+				}
+				st.filename = 0;
+			} else if (st.perfile) {
+				if (st.newline) {
+					st.perfile = 0;
+					st.perblank = 1;
+				}
+			} else if (st.perblank) {
+				if (st.newline) {
+					fprintf(stderr, "Expected metadata\n");
+					goto error;
+				}
+				st.metadata = 1;
+				st.perblank = 0;
+			} else if (st.metadata) {
+#define	DIVIDER	"------------------------------------------------\n"
+				if (st.newline) {
+					fprintf(stderr, "Expected metadata\n");
+					goto error;
+				} else if (streq(buf, DIVIDER)) {
+					st.metadata = 0;
+					st.metaline = 1;
+				}
+			} else if (st.metaline) {
+				if (st.newline) {
+					st.metaline = 0;
+					st.metablank = 1;
+				} else {
+					fprintf(stderr, "Expected metablank\n");
+					goto error;
+				}
+			} else if (st.metablank) {
+				st.metablank = 0;
+				if (st.newline) {	/* no diffs */
+					st.diffsblank = 1;
+				} else {
+					st.diffs = 1;
+				}
+			} else if (st.diffs) {
+				if (st.newline) {
+					st.diffs = 0;
+					st.diffsblank = 1;
+				}
+			} else if (st.diffsblank) {
+				if (strneq("== ", buf, 3)) {
+					st.diffsblank = 0;
+					st.filename = 1;
+					st.first = 0;
+				} else if (strneq(buf,
+				    "# Patch checksum=", 17)) {
+					sumR = strtoul(buf+17, 0, 16);
+					assert(sumR != 0);
+					fputs(buf, f);
+					break;
+				} else if (st.newline) {
+					fprintf(stderr,
+					    "Expected '== f ==' or key\n");
+				    	goto error;
+				} else {
+					st.diffsblank = 0;
+					st.metadata = 1;
 				}
 			}
-
-			if (started) {
+			
+			unless (st.preamble) {
 				if (fputs(buf, f) == EOF) {
 					perror("fputs on patch");
 					cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 				}
-				if (strneq(buf, "# Patch checksum=", 17)) {
-					sumR = strtoul(buf+17, 0, 16);
-					assert(sumR != 0);
-					break;
-				}
-
 				len = strlen(buf);
 				sumC = adler32(sumC, buf, len);
-				/*
-				 * Status.
-				 */
-				unless (mkpatch) {
-					unless (fnext(buf, stdin)) goto missing;
-					continue;
-				}
-#define	DIVIDER	"------------------------------------------------\n"
-				if (strneq("== ", buf, 3)) {
-					char	*t = strchr(&buf[3], ' ');
-
-					*t = 0;
-					unless (first) {
-						fprintf(stderr,
-						    "\b: %d deltas\n", j);
-						j = 0;
-					} else {
-						first = 0;
-					}
-					fprintf(stderr,
-					    "%s ", &buf[3]);
-				} else if (streq(DIVIDER, buf)) {
-					line = 1;
-				} else if ((line == 1) && streq("\n", buf)) {
-					fprintf(stderr, "%c\b", spin[j++ % 4]);
-				} else {
-					line = 0;
-				}
-			} else {
-				if (echo > 4) {
-					fprintf(stderr, "Discard: %s", buf);
-				}
 			}
+
+			unless (mkpatch) {
+				unless (fnext(buf, stdin)) goto missing;
+				continue;
+			}
+
+			/*
+			 * Status.
+			 */
+			if (st.filename) {
+				char	*t = strchr(&buf[3], ' ');
+
+				*t = 0;
+				unless (st.first) {
+					fprintf(stderr, "\b: %d deltas\n", j);
+					j = 0;
+				} else {
+					st.first = 0;
+				}
+				fprintf(stderr, "%s ", &buf[3]);
+			}
+
+			if (st.metablank) {
+				fprintf(stderr, "%c\b", spin[j++ % 4]);
+			}
+
+			if (st.preamble && echo > 4) {
+				fprintf(stderr, "Discard: %s", buf);
+			}
+
 			unless (fnext(buf, stdin)) goto missing;
 		}
-		unless (started) nothingtodo();
+		if (st.preamble) nothingtodo();
 		if (mkpatch) fprintf(stderr, "\b: %d deltas\n", j);
 		if (fclose(f)) {
 			perror("fclose on patch");
@@ -1352,7 +1471,6 @@ init(char *inputFile, int flags, project **pp)
 		i = 0;
 		while (t = mnext(m)) {
 			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {
-				havexsum = 1;
 				i++;
 				break;
 			}
@@ -1362,20 +1480,23 @@ init(char *inputFile, int flags, project **pp)
 			len = linelen(t);
 			sumC = adler32(sumC, t, len);
 			unless (t = mnext(m)) break;
-		} while (!strneq(t, "# Patch checksum=", 17));
+		} while (!strneq(t-2, "\n\n# Patch checksum=", 19));
+		unless (t && strneq(t-2, "\n\n# Patch checksum=", 19)) {
+			goto missing;
+		}
 		t = mkline(t);
 		sumR = strtoul(t+17, 0, 16);
 		assert(sumR != 0);
 	}
 
-	if (havexsum && !sumR) {
+	if (!sumR) {
 missing:	
 		SHOUT();
 		fputs("takepatch: missing checksum line in patch, aborting.\n",
 		      stderr);
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
-	if (havexsum && sumR != sumC) badXsum(sumR, sumC);
+	if (sumR != sumC) badXsum(sumR, sumC);
 
 	mseekto(m, 0);
 	mnext(m);		/* skip version number */

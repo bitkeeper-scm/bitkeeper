@@ -71,7 +71,6 @@ check_main(int ac, char **av)
 	char	buf[MAXKEY];
 	char	*t;
 
-
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", check_help);
@@ -182,7 +181,8 @@ usage:		fprintf(stderr, "%s", check_help);
 	if (errors && fix) {
 		if (names) {
 			fprintf(stderr, "check: trying to fix names...\n");
-			system("bk -r names; bk sfiles -r");
+			system("bk -r names");
+			system("bk sfiles -r");
 			return (2);
 		}
 	}
@@ -230,9 +230,9 @@ checkAll(MDBM *db)
 		    RESYNC2ROOT, CTMP, CTMP);
 		system(buf);
 		sprintf(buf, "%s.p", CTMP);
-		keys = fopen(buf, "r");
+		keys = fopen(buf, "rt");
 	} else {
-full:		keys = fopen(CTMP, "r");
+full:		keys = fopen(CTMP, "rt");
 	}
 	unless (keys) {
 		perror("checkAll");
@@ -292,8 +292,9 @@ init_idcache()
 		fprintf(stderr, "check: can't lock id cache\n");
 		exit(1);
 	}
+	close(e);
 	unlink(IDCACHE);
-	unless (idcache = fopen(IDCACHE, "w")) {
+	unless (idcache = fopen(IDCACHE, "wb")) {
 		perror(IDCACHE);
 		unlink(IDCACHE_LOCK);
 		exit(1);
@@ -343,7 +344,7 @@ buildKeys()
 		exit(1);
 	}
 	/*
- 	 * Note: malloc would return if sz == 0
+ 	 * Note: malloc would return 0 if sz == 0
 	 */
 	csetKeys.malloc = malloc(sz = size(CTMP));
 	fd = open(CTMP, 0, 0);
@@ -351,6 +352,7 @@ buildKeys()
 		perror(CTMP);
 		exit(1);
 	}
+	close(fd);
 	for (fd = 0, d = cset->table; d; d = d->next) {
 		fd += d->added;
 	}
@@ -370,6 +372,9 @@ buildKeys()
 		*t++ = 0;
 		assert(t);
 		r = strchr(t, '\n');
+#ifdef WIN32
+		if (r[-1] == '\r') r[-1] = 0; /* remove DOS '\r' */
+#endif
 		*r++ = 0;
 		assert(t);
 		if (mdbm_store_str(db, t, s, MDBM_INSERT)) {
@@ -599,6 +604,11 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	 */
 	if (all && !streq(ino->pathname, d->pathname)) {
 		fprintf(idcache, "%s %s\n", buf, s->gfile);
+		if (mixed && (t = sccs_iskeylong(buf))) {
+			*t = 0;
+			 fprintf(idcache, "%s %s\n", buf, s->gfile);
+			*t = '|';
+		} 
 	}
 
 	/* Make sure that we think we have cset marks */

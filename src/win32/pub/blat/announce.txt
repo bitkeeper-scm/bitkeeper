@@ -1,0 +1,203 @@
+Version 1.8.5b 2000.03.13
+  - Fixed -body
+-----------------------------------------------------------------------
+1.8.5 2000.02.08
+  - RFC compliant options added by Skough Axel IT-S <axel.skough@scb.se>
+    -mailfrom <addr>   The RFC 821 MAIL From: statement
+    -from <addr>       The RFC 822 From: statement
+    -replyto <addr>    The RFC 822 Reply-To: statement
+    -returnpath <addr> The RFC 822 Return-Path: statement
+    -sender <addr>     The RFC 822 Sender: statement
+  - Migrated -t to -to, -c to -cc, -b to -bcc, -s to -subject, -o to -organization
+-----------------------------------------------------------------------
+1.8.4e 2000.01.14
+  - -body translates '|' into CRLF
+-----------------------------------------------------------------------
+1.8.4d 99.11.22
+  - Added "-body" parameter (requires argv[1]=="-")
+  - Fixed problem with missing To/CC headers
+-----------------------------------------------------------------------
+1.8.4b 99.09.22
+  - buffer from 255 to 2048 chars (I forget which one)
+  - -x fixed
+  - -noh2 fixed (-noh or -noh2 was messing up headers)
+  - single quotes in email addresses used to mean 'comment'.  Removed.
+  - Replaced "|" in if statement with "||" inside of ConvertToQuotedPrintable(). 99.9.20
+  - Added -enriched and -html options (Courtesy of James Greene)
+  - Enhanced support for paths in -attach files (Bergamini Angelo <Angelo.Bergamini@sangiorgio.it>)
+  - Added df/cf/bf command line options to support using email addresses from a file
+    (Kenneth Massey <kmassey@mratings.com>)
+  - Added header when mail is sent using cgi.
+-----------------------------------------------------------------------
+1.8.4 99.02.20
+  - Much improved support for use within CGI scripts (by Gilles Vollant)
+    (see included blatcgi.txt file)
+  - Minor change to "Date:" header generation code.  Although it was Y2K
+    compliant, it wasn't obvious.  This was fixed to remove the confusion.
+  - Added support for customized "X-" style headers. (-x)
+-----------------------------------------------------------------------
+1.8.3 99.02.??
+  - Internal development release
+-----------------------------------------------------------------------
+1.8.2d 99.01.??
+  - Added -debug flag
+-----------------------------------------------------------------------
+1.8.2c 98.11.30
+  - Added optional "Return-Receipt-To:" and "Disposition-Notification-To:"
+    headers.
+  - It's now possible to run blat without an install.  You must specify
+    the "-server" and "-f" parameters (at a minimum) on the command line.
+-----------------------------------------------------------------------
+1.8.2b 98.11.30
+  - Removed all calls in gensock to MessageBox()
+  - Fixed timeout when configured for retries.  (was using ms instead of s)
+-----------------------------------------------------------------------
+1.8.2a 98.11.20
+  - "-q" option was still printing "Attached text file: attach.txt" messages
+-----------------------------------------------------------------------
+1.8.2 98.11.17 Tim Charron (tcharron@interlog.com)
+   - Oops.  was still identifying itself as 1.8
+   - Added terminating boundary to any messages with attachments.
+   - Autodetection of file types in MIME headers (from
+     Toby Korn <tkorn@snl.com>
+-----------------------------------------------------------------------
+1.8.1 98.11.15 Tim Charron (tcharron@interlog.com)
+   - Fixed Multiline response treatment. (courtesy of Wolfgang
+     Schwart <schwart@wmd.de>)
+   - Fixed ability to use "-" filenames.  Ctrl-Z detection was broken.
+   - Fixed use of "-noh"/"-noh2" option (also broken in 1.8).
+-----------------------------------------------------------------------
+Blat version 1.8     98.10.29  Tim Charron (tcharron@interlog.com)
+   1.8 is a merge of 2 different source trees which started diverging
+   at version 1.5.  If you're upgrading from the prior "official"
+   release, then changes include:
+
+   - Use of "-attach *.ZIP" to send multiple files
+   - Use of 'profiles' to store server/userid/n_of_tries/port in the
+     registry for multiple profiles.
+   - Multiple retries
+   - Other changes as described below labeled version 1.6-1.7.9
+
+   If you're upgrading from 1.7.9 at
+     http://www.interlog.com/~tcharron/blat.html, then changes include:
+   - gwinsock.dll/gensock.dll are no longer needed
+   - UUencoding of the main file is possible
+   - Graceful termination of connection to smtp server
+   - hostname <hst> option to select the hostname used to send the
+     message
+   - Ability to specify port using "server:port" style names. (ports
+     specified this way will override any specified with "-port")
+-----------------------------------------------------------------------
+Blat version 1.7.9   98.9.16
+ - omission of a terminating boundary was causing some e-mail systems
+   to not process the message properly. (Toby Korn tkorn@snl.com)
+-----------------------------------------------------------------------
+Blat version 1.7.8d  98.9.1
+ - Added "-noh" command line option to prevent X-Mailer header from
+   showing homepage of blat.  Added "-noh2" to prevent X-Mailer
+   header entirely
+-----------------------------------------------------------------------
+Blat version 1.7.8c  98.8.25
+ - Changed copyright limitations to prohibit use as a spam tool
+-----------------------------------------------------------------------
+Blat version 1.7.8b  98.8.11
+ - Cleaned up some wild pointers that was a potential crash
+   (although crashes have not been reported, better safe than sorry...)
+-----------------------------------------------------------------------
+Blat version 1.7.8   98.8.8
+ - Support for non-standard character sets in the header fields (hopefully).
+-----------------------------------------------------------------------
+Blat version 1.7.7   98.8.8
+ - Fixed problem with wildcards/filename parsing when compile with
+   Watcom
+-----------------------------------------------------------------------
+Blat version 1.7.6
+ - Made output cleaner when wildcards used
+ - Increased limit on attachments to 64 files.
+ - Message Boundary is a random string instead of a fixed string
+   (allows sending 2 or more blat messages as attachements to a 3rd
+   message using BLAT)
+-----------------------------------------------------------------------
+
+Blat version 1.7.5
+ - Fixed reading from file "-", there was a phantom character appearing.
+ - Added the ability to use wildcards for "-attach" and "-attacht" option
+ - Added a delay of 15 seconds between retries
+-----------------------------------------------------------------------
+
+Blat version 1.7.4
+ - Minor correction to return values in the event of server timeout
+-----------------------------------------------------------------------
+
+Blat version 1.7.3
+Created April 22, 1998 by Tim Charron (tcharron@interlog.com)
+ - Fixed "-attach"ing of largish files (but in calculation of internal
+   space required).
+
+-----------------------------------------------------------------------
+Blat version 1.7.2
+Created April 16, 1998 by Tim Charron (tcharron@interlog.com)
+ - Added "-attacht" which enables attaching multiple files without base64
+   encoding them.
+
+-----------------------------------------------------------------------
+Blat version 1.7.1
+Created March 27, 1998 by Tim Charron (tcharron@interlog.com)
+  - Minor command line parsing bugs fixed
+
+-----------------------------------------------------------------------
+Blat version 1.7
+Created March 20, 1998 by Christophe Henquin (ch@inncoent.com)
+  - Added command line option "-port" to override the default SMTP port.
+  - Added command line option "-try" to specified how many times blat should try sending.
+  - Added "profile" to quickly choose server, sender, n of tries and port.
+  - Added "-profile" to edit profiles
+
+-----------------------------------------------------------------------
+Blat version 1.6.3
+Created February 25, 1998 by Tim Charron (tcharron@interlog.com)
+  - Added command line option "-attach" to allow attaching multiple
+    binary files to a message.
+ - "-base64" causes inclusion via 'attachment' method instead of 'inline'
+
+-----------------------------------------------------------------------
+Blat version 1.6.2
+Created January 11, 1998 by Tim Charron (tcharron@interlog.com)
+  - Added command line option "-o" to provide Organization field
+    in the headers of the sent message.
+
+-----------------------------------------------------------------------
+Blat version 1.6.
+Created October 20, 1997 by Tim Charron (tcharron@interlog.com)
+  - Added support for mailing of binary files (mime base64 encoding)
+  - Fixed argument parsing for '-q' and '-mime' options (these used
+    to only work if they were the last argument)
+
+-----------------------------------------------------------------------
+Blat version 1.5 has just been released. This version has the following
+enhancements:
+
+ - Two bugs were corrected that made Blat generate exceptions with
+   certain CC or BCC adresses.
+ - Blat now generates descriptive error messages, rather than the
+   infamous "gensock error 4017" type errors
+ - Blat now returns an error code when the SMTP session fails
+ - A new option -mime was added. This implements the possibility to
+   use the MIME quoted-printable transfer encoding. The assumptions
+   are:
+        1: The file is a text file
+        2: The charset is ISO 8859/1
+
+The archive zip file (Intel: Blat15.zip, DEC Alpha: Blat15a.zip) can
+be obtained from the usual places (although both SimTel and CICA will
+take some time to move the package to the right place). To select the
+ftp site near you please use the Blat WWW home page at:
+
+http://gepasi.dbs.aber.ac.uk/softw/Blat.html
+
+THIS ANNOUNCEMENT WAS MAILED WITH BLAT 1.5!
+
+Enjoy!
+
+Pedro Mendes & Mark Neal
+prm@aber.ac.uk,mjn@aber.ac.uk

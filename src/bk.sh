@@ -97,6 +97,26 @@ _extras() {
 	bk sfiles -x
 }
 
+_jove() {
+	bk get -qe "$@" 2> /dev/null
+	jove $@
+}
+
+_joe() {
+	bk get -qe "$@" 2> /dev/null
+	joe $@
+}
+
+_jed() {
+	bk get -qe "$@" 2> /dev/null
+	jed $@
+}
+
+_vim() {
+	bk get -qe "$@" 2> /dev/null
+	vim $@
+}
+
 _vi() {
 	bk get -qe "$@" 2> /dev/null
 	vi $@
@@ -121,11 +141,6 @@ _tag() {
 		exit 1
 	fi
 	bk admin -S${1}$REV ChangeSet
-}
-
-_keys() {
-	__cd2root
-	bk sfiles -k
 }
 
 # usage: gone key [key ...]
@@ -230,10 +245,15 @@ _man() {
 
 _root() {
 	if [ X$1 = X -o X$1 = X--help ]
-	then	echo usage: root pathname
+	then	echo "usage: root [pathname]"
 		exit 1
 	fi
-	cd `dirname $1`
+	if [ X$1 != X ]
+	then	if [ ! -d $1 ]
+		then	cd `dirname $1`
+		else	cd $1
+		fi
+	fi
 	__cd2root
 	pwd
 	exit 0
@@ -263,14 +283,19 @@ _links() {
 # usage: regression [-s]
 # -s says use ssh
 # -l says local only (don't do remote).
+# -r says do remote.
+# If neither -r or -l is specified, you
+# get a system dependent default:
+# on unix: the default is -r
+# in win32 the defaule is -l
 _regression() {
-	DO_REMOTE=YES
 	PREFER_RSH=YES
 	V=
 	X=
 	while getopts lsvx OPT
 	do	case $OPT in
 		l)	DO_REMOTE=NO;;
+		r)	DO_REMOTE=YES;;
 		s)	PREFER_RSH=;;
 		v)	V=-v;;
 		x)	X=-x;;
@@ -278,7 +303,7 @@ _regression() {
 	done
 	shift `expr $OPTIND - 1`
 	export DO_REMOTE PREFER_RSH
-	cd `bk bin`/t && exec ./doit $V $X "$@"
+	cd "`bk bin`/t" && exec time ./doit $V $X "$@"
 }
 
 __init() {
@@ -306,4 +331,9 @@ fi
 cmd=$1
 shift
 
-exec $cmd "$@"
+if type "$cmd" > /dev/null 2>&1
+then
+	exec $cmd "$@"
+else
+	echo "$cmd: command not found"
+fi

@@ -57,7 +57,7 @@ undo_main(int ac,  char **av)
 		cat(undo_list);
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
-		mdbm_close(fileList);
+		if (fileList) mdbm_close(fileList);
 		if (cmd) free(cmd);
 		exit(1);
 	}
@@ -106,7 +106,6 @@ err:		if (undo_list[0]) unlink(undo_list);
 		    BK_UNDO);
 	}
 	if (streq(qflag, "")) printf("Running consistency check...\n");
-	system("bk sfiles -r");
 	if ((rc = system("bk -r check -a")) == 2) { /* 2 mean try again */
 		if (streq(qflag, "")) {
 			printf("Running consistency check again ...\n");
@@ -119,7 +118,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 private void
 checkRev(char *rev)
 {
-	char	*file = CHANGESET;
+	char	file[MAXPATH] = CHANGESET;
 	sccs	*s = sccs_init(file, 0, 0);
 	delta	*d;
 
@@ -202,10 +201,10 @@ do_rename(MDBM *fileList, char *qflag)
 	project *proj = 0;
 	kvpair  kv;
 	FILE	*f;
-	char	buf[MAXLINE];
+	char	rc, renum_list[MAXPATH], buf[MAXLINE];
 
-	sprintf(buf, "bk renumber %s -", qflag);
-	f = popen(buf, "w");
+	sprintf(renum_list, "%s/bk_renum_list%d",  TMP_PATH, getpid());
+	f = fopen(renum_list, "wb"); assert(f);
 	for (kv = mdbm_first(fileList); kv.key.dsize;
 						kv = mdbm_next(fileList)) {
 		char	*sfile, *old_path;
@@ -249,7 +248,11 @@ do_rename(MDBM *fileList, char *qflag)
 		free(old_path);
 	}
 	if (proj) proj_free(proj);
-	return (pclose(f));
+	fclose(f);
+	sprintf(buf, "bk renumber %s -  < %s ", qflag, renum_list);
+	rc = system(buf);
+	unlink(renum_list);
+	return rc;
 }
 
 private int
@@ -271,7 +274,6 @@ clean_file(MDBM *fileList)
 			printf("Can not clean %s, Undo aborted\n", sfile);
 			sccs_free(s);
 			free(sfile);
-			mdbm_close(fileList);
 			if (proj) proj_free(proj);
 			return (-1);
 		}

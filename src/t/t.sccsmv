@@ -163,7 +163,7 @@ date > G
 bk new $Q G
 cp SCCS/s.G S.G
 bk edit $Q G
-${RM} -f G
+rm -f G
 bk rm G 2> $DEV_NULL
 cmp -s S.G SCCS/s..del-G
 if [ $? = 0 ]; then echo Failed to add rm delta; exit 1; fi

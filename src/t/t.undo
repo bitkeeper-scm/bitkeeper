@@ -14,8 +14,8 @@
 
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
-${ECHO} "logging: none" > $HERE/c
-${ECHO} "seats: 1" >>$HERE/c
+echo "logging: none" > $HERE/c
+echo "seats: 1" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
@@ -59,4 +59,14 @@ then
 	echo failed
 	exit
 fi
+echo OK
+echo $N Check undo with edited file .................................$NL
+bk co $Q -l foo.c
+echo new-data > foo.c
+bk undo -r+ > undo.out 2>&1
+if [ $? -eq 0 ]; then echo "failed"; exit 1; fi
+grep -q "src/foo.c has been modified, needs delta." undo.out
+if [ $? -ne 0 ]; then echo "failed1"; exit 1; fi
+grep -q "Undo aborted" undo.out
+if [ $? -ne 0 ]; then echo "failed2"; exit 1; fi
 echo OK

@@ -133,74 +133,60 @@ out:
 private int
 uncompressed(char *tmpfile)
 {
-	pid_t	pid;
+	int	fd0, fd;
+	int	status;
+	pid_t 	pid;
 
 	/*
 	 * What I want is to run cset with stdin being the file.
 	 */
-	if (pid = fork()) {
-		int	status;
 
-		if (pid == -1) {
-			repository_rdunlock(0);
-			out("ERROR-fork failed\n");
-			return (1);
-		}
-		waitpid(pid, &status, 0);
-		unlink(tmpfile);
-		if (WIFEXITED(status)) {
-			return (WEXITSTATUS(status));
-		}
-		return (100);
-	} else {
-		close(0);
-		open(tmpfile, 0, 0);
-		execvp(cset[0], cset);
-		exit(1);
+	fd0 = dup(0); close(0);
+	fd = open(tmpfile, 0,  0);
+	assert(fd == 0);
+	pid = spawnvp_ex(_P_NOWAIT, cset[0], cset);
+	if (pid == -1) {
+		repository_rdunlock(0);
+		out("ERROR-fork failed\n");
+		return (1);
 	}
+	close(0); dup2(fd0, 0); close(fd0);
+	waitpid(pid,  &status, 0);
+	unlink(tmpfile);
+	if (WIFEXITED(status)) {
+		return (WEXITSTATUS(status));
+	}
+	return (100);
 }
 
+//XXX this code path have no regression test
 private int
 compressed(int gzip, char *tmpfile)
 {
 	pid_t	pid;
 	int	n;
-	int	p[2];
+	int	rfd, status;
 	char	buf[8192];
 
-	if (pipe(p) == -1) {
-err:		repository_rdunlock(0);
-		exit(1);
-	}
-
-	pid = fork();
+#ifndef WIN32
+	signal(SIGCHLD, SIG_DFL);
+#endif
+	pid = spawnvp_rPipe(cset, &rfd);
 	if (pid == -1) {
-		out("ERROR-fork failed\n");
-		goto err;
-	} else if (pid) {
-		int	status;
-
-		signal(SIGCHLD, SIG_DFL);
-		close(p[1]);
-		gzip_init(gzip);
-		while ((n = read(p[0], buf, sizeof(buf))) > 0) {
-			gzip2fd(buf, n, 1);
-		}
-		gzip_done();
-		waitpid(pid, &status, 0);
-		unlink(tmpfile);
-		if (WIFEXITED(status)) {
-			return (WEXITSTATUS(status));
-		}
-		return (100);
-	} else {
-		close(0);
-		open(tmpfile, 0, 0);
-		close(1); dup(p[1]); close(p[1]);
-		close(p[0]);
-		execvp(cset[0], cset);
+		repository_rdunlock(0);
 		exit(1);
 	}
+	gzip_init(gzip);
+	while ((n = read(rfd, buf, sizeof(buf))) > 0) {
+		gzip2fd(buf, n, 1);
+	}
+	gzip_done();
+	waitpid(pid, &status, 0);
+	unlink(tmpfile);
+	if (WIFEXITED(status)) {
+		return (WEXITSTATUS(status));
+	}
+	return (100);
 }
 
 private void

@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <unistd.h>
 #include "lib_tcp.h"
 #include "system.h"
 #include "sccs.h"
@@ -40,10 +39,14 @@ typedef struct {
 	u32	interactive:1;		/* show prompts, etc */
 	u32	errors_exit:1;		/* exit on any error */
 	u32	daemon:1;		/* listen for TCP connections */
+	u32	start:1;		/* start NT bkd service */
+	u32	remove:1;		/* remove NT bkd service */
 	FILE	*log;			/* if set, log commands to here */
 	int	alarm;			/* exit after this many seconds */
+	int	count;			/* exit after this many connections */
 	u16	port;			/* listen on this port */
 	char	*pidfile;		/* write the daemon pid here */
+	char	*startDir;		/* start up directory for daemon */
 	uid_t	uid;			/* run as uid */
 	char	remote[16];		/* a.b.c.d of client */
 } bkdopts;
@@ -73,8 +76,8 @@ extern	bkdopts Opts;
 
 remote	*remote_parse(char *url);
 char	*remote_unparse(remote *r);
-pid_t	bkd(int compress, remote *r, int *sock);
-void	bkd_reap(pid_t resync, int sock);
+pid_t	bkd(int compress, remote *r, int *r_pipe, int *w_pipe);
+void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
 int	getline(int in, char *buf, int size);
 int	gunzip2fd(char *input, int len, int fd);
 int	gzip2fd(char *input, int len, int fd);

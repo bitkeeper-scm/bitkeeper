@@ -14,10 +14,12 @@
 
 echo $N Test import of a plain file .................................$NL
 HERE=`pwd`
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 mkdir -p import_dir/src
-${ECHO} foo > import_dir/src/foo.c
+echo foo > X
+bk undos X > import_dir/src/foo.c
+rm -f X
 touch import_dir/src/boo.c
 trap 'echo failed; cat $HERE/import.out' 0
 set -e
@@ -33,12 +35,13 @@ echo OK
 # XXX - we do not test for links pointing outside the tree
 if [ $PLATFORM != "WIN32" ]
 then
+#----------------------------------------------------
 echo $N Test import of a symbolic link ..............................$NL
 cd $HERE
-${ECHO} "logging: none" > $HERE/c
+echo "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c symlink
 mkdir -p symlink/src
-${ECHO} foo > import_dir/src/foo.c
+echo foo > import_dir/src/foo.c
 touch import_dir/src/boo.c
 cd import_dir/src
 ln -s foo.c link
@@ -57,11 +60,11 @@ test -f SCCS/s.link
 bk get $Q link
 cmp -s link $HERE/import_dir/src/foo.c
 echo OK
-fi	# Win32
 echo $N Test import of a patch file .................................$NL
 cd $HERE
 mkdir -p import_new/src
-${ECHO} "foo-new" > $HERE/import_new/src/foo.c
+echo "foo-new" > X
+bk undos X >  $HERE/import_new/src/foo.c
 diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd $HERE/project/src
@@ -94,13 +97,15 @@ then	echo Can not find deleted file
 	exit 1
 fi
 echo OK
+#----------------------------------------------------
+fi	# Win32
 echo $N Test import of an sccs file .................................$NL
 cd $HERE
 mkdir -p import_sccs/src
 cd $HERE/import_sccs/src
-${ECHO} bar > bar.c
+echo bar > bar.c
 bk ci $Q -i -l bar.c
-${ECHO} "bar-new" > bar.c
+echo "bar-new" > bar.c
 bk ci $Q -y bar.c
 cd $HERE
 ( echo SCCS; echo no ) | bk import import_sccs project  > import.out 2>&1
