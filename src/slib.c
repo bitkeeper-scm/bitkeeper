@@ -5345,7 +5345,11 @@ sccs_hasDiffs(sccs *s, int flags)
 		if (S_ISLNK(s->mode)) RET(!streq(s->glink, d->glink));
 	}
 
-	assert(IS_WRITABLE(s));
+	unless (IS_WRITABLE(s)) {
+		fprintf(stderr,
+		    "Warning: %s edited but not writeable.\n", s->gfile);
+	}
+
 	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
 		tmpfile = 1;
 		sprintf(sbuf, "%s/getU%d", TMP_PATH, getpid());
@@ -5467,6 +5471,7 @@ fix_lf(char *gfile)
 		perror(gfile);
 		return (-1);
 	}               
+	unless (sb.st_mode & 0200) return (0);
 	if (sb.st_size > 0) {
 		if ((fd = open(gfile, 2, 0660)) == -1) {
 			perror(gfile);
@@ -5754,8 +5759,7 @@ sccs_clean(sccs *s, int flags)
 	 * isn't.  I suspect some interactions with make, but I'm not
 	 * sure.  The difference ends up being on a line with the keywords.
 	 */
-	if (access(s->gfile, W_OK)) {
-		verbose((stderr, "%s edited but not writeable?\n", s->gfile));
+	if (access(s->gfile, W_OK) != 0) {
 		flags |= EXPAND;
 		if (s->state & S_RCS) flags |= RCSEXPAND;
 	}
@@ -8208,9 +8212,9 @@ out:
 			unedit(s, flags);
 			goto out;
 		}
-		verbose((stderr, "delta: %s locked but not writable?\n",
+		verbose((stderr,
+		    "delta warning: %s is locked but not writable.\n",
 		    s->gfile));
-		OUT;
 	}
 	unless (s->tree) {
 		fprintf(stderr, "delta: bad delta table in %s\n", s->sfile);
@@ -8494,7 +8498,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 	FILE	*diffs = 0;
 	char	*left, *right;
 	char	*leftf, *rightf;
-	char	tmpfile[30];
+	char	tmpfile[MAXPATH];
 	char	diffFile[30];
 	char	*columns;
 	char	tmp2[32];
