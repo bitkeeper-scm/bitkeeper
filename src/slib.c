@@ -7531,6 +7531,31 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 	return (added);
 }
 
+private int
+addMode(char *me, sccs *sc, int flags, char *mode, int *ep)
+{
+	delta	*d, *n;
+	char	*rev;
+	int 	f = 0;  /* XXX this may be affected by LOD */
+
+	unless (mode) return 0;
+	d = findrev(sc, 0);
+	n = calloc(1, sizeof(delta));
+	n->next = sc->table;
+	sc->table = n;
+	n = sccs_dInit(n, 'D', sc, 0);
+	rev = d->rev;
+	getedit(sc, &rev, f);
+	n->rev = strdup(rev);
+	n->pserial = d->serial;
+	n->serial = sc->nextserial++;
+	n->comments = addLine(n->comments, strdup("Add mode"));
+	sc->numdeltas++;
+	n = modeArg(n, mode);
+	dinsert(sc, 0, n);
+	return 1;
+}
+
 /*
  * Translate an encoding string (e.g. "ascii") and a compression string
  * (e.g. "gzip") to a suitable value for sccs->encoding.
@@ -7583,7 +7608,7 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
  */
 int
 sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
-	admin *f, admin *z, admin *u, admin *s, char *text)
+	admin *f, admin *z, admin *u, admin *s, char *mode, char *text)
 {
 	FILE	*sfile = 0;
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
@@ -7645,6 +7670,7 @@ out:
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
 
 	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
+	if (addMode("admin", sc, flags, mode, &error)) flags |= NEWCKSUM;
 
 	if (text) {
 		FILE	*desc;
