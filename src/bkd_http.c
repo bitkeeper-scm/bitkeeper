@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "logging.h"
 typedef void (*vfn)(char *);
 
 char		*http_time(void);
@@ -50,15 +51,15 @@ private int	expires = 0;
 #define OUTER_END	"</td></tr></table>\n"
 #define	INNER_END	"</table>"
 
-
 #define BKWEB_SERVER_VERSION	"0.2"
 
-private char arguments[MAXPATH];
-private char navbar[MAXPATH];
-private char thisPage[MAXPATH];
-private char user[80];
-private char prefix[100];
-private char suffix[10];
+private char	arguments[MAXPATH];
+private char	navbar[MAXPATH];
+private char	thisPage[MAXPATH];
+private char	user[80];
+private char	prefix[100];
+private char	suffix[10];
+private int	isLoggingTree;
 
 private struct pageref {
     vfn  content;
@@ -87,9 +88,6 @@ private struct pageref {
     { 0 },
 };
 
-
-/*
- */
 int
 cmd_httpget(int ac, char **av)
 {
@@ -151,8 +149,7 @@ cmd_httpget(int ac, char **av)
 		}
 	}
 
-	sprintf(buf, "BitKeeper/html/%s", name);
-
+	isLoggingTree = exists(LOG_TREE);
 	for (i = 0; pages[i].content; i++) {
 		if (pages[i].size == 0) {
 			ret = streq(pages[i].name, name);
@@ -167,8 +164,7 @@ cmd_httpget(int ac, char **av)
 		}
 	}
 
-
-
+	sprintf(buf, "BitKeeper/html/%s", name);
 	if (isreg(buf)) {
 		http_file(buf);		/* XXX - doesn't respect base url */
 	} else if ((s = strrchr(name, '.')) && streq(s, ".gif")) {
@@ -564,38 +560,40 @@ http_cset(char *rev)
 
 	whoami("cset@%s", rev);
 
-	i = snprintf(dspec, sizeof dspec,
+	i = snprintf(buf, sizeof(buf),
 	    "-d%s"
-	    "<tr bgcolor=#e0e0e0><td><font size=2>\n"
+	    "<tr bgcolor=#e0e0e0><td><font size=2>"
 	    ":GFILE:@:I:&nbsp;&nbsp;:Dy:-:Dm:-:Dd: :T::TZ:&nbsp;&nbsp;:P:"
 	    "$if(:DOMAIN:){@:DOMAIN:}</font><br>\n"
-	    "$if(:GFILE:=ChangeSet){"
-	      "<a href=patch@:REV:%s>\n"
-	      "<font size=2 color=darkblue>all diffs</font></a>\n"
-	    "}"
+	    "%s"
 	    "$if(:GFILE:!=ChangeSet){"
 	      "<a href=hist/:GFILE:%s>\n"
 	      "<font size=2 color=darkblue>history</font></a>\n"
-	      "&nbsp;&nbsp;"
-	      "<a href=anno/:GFILE:@:REV:%s>\n"
-	      "<font size=2 color=darkblue>annotate</font></a>\n"
-	      "&nbsp;&nbsp;"
-	      "<a href=diffs/:GFILE:@:REV:%s>\n"
-	      "<font size=2 color=darkblue>diffs</font></a>\n"
+	      "%s"
 	    "}"
 	    "</td></tr>\n"
-//	    "$each(:TAG:){<tr bgcolor=yellow><td>(:TAG:)</td></tr>\n}"
 	    "$if(:TAG:){<tr bgcolor=yellow>\n  <td>:TAG:</td>\n</tr>\n}"
 	    "<tr bgcolor=white>\n"
 	    "<td>:HTML_C:</td></tr>\n"
 	    "%s",
 	    prefix,
-	    navbar, navbar, navbar, navbar,
+	    isLoggingTree ? "" :
+	      "$if(:GFILE:=ChangeSet){"
+	        "<a href=patch@:REV:%s>\n"
+	        "<font size=2 color=darkblue>all diffs</font></a>\n"
+	      "}",
+	    navbar,
+	    isLoggingTree ? "" :
+	      "&nbsp;&nbsp;"
+	      "<a href=anno/:GFILE:@:REV:%s>\n"
+	      "<font size=2 color=darkblue>annotate</font></a>\n"
+	      "&nbsp;&nbsp;"
+	      "<a href=diffs/:GFILE:@:REV:%s>\n"
+	      "<font size=2 color=darkblue>diffs</font></a>\n",
 	    suffix);
-
-	if (i == -1) {
-		http_error(500, "buffer overflow in http_cset");
-	}
+	if (i == -1) http_error(500, "buffer overflow in http_cset");
+	i = snprintf(dspec, sizeof(dspec), buf, navbar, navbar, navbar);
+	if (i == -1) http_error(500, "buffer overflow in http_cset");
 
 	putenv("BK_YEAR4=1");
 	sprintf(buf, "bk cset -r%s", rev);
@@ -644,7 +642,7 @@ http_cset(char *rev)
 		delta	*d = findrev(cset, rev);
 
 		cset->rstart = cset->rstop = d;
-		sccs_prs(cset, 0, 0, dspec, stdout);
+		sccs_prs(cset, 0, 0, &dspec[2], stdout);
 		sccs_free(cset);
 		fflush(stdout);
 		EACH(lines) write(fd, lines[i], strlen(lines[i]));
@@ -798,11 +796,17 @@ http_hist(char *pathrev)
 		" <td align=center"
 		"$if(:TAG:){ bgcolor=yellow}"
 		"$if(:RENAME:){$if(:I:!=1.1){ bgcolor=orange}}>"
-		"<a href=\"diffs/:GFILE:@:I:%s\">:I:</a>"
+		"%s%s%s%s%s"
 		"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 		"</td>\n <td>:HTML_C:</td>\n"
-		"</tr>\n%s", prefix, navbar, suffix);
-
+		"</tr>\n%s",
+		prefix,
+		isLoggingTree ? "" : "<a href=\"diffs/:GFILE:@:I:",
+		isLoggingTree ? "" : navbar,
+		isLoggingTree ? "" : "\">",
+		":I:",
+		isLoggingTree ? "" : "</a>",
+		suffix);
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_hist");
 	}
@@ -967,7 +971,7 @@ http_anno(char *pathrev)
 {
 	FILE	*f;
 	char	buf[4096];
-	int	n;
+	int	n, empty = 1;
 	char	*s, *d;
 	MDBM	*m;
 
@@ -982,7 +986,8 @@ http_anno(char *pathrev)
 
 	if (!embedded) {
 		httphdr(".html");
-		header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
+		header("anno",
+		    COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
 	}
 
 	*s++ = 0;
@@ -992,15 +997,25 @@ http_anno(char *pathrev)
 
 	/*
 	 * Do not show the license key in config file
-	 * XXX Do we need to also check the S_LOGS_ONLY flags?
 	 */
 	if (streq(pathrev, "BitKeeper/etc/config")) {
 		strcat(buf,
-			" | sed -e's/| license:.*$/| license: XXXXXXXXXXXXX/'");
+		    " | sed -e's/| license:.*$/| license: XXXXXXXXXXXXX/'");
 	}
 	f = popen(buf, "r");
-	while ((n = fread(buf, 1, sizeof(buf), f)) > 0) htmlify(buf, n);
+	while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+		empty = 0;
+		htmlify(buf, n);
+	}
 	pclose(f);
+	if (empty) {
+		if (isLoggingTree) {
+			out("\nThis is an Open Logging tree so there is "
+			    "no data in this file.\n");
+		} else {
+			out("\nEmpty file\n");
+		}
+	}
 	out("</pre>\n");
 	if (!embedded) trailer("anno");
 }
