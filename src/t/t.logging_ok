@@ -1,0 +1,164 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+echo $N Create two copies of a repository ...........................$NL
+HERE=`${CWD}`
+echo "logging: none" > $HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+bk clone $Q project copy
+echo OK
+echo $N Create two different logging_ok files .......................$NL
+cd $HERE/project/BitKeeper/etc
+cat > logging_ok <<EOF
+lm@bitmover.com
+lm@work.bitmover.com
+awc@etp3.bitmover.com
+EOF
+bk new $Q logging_ok
+bk commit $Q -ywhatever
+cd $HERE/copy/BitKeeper/etc
+cat > logging_ok <<EOF
+lm@lm.bitmover.com
+beth@work.bitmover.com
+EOF
+bk new $Q logging_ok
+bk commit $Q -ywhatever
+echo OK
+
+# Save it so we can try the other direction to run through both code paths
+cd $HERE
+tar cf TAR project copy
+
+echo $N Pull, should union the data and delete one file .............$NL
+cd $HERE/copy
+bk pull $Q
+if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
+then	echo failed to delete file
+	ls -R BitKeeper
+	exit 1
+fi
+bk get $Q BitKeeper/etc/logging_ok
+if [ ! -f BitKeeper/etc/logging_ok ]
+then	echo 'Where oh where did my little file go?'
+	exit 1
+fi
+cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+awc@etp3.bitmover.com
+beth@work.bitmover.com
+lm@bitmover.com
+lm@lm.bitmover.com
+lm@work.bitmover.com
+EOF
+if [ `wc -l < DIFFS` -ne 0 ]
+then	echo failed to union the data in the file
+	cat DIFFS
+	exit 1
+fi
+echo OK
+
+echo $N Same thing, in opposite direction ...........................$NL
+cd $HERE
+rm -rf project copy
+tar xf TAR
+cd $HERE/project
+bk pull $Q ../copy
+if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
+then	echo failed to delete file
+	ls -R BitKeeper
+	exit 1
+fi
+bk get $Q BitKeeper/etc/logging_ok
+if [ ! -f BitKeeper/etc/logging_ok ]
+then	echo 'Where oh where did my little file go?'
+	exit 1
+fi
+cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+awc@etp3.bitmover.com
+beth@work.bitmover.com
+lm@bitmover.com
+lm@lm.bitmover.com
+lm@work.bitmover.com
+EOF
+if [ `wc -l < DIFFS` -ne 0 ]
+then	echo failed to union the data in the file
+	cat DIFFS
+	exit 1
+fi
+echo OK
+
+echo $N Paranoid - make sure the push works .........................$NL
+cd $HERE/project
+bk push $Q ../copy
+cd $HERE/copy
+if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
+then	echo failed to delete file
+	ls -R BitKeeper
+	exit 1
+fi
+bk get $Q BitKeeper/etc/logging_ok
+if [ ! -f BitKeeper/etc/logging_ok ]
+then	echo 'Where oh where did my little file go?'
+	exit 1
+fi
+cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+awc@etp3.bitmover.com
+beth@work.bitmover.com
+lm@bitmover.com
+lm@lm.bitmover.com
+lm@work.bitmover.com
+EOF
+if [ `wc -l < DIFFS` -ne 0 ]
+then	echo failed to union the data in the file
+	cat DIFFS
+	exit 1
+fi
+echo OK
+
+echo $N Update both copies of the same file, should automerge .......$NL
+cd $HERE/project/BitKeeper/etc
+bk edit $Q logging_ok
+echo "project@foo.com" >> logging_ok
+bk delta $Q -yproject
+bk commit -ywhatever $Q
+cd $HERE/copy/BitKeeper/etc
+bk edit $Q logging_ok
+echo "copy@foo.com" >> logging_ok
+bk delta $Q -ycopy
+bk commit -ywhatever $Q
+cd $HERE/copy
+echo q | bk pull $Q
+if [ -f RESYNC ]
+then	echo failed to complete resync
+	exit 1
+fi
+bk get $Q BitKeeper/etc/logging_ok
+if [ ! -f BitKeeper/etc/logging_ok ]
+then	echo 'Where oh where did my little file go?'
+	exit 1
+fi
+cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+awc@etp3.bitmover.com
+beth@work.bitmover.com
+copy@foo.com
+lm@bitmover.com
+lm@lm.bitmover.com
+lm@work.bitmover.com
+project@foo.com
+EOF
+if [ `wc -l < DIFFS` -ne 0 ]
+then	echo failed to union the data in the file
+	cat DIFFS
+	exit 1
+fi
+echo OK
