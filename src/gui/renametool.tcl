@@ -482,14 +482,15 @@ proc Rename {} \
 
 proc sh {buf} \
 {
-	global	undoLine
+	global	undoLine gc
 
 	.files.sh tag delete select
 	.files.sh configure -state normal
 	.files.sh insert end $buf select
 	.files.sh configure -state disabled
 	.files.sh tag configure select \
-	    -background $gc(rename.textBG) -fg $gc(rename.textFG) \
+	    -background $gc(rename.textBG) \
+	    -foreground $gc(rename.textFG) \
 	    -relief groove -borderwid 1
 	.menu.undo configure -state normal
 	.menu.apply configure -state normal
@@ -498,7 +499,7 @@ proc sh {buf} \
 
 proc Undo {} \
 {
-	global	undoLine leftCount rightCount
+	global	undoLine leftCount rightCount gc
 
 	.files.sh tag delete select
 	set buf [.files.sh get $undoLine "$undoLine lineend"]
@@ -535,7 +536,8 @@ proc Undo {} \
 		set l $undoLine
 		.files.sh tag add select "$l linestart" "$l lineend + 1 char"
 		.files.sh tag configure select \
-		    -background $gc(rename.textBG) -fg $gc(rename.textFG) \
+		    -background $gc(rename.textBG) \
+		    -foreground $gc(rename.textFG) \
 		    -relief groove -borderwid 1
 	} else {
 		.menu.undo configure -state disabled
@@ -603,7 +605,7 @@ proc Guess {} \
 # go on.
 proc Apply {} \
 {
-	global	undoLine leftCount rightCount QUIET
+	global	undoLine leftCount rightCount QUIET gc
 
 	busy 1
 	.files.sh configure -state normal
@@ -659,7 +661,8 @@ proc Apply {} \
 		set undoLine 1.0
 		.files.sh tag add select "1.0 linestart" "1.0 lineend + 1 char"
 		.files.sh tag configure select \
-		    -background $gc(rename.textBG) -fg $gc(rename.textFG) \
+		    -background $gc(rename.textBG) \
+		    -foreground $gc(rename.textFG) \
 		    -relief groove -borderwid 1
 	}
 	busy 0
@@ -704,7 +707,7 @@ proc pixSelect {which line file x y} \
 proc Select {which line file l} \
 {
 	global	leftFile rightFile leftLine rightLine undoLine rightCount
-	global	guessNext
+	global	guessNext gc
 
 	set foo [$which get "$l linestart" "$l lineend"]
 	if {$foo != ""} {
@@ -712,7 +715,8 @@ proc Select {which line file l} \
 		$which tag delete select
 		$which tag add select "$l linestart" "$l lineend + 1 char"
 		$which tag configure select \
-		    -background $gc(rename.textBG) -fg $gc(rename.textFG) \
+		    -background $gc(rename.textBG) \
+		    -foreground $gc(rename.textFG) \
 		    -relief groove -borderwid 1
 		$which see $l
 		set doDiff 1
