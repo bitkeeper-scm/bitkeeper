@@ -92,6 +92,7 @@ int takepatch_main(int, char **);
 int undo_main(int, char **);
 int undos_main(int, char **);
 int unedit_main(int, char **);
+int unlink_main(int, char **);
 int unlock_main(int, char **);
 int unwrap_main(int, char **);
 int users_main(int, char **);
@@ -184,6 +185,7 @@ struct command cmdtbl[100] = {
 	{"undos", undos_main},
 	{"unedit", unedit_main},
 	{"unget", unedit_main},	/* aliases */
+	{"unlink", unlink_main },
 	{"unlock", unlock_main },
 	{"unwrap", unwrap_main},
 	{"users", users_main},

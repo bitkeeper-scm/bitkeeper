@@ -58,7 +58,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  send.o sendbug.o setup.o \
 	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
-	  unique.o unedit.o unlock.o unwrap.o user.o utils.o \
+	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
 	  version.o what.o zgets.o zone.o license.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
@@ -605,6 +605,7 @@ undo.o:		undo.c $(H)
 undos.o:	undos.c
 unedit.o:	unedit.c $(H)
 unique.o:	unique.c $(H)
+unlink.o:	unlink.c $(H)
 unlock.o:	unlock.c $(H)
 unwrap.o:	unwrap.c $(H)
 user.o:		user.c $(H)

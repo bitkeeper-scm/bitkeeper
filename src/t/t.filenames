@@ -102,3 +102,61 @@ then	echo $N Try sccstool on the file ....................................$NL
 	bk csettool -geom +1+1 -r1.2 || { echo failed; exit 1; }
 	echo OK
 fi
+
+echo $N Test import of a file with spaces in the name ...............$NL
+cd $HERE
+rm -rf project
+no_logging project
+cd $HERE
+mkdir -p import_dir/src
+echo foo > import_dir/src/'s p a c e s'
+touch import_dir/src/boo.c
+( echo plain; echo no ) | bk import import_dir project > import.out 2>&1
+cd $HERE/project/src
+test -f SCCS/s.'s p a c e s' || { echo failed; cat $HERE/import.out; exit 1; }
+bk get $Q 's p a c e s'
+cmp -s 's p a c e s' $HERE/import_dir/src/'s p a c e s' &&
+    test -f SCCS/s.boo.c || { echo failed; exit 1; }
+bk get $Q boo.c
+cmp -s boo.c $HERE/import_dir/src/boo.c || { echo failed; exit 1; }
+echo OK
+
+set +e
+echo $N Test RCS import of a file with spaces in the name ...........$NL
+cd $HERE
+rm -rf project import_dir
+no_logging project
+cd $HERE
+mkdir -p import_dir/src
+cat > import_dir/src/'S P A C E S,v' <<EOF
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2000.05.25.01.37.15;	author lm;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@06:37:07 PM Wed May 24 2000
+@
+EOF
+set -e
+( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
+cd $HERE/project/src
+test -f SCCS/s.'S P A C E S' || { echo failed; exit 1; }
+test -f 'S P A C E S,v' && { echo failed to remove ,v file; ls; exit 1; }
+echo OK

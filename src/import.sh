@@ -136,8 +136,8 @@ import() {
 		echo "	$TO"
 		cd $TO
 		while read x
-		do	if [ -e $x ]
-			then	echo import: $x exists, entire import aborted
+		do	if [ -e "$x" ]
+			then	echo "import: $x exists, entire import aborted"
 				rm -f ${TMP}import$$
 				exit 1
 			fi
@@ -145,7 +145,7 @@ import() {
 		if [ $TYPE != SCCS ]
 		then	bk g2sccs < ${TMP}import$$ > ${TMP}sccs$$
 			while read x
-			do	if [ -e $x ]
+			do	if [ -e "$x" ]
 				then	echo \
 				    "import: $x exists, entire import aborted"
 					rm -f ${TMP}sccs$$ ${TMP}import$$
@@ -291,7 +291,7 @@ import_patch() {
 	    bk patch -p1 -ZsE -z '=-PaTcH_BaCkUp!' --forcetime --lognames > \
 		${TMP}plog$$ 2>&1
 	cat ${TMP}plog$$
-	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | xargs rm -f
+	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk unlink
 	REJECTS=NO
 	find .  -name '*.rej' -print > ${TMP}rejects$$
 	while [ -s ${TMP}rejects$$ ]
@@ -369,12 +369,13 @@ import_text () {
 }
 
 import_RCS () {
+	set -x
 	cd $2
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]
 	then	bk rcs2sccs $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ || exit 1
-		xargs rm -f < ${TMP}import$$
+		bk unlink < ${TMP}import$$
 		return
 	fi
 	LINES=`wc -l < ${TMP}import$$`
