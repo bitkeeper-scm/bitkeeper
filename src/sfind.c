@@ -573,8 +573,7 @@ walk(char *dir, int level)
 	/*
 	 * Special processing for .bk_skip file
 	 */
-	sprintf(buf, "%s/%s", dir, BKSKIP);
-	if (exists(buf)) return;
+	if (sfiles_skipdir(dir)) return;
 
 	if (level == 0) {
 		char tmp[MAXPATH];
@@ -937,9 +936,11 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 		if (patheq(dh[i], "SCCS")) continue;
 
 		/*
-		 * Allow people to prune their tree with ".bk_skip".
+		 * Warn users who accidentally prune their tree with ".bk_skip".
 		 */
-		if (streq(".bk_skip", dh[i])) goto skip;
+		if (streq(BKSKIP, dh[i])) {
+			getMsg("bk_skip_and_sccs", dir, 0, 0, stderr);
+		}
 
 		/*
 		 * Do not descend into another project root. e.g RESYNC
@@ -947,7 +948,7 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 		if ((level > 0) &&
 		    streq(dh[i], BKDIR) &&
 		    isBKRoot(dir)) {
-skip:			mdbm_close(gDB);
+			mdbm_close(gDB);
 			mdbm_close(sDB);
 			freeLines(dh, free);
 			while (p = dequeue(&slist)) free(p);
@@ -1144,4 +1145,29 @@ void
 enableFastPendingScan()
 {
 	touch(DFILE, 0666);
+}
+
+/*
+ * Return true if we should skip this directory (it contains .bk_skip).
+ * If there is an SCCS directory then complain, and return false,
+ * because that is likely to be a mistake.
+ *
+ * The intent is, if users need to be able to .bk_skip a directory with
+ * SCCS/, then this should be extended to check for $d/.bk_skip and
+ * $d/SCCS/.bk_skip.  The workaround is to rename SCCS/, or to move it to
+ * a subdirectory, at the same time as creating a .bk_skip.
+ */
+int
+sfiles_skipdir(char *dir)
+{
+	char	buf[MAXPATH];
+
+	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
+	unless (exists(buf)) return (0);
+	snprintf(buf, sizeof(buf), "%s/%s", dir, "SCCS");
+	if (isdir(buf)) {
+		getMsg("bk_skip_and_sccs", dir, 0, 0, stderr);
+		return (0);
+	}
+	return (1);
 }

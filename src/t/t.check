@@ -307,3 +307,45 @@ bk -r check -a 2>ERRS && {
 cd $HERE
 rm -rf bad
 echo OK
+
+echo $N Make sure check knows about .bk_skip ........................$NL
+cd $HERE
+bk clone $Q project clone || exit 1
+cd clone
+# this one should print a warning
+touch d1/sub1/.bk_skip
+bk -r check -a >OUT 2>ERRS
+rm d1/sub1/.bk_skip
+[ -s ERRS ] || {
+	echo ".bk_skip didn't cause a warning; output was"
+	cat OUT
+	echo "error output was empty!"
+	exit 1
+}
+grep "^Missing" ERRS > /dev/null && {
+	echo ".bk_skip seems to have broken check; output was"
+	cat OUT
+	echo "error output was"
+	cat ERRS
+	exit 1
+}
+echo OK
+
+# XXX if we implement the additional code suggested in the comment before
+# sccs_skipdir, this is how to test it.
+#
+# echo $N Make sure .bk_skip and SCCS/.bk_skip works ..................$NL
+# # this one should not cause a warning, but the check will complain about
+# # missing files
+# cd $HERE/clone
+# touch d1/sub1/SCCS/.bk_skip
+# bk -r check -a >OUT 2>ERRS
+# grep -v 'Missing file' ERRS > E2
+# [ -s E2 ] && {
+# 	echo "Unexpected error output from check; output was"
+# 	cat OUT
+# 	echo "error output was"
+# 	cat ERRS
+# 	exit 1
+# }
+# echo OK
