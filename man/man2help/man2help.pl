@@ -2,7 +2,7 @@
 eval "exec perl -Ssw $0 $@"
         if 0;
 
-sub main()
+sub main
 {
 	$debug = 0 if 0;
 	$m = shift(@ARGV);
