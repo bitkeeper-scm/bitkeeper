@@ -265,7 +265,7 @@ done:		mdbm_close(vals);
 	if (winner && exists(sfile) && !streq(sfile, winner->sfile)) {
 		sprintf(key, "bk rm %s", gfile);
 		sys(key);
-		sccs_close(winner);
+		sccs_close(winner); /* for win32 */
 		sprintf(key, "bk mv %s %s", winner->gfile, gfile);
 		sys(key);
 	}
@@ -276,6 +276,8 @@ done:		mdbm_close(vals);
 		 * create a new file with the saved content.
 		 */
 		if (winner) {
+			sccs_free(winner);
+			winner = 0;
 			sprintf(key, "bk get -qeg %s", gfile);
 			sys(key);
 			sprintf(key, "sort -u < %s > %s", CTMP, gfile);

@@ -258,7 +258,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		 * So we open the file in read mode close it and re-open
 		 * it in write mode
 		 */
-		f = fopen(pendingFiles, "rt");
+		f = fopen(pendingFiles, "rb");
 		assert(f);
 		while (fnext(buf, f)) {
 			if (strneq(LOGGING_OK, buf, len) && buf[len] == '@') {
@@ -266,7 +266,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 			}
 		}
 		fclose (f);
-		f = fopen(pendingFiles, "at");
+		f = fopen(pendingFiles, "ab");
 		fprintf(f, "%s@+\n", LOGGING_OK);
 out:		fclose(f);
 	}

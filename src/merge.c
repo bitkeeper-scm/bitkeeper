@@ -34,7 +34,6 @@ merge_main(int ac, char **av)
 		return(1);
 	}
 	assert(fd == 1);
-	make_fd_uninheritable(fd1);
 	rc = spawnvp_ex(_P_WAIT, new_av[0], new_av);
 	/* restore parent's stdout */
 	close(1); dup2(fd1, 1);

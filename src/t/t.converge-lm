@@ -18,7 +18,7 @@ ME=$BK_USER@$BK_HOST
 export ME BK_USER BK_HOST
 NUM=0
 FILE=test$NUM
-HERE=`pwd`
+HERE=`bk pwd`
 
 echo $N Create repository ...........................................$NL
 echo "logging: logging@openlogging.org" > $HERE/c
@@ -189,10 +189,13 @@ echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
 JUNK=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
 J_UTC=`bk -R prs -hr1.0 '-d:UTC:\n' BitKeeper/etc/logging_ok`
 mv BitKeeper/etc/SCCS/s.logging_ok OLD
-sed "s|$JUNK BBB |$DATE BBB |" < OLD > BitKeeper/etc/SCCS/s.logging_ok
+sed "s|$JUNK BBB |$DATE BBB |" < OLD > X
+bk undos X > BitKeeper/etc/SCCS/s.logging_ok
 bk admin -z BitKeeper/etc/logging_ok
 mv SCCS/s.ChangeSet OLD2
-sed "s?BitKeeper/etc/logging_ok|$J_UTC?BitKeeper/etc/logging_ok|$UTC?" < OLD2 >  SCCS/s.ChangeSet
+sed "s?BitKeeper/etc/logging_ok|$J_UTC?BitKeeper/etc/logging_ok|$UTC?" \
+								< OLD2 >  X
+bk undos X > SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk rechksum -f ChangeSet 2> /dev/null
 bk -r check -a
@@ -320,11 +323,12 @@ if [ "$KEY" = "$KEY2" ]
 then	echo failed to delete original logging_ok file
 	exit 1
 fi
-sort <<EOF > DATA
+sort <<EOF > X
 $ME
 jane@kick.dork
 joe@blow.dork
 EOF
+bk undos X > DATA
 bk get $Q BitKeeper/etc/logging_ok
 cmp -s BitKeeper/etc/logging_ok DATA || {
 	echo failed to union data
@@ -406,10 +410,11 @@ test -d RESYNC && {
 	echo failed to use existing logging_ok, left RESYNC
 	exit 1
 }
-cat <<EOF > DATA
+cat <<EOF > X
 jane@kick.dork
 joe@blow.dork
 EOF
+bk undos X > DATA
 bk get $Q BitKeeper/etc/logging_ok
 cmp -s BitKeeper/etc/logging_ok DATA || {
 	echo failed to union data

@@ -95,6 +95,7 @@ sccs_rm(char *name, char *del_name, int useCommonDir)
 	sfile = name2sccs(name);
 	s = sccs_init(sfile, 0, 0);
 	assert(s && s->tree);
+	sccs_close(s);
 	rmName = sccs_rmName(s, useCommonDir);
 	if (del_name) strcpy(del_name, rmName);
 	error |= sccs_mv(sfile, rmName, 0, 1);
