@@ -56,7 +56,15 @@ cd clone
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
-echo OK
+P=`ls -l SCCS/s.ChangeSet`
+case "$P" in
+-r--r--r--*) echo OK
+	;;
+*)
+	echo failed
+	exit 1
+	;;
+esac
 echo $N Should not be able to resync unrelated repositories .........$NL
 cd ..
 bk setup -f -n'BitKeeper Test repo number two' -c$HERE/c project2

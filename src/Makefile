@@ -385,6 +385,7 @@ mkdiffs: mkdiffs.perl port/unix_platform.perl substvars
 	mv -f mkdiffs.T mkdiffs
 
 count_user: count_user.perl
+	-rm -f count_user
 	cp count_user.perl count_user
 	chmod +x count_user
 

@@ -246,7 +246,11 @@ done:	if (readn(0, buf, 10) != 10) {
 	}
 	if (extract) {
 		close(fd);
-		if (doModes) chmod(file, mode & 0777);
+		if (doModes) {
+			chmod(file, mode & 0777);
+		} else {
+			chmod(file, 0444);
+		}
 	}
 	unless (quiet) fprintf(stderr, "%s\n", file);
 	return (0);

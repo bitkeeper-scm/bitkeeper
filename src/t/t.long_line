@@ -128,8 +128,9 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check diffs with long line ..................................$NL
 cd $HERE/project/src
-diffs -h -r1.1 -r1.2 long1 | grep -v "^$" > diff
-diff long1_1.1.sav long1_1.2.sav > diff.ref
+diffs -h -r1.1 -r1.2 long1 > diff
+echo > diff.ref
+diff long1_1.1.sav long1_1.2.sav >> diff.ref
 diff diff diff.ref  
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
