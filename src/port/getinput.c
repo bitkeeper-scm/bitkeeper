@@ -31,7 +31,6 @@ sccs_getComments(char *file, char *rev, delta *n)
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
 		return (-1);
 	}
 	signal(SIGINT, abort_ci);
@@ -58,7 +57,6 @@ sccs_getComments(char *file, char *rev, delta *n)
 		sig(BLOCK, SIGINT);
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
 		return (-1);
 	}
 #endif
@@ -80,7 +78,6 @@ sccs_getHostName(char *file, char *rev, delta *n)
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
 		return (-1);
 	}
 	signal(SIGINT, abort_ci);
@@ -104,7 +101,6 @@ sccs_getHostName(char *file, char *rev, delta *n)
 		sig(BLOCK, SIGINT);
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
 		return (-1);
 	}
 #endif
@@ -127,7 +123,6 @@ sccs_getUserName(char *file, char *rev, delta *n)
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
 		return (-1);
 	}
 	signal(SIGINT, abort_ci);
@@ -151,7 +146,6 @@ sccs_getUserName(char *file, char *rev, delta *n)
 		sig(BLOCK, SIGINT);
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
 		return (-1);
 	}
 #endif
@@ -250,7 +244,6 @@ sccs_getComments(char *file, char *rev, delta *n)
 
 gotInterrupt:
 	fprintf(stderr, "\nCheck in aborted due to interrupt.\n");
-	sccs_freetree(n);
 	SetConsoleMode(fh, consoleMode); /* restore old mode */
 	fflush(stdin);
 	return (-1);
@@ -331,7 +324,6 @@ sccs_getHostName(char *file, char *rev, delta *n)
 
 gotInterrupt:
 	fprintf(stderr, "\nCheck in aborted due to interrupt.\n");
-	sccs_freetree(n);
 	SetConsoleMode(fh, consoleMode); /* restore old mode */
 	fflush(stdin);
 	return (-1);
@@ -414,7 +406,6 @@ sccs_getUserName(char *file, char *rev, delta *n)
 
 gotInterrupt:
 	fprintf(stderr, "\nCheck in aborted due to interrupt.\n");
-	sccs_freetree(n);
 	SetConsoleMode(fh, consoleMode); /* restore old mode */
 	fflush(stdin);
 	return (-1);
