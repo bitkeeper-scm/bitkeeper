@@ -1099,6 +1099,10 @@ proc r2c {} \
 	set c ""
 	set errorCode [list]
 
+	# XXX: When called from "View changeset", rev1 has the name appended
+	#      need to track down the reason -- this is a hack
+	set rev1 [lindex [split $rev1 "-"] 0]
+	#displayMessage "rev1=($rev1) file=($file)"
 	if {[info exists rev2]} {
 		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
 		while {[gets $revs r] >= 0} {
@@ -1873,6 +1877,7 @@ proc lineOpts {rev} \
 proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
+	global file
 
 	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
 	if {$srev != ""} {
@@ -1880,6 +1885,9 @@ proc startup {} \
 		histtool $fname "-$srev"
 		set rev1 [lineOpts $srev]
 		highlight $rev1 "old"
+		set file [exec bk sfiles -g $fname 2>$dev_null]
+		#displayMessage "fname=($fname) file=($file)"
+		.menus.cset configure -state normal 
 	} elseif {$rev1 == ""} {
 		histtool $fname "-$gc(hist.showHistory)"
 	} else {
