@@ -1,0 +1,159 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2001 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Larry McVoy
+# %K%
+
+# For each flag we have, make sure we can add and delete it if that is allowed.
+# Make sure we cannot change it if it is not allowed.
+
+MAYCHANGE="RCS YEAR4 SHELL EXPAND1 SCCS EOLN_NATIVE"
+MAYNOT="BITKEEPER CSETMARKED HASH SINGLE LONGKEY"
+
+no_logging project
+echo $N Creat initial file ..........................................$NL
+echo Yo yo yo yo > xflags
+bk new $Q xflags
+bk commit $Q -ywhatever
+echo OK
+
+echo $N Clear all the flags .........................................$NL
+for f in $MAYCHANGE
+do	bk admin -F$f xflags >/dev/null 2>&1
+done
+echo OK
+
+for f in $MAYCHANGE
+do	echo $N Set flag $f and make sure it is there .$NL
+	LEN=`echo $f | wc -c`
+	LEN=`expr 25 - $LEN`
+	while [ $LEN -gt 0 ]
+	do	echo $N .$NL
+		LEN=`expr $LEN - 1`
+	done
+	bk admin -f$f xflags || exit 1
+	bk flags xflags > FLAGS
+	grep -q $f FLAGS || {
+		echo flag $f not found
+		cat FLAGS
+		exit 1
+	}
+	echo OK
+	echo $N Clear flag $f and make sure it is gone .$NL
+	LEN=`echo $f | wc -c`
+	LEN=`expr 24 - $LEN`
+	while [ $LEN -gt 0 ]
+	do	echo $N .$NL
+		LEN=`expr $LEN - 1`
+	done
+	bk admin -F$f xflags || exit 1
+	bk flags xflags > FLAGS
+	grep -q $f FLAGS && {
+		echo flag $f found
+		exit 1
+	}
+	echo OK
+done
+
+bk flags xflags > START
+for f in $MAYNOT
+do	echo $N Make sure we can not change flag $f .$NL
+	LEN=`echo $f | wc -c`
+	LEN=`expr 27 - $LEN`
+	while [ $LEN -gt 0 ]
+	do	echo $N .$NL
+		LEN=`expr $LEN - 1`
+	done
+	bk admin -f$f xflags 2>/dev/null && exit 1
+	bk flags xflags > FLAGS
+	cmp -s FLAGS START || {
+		echo changed a flag that should not be changed
+		diff START FLAGS
+		exit 1
+	}
+	bk admin -F$f xflags 2>/dev/null && exit 1
+	bk flags xflags > FLAGS
+	cmp -s FLAGS START || {
+		echo changed a flag that should not be changed
+		diff START FLAGS
+		exit 1
+	}
+	echo OK
+done
+
+echo $N Make sure that the xflags command thinks things are OK ......$NL
+bk xflags -s xflags || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Commit, clone, make sure we get the same file ...............$NL
+bk commit $Q -ywhatever
+bk admin -z
+bk clone $Q -r1.1 . ../clone || exit 1
+cd ../clone
+bk pull $Q || exit 1
+bk admin -z
+cmp -s SCCS/s.xflags ../project/SCCS/s.xflags || {
+	echo files differ
+	diff SCCS/s.xflags ../project/SCCS/s.xflags
+	exit 1
+}
+bk xflags -s xflags || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Turn them all on at once, check it ..........................$NL
+CMD=""
+for i in $MAYCHANGE
+do	CMD="-f$i $CMD"
+done
+bk admin $Q $CMD xflags || {
+	echo admin failed
+	exit 1
+}
+bk xflags -s || {
+	echo xflags failed
+	bk xflags -n
+	exit 1
+}
+echo OK
+
+echo $N Turn them all off at once, check it .........................$NL
+CMD=""
+for i in $MAYCHANGE
+do	CMD="-F$i $CMD"
+done
+bk admin $Q $CMD xflags || {
+	echo admin failed
+	exit 1
+}
+bk xflags -s || {
+	echo xflags failed
+	bk xflags -n
+	exit 1
+}
+echo OK
+
+echo $N Rip out all the flags, put them back, check it ..............$NL
+grep -v cX SCCS/s.xflags | grep -v 'f x ' > SCCS/s.bad
+bk admin -z 
+bk xflags bad
+cmp -s SCCS/s.xflags SCCS/s.bad || {
+	echo failed to restore flags properly
+	#diff SCCS/s.xflags SCCS/s.bad
+	bk difftool SCCS/s.xflags SCCS/s.bad
+	exit 1
+}
+echo OK

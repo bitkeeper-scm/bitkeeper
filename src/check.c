@@ -44,6 +44,7 @@ private	int	poly;
 private	int	polyList;
 private	MDBM	*goneDB;
 private	char	ctmp[100];  	/* BitKeeper/tmp/bkXXXXXX */
+int		xflags_failed;	/* notification */
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
 
@@ -223,8 +224,12 @@ check_main(int ac, char **av)
 			fprintf(stderr, "check: trying to fix names...\n");
 			system("bk -r names");
 			system("bk idcache");
-			return (2);
 		}
+		if (xflags_failed) {
+			fprintf(stderr, "check: trying to fix xflags...\n");
+			system("bk -r xflags -f");
+		}
+		if (names || xflags_failed) return (2);
 	}
 	if (csetKeys.malloc) {
 		int	i;

@@ -184,6 +184,11 @@
 #define	X_MAYCHANGE	(X_RCS|X_YEAR4|X_SHELL|X_EXPAND1|X_SCCS|X_EOLN_NATIVE)
 					/* default set of flags */
 #define	X_DEFAULT	(X_BITKEEPER|X_EXPAND1|X_CSETMARKED|X_SCCS)
+#define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
+
+/* bits for the xflags checker - lovely having legacy files, eh? */
+#define	XF_DRYRUN	0x0001	/* say what would be done */
+#define	XF_STATUS	0x0002	/* just return status, for check/admin -h */
 
 /*
  * Encoding flags.
