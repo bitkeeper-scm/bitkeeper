@@ -485,10 +485,11 @@ private
 chk_eoln(sccs *s, int eoln_native)
 {
 	/*
-	 * Skip non-user file
+	 * Skip non-user file and binary file
 	 */
-	if (CSET(s) || 
-	    ((strlen(s->gfile) > 10) && strneq(s->gfile, "BitKeeper/", 10))) {
+	if (CSET(s) ||
+	    ((strlen(s->gfile) > 10) && strneq(s->gfile, "BitKeeper/", 10)) ||
+	    ((s->encoding != E_ASCII) && (s->encoding != E_GZIP))) {
 		return (0);
 	}
 
