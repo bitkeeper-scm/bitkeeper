@@ -122,7 +122,6 @@ rmKeys(MDBM *s)
 	MDBM	*dirs = mdbm_mem();
 	MDBM	*idDB;
 	kvpair	kv;
-	char	*gname, *gname_end;
 	project	*proj = proj_init(0);
 
 	verbose((stderr, "Reading keys...\n"));
@@ -137,24 +136,6 @@ rmKeys(MDBM *s)
 	}
 	verbose((stderr, "Removing files...\n"));
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
-		/* Filter out of list : important BK files */
-		for (gname = kv.key.dptr; *gname; gname++) {
-			if (*gname == '|') break;
-		}
-		assert(*gname == '|');
-		gname++;
-		for (gname_end = gname; *gname_end; gname_end++) {
-			if (*gname_end == '|') break;
-		}
-		assert(*gname_end == '|');
-		*gname_end = '\0';
-		if (streq(gname, GCHANGESET) || strneq(gname, "BitKeeper/", 10))
-		{
-			verbose((stderr, "Keeping %s\n", gname));
-			*gname_end = '|';
-			continue;
-		}
-		*gname_end = '|';
 		verbose((stderr, "%d removed\r", ++n));
 		sccs_keyunlink(kv.key.dptr, proj, idDB, dirs);
 	}
@@ -337,34 +318,29 @@ rebuildTags(sccs *s)
 				sym->metad = sym->d = 0;
 				continue;
 			}
-			/*
-			 * If symbol is on a real delta which is now deleted, 
-			 * make this delta into a 'R' type and ungone it.
-			 * Parent pointer will already be set correctly.
-			 */
-			if (md->type == 'D') {
-				sccs_deltaD2R(md);
-				md->flags &= ~D_GONE;
-			}
-			else {
-				assert(md->parent == d);
-				md->parent = d->parent;
-				md->pserial = d->pserial;
-			}
-			d = d->parent;
-			sym->d = d;
-			if (md->rev) free(md->rev);
-			md->rev = strdup(d->rev);
+			/* Move Tag to Parent */
+			assert(!(d->parent->flags & D_GONE));
+			d = sym->d = d->parent;
+		}
+		/* Move all tags directly onto delta, delete all "R" deltas */
+		if (md != d) {
+			md->flags |= D_GONE;
+			md = sym->metad = d;
+		}
+		/*
+		 * If this is the first symbol assigned to a delta,
+		 * wire into graph.  There could be many assigned.
+		 */
+		unless (md->flags & D_SYMBOLS) {
 			md->flags |= D_SYMBOLS;
-			d->flags |= D_SYMBOLS;
+			if (last) {
+				last->ptag = md->serial;
+			} else {
+				md->symLeaf = 1;
+			}
+			last = md;
+			md->symGraph = 1;
 		}
-		if (last) {
-			last->ptag = md->serial;
-		} else {
-			md->symLeaf = 1;
-		}
-		last = md;
-		md->symGraph = 1;
 	}
 	mdbm_close(symdb);
 }
@@ -516,6 +492,7 @@ private int
 getKeys(MDBM *m)
 {
 	char	buf[MAXKEY];
+	char	*gname, *gname_end;
 
 	while (fnext(buf, stdin)) {
 		unless (chop(buf) == '\n') {
@@ -523,6 +500,24 @@ getKeys(MDBM *m)
 			return (1);
 		}
 		assert(sccs_iskeylong(buf));
+		/* Filter out of list : important BK files */
+		for (gname = buf; *gname; gname++) {
+			if (*gname == '|') break;
+		}
+		assert(*gname == '|');
+		gname++;
+		for (gname_end = gname; *gname_end; gname_end++) {
+			if (*gname_end == '|') break;
+		}
+		assert(*gname_end == '|');
+		*gname_end = '\0';
+		if (streq(gname, GCHANGESET) || strneq(gname, "BitKeeper/", 10))
+		{
+			verbose((stderr, "Keeping %s\n", gname));
+			*gname_end = '|';
+			continue;
+		}
+		*gname_end = '|';
 		if (mdbm_store_str(m, buf, "", MDBM_INSERT)) {
 			fprintf(stderr, "Duplicate key?\nKEY: %s\n", buf);
 			return (1);

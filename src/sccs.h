@@ -766,7 +766,6 @@ int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
 		   char **syms);
-void	sccs_deltaD2R(delta *d);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, char *opts, FILE *);
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,

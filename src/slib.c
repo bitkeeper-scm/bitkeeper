@@ -523,53 +523,7 @@ atoiMult_p(char **p)
 	return (val);
 }
 
-/*
- * Convert a 'D' type delta to an 'R' type tag.  Used in csetprune
- * XXX: code is here to be close to freedelta so if one changes other changes
- */
-void
-sccs_deltaD2R(delta *d)
-{
-	assert(d && (d->type == 'D'));
-
-	/*
-	 * Keep rev, user, date, hostname, pathname, zone
-	 * destroy all other evidence
-	 */
-
-	d->flags &= ~(D_CSET|D_CKSUM|D_MODE|D_TEXT|D_XFLAGS);
-	d->merge = 0;
-	d->added = 0;
-	d->deleted = 0;
-	d->same = 0;
-
-	freeLines(d->comments);
-	d->comments = 0;
-	freeLines(d->mr);
-	d->mr = 0;
-	freeLines(d->text);
-	d->text = 0;
-
-	if (d->include) free(d->include);
-	d->include = 0;
-	if (d->exclude) free(d->exclude);
-	d->exclude = 0;
-	if (d->ignore) free(d->ignore);
-	d->ignore = 0;
-	if (d->symlink && !(d->flags & D_DUPLINK)) free(d->symlink);
-	d->symlink = 0;
-	d->flags &= ~ D_DUPLINK;
-	if (d->random) free(d->random);
-	d->random = 0;
-	if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
-		free(d->csetFile);
-	}
-	d->csetFile = 0;
-	d->type = 'R';
-}
-
 /* Free one delta.  */
-/* XXX: if change this, also change sccs_deltaD2R */
 private inline void
 freedelta(delta *d)
 {
