@@ -183,7 +183,7 @@ notify()
 		char notify_sfile[MAXPATH];	
 		sprintf(notify_sfile, "%setc/SCCS/s.notify", bk_dir);
 		if (exists(notify_sfile)) {
-			get(notify_sfile, 0, "-");
+			get(notify_sfile, SILENT, "-");
 			assert(exists(notify_file));
 		}
 	}
