@@ -135,11 +135,23 @@ proc searchstring {} \
 		searchreset
 		return
 	} elseif {("$string" != "") && ($search(dir) == ":")} {
+		set i [$search(widget) index "end-1c linestart"]
+		set end [lindex [split $i .] 0]
+		if {$string == "end" || $string == "last"} {
+			set string $end
+		}
+			
 		if {[string match {[0-9]*} $string]} {
-		    $search(widget) see "$string.0"
-		} elseif {[string match {[0-9]*} $string] || 
-		    ($string == "end") || ($string == "last")} {
-			$search(widget) see end
+			if {[$search(widget) compare "$string.0" > "end-1c"]} {
+				set msg "beyond end of data"
+				$search(status) configure -text $msg
+			} else {
+				$search(widget) tag remove search 1.0 end
+				$search(widget) tag add search \
+				    "$string.0" "$string.end+1c"
+				$search(widget) tag raise search
+				searchsee $string.0
+			}
 		} else {
 			$search(status) configure -text "$string not integer"
 		}
