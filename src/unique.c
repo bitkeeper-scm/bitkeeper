@@ -250,53 +250,34 @@ uniq_open()
 }
 
 /*
- * Return the timestamp for this key, or 0 if none found.
+ * Return true if this key is unique.
  */
-time_t
-uniq_time(char *key)
+unique(char *key)
 {
 	datum	k, v;
-	time_t	t;
 
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
 	v.dsize = 0;
 	v = mdbm_fetch(db, k);
-	unless (v.dsize) return (0);
-	if (sizeof(time_t) != v.dsize) {
-		fprintf(stderr, "KEY(%s) got value len %d\n", key, v.dsize);
-	}
-	assert(sizeof(time_t) == v.dsize);
-	memcpy(&t, v.dptr, sizeof(time_t));
-	return (t);
+	return (v.dsize == 0);
 }
 
 int
 uniq_update(char *key, time_t t)
 {
 	datum	k, v;
-	time_t	current = uniq_time(key);
 
-	if (current >= t) return (0);
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
 	v.dsize = sizeof(time_t);
 	v.dptr = (char *)&t;
-	if (mdbm_store(db, k, v, MDBM_REPLACE)) {
+	if (mdbm_store(db, k, v, MDBM_INSERT)) {
 		perror("mdbm key store");
 		return (-1);
 	}
 	dirty = 1;
 	return (0);
-}
-
-/*
- * Return true if the key exists.
- */
-int
-uniq_root(char *key)
-{
-	return (uniq_time(key) != 0);
 }
 
 /*

@@ -864,7 +864,7 @@ uniqRoot(sccs *s)
 
 	uniq_open();
 	shortKey(s, sccs_ino(s), buf);
-	while (uniq_root(buf)) {
+	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate root: %s\n", buf);
 		d->dateFudge++;
 		d->date++;
@@ -915,12 +915,10 @@ uniqDelta(sccs *s)
 		d->date += d->dateFudge;
 	}
 	shortKey(s, d, buf);
-	if ((last = uniq_time(buf)) && (last >= d->date)) {
+	while (!unique(buf)) {
 //fprintf(stderr, "COOL: caught a duplicate key: %s\n", buf);
-		while (d->date <= last) {
-			d->date++;
-			d->dateFudge++;
-		}
+		d->date++;
+		d->dateFudge++;
 		shortKey(s, d, buf);
 	}
 	uniq_update(buf, d->date);
