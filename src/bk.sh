@@ -357,20 +357,20 @@ _mvdir() {		# /* doc 2.0 */
 		exit 1;
 		;;
 	esac
-	if [ X$1 = X"--help" ]; then bk help mvdir; exit 0; fi
-	if [ X$2 = X ]; then bk help -s mvdir; exit 1; fi
-	if [ X$3 != X ]; then bk help -s mvdir; exit 1; fi
-	if [ ! -d $1 ]; then echo $1 is not a directory; exit 1; fi
-	if [ -e $2 ]; then echo $2 already exist; exit 1; fi
+	if [ X"$1" = X"--help" ]; then bk help mvdir; exit 0; fi
+	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
+	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
+	if [ ! -d "$1" ]; then echo $1 is not a directory; exit 1; fi
+	if [ -e "$2" ]; then echo $2 already exist; exit 1; fi
 	
 	bk -r check -a || exit 1;
 	# Win32 note: must use relative path or drive:/path
 	# because cygwin mv interpret /path relative to the mount tables.
 	# XXX TODO we should move this code to a C function
-	mkdir -p $2
-	rmdir $2
-	mv $1 $2
-	cd $2
+	mkdir -p "$2"
+	rmdir "$2"
+	mv "$1" "$2"
+	cd "$2"
 	bk sfiles -u | bk edit -q -
 	bk sfiles | bk delta -q -ymvdir -
 	bk idcache -q
