@@ -46,7 +46,9 @@ revs=`prs -hd:I: src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 # most NT system does not have rshd/sshd, it may have ssh/rsh client however
-if test "$PLATFORM" = "UNIX" && (type ssh >$DEV_NULL 2>&1 || type rsh >$DEV_NULL 2>&1) 
+if test "$PLATFORM" = "UNIX" && \
+	((type ssh >$DEV_NULL 2>&1 && ssh localhost "cd $HERE/project") || \
+	 (type rsh >$DEV_NULL 2>&1 && rsh localhost "cd $HERE/project")) 
 then
  echo $N Pull with explicit remote parent ............................$NL
  bk pull $Q localhost:$HERE/project || { echo failed; exit 1; }
