@@ -19,7 +19,7 @@ be excluded from the changeset via citool.
 Used to view the files in a changeset.  Shows the check-in comments and the 
 diffs for each file in the changeset.  
 You can get to a particular changeset by running
-.B histtool
+.B revtool
 on a file, finding and selecting a change in that file,
 then click on 
 .B "View changeset"
@@ -47,9 +47,9 @@ between two files and allows selecting either change.
 Used to find renames when importing a patch.  Invoked
 automatically when "bk import -tpatch" is run.
 .tp
-.B histtool
+.B revtool
 The primary tool for viewing file history and contents.  After citool,
-histtool will be the gui-tool you use most often - just about everything 
+revtool will be the gui-tool you use most often - just about everything 
 in this tool is clickable to get more information about changes. 
 
 .SH "SEE ALSO"
@@ -60,7 +60,7 @@ in this tool is clickable to get more information about changes.
 .SA fmtool 1
 .\".SA fm3tool 1
 .SA renametool 1
-.SA histtool 1
+.SA revtool 1
 .SH CATEGORY
 .B GUI-tools
 .br

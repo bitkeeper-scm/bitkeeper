@@ -89,7 +89,7 @@ rfuncs	m_funcs[] = {
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "l", "local", "use the mode on local file", m_local },
-    { "p", "sccstool", "graphical picture of the file history", res_sccstool },
+    { "p", "revtool", "graphical picture of the file history", res_revtool },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "remote", "use the mode on remote file", m_remote },
     { "x", "explain", "explain the choices", m_explain },

@@ -23,7 +23,7 @@ Used to view changesets.
 Shows the check-in comments and the  diffs of each file in a
 changeset.
 You can get to a particular changeset by running
-.B histtool
+.B revtool
 on a file, finding and selecting a change in that file,
 then click on 
 .B "View changeset"
@@ -47,7 +47,7 @@ Used to  find renames when importing a diff-style patch.
 Called automatically from
 .BR "bk import -tpatch" .
 .tp
-.B histtool
+.B revtool
 The primary tool for viewing file history and contents.  Probably 
 the second most popular GUI tool - just about everything in this tool is
 clickable to get more information about changes. 
@@ -55,7 +55,7 @@ clickable to get more information about changes.
 BitKeeper uses a configuration file called 
 .B .bkgui
 for the 
-configuration of the graphical tools such as citool, sccstool,
+configuration of the graphical tools such as citool, revtool,
 difftool, etc.  The configuration file is used to modify
 colors, fonts, and widget dimensions. 
 .LP
@@ -177,7 +177,7 @@ Color for warnings and messages.  Default:\ #b0b0e0
 .tp
 .B searchColor
 Highlight color for search matches. Used in difftool
-and histtool.  Default:\ yellow
+and revtool.  Default:\ yellow
 .tp
 .B selectColor
 Color of the current file in citool and csettool. Color of
@@ -365,7 +365,7 @@ The GUI configuration was designed and is maintained by Aaron Kushner.
 .SA csettool 1
 .SA difftool 1
 .SA helptool 1
-.SA histtool 1
+.SA revtool 1
 .SA fmtool 1
 .SA renametool 1
 .SH CATEGORY

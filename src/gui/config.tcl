@@ -73,22 +73,24 @@ proc getConfig {prog} \
 
 	set _d(rename.listHeight) 8
 
-	set _d(hist.canvasBG) #9fb6b8	   ;# graph background
-	set _d(hist.commentBG) lightblue   ;# background of comment text
-	set _d(hist.arrowColor) darkblue   ;# arrow color
-	set _d(hist.mergeOutline) darkblue ;# merge rev outlines
-	set _d(hist.revOutline) darkblue   ;# regular rev outlines
-	set _d(hist.revColor) #9fb6b8	   ;# unselected box fills
-	set _d(hist.tagColor) red	   ;# tag box fills
-	set _d(hist.selectColor) #adb8f6   ;# highlight color for selected tag
-	set _d(hist.dateColor) #181818	   ;# dates at the bottom of graph
-	set _d(hist.commentHeight) 5       ;# height of comment text widget
-	set _d(hist.textWidth) 92	   ;# width of text windows
-	set _d(hist.textHeight) 30	   ;# height of lower window
-	set _d(hist.showHistory) "1M"	   ;# History to show in graph on start
+	set _d(rev.canvasBG) #9fb6b8	  ;# graph background
+	set _d(rev.commentBG) lightblue   ;# background of comment text
+	set _d(rev.arrowColor) darkblue   ;# arrow color
+	set _d(rev.mergeOutline) darkblue ;# merge rev outlines
+	set _d(rev.revOutline) darkblue   ;# regular rev outlines
+	set _d(rev.revColor) #9fb6b8	  ;# unselected box fills
+	set _d(rev.localColor) green	  ;# local node (for resolve)
+	set _d(rev.remoteColor) red	  ;# remote node (for resolve)
+	set _d(rev.tagColor) red	  ;# tag box fills
+	set _d(rev.selectColor) #adb8f6   ;# highlight color for selected tag
+	set _d(rev.dateColor) #181818	  ;# dates at the bottom of graph
+	set _d(rev.commentHeight) 5       ;# height of comment text widget
+	set _d(rev.textWidth) 92	  ;# width of text windows
+	set _d(rev.textHeight) 30	  ;# height of lower window
+	set _d(rev.showHistory) "1M"	  ;# History to show in graph on start
 	# XXX: not documented yet
-	set _d(hist.savehistory) 5	   ;# Max number of files to save in
-					    #     file list
+	set _d(rev.savehistory) 5	  ;# Max number of files to save in
+					   #     file list
 
 	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
 
