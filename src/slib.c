@@ -10789,6 +10789,30 @@ skip:
 		error++;
 	}
 
+	if (patch && (d->type == 'D') && !(d->flags & D_ICKSUM))  {
+		fprintf(stderr,
+			"sccs_getInit: Warning: "
+			"%s: rev %s: Undefined delta checksum in patch\n",
+			sc->sfile, d->rev);
+#if 0
+		/*
+		 * Some really old repository e.g LMbench, have deltas with
+		 * no checksum field, (becuase the BITKEEPER flag is unset)
+		 * We must force zero checksum because it is part of the
+		 * delta key recorded in the ChangeSet file.
+		 * Do this only when we process a non-meta, null delta in
+		 * a patch, becuase regular INIT file omit the K line
+		 * and expect checksum to be generated when the delta is 
+		 * is created.
+		 */
+		if (!d->added && !d->deleted &&
+				     !d->same && !d->include && !d->exclude) {
+			d->sum = 0;
+			d->flags |= D_ICKSUM;
+
+#endif
+ 	}
+
 out:	if (d) {
 		unless (hasComments(d)) d->flags |= D_NOCOMMENTS;
 		unless (d->pathname) d->flags |= D_NOPATH;
