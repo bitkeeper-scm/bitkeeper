@@ -286,7 +286,7 @@ bk ci $Q -i -m'boo!' impostor
 bk co $Q impostor
 mv SCCS/s.impostor s.impostor
 mv impostor SCCS/s.impostor
-bk sfind | sort > SFILES
+bk sfind -a | sort > SFILES
 sort <<EOF > LIST
 BitKeeper/etc/SCCS/s.config
 SCCS/s.s.foo

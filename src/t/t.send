@@ -57,7 +57,7 @@ cd $HERE/project; bk -r clean
 cd $HERE/copy; bk -r clean
 cd $HERE
 rmdir project/BitKeeper/etc/.master
-rmdir project/BitKeeper/etc/.use_d_file
+rm -f project/BitKeeper/etc/SCCS/x.dfile
 rm -f project/BitKeeper/etc/SCCS/x.id_cache
 rm -f project/BitKeeper/etc/SCCS/d.config
 rm -f copy/BitKeeper/etc/SCCS/x.id_cache

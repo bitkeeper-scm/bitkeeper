@@ -245,6 +245,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		 * remove the d.file
 		 */
 		f = fopen(pendingFiles, "rt");
+		assert(f);
 		while (fgets(buf, sizeof(buf), f)) {
 			char *p, *q;
 
@@ -256,13 +257,20 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 			unlink(q);
 			free(q);
 		}
+		fclose(f);
+/*
+ * Do not enable this until
+ * new BK binary is fully deployed
+ */
+#ifdef NEXT_RELEASE
 		unless (opts.resync) {
-			sprintf(buf, "%setc/.use_d_file", BitKeeper);
-			mkdir(buf, 0777);
+			sprintf(buf, "%setc/SCCS/x.dfile", BitKeeper);
+			close(open(buf, O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
 		}
+#endif
 	}
-	unlink(commentFile);
-	unlink(pendingFiles);
+	if (unlink(commentFile)) perror(commentFile);
+	if (unlink(pendingFiles)) perror(pendingFiles);
 	notify();
 	s = sccs_init(s_cset, 0, 0);
 	assert(s);
