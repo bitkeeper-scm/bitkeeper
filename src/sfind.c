@@ -771,48 +771,6 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 #endif                                 
 
 	/*
-	 * Get all the gfiles
-	 */
-	dh = opendir(dir);
-	while (e = readdir(dh)) {
-#ifndef WIN32
-		/*
-		 * Linux 2.3.x NFS bug, skip repeats.
-		 */
-		if (lastInode == e->d_ino) continue;
-		lastInode = e->d_ino;
-#endif
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
-		if (patheq(e->d_name, "SCCS")) continue;
-
-		/*
-		 * Do not descend into another project root. e.g RESYNC
-		 */
-		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) return;
-
-		/*
-		 * Skip files with paths that are too long
-		 * pad = "/SCCS/s." = 8
-		 */
-		if ((dir_len + 8 + strlen(e->d_name)) >= MAXPATH) {
-			fprintf(stderr,
-			    "Warning: %s/%s name too long, skipped\n",
-			    dir, e->d_name);
-			continue;
-		}
-
-		concat_path(buf, dir, e->d_name);
-		if (isdir(buf)) {
-			enqueue(&dlist, e->d_name);
-		} else {
-			mdbm_store_str(gDB, e->d_name, "", MDBM_INSERT);
-		}
-	}
-	closedir(dh);
-	d_count++;
-	if (opts.progress) progress(1);
-
-	/*
 	 * Get all the SCCS/?.files
 	 */
 	while (e = readdir(sccs_dh)) {
@@ -855,6 +813,52 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 		}
 	}
 	closedir(sccs_dh);
+
+	/*
+	 * Get all the gfiles
+	 */
+	dh = opendir(dir);
+	while (e = readdir(dh)) {
+#ifndef WIN32
+		/*
+		 * Linux 2.3.x NFS bug, skip repeats.
+		 */
+		if (lastInode == e->d_ino) continue;
+		lastInode = e->d_ino;
+#endif
+		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
+		if (patheq(e->d_name, "SCCS")) continue;
+
+		/*
+		 * Do not descend into another project root. e.g RESYNC
+		 */
+		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
+			mdbm_close(gDB);
+			mdbm_close(sDB);
+			return;
+		}
+
+		/*
+		 * Skip files with paths that are too long
+		 * pad = "/SCCS/s." = 8
+		 */
+		if ((dir_len + 8 + strlen(e->d_name)) >= MAXPATH) {
+			fprintf(stderr,
+			    "Warning: %s/%s name too long, skipped\n",
+			    dir, e->d_name);
+			continue;
+		}
+
+		concat_path(buf, dir, e->d_name);
+		if (isdir(buf)) {
+			enqueue(&dlist, e->d_name);
+		} else {
+			mdbm_store_str(gDB, e->d_name, "", MDBM_INSERT);
+		}
+	}
+	closedir(dh);
+	d_count++;
+	if (opts.progress) progress(1);
 
 	/*
 	 * First eliminate as much as we can from SCCS dir;

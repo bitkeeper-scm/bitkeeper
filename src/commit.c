@@ -252,6 +252,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 #endif
 	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);
+	if (rc) return (rc); /* if commit failed do not send log */
 	notify();
 	s = sccs_init(s_cset, 0, 0);
 	assert(s);
