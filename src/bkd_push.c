@@ -8,7 +8,7 @@ cmd_push(int ac, char **av)
 	int	got = 0, n, c, verbose = 1;
 	int	gzip = 0;
 	char	buf[4096];
-	int	fd2, wfd, status;
+	int	fd2, wfd, status, clean_lock = 1;
 	static	char *prs[] =
 	    { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
@@ -109,6 +109,7 @@ cmd_push(int ac, char **av)
 			putenv("BK_INCOMING=SIGNALED");
 			OUT;
 		}
+		clean_lock = 0; /* takepacth already cleaned the lock */
 	} else {
 		if (got == 8) {
 			if (streq(buf, "@NADA!@\n")) {
@@ -128,6 +129,6 @@ out:
 	 * The write lock code respects the RESYNC dir, so that's OK.
 	 */
 	cmdlog_end(error);
-	if (error) repository_wrunlock(0);
+	if (clean_lock) repository_wrunlock(0);
 	exit(error);
 }

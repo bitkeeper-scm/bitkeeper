@@ -67,7 +67,7 @@ private globv	ignore;
 private void do_print(char state[4], char *file, char *rev);
 private void walk(char *dir, int level);
 private void file(char *f);
-private void sccsdir(char *dir, int level, DIR *sccs_dh);
+private void sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH]);
 private int chk_diffs(sccs *s);
 
 
@@ -422,14 +422,11 @@ walk(char *dir, int level)
 {
 	struct dirent   *e;
 	DIR	*dh, *sccs_dh;
-	char	*p, *buf, *root;
+	char	buf[MAXPATH], *p, *root;
 	fifo	dlist = {0, 0};
 #ifndef WIN32
         ino_t	lastInode = 0;
 #endif                                 
-	buf = malloc(MAXPATH);
-	assert(buf);
-
 	if (level == 0) {
 		char tmp[MAXPATH];
 
@@ -496,14 +493,12 @@ walk(char *dir, int level)
 			}
 		}
 		closedir(dh);
-		free(buf);
 		while (p = dequeue(&dlist)) {
 			walk(p, level + 1);
 			free(p);
 		}
 	} else {
-		free(buf);
-		sccsdir(dir, level, sccs_dh);
+		sccsdir(dir, level, sccs_dh, buf);
 	}
 
 done:	if (level == 0) {
@@ -632,7 +627,7 @@ append_rev(MDBM *db, char *name, char *rev, char *buf)
  * Called for each directory that has an SCCS subdirectory
  */
 private void
-sccsdir(char *dir, int level, DIR *sccs_dh)
+sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 {
 	MDBM	*gDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*sDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -641,7 +636,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 	struct dirent   *e;
 	DIR	*dh; /* dir handle */
 	int 	dir_len = strlen(dir);
-	char	*p, *gfile, buf[MAXPATH];
+	char	*p, *gfile;
 	datum	k;
 	sccs	*s = 0;
 	q_item	*i;
@@ -691,7 +686,6 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 
 	/*
 	 * Get all the SCCS/?.files
-	 * TODO compute sPath() for split root config
 	 */
 	while (e = readdir(sccs_dh)) {
 #ifndef WIN32

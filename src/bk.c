@@ -516,7 +516,10 @@ cmdlog_end(int ret)
 		unless (exists(path)) return;
 		sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
 		mkdirf(path);
-		unless (f = fopen(path, "a")) return;
+		unless (f = fopen(path, "a")) {
+			fprintf(stderr, "Cannot open %s\n", path);
+			return;
+		}
 	}
 	if (cmdlog_repo) trigger(cmdlog_buffer, "post", ret);
 	user = sccs_getuser();
