@@ -1100,7 +1100,7 @@ _setLog()
 	${BIN}get -seg ${BK_ETC}config
 	${BIN}get -kps ${BK_ETC}config | sed -e '/^logging:/a\
 logging_ok:	'$1 > ${BK_ETC}config
-	${BIN}delta -q -y'logging_ok: $1' ${BK_ETC}config
+	${BIN}delta -q -y"logging_ok: $1" ${BK_ETC}config
 	return 0
 }
 
@@ -1290,8 +1290,8 @@ _commit() {
 		fi
 		${BIN}sccslog -C - < ${TMP}list$$ > ${TMP}commit$$
 	else	if [ $FORCE = NO ]
-		then	N=`wc -l < ${TMP}list$$`
-			if [ $N -eq 0 ]
+		then	COUNT=`wc -l < ${TMP}list$$`
+			if [ $COUNT -eq 0 ]
 			then	[ $QUIET = YES ] || echo Nothing to commit >&2
 				${RM} -f ${TMP}list$$ ${TMP}commit$$
 				exit 0
