@@ -30,7 +30,6 @@ findkey_main(int ac, char **av)
 	project	*proj = 0;
 	look	look;
 	char	*name;
-	RANGE_DECL;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help findkey");
@@ -49,7 +48,7 @@ findkey_main(int ac, char **av)
 	 * Usage: findkey [opts | key] [files]
 	 */
 	bzero(&look, sizeof(look));
-	while ((c = getopt(ac, av, "b;c;e;h;kp;r;t;u;")) != -1) {
+	while ((c = getopt(ac, av, "b;c;e;h;kp;t;u;")) != -1) {
 		switch (c) {
 		    case 'b': look.random = optarg; break;
 		    case 'c': look.cksum = atoi(optarg); break;
@@ -59,7 +58,6 @@ findkey_main(int ac, char **av)
 		    case 'p': look.path = optarg; break;
 		    case 't': look.utc = utc(optarg); break;
 		    case 'u': look.user = optarg; break;
-		    RANGE_OPTS('d', 'r');
 		    default:
 usage:			system("bk help -s findkey");
 			return (1);
@@ -85,7 +83,6 @@ usage:			system("bk help -s findkey");
 			sccs_free(s);
 			continue;
 		}
-		RANGE("findkey", s, 3, 0);
 		findkey(s, look);
 next:		sccs_free(s);
 	}
@@ -122,7 +119,6 @@ findkey(sccs *s, look l)
 	char	key[MAXKEY];
 
 	for (d = s->table; d; d = d->next) {
-		unless (d->flags & D_SET) continue;
 		/* continues if no match, print if we get through all */
 		if (l.key) {
 			sccs_sdelta(s, d, key);
