@@ -552,6 +552,7 @@ _sendLog() {
 		*.*)		n=${REV#*.}
 				n=`expr $n - 10`;;
 		esac
+		if [ $n -le 0 ]; then n=0; fi
 		R=${REV%%.*}.$n..$REV
 	fi
 
@@ -877,7 +878,7 @@ _platformPath() {
 
 	BIN=
 	if [ X$BK_BIN != X -a -x $BK_BIN/sccslog ]
-	then	BIN="$BK_BIN/"
+	then	BIN="$BK_BIN"
 		export BK_BIN
 		return
 	fi

@@ -51,6 +51,8 @@ then
 	binary_data="$BK_BIN/ci.exe"
 	binary_data2="$BK_BIN/co.exe"
 	PATH=$BK_BIN:$PATH
+	BK_BIN="$BK_BIN/"
+	export PATH BK_BIN
 	USER=`getuser`
 else
 	# we are on a unix box
@@ -64,11 +66,12 @@ else
 	fi
 	DATE=/bin/date
 	DEV_NULL="/dev/null"
-	BK_BIN=`cd .. && pwd`
+	BK_BIN="`cd .. && pwd`"
 	if [ -d /usr/xpg4/bin ]
 	then  PATH=/usr/xpg4/bin:$PATH
 	fi
 	PATH=$BK_BIN:$PATH
+	BK_BIN="$BK_BIN/"
 	export PATH BK_BIN
 	binary_data=/bin/ls
 	binary_data2=/bin/rm
