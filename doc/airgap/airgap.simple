@@ -1,0 +1,177 @@
+.NH 1
+BitKeeper in classified environments
+.NH 2
+Abstract
+.LP
+Defense contractors and other customers with similar constraints may
+face situations wherein they need to maintain multiple versions of
+a source base without any network connectivity.   BitKeeper is well suited
+to this task because of its distributed nature.  We describe straight
+forward application of the BitKeeper system which is one possible 
+solution.  The effect of our solution is to have full functionality
+both in and out of the classified area.  The only associated cost is
+latency introduced by having outgoing changes reviewed and approved.
+.NH 2
+BitKeeper background
+.LP
+BitKeeper is a distributed configuration management system which
+supports full functionality with or without a network connection
+to other instances of the data.  It does this by replicating,
+and subsequently merging, all of the data including metadata.
+Other systems claim to be distributed but all they really mean
+is that there is a local copy of some version of the data and
+to update that, roll it backwards or forwards, or perform any
+other revision control operation, there must be a network connection
+to a centralized server.  
+.LP
+Since BitKeeper replicates all of the data and allows any user to 
+update any copy in any repository at any time 
+any problem which requires disconnected operation is ideal for
+BitKeeper. 
+(If the feature claims seem a bit pedantic,
+note that ClearCase's multisite product
+grants write access to each site but only on a site specific branch.
+I.e., if there are three multisite repositories, each has to be in a
+different branch or it is read only.  BitKeeper does not have this restriction.)
+The fact that there is no connection between two repositories
+in no way reduces the abilities of either of those repositories.
+Each repository may be cloned (copied) to create another repository
+for a new development effort, each repository may be rolled backwards
+to any/all earlier states, and each repository may be updated in 
+parallel.
+.NH 2
+Problem statement
+.LP
+In a classified environment, it is typically much easier to get information
+into the environment than it is to get it back out.  This holds true for
+source code.  The classified area is frequently the only realistic test
+environment, many projects are too expensive to replicate the test 
+environment outside the classified area; security issues may preclude
+the replication of the test environment even if cost does not.
+.LP
+The lack of data flow in both directions makes software development
+difficult across the boundaries.  Limitations in most SCM systems
+force one or the other environments to operate without SCM since
+the air gap makes it impossible for traditional systems to communicate.
+.NH 2
+Proposed solution
+.LP
+With BitKeeper, none of these problems are difficult.  The solution may be
+summarized as follows:
+.LI
+have two ``master'' repositories, one inside and one outside;
+.LI
+Periodically create a copy of the outside one and take it inside and
+use it to update the inside one.
+.LI
+Periodically generate a BitKeeper ``patch'' of changes made on the inside,
+have them reviewed, transfer them to the outside and apply them to the
+outside repository.
+.NH 3
+Solution diagram
+.LP
+.imgc gifs/airgap.gif
+.LP
+A flow chart of the proposed solution is above.  The following sections
+provide more detailed information about how this would work.
+.NH 3
+External environment
+.LP
+A master repository is created.  Each developer gets their own repository
+to work on their tasks; those repositories are labeled workspaces in
+the diagram.  Until such time as the work is ready to be tested, all
+development occurs outside, and is aggregated in the master.  So far,
+this is a very typical, fairly basic usage model for BitKeeper.
+.NH 3
+Creating the internal environment
+.LP
+Getting data into the classified zone is accomplished by putting the data
+on some sort of easily transferred media; since CD writers are cheap
+and ubiquitous, we'll assume that media.
+.LP
+On the outside, someone burns a CD containing a copy of the master
+repository.  This CD is hand carried into the classified environment and
+loaded onto a disk.  The created repository a copy of the external
+master, labeled "BK master 1 copy" in the diagram.
+Before any internal work starts, the copy of the master is cloned to
+an internal master, labeled "BK Master 2" in the diagram.  All internal
+work will be coordinated in the internal master.  The copy of the external
+master is not strictly required but we will see that it makes it trivial
+to update the external master in a moment.
+.NH 3
+Internal development
+.LP
+At this point testing may begin in the classified area.  There are no
+restrictions placed by the SCM system on the internal usage.  If 
+multiple tests are required, each engineer could clone a copy of the
+internal master and go to work.  If old versions are needed for a 
+demonstration, for comparison, or for debugging purposes, rollback to 
+any version is easily accomplished with a one line clone command.
+Other than updating, there is absolutely no difference in functionality
+on the inside versus the outside.  It is easy to test if this is true
+by cloning a copy of a repository onto a laptop, unplug the laptop from
+the network, and run some tests against the repository.  It will become
+apparent that there is no dependency on the network for any operation
+other than updates.
+.NH 3
+Updating the internal site
+.LP
+At any time, if it is known or suspected that the external site has
+advanced, the process for updating the internal site is as follows.
+Burn another CD of BK master 1.  Hand carry the CD into classified
+area and load it on disk.  Before loading it, remove the (possibly)
+out of date ``BK master 1 copy'' repository; the new CD is a superset
+of the internal copy.  After loading, do a
+.B bk pull
+from the
+master copy into ``BK master 2.''   After doing so, BK master 2 
+will contain everything that is on the outside merged with all work
+on the inside.
+.NH 3
+Moving changes back out
+.LP
+At some regular interval, any internal bug fixes need to be moved 
+to the unclassified area.
+This poses two problems:
+.LI
+How does one know what to send out?
+.LI
+How does one get this data reviewed and sent out?
+.LP
+The usefulness of the BK master 1 copy repository will become apparent
+as we examine how BitKeeper moves data.  A pull operation is actually 
+made up of several sub-operations.  Pull starts by comparing the 
+changeset identifiers in each repository to determine what changes
+are in the source but not in the destination.  The list, if any,
+is used by a program called makepatch which generates a special 
+sort of patch, one which contains both data and metadata.  These
+patches are quite small and are proportional to the size of the
+changes.  The patch is sent to the receiving side, which explodes
+it using a program called takepatch, and then resolves any conflicts
+and applies the changes using a program called resolve.
+.LP
+BitKeeper can be instructed to do only part of this process, and that is
+exactly what is needed here.  If a user does a 
+.B bk pull -r
+from
+the BK master 2 repository to the BK master 1 copy repository, then
+the patch will be left in the PENDING directory in the destination
+repository.  This patch is precisely what is needed to update the external
+repository.  Instead of updating the copy repository, we want to 
+have the patch reviewed, sent out, and then applied to the external
+master.
+.LP
+Note that none of these operations need be synchronous.  While it is
+annoying to have to wait for a review, BitKeeper will be perfectly happy
+to take the patch 2 or 3 weeks later, with 2 or 3 weeks more development
+in the external tree, and apply it.  The review puts a delay into the
+update process, but the whole thing may be pipelined such that there
+is a fairly constant stream of changes being sent out.
+.LP
+Also note that it is not necessary to wait for the changes to be applied
+to the external repository before updating the internal one again.  One
+or more updates of the internal repository may happen, either from 
+the external repository or from internal bug fixes, while the patch
+is in process with the reviewer.  A small amount of care should be taken
+not to send the reviewer the same data twice, but this is an easily 
+automated process.

@@ -195,7 +195,7 @@ sed "s?BitKeeper/etc/logging_ok|$J_UTC?BitKeeper/etc/logging_ok|$UTC?" \
 								< OLD2 >  X
 bk undos X > SCCS/s.ChangeSet
 bk admin -z ChangeSet
-bk rechksum -f ChangeSet 2> /dev/null
+bk checksum -f ChangeSet 2> /dev/null
 bk -r check -a
 NEW=`bk -R prs -hr1.0 '-dD :I: :D: :T:\n' BitKeeper/etc/logging_ok`
 if [ "$NEW" != "$DATE" ]

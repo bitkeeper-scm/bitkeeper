@@ -122,6 +122,6 @@ echo OK
 echo $N Verifying data checksum .....................................$NL
 bk co $Q -kr1.1 -Ggzipped gzipped
 A=`bk prs -r1.1 -hd:DSUM: gzipped`
-B=`bk chksum < gzipped`
+B=`bk checksum -s < gzipped`
 if [ $A -ne $B ]; then echo Failed - chksums $A $B differ.; exit 1; fi
 echo OK

@@ -153,6 +153,7 @@ check_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
+		errors |= sccs_resum(s, 0, 0, 0);
 		errors |= chk_gfile(s);
 		errors |= no_gfile(s);
 		errors |= readonly_gfile(s);

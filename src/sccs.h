@@ -756,6 +756,7 @@ delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_shortKey(sccs *s, delta *, char *);
+int	sccs_resum(sccs *s, delta *d, int diags, int dont);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);

@@ -48,7 +48,7 @@ usage:		fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
 		ret |= xflagsDefault(s, CSET(s), what);
 		ret |= xflags(s, s->tree, what);
 		if (!(what & XF_DRYRUN) && !(s->state & S_READ_ONLY)) {
-		    	sccs_resum(s);
+		    	sccs_newchksum(s);
 		}
 next:		sccs_free(s);
 	}

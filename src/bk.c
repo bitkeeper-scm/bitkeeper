@@ -39,7 +39,7 @@ int	bkd_main(int, char **);
 int	cat_main(int, char **);
 int	changes_main(int, char **);
 int	check_main(int, char **);
-int	chksum_main(int, char **);
+int	checksum_main(int, char **);
 int	clean_main(int, char **);
 int	cleanpath_main(int, char **);
 int	clone_main(int, char **);
@@ -58,6 +58,7 @@ int	export_main(int, char **);
 int	f2csets_main(int, char **);
 int	fdiff_main(int, char **);
 int	find_main(int, char **);
+int	findkey_main(int, char **);
 int	fix_main(int, char **);
 int	gca_main(int, char **);
 int	get_main(int, char **);
@@ -115,7 +116,6 @@ int	range_main(int, char **);
 int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
 int	receive_main(int, char **);
-int	rechksum_main(int, char **);
 int	renumber_main(int, char **);
 int	repo_main(int, char **);
 int	resolve_main(int, char **);
@@ -127,6 +127,7 @@ int	sane_main(int, char **);
 int	sccs2bk_main(int, char **);
 int	sccscat_main(int, char **);
 int	sccslog_main(int, char **);
+int	scompress_main(int, char **);
 int	send_main(int, char **);
 int	sendbug_main(int, char **);
 int	setlod_main(int, char **);
@@ -184,6 +185,7 @@ struct command cmdtbl[] = {
 	{"_mail", mail_main},
 	{"_probekey", probekey_main},
 	{"_prunekey", prunekey_main},
+	{"_scompress", scompress_main},		/* undoc? 2.0 */
 	{"_socket2pipe", socket2pipe_main},	/* for win32 only */
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
@@ -198,7 +200,7 @@ struct command cmdtbl[] = {
 	{"cat", cat_main},			/* doc 2.0 */
 	{"changes", changes_main},		/* doc 2.0 */
 	{"check", check_main},			/* doc 2.0 */
-	{"chksum", chksum_main},		/* doc 2.0 */
+	{"checksum", checksum_main},		/* doc 2.0 */
 	{"ci", delta_main},			/* doc 2.0 */
 	{"clean", clean_main},			/* doc 2.0 */
 	{"clone", clone_main},			/* doc 2.0 */
@@ -217,6 +219,7 @@ struct command cmdtbl[] = {
 	{"enter", delta_main},			/* doc 2.0 */
 	{"export", export_main},		/* doc 2.0 */
 	{"fdiff", fdiff_main},			/* undoc? 2.0 */
+	{"findkey", findkey_main},		/* doc 2.0 */
 	{"fix", fix_main},			/* doc 2.0 */
 	{"gca", gca_main},			/* doc 2.0 */
 	{"get", get_main},			/* doc 2.0 */
@@ -261,7 +264,7 @@ struct command cmdtbl[] = {
 	{"rcs2sccs", rcs2sccs_main},		/* doc 2.0 */
 	{"rcsparse", rcsparse_main},		/* doc 2.0 */
 	{"receive", receive_main},		/* doc 2.0 */
-	{"rechksum", rechksum_main},		/* doc 2.0 */
+	{"rechksum", checksum_main},		/* obsolete - alias */
 	{"renumber", renumber_main},		/* doc 2.0 */
 	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
 	{"resolve", resolve_main},		/* doc 2.0 */

@@ -36,11 +36,11 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	bkd_misc.o bkd_pull.o bkd_push.o bkd_pwd.o \
 	bkd_rootkey.o bkd_status.o bkd_version.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
-	check.o chksum.o clean.o cleanpath.o clone.o \
+	check.o checksum.o clean.o cleanpath.o clone.o \
 	comments.o commit.o compress.o converge.o \
 	cset.o cset_inex.o csets.o delta.o diffs.o \
 	dir_gif.o dirname.o export.o fdiff.o file_gif.o \
-	find.o fix.o g2sccs.o gca.o get.o gethelp.o \
+	find.o findkey.o fix.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o http.o \
 	isascii.o key2rev.o keysort.o kvfile.o level.o \
@@ -66,12 +66,12 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	port/sccs_root.o port/sig.o port/socket2pipe.o \
 	port/spawn.o prs.o pull.o purify.o push.o pwd.o \
 	r2c.o range.o rcs.o rcs2sccs.o rcsparse.o \
-	receive.o rechksum.o renumber.o resolve.o \
+	receive.o renumber.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \
 	resolve_renames.o resolve_tags.o rmdel.o \
-	root.o rset.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
+	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
 	slib.o status.o stripdel.o synckeys.o sys.o \
@@ -468,7 +468,7 @@ install-nolinks: all
 	@-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
 	@cp -f t/doit t/t.* t/setup t/x.chk_env $(BINDIR)/t
 	@rm -f $(BINDIR)/MANIFEST
-	@./bk chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup \
+	@./bk checksum -s $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup \
 		| sort > $(BINDIR)/MANIFEST
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
@@ -569,7 +569,6 @@ bkd_version.o:	bkd_version.c $(B) $(H) $(Z)
 bkusers.o:	bkusers.c $(H)
 changes.o:	changes.c $(H)
 check.o:	check.c $(H) range.h
-chksum.o:	chksum.c
 clean.o:	clean.c $(H)
 clone.o:	clone.c $(B) $(H) $(Z)
 comments.o:	comments.c $(H)
@@ -655,7 +654,7 @@ rcs.o:		rcs.c $(H)
 rcsparse.o:	rcsparse.c $(H) rcs.h
 rcs2sccs.o:	rcs2sccs.c $(H) rcs.h
 receive.o:	receive.c $(H)
-rechksum.o:	rechksum.c $(H)
+checksum.o:	checksum.c $(H)
 renumber.o:	renumber.c $(H)
 resolve.o:	resolve.c resolve.h $(H)
 resolve_contents.o:	resolve_contents.c resolve.h $(H)

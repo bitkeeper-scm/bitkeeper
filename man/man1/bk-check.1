@@ -21,7 +21,7 @@ nothing has gone wrong (and if it has, it gives you a rough idea of
 how to fix it).
 .LP
 Currently, the following are checked:
-.TP 2
+.TP 4
 \*(BU 
 for each file specified, make sure that deltas marked as recorded in
 the ChangeSet file are recorded in the ChangeSet file.
@@ -48,7 +48,9 @@ Ensures that the ChangeSet file and the repository
 agree on what files are in the repository.
 .tp
 .B \-c
-Check file (but not per delta) checksum.
+Check file and the per delta checksums.  Note that only the most recent
+delta's checksum is checked, see bk help checksum to check all of the
+checksums.
 .tp
 .B \-f
 Fix any fixable errors.
@@ -75,6 +77,6 @@ List files which are writable but not locked.
 .SA admin 1
 .SA gone 1
 .SA prs 1
-.SA rechksum 1
+.SA checksum 1
 .SH CATEGORY
 .B Repository

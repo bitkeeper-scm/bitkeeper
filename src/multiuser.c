@@ -46,7 +46,7 @@ multiuser_main(int ac, char **av)
 	free(s->tree->random);
 	s->tree->random = strdup(buf);
 	sccs_sdelta(s, s->tree, key);
-	sccs_resum(s);
+	sccs_newchksum(s);
 	sccs_free(s);
 	f = popen("bk sfiles", "r");
 	while (fnext(buf, f)) {
@@ -62,7 +62,7 @@ multiuser_main(int ac, char **av)
 		for (d = s->table; d; d = d->next) {
 			if (d->xflags & X_SINGLE) d->xflags &= ~X_SINGLE;
 		}
-		if (sccs_resum(s)) rc = 1;
+		if (sccs_newchksum(s)) rc = 1;
 		sccs_free(s);
 	}
 	pclose(f);

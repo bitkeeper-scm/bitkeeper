@@ -65,7 +65,7 @@ mv SCCS/s.ChangeSet SCCS/s-ChangeSet
 sed "s/$KEY/$BADKEY/" < SCCS/s-ChangeSet > X
 bk undos X > SCCS/s.ChangeSet
 bk admin -z ChangeSet
-bk rechksum -f ChangeSet 2>/dev/null
+bk checksum -f ChangeSet 2>/dev/null
 cd $HERE/copy
 bk pull -t $Q $HERE/project 2>/dev/null
 if [ -d RESYNC ]; then echo failed to abort the takepatch; exit 1; fi

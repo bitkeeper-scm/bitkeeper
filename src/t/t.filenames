@@ -132,7 +132,7 @@ bk edit $Q "a a a"
 echo "bar" >> "a a a"
 bk delta $Q -y"test" "a a a"
 bk commit $Q -a -yCset
-bk -R rechksum -c ChangeSet || { echo rechksum failed; exit 1; }
+bk -R checksum -c ChangeSet || { echo checksum failed; exit 1; }
 echo OK
 echo $N Test import of a file with spaces in the name ...............$NL
 cd $HERE

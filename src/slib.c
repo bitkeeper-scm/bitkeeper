@@ -5889,7 +5889,9 @@ out:			if (slist) free(slist);
 				if (lf_pend &&
 				    lf_pend == whatstate((const serlist*)state))
 				{
-					fputc('\n', out);
+					unless (flags & GET_SUM) {
+						fputc('\n', out);
+					}
 					if (flags & NEWCKSUM) sum += '\n';
 					lf_pend = 0;
 				}
@@ -5898,7 +5900,8 @@ out:			if (slist) free(slist);
 			if (hash) {
 				if (getKey(DB, buf, hashFlags|flags,
 							s->proj->root) == 1) {
-					unless (flags & GET_HASHONLY) {
+					unless (flags &
+					    (GET_HASHONLY|GET_SUM)) {
 						fnlputs(buf, out);
 					}
 					if (flags & NEWCKSUM) {
@@ -5912,7 +5915,7 @@ out:			if (slist) free(slist);
 			}
 			lines++;
 			if (lf_pend) {
-				fputc('\n', out);
+				unless (flags & GET_SUM) fputc('\n', out);
 				if (flags & NEWCKSUM) sum += '\n';
 				lf_pend = 0;
 			}
@@ -5981,14 +5984,17 @@ out:			if (slist) free(slist);
 			    case E_GZIP|E_UUENCODE:
 			    case E_UUENCODE: {
 				uchar	obuf[50];
-				int	n = uudecode1(e, obuf);
-
-				fwrite(obuf, n, 1, out);
+				int	n;
+				
+				unless (flags & GET_SUM) {
+					n = uudecode1(e, obuf);
+					fwrite(obuf, n, 1, out);
+				}
 				break;
 			    }
 			    case E_ASCII:
 			    case E_GZIP:
-				fnnlputs(e, out);
+				unless (flags & GET_SUM) fnnlputs(e, out);
 				if (flags & NEWCKSUM) sum -= '\n';
 				lf_pend = print;
 				if (sccs_expanded) free(e1);
@@ -6020,7 +6026,7 @@ out:			if (slist) free(slist);
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
 			unless (*n == 'N') {
-				fputc('\n', out);
+				unless (flags & GET_SUM) fputc('\n', out);
 				lf_pend = 0;
 				if (flags & NEWCKSUM) sum += '\n';
 			}
@@ -6030,7 +6036,8 @@ out:			if (slist) free(slist);
 		    ? printstate((const serlist*)state, (const ser_t*)slist)
 		    : visitedstate((const serlist*)state, (const ser_t*)slist);
 	}
-	if (d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
+	if (BITKEEPER(s) &&
+	    d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
 		delta	*z = getCksumDelta(s, d);
 
 		if (!z || ((sum_t)sum != z->sum)) {
@@ -9801,6 +9808,21 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 	return (enc | comp);
 }
 
+private void
+adjust_serials(delta *d, int amount)
+{
+	int	i;
+
+	d->serial += amount;
+	d->pserial += amount;
+	if (d->ptag) d->ptag += amount;
+	if (d->mtag) d->mtag += amount;
+	if (d->merge) d->merge += amount;
+	EACH(d->include) d->include[i] += amount;
+	EACH(d->exclude) d->exclude[i] += amount;
+	EACH(d->ignore) d->ignore[i] += amount;
+}
+
 /*
  * Cons up a 1.0 delta, initializing as much as possible from the 1.1 delta.
  * If this is a BitKeeper file with changeset marks, then we have to 
@@ -9811,7 +9833,6 @@ insert_1_0(sccs *s)
 {
 	delta	*d;
 	delta	*t;
-	int	i;
 	int	csets = 0;
 
 	/*
@@ -9819,14 +9840,7 @@ insert_1_0(sccs *s)
 	 */
 	for (t = d = s->table; d; d = d->next) {
 		if (d->flags & D_CSET) csets++;
-		d->serial++;
-		d->pserial++;
-		if (d->ptag) d->ptag++;
-		if (d->mtag) d->mtag++;
-		if (d->merge) d->merge++;
-		EACH(d->include) d->include[i]++;
-		EACH(d->exclude) d->exclude[i]++;
-		EACH(d->ignore) d->ignore[i]++;
+		adjust_serials(d, 1);
 		t = d;
 	}
 
@@ -9864,24 +9878,14 @@ void
 remove_1_0(sccs *s)
 {
 	delta	*d;
-	int	i;
 
 	assert(streq(s->tree->rev, "1.0"));
 	s->tree->flags |= D_GONE;
-	for (d = s->table; d; d = d->next) {
-		d->serial--;
-		d->pserial--;
-		if (d->ptag) d->ptag--;
-		if (d->mtag) d->mtag--;
-		if (d->merge) d->merge--;
-		EACH(d->include) d->include[i]--;
-		EACH(d->exclude) d->exclude[i]--;
-		EACH(d->ignore) d->ignore[i]--;
-	}
+	for (d = s->table; d; d = d->next) adjust_serials(d, -1);
 }
 
 int
-sccs_resum(sccs *s)
+sccs_newchksum(sccs *s)
 {
 	return (sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0));
 }
@@ -10203,6 +10207,114 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 #undef	OUT
 }
 
+private	char *name;
+
+private int
+scompress(delta *d)
+{
+	int	s;
+
+	unless (d) return (1);
+	s = scompress(d->next);
+	if (s != d->serial) {
+		printf("Remap %s:%d ->%d\n", name, d->serial, s);
+		d->serial = s;
+	}
+	return (d->serial + 1);
+}
+
+/*
+ * Remve any gaps in the serial numbers.
+ * Should be called after a stripdel.
+ */
+int
+sccs_scompress(sccs *s)
+{
+	FILE	*sfile = 0;
+	int	ser, error = 0, locked = 0, i, adjust;
+	char	*t;
+	char	*buf;
+	delta	*d, *e;
+	ser_t	*orig, *remap;
+
+	unless (locked = sccs_lock(s, 'z')) {
+		fprintf(stderr, "scompress: can't get lock on %s\n", s->sfile);
+		error = -1; s->state |= S_WARNED;
+out:
+		if (sfile) fclose(sfile);
+		if (locked) sccs_unlock(s, 'z');
+		debug((stderr, "scompress returns %d\n", error));
+		return (error);
+	}
+#define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
+
+	orig = calloc(sizeof(ser_t), s->nextserial);
+	remap = calloc(sizeof(ser_t), s->nextserial);
+	for (i = 0, d = s->table; d; d = d->next) orig[i++] = d->serial;
+
+	name = s->gfile;
+	scompress(s->table);
+	for (i = 0, d = s->table; d; d = d->next, i++) {
+		if (d->next) assert(d->serial == (d->next->serial + 1));
+		remap[orig[i]] = d->serial;
+	}
+
+	for (d = s->table; d; d = d->next) {
+		d->pserial = remap[d->pserial];
+		if (d->ptag) d->ptag = remap[d->ptag];
+		if (d->mtag) d->mtag = remap[d->mtag];
+		if (d->merge) d->merge = remap[d->merge];
+		EACH(d->include) d->include[i] = remap[d->include[i]];
+		EACH(d->exclude) d->exclude[i] = remap[d->exclude[i]];
+		EACH(d->ignore) d->ignore[i] = remap[d->ignore[i]];
+	}
+
+	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
+		fprintf(stderr,
+		    "scompress: can't create %s: ", sccsXfile(s, 'x'));
+		perror("");
+		OUT;
+	}
+	if (delta_table(s, sfile, 0)) {
+		sccs_unlock(s, 'x');
+		if (s->io_warned) OUT;
+		goto out;	/* we don't know why so let sccs_why do it */
+	}
+	assert(s->state & S_SOPEN);
+	seekto(s, s->data);
+	debug((stderr, "seek to %d\n", s->data));
+	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) zputs_init();
+	while (buf = nextdata(s)) {
+		unless (buf[0] == '\001') {
+			fputdata(s, buf, sfile);
+			continue;
+		}
+		ser = atoi(&buf[3]);
+		fputbumpserial(s, buf, remap[ser] - ser, sfile);
+	}
+	if (fflushdata(s, sfile)) {
+		sccs_unlock(s, 'x');
+		sccs_close(s), fclose(sfile), sfile = NULL;
+		if (s->io_warned) OUT;
+		goto out;
+	}
+	fseek(sfile, 0L, SEEK_SET);
+	fprintf(sfile, "\001h%05u\n", s->cksum);
+	sccs_close(s), fclose(sfile), sfile = NULL;
+	if (s->encoding & E_GZIP) zgets_done();
+	unlink(s->sfile);		/* Careful. */
+	t = sccsXfile(s, 'x');
+	if (rename(t, s->sfile)) {
+		fprintf(stderr,
+		    "admin: can't rename(%s, %s) left in %s\n",
+		    t, s->sfile, t);
+		OUT;
+	}
+	Chmod(s->sfile, 0444);
+	goto out;
+#undef	OUT
+}
 
 private void
 doctrl(sccs *s, char *pre, int val, char *post, FILE *out)

@@ -45,7 +45,7 @@ usage:		system("bk help sccs2bk");
 			errors |= 1;
 			continue;
 		}
-		fprintf(stderr, "%-80s\r", s->gfile);
+		fprintf(stderr, "Converting %-65s\r", s->gfile);
 		errors |= sccs2bk(s, csetkey);
 		s = 0;	/* freed by sccs2bk */
 	}
@@ -128,7 +128,6 @@ sccs2bk(sccs *s, char *csetkey)
 		s->defbranch = 0;
 	}
 	for (d = s->table; d->type == 'R'; d = d->next);
-	sccs_resum(s);
 	if (d->r[2]) {	/* it's a branch */
 		char	rev[MAXREV];
 
@@ -157,9 +156,11 @@ sccs2bk(sccs *s, char *csetkey)
 		s = sccs_reopen(s);
 		d = sccs_getrev(s, rev, 0, 0);
 		sccs_top(s)->merge = d->serial;
-		sccs_resum(s);
 	}
 
+	/* Generate the checksums */
+	for (d = s->table; d; d = d->next) sccs_resum(s, d, 0, 1);
+	sccs_newchksum(s);
 	sccs_free(s);
 	return (0);
 }

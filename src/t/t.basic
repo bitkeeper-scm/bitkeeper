@@ -54,7 +54,7 @@ do	case "$D" in
 	echo OK
 	echo $N Verifying data checksum .....................................$NL
 	A=`bk prs -r1.1 -hd:DSUM: ${D}foo`
-	B=`bk chksum < ../SAVE`
+	B=`bk checksum -s < ../SAVE`
 	if [ $A -ne $B ]; then echo Failed - chksums $A $B differ; exit 1; fi
 	echo OK
 	echo $N "cleaning ${D}" ${DOTS}...........................................$NL

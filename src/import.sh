@@ -461,11 +461,9 @@ import_RCS () {
 
 import_SCCS () {
 	cd "$2"
-	msg Making sure all files have pathnames, proper dates...
+	msg Making sure all files have pathnames, proper dates, and checksums...
 	bk sccs2bk -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
 	    exit 1
-	msg Adding checksums...
-	bk rechksum -f - < ${TMP}import$$
 	bk sfiles -P > /dev/null
 	test X$VERIFY = X && return
 	# XXX - this needs to be a C program

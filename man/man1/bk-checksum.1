@@ -1,0 +1,50 @@
+.so bk-macros
+.TH "bk checksum" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk checksum \- check and/or fix \*(BK checksums
+.SH SYNOPSIS
+.B bk checksum [
+.OPTopt \-s offset
+.Bc ] [-fv]
+.BKARGS
+.SH DESCRIPTION
+\*(BK has more integrity checksums than the original \*(SC had
+(\*(SC had one over the whole s.file).
+\*(BK maintains a checksum which is compatible with \*(SC and
+also a set of new checksums, one per delta.
+This command is typically used to check and/or regenerate the
+per delta checksums.
+Without any options, the default behaviour is to just check each
+checksum warn about any checksums that are missing or incorrect.
+This command may also be used to print a list of checksums of
+arbitrary data, see the -s option.
+.SH WARNING
+The per delta checksums are part of the delta keys which are contained in 
+the ChangeSet file.  These keys are part of the metadata which \*(BK uses
+to group deltas into changesets.  If the checksums are changed, the checksums
+in the ChangeSet file must be correspondingly changed, and the process
+repeated for each copy of the repository.  Needless to say, we do not
+encourage the use of this command with the
+.B \-f 
+option unless you are sure of what you are doing.
+.SH OPTIONS
+.TP 10
+.B \-f
+fix any missing or incorrect checksums.
+.tp
+.OPTopt \-s off
+generate and print the \*(SC style 16 bit unsigned checksum starting
+at offset
+.BR off .
+If 
+.B off 
+is 8, then this generates the same checksum as the per file checksum.
+If there are no file arguments, reads data from stdin (note: differs from
+other options which obey the normal \*(BK file expansion rules).
+.tp
+.B \-v
+be verbose.
+.SH "SEE ALSO"
+.SA check 1
+.SH CATEGORY
+.B Admin

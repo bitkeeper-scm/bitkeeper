@@ -1,0 +1,41 @@
+.so bk-macros
+.TH "bk findkey" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk findkey \- look for keys in files
+.SH SYNOPSIS
+.B bk findkey [opts | key] 
+.BKARGS
+.SH DESCRIPTION
+.B bk findkey
+may be used to look for keys in one or more files.  
+.LP
+Either entire keys or one or more portions of a key may be specified.
+Each delta in each file that matches all specified parts is listed.
+.SH OPTIONS
+.if t .TP
+.if n .TP 1.2i
+.OPTreq \-b random
+specify the random bits part of a key.
+.tp
+.OPTreq \-c chksum
+specify the checksum part of a key.
+.tp
+.OPTreq \-e email
+specify the user@host.domain part of a key.
+.tp
+.OPTreq \-h h.dom
+specify the host.domain part of a key.
+.tp
+.OPTreq \-p path
+specify the path part of a key.
+.tp
+.OPTreq \-t utc
+specify the timestamp part of a key.  Date formats accepted are
+either YYYYMMDDHHMMSS or YYYY/MM/DD\ HH:MM:SS.
+.tp
+.OPTreq \-u user
+specify the username part of a key.
+.SH "SEE ALSO"
+.SA prs 1
+.SH CATEGORY
+.B File
