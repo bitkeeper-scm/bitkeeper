@@ -73,6 +73,17 @@ bk delta $Q -y2 foo.c
 bk commit $Q -y2 || { echo failed; exit 1; }
 echo OK
 
+if [ X$BK_TESTGUI != X ]; then
+    echo $N citool w/trivial triggers ...................................$NL
+    cd $HERE/project/src
+    bk get $Q -e foo.c
+    echo delta three >> foo.c
+    bk delta $Q -y2 foo.c
+    bk citool
+    echo OK
+fi
+
+
 echo $N Pull w/trivial triggers .....................................$NL
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
@@ -108,10 +119,20 @@ echo OK
 echo $N Commit w/failure triggers ...................................$NL
 cd $HERE/project/src
 bk get $Q -e foo.c
-echo delta two >> foo.c
+echo delta four >> foo.c
 bk delta $Q -y2 foo.c
 bk commit $Q -y2 && { echo failed; exit 1; }
 echo OK
+
+if [ X$BK_TESTGUI != X ]; then
+    echo $N citool w/failure triggers ...................................$NL
+    cd $HERE/project/src
+    bk get $Q -e foo.c
+    echo delta five >> foo.c
+    bk delta $Q -y2 foo.c
+    bk citool
+    echo OK
+fi
 
 echo $N Pull w/failure triggers .....................................$NL
 cd $HERE/copy

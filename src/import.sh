@@ -41,7 +41,7 @@ import() {
 	PARALLEL=1
 	VERIFY=-h
 	CUTOFF=
-	while getopts c:efHij:l:LrS:t:v opt
+	while getopts c:efHij:l:LrS:t:vq opt
 	do	case "$opt" in
 		c) CUTOFF=-c$OPTARG;;
 		e) EX=YES;;
@@ -54,6 +54,7 @@ import() {
 		S) SYMBOL=-S$OPTARG;;
 		r) RENAMES=NO;;
 		t) TYPE=$OPTARG;;
+		q) QUIET=-q;;
 		v) QUIET=;;
 		esac
 	done
