@@ -8,6 +8,19 @@ private	void	rmDir(char *);
 private	int	mv(char *, char *);
 private	int	update_idcache(sccs *s, char *old, char *new);
 
+private char *
+mkXfile(char *sfile, char type)
+{
+	char *p, *tmp;
+
+	tmp = strdup(sfile);
+	p = strrchr(tmp, '/');
+	p = p ? &p[1]: sfile;
+	assert(*p == 's');
+	*p = type;
+	return (tmp);
+}
+
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
@@ -64,6 +77,18 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	}
 
 	error = mv(s->sfile, sfile);
+
+	/*
+	 * move the d.file
+	 */
+	p = mkXfile(s->sfile, 'd');
+	if (!error && exists(p)) {
+		q = mkXfile(sfile, 'd');
+		error = mv(p, q);
+		free(q);
+	}
+	free(p);
+
 //fprintf(stderr, "mv(%s, %s) = %d\n", s->sfile, sfile, error);
 	if (!error && (error = update_idcache(s, oldpath, newpath))) {
 		fprintf(stderr, "Idcache failure\n");
@@ -72,12 +97,8 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	/* This is kind of bogus, we don't move the sfile back. */
 	if (!error && exists(s->gfile)) error = mv(s->gfile, gfile);
 	if (HAS_PFILE(s) && !error) {
-		p = strrchr(sfile, '/');
-		p = p ? &p[1]: sfile;
-		assert(*p == 's');
-		*p = 'p';
-		error = mv(s->pfile, sfile);
-		*p = 's';
+		error = mv(s->pfile, q = mkXfile(sfile, 'p'));
+		free(q);
 	}
 	if (error) goto out;
 
