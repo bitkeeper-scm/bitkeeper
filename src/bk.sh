@@ -339,12 +339,14 @@ _csets() {		# /* doc 2.0 */
 	then	echo Viewing RESYNC/BitKeeper/etc/csets-in
 		cd RESYNC
 		bk changes -nd:I: - < BitKeeper/etc/csets-in |
-		    exec bk csettool "$@" -
+		    bk csettool "$@" -
+		exit 0
 	fi
 	if [ -f BitKeeper/etc/csets-in ]
 	then	echo Viewing BitKeeper/etc/csets-in
 		bk changes -nd:I: - < BitKeeper/etc/csets-in |
-		    exec bk csettool "$@" -
+		    bk csettool "$@" -
+		exit 0
 	fi
 	echo "Can not find csets to view."
 	exit 1
