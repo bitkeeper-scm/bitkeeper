@@ -209,6 +209,23 @@ bk -r check -a
 bk lock -U
 echo OK
 
+echo $N Check that missing edited gfile does not abort takepatch ....$NL
+cd $HERE/project
+echo "foo" > aaa
+bk new $Q aaa
+bk commit $Q -y'add aaa' aaa
+bk clone $Q $HERE/project $HERE/proj_takepatch
+bk edit $Q aaa
+echo "bar" >> aaa
+bk ci $Q -y'add bar' aaa
+bk commit $Q -y'add bar to aaa' aaa
+bk makepatch $Q -r+ > $HERE/patch
+cd $HERE/proj_takepatch
+bk edit $Q aaa
+rm aaa
+bk takepatch -a < $HERE/patch || { echo takepatch failed >&2; exit 1; }
+echo OK
+
 #echo $N Test for path conflict ......................................$NL
 #cd $HERE/proj_log
 #bk undo $Q -f -r1.2.1.1,1.3
