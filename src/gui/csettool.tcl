@@ -6,6 +6,10 @@ proc next {} \
 {
 	global	diffCount lastDiff DiffsEnd
 
+	if {$diffCount == 0} {
+		nextFile
+		return
+	}
 	if {[visible $DiffsEnd($lastDiff)] == 0} {
 		Page "yview" 1 0
 		return
@@ -22,6 +26,10 @@ proc prev {} \
 {
 	global	Diffs DiffsEnd lastDiff diffCount lastFile
 
+	if {$diffCount == 0} {
+		prevFile
+		return
+	}
 	if {[visible $Diffs($lastDiff)] == 0} {
 		Page "yview" -1 0
 		return
@@ -658,8 +666,8 @@ proc widgets {} \
 	    -relief groove -borderwid 1
 	.filelist.t tag configure cset -background #c0c0c0
 	.sccslog.t tag configure cset -background #c0c0c0
-	.sccslog.t tag configure file_tag -background #b0b0f0 \
-	    -relief groove -borderwid 1
+	#.sccslog.t tag configure file_tag -background #b0b0f0
+	.sccslog.t tag configure file_tag -underline true
 }
 
 # Set up keyboard accelerators.
