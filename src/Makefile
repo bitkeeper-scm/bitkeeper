@@ -150,7 +150,7 @@ default:
 	then PAGER="less -E"; \
 	else PAGER=more; \
 	fi; \
-	bk get -qp HEADER LICENSE BUILD.txt | $${PAGER}
+	(bk cat HEADER; bk help bksrc; bk cat BUILD.txt) | $${PAGER}
 
 all: $(ALL)
 
