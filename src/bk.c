@@ -1024,6 +1024,11 @@ find_wish()
 	static char wish_path[MAXPATH];
 	int more = 1;
 
+#ifdef	__APPLE__
+	strcpy(wish_path,
+	    "/Applications/Wish Shell.app/Contents/MacOS/Wish Shell");
+	if (exists(wish_path)) return (wish_path);
+#endif
 	p  = getenv("PATH");
 	if (p) {;
 		sprintf(path, "%s%c/usr/local/bin", p, PATH_DELIM);

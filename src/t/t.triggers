@@ -18,18 +18,21 @@ else
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
 fi
 
+DASHA=
+test X`uname -s` = XDarwin && DASHA=-a
+
 echo $N Check commit trigger environment variables ..................$NL
 cd $HERE
 no_logging project
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-commit <<EOF
 #!/bin/sh
-set | grep BK | sort > $HERE/pre-commit
+set | grep $DASHA BK | sort > $HERE/pre-commit
 exit 0
 EOF
 cat > BitKeeper/triggers/post-commit <<EOF
 #!/bin/sh
-set | grep BK | sort > $HERE/post-commit
+set | grep $DASHA BK | sort > $HERE/post-commit
 exit 0
 EOF
 chmod +x BitKeeper/triggers/*
@@ -115,12 +118,12 @@ echo OK
 echo $N Make sure clone is passed the right variables ...............$NL
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/sh
-set | grep BK | sort > $HERE/pre-outgoing
+set | grep $DASHA BK | sort > $HERE/pre-outgoing
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/sh
-set | grep BK | sort > $HERE/post-outgoing
+set | grep $DASHA BK | sort > $HERE/post-outgoing
 EOF
 chmod +x BitKeeper/triggers/*
 cd $HERE
@@ -162,7 +165,7 @@ echo $N Make sure pull is passed the right variables ................$NL
 cd project
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/sh
-set | grep BK | sort > $HERE/pre-outgoing
+set | grep $DASHA BK | sort > $HERE/pre-outgoing
 cp \$BK_CSETLIST $HERE/CSETS
 exit 1
 EOF
@@ -196,7 +199,7 @@ cd $HERE/clone
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-incoming <<EOF
 #!/bin/sh
-set | grep BK | sort > $HERE/pre-incoming
+set | grep $DASHA BK | sort > $HERE/pre-incoming
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -219,7 +222,7 @@ cd $HERE/clone
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
-set | grep BK | sort > $HERE/pre-resolve
+set | grep $DASHA BK | sort > $HERE/pre-resolve
 pwd > $HERE/PWD
 exit 1
 EOF
@@ -300,7 +303,7 @@ rm BitKeeper/triggers/* $HERE/changes
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/sh
 bk changes - < \$BK_CSETLIST > $HERE/changes
-set | grep BK | sort -u > $HERE/post-incoming
+set | grep $DASHA BK | sort -u > $HERE/post-incoming
 EOF
 chmod +x BitKeeper/triggers/*
 bk pull $Q || {
@@ -332,7 +335,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-incoming <<EOF
 #!/bin/sh
 echo I am the remote pre-incoming trigger and I am failing
-set | grep BK | sort > $HERE/pre-incoming
+set | grep $DASHA BK | sort > $HERE/pre-incoming
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -369,7 +372,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
 echo pre-resolve failing
-set | grep BK | sort >> $HERE/pre-resolve
+set | grep $DASHA BK | sort >> $HERE/pre-resolve
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -612,7 +615,7 @@ cd $HERE/project/BitKeeper/triggers
 rm -f *
 bk undos > pre-incoming <<EOF
 #! /bin/sh
-set | grep BK_STATUS
+set | grep $DASHA BK_STATUS
 EOF
 cp pre-incoming pre-outgoing
 

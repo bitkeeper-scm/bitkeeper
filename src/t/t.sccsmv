@@ -276,3 +276,21 @@ else
     fi
     echo OK
 fi
+echo $N Test mv of directory ........................................$NL
+cd $HERE
+no_logging src
+mkdir foo
+cd foo
+echo bar > bar
+bk new $Q bar || exit 1
+mkdir sub1
+cd sub1
+echo sub > sub
+bk new $Q sub || exit 1
+cd ../..
+bk mv foo foo2 || exit 1
+if [ -f foo/sub1/SCCS/s.sub ]; then
+	echo 'failed (bug 2001-06-15-002)'
+else
+	echo OK
+fi

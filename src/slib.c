@@ -8821,6 +8821,13 @@ out:		sccs_unlock(s, 'z');
 			perror(s->gfile);
 			goto out;
 		}
+	} else if (S_ISLNK(s->mode)) {
+		if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
+			fprintf(stderr, 
+			    "%s: symlinks should not use BINARY mode!\n",
+			    s->gfile);
+			goto out;
+		}
 	}
 
 	if (HASGRAPH(s)) {
