@@ -12279,8 +12279,10 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "CSETKEY")) {
+		char key[MAXKEY];
 		unless (d->flags & D_CSET) return (nullVal);
-		if (out) sccs_pdelta(s, d, out);
+		sccs_sdelta(s, d, key);
+		fs(key);
 		return (strVal);
 	}
 
@@ -12621,10 +12623,13 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "LODKEY")) {
+		char key[MAXKEY];
+
 		while (d && d->r[2]) d = d->parent;
 		while (d && (d->r[1] != 1)) d = d->parent;
 		if (d) {
-			if (out) sccs_pdelta(s, d, out);
+			sccs_sdelta(s, d, key);
+			fs(key);
 			return (strVal);
 		}
 		return (nullVal);
