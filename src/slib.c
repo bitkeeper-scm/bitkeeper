@@ -11346,9 +11346,14 @@ sccs_resolveFiles(sccs *s)
 
 	/*
 	 * If we have no conflicts, then make sure the paths are the same.
+	 * What we want to compare is whatever the tip path is with the
+	 * whatever the path is in the most recent delta in this LOD.
+	 * XXX - Rick, I don't do the lod stuff yet.
 	 */
 	unless (b) {
-		for (p = a->parent; p && (p->flags & D_REMOTE); p = p->parent);
+		for (p = s->table;
+		    p && ((p->type == 'R') || (p->flags & D_REMOTE));
+		    p = p->next);
 		if (!p || streq(p->pathname, a->pathname)) {
 			free(lodmap);
 			return (0);
