@@ -216,6 +216,11 @@ proc readFiles {L Ln R Rn} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
 
+	if {![file exists $L] || ![file exists $R]} {
+		#XXX: display dialogue box on NT explaining that files don't
+		# exist
+		return
+	}
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
  	set t [clock format [file mtime $L] -format "%r %D"]
@@ -482,14 +487,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
 	    pack .menu.reread -side left
-	    pack .menu.prev -side left
+	    pack .menu.prev -side left -fill y 
 	    pack .menu.dot -side left
-	    pack .menu.next -side left
+	    pack .menu.next -side left -fill y
 	    pack .menu.prompt -side left
 	    pack $search(text) -side left
-	    pack .menu.searchPrev -side left
+	    pack .menu.searchPrev -side left -fill y
 	    pack .menu.searchClear -side left
-	    pack .menu.searchNext -side left
+	    pack .menu.searchNext -side left -fill y
 	    pack $search(status) -side left -expand 1 -fill x
 
 	grid .menu -row 0 -column 0 -sticky ew

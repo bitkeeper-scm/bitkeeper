@@ -1328,10 +1328,10 @@ proc widgets {fname} \
 	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
-			-side left
+			-side left -fill y
 	    } else {
 		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.mb .menus.cset -side left
+			.menus.mb .menus.cset -side left -fill y
 	    }
 
 	frame .p
@@ -1482,6 +1482,7 @@ proc widgets {fname} \
 	bindtags $w(aptext) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
 
+	wm deiconify .
 	focus $w(graph)
 	. configure -background $gc(BG)
 }
@@ -1510,8 +1511,7 @@ proc histtool {fname R} \
 	set bad 0
 	set file [exec bk sfiles -g $fname 2>$dev_null]
 	if {"$file" == ""} {
-		puts stderr "No such file \"$fname\" rev=($R)"
-		exit 1
+		fatalMessage "No such file \"$fname\" rev=($R)"
 	}
 	if {[catch {exec bk root $file} proot]} {
 		wm title . "histtool: $file $R"
@@ -1612,12 +1612,17 @@ proc lineOpts {rev} \
 	return $rev
 }
 
+wm withdraw .
 init
 arguments
 if {$fname == ""} {
 	cd2root
 	# This should match the CHANGESET path defined in sccs.h
 	set fname ChangeSet
+	catch {exec bk sane} err
+	if {[lindex $errorCode 2] == 1} {
+		fatalMessage "$err"
+	}
 }
 widgets $fname
 histtool $fname "-$gc(hist.showHistory)"
