@@ -244,10 +244,6 @@ mail(char *to, char *subject, char *file)
 		0
 	};
 	
-/*XXXXXXXXXXXXXXXX */
-to ="awc@bitmover.com";
-/*XXXXXXXXXXXXXXX */
-
 	if (streq("BitKeeper Test repository", project_name()) &&
 	    (bkusers(1,1) <= 5)) {
 		return;

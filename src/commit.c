@@ -24,7 +24,7 @@ main(int ac, char **av)
 
 	platformInit();
 
-	sprintf(commit_file, "%s/commit%d", TMP_PATH, getpid());
+	sprintf(commit_file, "%s/bk_commit%d", TMP_PATH, getpid());
 	while ((c = getopt(ac, av, "dfFLRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'd': 	doit = 1; break;
@@ -41,13 +41,13 @@ main(int ac, char **av)
 				make_comment(optarg);
 				break;
 		    case 'Y':	doit = 1; getcomment = 0;
-				cp_comment(optarg);
+				strcpy(commit_file, optarg);
 				break;
 		}
 	}
 	cd2root();
 	unless(resync) remark(quiet);
-	sprintf(list, "%s/list%d", TMP_PATH, getpid());
+	sprintf(list, "%s/bk_list%d", TMP_PATH, getpid());
 	sprintf(buf, "%ssfiles -CA > %s", bin, list);
 	if (system(buf) != 0) {
 		unlink(list);
@@ -217,14 +217,5 @@ make_comment(char *cmt)
 	}
 	write(fd, cmt, strlen(cmt));
 	close(fd);
-}
-
-void
-cp_comment(char *file)
-{
-	char buf[MAXLINE];
-
-	sprintf(buf, "cp %s %s", file, commit_file);
-	system(buf);
 }
 
