@@ -15,6 +15,7 @@ usage: prs [-abhmMv] [-c<date>] [-C<rev>] [-r<rev>] [files...]\n\n\
     -M		do not include branch deltas which are not merged\n\
     -o		print the set of not specified deltas\n\
     -r<rev>	Specify a revision, or part of a range.\n\
+    -x<rev>	exclude rev from the selection in -r.\n\n\
     -v		Complain about SCCS files that do not match the range.\n\n\
     Note that <date> may be a symbol, which implies the date of the\n\
     delta which matches the symbol.\n\n\
@@ -34,7 +35,7 @@ prs_main(int ac, char **av)
 	int	flags = 0;
 	int	opposite = 0;
 	int	c;
-	char	*name;
+	char	*name, *xrev = 0;
 	char	*cset = 0;
 	int	noisy = 0;
 	int	expand = 1;
@@ -47,7 +48,7 @@ prs_main(int ac, char **av)
 		fprintf(stderr, prs_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "abc;C;d:hmMor|vY")) != -1) {
+	while ((c = getopt(ac, av, "abc;C;d:hmMor|x:vY")) != -1) {
 		switch (c) {
 		    case 'a':
 			/* think: -Ma, the -M set expand already */
@@ -61,6 +62,7 @@ prs_main(int ac, char **av)
 		    case 'm': flags |= PRS_META; break;
 		    case 'M': expand = 3; break;
 		    case 'o': opposite = 1; doheader = 0; break;
+		    case 'x': xrev = optarg; break;
 		    case 'v': noisy = 1; break;
 		    case 'Y': year4 = strdup("BK_YEAR4=1");
 			      putenv(year4);
@@ -107,6 +109,20 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 				} else {
 					e->flags |= D_SET;
 				}
+			}
+		}
+		if (xrev) {
+			unless (s->state & S_SET) { 
+				for (e = s->rstop; e; e = e->next) {
+					unless (streq(xrev, e->rev)) {
+						e->flags |= D_SET;
+					}
+					if (e == s->rstart) break;
+				}
+				s->state |= S_SET;
+			} else {
+				e = findrev(s, xrev);
+				if (e) e->flags &= ~D_SET;
 			}
 		}
 		sccs_prs(s, flags, reverse, dspec, stdout);
