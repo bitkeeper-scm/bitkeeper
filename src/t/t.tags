@@ -83,6 +83,7 @@ bk tag $Q 'foo|bar' && {
 }
 echo OK
 
+test $PLATFORM != "WIN32" && {
 echo $N "Tags may not contain a  \\n  .................................$NL"
 bk tag $Q 'foo
 bar' && {
@@ -90,6 +91,7 @@ bar' && {
 	exit 1
 }
 echo OK
+}
 
 echo $N Add old style tags ..........................................$NL
 cd $HERE
