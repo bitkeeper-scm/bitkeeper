@@ -26,6 +26,7 @@ private void	http_search(char *path);
 private void	http_related(char *path);
 private void	http_license(char *path);
 private void	http_tags(char *path);
+private void	http_robots(char *junk);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *path, char *color, char *title, char *header, ...);
@@ -86,6 +87,7 @@ private struct pageref {
     { http_related, "related",   "related/", 8 },
     { http_license, 0,           "license" },
     { http_tags,    "tags",      "tags" },
+    { http_robots,  "robots",	 "robots.txt", 10},
     { 0 },
 };
 
@@ -2098,3 +2100,12 @@ http_search(char *junk)
 
 	if (!embedded) trailer("search");
 }
+
+private void
+http_robots(char *junk)
+{
+	httphdr("robots.txt");
+
+	out("User-agent: *\nDisallow: /\n");
+}
+
