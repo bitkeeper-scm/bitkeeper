@@ -3,21 +3,20 @@
 
 extern char *bin;
 private char	*getrev(char *);
-private MDBM	*mk_list(char *, char *, char *);
+private MDBM	*mk_list(char *, char *);
 private void	clean_file(MDBM *);
+private void	do_rename(MDBM *, char *);
 extern	void	cat(char *);
-private void	checkRev(char *rev);
+private void	checkRev(char *);
 
 int
 undo_main(int ac,  char **av)
 {
 	int	c, rc, 	force = 0, save = 1;
 	char	buf[MAXLINE];
-	char	rev_list[MAXPATH], file_list[MAXPATH];
-	char	rename_list[MAXPATH], undo_list[MAXPATH];
+	char	rev_list[MAXPATH], undo_list[MAXPATH];
 	char	*qflag = "", *vflag = "-v";
-	char	*cmd, *p, *rev = 0;
-	FILE	*f, *renum;
+	char	*cmd, *rev = 0;
 	MDBM	*fileList;
 #define	LINE "---------------------------------------------------------\n"
 #define	BK_TMP  "BitKeeper/tmp"
@@ -47,10 +46,8 @@ undo_main(int ac,  char **av)
 	}
 
 	sprintf(rev_list, "%s/bk_rev_list%d",  TMP_PATH, getpid());
-	sprintf(file_list, "%s/bk_file_list%d",  TMP_PATH, getpid());
-	fileList = mk_list(rev_list, file_list, rev);
+	fileList = mk_list(rev_list, rev);
 	clean_file(fileList);
-	mdbm_close(fileList);
 
 	sprintf(undo_list, "%s/bk_undo_list%d",  TMP_PATH, getpid());
 	cmd = malloc(strlen(rev) + strlen(undo_list) + 200);
@@ -98,40 +95,10 @@ undo_main(int ac,  char **av)
 	 * make sense at cset boundries.
 	 * Also, run all files through renumber.
 	 */
-	sprintf(rename_list, "%s/bk_rename_list%d",  TMP_PATH, getpid());
-	sprintf(buf, "bk prs -hr+ -d':PN: :SPN:' - < %s > %s",
-							file_list, rename_list);
-	system(buf);
-	f = fopen(rename_list, "rt");
-	sprintf(buf, "bk renumber %s -", qflag);
-	renum = popen(buf, "w");
-	while (fgets(buf, sizeof(buf), f)) {
-		chop(buf);
-		p = strchr(buf, ' ');
-		assert(p);
-		*p++ = 0;
-		unless (streq(buf, p)) {
-			if (exists(p)) {
-				printf("Unable to mv %s %s, %s exists\n",
-								buf, p, p);
-			} else {
-				mkdirf(p);
-				if (streq(qflag, "")) {
-					printf("mv %s %s\n", buf, p);
-				}
-				if (rename(buf, p) != 0) {
-					perror("rename failed");
-					exit(1);
-				}
-			}
-		}
-		/* must be AFTER the move */
-		fprintf(renum, "%s\n", p);
-	}
-	unlink(file_list); unlink(rev_list);
-	unlink(undo_list); unlink(rename_list);
+	do_rename(fileList, qflag);
+	mdbm_close(fileList);
+	unlink(rev_list); unlink(undo_list);
 
-	pclose(renum);
 	if (streq(qflag, "") && save) {
 		printf("Patch containing these undone deltas left in %s",
 		    BK_UNDO);
@@ -195,9 +162,8 @@ getrev(char *top_rev)
 }
 
 MDBM *
-mk_list(char *rev_list, char *file_list, char *rev)
+mk_list(char *rev_list, char *rev)
 {
-	kvpair  kv;
 	MDBM 	*DB;
 	char	*p, *cmd, buf[MAXLINE];
 	FILE	 *f;
@@ -221,12 +187,60 @@ mk_list(char *rev_list, char *file_list, char *rev)
 		mdbm_store_str(DB, buf, "", MDBM_INSERT);
 	}
 	fclose(f);
-	f = fopen(file_list, "wb");
-	for (kv = mdbm_first(DB); kv.key.dsize; kv = mdbm_next(DB)) {
-		fprintf(f, "%s\n", kv.key.dptr);
-	}
-	fclose(f);
 	return DB;
+}
+
+private void
+do_rename(MDBM *fileList, char *qflag)
+{
+	sccs	*s;
+	project *proj = 0;
+	kvpair  kv;
+	FILE	*f;
+	char	buf[MAXLINE];
+
+	sprintf(buf, "bk renumber %s -", qflag);
+	f = popen(buf, "w");
+	for (kv = mdbm_first(fileList); kv.key.dsize;
+						kv = mdbm_next(fileList)) {
+		char	*sfile, *old_path;
+		delta	*d;
+
+		sfile = name2sccs(kv.key.dptr);
+		s = sccs_init(sfile, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		assert(s);
+		unless(proj) proj = s->proj;
+		d = findrev(s, 0);
+		assert(d);
+		old_path = name2sccs(d->pathname);
+		sccs_free(s);
+		unless (streq(sfile, old_path)) {
+			if (exists(old_path)) {
+				printf("Unable to mv %s %s, %s exists\n",
+						    sfile, old_path, old_path);
+			} else {
+				mkdirf(old_path);
+				if (streq(qflag, "")) {
+					printf("mv %s %s\n", sfile, old_path);
+				}
+				if (rename(sfile, old_path) != 0) {
+					sprintf(buf, "mv %s %s",
+							    sfile, old_path);
+					assert(strlen(buf) < sizeof(buf));
+					if (system(buf) != 0) {
+						perror("rename failed");
+						exit(1);
+					}
+				}
+			}
+		}
+		/* must be AFTER the move */
+		free(sfile);
+		free(old_path);
+		fprintf(f, "%s\n", old_path);
+	}
+	if (proj) proj_free(proj);
+	pclose(f);
 }
 
 private void
