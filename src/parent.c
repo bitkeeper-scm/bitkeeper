@@ -61,7 +61,13 @@ parent_main(int ac,  char **av)
 		return (1);
 	}
 	if (isLocalHost(r->host)) {
-		if (r->path && IsFullPath(r->path)) {
+		/*
+		 * Skip the path check if the url has a port address because
+		 * a) Virtual host support means we can't tell if it is valid
+		 * b) Some sites may be port forwarding which means the path
+		 *    is not really local.  XXX - only if ssh?
+		 */
+		if (r->path && IsFullPath(r->path) && !r->port) {
 			sprintf(buf, "%s/BitKeeper/etc", r->path);
 			unless (isdir(buf)) {
 				printf("%s is not a BitKeeper package root\n",
