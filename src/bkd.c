@@ -70,7 +70,7 @@ bkd_main(int ac, char **av)
 			break;
 		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */
 		    case 'e': break;				/* undoc */
-		    case 'E': putenv((strdup)(optarg)); break;	/* undoc */
+		    case 'E': putenv(optarg); break;		/* undoc */
 		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
 		    case 'q': Opts.quiet = 1; break; 		/* undoc */
 		    case 't': Opts.alarm = atoi(optarg); break;	/* undoc */

@@ -19,7 +19,7 @@ prs_main(int ac, char **av)
 	int	noisy = 0;
 	int	expand = 1;
 	int	want_parent = 0;
-	char	*dspec = NULL, *year4 = NULL;
+	char	*dspec = NULL;
 	project	*proj = 0;
 	RANGE_DECL;
 
@@ -48,13 +48,11 @@ prs_main(int ac, char **av)
 		    case 'p': want_parent = 1; break;
 		    case 'x': xrev = optarg; break;		/* doc 2.0 */
 		    case 'v': noisy = 1; break;			/* doc 2.0 */
-		    case 'Y': year4 = strdup("BK_YEAR4=1");	/* undoc 2.0 */
-			      putenv(year4);
+		    case 'Y': putenv("BK_YEAR4=1");		/* undoc 2.0 */
 			      break;
 		    RANGE_OPTS('c', 'r');			/* doc 2.0 */
 		    default:
 usage:			system("bk help -s prs");
-			if (year4) free(year4);
 			return (1);
 		}
 	}
@@ -165,6 +163,5 @@ next:		rc = 1;
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	if (year4) free(year4);
 	return (rc);
 }

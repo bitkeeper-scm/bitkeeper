@@ -334,12 +334,11 @@ int
 c_shell(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	buf[MAXPATH];
 
-	sprintf(buf, "BK_GCA=%s", n->gca); putenv(strdup(buf));
-	sprintf(buf, "BK_LOCAL=%s", n->local); putenv(strdup(buf));
-	sprintf(buf, "BK_REMOTE=%s", n->remote); putenv(strdup(buf));
-	sprintf(buf, "BK_MERGE=%s", rs->s->gfile); putenv(strdup(buf));
+	safe_putenv("BK_GCA=%s", n->gca);
+	safe_putenv("BK_LOCAL=%s", n->local);
+	safe_putenv("BK_REMOTE=%s", n->remote);
+	safe_putenv("BK_MERGE=%s", rs->s->gfile);
 	unless (rs->shell && rs->shell[0]) {
 		system("sh -i");
 		return (0);

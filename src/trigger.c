@@ -169,10 +169,8 @@ runit(char *file, char *output)
 {
 	int	status, rc, j = 0, fd1 = -1, fd;
 	char	*my_av[10];
-	char	trigger[MAXPATH];
 
-	sprintf(trigger, "BK_TRIGGER=%s", basenm(file));
-	putenv(trigger);	/* OK to not dup, transitory */
+	safe_putenv("BK_TRIGGER=%s", basenm(file));
 	if (output) {
 		fd1 = dup(1); close(1); 
 		fd = open(output, O_CREAT|O_TRUNC|O_WRONLY, 0666);

@@ -521,45 +521,25 @@ add_cd_command(FILE *f, remote *r)
 void
 put_trigger_env(char *prefix, char *v, char *value)
 {
-	char *env;
-	char *buf;
-	char *e;
-
-	env = aprintf("%s_%s", prefix, v);
-	if ((e = getenv(env)) && streq(e, value)) return;
-	buf = aprintf("%s=%s", env, value);
-	putenv(strdup(buf));
-	free(env); free(buf);
+	safe_putenv("%s_%s=%s", prefix, v, value);
 }
 
 void
 putroot(char *where)
 {
 	char	*root = sccs_root(0);
-	char	*e, *buf, *env;
-
-	env = aprintf("%s_ROOT", where);
 
 	if (root) {
 		if (streq(root, ".")) {
 			char	pwd[MAXPATH];
 
 			getcwd(pwd, MAXPATH);
-			if ((e = getenv(env)) && streq(e, pwd)) {
-				return;
-			}
-			buf = aprintf("%s=%s", env, pwd);
+			safe_putenv("%s_ROOT=%s", where, pwd);
 		} else {
-			if ((e = getenv(env)) && streq(e, root)) {
-				return;
-			}
-			buf = aprintf("%s=%s", env, root);
+			safe_putenv("%s_ROOT=%s", where, root);
 		}
-		putenv(buf);
-		buf = 0; /* paranoid */
 		free(root);
 	}
-	free(env);
 }
 
 /*
@@ -615,17 +595,16 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 int
 getServerInfoBlock(remote *r)
 {
-	char	*p, buf[4096];
+	char	buf[4096];
 
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) return (0); /* ok */
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
 		if (strneq(buf, "PROTOCOL", 8)) {
-			p = aprintf("BK_REMOTE_%s", buf);
+			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
-			p = aprintf("BKD_%s", buf);
+			safe_putenv("BKD_%s", buf);
 		}
-		putenv(p);
 	}
 	return (1); /* protocol error, never saw @END@ */
 }
@@ -802,15 +781,12 @@ smallTree(int threshold)
  * malloc'ed buffer which caller should free when done
  */
 char *
-aprintf(char *fmt, ...)
+vaprintf(const char *fmt, va_list ptr)
 {
-	va_list	ptr;
 	int	rc, size = strlen(fmt) + 64;
 	char	*buf = malloc(size);
 
-	va_start(ptr, fmt);
 	rc = vsnprintf(buf, size, fmt, ptr);
-	va_end(ptr);
 	/*
 	 * On IRIX, it truncates and returns size-1.
 	 * We can't assume that that is OK, even though that might be
@@ -822,11 +798,26 @@ aprintf(char *fmt, ...)
 		size *= 2;
 		free(buf);
 		buf = malloc(size);
-		va_start(ptr, fmt);
 		rc = vsnprintf(buf, size, fmt, ptr);
-		va_end(ptr);
 	}
 	return (buf); /* caller should free */
+}
+
+/*
+ * This function works like sprintf(), except it return a
+ * malloc'ed buffer which caller should free when done
+ */
+char *
+aprintf(char *fmt, ...)
+{
+	va_list	ptr;
+	char	*ret;
+	
+	va_start(ptr, fmt);
+	ret = vaprintf(fmt, ptr);
+	va_end(ptr);
+	
+	return (ret);
 }
 
 /*

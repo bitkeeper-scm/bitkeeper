@@ -831,7 +831,7 @@ delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
-int	sccs_resetuser(void);
+void	sccs_resetuser(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -1045,6 +1045,7 @@ char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
 char	*aprintf(char *fmt, ...);
+char	*vaprintf(const char *fmt, va_list ptr);
 void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);

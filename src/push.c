@@ -543,8 +543,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		 * Setup the BK_CSETS env variable, in case the trigger 
 		 * script wants it.
 		 */
-		sprintf(buf, "BK_CSETLIST=%s", rev_list);
-		putenv(buf);  /* XXX should we strdup this buffer ?? */
+		safe_putenv("BK_CSETLIST=%s", rev_list);
 		if (!opts.metaOnly && trigger(av, "pre")) {
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
