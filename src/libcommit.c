@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include <sys/utsname.h>
 #include <time.h>
 
 char *editor = 0, *pager = 0, *bin = 0; 
@@ -138,6 +137,7 @@ logChangeSet(char *rev)
 	sprintf(buf, "%scset -r+ | %ssccslog - >> %s", bin, bin, commit_log);
 	system(buf);
 	fprintf(f, "---------------------------------\n");
+	fclose(f);
 	sprintf(buf, "%scset -c -r%s..%s >> %s",
 					bin, start_rev, rev, commit_log);
 	system(buf);
@@ -164,8 +164,9 @@ project_name()
 {
 	sccs *s;
 	static char pname[MAXLINE] = "";
+	char changeset[MAXPATH] = CHANGESET;
 	cd2root();
-	s = sccs_init(CHANGESET, 0, 0);
+	s = sccs_init(changeset, 0, 0);
 	if (s && s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
 	sccs_free(s);
 	return (pname);
