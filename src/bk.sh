@@ -973,6 +973,7 @@ __sendConfig() {
 	if [ X$1 = X ]
 	then	return		# error, should never happen
 	fi
+	if [ X$BK_REGRESSION = XYES ]; then echo "sending config file..."; fi
 	__cd2root
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( __status
@@ -1154,20 +1155,22 @@ __checkLog() {
 		read x
 		case X$x in
 	    	    X[Yy]*)
-			_setLog "yes"; return
+			_setLog "yes"; return 0
 			;;
 	    	    X[Nn]*)
-			if _setLog "no" ; then return; fi
+			if _setLog "no" ; then return 0; fi
 			;;
 		esac
 		__gethelp log_abort
-		exit 1
-	else	return 
+		return 1
+	else	
+		return 0
 	fi
 }
 
 __logChangeSet() {
 	if [ `_getLog` = "no" ]; then return; fi
+	if [ X$BK_REGRESSION = XYES ]; then echo "sending ChangeSet to $LOGADDR..."; fi
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
 	if [ x$key != x ]
@@ -1307,7 +1310,12 @@ _commit() {
 		__chkConfig && LOGADDR=`__logAddr` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		export LOGADDR
-		$CHECKLOG
+		if [ X$CHECKLOG != X ]
+		then	$CHECKLOG ||  {
+				${RM} -f ${TMP}commit$$
+				exit 1;
+			}
+		fi
 		${BIN}sfiles -C |
 		    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 		EXIT=$?
@@ -1336,7 +1344,12 @@ _commit() {
 			__chkConfig && LOGADDR=`__logAddr` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			export LOGADDR
-			$CHECKLOG
+			if [ X$CHECKLOG != X ]
+			then	$CHECKLOG ||  {
+					${RM} -f ${TMP}commit$$
+					exit 1;
+				}
+			fi
 			${BIN}sfiles -C |
 			    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 			EXIT=$?
