@@ -131,6 +131,7 @@ _setup() {
 
 # This will go find the root if we aren't at the top
 _changes() {
+	__cd2root
 	echo ChangeSet | ${BIN}sccslog $@ - | $PAGER
 }
 
