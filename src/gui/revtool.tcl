@@ -1468,9 +1468,17 @@ proc PaneCreate {} \
 	set percent [expr {[winfo reqheight .p.b] / double($ysize)}]
 	.p configure -height $ysize -width $xsize -background black
 	frame .p.fakesb -height $gc(rev.scrollWidth) -background grey \
-	    -borderwid 1.25 -relief sunken
-	    label .p.fakesb.l -text "<-- scrollbar -->"
-	    pack .p.fakesb.l -expand true -fill x
+	    -borderwid 1 -relief sunken
+	    scrollbar .p.fakesb.x\
+	    	    -wid $gc(rev.scrollWidth) \
+		    -orient horiz \
+		    -background $gc(rev.scrollColor) \
+		    -troughcolor $gc(rev.troughColor)
+	    frame .p.fakesb.y -width $gc(rev.scrollWidth) \
+	    	-background grey -bd 2
+	    grid .p.fakesb.x -row 0 -column 0 -sticky ew
+	    grid .p.fakesb.y -row 0 -column 1 -sticky ns -padx 2
+	    grid columnconfigure .p.fakesb 0 -weight 1
 	place .p.fakesb -in .p -relx .5 -rely $percent -y -2 \
 	    -relwidth 1 -anchor s
 	frame .p.sash -height 2 -background black
@@ -1489,7 +1497,6 @@ proc PaneCreate {} \
 	bind .p.grip <B1-Motion> "PaneDrag %Y"
 	bind .p.grip <ButtonRelease-1> "PaneStop"
 
-	PaneGeometry
 	set paned 1
 }
 
@@ -1497,27 +1504,45 @@ proc PaneCreate {} \
 # currently fitting in the window.
 proc PaneResize {} \
 {
-	global	percent
+	global	percent preferredGraphSize
 
-	set ht [expr {[ht all] + 30}]
-	incr ht -1
-	set y [winfo height .p]
-	set y1 [winfo height .p.top]
-	set y2 [winfo height .p.b]
-	if {$y1 >= $ht} {
-		set y1 $ht
-		set percent [expr {$y1 / double($y)}]
+	if {[info exists preferredGraphSize]} {
+		set max [expr {double([winfo height .p])}]
+		set percent [expr {double($preferredGraphSize) / $max}]
+		if {$percent > 1.0} {set percent 1.0}
+	} else {
+		set ht [expr {[ht all] + 29.0}]
+		set y [winfo height .p]
+		set y1 [winfo height .p.top]
+		set y2 [winfo height .p.b]
+		if {$y1 >= $ht} {
+			set y1 $ht
+			set percent [expr {$y1 / double($y)}]
+		}
+		if {$y > $ht && $y1 < $ht} {
+			set y1 $ht
+			set percent [expr {$y1 / double($y)}]
+		}
+
 	}
-	if {$y > $ht && $y1 < $ht} {
-		set y1 $ht
-		set percent [expr {$y1 / double($y)}]
-	}
-	PaneGeometry
+
+	# The plan is, the very first time this proc is called should
+	# be when the window first comes up. We want to set the
+	# preferred size then. All other times this proc is called 
+	# should be in response to the user interactively resizing the
+	# window, in which case we definitely do not want to change
+	# the preferred size of the graph. 
+	PaneGeometry [expr {![info exists preferredGraphSize]}]
 }
 
-proc PaneGeometry {} \
+proc PaneGeometry {{saveSize 0}} \
 {
-	global	percent psize
+	global	percent psize preferredGraphSize
+
+	if {$saveSize} {
+		set preferredGraphSize \
+		    [expr {double([winfo height .p]) * $percent}]
+	}
 
 	place .p.top -relheight $percent
 	place .p.b -relheight [expr {1.0 - $percent}]
@@ -1533,6 +1558,10 @@ proc PaneGeometry {} \
 proc PaneDrag {D} \
 {
 	global	lastD percent psize
+
+	# sync the fake scrollbar with the real one, to promote the
+	# illusion that we're dragging the actual scrollbar
+	eval .p.fakesb.x set [.p.top.xscroll get]
 
 	if {[info exists lastD]} {
 		set delta [expr {double($lastD - $D) / $psize}]
@@ -1556,7 +1585,7 @@ proc PaneStop {} \
 {
 	global	lastD
 
-	PaneGeometry
+	PaneGeometry 1
 	catch {unset lastD}
 }
 
@@ -1721,7 +1750,7 @@ proc widgets {} \
 			.menus.mb .menus.cset .menus.fmb -side left -fill y
 	    }
 	frame .p
-	    frame .p.top -borderwidth 2 -relief sunken
+	    frame .p.top -borderwidth 1 -relief sunken
 		scrollbar .p.top.xscroll -wid $gc(rev.scrollWidth) \
 		    -orient horiz \
 		    -command "$w(graph) xview" \
@@ -1732,17 +1761,24 @@ proc widgets {} \
 		    -background $gc(rev.scrollColor) \
 		    -troughcolor $gc(rev.troughColor)
 		canvas $w(graph) -width 500 \
+	    	    -borderwidth 1 \
 		    -background $gc(rev.canvasBG) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
-		pack .p.top.yscroll -side right -fill y
-		pack .p.top.xscroll -side bottom -fill x
-		pack $w(graph) -expand true -fill both
 
-	    frame .p.b -borderwidth 2 -relief sunken
+		grid .p.top.yscroll -row 0 -column 1 -sticky ns
+		grid .p.top.xscroll -row 1 -column 0 -sticky ew
+		grid $w(graph)      -row 0 -column 0 -sticky nsew
+		grid rowconfigure    .p.top 0 -weight 1
+		grid rowconfigure    .p.top 1 -weight 0
+		grid columnconfigure .p.top 0 -weight 1
+		grid columnconfigure .p.top 1 -weight 0
+		
+	    frame .p.b -borderwidth 1 -relief sunken
 	    	# prs and annotation window
 		frame .p.b.p
 		    text .p.b.p.t -width $gc(rev.textWidth) \
+			-borderwidth 1 \
 			-height $gc(rev.textHeight) \
 			-font $gc(rev.fixedFont) \
 			-xscrollcommand { .p.b.p.xscroll set } \
@@ -1760,6 +1796,7 @@ proc widgets {} \
 		# change comment window
 		frame .p.b.c
 		    text .p.b.c.t -width $gc(rev.textWidth) \
+			-borderwidth 1 \
 			-height $gc(rev.commentHeight) \
 			-font $gc(rev.fixedFont) \
 			-xscrollcommand { .p.b.c.xscroll set } \
@@ -1775,13 +1812,21 @@ proc widgets {} \
 			-background $gc(rev.scrollColor) \
 			-troughcolor $gc(rev.troughColor)
 
-		pack .p.b.c.yscroll -side right -fill y
-		pack .p.b.c.xscroll -side bottom -fill x
-		pack .p.b.c.t -expand true -fill x
+		grid .p.b.c.yscroll -row 0 -column 1 -sticky ns
+		grid .p.b.c.xscroll -row 1 -column 0 -sticky ew
+		grid .p.b.c.t       -row 0 -column 0 -sticky nsew
+		grid rowconfigure    .p.b.c 0 -weight 1
+		grid rowconfigure    .p.b.c 1 -weight 0
+		grid columnconfigure .p.b.c 0 -weight 1
+		grid columnconfigure .p.b.c 1 -weight 0
 
-		pack .p.b.p.yscroll -side right -fill y
-		pack .p.b.p.xscroll -side bottom -fill x
-		pack .p.b.p.t -expand true -fill both
+		grid .p.b.p.yscroll -row 0 -column 1 -sticky ns
+		grid .p.b.p.xscroll -row 1 -column 0 -sticky ew
+		grid .p.b.p.t       -row 0 -column 0 -sticky nsew
+		grid rowconfigure    .p.b.p 0 -weight 1
+		grid rowconfigure    .p.b.p 1 -weight 0
+		grid columnconfigure .p.b.p 0 -weight 1
+		grid columnconfigure .p.b.p 1 -weight 0
 
 		pack .p.b.p -expand true -fill both -anchor s
 		pack .p.b -expand true -fill both -anchor s
