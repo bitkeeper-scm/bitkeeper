@@ -52,8 +52,9 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/infutil.o zlib/inffast.o
 RESOBJ =  resolve.o resolve_create.o resolve_contents.o resolve_generic.o \
 	  resolve_renames.o resolve_modes.o resolve_flags.o
-BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
-	  bkd_cmdtab.o lib_tcp.o bkd.o bkd_version.o
+BKDOBJ	= bkd_misc.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
+	  bkd_cmdtab.o lib_tcp.o bkd.o bkd_version.o \
+	  bkd_cd.o bkd_pwd.o bkd_rootkey.o
 BKLIB	= lib_tcp.o bkd_client.o
 BINOBJ	= $(BINS:=.o)
 BKDSRCS	= $(BKDOBJ:.o=.c)

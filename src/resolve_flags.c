@@ -127,13 +127,13 @@ rfuncs	f_funcs[] = {
     { "?", "help", "print this help", f_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "cl", "clear", "clear the screen", res_clear },
-    { "e", "explain", "explain the choices", f_explain },
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "l", "local", "use the flags on local file", f_local },
     { "p", "sccstool", "graphical picture of the file history", res_sccstool },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "remote", "use the flags on remote file", f_remote },
+    { "x", "explain", "explain the choices", f_explain },
     { 0, 0, 0, 0 }
 };
 

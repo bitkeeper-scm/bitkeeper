@@ -73,7 +73,7 @@ nfs_parse(char *p)
 	return (r);
 }
 
-/* host[:port]/path */
+/* host[:port]/path or host:port */
 remote *
 url_parse(char *p)
 {
@@ -82,24 +82,20 @@ url_parse(char *p)
 
 	unless (*p) return (0);
 	new(r);
-	if (s = strchr(p, ':')) {
+	if (s = strchr(p, ':')) {		/* host:port[/path] */
 		*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
-	}
-	unless (s = strchr(p, '/')) {
-		remote_free(r);
-		return (0);
-	}
-	*s = 0;
-	if (r->host) {
 		r->port = atoi(p);
-	} else {
+		p = strchr(p, '/');
+		if (p) r->path = strdup(p);
+	} else if (s = strchr(p, '/')) {	/* host/path */
+		*s = 0;
 		r->port = BK_PORT;
 		r->host = strdup(p);
+		*s = '/';
+		r->path = strdup(s);
+	} else {
+		return (0);
 	}
-	p = s;
-	*s = '/';
-	unless (*p) p = ".";	/* we like having a path */
-	r->path = strdup(p);
 	return (r);
 }
 
@@ -127,17 +123,20 @@ remote_unparse(remote *r)
 			sprintf(port, "%u", r->port);
 			strcat(buf, port);
 		}
-		strcat(buf, r->path);
+		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
 	}
 	if (r->user) {
 		assert(r->host);
-		sprintf(buf, "%s@%s:%s", r->user, r->host, r->path);
+		sprintf(buf, "%s@%s", r->user, r->host);
+		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
 	} else if (r->host) {
-		sprintf(buf, "%s:%s", r->host, r->path);
+		sprintf(buf, "%s:", r->host);
+		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
 	}
+	assert(r->path);
 	return (strdup(r->path));
 }
 
