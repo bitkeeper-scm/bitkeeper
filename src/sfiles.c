@@ -53,8 +53,7 @@ private void	file(char *f);
 private	void	sccsdir(winfo *wi);
 private void	progress(int force);
 private int	chk_diffs(sccs *s);
-private	char	*append_rev(MDBM *db, char *name, char *rev, char *buf);
-
+private	void	append_rev(MDBM *db, char *name, char *rev);
 
 private char *
 hasfile(char *file, char type, MDBM *sDB)
@@ -538,37 +537,41 @@ struct winfo {
 	int	sccsdirlen;
 };
 
-
 private void
 add_to_winfo(winfo *wi, char *file, int sccs)
 {
-	char	*p, *p1;
-	char	buf[MAXPATH];
+	char	*p;
 
 	unless (wi->sDB) wi->sDB = mdbm_mem();
 	unless (wi->gDB) wi->gDB = mdbm_mem();
 
 	if (sccs) {
-		p = "";
 		if (pathneq("s.", file, 2)) {
 			wi->sfiles = addLine(wi->sfiles, strdup(file));
 		} else {
-			if (pathneq("c.", file, 2) &&
-			    (p1 = strrchr(file, '@'))) {
+			if (pathneq("c.", file, 2)) {
+				/*
+				 * If there is no @rev, make sure we
+				 * don't miss the case where we have
+				 * both a c.file and c.file@rev
+				 */
+				if (p = strrchr(file, '@')) {
+					*p++ = 0;
+				} else {
+					p = "";
+				}
 				/*
 				 * Special handling for c.file@rev entry
 				 * append the @rev part to the value field
 				 * so we can print the correct file
 				 * name if it turns out to be a junk file.
 				 */
-				*p1++ = 0;
-				p = append_rev(wi->sDB, file, p1, buf);
+				append_rev(wi->sDB, file, p);
+				return;
 			}
 		}
-		mdbm_store_str(wi->sDB, file, p, MDBM_REPLACE);
-	} else {
-		mdbm_store_str(wi->gDB, file, "", MDBM_INSERT);
 	}
+	mdbm_store_str((sccs ? wi->sDB : wi->gDB), file, "", MDBM_INSERT);
 }
 
 private int
@@ -865,16 +868,20 @@ do_print(char state[5], char *file, char *rev)
 print:	print_it(state, file, rev);
 }
 
-char *
-append_rev(MDBM *db, char *name, char *rev, char *buf)
+private void
+append_rev(MDBM *db, char *name, char *rev)
 {
-	char *t;
+	char	*buf = 0;
+	char	*t;
 
 	t = mdbm_fetch_str(db, name);
-	unless (t) return (rev);
-	sprintf(buf, "%s,%s", t, rev);
-	assert(strlen(buf) < MAXPATH);
-	return (buf);
+	if (t) {
+		t = buf = aprintf("%s,%s", t, rev);
+	} else {
+		t = rev;
+	}
+	mdbm_store_str(db, name, t, MDBM_REPLACE);
+	if (buf) free(buf);
 }
 
 /*
