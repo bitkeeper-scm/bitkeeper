@@ -1,0 +1,6 @@
+This is a little tool to put a file into a .o as an array.
+It generates an object file called _data.o which you can link
+against.  The object file contains
+
+unsigned char program_data[];	/* this is the file */
+unsigned int program_size;	/* this is how big it is */

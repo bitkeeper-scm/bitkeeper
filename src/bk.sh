@@ -1400,8 +1400,17 @@ __platformPath() {
 	fi
 	# The following  path  list only works in unix, on win32 we must find it
 	# in @bitkeeper_bin@
-	for i in @bitkeeper_bin@ /usr/bitkeeper /usr/local/bitkeeper \
-	    /usr/local/bin/bitkeeper /usr/bin/bitkeeper /usr/bin
+	#
+	# This list must match the list in port/unix_platform.tcl and 
+	# utils/extractor.c
+	for i in @bitkeeper_bin@ \
+	    /usr/libexec/bitkeeper \
+	    /usr/lib/bitkeeper \
+	    /usr/bitkeeper \
+	    /opt/bitkeeper \
+	    /usr/local/bitkeeper \
+	    /usr/local/bin/bitkeeper \
+	    /usr/bin/bitkeeper
 	do	if [ -x $i/$bk_tagfile ]
 		then	BIN="$i/"
 			BK_BIN=$BIN

@@ -3,7 +3,7 @@
 
 # You can set this to anywhere you like and do a "make production" and you'll
 # have an installed BitKeeper.
-BK_BIN	= /usr/bitkeeper
+BK_BIN	= /usr/libexec/bitkeeper
 
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines prs range rechksum renumber	 \

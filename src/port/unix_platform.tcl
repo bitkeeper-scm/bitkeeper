@@ -13,9 +13,17 @@ proc bk_init {} \
 		set bin $env(BK_BIN)
 	} else {
 		set bin ""
+		# This list must match the list in bk.sh and
+		# utils/extractor.c
 		foreach dir {@bitkeeper_bin@ \
-		    /usr/bitkeeper /usr/local/bitkeeper \
-		    /usr/local/bin/bitkeeper /usr/bin/bitkeeper /usr/bin} {
+		    /usr/libexec/bitkeeper \
+		    /usr/lib/bitkeeper \
+		    /usr/bitkeeper \
+		    /opt/bitkeeper \
+		    /usr/local/bitkeeper \
+		    /usr/local/bin/bitkeeper \
+		    /usr/bin/bitkeeper \
+		} {
 		    	if {[file exists [file join $dir sccstool]]} {
 				set bin $dir
 				break
