@@ -11,7 +11,7 @@
 
 if [ "$PLATFORM" = "WIN32" ]
 then
-	echo "bk lclone is not supportted on win32: skipped"
+	echo "For non win32 only ..........................................skipped"
 	exit 0
 fi
 

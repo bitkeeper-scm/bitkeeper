@@ -12,6 +12,9 @@ ifeq "$(OSTYPE)" "cygwin"
 	XTRA=win32
 	BKLINK=bklink.exe
 	UWTLIB=win32/uwtlib/libuwt.a
+	UWT_H=$(patsubst %,win32/uwtlib/%.h, \
+		dirent misc re_map sys/wait stat utsname ftw \
+	 	mman re_map_decl times)
 	W32LIBS=-lws2_32 -lole32
 else
 	SYS=unix
@@ -57,7 +60,6 @@ CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$G -DLINT $(WARNINGS)
 INSTALL=install
-UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
 BINS	= $(BK)
 RESOURCE=
@@ -135,7 +137,6 @@ SCRIPTS	= applypatch bk.script import resync \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
 LOCALSCR= build
 PSCR	= t/doit
-UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
