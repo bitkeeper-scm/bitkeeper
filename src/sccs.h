@@ -116,7 +116,7 @@
 #define S_CACHEROOT	0x01000000	/* don't free the root entry */
 #define	S_KEY2		0x02000000	/* all keys are version 2 format */
 #define	S_HASH		0x04000000	/* this file is an MDBM file */
-#define	S_ONEZERO	0x08000000	/* This file has no 1.0 delta */
+#define	S_FAKE_1_0	0x08000000	/* the 1.0 delta is a fake */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 

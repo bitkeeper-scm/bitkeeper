@@ -2492,7 +2492,7 @@ mkOneZero(sccs *s)
 	d->rev = strdup("1.0");
 	explode_rev(d);
 	s->numdeltas++;
-	s->state |= S_ONEZERO;       
+	s->state |= S_FAKE_1_0;       
 	return d;
 }
 
@@ -5433,7 +5433,7 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 	if (fixDate) fixNewDate(s);
 	
 	/* If the 1.0 delta is a fake, skip it */
-	if (s->state & S_ONEZERO) {
+	if (s->state & S_FAKE_1_0) {
 		assert(streq(s->table->rev, "1.0"));
 		d = s->table->next;
 	} else {
@@ -9633,8 +9633,8 @@ mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
 		date = strchr(buf, '\t'); assert(date);
 		buf[3] = 0; marker = buf;
 		if (kind == DF_GNU_PATCH) {
-#define			EPROCH "\tWed Dec 31 16:00:00 1969\n"
-			if (streq(tag, "/dev/null")) date = EPROCH;
+#define			EPOCH "\tWed Dec 31 16:00:00 1969\n"
+			if (streq(tag, "/dev/null")) date = EPOCH;
 		}
 		fprintf(out, "%s %s%s", marker, tag, date);
 	} else	fputs(buf, out);
