@@ -2190,11 +2190,13 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
+	int	eperm = 0, first = 1;
 	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 	char 	realname[MAXPATH];
+	MDBM	*permDB = mdbm_mem();
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2212,6 +2214,7 @@ pass4_apply(opts *opts)
 		fprintf(stderr, "Unable to create|open " TODO);
 		fclose(save);
 		freeStuff(opts);
+		mdbm_close(permDB);
 		exit(1);
 	}
 	while (fnext(buf, f)) {
@@ -2232,8 +2235,13 @@ pass4_apply(opts *opts)
 			fprintf(stderr, "resolve: corrupt file %s\n", r->sfile);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			fclose(save);
+			mdbm_close(permDB);
 			freeStuff(opts);
 			exit(1);
+		}
+		if (writeCheck(r, permDB) && first) {
+			first = 0;
+			eperm = 1;
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
 		sccs_free(r);
@@ -2253,13 +2261,20 @@ pass4_apply(opts *opts)
 			sccs_free(l);
 		}
 	}
+	fclose(save);
+	mdbm_close(permDB);
+
+	if (eperm) {
+		getmsg("write_perms", 0, 0, stderr);
+		freeStuff(opts);
+		exit(1);
+	}
 
 	/*
 	 * Pass 4b.
 	 * Save the list of files and then remove them.
 	 * XXX - need to be positive that fflush works.
 	 */
-	fclose(save);
 	if (size(BACKUP_LIST) > 0) {
 		if (system("bk sfio -omq < " BACKUP_LIST " > " BACKUP_SFIO)) {
 			fprintf(stderr,
@@ -2398,6 +2413,40 @@ Got:\n\
 	}
 	resolve_cleanup(opts, CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING);
 	/* NOTREACHED */
+	return (0);
+}
+
+private int
+writeCheck(sccs *s, MDBM *db)
+{
+	char	*t;
+	struct	stat sb;
+	char	path[MAXPATH];
+
+	strcpy(path, s->sfile + 7);	/* RESYNC/SCCS want SCCS */
+	if (t = strrchr(path, '/')) *t = 0;
+	if (mdbm_fetch_str(db, path)) return (0);
+	mdbm_store_str(db, path, "", MDBM_INSERT);
+	if (isdir(path) && writable(path)) {
+		if (streq(path, "SCCS")) return (0);
+		t[-5] = 0;
+		if (isdir(path) && writable(path)) return (0);
+		unless (writable(path)) {
+			fprintf(stderr, "No write permission: %s\n", path);
+			return (1);
+		}
+		/* we can write the parent, so OK */
+		return (0);
+	}
+	if (isdir(path)) {
+		fprintf(stderr, "No write permission: %s\n", path);
+		return (1);
+	}
+	if (exists(path)) {
+		fprintf(stderr,
+		    "File where a directory needs to be: %s\n", path);
+		return (1);
+	}
 	return (0);
 }
 

@@ -74,3 +74,23 @@ bk -R rset -hr1.2,1.3 > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK
+
+echo $N Try to resolve into a tree with no write permission .........$NL
+cd $HERE
+bk clone $Q project copy
+cd project/src
+touch NEWFILE
+bk new $Q NEWFILE
+bk commit $Q -yNEWFILE 
+cd $HERE/copy
+chmod -w src
+bk pull $Q > OUT 2>&1
+grep -q 'No write permission: src' OUT || {
+	echo bad error message from pull
+	cat OUT
+	chmod +w src
+	exit 1
+}
+chmod +w src
+echo OK
+cat OUT

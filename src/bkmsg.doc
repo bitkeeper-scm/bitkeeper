@@ -1,3 +1,15 @@
+#write_perms
+=========================================================================
+One or more directories which need updating do not have write permission.
+Please examine the list and fix the permissions.
+
+You can restart the resolve with a 
+
+    bk resolve
+
+after fixing the permissions.
+=========================================================================
+$
 #setup_1
 ----------------------------------------------------------------------
 
