@@ -298,6 +298,15 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			if (fix_gmode(s, gf)) {
 				errors |= 16;
 			}
+			/*
+			 * The 'keyword' preference for a new file might
+			 * have set keywords in sccs_delta() so we need to
+			 * check again.
+			 */
+			if (co == 2 && hasKeyword(s)) {
+				gf |= GET_EXPAND;
+				co = 1;
+			}
 		}
 
 		if (co == 1) {
