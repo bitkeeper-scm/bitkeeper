@@ -612,7 +612,6 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
 	/* go get the delta table entry for this delta */
 delta1:	off = mtell(f);
 	d = getRecord(f);
-	d->published = 0; /* Don't trust log marker from remote repository */
 	sccs_sdelta(s, d, buf);
 	if (tmp = sccs_findKey(s, buf)) {
 		if (echo > 3) {

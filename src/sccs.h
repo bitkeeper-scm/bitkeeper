@@ -334,6 +334,8 @@
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
+#define	LMARK		"BitKeeper/etc/SCCS/x.lmark"
+#define	CMARK		"BitKeeper/etc/SCCS/x.cmark"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
@@ -430,8 +432,6 @@ typedef struct delta {
 	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
 					/* Needed for tag conflicts with 2 */
 					/* open tips, so maintained always */
-	u32	published:1;	
-	u32	ptype:1;	
 } delta;
 #define	TAG(d)	((d)->type == 'R')
 
@@ -1096,8 +1096,6 @@ void	http_hdr();
 pid_t	bkd_tcp_connect(remote *r);
 int	check_rsh(char *remsh);
 int	smartMkdir(char *pathname, mode_t mode);
-int	cset_lock(void);
-void	cset_unlock(void);
 void	sccs_color(sccs *s, delta *d);
 int	bk_options(void);
 int	out(char *buf);
