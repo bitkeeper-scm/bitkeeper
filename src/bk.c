@@ -455,8 +455,8 @@ private	struct {
 	char	*name;
 	int	flags;
 } repolog[] = {
-	{"pull", 0},
-	{"push", 0},
+	{"pull", CMD_BYTES},
+	{"push", CMD_BYTES},
 	{"commit", CMD_WRLOCK},
 	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
 	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK},
@@ -507,6 +507,8 @@ cmdlog_start(char **av)
 			exit(1);
 		}
 	}
+	if (cflags & CMD_BYTES) save_byte_count(0); /* init to zero */
+
 	if (cmdlog_repo) {
 		int ret ;
 
