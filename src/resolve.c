@@ -45,15 +45,18 @@ private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
 private void	resolve_post(opts *o, int c);
 private void	unapply(FILE *f);
-private int	copyAndGet(char *from, char *to, project *proj, int getFlags);
+private int	copyAndGet(opts *opts, char *from, char *to);
 private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
 private	void	log_cleanup(void);
+private void	save_checkout_state(MDBM *DB, sccs *s);
+private void	restore_checkouts(opts *opts);
 
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 
+private	int	default_getFlags;
 
 int
 resolve_main(int ac, char **av)
@@ -61,6 +64,7 @@ resolve_main(int ac, char **av)
 	int	c;
 	int	comment = 0;	/* set if they used -y */
 	static	opts opts;	/* so it is zero */
+	char	*checkout;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help resolve");
@@ -111,7 +115,11 @@ resolve_main(int ac, char **av)
 		opts.from_pullpush = 1;
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
-	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
+	if ((av[optind] != 0) && isdir(av[optind])) {
+		chdir(av[optind]);
+		if (bk_proj) proj_free(bk_proj);
+		bk_proj = proj_init(0);
+	}
 
 	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
 		opts.textOnly = 1; 
@@ -127,6 +135,13 @@ resolve_main(int ac, char **av)
 	}
 	unless (comment || opts.comment) {
 		opts.comment = "Merge";
+	}
+
+	checkout = user_preference("checkout");
+	if (strieq(checkout, "edit")) {
+		default_getFlags = GET_EDIT;
+	} else if (strieq(checkout, "get")) {
+		default_getFlags = GET_EXPAND;
 	}
 
 	c = passes(&opts);
@@ -263,6 +278,11 @@ passes(opts *opts)
 		return (1);
 	}
 	unless (opts->rootDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
+		perror("mdbm_open");
+		pclose(p);
+		return (1);
+	}
+	unless (opts->checkoutDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
 		pclose(p);
 		return (1);
@@ -467,6 +487,7 @@ nameOK(opts *opts, sccs *s)
 	if (streq(path, realname) &&
 	    (local = sccs_init(path, INIT, opts->local_proj)) &&
 	    HAS_SFILE(local)) {
+		save_checkout_state(opts->checkoutDB, local);
 		if (IS_EDITED(local) && sccs_clean(local, SILENT)) {
 			fprintf(stderr,
 			    "Warning: %s is modified, will not overwrite it.\n",
@@ -489,6 +510,7 @@ nameOK(opts *opts, sccs *s)
 	sccs_sdelta(s, sccs_ino(s), buf);
 	local = sccs_keyinit(buf, INIT, opts->local_proj, opts->idDB);
 	if (local) {
+		save_checkout_state(opts->checkoutDB, local);
 		if (IS_EDITED(local) &&
 		    sccs_clean(local, SILENT|CLEAN_SHUTUP)) {
 			fprintf(stderr,
@@ -2168,7 +2190,7 @@ rm_sfile(char *sfile, int leavedirs)
  * Return true if we detected a case folding File system
  */
 private int
-isCaseFoldingFS()
+isCaseFoldingFS(void)
 {
 	char	s_cset[] = CHANGESET;
 	char	*p;
@@ -2248,7 +2270,6 @@ pass4_apply(opts *opts)
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
 	int	eperm = 0, first = 1, flags, ret;
-	int	getFlags = GET_EXPAND;
 	FILE	*f = 0;
 	FILE	*save = 0;
 	char	buf[MAXPATH];
@@ -2379,11 +2400,6 @@ pass4_apply(opts *opts)
 	fflush(f);
 	rewind(f);
 
-	/*
-	 * Get user preference from the local config file
-	 */
-	if (strieq("edit", user_preference("checkout"))) getFlags = GET_EDIT;
-
 	while (fnext(buf, f)) {
 		chop(buf);
 		/*
@@ -2400,7 +2416,7 @@ pass4_apply(opts *opts)
 		if (opts->log) {
 			fprintf(stdlog, "copy(%s, %s)\n", buf, &buf[offset]);
 		}
-		if (copyAndGet(buf, &buf[offset], opts->local_proj, getFlags)) {
+		if (copyAndGet(opts, buf, &buf[offset])) {
 			perror("copy");
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
@@ -2492,9 +2508,12 @@ writeCheck(sccs *s, MDBM *db)
 }
 
 private int
-copyAndGet(char *from, char *to, project *proj, int getFlags)
+copyAndGet(opts *opts, char *from, char *to)
 {
-	sccs *s;
+	sccs	*s;
+	char	key[MAXKEY];
+	char	*co;
+	int	getFlags;
 
 	if (link(from, to)) {
 		if (mkdirf(to)) {
@@ -2516,9 +2535,34 @@ copyAndGet(char *from, char *to, project *proj, int getFlags)
 			if (fileCopy(from, to)) return (-1);
 		}
 	}
-	s = sccs_init(to, INIT_SAVEPROJ, proj);
+
+	s = sccs_init(to, INIT_SAVEPROJ, opts->local_proj);
 	assert(s && HASGRAPH(s));
-	sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
+	sccs_sdelta(s, sccs_ino(s), key);
+	co = mdbm_fetch_str(opts->checkoutDB, key);
+	if (co) {
+		//ttyprintf("checkout %s with %s\n", key, co);
+		if (co[0] == 'e') {
+			getFlags = GET_EDIT;
+		} else if (co[0] == 'g') {
+			getFlags = GET_EXPAND;
+		} else if (co[0] == 'n') {
+			getFlags = 0;
+		} else {
+			fprintf(stderr, "Illegal value of co (== %s)\n",
+			    co);
+			exit(1);
+		}
+		mdbm_delete_str(opts->checkoutDB, key);
+	} else {
+		getFlags = default_getFlags;
+		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
+	}
+	if (getFlags) {
+		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
+	} else {
+		assert(!HAS_GFILE(s));
+	}
 	sccs_free(s);
 	return (0);
 }
@@ -2715,6 +2759,8 @@ resolve_cleanup(opts *opts, int what)
 		rmdir(ROOT2PENDING);
 	}
 
+	restore_checkouts(opts);
+
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {
 		unless (what & CLEAN_NOSHOUT) SHOUT2();
@@ -2735,3 +2781,67 @@ resolve_cleanup(opts *opts, int what)
 	if (!opts->logging) logChangeSet(logging(0), 1);
 	exit(0);
 }
+
+/*
+ * This gets called for every local file that might get overwritten.
+ * We need to record the checkout state of the file so we can restore it
+ * after resolve is finished.
+ */
+private void
+save_checkout_state(MDBM *DB, sccs *s)
+{
+	char	key[MAXKEY];
+	char	*state;
+
+	sccs_sdelta(s, sccs_ino(s), key);
+
+	if (HAS_PFILE(s)) {
+		state = "e";
+	} else if (HAS_GFILE(s)) {
+		state = "g";
+	} else {
+		state = "n";
+	}
+	mdbm_store_str(DB, key, state, MDBM_INSERT);
+}
+
+/*
+ * After resolve is finished we look at every file that
+ * we might have touched and restore the gfile if needed.
+ */
+private void
+restore_checkouts(opts *opts)
+{
+	kvpair	kv;
+	int	getFlags = 0;
+
+	EACH_KV(opts->checkoutDB) {
+		sccs	*s;
+		s = sccs_keyinit(kv.key.dptr, INIT, 
+		    opts->local_proj, opts->idDB);
+		
+		unless (s) continue;
+
+		switch (kv.val.dptr[0]) {
+		    case 'e':
+			unless (HAS_PFILE(s)) getFlags = GET_EDIT;
+			break;
+		    case 'g':
+			unless (HAS_GFILE(s)) getFlags = GET_EXPAND;
+			break;
+		    case 'n':
+			assert(!HAS_GFILE(s));
+			break;
+		    default:
+			assert(0);
+			break;
+		}
+		if (getFlags) {
+			sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
+		}
+	}
+	mdbm_close(opts->checkoutDB);
+	opts->checkoutDB = 0;
+}
+
+		

@@ -151,7 +151,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 			goto err;
 		}
 	}
-
+	freeLines(csetrev_list);
 	sig_ignore();
 
 	/*

@@ -375,7 +375,7 @@ milli(void)
 }
 
 private void
-save_gmon()
+save_gmon(void)
 {
 	char	buf[200];
 	int	i = 0;
