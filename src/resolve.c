@@ -98,10 +98,7 @@ resolve_main(int ac, char **av)
 			exit(1);
 		}
     	}
-	unless (opts.mergeprog) {
-		char	*env = getenv("BK_RESOLVE_MERGEPROG");
-		opts.mergeprog = env ? env : "smerge";
-	}
+	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
 	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
@@ -1817,20 +1814,6 @@ get_revs(resolve *rs, names *n)
 	return (0);
 }
 
-private void
-export_rev(const char *name, const char *ver)
-{
-	putenv(aprintf("BK_R%s=%s", name, ver));
-}
-
-void
-export_revs(resolve *rs)
-{
-	export_rev("L", rs->revs->local);
-	export_rev("G", rs->revs->gca);
-	export_rev("R", rs->revs->remote);
-}
-
 /*
  * Try to automerge.
  */
@@ -1863,14 +1846,19 @@ automerge(resolve *rs, names *n)
 	}
 
 	/*
-	 * The interface to the smerge program is
+	 * The interface to the merge program is
 	 * "smerge left_ver gca_ver right_ver"
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	export_revs(rs);
-	ret = sys("bk", rs->opts->mergeprog,
-	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
+	if (rs->opts->mergeprog) {
+		ret = sys("bk", rs->opts->mergeprog,
+		    n->local, n->gca, n->remote, rs->s->gfile, SYS);
+	} else {
+		ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", rs->s->gfile, 
+		    rs->revs->local, rs->revs->remote, SYS);
+	}
+		
 	if (do_free) {
 		unlink(tmp.local);
 		unlink(tmp.gca);

@@ -788,9 +788,9 @@ proc smerge {} \
 	set r [lindex $argv 2]
 	set f [lindex $argv 3]
 	if {$annotate} {
-		set ret [catch {exec bk smerge -Im -f $l $g $r $f > $smerge}]
+		set ret [catch {exec bk smerge -Im -f $f $l $r > $smerge}]
 	} else {
-		set ret [catch {exec bk smerge -f $l $g $r $f > $smerge}]
+		set ret [catch {exec bk smerge -f $f $l $r > $smerge}]
 	}
 	set filename $f
 }

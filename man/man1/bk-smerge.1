@@ -4,7 +4,7 @@
 bk smerge \- smart text-based 3-way file merge
 .SH SYNOPSIS
 .\"
-.\".Bc bk smerge [\-2efghns] [
+.\".Bc bk smerge [\-23efghns] [
 .Bc bk smerge [\-2efghn] [
 .OPTreq \-A n
 .Bc ] [
@@ -13,10 +13,9 @@ bk smerge \- smart text-based 3-way file merge
 .\".Bc ] [
 .\".OPTreq \-r r
 .\".B ] 
-.ARG local
-.ARG gca
-.ARG remote
 .ARG file
+.ARG local
+.ARG remote
 .SH DESCRIPTION
 .LP
 The bk smerge command compares the three versions of the file and 
@@ -38,21 +37,18 @@ only be run on SCCS files.
 In some scripts users may want to call smerge directly.  If so, an example
 for usage is:
 .DS
-bk smerge -gp 1.661 1.660 1.660.1.4 slib.c > slib.c.merged
+bk smerge -g slib.c 1.661 1.660.1.4 > slib.c.merged
 .DE
-where 1.661 is the local revision, 1.660 is the revision of the
-greatest common ancestor, 1.660.1.4 is the remote revision, slib.c is the
-file name and slib.c.merged is the file to which merge output is redirected.
+where 1.661 is the local revision and 1.660.1.4 is the remote
+revision, slib.c is the file name and slib.c.merged is the file to
+which merge output is redirected.
 .LP
-The string for the local, gca, and remote versions of the file can be
+The string for the local remote versions of the file can be
 expressed in the form "rev+includes-excludes" where rev is a normal
 revision number like "1.661" and includes and excludes are a comma
 separated list if revisions to include or exclude from the base
 revision. (The include and/or exclude lists can be omitted if they are
-empty.)  If the environmental variables
-BK_R{L,G,R} are set, then those strings are used
-instead of the corresponding strings on the commandline.  This is for
-integration into the BK resolve command.
+empty.)  
 .SH "MERGE ALGORITHMS"
 .LP
 Each of the automerge algorithms is described below.  Currently,
@@ -154,10 +150,6 @@ Examples of merge output can be viewed by using the -e option.
 .SH OPTIONS
 .if t .TP .6i
 .if n .TP 1i
-.B \-p
-Write merged output to stdout instead of overwriting the file
-on the command line.
-.tp
 .B \-2
 Enable the 2 way output format (like diff3)
 .tp
