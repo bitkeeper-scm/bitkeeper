@@ -211,7 +211,7 @@ out:		if (commentFile) unlink(commentFile);
 		
 	}
 
-	if (!opts.resync && (enforceLicense(l) == -1)) goto out;
+	if (!opts.resync && (enforceLicense(l, opts.quiet) == -1)) goto out;
 
 	if (pending(s_logging_ok)) {
 		int     len = strlen(s_logging_ok); 
