@@ -50,7 +50,7 @@ pull_main(int ac, char **av)
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
 		    case 'l': opts.list = listType(optarg);	/* doc 2.0 */
-			      break;
+			break;
 		    case 'n': opts.dont = 1; break;		/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'R': opts.noresolve = 1; break;	/* doc 2.0 */
@@ -66,14 +66,16 @@ pull_main(int ac, char **av)
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;
 		    default:
-			    usage();
-			    return(1);
+			usage();
+			return(1);
 		}
 	}
 
 	if (opts.list == LISTKEY) {
+		unless (av[optind]) return (sys("bk", "synckeys", "-rk", SYS));
 		return (sys("bk", "synckeys", "-rk", av[optind], SYS));
 	} else  if (opts.list == LISTREV) {
+		unless (av[optind]) return (sys("bk", "synckeys", "-rr", SYS));
 		return (sys("bk", "synckeys", "-rr", av[optind], SYS));
 	}
 

@@ -555,17 +555,18 @@ synckeys(remote *r, int flags)
 	rc = prunekey(s, r, 1, flags, 0, NULL, NULL, NULL);
 	if (rc < 0) {
 		switch (rc) {
-		    case -2:	printf(
+		    case -2:
+			printf(
 "You are trying to sync to an unrelated package. The root keys for the\n\
 ChangeSet file do not match.  Please check the pathnames and try again.\n");
-				close(fd);
-				sccs_free(s);
-				return (1); /* needed to force bkd unlock */
-		    case -3:	printf("You are syncing to an a empty "
-					    "directory\n");
-				sccs_free(s);
-				return (1); /* empty dir */
-				break;
+			close(fd);
+			sccs_free(s);
+			return (1); /* needed to force bkd unlock */
+		    case -3:
+			printf("You are syncing to an empty directory\n");
+			sccs_free(s);
+			return (1); /* empty dir */
+			break;
 		}
 		close(fd);
 		disconnect(r, 2);
