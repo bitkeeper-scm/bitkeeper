@@ -31,7 +31,10 @@ remote_parse(char *p, int is_clone)
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5, BK_PORT);
-		if (r) r->type = ADDR_BK;;
+		if (r) {
+			r->type = ADDR_BK;;
+			if (r->user) r->loginshell = 1;
+		}
 	} else if (!is_clone && (bk_mode() == BK_BASIC)) {
 		fprintf(stderr,
 		    "Non-bk:// address detected: %s\n", upgrade_msg);
@@ -165,7 +168,6 @@ url_parse(char *p, int default_port)
 		 * user@host[:path] or
 		 * user@host[/path]
 		 */
-		r->loginshell = 1;
 		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
 		s = p;
 		while (*s) {

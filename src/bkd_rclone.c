@@ -16,6 +16,7 @@ rclone_common(int ac, char **av, opts *opts)
 	int	c;
 	char	*p;
 
+	bzero(opts, sizeof(*opts));
 	while ((c = getopt(ac, av, "dr;vz|")) != -1) {
 		switch (c) {
 		    case 'd': opts->debug = 1; break;

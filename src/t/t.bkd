@@ -133,7 +133,7 @@ bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
 echo OK
 echo $N check a push to bkd with a gfile conflict ...................$NL
-if [ "$PLATFORM" = "UNIX" ];then CNT=5; else CNT=2; fi
+CNT=5
 P=50000
 cd $HERE/project
 bk bkd -q -d -p$P -c$CNT
@@ -158,8 +158,6 @@ grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 rm -f  $HERE/project/conflict.c
 echo OK
-if [ "$PLATFORM" = "UNIX" ]
-then #-------------------------------------------------------------------------
 echo $N check http pull from bkd ....................................$NL
 waitForUnlock $HERE/project
 cd $HERE/project/src
@@ -176,9 +174,6 @@ cd $HERE
 bk clone $Q http://localhost:$P $HERE/project2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
-else
-bk bkd -R 2> $DEV_NULL
-fi #---------------------------------------------------------------------------
 
 # Check bk basic mode behaviour
 echo $N Make sure bk/basic limits access to master repository only ..$NL
@@ -223,7 +218,7 @@ bk new $Q JUNK
 (cd $HERE/copy; bk _loggingaccepted; )
 bk commit $Q -ywhatever
 bk push -t bk://localhost:$P/$HERE/copy 2> bk.out
-if [ $PLATFORM = "UNIX" ]; then CNT=6; else CNT=4; fi
+CNT=6
 grep -q "pushing to is $CNT changesets" bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
