@@ -696,38 +696,49 @@ flush2remote(remote *r)
  * 1) remote is running a version 1.2 (i.e. old) bkd
  * 2) remote is not running a bkd.
  * 3) remote is running a current bkd, but have some type of config/path error
+ *
+ * XXX This function could be simplied if we don't need to detect old bkd.
  */
 void
 drainErrorMsg(remote *r, char *buf, int bsize)
 {
-	int bkd_msg = 0;
-
+	int	bkd_msg = 0, i;
+	char	**lines = 0;
+	
+	lines = addLine(lines, strdup(buf));
 	if (strneq("ERROR-BAD CMD: putenv", buf, 21)) {
 		bkd_msg = 1;
 		while (getline2(r, buf, bsize) > 0) {
+			lines = addLine(lines, strdup(buf));
 			if (strneq("ERROR-BAD CMD: putenv", buf, 21)) continue;
 			break;
 		}
 	}
 
-	do {
+	while (1) {
 		if (strneq("ERROR-BAD CMD: pull_part1", buf, 25)) break;
 		if (strneq("ERROR-BAD CMD: @END", buf, 19)) break; /*for push*/
-		if (strneq("ERROR-BAD CMD:", buf, 14)) continue;
-		if (streq("OK-root OK", buf)) continue;
+		if (strneq("ERROR-BAD CMD:", buf, 14)) goto next;
+		if (streq("OK-root OK", buf)) goto next;
 		if (streq("ERROR-exiting", buf)) exit(1);
 		if (!strneq("ERROR-", buf, 6)) {
-			fprintf(stderr, "drainErrorMsg: Unexpected response: ");
+			fprintf(stderr,
+				"drainErrorMsg: Unexpected response:\n");
+			EACH (lines) fprintf(stderr, "%s\n", lines[i]);
+		} else {
+			fprintf(stderr, "%s\n", buf);
 		}
-		fprintf(stderr, "%s\n", buf);
 		break;
-	} while (getline2(r, buf, bsize) > 0);
+next:		if (getline2(r, buf, bsize) <= 0) break;
+		lines = addLine(lines, strdup(buf));
+	}
 
 	if (bkd_msg) {
 		fprintf(stderr,
 			"Remote seems to be running a older BitKeeper release\n"
 			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
 	}
+	freeLines(lines);
 	exit(1);
 }
 
