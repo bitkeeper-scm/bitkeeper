@@ -5,19 +5,8 @@
 bk resolve \- merge and/or apply new work after a push or a pull
 .SH SYNOPSIS
 .\" -F undoc
-.Bc bk resolve [\-aAcdlnqrtv1234] [
-.OPTreq \-l log
-.Bc ] [
-.OPTreq \-m merge
-.Bc ] [
-.OPTreq \-X glob
-.Bc ] [
-.OPTreq \-y comment
-.Bc ] [
-.ARGc package_root
-.Bc ] [
-.ARGc globs
-.B ]
+.B bk resolve [\-options] 
+.OPT repo
 .SH DESCRIPTION
 .LP
 After a 
@@ -31,9 +20,9 @@ and
 .B bk push
 commands but may be rerun to finish a previously uncompleted resolve.
 .LP
-If you want to preview the new changesets before merging, you can run
+In order to preview the new changesets before merging, run
 .B bk csets 
-and that will run csettool on the list of changes (which can
+and that will run csettool on the list of changes (which may
 be found in RESYNC/BitKeeper/etc/csets).
 .LP
 Resolve traverses all of the files, prompting you with a list of files
@@ -57,22 +46,129 @@ different deltas)
 .LP
 When there are no conflicts left to be merged, resolve groups any merge
 changes into a changeset and moves everything into your repository.
-If a subset of the files have been specified when invoking resolve,
-or if the \-X option was used when invoking resolve, the changeset will
-not be created.
-bk resolve must be rerun without any of these options in order to create
-the changeset.
-.LP
-When using the glob patterns, the pattern must match the full pathname,
-not just the filename part.  For example, given a filename of src/bk.c
-the patterns '*bk.c' or 'src/*.c' would match, whereas 'bk.c' would not.
 .LP
 While it is OK to quit out of resolve without finishing, the repository
 will be locked and remain locked until you return to resolve and finish
 up the merge process.
 .LP
 For detailed help on the merge process, see 
-.BR bk\ help\ merging .
+.BR bk\ help\ resolving .
+.SH OPTIONS
+.if t .TP .8i
+.if n .TP 1i
+.B \-1
+Run only pass 1; similarly for 2 3 and 4.
+See PASSES section below.
+.tp
+.B \-a
+Automerge.  This will run a diff3\-based merge of
+all non\-overlapping lines.  If there are overlapping
+lines in merged files, the merge will fail and the files
+will not be resolved; you have to run resolve again
+without the 
+.B \-a
+option to finish the resolve.
+.tp
+.B \-A
+Auto advance.  Normally, when doing an interactive resolve,
+the resolution is not complete until you tell the system
+to commit the file ("C" in the content resolve menu).  This
+allows for several false starts on a merge, you can use
+"m" to merge, decide that you didn't like it, and use
+"m" again to try over.  If 
+.B \-A
+is used, any sort of merge
+which completes is immediately used and the resolver 
+advances to the next file.
+.tp
+.B \-c
+No conflicts.  This option tells resolve to complete if and
+only if new non\-conflicting work appears in the patch.
+.tp
+.B \-d
+Debugging (mainly useful to \*(BK developers).
+.tp
+.OPTreq \-i glob
+Include (resolve) files matching the glob pattern specified. 
+This option may be specified multiple times.
+See RESOLVING SUBSETS section below.
+.tp
+.OPTreq \-l log
+Log operations to 
+.ARG log
+(or stderr if no destination is specified).
+This option is to provide for audit trails; support is not
+yet complete.
+.tp
+.OPTreq \-m merge
+Use 
+.ARG merge
+as the merge program called when you press "m"
+in the content resolver.  The merge program takes four file
+arguments: the local version of the file, the ancestor
+version of the file, the remote version of the file,
+and the merged file.  It is the job of the merge program
+to merge the changes into the merge file. 
+.tp
+.B \-q
+Be quiet.
+.tp
+.B \-r
+Re\-merge.  If you started to resolve, exited the resolver,
+and then restarted, files already merged will be skipped.
+This options allows you to re\-merge files which need
+help, yet allows you to skip past the ones you are happy
+with by hitting "C" in the resolve menu.
+.tp
+.B \-t
+Text\-only. Enables the text\-based resolve menu when doing 
+the final commit instead of using citool.
+.tp
+.OPTreq \-x glob
+Exclude (don't resolve) files matching the glob pattern specified. 
+This option may be specified multiple times.
+See RESOLVING SUBSETS section below.
+.tp
+.OPTreq \-y comment
+Use 
+.ARG comment
+as the changeset check\-in message.  This option
+is typically set by the calling program, i.e., 
+.BR bk\ pull .
+If 
+.ARG comment
+is not present, resolve will prompt for one
+at commit time.
+.SH RESOLVING SUBSETS
+Include and/or exclude patterns may be used to control which
+files are resolved.
+This may be useful when unrelated changes by different engineers
+are being merged.
+To see which files will need to be merged run bk conflicts.
+.LP
+There may be multiple include and/or exclude patterns.
+The patterns are a file glob the same as used by bk ignore.
+Patterns are matched against the partial pathname from the root
+of the repository.
+If the partial pathname matches any of the exclude patterns then
+the file is skipped.
+If there are one or more include patterns but the partial
+pathname does not match any of the include patterns then the
+file is skipped.
+Exclude processing takes precendence over include processing.
+.LP
+If there are renames in the update and files which need renames
+are selected then the resolver will force the resolution of
+those renames first.
+Currently, the include/exclude selection process is applied to
+the name used after the rename resolution, which can be
+confusing.
+It may be easiest to run the rename resolution passes first with
+"bk resolve -12", list the conflicts with "bk conflicts", and
+then rerun resolve selecting the files to be resolved.
+.LP
+bk resolve must be run without specifying any subset of the files in order
+to fully complete.
 .SH PASSES
 .LP
 The resolver has four passes (phases), each with a different function.
@@ -112,87 +208,8 @@ changes made to the local repository are removed, and the resolver
 working directory is left intact.  The user can then fix the problems
 that caused the error, then re-run the resolver to apply the changes
 to the local repository.
-.SH OPTIONS
-.if t .TP .8i
-.if n .TP 1i
-.B \-1
-Run only pass 1; similarly for 2 3 and 4.
-.tp
-.B \-a
-Automerge.  This will run a diff3\-based merge of
-all non\-overlapping lines.  If there are overlapping
-lines in merged files, the merge will fail and the files
-will not be resolved; you have to run resolve again
-without the 
-.B \-a
-option to finish the resolve.
-.tp
-.B \-A
-Auto advance.  Normally, when doing an interactive resolve,
-the resolution is not complete until you tell the system
-to commit the file ("C" in the content resolve menu).  This
-allows for several false starts on a merge, you can use
-"m" to merge, decide that you didn't like it, and use
-"m" again to try over.  If 
-.B \-A
-is used, any sort of merge
-which completes is immediately used and the resolver 
-advances to the next file.
-.tp
-.B \-c
-No conflicts.  This option tells resolve to complete if and
-only if new non\-conflicting work appears in the patch.
-.tp
-.B \-d
-Debugging (mainly useful to \*(BK developers).
-.tp
-.tp
-.OPTreq \-l log
-Log operations to 
-.ARG log
-(or stderr if no destination is specified).
-This option is to provide for audit trails; support is not
-yet complete.
-.tp
-.OPTreq \-m merge
-Use 
-.ARG merge
-as the merge program called when you press "m"
-in the content resolver.  The merge program takes four file
-arguments: the local version of the file, the ancestor
-version of the file, the remote version of the file,
-and the merged file.  It is the job of the merge program
-to merge the changes into the merge file. 
-.tp
-.B \-q
-Be quiet.
-.tp
-.B \-r
-Re\-merge.  If you started to resolve, exited the resolver,
-and then restarted, files already merged will be skipped.
-This options allows you to re\-merge files which need
-help, yet allows you to skip past the ones you are happy
-with by hitting "C" in the resolve menu.
-.tp
-.B \-t
-Text\-only. Enables the text\-based resolve menu when doing 
-the final commit instead of using citool.
-.tp
-.OPTreq \-X glob
-Exclude (don't resolve) file matching the glob pattern specified.  This
-option may be specified multiple times.
-.tp
-.OPTreq \-y comment
-Use 
-.ARG comment
-as the changeset check\-in message.  This option
-is typically set by the calling program, i.e., 
-.BR bk\ pull .
-If 
-.ARG comment
-is not present, resolve will prompt for one
-at commit time.
 .SH "SEE ALSO"
+.SA conflicts 1
 .SA csets 1
 .SA merging 1
 .SA pull 1

@@ -8,7 +8,6 @@ private int	win32link(const char *from, const char *to);
 
 private	char	*uniqfile(const char *file);
 private	int	linkcount(const char *file);
-private int	readlockf(const char *file, pid_t *, char **hostp, time_t *tp);
 private	void	addLock(const char *, const char *);
 
 private	char	**lockfiles;
@@ -129,7 +128,7 @@ sccs_stalelock(const char *file, int discard)
 	time_t	t;
 	const	int DAY = 24*60*60;
 
-	if (readlockf(file, &pid, &host, &t) == -1) return (0);
+	if (sccs_readlockf(file, &pid, &host, &t) == -1) return (0);
 
 	if (streq(host, sccs_realhost()) && !isLocalHost(host)) {
 		if (findpid(pid) == 0) {
@@ -163,7 +162,7 @@ sccs_mylock(const char *file)
 	pid_t	pid;
 	time_t	t;
 
-	if (readlockf(file, &pid, &host, &t) == -1) return (0);
+	if (sccs_readlockf(file, &pid, &host, &t) == -1) return (0);
 	if ((getpid() == pid) &&
 	    streq(host, sccs_realhost()) && !isLocalHost(host)) {
 	    	free(host);
@@ -173,8 +172,8 @@ sccs_mylock(const char *file)
 	return (0);
 }
 
-private int
-readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
+int
+sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 {
 	int	fd, flen;
 	int	try = 0;

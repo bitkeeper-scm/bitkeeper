@@ -73,7 +73,7 @@ resolve_main(int ac, char **av)
 	setmode(0, _O_TEXT);
 	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtvX;1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFi;qrtvx;1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -92,7 +92,11 @@ resolve_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
-		    case 'X':
+		    case 'i':
+			opts.partial = 1;
+			opts.includes = addLine(opts.includes, strdup(optarg));
+			break;
+		    case 'x':
 			opts.partial = 1;
 			opts.excludes = addLine(opts.excludes, strdup(optarg));
 			break;
@@ -104,7 +108,7 @@ resolve_main(int ac, char **av)
 		    case '4': opts.pass4 = 0; break;		/* doc 2.0 */
 		    default:
 		    	fprintf(stderr, "resolve: bad opt %c\n", optopt);
-			system("bk help -s resolve");
+usage:			system("bk help -s resolve");
 			exit(1);
 		}
     	}
@@ -118,11 +122,8 @@ resolve_main(int ac, char **av)
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind++]);
-	if (av[optind]) opts.partial = 1;
-	while (av[optind]) {
-		opts.only = addLine(opts.only, strdup(av[optind++]));
-	}
-	if (opts.partial) opts.pass1 = opts.pass2 = opts.pass4 = 0;
+	if (av[optind]) goto usage;
+	if (opts.partial) opts.pass4 = 0;
 
 	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
 		opts.textOnly = 1; 
@@ -308,6 +309,10 @@ passes(opts *opts)
 		perror("sfiles list");
 err:		if (p) fclose(p);
 		if (flist[0]) unlink(flist);
+	}
+	unless (p = fopen(flist, "r")) {
+		perror(flist);
+		goto err;
 	}
 	unless (opts->rootDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
@@ -675,8 +680,7 @@ pass2_renames(opts *opts)
 		t = strrchr(path, '/');
 		unless (t[1] == 's') continue;
 
-		unless ((s = sccs_init(path, INIT_NOCKSUM)) &&
-		    HASGRAPH(s)) {
+		unless ((s = sccs_init(path, INIT_NOCKSUM)) && HASGRAPH(s)) {
 			if (s) sccs_free(s);
 			fprintf(stderr, "Ignoring %s\n", path);
 			continue;
@@ -739,7 +743,7 @@ out:		resolve_free(rs);
  * r.file: merge deltas 1.491 1.489 1.489.1.21 lm 00/01/08 10:39:11
  */
 names	*
-getnames(char	*path, int type)
+res_getnames(char *path, int type)
 {
 	FILE	*f = fopen(path, "r");
 	names	*names = 0;
@@ -1538,10 +1542,6 @@ pass3_resolve(opts *opts)
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
 
-	/*
-	 * Make sure the renames are done first.
-	 * XXX - doesn't look in RENAMES, should it?
-	 */
 	unless (p = popen("bk _find . -name 'm.*'", "r")) {
 		perror("popen of find");
 		resolve_cleanup(opts, 0);
@@ -1570,6 +1570,7 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	EACH(conflicts) {
 		char	*t = strrchr(conflicts[i], '/');
 
+		if (opts->debug) fprintf(stderr, "pass3: %s\n", conflicts[i]);
 		if (streq(conflicts[i], "SCCS/s.ChangeSet")) continue;
 
 		if (opts->debug) fprintf(stderr, "pass3: %s", conflicts[i]);
@@ -1632,6 +1633,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		freeLines(opts->notmerged, free);
 		opts->notmerged = 0;
 		chdir(RESYNC2ROOT);
+		sccs_unlockfile(RESOLVE_LOCK);
 		execvp("bk", nav);
 		exit(1);
 	}
@@ -2919,15 +2921,25 @@ resolvewalk(char *file, struct stat *sb, void *data)
 	if (!ci->pfiles_only && !opts->remerge && e) goto out;
 	p[1] = 's';
 	q = sccs2name(file);
-	/* Add to the list if the sfile or gfile matches the ONLY list,
-	 * and does not match the EXCLUDE list.  Also add if neither
-	 * ONLY nor EXCLUDE list exists (!opts->partial).
-	 */
-	if (!opts->partial ||
-	    ((!opts->only || (match_globs(file, opts->only, 0) ||
-	    match_globs(q, opts->only, 0))) &&
-	    !(opts->excludes && (match_globs(file, opts->excludes, 0) ||
-	    match_globs(q, opts->excludes, 0))))) {
+
+	/* just like in export -tpatch */
+	if (opts->excludes || opts->includes) {
+		int	skip = 0;
+
+		if (opts->excludes && match_globs(q, opts->excludes, 0)) {
+			if (opts->debug) fprintf(stderr, "SKIPx %s\n", q);
+			skip = 1;
+		}
+		if (opts->includes && !match_globs(q, opts->includes, 0)) {
+			if (opts->debug) fprintf(stderr, "SKIPi %s\n", q);
+			skip = 1;
+		}
+		unless (skip) {
+			if (opts->debug) fprintf(stderr, "ADD(%s)\n", q);
+			ci->files = addLine(ci->files, strdup(file));
+		}
+	} else {
+		if (opts->debug) fprintf(stderr, "ADD(%s)\n", q);
 		ci->files = addLine(ci->files, strdup(file));
 	}
 	free(q);
@@ -2943,7 +2955,6 @@ find_files(opts *opts, int pfiles)
 	cinfo.files = 0;
 	cinfo.opts = opts;
 	cinfo.pfiles_only = pfiles;
-	chdir(ROOT2RESYNC);
 	walksfiles(".", resolvewalk, &cinfo);
 	return (cinfo.files);
 }

@@ -13173,7 +13173,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-
 	if (streq(kw, "Dn")) {
 		/* serial number of included deltas */
 		int i;
@@ -13713,7 +13712,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return nullVal;
 	}
 
-	/* ======== BITKEEPER SPECIFIC KEYWORDS ========== */
 	if (streq(kw, "N")) {
 		fd(s->numdeltas);
 		return (strVal);
@@ -14490,7 +14488,9 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "RREV")) {
 		names	*n;
 
-		unless (s->rrevs) s->rrevs = getnames(sccsXfile(s, 'r'), 'r');
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
 		n = (names *)s->rrevs;
 		if (n && n->remote) {
 			fs(n->remote);
@@ -14502,7 +14502,9 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "LREV")) {
 		names	*n;
 
-		unless (s->rrevs) s->rrevs = getnames(sccsXfile(s, 'r'), 'r');
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
 		n = (names *)s->rrevs;
 		if (n && n->local) {
 			fs(n->local);
@@ -14514,10 +14516,54 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "GREV")) {
 		names	*n;
 
-		unless (s->rrevs) s->rrevs = getnames(sccsXfile(s, 'r'), 'r');
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
 		n = (names *)s->rrevs;
 		if (n && n->gca) {
 			fs(n->gca);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "RPN")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->remote && (d = findrev(s, n->remote))) {
+			fs(d->pathname);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "LPN")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->local && (d = findrev(s, n->local))) {
+			fs(d->pathname);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GPN")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->gca && (d = findrev(s, n->gca))) {
+			fs(d->pathname);
 			return (strVal);
 		}
 		return (nullVal);

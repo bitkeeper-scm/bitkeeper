@@ -300,7 +300,7 @@ Alternatively, you use 'f' to try the graphical filemerge.\n\n");
 }
 
 private int
-commit(resolve *rs, int delta_now, int show_diffs, char *comments)
+commit(resolve *rs, int delta_now, int show_diffs)
 {
 	if (rs->opts->debug) fprintf(stderr, "commit(%s)\n", rs->s->gfile);
 
@@ -326,9 +326,9 @@ doit:	if (delta_now) {
 			do_delta(rs->opts, rs->s, SCCS_MERGE);
 		} else {
 			if (show_diffs) {
-				sccs_diffs(rs->s, 0, 0, 0, DF_DIFF, 0, stdout);
+				sccs_diffs(rs->s, 0, 0, 0, DF_DIFF, stdout);
 			}
-			do_delta(rs->opts, rs->s, comments);
+			do_delta(rs->opts, rs->s, 0);
 		}
 	}
 	rs->opts->resolved++;
@@ -338,13 +338,13 @@ doit:	if (delta_now) {
 int
 c_commit(resolve *rs)
 {
-	return (commit(rs, rs->opts->textOnly, 0, 0));
+	return (commit(rs, rs->opts->textOnly, 0));
 }
 
 int
 c_ccommit(resolve *rs)
 {
-	return (commit(rs, 1, 1, 0));
+	return (commit(rs, 1, 1));
 }
 
 /*
@@ -389,7 +389,7 @@ c_ul(resolve *rs)
 	names	*n = rs->tnames;
 
 	unless (sys("cp", "-f", n->local, rs->s->gfile, SYS)) {
-		return (commit(rs, 1, 0, "Use local revision"));
+		return (commit(rs, 1, 0));
 	}
 	return (0);
 }
@@ -401,7 +401,7 @@ c_ur(resolve *rs)
 	names	*n = rs->tnames;
 
 	unless (sys("cp", "-f", n->remote, rs->s->gfile, SYS)) {
-		return (commit(rs, 1, 0, "Use remote revision"));
+		return (commit(rs, 1, 0));
 	}
 	return (0);
 }

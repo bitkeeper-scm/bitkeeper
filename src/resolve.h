@@ -61,14 +61,14 @@ typedef struct {
 	MDBM	*idDB;		/* for the local repository, not RESYNC */
 	MDBM	*checkoutDB;	/* Save the original checkout state files */
 	FILE	*log;		/* if set, log to here */
-	char	**only;		/* list of globs indicating files to resolve */
+	char	**includes;	/* list of globs indicating files to resolve */
 	char	**excludes;	/* list of globs indicating files to skip */
 	char	**notmerged;	/* list of files that didn't automerge */
 } opts;
 
 /*
  * Used both for r.files and m.files.
- * See getnames() and freenames().
+ * See res_getnames() and freenames().
  */
 typedef struct {
 	char	*local;
@@ -127,7 +127,7 @@ struct resolve {
 };
 
 
-names	*getnames(char *path, int type);
+names	*res_getnames(char *path, int type);
 char	*mode2a(mode_t m);
 int	more(resolve *rs, char *file);
 char	*res_getlocal(char *gfile);

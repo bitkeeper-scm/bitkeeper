@@ -151,23 +151,26 @@ for d in proj copy3; do
 		echo $d >> $f
 		bk delta $Q -y"$d side" "$f" || exit 1
 	done
+	bk mv file file.$d
 	bk commit -y"$d" $Q || exit 1
 done
 cd $HERE/copy3
-bk pull $Q 2> OUT && {
-	echo pull should have had conflict
+bk pull -R $Q
+tar cf TAR RESYNC
+echo q | bk resolve -a -d -l 2> OUT && {
+	echo resolve should have failed
+	cat OUT
 	exit 1
 }
 # List files in conflict
-bk undos << EOF | sort > CMP1
-file
+cat <<EOF > WANT
 dir1/ff
 dir2/gg
 dir2/space file
+file (renamed) LOCAL=file.copy3 REMOTE=file.proj
 EOF
-bk conflicts | sort > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
+bk conflicts > GOT
+checkfiles WANT GOT
 # test ordering of prs options: sfile gfile REMOTE LOCAL GCA
 cd RESYNC > /dev/null
 bk sfiles -U "$@" | bk prs -hnr+ \
@@ -183,25 +186,42 @@ cd .. > /dev/null
 echo OK
 
 echon Testing output of conflicts command .........................
-bk undos << EOF | sort > CMP1
-file                 1 conflicts by bk 
+cat <<EOF > WANT
 dir1/ff              1 conflicts by bk 
 dir2/gg              1 conflicts by bk 
+dir2/space file      1 conflicts by bk 
+BitKeeper/RENAMES/1  1 conflicts by bk 
+    GCA path:        file
+    Local path:      file.copy3
+    Remote path:     file.proj
 EOF
-bk conflicts -l | sort > CMP2
-if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
+bk conflicts -l > GOT
+checkfiles WANT GOT
 echo OK
 
 echon Testing skip command ........................................
-bk conflicts | sed -e1d -e3d > CMP1
-bk resolve $Q << EOF > OUT 2>&1
+cat <<EOF >WANT
+dir1/ff
+dir2/space file
+EOF
+# l - resolves file.copy3 rename conflict
+# ul - resolves file.copy3 content conflict
+# S - skips dir1/ff
+# ul - resolves dir2/gg content conflict
+# q - leaves 'dir2/space file' unresolved
+bk resolve -l << EOF > OUT 2>&1
+l
 ul
+this is the comment
+.
 S
 ul
+this is the comment
+.
+q
 EOF
-bk conflicts > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
+bk conflicts > GOT
+checkfiles WANT GOT
 echo OK
 
 echon Testing locking of RESYNC dir ...............................
@@ -210,8 +230,120 @@ bk undos << EOF > CMP1
 Could not get lock on RESYNC directory.
 EOF
 bk resolve -q 2>&1 | head -1 > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
+checkfiles CMP1 CMP2
+echo OK
+
+echon Test selective resolve using includes .......................
+rm -rf RESYNC
+bk pull -R $Q
+cat <<EOF > WANT
+dir1/ff              1 conflicts by bk 
+dir2/gg              1 conflicts by bk 
+dir2/space file      1 conflicts by bk 
+file.proj            1 conflicts by bk 
+    GCA path:        file
+    Local path:      file.copy3
+    Remote path:     file.proj
+EOF
+bk conflicts -l > GOT
+checkfiles WANT GOT
+# l - resolves file.copy3 rename conflict
+# ul - resolves dir2/gg content conflict
+bk resolve -l -i'*/gg' <<EOF > OUT 2>&1
+l
+ul
+this is the comment
+.
+EOF
+cat <<EOF > WANT
+dir1/ff              1 conflicts by bk 
+dir2/space file      1 conflicts by bk 
+file.copy3           1 conflicts by bk 
+EOF
+bk conflicts -l > GOT
+checkfiles WANT GOT
+grep -q 'Commands are:' OUT && {
+	echo failed to exit resolver when it should have
+	exit 1
+}
+echo OK
+
+echon Test selective resolve using excludes .......................
+rm -rf RESYNC
+bk pull -R $Q
+# l - resolves file.copy3 rename conflict
+# ul - resolves dir2/gg content conflict
+bk resolve -d -l -x'*/ff' -x'dir2/s*' -x'f*' <<EOF > OUT 2>&1
+l
+ul
+this is the comment
+.
+EOF
+cat <<EOF > WANT
+dir1/ff              1 conflicts by bk 
+dir2/space file      1 conflicts by bk 
+file.copy3           1 conflicts by bk 
+EOF
+bk conflicts -l > GOT
+checkfiles WANT GOT
+grep -q 'Commands are:' OUT && {
+	echo failed to exit resolver when it should have
+	exit 1
+}
+echo OK
+
+echon Test selective resolve specifying a file that needs rename ..
+rm -rf RESYNC
+bk pull -R $Q
+# l - resolves file.copy3 rename conflict
+# ul - resolves dir2/gg content conflict
+bk resolve -d -l -i'f*' <<EOF > OUT 2>&1
+l
+ul
+this is the comment
+.
+EOF
+cat <<EOF > WANT
+dir1/ff              1 conflicts by bk 
+dir2/gg              1 conflicts by bk 
+dir2/space file      1 conflicts by bk 
+EOF
+bk conflicts -l > GOT
+checkfiles WANT GOT
+grep -q 'Commands are:' OUT && {
+	echo failed to exit resolver when it should have
+	exit 1
+}
+echo OK
+
+# This test shows that the include is on the name of the file after the rename
+echon Test selective resolve specifying the rename ................
+rm -rf RESYNC
+bk pull -R $Q
+# m - resolves file.copy3 rename conflict to xyz
+# ul - resolves xyz content conflict
+bk resolve -d -l -i'xyz' <<EOF > OUT 2>&1
+m
+xyz
+ul
+this is the comment
+.
+EOF
+cat <<EOF > WANT
+dir1/ff              1 conflicts by bk 
+dir2/gg              1 conflicts by bk 
+dir2/space file      1 conflicts by bk 
+EOF
+bk conflicts -l > GOT
+checkfiles WANT GOT
+grep -q 'Commands are:' OUT && {
+	echo failed to exit resolver when it should have
+	exit 1
+}
+test -f RESYNC/SCCS/s.xyz || {
+	failed to move to xyz
+	exit 1
+}
 echo OK
 
 echo $N Do a \'rr\' when given a create/gfile conflict ................$NL
@@ -219,7 +351,6 @@ cd $HERE
 rm -rf copy2
 bk clone $Q proj copy2 || exit 1
 cd proj
-bk abort -f
 echo hh > hh
 bk new $Q hh
 bk commit $Q -ynewhh || exit 1

@@ -1465,13 +1465,23 @@ _conflicts() {
 	test -d RESYNC || { echo "No files are in conflict"; exit 0; }
 	cd RESYNC > /dev/null
 
-	bk sfiles -U "$@" | bk prs -hnr+ \
-	-d'$if(:RREV:){:DPN:|:PN:|:LREV:|:RREV:|:GREV:}' - | \
-	while IFS='|' read GFILE SFILE LOCAL REMOTE GCA
-	do	if [ $SHORTLIST -eq 1 ]; then
-			echo $GFILE
+	bk gfiles "$@" | grep -v '^ChangeSet$' | bk prs -hnr+ \
+	-d'$if(:RREV:){:GPN:|:LPN:|:RPN:|:GFILE:|:LREV:|:RREV:|:GREV:}' - | \
+	bk _sort | while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
+	do	export GFILE LPN RPN GPN LOCAL REMOTE GCA
+		if [ "$GFILE" != "$LPN" ]
+		then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
+		else	test "$GFILE" = "$LPN" || {
+				echo GFILE=$GFILE LOCALPATH=$LPN
+				echo This is unexpected, paths are unknown
+				exit 1
+			}
+			PATHS="$GFILE"
+		fi
+		if [ $SHORTLIST -eq 1 ]; then
+			echo $PATHS
 		else
-			bk _conflict "$GFILE" "$SFILE" $LOCAL $REMOTE
+			bk _conflict 
 		fi
 		if [ $DIFF -eq 1 ]; then
 			bk diffs -r${LOCAL}..${REMOTE} "$GFILE"
@@ -1491,26 +1501,24 @@ _conflicts() {
 }
 
 __conflict() {
-	GFILE="$1"
-	SFILE="$2"
-	LOCAL=$3
-	REMOTE=$4
-
-	LINES=`bk smerge "$SFILE" $LOCAL $REMOTE | grep '^<<<<<<< gca' | wc -l`
+	LINES=`bk smerge "$GFILE" $LOCAL $REMOTE | grep '^<<<<<<< gca' | wc -l`
 	CONFLICTS=`expr $LINES + 0`
 	# Return if we can automerge
 	test $CONFLICTS -eq 0 && return
-	LOCAL_ONLY=`bk set -d -r$REMOTE -r$LOCAL "$SFILE"`
-	REMOTE_ONLY=`bk set -d -r$LOCAL -r$REMOTE "$SFILE"`
-	bk set -x -r$REMOTE -r$LOCAL "$SFILE" | while read REV
-	do      echo "$SFILE|$REV"
-	done | bk prs -hnd':P:' - | sort -r -u > /tmp/u$$
+	bk set -x -r$REMOTE -r$LOCAL "$GFILE" | while read REV
+	do      echo "$GFILE|$REV"
+	done | bk prs -hnd':P:' - | bk _sort -r -u > /tmp/u$$
 	USERS=
 	for i in `cat /tmp/u$$`
 	do	USERS="$i $USERS"
 	done
 	rm -f /tmp/u$$
 	printf "%-20s $CONFLICTS conflicts by $USERS\n" "$GFILE"
+	test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
+		printf "    %-16s %s\n" "GCA path:" "$GPN"
+		printf "    %-16s %s\n" "Local path:" "$LPN"
+		printf "    %-16s %s\n" "Remote path:" "$RPN"
+	}
 }
 
 # ------------- main ----------------------

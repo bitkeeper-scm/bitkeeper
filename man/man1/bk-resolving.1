@@ -23,7 +23,7 @@ was run with the
 .B -a
 option.
 .LP
-There are other sorts of conflicts, besides the usual file content
+There are other sorts of conflicts besides the typical file content
 conflicts.  \*(BK manages file names, permissions, flags, and
 symbolic tags in the same way as it manages file contents.
 That means that you can have a permissions conflict if, for example, one
@@ -50,11 +50,11 @@ A typical way to do this is to use the bk conflicts command to get a
 list of files that need manual resolving along with a list of users
 responsible for the conflicting changes.  Then each user takes turns
 invoking the resolver on the list of files for which they are
-responsible, committing the changes as they go.  After the conflicts in
-the individual files have been resolved and committed, the bk resolve
+responsible, checking in the changes as they go.  After the conflicts in
+the individual files have been resolved and checked in, the bk resolve
 command is run with no arguments in order to finish the process and
 commit a changeset.  The changes for each file will be attributed to the
-user that comitted that particular file.  The changeset will be
+user that committed that particular file.  The changeset will be
 attributed to the user that does the final commit of the changeset.
 .LP
 In this context, as well as the single user case, it is sometimes
