@@ -251,7 +251,7 @@ proc tmpfile {name} \
 
 proc restoreGeometry {app {w .} {force 0}} \
 {
-	global State gc
+	global State gc env
 
 	# The presence of the global variable 'geometry' means that the
 	# user specified a geometry on the command line. If that happens
@@ -267,6 +267,7 @@ proc restoreGeometry {app {w .} {force 0}} \
 	} elseif {[info exists gc($app.geometry)]} {
 		set geometry $gc($app.geometry)
 	}
+	if {[info exists env(BK_GEOM)]} { set geometry $env(BK_GEOM) }
 	if {![info exists geometry]} return
 
 	if {[catch {
@@ -276,8 +277,8 @@ proc restoreGeometry {app {w .} {force 0}} \
 	} message]} {
 		# See if we have just the +x+y form
 		if {[catch {
-			regexp {^\+([0-9]+)\+([0-9]+)$} $geometry -> x y
-			wm geometry $w +$x+$y
+			regexp {^([-+][0-9]+)([-+][0-9]+)$} $geometry -> x y
+			wm geometry $w $x$y
 			return
 		} message]} {
 			# OK, now we can punt

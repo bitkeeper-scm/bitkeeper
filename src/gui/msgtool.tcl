@@ -133,6 +133,8 @@ proc widgets {} \
 	$widgets(toplevel) configure -borderwidth 4 -relief flat 
 	if  {[info exists env(BK_MSG_GEOM)]} {
 		wm geometry $widgets(toplevel) $env(BK_MSG_GEOM)
+	} elseif {[info exists env(BK_GEOM)]} {
+		wm geometry $widgets(toplevel) $env(BK_GEOM)
 	}
 
 	# Any widgets that get referenced outside of this

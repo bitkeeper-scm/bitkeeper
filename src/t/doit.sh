@@ -219,6 +219,10 @@ setup_env()
 	BK_PAGER=cat
 	export BK_PAGER
 
+	# Force GUI tools to autoplace
+	BK_GEOM=+1+1
+	export BK_GEOM
+
 	unset BK_BIN _BK_GMODE_DEBUG
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
