@@ -120,19 +120,20 @@ cmd_rclone_part2(int ac, char **av)
 	}
 
 	/*
-	 * For security reason, Path is interpreted relative to virtual root
+	 * XXX TODO: Transformation of
+	 * BK_VHOST, project_name, path => /repos/<section>/<project>bk/<path>
+	 * can be done here.
+	 *
+	 * sprintf(buf, "/repos/%c/%s/bk/%s", REPOS,  pname[0], pname, path);
 	 */
-#define VROOT "/tmp"
-	p = aprintf("%s/%s", VROOT, path);
-	if (chdir(p)) {
-		free(p);
+	strcpy(buf, path);
+	if (chdir(buf)) {
 		p = aprintf("ERROR-cannot chdir to \"\%s\"\n", path);
                 out(p);
 		free(p);
 		drain();
                 return (1);
 	}
-	free(p);
 
 	getline(0, buf, sizeof(buf));
 	if (!streq(buf, "@SFIO@")) {
