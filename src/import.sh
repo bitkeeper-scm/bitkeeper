@@ -10,6 +10,7 @@ import() {
 	if [ X"$1" = "X--help" ]
 	then	bk help import; Done 0;
 	fi
+	__platformInit
 	COMMENTS=
 	COMMIT=YES
 	BRANCH=
@@ -327,30 +328,44 @@ transfer_RCS() { transfer "$@"; }
 transfer_MKS () {
 	transfer "$@"
 	mycd "$2" || exit 1
-	find . -type d -name rcs -print | while read x
-	do	DIR=`echo "$x" | sed 's,/rcs$,/RCS,'`
-		mv "$x" "$DIR"
-	done
-	find . -type d -name RCS | while read DIR
-	do	find "$DIR" -maxdepth 1 -type f | while read x
-		do
-			mv "$x" "${x},v"
-		done
-	done
-	find . -type f -name '*,v' -print | grep /RCS/ |
-	    xargs perl -w -i -e '$sym = 0; while(<>) {
-		$sym = 1 if /^symbols\s/;
-		$sym = 0 if /^locks\s*;/;
-		s/%2E/./g if $sym;
-		unless (/^ext$/) {
-			print;
-			next;
-		}
+	# Double check we are in the BK tree.
+	test -f "BitKeeper/etc/SCCS/s.config" || exit 1
+	find . -type f | perl -w -e '
 		while (<>) {
-			last if /^\@$/;
-		}
-	}'
-	bk _find | grep RCS/ > ${TMP}import$$
+			next if m|/SCCS/|i;
+			next if m|^./BitKeeper/|i;
+			chop;
+			unlink $_ unless m|/rcs/|i;
+		}'
+	find . -type f | perl -w -e '
+		while ($old = <>) {
+			$old =~ s|^\./||;
+			next if $old =~ m|/SCCS/|i;
+			next if $old =~ m|^SCCS/|i;
+			next if $old =~ m|^BitKeeper/|i;
+			chop($old);
+			$new = $old;
+			$new =~ s|/rcs/||;
+			$new =~ s|$|,v|;
+			open(IN, "$old") || die "$old";
+			open(OUT, ">$new") || die "$new";
+	    		while (<IN>) {
+				$sym = 1 if /^symbols\s/;
+				$sym = 0 if /^locks\s*;/;
+				s/%2E/./g if $sym;
+				unless (/^ext$/) {
+					print OUT;
+					next;
+				}
+				while (<IN>) {
+					last if /^\@$/;
+				}
+			}
+			close(IN);
+			close(OUT);
+			unlink($old);
+			print "$new\n";
+		}' > ${TMP}import$$
 }
 
 transfer_SCCS() { transfer "$@"; }
@@ -627,7 +642,7 @@ import_RCS () {
 		/bin/rm -f ${TMP}Attic$$
 	fi
 	if [ $TYPE = RCS ]
-	then	msg Moving RCS files out of RCS directories
+	then	msg Moving RCS files out of any RCS subdirectories
 		HERE=`pwd`
 		find . -type d | grep 'RCS$' | while read x
 		do	mycd $x
