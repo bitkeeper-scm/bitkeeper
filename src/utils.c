@@ -1427,3 +1427,28 @@ progressbar(int n, int max, char *msg)
 		fprintf(stderr, "|\r");
 	}
 }
+
+/*
+ * Make sure stdin and stdout are both open to to file handles.
+ * If not tie them to /dev/null to match assumption in the rest of bk.
+ * This tends to be a problem in cgi environments.
+ */
+void
+reserveStdFds(void)
+{
+	int	fd0, fd1;
+						
+#ifdef WIN32
+	closeBadFds();
+#endif
+	if ((fd0 = open(NULL_FILE, O_RDONLY, 0)) == 0) {
+do1:		if ((fd1 = open(DEV_NULL, O_WRONLY, 0)) != 1) {
+			close(fd1);
+		}
+	} else {
+		close(fd0);
+		if (fd0 == 1) {
+			goto do1;
+		}
+											}
+}

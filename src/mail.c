@@ -14,19 +14,6 @@ mail_main(int ac, char **av)
 	char	**to = 0;
 	int	ret;
 
-	/*
-	 * WIN32 note: Win32 wish shell maps the console to a
-	 * to a invisiable window, messages printed to tty will be invisiable.
-	 * We therefore have to send it to stdout, which will be read and
-	 * displayed by citool.
-	 */
-	unless (wishConsoleVisible()) {
-		/* close stdout, so citool doesn't wait for us */
-		fclose(stdout);
-		usleep(0); /* release cpu, so citool can exit */
-		fopen(DEV_TTY, "w");
-	}
-
 	if (name = strrchr(av[0], '/')) {
 		name++;
 	} else {

@@ -446,6 +446,7 @@ main(int ac, char **av, char **env)
 	char	*prog, *argv[MAXARGS];
 	char	sopts[30];
 
+	reserveStdFds();
 	if (getenv("BK_SHOWPROC")) {
 		FILE	*f;
 
