@@ -7732,7 +7732,9 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	/*
 	 * Make sure that the revision is well formed.
 	 */
-	if (!d->r[0] || (!d->r[1] && (d->r[0] != 1)) || (d->r[2] && !d->r[3])) {
+	if (!d->r[0] || (!d->r[2] && !d->r[1] && (d->r[0] != 1)) ||
+	    (d->r[2] && !d->r[3]))
+	{
 		unless (flags & ADMIN_SHUTUP) {
 			fprintf(stderr, "%s: bad revision %s (parent = %s)\n",
 			    file, d->rev, d->parent?d->parent->rev:"Root");
@@ -7780,7 +7782,8 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			}
 			error = 1;
 		}
-		if ((p->r[0] != d->r[0]) || (p->r[1] != d->r[1])) {
+		if (d->r[1] && ((p->r[0] != d->r[0]) || (p->r[1] != d->r[1])))
+		{
 			unless (flags & ADMIN_SHUTUP) {
 				fprintf(stderr,
 				    "%s: rev %s has incorrect parent %s\n",
@@ -7827,8 +7830,8 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			error = 1;
 		}
 	} else {
-		/* Otherwise, this should be a .1 node */
-		if (d->r[1] != 1) {
+		/* Otherwise, this should be a .1 node or 0.y.1 node */
+		if (d->r[1] != 1 && (!d->r[1] || d->r[3] != 1)) {
 			unless (flags & ADMIN_SHUTUP) {
 				fprintf(stderr, "%s: rev %s should be a .1 rev"
 				    " since parent %s is a different release\n",
@@ -9857,7 +9860,14 @@ chknewlod(sccs *s, delta *d)
 
 	unless (d->rev) return (0);
 
-	unless (d->r[0] != 1 && d->r[1] == 1 && d->r[2] == 0) {
+	/* x.1 or x.0.y.1 signify base of lod
+	 * renumber will smoosh together same lod branches
+	 * for now, just separate
+	 */
+	unless ((d->r[0] != 1 && 
+		((d->r[1] == 1 && d->r[2] == 0) ||
+		(d->r[1] == 0 && d->r[2] != 0 && d->r[3] == 1))))
+	{
 		free(d->rev);
 		d->rev = 0;
 		return (0);
