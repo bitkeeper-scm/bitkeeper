@@ -66,6 +66,9 @@ List only those changesets whose comments contain the string
 .ARG pat .
 If there is a trailing "i" then ignore case in the search.
 .tp
+.B \-a
+List all deltas, including tag deltas.  Implies -e.
+.tp
 .OPTreq \-c dates
 Specifies the changesets to be listed as a date range, i.e., -c-6W lists
 the last 6 weeks worth of changes.
@@ -86,9 +89,9 @@ Produce html as output.  May not be combined with
 .tp
 .B \-k
 Produce a list of matching changeset keys, usually for scripts.
-Implies 
+Implies -a which implies
 .BR \-e .
-If you really do not want the empty merge keys, a
+If you really do not want the empty merge keys, another
 .B \-e 
 option 
 .B after 
