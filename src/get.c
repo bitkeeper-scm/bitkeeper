@@ -167,12 +167,13 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];
+				int	ret;
 
 				sprintf(buf, "%s/%s", Gname, basenm(s->gfile));
 				free(s->gfile);
 				s->gfile = strdup(buf);
-				s = check_gfile(s, 0);
-				assert(s);
+				ret = check_gfile(s, 0);
+				assert(ret == 0);
 			} else {
 				free(s->gfile);
 				s->gfile = strdup(Gname);

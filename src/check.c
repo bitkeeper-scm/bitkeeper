@@ -185,7 +185,7 @@ checkAll(MDBM *db)
 		t = strchr(buf, ' ');
 		assert(t);
 		*t++ = 0;
-		unless (s = sccs_keyinit(buf, 0, idDB)) {
+		unless (s = sccs_keyinit(buf, 0, 0, idDB)) {
 			unless (gone(buf, goneDB) ||
 			    mdbm_fetch_str(warned, buf)) {
 				fprintf(stderr, "keyinit(%s) failed.\n", buf);
@@ -380,7 +380,7 @@ out:	pclose(keys);
 char	*
 getFile(char *root, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(root, 0, idDB);
+	sccs	*s = sccs_keyinit(root, 0, 0, idDB);
 	char	*t;
 
 	unless (s) return (strdup("[can not init]"));
@@ -392,7 +392,7 @@ getFile(char *root, MDBM *idDB)
 char	*
 getRev(char *root, char *key, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(root, 0, idDB);
+	sccs	*s = sccs_keyinit(root, 0, 0, idDB);
 	delta	*d;
 
 	unless (s) return (strdup("[can not init]"));

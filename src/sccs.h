@@ -21,6 +21,7 @@
 #define	INIT_MAPWRITE	0x10000000	/* map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define INIT_GTIME	0x40000000	/* use g file mod time as time stamp */
+#define	INIT_SAVEPROJ	0x80000000	/* project is loaned, do not free it */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -239,10 +240,11 @@
 
 #define	UNKNOWN_USER	"anon"
 
-#define	isData(buf) (buf[0] != '\001')
+#define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)
 #define	eof(s)		((s->encoding & E_GZIP) ? \
 			    zeof() : (s->where >= s->mmap + s->size))
+#define	new(p)		p = calloc(1, sizeof(*p))
 
 typedef	unsigned short	ser_t;
 typedef	unsigned short	sum_t;
@@ -365,6 +367,12 @@ typedef struct {
  * sccs_init() should *NOT* go find that root directory, it should do it
  * lazily in sccs_root().  That gives us a chance to pass it in.
  */
+typedef struct {
+	int	flags;		/* PROJ_* */
+	char	*root;		/* to the root of the project */
+} project;
+
+#define	PROJ_RESYNC	0x00000001	/* Locked by resync */
 
 /*
  * struct sccs - the delta tree, the data, and associated junk.
@@ -392,7 +400,6 @@ typedef	struct sccs {
 	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
-	char	*root;		/* to the root of the project; optional */
 	char	**usersgroups;	/* lm, beth, staff, etc */
 	int	encoding;	/* ascii, uuencode, gzip, etc. */
 	char	**flags;	/* flags in the middle that we didn't grok */
@@ -408,6 +415,7 @@ typedef	struct sccs {
 	off_t	sumOff;		/* offset of the new delta cksum */
 	time_t	gtime;		/* gfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
+	project	*proj;		/* If in BK mode, pointer to project */
 	unsigned int cksumok:1;	/* check sum was ok */
 } sccs;
 
@@ -511,7 +519,7 @@ int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 void	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
-sccs	*sccs_init(char *filename, u32 flags, char *root);
+sccs	*sccs_init(char *filename, u32 flags, project *proj);
 sccs	*sccs_restart(sccs *s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
@@ -582,7 +590,7 @@ int	diff(char *lfile, char *rfile, char kind, char *out);
 char	**addLine(char **space, char *line);
 void	freeLines(char **space);
 int	roundType(char *r);
-sccs	*check_gfile(sccs*, int);
+int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
@@ -597,7 +605,7 @@ delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(void);
 int	sccs_meta(sccs *s, delta *parent, MMAP *initFile);
 int	sccs_resolveFiles(sccs *s);
-sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
+sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);

@@ -413,6 +413,7 @@ then echo "failed (known bug)"
 else echo OK
 fi
 rm -f resolve.out
+rm -rf $HERE/project/RESYNC
 echo $N Test propagation of a symbol on new changeset ...............$NL
 cd $HERE/project/src
 date > symbol_test
