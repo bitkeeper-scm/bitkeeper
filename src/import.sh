@@ -73,16 +73,16 @@ import() {
 	fi
 	HERE=`bk pwd`
 	if [ $TYPE != patch ]
-	then	cd $1
+	then	cd "$1"
 		FROM=`bk pwd`
-		cd $HERE
-	else	FROM=$1
+		cd "$HERE"
+	else	FROM="$1"
 	fi
-	cd $2
-	TO=`bk pwd`
+	cd "$2"
+	TO="`bk pwd`"
 	getIncExc
 	if [ X"$LIST" != X ]
-	then	cd $HERE
+	then	cd "$HERE"
 		if [ ! -s "$LIST" ]
 		then	echo Empty file $LIST
 			exit 1
@@ -93,16 +93,16 @@ import() {
 	    "Absolute pathnames are disallowed, they should relative to $FROM"
 		    exit 1;;
 		esac
-		cd $FROM
-		if [ ! -f $path ]
+		cd "$FROM"
+		if [ ! -f "$path" ]
 		then	echo No such file: $FROM/$path
 			exit 1
 		fi
-		cd $HERE
+		cd "$HERE"
 		sed 's|^\./||'< $LIST > ${TMP}import$$
 	else	if [ $TYPE != patch ]
 		then	echo Finding files in $FROM
-			cd $FROM
+			cd "$FROM"
 			cmd="bk _find"
 			if [ X"$INCLUDE" != X ]
 			then	cmd="$cmd | egrep '$INCLUDE'"
@@ -118,7 +118,7 @@ import() {
 	if [ $TYPE != patch ]
 	then	echo Checking to make sure there are no files already in
 		echo "	$TO"
-		cd $TO
+		cd "$TO"
 		while read x
 		do	if [ -e "$x" ]
 			then	echo "import: $x exists, entire import aborted"
@@ -140,11 +140,11 @@ import() {
 		fi
 	fi
 	rm -f ${TMP}sccs$$
-	cd $TO
-	eval validate_$type $FROM $TO
-	transfer_$type $FROM $TO
-	eval import_$type $FROM $TO
-	import_finish $TO
+	cd "$TO"
+	eval validate_$type \"$FROM\" \"$TO\"
+	transfer_$type "$FROM" "$TO"
+	eval import_$type \"$FROM\" \"$TO\"
+	import_finish "$TO"
 }
 
 getIncExc () {
@@ -231,9 +231,9 @@ transfer_text() { transfer "$@"; }
 transfer_patch() { return; }
 
 transfer() {
-	FROM=$1
-	TO=$2
-	TYPE=$3
+	FROM="$1"
+	TO="$2"
+	TYPE="$3"
 	NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 	if [ $FORCE = NO ]
 	then	echo
@@ -255,8 +255,8 @@ transfer() {
 	echo Transfering files
 	echo "	from $FROM"
 	echo "	to   $TO"
-	cd $FROM
-	bk sfio -omq < ${TMP}import$$ | (cd $TO && bk sfio -im $QUIET ) || exit 1
+	cd "$FROM"
+	bk sfio -omq < ${TMP}import$$ | (cd "$TO" && bk sfio -im $QUIET ) || exit 1
 }
 
 import_patch() {
@@ -267,7 +267,7 @@ import_patch() {
 	USER=patch
 	export USER
 	Q=$QUIET
-	cd $2
+	cd "$2"
 
 	# This must be done after we cd to $2
 	case `bk version` in
@@ -278,7 +278,7 @@ import_patch() {
 	echo Locking files in `pwd` ...
 	bk -r get -eq
 	echo Patching...
-	(cd $HERE && cat $PATCH) |
+	(cd "$HERE" && cat "$PATCH") |
 	    bk patch -p1 -ZsE -z '=-PaTcH_BaCkUp!' --forcetime --lognames > \
 		${TMP}plog$$ 2>&1
 	cat ${TMP}plog$$
@@ -359,13 +359,13 @@ import_patch() {
 import_text () {
 	Q=$QUIET
 
-	cd $2
+	cd "$2"
 	echo Checking in plain text files...
 	CLOCK_DRIFT=1 bk ci -1i $Q - < ${TMP}import$$ || exit 1
 }
 
 import_RCS () {
-	cd $2
+	cd "$2"
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]
@@ -385,7 +385,7 @@ import_RCS () {
 }
 
 import_SCCS () {
-	cd $2
+	cd "$2"
 	echo Checking for and fixing Teamware corruption...
 	bk sfiles | bk renumber -q -
 	if [ -s ${TMP}reparent$$ ]
@@ -408,7 +408,7 @@ import_SCCS () {
 }
 
 import_finish () {
-	cd $1
+	cd "$1"
 	echo ""
 	echo Validating all SCCS files
 	bk sfiles | bk admin -hhhq - > ${TMP}admin$$
@@ -428,9 +428,9 @@ import_finish () {
 }
 
 validate_SCCS () {
-	FROM=$1
-	TO=$2
-	cd $FROM
+	FROM="$1"
+	TO="$2"
+	cd "$FROM"
 	grep 'SCCS/s\.' ${TMP}import$$ > ${TMP}sccs$$
 	grep -v 'SCCS/s\.' ${TMP}import$$ > ${TMP}notsccs$$
 	if [ -s ${TMP}sccs$$ -a -s ${TMP}notsccs$$ ]
@@ -505,9 +505,9 @@ validate_RCS () {
 }
 
 validate_text () {
-	FROM=$1
-	TO=$2
-	cd $FROM
+	FROM="$1"
+	TO="$2"
+	cd "$FROM"
 	egrep 'SCCS/s\.|,v$' ${TMP}import$$ > ${TMP}nottext$$
 	egrep -v 'SCCS/s\.|,v$' ${TMP}import$$ > ${TMP}text$$
 	if [ -s ${TMP}text$$ -a -s ${TMP}nottext$$ ]
@@ -527,7 +527,7 @@ validate_text () {
 
 # Make sure there are no locked/extra files
 validate_patch() {
-	cd $2
+	cd "$2"
 	echo Make sure there are no locked files in `pwd` ...
 	bk sfiles -l | grep -v BitKeeper/ > ${TMP}locked$$
 	if [ -s ${TMP}locked$$ ]

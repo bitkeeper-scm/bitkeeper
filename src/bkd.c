@@ -36,7 +36,7 @@ bkd_main(int ac, char **av)
 		    case 'D': Opts.debug = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
 		    case 'i': Opts.interactive = 1; break;
-		    case 'h': Opts.http_hdr_out; break;
+		    case 'h': Opts.http_hdr_out = 1; break;
 		    case 'H': Opts.http_hdr_out = Opts.http_hdr_in = 1; break;
 		    case 'l':
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
@@ -480,11 +480,27 @@ getav(int *acp, char ***avp)
 {
 	static	char buf[2500];		/* room for two keys */
 	static	char *av[50];
-	int	i, inspace = 1;
+	int	i, inspace = 1, inQuote = 0;
 	int	ac;
 
+	/*
+	 * XXX TODO need to handle escaped quote character in args 
+	 */
 	if (Opts.interactive) out("BK> ");
 	for (ac = i = 0; in(&buf[i], 1) == 1; i++) {
+		if (inQuote) {
+			if (buf[i] == '\"') {
+				buf[i] = 0;
+				inQuote = 0;
+			}
+			continue;
+		}
+		if (buf[i] == '\"') {
+			assert(buf[i+1] != '\"'); /* no null arg */
+			av[ac++] = &buf[i+1];
+			inQuote = 1;
+			continue;
+		}
 		if ((buf[i] == '\r') || (buf[i] == '\n')) {
 			buf[i] = 0;
 			av[ac] = 0;
@@ -497,9 +513,6 @@ getav(int *acp, char ***avp)
 			*avp = av;
 			return (1);
 		}
-		/*
-		 * XXX FIXME: This could fail if there is space in a argument
-		 */
 		if (isspace(buf[i])) {
 			buf[i] = 0;
 			inspace = 1;
