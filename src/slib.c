@@ -3516,8 +3516,7 @@ check_gfile(sccs *s, int flags)
 	struct	stat sbuf;
 
 	if (lstat(s->gfile, &sbuf) == 0) {
-		unless (fileTypeOk(sbuf.st_mode))
-		{
+		unless ((flags & INIT_NOGCHK) || fileTypeOk(sbuf.st_mode)) {
 			verbose((stderr,
 				"unsupported file type: %s\n", s->gfile));
 err:			free(s->gfile);

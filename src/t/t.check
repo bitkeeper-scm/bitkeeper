@@ -81,3 +81,73 @@ bk -r check -a > OUT 2>&1
 if [ $? -eq 0 ]; then echo failed to exit non-zero; cat OUT; exit 1; fi
 if [ ! -s OUT ]; then echo failed; cat OUT; exit 1; fi
 echo OK
+
+echo $N Make sure that it is happy when we put it back ..............$NL
+mv d1/sub1/SCCS/S.a d1/sub1/SCCS/s.a
+bk -r check -a > OUT 2>&1 || {
+	exit failed to exit cleanly
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure it complains about locked files w/o a gfile........$NL
+bk get -eg $Q d1/sub1/SCCS/s.a
+bk -r check -a > OUT 2>&1 && {
+	echo should have exited with a failure
+	exit 1
+}
+grep -q 'is locked but not checked out' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure it it fixes the above problem with -f .............$NL
+bk -r check -af > OUT 2>&1 || {
+	echo should have exited cleanly
+	exit 1
+}
+test -f d1/sub1/SCCS/p.a && {
+	echo failed to unlock the file
+	exit 1
+}
+echo OK
+
+echo $N Make sure it complains about locked files w/ RO gfile........$NL
+bk edit $Q d1/sub1/SCCS/s.a
+chmod 444 d1/sub1/a
+bk -r check -a > OUT 2>&1 && {
+	echo should have exited with a failure
+	exit 1
+}
+grep -q 'is locked but not writable' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure unedit will fix the above problem .................$NL
+bk unedit d1/sub1/SCCS/s.a
+bk -r check -a > OUT 2>&1 || {
+	echo should have exited cleanly
+	exit 1
+}
+echo OK
+
+echo $N Make sure it complains about file/dir conflicts .............$NL
+bk clean $Q d1/sub1/a
+mkdir d1/sub1/a
+bk -r check -a > OUT 2>&1 && {
+	echo should have exited with a failure
+	cat OUT
+	exit 1
+}
+grep -q 'file/directory conflict' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
