@@ -64,9 +64,21 @@ chk_user()
 {
 	char	*user = sccs_getuser();
 
-	if (user && !streq(user, "root")) return (0);
-	unless (user) return (1);
-	fprintf(stderr, "Warning: running as root is not a good idea!\n");
+	if (streq(user, "root")) {
+		fprintf(stderr,
+		    "Warning: running as root is not a good idea!\n");
+		fprintf(stderr, "Set BK_USER to your real user name.\n");
+		return (0);
+	}
+	if (strchr(user, '@')) {
+		fprintf(stderr, "User name may not contain an @ sign.\n");
+		fprintf(stderr, "Set BK_USER to your real user name.\n");
+		return (1);
+	}
+	unless (user) {
+		fprintf(stderr, "Cannot determine user name.\n");
+		return (1);
+	}
 	return (0);
 }
 
