@@ -1030,7 +1030,9 @@ __mail() {
 }
 
 __logAddr() {
-	LOG=`grep "^logging:" ${BK_ETC}config | tr -d '[\t, ]'`
+	__cd2root
+	#LOG=`grep "^logging:" ${BK_ETC}config | tr -d '[\t, ]'`
+	LOG=`${BIN}get -qp ${BK_ETC}config | grep "^logging:" | tr -d '[\t, ]'`
 	case X${LOG} in
 	Xlogging:*)
 		;;
@@ -1085,7 +1087,7 @@ _getLog()
 {
 	__cd2root
 	NAME=$1
-	if [ X$NAME = X ]; then NAME=`${BIN}getuser`; fi
+	if [ X$NAME = X ]; then NAME=`${BIN}getuser`@`${BIN}gethost`; fi
 	exec `__perl` ${BIN}getlog $NAME ${BK_ETC}/config;
 }
 
@@ -1098,7 +1100,7 @@ _setLog()
 	${BIN}get -seg ${BK_ETC}config
 	${BIN}get -kps ${BK_ETC}config | sed -e '/^logging:/a\
 logging_ok:	'$1 > ${BK_ETC}config
-	${BIN}delta -q -y'Logging OK' ${BK_ETC}config
+	${BIN}delta -q -y'logging_ok: $1' ${BK_ETC}config
 	return 0
 }
 
@@ -1110,12 +1112,14 @@ logging_ok:	'$1 > ${BK_ETC}config
 __checkLog() {
 	msg=`_getLog`
 	case X$msg in
-	    Xask_open_logging)
+	    Xask_open_logging:*)
 		__gethelp open_log_query `__logAddr`
+		echo $N "OK [y/n]? "$NL
 		read x
 		case X$x in
 		    X[Yy]*)
-			_setLog `getuser`
+			CNAME=${msg#*:}
+			_setLog $CNAME
 			return 0
 			;;
 		   *)
@@ -1124,12 +1128,14 @@ __checkLog() {
 			;;
 		esac
 		;;
-	    Xask_close_logging)
+	    Xask_close_logging:*)
 		__gethelp close_log_query `__logAddr`
+		echo $N "OK [y/n]? "$NL
 		read x
 		case X$x in
 		    X[Yy]*)
-			_setLog `getuser`
+			CNAME=${msg#*:}
+			_setLog $CNAME
 			return 0
 			;;
 		   *)
@@ -1141,8 +1147,7 @@ __checkLog() {
 		esac
 		;;
 	    Xneed_seats)
-		__gethelp seat_query
-		# XXXX TODO need code to add seats here
+		__gethelp seat_info
 		return 1
 		;;
 	    Xcommit_and_mailcfg)
