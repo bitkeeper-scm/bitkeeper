@@ -28,6 +28,10 @@ platformInit(char **av)
 	int	flags = SILENT;	/* for debugging */
 	mode_t	m;
 	char    *paths[] = {"", "/gnu/bin", "/gui/bin", 0};
+	char	*badvars[] = {"CDPATH", "",
+			      "IFS", " \t\n",
+			      "ENV", "",
+			      "BASH_ENV", "", 0};
 	char	buf2[MAXPATH];
 
 	if (bin) return;
@@ -195,6 +199,13 @@ platformInit(char **av)
 	safe_putenv("PATH=%s", p);
 	free(p);
 	safe_putenv("BK_BIN=%s", bin);
+
+	/* stomp on any vars I don't want in the user's env */
+	for (n = 0; badvars[n]; n += 2) {
+		if (getenv(badvars[n])) {
+			safe_putenv("%s=%s", badvars[n], badvars[n+1]);
+		}
+	}
 }
 
 #ifdef WIN32

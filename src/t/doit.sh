@@ -221,7 +221,7 @@ setup_env()
 	unset BK_BIN _BK_GMODE_DEBUG
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
-	HERE=`echo $BK_REGRESSION | sed -e 's,\\\\,/,g'`
+	HERE=`cd $TST_DIR; bk pwd -s`/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp
 	BK_DOTBK=$BK_REGRESSION/.bk
 	export BK_DOTBK

@@ -73,11 +73,13 @@ cmd_putenv(int ac, char **av)
 	len = p - av[1];
 	/*
 	 * For security, we dis-allow setting PATH and IFS
+	 * and dis-allow the remote altering of BK_NO_TRIGGERS.
 	 * We also disallow anything not starting with one of
 	 * _BK_, BK_, or BKD_.  Not sure we need the BKD_, but hey.
 	 */
 	if ((len == 3) && strneq(av[1], "IFS", 3)) return (1);
 	if ((len == 4) && strneq(av[1], "PATH", 4)) return (1);
+	if ((len == 14) && strneq(av[1], "BK_NO_TRIGGERS", 14)) return (1);
 	unless (strneq("BK_", av[1], 3) ||
 	    strneq("BKD_", av[1], 4) || strneq("_BK_", av[1], 4)) {
 	    	return (1);

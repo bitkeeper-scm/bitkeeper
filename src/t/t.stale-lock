@@ -10,7 +10,7 @@
 #    modifications under any license.
 
 # Copyright (c) 2000 Larry McVoy
-# awc@etp2.bitmover.com|src/t/t.locking|20020304175957|28702
+# %K%
 
 # Create a repository 
 echo $N Create initial repository, force it to send configs .........$NL

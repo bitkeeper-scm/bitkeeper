@@ -14,7 +14,6 @@
 
 # Make sure that tags obey graph like invariants.
 
-HERE=`bk pwd -s`
 echo $N Create initial repository with a tagged cset ................$NL
 no_logging project
 echo foo > foo.c

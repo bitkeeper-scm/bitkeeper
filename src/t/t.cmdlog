@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Andrew Chang
 # Copyright (c) 2000 Larry McVoy
 # Copyright (c) 2000 David Parsons
-# awc@etp3.bitmover.com|src/t/t.logging|20001219191629|42423
+# %K%
 
 MYHOST=`bk gethost`
 MYNAME=`bk getuser`

@@ -342,3 +342,18 @@ grep -q "checksum in the patch for the ChangeSet" ERR || {
 echo OK
 
 # XXX TODO need test case for pull/pull/clone to/from space in pathname
+
+echo $N Try pushing to an illegal hostname ..........................$NL
+bk push bk://badhostname > ERR 2>&1 && {
+	echo should have failed
+	exit 1
+}
+grep -q "Cannot resolve host badhostname" ERR || {
+	echo bad error message
+	exit 1
+}
+grep -q "Assert" ERR && {
+	echo should not assert
+	exit 1
+}
+echo OK
