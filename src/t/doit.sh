@@ -144,8 +144,14 @@ clean_up()
                 file `cat $BK_REGRESSION/cores`
                 exit 10
 	fi
-        find $BK_REGRESSION -name bk'*' -print |
-	    grep BitKeeper/tmp > $BK_REGRESSION/junk
+	for i in 1 2 3 4 5
+	do	find $BK_REGRESSION -name bk'*' -print |
+		    grep BitKeeper/tmp > $BK_REGRESSION/junk
+		if [ ! -s $BK_REGRESSION/junk ]
+		then	break
+		fi
+		sleep 1
+	done
         if [ -s $BK_REGRESSION/junk ]
         then    ls -l `cat $BK_REGRESSION/junk`
                 file `cat $BK_REGRESSION/junk`
