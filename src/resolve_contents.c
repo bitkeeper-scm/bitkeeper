@@ -3,6 +3,9 @@
  */
 #include "resolve.h"
 
+private int	c_merge(resolve *rs);
+
+
 int
 c_help(resolve *rs)
 {
@@ -115,14 +118,15 @@ c_quit(resolve *rs)
 	exit(1);
 }
 
-int
+private int
 c_merge(resolve *rs)
 {
-	names	*n = rs->tnames;
+	names	*n = rs->revs;
 	int	ret;
 
-	ret = sys("bk", rs->opts->mergeprog,
-	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
+	ret = sysio(0, rs->s->gfile, 0, "bk", rs->opts->mergeprog, "-a",
+		    n->local, n->gca, n->remote, 
+		    rs->s->gfile, SYS);
 	sccs_restart(rs->s);
 	unless (WIFEXITED(ret)) {
 	    	fprintf(stderr, "Cannot execute '%s'\n", rs->opts->mergeprog);
@@ -449,7 +453,7 @@ resolve_contents(resolve *rs)
 		if (edit(rs)) return (-1);
 	}
 	if (sameFiles(n->local, n->remote)) {
-		automerge(rs, n);
+		automerge(rs);
 		ret = 1;
 	} else {
 		ret = resolve_loop("content conflict", rs, c_funcs);

@@ -98,7 +98,7 @@ resolve_main(int ac, char **av)
 			exit(1);
 		}
     	}
-	unless (opts.mergeprog) opts.mergeprog = "merge";
+	unless (opts.mergeprog) opts.mergeprog = "smerge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
 	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
@@ -1785,7 +1785,7 @@ err:		resolve_free(rs);
 	}
 
 	if (opts->automerge) {
-		automerge(rs, 0);
+		automerge(rs);
 		resolve_free(rs);
 		return;
 	}
@@ -1819,32 +1819,13 @@ get_revs(resolve *rs, names *n)
  * Try to automerge.
  */
 void
-automerge(resolve *rs, names *n)
+automerge(resolve *rs)
 {
-	char	cmd[MAXPATH*4];
 	int	ret;
 	char	*name = basenm(rs->d->pathname);
-	names	tmp;
-	int	do_free = 0;
 	int	flags;
 	
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
-
-	unless (n) {
-		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
-		tmp.local = strdup(cmd);
-		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->gca);
-		tmp.gca = strdup(cmd);
-		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->remote);
-		tmp.remote = strdup(cmd);
-		if (get_revs(rs, &tmp)) {
-			rs->opts->errors = 1;
-			freenames(&tmp, 0);
-			return;
-		}
-		n = &tmp;
-		do_free = 1;
-	}
 
 	/*
 	 * The interface to the merge program is
@@ -1852,14 +1833,9 @@ automerge(resolve *rs, names *n)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	ret = sys("bk", rs->opts->mergeprog,
-	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
-	if (do_free) {
-		unlink(tmp.local);
-		unlink(tmp.gca);
-		unlink(tmp.remote);
-		freenames(&tmp, 0);
-	}
+	ret = sysio(0, rs->s->gfile, 0, "bk", rs->opts->mergeprog, "-a",
+		    rs->revs->local, rs->revs->gca, rs->revs->remote, 
+		    rs->s->gfile, SYS);
 	if (ret == 0) {
 		delta	*d;
 
@@ -2486,7 +2462,6 @@ csets_in(opts *opts)
 	sccs	*s;
 	delta	*d;
 	FILE	*in, *out;
-	int	c;
 	char	s_cset[] = CHANGESET;
 	char	buf[MAXPATH];
 
@@ -2522,17 +2497,12 @@ csets_in(opts *opts)
 private void
 log_cleanup()
 {
-	int	i = 0;
 	FILE	*f;
 	char	buf[MAXPATH];
 	char	subject[MAXPATH*2];
-	struct  tm *tm;
-	char    save[100];
-	time_t  now = time(0);
+	char    save[MAXPATH];
 
-	do {
-		sprintf(save, "RESYNC-%u", now);
-	} while (exists(save) && (++i < 100));
+	savefile(".", "RESYNC-", save);
 	if (rename("RESYNC", save)) return;
 	unless (f = fopen(LOG_KEYS, "r")) return;
 	strcpy(buf, "-a");

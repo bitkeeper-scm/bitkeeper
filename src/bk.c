@@ -145,6 +145,7 @@ int	sfind_main(int, char **);
 int	sfio_main(int, char **);
 int	shrink_main(int, char **);
 int	sinfo_main(int, char **);
+int	smerge_main(int, char **);
 int	socket2pipe_main(int, char **);
 int	sort_main(int, char **);
 int	sortmerge_main(int, char **);
@@ -306,6 +307,7 @@ struct	command cmdtbl[] = {
 	{"sfind", sfind_main},			/* doc 2.0 as sfiles */
 	{"sfio", sfio_main},			/* doc 2.0 */
 	{"sinfo", sinfo_main},	/* alias */	/* doc 2.0 as info */
+	{"smerge", smerge_main},		/* doc needed 2.0 */
 	{"status", status_main},		/* doc 2.0 */
 	{"stripdel", stripdel_main},		/* doc 2.0 */
 	{"tagmerge", tagmerge_main},		/* */

@@ -1007,6 +1007,7 @@ void	sortLines(char **);
 #define	SYS	(char*)0, 0xdeadbeef
 int	sys(char *first, ...);
 int	sysio(char *in, char *out, char *err, char *first, ...);
+void	syserr(const char *postfix);
 char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 void	sccs_tagMerge(sccs *s, delta *d, char *tag);
@@ -1044,6 +1045,9 @@ int	logs_pending(int ptype, int skipRecentCset, int grace);
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
 char	*getCSetFile(project *p);
 int	spawn_cmd(int flag, char **av);
+int	getRealName(char *path, MDBM *db, char *realname);
+
+
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
