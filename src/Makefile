@@ -88,7 +88,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/uncompr.o zlib/zutil.o
 SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
       revtool citool helptool difftool csettool fmtool fm3tool msg \
-      renametool setuptool gzip_uuwrap ungzip_uuwrap
+      renametool setuptool gzip_uuwrap ungzip_uuwrap bugtool
 LOCALSCR= testfast build crank
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
@@ -125,7 +125,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/progress.tcl gui/search.tcl gui/msg.tcl \
+	  gui/progress.tcl gui/search.tcl gui/msg.tcl gui/bugtool.tcl\
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -424,6 +424,11 @@ difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
 	    gui/common.tcl gui/difflib.tcl gui/difftool.tcl > difftool
+
+bugtool: gui/search.tcl gui/config.tcl gui/bugtool.tcl \
+	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl
+	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
+	    gui/common.tcl gui/buglib.tcl gui/bugtool.tcl > bugtool
 
 csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl
