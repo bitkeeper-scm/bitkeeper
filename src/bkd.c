@@ -7,7 +7,7 @@ private	void	bkd_server(void);
 private	void	do_cmds();
 private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
-private	int	getav(int *acp, char ***avp);
+private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(int i, int ac, char **av);
 private	void	reap(int sig);
 private	void	usage();
@@ -36,7 +36,7 @@ bkd_main(int ac, char **av)
 	loadNetLib();
 
 
-	while ((c = getopt(ac, av, "c:dDeE:hHil|L:p:P:qRs:St:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:qRs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;	/* doc 2.0 */
 		    case 'd': Opts.daemon = 1; break;	/* doc 2.0 */
@@ -44,8 +44,6 @@ bkd_main(int ac, char **av)
 		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
 		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
-		    case 'H': 	/* doc 2.0 */
-				Opts.http_hdr_out = Opts.http_hdr_in = 1; break;
 		    case 'l':	/* doc 2.0 */
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
@@ -137,15 +135,9 @@ bkd_server()
 {
 	fd_set	fds;
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT, Opts.quiet);
-	remote	r;
 	int	maxfd;
 	time_t	now;
 
-	if (Opts.http_hdr_in) {
-		bzero(&r, sizeof(r));
-		r.wfd = 1;
-	}
-	
 	unless (Opts.debug) if (fork()) exit(0);
 	unless (Opts.debug) setsid();	/* lose the controlling tty */
 	signal(SIGCHLD, reap);
@@ -226,7 +218,6 @@ bkd_server()
 		close(0); dup(n);
 		close(1); dup(n);
 		close(n);
-		if (Opts.http_hdr_in) skip_http_hdr(&r);
 		do_cmds();
 		exit(0);
 	}
@@ -413,8 +404,8 @@ do_cmds()
 	int	i, ret, httpMode;
 	int	flags = 0;
 
-	httpMode = (Opts.http_hdr_in || Opts.http_hdr_out);
-	while (getav(&ac, &av)) {
+	httpMode = Opts.http_hdr_out;
+	while (getav(&ac, &av, &httpMode)) {
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.log) log_cmd(i, ac, av);
@@ -533,10 +524,11 @@ findcmd(int ac, char **av)
 }
 
 private	int
-getav(int *acp, char ***avp)
+getav(int *acp, char ***avp, int *httpMode)
 {
 	static	char buf[2500];		/* room for two keys */
 	static	char *av[50];
+	static	remote r = { 0, 0, 0, 0, 0, 0, 1, 0, 0 ,0 };
 	int	i, inspace = 1, inQuote = 0;
 	int	ac;
 
@@ -561,11 +553,21 @@ getav(int *acp, char ***avp)
 		if ((buf[i] == '\r') || (buf[i] == '\n')) {
 			buf[i] = 0;
 			av[ac] = 0;
-#if 0
-			if ((ac > 2) && strneq("HTTP/1", av[2], 6)) {
-				av[0] = "httpget";
+
+			/*
+			 * Process http post command used in
+			 * http based push/pull/clone
+			 * Strip the http header so we can access 
+			 * the real push/pull/clone command
+			 */
+			if ((ac >= 1) && streq("POST", av[0])) {
+				skip_http_hdr(&r);
+				http_hdr();
+				*httpMode = 1;
+				ac = i = 0;
+				inspace = 1;
+				continue;
 			}
-#endif
 			*acp = ac;
 			*avp = av;
 			return (1);
