@@ -4,8 +4,8 @@
 
 echo $N Check bk fix to re-edit a file ..............................$NL
 cset -i -s .
-${ECHO} "logging: lm@openlogging.org" > BitKeeper/etc/config
-${ECHO} "logging_ok: no" >> BitKeeper/etc/config
+${ECHO} "logging: none" > BitKeeper/etc/config
+${ECHO} "seats: 1" >> BitKeeper/etc/config
 ci -i $Q BitKeeper/etc/config
 date > FILE
 ci $Q -i FILE

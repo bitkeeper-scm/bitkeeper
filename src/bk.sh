@@ -996,6 +996,8 @@ __mail() {
 	shift
 	SUBJ="$@"
 
+	
+	if [ X$BK_REGRESSION = XYES ]; then return; fi
 	# Try to find sendmail, it works better, especially on IRIX.
 	for i in /usr/bin /usr/sbin /usr/lib /usr/etc /etc /bin
 	do	if [ -x "$i/sendmail" ]
@@ -1080,64 +1082,22 @@ __nusers() {
 	${RM} -f ${TMP}users$$ ${TMP}aliases$$
 }
 
-__has_unconfirmed_openlogging()
-{
-	LOGGING_OK=`_getLog`
-	if [ "$LOGGING_OK" = "yes" ]; then return 1; fi
-	if [ "$LOGGING_OK" = "no" -a `__nusers` -le 1 ]; then return 1; fi
-
-	if [ `__logAddr | grep '@openlogging.org$' | wc -l` -eq 0 ]
-	then 
-		# They are pointing the log to a private address
-		# so just mail out the config file
-		__sendConfig config@openlogging.org 
-		return 1
-	fi
-	return 0
-}
-
 _getLog()
 {
 	__cd2root
-	LOGOK=`${BIN}get -kps ${BK_ETC}config | \
-					grep "^logging_ok:" | tr -d '[\t, ]'`
-	case X${LOGOK} in
-	Xlogging_ok:[nN][oO])
-		echo "no"
-		;;
-	Xlogging_ok:[Yy][eE][sS])
-		echo "yes"
-		;;
-	Xlogging_ok:t)
-		# Old syntax: "logging_ok: t" => "yes"
-		echo "yes"
-		;;
-	Xlogging_ok:*@*)
-		# Old syntax: "logging_ok: mailbox@domain" => "yes"
-		echo "yes"
-		;;
-	*)	echo "not_set"
-		;;
-	esac
-	return 0
+	NAME=$1
+	if [ X$NAME = X ]; then NAME=`${BIN}getuser`; fi
+	exec `__perl` ${BIN}getlog $NAME ${BK_ETC}/config;
 }
 
 _setLog()
 {
-	if [ "$1" != "yes" -a "$1" != "no" ] 
-	then echo "usage:  setLog ues|no"
-	     return 1;
-	fi
 	# Can not disable logging when there are
 	# more then 1 user, unless it is BitKeeper/Pro
 	__cd2root
-	if [ "$1" = "no" -a `__nusers` -gt 1 ]
-	then return 1
-	fi;
 	if [ -f ${BK_ETC}config ]; then ${BIN}clean ${BK_ETC}config; fi
 	${BIN}get -seg ${BK_ETC}config
-	${BIN}get -kps ${BK_ETC}config | grep -v "^logging_ok:" |\
-	sed -e '/^logging:/a\
+	${BIN}get -kps ${BK_ETC}config | sed -e '/^logging:/a\
 logging_ok:	'$1 > ${BK_ETC}config
 	${BIN}delta -q -y'Logging OK' ${BK_ETC}config
 	return 0
@@ -1149,27 +1109,44 @@ logging_ok:	'$1 > ${BK_ETC}config
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
 __checkLog() {
-	if __has_unconfirmed_openlogging
-	then 	__gethelp log_query `__logAddr`
-		echo $N "OK [y/n]? "$NL
+	msg=`_getLog`
+	case $msg in
+	    ask_open_logging|ask_close_logging)
+		__gethelp log_query `__logAddr`
 		read x
 		case X$x in
-	    	    X[Yy]*)
-			_setLog "yes"; return 0
+		    X[Yy]*)
+			# XXXXXX should restart ?
+			_setLog `getuser`
+			return 0
 			;;
-	    	    X[Nn]*)
-			if _setLog "no" ; then return 0; fi
+		   *)
+			if [ X$msg = "ask_close_logging" ]
+			then	__sendConfig
+				return 0
+			else 	return 1
+			fi
 			;;
 		esac
-		__gethelp log_abort
+		;;
+	    need_seats)
+		__gethelp seat_query
+		# XXXX TODO need code to add seats here
 		return 1
-	else	
+		;;
+	    commit_and_mailcfg)
+		__sendConfig
 		return 0
-	fi
+		;;
+	    commit_and_maillog)
+		# changeSet is sent after it is checked in
+		return 0
+		;;
+	esac
 }
 
 __logChangeSet() {
-	if [ `_getLog` = "no" ]; then return; fi
+	if [ "`_getLog`" != "commit_and_maillog" ]; then return; fi
 	if [ X$BK_REGRESSION = XYES ]; then echo "sending ChangeSet to $LOGADDR..."; fi
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
