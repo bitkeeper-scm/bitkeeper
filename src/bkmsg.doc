@@ -1123,3 +1123,12 @@ needs to be repaired manually.  If at all possible please delete this
 repository and clone a new copy.  Otherwise contact BitMover and
 request assistance.
 $
+#comments-badfmt
+Illegal format for input to the 'bk comments' command.  Lines should
+match this format:
+   ### Comments for <file1>|<rev1>
+   New comments
+
+   ### Comments for <file2>|<rev2>
+   Other changes
+$
