@@ -23,6 +23,7 @@ __platformInit()
 		TMP=`__nativepath /tmp`
 		DEV_NULL=nul
 		wish=${_TCL_BIN}/wish83.exe
+		AWK=awk
 		ext=".exe"
 		tcl=".tcl"
 
