@@ -148,7 +148,7 @@ proc widgets {} \
 	set widgets(no) $widgets(buttonFrame).no
 
 	## Bk Logo
-	set image [file join $env(BK_BIN) "bklogo.gif"]
+	set image "$env(BK_BIN)/gui/images/bklogo.gif"
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
 		label $widgets(logo) \

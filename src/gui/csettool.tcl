@@ -297,7 +297,7 @@ proc adjustHeight {diff list} \
 
 proc widgets {} \
 {
-	global	scroll gc wish tcl_platform d search fmenu app
+	global	scroll gc wish tcl_platform d search fmenu app env
 
 	getConfig "cset"
 	option add *background $gc(BG)
@@ -358,16 +358,11 @@ proc widgets {} \
 
 	    createDiffWidgets .diffs
 
-image create photo prevImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
-WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
-}
-image create photo nextImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
-XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
-}
+	set prevImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/previous.gif]
+	set nextImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/next.gif]
+
 	set menuwid 7
 	frame .menu -background $gc(BG)
 	    button .menu.prevCset -font $gc(cset.buttonFont) \
@@ -381,7 +376,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.prevFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image prevImage -command prevFile
+		-image $prevImage -command prevFile
 	    menubutton .menu.fmb -font $gc(cset.buttonFont) -relief raised \
 	        -indicatoron 1 \
 		-bg $gc(cset.buttonColor) \
@@ -399,11 +394,11 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.nextFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image nextImage -command nextFile
+		-image $nextImage -command nextFile
 	    button .menu.prev -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image prevImage -state disabled \
+		-image $prevImage -state disabled \
 		-command {
 			searchreset
 		    	prev
@@ -411,7 +406,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.next -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image nextImage -state disabled \
+		-image $nextImage -state disabled \
 		-command {
 			searchreset
 			next

@@ -7,7 +7,6 @@ LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
 ifeq "$(OSTYPE)" "cygwin"
-	SMALL_ICON=bk16.ico
 	SYS=win32
 	EXE=.exe
 	XTRA=win32
@@ -17,7 +16,6 @@ ifeq "$(OSTYPE)" "cygwin"
 		dirent misc re_map sys/wait stat utsname ftw \
 	 	mman re_map_decl times)
 else
-	SMALL_ICON=
 	SYS=unix
 	EXE=
 	XTRA=gnu
@@ -125,8 +123,8 @@ LOCALSCR= build
 PSCR	= t/doit
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
 LIBS	= $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a
-DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf $(SMALL_ICON)
+DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
@@ -473,7 +471,7 @@ install: installdir
 installdir:
 	rm -rf $(IMGDIR)
 	mkdir -p $(IMGDIR)
-	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib | \
+	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images | \
 		(cd $(IMGDIR) && tar xf -)
 	cp $(DATA) $(IMGDIR)
 	@if [ $(SYS) = unix ]; \

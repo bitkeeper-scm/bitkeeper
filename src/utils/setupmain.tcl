@@ -18,6 +18,9 @@ proc main {} \
 	}
 
 	widgets
+	if {[file exists bitkeeper/gui/images/bk16.ico]} {
+		catch {wm iconbitmap . bitkeeper/gui/images/bk16.ico}
+	}
 	centerWindow . 500 350
 	. configure -step Welcome
 	. show

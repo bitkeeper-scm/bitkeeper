@@ -284,8 +284,7 @@ proc widgets {} \
 
 	::tkwizard::tkwizard . -title "BK Setup Assistant" -sequential 1 
 
-	set bin $env(BK_BIN)
-	set image [file join $bin "bklogo.gif"]
+	set image "$env(BK_BIN)/gui/images/bklogo.gif"
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
 		. configure -icon $bklogo

@@ -282,20 +282,14 @@ proc search_init {w s} \
 
 proc search_widgets {w s} \
 {
-	global search app gc
+	global search app gc env
 
 	search_init $w $s
 
-	image create photo prevImage \
-	    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
-WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
-}
-	image create photo nextImage \
-	    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
-XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
-}
+	set prevImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/previous.gif]
+	set nextImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/next.gif]
 	label $search(plabel) -font $gc($app.buttonFont) -width 11 \
 	    -relief flat \
 	    -textvariable search(prompt)
@@ -327,7 +321,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	button $search(prev) -font $gc($app.buttonFont) \
 	    -bg $gc($app.buttonColor) \
 	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image prevImage \
+	    -image $prevImage \
 	    -state disabled -command {
 		    searchdir ?
 		    searchnext
@@ -335,7 +329,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	button $search(next) -font $gc($app.buttonFont) \
 	    -bg $gc($app.buttonColor) \
 	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image nextImage \
+	    -image $nextImage \
 	    -state disabled -command {
 		    searchdir /
 		    searchnext

@@ -239,20 +239,15 @@ proc search_init {w s} \
 
 proc search_widgets {w s} \
 {
-	global search app gc
+	global search app gc env
 
 	search_init $w $s
 
-	image create photo prevImage \
-	    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
-WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
-}
-	image create photo nextImage \
-	    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
-XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
-}
+	set prevImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/previous.gif]
+	set nextImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/next.gif]
+
 	label $search(plabel) -font $gc($app.buttonFont) -width 11 \
 	    -relief flat \
 	    -textvariable search(prompt)
@@ -303,7 +298,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	button $search(prev) -font $gc($app.buttonFont) \
 	    -bg $gc($app.buttonColor) \
 	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image prevImage \
+	    -image $prevImage \
 	    -state disabled -command {
 		    searchdir ?
 		    searchnext
@@ -311,7 +306,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	button $search(next) -font $gc($app.buttonFont) \
 	    -bg $gc($app.buttonColor) \
 	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	    -image nextImage \
+	    -image $nextImage \
 	    -state disabled -command {
 		    searchdir /
 		    searchnext
@@ -1054,16 +1049,10 @@ proc widgets {} \
 	}
 	createDiffWidgets .diffs
 
-image create photo prevImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
-WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
-}
-image create photo nextImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
-XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
-}
+	set prevImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/previous.gif]
+	set nextImage [image create photo \
+			   -file $env(BK_BIN)/gui/images/next.gif]
 	frame .menu -relief groove -borderwidth 2
 	    set m .menu.diffs.m
 	    menubutton .menu.diffs -font $gc(fm3.buttonFont) \
@@ -1095,14 +1084,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.prevdiff -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image prevImage -state disabled -command {
+		-image $prevImage -state disabled -command {
 			searchreset
 			prev 0
 		}
 	    button .menu.nextdiff -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image nextImage -state disabled -command {
+		-image $nextImage -state disabled -command {
 			searchreset
 			next 0
 		}
@@ -1113,14 +1102,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.prevconflict -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image prevImage -command {
+		-image $prevImage -command {
 			searchreset
 			prev 1
 		}
 	    button .menu.nextconflict -font $gc(fm3.buttonFont) \
 		-bg $gc(fm3.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-image nextImage -command {
+		-image $nextImage -command {
 			searchreset
 			next 1
 		}
@@ -1203,7 +1192,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		    -wrap word -font $gc($app.fixedFont) \
 		    -borderwidth 2 -state disabled
 		set bin $env(BK_BIN)
-		set logo [file join $bin "bklogo.gif"]
+		set logo [file join $bin gui images "bklogo.gif"]
 		if {[file exists $logo]} {
 		    image create photo bklogo -file $logo
 		    label $menu.logo -image bklogo \
