@@ -207,6 +207,10 @@ do_rename(MDBM *fileList, char *qflag)
 		delta	*d;
 
 		sfile = name2sccs(kv.key.dptr);
+		unless (exists(sfile)) {
+			free(sfile);
+			continue;
+		}
 		s = sccs_init(sfile, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
 		assert(s);
 		unless(proj) proj = s->proj;
