@@ -653,6 +653,24 @@ init_idcache()
  * Build an mdbm which is indexed by key (value is root key).
  * We'll use this later for making sure that all the keys in a file
  * are there.
+ *
+ * XXX - this code currently insists that the set of all marked deltas
+ * in all files have a unique set of keys.  That may not be so and should
+ * not have to be so.  The combination of <root key>,<delta key> does need
+ * to be unique, however.
+ * Should this become a problem, the right way to fix it is this: when the
+ * second (or Nth where N>1) store fails, do the store with the key 
+ * being <rootkey>\n<deltakey> -> <rootkey>.  Also fix the original but
+ * do not remove the first <deltakey> -> <rootkey> pair so that any other
+ * duplicates also do the long form.  Instead, replace the <rootkey> with
+ * a marker, like "", and handle that in the lookup code.
+ * When looking up the key in check(), if the rootkey is the marker, then
+ * redo the lookup with the <rootkey>\n<deltakey> pair, you have "s" so you
+ * can get the root key.
+ * What this means is that we are saying the full name of a key is root\nkey
+ * not just key.  We use "key" as a shorthand.
+ * We should *NOT* do this for all keys regardless.  The memory footprint of
+ * this program is huge already.
  */
 private MDBM	*
 buildKeys()

@@ -894,7 +894,6 @@ uniqRoot(sccs *s)
 
 	assert(s->tree == s->table);
 	d = s->tree;
-	assert(!d->dateFudge);
 	unless (d->date) (void)getDate(d);
 
 	unless (uniq_open() == 0) return;	// XXX - no error?
@@ -924,7 +923,6 @@ uniqDelta(sccs *s)
 	d = s->table;
 	next = d->next;
 	assert(d != s->tree);
-	assert(!d->dateFudge);
 	unless (d->date) (void)getDate(d);
 
 	/*
@@ -945,7 +943,7 @@ uniqDelta(sccs *s)
 	unless (uniq_open() == 0) return;
 	CHKDATE(next);
 	if (d->date <= next->date) {
-		d->dateFudge = (next->date - d->date) + 1;
+		d->dateFudge += (next->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
 	sccs_shortKey(s, d, buf);
@@ -8436,6 +8434,8 @@ openInput(sccs *s, int flags, FILE **inp)
 delta *
 sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 {
+	int i;
+
 	if (!d) d = calloc(1, sizeof(*d));
 	d->type = type;
 	assert(s);
@@ -8443,6 +8443,17 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	unless (d->sdate) {
 		if (s->gtime) {
 			date(d, s->gtime);
+
+			/*
+			 * If gtime is from the pass, fudge the date
+			 * to current, so the unique() code don't cut us off
+			 * too early. This is important for getting unique
+			 * root key.
+			 */
+			if ((i = (time(0) - s->gtime)) > 0) {
+				d->dateFudge = i;
+				d->date += d->dateFudge;
+			}
 		} else {
 			date(d, time(0));
 		}
