@@ -12,8 +12,9 @@
 # Copyright (c) 2003 Larry McVoy
 # %K%
 
+
 echo $N Make sure we can find keys with a date of 0 - 70/01/01 etc ..$NL
-mkdir SCCS
+no_logging project
 bk base64 -d <<EOF > SCCS/s.Makefile
 AUgyODM1MwoBcyAwMDAwMC8wMDAwMC8wMDAwMAoBZCBEIDEuMSA3MC8wMS8wMSAw
 MDowMDowMCBGYWtlIDIgMQoBYyB3d3R0dHR0c3Nyb29vb29vb25ubm5tbW1sbGxr
