@@ -36,7 +36,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  bkd_http.o bkd_misc.o bkd_pull.o \
 	  bkd_push.o bkd_pwd.o bkd_rootkey.o bkd_status.o \
 	  bkd_version.o bk.o bkusers.o changes.o check.o chksum.o \
-	  clean.o comments.o commit.o compress.o converge.o \
+	  clean.o clone.o comments.o commit.o compress.o converge.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
@@ -52,9 +52,9 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
 	  port/mail.o port/platforminit.o \
 	  port/randomBits.o port/samepath.o port/sccs_lockfile.o \
-	  port/sccs_root.o port/spawn.o \
+	  port/sccs_root.o port/socket2pipe.o port/spawn.o \
 	  port/getnull.o port/http_proxy.o port/service.o \
-	  prs.o purify.o pwd.o r2c.o \
+	  prs.o pull.o purify.o push.o pwd.o r2c.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o \
@@ -64,8 +64,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  sfiles.o sfind.o sfio.o sinfo.o slib.o \
 	  status.o stripdel.o synckeys.o sys.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
-	  version.o what.o zgets.o zone.o license.o trigger.o \
-	  webpull.o webpush.o webclone.o
+	  version.o what.o zgets.o zone.o license.o trigger.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \

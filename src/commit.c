@@ -326,7 +326,10 @@ do_commit(char **av, c_opts opts, char *sym,
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
 	 */
-	trigger(av, "pre", 0);
+	if (trigger(av, "pre", 0)) {
+		rc = 1;
+		goto done;
+	}
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
 	sprintf(buf, "bk cset %s %s %s %s%s < %s",
 		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,
@@ -344,7 +347,7 @@ do_commit(char **av, c_opts opts, char *sym,
 		close(open(buf, O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
 	}
 #endif
-	if (unlink(commentFile)) perror(commentFile);
+done:	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);
 	if (pendingFiles2[0]) {
 		if (unlink(pendingFiles2)) perror(pendingFiles2);

@@ -114,6 +114,9 @@ int sfind_main(int, char **);
 int sfio_main(int, char **);
 int sinfo_main(int, char **);
 int status_main(int, char **);
+#ifdef WIN32
+int socket2pipe_main(int, char **);
+#endif
 int sort_main(int, char **);
 int sortmerge_main(int, char **);
 int stripdel_main(int, char **);
@@ -144,6 +147,9 @@ struct command cmdtbl[] = {
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
+#ifdef WIN32
+	{"_socket2pipe", socket2pipe_main},
+#endif
 	{"_converge", converge_main},
 	{"_mail", mail_main},
 	{"_get", get_main},
@@ -295,6 +301,13 @@ main(int ac, char **av)
 
 	if (!bk_proj || !bk_proj->root || !isdir(bk_proj->root)) {
 		bk_proj = proj_init(0);
+	}
+
+	if (av[1] && streq(av[1], "root") && !av[2]) {
+		if (bk_proj && bk_proj->root) {
+			printf("%s\n", fullname(bk_proj->root, 0));
+		}
+		exit(0);
 	}
 
 	/*

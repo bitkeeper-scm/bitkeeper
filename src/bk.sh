@@ -301,23 +301,6 @@ _man() {
 	exit 1
 }
 
-_root() {
-	if [ X$1 = X--help ]
-	then	bk help root
-		exit 1
-	fi
-	if [ X$1 != X ]
-	then	if [ ! -d $1 ]
-		then	cd `dirname $1`
-		else	cd $1
-		fi
-	fi
-	__cd2root
-	pwd
-	exit 0
-}
-
-
 # Make links in /usr/bin (or wherever they say).
 _links() {
 	if [ X$1 = X ]

@@ -138,7 +138,6 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	getline2(r, buf, sizeof (buf));
 	if (streq(buf, "@TRIGGER INFO@")) { 
 		if (getTriggerInfoBlock(r, !opts.quiet)) {
-fprintf(stderr, "#######webclone: got failed triffer\n");
 			disconnect(r, 2);
 			return (1);
 		}

@@ -12,6 +12,7 @@ private	void	log_cmd(int i, int ac, char **av);
 private	void	reap(int sig);
 private	void	usage();
 private	void	ids();
+char 	*logRoot;
 
 
 int
@@ -44,7 +45,7 @@ bkd_main(int ac, char **av)
 		goto doit;
         }
 
-	while ((c = getopt(ac, av, "c:dDeE:hil|p:P:Rs:St:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:hil|Lp:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;
@@ -55,6 +56,8 @@ bkd_main(int ac, char **av)
 		    case 'l':
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
+		    case 'L':
+			logRoot = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;
 		    case 'P': Opts.pidfile = optarg; break;
 #ifdef WIN32
@@ -215,7 +218,8 @@ bkd_service_loop(int ac, char **av)
 	while (1)
 	{
 		char sbuf[20];
-		char *av[10] = {"socket_helper", "-s", sbuf, "bk", "bkd", 0};
+		char *av[10] =
+			    {"bk", "_socket2pipe", "-s", sbuf, "bk", "bkd", 0};
 		int n;
 		n = accept(sock, 0 , 0);
 		/*
@@ -296,13 +300,6 @@ drain()
 	char	buf[1024];
 	int	i = 0;
 
-#ifdef WIN32
-	/*
-	 * XXX FIXME
-	 * Temp work around for a socket helper bug on win32 */
-	 */
-	return;
-#endif
 	close(1); /* in case remote is waiting for input */
 	while (getline(0, buf, sizeof(buf))) {
 		if (streq("@END@", buf)) break;

@@ -219,17 +219,18 @@ remote_print(remote *r, FILE *f)
 
 #ifdef WIN32
 pid_t
-tcp_pipe(char *host, int port, int *r_pipe, int *w_pipe)
+tcp_pipe(remote *r)
 {
-	char *av[4];
-	char pbuf[50];
-		
-	sprintf(pbuf, "%d", port);
-	av[0] = "socket_helper";
-	av[1] = host;
-	av[2] = pbuf;
-	av[3] = 0;
-	return spawnvp_rwPipe(av, r_pipe, w_pipe);
+	char	port[50];
+	char	*av[6] = {"bk", "_socket2pipe"};
+	int	i = 2;
+
+	sprintf(port, "%d", r->port);
+	if (r->httpd) av[i++] = "-h";
+	av[i++] = r->host;
+	av[i++] = port;
+	av[i] = 0;
+	return spawnvp_rwPipe(av, &(r->rfd), &(r->wfd));
 }
 #endif
 
@@ -252,8 +253,23 @@ bkd(int compress, remote *r)
 
 	if (r->port) {
 		assert(r->host);
-		r->rfd = r->wfd = tcp_connect(r->host, r->port);
+#ifdef WIN32
+		p = tcp_pipe(r);
+		if (p == ((pid_t) -1)) {
+			fprintf(stderr, "cannot create socket_helper\n");
+			return (-1);
+		}
+		r->isSocket = 0;
+		return (p);
+#else
+		if (r->httpd) {
+			http_connect(r, WEB_BKD_CGI);
+		} else {
+			r->rfd = r->wfd = tcp_connect(r->host, r->port);
+		}
+		r->isSocket = 1;
 		return ((pid_t)0);
+#endif
 	}
 	t = sccs_gethost();
 	if (r->host && (!t || !streq(t, r->host))) { 

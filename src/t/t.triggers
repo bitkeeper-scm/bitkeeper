@@ -45,12 +45,16 @@ cd $HERE
 mkdir project/BitKeeper/triggers || exit 1
 cd project/BitKeeper/triggers
 echo "#! /bin/sh"                > good
-echo "echo \`bk root\`/\$0: trigger fired"	>> good
+#echo "echo \`bk root\`/\$0: trigger fired"	>> good
+echo "bk root"			>> good
+echo "PROOT=\`bk root\`"			>> good
+echo "echo \$PROOT/\$0: trigger fired"	>> good
 echo "exit 0"                   >> good
-chmod +x good
+bk undos good > X
+chmod +x X
 for x in pre post;do
 	for y in commit incoming outgoing;do
-		cp good $x-$y
+		cp X $x-$y
 	done
 done
 
@@ -63,11 +67,11 @@ if [ X\$BK_CLIENT_USER != X`bk getuser` ]; then echo "Wrong user"; exit 1; fi
 echo "post-incoming trigger: user=\$BK_CLIENT_USER"
 REV=\`cat RESYNC/BitKeeper/etc/csets-in\`
 echo "incoming rev=\$REV"
-prs -hnr\$REV RESYNC/ChangeSet
+bk prs -hnr\$REV RESYNC/ChangeSet
 exit 0
 EOF
-chmod +x good2
-cp good2 pre-incoming
+bk undos good2 > pre-incoming
+chmod +x pre-incoming
 
 cd $HERE
 echo "OK"
@@ -114,6 +118,9 @@ fi
 echo $N Pull w/trivial triggers .....................................$NL
 cd $HERE/copy
 bk pull -t >pull.out 2>&1 || { echo failed; exit 1; }
+cd $HERE/project
+while ! bk lock -s; do true; done
+cd $HERE/copy
 grep -q "1.3" pull.out
 if [ $? -ne 0 ]; then echo failed 2; cat pull.out; exit 1; fi
 grep -q "$HERE/project/BitKeeper/triggers/pre-outgoing: trigger fired" pull.out
@@ -170,18 +177,18 @@ for y in commit incoming outgoing;do
 done
 echo "OK"
 
-#echo $N Clone w/failure triggers ....................................$NL
-#cd $HERE
-#bk clone $Q $HERE/project $HERE/dontcopy && { echo failed; exit 1; }
-#echo OK
+echo $N Clone w/failure triggers ....................................$NL
+cd $HERE
+bk clone $Q $HERE/project $HERE/dontcopy && { echo failed; exit 1; }
+echo OK
 
-#echo $N Commit w/failure triggers ...................................$NL
-#cd $HERE/project/src
-#bk get $Q -e foo.c
-#echo delta four >> foo.c
-#bk delta $Q -y2 foo.c
-#bk commit $Q -y2 && { echo failed; exit 1; }
-#echo OK
+echo $N Commit w/failure triggers ...................................$NL
+cd $HERE/project/src
+bk get $Q -e foo.c
+echo delta four >> foo.c
+bk delta $Q -y2 foo.c
+bk commit $Q -y2 > /dev/null && { echo failed; exit 1; }
+echo OK
 
 #if [ X$BK_TESTGUI != X ]; then
 #    echo $N citool w/failure triggers ...................................$NL
@@ -205,9 +212,6 @@ bk commit $Q -y2
 cd $HERE/copy
 bk pull -t -c0 $Q && { echo failed; exit 1; }
 bk lock -s || { echo failed; exit 1; }
-# it may take the server side a little longer to unlock
-#cd $HERE/project
-#bk lock -s || { echo failed; exit 1; }
 
 # clean up
 cd $HERE/project/src
@@ -224,9 +228,6 @@ bk commit $Q -y2 || { echo failed; exit 1; }
 
 bk push -c0 $Q && { echo failed 1; exit 1; }
 bk lock -s || { echo failed 2; exit 1; }
-# it may take the server side a little longer to unlock
-#cd $HERE/project
-#bk lock -s || { echo failed 3; exit 1; }
 echo OK
 echo $N auto-mirroring ..............................................$NL
 cd $HERE/project/BitKeeper/triggers

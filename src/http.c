@@ -355,7 +355,7 @@ http_send(remote *r, char *msg,
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
 
 	len = strlen(header);
-	if (send(r->wfd, header, len, 0) != len) {
+	if (write_blk(r, header, len) != len) {
 		if (r->trace) fprintf(stderr, "Send failed\n");
 err:		return (-1);
 	}
@@ -366,8 +366,7 @@ err:		return (-1);
 
 		if (len > 4096) len = 4096;
 
-		unless (send(r->wfd, msg + start, len, 0) == len) break;
-
+		unless (write_blk(r, msg + start, len) == len) break;
 		if (r->trace) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	}
 	if (r->trace) fputs(" \n", stderr);

@@ -115,7 +115,7 @@ err:				buf[i] = 0;
 int
 read_blk(remote *r, char *buf, int len)
 {
-	if (r->port) {
+	if (r->isSocket) {
 		return (recv(r->rfd, buf, len, 0));
 	} else {
 		return (read(r->rfd, buf, len));
@@ -128,7 +128,7 @@ read_blk(remote *r, char *buf, int len)
 int
 write_blk(remote *r, char *buf, int len)
 {
-	if (r->port) {
+	if (r->isSocket) {
 		return (send(r->wfd, buf, len, 0));
 	} else {
 		return (write(r->wfd, buf, len));
@@ -262,7 +262,7 @@ send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 		http_send(r, msg, mlen, extra, "BitKeeper", WEB_BKD_CGI);
 	} else {
 		if (r->wfd == -1) bkd(compress, r);
-		if (r->port) {
+		if (r->isSocket) {
 			send(r->wfd, msg, mlen, 0);
 		} else {
 			write(r->wfd, msg, mlen);
@@ -289,7 +289,7 @@ disconnect(remote *r, int how)
 	assert((how >= 0) && (how <= 2));
 	switch (how) {
 	    case 0:	if (r->rfd == -1) return;
-			if (r->port) {
+			if (r->isSocket) {
 				shutdown(r->rfd, 0);
 			} else {
 				close(r->rfd);
@@ -297,7 +297,7 @@ disconnect(remote *r, int how)
 			r->rfd = -1;
 			break;
 	    case 1: 	if (r->wfd == -1) return;
-			if (r->port) {
+			if (r->isSocket) {
 				shutdown(r->wfd, 1);
 			} else {
 				close(r->wfd);
@@ -305,7 +305,7 @@ disconnect(remote *r, int how)
 			r->wfd = -1;
 			break;
 	    case 2:	if (r->rfd == -1) return;
-			if (r->port) {
+			if (r->isSocket) {
 				shutdown(r->rfd, 2);
 			} else {
 				close(r->rfd);

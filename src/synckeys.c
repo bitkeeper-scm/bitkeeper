@@ -59,10 +59,10 @@ listkey_main(int ac, char **av)
 	sccs	*s;
 	delta	*d = 0;
 	int	quiet = 0;
-	char	key[MAXKEY] = "";
+	char	key[MAXKEY] = "", s_cset[] = CHANGESET;
 
 	if (ac == 2 && streq(av[1], "-q")) quiet = 1;
-	unless ((s = sccs_init("SCCS/s.ChangeSet", 0, 0)) && s->tree) {
+	unless ((s = sccs_init(s_cset, 0, 0)) && s->tree) {
 		fprintf(stderr, "Can't init changeset\n");
 		return(1); /* cset error */
 	}

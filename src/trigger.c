@@ -16,7 +16,7 @@ private int run_bkd_post_trigger(char **, char *, char *, char *);
 int
 trigger(char **av, char *when, int status)
 {
-	char	*what, *var, *t, **lines = 0, buf[MAXPATH*4], file[MAXPATH];
+	char	*what, *var, *t, **triggers = 0, buf[MAXPATH*4], file[MAXPATH];
 	int	i, len, rc = 0;
 	struct	dirent *e;
 	DIR	*dh;
@@ -71,80 +71,109 @@ trigger(char **av, char *when, int status)
 	while ((e = readdir(dh)) != NULL) {
 		if ((strlen(e->d_name) >= len) &&
 		    strneq(e->d_name, file, len)) {
-			lines = addLine(lines, strdup(e->d_name));
+			sprintf(file, "%s/%s",  TRIGGERS, e->d_name);
+			triggers = addLine(triggers, strdup(file));
 		}
 	}
 	closedir(dh);
-	unless (lines) return (0);
+	unless (triggers) return (0);
 
 	/*
 	 * Sort it and run the triggers
 	 */
-	sortLines(lines);
+	sortLines(triggers);
 	unless (strneq(t, "remote ", 7))  {
-		rc = run_client_trigger(lines, when, what, buf);
+		rc = run_client_trigger(triggers, when, what, buf);
 	} else if (streq(when, "pre")) {
-		rc = run_bkd_pre_trigger(lines, when, what, buf);
+		rc = run_bkd_pre_trigger(triggers, when, what, buf);
 	} else 	{
-		rc = run_bkd_post_trigger(lines, when, what, buf);
+		rc = run_bkd_post_trigger(triggers, when, what, buf);
 	}
-	freeLines(lines);
+	freeLines(triggers);
 	return (rc);
 }
 
 private int
-makeTriggerCmd(char *tscript, char *when, char *what, char *event, char *tcmd)
+runable(char *file)
 {
-	char	file[MAXPATH];
-
-	sprintf(file, "%s/%s", TRIGGERS, tscript);
 #ifdef	WIN32
-	sprintf(tcmd, "bash -c \"%s %s %s\"", file, when, event);
+	return (1);
 #else
 	unless (access(file, X_OK) == 0) {
-		fprintf(stderr,
-			"Warning: %s is not executable, skipped\n", file);
-		return (1);
+		fprintf(stderr, "Warning: %s is not executable, "
+				"skipped\n", file);
+		return (0);
 	}
-	sprintf(tcmd, "%s %s %s", file, when, event);
+	return (1);
 #endif
-	return (0);
 }
 
 private int
-run_client_trigger(char **lines, char *when, char *what, char *event)
+runit(char *file, char *when, char *event, char *output)
+{
+#ifdef	WIN32
+		char *p;
+
+		p = strrchr(file, '.');
+		/*
+		 * If no suffix, assumes it is a shell script
+		 * so feed it to the bash shell
+		 */
+		unless (p) {
+			return (sysio(0, output, 0,
+					"bash", "-c", file, when, event, SYS));
+		}
+		/*
+		 * XXX TODO: If suffix is .pl or .perl, run the perl interpretor
+		 * Win32 ".bat" file should just work with no special handling.
+		 */
+		return (sysio(0, output, 0, file, when, event, SYS));
+#else
+		return (sysio(0, output, 0, file, when, event, SYS));
+#endif
+}
+
+private int
+run_client_trigger(char **triggers, char *when, char *what, char *event)
 {
 	int	i, rc = 0;
-	char	cmd[MAXPATH*4];
 
-	EACH(lines) {
-		if (makeTriggerCmd(lines[i], when, what, event, cmd)) continue;
-		rc = system(cmd);
+	EACH(triggers) {
+		unless (runable(triggers[i])) continue;
+		rc = runit(triggers[i], when, event, 0);
 		if (rc) break;
 	}
 	return (rc);
 }
 
 private int
-run_bkd_pre_trigger(char **lines, char *when, char *what, char *event)
+run_bkd_pre_trigger(char **triggers, char *when, char *what, char *event)
 {
 	int	i, rc = 0, status, first = 1;
-	char	cmd[MAXPATH*4];
+	char	output[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
-	EACH(lines) {
-		if (makeTriggerCmd(lines[i], when, what, event, cmd)) continue;
-		f = popen(cmd, "r");
+	/*
+	 * WIN32 note: We must issue the waitpid() call before the
+	 * process exit. Otherwise we loose the process exit status.
+	 * This means using popen() does not work on NT, you almost always
+	 * get back a undefined status when you a call pclose();
+	 * Note: waitpid() is hiden inside sysio() which is called from runit();
+	 */
+	gettemp(output, "trigger");
+	EACH(triggers) {
+		unless (runable(triggers[i])) continue;
+		rc = runit(triggers[i], when, event, output);
+		f = fopen(output, "rt");
 		assert(f);
-		while (fnext(cmd, f)) {
+		while (fnext(buf, f)) {
 			if (first) {
 				first = 0;
 				fputs("@TRIGGER INFO@\n", stdout);
 			}
-			printf("%c%s", BKD_DATA, cmd);
+			printf("%c%s", BKD_DATA, buf);
 		}
-		status = pclose(f);
-		rc = WEXITSTATUS(status);
+		fclose(f);
 		if (rc) break;
 	}
 	unless (first) {
@@ -152,14 +181,14 @@ run_bkd_pre_trigger(char **lines, char *when, char *what, char *event)
 		fputs("@END@\n", stdout);
 		fflush(stdout);
 	}
+	unlink(output);
 	return (rc);
 }
 
 private int
-run_bkd_post_trigger(char **lines, char *when, char *what, char *event)
+run_bkd_post_trigger(char **triggers, char *when, char *what, char *event)
 {
 	int	fd1, i, rc = 0;
-	char	cmd[MAXPATH*4];
 
 	/*
 	 * Process post trigger for remote client
@@ -170,9 +199,9 @@ run_bkd_post_trigger(char **lines, char *when, char *what, char *event)
 	fflush(stdout);
 	fd1 = dup(1); assert(fd1 > 0);
 	if (dup2(2, 1) < 0) perror("trigger: dup2");
-	EACH(lines) {
-		if (makeTriggerCmd(lines[i], when, what, event, cmd)) continue;
-		rc = system(cmd);
+	EACH(triggers) {
+		unless (runable(triggers[i])) continue;
+		rc = runit(triggers[i], when, event, 0);
 		if (rc) break;
 	}
 	dup2(fd1, 1); close(fd1);

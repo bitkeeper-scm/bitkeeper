@@ -180,7 +180,7 @@ mk_list(char *rev_list, char *rev)
 	sprintf(cmd, "bk cset -ffr%s > %s", rev, rev_list);
 	if (system(cmd) != 0) {
 		printf("undo: %s\n", cmd);
-		printf("undo: cannot extact revision list\n");
+		printf("undo: cannot extract revision list\n");
 		return (NULL);
 	}
 	free(cmd);

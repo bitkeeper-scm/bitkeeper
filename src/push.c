@@ -166,6 +166,12 @@ log_main(int ac, char **av)
 private void
 unPublish(sccs *s, delta *d)
 {
+	unless (d && !(d->flags & D_VISITED)) return;
+	assert(d->type == 'D');
+	unPublish(s, d->parent);
+	if (d->merge) unPublish(s, sfind(s, d->merge));
+	d->flags |= D_VISITED; 
+	d->published = 0;
 }
 
 private void
@@ -183,8 +189,8 @@ updLogMarker()
 	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
 		d = findrev(s, 0);
 		assert(d);
+		unPublish(s, d);
 		d->published = 1;
-		for (d = d->parent; d; d = d->parent) d->published = 0;
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 	}
@@ -267,12 +273,14 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 					fprintf(stderr,
 					    "You are pushing to an a empty "
 					    "directory\n");
+					sccs_free(s);
 					return (1); /* empty dir */
 				}
 				break;
 		}
 		unlink(rev_list);
 		disconnect(r, 2);
+		sccs_free(s);
 		return (-1);
 	}
 	close(fd);
@@ -623,7 +631,6 @@ push(char **av, opts opts, remote *r, char **envVar)
 	sccs	*cset = 0;
 	char	*root;
 	int	gzip;
-	char	csetFile[MAXPATH] = CHANGESET;
 	char	buf[MAXKEY];
 	char	rev_list[MAXPATH];
 
@@ -638,12 +645,6 @@ push(char **av, opts opts, remote *r, char **envVar)
 			upgrade_msg);
 		exit(1);
 	}
-	unless (cset = sccs_init(csetFile, 0, 0)) {
-		fprintf(stderr, "push: no ChangeSet file found.\n");
-		exit(1);
-	}
-	sccs_sdelta(cset, sccs_ino(cset), buf);
-	root = strdup(buf);
 	ret = push_part1(opts, r, rev_list, envVar);
 	if (ret < 0) return (1); /* failed */
 	return (push_part2(av, opts, r, rev_list, ret, envVar));

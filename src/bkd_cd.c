@@ -1,4 +1,5 @@
 #include "bkd.h"
+extern char *logRoot;
 
 /*
  * Convert rootkey to a path name
@@ -43,6 +44,11 @@ getLogRoot(char log_root[])
 {
 	FILE *f;
 	char buf[MAXPATH + 9];
+
+	if (logRoot) {
+		strcpy(log_root, logRoot);
+		return(0);
+	}
 
 	/*
 	 * We assume we are at the cgi-bin directory
