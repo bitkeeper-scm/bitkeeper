@@ -138,17 +138,6 @@ rangeMark(sccs *s, delta *d, delta *start)
 	} while (d && !(d->flags & D_CSET));
 }
 
-delta *
-sccs_kid(sccs *s, delta *d)
-{
-	delta	*e;
-
-	unless (d->flags & D_MERGED) return (d->kid);
-	for (e = s->table; e; e = e->next) if (e->merge == d->serial) break;
-	assert(e);
-	return (e);
-}
-
 private void
 walkClr(sccs *s, delta *d)
 {
