@@ -295,7 +295,8 @@ EOF
 
 import_validate_RCS () {
 	grep ',v$' /tmp/import$$ >/tmp/rcs$$
-	grep -v ',v$' /tmp/import$$ >/tmp/notrcs$$
+	# Filter out CVS repository metadata here.
+	grep -v ',v$' /tmp/import$$ | egrep -v 'CVS|#cvs' >/tmp/notrcs$$
 	if [ -s /tmp/rcs$$ -a -s /tmp/notrcs$$ ]
 	then	NOT=`wc -l < /tmp/notrcs$$ | sed 's/ //g'`
 		echo
@@ -305,9 +306,9 @@ import_validate_RCS () {
 		case "$x" in
 		y*)	sed 's/^/	/' < /tmp/notrcs$$ | more ;;
 		esac
-		mv /tmp/rcs$$ /tmp/import$$
-		rm -f /tmp/notrcs$$
 	fi
+	mv /tmp/rcs$$ /tmp/import$$
+	rm -f /tmp/notrcs$$
 }
 
 import_validate_text () {

@@ -14,15 +14,19 @@ c This the second comment of 1.$R
 P this/is/the/pathname.$R
 ------------------------------------------------
 EOF
+	# We must be careful not to leave a locked file behind at the
+	# end of the loop.  clean will complain because the recorded
+	# and actual pathnames don't match.
+	if [ $R -ne 1 ]
+	then	co $Q -l FILE
+	fi
 	echo 1.$R >> FILE
 	if [ $R -eq 1 ]
 	then	delta $Q -i -IINITX FILE
 	else	delta $Q -IINITX FILE
 	fi
 	R=`expr $R + 1`
-	co $Q -l FILE
 done
-clean FILE
 co  $Q -l -r1.3 FILE
 echo "added in 1.3.1.1" >> FILE
 ci $Q -y FILE
@@ -116,7 +120,7 @@ co $Q -p foo.c > save
 rmdel $Q -r+ foo.c
 co $Q -p foo.c > check
 if cmp -s save check
-then	echo failed to propogate remove data
+then	echo failed to propagate remove data
 	exit 1
 fi
 if grep -q RMDEL SCCS/s.foo.c
@@ -125,12 +129,12 @@ then	echo Failed to remove data from the body of the s.file
 	exit 1
 fi
 echo OK
-#echo $N Check propogation of rmdel in resync ........................$NL
+#echo $N Check propagation of rmdel in resync ........................$NL
 #cd $HERE
 #bk resync -a $Q project clone
 #if cmp -s project/SCCS/s.foo.c clone/SCCS/s.foo.c
 #then	:
-#else	echo failed to propogate removed delta
+#else	echo failed to propagate removed delta
 #	diff project/SCCS/s.foo.c clone/SCCS/s.foo.c
 #	exit 1
 #fi

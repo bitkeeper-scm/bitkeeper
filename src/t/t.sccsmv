@@ -26,15 +26,17 @@ done
 sfiles -l A B | clean -
 co $Q -l -r1.2  A/file1
 sccsmv A/file1 B/file1
+# The file should have been moved, but not checked in.
 if [ ! -f B/file1 ]; then echo failed; exit 1; fi
 if [ ! -f B/SCCS/s.file1 ]; then echo failed; exit 1; fi
 if [ ! -f B/SCCS/p.file1 ]; then echo failed; exit 1; fi
 if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit 1; fi
 DPATH=`prs -hr1.2.1.1 -d:DPN: B/file1`
 if [ ${DPATH}X != ""X ]; then echo failed; exit 1; fi
+# Now check it in so later tests aren't confused.
+ci $Q -yrename B/file1
 echo OK
 echo $N Test sccsmv w/ unlocked file ................................$NL
-clean B
 sccsmv B/file2 C/file3
 if [ -f C/file3 ]; then echo failed; exit 1; fi
 if [ ! -f C/SCCS/s.file3 ]; then echo failed; exit 1; fi

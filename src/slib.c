@@ -6241,6 +6241,7 @@ sccs_clean(sccs *s, u32 flags)
 			printf("< %s\n-\n", d->pathname);
 			printf("> %s\n", relativeName(s, 0, 1));
  		}
+		free_pfile(&pf);
 		return (2);
 	}
 
@@ -7550,7 +7551,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 		n->dateFudge += tdiff;
 	}
 	if (n->dateFudge) {
-		sprintf(fudge, "\001cF%d\n", n->dateFudge);
+		sprintf(fudge, "\001cF%ld\n", (long) n->dateFudge);
 	} else {
 		fudge[0] = 0;
 	}
@@ -7558,7 +7559,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 "\001s 00000/00000/00000\n\
 \001d R %s %s %s %d %d\n\
 %s\
-\001cK%05u\n\
+\001cK%05lu\n\
 \001cS%s\n\
 \001e\n",
 	    rev, n->sdate, n->user, sc->nextserial++, d->serial, 

@@ -1422,7 +1422,7 @@ cmd=$1
 shift
 
 case $cmd in
-    resync|resolve|pmerge)
+    resync|resolve|pmerge|rcs2sccs)
 	exec perl ${BIN}$cmd "$@";;
     citool|sccstool|vitool|fm|fmtool|fm3|fm3tool|difftool|helptool|csettool)
 	exec $wish -f ${BIN}${cmd}${tcl} "$@";;
