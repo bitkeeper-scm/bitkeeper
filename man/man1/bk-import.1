@@ -160,6 +160,11 @@ DOS style end of lines to Unix style end of lines.
 .if t .TP
 .if n .TP .4i
 .tp
+.OPTreq \-p num
+Strip  the  smallest prefix containing
+.ARG num
+leading slashes from each file name found in the patch file.
+.tp
 .B \-r
 Do not do rename processing when doing patch imports.
 .tp
