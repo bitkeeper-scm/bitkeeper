@@ -1832,6 +1832,10 @@ findrev(sccs *s, char *rev)
 	    notnull(rev), s->sfile, defbranch(s)));
 	if (!s->tree) return (0);
 	if (!rev || !*rev) rev = defbranch(s);
+	if (streq(rev, "_BK_TOP")) {
+		for (e = s->table; e && TAG(e); e = e->next);
+		return (e);
+	}
 
 	if (name2rev(s, &rev)) return (0);
 	switch (scanrev(rev, &a, &b, &c, &d)) {
