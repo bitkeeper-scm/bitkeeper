@@ -2654,12 +2654,15 @@ rcsexpand(sccs *s, delta *d, char *l, int *expanded)
  * We don't consider EPIPE an error since we hit it when we do stuff like
  * get -p | whatever
  * and whatever exits first.
+ * XXX - on linux, at least, this doesn't work, so we catch the EPIPE case
+ * where we call this function.  There should be only one place in the
+ * getRegBody() function.
  */
 int
 flushFILE(FILE *out)
 {
 	if (fflush(out) && (errno != EPIPE)) {
-		return (-1);
+		return (errno);
 	}
 	return (ferror(out));
 }
@@ -5287,7 +5290,7 @@ fflushdata(sccs *s, FILE *out)
 	}
 	data_next = data_block;
 	debug((stderr, "SUM2 %u\n", s->cksum));
-	if (flushFILE(out)) {
+	if (flushFILE(out) && (errno != EPIPE)) {
 		perror(s->sfile);
 		s->io_error = s->io_warned = 1;
 		return(-1);
@@ -6052,8 +6055,17 @@ out:			if (slist) free(slist);
 		error = 0;
 	} else {
 		if (error = flushFILE(out)) {
-			perror(s->gfile);
-			s->io_error = s->io_warned = 1;
+			/*
+			 * In spite of flushFILE() looking like it catches
+			 * EPIPE, it doesn't.  So we look for that case
+			 * here.
+			 */
+			unless ((flags&PRINT) && streq("-", printOut)) {
+				perror(s->gfile);
+				s->io_error = s->io_warned = 1;
+			} else {
+				error = 0;
+			}
 		}
 		if (popened) {
 			pclose(out);
@@ -6080,7 +6092,7 @@ out:			if (slist) free(slist);
 		if (!streq(fname, "-") && (utime(fname, &ut) != 0)) {
 			char msg[1024];
 
-			sprintf(msg, "%s: Cannot set modificatime; ", fname);
+			sprintf(msg, "%s: Cannot set mod time; ", fname);
 			perror(msg);
 			s->state |= S_WARNED;
 			goto out;
