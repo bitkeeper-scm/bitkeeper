@@ -2878,7 +2878,6 @@ restore_checkouts(opts *opts)
 			unless (HAS_GFILE(s)) getFlags = GET_EXPAND;
 			break;
 		    case 'n':
-			assert(!HAS_GFILE(s));
 			break;
 		    default:
 			assert(0);
