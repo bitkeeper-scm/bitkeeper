@@ -84,6 +84,48 @@ keysHome()
 	return (keysFile = (strdup)(path));
 }
 
+#ifdef WIN32
+private void
+mk_prelock(char *linkpath, int me)
+{
+	/* no op */
+}
+
+private int
+atomic_create(char *noused, char *lock, int me)
+{
+	int	fd;
+	FILE 	*f;
+
+	fd = open(lock, O_EXCL|O_CREAT|O_WRONLY, 0666);
+	if (fd < 0) return (-1);
+	f = fdopen(fd, "wb");
+	fprintf(f, "#%d\n", me);
+	fclose(f);
+	return (0);
+}
+#else
+private void
+mk_prelock(char *linkpath, int me)
+{
+	FILE 	*f;
+
+	unless (f = fopen(linkpath, "w")) {
+		unlink(linkpath);
+		f = fopen(linkpath, "w");
+	}
+	assert(f);
+	fprintf(f, "#%d\n", me);
+	fclose(f);
+}
+
+private int
+atomic_create(char *linkpath, char *lock, int me)
+{
+	return (link(linkpath, lock));
+}
+#endif
+
 /* -1 means error, 0 means OK */
 int
 uniq_lock()
@@ -104,18 +146,17 @@ uniq_lock()
 	}
 
 	sprintf(linkpath, "%s.%d", lock, me);
-	unless (f = fopen(linkpath, "w")) {
-		unlink(linkpath);
-		f = fopen(linkpath, "w");
-	}
-	assert(f);
-	fprintf(f, "%d\n", me);
-	fclose(f);
-	while (link(linkpath, lock) != 0) {
+	mk_prelock(linkpath, me);
+	while (atomic_create(linkpath, lock, me) != 0) {
 		if (f = fopen(lock, "r")) {
 			int	pid = 0;
 
-			fscanf(f, "%d\n", &pid);
+			/*
+			 * We added a leading "#" character
+			 * because some pid (e.g 844) would pop
+			 * a bogus Norton virus alert.
+			 */
+			fscanf(f, "#%d\n", &pid);
 			fclose(f);
 			unless (pid) continue;	/* must be gone */
 			assert(pid != me);
