@@ -318,6 +318,7 @@
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
+#define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
 

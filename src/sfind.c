@@ -566,12 +566,8 @@ walk(char *dir, int level)
 	/*
 	 * Special processing for .bk_skip file
 	 */
-	sprintf(buf, "%s/.bk_skip", dir);
-	if (exists(buf)) {
-		sprintf(buf, "%s/SCCS/s..bk_skip", dir);
-		if (exists(buf)) file(buf);
-		return;
-	}
+	sprintf(buf, "%s/%s", dir, BKSKIP);
+	if (exists(buf)) return;
 
 	if (level == 0) {
 		char tmp[MAXPATH];
