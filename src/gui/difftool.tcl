@@ -99,9 +99,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Reread" -command {
-			global lname rname lfile rfile
+			global lname rname lfile rfile menu
 			#puts "$lfile $lname $rfile $rname"
-			readFiles $lfile $lname $rfile $rname
+			readFiles $lfile $rfile $lname $rname
 		    }
 	    button .menu.help -bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -126,11 +126,11 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
                 -borderwid $gc(bw) -text "Files" -width 6 -state normal \
                 -menu .menu.fmb.menu
 
-	    pack .menu.quit -side left
-	    pack .menu.help -side left
-	    pack .menu.reread -side left
+	    pack .menu.quit -side left -fill y
+	    pack .menu.help -side left -fill y
+	    pack .menu.reread -side left -fill y
 	    pack .menu.prev -side left -fill y 
-	    pack .menu.dot -side left
+	    pack .menu.dot -side left -fill y
 	    pack .menu.next -side left -fill y
 
 	    search_widgets .menu .diffs.right
@@ -296,10 +296,12 @@ proc getFiles {} \
 					set rname $rfile
 					set lfile [getRev $rfile "+" 1]
 					set lname "$rfile"
-					lappend tmps $lfile
-					eval lappend files \
-					    {"$rfile $rname $lfile $lname"}
 					set lname "$rfile"
+					lappend tmps $lfile
+					if {[checkFiles $lfile $rfile]} {
+						eval lappend files \
+						    {"$rfile $rname $lfile $lname"}
+					}
 					set lnorev $rfile
 					set rnorev $rfile
 					set rev1 "+"
@@ -309,9 +311,12 @@ proc getFiles {} \
 			set rfile [lindex $argv 0]
 			set rname $rfile
 			set lfile [getRev $rfile "+" 1]
-			lappend tmps $lfile
 			set lname "$rfile"
-			eval lappend files {"$rfile $rname $lfile $lname"}
+			if {[checkFiles $lfile $rfile]} {
+				eval lappend files \
+				    {"$rfile $rname $lfile $lname"}
+			}
+			lappend tmps $lfile
 			set lnorev $rfile
 			set rnorev $rfile
 			set rev1 "+"
@@ -323,20 +328,26 @@ proc getFiles {} \
 			if {[file exists $rfile] != 1} { usage }
 			set rname $rfile
 			set lfile [getRev $rfile $rev1 0]
+			set lname "$rfile@$rev1"
+			if {[checkFiles $lfile $rfile]} {
+				eval lappend files \
+				    {"$rfile $rname $lfile $lname"}
+			}
 			set lnorev $rfile
 			set rnorev $rfile
 			set rev2 "+"
-			set lname "$rfile@$rev1"
-			eval lappend files {"$rfile $rname $lfile $lname"}
 			lappend tmps $lfile
 		} else {         ;# bk difftool file file2"
 			set lfile [lindex $argv 0]
 			set lname $lfile
 			set rfile [lindex $argv 1]
 			set rname $rfile
+			if {[checkFiles $lfile $rfile]} {
+				eval lappend files \
+				    {"$rfile $rname $lfile $lname"}
+			}
 			set lnorev $lfile
 			set rnorev $rfile
-			eval lappend files {"$rfile $rname $lfile $lname"}
 		}
 	} else {  ;# bk difftool -r<rev> -r<rev2> file
 		set file [lindex $argv 2]
@@ -352,10 +363,13 @@ proc getFiles {} \
 		lappend tmps $rfile
 		set lnorev $file 
 		set rnorev $file
-		eval lappend files {"$rfile $rname $lfile $lname"}
+		#displayInfo $lnorev $rnorev $rev1 $rev2
+		#readFiles $lfile $rfile $lname $rname
+		if {[checkFiles $lfile $rfile]} {
+			eval lappend files {"$rfile $rname $lfile $lname"}
+		}
 	}
 	#puts "files=($files)"
-
 	# Now add the menubutton items if necessary
 	if {[llength $files] > 1} {
 		set m [menu .menu.fmb.menu]
@@ -369,16 +383,35 @@ proc getFiles {} \
 			incr item
 		}
 		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
-		    -side left -after .menu.help 
+		    -side left -fill y -after .menu.help 
 		$m invoke 1
 		set menu(max) [$m index last]
 		set menu(selected) 1
 	} elseif {[llength $files] == 1} {
+		#puts "lf=($lfile) rf=($rfile) lname=($lname) rname=($rname)"
 		displayInfo $lnorev $rnorev $rev1 $rev2
-		readFiles $lfile $lname $rfile $rname
+		readFiles $lfile $rfile $lname $rname
 	} else {
 		cleanup
 	}
+}
+
+proc checkFiles {lfile rfile} \
+{
+	if {[file isfile $lfile] && [file isfile $rfile]} {
+		return 1
+	}
+	if {![file isfile $lfile]} {
+		puts stderr \
+		    "File \"$lfile\" does not exist or is not a regular file"
+		return 0
+	}
+	if {![file isfile $rfile]} {
+		puts stderr \
+		    "File \"$rfile\" does not exist or is not a regular file"
+		return 0
+	}
+	return 0
 }
 
 proc cleanup {} \
@@ -393,7 +426,13 @@ proc cleanup {} \
 # Called from the menubutton -- updates the arrows and reads the correct file
 proc pickFile {lf ln rf rn item} \
 {
-	global menu
+	global menu lfile lname rfile rname
+
+	# Set globals so that 'proc reread' knows which file to reread
+	set lfile $lf 
+	set rfile $rf
+	set lname $ln
+	set rname $rn
 
 	set menu(selected) $item
 	if {$menu(selected) == 1} {
@@ -407,7 +446,8 @@ proc pickFile {lf ln rf rn item} \
 		.menu.fileNext configure -state normal
 	}
 	#displayInfo $lnorev $rnorev $rev1 $rev2
-	readFiles $lf $ln $rf $rn
+	readFiles $lf $rf $ln $rn
+	return
 }
 
 # Get the previous file when the button is selected -- update the arrow state

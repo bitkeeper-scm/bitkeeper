@@ -249,8 +249,8 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 
 	.diffs.left tag configure "select" -background $gc($app.infoColor)
 	.diffs.right tag configure "select" -background $gc($app.infoColor)
-	set dspec1 "{-d:DPN:\n\tFlags :FLAGS:\n\tMode :RWXMODE:\n}"
-	set dspec2 "{-dFlags :FLAGS:\nPath :DPN:\n}"
+	set dspec1 "{-d:DPN:\n\tFlags = :FLAGS:\n\tMode  = :RWXMODE:\n}"
+	set dspec2 "{-d:DPN:\n\tFlags = :FLAGS:\n}"
 
 	catch {set f [open "| bk sfiles -g \"$lfile\"" r]} err
 	if { ([gets $f fname] <= 0)} {
@@ -305,10 +305,13 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
 
-	if {![file exists $L] || ![file exists $R]} {
-		displayMessage "Either the left file ($L) or right file ($R)\n\
-does not exist"
-		return
+	if {![file exists $L]} {
+		displayMessage "Left file ($L) does not exist"
+		return 1
+	}
+	if {![file exists $R]} {
+		displayMessage "Right file ($R) does not exist"
+		return 1
 	}
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
@@ -371,9 +374,9 @@ does not exist"
 		#puts "No differences"
 		return
 	}
-	close $r
-	close $l
-	catch { close $d }
+	catch {close $r}
+	catch {close $l}
+	catch {close $d}
 	if {"$rmList" != ""} {
 		foreach rm $rmList {
 			catch {file delete $rm}
