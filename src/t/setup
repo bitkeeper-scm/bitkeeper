@@ -61,6 +61,8 @@ unsetHttpProxy() {
 
 # Usage: waitForUnlock <root>
 waitForUnlock() {
+	test X$LOCKPID != X && wait $LOCKPID
+	LOCKPID=
 	bk lock -U $1
 }
 

@@ -260,6 +260,7 @@ echo OK
 
 echo $N push to a read locked repository should fail ................$NL
 bk lock -r $HERE/project &
+LOCKPID=$!
 bk lock -L $HERE/project
 bk push -c0 $HERE/project > OUT 2>&1
 grep -q 'Unable to lock repository for update' OUT || {
@@ -268,7 +269,7 @@ grep -q 'Unable to lock repository for update' OUT || {
 	exit 1
 }
 bk unlock -r $HERE/project
-bk lock -U $HERE/project
+waitForUnlock $HERE/project
 echo OK
 
 echo $N push to unrelated project should error ......................$NL
