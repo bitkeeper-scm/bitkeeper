@@ -96,7 +96,12 @@ main(int ac, char **av)
 		    case 'F': fast++; break;
 		    case 'f':
 			    infname = optarg;
-			    input = fopen(optarg, "rt"); break;
+			    input = fopen(optarg, "rt");
+			    unless (input) {
+				    perror(optarg);
+				    exit(1);
+			    }
+			    break;
 		    case 'i': newProject++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
@@ -556,6 +561,17 @@ badXsum(int a, int b)
 	/* XXX - should clean up everything if this was takepatch -i */
 }
 
+void
+uncommitted(char *file)
+{
+	SHOUT();
+	fprintf(stderr,
+"takepatch: %s has uncommitted changes\n\
+Please commit pending changes with `bk commit' and reapply the patch.\n",
+		file);
+	cleanup(CLEAN_RESYNC);
+}
+
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
@@ -569,12 +585,13 @@ applyPatch(
 	patch	*p = patchList;
 	FILE	*iF, *dF;
 	sccs	*s = 0;
-	delta	*d;
+	delta	*d = 0;
 	int	newflags;
 	char	*getuser(), *now();
 	static	char *spin = "|/-\\";
 	char	*gcaPath = 0;
 	int	n = 0;
+	int	confThisFile;
 
 	unless (p) return (0);
 	if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
@@ -724,17 +741,22 @@ apply:
 	}
 	unless (localPath) {
 		/* must be new file */
-		conflicts += sccs_resolveFile(s, 0, 0, 0);
+		confThisFile = sccs_resolveFile(s, 0, 0, 0);
 	} else if (streq(localPath, remotePath)) {
 		/* no name changes, life is good */
-		conflicts += sccs_resolveFile(s, 0, 0, 0);
+		confThisFile = sccs_resolveFile(s, 0, 0, 0);
 	} else {
 		debug((stderr, "L=%s\nR=%s\nG=%s (%s)\n",
 		    localPath, remotePath, gcaPath, gca ? gca->rev : ""));
 		/* local != remote */
 		assert(gcaPath);
-		conflicts +=
+		confThisFile =
 		    sccs_resolveFile(s, localPath, gcaPath, remotePath);
+	}
+	conflicts += confThisFile;
+	if (confThisFile) {
+		assert(d);
+		unless (d->flags & D_CSET) uncommitted(localPath);
 	}
 	sccs_free(s);
 	if (noConflicts && conflicts) noconflicts();
@@ -885,7 +907,7 @@ initProject()
 		SHOUT();
 		fprintf(stderr,
 		    "takepatch: -i can only be used in an empty directory\n");
-		SHOUT();
+		SHOUT2();
 		/*
 		 * We MUST exit here.  It is an invariant that if we are not
 		 * empty we abort.  See cleanup().
@@ -912,44 +934,63 @@ init(FILE *p, int flags, char **resyncRootp)
 	FILE	*f, *g;
 	uLong	sumC = 0, sumR = 0;
 
+	root = sccs_root(0, 0);
+	
 	if (newProject) {
 		initProject();
 		*resyncRootp = strdup("RESYNC");
 	} else {
-	    root = sccs_root(0, 0);
-	    if (sccs_cd2root(0, root)) {
-		SHOUT();
-		fprintf(stderr, "takepatch: can't find project root.\n");
-		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-	    }
-	    *resyncRootp = malloc(strlen(root) + 8);
-	    sprintf(*resyncRootp, "%s%s", root, "/RESYNC");
+		root = sccs_root(0, 0);
+		if (!root && emptyDir(".")) {
+			/* If we are invoked in an empty directory,
+			 * assume they meant -i.
+			 */
+			fputs("takepatch: creating new project.\n", stderr);
+			initProject();
+			*resyncRootp = strdup("RESYNC");
+			newProject = 1;
+		} else if (sccs_cd2root(0, root)) {
+			SHOUT();
+			fputs("takepatch: can't find project root.\n", stderr);
+			SHOUT2();
+			exit(1);
+		} else {
+			*resyncRootp = malloc(strlen(root) + 8);
+			sprintf(*resyncRootp, "%s%s", root, "/RESYNC");
+		}
 	}
 
 	/*
 	 * See if we can lock the tree.
 	 */
 	if ((mkdir("RESYNC", 0775) == -1) && (access("RESYNC", F_OK) == 0)) {
-		unless ((f = fopen("RESYNC/BitKeeper/tmp/pid", "r")) &&
+		if ((f = fopen("RESYNC/BitKeeper/tmp/pid", "r")) &&
 		    fnext(buf, f)) {
-			SHOUT();
-			fprintf(stderr, "takepatch: RESYNC dir exists\n");
-			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+			fclose(f);
+			chop(buf);
+		} else {
+			*buf = '\0';
 		}
-		fclose(f);
-		chop(buf);
-		SHOUT();
 		if ((f = fopen("RESYNC/BitKeeper/tmp/patch", "r")) &&
 		    fnext(file, f)) {
+			fclose(f);
 			chop(file);
-			fprintf(stderr,
-			    "takepatch: RESYNC dir locked by %s for patch %s\n",
-			    buf, file);
 		} else {
-			fprintf(stderr,
-			    "takepatch: RESYNC dir locked by %s\n", buf);
+			*file = '\0';
 		}
-		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+
+		SHOUT();
+		if (*buf && *file) {
+			fprintf(stderr,
+		      "takepatch: RESYNC dir locked by pid %s for patch %s\n",
+				buf, file);
+		} else if (*buf) {
+			fprintf(stderr,
+			      "takepatch: RESYNC dir locked by pid %s\n", buf);
+		} else {
+			fprintf(stderr, "takepatch: RESYNC dir exists\n");
+		}
+		cleanup(0);
 	}
 	unless (mkdir("RESYNC/SCCS", 0775) == 0) {
 		SHOUT();

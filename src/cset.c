@@ -561,7 +561,8 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
-			fprintf(stderr, "Rebuilding caches...\n");
+			if (verbose > 0)
+				fputs("Rebuilding caches...\n", stderr);
 			system("bk sfiles -r");
 			doneFullRebuild = 1;
 			unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
