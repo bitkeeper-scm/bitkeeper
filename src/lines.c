@@ -19,17 +19,20 @@ private	delta	*tree;	/* oldest node we're displaying */
 int
 lines_main(int ac, char **av)
 {
-	int	c, rc = 1;
+	int	n = 0, c, rc = 1;
 	char	*name;
 	delta	*e;
 	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "ur;R;t")) != -1) {
+	while ((c = getopt(ac, av, "n;ur;R;t")) != -1) {
 		switch (c) {
 		    case 'u':
 			flags |= GET_USER;
 			break;
 		    case 't': sort = 1; 
+			break;
+		    case 'n':
+			n = atoi(optarg); 
 			break;
 		    case 'r':
 			rev = optarg; 
@@ -37,7 +40,7 @@ lines_main(int ac, char **av)
 		    RANGE_OPTS(' ', 'R');
 		    default:
 usage:			fprintf(stderr,
-			    "usage lines [-ut] [-r<r> | -R<r>] file.\n");
+			    "Usage: _lines [-ut] [-n<n>] [-r<r> | -R<r>] file.\n");
 			return (1);
 		}
 	}
@@ -54,7 +57,8 @@ usage:			fprintf(stderr,
 			unless (s->rstart) goto next;
 			e = ancestor(s, s->rstart);
 			e->merge = 0;
-			prevs(e);
+			for (c = n; e && c; c--, e = e->parent);  
+			prevs(e ? e : s->tree);
 		} else if (rev) {
 			e = sccs_getrev(s, rev, 0, 0);
 			unless (e) {
@@ -92,6 +96,11 @@ renumber(delta *d)
 private void
 puser(char *u)
 {
+	/* 1.0 nodes don't always have a user */
+    	unless (u) {
+		printf("NONE");
+		return;
+	}
 	do {
 		unless (*u == '@') putchar(*u);
 	} while (*++u);

@@ -99,6 +99,7 @@ proc getConfig {prog} \
 	set _d(rev.textWidth) 92	  ;# width of text windows
 	set _d(rev.textHeight) 30	  ;# height of lower window
 	set _d(rev.showHistory) "1M"	  ;# History to show in graph on start
+	set _d(rev.showRevs) 50		  ;# Num of revs to show in graph 
 	# XXX: not documented yet
 	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
 	set _d(rev.hlineColor) white	  ;# Color of highlight lines XXX:NOTDOC

@@ -25,13 +25,48 @@ proc cd2root { {startpath {}} } \
 
 proc displayMessage {msg {exit {}}} \
 {
-
 	global tcl_platform
 
-	tk_messageBox -title "Error" -type ok -icon error -message $msg
+	if {$exit != ""} {
+		set title "Error"
+		set icon "error"
+	} else {
+		set title "Info"
+		set icon "info"
+	}
+	tk_messageBox -title $title -type ok -icon $icon -message $msg
 	if {$exit == 1} {
 		exit 1
 	} else {
 		return
 	}
+}
+
+# From a Cameron Laird post on usenet
+proc print_stacktrace {} {
+	set depth [info level]
+	puts "Current call stack shows"
+	for {set i 1} {$i < $depth} {incr i} {
+		puts "\t[info level $i]"
+	}
+}
+proc _parray {a {pattern *}} {
+	upvar 1 $a array
+	if {![array exists array]} {
+		error "\"$a\" isn't an array"
+	}
+	set maxl 0
+	foreach name [lsort [array names array $pattern]] {
+		if {[string length $name] > $maxl} {
+			set maxl [string length $name]
+		}
+	}
+	set maxl [expr {$maxl + [string length $a] + 2}]
+	set answer ""
+	foreach name [lsort [array names array $pattern]] {
+		set nameString [format %s(%s) $a $name]
+		append answer \
+		    [format "%-*s = %s\n" $maxl $nameString $array($name)]
+	}
+	return $answer
 }
