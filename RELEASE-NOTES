@@ -14,20 +14,36 @@ Nothing is required to upgrade from the 3.0.3 release.
 New Features
 ----------------------------------------------------------------------------
 
+  When running under rxvt on Windows the stderr output gets buffered.  Add
+  a setbuf() to make stderr unbuffered.
+
+  revtool has "a" accelerator to show annotated listes and "C" accelerator
+  to jump to csettool.
+
   Fix some performance problems that should provide a noticable speedup for
   users with large ChangeSet files.
+
+  Fix some performance problems which should help the openlogging users.
 
 Noteworthy Bug Fixes
 ----------------------------------------------------------------------------
 
   2002-02-13-006: Fix expanding of already expanded RCS keywords
   2003-09-10-002: Fix tags in BKWeb
-  
+  2003-02-27-002: Don't rewrite localhost URLs
+  2003-11-21-005: Takepatch filename printing
+
+  Fix a bug in citool that was throwing away comments when you clicked on
+  the icon for a new file.
+
   Workaround a Windows problem where strerr was being buffered for
   some reason.
 
   Fix some license checks so users won't be prompted for some licenses
   when running bk in scripts or triggers.
+
+  Do not allow people to cset -x merge nodes, that can break some BK 
+  invariants.
 
 ===============================================================================
 Release notes for BitKeeper version 3.0.3.   These release notes cover
