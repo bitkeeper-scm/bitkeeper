@@ -4,6 +4,8 @@
 # XXX - the build script should be merged into this.
 PATH=/bin:/usr/bin:/usr/bsd:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin:/usr/ccs/bin
 
+umask 0
+
 IMAGE=image
 test $OSTYPE = cygwin && {
 	PATH=$PATH:/cygdrive/c/WINDOWS/system32::/cygdrive/c/PROGRA~1/BITKEE~1

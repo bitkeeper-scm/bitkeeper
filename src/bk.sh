@@ -1320,7 +1320,7 @@ _install()
 			exit 1
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
-		chmod -R +w "$DEST" 2> /dev/null
+		(cd "$DEST"; find . -type d | xargs chmod ug+w)
 		if [ "X$OSTYPE" = "Xmsys" ]
 		then
 			__do_win32_uninstall "$SRC" "$DEST" "$OBK"
@@ -1391,11 +1391,14 @@ _install()
 
 	# permissions
 	cd "$DEST"
-	test $CRANKTURN = NO && {
+	if [ $CRANKTURN = NO ]
+	then
 		(find . | xargs chown root) 2> /dev/null
 		(find . | xargs chgrp root) 2> /dev/null
 		find . | grep -v bkuninstall.exe | xargs chmod -w
-	}
+	else
+		find . -type d | xargs chmod 777
+	fi
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
