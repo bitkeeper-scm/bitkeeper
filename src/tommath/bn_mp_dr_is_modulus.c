@@ -4,7 +4,7 @@
  * integer arithmetic as well as number theoretic functionality.
  *
  * The library is designed directly after the MPI library by
- * Michael Fromberger but has been written from scratch with 
+ * Michael Fromberger but has been written from scratch with
  * additional optimizations in place.
  *
  * The library is free for all purposes without any express
@@ -14,21 +14,21 @@
  */
 #include <tommath.h>
 
-/* init a new bigint */
-int
-mp_init (mp_int * a)
+/* determines if a number is a valid DR modulus */
+int mp_dr_is_modulus(mp_int *a)
 {
-  /* allocate ram required and clear it */
-  a->dp = OPT_CAST calloc (sizeof (mp_digit), MP_PREC);
-  if (a->dp == NULL) {
-    return MP_MEM;
-  }
+   int ix;
 
-  /* set the used to zero, allocated digit to the default precision
-   * and sign to positive */
-  a->used  = 0;
-  a->alloc = MP_PREC;
-  a->sign  = MP_ZPOS;
+   /* must be at least two digits */
+   if (a->used < 2) {
+      return 0;
+   }
 
-  return MP_OKAY;
+   for (ix = 1; ix < a->used; ix++) {
+       if (a->dp[ix] != MP_MASK) {
+          return 0;
+       }
+   }
+   return 1;
 }
+
