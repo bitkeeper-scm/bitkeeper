@@ -424,6 +424,7 @@ typedef struct delta {
 					/* open tips, so maintained always */
 } delta;
 #define	TAG(d)	((d)->type == 'R')
+#define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 /*
  * Rap on lod/symbols wrt deltas.

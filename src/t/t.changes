@@ -238,10 +238,9 @@ bk mv b foo
 bk mv foo fee
 bk commit $Q -yy
 files=`bk changes -r+ -v -d:DPN:`
-if [ $files != "ChangeSetfeefoobbarfoofoo" ]
-then	echo 'failed (bug 2002-04-19-001)'
-else	echo 'bug 2002-04-19-001 passing! fix test.'
-	exit 1
+if [ "$files" != "ChangeSetfeefoobbarfoofoo" ]
+then	echo failed; exit 1;
+else	echo OK
 fi
 cd $HERE
 rm -rf p
@@ -261,9 +260,8 @@ bk commit $Q -ya
 cd $HERE/c2
 bk pull $Q
 files=`bk changes -r1.1.1.1,1.2 -v -d:DPN:`
-if [ $files != "ChangeSetfoofooChangeSetbarbar" ]
-then	echo 'failed (bug 2002-04-19-001)'
-else	echo 'bug 2002-04-19-001 passing! fix test.'
-	exit 1
+if [ "$files" != "ChangeSetfoofooChangeSetbarbar" ]
+then	echo failed; exit 1;
+else	echo OK
 fi
 

@@ -28,6 +28,16 @@ private struct {
 	char	*spec;		/* global for recursion */
 } opts;
 
+typedef struct slog {
+	time_t	date;
+	time_t	dateFudge;
+	char	*log;
+	delta	*delta;
+	struct	slog *next;
+} slog;
+	
+	
+
 private int	doit(int dash);
 private int	want(sccs *s, delta *e);
 private int	send_part1_msg(remote *r, char **av);
@@ -302,7 +312,7 @@ doit(int dash)
 	} else {
 		spec = DSPEC;
 	}
-	s = sccs_init(s_cset, SILENT, 0);
+	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, bk_proj);
 	assert(s && s->tree);
 	if (opts.rev || opts.date) {
 		if (opts.rev) {
@@ -364,7 +374,7 @@ doit(int dash)
 	}
 	s->xflags |= X_YEAR4;
 	if (opts.verbose) {
-		cset(s, stderr, spec == DSPEC ? 0 : spec);
+		cset(s, stderr, spec);
 	} else {
 		opts.f = stdout;
 		opts.s = s;
@@ -388,38 +398,367 @@ doit(int dash)
 next:	return (1);
 }
 
-private void
-cset(sccs *s, FILE *f, char *dspec)
+/*
+ * Note that these two are identical except for the d1/d2 assignment.
+ */
+private int
+compar(const void *a, const void *b)
 {
-	char	*cmd;
-	delta	*e;
-	FILE	*p;
+        register        slog *d1, *d2;
 
-	if (dspec) {
-		if (strchr(dspec, '\'')) {
-			fprintf(stderr,
-			    "Cannot have a single quote in dspec\n");
-			return;
+        d1 = *((slog**)a);
+        d2 = *((slog**)b);
+	if (d1->date == d2->date) {
+        	return (d2->dateFudge - d1->dateFudge);
+	}
+        return (d2->date - d1->date);
+}
+
+private int
+forwards(const void *a, const void *b)
+{
+        register        slog *d1, *d2;
+
+        d1 = *((slog**)b);
+        d2 = *((slog**)a);
+	if (d1->date == d2->date) {
+        	return (d2->dateFudge - d1->dateFudge);
+	}
+        return (d2->date - d1->date);
+}
+
+private slog *
+dumplog(slog *list, int *n)
+{
+	slog	*ll;
+	slog 	**sorted;	
+	int	i = *n;
+	int	indent = 2;
+	char 	*p, *q;
+
+	if (i == 0) return (NULL);
+	assert(i > 0);
+
+	/*
+	 * Stuff the list in a array so we can sort it
+	 */
+	sorted = malloc(i * sizeof(sorted));
+	for (ll = list; ll; ll = ll->next) sorted[--i] = ll;
+	assert(i == 0);
+	qsort(sorted, *n, sizeof(sorted), opts.forwards ? forwards : compar);
+
+	/*
+	 * Print the sorted list
+	 */
+	for (i = 0; i < *n; ++i) {
+		ll = sorted[i];
+		p = ll->log;
+
+		/* indent each non-empty line */
+		while (p) {
+			q = strchr(p, '\n');
+			/* do not indent empty line */
+			if (indent && (q > p)) printf("%*s", indent, "");
+			if (q) {
+				*q++ = '\0';
+				printf("%s\n", p);
+			} else {
+				printf("%s", p);
+			}
+			p = q;
 		}
-		cmd = aprintf("bk cset -l - | bk sccslog %s %s -d'%s' - ",
-		    opts.forwards ? "-f" : "",
-		    opts.newline ? "-n" : "",
-		    dspec);
-	} else {
-		cmd = aprintf("bk cset -l - | bk sccslog %s -i2 - ",
-		    opts.forwards ? "-f" : "");
+		if (opts.newline) fputc('\n', stdout);
+
+		free(ll->log);
+		free(ll);
 	}
-	putenv("PAGER=cat");
-	unless (p = popen(cmd, "w")) {
-		perror(cmd);
-		return;
+
+	/*
+	 * Reset the list
+	 */
+	free(sorted);
+	*n = 0;
+	return (NULL);
+}
+
+/*
+ * Cache the sccs struct to avoid re-initing the same sfile
+ */
+private sccs *
+sccs_keyinitAndCache(char *key, int flags,
+				project *proj, MDBM *idDB, MDBM *graphDB)
+{
+	datum	k, v;
+	sccs	*s;
+	
+	k.dptr = key;
+	k.dsize = strlen(key);
+	v = mdbm_fetch(graphDB, k);
+	if (v.dptr) { /* cache hit */
+		memcpy(&s, v.dptr, sizeof (sccs *));
+		return (s);
 	}
-	for (e = s->table; e; e = e->next) {
+
+	s = sccs_keyinit(key, flags, proj, idDB);
+	/* (s == NULL) is OK, could be a Gnone file */
+	v.dptr = (void *) &s;
+	v.dsize = sizeof (sccs *);
+	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
+		perror("sccs_keyinitAndCache");
+	}
+	if (s) sccs_close(s); /* we don't need the delta body */
+	return (s);
+}
+
+private slog *
+collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
+{
+	slog	*ll;
+	delta	*e;
+
+	/*
+	 * Walk d->parent and d->merge recursively to find cset boundaries
+	 * and collect the deltas/dspec-output along the way
+	 */
+	do {
+		d->flags |= D_SET;
+		dbuf[0] = '\0';
+		sccs_prsbuf(s, d, PRS_ALL, dspec, dbuf);
+		/* add delta to list */
+		ll = calloc(sizeof (slog), 1);
+		ll->log = strdup(dbuf);
+		ll->date = NOFUDGE(d);
+		ll->dateFudge = d->dateFudge;
+		ll->next = list;
+		list = ll;
+		(*n)++;
+		d->flags &= ~D_SET;
+
+		if (d->merge) {
+			e = sfind(s, d->merge);
+			assert(e);
+			unless (e->flags & D_CSET) {
+				list = collectDelta(s, e, list, dspec, n, dbuf);
+			}
+		}
+		
+		d =  d->parent;
+	} while (d && !(d->flags & D_CSET));
+	return (list);
+}
+
+private void
+saveKey(MDBM *db, char *rev, char **keylist)
+{
+	datum	k, v;
+
+	k.dptr = rev;
+	k.dsize = strlen(rev) + 1;
+	v.dptr = (char *) &keylist;
+	v.dsize = sizeof (keylist);
+	if (mdbm_store(db, k, v, MDBM_INSERT)) perror("savekey");
+}
+
+/*
+ * Load a db of rev key_list pair
+ * key is rev
+ * val is a list of entries in "root_key deltakey" format.
+ */
+private MDBM *
+loadcset(sccs *cset)
+{
+	char	tmp[MAXPATH], buf[2 * MAXKEY + 100];
+	char	*rev = NULL;
+	char	**keylist = NULL;
+	char	*p;
+	FILE	*f;
+	MDBM	*db;
+
+	bktemp(tmp);
+	sccs_cat(cset, SILENT|GET_NOHASH|GET_REVNUMS|PRINT, tmp);
+	f = fopen(tmp, "rt");
+
+	db = mdbm_mem();
+	while (fnext(buf, f)) {
+		
+		chomp(buf);
+		p = strchr(buf, '\t');
+		assert(p);
+		*p++ = 0;
+		if (!rev) {
+			rev = strdup(buf);
+			assert(keylist == NULL);
+		} else if (rev && !streq(rev, buf)) {
+			saveKey(db, rev, keylist);
+			free(rev);
+			rev = strdup(buf);
+			keylist = NULL;
+		}
+		keylist = addLine(keylist, strdup(p));
+	}
+	fclose(f);
+
+	if (rev) {
+		saveKey(db, rev, keylist);
+		free(rev);
+	}
+	
+	unlink(tmp);
+	return (db);
+}
+
+private void
+cset(sccs *cset, FILE *f, char *dspec)
+{
+	int	flags = PRS_ALL, iflags = INIT_NOCKSUM|INIT_SAVEPROJ;
+	int 	i, j, m = 0, n = 0;
+	char	*dbuf;
+	char	**keys;
+	slog	*list = 0, *ll, *ee;
+	slog 	**sorted;	
+	delta	*e;
+	kvpair	kv;
+	datum	k, v;
+	MDBM 	*idDB, *goneDB, *graphDB, *csetDB;
+	project	*proj = bk_proj;
+
+	assert(dspec);
+	if (opts.newline) flags |= PRS_LF; /* for sccs_prsdelta() */
+
+	/*
+	 * Init idDB, goneDB and graphDB
+	 */
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+		perror("idcache");
+		exit(1);
+	}
+	goneDB = NULL;
+	if (exists(SGONE)) {
+		char tmp_gone[MAXPATH];
+
+		bktemp(tmp_gone);
+		sysio(0, tmp_gone, 0, "bk", "get", "-kpsC", GONE, SYS);
+		goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
+		unlink(tmp_gone);
+	}
+	graphDB = mdbm_mem();
+	csetDB = loadcset(cset);
+	sccs_close(cset);
+
+	/*
+	 * Collect the cset in a list
+	 */
+	for (e = cset->table; e; e = e->next) {
 		unless (e->flags & D_SET) continue;
-		fprintf(p, "%s\n", e->rev);
+		ll = calloc(sizeof (slog), 1);
+		ll->date = NOFUDGE(e);
+		ll->dateFudge = e->dateFudge;
+		ll->delta = e;
+		ll->next = list;
+		list = ll;
+		m++;
+		e->flags &= ~D_SET; /* important */
 	}
-	pclose(p);
-	free(cmd);
+
+	/*
+	 * Stuff the cset list in a array so we can sort it
+	 */
+	if (m == 0) return; /* no work needed */
+	sorted = malloc(m * sizeof(sorted));
+	for (i = m, ll = list; ll; ll = ll->next) sorted[--i] = ll;
+	assert(i == 0);
+	qsort(sorted, m, sizeof(sorted), opts.forwards ? forwards : compar);
+
+	dbuf = malloc(4096); /* XXX This should match VSIZE in slib.c */
+	assert(dbuf);	     /* life will be better when we go to the */
+			     /* 3.0 tree where prs vbuf is 	      */
+			     /* dynamically sized		      */
+
+
+	/*
+	 * Walk the sorted cset list and dump the file deltas contain in
+	 * each cset. The file deltas are also sorted on the fly in dumplog().
+	 */
+	list = NULL;
+	for (j = 0; j < m; ++j) {
+		ee = sorted[j];
+
+		/* print cset dspec */
+		e = ee->delta;
+		e ->flags |= D_SET;
+		sccs_prsdelta(cset, e, flags, dspec, stdout);
+
+		k.dptr = e->rev;
+		k.dsize = strlen(e->rev) + 1;
+		v = mdbm_fetch(csetDB, k);
+		unless (v.dptr) {
+			/* merge cset are usually empty */
+			continue;
+		}
+		memcpy(&keys, v.dptr, v.dsize);
+
+		EACH (keys) {
+			sccs	*s;
+			delta	*d;
+			char	*dkey;
+
+			dkey = separator(keys[i]);
+			assert(dkey);
+			*dkey++ = 0;
+			s = sccs_keyinitAndCache(
+				keys[i], iflags, proj, idDB, graphDB);
+			unless (s) {
+				if (gone(keys[i], goneDB)) continue;
+				fprintf(stderr,
+					"Cannot sccs_init(), key = %s\n",
+					keys[i]);
+				continue;
+			}
+			d = sccs_findKey(s, dkey);
+			assert(d);
+
+			/*
+			 * When this function returns, "list" will contain
+			 * all member deltas/dspec in "s" for this cset
+			 */
+			list = 	collectDelta(s, d, list, dspec, &n, dbuf);
+		}
+		e ->flags &= ~D_SET;
+		list = dumplog(list, &n); /* sort file dspec and print it */
+		freeLines(keys); /* reduce mem foot print, could be huge */
+		mdbm_delete(csetDB, k);
+		if (fflush(stdout)) break;
+	}
+
+	/*
+	 * All done, clean up
+	 * The above loop may break out prematurely if pager exit
+	 * We need to account for it.
+	 */
+	for (i = 0; i < m; ++i) {
+		ee = sorted[i];
+		free(ee);
+	}
+	free(sorted);
+
+	EACH_KV(graphDB) {
+		sccs	*s;
+
+		memcpy(&s, kv.val.dptr, sizeof (sccs *));
+		if (s) sccs_free(s);
+	}
+
+	EACH_KV(csetDB) {
+		memcpy(&keys, kv.val.dptr, sizeof (char **));
+		freeLines(keys);
+	}
+
+	mdbm_close(graphDB);
+	mdbm_close(idDB);
+	mdbm_close(goneDB);
+	mdbm_close(csetDB);
+	free(dbuf);
+	return;
 }
 
 private int
