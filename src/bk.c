@@ -700,7 +700,7 @@ private	struct {
 void
 cmdlog_start(char **av, int httpMode)
 {
-	int	i, len;
+	int	i, len, do_lock = 1;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -752,7 +752,23 @@ cmdlog_start(char **av, int httpMode)
 	}
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
-	if (cmdlog_flags & CMD_WRLOCK) {
+	/*
+	 * Provide a way to do nested repo operations.  Used by import
+	 * which calls commit.
+	 * Locking protocol is that BK_NO_REPO_LOCK=YES means we are already
+	 * locked, skip it, but change it to BK_NO_REPO_LOCK=DIDNT to make
+	 * sure we don't unlock either.
+	 */
+	if (cmdlog_flags & (CMD_WRLOCK|CMD_RDLOCK)) {
+		char	*p = getenv("BK_NO_REPO_LOCK");
+
+		if (p && streq(p, "YES")) {
+			putenv("BK_NO_REPO_LOCK=DIDNT");
+			do_lock = 0;
+		}
+	}
+
+	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
 		if (i = repository_wrlock()) {
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
@@ -778,7 +794,7 @@ cmdlog_start(char **av, int httpMode)
 			exit(1);
 		}
 	}
-	if (cmdlog_flags & CMD_RDLOCK) {
+	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock()) {
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);

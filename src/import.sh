@@ -8,7 +8,7 @@
 
 import() {
 	if [ X"$1" = "X--help" ]
-	then	bk help import; exit 0;
+	then	bk help import; Done 0;
 	fi
 	COMMENTS=
 	COMMIT=YES
@@ -29,6 +29,7 @@ import() {
 	UNDOS=
 	VERBOSE=-q
 	VERIFY=-h
+	LOCKPID=
 	while getopts ACc:efFHij:l:qRrS:t:uvxy: opt
 	do	case "$opt" in
 		A) FIX_ATTIC=YES;;		# doc 2.0
@@ -55,7 +56,7 @@ import() {
 	done
 	test X$CLOCK_DRIFT != X -a X$PARALLEL != X1 && {
 		echo Parallel imports may not set CLOCK_DRIFT
-		exit 1
+		Done 1
 	}
 	shift `expr $OPTIND - 1`
 	gettype $TYPE
@@ -64,51 +65,51 @@ import() {
 		test "X$1" != X && {
 			cd "$1" || {
 				echo Unable to cd to "$1"
-				exit 1
+				Done 1
 			}
 		}
 		test -d BitKeeper/etc || {
 			echo "Not at a repository root"
-			exit 1
+			Done 1
 		}
 		bk mailsplit bk diffsplit \
 				applypatch NAME DOMAIN SUBJECT EXPLANATION
-		exit $?
+		Done $?
 	fi
 
 	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
-	then	bk help -s import; exit 1;
+	then	bk help -s import; Done 1;
 	fi
 	if [ $TYPE = patch ]
 	then	if [ ! -f "$1" ]
 		then	echo import: "$1" is not a patch file
-			exit 1
+			Done 1
 		fi
 		if [ X"$LIST" != X ]
 		then	echo import: no lists allowed with patch files
-			exit 1
+			Done 1
 		fi
 		if [ "$EX" != NO -o $INC != NO ]
 		then	echo import: no include/excludes allowed with patch files
-			exit 1
+			Done 1
 		fi
 		export BK_IMPORTER=`bk getuser -r`
 	else	if [ ! -d "$1" ]
 		then	echo import: "$1" is not a directory
-			exit 1
+			Done 1
 		fi
 		unset BK_IMPORTER
 	fi
 	if [ ! -d "$2" ]
 	then	echo import: "$2" is not a directory, run setup first
-		exit 1
+		Done 1
 	fi
 	if [ ! -d "$2/BitKeeper" ]
-	then	echo "$2 is not a BitKeeper package"; exit 1
+	then	echo "$2 is not a BitKeeper package"; Done 1
 	fi
 	if [ ! -w "$2" -o ! -w "$2/BitKeeper" ]
 	then	echo import: "$2" is not writable
-		exit 1
+		Done 1
 	fi
 	HERE=`bk pwd`
 	if [ $TYPE != patch ]
@@ -118,28 +119,34 @@ import() {
 	else	FROM="$1"
 		test -f "$FROM" || {
 			echo "No such file $FROM"
-			exit 1
+			Done 1
 		}
 	fi
 	cd "$2"
 	TO="`bk pwd`"
+	bk lock -w &
+	LOCKPID=$!
+	bk lock -L
+	export BK_IGNORELOCK=YES
+	trap 'Done 100' 1 2 3 15
+
 	getIncExc
 	if [ X"$LIST" != X ]
 	then	cd "$HERE"
 		if [ ! -s "$LIST" ]
 		then	echo Empty file $LIST
-			exit 1
+			Done 1
 		fi
 		read path < $LIST
 		case "$path" in
 		/*) echo \
 	    "Absolute pathnames are disallowed, they should relative to $FROM"
-		    exit 1;;
+		    Done 1;;
 		esac
 		cd "$FROM"
 		if [ ! -f "$path" ]
 		then	echo No such file: $FROM/$path
-			exit 1
+			Done 1
 		fi
 		cd "$HERE"
 		sed 's|^\./||'< $LIST > ${TMP}import$$
@@ -169,14 +176,14 @@ import() {
 		x=`bk _exists < ${TMP}import$$` && {
 			echo "import: $x exists, entire import aborted"
 			rm -f ${TMP}import$$
-			exit 1
+			Done 1
 		}
 		if [ $TYPE != SCCS ]
 		then	bk _g2sccs < ${TMP}import$$ > ${TMP}sccs$$
 			x=`bk _exists < ${TMP}sccs$$` && {
 				echo "import: $x exists, entire import aborted"
 				rm -f .x ${TMP}sccs$$ ${TMP}import$$
-				exit 1
+				Done 1
 			}
 			if [ X$QUIET = X ]; then echo OK; fi
 		fi
@@ -302,7 +309,7 @@ transfer() {
 			fi
 			if [ $? -ne 0 ]; then
 			    echo ERROR: aborting...
-			    exit 1
+			    Done 1
 			fi
 			NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 		esac
@@ -313,7 +320,7 @@ transfer() {
 		echo "	to   $TO"
 	fi
 	cd "$FROM"
-	bk sfio -omq < ${TMP}import$$ | (cd "$TO" && bk sfio -im $VERBOSE ) || exit 1
+	bk sfio -omq < ${TMP}import$$ | (cd "$TO" && bk sfio -im $VERBOSE ) || Done 1
 }
 
 patch_undo() {
@@ -502,9 +509,10 @@ import_patch() {
 	# which is slow.
 	msg Creating changeset for $PNAME in `pwd` ...
 	bk _key2path < ${TMP}keys$$ > ${TMP}patching$$
-	cat ${TMP}creates$$ ${TMP}patching$$ | sort -u | \
-			bk sfiles -C - | \
-			bk commit $QUIET $SYMBOL -a -y"`basename $PNAME`" -
+	cat ${TMP}creates$$ ${TMP}patching$$ |
+	    sort -u | bk sfiles -C - > ${TMP}commit$$
+	BK_NO_REPO_LOCK=YES bk commit \
+	    $QUIET $SYMBOL -a -y"`basename $PNAME`" - < ${TMP}commit$$
 
 	msg Done.
 	Done 0
@@ -515,7 +523,7 @@ import_text () {
 
 	cd "$2"
 	if [ X$QUIET = X ]; then msg Checking in plain text files...; fi
-	bk ci -1i $VERBOSE - < ${TMP}import$$ || exit 1
+	bk ci -1i $VERBOSE - < ${TMP}import$$ || Done 1
 }
 
 import_RCS () {
@@ -525,7 +533,7 @@ import_RCS () {
 		grep Attic/ ${TMP}import$$ | while read x
 		do	d=`dirname $x`
 			test -d $d || continue	# done already
-			cd $d || exit 1
+			cd $d || Done 1
 			# If there is a name conflict, do NOT use the Attic file
 			find . -name '*,v' -print | while read i
 			do	if [ -e "../$i" ] 
@@ -534,12 +542,12 @@ import_RCS () {
 				fi
 			done
 			cd ..
-			rmdir Attic || { touch ${TMP}failed$$; exit 1; }
+			rmdir Attic || { touch ${TMP}failed$$; Done 1; }
 			cd $HERE
 		done
 		test -f ${TMP}failed$$ && {
 			echo Attic processing failed, aborting.
-			exit 1
+			Done 1
 		}
 		mv ${TMP}import$$ ${TMP}Attic$$
 		sed 's|Attic/||' < ${TMP}Attic$$ | sort -u > ${TMP}import$$
@@ -563,7 +571,7 @@ import_RCS () {
 	msg WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]
 	then	bk rcs2sccs $UNDOS $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ ||
-		    exit 1
+		    Done 1
 		bk _unlink < ${TMP}import$$
 		return
 	fi
@@ -581,7 +589,7 @@ import_SCCS () {
 	cd "$2"
 	msg Converting SCCS files...
 	bk sccs2bk $VERIFY -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
-	    exit 1
+	    Done 1
 	rm -f ${TMP}cmp$$
 }
 
@@ -593,7 +601,7 @@ import_finish () {
 	if [ -s ${TMP}admin$$ ]
 	then	echo Import failed because
 		cat ${TMP}admin$$
-		exit 1
+		Done 1
 	fi
 	if [ X$QUIET = X ]; then echo OK; fi
 	
@@ -606,7 +614,8 @@ import_finish () {
 		if [ X$QUIET = X ]
 		then echo "Creating initial changeset (should be +$NFILES)"
 		fi
-		bk commit $QUIET $SYMBOL -y'Import changeset'
+		BK_NO_REPO_LOCK=YES bk commit \
+		    $QUIET $SYMBOL -y'Import changeset'
 	fi
 	bk -r check -ac
 }
@@ -649,14 +658,14 @@ EOF
 		case "$x" in
 		y*)	;;
 		*)	rm -f ${TMP}sccs$$ ${TMP}import$$ ${TMP}reparent$$
-			exit 1
+			Done 1
 		esac
 		echo $N "Are you sure? [No] " $NL
 		read x
 		case "$x" in
 		y*)	;;
 		*)	rm -f ${TMP}sccs$$ ${TMP}import$$
-			exit 1
+			Done 1
 		esac
 		echo OK
 	fi
@@ -709,9 +718,13 @@ validate_patch() {
 
 Done() {
 	for i in patch rejects plog locked import sccs rm patching \
-		plist creates deletes keys
+		plist creates deletes keys commit
 	do	rm -f ${TMP}${i}$$
 	done
+	test X$LOCKPID != X && {
+		kill $LOCKPID || exit 100
+		trap '' 0 2 3 15
+	}
 	exit $1
 }
 
@@ -730,4 +743,4 @@ init() {
 
 init
 import "$@"
-exit 0
+Done 0
