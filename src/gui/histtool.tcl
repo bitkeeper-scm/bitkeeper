@@ -1731,6 +1731,15 @@ period; please choose a longer amount of time.\n
 The file $lfname was last modified ($ago) ago."
 		histtool $lfname +
 	}
+	# Now make sure that the last node is visible in the canvas
+	if {$srev == ""} {
+		catch {exec bk prs -hr+ -d:I:-:P: $lfname 2>$dev_null} out
+	} else {
+		catch {exec bk prs -hr$srev -d:I:-:P: $lfname 2>$dev_null} out
+	}
+	if {$out != ""} {
+		centerRev $out
+	}
 	set search(prompt) "Welcome"
 	focus $w(graph)
 	busy 0
@@ -1843,20 +1852,14 @@ proc startup {} \
 	if {$srev != ""} {
 		#displayMessage "rev1=($rev1) srev=($srev)"
 		histtool $fname "-$srev"
-		centerRev $rev2rev_name($srev)
 		set rev1 [lineOpts $srev]
 		highlight $rev1 "old"
 	} elseif {$rev1 == ""} {
 		histtool $fname "-$gc(hist.showHistory)"
-		catch {exec bk prs -hr+ -d:I:-:P: ChangeSet 2>$dev_null} out
-		if {$out != ""} {
-			centerRev $out
-		}
 	} else {
 		set srev $rev1
 		histtool $fname "-$rev1"
 		set rev1 [lineOpts $rev1]
-		centerRev $rev2rev_name($srev)
 		highlight $rev1 "old"
 	}
 	if {[info exists rev2] && ($rev2 != "")} {

@@ -353,7 +353,7 @@ proc getFiles {} \
 			set lfile [lindex $argv 0]
 			set rfile [lindex $argv 1]
 			if {[checkFiles $lfile $rfile]} {
-				set t "$lfile $rfile $lfile $rfile"
+				set t "$lfile $rfile $lfile"
 				lappend files $t
 			}
 		}
