@@ -203,38 +203,31 @@ extern	char *strdup(char *s);
 
 /*
  * Flags (s->state) that indicate the state of a file.  Set up in init.
- * Also used for sccs_files() flags.
  */
 #define	S_SFILE		0x00000001	/* s->sfile exists as a regular file */
 #define	S_GFILE		0x00000002	/* s->gfile exists as a regular file */
 #define	S_PFILE		0x00000004	/* SCCS/p.file exists */
-#define	S_ZFILE		0x00000008	/* SCCS/z.file exists */
-/*			0x00000010	AVAILABLE */
-#define	S_SOPEN		0x00000020	/* s->sfile is open */
-/*			0x00000040	AVAILABLE */
-/*			0x00000080	AVAILABLE */
-#define	S_WARNED	0x00000100	/* error message already sent */
-/*			0x00000200	AVAILABLE */
 #define S_EDITED	(S_SFILE|S_PFILE|S_GFILE)
-#define	S_RCS		0x00000400	/* expand RCS keywords */
-#define	S_BRANCHOK	0x00000800	/* branching allowed */
-#define	S_EXPAND1	0x00001000	/* expand first line of keyowrds only */
-#define	S_CHMOD		0x00002000	/* change the file back to 0444 mode */
-#define	S_YEAR4		0x00004000	/* print out the year as 4 digits */
-#define	S_BADREVS	0x00008000	/* has corrupted revisions */
-#define	S_BIGPAD	0x00010000	/* admin -B: make the landing pad big */
-/*			0x00020000	AVAILABLE */
-#define	S_REINHERIT	0x00040000	/* found stuff in flags, reinherit */
-#define	S_BITKEEPER	0x00080000	/* X_BITKEEPER flag */
-#define	S_CSET		0x00100000	/* this is a changeset file */
-#define	S_NOSCCSDIR	0x00200000	/* this is a s.foo not SCCS/s.foo */
-#define S_MAPPRIVATE	0x00400000	/* hack for Samba */
-/*			0x00800000	AVAILABLE */
-#define S_READ_ONLY	0x01000000	/* force read only mode */
-/*			0x02000000	AVAILABLE */
-#define	S_RANGE2	0x04000000	/* second call for date|rev range */
-#define	S_BAD_DSUM	0x08000000	/* patch checksum mismatch */
-#define S_ISSHELL	0x10000000	/* this is a shell script */
+#define	S_ZFILE		0x00000008	/* SCCS/z.file exists */
+#define	S_SOPEN		0x00000010	/* s->sfile is open */
+#define	S_WARNED	0x00000020	/* error message already sent */
+#define	S_RCS		0x00000040	/* expand RCS keywords */
+#define	S_BRANCHOK	0x00000080	/* branching allowed */
+#define	S_EXPAND1	0x00000100	/* expand first line of keyowrds only */
+#define	S_CHMOD		0x00000200	/* change the file back to 0444 mode */
+#define	S_YEAR4		0x00000400	/* print out the year as 4 digits */
+#define	S_BADREVS	0x00000800	/* has corrupted revisions */
+#define	S_BIGPAD	0x00001000	/* admin -B: make the landing pad big */
+#define	S_REINHERIT	0x00002000	/* found stuff in flags, reinherit */
+#define	S_BITKEEPER	0x00004000	/* X_BITKEEPER flag */
+#define	S_CSET		0x00008000	/* this is a changeset file */
+#define	S_NOSCCSDIR	0x00010000	/* this is a s.foo not SCCS/s.foo */
+#define S_MAPPRIVATE	0x00020000	/* hack for Samba */
+#define S_READ_ONLY	0x00040000	/* force read only mode */
+#define	S_RANGE2	0x00080000	/* second call for date|rev range */
+#define	S_BAD_DSUM	0x00100000	/* patch checksum mismatch */
+#define S_ISSHELL	0x00200000	/* this is a shell script */
+#define	S_SET		0x00400000	/* the tree is marked with a set */
 
 /*
  * Options to sccs_diffs()
@@ -280,7 +273,7 @@ extern	char *strdup(char *s);
 #define	HAS_SFILE(s)	((s)->state & S_SFILE)
 #define	BEEN_WARNED(s)	((s)->state & S_WARNED)
 #define	IS_WRITABLE(s)	((s)->mode & 0200)
-#define IS_EDITED(s)	((((s)->state & S_EDITED) == S_EDITED) && IS_WRITABLE(s))
+#define IS_EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && IS_WRITABLE(s))
 #define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile(s->mode))
 
 #define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)
