@@ -594,9 +594,11 @@ http_cset(char *rev)
 	}
 
 	while (fnext(buf, f)) {
-		if (strneq("ChangeSet@", buf, 10)) continue;
-		d = strrchr(buf, '@');
-		if (streq(d, "@1.0\n")) continue;
+		unless (strneq("ChangeSet@", buf, 10)) {
+			if (d = strrchr(buf, '@')) {
+				if (streq(d, "@1.0\n")) continue;
+			}
+		}
 		lines = addLine(lines, strdup(buf));
 	}
 	pclose(f);
@@ -624,10 +626,12 @@ http_cset(char *rev)
 
 	out(OUTER_TABLE INNER_TABLE);
 
-	EACH(lines) write(fd, lines[i], strlen(lines[i]));
-	freeLines(lines);
-	close(fd);
-	waitpid(child, &i, 0);
+	if (lines) {
+		EACH(lines) write(fd, lines[i], strlen(lines[i]));
+		freeLines(lines);
+		close(fd);
+		waitpid(child, &i, 0);
+	}
 
 	out(INNER_END OUTER_END);
 	if (!embedded) trailer("cset");
@@ -1655,11 +1659,14 @@ http_related(char *file)
 	char	*d;
 	char	*c;
 	FILE	*f;
-	char	**cset = 0;
+	int	count = 0;
+	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT, 0);
 
 	whoami("related/%s", file);
 
-	i = snprintf(dspec, sizeof dspec, "-d%s<tr>\n"
+	unless (s) http_error(500, "cannot initialize " CHANGESET);
+
+	i = snprintf(dspec, sizeof dspec, "%s<tr>\n"
 			" <td align=right>:HTML_AGE:</td>\n"
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
@@ -1679,7 +1686,7 @@ http_related(char *file)
 
 	while (fnext(buf, f)) {
 		chop(buf);
-		cset = addLine(cset, strdup(buf));
+		if (rangeList(s, buf) == 0) count++;
 	}
 	pclose(f);
 
@@ -1688,30 +1695,22 @@ http_related(char *file)
 		header(0, COLOR_CHANGES, "ChangeSets that modify %s", 0, file);
 	}
 
-	if (cset) {
+	if (count) {
 		out(OUTER_TABLE INNER_TABLE
 		    "<tr bgcolor=#d0d0d0>\n"
 		    "<th>Age</th><th>Author</th><th>Rev</th>"
 		    "<th align=left>&nbsp;Comments</th></tr>\n");
 
-		EACH(cset) {
-			sprintf(buf, "-r%s", cset[i]);
-
-			av[j=0] = "bk";
-			av[++j] = "prs";
-			av[++j] = "-h";
-			av[++j] = dspec;
-			av[++j] = buf;
-			av[++j] = "ChangeSet";
-			av[++j] = 0;
-			putenv("BK_YEAR4=1");
-			spawnvp_ex(_P_WAIT, "bk", av);
+		if (f = fdopen(1, "w")) {
+			sccs_prs(s, 0, 0, dspec, f);
+			fflush(f);
 		}
 
 		out(INNER_END OUTER_END);
 	}
 
 	if (!embedded) trailer("related");
+	if (f) fclose(f);
 }
 
 
