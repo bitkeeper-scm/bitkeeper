@@ -379,6 +379,17 @@ addLine(char **space, char *line)
 }
 
 void
+sortLines(char **space)
+{
+	int	n;
+	int	string_sort(const void *a, const void *b);
+
+	if (!space) return;
+	for (n = 1; space[n]; n++);
+	qsort((void*)&space[1], n-1, sizeof(char*), string_sort);
+}
+
+void
 freeLines(char **space)
 {
 	int	i;
@@ -5583,7 +5594,7 @@ out:			if (slist) free(slist);
 				if (flags&GET_MODNAME)
 					fprintf(out, "%s\t", base);
 				if (flags&GET_PREFIXDATE)
-					fprintf(out, "%s\t", tmp->sdate);
+					fprintf(out, "%8.8s\t", tmp->sdate);
 				if (flags&GET_USER)
 					fprintf(out, "%s\t", tmp->user);
 				if (flags&GET_REVNUMS)

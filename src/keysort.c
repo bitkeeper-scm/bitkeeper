@@ -34,7 +34,7 @@ keysort_main(int ac, char **av)
 	int	next = 1;
 	int	bytes = 0;
 	int	i;
-	int	sort(const void *a, const void *b);
+	int	string_sort(const void *a, const void *b);
 	mem_t	*memlist = calloc(sizeof(mem_t), 1);
 	mem_t	*mem = memlist;
 
@@ -70,7 +70,7 @@ keysort_main(int ac, char **av)
 		}
 		bytes += strlen(buf);
 	}
-	qsort((void*)&lines[1], next-1, sizeof(char *), sort);
+	qsort((void*)&lines[1], next-1, sizeof(char *), string_sort);
 	EACH(lines) fputs(lines[i], stdout);
 	free(lines);
 	for (mem = memlist; mem; ) {
@@ -83,7 +83,7 @@ keysort_main(int ac, char **av)
 }
 
 int
-sort(const void *a, const void *b)
+string_sort(const void *a, const void *b)
 {
 	char	*l, *r;
 

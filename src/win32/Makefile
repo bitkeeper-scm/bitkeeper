@@ -4,7 +4,7 @@ all:
 	cd pub/diffutils && unset MAKEFLAGS && make
 
 clean clean-obj:
-	-if uname -s | grep _NT; \
+	-@if uname -s | grep _NT; \
 	then \
 		cd uwtlib && make $@ && cd ..; \
 		cd util && make $@ && cd ..; \

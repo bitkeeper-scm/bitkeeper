@@ -24,10 +24,10 @@ private	void	cmdlog_dump(int, char **);
 extern	void	getoptReset();
 extern	void	platformInit(char **av);
 extern	int proj_cd2root(project *p);
-int _createlod_main(int, char **);
 int abort_main(int, char **);
 int adler32_main(int, char **);
 int admin_main(int, char **);
+int annotate_main(int, char **);
 int bkd_main(int, char **);
 int changes_main(int, char **);
 int check_main(int, char **);
@@ -36,6 +36,7 @@ int clean_main(int, char **);
 int clone_main(int, char **);
 int commit_main(int, char **);
 int config_main(int, char **);
+int _createlod_main(int, char **);
 int createlod_main(int, char **);
 int cset_main(int, char **);
 int delta_main(int, char **);
@@ -55,6 +56,9 @@ int graft_main(int, char **);
 int grep_main(int, char **);
 int gone_main(int, char **);
 int help_main(int, char **);
+int helpaliases_main(int, char **);
+int helpsearch_main(int, char **);
+int helptopiclist_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int keysort_main(int, char **);
@@ -116,6 +120,7 @@ int version_main(int, char **);
 int what_main(int, char **);
 int zone_main(int, char **);
 
+/* do not change the next line, it's parsed in helpcheck.pl */
 struct command cmdtbl[] = {
 	{"_createlod", _createlod_main},
 	{"_find", find_main }, /* internal helper function */
@@ -126,6 +131,7 @@ struct command cmdtbl[] = {
 	{"abort", abort_main},
 	{"adler32", adler32_main},
 	{"admin", admin_main},
+	{"annotate", annotate_main},
 	{"bkd", bkd_main },
 	{"changes", changes_main},
 	{"check", check_main},
@@ -155,6 +161,9 @@ struct command cmdtbl[] = {
 	{"gnupatch", gnupatch_main},
 	{"gone", gone_main},
 	{"help", help_main},
+	{"helpaliases", helpaliases_main},
+	{"helpsearch", helpsearch_main},
+	{"helptopiclist", helptopiclist_main},
 	{"info", sinfo_main},	/* aliases */
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
@@ -303,7 +312,7 @@ main(int ac, char **av)
 		av = &av[optind];
 		for (ac = 0; av[ac]; ac++);
 		if (dashr) {
-			unless (streq(prog, "sfiles")) {
+			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
 				getoptReset();
 				return (bk_sfiles(ac, av));
 			}
@@ -569,7 +578,7 @@ bk_sfiles(int ac, char **av)
 	int	i;
 	int	j, pfd;
 	int	status;
-	char	*sav[2] = {"sfiles", 0};
+	char	*sav[2] = {"sfind", 0};
 	char	*cmds[100] = {"bk"};
 
 	assert(ac < 95);
@@ -582,7 +591,7 @@ bk_sfiles(int ac, char **av)
 	} 
 	cmdlog_start(sav);
 	close(1); dup(pfd); close(pfd);
-	if (status = sfiles_main(1, sav)) {
+	if (status = sfind_main(1, sav)) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
 		cmdlog_end(status);

@@ -223,49 +223,6 @@ status(int verbose, FILE *f)
 }
 
 int
-gethelp(char *help_name, char *bkarg, char *prefix, FILE *outf)
-{
-	char	buf[MAXLINE], pattern[MAXLINE];
-	FILE	*f;
-	int	found = 0;
-	int	first = 1;
-
-	if (bkarg == NULL) bkarg = "";
-	sprintf(buf, "%s/bkhelp.txt", bin);
-	f = fopen(buf, "rt");
-	unless (f) {
-		fprintf(stderr, "Unable to locate help file %s\n", buf);
-		exit(1);
-	}
-	sprintf(pattern, "#%s\n", help_name);
-	while (fgets(buf, sizeof(buf), f)) {
-		if (streq(pattern, buf)) {
-			found = 1;
-			break;
-		}
-	}
-	while (fgets(buf, sizeof(buf), f)) {
-		char	*p;
-
-		if (first && (buf[0] == '#')) continue;
-		first = 0;
-		if (streq("$\n", buf)) break;
-		if (prefix) fputs(prefix, outf);
-		p = strstr(buf, "#BKARG#");
-		if (p) {
-			*p = 0;
-			fputs(buf, outf);
-			fputs(bkarg, outf);
-			fputs(&p[7], outf);
-		} else {
-			fputs(buf, outf);
-		}
-	}
-	fclose(f);
-	return (found);
-}
-
-int
 mkconfig(FILE *out)
 {
 	FILE	*in;

@@ -46,12 +46,12 @@ clean clean-obj: os
 	for i in $(DIRS); \
 	do	(cd $$i && rm -rf BIN-* ); \
 	done
-	-rm -rf bin
-	-bk sfiles | grep -v "^SCCS/s.Makefile" | bk clean -
+	-@rm -rf bin
+	-@bk sfiles | grep -v "^SCCS/s.Makefile" | bk clean -
 clobber: clean clean-obj
-	for i in $(DIRS); \
+	@for i in $(DIRS); \
 	do	(cd $$i && \
 		 rm -rf config.log config.cache config.status \
 		    configure config.h Makefile stamp-h *.exe *.o); \
 	done
-	rm -f config.cache
+	@rm -f config.cache
