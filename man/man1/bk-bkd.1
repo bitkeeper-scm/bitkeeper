@@ -3,7 +3,9 @@
 .SH NAME
 bk bkd \- the \*(BK daemon
 .SH SYNOPSIS
-.Bc bk bkd [\-dDei] [
+.Bc bk bkd [\-dDehi] [
+.OPTreq \-L dir
+.Bc ] [
 .OPTreq \-l log
 .Bc ] [
 .OPTreq \-P pfile
@@ -172,13 +174,21 @@ work since it is insecure.
 Run as a daemon.
 .tp
 .B \-D
+Debug mode, do not fork and run in the background.
 .tp
-debug mode, do not fork and run in the background.
 .B \-e
 Exit on any error.
 .tp
+.B \-h
+Make bkd print http headers on all outgoing bk push, bk pull,
+and bk clone messages.  Use when bkd is run in a cgi environment.
+.tp
 .B \-i
 Interactive, provide prompts.
+.tp
+.OPTreq \-L dir
+Specify the directory under which one or more logging repositories can
+be stored.  
 .tp
 .OPTreq \-l log
 Log accesses in 
