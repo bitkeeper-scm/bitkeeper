@@ -384,6 +384,8 @@ bk -r check -a >OUT 2>ERRS
 	cat OUT
 	exit 1
 }
+# restore repo
+cp ../project/SCCS/s.ChangeSet SCCS
 echo OK
 
 echo $N Make sure .bk_skip and SCCS/.bk_skip works ..................$NL

@@ -1133,7 +1133,7 @@ sfiles_skipdir(char *dir)
 	if (exists(buf)) return (1);
 
 	/* OK, .bk_skip without SCCS/.bk_skip - flag it and keep going */
-	getMsg("bk_skip_and_sccs", dir, 0, 0, stderr);
+	getMsg("bk_skip_and_sccs", dir, 0, stderr);
 	return (0);
 }
 
