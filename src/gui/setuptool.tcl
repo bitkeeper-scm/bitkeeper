@@ -147,27 +147,6 @@ proc license_check {}  \
 	return 0
 }
 
-#
-# Write .bkrc file so that the user does not have to reenter info such
-# as phone number and address
-#
-proc save_config_info {} \
-{
-	global st_cinfo env st_g
-
-	#puts "Writing config file: $env(HOME)"
-	if {[catch {open $st_g(bkrc) w} fid]} {
-		puts "Cannot open $st_g(bkrc)"
-	} else {
-		foreach el [lsort [array names st_cinfo]] {
-			puts $fid "${el}: $st_cinfo($el)"
-			#puts "${el}: $st_cinfo($el)"
-		}
-		catch { close $fid }
-	}
-	return
-}
-
 # update the entry widgets
 proc update_info {field value} \
 {
@@ -180,8 +159,8 @@ proc read_bkrc {config} \
 
 	set fid [open $config "r"]
 	while { [ gets $fid line ] != -1 } {
-		if {[regexp -- {^\ *#} $line d]} {continue}
-		if {[regexp -- {^\ *$} $line d]} {continue}
+		if {[regexp -- {^ *#} $line d]} {continue}
+		if {[regexp -- {^ *$} $line d]} {continue}
 		set col [string first ":" $line ]
 		set key [string range $line 0 [expr {$col - 1}]]
 		set val [string range $line [expr {$col + 1}] \
@@ -215,12 +194,6 @@ proc create_repo {} \
 	global st_cinfo env st_repo_name tmp_dir debug st_g opts
 
 	wm withdraw .
-	regsub -all {\ } $st_cinfo(description) {\\ }  escaped_desc
-	# We don't want to save the a local .bkrc if a global config
-	# template exists. May want to revisit this policy later
-	if {![info exists st_g(bktemplate)] || ($st_g(bktemplate) == "")} {
-		save_config_info
-	}
 	# Create a temp config file from user-entered data 
 	set pid [pid]
 	set cfile [file join $tmp_dir "config.$pid"]
@@ -251,12 +224,8 @@ proc get_config_info {} \
 
 	if {[info exists st_g(bktemplate)] && ($st_g(bktemplate) != "")} {
 		read_bkrc $st_g(bktemplate)
-	} elseif {[file exists $st_g(bkrc)]} {
-		#puts "found file .bkrc"
-		read_bkrc $st_g(bkrc)
-		return 
 	} else {
-		#puts "didn't find file .bkrc"
+		#puts "didn't find template file"
 	}
 	return 1
 }
@@ -517,23 +486,18 @@ proc setbkdir {} \
 		set ct [file join $appdir BitKeeper etc config.template]
 		if {[file exists $ct]} {
 			set st_g(bktemplate) $ct
-			#puts "template exist ct=($ct)"
-		} else {
-			#puts "template does not exist ct=($ct)"
 		}
 		set appdir [registry get "$HKCU\\$l" {AppData}]
 		set st_g(bkdir) [file join $appdir BitKeeper]
 		if {![file isdirectory $st_g(bkdir)]} {
 			catch {file mkdir $st_g(bkdir)} err
 		}
-		set st_g(bkrc) [file join $st_g(bkdir) _bkrc]
 	} elseif {$tcl_platform(platform) == "unix"} {
 		if {[file exists $tfile]} {
 			set st_g(bktemplate) $tfile
 		}
 		if {[info exists env(HOME)]} {
 			set st_g(bkdir) $env(HOME)
-			set st_g(bkrc) [file join $st_g(bkdir) .bkrc]
 		}
 	} else {
 		displayMessage "HOME environment variable not set"
@@ -592,7 +556,7 @@ proc main {} \
 
 	wm withdraw .
 
-	# Override the repo name found in the .bkrc file if argc is set
+	# Override the repo name found in the template file if argc is set
 	while {$argindex < $argc} {
 	    set arg [lindex $argv $argindex]
 	    switch -regexp -- $arg {
