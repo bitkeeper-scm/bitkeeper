@@ -35,12 +35,16 @@ bk clone $Q project copy || exit 1
 echo OK
 
 echo $N Test clone to illegal directory .............................$NL
-bk clone $Q project /XXX.cannotwrite/foo 2> OUT && {
+touch $HERE/file
+bk clone $Q project $HERE/file/XXX.cannotwrite/foo 2> OUT && {
 	echo clone should have failed
+	cat OUT
 	exit 1
 }
-if [ -d RESYNC ]
-then	echo should not have created RESYNC
+test -d RESYNC && {
+	echo should not have created RESYNC
+	cat OUT
 	exit 1
-fi
+}
+rm -f $HERE/file
 echo OK

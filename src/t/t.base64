@@ -1,27 +1,29 @@
 
 openssl=0
-openssl version 2> /dev/null >/dev/null && {
-	openssl=1
-}
+openssl version 2> /dev/null >/dev/null && openssl=1
 
 echo $N Test base64 encoder/decoder .................................$NL
 bin=`bk bin`
 for f in $bin/t/t.[a-f]*
-do	test -f $f && {
-		b=`basename $f`
-		bk base64 < $f > $b.64 || exit 1
-		if [ $openssl -eq 1 ]
-		then
-			openssl base64 -in $f | cmp -s - $b.64 || {
-				echo file $b doesn\'t match openssl base64
-				exit 1
-			}
-		fi
-		bk base64 -d < $b.64 | cmp -s - $f || {
-			echo file $b not preserved by base64
+do	test -f $f || continue
+	bk undos < $f > $f.undos
+	f=$f.undos
+	b=`basename $f`
+	bk base64 < $f > $b.64 || exit 1
+	test $openssl -eq 1 && {
+		openssl base64 -in $f > $b.o
+		cmp -s $b.o $b.64 || {
+			echo file $b doesn\'t match openssl base64
+			bk difftool $b.64 $b.o
 			exit 1
 		}
-		rm -f $b.64
 	}
+	bk base64 -d < $b.64 > $b.f
+	cmp -s $b.f $f || {
+		echo file $b not preserved by base64
+		bk difftool $f $b.f
+		exit 1
+	}
+	rm -f $b.64 $b.o $b.f $f
 done
 echo OK
