@@ -90,9 +90,7 @@ sfio_out()
 	char	len[5];
 	struct	stat sb;
 
-#ifdef WIN32
 	setmode(0, _O_TEXT); /* read file list in text mode */
-#endif
 	writen(1, SFIO_VERS, 10);
 	while (fnext(buf, stdin)) {
 		chop(buf);

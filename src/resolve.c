@@ -65,9 +65,7 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
-#ifdef WIN32
 	setmode(0, _O_TEXT);
-#endif
 	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {

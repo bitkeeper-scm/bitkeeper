@@ -91,9 +91,7 @@ commit_main(int ac, char **av)
 			"You must use the -Y or -y option when using \"-\"\n");
 			exit(1);
 		}
-#ifdef WIN32
 		setmode(0, _O_TEXT);
-#endif
 		f = fopen(pendingFiles, "wb");
 		assert(f);
 		while (fgets(buf, sizeof(buf), stdin)) {

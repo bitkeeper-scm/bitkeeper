@@ -46,9 +46,7 @@ sccslog_main(int ac, char **av)
 	project	*proj = 0;
 	RANGE_DECL;
 
-#ifdef WIN32
-	_setmode(_fileno(stdout), _O_BINARY);
-#endif
+	setmode(1, _O_BINARY);
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
 		fprintf(stderr, log_help);
