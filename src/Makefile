@@ -195,6 +195,7 @@ clean-bin: FORCE
 clean clobber distclean: rebuild FORCE
 	-@bk -r clean
 	-@rm -f tags TAGS
+	-@cd ../man/man2help && make clobber
 
 rebuild:
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 

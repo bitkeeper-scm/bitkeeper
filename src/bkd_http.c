@@ -709,7 +709,7 @@ http_diffs(char *pathrev)
 		"<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
-		" <td align=center><a href=/anno/:GFILE:@:I:>:I:</a></td>\n"
+		" <td align=center><a href=anno/:GFILE:@:I:>:I:</a></td>\n"
 		" <td>:HTML_C:</td>\n"
 		"</tr>\n";
 
@@ -776,12 +776,12 @@ http_patch(char *rev)
 	m = loadConfig(".", 0);
 	if (m && (s = mdbm_fetch_str(m, "description")) && (strlen(s) < 1900)) {
 		sprintf(html,
-		    "%s<hr>Patch for ChangeSet <a href=/cset@%s>%s</a>",
+		    "%s<hr>Patch for ChangeSet <a href=cset@%s>%s</a>",
 		    s, rev, rev);
 		title(html, COLOR_PATCH);
 	} else {
 		sprintf(html,
-		    "Patch for ChangeSet <a href=/cset@%s>%s</a>", rev, rev);
+		    "Patch for ChangeSet <a href=cset@%s>%s</a>", rev, rev);
 		pwd_title(html, COLOR_PATCH);
 	}
 	if (m) mdbm_close(m);

@@ -795,7 +795,9 @@ rename_file(resolve *rs)
 {
 	opts	*opts = rs->opts;
 	char	*to;
+	int	how = 0;
 
+again:
 	if (opts->debug) {
 		fprintf(stderr, ">> rename_file(%s)\n", rs->d->pathname);
 	}
@@ -839,9 +841,10 @@ rename_file(resolve *rs)
 	 */
 	if (streq(rs->snames->local, rs->snames->gca)) {
 		to = rs->snames->remote;
-		if (slotTaken(opts, to)) to = 0;
+		if (how = slotTaken(opts, to)) to = 0;
 	} else if (streq(rs->snames->gca, rs->snames->remote)) {
 		to = rs->snames->local;
+		/* XXX - I'm not sure that this makes sense. */
 		if (exists(to)) to = 0;
 	} else {
 		to = 0;
@@ -901,14 +904,15 @@ rename_file(resolve *rs)
 	unless (opts->resolveNames) return (-1);
 
 	/*
-	 * This makes the pass3 not automerge.
-	if (opts->automerge) {
-		fprintf(stderr, "resolve: cannot autorename %s\n", rs->dname);
-		return (-1);
-	}
+	 * Figure out why we have a conflict, if it is like a create
+	 * conflict, try that.
 	 */
-
-	return (resolve_renames(rs));
+	if (how && (resolve_create(rs, how) == EAGAIN)) {
+		how = 0;
+		goto again;
+	} else {
+		return (resolve_renames(rs));
+	}
 }
 
 /*
@@ -1439,14 +1443,24 @@ slotTaken(opts *opts, char *slot)
 		char	*gfile = sccs2name(slot);
 
 		if (exists(gfile)) {
+			int	conf;
+
+			conf = isdir(gfile) ? DIR_CONFLICT : GFILE_CONFLICT;
 			if (opts->debug) {
 			    	fprintf(stderr,
-				    "%s exists in local repository\n", gfile);
+				    "%s %s exists in local repository\n",
+				    conf == DIR_CONFLICT ? "dir" : "file",
+				    gfile);
 			}
 			free(gfile);
 			chdir(ROOT2RESYNC);
-			return (GFILE_CONFLICT);
+			return (conf);
 		} else if (pathConflict(opts, gfile)) {
+			if (opts->debug) {
+			    	fprintf(stderr,
+				    "directory %s exists in local repository\n",
+				    gfile);
+			}
 			free(gfile);
 			chdir(ROOT2RESYNC);
 			return (DIR_CONFLICT);
