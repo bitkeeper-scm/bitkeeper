@@ -1,12 +1,22 @@
 #include "system.h"
 #include "sccs.h"
 
-#define V(format, args...) // (fprintf(stderr, "%5d: ", getpid()), fprintf(stderr, format, ## args))
+#if 0
+#define pdbg(x) do { \
+			ttyprintf("%5d: ", getpid()); \
+			ttyprintf x ; \
+		} while (0);
+#else
+#define	pdbg(x)
+#endif
 
 /*
  * Don't treat chdir() special here.
  */
 #undef	chdir
+#ifdef	WIN32
+#define	chdir	nt_chdir
+#endif
 
 typedef struct dirlist dirlist;
 struct dirlist {
@@ -40,7 +50,7 @@ projcache_lookup(char *dir)
 
 	unless (projcache) {
 		projcache = mdbm_mem();
-		V("mdbm_mem()\n");
+		pdbg(("mdbm_mem()\n"));
 	}
 	k.dptr = (char *)dir;
 	k.dsize = strlen(dir) + 1;
@@ -49,7 +59,7 @@ projcache_lookup(char *dir)
 		assert(v.dsize == sizeof(ret));
 		memcpy(&ret, v.dptr, sizeof(ret));
 	}
-	V("mdbm_fetch(%s) = %p\n", dir, ret);
+	pdbg(("mdbm_fetch(%s) = %p\n", dir, ret));
 	return (ret);
 }
 
@@ -74,10 +84,10 @@ projcache_store(char *dir, project *p)
 	assert(v.dsize == 0);
 	v.dptr = (char *)&p;
 	v.dsize = sizeof(p);
-	V("mdbm_store(%s, %p)\n", dir, p);
+	pdbg(("mdbm_store(%s, %p)\n", dir, p));
 	status = mdbm_store(projcache, k, v, MDBM_INSERT);
 	if (status) {
-		V("mdbm_store: exists\n");
+		pdbg(("mdbm_store: exists\n"));
 		assert(0);
 	}
 }
@@ -92,7 +102,7 @@ projcache_delete(project *p)
 	k.dptr = p->root;
 	k.dsize = strlen(p->root) + 1;
 
-	V("mdbm_delete(%s)\n", p->root);
+	pdbg(("mdbm_delete(%s)\n", p->root));
 	status = mdbm_delete(projcache, k);
 	assert(status == 0);
 	dl = p->dirs;
@@ -102,7 +112,7 @@ projcache_delete(project *p)
 		k.dptr = dl->dir;
 		k.dsize = strlen(dl->dir) + 1;
 
-		V("mdbm_delete(%s)\n", dl->dir);
+		pdbg(("mdbm_delete(%s)\n", dl->dir));
 		status = mdbm_delete(projcache, k);
 		assert(status == 0);
 
@@ -142,7 +152,7 @@ proj_init(char *dir)
 	if (!streq(root, dir) && IsFullPath(dir)) projcache_store(dir, ret);
 done:
 	++ret->refcnt;
-	V("proj_init() = %p (ref %d)\n", ret, ret->refcnt);
+	pdbg(("proj_init() = %p (ref %d)\n", ret, ret->refcnt));
 	return (ret);
 }
 
@@ -152,7 +162,7 @@ proj_free(project *p)
 	project	**m;
 	assert(p);
 
-	V("proj_free(%p (ref %d))\n", p, p->refcnt);
+	pdbg(("proj_free(%p (ref %d))\n", p, p->refcnt));
 	unless (--p->refcnt == 0) return;
 
 	projcache_delete(p);
@@ -299,7 +309,7 @@ proj_reset(project *p)
 			p->config = 0;
 		}
 	} else {
-		V("proj_reset(0)\n");
+		pdbg(("proj_reset(0)\n"));
 		p = proj_master_list;
 		while (p) {
 			proj_reset(p);
