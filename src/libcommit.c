@@ -149,10 +149,12 @@ logChangeSet(char *rev)
 	sprintf(commit_log, "%s/commit_log%d", TMP_PATH, getpid());
 	f = fopen(commit_log, "wb");
 	fprintf(f, "---------------------------------\n");
+	fclose(f);
 	sprintf(buf, "%ssccslog -r%s ChangeSet >> %s", bin, rev, commit_log);
 	system(buf);
 	sprintf(buf, "%scset -r+ | %ssccslog - >> %s", bin, bin, commit_log);
 	system(buf);
+	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
 	sprintf(buf, "%scset -c -r%s..%s >> %s",
@@ -281,13 +283,14 @@ mail(char *to, char *subject, char *file)
 	}
 
 	mail = exists("/usr/bin/mailx") ? "/usr/bin/mailx" : "mail";
-
 	/* We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX */
 	assert(uname(&ubuf) == 0);
 	if (strstr(ubuf.sysname, "IRIX")) {
 		sprintf(buf, "%s %s < %s", mail, to, file);
+	} else if (strstr(ubuf.sysname, "Windows")) {
+		sprintf(buf, "%s/%s -s \"%s\" %s < %s", bin, mail, subject, to, file);
 	}  else {
-		sprintf(buf, "%s -s %s %s < %s", mail, subject, to, file);
+		sprintf(buf, "%s -s \"%s\" %s < %s", mail, subject, to, file);
 	}
 	system(buf);
 
