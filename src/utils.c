@@ -762,9 +762,10 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 		free(repo);
 	}
-	lic = licenses_accepted();
-	fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
-	free(lic);
+	if (lic = licenses_accepted()) {
+		fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
+		free(lic);
+	}
 	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
 	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
 	fprintf(f, "putenv BK_PLATFORM=%s\n", platform());
