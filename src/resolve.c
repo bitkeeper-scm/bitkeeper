@@ -363,7 +363,7 @@ that will work too, it just gets another patch.\n");
 	 * Pass 2 - move files back into RESYNC
 	 */
 	if (opts->pass2) {
-		int	old, n = -1;
+		int	save, old, n = -1;
 
 		if (opts->log) fprintf(opts->log, "==== Pass 2 ====\n");
 		opts->pass = 2;
@@ -415,6 +415,7 @@ that will work too, it just gets another patch.\n");
 		 * Now do the same thing, calling the resolver.
 		 */
 		opts->resolveNames = 1;
+		save = opts->renames2;
 		n = -1;
 		do {
 			old = n;
@@ -431,6 +432,7 @@ that will work too, it just gets another patch.\n");
 			    "resolve: resolved %d renames in pass 2\n",
 			    opts->renames2);
 		}
+		opts->renamed = opts->renames2 - save;
 	}
 
 	/*
@@ -2149,7 +2151,8 @@ commit(opts *opts)
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";
-	cmds[++i] = "-RFa";
+	/* force a commit if we are a null merge */
+	cmds[++i] = (opts->resolved || opts->renamed) ? "-Ra" : "-FRa";
 	if (opts->quiet) cmds[++i] = "-s";
 	if (opts->comment) {
 		cmt = malloc(strlen(opts->comment) + 10);

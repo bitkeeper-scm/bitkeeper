@@ -45,6 +45,8 @@ sane(int readonly, int resync)
 {
 	int	errors = 0;
 
+	/* commits in RESYNC may not have everything, this lets us know */
+	if (exists("BitKeeper/etc/RESYNC_TREE")) resync = 1;
 	if (chk_host()) errors++;
 	if (chk_user()) errors++;
 	if (sccs_cd2root(0, 0) == 0) {
