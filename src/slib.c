@@ -7872,7 +7872,6 @@ checkin(sccs *s,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
-		freeLines(syms);
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -7882,7 +7881,6 @@ checkin(sccs *s,
 			perror(s->gfile);
 			sccs_unlock(s, 'z');
 			if (prefilled) sccs_freetree(prefilled);
-			freeLines(syms);
 			return (-1);
 		}
 	}
@@ -7890,7 +7888,6 @@ checkin(sccs *s,
 	if (exists(s->sfile)) {
 		fprintf(stderr, "delta: lost checkin race on %s\n", s->sfile);
 		if (prefilled) sccs_freetree(prefilled);
-		freeLines(syms);
 		if (gfile && (gfile != stdin)) {
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
@@ -7906,7 +7903,6 @@ checkin(sccs *s,
 			"delta: %s: filename must not contain \":/@\"\n" , t);
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
-		freeLines(syms);
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -8002,7 +7998,6 @@ checkin(sccs *s,
 	EACH (syms) {
 		addsym(s, n, n, n->rev, syms[i]);
 	}
-	freeLines(syms);
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
@@ -10582,7 +10577,7 @@ sccs_delta(sccs *s,
     	u32 flags, delta *prefilled, MMAP *init, MMAP *diffs, char **syms)
 {
 	FILE	*sfile = 0;	/* the new s.file */
-	int	i, error = 0;
+	int	i, free_syms = 0, error = 0;
 	char	*t;
 	delta	*d = 0, *n = 0;
 	char	*tmpfile = 0;
@@ -10604,7 +10599,7 @@ out:
 		if (sfile) fclose(sfile);
 		if (diffs) mclose(diffs);
 		free_pfile(&pf);
-		freeLines(syms);
+		if (free_syms) freeLines(syms); 
 		if (tmpfile  && !streq(tmpfile, DEV_NULL)) unlink(tmpfile);
 		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
@@ -10623,6 +10618,14 @@ out:
 		prefilled =
 		    sccs_getInit(s,
 		    prefilled, init, flags&DELTA_PATCH, &e, 0, &syms);
+		/*
+		 * Normally, the syms list is passed in by the caller
+		 * and we let the caller free it.
+		 * Here we are getting the syms list from the init file,
+		 * i.e this syms list is unknown to the caller.
+		 * thus we must free the syms list before we return.
+		 */
+		if (syms) free_syms = 1;
 		unless (prefilled && !e) {
 			fprintf(stderr, "delta: bad init file\n");
 			goto out;
@@ -10702,7 +10705,11 @@ out:
 	}
 
 	if ((flags & NEWFILE) || (!HAS_SFILE(s) && HAS_GFILE(s))) {
-		return (checkin(s, flags, prefilled, init != 0, diffs, syms));
+		int rc;
+
+		rc = checkin(s, flags, prefilled, init != 0, diffs, syms);
+		if (free_syms) freeLines(syms); 
+		return rc;
 	}
 
 	unless (HAS_SFILE(s) && s->tree) {
@@ -14089,3 +14096,4 @@ sparc_fclose(FILE *f)
 	return (ret);
 }
 #endif
+
