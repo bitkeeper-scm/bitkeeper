@@ -4,6 +4,7 @@
 bk crypto \- Cryptography services
 .SH SYNOPSIS
 .B bk crypto -i
+.ARG bits
 .ARG secret-key
 .ARG public-key
 .br
@@ -32,7 +33,9 @@ RSA signature scheme.
 .if n .TP 1i
 .B \-i
 Create a new RSA key pair.  This option creates a new random RSA keypair
-and saves the output in two filenames given on the command line.
+and saves the output in two filenames given on the command line. This 
+command needs to generate a lot of random data from your system so it
+can take a long time to complete.
 .tp
 .B \-s
 Create a RSA signature for data read from stdin using a private key. 

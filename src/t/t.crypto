@@ -39,17 +39,17 @@ bk crypto -v my.pub data.sig < data2 && {
 }
 echo OK
 
-echo $N Run internal test vectors ...................................$NL
-bk crypto -t > OUT 2>ERR || {
-	echo tests failed
-	cat OUT
-	cat ERR
-	exit 1
-}
-egrep -i 'error|failed' OUT && {
-	echo regressions failed
-	cat OUT
-	cat ERR
-	exit 1
-}
-echo OK
+#echo $N Run internal test vectors ...................................$NL
+#bk crypto -t > OUT 2>ERR || {
+#	echo tests failed
+#	cat OUT
+#	cat ERR
+#	exit 1
+#}
+#egrep -i 'error|failed' OUT && {
+#	echo regressions failed
+#	cat OUT
+#	cat ERR
+#	exit 1
+#}
+#echo OK

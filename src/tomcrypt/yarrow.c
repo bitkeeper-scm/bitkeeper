@@ -125,5 +125,5 @@ unsigned long yarrow_read(unsigned char *buf, unsigned long len, prng_state *prn
 
 #endif
 
-static const char *ID_TAG = "yarrow.c"; 
+static const char __attribute__((unused)) *ID_TAG = "yarrow.c";
 

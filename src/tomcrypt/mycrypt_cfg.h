@@ -68,7 +68,7 @@
 #define BASE64
 
 /* prngs */
-//#define YARROW
+#define YARROW
 #define SPRNG
 
 #ifdef YARROW

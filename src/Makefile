@@ -111,7 +111,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/ampi.o tomcrypt/prime.o tomcrypt/mem.o tomcrypt/packet.o \
 	tomcrypt/md5.o tomcrypt/ctr.o tomcrypt/aes.o tomcrypt/hash.o \
 	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
-	tomcrypt/demos/test.o
+	tomcrypt/yarrow.o tomcrypt/demos/test.o
 GUI	= revtool citool helptool difftool csettool fmtool fm3tool msg \
 	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap \

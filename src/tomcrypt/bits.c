@@ -1,5 +1,7 @@
 /* portable way to get secure random bits to feed a PRNG */
 #include "mycrypt.h"
+#include <unistd.h>
+#include <sys/time.h>
 
 /* on *NIX read /dev/random */
 static unsigned long rng_nix(unsigned char *buf, unsigned long len, 
@@ -87,17 +89,46 @@ static unsigned long rng_win32(unsigned char *buf, unsigned long len,
 
 #endif /* WIN32 */
 
+/*
+ * A "fake" random number generator for the BK regressions.
+ * This one is a lot faster than /dev/random which might wait
+ * a long time for data to be generated.
+ */
+static unsigned long rng_fake(unsigned char *buf, unsigned long len)
+{
+	unsigned long	seed;
+	int	x = len;
+	struct timeval tv;
+
+	gettimeofday(&tv, 0);
+	seed ^= tv.tv_usec;
+	seed ^= getpid();
+	seed = (seed << 7) | (seed >> 25);
+	seed ^= (unsigned long)sbrk(0);
+	seed = (seed << 7) | (seed >> 25);
+	seed ^= (unsigned long)&seed;
+	srandom(seed);
+	while (x--) *buf++ = random();
+	return (len);
+}
+
 unsigned long rng_get_bytes(unsigned char *buf, unsigned long len, 
                             void (*callback)(void))
 {
-   int x;
-   x = rng_nix(buf, len, callback);   if (x) { return x; }
+   int x = 0;
+
+   if (getenv("BK_REGRESSION")) {
+	   x += rng_fake(buf+x, len-x);    if (x==len) { return x; }
+   }
+
+   x += rng_nix(buf+x, len-x, callback);   if (x==len) { return x; }
 #ifdef WIN32
-   x = rng_win32(buf, len, callback); if (x) { return x; }
+   x += rng_win32(buf+x, len-x, callback); if (x==len) { return x; }
 #endif
 #ifdef ANSI_RNG
-   x = rng_ansic(buf, len, callback); if (x) { return x; }
+   x += rng_ansic(buf+x, len-x, callback); if (x==len) { return x; }
 #endif
+   x += rng_fake(buf+x, len-x);	           if (x==len) { return x; }
    return 0;
 }
 

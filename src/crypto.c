@@ -75,6 +75,7 @@ crypto_main(int ac, char **av)
 
 	register_cipher(&rijndael_desc);
 	register_hash(&md5_desc);
+	register_prng(&yarrow_desc);
 	register_prng(&sprng_desc);
 
 	switch (mode) {
@@ -104,20 +105,21 @@ crypto_main(int ac, char **av)
 private	int
 make_keypair(int bits, char *secret, char *public)
 {
-	int	ret;
 	rsa_key	key;
 	unsigned long	size;
 	FILE	*f;
+	prng_state	prng;
 	char	out[4096];
 
-	ret = rsa_make_key(0, find_prng("sprng"), bits/8, 655337, &key);
-	if (ret == CRYPT_ERROR) {
+	if (rng_make_prng(128, find_prng("yarrow"), &prng, 0)) {
  err:		fprintf(stderr, "crypto: %s\n", crypt_error);
 		return (1);
 	}
+	if (rsa_make_key(&prng, find_prng("yarrow"), bits/8, 655337, &key)) {
+		goto err;
+	}
 	size = sizeof(out);
-	ret = rsa_export(out, &size, PK_PRIVATE_OPTIMIZED, &key);
-	if (ret == CRYPT_ERROR) goto err;
+	if (rsa_export(out, &size, PK_PRIVATE_OPTIMIZED, &key)) goto err;
 	f = fopen(secret, "wb");
 	unless (f) {
 		fprintf(stderr, "crypto: can open %s for writing\n", secret);
@@ -126,8 +128,7 @@ make_keypair(int bits, char *secret, char *public)
 	fwrite(out, 1, size, f);
 	fclose(f);
 	size = sizeof(out);
-	ret = rsa_export(out, &size, PK_PUBLIC, &key);
-	if (ret == CRYPT_ERROR) goto err;
+	if (rsa_export(out, &size, PK_PUBLIC, &key)) goto err;
 	f = fopen(public, "wb");
 	unless (f) {
 		fprintf(stderr, "crypto: can open %s for writing\n", public);
