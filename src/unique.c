@@ -35,6 +35,10 @@ WHATSTR("@(#)%K%");
 private	int dirty;	/* set if we updated the db */
 private MDBM *db;
 
+/*
+ * XXX Note: This locking scheme will not work if the lock directory is
+ *     is NFS mounted, and two process is runing on different host
+ */
 /* -1 means error, 0 means OK */
 int
 uniq_lock()
@@ -42,18 +46,67 @@ uniq_lock()
 	char	*bin;
 	pid_t	pid = 0;
 	int	fd;
+	int	first = 1;
 	char	path[MAXPATH];
+#ifdef WIN32
+	int	retry = 0;
+#endif
 
 	if (db) {
 		fprintf(stderr, "keys: db already locked\n");
 		return (-1);
 	}
 	unless (bin = findBin()) {
-		fprintf(stderr, "Can not find BitKeeper bin directory");
+		fprintf(stderr, "Can not find BitKeeper bin directory\n");
 		return (-1);
 	}
-	sprintf(path, "%s/tmp/keys.lock", bin);
+	sprintf(path, "%stmp/keys.lock", bin);
+#ifdef WIN32
+	while ((fd = _sopen(path, _O_CREAT|_O_EXCL|_O_WRONLY|_O_SHORT_LIVED,
+					_SH_DENYRW, _S_IREAD | _S_IWRITE)) == -1) {
+		if (first && (errno == ENOENT)) {
+			first = 0;
+			mkdirf(path);
+			continue;
+		}
+		if (errno != EEXIST) {
+			perror(path);
+			return (-1);
+		}
+
+		if ((fd = open(path, O_RDONLY, 0)) >= 0) {
+			char	buf[20];
+			int	n;
+
+			n = read(fd, buf, sizeof(buf));
+			close(fd);
+			if (n > 0) {
+				buf[n] = 0;
+				pid = atoi(buf);
+			}
+			if (pid == getpid()) {
+				fprintf(stderr, "recursive lock ??");
+				break;
+			}
+		}
+		if (retry++ > 10) {
+			fprintf(stderr, "stale_lock: removed\n");
+			unlink(path);
+		} else {
+			sleep(1);
+		}
+	}
+	sprintf(path, "%u", getpid());
+	write(fd, path, strlen(path));
+	close(fd);
+	return 0;
+#else
 	while ((fd = open(path, O_CREAT|O_EXCL|O_RDWR, 0666)) == -1) {
+		if (first && (errno == ENOENT)) {
+			first = 0;
+			mkdirf(path);
+			continue;
+		}
 		if (errno != EEXIST) {
 			perror(path);
 			return (-1);
@@ -80,6 +133,7 @@ uniq_lock()
 	write(fd, path, strlen(path));
 	close(fd);
 	return (0);
+#endif
 }
 
 int
@@ -92,7 +146,7 @@ uniq_unlock()
 		fprintf(stderr, "Can not find BitKeeper bin directory");
 		return (-2);
 	}
-	sprintf(path, "%s/tmp/keys.lock", bin);
+	sprintf(path, "%stmp/keys.lock", bin);
 	return (unlink(path));
 }
 
@@ -118,14 +172,14 @@ uniq_open()
 		fprintf(stderr, "Can not find BitKeeper bin directory");
 		return (-1);
 	}
-	sprintf(path, "%s/tmp/keys", bin);
+	sprintf(path, "%stmp/keys", bin);
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (f = fopen(path, "r")) return (0);
 	while (fnext(path, f)) {
 		s = strchr(path, ' ');
 		if ((chop(path) != '\n') || !s) {
 			fprintf(stderr,
-			    "bad data: <%s> in %s/tmp/keys\n", path, bin);
+			    "bad data: <%s> in %stmp/keys\n", path, bin);
 			mdbm_close(db);
 			return (-1);
 		}
@@ -152,7 +206,7 @@ uniq_open()
 			time_t	t2;
 
 			fprintf(stderr,
-			    "Warning: duplicate key '%s' in %s/tmp/keys\n",
+			    "Warning: duplicate key '%s' in %stmp/keys\n",
 			    path, bin);
 		    	v2 = mdbm_fetch(db, k);
 			assert(v2.dsize == sizeof(time_t));
@@ -231,7 +285,7 @@ uniq_close()
 		fprintf(stderr, "Can not find BitKeeper bin directory");
 		return (-1);
 	}
-	sprintf(path, "%s/tmp/keys", bin);
+	sprintf(path, "%stmp/keys", bin);
 	unlink(path);
 	unless (f = fopen(path, "w")) {
 		perror(path);
@@ -243,8 +297,8 @@ uniq_close()
 		fprintf(f, "%s %lu\n", kv.key.dptr, t);
 	}
 	fclose(f);
-	uniq_unlock();
-close:	mdbm_close(db);
+close:  uniq_unlock();  //XXX should'nt we close before we unlock ?
+	mdbm_close(db);
 	db = 0;
 	dirty = 0;
 	return (0);
