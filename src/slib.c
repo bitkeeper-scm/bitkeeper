@@ -7742,10 +7742,13 @@ changeXFlag(char *me, sccs *sc, delta *n, int add, char *flag, int *fixDate)
 	 */
 	unless (n && (n->flags & D_XFLAGS)) {
 		xflags = 0;
-		if (sc->state & S_EXPAND1) xflags |= X_EXPAND1;
+		if (sc->state & S_BITKEEPER) xflags |= X_BITKEEPER;
 		if (sc->state & S_RCS) xflags |= X_RCSEXPAND;
 		if (sc->state & S_YEAR4) xflags |= X_YEAR4;
-		/* XXX Do we want to grap other X flags here ??*/
+		if (sc->state & S_ISSHELL) xflags |= X_ISSHELL;
+		if (sc->state & S_EXPAND1) xflags |= X_EXPAND1;
+		if (sc->state & S_CSETMARKED) xflags |= X_CSETMARKED;
+		if (sc->state & S_HASH) xflags |= X_HASH;
 	} else {
 		xflags = n->xflags;
 	}

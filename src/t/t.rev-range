@@ -3,7 +3,7 @@
 # %K%
 
 # The optional datefudge line is excluded from $BASE2
-BASE=37
+BASE=38
 BASE2=`expr $BASE + 70`
 ${RM} -rf foo SCCS A
 mkdir SCCS; cset -i -s .
