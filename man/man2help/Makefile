@@ -4,7 +4,7 @@
 	bk get -q $@
 
 # Order is important, this is the order they will show up in helptool.
-SUM=All General Common Repository GUI-tools File Admin Licensing Compat Utility 
+SUM=All Overview Common Repository GUI-tools File Admin Licensing Compat Utility 
 
 helptxt: FRC
 	@$(MAKE) pages
