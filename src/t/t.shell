@@ -47,6 +47,7 @@ EOF
 bk ci $Q -i file
 if [ ! -f SCCS/s.file ]; then echo failed to create history; exit 1; fi
 cp /bin/sh binary
+chmod +w binary
 bk new $Q -b binary
 bk prs -hr+ binary | grep -q binary || {
 	echo bad encoding
@@ -116,6 +117,7 @@ cp -f /bin/ls copy/binary
 cp -f /bin/rm project/binary
 for i in copy project
 do	cd $HERE/$i
+	chmod +w binary
 	bk delta $Q -y$i
 	bk commit -y$i $Q
 done
