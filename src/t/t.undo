@@ -102,3 +102,30 @@ grep -q 'R 1.2' SCCS/s.ChangeSet && {
 	exit 1
 }
 echo OK
+
+echo $N Try and undo a merge changeset ..............................$NL
+cd $HERE
+no_logging merge
+ls > file
+bk new $Q file
+bk commit -ywhatever $Q
+cd ..
+bk clone $Q merge merge-clone
+for i in merge merge-clone
+do	cd $HERE/$i
+	bk edit -q file
+	bk delta $Q -y$i file
+	bk commit -y$i $Q
+done
+cd $HERE/merge-clone
+bk pull $Q || exit 1
+bk undo -sfr+ > OUT && {
+	echo undo should have failed
+	cat OUT
+	exit 1
+}
+bk prs -r1.4 ChangeSet > OUT || {
+	echo undo did remove 1.4
+	exit 1
+}
+echo OK

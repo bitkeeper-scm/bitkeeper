@@ -3,7 +3,7 @@
 .SH NAME
 bk diffs \- show differences in revision controlled files
 .SH SYNOPSIS
-.Bc bk diffs [\-bBcDfhMnpsuU] [
+.Bc bk diffs [\-bBcDfhMnpsuUvw] [
 .OPTreq \-C rev
 .Bc ] [
 .OPTreq \-d date
@@ -91,6 +91,9 @@ Do unified diffs.
 .tp
 .B \-v
 Be verbose about non-matching ranges.
+.tp
+.B \-w
+Ignore white space when comparing lines.
 .SH SEE ALSO
 .BR diff (1)
 .br

@@ -19,6 +19,7 @@ for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 0
 do	cat > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
+P FILE
 ------------------------------------------------
 EOF
 	echo 1.$R >> FILE
@@ -388,24 +389,31 @@ bk undos X > CMP1
 cat > X <<EOF
 ======== FILE 1.5..1.7
 D 1.7 01/05/28
+P FILE
 C This is
 ------------------------------------------------
 D 1.6 00/05/28
+P FILE
 C This is
 ------------------------------------------------
 D 1.5 98/01/30
+P FILE
 C This is
 ------------------------------------------------
 EOF
 bk undos X > CMP2
-cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
+cmp -s CMP1 CMP2 || {
+	echo Failed - files differ.
+	diff CMP1 CMP2
+	exit 1
+}
 echo OK
 R=1
 for D in '97/06/23 01:33:45' '00/01/30 17:45:17' '01/01/10 10:10:10'
 do	cat > X <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
+P YEAR4
 X 0x81
 ------------------------------------------------
 EOF
