@@ -969,7 +969,7 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	t = sccs2name(sfile);
-	sprintf(buf, "bk delta %s -y'Merge rename: %s -> %s' %s",
+	sprintf(buf, "bk delta %s -Py'Merge rename: %s -> %s' %s",
 	    rs->opts->log ? "" : "-q", d->pathname, t, sfile);
 	free(t);
 	sys(buf, rs->opts);
@@ -1031,7 +1031,7 @@ type_delta(resolve *rs,
 		exit(1);
 	}
 	free(g);
-	sprintf(buf, "bk delta -q -y'Merge file types: %s -> %s' %s",
+	sprintf(buf, "bk delta -q -Py'Merge file types: %s -> %s' %s",
 	    mode2FileType(o->mode), mode2FileType(n->mode), sfile);
 	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
@@ -1068,7 +1068,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 		    sfile, d->rev, a, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
-	sprintf(buf, "bk delta %s -y'Change mode to %s' -M%s %s",
+	sprintf(buf, "bk delta %s -Py'Change mode to %s' -M%s %s",
 	    rs->opts->log ? "" : "-q", a, a, sfile);
 	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
@@ -1965,7 +1965,7 @@ err:		unlink(left);
 	unlink(left);
 	unlink(right);
 	sccs_close(rs->s); /* for win32 */
-	sprintf(cmd, "bk delta -y'Auto merged' %s %s",
+	sprintf(cmd, "bk delta -Py'Auto merged' %s %s",
 	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
 	if (sys(cmd, rs->opts)) {
 		perror(cmd);

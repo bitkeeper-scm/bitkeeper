@@ -59,7 +59,7 @@ delta_main(int ac, char **av)
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
 	int	isci = 0;
-	int	checkout = 0;
+	int	checkout = 0, ignorePreference = 0;
 	int	c, rc, enc;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
@@ -96,7 +96,7 @@ help:		fputs(delta_help, stderr);
 	}
 
 	while ((c = getopt(ac, av,
-			   "1acD:E|fg;GhI;ilm|M;npqRrS;suy|YZ|")) != -1) {
+			   "1acD:E|fg;GhI;ilm|M;npPqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case '1': iflags |= INIT_ONEROOT; break;
@@ -146,6 +146,7 @@ comment:		comments_save(optarg);
 		    case 'h': dflags |= DELTA_HASH; break;
 		    case 'I': initFile = optarg; break;
 		    case 'M': mode = optarg; break;
+		    case 'P': ignorePreference = 1;  break;
 		    case 'R': dflags |= DELTA_PATCH; break;
 		    case 'S': syms = addLine(syms, strdup(optarg)); break;
 		    case 'Y': dflags |= DELTA_DONTASK; break;
@@ -159,7 +160,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		}
 	}
 
-	unless (checkout) {
+	unless (ignorePreference || checkout) {
 		p = user_preference("checkout", buf);
 		if (streq(p, "edit")) {
 			gflags |= GET_SKIPGET|GET_EDIT;

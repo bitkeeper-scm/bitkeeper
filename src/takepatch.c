@@ -260,7 +260,7 @@ get_configs()
 			 * We use ci here, because we do not want to
 			 * create a new delta if there is no diffs
 			 */
-			system("bk ci -qyauto-merge RESYNC/BitKeeper/etc/gone");
+			system("bk ci -qPyauto-merge RESYNC/BitKeeper/etc/gone");
 		}
     	}
 }
