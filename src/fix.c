@@ -48,6 +48,11 @@ do_cset(char *qflag)
 	char	lastpath[MAXPATH];
 	FILE	*f = popen("bk cset -r+", "r");
 
+	if (sccs_cd2root(0, 0)) {
+		fprintf(stderr, "fix: can't find repository root\n");
+		exit(1);
+	}
+
 	/* 
 	 * check to see if there are later deltas.
 	 * XXX - we could try locking the tree with the RESYNC dir.

@@ -59,6 +59,17 @@ cmd_clone(int ac, char **av)
 			exit(1);
 	    	}
 	}
+	if (rev) {
+		sccs	*s = sccs_csetInit(SILENT, 0);
+		unless (s && sccs_getrev(s, rev, 0, 0)) {
+			out("ERROR-rev ");
+			out(rev);
+			out(" doesn't exist\n");
+			drain();
+			exit(1);
+		}
+		sccs_free(s);
+	}
 	if (!p) {
 		out("OK-read lock granted\n");
 	} else if (streq(p, BKD_VERSION)) {

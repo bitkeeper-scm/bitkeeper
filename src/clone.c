@@ -21,6 +21,7 @@ private int	sfio(opts opts, int gz, remote *r);
 private void	usage(void);
 private int	initProject(char *root);
 private void	usage(void);
+private	void	do_lclone(char **av);
 extern	int	rclone_main(int ac, char **av);
 
 int
@@ -30,6 +31,7 @@ clone_main(int ac, char **av)
 	opts	opts;
 	char	**envVar = 0;
 	remote 	*r = 0,  *l = 0;
+	int	lclone = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help clone");
@@ -38,11 +40,12 @@ clone_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "dE:qr;w|z|")) != -1) {
+	while ((c = getopt(ac, av, "dE:lqr;w|z|")) != -1) {
 		switch (c) {
 		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
 		    case 'E': 					/* doc 2.0 */
 			envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'l': lclone = 1; break;		/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
 		    case 'w': opts.delay = atoi(optarg); break; /* undoc 2.0 */
@@ -56,6 +59,9 @@ clone_main(int ac, char **av)
 	}
 	license();
 	unless (av[optind]) usage();
+
+	if (lclone) do_lclone(av);		
+
 	loadNetLib();
 	/*
 	 * Trigger note: it is meaningless to have a pre clone trigger
@@ -455,4 +461,21 @@ rmEmptyDirs(int quiet)
 		}
 		pclose(f);
 	} while (n);
+}
+
+private void
+do_lclone(char **av)
+{
+	char	*nav[30];
+	int	i = 0;
+
+	nav[i++] = "bk";
+	nav[i++] = "lclone";
+	
+	++av;
+	while ((nav[i++] = *av++));
+
+	execvp("bk", nav);
+	perror(nav[1]);
+	exit(1);
 }

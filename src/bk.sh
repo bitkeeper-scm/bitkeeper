@@ -210,11 +210,14 @@ _copying() {
 # Usage: lclone from [to]
 _lclone() {
 	HERE=`pwd`
-	while getopts q opt
+	REV=
+	while getopts lqr: opt
 	do
 		case "$opt" in
+		l) ;;	#ignore
 		q) Q="-q";;
-		*)	echo "Usage: lclone [-q] from to"
+		r) REV=$OPTARG;;	# /* undoc? 2.0 */
+		*)	echo "Usage: lclone [-q] [-rrev] from to"
 			exit 1;;
 		esac
 	done
@@ -238,6 +241,12 @@ _lclone() {
 	fi
 	test -d "$TO" && { echo $2 exists; exit 1; }
 	cd "$FROM"
+	bk prs -hr$REV ChangeSet > BitKeeper/tmp/rev$$
+	test -s BitKeeper/tmp/rev$$ || {
+		echo Rev $REV does not exist, aborting...
+		/bin/rm -f BitKeeper/tmp/rev$$
+		exit 1
+	}	
 	while ! bk lock -s
 	do	bk lock -l
 		echo Sleeping 5 seconds and trying again...
@@ -249,13 +258,19 @@ _lclone() {
 	sleep 1
 	test -f BitKeeper/readers/$LOCK || {
 		echo Lost read lock race, please retry again later.
+		/bin/rm -f BitKeeper/tmp/rev$$
 		exit 1
 	}
 	qecho Finding SCCS directories...
 	bk sfiles -d > /tmp/dirs$$
 	cd "$HERE"
-	mkdir -p "$TO"
+	mkdir -p "$TO/BitKeeper/tmp"
 	cd "$TO"
+	ln "$FROM/BitKeeper/tmp/rev$$" BitKeeper/tmp/link || {
+		cd $FROM
+		rm BitKeeper/tmp/rev$$
+		cp /dev/null /tmp/dirs$$
+	}
 	while read x
 	do
 		if [ "$x" != "." -a -d "$FROM/$x/BitKeeper" ]
@@ -268,7 +283,6 @@ _lclone() {
 		find "$FROM/$x/SCCS" -type f -name 's.*' -print |
 		    bk _link "$x/SCCS"
 	done < /tmp/dirs$$
-	bk sane
 	while [ -d "$FROM/BitKeeper/readers" ]
 	do	kill $LOCKPID 2>/dev/null
 		kill -0 $LOCKPID 2>/dev/null || {
@@ -276,9 +290,19 @@ _lclone() {
 			sleep 1
 		}
 	done
+	(cd "$FROM" && /bin/rm -f BitKeeper/tmp/rev$$)
+	test -s /tmp/dirs$$ || {
+		echo ""
+		echo Please try bk clone without the -l option.
+		exit 1
+	}
 	bk sane
 	qecho Looking for and removing any uncommitted deltas
 	bk sfiles -pA | bk stripdel -
+	if [ "X$REV" != "X" ]; then
+		qecho Removing revisions after $REV ...
+		bk undo -fs $Q -a$REV
+	fi
 	qecho Running a sanity check
 	bk -r check -ac || {
 		echo lclone failed

@@ -146,7 +146,7 @@ bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
 echo OK
 echo $N check a push to bkd with a gfile conflict ...................$NL
-CNT=5
+CNT=6
 P=50000
 cd $HERE/project
 bk bkd -q -d -p$P -c$CNT
@@ -185,6 +185,10 @@ echo $N check http clone from bkd ...................................$NL
 cd $HERE
 bk clone $Q http://localhost:$P $HERE/project2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N check http clone with bad -r from bkd .......................$NL
+bk clone $Q -rbad http://localhost:$P $HERE/junk2
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
 # Check bk basic mode behaviour
