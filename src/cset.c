@@ -490,7 +490,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, 0, idDB);
 			}
 			goto retry;
 		}
-		if (cs->force < 2) {
+		if (!cs->makepatch && (cs->force < 2)) {
 			fprintf(stderr,
 			    "cset: missing id %s, sfile removed?\n", key);
 		}
@@ -636,7 +636,11 @@ csetlist(cset_t *cs, sccs *cset)
 			sprintf(buf, "cat %s", csort);
 			system(buf);
 		}
-		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+		if (exists(SGONE)) {
+			system("bk get -kpsC " GONE " > BitKeeper/tmp/gone");
+			goneDB =
+			 loadDB("BitKeeper/tmp/gone", 0, DB_KEYSONLY|DB_NODUPS);
+		}
 	} else {
 		close(creat(csort, TMP_MODE));
 	}
@@ -684,8 +688,12 @@ again:	/* doDiffs can make it two pass */
 		chop(buf);
 		t = separator(buf); *t++ = 0;
 		if (sameFile(cs, csetid, buf)) continue;
-		if (gone(buf, goneDB)) continue;
-		if (doKey(cs, buf, t)) goto fail;
+		if (doKey(cs, buf, t) && !gone(buf, goneDB)) {
+			fprintf(stderr,
+			    "File named by key\n\t%s\n\tis missing and key is "
+			    "not in a committed gone delta, aborting.\n", buf);
+			goto fail;
+		}
 	}
 	if (cs->doDiffs && cs->makepatch) {
 		doKey(cs, 0, 0);

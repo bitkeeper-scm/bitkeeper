@@ -586,7 +586,7 @@ private int
 chk_diffs(sccs *s)
 {
 	if (!s) return (0);
-	if (sccs_hasDiffs(s, 0) >= 1) return (1);
+	if (sccs_hasDiffs(s, 0, 1) >= 1) return (1);
 	return (0);  
 }
 

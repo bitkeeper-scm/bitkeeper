@@ -645,7 +645,7 @@ delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 int	sccs_addSym(sccs *, u32 flags, char *);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
-int	sccs_hasDiffs(sccs *s, u32 flags);
+int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
 		      int *errorp, int *linesp, char ***symsp);

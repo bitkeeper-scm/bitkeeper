@@ -323,7 +323,7 @@ hasDiffs(char *file)
 	sccs	*s = init(file, INIT_NOCKSUM);
 
 	if (!s) return (0);
-	if (sccs_hasDiffs(s, 0) >= 1) {
+	if (sccs_hasDiffs(s, 0, 1) >= 1) {
 		sccs_free(s);
 		return (1);
 	}
