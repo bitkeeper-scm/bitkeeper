@@ -102,6 +102,7 @@ sccs_mv(char *name, char *dest, int isDir, int createDelta)
 	if (error) goto out;
 	if (IS_EDITED(s)) {
 		sccs_free(s);
+		s = NULL;
 		if (!createDelta) goto out;
 		/* extract the branch/LOD info */
 		unless (s = sccs_init(sfile, 0)) { error++; goto out; }
