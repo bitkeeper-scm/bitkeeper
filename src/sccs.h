@@ -424,7 +424,7 @@ typedef struct delta {
 	char 	*symlink;		/* sym link target */
 	u32	xflags;			/* timesafe x flags */
 	/* In memory only stuff */
-	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
+	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	time_t	date;			/* date - conversion from sdate/zone */
 	struct	delta *parent;		/* parent delta above me */
 	struct	delta *kid;		/* next delta on this branch */
@@ -843,8 +843,10 @@ delta	*sccs_findMD5(sccs *s, char *md5);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
+void	sccs_resethost(void);
 char	*sccs_realuser(void);
 char	*sccs_user(void);
+void	checkSingle(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -968,7 +970,7 @@ int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
 void	status(int verbose, FILE *out);
 void	notify(void);
 char	*package_name(void);
-int	bkusers(int countOnly, int raw, char *prefix, FILE *out);
+int	bkusers(sccs *s, char *prefix, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 int	match_one(char *string, char *glob, int ignorecase);
 char	*match_globs(char *string, globv globs, int ignorecase);

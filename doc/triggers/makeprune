@@ -1,0 +1,157 @@
+#!/bin/sh
+
+# Copyright (c) 2003 BitMover Inc.
+# No warranty expressed or implied.
+# DO NOT USE WITHOUT UNDERSTANDING!! ASK QUESTIONS!!
+# Mail: support@bitmover.com
+#
+# User is free to modify and use.
+# User must not redistribute in either unchanged or modified form.
+# User may return changes made to BitMover
+
+# Make a prune repo -- has a trigger which fires when pulled to
+# prune a list of files, as well as the trigger.
+
+rev="%K%"
+
+usage="Usage: makeprune keylist repo newrepo (where newrepo does not exist)"
+
+test "$#" -eq 3 || {
+	echo $usage
+	exit 1
+}
+
+keylist="$1"
+repo="$2"
+new="$3"
+
+test -f "$keylist" || {
+	echo Keylist "'$keylist'" not a file
+	echo $usage
+	exit 1
+}
+
+test -e "$new" && {
+	echo New repo "'$new'" exists as a directory.
+	echo please remove or use another name.
+	echo $usage
+	exit 1
+}
+
+# put the appended trigger template in 'trigger'
+bk lclone "$repo" "$new"
+cd "$new"
+conf=BitKeeper/etc/config
+save=BitKeeper/tmp/confsave$$
+bk get -p $conf > $save
+echo "Doing an undo to strip all of history .. please be patient .."
+bk undo -fqsa1.1
+bk edit $conf
+cp $save $conf
+rm -f $save
+bk delta -y'restore config' $conf
+
+trig=BitKeeper/triggers/post-incoming.zzzprune
+strig=BitKeeper/triggers/SCCS/s.post-incoming.zzzprune
+
+####### create the trigger
+####### save the first part.  This script resumes at -> #######
+cat <<'MKEOF' > trig
+#!/bin/sh
+
+# Copyright (c) 2003 BitMover Inc.
+# No warranty expressed or implied.
+# DO NOT USE WITHOUT UNDERSTANDING!! ASK QUESTIONS!!
+# Mail: support@bitmover.com
+#
+# User is free to modify and use.
+# User must not redistribute in either unchanged or modified form.
+# User may return changes made to BitMover
+
+# zzzprune -  because triggers are in alphabetical order
+# this one goes last.  (Does that matter?  It does an unlock)
+#
+MKEOF
+####### Maketrig script resumes
+
+# insert revision into trigger script
+echo "# rev: $rev" >> trig
+
+####### contineu writing trigger
+cat <<'MKEOF' >> trig
+
+trig=BitKeeper/triggers/post-incoming.zzzprune
+tmp=BitKeeper/tmp
+
+# This trigger deletes itself, so copy it to tmp and run from there
+# Assume BK_PRUNE_IT not set initially.  Copy, then set env and run copy.
+
+if [ -z "$BK_PRUNE_IT" ]
+then
+	cp $trig $tmp/prune || exit 1
+	chmod +x $tmp/prune
+	bk unlock -r
+	exec env BK_PRUNE_IT=1 $tmp/prune
+	exit 1
+fi
+
+# We are now running the copy in BitKeeper/tmp
+
+# put the list of keys to remove between these two lines:
+cat <<'EOF' > $tmp/keylist
+MKEOF
+####### Maketrig script resumes
+
+# insert list of keys into the trigger.
+# keylist could be relative or absolute path, so do it from ..
+(cd ..; cat $keylist >> $new/trig)
+
+# need a random string of 16 hex digits
+rand=`perl -e 'for (1 .. 4) { printf "%04x", int rand 65536 } print "\n"'`
+
+####### Finish off writing the trigger
+cat <<'MKEOF' | sed "s/16-HEX-CHARS/$rand/" >> trig
+EOF
+
+# We also delete this trigger, so add it to the list
+bk prs -r+ -hnd:ROOTKEY: $trig >> $tmp/keylist
+
+# csetprune does not like editted files.  Unedit all.
+# NOTE: This destroys user's work.
+# _key2path undocumented.
+# It takes stdin and gives out a path of where they are now
+bk _key2path < $tmp/keylist | xargs -i@ bk unedit @
+
+# now prune out the stuff
+# XXX: while each 
+bk csetprune -S -k16-HEX-CHARS < $tmp/keylist || exit 1
+echo
+echo Cleanup succeeded
+echo 
+
+# remove litter -- make small 
+cat - <<EOF > $tmp/cleanup
+#!/bin/sh
+rm -f $tmp/keylist $tmp/prune $tmp/cleanup
+exit 0
+EOF
+chmod +x $tmp/cleanup
+
+# Done this way to not mess with possible NFS block boundary things
+# The cleanup script should be under 512 bytes (a very small block boundary)
+exec $tmp/cleanup
+exit 1
+MKEOF
+####### Maketrig script resumes
+
+# save trigger, then rename it
+chmod +x trig
+bk new trig
+bk mv trig $trig
+# don't commit the config license as part of cset
+echo "$strig|+" | bk commit -y'trig' -
+
+echo
+echo Done.  Clone some repository, then pull the new repository into it.
+
+exit 0

@@ -364,7 +364,7 @@ _extras() {		# /* doc 2.0 */
 }
 
 _keycache() {	# /* undoc? 2.0 */
-	bk sfiles -k
+	bk -R sfiles -k
 }
 
 

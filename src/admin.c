@@ -188,6 +188,8 @@ admin_main(int ac, char **av)
 		init_flags |= INIT_FIXSTIME;
 	}
 
+	checkSingle();
+
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, compp,
