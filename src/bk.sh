@@ -1211,7 +1211,7 @@ __do_win32_uninstall()
 
 	case "$UNINSTALL_CMD" in
 	    *UNWISE.EXE*)	# Uninstall bk3.0.x
-		mv "$DEST" "$OBK"
+		mv "$DEST" "$OBK" || exit 3
 
 		mkdir "$DEST"
 		for i in UNWISE.EXE UNWISE.INI INSTALL.LOG
@@ -1248,7 +1248,7 @@ __do_win32_uninstall()
 		if [ $cnt -gt 60 ]; then exit 2; fi; # force installtool to exit
 		;;
 	    *bkuninstall*)	# Uninstall bk3.2.x
-		mv "$DEST" "$OBK"
+		mv "$DEST" "$OBK" || exit 3
 
 		# replace $DEST with $OBK
 		X1=`__quoteSpace "$DEST"`
@@ -1260,7 +1260,7 @@ __do_win32_uninstall()
 		rm -f "$TEMP/bkuninstall_tmp$$" "$TEMP/bk_cmd$$"
 		;;
 	    *)	
-		mv "$DEST" "$OBK"
+		mv "$DEST" "$OBK" || exit 3
 		rm -rf "$OBK" 2> /dev/null
 		if [ -f "$ODLL" ]
 		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
@@ -1324,14 +1324,17 @@ _install()
 			exit 1
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
-		(cd "$DEST"; find . -type d | xargs chmod ug+w)
 		if [ "X$OSTYPE" = "Xmsys" ]
 		then
 			__do_win32_uninstall "$SRC" "$DEST" "$OBK"
 		else
+			(
+				cd "$DEST"
+				find . -type d | xargs chmod ug+w
+			) 2> /dev/null || exit 3
 			rm -rf "$DEST"/* || {
 			    echo "bk install: failed to remove $DEST"
-			    exit 1
+			    exit 3
 			}
 		fi
 	}
@@ -1371,8 +1374,10 @@ _install()
 	# symlinks to /usr/bin
 	if [ "$DOSYMLINKS" = "YES" ]
 	then
-	        test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
-		"$DEST"/bk links /usr/bin
+	        LINKDIR=/usr/bin
+		test ! -w $LINKDIR && LINKDIR="$HOME/bin"
+	        test $VERBOSE = YES && echo "$DEST"/bk links "$LINKDIR"
+		"$DEST"/bk links "$LINKDIR"
 	fi
 
 	if [ "X$OSTYPE" = "Xmsys" ]

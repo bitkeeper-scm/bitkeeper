@@ -71,10 +71,7 @@ proc initGlobals {} \
 
 	if {![string equal $::runtime(user) "root"]} {
 		set home [homedir]
-		if {[file exists [file join $home bin]]} {
-			lappend ::runtime(places) \
-			    [normalize [file join $home bin]]
-		} elseif {[file exists $home]} {
+		if {[file exists $home]} {
 			lappend ::runtime(places) \
 			    [normalize [file join $home bitkeeper]]
 		}
@@ -717,7 +714,7 @@ proc busy {on} \
 # variable BK_DEBUG to get a bunch of output from the installer)
 proc doCommand {args} \
 {
-	global pipeOutput errorCode
+	global pipeOutput errorCode strings
 
 	if {[string equal [lindex $args 0] -nolog]} {
 		set args [lrange $args 1 end]
@@ -735,6 +732,15 @@ proc doCommand {args} \
 
 	# This variable is set by readPipe when we get EOF on the pipe
 	vwait ::DONE
+
+	# uninstall failed. Sucks to be the user.
+        if {$::DONE == 3} {
+		tk_messageBox \
+		    -icon error \
+		    -message $strings(uninstall.failed)
+		return -code error \
+		    "uninstallation of previous version failed"
+        }
 
 	if {$::DONE == 2} {
 		# exit immediately; system must reboot. If we don't
@@ -818,7 +824,12 @@ proc setDestination {dir} \
 
 proc isempty {dir} \
 {
-	set files [exec bk _find -type f $dir]
+	if {[catch {set files [exec bk _find -type f $dir]} error]} {
+		# bk _find will fail if we don't have access to the
+		# directory, so assume the directory is non empty
+		# and bail
+		return 0
+	}
 	if {[string length $files] > 0} { return 0 }
 	return 1
 }
@@ -829,6 +840,16 @@ proc validateDestination {} \
 
 	if {![file isdirectory $dest]} {
 		return "\"$dest\" is not a directory"
+	}
+
+	# tcl's [file readable] can return 1 for a directory even
+	# if it belongs to another user and we don't have permission to
+	# see the contents. However, glob will fail with a specific message
+	# in this case.
+	if {[catch {glob [file join $dest *]} message] &&
+	    [regexp -nocase {.*permission denied} $message]} {
+		# must belong to another user if we can't peek
+		return "Access to \"$dest\" is denied"
 	}
 
 	set bkhelp [file join $dest bkhelp.txt]
@@ -1030,7 +1051,16 @@ set strings(MoreInfo,symlinks) {
 	More info may be found by running "bk help links".
 }
 
-# this one is not re-wrapped, so it needs to be manually formatted
+# these are not re-wrapped, so they need to be manually formatted
+set strings(uninstall.failed) {
+The uninstallation of the previous version of BitKeeper 
+could not be completed. 
+
+You may choose to install this version in another location
+rather than in the same location as the previous install 
+by using the back button.
+}
+
 set strings(InstallComplete) {
 Installation of
 

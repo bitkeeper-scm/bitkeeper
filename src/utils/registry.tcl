@@ -154,18 +154,25 @@ proc reg {command args} \
 		set key [lindex $args 0]
 		set name [lindex $args 1]
 		set value [lindex $args 2]
+		if {[llength $args] == 4} {
+			set type [lindex $args 3]
+			set command [list registry set $key $name $value $type]
+		} else {
+			set command [list registry set $key $name $value]
+		}
 		if {$name eq ""} {
 			lappend reglog "set $key"
 		} else {
 			lappend reglog "set $key \[$name\]"
 		}
-		set command [list registry set $key $name $value]
 	} elseif {$command == "modify"} {
 		set key [lindex $args 0]
 		set name [lindex $args 1]
 		set value [lindex $args 2]
 		set newbits [lindex $args 3]
-		set type [registry type $key $name]
+		if {[catch {set type [registry type $key $name]}]} {
+			set type sz
+		}
 		if {$newbits eq ""} {
 			lappend reglog "modify $key \[$name\]"
 		} else {
@@ -220,10 +227,12 @@ proc addpath {type dir} \
 		set key "HKEY_CURRENT_USER\\Environment"
 	}
 
+	set regcmd "modify"
 	if {[catch {set path [registry get $key Path]}]} {
 		# it's possible that there won't be a Path value
 		# if the key is under HKEY_CURRENT_USER
 		set path ""
+		set regcmd "set"
 	}
 
 	# at this point it's easier to deal with a list of dirs
@@ -245,13 +254,17 @@ proc addpath {type dir} \
 		}
 	}
 
-	# this is going to get logged even though we only modify the
-	# key (versus creating it). Andrew wanted to know the exact
-	# bits added to the path so we'll pass that info along so 
-	# it gets logged
 	lappend npath $dir
 	set path [join $npath {;}]
-	reg modify $key Path $path $dir
+	if {$regcmd == "set"} {
+		reg set $key Path $path expand_sz
+	} else {
+		# this is going to get logged even though we only modify the
+		# key (versus creating it). Andrew wanted to know the exact
+		# bits added to the path so we'll pass that info along so 
+		# it gets logged
+		reg modify $key Path $path $dir
+	}
 	reg broadcast Environment
 }
 
