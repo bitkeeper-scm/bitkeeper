@@ -400,7 +400,12 @@ typedef struct {
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
 
-#define	SCCS_VERSION	1	/* bumped whenever we change any file format */
+/*
+ * Bumped whenever we change any file format
+ *
+ * 2 - bumped to invalidate old binaries with bad date code.
+ */
+#define	SCCS_VERSION	2
 
 /*
  * struct sccs - the delta tree, the data, and associated junk.

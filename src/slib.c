@@ -702,20 +702,26 @@ realloc:
  * The first value is the time value for 1970-01-01-00:00:00 .
  *
  * Do NOT NOT NOT change this after shipping, even if it is wrong.
+ *
+ * Bummer.  I made the same mistake in generating this table (passing in
+ * 70 intstead of 1970 to the leap your calculation) so all entries
+ * after 2000 were wrong.
+ * What we'll do is rev the file format so that old binaries
+ * won't be able to create deltas with bad time stamps.
  */
 static const time_t  yearSecs[] = {
-             0,   31536000,   63072000,   94694400,  126230400,  157766400,
+	     0,   31536000,   63072000,   94694400,  126230400,  157766400,
      189302400,  220924800,  252460800,  283996800,  315532800,  347155200,
      378691200,  410227200,  441763200,  473385600,  504921600,  536457600,
      567993600,  599616000,  631152000,  662688000,  694224000,  725846400,
      757382400,  788918400,  820454400,  852076800,  883612800,  915148800,
-     946684800,  978220800, 1009756800, 1041292800, 1072828800, 1104451200,
-    1135987200, 1167523200, 1199059200, 1230681600, 1262217600, 1293753600,
-    1325289600, 1356912000, 1388448000, 1419984000, 1451520000, 1483142400,
-    1514678400, 1546214400, 1577750400, 1609372800, 1640908800, 1672444800,
-    1703980800, 1735603200, 1767139200, 1798675200, 1830211200, 1861833600,
-    1893369600, 1924905600, 1956441600, 1988064000, 2019600000, 2051136000,
-    2082672000, 2114294400, 2145830400, 0 };
+     946684800,  978307200, 1009843200, 1041379200, 1072915200, 1104537600,
+    1136073600, 1167609600, 1199145600, 1230768000, 1262304000, 1293840000,
+    1325376000, 1356998400, 1388534400, 1420070400, 1451606400, 1483228800,
+    1514764800, 1546300800, 1577836800, 1609459200, 1640995200, 1672531200,
+    1704067200, 1735689600, 1767225600, 1798761600, 1830297600, 1861920000,
+    1893456000, 1924992000, 1956528000, 1988150400, 2019686400, 2051222400,
+    2082758400, 2114380800, 0 };
 
 /*
  * An array, indexed by the month which we are in, which gives the
@@ -3895,6 +3901,40 @@ date(delta *d, time_t tt)
 
 	zoneArg(d, tmp);
 	getDate(d);
+	if (d->date != tt) {
+		fprintf(stderr, "Internal error on dates, aborting.\n");
+		assert(d->date == tt);
+	}
+}
+
+testdate(time_t t)
+{
+	struct	tm tm;
+	static char	date[50];
+	char	zone[50];
+	long   	seast;
+	int	mwest, hwest;
+	char	sign = '+';
+
+	// XXX - fix this before release 1.0 - make it be 4 digits
+	seast = localtimez(t, &tm);
+	strftime(date, sizeof(date), "%y/%m/%d %H:%M:%S", &tm);
+
+	if (seast < 0) {
+		sign = '-';
+		seast = -seast;  /* now swest */
+	}
+	hwest = seast / 3600;
+	mwest = (seast % 3600) / 60;
+	sprintf(zone, "%c%02d:%02d", sign, hwest, mwest);
+
+	if (date2time(date, zone, EXACT) != t) {
+		fprintf(stderr, "Internal error on dates, aborting.\n");
+		fprintf(stderr, "time_t=%u vs %u date=%s zone=%s\n",
+		    date2time(date, zone, EXACT), t, date, zone);
+		exit(1);
+	}
+	return (date);
 }
 
 /*
