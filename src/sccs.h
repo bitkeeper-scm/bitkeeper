@@ -285,6 +285,7 @@
 #define CMD_RDLOCK	0x00000008	/* read lock */
 #define CMD_WRUNLOCK	0x00000010	/* write unlock */
 #define CMD_RDUNLOCK	0x00000020	/* read unlock */
+#define CMD_RETRYLOCK	0x00000040	/* if lock failed, retry */
 
 /*
  * Signal handling.
