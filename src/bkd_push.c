@@ -29,12 +29,12 @@ cmd_push(int ac, char **av, int in, int out)
 
 	if (!exists("BitKeeper/etc")) {
 		writen(out, "ERROR-Not at project root\n");
-		return (-1);
+		exit(1);
 	}
 
 	if (repository_wrlock()) {
 		writen(out, "ERROR-Unable to lock repository for update.\n");
-		return (-1);
+		exit(1);
 	} else {
 		writen(out, "OK-write lock granted\n");
 	}

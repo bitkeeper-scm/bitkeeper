@@ -35,7 +35,7 @@ cmd_pull(int ac, char **av, int in, int out)
 
 	unless (repository_rdlock() == 0) {
 		writen(out, "ERROR-Can't get read lock on the repository.\n");
-		return (-1);
+		exit(1);
 	} else {
 		writen(out, "OK-read lock granted\n");
 	}
@@ -85,6 +85,11 @@ cmd_pull(int ac, char **av, int in, int out)
 	}
 	pclose(f); f = 0;
 	unless (bytes) {
+		/*
+		 * Unlock because our nasty parent may kill us before we
+		 * get to it.  It kills us as soon as the Nothing is seen.
+		 */
+		repository_rdunlock(0);
 		if (doit) {
 			writen(out, "OK-Nothing to send.\n");
 			writen(out, "OK-END\n");

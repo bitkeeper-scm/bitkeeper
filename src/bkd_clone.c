@@ -12,7 +12,7 @@ cmd_clone(int ac, char **av, int in, int out)
 
 	if (!exists("BitKeeper/etc")) {
 		writen(out, "ERROR-Not at project root\n");
-		return (-1);
+		exit(1);
 	}
 	while ((c = getopt(ac, av, "q")) != -1) {
 		switch (c) {
@@ -21,7 +21,7 @@ cmd_clone(int ac, char **av, int in, int out)
 	}
 	unless (repository_rdlock() == 0) {
 		writen(out, "ERROR-Can't get read lock on the repository.\n");
-		return (-1);
+		exit(1);
 	} else {
 		writen(out, "OK-read lock granted\n");
 	}
