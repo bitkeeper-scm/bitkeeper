@@ -1,0 +1,143 @@
+.TH "bk set" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk set \- set operations
+.SH SYNOPSIS
+.B bk set [\-adeklnox] [
+.OPTreq \-r rev
+.Bc ] [
+.OPTopt \-t type
+] [file]
+.SH DESCRIPTION
+The 
+.B bk set
+command performs set operations on a \*(BK file.  This command provides 
+the following set operations: union, intersection, difference and symmetric
+difference.  It also provides the member function (is this element a member
+of the set?) as well as the list function (list all sets which contain this
+member).
+.LP
+If the file is not specified, it defaults to the ChangeSet file.
+.SH OUTPUT OPTIONS
+The default output is a list of revisions, one per line.  The output
+may be restricted to only tagged revisions, and may be forced into
+revision, tag, or key format.  Note that only the ChangeSet file may
+have tags, which means that combining tag output format with a regular
+file has unexpected results.
+.TP 
+.B \-k
+list all answers as keys, not as tags or revisions.
+.tp
+.B \-n
+prefix each output line with the filename, i.e., ChangeSet|1.3, so that
+the output may be fed to other programs, such as bk prs.
+.tp
+.B \-t
+list all answers as tags where possible, else revisions.
+.tp
+.B \-tt
+list only those answers which are tagged and list those as the tag
+not the revision.
+.tp
+.B \-tr
+list only those answers which are tagged but list those as revisions.
+.tp
+.B \-tk
+list only those answers which are tagged but list those as keys.
+.SH SPECIFYING SETS
+If a revision is specified for a set argument, the set is the set of
+deltas which make up that revision.  For example, in a simple history
+without branches, revision 1.5 implies the set {1.1, 1.2, 1.3, 1.4, 1.5}.
+A revision may be specified as a dotted number pair, as a symbolic tag,
+or as a \*(BK key.  It may also be specified as a "-", for the second
+set only, in which case it expects a list of revisions (or keys) on
+stdin, one per line.
+.SH SET OPERATIONS
+.SS UNION (A | B)
+.B bk set [output opts] \-o
+.ARG "set A"
+.ARG "set B"
+[file]
+.LP
+The union operation, familiar to programmers as a "bitwise or",
+lists all members which occur in either set.
+.SS INTERSECTION (A & B)
+.B bk set [output opts] \-a
+.ARG "set A"
+.ARG "set B"
+[file]
+The intersection operator, familiar to programmers as a "bitwise and",
+lists all members which occur in both sets.
+.SS DIFFERENCE (~A & B)
+.B bk set [output opts] \-d
+.ARG "set A"
+.ARG "set B"
+[file]
+.LP
+The difference operator lists all members in set B which are not in set A.
+This is the most useful of the set operations, see the examples below.
+.SS SYMMETRIC DIFFERENCE (A ^ B)
+.B bk set [output opts] \-a
+.ARG "set A"
+.ARG "set B"
+[file]
+.LP
+The symmetric difference operator, familiar to programmers as an
+"exclusive or",
+lists all members which occur in only one of the two sets.
+.SS ELEMENT
+.B bk set [output opts] \-e
+.OPTreq \-r rev
+.ARG "set B"
+[file]
+.LP
+The element operator treats the specified revision as a single element,
+not as an implied set, and lists the element if it is in the set.
+.SS LIST
+.B bk set \-l
+.OPTreq \-r rev
+[file]
+.LP
+The list operator treats the specified revision as a single element,
+not as an implied set, and lists all sets (as revisions) which contain
+the element as part of their set.
+It is typically used to see if a bug
+fix is in a particular release.  If the changeset has been excluded from
+a later changeset, the later changeset and its' descendents will not be
+listed.
+.SH EXAMPLES
+A good use of this command is the generation of release notes.  To do
+so, pick the starting and ending points and do this:
+.DS
+$ bk set -d -rbk-2.0 -rbk-2.0.1 | bk changes -
+ChangeSet@1.1425.5.19, 2001-10-12 15:18:06, lm@work
+  utils.c:
+    Remove debugging.
+    Sleep 50 milliseconds when waiting for the lock.
+
+ChangeSet@1.1425.5.20, 2001-10-15 15:57:42, lm@disks
+  A weekend's worth of testing of locking over NFS
+  turned into this cset.
+
+ChangeSet@1.1425.5.21, 2001-10-16 08:35:26, lm@disks
+  The cset lock was too fine grained.
+  This is a short term fix,
+  the longer term fix is the per file locking
+  Andrew is working on.
+  TAG: bk-2.0.1
+.DE
+To see the tagged releases which contain bk-2.0.3:
+.DS
+$ bk set -l -tt -rbk-2.0.3 
+bk-2.0.3
+bk-2.0.4
+bk-2.0.4b
+bk-2.1.2
+bk-2.1.3
+bk-3par_merge
+bk-3par_merge2
+.DE
+.SH SEE ALSO
+.SA changes 1
+.SA prs 1
+.SH CATEGORY
+.B Utility

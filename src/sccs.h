@@ -921,7 +921,7 @@ int	fileCopy(char *from, char *to);
 off_t	size(char *s);
 int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
-int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
+int	sccs_mv(char *, char *, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName, int isDir, int withsccs,
 	    int mustHaveRmarker, int wantRealName, project *proj, char *root);
@@ -1035,6 +1035,7 @@ char	*sccs_zone(time_t tt);
 MDBM	*sccs_tagConflicts(sccs *s);
 void	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);
+ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 
 int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
@@ -1075,6 +1076,7 @@ char	**getdir(char *);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
         *utc2tm(time_t t);
+void	fix_stime(sccs *s);
 
 extern char *bk_vers;
 extern char *bk_utc;

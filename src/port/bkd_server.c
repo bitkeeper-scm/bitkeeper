@@ -31,6 +31,8 @@ ids()
 		if (Opts.log) fprintf(Opts.log, "Set to GID %u\n", getegid());
 	}
 	if (Opts.uid && isdigit(Opts.uid[0])) {
+		struct	passwd *p;
+
 		u = atoi(Opts.uid);
 		if (Opts.log) fprintf(Opts.log, "Run as UID %u\n", getuid());
 #ifdef	__hpux__
@@ -38,17 +40,18 @@ ids()
 #else
 		seteuid(u);
 #endif
-		if (Opts.log) fprintf(Opts.log, "Set to UID %u\n", geteuid());
+		p = getpwuid(geteuid());
+		putenv(aprintf("USER=%s", p->pw_name));
+		if (Opts.log) {
+			fprintf(Opts.log,
+			    "Set to UID %u (%s)\n", geteuid(), sccs_getuser());
+		}
 	}
 }
 #else
 void
 ids() {} /* no-op */
 #endif
-
-
-
-
 
 
 #ifndef WIN32

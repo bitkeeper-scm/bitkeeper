@@ -13,21 +13,22 @@ To delete a file, do this:
 $ bk rm foo.c
 .DE
 Removing the file actually moves it to
-.if t .IR BitKeeper/deleted/del-foo.c .
-.if n BitKeeper/deleted/del-foo.c.
+.if t .IR BitKeeper/deleted/.del-foo.c~293843edf341df .
+.if n BitKeeper/deleted/.del-foo.c~293843edf341df.
 All future operations will ignore the file unless you name it
 explicitly, but it will still exist in the repository and will still be
 propagated by
 .BR  resync .
-To resurrect the file, simply rename it again:
-.DS
-$ bk -R mv BitKeeper/deleted/.del-foo.c `pwd`/foo.c
-.DE
 Edited files can not be deleted, you must check them in first.
 .LP
 If you wish to obliterate all traces of a file, use the 
 .B bk gone
 facility.
+.LP
+To resurrect the file, use bk unrm.
+.DS
+bk unrm foo.c
+.DE
 .SH NOTE
 .B bk rm
 will not remove directories, use
@@ -35,7 +36,7 @@ will not remove directories, use
 for that.
 .SH SEE ALSO
 .SA gone 1
-.SA mv 1
 .SA rmdir 1
+.SA unrm 1
 .SH CATEGORY
 .B File

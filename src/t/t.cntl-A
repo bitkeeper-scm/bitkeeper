@@ -79,6 +79,19 @@ bk edit $Q data
 bk sfiles -c data | grep -q SCCS/s.data
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+echo $N check cnt-A when pushing stuff ..............................$NL
+cd $HERE
+bk clone $Q project copy
+cd $HERE/project
+echo foo > foo
+bk new $Q foo
+bk edit $Q foo
+echo -e "\001" >> foo
+bk delta $Q -ynew foo
+bk commit $Q -ynew
+bk push $Q $HERE/copy || { echo failed; exit 1 }
+echo OK
+
 
 # XX TODO need to get diff to produce 'i' command, and check
 # the processing of this case.

@@ -139,6 +139,7 @@ int	sccslog_main(int, char **);
 int	scompress_main(int, char **);
 int	send_main(int, char **);
 int	sendbug_main(int, char **);
+int	set_main(int, char **);
 int	setlod_main(int, char **);
 int	setup_main(int, char **);
 int	setup_main(int, char **);
@@ -305,6 +306,7 @@ struct	command cmdtbl[] = {
 	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
 	{"send", send_main},			/* doc 2.0 */
 	{"sendbug", sendbug_main},		/* doc 2.0 */
+	{"set", set_main},
 	{"setlod", setlod_main},		/* doc 2.0 as lod */
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */

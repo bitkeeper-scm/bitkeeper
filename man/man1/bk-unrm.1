@@ -1,0 +1,35 @@
+.so bk-macros
+.TH "bk unrm" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME 
+bk unrm \- resurrect a removed \*(BK file
+.SH SYNOPSIS
+.B bk unrm
+.ARG file
+.SH DESCRIPTION
+.LP
+Use unrm to resurrect a file that has been deleted using bk rm.
+Please note that unrm can not resurrect files that have been removed 
+from the source tree using bk gone.
+.LP
+If you know the path to the original file, for example src/Makefile, then
+to resurrect:
+.DS
+cd ~/projects/myproject/src
+bk unrm Makefile
+.DE
+If you do not know the directory run unrm from the root of the repository:
+.DS
+cd ~/projects/myproject
+bk unrm Makefile
+.DE
+There will be an interactive interface for choosing whether or not to 
+resurrect the file.  Type "y" to resurrect the file, "n" to do nothing or
+go to the next option, or "q" to quit.  If there are more than one files
+with the same name, choose "y" if the pathname shown is the one you want,
+or choose "n" until the correct file is shown.
+.SH SEE ALSO
+.SA gone 1
+.SA rm 1
+.SA rmdir 1
+.SH CATEGORY
+.B File

@@ -29,6 +29,7 @@ if [ $? != 0 ]; then echo failed to restore FILE; diff FILE SAVE; exit 1; fi
 set `cat SCCS/p.FILE`
 if [ "X$1" != "X1.1" ]; then echo failed to restore revision; exit 1; fi
 echo OK
+
 echo $N Make sure that we can not fix a committed delta .............$NL
 bk ci $Q -y'OK' FILE
 bk commit $Q -y'commit'
@@ -37,4 +38,118 @@ bk undos X > CMP1
 bk fix $Q FILE 2> CMP2
 cmp -s CMP1 CMP2
 if [ $? != 0 ]; then echo failed to fail stripdel; diff CMP1 CMP2; exit 1; fi
+echo OK
+
+echo $N Make sure file was not left edited or writable ..............$NL
+test -w FILE && {
+	echo FILE is writeable
+	exit 1
+}
+test -f SCCS/p.FILE && {
+	echo FILE is locked
+	exit 1
+}
+echo OK
+
+echo $N Make sure cset lists changes in latest .. earliest order ....$NL
+echo foo > ORDER
+bk new $Q ORDER
+bk unedit FILE
+for i in 2 3 4 5
+do	bk edit $Q FILE ORDER
+	echo $i >> FILE
+	echo $i >> ORDER
+	bk delta $Q -ywhatever$i FILE ORDER
+done
+bk commit $Q -y'ChangeSet comments'
+cat > WANT <<EOF
+ORDER|1.5
+ORDER|1.4
+ORDER|1.3
+ORDER|1.2
+ORDER|1.1
+ORDER|1.0
+EOF
+bk cset -r+ | grep ORDER > REVS
+cmp -s WANT REVS || {
+	echo cset listed wrong order or incorrect list
+	cat WANT
+	echo ====== got ======
+	cat REVS
+	exit 1
+}
+cat > WANT <<EOF
+FILE|1.6
+FILE|1.5
+FILE|1.4
+FILE|1.3
+EOF
+bk cset -r+ | grep FILE > REVS
+cmp -s WANT REVS || {
+	echo cset listed wrong order or incorrect list
+	cat WANT
+	echo ====== got ======
+	cat REVS
+	bk cset -r+
+	exit 1
+}
+echo OK
+
+echo $N Make sure ChangeSet is not left edited by fix -c ............$NL
+bk fix $Q -c
+test -f SCCS/p.ChangeSet && {
+	echo Left a lock file
+	exit 1
+}
+echo OK
+
+echo $N Make sure ChangeSet comments were left by fix -c ............$NL
+test -f SCCS/c.ChangeSet || {
+	echo No comments
+	exit 1
+}
+echo ChangeSet comments > C
+cmp -s C SCCS/c.ChangeSet || {
+	echo incorrect comments
+	echo Wanted ChangeSet comments
+	echo got `cat SCCS/c.ChangeSet`
+	exit 1
+}
+echo OK
+
+echo $N Make sure multiple comments are left for multiple deltas ....$NL
+test -f SCCS/c.ORDER || {
+	echo No comment file found
+	exit 1
+}
+cat > WANT <<EOF
+whatever5
+whatever4
+whatever3
+whatever2
+EOF
+grep -v 'BitKeeper file' SCCS/c.ORDER > GOT
+cmp -s GOT WANT || {
+	echo Incorrect comments
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Make sure permissions are preserved .........................$NL
+bk unedit FILE
+rm ORDER
+bk chmod +x FILE
+bk commit $Q -ychmod
+bk get $Q FILE
+test -x FILE || {
+	echo bk chmod did not stick
+	exit 1
+}
+bk clean FILE
+bk fix -c
+test -x FILE || {
+	echo Did not preserve execute
+	exit 1
+}
 echo OK

@@ -74,7 +74,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	resolve_renames.o resolve_tags.o rmdel.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
-	setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
+	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
 	slib.o smerge.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \

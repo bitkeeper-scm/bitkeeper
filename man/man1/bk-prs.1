@@ -5,7 +5,7 @@
 bk prs \- print revision summary
 .SH SYNOPSIS
 .if n .ll 7.49i
-.Bc bk prs [-abdhmMov] [
+.Bc bk prs [-abdDhmMopv] [
 .if t .ds d date
 .if n .ds d d
 .if t .ds r rev
@@ -58,6 +58,9 @@ Make the range be all revs that are the same cset as
 .OPTreq \-d spec
 Override the default output format (see below).
 .tp
+.B \-D
+Do not skip files in the BitKeeper/deleted directory.
+.tp
 .B \-h
 Suppress range header.
 .tp
@@ -73,6 +76,9 @@ Add a newline to each printed record.
 .B \-o
 Reverse the sense of which deltas to print, i.e., print all unspecified
 deltas.
+.tp
+.B \-p
+Use the parent of selected revisions.
 .tp
 .OPTreq \-r rev
 Specify a revision, or part of a range.

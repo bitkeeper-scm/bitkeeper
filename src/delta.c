@@ -210,8 +210,11 @@ usage:			sprintf(buf, "bk help -s %s", name);
 	while (name) {
 		delta	*d = 0;
 		char	*nrev;
+		int	df = dflags;
+		int	gf = gflags;
+		int	co = checkout;
 
-		if (dflags & DELTA_DONTASK) {
+		if (df & DELTA_DONTASK) {
 			unless (d = comments_get(0)) goto usage;
 		}
 		if (mode) d = sccs_parseArg(d, 'O', mode, 0);
@@ -222,11 +225,11 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			continue;
 		}
 		unless (proj) proj = s->proj;
-		if (dflags & DELTA_AUTO) {
+		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
-				dflags &= ~NEWFILE;
+				df &= ~NEWFILE;
 			} else {
-				dflags |= NEWFILE;
+				df |= NEWFILE;
 			}
 		}
 
@@ -236,17 +239,17 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		 */
 		unless (CSET(s)) {
 			if (strieq(ckopts, "edit")) {
-				gflags |= GET_SKIPGET|GET_EDIT;
-				dflags |= DELTA_SAVEGFILE;
-				checkout = 1;
+				gf |= GET_SKIPGET|GET_EDIT;
+				df |= DELTA_SAVEGFILE;
+				co = 1;
 			} else if (strieq(ckopts, "get")) {
 				if (hasKeyword(s))  {
-					gflags |= GET_EXPAND;
+					gf |= GET_EXPAND;
 					s->initFlags &= ~INIT_FIXSTIME;
-					checkout = 1;
+					co = 1;
 				} else {
-					checkout = 2;
-					dflags |= DELTA_SAVEGFILE;
+					co = 2;
+					df |= DELTA_SAVEGFILE;
 				}
 			}
 		}
@@ -257,11 +260,11 @@ usage:			sprintf(buf, "bk help -s %s", name);
 				errors |= 2;
 				goto next;
 			}
-			if (checkout && (gflags &GET_EDIT)) nrev = pf.newrev;
+			if (co && (gf & GET_EDIT)) nrev = pf.newrev;
 		}
 
 		s->encoding = sccs_encoding (s, encp, compp);
-		rc = sccs_delta(s, dflags, d, init, diffs, 0);
+		rc = sccs_delta(s, df, d, init, diffs, 0);
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
 			sccs_whynot("delta", s);
@@ -277,16 +280,15 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			goto next;
 		}
 
-		if ((checkout == 2) ||
-		    ((checkout == 1) && (dflags&NEWFILE))) {
-			if (fix_gmode(s, gflags)) {
+		if ((co == 2) || ((co == 1) && (df&NEWFILE))) {
+			if (fix_gmode(s, gf)) {
 				errors |= 16;
 			}
 		}
 
-		if (checkout == 1) {
+		if (co == 1) {
 			if (rc == -3) nrev = pf.oldrev;
-			if (sccs_get(s, nrev, 0, 0, 0, gflags, "-")) {
+			if (sccs_get(s, nrev, 0, 0, 0, gf, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					"get of %s failed, skipping it.\n",

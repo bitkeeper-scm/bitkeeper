@@ -186,7 +186,7 @@ proc keyboard_bindings {} \
 
 proc getRev {file rev checkMods} \
 {
-	global	tmp_dir
+	global	tmp_dir unique
 
 	set gfile ""
 	set f [open "| bk sfiles -g \"$file\"" r]
@@ -205,7 +205,8 @@ proc getRev {file rev checkMods} \
 	}
 	set tmp [file join $tmp_dir [file tail $file]]
 	set pid [pid]
-	set tmp "$tmp@$rev-$pid"
+	incr unique
+	set tmp "$tmp@$rev-$pid$unique"
 	if {[catch {exec bk get -qkTG$tmp -r$rev $file} msg]} {
 		puts "$msg"
 		exit 1
@@ -235,7 +236,7 @@ proc usage {} \
 
 proc getFiles {} \
 {
-	global argv0 argv argc dev_null lfile rfile tmp_dir
+	global argv0 argv argc dev_null lfile rfile tmp_dir unique
 	global gc tcl_platform tmps menu rev1 rev2 Diffs DiffsEnd
 
 	if {$argc > 3} { usage }
@@ -245,6 +246,7 @@ proc getFiles {} \
 	set rev2 ""
 	set Diffs(0) 1.0
 	set DiffsEnd(0) 1.0
+	set unique 0
 
 	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
 	#puts "argc=($argc) argv=($argv)"
