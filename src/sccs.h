@@ -989,4 +989,5 @@ int	bktemp(char *buf);
 char	*bktmpfile();	/* return a char* to a just created temp file */
 void	updLogMarker(int ptype);
 char	*getRealCwd(char *, size_t);
+int	getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf);
 #endif	/* _SCCS_H_ */

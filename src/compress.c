@@ -144,7 +144,7 @@ gunzip2fd(char *input, int len, int fd, int hflag)
 int
 gzip_main(int ac, char **av)
 {
-	int c, rc, uflag = 0, gzip_level = -1;
+	int c, rc, gzip_level = -1;
 
 	unless (av[1]) {
 		fprintf(stderr, "usage: %s -z|-u\n", av[0]);
@@ -152,7 +152,7 @@ gzip_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "z:u")) != -1) { 
 		switch (c) {
-		    case 'u':	uflag = 1; break;
+		    case 'u':	gzip_level = -1; break;
 		    case 'z':	gzip_level = atoi(optarg); break;
 		    default:  
 usage:			    	fprintf(stderr,
@@ -161,7 +161,6 @@ usage:			    	fprintf(stderr,
 		}
 	}
 
-	if (uflag && gzip_level) goto usage;	
 	if (gzip_level >= 0) {
 		rc = gzipAll2fd(0, 1, gzip_level, 0, 0, 1, 0);
 	} else {
@@ -180,7 +179,7 @@ gzipAll2fd(int rfd, int wfd, int level, int *in, int *out,
 
 	bsize = 4096;
 	gzip_init(level);
-	while ((n = read(rfd, buf, bsize)) > 0) {
+	while ((n = readn(rfd, buf, bsize)) > 0) { /* must use readn() here */
 		if (in) *in += n;
 		i = gzip2fd(buf, n, wfd, hflag);
 		if (out) *out += i;

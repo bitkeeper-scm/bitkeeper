@@ -77,7 +77,7 @@ remark(int quiet)
 	int i;
 
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
-	unless (quiet) getmsg("consistency_check", 0, 0, stdout);
+	unless (quiet) getMsg("consistency_check", 0, 0, stdout);
 	system("bk cset -M1.0..");
 	i = open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC|O_WRONLY, 0664);
 	if (i < 0) {
@@ -99,7 +99,7 @@ status(int verbose, FILE *f)
 
 	fprintf(f, "Status for BitKeeper repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
-	getmsg("version", bk_model(buf, sizeof(buf)), 0, f);
+	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
@@ -157,7 +157,7 @@ status(int verbose, FILE *f)
 
 
 int
-getmsg(char *msg_name, char *bkarg, char *prefix, FILE *outf)
+getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf)
 {
 	char	buf[MAXLINE], pattern[MAXLINE];
 	FILE	*f, *f1;
@@ -218,7 +218,7 @@ mkconfig(FILE *out)
 		fprintf(stderr, "Unable to open %s\n", buf);
 		return (-1);
 	}
-	getmsg("config_preamble", 0, "# ", out);
+	getMsg("config_preamble", 0, "# ", out);
 	fputs("\n", out);
 
 	/*
@@ -244,7 +244,7 @@ mkconfig(FILE *out)
 		if (streq("$\n", buf)) break;
 		chop(buf);
 		sprintf(pattern, "config_%s", buf);
-		getmsg(pattern, 0, "# ", out);
+		getMsg(pattern, 0, "# ", out);
 		fprintf(out, "%s: \n", buf);
 	}
 	fclose(in);
