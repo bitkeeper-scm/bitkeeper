@@ -11,9 +11,8 @@ section, we provide a brief overview of the GUI tools, although each tool
 is covered more thoroughly in its own section.
 .TP
 .B citool
-Run this to see which files need to be checked in.
-Note: it only shows you modified files under revision
-control, use bk new for the initial check-in.
+Run this to see which files need to be checked in. Also, files can
+be excluded from the changeset.
 .TP
 .B csettool
 Used to view changesets.  Shows the history and the 

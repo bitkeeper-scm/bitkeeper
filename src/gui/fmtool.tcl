@@ -958,6 +958,8 @@ proc bindhelp {w msg} \
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
+	global gc
+
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
 	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
@@ -970,6 +972,7 @@ proc keyboard_bindings {} \
 	bind all <Control-Right> {useRight}
 	bind all <Control-Down> {skip}
 	bind all <Control-Up> {undo}
+	bind all $gc(quit)	cmd_done 
 }
 
 proc confirm {msg l} \

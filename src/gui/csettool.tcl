@@ -760,6 +760,8 @@ proc widgets {} \
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
+	global gc
+
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
 	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
@@ -784,7 +786,7 @@ proc keyboard_bindings {} \
 	}
 	bind all <Alt-Up> { adjustHeight 1 -1 }
 	bind all <Alt-Down> { adjustHeight -1 1 }
-	bind all <q>		exit
+	bind all $gc(quit)	exit
 	bind all <space>	next
 	bind all <n>		next
 	bind all <p>		prev

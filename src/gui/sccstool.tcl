@@ -994,7 +994,7 @@ proc widgets {} \
 	bind .p.top.c <3>		"diff2 0; break"
 	bind .p.top.c <Double-1>	"get; break"
 	bind .p.top.c <h>		"history"
-	bind .p.top.c <q>		"exit"
+	bind .p.top.c $gc(quit)		"exit"
 	bind .p.top.c <s>		"sfile"
 
 	bind .p.top.c <Prior>		".p.bottom.t yview scroll -1 pages"

@@ -1040,6 +1040,8 @@ proc widgets {} \
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
+	global gc
+
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
 	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
@@ -1062,7 +1064,7 @@ proc keyboard_bindings {} \
 		.diffs.l yview -pickplace end
 		.diffs.r yview -pickplace end
 	}
-	bind all <q>		exit
+	bind all $gc(quit)	exit
 	bind all <space>	next
 	bind all <n>		next
 	bind all <p>		prev
