@@ -115,6 +115,21 @@ done
 if [ $GOT_IT = NO ]
 then	exit 0
 fi
+echo $N "Aaron's file with 2 spaces in the name bug .................."$NL
+cd $HERE
+rm -rf project
+no_logging project
+mkdir src
+cd src
+echo "foo" > "a a a"
+bk new $Q "a a a"
+bk commit $Q -a -yCset
+bk edit $Q "a a a"
+echo "bar" >> "a a a"
+bk delta $Q -y"test" "a a a"
+bk commit $Q -a -yCset
+bk -R rechksum -c ChangeSet || { echo rechksum failed; exit 1; }
+echo OK
 echo $N Test import of a file with spaces in the name ...............$NL
 cd $HERE
 rm -rf project

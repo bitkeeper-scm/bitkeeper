@@ -9855,9 +9855,21 @@ bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
 	}
 	while (buf = mnext(diffs)) {
 		unless (offset == 0 || buf[0] == '>') goto bad;
-		for (t = key, v = &buf[offset];
-		    (v < diffs->end) && (*v != ' '); ) {
-			*t++ = *v++;
+		t = key, v = &buf[offset];
+		if (sc->state & S_CSET) {
+			int	pipes = 0;
+
+			/*
+			 * Keys are like u@h|path|date|.... whatever
+			 * We want to skip over any spaces in the path part.
+			 */
+			while (v < diffs->end) {
+				if (*v == '|') pipes++;
+				if ((*v == ' ') && (pipes >= 2)) break;
+				*t++ = *v++;
+			}
+		} else {
+			while ((v < diffs->end) && (*v != ' ')) *t++ = *v++;
 		}
 		unless (*v == ' ') goto bad;
 		*t = 0;
