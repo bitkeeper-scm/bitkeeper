@@ -152,29 +152,59 @@ typically used for notification.
 .SS
 TRIGGER SECURITY ISSUES
 .LP
-Because triggers can propagate and because they can do bad things like
-.DS
-.B rm -rf .
-.DE
-it is a wise idea to put a paranoid trigger like so in your tree:
+Triggers are arbitrary programs (or scripts) which are run automatically
+and without warning.  It is possible that a malicious person could add
+a trigger which effect a security breach, damage files, etc.  If you are
+operating in a non-trusted environment, you may disable all triggers by
+setting the \f(CWBK_NO_TRIGGERS\fP environment variable.  This is the
+safest thing to do but then the trigger functionality is lost.
+.LP
+Alternatively, a "paranoid" trigger could be added which refused to accept
+a new trigger into a repository without being exmamined first.  Here's an
+example of such a trigger, which would typically be named
+\f(CWBitKeeper/triggers/pre-apply.paranoid\fP:
 .DS
 .ft CW
-cat > BitKeeper/triggers/pre-apply.paranoid <<EOF
 #!/bin/sh
 
-# This is running in the RESYNC tree, we're looking for any new
-# triggers and/or changes to triggers.
-# Done after the resolve stage because
-# they could be sneaky and create
-# the file in an earlier changeset and
-# then move it.
-test `bk sfiles BitKeeper/triggers | wc -l` -gt 0 && {
-	echo Changes delayed until they are reviewed
-	mail -s 'Review the triggers' bk-admin < /dev/null
-	exit 3
+# This is running in the RESYNC tree, we're looking
+# for any new triggers and/or changes to triggers.
+# Done after the resolve stage because they could
+# be sneaky and create the file in an earlier
+# changeset and then move it.
+
+test `bk sfiles -g BitKeeper/triggers | wc -l` -gt 0 || exit 0
+
+if [ $BK_SIDE = server ]
+then    echo Refusing to accept any changes to triggers on push,
+        echo get the project admin to pull your changes.
+        exit 1
+fi
+
+rm -f BitKeeper/tmp/t_reject
+for i in `bk sfiles -g BitKeeper/triggers`
+do      (
+        echo Please review the following trigger for security risks.
+        echo Do not accept it if you think it is a problem.
+        echo
+        echo ===== $i =====
+        bk cat $i
+        ) > BitKeeper/tmp/prompt$$
+        bk prompt -fBitKeeper/tmp/prompt$$ \\
+	    -t"Review trigger" -yAccept -nReject
+        STATUS=$?
+        rm -f BitKeeper/tmp/prompt$$
+        test $STATUS = 0 || {
+                touch BitKeeper/tmp/t_reject
+                break
+        }
+done
+test -f BitKeeper/tmp/t_reject && {
+        rm -f BitKeeper/tmp/t_reject
+        exit 3
 }
+rm -f BitKeeper/tmp/t_reject
 exit 0
-EOF
 .ft
 .DE
 .SS

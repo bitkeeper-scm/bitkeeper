@@ -18,6 +18,7 @@ version_main(int ac, char **av)
 	lease_checking(0);
 	if (proj_cd2root()) {
 		getMsg("version", " ", 0, 0, stdout);
+		lease_checking(1);
 		return (0);
 	}
 	getMsg("version", bk_model(buf, sizeof(buf)), 0, 0, stdout);

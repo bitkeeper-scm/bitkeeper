@@ -111,7 +111,7 @@ k_err:			fprintf(stderr,
 	pruneEmpty(s, sb, m);
 	mdbm_close(m);
 	sccs_free(sb);
-	s = sccs_init(csetFile, ADMIN_SHUTUP|INIT_NOCKSUM);
+	s = sccs_init(csetFile, INIT_WACKGRAPH|INIT_NOCKSUM);
 	unless (s && s->tree) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
 		exit(1);	/* leave it locked! */

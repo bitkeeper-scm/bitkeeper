@@ -259,7 +259,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		d->siblings = k;
 		*kp = d;
 	}
-	sccs_inherit(s, 0, d);
+	sccs_inherit(s, d);
 	if ((d->type == 'D') && (s->tree != d)) d->same = 1;
 
 	/*

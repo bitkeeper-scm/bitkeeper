@@ -99,7 +99,18 @@ bk admin $Q -r1.2.3.4.9999 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project
+echo "logging: none" > c
+echo "description: BitKeeper Test repository" >> c
+echo "email: nobody@nowhere.bk" >> c
+echo "license: $BKL_P" >> c
+echo "licsign1: $BKL_P1" >> c
+echo "licsign2: $BKL_P2" >> c
+echo "licsign3: $BKL_P3" >> c
+echo "eoln: unix" >> c
+BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
+cd project
+
 echo This is the description. > $HERE/D
 echo $N Creating a file with description ............................$NL
 bk admin $Q -n -t$HERE/D foo
