@@ -552,7 +552,13 @@ _mvdir() {		# /* doc 2.0 */
 	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
 	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1" is not a directory; exit 1; fi
-	if [ -e "$2" ]; then echo "$2" already exist; exit 1; fi
+	if [ -f "$2" ]; then echo "$2" is a file; exit 1; fi
+	if [ -d "$2" ]
+	then
+		bk mvdir "$1" "$2/$1"
+		return $?
+	fi
+
 	__bkfiles "$1" "Moving"
 	
 	bk -r check -a || exit 1;
@@ -657,7 +663,7 @@ _chmod() {		# /* doc 2.0 */
 	fi
 	MODE=$1
 	shift
-	for i
+	for i in `bk sfiles -g ${1+"$@"}`
 	do	bk clean "$i" || {
 			echo Can not clean "$i," skipping it
 			continue
@@ -856,7 +862,7 @@ _repogca() {
 	    remote=$1
 	fi
 	bk -R changes -e -L -nd:REV: $remote > /tmp/LOCAL.$$
-	bk -R prs -hnd:REV: | fgrep -v -f/tmp/LOCAL.$$ | head -1
+	bk -R prs -hnd:REV: ChangeSet | fgrep -v -f/tmp/LOCAL.$$ | head -1
 	rm -f /tmp/LOCAL.$$
 }
 

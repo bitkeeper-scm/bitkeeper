@@ -341,6 +341,7 @@
 #define BK_FREE		0
 #define BK_BASIC	1
 #define BK_PRO		2
+#define BK_BADMODE	999
 int	bk_mode(void);
 
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */

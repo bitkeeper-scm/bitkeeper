@@ -481,7 +481,7 @@ file(char *f)
 	 */
 	if (s && (name <= &s[-4]) && pathneq("SCCS", &s[-4], 4)) {
 		/* this file is under a SCCS dir */
-		unless (sccs_filetype(f)) {
+		unless (sccs_filetype(f) == 's') {
 			state[CSTATE] = 'j';
 			strcpy(buf, f);
 		} else {

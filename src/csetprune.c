@@ -266,16 +266,106 @@ found(delta *start, delta *stop)
 	return ((stop->flags & D_RED) != 0);
 }
 
+/*
+ * Make the Tag graph mimic the real graph.
+ * All symbols are on 'D' deltas, so wire them together
+ * based on that graph.  This means making some of the merge
+ * deltas into merge deltas on the tag graph.
+ * Algorithm uses d->ptag on deltas not in the tag graph
+ * to cache graph information.
+ * These settings are ignored elsewhere unless d->symGraph is set.
+ */
+
+private int
+mkTagGraph(sccs *s)
+{
+	delta	*d, *p, *m;
+	int	i;
+	int	tips = 0;
+
+	/* in reverse table order */
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) continue;
+		if (d->flags & D_GONE) continue;
+
+		/* initialize that which might be inherited later */
+		d->mtag = d->ptag = 0;
+
+		/* go from real parent to tag parent (and also for merge) */
+		if (p = d->parent) {
+			unless (p->symGraph) {
+				p = (p->ptag) ? sfind(s, p->ptag) : 0;
+			}
+		}
+		m = 0;
+		if (d->merge) {
+			m = sfind(s, d->merge);
+			assert(m);
+			unless (m->symGraph) {
+				m = (m->ptag) ? sfind(s, m->ptag) : 0;
+			}
+		}
+
+		/*
+		 * p and m are parent and merge in tag graph
+		 * this section only deals with adjustments if they
+		 * are not okay.
+		 */
+		/* if only one, have it be 'p' */
+		if (!p && m) {
+			p = m;
+			m = 0;
+		}
+		/* if both, but one is contained in other: use newer as p */
+		if (p && m && found(p, m)) {
+			if (m->serial > p->serial) p = m;
+			m = 0;
+		}
+		/* p and m are now as we would like them.  assert if not */
+		assert(p || !m);
+
+		/* If this has a symbol, it is in tag graph */
+		if (d->flags & D_SYMBOLS) {
+			unless (d->symLeaf) tips++;
+			d->symGraph = 1;
+			d->symLeaf = 1;
+		}
+		/*
+		 * if this has both, then make it part of the tag graph
+		 * unless it is already part of the tag graph.
+		 * The cover just the 'm' side.  p will be next.
+		 */
+		if (m) {
+			assert(p);
+			unless (d->symLeaf) tips++;
+			d->symGraph = 1;
+			d->symLeaf = 1;
+			d->mtag = m->serial;
+			if (m->symLeaf) tips--;
+			m->symLeaf = 0;
+		}
+		if (p) {
+			d->ptag = p->serial;
+			if (d->symGraph) {
+				if (p->symLeaf) tips--;
+				p->symLeaf = 0;
+			}
+		}
+	}
+	return (tips);
+}
+
 private void
 rebuildTags(sccs *s)
 {
 	delta	*d, *md;
-	delta	*last = 0;
 	symbol	*sym;
 	MDBM	*symdb = mdbm_mem();
+	int	tips;
 
 	/*
 	 * Only keep newest instance of each name
+	 * Move all symbols onto real deltas that are not D_GONE
 	 */
 	for (sym = s->symbols; sym; sym = sym->next) {
 		md = sym->metad;
@@ -283,7 +373,6 @@ rebuildTags(sccs *s)
 		assert(sym->symname && md && d);
 		if (mdbm_store_str(symdb, sym->symname, "", MDBM_INSERT)) {
 			/* no error, just ignoring duplicates */
-			MK_GONE(s, md);
 			sym->metad = sym->d = 0;
 			continue;
 		}
@@ -291,7 +380,7 @@ rebuildTags(sccs *s)
 		/* If tag on a deleted node, (if parent) move tag to parent */
 		if (d->flags & D_GONE) {
 			unless (d->parent) {
-				MK_GONE(s, md);
+				/* No where to move it: drop tag */
 				sym->metad = sym->d = 0;
 				continue;
 			}
@@ -299,28 +388,26 @@ rebuildTags(sccs *s)
 			assert(!(d->parent->flags & D_GONE));
 			d = sym->d = d->parent;
 		}
-		/* Move all tags directly onto delta, delete all "R" deltas */
+		/* Move all tags directly onto real delta */
 		if (md != d) {
-			MK_GONE(s, md);
 			md = sym->metad = d;
 		}
-		md->flags |= D_SYMBOLS;
+		assert(md == d && d->type == 'D');
+		d->flags |= D_SYMBOLS;
 	}
 	/*
-	 * symbols above could now be out of order.
-	 * Use table order to build tag graph.
+	 * Symbols are now marked, but not connected.
+	 * Prepare structure for building symbol graph.
+	 * and D_GONE all 'R' nodes in graph.
 	 */
 	for (d = s->table; d; d = d->next) {
-		unless (d->flags & D_SYMBOLS) continue;
-		assert(!(d->flags & D_GONE));
-		if (last) {
-			last->ptag = d->serial;
-		} else {
-			d->symLeaf = 1;
-		}
-		last = d;
-		d->symGraph = 1;
+		unless (d->type == 'R') continue;
+		assert(!(d->flags & D_SYMBOLS));
+		MK_GONE(s, d);
 	}
+	tips = mkTagGraph(s);
+	verbose((stderr, "Tag graph rebuilt with %d tip%s\n",
+		tips, (tips != 1) ? "s" : ""));
 	mdbm_close(symdb);
 }
 
@@ -438,15 +525,6 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 				n->added = 0;
 			}
 		}
-		else unless (n->flags & D_SYMBOLS) {
-			/*
-			 * Mark nodes in the tag graph GONE
-			 * if they don't have a symbol (meaning
-			 * they are a merge node with type R
-			 * Do this here, because about to turn off D_SYMBOL
-			 */
-			MK_GONE(s, n);
-		}
 		n->ptag = n->mtag = 0;
 		n->symGraph = 0;
 		n->symLeaf = 0;
@@ -455,6 +533,7 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 	sc = s;
 	scb = sb;
 	_pruneEmpty(sc->table);
+	verbose((stderr, "Rebuilding Tag Graph...\n"));
 	rebuildTags(sc);
 	sccs_reDup(sc);
 	sccs_newchksum(sc);

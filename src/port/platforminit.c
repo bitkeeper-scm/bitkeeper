@@ -24,8 +24,10 @@ cygwinPath()
 #define KEY "Software\\Cygnus Solutions\\Cygwin\\mounts v2\\/usr/bin"
 
 	if (cygwinPath) return (cygwinPath);
-	if (getReg(HKEY_LOCAL_MACHINE, KEY, "native", buf, &len) == 0) {
-		return ("");
+	if (getReg(HKEY_CURRENT_USER, KEY, "native", buf, &len) == 0) {
+		if (getReg(HKEY_LOCAL_MACHINE, KEY, "native", buf, &len) == 0) {
+			return ("");
+		}
 	}
 	GetShortPathName(buf, tmp, MAXPATH);
 	localName2bkName(tmp, tmp);
