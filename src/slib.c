@@ -40,7 +40,7 @@ private delta*	csetFileArg(delta *d, char *name);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	zoneArg(delta *d, char *arg);
-private delta*	modeArg(delta *d, char *arg);
+delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
@@ -93,6 +93,15 @@ size(char *s)
 
 	if (stat(s, &sbuf) == -1) return 0;
 	return (sbuf.st_size);
+}
+
+int
+emptyDir(char *dir)
+{
+	struct	stat sbuf;
+
+	if (stat(dir, &sbuf) == -1) return 0;
+	return (sbuf.st_nlink == 2);	/* . and .. */
 }
 
 /*
@@ -3042,7 +3051,7 @@ bad:			sccs_free(s);
 			return (0);
 		}
 		s->state |= GFILE;
-		s->mode = sbuf.st_mode & 0777;
+		s->mode = sbuf.st_mode;
 	}
 	if (stat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
@@ -4870,6 +4879,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 		if (d->flags & D_MODE) {
 		    	unless (d->parent && sameMode(d->parent, d)) {
+#define USE_OCTAL_MODE
+#ifdef	USE_OCTAL_MODE
 				if (d->glink) {
 					assert(S_ISLNK(d->mode));
 					sprintf(buf,
@@ -4877,6 +4888,17 @@ delta_table(sccs *s, FILE *out, int willfix)
 				} else {
 					sprintf(buf, "\001cO%o\n", d->mode);
 				}
+#else /* "ascii mode string */
+				if (d->glink) {
+					assert(S_ISLNK(d->mode));
+					sprintf(buf,
+			    		    "\001cO%s %s\n", mode2a(d->mode),
+					    d->glink);
+				} else {
+					sprintf(buf,
+						"\001cO%s\n", mode2a(d->mode));
+				}
+#endif
 				fputsum(s, buf, out);
 			}
 		}
@@ -6009,17 +6031,21 @@ pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
 /*
  * Handle either 0664 style or -rw-rw-r-- style.
  */
-private delta *
+delta *
 modeArg(delta *d, char *arg)
 {
-	mode_t	m;
+	unsigned int m;
 
 	assert(d);
 	if (isdigit(*arg)) {
 		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
-		m |= S_IFREG;
+		if (S_ISLNK(m)) d->glink = strnonldup(++arg);
 	} else {
 		m = a2mode(arg);
+		if (S_ISLNK(m))	 {
+			char *p = strchr(arg , ' ');
+			d->glink = strnonldup(++p);
+		}
 	}
 	if (d->mode = m) d->flags |= D_MODE;
 	return (d);
