@@ -497,6 +497,7 @@ _unrm () {
 			echo ""
 			echo ""
 		esac
+		bk unedit "$GFILE" 	# follow checkout modes
 	done < $LIST 
 	rm -f $LIST $TMPFILE
 }
