@@ -40,7 +40,7 @@ if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 cores
 
-echo $N Create triggers .............................................$NL
+echo $N Create trivial triggers .....................................$NL
 cd $HERE
 mkdir project/BitKeeper/triggers || exit 1
 
@@ -60,12 +60,12 @@ done
 cd $HERE
 echo "OK"
 
-echo $N Clone .......................................................$NL
+echo $N Clone w/trivial triggers ....................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
 echo OK
 
-echo $N Commit triggers .............................................$NL
+echo $N Commit w/trivial triggers ...................................$NL
 cd $HERE/project/src
 bk get $Q -e foo.c
 echo delta two >> foo.c
@@ -73,20 +73,58 @@ bk delta $Q -y2 foo.c
 bk commit $Q -y2 || { echo failed; exit 1; }
 echo OK
 
-echo $N Pull triggers ...............................................$NL
+echo $N Pull w/trivial triggers .....................................$NL
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
-revs=`bk prs -hd:I: src/foo.c | wc -l`
-[ $revs -eq 2 ] || { echo failed; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 
-echo $N Push triggers ...............................................$NL
+echo $N Push w/trivial triggers .....................................$NL
 bk push $Q || { echo failed; exit 1; }
-mv ref-bar.c $HERE/project/src
+echo OK
+
+echo $N Create failure triggers .....................................$NL
+cd $HERE
+cd project/BitKeeper/triggers
+
+echo "#! /bin/sh"                > bad
+echo "exit 1"                   >> bad
+chmod +x bad
+
+rm -f post-*
+for x in pre;do
+	for y in commit incoming outgoing;do
+		ln -f bad $x-$y
+	done
+done
+
+cd $HERE
+echo "OK"
+
+echo $N Clone w/failure triggers ....................................$NL
+cd $HERE
+bk clone $Q $HERE/project $HERE/dontcopy && { echo failed; exit 1; }
+echo OK
+
+echo $N Commit w/failure triggers ...................................$NL
 cd $HERE/project/src
-bk get $Q bar.c
-cmp -s ref-bar.c bar.c
-[ $? -eq 0 ] || { echo failed; diff ref-bar.c bar.c; exit 1; }
-cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+bk get $Q -e foo.c
+echo delta two >> foo.c
+bk delta $Q -y2 foo.c
+bk commit $Q -y2 && { echo failed; exit 1; }
+echo OK
+
+echo $N Pull w/failure triggers .....................................$NL
+cd $HERE/copy
+bk pull -t $Q && { echo failed; exit 1; }
+bk lock || { echo failed; exit 1; }
+cd $HERE/project
+bk lock || { echo failed; exit 1; }
+echo OK
+
+cd $HERE/copy
+echo $N Push w/failure triggers .....................................$NL
+bk push $Q && { echo failed; exit 1; }
+bk lock || { echo failed; exit 1; }
+cd $HERE/project
+bk lock || { echo failed; exit 1; }
 echo OK
