@@ -9,10 +9,11 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii resyncwrap r2c rename setlog
+	  isascii resyncwrap r2c rename setlog getlog setup commit status \
+	  bkusers logaddr sendconfig logchangeset
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset bk_users getlog build
+	  renametool mkdiffs lodset build
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
@@ -39,7 +40,8 @@ RANLIB	= ranlib
 
 SCCSOBJ	= dirname.o filecopy.o getopt.o gettemp.o glob.o libdiff.o librange.o \
 	  libsfiles.o localtm.o mkdir.o mmap.o newrev.o popen.o purify.o      \
-	  rcs.o sccs_mv.o slib.o zgets.o unique.o finddirs.o
+	  rcs.o sccs_mv.o slib.o zgets.o unique.o finddirs.o libcommit.o \
+	  libusers.o
 PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
 	  port/disksp.o
@@ -305,9 +307,24 @@ chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
-setlog: setlog.o
-	$(CC) $(CFLAGS) setlog.o -o setlog
-	
+logaddr: logaddr.o $(LIBS)
+	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
+setlog: setlog.o $(LIBS)
+	$(CC) $(CFLAGS) setlog.o $(LINK) -o setlog
+getlog: getlog.o $(LIBS)
+	$(CC) $(CFLAGS) getlog.o $(LINK) -o getlog
+setup: setup.o $(LIBS)
+	$(CC) $(CFLAGS) setup.o $(LINK) -o setup
+commit: commit.o $(LIBS)
+	$(CC) $(CFLAGS) commit.o $(LINK) -o commit
+status: status.o $(LIBS)
+	$(CC) $(CFLAGS) status.o $(LINK) -o status
+bkusers: bkusers.o $(LIBS)
+	$(CC) $(CFLAGS) bkusers.o $(LINK) -o bkusers
+sendconfig: sendconfig.o $(LIBS)
+	$(CC) $(CFLAGS) sendconfig.o $(LINK) -o sendconfig
+logchangeset: logchangeset.o $(LIBS)
+	$(CC) $(CFLAGS) logchangeset.o $(LINK) -o logchangeset
 
 # Links.
 ci: delta
@@ -395,14 +412,9 @@ mkdiffs: mkdiffs.perl port/unix_platform.perl substvars
 	chmod +x mkdiffs.T
 	mv -f mkdiffs.T mkdiffs
 
-getlog: getlog.perl aliases.perl port/unix_platform.perl substvars
-	./substvars getlog.perl aliases.perl port/unix_platform.perl > getlog.T
-	chmod +x getlog.T
-	mv -f getlog.T getlog
-
-bk_users: bk_users.perl aliases.perl
+bk_users: bk_users.perl aliases.perl port/unix_platform.perl substvars
 	-rm -f bk_users
-	cat bk_users.perl aliases.perl > bk_users
+	./substvars bk_users.perl aliases.perl port/unix_platform.perl > bk_users
 	chmod +x bk_users
 
 sccstool: gui/sccstool.tcl gui/common.tcl port/unix_platform.tcl substvars

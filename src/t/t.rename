@@ -7,12 +7,11 @@
 echo $N set up ......................................................$NL
 trap 'echo failed' 0
 set -e
-HERE=`pwd`
-mkdir gca; cd gca
-cset -qi .
-${ECHO} "logging: none" > BitKeeper/etc/config
-${ECHO} "seats: 3" >> BitKeeper/etc/config
-ci -i $Q BitKeeper/etc/config
+HERE=`${CWD}`
+echo "logging: none" > $HERE/c
+echo "seats: 3" >> $HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c gca
+cd gca
 mkdir src
 cd src
 echo Baseline > regression.sh
