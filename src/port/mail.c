@@ -68,7 +68,6 @@ mail(char *to, char *subject, char *file)
 pid_t
 mail(char *to, char *subject, char *file)
 {
-	int	i = -1;
 	char	buf[MAXLINE];
 	pid_t	pid;
 	extern	char *bin;

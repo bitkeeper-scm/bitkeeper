@@ -5,19 +5,21 @@ REPO    := $(shell basename `bk root`)
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
 LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
+
 ifeq "$(OSTYPE)" "cygwin"
 	SYS=win32
 	EXE=.exe
 	XTRA=win32
-	STRIP=true
 	BKLINK=bklink.exe
+	UWTLIB=win32/uwtlib/libuwt.a
+	W32LIBS=-lws2_32 -lole32
 else
 	SYS=unix
 	EXE=
 	XTRA=gnu
-	STRIP=strip
 	BKLINK=
 endif
+STRIP=strip
 
 # You can set this to anywhere you like and do a "build production" and you'll
 # have an installed BitKeeper.
@@ -55,8 +57,6 @@ CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
 CC_WALL=$G -DLINT $(WARNINGS)
 INSTALL=install
-#UWTLIB is used on win32 only - passed in from build.sh
-UWTLIB	=
 UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
 BINS	= $(BK)
@@ -146,7 +146,6 @@ CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
 	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
 CPPFLAGS= -Izlib -Imdbm
 # For extra libraries required by the system, e.g. libnsl.
-XLIBS	=
 LINK_LIB= $(XLIBS) $(LSCCS) $(LMDBM) $(LZLIB) $(LTOMCRYPT)
 LSCCS	= -L. -lsccs
 LMDBM	= -Lmdbm -lmdbm
@@ -366,7 +365,7 @@ bklink.exe: bklink.c
 	$(CC) bklink.c
 
 $(BK): bk.o $(LIBS) $(RESOURCE)
-	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
+	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LIBS) $(W32LIBS) $(RESOURCE)
 
 testfast: testfast.perl
 	rm -f testfast
@@ -384,7 +383,7 @@ bkmsg.txt: bkmsg.doc bk.ver Makefile
 
 bkhelp.txt: build FRC
 	@bk get -S ../man/man2help/Makefile
-	@cd ../man/man2help && ../../src/build -u helptxt
+	@cd ../man/man2help && ../../src/build helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 ../doc/bk_refcard.pdf: build FRC

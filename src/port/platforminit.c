@@ -164,9 +164,13 @@ platformInit(char **av)
 	 */
 	if (t = getenv("BK_LIMITPATH")) p = t;
 
+	/* Make a string with the : or ; for strcspn() and joinLines() */
+	buf2[0] = PATH_DELIM;
+	buf2[1] = 0;
+
 	/* process dirs in existing PATH */
 	while (*p) {
-		t = p + strcspn(p, ":;");
+		t = p + strcspn(p, buf2);
 		if (*t) *t++ = 0;
 		unless (mdbm_store_str(uniq, p, "", MDBM_INSERT)) {
 			newpath = addLine(newpath, strdup(p));
@@ -175,9 +179,6 @@ platformInit(char **av)
 	}
 	mdbm_close(uniq);
 
-	/* joinLines wants a string */
-	buf2[0] = PATH_DELIM;
-	buf2[1] = 0;
 	p = joinLines(buf2, newpath);
 	freeLines(newpath, free);
 	safe_putenv("PATH=%s", p);

@@ -1098,7 +1098,7 @@ savefile(char *dir, char *prefix, char *pathname)
 		if (fd == -1) {
 			if (errno == EEXIST) continue;	/* name taken */
 			if (errno == ENOENT &&
-			    ((mkdir)(dir, 0777) == 0)) {
+			    (realmkdir(dir, 0777) == 0)) {
 				/* dir missing, applyall race? */
 				continue;
 			}

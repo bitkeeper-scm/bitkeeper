@@ -1,28 +1,21 @@
-SHELL	:= /bin/bash
 HERE	:= $(shell pwd)
 OSTYPE	:= $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "cygwin"
 	S := win
-	CC := cl
-	LD := link
 	EXE := .exe
-	INCLUDE := C:\\Program Files\\Microsoft Visual Studio\\VC98\\Include
-	LIB := C:\\Program Files\\Microsoft Visual Studio\\VC98\\Lib
-	# XXX change this if you install VC++ to non-standard path
-	PATH := $(shell echo "$${PATH}:/cygdrive/c/Program Files/Microsoft Visual Studio/VC98/bin:/cygdrive/c/Program Files/Microsoft Visual Studio/Common/MSDev98/Bin")
 	STRIP := true
 else
 	S := unix
-	CC := gcc
-	LD := gcc
 	EXE := 
-	STRIP := strip
 endif
-export CC LD PATH INCLUDE LIB
+CC := gcc
+LD := gcc
+STRIP := strip
+export CC LD
 
 all: build version.sh
 	TCLVER=`./version.sh`; \
-	if [ $$? -eq 0 -a -f $$TCLVER ]; \
+	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
 	then	rm -rf bin lib; \
 		gunzip < $$TCLVER | tar xf -; \
 	else \
@@ -59,14 +52,15 @@ install: ./version.sh
 	find bin lib -type d -print | xargs chmod ug+w
 	rm -rf ../bin ../lib
 	cp -rp bin lib ..
-	-TCLVER=`./version.sh` && test -f $$TCLVER || { \
-		test -d /build/obj || { \
+	TCLVER=`./version.sh`; \
+	if [ -n "$$TCLVER" -a \! -f "$$TCLVER" ]; \
+	then	test -d /build/obj || { \
 			mkdir /build/obj; \
 			chmod 777 /build/obj; \
 		}; \
-		tar cf - bin lib | gzip > $$TCLVER; \
-		chmod 666 $$TCLVER; \
-	}
+		tar cf - bin lib | gzip > "$$TCLVER"; \
+		chmod 666 "$$TCLVER"; \
+	fi
 
 bin/tclsh: tcl/$S/Makefile
 	rm -rf bin/tclsh lib/tcl*
