@@ -10,7 +10,7 @@
 #    modifications under any license.
 
 # Copyright (c) 1999 Larry McVoy
-# wscott@wscott1.homeip.net|src/t/t.symlink|20010906193942|61331
+# %K%
 
 if [ "$PLATFORM" = "WIN32" ]
 then

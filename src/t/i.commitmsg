@@ -14,7 +14,6 @@
 
 MYHOST=`bk gethost`
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
 echo "logging: none" > $HERE/c
 echo "single_user: user1" >>$HERE/c
 echo "single_host: $MYHOST" >>$HERE/c

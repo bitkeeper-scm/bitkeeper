@@ -13,7 +13,6 @@
 # %K%
 
 
-HERE=`${CWD}`
 test -d $HERE/home || mkdir $HERE/home
 export BK_TEST_HOME=$HERE/home
 

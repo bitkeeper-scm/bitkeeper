@@ -17,7 +17,6 @@
 MYHOST=`bk gethost`
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
