@@ -301,5 +301,44 @@ bk pull $Q || {
 }
 chmod +w $HERE/project/SCCS
 echo OK
+echo $N Create bad change and pull should fail ......................$NL
+cd $HERE
+no_logging badsrc
+cd ..
+bk clone $Q badsrc badclone
+cd badsrc
+echo foo > foo
+bk new $Q foo
+bk commit $Q -yfoo
+sum=`bk prs -r+ -hnd:DSUM: ChangeSet`
+newsum=`expr $sum + 10`
+test "$newsum" -ge 65536 && {
+	newsum=`expr $newsum - 65536`
+}
+bk edit $Q foo
+echo no more foo > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+sed "s/K$sum$/K$newsum/" < SCCS/s.ChangeSet > X
+chmod 444 X
+mv SCCS/s.ChangeSet Y
+mv X SCCS/s.ChangeSet
+bk admin -z ChangeSet
+bk edit $Q foo
+echo another foo > foo
+bk delta $Q -yfoo foo
+bk commit $Q -yfoo
+cd ../badclone
+bk pull -R $Q ../badsrc 2> ERR && {
+	echo Failed
+	exit 1
+}
+grep -q "checksum in the patch for the ChangeSet" ERR || {
+	echo Failed
+	echo Wrong message. Expected "'checksum ... ChangeSet'":
+	cat ERR
+	exit 1
+}
+echo OK
 
 # XXX TODO need test case for pull/pull/clone to/from space in pathname

@@ -1381,7 +1381,12 @@ apply:
 		 */
 		if (!d && p->meta) continue;
 		assert(d);
-		d->flags |= p->local ? D_LOCAL : D_REMOTE;
+		d->flags |= p->local ? D_LOCAL : (D_REMOTE|D_SET);
+	}
+	s->state |= S_SET;
+	if (cset_resum(s, 0, 0)) {
+		getMsg("takepatch-chksum", 0, 0, '=', stderr);
+		return (-1);
 	}
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
