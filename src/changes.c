@@ -180,7 +180,7 @@ usage:			system("bk help -s changes");
 		/* bk changes url */
 		rc = doit_remote(nav, av[optind]);
 	} else {
-		if (!av[optind]) {
+		unless (av[optind]) {
 			rc = doit(0); /* bk changes */
 		} else {
 			assert(streq(av[optind], "-"));
@@ -325,7 +325,10 @@ doit(int dash)
 		spec = DSPEC;
 	}
 	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM);
-	assert(s && HASGRAPH(s));
+	unless (s && HASGRAPH(s)) {
+		system("bk help -s changes");
+		exit(1);
+	}
 	if (opts.rev || opts.date) {
 		if (opts.rev) {
 			r[0] = notnull(opts.rev);
