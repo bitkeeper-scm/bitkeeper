@@ -8324,6 +8324,10 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
  * Init file implies the old NODEFAULT flag, i.e., if there was an init
  * file, that is the truth.  The truth can be over ridden with a prefilled
  * delta but even that is questionable.
+ * Return codes:
+ *	-1 = error
+ *	-2 = AUTO_CHECKIN (delta -a) and no diff in gfile 
+ *	-3 = not AUTO_CHECKIN or FORCE and no diff in gfile (gfile unlinked)
  */
 int
 sccs_delta(sccs *s, int flags, delta *prefilled, FILE *init, FILE *diffs)
@@ -8442,6 +8446,7 @@ out:
 				goto out;
 			}
 			unedit(s, flags);
+			error = -3;
 			goto out;
 		    case 0:		/* diffs */
 			break;
