@@ -9019,19 +9019,15 @@ private int
 binaryCheck(MMAP *m)
 {
 	u8	*p, *end;
-	int	cnt = 0;
 
-	for (p = m->mmap, end = m->end; p < end; p++) {
-		cnt++;
-		if (*p == 0) return (1);  /* no nulls */
-		if (cnt == 1) {
-			/* GNU diff reports binary files */
-			if (strneq("Binary files ", p, 13)) return (1);
-		}
-		if (*p == '\n') {
-			cnt = 0;
-		}
-	}
+	p = m->mmap;
+	end = m->end;
+	
+	/* GNU diff reports binary files */
+	if (p + 13 < end && strneq("Binary files ", p, 13)) return (1);
+	
+	/* no nulls */
+	while (p < end) if (*p++ == 0) return (1);
 	return (0);
 }
 
