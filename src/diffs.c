@@ -57,7 +57,7 @@ diffs_main(int ac, char **av)
 {
 	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
 	int	empty = 0, errors = 0;
-	int	kind, fd, mdiff = 0;
+	int	kind, mdiff = 0;
 	pid_t	pid = 0; /* lint */
 	char	*name;
 	char	*Rev = 0, *boundaries = 0;
@@ -137,8 +137,8 @@ usage:			system("bk help -s diffs");
 
 	if (mdiff) {
 		char	*mav[20];
-		int	i;
-		
+		int	i, fd;
+
 		mav[i=0] = "bk";
 		mav[++i] = "mdiff";
 		if (flags & GET_PREFIX) {
@@ -153,7 +153,7 @@ usage:			system("bk help -s diffs");
 			perror("mdiff");
 			exit(1);
 		}
-		close(1); dup(fd); close(fd);
+		dup2(fd, 1); close(fd);
 	}
 	name = sfileFirst("diffs", &av[optind], 0);
 	while (name) {
@@ -296,7 +296,7 @@ next:		if (s) {
 		fflush(stdout);		/* just in case */
 		close(1);
 		waitpid(pid, &status, 0);
-		if (WIFEXITED(status)) errors = WEXITSTATUS(status);
+		errors |= WIFEXITED(status) ? WEXITSTATUS(status) : 1;
 	}
 	return (errors);
 }
