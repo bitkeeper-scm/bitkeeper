@@ -182,8 +182,9 @@ uniq_lock()
 			}
 		}
 		if (retry++ > 10) {
-			fprintf(stderr, "stale_lock: removed\n");
+			close(fd);
 			unlink(tmp);
+			fprintf(stderr, "stale_lock: removed\n");
 		} else {
 			sleep(1);
 		}

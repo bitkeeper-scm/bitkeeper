@@ -275,6 +275,7 @@ $(BKMERGE): bkmerge.o $(LIBS)
 	$(LD) $(LDFLAGS) $(LD_OUT) bkmerge.o $(LINK_LIB)
 
 testfast: testfast.perl
+	rm -f testfast
 	cp testfast.perl testfast
 	chmod +x testfast
 
@@ -308,22 +309,27 @@ utils/os utils/gnu-os: $(BK)
 	@if [ ! -x utils/gnu-os ]; then ./bk get utils/gnu-os; fi
 
 substvars: substvars.sh
+	rm -f substvars
 	cp substvars.sh substvars
 	chmod +x substvars
 
 uuwrap: uuwrap.sh
+	rm -f uuwrap
 	cp uuwrap.sh uuwrap
 	chmod +x uuwrap
 
 unuuwrap: unuuwrap.sh
+	rm -f unuuwrap
 	cp unuuwrap.sh unuuwrap
 	chmod +x unuuwrap
 
 gzip_uuwrap: gzip_uuwrap.sh
+	rm -f gzip_uuwrap
 	cp gzip_uuwrap.sh gzip_uuwrap
 	chmod +x gzip_uuwrap
 
 ungzip_uuwrap: ungzip_uuwrap.sh
+	rm -f ungzip_uuwrap
 	cp ungzip_uuwrap.sh ungzip_uuwrap
 	chmod +x ungzip_uuwrap
 
@@ -472,8 +478,9 @@ M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
 
 shell.o: substvars
-	echo 'char *shell() { return ("@SH@"); }' | ./substvars > shell.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c
+	echo 'char *shell() { return ("@FEATURE_SH@"); }' | \
+							./substvars > shell.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c $(CC_OUT)
 
 abort.o:	abort.c $(H) $(Z)
 adler32.o:	adler32.c $(H) $(Z)
