@@ -2,7 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 
-private	void	print_title(void);
+private	void	print_title(char *, char *);
 
 private project *proj;
 private	int	expandkeywords;
@@ -100,73 +100,23 @@ fix_header(char *buf, MDBM *db)
 }
 
 private void
-print_title()
+print_title(char *r1, char *r2)
 {
-	printf(
-"# This is a BitKeeper generated patch for the following project:\n\
-# Project Name: %s\n\
-# This patch format is intended for GNU patch command version 2.5 or higher.\n\
-# This patch includes the following deltas:\n", package_name());               
-}
+	FILE	*f;
+	char	*p;
+	char	*d = ":DPN:\n  :D: :T::TZ: :P:@:HT: "
+		     "$unless(:DPN:=ChangeSet){+:LI: -:LD:}\n"
+		     "$each(:C:){  (:C:)\n}"
+		     "$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n";
+	char	buf[BUFSIZ];
 
-/*
- * print info for new/moved/deleted files
- */
-private void
-print_moved(char *path1, char *rev1, char *path2, char *rev2)
-{
-	printf("#\t"); 
-	if (isNullFile(rev1, path1)) {
-		printf("%20s\t%-7s", "(new)", "");
-	} else {
-		printf("%20s\t%-7s", path1, rev1);
-	}
-	printf(" -> ");
-	if (isNullFile(rev2, path2)) {
-		printf("%-7s %-15s\n", "", "(deleted)");
-	} else {
-		if (isNullFile(rev1, path1)) {
-			printf("%-7s %-15s\n", rev2,  path2);
-		} else {
-			printf("%-7s %-15s (moved)\n", rev2,  path2);
-		}
-	}
-}
-
-private void
-print_entry(char *path1, char *rev1, char *path2, char *rev2)
-{
-	if (!streq(path1, path2) ||
-	    streq(rev1, "1.0") ||
-	    streq(rev2, "1.0")) {
-		print_moved(path1, rev1, path2, rev2);
-	} else {
-		printf("#\t%20s\t%-7s -> %-7s\n", path1, rev1, rev2);
-	}
-}
-
-private void
-print_cset_log(char *cset1, char *cset2)
-{
-	char revs[50], xrev[50];
-	char *dspec =
-"-d# :D:\t:P:@:HT:\t:I:\n$each(:C:){# (:C:)\n}# --------------------------------------------\n";
-	char *prs_av[] = {"bk", "prs", "-hb", revs, xrev, dspec, "ChangeSet", 0};
-
-	/*
-	 * XXX FIXME need to handle the case where
-	 * cset1 is parent+merge_parent
-	 */
-	if (strchr(cset1, '+')) goto done;
-
-	printf("#\n# The following is the BitKeeper ChangeSet Log\n");
-	printf("# --------------------------------------------\n");
-	fflush(stdout);
-	sprintf(revs, "-r%s..%s", cset1, cset2);
-	sprintf(xrev, "-x%s", cset1);
-	spawnvp_ex(_P_WAIT, "bk", prs_av);
-done:	printf("#\n");
-	fflush(stdout);
+	putenv("BK_YEAR4=1");
+	printf("# This is a BitKeeper generated diff -Nru style patch.\n#\n");
+	p = aprintf("bk set -d -r%s -r%s | bk changes -vd'%s' -", r1, r2, d);
+	f = popen(p, "r");
+	free(p);
+	while (fnext(buf, f)) printf("# %s", buf);
+	pclose(f);
 }
 
 int
@@ -220,7 +170,6 @@ gnupatch_main(int ac, char **av)
 		exit(1);
 	}
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE); /* db for null file */
-	if (header) print_title();
 
 	/*
 	 * parse the rev list from stdin
@@ -247,10 +196,10 @@ gnupatch_main(int ac, char **av)
 		rev2 = strchr(path2, BK_FS);
 		unless (rev2) goto err;
 		*rev2++ = 0;
-		if (header) print_entry(path1, rev1, path2, rev2);
 		if (streq(path0, "ChangeSet")) {
 			cset1 = strdup(rev1);
 			cset2 = strdup(rev2);
+			if (header) print_title(rev1, rev2);
 			continue;
 		}
 		/*
@@ -260,7 +209,6 @@ gnupatch_main(int ac, char **av)
 							fix_mod_time, db);
 	}
 
-	if (header && cset1) print_cset_log(cset1, cset2);
 	chdir(tmpdir);
 	/*
 	 * now "diff -Nr" the left & right tree
