@@ -522,7 +522,11 @@ main(int ac, char **av, char **env)
 	atexit(cmdlog_exit);
 	platformInit(av); 
 	bk_environ = env;
-	assert(bin);
+	unless (bin) {
+		fprintf(stderr,
+		    "Unable to find the BitKeeper bin directory, aborting\n");
+		return (1);
+	}
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
 		printf("%s\n", bin ? bin : "no path found");
 		exit(0);
