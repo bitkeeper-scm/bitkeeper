@@ -36,6 +36,7 @@ echo 12345678901234567890123456789012345678901234567890 >> long
 bk undos long > long.sav
 cp long.sav long
 bk ci $Q -i long
+bk admin -Z long
 if [ ! -f SCCS/s.long ]; then echo failed to create history; exit 1; fi
 bk co $Q long
 cmp -s long long.sav
@@ -59,6 +60,7 @@ sed -e's/@I@/1.1/g' < tmp > X
 bk undos X > long1.ref 
 cp long1 long1_1.1.sav
 bk ci $Q -i long1
+bk admin -Z long1
 if [ ! -f SCCS/s.long1 ]; then echo failed to create history; exit 1; fi
 bk co $Q long1
 cmp -s long1 long1.ref
@@ -80,6 +82,7 @@ echo 12345678901234567890123456789012345678901234567890 >> long2
 sed -e's/\$RCSfile\$/\$RCSfile: s.long2 \$/g' < long2 > X
 bk undos X > long2.ref 
 bk ci $Q -i long2
+bk admin -Z long2
 bk admin -fRCS long2
 if [ ! -f SCCS/s.long2 ]; then echo failed to create history; exit 1; fi
 bk co $Q long2
