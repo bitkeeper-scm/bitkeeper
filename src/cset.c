@@ -1059,6 +1059,7 @@ private	char	*
 file2str(char *f)
 {
 	struct	stat sb;
+	int 	n;
 #ifdef WIN32
 	int	fd = open(f, O_RDONLY|_O_TEXT, 0);
 #else
@@ -1077,8 +1078,13 @@ file2str(char *f)
 		close(fd);
 		return (0);
 	}
-	read(fd, s, sb.st_size);
-	s[sb.st_size] = 0;
+	/*
+	 * Note: On win32, n may be smaller than sb.st_size
+	 * because text mode remove \r when reading
+	 */
+	n = read(fd, s, sb.st_size);
+	assert((n >= 0) && (n <= sb.st_size));
+	s[n] = 0;
 	close(fd);
 	return (s);
 }
