@@ -95,6 +95,7 @@ int	key2rev_main(int, char **);
 int	key2path_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
+int	lease_main(int, char **);
 int	level_main(int, char **);
 int	license_main(int, char **);
 int	lines_main(int, char **);
@@ -285,6 +286,7 @@ struct	command cmdtbl[] = {
 	{"idcache", idcache_main},		/* undoc? 2.0 */
 	{"isascii", isascii_main},		/* doc 2.0 */
 	{"key2rev", key2rev_main},		/* doc 2.0 */
+	{"lease", lease_main},
 	{"level", level_main},			/* doc 2.0 */
 	{"license", license_main},		/* undoc */
 	{"lock", lock_main},			/* doc 2.0 */
