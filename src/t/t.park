@@ -35,15 +35,15 @@ echo $N Check basic park/unpark cycle ...............................$NL
 bk edit $Q foo.c bar.c
 echo foo-new > foo.c
 echo bar-new >> bar.c
-cp foo.c foo.sav
+bk undos foo.c > foo.sav
 bk undos bar.c > bar.sav
 bk park 2> /dev/null
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 bk unpark 2> /dev/null 1>&2
-cmp -s foo.c foo.sav
+bk undos foo.c > X
+cmp -s X foo.sav
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
-# Becase patch output in text mode
 bk undos bar.c > X
 cmp -s X bar.sav 
 if [ $? -ne 0 ]; then echo failed 2; od -c bar.c; od -c bar.sav; exit 1; fi

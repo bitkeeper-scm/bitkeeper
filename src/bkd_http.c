@@ -42,8 +42,8 @@ private int	embedded = 0;
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
 
-#define	OUTER_TABLE "<table width=100% bgcolor=darkgray cellspacing=0 border=0 cellpadding=0><tr><td>\n"
-#define INNER_TABLE	"<table width=100% cellpadding=3 cellspacing=1 border=0 bgcolor=white>"
+#define	OUTER_TABLE "<table width=100% bgcolor=#808080 cellspacing=0 border=0 cellpadding=0><tr><td>\n"
+#define INNER_TABLE	"<table width=100% bgcolor=#808080 cellpadding=3 cellspacing=1 border=0 bgcolor=white>"
 #define OUTER_END	"</td></tr></table>\n"
 #define	INNER_END	"</table>"
 
@@ -486,7 +486,7 @@ http_changes(char *rev)
 		whoami("ChangeSet");
 	}
 
-	i = snprintf(dspec, sizeof dspec, "-d%s<tr>\n"
+	i = snprintf(dspec, sizeof dspec, "-d%s<tr bgcolor=white>\n"
 			" <td align=right>:HTML_AGE:</td>\n"
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
@@ -760,7 +760,7 @@ http_hist(char *pathrev)
 	whoami("hist/%s", pathrev);
 
 	i = snprintf(dspec, sizeof(dspec),
-		"-d%s<tr>\n"
+		"-d%s<tr bgcolor=white>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:</td>\n"
 		" <td align=center"
@@ -1042,7 +1042,7 @@ http_diffs(char *pathrev)
 	whoami("diffs/%s", pathrev);
 
 	i = snprintf(dspec, sizeof dspec,
-		"%s<tr>\n"
+		"%s<tr bgcolor=white>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
 		" <td align=center><a href=anno/:GFILE:@:I:%s>:I:</a></td>\n"

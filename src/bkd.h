@@ -64,6 +64,8 @@ typedef struct {
 	u32	daemon:1;		/* listen for TCP connections */
 	u32	start:1;		/* start NT bkd service */
 	u32	remove:1;		/* remove NT bkd service */
+	u32	http_hdr_out:1;		/* print http header to output */
+	u32	http_hdr_in:1;		/* strip http header on input */
 	FILE	*log;			/* if set, log commands to here */
 	int	alarm;			/* exit after this many seconds */
 	int	count;			/* exit after this many connections */
@@ -114,6 +116,7 @@ void	sccs_color(sccs *s, delta *d);
 int	getline2(remote *r, char *buf, int size); 
 int	get_ok(remote *r, char *read_ahead, int verbose); 
 int	send_msg(remote *r, char *msg, int mlen, int extra, int compress);
+int	send_file(remote *r, char *file, int extra, int gzip);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
 void	disconnect(remote *r, int how);

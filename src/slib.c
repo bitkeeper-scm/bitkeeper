@@ -10578,7 +10578,11 @@ int
 isValidUser(char *u)
 {
 	if (!u || !(*u)) return 0;
+#ifdef WIN32
+	if (!stricmp(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
+#else
 	if (streq(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
+#endif
 	/*
 	 * XXX TODO:
 	 * 	a) should we disallow "Guest/guest" as user name ??
@@ -12285,8 +12289,10 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "CSETKEY")) {
+		char key[MAXKEY];
 		unless (d->flags & D_CSET) return (nullVal);
-		sccs_pdelta(s, d, out);
+		sccs_sdelta(s, d, key);
+		fs(key);
 		return (strVal);
 	}
 
@@ -12627,10 +12633,13 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "LODKEY")) {
+		char key[MAXKEY];
+
 		while (d && d->r[2]) d = d->parent;
 		while (d && (d->r[1] != 1)) d = d->parent;
 		if (d) {
-			if (out) sccs_pdelta(s, d, out);
+			sccs_sdelta(s, d, key);
+			fs(key);
 			return (strVal);
 		}
 		return (nullVal);

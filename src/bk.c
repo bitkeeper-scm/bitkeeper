@@ -380,10 +380,15 @@ spawn_cmd(int flag, char **av)
 	int ret;
 
 	ret = spawnvp_ex(flag, av[0], av); 
+#ifndef WIN32
+	/*
+	 * This test always failed with bash in cygwin1.1.6, why ?
+	 */
 	unless (WIFEXITED(ret)) {
 		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
 		return (127);
 	}
+#endif
 	return (WEXITSTATUS(ret));
 }
 
@@ -544,7 +549,7 @@ private	struct {
 };
 
 int
-cmdlog_start(char **av, int want_http_hdr)
+cmdlog_start(char **av, int httpMode)
 {
 	int	i, len, cflags = 0;
 
@@ -565,7 +570,7 @@ cmdlog_start(char **av, int want_http_hdr)
 	 * complete the lock unlock cycle in part 1. Restart the lock when
 	 * we enter part 2, with the up-to-date pid.
 	 */
-	if (want_http_hdr) {
+	if (httpMode) {
 		if (cflags & CMD_WRLOCK) cflags |= CMD_WRUNLOCK;
 		if (cflags & CMD_WRUNLOCK) cflags |= CMD_WRLOCK;
 		if (cflags & CMD_RDLOCK) cflags |= CMD_RDUNLOCK;
