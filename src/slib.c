@@ -6913,6 +6913,9 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 			fputs("> ", out);
 			fputs(b, out);
 		}
+		fclose(lbuf);
+		lbuf = NULL;
+		unlink(tmpfile);
 		goto done2;
 	}
 	unless (lbuf = fopen(tmpfile, "w+b")) {
