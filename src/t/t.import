@@ -196,6 +196,14 @@ test -x ixupdate.pl || {
 	exit 1
 }
 echo OK
+echo $N Make sure RCS/CVS imports set RCS flag ......................$NL
+bk flags ixupdate.pl > F
+grep -q RCS F || {
+	echo bad flags
+	cat F
+	exit 1
+}
+echo OK
 }
 
 test -d $TESTDATA/import_data && {

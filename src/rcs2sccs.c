@@ -366,6 +366,7 @@ create(char *sfile, int flags, RCS *rcs)
 	sccs	*s = sccs_init(sfile, INIT_SAVEPROJ, proj);
 	char	*g = sccs2name(sfile);
 	int	enc = encoding(rcs->file);
+	int	expand;
 	mode_t	m = mode(rcs->file);
 	char	r[20];
 	MMAP	*init;
@@ -399,10 +400,12 @@ R %s\n", ++seq, m, g, r);
 		unless (t[-1] == '\n') *t++ = '\n';
 		*t = 0;
 	}
+	expand = streq(rcs->kk, "-kv") ||
+	    streq(rcs->kk, "-kk") || streq(rcs->kk, "-kkv");
 	sprintf(t,
 	    "X 0x%x\n------------------------------------------------\n",
-	    streq(rcs->kk, "kk") ? 3 : 1);
-//fprintf(stderr, "%s", buf);
+	    expand ? 
+	    X_BITKEEPER|X_RCS|X_CSETMARKED : X_BITKEEPER|X_CSETMARKED);
 	init = mrange(buf, &buf[strlen(buf)], "b");
 
 	/* bk delta $Q $enc -ciI.onezero $gfile */
