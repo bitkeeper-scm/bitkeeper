@@ -299,7 +299,7 @@ strip_list(s_opts opts)
 	sccs	*s = 0;
 	delta	*d;
 	int 	rc = 1;
-	int	iflags = opts.iflags|SILENT|INIT_SAVEPROJ;
+	int	iflags = opts.iflags|SILENT;
 
 	for (name = sfileFirst("stripdel", av, SF_HASREVS);
 	    name; name = sfileNext()) {

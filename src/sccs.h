@@ -23,7 +23,6 @@
 #define	INIT_avail	0x10000000	/* OLD: map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define	INIT_FIXDTIME	0x40000000	/* use g file mod time as delat time */
-#define	INIT_SHUTUP	0x80000000	/* pass ADMIN_SHUTUP to checkrevs() */
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
 #define	INIT_HAScFILE	0x02000000	/* has c.file */
 #define	INIT_HASgFILE	0x04000000	/* has g.file */

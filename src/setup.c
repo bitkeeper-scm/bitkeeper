@@ -205,7 +205,6 @@ err:			unlink("BitKeeper/etc/config");
 
 	mdbm_close(m);
 
-	lease_checking(0);
 	if (cset_setup(SILENT, ask)) goto err;
 	s = sccs_init(s_config, SILENT);
 	assert(s);
@@ -215,7 +214,6 @@ err:			unlink("BitKeeper/etc/config");
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
 	sccs_free(s);
 	defaultIgnore();
-	lease_checking(1);
 
 	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {

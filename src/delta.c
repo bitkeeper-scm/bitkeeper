@@ -86,7 +86,7 @@ strip_danglers(char *name, u32 flags)
 	delta	*d;
 	FILE	*f;
 
-	s = sccs_init(name, INIT_WACKGRAPH, 0);
+	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
 	for (d = s->table; d; d = d->next) {
 		if (d->dangling) revs = addLine(revs, strdup(d->rev));
@@ -104,7 +104,7 @@ strip_danglers(char *name, u32 flags)
 		return (i);	// XXX - need to get exit status
 	}
 	free(p);
-	s = sccs_init(name, INIT_WACKGRAPH, 0);
+	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
 	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH);
 	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0, 0);

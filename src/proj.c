@@ -267,7 +267,7 @@ proj_csetrootkey(project *p)
 		sprintf(buf, "%s/%s", p->root, CHANGESET);
 		if (exists(buf)) {
 			sc = sccs_init(buf,
-			    INIT_NOCKSUM|INIT_NOSTAT|INIT_SHUTUP);
+			    INIT_NOCKSUM|INIT_NOSTAT|INIT_WACKGRAPH);
 			assert(sc->tree);
 			sccs_sdelta(sc, sc->tree, buf);
 			p->csetrootkey = strdup(buf);
@@ -368,10 +368,12 @@ proj_fakenew(void)
 {
 	project	*ret;
 
+	if (ret = projcache_lookup("/")) return (ret);
 	new(ret);
 	ret->root = strdup("/");
 	ret->csetrootkey = strdup("SCCS");
 	ret->csetmd5rootkey = strdup("SCCS");
+	projcache_store("/", ret);
 
 	return (ret);
 }
