@@ -64,6 +64,8 @@ proc balloon_help {w msg {cmd {}}} \
 
 proc balloon_aux {w msg} \
 {
+	global gc app
+
 	set t .balloon_help
 	catch {destroy $t}
 	toplevel $t
@@ -74,7 +76,7 @@ proc balloon_aux {w msg} \
 	    -padx 5 -pady 2 \
 	    -borderwidth 1 \
 	    -justify left \
-	    -background lightyellow 
+	    -background $gc($app.balloonBG)
 	pack $t.l -fill both
 	set x [expr [winfo rootx $w]+6+[winfo width $w]/2]
 	set y [expr [winfo rooty $w]+6+[winfo height $w]/2]
