@@ -1,0 +1,70 @@
+.so ../macros
+.TH sfiles File %G% "BitMover, Inc." BitKeeper
+.\"    ======================== Sfiles Help ===========================
+.SH NAME
+bk sfiles \- generates lists of revision control files
+.SH SYNOPSIS
+.B sfiles [\-aAcCdDglkpPRrux] [
+.IB directories ]
+.SH OPTIONS
+.TP
+.B \-A
+When used with \-C, list all revisions, not just the tip.
+.TP
+.B \-a
+Examine all files, even if listed in BitKeeper/etc/ignore.
+.TP
+.B \-C
+List leaves which are not in a changeset as file:1.3
+.TP
+.B \-c
+List only changed files (locked and modified).
+.TP
+.B \-D
+List directories with no (or empty) SCCS subdirs.
+.TP
+.B \-d
+List directories under SCCS control (have SCCS subdir).
+.TP
+.B \-g
+List the gfile name, not the sfile name.
+.TP
+.B \-l
+List only locked files (p.file and/or z.file).
+.TP
+.B \-k
+List the keys which should be in keys cache.
+.TP
+.B \-P
+(paranoid) Opens each file to make sure it is an SCCS file.
+.TP
+.B \-p
+(paranoid) Opens each file to make sure it is an SCCS file,
+but only if the pathname to the file is not ../SCCS/s.*.
+.TP
+.B \-R
+When used with \-C, list files as foo.c:1.3..1.5
+.TP
+.B \-r
+Rebuild the id to pathname cache.
+.TP
+.B \-u
+List only unlocked files.
+.TP
+.B \-x
+List files which have no revision control files.
+.SH NOTES
+.LP
+Files in BitKeeper/log/ are ignored.
+.LP
+Revision control files must look like SCCS/s.*,
+not foo/bar/blech/s.*
+.LP
+The \-r option can take an optional repository root but not any other
+directories.
+.SH "SEE ALSO"
+.B bk help history
+.br
+.B bk help ignore
+.br
+.B bk help new

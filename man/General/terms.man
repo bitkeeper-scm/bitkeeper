@@ -1,0 +1,62 @@
+.so ../macros
+.TH terms General %G% "BitMover, Inc." BitKeeper
+.\"    ====================== BitKeeper terms ======================
+.SH NAME
+BitKeeper terms
+.SH DESCRIPTION
+.LP
+.SS "BitKeeper definitions:"
+.TP
+sfile
+A file containing the revision history, e.g., SCCS/s.foo.c
+.TP
+gfile
+A file that is checked out, e.g., foo.c
+.TP
+package
+A package is a logical concept while the repository is 
+the physical instance of that concept. A package is 
+created only once when the "bk setup" program is run.
+.TP
+repository
+A directory tree that is populated with the revision
+control files.  A repository is an instance of a
+package i.e. there is one package, but there can
+be many repositories belonging to that package.
+.TP
+tag, symbol
+A symbolic name (or tag) which is given to a particular
+revision of one or more files.  e.g., "Alpha1".
+.TP
+revision, delta
+One version of a particular file, or one change to a
+particular file, depending on context.  Sometimes we
+want to talk about the way the file is while sometimes
+we want to talk about how it got there.
+Files that have been checked out, edited, and not
+yet checked back in are "modified" files.  When you
+check files in, the modifications become new deltas.
+.TP
+cset, changeset
+One or more changes (deltas) to one or more files, 
+grouped together into one logical change.
+A changeset is the smallest thing which may be 
+propagated between repositories.
+Deltas that aren't in changesets are called
+"uncommitted" or "pending" deltas.
+.TP
+pending
+Deltas which have been checked into a file but not yet
+committed to a changeset.
+.TP
+patch
+Formally, this is one or more changesets wrapped up
+for transmission to someone else.  It is similar to
+what you may be used to thinking of as a patch
+(a list of all the changes between two versions of
+an entire package) but carries more information: who
+made the changes, when, and why.
+.LP
+We attempt to list all of the BitKeeper definitions here, but send us a
+message at "docs@bitkeeper.com" if you have suggestions for definitions
+we may have missed.

@@ -1,0 +1,81 @@
+.so ../macros
+.TH fmtool GUI-tools %G% "BitMover, Inc." BitKeeper
+.\"    =============== BitKeeper 2-way File Merge Tool ===============
+.SH NAME
+bk fmtool \- side-by-side merge tool
+.SH SYNOPSIS
+.B bk fmtool local remote merge
+.SH DESCRIPTION
+.LP
+fmtool is a side-by-side merge tool used for resolving differences
+between two different versions of a file.
+.LP
+When the tool is started, there are three main windows, the ``local''
+window on the left, the ``remote'' window on the right, and the ``merge''
+window on the bottom.  When doing a bk resync or a bk pull, your repository
+is considered local and the other one is considered remote, and BitKeeper
+arranges to have the local version of the file on the left side and the
+remote version on the right.
+.LP
+Merging is done as follows: 
+.TP
+.B 1.
+fmtool starts scanning both files from the top until difference
+are found. The identical work (i.e the work up to the point where
+the differences are found) is put in the merge window.
+.TP
+.B 2.
+The user selects whether the remote or local version of the change
+will be used by clicking the "Use Left" or "Use Right" buttons.
+When the user picks a version, the changes are placed in the merge
+window.
+.TP
+.B 3.
+Repeat the process until all changes are placed in the merge file.
+.LP
+The changes in the merge window colored so that it is easy to tell whether
+the work was from the local or remote file.
+.LP
+Each merge may be undone either by clicking the "Undo" button or using
+the keys listed below.  The undo works all the way to the start of
+the file.
+.LP
+If you need to make adjustments to the merge, you can edit the work in 
+the merge window.  The merge window is a simple editor - move the mouse
+pointer where you want to make the changes and start typing.
+.SH BINDINGS
+.TP 20
+.B Control-LeftArrow
+Use the diff in the left window.
+.tp
+.B Control-RightArrow
+Use the diff in the right window.
+.tp
+.B Control-DownArrow
+Skip the current diff, using neither.
+.tp
+.B Control-UpArrow
+Undo the last choice.
+.tp
+.B Alt-UpArrow
+Grow the merge window and shrink the diff windows.
+.tp
+.B Alt-DownArrow
+Grow the diff windows and shrink the merge window.
+.LP
+The following keys operate on the set of windows that have the focus.
+Click in the diff windows or the merge window to set the focus.
+.TP 12
+.B PageDown
+Scroll the diffs or the merge window up one screen.
+.tp
+.B PageUp
+Scroll the diffs or the merge window up one screen.
+.tp
+.B DownArrow
+Scroll the diffs or the merge window up one line.
+.tp
+.B UpArrow
+Scroll the diffs or the merge window up one line.
+.SH ALIASES
+.BR fm (GUI-tools)

@@ -1,0 +1,103 @@
+.so ../macros
+.TH get File %G% "BitMover, Inc." BitKeeper
+.\"    =================== Editing BitKeeper files ===================
+.SH NAME
+bk get \- check out BitKeeper files
+.SH SYNOPSIS
+.B bk get [\-qkepdmunN] [\-r
+.IB rev | 
+.BI \-c date
+.B ] [
+.IB files... | 
+.IB \- ]
+.SH DESCRIPTION
+.LP
+get is used to check out files for viewing or building. By default,
+files are checked out unlocked and in a read-only mode.  The get
+command is used primarily within automated scripts and is not the
+preferred method for checking out files for editing.  To check out
+files for editing, see bk edit.
+.LP
+You do not need to check out every file in order to compile your
+program since most versions of the Make program will check files out
+as they are needed. In order for this to work, the get command needs
+to be in your path.
+.SH OPTIONS 
+.TP
+.B \-a
+Align prefix output in a human readable form.
+Used with one of the following options [mNnud].
+.TP
+.AN \-c date
+Get the latest revision before the 
+.IR date .
+.TP
+.B \-d
+Prefix each line with the date of last modification.
+.TP
+.B \-e
+Get file for editing. A lock is placed on the s.file.
+.TP
+.AN \-G name
+Place the checked out file in 
+.I name 
+instead of the default.
+.TP
+.B \-g
+Suppress the retrieval of any text.
+.TP
+.AN \-i list
+Include revs in 
+.IR list .
+.TP
+.B \-k
+Don't expand RCS or SCCS keywords. \-k is implied by \-e.
+.TP
+.AN \-M rev
+Merge with 
+.IR rev .
+.TP
+.B \-m
+Prefix each line with the revision of last modification.
+.TP
+.B \-N
+Prefix each line with its line number.
+.TP
+.B \-n
+Prefix each line with the filename.
+.TP
+.B \-p
+Write file to standard output (useful in scripts).
+Required with \-r
+.I rev 
+where 
+.I rev 
+is anything other than the most recent delta.
+.TP
+.B \-q
+Run quietly.
+.TP
+.AN \-r rev
+Get this revision.
+.TP
+.B \-S
+If a gfile exists, don't check it out again.
+.TP
+.B \-T
+Set the gfile's modification time to the delta's
+creation time.
+.TP
+.B \-u
+Prefix each line with the user who last modified it.
+.TP
+.AN \-x list
+Exclude revs in 
+.IR list .
+.SH "SEE ALSO"
+.B bk help co
+.br
+.B bk help edit
+.br
+.B bk help exclude
+.br
+.B bk help include

@@ -1,0 +1,11 @@
+.so ../macros
+.TH root Admin %G% "\*(BC" \*(BK
+.SH NAME
+bk root \- print the path name to the root of the repository
+.SH SYNOPSIS
+.B
+bk root
+.SH DESCRIPTION
+.LP
+The root command prints the pathname to the root of the repository.
+

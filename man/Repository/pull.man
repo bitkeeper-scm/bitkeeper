@@ -1,0 +1,74 @@
+.so ../macros
+.TH pull Repository %G% "BitMover, Inc." BitKeeper
+.\"    ============== Pulling changes into your repository ==============
+.SH NAME
+bk pull \- updates the repository from its parent
+.SH SYNOPSIS
+.B bk pull [\-ilnqrt] [\-z[0\-9]] [
+.IB parent ]
+.SH DESCRIPTION
+.LP
+pull updates a repository from its parent.  Changes are retrieved and
+automatically applied, if possible.  You will only be asked to resolve
+conflicts by hand if a file has overlapping changes (changes where both
+repositories have touched the same line in the same file).
+.LP
+Pull normally runs resolve, the tool which applies the pulled changes,
+automatically.  Resolve will look at each change, make sure there are
+no conflicts that it can't merge, and apply the change.  You may have to
+(or want to) run resolve manually.  If you do not want automatic merges,
+i.e., you want to diff them by hand, then use the \-i option.  If resolve
+was run automatically and it found conflicts, the changes have _not_ been
+applied; you will need to run an interactive resolve to merge and
+apply the changes.
+.LP
+You can override the default parent by specifying a different one.
+Doing so changes the parent for the duration of this command only.
+.SH OPTIONS
+.TP
+.B \-i
+Turn off automerge feature in resolve.
+.TP
+.B \-l
+Do a long listing of changesets to be sent (like
+.B bk changes 
+does). May be combined with 
+.B \-n 
+to get a repository difference summary without any updates.
+.TP
+.B \-n
+Don't actually do it, just say what would be done.
+.TP
+.B \-q
+Be quiet.
+.TP
+.B \-r
+Do not run resolve at all.  You must run 
+.B bk resolve 
+later.
+.TP
+.B \-t
+Pass 
+.B \-t
+to resolve (
+.B \-t
+means do not use the GUI tools.)
+.TP
+.AN \-z d
+Do compression at level 
+.I d 
+if possible; default is 
+.BR \-z6 .
+Compression is possible when using ssh or the BK daemon,
+but not with rsh.
+.SH "SEE ALSO"
+.B bk help bkd
+.br
+.B bk help parent
+.br
+.B bk help push
+.br
+.B bk help resolve
+.br
+.B bk help triggers
+

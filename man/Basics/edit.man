@@ -1,0 +1,36 @@
+.so ../macros
+.TH edit Basics %G% "BitMover, Inc." BitKeeper
+.SH NAME
+bk edit \- check out a file for editing (writable)
+.SH SYNOPSIS
+.B bk edit
+.BI [ -q
+.B ]
+.BI [ files...
+.BI | \ -
+.B ]
+.SH DESCRIPTION
+.LP
+Use
+.B edit
+when modifying existing files. 
+.B Edit
+checks the file out of the SCCS directory in a read-write mode
+and locks the file for modifications.
+.LP
+.B Edit
+with no options will check out all files in a directory.
+.SH OPTIONS
+.TP
+.B -q
+run quietly
+.SH NOTE
+.B edit
+is actually an alias for
+.B get -e
+.SH SEE ALSO
+.B bk help co
+.br
+.B bk help get
+.br
+.B bk help new

@@ -1,0 +1,35 @@
+.so ../macros
+.TH extras File %G% "BitMover, Inc." BitKeeper
+.\"    ======================= Finding extra files =======================
+.SH NAME
+bk extras \- list extra files not under revision control
+.SH SYNOPSIS
+.B bk extras [
+.IR dir ] 
+.B [\-a]
+.SH DESCRIPTION
+.LP
+The extras command finds files which are not under revision control and 
+are not listed in the ignore file (see bk help ignore).
+.LP
+The default behavior is to find all extra files in the entire tree, this
+can be changed by specifying a subdirectory like so
+.AX
+    bk extras .
+.XA
+The default behavior is to respect the ignore file, this can be changed
+by adding the -a flag (which must follow the optional directory argument)
+like so
+.AX
+    bk extras -a	# find all extra files
+    bk extras . -a
+.XA
+.SH BUGS
+.LP
+The
+.B \-a
+position is lame.
+.SH "SEE ALSO"
+.B bk help ignore
+.br
+.B bk help sfiles

@@ -1,0 +1,21 @@
+.so ../macros
+.TH pending Repository %G% "BitMover, Inc." BitKeeper
+.\"    ====================== Uncommitted changes ======================
+.SH NAME
+bk pending \- list deltas which need to be in a changeset
+.SH SYNOPSIS
+.B bk pending
+.SH DESCRIPTION
+.LP
+The pending command shows changes that have been checked into your
+local work area, but not yet committed to a changeset.  You have to
+commit to a changeset in order to send the change to other work areas.
+.LP
+To see what needs to be committed to a change set, run:
+.AX
+$ bk pending
+.XA
+.SH "SEE ALSO"
+.B bk help commit
+.br
+.B bk help changes

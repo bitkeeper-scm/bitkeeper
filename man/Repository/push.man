@@ -1,0 +1,70 @@
+.so ../macros
+.TH push Repository %G% "BitMover, Inc." BitKeeper
+.\"    ============== Pushing changes from your repository ==============
+.SH NAME
+bk push \- send local changes to the parent repository
+.SH SYNOPSIS
+.B bk push [\-aglntq] [\-z[0\-9]] [
+.IB parent ]
+.SH DESCRIPTION
+Push sends changes in the current repository back to its parent if
+and only if the current repository is a superset of the parent.
+When the parent has changes not found in the current repository,
+push will fail and you will need to do a bk pull, merge those changes,
+and retry the push.  The idea is that the parent is typically a shared
+resource and should not be locked for merging.
+.LP
+If there is no new work in the parent, then all changes in the child
+will be sent to the parent and auto\-applied.
+.LP
+You can override the default parent by specifying a different one.
+Doing so changes the parent for the duration of this command only.
+.LP
+You can override the no\-merge policy by going to the parent and doing
+a 
+.B bk pull
+and specify the child as the 
+.BR bk\ parent .
+.SH OPTIONS
+.TP
+.B \-a
+If the parent is a superset of the current repository,
+then automatically pull that work into the current repository.
+.TP
+.B \-l
+Do a long listing of changesets to be sent (like bk changes
+does).  May be combined with 
+.B \-n 
+to get a repository difference summary.
+.TP
+.B \-n
+Don't actually push, just show what would be pushed.
+.TP
+.B \-q
+Run quietly.
+.TP
+.B \-t
+Pass 
+.B \-t
+to resolve (
+.B \-t
+means do not use the GUI tools) during
+the pull operation (requires 
+.B \-a
+and that the parent is a superset).
+.TP
+.AN \-z d
+Do compression at level 
+.I d 
+if possible; default is 
+.BR \-z6 .
+Compression is possible when using ssh or the BK daemon,
+but not with rsh.
+.SH "SEE ALSO"
+.B bk help pull
+.br
+.B bk help parent
+.br
+.B bk help resolve
+.br
+.B bk help triggers
