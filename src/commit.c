@@ -18,6 +18,7 @@ main(int ac, char **av)
 	int c, doit = 0;
 	int rc;
 	char buf[MAXLINE];
+	char s_cset[MAXPATH] = CHANGESET;
 
 	platformInit();
 
@@ -64,8 +65,7 @@ main(int ac, char **av)
 		system(buf);
 	}
 	unlink(list);
-	sprintf(buf, "%sclean -q ChangeSet", bin);
-	system(buf);
+	do_clean(s_cset, SILENT);
 	if (doit) exit (do_commit());
 
 	while (1) {
@@ -179,19 +179,17 @@ checkLog()
 checkConfig()
 {
 	char buf[MAXLINE];
+	char s_config[MAXPATH];
+	char config[MAXPATH];
 	
-	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
-	unless (exists(buf)) {
+	sprintf(s_config, "%setc/SCCS/s.config", bk_dir);
+	sprintf(config, "%setc/config", bk_dir);
+	unless (exists(s_config)) {
 		gethelp("chkconfig_missing", bin, stdout);
 		return 1;
 	}
-	sprintf(buf, "%setc/config", bk_dir);
-	if (exists(buf)) {
-		sprintf(buf, "%sclean %setc/config", bin, bk_dir);
-		system(buf);
-	}
-	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
-	get(buf, SILENT, 0);
+	if (exists(config)) do_clean(s_config, SILENT);
+	get(s_config, SILENT, 0);
 	sprintf(buf, "cmp -s %setc/config %sbitkeeper.config", bk_dir, bin);
 	if (system(buf) == 0) {
 		gethelp("chkconfig_inaccurate", bin, stdout);

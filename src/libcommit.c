@@ -22,6 +22,16 @@ do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 	sccs_free(s);
 }
 
+void
+do_clean(char *file, int flags)
+{
+	sccs *s;
+	s = sccs_init(file, INIT_NOCKSUM, NULL);
+	assert(s);
+	sccs_clean(s, flags);
+	sccs_free(s);
+}
+
 char *
 logAddr()
 {
