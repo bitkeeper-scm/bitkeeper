@@ -35,6 +35,7 @@ private	int	names;	/* if set, we need to fix names */
 private	int	mixed;	/* mixed short/long keys */
 private	project	*proj;
 private char	csetFile[] = CHANGESET;
+private	sccs	*cset;	/* the initialized cset file */
 private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
 
@@ -98,14 +99,13 @@ usage:		fprintf(stderr, "%s", check_help);
 		fprintf(stderr, "check: can not find project root.\n");
 		return (1);
 	}
-	unless (s = sccs_init(csetFile, flags, 0)) {
+	unless (cset = sccs_init(csetFile, flags, 0)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
-	proj = s->proj;
-	mixed = (s->state & S_KEY2) == 0;
+	proj = cset->proj;
+	mixed = (cset->state & S_KEY2) == 0;
 	db = buildKeys();
-	sccs_free(s);
 	if (all) init_idcache();
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
@@ -222,15 +222,40 @@ checkAll(MDBM *db)
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
+	/*
+	 * If we are doing the resync tree, we just want the keys which
+	 * are not in the local repo.
+	 */
 	if (resync) {
+		MDBM	*local = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+		FILE	*f;
+		
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
-		unless (exists(buf)) goto full;
+		unless (exists(buf)) {
+			mdbm_close(local);
+			goto full;
+		}
 		sprintf(buf,
-		    "bk sccscat -h %s/ChangeSet | sort | comm -13 - %s > %s.p",
-		    RESYNC2ROOT, CTMP, CTMP);
-		system(buf);
+		    "bk sccscat -h %s/ChangeSet | bk keysort", RESYNC2ROOT);
+		f = popen(buf, "r");
+		while (fgets(buf, sizeof(buf), f)) {
+			if (mdbm_store_str(local, buf, "", MDBM_INSERT)) {
+				fprintf(stderr,
+				    "ERROR: duplicate line in ChangeSet\n");
+			}
+		}
+		fclose(f);
+		f = fopen(CTMP, "r");
+		sprintf(buf, "%s.p", CTMP);
+		keys = fopen(buf, "w");
+		while (fgets(buf, sizeof(buf), f)) {
+			unless (mdbm_fetch_str(local, buf)) fputs(buf, keys);
+		}
+		fclose(f);
+		fclose(keys);
 		sprintf(buf, "%s.p", CTMP);
 		keys = fopen(buf, "r");
+		mdbm_close(local);
 	} else {
 full:		keys = fopen(CTMP, "r");
 	}
@@ -318,7 +343,6 @@ buildKeys()
 	int	fd, sz;
 	char	buf[MAXPATH*3];
 	char	key[MAXPATH*2];
-	sccs	*cset;
 	delta	*d;
 	datum	k, v;
 
@@ -330,13 +354,13 @@ buildKeys()
 		perror("idcache");
 		exit(1);
 	}
-	unless (cset = sccs_init(csetFile, flags, proj)) {
+	unless (cset && cset->tree) {
 		fprintf(stderr, "check: ChangeSet file not inited\n");
 		exit (1);
 	}
 	unless (exists("BitKeeper/tmp")) mkdir("BitKeeper/tmp", 0777);
 	unlink(CTMP);
-	sprintf(buf, "bk sccscat -h ChangeSet | sort > %s", CTMP);
+	sprintf(buf, "bk sccscat -h ChangeSet | bk keysort > %s", CTMP);
 	system(buf);
 	unless (exists(CTMP)) {
 		fprintf(stderr, "Unable to create %s\n", CTMP);
@@ -594,8 +618,18 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	/*
 	 * Rebuild the id cache if we are running in -a mode.
 	 */
-	if (all && !streq(ino->pathname, d->pathname)) {
-		fprintf(idcache, "%s %s\n", buf, s->gfile);
+	if (all) {
+		do {
+			sccs_sdelta(s, ino, buf);
+			if (s->grafted || !streq(ino->pathname, s->gfile)) {
+				fprintf(idcache, "%s %s\n", buf, s->gfile);
+			}
+			/* XXX - mixed size keys */
+			unless (s->grafted) break;
+			while (ino = ino->next) {
+				if (ino->random) break;
+			}
+		} while (ino);
 	}
 
 	/* Make sure that we think we have cset marks */

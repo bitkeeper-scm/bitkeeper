@@ -5,12 +5,19 @@
 
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
+project	*bk_proj = 0;
+
+private	char log_buffer[MAXPATH*4];
 
 char	*find_wish();
 char	*find_perl5();
-extern	void getoptReset();
-private void platformInit(char **av);
-private int sfiles(int ac, char **av);
+extern	void	getoptReset();
+private void	platformInit(char **av);
+private int	sfiles(int ac, char **av);
+private	void	log_start(char **av);
+private	void	log_end(int ret);
+private	void	log_dump();
+private	void	log_exit(void);
 
 int unedit_main(int, char **);
 int unlock_main(int, char **);
@@ -85,6 +92,7 @@ int pull_main(int, char **);
 int log_main(int, char **);
 int abort_main(int, char **);
 int graft_main(int, char **);
+int keysort_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"unlock", unlock_main },
@@ -169,6 +177,7 @@ struct command cmdtbl[100] = {
 	{"log", log_main},
 	{"abort", abort_main},
 	{"graft", graft_main},
+	{"keysort", keysort_main},
 	{0, 0},
 };
 
@@ -188,6 +197,7 @@ main(int ac, char **av)
 	char	*argv[100];
 	int	c;
 	int	dashr = 0;
+	int	ret;
 	char	*prog;
 
 	/*
@@ -206,6 +216,12 @@ main(int ac, char **av)
 	argv[0] = "help";
 	argv[1] = 0;
 
+	if (!bk_proj || !bk_proj->root || !isdir(bk_proj->root)) {
+		bk_proj = proj_init(0);
+	}
+	log_buffer[0] = 0;
+	atexit(log_exit);
+
 	/*
 	 * Parse our options if called as "bk".
 	 */
@@ -222,7 +238,7 @@ main(int ac, char **av)
 						return (1);
 					}
 					optind++;
-				} else if (sccs_cd2root(0, 0) == -1) {
+				} else unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
 					    "bk: Can not find project root.\n");
 					return(1);
@@ -230,7 +246,7 @@ main(int ac, char **av)
 				dashr++;
 				break;
 			    case 'R':
-				if (sccs_cd2root(0, 0) == -1) {
+				unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
 					    "bk: Can not find project root.\n");
 					return(1);
@@ -252,12 +268,20 @@ main(int ac, char **av)
 	}
 	getoptReset();
 
+	if (streq(av[0], "cmdlog")) {
+		log_dump();
+		return (0);
+	}
+
 	/*
 	 * look up the internal command 
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
 		if (streq(cmdtbl[i].name, av[0])){
-			return (cmdtbl[i].func(ac, av));
+			log_start(av);
+			ret = cmdtbl[i].func(ac, av);
+			log_end(ret);
+			exit(ret);
 		}
 	}
 
@@ -270,7 +294,10 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -283,7 +310,10 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -304,7 +334,10 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -322,16 +355,10 @@ main(int ac, char **av)
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		for (i = 0; argv[i] != 0;  i++) {
-		}
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));
-	}
-
-	/*
-	 * Is it a known C program ?
-	 */
-	if (streq(av[0], "patch")) {
-		return (spawnvp_ex(_P_WAIT, av[0], av));
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -350,7 +377,81 @@ main(int ac, char **av)
 	argv[1] = cmd_path;
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
 	argv[i] = 0;
-	return (spawnvp_ex(_P_WAIT, argv[0], argv));
+	ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+	log_end(ret);
+	exit(ret);
+}
+
+#define	LOG_MAXSIZE	(32<<10)
+#define	LOG_BADEXIT	-100000		/* some non-valid exit */
+
+void
+log_exit(void)
+{
+	if (log_buffer[0]) log_end(LOG_BADEXIT);
+}
+
+private	void
+log_start(char **av)
+{
+	int	i, len = 0;
+
+	unless (bk_proj && bk_proj->root) return;
+	for (i = 0; av[i]; i++) {
+		len += strlen(av[i]);
+		if (len >= sizeof(log_buffer)) continue;
+		if (i) {
+			strcat(log_buffer, " ");
+			strcat(log_buffer, av[i]);
+		} else {
+			strcpy(log_buffer, av[i]);
+		}
+	}
+}
+
+private	void
+log_end(int ret)
+{
+	FILE	*f;
+	char	*user;
+	char	path[MAXPATH];
+
+	unless (log_buffer[0] && bk_proj && bk_proj->root) return;
+	sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+	unless (f = fopen(path, "a")) {
+		sprintf(path, "%s/%s", bk_proj->root, BKROOT);
+		unless (exists(path)) return;
+		sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+		mkdirf(path);
+		unless (f = fopen(path, "a")) return;
+	}
+	user = sccs_getuser();
+	fprintf(f, "%s@%u: ", user ? user : "Phantom User", time(0));
+	if (ret == LOG_BADEXIT) {
+		fprintf(f, "%s = ?\n", log_buffer);
+	} else {
+		fprintf(f, "%s = %d\n", log_buffer, ret);
+	}
+	if (fsize(fileno(f)) > LOG_MAXSIZE) {
+		char	old[MAXPATH];
+
+		sprintf(old, "%s-older", path);
+		fclose(f);
+		rename(path, old);
+	} else {
+		fclose(f);
+	}
+	log_buffer[0] = 0;
+}
+
+private	void
+log_dump()
+{
+	char	path[MAXPATH];
+
+	unless (bk_proj && bk_proj->root) return;
+	sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+	cat(path);
 }
 
 private int
@@ -380,10 +481,12 @@ sfiles(int ac, char **av)
 		close(p[0]);
 		sav[0] = "sfiles";
 		sav[1] = 0;
+		log_start(sav);
 		status = sfiles_main(1, sav);
 		if (status) {
 			kill(pid, SIGTERM);
 			wait(0);
+			log_end(status);
 			exit(status);
 		}
 		fflush(stdout);
@@ -394,8 +497,10 @@ sfiles(int ac, char **av)
 			fprintf(stderr,
 			    "Child was signaled with %d\n",
 			    WTERMSIG(status));
+			log_end(WTERMSIG(status));
 			exit(WTERMSIG(status));
 		}
+		log_end(100);
 		exit(100);
 	} else {		/* child runs command - */
 		char	*cmds[100];
@@ -413,9 +518,15 @@ sfiles(int ac, char **av)
 		 */
 		for (i = 0; cmdtbl[i].name; i++) {
 			if (streq(cmdtbl[i].name, av[0])){
-				exit(cmdtbl[i].func(ac+1, cmds));
+				int	ret;
+
+				log_start(cmds);
+				ret = cmdtbl[i].func(ac+1, cmds);
+				log_end(ret);
+				exit(ret);
 			}
 		}
+		log_end(101);
 		exit(101);
 	}
 }

@@ -17,7 +17,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  filecopy.o files.o finddirs.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getlog.o getopt.o \
 	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
-	  key2rev.o lib_tcp.o libcommit.o libdiff.o librange.o \
+	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
 	  lod.o log.o logaddr.o logchangeset.o mkdir.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
@@ -499,19 +499,19 @@ Z=zlib/zlib.h zlib/zconf.h
 abort.o:	abort.c $(H) $(Z)
 adler32.o:	adler32.c $(H) $(Z)
 admin.o:	admin.c $(H)
-bk.o:		bk.c $(H)
-bkd.o:		bkd.c $(B) $(H) $(Z)
 bkd_cd.o:	bkd_cd.c $(B) $(H) $(Z)
 bkd_client.o:	bkd_client.c $(B) $(H) $(Z)
 bkd_clone.o:	bkd_clone.c $(B) $(H) $(Z)
 bkd_cmdtab.o:	bkd_cmdtab.c $(B) $(H) $(Z)
 bkd_misc.o:	bkd_misc.c $(B) $(H) $(Z)
+bkd.o:		bkd.c $(B) $(H) $(Z)
 bkd_pull.o:	bkd_pull.c $(B) $(H) $(Z)
 bkd_push.o:	bkd_push.c $(B) $(H) $(Z)
 bkd_pwd.o:	bkd_pwd.c $(B) $(H) $(Z)
 bkd_rootkey.o:	bkd_rootkey.c $(B) $(H) $(Z)
 bkd_status.o:	bkd_status.c $(B) $(H) $(Z)
 bkd_version.o:	bkd_version.c $(B) $(H) $(Z)
+bk.o:		bk.c $(H)
 bkusers.o:	bkusers.c $(H)
 check.o:	check.c $(H) range.h
 chksum.o:	chksum.c
@@ -534,12 +534,12 @@ fix.o:		fix.c $(H)
 fullname.o:	port/fullname.c $(H)
 g2sccs.o:	g2sccs.c $(H)
 gca.o:		gca.c $(H)
-get.o:		get.c $(H)
 gethelp.o:	gethelp.c $(H)
 gethost.o:	gethost.c
 gethost.o:	port/gethost.c $(H)
 getinput.o:	port/getinput.c $(H)
 getlog.o:	getlog.c $(H)
+get.o:		get.c $(H)
 getopt.o:	getopt.c $(H)
 gettemp.o:	gettemp.c $(H)
 getuser.o:	getuser.c
@@ -549,16 +549,17 @@ help.o:		help.c $(H)
 host.o:		host.c $(H)
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(H)
-lib_tcp.o:	lib_tcp.c lib_tcp.h
+keysort.o:	keysort.c $(H)
 libcommit.o:	libcommit.c $(H)
 libdiff.o:	libdiff.c $(H)
 librange.o:	librange.c $(H) range.h
 libsfiles.o:	libsfiles.c $(H)
+lib_tcp.o:	lib_tcp.c lib_tcp.h
 libusers.o:	libusers.c $(H) range.h
 lines.o:	lines.c $(H)
 localtm.o:	localtm.c $(H)
-lock.o:		lock.c $(H)
 locking.o:	locking.c $(H)
+lock.o:		lock.c $(H)
 lod.o:		lod.c $(H) range.h $(Z)
 logaddr.o:	logaddr.c $(H)
 logchangeset.o:	logchangeset.c $(H)
@@ -582,24 +583,24 @@ rcs.o:		rcs.c $(H)
 receive.o:	receive.c $(H)
 rechksum.o:	rechksum.c $(H)
 renumber.o:	renumber.c $(H)
-resolve.o:	resolve.c resolve.h $(H)
 resolve_contents.o:	resolve_contents.c resolve.h $(H)
 resolve_create.o:	resolve_create.c resolve.h $(H)
 resolve_flags.o:	resolve_flags.c resolve.h $(H)
 resolve_generic.o:	resolve_generic.c resolve.h $(H)
 resolve_modes.o:	resolve_modes.c resolve.h $(H)
+resolve.o:	resolve.c resolve.h $(H)
 resolve_renames.o:	resolve_renames.c resolve.h $(H)
 rmdel.o:	rmdel.c $(H)
 samepath.o:	port/samepath.c $(H)
-sccs_mv.o:	sccs_mv.c $(H)
-sccs_root.o:	port/sccs_root.c $(H)
 sccscat.o:	sccscat.c $(H) range.h
 sccslog.o:	sccslog.c $(H) range.h
+sccs_mv.o:	sccs_mv.c $(H)
 sccsmv.o:	sccsmv.c $(H)
 sccsrm.o:	sccsrm.c $(H)
-send.o:		send.c $(H)
+sccs_root.o:	port/sccs_root.c $(H)
 sendbug.o:	sendbug.c $(H)
 sendconfig.o:	sendconfig.c $(H)
+send.o:		send.c $(H)
 setlog.o:	setlog.c $(H)
 setup.o:	setup.c $(H)
 sfiles.o:	sfiles.c $(H)
