@@ -16,6 +16,7 @@ private int	merge_only_one(char **lines[3]);
 private int	merge_content(char **lines[3]);
 private int	merge_common_header(char **lines[3]);
 private int	merge_common_footer(char **lines[3]);
+private	int	merge_common_deletes(char **lines[3]);
 
 enum {
 	MODE_GCA,
@@ -338,9 +339,8 @@ push_region(region *r)
  *    2  resolved this change.  No lines left to be processed in this
  *       region.
  *
- *   The functions make call push_region() to schedule some lines to
- *   be processed after the current section is finished.
- *
+ *   The functions can make calls to push_region() to schedule some
+ *   lines to be processed after the current section is finished.
  */
 private	int	always_true = 1;
 struct mergefcns {
@@ -352,6 +352,7 @@ struct mergefcns {
 	{merge_content,		&do_merge_content},
 	{merge_common_header,   &do_merge_content},
 	{merge_common_footer,   &do_merge_content},
+	{merge_common_deletes,	&do_merge_content},
 };
 #define	N_MERGEFCNS (sizeof(mergefcns)/sizeof(struct mergefcns))
 
@@ -864,6 +865,25 @@ merge_content(char **lines[3])
 	return (ret);
 }
 
+private void
+lines_trim_head(char **lines, int num) 
+{
+	int	i;
+
+	EACH (lines);
+	
+	assert(num <= (i-1));
+	
+	/* free lines to be removed */
+	for (i = 1; i <= num; i++) free(lines[i]);
+
+	for (i = 1; VALID(lines, i+num); ++i) {
+		lines[i] = lines[i + num];
+	}
+	lines[i] = 0;
+}	
+
+
 private int
 merge_common_header(char **lines[3])
 {
@@ -883,34 +903,17 @@ merge_common_header(char **lines[3])
 	if (i == 1) return (0);
 	for (j = 1; j < i; j++) printline(a[j], 0, 1);
 	
-	last_seq = seq(a[j-1]);
+	last_seq = seq(a[i-1]);
 
 	/* shift a and b down by i-1 */
-	j = 1;
-	while (VALID(a, j+i-1)) {
-		a[j] = a[j+i-1];
-		++j;
-	}
-	a[j] = 0;
-
-	j = 1;
-	while (VALID(b, j+i-1)) {
-		b[j] = b[j+i-1];
-		++j;
-	}
-	b[j] = 0;
+	lines_trim_head(a, i-1);
+	lines_trim_head(b, i-1);
 
 	/* remove lines from GCA that were replace by these lines */
-	i = 1;
-	while (VALID(lines[GCA], i) && seq(lines[GCA][i]) < last_seq) i++;
-	if (i > 1) {
-		j = 1;
-		while (VALID(lines[GCA], j+i-1)) {
-			lines[GCA][j] = lines[GCA][j+i-1];
-			++j;
-		}
-		lines[GCA][j] = 0;
+	EACH (lines[GCA]) {
+		if (seq(lines[GCA][i]) > last_seq) break;
 	}
+	lines_trim_head(lines[GCA], i-1);
 
 	return (1);
 }
@@ -946,30 +949,85 @@ merge_common_footer(char **lines[3])
 
 	/* push common lines to new region */
 	new(r);
-	i = ca + 1;
-	while (VALID(a, i)) {
+	for (i = ca + 1; VALID(a, i); ++i) {
 		r->lines[LOCAL] = addLine(r->lines[LOCAL], a[i]);
-		++i;
+		a[i] = 0;
 	}
-	i = cb + 1;
-	while (VALID(b, i)) {
+	for (i = cb + 1; VALID(b, i); ++i) {
 		r->lines[REMOTE] = addLine(r->lines[REMOTE], b[i]);
-		++i;
+		b[i] = 0;
 	}
-	a[ca + 1] = 0;
-	b[cb + 1] = 0;
 	push_region(r);
 
 	/* remove lines from GCA that are after these lines */
 	last_seq = MIN(seq(r->lines[LOCAL][1]), seq(r->lines[REMOTE][1]));
 	EACH(lines[GCA]) {
 		if (seq(lines[GCA][i]) >= last_seq) {
+			free(lines[GCA][i]);
 			lines[GCA][i] = 0;
-			break;
 		}
 	}
 
 	return (1);
 }
 	
+private int
+merge_common_deletes(char **lines[3])
+{
+	char	**left, **right;
+	int	i, j;
+	int	ret = 0;
+	int	cnt;
 
+	left = unidiff(lines[GCA], lines[LOCAL]);
+	right = unidiff(lines[GCA], lines[REMOTE]);
+
+#if 0	
+	/* 
+	 * remove matching deletes at beginning
+	 */
+	EACH (left) if (left[i][0] != '-') break;
+	cnt = i - 1;
+	EACH (right) if (right[i][0] != '-') break;
+	cnt = MIN(cnt, i - 1);
+	
+	if (cnt > 0) {
+		ret = 1;
+		lines_trim_head(lines[GCA], cnt);
+	}
+#endif
+	
+	/*
+	 * remove matching deletes at end 
+	 */
+	EACH (left);
+	j = i - 1;
+	while (j >= 1) {
+		if (left[j][0] != '-') break;
+		--j;
+	}
+	cnt = i - j - 1;
+	EACH (right);
+	j = i - 1;
+	while (j >= 1) {
+		if (right[j][0] != '-') break;
+		--j;
+	}
+	cnt = MIN(cnt, i - j - 1);
+	
+	if (cnt > 0) {
+		EACH (lines[GCA]);
+		if (cnt < i - 1) {
+			ret = 1;
+			while (cnt > 0) {
+				--i;
+				--cnt;
+				free(lines[GCA][i]);
+				lines[GCA][i] = 0;
+			}
+		}
+	}
+	freeLines(left);
+	freeLines(right);
+	return (ret);
+}
