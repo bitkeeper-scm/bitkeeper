@@ -26,7 +26,7 @@ ms_env()
 	# we use the short name here
 	BINDIR="C:/Progra~1/BitKeeper"
 	INSTALL=installdir
-	#RESOURCE=bk.res
+	RESOURCE=bkres.o
 
 	export SYS BK BINDIR INSTALL RESOURCE
 }

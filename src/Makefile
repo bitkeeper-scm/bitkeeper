@@ -7,6 +7,7 @@ LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 
 ifeq "$(OSTYPE)" "cygwin"
+	SMALL_ICON=bk16.ico
 	SYS=win32
 	EXE=.exe
 	XTRA=win32
@@ -17,6 +18,7 @@ ifeq "$(OSTYPE)" "cygwin"
 		dirent misc re_map sys/wait stat utsname ftw \
 	 	mman re_map_decl times)
 else
+	SMALL_ICON=
 	SYS=unix
 	EXE=
 	XTRA=gnu
@@ -137,7 +139,7 @@ LOCALSCR= build
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf $(SMALL_ICON)
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
@@ -351,8 +353,14 @@ libsccs.a: $(OBJ)
 	-$(RANLIB) libsccs.a
 
 # complie win32 resource file
-bk.res: win32/data/bk.rc win32/data/bk.ico
-	rc.exe -fo bk.res -r win32/data/bk.rc
+bkres.o: win32/data/bk.rc bk.ico
+	windres -i win32/data/bk.rc -o bkres.o
+
+bk16.ico: win32/data/bk16.ico
+	@cp win32/data/bk16.ico .
+
+bk.ico: win32/data/bk.ico
+	@cp win32/data/bk.ico .
 
 bklink.exe: bklink.c
 	$(CC) $(CFLAGS) -c bklink.c

@@ -7,6 +7,8 @@ proc main {} \
 
 	after idle [list wm deiconify .]
 	after idle [list focus -force .]
+	
+	catch {wm iconbitmap . [exec bk bin]/bk16.ico} 
 }
 
 proc init {} \
