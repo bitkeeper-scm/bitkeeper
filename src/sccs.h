@@ -748,6 +748,7 @@ int	setlog(char *u);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *help_name, char *bkarg, FILE *f);
+int	is_open_logging(char *logaddr);
 void	status(int verbose, char *status_log);
 void	notify();
 char	*logAddr();

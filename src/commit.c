@@ -108,7 +108,6 @@ commit_main(int ac, char **av)
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
 		    case 'u':
-			//exit(do_commit(quiet, checklog, lod, sym, commentFile));
 			exit(do_commit(opts, sym, commentFile));
 			break;
 		    case 'e':
@@ -150,6 +149,16 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 	}
 	if (opts.checklog) {
 		if (checkLog(opts.quiet, opts.resync) != 0) {
+			unlink(commentFile);
+			exit(1);
+		}
+	} else {
+		char *p = getlog(NULL , 1);
+		unless (streq("commit_and_maillog", p) ||
+			streq("commit_and_mailcfg", p)) {
+			fprintf(stderr,
+			    "do_commit: need to comfirm logging: <%s> \n", p);
+			fprintf(stderr, "commit aborted\n");
 			unlink(commentFile);
 			exit(1);
 		}
