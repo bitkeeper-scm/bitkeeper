@@ -119,11 +119,11 @@ resolve_main(int ac, char **av)
 		bk_proj = proj_init(0);
 	}
 
-	if (opts.pass3 && !opts.textOnly && !gui_haveDisplay()) {
+	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
 		opts.textOnly = 1; 
 	}
 	if (opts.pass3 &&
-	    !opts.textOnly && !opts.quiet && !win32() && gui_haveDisplay()) {
+	    !opts.textOnly && !opts.quiet && !win32() && gui_useDisplay()) {
 		fprintf(stderr,
 		    "Using %s as graphical display\n", gui_displayName());
 	}

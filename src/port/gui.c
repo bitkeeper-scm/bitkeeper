@@ -6,7 +6,7 @@
  */
 
 int
-gui_haveDisplay()
+gui_useDisplay()
 {
 	if (getenv("BK_NO_GUI_PROMPT")) return (0);
 
@@ -14,6 +14,8 @@ gui_haveDisplay()
 	if (win32() && getenv("_BK_IN_BKD") && !getenv("_BK_BKD_IS_LOCAL")) {
 		return (0);
 	}
+
+	unless (getenv("BK_GUI")) return (0);
 
 	/* FYI: Cygwin has X11 clients so there may be a display there too */
 	if (getenv("DISPLAY")) return (1);

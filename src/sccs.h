@@ -1082,7 +1082,7 @@ char	*vaprintf(const char *fmt, va_list ptr);
 void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
-int	gui_haveDisplay(void);
+int	gui_useDisplay(void);
 char	*gui_displayName(void);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);

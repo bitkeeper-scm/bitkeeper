@@ -1184,6 +1184,7 @@ launch_wish(char *script, char **av)
 		exit(1);
 	}
 
+	putenv("BK_GUI=YES");
 	sig_catch(SIG_IGN);
 	argv[0] = path;
 	if (strchr(script, '/')) {
