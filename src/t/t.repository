@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# Copyright (c) 1999 Andrew Chang?
+# lm@work.bitmover.com|src/t/t.resync|19990914002924|05544
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+echo "logging: /dev/null" > $HERE/c
+echo "logging_ok: t" >>$HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+echo OK
+echo $N Check pending ...............................................$NL
+P=`bk pending | wc -l`
+if [ $P -ne 21 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+echo OK
+echo $N Create a change set with a symbol with spaces in it .........$NL
+bk commit $S -f -yCset -S"Hi there this is a changeset"
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+bk -R get $S -p ChangeSet > TOT
+bk -R get $S -pr"Hi there this is a changeset" ChangeSet > SYM
+cmp -s TOT SYM
+if [ $? != 0 ]
+then	echo failed
+	diff TOT SYM
+	exit 1
+fi
+echo OK

@@ -1,0 +1,67 @@
+#!/bin/sh
+
+# %K%
+
+PRS=
+FM=NO
+MERGE=NO
+RMERGE=NO
+DIFF=YES
+while getopts bc:fmnRr: opt
+do	case "$opt" in
+	    R)	RMERGE=YES
+	    	;;
+	    m)	MERGE=YES
+	    	;;
+	    f)	FM=YES
+	    	;;
+	    n)	DIFF=NO
+	    	;;
+	    b)
+	    	PRS="-$opt $PRS"
+		;;
+	    c)	PRS="-c$OPTARG $PRS"
+	    	;;
+	    r)	PRS="-r$OPTARG $PRS"
+	    	;;
+	esac
+done
+shift `expr $OPTIND - 1`
+for i in $*
+do	F=`basename $i`
+	bk prs $PRS -hd'$if(:MERGE:){:REV: :PARENT: :GCA: :MPARENT:\n}\c' $i |
+	while read rev l g r
+	do	
+		echo ------- $F $l vs $r --------
+		bk get -qkpr$l $i > /tmp/L-$F
+		bk get -qkpr$g $i > /tmp/G-$F
+		bk get -qkpr$r $i > /tmp/R-$F
+		cp /tmp/L-$F /tmp/M-$F
+		/usr/bin/merge /tmp/M-$F /tmp/G-$F /tmp/R-$F
+		mv /tmp/M-$F /tmp/RCS-$F
+		cp /tmp/L-$F /tmp/M-$F
+		bk pmerge /tmp/M-$F /tmp/G-$F /tmp/R-$F
+		mv /tmp/M-$F /tmp/PMERGE-$F
+		cmp -s /tmp/RCS-$F /tmp/PMERGE-$F
+		if [ $? != 0 ]
+		then	
+			# fm the rcs vs pmerge
+			if [ $FM = YES ]
+			then	bk fm /tmp/RCS-$F /tmp/PMERGE-$F /dev/null
+			fi
+			# fm pmerge vs actual delta
+			if [ $MERGE = YES ]
+			then	bk get -qkpr$rev $i > /tmp/${F}-$rev
+				bk fm /tmp/${F}-$rev /tmp/PMERGE-$F /dev/null
+			fi
+			# fm rcs merge vs actual delta
+			if [ $RMERGE = YES ]
+			then	bk get -qkpr$rev $i > /tmp/${F}-$rev
+				bk fm /tmp/${F}-$rev /tmp/RCS-$F /dev/null
+			fi
+			if [ $DIFF = YES ]
+			then	diff /tmp/RCS-$F /tmp/PMERGE-$F
+			fi
+		fi
+	done
+done

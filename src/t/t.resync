@@ -342,7 +342,6 @@ mv merge.tmp merge.c
 bk ci $Q -y merge.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy 
-bk resolve $Q -f - $HERE/copy <<EOF  > $DEV_NULL 2>&1
 bk resolve $Q -a -f - $HERE/copy  << EOF
 EOF
 if [ ! -f "SCCS/s..del-delete.c" ]

@@ -653,6 +653,7 @@ _commit() {
 	FORCE=NO
 	RESYNC=NO
 	QUIET=NO
+	SYM=
 	while getopts dfFRqsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=YES;;
@@ -660,7 +661,7 @@ _commit() {
 		F) FORCE=YES;;
 		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
 		s|q) QUIET=YES; COPTS="-s $COPTS";;
-		S) COPTS="-S$OPTARG $COPTS";;
+		S) SYM="-S$OPTARG";;
 		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}commit$$;;
 		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}commit$$;;
 		esac
@@ -707,7 +708,8 @@ _commit() {
 		if [ $nusers -gt 1 ]
 		then $CHECKLOG
 		fi
-		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
+		${BIN}sfiles -C |
+		    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 		EXIT=$?
 		${RM} -f ${TMP}commit$$ ${TMP}list$$ 
 		# Assume top of trunk is the right rev
@@ -741,7 +743,7 @@ _commit() {
 			then $CHECKLOG
 			fi
 			${BIN}sfiles -C |
-			    eval ${BIN}cset "$COMMENTS" $COPTS $@ -
+			    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 			EXIT=$?
 			${RM} -f ${TMP}commit$$ ${TMP}list$$
 			# Assume top of trunk is the right rev
