@@ -1,0 +1,96 @@
+.so ../macros
+.TH export Compat %G% "BitMover, Inc." BitKeeper
+.SH NAME 
+bk export\- checks out clear-text version of all BitKeeper files
+.SH SYNOPSIS
+.if t \{\
+.B bk export
+.OA t plain
+.BI [ -kTvw ]
+.B [
+.BI -i pat ]
+.B [
+.BI -x pat ]
+.BI -r rev
+.BI [ source ]
+.I dest
+.br
+or
+.br
+.B bk export
+.BI -t patch 
+.BI [ -hT ]
+.BI [-d u|c ]
+.BI \ \-r rev1,rev2
+\}
+.if n \{\
+bk export [-tplain] [-kTvw] [-i<pat>] [-x<pat>] -r<rev>  [source] dest
+.br
+or
+.br
+bk export -tpatch [-hT] [-d u|c] -rrev1,rev2
+\}
+.SH DESCRIPTION
+.LP
+The
+.B export
+command generates a directory tree alongside the BitKeeper
+repository which contains checked-out copies of all the files under
+BitKeeper control.  It can also generate traditional
+.RB ( diff
+.BR -urN )
+patches between any two revisions of the source tree.
+.SH OPTIONS
+.TP
+.AN -d style
+Set patch's diff style to Unified or Context diff.
+.TP
+.B -h
+Disable patch header.
+.TP
+.AN -i pat
+Export only pathnames matching 
+.IR pattern .
+.TP 
+.B -k
+Do not expand keywords (default is to expand keywords).
+.TP
+.AN -r rev
+Export the tree as of revision 
+.IR rev .
+.TP
+.B -T
+Set gfile modification time to check-in time.
+.TP
+.B -v
+Be verbose.
+.TP
+.B -w
+Make files writable (default is read-only).
+.TP
+.AN -x pat
+Export all pathnames not matching 
+.IR pattern .
+.LP
+Note that
+.I -i
+and
+.I -x
+take a single,
+.BR egrep -style
+regular expression which is matched against the partial pathname from the root.
+.LP
+.B bk export
+requires you to be in the top-level of your repository. For
+example, if your package is
+.I /u/proj1
+and you want to export your package to
+.IR /tmp/proj1 ,
+do the following:
+.AX
+$ cd /u/proj1
+$ bk export /tmp/proj1
+.XA
+.SH SEE ALSO
+.LP
+.B bk help mkdiffs

@@ -1,0 +1,27 @@
+.so ../macros
+.TH fix Basics %G% "BitMover, Inc." BitKeeper
+.SH NAME
+bk fix \- re-edit a checked in (but uncommitted) delta
+.SH SYNOPSIS
+.B bk fix
+.I file.c
+.SH DESCRIPTION
+.LP
+The
+.B fix
+command allows you to revise changes made to the most recent delta
+in a file.  Typically, this feature is used immediately after a check in
+when it is realized that that delta was not done or was incorrect.
+.LP
+Only deltas which have not yet been committed to a ChangeSet may be modified.
+The reason for this is that ChangeSets are immutable - once they are created,
+they may not be modified.
+.SH OPTIONS
+.TP
+.B -q
+run quietly
+.SH SEE ALSO
+.LP
+.B bk help ci
+.br
+.B bk help edit

@@ -1,0 +1,62 @@
+.so ../macros
+.TH takepatch Repository %G% "BitMover, Inc." BitKeeper
+.\"    ====================== BitKeeper takepatch command ======================
+.SH NAME
+bk takepatch \- apply a BitKeeper patch
+.SH SYNOPSIS
+.if t \{\
+.B bk takepatch [\-acFimStv] [\-f 
+.IB file ]
+.\}
+.if n
+bk takepatch [\-acFimStv] [\-f<file>]
+.SH DESCRIPTION
+.LP
+The takepatch command is used to apply a BitKeeper patch.  BitKeeper patches
+are how data is moved between BitKeeper repositories.
+.LP
+Users do not normally invoke this command, it is called directly by 
+.BR bk\ pull ,
+.BR bk\ push ,
+.BR bk\ resync ,
+or
+.BR bk\ receive .
+.SH OPTIONS
+.TP
+.B \-a
+Apply the changes (call 
+.BR bk\ resolve .)
+.TP
+.B \-c
+Do not accept conflicts with this patch.
+.TP
+.B \-F
+(Fast) Do rebuild id cache when creating files.
+.TP
+.AN \-f file
+Take the patch from 
+.I file 
+and do not save it.
+.TP
+.B \-i
+Initial patch, create a new repository.
+.TP
+.B \-m
+List deltas as they are read in the patch.
+.TP
+.B \-S
+Save RESYNC and or PENDING directories even if errors.
+.TP
+.B \-t
+Run in text only mode, do not talk to X11.
+.TP
+.B \-v
+Verbose level, more is more verbose, \-vv is suggested.
+.SH "SEE ALSO"
+.B bk help pull
+.br
+.B bk help push
+.br
+.B bk help receive
+.br
+.B bk help resync

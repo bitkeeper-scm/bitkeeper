@@ -1,0 +1,41 @@
+.so ../macros
+.TH lock Repository %G% "BitMover, Inc." BitKeeper
+.\"    =============== Locking a repository ===============
+.SH NAME
+bk lock \- lock a repository or show lockers
+.SH SYNOPSIS
+.B bk lock [\-l|r|w]
+.SH DESCRIPTION
+.LP
+The lock command can be used to lock an entire repository or to list the
+lockers of a repository.
+.LP
+Since a lock is valid only as long as the locking process exists, when
+placing  lock, the lock command does not exit, it goes to sleep waiting
+for a signal.
+.SH OPTIONS
+.TP
+.B \-l
+List the lockers of a repository.
+.TP
+.B \-r
+Add a read lock (non-exclusive).
+.TP
+.B \-w
+Add a write lock (exclusive).
+.SH "EXIT STATUS"
+.LP
+If called with no options or if called with the 
+.B \-l
+option, lock
+exits 1 if the repository has locks and exits 0 if the repository
+has no locks.
+.LP
+If called with either 
+.B \-r 
+or 
+.BR \-w ,
+lock exits 1 if unable to lock the
+repository.
+.SH "SEE ALSO"
+.B bk help unlock

@@ -1,0 +1,46 @@
+.so ../macros
+.TH bk Basics %G% "BitMover, Inc." BitKeeper
+.SH NAME
+bk \- BitKeeper shell
+.SH SYNOPSIS
+.if t \{\
+.B bk
+.OA r Dir
+.OA R Cmd
+.BI command \ [options]
+.\}
+.if n
+bk [-r<dir>] [-R <cmd>] command [options]
+.SH OPTIONS
+.TP
+.AS    -R cmd
+Change directories to the root of the repository and run 
+.IR cmd .
+.TP
+.AB -r dir
+Starting at 
+.IR dir ,
+or the repository root if 
+.I dir
+was not specified, generate a list of sfiles and pass them to the command.  
+.LP
+All BitKeeper commands are prefixed with 
+.B bk
+in order to avoid ambiguity with
+non-BitKeeper commands that might be on the system such as 
+.B get
+and
+.BR ci .
+.SH NOTE
+.LP
+The following commands are equivalent:
+.AX
+bk -r get
+cd `bk -R pwd`; bk sfiles | bk get -
+.XA
+.SH SEE ALSO
+.B bk help check
+.br
+.B bk help diffs
+.br
+.B bk help tag

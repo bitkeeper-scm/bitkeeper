@@ -1,0 +1,94 @@
+.so ../macros
+.TH Introduction Repository %G% "BitMover, Inc." BitKeeper
+.\"    ====================== BitKeeper repository commands ======================
+.SH NAME
+Introduction
+.SH DESCRIPTION
+.LP
+This section contains some of the most heavily used commands in BitKeeper.
+They are sorted, but the most heavily used ones are:
+.RS .5i
+.br
+bk clone
+.br
+bk pull
+.br
+bk push
+.RE
+.LP
+Those commands, plus a bk edit and a bk citool are all that you
+need to get a repository, lock it, make changes, check them in and commit
+them, and push your changes back up to your parent.
+.SH SUMMARY
+.TP
+.B bk abort 
+abort a patch which is not yet applied (dangerous)
+.TP
+.B bk backups 
+how to save and copy repositories
+.TP
+.B bk bkd 
+the BitKeeper daemon, for TCP based access
+.TP
+.B bk changes 
+show changeset comments
+.TP
+.B bk check 
+BitKeeper integrity checking
+.TP
+.B bk clone 
+copy a repository
+.TP
+.B bk cmdlog 
+see commands which have happened in this repository
+.TP
+.B bk commit 
+group a set of files together into a local changeset
+.TP
+.B bk cset 
+low level command
+.TP
+.B bk import 
+import regular, RCS, CVS, SCCS, or traditional patches 
+.TP
+.B bk lock 
+lock a repository or list lockers
+.TP
+.B bk parent 
+set or query this repostories' parent
+.TP
+.B bk pending 
+show which files need to be committed to a changeset
+.TP
+.B bk pull 
+pull changes into your repository and merge them
+.TP
+.B bk push 
+push changes into your parent (no merges allowed)
+.TP
+.B bk resolve 
+resolve conflicting files which could not be automerged
+.TP
+.B bk resync 
+resync two repositories without calling resolve
+.TP
+.B bk status
+show status for the repository
+.TP
+.B bk tag 
+add a symbolic tag to a changeset
+.TP
+.B bk takepatch 
+low level command to import BitKeeper patches
+.TP
+.B bk undo 
+undo one or more changesets
+.TP
+.B bk unlock
+unlock the repository or a file (should not be needed)
+.TP
+.B bk help merge 
+information on how to merge
+.TP 
+.B bk help triggers 
+information on event triggers

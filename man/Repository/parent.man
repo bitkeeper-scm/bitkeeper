@@ -1,0 +1,67 @@
+.so ../macros
+.TH parent Repository %G% "BitMover, Inc." BitKeeper
+.\"    ============== Setting the parent repository ==============
+.SH NAME
+bk parent \- show or set the parent repository
+.SH SYNOPSIS
+.if t \{\
+.B bk [\-qr] parent [
+.IB repository ]
+.\}
+.if n
+bk [\-qr] parent [<repository>]
+.SH DESCRIPTION
+.LP
+The parent command prints or sets the default location where the 
+bk pull/push commands get/put new work.
+.LP
+With no argument, print the parent name.  With an argument, set the 
+parent to that argument.  The form of the parent can be
+.AX
+/path/to/repository
+.XA
+or
+.AX
+host:relative/or/absolute/path/to/repository
+.XA
+or
+.AX
+bk://host[:port]/absolute/path/to/repository
+bk://host:port
+bk://host
+.XA
+The first form only works locally and is appropriate for repositories
+which are not accessed from the network.
+.LP
+The second form works locally or remotely and implies ssh or rsh as
+the transport used to get to the remote repository.   In general,
+this is the best form to use to specify a repository.  If the host
+is the same as what 
+.B bk gethost
+prints, then it will optimize out the host and work locally.
+.LP
+The third form works locally or remotely and implies that there is a 
+BitKeeper daemon running on the remote host at the implied or stated
+port.  In the cases where no pathname is specified, there must be
+a BK daemon running at the root of the repository.
+.LP
+The parent is automatically set when a repository is cloned.
+.SH OPTIONS
+.TP
+.B \-q
+Run quietly.
+.TP
+.B \-r
+Remove the parent pointer.
+.SH "SEE ALSO"
+.B bk help bkd
+.br
+.B bk help clone
+.br
+.B bk help pull
+.br
+.B bk help push
+.br
+.B bk help resync
+.SH ALIASES
+.BR url (Repository)

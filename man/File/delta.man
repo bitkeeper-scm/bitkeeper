@@ -1,0 +1,95 @@
+.so ../macros
+.TH delta File %G% "BitMover, Inc." BitKeeper
+.\"    ========== Checking in Deltas (changes) to BitKeeper ==========
+.SH NAME
+bk delta \- check in modified files
+.SH SYNOPSIS
+.if t \{\
+.B bk delta [\-iluYpqfach] [\-S
+.IB sym ] 
+.B [\-Z
+.IB alg ] 
+.B [\-y
+.IB c ] 
+.BI [ files...
+.B ]
+\}
+.if n \{\ 
+bk delta [-iluYpqfach] [-S<sym>] [-Z<alg>] [-y<c>] [files...]
+\}
+.SH DESCRIPTION
+.LP
+Saves editing changes in a Source Code Control System (SCCS) file.
+.SH OPTIONS
+.TP
+.B \-a
+Check in new work automatically.
+.TP
+.B \-c
+Don't verify file checksum.
+.TP
+.AN \-D file
+Take diffs from
+.IR file .
+.TP
+.B \-E
+Set file encoding (like admin).
+.TP
+.B \-f
+Force creation of a null delta when invoked as ci.
+.TP
+.B \-h
+Invert sense of file's hash flag.
+.TP
+.AN \-I file
+Use init 
+.I file
+for meta data.
+.TP
+.B \-i
+Initial check-in, create a new revision history.
+.TP
+.B \-l
+Follow check in with a locked check out like bk get -e.
+.TP
+.AN \-M mode
+Set the permissions on the new delta to
+.IR mode .
+.TP
+.B \-p
+Print differences before prompting for comments.
+.TP
+.B \-q
+Run silently.
+.TP
+.AN \-S sym
+Set the symbol
+.I sym
+to be the revision created.
+.TP
+.B \-u
+Follow check in with an unlocked check out like bk get.
+.TP
+.B \-Y
+Prompt for one comment, then use it for all the files.
+.TP
+.AN \-y comment
+Sets the revision comment to 
+.IR comment .
+.TP
+.AN \-Z,\ \-Z alg
+Compress stored s.file with 
+.I alg
+, which may be: 
+.br
+gzip like gzip(1) 
+.br
+none no compression
+.SH "SEE ALSO"
+.B bk help ci
+.br
+.B bk help co
+.br
+.B bk help edit
+.br
+.B bk help get

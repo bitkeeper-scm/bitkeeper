@@ -1,0 +1,481 @@
+.so ../macros
+.TH howto General %G% "BitMover, Inc." BitKeeper
+.SH NAME
+howto
+.SH DESCRIPTION
+.LP
+This section provides detailed, step-by-step instructions for several
+common scenarios. We will cover the following scenarios:
+.AX
+A) Two machines and two repositories.
+B) Single machine shared with multiple developers and a single 
+	   repository
+C) Hierarchy of repositories 
+.XA
+.SH SECTIONS:
+.nf
+	I.   Creating and Working with a Repository
+	II.  Cloning a Repository
+	III. Working with a cloned repository
+	IV.  Updating from a Repository 
+	V.   Synchronizing with the Parent Repository
+	VI.  Importing from a CVS repository
+.fi
+.SH "SCENARIO A:"
+.SS PREREQUISITES:
+.LP
+.nf
+1) BitKeeper must be installed on both machines.
+2) Multiple machine scenarios require that the machines be connected
+   by a network and either ssh, rsh, or bkd must be working. (Go here 
+   http://www.openssh.org for ssh help).
+.fi
+.LP
+For the purpose of this scenario, we are going to use two machines,
+master.dmn.com and slave.dmn.com.
+
+.SS "I. CREATING AND WORKING WITH A REPOSITORY"
+.LP
+On machine 'master', we will create a new repository under the /u01
+mount point:
+.AX
+master$ bk setup /u01/my_package
+.XA
+The setup command will prompt you for a description of the package. In
+addition, you will be asked to edit a configuration file containing
+information about your new repository.
+.LP
+After creating the repository, "bk new" is used to add files from
+scratch and "bk import" is used to populate your repository from an
+existing, non-BitKeeper package.
+.LP
+For this scenario, we will create new files from scratch. Change to
+the /u01/my_package directory that was created from the setup step and
+create a source and doc directory:
+.AX
+master$ mkdir doc src
+.XA
+Now change to the src directory and create a new file with the editor
+of your choice:
+.AX
+master$ cd src
+master$ vi test.c 
+.XA
+Once you have added some content to test.c, save the file and exit 
+the editor. Now do the following:
+.AX
+master$ bk new test.c
+.XA
+Upon doing the "bk new", test.c will be removed from the current
+directory and the corresponding s.file, s.test.c, will be placed in
+the SCCS subdirectory. If you look in the SCCS directory, you will
+see one file, s.test.c (See the "bk help files" topic for more info).
+.LP
+To make additional changes to test.c, use "bk edit":
+.AX
+master$ bk edit test.c 	(or "bk edit" to check out all files in a directory)
+master$ vi test.c       (make some more changes)
+.XA
+At this point, you might want to experiment with SCCS keywords (see
+"bk help keywords"). For example, try adding the following string
+to test.c:
+.AX
+static char *what = "%W%";
+.XA
+When test.c is checked out in read-only mode (i.e. "bk co"), the
+keyword will be expanded to:
+.AX
+static char *what = "@(#)test.doc 1.2";
+.XA
+The "bk what" command can be used to search for keywords that follow
+the "what string", i.e., "@(#)". "bk what" will even extract the what
+string when the program is compiled into a binary executable.
+.LP
+Before checking in the file, you might want to see what changes you
+have made to the file since checking it out:
+.AX
+master$ bk diffs
+.XA
+When you are happy with your changes and want to commit them, type:
+.AX
+master$ bk ci test.c
+.XA
+An alternative to doing 
+.BR bk diffs ,
+is to use the 
+.B -p 
+option when
+checking in a file.  For example, typing:
+.AX
+master$ bk ci -p test.c
+.XA
+Will show the following:
+.AX
+==== Changes to test.c ====
+8,9c8,9
+<     int k;
+<     int j;
+---
+>     int l;
+>     int m;
+====
+End comments with "." by itself, blank line, or EOF.
+test.c 1.5>> 
+.XA
+Now when you are prompted for comments, you will be reminded of the
+changes you made to the file.
+.LP
+A popular alternative to the command line check-in is "citool", a
+graphical tool which lists the files needing a check-in, provides
+a window to type in comments, and another window showing the diffs.
+.LP
+After checking in files with "ci", you may want to see what files need
+to be added to the changeset. Type "bk pending" to show all files checked
+in, but not yet committed to a changeset.
+.AX
+master$	bk pending 
+src/test.c@1.6, 2000-02-29 17:27:29-08:00, usr@master.dmn.com added for loop 
+.XA
+Finally, you must do a "bk commit" if you want your changes to become
+part of a changeset. If you don't do a commit, other users will not see
+the changes when they synchronize with your repository.  Repositories
+are synchronized at the changeset level, not at the delta level.
+.AX
+master$ bk commit
+.XA
+You will be prompted for comments.  If you used citool, the changeset
+is usually created as part of the check in.
+.SS "II. CLONING A REPOSITORY"
+.LP
+Sooner or later, you will want to let others work with you on the
+package or you might want to use BitKeeper to synchronize packages
+between a desktop and a laptop or between a work and home machine.
+In this case, you need to clone your repository.  Login to the machine
+'slave.dmn.com' and do:
+.AX
+slave$ bk clone master.dmn.com:/u01/package1  /dest/package1
+.XA
+The output when running clone will look like the following:
+.AX
+src/SCCS/s.test.c
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.config
+Looking for, and removing, any uncommitted deltas...
+Removing any directories left empty ...
+Set parent to master.dmn.com:/u01/package1
+Clone completed successfully.
+.XA
+If you did not commit work to the changeset, you will find that
+uncommitted deltas are not cloned to your new repository. Here is
+an example where test.c was checked in, but not committed.
+.AX
+src/SCCS/s.test.c
+SCCS/s.ChangeSet
+BitKeeper/etc/SCCS/s.config
+Looking for, and removing, any uncommitted deltas...
+stripdel: removed 1 deltas from src/test.c
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Removing any directories left empty ...
+Set parent to master.dmn.com:/u01/package1
+Running consistency check ...
+Clone completed successfully.
+.XA
+The marked line shows what clone does when it has cloned deltas not yet
+part of a changeset - it throws them out of the newly created repository.
+.SH "III. WORKING WITH A CLONED REPOSITORY"
+.LP
+Once you have a clone of the master repository, you can do work as if
+you were in the master repository. (see bk ci, bk edit)
+.LP
+In this section we are going to show how to interact with the master
+repository and how to deal with merging and conflicts. For this demo,
+we will need to create a small program which we will then push to the
+master repository. We are then going to modify the file on both the 
+master and slave repository and then merge the work.
+.LP
+Let's add a new file to the cloned repository. Go to the package
+directory and enter the following c program:
+.AX
+slave$ cd /u01/package1/src
+
+======= use editor and cut-and-paste into file1.c ====
+
+#include <stdio.h>
+static char *what = "%W%";
+
+int main () {
+    printf("Go BitKeeper: %s\n",what);
+}
+
+       ======
+
+slave$ bk new file1.c
+slave$ bk commit -y"Test of bitkeeper"
+.XA
+We can use the "bk parent" command to check to see what the slave
+thinks is the master repository:
+.AX
+slave$ bk parent 
+Parent repository is slave.dmn.com:/u01/package1
+.XA
+The "bk parent" command can be given an argument to set the parent
+pointer to another repository. (see "bk help parent")
+.AX
+slave$ bk push -n -l
+
+----------------- Would send the following csets -----------------
+ChangeSet@1.5, 2000-03-01 09:05:39, u1@slave.dmn.com   test change
+------------------------------------------------------------------
+
+slave$ bk csets -r1.5 
+src/file.c@1.0..1.1
+.XA
+If you'd like to see what files are a part of that changeset, use
+"bk csettool" (see "bk help csettool").
+.LP
+Now push the changes you have made in the slave repository to the 
+master repository:
+.AX	
+slave$ bk push
+
+--------------- Sending the following csets ---------------------
+1.4 
+-----------------------------------------------------------------
+makepatch: ChangeSet 1 revisions
+makepatch: src/file1.c 2 revisions
+makepatch: patch contains 3 revisions from 2 files
+------------------------------------------------------
+takepatch: saved entire patch in PENDING/2000-03-01.01
+------------------------------------------------------
+Applying   1 revisions to ChangeSet  
+takepatch: miss in idcache while looking for
+	     "user1@slave.dmn.com|src/file1.c|20000301192023",
+	     rebuilding (this can take a while)...done
+Applying   2 revisions to new file src/file1.c  
+takepatch: 3 new revisions, 0 conflicts in 2 files
+Running resolve to apply new work...
+resolve: applied 2 files in pass 4
+resolve: running consistency check, please wait...
+Consistency check passed, resolve complete.
+.XA
+Now go to the master repository and make some changes to
+file1.c.  Since we did the push from the slave, file1.c now exists
+in /u01/package1/src/ of the master repository. By making changes to
+the files in the master repository, we are simulating the situation
+where progress is being made on the package at multiple repositories.
+.AX
+master$ cd /u01/package1/src
+master$ bk edit
+master$ bk vi file1.c 
+.XA
+Make the file look like the one below, i.e. add the "int j;" line
+above the printf.
+.AX
+       ======= 
+
+    #include <stdio.h>
+    static char *what = "%W%";
+
+    int main () {
+    int j;
+        printf("Go BitKeeper: %s\n",what);
+    }
+
+       ======
+.XA
+Save the file, check it in, and then commit it to a changeset.
+.AX
+master$ bk ci -y"added variable" file1.c
+master$ bk commit -Yfile1.c
+.XA
+Now go back to the slave, and make a slightly different change to
+file.c. Enter "int k;" instead of "int j;".
+.AX
+        ======= 
+
+    #include <stdio.h>
+    static char *what = "%W%";
+
+    int main () {
+        int k;
+        printf("Go BitKeeper: %s\n",what);
+    }       
+
+        ======
+
+slave$ bk ci -y"added variable" file1.c
+slave$ bk commit -Yfile1.c
+.XA
+Now synchronize with the master. We can use the -t option to 
+pull to specify the text-only version.
+.AX
+slave$ bk pull -t
+
+------------- Sending the following csets ---------------------
+1.5
+---------------------------------------------------------------
+ChangeSet: 1 deltas
+src/file1.c: 1 deltas
+------------------------------------------------------
+takepatch: saved entire patch in PENDING/2000-03-01.01
+------------------------------------------------------
+Applying   1 revisions to ChangeSet  
+Applying   1 revisions to src/file1.c  
+takepatch: 2 new revisions, 1 conflicts in 2 files
+Running resolve to apply new work ...
+Conflicts during automerge of src/file1.c
+resolve: 1 unresolved conflicts, nothing is applied.
+.XA
+Notice that the pull didn't complete this time since there were
+conflicting changes within the file1.c code. When push and pull result
+in conflicts, we use the "bk resolve" command.
+.AX
+slave$ bk resolve -t
+src/file1.c 1.2 inc: 1.1.1.1 -> 1.3
+src/file1.c>> 
+.XA
+At the prompt, type a question mark to see what options are available:
+.AX
+
+src/file1.c>> ?
+
+-------------------------------------------------------------------
+File:   src/file1.c
+
+New work has been added locally and remotely and must be merged.
+
+GCA:    1.1
+Local:  1.1.1.1
+Remote: 1.2
+-------------------------------------------------------------------
+Commands are:
+
+  ?    - print this help
+  a    - abort the patch, DISCARDING all merges
+  cl   - clear the screen
+  C    - commit to the merged file
+  d    - diff the local file against the remote file
+  D    - run side-by-side graphical difftool on local and remote
+  dl   - diff the GCA against local file
+  dr   - diff the GCA against remote file
+  dlm  - diff the local file against merge file
+  drm  - diff the remote file against merge file
+  e    - edit the merge file
+  f    - merge with graphical filemerge
+  F    - merge with graphical experimental three-way filemerge
+  hl   - revision history of the local file
+  hr   - revision history of the remote file
+  H    - show merge help in helptool
+  m    - automerge the two files
+  p    - graphical picture of the file history
+  q    - immediately exit resolve
+  sd   - side-by-side diff of the local file against the remote file
+  v    - view the merged file
+  vl   - view the local file
+  vr   - view the remote file
+  x    - explain the choices
+
+Typical command sequence: 'm' 'e' 'C';
+Difficult merges may be helped by 'p'.
+.XA
+Between the dashed lines above, resolve displays what files need
+to be merged, and what BitKeeper sees as the revision history. The
+greatest common ancestor for file1.c was 1.1. However, by modifying
+the file on both repositories, BitKeeper needs to change the revision
+numbers since both files cannot be version 1.2.
+.LP
+Notice above that the resolve interface shows the typical command
+sequence as 'm', 'e', and then 'C'. The 'm' option will try to
+automerge, but automerge will not work in our situation because of
+the conflicts. When the 'e' option is used , your default editor
+is opened with the following:
+.AX
+#include <stdio.h>
+
+static char *what = "%W%";
+
+int 
+main () {
+<<<<<<< BitKeeper/tmp/file1.c_user1@1.1.1.1
+	ink k;
+=======
+	int j;
+>>>>>>> BitKeeper/tmp/file1.c_user2@1.2
+	printf("Go BitKeeper: %s\n",what);
+}
+.XA
+Notice the tags surrounding the conflict.  From the left arrows (<<<<<)
+to the dashed-line represent the local code while from the dashes
+to the right arrows (>>>>) show the remote repository version. 
+.LP
+To resolve this conflict, you need to know about the program and
+might need to talk with the other developers to find out what should
+be done. In our case, suppose that we speak to the owner of the code
+on the master repository and determine that both "int k" and "int j"
+should be in the program. We then remove the tags and make the code 
+look like:
+.AX
+#include <stdio.h>
+
+    static char *what = "%W%";
+
+    int
+    main () {
+            ink k;
+            int j;
+            printf("Go BitKeeper: %s\n",what);
+    }
+.XA
+Once edited, we do the commit step:
+.AX
+resolve: resolved 1 conflicts in pass 3
+ChangeSet 1.5 inc: 1.4.1.1 -> 1.6
+resolve: applied 2 files in pass 4
+resolve: running consistency check, please wait...
+Consistency check passed, resolve complete.
+.XA
+Now we can do a push to the master repository:
+.AX
+slave$ bk push
+
+[akushner@vermin src]$ bk push
+----------------- Sending the following csets ---------------
+1.4.1.1 1.6 
+-------------------------------------------------------------
+makepatch: ChangeSet 2 revisions
+makepatch: src/file1.c 2 revisions
+makepatch: patch contains 4 revisions from 2 files
+------------------------------------------------------
+takepatch: saved entire patch in PENDING/2000-03-01.01
+------------------------------------------------------
+Applying   2 revisions to ChangeSet  
+Applying   2 revisions to src/file1.c  
+takepatch: 4 new revisions, 0 conflicts in 2 files
+Running resolve to apply new work...
+resolve: applied 2 files in pass 4
+resolve: running consistency check, please wait...
+Consistency check passed, resolve complete.
+
+
+master$ cd /u01/package1/src
+master$ bk prs file1.c
+
+======== file1.c 1.1..1.3 ========
+D 1.3 00/03/01 13:04:46 u1@master.dmn.com 5 3 00000/00000/00011
+P src/file1.c
+C fixed conflict. Keeping both variables
+------------------------------------------------
+D 1.1.1.1 00/03/01 12:01:40 u1@master.dmn.com 4 2 00001/00000/00009
+P src/file1.c
+C added int k
+------------------------------------------------
+D 1.2 00/03/01 11:43:16 u1@master.dmn.com  3 2 00001/00000/00009
+P src/file1.c
+C added int j
+------------------------------------------------
+D 1.1 00/03/01 11:20:23 u1@master.dmn.com 2 1 00009/00000/00000
+P src/file1.c
+------------------------------------------------
+.XA
+.SH ALIASES
+.BR HOWTO (General)

@@ -1,0 +1,51 @@
+.so ../macros
+.TH new Basics %G% "BitMover, Inc." BitKeeper
+.SH NAME
+bk new \- add a file to the repository
+.SH SYNOPSIS
+.B bk new
+.I file
+.br
+.B bk sfiles
+.I -x
+.B | bk new 
+.I -
+.SH DESCRIPTION
+.LP
+The 
+.B new
+command is used when placing files under BitKeeper control.
+The first form checks in a single file, the second form checks in
+all files in the repository which are not under BitKeeper control
+(be careful, the second form will check in anything, such as
+.IR  a.out ,
+.IR *.o ,
+.IR core ,
+etc.).
+.LP
+When checking in multiple files in a directory, do:
+.AX
+bk sfiles -x *.[ch] | bk new - 
+.XA
+When you want to check in files in the current directory and all 
+subdirectories, do the following:
+.AX
+bk sfiles -x | egrep '*.[ch]$' | bk new -
+.XA
+After the files are checked in, don't be surprised to see that
+the files are no longer in your directory. The process of checking
+in files removes the files from the directory and places them in
+the SCCS directories.  Once in the SCCS directory, the file can be
+retrieved with the 
+.B bk get
+or 
+.B bk edit
+commands.  Most versions of the
+Unix make command know about SCCS and will automatically check out
+files as they are needed.
+.SH SEE ALSO
+.B bk help edit
+.br
+.B bk help get
+.br
+.B bk help sfiles

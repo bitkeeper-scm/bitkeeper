@@ -1,0 +1,157 @@
+.so ../macros
+.TH admin Admin %G% "\*(BC" \*(BK
+.SH NAME
+bk admin \- administer BitKeeper files (tags, checksums, validation)
+.SH SYNOPSIS
+.B bk admin options [\- | file file file...]
+.SH DESCRIPTION
+.LP
+The 
+.B admin
+command is used to administer individual files.
+.SH OPTIONS
+.TP .7i
+.B \-0
+add a 1.0 delta if there is not one already
+.TP
+.B \-q
+run quietly
+.TP
+.AN \-r rev
+revision to add or modify
+.TP
+.AN \-y comment
+comment for change
+.TP
+.B \-n
+create new SCCS history file
+.TP
+.AB \-i file
+read initial text from
+.I file
+(default stdin)
+.TP
+.AB \-t file
+read description from 
+.I file
+.TP
+.B \-T
+clear description
+.TP
+.B \-h
+check s.file structure
+.TP
+.B \-hh
+check s.file structure for BitKeeper structure
+.TP
+.B \-hhh
+check s.file structure for BitKeeper & time structure
+.TP
+.B \-H
+same as -h, plus check file contents are ASCII
+.TP
+.B \-z
+recalculate file checksum
+.TP
+.AN \-f FlagVal
+set 
+.I Flag
+to value
+.IR Val .
+.I Val 
+can be any of:
+.RS .7i
+.TP .8i
+.B EXPAND1
+expand keywords in first keyword containing line only
+.TP
+.B RCS
+expand RCS keywords
+.TP
+.B SCCS
+expand SCCS keywords
+.TP
+.B YEAR4
+store dates as 4 digit years (breaks SCCS compat)
+.RE
+.TP
+.AN \-F f
+delete flag 
+.I f
+.TP
+.AN \-m mode
+set the mode of the file
+.TP
+.AN \-M merge
+Merge branch 
+.I merge
+into TOT or 
+.I rev
+.TP
+.AL \-S sym rev
+associate 
+.if t .I sym
+.if n <sym>
+with 
+.if t .I rev
+.if n <rev>
+.TP
+.AN \-p path
+set path of the most recent delta to 
+.if t .I path
+.if n <path>
+.TP
+.B \-B
+make the landing pad bigger
+.TP
+.B \-C
+remove the changeset marks
+.TP
+.B \-CC
+remove the changeset marks and pointer
+.TP
+.AB \-Z alg
+compress stored s.file with 
+.I alg ,
+which may be:
+.RS .7i
+.TP .5i
+.B  gzip
+like gzip(1) (default)
+.TP
+.B none
+no compression
+.RE
+.TP
+.AB \-E enc
+treat file as encoded with 
+.I enc ,
+which may be:
+.RS .3i
+.TP
+.B text
+plain text
+.TP
+.B ascii
+same
+.TP
+.B binary
+binary file (must uuencode before diffing)
+.TP
+.B uugzip
+same, but compress before uuencode
+.RE
+.TP
+.B \-u
+make sure that all dates are increasing (dangerous, this changes the keys)
+.SH BUGS
+.LP
+This command does way too much and should be split apart.  Other than the
+traditional ATT options, do not depend on these options for scripts.
+.SH SEE ALSO
+.LP
+.B bk help tag
+.br
+.B bk help chmod
+.br
+.B bk help keywords

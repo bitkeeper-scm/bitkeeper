@@ -1,0 +1,108 @@
+.so ../macros
+.TH renametool GUI-tools %G% "BitMover, Inc." BitKeeper
+.\"    =============== BitKeeper Graphical Rename Tool ===============
+.SH NAME
+bk renametool \- graphical tool for finding renames
+.SH SYNOPSIS
+.if t \{\
+.B bk renametool \< 
+.I filelist
+\}
+.if n \{\ 
+bk rename < <filelist>
+\}
+.SH DESCRIPTION
+.LP
+The renametool command is a graphical interface for finding renames.
+Renametool is invoked automatically by the import command when
+importing patches.
+.LP
+The purpose of this tool is to maintain revision history across file
+renames.  A repository which is managed entirely by BitKeeper manages
+revision history across file renames. However, a system managed by
+BitKeeper, but which imports traditional patches (i.e. diff -Nur)
+needs some help because patches do not directly record renames.
+.LP
+Conceptually, a patch rename is seen as a deletion of one file and a
+creation of another file.  When BitKeeper imports a patch, it detects
+the set of created and deleted files.  These files are then fed to
+renametool where you are given the chance to find files which are
+actually renames and record that information.  
+.LP
+When renametool starts up, you are looking at several text windows.
+The game is that you need to match up files in the create window with
+files in the delete window.  You can click on files in each window
+and the tool will show you diffs.  When you find two files which
+you think are the same, you can click the rename button to rename
+them and remove them from the lists.  The guess button tries to find
+matches for you, based on the basename of the files.  When you click
+on a created file, the guess button is invoked once automatically.
+You can click on the guess button again to find the next potential
+match.
+.LP
+After you have matched up every file there is to match up, click
+"create all" and "delete all" to finish up any stragglers, and then
+click apply.
+.SH BINDINGS
+.TP 12
+.B Home
+Scroll both diff windows to the top
+.tp
+.B End
+Scroll both diff windows to the bottom.
+.tp
+.B PageUp
+Scroll both diff windows one screen up.
+.tp
+.B PageDown
+Scroll both diff windows one screen down.
+.tp
+.B UpArrow
+Scroll both diff windows one line up.
+.tp
+.B DownArrow
+Scroll both diff windows one line down.
+.tp
+.B LeftArrow
+Scroll both diff windows to the left.
+.tp
+.B RightArrow
+Scroll both diff windows to the right.
+.LP
+These bindings are the same as clicking the associated buttons:
+.tp
+.B a
+Apply the actions in the Resolved files window.
+.tp
+.B C
+Create all files in the Created files window.
+.tp
+.B c
+Create the highlighted file in the Created files window.
+.tp
+.B D
+Delete all files in the Deleted files window.
+.tp
+.B d
+Delete the highlighted file in the Deleted files window.
+.tp
+.B g
+Guess what the match might be.
+.tp
+.B h
+Show history of the highlighted file in the Deleted files window.
+.tp
+.B n
+Next diff.
+.tp
+.B p
+Previous diff.
+.tp
+.B q
+Quit without applying any changes.
+.tp
+.B r
+Rename the two marked files.
+.tp
+.B u
+Undo the highlighted file in the Resolved files window.
