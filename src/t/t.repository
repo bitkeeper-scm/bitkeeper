@@ -112,6 +112,9 @@ bk -r check -a || { echo failed; exit 1; }
 cd $HERE/project
 bk push $Q -e $HERE/proj_log
 cd $HERE/proj_log
+while [ -d PENDING ]
+do	sleep 1
+done
 bk -r check -a || { echo failed; exit 1; }
 echo OK
 

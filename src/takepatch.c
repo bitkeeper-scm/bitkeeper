@@ -151,15 +151,26 @@ usage:		system("bk help -s takepatch");
 
 	p = init(input, flags, &proj);
 
-	if (streq(input, "-") && isLogPatch && !newProject) {
-		char	*applyall[] = {"bk", "_applyall", 0};
+	if (streq(input, "-") && isLogPatch) {
+		if (newProject) {
+			/*
+			 * We will handle creating new logging repos
+			 * directly, so we won't be needing the .env
+			 * file.
+			 */
+			char	*env = aprintf("%s.env", pendingFile);
+			unlink(env);
+			free(env);
+		} else {
+			char	*applyall[] = {"bk", "_applyall", 0};
 
-		mclose(p);
-		mdbm_close(goneDB);
-		mdbm_close(idDB);
+			mclose(p);
+			mdbm_close(goneDB);
+			mdbm_close(idDB);
 
-		spawnvp_ex(_P_NOWAIT, "bk", applyall);
-		return(0);
+			spawnvp_ex(_P_NOWAIT, "bk", applyall);
+			return(0);
+		}
 	}
 	/*
 	 * Find a file and go do it.
