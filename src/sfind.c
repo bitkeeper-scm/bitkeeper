@@ -866,16 +866,20 @@ do_print(char state[5], char *file, char *rev)
 print:	print_it(state, file, rev);
 }
 
-char *
-append_rev(MDBM *db, char *name, char *rev, char *buf)
+private void
+append_rev(MDBM *db, char *name, char *rev)
 {
-	char *t;
+	char	*buf = 0;
+	char	*t;
 
 	t = mdbm_fetch_str(db, name);
-	unless (t) return (rev);
-	sprintf(buf, "%s,%s", t, rev);
-	assert(strlen(buf) < MAXPATH);
-	return (buf);
+	if (t) {
+		t = buf = aprintf("%s,%s", t, rev);
+	} else {
+		t = rev;
+	}
+	mdbm_store_str(db, name, t, MDBM_REPLACE);
+	if (buf) free(buf);
 }
 
 /*
@@ -923,11 +927,10 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 				 * name if it turns out to be a junk file. 
 				 */
 				*p++ = 0;
-				p = append_rev(sDB, sdh[i], p, buf);
+				append_rev(sDB, sdh[i], p);
 			} else {
-				p = "";
-			} 
-			mdbm_store_str(sDB, sdh[i], p, MDBM_REPLACE);
+				mdbm_store_str(sDB, sdh[i], "", MDBM_REPLACE);
+			}
 		}
 	}
 	freeLines(sdh);
