@@ -3084,7 +3084,8 @@ sccs_initProject(sccs *s)
 	 */
 	sprintf(path, "%s/RESYNC", root);
 	if (exists(path)) p->flags |= PROJ_RESYNC;
-	unless (emptyDir(READER_LOCK_DIR)) p->flags |= PROJ_READER;
+	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
+	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_READER;
 	return (p);
 }
 
