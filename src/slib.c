@@ -13991,6 +13991,7 @@ stripChecks(sccs *s, delta *d, char *who)
 	return (0);
 }
 
+#ifndef WIN32
 int
 smartUnlink(char *file)
 {
@@ -14048,6 +14049,7 @@ smartMkdir(char *dir, int mode)
 	if (isdir(dir)) return 0;
 	return ((mkdir)(dir, mode));
 }
+#endif
 
 #if	defined(linux) && defined(sparc)
 #undef	fclose
