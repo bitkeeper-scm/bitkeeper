@@ -1101,7 +1101,6 @@ flags_delta(resolve *rs,
 	sccs	*s;
 	int	bits = flags & X_USER;
 
-	assert(bits);
 	if (rs->opts->debug) {
 		fprintf(stderr, "flags(%s, %s, 0x%x, %s)\n",
 		    sfile, d->rev, bits, which == LOCAL ? "local" : "remote");
@@ -1109,7 +1108,7 @@ flags_delta(resolve *rs,
 	edit_tip(rs, sfile, d, rfile, which);
 	sprintf(buf, "bk clean %s", sfile);
 	sys(buf, rs->opts);
-	sprintf(buf, "bk admin -r%s", d->rev);
+	sprintf(buf, "bk admin -qr%s", d->rev);
 #define	add(s)		{ strcat(buf, " -f"); strcat(buf, s); }
 #define	del(s)		{ strcat(buf, " -F"); strcat(buf, s); }
 #define	doit(f,s)	if (bits&f) add(s) else del(s)

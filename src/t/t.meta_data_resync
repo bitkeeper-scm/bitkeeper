@@ -180,3 +180,23 @@ then	echo failed with mode $FLAGS
 	exit 1
 fi
 echo OK
+echo $N Check flags conflict2 .......................................$NL
+cd $HERE/project/src
+bk admin $Q -FSCCS foo.c
+bk commit $S -yperm2
+cd $HERE/copy/src
+bk admin $Q -FRCS -FYEAR4 -FSCCS -FEXPAND1 foo.c
+bk commit $S -yperm3
+bk resync -t $Q $HERE/project $HERE/copy
+cd $HERE
+bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
+l
+EOF
+cd $HERE/copy/src
+FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
+if [ "$FLAGS" != "SINGLE" ]
+then	echo failed with mode $FLAGS
+	bk prs -h -d':REV:\t:FLAGS:' foo.c
+	exit 1
+fi
+echo OK
