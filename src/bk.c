@@ -1,3 +1,6 @@
+#ifdef WIN32
+#include <windows.h>
+#endif
 #include "system.h"
 #include "sccs.h" 
 
@@ -350,7 +353,7 @@ main(int ac, char **av)
 	 * XXX This is slow because we are going thru the shell
 	 */
 #ifdef WIN32
-	argv[0] = "sh";
+	argv[0] = "bash"; /* because the script uses getopt */
 #else
 	argv[0] = "/bin/sh";
 #endif
@@ -550,6 +553,13 @@ gotit:
 		t = strrchr(buf, '/');
 		*t = 0;
 		localName2bkName(buf, buf);
+#ifdef WIN32
+		/*
+		 * Convert to short path name, because the shell 
+		 * script can not handle space in path name.
+		 */
+		GetShortPathName(buf, buf, sizeof(buf));
+#endif
 		bin = buf; /* buf is static */
 
 		if (add2path) {

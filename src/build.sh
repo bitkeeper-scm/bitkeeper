@@ -48,13 +48,16 @@ case `uname -s` in
 		LINK_LIB="$LINK_LIB $WIN32_LIBS"
 		BK="bk.exe"
 		BKMERGE="bkmerge.exe"
-		WIN_UTIL="win_util"
+		WIN_BIN="pwd.exe socket_helper.exe"
 		LDFLAGS="-nologo -debug"
 		AR=`pwd`/win32/util/mklib
-		BINDIR="C:/BitKeeper"
+		# BINDIR should really be :C:/Program Files/BitKeeper
+		# The shell can not handle space in pathname, so
+		# we use the short name here
+		BINDIR="C:/Progra~1/BitKeeper"
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
 		export CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
-		export BK BKMERGE MORE UWT_H WIN_UTIL BINDIR
+		export BK BKMERGE MORE UWT_H WIN_UTIL BINDIR WIN_BIN
 		;;
 esac
 $MAKE "CC=$CC" "LD=$LD" "XLIBS=$XLIBS" "$@"
