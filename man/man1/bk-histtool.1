@@ -23,7 +23,7 @@ When the histtool starts up, the entire revision history of the file
 is in the text window.
 .LP
 To view the history for just one revision, left click once on that
-revision.
+revision in the graph.
 .LP
 To see differences between two revisions, left click once on the older
 revision and right click once on the newer revision.  The differences
@@ -31,6 +31,12 @@ will be displayed in the text window.  You can right click on another
 revision and diff again.  The default diff format is
 .B \-u
 (unified diffs).
+.LP
+Once the annotated file listing is shown, you can then click on
+the lines to view the checkin comments that are associated with the
+revision that the line represents. Double clicking on an annotated
+line brings up csettool and shows all of the other files that were
+modified in the same changeset as the selected line.
 .LP
 To get a side\-by\-side view of the differences, select the two revisions
 and click on the "Diff tool" button.
@@ -111,8 +117,12 @@ Scroll text window to the bottom.
 .B s
 Show the raw SCCS file.
 .tp
-.B Control\-q
-Quit histtool.
+.B d
+Show the differences between the selected item and its parent. If
+a graph node is selected, the difference between it and its parent
+are shown. However, if a line within the annotated file listing is
+selected, the difference between the selected revision and its parent
+are shown.
 .tp
 .B h
 Show the entire revision history comments.
@@ -125,6 +135,9 @@ Reverse search.
 .tp
 .B n
 Search for the next occurrence of the string.
+.tp
+.B Control\-q
+Quit histtool.
 .SH "SEE ALSO"
 .SA gui 1
 .SH CATEGORY
