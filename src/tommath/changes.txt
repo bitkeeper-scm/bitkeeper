@@ -1,3 +1,13 @@
+Aug 29th, 2003
+v0.26  -- Fixed typo that caused warning with GCC 3.2
+       -- Martin Marcel noticed a bug in mp_neg() that allowed negative zeroes.  
+          Also, Martin is the fellow who noted the bugs in mp_gcd() of 0.24/0.25.
+       -- Martin Marcel noticed an optimization [and slight bug] in mp_lcm().
+       -- Added fix to mp_read_unsigned_bin to prevent a buffer overflow.
+       -- Beefed up the comments in the baseline multipliers [and montgomery]
+       -- Added "mont" demo to the makefile.msvc in etc/
+       -- Optimized sign compares in mp_cmp from 4 to 2 cases.
+
 Aug 4th, 2003
 v0.25  -- Fix to mp_gcd again... oops (0,-a) == (-a, 0) == a
        -- Fix to mp_clear which didn't reset the sign  [Greg Rose]
