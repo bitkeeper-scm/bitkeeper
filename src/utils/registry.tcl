@@ -73,7 +73,7 @@ proc registry_install {destination} \
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayVersion $version
 	reg set $HKLMS\\$MWC\\Uninstall\\$id Publisher "BitMover, Inc."
 	reg set $HKLMS\\$MWC\\Uninstall\\$id UninstallString \
-		 "[file nativename [file join $destination bkuninstall]] -r -S \"$destination\\install.log\""
+		 "[file nativename [file join $destination bkuninstall]] -S \"$destination\\install.log\""
 	reg set $HKLMS\\$MWC\\Uninstall\\$id URLInfoAbout \
 		 "http://www.bitkeeper.com"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id HelpLink \
