@@ -6219,6 +6219,16 @@ sccs_get(sccs *s, char *rev,
 	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
 	    s->sfile, notnull(rev), notnull(mRev),
 	    notnull(iLst), notnull(xLst), flags, printOut));
+	if (!(flags & (PRINT|GET_SKIPGET)) && (s->state & S_LOGS_ONLY)) {
+		unless (s->tree->pathname) {
+			fprintf(stderr, "get: no pathname for %s\n", s->sfile);
+			return (-1);
+		}
+		unless (streq("ChangeSet", s->tree->pathname) ||
+		    strneq("BitKeeper/etc/", s->tree->pathname, 14)) {
+			return (0);
+		}
+	}
 	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
 err:		if (i2) free(i2);
