@@ -225,65 +225,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	FILE 	*f;
 
 	
-	/*
-	 * Auto upgarde old logging_ok file to new logging_ok file
-	 * which has a cset-drived root key
-	 */
-	if (!opts.resync && !opts.no_autoupgrade) {
-		s = sccs_init(LOGGING_OK, 0, 0);
-		if (s && s->tree && !sccs_hasCsetDerivedKey(s)) {
-			char buf2[MAXPATH], buf3[MAXPATH], buf4[MAXPATH];
 
-			unless (HAS_GFILE(s)) {
-				sccs_get(s, 0, 0 ,0 ,0, SILENT, "-");
-			}
-			sccs_free(s); s = 0;
-			assert(exists(GLOGGING_OK));
-			mkdirp("BitKeeper/tmp/SCCS"); 
-			sprintf(buf, "BitKeeper/tmp/SCCS/%s",
-							basenm(LOGGING_OK));
-			if (rename(LOGGING_OK, buf)) {
-				fprintf(stderr,
-					"cannot move %s\n", LOGGING_OK);
-				perror(buf);
-				return (1);
-			}
-			if (sccs_rm(buf, buf2, 1)) {
-				fprintf(stderr, "Cannot \"bk rm %s\"\n", buf);
-				return (1);
-			}
-
-			/* becuase sccs_rm removed empty dir */
-			mkdirp("BitKeeper/tmp");
-
-			assert(exists(GLOGGING_OK));
-			assert(!exists(LOGGING_OK));
-			if (system("bk new -q " GLOGGING_OK)) {
-				fprintf(stderr,
-					"cannot \"bk new %s\"\n", GLOGGING_OK);
-				return (1);
-			}
-
-			/*
-			 * Add the old and new logging_ok file to 
-		  	 * the pendingFiles
-			 */
-			gettemp(buf3, "pending1");
-			sprintf(buf, "bk sfiles -pC %s %s >> %s",
-					    LOGGING_OK, buf2, buf3);
-			system(buf);
-			gettemp(buf4, "pending2");
-			sprintf(buf, "egrep -v \"^%s@[^@]*$\" %s > %s",
-					LOGGING_OK, pendingFiles, buf4);
-			system(buf);
-			sprintf(buf, "sort -u %s %s > %s", 
-						buf3, buf4, pendingFiles);
-			system(buf);
-			unlink(buf3);
-			unlink(buf4);
-		}
-		if (s) sccs_free(s);
-	}
 
 	l =  logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {

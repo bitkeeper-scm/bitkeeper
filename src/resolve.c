@@ -47,7 +47,7 @@ private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
-private void	auto_sortmerge(resolve *rs);
+private void	merge_loggingok(resolve *rs);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj);
 private int	writeCheck(sccs *s, MDBM *db);
@@ -1838,7 +1838,7 @@ err:		resolve_free(rs);
 	}
 
 	if (streq(LOGGING_OK, rs->s->sfile)) {
-		auto_sortmerge(rs);
+		merge_loggingok(rs);
 		resolve_free(rs);
 		return;
 	}
@@ -1963,17 +1963,44 @@ automerge(resolve *rs, names *n)
 }
 
 /*
- * Sort merge two files, i.e we just union the data.
+ * Merge the logging_ok files, we just union the data.
  */
 private void
-auto_sortmerge(resolve *rs)
+merge_loggingok(resolve *rs)
 {
-	char *tmp;
+	char	left[MAXPATH];
+	char	right[MAXPATH];
+	char	cmd[MAXPATH*3];
 
-	tmp = rs->opts->mergeprog; 	/* save */
-	rs->opts->mergeprog = "_sortmerge";
-	automerge(rs, 0);
-	rs->opts->mergeprog = tmp;	/* restore */
+	/*
+	 * save the contents before we start moving stuff around.
+	 */
+	gettemp(left, "left");
+	gettemp(right, "right");
+	sprintf(cmd, "bk _get -qp %s/%s > %s", RESYNC2ROOT, GLOGGING_OK, left);
+	if (sys(cmd, rs->opts) ||
+	    sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
+		fprintf(stderr, "get failed, can't merge.\n");
+err:		unlink(left);
+		unlink(right);
+		rs->opts->errors = 1;
+		return;
+	}
+	if (edit(rs)) goto err;
+	sprintf(cmd, "cat %s %s | sort -u > %s", left, right, GLOGGING_OK);
+	if (sys(cmd, rs->opts)) {
+		perror(cmd);
+		goto err;
+	}
+	unlink(left);
+	unlink(right);
+	sccs_close(rs->s); /* for win32 */
+	sprintf(cmd, "bk delta -Py'Auto merged' %s %s",
+	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
+	if (sys(cmd, rs->opts)) {
+		perror(cmd);
+		goto err;
+	}
 }
 
 /*

@@ -8209,72 +8209,11 @@ checkin(sccs *s,
 		s->table = n0;
 		if (buf[0]) pathArg(n0, buf); /* pathname */
 
-		if (bk_etc && !(flags&DELTA_PATCH)) {
-			sccs *sc;
-			delta *cset_root, *d_tmp;
-			char tmp[MAXPATH];
-			char *root = sccs_root(s);
 
-			/*
-			 * File under BitKeeper/etc are special
-			 * It's root key is computed relative to
-			 * Changeset root key;
-			 * If a file of the same name is created
-			 * indendently in two related repositories, they
-			 * will have the same root key.
-			 */
-			sprintf(tmp, "%s/%s", root, CHANGESET);
-			free(root);
-			sc = sccs_init(tmp, INIT_SAVEPROJ, s->proj);
-			assert(sc);
-			cset_root = findrev(sc, "1.0");
-			assert(cset_root);
-			assert(cset_root->user);
-			assert(cset_root->hostname);
-			assert(cset_root->sdate);
-			assert(cset_root->zone);
-			n0->user = strdup(cset_root->user);
-			n0->hostname = strdup(cset_root->hostname);
-			n0->sdate = strdup(cset_root->sdate);
-			n0->zone = strdup(cset_root->zone);
-			if (cset_root->random) {
-				n0->random = strdup(cset_root->random);
-			} else {
-				/*
-				 * If the ChangeSet file has short key
-				 * force short key for the derived key
-				 */
-				short_key = 1;
-			}
-			n0->flags |= D_CKSUM;
-			n0->sum = cset_root->sum;
-			n0->date = cset_root->date;
-			n0->dateFudge = cset_root->dateFudge;
-			n0 = sccs_dInit(n0, 'D', s, 0);
-			sccs_free(sc);
-
-			/*
-			 * Check the ChangeSet database
-			 * to make sure the file is not already created
-			 * and used in a ChangeSet
-			 */
-			sccs_sdelta(s, n0, buf);
-			sprintf(tmp, "bk -R grep \"^%s \" %s > %s",
-						   buf, CHANGESET, DEV_NULL);
-			if (system(tmp) == 0) {
-				fprintf(stderr, 
-					"delta: %s: key allready used"
-					" in ChangeSet file\n", s->sfile);
-				s->state |= S_WARNED;
-				goto abort;
-			}
-			dinsert(s, flags, n0, 0);
-		} else {
-			n0 = sccs_dInit(n0, 'D', s, nodefault);
-			n0->flags |= D_CKSUM;
-			n0->sum = (unsigned short) almostUnique(1);
-			dinsert(s, flags, n0, !(flags & DELTA_PATCH));
-		}
+		n0 = sccs_dInit(n0, 'D', s, nodefault);
+		n0->flags |= D_CKSUM;
+		n0->sum = (unsigned short) almostUnique(1);
+		dinsert(s, flags, n0, !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
