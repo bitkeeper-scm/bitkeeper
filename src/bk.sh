@@ -1308,7 +1308,9 @@ _install()
 	SRC=`bk bin`
 
 	OBK="$DEST.old$$"
-	test -d "$DEST" -a `bk _find -type f "$DEST" | wc -l` -gt 0 && {
+	NFILE=0
+	test -d "$DEST" && NFILE=`bk _find -type f "$DEST" | wc -l`
+	test $NFILE -gt 0 && {
 		DEST=`bk pwd "$DEST"`
 		test "$DEST" = "$SRC" && {
 			echo "bk install: destination == source"
