@@ -523,6 +523,7 @@ binlinks:
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
+	@find $(BINDIR) -type d -print | xargs chmod +w
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t/t.*
 	@if [ ! -d $(BINDIR)/t ]; \

@@ -1,6 +1,13 @@
 This is an installation tool.  It needs two arguments to run, an
 executable program and a data file.  It generates a program which
-will unpack the two files and run the first giving it the second as
-an argument.
+will unpack the two files and run the first giving it the full path
+to each file as arguments.
 
-See example.sh for more info.
+If the installer is called with any arguments, then first program will
+be passed those arguments.
+
+Suppose that you had installer.sh and tarball.gz and you packed those
+into installer.bin.  Then it works like this:
+
+    $ installer.bin -> installer.sh installer.sh tarball.gz
+    $ installer.bin --doit -> installer.sh --doit installer.sh tarball.gz
