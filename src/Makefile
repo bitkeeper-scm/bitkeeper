@@ -12,7 +12,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  isascii resyncwrap r2c rename setlog
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset count_user getlog build
+	  renametool mkdiffs lodset bk_users getlog build
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
@@ -395,15 +395,15 @@ mkdiffs: mkdiffs.perl port/unix_platform.perl substvars
 	chmod +x mkdiffs.T
 	mv -f mkdiffs.T mkdiffs
 
-getlog: getlog.perl port/unix_platform.perl substvars
-	./substvars getlog.perl port/unix_platform.perl > getlog.T
+getlog: getlog.perl aliases.perl port/unix_platform.perl substvars
+	./substvars getlog.perl aliases.perl port/unix_platform.perl > getlog.T
 	chmod +x getlog.T
 	mv -f getlog.T getlog
 
-count_user: count_user.perl
-	-rm -f count_user
-	cp count_user.perl count_user
-	chmod +x count_user
+bk_users: bk_users.perl aliases.perl
+	-rm -f bk_users
+	cat bk_users.perl aliases.perl > bk_users
+	chmod +x bk_users
 
 sccstool: gui/sccstool.tcl gui/common.tcl port/unix_platform.tcl substvars
 	./substvars port/unix_platform.tcl \

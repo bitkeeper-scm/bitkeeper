@@ -983,8 +983,16 @@ __sendConfig() {
 	  echo "Host:		`hostname`"
 	  echo "Root:		`pwd`"
 	  echo "Date:		`date`"
-	  ${BIN}get -ps ${BK_ETC}config | \
-	    grep -v '^#' ${BK_ETC}config | grep -v '^$'
+	  ${BIN}get -ps ${BK_ETC}config | grep -v '^#' | grep -v '^$'
+	  echo "User list:"
+	  _users
+	  echo "====="
+	  if [ -f ${BK_ETC}SCCS/s.aliases ] 
+	  then
+	  	echo "Alias list:"
+	  	${BIN}get -ps ${BK_ETC}/aliases | grep -v '^#' | grep -v '^$'
+	  	echo "====="
+	  fi
 	) | __mail $1 "BitKeeper config: $P"
 }
 
@@ -1085,7 +1093,7 @@ __nusers() {
 	if [ -f ${BK_ETC}SCCS/s.aliases ]
 	then ${BIN}get -kps ${BK_ETC}aliases > ${TMP}aliases$$
 	fi
-	perl -w ${BIN}count_user ${TMP}aliases$$ ${TMP}users$$
+	perl -w ${BIN}bk_users -c ${TMP}aliases$$ ${TMP}users$$
 	${RM} -f ${TMP}users$$ ${TMP}aliases$$
 }
 
