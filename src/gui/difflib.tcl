@@ -468,8 +468,8 @@ proc readFiles {L R {O {}}} \
 	set maxDiff [expr {[llength $rDiff] - 2}]
 	set maxBoth [expr {[llength $rBoth] - 2}]
 
-	#.diffs.left configure -state disabled
-	#.diffs.right configure -state disabled
+	.diffs.left configure -state disabled
+	.diffs.right configure -state disabled
 	. configure -cursor left_ptr
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
@@ -479,6 +479,8 @@ proc readFiles {L R {O {}}} \
 		dot
 	} else {
 		set lastDiff 0
+		set done 0
+		#displayMessage "done=($done) diffCount=($diffCount)"
 		# XXX: Really should check to see whether status lines
 		# are different
 		.diffs.status.middle configure -text "No differences"

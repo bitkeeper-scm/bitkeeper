@@ -344,15 +344,21 @@ proc resolved {n} \
 	global done diffCount
 	incr done $n
 	.merge.menu.l configure -text "$done / $diffCount resolved"
-	if {$done == 0} {
-		.merge.menu.undo configure -state disabled
-		.merge.menu.redo configure -state disabled
-	} elseif {$done == $diffCount} {
+	# prettier as a 'case' stmt? -ask
+	if {($done == 0) && ($diffCount) == 0} { ;# case with no differences
 		.merge.menu.save configure -state normal
 		.merge.menu.left configure -state disabled
 		.merge.menu.right configure -state disabled
 		.merge.menu.skip configure -state disabled
-	} else {
+	} elseif {$done == 0} { ;# not stated yet
+		.merge.menu.undo configure -state disabled
+		.merge.menu.redo configure -state disabled
+	} elseif {$done == $diffCount} { ;# we are done
+		.merge.menu.save configure -state normal
+		.merge.menu.left configure -state disabled
+		.merge.menu.right configure -state disabled
+		.merge.menu.skip configure -state disabled
+	} else { ;# we still have some to go...
 		.merge.menu.save configure -state disabled
 		.merge.menu.left configure -state normal
 		.merge.menu.right configure -state normal
@@ -432,55 +438,6 @@ proc save {} \
 	}
 	catch {close $o} err
 	exit 0
-}
-
-proc fPage {view dir one} \
-{
-	set p [winfo pointerxy .]
-	set x [lindex $p 0]
-	set y [lindex $p 1]
-	set w [winfo containing $x $y]
-	if {[regexp {^.diffs} $w]} {
-		page ".diffs" $view $dir $one
-		return 1
-	}
-	if {[regexp {^.merge} $w]} {
-		page ".merge" $view $dir $one
-		return 1
-	}
-	return 0
-}
-
-proc fpage {w xy dir one} \
-{
-	global	gc
-
-	if {$w == ".diffs"} {
-		if {$xy == "yview"} {
-			set lines [expr {$dir * $gc(fm.diffHeight)}]
-		} else {
-			# XXX - should be width.
-			set lines 16
-		}
-	} else {
-		if {$xy == "yview"} {
-			set lines [expr {$dir * $gc(fm.mergeHeight)}]
-		} else {
-			# XXX - should be width.
-			set lines 16
-		}
-	}
-	if {$one == 1} {
-		set lines [expr {$dir * 1}]
-	} else {
-		incr lines -1
-	}
-	if {$w == ".diffs"} {
-		.diffs.left $xy scroll $lines units
-		.diffs.right $xy scroll $lines units
-	} else {
-		.merge.t $xy scroll $lines units
-	}
 }
 
 proc height {w} \
