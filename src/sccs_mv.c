@@ -11,8 +11,9 @@ char *getRelativeName(char *name);
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
-	char 	buf[1024], *p, *q, *t, *destfile, *oldpath;
+	char 	*p, *q, *t, *destfile, *oldpath;
 	char	*gfile, *sfile, *nrev = 0;
+	char	buf[1024], commentBuf[MAXPATH*2];
 	sccs	*s;
 	delta	*d;
 	int	error = 0, wasEdited = 0;
@@ -45,6 +46,18 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		fprintf(stderr, "sccsmv: destination %s exists\n", gfile);
 		return (1);
 	}
+	oldpath = getRelativeName(name);
+	if (isDelete) {
+		sprintf(commentBuf, "Delete: %s", oldpath); 
+	} else {
+		char *newpath;
+
+		newpath = getRelativeName(destfile);
+		sprintf(commentBuf, "Rename: %s -> %s", oldpath, newpath); 
+		free(newpath);
+	}
+	free(oldpath);
+
 	error |= mv(s->sfile, sfile);
 	if (!error && exists(s->gfile)) error = mv(s->gfile, gfile);
 	if (HAS_PFILE(s) && !error) {
@@ -56,6 +69,25 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		*p = 's';
 	}
 	if (error) goto out;
+	/*
+	 * Remove the parent directory of "name",
+	 * If it is empty after the moves.
+	 * XXX TODO: for split root, check the G tree too..
+	 */
+	p = strrchr(s->sfile, '/');
+	if (p) {
+		*p = 0;
+		if (emptyDir(s->sfile)) rmDir(s->sfile);
+		q = strrchr(s->sfile, '/');
+		*p = '/';
+		if (q) {
+			*q = 0;
+			if (emptyDir(s->sfile)) rmDir(s->sfile);
+			*q = '/';
+		} else {
+			if (emptyDir(".")) rmDir(".");
+		}
+	}
 
 	/*
 	 * XXX TODO: we should store the rename comment 
@@ -76,19 +108,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		s = sccs_restart(s);
 	}
 
-	oldpath = getRelativeName(name);
-	if (isDelete) {
-		sprintf(buf, "Delete: %s", oldpath); 
-	} else {
-		char *newpath;
-
-		newpath = getRelativeName(destfile);
-		sprintf(buf, "Rename: %s -> %s", oldpath, newpath); 
-		free(newpath);
-
-	}
-	free(oldpath);
-	comment = buf;
+	comment = commentBuf;
 	gotComment = 1;
 	unless (s && (d = getComments(0))) {
 		error = 1;
@@ -96,29 +116,6 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	}
 
 	if (sccs_delta(s, flags, d, 0, 0) == -1) error = 1;
-
-	/*
-	 * Remove the parent directory of "name",
-	 * If it is empty after the moves.
-	 * XXX TODO: for split root, check the G tree too..
-	 */
-	free(sfile);
-	sfile = name2sccs(name);
-	p = strrchr(sfile, '/');
-	if (p) {
-		*p = 0;
-		if (emptyDir(sfile)) rmDir(sfile);
-		q = strrchr(sfile, '/');
-		*p = '/';
-		if (q) {
-			*q = 0;
-			if (emptyDir(sfile)) rmDir(sfile);
-			*q = '/';
-		} else {
-			if (emptyDir(".")) rmDir(".");
-		}
-	}
-
 out:	if (s) sccs_free(s);
 	free(destfile); free(sfile); free(gfile); 
 	if (gotComment) commentsDone(saved);

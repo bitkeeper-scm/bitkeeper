@@ -1302,7 +1302,9 @@ fullname(char *gfile, int withsccs)
 		 * pass in.  So we might as well save the call to putenv
 		 * and getenv.
 		 */
+		pwd[0] = 0;
 		getcwd(pwd, sizeof(pwd));
+		assert(IsFullPath(pwd));
 		/*
 		 * TODO we should store the PWD info
 		 * in the project stuct or some here
@@ -4440,13 +4442,13 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 			if (c == '\0') goto done;
 			sum += c;
 			*q++ = c;
-			if (q == &block[8192]) break;
+			if (q == &block[sizeof(block)]) break;
 			if (c == '\n') goto done;
 		}
 		if (s->encoding & E_GZIP) {
-			zputs((void *)s, out, block, 8192, gzip_sum);
+			zputs((void *)s, out, block, sizeof(block), gzip_sum);
 		} else {
-			fwrite(block, 8192, 1, out);
+			fwrite(block, sizeof(block), 1, out);
 		}
 		q = block;
 		if (c == '\n') break;
@@ -5524,11 +5526,9 @@ sameFileType(sccs *s, delta *d)
  * spec (except "fmttt" which stands for "format time_t").
  */
 private inline char *
-fmts(char *p, char *s)
+fmts(register char *p, register char *s)
 {
-	size_t len = strlen(s);
-	memcpy(p, s, len);
-	return p + len;
+	while (*p++ = *s++);
 }
 
 private char *
