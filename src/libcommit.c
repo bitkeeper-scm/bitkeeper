@@ -72,11 +72,6 @@ package_name()
 }
 
 void
-notify()
-{
-}
-
-void
 remark(int quiet)
 {
 	int i;
@@ -152,8 +147,6 @@ status(int verbose, FILE *f)
 		fclose(f1);
 		unlink(tmp_file);
 	} else {
-		int i;
-
 		fprintf(f,
 		    "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
 		f1 = popen("bk sfind -S -sx,c,p", "r");

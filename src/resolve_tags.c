@@ -33,8 +33,6 @@ t_help(resolve *rs)
 int
 t_explain(resolve *rs)
 {
-	tags	*t = (tags *)rs->opaque;
-
 	fprintf(stderr, 
 "----------------------------------------------------------------------\n\
 The file has a tag conflict.  This means that both the local\n\
@@ -81,7 +79,8 @@ rfuncs	t_funcs[] = {
 int
 resolve_tags(opts *opts)
 {
-	sccs	*s = sccs_init(CHANGESET, 0, 0);
+	char 	s_cset[] = CHANGESET;
+	sccs	*s = sccs_init(s_cset, 0, 0);
 	MDBM	*m = sccs_tagConflicts(s);
 	sccs	*local;
 	delta	*d;

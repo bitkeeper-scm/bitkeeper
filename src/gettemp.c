@@ -35,3 +35,19 @@ bktemp(char *buf)
 	perror("mkstemp");
 	return (-1);
 }
+
+char	*
+bktmpfile()
+{
+	int	fd;
+	char	buf[MAXPATH];
+
+	sprintf(buf, "BitKeeper/tmp/bkXXXXXX");
+	fd = mkstemp(buf);
+	if (fd != -1) {
+		close(fd);
+		return (strdup(buf));
+	}
+	perror("mkstemp");
+	return (0);
+}

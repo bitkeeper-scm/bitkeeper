@@ -536,7 +536,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 	return (spawn_cmd(_P_WAIT, argv));
 }
 
-#define	LOG_MAXSIZE	(32<<10)
+#define	LOG_MAXSIZE	(1<<20)
 #define	LOG_BADEXIT	-100000		/* some non-valid exit */
 
 void
@@ -677,7 +677,9 @@ cmdlog_end(int ret, int flags)
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
 		fprintf(f, "%s = %d", cmdlog_buffer, ret);
-		if (flags&CMD_BYTES) fprintf(f, " xfered=%u", get_byte_count());
+		if (flags&CMD_BYTES) {
+			fprintf(f, " xfered=%u", (u32)get_byte_count());
+		}
 		fputs("\n", f);
 	}
 	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {

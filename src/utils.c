@@ -333,7 +333,6 @@ int
 skip_http_hdr(remote *r)
 {
 	char	buf[1024];
-	int	i =0;
 
 	while (getline2(r, buf, sizeof(buf)) >= 0) {
 		if (buf[0] == 0) return (0); /*ok */
@@ -452,14 +451,60 @@ add_cd_command(FILE *f, remote *r)
 }
 
 void
+putroot()
+{
+	char	*root = sccs_root(0);
+	char	*e;
+	char	buf[MAXPATH];
+
+	if (root) {
+		if (streq(root, ".")) {
+			char	pwd[MAXPATH];
+
+			getcwd(pwd, MAXPATH);
+			if ((e = getenv("BK_LOCAL_ROOT")) && streq(e, pwd)) {
+				return;
+			}
+			sprintf(buf, "BK_LOCAL_ROOT=%s", pwd);
+		} else {
+			if ((e = getenv("BK_LOCAL_ROOT")) && streq(e, root)) {
+				return;
+			}
+			sprintf(buf, "BK_LOCAL_ROOT=%s", root);
+		}
+		putenv((strdup)(buf));
+		free(root);
+	}
+}
+
+void
 sendEnv(FILE *f, char **envVar)
 {
-	int i;
+	int	i;
+	char	*root;
+	extern	char *bk_vers, *bk_utc, *bk_time;
 
+	/* for compat with old 2.0 code, remove this line later*/
 	fprintf(f, "putenv BK_CLIENT_PROTOCOL=%s\n", BKD_VERSION);
-	fprintf(f, "putenv BK_CLIENT_RELEASE=%s\n", BK_RELEASE);
-	fprintf(f, "putenv BK_CLIENT_USER=%s\n", sccs_getuser());
-	fprintf(f, "putenv BK_CLIENT_HOST=%s\n", sccs_gethost());
+
+	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
+	fprintf(f, "putenv BK_REMOTE_VERSION=%s\n", bk_vers);
+	fprintf(f, "putenv BK_REMOTE_UTC=%s\n", bk_utc);
+	fprintf(f, "putenv BK_REMOTE_TIME_T=%s\n", bk_time);
+	fprintf(f, "putenv BK_REMOTE_USER=%s\n", sccs_getuser());
+	fprintf(f, "putenv BK_REMOTE_HOST=%s\n", sccs_gethost());
+	root = sccs_root(0);
+	if (root) {
+		if (streq(root, ".")) {
+			char	pwd[MAXPATH];
+
+			getcwd(pwd, MAXPATH);
+			fprintf(f, "putenv BK_REMOTE_ROOT=%s\n", pwd);
+		} else {
+			fprintf(f, "putenv BK_REMOTE_ROOT=%s\n", root);
+		}
+		free(root);
+	}
 	EACH(envVar) {
 		fprintf(f, "putenv %s\n", envVar[i]);
 	}
@@ -480,7 +525,7 @@ getServerInfoBlock(remote *r)
 	 	 * Note: This memory is de-allocated at exit
 		 */
 		p = (char *) malloc(len + 11); assert(p); 
-		sprintf(p, "BK_SERVER_%s", buf);
+		sprintf(p, "BK_REMOTE_%s", buf);
 		putenv(p);
 	}
 	return (1); /* protocol error */
@@ -489,14 +534,26 @@ getServerInfoBlock(remote *r)
 void
 sendServerInfoBlock()
 {
-	char buf[100];
+	char	buf[MAXPATH];
+	extern	char *bk_vers, *bk_utc, *bk_time;
 
 	out("@SERVER INFO@\n");
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
 	out(buf);
-        sprintf(buf, "RELEASE=%s\n", BK_RELEASE);	/* binary version   */
+        sprintf(buf, "VERSION=%s\n", bk_vers);		/* binary version   */
 	out(buf);
-	out("@END@\n");
+        sprintf(buf, "UTC=%s\n", bk_utc);
+	out(buf);
+        sprintf(buf, "TIME_T=%s\n", bk_time);
+	out(buf);
+	out("ROOT=");
+	getcwd(buf, sizeof(buf));
+	out(buf);
+	out("\nUSER=");
+	out(sccs_getuser());
+	out("\nHOST=");
+	out(sccs_gethost());
+	out("\n@END@\n");
 } 
 
 void

@@ -321,7 +321,6 @@
 #define CSETS_IN	"BitKeeper/etc/csets-in"
 #define CSETS_OUT	"BitKeeper/etc/csets-out"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
-#define	TRIGGERS	"BitKeeper/triggers"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
 #define	LOGGING_OK	"BitKeeper/etc/SCCS/s.logging_ok"
@@ -982,5 +981,6 @@ int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
 char *	user_preference(char *what, char buf[MAXPATH]);
 int	bktemp(char *buf);
+char	*bktmpfile();	/* return a char* to a just created temp file */
 void	updLogMarker(int ptype);
 #endif	/* _SCCS_H_ */

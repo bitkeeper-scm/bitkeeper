@@ -12,13 +12,13 @@ cmd_clone(int ac, char **av)
 {
 	int	c, rc;
 	int	gzip = 0;
-	char 	*p;
+	char 	*p, *rev = 0, ebuf[200];
 
 	/*
-	 * If BK_CLIENT_PROTOCOL is not defined,
+	 * If BK_REMOTE_PROTOCOL is not defined,
 	 * assumes bkd protocol version 1.2
 	 */
-	p = getenv("BK_CLIENT_PROTOCOL");
+	p = getenv("BK_REMOTE_PROTOCOL");
 	if (p) sendServerInfoBlock();
 
 	if (!exists("BitKeeper/etc")) {
@@ -31,7 +31,7 @@ cmd_clone(int ac, char **av)
 	}
 
 	cmd[4] = 0;
-	while ((c = getopt(ac, av, "qz|")) != -1) {
+	while ((c = getopt(ac, av, "qr|z|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -40,6 +40,12 @@ cmd_clone(int ac, char **av)
 		    case 'q':
 			cmd[4] = "-q";
 			break;
+		    case 'r':
+			rev = optarg;
+			break;
+		    default:
+			out("ERROR-unknown option\n");
+			exit(1);
 	    	}
 	}
 	if (!p) {
@@ -55,7 +61,12 @@ cmd_clone(int ac, char **av)
 		drain();
 		exit(1);
 	}
-	putenv("BK_OUTGOING=OK");
+	if (rev) {
+		sprintf(ebuf, "BK_CSETS=1.0..%s", rev);
+		putenv(ebuf);
+	} else {
+		putenv("BK_CSETS=1.0..");
+	}
 	if (p && trigger(av, "pre")) return (1);
 	if (p) out("@SFIO@\n");
 	if (p) {
@@ -66,7 +77,7 @@ cmd_clone(int ac, char **av)
 		rc = uncompressed();
 	}
 	flushSocket(1); /* This has no effect for pipe, should be OK */
-	if (rc) putenv("BK_OUTGOING=CONFLICT");
+	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (p && trigger(av, "post")) exit (1);
 	return (rc);
 }
@@ -91,9 +102,7 @@ private int
 compressed(int level, int hflag)
 {
 	pid_t	pid;
-	int	n, rfd, status;
-	u32	hlen = 0;
-	char	buf[4096];
+	int	rfd, status;
 
 #ifndef WIN32
 	signal(SIGCHLD, SIG_DFL);

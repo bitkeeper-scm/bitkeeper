@@ -3,9 +3,9 @@
  */
 
 #include "bkd.h"
-private int run_client_trigger(char **, char *, char *, char *);
-private int run_bkd_pre_trigger(char **, char *, char *, char *);
-private int run_bkd_post_trigger(char **, char *, char *, char *);
+private int localTrigger(char **);
+private int remotePreTrigger(char **);
+private int remotePostTrigger(char **);
 
 /*
  * trigger:  Fire triggers before and/or after repository level commands.
@@ -16,31 +16,49 @@ private int run_bkd_post_trigger(char **, char *, char *, char *);
 int
 trigger(char **av, char *when)
 {
-	char	*what, *t, **triggers = 0, buf[MAXPATH*4], file[MAXPATH];
-	char	*triggerDir = TRIGGERS, tbuf[MAXPATH];
-	int	i, len, rc = 0;
+	char	buf[MAXPATH], tbuf[MAXPATH];
+	char	*what, *t, **triggers = 0;
+	char	*triggerDir = "BitKeeper/triggers";
+	int	len, resync, rc = 0;
 	struct	dirent *e;
 	DIR	*dh;
+	extern	char *bk_vers, *bk_utc, *bk_time;
 
 	t = av[0];
-
-	if (strneq(t, "remote pull", 11) || strneq(t, "push", 4) ||
-	    strneq(t, "remote clone", 12)) {
+	if (strneq(t, "remote pull", 11)) {
 		what = "outgoing";
-	} else if (
-	    strneq(t, "remote push", 11) || strneq(t, "clone", 5) ||
-	    strneq(t, "pull", 4)) {
+		putenv("BK_EVENT=outgoing pull");
+	} else if (strneq(t, "push", 4)) {
+		what = "outgoing";
+		putenv("BK_EVENT=outgoing push");
+	} else if (strneq(t, "remote clone", 12)) {
+		what = "outgoing";
+		putenv("BK_EVENT=outgoing clone");
+	} else if (strneq(t, "remote push", 11)) {
 		what = "incoming";
+		putenv("BK_EVENT=incoming push");
+	} else if (streq(t, "resolve") || streq(t, "remote resolve")) {
+		what = "resolve";
+		putenv("BK_EVENT=resolve");
+	} else if (strneq(t, "clone", 5)) {
+		/* XXX - can this happen?  Where's the trigger? */
+		what = "incoming";
+		putenv("BK_EVENT=incoming clone");
+	} else if (strneq(t, "pull", 4)) {
+		what = "incoming";
+		putenv("BK_EVENT=incoming pull");
 	} else if (strneq(t, "commit", 6)) {
 		what = "commit";
+		putenv("BK_EVENT=commit");
 	} else if (strneq(t, "remote log push", 15)) {
 		/*
 		 * logs triggers are global over all logging trees
 		 */
 		unless (logRoot) return (0);
 		triggerDir = tbuf;
-		concat_path(tbuf, logRoot, "triggers");
+		concat_path(triggerDir, logRoot, "triggers");
 		what = "incoming-log";
+		putenv("BK_EVENT=incoming log");
 	} else {
 		fprintf(stderr,
 			"Warning: Unknown trigger event: %s, ignored\n", av[0]);
@@ -49,46 +67,80 @@ trigger(char **av, char *when)
 
 	if ((bk_mode() == BK_BASIC) && !strneq("commit", t, 6)) return (0);
 
-	sprintf(buf, "%s:%s", sccs_gethost(), fullname(".", 0));
-	for (len = 1, i = 0; av[i]; i++) {
-		len += strlen(av[i]) + 1;
-		if (len >= sizeof(buf)) continue;
-		strcat(buf, " ");
-		strcat(buf, av[i]);
-	}
 	unless (isdir(triggerDir)) return (0);
 	sys("bk", "get", "-q", triggerDir, SYS);
-	sprintf(file, "%s-%s", when, what);
-	len = strlen(file);
+
+	/* Run the incoming trigger in the RESYNC dir if there is one.  */
+	resync = (triggerDir != tbuf) && streq(what, "resolve");
+	if (resync) {
+		assert(isdir(ROOT2RESYNC));
+	    	chdir(ROOT2RESYNC);
+		triggerDir = RESYNC2ROOT "/BitKeeper/triggers";
+	}
 
 	/*
 	 * Find all the trigger scripts associated with this event.
 	 * XXX TODO need to think about the spilt root case
 	 */
+	sprintf(buf, "BK_TRIGGER=%s-%s", when, what);
+	putenv((strdup)(buf));
+	sprintf(buf, "%s-%s", when, what);
+	len = strlen(buf);
 	dh = opendir(triggerDir);
 	assert(dh);
-	while ((e = readdir(dh)) != NULL) {
+	while (e = readdir(dh)) {
 		if ((strlen(e->d_name) >= len) &&
-		    strneq(e->d_name, file, len)) {
+		    strneq(e->d_name, buf, len)) {
+			char	file[MAXPATH];
+
 			sprintf(file, "%s/%s",  triggerDir, e->d_name);
 			triggers = addLine(triggers, strdup(file));
 		}
 	}
 	closedir(dh);
-	unless (triggers) return (0);
+	unless (triggers) {
+		if (resync) chdir(RESYNC2ROOT);
+		return (0);
+	}
+
+	/*
+	 * Stuff some more useful crud in the environment.
+	 */
+	putroot();
+	unless ((t = getenv("BK_LOCAL_HOST")) && streq(t, sccs_gethost())) {
+		sprintf(buf, "BK_LOCAL_HOST=%s", sccs_gethost());
+		putenv((strdup)(buf));
+	}
+	unless ((t = getenv("BK_LOCAL_USER")) && streq(t, sccs_getuser())) {
+		sprintf(buf, "BK_LOCAL_USER=%s", sccs_getuser());
+		putenv((strdup)(buf));
+	}
+	unless ((t = getenv("BK_LOCAL_TIME_T")) && streq(t, bk_time)) {
+		sprintf(buf, "BK_LOCAL_TIME_T=%s", bk_time);
+		putenv((strdup)(buf));
+	}
+	unless ((t = getenv("BK_LOCAL_UTC")) && streq(t, bk_utc)) {
+		sprintf(buf, "BK_LOCAL_UTC=%s", bk_utc);
+		putenv((strdup)(buf));
+	}
+	unless ((t = getenv("BK_LOCAL_VERSION")) && streq(t, bk_vers)) {
+		sprintf(buf, "BK_LOCAL_VERSION=%s", bk_vers);
+		putenv((strdup)(buf));
+	}
 
 	/*
 	 * Sort it and run the triggers
 	 */
 	sortLines(triggers);
-	unless (strneq(t, "remote ", 7))  {
-		rc = run_client_trigger(triggers, when, what, buf);
+	unless (strneq(av[0], "remote ", 7))  {
+		rc = localTrigger(triggers);
 	} else if (streq(when, "pre")) {
-		rc = run_bkd_pre_trigger(triggers, when, what, buf);
+		rc = remotePreTrigger(triggers);
 	} else 	{
-		rc = run_bkd_post_trigger(triggers, when, what, buf);
+		rc = remotePostTrigger(triggers);
 	}
 	freeLines(triggers);
+	if (resync) chdir(RESYNC2ROOT);
 	return (rc);
 }
 
@@ -108,55 +160,62 @@ runable(char *file)
 }
 
 private int
-runit(char *file, char *when, char *event, char *output)
+runit(char *file, char *output)
 {
-	int	status, rc;
-#ifdef	WIN32
-		char *p;
+	int	status, rc, j = 0, fd1, fd;
+	char	*my_av[10];
 
-		p = strrchr(file, '.');
-		/*
-		 * If no suffix, assumes it is a shell script
-		 * so feed it to the bash shell
-		 */
-		unless (p) {
-			status = sysio(0, output, 0,
-					"bash", "-c", file, when, event, SYS);
-		} else {
-			/*
-			 * XXX TODO: If suffix is .pl or .perl, run the perl
-			 * interpretor. Win32 ".bat" file should just work
-			 * with no special handling.
-			 */
-			status = sysio(0, output, 0, file, when, event, SYS);
-		}
-#else
-		status = sysio(0, output, 0, file, when, event, SYS);
+	if (output) {
+		fd1 = dup(1); close(1); 
+		fd = open(output, O_CREAT|O_TRUNC|O_WRONLY, 0666);
+		assert(fd == 1);
+	}
+#ifdef	WIN32
+	p = strrchr(file, '.');
+	/*
+	 * If no suffix, assumes it is a shell script
+	 * so feed it to the bash shell
+	 */
+	unless (p) {
+		my_av[j++] = "bash";
+		my_av[j++] = "-c";
+	}
 #endif
+	my_av[j++] = file;
+	my_av[j] = 0;
+	status = spawnvp_ex(_P_WAIT, my_av[0], my_av);
+	if (output) {
+		close(1);
+		dup2(fd1, 1);
+	}
+	if (WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);
-		return (rc);
+	} else {
+		rc = 100;
+	}
+	return (rc);
 }
 
 /*
  * Both pre and post client triggers are handled here
  */
 private int
-run_client_trigger(char **triggers, char *when, char *what, char *event)
+localTrigger(char **triggers)
 {
 	int	i, rc = 0;
 
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
-		rc = runit(triggers[i], when, event, 0);
+		rc = runit(triggers[i], 0);
 		if (rc) break;
 	}
 	return (rc);
 }
 
 private int
-run_bkd_pre_trigger(char **triggers, char *when, char *what, char *event)
+remotePreTrigger(char **triggers)
 {
-	int	i, rc = 0, status, first = 1;
+	int	i, rc = 0;
 	char	output[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
@@ -171,30 +230,24 @@ run_bkd_pre_trigger(char **triggers, char *when, char *what, char *event)
 	 * This is not done yet.
 	 */
 	gettemp(output, "trigger");
+	fputs("@TRIGGER INFO@\n", stdout);
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
-		rc = runit(triggers[i], when, event, output);
+		rc = runit(triggers[i], output);
 		f = fopen(output, "rt");
 		assert(f);
 		while (fnext(buf, f)) {
-			if (first) {
-				first = 0;
-				fputs("@TRIGGER INFO@\n", stdout);
-			}
 			printf("%c%s", BKD_DATA, buf);
 		}
 		fclose(f);
 		if (rc) break;
 	}
-	unless (first) {
-		printf("%c%d\n", BKD_RC, rc);
-		fputs("@END@\n", stdout);
-		fflush(stdout);
-	}
+	printf("%c%d\n", BKD_RC, rc);
+	fputs("@END@\n", stdout);
+	fflush(stdout);
 	unlink(output);
 	return (rc);
 }
-
 /*
  * This function is called by client side to process the TRIGGER INFO block
  * sent by run_bkd_trigger() above
@@ -230,7 +283,7 @@ getTriggerInfoBlock(remote *r, int verbose)
 }
 
 private int
-run_bkd_post_trigger(char **triggers, char *when, char *what, char *event)
+remotePostTrigger(char **triggers)
 {
 	int	fd1, i, rc = 0;
 
@@ -245,7 +298,7 @@ run_bkd_post_trigger(char **triggers, char *when, char *what, char *event)
 	if (dup2(2, 1) < 0) perror("trigger: dup2");
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
-		rc = runit(triggers[i], when, event, 0);
+		rc = runit(triggers[i], 0);
 		if (rc) break;
 	}
 	dup2(fd1, 1); close(fd1);
