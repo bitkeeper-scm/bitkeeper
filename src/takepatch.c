@@ -65,6 +65,7 @@ private	void	getGone(int isLogPatch);
 private void	metaUnion(void);
 private void	metaUnionFile(char *file, char *cmd);
 private void	metaUnionResyncFile(char *from, char *to);
+private	void	loadskips(void);
 
 private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -172,6 +173,30 @@ usage:		system("bk help -s takepatch");
 			return(0);
 		}
 	}
+
+	if (newProject) {
+		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
+			perror("mdbm_open");
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
+	} else {
+		/*
+		 * before loading up special dbs, update gfile is
+		 * logging tree
+		 */
+		if (isLogPatch) metaUnion();
+
+		/* OK if this returns NULL */
+		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+
+		loadskips();
+
+		unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+			perror("SCCS/x.id_cache");
+			exit(1);
+		}
+	}
+
 	/*
 	 * Find a file and go do it.
 	 */
@@ -1913,6 +1938,13 @@ resync_lock(void)
  * Create the RESYNC dir or bail out if it exists.
  * Put our pid in that dir so that we can figure out if
  * we are still here.
+ *
+ * This function creates patches in the PENDING directory when the
+ * patches are read from stdin.  On a logging tree, these patches are
+ * written and then processed by a seperate applyall process.  So
+ * logging processes need to be very careful to not touch any state
+ * that might effect the other takepatch that might be running in the
+ * background from a previous patch.
  */
 private	MMAP	*
 init(char *inputFile, int flags, project **pp)
@@ -2005,7 +2037,10 @@ init(char *inputFile, int flags, project **pp)
 	if (streq(inputFile, "-")) {
 		/*
 		 * Save the patch in the pending dir
-		 * and record we're working on it.
+		 * and record we're working on it.  We use a .incoming
+		 * file and then rename it later so that a background
+		 * applyall process on the logging server doesn't try
+		 * to process a partial patch.
 		 */
 		unless (savefile("PENDING", ".incoming", pendingFile)) {
 			SHOUT();
@@ -2336,26 +2371,6 @@ missing:
 	mnext(m);		/* skip version number */
 	line = 1;
 
-	if (newProject) {
-		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
-			perror("mdbm_open");
-			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-		}
-		return (m);
-	}
-
-	/* before loading up special dbs, update gfile is logging tree */
-	if (isLogPatch) metaUnion();
-
-	/* OK if this returns NULL */
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
-
-	loadskips();
-
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
-		perror("SCCS/x.id_cache");
-		exit(1);
-	}
 	return (m);
 }
 
