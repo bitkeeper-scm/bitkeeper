@@ -11,6 +11,7 @@ then
 	echo '# Always delta this if there are diffs' > TCLKEY
 	echo $TCLKEY >> TCLKEY
 else
+	bk get -q TCLKEY
         test -f TCLKEY || exit 1
 	TCLKEY=`tail -1 TCLKEY`
 fi
@@ -23,6 +24,7 @@ then
 	echo '# Always delta this if there are diffs' > TKKEY
 	echo $TKKEY >> TKKEY
 else
+	bk get -q TKKEY
 	test -f TKKEY || exit 1
 	TKKEY=`tail -1 TKKEY`
 fi

@@ -38,13 +38,15 @@ configure: tcl/$S/configure tk/$S/configure
 	done
 
 # fetch tcl subdirectory if needed
-tcl/$S/configure:
-	test -d tcl || bk clone bk://data.bitmover.com/tcl.bk tcl
+tcl/$S/configure: TCLKEY
+	test -d tcl || bk clone -r`tail -1 TCLKEY` \
+				bk://data.bitmover.com/tcl.bk tcl
 	cd tcl; bk -Ur get -qS
 
 # fetch tk subdirectory if needed
-tk/$S/configure:
-	test -d tk || bk clone bk://data.bitmover.com/tk.bk tk
+tk/$S/configure: TKKEY
+	test -d tk || bk clone -r`tail -1 TKKEY` \
+				bk://data.bitmover.com/tk.bk tk
 	cd tk; bk -Ur get -qS
 
 install: ./version.sh
