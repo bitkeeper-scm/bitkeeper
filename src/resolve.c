@@ -1158,7 +1158,8 @@ flags_delta(resolve *rs,
 	assert(n < 38);	/* matches 40 in declaration */
 	av[++n] = 0;
 
-	if (spawnvp_ex(_P_WAIT, av[0], av)) {
+	n = spawnvp_ex(_P_WAIT, av[0], av);
+	if (!WIFEXITED(n) || WEXITSTATUS(n)) {
 		for (i = 0; av[i]; ++i) fprintf(stderr, "%s ", av[i]);
 		fprintf(stderr, "failed\n");
 		freeStuff(rs->opts);
@@ -2118,7 +2119,8 @@ commit(opts *opts)
 		cmds[++i] = cmt;
 	}
 	cmds[++i] = 0;
-	unless (spawnvp_ex(_P_WAIT, "bk", cmds)) {
+	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
 		if (cmt) free(cmt);
 		return;
 	}
@@ -2159,8 +2161,12 @@ private int
 bk_check()
 {
 	char	*av[5] = {"bk", "-r", "check", "-a", 0};
+	int	status;
 
-	return (spawnvp_ex(_P_WAIT, av[0], av) != 0);
+	status = spawnvp_ex(_P_WAIT, av[0], av);
+	unless (WIFEXITED(status))  return (1);  /* fail */
+	return (WEXITSTATUS(status) != 0);   
+
 }
 
 /*
