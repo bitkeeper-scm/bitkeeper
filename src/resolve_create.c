@@ -892,16 +892,41 @@ sc_rml(resolve *rs)
 int
 sc_rmr(resolve *rs)
 {
-	char	cmd[MAXPATH*2];
+	char	repo[MAXPATH*2];
+	char	resync[MAXPATH];
+	int	filenum = 0;
+	char	*nm = basenm(rs->d->pathname);
 
 	unless (rs->opts->force || confirm("Remove remote file?")) return (0);
+	sprintf(resync, "BitKeeper/deleted/SCCS/s..del-%s", nm);
+	sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
+	while (exists(resync) || exists(repo)) {
+		sprintf(resync,
+		    "BitKeeper/deleted/SCCS/s..del-%s~%d", nm, ++filenum);
+		sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
+	}
 	sccs_close(rs->s);
-	sprintf(cmd, "bk rm %s", rs->s->sfile);
-	if (sys(cmd, rs->opts)) {
-		perror(cmd);
+	if (rename(rs->s->sfile, resync)) {
+		perror("rename");
+		fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, resync);
 		exit(1);
 	}
-	return (1);
+
+	/*
+	 * Force a delta to lock it down to this name.
+	 */
+	sprintf(repo, "bk edit -q %s", resync);
+	if (sys(repo, rs->opts)) {
+		perror(repo);
+		exit(1);
+	}
+	sprintf(repo,
+	    "bk delta -y'Delete: %s' %s", ((sccs*)rs->opaque)->gfile, resync);
+	if (sys(repo, rs->opts)) {
+		perror(repo);
+		exit(1);
+	}
+	return (1);	/* XXX - EAGAIN? */
 }
 
 rfuncs	gc_funcs[] = {
