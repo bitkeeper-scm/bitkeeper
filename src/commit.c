@@ -131,7 +131,7 @@ do_commit()
 
 checkLog()
 {
-	char buf[MAXLINE], buf2[MAXLINE];
+	char ans[MAXLINE], buf[MAXLINE], buf2[MAXLINE];
 	char getlog_out[MAXPATH];
 	FILE *f;
 	char *getlog(char *user);
@@ -140,12 +140,10 @@ checkLog()
 	if (strneq("ask_open_logging:", buf, 17)) {
 		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
-		fgets(buf, sizeof(buf), stdin);
-		if ((buf[0] == 'Y') || (buf[0] == 'y')) {
+		fgets(ans, sizeof(ans), stdin);
+		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
 			char *cname = &buf[17];
-			sprintf(buf2, "%ssetlog %s %s",
-						bin, resync ? "-R" : "", cname);
-			system(buf2);
+			setlog(cname);
 			return (0);
 		} else {
 			gethelp("log_abort", logAddr(), stdout);
@@ -154,12 +152,10 @@ checkLog()
 	} else if (strneq("ask_close_logging:", buf, 18)) {
 		gethelp("close_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
-		fgets(buf, sizeof(buf), stdin);
-		if ((buf[0] == 'Y') || (buf[0] == 'y')) {
+		fgets(ans, sizeof(ans), stdin);
+		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
 			char *cname = &buf[18];
-			sprintf(buf2, "%ssetlog %s %s",
-						bin, resync ? "-R" : "", cname);
-			system(buf2);
+			setlog(cname);
 			return (0);
 		} else {
 			sendConfig("config@openlogging.org");
