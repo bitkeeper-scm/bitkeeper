@@ -409,7 +409,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 
 	if (bkarg == NULL) bkarg = "";
 	sprintf(buf, "%sbkhelp.txt", bin);
-	f = fopen(buf, "r");
+	f = fopen(buf, "rt");
 	assert(f);
 	sprintf(pattern, "#%s\n", help_name);
 	while (fgets(buf, sizeof(buf), f)) {
