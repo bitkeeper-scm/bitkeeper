@@ -2190,9 +2190,10 @@ bk_check()
 private void
 rm_sfile(char *sfile)
 {
-	char *p;
+	char	*p;
 
 	assert(!IsFullPath(sfile));
+	sys("bk", "clean", sfile, SYS);
 	if (unlink(sfile)) {
 		perror(sfile);
 		return;

@@ -550,7 +550,7 @@ push_part2(char **av, opts opts,
 		 */
 		sprintf(buf, "BK_REVLISTFILE=%s", rev_list);
 		putenv(buf); 
-		if (trigger(av, "pre", 0)) {
+		if (!opts.metaOnly && trigger(av, "pre", 0)) {
 			putenv("BK_REVLISTFILE="); /* free env varible */
 			send_abort_msg(opts, r, rev_list, ret, envVar);
 			rc = 1;
@@ -615,7 +615,7 @@ push_part2(char **av, opts opts,
 		rev_list[0] = 0;
 	}
 
-done:	trigger(av, "post", rc);
+done:	if (!opts.metaOnly) trigger(av, "post", rc);
 	if (rev_list[0]) unlink(rev_list);
 	disconnect(r, 2);
 	return (rc);

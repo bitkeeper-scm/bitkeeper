@@ -1363,19 +1363,19 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "Select File" -width 12 -state normal \
 		-menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
-		$gc(fmenu) add command -label "Get new file" \
+		$gc(fmenu) add command -label "View new file" \
 		    -command { 
 		    	set fname [selectFile]
 			if {$fname != ""} {
 				histtool $fname "-$gc(hist.showHistory)"
 			}
 		    }
-		$gc(fmenu) add command -label "ChangeSet" \
-		    -command {
-			cd2root
-			set fname ChangeSet
-		    	histtool ChangeSet -$gc(hist.showHistory)
-		    }
+		#$gc(fmenu) add command -label "ChangeSet" \
+		#    -command {
+		#	cd2root
+		#	set fname ChangeSet
+		#    	histtool ChangeSet -$gc(hist.showHistory)
+		#    }
 		$gc(fmenu) add separator
 		$gc(fmenu) add command -label "$fname" \
 		    -command "histtool $fname -$gc(hist.showHistory)"
@@ -1576,8 +1576,8 @@ proc selectFile {} \
 	if {$file == ""} {return}
 	catch {set f [open "| bk sfiles -g \"$file\"" r]} err
 	if { ([gets $f fname] <= 0)} {
-		displayMessage "$file is not under revision control.\n
-Please select a revision controled file"
+		set rc [tk_dialog .new "Error" "$file is not under revision control.\nPlease select a revision controled file" "" 0 "Cancel" "Select Another File" "Exit BitKeeper"]
+		if {$rc == 2} {exit} elseif {$rc == 1} { selectFile }
 	} else {
 		#displayMessage "file=($file) err=($err)"
 		# XXX: Need to add in a function so that we can check for
@@ -1602,9 +1602,9 @@ proc saveHistory {} \
 	if {[catch {open $gc(histfile) w} fid]} {
 		puts stderr "Cannot open $bkrc"
 	} else {
-		# Start at 4 so we skip over the "Add new" and sep entries
-		set start 4
-		set saved [expr $gc(hist.savehistory) + 3]
+		# Start at 3 so we skip over the "Add new" and sep entries
+		set start 3
+		set saved [expr $gc(hist.savehistory) + 2]
 		if {$num > $saved} {
 			set start [expr $num - $gc(hist.savehistory)]
 		}
@@ -1780,6 +1780,13 @@ if {$fname == ""} {
 	catch {exec bk sane} err
 	if {[lindex $errorCode 2] == 1} {
 		displayMessage "$err" 0
+	}
+} else {
+	# If we haven't brought up the gui yet, die if a bad file was given
+	set file [exec bk sfiles -g $fname 2>$dev_null]
+	if {"$file" == ""} {
+		puts stderr "No such file \"$fname\""
+		exit
 	}
 }
 
