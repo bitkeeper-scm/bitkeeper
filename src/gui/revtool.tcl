@@ -247,18 +247,18 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 	if {[info exists fname]} {unset fname}
 	#displayMessage "type=($ttype)"
 
-	# Use annotated and prs to keep track of whether we are being called from within the 
-	# file annotation text widget or prs
-
 	$win tag remove "select" 1.0 end
 	set curLine [$win index "@$x,$y linestart"]
 	set line [$win get $curLine "$curLine lineend"]
+	busy 1
 
 	# Search for annotated file output or annotated diff output
 	# display comment window if we are in annotated file output
 	switch -regexp -- $ttype {
 	    "^annotated$" {
-	    	if {![regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match fname rev]} {
+	    	if {![regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} \
+		    $line match fname rev]} {
+			busy 0
 			return
 		}
 		# set global rev1 so that r2c and csettool know which rev
@@ -273,8 +273,15 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		} else {
 			set comments_mapped 0
 		}
-		pack configure $w(cframe) -fill x -expand true -anchor n -before $w(apframe)
-		pack configure $w(apframe) -fill both -expand true -anchor n
+		pack configure $w(cframe) \
+		    -fill x \
+		    -expand true \
+		    -anchor n \
+		    -before $w(apframe)
+		pack configure $w(apframe) \
+		    -fill both \
+		    -expand true \
+		    -anchor n
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
 		filltext $w(ctext) $prs 1
 		set wht [winfo height $w(cframe)]
@@ -286,9 +293,9 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		}
 	    }
 	    "^.*_prs$" {
-		# Fall through and assume we are in prs output and walk backwards up 
-		# the screen until we find a line with a revision number (if in cset prs) 
-		# or filename@revision if in specific file prs output
+		# walk backwards up the screen until we find a line with a 
+		# revision number (if in cset prs) or filename@revision 
+		# if in specific file prs output
 		catch {unset rev}
 		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match fname rev
 		regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line match rev
@@ -298,11 +305,27 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 				# This pops when trying to select the cset
 				# comments for the ChangeSet file
 				#puts "Error: curLine=$curLine"
+				busy 0
 				return
 			}
 			set line [$win get $curLine "$curLine lineend"]
-			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match fname rev
-			regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line match rev
+			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line m fname rev
+			regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line m rev
+		}
+		$win see $curLine
+	    }
+	    "^sccs$" {
+		catch {unset rev}
+		regexp {^.*D\ ([0-9]+\.[0-9.]+)\ .*} $line match rev
+		while {![info exists rev]} {
+			set curLine [expr $curLine - 1.0]
+			if {$curLine == "0.0"} {
+				#puts "Error: curLine=$curLine"
+				busy 0
+				return
+			}
+			set line [$win get $curLine "$curLine lineend"]
+			regexp {^.*D\ ([0-9]+\.[0-9.]+)\ .*} $line match rev
 		}
 		$win see $curLine
 	    }
@@ -326,11 +349,12 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		if {($bindtype == "B1") && ($fname != "") && ($fname != "ChangeSet")} {
 			catch {exec bk revtool -l$rev $fname &} err
 		}
+		busy 0
 		return
 	}
 	set srev ""
 	set name [$win get $curLine "$curLine lineend"]
-	if {$name == ""} { puts "Error: name=($name)"; return }
+	if {$name == ""} { puts "Error: name=($name)"; busy 0; return }
 	if {[info exists rev2rev_name($rev)]} {
 		set revname $rev2rev_name($rev)
 	} else {
@@ -356,7 +380,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 			.menus.cset configure -state normal
 			centerRev $revname
 			set id [$w(graph) gettag $revname]
-			if {$id == ""} { return }
+			if {$id == ""} { busy 0; return }
 			if {$bindtype == "B1"} {
 				getLeftRev $id
 			} elseif {$bindtype == "B3"} {
@@ -378,13 +402,14 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 				r2c
 			}
 		}
+		busy 0
 		return
 	}
 	# center the selected revision in the canvas
 	if {$revname != ""} {
 		centerRev $revname
 		set id [$w(graph) gettag $revname]
-		if {$id == ""} { return }
+		if {$id == ""} { busy 0; return }
 		if {$bindtype == "B1"} {
 			getLeftRev $id
 		} elseif {$bindtype == "B3"} {
@@ -395,6 +420,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		}
 	} else {
 		#puts "Error: tag not found ($line)"
+		busy 0
 		return
 	}
 	if {($bindtype == "D1") && ($ttype == "annotated")} {
@@ -405,6 +431,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 			r2c
 		}
 	}
+	busy 0
 	return
 } ;# proc selectTag
 
@@ -446,7 +473,6 @@ proc centerRev {revname} \
 	set xfract [expr ($rev_x2 - $cdim(s,x1) - $xdiff) /  \
 	    ($cdim(s,x2) - $cdim(s,x1))]
 	$w(graph) xview moveto $xfract
-
 }
 
 # Separate the revisions by date with a vertical bar
@@ -700,6 +726,7 @@ proc mergeArrow {m ht} \
 
 	set b $parent($m)
 	if {!([info exists revX($b)] && [info exists revY($b)])} {return}
+	if {!([info exists revX($m)] && [info exists revY($m)])} {return}
 	set px $revX($b)
 	set py $revY($b)
 	set x $revX($m)
