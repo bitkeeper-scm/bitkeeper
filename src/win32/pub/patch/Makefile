@@ -20,11 +20,15 @@ all: patch
 
 patch: $(OBJS)
 
-$(OBJS): $(H) $(SRCS)
+include depends
+
+depends: $(SRCS) $(H)
+	gcc -MM $(CFLAGS) $^ > $@
 
 clean clean-obj clobber:
 	rm -f *.o $(PROGRAMS) core
 	rm -f *.pdb *.ilk *.exp *.exe *.lib *.idb
+	rm -f depends
 
 install: all
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi

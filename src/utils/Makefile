@@ -23,7 +23,7 @@ else
 	LD=$(CC)
 	STRIP=strip
 endif
-SFIO_OBJS=sfio.o sfio_utils.o
+SFIO_OBJS=sfio.o sfio_utils.o ../port/fast_lstat.c ../port/fileinfo.o
 SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o
 SFIO=sfio$(EXE)
 VERS	:= $(shell test -x vers || bk get vers; ./vers)

@@ -316,7 +316,29 @@ remote_print(remote *r, FILE *f)
 	fprintf(f, "\n");
 }
 
+private pid_t
+bkd_tcp_connect(remote *r)
+{
+	int	i;
+	char	*cgi = WEB_BKD_CGI;
 
+	if (r->type == ADDR_HTTP) {
+		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
+			cgi = r->path + 8;
+		}
+		http_connect(r);
+	} else {
+		i = tcp_connect(r->host, r->port);
+		if (i < 0) {
+			r->rfd = r->wfd = -1;
+			if (i == -2) r->badhost = 1;
+		} else {
+			r->rfd = r->wfd = i;
+		}
+	}
+	r->isSocket = 1;
+	return ((pid_t)0);
+}
 
 /*
  * Return the pid of a connected to daemon with stdin/out put in fds[].

@@ -99,6 +99,15 @@ loadfile(char *file, int *size)
 	return (ret);
 }
 
+int
+touch(char *file, int mode)
+{
+	int	fh = open(file, O_CREAT|O_EXCL|O_WRONLY, mode);
+
+	if (fh < 0) return (fh);
+	return (close(fh));
+}
+
 /*
  * Write the data to either the gzip channel or to 1.
  */
@@ -204,32 +213,20 @@ getline(int in, char *buf, int size)
 	}
 }
 
-/*
- * We need this becuase on win32, read() does not work on socket
- */
 int
 read_blk(remote *r, char *buf, int len)
 {
 	if (r->rf) {
 		return (fread(buf, 1, len, r->rf));
-	} else if (r->isSocket) {
-		return (recv(r->rfd, buf, len, 0));
 	} else {
 		return (read(r->rfd, buf, len));
 	}
 }
 
-/*
- * We need this becuase on win32, write() does not work on socket
- */
 int
 write_blk(remote *r, char *buf, int len)
 {
-	if (r->isSocket) {
-		return (send(r->wfd, buf, len, 0));
-	} else {
-		return (write(r->wfd, buf, len));
-	}
+	return (write(r->wfd, buf, len));
 }
 
 /*
@@ -629,6 +626,8 @@ send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 	} else {
 		if (write_blk(r, msg, mlen) != mlen) {
 			perror("send_msg");
+			fprintf(stderr, "r->wfd = %d errno = %d\n",
+			    r->wfd, errno);
 			return (-1);
 		}
 	}
@@ -680,16 +679,16 @@ disconnect(remote *r, int how)
 				shutdown(r->rfd, 0);
 			} else {
 				close(r->rfd);
-				r->rfd = -1;
 			}
+			r->rfd = -1;
 			break;
 	    case 1: 	if (r->wfd == -1) return;
 			if (r->isSocket) {
 				shutdown(r->wfd, 1);
 			} else {
 				close(r->wfd);
-				r->wfd = -1;
 			}
+			r->wfd = -1;
 			break;
 	    case 2:	if (r->rfd >= 0) close(r->rfd);
 			if (r->wfd >= 0) close(r->wfd);
@@ -955,12 +954,12 @@ sendServerInfoBlock(int is_rclone)
 }
 
 void
-http_hdr(int full)
+http_hdr(void)
 {
 	static	int done = 0;
-	
+
 	if (done) return; /* do not send it twice */
-	if (full) {
+	if (getenv("BKD_DAEMON")) {
 		out("HTTP/1.0 200 OK\r\n");
 		out("Server: BitKeeper daemon ");
 		out(bk_vers);
@@ -972,17 +971,6 @@ http_hdr(int full)
 	out("\r\n");				/* end of header */
 	done = 1;
 }
-
-void
-flush2remote(remote *r)
-{
-	if (r->isSocket) {
-		flushSocket(r->wfd);
-	} else {
-		flush_fd(r->wfd); /* this is a no-op on Unix */
-	}
-}
-
 
 /*
  * Drain error message:
@@ -1334,7 +1322,7 @@ unsafe_path(char *s)
 		if (streq(s, "/..")) return (1);
 		*s = 0;
 		/* we've chopped the last component, it must be a dir */
-		unless (isdir(buf)) return (1); /* this call lstat() */
+		unless (isdir(buf)) return (1); /* this calls lstat() */
 		unless (s = strrchr(buf, '/')) {
 			/* might have started with ../someplace */
 			return (streq(buf, ".."));
@@ -1360,7 +1348,8 @@ run_check(char *partial, int fix, int quiet)
 
  again:
 	fixopt = (fix ? "-f" : "--");
-	if (!partial || stat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
+	if (!partial || 
+	    fast_lstat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
 		ret = sys("bk", "-r", "check", opts, fixopt, SYS);
 	} else {
 		ret = sysio(partial, 0, 0, "bk", "check", fixopt, "-", SYS);

@@ -289,7 +289,7 @@ oksccs(char *sfile, int flags, int complain)
 		return (0);
 	}
 	g = sccs2name(sfile);
-	ok = fast_lstat(g, &sbuf, 0) == 0;
+	ok = fast_lstat(g, &sbuf) == 0;
 	if ((flags&SF_GFILE) && !ok) {
 		if (complain) {
 			unless (exists(sfile)) {

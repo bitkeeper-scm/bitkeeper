@@ -663,9 +663,6 @@ synckeys_main(int ac, char **av)
 		}
 	}
 
-
-
-	loadNetLib();
 	has_proj("synckeys");
 	r = remote_parse(av[optind]);
 	assert(r);

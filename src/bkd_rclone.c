@@ -79,12 +79,12 @@ cmd_rclone_part1(int ac, char **av)
 	char	*path, *p;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
-	if (isDaemon(Opts) || Opts.safe_cd) {
+	if (Opts.safe_cd || getenv("BKD_DAEMON")) {
 		char	cwd[MAXPATH];
 		char	*new = fullname(path, 0);
 		localName2bkName(new, new);
 		getcwd(cwd, sizeof(cwd));
-		unless ((strlen(new) >= strlen(cwd)) && 
+		unless ((strlen(new) >= strlen(cwd)) &&
 		    pathneq(cwd, new, strlen(cwd))) {
 			out("ERROR-illegal cd command\n");
 			free(path);

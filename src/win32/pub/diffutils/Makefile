@@ -27,11 +27,10 @@ diff: $(D_OBJ) $(L_OBJ) $(LIBUWT)
 
 diff3: $(D3_OBJ) $(LIBUWT)
 
-$(D_OBJ): $(H) $(D_SRC)
+depends: $(D_SRC) $(D3_SRC) $(L_SRC) $(H)
+	gcc -MM $(CFLAGS) $^ > $@
 
-$(L_OBJ): $(H) $(L_SRC)
-
-$(D3_OBJ): $(H) $(D3_SRC)
+include depends
 
 clean clean-obj clobber:
 	rm -f *.o $(PROGRAMS) core

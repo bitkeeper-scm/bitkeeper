@@ -94,7 +94,7 @@ cmd_clone(int ac, char **av)
 	} else {
 		rc = uncompressed();
 	}
-	flushSocket(1); /* This has no effect for pipe, should be OK */
+	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (p && trigger(av[0], "post")) exit (1);
 

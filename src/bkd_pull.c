@@ -198,7 +198,7 @@ cmd_pull_part2(int ac, char **av)
 			    n);
 		}
 	}
-	flushSocket(1); /* This has no effect for pipe, should be OK */
+	tcp_ndelay(1, 1); /* This has no effect for pipe, should be OK */
 
 done:	fflush(stdout);
 	if (dont) {

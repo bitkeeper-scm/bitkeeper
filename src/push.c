@@ -78,7 +78,6 @@ push_main(int ac, char **av)
 		}
 	}
 
-	loadNetLib();
 	/*
 	 * Get push parent(s)
 	 * Must do this before we chdir()
@@ -221,6 +220,11 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 	sccs	*s;
 	delta	*d;
 
+	/*
+	 * XXX returning -1 for a failed connect is bogus.  it means
+	 * we call push_part2() to send an abort message and that will
+	 * fail too.
+	 */
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
 	send_part1_msg(r, rev_list, envVar);
 	if (r->rfd < 0) return (-1);
@@ -510,12 +514,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 		return (-1);
 	}
 	write_blk(r, "@END@\n", 6);	/* important for win32 socket helper */
-	if (getenv("_BK_NO_SHUTDOWN")) {
-		send_flush_block(r); /* ignored by bkd */
-		flush2remote(r);
-	} else {
-		disconnect(r, 1);
-	}
+	disconnect(r, 1);
 
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
@@ -690,11 +689,11 @@ done:	if (!opts.metaOnly) {
 	if (rev_list[0]) unlink(rev_list);
 
 	/*
-	 * XXX This is a workaround for a csh fd lead:
+	 * XXX This is a workaround for a csh fd leak:
 	 * Force a client side EOF before we wait for server side EOF.
-	 * Needed only if remote is running csh; csh have a fd lead
-	 * which cause it fail to send us EOF when we close stdout and opts.out.
-	 * Csh only send us EOF and the bkd exit, yuck !!
+	 * Needed only if remote is running csh; csh has a fd leak
+	 * which causes it fail to send us EOF when we close stdout
+	 * and stderr.  Csh only sends us EOF and the bkd exit, yuck !!
 	 */
 	disconnect(r, 1);
 
