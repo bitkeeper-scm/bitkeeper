@@ -1138,6 +1138,7 @@ char	*
 fullname(char *gfile, int withsccs)
 {
 	static	char new[MAXPATH];
+	static	char pwd[MAXPATH];
 	char	*t;
 
 	if (IsFullPath(gfile)) {
@@ -1146,6 +1147,8 @@ fullname(char *gfile, int withsccs)
 		 * It's quicker than calling getcwd.
 		 */
 		strcpy(new, gfile);
+	} else if  (pwd[0] && samefile(".", pwd)) {
+		concat_path(new, pwd, gfile);
 	} else if  ((t = getenv("PWD")) && samefile(".", t)) {
 		/*
 		 * If we have a relative name and $PWD points to where
@@ -1153,14 +1156,19 @@ fullname(char *gfile, int withsccs)
 		 */ 
 		concat_path(new, t, gfile);
 	} else {
-		getcwd(new, sizeof(new));
-		setenv("PWD", new, 1);
+		/*
+		 * We can not use putenv() here because god damn IRIX
+		 * doesn't malloc space for it, they use the buffer you
+		 * pass in.  So we might as well save the call to putenv
+		 * and getenv.
+		 */
+		getcwd(pwd, sizeof(pwd));
 		/*
 		 * TODO we should store the PWD info
 		 * in the project stuct or some here
 		 * so it will be faster on the next call
 		 */
-		concat_path(new, new, gfile);
+		concat_path(new, pwd, gfile);
 	}
 
 	cleanPath(new, new);
@@ -5801,11 +5809,7 @@ skip_data:
 
 			sccs_pdelta(s->tree, id);
 			unless (path) path = relativeName(s, 0, 0);
-			if (streq(path, s->gfile)) {
-				fprintf(id, "\n");
-			} else {
-				fprintf(id, " %s\n", path);
-			}
+			fprintf(id, " %s\n", path);
 			fclose(id);
 		}
 	} 

@@ -47,7 +47,7 @@ main(int ac, char **av)
 {
 	sccs	*s;
 	int	all = 0, flags = SILENT, c;
-	char	kind = streq(av[0], "sdiffs") ? D_SDIFF : D_DIFF;
+	char	kind;
 	char	*name;
 	RANGE_DECL;
 
@@ -57,6 +57,11 @@ main(int ac, char **av)
 		return (1);
 	}
 
+	if (name = strrchr(av[0], '/')) {
+		kind = streq(++name, "sdiffs") ? D_SDIFF : D_DIFF;
+	} else {
+		kind = streq(av[0], "sdiffs") ? D_SDIFF : D_DIFF;
+	}
 	while ((c = getopt(ac, av, "acd;DMnpr|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;

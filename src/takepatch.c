@@ -416,7 +416,7 @@ applyPatch(int flags)
 		perror("cp");
 		exit(1);
 	}
-	unless (s = sccs_init(p->resyncFile, flags)) {
+	unless (s = sccs_init(p->resyncFile, NOCKSUM|flags)) {
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
 		exit(1);
 	}
@@ -444,7 +444,7 @@ applyPatch(int flags)
 	/* sccs_restart does not rebuild the graph and we just pruned it,
 	 * so do a hard restart.
 	 */
-	unless (s = sccs_init(p->resyncFile, flags)) {
+	unless (s = sccs_init(p->resyncFile, NOCKSUM|flags)) {
 		fprintf(stderr,
 		    "takepatch: can't open %s\n", p->resyncFile);
 		exit(1);
@@ -521,7 +521,7 @@ apply:
 			if (s->state & BAD_DSUM) cleanup(CLEAN_RESYNC);
 			fclose(iF);	/* dF done by delta() */
 			sccs_free(s);
-			s = sccs_init(p->resyncFile, 0);
+			s = sccs_init(p->resyncFile, NOCKSUM);
 		}
 		p = p->next;
 	}
@@ -862,7 +862,6 @@ fileCopy(char *from, char *to)
 
 cleanup(int what)
 {
-exit(9);
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
 		system("/bin/rm -rf RESYNC");

@@ -265,7 +265,7 @@ retry:		v = mdbm_fetch(idDB, k);
 			continue;
 		}
 		t = name2sccs(v.dptr);
-		unless (sc = sccs_init(t, 0)) {
+		unless (sc = sccs_init(t, NOCKSUM)) {
 			fprintf(stderr, "cset: init of %s failed\n", t);
 			exit(1);
 		}
@@ -349,7 +349,7 @@ retry:		v = mdbm_fetch(idDB, k);
 			goto next;
 		}
 		t = name2sccs(v.dptr);
-		unless (sc = sccs_init(t, 0)) {
+		unless (sc = sccs_init(t, NOCKSUM)) {
 			fprintf(stderr, "cset: init of %s failed\n", t);
 			exit(1);
 		}
@@ -445,7 +445,7 @@ add(MDBM *csDB, char *buf)
 		exit(1);
 	}
 	*rev++ = 0;
-	unless (s = sccs_init(buf, SILENT)) {
+	unless (s = sccs_init(buf, NOCKSUM|SILENT)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -u ChangeSet");
 		exit(1);

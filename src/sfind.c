@@ -206,7 +206,7 @@ hasDiffs(char *file)
 	sccs	*s = sccs_init(file, 0);
 
 	if (!s) return (0);
-	if (sccs_hasDiffs(s, 0) == 1) {
+	if (sccs_hasDiffs(s, 0) >= 1) {
 		sccs_free(s);
 		return (1);
 	}

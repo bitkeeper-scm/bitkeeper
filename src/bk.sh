@@ -827,11 +827,8 @@ function resync {
 	fi
 	cd $FROM
 	if [ "X$INIT" = "X-i" ]
-	then	bk prs -hd:I: ChangeSet | while read x
-		do	bk cset -l$x
-		done | csetSort > /tmp/list$$
-	else
-		bk smoosh ChangeSet $TO/ChangeSet | \
+	then	bk cset -l1.1.. | csetSort > /tmp/list$$
+	else	bk smoosh ChangeSet $TO/ChangeSet | \
 		sed 's/ChangeSet://' | while read x
 		do	bk cset -l$x
 		done | csetSort > /tmp/list$$
@@ -989,7 +986,7 @@ function commit {
 }
 
 function man {
-	MANPATH=${BIN}man:$MANPATH
+	export MANPATH=${BIN}man:$MANPATH
 	for i in /usr/bin /bin /usr/local/bin /usr/sbin
 	do	if [ -x /usr/bin/man ]
 		then	exec /usr/bin/man $@
