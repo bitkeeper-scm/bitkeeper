@@ -9122,7 +9122,8 @@ out:
 			break;
 		    default: OUT;
 		}
-		unless (diffs = mopen(tmpfile)) {
+		/* We prefer binary mode, but win32 GNU diff used text mode */ 
+		unless (diffs = mopen(tmpfile, "t")) {
 			fprintf(stderr,
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;

@@ -156,12 +156,12 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			av[0]);
 		goto usage;
 	}
-	if (diffsFile && !(diffs = mopen(diffsFile))) {
+	if (diffsFile && !(diffs = mopen(diffsFile, "b"))) {
 		fprintf(stderr, "%s: diffs file '%s': %s.\n",
 			av[0], diffsFile, strerror(errno));
 	       return (1);
 	}
-	if (initFile && !(init = mopen(initFile))) {
+	if (initFile && !(init = mopen(initFile, "b"))) {
 		fprintf(stderr,"%s: init file '%s': %s.\n",
 			av[0], initFile, strerror(errno));
 		return (1);

@@ -1296,7 +1296,7 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 	d = mkChangeSet(cset, fdiffs); /* write change set to diffs */
 
 	fclose(fdiffs);
-	unless (diffs = mopen(filename)) {
+	unless (diffs = mopen(filename, "b")) {
 		perror(filename);
 		sccs_free(cset);
 		unlink(filename);

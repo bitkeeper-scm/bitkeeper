@@ -595,17 +595,17 @@ int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
-MMAP	*purify_mopen(char *file, char *, int);
+MMAP	*purify_mopen(char *file, char *mode, char *, int);
 void	purify_mclose(MMAP *, char *, int);
 #else
-MMAP	*mopen(char *file);
+MMAP	*mopen(char *file, char *mode);
 void	mclose(MMAP *);
 #endif
 char	*mnext(MMAP *);
 int	mpeekc(MMAP *);
 void	mseekto(MMAP *m, off_t off);
 off_t	mtell(MMAP *m);
-MMAP	*mrange(char *start, char *stop);
+MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
