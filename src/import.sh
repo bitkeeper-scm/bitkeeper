@@ -283,12 +283,12 @@ import_patch() {
 			;;
 	esac
 	
-	echo Locking files in `pwd` ...
-	bk -r get -eq
 	echo Patching...
+	# XXX TODO For gfile with a sfile, patch -E option should translates
+	#          delete event to "bk rm"
 	(cd "$HERE" && cat "$PATCH") |
-	    bk patch -p1 -ZsE -z '=-PaTcH_BaCkUp!' --forcetime --lognames > \
-		${TMP}plog$$ 2>&1
+	    bk patch -g1 -f -p1 -ZsE \
+		-z '=-PaTcH_BaCkUp!' --forcetime --lognames > ${TMP}plog$$ 2>&1
 	cat ${TMP}plog$$
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink
 	REJECTS=NO
@@ -337,11 +337,7 @@ import_patch() {
 	fi
 	rm -f ${TMP}creates$$ ${TMP}deletes$$
 
-	if [ X$Q = X ]
-	then	bk -r clean -q
-	fi
-
-	bk -r ci $VERBOSE -G -y"Import patch $PNAME"
+	bk -cr ci $VERBOSE -G -y"Import patch $PNAME"
 
 	bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
 	if [ -s ${TMP}extras$$ ]
