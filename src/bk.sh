@@ -461,6 +461,24 @@ _logAddr() {
 	echo ${LOG#*:} 
 }
 
+# Determine if the repo is multiuser.
+# If it isn't, we don't need to log anything.
+# The rule is: for any user@host.dom.ain, if the last component is 3 letters,
+# then the last two components are significant; if the last components are
+# two letters, then the last three are.
+# This is not always right (consider .to) but works most of the time.
+# We are fascist about the letters allowed on the RHS of an address.
+_checkMultiuser() {
+	${BIN}prs -hd:HT: ChangeSet >/tmp/hosts$$
+	${BIN}prs -hd:P: ChangeSet >/tmp/users$$
+	tr A-Z a-z </tmp/hosts$$ | sed '
+s/^[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/\1.\2/
+s/^[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\2/
+' > /tmp/shosts$$
+	paste -d@ /tmp/users$$ /tmp/shosts$$ | sort | uniq | wc -l
+	rm -f /tmp/hosts$$ /tmp/users$$ /tmp/shosts$$
+}
+
 # Log the changeset to openlogging.org or wherever they said to send it.
 # If they agree to the logging, record that fact in the config file.
 # If they have agreed, then don't keep asking the question.
@@ -495,12 +513,32 @@ logging_ok:	to '$LOGADDR > ${cfgDir}config
 	else
 		_sendConfig config@openlogging.org
 	fi
-	echo $LOGADDR
 }
 
 _sendLog() {
+	# Determine if this is the first rev where logging is active.
+	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
+	if [ x$key != x ]
+	then if ${BIN}prs -hd:C: \
+	    -r`echo "$key" | ${BIN}key2rev BitKeeper/etc/config` \
+	    BitKeeper/etc/config | grep 'Logging OK' >/dev/null 2>&1
+	then first=yes
+	fi
+	fi
+	if [ x$first = xyes ]
+	then R=1.0..$REV
+	else	case $REV in
+		*.*.*.*)	n=${REV%.*.*}
+				n=${r#*.}
+				n=`expr $r - 5`;;
+		*.*)		n=${REV#*.}
+				n=`expr $r - 10`;;
+		esac
+		R=${REV%%.*}.$n..$REV
+	fi
+
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	${BIN}cset -c$REV | mail -s "BitKeeper log: $P" $LOGADDR
+	${BIN}cset -c -r$R | mail -s "BitKeeper log: $P" $LOGADDR
 }
 
 _commit() {
@@ -555,7 +593,10 @@ _commit() {
 		fi
 		LOGADDR=`_logAddr` || exit 1
 		export LOGADDR
-		$CHECKLOG
+		nusers=`_checkMultiuser` || exit 1
+		if [ $nusers -gt 1 ]
+		then $CHECKLOG
+		fi
 		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		EXIT=$?
 		/bin/rm -f /tmp/comments$$
@@ -563,7 +604,9 @@ _commit() {
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
-		_sendLog $REV
+		if [ $nusers -gt 1 ]
+		then _sendLog $REV
+		fi
 		exit $EXIT;
 	fi
 	while true
@@ -582,7 +625,10 @@ _commit() {
 			fi
 			LOGADDR=`_logAddr` || exit 1
 			export LOGADDR
-			$CHECKLOG
+			nusers=`_checkMultiuser` || exit 1
+			if [ $nusers -gt 1 ]
+			then $CHECKLOG
+			fi
 			${BIN}sfiles -C |
 			    eval ${BIN}cset "$COMMENTS" $COPTS $@ -
 			EXIT=$?
@@ -591,7 +637,9 @@ _commit() {
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			${BIN}csetmark -r+
-			_sendLog $REV
+			if [ $nusers -gt 1 ]
+			then _sendLog $REV
+			fi
 	    	 	exit $EXIT;
 		 	;;
 		    Xe*) $EDITOR /tmp/comments$$
