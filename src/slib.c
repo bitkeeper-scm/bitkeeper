@@ -19,7 +19,7 @@ private int	badcksum(sccs *s);
 private int	printstate(const serlist *state, const ser_t *slist);
 private void	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int oldsize, int n);
-private void	end(sccs *, delta *, FILE *, int, int, int, int);
+private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
 #ifndef	ANSIC
 private int	sig(int what, int sig);
@@ -2541,6 +2541,10 @@ void
 sccs_whynot(char *who, sccs *s)
 {
 	if (BEEN_WARNED(s)) return;
+	if (full(s->sfile)) {
+		fprintf(stderr, "No disk space for %s\n", s->sfile);
+		return;
+	}
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "%s: No such file: %s\n", who, s->sfile);
 		return;
@@ -4262,6 +4266,7 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 		debug((stderr, "SUM2 %u %u\n", s->cksum, sum2));
 		next = fbuf;
 		sum2 = 0;
+		if (ferror(out) || fflush(out)) return (-1);
 		return (0);
 	}
 		
@@ -4618,7 +4623,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	sum_t	sum;
 	FILE 	*out;
 	BUF	(buf);
-	char 	*base, *f, path[MAXPATH];
+	char 	*base, *f;
 
 	slist = serialmap(s, d, flags, iLst, xLst, &error);
 	if (error == 1) {
@@ -4730,11 +4735,21 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	}
 
 	if (s->encoding == E_GZIP) zgets_done();
+	error = ferror(out) || fflush(out);
 	if (popened) {
 		pclose(out);
 	} else if (flags & PRINT) {
 		unless (streq("-", printOut)) fclose(out);
 	} else fclose(out);
+
+	if (error) {
+		if (full(s->gfile)) {
+			fprintf(stderr, "No disk space for %s\n", s->gfile);
+			s->state |= S_WARNED;
+		}
+		unless (flags & PRINT) unlink(s->gfile);
+		return (1);
+	}
 
 	if (flags&EDIT) {
 		if (d->mode) {
@@ -5262,7 +5277,7 @@ sameFileType(sccs *s, delta *d)
  * The table is all here in order, just print it.
  * New in Feb, '99: remove duplicates of metadata.
  */
-private void
+private int
 delta_table(sccs *s, FILE *out, int willfix)
 {
 	delta	*d;
@@ -5469,7 +5484,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 		fputmeta(s, "\n", out);
 	}
 	fputmeta(s, "\001T\n", out);
-	fflush(out);
+	if (fflush(out) || ferror(out)) return (-1);
+	return (0);
 }
 
 /*
@@ -6207,6 +6223,7 @@ get_sroot(char *sfile, char *sroot)
 private void
 updatePending(sccs *s, delta *d)
 {
+#ifdef LATER
 	int fd;
 	char sRoot[1024], buf[2048];
 
@@ -6214,7 +6231,6 @@ updatePending(sccs *s, delta *d)
 	// Do not enable this until
 	// we fix "sfiles -C" or cset to consume the entries in x.pending
 	// This feature is need for performance only
-#ifdef LATER
 	assert(s); assert(d);
 	if (s->state & S_CSET) return;
 	get_sroot(s->sfile, sRoot);
@@ -6239,6 +6255,26 @@ updatePending(sccs *s, delta *d)
 }
 
 /*
+ * Given a pathname, figure out if disk is full.
+ */
+full(char *path)
+{
+	struct	statfs sf;
+	char	*s = 0;
+
+	sf.f_bsize = 0;
+	sf.f_bfree = 0;
+	if (statfs(path, &sf) == -1) {
+		if (s = strrchr(path, '/')) {
+			*s = 0;
+		}
+		statfs(path, &sf);
+		*s = '/';
+	}
+	return ((sf.f_bsize * sf.f_bfree) > 0);
+}
+
+/*
  * Check in initial gfile.
  *
  * XXX - need to make sure that they do not check in binary files in
@@ -6248,13 +6284,14 @@ updatePending(sccs *s, delta *d)
 private int
 checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 {
-	FILE	*id, *sfile, *gfile = 0;
+	FILE	*sfile, *gfile = 0;
 	delta	*n;
 	int	added = 0;
 	int	popened, len;
 	char	*t;
 	char	buf[MAXLINE];
 	admin	l[2];
+	int	error = 0;
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -6283,6 +6320,9 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		}
 		return (1);
 	}
+	/*
+	 * XXX - this is bad we should use the x.file
+	 */
 	sfile = fopen(s->sfile, "wb"); /* open in binary mode */
 	if (prefilled) {
 		n = prefilled;
@@ -6350,7 +6390,10 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		n->sym = 0;
 	}
 	addLod("delta", s, flags, l, 0);
-	delta_table(s, sfile, 1);
+	if (delta_table(s, sfile, 1)) {
+		error++;
+		goto abort;
+	}
 	buf[0] = 0;
 	if (s->encoding == E_GZIP) zputs_init();
 	fputdata(s, "\001I 1\n", sfile);
@@ -6392,20 +6435,19 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		}
 	}
 	fputdata(s, "\001E 1\n", sfile);
-	end(s, n, sfile, flags, added, 0, 0);
+	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
 		if (popened) pclose(gfile); else fclose(gfile);
 	}
-#ifdef	PARANOID
-	unless (flags&SAVEGFILE) {
-		rename(s->gfile, sccsXfile(s, 'G'));
-		s->state &= ~WRITABLE;
+	if (error) {
+abort:		fclose(sfile);
+		unlink(s->sfile);
+		unlock(s, 'z');
+		return (-1);
 	}
-#else
 	unless (flags&SAVEGFILE) {
 		unlinkGfile(s);	/* Careful */
 	}
-#endif
 	Chmod(s->sfile, 0444);
 	fclose(sfile);
 	if (s->state & S_BITKEEPER) updatePending(s, n);
@@ -7463,7 +7505,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	old_enc = sc->encoding;
 	sc->encoding = new_enc;
-	delta_table(sc, sfile, 0);
+	if (delta_table(sc, sfile, 0)) {
+		unlock(sc, 'x');
+		goto out;	/* we don't know why so let sccs_why do it */
+	}
 	assert(sc->state & S_SOPEN);
 	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", sc->data));
@@ -7483,7 +7528,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	/* not really needed, we already wrote it */
 	sc->encoding = new_enc;
-	fputdata(sc, 0, sfile);
+	if (fputdata(sc, 0, sfile)) {
+		sccs_close(sc), fclose(sfile), sfile = NULL;
+		goto out;
+	}
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", sc->cksum);
 #ifdef	DEBUG
@@ -7491,17 +7539,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
 	if (old_enc == E_GZIP) zgets_done();
-	/*
-	 * XXX - right here, I should look at old checksum and if no different,
-	 * leave well enough alone.
-	 */
-#ifdef	PARANOID
-	t = sccsXfile(sc, 'S');
-	unlink(t);
-	rename(sc->sfile, t);
-#else
 	unlink(sc->sfile);		/* Careful. */
-#endif
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
 		fprintf(stderr,
@@ -7509,9 +7547,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		    t, sc->sfile, t);
 		OUT;
 	}
-
 	Chmod(sc->sfile, 0444);
-
 	goto out;
 #undef	OUT
 }
@@ -8308,7 +8344,11 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 		unlock(s, 'z');
 		exit(1);
 	}
-	delta_table(s, sfile, 0);
+	if (delta_table(s, sfile, 0)) {
+abort:		fclose(sfile);
+		unlock(s, 'x');
+		return (-1);
+	}
 	seekto(s, s->data);
 	if (s->encoding == E_GZIP) {
 		zgets_init(s->where, s->size - s->data);
@@ -8318,18 +8358,12 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 	while (buf = nextdata(s)) {
 		fputdata(s, buf, sfile);
 	}
-	fputdata(s, 0, sfile);
+	if (fputdata(s, 0, sfile)) goto abort;
 	if (s->encoding == E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
-#ifdef	PARANOID
-	t = sccsXfile(s, 'S');
-	unlink(t);
-	rename(s->sfile, t);
-#else
 	unlink(s->sfile);		/* Careful. */
-#endif
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -8585,30 +8619,25 @@ out:
 		perror("");
 		OUT;
 	}
-	delta_table(s, sfile, 1);
+	if (delta_table(s, sfile, 1)) {
+		unlock(s, 'x');
+		goto out;	/* not OUT - we want the warning */
+	}
 
 	assert(d);
 	if (delta_body(s, n, diffs, sfile, &added, &deleted, &unchanged)) {
 		OUT;
 	}
-	end(s, n, sfile, flags, added, deleted, unchanged);
+	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
+		unlock(s, 'x');
+		goto out;	/* not OUT - we want the warning */
+	}
 
 	sccs_close(s), fclose(sfile), sfile = NULL;
-#ifdef	PARANOID
-	t = sccsXfile(s, 'S');
-	unlink(t);
-	rename(s->sfile, t);
-	t = sccsXfile(s, 'G');
-	unless (flags&SAVEGFILE) {
-		rename(s->gfile, t);
-		s->state &= ~WRITABLE;
-	}
-#else
 	unlink(s->sfile);		/* Careful. */
 	unless (flags&SAVEGFILE) {
 		unlinkGfile(s);		/* Careful */
 	}
-#endif
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -8662,11 +8691,15 @@ fitCounters(char *buf, int a, int d, int s)
 /*
  * Print the summary and go and fix up the top.
  */
-private void
+private int
 end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 {
 	char	buf[100];
 
+	/*
+	 * Flush and make sure we have disk space.
+	 */
+	if (fputdata(s, 0, out)) return (-1);
 	unless (flags & SILENT) {
 		int	lines = count_lines(n->parent) - del + add;
 
@@ -8680,7 +8713,6 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	/*
 	 * Now fix up the checksum and summary.
 	 */
-	fputdata(s, 0, out);
 	fseek(out, 8L, SEEK_SET);
 	sprintf(buf, "\001s %05d/%05d/%05d\n", add, del, same);
 	if (strlen(buf) > 21) {
@@ -8713,6 +8745,8 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001h%05u\n", s->cksum);
+	if (fflush(out) || ferror(out)) return (-1);
+	return (0);
 }
 
 /*
@@ -10660,7 +10694,10 @@ rmdelout:
 	}
 
 	/* write out upper half */
-	delta_table(s, sfile, 0);  /* 0 means as-is, so checksum works */
+	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so checksum works */
+		unlock(s, 'x');
+		goto rmdelout;
+	}
 
 	if (s->encoding == E_GZIP) {
 		zgets_init(s->where, s->size - s->data);
@@ -10672,19 +10709,16 @@ rmdelout:
 		    : delta_rm(s, d, sfile, flags)) {
 		RMDELOUT;
 	}
-	fputdata(s, 0, sfile);
+	if (fputdata(s, 0, sfile)) {
+		unlock(s, 'x');
+		goto rmdelout;
+	}
 	if (s->encoding == E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", s->cksum);
 
 	sccs_close(s), fclose(sfile), sfile = NULL;
-#ifdef	PARANOID
-	t = sccsXfile(s, 'S');
-	unlink(t);
-	rename(s->sfile, t);
-#else
 	unlink(s->sfile);		/* Careful. */
-#endif
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,

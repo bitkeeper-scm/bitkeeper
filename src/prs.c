@@ -26,7 +26,7 @@ main(int ac, char **av)
 	int	reverse = 0, doheader = 1, didone = 0;
 	int	flags = NOCKSUM|SILENT|SHUTUP;
 	int	c;
-	char	*name, *rev;
+	char	*name;
 	int	noisy = 0;
 	char	*dspec = NULL;
 	RANGE_DECL;

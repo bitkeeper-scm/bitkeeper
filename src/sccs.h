@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <setjmp.h>
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <fcntl.h>
 #include "purify.h"
 #include "mdbm/mdbm.h"

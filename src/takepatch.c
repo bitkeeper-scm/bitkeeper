@@ -143,11 +143,9 @@ extractPatch(char *name, FILE *p, int flags)
 	delta	*tmp;
 	sccs	*s = 0;
 	sccs	*perfile = 0;
-	datum	k, v;
 	int	newFile = 0;
 	char	*gfile;
 	static	int rebuilt = 0;	/* static - do it once only */
-	static	unsigned int uniqueId = 0;	/* unique ID for new file */
 	char	buf[1200];
 
 	/*
@@ -371,7 +369,10 @@ delta:	off = ftell(f);
 		while (fnext(buf, f) && !streq("\n", buf)) {
 			line++;
 			if (echo>3) fprintf(stderr, "%s", buf);
-			fputs(buf, t);
+			if (fputs(buf, t) <= 0) {
+				perror("fputs on init file");
+				cleanup(CLEAN_RESYNC);
+			}
 		}
 		line++;
 		if (echo>4) fprintf(stderr, "\n");
@@ -395,7 +396,10 @@ delta:	off = ftell(f);
 		}
 		c = line;
 		while (fnext(buf, f) && !streq("\n", buf)) {
-			fputs(buf, t);
+			if (fputs(buf, t) <= 0) {
+				perror("fputs on diffs file");
+				cleanup(CLEAN_RESYNC);
+			}
 			line++;
 			if (echo>4) fprintf(stderr, "%s", buf);
 		}
@@ -461,7 +465,6 @@ int
 applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 {
 	patch	*p = patchList;
-	patch	*p2;
 	FILE	*iF, *dF;
 	sccs	*s = 0;
 	delta	*d;
@@ -483,11 +486,11 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 	}
 	if (fileCopy(localPath, p->resyncFile)) {
 		perror("cp");
-		exit(1);
+		cleanup(CLEAN_RESYNC);
 	}
 	unless (s = sccs_init(p->resyncFile, NOCKSUM|flags)) {
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
-		exit(1);
+		cleanup(CLEAN_RESYNC);
 	}
 	if (!s->tree) {
 		if (!(s->state & S_SFILE)) {
@@ -496,7 +499,7 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 		} else {
 			perror(s->sfile);
 		}
-		exit(1);
+		cleanup(CLEAN_RESYNC);
 	}
 	unless (gca) goto apply;
 	/*
@@ -512,7 +515,7 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 				fprintf(stderr,
 				    "rmdel of %s failed.\n", p->resyncFile);
 			}
-			exit(1);
+			cleanup(CLEAN_RESYNC);
 		}
 	}
 	sccs_free(s);
@@ -522,7 +525,7 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 	unless (s = sccs_init(p->resyncFile, NOCKSUM|flags)) {
 		fprintf(stderr,
 		    "takepatch: can't open %s\n", p->resyncFile);
-		exit(1);
+		cleanup(CLEAN_RESYNC);
 	}
 apply:
 	p = patchList;
@@ -539,7 +542,7 @@ apply:
 			if (p->flags & PATCH_META) {
 				if (sccs_meta(s, d, p->initFile)) {
 					perror("meta");
-					exit(1);
+					cleanup(CLEAN_RESYNC);
 				}
 			} else {
 				newflags = (echo > 5) ?
@@ -548,7 +551,7 @@ apply:
 				/* CSTYLED */
 				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
 				    	perror("get");
-					exit(1);
+					cleanup(CLEAN_RESYNC);
 				}
 				if (echo > 6) {
 					char	buf[MAXPATH];
@@ -565,7 +568,7 @@ apply:
 				    NOCKSUM|FORCE|PATCH|SILENT;
 				if (sccs_delta(s, newflags, 0, iF, dF)) {
 					perror("delta");
-					exit(1);
+					cleanup(CLEAN_RESYNC);
 				}
 				if (s->state & S_BAD_DSUM) {
 					cleanup(CLEAN_RESYNC);
@@ -578,7 +581,7 @@ apply:
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
 				    p->resyncFile);
-				exit(1);
+				cleanup(CLEAN_RESYNC);
 			}
 			if (perfile) sccscopy(s, perfile);
 			iF = fopen(p->initFile, "r");
@@ -589,7 +592,7 @@ apply:
 			    NOCKSUM|NEWFILE|FORCE|PATCH|SILENT;
 			if (sccs_delta(s, newflags, d, iF, dF)) {
 				perror("delta");
-				exit(1);
+				cleanup(CLEAN_RESYNC);
 			}
 			if (s->state & S_BAD_DSUM) cleanup(CLEAN_RESYNC);
 			fclose(iF);	/* dF done by delta() */
@@ -666,6 +669,10 @@ getLocals(sccs *s, delta *g, char *name)
 		s->rstart = s->rstop = d;
 		sccs_restart(s);
 		sccs_prs(s, PATCH|SILENT, 0, NULL, t);
+		if (ferror(t)) {
+			perror("error on init file");
+			cleanup(CLEAN_RESYNC);
+		}
 		fclose(t);
 		p = calloc(1, sizeof(patch));
 		p->flags = PATCH_LOCAL;
@@ -677,7 +684,10 @@ getLocals(sccs *s, delta *g, char *name)
 		unless (d->flags & D_META) {
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
-			sccs_getdiffs(s, d->rev, 0, tmpf);
+			if (sccs_getdiffs(s, d->rev, 0, tmpf)) {
+				fprintf(stderr, "unable to create diffs");
+				cleanup(CLEAN_RESYNC);
+			}
 		} else {
 			p->flags |= PATCH_META;
 		}
@@ -845,9 +855,14 @@ tree:
 		while (fnext(buf, p)) {
 			if (!started && streq(buf, PATCH_VERSION)) started = 1;
 			if (started) {
-				fputs(buf, f);
+				if (fputs(buf, f) <= 0) {
+					perror("fputs on patch");
+					cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+				}
 			} else {
-				verbose((stderr, "Discard: %s", buf));
+				if (echo > 4) {
+					fprintf(stderr, "Discard: %s", buf);
+				}
 			}
 		}
 		unless (started) {
@@ -857,8 +872,10 @@ mismatch.  You need to make sure that the software generating the patch is\n
 the same as the software accepting the patch.  We were looking for\n\
 %s", PATCH_VERSION);
 		}
-		fflush(f);
-		fsync(fileno(f));
+		if (fflush(f) || fsync(fileno(f))) {
+			perror("fsync on patch");
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
 		unless (flags & SILENT) {
 			fprintf(stderr,
 			    "takepatch: saved patch in %s\n", pendingFile);

@@ -247,11 +247,7 @@ main(int ac, char **av, char **ev)
 			}
 		}
 		if (sccs_admin(sc, flags, encp, f, l, u, s, text)) {
-			unless (BEEN_WARNED(sc)) {
-				fprintf(stderr,
-				    "admin of %s failed.\n",
-				    sc->gfile);
-			}
+			sccs_whynot("admin", s);
 			error = 1;
 		}
 next:		sccs_free(sc);

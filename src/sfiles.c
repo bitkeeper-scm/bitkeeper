@@ -209,7 +209,6 @@ private int
 oksccs(char *sfile, int flags, int complain)
 {
 	char	*g;
-	char	*s;
 	int	ok;
 	struct	stat sbuf;
 

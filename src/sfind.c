@@ -354,7 +354,6 @@ int
 caches(const char *filename, const struct stat *sb, int flag)
 {
 	register char *file = (char *)filename;
-	register char *s;
 	sccs	*sc;
 	register delta *d, *e;
 	datum	k, v;

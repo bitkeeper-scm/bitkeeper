@@ -9,6 +9,7 @@ WHATSTR("@(#)%K%");
 char	*cset_help = "\n\
 usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
     -d		do unified diffs for the range (used with -m)\n\
+    -c		like -m, except generate only ChangeSet diffs for logging\n\
     -i		Create a new change set history rooted at <root>\n\
     -l<range>	List the filenames:revisions of the csets in <range>\n\
     -m		Generate a patch (use with -l)\n\
@@ -38,6 +39,8 @@ void	unlock(char *);
 delta	*mkChangeSet(sccs *cset);
 void	explodeKey(char *key, char *parts[4]);
 char	*file2str(char *f);
+void	doRange(sccs *sc);
+void	doDiff(sccs *sc, int kind);
 
 FILE	*id_cache;
 MDBM	*idDB = 0;
@@ -47,6 +50,7 @@ char	csetFile[] = "SCCS/s.ChangeSet";
 char	zcsetFile[] = "SCCS/z.ChangeSet";
 int	verbose = 0;
 int	dash, ndeltas;
+int	csetOnly;	/* if set, do logging ChangeSet */
 int	makepatch;	/* if set, act like makepatch */
 int	range;		/* if set, list file:rev..rev */
 			/* if set to 2, then list parent..rev */
@@ -73,7 +77,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "dil|m|t;pr|R|sS;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "c|dil|m|t;pr|R|sS;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'd': doDiffs++; break;
 		    case 'i':
@@ -85,6 +89,11 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'r':
 		    	range++;
 		    	/* fall through */
+		    case 'c':
+			if (c == 'c') {
+				csetOnly++;
+				makepatch++;
+			}
 		    case 'm':
 			if (c == 'm') makepatch++;
 			/* fall through */
@@ -339,13 +348,11 @@ csetlist(sccs *cset)
 	MDBM	*pdb = 0;
 	MDBM	*idDB;			/* db{fileId} = pathname */
 	kvpair	kv;
-	datum	k, v;
 	char	*t, *p;
 	sccs	*sc;
 	delta	*d, *prev;
 	int  	doneFullRebuild = 0;
 	int	first = 1;
-	char	*rev;
 	FILE	*sort;
 	char	buf[MAXPATH*2];
 	char	*csetid;
@@ -496,7 +503,9 @@ retry:		sc = sccs_keyinit(buf, NOCKSUM, idDB);
 				printf("%s", PATCH_VERSION);
 				first = 0;
 			}
-			sccs_patch(sc);
+			if (!csetOnly || (sc->state & S_CSET)) {
+				sccs_patch(sc);
+			}
 		}
 		if (range) doRange(sc);
 		sccs_free(sc);
@@ -522,6 +531,7 @@ next:
  * Spit out the diffs.
  * XXX - TODO - generate a checksum of this data.
  */
+void
 doDiff(sccs *sc, int kind)
 {
 	delta	*d, *e = 0;
@@ -550,6 +560,7 @@ doDiff(sccs *sc, int kind)
 	sccs_diffs(sc, e->rev, d->rev, ex, kind, stdout);
 }
 
+void
 doRange(sccs *sc)
 {
 	delta	*d, *e = 0;
@@ -852,7 +863,6 @@ int
 sccs_patch(sccs *s)
 {
 	delta	*d, *e;
-	char	*path;
 	int	deltas = 0;
 	int	i, n;
 	delta	**list;

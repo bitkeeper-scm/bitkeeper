@@ -32,6 +32,7 @@ usage: delta [-AcGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
  */
 
 #include "comments.c"
+int	newrev(sccs *s, pfile *pf);
 
 int
 main(int ac, char **av)
