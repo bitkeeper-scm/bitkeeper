@@ -61,7 +61,7 @@ package_name()
 	static	char *name = 0;
 
 	if (name) return (name);
-	unless (m = loadConfig(".", 0)) return ("");
+	unless (m = loadConfig(".")) return ("");
 	unless (n = mdbm_fetch_str(m, "description")) {
 		mdbm_close(m);
 		return ("");

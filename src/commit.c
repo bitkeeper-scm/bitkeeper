@@ -701,7 +701,7 @@ printConfig(FILE *f, char *root, char *header)
 	MDBM *db;
 	kvpair	kv;
 
-	unless (db = loadConfig(root, 1)) return;
+	unless (db = loadConfig(root)) return;
 	fputs(header, f);
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		if (streq("description", kv.key.dptr) ||

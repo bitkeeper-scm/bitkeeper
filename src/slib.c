@@ -74,7 +74,7 @@ private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s, MDBM *m);
-private	int	parseConfig(char *buf);
+private	int	parseConfig(char *buf, char **k, char **v);
 private void	fix_stime(sccs *s);
 
 int
@@ -3778,83 +3778,78 @@ nup:		remote_free(r);
 	return (1);
 }
 
-/*
- * Parse a line from the config file
- * a) reject all lines without a ':' character
- * b) remove all whitespace between ':' and first !whitespace
- * c) replace ':' with space as field seperator.
- * d) skip the "logging_ok" field; MDBM does not like dup keys.
- */
-private int
-parseConfig(char *buf)
+char	*
+filterMatch(char *buf)
 {
-	char *p, *q, *end_filter = 0;
-	
-	/*
-	 * If it has a filter, extract filter part
-	 */
+	char	*end = strchr(buf, ']');
+
+	unless (end) return (0);
+	*end = 0;
+	unless (filter(++buf)) return (0);
+	return (end);
+}
+
+private int
+parseConfig(char *buf, char **kp, char **vp)
+{
+	char	*p;
+
+	while (*buf && isspace(*buf)) buf++;
+	if ((*buf == '#') || !strchr(buf, ':')) return (0);
 	if (*buf == '[') {
-		end_filter = strchr(buf, ']');
-		unless (end_filter) return 0;
-		p = strchr(&end_filter[1], ':');
-	} else {
-		p = strchr(buf, ':');
+		unless (buf = filterMatch(buf)) return (0);
+		for (buf++; isspace(*buf); buf++);
 	}
-
-	unless (p) return 0;
 
 	/*
-	 * Handle the [user][@host][:path]/pref_key: value syntax
+	 * lose all white space on either side of ":"
 	 */
-	*p = 0;
-	if (end_filter) {
-		char *t;
-
-		*end_filter = 0;
-		t = &end_filter[1];
-		/*
-		 * Ignore the line if not match 
-		 * for per user/host/path filter
-		 */
-		unless (filter(&buf[1])) return (0); 
-		*p++ = ' ';
-		memmove(buf, t, strlen(t) + 1);
-		p  = (p - (t - buf)); /* adjust p to account for memmove */
-		assert(p[-1] == ' ');
-	} else {
-		*p++ = ' ';
+	for (p = strchr(buf, ':'); (p >= buf) && isspace(p[-1]); p--);
+	if (*p != ':') {
+		*p = 0;
+		for (p++; *p != ':'; p++);
 	}
+	for (*p++ = 0; isspace(*p); p++);
+	unless (*p) return (0);
 
-	if (strneq(buf, "logging_ok ", 11)) {
-		strcpy(buf, "CONVERT ME PLEASE\n");
-		return (1);
-	}
-	if (isspace(*p)) {
-		for (q = p; *q && isspace(*q); q++);
-		unless (*q) return (0);		/* garbage */
-		while (*p++ = *q++);		/* leftshift over the spc */
-		*p-- = 0;
-	}
+	if (streq(buf, "logging_ok")) return (0);
+		
+	*kp = buf;
+	*vp = p;
 
-	while (*p) p++;				/* find end of line */
-	q = &p[-1];
-	if (*q == '\n') q--;
-	while (isspace(*q)) q--;		/* trim trailing space */
-	if (p[-1] == '\n') *++q = p[-1];	/* preserve LF for loadDB */
-	*++q = 0;
-	
+	/*
+	 * Lose trailing whitespace including newline.
+	 */
+	while (p[1]) p++;
+	while (isspace(*p)) *p-- = 0;
+//fprintf(stderr, "[%s] -> [%s]\n", *kp, *vp);
 	return (1);
 }
 
+private void
+config2mdbm(MDBM *db, char *config)
+{
+	char 	*k, *v, buf[MAXLINE];
+	FILE	*f;
 
+	if (f = fopen(config, "rt")) {
+		while (fnext(buf, f)) {
+			unless (parseConfig(buf, &k, &v)) continue;
+			chomp(v);
+			mdbm_store_str(db, k, v, MDBM_INSERT);
+		}
+		fclose(f);
+	}
+}
+ 
 /*
  * Load config file into a MDBM DB
  */
 MDBM *
-loadRepoConfig(char *root, int convert)
+loadRepoConfig(char *root)
 {
 	MDBM	*DB = 0;
-	char 	*t, *config;
+	char 	*config;
 	sccs	*s = 0;
 	project *proj = 0;
 
@@ -3863,9 +3858,10 @@ loadRepoConfig(char *root, int convert)
 	 */
 	config = aprintf("%s/BitKeeper/etc/config", root);
 	if (exists(config)) {
-		DB = loadDB(config, parseConfig, DB_NOBLANKS|DB_USEFIRST);
+		DB = mdbm_mem();
+		config2mdbm(DB, config);
 		free(config);
-		goto check;
+		return (DB);
 	}
 	free(config);
 
@@ -3880,7 +3876,7 @@ out:		free(config);
 
 	/*
 	 * Hand make a project struct, so sccs_init(s_config, ..) below
-	 * won'nt call us again, otherwise we end up in a loop.
+	 * won't call us again, otherwise we end up in a loop.
 	 */
 	proj = calloc(1, sizeof(*proj));
 	proj->root = strdup(root);
@@ -3898,52 +3894,35 @@ out:		free(config);
 	s->mdbm = 0;
 	sccs_free(s);
 	free(config);
-
-check:	if (convert && (t = mdbm_fetch_str(DB, "CONVERT")) &&
-	    streq("ME PLEASE", t) && (config2logging(root) == 0)) {
-		mdbm_close(DB);
-		return (loadRepoConfig(root, 1));
-	}
 	return (DB);
 }
 
 /*
  * "Append" Global config to local config.
  * I.e local field have priority over global field.
- * If local field exist, it mask out its global counter part.
+ * If local field exists, it masks out the global counter part.
  */
 MDBM *
 loadGlobalConfig(MDBM *db)
 {
-	char 	*config, *p, buf[MAXLINE];
-	FILE	*f;
+	char 	*config;
 
 	assert(db);
 	config = aprintf("%s/BitKeeper/etc/config", globalroot());
-	if (f = fopen(config, "rt")) {
-		while (fnext(buf, f)) {
-			unless (parseConfig(buf)) continue;
-			p = strchr(buf, ' ');
-			assert(p);
-			*p++ = 0;
-			chomp(p);
-			mdbm_store_str(db, buf, p, MDBM_INSERT);
-		}
-		fclose(f);
-	}
+	config2mdbm(db, config);
 	free(config);
 	return(db);
 }
- 
+
 /*
  * Load both local and global config
  */
 MDBM *
-loadConfig(char *root, int convert)
+loadConfig(char *root)
 {
 	MDBM *db;
 
-	db = loadRepoConfig(root, convert);
+	db = loadRepoConfig(root);
 	unless (db) return (NULL);
 	return (loadGlobalConfig(db));
 }
@@ -5987,29 +5966,30 @@ getSymlnkCksumDelta(sccs *s, delta *d)
 private sum_t
 getKey(MDBM *DB, char *buf, int flags, char *root)
 {
-	char	*e;
+	char	*k, *v;
 	int	len;
 	char	data[MAXLINE];
 
-	for (e = buf; *e != '\n'; ++e);
-	len = (char *)e - buf;
+	for (k = buf; *k != '\n'; ++k);
+	len = (char *)k - buf;
 	assert(len < MAXLINE);
 	if (len) strncpy(data, buf, len);
 	data[len] = 0;
 	if (flags & DB_CONFIG) {
-		unless (parseConfig(data)) return (1);
-		e = strchr(data, ' ');
+		unless (parseConfig(data, &k, &v)) return (1);
 	} else if (flags & DB_KEYFORMAT) {
-		e = separator(data);
+		k = data;
+		if (v = separator(data)) *v++ = 0;
 	} else {
-		e = strchr(data, ' ');
+		k = data;
+		if (v = strchr(data, ' ')) *v++ = 0;
 	}
-	unless (e) {
-		fprintf(stderr, "get hash: no separator in line\n");
+	unless (v) {
+		chomp(data);
+		fprintf(stderr, "get hash: no separator in '%s'\n", data);
 		return (-1);
 	}
-	*e++ = 0;
-	switch (mdbm_store_str(DB, data, e, MDBM_INSERT)) {
+	switch (mdbm_store_str(DB, k, v, MDBM_INSERT)) {
 	    case 1:	/* key already in DB */
 		return (0);
 	    case -1:
@@ -8663,7 +8643,7 @@ singleUser(sccs *s, MDBM *m)
 
 	if (!m) {
 		unless (s && s->proj && s->proj->root) return;
-		unless (m = loadConfig(s->proj->root, 0)) return;
+		unless (m = loadConfig(s->proj->root)) return;
 	}
 	user = mdbm_fetch_str(m, "single_user");
 	host = mdbm_fetch_str(m, "single_host");
@@ -8849,7 +8829,7 @@ out:		sccs_unlock(s, 'z');
 			/* check eoln preference */
 			s->xflags |= X_DEFAULT;
 			if (s->proj) {
-				db = loadConfig(s->proj->root, 0);
+				db = loadConfig(s->proj->root);
 				if (db) {
 					char *p = mdbm_fetch_str(db, "eoln");
 					if (p && streq("unix", p)) {

@@ -13,7 +13,7 @@ user_preference(char *what)
 	unless (bk_proj) return "";
 	unless (bk_proj->config) {
 		unless (bk_proj->root) return "";
-		bk_proj->config = loadConfig(bk_proj->root, 0);
+		bk_proj->config = loadConfig(bk_proj->root);
 		unless (bk_proj->config) return "";
 	}
 	p = mdbm_fetch_str(bk_proj->config, what);
