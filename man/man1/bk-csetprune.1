@@ -1,0 +1,76 @@
+.so bk-macros
+.TH "bk csetprune" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk csetprune \- shrink a repository by removing files
+.SH SYNOPSIS
+.B bk csetprune < keylist
+.SH DESCRIPTION
+.LP
+The
+.B csetprune
+command is used to prune certain files from the repository.  These files are
+removed in a way which is permanent, i.e., the prune cannot be undone.
+.LP
+The command operates on a list of file keys (sometimes called \*(BK inodes).
+Each file associated with a key is 
+.B removed
+from the repository and from all changesets in the ChangeSet file.  If a 
+changeset becomes empty as a result of the key removal,
+then that changeset is removed
+from the ChangeSet file history.  If a removed changeset had a tag, the 
+tag is moved to the closest non-removed ancestor in the ChangeSet file.  
+If that ancestor was already tagged with the same tag, the duplicate tag
+is discarded.
+.LP
+After all files have been removed, the identity of the ChangeSet file
+is changed (using bk newroot) and the remaining files are ``reparented''
+to the new ChangeSet file.
+.SH "GENERATING KEYS"
+.LP
+The
+.B prs
+command may be used to generate the list of keys.  
+When generating keys, it is important to realize that looking in a particular
+subdirectory is likely to miss some of the files that you may want to remove.
+The files may have been moved to another directory or they may have been 
+removed (which is really just a move to the BitKeeper/deleted subdirectory).
+.LP
+The following command will generate a list of keys for all files originally
+created in the ``junk'' subdirectory, including all deleted and/or moved
+files:
+.DS
+bk -r prs -hr+ -nd:ROOTKEY: | grep '|junk/'
+.DE
+.SH EXAMPLE
+.LP
+Suppose there is a repository which has two major subsections, called
+``docs'' and ``src'' respectively.  The repository has grown to be too
+large and the goal is to split it in two.  The process for doing so would
+be to 
+.IP (1) 4
+Make sure all users have pushed their changes into the main repository.
+Changes made after the split will have to exported as a traditional patch
+and imported, which loses the checkin comments.
+.IP (2)
+Clone the repository twice, once for each of ``docs'' and ``src''.
+.IP (3)
+Each each new repository, strip out the files which will be in the other
+repository.
+.LP
+Commands which will do this:
+.DS
+bk clone master src
+bk clone master docs
+# Remove the docs files from the src repository
+cd src
+bk -r prs -hr+ -nd:ROOTKEY: | grep '|docs/' | bk csetprune
+# Remove the src files from the docs repository
+cd ../docs
+bk -r prs -hr+ -nd:ROOTKEY: | grep '|src/' | bk csetprune
+.DE
+.SH "SEE ALSO"
+.SA newroot 1
+.SA prs 1
+.SA sfiles 1
+.SH CATEGORY
+.B Admin
