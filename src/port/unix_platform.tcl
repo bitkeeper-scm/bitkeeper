@@ -6,18 +6,10 @@ proc bk_init {} \
 {
 	global	tcl_platform dev_null tmp_dir wish sdiffw file_rev
 	global	file_start_stop file_stop line_rev keytmp file_old_new
-	global 	bk_fs env tcl_version
+	global 	bk_fs env 
 
 	if [catch {wm withdraw .} err] {
 		puts "DISPLAY variable not set correctly or not running X"
-		exit 1
-	}
-	if {![info exists tcl_version]} {
-		puts "No tcl_version found?!?"
-		exit 1
-	}
-	if {$tcl_version < 8.0} {
-		puts "BitKeeper requires tcl/tk version 8.x or later."
 		exit 1
 	}
 
@@ -39,4 +31,16 @@ proc bk_init {} \
 
 	# make sure GUIs don't come up bigger than the screen
 	constrainSize
+
+	# Determine the bk icon to associate with toplevel windows. If
+	# we can't find the icon, don't set the global variable. This
+	# way code that needs the icon can check for the existence of
+	# the variable rather than checking the filesystem.
+	set f [file join [exec bk bin] bk.xbm]
+	if {[file exists $f]} {
+		set ::wmicon $f
+		# N.B. on windows, wm iconbitmap supports a -default option
+		# that is not available on unix. Bummer. 
+		catch {wm iconbitmap . @$::wmicon}
+	}
 }
