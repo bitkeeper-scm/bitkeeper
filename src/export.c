@@ -77,6 +77,11 @@ usage:			system("bk help -s export");
 	    default: goto usage;
 	}
 
+	unless (isdir(src)) {
+		fprintf(stderr, "export: %s does not exist.\n", src);
+		exit(1);
+	}
+
 	if (mkdirp(dst) != 0) {
 		fprintf(stderr, "cannot mkdir %s\n", dst);
 		exit(1);

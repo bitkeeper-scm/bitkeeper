@@ -277,3 +277,13 @@ grep -q b/src/foo.h ../PATCH || {
 echo OK
 
 # XXX - todo, test case where a patch includes a rename
+
+# 2004-02-06-001 - error out if source does not exist
+echo $N Export should fail if source+dest specified but no source ...$NL
+cd $HERE/project
+bk export ../bar $HERE/whoops-plain 2>ERR
+test -d $HERE/whoops-plain && {
+	echo failed when exporting -tplain
+	exit 1
+}
+echo OK
