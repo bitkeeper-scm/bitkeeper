@@ -40,9 +40,9 @@ export_main(int ac,  char **av)
 				break;
 		    case 'T':	tflag = 1; break;
 		    case 'w':	wflag = 1; break;
-		    case 'i':	sprintf(include, "| grep -E '%s' ",  optarg);
+		    case 'i':	sprintf(include, "| egrep '%s' ",  optarg);
 				break;
-		    case 'x':	sprintf(exclude, "| grep -E -v '%s' ",  optarg);
+		    case 'x':	sprintf(exclude, "| egrep -v '%s' ",  optarg);
 				break;
 		    default :
 usage:			system("bk help -s export");
