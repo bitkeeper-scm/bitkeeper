@@ -270,12 +270,14 @@ strnonldup(char *s)
  * Compare up to but not including the newline.
  * They should be newlines or nulls.
  */
+#if 0
 private int
 strnonleq(register char *s, register char *t)
 {
 	while (*s && *t && (*s == *t) && (*s || (*s != '\n'))) s++, t++;
 	return ((!*s || (*s == '\n')) && (!*t || (*t == '\n')));
 }
+#endif
 
 char
 chop(register char *s)
@@ -3797,6 +3799,7 @@ almostUnique(int harder)
  * Use /dev/urandom, /dev/random if present.  Otherwise use anything else
  * we can find.
  */
+void
 randomBits(char *buf)
 {
 	int	fd;
@@ -3842,8 +3845,8 @@ now()
 char	*
 sccs_gethost(void)
 {
-	static char host[257];
-	static	done = 0;
+	static	char host[257];
+	static	int done = 0;
 	struct	hostent *hp;
 	char 	*h;
 
@@ -4371,26 +4374,13 @@ fnlputs(char *buf, FILE *out)
 private sum_t
 fputmeta(sccs *s, u8 *buf, FILE *out)
 {
-	u8		fbuf[MAXLINE];
 	register u8	*t = buf;
-	register u8	*p = fbuf;
 	register sum_t	 sum = 0;
 
-	for (; *t; t++) {
-		sum += *t;
-		*p++ = *t;
-		if (p == &fbuf[MAXLINE-1]) {
-			*p = 0;
-			p = fbuf;
-			fputs(fbuf, out);
-		}
-		if (*t == '\n') break;
-	}
+	for (; *t; t++)	sum += *t;
 	s->cksum += sum;
-	if (p != fbuf) {
-		*p = 0;
-		fputs(fbuf, out);
-	}
+	fputs(buf, out);
+
 	return (sum);
 }
 
@@ -4406,60 +4396,39 @@ gzip_sum(void *p, u8 *buf, int len, FILE *out)
 }
 
 /*
- * Buffered fputmeta.
- * A call with 0 for a buffer means flush.
- *
+ * Like fputmeta, but optionally compresses the data stream.
  * This is used for the data section exclusively.
- * Real soon now, we are going to add compression here.
+ * A call with 0 for a buffer means we're done.
+ * Note that only the first line of the buffer is considered valid.
  */
 private sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
-	static u8	fbuf[8<<10];
-	static sum_t	sum2;
-	static u8	*next = fbuf;
-	register u8	*t = buf;
-	register u8	*p = next;
-	register sum_t	sum = 0;
+	sum_t	sum = 0;
+	u8	*p;
 
 	if (!buf) {	/* flush */
-		int	len = next - fbuf;
-
-		if (len) {
-			if (s->encoding & E_GZIP) {
-				zputs((void *)s, out, fbuf, len, gzip_sum);
-			} else {
-				fwrite(fbuf, 1, len, out);
-			}
-		}
 		if (s->encoding & E_GZIP) {
 			zputs_done((void *)s, out, gzip_sum);
-		} else {
-			s->cksum += sum2;
 		}
-		debug((stderr, "SUM2 %u %u\n", s->cksum, sum2));
-		next = fbuf;
-		sum2 = 0;
+		debug((stderr, "SUM2 %u\n", s->cksum));
 		if (ferror(out) || fflush(out)) return (-1);
 		return (0);
 	}
-		
-	for (; *t; t++) {
-		sum += *t;
-		*p++ = *t;
-		if (p == &fbuf[sizeof(fbuf)]) {
-			if (s->encoding & E_GZIP) {
-				zputs((void *)s,
-				    out, fbuf, sizeof(fbuf), gzip_sum);
-			} else {
-				fwrite(fbuf, sizeof(fbuf), 1, out);
-			}
-			p = next = fbuf;
-		}
-		if (*t == '\n') break;
+
+	/* Checksum up to and including the first newline
+	 * or the end of the string.
+	 */
+	for (p = buf; *p;) {
+		sum += *p++;
+		if (p[-1] == '\n') break;
 	}
-	sum2 += sum;
-	next = p;
+	if (s->encoding & E_GZIP) {
+		zputs((void *)s, out, buf, p - buf, gzip_sum);
+	} else {
+		fwrite(buf, p - buf, 1, out);
+		s->cksum += sum;
+	}
 	return (sum);
 }
 
@@ -5129,7 +5098,7 @@ skip_get:
 int
 sccs_cat(sccs *s, u32 flags, char *printOut)
 {
-	int	lines = 0, locked = 0, error;
+	int	lines = 0, error;
 
 	debug((stderr, "sccscat(%s, %x, %s)\n",
 	    s->sfile, flags, printOut));
@@ -5516,6 +5485,115 @@ sameFileType(sccs *s, delta *d)
 	}
 }
 
+/* Formatting routines used by delta_table.
+ * sprintf() is so slow that it accounted for ~20% of execution time
+ * of delta(1).
+ * All of these write the requested data into the string provided
+ * and return a pointer one past where they stopped writing, so you
+ * can write code like
+ * p = fmts(p, "blah");
+ * p = fmtd(p, number);
+ * ...
+ * *p = '\0';
+ * None of them null-terminate.
+ * The names are all 'fmt' + what you'd put after the % in a sprintf format
+ * spec (except "fmttt" which stands for "format time_t").
+ */
+private inline char *
+fmts(char *p, char *s)
+{
+	size_t len = strlen(s);
+	memcpy(p, s, len);
+	return p + len;
+}
+
+private char *
+fmtu(char *p, unsigned int u)
+{
+	char tmp[10];  /* 4294967295 (2**32) has 10 digits.  */
+	char *x = &tmp[10];
+
+	if (u == 0) {
+		*p++ = '0';
+		return p;
+	}
+
+	do {
+		*--x = u%10 + '0';
+		u /= 10;
+	} while (u);
+
+	memcpy(p, x, 10 - (x - tmp));
+	return p + 10 - (x - tmp);
+}
+
+private char *
+fmtd(char *p, int d)
+{
+	if (d < 0) {
+		*p++ = '-';
+		d = -d;
+	}
+
+	return fmtu(p, d);
+}
+
+private char *
+fmt05u(char *p, unsigned int u)
+{
+	char tmp[10];
+	char *x = &tmp[10];
+
+	do {
+		*--x = u%10 + '0';
+		u /= 10;
+	} while (u);
+
+	while (x - tmp > 5) *--x = '0';
+
+	memcpy(p, x, 10 - (x - tmp));
+	return p + 10 - (x - tmp);
+}
+
+private char *
+fmt05d(char *p, int d)
+{
+	if (d < 0) {
+		*p++ = '-';
+		d = -d;
+	}
+
+	return fmt05u(p, d);
+}
+
+private char *
+fmttt(char *p, time_t d)
+{
+	char tmp[21];  /* 18446744073709551616 (2**64) has 21 digits.
+			* time_t may well be a 64 bit quantity.
+			*/
+	char *x = &tmp[21];
+
+	/* time_t is signed! */
+	if (d < 0) {
+		*p++ = '-';
+		d = -d;
+	}
+
+	if (d == 0) {
+		*p++ = '0';
+		return p;
+	}
+
+	do {
+		*--x = d%10 + '0';
+		d /= 10;
+	} while (d);
+
+	memcpy(p, x, 21 - (x - tmp));
+	return p + 21 - (x - tmp);
+}
+	
 /*
  * The table is all here in order, just print it.
  * New in Feb, '99: remove duplicates of metadata.
@@ -5527,11 +5605,12 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 	int	i;	/* used by EACH */
 	int	first = willfix;
 	char	buf[MAXLINE];
+	char	*p;
 	int	bits = 0;
 
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
-	fprintf(out, "\001hXXXXX\n");
+	fputs("\001hXXXXX\n", out);
 	s->cksum = 0;
 
 	if (fixDate) fixNewDate(s);
@@ -5557,15 +5636,34 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 		    
 		assert(d->date);
 		if (d->parent) assert(d->date > d->parent->date);
-		sprintf(buf, "\001s %05d/%05d/%05d\n",
-		    d->added, d->deleted, d->same);
+
+		p = fmts(buf, "\001s ");
+		p = fmt05d(p, d->added);
+		*p++ = '/';
+		p = fmt05d(p, d->deleted);
+		*p++ = '/';
+		p = fmt05d(p, d->same);
+		*p++ = '\n';
+		*p = '\0';
 		if (first)
 			fputs(buf, out);
 		else
 			fputmeta(s, buf, out);
-		sprintf(buf, "\001d %c %s %s %s %d %d\n",
-		    d->type, sccsrev(d), d->sdate, d->user,
-		    d->serial, d->pserial);
+
+		p = fmts(buf, "\001d ");
+		*p++ = d->type;
+		*p++ = ' ';
+		p = fmts(p, sccsrev(d));
+		*p++ = ' ';
+		p = fmts(p, d->sdate);
+		*p++ = ' ';
+		p = fmts(p, d->user);
+		*p++ = ' ';
+		p = fmtd(p, d->serial);
+		*p++ = ' ';
+		p = fmtd(p, d->pserial);
+		*p++ = '\n';
+		*p = '\0';
 		fputmeta(s, buf, out);
 		if (d->include) {
 			fputmeta(s, "\001i ", out);
@@ -5588,32 +5686,38 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 		}
 		EACH(d->comments) {
 			/* metadata */
-			if (d->comments[i][0] == '\001') {
-				fputmeta(s, d->comments[i], out);
-			} else {
-				fputmeta(s, "\001c ", out);
-				fputmeta(s, d->comments[i], out);
+			p = buf;
+			if (d->comments[i][0] != '\001') {
+				p = fmts(p, "\001c ");
 			}
-			fputmeta(s, "\n", out);
+			p = fmts(p, d->comments[i]);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
 		}
 		if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
-			fputmeta(s, "\001cB", out);
-			fputmeta(s, d->csetFile, out);
-			fputmeta(s, "\n", out);
+			p = fmts(buf, "\001cB");
+			p = fmts(p, d->csetFile);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_CSET) {
 			fputmeta(s, "\001cC\n", out);
 		}
 		if (d->dateFudge) {
-			fputmeta(s, "\001cF", out);
-			sprintf(buf, "%u", (unsigned int)d->dateFudge);
+			p = fmts(buf, "\001cF");
+			p = fmttt(p, d->dateFudge);
+			*p++ = '\n';
+			*p   = '\0';
 			fputmeta(s, buf, out);
-			fputmeta(s, "\n", out);
 		}
 		if (d->hostname && !(d->flags & D_DUPHOST)) {
-			fputmeta(s, "\001cH", out);
-			fputmeta(s, d->hostname, out);
-			fputmeta(s, "\n", out);
+			p = fmts(buf, "\001cH");
+			p = fmts(p, d->hostname);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
 		}
 		if (s->state & S_BITKEEPER) {
 			if (first) {
@@ -5631,7 +5735,10 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 				 * Leaving this fixed means we can diff the
 				 * s.files easily.
 				 */
-				sprintf(buf, "\001cK%05u\n", d->sum);
+				p = fmts(buf, "\001cK");
+				p = fmt05u(p, d->sum);
+				*p++ = '\n';
+				*p   = '\0';
 				fputmeta(s, buf, out);
 			}
 		}
@@ -5652,47 +5759,59 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 			}
 		}
 		if (d->merge) {
-			sprintf(buf, "\001cM%d\n", d->merge);
+			p = fmts(buf, "\001cM");
+			p = fmtd(p, d->merge);
+			*p++ = '\n';
+			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
 		if (d->pathname && !(d->flags & D_DUPPATH)) {
-			fputmeta(s, "\001cP", out);
-			fputmeta(s, d->pathname, out);
-			fputmeta(s, "\n", out);
+			p = fmts(buf, "\001cP");
+			p = fmts(p, d->pathname);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_MODE) {
 		    	unless (d->parent && sameMode(d->parent, d)) {
+				p = fmts(buf, "\001cO");
+				p = fmts(p, mode2a(d->mode));
 				if (d->symlink) {
 					assert(S_ISLNK(d->mode));
-					sprintf(buf,
-			    		    "\001cO%s %s\n", mode2a(d->mode),
-					    d->symlink);
-				} else {
-					sprintf(buf,
-						"\001cO%s\n", mode2a(d->mode));
+
+					*p++ = ' ';
+					p = fmts(p, d->symlink);
 				}
+				*p++ = '\n';
+				*p   = '\0';
 				fputmeta(s, buf, out);
 			}
 		}
 		if (!d->next && s->random) {
-			fputmeta(s, "\001cR", out);
-			fputmeta(s, s->random, out);
-			fputmeta(s, "\n", out);
+			p = fmts(buf, "\001cR");
+			p = fmts(p, s->random);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_SYMBOLS) {
 			symbol	*sym;
 
 			for (sym = s->symbols; sym; sym = sym->next) {
 				unless (sym->metad == d) continue;
-				fputmeta(s, "\001cS", out);
-				fputmeta(s, sym->name, out);
-				fputmeta(s, "\n", out);
+				p = fmts(buf, "\001cS");
+				p = fmts(p, sym->name);
+				*p++ = '\n';
+				*p   = '\0';
+				fputmeta(s, buf, out);
 			}
 		}
 		if (d->zone && !(d->flags & D_DUPZONE)) {
-			fputmeta(s, "\001cZ", out);
-			fputmeta(s, d->zone, out);
-			fputmeta(s, "\n", out);
+			p = fmts(buf, "\001cZ");
+			p = fmts(p, d->zone);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
 		}
 		if (!d->next && (s->state & S_CSET)) {
 #if LPAD_SIZE > 0
@@ -5717,7 +5836,10 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 		fputmeta(s, "\n", out);
 	}
 	fputmeta(s, "\001U\n", out);
-	sprintf(buf, "\001f e %d\n", s->encoding);
+	p = fmts(buf, "\001f e ");
+	p = fmtd(p, s->encoding);
+	*p++ = '\n';
+	*p   = '\0';
 	fputmeta(s, buf, out);
 	if (s->state & S_BRANCHOK) {
 		fputmeta(s, "\001f b\n", out);
@@ -5733,18 +5855,25 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 	if (bits) {
 		char	buf[40];
 
-		sprintf(buf, "\001f x %u\n", bits);
+		p = fmts(buf, "\001f x ");
+		p = fmtu(p, bits);
+		*p++ = '\n';
+		*p   = '\0';
 		fputmeta(s, buf, out);
 	}
 	if (s->defbranch) {
-		fputmeta(s, "\001f d ", out);
-		fputmeta(s, s->defbranch, out);
-		fputmeta(s, "\n", out);
+		p = fmts(buf, "\001f d ");
+		p = fmts(p, s->defbranch);
+		*p++ = '\n';
+		*p   = '\0';
+		fputmeta(s, buf, out);
 	}
 	EACH(s->flags) {
-		fputmeta(s, "\001f ", out);
-		fputmeta(s, s->flags[i], out);
-		fputmeta(s, "\n", out);
+		p = fmts(buf, "\001f ");
+		p = fmts(p, s->flags[i]);
+		*p++ = '\n';
+		*p   = '\0';
+		fputmeta(s, buf, out);
 	}
 	fputmeta(s, "\001t\n", out);
 	EACH(s->text) {
@@ -5988,6 +6117,7 @@ isRegularFile(mode_t m)
  * 	3 if path changed
  *	
  */
+int
 diff_gmode(sccs *s, pfile *pf)
 {
 	delta *d = findrev(s, pf->oldrev);
@@ -6102,6 +6232,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
  *	1 if no differences
  *
  */
+int
 diff_g(sccs *s, pfile *pf, char **tmpfile)
 {
 	*tmpfile = DEV_NULL;
