@@ -110,10 +110,11 @@ m(sccs *s, delta *l, delta *r)
 {
 	delta	*d, *p;
 	char	key[MAXKEY];
-	char	*zone = sccs_zone();
-	int	i;
+	char	zone[20];
+	int	i, sign, hwest, mwest;
 	struct	tm *tm;
 	time_t	tt;
+	long	seast;
 	u32	sum = 0;
 	char	tmp[20], buf[MAXKEY];
 
@@ -135,7 +136,6 @@ m(sccs *s, delta *l, delta *r)
 		}
 	} while (d);
 	while (p->parent && (p->type != 'D')) p = p->parent;
-	tm = localtimez(&tt, 0);
 	sprintf(buf, "# Patch vers:\t1.3\n# Patch type:\tREGULAR\n\n");
 	sum = doit(sum, buf);
 	sprintf(buf, "== %s ==\n", s->gfile);
@@ -146,7 +146,16 @@ m(sccs *s, delta *l, delta *r)
 	sccs_sdelta(s, p, key);
 	sprintf(buf, "%s\n", key);
 	sum = doit(sum, buf);
+	tm = localtimez(&tt, &seast);
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
+	if (seast < 0) {
+		sign = '-';
+		seast = -seast;  /* now swest */
+	}
+	hwest = seast / 3600;
+	mwest = (seast % 3600) / 60;
+	sprintf(zone, "%c%02d:%02d", sign, hwest, mwest);
+
 	sprintf(buf, "M %s %s%s %s@%s +0 -0\n",
 	    "0.0", tmp, zone, p->user, p->hostname);
 	sum = doit(sum, buf);
@@ -170,7 +179,10 @@ m(sccs *s, delta *l, delta *r)
 	doit(sum, 0);
 	sccs_free(s);
 	system("bk takepatch -vvvf PENDING/tagmerge");
+	if (exists("core") || exists("RESYNC/core")) {
+		fprintf(stderr, "takepatch failed, contact BitMover please.\n");
+		exit(1);
+	}
 	system("mv -f RESYNC/SCCS/s.ChangeSet SCCS/s.ChangeSet");
 	system("bk abort -f");
-	free(zone);
 }

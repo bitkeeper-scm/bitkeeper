@@ -1012,6 +1012,13 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 
 		for (e = s->table; e; e = e->next) {
 			e->flags |= D_SET|D_GONE;
+		    	if (echo>7) {
+				char	k[MAXKEY];
+
+				sccs_sdelta(s, e, k);
+				fprintf(stderr, "STRIP %s/%u/%c %s\n",
+				    e->rev, e->serial, e->type, k);
+			}
 			if (e == d) break;
 		}
 		if (sccs_stripdel(s, "takepatch")) {
@@ -1041,6 +1048,10 @@ apply:
 		n++;
 		if (p->pid) {
 			assert(s);
+			if (echo>9) {
+				fprintf(stderr,
+				    "PID: %s\nME:  %s\n", p->pid, p->me);
+			}
 			unless (d = sccs_findKey(s, p->pid)) {
 				if ((echo == 2) || (echo == 3)) {
 					fprintf(stderr, " \n");
