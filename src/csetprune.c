@@ -276,6 +276,7 @@ rebuildTags(sccs *s)
 
 	/*
 	 * Only keep newest instance of each name
+	 * Move all symbols onto real deltas that are not D_GONE
 	 */
 	for (sym = s->symbols; sym; sym = sym->next) {
 		md = sym->metad;
@@ -283,7 +284,6 @@ rebuildTags(sccs *s)
 		assert(sym->symname && md && d);
 		if (mdbm_store_str(symdb, sym->symname, "", MDBM_INSERT)) {
 			/* no error, just ignoring duplicates */
-			MK_GONE(s, md);
 			sym->metad = sym->d = 0;
 			continue;
 		}
@@ -291,7 +291,7 @@ rebuildTags(sccs *s)
 		/* If tag on a deleted node, (if parent) move tag to parent */
 		if (d->flags & D_GONE) {
 			unless (d->parent) {
-				MK_GONE(s, md);
+				/* No where to move it: drop tag */
 				sym->metad = sym->d = 0;
 				continue;
 			}
@@ -299,18 +299,24 @@ rebuildTags(sccs *s)
 			assert(!(d->parent->flags & D_GONE));
 			d = sym->d = d->parent;
 		}
-		/* Move all tags directly onto delta, delete all "R" deltas */
+		/* Move all tags directly onto real delta */
 		if (md != d) {
-			MK_GONE(s, md);
 			md = sym->metad = d;
 		}
-		md->flags |= D_SYMBOLS;
+		assert(md == d && d->type == 'D');
+		d->flags |= D_SYMBOLS;
 	}
 	/*
 	 * symbols above could now be out of order.
 	 * Use table order to build tag graph.
+	 * D_GONE all 'R' nodes in graph.
 	 */
 	for (d = s->table; d; d = d->next) {
+		if (d->type == 'R') {
+			assert(!(d->flags & D_SYMBOLS));
+			MK_GONE(s, d);
+			continue;
+		}
 		unless (d->flags & D_SYMBOLS) continue;
 		assert(!(d->flags & D_GONE));
 		if (last) {
@@ -437,15 +443,6 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 			if (mdbm_fetch_str(m, buf)) {
 				n->added = 0;
 			}
-		}
-		else unless (n->flags & D_SYMBOLS) {
-			/*
-			 * Mark nodes in the tag graph GONE
-			 * if they don't have a symbol (meaning
-			 * they are a merge node with type R
-			 * Do this here, because about to turn off D_SYMBOL
-			 */
-			MK_GONE(s, n);
 		}
 		n->ptag = n->mtag = 0;
 		n->symGraph = 0;
