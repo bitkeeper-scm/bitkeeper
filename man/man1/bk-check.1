@@ -4,7 +4,7 @@
 .SH NAME
 bk check \- check repository for consistency
 .SH SYNOPSIS
-.B bk \-r check [\-acfgpRvw]
+.B bk \-r check [\-acefgpRvw]
 .SH DESCRIPTION
 .LP
 Check is used to make sure that a repository is in a consistent state.
@@ -42,7 +42,7 @@ While you can specify a list of files instead of using
 .B bk \-r
 to get all of them, this is not recommended.
 .SH OPTIONS
-.TP
+.TP .4i
 .B \-a
 Ensures that the ChangeSet file and the repository
 agree on what files are in the repository.
@@ -51,6 +51,33 @@ agree on what files are in the repository.
 Check file and the per delta checksums.  Note that only the most recent
 delta's checksum is checked, see bk help checksum to check all of the
 checksums.
+.tp
+.B \-e
+Check for end of line (eoln) inconsistencies in text files.  
+Typically used with the -a option.  This will check to make sure that:
+.RS .41i
+.tp .3i
+\*(BU
+the state of the EOLN_NATIVE flag in each sfile is consistent with 
+what is set in the BitKeeper/etc/config file.  (see bk help admin).
+.tp
+.br
+\*(BU
+a bk file on a win32 operating system that has
+the EOLN_NATIVE flag set has the correct line termination character, CRLF
+.tp
+.br
+\*(BU
+a file on a unix operating system has the correct line 
+termination character, LF
+.tp
+.br
+\*(BU
+a file that does not have the EOLN_NATIVE flag is not set 
+has the correct line termination character, LF
+.tp
+Warnings will occur if any of the above do not check out cleanly.
+.RE
 .tp
 .B \-f
 Fix any fixable errors.
@@ -78,5 +105,6 @@ List files which are writable but not locked.
 .SA gone 1
 .SA prs 1
 .SA checksum 1
+.SA config-etc 1
 .SH CATEGORY
 .B Repository
