@@ -1,14 +1,28 @@
+/*
+ * TODO
+ *	- t.grep
+ *	  Test all the GNU options.
+ *	  Make sure that every use of grep in our t.* files could be replaced
+ *	  with "bk grep ..."
+ *	- try and figure out what to do when someone hits ^C.
+ *	- fix the context stuff to be identical to gnu grep
+ *	- maybe look at a better way of grep -i in regex.c
+ *	- maybe look at a pseudo DFA in regex.c where you grap the first
+ *	  match char from each and walk the string for all in parallel.
+ *	  Or something.
+ *	- \<something\> is substantially slower than just "something"
+ */
 /* Copyright 2003 BitMover, Inc. */
-#include "regex/regex.h"
 #include "system.h"
 #include "sccs.h"
+#include "regex/regex.h"
 
 private	void	doit(FILE *f);
-private void	context(char *arg);
 private char	*getfile(char *buf);
 private void	done(char *file, int count);
 
 struct	grep {
+	u32	align:1;	/* try and align the output */
 	u32	count:1;	/* count up the matches */
 	u32	invert:1;	/* show non matching lines */
 	u32	lineno:1;	/* also list line number */
@@ -18,11 +32,17 @@ struct	grep {
 	u32	quiet:1;	/* exit status only */
 	u32	wholeline:1;	/* add ^ $ to the pat */
 	u32	name:1;		/* print file name */
+	u32	Name:1;		/* they said they really wanted it */
+	u32	anno:1;		/* skip over the annotations when searching */
+	u32	firstmatch:1;	/* if set, we are the first match */
 
 	u32	before;		/* lines of context before the match */
 	u32	after;		/* lines of context after the match */
 	u32	found;		/* set if any matches were found in any file */
 	u32	line;		/* line number in current file */
+	u8	fname;		/* if set, position in annotations of file */
+	u8	user;		/* if set, position in annotations of user */
+	u8	rev;		/* if set, position in annotations of revnums */
 } opts;
 
 int
@@ -31,17 +51,25 @@ grep_main(int ac, char **av)
 	int	c;
 	char	*pat;
 	FILE	*f;
-	char	*rev = 0, *range = 0;
-	char	**cmd;
+	char	*rev = 0, *range = 0, **cmd;
 	pid_t	pid;
-	int	pfd;
+	int	pfd, aflags = 0, args = 0;
+	char	aopts[20];
 
-	opts.name = 1;
-	while ((c = getopt(ac, av, "a;A;cC|d;hilLnqr;R|vx")) != EOF) {
+	opts.firstmatch = opts.name = 1;
+	while ((c = getopt(ac, av, "a;A:B:cC:d;hHilLnqr;R|vx")) != EOF) {
 		switch (c) {
+		    case 'A':				/* GNU -A %d */
+			if (optarg && isdigit(*optarg)) {
+				opts.after = atoi(optarg);
+				break;
+			}
+			opts.align = 1;
+			/* fall through */
 		    case 'a':				/* BK anno opt */
-		    case 'A':				/* BK anno opt */
-			fprintf(stderr, "Annotations need merge w/ Wayne\n");
+			aflags = annotate_args(aflags, optarg);
+			if (aflags == -1) exit(2);
+			opts.anno = 1;
 		    	break;
 		    case 'r':				/* BK rev opt */
 			rev = aprintf("-r%s", optarg);
@@ -57,9 +85,17 @@ grep_main(int ac, char **av)
 			}
 			break;
 
+		    case 'B': opts.before = atoi(optarg); break;
 		    case 'c': opts.count = 1; break;	/* GNU compat */
-		    case 'C': context(optarg); break;	/* semi GNU compat */
+		    case 'C':				/* GNU compat */
+			if (opts.before = atoi(optarg)) {
+				opts.after = opts.before;
+			} else {
+				opts.before = opts.after = 2;
+			}
+			break;
 		    case 'h': opts.name = 0; break;	/* GNU compat */
+		    case 'H': opts.Name = 1; break;	/* GNU compat */
 		    case 'i': opts.nocase = 1; break;	/* GNU compat */
 		    case 'l': opts.list = 1; break;	/* GNU compat */
 		    case 'L': opts.List = 1; break;	/* GNU compat */
@@ -67,6 +103,7 @@ grep_main(int ac, char **av)
 		    case 'q': opts.quiet = 1; break;	/* GNU compat */
 		    case 'v': opts.invert = 1; break;	/* GNU compat */
 		    case 'x': opts.wholeline = 1; break;/* GNU compat */
+		    default: exit(2);
 		}
 	}
 	unless (av[optind]) exit(2);
@@ -91,21 +128,54 @@ grep_main(int ac, char **av)
 	}
 	if (re_comp(pat)) exit(2);
 	if (rev && range) {
-		fprintf(stderr, "bk grep: can not mix -r with -R\n");
+		fprintf(stderr, "grep: can't mix -r with -R\n");
 		exit(2);
 	}
 	cmd = addLine(0, "bk");
-	unless (range || rev) rev = "-r+";
+	if (aflags && !rev && !range) rev = "-r+";
 	if (rev) {
 		cmd = addLine(cmd, "get");
 		cmd = addLine(cmd, "-kpq");
 		cmd = addLine(cmd, rev);
-	} else {
+	} else if (range) {
 		cmd = addLine(cmd, "sccscat");
 		cmd = addLine(cmd, "-q");
 		if (range) cmd = addLine(cmd, range);
+	} else {
+		cmd = addLine(cmd, "cat");
 	}
-	while (av[optind]) cmd = addLine(cmd, av[optind++]);
+	if (aflags) {
+		aopts[0] = '-';
+		aopts[1] = 'A';
+		aopts[2] = 0;
+		if (aflags & GET_PREFIXDATE)	strcat(aopts, "d");
+		if (aflags & GET_RELPATH)	strcat(aopts, "f");
+		if (aflags & GET_MODNAME)	strcat(aopts, "l");
+		if (aflags & GET_REVNUMS)	strcat(aopts, "r");
+		if (aflags & GET_USER)		strcat(aopts, "u");
+		cmd = addLine(cmd, aopts);
+		if (aflags & (GET_RELPATH|GET_MODNAME)) {
+			opts.Name = opts.name = 0;
+		}
+
+		opts.fname = opts.user = opts.rev = 1;
+		if (opts.name) opts.fname++, opts.user++, opts.rev++;
+		if (opts.lineno) opts.fname++, opts.user++, opts.rev++;
+		if (aflags & GET_RELPATH) opts.user++, opts.rev++;
+		if (aflags & GET_MODNAME) opts.user++, opts.rev++;
+		if (aflags & GET_PREFIXDATE) opts.user++, opts.rev++;
+		if (aflags & GET_USER) opts.rev++;
+		unless (aflags & GET_USER) opts.user = 0;
+		unless (aflags & GET_REVNUMS) opts.rev = 0;
+		unless (aflags & (GET_RELPATH|GET_MODNAME)) opts.fname = 0;
+	}
+	cmd = addLine(cmd, "-B");
+	while (av[optind]) {
+		unless (streq("-", av[optind])) args++;
+		cmd = addLine(cmd, av[optind++]);
+	}
+	if (args == 1) opts.name = opts.Name;
+
 	/* force a null entry at the end for spawn */
 	cmd = addLine(cmd, "");
 	cmd[nLines(cmd)] = 0;
@@ -114,24 +184,120 @@ grep_main(int ac, char **av)
 	f = fdopen(pfd, "r");
 	doit(f);
 	exit(opts.found ? 0 : 1);
-
-	// TODO - figure out a way to make this work with non-bk files so we
-	// we can use it in the regressions.
 }
 
-void
+typedef	struct {
+	char	*buf;
+	int	bufsiz;
+} line;
+
+private	line	*lines;	/* array of opts.before+1 lines */
+private	char	*lower;
+private	int	cur, lsiz;
+
+char	*
+fgetline(FILE *f)
+{
+	char	*p;
+	int	nchar;
+	line	*l;
+
+	unless (lines) lines = calloc(opts.before + 1, sizeof(line));
+	if (opts.before) cur = (cur + 1) % (opts.before + 1);
+	l = &lines[cur];
+	unless (l->bufsiz) {
+		l->bufsiz = 512;
+realloc:
+		if (l->buf) {
+			char	*tmp = malloc(l->bufsiz << 1);
+
+			bcopy(l->buf, tmp, l->bufsiz);
+			free(l->buf);
+			l->buf = tmp;
+
+			p = &(l->buf[l->bufsiz - 1]);
+			assert(p[-1] && !p[0]);
+			nchar = l->bufsiz + 1;
+			l->bufsiz <<= 1;
+		} else {
+			p = l->buf = malloc(l->bufsiz);
+			nchar = l->bufsiz;
+		}
+		if (opts.nocase && (l->bufsiz > lsiz)) {
+			if (lower) free(lower);
+			lower = malloc(lsiz = l->bufsiz);
+		}
+	} else {
+		p = l->buf;
+		nchar = l->bufsiz;
+	}
+	unless (fgets(p, nchar, f)) return (0);
+	unless (chomp(p)) goto realloc;
+	return (l->buf);
+}
+
+private void
+pline(char *file, char *buf, char c)
+{
+	int	len = 0;
+	int	n = 0;
+	char	spacer = opts.align ? '\t' : ':';
+
+	if (file && opts.name) {
+		printf("%s%c", file, spacer);
+		n++;
+	}
+	if (opts.lineno) {
+		printf("%d%c", opts.line, c);
+		n++;
+	}
+	if (opts.anno) {
+		char	*p;
+
+		for (p = buf; *p != '|'; p++) {
+			unless (isspace(*p)) {
+				putchar(*p);
+				len++;
+				continue;
+			}
+			n++;
+			if (opts.align) {
+				if ((n == opts.fname) || (n == opts.user) || (n == opts.rev)) {
+					len = 16 - len;
+					if (len > 0) {
+						printf("%*s", len, "");
+					} else {
+						putchar('\t');
+					}
+				} else {
+					putchar(spacer);
+				}
+			} else {
+				putchar(':');
+			}
+			while (isspace(p[1])) p++;
+			len = 0;
+		}
+		assert(*p == '|');
+		unless (opts.align) p += 2;
+		puts(p);
+	} else {
+		puts(buf);
+	}
+}
+
+private void
 doit(FILE *f)
 {
 	char	*p, *file = strdup("?");
 	int	match;
-	int	first = 1, skip = 0;
+	int	first = 1, skip = 0, print = 0;
 	u32	count = 0;
-	char	buf[BUFSIZ];
-	char	lower[BUFSIZ];
+	char	*buf = 0;
 
 	opts.line = 0;
-	while (fgets(buf, sizeof(buf), f)) {
-		if (p = getfile(buf)) {
+	while (buf = fgetline(f)) {
+		if ((buf[0] == '|') && (p = getfile(buf))) {
 			unless (first) done(file, count);
 			count = opts.line = first = skip = 0;
 			free(file);
@@ -140,20 +306,25 @@ doit(FILE *f)
 		}
 		if (skip) continue;
 		opts.line++;
-		chomp(buf);
-		unless (buf[0]) continue;
+		p = opts.anno ? strchr(buf, '|') + 2 : buf;
+		unless (p[0]) continue;
 		if (opts.nocase) {
 			int	i;
 
-			for (i = 0; buf[i]; i++) lower[i] = tolower(buf[i]);
+			for (i = 0; p[i]; i++) lower[i] = tolower(p[i]);
 			lower[i] = 0;
 			match = re_exec(lower);
 		} else {
-			match = re_exec(buf);
+			match = re_exec(p);
 		}
 		if (opts.invert) match = !match;
-		if (match) {
-			count++;
+		if (match || print) {
+			if (match) {
+				count++;
+				print = opts.after;
+			} else {
+				print--;
+			}
 			if (opts.quiet) exit(0);
 			opts.found = 1;
 			if (opts.list) {
@@ -163,9 +334,22 @@ doit(FILE *f)
 				continue;
 			}
 			unless (opts.List || opts.count) {
-				if (file && opts.name) printf("%s:", file);
-				if (opts.lineno) printf("%d:", opts.line);
-				puts(buf);
+				if (!opts.firstmatch && match &&
+				    (opts.before || opts.after)) {
+				    	puts("--");
+				}
+				opts.firstmatch = 0;
+				if (match && opts.before) {
+					int	i, j;
+
+					opts.line -= opts.before;
+					for (i = 1; i <= opts.before; ++i) {
+						j = (cur + i) % (opts.before+1);
+						pline(file, lines[j].buf, '-');
+						opts.line++;
+					}
+				}
+				pline(file, buf, match ? ':' : '-');
 			}
 		}
 	}
@@ -202,33 +386,4 @@ getfile(char *buf)
 		return (0);
 	}
 	return (file);
-}
-
-private void
-context(char *arg)
-{
-	/* -C sets before/after to 3 */
-	unless (arg && *arg) {
-		opts.before = opts.after = 3;
-		return;
-	}
-	/* -C%d sets before/after to %d */
-	if (isdigit(optarg[0])) {
-		opts.before = opts.after = atoi(arg);
-		return;
-	}
-	/* -C+5 -C-3 -C+5-3 -C-3+5 etc */
-	while (*arg) {
-		if (*arg == '+') {
-			arg++;
-			opts.after = atoi(arg);
-		} else if (*arg == '-') {
-			arg++;
-			opts.before = atoi(arg);
-		} else {
-			system("bk help -s grep");
-			exit(2);
-		}
-		while (*arg && isdigit(*arg)) arg++;
-	}
 }

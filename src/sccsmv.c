@@ -63,7 +63,7 @@ mv_main(int ac, char **av)
 	av[ac-1] = 0;
 
         if (!skip_lock && repository_wrlock()) {
-                fprintf(stderr, "mv: unable to write lock repository\n");
+                fprintf(stderr, "mv: unable to write-lock repository\n");
                 return (1);
         }
 
@@ -80,8 +80,8 @@ mv_main(int ac, char **av)
 		if (isdir(av[i])) {
 			errors |= sys("bk", "mvdir", "-l", av[i], dest, SYS);
 		} else {
-			errors |= sccs_mv(av[i], dest,
-						isDir, 0, isUnDelete, force);
+			errors |=
+			    sccs_mv(av[i], dest, isDir, 0, isUnDelete, force);
 		}
 	}
 	if (dofree) free(dest);

@@ -44,7 +44,7 @@
 #define	GET_LINENUM	0x08000000	/* get -N: show line numbers */
 #define	GET_MODNAME	0x00100000	/* get -n: prefix with %M */
 #define	GET_PREFIXDATE	0x00200000	/* get -d: show date */
-#define GET_PATH	0x00400000	/* use delta (original) path */
+/* available		0x00400000	*/
 #define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
 #define	GET_ALIGN	0x00010000	/* nicely align prefix output */
 #define	GET_FORCE	0x00020000	/* do it even with errors */
@@ -59,14 +59,14 @@
 #define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
 #define	GET_LINENAME	0x00000800	/* get -O: prefix with line name */
-#define	GET_FULLPATH	0x00000010	/* like GET_MODNAME but full relative */
+#define	GET_RELPATH	0x00000010	/* like GET_MODNAME but full relative */
 #define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
 #define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
 #define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
 #define	DIFF_COMMENTS	GET_COMMENTS
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
-     GET_FULLPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME)
+     GET_RELPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME)
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
@@ -438,7 +438,8 @@ typedef struct delta {
 					/* open tips, so maintained always */
 	char	type;			/* Delta or removed delta */
 } delta;
-#define	TAG(d)	((d)->type == 'R')
+#define	TAG(d)		((d)->type == 'R')
+#define	REG(d)		((d)->type == 'D')
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 /*
@@ -853,7 +854,7 @@ delta	*modeArg(delta *d, char *arg);
 char    *fullname(char *, int);
 int	fileType(mode_t m);
 char	chop(char *s);
-void	chomp(char *s);
+int	chomp(char *s);
 int	atoi_p(char **p);
 char	*p2str(void *p);
 int	sccs_filetype(char *name);
@@ -956,6 +957,7 @@ int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
 char	*sccs_Xfile(sccs *s, char type);
 int	unique(char *key);
+char	*uniq_keysHome(void);
 int	uniq_lock(void);
 int	uniq_unlock(void);
 int	uniq_open(void);

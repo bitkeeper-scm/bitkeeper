@@ -664,7 +664,8 @@ csetlist(cset_t *cs, sccs *cset)
 			char tmp_gone[MAXPATH];
 
 			bktmp(tmp_gone, "gone");
-			sysio(0, tmp_gone, 0, "bk", "get", "-kpsC", GONE, SYS);
+			sysio(0,
+			    tmp_gone, 0, "bk", "get", "-kpsr@+", GONE, SYS);
 			goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
 			unlink(tmp_gone);
 		}

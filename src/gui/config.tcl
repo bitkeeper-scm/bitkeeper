@@ -18,7 +18,6 @@ proc getConfig {prog} \
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
-		set _d(help.scrollWidth) 14	;# helptool scrollbar width
 		set _d(ci.filesHeight) 8
 		set _d(ci.commentsHeight) 7	;# height of comment window
 		set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
@@ -27,7 +26,6 @@ proc getConfig {prog} \
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
-		set _d(help.scrollWidth) 14	;# helptool scrollbar width
 		set _d(ci.filesHeight) 9	;# num files to show in top win
 		set _d(ci.commentsHeight) 8	;# height of comment window
 		set _d(fm.editor) "fm2tool"
@@ -164,7 +162,7 @@ proc getConfig {prog} \
 	# XXX: not documented yet
 	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
 	set _d(rev.hlineColor) $WHITE	;# Color of highlight lines XXX:NOTDOC
-	set _d(rev.sccscat) "-aum"	  ;# Options given to sccscat
+	set _d(rev.sccscat) "-Aur"	  ;# Options given to sccscat
 
 	set _d(setup.stripeColor) $BLUE ;# color of horizontal separator
 	set _d(setup.mandatoryColor) $BKSLATEGRAY1 ;# mandatory fields

@@ -16,6 +16,7 @@ SAVE=`bk getuser`
 no_logging project
 echo Hallo > date
 bk new $Q date
+
 echo $N Check for path in initial checkin ...........................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -26,6 +27,7 @@ mkdir -p aa/bb/cc/dd
 cd aa/bb/cc/dd
 echo Hallo > date
 bk new $Q date
+
 echo $N Check for path in sub dir1 ..................................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -35,6 +37,7 @@ echo OK
 cd ../../../..
 echo Hallo > aa/bb/cc/dd/date2
 bk new $Q  aa/bb/cc/dd/date2
+
 echo $N Check for path in sub dir2 ..................................$NL
 grep -q '^.cP.*date2$' aa/bb/cc/dd/SCCS/s.date2
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -47,6 +50,7 @@ bk ci $Q -y date
 bk co $Q -l date
 echo Hi >> date
 bk ci $Q -y date
+
 echo $N Make sure -Gname works ......................................$NL
 bk get $S -GA -r1.1 date
 bk get $S -G B -r1.2 date
@@ -64,6 +68,7 @@ grep -q Hi B
 if [ $? -ne 0 ]; then echo Bad data in B.; exit 1; fi
 echo OK
 rm -f A B
+
 echo $N Make sure -Ga/b/c/name works ................................$NL
 mkdir -p a/b/c
 bk get $S -Ga/b/c/A -r1.1 date
@@ -81,10 +86,12 @@ if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 grep -q Hi a/b/c/B
 if [ $? -ne 0 ]; then echo Bad data in a/b/c/B.; exit 1; fi
 echo OK
+
 echo $N Check paths in file .........................................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
 echo OK
+
 echo $N Check hosts in file .........................................$NL
 hostname=free.bk
 grep -q "^.cH.*$hostname\$" SCCS/s.date
@@ -92,6 +99,7 @@ if [ $? -ne 0 ]; then echo No host found.; exit 1; fi
 X=`grep -c "^.cH.*$hostname\$" SCCS/s.date`
 if [ $X -ne 1 ]; then echo Duplicate hosts.; exit 1; fi
 echo OK
+
 echo $N Check zones in file .........................................$NL
 zone=`bk zone`
 grep -q "^.cZ.*$zone\$" SCCS/s.date
@@ -99,6 +107,7 @@ if [ $? -ne 0 ]; then echo No zone found.; exit 1; fi
 X=`grep -c "^.cZ.*$zone\$" SCCS/s.date`
 if [ $X -ne 1 ]; then echo Duplicate zones; exit 1; fi
 echo OK
+
 echo $N Check paths in moved file ...................................$NL
 cp SCCS/s.date SCCS/s.moved
 bk get $Q -e moved
@@ -108,10 +117,12 @@ if [ $? -ne 0 ]; then echo Lost old path.; exit 1; fi
 grep -q '^.cP.*moved$' SCCS/s.moved
 if [ $? -ne 0 ]; then echo Did not add new path.; exit 1; fi
 echo OK
+
 echo $N Make sure get -g does not get file ..........................$NL
 bk get $S -g date
 if [ -f date ]; then echo Failed, got file.; exit 1; fi
 echo OK
+
 echo $N Make sure get -k does not expand keywords ...................$NL
 bk get $S -e date
 if [ -f core ]; then echo core dumped; exit 1; fi
@@ -123,12 +134,14 @@ if [ -f core ]; then echo core dumped; exit 1; fi
 if writable date; then echo date is writable and should not be; exit 1; fi
 if [ "$X" != "`wc date`" ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
+
 echo $N Make sure get does expand keywords ..........................$NL
 bk get $S date
 if [ -f core ]; then echo core dumped; exit 1; fi
 if writable date; then echo date is writable and should not be; exit 1; fi
 if [ "$X" = "`wc date`" ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
+
 echo $N RCS keywords should fail w/o -fRCS ..........................$NL
 bk get $S -e date
 echo '$Id$' > date
@@ -137,45 +150,55 @@ bk get $S date
 if writable date; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' != "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N RCS keywords should work w/ -fRCS ...........................$NL
 bk admin $Q -fRCS date
 bk get $S date
 if writable date; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' = "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N Get -ep should fail .........................................$NL
 bk get $S -ep date > junk 2>junk2
 if [ -f "SCCS/p.date" ]; then echo failed, created p.file; exit 1; fi
 echo OK
+
 echo $N Get -eg should remove readonly gfile ........................$NL
 bk get $S -eg date
 if [ -f "date" ]; then echo failed, did not remove file; exit 1; fi
 if writable date; then echo failed, added writable file; exit 1; fi
 bk unlock -p date
 echo OK
-echo $N Make sure get -an works .....................................$NL
+
+echo $N Make sure get -ab works .....................................$NL
 echo HI > T
 bk ci $Q -i T
-if [ "`bk get $S -pan T`" != "T	HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pab T`" != "T	HI" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure get -am works .....................................$NL
-if [ "`bk get $S -pam T`" != "1.1	HI" ]; then echo Failed.; exit 1; fi
+
+echo $N Make sure get -ar works .....................................$NL
+if [ "`bk get $S -par T`" != "1.1	HI" ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N Make sure get -aO works .....................................$NL
 name=`bk prs -r+ -hnd:MD5KEY: T`
 if [ "`bk get $S -paO T`" != "$name.1	HI" ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N Make sure get -au works .....................................$NL
 if [ "`bk get $S -pau T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure get -An works .....................................$NL
+
+echo $N Make sure get -Ab works .....................................$NL
 echo HI > T
 chmod -w T
-if [ "`bk get $S -pAn T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
+if [ "`bk get $S -pAb T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure get -Am works .....................................$NL
-if [ "`bk get $S -pAm T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
+
+echo $N Make sure get -Ar works .....................................$NL
+if [ "`bk get $S -pAr T`" != "1.1   | HI" ]; then echo Failed.; exit 1; fi
 echo OK
+
 echo $N Make sure get -Au works .....................................$NL
 if [ "`bk get $S -pAu T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK
@@ -272,6 +295,7 @@ echo OK
 
 if [ $PLATFORM = "WIN32" ]
 then #-------------------------------------------------------------
+
 echo $N Make sure get creats gfile with real name ...................$NL
 echo "hi" > test.c
 bk ci $Q -i test.c
@@ -282,6 +306,7 @@ DPN=`bk prs -h -r+ -d:DPN: test.C`
 if [ "$DPN" != "test.c" ]; then echo failed; exit 1; fi
 echo OK
 fi #---------------------------------------------------------------
+
 echo $N Test get with foo.c -Gbar.c .................................$NL
 echo foo.c > foo.c
 bk new $Q foo.c
@@ -299,6 +324,7 @@ test `cat bar.c` = foo.c || {
 	exit 1
 }
 echo OK
+
 echo $N Test get with -Gsubdir foo.c ................................$NL
 mkdir subdir
 rm -f bar.c
@@ -320,6 +346,7 @@ test `cat subdir/foo.c` = foo.c || {
 	exit 1
 }
 echo OK
+
 echo $N Test get with -Gsubdir ......................................$NL
 bk get $Q -Gsubdir || {
 	echo failed to exit cleanly
@@ -332,6 +359,7 @@ do	test -f subdir/$i || {
 	}
 done
 echo OK
+
 
 echo $N Test sccs get with foo.c -Gbar.c ............................$NL
 mkdir bin
@@ -358,6 +386,7 @@ test `cat bar.c` = foo.c || {
 	exit 1
 }
 echo OK
+
 echo $N Test sccs get with -Gsubdir foo.c ...........................$NL
 mkdir subdir
 rm -f bar.c
@@ -379,6 +408,7 @@ test `cat subdir/foo.c` = foo.c || {
 	exit 1
 }
 echo OK
+
 echo $N Test sccs get with -Gsubdir .................................$NL
 ./bin/sccs get $Q -Gsubdir || {
 	echo failed to exit cleanly

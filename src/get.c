@@ -3,27 +3,25 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-/*
- * The weird setup is so that I can #include this file into sccssh.c
- */
 int
-_get_main(int ac, char **av, char *out)
+get_main(int ac, char **av)
 {
 	sccs	*s;
 	int	iflags = 0, flags = GET_EXPAND, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
 	char	*prog;
-	char	*mRev = 0;
+	char	*mRev = 0, *Rev = 0;
 	delta	*d;
 	int	gdir = 0;
 	int	getdiff = 0;
 	int	sf_flags = 0;
 	int	dohash = 0;
-	int	commitedOnly = 0;
 	int	branch_ok = 0;
 	int	caseFoldingFS = 1;
+	int	skip_bin = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	MDBM	*realNameCache = 0;
+	char	*out = "-";
 	char	realname[MAXPATH];
 
 	debug_main(av);
@@ -49,7 +47,7 @@ _get_main(int ac, char **av, char *out)
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	if (streq("GET", user_preference("checkout"))) flags |= GET_NOREGET;
 	while ((c =
-	    getopt(ac, av, "A;a;c;CDeFgG:hHi;klM|pPqr;RSstTx;")) != -1) {
+	    getopt(ac, av, "A;a;Bc;CDeFgG:hi;klM|pPqr;RSstTx;")) != -1) {
 		switch (c) {
 		    case 'A':
 			flags |= GET_ALIGN;
@@ -58,8 +56,9 @@ _get_main(int ac, char **av, char *out)
 			flags = annotate_args(flags, optarg);
 			if (flags == -1) goto usage;
 			break;
+		    case 'B': skip_bin = 1; break;
 		    case 'c': cdate = optarg; break;		/* doc 2.0 */
-		    case 'C': commitedOnly = 1; break;		/* doc 2.0 */
+		    case 'C': getMsg("get_C", 0, 0, stdout); exit(0);
 		    case 'D': getdiff++; break;			/* doc 2.0 */
 		    case 'l':					/* doc 2.0 co */
 		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */
@@ -67,14 +66,13 @@ _get_main(int ac, char **av, char *out)
 		    case 'g': flags |= GET_SKIPGET; break;	/* doc 2.0 */
 		    case 'G': Gname = optarg; break;		/* doc 2.0 */
 		    case 'h': dohash = 1; break;		/* doc 2.0 */
-		    case 'H': flags |= GET_PATH; break;		/* doc 2.0 */
 		    case 'i': iLst = optarg; break;		/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
 		    case 'M': mRev = optarg; break;		/* doc 2.0 */
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */
 		    case 'q': flags |= SILENT; break;		/* doc 2.0 */
-		    case 'r': rev = optarg; break;		/* doc 2.0 */
+		    case 'r': Rev = optarg; break;		/* doc 2.0 */
 		    case 'R': sf_flags |= SF_HASREVS; break;	/* doc 2.0 */
 		    case 's': flags |= SILENT; break;		/* undoc */
 		    case 'S': flags |= GET_NOREGET; break;	/* doc 2.0 */
@@ -103,45 +101,18 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 	gdir = Gname && isdir(Gname);
 	if (((Gname && !gdir) || iLst || xLst) && sfileNext()) {
 onefile:	fprintf(stderr,
-			"%s: only one file name with -G/i/x.\n", av[0]);
+		    "%s: only one file name with -G/i/x.\n", av[0]);
 		goto usage;
 	}
 	if (av[optind] && av[optind+1] && strneq(av[optind+1], "-G", 2)) {
 		Gname = &av[optind+1][2];
 	}
 	if (Gname && (flags & GET_EDIT)) {
-		fprintf(stderr, "%s: can't use -G and -e/-l together.\n",
-			av[0]);
-		goto usage;
-	}
-	if (Gname && (flags & GET_PATH)) {
-		fprintf(stderr, "%s: can't use -G and -H together.\n",
-			av[0]);
+		fprintf(stderr, "%s: can't use -G and -e/-l together.\n",av[0]);
 		goto usage;
 	}
 	if (Gname && (flags & PRINT)) {
-		fprintf(stderr, "%s: can't use -G and -p together,\n",
-			av[0]);
-		goto usage;
-	}
-	if ((flags & GET_PATH) && (flags & (GET_EDIT|PRINT))) {
-		fprintf(stderr, "%s: can't use -e/-l/-p and -H together.\n",
-			av[0]);
-		goto usage;
-	}
-	if (commitedOnly && (flags & GET_EDIT)) {
-		fprintf(stderr,
-		    "%s: -C can not be combined with edit.\n", av[0]);
-		goto usage;
-	}
-	if (commitedOnly && (rev || cdate)) {
-		fprintf(stderr,
-		    "%s: -C can not be combined with rev/date.\n", av[0]);
-		goto usage;
-	}
-	if ((rev || cdate) && (sf_flags & SF_HASREVS)) {
-		fprintf(stderr,
-		    "%s: can't specify more than one rev.\n", av[0]);
+		fprintf(stderr, "%s: can't use -G and -p together,\n", av[0]);
 		goto usage;
 	}
 	switch (getdiff) {
@@ -150,8 +121,7 @@ onefile:	fprintf(stderr,
 	    case 2: flags |= GET_BKDIFFS; break;
 	    case 3: flags |= GET_HASHDIFFS; break;
 	    default:
-		fprintf(stderr, "%s: invalid D flag value %d\n",
-			av[0], getdiff);
+		fprintf(stderr, "%s: invalid D flag value %d\n", av[0],getdiff);
 		return(1);
 	}
 	if (getdiff && (flags & GET_PREFIX)) {
@@ -166,6 +136,8 @@ onefile:	fprintf(stderr,
 	}
 
 	for (; name; name = sfileNext()) {
+		d = 0;
+
 		if (caseFoldingFS) {
 			/*
 			 * For win32 FS and Samba.
@@ -178,9 +150,6 @@ onefile:	fprintf(stderr,
 			name = realname;
 		}
 		unless (s = sccs_init(name, iflags)) continue;
-		if (pnames) {
-			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
-		}
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];
@@ -207,6 +176,10 @@ onefile:	fprintf(stderr,
 			errors = 1;
 			continue;
 		}
+		if (skip_bin && (s->encoding & E_BINARY)) {
+			sccs_free(s);
+			continue;
+		}
 		if (cdate) {
 			s->state |= S_RANGE2;
 			d = sccs_getrev(s, 0, cdate, ROUNDUP);
@@ -218,6 +191,10 @@ onefile:	fprintf(stderr,
 				continue;
 			}
 			rev = d->rev;
+		} else if (Rev) {
+			rev = Rev;
+		} else {
+			rev = sfileRev();
 		}
 		if (dohash) {
 			if (HASH(s)) {
@@ -225,20 +202,6 @@ onefile:	fprintf(stderr,
 			} else {
 				s->xflags |= X_HASH;
 			}
-		}
-		if (sf_flags & SF_HASREVS) rev = sfileRev();
-		if (commitedOnly) {
-			delta	*d = sccs_top(s);
-
-			while (d && !(d->flags & D_CSET)) d = d->parent;
-			if (!d) {
-				verbose((stderr,
-				    "No committed deltas in %s\n", s->gfile));
-				errors = 1;
-				sccs_free(s);
-				continue;
-			}
-			rev = d->rev;
 		}
 		if (BITKEEPER(s) && (flags & GET_EDIT) && rev && !branch_ok) {
 			fprintf(stderr, "Cannot create branch\n");
@@ -253,6 +216,9 @@ onefile:	fprintf(stderr,
 				    av[0]);
 				goto usage;
 			}
+		}
+		if (pnames) {
+			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
@@ -290,11 +256,14 @@ annotate_args(int flags, char *args)
 {
 	while (*args) {
 		switch (*args) {
+		    case 'b': flags |= GET_MODNAME; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;
-		    case 'f': flags |= GET_FULLPATH; break;
-		    case 'm': flags |= GET_REVNUMS; break;
-		    case 'n': flags |= GET_MODNAME; break;
-		    case 'N': flags |= GET_LINENUM; break;
+		    case 'p': flags |= GET_RELPATH; break;
+		    case 'm': /* pseudo backwards compat */
+		    case 'r': /* better name */
+			flags |= GET_REVNUMS; break;
+		    case 'l': /* undoc-ed - alias */
+		    case 'n': flags |= GET_LINENUM; break;
 		    case 'O': flags |= GET_LINENAME; break;
 		    case 'u': flags |= GET_USER; break;
 		    default:
@@ -303,10 +272,4 @@ annotate_args(int flags, char *args)
 		++args;
 	}
 	return (flags);
-}
-
-int
-get_main(int ac, char **av)
-{
-	return (_get_main(ac, av, "-"));
 }

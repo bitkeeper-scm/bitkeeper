@@ -84,15 +84,15 @@ diffs_main(int ac, char **av)
 		    case 'B': kind |= DF_GNUB; break;		/* doc 2.0 */
 		    case 'c': kind |= DF_CONTEXT; break;	/* doc 2.0 */
 		    case 'C': getMsg("diffs_C", 0, 0, stdout); exit(0);
-		    case 'e': empty = 1; break;
+		    case 'e': empty = 1; break;			/* don't doc */
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
 		    case 'H':
 			flags |= DIFF_COMMENTS;
 			putenv("BK_YEAR4=YES");  /* rm when YEAR4 is default */
 			break;
-		    case 'I': kind |= DF_IFDEF; break;
+		    case 'I': kind |= DF_IFDEF; break;		/* internal */
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
-		    case 'm':
+		    case 'm':					/* internal */
 			kind |= DF_IFDEF;
 			mdiff = 1;
 			if (optarg && (*optarg == 'r')) flags |= GET_LINENAME;

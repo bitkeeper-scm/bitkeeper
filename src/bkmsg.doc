@@ -1,3 +1,11 @@
+#get_C
+The get -C option has been replaced with the -r@rev syntax.  To get the
+same effect as
+
+	bk get -p -C foo.c
+try
+	bk -r get -r@+ foo.c
+$
 #diffs_C
 The diffs -C option has been replaced with the -r@rev syntax.  To get the
 same effect as

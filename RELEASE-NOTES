@@ -1,35 +1,15 @@
 ===============================================================================
-Release notes for BitKeeper version 3.0.4.   These release notes cover
-the following topics:
+Release notes for BitKeeper version 3.3.x
 
-. Upgrade Notes
-. New Features
-. Noteworthy bug fixes
+All platforms default to using bash to run any shell based functions.
+We know that bash always works, you can also try ksh if you don't have
+bash.  We look for bash, ksh, sh in that order, and use the first thing 
+found anywhere in your path.
 
-Upgrade notes
-----------------------------------------------------------------------------
+You may override the shell used with 
+	setenv BK_SHELL /usr/local/bin/bash
+	BK_SHELL=/usr/local/bin/bash
 
-Nothing is required to upgrade from the 3.0.3 release.
-
-New Features
-----------------------------------------------------------------------------
-
-  Fix some performance problems that should provide a noticable speedup for
-  users with large ChangeSet files.
-
-Noteworthy Bug Fixes
-----------------------------------------------------------------------------
-
-  2002-02-13-006: Fix expanding of already expanded RCS keywords
-  2003-09-10-002: Fix tags in BKWeb
-  
-  Workaround a Windows problem where strerr was being buffered for
-  some reason.
-
-  Fix some license checks so users won't be prompted for some licenses
-  when running bk in scripts or triggers.
-
-===============================================================================
 Interface changes:
     bk grep has been rewritten, it mimics GNU grep for the most part.  
     Backwards compat is basically gone.
@@ -80,6 +60,37 @@ Interface changes:
 
     get -C is gone; use get -r@+ instead.  This @+ rev is special cased for
     performance.
+
+===============================================================================
+Release notes for BitKeeper version 3.0.4.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+
+Nothing is required to upgrade from the 3.0.3 release.
+
+New Features
+----------------------------------------------------------------------------
+
+  Fix some performance problems that should provide a noticable speedup for
+  users with large ChangeSet files.
+
+Noteworthy Bug Fixes
+----------------------------------------------------------------------------
+
+  2002-02-13-006: Fix expanding of already expanded RCS keywords
+  2003-09-10-002: Fix tags in BKWeb
+  
+  Workaround a Windows problem where strerr was being buffered for
+  some reason.
+
+  Fix some license checks so users won't be prompted for some licenses
+  when running bk in scripts or triggers.
 
 ===============================================================================
 Release notes for BitKeeper version 3.0.3.   These release notes cover

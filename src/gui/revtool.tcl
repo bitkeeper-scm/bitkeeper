@@ -1833,7 +1833,7 @@ proc widgets {} \
 	set chgdspec \
 "-d\$if(:DPN:!=ChangeSet){  }:DPN:\n    :I: :Dy:/:Dm:/:Dd: :T: :P:\$if(:HT:){@:HT:} +:LI: -:LD: \n\$each(:C:){    (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 	set Opts(diff) "-u"
-	set Opts(get) "-aum"
+	set Opts(get) "-Aur"
 	set Opts(line) "-u -t"
 	set yspace 20
 	# graph		- graph canvas window

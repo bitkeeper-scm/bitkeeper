@@ -1,84 +1,153 @@
 .so ../bk-macros
 .TH "bk grep" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk grep \- search some/all revisions for a pattern
+bk grep \- search some/all revisions of one or more files for a pattern
 .SH SYNOPSIS
-.Bc bk grep [\-adeimnNu] [
-.OPTreq \-c dates
-.Bc ] | [
-.OPTreq \-r rev
-.Bc ] | [
-.OPTopt \-R rev
-]
+.B bk grep 
+[\fIoptions\fP]
 .ARG pattern
 .BKARGS
-.if n .ll 
 .SH DESCRIPTION
 .LP
-If you need to find a string which you think may be present in some version
-of some file, you can use the 
-.B bk grep
-command to do that.
+The bk grep command searches the named files (or standard input if the file
+name - is given) for lines containing a match to the given 
+.IR pattern .
+The pattern may be a 
+.I regular expression.
+By default, bk grep prints the matching lines.
 .LP
-By default,
-.B bk grep
-searches only the most recent version of each file.
-The listing can be annotated with dates,
-revision numbers, file names, and/or user names.  
-.LP
-If no annotations are
-selected, the default is to do "\-mn" (revision numbers and file names).
-.LP
-If a revision is specified with
+While designed to be command line compatible with GNU grep,
+bk grep can search in the most recent revision of a file,
+all revisions of a file, a subset of revisions of a file,
+or the checked out and (possibly) modified version of a file.
+By default, bk grep searches the checked out version of a file and if that is
+not present then it searches the most recent version of the file.
+The 
 .BR \-r ,
-then 
-.B bk get
-is used to annotate just that version of the file.
-.LP
-If a range of revisions are specified with
 .BR \-R ,
-or a range of dates are specified with
-.BR \-c ,
-then
-.B bk sccscat
-is used to get the changes made by that range of revisions.
-.B Note:
-just the additions made by the selected versions are annotated in this case.
+and 
+.B \-d
+options are used to control where in a file's history to search.
 .LP
-The output found is passed through the native
-.BR grep (1)
-command.
+The printed lines may be annotated with file names,
+dates, revision numbers, line numbers, and/or user names.
 .SH OPTIONS
 .if n .TP 1i
 .if t .TP .7i
-.B \-a
-Suppress all annotations.
+.OPTreq \-A num
+Print 
+.I num
+lines of trailing context after matching lines.
+Places a line containing -- between contiguous groups of matches.
+(Like GNU grep.)
 .tp
-.OPTreq \-c dates
-Specify the versions as a range of dates.
+.if t \fB\-A\fP\fIbdpru\fP
+.if n \fB\-A\fP\fI<bdpru>\fP
+Annotate the output with information from the revision history.
+Each annotation is aligned in a column.
+The option argument[s] turn on one
+or more annotations as a prefix to each line.
+The possible annotations are:
+.RS
+.TP 4
+.B b
+Prefix each line with the basename of the file.
+If a single revision was selected, the name used is the name as of that
+revision, otherwise the name used is the current name.
 .tp
-.B \-d
-Prefix each line with the date it was last modified.
+.B d
+Prefix each line with the date of last modification.
 .tp
-.B \-e
-Use 
-.B egrep
-instead of
-.BR grep .
+.B p
+Prefix each line with the pathname of the file relative to the root
+of the repository.
+If a single revision was selected, the name used is the name as of that
+revision, otherwise the name used is the current name.
+.tp
+.B r
+Prefix each line with the revision of last modification.
+.tp
+.B u
+Prefix each line the name of the user who last modified it.
+.RE
+There is some redundancy between the b/p options and the traditional GNU
+options for listing file names.  The \*(BK options are slightly different
+in the following ways: the file names listed are either the basename or
+the pathname relative to the root regardless of where the command is run 
+in the repository; and when using the 
+.B \-A
+option bk grep will attempt to align the filenames in the output but it will
+not with the normal GNU style output.
+.if n .TP 1i
+.if t .TP .7i
+.if t \fB\-a\fP\fIbdpru\fP
+.if n \fB\-a\fP\fI<bdpru>\fP
+Similar to
+.B \-A
+but each annotation is followed by a colon rather than a set of spaces
+aligning the output.
+.tp
+.OPTreq \-B num
+Print
+.I num
+lines of leading context before matching lines.
+Places a line containing -- between contiguous groups of matches.
+(Like GNU grep.)
+.tp
+.OPTopt \-C num
+Print
+.I num
+lines of output context. 
+Places a line containing -- between contiguous groups of matches.
+If no value is given defaults to 2.
+(Like GNU grep.)
+.tp
+.B \-c
+Suppress normal output; instead print a count of matching lines for 
+each input file.  With -v option (see below), count non-matching lines.
+(Like GNU grep.)
+.tp
+.OPTreq \-d dates
+Select the versions to search as all deltas created in the specified 
+range of dates.
+.tp
+.B \-h
+Do not print filenames with matches when multiple files are searched.
+(Like GNU grep.)
+.tp
+.B \-H
+Print the file name even if there is only one file being searched.
+(Like GNU grep.)
+Note: if either of 
+.B b
+or
+.B f
+annotations options are used then this option is overridden.
 .tp
 .B \-i
-Ignore the case of letters in making comparisons (passed through to
-.BR grep (1)).
+Ignore case distinctions in both the
+.I pattern
+and the input files.
+(Like GNU grep.)
 .tp
-.B \-m
-Prefix each line with the rev it was last modified in.
+.B \-l
+Suppress normal output; instead print the name of each input file from which
+output would have normally been produced.
+(Like GNU grep.)
+.tp
+.B \-L
+Suppress normal output; instead print the name of each input file from which
+no output would have normally been produced.
+(Like GNU grep.)
 .tp
 .B \-n
-Prefix each line with the filename.  If used twice, prefix each line with
-pathname of the file relative to the root of the repository.
+Prefix each line with the line number from its input file.
+(Like GNU grep.)
 .tp
-.B \-N
-Prefix each line with the line number.
+.B \-q
+Do not produce any output.
+Exit immediately with zero status if any match is  found.
+(Like GNU grep.)
 .tp
 .OPTreq \-r rev
 Only look in revision
@@ -100,8 +169,13 @@ by the specified revision, but in the
 .B \-r
 case, the entire contents of the specified version is searched.
 .tp
-.B \-u
-Prefix each line with the user who last modified it.
+.B \-v
+Invert the sense of matching, to select non-matching lines.
+(Like GNU grep.)
+.tp
+.B \-x
+Select only those matches that exactly match the whole line.
+(Like GNU grep.)
 .SH EXAMPLES
 To see if 
 .ARG pattern
@@ -111,6 +185,17 @@ $ bk -r grep -R pattern
 .DE
 To see if it occurs anywhere
 in the most recent version of of any file of your tree:
+.DS
+$ bk -r grep -r+ pattern
+.DE
+To see if it occurs anywhere in any of your checked out files (this may
+be substantially faster than searching all files):
+.DS
+$ bk -Gr grep pattern
+.DE
+.DE
+To see if it occurs anywhere in any of your files, including checked out
+and modified files:
 .DS
 $ bk -r grep pattern
 .DE
@@ -124,17 +209,18 @@ The ways of specifying which versions to search are non-obvious.  You
 need to read the examples carefully.  We made the default be the most
 useful/common one.
 .LP
+Binary files are never searched, they are silently ignored.
+.LP
 There really ought to be a way to grep changes made by a changeset
 or range of changesets.
-.LP
-When looking through annotated files, the if the annotation contains
-the string but the line data does not, it still matches.  In other
-words, if you look for "foo" and you have a file named "foobar", all
-lines in that file will be printed.
 .SH "SEE ALSO"
 .BR grep (1)
 .br
+.SA bk 1
+.SA cat 1
+.SA get 1
 .SA range 1
+.SA regex 1
 .SA sccscat 1
 .SH CATEGORY
 .B File

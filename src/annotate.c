@@ -16,7 +16,7 @@ annotate_main(int ac, char **av)
 	int	flags = BASE_FLAGS;
 	int	c, errors = 0;
 	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
-	char	*t, *name, *rev = 0, *cdate = 0;
+	char	*t, *name, *Rev = 0, *rev = 0, *cdate = 0;
 	delta	*d;
 
 	debug_main(av);
@@ -26,17 +26,7 @@ annotate_main(int ac, char **av)
 		system("bk help annotate");
 		return (1);
 	}
-	for (t = getenv("BK_ANNOTATE"); t && *t; t++) {
-		switch (*t) {
-		    case 'a': flags |= GET_ALIGN; break;
-		    case 'd': flags |= GET_PREFIXDATE; break;
-		    case 'k': flags &= ~GET_EXPAND; break;
-		    case 'm': flags |= GET_REVNUMS; break;
-		    case 'n': flags |= GET_MODNAME; break;
-		    case 'N': flags |= GET_LINENUM; break;
-		    case 'u': flags |= GET_USER; break;
-		}
-	}
+	if (t = getenv("BK_ANNOTATE")) flags = annotate_args(flags, t);
 	while ((c = getopt(ac, av, "A;a;c;kr;")) != -1) {
 		switch (c) {
 		    case 'A':
@@ -48,7 +38,7 @@ annotate_main(int ac, char **av)
 			break;
 		    case 'c': cdate = optarg; break;		/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
-		    case 'r': rev = optarg; break;		/* doc 2.0 */
+		    case 'r': Rev = optarg; break;		/* doc 2.0 */
 
 		    default:
 		usage:
@@ -57,7 +47,7 @@ annotate_main(int ac, char **av)
 		}
 	}
 	if (flags == BASE_FLAGS) flags |= GET_REVNUMS|GET_USER;
-	name = sfileFirst("get", &av[optind], SF_HASREVS);
+	name = sfileFirst("annotate", &av[optind], SF_HASREVS);
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) {
@@ -65,14 +55,13 @@ annotate_main(int ac, char **av)
 			continue;
 		}
 		if (s->encoding & E_BINARY) {
-			fprintf(stderr, "Skipping binary file %s\n", s->gfile);
 			sccs_free(s);
 			continue;
 		}
 		if (cdate) {
 			s->state |= S_RANGE2;
 			d = sccs_getrev(s, 0, cdate, ROUNDUP);
-			if (!d) {
+			unless (d) {
 				fprintf(stderr,
 				    "No delta like %s in %s\n",
 				    cdate, s->sfile);
@@ -80,7 +69,9 @@ annotate_main(int ac, char **av)
 				continue;
 			}
 			rev = d->rev;
-		} else unless (rev) {
+		} else if (Rev) {
+			rev = Rev;
+		} else {
 			rev = sfileRev();
 		}
 		if (pnames) {

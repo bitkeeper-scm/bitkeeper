@@ -79,6 +79,8 @@ private void	singleUser(sccs *s);
 private	int	parseConfig(char *buf, char **k, char **v);
 private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
+private	void	prefix(sccs *s,
+		    delta *d, u32 flags, int lines, char *name, FILE *out);
 
 private	delta	*delta_lmarker;	/* old-style log marker */
 private	delta	*delta_cmarker;	/* old-style config marker */
@@ -372,12 +374,15 @@ chop(register char *s)
 /*
  * Remove any trailing newline or CR from a string. 
  */
-void
+int
 chomp(char *s) 
 {
+	int	any = 0;
+
 	while (*s) ++s;
-	while (s[-1] == '\n' || s[-1] == '\r') --s;
+	while (s[-1] == '\n' || s[-1] == '\r') --s, any = 1;
 	*s = 0;
+	return (any);
 }
 
 /* chop if there is a trailing slash */
@@ -2120,6 +2125,17 @@ cset2rev(sccs *s, char *rev)
 	char	*s_cset = 0;
 	char	*deltakey;
 	char	rootkey[MAXKEY];
+
+	/*
+	 * Sleazy little hack to optimize a common case of most recent
+	 * committed delta.
+	 */
+	if (streq(rev, "+")) {
+		for (ret = s->table;
+		    ret && (!REG(ret) || !(ret->flags & D_CSET));
+		    ret = ret->next);
+		return (ret);
+	}
 
 	unless (rootpath = proj_root(0)) goto ret;
 
@@ -5662,7 +5678,14 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		    !CSET(s) && (s->xflags&X_EOLN_NATIVE)) {
 			mode = "wt";
 		}
-		*op = toStdout ? stdout : fopen(file, mode);
+		if (toStdout) {
+			*op = stdout;
+		} else {
+			unless (*op = fopen(file, mode)) {
+				mkdirf(file);
+				*op = fopen(file, mode);
+			}
+		}
 		break;
 	    default:
 		*op = NULL;
@@ -5951,16 +5974,9 @@ char *
 setupOutput(sccs *s, char *printOut, int flags, delta *d)
 {
 	char *f;
-	static char path[1024];
 
 	if (flags & PRINT) {
 		f = printOut;
-	} else if (flags & GET_PATH) {
-		/* put the file in its historic location */
-		assert(d->pathname);
-		concat_path(path, proj_root(0), d->pathname);
-		f = path;
-		unlink(f);
 	} else {
 		/* With -G/somewhere/foo.c we need to check the gfile again */
 		if (flags & GET_NOREGET) flags |= SILENT;
@@ -6113,7 +6129,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	u32	other;
 	u32	*counter;
 	FILE 	*out;
-	char	*buf, *base = 0, *f = 0;
+	char	*buf, *name = 0, *f = 0;
 	MDBM	*DB = 0;
 	int	hash = 0;
 	int	hashFlags = 0;
@@ -6188,9 +6204,9 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		namedb = mdbm_mem();
 	}
 	if (flags & GET_MODNAME) {
-		base = basenm(s->gfile);
-	} else if (flags & GET_FULLPATH) {
-		base = d ? d->pathname : sccs_top(s)->pathname;
+		name = basenm(d ? d->pathname : s->gfile);
+	} else if (flags & GET_RELPATH) {
+		name = d ? d->pathname : s->gfile;
 	}
 
 	/*
@@ -6199,8 +6215,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	if ((flags & GET_PREFIX) && (flags & GET_ALIGN)) {
 		int	len = 0;
 
-
-		if (flags&(GET_MODNAME|GET_FULLPATH)) len += strlen(base) + 1;
+		if (flags&(GET_MODNAME|GET_RELPATH)) len += strlen(name) + 1;
 		if (flags&GET_PREFIXDATE) len += 9;
 		if (flags&GET_USER) len += s->userLen + 1;
 		if (flags&GET_REVNUMS) len += s->revLen + 1;
@@ -6302,53 +6317,24 @@ out:			if (slist) free(slist);
 				sum += '\n';
 			}
 			if (flags&GET_SEQ) smerge_saveseq(seq);
-			if ((flags & GET_PREFIX) && (flags & GET_ALIGN)) {
-				delta *tmp = sfind(s, (ser_t) print);
+			if (flags & GET_PREFIX) {
+				delta	*tmp = sfind(s, (ser_t) print);
+				char	*p = 0;
 
-				if (flags&(GET_MODNAME|GET_FULLPATH))
-					fprintf(out, "%s ", base);
-				if (flags&GET_PREFIXDATE)
-					fprintf(out, "%8.8s ", tmp->sdate);
-				if (flags&GET_USER)
-					fprintf(out,
-					    "%-*s ", s->userLen, tmp->user);
-				if (flags&GET_REVNUMS)
-					fprintf(out,
-					    "%-*s ", s->revLen, tmp->rev);
-				if (flags&GET_LINENUM)
-					fprintf(out, "%6d ", lines);
+				prefix(s, tmp, flags, lines, name, out);
+
 				/* GET_LINENAME must be last for mdiff */
-				if (flags&GET_LINENAME) {
-					char	*p;
-
+				if (flags & GET_LINENAME) {
 					p = get_lineName(s, print,
 					    namedb, lnum[print], lnamebuf);
 					assert(p &&
 					    strlen(p) < sizeof(lnamebuf));
-					fprintf(out, "%-36s", p);
 				}
-				fprintf(out, align);
-			} else if (flags & GET_PREFIX) {
-				delta *tmp = sfind(s, (ser_t) print);
-
-				if (flags&(GET_MODNAME|GET_FULLPATH))
-					fprintf(out, "%s\t", base);
-				if (flags&GET_PREFIXDATE)
-					fprintf(out, "%8.8s\t", tmp->sdate);
-				if (flags&GET_USER)
-					fprintf(out, "%s\t", tmp->user);
-				if (flags&GET_REVNUMS)
-					fprintf(out, "%s\t", tmp->rev);
-				if (flags&GET_LINENUM)
-					fprintf(out, "%6d\t", lines);
-				if (flags&GET_LINENAME) {
-					char	*p;
-
-					p = get_lineName(s, print,
-					    namedb, lnum[print], lnamebuf);
-					assert(p &&
-					    strlen(p) < sizeof(lnamebuf));
-					fprintf(out, "%s\t", p);
+				if (flags & GET_ALIGN) {
+					if (p) fprintf(out, "%-36s", p);
+					fprintf(out, align);
+				} else {
+					if (p) fprintf(out, "%s\t", p);
 				}
 			}
 			e = buf;
@@ -6628,6 +6614,29 @@ getLinkBody(sccs *s,
 			fflush(stderr);
 			return 1;
 		}
+		if (flags & GET_PREFIX) {
+			char	*name = 0;
+			
+			assert(d->pathname);
+			if (flags & GET_MODNAME) name = basenm(d->pathname);
+			if (flags & GET_RELPATH) name = d->pathname;
+			prefix(s, d, flags, 1, name, out);
+			if (flags & GET_ALIGN) {
+				int	len = 0;
+
+				if (flags&(GET_MODNAME|GET_RELPATH)) {
+					len += strlen(name) + 1;
+				}
+				if (flags&GET_PREFIXDATE) len += 9;
+				if (flags&GET_USER) len += s->userLen + 1;
+				if (flags&GET_REVNUMS) len += s->revLen + 1;
+				if (flags&GET_LINENUM) len += 7;
+				len += 2;
+				while (len++ % 8) fputc(' ', out);
+				fputs("| ", out);
+			}
+			// XXX - no GET_LINENAME (yet)
+		}
 		fprintf(out, "SYMLINK -> %s\n", d->symlink);
 		unless (streq("-", f)) fclose(out);
 		*ln = 1;
@@ -6635,7 +6644,6 @@ getLinkBody(sccs *s,
 		unless (symlink(d->symlink, f) == 0 ) {
 #ifdef WIN32
 			getMsg("symlink", s->gfile, '=', stderr);
-			s->gfile);
 #else
 			perror(f);
 #endif
@@ -6764,8 +6772,8 @@ err:		if (i2) free(i2);
 	switch (fileType(d->mode)) {
 	    case 0:		/* uninitialized mode, assume regular file */
 	    case S_IFREG:	/* regular file */
-		error = getRegBody(s,
-			    printOut, flags, d, &lines, i2? i2: iLst, xLst);
+		error =
+		    getRegBody(s, printOut, flags, d, &lines, i2?i2:iLst, xLst);
 		break;
 	    case S_IFLNK:	/* symlink */
 		error = getLinkBody(s, printOut, flags, d, &lines);
@@ -6809,6 +6817,38 @@ skip_get:
 	}
 	if (i2) free(i2);
 	return (0);
+}
+
+/*
+ * XXX - the userLen/revLen should be calculated for the set of serials that
+ * we are displaying, not the full set.
+ */
+private void
+prefix(sccs *s, delta *d, u32 flags, int lines, char *name, FILE *out)
+{
+	if (flags & GET_ALIGN) {
+		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s ", name);
+		if (flags&GET_PREFIXDATE) fprintf(out, "%8.8s ", d->sdate);
+		if (flags&GET_USER) fprintf(out, "%-*s ", s->userLen, d->user);
+		if (flags&GET_REVNUMS) fprintf(out, "%-*s ", s->revLen, d->rev);
+		if (flags&GET_LINENUM) fprintf(out, "%6d ", lines);
+	} else {
+#if 0
+		/* maybe, need to think about it */
+		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s|",name);
+		if (flags&GET_PREFIXDATE) fprintf(out, "%8.8s|", d->sdate);
+		if (flags&GET_USER) fprintf(out, "%s|", d->user);
+		if (flags&GET_REVNUMS) fprintf(out, "%s|", d->rev);
+		if (flags&GET_LINENUM) fprintf(out, "%d|", lines);
+#else
+		/* tab style */
+		if (flags&(GET_MODNAME|GET_RELPATH)) fprintf(out, "%s\t",name);
+		if (flags&GET_PREFIXDATE) fprintf(out, "%8.8s\t", d->sdate);
+		if (flags&GET_USER) fprintf(out, "%s\t", d->user);
+		if (flags&GET_REVNUMS) fprintf(out, "%s\t", d->rev);
+		if (flags&GET_LINENUM) fprintf(out, "%6d\t", lines);
+#endif
+	}
 }
 
 /*

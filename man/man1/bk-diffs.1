@@ -3,15 +3,8 @@
 .SH NAME
 bk diffs \- show differences in revision controlled files
 .SH SYNOPSIS
-.Bc bk diffs [\-bBcDfhMnpsuUvw] [
-.OPTreq \-d date
-.Bc ] [
-.OPTreq \-l rev
-.Bc ] [
-.OPTreq \-r r
-.Bc ] [
-.OPTreq \-R r
-.B ]
+.B bk diffs 
+.OPT opts
 .BKARGS
 .SH DESCRIPTION
 .LP
@@ -27,28 +20,46 @@ $ bk \-r diffs | more
 The 
 .B bk diffs
 command supports context, unified, procedural, and side-by-side diffs.
-All of the above can be optionally annotated with author, date, and/or
-revision numbers.
-.LP
-You can also diff specific revisions. For example:
-.DS
-$ bk diffs -r1.2..1.4 foo.c
-.DE
-.LP
-When only one revision is supplied with -r, then that revision is
-compared to the working file or the top of trunk if the file is not
-edited.
-.LP
-You can use bk diffs to diff your entire tree, including edits against an
-existing changeset revision or tag in your repository.  The second form
-below, -r@<rev>, means use the revision as of changeset <rev>.
-.DS
-$ bk -r diffs -u
-$ bk -r diffs -u -r@<rev>
-.DE
+All of the above can be optionally annotated with filename,
+author, date, and/or revision numbers.
 .SH OPTIONS
-.if t .TP
-.if n .TP 1i
+.if t .TP .7i
+.if n .TP 1.1i
+.if t \fB\-A\fP\fIbdpru\fP
+.if n \fB\-A\fP\fI<bdpru>\fP
+Align prefix output in a human readable form.
+The set of annotations will be followed by a vertical bar and a space
+before the data from each line of the file starts.
+Each annotation is aligned in a column.
+The option argument[s] turn on one
+or more annotations as a prefix to each line.
+The possible annotations are:
+.RS
+.TP 4
+.B b
+Prefix each line with the basename of the file.
+.tp
+.B d
+Prefix each line with the date of last modification.
+.tp
+.B p
+Prefix each line with pathname of the file relative to the root
+of the repository.
+.tp
+.B r
+Prefix each line with the revision of last modification.
+.tp
+.B u
+Prefix each line the name of the user who last modified it.
+.RE
+.if t .TP .7i
+.if n .TP 1.1i
+.if t \fB\-a\fP\fIbdpru\fP
+.if n \fB\-a\fP\fI<bdpru>\fP
+Similar to
+.B \-A 
+but without the alignment.
+.tp
 .B \-b
 Ignore changes in amount of white space.
 .tp
@@ -58,24 +69,20 @@ Ignore  changes  that  just  insert or delete blank lines.
 .B \-c
 Do context diffs.
 .tp
-.B \-D
-Prefix lines with dates.
-.tp
 .OPTreq \-d date
 Diff using date or symbol.
-.tp
-.B \-f
-Prefix lines with file names.
 .tp
 .B \-h
 Don't print headers.
 .tp
+.B \-H
+Prefix diffs with the checkin comments of that range of revisions.
+The comments printed are those associated with the set difference
+of the two revisions.
+.tp
 .OPTreq \-l rev
 Show all changes made by the changeset containing rev 
 .ARG rev .
-.tp
-.B \-M
-Prefix lines with revision numbers.
 .tp
 .B \-n
 Do RCS style diffs.
@@ -100,9 +107,6 @@ and
 .B \-s
 Display side-by-side diffs.
 .tp
-.B \-U
-Prefix lines with user names.
-.tp
 .B \-u
 Do unified diffs.
 .tp
@@ -111,6 +115,34 @@ Be verbose about non-matching ranges.
 .tp
 .B \-w
 Ignore white space when comparing lines.
+.SH EXAMPLES
+You may diff specific revisions:
+.DS
+$ bk diffs -r1.2..1.4 foo.c
+.DE
+When only one revision is supplied with -r, then that revision is
+compared to the working file or the top of trunk if the file is not
+edited.
+.LP
+A fairly useful thing is to show the differences introduced by a 
+specific revision or changeset:
+.DS
+bk diffs -R1.5 foo.c
+bk diffs -R@alpha1 bar.c
+.DE
+.LP
+You can use bk diffs to diff your entire tree, including edits against an
+existing changeset revision or tag in your repository.  The second form
+below, -r@<rev>, means use the revision as of changeset <rev>.
+.DS
+$ bk -r diffs -u
+$ bk -r diffs -u -r@<rev>
+.DE
+.SH BUGS
+The annotations, if any, are currently considered part of the data when diffing
+files.  This needs to work more like bk grep.
+.LP
+This command should support more of the GNU diff options.
 .SH SEE ALSO
 .BR diff (1)
 .br

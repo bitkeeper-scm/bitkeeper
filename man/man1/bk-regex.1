@@ -1,0 +1,92 @@
+.so ../bk-macros
+.TH "regex" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+regex \- regular expressions in \*(BK
+.SH DESCRIPTION
+.LP
+Some commands, most notably bk grep, can take a regular expression as an
+argument.  This man page describes the \*(BK version of regular expressions.
+.LP
+A regular expression (``RE'') is one or more non-empty 
+.IR branches ,
+separated by `|'.
+It matches anything that matches one of the branches.
+.LP
+A branch is made up of one or more of the following:
+.TP 14
+[1]	char
+matches itself, unless it is a special character (metachar): . \ [ ] * + ^ $
+.tp
+[2]	.
+matches any character.
+.tp
+[3]	\\
+matches the character following it, except when followed by a left or right
+round bracket, a digit 1 to 9 or a left or right angle bracket (see
+[7], [8], and [9]).
+It is used as an escape character for all other meta-characters, and itself.
+When used in a set ([4]), it is treated as an ordinary character.
+.tp
+[4]	[set]
+matches one of the characters in the set.
+If the first character in the set is "^", it matches a character 
+.B not
+in the set, i.e. complements the set.
+A shorthand S-E is used to specify a set of characters S upto E, inclusive.
+The special characters "]" and "-" have no special meaning if they appear
+as the first chars in the set.
+.tp
+[5]	*
+any regular expression form [1] to [4], followed by closure char (*)
+matches zero or more matches of that form.
+.tp
+[6]	+
+same as [5], except it matches one or more.
+.tp
+[7]
+a regular expression in the form [1] to [10], enclosed as \\(form\\)
+matches what form matches.
+The enclosure creates a set of tags, used for [8] and for pattern substution.
+The tagged forms are numbered starting from 1.
+.tp
+[8]
+a \\ followed by a digit 1 to 9 matches whatever previously tagged regular
+expression ([7]) matched.
+.tp
+[9]	\\< \\>
+regular expression starting with a \< construct and/or ending
+with a \> construct, restricts the pattern matching to the
+beginning of a word, and/or the end of a word.
+A word is defined to be a character string beginning and/or
+ending with the characters A-Z a-z 0-9 and _.
+It must also be preceded and/or followed by any character
+outside those mentioned.
+.tp
+[10]
+a composite regular expression xy where x and y are in the form [1] to
+[10] matches the longest match of x followed by a match for y.
+.tp
+[11]	\ ^ $
+a regular expression starting with a ^ character and/or ending
+with a $ character, restricts the pattern matching to the
+beginning of the line, or the end of line.
+Elsewhere in the pattern, ^ and $ are treated as ordinary characters.
+.SH EXAMPLES
+.DS
+[a-z]		matches any lower case alpha.
+[^]-]		matches any char except "]" and "-".
+[^A-Z]		any char except uppercase alpha.
+foo|bar		either "foo" or "bar".
+^the line$	a line which is exactly "the line".
+\\<word\\>		any word "word" but not "theword".
+.SH "SEE ALSO"
+.SA grep 1
+.SH ACKNOWLEDGEMENTS
+The regular expression library we currently use was originally written by
+Ozan S. Yigit at Dept. of Computer Science at York University.
+This man page is inspired by Ozan's comments in his source as well as
+Henry Spencer's regex.7 included with his regular expression library.
+.SH CATEGORY
+.B Overview
+.br
+.B File

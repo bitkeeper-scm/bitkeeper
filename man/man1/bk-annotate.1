@@ -3,18 +3,10 @@
 .SH NAME
 bk annotate \- provide annotated listing of source files
 .SH SYNOPSIS
-.Bc bk annotate [\-adkmNnu] [
-.OPTreq \-c dt
-.Bc ] [
-.OPTreq \-r rev
-.B ]
+.Bc bk annotate [opts] 
 .BKARGS
 .br
-.Bc bk sccscat [\-dmnNu] [
-.OPTreq \-c dates
-.Bc ] [
-.OPTreq \-r rev
-.B ]
+.Bc bk sccscat opts
 .BKARGS
 .SH DESCRIPTION
 .LP
@@ -52,12 +44,45 @@ range of changes are displayed.  This form is usually a result of
 specifying a range to
 .BR "bk grep" .
 .SH OPTIONS
-.if t .TP
-.if n .TP 1i
-.B \-a
-Align prefix output in a human readable form.  Used with one of
-the following options
-.BI [ mNnud ].
+.if t .TP .7i
+.if n .TP 1.1i
+.if t \fB\-A\fP\fIbdnpru\fP
+.if n \fB\-A\fP\fI<bdnpru>\fP
+Align prefix output in a human readable form.
+The set of annotations will be followed by a vertical bar and a space
+before the data from each line of the file starts.
+Each annotation is aligned in a column.
+The option argument[s] turn on one
+or more annotations as a prefix to each line.
+The possible annotations are:
+.RS
+.TP 4
+.B b
+Prefix each line with the basename of the file.
+.tp
+.B d
+Prefix each line with the date of last modification.
+.tp
+.B n
+Prefix each line with its line number.
+.tp
+.B p
+Prefix each line with pathname of the file relative to the root
+of the repository.
+.tp
+.B r
+Prefix each line with the revision of last modification.
+.tp
+.B u
+Prefix each line the name of the user who last modified it.
+.RE
+.if t .TP .7i
+.if n .TP 1.1i
+.if t \fB\-a\fP\fIbdnpru\fP
+.if n \fB\-a\fP\fI<bdnpru>\fP
+Similar to
+.B \-A 
+but without the alignment.
 .tp
 .OPTreq \-c date
 .B bk annotate: 
@@ -70,24 +95,11 @@ annotate the set of versions matching the range
 .ARG date .
 See bk range for date specs.
 .tp
-.B \-d
-Prefix each line with the date of last modification.
-.tp
 .B \-k
 .B bk annotate:
 do not expand RCS or SCCS keywords.
 .B bk sccscat
 never expands keywords.
-.tp
-.B \-m
-Prefix each line with the revision of last modification.
-.tp
-.B \-N
-Prefix each line with its line number.
-.tp
-.B \-n
-Prefix each line with the filename.  If used twice, prefix each line with
-pathname of the file relative to the root of the repository.
 .tp
 .OPTreq \-r rev
 .B bk annotate: 
@@ -95,9 +107,6 @@ annotate this revision;
 .br
 .B bk sccscat:
 annotate the lines added by this revision.
-.tp
-.B \-u
-Prefix each line with the user who last modified it.
 .SH SEE ALSO
 .LP
 .SA get 1

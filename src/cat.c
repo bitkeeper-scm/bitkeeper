@@ -8,21 +8,41 @@ cat_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
-	int	errors = 0;
+	int	skip_bin = 0, errors = 0;
+	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
+	int	c, gfile;
 
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help cat");
+usage:		system("bk help -s cat");
 		return (1);
 	}
-	for (name = sfileFirst("cat", &av[1], 0); name; name = sfileNext()) {
-		unless (s = sccs_init(name, 0)) continue;
-		if (access(s->gfile, R_OK) == 0) {
-			errors |= cat(s->gfile);
+	while ((c = getopt(ac, av, "B")) != -1) {
+		switch (c) {
+		    case 'B': skip_bin = 1; break;
+		    default: goto usage;
+		}
+	}
+	for (name = sfileFirst("cat", &av[optind], 0);
+	    name; name = sfileNext()) {
+		unless (s = sccs_init(name, INIT_NOCKSUM)) continue;
+		gfile = (access(s->gfile, R_OK) == 0);
+		unless (gfile || HASGRAPH(s)) {
 			sccs_free(s);
 			continue;
 		}
-		unless (HASGRAPH(s)) {
+		if (skip_bin &&
+		    ((s->encoding & E_BINARY) ||
+		    (gfile && !HASGRAPH(s) && !ascii(s->gfile)))) {
+			sccs_free(s);
+			continue;
+		}
+		if (pnames) {
+			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
+			fflush(stdout);
+		}
+		if (gfile) {
+			errors |= cat(s->gfile);
 			sccs_free(s);
 			continue;
 		}
