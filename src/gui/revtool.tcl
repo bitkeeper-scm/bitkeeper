@@ -1627,6 +1627,7 @@ proc widgets {} \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Help" -command { exec bk helptool revtool & }
 	    menubutton .menus.mb -font $gc(rev.buttonFont) -relief raised \
+	        -indicatoron 1 \
 		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Select Range" -width 15 -state normal \
@@ -1677,6 +1678,7 @@ proc widgets {} \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Diff tool" -command "diff2 1" -state disabled
 	    menubutton .menus.fmb -font $gc(rev.buttonFont) -relief raised \
+	        -indicatoron 1 \
 		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Select File" -width 12 -state normal \

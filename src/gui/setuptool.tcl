@@ -308,6 +308,7 @@ proc createCatMenu {w} \
 	set gc(catmenu) $w
 
 	menubutton $gc(catmenu) \
+	    -indicatoron 1 \
 	    -font $gc(setup.fixedFont) \
 	    -relief raised \
 	    -bg $gc(setup.BG) \
