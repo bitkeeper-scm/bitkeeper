@@ -534,7 +534,7 @@ http_changes(char *rev)
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
 			"$if(:TAG:){ bgcolor=yellow}>"
-			"<a href=cset@:I:%s>:I:</a>"
+			"<a href=cset@:MD5KEY:%s>:I:</a>"
 			"$if(:TAG:){<br>:TAG:}"
 //			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 			"</td>\n"
@@ -605,16 +605,16 @@ http_cset(char *rev)
 	    prefix,
 	    isLoggingTree ? "" :
 	      "$if(:GFILE:=ChangeSet){"
-	        "<a href=patch@:REV:%s>\n"
+	        "<a href=patch@:MD5KEY:%s>\n"
 	        "<font size=2 color=darkblue>all diffs</font></a>\n"
 	      "}",
 	    navbar,
 	    isLoggingTree ? "" :
 	      "&nbsp;&nbsp;"
-	      "<a href=anno/:GFILE:@:REV:%s>\n"
+	      "<a href=anno/:GFILE:@:MD5KEY:%s>\n"
 	      "<font size=2 color=darkblue>annotate</font></a>\n"
 	      "&nbsp;&nbsp;"
-	      "<a href=diffs/:GFILE:@:REV:%s>\n"
+	      "<a href=diffs/:GFILE:@:MD5KEY:%s>\n"
 	      "<font size=2 color=darkblue>diffs</font></a>\n",
 	    suffix);
 	if (i == -1) http_error(500, "buffer overflow in http_cset");
@@ -826,7 +826,7 @@ http_hist(char *pathrev)
 		"</td>\n <td>:HTML_C:</td>\n"
 		"</tr>\n%s",
 		prefix,
-		isLoggingTree ? "" : "<a href=\"diffs/:GFILE:@:I:",
+		isLoggingTree ? "" : "<a href=\"diffs/:GFILE:@:MD5KEY:",
 		isLoggingTree ? "" : navbar,
 		isLoggingTree ? "" : "\">",
 		":I:",
@@ -896,8 +896,8 @@ http_src(char *path)
 	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:%s>&nbsp;:G:</a>}"
 	    " </td>"
 	    " <td align=center>"
-	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:%s>&nbsp;:REV:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:%s>:REV:</a>}"
+	      "$if(:GFILE:=ChangeSet){<a href=cset@:MD5KEY:%s>&nbsp;:I:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:MD5KEY:%s>:I:</a>}"
 	    " </td>"
 	    " <td align=center>"
 	      "$if(:GFILE:=ChangeSet){&nbsp;}"
@@ -1110,7 +1110,8 @@ http_diffs(char *pathrev)
 		"-d%s<tr bgcolor=white>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
-		" <td align=center><a href=anno/:GFILE:@:I:%s>:I:</a></td>\n"
+		" <td align=center><a href=anno/:GFILE:@:MD5KEY:%s>"
+		":I:</a></td>\n"
 		" <td>:HTML_C:</td>\n"
 		"</tr>\n%s", prefix, navbar, suffix);
 
@@ -1880,7 +1881,7 @@ http_related(char *file)
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
 			"$if(:TAG:){ bgcolor=yellow}>"
-			"<a href=cset@:I:%s>:I:</a>"
+			"<a href=cset@:MD5KEY:%s>:I:</a>"
 			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 			"</td>\n"
 			" <td>:HTML_C:</td>\n"
@@ -1950,9 +1951,9 @@ http_tags(char *page)
 	    "<tr bgcolor=white>\n"
 	    "  <td align=right>:HTML_AGE:</td>\n"
 	    "  <td align=center bgcolor=yellow>\n"
-	    "      <a href=\"cset@:REV:%s\">:TAG:</a></td>\n"
-	    "  <td><a href=\"ChangeSet@..:REV:%s\">earlier CSets</a></td>\n"
-	    "  <td><a href=\"ChangeSet@:REV:..%s\">later CSets</a></td>\n"
+	    "      <a href=\"cset@:MD5KEY:%s\">:TAG:</a></td>\n"
+	    "  <td><a href=\"ChangeSet@..:MD5KEY:%s\">earlier CSets</a></td>\n"
+	    "  <td><a href=\"ChangeSet@:MD5KEY:..%s\">later CSets</a></td>\n"
 	    "  <td>:HTML_C:</td>\n"
 	    "</tr>}%s", prefix, navbar, navbar, navbar, suffix);
 
