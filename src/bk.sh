@@ -407,7 +407,7 @@ _after() {
 }
 
 _man() {
-	export MANPATH=`bk path`/man:$MANPATH
+	export MANPATH=`bk bin`/man:$MANPATH
 	for i in /usr/bin /bin /usr/local/bin /usr/sbin
 	do	if [ -x /usr/bin/man ]
 		then	exec /usr/bin/man $@
@@ -466,7 +466,7 @@ _regression() {
 	done
 	shift `expr $OPTIND - 1`
 	export DO_REMOTE PREFER_RSH
-	cd `bk path`/t && exec ./doit $V $X "$@"
+	cd `bk bin`/t && exec ./doit $V $X "$@"
 }
 
 __init() {

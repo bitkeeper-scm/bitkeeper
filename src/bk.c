@@ -184,8 +184,12 @@ main(int ac, char **av)
 	 */
 
 	platformInit(av); 
-	if (av[1] && streq(av[1], "path") && !av[2]) {
+	if (av[1] && streq(av[1], "bin") && !av[2]) {
 		fprintf(stderr, "%s\n", bin ? bin : "no path found");
+		exit(0);
+	}
+	if (av[1] && streq(av[1], "path") && !av[2]) {
+		fprintf(stderr, "%s\n", getenv("PATH"));
 		exit(0);
 	}
 	argv[0] = "help";
@@ -390,13 +394,6 @@ sfiles(int ac, char **av)
 		close(0);
 		dup(p[0]);
 		close(p[0]);
-#if 0
-		cmds[0] = "bk";
-		for (i = 1; cmds[i] = av[i-1]; i++);
-		cmds[i++] = "-";
-		cmds[i] = 0;
-		execvp("bk", cmds);
-#else
 		for (i = 0; cmds[i] = av[i]; i++);
 		cmds[i++] = "-";
 		cmds[i] = 0;
@@ -409,7 +406,6 @@ sfiles(int ac, char **av)
 			}
 		}
 		exit(101);
-#endif
 	}
 }
 
@@ -546,7 +542,6 @@ gotit:
 		sprintf(s, "PATH=%s:%s", buf, p);
 		putenv(s);
 		bin = strdup(buf);
-//fprintf(stderr, "%s\n", s);
 		return;
 	}
 
@@ -587,6 +582,7 @@ gotit:
 			*t = ':';
 			return;
 		}
+		*t = ':';
 	}
 	return;
 }
