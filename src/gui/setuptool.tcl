@@ -1066,7 +1066,7 @@ proc readConfig {type {filename {}}} \
 			set key {HKEY_LOCAL_MACHINE\Software\Microsoft\Windows}
 			append key {\CurrentVersion\Explorer\Shell Folders}
 			catch {set appdir \
-				   [registry get "$HKLM\\$l" {Common AppData}]
+				   [registry get "$key" {Common AppData}]
 			}
 
 			if {$errorCode ==  {} } {
