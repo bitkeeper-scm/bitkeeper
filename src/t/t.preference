@@ -1,0 +1,52 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2001 Andrew Chang
+# %K%
+
+HERE=`bk pwd`
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+echo OK
+echo $N checkout:GET w admin ........................................$NL
+bk edit $Q $HERE/project/BitKeeper/etc/config
+echo "checkout:GET" >> $HERE/project/BitKeeper/etc/config
+bk get $Q foo.c
+sleep 1
+bk admin -fRCS foo.c
+bk commit $Q -ynew_stuff
+find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N checkout:EDIT w admin .......................................$NL
+bk unedit $HERE/project/BitKeeper/etc/config
+bk edit $Q $HERE/project/BitKeeper/etc/config
+echo "checkout:EDIT" >> $HERE/project/BitKeeper/etc/config
+bk edit $Q foo.c
+sleep 1
+bk admin -FRCS foo.c
+bk commit $Q -ynew_stuff
+find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK

@@ -46,6 +46,7 @@ _get_main(int ac, char **av, char *out)
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
+	if (streq("GET", user_preference("checkout"))) flags |= GET_NOREGET;
 	while ((c =
 	    getopt(ac, av, "ac;CdDefFgG:hHi;klmM|nNOpPqr;RSstTux;")) != -1) {
 		switch (c) {

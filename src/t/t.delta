@@ -301,6 +301,20 @@ if [ ! -f mid.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 echo OK
+echo $N Make sure checkout:GET preserve modtime if no keyword .......$NL
+cp config.sav BitKeeper/etc/config
+echo "checkout:GET" >> BitKeeper/etc/config
+bk admin -FSCCS mid.c
+bk edit $Q mid.c
+sleep 1
+echo mid3 > mid.c
+bk ci $Q -ymid2 mid.c
+if [ ! -f mid.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
+if writable mid.c; then echo failed; exit 1; fi
+find . -newer mid.c | grep -q ./SCCS/s.mid.c
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
 echo $N Make sure "bk new -b" forces binary encoding for text file ....$NL
 echo "this is text" > text
 bk new $Q -b text

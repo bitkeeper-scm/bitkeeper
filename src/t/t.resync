@@ -405,7 +405,9 @@ cores
 echo $N resync w/ pending rename in source tree .....................$NL
 cd $HERE/project/src
 bk get $Q -e a.c
-bk sccsmv a.c f.c
+mv a.c f.c
+mv SCCS/s.a.c SCCS/s.f.c
+mv SCCS/p.a.c SCCS/p.f.c
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar

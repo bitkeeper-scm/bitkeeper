@@ -42,7 +42,7 @@ if [ ! -f B/SCCS/p.file1 ]; then echo failed; exit 1; fi
 if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit 1; fi
 # XXX - I think this is right but am not sure.
 DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
-if [ ${DPATH}X != ""X ]; then echo failed; exit 1; fi
+if [ ${DPATH}X != "B/file1"X ]; then echo failed; exit 1; fi
 # Now check it in so later tests aren't confused.
 bk ci $Q -yrename B/file1
 bk -r check -a || { echo check exits $?; exit 1; }
@@ -109,6 +109,7 @@ GFILE=`bk prs -hr+ -d:GFILE: C/SCCS/$SFILE`
 echo $GFILE | grep -q "^C/.del-file3"
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+bk -r check -ac
 echo $N Check implied file lists for rm-ed files ....................$NL
 cd C
 GFILE=`basename $GFILE`

@@ -111,6 +111,7 @@ int	opush_main(int, char **);
 int	parent_main(int, char **);
 int	park_main(int, char **);
 int	pending_main(int, char **);
+int	preference_main(int, char **);
 int	probekey_main(int, char **);
 int	prs_main(int, char **);
 int	prunekey_main(int, char **);
@@ -196,6 +197,7 @@ struct	command cmdtbl[] = {
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
 	{"_mail", mail_main},
+	{"_preference", preference_main},
 	{"_probekey", probekey_main},
 	{"_prunekey", prunekey_main},
 	{"_rclone", rclone_main},
