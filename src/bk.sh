@@ -66,6 +66,11 @@ _encoding() {		# /* undoc? 2.0 */
 }
 
 # shorthand
+_compression() {		# /* undoc? 2.0 */
+	bk prs -hr+ -nd':GFILE: :COMPRESSION:' "$@"
+}
+
+# shorthand
 _tags() {
 	bk changes -t
 }

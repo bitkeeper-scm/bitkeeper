@@ -380,3 +380,25 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "not allowed" new.out
 if [ $? -ne 0 ]; then echo failed 2; exit 1; fi
 echo OK
+echo $N Check compresssion: gzip preference .........................$NL
+cd $HERE/project/BitKeeper/etc
+bk edit $Q config
+echo "compression: gzip" >> config
+cd $HERE/project
+echo hi > init2
+bk new $Q init2
+bk compression init2 | grep -q "gzip"
+if  [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check compresssion: none preference .........................$NL
+cd $HERE/project/BitKeeper/etc
+bk edit $Q config
+sed -e's/^compression: gzip/compression: none/' < config > config.tmp
+mv config.tmp config
+cd $HERE/project
+echo hi > init3
+bk new $Q init3
+bk compression init3 | grep -q "none"
+if  [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+

@@ -164,6 +164,13 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		iflags |= INIT_FIXSTIME;
 	}
 
+	if (dflags & NEWFILE) {
+		unless (ignorePreference || compp) { 
+			compp  = user_preference("compression");
+			unless (compp && *compp) compp = NULL;
+		}
+	}
+
 	if ((encp || compp) && !(dflags & NEWFILE)) {
 		fprintf(stderr, "-Z is allowed with -i option only\n");
 		goto usage;
