@@ -1,0 +1,107 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2003 Bill Moore
+# %K%
+
+echon Creating initial repositories ...............................
+no_logging proj
+echo line 1 > file
+bk new $Q file || exit 1
+mkdir dir1
+echo ff > dir1/ff
+mkdir dir2
+echo gg > dir2/gg
+bk new $Q dir1/ff dir2/gg || exit 1
+bk commit $Q -ystart || exit 1
+cd $HERE
+bk clone $Q proj copy3 || exit 1
+for d in proj copy3; do
+	cd $HERE/$d
+	for f in file dir1/ff dir2/gg; do
+		bk edit $Q $f
+		echo $d >> $f
+		bk delta $Q -y"$d side" $f || exit 1
+	done
+	bk commit -y"$d" $Q || exit 1
+done
+cd $HERE/copy3
+bk pull $Q 2> OUT && {
+	echo pull should have had conflict
+	exit 1
+}
+echo OK
+
+echon Testing -p option to conflicts command ......................
+echo
+echo "================================================================="
+echo "Make sure revtool displays the GCA in white, the 1.2 node in red"
+echo "and the 1.1.1.1 branch in green."
+echo "================================================================="
+bk conflicts -p file > /dev/null
+echo OK
+
+echon Testing -f option to conflicts command ......................
+echo
+echo "================================================================="
+echo "Make sure fm3tool comes up and shows the 1.1.1.1 conflict on the"
+echo "left and the 1.2 part on the right.  Type CTRL-Q to quit."
+echo "================================================================="
+bk conflicts -f file > /dev/null
+read
+echo OK
+
+echon Testing -d option to conflicts command ......................
+echo
+echo "================================================================="
+echo "Check the text diffs to make sure they look reasonable."
+echo "================================================================="
+bk conflicts -d file
+echo OK
+
+echon Testing -D option to conflicts command ......................
+echo
+echo "================================================================="
+echo "Make sure difftool shows the same thing that the text diffs did."
+echo "================================================================="
+bk conflicts -D file > /dev/null
+echo OK
+
+echon Checking citool behavior ....................................
+rm -f OUT
+echo
+echo "================================================================="
+echo "Resolve by choosing first the right addition, then the left."
+echo "Commit on the commandline but just quit out of citool without"
+echo "doing anything."
+echo "================================================================="
+bk resolve file < /dev/tty
+echo "================================================================="
+echo "Make sure citool shows only the file you resolved."
+echo "Quit without doing anything."
+echo "================================================================="
+bk resolve -q \* << EOF > /dev/null 2>&1
+ul
+ul
+EOF
+echo "================================================================="
+echo "Make sure all three files plus the ChangeSet file are listed."
+echo "Type in comments for the third file plus the ChangeSet file"
+echo "but do NOT commit."
+echo "================================================================="
+bk resolve < /dev/tty
+echo "================================================================="
+echo "Make sure the state of citool is the same as you left it."
+echo "Commit the ChangeSet."
+echo "================================================================="
+bk resolve < /dev/tty
+test -f RESYNC && { echo "ERROR: RESYNC directory should be gone." ; exit 1; }
+echo OK

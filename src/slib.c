@@ -9,6 +9,7 @@
  */
 #include "system.h"
 #include "sccs.h"
+#include "resolve.h"
 #include "zgets.h"
 #include "bkd.h"
 #include "logging.h"
@@ -4409,6 +4410,7 @@ sccs_free(sccs *s)
 	if (s->spathname) free(s->spathname);
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
+	if (s->rrevs) freenames(s->rrevs, 1);
 	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
@@ -14480,6 +14482,42 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		/* don't clause on MONOTONIC, we had a bug there, see chgset */
 		if (d->dangling) {
 			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "RREV")) {
+		names	*n;
+
+		unless (s->rrevs) s->rrevs = getnames(sccsXfile(s, 'r'), 'r');
+		n = (names *)s->rrevs;
+		if (n && n->remote) {
+			fs(n->remote);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "LREV")) {
+		names	*n;
+
+		unless (s->rrevs) s->rrevs = getnames(sccsXfile(s, 'r'), 'r');
+		n = (names *)s->rrevs;
+		if (n && n->local) {
+			fs(n->local);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GREV")) {
+		names	*n;
+
+		unless (s->rrevs) s->rrevs = getnames(sccsXfile(s, 'r'), 'r');
+		n = (names *)s->rrevs;
+		if (n && n->gca) {
+			fs(n->gca);
 			return (strVal);
 		}
 		return (nullVal);

@@ -452,7 +452,7 @@ proc status {} \
 
 proc dot {} \
 {
-	global	diffCount lastDiff conf_todo 
+	global	diffCount lastDiff conf_todo nowrite
 	global	app gc UNMERGED restore undo
 
 	searchreset
@@ -470,7 +470,7 @@ proc dot {} \
 	} else {
 		.menu.edit.m entryconfigure "Undo" -state disabled
 	}
-	if {$conf_todo} {
+	if {$conf_todo || $nowrite} {
 		.menu.file.m entryconfigure Save -state disabled
 	} else {
 		.menu.file.m entryconfigure Save -state normal
@@ -1059,7 +1059,7 @@ proc smerge_highlight {t line off} \
 proc smerge {} \
 {
 	global  argc argv filename smerge tmps tmp_dir annotate force app gc
-	global outfile
+	global	nowrite outfile
 
 	set smerge [file join $tmp_dir bksmerge_[pid]]
 	set tmps [list $smerge]
@@ -1084,19 +1084,20 @@ proc smerge {} \
 		exec cp $filename $smerge
 		return
 	}
-	if {$argc == 5 && [lindex $argv 0] == "-f"} {
-		set l [list]
-		foreach a $argv {
-			if {$a != "-f"} { lappend l $a }
-		}
-		set argv $l
-		set argc 4
+	set force 0
+	set nowrite 0
+	# Only one of -N or -f is allowed
+	if {[lindex $argv 0] == "-f"} {
 		set force 1
-	} else {
-		set force 0
+		incr argc -1
+		set argv [lreplace $argv 0 0]
+	} elseif {[lindex $argv 0] == "-N"} {
+		set nowrite 1
+		incr argc -1
+		set argv [lreplace $argv 0 0]
 	}
 	if {$argc != 4} {
-		puts "Usage: fm3tool \[-o filename\] \[-f\]\
+		puts "Usage: fm3tool \[-o filename\] \[-f | -N\]\
 		      <local> <gca> <remote> <file>"
 		exit 1
 	}
@@ -1732,8 +1733,9 @@ proc keyboard_bindings {} \
 	bind all	<a>				{ edit_restore a }
 	bind all	<m>				{ edit_restore m }
 	bind all	<s>				{
-	    global conf_todo
+	    global conf_todo nowrite
 
+	    if {$nowrite} break
 	    if {$conf_todo} {
 	    	displayMessage \
 		    "Need to resolve $conf_todo more conf_todo first" 0
@@ -1886,9 +1888,9 @@ proc cleanup {} \
 
 proc save {} \
 {
-	global	filename force
-	global outfile
+	global	filename force nowrite outfile
 
+	if {$nowrite} {exit}
 	if {[info exists outfile]} {
 		# user specified "-o filename" on the command line...
 		if {$force == 0 && [file exists $outfile]} {
@@ -2185,7 +2187,7 @@ proc edit_save {} \
 
 proc edit_clear {} \
 {
-	global	lastDiff diffCount UNMERGED conf_todo restore
+	global	lastDiff diffCount UNMERGED conf_todo restore nowrite
 	global app gc
 
 	set d "d$lastDiff"
@@ -2196,7 +2198,7 @@ proc edit_clear {} \
 		incr conf_todo -1
 		status
 		.merge.menu.l configure -background $gc($app.unmergeBG)
-		if {$conf_todo == 0} {
+		if {($conf_todo == 0) && !$nowrite} {
 			.menu.file.m entryconfigure Save -state normal
 		}
 	}
@@ -2274,7 +2276,7 @@ proc undo {} \
 proc change {lines replace orig pipe} \
 {
 	global	lastDiff diffCount UNMERGED conf_todo restore undo annotate
-	global gc app
+	global gc app nowrite
 
 	edit_save
 	set next [expr $lastDiff + 1]
@@ -2286,7 +2288,7 @@ proc change {lines replace orig pipe} \
 		incr conf_todo -1
 		status
 		.merge.menu.l configure -bg $gc($app.unmergeBG)
-		if {$conf_todo == 0} {
+		if {($conf_todo == 0) && !$nowrite} {
 			.menu.file.m entryconfigure Save -state normal
 		}
 	}

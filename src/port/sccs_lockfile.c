@@ -9,6 +9,10 @@ private int	win32link(const char *from, const char *to);
 private	char	*uniqfile(const char *file);
 private	int	linkcount(const char *file);
 private int	readlockf(const char *file, pid_t *, char **hostp, time_t *tp);
+private	void	addLock(const char *, const char *);
+
+private	char	**lockfiles;
+private	int	lockfiles_pid;
 
 /*
  * Create a file with a unique name,
@@ -50,8 +54,9 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 					write(fd, p, strlen(p));
 					unless (getenv("BK_REGRESSION")) {							fsync(fd);
 						fsync(fd);
-				    	}
+					}
 					close(fd);
+					addLock(uniq, file);
 					free(uniq);
 					free(p);
 					return (0);
@@ -60,6 +65,7 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 		}
 		/* not true on windows file systems */
 		if (linkcount(uniq) == 2) {
+			addLock(uniq, file);
 			free(uniq);
 			free(p);
 			return (0);
@@ -102,6 +108,10 @@ sccs_unlockfile(const char *file)
 
 	if (unlink(uniq)) error++;
 	if (unlink((char*)file)) error++;
+	if (lockfiles_pid == getpid()) {
+		removeLine(lockfiles, uniq, free);
+		removeLine(lockfiles, (char *)file, free);
+	}
 	free(uniq);
 	return (error ? -1 : 0);
 }
@@ -290,3 +300,32 @@ linkcount(const char *file)
 
 }
 #endif
+
+void
+lockfile_cleanup(void)
+{
+	int	i;
+
+	unless (lockfiles_pid == getpid()) return;
+	EACH(lockfiles) {
+		if (exists(lockfiles[i])) {
+			fprintf(stderr, "WARNING: "
+			    "deleting orphan lock file %s\n", lockfiles[i]);
+			unlink(lockfiles[i]);
+		}
+	}
+	freeLines(lockfiles, free);
+	lockfiles = 0;
+}
+
+private void
+addLock(const char *uniq, const char *file)
+{
+	unless (lockfiles_pid == getpid()) {
+		freeLines(lockfiles, free);
+		lockfiles = 0;
+		lockfiles_pid = getpid();
+	}
+	lockfiles = addLine(lockfiles, strdup(uniq));
+	lockfiles = addLine(lockfiles, strdup(file));
+}

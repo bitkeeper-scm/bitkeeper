@@ -1,0 +1,53 @@
+.so ../bk-macros
+.TH "bk conflicts" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk conflicts \- Find files which contain conflicts
+.SH SYNOPSIS
+.Bc bk conflicts [\-dDflp] [
+.ARGc files |
+.ARGc dirs ]\ 
+.ARG ...
+.SH DESCRIPTION
+.LP
+The
+.B conflicts
+command finds files which contain content conflicts and need to be
+resolved.  Both filenames and directory names may be specified and they
+are treated they same way as in bk sfiles.  Only files that contain
+conflicts are actually listed.
+.LP
+Any options specified will operate only on the set of files that would
+normally be listed.
+.SH OPTIONS
+.tp
+.B \-d
+Invoke bk diffs on the file, showing the differences between the local
+and remote files.
+.tp
+.B -D
+Like \-d but using the graphical diff tool instead of text diffs.
+.tp
+.B \-f
+Invoke the 3-way filemerge in read-only mode.  This is useful in case
+the developer working on a particular merge wants a second person to see
+the conflict in question without the danger of overwriting the merged
+file.
+.tp
+.B \-l
+Long listing.  The output lists the files that match the filenames or
+directories specified, along with the number of non-automerged conflicts
+in the file and the usernames responsible for the conflicting content.
+.tp
+.B \-p
+Invoke revtool, highlighting the GCA, LOCAL, and REMOTE versions in the
+file.
+.sp
+.fi
+.SH SEE ALSO
+.LP
+.SA merging 1
+.SA revtool 1
+.SA fm3tool 1
+.SA difftool 1
+.SA diffs 1
+.SA sfiles 1

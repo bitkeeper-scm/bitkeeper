@@ -1,7 +1,7 @@
 .so ../bk-macros
-.TH "bk merging" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk resolving" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk merging \- help on merging conflicts
+bk resolving \- help on resolving conflicts
 .SH DESCRIPTION
 .LP
 This section documents the merge process started by the resolve command.
@@ -24,8 +24,8 @@ was run with the
 option.
 .LP
 There are other sorts of conflicts, besides the usual file content
-conflicts.  \*(BK manages file names, permissions, flags, symbols,
-and descriptive text in the same way as it manages file contents.
+conflicts.  \*(BK manages file names, permissions, flags, and
+symbolic tags in the same way as it manages file contents.
 That means that you can have a permissions conflict if, for example, one
 person changed the file to 0755 mode and another changed it to 0777 mode.
 .LP
@@ -39,6 +39,30 @@ make this available as the "x" command (as in eXplain).
 Some of the available actions allow you to diff the files, view
 file history, and merge using graphical tools, etc.  See the command
 summary for the full list.
+.SH "MULTIPLE USERS"
+.LP
+Only one user is allowed to run the resolver at any given time.  If
+a second user attempts to run bk resolve, they will get an error message
+indicating that another user is already running the resolver.
+.LP
+It is also possible to have multiple users resolve a set of conflicts.
+A typical way to do this is to use the bk conflicts command to get a
+list of files that need manual resolving along with a list of users
+responsible for the conflicting changes.  Then each user takes turns
+invoking the resolver on the list of files for which they are
+responsible, committing the changes as they go.  After the conflicts in
+the individual files have been resolved and committed, the bk resolve
+command is run with no arguments in order to finish the process and
+commit a changeset.  The changes for each file will be attributed to the
+user that comitted that particular file.  The changeset will be
+attributed to the user that does the final commit of the changeset.
+.LP
+In this context, as well as the single user case, it is sometimes
+desirable to quit the resolver and restart it at a later time.  When
+the resolver is re-invoked, it will not ask the user to re-merge files
+that have already been resolved and will continue where the user left
+off on the previous invocation.  This process can be repeated as many
+times as desired until all conflicts have been resolved.
 .SH "VIEW DIFFERENCES AND HISTORY"
 .LP
 To see the diffs use the "d" command.  For side-by-side diffs, use the
@@ -139,6 +163,8 @@ the file and move on to the next one.
 .SA fmtool 1
 .SA revtool 1
 .SA resolve 1
+.SA conflicts 1
+.\" help://merging
 .SH CATEGORY
 .B Overview
 .br

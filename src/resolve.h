@@ -22,6 +22,7 @@
 #define	BACKUP_SFIO		"BitKeeper/tmp/resolve_backup_sfio"
 #define	PASS4_TODO		"BitKeeper/tmp/resolve_sfiles"
 #define	APPLIED			"BitKeeper/tmp/resolve_applied"
+#define	RESOLVE_LOCK		(ROOT2RESYNC "/BitKeeper/tmp/resolve_lock")
 #define	AUTO_MERGE		"Auto merged"
 #define	SCCS_MERGE		"SCCS merged"
 
@@ -47,6 +48,7 @@ typedef struct {
 	u32	didMerge:1;	/* set if we created a cset merge delta */
 	u32	logging:1;	/* set if we are in a logging only repo */
 	u32	from_pullpush:1;/* set if we are being called from pull/push */
+	u32	partial:1;	/* partial resolve - don't commit changeset */
 	int	hadConflicts;	/* conflicts during automerge */
 	int	pass;		/* which pass are we in now */
 	char	*comment;	/* checkin comment for commit */
@@ -59,6 +61,9 @@ typedef struct {
 	MDBM	*idDB;		/* for the local repository, not RESYNC */
 	MDBM	*checkoutDB;	/* Save the original checkout state files */
 	FILE	*log;		/* if set, log to here */
+	char	**only;		/* list of globs indicating files to resolve */
+	char	**excludes;	/* list of globs indicating files to skip */
+	char	**notmerged;	/* list of files that didn't automerge */
 } opts;
 
 /*

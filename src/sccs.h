@@ -572,6 +572,8 @@ typedef	struct sccs {
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
 	MDBM	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
+	void	*rrevs;		/* If has conflicts, revs in conflict */
+				/* Actually is of type "name *" in resolve.h */
 	u16	version;	/* file format version */
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
@@ -1188,6 +1190,7 @@ char	*pager(void);
 int	bkmail(char *url, char **to, char *subject, char *file);
 int	sfiles_skipdir(char *dir);
 void	bkversion(FILE *f);
+void	lockfile_cleanup(void);
 void	set_timestamps(char *sfile);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
