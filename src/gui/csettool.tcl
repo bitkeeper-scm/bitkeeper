@@ -795,7 +795,7 @@ proc keyboard_bindings {} \
 	bind all <Button-4>	prev
 	bind all <Button-5>	next
 
-	bind .filelist.t <ButtonPress> { pixSelect %x %y }
+	bind .filelist.t <Button-1> { pixSelect %x %y }
 }
 
 proc main {} \
