@@ -1492,6 +1492,7 @@ hasRootFile(char *gRoot, char *sRoot)
 		*p++ = 0;
 		if (streq(buf, "SROOT")) {
 			strcpy(sRoot, p);
+			localName2bkName(sRoot, sRoot);
 			fclose(f);
 			return 1;
 		}

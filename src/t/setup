@@ -36,7 +36,7 @@ then
 	PLATFORM="WIN32"
 	BK_BIN=`cd .. && ./pwd.exe -s`
 	win2cygPath $BK_BIN; _BK_BIN=$cygPath;
-	TST_DIR=//c/tmp
+	TST_DIR=$TEMP
 	CAT="bin_mode_cat"
 	ECHO="bin_mode_echo"
 	RM=rm
