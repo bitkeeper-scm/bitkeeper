@@ -679,6 +679,18 @@ tokens(char *s)
 }
 
 /*
+ * Figure out if the two tokens are really <rev>..<rev> or <rev>..
+ * Used by sccscat, cset when calculating sets.
+ */
+int
+closedRange(char *s)
+{
+	unless (s && s[0]) return (-1);
+	for (; s && *s; s++) if (strneq(s, "..", 2) && s[2]) return (1);
+	return (0);
+}
+
+/*
  * Translate from the range info in the options to a range specification
  * in the sccs structure.
  * This used to be the monster macro in range.h.

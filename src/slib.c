@@ -8620,13 +8620,13 @@ check_xflags(sccs *s, int flags)
 	delta	*d;
 	int x1, x2;
 
-	d = sccs_getrev(s, "+", 0, 0);
+	d = sccs_top(s);
 	if (d) {
 		x1 = state2xflags(s->state) & X_XFLAGS;
 		x2 = sccs_getxflags(d) & X_XFLAGS;
 		if (x2 && (x1 != x2)) {
 			verbose((stderr,
-				"sccs_int: %s: inconsistent xflags: "
+				"%s: inconsistent xflags: "
 				"s->state => %x, d->xflags => %x\n",
 				s->sfile, x1, x2));
 			return (1); /* failed */
@@ -11390,10 +11390,12 @@ out:
 	 * XXX: Could require the old defbranch to match exactly the
 	 * initial version in the pfile to make conditions tighter.
 	 */
-	if ((s->state & S_BITKEEPER) && n->r[1] == 1 && n->r[2] == 0) {
-		if (s->defbranch) {
-			free(s->defbranch);
-			s->defbranch = 0;
+	unless (flags & DELTA_PATCH) {
+		if ((s->state & S_BITKEEPER) && n->r[1] == 1 && n->r[2] == 0) {
+			if (s->defbranch) {
+				free(s->defbranch);
+				s->defbranch = 0;
+			}
 		}
 	}
 
