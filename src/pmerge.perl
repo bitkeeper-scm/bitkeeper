@@ -104,42 +104,172 @@ sub _doMerge
 	    if ($conflicts && !$quiet);
 }
 
+# get unified diff
+sub getUdiff
+{
+	while (<DIFF>) {
+		next if (/^--- /);
+		next if (/^\+\+\+ /);
+		next if (/^@@ /);
+		if (/^-(.*)/) {return ("<", $1)}
+		elsif (/^\+(.*)/) {return(">", $1)}
+		elsif (/^ (.*)/) {return(" ", $1)};  
+	}
+	return ("EOF", "");
+}
 
-# return 1 if we get a real conflict
+sub ejectListXX
+{
+	foreach (@_) { print OUT "$_\n"; }
+}
+
+sub ejectList
+{
+	local($mylist, $stripmarker) = ($_[0], $_[1]);
+	local($ln);
+
+	foreach $ln (@$mylist) {
+		$ln =~ s/^.// if $stripmarker;
+		print OUT "$ln\n"
+	}
+}
+
+sub needCommon
+{
+	local($threshold) = 2; # tuneable parameter;
+	local($clen, $llen , $rlen) = ($_[0], $_[1], $_[2]);
+	$clen++; $llen++; $rlen++;
+	return 1 if ($clen >= $threshold);
+	return 1 if (($clen * 2) > ($llen + $rlen));
+	return 0;
+}
+
+sub fixMarker()
+{
+	$_ = $_[0];
+	return "=" if /u/;
+	return "+" if /i/;
+	warn "unexpected marker: $_\n";
+}
+
+
+# Return 1 if we get a real conflict
 # also print out the block that is processed
 sub _chk_conflict
 {
 	local($lmarker, $ldata, $rmarker, $rdata);
+	local($ldata1, $cdata1, $rdata1);
+	local($lm, $rm, $lm1, $rm1);
+	local($same, $ltmp, $rtmp) = (0);
+	local($len) = (0);
 
 	# first save the conflict block to 2 list
+	$ltmp =  "${tmp}pmerge_l$$";
+	$rtmp =  "${tmp}pmerge_r$$";
+	open(TMPL, ">$ltmp"); open(TMPR, ">$rtmp");
 	while (1) {
 		chop($lm = <LM>); chop($rm = <RM>); 
 		$ld = <LD>; $rd = <RD>; 
 		last if ($lm eq ">");
+		$len++;
 		unless($lm eq "s" || $lm eq "d") {
+			if ($lm eq ">") {print OUT "bad marker:$lm : $ld\n"; }
 			push(@ldata, $ld);
-			push(@lmarker, $lm);
+			push(@lmarker, &fixMarker($lm));
+			print(TMPL "$ld");
 		}
 		unless($rm eq "s" || $rm eq "d") {
+			if ($rm eq ">") {print OUT "bad marker:$rm : $rd\n"; }
 			push(@rdata, $rd);
-			push(@rmarker, $rm);
+			push(@rmarker, &fixMarker($rm));
+			print(TMPR "$rd");
 		}
 	}
-	$same = isSame(\@ldata, \@rdata);
-	$same = isSame(\@lmarker, \@rmarker) if $same;
+	close(TMPL); close(TMPR);
+	open(DIFF, "diff -u -U $len  ${tmp}pmerge_l$$ ${tmp}pmerge_r$$|")
+	    || die "can not popen diff\n";
+	($mode, $ln) = &getUdiff();
+	$lm1 = $rm1  = "";
+	@ldata1=@rdata1=();
+	while (1) {
+		$needArrow = 0;
+		while ($mode eq " " ) {
+			$cm1 = shift(@lmarker) unless ($hideMarker);
+			shift(@rmarker) unless ($hideMarker);
+			push(@cdata1, "$cm1$ln");
+			($mode, $ln) = &getUdiff();
+		}
+		while ($mode eq "<" ) {
+			$lm1 = shift(@lmarker) unless ($hideMarker);
+			push(@ldata1, "$lm1$ln");
+			($mode, $ln) = &getUdiff();
+		}
+		while ($mode eq ">" ) {
+			$rm1 = shift(@rmarker) unless ($hideMarker);
+			push(@rdata1, "$rm1$ln");
+			($mode, $ln) = &getUdiff();
+		}
+		while ($mode eq " " ) {
+			$cm2 = shift(@lmarker) unless ($hideMarker);
+			shift(@rmarker) unless ($hideMarker);
+			push(@cdata2, "$cm2$ln");
+			($mode, $ln) = &getUdiff();
+		}
+		$prefix = &needCommon($#cdata1, $#ldata1, $#rdata1);
+		unless ($prefix) {
+			foreach (@cdata1) { unshift(@ldata1, $_); }
+			foreach (@cdata1) { unshift(@rdata1, $_); }
+			@cdata1 = ();
+		}
+		$suffix = &needCommon($#cdata2, $#ldata1, $#rdata1);
+		unless ($suffix) {
+			foreach (@cdata2) { push(@ldata1, $_); }
+			foreach (@cdata2) { push(@rdata1, $_); }
+			@cdata2 = ();
+			unless ($mode eq "EOF") {
+				#print OUT "### loop back\n";
+				next;
+			}
+		}
+		$needArrow = 1 if (($#ldata1 >= 0) || ($#rdata1  >=0));
+		if ($needArrow) {
+			ejectList(\@cdata1, 1) if ($prefix);
+			print OUT "<<<<<<< $lfile\n" if $needArrow;
+			ejectList(\@ldata1, 0); @ldata1 = ();
+			print OUT "=======\n" if $needArrow; 
+			ejectList(\@rdata1, 0); @rdata1 = ();
+			print OUT ">>>>>>> $rfile\n" if $needArrow;
+			@cdata1 = ();
+			@cdata1 = @cdata2 if $suffix;
+			@cdata2 = ();
+		} else {
+			ejectList(\@cdata1, 1); @cdata1 = ();
+			ejectList(\@ldata1, 1); @ldata1 = ();
+			ejectList(\@rdata1, 1); @rdata1 = ();
+		}
+		if ($mode eq "EOF") {
+			ejectList(\@cdata1, 1); @cdata1 = ();
+			last;
+		}
+	}
+	close(DIFF);
+	$same = !$?;
+	force_unlink($ltmp); force_unlink($rtmp);
 	if ($same) {
 		# bath side added the same text, then not a real conflict
 		foreach  $ld (@ldata) { print OUT "$ld"; }
-	} else {
-		# we have a real conflict, print the conflict block
-		print OUT "<<<<<<< $lfile\n";
-		foreach  $ld (@ldata) { print OUT "$ld"; }
-		print OUT "=======\n";
-		foreach  $rd (@rdata) { print OUT "$rd"; }
-		print OUT ">>>>>>> $rfile\n";
 	}
-	# free the list
-	@ldata = @rdata = @lmarker = @rmarker = ();
+	if ($debug >= 2 ) {
+		foreach  $ld (@ldata) { 
+			$lm = shift(@lmarker);
+			print OUT "#L# $lm: $ld"; 
+		}
+		foreach  $rd (@rdata) {
+			$rm = shift(@rmarker);
+			print OUT "#R# $rm: $rd";
+		}
+	}
+	@ldata=@rdata=@lmarker=@rmarker=();
 	return (!$same);
 }
 
@@ -277,7 +407,7 @@ sub usage
         print <<EOF;
 USAGE
 
-    pmerge [-q] [-d] left gca right
+    pmerge [-m ] [-q] [-d] left gca right
 
 DESCRIPTION
 
@@ -286,9 +416,11 @@ DESCRIPTION
 
 OPTIONS
 
-    -d  debugging.
+    -m  turn off +/= markers
 
     -q  quite mode.
+
+    -d  debugging.
 
 EOF
         exit 0;
@@ -298,15 +430,16 @@ sub init
 {
 	$BIN = &platformPath();
 	&platformInit;
-	$OK = 1; $debug = 0; $quiet = 0;
+	$OK = 1; $debug  = $quiet = $hideMarker = 0;
 
 	while (defined($ARGV[0]) && ($ARGV[0] =~ /^-/)) {
  		($x = $ARGV[0]) =~ s/^-//; 
                 if ($x eq "-help") {
 			&usage;
                 } 
-		if ($x eq "d") { $debug = 1; }
+		if ($x eq "d") { $debug++; }
 		elsif ($x eq "q") { $quiet = 1; }
+		elsif ($x eq "m") { $hideMarker = 1; }
 		shift(@ARGV); 
 	}
 	&usage if ($#ARGV != 2);
