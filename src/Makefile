@@ -40,7 +40,7 @@ BINOBJ  = admin.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  diffs.o rmdel.o sccssh.o what.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o gethost.o rcs.o sccslog.o sinfo.o \
-	  fdiff.o check.o adler32.o
+	  fdiff.o check.o adler32.o undos.o chksum.o
 
 SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  sfiles.c purify.c zgets.c dirname.c maketmp.c mkdir.c \
@@ -174,19 +174,6 @@ test tests:
 	-get -q t
 	cd t && ./doit
 
-# This uses bk-prefixed commands so it works even if you haven't
-# built anything yet (assuming bk is installed already).
-# DO NOT make any header file inclusions depend on -D switches or I will
-# strangle you.
-# It creates a dummy config.h rather than run autoconf.
-# You'll get a flood of warnings about missing system header files;
-# ignore them.
-depend: srcs
-	-bk get -e Makefile
-	echo '#define HAVE_SYS_STATFS_H' > config.h
-	makedepend -Y -- $(CPPFLAGS) -- $(SRCS)
-	-/bin/rm -f config.h
-
 FORCE:
 
 zlib/libz.a: $(ZLIBOBJ)
@@ -260,6 +247,10 @@ diffs: diffs.o $(LIBS)
 	$(CC) $(CFLAGS) diffs.o $(LINK) -o diffs
 adler32: adler32.o $(LIBS)
 	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
+undos: undos.o
+	$(CC) $(CFLAGS) undos.o -o undos
+chksum: chksum.o
+	$(CC) $(CFLAGS) chksum.o -o chksum
 
 # Links.
 ci: delta
@@ -395,73 +386,88 @@ install: install.sh all FORCE
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # .o: .c .h dependencies.
-# DO NOT DELETE THIS LINE -- make depend depends on it.
+# These were generated with makedepend and then corrected by hand. 
+# There is no auto-update target.  Do not add one.
+commondeps = system.h unix.h config.h mdbm/mdbm.h purify.h
+sccsdeps   = $(commondeps) sccs.h
 
-slib.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h zgets.h
-range.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-newrev.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-getopt.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-popen.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-libdiff.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-sfiles.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-#platforminit.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-purify.o: system.h unix.h purify.h mdbm/mdbm.h config.h
-zgets.o: zgets.h
-disksp.o: system.h unix.h purify.h mdbm/mdbm.h config.h
-dirname.o: config.h
-mdbm/mdbm.o: mdbm/common.h mdbm/tune.h mdbm/mdbm.h
-mdbm/hash.o: mdbm/mdbm.h
-mdbm/debug.o: mdbm/common.h mdbm/tune.h mdbm/mdbm.h
-zlib/adler32.o: zlib/zlib.h zlib/zconf.h
-zlib/compress.o: zlib/zlib.h zlib/zconf.h
-zlib/crc32.o: zlib/zlib.h zlib/zconf.h
-zlib/gzio.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h
-zlib/uncompr.o: zlib/zlib.h zlib/zconf.h
-zlib/deflate.o: zlib/deflate.h zlib/zutil.h zlib/zlib.h zlib/zconf.h
-zlib/trees.o: zlib/deflate.h zlib/zutil.h zlib/zlib.h zlib/zconf.h
-zlib/trees.o: zlib/trees.h
-zlib/zutil.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h
-zlib/inflate.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
-zlib/infblock.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
-zlib/infblock.o: zlib/inftrees.h zlib/infcodes.h zlib/infutil.h
-zlib/inftrees.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
-zlib/inftrees.o: zlib/inffixed.h
-zlib/infcodes.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
-zlib/infcodes.o: zlib/infblock.h zlib/infcodes.h zlib/infutil.h
-zlib/infcodes.o: zlib/inffast.h
-zlib/infutil.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/infblock.h
-zlib/infutil.o: zlib/inftrees.h zlib/infcodes.h zlib/infutil.h
-zlib/inffast.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
-zlib/inffast.o: zlib/infblock.h zlib/infcodes.h zlib/infutil.h zlib/inffast.h
-delta.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
-get.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-admin.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-diffs.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-clean.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-prs.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-what.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-sinfo.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-sccssh.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h get.c delta.c
-sccssh.o: comments.c admin.c
-sids.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-smoosh.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-sccslog.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-sfind.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-renumber.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-lines.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-rmdel.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-takepatch.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-cset.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h comments.c
-cset.o: host.c user.c
-g2sccs.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
-rangemain.o: system.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-zone.o: system.h purify.h mdbm/mdbm.h config.h
-rechksum.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
-cset_todo.o: mdbm/mdbm.h
-sccs_mv.o: system.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
-sccsmv.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
-sccsrm.o: system.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
-sccscat.o: system.h purify.h mdbm/mdbm.h config.h sccs.h range.h
-key2rev.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
-rcs.o: system.h purify.h mdbm/mdbm.h config.h sccs.h
-localtm.o: system.h purify.h mdbm/mdbm.h config.h
+adler32.o:	adler32.c $(sccsdeps)
+admin.o:	admin.c $(sccsdeps)
+check.o:	check.c $(sccsdeps) range.h
+clean.o:	clean.c $(sccsdeps)
+cset.o:		cset.c $(sccsdeps) range.h comments.c host.c user.c
+delta.o:	delta.c $(sccsdeps) comments.c
+diffs.o:	diffs.c $(sccsdeps) range.h
+dirname.o:	dirname.c config.h
+fdiff.o:	fdiff.c $(sccsdeps)
+g2sccs.o:	g2sccs.c $(sccsdeps)
+get.o:		get.c $(sccsdeps)
+getopt.o:	getopt.c $(sccsdeps)
+key2rev.o:	key2rev.c $(sccsdeps)
+libdiff.o:	libdiff.c $(sccsdeps)
+lines.o:	lines.c $(sccsdeps)
+maketmp.o:	maketmp.c $(sccsdeps)
+mkdir.o:	mkdir.c $(sccsdeps)
+newrev.o:	newrev.c $(sccsdeps)
+popen.o:	popen.c $(sccsdeps)
+prs.o:		prs.c $(sccsdeps) range.h
+range.o:	range.c $(sccsdeps) range.h
+rangemain.o:	rangemain.c $(sccsdeps) range.h
+rcs.o:		rcs.c $(sccsdeps)
+rechksum.o:	rechksum.c $(sccsdeps)
+renumber.o:	renumber.c $(sccsdeps)
+rmdel.o:	rmdel.c $(sccsdeps) range.h
+sccs_mv.o:	sccs_mv.c $(sccsdeps) comments.c
+sccscat.o:	sccscat.c $(sccsdeps) range.h
+sccslog.o:	sccslog.c $(sccsdeps) range.h
+sccsmv.o:	sccsmv.c $(sccsdeps)
+sccsrm.o:	sccsrm.c $(sccsdeps)
+sccssh.o:	sccssh.c $(sccsdeps) get.c delta.c comments.c admin.c
+sfiles.o:	sfiles.c $(sccsdeps)
+sfind.o:	sfind.c $(sccsdeps)
+sids.o:		sids.c $(sccsdeps)
+sinfo.o:	sinfo.c $(sccsdeps)
+slib.o:		slib.c $(sccsdeps) zgets.h
+smoosh.o:	smoosh.c $(sccsdeps)
+takepatch.o:	takepatch.c $(sccsdeps)
+what.o:		what.c $(sccsdeps)
+
+zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
+purify.o:	purify.c $(commondeps)
+zone.o:		zone.c $(commondeps)
+localtm.o:	localtm.c $(commondeps)
+undos.o:	undos.c
+chksum.o:	chksum.c
+gethost.o:	gethost.c
+
+mdbm/hash.o:	mdbm/hash.c mdbm/mdbm.h
+mdbm/mdbm.o:	mdbm/mdbm.c mdbm/common.h mdbm/tune.h mdbm/mdbm.h
+mdbm/debug.o:	mdbm/debug.c mdbm/common.h mdbm/tune.h mdbm/mdbm.h
+
+port/getinput.o:	port/getinput.c $(sccsdeps)
+port/gethost.o:		port/gethost.c $(sccsdeps)
+port/fullname.o:	port/fullname.c $(sccsdeps)
+port/platforminit.o:	port/platforminit.c $(sccsdeps)
+port/sccs_root.o:	port/sccs_root.c $(sccsdeps)
+port/randomBits.o:	port/randomBits.c $(sccsdeps)
+port/spawn.o:		port/spawn.c $(sccsdeps)
+port/samepath.o:	port/samepath.c $(sccsdeps)
+port/disksp.o:		port/disksp.c $(commondeps)
+
+zdep = zlib/zlib.h zlib/zconf.h
+zdepx = zlib/zutil.h zlib/zlib.h zlib/zconf.h
+zdepinf = zlib/infblock.h zlib/inftrees.h zlib/infcodes.h zlib/infutil.h
+zlib/adler32.o:		zlib/adler32.c $(zdep)
+zlib/compress.o:	zlib/compress.c $(zdep)
+zlib/crc32.o:		zlib/crc32.c $(zdep)
+zlib/uncompr.o:		zlib/uncompr.c $(zdep)
+zlib/gzio.o:		zlib/gzio.c $(zdepx)
+zlib/zutil.o:		zlib/zutil.c $(zdepx)
+zlib/deflate.o:		zlib/deflate.c $(zdepx) zlib/deflate.h
+zlib/trees.o:		zlib/trees.c $(zdepx) zlib/deflate.h zlib/trees.h
+zlib/inflate.o:		zlib/inflate.c $(zdepx) zlib/infblock.h
+zlib/inftrees.o:	zlib/inftrees.c $(zdepx) zlib/inftrees.h zlib/inffixed.h
+zlib/infblock.o:	zlib/infblock.c $(zdepx) $(zdepinf)
+zlib/infutil.o:		zlib/infutil.c $(zdepx) $(zdepinf)
+zlib/infcodes.o:	zlib/infcodes.c $(zdepx) $(zdepinf) zlib/inffast.h
+zlib/inffast.o:		zlib/inffast.c $(zdepx) $(zdepinf) zlib/inffast.h
