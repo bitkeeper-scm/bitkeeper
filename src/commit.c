@@ -516,5 +516,5 @@ sendConfig(char *to, char *rev)
 	fclose(f);
 	sprintf(subject, "BitKeeper config: %s", package_name());
 	n = spawnvp_ex(_P_NOWAIT, av[0], av);
-	unless (WIFEXITED(n)) unlink(config_log);
+	if (n == -1) unlink(config_log);
 }
