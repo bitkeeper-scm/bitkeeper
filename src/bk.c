@@ -154,12 +154,12 @@ struct command cmdtbl[100] = {
 	{"names", names_main},
 	{"repo", repo_main},
 	{"pull", pull_main},
-	0
+	{0, 0},
 };
 
 main(int ac, char **av)
 {
-	int i, j, rc;
+	int i, j;
 	char cmd_path[MAXPATH];
 	char *argv[100];
 	char *p;
@@ -171,7 +171,7 @@ main(int ac, char **av)
 	av[0] = basenm(av[0]);
 	if (streq(av[0], BK)) {
 		if (av[1] == NULL) {
-			printf("usage $0 command '[options]' '[args]'\n");
+			printf("usage %s command '[options]' '[args]'\n");
 			printf("Try bk help for help.\n");
 			exit(0);
 		} else if (streq(av[1], "-h")) {
@@ -345,7 +345,6 @@ main(int ac, char **av)
 char *
 find_wish()
 {
-	char buf[MAXLINE];
 	char *p, *s;
 	char path[MAXLINE];
 	static char wish_path[MAXPATH];
