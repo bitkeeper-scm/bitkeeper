@@ -344,12 +344,14 @@ sub mv
         }
 
         # No?  Create the dir and try again.
-        ($dir = $to) =~ s|/[^/]+$||;
-        &mkdirp($dir, 0775);
-        if (&force_rename($from, $to)) {
-                print "rename($from,$to) worked\n" if $debug;
-                return $OK;
-        }
+	if ($to =~ m|/|) {
+        	($dir = $to) =~ s|/[^/]+$||;
+        	&mkdirp($dir, 0775);
+        	if (&force_rename($from, $to)) {
+                	print "rename($from,$to) worked\n" if $debug;
+                	return $OK;
+        	}
+	}
 
         # Still didn't work?  Try copying it.
         &force_unlink($to);
@@ -437,7 +439,8 @@ sub init
 {
 	$BIN = &platformPath();
 	&platformInit;
-	$OK = 1; $debug  = $quiet = $hideMarker = 0;
+	$ERROR = 0; $OK = 1; $ENOENT = 2; $EEXIST = 17;
+	$debug  = $quiet = $hideMarker = 0;
 
 	while (defined($ARGV[0]) && ($ARGV[0] =~ /^-/)) {
  		($x = $ARGV[0]) =~ s/^-//; 
@@ -448,6 +451,7 @@ sub init
 		elsif ($x eq "q") { $quiet = 1; }
 		elsif ($x eq "m") { $hideMarker = 1; }
 		elsif ($x eq "g") { $wantGca = 1; }
+		elsif ($x eq "v") { $verbose = 1; }
 		shift(@ARGV); 
 	}
 	&usage if ($#ARGV != 2);
@@ -481,3 +485,18 @@ sub dummy
 }
 
 
+# mkdir -p
+sub mkdirp
+{
+	local($path, $mode) = ($_[0], $_[1]);
+	local($chopped);
+
+	printf "mkdirp %s %o\n", $path, $mode if ($debug);
+	return $OK if $doNothing;
+	(mkdir($path, $mode) || $! == $EEXIST) && return $OK;
+	return $ERROR if $! != $ENOENT;
+	($chopped = $path) =~ s|/[^/]+$||o;
+	return $ERROR if $chopped eq $path;
+	&mkdirp($chopped, $mode) || return $ERROR;
+	mkdir($path, $mode);
+}

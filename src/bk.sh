@@ -118,7 +118,7 @@ _setup() {
 
 # This will go find the root if we aren't at the top
 _changes() {
-	echo ChangeSet | ${BIN}sccslog $@ -
+	echo ChangeSet | ${BIN}sccslog $@ - | $PAGER
 }
 
 # Figure out what we have sent and only send the new stuff.  If we are
@@ -323,6 +323,40 @@ _push() {
 	esac
 }
 
+_diffr() {
+	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
+	then	echo Usage: diffr repository different_repository
+		exit 1
+	fi
+	HERE=`pwd`
+	cd $1
+	LEFT=`pwd`
+	cd $HERE
+	cd $2
+	RIGHT=`pwd`
+	LREVS=`${BIN}resync -n $LEFT $RIGHT 2>&1 | grep '[0-9]' | sed 's/ /,/g'`
+	RREVS=`${BIN}resync -n $RIGHT $LEFT 2>&1 | grep '[0-9]' | sed 's/ /,/g'`
+	if [ "X$LREVS" = X -a "X$RREVS" = X ]
+	then	echo $1 and $2 have the same changesets.
+		exit 0
+	fi
+	export LREVS RREVS  LEFT RIGHT
+	(
+	if [ "X$LREVS" != X ]
+	then
+		echo "ChangeSets only in $LEFT"
+		echo ----------------------------------------------------------
+		echo "$LEFT/ChangeSet:$LREVS" | ${BIN}sccslog -
+	fi
+	if [ "X$RREVS" != X ]
+	then
+		echo "ChangeSets only in $RIGHT"
+		echo ----------------------------------------------------------
+		echo "$RIGHT/ChangeSet:$RREVS" | ${BIN}sccslog -
+	fi
+	) | $PAGER
+}
+
 _save() {
 	V=-vv
 	case X$1 in
@@ -349,6 +383,10 @@ _save() {
 
 # Show repository status
 _status() {
+	__status "$@" | $PAGER
+}
+
+__status() {
 	V=NO
 	while getopts v opt
 	do	case "$opt" in
@@ -490,7 +528,7 @@ _sendConfig() {
 	fi
 	_cd2root
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	( _status
+	( __status
 	  ${BIN}prs -hr1.0 \
 	-d'$each(:FD:){Project:\t(:FD:)}\nChangeSet ID:\t:LONGKEY:' ChangeSet;
 	  echo "User:		$USER"
@@ -881,7 +919,7 @@ _commandHelp() {
 				    backups|debug|sendbug|commit|pending|send|\
 				    resync|changes|undo|save|RCS|status|\
 				    sccsmv|mv|sccsrm|rm|version|root|export|\
-				    users|receive|wrap|unwrap)
+				    users|receive|wrap|unwrap|diffr)
 					_gethelp help_$i $BIN | $PAGER
 					;;
 				    *)
@@ -1015,7 +1053,7 @@ case "$1" in
     setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
-    pull|push|parent)
+    pull|push|parent|diffr)
 	cmd=$1
     	shift
 	_$cmd "$@"

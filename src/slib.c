@@ -66,6 +66,7 @@ private int	fprintDelta(FILE *,
 			char *, const char *, const char *, sccs *, delta *);
 private	void	fitCounters(char *buf, int a, int d, int s);
 private delta	*gca(delta *left, delta *right);
+private delta	*gca2(sccs *s, delta *left, delta *right);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -10315,6 +10316,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "GCA2")) {	/* print gca rev if a merge node */
+		if (d->merge && (d = gca2(s, sfind(s, d->merge), d->parent))) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	if (streq(kw, "DFB")) {
 		/* default branch */
 		if (s->defbranch) {
@@ -11117,6 +11126,11 @@ samekey(delta *d, char *user, char *host, char *path, time_t date,
 	return (1);
 }
 
+/*
+ * This gets a GCA which tends to be on the trunk.
+ * Because it doesn't look up the mparent path, it tends not to get
+ * the closest gca.
+ */
 private delta *
 gca(delta *left, delta *right)
 {
@@ -11133,6 +11147,30 @@ gca(delta *left, delta *right)
 		if (d->flags & D_VISITED) return (d);
 	}
 	return (0);
+}
+
+private delta *
+gca2(sccs *s, delta *left, delta *right)
+{
+	delta	*d;
+	char	*slist;
+	int	value;
+
+	unless (s && s->nextserial && left && right) return (0);
+
+	slist = calloc(s->nextserial, sizeof(char));
+	slist[left->serial] |= 1;
+	slist[right->serial] |= 2;
+	d = (left->serial > right->serial) ? left : right;
+	for ( ; d ; d = d->next) {
+		unless (d->type == 'D') continue;
+		unless (value = slist[d->serial]) continue;
+		if (value == 3) break;
+		if (d->parent)  slist[d->parent->serial] |= value;
+		if (d->merge)   slist[d->merge] |= value;
+	}
+	free(slist);
+	return (d);
 }
 
 /*
