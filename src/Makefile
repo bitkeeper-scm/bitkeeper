@@ -218,7 +218,7 @@ libsccs.a: $(OBJ)
 	$(AR) cr libsccs.a $(OBJ)
 	-$(RANLIB) libsccs.a
 bk: $(OBJ) $(LIBS)
-	$(CC) $(CFLAGS) -Wl,-warn-common $(LINK) -o bk
+	$(CC) $(CFLAGS) $(LINK) -o bk
 
 # Scripts.
 rcs2sccs: rcs2sccs.perl substvars
@@ -406,38 +406,41 @@ substvars: substvars.in config.status
 
 # Touch this and die.  --lm
 install: install-nolinks
-	for file in $(BINLINKS); \
-	do	ln $(BK_BIN)/bk $(BK_BIN)/$$file; \
+	@-for file in $(BINLINKS); \
+	do	if [ $$file != bk ]; \
+		then	rm -f $(BK_BIN)/$$file; \
+			ln $(BK_BIN)/bk $(BK_BIN)/$$file; \
+		fi; \
 	done
-	if [ -w /usr/bin ]; \
+	@-if [ -w /usr/bin ]; \
 	then	for file in $(BINLINKS); \
 		do	rm -f /usr/bin/$$file; \
 			rm -f $(BK_BIN)/$$file; \
 			ln -s $(BK_BIN)/$$file /usr/bin/$$file; \
 		done; \
 	fi
-	-if [ ! -d /var/bitkeeper ]; \
+	@-if [ ! -d /var/bitkeeper ]; \
 	then	mkdir /var/bitkeeper; chmod 777 /var/bitkeeper; \
 	fi
 
 install-nolinks: all
-	test -d $(BK_BIN) || mkdir -p $(BK_BIN)
-	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BK_BIN)
-	-rm -rf $(BK_BIN)/t/t.*
-	if [ ! -d $(BK_BIN)/t ]; \
+	@test -d $(BK_BIN) || mkdir -p $(BK_BIN)
+	@cp -f $(BINS) $(SCRIPTS) $(DATA) $(BK_BIN)
+	@-rm -rf $(BK_BIN)/t/t.*
+	@if [ ! -d $(BK_BIN)/t ]; \
 	then	mkdir $(BK_BIN)/t; \
 	fi
-	-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
-	cp -f t/doit t/t.* t/setup t/cleanup $(BK_BIN)/t
-	./bk chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup t/cleanup \
+	@-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
+	@cp -f t/doit t/t.* t/setup t/cleanup $(BK_BIN)/t
+	@./bk chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup t/cleanup \
 		| sort > $(BK_BIN)/MANIFEST
-	set `echo $(LINKTO)`; \
+	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
 	do	rm -f $(BK_BIN)/$$1; \
 		ln $(BK_BIN)/$$2 $(BK_BIN)/$$1; \
 		shift; shift; \
 	done
-	cd gnu && $(MAKE) BK_BIN=$(BK_BIN) install
+	@cd gnu && $(MAKE) BK_BIN=$(BK_BIN) install
 
 image: all
 	-rm -rf tmp/bitkeeper
