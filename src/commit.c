@@ -291,12 +291,20 @@ logChangeSet(int l, char *rev, int quiet)
 	FILE	*f;
 	int	dotCount = 0, junk, n;
 	pid_t	pid;
-	char 	*av[] = {
+	char 	*http_av[] = {
 		"bk",
 		"log",
 		"http://www.bitkeeper.com/cgi-bin/logit",
 		to,
 		subject, 
+		commit_log,
+		0
+	};
+	char	*mail_av[] = {
+		"bk",
+		"mail",
+		to,
+		subject,
 		commit_log,
 		0
 	};
@@ -345,19 +353,14 @@ logChangeSet(int l, char *rev, int quiet)
 
 	sprintf(subject, "BitKeeper ChangeSet log: %s", package_name());
 	if (l & LOG_OPEN) {
-		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
-		if (pid == -1) unlink(commit_log);
+		pid = spawnvp_ex(_P_NOWAIT, http_av[0], http_av);
 		fprintf(stdout, "Sending ChangeSet log via http...\n");
-		fflush(stdout); /* needed for citool */
-		/* do not do waitpid(), let http xfer run in back ground */
 	} else {
-		pid = mail(to, subject, commit_log);
-		if (pid == -1) unlink(commit_log);
-		fprintf(stdout, "Sending ChangeSet log via email...\n");
-		fflush(stdout); /* needed for citool */
-		waitpid(pid, 0, 0);
-		unlink(commit_log);
+		pid = spawnvp_ex(_P_NOWAIT, mail_av[0], mail_av);
+		fprintf(stdout, "Sending ChangeSet log via mail...\n");
 	}
+	if (pid == -1) unlink(commit_log);
+	fflush(stdout); /* needed for citool */
 }
 
 void

@@ -71,6 +71,7 @@ int logging_main(int, char **);
 int loggingaccepted_main(int ac, char **av);
 int loggingask_main(int ac, char **av);
 int loggingto_main(int, char **);
+int mail_main(int, char **);
 int merge_main(int, char **);
 int mklock_main(int, char **);
 int mtime_main(int, char **);
@@ -177,6 +178,7 @@ struct command cmdtbl[] = {
 	{"lock", lock_main},
 	{"lod", lod_main},
 	{"log", log_main},
+	{"mail", mail_main},
 	{"merge", merge_main},
 	{"mklock", mklock_main}, /* for regression test only */
 	{"mtime", mtime_main},
