@@ -56,7 +56,6 @@ void		explodeKey(char *key, char *parts[4]);
 private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
 private time_t	date2time(char *asctime, char *z, int roundup);
-private int	gettimezone(time_t when);
 private	char	*sccsrev(delta *d);
 private int	addLod(char *name, sccs *sc, int flags, admin *l, int *ep);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
@@ -3676,60 +3675,30 @@ sccsXfile(sccs *sccs, char type)
 }
 
 /*
- * Given a time_t, compute the timezone in effect at our
- * present location as of the time it refers to.
- * Returns minutes east or west of GMT; west is negative.  Directly
- * opposite Greenwich is considered positive (matches date -R).
- *
- * This implementation may look a bit silly, but it is
- * maximally portable.
- *
- * Yes, there are timezones that aren't a whole number of hours
- * off of GMT.  Try Pacific/Pitcairn, for example.
- */
-private int
-gettimezone(time_t when)
-{
-	struct	tm *tm;
-	struct	tm gt, lt;
-	int	delta;
-
-	tm = gmtime(&when);
-	gt = *tm;
-	tm = localtime(&when);
-	lt = *tm;
-
-	delta = (lt.tm_hour - gt.tm_hour)*60 + (lt.tm_min - gt.tm_min);
-	if (delta > 12*60) delta = -(24*60 - delta);
-	return delta;
-}
-	
-
-/*
  * Get the date as YY/MM/DD HH:MM:SS.mmm
  * and get timezone as minutes west of GMT
  */
 private void
 date(delta *d, time_t tt)
 {
-	struct	tm *tm;
+	struct	tm tm;
 	char	tmp[50];
-	int    	mwest;
-	div_t	tz;
+	long   	seast;
+	int	mwest, hwest;
 	char	sign = '+';
 
 	// XXX - fix this before release 1.0 - make it be 4 digits
-	tm = localtime(&tt);
-	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
+	seast = localtimez(tt, &tm);
+	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", &tm);
 	d->sdate = strdup(tmp);
 
-	mwest = gettimezone(tt);
-	if (mwest < 0) {
+	if (seast < 0) {
 		sign = '-';
-		mwest = -mwest;
+		seast = -seast;  /* now swest */
 	}
-	tz = div(mwest, 60);
-	sprintf(tmp, "%c%02d:%02d", sign, tz.quot, tz.rem);
+	hwest = seast / 3600;
+	mwest = (seast % 3600) / 60;
+	sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
 
 	zoneArg(d, tmp);
 	getDate(d);
@@ -6890,7 +6859,6 @@ dateArg(delta *d, char *arg, int defaults)
 	char	*save = arg;
 	char	tmp[50];
 	int	year, month, day, hour, minute, second, msec, hwest, mwest;
-	div_t	tz;
 	char	sign = ' ';
 	int	rcs = 0;
 	int	gotZone = 0;
@@ -6955,17 +6923,20 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 		 * So we assume here.
 		 * XXX - maybe not the right answer?
 		 */
+		struct tm dummy;
+		long seast;
+		
 		gotZone++;
-		mwest = gettimezone(time(0));
-		if (mwest < 0) {
-			mwest = -mwest;
+		seast = localtimez(time(0), &dummy);
+		if (seast < 0) {
+			seast = -seast;
 			sign = '-';
 		} else {
 			sign = '+';
 		}
-		tz = div(mwest, 60);
-		hwest = tz.quot;
-		mwest = tz.rem;
+
+		hwest = seast / 3600;
+		mwest = (seast % 3600) / 60;
 	}
 	sprintf(tmp, "%02d/%02d/%02d %02d:%02d:%02d",
 	    year, month, day, hour, minute, second);

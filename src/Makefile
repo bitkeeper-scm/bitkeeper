@@ -25,7 +25,8 @@ RANLIB	= ranlib
 
 
 SCCSOBJ	= slib.o range.o newrev.o getopt.o popen.o libdiff.o \
-	  sfiles.o platforminit.o purify.o zgets.o disksp.o dirname.o
+	  sfiles.o platforminit.o purify.o zgets.o disksp.o  \
+	  dirname.o localtm.o
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
@@ -50,7 +51,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  renumber.c lines.c rmdel.c makepatch.c takepatch.c smark.c \
 	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
 	  rechksum.c cset_todo.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
-	  csetmark.c key2rev.c rcs.c comments.c user.c host.c
+	  csetmark.c key2rev.c rcs.c comments.c user.c host.c localtm.c
 HDRS	= sccs.h purify.h sccs.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
@@ -84,7 +85,10 @@ clobber: cclean
 	-/bin/rm -f tags TAGS
 
 srcs: FORCE
-	get -s $(SRCS) $(HDRS) $(SCRSRCS)
+	-get -s $(SRCS) $(HDRS) $(SCRSRCS)
+
+get-e: FORCE
+	-get -se $(SRCS) $(HDRS) $(SCRSRCS)
 
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
@@ -110,7 +114,6 @@ depend: srcs
 	echo '#define HAVE_SYS_STATFS_H' > config.h
 	makedepend -Y -- $(CPPFLAGS) -- $(SRCS)
 	-/bin/rm -f config.h
-	bk delta -y'Regenerate dependencies' Makefile
 
 FORCE:
 
@@ -126,8 +129,8 @@ libsccs.a: $(SCCSOBJ)
 
 cset_todo: cset_todo.o mdbm/libmdbm.a
 	$(CC) $(CFLAGS) -o cset_todo cset_todo.o $(LMDBM)
-zone: zone.o
-	$(CC) $(CFLAGS) -o zone zone.o
+zone: zone.o localtm.o
+	$(CC) $(CFLAGS) -o zone zone.o localtm.o
 gui/fdiff: gui/fdiff.o
 	$(CC) $(CFLAGS) gui/fdiff.o -o gui/fdiff
 
@@ -309,8 +312,8 @@ libdiff.o: system.h purify.h mdbm/mdbm.h sccs.h
 sfiles.o: system.h purify.h mdbm/mdbm.h sccs.h
 platforminit.o: system.h purify.h mdbm/mdbm.h sccs.h
 purify.o: system.h purify.h mdbm/mdbm.h
-zgets.o: zgets.h
-disksp.o: config.h system.h purify.h mdbm/mdbm.h
+zgets.o: zlib/zlib.h zlib/zconf.h zgets.h
+disksp.o: system.h purify.h mdbm/mdbm.h config.h
 dirname.o: config.h
 mdbm/mdbm.o: mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 mdbm/hash.o: mdbm/mdbm.h
@@ -360,7 +363,7 @@ takepatch.o: system.h purify.h mdbm/mdbm.h sccs.h
 cset.o: system.h purify.h mdbm/mdbm.h sccs.h range.h comments.c host.c user.c
 g2sccs.o: system.h purify.h mdbm/mdbm.h sccs.h
 rangemain.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
-zone.o: system.h purify.h mdbm/mdbm.h sccs.h
+zone.o: system.h purify.h mdbm/mdbm.h
 rechksum.o: system.h purify.h mdbm/mdbm.h sccs.h
 cset_todo.o: mdbm/mdbm.h
 sccs_mv.o: system.h purify.h mdbm/mdbm.h sccs.h comments.c
@@ -370,3 +373,4 @@ sccscat.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
 csetmark.o: system.h purify.h mdbm/mdbm.h sccs.h range.h
 key2rev.o: system.h purify.h mdbm/mdbm.h sccs.h
 rcs.o: system.h purify.h mdbm/mdbm.h sccs.h
+localtm.o: config.h system.h purify.h mdbm/mdbm.h
