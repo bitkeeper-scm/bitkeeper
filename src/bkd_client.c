@@ -105,6 +105,9 @@ nfs_parse(char *p)
  * user@host[:path] or
  * host:port
  * host
+ *
+ * Note: If we are talking to a bkd on win32, there could be
+ * 	 a colon in the path component
  */
 private	remote *
 url_parse(char *p)
@@ -123,7 +126,7 @@ url_parse(char *p)
 		} else {
 			r->host = strdup(p);
 		}
-	} else if (s = strchr(p, ':')) {	/* host:port[/path] */
+	} else if ((s = strchr(p, ':')) && isdigit(s[1])) { /* host:port[/path] */
 		*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 		r->port = atoi(p);
 		p = strchr(p, '/');

@@ -8,7 +8,13 @@
 int
 cmd_cd(int ac, char **av)
 {
-	if (!av[1] || chdir(av[1])) {
+	char *p = av[1];
+
+#ifdef WIN32
+	/* convert /c:path => c:path */
+	if (p && (p[0] == '/') && isalpha(p[1]) && (p[2] == ':')) p++;
+#endif
+	if (!p || chdir(p)) {
 		out("ERROR-Can not change to directory '");
 		out(av[1]);
 		out("'\n");
