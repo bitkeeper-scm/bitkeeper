@@ -193,6 +193,9 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
+#ifndef	WIN32
+	signal(SIGCHLD, SIG_DFL); /* for free bsd */
+#endif
 	/*
 	 * What we want is: remote => bk _listkey = > key_list
 	 */

@@ -358,6 +358,10 @@ cmd_pull_part1(int ac, char **av)
 		close(1);
 		return (1);
 	}
+
+#ifndef	WIN32
+	signal(SIGCHLD, SIG_DFL); /* hpux */
+#endif
 	fputs("@OK@\n", stdout);
 	pid = spawnvp_rPipe(probekey_av, &rfd);
 	f = fdopen(rfd, "r");
@@ -414,7 +418,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 	close(fd);
 
-	if (fputs("@OK@\n", stdout) <= 0) {
+	if (fputs("@OK@\n", stdout) < 0) {
 		perror("fputs ok");
 	}
 	fflush(stdout);

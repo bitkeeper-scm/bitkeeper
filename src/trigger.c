@@ -128,7 +128,7 @@ run_client_trigger(char **lines, char *when, char *what, char *event)
 private int
 run_bkd_pre_trigger(char **lines, char *when, char *what, char *event)
 {
-	int	i, rc = 0, first = 1;
+	int	i, rc = 0, status, first = 1;
 	char	cmd[MAXPATH*4];
 	FILE	*f;
 
@@ -143,7 +143,8 @@ run_bkd_pre_trigger(char **lines, char *when, char *what, char *event)
 			}
 			printf("%c%s", BKD_DATA, cmd);
 		}
-		rc = WEXITSTATUS(pclose(f));
+		status = pclose(f);
+		rc = WEXITSTATUS(status);
 		if (rc) break;
 	}
 	unless (first) {
