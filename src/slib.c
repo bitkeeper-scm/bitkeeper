@@ -2116,7 +2116,11 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 * If it's a revision, go find it and use it.
 	 */
 	if (rev) {
-		unless (d = findrev(sc, s)) return (0);
+		if (strchr(s, '|')) {
+			d = sccs_findKey(sc, s);
+		} else {
+			d = findrev(sc, s);
+		}
 		return (d);
 	}
 
