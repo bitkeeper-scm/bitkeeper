@@ -1189,7 +1189,9 @@ proc main {} \
 	loadState
 	restoreGeometry rename
 	update idletasks
-	wm deiconify .
+
+	after idle [list focus -force .]
+	after idle [list wm deiconify .]
 
 	getFiles
 

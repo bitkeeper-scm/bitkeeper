@@ -23,7 +23,7 @@ proc main {} \
 	}
 
 	after idle [list wm deiconify .]
-
+	after idle [list focus -force .]
 }
 
 #
