@@ -19,7 +19,7 @@ getHomeDir(void)
 		return (NULL);
 	}
 	GetShortPathName(home_buf, tmp, MAXPATH);
-	localName2bkName(home_buf, home_buf);
+	localName2bkName(tmp, tmp);
 	concat_path(tmp, tmp, "BitKeeper");
 	unless (exists(tmp)) mkdir(tmp, 0640);
 	homeDir = strdup(tmp);
