@@ -13,6 +13,7 @@ usage: sccslog [-pCv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
     -A		select all uncommited deltas in a file.\n\
     -c<dates>	Cut off dates.  See 'bk help dates' for details.\n\
     -C		produce comments for a changeset\n\
+    -i<d>	indent output by <d> spaces\n\
     -p		show basenames instead of full pathnames.\n\
     -r<r>	specify a revision or a part of a range.\n\
     -v		be verbose about errors and processing\n\n\
@@ -26,7 +27,7 @@ usage: sccslog [-pCv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
 
 private	int	compar(const void *a, const void *b);
 private	void	sortlog(int flags);
-private	void	printlog(void);
+private	void	printlog(int);
 private	void	sccslog(sccs *s);
 private	void	reallocDelta(delta *d);
 private	void	freelog(void);
@@ -42,7 +43,7 @@ sccslog_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
-	int	save, c, flags = INIT_SAVEPROJ|SILENT;
+	int	indent = 0, save, c, flags = INIT_SAVEPROJ|SILENT;
 	project	*proj = 0;
 	RANGE_DECL;
 
@@ -52,10 +53,11 @@ sccslog_main(int ac, char **av)
 		fprintf(stderr, log_help);
 		return (0);
 	}
-	while ((c = getopt(ac, av, "ACc;pr|v")) != -1) {
+	while ((c = getopt(ac, av, "ACc;i;pr|v")) != -1) {
 		switch (c) {
 		    case 'A': Aflg++; break;
 		    case 'C': Cflg++; break;
+		    case 'i': indent = atoi(optarg); break;
 		    case 'p': pflag++; break;
 		    case 'v': flags &= ~SILENT; break;
 		    RANGE_OPTS('c', 'r');
@@ -92,7 +94,7 @@ next:		sccs_free(s);
 	verbose((stderr, "Total %d deltas\n", n));
 	if (n) {
 		sortlog(flags);
-		printlog();
+		printlog(indent);
 		freelog();
 	}
 	return (0);
@@ -133,7 +135,7 @@ sortlog(int flags)
 }
 
 private	void
-printlog()
+printlog(int indent)
 {
 	int	i, j;
 	delta	*d;
@@ -143,6 +145,7 @@ printlog()
 		unless (d->type == 'D') continue;
 		if (Cflg) {
 			EACH(d->comments) {
+				if (indent) printf("%*s", indent, "");
 				if (d->pathname) {
 					printf("%-8s\t", basenm(d->pathname));
 				}
@@ -150,9 +153,11 @@ printlog()
 			}
 			continue;
 		}
+		if (indent) printf("%*s", indent, "");
 		if (d->pathname) {
 			unless (pflag) {
 				printf("%s\n  ", d->pathname);
+				if (indent) printf("%*s", indent, "");
 			} else {
 				printf("%s ", basenm(d->pathname));
 			}
@@ -162,6 +167,7 @@ printlog()
 		printf(" +%d -%d\n", d->added, d->deleted);
 		EACH(d->comments) {
 			if (d->comments[i][0] == '\001') continue;
+			if (indent) printf("%*s", indent, "");
 			printf("  %s\n", d->comments[i]);
 		}
 		printf("\n");

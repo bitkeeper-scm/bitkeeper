@@ -3490,7 +3490,11 @@ sccs_init(char *name, u32 flags, project *proj)
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));
-		s->sfile = strdup(sPath(name, 0));
+		if (flags & INIT_ONEROOT) {
+			s->sfile = strdup(name);
+		} else {
+			s->sfile = strdup(sPath(name, 0));
+		}
 		s->gfile = sccs2name(name);
 	} else {
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
@@ -3503,7 +3507,11 @@ sccs_init(char *name, u32 flags, project *proj)
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
 		s->state |= S_NOSCCSDIR;
 	}
-	if (check_gfile(s, flags)) return (0);
+	if (flags & INIT_NOSTAT) {
+		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
+	} else {
+		if (check_gfile(s, flags)) return (0);
+	}
 	if (lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
@@ -3524,8 +3532,13 @@ sccs_init(char *name, u32 flags, project *proj)
 	}
 	s->pfile = strdup(sccsXfile(s, 'p'));
 	s->zfile = strdup(sccsXfile(s, 'z'));
-	if (isreg(s->pfile)) s->state |= S_PFILE;
-	if (isreg(s->zfile)) s->state |= S_ZFILE;
+	if (flags & INIT_NOSTAT) {
+		if (flags & INIT_HASpFILE) s->state |= S_PFILE;
+		if (flags & INIT_HASzFILE) s->state |= S_ZFILE;
+	} else {
+		if (isreg(s->pfile)) s->state |= S_PFILE;
+		if (isreg(s->zfile)) s->state |= S_ZFILE;
+	}
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
 	s->fd = -1;

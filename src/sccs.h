@@ -22,6 +22,13 @@
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define INIT_GTIME	0x40000000	/* use g file mod time as time stamp */
 #define	INIT_SAVEPROJ	0x80000000	/* project is loaned, do not free it */
+#define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
+#define	INIT_HAScFILE	0x02000000	/* has c.file */
+#define	INIT_HASgFILE	0x04000000	/* has g.file */
+#define	INIT_HASpFILE	0x08000000	/* has p.file */
+#define	INIT_HASxFILE	0x00100000	/* has x.file */
+#define	INIT_HASzFILE	0x00200000	/* has z.file */
+#define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
