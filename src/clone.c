@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, Andrew Chang & Larry McVoy
+ * Copyright (c) 2000-2002, Andrew Chang & Larry McVoy
  */    
 #include "bkd.h"
 
@@ -24,6 +24,7 @@ private int	initProject(char *root);
 private	void	lclone(opts, remote *, char *to);
 private int	linkdir(char *from, char *to, char *dir);
 private int	relink(char *a, char *b);
+private	void	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
 private int	in_trigger(char *status, char *rev, char *root);
 extern	int	rclone_main(int ac, char **av);
@@ -682,71 +683,90 @@ int
 relink_main(int ac, char **av)
 {
 	char	here[MAXPATH];
-	char	from[MAXPATH];
-	char	buf[MAXPATH];
-	char	path[MAXPATH];
-	FILE	*f;
-	int	quiet = 0, linked, total, n;
+	int	quiet = 0, i;
+	char	*to = av[ac-1];
 
 	if (av[1] && streq("-q", av[1])) quiet++, av++, ac--;
 
-	unless ((ac == 3) && isdir(av[1]) && isdir(av[2])) {
-		system("bk help -s relink");
+	for (i = 1; av[i]; i++) {
+		unless (isdir(av[i])) {
+err:			system("bk help -s relink");
+			exit(1);
+		}
+	}
+	unless (av[2]) goto err;	/* have to have at least 2 dirs */
+	getRealCwd(here, MAXPATH);
+	for (i = 1; av[i] != to; ++i) {
+		do_relink(av[i], to, quiet, here);
+	}
+	exit(0);
+}
+
+private	void
+do_relink(char *from, char *to, int quiet, char *here)
+{
+	char	frompath[MAXPATH];
+	char	buf[MAXPATH];
+	char	path[MAXPATH];
+	FILE	*f;
+	int	linked, total, n;
+
+	unless (chdir(here) == 0) {
+		fprintf(stderr, "relink: cannot chdir to %s\n", here);
 		exit(1);
 	}
-	getRealCwd(here, MAXPATH);
-	unless (chdir(av[1]) == 0) {
-		fprintf(stderr, "relink: cannot chdir to %s\n", av[1]);
+	unless (chdir(from) == 0) {
+		fprintf(stderr, "relink: cannot chdir to %s\n", from);
 		exit(1);
 	}
 	unless (exists(BKROOT)) {
-		fprintf(stderr, "relink: %s is not a package root\n", av[1]);
+		fprintf(stderr, "relink: %s is not a package root\n", from);
 		exit(1);
 	}
-	if (repository_rdlock()) {
-		fprintf(stderr, "relink: unable to readlock %s\n", av[1]);
+	if (repository_wrlock()) {
+		fprintf(stderr, "relink: unable to write lock %s\n", from);
 		exit(1);
 	}
-	getRealCwd(from, MAXPATH);
+	getRealCwd(frompath, MAXPATH);
 	f = popen("bk sfiles", "r");
 	chdir(here);
-	unless (chdir(av[2]) == 0) {
-		fprintf(stderr, "relink: cannot chdir to %s\n", av[2]);
-out:		chdir(from);
-		repository_rdunlock(0);
+	unless (chdir(to) == 0) {
+		fprintf(stderr, "relink: cannot chdir to %s\n", to);
+out:		chdir(frompath);
+		repository_wrunlock(0);
 		pclose(f);
 		exit(1);
 	}
 	unless (exists(BKROOT)) {
-		fprintf(stderr, "relink: %s is not a package root\n", av[2]);
+		fprintf(stderr, "relink: %s is not a package root\n", to);
 		goto out;
 	}
-	if (repository_wrlock()) {
-		fprintf(stderr, "relink: unable to writelock %s\n", av[2]);
+	if (repository_rdlock()) {
+		fprintf(stderr, "relink: unable to read lock %s\n", to);
 		goto out;
 	}
 	linked = total = n = 0;
 	while (fnext(buf, f)) {
 		total++;
 		chomp(buf);
-		sprintf(path, "%s/%s", from, buf);
+		sprintf(path, "%s/%s", frompath, buf);
 		switch (relink(path, buf)) {
 		    case 0: break;		/* no match */
 		    case 1: n++; break;		/* relinked */
 		    case 2: linked++; break;	/* already linked */
 		    case -1:			/* error */
-		    	repository_wrunlock(0);
+		    	repository_rdunlock(0);
 			goto out;
 		}
 	}
 	pclose(f);
-	repository_wrunlock(0);
-	chdir(from);
 	repository_rdunlock(0);
+	chdir(frompath);
+	repository_wrunlock(0);
 	if (quiet) exit(0);
 	fprintf(stderr,
-	    "Relinked %u/%u files, %u already linked.\n", n, total, linked);
-	exit(0);
+	    "%s: relinked %u/%u files, %u different, %u already linked.\n",
+	    from, n, total, total - (n + linked), linked);
 }
 
 /*
@@ -767,7 +787,7 @@ relink(char *a, char *b)
 		return (-1);
 	}
 	if (sa.st_ino == sb.st_ino) return (2);
-	if (access(a, R_OK)) return (0);	/* I can't read it */
+	if (access(b, R_OK)) return (0);	/* I can't read it */
 	if (sameFiles(a, b)) {
 		char	buf[MAXPATH];
 		char	*p;
@@ -778,19 +798,19 @@ relink(char *a, char *b)
 		 * if that works, then unlink,
 		 * else try to restore.
 		 */
-		strcpy(buf, b);
+		strcpy(buf, a);
 		p = strrchr(buf, '/');
 		assert(p && (p[1] == 's'));
 		p[1] = 'x';
-		if (rename(b, buf)) {
-			perror(b);
+		if (rename(a, buf)) {
+			perror(a);
 			return (-1);
 		}
-		if (link(a, b)) {
-			perror(b);
-			unlink(b);
-			if (rename(buf, b)) {
-				fprintf(stderr, "Unable to restore %s\n", b);
+		if (link(b, a)) {
+			perror(a);
+			unlink(a);
+			if (rename(buf, a)) {
+				fprintf(stderr, "Unable to restore %s\n", a);
 				fprintf(stderr, "File left in %s\n", buf);
 			}
 			return (-1);

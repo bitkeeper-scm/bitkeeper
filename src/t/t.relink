@@ -1,0 +1,129 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2002 Larry McVoy
+# %K%
+
+test "$PLATFORM" = "UNIX" || {
+	echo Not testing relink, operation not supported on this platform
+	exit 0
+}
+
+echo $N Create initial repositories .................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+cd ..
+bk clone -q project clone || exit 1
+bk clone -q project clone2 || exit 1
+bk clone -q project clone3 || exit 1
+echo OK
+
+echo $N Try to relink them ..........................................$NL
+NFILE=`bk sfiles project | wc -l`
+NFILE=`expr $NFILE + 0`	# trim the white space
+bk relink clone project 2>OUT || {
+	cat OUT
+	exit 1
+}
+grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
+	echo Bad status message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try to relink them again, should already be linked ..........$NL
+bk relink clone project 2>OUT || {
+	cat OUT
+	exit 1
+}
+grep -q "relinked 0/$NFILE files, 0 different, $NFILE already linked." OUT || {
+	echo Bad status message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try to relink multiple repositories at once .................$NL
+bk relink clone* project 2>OUT || {
+	cat OUT
+	exit 1
+}
+grep -q "relinked $NFILE/$NFILE files, 0 different, 0 already linked." OUT || {
+	echo Bad status message
+	cat OUT
+	exit 1
+}
+grep -q "relinked 0/$NFILE files, 0 different, $NFILE already linked." OUT || {
+	echo Bad status message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try to relink with read lock in the from repo, should fail ..$NL
+cd clone
+bk lock -r &
+PID=$!
+cd ..
+bk relink clone project 2>OUT && {
+	kill $PID
+	echo Should have failed
+	cat OUT
+	exit 1
+}
+kill $PID
+grep -q "relink: unable to write lock clone" OUT || {
+	echo Bad status message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try to relink with write lock in the from repo, should fail .$NL
+cd clone
+bk lock -w &
+PID=$!
+cd ..
+bk relink clone project 2>OUT && {
+	kill $PID
+	echo Should have failed
+	cat OUT
+	exit 1
+}
+kill $PID
+grep -q "relink: unable to write lock clone" OUT || {
+	echo Bad status message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try to relink with read lock in the to repo, should work ....$NL
+cd project
+bk lock -r &
+PID=$!
+cd ..
+bk relink clone project 2>OUT || {
+	kill $PID
+	cat OUT
+	exit 1
+}
+kill $PID
+grep -q "relinked 0/$NFILE files, 0 different, $NFILE already linked." OUT || {
+	echo Bad status message
+	cat OUT
+	exit 1
+}
+echo OK
+
