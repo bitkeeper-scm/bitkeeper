@@ -316,7 +316,9 @@ prompt_main(int ac, char **av)
 	int	i, c, ret, ask = 1, nogui = 0;
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
+	char	*cmd;
 	FILE	*in, *out = 0;
+	char	msgtmp[MAXPATH];
 	extern	char *pager;
 
 	while ((c = getopt(ac, av, "cegiowxf:n:p:t:y:")) != -1) {
@@ -339,8 +341,18 @@ prompt_main(int ac, char **av)
 	    (!(file || prog) && !av[optind]) ||
 	    (av[optind] && av[optind+1]) || (file && prog)) {
 err:		system("bk help -s prompt");
+		if (file == msgtmp) unlink(msgtmp);
 		if (out) pclose(out);
 		exit(1);
+	}
+	if (prog) {
+		assert(!file);
+		gettemp(msgtmp, "prompt");
+		file = msgtmp;
+		cmd = aprintf("%s > %s", prog, file);
+		putenv("PAGER=cat");
+		if (system(cmd)) goto err;
+		free(cmd);
 	}
 	if (getenv("BK_GUI") && !nogui) {
 		char	*nav[19];
@@ -362,15 +374,13 @@ err:		system("bk help -s prompt");
 		if (file) {
 			nav[++i] = "-F";
 			nav[++i] = file;
-		} else if (prog) {
-			nav[++i] = "-P";
-			nav[++i] = prog;
 		} else {
 			nav[++i] = av[optind];
 		}
 		nav[++i] = 0;
 		assert(i < sizeof(nav)/sizeof(char*));
 		ret = spawnvp_ex(_P_WAIT, nav[0], nav);
+		if (prog) unlink(msgtmp);
 		if (WIFEXITED(ret)) exit(WEXITSTATUS(ret));
 		exit(2);
 	}
@@ -398,20 +408,14 @@ err:		system("bk help -s prompt");
 		fputc('\n', out);
 		fflush(out);
 	}
-	if (file || prog) {
-		char	buf[1024];
+	if (file) {
+		char	buf[MAXLINE];
 
-		if (file) {
-			unless (in = fopen(file, "r")) goto err;
-		} else {
-			putenv("PAGER=cat");
-			unless (in = popen(prog, "r")) goto err;
-		}
+		unless (in = fopen(file, "r")) goto err;
 		while (fnext(buf, in)) {
 			fputs(buf, out);
 		}
-		if (file) fclose(in);
-		if (prog) pclose(in);
+		fclose(in);
 	} else if (streq(av[optind], "-")) {
 		goto err;
 	} else {
@@ -423,6 +427,7 @@ err:		system("bk help -s prompt");
 		fputc('\n', out);
 	}
 	pclose(out);
+	if (prog) unlink(msgtmp);
 	/* No exit status if no prompt */
 	unless (ask) exit(0);
 	exit(confirm(yes ? yes : "OK") ? 0 : 1);

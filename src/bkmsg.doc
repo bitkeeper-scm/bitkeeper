@@ -849,3 +849,19 @@ set the environment variable BK_LICENSE to the value ACCEPTED.  Doing so
 means that you are agreeing to any future versions of any license associated
 with this repository.
 $
+#missing-key-signature
+This repository is configured to use a commercial license 
+(#BKARG#), but does not contain a license key
+signature in the BitKeeper config key: licsign1.
+Please contact sales@bitmover.com to get a valid license signature.
+$
+#invalid-key-signature
+The configured license key signature for for the current repository
+doesn't match the current license key: #BKARG#
+$
+#bad-key-signature
+When validating the license key signature for the current repository
+an error occured.  The current operation cannot be completed.
+The error was:
+   #BKARG#
+$

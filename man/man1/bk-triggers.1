@@ -76,15 +76,13 @@ supported triggers are as follows:
 .EV pre-commit
 called before a changeset is committed.
 .LI
-exit 0 allows the commit.
+exit 0 allows the commit. 
 .LI
-exit 1 fails the commit.
+exit 1 fails the commit. If the commit was initiated from citool, 
+citool will not exit. This allows the user to try the commit again. 
+See example below.
 .LI
 exit 2 Reserved for future use (see pre-delta) and should not be used.
-.LI
-exit 3 indicates that citool should try the commit again. Useful when
-the trigger requires the user to modify a changeset comment. See example
-below.
 .EV post-commit
 called after a changeset is committed or attempted to be committed.
 .LI
@@ -382,23 +380,19 @@ fi
 
 grep -q 'BUGID:' $BK_COMMENTFILE && exit 0
 
-msg="
-===================================================
-A BUGID: field is needed in the checkin comments
-===================================================
-"
+msg="A 'BUGID:' field is needed in the checkin comments"
 
 # Bring up an external program to browse bugs so that the
 # engineer can add a valid bugid to the changeset comments.
 
-/opt/bugtrack/bin/bugviewer 'http://server.host.com/bugs?status=open' &
+#/opt/bugtrack/bin/bugviewer 'http://server.host.com/bugs?status=open' &
 
-bk prompt -o -y"Retry" "$msg"
+# Ask user if he needs to enter a bugid.  returning a non-zero exit
+# code from the trigger will allow user to retry the commit from
+# within citool.
+bk prompt -y"Reenter bugid" -n"No bugid is required" "$msg" && exit 1
 
-# returning 3 from trigger will allow user to retry the commit
-# from within citool.
-
-exit 3
+exit 0
 .ft
 .DE
 .SH SEE ALSO

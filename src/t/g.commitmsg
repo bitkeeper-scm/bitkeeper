@@ -122,4 +122,33 @@ test -s XXX && {
 	echo Did not commit
 	exit 1
 }
+chmod -x $HERE/project/BitKeeper/triggers/pre-commit
 echo OK
+
+echo $N Attempt citool with a bad license signature......$NL
+cd $HERE/interactive
+bk edit $Q BitKeeper/etc/config
+# note that one of the signatures is purposefully bogus...
+cd $HERE/interactive
+cat > BitKeeper/etc/config << EOF
+license: BKL5386d89d03935edd00001200fffff
+licsign1: YgAAAo0AAAADgAAAAMUmMTTh4+BGjWWnrwvKsg/g8pcqo5+GEe78c0bXAjjQOBdH
+licsign2: kN5i7hpD1DFPrRsch295t3oop5U/7e4hisefNmwaLIQAC07xitzmbw6PdeL2uokv
+licsign3: xyzzy
+logging: private@me.com
+EOF
+echo foo > SCCS/c.ChangeSet
+bk edit $Q src/foo.c
+echo "more foo" >> src/foo.c
+echo "yada yada" > src/SCCS/c.foo.c
+rm -f XXX
+bk citool
+bk sfiles -p > XXX
+test -s XXX || {
+     echo Did not fail the commit
+     exit 1
+}
+echo OK
+echo "You should have seen a popup explaining the license signature was bad"
+echo "and you should have had to exit citool manually."
+exit 0
