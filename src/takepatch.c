@@ -151,9 +151,12 @@ takepatch_main(int ac, char **av)
 usage:		system("bk help -s takepatch");
 		return (1);
 	}
-
 	p = init(input, flags, &proj);
-
+	if (newProject) {
+		putenv("BK_NEWPROJECT=YES");
+	} else {
+		if (sane(0, 0)) exit(1);
+	}
 	if (streq(input, "-") && isLogPatch) {
 		if (newProject) {
 			/*
