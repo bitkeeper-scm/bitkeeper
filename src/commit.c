@@ -250,7 +250,7 @@ logChangeSet(int l, char *rev, int quiet)
 	char	start_rev[1024];
 	char	*to = logAddr();
 	FILE	*f;
-	int	dotCount = 0, junk, n, status;
+	int	dotCount = 0, junk, n;
 	pid_t	pid;
 	char 	*av[] = {
 		"bk",
@@ -288,7 +288,7 @@ logChangeSet(int l, char *rev, int quiet)
 	sprintf(p, "%d", n);
 	sprintf(commit_log, "%s/commit_log%d", TMP_PATH, getpid());
 	f = fopen(commit_log, "wb");
-	cset_header(f);
+	status(0, f);
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
 	sprintf(buf, "bk sccslog -r%s ChangeSet >> %s", rev, commit_log);
@@ -296,7 +296,8 @@ logChangeSet(int l, char *rev, int quiet)
 	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", commit_log);
 	system(buf);
 	f = fopen(commit_log, "ab");
-	fprintf(f, "---------------------------------\n");
+	fprintf(f, "---------------------------------\n\n");
+	config(0, f);
 	fclose(f);
 	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
 	system(buf);
@@ -316,7 +317,7 @@ logChangeSet(int l, char *rev, int quiet)
 		fprintf(stdout, "Waiting for mailer...\n");
 	}
 	fflush(stdout); /* needed for citool */
-	waitpid(pid, &status, 0);
+	waitpid(pid, 0, 0);
 	unlink(commit_log);
 }
 
@@ -331,7 +332,6 @@ config(char *rev, FILE *f)
 	char	buf[MAXLINE], aliases[MAXPATH];
 	char	s_cset[MAXPATH] = CHANGESET;
 
-	status(0, f);
 	dspec = "$each(:FD:){Proj:      (:FD:)}\\nID:        :KEY:";
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
 	fprintf(f, "%-10s %s", "User:", sccs_realuser());
@@ -425,6 +425,7 @@ sendConfig(char *to, char *rev)
 
 	gettemp(config_log, "config");
 	unless (f = fopen(config_log, "wb")) return;
+	status(0, f);
 	config(rev, f);
 	sprintf(subject, "BitKeeper config: %s", package_name());
 	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);

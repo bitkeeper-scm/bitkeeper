@@ -827,7 +827,6 @@ int	sccs_rm(char *name, int useCommonDir);
 int	mkconfig(FILE *out);
 int	config2logging(char *root);
 int	logging(char *user, MDBM *configDB, MDBM *okDB);
-void	cset_header(FILE *f);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 void	get_http_proxy(char *proxy_host, int *proxy_port);
 int	confirm(char *msg);

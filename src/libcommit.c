@@ -30,22 +30,6 @@ do_clean(char *file, int flags)
 	sccs_free(s);
 }
 
-void
-cset_header(FILE *f)
-{
-	char	*p;
-
-	p = package_name();
-	if (p[0]) {
-		fprintf(f,
-		    "Changeset in %s by %s\n", p, sccs_getuser());
-	} else {
-		fprintf(f, "Changeset by %s\n", sccs_getuser());
-	}
-	config(0, f);
-	fprintf(f, "\n");
-}
-
 int
 get(char *path, int flags, char *output)
 {
@@ -92,7 +76,7 @@ notify()
 	char	buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
 	char	subject[MAXLINE], *packagename;
 	FILE	*f;
-	int 	status;
+	int	ret;
 	pid_t 	pid;
 
 	sprintf(notify_file, "%setc/notify", BitKeeper);
@@ -108,7 +92,7 @@ notify()
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
 	f = fopen(notify_log, "wb");
-	cset_header(f);
+	status(0, f);
 	fclose(f);
 	sprintf(buf, "bk sccslog -r+ ChangeSet >> %s", notify_log);
 	system(buf);
@@ -127,8 +111,8 @@ notify()
 		pid = mail(buf, subject, notify_log);
 		fprintf(stdout, "Waiting for mailer...\n");
 		fflush(stdout); /* needed for citool */
-		waitpid(pid, &status, 0);
-		if (WEXITSTATUS(status) != 0) {
+		waitpid(pid, &ret, 0);
+		if (WEXITSTATUS(ret) != 0) {
 			fprintf(stdout, "can not notify %s\n", buf);
 			fflush(stdout); /* needed for citool */
 		}
