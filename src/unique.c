@@ -115,7 +115,6 @@ stale:					fprintf(stderr,
 					assert(!exists(lock));
 					continue;
 				}
-				assert(pid > 0);
 			}
 			unless (pid) goto stale;
 			if (pid == getpid()) {

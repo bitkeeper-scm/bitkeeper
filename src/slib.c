@@ -9207,6 +9207,17 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 
 	assert(flag);
 
+	mask = name2xflg(flag);
+	if (mask & X_ALWAYS_EDIT) {
+		if ((sc->state & S_CSET) || 
+		    (strlen(sc->gfile) > 10) &&
+		     strneq("BitKeeper/", sc->gfile, 10)) {
+			fprintf(stderr,
+	  "admin: warning: %s: ALWAYS_EDIT is illegal in BitKeeper system file,"
+			" ignored\n", sc->gfile);
+			return;
+		}
+	}
 	/*
 	 * If this is the first time we touch n->xflags,
 	 * initialize it from sc->state.
@@ -9217,7 +9228,6 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 		xflags = n->xflags;
 	}
 
-	mask = name2xflg(flag);
 	if (add) {
 		if (xflags & mask) {
 			verbose((stderr,
@@ -9434,6 +9444,15 @@ out:
 		flags |= NEWCKSUM;
 	}
 	if (mode) {
+		delta *n = sccs_getrev(sc, "+", 0, 0);
+
+		assert(n);
+		if ((n->flags & D_MODE) && n->symlink) {
+			fprintf(stderr,
+				"admin: %s: chmod on symlink is illegal\n",
+				sc->gfile);
+			OUT;
+		} 
 		ALLOC_D();
 		addMode("admin", sc, d, mode);
 		flags |= NEWCKSUM;

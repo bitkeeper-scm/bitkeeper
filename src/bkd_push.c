@@ -1,5 +1,6 @@
 #include "bkd.h"
 
+
 int
 cmd_push(int ac, char **av)
 {
@@ -8,7 +9,7 @@ cmd_push(int ac, char **av)
 	int	got = 0, n, c, verbose = 1;
 	int	gzip = 0;
 	char	buf[4096];
-	int	fd2, wfd, status, clean_lock = 1;
+	int	fd2, wfd, status;
 	static	char *prs[] =
 	    { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
@@ -17,19 +18,15 @@ cmd_push(int ac, char **av)
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
-		exit(1);
+		return (1);
 	}
 	if ((bk_mode() == BK_BASIC) && !exists("BitKeeper/etc/.master")) {
 		out("ERROR-bkd std cannot access non-master repository\n");
-		exit(1);
+		return (1);
 	}
 
-	if (repository_wrlock()) {
-		out("ERROR-Unable to lock repository for update.\n");
-		exit(1);
-	} else {
-		out("OK-write lock granted\n");
-	}
+	/* we already lock it in do_cmds() */
+	out("OK-write lock granted\n");
 
 	while ((c = getopt(ac, av, "qz|")) != -1) {
 		switch (c) {
@@ -109,7 +106,6 @@ cmd_push(int ac, char **av)
 			putenv("BK_INCOMING=SIGNALED");
 			OUT;
 		}
-		clean_lock = 0; /* takepacth already cleaned the lock */
 	} else {
 		if (got == 8) {
 			if (streq(buf, "@NADA!@\n")) {
@@ -123,12 +119,5 @@ cmd_push(int ac, char **av)
 		OUT;
 	}
 
-out:
-	/*
-	 * This could screw up if takepatch errored but left the RESYNC dir.
-	 * The write lock code respects the RESYNC dir, so that's OK.
-	 */
-	cmdlog_end(error);
-	if (clean_lock) repository_wrunlock(0);
-	exit(error);
+out:	return (error);
 }

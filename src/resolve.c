@@ -2530,8 +2530,6 @@ resolve_cleanup(opts *opts, int what)
 		SHOUT2();
 		exit(1);
 	}
-	repository_wrunlock(1);
-	repository_lockers(0);
 	exit(0);
 }
 

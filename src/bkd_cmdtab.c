@@ -8,6 +8,7 @@ struct cmd cmds[] = {
   { "diffs", "show diffs for a changeset", cmd_diffs },
   { "get", "get a file", cmd_get },
   { "help", "print this help", cmd_help },
+  { "httpget", "http get command", cmd_httpget },
   { "pull",
     "pull remote changes from current repository into client repository",
     cmd_pull },

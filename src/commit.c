@@ -16,7 +16,7 @@ typedef struct {
 extern	char	*editor, *bin, *BitKeeper;
 extern	int	do_clean(char *, int);
 extern	int	loggingask_main(int, char**);
-private	void	make_comment(char *cmt, char *commentFile);
+private	int	make_comment(char *cmt, char *commentFile);
 private int	do_commit(c_opts opts, char *sym,
 					char *pendingFiles, char *commentFile);
 
@@ -60,7 +60,9 @@ commit_main(int ac, char **av)
 		    case 'q':	opts.quiet = 1; break;
 		    case 'S':	sym = optarg; break;
 		    case 'y':	doit = 1; getcomment = 0;
-				make_comment(optarg, commentFile);
+				if (make_comment(optarg, commentFile)) {
+					return (1);
+				}
 				break;
 		    case 'Y':	doit = 1; getcomment = 0;
 				strcpy(commentFile, optarg);
@@ -79,7 +81,7 @@ commit_main(int ac, char **av)
 	}
 	if (sccs_cd2root(0, 0) == -1) {
 		printf("Cannot find root directory\n");
-		exit(1);
+		return (1);
 	}
 	unless(opts.resync) remark(opts.quiet);
 	sprintf(pendingFiles, "%s/bk_list%d", TMP_PATH, getpid());
@@ -89,7 +91,7 @@ commit_main(int ac, char **av)
 		if (getcomment) {
 			fprintf(stderr,
 			"You must use the -Y or -y option when using \"-\"\n");
-			exit(1);
+			return (1);
 		}
 		setmode(0, _O_TEXT);
 		f = fopen(pendingFiles, "wb");
@@ -104,14 +106,14 @@ commit_main(int ac, char **av)
 			unlink(pendingFiles);
 			unlink(commentFile);
 			getmsg("duplicate_IDs", 0, 0, stdout);
-			exit(1);
+			return (1);
 		}
 	}
 	if ((force == 0) && (size(pendingFiles) == 0)) {
 		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
 		unlink(pendingFiles);
 		unlink(commentFile);
-		exit(0);
+		return (0);
 	}
 	if (getcomment) {
 		sprintf(buf,
@@ -119,7 +121,7 @@ commit_main(int ac, char **av)
 		system(buf);
 	}
 	do_clean(s_cset, SILENT);
-	if (doit) exit(do_commit(opts, sym, pendingFiles, commentFile));
+	if (doit) return(do_commit(opts, sym, pendingFiles, commentFile));
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
@@ -131,7 +133,7 @@ commit_main(int ac, char **av)
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
 		    case 'u':
-			exit(do_commit(opts, sym, pendingFiles, commentFile));
+			return(do_commit(opts, sym, pendingFiles, commentFile));
 			break;
 		    case 'e':
 			sprintf(buf, "%s %s", editor, commentFile);
@@ -141,7 +143,7 @@ commit_main(int ac, char **av)
 Abort:			printf("Commit aborted.\n");
 			unlink(pendingFiles);
 			unlink(commentFile);
-			exit(1);
+			return(1);
 		}
 	}
 }
@@ -264,7 +266,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	return (rc ? 1 : 0);
 }
 
-private	void
+private	int
 make_comment(char *cmt, char *commentFile)
 {
 	int fd;
@@ -275,10 +277,11 @@ make_comment(char *cmt, char *commentFile)
 #endif
 	if ((fd = open(commentFile, flags, 0664)) == -1)  {
 		perror("commit");
-		exit(1);
+		return (1);
 	}
 	write(fd, cmt, strlen(cmt));
 	close(fd);
+	return (0);
 }
 
 void

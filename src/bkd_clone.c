@@ -1,8 +1,8 @@
 #include "bkd.h"
 
 private	char *cmd[] = { "bk", "-r", "sfio", "-o", 0, 0 };
-private void uncompressed();
-private void compressed(int);
+private int uncompressed();
+private int compressed(int);
 
 /*
  * Send the sfio file to stdout
@@ -34,39 +34,31 @@ cmd_clone(int ac, char **av)
 			break;
 	    	}
 	}
-	unless (repository_rdlock() == 0) {
-		out("ERROR-Can't get read lock on the repository.\n");
-		exit(1);
-	} else {
-		out("OK-read lock granted\n");
-	}
+	out("OK-read lock granted\n");
 	if (gzip) {
-		compressed(gzip);
+		return (compressed(gzip));
 	} else {
-		uncompressed();
+		return (uncompressed());
 	}
-	exit(1);	/* shouldn't get here */
 }
 	    
-private void
+private int
 uncompressed()
 {
 	pid_t	pid;
 
 	pid = spawnvp_ex(_P_WAIT, cmd[0], cmd);
 	if (pid == -1) {
-		repository_rdunlock(0);
-		exit(1);
+		return (1);
 	} else {
 		int	status;
 
 		waitpid(pid, &status, 0);
-		repository_rdunlock(0);
-		exit(0);
+		return (0);
 	}
 }
 
-private void
+private int
 compressed(int gzip)
 {
 	pid_t	pid;
@@ -78,8 +70,7 @@ compressed(int gzip)
 #endif
 	pid = spawnvp_rPipe(cmd, &rfd);
 	if (pid == -1) {
-		repository_rdunlock(0);
-		exit(1);
+		return (1);
 	}
 	gzip_init(gzip);
 	while ((n = read(rfd, buf, sizeof(buf))) > 0) {
@@ -87,6 +78,5 @@ compressed(int gzip)
 	}
 	gzip_done();
 	waitpid(pid, &status, 0);
-	repository_rdunlock(0);
-	exit(0);
+	return (0);
 }

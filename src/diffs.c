@@ -26,6 +26,7 @@ private	char	*diffs_help = "\n\
 usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -a		do diffs on all sfiles\n\
     -c		do context diffs\n\
+    -C<r>	show all changes made by cset containing rev <r>\n
     -d<dates>	diff using date or symbol\n\
     -D		prefix lines with dates\n\
     -f		prefix lines with file names\n\
@@ -35,6 +36,7 @@ usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -p		procedural diffs, like diff -p\n\
     -P		produce patch diffs, similar to diff -Nur\n\
     -r<r>	diff revision <r>\n\
+    -R<r>	diffs between parent of <r> and <r>\n
     -s		do side-by-side\n\
     -u		do unified diffs\n\
     -U		prefix lines with user names\n\
@@ -55,6 +57,7 @@ diffs_main(int ac, char **av)
 	char	kind;
 	char	*name;
 	project	*proj = 0;
+	char	*rev = 0, *cset = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -68,16 +71,18 @@ diffs_main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "acd;DfhMnpr|suU")) != -1) {
+	while ((c = getopt(ac, av, "acC|d;DfhMnpr|R|suU")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'h': flags &= ~DIFF_HEADER; break;
 		    case 'c': kind = DF_CONTEXT; break;
+		    case 'C': cset = optarg; break;
 		    case 'D': flags |= GET_PREFIXDATE; break;
 		    case 'f': flags |= GET_MODNAME; break;
 		    case 'M': flags |= GET_REVNUMS; break;
 		    case 'p': kind = DF_PDIFF; break;
 		    case 'n': kind = DF_RCS; break;
+		    case 'R': rev = optarg; break;
 		    case 's': kind = DF_SDIFF; break;
 		    case 'u': kind = DF_UNIFIED; break;
 		    case 'U': flags |= GET_USER; break;
@@ -88,12 +93,18 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		}
 	}
 
+	if ((things && (cset || rev)) || (cset && rev)) {
+		fprintf(stderr, "%s: -C/-R must be alone\n", av[0]);
+		return (1);
+	}
+
 	/*
 	 * If we specified both revisions then we don't need the gfile.
 	 * If we specifed one rev, then the gfile is also optional, we'll
 	 * do TOT if it isn't there.
 	 * If we specified no revs then there must be a gfile.
 	 */
+	if (rev || cset) things = 2;
 	if ((flags & GET_PREFIX) && (things != 2) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
 		    "%s: must have both revisions with -d|u|m|s\n", av[0]);
@@ -103,7 +114,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 	/* XXX - if we are doing cset | diffs then we don't need the GFILE.
 	 * Currently turned off in sfiles.
 	 */
-	if (all || things) {
+	if (all || things || cset || rev) {
 		name = sfileFirst("diffs", &av[optind], 0);
 	} else {
 		name = sfileFirst("diffs", &av[optind], SF_GFILE);
@@ -116,7 +127,21 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 			goto next;
 		}
 		unless (proj) proj = s->proj;
-		RANGE("diffs", s, 0, (flags & SILENT) == 0);
+		if (cset) {
+			if (cset_boundries(s, cset)) goto next;
+		} else if (rev) {
+			delta	*d = sccs_getrev(s, rev, 0, 0);
+
+			unless (d && d->parent) {
+				fprintf(stderr,
+				    "No rev or parent for %s\n", rev);
+				goto next;
+			}
+			s->rstart = d->parent;
+			s->rstop = d;
+		} else {
+			RANGE("diffs", s, 0, (flags & SILENT) == 0);
+		}
 		if (things) {
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
 			if (s->rstop) r2 = s->rstop->rev;
@@ -179,5 +204,34 @@ next:		if (s) sccs_free(s);
 	}
 	if (proj) proj_free(proj);
 	sfileDone();
+	return (0);
+}
+
+cset_boundries(sccs *s, char *rev)
+{
+	delta	*d = sccs_getrev(s, rev, 0, 0);
+
+	unless (d) {
+		fprintf(stderr, "No delta %s in %s\n", rev, s->gfile);
+		return (1);
+	}
+	d->flags |= D_VISITED;
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_CSET) s->rstop = d;
+		if (d->flags & D_VISITED) break;
+	}
+	unless (d) {
+		fprintf(stderr, "No csets in %s?\n", s->gfile);
+		return (1);
+	}
+	s->rstart = d;
+	while (d && (d != s->tree)) {
+		s->rstart = d;
+		if ((d != s->rstop) && (d->flags & D_CSET)) {
+			break;
+		}
+		d = d->parent;
+	}
+	assert(s->rstop);
 	return (0);
 }

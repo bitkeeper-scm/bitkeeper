@@ -89,6 +89,7 @@ private	char	*spin = "|/-\\";
 int
 takepatch_main(int ac, char **av)
 {
+	FILE 	*f;
 	char	*buf;
 	MMAP	*p;
 	int	c;
@@ -181,6 +182,14 @@ usage:		fprintf(stderr, takepatch_help);
 		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
 		    remote, remote == 1 ? "" : "s", conflicts, files);
 	}
+
+	/* save byte count for logs */
+	f = fopen("BitKeeper/log/byte_count", "w");
+	if (f) {
+		fprintf(f, "%u\n", size(pendingFile));
+		fclose(f);
+	}
+
 	if (remote) {
 		get_configs();
 	} else {

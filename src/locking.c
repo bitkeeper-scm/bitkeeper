@@ -316,6 +316,7 @@ fail:		proj_free(p);
 	    	goto fail;
 	}
 	proj_free(p);
+	setenv("BK_IGNORELOCK", "YES", 1);
 	return (0);
 }
 
@@ -373,6 +374,8 @@ repository_wrunlock(int force)
 	char	*t;
 	int	error = 0;
 
+	unsetenv("BK_IGNORELOCK");
+	assert(!getenv("BK_IGNORELOCK"));
 	unless (p = proj_init(0)) return (-1);
 	unless (p->root) {
 		proj_free(p);

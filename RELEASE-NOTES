@@ -101,6 +101,19 @@ Upgrade notes
     1 files modified and not checked in.
     0 files with uncommitted deltas.
 
+Changes from last release
+-----------------------------------------------------------------------------
+
+Two BitKeeper system files have been renamed:
+
+BitKeeper/etc/csets -> Bitkeeper/etc/csets-in
+BitKeeper/etc/pushed -> BitKeeper/etc/csets-out
+
+Typically these files are accessed by the user supplied trigger scripts.
+This mean your trigger scripts must be updated when you upgrade to
+BitKeeper 2.0.
+
+
 Known bugs
 -----------------------------------------------------------------------------
 

@@ -66,6 +66,8 @@ proc getConfig {prog} \
 	set _d(sccs.mergeOutline) darkblue ;# merge rev outlines
 	set _d(sccs.revOutline) darkblue   ;# regular rev outlines
 	set _d(sccs.revColor) #9fb6b8	   ;# unselected box fills
+	set _d(sccs.tagColor) red	   ;# tag box fills
+	set _d(sccs.selectColor) lightblue ;# highlight color for selected tag
 	set _d(sccs.dateColor) #181818	   ;# dates at the bottom of graph
 
 	if {$tcl_platform(platform) == "windows"} {
