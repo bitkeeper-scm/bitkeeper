@@ -7516,21 +7516,32 @@ sccs_clean(sccs *s, u32 flags)
 		return (2);
 	}
 
-	if ((s->state & S_BITKEEPER)  &&
-	    !streq(relativeName(s, 0, 1), d->pathname)) {
-		unless (flags & PRINT) {
+	if (s->state & S_BITKEEPER) {
+		char *t = relativeName(s, 0, 1);
+
+		unless (t) {
 			fprintf(stderr,
-			    "%s has different pathnames, needs delta.\n",
-			    s->gfile);
-                } else {
-			printf("===== %s (pathnames) %s vs edited =====\n",
-			    s->gfile, pf.oldrev);
-			printf("< %s\n-\n", d->pathname);
-			printf("> %s\n", relativeName(s, 0, 1));
- 		}
-		free_pfile(&pf);
-		return (2);
-	}
+			"%s: cannot compute relative path, no project root ?\n",
+				s->gfile);
+			free_pfile(&pf);
+			return (1);
+		}
+		if (!streq(t, d->pathname)) {
+			unless (flags & PRINT) {
+				fprintf(stderr,
+				   "%s has different pathnames, needs delta.\n",
+				    s->gfile);
+			} else {
+				printf(
+				    "===== %s (pathnames) %s vs edited =====\n",
+				    s->gfile, pf.oldrev);
+				printf("< %s\n-\n", d->pathname);
+				printf("> %s\n", t);
+			}
+			free_pfile(&pf);
+			return (2);
+		}
+	} 
 
 	if (S_ISLNK(s->mode)) {
 		if (streq(s->symlink, d->symlink)) {
