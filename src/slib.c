@@ -123,10 +123,7 @@ emptyDir(char *dir)
 	struct dirent *e;
 
 	d = opendir(dir);
-	unless (d) {
-		perror(dir);
-		return (0);
-	}
+	unless (d) return (0);
 
 	while (e = readdir(d)) {
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
@@ -3087,6 +3084,7 @@ sccs_initProject(sccs *s)
 	 */
 	sprintf(path, "%s/RESYNC", root);
 	if (exists(path)) p->flags |= PROJ_RESYNC;
+	unless (emptyDir(READER_LOCK_DIR)) p->flags |= PROJ_READER;
 	return (p);
 }
 
@@ -3105,9 +3103,15 @@ resync_locked(project *p)
 }
 
 private inline int
+reader_locked(project *p)
+{
+	return (p && (p->flags & PROJ_READER));
+}
+
+private inline int
 locked(project *p)
 {
-	return (resync_locked(p));
+	return (resync_locked(p) || reader_locked(p));
 }
 
 /* used to tell us who is blocking the lock */
@@ -3118,6 +3122,7 @@ lockers(project *p)
 	if (locked(p)) {
 		fprintf(stderr, "Entire repository is locked");
 		if (resync_locked(p)) fprintf(stderr, " by RESYNC directory");
+		if (reader_locked(p)) fprintf(stderr, " by READER lock");
 		fprintf(stderr, ".\n");
 	}
 }

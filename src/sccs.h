@@ -378,6 +378,9 @@ typedef struct {
 } project;
 
 #define	PROJ_RESYNC	0x00000001	/* Locked by resync */
+#define	PROJ_READER	0x00000002	/* Locked by reader */
+
+#define	READER_LOCK_DIR	"BitKeeper/readers"
 
 /*
  * struct sccs - the delta tree, the data, and associated junk.

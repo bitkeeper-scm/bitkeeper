@@ -22,11 +22,12 @@ main(int ac, char **av)
 		perror(av[1]);
 		exit(1);
 	}
+	buf[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
 		undos(buf);
 		fputs(buf, stdout);
 	}
-
+	if (!strchr(buf, '\n')) fputc('\n', stdout);
 	return (0);
 }
 
