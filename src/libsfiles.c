@@ -86,6 +86,9 @@ again:
 			concat_path(buf, prefix, e->d_name);
 			/* I thought I didn't need this but I was wrong. */
 			unless (oksccs(buf, flags, 0)) continue;
+			if ((flags & SF_NOCSET) && streq(CHANGESET, buf)) {
+				continue;
+			}
 			debug((stderr, "sfiles::DIR got %s\n", buf));
 			goto norev;
 		}

@@ -241,7 +241,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			errors |= 4;
 			goto next;
 		}
-		if (checkout) {
+		if (checkout && !CSET(s)) {
 			s = sccs_restart(s);
 			unless (s) {
 				fprintf(stderr,

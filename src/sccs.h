@@ -112,6 +112,7 @@
 #define	SF_HASREVS	0x00000008	/* sfiles - filename:rev */
 #define	SF_SILENT	0x00000010	/* sfiles - don't complain */
 #define	SF_DELETES	0x00000020	/* expand files like .del-whatever */
+#define	SF_NOCSET	0x00000040	/* do not autoexpand cset files */
 
 /*
  * Flags (s->state) that indicate the state of a file.  Set up in init.

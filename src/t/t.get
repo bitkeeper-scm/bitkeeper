@@ -173,6 +173,45 @@ echo OK
 echo $N Make sure get -u works ......................................$NL
 if [ "`bk get $S -pau T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK
+
+echo $N Make sure get does not get ChangeSet ........................$NL
+rm -f T
+bk clean
+bk get -q
+test -f ChangeSet && {
+	echo should not have gotten ChangeSet
+	exit 1
+}
+bk clean
+echo OK
+
+echo $N Make sure get -e does not get ChangeSet .....................$NL
+bk get -qe
+test -f ChangeSet && {
+	echo should not have gotten ChangeSet
+	exit 1
+}
+bk clean
+echo OK
+
+echo $N Make sure get ChangeSet does get the ChangeSet file .........$NL
+bk get -q ChangeSet
+test -f ChangeSet || {
+	echo should have gotten ChangeSet
+	exit 1
+}
+bk clean
+echo OK
+
+echo $N Make sure get -e ChangeSet does get the ChangeSet file ......$NL
+bk get -qe ChangeSet
+test -f ChangeSet || {
+	echo should have gotten ChangeSet
+	exit 1
+}
+bk clean
+echo OK
+
 if [ $PLATFORM = "WIN32" ]
 then #-------------------------------------------------------------
 echo $N Make sure get creats gfile with real name ...................$NL
@@ -228,9 +267,9 @@ bk get $Q -Gsubdir || {
 	echo failed to exit cleanly
 	exit 1
 }
-for i in `bk sfiles -g SCCS/s.*`
+for i in `bk sfiles -g SCCS/s.* | grep -v ChangeSet`
 do	test -f subdir/$i || {
-		echo failed get foo.c
+		echo failed get $i
 		exit 1
 	}
 done
@@ -282,9 +321,9 @@ echo $N Test sccs get with -Gsubdir .................................$NL
 	echo failed to exit cleanly
 	exit 1
 }
-for i in `./sccs sfiles -g SCCS/s.*`
+for i in `./sccs sfiles -g SCCS/s.* | grep -v ChangeSet`
 do	test -f subdir/$i || {
-		echo failed get foo.c
+		echo failed get $i
 		exit 1
 	}
 done

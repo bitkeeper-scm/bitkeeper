@@ -12,11 +12,12 @@ unwrap_main(int ac,  char **av)
 		system("bk help unwrap");
 		return (0);
 	}
-	while (getline(0, buf, sizeof(buf)) > 0) {
+	while (fgets(buf, sizeof(buf), stdin)) {
 		if (strneq(buf, "# Patch vers:", 13)) {
-			fprintf(stdout, "\n%s\n", buf);
-			while (getline(0, buf, sizeof(buf)) > 0) {
-				fprintf(stdout, "%s\n", buf);
+			fputs("\n", stdout);
+			fputs(buf, stdout);
+			while (fgets(buf, sizeof(buf), stdin)) {
+				fputs(buf, stdout);
 			}
 			return (0);
 		} else if (strneq(buf, "## Wrapped with", 15)) {
