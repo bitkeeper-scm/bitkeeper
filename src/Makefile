@@ -133,7 +133,7 @@ UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf bklicense.pub
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -358,7 +358,7 @@ libsccs.a: $(OBJ) shell.o
 bk.res: win32/data/bk.rc win32/data/bk.ico
 	rc.exe -fo bk.res -r win32/data/bk.rc
 
-$(BK): bk.o $(LIBS) $(RESOURCE) bklicense.pub
+$(BK): bk.o $(LIBS) $(RESOURCE)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
 	if [ $(SYS) = win32 ]; \
 	then	$(MAKE) link; \
