@@ -57,6 +57,7 @@ private	void	badpath(sccs *s, delta *tot);
 private void	merge(char *gfile);
 private	sccs	*expand(sccs *s, project *proj);
 private	sccs	*unexpand(sccs *s);
+private	int	skipPatch(MMAP *p);
 
 private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -870,7 +871,7 @@ fixLod(sccs *s)
 private int
 chkEmpty(sccs *s, MMAP *dF)
 {
-	char 	*p, bk_etc[MAXPATH];
+	char 	*p, root[MAXPATH];
 	int	len;
 
 	
@@ -885,18 +886,18 @@ chkEmpty(sccs *s, MMAP *dF)
 	 *    i.e. s->tree->patname is null. This should not happen in new tree.
 	 */
 	if (s->tree && s->tree->pathname) {
-		strcpy(bk_etc, BKROOT);
+		strcpy(root, "BitKeeper/");
 		p = s->tree->pathname; /* we want the root path */
 	} else {
-		sprintf(bk_etc, "RESYNC/%s", BKROOT);
+		strcpy(root, "RESYNC/BitKeeper/");
 		assert(s->sfile);
 		p = s->sfile;
 	}
 
-	len = strlen(bk_etc);
-	if ((strlen(p) > len) && !strneq(p, bk_etc, len)) {
+	len = strlen(root);
+	if ((strlen(p) > len) && !strneq(p, root, len)) {
 		fprintf(stderr,
-			"Logging patch should not have source content\n");
+		    "Logging patch should not have source content\n");
 		return (1); /* failed */
 	}
 	return (0); /* ok */
