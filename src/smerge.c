@@ -1045,14 +1045,12 @@ resolve_conflict(conflict_t *curr)
 	if (curr->merged) {
 		ld_t	*p;
 		/* This region was automerged */
-		if (fdiff) {
-			user_conflict_fdiff(curr);
-			fputs("Merge\n", outf);
-		}
+		if (fdiff) fprintf(outf, "M %d\n", curr->start_seq);
 		for (p = curr->merged; p->line; p++) {
 			printline(p, 0);
 		}
 		free(curr->merged);
+		if (fdiff) user_conflict_fdiff(curr);
 	} else {
 		/* found a conflict that needs to be resolved
 		 * by the user
@@ -1065,10 +1063,9 @@ resolve_conflict(conflict_t *curr)
 		}
 	}
 	if (fdiff) {
-		fputs("End", outf);
-		if (curr->end_seq) {
-			fprintf(outf, " %d", curr->end_seq);
-		}
+		fputs("E", outf);
+		assert(curr->end_seq);
+		fprintf(outf, " %d", curr->end_seq);
 		fputc('\n', outf);
 	}
 	return (ret);
@@ -1288,7 +1285,9 @@ user_conflict_fdiff(conflict_t *c)
 	blankline.len = 1;
 	blankline.seq = 0;
 
-	printf("Left %d\n", c->start_seq);
+	fputs("L", outf);
+	unless (c->merged) fprintf(outf, " %d", c->start_seq);
+	fputs("\n", outf);
 	lp = left;
 	rp = right;
 	i = 0;
@@ -1316,7 +1315,7 @@ user_conflict_fdiff(conflict_t *c)
 		++i;
 	}
 
-	fputs("Right\n", outf);
+	fputs("R\n", outf);
 	for (j = 0; j < i; j++) printline(rightbuf[j].ld, rightbuf[j].c);
 
 	free(left);
