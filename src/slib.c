@@ -6897,7 +6897,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			t = relativeName(s, 0, 0);
 			assert(t);
 		}
-		if (s->state & S_CSET || (t && t[0] != '/')) {
+		if (s->state & S_CSET || (t && !IsFullPath(t))) {
 			s->state |= S_BITKEEPER|S_CSETMARKED;	
 			first->flags |= D_CKSUM;
 		} else {
@@ -9334,6 +9334,7 @@ out:
 	}
 
 	if (delta_table(s, sfile, 1, fixDate)) {
+		fclose(sfile); sfile = NULL;
 		sccs_unlock(s, 'x');
 		goto out;	/* not OUT - we want the warning */
 	}
@@ -9343,6 +9344,7 @@ out:
 		OUT;
 	}
 	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
+		fclose(sfile); sfile = NULL;
 		sccs_unlock(s, 'x');
 		goto out;	/* not OUT - we want the warning */
 	}

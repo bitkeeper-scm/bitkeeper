@@ -3,6 +3,12 @@
 # Copyright (c) 1999 lm
 # %K%
 
+if [ "$PLATFORM" = "WIN32" ]
+then
+	echo "This feature is not yet available on win32"
+	exit 0
+fi
+
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
 echo "logging: /dev/null" > $HERE/c
