@@ -403,9 +403,9 @@ renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	    gui/renametool.tcl > renametool
 
 fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl
+	gui/common.tcl gui/difflib.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/fmtool.tcl > fmtool
+	    gui/difflib.tcl gui/fmtool.tcl > fmtool
 
 fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl
 	cat gui/config.tcl gui/common.tcl gui/fm3tool.tcl > fm3tool

@@ -292,7 +292,7 @@ proc adjustHeight {diff list} \
 
 proc widgets {} \
 {
-	global	scroll gc wish tcl_platform d search fmenu
+	global	scroll gc wish tcl_platform d search fmenu app
 
 	getConfig "cset"
 	option add *background $gc(BG)
@@ -515,7 +515,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	grid columnconfigure .l.sccslog 1 -weight 1
 	grid columnconfigure .diffs 0 -weight 1
 
-	bind .diffs <Configure> { computeHeight }
+	bind .diffs <Configure> { computeHeight "diffs" }
 	#$search(widget) tag configure search \
 	#    -background $gc(cset.searchColor) -font $gc(cset.fixedBoldFont)
 	keyboard_bindings
@@ -524,7 +524,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
 	}
-	computeHeight
+	computeHeight "diffs"
 
 	.diffs.left tag configure diff -background $gc(cset.oldColor)
 	.diffs.right tag configure diff -background $gc(cset.newColor)
@@ -602,7 +602,6 @@ proc main {} \
 
 	# Set 'app' so that the difflib code knows which global config
 	# vars to read
-	set app cset
 	set revs ""
 	if {$argv == ""} {
 		set revs "+"
