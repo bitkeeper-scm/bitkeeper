@@ -206,11 +206,10 @@ csetInit(sccs *cset, int flags, char *sym)
 	 */
 	sccs_mkroot(".");
 
-	/*
-	 * awc to lm:
-	 * should we make sure there are no changeset file
-	 * in the subdirectory before we proceed ?
-	 */
+
+	 // awc to lm:
+	 // should we make sure there are no changeset file
+	 //in the subdirectory before we proceed ?
 	unless (streq(basenm(CHANGESET), basenm(cset->sfile))) {
 		fprintf(stderr, "cset: must be -i ChangeSet\n");
 		exit(1);
@@ -304,6 +303,21 @@ retry:		v = mdbm_fetch(idDB, k);
 			    kv.val.dptr, sc->sfile);
 			exit(1);
 		}
+// XXX TODO: This should probably be an option
+//#define	IGNORE_DELETED_FILES_AT_LIST
+#ifdef	IGNORE_DELETED_FILES_AT_LIST
+		/*
+		 * filter out deleted file
+		 */
+		assert(d->pathname);
+		p = strrchr(d->pathname, '/');
+		p = p ? &p[1] : d->pathname;
+		len = strlen(p);
+		if ((len >= 6) && (strncmp(p, ".del-", 5) == 0)) {
+			sccs_free(sc);
+			continue;
+		}
+#endif
 		printf("%s:%s\n", sc->gfile, d->rev);
 		sccs_free(sc);
 	}
@@ -565,6 +579,7 @@ add(MDBM *csDB, char *buf)
 		exit(1);
 	}
 	sccs_sdelta(key, sccs_ino(s));
+
 	sccs_sdelta(buf, d);
 	if (mdbm_store_str(csDB, key, buf, MDBM_REPLACE)) {
 		perror("cset MDBM store in csDB");
@@ -585,7 +600,7 @@ mkChangeSet(sccs *cset)
 {
 	MDBM	*csDB;
 	FILE	*sort;
-	delta	*d, *r;
+	delta	*d, *r, *e;
 	char	buf[MAXPATH];
 	char	key[MAXPATH];
 
@@ -609,6 +624,13 @@ mkChangeSet(sccs *cset)
 		exit(1);
 	}
 	d = sccs_dInit(0, 'D', cset, 0);
+	/*
+	 * XXX we need to insist d->hostname is non-null here, 
+	 * otherwise it will inherit hostname from its ancestor
+	 * which will cause cset -i/-L to fail since 
+	 * the signiture do not match 
+	 */
+	assert(d->hostname && d->hostname[0]);
 
 	/*
 	 * Read each file:rev from stdin and add that to the cset if it isn't
@@ -618,7 +640,7 @@ mkChangeSet(sccs *cset)
 		add(csDB, buf);
 	}
 
-	sort = popen("sort > ChangeSet", "w");
+	sort = popen("sort > ChangeSet", M_WRITE_T);
 	assert(sort);
 	r = sccs_ino(cset);
 	/* adjust the date of the new rev, scripts make this be in the
@@ -627,6 +649,18 @@ mkChangeSet(sccs *cset)
 	if (d->date == r->date) {
 		d->dateFudge++;
 		d->date++;
+	}
+	// awc -> lm : I suspect we do'nt need the code bove
+	/*
+	 * make sure the key is unique, 
+	 * This handle the case when multiple changeset is created
+	 * in the same second
+	 */
+	for (e = cset->table; e; e = e->next) {
+		if (e->date >=d->date) {
+			d->dateFudge = e->date - d->date + 1;
+			d->date = e->date + 1;
+		}
 	}
 	sccs_sdelta(key, r);
 	sccs_sdelta(buf, d);
@@ -706,9 +740,11 @@ csetCreate(sccs *cset, int flags, char *sym)
 {
 	delta	*d;
 	int	error = 0;
+	time_t	date;
 
 	d = mkChangeSet(cset);
-	unless (cset = sccs_init(csetFile, GTIME|flags)) {
+	date = d->date;
+	unless (cset = sccs_init(csetFile, flags)) {
 		perror("init");
 		goto out;
 	}
@@ -722,10 +758,12 @@ csetCreate(sccs *cset, int flags, char *sym)
 	close(0);
 	open("/dev/tty", 0, 0);
 	if (flags & DONTASK) d = getComments(d);
+	assert(d->sdate); /* this make sure d->date do'nt change */
 	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
 		sccs_whynot("cset", cset);
 		error = 1;
 	}
+	assert(d->date == date); /* make sure time stamp did not changed */
 out:	sccs_free(cset);
 	commentsDone(saved);
 	purify_list();

@@ -70,6 +70,10 @@ extern	char *strdup(char *s);
 #define	DEV_NULL	"/dev/null"
 #define	TMP_PATH	"/tmp"
 #define	IsFullPath(f)	((f)[0] == '/')
+#define M_WRITE_B	"w"		/* mode used by popen call */
+#define M_WRITE_T	"w"
+#define M_READ_B	"r"
+#define M_READ_T	"r"
 #define loadNetLib()
 #define unLoadNetLib()
 
@@ -142,7 +146,7 @@ extern	char *strdup(char *s);
 #define	SAVEGFILE	0x00000100	/* delta -n: save edited gfile */
 #define	UNEDIT		0x00000200	/* clean -u: unedit - discard changes */
 #define	NEWFILE		0x00000400	/* delta -i: create initial file */
-/*					   AVAILABLE */
+#define	AUTOCHKIN	0x00000800	/* auto check-in mode */
 #define	PATCH		0x00001000	/* mk/tkpatch, delta -R */
 #define	NOCKSUM		0x00002000	/* don't do the checksum */
 #define	FORCEBRANCH	0x00004000	/* force a branch when creating delta */
@@ -162,6 +166,7 @@ extern	char *strdup(char *s);
 #define	VERBOSE		0x10000000	/* when !SILENT isn't enough */
 #define SHUTUP		0x20000000	/* when SILENT isn't enough */
 #define GTIME		0x40000000	/* use g file mod time as time stamp */
+#define DELTA_PATH	0x80000000	/* use delta (orignal) path */
 
 /*
  * flags passd to sfileFirst
@@ -201,7 +206,7 @@ extern	char *strdup(char *s);
 #define	S_CSET		0x00100000	/* this is a changeset file */
 #define	S_NOSCCSDIR	0x00200000	/* this is a s.foo not SCCS/s.foo */
 #define S_MAPPRIVATE	0x00400000	/* hack for Samba */
-#define	S_ONE_ZERO	0x00800000	/* initial rev, make it be 1.0 */
+/*			0x00800000	AVAILABLE */
 #define S_READ_ONLY	0x01000000	/* force read only mode */
 /*			0x02000000	AVAILABLE */
 #define	S_RANGE2	0x04000000	/* second call for date|rev range */
@@ -669,6 +674,7 @@ MDBM	*loadDB(char *file, int (*want)(char *));
 MDBM	*csetIds(sccs *cset, char *rev, int all);
 void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);
+char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, char *initFile);
 int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);

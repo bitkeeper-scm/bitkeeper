@@ -136,7 +136,7 @@ sumit(char *path, int *old, int *new, int old7bit)
 	int fd, save, bytes = 0;
 
 	*old = *new = 0;
-	if ((fd = open(path, 0)) == -1) {
+	if ((fd = open(path, 0, 600)) == -1) {
 		perror(path);
 		return (-1);
 	}

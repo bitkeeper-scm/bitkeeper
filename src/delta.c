@@ -2,7 +2,8 @@
 #include "sccs.h"
 WHATSTR("%W%");
 char	*delta_help = "\n\
-usage: delta [-cGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
+usage: delta [-AcGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
+    -A		Auto mode, check in new or changed file automatically\n\
     -c		Skip the checksum generation (not advised)\n\
     -D<file>	Specify a file of diffs to be used as the change\n\
     -G		use gfile mod time as checkin time\n\
@@ -38,7 +39,7 @@ main(int ac, char **av)
 	sccs	*s;
 	//int	flags = FORCE|BRANCHOK;
 	int	flags = FORCE;
-	int	c;
+	int	c, rc;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*name;
@@ -53,7 +54,7 @@ main(int ac, char **av)
 help:		fprintf(stderr, delta_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "cD:g;GI;ilL;m;npqRS;sy|Y")) != -1) {
+	while ((c = getopt(ac, av, "AcD:g;GI;ilL;m;npqRS;sy|Y")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'g': fprintf(stderr, "-g Not implemented.\n");
@@ -72,6 +73,7 @@ help:		fprintf(stderr, delta_help);
 			break;
 
 		    /* LM flags */
+		    case 'A': flags |= AUTOCHKIN; flags &= ~FORCE; break;
 		    case 'c': flags |= NOCKSUM; break;
 		    case 'D': diffsFile = optarg; break;
 		    case 'G': flags |= GTIME; break;
@@ -130,6 +132,14 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			name = sfileNext();
 			continue;
 		}
+		if (flags & AUTOCHKIN) {
+			if (HAS_SFILE(s)) {
+				flags &= ~NEWFILE;
+			} else {
+				flags |= NEWFILE;
+			}
+		}
+
 		if (sym) {
 			if (!d) d = calloc(1, sizeof(*d));
 			d->sym = strdup(sym);
@@ -146,7 +156,9 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			}
 			nrev = pf.newrev;
 		}
-		if (sccs_delta(s, flags, d, init, diffs) == -1) {
+		rc = sccs_delta(s, flags, d, init, diffs);
+		if (rc == -2) goto next; /* no diff in file */
+		if (rc == -1) {
 			sccs_whynot("delta", s);
 			if (init) fclose(init);
 			if (diffs) fclose(diffs);
