@@ -546,8 +546,10 @@ drainNonStandardMsg(remote *r, char *buf, int bsize)
 		if (strneq("ERROR-BAD CMD: @END", buf, 19)) break; /*for push*/
 		if (strneq("ERROR-BAD CMD:", buf, 14)) continue;
 		if (streq("OK-root OK", buf)) continue;
-		fprintf(stderr, "%s\n", buf);
 		if (streq("ERROR-exiting", buf)) exit(1);
+		fprintf(stderr,
+			"drainNonStandardMsg: Unexpected response: %s\n", buf);
+		break;
 	} while (getline2(r, buf, bsize) > 0);
 
 	if (bkd_msg) {
