@@ -20,7 +20,7 @@ status_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "v")) != -1) { 
 		switch (c) {
-		    case 'v': verbose++; break;	/* doc 2.0 */
+		    case 'v': verbose++; break;			/* doc 2.0 */
 		    default:
 			system("bk help -s status");
 			return (1);

@@ -22,10 +22,10 @@ park_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "lp:qy:")) != -1) {
 		switch (c) {
-		    case 'l':	lflag = 1; break;
-		    case 'p':	purge = atoi(optarg); break;
-		    case 'q':	qflag = 1; break;
-		    case 'y':	comment = optarg; break;
+		    case 'l':	lflag = 1; break;		/* doc 2.0 */
+		    case 'p':	purge = atoi(optarg); break;	/* doc 2.0 */
+		    case 'q':	qflag = 1; break;		/* doc 2.0 */
+		    case 'y':	comment = optarg; break;	/* doc 2.0 */
 		    default: 	system("bk help -s park");
 				return (1);
 		}

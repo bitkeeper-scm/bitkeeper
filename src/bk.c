@@ -185,119 +185,119 @@ struct command cmdtbl[] = {
 	{"_sortmerge", sortmerge_main},
 	{"_strings", strings_main},
 	{"_unlink", unlink_main },
-	{"abort", abort_main},		/* doc 2.0 */	
-	{"add", delta_main},		
-	{"admin", admin_main},		/* doc 2.0 */
-	{"approve", approve_main},	/* doc 2.0 */
-	{"annotate", annotate_main},	/* doc 2.0 */
-	{"bkd", bkd_main },		/* doc 2.0 */
-	{"cat", cat_main},		/* doc 2.0 */
-	{"changes", changes_main},	/* doc 2.0 */
-	{"check", check_main},		/* doc 2.0 */
-	{"chksum", chksum_main},	/* doc 2.0 */
-	{"ci", delta_main},		/* doc 2.0 */
-	{"clean", clean_main},		/* doc 2.0 */
-	{"clone", clone_main},		/* doc 2.0 */
-	{"co", get_main},		/* doc 2.0 */
-	{"commit", commit_main},	/* doc 2.0 */
-	{"config", config_main},	/* doc 2.0 */
-	{"createlod", createlod_main},	/* undoc? 2.0 */
-	{"create", create_main},	
-	{"cset", cset_main},		/* doc 2.0 */
-	{"f2csets", f2csets_main},
-	{"delta", delta_main},		/* doc 2.0 */
-	{"deledit", deledit_main},	
-	{"delget", delget_main},	
-	{"diffs", diffs_main},		/* doc 2.0 */
-	{"edit", get_main},		/* aliases */	/* doc 2.0 */
-	{"enter", delta_main},
-	{"export", export_main},	/* doc 2.0 */
-	{"fdiff", fdiff_main},		/* undoc? 2.0 */
-	{"fix", fix_main},		/* doc 2.0 */
-	{"gca", gca_main},		/* doc 2.0 */
-	{"get", get_main},		/* doc 2.0 */
-	{"gethelp", gethelp_main},	/* undoc? 2.0 */
-	{"gethost", gethost_main},	/* doc 2.0 */
-	{"getmsg", getmsg_main},	/* undoc? 2.0 */
-	{"getuser", getuser_main},	/* doc 2.0 */
-	{"graft", graft_main},		/* undocumented */ /* undoc? 2.0 */
-	{"grep", grep_main},		/* doc 2.0 */
-	{"gnupatch", gnupatch_main},	/* doc 2.0 */
-	{"gone", gone_main},		/* doc 2.0 */
-	{"help", help_main},		/* doc 2.0 */
-	{"helpsearch", helpsearch_main},	/* undoc? 2.0 */
-	{"helptopics", helptopics_main},	/* undoc? 2.0 */
-	{"info", sinfo_main},		/* doc 2.0 */
-	{"idcache", idcache_main},	/* undoc? 2.0 */
-	{"isascii", isascii_main},	/* doc 2.0 */
-	{"key2rev", key2rev_main},	/* doc 2.0 */
-	{"level", level_main},		/* doc 2.0 */
-	{"lock", lock_main},		/* doc 2.0 */
+	{"abort", abort_main},			/* doc 2.0 */	
+	{"add", delta_main},			/* doc 2.0 */
+	{"admin", admin_main},			/* doc 2.0 */
+	{"approve", approve_main},		/* doc 2.0 */
+	{"annotate", annotate_main},		/* doc 2.0 */
+	{"bkd", bkd_main },			/* doc 2.0 */
+	{"cat", cat_main},			/* doc 2.0 */
+	{"changes", changes_main},		/* doc 2.0 */
+	{"check", check_main},			/* doc 2.0 */
+	{"chksum", chksum_main},		/* doc 2.0 */
+	{"ci", delta_main},			/* doc 2.0 */
+	{"clean", clean_main},			/* doc 2.0 */
+	{"clone", clone_main},			/* doc 2.0 */
+	{"co", get_main},			/* doc 2.0 */
+	{"commit", commit_main},		/* doc 2.0 */
+	{"config", config_main},		/* doc 2.0 */
+	{"createlod", createlod_main},		/* undoc? 2.0 */
+	{"create", create_main},		/* doc 2.0 */
+	{"cset", cset_main},			/* doc 2.0 */
+	{"f2csets", f2csets_main},		/* undoc? 2.0 */
+	{"delta", delta_main},			/* doc 2.0 */
+	{"deledit", deledit_main},		/* doc 2.0 */
+	{"delget", delget_main},		/* doc 2.0 */
+	{"diffs", diffs_main},			/* doc 2.0 */
+	{"edit", get_main},	/* aliases */	/* doc 2.0 */
+	{"enter", delta_main},			/* doc 2.0 */
+	{"export", export_main},		/* doc 2.0 */
+	{"fdiff", fdiff_main},			/* undoc? 2.0 */
+	{"fix", fix_main},			/* doc 2.0 */
+	{"gca", gca_main},			/* doc 2.0 */
+	{"get", get_main},			/* doc 2.0 */
+	{"gethelp", gethelp_main},		/* undoc? 2.0 */
+	{"gethost", gethost_main},		/* doc 2.0 */
+	{"getmsg", getmsg_main},		/* undoc? 2.0 */
+	{"getuser", getuser_main},		/* doc 2.0 */
+	{"graft", graft_main},			/* undoc? 2.0 */
+	{"grep", grep_main},			/* doc 2.0 */
+	{"gnupatch", gnupatch_main},		/* doc 2.0 */
+	{"gone", gone_main},			/* doc 2.0 */
+	{"help", help_main},			/* doc 2.0 */
+	{"helpsearch", helpsearch_main},	/* undoc 2.0 */
+	{"helptopics", helptopics_main},	/* undoc 2.0 */
+	{"info", sinfo_main},			/* doc 2.0 */
+	{"idcache", idcache_main},		/* undoc? 2.0 */
+	{"isascii", isascii_main},		/* doc 2.0 */
+	{"key2rev", key2rev_main},		/* doc 2.0 */
+	{"level", level_main},			/* doc 2.0 */
+	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"makepatch", makepatch_main},		/* doc 2.0 */
-	{"merge", merge_main},		/* doc 2.0 */
+	{"merge", merge_main},			/* doc 2.0 */
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
 	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
-	{"mv", mv_main},		/* doc 2.0 */
-	{"multiuser", multiuser_main},
-	{"names", names_main},		/* doc 2.0 */
-	{"new", delta_main},		/* aliases */		/* doc 2.0 */
-	{"oclone", oclone_main},	/* undoc? 2.0 */
-	{"opull", opull_main},		/* old pull */ /* undoc? 2.0 */
-	{"opush", opush_main},		/* old push */ /* undoc? 2.0 */
-	{"parent", parent_main},	/* doc 2.0 */
-	{"park", park_main},		/* doc 2.0 */
-	{"pending", pending_main},	/* doc 2.0 */
-	{"prs", prs_main},		/* doc 2.0 */
-	{"pull", pull_main},		/* doc 2.0 */
-	{"push", push_main},		/* doc 2.0 */
-	{"pwd", pwd_main},	/* regression test */ /* undoc? 2.0 */
-	{"r2c", r2c_main},		/* doc 2.0 */
+	{"mv", mv_main},			/* doc 2.0 */
+	{"multiuser", multiuser_main},		/* doc 2.0 */
+	{"names", names_main},			/* doc 2.0 */
+	{"new", delta_main},	/* aliases */	/* doc 2.0 */
+	{"oclone", oclone_main},		/* undoc 2.0 */
+	{"opull", opull_main},	/* old pull */ 	/* undoc 2.0 */
+	{"opush", opush_main},	/* old push */ 	/* undoc 2.0 */
+	{"parent", parent_main},		/* doc 2.0 */
+	{"park", park_main},			/* doc 2.0 */
+	{"pending", pending_main},		/* doc 2.0 */
+	{"prs", prs_main},			/* doc 2.0 */
+	{"pull", pull_main},			/* doc 2.0 */
+	{"push", push_main},			/* doc 2.0 */
+	{"pwd", pwd_main},/* regression test */ /* undoc? 2.0 */
+	{"r2c", r2c_main},			/* doc 2.0 */
 	{"range", range_main},		/* XXX - doc 2.0 it sucks*/
-	{"rcs2sccs", rcs2sccs_main},	/* doc 2.0 */
-	{"rcsparse", rcsparse_main},	/* doc 2.0 */
-	{"receive", receive_main},	/* doc 2.0 */
-	{"rechksum", rechksum_main},	/* doc 2.0 */
-	{"renumber", renumber_main},	/* doc 2.0 */
-	{"repo", repo_main},		/* obsolete */ /* undoc 2.0 */
-	{"resolve", resolve_main},	/* doc 2.0 */
-	{"rev2cset", r2c_main},		/* alias */	/* doc 2.0 as r2c */
-	{"root", root_main},		/* doc 2.0 */
-	{"rset", rset_main},		/* doc 2.0 */
-	{"rm", rm_main},		/* doc 2.0 */
-	{"rmdel", rmdel_main},		/* doc 2.0 */
-	{"sane", sane_main},		/* doc 2.0 */
-	{"sccscat", sccscat_main},	/* doc 2.0 as annotate */
-	{"sccsdiff", diffs_main},
-	{"sccslog", sccslog_main},	/* doc 2.0 */
-	{"sccsmv", mv_main},		/* alias */	/* doc 2.0 as mv */
-	{"sccsrm", rm_main},		/* alias */	/* doc 2.0 as mv */
-	{"send", send_main},		/* doc 2.0 */
-	{"sendbug", sendbug_main},	/* doc 2.0 */
-	{"setlod", setlod_main},	/* doc 2.0 as lod */
-	{"setup", setup_main },		/* doc 2.0 */
-	{"shrink", shrink_main}, 	
-	{"sfiles", sfind_main}, 	/* aliases */ /* doc 2.0 */
-	{"sfind", sfind_main},		/* doc 2.0 as sfiles */
-	{"sfio", sfio_main},		/* doc 2.0 */
-	{"sinfo", sinfo_main},		/* alias */	/* doc 2.0 as info */
-	{"status", status_main},	/* doc 2.0 */
-	{"stripdel", stripdel_main},	/* doc 2.0 */
-	{"takepatch", takepatch_main},	/* doc 2.0 */
-	{"undo", undo_main},		/* doc 2.0 */
-	{"undos", undos_main},		/* doc 2.0 */
-	{"unedit", unedit_main},	/* doc 2.0 */
-	{"unget", unedit_main},		/* aliases */	/* doc 2.0 as unedit */
-	{"unlock", unlock_main },	/* doc 2.0 */
-	{"unpark", unpark_main},	/* doc 2.0 */
-	{"unpull", unpull_main},
-	{"unwrap", unwrap_main},	/* doc 2.0 */
-	{"users", users_main},		/* doc 2.0 */
-	{"val", val_main},	
-	{"version", version_main},	/* doc 2.0 */
-	{"what", what_main},		/* doc 2.0 */
-	{"xflags", xflags_main},
-	{"zone", zone_main},		/* doc 2.0 */
+	{"rcs2sccs", rcs2sccs_main},		/* doc 2.0 */
+	{"rcsparse", rcsparse_main},		/* doc 2.0 */
+	{"receive", receive_main},		/* doc 2.0 */
+	{"rechksum", rechksum_main},		/* doc 2.0 */
+	{"renumber", renumber_main},		/* doc 2.0 */
+	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
+	{"resolve", resolve_main},		/* doc 2.0 */
+	{"rev2cset", r2c_main},	/* alias */	/* doc 2.0 as r2c */
+	{"root", root_main},			/* doc 2.0 */
+	{"rset", rset_main},			/* doc 2.0 */
+	{"rm", rm_main},			/* doc 2.0 */
+	{"rmdel", rmdel_main},			/* doc 2.0 */
+	{"sane", sane_main},			/* doc 2.0 */
+	{"sccscat", sccscat_main},		/* doc 2.0 as annotate */
+	{"sccsdiff", diffs_main},		/* doc 2.0 */
+	{"sccslog", sccslog_main},		/* doc 2.0 */
+	{"sccsmv", mv_main},	/* alias */	/* doc 2.0 as mv */
+	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
+	{"send", send_main},			/* doc 2.0 */
+	{"sendbug", sendbug_main},		/* doc 2.0 */
+	{"setlod", setlod_main},		/* doc 2.0 as lod */
+	{"setup", setup_main },			/* doc 2.0 */
+	{"shrink", shrink_main}, 		/* undoc? 2.0 */
+	{"sfiles", sfind_main}, /* aliases */ 	/* doc 2.0 */
+	{"sfind", sfind_main},			/* doc 2.0 as sfiles */
+	{"sfio", sfio_main},			/* doc 2.0 */
+	{"sinfo", sinfo_main},	/* alias */	/* doc 2.0 as info */
+	{"status", status_main},		/* doc 2.0 */
+	{"stripdel", stripdel_main},		/* doc 2.0 */
+	{"takepatch", takepatch_main},		/* doc 2.0 */
+	{"undo", undo_main},			/* doc 2.0 */
+	{"undos", undos_main},			/* doc 2.0 */
+	{"unedit", unedit_main},		/* doc 2.0 */
+	{"unget", unedit_main},	/* aliases */	/* doc 2.0 as unedit */
+	{"unlock", unlock_main },		/* doc 2.0 */
+	{"unpark", unpark_main},		/* doc 2.0 */
+	{"unpull", unpull_main},		/* doc 2.0 */
+	{"unwrap", unwrap_main},		/* doc 2.0 */
+	{"users", users_main},			/* doc 2.0 */
+	{"val", val_main},			/* doc 2.0 */
+	{"version", version_main},		/* doc 2.0 */
+	{"what", what_main},			/* doc 2.0 */
+	{"xflags", xflags_main},		/* doc 2.0 */
+	{"zone", zone_main},			/* doc 2.0 */
 
 	{0, 0},
 };
@@ -373,12 +373,12 @@ main(int ac, char **av)
 			    case 'e': case 'E': case 'g': case 'i':
 			    case 'j': case 'l': case 'n': case 'p':
 			    case 'S': case 'u': case 'U': case 'v':
-			    case 'x':
+			    case 'x':				/* doc 2.0 */
 				sopts[++si] = c;
 				break;
-			    case 'h':
+			    case 'h':				/* undoc? 2.0 */
 				return (help_main(1, argv));
-			    case 'r':
+			    case 'r':				/* doc 2.0 */
 				if (optarg) {
 					unless (chdir(optarg) == 0) {
 						perror(optarg);
@@ -393,7 +393,7 @@ main(int ac, char **av)
 				}
 				dashr++;
 				break;
-			    case 'R':
+			    case 'R':				/* doc 2.0 */
 				unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
 					    "bk: Cannot find package root.\n");

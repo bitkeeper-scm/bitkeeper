@@ -23,8 +23,8 @@ abort_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "fp")) != -1) {
 		switch (c) {
-		    case 'f': force = 1; break; /* doc 2.0 */
-		    case 'p': leavepatch = 1; break; /* undoc? 2.0 */
+		    case 'f': force = 1; break; 	/* doc 2.0 */
+		    case 'p': leavepatch = 1; break; 	/* undoc? 2.0 */
 		    default:
 usage:			system("bk help -s abort");
 			return (1);

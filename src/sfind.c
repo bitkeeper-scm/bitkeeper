@@ -185,38 +185,41 @@ sfind_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "aAcCdDeEgijklno:p|P|rRs:SuUvx")) != -1) {
 		switch (c) {
-		    case 'a':	opts.all = 1; break;
-		    case 'A':	opts.pending = opts.Aflg = 1; break;
-		    case 'c':	opts.modified = 1; break;
-		    case 'C':	opts.pending = opts.Cflg = 1; break;
-		    case 'd':	sfiles_compat = 1; break;
-		    case 'D':	sfiles_compat = 1; break;
-		    case 'i':	/* see below */
-		    case 'E':	opts.modified = 1;
+		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
+		    case 'A':					/* undoc? 2.0 */
+				opts.pending = opts.Aflg = 1; break;
+		    case 'c':	opts.modified = 1; break;	/* doc 2.0 */
+		    case 'C':					/* undoc? 2.0 */
+				opts.pending = opts.Cflg = 1; break;
+		    case 'd':	sfiles_compat = 1; break;	/* doc 2.0 */
+		    case 'D':	sfiles_compat = 1; break;	/* doc 2.0 */
+		    case 'i':	/* see below */	/* doc 2.0 */
+		    case 'E':	opts.modified = 1;		/* doc 2.0 */
 				opts.nflg = 1;
 				opts.names = 1;
 				opts.pending = 1;
 				/* fall thru */
-		    case 'e':	opts.junk = 1;
+		    case 'e':	opts.junk = 1;			/* doc 2.0 */
 				opts.extras = 1;
 				opts.locked = 1;
 				unless (c == 'i') opts.unlocked = 1;
 				opts.show_markers = 1;
 				break;
-		    case 'g':	opts.gfile = 1; break;
-		    case 'j':	opts.junk = 1; break;
-		    case 'k':	sfiles_compat = 1; break;
-		    case 'l':   opts.locked = 1; break;
-		    case 'n':   opts.names = 1; break;
-		    case 'o':	unless (opts.out = fopen(optarg, "w")) {
+		    case 'g':	opts.gfile = 1; break;		/* doc 2.0 */
+		    case 'j':	opts.junk = 1; break;		/* doc 2.0 */
+		    case 'k':	sfiles_compat = 1; break;	/* undoc? 2.0 */
+		    case 'l':   opts.locked = 1; break;		/* doc 2.0 */
+		    case 'n':   opts.names = 1; break;		/* doc 2.0 */
+		    case 'o':					/* doc 2.0 */
+				unless (opts.out = fopen(optarg, "w")) {
 		    			perror(optarg);
 					exit(1);
 				}
 				opts.progress = 1;
 				break;
-		    case 'P':	opts.fixdfile = 1;	  /* 2.0 undoc */
+		    case 'P':	opts.fixdfile = 1;	  	/* undoc 2.0 */
 				/* fall thru */
-		    case 'p':	opts.pending =1;
+		    case 'p':	opts.pending =1;		/* doc 2.0 */
 				for (s = optarg; s && *s; s++) {
 					if (*s == 'A') {
 						opts.Aflg = 1;
@@ -225,14 +228,15 @@ sfind_main(int ac, char **av)
 					else goto usage;
 				}
 				break;
-		    case 'r':	sfiles_compat = 1; break;
-		    case 'R':	sfiles_compat = 1; break;
-		    case 's':	parse_select(optarg); break;
-		    case 'S':	opts.summarize = 1; break;
-		    case 'u':	opts.unlocked = 1; break;
-		    case 'U':	opts.useronly = 1; break;
-		    case 'v':	opts.show_markers = 1; break;
-		    case 'x':	opts.extras = opts.junk = 1; break;
+		    case 'r':	sfiles_compat = 1; break;	/* undoc? 2.0 */
+		    case 'R':	sfiles_compat = 1; break;	/* undoc? 2.0 */
+		    case 's':	parse_select(optarg); break;	/* undoc? 2.0 */
+		    case 'S':	opts.summarize = 1; break;	/* doc 2.0 */
+		    case 'u':	opts.unlocked = 1; break;	/* doc 2.0 */
+		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
+		    case 'v':	opts.show_markers = 1; break;	/* doc 2.0 */
+		    case 'x':					/* doc 2.0 */
+				opts.extras = opts.junk = 1; break;
 		    default: 	
 usage:				system("bk help -s sfiles");
 				return (1);

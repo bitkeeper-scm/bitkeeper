@@ -39,18 +39,18 @@ push_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "ac:deE:ilnqtz|")) != -1) {
 		switch (c) {
-		    case 'a': opts.autopull = 1; break;	/* doc 2.0 */
+		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
-		    case 'd': opts.debug = 1; break;	/* undoc 2.0 */
-		    case 'e': opts.metaOnly = 1; break;	/* undoc 2.0 */
-		    case 'E': 	/* doc 2.0 */
+		    case 'd': opts.debug = 1; break;		/* undoc 2.0 */
+		    case 'e': opts.metaOnly = 1; break;		/* undoc 2.0 */
+		    case 'E': 					/* doc 2.0 */
 				envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'i': opts.forceInit = 1; break;	/* undoc? 2.0 */
-		    case 'l': opts.list++; break;	/* doc 2.0 */
-		    case 'n': opts.doit = 0; break;	/* doc 2.0 */
-		    case 'q': opts.verbose = 0; break;	/* doc 2.0 */
-		    case 't': opts.textOnly = 1; break;	/* doc 2.0 */
-		    case 'z':	/* doc 2.0 */
+		    case 'l': opts.list++; break;		/* doc 2.0 */
+		    case 'n': opts.doit = 0; break;		/* doc 2.0 */
+		    case 'q': opts.verbose = 0; break;		/* doc 2.0 */
+		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
+		    case 'z':					/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;

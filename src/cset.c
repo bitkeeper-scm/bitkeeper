@@ -69,28 +69,28 @@ usage:		system("bk help makepatch");
 	while ((c = getopt(ac, av, "c|e|dr|sCqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
-		    case 'd':
+		    case 'd':					/* doc 2.0 */
 			nav[++i] = "-d";
 			break;
-		    case 'r':
+		    case 'r':					/* doc 2.0 */
 		    	c = 'm';
-		    case 'c':
-		    case 'e':
+		    case 'c':					/* doc 2.0 */
+		    case 'e':					/* doc 2.0 */
 			if (range) goto usage;
 			range = malloc((optarg ? strlen(optarg) : 0) + 10);
 			sprintf(range, "-%c%s", c, optarg ? optarg : "");
 			nav[++i] = range;
 		    	break;
-		    case 's':
+		    case 's':					/* undoc? 2.0 */
 			copts.serial = 1;
 			break;
-		    case 'C':
+		    case 'C':					/* undoc? 2.0 */
 			copts.compat = 1;
 			break;
-		    case 'q':
+		    case 'q':					/* undoc? 2.0 */
 			nav[++i] = "-q";
 			break;
-		    case 'v':
+		    case 'v':					/* doc 2.0 */
 			nav[++i] = "-v";
 			break;
 		    default:
@@ -140,16 +140,16 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	    (c =
 	    getopt(ac, av, "c|e|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
 		switch (c) {
-		    case 'D': ignoreDeleted++; break;	/* undoc 2.0 */
-		    case 'f': copts.force++; break;	/* undoc? 2.0 */
-		    case 'h': copts.historic++; break;	/* undoc? 2.0 */
-		    case 'H': copts.hide_cset++; break;	/* undoc 2.0 internal */
-		    case 'i':	/* doc 2.0 */
+		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
+		    case 'f': copts.force++; break;		/* undoc? 2.0 */
+		    case 'h': copts.historic++; break;		/* undoc? 2.0 */
+		    case 'H': copts.hide_cset++; break;		/* undoc 2.0 */
+		    case 'i':					/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.include++;
 			r[rd++] = optarg;
 			break;
-		    case 'r':	/* undoc? 2.0 */
+		    case 'r':					/* doc 2.0 */
 			if (streq(av[0], "makepatch")) {
 				/* pretend -r<rev> is -m<rev> */
 				c = 'm';
@@ -157,25 +157,25 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 				copts.listeach++;
 			}
 		    	/* fall through */
-		    case 'd':	/* undoc? 2.0 */
+		    case 'd':					/* undoc? 2.0 */
 			if (c == 'd') copts.doDiffs++;
 		    	/* fall through */
-		    case 'e':	/* undoc? 2.0 */
+		    case 'e':					/* undoc? 2.0 */
 			if (c == 'e') {
 				copts.metaOnly++;
 				copts.makepatch = 1;
 			}
 			/* fall through */
-		    case 'c':	/* undoc? 2.0 */
+		    case 'c':					/* undoc? 2.0 */
 			if (c == 'c') {
 				copts.csetOnly++;
 				copts.makepatch = 1;
 			}
 			/* fall through */
-		    case 'M':	/* doc 2.0 */
+		    case 'M':					/* doc 2.0 */
 			if (c == 'M') copts.mark++;
 			/* fall through */
-		    case 'm':	/* undoc? 2.0 */
+		    case 'm':					/* undoc? 2.0 */
 			if (c == 'm') copts.makepatch = 1;
 		    	list |= 1;
 			if (optarg) {
@@ -183,7 +183,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 				things += tokens(notnull(optarg));
 			}
 			break;
-		    case 'C':	/* doc 2.0 */
+		    case 'C':					/* doc 2.0 */
 			unless (streq(av[0], "makepatch")) {
 				/* XXX - this stomps on everyone else */
 		    		list |= 1;
@@ -195,24 +195,24 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 				things = tokens(notnull(optarg));
 			}
 			break;
-		    case 'p': flags |= PRINT; break;	/* doc 2.0 */
-		    case 'q':	/* doc 2.0 */
-		    case 's': flags |= SILENT; break;	/* undoc? 2.0 */
-		    case 'v': copts.verbose++; break;	/* undoc? 2.0 */
-		    case 'x':	/* doc 2.0 */
+		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
+		    case 'q':					/* doc 2.0 */
+		    case 's': flags |= SILENT; break;		/* undoc? 2.0 */
+		    case 'v': copts.verbose++; break;		/* undoc? 2.0 */
+		    case 'x':					/* doc 2.0 */
 			if (copts.include || copts.exclude) goto usage;
 			copts.exclude++;
 			r[rd++] = optarg;
 			break;
-		    case 'y':	/* doc 2.0 */
+		    case 'y':					/* doc 2.0 */
 			comments_save(optarg);
 			flags |= DELTA_DONTASK;
 			break;
-		    case 'Y':	/* doc 2.0 */
+		    case 'Y':					/* doc 2.0 */
 			comments_save(cFile = file2str(optarg));
 			flags |= DELTA_DONTASK;
 			break;
-		    case 'S': 	/* doc 2.0 */
+		    case 'S': 					/* doc 2.0 */
 				syms = addLine(syms, strdup(optarg)); break;
 
 		    default:

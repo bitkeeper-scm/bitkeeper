@@ -66,19 +66,19 @@ sfio_main(int ac, char **av)
 	out_reg = out_file;
 	while ((c = getopt(ac, av, "cimopq")) != -1) {
 		switch (c) {
-		    case 'c':	/* undoc */
+		    case 'c':					/* undoc 2.0 */
 			compat = 1;
 			in_reg = in_file_compat;
 			out_reg = out_file_compat;
 			break;
-		    case 'i': 	/* doc 2.0 */
+		    case 'i': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_IN;   break;
-		    case 'o': 	/* doc 2.0 */
+		    case 'o': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_OUT;  break;
-		    case 'p': 	/* doc 2.0 */
+		    case 'p': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_LIST; break; 
-		    case 'm': doModes = 1; break; 	/* doc 2.0 */
-		    case 'q': quiet = 1; break; 	/* doc 2.0 */
+		    case 'm': doModes = 1; break; 		/* doc 2.0 */
+		    case 'q': quiet = 1; break; 		/* doc 2.0 */
 		    default:
 			goto usage;
 		}

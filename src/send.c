@@ -120,10 +120,10 @@ send_main(int ac,  char **av)
 	}
 	while ((c = getopt(ac, av, "dfqr:w:")) != -1) {
 		switch (c) {
-		    case 'd':	dflag = "-d"; break;	/* doc 2.0 */
-		    case 'f':	force++; break;	/* doc 2.0 */
-		    case 'q':	qflag = ""; break;	/* doc 2.0 */
-		    case 'r': 	rev = optarg; break;	/* doc 2.0 */
+		    case 'd':	dflag = "-d"; break;		/* doc 2.0 */
+		    case 'f':	force++; break;			/* doc 2.0 */
+		    case 'q':	qflag = ""; break;		/* doc 2.0 */
+		    case 'r': 	rev = optarg; break;		/* doc 2.0 */
 		    case 'w': 	wrapper = optarg; break;	/* doc 2.0 */
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);

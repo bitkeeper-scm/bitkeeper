@@ -43,8 +43,8 @@ renumber_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "nqs")) != -1) {
 		switch (c) {
-		    case 'n': dont = 1; break;	/* doc 2.0 */
-		    case 's':	/* undoc? 2.0 */
+		    case 'n': dont = 1; break;			/* doc 2.0 */
+		    case 's':					/* undoc? 2.0 */
 		    case 'q': quiet++; flags |= SILENT; break;	/* doc 2.0 */
 		    default:
 			system("bk help -s renumber");

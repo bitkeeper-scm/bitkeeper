@@ -19,8 +19,8 @@ unpull_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "fq")) != -1) {
 		switch (c) {
-		    case 'f': force = 1; break;
-		    case 'q': quiet = 1; break;
+		    case 'f': force = 1; break;			/* doc 2.0 */
+		    case 'q': quiet = 1; break;			/* doc 2.0 */
 		    default:
 			system("bk help -s unpull");
 			return (1);

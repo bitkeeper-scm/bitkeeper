@@ -109,20 +109,20 @@ takepatch_main(int ac, char **av)
 	debug_main(av);
 	while ((c = getopt(ac, av, "acFf:imqsStv")) != -1) {
 		switch (c) {
-		    case 'q':	/* undoc 2.0 */
-		    case 's':	/* undoc 2.0 */
+		    case 'q':					/* undoc 2.0 */
+		    case 's':					/* undoc 2.0 */
 			/* undoc, Ignored for option consistency.  */
 			break;
-		    case 'a': resolve++; break;	/* doc 2.0 */
-		    case 'c': noConflicts++; break;	/* doc 2.0 */
-		    case 'F': fast++; break;	/* doc 2.0 */
-		    case 'f':	/* doc 2.0 */
+		    case 'a': resolve++; break;			/* doc 2.0 */
+		    case 'c': noConflicts++; break;		/* doc 2.0 */
+		    case 'F': fast++; break;			/* doc 2.0 */
+		    case 'f':					/* doc 2.0 */
 			    input = optarg;
 			    break;
-		    case 'i': newProject++; break;	/* doc 2.0 */
-		    case 'm': mkpatch++; break;	/* doc 2.0 */
-		    case 'S': saveDirs++; break;	/* doc 2.0 */
-		    case 't': textOnly++; break;	/* doc 2.0 */
+		    case 'i': newProject++; break;		/* doc 2.0 */
+		    case 'm': mkpatch++; break;			/* doc 2.0 */
+		    case 'S': saveDirs++; break;		/* doc 2.0 */
+		    case 't': textOnly++; break;		/* doc 2.0 */
 		    case 'v': echo++; flags &= ~SILENT; break;	/* doc 2.0 */
 		    default: goto usage;
 		}

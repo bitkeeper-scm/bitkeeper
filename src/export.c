@@ -32,23 +32,23 @@ export_main(int ac,  char **av)
 
 	while ((c = getopt(ac, av, "d:hkt:Twvi|x|r:")) != -1) {
 		switch (c) {
-		    case 'v':	vflag = 1; break;	/* doc 2.0 */
-		    case 'q':	/* undoc 2.0 */
+		    case 'v':	vflag = 1; break;		/* doc 2.0 */
+		    case 'q':					/* undoc 2.0 */
 				break; /* no op; for interface consistency */
 		    case 'd':	diff_style = optarg; break;	/* doc 2.0 */
-		    case 'h':	/* doc 2.0 */
+		    case 'h':					/* doc 2.0 */
 			hflag = 1; break; /*disbale patch header*/
-		    case 'k':	kflag = 1; break;	/* doc 2.0 */
-		    case 'r':	rev = optarg; break;	/* doc 2.0 */
-		    case 't':	if (type) goto usage;	/* doc 2.0 */
+		    case 'k':	kflag = 1; break;		/* doc 2.0 */
+		    case 'r':	rev = optarg; break;		/* doc 2.0 */
+		    case 't':	if (type) goto usage;		/* doc 2.0 */
 				type = optarg; 
 				if (!streq(type, "patch") &&
 				    !streq(type, "plain")) {
 					goto usage;
 				}
 				break;
-		    case 'T':	tflag = 1; break;	/* doc 2.0 */
-		    case 'w':	wflag = 1; break;	/* doc 2.0 */
+		    case 'T':	tflag = 1; break;		/* doc 2.0 */
+		    case 'w':	wflag = 1; break;		/* doc 2.0 */
 		    case 'i':	if (optarg && *optarg) {	/* doc 2.0 */
 					strcpy(include, optarg);
 				} else {

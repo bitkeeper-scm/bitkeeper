@@ -54,9 +54,9 @@ _get_main(int ac, char **av, char *out)
 		    case 'C': commitedOnly = 1; break;		/* doc 2.0 */
 		    case 'd': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'D': getdiff++; break;			/* doc 2.0 */
-		    case 'l':		/* undoc in get, doc-ed in co */
+		    case 'l':					/* doc 2.0 co */
 		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */
-		    case 'f': flags |= GET_FULLPATH; break;
+		    case 'f': flags |= GET_FULLPATH; break;	/* undoc? 2.0 */
 		    case 'F': iflags |= INIT_NOCKSUM; break;	/* doc 2.0 */
 		    case 'g': flags |= GET_SKIPGET; break;	/* doc 2.0 */
 		    case 'G': Gname = optarg; break;		/* doc 2.0 */
@@ -75,7 +75,7 @@ _get_main(int ac, char **av, char *out)
 		    case 'R': sf_flags |= SF_HASREVS; break;	/* doc 2.0 */
 		    case 's': flags |= SILENT; break;		/* undoc */
 		    case 'S': flags |= GET_NOREGET; break;	/* doc 2.0 */
-		    case 't': break;		/* compat, noop, undoc */
+		    case 't': break;		/* compat, noop, undoc 2.0 */
 		    case 'T': flags |= GET_DTIME; break;	/* doc 2.0 */
 		    case 'u': flags |= GET_USER; break;		/* doc 2.0 */
 		    case 'x': xLst = optarg; break;		/* doc 2.0 */

@@ -58,25 +58,25 @@ admin_main(int ac, char **av)
 	       != -1) {
 		switch (c) {
 		/* user|group */
-		    case 'a':	OP(u, optarg, A_ADD); break; /* undoc? 2.0 */
-		    case 'e':	OP(u, optarg, A_DEL); break; /* undoc? 2.0 */
+		    case 'a':	OP(u, optarg, A_ADD); break; 	/* undoc? 2.0 */
+		    case 'e':	OP(u, optarg, A_DEL); break; 	/* undoc? 2.0 */
 		/* flags */
-		    case 'f':	/* doc 2.0 */
+		    case 'f':					/* doc 2.0 */
 				OP(f, optarg, A_ADD); new_delta = 1; break; 
-		    case 'F':	/* doc 2.0 */
-		    case 'd':	/* undoc 2.0 */
+		    case 'F':					/* doc 2.0 */
+		    case 'd':					/* undoc 2.0 */
 				OP(f, optarg, A_DEL); new_delta = 1; break; 
 		/* new file options */
 		    case 'i':	newfile = optarg ? optarg : "-"; /* doc 2.0 */
 				flags |= NEWFILE; break;
-		    case 'n':	flags |= NEWFILE; break;   /* undoc? 2.0 */
-		    case 'r':	rev = optarg; break;	/* doc 2.0 */
+		    case 'n':	flags |= NEWFILE; break;   	/* undoc? 2.0 */
+		    case 'r':	rev = optarg; break;		/* doc 2.0 */
 		    case 'y':	comment = optarg; break;	/* doc 2.0 */
-		    case 'M':	/* doc 2.0 */
+		    case 'M':					/* doc 2.0 */
 				merge = optarg; flags |= NEWCKSUM; break;
 		/* mode */
 		/* XXX should accept octal modes too */
-		    case 'm':	m = optarg;		/* doc 2.0 */
+		    case 'm':	m = optarg;			/* doc 2.0 */
 		    		switch (m[0]) {
 				    case '-':
 				    case 'l':
@@ -91,7 +91,7 @@ admin_main(int ac, char **av)
 		   		flags |= NEWCKSUM;
 				break;
 		/* pathname */
-		    case 'p':	path = optarg;	/* doc 2.0 */
+		    case 'p':	path = optarg;			/* doc 2.0 */
 		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
 				break;
@@ -100,21 +100,21 @@ admin_main(int ac, char **av)
 				flags |= NEWCKSUM;
 				touchGfile++;
 				break;
-		    case 'E':	encp = optarg; break;	/* doc 2.0 */
+		    case 'E':	encp = optarg; break;		/* doc 2.0 */
 		/* symbols */
 		    case 'S':	OP(s, optarg, A_ADD); break;	/* doc 2.0 */
 		/* text */
-		    case 't':	/* doc 2.0 */
+		    case 't':					/* doc 2.0 */
 			text = optarg ? optarg : ""; new_delta = 1; break;
-		    case 'T':	/* doc 2.0 */	
+		    case 'T':					/* doc 2.0 */	
 			text = ""; new_delta = 1; break;
 		/* singletons */
-		    case '0':	/* doc 2.0 */
+		    case '0':					/* doc 2.0 */
 			flags |= ADMIN_ADD1_0|NEWCKSUM; break;
-		    case 'B':	bigpad++; break;	/* doc 2.0 */
-		    case 'C':	/* doc 2.0 */
+		    case 'B':	bigpad++; break;		/* doc 2.0 */
+		    case 'C':					/* doc 2.0 */
 			csetFile = optarg; newCset++; flags |= NEWCKSUM; break;
-		    case 'D':	/* doc 2.0 */
+		    case 'D':					/* doc 2.0 */
 			rmCsets = 1; break;
 		    case 'h':	if (flags & ADMIN_FORMAT) {	/* doc 2.0 */
 		    			flags |= ADMIN_BK;
@@ -124,12 +124,12 @@ admin_main(int ac, char **av)
 		    			flags |= ADMIN_FORMAT;
 				}
 				break;
-		    case 'H':	/* doc 2.0 */	
+		    case 'H':					/* doc 2.0 */	
 				flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
 				break;
-		    case 's':	/* undoc? 2.0 */
+		    case 's':					/* undoc? 2.0 */
 		    case 'q':	flags |= SILENT; break;		/* doc 2.0 */
-		    case 'u':	/* doc 2.0 */
+		    case 'u':					/* doc 2.0 */
 			doDates = 1; flags |= NEWCKSUM; break;
 		    case 'z':	init_flags |= INIT_NOCKSUM;	/* doc 2.0 */
 		    		flags |= NEWCKSUM;

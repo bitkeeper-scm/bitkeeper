@@ -38,7 +38,7 @@ unlock_main(int ac, char **av)
 	while ((c = getopt(ac, av, "bfprswxz")) != -1) {
 		switch (c) {
 		    case 'b': flags |= BLOCK; break;	/* doc 2.0 */
-		    case 'f': force = 1; break;	/* doc 2.0 */
+		    case 'f': force = 1; break;		/* doc 2.0 */
 		    case 'p': flags |= PLOCK; break;	/* doc 2.0 */
 		    case 'r': flags |= RLOCK; break;	/* doc 2.0 */
 		    case 's': flags |= STALE; break;	/* doc 2.0 */

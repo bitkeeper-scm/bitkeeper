@@ -70,12 +70,12 @@ resolve_main(int ac, char **av)
 	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
-		    case 'A': opts.advance = 1; break;	/* doc 2.0 */
+		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
 		    case 'c': opts.noconflicts = 1; break;	/* doc 2.0 */
-		    case 'd': 	/* doc 2.0 */
+		    case 'd': 					/* doc 2.0 */
 			opts.debug = 1; putenv("BK_DEBUG_CMD=YES"); break;
-		    case 'F': opts.force = 1; break;	/* undoc? 2.0 */
-		    case 'l':	/* doc 2.0 */
+		    case 'F': opts.force = 1; break;		/* undoc? 2.0 */
+		    case 'l':					/* doc 2.0 */
 		    	if (optarg) {
 				opts.log = fopen(optarg, "a");
 			} else {
@@ -83,15 +83,15 @@ resolve_main(int ac, char **av)
 			}
 			break;
 		    case 'm': opts.mergeprog = optarg; break;	/* doc 2.0 */
-		    case 'q': opts.quiet = 1; break;	/* doc 2.0 */
-		    case 'r': opts.remerge = 1; break;	/* doc 2.0 */
-		    case 't': opts.textOnly = 1; break;	/* doc 2.0 */
-		    case 'y': /* doc 2.0 */
+		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
+		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
+		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
+		    case 'y': 					/* doc 2.0 */
 			opts.comment = optarg; comment = 1; break;
-		    case '1': opts.pass1 = 0; break;	/* doc 2.0 */
-		    case '2': opts.pass2 = 0; break;	/* doc 2.0 */
-		    case '3': opts.pass3 = 0; break;	/* doc 2.0 */
-		    case '4': opts.pass4 = 0; break;	/* doc 2.0 */
+		    case '1': opts.pass1 = 0; break;		/* doc 2.0 */
+		    case '2': opts.pass2 = 0; break;		/* doc 2.0 */
+		    case '3': opts.pass3 = 0; break;		/* doc 2.0 */
+		    case '4': opts.pass4 = 0; break;		/* doc 2.0 */
 		    default:
 		    	fprintf(stderr, "resolve: bad opt %c\n", optopt);
 			system("bk help -s resolve");

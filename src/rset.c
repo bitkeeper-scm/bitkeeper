@@ -374,19 +374,19 @@ rset_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "ahHl|r|")) != -1) {
 		switch (c) {
-		case 'a':	/* doc 2.0 */	
+		case 'a':					/* doc 2.0 */	
 				opts.show_all = 1;  /* show deleted files */
 				break;
-		case 'h':	/* doc 2.0 */
+		case 'h':					/* doc 2.0 */
 				opts.show_path = 1; /* show historic path */
 				break;
-		case 'H':	/* doc 2.0 */
+		case 'H':					/* undoc 2.0 */
 				opts.hide_cset = 1; /* hide ChangeSet file */
 				break;
-		case 'l':	opts.lflg = 1;	/* doc 2.0 */
+		case 'l':	opts.lflg = 1;			/* doc 2.0 */
 				rev1 = optarg;
 				break;
-		case 'r':	opts.rflg = 1;	/* doc 2.0 */
+		case 'r':	opts.rflg = 1;			/* doc 2.0 */
 				if (parse_rev(s, optarg,
 						&rev1, &revM, &rev2, rbuf)) {
 					return (1); /* parse failed */

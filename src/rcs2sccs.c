@@ -36,11 +36,11 @@ rcs2sccs_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "c;dhqu")) != -1) {
 		switch (c) {
-		    case 'c': cutoff = optarg; break;	/* doc 2.0 */
-		    case 'd': Flags = 0; break;	/* undoc? 2.0 */
+		    case 'c': cutoff = optarg; break;		/* doc 2.0 */
+		    case 'd': Flags = 0; break;			/* undoc? 2.0 */
 		    case 'q': if (verbose) verbose--; break;	/* doc 2.0 */
-		    case 'h': verify++; break;	/* doc 2.0 */
-		    case 'u': undos++; break;	/* undoc? 2.0 */
+		    case 'h': verify++; break;			/* doc 2.0 */
+		    case 'u': undos++; break;			/* doc 2.0 */
 		    default:
 		    	fprintf(stderr,
 			    "Usage: %s [-hq] [-c<TAG>] files\n", av[0]);

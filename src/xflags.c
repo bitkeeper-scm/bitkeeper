@@ -29,8 +29,8 @@ usage:		fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
 	}
 	while ((c = getopt(ac, av, "ns")) != -1) {
 		switch (c) {
-		    case 'n': what = XF_DRYRUN; break;
-		    case 's': what = XF_STATUS; break;
+		    case 'n': what = XF_DRYRUN; break;		/* doc 2.0 */
+		    case 's': what = XF_STATUS; break;		/* doc 2.0 */
 		    default: goto usage;
 		}
 	}

@@ -40,14 +40,14 @@ annotate_main(int ac, char **av)
 	while ((c = getopt(ac, av, "ac;dkmnNr;u")) != -1) {
 		switch (c) {
 		    case 'a': flags |= GET_ALIGN; break;	/* doc 2.0 */
-		    case 'c': cdate = optarg; break;	/* doc 2.0 */
+		    case 'c': cdate = optarg; break;		/* doc 2.0 */
 		    case 'd': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
 		    case 'm': flags |= GET_REVNUMS; break;	/* doc 2.0 */
 		    case 'n': flags |= GET_MODNAME; break;	/* doc 2.0 */
 		    case 'N': flags |= GET_LINENUM; break;	/* doc 2.0 */
-		    case 'r': rev = optarg; break;	/* doc 2.0 */
-		    case 'u': flags |= GET_USER; break;	/* doc 2.0 */
+		    case 'r': rev = optarg; break;		/* doc 2.0 */
+		    case 'u': flags |= GET_USER; break;		/* doc 2.0 */
 
 		    default:
 usage:			system("bk help -s annotate");

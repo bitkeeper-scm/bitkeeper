@@ -26,30 +26,30 @@ grep_main(int ac, char **av)
 	rev[0] = range[0] = 0;
 	while ((c = getopt(ac, av, "ac|defimnNur|R|")) != -1) {
 		switch (c) {
-		    case 'a':	/* doc 2.0 */
+		    case 'a':					/* doc 2.0 */
 			none = 1;
 			break;
-		    case 'd':	/* doc 2.0 */
-		    case 'f':
-		    case 'm':	/* doc 2.0 */
-		    case 'n':	/* doc 2.0 */
-		    case 'N':	/* doc 2.0 */
-		    case 'u':	/* doc 2.0 */
+		    case 'd':					/* doc 2.0 */
+		    case 'f':					/* undoc? 2.0 */
+		    case 'm':					/* doc 2.0 */
+		    case 'n':					/* doc 2.0 */
+		    case 'N':					/* doc 2.0 */
+		    case 'u':					/* doc 2.0 */
 			*s++ = c;
 			break;
-		    case 'e':	/* doc 2.0 */
+		    case 'e':					/* doc 2.0 */
 		    	grep = "egrep";
 			break;
-		    case 'r':	/* doc 2.0 */
+		    case 'r':					/* doc 2.0 */
 			sprintf(rev, "-r%s", optarg);
 			break;
-		    case 'c':	/* doc 2.0 */
+		    case 'c':					/* doc 2.0 */
 			sprintf(range, "-c%s", optarg);
 			break;
-		    case 'R':	/* doc 2.0 */
+		    case 'R':					/* doc 2.0 */
 			sprintf(range, "-r%s", optarg);
 			break;
-		    case 'i':	/* doc 2.0 */
+		    case 'i':					/* doc 2.0 */
 			*g++ = c;
 			break;
 		    default:
