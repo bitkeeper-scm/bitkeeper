@@ -55,6 +55,7 @@ char	zidCache[] = "SCCS/z.id_cache";
 char	csetFile[] = "SCCS/s.ChangeSet";
 char	zcsetFile[] = "SCCS/z.ChangeSet";
 int	verbose = 0;
+int	mixed;		/* if set, we are doing both long and short keys */
 int	dash, ndeltas;
 int	csetOnly;	/* if set, do logging ChangeSet */
 int	makepatch;	/* if set, act like makepatch */
@@ -183,6 +184,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	cset = sccs_init(csetFile, flags, 0);
 	if (!cset) return (101);
+	mixed = !(cset->state & S_KEY2);
 
 	/*
 	 * If we are initializing, then go create the file.
@@ -194,6 +196,15 @@ usage:		fprintf(stderr, "%s", cset_help);
 			exit(1);
 		}
 		return (csetInit(cset, flags));
+	}
+
+	if (list) {
+#ifdef  ANSIC
+		signal(SIGINT, SIG_DFL);
+#else
+		sig(UNCATCH, SIGINT);
+		sig(UNBLOCK, SIGINT);
+#endif
 	}
 
 	/*
@@ -319,7 +330,6 @@ spawn_checksum_child(void)
 		(dup2)(p[0], fd);
 		close(p[0]);
 		close(p[1]);
-
 		/* Now go do the real work... */
 		do_checksum();
 		exit(0);
@@ -504,13 +514,13 @@ mark(sccs *s, delta *d)
  * Otherwise we'll try short versions.
  */
 int
-samefile(sccs *s, char *key1, char *key2)
+sameFile(char *key1, char *key2)
 {
 	char	*a, *b;
 	int	ret;
 
 	if (streq(key1, key2)) return (1);
-	if (s->state & S_KEY2) return (0);
+	unless (mixed) return (0);
 	if (a = sccs_iskeylong(key1)) *a = 0;
 	if (b = sccs_iskeylong(key2)) *b = 0;
 	ret = streq(key1, key2);
@@ -558,7 +568,7 @@ doKey(char *key, char *val)
 	 *
 	 * With long/short keys mixed, we have to be a little careful here.
 	 */
-	if (lastkey && samefile(sc, lastkey, key)) {
+	if (lastkey && sameFile(lastkey, key)) {
 		unless (d = sccs_findKey(sc, val)) return (-1);
 		mark(sc, d);
 		return (0);
@@ -670,15 +680,7 @@ csetlist(sccs *cset)
 	}
 
 	/* Save away the cset id */
-	/* XXX: saving as short because ChangeSet IDs in ChangeSet
-	 * file will short as the long keys and removing ChangeSet keys
-	 * from ChangeSet file happened at the same time
-	 */
 	sccs_sdelta(cset, sccs_ino(cset), buf);
-	if (csetid = sccs_iskeylong(buf)) {
-		debug((stderr, "cset: csetlist: long key to short\n"));
-		*csetid = 0; /* make into short key */
-	}
 	csetid = strdup(buf);
 
 	/*
@@ -716,15 +718,17 @@ again:	/* doDiffs can make it two pass */
 	for (d = cset->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			sccs_sdelta(cset, d, buf);
-			fprintf(list, "%s %s\n", csetid, buf);
 			if (doKey(csetid, buf)) goto fail;
 		}
 	}
+	/*
+	 * Now do the real data.
+	 */
 	while (fnext(buf, list)) {
 		chop(buf);
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
-		if (streq(csetid, buf)) continue;
+		if (sameFile(csetid, buf)) continue;
 		if (doKey(buf, t)) goto fail;
 	}
 	if (doDiffs && makepatch) {
@@ -750,12 +754,11 @@ again:	/* doDiffs can make it two pass */
 				status);
 		}
 	}
-
 	unlink(csort);
 	free(csetid);
 	return;
 
- fail:
+fail:
 	unlink(csort);
 	free(csetid);
 	exit(1);
@@ -1128,8 +1131,10 @@ sccs_patch(sccs *s)
 		unless (e->flags & D_META) continue;
 		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
 		if (d && (d->flags & D_SET)) {
-			e->flags |= D_SET;
-			n++;
+			unless (e->flags & D_SET) {
+				e->flags |= D_SET;
+				n++;
+			}
 		}
 	}
 
@@ -1151,6 +1156,7 @@ sccs_patch(sccs *s)
 	 */
 	for (i = n - 1; i >= 0; i--) {
 		d = list[i];
+		assert(d);
 		if (verbose > 2) fprintf(stderr, "%s ", d->rev);
 		if (verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
 		if (i == n - 1) {

@@ -25,7 +25,7 @@ private serlist *allocstate(serlist *old, int oldsize, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
 #ifndef	ANSIC
-private int	sig(int what, int sig);
+int		sig(int what, int sig);
 #endif
 private int	getflags(sccs *s, char *buf);
 private int	addsym(sccs *s, delta *d, delta *metad, char *a, char *b);
@@ -10709,7 +10709,7 @@ private void	catch(int sig) { caught[sig]++; }
  *	unblock when we are going to do anything that takes a long time.
  *	XXX - doesn't stack more than one deep.	 Bad for a library.
  */
-private int
+int
 sig(int what, int sig)
 {
 	struct	sigaction sa;
