@@ -536,8 +536,8 @@ platformInit()
 			return;
 		}
 	}
-	printf("Can not find Bitkeeper binary directory\n");
-	exit(1);
+	bin = strdup("/usr/libexec/bitkeeper/");
+	return;
 }
 
 int
