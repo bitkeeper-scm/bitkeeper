@@ -388,12 +388,14 @@ proc createDiffWidgets {w} \
 	    .diffs.left tag configure gcaline -background $gc($app.oldColor)
 	    .diffs.left tag configure hand -background lightyellow
 	    .diffs.left tag configure space -background black
+	    .diffs.left tag configure reverse -background orange
 	    .diffs.right tag configure diff -background $gc($app.newColor)
 	    .diffs.right tag configure diffline -background $gc($app.newColor)
 	    .diffs.right tag configure gca -background $gc($app.oldColor)
 	    .diffs.right tag configure gcaline -background $gc($app.oldColor)
 	    .diffs.right tag configure hand -background lightyellow
 	    .diffs.right tag configure space -background black
+	    .diffs.right tag configure reverse -background orange
 
 	    bind .diffs <Configure> { computeHeight "diffs" }
 }
@@ -754,7 +756,7 @@ proc readFile {} \
 
 	set dir "forward"
 	array set restore {}
-	foreach t {.diffs.left .diffs.right .merge.t} {
+	foreach t {.diffs.left .diffs.right .merge.t .merge.hi} {
 		$t configure -state normal
 		$t delete 1.0 end
 		$t tag delete [$t tag names]
@@ -1056,7 +1058,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "File" -menu $m
 	    menu $m
 		$m add command -label "Save" \
-		    -command save -state disabled -accelerator <Alt-s>
+		    -command save -state disabled -accelerator <s>
 		$m add command \
 		    -label "Restart, discarding any merges" -command readFile
 		$m add command -label "Quit" \
@@ -1078,14 +1080,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		$m add command \
 		    -label "Edit merge window" -command { edit_merge 1 1 }
 		$m add command -state disabled \
-		    -label "Undo" -command undo -accelerator <Alt-u>
+		    -label "Undo" -command undo -accelerator <u>
 		$m add command \
-		    -label "Clear" -command edit_clear -accelerator <Alt-c>
+		    -label "Clear" -command edit_clear -accelerator <c>
 		$m add command \
-		    -label "Restore automerge" -accelerator <Alt-a> \
+		    -label "Restore automerge" -accelerator <a> \
 		    -command { edit_restore a }
 		$m add command \
-		    -label "Restore manual merge" -accelerator <Alt-m> \
+		    -label "Restore manual merge" -accelerator <m> \
 		    -command { edit_restore m }
 
 	    pack .menu.file -side left -fill y
@@ -1264,10 +1266,10 @@ proc keyboard_bindings {} \
 	bind all	<Shift-space>	{ next 1; break }
 	bind all	<p>		{ prev 0; break }
 	bind all	<P>		{ prev 1; break }
-	bind all	<Alt-c>		{ edit_clear }
-	bind all	<Alt-a>		{ edit_restore a }
-	bind all	<Alt-m>		{ edit_restore m }
-	bind all	<Alt-s>		{
+	bind all	<c>		{ edit_clear }
+	bind all	<a>		{ edit_restore a }
+	bind all	<m>		{ edit_restore m }
+	bind all	<s>		{
 	    global conflicts
 
 	    if {$conflicts} {
@@ -1277,7 +1279,7 @@ proc keyboard_bindings {} \
 	    	save
 	    }
 	}
-	bind all	<Alt-u>		{ undo }
+	bind all	<u>		{ undo }
 	bind all	<period>	{ dot; break }
 	bind all	<minus>		{
 	    global lastDiff
@@ -1398,8 +1400,14 @@ proc save {} \
 		return
 	}
 	set f [open $filename "w"]
-	set buf [.merge.t get 1.0 end]
-	puts -nonewline $f $buf
+	set buf [.merge.t get 1.0 "end - 1 char"]
+	set len [expr {[string length $buf] - 1}]
+	set last [string index $buf $len]
+	if {"$last" == "\n"} {
+		puts -nonewline $f $buf
+	} else {
+		puts $f $Text
+	}
 	close $f
 	exit
 }
@@ -1471,21 +1479,26 @@ proc nextCommon {} \
 		set text [list .diffs.right]
 		set rrevs [split [.diffs.right get $d $e] "\n"]
 	}
-	foreach t $text {
-		difflight $t $d $e
-	}
 	prs $lrevs .prs.left
 	prs $rrevs .prs.right
-
 	update
 	dot
+	# Has to be after dot, for the horizontal positioning
+	foreach t $text { difflight $t $d $e }
 	return 1
 }
 
 proc difflight {t d e} \
 {
+	global	annotate
+
 	$t tag remove gcaline 1.0 end
 	$t tag remove diffline 1.0 end
+	$t tag remove reverse 1.0 end
+	set old 0
+	set new 0
+	set oldstart -1
+	set newstart -1
 	set l 0
 	while {[$t compare "$d + $l lines" <= $e]} {
 		foreach {tag tagline} {gca gcaline diff diffline} {
@@ -1494,9 +1507,90 @@ proc difflight {t d e} \
 			if {$range != ""} {
 				$t tag add $tagline "$d + $l lines" \
 				    "$d + $l lines lineend + 1 char"
+				if {$tag == "gca"} {
+					incr old
+					if {$oldstart == -1} { set oldstart $l }
+				}
+				if {$tag == "diff"} {
+					incr new
+					if {$newstart == -1} { set newstart $l }
+				}
 			}
 		}
 		incr l
+	}
+
+	if {$old == 0 || $new == 0} { return }
+
+	# Go look for matching stuff
+# puts "difflight t=$t old=$old new=$new"
+	set o $oldstart
+	set n $newstart
+	while {$old && $new} {
+		set oc [$t get "$d + $o lines + 1 char"]
+		set nc [$t get "$d + $n lines + 1 char"]
+# puts "new=$new n=$n nc=$nc old=$old o=$o oc=$oc"
+		if {$oc == "s"} {
+			incr o
+			continue
+		}
+		if {$nc == "s"} {
+			incr n
+			continue
+		}
+		set N [$t get "$d + $n lines" "$d + $n lines lineend"]
+		set O [$t get "$d + $o lines" "$d + $o lines lineend"]
+		if {$annotate} {
+			set na [expr [string first "|" $N] + 2]
+			set oa [expr [string first "|" $O] + 2]
+		} else {
+			set na 1
+			set oa 1
+		}
+		set N [string range $N $na end]
+		set O [string range $O $oa end]
+		set ol [string length $O]
+		set nl [string length $N]
+# puts "ol=$ol o='$O'\nnl=$nl n='$N'"
+		if {$N == $O} {
+			incr old -1
+			incr new -1
+			incr o
+			incr n
+			continue
+		}
+		for {set lead 0} \
+		    {[string index $O $lead] == [string index $N $lead]} \
+		    {incr lead} { }
+		for {set tail 0; set j [expr $ol - 1]; set k [expr $nl - 1]} \
+		    {$j >= $lead && $k >= $lead && \
+		    [string index $O $j] == [string index $N $k]} \
+		    {incr tail; incr j -1; incr k -1} { }
+		if {[expr $lead + $tail] < [expr $nl / 3] || \
+		    [expr $lead + $tail] < [expr $ol / 3]} {
+			incr old -1
+			incr new -1
+			incr o
+			incr n
+			continue
+		}
+# puts "lead=$lead tail=$tail len=$ol/$nl"
+		set om [expr $ol - [expr $lead + $tail]]
+		incr oa $lead
+		set om [expr $oa + $om]
+		$t tag add reverse "$d + $o lines + $oa chars" \
+		    "$d + $o lines + $om chars"
+		$t see "$d + $o lines + $om chars"
+		set nm [expr $nl - [expr $lead + $tail]]
+		incr na $lead
+		set nm [expr $na + $nm]
+		$t tag add reverse "$d + $n lines + $na chars" \
+		    "$d + $n lines + $nm chars"
+		$t see "$d + $n lines + $nm chars"
+		incr old -1
+		incr new -1
+		incr o
+		incr n
 	}
 }
 
@@ -1691,6 +1785,9 @@ proc change {lines replace orig pipe} \
 		$t see $e
 	}
 	.merge.hi configure -state disabled
+	if {[.merge.t get $d $e] == $UNMERGED} {
+		.merge.menu.l configure -bg red
+	}
 	edit_save
 }
 
