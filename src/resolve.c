@@ -1564,6 +1564,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		s = sccs_init(s_cset, INIT, opts->resync_proj);
 		if (s->state & S_LOGS_ONLY) {
 			isLoggingRepository  = 1;
+			sccs_free(s);
 		} else {
 			rs = resolve_init(opts, s);
 			edit(rs);
@@ -1603,6 +1604,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * For logging repository, do not commit merge node
 	 */ 
 	if (isLoggingRepository) return (0);
+
 
 	/*
 	 * If there is nothing to do, bail out.
@@ -1739,7 +1741,10 @@ conflict(opts *opts, char *sfile)
 	 * do not try to resolve conflict
 	 * i.e we allow open branch
 	 */
-	if (s->state & S_LOGS_ONLY) return;
+	if (s->state & S_LOGS_ONLY) {
+		sccs_free(s);
+		return;
+	}
 
 	rs = resolve_init(opts, s);
 	assert(streq(rs->dname, s->sfile));

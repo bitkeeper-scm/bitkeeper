@@ -69,6 +69,7 @@ check_main(int ac, char **av)
 	int	e;
 	char	*name;
 	char	buf[MAXKEY];
+	char 	s_cset[] = CHANGESET;
 	char	*t;
 
 	debug_main(av);
@@ -106,7 +107,7 @@ check_main(int ac, char **av)
 		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
 	}
-	unless (cset = sccs_init(CHANGESET, flags, 0)) {
+	unless (cset = sccs_init(s_cset, flags, 0)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}

@@ -387,7 +387,9 @@ keys(char *file)
 private	void
 rebuild()
 {
-	unless (cset = init(CHANGESET, 0)) {
+	char s_cset[] = CHANGESET;
+
+	unless (cset = init(s_cset, 0)) {
 		perror("sfiles: can't init ChangeSet");
 		exit(1);
 	}
