@@ -111,6 +111,14 @@ ci $S -SBAR -fy init2
 grep -q '^.cSBAR$' SCCS/s.init2
 if [ $? -ne 0 ]; then echo Failed to add symbol.; exit 1; fi
 echo OK
+echo $N Make sure ci can add multiple symbols in one run ............$NL
+get $S -e init2
+ci $S -Sone -Stwo -fy init2
+grep -q '^.cSone' SCCS/s.init2
+if [ $? -ne 0 ]; then echo Failed to add symbol one.; exit 1; fi
+grep -q '^.cStwo' SCCS/s.init2
+if [ $? -ne 0 ]; then echo Failed to add symbol two.; exit 1; fi
+echo OK
 echo $N Make sure ci can not add same symbol twice ..................$NL
 get $S -e init2
 ci $S -SBAR -fy init2 2> ${DEV_NULL}

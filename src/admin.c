@@ -404,7 +404,7 @@ do_checkin(char *name, char *encp, char *compp,
 	}
 	s->state |= S_GFILE;
 	if (comment) { d = sccs_parseArg(d, 'C', comment, 0); }
-	if ((error = sccs_delta(s, flags|DELTA_SAVEGFILE, d, 0, 0))) {
+	if ((error = sccs_delta(s, flags|DELTA_SAVEGFILE, d, 0, 0, 0))) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "admin: failed to check in %s.\n",
 			    s->sfile);
