@@ -80,7 +80,6 @@ _get_main(int ac, char **av, char *out)
 	    getopt(ac, av, "ac;CdDeFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
 		switch (c) {
 		    case 'a': flags |= GET_ALIGN; break;
-		    //case 'b': flags |= GET_BRANCH; break;
 		    case 'c': cdate = optarg; break;
 		    case 'C': commitedOnly = 1; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;

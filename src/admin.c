@@ -95,7 +95,7 @@ admin_main(int ac, char **av)
 	bzero(u, sizeof(u));
 	bzero(s, sizeof(s));
 	while ((c =
-	    getopt(ac, av, "0a;e;f;F;d;i|nr;y|M;m;p|PZ|E;L|S;t|TBChHsquz"))
+	    getopt(ac, av, "a;d;e;E;f;F;i|M;m;p|r;S;t|y|Z|0BChHnqsTuz"))
 	       != -1) {
 		switch (c) {
 		/* user|group */
@@ -193,6 +193,9 @@ admin_main(int ac, char **av)
 		    "admin: comment may only be specifed with -i and/or -n\n");
 		goto usage;
 	}
+	/* All of these need to be here: m/nextf are for resolve,
+	 * newfile is for !BK mode.
+	 */
 	if (rev && (!(flags & NEWFILE) && !merge && !m && !nextf)) {
 		fprintf(stderr, "%s %s\n",
 		    "admin: revision may only be specified with",
@@ -377,6 +380,12 @@ do_checkin(char *name, char *encp, char *compp,
 	struct	stat sb;
 
 	unless (s = sccs_init(name, flags, 0)) return (-1);
+	if (rev && !streq(rev, "1.1") && s->proj && s->proj->root) {
+		fprintf(stderr,
+		    "admin: can not specify initial rev for BK files\n");
+		sccs_free(s);
+		return (-1);
+	}
 	enc = sccs_encoding(s, encp, compp);
 	if (enc == -1) return (-1);
 

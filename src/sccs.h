@@ -43,11 +43,7 @@
 #define	GET_PREFIXDATE	0x00200000	/* get -d: show date */
 #define GET_PATH	0x00400000	/* use delta (original) path */
 #define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
-#if 0
-#define	GET_BRANCH	0x00010000	/* force a branch when creating delta */
-#else
 #define	GET_ALIGN	0x00010000	/* nicely align prefix output */
-#endif
 #define	GET_FORCE	0x00020000	/* do it even with errors */
 #define	GET_HEADER	0x00040000	/* diff: print header */
 #define	DIFF_HEADER	GET_HEADER
@@ -124,7 +120,7 @@
 #define	S_SOPEN		0x00000010	/* s->sfile is open */
 #define	S_WARNED	0x00000020	/* error message already sent */
 #define	S_RCS		0x00000040	/* expand RCS keywords */
-#define	S_BRANCHOK	0x00000080	/* branching allowed */
+/* AVAILABLE      	0x00000080	*/
 #define	S_EXPAND1	0x00000100	/* expand first line of keyowrds only */
 #define	S_CHMOD		0x00000200	/* change the file back to 0444 mode */
 #define	S_YEAR4		0x00000400	/* print out the year as 4 digits */
@@ -801,7 +797,7 @@ int	setlog(char *u);
 int	connect_srv(char *srv, int port);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
-int	gethelp(char *help_name, char *bkarg, char *prefix, FILE *f);
+int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
 int	is_open_logging(char *logaddr);
 void	status(int verbose, FILE *out);
 void	notify();
