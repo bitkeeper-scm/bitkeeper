@@ -352,7 +352,7 @@ struct	command cmdtbl[] = {
 	{"tagmerge", tagmerge_main},		/* */
 	{"takepatch", takepatch_main},		/* doc 2.0 */
 	{"testdates", testdates_main},		/* undoc 2.0 */
-	{"timestamp", timestamp_main},
+	{"timestamps", timestamp_main},
 	{"unbk", unbk_main},			/* undoc? 2.0 */
 	{"undo", undo_main},			/* doc 2.0 */
 	{"undos", undos_main},			/* doc 2.0 */
