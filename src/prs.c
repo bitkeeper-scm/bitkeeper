@@ -5,6 +5,7 @@
 WHATSTR("@(#)%K%");
 char	*prs_help = "\n\
 usage: prs [-hmv] [-c<d>] [-I<rev>] [-r<r>] [files...]\n\n\
+    -b		reverse the order of the printed deltas\n\
     -c<date>	Cut off dates.  See sccsrange(1) for details.\n\
     -C		do not include branch deltas which are not merged\n\
     -d<spec>    Specify output data specification\n\

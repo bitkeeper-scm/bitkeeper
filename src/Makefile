@@ -60,7 +60,8 @@ HDRS	= sccs.h purify.h sccs.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/vitool.tcl \
-	  gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl gui/mkindex.tcl
+	  gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl gui/mkindex.tcl \
+	  resync.perl
 
 all: $(ALL)
 

@@ -27,7 +27,7 @@ P src/regression.sh
 EOF
 delta $Q -i -IINIT regression.sh
 bk commit $S -yBaseline
-$SLEEP
+bk -r check -a || exit 1
 
 # Now create two repositories with that file.
 cd $HERE
@@ -60,7 +60,7 @@ P src/t/regression.sh
 EOF
 delta $Q -IINIT regression.sh
 bk commit $S -yObsolete
-$SLEEP
+bk -r check -a || exit 1
 
 # Now add some deltas in the other tree, not moving it.
 cd $HERE
@@ -74,7 +74,7 @@ P src/regression.sh
 EOF
 delta $Q -IINIT regression.sh
 bk commit $S -ywhatever
-$SLEEP
+bk -r check -a || exit 1
 get $S -e regression.sh
 cat > INIT <<EOF
 D 1.3 99/08/18 01:11:42-07:00 lm@lm.bitmover 0 0 0/0/0
@@ -84,6 +84,7 @@ P src/regression.sh
 EOF
 delta $Q -IINIT regression.sh
 bk commit $S -ywhatever
+bk -r check -a || exit 1
 
 # Now resync them.
 cd $HERE

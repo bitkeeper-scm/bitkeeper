@@ -11,15 +11,19 @@
 WHATSTR("@(#)%K%");
 
 char	*cset_help = "\n\
-usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
-    -d		do unified diffs for the range (used with -m)\n\
-    -c		like -m, except generate only ChangeSet diffs for logging\n\
+usage: cset [opts]\n\n\
+    -d<range>	do unified diffs for the range\n\
+    -c		like -m, except generate only ChangeSet diffs\n\
     -i		Create a new change set history rooted at <root>\n\
-    -l		List each rev as file:rev (use with -r)\n\
-    -m<range>	Generate a patch of the changesets in <range>\n\
+    -l<range>	List each rev in range as file:rev,rev,rev (set format)\n\
+    -m<range>	Generate a patch of the changes in <range>\n\
+    -M<range>	Mark the files included in the range of csets\n\
+    		If no range, then mark all files in all changesets\n\
     -r<range>	List the filenames:rev..rev which match <range>\n\
+    		ChangeSet is not included in the listing\n\
     -R<range>	Like -r but start on rev farther back (for diffs)\n\
-    -t<rev>	List the filenames:revisions of the whole tree\n\
+    		ChangeSet is not included in the listing\n\
+    -t<rev>	List the filenames:revisions of the repository as of rev\n\
     -p		print the list of deltas being added to the cset\n\
     -y<msg>	Sets the changeset comment to <msg>\n\
     -Y<file>	Sets the changeset comment to the contents of <file>\n\
@@ -36,33 +40,32 @@ int	csetInit(sccs *cset, int flags);
 void	csetlist(sccs *cset);
 void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 void	csetDeltas(sccs *sc, delta *start, delta *d);
-sccs	*csetReformat(sccs *c, char *file);
 void	dump(MDBM *db, FILE *out);
 int	sameState(const char *file, const struct stat *sb);
 void	lock(char *);
 void	unlock(char *);
-delta	*mkChangeSet(sccs *cset);
+delta	*mkChangeSet(sccs *cset, FILE *diffs);
+void	explodeKey(char *key, char *parts[4]);
 char	*file2str(char *f);
 void	doRange(sccs *sc);
-void	doList(sccs *sc);
+void	doSet(sccs *sc);
+void	doMarks(sccs *sc);
 void	doDiff(sccs *sc, int kind);
 void	sccs_patch(sccs *);
 
 FILE	*id_cache;
 MDBM	*idDB = 0;
-char	idCache[] = "SCCS/x.id_cache";
-char	zidCache[] = "SCCS/z.id_cache";
-char	csetFile[] = "SCCS/s.ChangeSet";
-char	zcsetFile[] = "SCCS/z.ChangeSet";
 int	verbose = 0;
 int	mixed;		/* if set, we are doing both long and short keys */
-int	dash, ndeltas;
 int	csetOnly;	/* if set, do logging ChangeSet */
 int	makepatch;	/* if set, act like makepatch */
 int	listeach;	/* if set, be like -r except list revs 1 per line */
+int	mark;		/* act like csetmark used to act */
 int	range;		/* if set, list file:rev..rev */
 			/* if set to 2, then list parent..rev */
 int	doDiffs;	/* prefix with unified diffs */
+int	force;		/* if set, then force marks when used with -M */
+int	dash, ndeltas, nfiles;
 char	*spin = "|/-\\";
 
 /*
@@ -72,7 +75,6 @@ int
 main(int ac, char **av)
 {
 	sccs	*cset;
-	//int	flags = BRANCHOK;
 	int	flags = 0;
 	int	c, list = 0;
 	char	*sym = 0;
@@ -86,18 +88,21 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (streq(av[0], "makepatch")) makepatch++;
 
-	while ((c = getopt(ac, av, "c|d|Dilm|pqr|R|sS;t;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "c|d|Dfil|m|M|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
 			flags |= DELTA_EMPTY|NEWFILE;
 			break;
-		    case 'l': listeach++; break;
+		    case 'f': force++; break;
 		    case 'R':
 			range++;
 			/* fall through */
 		    case 'r':
 		    	range++;
+		    	/* fall through */
+		    case 'l':
+			if (c == 'l') listeach++; 
 		    	/* fall through */
 		    case 'd': 
 			if (c == 'd') doDiffs++;
@@ -107,6 +112,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 				csetOnly++;
 				makepatch++;
 			}
+			/* fall through */
+		    case 'M':
+			if (c == 'M') mark++;
 			/* fall through */
 		    case 'm':
 			if (c == 'm') makepatch++;
@@ -153,15 +161,13 @@ usage:		fprintf(stderr, "%s", cset_help);
 		goto usage;
 	}
 	if ((things > 1) && (list != 1)) {
-		fprintf(stderr,
-		    "%s: only one rev allowed with -t\n", av[0]);
+		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
 		goto usage;
 	}
 	if (av[optind] && streq(av[optind], "-")) {
 		optind++;
 		dash++;
 	}
-
 	if (av[optind]) {
 		unless (isdir(av[optind])) {
 			if (flags & NEWFILE) {
@@ -182,7 +188,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: can not find project root.\n");
 		return (1);
 	}
-	cset = sccs_init(csetFile, flags, 0);
+	cset = sccs_init(CHANGESET, flags, 0);
 	if (!cset) return (101);
 	mixed = !(cset->state & S_KEY2);
 
@@ -207,9 +213,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 #endif
 	}
 
-	/*
-	 * List a specific rev.
-	 */
 	if (list && (things < 1) && !dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
@@ -254,7 +257,6 @@ next:		sccs_free(cset);
  *
  * adler32() is in zlib.
  */
-
 void
 do_checksum(void)
 {
@@ -291,7 +293,6 @@ do_checksum(void)
  *
  * XXX Andrew - this needs to be ifdefed for NT.
  */
-
 pid_t
 spawn_checksum_child(void)
 {
@@ -369,7 +370,7 @@ intr:		sccs_whynot("cset", cset);
 		purify_list();
 		return (1);
 	}
-	close(creat("SCCS/x.id_cache", 0664));
+	close(creat(IDCACHE, 0664));
 	sccs_free(cset);
 	commentsDone(saved);
 	hostDone();
@@ -396,10 +397,10 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 		exit(1);
 	}
 
-	unless (idDB = loadIdDB()) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 		system("bk sfiles -r");
 		doneFullRebuild = 1;
-		unless (idDB = loadIdDB()) {
+		unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 			perror("idcache");
 			exit(1);
 		}
@@ -451,16 +452,19 @@ doit(sccs *sc)
 		first = 1;
 		return;
 	}
+	nfiles++;
 	if (doDiffs) {
 		doDiff(sc, DF_UNIFIED);
 	} else if (makepatch) {
 		if (!csetOnly || (sc->state & S_CSET)) {
 			sccs_patch(sc);
 		}
+	} else if (mark) {
+		doMarks(sc);
 	} else if (range && !listeach) {
 		doRange(sc);
 	} else {
-		doList(sc);
+		doSet(sc);
 	}
 }
 
@@ -490,19 +494,25 @@ header(sccs *cset, int diffs)
 	cset->state = save;
 }
 
+/*
+ * Depending on what we are doing, either
+ * mark all deltas in this cset, or
+ * just mark the cset boundry.
+ */
 void
-mark(sccs *s, delta *d)
+markThisCset(sccs *s, delta *d)
 {
-	/*
-	 * Mark everything from here until the previous change set.
-	 */
+	if (mark) {
+		d->flags |= D_SET;
+		return;
+	}
 	do {
 		d->flags |= D_SET;
 		if (d->merge) {
 			delta	*e = sfind(s, d->merge);
 
 			assert(e);
-			unless (e->flags & D_CSET) mark(s, e);
+			unless (e->flags & D_CSET) markThisCset(s, e);
 		}
 		d = d->parent;
 	} while (d && !(d->flags & D_CSET));
@@ -570,7 +580,7 @@ doKey(char *key, char *val)
 	 */
 	if (lastkey && sameFile(lastkey, key)) {
 		unless (d = sccs_findKey(sc, val)) return (-1);
-		mark(sc, d);
+		markThisCset(sc, d);
 		return (0);
 	}
 
@@ -588,7 +598,7 @@ doKey(char *key, char *val)
 	/*
 	 * Set up the new file.
 	 */
-	unless (idDB || (idDB = loadIdDB())) {
+	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_NODUPS))) {
 		perror("idcache");
 	}
 	lastkey = strdup(key);
@@ -597,10 +607,10 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
-			if (verbose > 0) fputs("Rebuilding caches...\n", stderr);
+			if (verbose) fputs("Rebuilding caches...\n", stderr);
 			system("bk sfiles -r");
 			doneFullRebuild = 1;
-			unless (idDB = loadIdDB()) {
+			unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 				perror("idcache");
 			}
 			goto retry;
@@ -623,13 +633,13 @@ is being automatically generated and added to all files.  If your repository\n\
 is large, this is going to take a while - it has to rewrite each file.\n\
 This is a one time event to upgrade this repository to the latest format.\n\
 Please stand by.\n\n", stderr);
-		sprintf(buf, "bk csetmark -a%c", verbose ? 'v' : '\0');
+		sprintf(buf, "bk cset -M1.0.. %s", verbose ? "-v" : "");
 		system(buf);
 		doneFullRemark++;
 		goto retry;
 	}
 	unless (d = sccs_findKey(sc, val)) return (-1);
-	mark(sc, d);
+	markThisCset(sc, d);
 	return (0);
 }
 
@@ -683,24 +693,31 @@ csetlist(sccs *cset)
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	csetid = strdup(buf);
 
-	/*
-	 * Get the list of key tuples in a sorted file.
-	 * The list should not contain the ChangeSet file key.
-	 */
 	gettemp(cat, "/tmp/cat1XXXXXX");
 	gettemp(csort, "/tmp/csortXXXXXX");
-	if (sccs_cat(cset, PRINT, cat)) {
-		sccs_whynot("cset", cset);
-		goto fail;
+	unless (csetOnly) {
+		/*
+		 * Get the list of key tuples in a sorted file.
+		 */
+		if (sccs_cat(cset, GET_NOHASH|PRINT, cat)) {
+			sccs_whynot("cset", cset);
+			goto fail;
+		}
+		sprintf(buf, "sort < %s > %s", cat, csort);
+		if (system(buf)) goto fail;
+		unlink(cat);
+		if (verbose > 5) {
+			sprintf(buf, "cat %s", csort);
+			system(buf);
+		}
+	} else {
+		close(creat(csort, 0666));
 	}
-	sprintf(buf, "sort < %s > %s", cat, csort);
-	if (system(buf)) goto fail;
-	unlink(cat);
 	unless (list = fopen(csort, "r")) {
 		perror(buf);
 		goto fail;
 	}
-	
+
 	/* checksum the output */
 	if (makepatch) {
 		pid = spawn_checksum_child();
@@ -716,7 +733,7 @@ again:	/* doDiffs can make it two pass */
 	 * Do the ChangeSet deltas first, takepatch needs it to be so.
 	 */
 	for (d = cset->table; d; d = d->next) {
-		if (d->flags & D_SET) {
+		if ((d->flags & D_SET) && (d->type == 'D')) {
 			sccs_sdelta(cset, d, buf);
 			if (doKey(csetid, buf)) goto fail;
 		}
@@ -741,7 +758,11 @@ again:	/* doDiffs can make it two pass */
 	doKey(0, 0);
 	if (verbose && makepatch) {
 		fprintf(stderr,
-		    "makepatch: patch contains %d revisions\n", ndeltas);
+		    "makepatch: patch contains %d revisions from %d files\n",
+		    ndeltas, nfiles);
+	} else if (verbose && mark) {
+		fprintf(stderr,
+		    "cset: marked %d revisions in %d files\n", ndeltas, nfiles);
 	}
 	if (makepatch) {
 		fclose(stdout);  /* give the child an EOF */
@@ -803,6 +824,7 @@ doRange(sccs *sc)
 {
 	delta	*d, *e = 0;
 
+	if (sc->state & S_CSET) return;
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) e = d;
 	}
@@ -818,7 +840,32 @@ doRange(sccs *sc)
 }
 
 void
-doList(sccs *sc)
+doMarks(sccs *s)
+{
+	delta	*d;
+	int	did = 0;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_SET) {
+			if (force || !(d->flags & D_CSET)) {
+				if (verbose > 2) {
+					fprintf(stderr,
+					    "Mark %s:%s\n", s->gfile, d->rev);
+				}
+				d->flags |= D_CSET;
+				ndeltas++;
+				did++;
+			}
+		}
+	}
+	if (did) sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0);
+	if (verbose > 1) {
+		fprintf(stderr, "Marked %d csets in %s\n", did, s->gfile);
+	}
+}
+
+void
+doSet(sccs *sc)
 {
 	delta	*d;
 	int	first = 1;
@@ -835,13 +882,6 @@ doList(sccs *sc)
 		}
 	}
 	printf("\n");
-}
-
-void
-visit(delta *d)
-{
-	d->flags |= D_SET;
-	if (d->parent) visit(d->parent);
 }
 
 /*
@@ -874,18 +914,17 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 }
 
 /*
- * Add a delta to the cset db.
+ * Add a delta to the ChangeSet.
  *
  * XXX - this could check to make sure we are not adding 1.3 to a cset LOD
  * which already has 1.5 from the same file.
  */
-void
-add(MDBM *csDB, char *buf)
+private void
+add(FILE *diffs, char *buf)
 {
 	sccs	*s;
 	char	*rev;
 	delta	*d;
-	char	key[MAXPATH];
 
 	unless ((chop(buf) == '\n') && (rev = strrchr(buf, ':'))) {
 		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
@@ -898,19 +937,19 @@ add(MDBM *csDB, char *buf)
 		system("bk clean -u ChangeSet");
 		exit(1);
 	}
+	if (s->state & S_CSET) {
+		sccs_free(s);
+		return;
+	}
 	unless (d = sccs_getrev(s, rev, 0, 0)) {
 		fprintf(stderr, "cset: can't find %s in %s\n", rev, buf);
 		system("bk clean -u ChangeSet");
 		exit(1);
 	}
-	sccs_sdelta(s, sccs_ino(s), key);
-
+	sccs_sdelta(s, sccs_ino(s), buf);
+	fprintf(diffs, "> %s ", buf);
 	sccs_sdelta(s, d, buf);
-	if (mdbm_store_str(csDB, key, buf, MDBM_REPLACE)) {
-		perror("cset MDBM store in csDB");
-		system("bk clean -u ChangeSet");
-		exit(1);
-	}
+	fprintf(diffs, "%s\n", buf);
 	sccs_free(s);
 }
 
@@ -921,32 +960,25 @@ add(MDBM *csDB, char *buf)
  * Close the cset sccs* when done.
  */
 delta	*
-mkChangeSet(sccs *cset)
+mkChangeSet(sccs *cset, FILE *diffs)
 {
-	MDBM	*csDB;
-	FILE	*sort;
 	delta	*d;
 	char	buf[MAXPATH];
-	char	key[MAXPATH];
 
 	/*
 	 * Edit the ChangeSet file - we need it edited to modify it as well
 	 * as load in the current state.
 	 * If the edit flag is off, then make sure the file is already edited.
 	 */
-	unless (IS_EDITED(cset)) {
-		if (sccs_get(cset, 0, 0, 0, 0, GET_EDIT|SILENT, "-")) {
+	unless ((cset->state & (S_SFILE|S_PFILE)) == (S_SFILE|S_PFILE)) {
+		int flags = GET_EDIT|GET_SKIPGET|SILENT;
+		if (sccs_get(cset, 0, 0, 0, 0, flags, "-")) {
 			unless (BEEN_WARNED(cset)) {
 				fprintf(stderr,
-				    "cset: get -e of ChangeSet failed\n");
+				    "cset: get -eg of ChangeSet failed\n");
 				exit(1);
 			}
 		}
-	}
-	unless (csDB = loadDB("ChangeSet", 0)) {
-		fprintf(stderr, "cset: load of ChangeSet failed\n");
-		system("bk clean -u ChangeSet");
-		exit(1);
 	}
 	d = sccs_dInit(0, 'D', cset, 0);
 	/*
@@ -957,16 +989,16 @@ mkChangeSet(sccs *cset)
 	 */
 	assert(d->hostname && d->hostname[0]);
 
+	fprintf(diffs, "0a0\n"); /* fake diff header */
+
 	/*
-	 * Read each file:rev from stdin and add that to the cset if it isn't
-	 * there already.
+	 * Read each file:rev from stdin and add that to the cset.
+	 * add() will ignore the ChangeSet entry itself.
 	 */
 	while (fgets(buf, sizeof(buf), stdin)) {
-		add(csDB, buf);
+		add(diffs, buf);
 	}
 
-	sort = popen("sort > ChangeSet", M_WRITE_T);
-	assert(sort);
 	/*
 	 * Adjust the date of the new rev, scripts can make this be in the
 	 * same second.  It's OK that we adjust it here, we are going to use
@@ -976,21 +1008,13 @@ mkChangeSet(sccs *cset)
 		d->dateFudge = (cset->table->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
-	/*
-	 * Remove the ChangeSet entry from the list
-	 */
-	sccs_sdelta(cset, sccs_ino(cset), key);
-	if (mdbm_delete_str(csDB, key) == -1) {
-		perror("cset MDBM delete in csDB");
-		system("bk clean -u ChangeSet");
-		exit(1);
-	}
-	dump(csDB, sort);
-	if (pclose(sort) == -1) {
-		perror("pclose on sort pipe");
-		system("bk clean -u ChangeSet");
-		exit(1);
-	}
+#ifdef CRAZY_WOW
+	/* Add ChangeSet entry */
+	sccs_sdelta(cset, sccs_ino(cset), buf);
+	fprintf(diffs, "> %s", buf);
+	sccs_sdelta(cset, d, buf);
+	fprintf(diffs, " %s\n", buf);
+#endif
 	sccs_free(cset);
 	return (d);
 }
@@ -1057,11 +1081,29 @@ csetCreate(sccs *cset, int flags, char *sym)
 	delta	*d;
 	int	error = 0;
 	time_t	date;
+	FILE	*diffs;
+	char	filename[30];
 
-	d = mkChangeSet(cset);
+	gettemp(filename, "/tmp/cdifXXXXXX");
+	unless (diffs = fopen(filename, "w+")) {
+		perror(filename);
+		exit(1);
+	}
+
+	d = mkChangeSet(cset, diffs); /* write change set to diffs */
+
+	/* then rewind to ready it for reading */
+	unless (fflush(diffs)==0 && fseek(diffs, 0L, SEEK_SET)==0) {
+		perror(filename);
+		fclose(diffs);
+		unlink(filename);
+		exit(1);
+	}
+	
 	date = d->date;
-	unless (cset = sccs_init(csetFile, flags, 0)) {
+	unless (cset = sccs_init(CHANGESET, flags, 0)) {
 		perror("init");
+		error = -1;
 		goto out;
 	}
 	if (sym) d->sym = strdup(sym);
@@ -1074,13 +1116,21 @@ csetCreate(sccs *cset, int flags, char *sym)
 	close(0);
 	open("/dev/tty", 0, 0);
 	if (flags & DELTA_DONTASK) d = getComments(d);
-	assert(d->sdate); /* this make sure d->date doesn't change */
-	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
+	if (sccs_delta(cset, flags, d, 0, diffs) == -1) {
 		sccs_whynot("cset", cset);
-		error = 1;
+		error = -1;
+		goto out;
 	}
 	assert(d->date == date); /* make sure time stamp did not change */
+
+	/*
+	 * XXX - some day we should do this in this program rather than
+	 * re execing.
+	 */
+	system("bk cset -M+");
+
 out:	sccs_free(cset);
+	unlink(filename);
 	commentsDone(saved);
 	return (error);
 }
@@ -1117,7 +1167,7 @@ sccs_patch(sccs *s)
 {
 	delta	*d, *e;
 	int	deltas = 0;
-	int	i, n;
+	int	i, n, newfile;
 	delta	**list;
 
 	if (verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
@@ -1140,12 +1190,16 @@ sccs_patch(sccs *s)
 
 	/*
 	 * Build a list of the deltas we're sending
+	 * Clear the D_SET flag because we need to be able to do one at
+	 * a time when sending the cset diffs.
 	 */
 	list = calloc(n, sizeof(delta*));
+	newfile = s->tree->flags & D_SET;
 	for (i = 0, d = s->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			assert(i < n);
 			list[i++] = d;
+			d->flags &= ~D_SET;
 		}
 	}
 
@@ -1168,7 +1222,7 @@ sccs_patch(sccs *s)
 				exit(1);
 			}
 			printf("== %s ==\n", top->pathname);
-			if (s->tree->flags & D_SET) {
+			if (newfile) {
 				printf("New file: %s\n", d->pathname);
 				sccs_perfile(s, stdout);
 			}
@@ -1187,7 +1241,16 @@ sccs_patch(sccs *s)
 		s->rstop = s->rstart = d;
 		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, stdout);
 		printf("\n");
-		if (d->type == 'D') sccs_getdiffs(s, d->rev, 0, "-");
+		if (d->type == 'D') {
+			if (s->state & S_CSET) {
+				if (d->added) {
+					sccs_getdiffs(s,
+					    d->rev, GET_HASHDIFFS, "-");
+				}
+			} else {
+				sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
+			}
+		}
 		printf("\n");
 		deltas++;
 	}

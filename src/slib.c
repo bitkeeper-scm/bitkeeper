@@ -3056,6 +3056,7 @@ misc(sccs *s)
 #ifdef S_ISSHELL
 			if (bits & X_ISSHELL) s->state |= S_ISSHELL;
 #endif
+			if (bits & X_HASH) s->state |= S_HASH;
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
@@ -3329,7 +3330,7 @@ sccs_init(char *name, u32 flags, char *root)
 	}
 	t = strrchr(s->sfile, '/');
 	if (t) {
-		if (streq(t, "/s.ChangeSet")) s->state |= S_CSET;
+		if (streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
 	} else {
 		// awc -> lm : this seem to be a impossbile code path
 		// if we get here, there should be no '/' in s->sfile
@@ -3474,6 +3475,10 @@ bad:		sccs_free(s);
 	} else {
 		s->state &= ~S_ZFILE;
 	}
+	if (s->mdbm) {
+		mdbm_close(s->mdbm);
+		s->mdbm = 0;
+	}
 	return (s);
 }
 
@@ -3549,6 +3554,7 @@ sccs_free(sccs *s)
 	if ((s->root) && ((s->state & S_CACHEROOT) == 0)) free(s->root);
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
+	if (s->mdbm) mdbm_close(s->mdbm);
 	free(s);
 #ifdef	ANSIC
 	signal(SIGINT, SIG_DFL);
@@ -4822,6 +4828,33 @@ getCksumDelta(sccs *s, delta *d)
 	return (0);
 }
 
+private sum_t
+getKey(MDBM *DB, char *buf, int flags)
+{
+	char	*e;
+	int	len;
+	char	data[MAXLINE];
+
+	for (e = buf; *e != '\n'; ++e);
+	len = (char *)e - buf;
+	assert(len < MAXLINE);
+	if (len) strncpy(data, buf, len);
+	data[len] = 0;
+	unless (e = strchr(data, ' ')) {
+		fprintf(stderr, "get hash: no space char in line\n");
+		return (-1);
+	}
+	*e++ = 0;
+	switch (mdbm_store_str(DB, data, e, MDBM_INSERT)) {
+	    case 1:	/* key already in DB */
+		return (0);
+	    case -1:
+		return (-1);
+	    default:
+		return (1);
+	}
+}
+
 private int
 getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
@@ -4832,12 +4865,12 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
 	sum_t	sum;
 	FILE 	*out;
-	BUF	(buf);
-	char 	*base, *f;
+	char	*buf, *base, *f;
+	MDBM	*DB = 0;
+	int	hash = 0;
 
-	slist = (d)
-		? serialmap(s, d, flags, iLst, xLst, &error)
-		: visitedmap(s);
+	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
+		  : visitedmap(s);
 	if (error == 1) {
 		assert(!slist);
 		fprintf(stderr,
@@ -4854,28 +4887,50 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		s->state |= S_WARNED;
 		return 1;
 	}
-
-	if ((s->state & S_RCS) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
-	if (d && (s->state & S_BITKEEPER) && d->sum && !iLst && !xLst) {
+	if (flags & GET_SUM) {
+		flags |= NEWCKSUM;
+	} else if (d && (s->state & S_BITKEEPER) && !iLst && !xLst) {
 		flags |= NEWCKSUM;
 	}
+	/* we're changing the meaning of the file, checksum would be invalid */
+	if ((s->state & S_HASH) && (flags & GET_NOHASH)) {
+		flags &= ~NEWCKSUM;
+	}
+	if ((s->state & S_HASH) && !(flags & GET_NOHASH)) {
+		hash = 1;
+		unless ((encoding == E_ASCII) || (encoding == E_GZIP)) {
+			fprintf(stderr, "get: has files must be ascii.\n");
+			s->state |= S_WARNED;
+			goto out;
+		}
+		unless (DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
+			fprintf(stderr, "get: bad MDBM.\n");
+			s->state |= S_WARNED;
+			goto out;
+		}
+	}
+
+	if ((s->state & S_RCS) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
 	/* Think carefully before changing this */
-	if (s->encoding != E_ASCII) {
+	if ((s->encoding != E_ASCII) || hash) {
 		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
 	}
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & GET_MODNAME) base = basenm(s->gfile);
 	
-	f = (d) ? setupOutput(s, printOut, flags, d) : printOut;
-	unless (f) {
-out:		if (slist) free(slist);
-		if (state) free(state);
-		return 1;
-	}
-	popened = openOutput(encoding, f, &out);
-	unless (out) {
-		fprintf(stderr, "Can't open %s for writing\n", f);
-		goto out;
+	unless (flags & GET_HASHONLY) {
+		f = d ? setupOutput(s, printOut, flags, d) : printOut;
+		unless (f) {
+out:			if (slist) free(slist);
+			if (state) free(state);
+			if (DB) mdbm_close(DB);
+			return 1;
+		}
+		popened = openOutput(encoding, f, &out);
+		unless (out) {
+			fprintf(stderr, "Can't open %s for writing\n", f);
+			goto out;
+		}
 	}
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
@@ -4885,6 +4940,20 @@ out:		if (slist) free(slist);
 
 		if (isData(buf)) {
 			if (!print) continue;
+			if (hash) {
+				if (getKey(DB, buf, flags) == 1) {
+					unless (flags & GET_HASHONLY) {
+						fnlputs(buf, out);
+					}
+					if (flags & NEWCKSUM) {
+						for (e = buf;
+						    *e != '\n'; sum += *e++);
+						sum += '\n';
+					}
+					lines++;
+				}
+				continue;
+			}
 			lines++;
 			if (flags & NEWCKSUM) {
 				for (e = buf; *e != '\n'; sum += *e++);
@@ -4963,15 +5032,21 @@ out:		if (slist) free(slist);
 			"gotten anyway.");
 		}
 	}
+	/* Try passing back the sum in dsum in case someone wants it */
+	s->dsum = sum;
 
 	if (s->encoding & E_GZIP) zgets_done();
-	error = ferror(out) || fflush(out);
-	if (popened) {
-		pclose(out);
-	} else if (flags & PRINT) {
-		unless (streq("-", printOut)) fclose(out);
+	if (flags & GET_HASHONLY) {
+		error = 0;
 	} else {
-		fclose(out);
+		error = ferror(out) || fflush(out);
+		if (popened) {
+			pclose(out);
+		} else if (flags & PRINT) {
+			unless (streq("-", printOut)) fclose(out);
+		} else {
+			fclose(out);
+		}
 	}
 
 	if (error) {
@@ -4980,6 +5055,7 @@ out:		if (slist) free(slist);
 			s->state |= S_WARNED;
 		}
 		unless (flags & PRINT) unlink(s->gfile);
+		if (DB) mdbm_close(DB);
 		return (1);
 	}
 
@@ -5021,6 +5097,10 @@ out:		if (slist) free(slist);
 	*ln = lines;
 	if (slist) free(slist);
 	if (state) free(state);
+	if (DB) {
+		if (s->mdbm) mdbm_close(s->mdbm);
+		s->mdbm = DB;
+	}
 	return 0;
 }
 
@@ -5099,6 +5179,7 @@ err:		if (i2) free(i2);
 		i2 = strconcat(tmp, iLst, ",");
 		if (i2 != tmp) free(tmp);
 	}
+	if (rev && streq(rev, "+")) rev = 0;
 	if (flags & GET_EDIT) {
 		int	f = (s->state & S_BRANCHOK) ? flags&GET_BRANCH : 0;
 
@@ -5134,8 +5215,8 @@ err:		if (i2) free(i2);
 	switch (fileType(d->mode)) {
 	    case 0:		/* uninitialized mode, assume regular file */
 	    case S_IFREG:	/* regular file */
-		error = getRegBody(s, printOut,
-					flags, d, &lines, i2? i2: iLst, xLst);
+		error = getRegBody(s,
+			    printOut, flags, d, &lines, i2? i2: iLst, xLst);
 		break;
 	    case S_IFLNK:	/* symlink */
 		error = getLinkBody(s, printOut, flags, d, &lines);
@@ -5205,10 +5286,6 @@ err:		return (-1);
 #define	RIGHT	2
 #define	BOTH	3
 
-/* These are the type of output style available to get -D */
-#define	GD_DIFF		1
-#define	GD_BK		2
-
 private int
 outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 	FILE *in, FILE *out)
@@ -5218,7 +5295,7 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 	unless (count)  return (0);
 
 	if (side == RIGHT) {
-		if (type == GD_BK) {
+		if (type == GET_BKDIFFS) {
 			fprintf(out, "I%d %d\n", *left, count);
 			*right += count; /* not used, but easy to inc */
 			prefix = "";
@@ -5232,7 +5309,7 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 		}
 	} else {
 		assert(side == LEFT);
-		if (type == GD_BK) {
+		if (type == GET_BKDIFFS) {
 			fprintf(out, "D%d %d\n", *left+1, count);
 			*left += count;
 			prefix = "";
@@ -5247,7 +5324,7 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 	}
 
 	/* print out text block unless a diff -n type of delete */
-	unless (type == GD_BK && side == LEFT) {
+	unless (type == GET_BKDIFFS && side == LEFT) {
 		fseek(in, 0L, SEEK_SET);
 		while (count--) {
 			char	buf[MAXLINE];
@@ -5286,9 +5363,7 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 int
 sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 {
-	/* XXX: lm, wire 'type' in as you'd like: flags or param */
-	int	type = GD_BK;	/* hard code output style GD_DIFF || GD_BK */
-
+	int	type = flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS);
 	serlist *state = 0;
 	ser_t	*slist = 0;
 	ser_t	old = 0;
@@ -5300,7 +5375,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
 	int	error = 0;
 	int	side, nextside;
-	BUF	(buf);
+	char	*buf;
 	char	tmpfile[100];
 	FILE	*lbuf = 0;
 	int	ret = -1;
@@ -5327,14 +5402,42 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	d = findrev(s, rev);
-	if (!d) {
+	unless (d = findrev(s, rev)) {
 		fprintf(stderr, "get: can't find revision like %s in %s\n",
 		    rev, s->sfile);
 		s->state |= S_WARNED;
+		return (-1);
 	}
-	unless (d) return (-1);
 	sprintf(tmpfile, "/tmp/%s-%s-%d", basenm(s->gfile), d->rev, getpid());
+	popened = openOutput(encoding, printOut, &out);
+	if (type == GET_HASHDIFFS) {
+		int	lines = 0;
+		int	f = PRINT;
+		int	hash = s->state & S_HASH;
+		int	set = d->flags & D_SET;
+		char	b[MAXLINE];
+
+		s->state |= S_HASH;
+		d->flags |= D_SET;
+		ret =
+		    getRegBody(s, tmpfile, f|flags, 0, &lines, 0, 0);
+		unless (hash) s->state &= ~S_HASH;
+		unless (set) d->flags &= ~D_SET;
+		unless ((ret == 0) && (lines != 0)) {
+		    	goto done2;
+		}
+		unless (lbuf = fopen(tmpfile, "r")) {
+			perror(tmpfile);
+			ret = -1;
+			goto done2;
+		}
+		fputs("0a0\n", out);
+		while (fnext(b, lbuf)) {
+			fputs("> ", out);
+			fputs(b, out);
+		}
+		goto done2;
+	}
 	unless (lbuf = fopen(tmpfile, "w+")) {
 		perror(tmpfile);
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
@@ -5342,7 +5445,6 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		return (-1);
 	}
 	slist = serialmap(s, d, flags, 0, 0, &error);
-	popened = openOutput(encoding, printOut, &out);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
@@ -5370,7 +5472,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		    nextside != side && (side == LEFT || side == RIGHT)) {
 			if (outdiffs(s, type,
 			    side, &left, &right, count, lbuf, out)) {
-				goto getdifferr;
+				goto done;
 			}
 			count = 0;
 		}
@@ -5379,8 +5481,9 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		    case LEFT:
 		    case RIGHT:
 			count++;
-			unless (type == GD_BK && side == LEFT)
+			if ((type == GET_DIFFS) || (side == RIGHT)) {
 				fnlputs(buf, lbuf);
+			}
 			break;
 		    case BOTH:
 			left++, right++; break;
@@ -5388,12 +5491,12 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	}
 	if (count) { /* there is something left in the buffer */
 		if (outdiffs(s, type, side, &left, &right, count, lbuf, out))
-			goto getdifferr;
+			goto done;
 		count = 0;
 	}
 	ret = 0;
-getdifferr:
-	if (s->encoding & E_GZIP) zgets_done();
+done:	if (s->encoding & E_GZIP) zgets_done();
+done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 	if (lbuf) {
 		fclose(lbuf);
 		unlink(tmpfile);
@@ -5921,6 +6024,7 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 #ifdef S_ISSHELL
 	if (s->state & S_ISSHELL) bits |= X_ISSHELL;
 #endif
+	if (s->state & S_HASH) bits |= X_HASH;
 	if (bits) {
 		char	buf[40];
 
@@ -6209,15 +6313,64 @@ diff_gmode(sccs *s, pfile *pf)
 }
 
 /*
-* Returns:
-*	-1 for some already bitched about error
-*	0 if there were differences
-*	1 if no differences
-*
-* 	This function is called to determine the difference 
-*	in the delta body. Note that, by definition, the delta body
-*	of non-regular file is empty.
-*/
+ * Load both files into MDBMs and then leave the difference in the tmpfile.
+ * case 0:	no diffs 
+ * case 1:	diffs
+ * case 2:	diff ran into problems
+ */
+int
+diffMDBM(sccs *s, char *old, char *new, char *tmpfile)
+{
+	FILE	*f = fopen(tmpfile, "w");
+	MDBM	*o = loadDB(old, 0, DB_USEFIRST);
+	MDBM	*n = loadDB(new, 0, DB_USEFIRST);
+	kvpair	kv;
+	int	items = 0;
+	int	ret;
+	char	*val;
+
+	unless (n && o && f) {
+		ret = 2;
+		unlink(tmpfile);
+		goto out;
+	}
+	fputs("0a0\n", f);
+	for (kv = mdbm_first(n); kv.key.dsize; kv = mdbm_next(n)) {
+		if ((val = mdbm_fetch_str(o, kv.key.dptr)) &&
+		    streq(val, kv.val.dptr)) {
+		    	continue;
+		}
+		fputs("> ", f);
+		fputs(kv.key.dptr, f);
+		fputc(' ', f);
+		fputs(kv.val.dptr, f);
+		fputc('\n', f);
+		items++;
+	}
+	if (items) {
+		ret = 1;
+		if (s->mdbm) mdbm_close(s->mdbm);
+		s->mdbm = o;
+		o = 0;
+	} else {
+		ret = 0;
+	}
+out:	if (n) mdbm_close(n);
+	if (o) mdbm_close(o);
+	if (f) fclose(f);
+	return (ret);
+}
+
+/*
+ * Returns:
+ *	-1 for some already bitched about error
+ *	0 if there were differences
+ *	1 if no differences
+ *
+ * 	This function is called to determine the difference 
+ *	in the delta body. Note that, by definition, the delta body
+ *	of non-regular file is empty.
+ */
 private int
 diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 {
@@ -6274,7 +6427,11 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	/*
 	 * now we do the diff
 	 */
-	ret = diff(old, new, DF_DIFF, tmpfile);
+	if (s->state & S_HASH) {
+		ret = diffMDBM(s, old, new, tmpfile);
+	} else {
+		ret = diff(old, new, DF_DIFF, tmpfile);
+	}
 	unless (streq(old, DEV_NULL)) unlink(old);
 	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
 		unlink(new);		/* careful */
@@ -6821,6 +6978,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		n->next = n0;
 	}
 	n = sccs_dInit(n, 'D', s, nodefault);
+	unless (s->mode & S_IWUSR) s->mode |= S_IWUSR;
 	updMode(s, n, 0);
 	if (!n->rev) n->rev = n0 ? strdup("1.1") : strdup("1.0");
 	explode_rev(n);
@@ -6909,6 +7067,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			}
 		}
 	} 
+	if (flags & DELTA_HASH) s->state |= S_HASH;
 	if (delta_table(s, sfile, 1, 1)) {
 		error++;
 		goto abort;
@@ -8198,6 +8357,80 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 	debug((stderr, "sum=%d\n", s->dsum));
 }
 
+/*
+ * Get the hash checksum.  
+ * A side effect of getRegBody() is to set dsum.
+ * We're getting what looks like the new delta but it is really
+ * the basis for the new delta -
+ * we are still operating on the old file, without the diffs applied.
+ */
+private int
+getHashSum(sccs *sc, delta *n, FILE *diffs)
+{
+	char	buf[MAXPATH*3];
+	char	*k, *v, *v2, *t;
+	u8	*e;
+	sum_t	sum = 0;
+	int	lines = 0;
+	int	flags = SILENT|GET_HASHONLY|GET_SUM|GET_SHUTUP;
+	delta	*d;
+
+	assert(sc->state & S_HASH);
+	/*
+	 * If we have a hash already and it is a simple delta, then just
+	 * use that.  Otherwisre, regen from scratch.
+	 */
+	if (sc->mdbm
+	    && !n->include && !n->exclude && (d = getCksumDelta(sc, n))) {
+	    	sum = d->sum;
+	} else {
+		if (sc->mdbm) mdbm_close(sc->mdbm), sc->mdbm = 0;
+		sccs_restart(sc);
+		if (getRegBody(sc, 0, flags, n, &lines, 0, 0)) {
+			sccs_whynot("delta", sc);
+			return (-1);
+		}
+		sum = sc->dsum;
+	}
+	if (fseek(diffs, 0L, SEEK_SET)) {
+		perror("fseek for hash checksum");
+		return (-1);
+	}
+	unless (fnext(buf, diffs) && streq(buf, "0a0\n")) {
+bad:		fprintf(stderr, "bad diffs: %s\n", buf);
+		return (-1);
+	}
+	while (fnext(buf, diffs)) {
+		unless (buf[0] == '>') goto bad;
+		for (k = v = &buf[2]; *v && (*v != ' '); v++);
+		unless (*v == ' ') goto bad;
+		*v++ = 0;
+		t = v; while (*t++);
+		unless (t[-2] == '\n') goto bad;
+		t[-2] = 0;
+		if (v2 = mdbm_fetch_str(sc->mdbm, k)) {
+			if (streq(v2, v)) {
+				fprintf(stderr, "Redundant: %s %s\n", k, v);
+				return (-1);
+			} else {
+				/*
+				 * Subtract off the old value and add in new
+				 */
+				for (e = v2; *e; sum -= *e++);
+				for (e = v; *e; sum += *e++);
+				mdbm_store_str(sc->mdbm, k, v, MDBM_REPLACE);
+			}
+		} else {
+			/* completely new, add in the whole line */
+			for (e = k; *e; sum += *e++); sum += ' ';
+			for (e = v; *e; sum += *e++); sum += '\n';
+			mdbm_store_str(sc->mdbm, k, v, MDBM_INSERT);
+		}
+	}
+	sc->dsum = sum;
+	return (0);
+}
+
 int
 delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 {
@@ -8304,7 +8537,7 @@ newcmd:
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (fnext(buf2, diffs)) break;
-				if (buf2[0] == '\\') {
+				if (what == 'I' && buf2[0] == '\\') {
 					s->dsum += fputdata(s, &buf2[1], out);
 				} else {
 					s->dsum += fputdata(s, buf2, out);
@@ -8339,6 +8572,9 @@ newcmd:
 	if (state) free(state);
 	if (slist) free(slist);
 	if (s->encoding & E_GZIP) zgets_done();
+	if ((s->state & S_HASH) && (getHashSum(s, n, diffs) != 0)) {
+		return (-1);
+	}
 	return (0);
 }
 
@@ -9350,6 +9586,10 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 			} else {
 				n->sum = almostUnique(0);
 			}
+#if 0
+
+Fucks up citool
+
 			/*
 			 * XXX - should this be fatal for cset?
 			 * It probably should but only if the
@@ -9360,6 +9600,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 				    "%s: warning %s & %s have same sum\n",
 				    s->sfile, n->parent->rev, n->rev);
 			}
+#endif
 		}
 		fseek(out, s->sumOff, SEEK_SET);
 		sprintf(buf, "%05u", n->sum);
@@ -10031,15 +10272,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	/* ======== BITKEEPER SPECIFIC KEYWORDS ========== */
 	if (streq(kw, "REV")) {
-		char	buf[MAXREV];
+		fs(d->rev);
+		return (strVal);
+	}
 
-		if (d->r[2]) {
-			sprintf(buf,
-			    "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
-		} else {
-			sprintf(buf, "%d.%d", d->r[0], d->r[1]);
-		}
-		fs(buf);
+	if (streq(kw, "PARENT")) {
+		unless (d && d->parent) return (nullVal);
+		d = d->parent;
+		fs(d->rev);
 		return (strVal);
 	}
 
@@ -10488,9 +10728,16 @@ sccs_perfile(sccs *s, FILE *out)
 
 	if (s->defbranch) fprintf(out, "f d %s\n", s->defbranch);
 	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
+	if (s->state & S_BITKEEPER) i |= X_BITKEEPER;
 	if (s->state & S_YEAR4) i |= X_YEAR4;
 	if (s->state & S_RCS) i |= X_RCSEXPAND;
 	if (s->state & S_EXPAND1) i |= X_EXPAND1;
+	if (s->state & S_CSETMARKED) i |= X_CSETMARKED;
+#ifdef S_ISSHELL
+	if (s->state & S_ISSHELL) i |= X_ISSHELL;
+#endif
+	if (s->state & S_HASH) i |= X_HASH;
+
 	if (i) fprintf(out, "f x %u\n", i);
 	if (s->random) fprintf(out, "R %s\n", s->random);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
@@ -10535,10 +10782,15 @@ err:			fprintf(stderr,
 		int	bits = atoi(&buf[4]);
 
 		unused = 0;
+		if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
 		if (bits & X_YEAR4) s->state |= S_YEAR4;
 		if (bits & X_RCSEXPAND) s->state |= S_RCS;
 		if (bits & X_EXPAND1) s->state |= S_EXPAND1;
-		unused = 0;
+		if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
+#ifdef S_ISSHELL
+		if (bits & X_ISSHELL) s->state |= S_ISSHELL;
+#endif
+		if (bits & X_HASH) s->state |= S_HASH;
 		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
 	}
 	if (strneq(buf, "R ", 2)) {
@@ -11268,12 +11520,13 @@ sccs_ino(sccs *s)
 }
 
 MDBM	*
-loadDB(char *file, int (*want)(char *))
+loadDB(char *file, int (*want)(char *), int style)
 {
 	MDBM	*DB = 0;
 	FILE	*f = 0;
 	char	*v;
 	int	first = 1;
+	int	flags;
 	char	buf[MAXLINE];
 
 	// XXX awc->lm: we should check the z lock here
@@ -11290,6 +11543,14 @@ out:		if (f) fclose(f);
 	}
 	DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(DB);
+	switch (style) {
+	    case DB_NODUPS:	flags = MDBM_INSERT; break;
+	    case DB_USEFIRST:	flags = MDBM_INSERT; break;
+	    case DB_USELAST:	flags = MDBM_REPLACE; break;
+	    default:
+		fprintf(stderr, "Bad option to loadDB: %x\n", style);
+		exit(1);
+	}
 	while (fnext(buf, f)) {
 		if (buf[0] == '#') continue;
 		if (want && !want(buf)) continue;
@@ -11300,84 +11561,22 @@ out:		if (f) fclose(f);
 		v = strchr(buf, ' ');
 		assert(v);
 		*v++ = 0;
-		if (mdbm_store_str(DB, buf, v, MDBM_INSERT)) {
-			fprintf(stderr,
-			    "Duplicate name '%s' in %s.\n", buf, file);
+		switch (mdbm_store_str(DB, buf, v, flags)) {
+		    case 0: break;
+		    case 1:
+		    	if ((style == DB_NODUPS)) {
+				fprintf(stderr,
+				    "Duplicate name '%s' in %s.\n", buf, file);
+				goto out;
+			}
+			break;
+		    default:
+			fprintf(stderr, "loadDB(%s) failed\n", file);
 			goto out;
 		}
 	}
 	fclose(f);
 	return (DB);
-}
-
-MDBM	*
-loadIdDB(void)
-{
-	MDBM	*idDB = 0;
-	MDBM	*DB = 0;
-	kvpair	kv;
-	char	k[MAXLINE];
-	char	*v;
-	char	*t;
-	int	first = 1;
-	int	rc;
-
-again:
-	unless (first) {	/* dump and recompute long key cache */
-		if (DB) mdbm_close(DB);
-		if (idDB) mdbm_close(idDB);
-		unlink(IDCACHE);	/* XXX: careful throwing away files */
-	}
-
-	DB = loadDB(IDCACHE, 0);	/* slurp the id_cache file */
-	assert(DB);
-
-	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	assert(idDB);
-
-	/* Scan through DB, and copy keys + short keys - short key dups */
-
-	for (kv = mdbm_first(DB); kv.key.dsize; kv = mdbm_next(DB)) {
-		v = strcpy(k, kv.key.dptr);
-		assert(v);
-		v = kv.val.dptr;
-		/* copy across allowing no failure */
-		if (mdbm_store_str(idDB, k, v, MDBM_INSERT)) {
-			assert("loadIdDB: copy failed" == 0);
-		}
-		/* compute short key and put in unless dup */
-		unless (t = sccs_iskeylong(k)) {
-			if (first) {
-				first = 0;
-				goto again;
-			}
-			assert("loadIdDB: is bk sfiles running old bits?" == 0);
-		}
-		*t = 0;	/* k is now short key */
-		if (rc = mdbm_store_str(idDB, k, v, MDBM_INSERT)) {
-			if (errno == EEXIST) {
-				char	*old = mdbm_fetch_str(idDB, k);
-
-				assert(old);
-				fprintf(stderr,
-				    "Duplicate short keys: %s for %s and %s\n",
-				      k, v, old);
-				mdbm_delete_str(idDB, k); 
-			} else {
-				assert("loadIdDB: fail in store idDB" == 0);
-			}
-		}
-
-	}
-	mdbm_close(DB);
-	return (idDB);
-}
-
-inline int
-findpipe(register char *s)
-{
-	while (*s) if (*s++ == '|') return (1);
-	return (0);
 }
 
 /*
@@ -11390,37 +11589,30 @@ MDBM	*
 csetIds(sccs *s, char *rev, int all)
 {
 	MDBM	*db;
-	char	name[MAXPATH];
-	char	key[MAXPATH];
-	delta	*d;
 
-	sprintf(name, "/tmp/cs%d", getpid());
-	assert(all);
-	unless (d = findrev(s, rev)) {
-		perror(rev);
-		exit(1);
-	}
-	if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
+	assert(all); /* XXX: this can only do all */
+	assert(s->state & S_HASH);
+	if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 		sccs_whynot("get", s);
 		exit(1);
 	}
-	db = loadDB(name, findpipe);
-	unlink(name);
-	/* add cset key, val */
-	sccs_sdelta(s, sccs_ino(s), key);
-	sccs_sdelta(s, d, name);
-	if (mdbm_store_str(db, key, name, MDBM_INSERT) == -1) {
-		perror("mdbm_store_str");
+	unless (s->mdbm) {
+		fprintf(stderr, "get: no mdbm found\n");
 		exit(1);
 	}
+
+	/* the caller's responsibility to close, not sccs_free */
+	db = s->mdbm;
+	s->mdbm = 0;
+
 	return (db);
 }
 
 /*
  * Scan key and return:
  * Location of '|' which starts long key part
- * or the NULL pointer (0) if it was already short
- * Does not modify string (though caller can do a *t=0 upon return
+ * or the NULL pointer (0) if it was already short.
+ * Does not modify the string (though the caller can do a *t=0 upeon return
  * to make a short key).
  */
 char *

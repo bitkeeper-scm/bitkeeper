@@ -5,7 +5,7 @@
 /*
  * Flags that modify some operation (passed to sccs_*).
  *
- * There are two ranges of values, 0x00000fff and 0xfffff000.
+ * There are two ranges of values, 0x000000ff and 0xffffff00.
  * The first is for flags which may be meaningful to all functions.
  * The second is for flags which are function specific.
  * Be VERY CAREFUL to not mix and match.  If I see a DELTA_ in sccs_get()
@@ -40,6 +40,12 @@
 #define	GET_PREFIX	\
 	    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|GET_PREFIXDATE)
 #define	GET_DTIME	0x00080000	/* gfile get delta's mode time */
+#define	GET_NOHASH	0x00001000	/* force regular file, ignore S_HASH */
+#define	GET_HASHONLY	0x00002000	/* skip the file */
+#define	GET_DIFFS	0x00004000	/* get -D, regular diffs */
+#define	GET_BKDIFFS	0x00008000	/* get -DD, BK (rick's) diffs */
+#define	GET_HASHDIFFS	0x00000100	/* get -DDD, 0a0 hash style diffs */
+#define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_UNLOCK	0x20000000	/* clean -n: just unlock */
@@ -50,13 +56,13 @@
 #define	DELTA_PATCH	0x80000000	/* delta -R: respect rev */
 #define	DELTA_EMPTY	0x01000000	/* initialize with empty file */
 #define	DELTA_FORCE	0x02000000	/* delta -f: force a delta */
+#define	DELTA_HASH	0x04000000	/* treat as hash (MDBM) file */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 #define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
 #define	ADMIN_TIME	0x40000000	/* warn about time going backwards */
 #define	ADMIN_SHUTUP	0x80000000	/* don't be noisy about bad revs */
 #define	ADMIN_BK	0x01000000	/* check BitKeeper invariants */
-
 
 #define	PRS_META	0x10000000	/* show metadata */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
@@ -102,8 +108,9 @@
 #define	S_CSETMARKED	0x00800000	/* X_CSETMARKED match */
 #define S_CACHEROOT	0x01000000	/* don't free the root entry */
 #define	S_KEY2		0x02000000	/* all keys are version 2 format */
+#define	S_HASH		0x04000000	/* this file is an MDBM file */
 
-#define	KEY_FORMAT2	"BK key2"
+#define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
 /*
  * Options to sccs_diffs()
@@ -135,6 +142,7 @@
 #define	X_ISSHELL	0x00000008	/* This is a shell script */
 #define	X_EXPAND1	0x00000010	/* Expand first line of keywords only */
 #define	X_CSETMARKED	0x00000020	/* ChangeSet boundries are marked */
+#define	X_HASH		0x00000040	/* mdbm file */
 
 /*
  * Encoding flags.
@@ -203,6 +211,13 @@
 #define	UNCATCH		0x0010		/* restore old handler */
 #define	CAUGHT		0x0020		/* has this signal been caught? */
 #define	CLEAR		0x0040		/* forget about past catches */
+
+/*
+ * Hash behaviour.
+ */
+#define DB_NODUPS       1		/* keys must be unique */
+#define DB_USEFIRST     2		/* use the first key found */
+#define DB_USELAST      3		/* use the last key found */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
@@ -418,6 +433,7 @@ typedef	struct sccs {
 	sum_t	 dsum;		/* SCCS delta chksum */
 	off_t	sumOff;		/* offset of the new delta cksum */
 	time_t	gtime;		/* gfile modidification time */
+	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
 	unsigned int cksumok:1;	/* check sum was ok */
 } sccs;
 
@@ -487,7 +503,7 @@ typedef struct patch {
 /*
  * Patch file format strings.
  */
-#define PATCH_CURRENT	"# Patch vers:\t0.6\n"
+#define PATCH_CURRENT	"# Patch vers:\t0.7\n"
 #define PATCH_NOSUM	"# Patch vers:\t0.5\n" 
 
 /*
@@ -530,6 +546,7 @@ int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 void	sccs_pdelta(sccs *s, delta *d, FILE *out);
 char	*sccs_root(sccs *, char *optional_root);
 int	sccs_cd2root(sccs *, char *optional_root);
+delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 sccs	*sccs_getperfile(FILE *, int *);
@@ -565,8 +582,7 @@ char	**addLine(char **space, char *line);
 int	roundType(char *r);
 sccs	*check_gfile(sccs*, int);
 void	platformSpecificInit(char *, int);
-MDBM	*loadDB(char *file, int (*want)(char *));
-MDBM	*loadIdDB(void);
+MDBM	*loadDB(char *file, int (*want)(char *), int style);
 MDBM	*csetIds(sccs *cset, char *rev, int all);
 void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);

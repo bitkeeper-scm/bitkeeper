@@ -13,8 +13,13 @@ WHATSTR("@(#)%K%");
  *
  * Copyright (c) 1999 L.W.McVoy
  */
+char	*sum_help = "\n\
+usage: rechksum [-cfo] file file | -\n\n\
+    -c		check existing checksums but do not correct them\n\
+    -f		force a regeneration of the checksum\n\
+    -o		go from v2 to old v1 sum format\n\n";
 
-int	resum(sccs *s, delta *d, int flags, int old7bit);
+int	resum(sccs *s, delta *d, int flags, int old7bit, int dont);
 int	sumit(char *path, int *old, int *new, int old7bit);
 
 int
@@ -26,12 +31,19 @@ main(int ac, char **av)
 	char	*name;
 	int	flags = 0;
 	int	old = 0;
+	int	dont = 0;
 	int	c;
 
-	while ((c = getopt(ac, av, "fo")) != -1) {
+	if (ac > 1 && streq("--help", av[1])) {
+usage:		fprintf(stderr, "%s", sum_help);
+		return (1);
+	}
+	while ((c = getopt(ac, av, "foc")) != -1) {
 		switch (c) {
+		    case 'c': dont++; break;
 		    case 'f': flags |= GET_FORCE; break;
 		    case 'o': old++; break;
+		    default:  goto usage;
 		}
 	}
 	for (name = sfileFirst("rechksum", &av[optind], 0);
@@ -45,10 +57,14 @@ main(int ac, char **av)
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
 			if (d->type == 'D') {
-				doit += resum(s, d, flags, old);
+				doit += resum(s, d, flags, old, dont);
 			}
 		}
-		if (doit) {
+		if (dont > 1) {
+			fprintf(stderr, "%s: %d bad delta checksums\n",
+			    s->gfile, doit);
+		}
+		if (doit && !dont) {
 			fprintf(stderr, "Redid %d in %s\n", doit, s->sfile);
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0)) {
@@ -67,7 +83,7 @@ main(int ac, char **av)
 }
 
 int
-resum(sccs *s, delta *d, int flags, int old7bit)
+resum(sccs *s, delta *d, int flags, int old7bit, int dont)
 {
 	int	old, new;
 	int	encoding = s->encoding;
@@ -106,6 +122,11 @@ resum(sccs *s, delta *d, int flags, int old7bit)
 	sccs_clean(s, SILENT);
 
 	if (d->sum == new) return (0);
+	if (dont) {
+		fprintf(stderr, "%s:%s actual=%d v2=%d v1=%d\n",
+		    s->gfile, d->rev, d->sum, new, old);
+		return (1);
+	}
 	if (d->sum != old) {
 		if ((d->flags & D_CKSUM) && !(flags & GET_FORCE)) {
 			fprintf(stderr,

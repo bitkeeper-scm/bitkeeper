@@ -760,7 +760,7 @@ apply:
 		    sccs_resolveFile(s, localPath, gcaPath, remotePath);
 	}
 	conflicts += confThisFile;
-	if (confThisFile) {
+	if (confThisFile && !(s->state & S_CSET)) {
 		assert(d);
 		unless (d->flags & D_CSET) uncommitted(localPath);
 	}
@@ -827,9 +827,13 @@ getLocals(sccs *s, delta *g, char *name)
 		p->resyncFile = strdup(tmpf);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", fileNum);
 		unless (d->flags & D_META) {
+			int	dflag;
+
 			p->diffFile = strdup(tmpf);
 			sccs_restart(s);
-			if (sccs_getdiffs(s, d->rev, 0, tmpf)) {
+			dflag =
+			    (s->state & S_CSET) ? GET_HASHDIFFS : GET_BKDIFFS;
+			if (sccs_getdiffs(s, d->rev, dflag, tmpf)) {
 				SHOUT();
 				fprintf(stderr, "unable to create diffs");
 				cleanup(CLEAN_RESYNC);
@@ -1097,15 +1101,20 @@ init(FILE *p, int flags, char **resyncRootp)
 		}
 	} else {
 		f = p;
-		fnext(buf, f);
-		if (streq(buf, PATCH_CURRENT)) {
-			havexsum = 1;
-		} else if (streq(buf, PATCH_NOSUM)) {
-			havexsum = 0;
-			oldformat();
-		} else {
-			noversline(infname);
+		i = 0;
+		while (fnext(buf, f)) {
+			if (streq(buf, PATCH_CURRENT)) {
+				havexsum = 1;
+				i++;
+				break;
+			} else if (streq(buf, PATCH_NOSUM)) {
+				havexsum = 0;
+				oldformat();
+				i++;
+				break;
+			}
 		}
+		unless (i) noversline(infname);
 		do {
 			len = strlen(buf);
 			sumC = adler32(sumC, buf, len);
@@ -1134,7 +1143,7 @@ init(FILE *p, int flags, char **resyncRootp)
 		return (f);
 	}
 
-	unless (idDB = loadIdDB()) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
@@ -1208,7 +1217,7 @@ rebuild_id(char *id)
 	}
 	system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
-	unless (idDB = loadIdDB()) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}

@@ -563,7 +563,6 @@ _commit() {
 		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		EXIT=$?
 		/bin/rm -f /tmp/comments$$
-		${BIN}csetmark -r+
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
@@ -594,7 +593,6 @@ _commit() {
 			# Assume top of trunk is the right rev
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
-			${BIN}csetmark -r+
 			_sendLog $REV
 	    	 	exit $EXIT;
 		 	;;
