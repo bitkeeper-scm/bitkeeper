@@ -195,10 +195,6 @@
 #define X_XFLAGS	(X_RCS|X_YEAR4|X_ISSHELL|X_EXPAND1|X_HASH|\
 			 X_SCCS|X_SINGLE|X_ALWAYS_EDIT)
 
-			/* users can change these */
-#define	X_USER		(X_RCS|X_YEAR4|X_EXPAND1|X_SCCS)
-#define	X_DEFAULTS	(X_BITKEEPER|X_SCCS|X_CSETMARKED)
-
 /*
  * Encoding flags.
  */

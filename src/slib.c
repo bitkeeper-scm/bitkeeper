@@ -3071,17 +3071,8 @@ misc(sccs *s)
 			}
 
 			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
-			if (bits & X_YEAR4) s->state |= S_YEAR4;
-			if (bits & X_SCCS) s->state |= S_SCCS;
-			if (bits & X_RCS) s->state |= S_RCS;
-			if (bits & X_SINGLE) s->state |= S_SINGLE;
-			if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
-			if (bits & X_ALWAYS_EDIT) s->state |= S_ALWAYS_EDIT;
-#ifdef S_ISSHELL
-			if (bits & X_ISSHELL) s->state |= S_ISSHELL;
-#endif
-			if (bits & X_HASH) s->state |= S_HASH;
+			s->state |= xflags2state(bits);
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
@@ -6824,17 +6815,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 		fputmeta(s, "\001f b\n", out);
 	}
 	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
-	if (s->state & S_YEAR4) bits |= X_YEAR4;
-	if (s->state & S_SCCS) bits |= X_SCCS;
-	if (s->state & S_SINGLE) bits |= X_SINGLE;
-	if (s->state & S_RCS) bits |= X_RCS;
-	if (s->state & S_EXPAND1) bits |= X_EXPAND1;
 	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
-	if (s->state & S_ALWAYS_EDIT) bits |= X_ALWAYS_EDIT;
-#ifdef S_ISSHELL
-	if (s->state & S_ISSHELL) bits |= X_ISSHELL;
-#endif
-	if (s->state & S_HASH) bits |= X_HASH;
+	bits |= state2xflags(s->state);
 	if (bits) {
 		char	buf[40];
 
@@ -9155,7 +9137,6 @@ name2xflg(char *fl)
 	} else if (streq(fl, "ALWAYS_EDIT")) {
 		return X_ALWAYS_EDIT;
 	}
-	assert("bad flag" == 0);
 	return (0);			/* lint */
 }
 
@@ -9224,7 +9205,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	 * initialize it from sc->state.
 	 */
 	unless (n && (n->flags & D_XFLAGS)) {
-		xflags = state2xflags(sc->state);
+		xflags = state2xflags(sc->state) & X_XFLAGS;
 	} else {
 		xflags = n->xflags;
 	}
@@ -9238,6 +9219,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 			return;
 		} 
 		xflags |= mask;
+		sc->state |= xflags2state(mask);
 	} else {
 		unless (xflags & mask) {
 			verbose((stderr,
@@ -9246,6 +9228,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 			return;
 		}
 		xflags &= ~mask;
+		sc->state &= ~xflags2state(mask);
 	}
 	assert(n);
 	n->flags |= D_XFLAGS;
@@ -9530,65 +9513,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (v && *v == '\0') v = 0;
 			ALLOC_D();
 
-			if (streq(fl, "SCCS")) {
+			if (name2xflg(fl) & X_XFLAGS) {
 				if (v) goto noval;
 				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_SCCS;
-				else
-					sc->state &= ~S_SCCS;
-			} else if (streq(fl, "EXPAND1")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_EXPAND1;
-				else
-					sc->state &= ~S_EXPAND1;
-			} else if (streq(fl, "RCS")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_RCS;
-				else
-					sc->state &= ~S_RCS;
-			} else if (streq(fl, "YEAR4")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_YEAR4;
-				else
-					sc->state &= ~S_YEAR4;
-			} else if (streq(fl, "HASH")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_HASH;
-				else
-					sc->state &= ~S_HASH;
-			} else if (streq(fl, "SINGLE")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_SINGLE;
-				else
-					sc->state &= ~S_SINGLE;
-#ifdef S_ISSHELL
-			} else if (streq(fl, "SHELL")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_ISSHELL;
-				else
-					sc->state &= ~S_ISSHELL;
-#endif
-			} else if (streq(fl, "ALWAYS_EDIT")) {
-
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_ALWAYS_EDIT;
-				else
-					sc->state &= ~S_ALWAYS_EDIT;
 			/* Flags below are non propagated */
 			} else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
 				if (v) goto noval;
@@ -9617,15 +9544,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_WARNED;
 				}
 			}
-#if 0 /* Not in this tree yet... */
-			else if (streq(fl, "HASH")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_HASH;
-				else
-					sc->state &= ~S_HASH;
-			}
-#endif
 			else {
 				if (v) fprintf(stderr,
 					       "admin: unknown flag %s=%s\n",
@@ -12632,17 +12550,8 @@ sccs_perfile(sccs *s, FILE *out)
 	if (s->defbranch) fprintf(out, "f d %s\n", s->defbranch);
 	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
 	if (s->state & S_BITKEEPER) i |= X_BITKEEPER;
-	if (s->state & S_YEAR4) i |= X_YEAR4;
-	if (s->state & S_RCS) i |= X_RCS;
-	if (s->state & S_SCCS) i |= X_SCCS;
-	if (s->state & S_SINGLE) i |= X_SINGLE;
-	if (s->state & S_EXPAND1) i |= X_EXPAND1;
 	if (s->state & S_CSETMARKED) i |= X_CSETMARKED;
-#ifdef S_ISSHELL
-	if (s->state & S_ISSHELL) i |= X_ISSHELL;
-#endif
-	if (s->state & S_HASH) i |= X_HASH;
-	if (s->state & S_ALWAYS_EDIT) i |= X_ALWAYS_EDIT;
+	i |= state2xflags(s->state);
 
 	if (i) fprintf(out, "f x %u\n", i);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
@@ -12688,17 +12597,8 @@ err:			fprintf(stderr,
 
 		unused = 0;
 		if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
-		if (bits & X_YEAR4) s->state |= S_YEAR4;
-		if (bits & X_RCS) s->state |= S_RCS;
-		if (bits & X_SCCS) s->state |= S_SCCS;
-		if (bits & X_SINGLE) s->state |= S_SINGLE;
-		if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 		if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
-#ifdef S_ISSHELL
-		if (bits & X_ISSHELL) s->state |= S_ISSHELL;
-#endif
-		if (bits & X_HASH) s->state |= S_HASH;
-		if (bits & X_ALWAYS_EDIT) s->state |= S_ALWAYS_EDIT;
+		s->state |= xflags2state(bits);
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
