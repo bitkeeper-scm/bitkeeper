@@ -1190,6 +1190,8 @@ char	**parent_allp(void);
 char	*parent_normalize(char *);
 u32	crc(char *s);
 
+int	annotate_args(int flags, char *args);
+
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;

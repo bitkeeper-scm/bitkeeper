@@ -71,16 +71,20 @@ diffs_main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "AbBcC|d;DefhHIl|Mm|npr|R|suUvw")) != -1) {
+	while ((c = getopt(ac, av, "a;A;bBcC|d;ehHIl|m|npr|R|suvw")) != -1) {
 		switch (c) {
-		    case 'A': flags |= GET_ALIGN; break;
+		    case 'A':
+			flags |= GET_ALIGN;
+			/*FALLTHROUGH*/
+		    case 'a':
+			flags = annotate_args(flags, optarg);
+			if (flags == -1) goto usage;
+			break;
 		    case 'b': kind |= DF_GNUb; break;		/* doc 2.0 */
 		    case 'B': kind |= DF_GNUB; break;		/* doc 2.0 */
 		    case 'c': kind |= DF_CONTEXT; break;	/* doc 2.0 */
 		    case 'C': getMsg("diffs-C", 0, 0, 0, stdout); exit(0);
-		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'e': empty = 1; break;
-		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
 		    case 'H':
 			flags |= DIFF_COMMENTS;
@@ -88,7 +92,6 @@ diffs_main(int ac, char **av)
 			break;
 		    case 'I': kind |= DF_IFDEF; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
-		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
 		    case 'm':
 			kind |= DF_IFDEF;
 			mdiff = 1;
@@ -102,7 +105,6 @@ diffs_main(int ac, char **av)
 			kind |= DF_SDIFF;
 			break;
 		    case 'u': kind |= DF_UNIFIED; break;	/* doc 2.0 */
-		    case 'U': flags |= GET_USER; break;		/* doc 2.0 */
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
 		    case 'w': kind |= DF_GNUw; break;		/* doc 2.0 */
 		    RANGE_OPTS('d', 'r');			/* doc 2.0 */
