@@ -3,14 +3,18 @@
 .SH NAME
 bk annotate \- provide annotated listing of source files
 .SH SYNOPSIS
-.B bk annotate [\-adkmNnu] [\c
-.OPTreq \-c d
-.B ] [\c
+.Bc bk annotate [\-adkmNnu] [
+.OPTreq \-c dt
+.Bc ] [
 .OPTreq \-r rev
 .B ]
 .BKARGS
 .br
-.B bk sccscat [\-dmnu]
+.Bc bk sccscat [\-dmnNu] [
+.OPTreq \-c dates
+.Bc ] [
+.OPTreq \-r rev
+.B ]
 .BKARGS
 .SH DESCRIPTION
 .LP
@@ -19,7 +23,7 @@ base, i.e., when you are tracking down bugs.  The annotations add an
 extra level of information which can be useful.
 .LP
 \*(BK has two kinds of annotations:  annotations of a specific version,
-and annotations of all versions (the second form is unique to \*(BK).
+and annotations of all (or some) versions (the second form is unique to \*(BK).
 .SH ANNOTATE
 .LP
 The 
@@ -28,6 +32,25 @@ command will display a specific version of a file with annotations.
 The default annotations are the revision in which the change was
 made and the user who made that change.  Specifying any options
 overrides all of the default options.
+.SH SCCSCAT
+.LP
+By default,
+.B bk sccscat
+will display 
+.B all
+lines in 
+.B all
+versions of a file, with each version of a line grouped closely with
+other versions of that line.  This is useful for determining when a
+particular feature was added.
+.LP
+.B bk sccscat 
+can restrict the set of lines displayed to those lines added in a 
+specified revision or date range.  In that case, the whole file is
+not displayed, instead, only the lines which were added in that 
+range of changes are displayed.  This form is usually a result of
+specifying a range to
+.BR "bk grep" .
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
@@ -37,17 +60,22 @@ the following options
 .BI [ mNnud ].
 .tp
 .OPTreq \-c date
-Get the latest revision before
+.B bk annotate: 
+annotate the latest version before
+.ARG date ;
+.br
+.B bk sccscat:
+annotate the set of versions matching the range
 .ARG date .
 .tp
 .B \-d
 Prefix each line with the date of last modification.
 .tp
 .B \-k
-Don't expand RCS or SCCS keywords.
-.B \-k
-is implied by
-.B \-e.
+.B bk annotate:
+do not expand RCS or SCCS keywords.
+.B bk sccscat
+never expands keywords.
 .tp
 .B \-m
 Prefix each line with the revision of last modification.
@@ -59,61 +87,23 @@ Prefix each line with its line number.
 Prefix each line with the filename.
 .tp
 .OPTreq \-r rev
-Get this revision.
-.tp
-.B \-u
-Prefix each line with the user who last modified it.
-.SH SCCSCAT
-.LP
-The
-.B sccscat
-command will display 
-.B all
-lines in 
-.B all
-versions of a file, with each version of a line grouped closely with
-other versions of that line.  This is useful for determining when a
-particular feature was added.
-.\"   It can also ???
-.SH OPTIONS
-.if t .TP
-.if n .TP 1i
-.OPTreq \-c date
-Do the set of revisions matching 
-.ARG date .
-.tp
-.B \-d
-Prefix each line with the date of last modification.
-.tp
-.B \-k
-Don't expand RCS or SCCS keywords.
-.B \-k
-is implied by
-.B \-e.
-.tp
-.B \-m
-Prefix each line with the revision of last modification.
-.tp
-.B \-N
-Prefix each line with its line number.
-.tp
-.B \-n
-Prefix each line with the filename.
-.tp
-.OPTreq \-r rev
-Do the set of revisions matching 
-.ARG rev .
+.B bk annotate: 
+annotate this revision;
+.br
+.B bk sccscat:
+annotate the lines added by this revision.
 .tp
 .B \-u
 Prefix each line with the user who last modified it.
 .SH SEE ALSO
 .LP
-.\".SA dates XXX-lm there is no bk-dates man page
 .SA get 1
 .SA grep 1
-.\" .SA ranges XXX assume bk-range.1 was meant.
 .SA range 1
 .SA histtool 1
-.\" help://File/sccscat
+.\" help://sccscat
+.\" help://bk-sccscat
+.\" help://sccscat.1
+.\" help://bk-sccscat.1
 .SH CATEGORY
 .B File
