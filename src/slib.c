@@ -78,69 +78,6 @@ private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s);
 private	int	parseConfig(char *buf);
 
-int
-exists(char *s)
-{
-	struct	stat sbuf;
-
-	return (lstat(s, &sbuf) == 0);
-}
-
-int
-isdir(char *s)
-{
-	struct	stat sbuf;
-
-	if (lstat(s, &sbuf) == -1) return 0;
-	return (S_ISDIR(sbuf.st_mode));
-}
-
-int
-isreg(char *s)
-{
-	struct	stat sbuf;
-
-	if (lstat(s, &sbuf) == -1) return 0;
-	return (S_ISREG(sbuf.st_mode));
-}
-
-int isSymlnk(char *s)
-{
-	struct	stat sbuf;
-
-	if (lstat(s, &sbuf) == -1) return 0;
-	return (S_ISLNK(sbuf.st_mode));
-}
-
-inline int
-writable(char *s)
-{
-	struct	stat sbuf;
-
-	if (lstat(s, &sbuf) == -1) return 0;
-	if (S_ISLNK(sbuf.st_mode)) return (1);
-	return ((sbuf.st_mode & 0222) != 0);
-}
-
-off_t
-fsize(int fd)
-{
-	struct	stat sbuf;
-
-	if (fstat(fd, &sbuf) == -1) return 0;
-	unless (S_ISREG(sbuf.st_mode)) return (0);
-	return (sbuf.st_size);
-}
-
-off_t
-size(char *s)
-{
-	struct	stat sbuf;
-
-	if (lstat(s, &sbuf) == -1) return 0;
-	unless (S_ISREG(sbuf.st_mode)) return (0);
-	return (sbuf.st_size);
-}
 
 int
 emptyDir(char *dir)
