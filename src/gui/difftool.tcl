@@ -19,9 +19,7 @@ proc widgets {} \
 	option add *background $gc(BG)
 
 	set g [wm geometry .]
-	if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
-		wm geometry . $gc(diff.geometry)
-	}
+	wm iconify .
 	wm title . "Diff Tool"
 
 	frame .diffs
@@ -175,6 +173,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	search_keyboard_bindings
 	searchreset
 	. configure -background $gc(BG)
+	if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
+		wm geometry . $gc(diff.geometry)
+	}
 	wm deiconify .
 }
 

@@ -49,7 +49,7 @@ private options	opts;
 private globv	ignore; 
 private u32	 d_count, s_count, x_count; /* progress counter */
 private u32	 s_last, x_last; /* progress counter */
-private unsigned int c_count, p_count;
+private u32	 c_count, p_count;
 
 private void do_print(char state[5], char *file, char *rev);
 private void walk(char *dir, int level);
@@ -606,7 +606,7 @@ progress(int force)
 	char	buf[100];
 
 	if (!force && (s_last == s_count) && (x_last == x_count)) return;
-	sprintf(buf, "%d %d %d\n", s_count, x_count, d_count);
+	sprintf(buf, "%d %d %d %d\n", s_count, x_count, d_count, c_count);
 	/* If we get an error, it usually means that we are to die */
 	if (write(1, buf, strlen(buf)) != strlen(buf)) exit(1);
 	s_last = s_count;
