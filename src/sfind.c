@@ -49,7 +49,7 @@ typedef struct {
 private	jmp_buf	sfind_exit;
 private project *proj;
 private options	opts;
-private globv	ignore; 
+private char	**ignore, **dont_ignore; 
 private u32	d_count, s_count, x_count; /* progress counter */
 private u32	s_last, x_last; /* progress counter */
 private u32	c_count, n_count, p_count;
@@ -588,6 +588,10 @@ walk(char *dir, int level)
 					ignore = read_globs(ignoref, 0);
 					fclose(ignoref);
 				}
+				dont_ignore = addLine(0,
+				    strdup("BitKeeper/etc/gone"));
+				dont_ignore = addLine(dont_ignore,
+				    strdup("./BitKeeper/etc/gone"));
 			}           
 			unless (opts.fixdfile) {
 				sprintf(tmp, "%s/%s", buf, DFILE);
@@ -645,6 +649,7 @@ walk(char *dir, int level)
 
 done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
+		if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
 		if (proj) proj_free(proj); proj = 0;
 		if (opts.summarize) print_summary();
 
@@ -690,7 +695,7 @@ isIgnored(char *file)
 	int len;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	unless (opts.all) {
+	unless (opts.all || match_globs(file, dont_ignore, 0)) {
 		if (match_globs(file, ignore, 0)) {
 			debug((stderr, "SKIP\t%s\n", file));
 			return (1);
