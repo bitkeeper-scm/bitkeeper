@@ -307,7 +307,8 @@ main(int ac, char **av)
 	/*
 	 * Is it a known C program ?
 	 */
-	if (streq(av[0], "bkd")) {
+	if (streq(av[0], "bkd") ||
+	    streq(av[0], "patch")) {
 		return (spawnvp_ex(_P_WAIT, av[0], av));
 	}
 

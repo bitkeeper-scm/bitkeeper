@@ -38,7 +38,14 @@ diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd $HERE/project/src
 bk get $Q foo.c
+diff -u foo.c $HERE/import_new/src/foo.c
 cmp -s foo.c $HERE/import_new/src/foo.c
+U=`bk prs -r+ -h -d:P: foo.c`
+if [ X$U != Xpatch ] 
+then
+	echo "failed: bad user: $U"
+	exit 1
+fi
 echo OK
 cd $HERE
 echo $N Test import patch file which deletes a file .................$NL
