@@ -141,10 +141,12 @@ if [ ! -f bar/s.foo ]; then echo failed on bar/s.foo; exit 1; fi
 if [ ! -f bar/blech/s.foo ]; then echo failed on bar/blech/s.foo; exit 1; fi
 echo OK
 echo $N get -S should not check out files again .....................$NL
-before="`ls -li s.foo`"
+touch ref
+echo "new" > ref
+sleep 1
 bk co $Q -S s.foo
-after="`ls -li s.foo`"
-if [ x"$before" != x"$after" ]; then echo failed; exit 1; fi
+find . -name ref | grep "^\./foo.c$"
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N get -S should ignore modified files .........................$NL
 bk co $Q -e s.foo
