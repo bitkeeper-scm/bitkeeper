@@ -232,3 +232,13 @@ bk push $HERE/copy > push.out 2>&1
 grep -q "not to accept conflicts" push.out
 if [ $? -ne 0 ]; then echo failed; fi
 echo OK
+echo $N pull with a delete event ....................................$NL
+bk clone $Q $HERE/project $HERE/copy2
+cd $HERE/project/src
+bk rm foo.c
+bk commit $Q -ydelete
+cd $HERE/copy2/src
+bk get $Q foo.c
+bk pull $Q $HERE/project
+if [ -f foo.c ]; then echo failed to delete gfile; exit 1; fi
+echo OK
