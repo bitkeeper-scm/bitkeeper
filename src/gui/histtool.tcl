@@ -40,7 +40,10 @@ proc highlight {id type {rev ""}} \
 {
 	global gc w
 
-	set bb [$w(graph) bbox $id]
+	catch {set bb [$w(graph) bbox $id]} err
+	#puts "In highlight: id=($id) err=($err)"
+	# If node to highlight is not in view, err=""
+	if {$err == ""} { return "$err" }
 	# Added a pixel at the top and removed a pixel at the bottom to fix 
 	# lm complaint that the bbox was touching the characters at top
 	# -- lm doesn't mind that the bottoms of the letters touch, though
@@ -245,6 +248,10 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	} elseif {[regexp \
 	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match fname rev]} {
 		set annotated 1
+		# set global rev1 so that r2c and csettool know which rev
+		# to view when a line is selected. Line has precedence over
+		# a selected node
+		set rev1 $rev
 		$w(aptext) configure -height 15
 		#.p.b configure -background green
 		$w(ctext) configure -height $gc(hist.commentHeight) 
@@ -332,6 +339,11 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		setScrollRegion
 		set first [$w(graph) gettags $firstnode]
 		$w(graph) xview moveto 0 
+		set hrev [lineOpts $rev]
+		set rc [highlight $hrev "old"]
+		#if {$rc == ""} {
+			#puts "trying to highlight rev=($rev) hrev=($hrev1)"
+		#}
 		set revname $rev2rev_name($rev)
 		
 		# XXX: This can be done cleaner -- coalesce this
@@ -343,6 +355,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 			if {"$file" == "ChangeSet"} {
 				csettool
 			} else {
+				#puts "getting r2c for rev=($rev)"
 				r2c
 			}
 		}
@@ -382,6 +395,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		return
 	}
 	if {($bindtype == "D1") && ($annotated == 1)} {
+		set rev1 $rev
 		if {"$file" == "ChangeSet"} {
 	    		csettool
 		} else {
@@ -389,7 +403,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		}
 	}
 	return
-}
+} ;# proc selectTag
 
 # Separate the revisions by date with a vertical bar
 # Prints the date on the bottom of the pane
@@ -1328,10 +1342,10 @@ proc widgets {fname} \
 	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
-			-side left
+			-side left -fill y
 	    } else {
 		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.mb .menus.cset -side left
+			.menus.mb .menus.cset -side left -fill y
 	    }
 
 	frame .p
@@ -1482,9 +1496,10 @@ proc widgets {fname} \
 	bindtags $w(aptext) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
 
+	wm deiconify .
 	focus $w(graph)
 	. configure -background $gc(BG)
-}
+} ;# proc widgets
 
 #
 # Arguments:
@@ -1510,8 +1525,7 @@ proc histtool {fname R} \
 	set bad 0
 	set file [exec bk sfiles -g $fname 2>$dev_null]
 	if {"$file" == ""} {
-		puts stderr "No such file \"$fname\" rev=($R)"
-		exit 1
+		fatalMessage "No such file \"$fname\" rev=($R)"
 	}
 	if {[catch {exec bk root $file} proot]} {
 		wm title . "histtool: $file $R"
@@ -1545,7 +1559,7 @@ The file $fname was last modified $ago ago."
 	set search(prompt) "Welcome"
 	focus $w(graph)
 	busy 0
-}
+} ;#histool
 
 proc init {} \
 {
@@ -1612,17 +1626,25 @@ proc lineOpts {rev} \
 	return $rev
 }
 
+wm withdraw .
 init
 arguments
 if {$fname == ""} {
 	cd2root
 	# This should match the CHANGESET path defined in sccs.h
 	set fname ChangeSet
+	catch {exec bk sane} err
+	if {[lindex $errorCode 2] == 1} {
+		fatalMessage "$err"
+	}
 }
 widgets $fname
-histtool $fname "-$gc(hist.showHistory)"
-
-if {$rev1 != ""} {
+if {$rev1 == ""} {
+	histtool $fname "-$gc(hist.showHistory)"
+} else {
+	#puts stderr "rev1=($rev1) srev=($srev)"
+	set srev $rev1
+	histtool $fname "-$rev1"
 	set rev1 [lineOpts $rev1]
 	highlight $rev1 "old"
 }

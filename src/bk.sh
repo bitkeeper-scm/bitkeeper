@@ -126,6 +126,11 @@ _vim() {
 	exec vim $@
 }
 
+_gvim() {
+	bk get -qe "$@" 2> /dev/null
+	exec gvim $@
+}
+
 _vi() {
 	bk get -qe "$@" 2> /dev/null
 	exec vi $@

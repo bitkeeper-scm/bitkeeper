@@ -2,5 +2,5 @@
 
 machine=`uname -s`
 case $machine in 
-    CYGWIN_NT-4.0) echo ".exe";;
+    CYGWIN_NT-[45].0) echo ".exe";;
 esac
