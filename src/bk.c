@@ -180,7 +180,11 @@ main(int ac, char **av)
 				chdir(av[2]);
 				av++; ac--;
 			} else {
-				sccs_cd2root(0, 0);
+				if (sccs_cd2root(0, 0) == -1) {
+					fprintf(stderr, 
+					    "bk: Can not find project root.\n");
+					return(1);
+				}
 			}
 			av++; ac--;
 			if (streq(av[1], "-R")) {

@@ -17,7 +17,10 @@ status_main(int ac, char **av)
 		}
 	}
 	if (project_path = av[optind]) chdir(project_path);
-	sccs_cd2root(0, 0);
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "status: can not find root directory\n");
+		return(1);  /* error exit */
+	}
 	sprintf(status_log, "%s/bk_status%d", TMP_PATH, getpid());
 	status(verbose, status_log);
 	f = fopen(status_log, "r");

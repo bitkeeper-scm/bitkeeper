@@ -33,7 +33,10 @@ undo_main(int ac,  char **av)
 			exit(1);
 		}
 	}
-	sccs_cd2root(0, 0);
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "undo: can not find project root.\n");
+		exit(1);
+	}
 	unless (rev) {
 		fprintf(stderr, "usage bk undo [-afqs] -rcset-revision\n");
 		exit(1);

@@ -45,7 +45,10 @@ commit_main(int ac, char **av)
 				break;
 		}
 	}
-	sccs_cd2root(0, 0);
+	if (sccs_cd2root(0, 0) == -1) {
+		printf("Can not find root directory\n");
+		exit(1);
+	}
 	unless(resync) remark(quiet);
 	sprintf(list, "%s/bk_list%d", TMP_PATH, getpid());
 	sprintf(buf, "%sbk sfiles -CA > %s", bin, list);
@@ -53,13 +56,13 @@ commit_main(int ac, char **av)
 		unlink(list);
 		unlink(commit_file);
 		gethelp("duplicate_IDs", "", stdout);
-		exit (1);
+		exit(1);
 	}
 	if ((force == 0) && (size(list) == 0)) {
 		unless (quiet) fprintf(stderr, "Nothing to commit\n");
 		unlink(list);
 		unlink(commit_file);
-		exit (0);
+		exit(0);
 	}
 	if (getcomment) {
 		sprintf(buf,
@@ -68,7 +71,7 @@ commit_main(int ac, char **av)
 	}
 	unlink(list);
 	do_clean(s_cset, SILENT);
-	if (doit) exit (do_commit());
+	if (doit) exit(do_commit());
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
@@ -89,7 +92,7 @@ commit_main(int ac, char **av)
 Abort:			printf("Commit aborted.\n");
 			unlink(list);
 			unlink(commit_file);
-			exit (1);
+			exit(1);
 		}
 		
 	}
@@ -174,7 +177,7 @@ make_comment(char *cmt)
 
 	if ((fd = open(commit_file, O_CREAT|O_TRUNC|O_WRONLY, 0664)) == -1)  {
 		perror("commit");
-		exit (1);
+		exit(1);
 	}
 	write(fd, cmt, strlen(cmt));
 	close(fd);

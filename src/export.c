@@ -54,7 +54,10 @@ usage:			fprintf(stderr,
 		exit(1);
 	}
 	chdir(src);
-	sccs_cd2root(0, 0);
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "Can not find project root.\n");
+		exit(1);
+	}
 	strcpy(src_path, fullname(src, 0));
 	strcpy(dst_path, fullname(dst, 0));
 

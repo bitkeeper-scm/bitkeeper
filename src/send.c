@@ -94,27 +94,16 @@ send_main(int ac,  char **av)
 		exit(1);
 	}
 
-	sccs_cd2root(0, 0);
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "send: can not find project root.\n");
+		exit(1);
+	}
 	if (!streq(to, "-") && !force) {
-#ifdef OLD
-		char rev_tmp[MAXPATH];
-		sprintf(rev_tmp, "%s/bk_rev%d", TMP_PATH, getpid());
-		sprintf(buf, "bk _sendlog %s %s > %s", to, rev,  rev_tmp);
-		system(buf);
-		if (size(rev_tmp) == 0) {
-			printf("Nothing to send to %s, use -f to force.\n", to);
-			unlink(rev_tmp);
-			exit(0);
-		}
-		unlink(rev_tmp);
-		// TODO ree-init rev
-#else
 		rev = sendlog(to, rev);
 		if (rev == NULL) {
 			printf("Nothing to send to %s, use -f to force.\n", to);
 			exit(0);
 		}
-#endif
 	}
 	if (streq(to, "-") || streq(to, "hoser@nevdull.com")) use_stdout = 1;
 	if (use_stdout) {

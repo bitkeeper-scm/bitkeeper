@@ -247,7 +247,10 @@ project_name()
 	static	char pname[MAXLINE] = "";
 	char	changeset[MAXPATH] = CHANGESET;
 
-	sccs_cd2root(0, 0);
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "project name: Can not find project root\n");
+		return (pname);
+	}
 	s = sccs_init(changeset, 0, 0);
 	if (s && s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
 	sccs_free(s);
@@ -390,7 +393,7 @@ status(int verbose, char *status_log)
 		}
 	}
 
-	sprintf(tmp_file, "%s/bl_tmp%d", TMP_PATH, getpid());
+	sprintf(tmp_file, "%s/bk_tmp%d", TMP_PATH, getpid());
 	if (verbose) {
 		f1 = fopen(tmp_file, "wb");
 		assert(f1);
