@@ -9,20 +9,16 @@
  */
 #include "system.h"
 
-long
-localtimez(time_t tt, struct tm *tmz)
+struct tm *
+localtimez(const time_t *timep, long *offsetp)
 {
 	struct tm	*tm;
 	int		offset;
-
-	tm = localtime(&tt);
-
-	/* There might be more fields in struct tm than
-	 * the portable ones, so copy it with structure assignment.
-	 */
-	*tmz = *tm;
+	int		offset_sec;
+	time_t		before = *timep;
 
 #ifdef HAVE_GMTOFF
+	tm = localtime(timep);
 	offset	= tm->tm_gmtoff;
 #else
 #ifdef	HAVE_TIMEZONE
@@ -31,22 +27,39 @@ localtimez(time_t tt, struct tm *tmz)
 	 * get the offset wrong everywhere but in the USA if we try
 	 * to calculate it using only timezone.
 	 */
+	tm = localtime(timep);
 	offset	= -((tm->tm_isdst > 0) ? altzone : timezone);
 #else
 	/* Take the difference between gmtime() and localtime() as the
 	 * time zone.  This works on all systems but has extra overhead.
 	 */
-	offset  = (tm->tm_hour*60 + tm->tm_min)*60 + tm->tm_sec;
+	tm = gmtime(timep);
+	offset = -((tm->tm_hour*60 + tm->tm_min)*60 + tm->tm_sec);
+	tm = localtime(timep);
+	offset += (tm->tm_hour*60 + tm->tm_min)*60 + tm->tm_sec;
+#endif
+#endif
+	assert(*timep == before);
+	/*
+	 * Handle weird people who have seconds in their timezone.
+	 * We just silents remove the seconds portion and only use
+	 * up the the minutes.
+	 */
+	offset_sec = offset % 60;
+	if (offset_sec) {
+		time_t	adjtime = *timep - offset_sec;
+		offset -= offset_sec;
+		tm = localtime(&adjtime);
+	}
 
-	tm = gmtime(&tt);
-	offset -= (tm->tm_hour*60 + tm->tm_min)*60 + tm->tm_sec;
-#endif
-#endif
 	/* Normalize offset to (-12h, 13h].
 	 * Thanks to Chris Wedgwood for the fix.
 	 */
 	while (offset <= -(12*60*60)) offset += (24*60*60);
 	while (offset > (13*60*60)) offset -= (24*60*60);
-
-	return (offset);
+	
+	if (offsetp) *offsetp = offset;
+	return (tm);
 }
+
+

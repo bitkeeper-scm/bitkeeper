@@ -243,7 +243,7 @@ log_cmd(int i, int ac, char **av)
 	struct	tm *tp;
 
 	time(&t);
-	tp = localtime(&t);
+	tp = localtimez(&t, 0);
 	fprintf(Opts.log, "%s %.24s ", Opts.remote, asctime(tp));
 	for (i = 0; i < ac; ++i) {
 		fprintf(Opts.log, "%s ", av[i]);
