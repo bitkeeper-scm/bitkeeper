@@ -6,8 +6,6 @@
 extern char	*editor, *pager, *bin;
 extern char	*BitKeeper;
 
-private char	*project_name();
-
 private	void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 {
@@ -130,7 +128,7 @@ sendConfig(char *to, int quiet, int quota)
 		printf("sending config file...\n");
 	}
 	sprintf(buf, "BitKeeper config: %s", project_name());
-	mail(to, buf, config_log);
+	sendit("http://www.bitkeeper.com/cgi-bin/logit", to, buf, config_log);
 	unlink(config_log);
 }
 
@@ -234,7 +232,7 @@ get(char *path, int flags, char *output)
 	return (ret ? -1 : 0);
 }
 
-private char *
+char *
 project_name()
 {
 	sccs	*s;
@@ -293,6 +291,7 @@ notify()
 	fclose(f);
 	unlink(notify_log);
 }
+
 
 void
 mail(char *to, char *subject, char *file)

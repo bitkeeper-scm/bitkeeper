@@ -19,7 +19,7 @@ OBJ	= adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  gettemp.o getuser.o glob.o help.o host.o isascii.o \
 	  key2rev.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o logaddr.o logchangeset.o mkdir.o mmap.o \
+	  lod.o log.o logaddr.o logchangeset.o mkdir.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/disksp.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/platforminit.o \
