@@ -34,6 +34,10 @@ bkd_main(int ac, char **av)
 	 * Unix note: -E/-s/-S/-R options have no effect on Unix;
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
+	 * XXX Win32 note: WARNING: If you add a new optoin,  you _must_
+	 * XXX propagate the option in  bkd_install_service() and 
+	 * XXX bkd_service_loop(). The NT service is a 3 level spwaning
+	 * XXX architechture!! (The above function are in port/bkd_server.c)
 	 */
 	while ((c = getopt(ac, av,
 			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
