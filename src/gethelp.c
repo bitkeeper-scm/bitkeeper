@@ -120,7 +120,8 @@ helpaliases_main(int ac, char **av)
 #define	COMPATIBILITY	7
 #define	MISC		8
 #define	OBSOLETE	9
-#define	LAST		9
+#define	ALL		10
+#define	LAST		10
 int
 helptopiclist_main(int ac, char **av)
 {
@@ -149,6 +150,7 @@ helptopiclist_main(int ac, char **av)
 		t = strrchr(buf, '/');
 		*t = 0;
 #define	streqcase	!strcasecmp
+#if 0
 		if (streqcase("General", &buf[HSZ])) {
 			i = GENERAL;
 		} else if (streqcase("Licensing", &buf[HSZ])) {
@@ -171,6 +173,9 @@ helptopiclist_main(int ac, char **av)
 			fprintf(stderr, "WARNING: unknown section %s\n", buf);
 			i = MISC;
 		}
+#else
+		i = ALL;
+#endif
 		*t = '/';
 		if (mdbm_store_str(dups, &buf[HSZ], "", MDBM_INSERT)) {
 			fprintf(stderr, "Duplicate key: %s\n", &buf[HSZ]);
@@ -198,6 +203,7 @@ helptopiclist_main(int ac, char **av)
 		    case ADMIN: 	t = "Admin"; break;
 		    case MISC: 		t = "Misc"; break;
 		    case OBSOLETE:	t = "Obsolete"; break;
+		    case ALL:		t = "Alphabetical"; break;
 		    default: 		t = "???"; break;
 		}
 		printf("%s\n", t);

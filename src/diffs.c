@@ -68,7 +68,7 @@ diffs_main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "acd;DfhMnpr|suUv")) != -1) {
+	while ((c = getopt(ac, av, "acd;DfhMnpr|suU")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'h': flags &= ~DIFF_HEADER; break;
