@@ -29,7 +29,10 @@ proc main {} \
 		puts stderr "can't find a usable bk.exe in $destination"
 		exit 1
 	}
+
 	registry_install $destination
+	addpath $destination
+	writelog "$destination/registry.log"
 
 	exit 0
 }
@@ -75,23 +78,6 @@ proc registry_install {destination} \
 	reg set $HKLMS\\$MWC\\Uninstall\\$id HelpLink \
 		 "http://www.bitmover.com"
 
-        # this is going to get logged even though we only modify the
-        # key (versus creating it). Andrew wanted to know the exact
-	# bits added to the path so we'll pass that info along so 
-	# it gets logged
-	if {![info exists env(BK_OLDPATH)]} {
-		# Pure paranoia but I don't want to stomp on the entire path
-		set env(PATH) "$destination;$env(PATH)"
-	} else {
-		set env(PATH) "$destination;$env(BK_OLDPATH)"
-	}
-	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
-	append key "\\Control\\Session Manager\\Environment"
-	reg modify $key Path $env(PATH) $destination
-	reg broadcast Environment
-
-	# save registry keys to a log file.
-	writelog "$destination/registry.log"
 }
 
 # perform a registry operation and save pertinent information to
@@ -143,14 +129,50 @@ proc writelog {file} \
 	close $f
 }
 
+proc addpath {dir} \
+{
+	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
+	append key "\\Control\\Session Manager\\Environment"
+	set path [registry get $key Path]
+	set dir [normalize [file nativename $dir]]
+	# look through the path to see if this directory is already
+	# there (presumably from a previous install); no sense in
+	# adding a duplicate
+	foreach d [split $path {;}] {
+		set d [file normalize $d]
+		if {$d eq $dir} {
+			# dir is already in the path
+			return 
+		}
+	}
+
+	# this is going to get logged even though we only modify the
+	# key (versus creating it). Andrew wanted to know the exact
+	# bits added to the path so we'll pass that info along so 
+	# it gets logged
+	set path "$path;$dir"
+	reg modify $key Path $path $dir
+	reg broadcast Environment
+
+}
+
 # file normalize is required to convert relative paths to absolute and
 # to convert short names (eg: c:/progra~1) into long names (eg:
 # c:/Program Files). file nativename is required to give the actual,
 # honest-to-goodness filename (read: backslashes instead of forward
 # slashes on windows). This is mostly used for human-readable filenames.
-proc normalize {dir} \
-{
-	return [file nativename [file normalize $dir]]
+proc normalize {dir} {
+	if {[file exists $dir]} {
+		# If possible, use bk's notion of a normalized
+		# path. This only works if the file exists, though.
+		catch {set dir [exec bk pwd $dir]}
+		if {$dir eq ""} {
+			set dir [file nativename [file normalize $dir]]
+		}
+	} else {
+		set dir [file nativename [file normalize $dir]]
+	}
+	return $dir
 }
 
 
