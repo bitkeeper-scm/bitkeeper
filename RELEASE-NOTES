@@ -14,13 +14,21 @@ Nothing is required to upgrade from the 3.0.1 release.
 New Features
 ----------------------------------------------------------------------------
 
-  Support the SCO platform
+  Support SCO and Tru64 platforms
 
-  Support Tcl/Tk 8.4 on UNIX platforms
+  Tcl/Tk is now included is distribution, eliminating dependancies on the
+  installed version.
+
+  Windows support now uses Cygwin 1.3.22
+
+  Consistency checks now display a progress bar unless -q is passed or BK_NOTTY
+  is set.
 
 Noteworthy Bug Fixes
 ----------------------------------------------------------------------------
 
+  2002-11-07-001 revtool fails when run on a certain repostiory
+  2002-12-09-004 some colors are missing from X configs
   2002-12-18-001 sfiles -i in corrupted tree dumps core
   2002-12-28-002 have rclone respect checkout preference
   2003-01-16-001 fix line length limitation with compressed files
@@ -28,6 +36,7 @@ Noteworthy Bug Fixes
   2003-01-24-001 allow tags to contains spaces
   2003-02-03-002 add remote level to push error messages
   2003-02-19-001 takepatch could fail if patches contain really long lines
+  2003-05-20-002 Evaluation license quota error message "off-by-one"
 
   Fix permissions problems in resolve.  In some cases where a user
   only has partial write permissions to a repository, resolve could
@@ -35,7 +44,7 @@ Noteworthy Bug Fixes
   in an unusable state.  These problems are now detected.
 
   'bk changes -L' could rarely report csets that do exist in the
-  remote tree we there are local tags.  This is now fixed.
+  remote tree when there are local tags.  This is now fixed.
 
   win32: Handle windows style pathnames in 'bk mv'
 
@@ -44,6 +53,19 @@ Noteworthy Bug Fixes
 
   Fix some cases where the 3-way merge could generate really strange
   results.  Significantly improved merging in some conditions.
+
+  Make 'bk fix -c' work better in checkout:edit mode.
+
+  Fix some obscure csetprune bugs...
+
+  Fix problem with 'bk multiuser' when upgrading single_user repository.
+
+  Fix a problem where 'bk changes' and 'bk sccslog' could assert
+  because of a fixed sized buffer for expanding dspec keywords.
+  BUGIDs: 2003-04-04-001 2002-02-28-002 2002-09-13-001
+  
+  Do a better job of handling file comments with really long lines.  Also
+  add a 'bk delta -Yfile' option like 'bk commit -Yfile'.
 
 ===============================================================================
 Release notes for BitKeeper version 3.0.1.   These release notes cover
