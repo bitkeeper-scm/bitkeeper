@@ -631,7 +631,7 @@ chk_diffs(sccs *s)
 int
 isIgnored(char *file)
 {
-	char *gfile;
+	char *gfile, *p, *q, save;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
 	unless (opts.aflg) {
@@ -651,11 +651,21 @@ isIgnored(char *file)
 
 		/*
 		 * For backward compat with "bk sfiles"
-		 * match basename against ignore list.
+		 * match basename/dirname against ignore list.
 		 */
-		if (match_globs(basenm(gfile), ignore)) {
-			debug((stderr, "SKIP\t%s\n", gfile));
-			return (1);
+		p = gfile;
+		while (p) {
+			for (q = p; *q && (*q != '/'); q++);
+			save = *q;
+			*q = 0;
+			if (match_globs(p, ignore)) {
+				*q = save;
+				debug((stderr, "SKIP\t%s\n", gfile));
+				return (1);
+			}
+			*q = save;
+			if (save == 0) break;
+			p = ++q;
 		}
 	}
 

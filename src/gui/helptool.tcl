@@ -136,7 +136,6 @@ proc bkhelp {topic} \
 {
 	global line line2full gc
 
-	#set topic $line2full($line)
 	set msg "BitKeeper help -- $topic"
 	wm title . $msg
 	set f [open "| bk help -p $topic"]
@@ -144,22 +143,10 @@ proc bkhelp {topic} \
 	.text.help delete 1.0 end
 	set lineno 1
 	while {[gets $f help] >= 0} {
-		if {($lineno < 3) || ([string first "bk " $help] == -1)} {
-			.text.help insert end "$help\n"
-		} else {
-			embedded_tag "$help"
-		}
-
-		if {[regexp {^[A-Z][ \t\nA-Z.?\-]+$} $help]} {
+		.text.help insert end "$help\n"
+		if {[regexp {^[A-Z][ \t\nA-Z.?\-\|]+$} $help]} {
 			set i "$lineno.0"
 			.text.help tag add "bold" $i "$i lineend"
-		}
-		if {$lineno == 1} {
-			if {[regexp {^[ \t]*[-=]} $help]} {
-				.text.help insert 1.0 "\n"
-				.text.help insert end "\n"
-				incr lineno 2
-			}
 		}
 		incr lineno
 	}
@@ -168,49 +155,90 @@ proc bkhelp {topic} \
 	.text.help tag add "bold" "$i - 2 lines" end
 	catch {close $f} dummy
 	.text.help configure -state disabled
+	bk_highlight
 }
 
-# Find each occurrence of
-#	bk <cmd> or
-#	bk help <cmd> or
-#	bk helptool <cmd>
-# and tag cmd.
-proc embedded_tag {line} \
+proc highlight {tag index len} \
 {
-	#puts "LINE=$line"
-	while {$line != ""} {
-		if {[regexp {bk( )+} $line match] == 0} { break }
-		set start [string first $match $line]
-		if {$start == -1} { break }
-		set end [expr {$start + 7}]
-		set t [string range $line $start $end]
-		#puts "  big?=$t"
-		if {$t == "bk help "} { incr start 5 }
-		# It may have been "bk helptool"
-		incr end 4
-		set t [string range $line $start $end]
-		if {$t == "bk helptool "} { incr start 9 }
-		incr start 2
-		set t [string range $line 0 $start]
-		#puts "  chop=$t"
-		.text.help insert end "$t"
-		incr start
-		set line [string range $line $start end]
-		#puts "  line=$line"
-		set end [string wordend $line 0]
-		incr end -1
-		set tag [string range $line 0 $end]
-		#puts "  tag=$tag"
-		if {[topic2line $tag] != ""} {
-			.text.help insert end "$tag" "$tag seealso"
-			.text.help tag bind $tag <Button-1> \
-			    "getSelection $tag; stackReset; doSelect 1"
-			incr end
-			set line [string range $line $end end]
+	set index2 [.text.help index "$index + $len chars"]
+	.text.help tag add $tag $index $index2
+	.text.help tag add seealso $index $index2
+	.text.help tag bind \
+	    $tag <Button-1> "getSelection $tag; stackReset; doSelect 1"
+}
+
+# Look for each <bk> word, then find the next word,
+# if next_word == help|helptool
+#	if word is a topic
+#		highlight that word
+#	else
+#		highlight help|helptool
+# else
+#	if word is a topic
+#		highlight that word
+#	else
+#		highlight "bk"
+# XXX - maybe recode this in C as an option to "bk help"?
+proc bk_highlight {} \
+{
+	set index 4.0
+	set t .text.help
+	while {"$index" != ""} {
+		set index [$t search \
+		    -count bklen -regexp {(^| |`|")bk([ ]+|$)} $index end]
+		if {"$index" == ""} { break }
+
+		# Get start of "bk"
+		if {[$t get $index] == " "} {
+			set bkindex [$t index "$index + 1 chars"]
+		} else {
+			set bkindex $index
+		}
+
+		# skip past " bk ".
+		set index [$t index "$index + $bklen chars"]
+
+		# Get next word
+		set w1index [$t search \
+		    -count w1len -regexp {[a-zA-Z0-9_\-]+} $index end]
+		if {"$w1index" == ""} {
+			highlight bk $bkindex 2
+			break
+		}
+		set w1 [$t get $w1index [$t index "$w1index + $w1len chars"]]
+#puts "WORD1=$w1 @ $w1index .. $w1len"
+		if {[regexp {^(help|helptool)$} $w1]} {
+			# skip past "$w1".
+			set index [$t index "$w1index + $w1len chars"]
+
+			# Get next word
+			set w2index [$t search \
+			    -count w2len -regexp {[a-zA-Z0-9_\-]+} $index end]
+			if {"$w2index" == ""} {
+				highlight $w1 $w1index $w1len
+				break
+			}
+			set w2 [$t get \
+			    $w2index [$t index "$w2index + $w2len chars"]]
+#puts "WORD2=$w2 @ $w2index .. $w2len"
+			if {[topic2line $w2] != ""} {
+				highlight $w2 $w2index $w2len
+				set index [$t index "$w2index + $w2len chars"]
+			} else {
+				highlight $w1 $w1index $w1len
+				set index [$t index "$w1index + $w1len chars"]
+			}
+			continue
+		}
+
+		if {[topic2line $w1] != ""} {
+			highlight $w1 $w1index $w1len
+			set index [$t index "$w1index + $w1len chars"]
+		} else {
+			highlight bk $bkindex 2
+			set index [$t index "$bkindex + 2 chars"]
 		}
 	}
-	# Even if it is empty, we want the newline.
-	.text.help insert end "$line\n"
 }
 
 proc topic2line {key} \
