@@ -1,0 +1,34 @@
+.so bk-macros
+.TH "bk scc dll" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk scc dll \- BitKeeper and SCC API
+.SH DESCRIPTION
+.LP
+What the SCC API calls a "project" is not the same as a BitKeeper
+Project.
+.LP
+A typical SCC API Project usually contains one binary for
+example, a ".exe" or ".dll" file.  A typical BitKeeper project/package 
+can contain multiple ".exe" and ".dll" files. 
+.LP
+The easiest way to think about a SCC API project is to equate it
+to a sub-directory under a BitKeeper repository where each project file
+is a mini Makefile for that sub-directory. The VC++ workspace file is
+equivalent to the master Makefile sitting at the BitKeeper root
+directory.
+.SH RECOMMENDED USAGE
+.BU
+A VC++ workspace file should be the first file added to version control
+.BU
+A VC++ workspace file must be placed at the BitKeeper root directory
+.BU
+A VC++ workspace should map to one and only one BitKeeper Project
+.SH BUGS
+.LP
+Closing a workspace file and opening a different one
+without restarting VC++ will cause a warning message
+about mixing multiple workspaces together. This is because VC++
+does not inform the source code control provider of workspace
+switching event.
+.SH CATEGORY
+.B admin
