@@ -22,7 +22,7 @@ fi
 data="data"
 
 rm -rf foo SCCS A
-mkdir SCCS; bk cset -i -s .
+mkdir SCCS; bk cset -n -s .
 echo $N Trying to check in some binary data .........................$NL
 cp ${binary_data} ${data}
 chmod u+w ${data}

@@ -86,7 +86,7 @@ setup_main(int ac, char **av)
 		fputs(package_name, f);
 		fclose(f);
 	}
-	system("bk cset -siDescription .");
+	system("bk cset -snDescription .");
 
 	f = fopen("Description", "rt");
 	fgets(buf, sizeof(buf), f);

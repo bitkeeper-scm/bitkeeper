@@ -16,7 +16,7 @@
 echo $N Create initial repository using cset ........................$NL
 mkdir easy
 cd easy
-bk cset $Q -i .
+bk cset $Q -n .
 if [ ! -f SCCS/s.ChangeSet ]; then	echo no ChangeSet; exit 1; fi
 echo OK
 echo $N Check for long keys only ....................................$NL

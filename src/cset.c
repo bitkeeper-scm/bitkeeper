@@ -11,13 +11,13 @@ usage: cset [opts]\n\n\
     -c		like -m, except generate only ChangeSet diffs\n\
     -d<range>	do unified diffs for the range\n\
     -C		clear and remark all ChangeSet boundries\n\
-    -i		Create a new change set history rooted at <root>\n\
     -h		When listing, in the file name as of the cset is not the\n\
     		same as the current file name, list as\n\
 		<cset name> <current name>:rev\n\
     -l<range>	List each rev in range as file:rev,rev,rev (set format)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
+    -n		Create a new change set history rooted at <root>\n\
     -p		print the list of deltas being added to the cset\n\
     -r<range>	List the filenames:rev..rev which are included in  <range>\n\
     -R<A>..<B>	List the differences between cset A and B, for diffs\n\
@@ -29,7 +29,7 @@ usage: cset [opts]\n\n\
     \nRanges of revisions may be specified with the -l or the -r options.\n\
     -l1.3..1.5 does 1.3, 1.4, and 1.5\n\n\
     Useful idioms:\n\t\
-    bk cset -Ralpha,beta | bk diffs -\n\t\
+    bk cset -Ralpha..beta | bk diffs -\n\t\
     bk cset -ralpha..beta | bk sccslog -\n\n";
 
 typedef	struct cset {
@@ -102,10 +102,10 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (streq(av[0], "makepatch")) copts.makepatch++;
 
 	while (
-	    (c = getopt(ac, av, "c|Cd|Dfhi|l|m|M|pqr|R|sS;t;vy|Y|")) != -1) {
+	    (c = getopt(ac, av, "c|Cd|Dfhl|m|M|n|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
-		    case 'i':
+		    case 'n':
 			flags |= DELTA_EMPTY|NEWFILE;
 			text = optarg;
 			break;

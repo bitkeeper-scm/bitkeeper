@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-bk cset -i -s .
+bk cset -n -s .
 echo $N Test sccsmv w/ p locked file ................................$NL
 mkdir A B D E
 echo "This is file 1" > A/file1
