@@ -71,7 +71,6 @@ setup_main(int ac, char **av)
 		package_path);
 	}
 	sccs_mkroot(".");
-	enableFastPendingScan();
 	if (config_path == NULL) {
 		FILE 	*f;
 
@@ -162,7 +161,11 @@ again:		printf("Editor to use [%s] ", editor);
 
 	mdbm_close(m);
 
-	if (cset_setup(SILENT)) return (1);
+	if (cset_setup(SILENT)) {
+		unlink("BitKeeper/etc/config");
+		sccs_unmkroot("."); /* reverse  sccs_mkroot */
+		return (1);
+	}
 	s = sccs_init(s_config, SILENT, NULL);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
@@ -184,6 +187,7 @@ again:		printf("Editor to use [%s] ", editor);
                 exit(1);
         }                           
 	mkdir(BKMASTER, 0775);
+	enableFastPendingScan();
 	sendConfig("setups@openlogging.org", "1.0");
 	return (0);
 }

@@ -1397,6 +1397,50 @@ sccs_mkroot(char *path)
 }
 
 /*
+ * Reverse the effect of sccs_mkroot
+ */
+void
+sccs_unmkroot(char *path)
+{
+	char	buf[MAXPATH];
+
+	sprintf(buf, "%s/SCCS", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+
+	sprintf(buf, "%s/BitKeeper/etc/SCCS", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+	sprintf(buf, "%s/BitKeeper/etc", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+	sprintf(buf, "%s/BitKeeper/deleted/SCCS", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+	sprintf(buf, "%s/BitKeeper/deleted", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+	sprintf(buf, "%s/BitKeeper/tmp", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+	sprintf(buf, "%s/BitKeeper/log", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+	sprintf(buf, "%s/BitKeeper", path);
+	if (rmdir(buf) == -1) {
+		perror(buf);
+	}
+}
+
+
+/*
  * Return the ChangeSet file id.
  */
 char	*
