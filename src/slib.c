@@ -15963,7 +15963,7 @@ generateTimestampDB(project *p)
 		return (0);
 	}
 
-	tsname = aprintf("%s/BitKeeper/etc/timestamps", proj_root(p));
+	tsname = aprintf("%s/BitKeeper/tmp/TIMESTAMPS", proj_root(p));
 
 	db = mdbm_mem();
 	assert(db);
@@ -15999,7 +15999,7 @@ dumpTimestampDB(project *p, MDBM* db)
 
 	if (!timestampDBChanged) return;
 
-	tsname = aprintf("%s/BitKeeper/etc/timestamps", proj_root(p));
+	tsname = aprintf("%s/BitKeeper/tmp/TIMESTAMPS", proj_root(p));
 	f = fopen(tsname, "w");
 	if (!f) {
 		free(tsname);
@@ -16027,46 +16027,55 @@ dumpTimestampDB(project *p, MDBM* db)
  * of the given file
  */
 int
-timeMatch(char *gfile, char *sfile, MDBM *timestamps)
+timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps)
 {
 	datum	k;
 	datum	v;
 	tsrec	*ts;
+	char	*relpath;
+	int	ret = 0;
 	struct	stat	sb;
 
-	k.dptr = gfile;
-	k.dsize = strlen(gfile);
+	unless (proj) return (0);
+	relpath = proj_relpath(proj, gfile);
+	k.dptr = relpath;
+	k.dsize = strlen(relpath) + 1;
 	v = mdbm_fetch(timestamps, k);
-	if (v.dsize == 0) return 0;	/* no entry for file */
+	if (v.dsize == 0) goto out;	/* no entry for file */
 	assert(v.dsize == sizeof(*ts));
 	ts = (tsrec*) v.dptr;
 
-	if (lstat(gfile, &sb) != 0) return 0;	/* might not exist */
+	if (lstat(gfile, &sb) != 0) goto out;	/* might not exist */
 
 	if (sb.st_mtime != ts->gfile_mtime
 	    || sb.st_size != ts->gfile_size
-	    || sb.st_mode != ts->permissions)
-		return 0;		    /* gfile doesn't match */
-
+	    || sb.st_mode != ts->permissions) {
+		goto out;		    /* gfile doesn't match */
+	}
 	if (lstat(sfile, &sb) != 0) {
 		/* We should never get here */
 		perror(sfile);
-		return 0;
+		goto out;
 	}
-	if (sb.st_mtime != ts->sfile_mtime || sb.st_size != ts->sfile_size)
-		return 0;		    /* sfile doesn't match */
+	if (sb.st_mtime != ts->sfile_mtime || sb.st_size != ts->sfile_size) {
+		goto out;		    /* sfile doesn't match */
+	}
 
 	/* as far as we're concerned, the file hasn't changed */
-	return 1;
+	ret = 1;
+ out:
+	free(relpath);
+	return (ret);
 }
 
 void
-updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int different)
+updateTimestampDB(sccs *s, MDBM *timestamps, int different)
 {
 	datum	k;
 	datum	v;
 	tsrec	ts;
 	struct	stat	sb;
+	char	*relpath;
 	const time_t one_week = 7 * 24 * 60 * 60;   /* # of seconds in week */
 	static time_t trust_window = 0;
 	time_t now;
@@ -16081,23 +16090,24 @@ updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int different)
 		if (!trust_window) trust_window = one_week;
 	}
 
-	k.dptr = gfile;
-	k.dsize = strlen(gfile);
+	relpath = proj_relpath(s->proj, s->gfile);
+	k.dptr = relpath;
+	k.dsize = strlen(relpath) + 1;
 
 	if (different) {
 		mdbm_delete(timestamps, k);
-		return;
+		goto out;
 	}
-		
-	if (lstat(gfile, &sb) != 0) return; /* might not exist */
+
+	if (lstat(s->gfile, &sb) != 0) goto out; /* might not exist */
 	ts.gfile_mtime = sb.st_mtime;
 	ts.gfile_size = sb.st_size;
 	ts.permissions = sb.st_mode;
 
-	if (lstat(sfile, &sb) != 0) {
+	if (lstat(s->sfile, &sb) != 0) {
 		/* We should never get here */
-		perror(sfile);
-		return;
+		perror(s->sfile);
+		goto out;
 	}
 	ts.sfile_mtime = sb.st_mtime;
 	ts.sfile_size = sb.st_size;
@@ -16119,6 +16129,8 @@ updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int different)
 		}
 		timestampDBChanged = 1;
 	}
+out:
+	free(relpath);
 }
 
 #if	defined(linux) && defined(sparc)

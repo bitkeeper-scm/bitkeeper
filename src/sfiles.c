@@ -527,6 +527,7 @@ struct winfo {
 	MDBM	*sDB, *gDB;
 	char	*sccsdir;
 	int	sccsdirlen;
+	project	*proj;
 };
 
 private void
@@ -623,16 +624,15 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 private void
 walk(char *dir)
 {
-	project	*proj;
 	char	tmp[MAXPATH];
 	winfo	wi = {0};
 
-	if (proj = proj_init(dir)) {
+	if (wi.proj = proj_init(dir)) {
 		if (!opts.all) {
 			FILE	*ignoref;
 
 			sprintf(tmp, "%s/BitKeeper/etc/ignore",
-			    proj_root(proj));
+			    proj_root(wi.proj));
 			unless (exists(tmp)) get(tmp, SILENT, "-");
 			if (ignoref = fopen(tmp, "rt")) {
 				ignore = read_globs(ignoref, 0);
@@ -644,10 +644,9 @@ walk(char *dir)
 			    strdup("./BitKeeper/etc/gone"));
 		}
 		unless (opts.fixdfile) {
-			sprintf(tmp, "%s/%s", proj_root(proj), DFILE);
+			sprintf(tmp, "%s/%s", proj_root(wi.proj), DFILE);
 			opts.dfile = exists(tmp);
 		}
-		proj_free(proj);
 	} else {
 		/*
 		 * Dir is not a BitKeeper repository,
@@ -667,10 +666,11 @@ walk(char *dir)
 
 	if (ignore) free_globs(ignore);  ignore = 0;
 	if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
-	if (opts.timestamps && timestamps && proj) {
-		dumpTimestampDB(proj, timestamps);
+	if (opts.timestamps && timestamps && wi.proj) {
+		dumpTimestampDB(wi.proj, timestamps);
 	}
 	if (opts.summarize) print_summary();
+	if (wi.proj) proj_free(wi.proj);
 
 	/*
 	 * We only enable fast scan mode if we started at the root
@@ -707,7 +707,7 @@ chk_diffs(sccs *s)
 	}
 	different = (sccs_hasDiffs(s, 0, 1) >= 1);
 	if (timestamps) {
-		updateTimestampDB(s->gfile, s->sfile, timestamps, different);
+		updateTimestampDB(s, timestamps, different);
 	}
 	return (different);
 }
@@ -935,7 +935,8 @@ sccsdir(winfo *wi)
 			gfile = sccs2name(sfile);
 			if (opts.modified &&
 			    (!timestamps ||
-				!timeMatch(gfile, sfile, timestamps)) &&
+				!timeMatch(wi->proj, gfile, sfile,
+				    timestamps)) &&
 			    (s = init(buf, INIT_NOCKSUM, sDB, gDB)) &&
 			    chk_diffs(s)) {
 				state[CSTATE] = 'c';
@@ -1048,9 +1049,12 @@ sccsdir(winfo *wi)
 		}
 	}
 	mdbm_close(wi->gDB);
+	wi->gDB = 0;
 	mdbm_close(wi->sDB);
+	wi->sDB = 0;
 	free(wi->sccsdir);
-	memset(wi, 0, sizeof(*wi));
+	wi->sccsdir = 0;
+	wi->sfiles = 0;
 }
 
 /*

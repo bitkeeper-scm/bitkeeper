@@ -1085,9 +1085,9 @@ char	*getParent(void);
 char	**getParentList(char *, char **);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 MDBM	*generateTimestampDB(project *p);
-int	timeMatch(char *gfile, char *sfile, MDBM *timestamps);
+int	timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps);
 void	dumpTimestampDB(project *p, MDBM* db);
-void	updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int diff);
+void	updateTimestampDB(sccs *s, MDBM *timestamps, int diff);
 struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
