@@ -82,8 +82,13 @@ cmd_putenv(int ac, char **av)
 	    strneq("BKD_", av[1], 4) || strneq("_BK_", av[1], 4)) {
 	    	return (1);
 	}
-	putenv(strdup(av[1])); /* XXX - memory is not released until we exit */
 	if (strneq("BK_USER=", av[1], 8)) sccs_resetuser();
+	if (strneq("_BK_USER=", av[1], 9)) {
+		sccs_resetuser();
+		putenv(strdup(&av[1][1]));	/* convert to BK_USER */
+	} else {
+		putenv(strdup(av[1])); 
+	}
 
 	/*
 	 * Special processing for virtual host/root
