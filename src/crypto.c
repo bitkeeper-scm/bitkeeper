@@ -157,6 +157,7 @@ make_keypair(int bits, char *secret, char *public)
 	rsa_free(&key);
 	return (0);
 }
+
 private void
 loadkey(char *file, rsa_key *key)
 {
@@ -516,6 +517,49 @@ hashstr(char *str)
 		}
 	}
 	return (strdup(b64));
+}
+
+char *
+signed_loadFile(char *filename)
+{
+	int	len;
+	char	*p;
+	char	*hash;
+	char	*data = loadfile(filename, &len);
+
+	unless (data && len > 0) return (0);
+	p = data + len - 1;
+	*p = 0;
+	while ((p > data) && (*p != '\n')) --p;
+	*p++ = 0;
+	hash = secure_hashstr(data, bk_utc);
+	unless (streq(hash, p)) {
+		free(data);
+		data = 0;
+	}
+	free(hash);
+	return (data);
+}
+
+int
+signed_saveFile(char *filename, char *data)
+{
+	FILE	*f;
+	char	*tmpf;
+	char	*hash;
+
+	tmpf = aprintf("%s.%u", filename, getpid());
+	unless (f = fopen(tmpf, "w")) {
+		return (-1);
+	}
+	hash = secure_hashstr(data, bk_utc);
+	fprintf(f, "%s\n%s\n", data, hash);
+	fclose(f);
+	free(hash);
+	rename(tmpf, filename);
+	unlink(tmpf);
+	free(tmpf);
+	return (0);
 }
 
 private int
