@@ -6,8 +6,6 @@ WHATSTR("@(#)%K%");
 
 private	int	cset_boundries(sccs *s, char *rev);
 
-private int	cset_boundries(sccs *s, char *rev);
-
 /*
  * diffs - show differences of SCCS revisions.
  *
@@ -51,17 +49,15 @@ private int	cset_boundries(sccs *s, char *rev);
  *
  *  XXX - need a -N which makes diffs more like diff -Nr, esp. w/ diffs -r@XXX
  */
-
 int
 diffs_main(int ac, char **av)
 {
-	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
-	int	empty = 0, errors = 0;
-	int	kind, mdiff = 0;
+	int	verbose = 0, rc, c;
+	int	empty = 0, errors = 0, mdiff = 0;
+	u32	flags = DIFF_HEADER|SILENT, kind;
 	pid_t	pid = 0; /* lint */
 	char	*name;
 	char	*Rev = 0, *boundaries = 0;
-	char	*opts, optbuf[20];
 	RANGE_DECL;
 
 	debug_main(av);
@@ -75,15 +71,12 @@ diffs_main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	opts = optbuf;
-	*opts++ = '-';
-	*opts = 0;
 	while ((c = getopt(ac, av, "AbBcC|d;DefhHIl|Mm|npr|R|suUvw")) != -1) {
 		switch (c) {
 		    case 'A': flags |= GET_ALIGN; break;
-		    case 'b': /* fall through */		/* doc 2.0 */
-		    case 'B': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
-		    case 'c': kind = DF_CONTEXT; break;		/* doc 2.0 */
+		    case 'b': kind |= DF_GNUb; break;		/* doc 2.0 */
+		    case 'B': kind |= DF_GNUB; break;		/* doc 2.0 */
+		    case 'c': kind |= DF_CONTEXT; break;	/* doc 2.0 */
 		    case 'C': getMsg("diffs-C", 0, 0, 0, stdout); exit(0);
 		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'e': empty = 1; break;
@@ -93,29 +86,31 @@ diffs_main(int ac, char **av)
 			flags |= DIFF_COMMENTS;
 			putenv("BK_YEAR4=YES");  /* rm when YEAR4 is default */
 			break;
-		    case 'I': kind = DF_IFDEF; break;
+		    case 'I': kind |= DF_IFDEF; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
 		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
 		    case 'm':
-			kind = DF_IFDEF;
+			kind |= DF_IFDEF;
 			mdiff = 1;
 			if (optarg && (*optarg == 'r')) flags |= GET_LINENAME;
 			break;
-		    case 'n': kind = DF_RCS; break;		/* doc 2.0 */
-		    case 'p': kind = DF_PDIFF; break;		/* doc 2.0 */
+		    case 'n': kind |= DF_RCS; break;		/* doc 2.0 */
+		    case 'p': kind |= DF_GNUp; break;		/* doc 2.0 */
 		    case 'R': Rev = optarg; break;		/* doc 2.0 */
-		    case 's': kind = DF_SDIFF; break;		/* doc 2.0 */
-		    case 'u': kind = DF_UNIFIED; break;		/* doc 2.0 */
+		    case 's':					/* doc 2.0 */
+			kind &= ~DF_DIFF;
+			kind |= DF_SDIFF;
+			break;
+		    case 'u': kind |= DF_UNIFIED; break;	/* doc 2.0 */
 		    case 'U': flags |= GET_USER; break;		/* doc 2.0 */
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
-		    case 'w': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
+		    case 'w': kind |= DF_GNUw; break;		/* doc 2.0 */
 		    RANGE_OPTS('d', 'r');			/* doc 2.0 */
 		    default:
 usage:			system("bk help -s diffs");
 			return (1);
 		}
 	}
-	if (opts[-1] == '-') opts = 0; else opts = optbuf;
 
 	if ((things && (boundaries || Rev)) || (boundaries && Rev)) {
 		fprintf(stderr, "%s: -C/-R must be alone\n", av[0]);
@@ -266,7 +261,7 @@ usage:			system("bk help -s diffs");
 		 *
 		 * XXX - need to catch a request for annotations w/o 2 revs.
 		 */
-		rc = sccs_diffs(s, r1, r2, ex|flags, kind, opts, stdout);
+		rc = sccs_diffs(s, r1, r2, ex|flags, kind, stdout);
 		switch (rc) {
 		    case -1:
 			fprintf(stderr,

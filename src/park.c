@@ -210,8 +210,7 @@ err:		if (s) sccs_free(s);
 			fprintf(out, "%s\n", s->symlink);
 		} else if (diffable_text(s, top)) {
 			rc |= parkfile_header(s, top, "TEXT_DIFFS", out);
-			rc |= sccs_diffs(s, NULL, NULL,
-					DIFF_HEADER, DF_UNIFIED, NULL, out);
+			rc |= sccs_diffs(s, 0, 0, DIFF_HEADER, DF_UNIFIED, out);
 		} else if (S_ISLNK(s->mode)) {
 			rc |= parkfile_header(s, top, "SYMLINK", out);
 			fprintf(out, "%s\n", s->symlink);

@@ -150,13 +150,16 @@
 /*
  * Options to sccs_diffs()
  */
-#define	DF_DIFF		'd'
-#define	DF_SDIFF	's'
-#define	DF_CONTEXT	'c'
-#define	DF_UNIFIED	'u'
-#define	DF_PDIFF	'p'
-#define	DF_RCS		'n'
-#define	DF_IFDEF	'I'
+#define	DF_DIFF		0x00000001
+#define	DF_SDIFF	0x00000002
+#define	DF_CONTEXT	0x00000004
+#define	DF_UNIFIED	0x00000008
+#define	DF_RCS		0x00000010
+#define	DF_IFDEF	0x00000020
+#define	DF_GNUb		0x00000040
+#define	DF_GNUB		0x00000080
+#define	DF_GNUp		0x00000100
+#define	DF_GNUw		0x00000200
 
 /*
  * Date handling.
@@ -772,7 +775,7 @@ int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
 		   char **syms);
-int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, char *opts, FILE *);
+int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, u32 kind, FILE *);
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
@@ -867,7 +870,7 @@ int	executable(char *f);
 char	*basenm(char *);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
-int	diff(char *lfile, char *rfile, char kind, char *opts, char *out);
+int	diff(char *lfile, char *rfile, u32 kind, char *out);
 int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
