@@ -13,7 +13,7 @@ REPO=$TREE-$USER
 cd /tmp || exit 1
 rm -rf $REPO
 set -e
-PREFER_RSH=YES bk clone $TREE_HOST:/home/bk/$TREE $REPO
+BK_LICENSE=ACCEPTED PREFER_RSH=YES bk clone $TREE_HOST:/home/bk/$TREE $REPO
 cd $REPO/src
 bk get build.sh || exit 1
 cp build.sh build
