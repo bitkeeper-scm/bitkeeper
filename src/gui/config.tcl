@@ -62,6 +62,7 @@ proc getConfig {prog} \
 	set _d(rename.listHeight) 8
 
 	set _d(sccs.canvasBG) #9fb6b8	   ;# graph background
+	set _d(sccs.commentBG) lightblue   ;# background of comment text
 	set _d(sccs.arrowColor) darkblue   ;# arrow color
 	set _d(sccs.mergeOutline) darkblue ;# merge rev outlines
 	set _d(sccs.revOutline) darkblue   ;# regular rev outlines
@@ -69,6 +70,7 @@ proc getConfig {prog} \
 	set _d(sccs.tagColor) red	   ;# tag box fills
 	set _d(sccs.selectColor) lightblue ;# highlight color for selected tag
 	set _d(sccs.dateColor) #181818	   ;# dates at the bottom of graph
+	set _d(sccs.commentHeight) 5       ;# height of comment text widget
 
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry
