@@ -233,6 +233,7 @@ proc clear {state} \
 proc diffFiles {L R} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
+	global  tmp_dir
 
 	clear normal
 	.diffs.status.l configure -text "$L"
@@ -246,13 +247,22 @@ proc diffFiles {L R} \
 	set n 1
 	set l [open "| bk get -kqp \"$L\"" r]
 	set tail [file tail $L]
-	set tmp [file join "/tmp" $tail]
+	set tmp [file join $tmp_dir $tail]
 	set t [open $tmp w]
 	while {[gets $l buf] >= 0} {
 		puts $t "$buf"
 	}
 	catch { close $l }
 	catch { close $t }
+	#puts "L=($L) R=($R)"
+	if {![file exists $tmp]} {
+		displayMessage "File $tmp does not exist"
+		return
+	}
+	if {![file exists $R]} {
+		displayMessage "File $R does not exist"
+		return
+	}
 	set l [open $tmp r]
 	set r [open $R r]
 	set d [sdiff $tmp $R]
@@ -286,7 +296,7 @@ proc diffFiles {L R} \
 	catch { close $d }
 	if {"$rmList" != ""} {
 		foreach rm $rmList {
-			file delete $rm
+			catch {file delete $rm} err
 		}
 	}
 	.diffs.l configure -state disabled
@@ -298,11 +308,15 @@ proc diffFiles {L R} \
 		set lastDiff 0
 		.diffs.status.middle configure -text "No differences"
 	}
-	file delete $tmp
+	catch {file delete $tmp} err
 }
 
 proc fillFile {which file} \
 {
+	if {![file exists $file]} {
+		displayMessage "File $file does not exist"
+		return
+	}
 	clear normal
 	set f [open $file r]
 	set data [read $f]

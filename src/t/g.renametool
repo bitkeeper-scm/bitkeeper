@@ -1,0 +1,96 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Aaron Kushner
+# %K%
+
+# Things that need to be added
+# 
+MYHOST=`bk gethost`
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+cd $HERE/project/BitKeeper/etc
+mkdir $HERE/project/src
+cd $HERE/project/src
+ed <<EOF >/dev/null 2>&1
+a
+Test File %W%
+stuff
+stuff
+stuff
+stuff
+stuff
+.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+w foo1
+EOF
+cp foo1 foo2
+cp foo1 foo3
+bk ci $Q -i foo1 foo2 foo3 
+if [ ! -f SCCS/s.foo1 ]; then echo failed to create history; exit 1; fi
+bk commit $Q -y"test of renametool"
+echo OK
+echo $N Test renametool  ...........................................$NL
+DIFF=$HERE/export.diff.$$
+P1=$HERE/project
+P2=$HERE/project2
+cd $HERE
+bk clone $P1 $P2
+cd $P2/src
+bk mv foo1 bar1
+bk commit $Q -y"test of renametool2"
+cd $P1
+bk -r edit > /dev/null 2>&1
+cd $P2
+bk -r edit > /dev/null 2>&1
+cd $HERE
+bk treediff project project2 > $DIFF
+cd $P1
+bk -r clean > /dev/null 2>&1
+cd $P2
+bk -r clean > /dev/null 2>&1
+cd $HERE
+bk import -tpatch $DIFF $P1
+cd $P1
+# Start revtool so that I have a chance to look at the dirs before
+# they are deleted
+echo OK
+echo "Click on foo1 foo2 foo3 foo4 and make sure foo4 doesn't dump"
+echo $N Test bad link ..........................................$NL
+DIFF=$HERE/export.diff.$$
+P1=$HERE/project
+P2=$HERE/project2
+cd $P1/src
+bk co
+ln -s foo2 l_foo2
+echo "foo1
+foo3
+
+foo2
+foo4" | bk renametool -
+
+# Start revtool so that I have a chance to look at the dirs before
+# they are deleted
+echo OK
