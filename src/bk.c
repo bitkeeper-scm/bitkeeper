@@ -45,6 +45,7 @@ int	checksum_main(int, char **);
 int	clean_main(int, char **);
 int	cleanpath_main(int, char **);
 int	clone_main(int, char **);
+int	clonedo_main(int, char **); 
 int	comments_main(int, char **);
 int	commit_main(int, char **);
 int	config_main(int, char **);
@@ -106,7 +107,6 @@ int	mv_main(int, char **);
 int	mydiff_main(int, char **);
 int	names_main(int, char **);
 int	newroot_main(int, char **);
-int	oclone_main(int, char **);
 int	opull_main(int, char **);
 int	opush_main(int, char **);
 int	parent_main(int, char **);
@@ -160,6 +160,7 @@ int	synckeys_main(int, char **);
 int	tagmerge_main(int, char **);
 int	takepatch_main(int, char **);
 int	testdates_main(int, char **);
+int	timestamp_main(int, char **);
 int	unbk_main(int, char **);
 int	undo_main(int, char **);
 int	undos_main(int, char **);
@@ -182,6 +183,7 @@ struct	command cmdtbl[] = {
 	{"_adler32", adler32_main},
 	{"_converge", converge_main},
 	{"_cleanpath", cleanpath_main},
+	{"_clonedo", clonedo_main},
 	{"_createlod", _createlod_main},
 	{"_exists", exists_main},
 	{"_find", find_main },
@@ -209,6 +211,7 @@ struct	command cmdtbl[] = {
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
 	{"_strings", strings_main},
+	{"_timestamp", timestamp_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},			/* doc 2.0 */	
 	{"add", delta_main},			/* doc 2.0 */
@@ -275,7 +278,6 @@ struct	command cmdtbl[] = {
 	{"names", names_main},			/* doc 2.0 */
 	{"newroot", newroot_main},		/* doc 2.0 */
 	{"new", delta_main},	/* aliases */	/* doc 2.0 */
-	{"oclone", oclone_main},		/* undoc 2.0 */
 	{"opull", opull_main},	/* old pull */ 	/* undoc 2.0 */
 	{"opush", opush_main},	/* old push */ 	/* undoc 2.0 */
 	{"parent", parent_main},		/* doc 2.0 */

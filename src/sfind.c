@@ -34,6 +34,7 @@ typedef struct {
 	FILE	*out;			/* send output here */
 	u32     summarize:1;     	/* summarize output only */
 	u32     useronly:1;     	/* list user file only 	*/
+	u32	timestamps:1;		/* whether to use the timestamp DB */
 } options;
 
 typedef struct _q_item {
@@ -47,6 +48,7 @@ typedef struct {
 } fifo;
 
 private	jmp_buf	sfind_exit;
+private MDBM	*timestamps = 0;
 private project *proj;
 private options	opts;
 private char	**ignore, **dont_ignore; 
@@ -183,7 +185,7 @@ sfind_main(int ac, char **av)
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aAcCdDeEgijklno:p|P|rRs:SuUvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDeEgijklno:p|P|rRs:StuUvx")) != -1) {
 		switch (c) {
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
 		    case 'A':					/* undoc? 2.0 */
@@ -232,6 +234,7 @@ sfind_main(int ac, char **av)
 		    case 'R':	sfiles_compat = 1; break;	/* undoc? 2.0 */
 		    case 's':	parse_select(optarg); break;	/* undoc? 2.0 */
 		    case 'S':	opts.summarize = 1; break;	/* doc 2.0 */
+		    case 't':	opts.timestamps = 1; break;	/* undoc? 2.0 */
 		    case 'u':	opts.unlocked = 1; break;	/* doc 2.0 */
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
 		    case 'v':	opts.show_markers = 1; break;	/* doc 2.0 */
@@ -648,6 +651,8 @@ walk(char *dir, int level)
 
 done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
+		if (opts.timestamps && timestamps && proj)
+			dumpTimestampDB(proj, timestamps);
 		if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
 		if (proj) proj_free(proj); proj = 0;
 		if (opts.summarize) print_summary();
@@ -681,9 +686,17 @@ progress(int force)
 private int
 chk_diffs(sccs *s)
 {
+	int different;
+
 	if (!s) return (0);
-	if (sccs_hasDiffs(s, 0, 1) >= 1) return (1);
-	return (0);  
+	if (opts.timestamps && !timestamps) {
+		timestamps = generateTimestampDB(s->proj);
+	}
+	different = (sccs_hasDiffs(s, 0, 1) >= 1);
+	if (timestamps) {
+		updateTimestampDB(s->gfile, s->sfile, timestamps, different);
+	}
+	return different;
 }
 
 int
@@ -980,15 +993,23 @@ skip:			mdbm_close(gDB);
 		 */
 		file[0] = 'p';
 		if (mdbm_fetch_str(sDB, file)) {
+			char *gfile;	/* a little bit of scope hiding ... */
+			char *sfile;
 			state[LSTATE] = 'l';
 			file[0] = 's';
 			concat_path(buf, dir, "SCCS");
 			concat_path(buf, buf, file);
+			sfile = buf;
+			if (strneq(sfile, "./", 2)) sfile += 2;
+			gfile = sccs2name(sfile);
 			if (opts.modified &&
+			    (!timestamps ||
+				!timeMatch(gfile, sfile, timestamps)) &&
 			    (s = init(buf, INIT_NOCKSUM, sDB, gDB)) &&
 			    chk_diffs(s)) {
 				state[CSTATE] = 'c';
 			}
+			free(gfile);
 		} else {
 			file[0] = 'z';
 			if (mdbm_fetch_str(sDB, file)) {
