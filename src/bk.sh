@@ -383,6 +383,10 @@ _rm() {
 	${BIN}sccsrm "$@"
 }
 
+_sdiffs() {
+	${BIN}diffs -s "$@"
+}
+
 # Usage: undo cset,cset,cset
 _undo() {
 	ASK=YES
@@ -768,7 +772,7 @@ _commandHelp() {
 			;;
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
-		unlock|unedit|check)
+		unlock|unedit|check|sdiffs)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
@@ -914,6 +918,7 @@ case "$1" in
 	;;
     setup|changes|pending|commit|sendbug|send|\
     mv|oldresync|edit|unedit|man|undo|save|docs|rm|new|version|\
+    sdiffs|\
     root|status|export|import)
 	cmd=$1
     	shift

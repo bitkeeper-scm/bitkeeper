@@ -34,3 +34,62 @@ doit(char *name)
 	printf("%s\n", name);
 	free(name);
 }
+
+/*
+ * Take a file name such as foo.c and return SCCS/s.foo.c
+ * Also works for /full/path/foo.c -> /fullpath/SCCS/s.foo.c.
+ * It's up to the caller to free() the resulting name.
+ */
+char	*
+name2sccs(char *name)
+{
+	int	len = strlen(name);
+	char	*s, *newname;
+
+	/* maybe it has the SCCS in it already */
+	s = rindex(name, '/');
+	if ((s >= name + 4) && strneq(s - 4, "SCCS/", 5)) {
+		if ((s[1] != 's') && (s[2] == '.')) {
+			switch (s[1]) {
+			    case 'p':
+			    case 'r':
+			    case 'x':
+			    case 'z':
+			    	break;
+			    default:
+				assert(name == "Bad name");
+			}
+			name = strdup(name);
+			s = strrchr(name, '/');
+			s[1] = 's';
+			return (name);
+		} else {
+			return (strdup(name));
+		}
+	}
+	newname = malloc(len + 8);
+	assert(newname);
+	strcpy(newname, name);
+	if ((s = rindex(newname, '/'))) {
+		s++;
+		strcpy(s, "SCCS/s.");
+		s += 7;
+		strcpy(s, rindex(name, '/') + 1);
+	} else {
+		strcpy(s = newname, "SCCS/s.");
+		s += 7;
+		strcpy(s, name);
+	}
+	return (newname);
+}
+
+char
+chop(register char *s)
+{
+	char	c;
+
+	while (*s++);
+	c = s[-2];
+	s[-2] = 0;
+	return (c);
+}

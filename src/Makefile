@@ -1,9 +1,8 @@
 
 BINS	= delta get ci co admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
-	  smark cset g2sccs range zone gethost undos chksum rechksum \
-	  cset_todo sccsmv sccsrm sccscat csetmark key2rev edit unedit sdiffs \
-	  check fdiff adler32
+	  cset g2sccs range zone gethost undos chksum rechksum \
+	  sccsmv sccsrm sccscat key2rev check fdiff adler32
 SCRIPTS	= rcs2sccs testfast bk import resolve resync
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
@@ -39,7 +38,7 @@ BINOBJ  = admin.o csetmark.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  ci.o delta.o lines.o renumber.o sccsrm.o takepatch.o clean.o \
 	  diffs.o rmdel.o sccssh.o what.o co.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
-	  sccscat.o sids.o cset_todo.o gethost.o rcs.o sccslog.o sinfo.o \
+	  sccscat.o sids.o gethost.o rcs.o sccslog.o sinfo.o \
 	  fdiff.o check.o adler32
 
 SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
@@ -52,15 +51,15 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  zlib/uncompr.c zlib/deflate.c zlib/trees.c zlib/zutil.c \
 	  zlib/inflate.c zlib/infblock.c zlib/inftrees.c zlib/infcodes.c \
 	  zlib/infutil.c zlib/inffast.c \
-	  delta.c get.c ci.c co.c adler32.c admin.c diffs.c clean.c prs.c what.c \
-	  sinfo.c sccssh.c sids.c smoosh.c sccslog.c sfind.c \
-	  renumber.c lines.c rmdel.c takepatch.c smark.c \
+	  delta.c get.c ci.c co.c adler32.c admin.c diffs.c clean.c prs.c \
+	  what.c sinfo.c sccssh.c sids.c smoosh.c sccslog.c sfind.c \
+	  renumber.c lines.c rmdel.c takepatch.c \
 	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
-	  rechksum.c cset_todo.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
+	  rechksum.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
 	  csetmark.c key2rev.c rcs.c comments.c user.c host.c localtm.c \
 	  check.c bkhelp.txt config.h.in configure substvars.in \
 	  bitkeeper.config install.in
-HDRS	= sccs.h purify.h sccs.h range.h system.h mdbm/common.h mdbm/mdbm.h \
+HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h
@@ -130,21 +129,15 @@ production_purify: rebuild purify install
 
 # Cleanup targets.
 clean-obj: FORCE
-	-/bin/rm -f $(PORTOBJ)
-	-/bin/rm -f $(SCCSOBJ)
-	-/bin/rm -f $(MDBMOBJ)
-	-/bin/rm -f $(ZLIBOBJ)
-	-/bin/rm -f $(BINOBJ)
-	-/bin/rm -f $(LIBS)
-	-/bin/rm -f a.out core
+	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
+		$(LIBS) a.out core
 
 clean-bin: FORCE
-	-/bin/rm -f $(BINS) $(SCRIPTS)
-	-/bin/rm -f $(GUIBIN) $(GUISCR)
+	-/bin/rm -f $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR)
 
 clean-cfg: FORCE
-	-/bin/rm -f config.h stamp-h substvars install.sh config.status
-	-/bin/rm -f config.cache config.log
+	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
+	    config.cache config.log
 
 clean-src: FORCE
 	bk clean
@@ -172,6 +165,7 @@ log: FORCE
 
 tags: srcs
 	ctags -nm $(SRCS) $(HDRS)
+
 TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
@@ -204,8 +198,6 @@ libsccs.a: $(SCCSOBJ)
 	$(AR) cr libsccs.a $(SCCSOBJ)
 	-$(RANLIB) libsccs.a
 
-cset_todo: cset_todo.o port/platforminit.o mdbm/libmdbm.a
-	$(CC) $(CFLAGS) -o cset_todo cset_todo.o port/platforminit.o $(LMDBM)
 zone: zone.o localtm.o port/platforminit.o
 	$(CC) $(CFLAGS) -o zone zone.o localtm.o port/platforminit.o
 fdiff: fdiff.o getopt.o purify.o
@@ -245,8 +237,8 @@ sccslog: sccslog.o $(LIBS)
 	$(CC) $(CFLAGS) sccslog.o $(LINK) -o sccslog
 smoosh: smoosh.o $(LIBS)
 	$(CC) $(CFLAGS) smoosh.o $(LINK) -o smoosh
-g2sccs: g2sccs.o $(LIBS)
-	$(CC) $(CFLAGS) g2sccs.o $(LINK) -o g2sccs
+g2sccs: g2sccs.o purify.o
+	$(CC) $(CFLAGS) g2sccs.o purify.o -o g2sccs
 key2rev: key2rev.o $(LIBS)
 	$(CC) $(CFLAGS) key2rev.o $(LINK) -o key2rev
 admin: admin.o $(LIBS)
@@ -273,16 +265,6 @@ diffs: diffs.o $(LIBS)
 	$(CC) $(CFLAGS) diffs.o $(LINK) -o diffs
 adler32: adler32.o $(LIBS)
 	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
-
-edit: get
-	-/bin/rm -f edit
-	ln get edit
-unedit: clean
-	-/bin/rm -f unedit
-	ln clean unedit
-sdiffs: diffs
-	-/bin/rm -f sdiffs
-	ln diffs sdiffs
 
 # Scripts.
 rcs2sccs: rcs2sccs.perl substvars
@@ -465,7 +447,6 @@ g2sccs.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 rangemain.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
 zone.o: system.h unix.h purify.h mdbm/mdbm.h config.h
 rechksum.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-cset_todo.o: mdbm/mdbm.h
 sccs_mv.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
 sccsmv.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 sccsrm.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
