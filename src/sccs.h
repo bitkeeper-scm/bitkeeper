@@ -313,6 +313,7 @@
 #define	OPENLOG_HOST	"config.openlogging.org"
 #define	OPENLOG_HOST1   "config2.openlogging.org"
 #define	OPENLOG_LEASE	"http://lease.openlogging.org:80"
+#define	OPENLOG_LEASE2	"http://lease2.openlogging.org:80"
 #define	BK_WEBMAIL_URL	"http://webmail.bitkeeper.com:80"
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
