@@ -700,7 +700,7 @@ checkAll(MDBM *db)
 				    "ERROR: duplicate line in ChangeSet\n");
 			}
 		}
-		fclose(f);
+		pclose(f);
 		f = fopen(ctmp, "r");
 		sprintf(buf, "%s.p", ctmp);
 		keys = fopen(buf, "w");
@@ -1095,6 +1095,7 @@ check(sccs *s, MDBM *db)
 			}
 		}
 		unless (t) {
+			if (MONOTONIC(s) && d->dangling) continue;
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not.\n",
 			    s->gfile, d->rev);

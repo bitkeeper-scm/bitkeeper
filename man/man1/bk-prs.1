@@ -284,12 +284,12 @@ In the ``What is printed'' column,
 .B D
 refers to the specified delta, since some operations work relative to 
 .BR D .
-Some fields are compatible with \*[AT], they are typically the one and 
+Some fields are compatible with \*[ATT], they are typically the one and 
 two letter fields;  \*[BK] fields tend to be longer.
 .if t .sp .5
 .if n .sp
 .nf
-.ta +10 +4 +20
+.ta +12 +4 +20
 .nr XX 0
 .de xx
 .br
@@ -321,6 +321,8 @@ CSETFILE	F	key of the ChangeSet file for this file
 .xx
 D	D	D's date as YY/MM/DD (years may be 4 digits)
 .xx
+DANGLING	D	D's rev if & only if D is a dangling delta
+.xx
 DEFAULT	D	default prs dspec
 .xx
 DFB	F	default branch if set (similar to Ds)
@@ -347,7 +349,7 @@ Dd	D	day part of D's date as DD
 .xx
 Dm	D	month part of D's date as MM
 .xx
-DM	D	month part of D's date as three letter abbreviation (Jan..Dec)
+DM	D	month part of D's date (Jan..Dec)
 .xx
 Dn	D	serial numbers of D's includes, if any
 .xx
@@ -502,7 +504,7 @@ X_FLAGS	D	D's per file flags as 0xFFFF
 .xx
 Z	D	@(#)
 .SH BUGS
-Not very compatible with \*(AT dspec; this should be considered a feature
+Not very compatible with \*[ATT] dspec; this should be considered a feature
 unless you are trying to maintain old scripts.
 .SH CATEGORY
 .B Common

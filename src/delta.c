@@ -77,6 +77,27 @@ delta_trigger(sccs *s)
 	return (i);
 }
 
+private int
+strip_danglers(char *name, u32 flags)
+{
+	char	*p;
+	int	ret;
+
+	p = aprintf("bk prs -hnd'$if(:DANGLING:){:GFILE:|:I:}' %s"
+	    " | bk stripdel -%sdC -", name, (flags&SILENT) ? "q" : "");
+	ret = system(p);
+	if (ret) {
+err:		fprintf(stderr, "%s failed\n", p);
+		free(p);
+		return (ret);
+	}
+	free(p);
+	p = aprintf("bk renumber %s %s", (flags&SILENT) ? "-q" : "", name);
+	if (ret = system(p)) goto err;
+	free(p);
+	return (0);
+}
+
 int
 delta_main(int ac, char **av)
 {
@@ -346,7 +367,21 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			goto next;
 		}
 
-		s = sccs_restart(s);
+		if (MONOTONIC(s) && sccs_top(s)->dangling) {
+			delta	*d = sccs_getrev(s, nrev, 0, 0);
+			char	key[MAXKEY];
+
+			assert(d);
+			sccs_sdelta(s, d, key);
+			sccs_free(s);
+			strip_danglers(name, dflags);
+			s = sccs_init(name, iflags, proj);
+			d = sccs_findKey(s, key);
+			assert(d);
+			nrev = d->rev;
+		} else {
+			s = sccs_restart(s);
+		}
 		unless (s) {
 			fprintf(stderr,
 			    "%s: can't restart %s\n", av[0], name);

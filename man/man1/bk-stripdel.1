@@ -3,7 +3,7 @@
 .SH NAME
 bk stripdel \- strip deltas out of an s.file
 .SH SYNOPSIS
-.Bc bk stripdel [-bCcq] [
+.Bc bk stripdel [-bCcdq] [
 .OPTreq \-r rev
 .B ]
 .ARG filename
@@ -30,7 +30,10 @@ and the
 option is not present.
 .SH WARNING
 It is an extremely bad idea to use the 
-.B \-C option, it can corrupt your repository.
+.B \-C
+option, it can corrupt your repository.  Instead, consider the 
+.B \-x
+option of bk get.
 .SH OPTIONS
 .if t .TP .8i
 .if n .TP 1i
@@ -44,13 +47,18 @@ Do not respect cset boundaries, used by
 .B -c
 Checks if the specified rev[s] can be stripped but do not strip them.
 .tp
+.B -d
+Strip deltas which are part of a MONOTONIC file.
+.tp
 .B -q
 Run quietly.
 .tp
 .OPTreq -r rev
 Set of revisions to be removed.
 .SH "SEE ALSO"
+.SA admin 1
 .SA clone 1
+.SA get 1
 .SA undo 1
 .SH CATEGORY
 .B File

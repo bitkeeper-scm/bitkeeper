@@ -168,7 +168,7 @@
 #endif /* MPI */
 
 /* Use /dev/urandom first on devices where /dev/random is too slow */
-/* #define TRY_URANDOM_FIRST */
+#define TRY_URANDOM_FIRST
 
 #endif /* MYCRYPT_CFG_H */
 

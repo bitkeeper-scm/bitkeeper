@@ -239,9 +239,6 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 			EACH(e->exclude) {
 				if (e->exclude[i] >= serial) e->exclude[i]++;
 			}
-			EACH(e->ignore) {
-				if (e->ignore[i] >= serial) e->ignore[i]++;
-			}
 		}
 	}
 	s->nextserial++;
