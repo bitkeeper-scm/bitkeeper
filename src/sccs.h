@@ -706,7 +706,7 @@ int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
 		   char **syms);
-int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *);
+int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, char *opts, FILE *);
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
@@ -790,7 +790,7 @@ int	executable(char *f);
 char	*basenm(char *);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
-int	diff(char *lfile, char *rfile, char kind, char *out);
+int	diff(char *lfile, char *rfile, char kind, char *opts, char *out);
 char	**addLine(char **space, char *line);
 void	freeLines(char **space);
 int	check_gfile(sccs*, int);

@@ -3,7 +3,7 @@
 .SH NAME
 bk diffs \- show differences in revision controlled files
 .SH SYNOPSIS
-.Bc bk diffs [\-cDfhMnpsuU] [
+.Bc bk diffs [\-bBcDfhMnpsuU] [
 .OPTreq \-C rev
 .Bc ] [
 .OPTreq \-d date
@@ -31,64 +31,66 @@ revision numbers.
 You can also diff specific revisions. For example:
 .DS
 $ bk diffs -r1.2..1.4 foo.c
-$ bk diffs -dAlpha..Beta foo.c
 .DE
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
-.\" .B \-a
-.\" do diffs for all sfiles, not just those which are checked out
-.\" .tp
+.B \-b
+Ignore changes in amount of white space.
+.tp
+.B \-B
+Ignore  changes  that  just  insert or delete blank lines.
+.tp
 .B \-c
-do context diffs
+Do context diffs.
 .tp
 .OPTreq \-C rev
-show all changes made by changeset containing rev 
+Show all changes made by changeset containing rev 
 .ARG rev .
 .tp
 .B \-D
-prefix lines with dates
+Prefix lines with dates.
 .tp
 .OPTreq \-d date
-diff using date or symbol
+Diff using date or symbol.
 .tp
 .B \-f
-prefix lines with file names
+Prefix lines with file names.
 .tp
 .B \-h
-don't print headers
+Don't print headers.
 .tp
 .B \-M
-prefix lines with revision numbers
+Prefix lines with revision numbers.
 .tp
 .B \-n
-do RCS style diffs
+Do RCS style diffs.
 .tp
 .B \-p
-procedural diffs, like
-.B diff \-p
+Procedural diffs, like
+.B diff \-p.
 .tp
 .OPTreq \-r rev
-diff revision 
+Diff revision 
 .ARG rev .
 .tp
 .OPTreq \-R rev
-show diffs between parent of 
+Show diffs between parent of 
 .ARG rev
 and
 .ARG rev .
 .tp
 .B \-s
-display side-by-side
+Display side-by-side diffs.
 .tp
 .B \-U
-prefix lines with user names
+Prefix lines with user names.
 .tp
 .B \-u
-do unified diffs
+Do unified diffs.
 .tp
 .B \-v
-be verbose about non-matching ranges
+Be verbose about non-matching ranges.
 .SH SEE ALSO
 .BR diff (1)
 .br

@@ -30,16 +30,19 @@ cset_inex(int flags, char *op, char *revs)
 	MDBM	*m = mdbm_mem();
 	delta	*d;
 	char	*t;
-	char	buf[MAXPATH+200];
+	char	*revarg;
+	char	buf[MAXKEY];
 	char	file[MAXPATH];
 	char	revbuf[MAXPATH];
 
 	av[i = 0] = "bk";
 	av[++i] = "cset";
-	sprintf(buf, "-r%s", revs);
-	av[++i] = buf;
+	revarg = malloc(strlen(revs) + 3);
+	sprintf(revarg, "-r%s", revs);
+	av[++i] = revarg;
 	av[++i] = 0;
 	pid = spawnvp_rPipe(av, &fd, 0);
+	free(revarg);
 	if (pid == -1) {
 		perror("spawnvp_rPipe");
 		return (1);

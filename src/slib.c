@@ -7827,7 +7827,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	if (HASH(s)) {
 		ret = diffMDBM(s, old, new, tmpfile);
 	} else {
-		ret = diff(old, new, DF_DIFF, tmpfile);
+		ret = diff(old, new, DF_DIFF, 0, tmpfile);
 	}
 	unless (streq(old, DEV_NULL)) unlink(old);
 	if (!streq(new, s->gfile) && !streq(new, DEV_NULL)){
@@ -11734,8 +11734,8 @@ mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
 }
 
 private int
-doDiff(sccs *s, u32 flags, char kind, char *leftf, char *rightf,
-	 FILE *out, char *lrev, char *rrev, char *ltag, char *rtag)
+doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
+	FILE *out, char *lrev, char *rrev, char *ltag, char *rtag)
 {
 	FILE	*diffs = 0;
 	char	diffFile[MAXPATH];
@@ -11758,7 +11758,7 @@ doDiff(sccs *s, u32 flags, char kind, char *leftf, char *rightf,
 	} else {
 		strcpy(spaces, "=====");
 		if (gettemp(diffFile, "diffs")) return (-1);
-		diff(leftf, rightf, kind, diffFile);
+		diff(leftf, rightf, kind, opts, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
 	while (fnext(buf, diffs)) {
@@ -11888,7 +11888,7 @@ mkDiffTarget(sccs *s,
 
 private int
 normal_diff(sccs *s, char *lrev, char *lrevM,
-		char *rrev, u32 flags, char kind, FILE *out, pfile *pf)
+	char *rrev, u32 flags, char kind, char *opts, FILE *out, pfile *pf)
 {
 	char	lfile[MAXPATH], rfile[MAXPATH];
 	char	ltag[MAXPATH],	rtag[MAXPATH], 	tmp[MAXPATH];
@@ -11922,7 +11922,8 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	/*
 	 * Now diff the lfile & rfile
 	 */
-	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
+	rc = doDiff(s,
+	    flags, kind, opts, lfile, rfile, out, lrev, rrev, ltag, rtag);
 done:	unless (streq(lfile, NULL_FILE)) unlink(lfile);
 	unless (streq(rfile, s->gfile) || streq(rfile, NULL_FILE)) unlink(rfile);
 	return (rc);
@@ -11932,7 +11933,8 @@ done:	unless (streq(lfile, NULL_FILE)) unlink(lfile);
  * diffs - diff the gfile or the specified (or implied) rev
  */
 int
-sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
+sccs_diffs(sccs *s,
+	char *r1, char *r2, u32 flags, char kind, char *opts, FILE *out)
 {
 	char	*lrev, *lrevM, *rrev;
 	pfile	pf;
@@ -11949,7 +11951,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		goto done;
 	}
 
-	rc = normal_diff(s, lrev, lrevM, rrev, flags, kind, out, &pf);
+	rc = normal_diff(s, lrev, lrevM, rrev, flags, kind, opts, out, &pf);
 
 done:	free_pfile(&pf);
 	return (rc);
@@ -14640,7 +14642,7 @@ sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 	sccs	*s;
 	char	*localkey = 0;
 	delta	*d;
-	char	buf[MAXPATH];
+	char	buf[MAXKEY];
 
 	/*
 	 * Id cache contains both long and short keys

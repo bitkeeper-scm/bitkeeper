@@ -27,12 +27,13 @@ int
 diffs_main(int ac, char **av)
 {
 	sccs	*s;
-	int	all = 0, flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
+	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
 	int	errors = 0;
 	char	kind;
 	char	*name;
 	project	*proj = 0;
 	char	*Rev = 0, *cset = 0;
+	char	*opts, optbuf[20];
 	RANGE_DECL;
 
 	debug_main(av);
@@ -46,28 +47,33 @@ diffs_main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "acC|d;DfhMnpr|R|suUv")) != -1) {
+	opts = optbuf;
+	*opts++ = '-';
+	*opts = 0;
+	while ((c = getopt(ac, av, "bBcC|d;DfhMnpr|R|suUv")) != -1) {
 		switch (c) {
-		    case 'a': all = 1; break;	/* unused??? */	/* undoc? 2.0 */
+		    case 'b': /* fall through */		/* doc 2.0 */
+		    case 'B': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
-		    case 'c': kind = DF_CONTEXT; break;	/* doc 2.0 */
-		    case 'C': cset = optarg; break;	/* doc 2.0 */
+		    case 'c': kind = DF_CONTEXT; break;		/* doc 2.0 */
+		    case 'C': cset = optarg; break;		/* doc 2.0 */
 		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */
 		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
-		    case 'p': kind = DF_PDIFF; break;	/* doc 2.0 */
-		    case 'n': kind = DF_RCS; break;	/* doc 2.0 */
-		    case 'R': Rev = optarg; break;	/* doc 2.0 */
-		    case 's': kind = DF_SDIFF; break;	/* doc 2.0 */
-		    case 'u': kind = DF_UNIFIED; break;	/* doc 2.0 */
-		    case 'U': flags |= GET_USER; break;	/* doc 2.0 */
-		    case 'v': verbose = 1; break;	/* doc 2.0 */
-		    RANGE_OPTS('d', 'r');
+		    case 'p': kind = DF_PDIFF; break;		/* doc 2.0 */
+		    case 'n': kind = DF_RCS; break;		/* doc 2.0 */
+		    case 'R': Rev = optarg; break;		/* doc 2.0 */
+		    case 's': kind = DF_SDIFF; break;		/* doc 2.0 */
+		    case 'u': kind = DF_UNIFIED; break;		/* doc 2.0 */
+		    case 'U': flags |= GET_USER; break;		/* doc 2.0 */
+		    case 'v': verbose = 1; break;		/* doc 2.0 */
+		    RANGE_OPTS('d', 'r');			/* doc 2.0 */
 		    default:
 usage:			system("bk help -s diffs");
 			return (1);
 		}
 	}
+	if (opts[-1] == '-') opts = 0; else opts = optbuf;
 
 	if ((things && (cset || Rev)) || (cset && Rev)) {
 		fprintf(stderr, "%s: -C/-R must be alone\n", av[0]);
@@ -90,7 +96,7 @@ usage:			system("bk help -s diffs");
 	/* XXX - if we are doing cset | diffs then we don't need the GFILE.
 	 * Currently turned off in sfiles.
 	 */
-	if (all || things || cset || Rev) {
+	if (things || cset || Rev) {
 		name = sfileFirst("diffs", &av[optind], 0);
 	} else {
 		name = sfileFirst("diffs", &av[optind], SF_GFILE);
@@ -158,7 +164,8 @@ usage:			system("bk help -s diffs");
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
 		 */
-		switch (rc = sccs_diffs(s, r1, r2, ex|flags, kind, stdout)) {
+		rc = sccs_diffs(s, r1, r2, ex|flags, kind, opts, stdout);
+		switch (rc) {
 		    case -1:
 			fprintf(stderr,
 			    "diffs of %s failed.\n", s->gfile);
