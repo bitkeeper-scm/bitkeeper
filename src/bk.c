@@ -458,7 +458,7 @@ main(int ac, char **av, char **env)
 {
 	int	i, c, si, is_bk = 0, dashr = 0;
 	int	ret;
-	char	*prog, *argv[MAXARGS];
+	char	*p, *prog, *argv[MAXARGS];
 	char	sopts[30];
 
 	if (getenv("BK_SHOWPROC")) {
@@ -475,6 +475,34 @@ main(int ac, char **av, char **env)
 	if (getenv("BK_REGRESSION") && exists("/build/die")) {
 		fprintf(stderr, "Forced shutdown.\n");
 		exit(1);
+	}
+
+	/*
+	 * Support redirection via BK_STDIO=$HOST:$PORT.
+	 * Similarly for STDERR except that it is write only.
+	 */
+	if ((p = getenv("BK_STDIO")) && !streq(p, "DONE")) {
+		int	sock;
+
+		if ((sock = tcp_connect(p, -1)) > 0) {
+			dup2(sock, 0);
+			dup2(sock, 1);
+			close(sock);
+		} else {
+			fprintf(stderr, "Unable to reset stdio to %s\n", p);
+		}
+		putenv("BK_STDIO=DONE");
+	}
+	if ((p = getenv("BK_STDERR")) && !streq(p, "DONE")) {
+		int	sock;
+
+		if ((sock = tcp_connect(p, -1)) > 0) {
+			dup2(sock, 2);
+			close(sock);
+		} else {
+			fprintf(stderr, "Unable to reset stderr to %s\n", p);
+		}
+		putenv("BK_STDERR=DONE");
 	}
 
 	unless (getenv("BK_TMP")) bktmpenv();
