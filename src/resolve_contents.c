@@ -349,7 +349,7 @@ c_shell(resolve *rs)
 	safe_putenv("BK_REMOTE=%s", n->remote);
 	safe_putenv("BK_MERGE=%s", rs->s->gfile);
 	safe_putenv("PATH=%s", getenv("BK_OLDPATH"));
-	av[i=0] = "sh";
+	unless (av[i=0] = getenv("SHELL")) av[i=0] = "sh";
 	unless (rs->shell && rs->shell[0]) {
 		av[++i] = "-i";
 	} else {

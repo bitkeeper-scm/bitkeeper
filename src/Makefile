@@ -470,7 +470,7 @@ bkdsubstr: bkd.h
 logging.o: bkl5_hashs.h
 
 bkl5_hashs.h: mk_bkl5_license_tab.pl  USED_BKL5_LICENSES
-	./mk_bkl5_license_tab.pl  USED_BKL5_LICENSES > $@
+	perl mk_bkl5_license_tab.pl  USED_BKL5_LICENSES > $@
 
 
 # Quick and dirty target so we can make all the gui tools without the rest
