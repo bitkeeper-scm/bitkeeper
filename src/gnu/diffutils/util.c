@@ -377,20 +377,26 @@ line_cmp (s1, s2)
 	    {
   	      unsigned char const *start;
 	      /* For -E, \r+\n == \n */
-	      for (start = t1 ; c1 == '\r'; c1 = *t1++);
-	      if (c1 != '\n')
-		{
-		  t1 = start;
-		  c1 = '\r';
+	      if (c1 == '\r')
+	        {
+	          for (start = t1 ; c1 == '\r'; c1 = *t1++);
+		  if (c1 != '\n')
+		    {
+		      t1 = start;
+		      c1 = '\r';
+	            }
 	        }
 
 	      /* Likewise for line 2.  */
-	      for (start = t2 ; c2 == '\r'; c2 = *t2++);
-	      if (c2 != '\n')
-		{
-		  t2 = start;
-		  c2 = '\r';
-	        }
+	      if (c2 == '\r')
+	        {
+	          for (start = t2 ; c2 == '\r'; c2 = *t2++);
+	          if (c2 != '\n')
+		    {
+		      t2 = start;
+		      c2 = '\r';
+	            }
+		}
 	    }
 
 	  /* Lowercase all letters if -i is specified.  */
