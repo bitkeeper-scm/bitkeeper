@@ -12,8 +12,8 @@ WHATSTR("@(#)%K%");
 
 char	*cset_help = "\n\
 usage: cset [opts]\n\n\
-    -d<range>	do unified diffs for the range\n\
     -c		like -m, except generate only ChangeSet diffs\n\
+    -d<range>	do unified diffs for the range\n\
     -C		clear and remark all ChangeSet boundries\n\
     -i		Create a new change set history rooted at <root>\n\
     -l<range>	List each rev in range as file:rev,rev,rev (set format)\n\
@@ -397,6 +397,7 @@ void
 csetList(sccs *cset, char *rev, int ignoreDeleted)
 {
 	MDBM	*idDB;				/* db{fileId} = pathname */
+	MDBM	*goneDB;
 	kvpair	kv;
 	char	*t;
 	sccs	*sc;
@@ -420,10 +421,12 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 			cset_exit(1);
 		}
 	}
+	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	for (kv = mdbm_first(cset->mdbm);
 	    kv.key.dsize != 0; kv = mdbm_next(cset->mdbm)) {
 		t = kv.key.dptr;
 		unless (sc = sccs_keyinit(t, INIT_NOCKSUM, idDB)) {
+			if (gone(t, goneDB)) continue;
 			fprintf(stderr, "cset: init of %s failed\n", t);
 			cset_exit(1);
 		}

@@ -358,14 +358,19 @@ proc get {} \
 
 proc difftool {a b} \
 {
+	global	tmp_dir
+
 	set x [expr [winfo rootx .]+150]
 	set y [expr [winfo rooty .]+50]
-	exec bk difftool -geometry +$x+$y $a $b /tmp/difftool &
+	set marker [file join $tmp_dir difftool]
+	set pid [pid]
+	set marker "$marker-$pid"
+	exec bk difftool -geometry +$x+$y $a $b $marker & &
 	after 100
-	while {[file exists /tmp/difftool] == 0} {
+	while {[file exists $marker] == 0} {
 		after 500
 	}
-	file delete -force $a $b /tmp/difftool
+	file delete -force $a $b $marker
 	busy 0
 }
 
@@ -384,16 +389,18 @@ proc diff2 {fm} \
 		return
 	}
 	busy 1
-	set a [open "| get $getOpts -kPr$rev1 $file >$tmp_dir/$rev1 2>$dev_null" "w"]
-	set b [open "| get $getOpts -kPr$rev2 $file >$tmp_dir/$rev2 2>$dev_null" "w"]
+	set r1 [file join $tmp_dir $rev1]
+	set a [open "| get $getOpts -kPr$rev1 $file >$r1 2>$dev_null" "w"]
+	set r2 [file join $tmp_dir $rev2]
+	set b [open "| get $getOpts -kPr$rev2 $file >$r2 2>$dev_null" "w"]
 	catch { close $a; }
 	catch { close $b; }
 	if {$fm == 1} {
-		difftool $tmp_dir/$rev1 $tmp_dir/$rev2 
+		difftool $r1 $r2
 		return
 	}
 
-	set diffs [open "| diff $diffOpts $tmp_dir/$rev1 $tmp_dir/$rev2"]
+	set diffs [open "| diff $diffOpts $r1 $r2"]
 	set l 3
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	.p.bottom.t insert end "- $file version $rev1\n"
@@ -403,13 +410,13 @@ proc diff2 {fm} \
 	diffs $diffs $l
 	.p.bottom.t configure -state disabled
 	searchreset
-	file delete -force $tmp_dir/$rev1 $tmp_dir/$rev2
+	file delete -force $r1 $r2
 	busy 0
 }
 
 proc csetdiff2 {} \
 {
-	global file rev1 rev2 diffOpts dev_null bk_cset tmp_dir
+	global file rev1 rev2 diffOpts dev_null bk_cset
 
 	busy 1
 	set l 3
@@ -851,12 +858,34 @@ proc sccstool {name} \
 	busy 0
 }
 
+
+
+proc platformPath {} \
+{
+	global bin env
+	# BK_BIN is set by bk.sh
+	set bin $env(BK_BIN)
+
+	#XXX TODO: make bk_tagfile a config variable
+	#XXX       for NT, it should be "sccslog.exe"
+	set bk_tagfile "sccslog"
+
+	set tmp [file join $bin $bk_tagfile]
+	if  [ file executable $tmp ] {
+		return
+	} else {
+		puts "Installation problem: $tmp does not exist or not executable"
+		exit
+	}
+}
+
 proc init {} \
 {
 	global bin bk_prs bk_cset bk_get bk_renumber bk_sfiles
 	global bk_lines
 
-	bk_init
+	platformPath
+	platformInit
 	set bk_prs [file join $bin prs]
 	set bk_cset [file join $bin cset]
 	set bk_get [file join $bin get]
@@ -871,7 +900,6 @@ if {"$argv" != ""} {
 	set next 0
 	sccstool [lindex $argv $next]
 } else {
-	cd2root
-	# This should match the CHANGESET path defined in sccs.h
-	sccstool "SCCS/s.ChangeSet"
+	puts "Usage: sccstool file"
+	exit
 }
