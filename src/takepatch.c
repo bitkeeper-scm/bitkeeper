@@ -42,6 +42,8 @@ private	delta	*getRecord(MMAP *f);
 private	int	extractPatch(char *name, MMAP *p, int flags, int fast, project *proj);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
 private	int	applyPatch(char *local, int flags, sccs *perfile, project *p);
+private	int	applyCsetPatch(char *localPath, int nfound, int flags,
+						sccs *perfile, project *proj);
 private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
 private	void	initProject(void);
@@ -519,8 +521,12 @@ cleanup:		if (perfile) sccs_free(perfile);
 		    nfound, reallyNew ? "new file " : "", gfile);
 		if ((echo != 2) && (echo != 3)) fprintf(stderr, "\n");
 	}
-	if (patchList && tableGCA) getLocals(s, tableGCA, name);
-	rc = applyPatch(s ? s->sfile : 0, flags, perfile, proj);
+	if (s && CSET(s)) {
+		rc = applyCsetPatch(s->sfile, nfound, flags, perfile, proj);
+	} else {
+		if (patchList && tableGCA) getLocals(s, tableGCA, name);
+		rc = applyPatch(s ? s->sfile : 0, flags, perfile, proj);
+	}
 	if (echo == 2) fprintf(stderr, "\n");
 	if (echo == 3) fprintf(stderr, " \n");
 	if (perfile) sccs_free(perfile);
@@ -901,6 +907,266 @@ chkEmpty(sccs *s, MMAP *dF)
 		return (1); /* failed */
 	}
 	return (0); /* ok */
+}
+
+/*
+ * Most of the code in this function is copied from applyPatch
+ * We may want to merge the two function later.
+ */
+private	int
+applyCsetPatch(char *localPath,
+			int nfound, int flags, sccs *perfile, project *proj)
+{
+	patch	*p = patchList;
+	MMAP	*iF;
+	MMAP	*dF;
+	sccs	*s = 0;
+	delta	*d = 0;
+	int	newflags;
+	int	pending = 0;
+	int	n = 0;
+	char	lodkey[MAXKEY];
+	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
+	int	confThisFile;
+	FILE	*csets = 0;
+	char	csets_in[MAXPATH];
+
+	unless (p) return (0);
+	lodkey[0] = 0;
+	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
+	if (echo > 7) {
+		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
+		    p->localFile, p->resyncFile, p->pid, p->me);
+	}
+	unless (localPath) {
+		mkdirf(p->resyncFile);
+		goto apply;
+	}
+	fileCopy2(localPath, p->resyncFile);
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
+		SHOUT();
+		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
+		return -1;
+	}
+	unless (HASGRAPH(s)) {
+		SHOUT();
+		if (!(s->state & S_SFILE)) {
+			fprintf(stderr,
+			    "takepatch: no s.file %s\n", p->resyncFile);
+		} else {
+			perror(s->sfile);
+		}
+		return -1;
+	}
+	if (isLogPatch) {
+		unless (LOGS_ONLY(s)) {
+			fprintf(stderr,
+	        		"takepatch: can't apply a logging "
+				"patch to a regular file %s\n",
+				p->resyncFile);
+			sccs_free(s);
+			return -1;
+		}
+	} else {
+		if (LOGS_ONLY(s)) {
+			fprintf(stderr,
+	        		"takepatch: can't apply a regular "
+				"patch to a logging file %s\n",
+				p->resyncFile);
+			sccs_free(s);
+			return -1;
+		}
+	}
+	/* convert to uncompressed, it's faster, we saved the mode above */
+	if (s->encoding & E_GZIP) s = expand(s, proj);
+	unless (s) return (-1);
+
+	/* save current LOD setting, as it might change */
+	if (d = sccs_top(s)) {
+		sccs_sdelta(s, d, lodkey);
+		if (s->defbranch) {
+			u8	*ptr;
+			/* XXX: handle symbols? */
+			lodbranch = 1;
+			for (ptr = s->defbranch; *ptr; ptr++) {
+				unless (*ptr == '.') continue;
+				lodbranch = 1 - lodbranch;
+			}
+			free(s->defbranch);
+			s->defbranch = 0;
+			sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+			unless (sccs_restart(s)) {
+				perror("restart");
+				exit(1);
+			}
+		}
+	}
+	s->proj = 0; sccs_free(s);
+	/* sccs_restart does not rebuild the graph and we just pruned it,
+	 * so do a hard restart.
+	 */
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
+		SHOUT();
+		fprintf(stderr,
+		    "takepatch: can't open %s\n", p->resyncFile);
+		return -1;
+	}
+apply:
+	assert(s && CSET(s));
+	cset_map(s, nfound);
+	p = patchList;
+	while (p) {
+		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
+		n++;
+		if (p->pid) {
+			assert(s);
+			if (echo>9) {
+				fprintf(stderr,
+				    "PID: %s\nME:  %s\n", p->pid, p->me);
+			}
+			unless (d = sccs_findKey(s, p->pid)) {
+				if ((echo == 2) || (echo == 3)) {
+					fprintf(stderr, " \n");
+				}
+				ahead(p->pid, s->sfile);
+			}
+			unless (sccs_restart(s)) { perror("restart"); exit(1); }
+			if (isLogPatch) {
+				s->state |= S_FORCELOGGING;
+				s->xflags |= X_LOGS_ONLY;
+			}
+			if (echo>9) {
+				fprintf(stderr, "Child of %s", d->rev);
+				if (p->meta) {
+					fprintf(stderr, " meta\n");
+				} else {
+					fprintf(stderr, " data\n");
+				}
+			}
+			iF = p->initMmap;
+			dF = p->diffMmap;
+			if (isLogPatch && chkEmpty(s, dF)) return -1;
+			cset_insert(s, iF, dF, p->pid);
+		} else {
+			assert(s == 0);
+			unless (s =
+			    sccs_init(p->resyncFile, NEWFILE|SILENT, proj)) {
+				SHOUT();
+				fprintf(stderr,
+				    "takepatch: can't create %s\n",
+				    p->resyncFile);
+				return -1;
+			}
+			if (perfile) {
+				sccscopy(s, perfile);
+				/*
+				 * For takepatch performance
+				 * turn off compression when we are in 
+				 * takepatch.
+				 * 
+				 * Note: Since this is a new file from remote,
+				 * there is no local setting. We save the 
+				 * compression setting of the remote file
+				 * and use that as the new local file when
+				 * when takepatch is done.
+				 */
+				encoding = s->encoding; /* save for later */
+				s->encoding &= ~E_GZIP;
+			}
+			cset_map(s, nfound);
+			iF = p->initMmap;
+			dF = p->diffMmap;
+			if (isLogPatch) {
+				s->state |= S_FORCELOGGING;
+				s->xflags |= X_LOGS_ONLY;
+				if (chkEmpty(s, dF)) return -1;
+			}
+			cset_insert(s, iF, dF, NULL);
+			mclose(iF); /* dF done below after cset_write */
+		}
+		p = p->next;
+	}
+	cset_write(s);
+
+	s->proj = 0; sccs_free(s);
+
+	/*
+	 * Fix up d->rev, there is probaply a better way to do this.
+	 */
+	sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
+
+	s = sccs_init(patchList->resyncFile, SILENT, proj);
+	assert(s && s->tree);
+
+	p = patchList;
+	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
+	csets = fopen(csets_in, "w");
+	assert(csets);
+	while (p) {
+		delta	*d;
+
+		d = sccs_findKey(s, p->me);
+		assert(d);
+		fprintf(csets, "%s\n", d->rev);
+		mclose(p->diffMmap); /* win32: must mclose after cset_write */
+		p = p->next;
+	}
+	fclose(csets);
+
+	if (encoding & E_GZIP) s = unexpand(s);
+	if (lodkey[0]) { /* restore LOD setting */
+		unless (d = sccs_findKey(s, lodkey)) {
+			fprintf(stderr, "takepatch: can't find lod key %s\n",
+				lodkey);
+			return (-1);
+		}
+		setlod(s, d, lodbranch);
+		unless (sccs_restart(s)) { perror("restart"); exit(1); }
+	}
+
+	/*
+	 * XXX What does this code do ??
+	 * this code seems to be setup the D_LOCAL ANd D_REMOTE flags 
+	 * used in sccs_resolveFiles()
+	 */
+	for (d = s->table; d; d = d->next) d->flags |= D_LOCAL;
+	for (d = 0, p = patchList; p; p = p->next) {
+		assert(p->me);
+		d = sccs_findKey(s, p->me);
+		/*
+		 * XXX - this is probably an incomplete fix.
+		 * The problem was that we got a patch with a meta delta
+		 * with no content in it and delta_table() tossed it out.
+		 * So when we go looking for it, we don't find it.
+		 * What is not being checked here is if the delta was
+		 * indeed empty.
+		 */
+		if (!d && p->meta) continue;
+		assert(d);
+		d->flags |= p->local ? D_LOCAL : D_REMOTE;
+	}
+
+	/* must have restored defbranch (setlod above) before fixing */
+	if (fixLod(s)) {
+		s->proj = 0; sccs_free(s);
+		return (-1);
+	}
+	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
+		s->proj = 0; sccs_free(s);
+		return (-1);
+	}
+	if (!confThisFile && (s->state & S_CSET) && 
+	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
+	    	confThisFile++;
+		/* yeah, the count is slightly off if there were conflicts */
+	}
+	conflicts += confThisFile;
+	s->proj = 0; sccs_free(s);
+	if (noConflicts && conflicts) noconflicts();
+	freePatchList();
+	patchList = 0;
+	fileNum = 0;
+	return (0);
 }
 
 /*

@@ -240,10 +240,10 @@ getrev(char *top_rev)
 			perror(tmpfile);
 			exit(1);
 		}
-		close(fd);
 		buf[len] = 0;
 		retptr = buf;
 	}
+	close(fd);
 	unlink(tmpfile);
 	return (retptr);
 }

@@ -26,7 +26,6 @@ private serlist *allocstate(serlist *old, int oldsize, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
 private int	getflags(sccs *s, char *buf);
-private int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 private void	inherit(sccs *s, int flags, delta *d);
 private void	linktree(sccs *s, delta *l, delta *r);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
@@ -47,7 +46,6 @@ delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
-private int	delta_table(sccs *s, FILE *out, int willfix);
 private time_t	getDate(delta *d);
 private	int	unlinkGfile(sccs *s);
 private int	write_pfile(sccs *s, int flags, delta *d,
@@ -3600,7 +3598,8 @@ getflags(sccs *s, char *buf)
  * Add a symbol to the symbol table.
  * Return 0 if we added it, 1 if it's a dup.
  */
-private int
+//private int
+int
 addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 {
 	symbol	*sym, *s2, *s3;
@@ -3609,13 +3608,20 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	if (!d && !(d = rfind(s, rev))) return (0);
 
 	sym = findSym(s->symbols, val);
-	if (sym && streq(sym->rev, rev)) {
+
+	/*
+	 * If rev is NULL, it means we have a new delta with
+	 * unallocated rev, force add the symbol. Caller
+	 * is responsible to run "bk renumber" to fix up
+	 * the rev. This is used by the cweave code.
+	 */
+	if (sym && rev && streq(sym->rev, rev)) {
 		return (1);
 	} else {
 		sym = calloc(1, sizeof(*sym));
 		assert(sym);
 	}
-	sym->rev = strdup(rev);
+	sym->rev = rev ? strdup(rev) : NULL;
 	sym->symname = strdup(val);
 	sym->d = d;
 	sym->metad = metad;
@@ -3880,7 +3886,7 @@ loadGlobalConfig(MDBM *db)
 	config = aprintf("%s/BitKeeper/etc/config", globalroot());
 	if (f = fopen(config, "rt")) {
 		while (fnext(buf, f)) {
-			parseConfig(buf);
+			unless (parseConfig(buf)) continue;
 			p = strchr(buf, ' ');
 			assert(p);
 			*p++ = 0;
@@ -7132,7 +7138,7 @@ check_removed(delta *d, int strip_tags)
  * The table is all here in order, just print it.
  * New in Feb, '99: remove duplicates of metadata.
  */
-private int
+int
 delta_table(sccs *s, FILE *out, int willfix)
 {
 	delta	*d;
@@ -9293,6 +9299,7 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 				fprintf(stderr,
 				    "%s: rev %s has incorrect parent %s\n",
 				    file, d->rev, d->parent->rev);
+abort(); //XXXXXXXXX DEBUG
 			}
 			error = 1;
 		}
