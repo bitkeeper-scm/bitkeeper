@@ -119,7 +119,7 @@ cd $HERE
 bk resync -t $Q -at project copy
 cd copy
 bk sfiles -g | grep -q "no_Conflicts"
-if [ $? -ne 0 ]; then echo failed; exit1; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hnr+ -d':DPN:' no_Conflicts`
 if [ "$DPATH" != "no_Conflicts" ]; then echo failed; exit 1; fi
 echo OK
