@@ -988,6 +988,17 @@ function commit {
 	exec ${BIN}sfiles -C | ${BIN}cset $@ -
 }
 
+function man {
+	MANPATH=${BIN}man:$MANPATH
+	for i in /usr/bin /bin /usr/local/bin /usr/sbin
+	do	if [ -x /usr/bin/man ]
+		then	exec /usr/bin/man $@
+		fi
+	done
+	echo Can not find man program
+	exit 1
+}
+
 function commitmerge {
 	exec ${BIN}sfiles -C | ${BIN}cset -yMerge $@ -
 }
@@ -1140,7 +1151,7 @@ case "$1" in
 	exit $?
 	;;
     setup|changes|pending|commit|commitmerge|sendbug|send|take|\
-    sccsmv|mv|resync|edit|unedit)
+    sccsmv|mv|resync|edit|unedit|man)
 	cmd=$1
     	shift
 	eval $cmd "$@"
@@ -1189,7 +1200,7 @@ then	if [ X$1 = X ]
 fi
 # Run our stuff first if we can find it, else
 # we don't know what it is, try running it and hope it is out there somewhere.
-if [ -x ${BIN}$cmd ]
+if [ -x ${BIN}$cmd -a ! -d ${BIN}$cmd ]
 then	exec ${BIN}$cmd "$@"
 else	exec $cmd "$@"
 fi
