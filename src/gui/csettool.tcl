@@ -60,7 +60,7 @@ proc file_history {} \
 proc dotFile {{line {}}} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
-	global	RealFiles file finfo
+	global	RealFiles file finfo currentCset
 	global gc
 
 	busy 1
@@ -127,6 +127,7 @@ proc dotFile {{line {}}} \
 		incr line -1
 		set buf [.l.filelist.t get "$line.0" "$line.0 lineend"]
 	}
+	set currentCset [lindex [split $buf] 1]
 	.l.sccslog.t configure -state normal
 	.l.sccslog.t delete 1.0 end
 
@@ -166,6 +167,36 @@ proc dotFile {{line {}}} \
 	.l.sccslog.t configure -state disabled
 	.l.sccslog.t see end
 	.l.sccslog.t xview moveto 0
+	busy 0
+}
+
+proc savePatch {f s} \
+{
+	global out
+	puts -nonewline $out $s
+}
+
+proc exportCset {} \
+{
+	global bgExec out currentCset
+
+	if {![info exists currentCset] || $currentCset eq ""} {
+		displayMessage "You are not in a ChangeSet that can be exported"
+		return
+	}
+	set f [tk_getSaveFile -title "Select file for patch export..."]
+	if {$f eq ""} return
+	busy 1
+	set out [open $f w+]
+	set r [bgExec -output savePatch bk export -tpatch -r$currentCset]
+	if {$r} {
+		displayMessage "Export Failed: $bgExec(stderr)"
+	} elseif {[catch {close $out} e]} {
+		displayMessage "Export failed: $e"
+	} else {
+		# success!
+		displayMessage "Export completed successfully\n$f"
+	}
 	busy 0
 }
 
@@ -539,6 +570,7 @@ proc keyboard_bindings {} \
 	bind all <period>		dot
 	bind all <Control-n>		nextFile
 	bind all <Control-p>		prevFile
+	bind all <s>			exportCset
 
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
