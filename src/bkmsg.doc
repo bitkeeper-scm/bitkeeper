@@ -528,6 +528,111 @@ x11/utilities
 x11/xfree86
 x11/xfree86/servers
 $
+#setuptool_step_Begin
+You are about to create a new repository. Creating a new repository is
+something which is done if the data which you wish to manage is not
+already under BitKeeper control in a different repository. If there
+already is a BitKeeper repository for this package, you should do
+
+bk clone package_dir my_package_dir
+
+If you create a new repository rather than cloning a copy you will not
+be able to exchange work between the existing and new repositories.
+In other words, a repository is set up only once; after that you use
+bk clone to get a copy of the repository
+
+
+If you are ready to create a new BitKeeper repository, press Next.
+$
+#setuptool_step_EndUserLicense
+Please take a moment to read the license agreement now. If you accept 
+the terms below, click "I Agree", then "Next". Otherwise click Cancel.
+$
+#setuptool_step_LicenseType
+BitKeeper provides three types of licensing. If you have received a bitkeeper
+license key from BitMover, select "Commercial" and you will be prompted to
+enter the key.
+
+If you wish to use BitKeeper for free you must choose one of the other 
+options. If you are a single user on a single host you may choose the
+"Single User / Single Host" option in which case you will be prompted 
+for a username and hostname. 
+
+If you choose "Open Logging" you will not have to enter any data for the 
+license, and all changes to the repository will be posted to openlogging.org
+$
+#setuptool_step_LicenseKey
+Please enter the license key exactly as it was given to you. If this is a 
+version 5 license key you must also enter the key signatures.
+
+If the license keys are in a file, click the "From file..." button and the 
+values will be extracted from the file. This should work even if the file 
+has mail headers or other text, and is the easiest way to insure the keys 
+are entered properly.
+$
+#setuptool_step_UserHostInfo
+For single user / single host configurations you must enter a 
+username and hostname. The username and hostname you supply will 
+be recorded with every check-in in this repository.
+$
+#setuptool_step_RepoInfo
+The following information uniquely identifies this repository. All fields 
+are required to be non-empty in order for you to continue.
+
+If the categories in the drop-down list don't meet your needs you may enter 
+any category you like.
+$
+#setuptool_step_ContactInfo
+The following information is optional.
+$
+#setuptool_step_Finish
+There is now enough information to create the repository. Please review the 
+following information. If it is correct, press the Finish button to create 
+the repository.
+$
+#setuptool_step_KeywordExpansion
+BitKeeper can automatically expand SCCS or RCS keywords in files when they are 
+checked out in read-only mode. This feature is off by default, but you can
+change this behavior by selecting the mode that best suits your needs.
+
+You may choose either "sccs" or "rcs" expansion. In addition, you can specify 
+"expand1" to mean you only want keywords to be expanded in the first line
+that contains keywords. This helps avoid conflicts with printf statements or 
+other code that may contain strings that look like keywords. 
+$
+#setuptool_step_CheckoutMode
+By default, gfiles will be visible in a repository unless they are checked
+out. You can modify this behavior by defining the checkout mode.
+
+A value of "get" will cause a "bk get <file>" command to be executed 
+automatically after a "bk delta", causing the file to be checked out 
+in read-only mode. 
+
+A value of "edit" will cause a "bk edit <file>" command to be executed
+automatically after a "bk delta", causing the file to be checked out in 
+edit mode.  This will also adjust the modification time of the s.file 
+to be one second before the modification time of the gfile, which is 
+needed in order to prevent make(1) from attempting to reget the file.
+
+A value of "none" will clear the gfile from the repository after a 
+"bk delta". This is the default behavior.
+$
+#setuptool_step_Compression
+By default, when you set up a repository the compression algorithm will be 
+set to "gzip". This will cause all s.files to be compressed in the 
+repository. Setting this value causes the option "-Zgzip" to automatically be 
+applied when running the "bk new" command. 
+
+If you do not wish for the s.files in your repository to be compressed you
+may turn this feature off by selecting "none".
+$
+#setuptool_step_Autofix
+The bk check command can automatically fix a number of problems found
+in a repository. By default this feature is turned on when a repository
+is created. To turn this feature off select the value "no", in which case
+the bk check command will not attempt to automatically fix problems it
+detects.
+$
 #bitkeeper.init
 #!/bin/sh
 #
@@ -581,4 +686,13 @@ case "$1" in
           ;;
 esac
 exit 0
+$
+#commercial_license_info
+This is information about the commercial license. 
+$
+#single_user_license_info
+This is information about the single user / single host license.
+$
+#open_logging_license_info
+This is informationa bot the openlogging license
 $

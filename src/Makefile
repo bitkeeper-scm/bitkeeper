@@ -441,10 +441,10 @@ citool: gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
 	    gui/progress.tcl gui/search.tcl gui/ciedit.tcl \
 	    gui/citool.tcl > citool
 
-setuptool: gui/setuptool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl gui/config.tcl \
-	    gui/setuptool.tcl > setuptool
+setuptool: gui/setuptool.tcl gui/lib/tkwizard.tcl \
+	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl
+	cat port/$(SYS)_platform.tcl gui/config.tcl \
+	gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl > setuptool
 
 helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl
