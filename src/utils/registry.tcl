@@ -21,7 +21,7 @@ proc main {} \
 			}
 		}
 	}
-	set destination [normalize [lindex $argv 0]]
+	set destination [file nativename [lindex $argv 0]]
 	set bk [file join $destination bk.exe]
 	if {![file exists $bk]} {
 		puts stderr "can't find a usable bk.exe in $destination"
@@ -56,7 +56,7 @@ proc registry_install {destination} \
 	set bk [file join $destination bk.exe]
 	catch {exec $bk version -s} version
 	set id "bk-$version"
-	set dll [normalize $destination/bkscc.dll]
+	set dll [shortname $destination/bkscc.dll]
 	
         # N.B. the command 'reg' has a side effect of adding each key
         # to a global array we can later write to a log...
@@ -98,12 +98,20 @@ proc registry_install {destination} \
 
 proc startmenu_install {dest {group "BitKeeper"}} \
 {
-	global env shortcutlog
+	global env shortcutlog tcl_platform
 
-	set dest [shortname $dest]
-	set bk [shortname [file join $dest bk.exe]]
-	set uninstall [shortname [file join $dest bkuninstall.exe]]
-	set installlog [shortname [file join $dest install.log]]
+	set bk [file join $dest bk.exe]
+	set uninstall [file join $dest bkuninstall.exe]
+	set installLog [file join $dest install.log]
+
+	# 95 == 98 in tcl.
+	if {$tcl_platform(os) == "Windows 95"} {
+		set dest [shortname $dest]
+		set bk [shortname $bk]
+		set uninstall [shortname $uninstall]
+		set installLog [shortname $installLog]
+	}
+
 	lappend shortcutlog "CreateGroup \"$group\""
 	# by not specifying whether this is a common or user group 
 	# it will default to common if the user has admin privs and
@@ -112,7 +120,11 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 	progman AddItem "$bk helptool,BitKeeper Documentation,,,,,,,1"
 	progman AddItem "$bk sendbug,Submit bug report,,,,,,,1"
 	progman AddItem "$bk support,Request BitKeeper Support,,,,,,,1"
-	progman AddItem "$uninstall -S \"$installlog\",Uninstall BitKeeper,,,,,C:\\,,1"
+	if {$tcl_platform(os) == "Windows 95"} {
+		progman AddItem "control appwiz.cpl,Uninstall BitKeeper,,,,,C:\\,,1"
+	} else {
+		progman AddItem "$uninstall -S \"$installLog\",Uninstall BitKeeper,,,,,C:\\,,1"
+	}
 	progman AddItem "$dest\\bk_refcard.pdf,Quick Reference,,,,,,,0"
 	progman AddItem "$dest\\gnu\\msys.bat,Msys Shell,,,,,,,1"
 	progman AddItem "http://www.bitkeeper.com,BitKeeper on the Web,,,,,,,1"
@@ -122,7 +134,9 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 proc progman {command details} \
 {
 	global reglog
+
 	set command "\[$command ($details)\]"
+
 	if {[catch {dde execute PROGMAN PROGMAN $command} error]} {
 		lappend reglog "error $error"
 	}
@@ -147,12 +161,13 @@ proc reg {command args} \
 		set name [lindex $args 1]
 		set value [lindex $args 2]
 		set newbits [lindex $args 3]
+		set type [registry type $key $name]
 		if {$newbits eq ""} {
 			lappend reglog "modify $key \[$name\]"
 		} else {
 			lappend reglog "modify $key \[$name\] $newbits"
 		}
-		set command [list registry set $key $name $value]
+		set command [list registry set $key $name $value $type]
 	} else {
 		# nothing else gets logged at this point (for example,
 		# registry broadcast)
@@ -186,6 +201,14 @@ proc writelog {dest} \
 
 proc addpath {type dir} \
 {
+	global	env tcl_platform
+
+	# 95 == 98 in tcl.
+	if {$tcl_platform(os) == "Windows 95"} {
+		autoexec $dir
+		return
+	}
+
 	if {$type eq "system"} {
 		set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
 		append key "\\Control\\Session Manager\\Environment"
@@ -206,10 +229,9 @@ proc addpath {type dir} \
 	# look through the path to see if this directory is already
 	# there (presumably from a previous install); no sense in
 	# adding a duplicate
-	set dir [normalize $dir]
+
 	foreach d $path {
-		set d [normalize $d]
-		if {$d eq $dir} {
+		if {[shortname $d] eq [shortname $dir]} {
 			# dir is already in the path
 			return 
 		}
@@ -225,33 +247,67 @@ proc addpath {type dir} \
 	reg broadcast Environment
 }
 
+proc autoexec {dir} \
+{
+	global	env
+
+	# Try and find autoexec.bat, always look at $COMSPEC first.
+	# Nota bene: keep this in sync with bkuninstall.c
+	if {![info exists env(COMSPEC)]} {
+		set drv "C";
+	} else {
+		if {[string range $env(COMSPEC) 1 1] != ":"} {
+			set drv "C";
+		} else {
+			set drv [string range $env(COMSPEC) 0 0]
+		}
+	}
+	
+	foreach drv {$drv c d e f g h i j k l m n o p q r s t u v w x y z} {
+		if {[file exists "$drv:/autoexec.bat"]} { break }
+	}
+	set lines {}
+	if {[file exists "$drv:/autoexec.bat"]} { 
+		set fd [open "$drv:/autoexec.bat"]
+		while {[gets $fd buf] >= 0} {
+			# Throw away the previous entry, if any
+			# XXX - does not verify the next line is BK line.
+			# Should we save the old autoexec.bat file?
+			if {$buf == "REM Added by BitKeeper"} {
+				gets $fd buf
+				gets $fd buf
+				continue
+			}
+			lappend lines $buf
+		}
+		close $fd
+	} else {
+		puts "Could not find autoexec.bat location, assuming C:"
+		drv = "C"
+	}
+	lappend lines "REM Added by BitKeeper"
+	lappend lines "REM Remove all three of these lines if you edit by hand"
+	lappend lines "SET PATH=\"%PATH%;$dir\""
+	set fd [open "$drv:/autoexec.bat" w]
+	foreach line $lines {
+		puts $fd $line
+	}
+	close $fd
+	puts ""
+	puts "Changed path to include $dir in $drv:\\autoexec.bat"
+}
+
 proc shortname {dir} \
 {
-	catch {set dir [file attributes $dir -shortname]}
-	return $dir
-}
+	global	env
 
-# file normalize is required to convert relative paths to absolute and
-# to convert short names (eg: c:/progra~1) into long names (eg:
-# c:/Program Files). file nativename is required to give the actual,
-# honest-to-goodness filename (read: backslashes instead of forward
-# slashes on windows). This is mostly used for human-readable filenames.
-proc normalize {dir} \
-{
-	if {[file exists $dir]} {
-		# If possible, use bk's notion of a normalized
-		# path. This only works if the file exists and
-		# we give a unixy anme (forward-slash, as given by
-		# tcl's normalize function) 
-		catch {set dir [exec bk pwd [file normalize $dir]]}
-		if {$dir eq ""} {
-			set dir [file nativename [file normalize $dir]]
-		}
-	} else {
-		set dir [file nativename [file normalize $dir]]
+	if {[catch {set d1 [file attributes $dir -shortname]}]} {
+		return $dir
 	}
-	return $dir
+	if {[catch {set d2 [file nativename $d1]}]} {
+		return $d1
+	}
+	return $d2
 }
-
 
 main

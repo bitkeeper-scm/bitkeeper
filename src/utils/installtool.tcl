@@ -6,7 +6,7 @@ catch {wm withdraw .}
 
 proc main {} \
 {
-	global	argv env options installer tcl_platform runtime
+	global	argv env options installer runtime
 
 	initGlobals
 
@@ -43,8 +43,14 @@ proc initGlobals {} \
 		set runtime(enableSccDLL) 1
 		set runtime(enableShellxLocal) 1
 		set runtime(enableShellxNetwork) 0
+		set key {HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft}
+		append key {\Windows\CurrentVersion} 
+		if {[catch {set pf [registry get $key ProgramFilesDir]}]} {
+			puts "Can't read $key"
+			set pf {C:\Program Files\BitKeeper}
+		}
 		set runtime(places) \
-		    [list [normalize {C:/Program Files/BitKeeper}]]
+		    [list [normalize [file join $pf BitKeeper]]]
 		set runtime(symlinkDir) ""
 		set id "./gnu/id"
 	} else {
@@ -95,12 +101,28 @@ proc initGlobals {} \
 
 proc hasWinAdminPrivs {} \
 {
+	global	tcl_platform
+
+	# Win98 always has these rights.
+	# 95 == 98 in tcl.
+	if {$tcl_platform(os) eq "Windows 95"} {
+		return 1
+	}
+
 	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
 	append key "\\Control\\Session Manager\\Environment"
-	set path [registry get $key Path]
+
+	if {[catch {set type [registry type $key Path]}]} {
+		return 0
+	}
+
+	if {[catch {set path [registry get $key Path]}]} {
+		return 0
+	}
+
 	# if this fails, it's almost certainly because the
 	# user doesn't have admin privs.
-	if {[catch {registry set $key Path $path}]} {
+	if {[catch {registry set $key Path $path $type}]} {
 		return 0
 	} else {
 		return 1

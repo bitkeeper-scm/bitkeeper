@@ -1352,8 +1352,7 @@ _install()
 		echo Installing data in "$DEST" ...
 	}
 	if [ "X$OSTYPE" = "Xmsys" ]
-	then 	echo "fixing up permissions, please wait..."
-		find "$SRC" | xargs chmod +w	# for Win/Me
+	then 	find "$SRC" | xargs chmod +w	# for Win/Me
 	fi
 	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar x${V}f -)
 	
@@ -1406,12 +1405,20 @@ _install()
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
-		test $VERBOSE = YES && echo "updating registry..."
+		test $VERBOSE = YES && echo "Updating registry and path ..."
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 		# This tells extract.c to reboot if it is needed
 		test $CRANKTURN = NO -a -f "$OBK/BkShellX.dll" && exit 2
 	fi
+
+	# Log the fact that the installation occurred
+	(bk version
+	echo USER=`bk getuser`/`bk getuser -r`
+	echo HOST=`bk gethost`/`bk gethost -r`
+	) | bk mail -u http://bitmover.com/cgi-bin/bkdmail \
+	    -s 'bk install' install@bitmover.com >/dev/null 2>&1 &
+
 	exit 0
 }
 
