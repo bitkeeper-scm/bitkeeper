@@ -27,26 +27,26 @@ WHATSTR("@(#)%K%");
  * Copyright (c) 2001 Larry McVoy & Rick Smith
  */
 
-int	csetsplit_main(int ac, char **av);
-int	rmKeys(MDBM *m, MDBM *s);
+int	csetprune_main(int ac, char **av);
+private	int rmKeys(MDBM *s);
 private	int found(delta *d);
 private void _pruneEmpty(delta *d);
 private void pruneEmpty(sccs *s, sccs *sb, MDBM *m);
 private int getKeys(MDBM *m);
+private int flags;
 
 /* XXX: get the slib.c prototype out of here! */
 extern void sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 
 int
-csetsplit_main(int ac, char **av)
+csetprune_main(int ac, char **av)
 {
 	sccs	*s, *sb;
 	char	csetFile[] = "SCCS/s.ChangeSet";
-	MDBM	*m1 = mdbm_mem();
-	MDBM	*m2 = mdbm_mem();
+	MDBM	*m = mdbm_mem();
 
 	if (ac > 1 && streq("--help", av[1])) {
-		system("bk help -s csetsplit");
+		system("bk help -s csetprune");
 		return (0);
 	}
 	if (sccs_cd2root(0, 0)) {
@@ -57,69 +57,102 @@ csetsplit_main(int ac, char **av)
 		fprintf(stderr, "Will not overwrite backup changeset file.\n");
 		exit(1);
 	}
-	if (getKeys(m1)) exit(1);
-	sys("bk", "admin", "-Znone", "SCCS/s.ChangeSet", SYS);
-	rename("SCCS/s.ChangeSet", "SCCS/s..ChangeSet");
-	unless (rmKeys(m1, m2)) {
-		fprintf(stderr, "Wow!  No empty deltas, great!\n");
+	unless (rmKeys(m)) {
+		rename("SCCS/s..ChangeSet", "SCCS/b.ChangeSet");
 		sys("bk", "admin", "-z", "ChangeSet", SYS);
-		sys("bk", "renumber", "ChangeSet", SYS);
-		exit(sys("bk", "checksum", "-fvv", "ChangeSet", SYS));
+		sys("bk", "renumber", "-q", "ChangeSet", SYS);
+		sys("bk", "checksum", "-fv", "ChangeSet", SYS);
+		sys("bk", "-r", "check", "-ac", SYS);
+		exit(0);
 	}
-	m1 = 0;	/* it was closed */
-
 	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
 		fprintf(stderr, "%s: cannot init ChangeSet file\n", av[0]);
 		exit(1);
 	}
-
 	unless ((sb = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
 		fprintf(stderr, "%s: cannot init ChangeSet backup file\n",
 			av[0]);
 		exit(1);
 	}
-	pruneEmpty(s, sb, m2);
+	verbose((stderr, "Pruning ChangeSet file...\n"));
+	pruneEmpty(s, sb, m);
 	sccs_free(sb);
-
-	unless ((s = sccs_init(csetFile, ADMIN_SHUTUP|INIT_NOCKSUM, 0)) && s->tree) {
+	s = sccs_init(csetFile, ADMIN_SHUTUP|INIT_NOCKSUM, 0);
+	unless (s && s->tree) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
 		exit(1);	/* leave it locked! */
 	}
-	sccs_renumber(s, 0, 0, 0, 0, 0);
+	verbose((stderr, "Renumbering ChangeSet file...\n"));
+	sccs_renumber(s, 0, 0, 0, 0, SILENT);
 	sccs_newchksum(s);
 	sccs_free(s);
 	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
 		exit(1);	/* leave it locked! */
 	}
+	verbose((stderr, "Serial compressing ChangeSet file...\n"));
 	sccs_scompress(s, SILENT);
 	sccs_free(s);
+	verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
 	sys("bk", "checksum", "-fv", "ChangeSet", SYS);
-#if 0
-	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
-		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
-		exit(1);	/* leave it locked! */
-	}
-	//transferTags(pristine, m2);
-	sccs_newchksum(s);
-	sccs_free(s);
-#endif
 	rename("SCCS/s..ChangeSet", "SCCS/b.ChangeSet");
+	verbose((stderr, "Generating a new root key and updating files...\n"));
+	sys("bk", "newroot", SYS);
+	verbose((stderr, "Running a check -ac...\n"));
+	if (sys("bk", "-r", "check", "-ac", SYS)) exit(1);
+	verbose((stderr, "All operations completed.\n"));
 	exit(0);		/* bitchin' */
 }
 
 /*
  * rmKeys - remove the keys and build a new file.
  */
-rmKeys(MDBM *m, MDBM *s)
+private int
+rmKeys(MDBM *s)
 {
 	char	line[MAXKEY*2];
-	FILE	*in = fopen("SCCS/s..ChangeSet", "r");
-	FILE	*out = fopen("SCCS/s.ChangeSet", "w");
+	FILE	*in, *out;
 	ser_t	ser;
 	int	first;
 	char	*t;
 	int	empty = 0;
+	int	n = 0;
+	MDBM	*m = mdbm_mem();
+	MDBM	*dirs = mdbm_mem();
+	MDBM	*idDB;
+	kvpair	kv;
+	project	*proj = proj_init(0);
+
+	verbose((stderr, "Reading keys...\n"));
+	if (getKeys(m)) exit(1);
+
+	/*
+	 * Remove each file.
+	 */
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+		perror("idcache");
+		exit(1);
+	}
+	verbose((stderr, "Removing files...\n"));
+	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
+		verbose((stderr, "%d removed\r", ++n));
+		sccs_keyunlink(kv.key.dptr, proj, idDB, dirs);
+	}
+	mdbm_close(idDB);
+	proj_free(proj);
+	verbose((stderr, "\n"));
+
+	verbose((stderr, "Removing directories...\n"));
+	for (kv = mdbm_first(dirs); kv.key.dsize; kv = mdbm_next(dirs)) {
+		if (isdir(kv.key.dptr)) sccs_rmEmptyDirs(kv.key.dptr);
+	}
+	mdbm_close(dirs);
+
+	verbose((stderr, "Processing ChangeSet file...\n"));
+	sys("bk", "admin", "-Znone", "SCCS/s.ChangeSet", SYS);
+	rename("SCCS/s.ChangeSet", "SCCS/s..ChangeSet");
+	in = fopen("SCCS/s..ChangeSet", "r");
+	out = fopen("SCCS/s.ChangeSet", "w");
 
 	/*
 	 * Do the top half
@@ -159,7 +192,7 @@ rmKeys(MDBM *m, MDBM *s)
 done:			fclose(in);
 			fclose(out);
 			mdbm_close(m);
-fprintf(stderr, "%d empty deltas\n", empty);
+			debug((stderr, "%d empty deltas\n", empty));
 			return (empty);
 		}
 		if (ser == 1) {
@@ -235,20 +268,91 @@ pruneList(ser_t *list)
 	}
 }
 
+/*
+ * Find all the tags associated with this delta and move them to the
+ * parent, if there is a parent.  Otherwise delete them.
+ */
+private void
+moveTags(delta *d)
+{
+	symbol	*sym;
+
+	for (sym = sc->symbols; sym; sym = sym->next) {
+		unless (sym->d == d) continue;
+		unless (d->parent) {
+			sym->d = 0;
+			continue;
+		}
+		debug((stderr,
+		    "TAG %s moved from %s to %s\n",
+		    sym->name, d->rev, d->parent->rev));
+		sym->d = d->parent;
+		d->parent->flags |= D_SYMBOLS;
+		free(sym->metad->rev);
+		sym->metad->rev = strdup(d->parent->rev);
+		/* I'm not positive they are all bushy */
+		assert(sym->metad->pserial == d->serial);
+		sym->metad->pserial = d->parent->serial;
+	}
+}
+
+private void
+rebuildTags(sccs *s)
+{
+	delta	*d;
+	delta	*last = 0;
+	symbol	*sym, *sym2;
+
+	/*
+	 * Remove duplicate syms on the same real delta.
+	 */
+	for (sym = s->symbols; sym; sym = sym->next) {
+		for (sym2 = s->symbols; sym2; sym2 = sym2->next) {
+			if (sym == sym2) continue;
+			unless ((sym->d == sym2->d) &&
+			    streq(sym->name, sym2->name)) {
+			    	continue;
+			}
+			sym2->d = sym2->metad = 0;
+		}
+	}
+	
+	/*
+	 * Remove all the tag only deltas and rebuild the tag graph
+	 */
+	for (d = s->table; d; d = d->next) {
+		for (sym = s->symbols; sym; sym = sym->next) {
+			if (sym->metad == d) break;
+		}
+		if (sym) {
+			if (last) {
+				last->ptag = d->serial;
+			} else {
+				d->symLeaf = 1;
+			}
+			last = d;
+			d->symGraph = 1;
+		} else if (d->type == 'R') {
+			d->flags |= D_GONE;
+		}
+	}
+}
+
 private void
 _pruneEmpty(delta *d)
 {
 	int	i;
 
-	unless (d && d->parent && (d->type == 'D')) return;
+	unless (d && d->parent) return;
 	_pruneEmpty(d->next);
-fprintf(stderr, "%s ", d->rev);
+	unless (d->type == 'D') return;
+	debug((stderr, "%s ", d->rev));
 	pruneList(d->include);
 	pruneList(d->exclude);
 	if (d->merge) {
-		delta	*e, *m;
+		delta	*m;
 
-fprintf(stderr, "\n");
+		debug((stderr, "\n"));
 		/*
 		 * cases which can happen:
 		 * a) all nodes up both parents are D_GONE until C.A.
@@ -275,10 +379,10 @@ fprintf(stderr, "\n");
 		m = sfind(sc, d->merge);
 		if (m->serial > d->parent->serial) {	/* parent is older */
 			findme = d->parent;
-//fprintf(stderr, "findme=%s d=%s m=%s\n", findme->rev, d->rev, m->rev);
 			unless (found(m)) goto check;
 			/* merge node becomes the parent */
-fprintf(stderr, "%s gets new parent %s (M)\n", d->rev, m->rev);
+			debug((stderr,
+			    "%s gets new parent %s (M)\n", d->rev, m->rev));
 			d->parent = m;
 			d->pserial = m->serial;
 		} else {				/* merge is older */
@@ -307,16 +411,18 @@ fprintf(stderr, "%s gets new parent %s (M)\n", d->rev, m->rev);
 	EACH(d->include) goto check;
 	EACH(d->exclude) goto check;
 	if (d->added) return;		/* Note: do this after inc/exc check */
-fprintf(stderr, "RMDELTA(%s)\n", d->rev);
+	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	d->flags |= D_GONE;
+	if (d->flags & D_SYMBOLS) moveTags(d);
 	if (d->flags & D_MERGED) {
 		delta	*m;
-		int	i;
 
 		assert(d->parent);
 		for (m = sc->table; m; m = m->next) {
 			unless (m->merge == d->serial) continue;
-fprintf(stderr, "%s gets new merge parent %s (was %s)\n", m->rev, d->parent->rev, d->rev);
+			debug((stderr,
+			    "%s gets new merge parent %s (was %s)\n",
+			    m->rev, d->parent->rev, d->rev));
 			m->merge = d->parent->serial;
 			d->parent->flags |= D_MERGED;
 		}
@@ -324,7 +430,9 @@ fprintf(stderr, "%s gets new merge parent %s (was %s)\n", m->rev, d->parent->rev
 	for (d = d->kid; d; d = d->siblings) {
 		unless (d->type == 'D') continue;
 		if (d->parent->parent) {
-fprintf(stderr, "%s gets new parent %s\n", d->rev, d->parent->parent->rev);
+			debug((stderr,
+			    "%s gets new parent %s\n",
+			    d->rev, d->parent->parent->rev));
 			d->parent = d->parent->parent;
 			d->pserial = d->parent->serial;
 		} else {
@@ -341,38 +449,28 @@ check:	/* for unpruned nodes that are merge or have includes or excludes */
 private void
 pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 {
-	delta	*n, *p;
+	delta	*n;
 
 	/*
-	 * Strip the tags.
-	 * We don't have to worry about the pointers because we are just
-	 * dumping all the removed deltas.
+	 * Mark the empty deltas.
 	 */
-//fprintf(stderr, "Empty: ");
-	for (p = 0, n = s->table; n; ) {
-		if (n->type == 'R') {
-			((p) ? p->next : s->table) = n->next;
-			n->flags |= D_GONE;
-		} else {
+	for (n = s->table; n; n = n->next) {
+		unless (n->type == 'R') {
 			char	buf[100];
 
 			sprintf(buf, "%u", n->serial);
 			if (mdbm_fetch_str(m, buf)) {
 				n->added = 0;
-//fprintf(stderr, "%s ", n->rev);
 			}
-			p = n;
 		}
 		n->ptag = n->mtag = 0;
 		n->symGraph = 0;
 		n->symLeaf = 0;
-		n->flags &= ~D_SYMBOLS;
-		n = n->next;
 	}
-//fprintf(stderr, "\n");
 	sc = s;
 	scb = sb;
 	_pruneEmpty(sc->table);
+	rebuildTags(sc);
 	sccs_newchksum(sc);
 	sccs_free(sc);
 }
