@@ -581,4 +581,14 @@ bk push $Q ../tagexport 2> OUT || exit 1
 test -f ../release/prog-newstuff.tar.gz || exit 1
 echo OK
 }
-exit 0
+
+echo $N Make sure we check for illegal char in tag ..................$NL
+cd $HERE
+no_logging proj
+touch foo
+bk new $Q foo
+bk commit $Q -S.1 -yfoo  2>out && { echo failed; exit 1; }
+grep -q "commit: .1: tags can't start with a '.'" out || {
+	echo failed; exit 1;
+}
+echo OK
