@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 
    ivsize = cipher_descriptor[cipher_idx].block_length;
    ks = hash_descriptor[hash_idx].hashsize;
-   if (cipher_descriptor[cipher_idx].keysize(&ks) == CRYPT_ERROR) { 
+   if (cipher_descriptor[cipher_idx].keysize(&ks) != CRYPT_OK) { 
       printf("Invalid keysize???\n");
       exit(-1);
    }
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
    printf("\nEnter key: ");
    fgets(tmpkey,sizeof(tmpkey), stdin);
    outlen = sizeof(key);
-   if (hash_memory(hash_idx,tmpkey,strlen(tmpkey),key,&outlen) == CRYPT_ERROR) {
+   if (hash_memory(hash_idx,tmpkey,strlen(tmpkey),key,&outlen) != CRYPT_OK) {
       printf("Error hashing key: %s\n", crypt_error);
       exit(-1);
    }
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
          exit(-1);
       }
    
-      if (ctr_start(cipher_idx,IV,key,ks,0,&ctr) == CRYPT_ERROR) {
+      if (ctr_start(cipher_idx,IV,key,ks,0,&ctr) != CRYPT_OK) {
          printf("ctr_start error: %s\n",crypt_error);
          exit(-1);
       }
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
       do {
          y = fread(inbuf,1,sizeof(inbuf),fdin);
 
-         if (ctr_decrypt(inbuf,plaintext,y,&ctr) == CRYPT_ERROR) {
+         if (ctr_decrypt(inbuf,plaintext,y,&ctr) != CRYPT_OK) {
             printf("ctr_decrypt error: %s\n", crypt_error);
             exit(-1);
          }
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
    } else {  /* encrypt */
       /* Setup yarrow for random bytes for IV */
       
-      if (rng_make_prng(128, find_prng("yarrow"), &prng, NULL)== CRYPT_ERROR) {
+      if (rng_make_prng(128, find_prng("yarrow"), &prng, NULL)!= CRYPT_OK) {
          printf("Error setting up PRNG, %s\n", crypt_error);
       }      
 
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
          exit(-1);
       }
 
-      if (ctr_start(cipher_idx,IV,key,ks,0,&ctr) == CRYPT_ERROR) {
+      if (ctr_start(cipher_idx,IV,key,ks,0,&ctr) != CRYPT_OK) {
          printf("ctr_start error: %s\n",crypt_error);
          exit(-1);
       }
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
       do {
          y = fread(inbuf,1,sizeof(inbuf),fdin);
 
-         if (ctr_encrypt(inbuf,ciphertext,y,&ctr) == CRYPT_ERROR) {
+         if (ctr_encrypt(inbuf,ciphertext,y,&ctr) != CRYPT_OK) {
             printf("ctr_encrypt error: %s\n", crypt_error);
             exit(-1);
          }

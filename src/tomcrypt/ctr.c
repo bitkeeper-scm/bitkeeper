@@ -12,12 +12,12 @@ int ctr_start(int cipher, const unsigned char *count, const unsigned char *key, 
    _ARGCHK(ctr != NULL);
 
    /* bad param? */
-   if (cipher_is_valid(cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(cipher) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* setup cipher */
-   if (cipher_descriptor[cipher].setup(key, keylen, num_rounds, &ctr->key) == CRYPT_ERROR) {
+   if (cipher_descriptor[cipher].setup(key, keylen, num_rounds, &ctr->key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -40,7 +40,7 @@ int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
    _ARGCHK(ct != NULL);
    _ARGCHK(ctr != NULL);
 
-   if (cipher_is_valid(ctr->cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(ctr->cipher) != CRYPT_OK) {
        return CRYPT_ERROR;
    }
 

@@ -410,7 +410,7 @@ int saferp_test(void)
    symmetric_key skey;
 
    /* test 128-bit key */
-   if (saferp_setup(key128, 16, 0, &skey) == CRYPT_ERROR) 
+   if (saferp_setup(key128, 16, 0, &skey) != CRYPT_OK) 
       return CRYPT_ERROR;
    saferp_ecb_encrypt(pt128, buf[0], &skey);
    saferp_ecb_decrypt(buf[0], buf[1], &skey);
@@ -426,7 +426,7 @@ int saferp_test(void)
    }
 
    /* test 192-bit key */
-   if (saferp_setup(key192, 24, 0, &skey) == CRYPT_ERROR)
+   if (saferp_setup(key192, 24, 0, &skey) != CRYPT_OK)
       return CRYPT_ERROR;
    saferp_ecb_encrypt(pt192, buf[0], &skey);
    saferp_ecb_decrypt(buf[0], buf[1], &skey);
@@ -442,7 +442,7 @@ int saferp_test(void)
    }
 
    /* test 256-bit key */
-   if (saferp_setup(key256, 32, 0, &skey) == CRYPT_ERROR)
+   if (saferp_setup(key256, 32, 0, &skey) != CRYPT_OK)
       return CRYPT_ERROR;
    saferp_ecb_encrypt(pt256, buf[0], &skey);
    saferp_ecb_decrypt(buf[0], buf[1], &skey);

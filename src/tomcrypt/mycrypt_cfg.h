@@ -7,6 +7,14 @@
 #ifndef MYCRYPT_CFG_H
 #define MYCRYPT_CFG_H
 
+/* you can change how memory allocation works ... */
+extern void *XMALLOC(size_t n);
+extern void *XCALLOC(size_t n, size_t s);
+extern void XFREE(void *p);
+
+/* change the clock function too */
+extern clock_t XCLOCK(void);
+
 /* type of argument checking, 0=default, 1=fatal and 2=none */
 #define ARGTYPE  0
 
@@ -17,13 +25,19 @@
    #define ENDIAN_32BITWORD
 #endif
 
+/* detects MIPS R5900 processors (PS2) */
+#if (defined(__R5900) || defined(R5900) || defined(__R5900__)) && (defined(_mips) || defined(__mips__) || defined(mips))
+   #define ENDIAN_LITTLE
+   #define ENDIAN_64BITWORD
+#endif
+
 /* #define ENDIAN_LITTLE */
 /* #define ENDIAN_BIG */
 
 /* #define ENDIAN_32BITWORD */
 /* #define ENDIAN_64BITWORD */
 
-#if defined(ENDIAN_BIG) || defined(ENDIAN_LITTLE) && !(defined(ENDIAN_32BITWORD) || defined(ENDIAN_64BITWORD))
+#if (defined(ENDIAN_BIG) || defined(ENDIAN_LITTLE)) && !(defined(ENDIAN_32BITWORD) || defined(ENDIAN_64BITWORD))
     #error You must specify a word size as well as endianess in mycrypt_cfg.h
 #endif
 
@@ -94,6 +108,7 @@
 /* prngs */
 #define YARROW
 #define SPRNG
+#define RC4      /* RC4 is defined in the PRNG section since thats how you access it */
 
 #ifdef YARROW
    #ifndef CTR
@@ -109,7 +124,11 @@
 
 #define MECC     /* Include ECC code? */
 
-#define KR       /* Include keyring support? */
+#ifndef SONY_PS2
+
+   #define KR       /* Include keyring support? */
+
+#endif
 
 /* packet code */
 #if defined(MRSA) || defined(MDH) || defined(MECC)
@@ -168,15 +187,6 @@
  * in speed.
  */
 #define SMALL_PRIME_TAB
-
-/* Include the ZLIB compression library */
-#define GZIP
-
-#ifdef GZIP
-   #ifndef OMIT_ZLIB
-       #include "zlib.h"
-   #endif
-#endif
 
 /* include HMAC support */
 #define HMAC

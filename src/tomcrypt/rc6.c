@@ -197,7 +197,7 @@ int rc6_test(void)
    }
    };
    unsigned char buf[2][16];
-   int x, y, failed;
+   int x, failed;
    symmetric_key key;
 
    for (x = failed = 0; x < (int)(sizeof(tests) / sizeof(tests[0])); x++) {
@@ -212,16 +212,22 @@ int rc6_test(void)
 
       /* compare */
       if (memcmp(buf[0], tests[x].ct, 16)) {
+#if 0
+         int y;
          printf("\nEncrypt test %d failed\n", x);
          for (y = 0; y < 16; y++) printf("%02x ", buf[0][y]);
          printf("\n");
+#endif
          failed = 1;
       }
 
       if (memcmp(buf[1], tests[x].pt, 16)) {
+#if 0
+         int y;
          printf("\nDecrypt test %d failed\n", x);
          for (y = 0; y < 16; y++) printf("%02x ", buf[1][y]);
          printf("\n");
+#endif
          failed = 1;
       }
    }

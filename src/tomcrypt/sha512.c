@@ -234,7 +234,7 @@ int  sha512_test(void)
     { NULL }
   };
 
-  int failed, i, j;
+  int failed, i;
   unsigned char tmp[64];
   hash_state md;
 
@@ -243,11 +243,14 @@ int  sha512_test(void)
       sha512_process(&md, tests[i].msg, strlen(tests[i].msg));
       sha512_done(&md, tmp);
       if (memcmp(tmp, tests[i].hash, 64)) {
+#if 0
+         int j;
          printf("\nSHA-512 Test %d failed\nGot (as a result): ", i);
          for (j = 0; j < 64; j++) {
              printf("%02x ", tmp[j]);
          }
          printf("\n");
+#endif
          failed = 1;
       }
   }

@@ -11,7 +11,7 @@ int cfb_start(int cipher, const unsigned char *IV, const unsigned char *key,
    _ARGCHK(key != NULL);
    _ARGCHK(cfb != NULL);
 
-   if (cipher_is_valid(cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(cipher) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -22,7 +22,7 @@ int cfb_start(int cipher, const unsigned char *IV, const unsigned char *key,
        cfb->IV[x] = IV[x];
 
    /* init the cipher */
-   if (cipher_descriptor[cipher].setup(key, keylen, num_rounds, &cfb->key) == CRYPT_ERROR) {
+   if (cipher_descriptor[cipher].setup(key, keylen, num_rounds, &cfb->key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -39,7 +39,7 @@ int cfb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
    _ARGCHK(ct != NULL);
    _ARGCHK(cfb != NULL);
 
-   if (cipher_is_valid(cfb->cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(cfb->cipher) != CRYPT_OK) {
        return CRYPT_ERROR;
    }
    while (len--) {
@@ -61,7 +61,7 @@ int cfb_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, s
    _ARGCHK(ct != NULL);
    _ARGCHK(cfb != NULL);
 
-   if (cipher_is_valid(cfb->cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(cfb->cipher) != CRYPT_OK) {
        return CRYPT_ERROR;
    }
    while (len--) {

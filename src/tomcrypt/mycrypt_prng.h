@@ -5,8 +5,14 @@ struct yarrow_prng {
     symmetric_CTR         ctr;
 };
 
+struct rc4_prng {
+    int x, y;
+    unsigned char buf[256];
+};
+
 typedef union Prng_state {
     struct yarrow_prng    yarrow;
+    struct rc4_prng       rc4;
 } prng_state;
 
 extern struct _prng_descriptor {
@@ -23,6 +29,14 @@ extern int yarrow_add_entropy(const unsigned char *buf, unsigned long len, prng_
 extern int yarrow_ready(prng_state *prng);
 extern unsigned long yarrow_read(unsigned char *buf, unsigned long len, prng_state *prng);
 extern const struct _prng_descriptor yarrow_desc;
+#endif
+
+#ifdef RC4
+extern int rc4_start(prng_state *prng);
+extern int rc4_add_entropy(const unsigned char *buf, unsigned long len, prng_state *prng);
+extern int rc4_ready(prng_state *prng);
+extern unsigned long rc4_read(unsigned char *buf, unsigned long len, prng_state *prng);
+extern const struct _prng_descriptor rc4_desc;
 #endif
 
 #ifdef SPRNG

@@ -250,7 +250,7 @@ int md4_test(void)
            0x9c, 0x3e, 0x7b, 0x16, 0x4f, 0xcc, 0x05, 0x36} },
         {0}
     };
-    int i, j, failed;
+    int i, failed;
     hash_state md;
     unsigned char digest[16];
 
@@ -260,7 +260,8 @@ int md4_test(void)
         md4_process(&md, cases[i].input, cases[i].inputlen);
         md4_done(&md, digest);
         if(memcmp(digest, cases[i].digest, 16) != 0) {
-            crypt_error = "MD4 hash code did not match test vector.";
+#if 0
+            int j;
             printf("\nMD4 test #%d failed; %s\n", cases[i].num, crypt_error);
             printf(  "Result:  0x"); 
             for(j=0; j < 16; j++) {
@@ -271,14 +272,17 @@ int md4_test(void)
                printf("%2x", cases[i].digest[j]);
             }
             printf("\n");
+#endif 
+            crypt_error = "MD4 hash code did not match test vector.";
             failed++;
         } else {
 /*            printf("MD4 test #%d succeeded.\n", cases[i].num); */
         }
     }
 
-    if(failed)
+    if (failed) {
         return CRYPT_ERROR;
+    }
 
     return CRYPT_OK;
 }

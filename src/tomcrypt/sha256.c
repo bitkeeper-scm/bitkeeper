@@ -196,7 +196,7 @@ int  sha256_test(void)
     { NULL }
   };
 
-  int failed, i, j;
+  int failed, i;
   unsigned char tmp[32];
   hash_state md;
 
@@ -205,11 +205,14 @@ int  sha256_test(void)
       sha256_process(&md, tests[i].msg, strlen(tests[i].msg));
       sha256_done(&md, tmp);
       if (memcmp(tmp, tests[i].hash, 32)) {
+#if 0
+         int j;
          printf("\nSHA-256 Test %d failed\nGot (as a result): ", i);
          for (j = 0; j < 32; j++) {
              printf("%02x ", tmp[j]);
          }
          printf("\n");
+#endif
          failed = 1;
       }
   }

@@ -33,14 +33,14 @@ int rsa_encrypt(const unsigned char *in,  unsigned long len,
    _ARGCHK(key != NULL);
 
    /* are the parameters valid? */
-   if (prng_is_valid(wprng) == CRYPT_ERROR ||
-      cipher_is_valid(cipher) == CRYPT_ERROR) {
+   if (prng_is_valid(wprng) != CRYPT_OK ||
+      cipher_is_valid(cipher) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* setup the CTR key */
    keylen = 32;                                                             /* default to 256-bit keys */
-   if (cipher_descriptor[cipher].keysize(&keylen) == CRYPT_ERROR) {
+   if (cipher_descriptor[cipher].keysize(&keylen) != CRYPT_OK) {
       crypt_error = "Could not get suggested key size in rsa_encrypt().";
       return CRYPT_ERROR;
    }
@@ -56,19 +56,19 @@ int rsa_encrypt(const unsigned char *in,  unsigned long len,
    }
 
    /* setup CTR mode */
-   if (ctr_start(cipher, sym_IV, sym_key, keylen, 0, &ctr) == CRYPT_ERROR) {
+   if (ctr_start(cipher, sym_IV, sym_key, keylen, 0, &ctr) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* rsa_pad the symmetric key */
    y = sizeof(rsa_in); 
-   if (rsa_pad(sym_key, keylen, rsa_in, &y, wprng, prng) == CRYPT_ERROR) {
+   if (rsa_pad(sym_key, keylen, rsa_in, &y, wprng, prng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
    
    /* rsa encrypt it */
    rsa_size = sizeof(rsa_out);
-   if (rsa_exptmod(rsa_in, y, rsa_out, &rsa_size, PK_PUBLIC, key) == CRYPT_ERROR) {
+   if (rsa_exptmod(rsa_in, y, rsa_out, &rsa_size, PK_PUBLIC, key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -138,7 +138,7 @@ int rsa_decrypt(const unsigned char *in,  unsigned long len,
    }
 
    /* check the header */
-   if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_ENCRYPTED) == CRYPT_ERROR) {
+   if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_ENCRYPTED) != CRYPT_OK) {
       crypt_error = "Invalid header for input in rsa_decrypt().";
       return CRYPT_ERROR;
    }
@@ -164,12 +164,12 @@ int rsa_decrypt(const unsigned char *in,  unsigned long len,
 
    /* decrypt it */
    x = sizeof(rsa_out);
-   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PRIVATE, key) == CRYPT_ERROR) 
+   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PRIVATE, key) != CRYPT_OK) 
       return CRYPT_ERROR;
 
    /* depad it */
    z = sizeof(sym_key);
-   if (rsa_depad(rsa_out, x, sym_key, &z) == CRYPT_ERROR) {
+   if (rsa_depad(rsa_out, x, sym_key, &z) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -178,7 +178,7 @@ int rsa_decrypt(const unsigned char *in,  unsigned long len,
        sym_IV[x] = in[y];
 
    /* setup CTR mode */
-   if (ctr_start(cipher, sym_IV, sym_key, keylen, 0, &ctr) == CRYPT_ERROR) {
+   if (ctr_start(cipher, sym_IV, sym_key, keylen, 0, &ctr) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -232,26 +232,26 @@ int rsa_sign(const unsigned char *in,  unsigned long inlen,
    }
 
    /* are the parameters valid? */
-   if (hash_is_valid(hash)  == CRYPT_ERROR) {
+   if (hash_is_valid(hash)  != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* hash it */
    hashlen = hash_descriptor[hash].hashsize;
    z = sizeof(rsa_in);
-   if (hash_memory(hash, in, inlen, rsa_in, &z) == CRYPT_ERROR) {
+   if (hash_memory(hash, in, inlen, rsa_in, &z) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* pad it */
    x = sizeof(rsa_in);
-   if (rsa_signpad(rsa_in, hashlen, rsa_out, &x) == CRYPT_ERROR) {
+   if (rsa_signpad(rsa_in, hashlen, rsa_out, &x) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* sign it */
    rsa_size = sizeof(rsa_in);
-   if (rsa_exptmod(rsa_out, x, rsa_in, &rsa_size, PK_PRIVATE, key) == CRYPT_ERROR) {
+   if (rsa_exptmod(rsa_out, x, rsa_in, &rsa_size, PK_PRIVATE, key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -301,7 +301,7 @@ int rsa_verify(const unsigned char *sig, const unsigned char *msg,
    *stat = 0;
 
    /* verify header */
-   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_RSA, PACKET_SUB_SIGNED) == CRYPT_ERROR) {
+   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_RSA, PACKET_SUB_SIGNED) != CRYPT_OK) {
       crypt_error = "Invalid header for input in rsa_verify().";
       return CRYPT_ERROR;
    }
@@ -326,19 +326,19 @@ int rsa_verify(const unsigned char *sig, const unsigned char *msg,
 
    /* exptmod it */
    x = sizeof(rsa_in);
-   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PUBLIC, key) == CRYPT_ERROR) {
+   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PUBLIC, key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* depad it */
    z = sizeof(rsa_in);
-   if (rsa_signdepad(rsa_out, x, rsa_in, &z) == CRYPT_ERROR) {
+   if (rsa_signdepad(rsa_out, x, rsa_in, &z) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* check? */
    w = sizeof(rsa_out);
-   if (hash_memory(hash, msg, inlen, rsa_out, &w) == CRYPT_ERROR) {
+   if (hash_memory(hash, msg, inlen, rsa_out, &w) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -368,19 +368,19 @@ int rsa_encrypt_key(const unsigned char *inkey, unsigned long inlen,
    _ARGCHK(key != NULL);
 
    /* are the parameters valid? */
-   if (prng_is_valid(wprng) == CRYPT_ERROR) {
+   if (prng_is_valid(wprng) != CRYPT_OK) {
       return CRYPT_ERROR; 
    }
 
    /* rsa_pad the symmetric key */
    y = sizeof(rsa_in); 
-   if (rsa_pad(inkey, inlen, rsa_in, &y, wprng, prng) == CRYPT_ERROR) {
+   if (rsa_pad(inkey, inlen, rsa_in, &y, wprng, prng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
    
    /* rsa encrypt it */
    rsa_size = sizeof(rsa_out);
-   if (rsa_exptmod(rsa_in, y, rsa_out, &rsa_size, PK_PUBLIC, key) == CRYPT_ERROR) {
+   if (rsa_exptmod(rsa_in, y, rsa_out, &rsa_size, PK_PUBLIC, key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -430,7 +430,7 @@ int rsa_decrypt_key(const unsigned char *in, unsigned char *outkey,
    }
 
    /* check the header */
-   if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_ENC_KEY) == CRYPT_ERROR) {
+   if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_ENC_KEY) != CRYPT_OK) {
       crypt_error = "Invalid header for input in rsa_decrypt_key().";
       return CRYPT_ERROR;
    }
@@ -447,12 +447,12 @@ int rsa_decrypt_key(const unsigned char *in, unsigned char *outkey,
 
    /* decrypt it */
    x = sizeof(rsa_out);
-   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PRIVATE, key) == CRYPT_ERROR) 
+   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PRIVATE, key) != CRYPT_OK) 
       return CRYPT_ERROR;
 
    /* depad it */
    z = sizeof(sym_key);
-   if (rsa_depad(rsa_out, x, sym_key, &z) == CRYPT_ERROR) {
+   if (rsa_depad(rsa_out, x, sym_key, &z) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -494,13 +494,13 @@ int rsa_sign_hash(const unsigned char *in,  unsigned long inlen,
 
    /* pad it */
    x = sizeof(rsa_out);
-   if (rsa_signpad(in, inlen, rsa_out, &x) == CRYPT_ERROR) {
+   if (rsa_signpad(in, inlen, rsa_out, &x) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* sign it */
    rsa_size = sizeof(rsa_in);
-   if (rsa_exptmod(rsa_out, x, rsa_in, &rsa_size, PK_PRIVATE, key) == CRYPT_ERROR) {
+   if (rsa_exptmod(rsa_out, x, rsa_in, &rsa_size, PK_PRIVATE, key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -547,7 +547,7 @@ int rsa_verify_hash(const unsigned char *sig, const unsigned char *md,
    *stat = 0;
 
    /* verify header */
-   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_RSA, PACKET_SUB_SIGNED) == CRYPT_ERROR) {
+   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_RSA, PACKET_SUB_SIGNED) != CRYPT_OK) {
       crypt_error = "Invalid header for input in rsa_verify().";
       return CRYPT_ERROR;
    }
@@ -564,13 +564,13 @@ int rsa_verify_hash(const unsigned char *sig, const unsigned char *md,
 
    /* exptmod it */
    x = sizeof(rsa_in);
-   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PUBLIC, key) == CRYPT_ERROR) {
+   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PUBLIC, key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* depad it */
    z = sizeof(rsa_in);
-   if (rsa_signdepad(rsa_out, x, rsa_in, &z) == CRYPT_ERROR) {
+   if (rsa_signdepad(rsa_out, x, rsa_in, &z) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 

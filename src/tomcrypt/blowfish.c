@@ -300,13 +300,13 @@ int blowfish_setup(const unsigned char *key, int keylen, int num_rounds,
 
    /* check key length */
    if (keylen < 8 || keylen > 56) {
-      crypt_error = "Invalid Blowfish key length.";
+      crypt_error = "Invalid key length for blowfish.";
       return CRYPT_ERROR;
    }
 
    /* check rounds */
    if (num_rounds != 0 && num_rounds != 16) {
-      crypt_error = "Invalid Blowfish number of rounds.";
+      crypt_error = "Invalid number of rounds for blowfish.";
       return CRYPT_ERROR;
    }   
 
@@ -635,7 +635,7 @@ int blowfish_test(void)
        }
    };
    unsigned char buf[2][8];
-   int x, y, failed;
+   int x, failed;
 
    for (x = failed = 0; x < (int)(sizeof(tests) / sizeof(tests[0])); x++) {
       /* setup key */
@@ -649,22 +649,28 @@ int blowfish_test(void)
 
       /* compare */
       if (memcmp(buf[0], tests[x].ct, 8)) {
+#if 0
+         int y;
          printf("\nEncrypt test %d failed\n", x);
          for (y = 0; y < 8; y++) printf("%02x ", buf[0][y]);
          printf("\n");
+#endif
          failed = 1;
       }
 
       if (memcmp(buf[1], tests[x].pt, 8)) {
+#if 0
+         int y;
          printf("\nDecrypt test %d failed\n", x);
          for (y = 0; y < 8; y++) printf("%02x ", buf[1][y]);
          printf("\n");
+#endif
          failed = 1;
       }
    }
 
    if (failed == 1) {
-      crypt_error = "Blowfish did not encrypt/decrypt to test vectors.";
+      crypt_error = "Blowfished failed to meet test vectors.";
       return CRYPT_ERROR;
    } else {
       return CRYPT_OK;

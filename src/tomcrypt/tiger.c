@@ -716,7 +716,7 @@ int  tiger_test(void)
     { NULL }
   };
 
-  int failed, i, j;
+  int failed, i;
   unsigned char tmp[24];
   hash_state md;
 
@@ -725,11 +725,14 @@ int  tiger_test(void)
       tiger_process(&md, tests[i].msg, strlen(tests[i].msg));
       tiger_done(&md, tmp);
       if (memcmp(tmp, tests[i].hash, 24)) {
+#if 0
+         int j;
          printf("\nTIGER-192 Test %d failed\nGot (as a result): ", i);
          for (j = 0; j < 24; j++) {
              printf("%02x ", tmp[j]);
          }
          printf("\n");
+#endif
          failed = 1;
       }
   }

@@ -39,7 +39,7 @@ int yarrow_start(prng_state *prng)
 #elif
    #error YARROW needs at least one CIPHER
 #endif
-   if (cipher_is_valid(prng->yarrow.cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(prng->yarrow.cipher) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -60,7 +60,7 @@ int yarrow_start(prng_state *prng)
 #else
    #error YARROW needs at least one HASH
 #endif
-   if (hash_is_valid(prng->yarrow.hash) == CRYPT_ERROR) {
+   if (hash_is_valid(prng->yarrow.hash) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -77,7 +77,7 @@ int yarrow_add_entropy(const unsigned char *buf, unsigned long len, prng_state *
    _ARGCHK(buf != NULL);
    _ARGCHK(prng != NULL);
 
-   if (hash_is_valid(prng->yarrow.hash) == CRYPT_ERROR) {
+   if (hash_is_valid(prng->yarrow.hash) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -103,18 +103,18 @@ int yarrow_ready(prng_state *prng)
 
    _ARGCHK(prng != NULL);
 
-   if (hash_is_valid(prng->yarrow.hash) == CRYPT_ERROR || 
-       cipher_is_valid(prng->yarrow.cipher) == CRYPT_ERROR) {
+   if (hash_is_valid(prng->yarrow.hash) != CRYPT_OK || 
+       cipher_is_valid(prng->yarrow.cipher) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* setup CTR mode using the "pool" as the key */
    ks = hash_descriptor[prng->yarrow.hash].hashsize;
-   if (cipher_descriptor[prng->yarrow.cipher].keysize(&ks) == CRYPT_ERROR) {
+   if (cipher_descriptor[prng->yarrow.cipher].keysize(&ks) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
-   if (ctr_start(prng->yarrow.cipher, prng->yarrow.pool, prng->yarrow.pool, ks, 0, &prng->yarrow.ctr) == CRYPT_ERROR) {
+   if (ctr_start(prng->yarrow.cipher, prng->yarrow.pool, prng->yarrow.pool, ks, 0, &prng->yarrow.ctr) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
    return CRYPT_OK;
@@ -125,7 +125,7 @@ unsigned long yarrow_read(unsigned char *buf, unsigned long len, prng_state *prn
    _ARGCHK(buf != NULL);
    _ARGCHK(prng != NULL);
 
-   if (ctr_encrypt(buf, buf, len, &prng->yarrow.ctr) == CRYPT_ERROR) {
+   if (ctr_encrypt(buf, buf, len, &prng->yarrow.ctr) != CRYPT_OK) {
       return 0;
    }
    return len;

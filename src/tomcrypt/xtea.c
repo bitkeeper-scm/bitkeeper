@@ -92,7 +92,7 @@ int xtea_test(void)
    unsigned char tmp[2][8];
    symmetric_key skey;
 
-   if (xtea_setup(key, 16, 0, &skey) == CRYPT_ERROR) 
+   if (xtea_setup(key, 16, 0, &skey) != CRYPT_OK) 
       return CRYPT_ERROR;
    xtea_ecb_encrypt(pt, tmp[0], &skey);
    xtea_ecb_decrypt(tmp[0], tmp[1], &skey);

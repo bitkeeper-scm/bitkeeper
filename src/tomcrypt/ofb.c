@@ -11,7 +11,7 @@ int ofb_start(int cipher, const unsigned char *IV, const unsigned char *key,
    _ARGCHK(key != NULL);
    _ARGCHK(ofb != NULL);
 
-   if (cipher_is_valid(cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(cipher) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -32,7 +32,7 @@ int ofb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, s
    _ARGCHK(pt != NULL);
    _ARGCHK(ct != NULL);
    _ARGCHK(ofb != NULL);
-   if (cipher_is_valid(ofb->cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(ofb->cipher) != CRYPT_OK) {
        return CRYPT_ERROR;
    }
    while (len--) {

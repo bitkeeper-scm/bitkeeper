@@ -23,25 +23,25 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
     int keysize, blocksize, hashsize;
     symmetric_CTR ctr;
 
-    _ARGCHK(in != NULL)
+    _ARGCHK(in != NULL);
     _ARGCHK(out != NULL);
     _ARGCHK(outlen != NULL);
     _ARGCHK(prng != NULL);
     _ARGCHK(key != NULL);
 
     /* check that wprng/cipher/hash are not invalid */
-    if (prng_is_valid(wprng) == CRYPT_ERROR ||
-        hash_is_valid(hash)  == CRYPT_ERROR ||
-        cipher_is_valid(cipher) == CRYPT_ERROR) {
+    if (prng_is_valid(wprng) != CRYPT_OK ||
+        hash_is_valid(hash)  != CRYPT_OK ||
+        cipher_is_valid(cipher) != CRYPT_OK) {
        return CRYPT_ERROR;
     }
 
     /* make a random key and export the public copy */
-    if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) == CRYPT_ERROR) 
+    if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) != CRYPT_OK) 
        return CRYPT_ERROR;
 
     pubkeysize = sizeof(pub_expt);
-    if (ecc_export(pub_expt, &pubkeysize, PK_PUBLIC, &pubkey) == CRYPT_ERROR) {
+    if (ecc_export(pub_expt, &pubkeysize, PK_PUBLIC, &pubkey) != CRYPT_OK) {
        ecc_free(&pubkey);
        return CRYPT_ERROR;
     }
@@ -58,20 +58,20 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
     blocksize = cipher_descriptor[cipher].block_length;
     hashsize  = hash_descriptor[hash].hashsize;
     keysize = hashsize;
-    if (cipher_descriptor[cipher].keysize(&keysize) == CRYPT_ERROR) {
+    if (cipher_descriptor[cipher].keysize(&keysize) != CRYPT_OK) {
        crypt_error = "Invalid cipher and hash combination in ecc_encrypt().";
        ecc_free(&pubkey);
        return CRYPT_ERROR;
     }
     x = sizeof(ecc_shared);
-    if (ecc_shared_secret(&pubkey, key, ecc_shared, &x) == CRYPT_ERROR) {
+    if (ecc_shared_secret(&pubkey, key, ecc_shared, &x) != CRYPT_OK) {
        ecc_free(&pubkey);
        return CRYPT_ERROR;
     }
     ecc_free(&pubkey);
 
     z = sizeof(skey);
-    if (hash_memory(hash, ecc_shared, x, skey, &z) == CRYPT_ERROR) {
+    if (hash_memory(hash, ecc_shared, x, skey, &z) != CRYPT_OK) {
        return CRYPT_ERROR;
     }
 
@@ -83,7 +83,7 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
     }
 
     /* setup CTR mode */
-    if (ctr_start(cipher, IV, skey, keysize, 0, &ctr) == CRYPT_ERROR) {
+    if (ctr_start(cipher, IV, skey, keysize, 0, &ctr) != CRYPT_OK) {
        return CRYPT_ERROR;
     }
 
@@ -149,7 +149,7 @@ int ecc_decrypt(const unsigned char *in,  unsigned long len,
    }
 
    /* is header correct? */
-   if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_ENCRYPTED) == CRYPT_ERROR) {
+   if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_ENCRYPTED) != CRYPT_OK) {
       crypt_error = "Invalid packet for ecc_decrypt().";
       return CRYPT_ERROR;
    }
@@ -173,7 +173,7 @@ int ecc_decrypt(const unsigned char *in,  unsigned long len,
    blocksize = cipher_descriptor[cipher].block_length;
    hashsize  = hash_descriptor[hash].hashsize;
    keysize = hashsize;
-   if (cipher_descriptor[cipher].keysize(&keysize) == CRYPT_ERROR) {
+   if (cipher_descriptor[cipher].keysize(&keysize) != CRYPT_OK) {
       crypt_error = "Invalid cipher and hash combination in dh_encrypt().";
       return CRYPT_ERROR;
    }
@@ -181,7 +181,7 @@ int ecc_decrypt(const unsigned char *in,  unsigned long len,
    /* get public key */
    LOAD32L(x, in+y);
    y += 4;
-   if (ecc_import(in+y, &pubkey) == CRYPT_ERROR) {
+   if (ecc_import(in+y, &pubkey) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
@@ -189,20 +189,20 @@ int ecc_decrypt(const unsigned char *in,  unsigned long len,
 
    /* make shared key */
    x = sizeof(shared_secret);
-   if (ecc_shared_secret(key, &pubkey, shared_secret, &x) == CRYPT_ERROR) {
+   if (ecc_shared_secret(key, &pubkey, shared_secret, &x) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
    ecc_free(&pubkey);
 
    z = sizeof(skey);
-   if (hash_memory(hash, shared_secret, x, skey, &z) == CRYPT_ERROR) {
+   if (hash_memory(hash, shared_secret, x, skey, &z) != CRYPT_OK) {
       res = CRYPT_ERROR;
       goto done;
    }
 
    /* setup CTR mode */
-   if (ctr_start(cipher, in+y, skey, keysize, 0, &ctr) == CRYPT_ERROR) {
+   if (ctr_start(cipher, in+y, skey, keysize, 0, &ctr) != CRYPT_OK) {
       res = CRYPT_ERROR;
       goto done;
    }
@@ -291,17 +291,17 @@ int ecc_sign(const unsigned char *in,  unsigned long inlen,
       return CRYPT_ERROR;
    }
 
-   if (prng_is_valid(wprng) == CRYPT_ERROR ||
-       hash_is_valid(hash)  == CRYPT_ERROR) {
+   if (prng_is_valid(wprng) != CRYPT_OK ||
+       hash_is_valid(hash)  != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* make up a key and export the public copy */
-   if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) == CRYPT_ERROR) 
+   if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) != CRYPT_OK) 
       return CRYPT_ERROR;
 
    pubkeysize = sizeof(epubkey);
-   if (ecc_export(epubkey, &pubkeysize, PK_PUBLIC, &pubkey) == CRYPT_ERROR) {
+   if (ecc_export(epubkey, &pubkeysize, PK_PUBLIC, &pubkey) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
@@ -309,7 +309,7 @@ int ecc_sign(const unsigned char *in,  unsigned long inlen,
    /* get the hash and load it as a bignum into 'b' */
    md[0] = 0;
    z = sizeof(md)-1;
-   if (hash_memory(hash, in, inlen, md+1, &z) == CRYPT_ERROR) {
+   if (hash_memory(hash, in, inlen, md+1, &z) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
@@ -406,7 +406,7 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    *stat = 0;
 
    /* is the message format correct? */
-   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_ECC, PACKET_SUB_SIGNED) == CRYPT_ERROR) {
+   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_ECC, PACKET_SUB_SIGNED) != CRYPT_OK) {
       crypt_error = "Invalid message format for ecc_verify().";
       return CRYPT_ERROR;
    }     
@@ -424,7 +424,7 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    y += 4;
 
    /* load the public key */
-   if (ecc_import((unsigned char*)sig+y, &pubkey) == CRYPT_ERROR) {
+   if (ecc_import((unsigned char*)sig+y, &pubkey) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
@@ -456,7 +456,7 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    /* get m in binary a bignum */
    md[0] = 0;
    z = sizeof(md)-1;
-   if (hash_memory(hash, msg, inlen, md+1, &z) == CRYPT_ERROR) {
+   if (hash_memory(hash, msg, inlen, md+1, &z) != CRYPT_OK) {
       res = CRYPT_ERROR;
       goto error;
    }
@@ -466,15 +466,15 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    if (mp_read_radix(&p, sets[key->idx].prime, 10) != MP_OKAY)                     { goto error; }
 
    /* get bA */
-   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR)          { goto error; }
+   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) != CRYPT_OK)          { goto error; }
    
    /* get bA + Y */
-   if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR) { goto error; }
+   if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) != CRYPT_OK) { goto error; }
 
    /* get mG */
    if (mp_read_radix(&mG->x, sets[key->idx].Gx, 16) != MP_OKAY)                    { goto error; }
    if (mp_read_radix(&mG->y, sets[key->idx].Gy, 16) != MP_OKAY)                    { goto error; }
-   if (ecc_mulmod(&m, mG, mG, &p) == CRYPT_ERROR)                                  { goto error; }
+   if (ecc_mulmod(&m, mG, mG, &p) != CRYPT_OK)                                  { goto error; }
 
    /* compare mG to bA + Y */
    if (!mp_cmp(&mG->x, &pubkey.pubkey.x) && !mp_cmp(&mG->y, &pubkey.pubkey.y)) {
@@ -511,8 +511,8 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
     _ARGCHK(key != NULL);
 
     /* check that wprng/cipher/hash are not invalid */
-    if (prng_is_valid(wprng) == CRYPT_ERROR ||
-        hash_is_valid(hash)  == CRYPT_ERROR) {
+    if (prng_is_valid(wprng) != CRYPT_OK ||
+        hash_is_valid(hash)  != CRYPT_OK) {
        return CRYPT_ERROR;
     }
 
@@ -522,11 +522,11 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
     }
 
     /* make a random key and export the public copy */
-    if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) == CRYPT_ERROR) 
+    if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) != CRYPT_OK) 
        return CRYPT_ERROR;
 
     pubkeysize = sizeof(pub_expt);
-    if (ecc_export(pub_expt, &pubkeysize, PK_PUBLIC, &pubkey) == CRYPT_ERROR) {
+    if (ecc_export(pub_expt, &pubkeysize, PK_PUBLIC, &pubkey) != CRYPT_OK) {
        ecc_free(&pubkey);
        return CRYPT_ERROR;
     }
@@ -541,13 +541,13 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
     /* make random key */
     hashsize  = hash_descriptor[hash].hashsize;
     x = sizeof(ecc_shared);
-    if (ecc_shared_secret(&pubkey, key, ecc_shared, &x) == CRYPT_ERROR) {
+    if (ecc_shared_secret(&pubkey, key, ecc_shared, &x) != CRYPT_OK) {
        ecc_free(&pubkey);
        return CRYPT_ERROR;
     }
     ecc_free(&pubkey);
     z = sizeof(skey);
-    if (hash_memory(hash, ecc_shared, x, skey, &z) == CRYPT_ERROR) {
+    if (hash_memory(hash, ecc_shared, x, skey, &z) != CRYPT_OK) {
        return CRYPT_ERROR;
     }
 
@@ -609,7 +609,7 @@ int ecc_decrypt_key(const unsigned char *in, unsigned char *outkey,
    }
 
    /* is header correct? */
-   if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_ENC_KEY) == CRYPT_ERROR) {
+   if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_ENC_KEY) != CRYPT_OK) {
       crypt_error = "Invalid packet for ecc_decrypt_key().";
       return CRYPT_ERROR;
    }
@@ -628,7 +628,7 @@ int ecc_decrypt_key(const unsigned char *in, unsigned char *outkey,
    /* get public key */
    LOAD32L(x, in+y);
    y += 4;
-   if (ecc_import(in+y, &pubkey) == CRYPT_ERROR) {
+   if (ecc_import(in+y, &pubkey) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
@@ -636,14 +636,14 @@ int ecc_decrypt_key(const unsigned char *in, unsigned char *outkey,
 
    /* make shared key */
    x = sizeof(shared_secret);
-   if (ecc_shared_secret(key, &pubkey, shared_secret, &x) == CRYPT_ERROR) {
+   if (ecc_shared_secret(key, &pubkey, shared_secret, &x) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
    ecc_free(&pubkey);
 
    z = sizeof(skey);
-   if (hash_memory(hash, shared_secret, x, skey, &z) == CRYPT_ERROR) {
+   if (hash_memory(hash, shared_secret, x, skey, &z) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -692,17 +692,17 @@ int ecc_sign_hash(const unsigned char *in,  unsigned long inlen,
       return CRYPT_ERROR;
    }
 
-   if (prng_is_valid(wprng) == CRYPT_ERROR) {
+   if (prng_is_valid(wprng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* make up a key and export the public copy */
-   if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) == CRYPT_ERROR) {
+   if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    pubkeysize = sizeof(epubkey);
-   if (ecc_export(epubkey, &pubkeysize, PK_PUBLIC, &pubkey) == CRYPT_ERROR) {
+   if (ecc_export(epubkey, &pubkeysize, PK_PUBLIC, &pubkey) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
@@ -800,7 +800,7 @@ int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash,
    *stat = 0;
 
    /* is the message format correct? */
-   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_ECC, PACKET_SUB_SIGNED) == CRYPT_ERROR) {
+   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_ECC, PACKET_SUB_SIGNED) != CRYPT_OK) {
       crypt_error = "Invalid message format for ecc_verify().";
       return CRYPT_ERROR;
    }     
@@ -813,7 +813,7 @@ int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash,
    y += 4;
 
    /* load the public key */
-   if (ecc_import((unsigned char*)sig+y, &pubkey) == CRYPT_ERROR) {
+   if (ecc_import((unsigned char*)sig+y, &pubkey) != CRYPT_OK) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
@@ -851,15 +851,15 @@ int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash,
    if (mp_read_radix(&p, sets[key->idx].prime, 10) != MP_OKAY)                     { goto error; }
 
    /* get bA */
-   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR)          { goto error; }
+   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) != CRYPT_OK)          { goto error; }
    
    /* get bA + Y */
-   if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR) { goto error; }
+   if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) != CRYPT_OK) { goto error; }
 
    /* get mG */
    if (mp_read_radix(&mG->x, sets[key->idx].Gx, 16) != MP_OKAY)                    { goto error; }
    if (mp_read_radix(&mG->y, sets[key->idx].Gy, 16) != MP_OKAY)                    { goto error; }
-   if (ecc_mulmod(&m, mG, mG, &p) == CRYPT_ERROR)                                  { goto error; }
+   if (ecc_mulmod(&m, mG, mG, &p) != CRYPT_OK)                                  { goto error; }
 
    /* compare mG to bA + Y */
    if (!mp_cmp(&mG->x, &pubkey.pubkey.x) && !mp_cmp(&mG->y, &pubkey.pubkey.y)) {

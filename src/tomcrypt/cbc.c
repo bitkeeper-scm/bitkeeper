@@ -12,12 +12,12 @@ int cbc_start(int cipher, const unsigned char *IV, const unsigned char *key,
    _ARGCHK(cbc != NULL);
 
    /* bad param? */
-   if (cipher_is_valid(cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(cipher) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    /* setup cipher */
-   if (cipher_descriptor[cipher].setup(key, keylen, num_rounds, &cbc->key) == CRYPT_ERROR) {
+   if (cipher_descriptor[cipher].setup(key, keylen, num_rounds, &cbc->key) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -45,7 +45,7 @@ int cbc_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_CBC *cbc)
    }
 
    /* encrypt */
-   if (cipher_is_valid(cbc->cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(cbc->cipher) != CRYPT_OK) {
        return CRYPT_ERROR;
    }
    cipher_descriptor[cbc->cipher].ecb_encrypt(tmp, ct, &cbc->key);
@@ -70,7 +70,7 @@ int cbc_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_CBC *cbc)
    _ARGCHK(cbc != NULL);
 
    /* decrypt the block from ct into tmp */
-   if (cipher_is_valid(cbc->cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(cbc->cipher) != CRYPT_OK) {
        return CRYPT_ERROR;
    }
    cipher_descriptor[cbc->cipher].ecb_decrypt(ct, tmp, &cbc->key);

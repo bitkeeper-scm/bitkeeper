@@ -2,7 +2,6 @@
 #include <signal.h>
 
 char *crypt_error;
-
 struct _cipher_descriptor cipher_descriptor[32] = {
 { NULL, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL },
 { NULL, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL },

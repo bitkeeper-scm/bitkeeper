@@ -8,7 +8,7 @@ int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned
     _ARGCHK(dst != NULL);
     _ARGCHK(outlen != NULL);
 
-    if (hash_is_valid(hash) == CRYPT_ERROR) {
+    if (hash_is_valid(hash) != CRYPT_OK) {
         return CRYPT_ERROR;
     }
 
@@ -26,6 +26,10 @@ int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned
 
 int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outlen)
 {
+#ifdef NO_FILE
+    crypt_error = "Can't call hash_filehandle() when NO_FILE is defined.";
+    return CRYPT_ERROR;
+#else
     hash_state md;
     unsigned char buf[512];
     int x;
@@ -33,7 +37,7 @@ int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outle
     _ARGCHK(dst != NULL);
     _ARGCHK(outlen != NULL);
 
-    if (hash_is_valid(hash) == CRYPT_ERROR) {
+    if (hash_is_valid(hash) != CRYPT_OK) {
         return CRYPT_ERROR;
     }
 
@@ -57,20 +61,23 @@ int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outle
 #ifdef CLEAN_STACK
     zeromem(buf, sizeof(buf));
 #endif
-
     return CRYPT_OK;
+#endif
 }
 
 
 int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *outlen)
 {
+#ifdef NO_FILE
+    crypt_error = "Can't call hash_file() when NO_FILE is defined.";
+    return CRYPT_ERROR;
+#else
     FILE *in;
-
     _ARGCHK(fname != NULL);
     _ARGCHK(dst != NULL);
     _ARGCHK(outlen != NULL);
 
-    if (hash_is_valid(hash) == CRYPT_ERROR) {
+    if (hash_is_valid(hash) != CRYPT_OK) {
         return CRYPT_ERROR;
     }
 
@@ -80,11 +87,12 @@ int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *ou
        return CRYPT_ERROR; 
     }
 
-    if (hash_filehandle(hash, in, dst, outlen) == CRYPT_ERROR) {
+    if (hash_filehandle(hash, in, dst, outlen) != CRYPT_OK) {
        return CRYPT_ERROR;
     }
     fclose(in);
 
     return CRYPT_OK;
+#endif
 }
 

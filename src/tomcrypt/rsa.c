@@ -20,7 +20,7 @@ int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
       return CRYPT_ERROR;
    }
  
-   if (prng_is_valid(wprng) == CRYPT_ERROR) {
+   if (prng_is_valid(wprng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -34,14 +34,14 @@ int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
 
    /* make prime "p" */
    do {
-       if (rand_prime(&p, size/2, prng, wprng) == CRYPT_ERROR) { res = CRYPT_ERROR; goto done; }
+       if (rand_prime(&p, size/2, prng, wprng) != CRYPT_OK) { res = CRYPT_ERROR; goto done; }
        if (mp_sub_d(&p, 1, &tmp1) != MP_OKAY)              { goto error; }  /* tmp1 = p-1 */
        if (mp_gcd(&tmp1, &tmp3, &tmp2) != MP_OKAY)         { goto error; } /* tmp2 = gcd(p-1, e) */
    } while (mp_cmp_d(&tmp2, 1) != 0);
        
    /* make prime "q" */
    do {
-       if (rand_prime(&q, size/2, prng, wprng) == CRYPT_ERROR) { res = CRYPT_ERROR; goto done; }
+       if (rand_prime(&q, size/2, prng, wprng) != CRYPT_OK) { res = CRYPT_ERROR; goto done; }
        if (mp_sub_d(&q, 1, &tmp1) != MP_OKAY)              { goto error; } /* tmp1 = q-1 */
        if (mp_gcd(&tmp1, &tmp3, &tmp2) != MP_OKAY)         { goto error; } /* tmp2 = gcd(q-1, e) */
    } while (mp_cmp_d(&tmp2, 1) != 0);
@@ -210,7 +210,7 @@ int rsa_pad(const unsigned char *in,  unsigned long inlen,
    }
 
    /* get random padding required */
-   if (prng_is_valid(wprng) == CRYPT_ERROR) {
+   if (prng_is_valid(wprng) != CRYPT_OK) {
       return CRYPT_ERROR; 
    }
 
@@ -400,7 +400,7 @@ int rsa_import(const unsigned char *in, rsa_key *key)
    _ARGCHK(key != NULL);
 
    /* test packet header */
-   if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_KEY) == CRYPT_ERROR) { 
+   if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_KEY) != CRYPT_OK) { 
       return CRYPT_ERROR;
    }
 

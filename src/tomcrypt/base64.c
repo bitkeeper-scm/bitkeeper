@@ -43,7 +43,7 @@ int base64_encode(const unsigned char *in,  unsigned long len,
    /* valid output size ? */
    len2 = 4 * ((len + 2) / 3);
    if (*outlen < len2 + 1) {
-      crypt_error = "Buffer overrun in base64_encode().";
+      crypt_error = "Buffer overflow in base64_encode().";
       return CRYPT_ERROR;
    }
    p = out;
@@ -66,7 +66,6 @@ int base64_encode(const unsigned char *in,  unsigned long len,
        *p++ = (i+1 < len) ? codes[((b & 0xf) << 2) + (c >> 6)] : '=';
        *p++ = '=';
    }
-   assert(len2 == (unsigned long)(p - out));
 
    /* append a NULL byte */
    *p = '\0';
@@ -101,7 +100,7 @@ int base64_decode(const unsigned char *in,  unsigned long len,
        }
    }
    if (y != 0) {
-       crypt_error = "Input buffer not complete in base64_decode().";
+       crypt_error = "Invalid packet in base64_decode().";
        return CRYPT_ERROR;
    }
    *outlen = z;

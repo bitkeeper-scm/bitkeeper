@@ -13,11 +13,17 @@ extern "C" {
 #endif
 
 /* version */
-#define CRYPT   0x0069
-#define SCRYPT  "0.69"
+#define CRYPT   0x0070
+#define SCRYPT  "0.70"
 
 /* max size of either a cipher/hash block or symmetric key [largest of the two] */
 #define MAXBLOCKSIZE           128
+
+/* error codes [will be expanded in future releases] */
+enum {
+   CRYPT_OK=0,
+   CRYPT_ERROR
+};
 
 #include <mycrypt_cfg.h>
 #include <mycrypt_macros.h>

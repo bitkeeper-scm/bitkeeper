@@ -640,7 +640,7 @@ int des_test(void)
 
         {0}
     };
-    int i, j, failed=0;
+    int i, failed=0;
     unsigned char out[8];
     symmetric_key des;
 
@@ -654,6 +654,8 @@ int des_test(void)
         }
 
         if (memcmp(cases[i].out, out, sizeof out) != 0) {
+#if 0
+            int j;
             printf("DES test #%d failed!\n", cases[i].num);
 
             printf(  "got:    "); 
@@ -665,10 +667,10 @@ int des_test(void)
                 printf("%02x ", cases[i].out[j] & 0xff);
             }
             printf("\n");
+#endif
 
             failed++;
         }
-/*        else printf("DES %s test #%d succeeded.\n", cases[i].mode?"encryption":"decryption", cases[i].num); */
     }
 
     if(failed > 0)
@@ -683,7 +685,7 @@ int des3_test(void)
    symmetric_key skey;
    int x;
 
-   if (des_test() == CRYPT_ERROR) {
+   if (des_test() != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -695,7 +697,7 @@ int des3_test(void)
        key[x] = x;
    }
 
-   if (des3_setup(key, 24, 0, &skey) == CRYPT_ERROR) {
+   if (des3_setup(key, 24, 0, &skey) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
    
@@ -712,7 +714,7 @@ int des3_test(void)
 
 int des_keysize(int *desired_keysize)
 {
-    _ARGCHK(desired_keysize != NULL)
+    _ARGCHK(desired_keysize != NULL);
     if(*desired_keysize < 8)
         return CRYPT_ERROR;
     *desired_keysize = 8;
@@ -721,7 +723,7 @@ int des_keysize(int *desired_keysize)
 
 int des3_keysize(int *desired_keysize)
 {
-    _ARGCHK(desired_keysize != NULL)
+    _ARGCHK(desired_keysize != NULL);
     if(*desired_keysize < 24)
         return CRYPT_ERROR;
     *desired_keysize = 24;

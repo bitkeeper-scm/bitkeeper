@@ -44,12 +44,12 @@
 \def\gap{\vspace{0.5ex}}
 \makeindex
 \begin{document}
-\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.69}
+\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.70}
 \author{Tom St Denis \\
 Algonquin College \\
 \\
 tomstdenis@yahoo.com \\
-http://libtomcrypt.iaw.ca \\ \\
+http://libtomcrypt.iahu.ca \\ \\
 Phone: 1-613-836-3160\\
 111 Banning Rd \\
 Kanata, Ontario \\
@@ -74,8 +74,9 @@ and will give verbose error messages.
 \subsection{What the library {\bf IS} for?}
 
 The library typically serves as a basis for other protocols and message formats.  For example, it should be possible to 
-take the RSA routines out of this library, apply the appropriate message padding and get PKCS compliant RSA routines.  The
-goal of this package is to provide these low level core functions.  
+take the RSA routines out of this library, apply the appropriate message padding and get PKCS compliant RSA routines.  
+Similarly SSL protocols could be formed on top  of the low-level symmetric cipher functions.  The goal of this package is 
+to provide these low level core functions.  
 
 The library also serves well as a toolkit for applications where they don't need to be OpenPGP, PKCS, etc. compliant.
 Often one simply wants the ciphers, hashes, prngs and PK algorithms available, the actual message format is not important.  
@@ -92,7 +93,12 @@ to test a design or theory.
 The library is not designed to be in anyway an implementation of PKCS or OpenPGP standards.  The library is not designed 
 to be compliant with any known form of API or programming hierarchy.  It is not a port of any other library and it is not
 platform specific (like the MS CSP).  So if you're looking to drop in some buzzword compliant crypto this library is not
-for you.  The library has been written from scratch to provide basic functions.
+for you.  The library has been written from scratch to provide basic functions as well as non-standard higher level 
+functions.  
+
+This is not to say that the library is a ``homebrew'' project.  All of the symmetric ciphers and one-way hash functions
+conform to published test vectors.  The public key functions are derived from publicly available material and the majority
+of the code has been reviewed by a growing community of developers.
 
 \subsubsection{Why not?}
 You may be asking why I didn't choose to go all out and support standards like P1363, PKCS and the whole lot.  The reason
@@ -119,17 +125,12 @@ application can support all ciphers/hashes/prngs without changing the source cod
 
 \section{License}
 
-All of the code except for MPI, the Zlib compression code and a few of the ciphers and hash functions have been written 
+All of the code except for MPI and a few of the ciphers and hash functions have been written 
 from scratch by Tom St Denis and as such is under the officially binding ``Tom Doesn't Care About Licenses'' or TDCAL 
 license.  This entitles the user to use this library for {\em whatever} they want without any form of repayment to 
 the author whatsoever.  Similarly MPI is public domain software copyrighted by Michael Fromberger and may be freely 
 used.  The Serpent and AES code are copyrighted by Brian Gladman and available for any purpose provided the 
 copyright message and rights remains intact.
-
-The ``Zlib'' compression code is copyrighted\footnote{Written by Jean-loup Gailly and Mark Adler.} ``freeware'' code.  It
-may be freely distributed, modified and used provided the copyright and origins of the code are not removed or altered.
-Unlike the rest of the code, the authors express their disapproval of the term ``public domain'' and request that the
-code be treated as copyrighted freely distributable ``freeware''.
 
 The net effect of all the varying licenses results in these simple rules:
 \begin{enumerate}
@@ -184,6 +185,7 @@ I would like to give thanks to the following people (in no particular order) for
    \item Daniel Richards
    \item Wayne Scott
    \item Andrew Tyler
+   \item Sky Schulz
 \end{enumerate}
 
 \chapter{The Application Programming Interface (API)}
@@ -221,8 +223,8 @@ int main(void) {
 }
 \end{verbatim}
 
-The header file ``mycrypt.h'' also includes ``stdio.h'', ``string.h'', ``stdlib.h'', ``time.h'', ``ctype.h'', ``mpi.h''
-(the bignum library routines) and ``zlib.h'' (the Zlib compression code).
+The header file ``mycrypt.h'' also includes ``stdio.h'', ``string.h'', ``stdlib.h'', ``time.h'', ``ctype.h'' and ``mpi.h''
+(the bignum library routines).
 
 \section{Macros}
 
@@ -628,8 +630,8 @@ OFB or Output Feedback Mode is a mode akin to CBC as well.  It is given as:
 C_{-1} = E_k(C_{-1}) \nonumber \\
 C_i = P_i \oplus C_{-1}
 \end{eqnarray}
-Like the CFB mode the output width in CFB mode is the same as the width of the block cipher.  This mode will allow you to
-encrypt or decrypt partial blocks without delay.
+Like the CFB mode the output width in CFB mode is the same as the width of the block cipher.  OFB mode will also
+buffer the output which will allow you to encrypt or decrypt partial blocks without delay.
 
 \subsection{Choice of Mode}
 My personal preference is for the CTR mode since it has several key benefits:
@@ -890,8 +892,7 @@ must set it to the size of your output buffer before calling the functions.  Whe
 the length of the message digest back in it.  The functions are otherwise straightforward.  The ``hash\_filehandle'' function
 assumes that ``in'' is an file handle opened in binary mode.  It will not reset the file position after hashing the content.
 
-To perform the above 
-hash with md5 the following code could be used:
+To perform the above hash with md5 the following code could be used:
 \begin{small}
 \begin{verbatim}
 #include <mycrypt.h>
@@ -899,7 +900,7 @@ int main(void)
 {
    int idx;
    unsigned long len;
-   unsigned char out[16];
+   unsigned char out[MAXBLOCKSIZE];
 
    /* register the hash */
    if (register_hash(&md5_desc) == -1) {
@@ -1013,7 +1014,7 @@ int main(void)
 {
    int idx;
    hmac_state hmac;
-   unsigned char key[16], dst[20];
+   unsigned char key[16], dst[MAXBLOCKSIZE];
 
    /* register SHA-1 */
    if (register_hash(&sha1_desc) == -1) {
@@ -1133,7 +1134,52 @@ exactly as those for the cipher registry functions.  They are:
 int register_prng(const struct _prng_descriptor *prng);
 int unregister_prng(const struct _prng_descriptor *prng);
 \end{verbatim}
-Currently only Yarrow (yarrow\_desc) and the secure RNG (sprng\_desc) are provided.
+
+\subsubsection{PRNGs Provided}
+Currently Yarrow (yarrow\_desc), RC4 (rc4\_desc) and the secure RNG (sprng\_desc) are provided as PRNGs within the 
+library.  
+
+RC4 is provided with a PRNG interface because it is a stream cipher and not well suited for the symmetric block cipher
+interface.  You provide the key for RC4 via the rc4\_add\_entropy() function.  By calling rc4\_ready() the key will be used
+to setup the RC4 state for encryption or decryption.  The rc4\_read() function has been modified from RC4 since it will 
+XOR the output of the RC4 keystream generator against the input buffer you provide.  The following snippet will demonstrate
+how to encrypt a buffer with RC4:
+
+\begin{verbatim}
+#include <mycrypt.h>
+int main(void)
+{
+   prng_state prng;
+   unsigned char buf[32];
+
+   if (rc4_init(&prng) == CRYPT_ERROR) {
+      printf("RC4 init error: %s\n", crypt_error);
+      exit(-1);
+   }
+
+   /* use ``key'' as the key */
+   if (rc4_add_entropy("key", 3, &prng) == CRYPT_ERROR) {
+      printf("RC4 add entropy error: %s\n", crypt_error);
+      exit(-1);
+   }
+
+   /* setup RC4 for use */
+   if (rc4_ready(&prng) == CRYPT_ERROR) {
+      printf("RC4 ready error: %s\n", crypt_error);
+      exit(-1);
+   }
+
+   /* encrypt buffer */
+   strcpy(buf,"hello world");
+   if (rc4_read(buf, 11, &prng) != 11) {
+      printf("RC4 read error: %s\n", crypt_error);
+      exit(-1);
+   }
+   return 0;
+}   
+\end{verbatim}
+
+To decrypt you have to do the exact same steps.  
 
 \section{The Secure RNG}
 \index{Secure RNG}
@@ -2081,26 +2127,6 @@ int base64_decode(const unsigned char *in, unsigned long len,
                   unsigned char *out, unsigned long *outlen);
 \end{verbatim}
 
-\section{Data Compression}
-The library provides the entire suite of Zlib compression functions.  The interested user is encouraged to goto the actual
-Zlib website:
-\begin{verbatim}
-http://www.gzip.org/zlib/
-\end{verbatim}
-The library also provides two wrapper functions for memory buffer compression which have the same calling convention
-as the other cryptographic functions.  They are:
-\begin{verbatim}
-int pack_buffer(const unsigned char *in,  unsigned long inlen,
-                      unsigned char *out, unsigned long *outlen)
-
-int unpack_buffer(const unsigned char *in,  unsigned long inlen,
-                        unsigned char *out, unsigned long *outlen)
-\end{verbatim}
-The ``pack'' routine will compress the data from ``in'' and store the data stream in ``out''.  The ``unpack'' routine
-will decompress the data from ``in'' and store the original data in ``out''.  In both cases you must set the size of your
-output buffer in ``outlen'' before calling the function.  They return {\bf CRYPT\_ERROR} on error, otherwise they return
-{\bf CRYPT\_OK}.
-
 \section{The Multiple Precision Integer Library (MPI)}
 The library comes with a copy of Michael Fromberger's\footnote{Michael J. Fromberger, sting@linguist.Thayer.dartmouth.edu} multiple
 precision integer library MPI.  MPI is a trivial to use ANSI C compatible large integer library.  It is free for all uses and
@@ -2222,9 +2248,13 @@ Also virtually all of the functions return an integer which is either {\bf CRYPT
 detect errors whenever possible.
 
 \section{Registering Your Algorithms}
-To avoid linking and other runtime errors it is important to register the ciphers, hashes and PRNGs you intend to use before you try to use them.  This includes any function which would use an algorithm indirectly through a descriptor table.  
+To avoid linking and other runtime errors it is important to register the ciphers, hashes and PRNGs you intend to use 
+before you try to use them.  This includes any function which would use an algorithm indirectly through a descriptor table.
 
-A neat bonus to the registry system is that you can add external algorithms that are not part of the library without having to hack the library.  For example, suppose you have a hardware specific PRNG on your system.  You could easily write the few functions required plus a descriptor.  After registering your PRNG all of the library functions that need a PRNG can instantly take advantage of it.
+A neat bonus to the registry system is that you can add external algorithms that are not part of the library without 
+having to hack the library.  For example, suppose you have a hardware specific PRNG on your system.  You could easily 
+write the few functions required plus a descriptor.  After registering your PRNG all of the library functions that 
+need a PRNG can instantly take advantage of it.
 
 \section{Key Sizes}
 
@@ -2279,4 +2309,86 @@ Using the above tables the following suggestions for key sizes seems appropriate
     \hline 
 \end{tabular}
 \end{center}
+
+\section{Thread Safety}
+The library is not thread safe but several simple precautions can be taken to avoid any problems.  The registry functions
+such as register\_cipher() are not thread safe no matter what you do.  Its best to call them from your programs initializtion
+code before threads are initiated.
+
+The rest of the code uses state variables you must pass it such as hash\_state, hmac\_state, etc.  This means that if each
+thread has its own state variables then they will not affect each other.  This is fairly simple with symmetric ciphers
+and hashes.  However, the keyring and PRNG support is something the threads will want to share.  The simplest workaround 
+is create semaphores or mutexes around calls to those functions.  
+
+Since C does not have standard semaphores this support is not native to Libtomcrypt.  Even a C based semaphore is not entire
+possible as some compilers may ignore the ``volatile'' keyword or have multiple processors.  Provide your host application
+is modular enough putting the locks in the right place should not bloat the code significantly and will solve all thread
+safety issues within the library.
+
+\chapter{Configuring the Library}
+\section{Introduction}
+The library is fairly flexible about how it can be built, used and generally distributed.  Additions are being made with
+each new release that will make the library even more flexible.  Most options are placed in the makefile and others
+are in ``mycrypt\_cfg.h''.  All are used when the library is built from scratch.
+
+For GCC platforms the file ``makefile'' is the makefile to be used.  On MSVC platforms ``makefile.vc'' and on PS2 platforms
+``makefile.ps2''.
+
+\section{mycrypt\_cfg.h}
+The file ``mycrypt\_cfg.h'' is what lets you control what functionality you want to remove from the library.  By default,
+everything the library has to offer it built.  
+
+\subsubsection{ARGTYPE}
+This lets you control how the \_ARGCHK macro will behave.  The macro is used to check pointers inside the functions against
+NULL.  There are three settings for ARGTYPE.  When set to 0 it will have the default behaviour of printing a message to 
+stderr and raising a SIGABRT signal.  This is provided so all platforms that use libtomcrypt can have an error that functions
+similarly.  When set to 1 it will simply pass on to the assert() macro.  When set to 2 it will resolve to a empty macro
+and no error checking will be performed.
+
+\subsubsection{Endianess}
+There are five macros related to endianess issues.  For little endian platforms define, ENDIAN\_LITTLE.  For big endian
+platforms define ENDIAN\_BIG.  Similarly when the default word size of an ``unsigned long'' is 32-bits define ENDIAN\_32BITWORD
+or define ENDIAN\_64BITWORD when its 64-bits.  If you do not define any of them the library will automatically use ENDIAN\_NEUTRAL
+which will work on all platforms.  Currently the system will automatically detect GCC or MSVC on a windows platform as well
+as GCC on a PS2 platform.
+
+\subsubsection{CLEAN\_STACK}
+When this functions is defined the functions that store key material on the stack will clean up afterwards.  Assumes that
+you have no memory paging with the stack.
+
+\subsubsection{Symmetric Ciphers, One-way Hashes, PRNGS and Public Key Functions}
+There are a plethora of macros for the ciphers, hashes, PRNGs and public key functions which are fairly self-explanatory.  
+When they are defined the functionality is included otherwise it is not.  There are some dependency issues which are
+noted in the file.  For instance, Yarrow requires CTR chaining mode, a block cipher and a hash function.
+
+\subsubsection{TWOFISH\_SMALL and TWOFISH\_TABLES}
+Twofish is a 128-bit symmetric block cipher that is provided within the library.  The cipher itself is flexible enough
+to allow some tradeoffs in the implementation.  When TWOFISH\_SMALL is defined the scheduled symmetric key for Twofish 
+requires only 200 bytes of memory.  This is achieved by not pre-computing the substitution boxes.  Having this 
+defined will also greatly slow down the cipher.  When this macro is not defined Twofish will pre-compute the 
+tables at a cost of 4KB of memory.  The cipher will be much faster as a result.  
+
+When TWOFISH\_TABLES is defined the cipher will use pre-computed (and fixed in code) tables required to work.  This is
+useful when TWOFISH\_SMALL is defined as the table values are computed on the fly.  When this is defined the code size
+will increase by approximately 500 bytes.  If this is defined but TWOFISH\_SMALL is not the cipher will still work but
+it will not speed up the encryption or decryption functions.
+
+\section{The makefile}
+There are also options you can specify from the makefiles themselves.  
+
+\subsubsection{X memory routines}
+The makefiles must define three macros denoted as XMALLOC, XCALLOC and XFREE which resolve to the name of the respective
+functions.  This lets you substitute in your own memory routines.  If you substitute in your own functions they must behave
+like the standard C library functions in terms of what they expect as input and output.  By default the library uses the
+standard C routines.
+
+\subsubsection{X clock routines}
+The rng\_get\_bytes() function can call a function that requires the clock() function.  These macros let you override
+the default clock() used with a replacement.  By default the standard C library clock() function is used.
+
+\subsubsection{NO\_FILE}
+During the build if NO\_FILE is defined then any function in the library that uses file I/O will not call the file I/O 
+functions and instead simply return CRYPT\_ERROR.  This should help resolve any linker errors stemming from a lack of
+file I/O on embedded platforms.
+
 \end{document}

@@ -1,3 +1,23 @@
+Nov 12th, 2002
+v0.70  -- Updated so you can swap out the default malloc/calloc/free routines at build time with others. (Sky Schulz)
+       -- Sky Schulz contributed some code towards autodetecting the PS2 in mycrypt_cfg.h
+       -- Added PS2 makefile contributed by Sky Schulz [see a pattern forming?]
+       -- Added ability to have no FILE I/O functions at all (see makefile), Sky Schulz....
+       -- Added support for substituting out the clock() function (Sky Schulz)
+       -- Fixed up makefile to include new headers in the HEADERS variable
+       -- Removed "coin.c" as its not really useful anyways
+       -- Removed many "debug" printfs that would show up on failures.  Basically I wanted to ensure the only output
+          would be from the developer themselves.
+       -- Added "rc4.c" a RC4 implementation with a PRNG interface.  Since RC4 isn't a block cipher it wouldn't work
+          too well as a block cipher.
+       -- Fixed ARGCHK macro usage when ARGTYPE=1 throughout the code
+       -- updated makefile to make subdirectory properly (Sku Schulz)
+       -- Started towards new API setup.  Instead of checking for "== CRYPT_ERROR" you should check "!= CRYPT_OK"
+          In future releases functions will return things other than CRYPT_ERROR on error to give more useful
+          thread safe error reporting.  The manual will be updated to reflect this.  For this release all
+          errors are returned as CRYPT_ERROR (except as noted) but in future releases this will change.         
+       -- Removed the zlib branch since its not really required anyways.  Makes the package smaller
+
 Nov 11th, 2002
 v0.69  -- Added ARGCHK (see mycrypt_argchk.h) "arguement checking" to all functions that accept pointers
        -- Note I forgot to change the CRYPT version tag in v0.68... fixed now.

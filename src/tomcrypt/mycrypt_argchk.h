@@ -10,15 +10,25 @@
  * On embedded platforms you can change the fprintf() to be a routine that would display a message
  * somehow 
  */
+#ifndef SONY_PS2
+
 #define _ARGCHK(x) \
     if (!(x)) { \
         fprintf(stderr, "_ARGCHK '%s' failure on line %d of file %s\n", #x, __LINE__, __FILE__); \
         raise(SIGABRT); \
     }
 
-#elif ARGTYPE == 1
+#else
 
-#include <assert.h>
+#define _ARGCHK(x) \
+    if (!(x)) { \
+        printf("_ARGCHK '%s' failure on line %d of file %s\n", #x, __LINE__, __FILE__); \
+        raise(SIGABRT); \
+    }
+
+#endif  /* SONY_PS2 */
+
+#elif ARGTYPE == 1
 
 /* fatal type of error */
 #define _ARGCHK(x) assert((x))

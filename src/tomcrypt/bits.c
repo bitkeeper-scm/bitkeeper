@@ -5,9 +5,11 @@
 static unsigned long rng_nix(unsigned char *buf, unsigned long len, 
                              void (*callback)(void))
 {
+#ifdef NO_FILE
+    return 0;
+#else
     FILE *f;
     int x;
-
 #ifdef TRY_URANDOM_FIRST
     f = fopen("/dev/urandom", "rb");
     if (f == NULL)
@@ -21,10 +23,11 @@ static unsigned long rng_nix(unsigned char *buf, unsigned long len,
     x = fread(buf, 1, len, f);
     fclose(f);
     return x;
+#endif
 }
 
 /* on ANSI C platforms with 100 < CLOCKS_PER_SEC < 10000 */
-#ifdef CLOCKS_PER_SEC
+#if !defined(SONY_PS2) && defined(CLOCKS_PER_SEC)
 
 #define ANSI_RNG
 
@@ -34,7 +37,7 @@ static unsigned long rng_ansic(unsigned char *buf, unsigned long len,
    clock_t t1;
    int l, acc, bits, a, b;
 
-   if (CLOCKS_PER_SEC < 100 || CLOCKS_PER_SEC > 10000) {
+   if (XCLOCKS_PER_SEC < 100 || XCLOCKS_PER_SEC > 10000) {
       return 0;
    }
 
@@ -45,8 +48,8 @@ static unsigned long rng_ansic(unsigned char *buf, unsigned long len,
        if (callback != NULL) callback();
        while (bits--) {
           do {
-             t1 = clock(); while (t1 == clock()) a ^= 1;
-             t1 = clock(); while (t1 == clock()) b ^= 1;
+             t1 = XCLOCK(); while (t1 == XCLOCK()) a ^= 1;
+             t1 = XCLOCK(); while (t1 == XCLOCK()) b ^= 1;
           } while (a == b);
           acc = (acc << 1) | a;
        }
@@ -112,30 +115,30 @@ int rng_make_prng(int bits, int wprng, prng_state *prng,
    _ARGCHK(prng != NULL);
 
    /* check parameter */
-   if (prng_is_valid(wprng) == CRYPT_ERROR) {
+   if (prng_is_valid(wprng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    if (bits < 64 || bits > 1024) {
-      crypt_error = "Invalid state size in rng_make_prng().";
+      crypt_error = "Invalid number of bits requested in rng_make_prng().";
       return CRYPT_ERROR;
    }
 
-   if (prng_descriptor[wprng].start(prng) == CRYPT_ERROR) {
+   if (prng_descriptor[wprng].start(prng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
    bits = ((bits/8)+(bits&7?1:0)) * 2;
    if (rng_get_bytes(buf, bits, callback) != (unsigned long)bits) {
-      crypt_error = "Error reading rng in rng_make_prng().";
+      crypt_error = "Error reading PRNG in rng_make_prng().";
       return CRYPT_ERROR;
    }
 
-   if (prng_descriptor[wprng].add_entropy(buf, bits, prng) == CRYPT_ERROR) {
+   if (prng_descriptor[wprng].add_entropy(buf, bits, prng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
-   if (prng_descriptor[wprng].ready(prng) == CRYPT_ERROR) {
+   if (prng_descriptor[wprng].ready(prng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 

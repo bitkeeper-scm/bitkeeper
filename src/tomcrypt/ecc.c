@@ -221,12 +221,12 @@ static int is_valid_idx(int n)
 static ecc_point *new_point(void)
 {
    ecc_point *p;
-   p = malloc(sizeof(ecc_point));
+   p = XMALLOC(sizeof(ecc_point));
    if (p == NULL) {
       return NULL;
    }
    if (mp_init_multi(&p->x, &p->y, NULL) != MP_OKAY) {
-      free(p);
+      XFREE(p);
       return NULL;
    }
    return p;
@@ -235,7 +235,7 @@ static ecc_point *new_point(void)
 static void del_point(ecc_point *p)
 {
    mp_clear_multi(&p->x, &p->y, NULL);
-   free(p);
+   XFREE(p);
 }
 
 
@@ -368,11 +368,11 @@ static int ecc_mulmod(mp_int *k, ecc_point *G, ecc_point *R, mp_int *modulus)
    /* now do dbl+add through all the bits */
    for (j = i-1; j >= 0; j--) {
        if (first) {
-           if (dbl_point(R, R, modulus) == CRYPT_ERROR)       { goto error; }
+           if (dbl_point(R, R, modulus) != CRYPT_OK)       { goto error; }
        }
        if (bits[j] == 1) {
           if (first) {
-             if (add_point(R, tG, R, modulus) == CRYPT_ERROR) { goto error; }
+             if (add_point(R, tG, R, modulus) != CRYPT_OK) { goto error; }
           }
           first = 1;
        }
@@ -421,7 +421,7 @@ int ecc_test(void)
        if (mp_read_radix(&order, sets[i].order, 10) != MP_OKAY)     { goto error; }
 
        /* is prime actually prime? */
-       if (is_prime(&modulus, &primality) == CRYPT_ERROR)           { goto error; }
+       if (is_prime(&modulus, &primality) != CRYPT_OK)           { goto error; }
        if (primality == 0) {
           sprintf(error, "%s modulus not prime", sets[i].name);
           res = CRYPT_ERROR;
@@ -430,7 +430,7 @@ int ecc_test(void)
        }
   
        /* is order prime ? */
-       if (is_prime(&order, &primality) == CRYPT_ERROR)             { goto error; }
+       if (is_prime(&order, &primality) != CRYPT_OK)             { goto error; }
        if (primality == 0) {
           sprintf(error, "%s order not prime", sets[i].name);
           res = CRYPT_ERROR;
@@ -443,7 +443,7 @@ int ecc_test(void)
 
        /* then we should have G == (order + 1)G */
        if (mp_add_d(&order, 1, &order) != MP_OKAY)                  { goto error; }
-       if (ecc_mulmod(&order, G, GG, &modulus) == CRYPT_ERROR)      { goto error; }
+       if (ecc_mulmod(&order, G, GG, &modulus) != CRYPT_OK)      { goto error; }
        if (mp_cmp(&G->x, &GG->x) || mp_cmp(&G->y, &GG->y)) {
           sprintf(error, "%s point failed", sets[i].name);
           res = CRYPT_ERROR;
@@ -493,7 +493,7 @@ int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
    _ARGCHK(key != NULL);
 
    /* good prng? */
-   if (prng_is_valid(wprng) == CRYPT_ERROR) {
+   if (prng_is_valid(wprng) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
 
@@ -533,7 +533,7 @@ int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
    if (mp_read_raw(&key->k, buf, keysize+1) != MP_OKAY)      { goto error; }
 
    /* make the public key */
-   if (ecc_mulmod(&key->k, base, &key->pubkey, &prime) == CRYPT_ERROR) { goto error; }
+   if (ecc_mulmod(&key->k, base, &key->pubkey, &prime) != CRYPT_OK) { goto error; }
    key->type = PK_PRIVATE;
 
    /* free up ram */
@@ -700,7 +700,7 @@ int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key
    OUTPUT_BIGNUM(&(key->pubkey.x), buf2, y, z);
 
    /* compress y and output it  */
-   if (compress_y_point(&key->pubkey, key->idx, &res) == CRYPT_ERROR) {
+   if (compress_y_point(&key->pubkey, key->idx, &res) != CRYPT_OK) {
       return CRYPT_ERROR;
    }
    buf2[y++] = res;
@@ -736,7 +736,7 @@ int ecc_import(const unsigned char *in, ecc_key *key)
    _ARGCHK(key != NULL);
 
    /* check type */
-   if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_KEY) == CRYPT_ERROR) { 
+   if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_KEY) != CRYPT_OK) { 
       return CRYPT_ERROR;
    }
 
@@ -767,7 +767,7 @@ int ecc_import(const unsigned char *in, ecc_key *key)
   
    /* load y */
    x = in[y++];
-   if (expand_y_point(&key->pubkey, key->idx, x) == CRYPT_ERROR) { goto error; }
+   if (expand_y_point(&key->pubkey, key->idx, x) != CRYPT_OK) { goto error; }
 
    if (key->type == PK_PRIVATE) {
       /* load private key */
@@ -821,7 +821,7 @@ int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key,
    }
 
    if (mp_read_radix(&prime, sets[private_key->idx].prime, 10) != MP_OKAY) { goto error; }
-   if (ecc_mulmod(&private_key->k, &public_key->pubkey, result, &prime) == CRYPT_ERROR) { goto error; }
+   if (ecc_mulmod(&private_key->k, &public_key->pubkey, result, &prime) != CRYPT_OK) { goto error; }
 
    x = mp_raw_size(&result->x);
    mp_toraw(&result->x, buf);

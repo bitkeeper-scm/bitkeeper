@@ -94,12 +94,12 @@ int rijndael_setup(const unsigned char *key, int keylen, int numrounds, symmetri
        numrounds = 10 + (2 * ((keylen/8)-2));
 
     if (keylen != 16 && keylen != 24 && keylen != 32) {
-       crypt_error = "Invalid key size for rijndael.";
+       crypt_error = "Invalid key size for Rijndael.";
        return CRYPT_ERROR;
     }
 
     if (numrounds != (10 + (2 * ((keylen/8)-2)))) {
-       crypt_error = "Invalid number of rounds for rijndael.";
+       crypt_error = "Invalid number of rounds for Rijndael.";
        return CRYPT_ERROR;
     }
 
@@ -308,47 +308,47 @@ int rijndael_test(void)
  symmetric_key key;
  unsigned char tmp[2][16];
 
- if (rijndael_setup(key128, 16, 0, &key) == CRYPT_ERROR) { 
-    return CRYPT_ERROR;
+ if (rijndael_setup(key128, 16, 0, &key) != CRYPT_OK) { 
+    return CRYPT_ERROR; 
  }
 
  rijndael_ecb_encrypt(pt128, tmp[0], &key);
  rijndael_ecb_decrypt(tmp[0], tmp[1], &key);
  if (memcmp(tmp[0], ct128, 16)) { 
-    crypt_error = "AES-128 did not encrypt to test vector."; 
+    crypt_error = "Rijndael-128 failed to encrypt properly.";
     return CRYPT_ERROR; 
  }
  if (memcmp(tmp[1], pt128, 16)) { 
-    crypt_error = "AES-128 did not decrypt to test vector."; 
+    crypt_error = "Rijndael-128 failed to decrypt properly.";
     return CRYPT_ERROR; 
  }
 
- if (rijndael_setup(key192, 24, 0, &key) == CRYPT_ERROR) { 
-    return CRYPT_ERROR;
+ if (rijndael_setup(key192, 24, 0, &key) != CRYPT_OK) { 
+    return CRYPT_ERROR; 
  }
 
  rijndael_ecb_encrypt(pt128, tmp[0], &key);
  rijndael_ecb_decrypt(tmp[0], tmp[1], &key);
  if (memcmp(tmp[0], ct192, 16)) { 
-    crypt_error = "AES-192 did not encrypt to test vector."; 
+    crypt_error = "Rijndael-192 failed to encrypt properly.";
     return CRYPT_ERROR; 
  }
  if (memcmp(tmp[1], pt128, 16)) { 
-    crypt_error = "AES-192 did not decrypt to test vector."; 
+    crypt_error = "Rijndael-192 failed to decrypt properly.";
     return CRYPT_ERROR; 
  }
 
- if (rijndael_setup(key256, 32, 0, &key) == CRYPT_ERROR) {
-    return CRYPT_ERROR;
+ if (rijndael_setup(key256, 32, 0, &key) != CRYPT_OK) {
+    return CRYPT_ERROR; 
  }
  rijndael_ecb_encrypt(pt128, tmp[0], &key);
  rijndael_ecb_decrypt(tmp[0], tmp[1], &key);
  if (memcmp(tmp[0], ct256, 16)) { 
-    crypt_error = "AES-256 did not encrypt to test vector."; 
+    crypt_error = "Rijndael-256 failed to encrypt properly.";
     return CRYPT_ERROR; 
  }
  if (memcmp(tmp[1], pt128, 16)) { 
-    crypt_error = "AES-256 did not decrypt to test vector."; 
+    crypt_error = "Rijndael-256 failed to decrypt properly.";
     return CRYPT_ERROR; 
  }
 

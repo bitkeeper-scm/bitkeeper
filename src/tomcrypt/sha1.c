@@ -200,7 +200,7 @@ int  sha1_test(void)
     { NULL }
   };
 
-  int failed, i, j;
+  int failed, i;
   unsigned char tmp[20];
   hash_state md;
 
@@ -209,11 +209,14 @@ int  sha1_test(void)
       sha1_process(&md, tests[i].msg, strlen(tests[i].msg));
       sha1_done(&md, tmp);
       if (memcmp(tmp, tests[i].hash, 20)) {
+#if 0
+         int j;
          printf("\nSHA-1 Test %d failed\nGot (as a result): ", i);
          for (j = 0; j < 20; j++) {
              printf("%02x ", tmp[j]);
          }
          printf("\n");
+#endif
          failed = 1;
       }
   }

@@ -674,7 +674,7 @@ int twofish_test(void)
  symmetric_key key;
  unsigned char tmp[2][16];
 
- if (twofish_setup(key128, 16, 0, &key) == CRYPT_ERROR)
+ if (twofish_setup(key128, 16, 0, &key) != CRYPT_OK)
     return CRYPT_ERROR;
  twofish_ecb_encrypt(pt128, tmp[0], &key);
  twofish_ecb_decrypt(tmp[0], tmp[1], &key);
@@ -687,7 +687,7 @@ int twofish_test(void)
     return CRYPT_ERROR;
  }
 
- if (twofish_setup(key192, 24, 0, &key) == CRYPT_ERROR) 
+ if (twofish_setup(key192, 24, 0, &key) != CRYPT_OK) 
     return CRYPT_ERROR;
  twofish_ecb_encrypt(pt192, tmp[0], &key);
  twofish_ecb_decrypt(tmp[0], tmp[1], &key);
@@ -700,7 +700,7 @@ int twofish_test(void)
     return CRYPT_ERROR;
  }
 
- if (twofish_setup(key256, 32, 0, &key) == CRYPT_ERROR) 
+ if (twofish_setup(key256, 32, 0, &key) != CRYPT_OK) 
     return CRYPT_ERROR;
  twofish_ecb_encrypt(pt256, tmp[0], &key);
  twofish_ecb_decrypt(tmp[0], tmp[1], &key);
