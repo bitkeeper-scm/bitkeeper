@@ -71,6 +71,7 @@ sub man2help
 		print O;
 		$nl = 0;
 	}
+	print O "\n" if $nl;
 	print O "\$\n";
 	close(O);
 	close(G);

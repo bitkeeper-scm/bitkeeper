@@ -213,18 +213,17 @@ connect_srv(char *srv, int port, int trace)
 }
 
 int
-connect_socks4_srv(char *host, int port, char *url, int trace)
+connect_socks4_srv(remote *r, char *host, int port)
 {
 	unsigned char sbuf[BUFSIZ];
-	char	web_host[MAXPATH], web_path[MAXPATH];
 	struct	socks_op    c;
 	struct	socks_reply *s = (struct socks_reply *)sbuf;
-	int	web_ip, web_port = 80, n, sfd;
-
+	int	web_ip, web_port, n, sfd;
+	int	trace = r->trace;
 
 	/* build a socks4 request */
-	parse_url(url, web_host, web_path);
-	web_ip = htonl(ns_sock_host2ip(web_host, trace));
+	web_ip = htonl(ns_sock_host2ip(r->host, r->trace));
+	web_port = r->port;
 
 	c.vn = 4;
 	c.cd = 1;
@@ -286,19 +285,14 @@ connect_socks4_srv(char *host, int port, char *url, int trace)
 }
 
 private int
-http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
+http_connect_srv(remote *r, char *type, char *host, int port)
 {
 	int	fd;
-	char	bk_url[MAXPATH];
 
-
-	sprintf(bk_url, "http://%s/cgi-bin/%s", host, cgi_script);
-	if (streq(type, "DIRECT")) {
-		fd = connect_srv(host, port, trace);
-	} else if (streq(type, "PROXY")) {
-		fd = connect_srv(host, port, trace);
+	if (streq(type, "PROXY")) {
+		fd = connect_srv(host, port, r->trace);
 	} else if (streq(type, "SOCKS")) {
-		fd = connect_socks4_srv(host, port, bk_url, trace);
+		fd = connect_socks4_srv(r, host, port);
 	} else {
 		fprintf(stderr, "unknown proxy type %s\n", type);
 		fd = -1;
@@ -328,11 +322,11 @@ in_no_proxy(char *host)
 }
 
 int
-http_connect(remote *r, char *cgi_script)
+http_connect(remote *r)
 {
-	int	i, port;
+	int	i, proxy_port;
 	char	*p, **proxies;
-	char	*type;
+	char	*proxy_type;
 	char	*proxy_host;
 	char	*cred;
 
@@ -347,19 +341,19 @@ http_connect(remote *r, char *cgi_script)
 			fprintf(stderr, "trying %s\n", proxies[i]);
 			fflush(stderr);
 		}
-		type = proxies[i];
-		p = strchr(type, ' ');
+		proxy_type = proxies[i];
+		p = strchr(proxy_type, ' ');
 		assert(p);
 		*p++ = 0;
 		proxy_host = p;
 		p = strchr(proxy_host, ':');
 		assert(p);
 		*p++ = 0;
-		port = strtol(p, &p, 10);
+		proxy_port = strtol(p, &p, 10);
 		assert(p);
 		cred = (*p == ' ') ? p+1 : 0;
-		r->rfd = http_connect_srv(type, proxy_host,
-						port, cgi_script, r->trace);
+		r->rfd =
+		    http_connect_srv(r, proxy_type, proxy_host, proxy_port);
 		r->wfd = r->rfd;
 		if (r->rfd >= 0) {
 			if (r->trace) fprintf(stderr, "connected\n");
@@ -383,8 +377,7 @@ http_connect(remote *r, char *cgi_script)
 		fprintf(stderr, "Trying direct connection\n");
 		fflush(stderr);
 	}
-	r->wfd = r->rfd = http_connect_srv("DIRECT", r->host,
-						r->port, cgi_script, r->trace);
+	r->wfd = r->rfd = connect_srv(r->host, r->port, r->trace);
 	if (r->rfd >= 0) {
 		if (r->trace) fprintf(stderr, "Connected\n");
 		return (0);

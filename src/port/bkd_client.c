@@ -46,7 +46,7 @@ bkd_tcp_connect(remote *r)
 		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
 			cgi = r->path + 8;
 		}
-		http_connect(r, cgi);
+		http_connect(r);
 	} else {
 		i = tcp_connect(r->host, r->port);
 		if (i < 0) {
