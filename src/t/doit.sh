@@ -48,6 +48,10 @@ unix_common_setup()
 	# for freebsd, malloc() interface
 	MALLOC_OPTIONS=Z
 	export MALLOC_OPTIONS
+
+	# unset htyp proxy env var, it confuses the regression test
+	unset http_proxy HTTP_PROXY_HOST HTTP_PROXY_PORT
+	unset SOCKS_SERVER SOCKS_PORT SOCKS_HOST
 }
 
 # Make sure we don't pick up the DOS "find" command in the PATH
