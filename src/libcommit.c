@@ -184,7 +184,7 @@ char *
 project_name()
 {
 	sccs *s;
-	static char pname[MAXLINE] = "    ";
+	static char pname[MAXLINE] = "";
 	char changeset[MAXPATH] = CHANGESET;
 	cd2root();
 	s = sccs_init(changeset, 0, 0);
