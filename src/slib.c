@@ -957,11 +957,34 @@ date2time(char *asctime, char *z, int roundup)
  *	10a12, 14	-> 10 a
  *	10, 12d13	-> 10 d
  *	10, 12c12, 14	-> 10 c
+ *
+ * Diff -n can give me
+ *	a10 2		-> 10 b 2
+ *	d10 2		-> 10 e 2
+ *
+ * Mkpatch can give me
+ *	I10 2		-> 10 I 2
+ *	D10 2		-> 10 D 2
  */
 private inline int
-scandiff(char *s, int *where, char *what)
+scandiff(char *s, int *where, char *what, int *howmany)
 {
-	if (!isdigit(*s)) return (-1);
+	if (!isdigit(*s)) { /* look for diff -n and mkpatch format */
+		*what = *s;
+		if (*s == 'a')
+			*what = 'i';
+		else if (*s == 'd')
+			*what = 'x';
+		else unless (*s == 'D' || *s == 'I')
+			return (-1);
+		s++;
+		*where = atoi2(&s);
+		unless (*s == ' ')  return (-1);
+		s++;
+		*howmany = atoi2(&s);
+		return (0);
+	}
+	*howmany = 0;	/* not used by this part */
 	*where = atoi2(&s);
 	if (*s == ',') {
 		s++;
@@ -4566,6 +4589,78 @@ skip_get:
 	return (0);
 }
 
+/* These are used to describe 'side' of a diff */
+#define	NEITHER 0
+#define	LEFT	1
+#define	RIGHT	2
+#define	BOTH	3
+
+/* These are the type of output style available to get -D */
+#define	GD_DIFF		1
+#define	GD_BK		2
+
+private int
+outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
+	FILE *in, FILE *out)
+{
+	char	*prefix;
+
+	unless (count)  return (0);
+
+	if (side == RIGHT) {
+		if (type == GD_BK) {
+			fprintf(out, "I%d %d\n", *left, count);
+			*right += count; /* not used, but easy to inc */
+			prefix = "";
+		}
+		else {
+			fprintf(out, "%da%d", *left, *right+1);
+			*right += count;
+			if (count != 1)
+				fprintf(out, ",%d", *right);
+			fputc('\n', out);
+			prefix = "> ";
+		}
+	} else {
+		assert(side == LEFT);
+		if (type == GD_BK) {
+			fprintf(out, "D%d %d\n", *left+1, count);
+			*left += count;
+			prefix = "";
+		}
+		else {
+			fprintf(out, "%d", *left+1);
+			*left += count;
+			if (count != 1)
+				fprintf(out, ",%d", *left);
+			fprintf(out, "d%d\n", *right);
+			prefix = "< ";
+		}
+	}
+
+	/* print out text block unless a diff -n type of delete */
+	unless (type == GD_BK && side == LEFT) {
+		fseek(in, 0L, SEEK_SET);
+		while (count--) {
+			int	c;
+			fputs(prefix, out);
+			while ((c = fgetc(in)) != EOF) {
+				fputc(c, out);
+				if (c == '\n') break;
+			}
+			/* XXX: EOF is error condition */
+			if (c == EOF) {
+				fprintf(stderr,
+				    "get: getdiffs temp file early EOF\n");
+				s->state |= WARNED;
+				return (-1);
+			}
+		}
+		fseek(in, 0L, SEEK_SET);
+	}
+	return (0);
+}
+
 /*
  * Get the diffs of the specified revision.
  * The diffs are only in terms of deletes and adds, no changes.
@@ -4574,6 +4669,9 @@ skip_get:
 int
 sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 {
+	/* XXX: lm, wire 'type' in as you'd like: flags or param */
+	int	type = GD_DIFF;	/* hard code output style GD_DIFF || GD_BK */
+
 	serlist *state = 0;
 	ser_t	*slist = 0;
 	ser_t	old = 0;
@@ -4585,21 +4683,12 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 	int	encoding = (flags&FORCEASCII) ? E_ASCII : s->encoding;
 	int	error = 0;
 	char	*prefix = "";
-#define	NEITHER 0
-#define	LEFT	1
-#define	RIGHT	2
-#define	BOTH	3
 	int	side, nextside;
 	BUF	(buf);
 	char	tmpfile[100];
-	FILE	*lbuf;
+	FILE	*lbuf = 0;
+	int	ret = -1;
 
-	sprintf(tmpfile, "/tmp/gdiffsU%d", getpid());
-	unless (lbuf = fopen(tmpfile, "w+")) {
-		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
-		s->state |= S_WARNED;
-		return (-1);
-	}
 	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "getdiffs: couldn't open %s\n", s->sfile);
 		s->state |= S_WARNED;
@@ -4629,6 +4718,12 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 		s->state |= S_WARNED;
 	}
 	unless (d) return (-1);
+	sprintf(tmpfile, "/tmp/gdiffsU%d", getpid());
+	unless (lbuf = fopen(tmpfile, "w+")) {
+		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
+		s->state |= S_WARNED;
+		return (-1);
+	}
 	slist = serialmap(s, d, flags, 0, 0, &error);
 	popened = openOutput(encoding, printOut, &out);
 	state = allocstate(0, 0, s->nextserial);
@@ -4637,97 +4732,54 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 	nextside = NEITHER;
 
 	while (next(buf, s)) {
-		if (isData(buf)) {
-			if (nextside == NEITHER) continue;
-			if (count && nextside != side &&
-			    (side == LEFT || side == RIGHT)) {
-				/* print out command line */
-				if (side == RIGHT) {
-					fprintf(out, "%da%d", left, right+1);
-					right += count;
-					if (count != 1)
-						fprintf(out, ",%d", right);
-					fputc('\n', out);
-					prefix = "> ";
-				} else {
-					assert(side == LEFT);
-					fprintf(out, "%d", left+1);
-					left += count;
-					if (count != 1)
-						fprintf(out, ",%d", left);
-					fprintf(out, "d%d\n", right);
-					prefix = "< ";
-				}
-				fseek(lbuf, 0L, SEEK_SET);
-				while (count--) {
-					int	c;
-					fputs(prefix, out);
-					while ((c = fgetc(lbuf)) != EOF) {
-						fputc(c, out);
-						if (c == '\n') break;
-					}
-					/* XXX: EOF is error condition */
-					if (c == EOF) break;
-				}
-				count = 0;
-				fseek(lbuf, 0L, SEEK_SET);
-			}
-			side = nextside;
-			switch (side) {
-			    case LEFT:
-			    case RIGHT:
-				count++;
-				fnlputs(buf, lbuf);
-				break;
-			    case BOTH:	left++, right++; break;
-			}
+		unless (isData(buf)) {
+			debug2((stderr, "%.*s", linelen(buf), buf));
+			changestate(state, buf[1], atoi(&buf[3]));
+			with = printstate((const serlist*)state,
+					(const ser_t*)slist);
+			old = slist[d->serial];
+			slist[d->serial] = 0;
+			without = printstate((const serlist*)state,
+				    	(const ser_t*)slist);
+			slist[d->serial] = old;
+	
+			nextside = with ? (without ? BOTH : RIGHT)
+					: (without ? LEFT : NEITHER);
 			continue;
 		}
-		debug2((stderr, "%.*s", linelen(buf), buf));
-		changestate(state, buf[1], atoi(&buf[3]));
-		with = printstate((const serlist*)state, (const ser_t*)slist);
-		old = slist[d->serial];
-		slist[d->serial] = 0;
-		without = printstate((const serlist*)state,
-				    (const ser_t*)slist);
-		slist[d->serial] = old;
-
-		nextside = with ? (without ? BOTH : RIGHT)
-				: (without ? LEFT : NEITHER);
-
+		if (nextside == NEITHER) continue;
+		if (count && nextside != side &&
+			(side == LEFT || side == RIGHT))
+		{
+			if (outdiffs(s, type, side, &left, &right, count,
+				lbuf, out))
+			{
+				goto getdifferr;
+			}
+			count = 0;
+		}
+		side = nextside;
+		switch (side) {
+		    case LEFT:
+		    case RIGHT:
+			count++;
+			unless (type == GD_BK && side == LEFT)
+				fnlputs(buf, lbuf);
+			break;
+		    case BOTH:	left++, right++; break;
+		}
 	}
 	if (count) { /* there is something left in the buffer */
-		/* print out command line */
-		if (side == RIGHT) {
-			fprintf(out, "%da%d", left, right+1);
-			right += count;
-			if (count != 1) fprintf(out, ",%d", right);
-			fputc('\n', out);
-			prefix = "> ";
-		} else {
-			assert(side == LEFT);
-			fprintf(out, "%d", left+1);
-			left += count;
-			if (count != 1) fprintf(out, ",%d", left);
-			fprintf(out, "d%d\n", right);
-			prefix = "< ";
-		}
-		fseek(lbuf, 0L, SEEK_SET);
-		while (count--) {
-			int	c;
-			fputs(prefix, out);
-			while ((c = fgetc(lbuf)) != EOF) {
-				fputc(c, out);
-				if (c == '\n') break;
-			}
-			/* XXX: fixme: EOF is error condition */
-			if (c == EOF) break;
-		}
+		if (outdiffs(s, type, side, &left, &right, count, lbuf, out))
+			goto getdifferr;
 		count = 0;
-		fseek(lbuf, 0L, SEEK_SET);
 	}
-	fclose(lbuf);
-	unlink(tmpfile);
+	ret = 0;
+getdifferr:
+	if (lbuf) {
+		fclose(lbuf);
+		unlink(tmpfile);
+	}
 	if (popened) {
 		pclose(out);
 	} else {
@@ -4735,7 +4787,7 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 	}
 	if (slist) free(slist);
 	if (state) free(state);
-	return (0);
+	return (ret);
 }
 
 /*
@@ -7112,9 +7164,10 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	while (fnext(buf2, diffs)) {
 		int	where;
 		char	what;
+		int	howmany;
 
 newcmd:
-		if (scandiff(buf2, &where, &what) != 0) {
+		if (scandiff(buf2, &where, &what, &howmany) != 0) {
 			fprintf(stderr, "delta: can't figure out '%s'\n", buf2);
 			if (state) free(state);
 			if (slist) free(slist);
@@ -7124,7 +7177,7 @@ newcmd:
 
 #define	ctrl(pre, val)	doctrl(s, pre, val, out)
 
-		if (what != 'a') where--;
+		if (what != 'a' && what != 'b' && what != 'I') where--;
 		while (lines < where) {
 			/*
 			 * XXX - this loops when I don't use the fudge as part
@@ -7180,6 +7233,29 @@ newcmd:
 				s->dsum += fputsum(s, &buf2[2], out);
 				debug2((stderr, "INS %s", &buf2[2]));
 				added++;
+			}
+			break;
+		    case 'I':
+		    case 'i':
+			ctrl("\001I ", n->serial);
+			while (howmany--) {
+				/* XXX: not break but error */
+				unless (fnext(buf2, diffs)) break;
+				fputsum(s, &buf2[0], out);
+				debug2((stderr, "INS %s", &buf2[0]));
+				added++;
+			}
+			break;
+		    case 'D':
+		    case 'x':
+			beforeline(unchanged);
+			ctrl("\001D ", n->serial);
+			while (howmany--) {
+				if (isdigit(buf2[0])) {
+					ctrl("\001E ", n->serial);
+					goto newcmd;
+				}
+				nextline(deleted);
 			}
 			break;
 		}
