@@ -9,20 +9,22 @@
 #include "system.h"
 #include "sccs.h"
 
+#define	BKD_VERSION	"bkd version 1"
+
 /*
- * Functions take (int ac, char **av, int in, int out, int err),
+ * Functions take (int ac, char **av, int in, int out)
  * do whatever, and return 0 or -1.
  */
-typedef	int (*func)(int, char **, int, int, int);
-int	cmd_clone(int ac, char **av, int in, int out, int err);
-int	cmd_eof(int ac, char **av, int in, int out, int err);
-int	cmd_help(int ac, char **av, int in, int out, int err);
-int	cmd_list(int ac, char **av, int in, int out, int err);
-int	cmd_pull(int ac, char **av, int in, int out, int err);
-int	cmd_push(int ac, char **av, int in, int out, int err);
-int	cmd_root(int ac, char **av, int in, int out, int err);
-int	cmd_status(int ac, char **av, int in, int out, int err);
-int	cmd_verbose(int ac, char **av, int in, int out, int err);
+typedef	int (*func)(int, char **, int, int);
+int	cmd_clone(int ac, char **av, int in, int out);
+int	cmd_eof(int ac, char **av, int in, int out);
+int	cmd_help(int ac, char **av, int in, int out);
+int	cmd_pull(int ac, char **av, int in, int out);
+int	cmd_push(int ac, char **av, int in, int out);
+int	cmd_root(int ac, char **av, int in, int out);
+int	cmd_status(int ac, char **av, int in, int out);
+int	cmd_verbose(int ac, char **av, int in, int out);
+int	cmd_version(int ac, char **av, int in, int out);
 
 struct cmd {
 	char	*name;		/* command name */

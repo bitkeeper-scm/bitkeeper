@@ -12,7 +12,7 @@
  * Returns - this never returns, always causes the daemon to exit.
  */
 int
-cmd_pull(int ac, char **av, int in, int out, int err)
+cmd_pull(int ac, char **av, int in, int out)
 {
 	static	char *cset[] = { "bk", "cset", "-m", "-", 0 };
 	char	buf[4096];
@@ -29,15 +29,15 @@ cmd_pull(int ac, char **av, int in, int out, int err)
 	kvpair	kv;
 
 	if (!exists("BitKeeper/etc")) {
-		writen(err, "Not at project root\n");
+		writen(out, "ERROR-Not at project root\n");
 		exit(1);
 	}
 
 	unless (repository_rdlock() == 0) {
-		writen(out, "Can't get read lock on the repository.\n");
+		writen(out, "ERROR-Can't get read lock on the repository.\n");
 		return (-1);
 	} else {
-		writen(out, "read lock OK\n");
+		writen(out, "OK-read lock granted\n");
 	}
 
 	while ((c = getopt(ac, av, "nq")) != -1) {
@@ -82,32 +82,39 @@ cmd_pull(int ac, char **av, int in, int out, int err)
 	}
 	pclose(f); f = 0;
 	unless (bytes) {
-		if (doit) writen(out, "Nothing to resync.\n");
+		if (doit) {
+			writen(out, "OK-Nothing to send.\n");
+			writen(out, "OK-END\n");
+		}
 		goto out;
 	}
+	writen(out, "OK-something to send.\n");
 	if (doit) {
-		if (verbose) writen(err, 
-"--------------------- Sending the following csets ---------------------\n");
+		if (verbose) writen(out, 
+"OK--------------------- Sending the following csets ---------------------\n");
 		gettemp(tmpfile, "push");
 		f = fopen(tmpfile, "w");
 	} else {
-		if (verbose) writen(err,
-"-------------------- Would send the following csets -------------------\n");
+		if (verbose) writen(out,
+"OK-------------------- Would send the following csets -------------------\n");
 	}
 	bytes = 0;
 	for (kv = mdbm_first(me); kv.key.dsize != 0; kv = mdbm_next(me)) {
 		if (doit) fprintf(f, "%s\n", kv.key.dptr);
-		if (verbose) writen(err, kv.key.dptr);
+		if (verbose) writen(out, kv.key.dptr);
 		bytes += kv.key.dsize;
 		if (bytes >= 50) {
-			if (verbose) writen(err, "\n");
+			if (verbose) writen(out, "\nOK-");
 			bytes = 0;
 		} else {
-			if (verbose) writen(err, " ");
+			if (verbose) writen(out, " ");
 		}
 	}
-	if (verbose) writen(err, 
-"\n-----------------------------------------------------------------------\n");
+	if (verbose) {
+		writen(out, 
+"\nOK----------------------------------------------------------------------\n");
+		writen(out, "OK-END\n");
+	}
 	unless (doit) goto out;
 
 	fclose(f); f = 0;
@@ -119,7 +126,7 @@ cmd_pull(int ac, char **av, int in, int out, int err)
 		int	status;
 
 		if (pid == -1) {
-			perror("fork");
+			writen(out, "ERROR-fork failed\n");
 			goto out;
 		}
 		waitpid(pid, &status, 0);

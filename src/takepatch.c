@@ -1109,7 +1109,7 @@ init(char *inputFile, int flags, project **pp)
 	if (streq(inputFile, "-")) {
 		if (fnext(buf, stdin)) {
 			if (streq(buf, "ERROR\n")) exit(1);
-			if (streq(buf, "Nothing to resync.\n")) {
+			if (streq(buf, "OK-Nothing to resync.\n")) {
 				if (echo) fprintf(stderr, buf);
 				exit(0);
 			}

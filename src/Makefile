@@ -53,7 +53,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 RESOBJ =  resolve.o resolve_create.o resolve_contents.o resolve_generic.o \
 	  resolve_renames.o resolve_modes.o resolve_flags.o
 BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
-	  bkd_cmdtab.o lib_tcp.o bkd.o
+	  bkd_cmdtab.o lib_tcp.o bkd.o bkd_version.o
 BINOBJ	= $(BINS:=.o)
 BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
@@ -136,7 +136,7 @@ production_image: rebuild p image
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-	    $(BKDOBJ) $(RESOBJ) $(LIBS) bkhelp.txt a.out core
+	    $(BKDOBJ) $(RESOBJ) $(LIBS) bkdsubstr bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
 
 clean-bin: FORCE
@@ -452,9 +452,10 @@ merge: merge.sh
 	chmod +x merge
 	chmod -w merge
 
-clone: clone.sh
+clone: bkdsubstr clone.sh
 	rm -f clone
 	cp clone.sh clone
+	./bkdsubstr < clone.sh > clone
 	chmod +x clone
 	chmod -w clone
 
@@ -464,11 +465,18 @@ resync: resync.sh
 	chmod +x resync
 	chmod -w resync
 
-pull: pull.sh
+pull: bkdsubstr pull.sh
 	rm -f pull
-	cp pull.sh pull
+	./bkdsubstr < pull.sh > pull
 	chmod +x pull
 	chmod -w pull
+
+bkdsubstr: bkd.h
+	grep BKD_VERSION bkd.h | sed -e 's/.*"b/b/' -e 's/".*//' > _bkdvers
+	echo "#!/bin/sh" > bkdsubstr
+	echo "sed 's/@BKD_VERSION@/`cat _bkdvers`/'" >> bkdsubstr
+	/bin/rm _bkdvers
+	chmod +x bkdsubstr
 
 bk_users: bk_users.perl aliases.perl port/unix_platform.perl substvars
 	-rm -f bk_users

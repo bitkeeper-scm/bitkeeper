@@ -16,7 +16,7 @@
  * Returns - errors only, success exits.
  */
 int
-cmd_push(int ac, char **av, int in, int out, int err)
+cmd_push(int ac, char **av, int in, int out)
 {
 	int	error = 0;
 	pid_t	pid;
@@ -28,15 +28,15 @@ cmd_push(int ac, char **av, int in, int out, int err)
 				    /* see verbose below    ^^ */
 
 	if (!exists("BitKeeper/etc")) {
-		writen(err, "Not at project root\n");
+		writen(out, "ERROR-Not at project root\n");
 		return (-1);
 	}
 
 	if (repository_wrlock()) {
-		writen(out, "Unable to lock project for update.\n");
+		writen(out, "ERROR-Unable to lock repository for update.\n");
 		return (-1);
 	} else {
-		writen(out, "write lock OK\n");
+		writen(out, "OK-write lock granted\n");
 	}
 
 	while ((c = getopt(ac, av, "q")) != -1) {
@@ -53,7 +53,7 @@ cmd_push(int ac, char **av, int in, int out, int err)
 		int	status;
 
 		if (pid == -1) {
-			perror("fork");
+			writen(out, "@END@\n");
 			goto out;
 		}
 		waitpid(pid, &status, 0);
@@ -66,7 +66,6 @@ cmd_push(int ac, char **av, int in, int out, int err)
 		}
 	} else {
 		if (out != 1) { close(1); dup(out); close(out); }
-		if (err != 2) { close(2); dup(err); close(err); }
 		execvp(prs[0], prs);
 	}
 
@@ -78,7 +77,6 @@ cmd_push(int ac, char **av, int in, int out, int err)
 	if ((readn(in, buf, 8) == 8) && streq(buf, "@PATCH@\n")) {
 		if (in != 0) { close(0); dup(in); close(in); }
 		if (out != 1) { close(1); dup(out); close(out); }
-		if (err != 2) { close(2); dup(err); close(err); }
 		/*
 		 * Wait for takepatch to get done and then send ack.
 		 */
@@ -86,11 +84,11 @@ cmd_push(int ac, char **av, int in, int out, int err)
 			int	status;
 
 			if (pid == -1) {
-				perror("fork");
+				writen(out, "@DONE@\n");
 				goto out;
 			}
 			waitpid(pid, &status, 0);
-			writen(1, "@DONE@\n");
+			writen(out, "@DONE@\n");
 			if (WIFEXITED(status)) {
 				if (error = WEXITSTATUS(status)) goto out;
 			} else {

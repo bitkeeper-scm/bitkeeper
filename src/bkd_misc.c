@@ -4,21 +4,15 @@
 #include "bkd.h"
 
 int
-cmd_verbose(int ac, char **av, int in, int out, int err)
+cmd_eof(int ac, char **av, int in, int out)
 {
-	return (0);
-}
-
-int
-cmd_eof(int ac, char **av, int in, int out, int err)
-{
-	write(out, "Goodbye\n", 8);
+	write(out, "OK-Goodbye\n", 8);
 	exit(0);
 	return (0);	/* lint */
 }
 
 int
-cmd_help(int ac, char **av, int in, int out, int err)
+cmd_help(int ac, char **av, int in, int out)
 {
 	int	i;
 

@@ -90,7 +90,7 @@ bk repo -r
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE/clone
 bk pull $Q -i
-if [ ! -d RESYNC ]; then echo clone failed; exit 1; fi
+if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
 bk resolve -t $Q
 echo OK
 echo $N Make sure push fails with existing read lock in dest ........$NL
@@ -117,8 +117,8 @@ bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
 cd $HERE/project
 bk pull $HERE/clone > OUT 2>&1
-if [ "`cat OUT`" != "Nothing to resync." ]
-then	echo failed
+if [ "`cat OUT`" != "Nothing to pull." ]
+then	echo failed - bad status message
 	cat OUT
 	exit 1
 fi

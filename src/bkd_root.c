@@ -6,7 +6,7 @@
  * Usage: root [/full/path/name]
  */
 int
-cmd_root(int ac, char **av, int in, int out, int err)
+cmd_root(int ac, char **av, int in, int out)
 {
 	int	c, key = 0;
 
@@ -18,17 +18,18 @@ cmd_root(int ac, char **av, int in, int out, int err)
 
 	if (av[optind] && !av[optind+1]) {
 		if (chdir(av[optind])) {
-			writen(err, "ERROR: Can not change to directory '");
-			writen(err, av[1]);
-			writen(err, "'\n");
+			writen(out, "ERROR: Can not change to directory '");
+			writen(out, av[1]);
+			writen(out, "'\n");
 			return (-1);
 		}
 		unless (exists("BitKeeper/etc")) {
-			writen(err, "ERROR: directory '");
-			writen(err, av[1]);
-			writen(err, "' is not a project root\n");
+			writen(out, "ERROR: directory '");
+			writen(out, av[1]);
+			writen(out, "' is not a project root\n");
 			return (-1);
 		}
+		writen(out, "OK-root OK\n");
 	} else if (!av[optind]) {
 		char	buf[MAXPATH];
 
@@ -39,7 +40,7 @@ cmd_root(int ac, char **av, int in, int out, int err)
 			if (fnext(buf, p)) {
 				writen(out, buf);
 			} else {
-				writen(out, "ERROR: no root key found\n");
+				writen(out, "ERROR-no root key found\n");
 				return (-1);
 			}
 			pclose(p);
@@ -48,11 +49,11 @@ cmd_root(int ac, char **av, int in, int out, int err)
 				writen(out, buf);
 				writen(out, "\n");
 			} else {
-				writen(out, "ERROR: can't get CWD\n");
+				writen(out, "ERROR-can't get CWD\n");
 			}
 		}
 	} else {
-		writen(err, "usage: root [-k] OR [pathname]\n");
+		writen(out, "ERROR-usage: root [-k] OR [pathname]\n");
 		return (-1);
 	}
 	return (0);
