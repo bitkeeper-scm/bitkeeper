@@ -33,6 +33,12 @@ win32_common_setup()
 	# don't run remote regressions on NT
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
 	export DO_REMOTE
+
+	# We need this only on NTFS, not needed on FAT/FAT32 file system
+	# This setting only affect the process started _after_ it is set.
+	# i.e. It has no effect on the "doit" process itself.
+	CYGWIN=nontsec
+	export CYGWIN
 }
 
 unix_common_setup()
@@ -109,33 +115,6 @@ check_path()
 	fi
 }
 
-check_tar()
-{
-	mkdir /tmp/tar_tst$$
-	echo data > /tmp/tar_tst$$/file
-	chmod 0444 /tmp/tar_tst$$/file
-	TAR=/tmp/tar_tst$$.tar
-	(cd / && tar cf $TAR tmp/tar_tst$$ 2> /dev/null)
-	rm -rf /tmp/tar_tst$$
-	(cd / && tar xf $TAR 2> /dev/null)
-	if [ -w /tmp/tar_tst$$/file ]
-	then
-		T_VER=`tar --version | grep "^tar" | cut -f4 -d' '`
-		echo "========================================================"
-		echo "The tar package you have installed does not preserve"
-		echo "file permission. This wlll not work with the BitKeeper"
-		echo "BitKeeper regression test becuase we depend on this"
-		echo "feature. To run the BitKeeper regression test correctly,"
-		echo "you need to install tar package included in the BitKeeper"
-		echo " install package"
-		echo "========================================================"
-		chmod 0666 /tmp/tar_tst$$/file
-		rm -rf /tmp/tar_tst$$
-		exit 1
-	fi
-	chmod 0666 /tmp/tar_tst$$/file
-	rm -rf $TAR /tmp/tar_tst$$
-}
 
 # Make sure the "if [ -w ... ]" construct works under this id.
 check_w()
@@ -188,13 +167,12 @@ setup_env()
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 		check_mount_mode
 		check_path
-		check_tar
 		;;
 	    *)	# assumes everything else is unix
 		unix_common_setup
+		check_w
 		;;
 	esac
-	check_w
 	chech_enclosing_repo
 
 	# turn off pager
