@@ -1,3 +1,4 @@
+#include "system.h"
 #include "sccs.h"
 
 main()

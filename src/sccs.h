@@ -1,139 +1,10 @@
 /* %W% Copyright (c) 1997 Larry McVoy */
 #ifndef	_SCCS_H_
 #define	_SCCS_H_
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <setjmp.h>
-#include <sys/stat.h>
-#include <sys/vfs.h>
-#include <fcntl.h>
-#include "purify.h"
-#include "mdbm/mdbm.h"
-#ifndef	WIN32
-#include <strings.h>
-#include <stdlib.h>
-#include <time.h>
-#include <utime.h>
-#include <unistd.h>
-#include <setjmp.h>
-#include <sys/time.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <netdb.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include "purify.h"
-#else
-#include "win32hdr.h"
-#endif
 
-#define	HAVE_GETDOMAINNAME
-#ifdef	PROFILE
-#define	private
-#define	inline
-#else
-#define	private static
-#endif
-#if	defined(ANSIC)
-#if	!defined(inline)
-#define	inline
-#endif
-
-#define	isascii(x)	(((x) & ~0x7f) == 0)
-#undef	HAVE_GETDOMAINNAME
-extern	char *strdup(char *s);
-#endif
-#define	MAXLINE	2048
-#define	MAXPATH	1024
-
-/*
- * Local config starts here.
- */
-#ifndef	SDIFF
-#	define	SDIFF	"/usr/bin/sdiff"
-#endif
-
-/*
- * Define this to use GNU diff instead of built in diff.
- * This is currently the right answer, there are problems with the
- * builtin diff.
- */
-#define	DIFF	"/usr/bin/diff"
-
-/*
- * define used to improve portability
- * may be redefined in platform specific header
- * ( see re_def.h )
- */
-#define	DEV_NULL	"/dev/null"
-#define	TMP_PATH	"/tmp"
-#define	IsFullPath(f)	((f)[0] == '/')
-#define M_WRITE_B	"w"		/* mode used by popen call */
-#define M_WRITE_T	"w"
-#define M_READ_B	"r"
-#define M_READ_T	"r"
-#define loadNetLib()
-#define unLoadNetLib()
-
-
-/*
- * If you want to use stdio for all I/O, which is slightlu slower but
- * more portable, define this:
-#define	USE_STDIO
- */
-
-#define	UMASK(x)	((x) & u_mask)
-
-#if	(!defined(__GNUC__) || defined(DEBUG)) && !defined(inline)
-#	define	inline
-#endif
-#ifdef	DEBUG
-#	define	debug(x)	fprintf x
-#else
-#	define	debug(x)
-#	define	debug_main(x)
-#endif
-#ifdef	DEBUG2
-#	define	debug2(x)	fprintf x
-#else
-#	define	debug2(x)
-#endif
-#ifdef LINT
-#	define	WHATSTR(X)	pid_t	getpid(void)
-#else
-#	define	WHATSTR(X)	static char *what = X
-#endif
-#ifndef	PURIFY
-#	define	malloc(s)	chk_malloc(s, __FILE__, __LINE__)
-#	define	calloc(n, s)	chk_calloc(n, s, __FILE__, __LINE__)
-#endif
-#define	max(a,b)	((a)>(b)?(a):(b))
-#define	min(a,b)	((a)<(b)?(a):(b))
-#define	bcopy(s,d,l)	memmove(d,s,l)
-#define	bcmp(a,b,l)	memcmp(a,b,l)
-#define	bzero(s,l)	memset(s,0,l)
-#define	streq(a,b)	!strcmp(a,b)
-#define	strneq(a,b,n)	!strncmp(a,b,n)
-#define	index(s, c)	strchr(s, c)
-#define	rindex(s, c)	strrchr(s, c)
-#define	notnull(s)	(s ? s : "")
-#define	unless(e)	if (!(e))
-#define	verbose(x)	unless (flags&SILENT) fprintf x
-#define fnext(buf, in)  fgets(buf, sizeof(buf), in)
-#define	unlink(f)	smartUnlink(f)
-#define	rename(o, n)	smartRename(o, n)
 #define	seekto(s,o)	s->where = (s->mmap + o)
 #define	eof(s)		((s->encoding == E_GZIP) ? \
 			    zeof() : (s->where >= s->mmap + s->size))
-#define	BUF(b)		char *b
-#define	EACH(s)		for (i = 1; (s) && (i < (int)(s[0])) && (s[i]); i++)
-#define	LPAD_SIZE	70
-#define	GOOD_PSIZE	16<<10
 
 /*
  * Flags that modify some operation (passed to sccs_*).
@@ -613,18 +484,6 @@ typedef struct patch {
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
 #define	PATCH_META	0x0004	/* delta is metadata */
 
-/* getopt stuff */
-#define getopt	mygetopt
-#define optind	myoptind
-#define optarg	myoptarg
-#define	opterr	myopterr
-#define	optopt	myoptopt
-extern	int	optind;
-extern	int	opterr;
-extern	int	optopt;
-extern	char	*optarg;
-int	getopt(int ac, char **av, char *opts);
-
 int	sccs_admin(sccs *sc, u32 flgs, int *encoding,
 	    admin *f, admin *l, admin *u, admin *s, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
@@ -694,8 +553,6 @@ int	diff(char *lfile, char *rfile, char kind, char *out);
 char	**addLine(char **space, char *line);
 int	roundType(char *r);
 sccs	*check_gfile(sccs*, int);
-void	*chk_malloc(size_t s, char *, int);
-void	*chk_calloc(size_t n, size_t s, char *, int);
 void	platformSpecificInit(char *, int);
 MDBM	*loadDB(char *file, int (*want)(char *));
 MDBM	*csetIds(sccs *cset, char *rev, int all);
@@ -716,13 +573,4 @@ int	zputs(void *p, FILE *f,
 	    char *data, int len, void (*func)(void *, u8 *, int, FILE *));
 int	zputs_done(void *p, FILE *f, void (*func)(void *, u8 *, int, FILE *));
 
-#ifdef	WIN32
-/*
- * Most of the WIN32 stuff is defined in re_def.h
- * this #include should be the last line in this file
- * re_def.h will redefine some of the decleration above
- * (for more info, see comments in uwtlib/wapi_intf.c)
- */
-#include "re_def.h"
-#endif
 #endif	/* _SCCS_H_ */

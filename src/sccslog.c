@@ -3,6 +3,7 @@
  *
  * Copyright (c) 1997 L.W.McVoy
  */
+#include "system.h"
 #include "sccs.h"
 #include "range.h"
 WHATSTR("@(#)%K%");

@@ -7,6 +7,7 @@
  *
  * Copyright (c) 1997-1998 Larry McVoy.	 All rights reserved.
  */
+#include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
@@ -2161,7 +2162,7 @@ peekc(sccs *s)
 }
 
 off_t
-tell(sccs *s)
+sccstell(sccs *s)
 {
 	return (s->where - s->mmap);
 }
@@ -3019,7 +3020,7 @@ misc(sccs *s)
 	for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); ) {
 		s->text = addLine(s->text, strnonldup(buf));
 	}
-	s->data = tell(s);
+	s->data = sccstell(s);
 	return (0);
 }
 
@@ -3386,7 +3387,7 @@ bad:		sccs_free(s);
 		if (s->mmap != (caddr_t)-1L) s->state |= S_SOPEN;
 		seekto(s, 0);
 		for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); );
-		s->data = tell(s);
+		s->data = sccstell(s);
 	}
 	if (isreg(s->pfile)) s->state |= S_PFILE;
 	if (isreg(s->zfile)) s->state |= S_ZFILE;

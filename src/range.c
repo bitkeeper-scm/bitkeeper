@@ -1,4 +1,5 @@
 /* Copyright (c) 1998 L.W.McVoy */
+#include "system.h"
 #include "sccs.h"
 #include "range.h"
 

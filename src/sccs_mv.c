@@ -1,4 +1,5 @@
 /* Copyright (c) 1999 Andrew Chang */  
+#include "system.h"
 #include "sccs.h"
 #include "dirent.h"
 WHATSTR("%W%");   

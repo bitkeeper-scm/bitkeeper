@@ -1,4 +1,5 @@
 /* Copyright (c) 1997 L.W.McVoy */
+#include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 char	*delta_help = "\n\

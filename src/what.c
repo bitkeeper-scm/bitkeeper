@@ -4,6 +4,7 @@
  * Copyright (c) 1997 by Larry McVoy; All rights reserved.
  *
  */
+#include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 

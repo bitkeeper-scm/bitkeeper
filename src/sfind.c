@@ -1,3 +1,4 @@
+#include "system.h"
 #include "sccs.h"
 #ifdef WIN32
 #include "uwtlib/ftw.h"
