@@ -67,6 +67,7 @@ doit(int verbose, char *rev, int dash)
 		strcat(cmd, " | ");
 		strcat(cmd, pager);
 		system(cmd);
+		if (dashfile[0]) unlink(dashfile);
 		return (0);
 	}
 	signal(SIGPIPE, SIG_IGN);
