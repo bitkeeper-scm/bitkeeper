@@ -2,7 +2,7 @@
 #include "sccs.h"
 
 int
-main(void)
+zone_main(void)
 {
 	time_t	tt = time(0);
 	struct	tm tm;

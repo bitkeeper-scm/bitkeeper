@@ -2,7 +2,7 @@
 #include "sccs.h"
 
 int
-main(int ac, char **av)
+gethelp_main(int ac, char **av)
 {
 	platformInit(); 
 	unless (av[1]) {

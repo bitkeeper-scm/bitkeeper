@@ -8,8 +8,10 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+private int print_id(char *file);
+
 int
-main(int ac, char **av)
+what_main(int ac, char **av)
 {
 	int	i;
 	int	doit(char *file);
@@ -24,18 +26,18 @@ main(int ac, char **av)
 
 		while (fnext(buf, stdin)) {
 			chop(buf);
-			doit(buf);
+			print_id(buf);
 		}
 	} else {
 		for (i = 1; i < ac; ++i) {
-			doit(av[i]);
+			print_id(av[i]);
 		}
 	}
 	return (0);
 }
 
-int
-doit(char *file)
+private int
+print_id(char *file)
 {
 	int	fd;
 	struct	stat sbuf;

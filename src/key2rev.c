@@ -8,7 +8,7 @@ WHATSTR("@(#)%K%");
  * usage: cat keys | key2rev file
  */
 int
-main(int ac, char **av)
+key2rev_main(int ac, char **av)
 {
 	char	*name;
 	delta	*d;

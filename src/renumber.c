@@ -26,7 +26,7 @@ int	taken(MDBM *db, delta *d);
 int	redo(sccs *s, delta *d, MDBM *db, int flags, int release);
 
 int
-main(int ac, char **av)
+renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;

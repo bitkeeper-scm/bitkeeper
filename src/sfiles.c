@@ -59,7 +59,7 @@ void	process(const char *filename, int mode);
 void	caches(const char *filename, int mode);
 
 int
-main(int ac, char **av)
+sfiles_main(int ac, char **av)
 {
 	int	c, i;
 	char	*path;

@@ -5,7 +5,7 @@
 #endif
 
 int
-main()
+getuser_main()
 {
 	extern	char	*sccs_getuser();
 

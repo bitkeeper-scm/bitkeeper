@@ -35,7 +35,7 @@ int	pflag;		/* do basenames */
 int	Cflg;		/* comments for changesets */
 
 int
-main(int ac, char **av)
+sccslog_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;

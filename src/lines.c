@@ -9,7 +9,7 @@ int	flags;
 sccs	*s;
 
 int
-main(int ac, char **av)
+lines_main(int ac, char **av)
 {
 	int	c;
 	char	*name;

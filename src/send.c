@@ -25,16 +25,16 @@ sendlog(char *to, char *rev)
 	close(open(x_sendlog, O_CREAT, 0660));
 
 	if (rev == NULL) {
-		sprintf(buf, "%sprs -hd:KEY: ChangeSet | sort > %s", bin, here);
+		sprintf(buf, "%sbk prs -hd:KEY: ChangeSet | sort > %s", bin, here);
 	} else {
-		sprintf(buf, "%sprs -hd:KEY: -r%s ChangeSet | sort > %s",
+		sprintf(buf, "%sbk prs -hd:KEY: -r%s ChangeSet | sort > %s",
 								bin, rev, here);
 	}
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", x_sendlog, has);
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", x_sendlog, has);
-	sprintf(buf, "comm -23 %s %s | %skey2rev ChangeSet > %s",
+	sprintf(buf, "comm -23 %s %s | %sbk key2rev ChangeSet > %s",
 							here, has, bin, revs);
 	system(buf);
 	f = fopen(revs, "rt");
@@ -52,7 +52,7 @@ sendlog(char *to, char *rev)
 	if (revbuf[0] == '\0') return 0; 
 	sprintf(buf, "cp %s %s", x_sendlog, here);
 	system(buf);
-	sprintf(buf, "%sprs -hd:KEY: -r%s ChangeSet >> %s", bin, revbuf, here);
+	sprintf(buf, "%sbk prs -hd:KEY: -r%s ChangeSet >> %s", bin, revbuf, here);
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", here, x_sendlog);
 	system(buf);
@@ -60,7 +60,7 @@ sendlog(char *to, char *rev)
 	return(revbuf);
 }
 
-main(int ac,  char **av)
+send_main(int ac,  char **av)
 {
 	int c, rc, use_stdout = 0;
 	int force = 0;
@@ -134,10 +134,10 @@ main(int ac,  char **av)
 	fflush(f);
 	unless (use_stdout) fclose(f);
 	unless (wrapper) {
-		sprintf(buf, "%scset %s -m%s %s %s",	
+		sprintf(buf, "%sbk cset %s -m%s %s %s",	
 					bin, dflag, rev, qflag, out);
 	} else {
-		sprintf(buf, "%scset %s -m%s %s | bk %swrap%s",
+		sprintf(buf, "%sbk cset %s -m%s %s | bk %swrap%s",
 					bin, dflag, rev, qflag, wrapper, out);
 	}
 	if (system(buf) != 0)  {

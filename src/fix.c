@@ -3,7 +3,7 @@
 
 extern char *bin;
 
-main(int ac,  char **av)
+fix_main(int ac,  char **av)
 {
 	int c, i;
 	char buf[MAXLINE], opts[MAXLINE] = "";
@@ -45,7 +45,7 @@ main(int ac,  char **av)
 		assert(s);
 		d = findrev(s, NULL);
 		assert(d);
-		sprintf(buf, "%sstripdel %s -r%s %s",
+		sprintf(buf, "%sbk stripdel %s -r%s %s",
 					bin, qflag, d->rev, av[i]);
 		sccs_free(s);
 		if (system(buf) == 0) {

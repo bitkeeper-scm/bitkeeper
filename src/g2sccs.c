@@ -2,45 +2,46 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-void	doit(char *);
+static void	print_name(char *);
 
 /*
  * g2sccs - convert gfile names to sfile names
  */
 int
-main(int ac, char **av)
+g2sccs_main(int ac, char **av)
 {
 	int	i;
 
 	if (ac > 1) {
 		for (i = 1; i < ac; ++i) {
-			doit(av[i]);
+			print_name(av[i]);
 		}
 	} else {
 		char	buf[MAXPATH];
 
 		while (fnext(buf, stdin)) {
 			chop(buf);
-			doit(buf);
+			print_name(buf);
 		}
 	}
 	return (0);
 }
 
-void
-doit(char *name)
+static void
+print_name(char *name)
 {
 	name = name2sccs(name);
 	printf("%s\n", name);
 	free(name);
 }
 
+#ifdef OLD
 /*
  * Take a file name such as foo.c and return SCCS/s.foo.c
  * Also works for /full/path/foo.c -> /fullpath/SCCS/s.foo.c.
  * It's up to the caller to free() the resulting name.
  */
-char	*
+static char	*
 name2sccs(char *name)
 {
 	int	len = strlen(name);
@@ -83,7 +84,7 @@ name2sccs(char *name)
 	return (newname);
 }
 
-char
+static char
 chop(register char *s)
 {
 	char	c;
@@ -93,3 +94,4 @@ chop(register char *s)
 	s[-2] = 0;
 	return (c);
 }
+#endif /* OLD */

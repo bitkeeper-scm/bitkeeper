@@ -62,7 +62,7 @@ int	setMerge(sccs *sc, char *merge, char *rev);
 int     newrev(sccs *s, pfile *pf); 
 
 int
-main(int ac, char **av)
+admin_main(int ac, char **av)
 {
 	sccs	*sc;
 	int	flags = 0;

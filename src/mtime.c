@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 
 int
-main(int ac, char **av)
+mtime_main(int ac, char **av)
 {
 	struct	stat st;
 	struct	tm *t;

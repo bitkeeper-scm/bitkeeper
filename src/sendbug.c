@@ -3,7 +3,7 @@
 
 extern char *bin, *editor;
 
-main(int ac,  char **av)
+sendbug_main(int ac,  char **av)
 {
 	char buf[MAXLINE];
 	char bug[MAXPATH];

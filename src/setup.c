@@ -3,7 +3,7 @@
 
 extern char *editor, *pager, *bin;
 
-main(int ac, char **av)
+setup_main(int ac, char **av)
 {
 	int force = 0, c, logsetup;
 	char *project_name = NULL, *project_path = NULL, *config_path = NULL;
@@ -23,11 +23,11 @@ main(int ac, char **av)
 	}
 	unless (project_path = av[optind]) {
 		printf(
-	"Usage: bk setup [-c<config file>] [-n <project name>] directory");
+	"Usage: bk setup [-c<config file>] [-n <project name>] directory\n");
 		exit (0);
 	}
 	if (exists(project_path)) {
-		printf("bk: %s exists already, setup fails.", project_path);
+		printf("bk: %s exists already, setup fails.\n", project_path);
 		exit (1);
 	}
 
@@ -73,7 +73,7 @@ main(int ac, char **av)
 		fputs(project_name, f);
 		fclose(f);
 	}
-	sprintf(buf, "%scset -siDescription .", getenv("BK_BIN"));
+	sprintf(buf, "%sbk cset -siDescription .", getenv("BK_BIN"));
 	system(buf);
 
 	f = fopen("Description", "rt"); 
@@ -114,18 +114,20 @@ main(int ac, char **av)
 		sprintf(buf, "cp %s config", config_path);
 		system(buf);
 	}
-	sprintf(buf, "%sci -qi config", bin);
+	// XXX FIXME: This should be replaced with a direct C function call
+	sprintf(buf, "%sbk ci -qi config", bin);
 	system(buf);
+
 	if (logsetup) {
-		sprintf(buf, "%sget -q config", bin);
+		sprintf(buf, "%sbk get -q config", bin);
 		system(buf);
-		sprintf(buf, "%ssendconfig setups@openlogging.org", bin);
+		sprintf(buf, "%sbk sendconfig setups@openlogging.org", bin);
 	}
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
-	sprintf(buf, "%ssfiles -C > %s", bin, setup_files);
+	sprintf(buf, "%sbk sfiles -C > %s", bin, setup_files);
 	system(buf);
 	sprintf(buf,
-		"%scset -q -y\"Initial repository create\" -  < %s", bin, setup_files);
+		"%sbk cset -q -y\"Initial repository create\" -  < %s", bin, setup_files);
 	system(buf);
 	unlink(setup_files);
 	return (0);

@@ -3,7 +3,7 @@
 
 extern char *bin;
 
-main(int ac,  char **av)
+undo_main(int ac,  char **av)
 {
 	int c;
 	int force = 0;
@@ -43,7 +43,7 @@ main(int ac,  char **av)
 	clean_file(rmlist, csets);
 
 	sprintf(undolist, "%s/bk_undolist%d",  TMP_PATH, getpid());
-	sprintf(buf, "%sstripdel -Ccr%s ChangeSet 2> %s", bin, csets, undolist);
+	sprintf(buf, "%sbk stripdel -Ccr%s ChangeSet 2> %s", bin, csets, undolist);
 	if (system(buf) != 0) {
 		gethelp("undo_error", bin, stdout);
 		sprintf(buf, "cat %s", undolist);
@@ -70,7 +70,7 @@ main(int ac,  char **av)
 		//chmod(BK_TMP, 0777);
 	}
 	//if (exists(BK_UNDO)) unlink(BK_UNDO):
-	sprintf(buf, "%scset %s -ffm%s > %s", bin, vflag, csets, BK_UNDO);
+	sprintf(buf, "%sbk cset %s -ffm%s > %s", bin, vflag, csets, BK_UNDO);
 	system(buf);
 
 	
@@ -87,7 +87,7 @@ main(int ac,  char **av)
 		assert(p);
 		*p++ = 0;
 		fprintf(f1, "%s\n", buf);
-		sprintf(buf1, "%sstripdel %s -Cr%s %s", bin, qflag, p, buf);
+		sprintf(buf1, "%sbk stripdel %s -Cr%s %s", bin, qflag, p, buf);
 		if (system(buf1) != 0) {
 			fprintf(stderr, "Undo of %s@%s failed\n", buf, p);
 			fclose(f);
@@ -105,7 +105,7 @@ main(int ac,  char **av)
 	 * make sense at cset boundries.
 	 */
 	sprintf(renamelist, "%s/bk_renaemlist%d",  TMP_PATH, getpid());
-	sprintf(buf, "%sprs -hr+ -d':PN: :SPN:' - < %s > %s",
+	sprintf(buf, "%sbk prs -hr+ -d':PN: :SPN:' - < %s > %s",
 						bin, mvlist, renamelist);
 	system(buf);
 	f = fopen(renamelist, "rt");
@@ -128,7 +128,7 @@ main(int ac,  char **av)
 				rename(buf, p);
 			}
 		}
-		sprintf(buf1, "%srenumber %s", bin, p);
+		sprintf(buf1, "%sbk renumber %s", bin, p);
 		system(buf1);
 	}
 	unlink(mvlist); unlink(rmlist); unlink(undolist); unlink(renamelist);
@@ -137,7 +137,7 @@ main(int ac,  char **av)
 								       BK_UNDO);
 		printf("Running consistency check...\n");
 	}
-	sprintf(buf, "%ssfiles -r", bin);
+	sprintf(buf, "%sbk sfiles -r", bin);
 	system(buf);
 	sprintf(buf, "bk -r check -a");
 	system(buf);
@@ -152,7 +152,7 @@ clean_file(char *rmlist, char *csets)
 	char *p;
 
 	sprintf(cleanlist, "%s/bk_cleanlist%d",  TMP_PATH, getpid());
-	sprintf(buf, "%scset -ffl%s > %s", bin, csets, rmlist);
+	sprintf(buf, "%sbk cset -ffl%s > %s", bin, csets, rmlist);
 	system(buf);
 	if (size(rmlist) == 0) {
 		printf("undo: nothing to undo in \"%s\"\n", csets);
@@ -171,7 +171,7 @@ clean_file(char *rmlist, char *csets)
 	}
 	fclose(f);
 	fclose(f1);
-	sprintf(buf, "%sclean - < %s", bin, cleanlist);
+	sprintf(buf, "%sbk clean - < %s", bin, cleanlist);
 	if (system(buf) != 0) {
 		printf("Undo aborted.\n");
 		unlink(rmlist);

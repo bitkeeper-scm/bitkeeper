@@ -5,7 +5,7 @@
 #endif
 
 int
-main()
+gethost_main()
 {
 	extern	char	*sccs_gethost();
 

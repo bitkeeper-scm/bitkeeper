@@ -78,7 +78,7 @@ char	*input;		/* input file name, either "-" or a patch file */
 
 
 int
-main(int ac, char **av)
+takepatch_main(int ac, char **av)
 {
 	char	*buf;
 	MMAP	*p;

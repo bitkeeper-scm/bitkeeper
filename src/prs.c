@@ -24,7 +24,7 @@ usage: prs [-abhmMv] [-c<date>] [-C<rev>] [-r<rev>] [files...]\n\n\
     -c92..92	    prints all deltas from Jan 1 '92 to Dec 31 '92\n\n";
 
 int
-main(int ac, char **av)
+prs_main(int ac, char **av)
 {
 	sccs	*s;
 	int	reverse = 0, doheader = 1;

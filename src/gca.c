@@ -8,7 +8,7 @@
 WHATSTR("%K%");
 
 int
-main(int ac, char **av)
+gca_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name, *r1 = 0, *r2 = 0;

@@ -7,7 +7,7 @@ WHATSTR("@(#)%K%");
  * info - display information about edited files.
  */
 int
-main(int ac, char **av)
+sinfo_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	int	e = 0;

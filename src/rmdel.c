@@ -13,7 +13,7 @@ void	rmcaches(void);
  * The weird setup is so that I can #include this file into sccssh.c
  */
 int
-rmdel_main(int ac, char **av, char *out)
+_rmdel_main(int ac, char **av, char *out)
 {
 	sccs	*s;
 	int	c, flags = 0;
@@ -95,7 +95,7 @@ err:		sccs_free(s);
 }
 
 int
-main(int ac, char **av)
+rmdel_main(int ac, char **av)
 {
-	return (rmdel_main(ac, av, "-"));
+	return (_rmdel_main(ac, av, "-"));
 }

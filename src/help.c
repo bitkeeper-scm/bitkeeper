@@ -4,7 +4,7 @@
 extern char *editor, *pager, *bin; 
 int is_command(char *file);
 
-main(int ac,  char **av)
+help_main(int ac,  char **av)
 {
 	char buf[MAXLINE];
 	char help_out[MAXPATH];
@@ -13,26 +13,21 @@ main(int ac,  char **av)
 
 	platformInit();  
 	if (ac == 1) {
-		sprintf(buf, "%sgethelp help | %s", bin, pager);
+		sprintf(buf, "%sbk gethelp help | %s", bin, pager);
 		system(buf);
 		return (0);
 	}
 	sprintf(help_out, "%s/bk_help%d", TMP_PATH, getpid());
 	while (av[++i]) {
-		sprintf(buf, "%sgethelp help_%s %s > %s",
+		sprintf(buf, "%sbk gethelp help_%s %s > %s",
 						bin, av[i], bin, help_out);
 		if (system(buf) != 0) {
-#ifdef WIN32
-			sprintf(buf, "%s%s.exe", bin, av[i]);
-#else
-			sprintf(buf, "%s%s", bin, av[i]);
-#endif
-			if (is_command(buf)) {
+			if (is_command(av[i])) {
 				f = fopen(help_out, "ab");
 				fprintf( f,
 	"		-------------- %s help ---------------\n\n", av[i]);
 				fclose(f);
-				sprintf(buf, "%s%s --help 2>&1", bin, av[i]);
+				sprintf(buf, "%sbk %s --help 2>&1", bin, av[i]);
 				system(buf);
 			} else {
 				f = fopen(help_out, "ab");
@@ -49,11 +44,13 @@ main(int ac,  char **av)
 }
 
 int
-is_command(char *file)
+is_command(char *cmd)
 {
-#ifdef WIN32
-	return (exists(file));
-#else
-	return(executable(file));
-#endif
-}
+        int i;
+	extern  struct command cmdtbl[]; /* see bkmain.c */
+
+        for (i = 0; cmdtbl[i].name; i++) {
+                if (streq(cmdtbl[i].name, cmd)) return 1;
+        }
+        return 0;
+}      

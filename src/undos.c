@@ -7,7 +7,7 @@ void undos(char *s);
 extern void platformSpecificInit(char *);
 
 int
-main(int ac, char **av)
+undos_main(int ac, char **av)
 {
 	FILE	*f;
 	char	buf[1024];

@@ -3,7 +3,7 @@
 
 extern char *bin;
 
-main(int ac,  char **av)
+receive_main(int ac,  char **av)
 {
 	int c, new = 0;
 	char buf[MAXLINE], opts[MAXLINE] = "";
@@ -34,6 +34,6 @@ main(int ac,  char **av)
 		perror(path);
 		exit(1);
 	}
-	sprintf(buf, "%sunwrap | %stakepatch %s", bin, bin, opts);
+	sprintf(buf, "%sbk unwrap | %sbk takepatch %s", bin, bin, opts);
 	return (system(buf));
 }

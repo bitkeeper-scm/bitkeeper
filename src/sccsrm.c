@@ -11,13 +11,14 @@ int	sccs_rm(char *name, int useCommonDir);	/* XXX - mv to slib.c? */
  * usage: rm a b ....
  */
 int
-main(int ac, char **av)
+rm_main(int ac, char **av)
 {
 	char	*name;
 	int	c, errors = 0;
 	int 	useCommonDir = 0;
 
 	debug_main(av);
+	if (streq(basenm(av[0]), "rm")) useCommonDir = 1;
         while ((c = getopt(ac, av, "d")) != -1) {
                 switch (c) {
                     case 'd': useCommonDir++; break;

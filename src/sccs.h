@@ -510,6 +510,15 @@ typedef struct patch {
  */
 #define	CLOCK_DRIFT	(2*24*60*60)
 
+/*
+ * command struct for bk front end
+ */
+struct command
+{
+        char *name;
+        int (*func)(int, char **);
+};      
+
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
@@ -676,6 +685,7 @@ char	*logAddr();
 char	*project_name(); 
 void	init_aliases();
 char	*cname_user(char *username); 
+int	bkusers(int countOnly, int raw, FILE *out);
 
 typedef	char **globv;
 globv	read_globs(FILE *f, globv oldglobs);

@@ -19,7 +19,7 @@ new2old(delta *d, delta *stop)
 }
 
 int
-main(int ac, char **av)
+range_main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*e;

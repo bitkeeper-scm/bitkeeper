@@ -4,7 +4,7 @@
 extern char *bin;
 
 int
-main(int ac,  char **av)
+export_main(int ac,  char **av)
 {
 	int c, count;
 	char *rev = NULL;
@@ -60,10 +60,10 @@ usage:			fprintf(stderr,
 
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	if (rev) {
-		sprintf(buf, "%scset -D -t%s %s %s > %s",
+		sprintf(buf, "%sbk cset -D -t%s %s %s > %s",
 				bin, rev, include, exclude, file_rev);
 	} else {
-		sprintf(buf, "%scset -D -t+  %s %s> %s",
+		sprintf(buf, "%sbk cset -D -t+  %s %s> %s",
 					bin, include, exclude, file_rev);
 	}
 	system(buf);

@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-int	ascii(int);
+static int	ascii(int);
 
 /* Look for files containing binary data that BitKeeper cannot handle.
  * This consists of (a) NULs, (b) \n followed by \001, or (c) a line
@@ -13,7 +13,7 @@ int	ascii(int);
  */
 
 int
-main(int ac, char **av)
+isascii_main(int ac, char **av)
 {
 	if (ac != 2) {
 		fprintf(stderr, "usage: %s filename\n", av[0]);
@@ -21,7 +21,7 @@ main(int ac, char **av)
 	return (ascii(open(av[1], 0)));
 }
 
-int
+static int
 ascii(int fd)
 {
 	char	buf[8192];

@@ -5,27 +5,28 @@
 # have an installed BitKeeper.
 BK_BIN	= /usr/libexec/bitkeeper
 
-BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
-	  get gethost getuser key2rev lines lod prs range rechksum renumber \
-	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
-	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii resyncwrap r2c rename setlog getlog setup commit status \
-	  bkusers gethelp logaddr sendconfig logchangeset version help \
-	  parent clone send unwrap receive fix undo sendbug export
-SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
+BINS	= bk sccssh 
+BK_SUBS	= setup.o commit.o status.o version.o help.o bkusers.o parent.o \
+	  clone.o send.o unwrap.o receive.o fix.o undo.o sendbug.o export.o \
+	  setlog.o getlog.o gethelp.o logaddr.o sendconfig.o logchangeset.o \
+	  takepatch.o clean.o prs.o sccsmv.o sccsrm.o get.o delta.o sinfo.o \
+	  sccscat.o cset.o diffs.o sccslog.o rmdel.o getuser.o gethost.o \
+	  admin.o g2sccs.o key2rev.o lines.o sfiles.o sfio.o sids.o \
+	  check.o chksum.o fdiff.o adler32.o lod.o range.o rechksum.o \
+	  renumber.o stripdel.o smoosh.o undos.o what.o gca.o mtime.o \
+	  zone.o isascii.o resyncwrap.o r2c.o rename.o pending.o
+SCRIPTS	= rcs2sccs testfast import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build gzip_uuwrap ungzip_uuwrap
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
-LINKS	= ci co edit unedit unget
 GNU	= gnu
 DATA	= bitkeeper.config bkhelp.txt
 
-LINKTO	= ci delta co get edit get unedit clean unget clean fmtool fm \
-	  fm3tool fm3
+LINKTO	= fmtool fm fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
 
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) $(GNU)
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(PSCR) $(DATA) $(GNU)
 
 CFLAGS	= -g -O -Wall -Wno-parentheses -Wno-char-subscripts \
 	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
@@ -172,20 +173,20 @@ clobber distclean: clean-obj clean-bin clean-cfg clean-src
 rebuild: clean-obj clean-bin
 
 srcs src: FORCE
-	-get -s $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+	-bk get -s $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 wc: $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
-	-@get -se $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+	-@bk get -se $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
 
 tags: FORCE
 	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
-	do	if [ ! -f $$i ]; then get -s $$i; fi; \
+	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
 	done
 	@ctags -nm $(SRCS) $(HDRS)
 	@echo ctags completed
@@ -193,7 +194,7 @@ tags: FORCE
 
 TAGS: srcs
 	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
-	do	if [ ! -f $$i ]; then get -s $$i; fi; \
+	do	if [ ! -f $$i ]; then bk get -s $$i; fi; \
 	done
 	@etags $(SRCS) $(HDRS)
 	@echo etags completed
@@ -205,7 +206,7 @@ test tests rsh rshtest:
 	PREFER_RSH=yes $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-./get -q t/SCCS/s.t.* t/setup t/cleanup
+	-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
@@ -228,146 +229,10 @@ libsccs.a: $(SCCSOBJ) $(PORTOBJ)
 	$(AR) cr libsccs.a $(SCCSOBJ) $(PORTOBJ)
 	-$(RANLIB) libsccs.a
 
-zone: zone.o localtm.o port/platforminit.o
-	$(CC) $(CFLAGS) -o zone zone.o localtm.o port/platforminit.o
-fdiff: fdiff.o getopt.o purify.o mmap.o
-	$(CC) $(CFLAGS) fdiff.o getopt.o purify.o mmap.o -o fdiff $(LMDBM)
-
-range: range.o $(LIBS)
-	$(CC) $(CFLAGS) range.o $(LINK) -o range
-sccsmv: sccsmv.o $(LIBS)
-	$(CC) $(CFLAGS) sccsmv.o $(LINK) -o sccsmv
-sccsrm: sccsrm.o $(LIBS)
-	$(CC) $(CFLAGS) sccsrm.o $(LINK) -o sccsrm
-rechksum: rechksum.o $(LIBS)
-	$(CC) $(CFLAGS) rechksum.o $(LINK) -o rechksum
-cset: cset.o $(LIBS)
-	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
-rename: rename.o $(LIBS)
-	$(CC) $(CFLAGS) rename.o $(LINK) -o rename
-lod: lod.o $(LIBS)
-	$(CC) $(CFLAGS) lod.o $(LINK) -o lod
-rmdel: rmdel.o $(LIBS)
-	$(CC) $(CFLAGS) rmdel.o $(LINK) -o rmdel
-stripdel: stripdel.o $(LIBS)
-	$(CC) $(CFLAGS) stripdel.o $(LINK) -o stripdel
-gethost: gethost.o $(LIBS)
-	$(CC) $(CFLAGS) gethost.o $(LINK) -o gethost
-getuser: getuser.o $(LIBS)
-	$(CC) $(CFLAGS) getuser.o $(LINK) -o getuser
-takepatch: takepatch.o $(LIBS)
-	$(CC) $(CFLAGS) takepatch.o $(LINK) -o takepatch
-sfiles: sfiles.o $(LIBS)
-	$(CC) $(CFLAGS) sfiles.o $(LINK) -o sfiles
-renumber: renumber.o $(LIBS)
-	$(CC) $(CFLAGS) renumber.o $(LINK) -o renumber
-lines: lines.o $(LIBS)
-	$(CC) $(CFLAGS) lines.o $(LINK) -o lines
-what: what.o $(LIBS)
-	$(CC) $(CFLAGS) what.o $(LINK) -o what
 sccssh: sccssh.o rcs.o $(LIBS)
 	$(CC) $(CFLAGS) sccssh.o $(LINK) -o sccssh
-check: check.o $(LIBS)
-	$(CC) $(CFLAGS) check.o $(LINK) -o check
-sccslog: sccslog.o $(LIBS)
-	$(CC) $(CFLAGS) sccslog.o $(LINK) -o sccslog
-r2c: r2c.o $(LIBS)
-	$(CC) $(CFLAGS) r2c.o $(LINK) -o r2c
-gca: gca.o $(LIBS)
-	$(CC) $(CFLAGS) gca.o $(LINK) -o gca
-smoosh: smoosh.o $(LIBS)
-	$(CC) $(CFLAGS) smoosh.o $(LINK) -o smoosh
-g2sccs: g2sccs.o $(LIBS)
-	$(CC) $(CFLAGS) g2sccs.o $(LINK) -o g2sccs
-key2rev: key2rev.o $(LIBS)
-	$(CC) $(CFLAGS) key2rev.o $(LINK) -o key2rev
-admin: admin.o $(LIBS)
-	$(CC) $(CFLAGS) admin.o $(LINK) -o admin
-sids: sids.o $(LIBS)
-	$(CC) $(CFLAGS) sids.o $(LINK) -o sids
-prs: prs.o $(LIBS)
-	$(CC) $(CFLAGS) prs.o $(LINK) -o prs
-get: get.o $(LIBS)
-	$(CC) $(CFLAGS) get.o $(LINK) -o get
-sccscat: sccscat.o $(LIBS)
-	$(CC) $(CFLAGS) sccscat.o $(LINK) -o sccscat
-clean: clean.o $(LIBS)
-	$(CC) $(CFLAGS) clean.o $(LINK) -o clean
-sinfo: sinfo.o $(LIBS)
-	$(CC) $(CFLAGS) sinfo.o $(LINK) -o sinfo
-delta: delta.o $(LIBS)
-	$(CC) $(CFLAGS) delta.o $(LINK) -o delta
-diffs: diffs.o $(LIBS)
-	$(CC) $(CFLAGS) diffs.o $(LINK) -o diffs
-sfio: sfio.o $(LIBS)
-	$(CC) $(CFLAGS) sfio.o $(LINK) -o sfio
-adler32: adler32.o $(LIBS)
-	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
-undos: undos.o port/platforminit.o
-	$(CC) $(CFLAGS) undos.o port/platforminit.o -o undos
-chksum: chksum.o
-	$(CC) $(CFLAGS) chksum.o -o chksum
-mtime: mtime.o
-	$(CC) $(CFLAGS) mtime.o -o mtime
-logaddr: logaddr.o $(LIBS)
-	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
-setlog: setlog.o $(LIBS)
-	$(CC) $(CFLAGS) setlog.o $(LINK) -o setlog
-getlog: getlog.o $(LIBS)
-	$(CC) $(CFLAGS) getlog.o $(LINK) -o getlog
-setup: setup.o $(LIBS)
-	$(CC) $(CFLAGS) setup.o $(LINK) -o setup
-commit: commit.o $(LIBS)
-	$(CC) $(CFLAGS) commit.o $(LINK) -o commit
-status: status.o $(LIBS)
-	$(CC) $(CFLAGS) status.o $(LINK) -o status
-bkusers: bkusers.o $(LIBS)
-	$(CC) $(CFLAGS) bkusers.o $(LINK) -o bkusers
-gethelp: gethelp.o $(LIBS)
-	$(CC) $(CFLAGS) gethelp.o $(LINK) -o gethelp
-sendconfig: sendconfig.o $(LIBS)
-	$(CC) $(CFLAGS) sendconfig.o $(LINK) -o sendconfig
-logchangeset: logchangeset.o $(LIBS)
-	$(CC) $(CFLAGS) logchangeset.o $(LINK) -o logchangeset
-version: version.o $(LIBS)
-	$(CC) $(CFLAGS) version.o $(LINK) -o version
-help: help.o $(LIBS)
-	$(CC) $(CFLAGS) help.o $(LINK) -o help
-parent: parent.o $(LIBS)
-	$(CC) $(CFLAGS) parent.o $(LINK) -o parent
-clone: clone.o $(LIBS)
-	$(CC) $(CFLAGS) clone.o $(LINK) -o clone
-send: send.o $(LIBS)
-	$(CC) $(CFLAGS) send.o $(LINK) -o send
-unwrap: unwrap.o $(LIBS)
-	$(CC) $(CFLAGS) unwrap.o $(LINK) -o unwrap
-receive: receive.o $(LIBS)
-	$(CC) $(CFLAGS) receive.o $(LINK) -o receive
-fix: fix.o $(LIBS)
-	$(CC) $(CFLAGS) fix.o $(LINK) -o fix
-undo: undo.o $(LIBS)
-	$(CC) $(CFLAGS) undo.o $(LINK) -o undo
-sendbug: sendbug.o $(LIBS)
-	$(CC) $(CFLAGS) sendbug.o $(LINK) -o sendbug
-export: export.o $(LIBS)
-	$(CC) $(CFLAGS) export.o $(LINK) -o export
-
-# Links.
-ci: delta
-	-rm -f ci
-	ln delta ci
-co: get
-	-rm -f co
-	ln get co
-edit: get
-	-rm -f edit
-	ln get edit
-unedit: clean
-	-rm -f unedit
-	ln clean unedit
-unget: clean
-	-rm -f unget
-	ln clean unget
+bk: bkmain.o ${BK_SUBS} $(LIBS)
+	$(CC) $(CFLAGS) bkmain.o ${BK_SUBS} $(LINK) -o bk
 
 # Scripts.
 rcs2sccs: rcs2sccs.perl substvars
@@ -380,13 +245,9 @@ testfast: testfast.perl substvars
 	chmod +x testfast.T
 	mv -f testfast.T testfast
 
-bk: bk.sh port/unix_platform.sh substvars 
-	./substvars port/unix_platform.sh bk.sh > bk
-	chmod +x bk
-
 bkhelp.txt: bkhelp.doc bk.ver
 	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
-	sed "s?@builder@?`./getuser`@`./gethost`?" | \
+	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkhelp.txt
 
 lodset: lodset.sh
@@ -405,7 +266,7 @@ stamp-ver:: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	) >bk.v
 	mv -f bk.v bk.ver
 	touch stamp-ver
-stamp-ver:: prs
+stamp-ver:: bk
 	touch stamp-ver
 
 uuwrap: uuwrap.sh substvars
@@ -535,7 +396,7 @@ install: install-nolinks
 	-set -e; \
 	for file in $(BINLINKS); \
 	do	rm -f /usr/bin/$$file; \
-		ln -s $(BK_BIN)/$$file /usr/bin/$$file; \
+		ln -s $(BK_BIN)/bk /usr/bin/$$file; \
 	done
 	-if [ ! -d /var/bitkeeper ]; \
 	then	mkdir /var/bitkeeper; chmod 777 /var/bitkeeper; \
@@ -547,7 +408,7 @@ install-nolinks: all
 	if [ ! -d $(BK_BIN)/t ]; \
 	then	mkdir $(BK_BIN)/t; \
 	fi
-	-./get -q t/SCCS/s.t.* t/setup t/cleanup
+	-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
 	cp -f t/doit t/t.* t/setup t/cleanup $(BK_BIN)/t
 	./chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup t/cleanup \
 		| sort > $(BK_BIN)/MANIFEST

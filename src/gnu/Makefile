@@ -11,7 +11,7 @@ all: os
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
-		cd $$i; ../../get -q checkout; sh checkout; \
+		cd $$i; ../../bk get -q checkout; sh checkout; \
 		cd $$OS; test -f Makefile || ../configure $(CONFIG); \
 		$(MAKE) \
 		); \
@@ -25,7 +25,7 @@ install: all
 	@for i in $(BINS); \
 	do	D=`dirname $$i`; \
 		F=`basename $$i`; \
-		(cd $$D && ../../../chksum $$F); \
+		(cd $$D && ../../../bk chksum $$F); \
 	done >> $(BK_BIN)/MANIFEST; \
 
 clobber clean clean-obj: os

@@ -48,7 +48,7 @@ usage: diffs [-acDMPsuU] [-d<d>] [-r<r>] [files...]\n\n\
 ";
 
 int
-main(int ac, char **av)
+diffs_main(int ac, char **av)
 {
 	sccs	*s;
 	int	all = 0, flags = DIFF_HEADER|SILENT, c, rc;

@@ -34,7 +34,7 @@ int	newrev(sccs *s, pfile *pf);
 project	*proj;
 
 int
-main(int ac, char **av)
+delta_main(int ac, char **av)
 {
 	sccs	*s;
 	int	iflags = INIT_SAVEPROJ;
@@ -66,6 +66,9 @@ main(int ac, char **av)
 		isci = 1;
 	} else if (streq(name, "delta")) {
 		dflags = DELTA_FORCE;
+	} else if (streq(name, "new")) {
+		dflags |= NEWFILE;
+		sflags |= SF_NODIREXPAND;
 	}
 
 	if (ac > 1 && streq("--help", av[1])) {
