@@ -492,9 +492,9 @@ bk resync $Q $HERE/project $HERE/copy
 bk resolve -t $L $Q $HERE/copy
 if [ ! -f $HERE/copy/src/sub/SCCS/s.delete.c ]; then echo failed; exit 1; fi
 bk rm sub/delete.c
-if [ ! -f "$HERE/project/BitKeeper/deleted/SCCS/s..del-delete.c" ]
-then echo failed; exit 1;
-fi
+#if [ ! -f "$HERE/project/BitKeeper/deleted/SCCS/s..del-delete.c" ]
+ls $HERE/project/BitKeeper/deleted/SCCS | grep -q "^s..del-delete.c"
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk co $Q -l merge.c
 sed -e"s/111/111-new/" merge.c > merge.tmp
 mv merge.tmp merge.c
@@ -508,7 +508,8 @@ bk ci $Q -y merge.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
 bk resolve $L $Q -a -t $HERE/copy
-if [ ! -f "$HERE/copy/BitKeeper/deleted/SCCS/s..del-delete.c" ]
+ls $HERE/copy/BitKeeper/deleted/SCCS | grep -q "^s..del-delete.c"
+if [ $? -ne 0 ]
 then	echo failed to delete delete.c;
 	pwd
 	bk _find .| grep "delete" 

@@ -73,6 +73,7 @@ int loggingto_main(int, char **);
 int mail_main(int, char **);
 int makepatch_main(int, char **);
 int merge_main(int, char **);
+int converge_main(int, char **);
 int mklock_main(int, char **);
 int mtime_main(int, char **);
 int mv_main(int, char **);
@@ -132,6 +133,7 @@ struct command cmdtbl[] = {
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
+	{"_converge", converge_main},
 	{"_mail", mail_main},
 	{"_get", get_main},
 	{"_sortmerge", sortmerge_main},
@@ -344,6 +346,10 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 	int	i, j, flags, ret;
 	char	cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
+	static	int trace = -1;
+
+	if (trace == -1) trace = getenv("BK_TRACE") != 0;
+	if (trace) fprintf(stderr, "RUN bk %s\n", prog);
 
 	/*
 	 * look up the internal command 
@@ -354,7 +360,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 			return (ret);
 		}
 	}
-	unless(is_bk) {
+	unless (is_bk) {
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
 		return (1);
 	}

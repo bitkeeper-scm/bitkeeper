@@ -24,7 +24,7 @@ private int	do_commit(c_opts opts, char *sym,
 int
 commit_main(int ac, char **av)
 {
-	int	c, rc, doit = 0, force = 0, getcomment = 1;
+	int	c, doit = 0, force = 0, getcomment = 1;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 	char	commentFile[MAXPATH], pendingFiles[MAXPATH];
 	char	*sym = 0;
@@ -115,7 +115,7 @@ commit_main(int ac, char **av)
 		system(buf);
 	}
 	do_clean(s_cset, SILENT);
-	if (doit) return(do_commit(opts, sym, pendingFiles, commentFile));
+	if (doit) return (do_commit(opts, sym, pendingFiles, commentFile));
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
@@ -213,6 +213,24 @@ ok_commit(int l, int alreadyAsked)
 }
 
 private int
+pending(char *sfile)
+{
+	sccs	*s = sccs_init(sfile, 0, 0);
+	delta	*d;
+	int	ret;
+
+	unless (s) return (0);
+	unless (s->tree) {
+		sccs_free(s);
+		return (0);
+	}
+	d = sccs_top(s);
+	ret = (d->flags & D_CSET) == 0;	/* pending if not set */
+	sccs_free(s);
+	return (ret);
+}
+
+private int
 do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
@@ -224,74 +242,34 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	delta	*d;
 	FILE 	*f;
 
-	
-	/*
-	 * Auto upgarde old logging_ok file to new logging_ok file
-	 * which has a cset-drived root key
-	 */
-	if (!opts.resync && !opts.no_autoupgrade) {
-		s = sccs_init(LOGGING_OK, 0, 0);
-		if (s && s->tree && !sccs_hasCsetDerivedKey(s)) {
-			char buf2[MAXPATH], buf3[MAXPATH], buf4[MAXPATH];
-
-			unless (HAS_GFILE(s)) {
-				sccs_get(s, 0, 0 ,0 ,0, SILENT, "-");
-			}
-			sccs_free(s); s = 0;
-			assert(exists(GLOGGING_OK));
-			mkdirp("BitKeeper/tmp/SCCS"); 
-			sprintf(buf, "BitKeeper/tmp/SCCS/%s",
-							basenm(LOGGING_OK));
-			if (rename(LOGGING_OK, buf)) {
-				fprintf(stderr,
-					"cannot move %s\n", LOGGING_OK);
-				perror(buf);
-				return (1);
-			}
-			if (sccs_rm(buf, buf2, 1)) {
-				fprintf(stderr, "Cannot \"bk rm %s\"\n", buf);
-				return (1);
-			}
-
-			/* becuase sccs_rm removed empty dir */
-			mkdirp("BitKeeper/tmp");
-
-			assert(exists(GLOGGING_OK));
-			assert(!exists(LOGGING_OK));
-			if (system("bk new -q " GLOGGING_OK)) {
-				fprintf(stderr,
-					"cannot \"bk new %s\"\n", GLOGGING_OK);
-				return (1);
-			}
-
-			/*
-			 * Add the old and new logging_ok file to 
-		  	 * the pendingFiles
-			 */
-			gettemp(buf3, "pending1");
-			sprintf(buf, "bk sfiles -pC %s %s >> %s",
-					    LOGGING_OK, buf2, buf3);
-			system(buf);
-			gettemp(buf4, "pending2");
-			sprintf(buf, "egrep -v \"^%s@[^@]*$\" %s > %s",
-					LOGGING_OK, pendingFiles, buf4);
-			system(buf);
-			sprintf(buf, "sort -u %s %s > %s", 
-						buf3, buf4, pendingFiles);
-			system(buf);
-			unlink(buf3);
-			unlink(buf4);
-		}
-		if (s) sccs_free(s);
-	}
-
-	l =  logging(0, 0, 0);
+	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
 		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
+	if (pending(LOGGING_OK)) {
+		int	len = strlen(LOGGING_OK);
 
+		/*
+		 * Redhat 5.2 cannot handle opening a file
+		 * in both read and write mode fopen(file, "rt+") at the
+		 * same time. Win32 is likely to have same problem too
+		 * So we open the file in read mode close it and re-open
+		 * it in write mode
+		 */
+		f = fopen(pendingFiles, "rb");
+		assert(f);
+		while (fnext(buf, f)) {
+			if (strneq(LOGGING_OK, buf, len) && buf[len] == '@') {
+				goto out;
+			}
+		}
+		fclose (f);
+		f = fopen(pendingFiles, "ab");
+		fprintf(f, "%s@+\n", LOGGING_OK);
+out:		fclose(f);
+	}
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
 	sprintf(buf, "bk cset %s %s %s %s%s < %s",
 		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,

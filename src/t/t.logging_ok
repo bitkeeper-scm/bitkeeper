@@ -14,68 +14,31 @@
 
 echo $N Create two copies of a repository ...........................$NL
 no_logging project
-bk clone $Q $HERE/project $HERE/old
 bk clone $Q $HERE/project $HERE/copy
 echo OK
-echo $N Create regular logging_ok file w/ cset based key ............$NL
+echo $N Create two different logging_ok files .......................$NL
 cd $HERE/project/BitKeeper/etc
-# Creat a logging_ok file with a cset-derived root key
+cat > logging_ok <<EOF
+lm@bitmover.com
+lm@work.bitmover.com
+awc@etp3.bitmover.com
+EOF
+bk new $Q logging_ok
+bk commit $Q -ywhatever
+cd $HERE/copy/BitKeeper/etc
 cat > logging_ok <<EOF
 lm@lm.bitmover.com
 beth@work.bitmover.com
 EOF
 bk new $Q logging_ok
-CSET_DERIVED_KEY=`bk prs -h -r1.0 -d":ROOTKEY:\n" logging_ok`
 bk commit $Q -ywhatever
-echo OK
-
-echo $N Test auto upgrade of old logging_ok file ....................$NL
-cd $HERE/old/BitKeeper/etc
-# Creat a logging_ok file outside BitKeepr/etc to
-# get a non-cset-derived root key
-cat > ../logging_ok <<EOF
-lm@bitmover.com
-lm@work.bitmover.com
-awc@etp3.bitmover.com
-EOF
-bk new $Q ../logging_ok
-# mv it to BitKeeper/etc and fix up the path
-sed -e's?cPBitKeeper/logging_ok?cPBitKeeper/etc/logging_ok?' \
-						../SCCS/s.logging_ok > X
-bk undos X > SCCS/s.logging_ok
-rm -f ../SCCS/s.logging_ok
-bk admin -z logging_ok
-bk commit $Q -ywhatever
-KEY=`bk prs -h -r1.0 -d":ROOTKEY:\n" logging_ok`
-if [ X$KEY != X$CSET_DERIVED_KEY ]; then echo failed; exit 1; fi
-echo OK
-
-echo $N Create a old logging_ok file w non-cset base key ............$NL
-cd $HERE/copy/BitKeeper/etc
-# Creat a logging_ok file outside BitKeepr/etc to
-# get a non-cset-derived root key
-cat > ../logging_ok <<EOF
-lm@bitmover.com
-lm@work.bitmover.com
-awc@etp3.bitmover.com
-EOF
-bk new $Q ../logging_ok
-# mv it to BitKeeper/etc and fix up the path
-sed -e's?cPBitKeeper/logging_ok?cPBitKeeper/etc/logging_ok?' \
-						../SCCS/s.logging_ok > X
-bk undos X > SCCS/s.logging_ok
-rm -f ../SCCS/s.logging_ok
-bk admin -z logging_ok
-bk commit -A $Q -ywhatever
-KEY=`bk prs -h -r1.0 -d":ROOTKEY:\n" logging_ok`
-if [ X$KEY = X$CSET_DERIVED_KEY ]; then echo failed; exit 1; fi
 echo OK
 
 # Save it so we can try the other direction to run through both code paths
 cd $HERE
 tar cf TAR project copy
 
-echo $N Pull, should union the data .................................$NL
+echo $N Pull, should union the data and leave one file ..............$NL
 cd $HERE/copy
 bk pull -t $Q
 bk get $Q BitKeeper/etc/logging_ok
@@ -83,21 +46,20 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF  > X
+cat <<EOF  > WANT
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
-diff X BitKeeper/etc/logging_ok > DIFFS
+diff WANT BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
-	cat DIFFS
+	echo WANT vs GOT
+	sdiff -w80 WANT BitKeeper/etc/logging_ok
 	exit 1
 fi
-KEY=`bk prs -h -r1.0 -d":ROOTKEY:\n" BitKeeper/etc/logging_ok`
-if [ X$KEY != X$CSET_DERIVED_KEY ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Same thing, in opposite direction ...........................$NL
@@ -124,8 +86,6 @@ then	echo failed to union the data in the file
 	cat DIFFS
 	exit 1
 fi
-KEY=`bk prs -h -r1.0 -d":ROOTKEY:\n" BitKeeper/etc/logging_ok`
-if [ X$KEY != X$CSET_DERIVED_KEY ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Paranoid - make sure the push works .........................$NL
@@ -150,8 +110,6 @@ then	echo failed to union the data in the file
 	cat DIFFS
 	exit 1
 fi
-KEY=`bk prs -h -r1.0 -d":ROOTKEY:\n" BitKeeper/etc/logging_ok`
-if [ X$KEY != X$CSET_DERIVED_KEY ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Update both copies of the same file, should automerge .......$NL
@@ -189,8 +147,7 @@ diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
+	bk prs -h '-d:I: :KEY:\n' BitKeeper/etc/logging_ok
 	exit 1
 fi
-KEY=`bk prs -h -r1.0 -d":ROOTKEY:\n" BitKeeper/etc/logging_ok`
-if [ X$KEY != X$CSET_DERIVED_KEY ]; then echo failed; exit 1; fi
 echo OK

@@ -68,7 +68,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c = getopt(ac, av,
-			   "1acD:E|fg;GhI;ilm|M;npPqRrS;suy|YZ|")) != -1) {
+			   "1acdD:E|fg;GhI;ilm|M;npPqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case '1': iflags |= INIT_ONEROOT; break;
@@ -111,6 +111,8 @@ comment:		comments_save(optarg);
 			dflags &= ~DELTA_FORCE;
 			break;
 		    case 'c': iflags |= INIT_NOCKSUM; break;
+		    case 'd': /* internal interface, do not document */
+			      dflags |= DELTA_NOPENDING; break;
 		    case 'D': diffsFile = optarg;
 			      sflags = ~(SF_GFILE | SF_WRITE_OK);
 			      break;

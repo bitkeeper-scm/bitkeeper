@@ -91,7 +91,8 @@ if [ -f src/SCCS/s.foo ]
 then	echo Failed to remove file
 	exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-foo.c ]
+ls BitKeeper/deleted/SCCS | grep -q "^s..del-foo.c" 
+if [ $? -ne 0 ]
 then	echo Can not find deleted file
 	exit 1
 fi
@@ -157,11 +158,24 @@ bk export -x $HERE/B
 cd $HERE
 rm B/BitKeeper/etc/logging_ok
 diff -Nur A B > P
+rm -rf SAVE
+cp -rp project SAVE
 echo no | bk import $Q -tpatch P project > OUT 2>&1
-grep -q "moving/removing file in BitKeeper/etc is ileggal" OUT
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-test -f $HERE/project/BitKeeper/etc/SCCS/s.logging_ok || {
-	echo failed
+grep -q 'Bitkeeper is aborting this commit' OUT || {
+	echo failed to produce error message
+	cat OUT
+	exit 1
+}
+cd $HERE
+echo yes | bk import $Q -tpatch P SAVE > OUT 2>&1
+grep -q 'Creating changeset for P' OUT || {
+	echo failed to produce OK message
+	cat OUT
+	exit 1
+}
+cd SAVE/BitKeeper
+test -f etc/SCCS/s.logging_ok || {
+	echo failed to preserve logging ok file
 	exit 1
 }
 echo OK

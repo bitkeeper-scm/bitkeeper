@@ -30,7 +30,6 @@ extern	char	*bin;
 private	void	commit(opts *opts);
 private	void	conflict(opts *opts, char *rfile);
 private	int	create(resolve *rs);
-private	int	create(resolve *rs);
 private	void	edit_tip(resolve *rs, char *sf, delta *d, char *rf, int which);
 private	void	freeStuff(opts *opts);
 private	int	nameOK(opts *opts, sccs *s);
@@ -47,7 +46,6 @@ private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
-private void	auto_sortmerge(resolve *rs);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj);
 private int	writeCheck(sccs *s, MDBM *db);
@@ -169,8 +167,6 @@ passes(opts *opts)
 	opts->local_proj = proj_init(0);
 	chdir(ROOT2RESYNC);
 	opts->resync_proj = proj_init(0);
-
-	chdir(ROOT2RESYNC);
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "Verifying consistency of the RESYNC tree...\n");
@@ -1837,11 +1833,6 @@ err:		resolve_free(rs);
 		return;
 	}
 
-	if (streq(LOGGING_OK, rs->s->sfile)) {
-		auto_sortmerge(rs);
-		resolve_free(rs);
-		return;
-	}
 	if (opts->automerge) {
 		automerge(rs, 0);
 		resolve_free(rs);
@@ -1963,20 +1954,6 @@ automerge(resolve *rs, names *n)
 }
 
 /*
- * Sort merge two files, i.e we just union the data.
- */
-private void
-auto_sortmerge(resolve *rs)
-{
-	char *tmp;
-
-	tmp = rs->opts->mergeprog; 	/* save */
-	rs->opts->mergeprog = "_sortmerge";
-	automerge(rs, 0);
-	rs->opts->mergeprog = tmp;	/* restore */
-}
-
-/*
  * Figure out which delta is the branch one and merge it in.
  */
 int
@@ -2083,8 +2060,6 @@ pendingEdits()
 
 /*
  * Commit the changeset.
- *
- * XXX - need to check logging.
  */
 private	void
 commit(opts *opts)
@@ -2271,7 +2246,6 @@ pass4_apply(opts *opts)
 	/*
 	 * Pass 4b.
 	 * Save the list of files and then remove them.
-	 * XXX - need to be positive that fflush works.
 	 */
 	if (size(BACKUP_LIST) > 0) {
 		if (system("bk sfio -omq < " BACKUP_LIST " > " BACKUP_SFIO)) {
