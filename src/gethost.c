@@ -16,5 +16,7 @@ gethost_main()
 	host = sccs_gethost();
 	if ((host == NULL) || (*host == '\0')) return (1);
 	printf("%s\n", host);
+	/* make isure we have a good domain name */
+	if (strchr(host, '.') == NULL) return (1);
 	return (0);
 }
