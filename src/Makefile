@@ -445,7 +445,7 @@ mkindex: gui/mkindex.tcl substvars
 # ATT SCCS doesn't respect the stored file mode.
 config.status: configure
 	chmod +x configure
-	./configure --no-create --bindir=$(BK_BIN)
+	./configure --quiet --no-create --bindir=$(BK_BIN)
 
 config.h: stamp-h
 stamp-h: config.h.in config.status

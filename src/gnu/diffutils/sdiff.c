@@ -27,10 +27,8 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 /* Size of chunks read from files which must be parsed into lines. */
 #define SDIFF_BUFSIZE ((size_t) 65536)
 
-/* Default name of the diff program */
-#ifndef DIFF_PROGRAM
-#define DIFF_PROGRAM "/usr/bin/diff"
-#endif
+#undef DIFF_PROGRAM
+#define DIFF_PROGRAM "diff"
 
 /* Users' editor of nonchoice */
 #ifndef DEFAULT_EDITOR_PROGRAM
