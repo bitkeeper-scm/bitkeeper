@@ -31,10 +31,10 @@ except it marks added lines)
 Print examples of all 4 output formats from 
 .B smerge
 .tp
--B \-a
+.B \-a
 Enable automerging of output
 .tp
--B \-f
+.B \-f
 Enable fdiff output.  (Used internally by 
 .B  fm3merge
 )
@@ -45,6 +45,13 @@ by local and remove users.
 .tp
 .B \-s
 Show sequence numbers in output
+.tp
+.B \-c
+Enable experimental content merger.  This example regions of conflict
+regions modified on both sides are unchanged on the other, a automerge
+is performed.  Requires
+.Bc \-a
+ . 
 .tp
 .OPTreq \-r range
 When given a range of the format 'start..end' it limits the output to

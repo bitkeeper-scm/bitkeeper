@@ -9,6 +9,7 @@ private int	fdiff_resolve_conflict(char **lines[3]);
 private char	**unidiff(char **gca, char **new);
 private void	show_examples(void);
 private	int	parse_range(char *range, int *start, int *end);
+private int	do_contentmerge(char **lines[3]);
 
 enum {
 	MODE_GCA,
@@ -31,6 +32,7 @@ private	int	automerge = 0;
 private	int	mode = MODE_GCA;
 private	int	show_seq;
 private	int	merge_common = 1;
+private	int	merge_content;
 private	int	fdiff;
 private	FILE	*fl, *fr;
 
@@ -44,7 +46,7 @@ smerge_main(int ac, char **av)
 	int	start = 0, end = 0;
 	int	ret;
 
-	while ((c = getopt(ac, av, "23Aaefhnr:s")) != -1) {
+	while ((c = getopt(ac, av, "23Aacefhnr:s")) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -75,6 +77,9 @@ smerge_main(int ac, char **av)
 			break;
 		    case 's': /* show sequence numbers */
 			show_seq = 1;
+			break;
+		    case 'c': /* experimental content merge */
+			merge_content = 1;
 			break;
 		    case 'h': /* help */
 		    default:
@@ -289,6 +294,7 @@ do_automerge(char **lines[3])
 			EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
 			return (1);
 		}
+		if (merge_content) if (do_contentmerge(lines)) return (1);
 	}
 	return (0);
 }
@@ -623,6 +629,106 @@ parse_range(char *range, int *start, int *end)
 	}
 	return(0);
 }
-	
-	
 
+private char **
+lines_modified(char **diff)
+{
+	char	**out = 0;
+	int	i;
+	int	saw_deletes = 0;
+	int	saw_adds = 0;
+
+	EACH (diff) {
+		switch (diff[i][0]) {
+		    case ' ': break;
+		    case '-':
+			if (saw_adds) goto bad;
+			saw_deletes = 1;
+			out = addLine(out, strdup(diff[i]));
+			break;
+		    case '+':
+			unless (saw_deletes) goto bad;
+			saw_adds = 1;
+			break;
+		}
+	}
+	return (out);
+ bad:
+	freeLines(out);
+	return (0);
+}
+
+private int
+are_unmodified(char **diff, char **lines)
+{
+	int	i;
+	int	lcnt = 1;
+	int	s;
+
+	s = seq(lines[lcnt]);
+	EACH (diff) {
+		if (s < seq(diff[i])) return (0);
+		if (s == seq(diff[i])) {
+			if (diff[i][0] != ' ') return (0);
+			++lcnt;
+			s = seq(lines[lcnt]);
+			unless (s) return (1);
+		}
+	}
+	return (0);
+}
+	
+private int
+do_contentmerge(char **lines[3])
+{
+	char	**left, **right;
+	char	**modified;
+	int	i;
+	int	ret = 0;
+	int	r = 1;
+	int	ok;
+
+	left = unidiff(lines[GCA], lines[LOCAL]);
+	right = unidiff(lines[GCA], lines[REMOTE]);
+	
+	modified = lines_modified(left);
+	unless (modified) goto bad;
+	ok = are_unmodified(right, modified);
+	freeLines(modified);
+	unless (ok) goto bad;
+
+	modified = lines_modified(right);
+	unless (modified) goto bad;
+	ok = are_unmodified(left, modified);
+	freeLines(modified);
+	unless (ok) goto bad;
+	
+	/* we are good to go, do merge */
+	EACH(left) {
+		while (VALID(right, r) && seq(right[r]) < seq(left[i])) {
+			if (right[i][0] == '+') printline(right[r] + 1, 0);
+			++r;
+		}
+		if (VALID(right, r) && seq(right[r]) == seq(left[i])) {
+			/* deleted line, ignore */
+			if (!((left[i][0] == '-' && right[r][0] == ' ') ||
+			      (left[i][0] == ' ' && right[r][0] == '-'))) {
+				printf("ERROR:\n\t%s\t%s", left[i], right[r]);
+				exit(2);
+			}
+			r++;
+		} else {
+			assert(left[i][0] == '+');
+			printline(left[i] + 1, 0);
+		}
+	}
+	while (VALID(right, r)) {
+		if (right[r][0] == '+') printline(right[r] + 1, 0);
+		++r;
+	}
+	ret = 1;
+ bad:
+	freeLines(left);
+	freeLines(right);
+	return (ret);
+}
