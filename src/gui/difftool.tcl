@@ -276,13 +276,15 @@ proc usage {} \
 proc getFiles {} \
 {
 	global argv0 argv argc dev_null lfile rfile tmp_dir
-	global gc tcl_platform tmps menu rev1 rev2
+	global gc tcl_platform tmps menu rev1 rev2 Diffs DiffsEnd
 
 	if {$argc > 3} { usage }
 	set files [list]
 	set tmps [list]
 	set rev1 ""
 	set rev2 ""
+	set Diffs(0) 1.0
+	set DiffsEnd(0) 1.0
 
 	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
 	#puts "argc=($argc) argv=($argv)"
@@ -459,23 +461,25 @@ proc pickFile {lf rf fname item {lr {}} {rr {}}} \
 # Get the previous file when the button is selected -- update the arrow state
 proc prevFile {} \
 {
-	global menu
+	global menu lastFile
 
 	if {$menu(selected) > 1} {
 		incr menu(selected) -1
 		.menu.fmb.menu invoke $menu(selected)
 		#puts "invoking $menu(selected)"
 		.menu.filePrev configure -state normal
+		return 1
 	} else {
 		.menu.filePrev configure -state disabled
 		.menu.fileNext configure -state normal
 	}
+	return 0
 }
 
 # Get the next file when the button is selected -- update the arrow state
 proc nextFile {} \
 {
-	global menu
+	global menu lastFile
 
 	if {$menu(selected) < $menu(max)} {
 		incr menu(selected)
