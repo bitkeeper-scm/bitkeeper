@@ -358,14 +358,19 @@ proc get {} \
 
 proc difftool {a b} \
 {
+	global	tmp_dir
+
 	set x [expr [winfo rootx .]+150]
 	set y [expr [winfo rooty .]+50]
-	exec bk difftool -geometry +$x+$y $a $b /tmp/difftool &
+	set marker [file join $tmp_dir difftool]
+	set pid [pid]
+	set marker "$marker-$pid"
+	exec bk difftool -geometry +$x+$y $a $b $marker & &
 	after 100
-	while {[file exists /tmp/difftool] == 0} {
+	while {[file exists $marker] == 0} {
 		after 500
 	}
-	file delete -force $a $b /tmp/difftool
+	file delete -force $a $b $marker
 	busy 0
 }
 
@@ -384,16 +389,18 @@ proc diff2 {fm} \
 		return
 	}
 	busy 1
-	set a [open "| get $getOpts -kPr$rev1 $file >$tmp_dir/$rev1 2>$dev_null" "w"]
-	set b [open "| get $getOpts -kPr$rev2 $file >$tmp_dir/$rev2 2>$dev_null" "w"]
+	set r1 [file join $tmp_dir $rev1]
+	set a [open "| get $getOpts -kPr$rev1 $file >$r1 2>$dev_null" "w"]
+	set r2 [file join $tmp_dir $rev2]
+	set b [open "| get $getOpts -kPr$rev2 $file >$r2 2>$dev_null" "w"]
 	catch { close $a; }
 	catch { close $b; }
 	if {$fm == 1} {
-		difftool $tmp_dir/$rev1 $tmp_dir/$rev2 
+		difftool $r1 $r2
 		return
 	}
 
-	set diffs [open "| diff $diffOpts $tmp_dir/$rev1 $tmp_dir/$rev2"]
+	set diffs [open "| diff $diffOpts $r1 $r2"]
 	set l 3
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	.p.bottom.t insert end "- $file version $rev1\n"
@@ -403,13 +410,13 @@ proc diff2 {fm} \
 	diffs $diffs $l
 	.p.bottom.t configure -state disabled
 	searchreset
-	file delete -force $tmp_dir/$rev1 $tmp_dir/$rev2
+	file delete -force $r1 $r2
 	busy 0
 }
 
 proc csetdiff2 {} \
 {
-	global file rev1 rev2 diffOpts dev_null bk_cset tmp_dir
+	global file rev1 rev2 diffOpts dev_null bk_cset
 
 	busy 1
 	set l 3
