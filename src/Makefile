@@ -7,8 +7,10 @@ LOG	:= $(shell echo LOG-`bk getuser`)
 OSTYPE  := $(shell bash -c 'echo $$OSTYPE')
 ifeq "$(OSTYPE)" "cygwin"
 	SYS=win32
+	EXE=.exe
 else
 	SYS=unix
+	EXE=
 endif
 
 # You can set this to anywhere you like and do a "build production" and you'll
@@ -137,7 +139,7 @@ LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
 LINKTO	= fm fmtool fm3 fm3tool
-BINLINKS= admin get delta unget rmdel prs
+BINLINKS= admin$(EXE) get$(EXE) delta$(EXE) unget$(EXE) rmdel$(EXE) prs$(EXE)
 # Note: $(XTRA) must be listed after "gnu"
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA)
 
@@ -274,7 +276,7 @@ clean clobber distclean: rebuild FORCE
 	-@cd ../man/man2help && $(MAKE) clobber
 
 rebuild:
-	-@rm -f *.bb *.bbg *.da *.gcov
+	-@rm -f *.bb *.bbg *.da *.gcov bklink.[eo]?? bk.res
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
 		$(TOMCRYPTOBJ)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
@@ -363,15 +365,17 @@ libsccs.a: $(OBJ) shell.o
 bk.res: win32/data/bk.rc win32/data/bk.ico
 	rc.exe -fo bk.res -r win32/data/bk.rc
 
+bklink: bklink.c
+	$(CC) bklink.c
+
 $(BK): bk.o $(LIBS) $(RESOURCE)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
 	if [ $(SYS) = win32 ]; \
-	then	$(MAKE) link; \
+	then	$(MAKE) bklink; \
 		for file in $(BINLINKS); \
 		do	rm -f $$file; \
-			cp link.exe $$file.exe; \
+			cp bklink.exe $$file; \
 		done; \
-		rm -f link.exe; \
 	else \
 		for file in $(BINLINKS); \
 		do	rm -f $$file; \
