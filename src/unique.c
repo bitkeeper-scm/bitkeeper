@@ -140,15 +140,25 @@ stale:					fprintf(stderr,
 	return (0);
 }
 
-
 int
 uniq_unlock()
 {
 	char	*tmp;
+	int	fd;
 
 	unless (tmp = lockHome()) return (-2);
-	if (unlink(tmp) != 0) perror(tmp);
-	assert(!exists(tmp));
+	if (unlink(tmp) == 0) return (0);
+	perror(tmp);
+	/* We hit a race on HPUX, be paranoid an be sure it is a race */
+	if ((fd = open(tmp, 0, 0)) >= 0) {
+		char	buf[20];
+
+		bzero(buf, sizeof(buf));
+		if (read(fd, buf, sizeof(buf)) > 0) {
+			assert(getpid() != atoi(buf));
+		}
+		close(fd);
+	}
 	return 0;
 }
 
