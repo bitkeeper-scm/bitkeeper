@@ -93,4 +93,3 @@ grep -q 'No write permission: src' OUT || {
 }
 chmod +w src
 echo OK
-cat OUT
