@@ -50,10 +50,18 @@ bk changes -afRnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project |
   bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 ) > GOT
 echo OK
 
-echo $N make sure bk send xfer tag correctly ........................$NL
+echo $N make sure bk send xfers tags correctly ......................$NL
 bk send $Q -u$HERE/project  - > $HERE/patch
 cd $HERE/project
-bk takepatch -qa -vv < $HERE/patch > /dev/null 2>&1
-bk prs -hn -d:TAG: | grep copy1 > /dev/null
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk lock -U
+bk takepatch -qa -vv < $HERE/patch > OUT 2>&1
+bk prs -hn -d:TAG: | grep copy1 > OUT2
+test $? -eq 0 || {
+	echo failed
+	echo TAKEPATCH
+	cat OUT
+	echo PRS
+	cat OUT2
+	exit 1
+}
 echo OK
