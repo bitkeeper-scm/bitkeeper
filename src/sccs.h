@@ -424,7 +424,7 @@ typedef struct delta {
 	char 	*symlink;		/* sym link target */
 	u32	xflags;			/* timesafe x flags */
 	/* In memory only stuff */
-	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
+	ser_t	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
 	time_t	date;			/* date - conversion from sdate/zone */
 	struct	delta *parent;		/* parent delta above me */
 	struct	delta *kid;		/* next delta on this branch */

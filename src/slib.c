@@ -1277,7 +1277,7 @@ scandiff(char *s, int *where, char *what, int *howmany)
  * Convert ascii 1.2.3.4 -> 1, 2, 3, 4
  */
 private inline int
-scanrev(char *s, u16 *a, u16 *b, u16 *c, u16 *d)
+scanrev(char *s, ser_t *a, ser_t *b, ser_t *c, ser_t *d)
 {
 	if (!isdigit(*s)) return (0);
 	*a = atoi_p(&s);
@@ -1368,7 +1368,7 @@ samebranch_bk(delta *a, delta *b, int bk_mode)
 private char *
 branchname(delta *d)
 {
-	u16	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
+	ser_t	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
 	static	char buf[6];
 
 	scanrev(d->rev, &a1, &a2, &a3, &a4);
@@ -1906,7 +1906,7 @@ sym2delta(sccs *s, char *sym)
 }
 
 private inline int
-samerev(u16 a[4], u16 b[4])
+samerev(ser_t a[4], ser_t b[4])
 {
 	return ((a[0] == b[0]) &&
 		(a[1] == b[1]) &&
@@ -1914,7 +1914,7 @@ samerev(u16 a[4], u16 b[4])
 		(a[3] == b[3]));
 }
 
-private u16	R[4];
+private ser_t	R[4];
 /*
  * This one uses the globals set up below.  This hack makes this library
  * !MT safe.  Which it wasn't anyway.
@@ -1975,8 +1975,8 @@ defbranch(sccs *s)
 delta *
 findrev(sccs *s, char *rev)
 {
-	u16	a = 0, b = 0, c = 0, d = 0;
-	u16	max = 0;
+	ser_t	a = 0, b = 0, c = 0, d = 0;
+	ser_t	max = 0;
 	delta	*e = 0, *f = 0;
 	char	buf[20];
 
@@ -2409,7 +2409,7 @@ private delta *
 getedit(sccs *s, char **revp)
 {
 	char	*rev = *revp;
-	u16	a = 0, b = 0, c = 0, d = 0;
+	ser_t	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
 	static	char buf[MAXREV];
 
@@ -2587,7 +2587,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 	char	*tmp, *g;
 	time_t	now = 0;
 	struct	tm *tm = 0;
-	u16	a[4];
+	ser_t	a[4];
 	int hasKeyword = 0, buf_size;
 #define EXTRA 1024
 
@@ -11289,7 +11289,7 @@ doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 {
 	char	tmp[10];
 
-	sertoa(tmp, (unsigned short) val);
+	sertoa(tmp, (ser_t) val);
 	fputdata(s, pre, out);
 	fputdata(s, tmp, out);
 	fputdata(s, post, out);
