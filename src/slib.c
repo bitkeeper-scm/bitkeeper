@@ -3461,18 +3461,18 @@ sccs2name(char *sfile)
  * Make the sccs dir if we need one.
  */
 void
-mksccsdir(sccs *sc)
+mksccsdir(char *sfile)
 {
-	char	*s = rindex(sc->sfile, '/');
+	char	*s = rindex(sfile, '/');
 
 	if (!s) return;
-	if ((s >= sc->sfile + 4) &&
+	if ((s >= sfile + 4) &&
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
 #ifdef SPLIT_ROOT
-		unless (exists(sc->sfile)) mkDir(sc->sfile);
+		unless (exists(sfile)) mkDir(sfile);
 #else
-		mkdir(sc->sfile, 0775);
+		mkdir(sfile, 0775);
 #endif
 		*s = '/';
 	}
@@ -5178,7 +5178,8 @@ inline int
 isAscii(c)
 {
 	if (c & 0x60) return (1);
-	return (c == '\n') || (c == '\b') || (c == '\r') || (c == '\t');
+	return (c == '\f') || 
+	    (c == '\n') || (c == '\b') || (c == '\r') || (c == '\t');
 }
 
 /*
@@ -6067,6 +6068,7 @@ openInput(sccs *s, int flags, FILE **inp)
 	    default:
 	    case E_ASCII:
 		mode = "rt"; /* read in text mode */
+		/* fall through, check if we are really ascii */
 	    case E_UUENCODE:
 		if (streq("-", file)) {
 			*inp = stdin;
@@ -7271,15 +7273,15 @@ sym_err:		error = 1; sc->state |= S_WARNED;
  * For large files, this is a win.
  */
 int
-sccs_admin(sccs *sc, int flags, int new_enc,
+sccs_admin(sccs *sc, int flags, int *new_encp,
 	admin *f, admin *l, admin *u, admin *s, char *text)
 {
 	FILE	*sfile = 0;
-	int	error = 0, locked, i, old_enc = 0;
+	int	new_enc, error = 0, locked, i, old_enc = 0;
 	char	*t;
 	BUF	(buf);
 
-	unless (new_enc) new_enc = E_ASCII;
+	new_enc = new_encp ? *new_encp : sc->encoding;
 	GOODSCCS(sc);
 	unless (flags & CHECKFILE) {
 		unless (locked = lock(sc, 'z')) {
@@ -8340,7 +8342,7 @@ sccs_delta(sccs *s, int flags, delta *prefilled, FILE *init, FILE *diffs)
 
 	assert(s);
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
-	if (flags & NEWFILE) mksccsdir(s);
+	if (flags & NEWFILE) mksccsdir(s->sfile);
 	bzero(&pf, sizeof(pf));
 	unless(locked = lock(s, 'z')) {
 		fprintf(stderr, "delta: can't get lock on %s\n", s->sfile);

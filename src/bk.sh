@@ -802,10 +802,14 @@ function help_sendbug {
 	cat <<EOF
     =============== BitKeeper bug reporting ===============
 
-Bugs are mailed to bitkeeper@bitmover.com .
+Bugs are mailed to bitkeeper.com's bug database.  The bug database
+will be made available at
+	
+	http://www.bitkeeper.com/bugs
 
-When reporting a bug, use "bk sendbug" to do so (which is currently 
-very lame but will improve soon).
+When reporting a bug, you can use "bk sendbug" or try
+
+	http://www.bitkeeper.com/bugs/bugreport.html
 
 If at all possible, include a reproducible test case.
 
@@ -882,7 +886,7 @@ EOF
 	# XXX - Make sure that they changed it.
 	${BIN}cset -i .
 	${BIN}admin -tDescription ChangeSet
-	rm -f Description
+	/bin/rm -f Description
 	cp ${BIN}/bitkeeper.config BitKeeper/etc/config
 	cd BitKeeper/etc
 	cat <<EOF
@@ -1081,11 +1085,11 @@ function unedit {
 }
 
 function mv {
-	sccsmv "$@"
+	bk sccsmv "$@"
 }
 
 function rm {
-	sccsrm "$@"
+	bk sccsrm "$@"
 }
 
 # Usage: undo [-f] [-F]
@@ -1281,9 +1285,9 @@ EOF
 	do	echo $N "(s)end, (e)dit, (q)uit? "
 		read x
 		case X$x in
-		    Xs*) mail -s "BitKeeper BUG" bitkeeper@bitmover.com \
+		    Xs*) mail -s "BitKeeper BUG" bitkeeper-bugs@bitmover.com \
 			    < /tmp/bug$$
-		 	 rm -f /tmp/bug$$
+		 	 /bin/rm -f /tmp/bug$$
 			 echo Your bug has been sent, thank you.
 	    	 	 exit 0;
 		 	 ;;
