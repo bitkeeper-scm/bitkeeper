@@ -60,10 +60,11 @@
 #define GET_DIFFTOT	0x00000800	/* hasDiffs() false if !TOT */
 #define	GET_FULLPATH	0x00000010	/* like GET_MODNAME but full relative */
 #define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
-#define	GET_SEQ		0x00000040	/* get -O: prefix with sequence no */
+#define	GET_SEQ		0x00000040	/* sccs_get: prefix with sequence no */
+#define	GET_LINENAME	0x00000080	/* get -O: prefix with line name */
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
-     GET_FULLPATH|GET_PREFIXDATE|GET_SEQ)
+     GET_FULLPATH|GET_PREFIXDATE|GET_SEQ|GET_LINENAME)
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */

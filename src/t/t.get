@@ -161,6 +161,10 @@ echo OK
 echo $N Make sure get -m works ......................................$NL
 if [ "`bk get $S -pm T`" != "1.1	HI" ]; then echo Failed.; exit 1; fi
 echo OK
+echo $N Make sure get -O works ......................................$NL
+name=`bk prs -r+ -hnd:MD5KEY: T`
+if [ "`bk get $S -pO T`" != "$name.1	HI" ]; then echo Failed.; exit 1; fi
+echo OK
 echo $N Make sure get -u works ......................................$NL
 if [ "`bk get $S -pu T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
 echo OK
