@@ -27,6 +27,10 @@ repository_locked(project *p)
 	unless (ret) {
 		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 		ret = exists(path) && !emptyDir(path);
+		unless (ret) {
+			sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+			ret = exists(path) && !emptyDir(path);
+		}
 	}
     	if (freeit) proj_free(p);
 	if (ret && getenv("BK_IGNORELOCK")) return (0);
@@ -52,18 +56,24 @@ repository_lockers(project *p)
 		return (0);
 	}
 	unless (repository_locked(p)) {
-		fprintf(stderr, "Entire repository is locked\n");
     		if (freeit) proj_free(p);
 		return (0);
 	}
 
+	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+	if (exists(path)) {
+		fprintf(stderr, "Entire repository is locked by:\n");
+		n++;
+		fprintf(stderr, "\tRESYNC directory.\n");
+	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	unless (D = opendir(path)) goto rd;
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
 		unless (isdigit(d->d_name[0])) continue;
+		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, d->d_name);
-		fprintf(stderr, "Write locker: %s%s\n",
+		fprintf(stderr, "\tWrite locker: %s%s\n",
 		    d->d_name, repository_stale(path, 0) ? " (stale)" : "");
 		n++;
 	}
@@ -76,8 +86,9 @@ rd:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	}
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
+		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, d->d_name);
-		fprintf(stderr, "Read  locker: %s%s\n",
+		fprintf(stderr, "\tRead  locker: %s%s\n",
 		    d->d_name, repository_stale(path, 0) ? " (stale)" : "");
 		n++;
 	}
