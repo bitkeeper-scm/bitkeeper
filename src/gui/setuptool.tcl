@@ -1,12 +1,12 @@
+#
 # setuptool - a tool for seting up a repository
 # Copyright (c) 2000 by Aaron Kushner; All rights reserved.
 #
 # %W%
 #
-#
 
 # Read descriptions for the config options
-source config.tcl
+source setup_messages.tcl
 
 set msg1 "You are about create a new repository.  You may do this exactly once
 for each project stored in BitKeeper.  If there already is a 
@@ -39,7 +39,7 @@ proc dialog { widgetname title trans  } \
 	toplevel $widgetname -class Dialog
 	wm title $widgetname $title
 
-	#only mark as transient on demang
+	#only mark as transient on demand
 	if { $trans } {
 		wm transient $widgetname
 
@@ -164,7 +164,7 @@ proc get_info {}  \
 	return
 }
 
-proc save_state {} \
+proc save_config_info {} \
 {
 	global st_cinfo env
 
@@ -203,8 +203,6 @@ proc read_bkrc {} \
 		     [string length $line]]
 	        set var [string trimleft $var]
 	        set var [string trimright $var]
-		#puts "$ln $line"
-		#puts "col $col key: ($key)"
 		set st_cinfo($key) $var
 
 		# tcl/tk has extremely shitty regexp support (ver <8.1)
@@ -214,9 +212,9 @@ proc read_bkrc {} \
 		#	set st_cinfo($key) $var
 	}
 
-	#foreach el [lsort [array names st_cinfo]] {
-	#	puts "$el = $st_cinfo($el)"
-	#}
+	foreach el [lsort [array names st_cinfo]] {
+		puts "$el = $st_cinfo($el)"
+	}
 
 	#return st_cinfo
 }
@@ -226,7 +224,9 @@ proc create_repo {} \
 	global st_cinfo env
 
 	puts "In create_repo"
-	save_state
+
+	save_config_info
+
 	return
 
 	set fid [open "|bk setup " "w"]
@@ -235,14 +235,12 @@ proc create_repo {} \
 
 }
 
-proc get_state {} \
+proc get_config_info {} \
 {
 	global env st_cinfo
 	puts "In get_state"
 
 	#catch { string compare "HOME" $env(HOME) } msg 
-	#puts "msg is $msg"
-	#if { $msg == 1 } \{
 
 	if {[ info exists env(HOME)] } {
 		puts "Home exists"
@@ -262,14 +260,9 @@ proc get_state {} \
 
 proc create_config {}  \
 {
-	global st_cinfo st_bk_cfg
+	global st_cinfo st_bk_cfg el
 
-	puts "In create_config"
-	get_state
-
-	#foreach el [lsort [array names st_cinfo]] {
-	#	puts "$el = $st_cinfo($el)"
-	#}
+	get_config_info
 
 	toplevel .c
 
@@ -286,98 +279,42 @@ proc create_config {}  \
 	frame .c.t.l
 	frame .c.t.e
 
-	# Roll this all into one loop. Gee, I really hate variables in
-	# tcl
-
-	label .c.t.l.des -text "description"
-	entry .c.t.e.des -width 30 -relief sunken -bd 2 -textvariable des
-
-	label .c.t.l.logok -text "logging OK (yes or no)"
-	entry .c.t.e.logok -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(logging_ok)
-	#bind  .c.t.e.logok  { .c.t.t insert insert $st_bk_cfg(logging) }
-
-	label .c.t.l.logserv -text "open logging server"
-	entry .c.t.e.logserv -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(logging)
-
-	label .c.t.l.seats -text "Number of Seats"
-	entry .c.t.e.seats -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(seats)
-
-	label .c.t.l.sec -text "Security"
-	entry .c.t.e.sec -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(security)
-
-	label .c.t.l.contact -text "Contact Name:"
-	entry .c.t.e.contact -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(contact)
-
-	label .c.t.l.email -text "Email:"
-	entry .c.t.e.email -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(email)
-
-	label .c.t.l.street -text "Street:"
-	entry .c.t.e.street -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(Street)
-
-	label .c.t.l.city -text "City:"
-	entry .c.t.e.city -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(City)
-
-	label .c.t.l.zip -text "Zip code/Postal Code:"
-	entry .c.t.e.zip -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(Postal)
-
-	label .c.t.l.country -text "Country:"
-	entry .c.t.e.country -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(Country)
-
-	label .c.t.l.phone -text "Phone:"
-	entry .c.t.e.phone -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(phone)
-
-	label .c.t.l.cell -text "Cell:"
-	entry .c.t.e.cell -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(cell)
-
-	label .c.t.l.pager -text "Pager:"
-	entry .c.t.e.pager -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(pager)
-
-	label .c.t.l.hours -text "Business Hours:"
-	entry .c.t.e.hours -width 30 -relief sunken -bd 2 \
-		-textvariable st_cinfo(business_hours)
-
 	button .c.t.b -text "Create Repository" -command create_repo
-
-	text .c.t.t -width 80 -height 20 -wrap word
-
-	bind c.t.e.sec <FocusIn> {\
-		.c.t.t insert insert st_bk_cfg(seats)
-	}
-	.c.t.t insert insert $st_bk_cfg(seats)
+	text .c.t.t -width 80 -height 10 -wrap word -background powderblue
 
 	pack .c.t.b -side bottom 
 	pack .c.t.t -side bottom
 	pack .c.t.l -side left
 	pack .c.t.e -side right
 
-	pack .c.t.e.des .c.t.e.logok .c.t.e.logserv .c.t.e.seats .c.t.e.sec \
-	     .c.t.e.contact .c.t.e.email -side top
+	foreach { description var } {
+		"description" des 
+		"logging OK (yes or no)" logging_ok
+		"open logging server" logging 
+		"Number of Seats" seats
+		"Security" security 
+		"Contact Name:" contact 
+		"Email" email
+		"Street" street "City" city 
+		"Zip/Postal Code" postal
+		"Country" country 
+		"Phone" phone "Pager" pager 
+		"Cell" cell
+		"Business Hours" business_hours } {\
 
-	pack .c.t.e.street .c.t.e.city .c.t.e.zip .c.t.e.country .c.t.e.phone \
-	     .c.t.e.cell .c.t.e.pager .c.t.e.hours -side top
+		    puts "desc: ($description) var: ($var)"
+		    label .c.t.l.$var -text "$description" -justify right
+		    entry .c.t.e.$var -width 30 -relief sunken -bd 2 \
+			    -textvariable st_cinfo($var)
 
-	pack .c.t.l.des .c.t.l.logok .c.t.l.contact .c.t.l.seats .c.t.l.sec \
-	     .c.t.l.logserv .c.t.l.email -side top -pady 1
-
-	pack .c.t.l.street .c.t.l.city .c.t.l.zip .c.t.l.country .c.t.l.phone \
-	     .c.t.l.cell .c.t.l.pager .c.t.l.hours -side top -pady 1
-
+		    pack .c.t.e.$var -side top
+		    pack .c.t.l.$var -side top -pady 1
+		    bind .c.t.e.$var <Motion> \
+			".c.t.t delete 1.0 end;\
+			.c.t.t insert insert \$st_bk_cfg($var)"
+	}
 
 	pack .c.t
-
 
 	return
 }
@@ -397,12 +334,9 @@ proc setup {} \
 	entry .s.t.e -width 30 -relief sunken -bd 2 \
 		-textvariable st_repository_name
 
-
 	pack .s.t.m1 -side top -expand 1 -fill both
 	pack .s.t.l .s.t.e -side left -pady 30 -padx 10
 	pack .s.t -fill both -expand 1
-	#pack .main .f1 .f2 -side top -expand y
-	#puts "Do you want to create a project"
 
 	# BUTTONS          0      1
 	dialog_bottom .s Continue Exit
@@ -415,7 +349,6 @@ proc setup {} \
 	}
 
 	return 0
-
 }
 
 proc main {} \
@@ -429,14 +362,14 @@ proc main {} \
 	#
 	# Make user accept license if environment var not set
 	#
-	catch { string compare "ACCEPTED" $env(IBK_LICENSE) } msg 
+	catch { string compare "ACCEPTED" $env(BK_LICENSE) } msg 
 	if { $msg != 0 } {
 		puts $msg
 		license_check
         }
 
 	if { [ setup ] == 0 } {
-		puts "not equal to zero"
+		puts "Setup step..."
 		create_config
 	} else {
 		puts "exiting"

@@ -1,0 +1,41 @@
+                            BitKeeper Cheat Sheet
+
+<>  mandatory
+[]  optional
+
+Repository Level Commands		Basic Version Control
+
+bk setup <repository>
+bk parent [repository]
+bk lock
+bk unlock
+
+Basic Version Control
+
+bk new <file>
+bk edit [file]
+bk ci
+bk co
+bk gone <file>
+
+Synchronizing Repositories
+
+bk push
+bk pull
+bk merge
+bk resolve
+
+Reporting
+
+bk prs
+bk sccslog
+bk changes
+bk pending
+
+Moving Files
+
+bk mv <source> <destination>
+
+Viewing changes
+
+bk diff
