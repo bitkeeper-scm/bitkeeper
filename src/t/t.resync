@@ -331,6 +331,7 @@ bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy > /dev/null 2>&1
 bk resolve $Q $HERE/copy
 bk rm delete.c
+if [ ! -f "SCCS/s..del-delete.c" ]; then echo failed; exit 1; fi
 bk co $Q -l merge.c
 sed -e"s/111/111-new/" merge.c > merge.tmp
 mv merge.tmp merge.c
@@ -349,7 +350,12 @@ bk resolve $Q -f - $HERE/copy <<EOF > /dev/null 2>&1
 m
 C
 EOF
-if [ ! -f "SCCS/s..del-delete.c" ]; then echo faild; exit 1; fi
+if [ ! -f "SCCS/s..del-delete.c" ]
+then	echo failed to delete delete.c;
+	pwd
+	find . -name '*delete*' -print
+	exit 1
+fi
 bk co $Q merge.c
 ${CAT} > merge.ref <<EOF
 111-new

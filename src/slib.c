@@ -72,6 +72,7 @@ private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 delta *		sccs_kid(sccs *s, delta *d);  /* In range.c */
 private	delta*	getCksumDelta(sccs *s, delta *d);
+private	void	fitCounters(char *buf, int a, int d, int s);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -1467,7 +1468,7 @@ idFile(sccs *s)
 	char	*root;
 	
 	unless (root = sccs_root(s, 0)) return (0);
-	sprintf(file, "%s/SCCS/x.id_cache", root);
+	sprintf(file, "%s/%s", root, IDCACHE);
 	// XXX - locking of this file.
 	return (fopen(file, "a"));
 	return (0);
@@ -5844,14 +5845,25 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 		assert(d->date);
 		if (d->parent) assert(d->date > d->parent->date);
 
+#ifdef CRAZY_FUCKED_UP
 		p = fmts(buf, "\001s ");
-		p = fmt05d(p, d->added);
+		p = fmt05u(p, d->added);
 		*p++ = '/';
-		p = fmt05d(p, d->deleted);
+		p = fmt05u(p, d->deleted);
 		*p++ = '/';
-		p = fmt05d(p, d->same);
+		p = fmt05u(p, d->same);
 		*p++ = '\n';
 		*p = '\0';
+#else
+		sprintf(buf, "\001s %05d/%05d/%05d\n", d->added, d->deleted, d->same);
+		if (strlen(buf) > 21) {
+			unless (s->state & S_BITKEEPER) {
+				fprintf(stderr, "%s: file too large\n", s->gfile);
+				exit(1);
+			}
+			fitCounters(buf, d->added, d->deleted, d->same);
+		}
+#endif
 		if (first)
 			fputs(buf, out);
 		else
@@ -8770,7 +8782,7 @@ sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
 	while (*s == ' ') s++;
 	t = s;
 	while (*s && (*s++ != '/'));	/* added */
-	unless (d->added) {
+	unless (d->added) {		// XXX - test a patch with > 99999 lines in a delta
 		if (s[-1] == '/') s[-1] = 0;
 		d->added = atoi(t);
 	}
@@ -9627,14 +9639,14 @@ fit(char *buf, unsigned int i)
 		return;
 	}
 	for (j = 0, f = 1000.; s[j]; j++, f *= 1000.) {
-		sprintf(buf, "%4.3g%s", i/f, s[j]);
+		sprintf(buf, "%04.3g%s", i/f, s[j]);
 		if (strlen(buf) == 5) return;
 	}
 	sprintf(buf, "E2BIG");
 	return;
 }
 
-void
+private void
 fitCounters(char *buf, int a, int d, int s)
 {
 	/* ^As 12345/12345/12345\n
@@ -10955,7 +10967,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	    start->parent && streq(start->rev, start->parent->rev)) {
 	    	type = 'M';
 	}
-	fprintf(out, "%c %s %s%s %s%s%s +%d -%d\n",
+	fprintf(out, "%c %s %s%s %s%s%s +%u -%u\n",
 	    type, start->rev, start->sdate,
 	    start->zone ? start->zone : "",
 	    start->user,
@@ -11497,7 +11509,7 @@ sccs_findKey(sccs *s, char *key)
 void
 sccs_print(delta *d)
 {
-	fprintf(stderr, "%c %s %s%s %s%s%s %d %d %d/%d/%d %s 0x%x\n",
+	fprintf(stderr, "%c %s %s%s %s%s%s %d %d %u/%u/%u %s 0x%x\n",
 	    d->type, d->rev,
 	    d->sdate, d->zone ? d->zone : "",
 	    d->user,
@@ -11710,7 +11722,10 @@ out:		if (f) fclose(f);
 		    case 1:
 		    	if ((style == DB_NODUPS)) {
 				fprintf(stderr,
-				    "Duplicate name '%s' in %s.\n", buf, file);
+				    "Duplicate key '%s' in %s.\n", buf, file);
+				fprintf(stderr,
+				    "\tvalue: %s\n\tvalue: %s\n",
+				    mdbm_fetch_str(DB, buf), v);
 				goto out;
 			}
 			break;

@@ -132,7 +132,7 @@ rmcaches()
 {
 	// XXX - needs to be updated when we move the cache to BitKeeper/caches
 	if (sccs_cd2root(0, 0) == 0) {
-		unlink("SCCS/x.id_cache");
+		unlink(IDCACHE);
 	}
 }
 

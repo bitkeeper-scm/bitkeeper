@@ -3,64 +3,11 @@
 # import.sh - import various sorts of files into BitKeeper
 # %W% %@%
 
-help_import () {
-	cat <<EOF
-    ================= Importing files into BitKeeper =================
-
-If you have not yet set up a project, try "bk help setup".  
-
-If you have a tree full of files which you wish to include, go to your
-tree and make sure there is nothing in it except for the files you want
-to revision control (or see the section of file specification below).
-Then do this:
-
-    $ bk import ~/src_files ~/project
-
-This will copy all of the files *below* ~/src/files into the project/src
-directory and check in the initial revision of the files.  Your original
-files are left untouched.
-
-Warning: this import command follows symbolic links and expands them.  
-BitKeeper currently does not support symbolic links directly.
-
-File specification
-------------------
-
-You can generate the list of files externally, and pass that list to
-import.  In that case, the usage is
-
-    $ bk import -l/tmp/list ~/src/files ~/project
-
-and the list of files must be relative paths, relative to the root of
-the from directory.  One way to generate the list might be:
-
-    $ cd ~/src/files
-    $ find . -type f -name '*.[ch]' -print > /tmp/list
-    $ bk import -l/tmp/list ~/src/files ~/project
-
-If you want to filter the lists, you can do that as well.  Suppose that
-you have a tree which has other stuff in it, such as .o's or core files,
-whatever.  You happen to know that the files you want are all of the form
-*.c *.h or Makefile and you want to pick up just them.  To do that, try
-the -include and/or -exclude options and enter the patterns one per line:
-
-    $ bk import -include ~/src_files ~/project
-    End patterns with "." by itself or EOF
-    Include>> *.c
-    Include>> *.h
-    Include>> Makefile
-    Include>> .
-
-There is a -exclude option as well, that works the same way except it
-excludes patterns.
-
-Note that both patterns are regular expressions which are applied to
-pathnames of the files.  You can exclude things like foo/skipthis_dir.
-
-EOF
-}
-
-import () {
+import() {
+	if [ X"$1" = "X--help" ]
+	then	bk help import
+		exit 0
+	fi
 	INCLUDE=""
 	EXCLUDE=""
 	LIST=""
@@ -74,8 +21,8 @@ import () {
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	if [ X"$1" = "X--help" -o X"$1" = X -o X"$2" = X -o X"$3" != X ]
-	then	help_import
+	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
+	then	bk help import
 		exit 0
 	fi
 	if [ ! -d "$1" ]
@@ -292,7 +239,7 @@ import_finish () {
 	fi
 	rm -f /tmp/sccs$$ /tmp/import$$ /tmp/notsccs$$ /tmp/reparent$$ /tmp/rep$$
 	bk sfiles -r
-	echo "Creating initial changeset (should have $NFILES + 2 lines)"
+	echo "Creating initial changeset (should have $NFILES + 1 lines)"
 	bk commit -f -y'Import changeset'
 }
 

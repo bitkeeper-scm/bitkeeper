@@ -199,9 +199,11 @@ main(int ac, char **av, char **ev)
 	/*
 	 * If we are adding exactly one symbol, do it quickly.
 	 */
+#if 0 /* Broken because of permission checking in init */
 	fastSym = !(flags & ~SILENT) && !nextf && !nextu && !nextp &&
 	    !rev && nexts && (s[0].flags == A_ADD) && !s[1].flags;
 	if (fastSym) init_flags |= (INIT_MAPWRITE|INIT_NOCKSUM);
+#endif
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, flags&(SILENT|NEWFILE),

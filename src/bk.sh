@@ -22,11 +22,11 @@ _cd2root() {
 _setup() { 
 	CONFIG=
 	NAME=
-	FORCE=no
+	FORCE=NO
 	while getopts c:fn: opt
 	do	case "$opt" in
 		    c) CONFIG=$OPTARG;;
-		    f) FORCE=yes;;
+		    f) FORCE=YES;;
 		    n) NAME=$OPTARG;;
 		esac
 	done
@@ -39,7 +39,7 @@ _setup() {
 	if [ -e "$1" ]
 	then	echo bk: "$1" exists already, setup fails.; exit 1
 	fi
-	if [ $FORCE = no ]
+	if [ $FORCE = NO ]
 	then	_gethelp setup_1
 		echo $N "Create new project? [no] " $NL
 		read ans
@@ -82,7 +82,7 @@ _setup() {
 	# setups alias.
 	if [ "`cat Description`" = "BitKeeper Test repository" ]
 	then logsetup=
-	else logsetup=yes
+	else logsetup=YES
 	fi
 	/bin/rm -f Description D.save
 	cd BitKeeper/etc
@@ -107,7 +107,7 @@ _setup() {
 	else	cp $CONFIG config
 	fi
 	${BIN}ci -qi config
-	if [ x$logsetup = xyes ]
+	if [ x$logsetup = xYES ]
 	then	${BIN}get -s config
 		_sendConfig setups@openlogging.org
 	fi
@@ -151,13 +151,13 @@ _send() {
 			if [ -f $LOG ]
 			then	sort -u < $LOG > /tmp/has$$
 				${BIN}prs -hd:KEY: ChangeSet| sort > /tmp/here$$
-				FIRST=yes
+				FIRST=YES
 				comm -23 /tmp/here$$ /tmp/has$$ |
 				${BIN}key2rev ChangeSet | while read x
-				do	if [ $FIRST != yes ]
+				do	if [ $FIRST != YES ]
 					then	echo $N ",$x"$NL
 					else	echo $N "$x"$NL
-						FIRST=no
+						FIRST=NO
 					fi
 				done > /tmp/rev$$
 				REV=`cat /tmp/rev$$`
@@ -220,10 +220,10 @@ _save() {
 
 # Show repository status
 _status() {
-	V=no
+	V=NO
 	while getopts v opt
 	do	case "$opt" in
-		v) V=yes;;
+		v) V=YES;;
 		esac
 	done
 	if [ X$1 != X -a -d "$1" ]
@@ -239,7 +239,7 @@ _status() {
 		fi
 	fi
 	# List counts or file states
-	if [ $V = yes ]
+	if [ $V = YES ]
 	then	( bk sfiles -x | sed 's/^/Extra:		/'
 		  bk sfiles -cg | sed 's/^/Modified:	/'
 		  bk sfiles -Cg | sed 's/^/Uncommitted:	/'
@@ -539,10 +539,10 @@ _sendLog() {
 	then if ${BIN}prs -hd:C: \
 	    -r`echo "$key" | ${BIN}key2rev BitKeeper/etc/config` \
 	    BitKeeper/etc/config | grep 'Logging OK' >/dev/null 2>&1
-	then first=yes
+	then first=YES
 	fi
 	fi
-	if [ x$first = xyes ]
+	if [ x$first = xYES ]
 	then R=1.0..$REV
 	else	case $REV in
 		*.*.*.*)	n=${REV%.*.*}
@@ -558,33 +558,51 @@ _sendLog() {
 	${BIN}cset -c -r$R | mail -s "BitKeeper log: $P" $LOGADDR
 }
 
+_remark() {
+	if [ -f "BitKeeper/etc/SCCS/x.marked" ]; then return; fi
+	cat <<EOF
+
+BitKeeper is running a consistency check on your system because it has
+noticed that this check has not yet been run on this repository.
+This is a one time thing but takes quite a while on large repositories,
+roughly a minute per 1000 files in the repository.
+Please stand by and do not kill this process until it gets done.
+EOF
+	bk cset -M1.0..
+	touch "BitKeeper/etc/SCCS/x.marked"
+	echo "Consistency check completed, thanks for waiting."
+	echo ""
+}
+
 _commit() {
-	DOIT=no
-	GETCOMMENTS=yes
+	DOIT=NO
+	GETCOMMENTS=YES
 	COPTS=
 	CHECKLOG=_checkLog
 	FORCE=NO
+	RESYNC=NO
 	while getopts dfFRsS:y:Y: opt
 	do	case "$opt" in
-		d) DOIT=yes;;
+		d) DOIT=YES;;
 		f) CHECKLOG=:;;
 		F) FORCE=YES;;
-		R) cfgDir="../BitKeeper/etc/";; # called from RESYNC dir
+		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
-		y) DOIT=yes; GETCOMMENTS=no; echo "$OPTARG" > /tmp/comments$$;;
-		Y) DOIT=yes; GETCOMMENTS=no; cp "$OPTARG" /tmp/comments$$;;
+		y) DOIT=YES; GETCOMMENTS=NO; echo "$OPTARG" > /tmp/comments$$;;
+		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" /tmp/comments$$;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	_cd2root
+	if [ $RESYNC = "NO" ]; then _remark; fi
 	${BIN}sfiles -Ca > /tmp/list$$
 	if [ $? != 0 ]
 	then	/bin/rm -f /tmp/list$$
 		_gethelp duplicate_IDs
 		exit 1
 	fi
-	if [ $GETCOMMENTS = yes ]
+	if [ $GETCOMMENTS = YES ]
 	then	
 		if [ $FORCE = NO -a ! -s /tmp/list$$ ]
 		then	echo Nothing to commit
@@ -604,7 +622,7 @@ _commit() {
 	/bin/rm -f /tmp/list$$
 	COMMENTS=
 	L=----------------------------------------------------------------------
-	if [ $DOIT = yes ]
+	if [ $DOIT = YES ]
 	then	if [ -f /tmp/comments$$ ]
 		then	COMMENTS="-Y/tmp/comments$$"
 		fi
@@ -766,7 +784,7 @@ _commandHelp() {
 			;;
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
-		unlock|unedit|check)
+		unlock|unedit|check|import)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
@@ -774,7 +792,7 @@ _commandHelp() {
 			then	echo -------------- $i help ---------------
 				${BIN}$i --help
 			else	case $i in
-				    overview|setup|basics|import|differences|\
+				    overview|setup|basics|differences|\
 				    history|tags|changesets|resync|merge|\
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
@@ -907,7 +925,7 @@ case "$1" in
 	;;
     setup|changes|pending|commit|sendbug|send|\
     mv|oldresync|edit|unedit|man|undo|save|docs|rm|new|version|\
-    root|status|export|import)
+    root|status|export)
 	cmd=$1
     	shift
 	_$cmd "$@"
@@ -932,7 +950,7 @@ case "$1" in
 	;;
 esac
 
-SFILES=no
+SFILES=NO
 if [ X$1 = X-r ]
 then	if [ X$2 != X -a -d $2 ]
 	then	cd $2
@@ -940,13 +958,13 @@ then	if [ X$2 != X -a -d $2 ]
 	else	_cd2root
 	fi
 	shift
-	SFILES=yes
+	SFILES=YES
 fi
 if [ X$1 = X-R ]
 then	_cd2root
 	shift
 fi
-if [ $SFILES = yes ]
+if [ $SFILES = YES ]
 then	${BIN}sfiles | bk "$@" -
 	exit $?
 fi

@@ -55,6 +55,12 @@ du -sh .
 /bin/rm -rf /b/tmp/va
 time bk resync -q . /b/tmp/va
 
+# commit everything and resync again
+time bk commit -yia64
+
 # Check out the tree
 bk sfiles | time bk co -q -
 du -sh .
+
+# Clean up!
+/bin/rm -rf va va.tgz /b/tmp/va

@@ -222,12 +222,13 @@
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
-#define	SCCSTMP		"SCCS/T.SCCSTMP"	/* XXX - .SCCS for Linus? */
+#define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
-#define	CHANGESET	"SCCS/s.ChangeSet"	/* Ditto */
-#define	IDCACHE		"SCCS/x.id_cache"	/* Ditto */
+#define	CHANGESET	"SCCS/s.ChangeSet"
+#define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
+#define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 
 #define	ROOT_USER	"root"
 #define	UNKNOWN_USER	"anon"
@@ -263,9 +264,9 @@ typedef	unsigned char	u8;
  */
 typedef struct delta {
 	/* stuff in original SCCS */
-	u16	added;			/* lines added by this delta */
-	u16	deleted;		/* and deleted */
-	u16	same;			/* and unchanged */
+	u32	added;			/* lines added by this delta (u32!) */
+	u32	deleted;		/* and deleted */
+	u32	same;			/* and unchanged */
 	char	type;			/* Delta or removed delta */
 	char	*rev;			/* revision number */
 	char	*sdate;			/* ascii date in local time, i.e.,
