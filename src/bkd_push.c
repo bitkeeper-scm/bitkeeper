@@ -133,7 +133,7 @@ cmd_push_part1(int ac, char **av)
 	MMAP    *m;
 	FILE	*l;
 
-	while ((c = getopt(ac, av, "dez|")) != -1) {
+	while ((c = getopt(ac, av, "denz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -141,6 +141,7 @@ cmd_push_part1(int ac, char **av)
 			break;
 		    case 'd': debug = 1; break;
 		    case 'e': metaOnly = 1; break;
+		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
 		}
 	}
@@ -240,7 +241,7 @@ int
 cmd_push_part2(int ac, char **av)
 {
 	int	fd2, pfd, c, rc = 0, gzip = 0, metaOnly = 0;
-	int	status, debug = 0, dont = 0, nothing = 0, conflict = 0;
+	int	status, debug = 0, nothing = 0, conflict = 0;
 	pid_t	pid;
 	char	buf[4096];
 	char	bkd_nul = BKD_NUL;
@@ -258,7 +259,7 @@ cmd_push_part2(int ac, char **av)
 		    case 'd': debug = 1; break;
 		    case 'e': metaOnly = 1; break;
 		    case 'G': takepatch[2] = "-vv"; break;
-		    case 'n': dont = 1; break;
+		    case 'n': putenv("BK_STATUS=DRYRUN"); break;
 		    default: break;
 		}
 	}
@@ -289,7 +290,6 @@ cmd_push_part2(int ac, char **av)
 		conflict = 1;
 		putenv("BK_STATUS=CONFLICTS");
 	}
-	if (dont) putenv("BK_STATUS=DRYRUN");
 	if (nothing || conflict) {
 		goto done;
 	}

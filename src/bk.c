@@ -633,6 +633,36 @@ private	struct {
 	{ 0, 0 },
 };
 
+/* Turn remote push -n into a read lock/unlock. */
+private int
+adjustFlags(char **av, int flags)
+{
+	int	ac, i;
+
+	unless (strneq("remote push", av[0], 11)) return (flags);
+	for (ac = 0; av[ac];  ac++);
+	if (flags & CMD_WRLOCK) {
+		getoptReset();
+		while ((i = getopt(ac, av, "n")) != -1) {
+			if (i == 'n') {
+				flags |= CMD_RDLOCK;
+				flags &= ~CMD_WRLOCK;
+			}
+		}
+	}
+	if (flags & CMD_WRUNLOCK) {
+		getoptReset();
+		while ((i = getopt(ac, av, "n")) != -1) {
+			if (i == 'n') {
+				flags |= CMD_RDUNLOCK;
+				flags &= ~CMD_WRUNLOCK;
+			}
+		}
+	}
+	getoptReset();
+	return (flags);
+}
+
 int
 cmdlog_start(char **av, int httpMode)
 {
@@ -648,6 +678,7 @@ cmdlog_start(char **av, int httpMode)
 			break;
 		}
 	}
+	cflags = adjustFlags(av, cflags);
 
 	/*
 	 * When in http mode, since push/pull part 1 and part 2 run in

@@ -1,4 +1,46 @@
-Release notes for BitKeeper version 2.0.   These release notes cover
+2.0beta12 Release notes
+
+bk push -n will hang against earlier versions of the code.
+
+bk push -n now gets a read lock instead of write lock if the remote side is 
+also upgraded.  
+
+2.0beta9.1 Release notes
+    Add a binary resolver, it allows you to use one or the other versions.
+    Fix a bug in the lclone locking code.
+
+2.0beta9 Release notes
+
+Undo can no longer be interrupted leaving a half undone tree.
+
+Don't annotate binaries.
+
+Fixed a pathname buffer overflow problem; generically fixed many potential
+similar problems by using aprintf which allocates space as need.
+
+Fix a problem where connection attempts to BKDs which are done did not 
+produce an error message.
+
+Added repository read locking to lclone.
+
+Reworked the on disk flags (xflags). 
+
+!!!! Note !!!!
+
+you will almost certainly see check complain about flags the first time you
+run it.  Just run
+
+            bk -r check -acf
+	    bk -r check -acf
+
+and that should fix it.  If you are worried about it, clone your tree first
+and try it there.
+
+You have to run the above command in each repository, the fix does not
+propogate.
+
+===============================================================================
+Release notes for BitKeeper version XXX.   These release notes cover
 the following topics:
 
 . Installation

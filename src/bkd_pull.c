@@ -404,10 +404,10 @@ cmd_pull_part2(int ac, char **av)
 	 */
 	sprintf(buf, "BK_CSETLIST=%s", revs);
 	putenv((strdup)(buf));
-	unless (local) {
-		putenv("BK_STATUS=NOTHING");
-	} else if (dont) {
+	if (dont) {
 		putenv("BK_STATUS=DRYRUN");
+	} else unless (local) {
+		putenv("BK_STATUS=NOTHING");
 	}
 
 	if (!metaOnly && trigger(av,  "pre")) {

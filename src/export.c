@@ -67,14 +67,14 @@ usage:			system("bk help -s export");
 		}
 	}
 
-	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "export: can not find package root.\n");
-		exit(1);
-	}
 	unless (type) type = "plain";
 	if (streq(type, "patch")) {
+		if (sccs_cd2root(0, 0) == -1) {
+			fprintf(stderr, "export: can not find package root.\n");
+			exit(1);
+		}
 		return (export_patch(diff_style,
-					rev, include, exclude, hflag, tflag));
+		    rev, include, exclude, hflag, tflag));
 	}
 
 	count =  ac - optind;

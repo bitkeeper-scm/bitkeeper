@@ -41,9 +41,9 @@ resolve_init(opts *opts, sccs *s)
 private void
 pnames(char *prefix, names *n)
 {
-	if (n->local) printf("%s local: %s\n", prefix, n->local);
-	if (n->gca) printf("%s gca: %s\n", prefix, n->gca);
-	if (n->remote) printf("%s remote: %s\n", prefix, n->remote);
+	if (n->local) fprintf(stderr, "%s local: %s\n", prefix, n->local);
+	if (n->gca) fprintf(stderr, "%s gca: %s\n", prefix, n->gca);
+	if (n->remote) fprintf(stderr, "%s remote: %s\n", prefix, n->remote);
 }
 
 /*
@@ -52,24 +52,24 @@ pnames(char *prefix, names *n)
 void
 resolve_dump(resolve *rs)
 {
-	printf("=== resolve dump of 0x%x ===\n", rs);
-	if (rs->prompt) printf("prompt: %s\n", rs->prompt);
-	if (rs->s) printf("sfile: %s\n", rs->s->sfile);
-	if (rs->key) printf("key: %s\n", rs->key);
-	if (rs->d) printf("delta: %s\n", rs->d->rev);
-	if (rs->dname) printf("dname: %s\n", rs->dname);
+	fprintf(stderr, "=== resolve dump of 0x%x ===\n", rs);
+	if (rs->prompt) fprintf(stderr, "prompt: %s\n", rs->prompt);
+	if (rs->s) fprintf(stderr, "sfile: %s\n", rs->s->sfile);
+	if (rs->key) fprintf(stderr, "key: %s\n", rs->key);
+	if (rs->d) fprintf(stderr, "delta: %s\n", rs->d->rev);
+	if (rs->dname) fprintf(stderr, "dname: %s\n", rs->dname);
 	if (rs->revs) pnames("revs", rs->revs);
 	if (rs->rnames) pnames("rnames", rs->rnames);
 	if (rs->gnames) pnames("gnames", rs->gnames);
 	if (rs->snames) pnames("snames", rs->snames);
 	if (rs->tnames) pnames("tnames", rs->tnames);
-	printf("n: %d\n", rs->n);
-	if (rs->opaque) printf("opaque: %x\n", rs->opaque);
-	if (rs->res_gcreate) printf("gcreate conflict\n");
-	if (rs->res_screate) printf("screate conflict\n");
-	if (rs->res_dirfile) printf("dirfile conflict\n");
-	if (rs->res_resync) printf("resync conflict\n");
-	if (rs->res_contents) printf("contents conflict\n");
+	fprintf(stderr, "n: %d\n", rs->n);
+	if (rs->opaque) fprintf(stderr, "opaque: %x\n", rs->opaque);
+	if (rs->res_gcreate) fprintf(stderr, "gcreate conflict\n");
+	if (rs->res_screate) fprintf(stderr, "screate conflict\n");
+	if (rs->res_dirfile) fprintf(stderr, "dirfile conflict\n");
+	if (rs->res_resync) fprintf(stderr, "resync conflict\n");
+	if (rs->res_contents) fprintf(stderr, "contents conflict\n");
 }
 
 void
