@@ -1,7 +1,5 @@
 #include "bkd.h"
 
-bkdopts	Opts;	/* needs to be global for sub commands */
-
 void	do_cmds();
 int	findcmd(int ac, char **av);
 int	getav(int *acp, char ***avp);
@@ -78,14 +76,6 @@ bkd_server()
 }
 
 void
-drain(int fd)
-{
-	int	c;
-
-	while (read(fd, &c, 1) == 1);
-}
-
-void
 do_cmds()
 {
 	int	ac;
@@ -98,20 +88,19 @@ do_cmds()
 			if (Opts.log) log_cmd(i, ac, av);
 			if (cmds[i].cmd(ac, av) != 0) {
 				if (Opts.interactive) {
-					writen(1, "ERROR-CMD FAILED\n");
+					out("ERROR-CMD FAILED\n");
 				}
 				if (Opts.errors_exit) {
-					writen(1, "ERROR-exiting\n");
-					drain(1);
+					out("ERROR-exiting\n");
 					exit(1);
 				}
 			}
 		} else if (av[0]) {
-			if (Opts.interactive) writen(1, "ERROR-BAD CMD: ");
-			if (Opts.interactive) writen(1, av[0]);
-			if (Opts.interactive) writen(1, ", Try help\n");
+			if (Opts.interactive) out("ERROR-BAD CMD: ");
+			if (Opts.interactive) out(av[0]);
+			if (Opts.interactive) out(", Try help\n");
 		} else if (Opts.interactive) {
-			writen(1, "ERROR-Try help\n");
+			out("ERROR-Try help\n");
 		}
 	}
 }
@@ -168,8 +157,8 @@ getav(int *acp, char ***avp)
 	int	i, inspace = 1;
 	int	ac;
 
-	if (Opts.interactive) write(1, "BK> ", 4);
-	for (ac = i = 0; read(0, &buf[i], 1) == 1; i++) {
+	if (Opts.interactive) out("BK> ");
+	for (ac = i = 0; in(&buf[i], 1) == 1; i++) {
 		if (buf[i] == '\n') {
 			buf[i] = 0;
 			av[ac] = 0;

@@ -13,15 +13,15 @@ cmd_push(int ac, char **av)
 				    /* see verbose below    ^^ */
 
 	if (!exists("BitKeeper/etc")) {
-		writen(1, "ERROR-Not at project root\n");
+		out("ERROR-Not at project root\n");
 		exit(1);
 	}
 
 	if (repository_wrlock()) {
-		writen(1, "ERROR-Unable to lock repository for update.\n");
+		out("ERROR-Unable to lock repository for update.\n");
 		exit(1);
 	} else {
-		writen(1, "OK-write lock granted\n");
+		out("OK-write lock granted\n");
 	}
 
 	while ((c = getopt(ac, av, "q")) != -1) {
@@ -38,11 +38,11 @@ cmd_push(int ac, char **av)
 		int	status;
 
 		if (pid == -1) {
-			writen(1, "@END@\n");
+			out("@END@\n");
 			goto out;
 		}
 		waitpid(pid, &status, 0);
-		writen(1, "@END@\n");
+		out("@END@\n");
 		if (WIFEXITED(status)) {
 			if (error = WEXITSTATUS(status)) goto out;
 		} else {
@@ -58,7 +58,7 @@ cmd_push(int ac, char **av)
 	 * @PATCH@ followed by a patch or some error.
 	 */
 	bzero(buf, sizeof(buf));
-	if ((readn(0, buf, 8) == 8) && streq(buf, "@PATCH@\n")) {
+	if ((in(buf, 8) == 8) && streq(buf, "@PATCH@\n")) {
 		/*
 		 * Wait for takepatch to get done and then send ack.
 		 */
@@ -66,11 +66,11 @@ cmd_push(int ac, char **av)
 			int	status;
 
 			if (pid == -1) {
-				writen(1, "@DONE@\n");
+				out("@DONE@\n");
 				goto out;
 			}
 			waitpid(pid, &status, 0);
-			writen(1, "@DONE@\n");
+			out("@DONE@\n");
 			if (WIFEXITED(status)) {
 				if (error = WEXITSTATUS(status)) goto out;
 			} else {

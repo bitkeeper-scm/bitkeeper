@@ -4,7 +4,6 @@
 struct cmd cmds[] = {
   { "?", "print this help", cmd_help, 1 },
   { "clone", "clone the current repository", cmd_clone, 1 },
-  { "compress", "turn on gzip -6 compression", cmd_compress, 1 },
   { "help", "print this help", cmd_help, 1 },
   { "pull",
     "pull remote changes from current repository into client repository",

@@ -18,18 +18,18 @@ cmd_root(int ac, char **av)
 
 	if (av[optind] && !av[optind+1]) {
 		if (chdir(av[optind])) {
-			writen(1, "ERROR: Can not change to directory '");
-			writen(1, av[1]);
-			writen(1, "'\n");
+			out("ERROR: Can not change to directory '");
+			out(av[1]);
+			out("'\n");
 			return (-1);
 		}
 		unless (exists("BitKeeper/etc")) {
-			writen(1, "ERROR: directory '");
-			writen(1, av[1]);
-			writen(1, "' is not a project root\n");
+			out("ERROR: directory '");
+			out(av[1]);
+			out("' is not a project root\n");
 			return (-1);
 		}
-		writen(1, "OK-root OK\n");
+		out("OK-root OK\n");
 	} else if (!av[optind]) {
 		char	buf[MAXPATH];
 
@@ -38,24 +38,24 @@ cmd_root(int ac, char **av)
 			
 			p = popen("bk prs -hr+ -d:ROOTKEY: ChangeSet", "r");
 			if (fnext(buf, p)) {
-				writen(1, buf);
+				out(buf);
 			} else {
-				writen(1, "ERROR-no root key found\n");
+				out("ERROR-no root key found\n");
 				return (-1);
 			}
 			pclose(p);
 		} else {
 			unless (exists("BitKeeper/etc")) {
-				writen(1, "ERROR-not at a repository root\n");
+				out("ERROR-not at a repository root\n");
 			} else if (getcwd(buf, sizeof(buf))) {
-				writen(1, buf);
-				writen(1, "\n");
+				out(buf);
+				out("\n");
 			} else {
-				writen(1, "ERROR-can't get CWD\n");
+				out("ERROR-can't get CWD\n");
 			}
 		}
 	} else {
-		writen(1, "ERROR-usage: root [-k] OR [pathname]\n");
+		out("ERROR-usage: root [-k] OR [pathname]\n");
 		return (-1);
 	}
 	return (0);

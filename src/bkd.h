@@ -8,6 +8,7 @@
 #include "lib_tcp.h"
 #include "system.h"
 #include "sccs.h"
+#include "zlib/zlib.h"
 
 #define	BKD_VERSION	"bkd version 1"
 
@@ -18,7 +19,6 @@
  */
 typedef	int (*func)(int, char **);
 int	cmd_clone(int ac, char **av);
-int	cmd_compress(int ac, char **av);
 int	cmd_eof(int ac, char **av);
 int	cmd_help(int ac, char **av);
 int	cmd_pull(int ac, char **av);
@@ -40,7 +40,6 @@ typedef struct {
 	u32	errors_exit:1;		/* exit on any error */
 	u32	daemon:1;		/* listen for TCP connections */
 	u32	readonly:1;		/* do read only commands exclusively */
-	u32	compressed:1;		/* run input/output through zlib */
 	FILE	*log;			/* if set, log commands to here */
 	u16	port;			/* listen on this port */
 	char	remote[16];		/* a.b.c.d of client */

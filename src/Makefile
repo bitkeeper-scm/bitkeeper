@@ -41,7 +41,7 @@ RANLIB	= ranlib
 SCCSOBJ	= dirname.o filecopy.o getopt.o gettemp.o glob.o libdiff.o librange.o \
 	  libsfiles.o localtm.o mkdir.o mmap.o newrev.o popen.o purify.o      \
 	  rcs.o sccs_mv.o slib.o zgets.o unique.o finddirs.o libcommit.o \
-	  libusers.o utils.o locking.o
+	  libusers.o utils.o locking.o compress.o
 PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
 	  port/disksp.o port/findprog.o

@@ -11,7 +11,7 @@ cmd_status(int ac, char **av)
 	pid_t	p;
 
 	if (!exists("BitKeeper/etc")) {
-		writen(1, "ERROR-Not at project root\n");
+		out("ERROR-Not at project root\n");
 		return (-1);
 	}
 	if ((ac == 2) && streq("-v", av[1])) cmd[2] = "-v";
