@@ -1894,7 +1894,6 @@ private void
 resync_lock(void)
 {
 	FILE	*f;
-	int	slept = 0, s = 1;
 
 	/*
 	 * See if we can lock the tree.
@@ -1904,16 +1903,7 @@ resync_lock(void)
 	 * Note: we need the real mkdir, not the so called smart one, we need
 	 * to fail if it exists.
 	 */
-	errno = 0;
-	while ((mkdir)("RESYNC", 0777)) {
-		unless (errno == EEXIST) break;
-		if (slept > (20*60)) break;
-		sleep(s);
-		slept += s;
-		s += 15;
-		errno = 0;
-	}
-	if (errno) {
+	if ((mkdir)("RESYNC", 0777)) {
 		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
 		repository_lockers(0);
 		cleanup(0);
