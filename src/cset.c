@@ -702,7 +702,12 @@ again:	/* doDiffs can make it two pass */
 			fputs("\n", stdout);
 			fputs(PATCH_PATCH, stdout);
 		}
-		fputs(PATCH_CURRENT, stdout);
+		if (cs->metaOnly) {
+			fputs(PATCH_NEXT, stdout);
+			fputs(PATCH_LOGGING, stdout);
+		} else {
+			fputs(PATCH_CURRENT, stdout);
+		}
 		fputs("\n", stdout);
 	}
 
@@ -1133,8 +1138,8 @@ private	void
 sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
-	int	deltas = 0;
-	int	i, n, newfile;
+	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
+	int	i, n, newfile, mk_placeholder; 
 	delta	**list;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
@@ -1196,7 +1201,22 @@ sccs_patch(sccs *s, cset_t *cs)
 			printf("\n");
 		}
 		s->rstop = s->rstart = d;
-		sccs_prs(s, PRS_PATCH|SILENT, 0, NULL, stdout);
+		/*
+		 * XXX FIXME
+		 * Do we expect the files under BitKeeper/etc to move?
+		 * If not,  we may want to jut test the top-of-trunk pathname
+		 * and move the test out side this loop. This would
+		 * be a little faster.
+		 */
+		mk_placeholder = 0;
+		if (cs->metaOnly) {
+			unless ((s->state & S_CSET) ||
+				match_one(d->pathname, BKROOT "/*")) {
+				mk_placeholder = 1;
+				prs_flags |= PRS_PLACEHOLDER;
+			}
+		}
+		sccs_prs(s, prs_flags, 0, NULL, stdout);
 		printf("\n");
 		if (d->type == 'D') {
 			if (s->state & S_CSET) {
@@ -1204,7 +1224,7 @@ sccs_patch(sccs *s, cset_t *cs)
 					sccs_getdiffs(s,
 					    d->rev, GET_HASHDIFFS, "-");
 				}
-			} else if (!cs->metaOnly || match_one(d->pathname, BKROOT "/*" ) ) {
+			} else if (!mk_placeholder) {
 				sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
 		}

@@ -55,6 +55,7 @@ private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private void	get_configs();
 
+private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
 private	int	mkpatch = 0;	/* act like makepatch verbose */
 private	int	line;		/* line number in the patch file */
@@ -381,7 +382,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 	}
 
 	/*
-	 * They may have sent us a patch from 1.1, so the patch looks like a
+	 * They may have sent us a patch from 1.0, so the patch looks like a
 	 * new file.  But if we have a match, we want to use it.
 	 */
 	if (s) {
@@ -779,6 +780,24 @@ fixLod(sccs *s)
 }
 
 /*
+ * Make sure user files have no content
+ * This function is called we process a logging patch
+ */
+private int
+chkEmpty(sccs *s, MMAP *dF)
+{
+	if ((dF->size > 0) &&
+	    !(s->state & S_CSET) &&
+	    (strlen(s->sfile) > 19) &&
+	    !strneq(s->sfile, "RESYNC/BitKeeper/etc/", 19)) {
+		fprintf(stderr,
+			"Logging patch should not have source content\n");
+		return (1); /* failed */
+	}
+	return (0); /* ok */
+}
+
+/*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
  * If the file does exist, copy it, rip out the old stuff, and then apply
@@ -827,6 +846,23 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 			perror(s->sfile);
 		}
 		return -1;
+	}
+	if (isLogPatch) {
+		unless (s->state&S_LOGS_ONLY) {
+			fprintf(stderr,
+	        		"takepatch: can't apply a logging "
+				"patch to a regular file %s\n",
+				p->resyncFile);
+			return -1;
+		}
+	} else {
+		if (s->state&S_LOGS_ONLY) {
+			fprintf(stderr,
+	        		"takepatch: can't apply a regular "
+				"patch to a logging file %s\n",
+				p->resyncFile);
+			return -1;
+		}
 	}
 	/* save current LOD setting, as it might change */
 	if (d = findrev(s, "")) {
@@ -926,6 +962,7 @@ apply:
 					dF = p->diffMmap;
 					p->diffMmap = 0;
 				}
+				if (isLogPatch && chkEmpty(s, dF)) return -1;
 				newflags = 
 				    DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
 				if (echo <= 2) newflags |= SILENT;
@@ -977,6 +1014,10 @@ apply:
 			} else {
 				dF = p->diffMmap;
 				p->diffMmap = 0;
+			}
+			if (isLogPatch) {
+				if (chkEmpty(s, dF)) return -1;
+				s->state |= S_LOGS_ONLY;
 			}
 			d = 0;
 			newflags = 
@@ -1245,6 +1286,7 @@ init(char *inputFile, int flags, project **pp)
 		u32	preamble_nl:1;	/* previous line was a newline */
 		u32	preamble:1;	/* looking for patch version */
 		u32	version:1;	/* previous line was Patch vers: ... */
+		u32	type:1;		/* looking for patch type */
 		u32	versionblank:1;	/* previous line was \n after vers */
 		u32	filename:1;	/* previous line was == file == */
 		u32	first:1;	/* previous line was == file == */
@@ -1406,11 +1448,29 @@ init(char *inputFile, int flags, project **pp)
 				if (st.newline) {
 					st.preamble_nl = 1;
 				}
-				if (st.preamble_nl &&
-				    streq(buf, PATCH_CURRENT)) {
+				if (st.preamble_nl) {
+					if (streq(buf, PATCH_CURRENT)) {
+						st.version = 1;
+						st.preamble = 0;
+						st.preamble_nl = 0;
+					} else if (streq(buf, PATCH_NEXT)) {
+						st.type = 1;
+						st.preamble = 0;
+						st.preamble_nl = 0;
+					}
+				}
+			} else if (st.type) {
+				if (streq(buf, PATCH_REGULAR)) {
+					st.type = 0;
 					st.version = 1;
-					st.preamble = 0;
-					st.preamble_nl = 0;
+					isLogPatch = 0;
+				} else if (streq(buf, PATCH_LOGGING)) {
+					st.type = 0;
+					st.version = 1;
+					isLogPatch = 1;
+				} else {
+					fprintf(stderr, "Expected type\n");
+					goto error;
 				}
 			} else if (st.version) {
 				if (st.newline) {
