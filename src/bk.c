@@ -17,7 +17,7 @@ private int sfiles(int ac, char **av);
 
 int unedit_main(int, char **);
 int unlock_main(int, char **);
-int files_main(int, char **);
+int find_main(int, char **);
 int bkd_main(int, char **);
 int setup_main(int, char **);
 int commit_main(int, char **);
@@ -93,7 +93,7 @@ int rcs2sccs_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"unlock", unlock_main },
-	{"files", files_main },
+	{"_find", find_main }, /* internal helper function */
 	{"bkd", bkd_main },
 	{"setup", setup_main },
 	{"commit", commit_main},

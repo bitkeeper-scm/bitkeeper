@@ -6,14 +6,14 @@ WHATSTR("@(#)%K%");
  * files - find regular files and symbolic links
  */
 private	char *files_usage = "\n\
-usage: files [-names glob_patten] [dir...] \n\
+usage: files [-name glob_patten] [dir...] \n\
 \n";
 private	void	walk(char *path);
 private	void	files(char *p);
 private	char 	**globs = 0;
 
 int
-files_main(int ac, char **av)
+find_main(int ac, char **av)
 {
 	int	i, optind = 1;
 	char	pwd[MAXPATH];
@@ -24,22 +24,6 @@ files_main(int ac, char **av)
 usage:		fprintf(stderr, "%s", files_usage);
 		exit(0);
 	}
-#ifdef OLD
-	if ((ac > 2) && streq("-name", av[ac - 2])) {
-		if (av[ac - 1] == NULL) goto usage;
-		globs = addLine(0, av[ac - 2]);
-		av[ac - 1] = NULL;
-		av[ac - 2] = NULL;
-	}
-	unless (av[1]) {
-		files(0);
-	} else {
-		for (i = 1; i < ac; ++i) {
-			files(av[i]);
-			//chdir(pwd);
-		}
-	}
-#else
 	if ((ac > 2) && streq("-name", av[1])) {
 		if (av[2] == NULL) goto usage;
 		globs = addLine(0, av[2]);
@@ -52,7 +36,6 @@ usage:		fprintf(stderr, "%s", files_usage);
 			files(av[i]);
 		}
 	}
-#endif
 	purify_list();
 	exit(0);
 }
