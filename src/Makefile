@@ -376,12 +376,13 @@ setuptool: gui/setuptool.tcl gui/config.tcl gui/common.tcl \
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/config.tcl \
 	    gui/setuptool.tcl > setuptool
 
-helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl
+helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
+	gui/common.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/helptool.tcl > helptool
 
 difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \
-	port/$(SYS)_platform.tcl
+	port/$(SYS)_platform.tcl gui/common.tcl
 	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
 	    gui/common.tcl gui/difftool.tcl > difftool
 
@@ -390,15 +391,17 @@ csettool: gui/csettool.tcl gui/config.tcl gui/common.tcl \
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/csettool.tcl > csettool
 
-renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl
+renametool: gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
+	gui/common.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/renametool.tcl > renametool
 
-fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl
+fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
+	gui/common.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/fmtool.tcl > fmtool
 
-fm3tool: gui/fm3tool.tcl gui/config.tcl
+fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl
 	cat gui/config.tcl gui/common.tcl gui/fm3tool.tcl > fm3tool
 
 # Touch this and die.  --lm
