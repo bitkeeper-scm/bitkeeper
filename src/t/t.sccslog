@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-bk cset -i -s .
+bk cset -n -s .
 rm -rf a
 mkdir -p a/b/c
 echo 1.1 > a/b/c/Data

@@ -20,7 +20,7 @@ P=`bk prs -h -d':DPN:' path`
 if [ X$P != X`$CWD`/path ]; then echo Failed; exit 1; fi
 echo OK
 echo $N checking pathname w/ cset file ..............................$NL
-bk cset -i -s .
+bk cset -n -s .
 echo 5678 > path
 bk ci $Q -y path
 P=`bk prs -r1.2 -h -d':DPN:' path`

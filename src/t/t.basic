@@ -37,7 +37,7 @@ do	case "$D" in
 	if [ X$D != X ]; then mkdir -p $D; fi
 	rm -rf SCCS ${D}foo ${D}SCCS ${D}s.foo
 	echo $N Create initial changeset ....................................$NL
-	bk cset -si .
+	bk cset -sn .
 	if [ ! -f SCCS/s.ChangeSet ]; then echo failed; exit 1; fi
 	echo OK
 	cp SAVE ${D}foo

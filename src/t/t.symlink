@@ -21,7 +21,7 @@ fi
 HERE=`pwd`
 echo $N Create a symlink ............................................$NL
 umask 0
-bk cset -i -s .
+bk cset -n -s .
 echo "xx" > file
 ln -s file symlink
 mv file file.tmp
