@@ -318,7 +318,7 @@ chk_dfile(sccs *s)
 		*p = 's';
 		fprintf(stderr,
 "===========================================================================\n"
-"check: %s have pending delta(s) but no d.file\n"
+"check: %s has pending deltas but no d.file\n"
 "You can fix this by running \"bk -R sfiles -P\"\n"
 "===========================================================================\n",
 			s->gfile);
