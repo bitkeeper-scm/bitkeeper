@@ -1573,6 +1573,10 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	. configure -background $gc(BG)
 } ;# proc widgets
 
+#
+#
+#
+#
 proc selectFile {} \
 {
 	global gc fname
@@ -1587,7 +1591,12 @@ proc selectFile {} \
 		#displayMessage "file=($file) err=($err)"
 		# XXX: Need to add in a function so that we can check for
 		# duplicates
-		if {$fname != "ChangeSet"} {
+		# Do the menus.difftool checks in 'proc histtool'
+		if {$fname == "ChangeSet"} {
+			#pack forget .menus.difftool
+		} else {
+			#pack configure .menus.difftool -before .menus.mb \
+			#    -side left
 			$gc(fmenu) add command -label "$fname" \
 			    -command "histtool $fname -$gc(hist.showHistory)" 
 		}
@@ -1668,6 +1677,12 @@ proc histtool {lfname R} \
 
 	set bad 0
 	set file [exec bk sfiles -g $lfname 2>$dev_null]
+	if {$lfname == "ChangeSet"} {
+		pack forget .menus.difftool
+	} else {
+		pack configure .menus.difftool -before .menus.mb \
+		    -side left
+	}
 	while {"$file" == ""} {
 		displayMessage "No such file \"$lfname\" rev=($R) \nPlease \
 select a new file to view"
@@ -1785,12 +1800,31 @@ if {$fname == ""} {
 	catch {exec bk sane} err
 	if {[lindex $errorCode 2] == 1} {
 		displayMessage "$err" 0
+		exit 1
 	}
 } else {
-	# If we haven't brought up the gui yet, die if a bad file was given
-	set file [exec bk sfiles -g $fname 2>$dev_null]
-	if {"$file" == ""} {
-		puts stderr "No such file \"$fname\""
+	if {[file isdirectory $fname]} {
+		catch {cd $fname} err
+		if {$err != ""} {
+			displayMessage "Unable to cd to $fname"
+			exit 1
+		}
+		cd2root
+		# This should match the CHANGESET path defined in sccs.h
+		set fname ChangeSet
+		catch {exec bk sane} err
+		if {[lindex $errorCode 2] == 1} {
+			displayMessage "$err" 0
+			exit 1
+		}
+	} elseif {[file exists $fname]} {
+		set file [exec bk sfiles -g $fname 2>$dev_null]
+		if {"$file" == ""} {
+			puts stderr "No such file \"$fname\""
+			exit
+		}
+	} else {
+		displayMessage "\$fname\": Not a valid file"
 		exit
 	}
 }
