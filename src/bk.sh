@@ -80,10 +80,10 @@ _setup() {
 	${BIN}admin -qtDescription ChangeSet
 	# This descr is used by the regression tests.  Don't spam the
 	# setups alias.
-	if [ "`cat Description`" = "BitKeeper Test repository" ]
-	then logsetup=
-	else logsetup=YES
-	fi
+	case "`cat Description`" in
+	    "BitKeeper Test"*) logsetup=NO;;
+	    *) logsetup=YES;;
+	esac
 	${RM} -f Description D.save
 	cd BitKeeper/etc
 	if [ "X$CONFIG" = X ]
@@ -107,7 +107,7 @@ _setup() {
 	else	cp $CONFIG config
 	fi
 	${BIN}ci -qi config
-	if [ x$logsetup = xYES ]
+	if [ $logsetup = YES ]
 	then	${BIN}get -s config
 		_sendConfig setups@openlogging.org
 	fi
@@ -296,7 +296,8 @@ _parent() {
 }
 
 # Pull: update from parent repository.  You can feed this any resync
-# switches you like.  Default is auto-resolve.
+# switches you like.  Default is auto-resolve stopping only for overlapped
+# changes (like cvs update).
 _pull() {
 	_cd2root
 	if [ -f BitKeeper/log/parent ]
@@ -306,28 +307,15 @@ _pull() {
 	fi
 }
 
-# Push: send changes back to parent.  This does auto-resolve, which
-# means conflicts are not allowed.
+# Push: send changes back to parent.  If parent is ahead of you, this
+# pulls down those changes and stops; you have to merge and try again.
 _push() {
 	_cd2root
 	if [ -f BitKeeper/log/parent ]
-	then	:
+	then	exec ${BIN}resync -Ab "$@" `cat BitKeeper/log/parent` . 
 	else	echo "No parent repository, cannot push" >&2
 		exit 1
 	fi
-
-	# Before pushing, we do an implicit pull and abort if it
-	# reports changes.
-	PARENT=`cat BitKeeper/log/parent`
-	changes="`${BIN}resync -v $PARENT . 2>&1`"
-	case "$changes" in
-	    "Nothing to resync.")
-		exec ${BIN}resync -a "$@" . `cat BitKeeper/log/parent`;;
-	    *)	echo "Changes in parent - resolve and try again" >&2
-		echo "$changes" >&2
-		exit 1
-		;;
-	esac
 }
 
 _diffr() {
@@ -597,6 +585,27 @@ _gone() {
 	else	${BIN}delta -i gone
 	fi
 }
+
+# usage: ignore glob [glob ...]
+#    or: ignore
+# XXX Open issue: should BK/etc/ignore be revisioned?
+# Can make case either way.  Currently it's not.
+_ignore() {
+	_cd2root
+	if [ ! -d BitKeeper/etc ]
+	then	echo No BitKeeper/etc
+		exit 1
+	fi
+	if [ "x$1" = x ]
+	then	if [ -f BitKeeper/etc/ignore ]
+		then cat BitKeeper/etc/ignore
+		fi
+		exit 0
+	fi
+	for i
+	do	echo "$i" >> BitKeeper/etc/ignore
+	done
+}	
 
 # usage: chmod mode file [file ...]
 _chmod() {
@@ -890,19 +899,25 @@ _logAddr() {
 # This is not always right (consider .to) but works most of the time.
 # We are fascist about the letters allowed on the RHS of an address.
 _users() {
-	if [ "X$1" = "X-a" ]; then ALL=YES; shift; else ALL=NO; fi
+	if [ "X$1" = "X-a" ]
+	then WHAT=ALL; shift
+	elif [ "X$1" = "X-c" ]
+	then WHAT="sort -u | wc -l"; shift
+	else WHAT="sort -u"
+	fi
 	if [ X$1 != X -a -d "$1" ]; then cd $1; fi
 	_cd2root
-	${BIN}prs -hd':P:@:HT:' ChangeSet | sort -u > ${TMP}users$$
-	if [ $ALL = "YES" ]
-	then	cat ${TMP}users$$
-		/bin/rm ${TMP}users$$
+	${BIN}prs -hd':P:@:HT:' ChangeSet > ${TMP}users$$
+	if [ $? -ne 0 ]; then exit 1; fi
+	if [ "$WHAT" = ALL ]
+	then	sort -u ${TMP}users$$
+		${RM} ${TMP}users$$
 		return
 	fi
 	tr A-Z a-z < ${TMP}users$$ | sed '
 s/@[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/@\1.\2/
-s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\2/
-' | sort -u
+s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/@\1.\2/
+' | eval $WHAT
 	${RM} -f ${TMP}users$$
 }
 
@@ -1022,7 +1037,7 @@ _commit() {
 	if [ $GETCOMMENTS = YES ]
 	then
 		if [ $FORCE = NO -a ! -s ${TMP}list$$ ]
-		then	echo Nothing to commit
+		then	[ $QUIET = YES ] || echo Nothing to commit >&2
 			${RM} -f ${TMP}list$$ ${TMP}commit$$
 			exit 0
 		fi
@@ -1030,7 +1045,7 @@ _commit() {
 	else	if [ $FORCE = NO ]
 		then	N=`wc -l < ${TMP}list$$`
 			if [ $N -eq 0 ]
-			then	echo Nothing to commit
+			then	[ $QUIET = YES ] || echo Nothing to commit >&2
 				${RM} -f ${TMP}list$$ ${TMP}commit$$
 				exit 0
 			fi
@@ -1047,7 +1062,7 @@ _commit() {
 		_chkConfig && LOGADDR=`_logAddr` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		export LOGADDR
-		nusers=`_users | wc -l` ||
+		nusers=`_users -c` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		if [ $nusers -gt 1 ]
 		then $CHECKLOG
@@ -1081,7 +1096,7 @@ _commit() {
 			_chkConfig && LOGADDR=`_logAddr` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			export LOGADDR
-			nusers=`_users | wc -l` ||
+			nusers=`_users -c` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			if [ $nusers -gt 1 ]
 			then $CHECKLOG
@@ -1195,26 +1210,20 @@ _commandHelp() {
 		exit 0
 	fi
 
+	(
 	for i in $*
-	do	case $i in
-		    RCS|backups|basics|changes|changesets|check|clone|commit|\
-		    debug|differences|diffr|export|fix|gui|history|import|\
-		    info|merge|mv|overview|parent|path|pending|pull|push|\
-		    ranges|receive|regression|renames|resync|rm|root|save|\
-		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
-		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
-		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
-		    csettool|difftool|merging|tag|gone|chmod)
-			_gethelp help_$i $BIN | $PAGER
-			;;
-		    *)
-			if [ -x "${BIN}$i" -a -f "${BIN}$i" ]
-			then	echo "                -------------- $i help ---------------"
-				${BIN}$i --help 2>&1
-			else	echo No help for "$i", check spelling.
-			fi
-		esac
+	do
+		if grep -q "^#help_$i" ${BIN}bkhelp.txt
+		then	_gethelp help_$i $BIN
+		elif [ -x "${BIN}$i" -a -x "${BIN}$i" ]
+		then	echo "                -------------- $i help ---------------"
+			echo
+			${BIN}$i --help 2>&1
+		else
+			echo No help for $i, check spelling.
+		fi
 	done
+	) | $PAGER
 }
 
 _export() {
@@ -1348,7 +1357,7 @@ case "$1" in
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
     pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics|chmod|gone|tag)
+    topics|chmod|gone|tag|ignore)
 	cmd=$1
     	shift
 	_$cmd "$@"

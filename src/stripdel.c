@@ -110,6 +110,7 @@ usage:		fprintf(stderr, stripdel_help);
 		/* see ya! */
 		verbose((stderr, "stripdel: remove file %s\n", s->sfile));
 		unlink(s->sfile);
+		sccs_free(s);
 		return (0);
 	}
 
@@ -122,8 +123,8 @@ usage:		fprintf(stderr, stripdel_help);
 	}
 	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
 	sfileDone();
-	purify_list();
 	sccs_free(s);
+	purify_list();
 	return (0);
 next:	return (1);
 }

@@ -70,13 +70,13 @@ C
 EOF
 MODE=`bk prs -h -r1.4 -d":MODE:" foo.c`
 if [ "$MODE" != "100740" ]
-then	echo "failed (Known bug)"  
+then	echo "failed (known bug)"  
 	${RM} -rf $HERE/copy/PENDING $HERE/copy/RESYNC
 	bk undo -f -q 1.4
 else	echo OK;
 fi
-echo $N Check propagation of symbol ...............................$NL
+echo $N Check propagation of symbol .................................$NL
 cd $HERE/project/src
 admin $Q -SBASE_LINE:1.1 bar.c
 P=`bk pending | wc -l`
-if [ $P -eq 0 ]; then echo "failed (Knwon bug)"; else echo OK; fi
+if [ $P -eq 0 ]; then echo "failed (known bug)"; else echo OK; fi

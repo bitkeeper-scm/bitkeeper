@@ -900,7 +900,11 @@ apply:
 		if (gcaPath) free(gcaPath);
 		return (-1);
 	}
-	conflicts += confThisFile;
+	/* Conflicts in ChangeSet don't count.  */
+	if (confThisFile && !streq(s->sfile + strlen(s->sfile) - 9,
+				   "ChangeSet")) {
+		conflicts += confThisFile;
+	}
 	if (confThisFile && !(s->state & S_CSET)) {
 		assert(d);
 		unless (d->flags & D_CSET) {

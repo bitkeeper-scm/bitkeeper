@@ -150,7 +150,7 @@ walkClr(sccs *s, delta *d)
 		d->flags &= ~D_SET;
 		if (d->merge)
 			walkClr(s, sfind(s, d->merge));
-		// printf("REM %s\n", d->rev);
+		debug2((stderr, "REM %s\n", d->rev));
 	}
 }
 
@@ -162,7 +162,7 @@ walkSet(sccs *s, delta *d)
 		d->flags |= D_SET;
 		if (d->merge)
 			walkSet(s, sfind(s, d->merge));
-		// printf("ADD %s\n", d->rev);
+		debug2(("ADD %s\n", d->rev));
 	}
 }
 
@@ -171,9 +171,12 @@ walkSet(sccs *s, delta *d)
  * Check to make sure start has been touched.
  * Then clear all between start and root.
  * What is left is the set on the graph between start and stop.
- *
  * This also picks up anything merged into any of the deltas in the range.
- * XXX - needs to treat LODs like trunk.
+ *
+ * XXX - this assumes that the tree has no open branches - i.e. will not
+ * work properly in the presence of LODs.  Also really only does the right
+ * thing for a start position on the trunk and an end position strictly
+ * above that in the graph.
  */
 int
 rangeConnect(sccs *s)
@@ -311,4 +314,74 @@ roundType(char *s)
 	    case '-':	return (ROUNDDOWN);
 	    default:	return (EXACT);
 	}
+}
+
+/*
+ * Translate from the range info in the options to a range specification
+ * in the sccs structure.
+ * This used to be the monster macro in range.h.
+ * Returns 1 if we are to 'goto next' in the caller, 0 if not.
+ */
+int
+rangeProcess(char *me, sccs *s, int expand, int noisy,
+	     int things, int rd, char **r, char **d)
+{
+	debug((stderr,
+	    "RANGE(%s, %s, %d, %d)\n", me, s->gfile, expand, noisy));
+	rangeReset(s);
+	if (!things && (r[0] = sfileRev())) things = tokens(notnull(r[0]));
+	if (things) {
+		if (rangeAdd(s, r[0], d[0])) {
+			if (noisy) {
+				fprintf(stderr,
+				    "%s: no such delta ``%s'' in %s\n",
+				    me, r[0] ? r[0] : d[0], s->sfile);
+			}
+			return 1;
+		}
+	}
+	if (things == 2) {
+		if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1]) == -1)) {
+			s->state |= S_RANGE2;
+			if (noisy) {
+				fprintf(stderr,
+				    "%s: no such delta ``%s'' in %s\n",
+				    me, r[1] ? r[1] : d[1], s->sfile);
+			}
+			return 1;
+		}
+	}
+	if (expand) {
+		unless (things) {
+			delta *e = 0;
+			if (s->tree && streq(s->tree->rev, "1.0")) {
+				if ((s->rstart = s->tree->kid)) {
+					e = s->table;
+				}
+			} else {
+				s->rstart = s->tree;
+				e = s->table;
+			}
+			while (e && e->type != 'D') e = e->next;
+			s->rstop = e;
+		}
+		if (s->state & S_SET) {
+			rangeSetExpand(s);
+		} else {
+			unless (s->rstart) s->rstart = s->rstop;
+			unless (s->rstop) s->rstop = s->rstart;
+		}
+	}
+	/* If they wanted a set and we don't have one... */
+	if ((expand == 2) && !(s->state & S_SET)) {
+		delta   *e;
+
+		for (e = s->rstop; e; e = e->next) {
+			e->flags |= D_SET;
+			if (e == s->rstart) break;
+		}
+		s->state |= S_SET;
+	}
+	if ((expand == 3) && !(s->state & S_SET)) rangeConnect(s);
+	return 0;
 }

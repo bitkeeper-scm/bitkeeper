@@ -96,6 +96,7 @@ renumber(sccs *s, int flags)
 		}
 		release = redo(s, d, db, flags, release);
 	}
+	mdbm_close(db);
 }
 
 void
