@@ -12630,6 +12630,30 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "DM")) {
+		/* month in Jan, Feb format */
+		if (d->sdate) {
+			for (p = d->sdate; *p && *p != '/'; p++);
+			switch (atoi(++p)) {
+			    case 1: fs("Jan"); break;
+			    case 2: fs("Feb"); break;
+			    case 3: fs("Mar"); break;
+			    case 4: fs("Apr"); break;
+			    case 5: fs("May"); break;
+			    case 6: fs("Jun"); break;
+			    case 7: fs("Jul"); break;
+			    case 8: fs("Aug"); break;
+			    case 9: fs("Sep"); break;
+			    case 10: fs("Oct"); break;
+			    case 11: fs("Nov"); break;
+			    case 12: fs("Dec"); break;
+			    default: fs("???"); break;
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	if (streq(kw, "Dd")) {
 		/* day */
 		if (d->sdate) {

@@ -83,10 +83,10 @@ proc dotFile {{line {}}} \
 	if {$parent == ""} { set parent "1.0" }
 	set finfo(l) "$file@$parent"
 	set finfo(r) "$file@$stop"
-	set p [open "| bk prs -hr$parent {-d:D: :T:\n} \"$file\""]
+	set p [open "| bk prs -hr$parent {-d:T: :Dd::DM::Dy:\n} \"$file\""]
 	gets $p finfo(lt)
 	catch { close $p }
-	set p [open "| bk prs -hr$stop {-d:D: :T:\n} \"$file\""]
+	set p [open "| bk prs -hr$stop {-d:T: :Dd::DM::Dy:\n} \"$file\""]
 	gets $p finfo(rt)
 	catch { close $p }
 	set tmp [file tail "$file"]
