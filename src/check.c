@@ -227,7 +227,7 @@ check_main(int ac, char **av)
 		}
 		if (xflags_failed) {
 			fprintf(stderr, "check: trying to fix xflags...\n");
-			system("bk -r xflags -f");
+			system("bk -r xflags");
 		}
 		if (names || xflags_failed) return (2);
 	}
