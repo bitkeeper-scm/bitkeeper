@@ -11,7 +11,8 @@ setup_main(int ac, char **av)
 	int	force = 0, c;
 	char	*package_path = 0, *config_path = 0, *t;
 	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
-	char 	s_config[MAXPATH] = "BitKeeper/etc/SCCS/s.config";
+	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
+	char 	config[] = "BitKeeper/etc/config";
 	sccs	*s;
 	MDBM	*m, *cat;
 	FILE	*f;
@@ -91,7 +92,7 @@ again:		printf("Editor to use [%s] ", editor);
 			fprintf(stderr, "You need to use a fullpath\n");
 			exit(1);
 	    	}
-		sys("cp", config_path, "BitKeeper/etc/config", SYS);
+		fileCopy(config_path, config);
 	}
 
 	unless (m = loadConfig(".", 0)) {
