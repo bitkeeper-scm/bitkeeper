@@ -94,6 +94,7 @@ proc getConfig {prog} \
 		set rcfile [file join $gc(bkdir) _bkgui]
 	} else {
 		set rcfile "~/.bkgui"
+		set gc(bkdir) "~"
 	}
 	if {[file readable $rcfile]} { source $rcfile }
 

@@ -1615,7 +1615,7 @@ proc getHistory {} \
 	global gc
 
 	if {![file exists $gc(histfile)]} {
-		puts "no history file exists"
+		#puts stderr "no history file exists"
 		return
 	}
 	set h [open "$gc(histfile)"]
