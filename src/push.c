@@ -324,7 +324,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 				}
 				if (n) fputs("\n", stderr);
 			}
-			unless (opts.doit) fprintf(stderr,
+			fprintf(stderr,
 "---------------------------------------------------------------------------\n")
 			;
 		} else if (lcsets == 0) {
@@ -339,7 +339,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	/*
 	 * if lcsets > 0, we update the log marker in push part 2
 	 */
-	if ((lcsets == 0) && (needLogMarker)) updLogMarker(0);
+	if ((lcsets == 0) && (needLogMarker(opts, r))) updLogMarker(0);
 	if ((lcsets == 0) || !opts.doit) return (0);
 	if ((rcsets || rtags) && !opts.metaOnly) {
 		return (opts.autopull ? 1 : -1);

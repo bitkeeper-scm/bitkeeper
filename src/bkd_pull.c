@@ -443,11 +443,8 @@ next:	sccs_free(s);
 		fprintf(stderr, "cmd_pull_part2: makepatch failed\n");
 	}
 
-	/*
-	 * Note: If you revise the protocol and need to read back staus
-	 * form the remote side. You may need to flush the output
-	 * fd/socket here, see the call to flush2remote() in push.c
-	 */
+
+	flushSocket(1); /* This has no effect for pipe, should be OK */
 
 done:	if (rc) {
 		unlink(rev_list);

@@ -65,6 +65,7 @@ cmd_clone(int ac, char **av)
 	} else {
 		rc = uncompressed();
 	}
+	flushSocket(1); /* This has no effect for pipe, should be OK */
 	if (rc) putenv("BK_OUTGOING=CONFLICT");
 	if (p && trigger(av, "post")) exit (1);
 	return (rc);
