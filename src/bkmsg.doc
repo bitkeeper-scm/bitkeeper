@@ -347,8 +347,9 @@ $
 
 If this field is set, all checkins will appear to be made by this user,
 in effect making this a single user package.  Single user packages are
-free from the logging constraint.  In order for the package to really
-be free, both the single_user and the single_host field need to be set.
+free from the logging constraint up to a maximum of 1000 files.  In order 
+for the package to really be free, both the single_user and the single_host 
+field need to be set.
 
 $
 #config_single_host
