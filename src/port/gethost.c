@@ -51,8 +51,7 @@ private void
 gethost(char *host, int hlen, int envOK)
 {
 	struct	hostent *hp;
-	char 	*h, *p, *q, buf[MAXLINE], domain[MAXPATH];
-	FILE	*f;
+	char 	*h, *p;
 
 	host[0] = 0;
 	if (envOK && (h = getenv("BK_HOST")) && !getenv("BK_EVENT")) {
@@ -108,7 +107,7 @@ gethost(char *host, int hlen, int envOK)
 out:
 #ifdef WIN32
 	unless (host[0]) {
-		int len = hlen;
+		DWORD len = hlen;
 		GetComputerName(host, &len);
 	}
 #else
@@ -118,7 +117,7 @@ out:
 	 * is the domain.
 	 */
 	if (host[0] && !strchr(host, '.')) {
-		f = fopen("/etc/resolv.conf", "rt");
+		FILE	*f = fopen("/etc/resolv.conf", "rt");
 		if (f) {
 			while (fgets(buf, sizeof(buf), f)) {
 				if (strneq("search", buf, 6)) {

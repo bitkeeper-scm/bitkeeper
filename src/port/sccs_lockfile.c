@@ -27,6 +27,7 @@ sccs_lockfile(const char *file, int waitsecs, int quiet)
 	char	*p, *uniq;
 	int	fd;
 	int	uslp = 1000, waited = 0;
+	extern	int fsync(int);
 
 	uniq = uniqfile(file);
 	unlink(uniq);
@@ -307,7 +308,7 @@ share_open(const char *file)
 		    (err != ERROR_PATH_NOT_FOUND) &&
 		    (err != ERROR_FILE_NOT_FOUND)) {
 			fprintf(stderr,
-			    "sccs_readlock: cannot open %s, win32 err %d\n",
+			    "sccs_readlock: cannot open %s, win32 err %lu\n",
 			    file, GetLastError());
 			return (-1);
 		}

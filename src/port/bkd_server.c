@@ -288,7 +288,7 @@ void
 bkd_service_loop(int ac, char **av)
 {
 	SOCKET	sock = 0;
-	int	c, i, j, n;
+	int	n;
 	char	pipe_size[50], socket_handle[20];
 	char	*nav[100] = {
 		"bk", "_socket2pipe",
@@ -411,25 +411,15 @@ envSize(char *envVar)
 	return (strlen(envVar) + 1 + strlen(e));
 }
 
+/* e.g. append "-E \"BK_BKDIR=path\"" */
 static void
 addEnvVar(char *cmd, char *envVar)
 {
-	char	*e, *p, *q;
+	char	*p, *v;
 
-	unless (e = getenv(envVar)) return;
-
-	/* e.g. append "-E \"BK_BKDIR=path\"" */
+	unless (v = getenv(envVar)) return;
 	p = &cmd[strlen(cmd)];
-	q = envVar;
-	*p++ = '-';
-	*p++ = 'E';
-	*p++ = ' ';
-	*p++ = '\" ';
-	while (*q) *p++ = *q++;
-	*p++ = '=';
-	while (*e) *p++ = *e++;
-	*p++ = '\" ';
-	*p = 0;
+	sprintf(p, "-E \"%s=%s\"", envVar, v);
 }
 
 /*
@@ -442,7 +432,7 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	SC_HANDLE   schSCManager = 0;
 	SERVICE_STATUS serviceStatus;
 	char	path[1024], here[1024];
-	char	*start_dir, *cmd, *p, *q;
+	char	*start_dir, *cmd, *p;
 	char	**nav;
 	char	*eVars[3] = {"BK_REGRESION", "BK_BKDIR", 0};
 	int	i, len, try = 0;
@@ -516,7 +506,7 @@ out:		if (cmd) free(cmd);
 	/*
 	 * Here is where we enter the bkd_service_loop()
 	 */
-	if (StartService(schService, --ac, ++av) == 0) {
+	if (StartService(schService, --ac, (LPDWORD)++av) == 0) {
 		fprintf(stderr, "%s cannot start service. %s\n",
 		    SERVICEDISPLAYNAME, getError(err, 256));
 		goto out;
@@ -720,7 +710,7 @@ getError(char *buf, int len)
        		buf[0] = 0;
     	} else {
         	buf1[lstrlen(buf1)-2] = 0;
-        	sprintf(buf, "%s (0x%x)", buf1, GetLastError());
+        	sprintf(buf, "%s (0x%lx)", buf1, GetLastError());
     	}
     	if (buf1) LocalFree((HLOCAL) buf1);
 	return buf;

@@ -131,12 +131,12 @@ main(int ac, char **av)
 	mkdir("bitkeeper/gnu/tmp", 0777);
 #endif
 	if (dest) {
-		// XXX - what about spaces in dest?
 		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
 		sprintf(buf, "bk install -f \"%s\"", dest);
 		system(buf);
-		tmp = malloc(strlen(getenv("PATH")) + MAXPATH);
-		sprintf(tmp, "PATH=%s%c%s", dest, PATH_DELIM, getenv("PATH"));
+		p = getenv("BK_OLDPATH");
+		tmp = malloc(strlen(p) + MAXPATH);
+		sprintf(tmp, "PATH=%s%c%s", dest, PATH_DELIM, p);
 		putenv(tmp);
 		fprintf(stderr, "\nInstalled version information:\n\n");
 		sprintf(buf, "bk version", dest);

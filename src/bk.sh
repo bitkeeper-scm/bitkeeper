@@ -1193,6 +1193,10 @@ _install()
 		}
 	}
 	mkdir -p "$DEST" || {
+		echo "bk install: Unable to mkdir $DEST, failed"
+		exit 1
+	}
+	test -d "$DEST" -a -w "$DEST" || {
 		echo "bk install: Unable to write to $DEST, failed"
 		exit 1
 	}

@@ -55,7 +55,7 @@ randomBits(char *buf)
 	u32 h1, h2,l1, l2;
 
 	if (QueryPerformanceCounter(&val)) {
-		sprintf(buf, "%lx", val.QuadPart);
+		sprintf(buf, "%llx", val.QuadPart);
 		return;
 	}
 	CoCreateGuid(&guid); /* get 128 bits unique id */

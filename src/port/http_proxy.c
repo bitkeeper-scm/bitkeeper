@@ -110,17 +110,19 @@ _get_socks_proxy(char **proxies)
 
 #ifdef WIN32
 int
-getReg(HKEY hive, char *key, char *valname, char *valbuf, int *buflen)
+getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
 {
         int	rc;
         HKEY    hKey;
         DWORD   valType = REG_SZ;
+	DWORD	len = *lenp;
 
 	valbuf[0] = 0;
         rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
         if (rc != ERROR_SUCCESS) return (0);
 
-        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, buflen);
+        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, &len);
+	*lenp = len;
         if (rc != ERROR_SUCCESS) return (0);
         RegCloseKey(hKey);
         return (1);
@@ -132,7 +134,7 @@ getRegDWord(HKEY hive, char *key, char *valname, DWORD *val)
         int	rc;
         HKEY    hKey;
         DWORD   valType = REG_DWORD;
-	int	buflen = sizeof (DWORD);
+	DWORD	buflen = sizeof (DWORD);
 
         rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
         if (rc != ERROR_SUCCESS) return (0);
