@@ -166,8 +166,8 @@ EOF
 L=`get $Q -p src/h.h | wc -l`
 [ $L -eq 5 ] || { echo merge failed; exit 1; }
 cd $HERE
-cp -a project project2
-cp -a project project3
+cp -rp project project2
+cp -rp project project3
 cd copy
 KEY="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
 bk push $Q || { echo failed; exit 1; }

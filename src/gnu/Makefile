@@ -1,4 +1,4 @@
-OS=`os`
+OS=`sh os`
 DIRS=patch
 BINS=patch/$(OS)/patch
 BKBIN=/usr/bitkeeper

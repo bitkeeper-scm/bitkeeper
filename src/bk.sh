@@ -539,6 +539,10 @@ _unlock() {
 	${BIN}clean -n "$@"
 }
 
+_mkdiffs() {
+	exec perl ${BIN}mkdiffs "$@"
+}
+
 _mv() {
 	${BIN}sccsmv "$@"
 }
