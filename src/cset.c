@@ -1261,8 +1261,8 @@ sccs_patch(sccs *s, cset_t *cs)
 			int len1 = strlen(s->tree->pathname);
 			int len2 = strlen(BKROOT);
 			unless ((s->state & S_CSET) ||
-				((len2 > len1) &&
-				    strneq(s->tree->pathname, BKROOT, len1))) {
+				((len1 > len2) &&
+				    strneq(s->tree->pathname, BKROOT, len2))) {
 				
 				mk_placeholder = 1;
 				prs_flags |= PRS_PLACEHOLDER;
