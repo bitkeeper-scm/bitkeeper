@@ -161,4 +161,21 @@ grep -q 'file/directory conflict' OUT || {
 	cat OUT
 	exit 1
 }
+rmdir d1/sub1/a
+echo OK
+echo $N Make sure it complains about cset pointer problems ..........$NL
+echo hi > foo
+bk new $Q foo || exit 1
+csetfile=`bk prs -hr+ -d ':CSETFILE:\n' foo`stuff
+bk admin -C$csetfile foo
+bk -r check -a > OUT 2>&1 && {
+	echo should have exited with a failure
+	cat OUT
+	exit 1
+}
+grep -q 'belongs to:' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
 echo OK
