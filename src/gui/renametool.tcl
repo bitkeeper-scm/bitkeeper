@@ -956,8 +956,6 @@ proc widgets {} \
 	    scrollbar .diffs.yscroll -wid $swid -troughcolor $tcolor \
 		-orient vertical -command { yscroll }
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
-	    #grid .diffs.l -row 0 -column 0 -sticky nsew
-	    #grid .diffs.r -row 0 -column 2 -sticky nsew
 	    grid .diffs.l -row 1 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
 	    grid .diffs.r -row 1 -column 2 -sticky nsew
@@ -1024,6 +1022,24 @@ proc keyboard_bindings {} \
 	bind all <n>		next
 	bind all <p>		prev
 	bind all <period>	dot
+	bind all <h>		\
+	    { if {[.menu.history cget -state] == "normal"} { history } }
+	bind all <c>		\
+	    { if {[.menu.create cget -state] == "normal"} { Create 1 } }
+	bind all <C>		\
+	    { if {[.menu.createAll cget -state] == "normal"} { CreateAll } }
+	bind all <d>		\
+	    { if {[.menu.delete cget -state] == "normal"} { Delete 1 } }
+	bind all <D>		\
+	    { if {[.menu.deleteAll cget -state] == "normal"} { DeleteAll } }
+	bind all <g>		\
+	    { if {[.menu.guess cget -state] == "normal"} { Guess } }
+	bind all <r>		\
+	    { if {[.menu.rename cget -state] == "normal"} { Rename } }
+	bind all <a>		\
+	    { if {[.menu.apply cget -state] == "normal"} { Apply } }
+	bind all <u>		\
+	    { if {[.menu.undo cget -state] == "normal"} { Undo } }
 
 	# Adjust relative heights
 	bind all <Alt-Up> { adjustHeight 1 -1 }
