@@ -94,7 +94,7 @@
 #define	ADMIN_OBSCURE	0x00100000	/* remove comments, obscure data */
 #define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
-#define	ADMIN_DELETE	0x00400000	/* file deleted, add a new null delta */
+#define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
