@@ -527,7 +527,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
-	global	search
+	global	search gc
 
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
@@ -551,7 +551,7 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
-	bind all		<q>		exit
+	bind all		$gc(quit)	exit
 	bind all		<n>		next
 	bind all		<space>		next
 	bind all		<p>		prev
