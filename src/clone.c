@@ -207,7 +207,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 	}
 
-	unless (bk_proj) bk_proj = proj_init(0);
+	/*
+	 * Invalidate the project cache, we have changed directory
+	 */
+	if (bk_proj) proj_free(bk_proj);
+	bk_proj = proj_init(0);
 	p = user_preference("checkout", buf);
 	if (streq(p, "edit")) {
 		sys("bk", "-r", "edit", "-q", SYS);
