@@ -42,6 +42,15 @@ rootkey2path(char *rootkey, char *log_root, char *buf)
 	return (buf);
 }
 
+private void
+send_cderror(char *path)
+{
+	out("ERROR-cannot cd to ");
+	out(path);
+	out(" (illegal, nonexistant, or not package root)\n");
+}
+
+
 /*
  * Change to the directory, making sure it is at or below where we are.
  * On failure, do not tell them why, that's an information leak.
@@ -57,7 +66,7 @@ unsafe_cd(char *path)
 	unless (Opts.daemon || Opts.safe_cd) return (0);
 	getcwd(b, MAXPATH);
 	unless ((strlen(b) >= strlen(a)) && pathneq(a, b, strlen(a))) {
-		out("ERROR-illegal cd command\n");
+		send_cderror(path);
 		return (1);
 	}
 	return (0);
@@ -106,9 +115,7 @@ cmd_cd(int ac, char **av)
 		}
 	} else {
 		if (unsafe_cd(p)) {
-			out("ERROR-cannot cd to ");
-			out(p);
-			out("\n");
+			send_cderror(p);
 			return (1);
 		}
 
@@ -117,9 +124,7 @@ cmd_cd(int ac, char **av)
 		 */
 		unless (exists("BitKeeper/etc")) {
 			if (errno == ENOENT) {
-				out("ERROR-");
-				out(p);
-				out(" is not a package root\n");
+				send_cderror(p);
 			} else if (errno == EACCES) {
 				out("ERROR-");
 				out(p);
