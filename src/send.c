@@ -71,6 +71,10 @@ send_main(int ac,  char **av)
 	char	patch[MAXPATH], out[MAXPATH];
 	FILE	*f;
 
+	if (bk_mode() == BK_STD) {
+		fprintf(stderr, upgrade_msg);
+		exit(1);
+	}
 	while ((c = getopt(ac, av, "dfqr:w:")) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;

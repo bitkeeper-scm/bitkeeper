@@ -61,6 +61,11 @@ nfs_parse(char *p)
 	remote	*r;
 	char	*s;
 	
+	if (bk_mode() == BK_STD) {
+		fprintf(stderr, upgrade_msg);
+		return (0);
+	}
+
 	unless (*p) return (0);
 	new(r);
 	/* user@host:path */

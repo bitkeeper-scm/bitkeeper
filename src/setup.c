@@ -52,7 +52,7 @@ setup_main(int ac, char **av)
 	if (chdir(package_path) != 0) exit(1);
 	sccs_mkroot(".");
 	if (config_path == NULL) {
-		FILE	*f;
+		FILE 	*f;
 
 		gethelp("setup_3", 0, 0, stdout);
 		/* notepad.exe wants text mode */
@@ -133,6 +133,7 @@ again:		printf("Editor to use [%s] ", editor);
                 fprintf(stderr, "setup: can not find package root.\n");
                 exit(1);
         }                           
+	mkdir("BitKeeper/etc/.master", 0775);
 	sendConfig("setups@openlogging.org", "1.0");
 	return (0);
 }
@@ -144,7 +145,7 @@ usage()
 		    "\n\
 usage: setup [-f] [-c<config file>] directory\n\
 \n\
-	-f               Don't ask for confirmation.
+	-f               Don't ask for confirmation.\n\
 	-c<config file>  Configuration file to use for setup.\n\n");
 	exit(1);
 }

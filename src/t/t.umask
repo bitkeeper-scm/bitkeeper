@@ -37,6 +37,7 @@ cat <<EOF > WANT
 ./BitKeeper/deleted
 ./BitKeeper/deleted/SCCS
 ./BitKeeper/etc
+./BitKeeper/etc/.master
 ./BitKeeper/etc/SCCS
 ./BitKeeper/log
 ./BitKeeper/tmp
@@ -48,6 +49,8 @@ then	echo failed to set permissions properly
 	exit 1
 fi
 echo OK
+exit
+##
 
 echo $N Make sure owner/group get read/write ........................$NL
 ls > LS

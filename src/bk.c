@@ -8,6 +8,10 @@ char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 project	*bk_proj = 0;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
+char 	*upgrade_msg =
+"This feature is not available in this version of BitKeeper, to upgrade\n\
+please contact sales@bitmover.com\n"; 
+
 
 char	*find_wish();
 char	*find_perl5();
@@ -452,6 +456,7 @@ cmdlog_start(char **av)
 			break;
 		}
 	}
+	if ((bk_mode() == BK_STD)  && !streq("commit", av[0])) cmdlog_repo = 0;
 	if (cmdlog_repo) {
 		sprintf(cmdlog_buffer,
 		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
@@ -705,5 +710,17 @@ next:		p = ++s;
 	}
 	fprintf(stderr, "Can not find perl5 to run\n");
 	exit(1);
+}
+
+bk_mode()
+{
+	char buf[MAXPATH];
+
+	/*
+	 * XXXX FIXME
+	 * This is a stub, pending the license key extraction code from Larry
+	 */
+	sprintf(buf, "%s/bk_std", sccs_root(0));
+	return ((exists(buf) == 1) ? BK_STD : BK_PRO); 
 }
 

@@ -282,6 +282,9 @@
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
 
+#define BK_STD 0
+#define BK_PRO 1
+
 #define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)
 #define	eof(s)		((s->encoding & E_GZIP) ? \
@@ -420,6 +423,7 @@ typedef struct {
 
 extern	project	*bk_proj;	/* bk.c sets this up */
 extern	jmp_buf	exit_buf;
+extern	char *upgrade_msg;
 
 #define	exit(e)	longjmp(exit_buf, e + 1000)
 
