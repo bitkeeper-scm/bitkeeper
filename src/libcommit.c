@@ -218,6 +218,9 @@ logChangeSet(char *rev, int quiet)
 	sprintf(subject, "BitKeeper ChangeSet log: %s", project_name());
 	mail(logAddr(), subject, commit_log);
 	unlink(commit_log);
+	unless(is_open_logging(logAddr())) {
+		sendConfig("config@openlogging.org", 1, 1);
+	}
 }
 
 int
@@ -532,6 +535,9 @@ checkLog(int quiet, int resync)
 		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("commit_and_maillog", buf)) {
+		unless(is_open_logging(logAddr())) {
+			sendConfig("config@openlogging.org", 1, 1);
+		}
 		return (0);
 	} else {
 		fprintf(stderr, "unknown return code <%s>\n", buf);
