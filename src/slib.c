@@ -1325,10 +1325,15 @@ cleanPath(char *path, char cleanPath[])
 
 	/* for win32 path */
 	top = (path[1] == ':')  ? top = &path[2] : path;
-	/* trim trailing '/' */
-	if ((*p == '/') && (p != top))  p--;
+
+	/* trim trailing slash(s) */
+	while ((p >= top) && (*p == '/')) p--;
+
 	while (p >= top) { 	/* scan backward */
-		if (p == &top[1] && (p[-1] == '.') && (p[0] == '.')) {
+		if ((p == top) && (p[0] == '.')) {
+			p = &p[-1];		/* process "." in the front */
+			break;
+		} else if (p == &top[1] && (p[-1] == '.') && (p[0] == '.')) {
 			dotCnt++; p = &p[-2];	/* process ".." in the front */
 			break;
 		} else if ((p >= &top[2]) && (p[-2] == '/') &&
@@ -1337,8 +1342,6 @@ cleanPath(char *path, char cleanPath[])
 		} else if ((p >= &top[1]) && (p[-1] == '/') &&
 		    	 (p[0] == '.')) {
 			p = &p[-2];		/* process "/." */
-		} else if ((p == top) && (p[0] == '.')) {
-			p = &p[-1];		/* process "." */
 		} else {
 			if (dotCnt) {
 				/* skip dir impacted by ".." */
@@ -1354,7 +1357,7 @@ cleanPath(char *path, char cleanPath[])
 		while ((p >= top) && (*p == '/')) p--;
 	}
 
-	if (!isEmpty(buf, r) && (top[0] != '/')) {
+	if (isEmpty(buf, r) || (top[0] != '/')) {
 		/* put back any ".." with no known parent directory  */
 		while (dotCnt--) {
 			if (!isEmpty(buf, r) && (r[1] != '/')) *r-- = '/';
