@@ -2,6 +2,7 @@
 
 /* Keep this alphabetical please */
 struct cmd cmds[] = {
+  { "?", "print this help", cmd_help, },
   { "clone", "clone the current repository", cmd_clone, },
   { "help", "print this help", cmd_help, },
   { "pull",
@@ -12,5 +13,6 @@ struct cmd cmds[] = {
   { "root",
     "set the repository to path or key; keys mean masters only", cmd_root, },
   { "status", "Show status for repository", cmd_status, },
+  { "version", "Show bkd version", cmd_version, },
   { 0, 0, 0 }
 };
