@@ -53,6 +53,30 @@ lockHome()
 	return (lockFile = strdup(path));
 }
 
+char *
+getHomeDir()
+{
+        char *homeDir;
+
+        homeDir = getenv("HOME");
+#ifdef WIN32
+        if (homeDir == NULL) {
+                char *home_drv, *home_path;
+                char home_buf[2048];
+
+                home_drv = getenv("HOMEDRIVE");
+                home_path = getenv("HOMEPATH");
+
+                if (home_drv && home_path) {
+                        sprintf(home_buf, "%s%s", home_drv, home_path);
+                        homeDir = strdup(home_buf);
+                        nt2bmfname(homeDir, homeDir);
+                }
+        }
+#endif
+        return homeDir;
+}
+
 /*
  * Use BK_TMP first, we set that for the regression tests.
  */
@@ -67,13 +91,16 @@ keysHome()
 		sprintf(path, "%s/.bk_keys", t);
 		return (keysFile = strdup(path));
 	}
-	if ((t = getenv("HOME")) && isdir(t)) {
+	t = getHomeDir();
+	if (t) {
 		sprintf(path, "%s/.bk_keys", t);
 		return (keysFile = strdup(path));
 	}
+#ifndef WIN32
 	if (exists("/var/bitkeeper/keys")) {
 		return (keysFile = strdup("/var/bitkeeper/keys"));
 	}
+#endif
 	sprintf(path, "%s/.bk_keys", TMP_PATH);
 	return (lockFile = strdup(path));
 }
@@ -109,7 +136,8 @@ uniq_lock()
 				if (sscanf(buf, "%d", &pid) != 1) {
 stale:					fprintf(stderr,
 					   "removing stale lock %s\n", lock);
-					unlink(lock);
+					if (unlink(lock) != 0) perror(lock);
+					assert(!exists(lock));
 					continue;
 				}
 				assert(pid > 0);
@@ -145,7 +173,9 @@ uniq_unlock()
 	char	*tmp;
 
 	unless (tmp = lockHome()) return (-2);
-	return (unlink(tmp));
+	if (unlink(tmp) != 0) perror(tmp);
+	assert(!exists(tmp));
+	return 0;
 }
 
 /*
@@ -299,7 +329,10 @@ uniq_close()
 	char	*tmp;
 
 	unless (dirty) goto close;
-	unless (tmp = keysHome()) return (-1);
+	unless (tmp = keysHome()) {
+		fprintf(stderr, "uniq_close:  can not find keyHome");
+		return (-1);
+	}
 	unlink(tmp);
 	unless (f = fopen(tmp, "w")) {
 		perror(tmp);
