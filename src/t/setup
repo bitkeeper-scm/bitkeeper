@@ -51,6 +51,13 @@ checkLocks() {
 	fi
 }
 
+# We need this because some proxy disallow proxy to localhost
+# some of our test do http push/pull/clone to localhost
+unsetHttpProxy() {
+	unset http_proxy HTTP_PROXY_HOST HTTP_PROXY_PORT
+	unset SOCKS_HOST SOCKS_PORT SOCKS_SERVER
+}
+
 # Usage: waitForUnlock <root>
 waitForUnlock() {
 	bk lock -U $1
