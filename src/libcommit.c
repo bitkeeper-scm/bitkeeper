@@ -180,7 +180,10 @@ logChangeSet(char *rev, int quiet)
 	FILE	*f;
 	int	dotCount = 0, n;
 
-	unless (streq("commit_and_maillog", getlog(NULL, quiet)))  return;
+	unless(is_open_logging(logAddr())) {
+		sendConfig("config@openlogging.org", 1, 1);
+	}
+	if (streq("none", logAddr())) return;
 
 	// XXX TODO  Determine if this is the first rev where logging is active.
 	// if so, send all chnage log from 1.0
@@ -218,9 +221,6 @@ logChangeSet(char *rev, int quiet)
 	sprintf(subject, "BitKeeper ChangeSet log: %s", project_name());
 	mail(logAddr(), subject, commit_log);
 	unlink(commit_log);
-	unless(is_open_logging(logAddr())) {
-		sendConfig("config@openlogging.org", 1, 1);
-	}
 }
 
 int
@@ -526,18 +526,13 @@ checkLog(int quiet, int resync)
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
-		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("need_seats", buf)) {
 		gethelp("seat_info", "", stdout);
 		return (1);
 	} else if (streq("commit_and_mailcfg", buf)) {
-		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("commit_and_maillog", buf)) {
-		unless(is_open_logging(logAddr())) {
-			sendConfig("config@openlogging.org", 1, 1);
-		}
 		return (0);
 	} else {
 		fprintf(stderr, "unknown return code <%s>\n", buf);
