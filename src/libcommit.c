@@ -486,39 +486,3 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	fclose(f);
 	return (found);
 }
-
-int
-checkLog(int quiet, int resync)
-{
-	char	ans[MAXLINE], buf[MAXLINE];
-
-	strcpy(buf, getlog(NULL, quiet));
-	if (strneq("ask_open_logging:", buf, 17)) {
-		gethelp("open_log_query", logAddr(), stdout);
-		printf("OK [y/n]? ");
-		fgets(ans, sizeof(ans), stdin);
-		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			setlog(&buf[17]);
-			return (0);
-		} else {
-			gethelp("log_abort", logAddr(), stdout);
-			return (1);
-		}
-	} else if (strneq("ask_close_logging:", buf, 18)) {
-		gethelp("close_log_query", logAddr(), stdout);
-		printf("OK [y/n]? ");
-		fgets(ans, sizeof(ans), stdin);
-		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
-		return (0);
-	} else if (streq("need_seats", buf)) {
-		gethelp("seat_info", "", stdout);
-		return (1);
-	} else if (streq("commit_and_mailcfg", buf)) {
-		return (0);
-	} else if (streq("commit_and_maillog", buf)) {
-		return (0);
-	} else {
-		fprintf(stderr, "unknown return code <%s>\n", buf);
-		return (1);
-	}
-}

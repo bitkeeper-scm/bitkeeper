@@ -1777,10 +1777,12 @@ commit(opts *opts)
 	extern	char *BitKeeper;
 
 	BitKeeper = "../BitKeeper/";
+#ifdef OLD_LICENSE
 	if (checkLog(opts->quiet, 1)) {
 		fprintf(stderr, "Commit aborted, no changes applied");
 		exit(1);
 	}
+#endif
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";

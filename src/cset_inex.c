@@ -57,6 +57,7 @@ cset_inex(int flags, char *op, char *revs)
 	file[0] = 0;
 	revbuf[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
+#ifdef OLD_LICENSE
 		if (checkLog(0, 1)) {
 			fprintf(stderr, "Cset aborted, no changes applied\n");
 #ifndef WIN32
@@ -66,6 +67,7 @@ cset_inex(int flags, char *op, char *revs)
 			mdbm_close(m);
 			return (1);
 		}
+#endif
 		chop(buf);
 		t = strchr(buf, '@');
 		assert(t);
