@@ -79,7 +79,7 @@ esac
 case "X`uname -s`" in
 	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
 		export XLIBS
-		MAKE="make -e"
+		MAKE="/usr/ccs/bin/make -e"
 		export MAKE
 		;;
 	XAIX)	MAKE=make

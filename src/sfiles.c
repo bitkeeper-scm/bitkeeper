@@ -42,6 +42,7 @@ usage: sfiles [-aAcCdDglkpPRrux] [directories]\n\n\
 private	int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg;
 private	int	Dflg, Aflg, Rflg, kFlg, xFlg, uFlg;
 private	FILE	*id_cache;
+private	char	id_tmp[100];	/* BitKeeper/tmp/idXXXXXX */
 private	void	keys(char *file);
 private	MDBM	*idDB;		/* used to detect duplicate keys */
 private	int	dups;		/* duplicate key count */
@@ -386,10 +387,7 @@ keys(char *file)
 private	void
 rebuild()
 {
-	int	i;
-	char	csetName[128] = CHANGESET;
-
-	unless (cset = init(csetName, 0)) {
+	unless (cset = init(CHANGESET, 0)) {
 		perror("sfiles: can't init ChangeSet");
 		exit(1);
 	}
@@ -410,14 +408,12 @@ rebuild()
 
 	unless (rFlg) goto c;
 
-	unless ((i = open(IDCACHE_LOCK, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
-		fprintf(stderr, "sfiles: can't lock id cache\n");
+	if (bktemp(id_tmp)) {
+		perror("gettemp");
 		exit(1);
 	}
-	close(i);	/* unlink it when we are done */
-	unlink(IDCACHE);
-	unless (id_cache = fopen(IDCACHE, "wb")) {
-		perror(IDCACHE);
+	unless (id_cache = fopen(id_tmp, "wb")) {
+		perror(id_tmp);
 		exit(1);
 	}
 	fprintf(id_cache, "\
@@ -431,8 +427,17 @@ rebuild()
 c:	lftw(".", caches);
 	if (id_cache) {
 		fclose(id_cache);
-		unlink(IDCACHE_LOCK);
-		chmod(IDCACHE, 0666);
+		if (sccs_lockfile(IDCACHE_LOCK, 16)) {
+			fprintf(stderr, "Not updating cache due to locking.\n");
+			unlink(id_tmp);
+		} else {
+			unlink(IDCACHE);
+			if (rename(id_tmp, IDCACHE)) {
+				perror("rename of idcache");
+				unlink(IDCACHE);
+			}
+			unlink(IDCACHE_LOCK);
+		}
 	}
 	sccs_free(cset);
 	mdbm_close(idDB);

@@ -1,5 +1,6 @@
 /*
  * BitKeeper repository level locking code.
+ * And some file level locking code which handles NFS races.
  *
  * Copyright (c) 2000 Larry McVoy.
  */
@@ -449,3 +450,52 @@ repository_stale(char *path, int discard, int verbose)
 	}
 	return (0);
 }
+
+/*
+ * Create a file with a unique name,
+ * try and link it to the lock file,
+ * if the link worked and our link count == 2, we won.
+ * If tries is set, try that many times, otherwise try forever.
+ *
+ * XXX - NT?
+ */
+int
+sccs_lockfile(char *lockfile, int tries)
+{
+	char	*s;
+	char	path[MAXPATH];
+	struct	stat sb;
+	int	slp = 1;
+	static	int uniq;
+
+	if (s = strrchr(lockfile, '/')) {
+		char	buf[MAXPATH];
+
+		strcpy(buf, lockfile);
+		s = strrchr(buf, '/');
+		*s = 0;
+		sprintf(path,
+		    "%s/%s%d%d", buf, sccs_gethost(), uniq++, getpid());
+	} else {
+		sprintf(path, "%s%d%d", sccs_gethost(), uniq++, getpid());
+	}
+	if (close(creat(path, GROUP_MODE))) {
+		perror(path);
+		return (-1);
+	}
+	for ( ;; ) {
+		if ((link(path, lockfile) == 0) && 
+		    (stat(path, &sb) == 0) && (sb.st_nlink == 2)) {
+		    	unlink(path);
+			return (0);
+		}
+		if (tries && (tries-- == 0)) {
+			fprintf(stderr, "timed out waiting for %s\n", lockfile);
+			unlink(path);
+			return (-1);
+		}
+		sleep(slp);
+		if (slp < 60) slp <<= 1;
+	}
+}
+
