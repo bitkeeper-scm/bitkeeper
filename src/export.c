@@ -165,7 +165,7 @@ export_patch(char *diff_style, char *rev,
 
 	unless (diff_style) diff_style = "u";
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
-	sprintf(buf, "bk rset -hr%s > %s", rev, file_rev);
+	sprintf(buf, "bk rset -hr%s > %s", rev ? rev : "+", file_rev);
 	system(buf);
 	sprintf(buf, "bk gnupatch -d%c %s %s",
 	    diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
