@@ -14,7 +14,7 @@ usage: check [-av]\n\n\
 
 MDBM	*buildKeys();
 char	*csetFind(char *key);
-int	check(sccs *s, MDBM *db);
+int	check(sccs *s, MDBM *db, MDBM *marks);
 char	*getRev(char *root, char *key, MDBM *idDB);
 char	*getFile(char *root, MDBM *idDB);
 int	verbose;
@@ -27,6 +27,7 @@ main(int ac, char **av)
 	int	c;
 	MDBM	*db;
 	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	MDBM	*marks = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
 	int	errors = 0;
 	int	e;
@@ -111,15 +112,19 @@ usage:		fprintf(stderr, "%s", check_help);
 				errors++;
 			}
 		}
-		if (e = check(s, db)) {
+		if (e = check(s, db, marks)) {
 			errors += e;
 		} else {
 			if (verbose) fprintf(stderr, "%s is OK\n", s->sfile);
 		}
 		sccs_free(s);
 	}
+	listMarks(marks);
 	sfileDone();
 	if (all) errors += checkAll(keys);
+	mdbm_close(db);
+	mdbm_close(keys);
+	mdbm_close(marks);
 	purify_list();
 	return (errors ? 1 : 0);
 }
@@ -136,9 +141,11 @@ checkAll(MDBM *db)
 	FILE	*keys = popen("bk sccscat -h ChangeSet", "r");
 	char	*t;
 	int	errors = 0;
-	MDBM	*idDB;
+	MDBM	*idDB, *goneDB;
+	MDBM	*warned = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
 	delta	*d;
+	int	found = 0;
 	char	buf[MAXPATH*3];
 
 	unless (keys) {
@@ -149,16 +156,17 @@ checkAll(MDBM *db)
 		perror("idcache");
 		exit(1);
 	}
+	/* This can legitimately return NULL */
+	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	while (fnext(buf, keys)) {
 		t = strchr(buf, ' ');
 		assert(t);
 		*t++ = 0;
 		if (mdbm_fetch_str(db, buf)) continue;
-		fprintf(stderr,
-		    "check: %s\n", buf);
-		fprintf(stderr,
-		    "\tfound in ChangeSet but not found in repository\n");
+		if (mdbm_fetch_str(goneDB, buf)) continue;
+		mdbm_store_str(warned, buf, "", MDBM_INSERT);
 		errors++;
+		found++;
 	}
 	pclose(keys);
 	keys = popen("bk get -skp ChangeSet", "r");
@@ -171,8 +179,11 @@ checkAll(MDBM *db)
 		assert(t);
 		*t++ = 0;
 		unless (s = sccs_keyinit(buf, 0, idDB)) {
-			fprintf(stderr, "keyinit(%s) failed.\n", buf);
-			errors++;
+			unless (gone(buf, goneDB) ||
+			    mdbm_fetch_str(warned, buf)) {
+				fprintf(stderr, "keyinit(%s) failed.\n", buf);
+				errors++;
+			}
 			continue;
 		}
 		s->state |= S_RANGE2;
@@ -192,8 +203,25 @@ checkAll(MDBM *db)
 		}
 		sccs_free(s);
 	}
+	if (found) listFound(warned);
 	pclose(keys);
+	mdbm_close(idDB);
+	mdbm_close(warned);
+	if (goneDB) mdbm_close(goneDB);
 	return (errors);
+}
+
+listFound(MDBM *db)
+{
+	kvpair	kv;
+
+	fprintf(stderr,
+	    "Check: found in ChangeSet but not found in repository:\n");
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		fprintf(stderr, "    %s\n", kv.key.dptr);
+	}
+	fprintf(stderr,
+	    "Add keys to BitKeeper/etc/gone if the files are gone for good.\n");
 }
 
 /*
@@ -297,6 +325,7 @@ buildKeys()
 	if (verbose > 1) {
 		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
 	}
+	mdbm_close(idDB);
 	if (e) exit(1);
 	return (db);
 }
@@ -376,7 +405,7 @@ getRev(char *root, char *key, MDBM *idDB)
 	   file and that one - if it exists - must be top of trunk.
 */
 int	
-check(sccs *s, MDBM *db)
+check(sccs *s, MDBM *db, MDBM *marks)
 {
 	delta	*d;
 	int	errors = 0;
@@ -386,6 +415,7 @@ check(sccs *s, MDBM *db)
 	char	*a;
 	char	buf[MAXPATH];
 	char	*val;
+	int	missing = 0;
 
 	/*
 	 * Make sure that all marked deltas are found in the ChangeSet
@@ -418,15 +448,8 @@ check(sccs *s, MDBM *db)
 	
 	/* Make sure that we think we have cset marks */
 	unless (s->state & S_CSETMARKED) {
-		if (marked) {
-			fprintf(stderr,
-			    "check: %s has marked deltas without marked file\n",
-			    s->sfile);
-		} else {
-			fprintf(stderr,
-		        "check: %s has neither marked file nor marked deltas\n",
-			    s->sfile);
-		}
+		mdbm_store_str(marks, s->sfile, "", 0);
+		missing++;
 		errors++;
 	}
 
@@ -463,6 +486,21 @@ check(sccs *s, MDBM *db)
 	}
 
 	return (errors);
+}
+
+listMarks(MDBM *db)
+{
+	kvpair	kv;
+	int	n = 0;
+
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		n++;
+		fprintf(stderr,
+		    "check: %s is missing cset marks,\n", kv.key.dptr);
+	}
+	if (n) {
+		fprintf(stderr, "   run ``bk cset -fvM1.0..'' to correct.\n");
+	}
 }
 
 char	*

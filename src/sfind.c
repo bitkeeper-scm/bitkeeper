@@ -39,7 +39,6 @@ int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
 MDBM	*idDB;
-MDBM	*csetDB;	/* database of {file if, tip id} */
 int	dups;
 int	mixed;		/* running in mixed long/short mode */
 int	file(char *f, int (*func)());
@@ -49,6 +48,7 @@ int	isSccs(char *s);
 void	rebuild(void);
 int	caches(const char *filename, const struct stat *sb, int flag);
 char	*name(char *);
+sccs	*cset;
 
 int
 main(int ac, char **av)
@@ -273,9 +273,8 @@ void
 rebuild()
 {
 	int	i;
-	sccs	*cset;
 
-	unless (cset = sccs_init("SCCS/s.ChangeSet", 0, 0)) {
+	unless (cset = sccs_init(CHANGESET, 0, 0)) {
 		perror("sfiles: can't init ChangeSet");
 		exit(1);
 	}
@@ -287,7 +286,7 @@ rebuild()
 	mixed = !(cset->state & S_KEY2);
 
 	if (Cflg) {
-		unless (csetDB = csetIds(cset, 0, 1)) {
+		if (csetIds(cset, 0)) {
 			perror("sfiles: can't init ChangeSet DB");
 			sccs_free(cset);
 			exit(1);
@@ -319,6 +318,7 @@ c:	lftw(".", caches, 15);
 		unlink("SCCS/z.id_cache");
 	}
 	sccs_free(cset);
+	mdbm_close(idDB);
 }
 
 visit(delta *d)
@@ -423,10 +423,10 @@ caches(const char *filename, const struct stat *sb, int flag)
 
 	/* Go look for long and short versions in the cset */
 	sccs_sdelta(sc, sccs_ino(sc), buf);
-	unless (t = mdbm_fetch_str(csetDB, buf)) {
+	unless (t = mdbm_fetch_str(cset->mdbm, buf)) {
 		if (t = sccs_iskeylong(buf)) {
 			*t = 0;
-			t = mdbm_fetch_str(csetDB, buf);
+			t = mdbm_fetch_str(cset->mdbm, buf);
 		}
 	}
 	if (t) {
