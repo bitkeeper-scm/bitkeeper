@@ -779,20 +779,22 @@ function help_send {
 	cat <<EOF
     =============== Sending BitKeeper patches ===============
 
-For now, this is very primitive.  You need to know the state of the other
-work area and list the change set revs that you want to send to them.
-See the resync command for an easier way.
+USAGE
+    bk send [-d] [-q] [revs] user@host.com
 
-So if you were in sync yesterday, and you made one changeset since then,
-you can do a 
+While the easiest way to keep two repositories in sync is to use resync,
+that requires an ssh connection to the other host.   Send is what you
+use when you have no connection other than email.
+
+To send the whole repository, you can just do
 
     $ bk send user@host.com
 
-and BitKeeper will generate the patch and mail it to user@host.com
+and BitKeeper will generate the (huge) patch and mail it to user@host.com
 
-The default changeset to send is the most recent one created.  If you want
-to send multiple changesets, for example from a common tagged point in the
-past, you can do
+If you happen to know that you want to send a specific change (and you know
+that the other repository has the changes leading up to the change you want 
+to send), you can do this
 
     $ bk send beta.. user@host.com
 
@@ -800,11 +802,24 @@ or
 
     $ bk send 1.10.. user@host.com
 
+Send remembers the changesets it has sent in BitKeeper/log/<address>
+where <address> is like user@host.com .  When you don't specify a list
+of changesets to send, Send will look in the log file and send only the
+new changesets.  So the easiest thing to do is to always use the same
+email address and just say
+
+    $ bk send user@host.com
+
+If you lose the log file and you want to seed it with the changes you
+know have been sent, the command to do that is
+
+    $ cd to project root
+    $ bk prs -h -r<revs> -d:ID: ChangeSet > BitKeeper/log/user@host.com
+
 OPTIONS
     -d		prepend the patch with unified diffs.  This is because some
     		people (Hi Linus!) like looking at the diffs to decide if 
 		they want the patch or not.
-
     -q		be quiet
 
 SEE ALSO
@@ -945,20 +960,53 @@ function send {
 	then	echo "usage: bk send [-dq] [cset_revs] user@host|-"
 		exit 1
 	fi
+	cd2root
+	if [ ! -d BitKeeper/log ]; then	mkdir BitKeeper/log; fi
 	if [ X$2 = X ]
-	then	cd2root
-		REV=`bk prs -hr+ -d:I: ChangeSet`
+	then	
 		OUTPUT=$1
+		if [ X$1 != X- ]
+		then	LOG=BitKeeper/log/$1
+			if [ -f $LOG ]
+			then	sort -u < $LOG > /tmp/has$$
+				bk prs -hd:ID: ChangeSet | sort > /tmp/here$$
+				FIRST=yes
+				comm -23 /tmp/here$$ /tmp/has$$ |
+				bk key2rev ChangeSet | while read x
+				do	if [ $FIRST != yes ]
+					then	echo $N ",$x"$NL
+					else	echo $N "$x"$NL
+						FIRST=no
+					fi
+				done > /tmp/rev$$
+				REV=`cat /tmp/rev$$`
+				/bin/rm -f /tmp/here$$ /tmp/has$$ /tmp/rev$$
+				if [ "X$REV" = X ]
+				then	echo Nothing new to send to $OUTPUT
+					exit 0
+				fi
+			else	REV=`bk prs -hr+ -d:I: ChangeSet`
+			fi
+	    		bk prs -hd:ID: ChangeSet > $LOG
+		fi
 	else	REV=$1
 		OUTPUT=$2
-	fi
-	if [ X$V != X ]
-	then	echo "Sending ChangeSet $REV to $OUTPUT" 1>&2
+		LOG=BitKeeper/log/$OUTPUT
+		if [ -f $LOG ]
+		then	(cat $LOG; bk prs -hd:ID: -r$REV ChangeSet) |
+			    sort -u > /tmp/log$$
+		    	cat /tmp/log$$ > $LOG
+			/bin/rm -f /tmp/log$$
+		else	bk prs -hd:ID: -r$REV ChangeSet > $LOG
+		fi
 	fi
 	case X$OUTPUT in
 	    X-)	${BIN}cset $D -m$REV $V
 	    	;;
-	    *)	${BIN}cset $D -m$REV $V | mail -s "BitKeeper patch $REV" $OUTPUT
+	    *)	( echo "This patch contains the following changesets:";
+	    	  echo "$REV" | sed 's/,/ /g' | fmt -1 | sort -n | fmt;
+	          ${BIN}cset $D -m$REV $V ) |
+		    mail -s "BitKeeper patch" $OUTPUT
 	    	;;
 	esac
 }
@@ -1432,7 +1480,7 @@ case "$1" in
 	exit 1
 	;;
     setup|changes|pending|commit|commitmerge|sendbug|send|\
-    mv|resync|edit|unedit|man|undo|save|docs)
+    mv|resync|edit|unedit|man|undo|save|docs|rm)
 	cmd=$1
     	shift
 	$cmd "$@"
@@ -1457,27 +1505,25 @@ case "$1" in
 	;;
 esac
 
-cmd=$1
-shift
-if [ X$cmd = X-r ]
-then	if [ X$1 = X ]
-	then	echo "usage: bk -r [dir] command [options]"
-		exit 0
-	fi
-	if [ -d "$1" ]
-	then	dir=$1
+SFILES=no
+if [ X$1 = X-r ]
+then	if [ X$2 != X -a -d $2 ]
+	then	cd $2
 		shift
 	else	cd2root
-		dir=.
 	fi
-	# Support -r as an option to tell sfiles to do it from the root
-	if [ X$1 = Xsfiles ]
-	then	shift
-		bk sfiles $dir "$@"
-	else	bk sfiles $dir | bk "$@" -
-	fi
+	shift
+	SFILES=yes
+fi
+if [ X$1 = X-R ]
+then	cd2root
+fi
+if [ $SFILES = yes ]
+then	bk sfiles | bk "$@" -
 	exit $?
 fi
+cmd=$1
+shift
 
 # Run our stuff first if we can find it, else
 # we don't know what it is, try running it and hope it is out there somewhere.

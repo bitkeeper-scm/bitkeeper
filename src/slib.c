@@ -5504,7 +5504,15 @@ delta_table(sccs *s, FILE *out, int willfix)
 				fputmeta(s, "\n", out);
 			} else if (d->flags & D_CKSUM) {
 				assert(d->type == 'D');
-				sprintf(buf, "\001cK%u\n", d->sum);
+				/*
+				 * It turns out not to be worth to save the
+				 * few bytes you might save by not making this
+				 * a fixed width field.  85% of the sums are
+				 * 5 digits, 97% are 4 or 5.
+				 * Leaving this fixed means we can diff the
+				 * s.files easily.
+				 */
+				sprintf(buf, "\001cK%05u\n", d->sum);
 				fputmeta(s, buf, out);
 			}
 		}
@@ -9009,6 +9017,25 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 				fprintf(out, "\n");
 			}
 			first = 0;
+			/*
+			 * Make the file names be the same, so change
+			 * +++ bk.sh-1.34  Thu Jun 10 21:22:08 1999
+			 * to
+			 * +++ bk.sh 1.34  Thu Jun 10 21:22:08 1999
+			 * XXX /tmp case
+			 */
+			if ((kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
+				int	len = strlen(s->gfile);
+
+				if (strneq(s->gfile, &buf[4], len)) {
+					buf[4+len] = ' ';
+				}
+				fputs(buf, out);
+				unless (fnext(buf, diffs)) break;
+				if (strneq(s->gfile, &buf[4], len)) {
+					buf[4+len] = ' ';
+				}
+			}
 		}
 		fputs(buf, out);
 	}
