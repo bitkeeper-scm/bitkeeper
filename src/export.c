@@ -18,9 +18,10 @@ export_main(int ac,  char **av)
 	FILE	*f;
 	char	*type = 0;
 
-	while ((c = getopt(ac, av, "d:Dhkt:Twvi:x:r:")) != -1) {
+	while ((c = getopt(ac, av, "d:Dhkqt:Twvi:x:r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;
+		    case 'q':	break; /* no op; for interface consistency */
 		    case 'd':	diff_style = optarg; break;
 		    case 'h':	hflag = 1; break; /* disbale patch header */
 		    case 'k':	kflag = 1; break;
@@ -40,7 +41,7 @@ export_main(int ac,  char **av)
 				break;
 		    default :
 usage:			fprintf(stderr,
-		"usage: bk export [-tplain|patch] [-TDkwv] [-i<pattern>] [-x<pattern>]\n");
+		"usage: bk export [-tplain|patch] [-TDkqwv] [-i<pattern>] [-x<pattern>]\n");
 			fprintf(stderr,
 				"\t[-r<rev> | -d u|c] [source] dest\n");
 			exit(1);
