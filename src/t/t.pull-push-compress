@@ -194,9 +194,9 @@ u
 EOF
 [ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
 L=`bk get $Q -p src/h.h | wc -l`
-target=5
-if [ "X$BK_RESOLVE_MERGEPROG" = "Xsmerge" ]; then
-	target=7
+target=7
+if [ "X$BK_RESOLVE_MERGEPROG" = "Xmerge" ]; then
+	target=5
 fi
 [ $L -eq $target ] || { echo merge failed; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
