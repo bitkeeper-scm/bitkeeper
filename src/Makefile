@@ -257,8 +257,8 @@ sfio: sfio.o $(LIBS)
 	$(CC) $(CFLAGS) sfio.o $(LINK) -o sfio
 adler32: adler32.o $(LIBS)
 	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
-undos: undos.o
-	$(CC) $(CFLAGS) undos.o -o undos
+undos: undos.o port/platforminit.o
+	$(CC) $(CFLAGS) undos.o port/platforminit.o -o undos
 chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 nextsecond: nextsecond.o

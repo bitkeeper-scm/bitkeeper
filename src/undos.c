@@ -11,11 +11,12 @@ main(int ac, char **av)
 	FILE	*f;
 	char	buf[1024];
 
+	platformSpecificInit(NULL);
 	if (ac != 2) {
 		printf("usage: %s filename\n", av[0]);
 		exit(1);
 	}
-	f = fopen(av[1], "r");
+	f = fopen(av[1], "rb");
 	if (!f) {
 		perror(av[1]);
 		exit(1);
