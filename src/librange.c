@@ -279,7 +279,7 @@ rangeSetExpand(sccs *s)
 
 /*
  * given a delta, go forward and backwards until we hit cset boundries.
- * XXX - this definitely wants to be a set, not a range.
+ * XXX - need to remove rstart/rstop.
  */
 void
 rangeCset(sccs *s, delta *d)
@@ -288,10 +288,17 @@ rangeCset(sccs *s, delta *d)
 	delta	*e = d;
 
 	assert(d);
-	for (d = d->parent; d && !(d->flags & D_CSET); e = d, d = d->parent);
+	for (d = d->parent; d && !(d->flags & D_CSET); e = d, d = d->parent) {
+		e->flags |= D_SET;
+	}
+	e->flags |= D_SET;
 	s->rstart = d ? e : s->tree;
-	for (d = save; d->kid && !(d->flags & D_CSET); d = d->kid);
+	for (d = save; d->kid && !(d->flags & D_CSET); d = d->kid) {
+		d->flags |= D_SET;
+	}
+	d->flags |= D_SET;
 	s->rstop = d;
+	s->state |= S_SET;
 }
 
 /*
