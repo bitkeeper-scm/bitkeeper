@@ -39,6 +39,23 @@ bk crypto -v my.pub data.sig < data2 && {
 }
 echo OK
 
+echo $N Test hashstr ................................................$NL
+bk crypto -h test > OUT.h
+echo CY9rzUYh03PK3k6DJie09g > WANT
+checkfiles OUT.h WANT
+echo $NX test$NXL | bk crypto -h - > OUT.h-
+checkfiles OUT.h- WANT
+bk crypto -Xh test > OUT.Xh
+echo 098f6bcd4621d373cade4e832627b4f6 > WANT
+checkfiles OUT.Xh WANT
+bk crypto -Sh test > OUT.Sh
+echo qUqP5cyxm6YcTAhz05Hph5gvu9M > WANT
+checkfiles OUT.Sh WANT
+bk crypto -SXh test > OUT.SXh
+echo a94a8fe5ccb19ba61c4c0873d391e987982fbbd3 > WANT
+checkfiles OUT.SXh WANT
+echo OK
+
 #echo $N Run internal test vectors ...................................$NL
 #bk crypto -t > OUT 2>ERR || {
 #	echo tests failed

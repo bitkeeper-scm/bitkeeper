@@ -8,8 +8,10 @@ private	int	make_keypair(int bits, char *secret, char *public);
 private	int	signdata(rsa_key *secret);
 private	int	validatedata(rsa_key *public, char *sign);
 private	int	cryptotest(void);
-
 private void	loadkey(char *file, rsa_key *key);
+
+private	int	use_sha1_hash = 0;
+private	int	hex_output = 0;
 
 /*
  * -i bits secret-key public-key
@@ -31,6 +33,10 @@ private void	loadkey(char *file, rsa_key *key);
  *    # run internal test vectors on the library
  * -h <data> [<key>]
  *    # hash data with an optional key
+ * -S
+ *    # use sha1 instead of md5 for -h
+ * -X
+ *    # print hash results in hex instead of base64 for -h
  */
 
 private void
@@ -55,12 +61,14 @@ crypto_main(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "histv")) != -1) {
+	while ((c = getopt(ac, av, "hisStvX")) != -1) {
 		switch (c) {
 		    case 'h': case 'i': case 's': case 't': case 'v':
 			if (mode) usage();
 			mode = c;
 			break;
+		    case 'S': use_sha1_hash = 1; break;
+		    case 'X': hex_output = 1; break;
 		    default:
 			usage();
 		}
@@ -457,23 +465,37 @@ base64_main(int ac, char **av)
 char *
 secure_hashstr(char *str, char *key)
 {
-	int	hash = register_hash(&md5_desc);
+	int	hash = register_hash(use_sha1_hash ? &sha1_desc : &md5_desc);
 	unsigned long md5len, b64len;
 	char	*p;
+	int	n;
 	char	md5[32];
 	char	b64[32];
 
-	if (hmac_memory(hash, key, strlen(key),
-		str, strlen(str), md5)) return (0);
+	if (key) {
+		if (hmac_memory(hash, key, strlen(key),
+			str, strlen(str), md5)) return (0);
+	} else if (streq(str, "-")) {
+		if (hash_filehandle(hash, stdin, md5)) return (0);
+	} else {
+		if (hash_memory(hash, str, strlen(str), md5)) return (0);
+	}
 	b64len = sizeof(b64);
 	md5len = hash_descriptor[hash].hashsize;
-	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
-	for (p = b64; *p; p++) {
-		if (*p == '/') *p = '-';	/* dash */
-		if (*p == '+') *p = '_';	/* underscore */
-		if (*p == '=') {
-			*p = 0;
-			break;
+	if (hex_output) {
+		for (n = 0; n < md5len; n++) {
+			sprintf(b64 + 2*n,
+			    "%1x%x", (md5[n] >> 4) & 0xf, md5[n] & 0xf);
+		}
+	} else {
+		if (base64_encode(md5, md5len, b64, &b64len)) return (0);
+		for (p = b64; *p; p++) {
+			if (*p == '/') *p = '-';	/* dash */
+			if (*p == '+') *p = '_';	/* underscore */
+			if (*p == '=') {
+				*p = 0;
+				break;
+			}
 		}
 	}
 	return (strdup(b64));
@@ -482,27 +504,5 @@ secure_hashstr(char *str, char *key)
 char *
 hashstr(char *str)
 {
-	int	hash = register_hash(&md5_desc);
-	unsigned long md5len, b64len;
-	char	*p;
-	char	md5[32];
-	char	b64[32];
-
-	if (streq(str, "-")) {
-		if (hash_filehandle(hash, stdin, md5)) return (0);
-	} else {
-		if (hash_memory(hash, str, strlen(str), md5)) return (0);
-	}
-	b64len = sizeof(b64);
-	md5len = hash_descriptor[hash].hashsize;
-	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
-	for (p = b64; *p; p++) {
-		if (*p == '/') *p = '-';	/* dash */
-		if (*p == '+') *p = '_';	/* underscore */
-		if (*p == '=') {
-			*p = 0;
-			break;
-		}
-	}
-	return (strdup(b64));
+	return (secure_hashstr(str, 0));
 }
