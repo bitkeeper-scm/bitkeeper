@@ -400,6 +400,7 @@ applyfiles(char *file, char *lastrev)
 	char	path[MAXPATH];
 	char	key[MAXPATH];
 	FILE	*f;
+	MMAP	*m;
 	int	error = 0, n;
 	delta	*d, *e;
 	char	*t;
@@ -471,7 +472,7 @@ Please check the list and try again.\n");
 				return (-1);
 			}
 		} else {
-			f = fopen(path, "r");
+			m = mopen(path);
 			assert(f);
 			if (sccs_get(s, d->rev,
 			    0, 0, 0, SILENT|GET_SKIPGET|GET_EDIT, "-")) {
@@ -479,7 +480,7 @@ Please check the list and try again.\n");
 				return (-1);
 			}
 			if (sccs_delta(s,
-			    SILENT|DELTA_FORCE|DELTA_PATCH, e, 0, f)) {
+			    SILENT|DELTA_FORCE|DELTA_PATCH, e, 0, m)) {
 				perror("delta");
 				return (-1);
 			}

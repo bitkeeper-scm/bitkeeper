@@ -1180,21 +1180,21 @@ csetCreate(sccs *cset, int flags, char *sym)
 	delta	*d;
 	int	error = 0;
 	time_t	date;
-	FILE	*diffs;
+	MMAP	*diffs;
+	FILE	*fdiffs;
 	char	filename[30];
 
 	gettemp(filename, "/tmp/cdifXXXXXX");
-	unless (diffs = fopen(filename, "w+")) {
+	unless (fdiffs = fopen(filename, "w+")) {
 		perror(filename);
 		exit(1);
 	}
 
-	d = mkChangeSet(cset, diffs); /* write change set to diffs */
+	d = mkChangeSet(cset, fdiffs); /* write change set to diffs */
 
-	/* then rewind to ready it for reading */
-	unless (fflush(diffs)==0 && fseek(diffs, 0L, SEEK_SET)==0) {
+	fclose(fdiffs);
+	unless (diffs = mopen(filename)) {
 		perror(filename);
-		fclose(diffs);
 		unlink(filename);
 		exit(1);
 	}

@@ -622,11 +622,11 @@ _sendLog() {
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
 	if [ x$key != x ]
-	then if ${BIN}prs -hd:C: \
-	    -r`echo "$key" | ${BIN}key2rev BitKeeper/etc/config` \
-	    BitKeeper/etc/config | grep 'Logging OK' >/dev/null 2>&1
-	then first=YES
-	fi
+	then	if ${BIN}prs -hd:C: \
+		    -r`echo "$key" | ${BIN}key2rev BitKeeper/etc/config` \
+		    BitKeeper/etc/config | grep 'Logging OK' >/dev/null 2>&1
+		then	first=YES
+		fi
 	fi
 	if [ x$first = xYES ]
 	then R=1.0..$REV
@@ -637,12 +637,15 @@ _sendLog() {
 		*.*)		n=${REV#*.}
 				n=`expr $n - 10`;;
 		esac
-		if [ $n -le 0 ]; then n=0; fi
+		if [ $n -le 1 ]; then n=1; fi
 		R=${REV%%.*}.$n..$REV
 	fi
 
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	${BIN}cset -c -r$R | _mail $LOGADDR "BitKeeper log: $P" 
+	( echo ---------------------------------
+	  ${BIN}sccslog -r$REV ChangeSet
+	  echo ---------------------------------
+	  ${BIN}cset -c -r$R ) | _mail $LOGADDR "BitKeeper log: $P" 
 }
 
 _remark() {
