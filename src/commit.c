@@ -180,14 +180,12 @@ do_commit(char **av,
 	c_opts opts, char *sym, char *pendingFiles, int dflags)
 {
 	int	rc, i;
+	char	buf[MAXLINE], *p;
+	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
 	sccs	*cset;
 	char	**syms = 0;
 	FILE 	*f, *f2;
-	char	*p;
-	int	add_loggingok, add_bkstate;
-	char	buf[MAXLINE];
-	char	pendingFiles2[MAXPATH] = "";
 	char	commentFile[MAXPATH];
 
 	unless (ok_commit(opts.alreadyAsked)) {
@@ -197,19 +195,8 @@ out:		if (pendingFiles) unlink(pendingFiles);
 
 	if (!opts.resync && enforceLicense(opts.quiet)) goto out;
 
-	add_loggingok = pending(s_logging_ok);
-	add_bkstate = update_bkstate();
-	if (add_bkstate < 0) {
-		if (add_bkstate < -2) {
-			fprintf(stderr,
-			    "commit: update_bkstate failed code = %d\n",
-			    add_bkstate);
-		}
-		goto out;
-	}
-	if (add_loggingok || add_bkstate) {
-		int     len1 = strlen(s_logging_ok);
-		int	len2 = strlen(BKSTATE);
+	if (pending(s_logging_ok)) {
+		int     len = strlen(s_logging_ok); 
 
 		/*
 		 * Redhat 5.2 cannot handle opening a file
@@ -227,22 +214,16 @@ out:		if (pendingFiles) unlink(pendingFiles);
 			 * Skip the logging_ok files
 			 * We'll add it back when we exit this loop
 			 */
-			if (add_loggingok && buf[len1] == BK_FS &&
-			    strneq(s_logging_ok, buf, len1)) {
-				continue;
-			}
-			if (add_bkstate && buf[len2] == BK_FS &&
-			    strneq(BKSTATE, buf, len2)) {
+			if (strneq(s_logging_ok, buf, len) &&
+			    buf[len] == BK_FS) {
 				continue;
 			}
 			fputs(buf, f2);
 		}
-		if (add_loggingok) fprintf(f2, "%s%c+\n", s_logging_ok, BK_FS);
-		if (add_bkstate) fprintf(f2, "%s%c+\n", BKSTATE, BK_FS);
+		fprintf(f2, "%s%c+\n", s_logging_ok, BK_FS); 
 		fclose(f);
 		fclose(f2);
 	}
-
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
 	 */
