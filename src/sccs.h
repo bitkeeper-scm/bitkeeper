@@ -656,7 +656,9 @@ delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
+char	*sccs_realhost(void);
 char	*sccs_getuser(void);
+char	*sccs_realuser(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -785,13 +787,12 @@ void	free_globs(globv globs);
 char	*prog2path(char *prog);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
-void	sendConfig(char *);
+void	sendConfig(char *addr, char *rev);
 int	writen(int to, char *buf, int size);
 char	chop(register char *s);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
 long	almostUnique(int harder);
-
 int	repository_locked(project *p);
 int	repository_lockers(project *p);
 int	repository_locker(char type, pid_t pid, char *host);
@@ -801,33 +802,36 @@ int	repository_wrlock(void);
 int	repository_rdunlock(int force);
 int	repository_wrunlock(int force);
 int	isValidLock(char, pid_t, char *);
-
 void	comments_save(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
-
 void	host_done();
 delta	*host_get(delta *);
-
 void	user_done();
 delta	*user_get(delta *);
 char	*shell();
-
-/* lod.c */
-struct lod;
+struct	lod;
 typedef struct lod lod_t;
-
 lod_t	*lod_init(sccs *cset, char *lodname, u32 flags, char *who);
 void	lod_free(lod_t *l);
 int	lod_setlod(lod_t *l, sccs *s, u32 flags);
-
-/* names.c */
 void	names_init(void);
 int	names_rename(char *old_spath, char *new_spath, u32 flags);
 void	names_cleanup(u32 flags);
-
-/* bk.c */
 int	bk_sfiles(int ac, char **av);
+int	outc(char c);
+MDBM	*loadConfig(char *root);
+int	ascii(char *file);
+int	sccs_rm(char *name, int useCommonDir);
+int	mkconfig(FILE *out);
+int	config2logging(char *root);
+int	logging(char *user, MDBM *configDB, MDBM *okDB);
+void	cset_header(FILE *f);
+void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
+void	get_http_proxy(char *proxy_host, int *proxy_port);
+int	confirm(char *msg);
+int	setlod_main(int ac, char **av);
+MDBM *	loadOK();
 
 #endif	/* _SCCS_H_ */
