@@ -207,7 +207,6 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 			nomatch = 0;
 		}
 	}
-	freeLines(lines);
 
 	if (streq("@TAG PROBE@", lines[--i])) {
 		d = 0;
@@ -223,6 +222,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 		}
 	}
 	out("@END MATCHES@\n");
+	freeLines(lines);
 
 	/*
 	 * Phase 2, send the non marked keys.

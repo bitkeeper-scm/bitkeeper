@@ -88,11 +88,7 @@ usage:			system("bk help -s stripdel");
 	sfileDone();
 done:   
 	if (!opts.checkOnly && logmarker_needed) {
-		/* 
-		 * XXX the debug argument to updLogMarker is unusable
-		 * because it uses a bad filehandle.
-		 */
-		updLogMarker(logmarker_ptype, 0);
+		updLogMarker(logmarker_ptype, !opts.quiet, stderr);
 	}
 	return (rc);
 next:	return (1);

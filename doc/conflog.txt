@@ -1,0 +1,81 @@
+Config Logging Algorithm
+=========================
+
+When user runs a "bk commit" command, the enforceLicense() function is
+called. If the repository is in closed logging mode, enforceLicense()
+calls the enforceConfigLog() function. The algorithm of the
+enforceConfigLog() function is as follows:
+
+First the ChangeSet file is examined to find the log marker that
+indicates the last Cset that has been successfully logged to
+bitkeeper.com.  Any csets past the marker are considered pending and
+need to be logged.  Normally only a handful of csets should be pending
+and the commit proceeds directly.  Then after the commit is finished a
+"bk _lconfig" process is started in the background to send the pending
+csets to bitkeeper.com and update the ChangeSet file with the new log
+marker.
+
+If there are more than 10 csets pending that are older than 60 days,
+the "bk _lconfig" process in run in the foreground to try to clear the
+back log before the commit is allowed to proceed. If the back log is
+still not cleared after the foreground "bk _lconfig" terminates, it
+fails the commit with a message. Note that the only time we run "bk
+_lconfig" in the foreground is when the blocking of "commit" is
+imminent and this requires at least 60 days to have passed since the
+last successful run of "bk _lconfig".  If there are any cset pending
+for more then 7 days, it assumes there is a temporary connection
+failure and issues a warning message to the user without disabling the
+"commit" operation.
+
+After a successful commit a "bk _lconfig" process is always started in
+the background.  If multiple "bk _lconfig" processes move the log
+marker in the ChangeSet file, the last process wins.  Locking is
+provided by sccs_admin() which protects the file with a 'z' lock.
+
+"bk citool" simply calls "bk commit" and depends on the commit code to
+enforce config logging.
+
+ Notes about the config marker
+ -----------------------------
+
+ When doing a "clone" the config marker in the parent tree is
+ preserved and copied to the child. 
+
+ When doing a "push" or a "pull" the config marker in NOT transfered.
+ The resolve code will start a background "bk _lconfig" regardless of
+ its outcome.
+
+ Notes about "bk _lconfig"
+ -------------------------
+
+ The "bk _lconfig" queries the current repository and builds a config
+ message like the ones at the end of /home/bk/mail/config.  This
+ message is then sent to bitkeeper.com using the following URL:
+     http://www.bitkeeper.com:80/cgi-bin/bk_config
+ if that fails then
+     http://backup1.bitkeeper.com:80/cgi-bin/bk_config
+ is also tried.
+ (Not the normal proxies are used to make the connection.)
+ The script (/home/httpd/cgi-bin/bk_config) is a simple program that
+ puts the message in an email and pipes it into sendmail.  _lconfig 
+ added mail headers with "To: config@openlogging.org" at the top.
+ If the sendmail process returns with no errors then "@OK@" is
+ returned to the _lconfig process which indicates that everything
+ worked OK.  Otherwise "ERROR-bad license key" is returned.  Note that
+ currently no license validation is performed by the server before
+ "@OK" is returned.
+
+Questions:
+
+ * What if I pull >10 csets from a repository I haven't touched in
+   more than 2 months into my tree.  Will I freeze in the next time I
+   make a commit if the net happens to be down?
+
+  [ yes. pretty much, but the net has to be done when I do the pull 
+    as well. ]
+
+ * We might want a return value from /home/httpd/cgi-bin/bk_config
+   that tells "bk _lconfig" that the license in question has been
+   revoked and to remove all log markers from the repo.  This will
+   force a foreground "bk _lconfig" on the next commit and stop people
+   cold.  (Wow.  Normally I am not this devious...)

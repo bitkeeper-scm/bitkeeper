@@ -200,7 +200,7 @@ unPublish(sccs *s, delta *d)
 }
 
 void
-updLogMarker(int ptype, int verbose)
+updLogMarker(int ptype, int verbose, FILE *vf)
 {
 	sccs	*s;
 	delta	*d;
@@ -223,7 +223,7 @@ updLogMarker(int ptype, int verbose)
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 		if (verbose) {
-			fprintf(opts.out,
+			fprintf(vf,
 				"Log marker updated: pending count = %d\n",
 				logs_pending(ptype, 0, 0));
 		}
@@ -232,7 +232,7 @@ updLogMarker(int ptype, int verbose)
 			char buf[MAXPATH];
 
 			getcwd(buf, sizeof (buf));
-			fprintf(opts.out,
+			fprintf(vf,
 				"updLogMarker: cannot access %s, pwd=%s\n",
 				s_cset, buf);
 		}
@@ -310,7 +310,7 @@ push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
-		if (getenv("BKD_LEVEL") &&
+		if (!opts.metaOnly && getenv("BKD_LEVEL") &&
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(opts.out,
 			    "push: cannot push to lower level repository\n");
@@ -423,7 +423,7 @@ tags:			fprintf(opts.out,
 	 * if opts.lcsets > 0, we update the log marker in push part 2
 	 */
 	if ((opts.lcsets == 0) && (needLogMarker(r))) {
-		updLogMarker(0, opts.debug);
+		updLogMarker(0, opts.debug, opts.out);
 	}
 	if ((opts.lcsets == 0) || !opts.doit) return (0);
 	if ((opts.rcsets || opts.rtags) && !opts.metaOnly) {
@@ -738,7 +738,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 
 	if (opts.metaOnly) {
-		if (needLogMarker(r)) updLogMarker(0, opts.debug);
+		if (needLogMarker(r)) updLogMarker(0, opts.debug, opts.out);
 	} else {
 		unlink(CSETS_OUT);
 		rename(rev_list, CSETS_OUT);

@@ -8,6 +8,7 @@ lconfig_main(int ac, char **av)
 {
 	char	from[MAXPATH], subject[MAXLINE], config_log[MAXPATH];
 	char	url[] = BK_CONFIG_URL;
+	char	url_backup[] = BK_CONFIG_BCKUP;
 	char	*to = "config@openlogging.org";
 	char	*p;
 	FILE	*f;
@@ -39,7 +40,7 @@ lconfig_main(int ac, char **av)
 			fprintf(stderr,
 			    "skipping config log for small single user tree\n");
 		}
-		updLogMarker(1, debug);
+		updLogMarker(1, debug, stderr);
 		return (1);
 	}
 
@@ -74,6 +75,12 @@ lconfig_main(int ac, char **av)
 	}
 
 	r = remote_parse(url, 0);
+	if (getenv("_BK_FORCE_CONFIGLOG_FAILURE")) {
+		sleep(5);
+		rc = 1; /* fake a failure */
+		goto done;
+	}
+
 	if (debug) r->trace = 1;
 	assert(r);
 	loadNetLib();
@@ -86,8 +93,31 @@ lconfig_main(int ac, char **av)
 	skip_http_hdr(r);
 	unless (rc) rc = get_ok(r, 0, debug);
 	disconnect(r, 2);
-	unlink(config_log);
-	unless (rc) updLogMarker(1, debug);
+	unless (rc) goto done;
+
+	/*
+	 * Try the backup url if the main one failed
+	 * I replicated the above code block because I want minim 
+	 * change to the original tested code.
+	 * We will factor out the commdn code in the 2.1 tree
+	 */
+	remote_free(r);
+	r = remote_parse(url_backup, 0);
+	if (debug) r->trace = 1;
+	assert(r);
+	http_connect(r, BK_CONFIG_CGI);
+	r->isSocket = 1;
+	m = mopen(config_log, "r");
+	assert(m);
+	rc = http_send(r, m->where, msize(m), 0, "bk_config", BK_CONFIG_CGI);
+	mclose(m);
+	skip_http_hdr(r);
+	unless (rc) rc = get_ok(r, 0, debug);
+	disconnect(r, 2);
+
+done:	if (unlink(config_log)) perror(config_log);
+	unless (rc) updLogMarker(1, debug, stderr);
+	remote_free(r);
 	return (rc);
 }
 

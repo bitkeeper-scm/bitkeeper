@@ -54,6 +54,7 @@ commit_main(int ac, char **av)
 				}
 				break;
 		    case 'Y':	doit = 1; getcomment = 0;	/* doc 2.0 */
+				unlink(commentFile);
 				strcpy(commentFile, optarg);
 				break;
 		    case 'A':	/* internal option for regression test only */
@@ -290,19 +291,62 @@ goodPackageName(char *pname)
 }
 
 private int
+inGracePeriod(int l)
+{
+	/*
+	 * Eval licence and single-user license have no grace period
+	 */
+	if ((l&LOG_LIC_GRACE) && 
+	    !(l&LOG_LIC_EXPIRED) && !(l&LOG_LIC_SINGLE) && !isEvalLicense()) {
+		return (1);
+	}
+	return (0);
+}
+
+private int
+is_VIP(int l)
+{
+	if ((l&LOG_LIC_OK) && !(l&LOG_LIC_SINGLE) &&
+	    !inGracePeriod(l) && !(l&LOG_LIC_EXPIRED) &&
+	    !isEvalLicense()) {
+		return (1);
+	}
+	return (0);
+}
+
+private int
+hasPendingClog(void)
+{
+
+	if (getenv("_BK_FORCE_PENDING_CLOG")) return (1);
+	if (logs_pending(1, 1, 7) > 0) return (1);
+	return (0);
+}
+
+private int
 enforceConfigLog(int l)
 {
-	int	ptype;
 
-	ptype = 1;
-	if (logs_pending(ptype, 1, 7) == 0)  return (0);
+	if (is_VIP(l) || !hasPendingClog()) return (0);
 
-	/*
-	 * Try to force and the log and re-check pending log
-	 */
-	if (logs_pending(ptype, 1, 60) > 10)  system("bk _lconfig");
-	if (logs_pending(ptype, 1, 60) > 10)  {
-			printf(
+	if (inGracePeriod(l)) {
+		printf(
+"============================================================================\n"
+"Warning:  You have config logs pending for a long time.\n\n" 
+"\"commit\" will try to send the pending logs automatically before it exit.\n"
+"Please verify the pending count is zero after bk commit is done.\n"
+"To get a count of the pending logs: use the following commnd:\n"
+"\t\"bk _lconfig -p\"\n\n"
+"If pedning count is still non-zero after bk commit is done,\n"
+"please run the following command and email its output to \n"
+"support@bitmover.com:\n"
+"\t\"bk _lconfig -d\"\n\n"
+"============================================================================\n"
+);
+		return (0);
+	}
+
+	printf(
 "============================================================================\n"
 "Error: Max pending config log exceeded, commit aborted\n\n"
 "This error indicates that the BitKeeper program is unable to contact \n"
@@ -317,41 +361,7 @@ enforceConfigLog(int l)
 "\t\"bk _lconfig -d\"\n\n"
 "============================================================================\n"
 );
-		return (-1);
-	}
-	if (logs_pending(ptype, 1, 7) > 0)  {
-		if ((l&LOG_LIC_OK) &&
-		    !(l&LOG_LIC_SINGLE) &&
-		    !(l&LOG_LIC_GRACE) &&
-		    !(l&LOG_LIC_EXPIRED) &&
-		    !isEvalLicense()) {
-			/*
-			 * Message for paying customer
-			 */
-			printf(
-"============================================================================\n"
-"Warning: BitKeeper was unable to transmit config log for 7 days. Please\n"
-"check Your network configuration and make sure logs are transmitted properly\n"
-"You can test your log transmission with the command \"bk _lconfig -d\".\n"
-"*IMPORTANT*: Do not ignore this message, if this problem is not fixed\n" 
-"Bitkeeper will stop working eventually!!\n"
-"If you need help with this problem, please contact support@bitmover.com\n"
-"============================================================================\n"
-			);
-		} else {
-			/*
-			 * Message for non-paying customer
-			 */
-			printf(
-"============================================================================\n"
-"Warning: BitKeeper was unable to transmit config log for 7 days. Please\n"
-"check Your network configuration and make sure logs are transmitted properly\n"
-"You can test your log transmission with the command \"bk _lconfig -d\".\n"
-"============================================================================\n"
-			);
-		}
-	}
-	return (0);
+	return (-1);
 }
 
 private int
@@ -627,7 +637,7 @@ logChangeSet(int l, char *rev, int quiet)
 		sccs_free(s);
 	}
 
-	unless (l & LOG_OPEN) sendConfig("config@openlogging.org", 1);
+	unless (l & LOG_OPEN) sendConfig();
 	if (streq("none", to)) return;
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("Sending ChangeSet to %s...\n", logAddr());
@@ -883,16 +893,19 @@ config_main(int ac, char **av)
 	return (0);
 }
 
+/*
+ * Note: must run config log process in background
+ */
 void
-sendConfig(char *to, int shutup)
+sendConfig()
 {
-	char	*out = NULL;
+	char	cmd[1024];
 
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
 	if (getenv("BK_REGRESSION") && (logs_pending(1, 0, 0) < 20)) return;
 
-	if (shutup) out = DEV_NULL; /* redirect all message to /dev/null */
-	sysio(0, out, out, "bk", "_lconfig", SYS);
+	sprintf(cmd, "bk _lconfig > %s 2> %s &", DEV_NULL, DEV_NULL);
+	system(cmd);
 }

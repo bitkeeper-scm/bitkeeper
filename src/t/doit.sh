@@ -44,6 +44,10 @@ unix_common_setup()
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test
 	if [ X$USER = Xroot ]; then USER=root-test; fi
+
+	# for freebsd, malloc() interface
+	MALLOC_OPTIONS=Z
+	export MALLOC_OPTIONS
 }
 
 # Make sure we don't pick up the DOS "find" command in the PATH
