@@ -10,8 +10,8 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
 	  bkd bkusers clone commit fix gethelp getlog help isascii logaddr \
-	  logchangeset names parent push r2c receive rename resolve \
-	  resyncwrap send sendconfig setlog setup status unwrap version
+	  logchangeset names parent push r2c receive resolve \
+	  send sendconfig setlog setup status unwrap version
 SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build pull clone resync merge \
@@ -350,8 +350,6 @@ help: help.o $(LIBS)
 	$(CC) $(CFLAGS) help.o $(LINK) -o help
 parent: parent.o $(LIBS)
 	$(CC) $(CFLAGS) parent.o $(LINK) -o parent
-clone: clone.o $(LIBS)
-	$(CC) $(CFLAGS) clone.o $(LINK) -o clone
 send: send.o $(LIBS)
 	$(CC) $(CFLAGS) send.o $(LINK) -o send
 unwrap: unwrap.o $(LIBS)
