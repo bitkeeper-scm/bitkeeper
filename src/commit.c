@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h" 
-#include <sys/utsname.h>
 #include <time.h>
 
 extern char *editor, *pager, *bin;
@@ -67,7 +66,6 @@ main(int ac, char **av)
 	unlink(list);
 	sprintf(buf, "%sclean -q ChangeSet", bin);
 	system(buf);
-
 	if (doit) exit (do_commit());
 
 	while (1) {
@@ -95,7 +93,8 @@ main(int ac, char **av)
 do_commit()
 {
 	int hasComment =  (exists(commit_file) && (size(commit_file) > 0));
-	char buf[MAXLINE], sym_opt[MAXLINE] = "";
+	char buf[MAXLINE], sym_opt[MAXLINE] = "", changeset[MAXPATH] = CHANGESET;
+	char commit_list[MAXPATH];
 	int rc;
 	sccs *s;
 	delta *d;
@@ -111,18 +110,20 @@ do_commit()
 			exit (1);
 		}
 	}
+	sprintf(commit_list, "%s/commit_list%d", TMP_PATH, getpid());
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
-	sprintf(buf, "%ssfiles -C | %scset %s %s %s %s%s ",
-		bin, bin, lod ? "-L": "", quiet ? "-q" : "", sym_opt,
-		hasComment? "-Y" : "", hasComment ? commit_file : "");
+	sprintf(buf, "%ssfiles -C > %s", bin, commit_list);
+	system(buf);
+	sprintf(buf, "%scset %s %s %s %s%s < %s",
+		bin, lod ? "-L": "", quiet ? "-q" : "", sym_opt,
+		hasComment? "-Y" : "", hasComment ? commit_file : "", commit_list);
 	rc = system(buf);
 	unlink(list);
 	unlink(commit_file);
+	unlink(commit_list);
 	notify();
-	s = sccs_init(CHANGESET, 0, 0);
+	s = sccs_init(changeset, 0, 0);
 	d = findrev(s, 0);
-	sprintf(buf, "LOGADDR=%s", logAddr());
-	putenv(buf); /* for _logChangeSet */
 	logChangeSet(d->rev);
 	sccs_free(s);
 	return(rc);
@@ -131,13 +132,17 @@ do_commit()
 checkLog()
 {
 	char buf[MAXLINE], buf2[MAXLINE];
-	FILE *pipe;
+	char getlog_out[MAXPATH];
+	FILE *f;
 
-	sprintf(buf, "%sgetlog %s", bin, resync ? "-R" : "");
-	pipe = popen(buf, "r");
-	fgets(buf, sizeof(buf), pipe);
+	sprintf(getlog_out, "%s/bk_getlog%d", TMP_PATH, getpid());
+	sprintf(buf, "%sgetlog %s > %s", bin, resync ? "-R" : "", getlog_out);
+	system(buf);
+	f = fopen(getlog_out, "rt");
+	fgets(buf, sizeof(buf), f);
 	chop(buf);
-	pclose(pipe);
+	fclose(f);
+	unlink(getlog_out);
 	if (strneq("ask_open_logging:", buf, 17)) {
 		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");

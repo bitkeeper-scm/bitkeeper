@@ -7,7 +7,7 @@ main(int ac, char **av)
 {
 	int force = 0, c, logsetup;
 	char *project_name = NULL, *project_path = NULL, *config_path = NULL;
-	char buf[1024], my_editor[1024];
+	char buf[1024], my_editor[1024], setup_files[MAXPATH];
 	FILE *f;
 
 	platformInit();
@@ -76,6 +76,7 @@ main(int ac, char **av)
 
 	f = fopen("Description", "rt"); 
 	fgets(buf, sizeof(buf), f);
+	fclose(f);
 	logsetup = strneq(buf, "BitKeeper Test", 14) ? 0 : 1;
 	unlink("Description"); unlink("D.save");
 	if (chdir("BitKeeper/etc") != 0) {
@@ -116,8 +117,11 @@ main(int ac, char **av)
 		system(buf);
 		sprintf(buf, "%ssendconfig setups@openlogging.org", bin);
 	}
+	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
+	sprintf(buf, "%ssfiles -C > %s", bin, setup_files);
+	system(buf);
 	sprintf(buf,
-		"%ssfiles -C | %scset -q -y\"Initial repository create\" - ",
-		bin, bin);
-	return (system(buf));
+		"%scset -q -y\"Initial repository create\" -  < %s", bin, setup_files);
+	system(buf);
+	unlink(setup_files);
 }

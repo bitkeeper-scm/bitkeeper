@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
-#include <sys/utsname.h>
 #include <time.h>
+
 
 char *editor = 0, *pager = 0, *bin = 0; 
 char *bk_dir = "BitKeeper/";
@@ -12,26 +12,31 @@ logAddr()
 {
 	static char buf[MAXLINE];
 	static char *logaddr = NULL;
-	FILE *pipe;
+	FILE *f1;
+	char config[MAXPATH];
 
 	if (logaddr) return logaddr;
-	sprintf(buf, "%sget -qp %setc/config", bin, bk_dir);
-	pipe = popen(buf, "r");
-	assert(pipe);
-	while (fgets(buf, sizeof(buf), pipe)) {
+	sprintf(config, "%s/bk_configY%d", TMP_PATH, getpid());
+	sprintf(buf, "%sget -qG%s %setc/config", bin, config, bk_dir);
+	system(buf);
+
+	f1 = fopen(config, "rt");
+	assert(f1);
+	while (fgets(buf, sizeof(buf), f1)) {
 		if (strneq("logging:", buf, 8)) {
 			char *p, *q;
 			for (p = &buf[8]; (*p == ' ' || *p == '\t'); p++);
 			q = &p[1];
 			while (strchr(" \t\n", *q) == 0) q++;
 			*q = 0;
-			pclose(pipe);
 			logaddr = p;
-			return logaddr;
+			goto done;
 		}
 	}
-	pclose(pipe);
 	logaddr = "";
+done: 	
+	fclose(f1);
+	unlink(config);
 	return logaddr;
 }
 
@@ -40,12 +45,13 @@ sendConfig(char *to)
 {
 	char *dspec;
 	char config_log[MAXPATH], buf[MAXLINE];
-	FILE *f, *pipef;
+	char config[MAXPATH], aliases[MAXPATH];
+	FILE *f, *f1;
 	time_t tm;
 	extern int bkusers();
 
 	if (bkusers(1, 1) <= 1) return;
-	sprintf(config_log, "%s/bk_config%d", TMP_PATH, getpid());
+	sprintf(config_log, "%s/bk_config_log%d", TMP_PATH, getpid());
 	if (exists(config_log)) {
 		fprintf(stderr, "Error %s already exist", config_log);
 		exit(1);
@@ -61,13 +67,16 @@ sendConfig(char *to)
 	fprintf(f, "Root:\t%s\n", fullname(".", 0));
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm)); 
-	sprintf(buf, "%sget -pq %setc/config", bin, bk_dir);
-	pipef = popen(buf, "r");
-	while (fgets(buf, sizeof(buf), pipef)) {
+	sprintf(config, "%s/bk_configX%d", TMP_PATH, getpid());
+	sprintf(buf, "%sget -qG%s %setc/config", bin, config, bk_dir);
+	system(buf);
+	f1 = fopen(config, "rt");
+	while (fgets(buf, sizeof(buf), f1)) {
 		if ((buf[0] == '#') || (buf[0] == '\n')) continue;
 		fputs(buf, f);
 	}
-	pclose(pipef);
+	fclose(f1);
+	unlink(config);
 	fprintf(f, "User List:\n");
 	fclose(f);
 	sprintf(buf, "%sbkusers >> %s", bin, config_log);
@@ -79,13 +88,16 @@ sendConfig(char *to)
 	if (exists(buf)) {
 		f = fopen(config_log, "a");
 		fprintf(f, "Alias  List:\n");
-		sprintf(buf, "%sget -pq %setc/aliases", bin, bk_dir);
-		pipef = popen(buf, "r");
-		while (fgets(buf, sizeof(buf), pipef)) {
+		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
+		sprintf(buf, "%sget -qG%s %setc/aliases", bin, aliases, bk_dir);
+		system(buf);
+		f1 = fopen(aliases, "r");
+		while (fgets(buf, sizeof(buf), f1)) {
 			if ((buf[0] == '#') || (buf[0] == '\n')) continue;
 			fputs(buf, f);
 		}
-		pclose(pipef);
+		fclose(f1);
+		unlink(aliases);
 		fprintf(f, "=====\n");
 		fclose(f);
 	}
@@ -103,15 +115,20 @@ void
 logChangeSet(char *rev)
 {
 	char commit_log[MAXPATH], buf[MAXLINE], *p;
+	char getlog_out[MAXPATH];
+	char subject[MAXLINE];
 	char start_rev[1024];
-	FILE *pipe, *f;
+	FILE *f, *f1;
 	int dotCount = 0, n;
 
-	sprintf(buf, "%sgetlog %s", bin, resync ? "-R" : "");
-	pipe = popen(buf, "r");
-	fgets(buf, sizeof(buf), pipe);
+	sprintf(getlog_out, "%s/bk_getlog%d", TMP_PATH, getpid());
+	sprintf(buf, "%sgetlog %s > %s", bin, resync ? "-R" : "", getlog_out);
+	system(buf);
+	f1 = fopen(getlog_out, "rt");
+	fgets(buf, sizeof(buf), f1);
 	chop(buf);
-	pclose(pipe);
+	fclose(f1);
+	unlink(getlog_out);
 	unless (streq("commit_and_maillog", buf))  return;
 
 	// XXX TODO  Determine if this is the first rev where logging is active.
@@ -133,18 +150,22 @@ logChangeSet(char *rev)
 	sprintf(commit_log, "%s/commit_log%d", TMP_PATH, getpid());
 	f = fopen(commit_log, "wb");
 	fprintf(f, "---------------------------------\n");
+	fclose(f);
 	sprintf(buf, "%ssccslog -r%s ChangeSet >> %s", bin, rev, commit_log);
 	system(buf);
 	sprintf(buf, "%scset -r+ | %ssccslog - >> %s", bin, bin, commit_log);
 	system(buf);
+	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n");
+	fclose(f);
 	sprintf(buf, "%scset -c -r%s..%s >> %s",
 					bin, start_rev, rev, commit_log);
 	system(buf);
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending ChangeSet to %s...\n", logAddr());
 	}
-	mail(logAddr(), project_name(), commit_log);
+	sprintf(subject, "BitKeeper ChangeSet log: %s", project_name());
+	mail(logAddr(), subject, commit_log);
 	unlink(commit_log);
 }
 
@@ -164,8 +185,9 @@ project_name()
 {
 	sccs *s;
 	static char pname[MAXLINE] = "";
+	char changeset[MAXPATH] = CHANGESET;
 	cd2root();
-	s = sccs_init(CHANGESET, 0, 0);
+	s = sccs_init(changeset, 0, 0);
 	if (s && s->text && (int)(s->text[0])  >= 1) strcpy(pname, s->text[1]);
 	sccs_free(s);
 	return (pname);
@@ -189,14 +211,14 @@ notify()
 	}
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
-	f = fopen(notify_log, "w");
+	f = fopen(notify_log, "wb");
 	gethelp("version", 0, f);
 	fprintf(f, "BitKeeper repository %s : %s\n",
 					sccs_gethost(), fullname(".", 0));
 	sprintf(parent_file, "%slog/parent", bk_dir);
-	if (exists(buf)) {
+	if (exists(parent_file)) {
 		FILE *f1;
-		f1 = fopen(parent_file, "r");
+		f1 = fopen(parent_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);
 		fclose(f1);
 	}
@@ -213,7 +235,7 @@ notify()
 	} else {
 		sprintf(subject, "BitKeeper changeset by %s", sccs_getuser());
 	}
-	f = fopen(notify_file, "r");
+	f = fopen(notify_file, "rt");
 	while (fgets(buf, sizeof(buf), f)) {
 		chop(buf);
 		mail(buf, subject, notify_log);
@@ -263,13 +285,14 @@ mail(char *to, char *subject, char *file)
 	}
 
 	mail = exists("/usr/bin/mailx") ? "/usr/bin/mailx" : "mail";
-
 	/* We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX */
 	assert(uname(&ubuf) == 0);
 	if (strstr(ubuf.sysname, "IRIX")) {
 		sprintf(buf, "%s %s < %s", mail, to, file);
+	} else if (strstr(ubuf.sysname, "Windows")) {
+		sprintf(buf, "%s/%s -s \"%s\" %s < %s", bin, mail, subject, to, file);
 	}  else {
-		sprintf(buf, "%s -s %s %s < %s", mail, subject, to, file);
+		sprintf(buf, "%s -s \"%s\" %s < %s", mail, subject, to, file);
 	}
 	system(buf);
 
@@ -294,6 +317,7 @@ void
 status(int verbose, char *status_log)
 {
 	char buf[MAXLINE], parent_file[MAXPATH];
+	char tmp_file[MAXPATH];
 	FILE *f, *f1;
 	extern int bkusers();
 
@@ -313,57 +337,66 @@ status(int verbose, char *status_log)
 		fprintf(f, "Pending patches\n");
 	}
 
+	sprintf(tmp_file, "%s/bl_tmp%d", TMP_PATH, getpid());
 	if (verbose) {
-		sprintf(buf, "%sbkusers", bin);
-		f1 = popen(buf, "r");
+		sprintf(buf, "%sbkusers > %s", bin, tmp_file);
+		system(buf);
+		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "User:\t%s", buf);
 		}
-		pclose(f1);
-		sprintf(buf, "%ssfiles -x", bin);
-		f1 = popen(buf, "r");
+		fclose(f1);
+		sprintf(buf, "%ssfiles -x > %s", bin, tmp_file);
+		system(buf);
+		f1 = fopen(buf, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Extra:\t%s", buf);
 		}
-		pclose(f1);
-		sprintf(buf, "%ssfiles -cg", bin);
-		f1 = popen(buf, "r");
+		fclose(f1);
+		sprintf(buf, "%ssfiles -cg > %s", bin, tmp_file);
+		system(buf);
+		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Modified:\t%s", buf);
 		}
-		pclose(f1);
-		sprintf(buf, "%ssfiles -Cg", bin);
-		f1 = popen(buf, "r");
+		fclose(f1);
+		sprintf(buf, "%ssfiles -Cg > %s", bin, tmp_file);
+		system(buf);
+		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Uncommitted:\t%s", buf);
 		}
-		pclose(f1);
+		fclose(f1);
 	} else {
 		int i;
 
 		fprintf(f, "%d people have made deltas.\n", bkusers(1, 0));
-		sprintf(buf, "%ssfiles", bin);
-		f1 = popen(buf, "r");
+		sprintf(buf, "%ssfiles > %s", bin, tmp_file);
+		system(buf);
+		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
-		pclose(f1);
+		fclose(f1);
 		fprintf(f, "%d files under revision control.\n", i);
-		sprintf(buf, "%ssfiles -x", bin);
-		f1 = popen(buf, "r");
+		sprintf(buf, "%ssfiles -x > %s", bin, tmp_file);
+		system(buf);
+		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
-		pclose(f1);
+		fclose(f1);
 		fprintf(f, "%d files not under revision control.\n", i);
-		sprintf(buf, "%ssfiles -c", bin);
-		f1 = popen(buf, "r");
+		sprintf(buf, "%ssfiles -c > %s", bin, tmp_file);
+		system(buf);
+		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
-		pclose(f1);
+		fclose(f1);
 		fprintf(f, "%d files modified and not checked in.\n", i);
-		sprintf(buf, "%ssfiles -C", bin);
-		f1 = popen(buf, "r");
+		sprintf(buf, "%ssfiles -C > %s", bin, tmp_file);
+		f1 = fopen(tmp_file, "rt");
 		for(i = 0;  fgets(buf, sizeof(buf), f); i++);
-		pclose(f1);
+		fclose(f1);
 		fprintf( f,
 		   "%d files with checked in, but not committed, deltas.\n", i);
 	}
+	unlink(tmp_file);
 	fclose(f);
 }
 
