@@ -126,7 +126,10 @@ proc test_focus {} \
 }
 
 # simulates input into a widget by generating the appropriate keypress
-# and keyrelease events for each character in the string
+# and keyrelease events for each character in the string. If a character
+# is preceeded by ^ it is treated as a control character (eg: ^c). To 
+# insert a literal ^, use ^^. Note that chars are treated literally, 
+# which means ^C is different from ^c (the former being control-shift-c). 
 proc test_inputString {string {w ""}} \
 {
 	set keysym(\n) Return
@@ -165,14 +168,25 @@ proc test_inputString {string {w ""}} \
 	}
 
 	set chars [split [subst -nocommands -novariables $string] {}]
+	set modifier ""
 	foreach char $chars {
+		if {$char eq "^"} {
+			if {$modifier eq ""} {
+				set modifier "Control-"
+				continue
+			} else {
+				# remove modifier; ^^ becomes ^
+				set modifier ""
+			}
+		}
 		if {[info exists keysym($char)]} {
 			set k $keysym($char)
 		} else {
 			set k $char
 		}
-		event generate $w <KeyPress-$k>
-		event generate $w <KeyRelease-$k>
+		event generate $w <${modifier}KeyPress-$k>
+		event generate $w <${modifier}KeyRelease-$k>
+		set modifier ""
 	}
 	update
 }
