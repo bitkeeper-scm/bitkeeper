@@ -13,7 +13,16 @@
 # %K%
 data="data"
 
-no_logging proj
+echo "logging: none" > c
+echo "description: BitKeeper Test repository" >> c
+echo "email: nobody@nowhere.bk" >> c
+echo "keyword: sccs" >> c
+echo "license: $BKL_P" >> c
+echo "licsign1: $BKL_P1" >> c
+echo "licsign2: $BKL_P2" >> c
+echo "licsign3: $BKL_P3" >> c
+BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c proj
+cd proj
 
 echo $N Trying to check in some binary data .........................$NL
 cp ${BIN1} ${data}

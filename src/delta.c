@@ -227,6 +227,9 @@ usage:			sprintf(buf, "bk help -s %s", name);
 	}
 
 	if (dflags & NEWFILE) {
+		if (bk_mode() != BK_PRO) {
+			compp = "gzip";
+		}
 		unless (ignorePreference || compp) { 
 			compp  = user_preference("compression");
 			unless (compp && *compp) compp = NULL;

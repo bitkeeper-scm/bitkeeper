@@ -156,13 +156,13 @@ if [ X"$REV1" != X"$REV2" ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N Rip out all the flags, put them back, check it ..............$NL
-grep -v cX SCCS/s.xflags | grep -v 'f x ' > SCCS/s.bad
+perl -ne 'print unless /^.cX/ || /^.f x /' SCCS/s.xflags > SCCS/s.bad
 bk admin -z 
 bk xflags bad
 cmp -s SCCS/s.xflags SCCS/s.bad || {
 	echo failed to restore flags properly
-	#diff SCCS/s.xflags SCCS/s.bad
-	bk difftool SCCS/s.xflags SCCS/s.bad
+	diff -au SCCS/s.xflags SCCS/s.bad
+	#bk difftool SCCS/s.xflags SCCS/s.bad
 	exit 1
 }
 echo OK
