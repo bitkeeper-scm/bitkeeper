@@ -1395,7 +1395,7 @@ _install()
 	then
 		(find . | xargs chown root) 2> /dev/null
 		(find . | xargs chgrp root) 2> /dev/null
-		find . | grep -v bkuninstall.exe | xargs chmod -w
+		find . | grep -v bkuninstall.exe | xargs chmod ugo-w
 	else
 		find . -type d | xargs chmod 777
 	fi
