@@ -4043,64 +4043,39 @@ bad:	free(slist);
 private void
 changestate(register serlist *state, char type, int serial)
 {
-	register serlist *s;
+	register serlist *p, **pp;
 	register serlist *n;
-	int	i;
 
 	debug2((stderr, "chg(%c, %d)\n", type, serial));
+
+	/* find place in linked list */
+	for (pp = &(state[SLIST].next), p = *pp; p; pp = &(p->next), p = *pp) {
+		if (p->serial <= serial) break;
+	}
+
 	/*
-	 * Find the item and delete it if it is an 'E'.
+	 * Delete it if it is an 'E'.
 	 */
 	if (type == 'E') {	/* free this item */
-
-		for (i = 0, s = state[SLIST].next; s; s = s->next, i++) {
-			if (s->serial == serial) break;
-		}
-		assert(s && (s->serial == serial));
-		if (s->prev) {
-			s->prev->next = s->next;
-		} else {
-			state[SLIST].next = s->next;
-		}
-		if (s->next) {
-			s->next->prev = s->prev;
-		}
-		s->next = state[SFREE].next;
-		state[SFREE].next = s;
+		assert(p && (p->serial == serial));
+		*pp = p->next;
+		p->next = state[SFREE].next;
+		state[SFREE].next = p;
 		return;
 	}
-	if (!state[SFREE].serial) {
-		assert("Ran out of serial numbers" == 0);
-	}
+
+	/*
+	 * Else a 'D' or an 'I', so insert it in list
+	 */
+
+	assert(!p || (p->serial < serial));
+	assert(state[SFREE].next || ("Ran out of serial numbers" == 0));
+
 	n = state[SFREE].next;
 	state[SFREE].next = n->next;
-	for (i = 0, s = state[SLIST].next; s; s = s->next, i++) {
-		if ((s->serial < serial) || !s->next) break;
-	}
-	/*
-	 * We're either at the head of the (empty) list,
-	 * at the right place (insert before s), or
-	 * or we're at the end of the list (insert after).
-	 */
-	if (!s) {
-		state[SLIST].next = n;
-		n->prev = 0;
-		n ->next = 0;
-	} else if (s->serial < serial) {
-		n->next = s;
-		if (s->prev) {
-			s->prev->next = n;
-		} else {
-			state[SLIST].next = n;
-		}
-		n->prev = s->prev;
-		s->prev = n;
-	} else {
-		assert(!s->next);
-		n->next = 0;
-		n->prev = s;
-		s->next = n;
-	}
+
+	*pp = n;
+	n->next = p;
 	n->serial = serial;
 	n->type = type;
 	verify(state);
@@ -4130,10 +4105,10 @@ allocstate(serlist *old, int oldsize, int n)
 	assert(s);
 	for (i = 2; i < n-1; ++i) {
 		s[i].next = &s[i+1];
-		s[i].prev = 0;
 	}
+	s[i].next = 0;
 	s[SFREE].next = &s[2];
-	s[SFREE].serial = n-2;
+	s[SFREE].serial = 0;
 	s[SLIST].next = 0;
 	s[SLIST].serial = 0;
 	return (s);
