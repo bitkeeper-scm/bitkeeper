@@ -1606,11 +1606,12 @@ proc widgets {} \
 	getConfig "rev"
 	option add *background $gc(BG)
 
+	set gc(bw) 1
 	if {$tcl_platform(platform) == "windows"} {
-		set gc(py) 0; set gc(px) 1; set gc(bw) 2
+		set gc(py) 0; set gc(px) 1
 		set gc(histfile) [file join $gc(bkdir) "_bkhistory"]
 	} else {
-		set gc(py) 1; set gc(px) 4; set gc(bw) 2
+		set gc(py) 1; set gc(px) 4
 		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
 	}
 	set Opts(line_time)  "-R-$gc(rev.showHistory)"

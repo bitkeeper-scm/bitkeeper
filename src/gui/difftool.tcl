@@ -14,13 +14,14 @@ proc widgets {} \
 	set g [wm geometry .]
 	wm title . "Diff Tool"
 
+	set gc(bw) 1
 	if {$tcl_platform(platform) == "windows"} {
-		set gc(py) -2; set gc(px) 1; set gc(bw) 2
+		set gc(py) -2; set gc(px) 1
 		if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
 			wm geometry . $gc(diff.geometry)
 		}
 	} else {
-		set gc(py) 1; set gc(px) 4; set gc(bw) 2
+		set gc(py) 1; set gc(px) 4
 		# We iconify here so that the when we finally deiconify, all
 		# of the widgets are correctly sized. Fixes irritating 
 		# behaviour on ctwm.

@@ -1043,13 +1043,14 @@ proc widgets {} \
 	set g [wm geometry .]
 	wm title . "BitKeeper FileMerge $argv"
 
+	set gc(bw) 1
 	if {$tcl_platform(platform) == "windows"} {
-		set gc(py) -2; set gc(px) 1; set gc(bw) 2
+		set gc(py) -2; set gc(px) 1
 		if {("$g" == "1x1+0+0") && ("$gc(fm3.geometry)" != "")} {
 			wm geometry . $gc(fm3.geometry)
 		}
 	} else {
-		set gc(py) 1; set gc(px) 4; set gc(bw) 2
+		set gc(py) 1; set gc(px) 4
 		# We iconify here so that the when we finally deiconify, all
 		# of the widgets are correctly sized. Fixes irritating 
 		# behaviour on ctwm.
@@ -1198,7 +1199,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		label $menu.l -font $gc(fm3.buttonFont) \
 		    -bg $gc(fm3.buttonColor) \
 		    -padx 0 -pady 0 \
-		    -width 40 -relief groove -pady 2
+		    -width 40 -relief groove -pady 2 \
+    		    -borderwidth 2
 		text $menu.t -width 40 -height 7 \
 		    -background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		    -wrap word -font $gc($app.fixedFont) \
