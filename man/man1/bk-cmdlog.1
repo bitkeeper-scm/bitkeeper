@@ -17,9 +17,15 @@ Commands are listed in least recent to most recent order.
 .B \-a
 List history of all commands run in the repository, not just repository level
 commands.
+.TP
+.OPTopt \-c cutoff
+List commands which happened during the date range specified by
+.ARG cutoff .
 .SH NOTES
 The two command logs are maintained by \*(BK in the \*(BK/log directory.
 repo_log contains repository level commands run in a repository.
 cmd_log contains all commands run in a repository.
+.SH "SEE ALSO"
+.SA range 1
 .SH CATEGORY
 .B Repository

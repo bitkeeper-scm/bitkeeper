@@ -65,6 +65,117 @@ _tags() {
 	bk changes -t
 }
 
+# superset - see if the parent is ahead
+_superset() {
+	__cd2root
+	LIST=YES
+	QUIET=
+	PUSH=-l
+	EXIT=0
+	TMP=/tmp/bksup$$
+	TMP2=/tmp/bksup2$$
+	while getopts q opt
+	do
+		case "$opt" in
+		q) QUIET=-q; PUSH=; LIST=NO;;
+		*) echo "Usage: superset [-q] [parent]"
+		   exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	export PAGER=cat
+	bk push -n -o$TMP2 $QUIET $PUSH "$@" 
+	grep -q 'Nothing to send to' $TMP2 || {
+		test $LIST = NO && {
+			rm -f $TMP $TMP2
+			exit 1
+		}
+		echo === Local changesets === >> $TMP
+		grep -ve --------------------- $TMP2 |
+		sed 's/^/    /'  >> $TMP
+		EXIT=1
+	}
+	bk pending $QUIET > $TMP2 2>&1 && {
+		test $LIST = NO && {
+			rm -f $TMP $TMP2
+			exit 1
+		}
+		echo === Pending files === >> $TMP
+		sed 's/^/    /' < $TMP2 >> $TMP
+		EXIT=1
+	}
+	bk sfiles -cg > $TMP2
+	test -s $TMP2 && {
+		test $LIST = NO && {
+			rm -f $TMP $TMP2
+			exit 1
+		}
+		echo === Modified files === >> $TMP
+		sed 's/^/    /' < $TMP2 >> $TMP
+		EXIT=1
+	}
+	(bk sfiles -x
+	 bk sfiles -xa BitKeeper/triggers
+	 bk sfiles -xa BitKeeper/etc |
+	    egrep -v 'etc/SCCS|etc/csets-out|etc/csets-in'
+	) | sort > $TMP2
+	test -s $TMP2 && {
+		test $LIST = NO && {
+			rm -f $TMP $TMP2
+			exit 1
+		}
+		echo === Extra files === >> $TMP
+		sed 's/^/    /' < $TMP2 >> $TMP
+		EXIT=1
+	}
+	find BitKeeper/tmp -name 'park*' -print > $TMP2
+	test -s $TMP2 && {
+		test $LIST = NO && {
+			rm -f $TMP $TMP2
+			exit 1
+		}
+		echo === Parked files === >> $TMP
+		sed 's/^/    /' < $TMP2 >> $TMP
+		EXIT=1
+	}
+	rm -f $TMP2
+	test -d PENDING && find PENDING -type f -print > $TMP2
+	test -s $TMP2 && {
+		test $LIST = NO && {
+			rm -f $TMP $TMP2
+			exit 1
+		}
+		echo === Possible pending patches === >> $TMP
+		sed 's/^/    /' < $TMP2 >> $TMP
+		EXIT=1
+	}
+	rm -f $TMP2
+	test -d RESYNC && find RESYNC -type f -print > $TMP2
+	test -s $TMP2 && {
+		test $LIST = NO && {
+			rm -f $TMP $TMP2
+			exit 1
+		}
+		echo === Unresolved pull === >> $TMP
+		sed 's/^/    /' < $TMP2 >> $TMP
+		EXIT=1
+	}
+
+	test $EXIT = 0 && {
+		rm -f $TMP $TMP2
+		exit 0
+	}
+	if [ $# -eq 0 ]
+	then	PARENT=`bk parent | awk '{print $NF}'`
+	else	PARENT="$@"
+	fi
+	echo "Child:  `bk gethost`:`pwd`"
+	echo "Parent: $PARENT"
+	cat $TMP
+	rm -f $TMP $TMP2
+	exit 1
+}
+
 # Hard link based clone.
 # Usage: lclone from [to]
 _lclone() {
@@ -188,7 +299,7 @@ __keysync() {
 #	put the merge on top of the edited file
 # fi
 _fixtool() {
-	if [ "X$@" = X ]; then __cd2root; fi
+	test $# -eq 0 && __cd2root
 	fix=${TMP}/fix$$	
 	merge=${TMP}/merge$$	
 	previous=${TMP}/previous$$	
@@ -200,18 +311,18 @@ _fixtool() {
 	}
 	# XXX - this does not work if the filenames have spaces, etc.
 	for x in `cat $fix`
-	do	echo ""
+	do	clear
 		bk diffs $x | ${PAGER} 
-		echo $N "Fix ${x}? y)es q)uit n)o: [no] "$NL
+		echo $N "Fix ${x}? y)es q)uit n)o u)nedit: [no] "$NL
 		read ans 
 		DOIT=YES
 		case "X$ans" in
 		    X[Yy]*) ;;
-		    X[q]*)
-		    	rm -f $fix $merge $previous 2>/dev/null
-		    	exit 0
-			;;
-		    *) DOIT=NO;;
+		    X[q]*)	rm -f $fix $merge $previous 2>/dev/null
+		    		exit 0
+				;;
+		    X[Uu]*)	bk unedit $x; DOIT=NO;;
+		    *)		DOIT=NO;;
 		esac
 		test $DOIT = YES || continue
 		bk get -kpr+ "$x" > $previous

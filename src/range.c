@@ -9,16 +9,18 @@ range_main(int ac, char **av)
 	delta	*e;
 	char	*name;
 	int	expand = 1;
+	int	quiet = 0;
 	int	c;
 	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "ec;r;")) != -1) {
+	while ((c = getopt(ac, av, "ec;qr;")) != -1) {
 		switch (c) {
 		    case 'e': expand++; break;
+		    case 'q': quiet++; break;
 		    RANGE_OPTS('c', 'r');
 		    default:
 usage:			fprintf(stderr,
-			    "usage: %s [-r<rev>] [-c<date>]\n", av[0]);
+			    "usage: %s [-q] [-r<rev>] [-c<date>]\n", av[0]);
 			exit(1);
 		}
 	}
@@ -28,7 +30,7 @@ usage:			fprintf(stderr,
 			continue;
 		}
 		if (!s->tree) goto next;
-		RANGE("range", s, expand, 1);
+		RANGE("range", s, expand, !quiet);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);
 			for (e = s->table; e; e = e->next) {

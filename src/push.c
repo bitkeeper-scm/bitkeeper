@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2000, Andrew Chang & Larry McVoy
+ * Copyright (c) 2000-2001, Andrew Chang & Larry McVoy
  */    
 #include "bkd.h"
 #include "logging.h"
 
-typedef	struct {
+private	struct {
 	u32	doit:1;
 	u32	verbose:1;
 	u32	nospin:1;
@@ -15,11 +15,15 @@ typedef	struct {
 	u32	forceInit:1;
 	u32	debug:1;
 	u32	gzip;
-	u32	in, out;		/* stats */
+	u32	inBytes, outBytes;		/* stats */
+	u32	lcsets;
+	u32	rcsets;
+	u32	rtags;
+	FILE	*out;
 } opts;
 
-private	int	push(char **av, opts opts, remote *r, char **envVar);
-private	void	pull(opts opts, remote *r);
+private	int	push(char **av, remote *r, char **envVar);
+private	void	pull(remote *r);
 private	void	listIt(sccs *s, int list);
 
 int
@@ -28,7 +32,6 @@ push_main(int ac, char **av)
 	int	c, rc, i = 1;
 	int	try = -1; /* retry forever */
 	char	**envVar = 0;
-	opts	opts;
 	remote 	*r;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -39,7 +42,7 @@ push_main(int ac, char **av)
 	opts.gzip = 6;
 	opts.doit = opts.verbose = 1;
 
-	while ((c = getopt(ac, av, "ac:deE:Gilnqtz|")) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:Gilno;qtz|")) != -1) {
 		switch (c) {
 		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
@@ -52,6 +55,7 @@ push_main(int ac, char **av)
 		    case 'l': opts.list++; break;		/* doc 2.0 */
 		    case 'n': opts.doit = 0; break;		/* doc 2.0 */
 		    case 'q': opts.verbose = 0; break;		/* doc 2.0 */
+		    case 'o': opts.out = fopen(optarg, "w"); break;
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'z':					/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
@@ -62,6 +66,7 @@ usage:			system("bk help -s push");
 			return (1);
 		}
 	}
+	unless (opts.out) opts.out = stderr;
 
 	loadNetLib();
 	has_proj("push");
@@ -69,19 +74,19 @@ usage:			system("bk help -s push");
 	unless (r) goto usage;
 	if (opts.debug) r->trace = 1;
 	for (;;) {
-		rc = push(av, opts, r, envVar);
+		rc = push(av, r, envVar);
 		if (rc != -2) break; /* -2 means locked */
 		if (try == 0) break;
 		if (bk_mode() == BK_BASIC) {
 			if (try > 0) {
-				fprintf(stderr,
+				fprintf(opts.out,
 			    "push: retry request detected: %s", upgrade_msg);
 			}
 			break;
 		}
 		if (try != -1) --try;
 		if (opts.verbose) {
-			fprintf(stderr,
+			fprintf(opts.out,
 				"push: remote locked, trying again...\n");
 		}
 		disconnect(r, 2); /* close fd before we retry */
@@ -90,6 +95,12 @@ usage:			system("bk help -s push");
 	if (rc == -2) rc = 1; /* if retry failed, reset exit code to 1 */
 	remote_free(r);
 	freeLines(envVar);
+	if (opts.debug) {
+		fprintf(opts.out, "lcsets=%d rcsets=%d rtags=%d\n",
+		    opts.lcsets, opts.rcsets, opts.rtags);
+	}
+	if (!opts.metaOnly && (opts.rcsets || opts.rtags)) return (1);
+	unless (opts.out == stderr) fclose(opts.out);
 	return (rc);
 }
 
@@ -110,14 +121,14 @@ log_main(int ac, char **av)
 		    case 'd':	dflag = 1; break;
 		    case 'q':	qflag = 1; break;
 		    case 'p':	pflag = 1; break;
-		    default:	fprintf(stderr,
+		    default:	fprintf(opts.out,
 				    "usage: bk log [-dqp] [-c count] [url]");
 				return (1);
 		}
 	}
 
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "Cannot find project root\n");
+		fprintf(opts.out, "Cannot find project root\n");
 		return (1);
 	}
 
@@ -171,7 +182,7 @@ log_main(int ac, char **av)
 
 			log_av[i] = log_ip;
 			unless (qflag) {
-				fprintf(stderr, "bk log: trying %s\n", log_ip);
+				fprintf(opts.out, "bk log: trying %s\n", log_ip);
 			}
 			getoptReset();
 			return (push_main(i, log_av));
@@ -217,7 +228,7 @@ updLogMarker(int ptype, int verbose)
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 		if (verbose) {
-			fprintf(stderr,
+			fprintf(opts.out,
 				"Log marker updated: pending count = %d\n",
 				logs_pending(ptype, 0));
 		}
@@ -226,7 +237,7 @@ updLogMarker(int ptype, int verbose)
 			char buf[MAXPATH];
 
 			getcwd(buf, sizeof (buf));
-			fprintf(stderr,
+			fprintf(opts.out,
 				"updLogMarker: cannot access %s, pwd=%s\n",
 				s_cset, buf);
 		}
@@ -234,7 +245,7 @@ updLogMarker(int ptype, int verbose)
 }
 
 private int
-needLogMarker(opts opts, remote *r)
+needLogMarker(remote *r)
 {
 	unless (opts.metaOnly) return (0);
 
@@ -259,7 +270,7 @@ needLogMarker(opts opts, remote *r)
 }
 
 private void
-send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
+send_part1_msg(remote *r, char rev_list[], char **envVar)
 {
 	char	*cmd, buf[MAXPATH];
 	FILE 	*f;
@@ -293,15 +304,15 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 }
 
 private int
-push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
+push_part1(remote *r, char rev_list[MAXPATH], char **envVar)
 {
 	char	buf[MAXPATH], s_cset[] = CHANGESET;
-	int	fd, rc, n, lcsets, rcsets, rtags;
+	int	fd, rc, n;
 	sccs	*s;
 	delta	*d;
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
-	send_part1_msg(opts, r, rev_list, envVar);
+	send_part1_msg(r, rev_list, envVar);
 	if (r->rfd < 0) return (-1);
 
 	if (r->httpd) skip_http_hdr(r);
@@ -312,7 +323,7 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 		getServerInfoBlock(r);
 		if (getenv("BKD_LEVEL") &&
 		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
-			fprintf(stderr,
+			fprintf(opts.out,
 			    "push: cannot push to lower level repository\n");
 			disconnect(r, 2);
 			return (-1);
@@ -334,10 +345,11 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	s = sccs_init(s_cset, 0, 0);
-	rc = prunekey(s, r, fd, !opts.verbose, &lcsets, &rcsets, &rtags);
+	rc = prunekey(s,
+	    r, fd, !opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
-		    case -2:	fprintf(stderr,
+		    case -2:	fprintf(opts.out,
 "You are trying to push to an unrelated package. The root keys for the\n\
 ChangeSet file do not match.  Please check the pathnames and try again.\n");
 				close(fd);
@@ -345,7 +357,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 				sccs_free(s);
 				return (1); /* needed to force bkd unlock */
 		    case -3:	unless  (opts.forceInit) {
-					fprintf(stderr,
+					fprintf(opts.out,
 					    "You are pushing to an a empty "
 					    "directory\n");
 					sccs_free(s);
@@ -365,19 +377,19 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	 * Spit out the set of keys we would send.
 	 */
 	if (opts.verbose || opts.list) {
-		if (rcsets && !opts.metaOnly) {
-			fprintf(stderr,
-			    "\nUnable to push to %s\n", remote_unparse(r));
-			fprintf(stderr,
-"The repository that you are pushing to is %d changesets\n\
+		if (opts.rcsets && !opts.metaOnly && opts.doit) {
+			fprintf(opts.out,
+			    "Unable to push to %s\nThe", remote_unparse(r));
+csets:			fprintf(opts.out,
+" repository that you are pushing to is %d changesets\n\
 ahead of your repository. Please do a \"bk pull\" to get \n\
-these changes or do a \"bk pull -nl\" to see what they are.\n", rcsets);
-		} else if (rtags && !opts.metaOnly) {
-			fprintf(stderr,
+these changes or do a \"bk pull -nl\" to see what they are.\n", opts.rcsets);
+		} else if (opts.rtags && !opts.metaOnly && opts.doit) {
+tags:			fprintf(opts.out,
 			    "Not pushing because of %d tags only in %s\n",
-			    rtags, remote_unparse(r));
-		} else if (lcsets > 0) {
-			fprintf(stderr, opts.doit ?
+			    opts.rtags, remote_unparse(r));
+		} else if (opts.lcsets > 0) {
+			fprintf(opts.out, opts.doit ?
 "----------------------- Sending the following csets -----------------------\n":
 "---------------------- Would send the following csets ---------------------\n")
 			;
@@ -389,48 +401,58 @@ these changes or do a \"bk pull -nl\" to see what they are.\n", rcsets);
 					if (d->flags & D_RED) continue;
 					unless (d->type == 'D') continue;
 					n += strlen(d->rev) + 1;
-					fprintf(stderr, "%s", d->rev);
+					fprintf(opts.out, "%s", d->rev);
 					if (n > 72) {
 						n = 0;
-						fputs("\n", stderr);
+						fputs("\n", opts.out);
 					} else {
-						fputs(" ", stderr);
+						fputs(" ", opts.out);
 					}
 				}
-				if (n) fputs("\n", stderr);
+				if (n) fputs("\n", opts.out);
 			}
-			fprintf(stderr,
+			fprintf(opts.out,
 "---------------------------------------------------------------------------\n")
 			;
-		} else if (lcsets == 0) {
-			fprintf(stderr,
+			if (opts.rcsets && !opts.metaOnly) {
+				fprintf(opts.out, "except that the");
+				goto csets;
+			}
+			if (opts.rtags && !opts.metaOnly) goto tags;
+		} else if (opts.lcsets == 0) {
+			fprintf(opts.out,
 			    "Nothing to send to %s\n", remote_unparse(r));
+			if (opts.rcsets) {
+				fprintf(opts.out, "but the");
+				goto csets;
+			}
+			if (opts.rtags) goto tags;
 		}
 	}
 	sccs_free(s);
 	if (r->httpd) disconnect(r, 2);
 	/*
-	 * if lcsets > 0, we update the log marker in push part 2
+	 * if opts.lcsets > 0, we update the log marker in push part 2
 	 */
-	if ((lcsets == 0) && (needLogMarker(opts, r))) {
+	if ((opts.lcsets == 0) && (needLogMarker(r))) {
 		updLogMarker(0, opts.debug);
 	}
-	if ((lcsets == 0) || !opts.doit) return (0);
-	if ((rcsets || rtags) && !opts.metaOnly) {
+	if ((opts.lcsets == 0) || !opts.doit) return (0);
+	if ((opts.rcsets || opts.rtags) && !opts.metaOnly) {
 		return (opts.autopull ? 1 : -1);
 	}
 	return (2);
 }
 
 private u32
-genpatch(opts opts, int level, int wfd, char *rev_list)
+genpatch(int level, int wfd, char *rev_list)
 {
 	char	*makepatch[10] = {"bk", "makepatch", 0};
 	int	fd0, fd, rfd, n, status;
 	pid_t	pid;
 	int	verbose = opts.verbose && !opts.nospin;
 
-	opts.in = opts.out = 0;
+	opts.inBytes = opts.outBytes = 0;
 	n = 2;
 	if (opts.metaOnly) makepatch[n++] = "-e";
 	makepatch[n++] = "-s";
@@ -445,27 +467,27 @@ genpatch(opts opts, int level, int wfd, char *rev_list)
 	assert(fd == 0);
 	pid = spawnvp_rPipe(makepatch, &rfd, 0);
 	dup2(fd0, 0); close(fd0);
-	gzipAll2fd(rfd, wfd, level, &(opts.in), &(opts.out), 1, verbose);
+	gzipAll2fd(rfd, wfd, level, &(opts.inBytes), &(opts.outBytes), 1, verbose);
 	close(rfd);
 	waitpid(pid, &status, 0);
-	return (opts.out);
+	return (opts.outBytes);
 }
 
 private u32
-patch_size(opts opts, int gzip, char *rev_list)
+patch_size(int gzip, char *rev_list)
 {
 	int	fd;
 	u32	n;
 
 	fd = open(DEV_NULL, O_WRONLY, 0644);
 	assert(fd > 0);
-	n = genpatch(opts, gzip, fd, rev_list);
+	n = genpatch(gzip, fd, rev_list);
 	close(fd);
 	return (n);
 }
 
 private int
-send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
+send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 {
 	char	msgfile[MAXPATH];
 	FILE	*f;
@@ -505,7 +527,7 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 
 
 private int
-send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
+send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 {
 	char	msgfile[MAXPATH];
 	FILE	*f;
@@ -538,7 +560,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 
 		/* Test for versions before this feature went in */
 		unless (tt && (atoi(tt) >= 985648694)) {
-			fprintf(stderr,
+			fprintf(opts.out,
 			    "Remote BKD does not support -G, "
 			    "continuing without -G.\n");
 		} else {
@@ -556,16 +578,16 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->httpd) {
-		m = patch_size(opts, gzip, rev_list);
+		m = patch_size(gzip, rev_list);
 		assert(m > 0);
 		extra = m + 6;
 	}
 
 	rc = send_file(r, msgfile, extra, opts.gzip);	
 
-	n = genpatch(opts, gzip, r->wfd, rev_list);
+	n = genpatch(gzip, r->wfd, rev_list);
 	if ((r->httpd) && (m != n)) {
-		fprintf(stderr,
+		fprintf(opts.out,
 			"Error: patch have change size from %d to %d\n",
 			m, n);
 		disconnect(r, 2);
@@ -586,9 +608,9 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	}
 
 	if (opts.debug) {
-		fprintf(stderr, "Send done, waiting for remote\n");
+		fprintf(opts.out, "Send done, waiting for remote\n");
 		if (r->httpd) {
-			fprintf(stderr,
+			fprintf(opts.out,
 				"Note: since httpd batch a large block of\n"
 				"output together before it send back a reply\n"
 				"This can take a while, please wait ...\n");
@@ -598,7 +620,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 }
 
 private int
-maybe_trigger(remote *r, opts opts)
+maybe_trigger(remote *r)
 {
 	char	buf[20];
 	int	n;
@@ -622,8 +644,7 @@ maybe_trigger(remote *r, opts opts)
 }
 
 private int
-push_part2(char **av, opts opts,
-			remote *r, char *rev_list, int ret, char **envVar)
+push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 {
 
 	char	buf[4096];
@@ -637,11 +658,11 @@ push_part2(char **av, opts opts,
 	putenv("BK_CMD=push");
 	if (ret == 0){
 		putenv("BK_STATUS=NOTHING");
-		send_end_msg(opts, r, "@NOTHING TO SEND@\n", rev_list, envVar);
+		send_end_msg(r, "@NOTHING TO SEND@\n", rev_list, envVar);
 		done = 1;
 	} else if (ret == 1) {
 		putenv("BK_STATUS=CONFLICTS");
-		send_end_msg(opts, r, "@CONFLICT@\n", rev_list, envVar);
+		send_end_msg(r, "@CONFLICT@\n", rev_list, envVar);
 		if (opts.autopull) do_pull = 1;
 		done = 1;
 	} else {
@@ -653,10 +674,10 @@ push_part2(char **av, opts opts,
 		sprintf(buf, "BK_CSETLIST=%s", rev_list);
 		putenv(buf);  /* XXX should we strdup this buffer ?? */
 		if (!opts.metaOnly && trigger(av, "pre")) {
-			send_end_msg(opts, r, "@ABORT@\n", rev_list, envVar);
+			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 1;
-		} else if (send_patch_msg(opts, r, rev_list, ret, envVar)) {
+		} else if (send_patch_msg(r, rev_list, ret, envVar)) {
 			rc = 1;
 			done = 1;
 		}
@@ -702,7 +723,7 @@ push_part2(char **av, opts opts,
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
 			if (buf[0] == '@') {
-				if (maybe_trigger(r, opts)) {
+				if (maybe_trigger(r)) {
 					rc = 1;
 					goto done;
 				}
@@ -721,10 +742,10 @@ push_part2(char **av, opts opts,
 		}
 	}
 
-	if (opts.debug) fprintf(stderr, "Remote terminated\n");
+	if (opts.debug) fprintf(opts.out, "Remote terminated\n");
 
 	if (opts.metaOnly) {
-		if (needLogMarker(opts, r)) updLogMarker(0, opts.debug);
+		if (needLogMarker(r)) updLogMarker(0, opts.debug);
 	} else {
 		unlink(CSETS_OUT);
 		rename(rev_list, CSETS_OUT);
@@ -743,14 +764,14 @@ done:	if (!opts.metaOnly) {
 	 * XXX This is a workaround for a csh fd lead:
 	 * Force a client side EOF before we wait for server side EOF.
 	 * Needed only if remote is running csh; csh have a fd lead
-	 * which cause it fail to send us EOF when we close stdout and stderr.
+	 * which cause it fail to send us EOF when we close stdout and opts.out.
 	 * Csh only send us EOF and the bkd exit, yuck !!
 	 */
 	disconnect(r, 1);
 
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);
-	if (do_pull) pull(opts, r); /* pull does not return */
+	if (do_pull) pull(r); /* pull does not return */
 	return (rc);
 }
 
@@ -759,7 +780,7 @@ done:	if (!opts.metaOnly) {
  * The client side of push.  Server side is in bkd_push.c
  */
 private	int
-push(char **av, opts opts, remote *r, char **envVar)
+push(char **av, remote *r, char **envVar)
 {
 	int	ret;
 	int	gzip;
@@ -768,28 +789,32 @@ push(char **av, opts opts, remote *r, char **envVar)
 
 	gzip = opts.gzip && r->port;
 	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "push: cannot find package root.\n");
+		fprintf(opts.out, "push: cannot find package root.\n");
 		exit(1);
 	}
-	if (opts.debug) fprintf(stderr, "Root Key = \"%s\"\n", rootkey(buf));
+	if (opts.debug) fprintf(opts.out, "Root Key = \"%s\"\n", rootkey(buf));
 
 	if ((bk_mode() == BK_BASIC) && !opts.metaOnly &&
 	    !isLocalHost(r->host) && exists(BKMASTER)) {
-		fprintf(stderr, "Cannot push from master repository: %s",
+		fprintf(opts.out, "Cannot push from master repository: %s",
 			upgrade_msg);
 		exit(1);
 	}
-	ret = push_part1(opts, r, rev_list, envVar);
-	if (opts.debug) fprintf(stderr, "part1 returns %d\n", ret);
+	ret = push_part1(r, rev_list, envVar);
+	if (opts.debug) {
+		fprintf(opts.out, "part1 returns %d\n", ret);
+		fprintf(opts.out, "lcsets=%d rcsets=%d rtags=%d\n",
+		    opts.lcsets, opts.rcsets, opts.rtags);
+	}
 	if (ret < 0) {
 		unlink(rev_list);
 		return (ret); /* failed */
 	}
-	return (push_part2(av, opts, r, rev_list, ret, envVar));
+	return (push_part2(av, r, rev_list, ret, envVar));
 }
 
 private	void
-pull(opts opts, remote *r)
+pull(remote *r)
 {
 	char	*cmd[100];
 	char	*url = remote_unparse(r);
@@ -802,7 +827,7 @@ pull(opts opts, remote *r)
 	cmd[++i] = url;
 	cmd[i] = 0;
 	if (opts.verbose) {
-		fprintf(stderr, "Pulling in new work\n");
+		fprintf(opts.out, "Pulling in new work\n");
 	}
 	execvp("bk", cmd);
 	perror(cmd[1]);
@@ -813,8 +838,13 @@ private	void
 listIt(sccs *s, int list)
 {
 	delta	*d;
-	FILE	*f = popen(list > 1 ? "bk changes -v -" : "bk changes -", "w");
-
+	char	*tmp = bktmpfile();
+	char	*cmd;
+	char	buf[BUFSIZ];
+	FILE	*f;
+	
+	cmd = aprintf("bk changes %s - > %s", list > 1 ? "-v" : "", tmp);
+	f = popen(cmd, "w");
 	assert(f);
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
@@ -822,4 +852,12 @@ listIt(sccs *s, int list)
 		fprintf(f, "%s\n", d->rev);
 	}
 	pclose(f);
+	f = fopen(tmp, "r");
+	while (fnext(buf, f)) {
+		fputs(buf, opts.out);
+	}
+	fclose(f);
+	free(cmd);
+	unlink(tmp);
+	free(tmp);
 }

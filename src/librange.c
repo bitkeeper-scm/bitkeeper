@@ -54,8 +54,8 @@ rangeReset(sccs *sc)
 	sc->state &= ~(S_RANGE2|S_SET);
 }
 
-private time_t
-backDate(char *spec)
+time_t
+rangeCutOff(char *spec)
 {
 	double	mult = atof(spec);
 	int	units = 1;
@@ -116,7 +116,7 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	}
 
 	if (s && (*s == '-') && !(sc->state & S_RANGE2)) {
-		time_t	cutoff = backDate(s+1);
+		time_t	cutoff = rangeCutOff(s+1);
 
 		for (tmp = sc->table; tmp; tmp = tmp->next) {
 			if ((tmp->date - tmp->dateFudge) >= cutoff) {
