@@ -287,13 +287,6 @@ connect_socks4_srv(char *host, int port, char *url, int trace)
 	return (-1);
 }
 
-void
-catch_alarm(int sig)
-{
-	/* no op */
-}
-
-
 private int
 http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
 {
@@ -301,8 +294,6 @@ http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
 	char	bk_url[MAXPATH];
 
 
-	alarm(10);
-	signal(SIGALRM, catch_alarm);
 	sprintf(bk_url, "http://%s/cgi-bin/%s", host, cgi_script);
 	if (streq(type, "DIRECT")) {
 		fd = connect_srv(host, port, trace);
@@ -314,7 +305,6 @@ http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
 		fprintf(stderr, "unknown proxy type %s\n", type);
 		fd = -1;
 	}
-	alarm(0);
 	return (fd);
 }
 

@@ -56,6 +56,7 @@ checkLocks() {
 unsetHttpProxy() {
 	unset http_proxy HTTP_PROXY_HOST HTTP_PROXY_PORT
 	unset SOCKS_HOST SOCKS_PORT SOCKS_SERVER
+	unset HTTP_PROXY # workaround for cygwin
 }
 
 # Usage: waitForUnlock <root>
