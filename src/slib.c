@@ -9121,8 +9121,8 @@ fix_crnl(register char *s)
 	while (*p) p++;
 	unless (p - s >= 2) return;
 	if (p[-2] == '\r' && p[-1] == '\n') {
-		s[-2] = '\n';
-		s[-1] = 0;
+		p[-2] = '\n';
+		p[-1] = 0;
 	}
 }
 
