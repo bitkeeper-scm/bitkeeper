@@ -13,15 +13,18 @@
 # %K%
 
 echo $N Create a file with two branches .............................$NL
-echo foo > foo.c
+echo base > foo.c
 bk new $Q foo.c
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Strip out the trunk and renumber ............................$NL
 bk get -e $Q foo.c
+echo first > foo.c
 bk delta $Q -y1.2 foo.c
 bk get -e -r1.1 $Q foo.c
+echo second > foo.c
 bk delta $Q -y1.1.1.1 foo.c
+cp SCCS/s.foo.c sfoo
 bk admin $Q -Ssymbol:1.1.1.1 foo.c
 bk stripdel $Q -r1.2 foo.c
 bk renumber $Q foo.c
@@ -31,4 +34,119 @@ grep -q "^.d R 1.1.1.1" SCCS/s.foo.c
 if [ $? -eq 0 ]; then echo Failed to move symbol.; exit 1; fi
 grep -q "^.d D 1.2" SCCS/s.foo.c 
 if [ $? -ne 0 ]; then echo Failed to move delta table entry to 1.2; exit 1; fi
+echo OK
+# Do many tests based on copy
+echo $N Restore initial and move revision numbers then fix ..........$NL
+cp -f sfoo SCCS/s.foo.c
+bk get $Q foo.c
+rm -f SCCS/s.foo.c
+mv foo.c top
+sed -e 's/ D 1\.1\.1\.1 / D 1.5 /' -e 's/ D 1\.2 / D 1.1.1.1 /'  \
+	-e 's/ D 1\.5 / D 1.2 /' sfoo > SCCS/s.foo.c
+bk admin $Q -z foo.c
+cmp -s sfoo SCCS/s.foo.c
+if [ $? -eq 0 ]; then echo Failed to alter revions; exit 1; fi
+bk renumber $Q foo.c
+cp -f SCCS/s.foo.c cp
+bk renumber $Q foo.c
+cmp -s cp SCCS/s.foo.c
+if [ $? -ne 0 ]; then echo Failed idempotent 1; exit 1; fi
+bk get $Q foo.c
+cmp -s top foo.c
+if [ $? -eq 0 ]; then echo Failed to get new top; exit 1; fi
+bk admin $Q -fd foo.c	# turn off default branch reassignment
+cmp -s sfoo SCCS/s.foo.c
+if [ $? -ne 0 ]; then echo Failed to fix numbers; exit 1; fi
+cp -f SCCS/s.foo.c cp
+bk renumber $Q foo.c
+cmp -s cp SCCS/s.foo.c
+if [ $? -ne 0 ]; then echo Failed idempotent 2; exit 1; fi
+echo OK
+# Do many tests based on copy
+echo $N Restore initial and move release numbers, then fix ..........$NL
+cp -f sfoo SCCS/s.foo.c
+bk get $Q foo.c
+rm -f SCCS/s.foo.c
+mv foo.c top
+sed -e 's/ D 1\.1\.1\.1 / D 2.0.4.1 /' -e 's/ D 1\.2 / D 2.0.7.1 /'  \
+	sfoo > SCCS/s.foo.c
+bk admin $Q -z foo.c
+cmp -s sfoo SCCS/s.foo.c
+if [ $? -eq 0 ]; then echo Failed to alter revions; exit 1; fi
+bk renumber $Q foo.c
+cp -f SCCS/s.foo.c cp
+bk renumber $Q foo.c
+cmp -s cp SCCS/s.foo.c
+if [ $? -ne 0 ]; then echo Failed idempotent 1; exit 1; fi
+bk get $Q foo.c
+cmp -s top foo.c
+if [ $? -eq 0 ]; then echo Failed to get new top; exit 1; fi
+bk admin $Q -fd foo.c	# turn off default branch reassignment
+bk get $Q foo.c
+cmp -s top foo.c
+if [ $? -ne 0 ]; then echo Failed to fix numbers; exit 1; fi
+cp -f SCCS/s.foo.c cp
+bk renumber $Q foo.c
+cmp -s cp SCCS/s.foo.c
+if [ $? -ne 0 ]; then echo Failed idempotent 2; exit 1; fi
+echo OK
+# OK good and fine.  Now for some bitkeeper tests
+rm -fr SCCS
+rm -f *
+HERE=`${CWD}`
+${ECHO} "logging: none" > $HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c proj
+cd proj
+echo $N Create lod collision and see if renumber does nothing .......$NL
+echo base > foo.c
+echo base > bar.c
+bk new $Q foo.c bar.c
+bk get -e $Q foo.c
+echo first > foo.c
+bk delta $Q -y1.2 foo.c
+bk commit $Q -y1.2
+bk get -e $Q foo.c
+echo proj1 > foo.c
+bk delta $Q -y1.2 foo.c
+bk get -e $Q foo.c
+echo proj2 > foo.c
+bk delta $Q -y1.2 foo.c
+bk commit $Q -y2.1 -L
+cd $HERE
+bk clone $Q proj copy
+cd proj
+bk get -e $Q bar.c
+echo proj1 > bar.c
+bk delta $Q -y1.2 bar.c
+bk get -e $Q bar.c
+echo proj2 > bar.c
+bk delta $Q -y1.2 bar.c
+bk commit $Q -y2.2
+cd $HERE
+cd copy
+bk get -e $Q bar.c
+echo cp1 > bar.c
+bk delta $Q -y1.2 bar.c
+bk get -e $Q bar.c
+echo cp2 > bar.c
+bk delta $Q -y1.2 bar.c
+bk commit $Q -y2.2
+cd $HERE
+bk resync $Q proj copy
+cd copy/RESYNC
+cp SCCS/s.bar.c sbar
+bk renumber $Q bar.c
+cmp -s sbar SCCS/s.bar.c
+retcode=$?
+if [ $retcode -eq 0 ]; then echo Fix regression; exit 1; fi
+if [ $retcode -ne 0 ]; then echo Known takepatch bug; fi
+echo $N Change default to be branch, renumber should reset it .......$NL
+bk admin -fd2.0.1 bar.c
+if [ $? -ne 0 ]; then echo Failed to set; exit 1; fi
+bk get $Q bar.c
+mv bar.c branch
+bk renumber $Q bar.c
+bk get $Q bar.c
+cmp -s bar.c branch
+if [ $? -eq 0 ]; then echo Failed to reset; exit 1; fi
 echo OK
