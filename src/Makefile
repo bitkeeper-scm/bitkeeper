@@ -461,8 +461,9 @@ setuptool: gui/setuptool.tcl gui/config.tcl gui/common.tcl \
 	    gui/setuptool.tcl > setuptool
 
 helptool: gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl
+	gui/common.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	    gui/appState.tcl \
 	    gui/helptool.tcl > helptool
 
 difftool: gui/search.tcl gui/config.tcl gui/difftool.tcl \

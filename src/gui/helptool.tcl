@@ -333,7 +333,7 @@ proc scroll {what dir} \
 proc widgets {} \
 {
 	global	line gc firstConfig pixelsPerLine tcl_platform
-	global	search_word stackMax stackPos d
+	global	search_word stackMax stackPos d State
 
 	set stackMax 0
 	set stackPos 0
@@ -344,7 +344,16 @@ proc widgets {} \
 		set py 1
 	}
 	getConfig "help"
-	if {"$gc(help.geometry)" != ""} { wm geometry . $gc(help.geometry) }
+	loadState
+
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	if {[info exists State(geometry@$res)]} {
+		wm geometry . $State(geometry@$res)
+
+	} elseif {"$gc(help.geometry)" != ""} {
+		wm geometry . $gc(help.geometry)
+	}
+
 	option add *background $gc(BG)
 
 	set rootX [winfo screenwidth .]
@@ -390,11 +399,12 @@ proc widgets {} \
 	    grid columnconfigure .menu 7 -weight 1
 	frame .ctrl -borderwidth 0 -relief flat
 	    text .ctrl.topics \
+	        -borderwidth 1 \
 		-spacing1 1 \
 		-spacing3 1 \
 		-wrap none \
 		-height $gc(help.height) \
-		-font $gc(help.fixedFont) -width 14 \
+		-font $gc(help.fixedFont) -width 16 \
 		-background $gc(help.listBG) \
 		-yscrollcommand [list .ctrl.yscroll set] \
 		-xscrollcommand [list .ctrl.xscroll set]
@@ -412,11 +422,12 @@ proc widgets {} \
 
 	    grid .ctrl.topics -row 0 -column 0 -sticky nsew
 	    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
-	    grid .ctrl.xscroll -row 1 -column 0 -columnspan 2 -sticky ew
+	    grid .ctrl.xscroll -row 1 -column 0 -sticky ew
 	    grid rowconfigure .ctrl 0 -weight 1
 
 	frame .text -borderwidth 0 -relief flat
 	    text .text.help \
+	        -borderwidth 1 \
 		-wrap none \
 		-font $gc(help.fixedFont) \
 		-width $gc(help.width) \
@@ -439,7 +450,7 @@ proc widgets {} \
 
 	    grid .text.help -row 0 -column 1 -sticky nsew
 	    grid .text.y2scroll -row 0 -column 0 -sticky nse
-	    grid .text.x2scroll -row 1 -column 0 -sticky ew -columnspan 2
+	    grid .text.x2scroll -row 1 -column 1 -sticky ew 
 
 	    grid rowconfigure .text 0 -weight 1
 	    grid columnconfigure .text 0 -weight 0
@@ -615,6 +626,53 @@ proc getHelp {} \
 	doSelect 1
 }
 
+# the purpose of this proc is merely to load the persistent state;
+# it does not do anything with the data (such as set the window 
+# geometry). That is best done elsewhere. This proc does, however,
+# attempt to make sure the data is in a usable form.
+proc loadState {} \
+{
+	global State
+
+	catch {::appState load help State}
+
+}
+
+proc saveState {} \
+{
+	global State
+
+	# Copy state to a temporary variable, the re-load in the
+	# state file in case some other process has updated it
+	# (for example, setting the geometry for a different
+	# resolution). Then add in the geometry information unique
+	# to this instance.
+	array set tmp [array get State]
+	catch {::appState load help tmp}
+	set res [winfo screenwidth .]x[winfo screenheight .]
+	set tmp(geometry@$res) [wm geometry .]
+
+	# Generally speaking, errors at this point are no big
+	# deal. It's annoying we can't save state, but it's no 
+	# reason to stop running. So, a message to stderr is 
+	# probably sufficient. Plus, given we may have been run
+	# from a <Destroy> event on ".", it's too late to pop
+	# up a message dialog.
+	if {[catch {::appState save help tmp} result]} {
+		puts stderr "error writing config file: $result"
+	}
+}
 bk_init
 widgets
 getHelp
+
+# This must be done after getFiles, because getFiles may cause the
+# app to exit. If that happens, the window size will be small, and
+# that small size will be saved. We don't want that to happen. So,
+# we only want this binding to happen if the app successfully starts
+# up
+bind . <Destroy> {
+	if {[string match %W "."]} {
+		saveState
+	}
+}
