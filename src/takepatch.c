@@ -126,6 +126,7 @@ takepatch_main(int ac, char **av)
 		    default: goto usage;
 		}
 	}
+	if (getenv("TAKEPATCH_SAVEDIRS")) saveDirs++;
 	if (av[optind]) {
 usage:		fprintf(stderr, takepatch_help);
 		return (1);
@@ -844,9 +845,8 @@ apply:
 					return -1;
 				}
 			} else {
-				newflags = (echo > 5) ?
-				    GET_SKIPGET|GET_EDIT :
-				    SILENT|GET_SKIPGET|GET_EDIT;
+				newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
+				unless (echo > 5) newflags |= SILENT;
 				/* CSTYLED */
 				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
 				    	perror("get");

@@ -5783,7 +5783,8 @@ err:		if (i2) free(i2);
 		goto err;
 	}
 	/* general error checking done.  Pretend not here if defbranch 1.0 */
-	if (s->defbranch && streq(s->defbranch, "1.0")) {
+	if (s->defbranch &&
+	    streq(s->defbranch, "1.0") && !(flags & GET_FORCE)) {
 		/* verbose((stderr, "get: ignoring %s\n", s->gfile)); */
 		return (0);
 	}

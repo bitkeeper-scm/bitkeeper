@@ -27,6 +27,7 @@ usage: sfiles [-aAcCdDglkpPRrux] [directories]\n\n\
     -r		rebuild the id to pathname cache\n\
     -R		when used with -C, list files as foo.c:1.3..1.5\n\
     -u		list only unlocked files\n\
+    -v		be verbose during id rebuild\n\
     -x		list files which have no revision control files\n\
 		Note 1: files in BitKeeper/log/ are ignored\n\
     		Note 2: revision control files must look like SCCS/s.*,\n\
@@ -495,7 +496,6 @@ caches(const char *filename, int mode)
 		sccs_free(sc);
 		return;
 	}
-	if (vFlg) printf("%s\n", sc->gfile);
 
 	if (rFlg) {
 		delta	*ino = sccs_ino(sc);
@@ -509,6 +509,7 @@ caches(const char *filename, int mode)
 			sccs_sdelta(sc, ino, buf);
 			save(sc, idDB, buf);
 			if (sc->grafted || !streq(ino->pathname, sc->gfile)) {
+				if (vFlg) printf("%s %s\n", buf, sc->gfile);
 				fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 			}
 			if (mixed && (t = sccs_iskeylong(buf))) {
@@ -530,12 +531,6 @@ caches(const char *filename, int mode)
 	/* XXX - should this be (Cflg && !(sc->state & S_CSET)) ? */
 	unless (Cflg) goto out;
 
-	/*
-	 * If we are doing sfiles -C, hide these.
-	 * XXX - seems redundant, I'd rather have an assert.
-	 */
-	if (sc->defbranch && streq(sc->defbranch, "1.0")) goto out;
-
 	/* find the leaf of the current LOD and check it */
 	unless (d = sccs_getrev(sc, "+", 0, 0)) goto out;
 
@@ -543,6 +538,23 @@ caches(const char *filename, int mode)
 	 * If it's marked, we're done.
 	 */
 	if (d->flags & D_CSET) goto out;
+
+	/*
+	 * If it is out of view, we need to look at all leaves and see if
+	 * there is a problem or not.
+	 */
+	if (sc->defbranch && streq(sc->defbranch, "1.0")) {
+		for (d = sc->table; d; d = d->next) {
+			unless ((d->type == 'D') && sccs_isleaf(sc, d)) {
+				continue;
+			}
+			unless (d->flags & D_CSET) break;
+		}
+		unless (d) goto out;
+		fprintf(stderr,
+		    "Warning: not in view file %s skipped.\n", sc->gfile);
+		goto out;
+	}
 
 	/*
 	 * If we are looking for diff output and not -a style,
