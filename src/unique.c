@@ -53,30 +53,6 @@ lockHome()
 	return (lockFile = (strdup)(path));
 }
 
-char *
-getHomeDir()
-{
-        char *homeDir;
-
-        homeDir = getenv("HOME");
-#ifdef WIN32
-        if (homeDir == NULL) {
-                char *home_drv, *home_path;
-                char home_buf[2048];
-
-                home_drv = getenv("HOMEDRIVE");
-                home_path = getenv("HOMEPATH");
-
-                if (home_drv && home_path) {
-                        sprintf(home_buf, "%s%s", home_drv, home_path);
-                        homeDir = strdup(home_buf);
-                        nt2bmfname(homeDir, homeDir);
-                }
-        }
-#endif
-        return homeDir;
-}
-
 /*
  * Use BK_TMP first, we set that for the regression tests.
  */
@@ -88,12 +64,13 @@ keysHome()
 
 	if (keysFile) return (keysFile);
 	if ((t = getenv("BK_TMP")) && isdir(t)) {
-		sprintf(path, "%s/.bk_keys", t);
+		concat_path(path, t, ".bk_keys");
 		return (keysFile = (strdup)(path));
 	}
 	t = getHomeDir();
 	if (t) {
-		sprintf(path, "%s/.bk_keys", t);
+		concat_path(path, t, ".bk_keys");
+		free(t);
 		return (keysFile = (strdup)(path));
 	}
 #ifndef WIN32
