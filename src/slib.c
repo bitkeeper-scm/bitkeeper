@@ -10936,7 +10936,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	obscure_it = (flags & ADMIN_OBSCURE);
 	/* ChangeSet can't be obscured, neither can the BitKeeper/etc files */
 	if (CSET(sc) ||
-	    (BITKEEPER(sc) && strneq(sc->tree->pathname,"BitKeeper/etc/",13))) {
+	    (sc->tree->pathname && strneq(sc->tree->pathname,"BitKeeper/etc/",13))) {
 	    	obscure_it = 0;
 	}
 	if ((old_enc & E_GZIP) && obscure_it) {
