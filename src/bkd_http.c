@@ -1837,7 +1837,7 @@ http_related(char *file)
 	if (i == -1)
 		http_error(500, "buffer overflow in http_related");
 
-	sprintf(buf, "bk _f2csets %s", file);
+	sprintf(buf, "bk f2csets %s", file);
 	unless (f = popen(buf, "r"))
 		http_error(500, "%s: %s", buf, strerror(errno));
 

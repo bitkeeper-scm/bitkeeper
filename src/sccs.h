@@ -698,7 +698,8 @@ typedef struct {
 	u16	loginshell:1;	/* if set, login shell is the bkd */
 	u16	httpd:1;	/* if set, httpd is the bkd */
 	u16	trace:1;	/* for debug, trace send/recv msg */
-	u16	isSocket:1;	/* if set, rfd and wfd is socket */
+	u16	isSocket:1;	/* if set, rfd and wfd are sockets */
+	u16	badhost:1;	/* if set, hostname lookup failed */
 	int	rfd;		/* read fd for the remote channel */
 	int	wfd;		/* write fd for the remote channel */
 	char	*user;		/* remote user if set */

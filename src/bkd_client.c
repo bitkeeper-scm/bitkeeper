@@ -269,7 +269,13 @@ bkd(int compress, remote *r)
 		if (r->httpd) {
 			http_connect(r, WEB_BKD_CGI);
 		} else {
-			r->rfd = r->wfd = tcp_connect(r->host, r->port);
+			i = tcp_connect(r->host, r->port);
+			if (i < 0) {
+				r->rfd = r->wfd = -1;
+				if (i == -2) r->badhost = 1;
+			} else {
+				r->rfd = r->wfd = i;
+			}
 		}
 		r->isSocket = 1;
 		return ((pid_t)0);

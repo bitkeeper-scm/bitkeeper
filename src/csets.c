@@ -3,9 +3,10 @@
 /*
  * XXX - this really needs to be rewritten to be general like the rest of
  * the commands.
+ * XXX - really needs to be part of r2c.
  */
 int
-csets_main(int argc, char **argv)
+f2csets_main(int argc, char **argv)
 {
 	char	rootkey[MAXKEY];
 	FILE	*f;

@@ -49,7 +49,7 @@ int	converge_main(int, char **);
 int	create_main(int, char **);
 int	createlod_main(int, char **);
 int	cset_main(int, char **);
-int	csets_main(int, char **);
+int	f2csets_main(int, char **);
 int	deledit_main(int, char **);
 int	delget_main(int, char **);
 int	delta_main(int, char **);
@@ -206,7 +206,7 @@ struct command cmdtbl[] = {
 	{"createlod", createlod_main},	/* undoc? 2.0 */
 	{"create", create_main},	
 	{"cset", cset_main},		/* doc 2.0 */
-	{"csets", csets_main},
+	{"f2csets", f2csets_main},
 	{"delta", delta_main},		/* doc 2.0 */
 	{"deledit", deledit_main},	
 	{"delget", delget_main},	

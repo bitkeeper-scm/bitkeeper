@@ -293,11 +293,16 @@ bkd_connect(remote *r, int compress)
 	bkd(compress, r);
 	if (r->trace) {
 		fprintf(stderr,
-			"send_msg: r->rfd = %d, r->wfd = %d\n",
-			r->rfd, r->wfd);
+		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);
 	}
 	if (r->wfd < 0) {
-		fprintf(stderr, "Cannot connect to %s\n", remote_unparse(r));
+		if (r->badhost) {
+			fprintf(stderr, "Cannot resolve host %s\n", r->host);
+		} else {
+			char	*rp = remote_unparse(r);
+			perror(rp);
+			free(rp);
+		}
 		return (-1);
 	}
 	return (0);
