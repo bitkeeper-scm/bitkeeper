@@ -3306,7 +3306,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	static	int YEAR4;
 	unsigned int i;
 
-	platformSpecificInit(name);
+	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));
 		s->sfile = strdup(sPath(name, 0));

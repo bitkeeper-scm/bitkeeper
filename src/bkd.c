@@ -1,3 +1,6 @@
+#ifdef WIN32
+#include <windows.h>
+#endif
 #include "bkd.h"
 
 private	void	bkd_server(void);
@@ -17,8 +20,9 @@ bkd_main(int ac, char **av)
 	char	*uid = 0;
 
 	loadNetLib();
-	while ((c = getopt(ac, av, "deil|p:P:t:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:deil|p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
+		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
 		    case 'i': Opts.interactive = 1; break;
@@ -27,6 +31,11 @@ bkd_main(int ac, char **av)
 			break;
 		    case 'p': Opts.port = atoi(optarg); break;
 		    case 'P': Opts.pidfile = optarg; break;
+#ifdef WIN32
+		    case 's': Opts.startDir = optarg; break;
+		    case 'S': Opts.start = 1; Opts.daemon = 1; break;
+		    case 'R': Opts.remove = 1; Opts.daemon = 1; break;
+#endif
 		    case 't': Opts.alarm = atoi(optarg); break;
 		    case 'u': uid = optarg; break;
 		    case 'x': exclude(optarg); break;
@@ -83,12 +92,10 @@ reap(int sig)
 #endif
 }
 
+#ifndef WIN32
 private	void
 bkd_server()
 {
-#ifdef WIN32
-	assert("not_implemented" == 0);
-#else
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
 
 	
@@ -112,6 +119,7 @@ bkd_server()
 		    	close(n);
 			/* reap 'em if you got 'em */
 			reap(0);
+			if ((Opts.count > 0) && (--(Opts.count) == 0)) break;
 			continue;
 		}
 
@@ -134,8 +142,124 @@ bkd_server()
 		do_cmds();
 		exit(0);
 	}
-#endif
 }
+
+#else
+void
+bkd_service_loop(int ac, char **av)
+{
+	SOCKET	sock = 0;
+	int	err = 0;
+	extern	int bkd_quit; /* This is set by the helper thread */
+	extern	int bkd_register_ctrl();
+	extern	void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
+	extern	void logMsg(char *);
+	SERVICE_STATUS_HANDLE   sHandle;
+	int	rm_service = 0;
+	
+	/*
+	 * Register our control interface with the service manager
+	 */
+	if ((sHandle = bkd_register_ctrl()) == 0) goto done;
+
+	/*
+	 * Get a socket
+	 */
+	sock = (SOCKET) tcp_server(Opts.port ? Opts.port : BK_PORT, &err);
+	if (sock == INVALID_SOCKET) goto done;
+	reportStatus(sHandle, SERVICE_RUNNING, NO_ERROR, 0);
+
+	if (Opts.startDir) {
+		if (chdir(Opts.startDir) != 0) {
+			char msg[MAXLINE];
+
+			sprintf(msg, "bkd: can not cd to \"%s\"",
+								Opts.startDir);
+			logMsg(msg);
+			goto done;
+		}
+	}
+
+	/*
+	 * remove the service after we process "count" connections
+	 */
+	if (Opts.count) rm_service = 1;
+
+	/*
+	 * Main loop
+	 */
+	while (1)
+	{
+		char sbuf[20];
+		char *av[10] = {"socket_helper", "-s", sbuf, "bk", "bkd", 0};
+		int n;
+		n = accept(sock, 0 , 0);
+		/*
+		 * We could be interrupted if the service manager
+		 * want to shut us down.
+		 */
+		if (n == INVALID_SOCKET) {
+			if (bkd_quit == 1) break; 
+			logMsg("bkd: got invalid socket, re-trying...");
+			continue; /* re-try */
+		}
+		/*
+		 * On win32, we can not dup a socket,
+		 * so just pass the socket handle as a argument
+		 */
+		sprintf(sbuf, "%d", n);
+		if (Opts.log) {
+			struct  sockaddr_in sin;
+			int     len = sizeof(sin);
+
+			// XXX TODO figure what to do with this
+			if (getpeername(n, (struct sockaddr*)&sin, &len)) {
+				strcpy(Opts.remote, "unknown");
+			} else {
+				strcpy(Opts.remote, inet_ntoa(sin.sin_addr));
+			}
+		}
+		if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) {
+			logMsg("bkd: can not spawn socket_helper");
+			break;
+		}
+		CloseHandle((HANDLE) n); /* important for EOF */
+        	if ((Opts.count > 0) && (--(Opts.count) == 0)) break;
+		if (bkd_quit == 1) break;
+	}
+
+done:	if (sock) CloseHandle((HANDLE)sock);
+	if (sHandle) reportStatus(sHandle, SERVICE_STOPPED, NO_ERROR, 0);
+	if (rm_service) bkd_remove_service();
+}
+
+
+/*
+ * There are two major differences between the Unix/Win32
+ * bkd_server implementation:
+ * 1) Unix bkd is a regular daemon, win32 bkd is a NT service
+ *    (NT services has a more complex interface, think 10 X)
+ * 2) Win32 bkd uses a socket_helper process to convert a pipe interface
+ *    to socket intertface, because the main code always uses read()/write()
+ *    instead of send()/recv(). On win32, read()/write() does not
+ *    work on socket.
+ */
+private	void
+bkd_server()
+{
+	extern void bkd_service_loop(int, char **);
+
+	if (Opts.start) { 
+		bkd_start_service(bkd_service_loop);
+		exit(0);
+	} else if (Opts.remove) { 
+		bkd_remove_service(); /* shut down and remove bkd service */
+		exit(0);
+	} else {
+		bkd_install_service(&Opts); /* install and start bkd service */
+	}
+}
+#endif /* WIN32 */
 
 private void
 drain(int fd)

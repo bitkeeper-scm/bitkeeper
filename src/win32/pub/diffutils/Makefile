@@ -33,7 +33,6 @@ PROGRAMS = cmp.exe diff.exe diff3.exe sdiff.exe
 all: $(PROGRAMS)
 	cp ${PROGRAMS} ../../..
 
-#COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -ID:/projects/bk/src/win32/pub/diffutils -I. -I../../uwtlib -I$(srcdir) $(CFLAGS) -Fo$@
 COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -I. -I../../uwtlib -I$(srcdir) $(CFLAGS) -Fo$@
 
 .c.o:
