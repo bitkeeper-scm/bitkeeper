@@ -877,8 +877,8 @@ int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
-char	*_relativeName(char *gName, int isDir,
-		int withsccs, int mustHaveRmarker, project *proj, char *root);
+char	*_relativeName(char *gName, int isDir, int withsccs,
+	    int mustHaveRmarker, int wantRealName, project *proj, char *root);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin();
 project	*chk_proj_init(sccs *s, char *file, int line);

@@ -50,4 +50,4 @@
 #define	HAVE_TMPNAM	1
 #define	RETSIGTYPE	void
 #define	same_file(a, b)	(-1)
-
+#define bzero(b, l)	memset(b, 0, l)

@@ -674,6 +674,7 @@ send.o:		send.c $(H)
 sendbug.o:	sendbug.c $(H)
 setup.o:	setup.c $(H)
 sfiles.o:	sfiles.c $(H)
+sfind.o:	sfind.c $(H)
 sfio.o:		sfio.c $(H) $(Z)
 sinfo.o:	sinfo.c $(H)
 slib.o:		slib.c $(H) zgets.h

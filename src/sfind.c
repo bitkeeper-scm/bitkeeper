@@ -549,7 +549,7 @@ print_summary()
 private char *
 find_root(char *dir, char *root)
 {
-	return (_relativeName(dir, 1, 0, 1, 0, root));
+	return (_relativeName(dir, 1, 0, 1, 0, 0, root));
 }
 
 private void

@@ -1422,6 +1422,13 @@ getCSetFile(sccs *s)
 	return (0);
 }
 
+private int
+do_chdir(char *pwd, char *dir)
+{
+	if (streq(pwd, dir)) return (0);
+	return (chdir(dir));
+}
+
 /*
  * Return the pathname relative to the first ChangeSet file found.
  *
@@ -1429,14 +1436,16 @@ getCSetFile(sccs *s)
  * I need to cache changeset lookups.
  */
 char	*
-_relativeName(char *gName, int isDir,
-		int withsccs, int mustHaveRmarker, project *proj, char *root)
+_relativeName(char *gName, int isDir, int withsccs,
+	    int mustHaveRmarker, int wantRealName, project *proj, char *root)
 {
-	char	*t, *s, *top, tmp[MAXPATH];
+	char	*t, *s, *top;
 	int	i, j;
-	static  char buf[MAXPATH];
+	char	tmp[MAXPATH], buf[MAXPATH];
+	static  char buf2[MAXPATH];
+	extern 	char pwd[]; /* set in fullname() */
 
-	getRealName(fullname(gName, 0), NULL, tmp);
+	strcpy(tmp, fullname(gName, 0));
 	t = tmp;
 
 	if (proj && proj->root) {
@@ -1479,8 +1488,8 @@ _relativeName(char *gName, int isDir,
 			 */
 			if (root) root[0] = 0;
 			if (mustHaveRmarker) return (0);
-			strcpy(buf, t);
-			return (buf); /* return full path name */
+			strcpy(buf2, t);
+			return (buf2); /* return full path name */
 		}
 		/* s -> / in .../foo/SCCS/s.foo.c */
 		for (--s; (*s != '/') && (s > top); s--);
@@ -1506,20 +1515,33 @@ got_root:
 		int len = s - t;
 		strncpy(root, t, len); root[len] = 0;
 	}
-	strcpy(buf, ++s);
+
+	/*
+	 * Must cd to project root before we call getRealName()
+	 */
+	t[s-t] = 0;
+	if (wantRealName && (do_chdir(pwd, t) == 0)) {
+		strcpy(buf, ++s);
+		getRealName(buf, NULL, buf2);
+		do_chdir(t, pwd);	/* restore pwd */
+	} else {
+		strcpy(buf2, ++s);
+	}
+
 	if (isDir) {
-		if (buf[0] == 0) strcpy(buf, ".");
-		return buf;
+		if (buf2[0] == 0) strcpy(buf2, ".");
+		return (buf2);
 	}
 	if (withsccs) {
 		char *sName;
 
-		sName = name2sccs(buf);
-		strcpy(buf, sName);
+		sName = name2sccs(buf2);
+		strcpy(buf2, sName);
 		free(sName);
 	}
-	return (buf);
+	return(buf2);
 }
+
 
 /*
  * Trim off the RESYNC/ part of the pathname, that's garbage.
@@ -1530,7 +1552,7 @@ relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 	char	*s, *g;
 
 	g = sccs2name(sc->sfile);
-	s = _relativeName(g, 0, withsccs, mustHaveRmarker, sc->proj, NULL);
+	s = _relativeName(g, 0, withsccs, mustHaveRmarker, 1, sc->proj, NULL);
 	free(g);
 
 	unless (s) return (0);
@@ -1612,7 +1634,7 @@ sPath(char *name, int isDir)
 		free(path);
 	}
 
-	path = _relativeName(name, isDir, 0, 0, 0, gRoot);
+	path = _relativeName(name, isDir, 0, 0, 0, 0, gRoot);
 	if (IsFullPath(path)) return path; /* no root marker */
 	if (hasRootFile(gRoot, sRoot)) {
 		concat_path(buf, sRoot, path);
@@ -5601,7 +5623,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	} else if (flags & GET_PATH) {
 		/* put the file in its historic location */
 		assert(d->pathname);
-		_relativeName(".", 1 , 0, 0, s->proj, path); /* get groot */
+		_relativeName(".", 1 , 0, 0, 0, s->proj, path); /* get groot */
 		concat_path(path, path, d->pathname);
 		f = path;
 		unlink(f);
@@ -7332,7 +7354,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, s->proj, 0);
+		char *r = _relativeName(s->gfile, 0, 0, 1, 1, s->proj, 0);
 		if (r && !streq(d->pathname, r)) RET(1);
 	}
 
@@ -7575,8 +7597,8 @@ diff_gmode(sccs *s, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, s->proj, 0);
-		if (r && !patheq(d->pathname, r)) return (3);
+		char *r = _relativeName(s->gfile, 0, 0, 1, 1, s->proj, 0);
+		if (r && !streq(d->pathname, r)) return (3);
 	}
 
 	unless (sameFileType(s, d)) return (1);
@@ -8168,7 +8190,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * because we cannot trust the gfile name on
 			 * win32 case-folding file system.
 			 */
-			p = _relativeName(s->sfile, 0, 0, 0, s->proj, NULL);
+			p = _relativeName(s->sfile, 0, 0, 0, 1, s->proj, NULL);
 			q = sccs2name(p);		
 			pathArg(d, q);
 			free(q);
@@ -8228,7 +8250,7 @@ get_sroot(char *sfile, char *sroot)
 	char *g;
 	g = sccs2name(sfile); /* strip SCCS */
 	sroot[0] = 0;
-	_relativeName(g, 0, 0, 1, 0, sroot);
+	_relativeName(g, 0, 0, 1, 0, 0, sroot);
 	free(g);
 }
 
@@ -8414,7 +8436,6 @@ out:		sccs_unlock(s, 'z');
 		s->table = n0;
 		if (buf[0]) pathArg(n0, buf); /* pathname */
 
-
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		n0->flags |= D_CKSUM;
 		n0->sum = (unsigned short) almostUnique(1);
@@ -8424,6 +8445,8 @@ out:		sccs_unlock(s, 'z');
 		n->pserial = n0->serial;
 		n->next = n0;
 	}
+	assert(n);
+	if (!nodefault && buf[0]) pathArg(n, buf); /* pathname */
 	n = sccs_dInit(n, 'D', s, nodefault);
 	if (s->mode & 0111) s->mode |= 0110;	/* force user/group execute */
 	s->mode |= 0220;			/* force user/group write */

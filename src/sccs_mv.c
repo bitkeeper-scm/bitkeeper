@@ -223,7 +223,6 @@ update_idcache(sccs *s, char *old, char *new)
 	char	*t;
 	FILE	*f;
 	MDBM	*idDB;
-	extern	char *relativeName(sccs *sc, int withsccs, int mustHaveRmarker);
 
 	unless ((p = s->proj) || (p = proj_init(s))) {
 		fprintf(stderr,
@@ -305,7 +304,7 @@ getRelativeName(char *name, project *proj)
 
 	/* TODO: we should cache the root value for faster lookup */
 	t = sccs2name(name);
-	rpath = strdup(_relativeName(t, 0, 0, 0, proj, 0));
+	rpath = strdup(_relativeName(t, 0, 0, 0, 0, proj, 0));
 	free(t);
 	return rpath;
 }

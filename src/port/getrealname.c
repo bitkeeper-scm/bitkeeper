@@ -90,6 +90,10 @@ getRealName(char *path, MDBM *db, char *realname)
 	int	first = 1;
 
 	assert(path != realname); /* must be different buffer */
+	if (!path[0]) {
+		realname[0] = 0;
+		return (0);
+	}
 	cleanPath(path, mypath);
 
 	realname[0] = 0;

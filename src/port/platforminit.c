@@ -55,12 +55,12 @@ platformInit(char **av)
 	localName2bkName(av[0], av[0]);
 
 	/*
-	 * convert to lower case: because W98 gives us upper case av
+	 * Convert to lower case: because W98 gives us upper case av
 	 */
 	for (t = av[0]; *t; t++) *t = tolower(*t);
 
 	/*
-	 * strip .exe .com suffix
+	 * Strip .exe .com suffix
 	 */
 	for (--t; t > av[0]; t--)  {
 		if (*t == '/') break;
@@ -108,7 +108,7 @@ gotit:
 	}
 
 	/*
-	 * partially specified paths are respected
+	 * Partially specified paths are respected
 	 */
 	if (t = strchr(av[0], '/')) {
 		verbose((stderr, "USING partial %s\n", av[0]));
