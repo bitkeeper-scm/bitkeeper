@@ -31,7 +31,7 @@ echo 1 > A
 echo 2 > B
 bk ci $Q -i A B
 if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
-commit $S -f -y"This is a \"Change Set\""
+bk commit $S -f -y"This is a \"Change Set\""
 echo OK
 echo $N Check edit with existing read lock ..........................$NL
 bk repo -r

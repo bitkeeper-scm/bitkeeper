@@ -77,7 +77,7 @@ executable(char *f)
 {
 	struct	stat sbuf;
 
-	if (lstat(f, &sbuf) == -1) return 0;
+	if (stat(f, &sbuf) == -1) return 0;
 	return (S_ISREG(sbuf.st_mode) && (sbuf.st_mode & 0111));
 }
 

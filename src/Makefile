@@ -140,7 +140,7 @@ production_image: rebuild p image
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-	    $(BKDOBJ) $(BJOBJ) $(RESOBJ) $(LIBS) $(BKLIB) bkdsubstr bkhelp.txt a.out core
+	    $(BKDOBJ) $(BKOBJ) $(RESOBJ) $(LIBS) $(BKLIB) bkdsubstr bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
 
 clean-bin: FORCE
