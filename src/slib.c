@@ -13536,6 +13536,27 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "P") || streq(kw, "USER")) {
 		/* programmer */
 		if (d->user) {
+			if (p = strchr(d->user, '/')) *p = 0;
+			fs(d->user);
+			if (p) *p = '/';
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "REALUSER")) {
+		if (d->user) {
+			if (p = strchr(d->user, '/')) {
+				++p;
+			} else {
+				p = d->user;
+			}
+			fs(p);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "FULLUSER")) {
+		if (d->user) {
 			fs(d->user);
 			return (strVal);
 		}
@@ -14102,8 +14123,44 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "HT") || streq(kw, "HOST")) {
 		/* host without any importer name */
 		if (d->hostname) {
-			for (p = d->hostname; *p && (*p != '['); ) {
-				fc(*p++);
+			if (p = strchr(d->hostname, '/')) {
+				*p = 0;
+				fs(d->hostname);
+				*p = '/';
+			} else if (p = strchr(d->hostname, '[')) {
+				*p = 0;
+				fs(d->hostname);
+				*p = '[';
+			} else {
+				fs(d->hostname);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "REALHOST")) {
+		if (d->hostname) {
+			if (p = strchr(d->hostname, '/')) {
+				fs(p+1);
+			} else if (p = strchr(d->hostname, '[')) {
+				*p = 0;
+				fs(d->hostname);
+				*p = '[';
+			} else {
+				fs(d->hostname);
+			}
+			return (strVal);
+		}
+		return (nullVal);
+	}
+	if (streq(kw, "FULLHOST")) {
+		if (d->hostname) {
+			if (p = strchr(d->hostname, '[')) {
+				*p = 0;
+				fs(d->hostname);
+				*p = '[';
+			} else {
+				fs(d->hostname);
 			}
 			return (strVal);
 		}
