@@ -296,7 +296,8 @@ _parent() {
 }
 
 # Pull: update from parent repository.  You can feed this any resync
-# switches you like.  Default is auto-resolve.
+# switches you like.  Default is auto-resolve stopping only for overlapped
+# changes (like cvs update).
 _pull() {
 	_cd2root
 	if [ -f BitKeeper/log/parent ]
@@ -306,28 +307,15 @@ _pull() {
 	fi
 }
 
-# Push: send changes back to parent.  This does auto-resolve, which
-# means conflicts are not allowed.
+# Push: send changes back to parent.  If parent is ahead of you, this
+# pulls down those changes and stops; you have to merge and try again.
 _push() {
 	_cd2root
 	if [ -f BitKeeper/log/parent ]
-	then	:
+	then	exec ${BIN}resync -Ab "$@" `cat BitKeeper/log/parent` . 
 	else	echo "No parent repository, cannot push" >&2
 		exit 1
 	fi
-
-	# Before pushing, we do an implicit pull and abort if it
-	# reports changes.
-	PARENT=`cat BitKeeper/log/parent`
-	changes="`${BIN}resync -v $PARENT . 2>&1`"
-	case "$changes" in
-	    "Nothing to resync.")
-		exec ${BIN}resync -a "$@" . `cat BitKeeper/log/parent`;;
-	    *)	echo "Changes in parent - resolve and try again" >&2
-		echo "$changes" >&2
-		exit 1
-		;;
-	esac
 }
 
 _diffr() {
@@ -952,7 +940,7 @@ _commit() {
 	if [ $GETCOMMENTS = YES ]
 	then
 		if [ $FORCE = NO -a ! -s ${TMP}list$$ ]
-		then	echo Nothing to commit
+		then	[ $QUIET = YES ] || echo Nothing to commit >&2
 			${RM} -f ${TMP}list$$ ${TMP}commit$$
 			exit 0
 		fi
@@ -960,7 +948,7 @@ _commit() {
 	else	if [ $FORCE = NO ]
 		then	N=`wc -l < ${TMP}list$$`
 			if [ $N -eq 0 ]
-			then	echo Nothing to commit
+			then	[ $QUIET = YES ] || echo Nothing to commit >&2
 				${RM} -f ${TMP}list$$ ${TMP}commit$$
 				exit 0
 			fi
