@@ -30,7 +30,7 @@ sccslog_main(int ac, char **av)
 	project	*proj = 0;
 	RANGE_DECL;
 
-	setmode(1, _O_BINARY);
+	setmode(1, _O_TEXT);
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help sccslog");

@@ -107,7 +107,7 @@ a/b/c/Data
   Rev 2
 
 EOF
-bk sccslog a/b/c/Data | head -36 | cat > CMP2
+bk sccslog a/b/c/Data | head -36 | bk undos > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
@@ -119,7 +119,7 @@ a/b/c/Data
 
 EOF
 bk undos X > CMP1
-bk sccslog -r1.2 a/b/c/Data > CMP2
+bk sccslog -r1.2 a/b/c/Data | bk undos > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
@@ -163,7 +163,7 @@ a/b/c/Data
 
 EOF
 bk undos X > CMP1
-bk sccslog -c20/03..20/04 a/b/c/Data > CMP2
+bk sccslog -c20/03..20/04 a/b/c/Data | bk undos > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
@@ -183,7 +183,7 @@ a/b/c/Data
 
 EOF
 bk undos X > CMP1
-bk sccslog -c20/03 -r1.4 a/b/c/Data > CMP2
+bk sccslog -c20/03 -r1.4 a/b/c/Data | bk undos > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
