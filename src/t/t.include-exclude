@@ -11,23 +11,23 @@ do	co $Q -l include
 	ci $Q -y"Rev $i" include
 done
 co $Q include
-echo $N Making sure of contents .....................$NL
+echo $N Making sure of contents .....................................$NL
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 co $Q -r1 include
-echo $N Making sure of contents w/ -r1 ..............$NL
+echo $N Making sure of contents w/ -r1 ..............................$NL
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Including a rev in the middle ...............$NL
+echo $N Including a rev in the middle ...............................$NL
 get $S -r1.1 -i1.3 include
 ${ECHO} 1 > big_i
 ${ECHO} 3 >> big_i
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; sdiff -w80 big_i include; exit 1; fi
 echo OK
-echo $N Including two revs in the middle ............$NL
+echo $N Including two revs in the middle ............................$NL
 get $S -r1.1 -i1.3,1.5 include
 ${ECHO} 1 > big_i
 ${ECHO} 3 >> big_i
@@ -35,38 +35,38 @@ ${ECHO} 5 >> big_i
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Including all revs -i1.1-1.10 ...............$NL
+echo $N Including all revs -i1.1-1.10 ...............................$NL
 get $S -r1.0 -i1.1-1.10 include
 ${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9 10; do ${ECHO} $i >> big_i; done
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 admin $Q -STOT include
-echo $N Including all revs -i1.1-TOT ................$NL
+echo $N Including all revs -i1.1-TOT ................................$NL
 ${RM} -f include
 get $S -r1.0 -i1.1-TOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Including all revs -i1.1,1.2,1.3-TOT ........$NL
+echo $N Including all revs -i1.1,1.2,1.3-TOT ........................$NL
 ${RM} -f include
 get $S -r1.0 -i1.1,1.2,1.3-TOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Excluding one rev in the middle .............$NL
+echo $N Excluding one rev in the middle .............................$NL
 ${RM} -f big_i; for i in 1 2 3 4 6 7 8 9 10; do ${ECHO} $i >> big_i; done
 get $S -x1.5 include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Excluding last rev -xTOT ....................$NL
+echo $N Excluding last rev -xTOT ....................................$NL
 ${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9; do ${ECHO} $i >> big_i; done
 get $S -xTOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Checking exclude lists in s.file ............$NL
+echo $N Checking exclude lists in s.file ............................$NL
 ${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9; do ${ECHO} $i >> big_i; done
 get $S -exTOT include
 cmp -s big_i include
@@ -75,7 +75,7 @@ ci $Q -fy include
 X=`sed -n 4p < SCCS/s.include`
 if [ "$X" != "x 11" ]; then echo Failed - bad exclude list $X; exit 1; fi
 echo OK
-echo $N Checking include lists in s.file ............$NL
+echo $N Checking include lists in s.file ............................$NL
 ${RM} -f big_i; for i in 1 2 3 4; do ${ECHO} $i >> big_i; done
 get $S -r1.0 -ei1.1-1.4 include
 cmp -s big_i include
@@ -86,12 +86,12 @@ ci $Q -fy include
 X=`sed -n 4p < SCCS/s.include`
 if [ "$X" != "i 2 3 4 5" ]; then echo Failed - bad include list $X; exit 1; fi
 echo OK
-echo $N Making sure the includes worked .............$NL
+echo $N Making sure the includes worked .............................$NL
 co $Q -r1.0.1.1 include
 cmp -s include SAVE
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Include/exclude ixg0 ........................$NL
+echo $N Include/exclude ixg0 ........................................$NL
 # Clean up 
 ${RM} -rf SCCS
 # Build up a file with 1.1 .. 1.4
@@ -157,7 +157,7 @@ echo OK
 #
 # See if includes mean include all the way up the trunk or just
 # the one delta.  It should not.
-echo $N Include/exclude ixg1 ........................$NL
+echo $N Include/exclude ixg1 ........................................$NL
 # Clean up 
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
@@ -223,7 +223,7 @@ echo OK
 # Create a branch, 1.1.3.1 - this also includes 1.1.1.1
 # Create a child, 1.1.3.2 - this excludes 1.1.1.1
 # Create a child, 1.3 - this includes 1.1.2.1 and 1.1.3.2
-echo $N Include/exclude ixg2 ........................$NL
+echo $N Include/exclude ixg2 ........................................$NL
 # Clean up 
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
@@ -284,7 +284,7 @@ echo OK
 # Create a child, 1.1.2.2 - this excludes 1.1.1.1
 # Create a branch, 1.1.3.1 - this includes 1.1.1.1
 # Create a child, 1.3 - this includes 1.1.2.2 and 1.1.3.1
-echo $N Include/exclude ixg3 ........................$NL
+echo $N Include/exclude ixg3 ........................................$NL
 # Clean up 
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
@@ -347,7 +347,7 @@ echo OK
 # Create a branch, 1.1.4.1 - this excludes 1.1.2.1
 # Note: the above excluded one that wasn't included.
 # Create a child, 1.3 - this includes 1.1.3.1 and 1.1.4.1
-echo $N Include/exclude ixg4 ........................$NL
+echo $N Include/exclude ixg4 ........................................$NL
 # Clean up 
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
@@ -413,7 +413,7 @@ echo OK
 # Note: the above excluded one that wasn't included.
 # Create a branch, 1.1.3.1 - this includes 1.1.1.1
 # Create a child, 1.3 - this includes 1.1.2.1 and 1.1.3.1
-echo $N Include/exclude ixg5 ........................$NL
+echo $N Include/exclude ixg5 ........................................$NL
 # Clean up 
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
@@ -465,7 +465,7 @@ echo OK
 # Create a branch, 1.1.1.1 - this will be included
 # Create a child, 1.3 which excludes 1.2 and includes 1.1.1.1
 # Ask for           -x1.3
-echo $N Exclude/exclude xxg1 ........................$NL
+echo $N Exclude/exclude xxg1 ........................................$NL
 # Clean up 
 ${RM} -rf SCCS i
 # Build up a file with 1.1 1.2
@@ -498,7 +498,7 @@ echo OK
 # The above should show the result of an excluded branch
 # not including or excluding other nodes
 # -------------------- Diamond tests  dtxg0 -----------------
-echo $N Delta section diamond test dtg0 .............$NL
+echo $N Delta section diamond test dtg0 .............................$NL
 # Diamond tests explore the workings of
 # the interleaved delta section.
 # This general test is really many tests in one.

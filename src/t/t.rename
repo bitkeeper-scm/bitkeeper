@@ -8,7 +8,7 @@ SLEEP="sleep 0"
 # The purpose of this test is to demonstrate a rename bug.  
 # Suppose we have a file which starts out being named A.
 # In one repository,
-echo $N Test rename with changes in both ............$NL
+echo $N Test rename with changes in both ............................$NL
 HERE=`pwd`
 mkdir gca; cd gca
 cset -qi .

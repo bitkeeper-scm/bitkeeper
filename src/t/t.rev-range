@@ -17,21 +17,21 @@ Hi there, this is file foo.
 Hi there, this is file foo.
 Hi there, this is file foo.
 EOF
-echo $N Creating an empty file ......................$NL
+echo $N Creating an empty file ......................................$NL
 admin $Q -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 if [ ! -f SCCS/s.empty ]; then echo Failed.; exit 1; fi
 set `wc -w SCCS/s.empty`
 if [ $1 -ne $BASE ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
-echo $N Creating the same file '(should fail)' ........$NL
+echo $N Creating the same file '(should fail)' ........................$NL
 admin $Q -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Bad exit code 0.; exit 1; fi
 echo OK
 ${RM} -f ERR
 # Note: this test could fail on slow/busy system
 # due to the optional date fudge entry
-echo $N Creating a file from foo ....................$NL
+echo $N Creating a file from foo ....................................$NL
 cp SAVE foo
 admin $Q -ifoo foo
 if [ ! -f SCCS/s.foo ]; then echo Failed.; exit 1; fi
@@ -39,13 +39,13 @@ if [ ! -f foo ]; then echo Failed - gfile was removed.; exit 1; fi
 set `wc -w SCCS/s.foo`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
-echo $N Creating an empty file from /dev/null .......$NL
+echo $N Creating an empty file from /dev/null .......................$NL
 admin $Q -i${DEV_NULL} empty2
 if [ ! -f SCCS/s.empty2 ]; then echo Failed.; exit 1; fi
 set `wc -w SCCS/s.empty2`
 if [ $1 -ne `expr $BASE + 17` ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
-echo $N Creating a file from stdin ..................$NL
+echo $N Creating a file from stdin ..................................$NL
 admin $Q -i stdin < SAVE
 if [ ! -f SCCS/s.stdin ]; then echo Failed.; exit 1; fi
 set `wc -w SCCS/s.stdin`
@@ -53,7 +53,7 @@ if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 ${RM} -rf foo SCCS 
 mkdir SCCS; cset -is .
-echo $N Creating an empty file with rel 3.1 .........$NL
+echo $N Creating an empty file with rel 3.1 .........................$NL
 admin $Q -r3.1 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 if [ ! -f SCCS/s.empty ]; then echo Failed.; exit 1; fi
@@ -62,7 +62,7 @@ if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 ${RM} -rf SCCS 
 mkdir SCCS; cset -is .
-echo $N Creating an empty file with rel 1.2.3.4 .....$NL
+echo $N Creating an empty file with rel 1.2.3.4 .....................$NL
 admin $Q -r1.2.3.4 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 if [ ! -f SCCS/s.empty ]; then echo Failed.; exit 1; fi
@@ -71,20 +71,20 @@ if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 ${RM} -rf SCCS 
 mkdir SCCS; cset -is .
-echo $N Attempting bad create with rel 1.2.3 ........$NL
+echo $N Attempting bad create with rel 1.2.3 ........................$NL
 admin $Q -r1.2.3 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 ${RM} -rf SCCS 
 mkdir SCCS; cset -is .
-echo $N Attempting bad create with rel 1.2.3.4.9999 .$NL
+echo $N Attempting bad create with rel 1.2.3.4.9999 .................$NL
 admin $Q -r1.2.3.4.9999 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 ${RM} -rf SCCS 
 mkdir SCCS; cset -is .
 echo This is the description. > D
-echo $N Creating a file with description ............$NL
+echo $N Creating a file with description ............................$NL
 admin $Q -n -tD foo
 if [ ! -f SCCS/s.foo ]; then echo Failed.; exit 1; fi
 set `wc -w SCCS/s.foo`
@@ -92,7 +92,7 @@ if [ $1 -ne `expr $BASE + 4` ]; then echo Failed - wrong size.; exit 1; fi
 grep -q "`cat D`" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-echo $N Removing description ........................$NL
+echo $N Removing description ........................................$NL
 cp SCCS/s.foo SCCS/s.bar
 admin $Q -t foo
 admin $Q -T bar
@@ -101,80 +101,80 @@ if [ $1 -ne $BASE ]; then echo Failed - wrong size $1 $BASE ; exit 1; fi
 set `wc -w SCCS/s.bar`
 if [ $1 -ne $BASE ]; then echo Failed - wrong size $1 $BASE ; exit 1; fi
 echo OK
-echo $N And putting it back .........................$NL
+echo $N And putting it back .........................................$NL
 admin $Q -tD bar
 set `wc -w SCCS/s.bar`
 if [ $1 -ne `expr $BASE + 4` ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
-echo $N One last text test ..........................$NL
+echo $N One last text test ..........................................$NL
 admin $Q -n -t junk 2>ERR
 if [ $? -eq 0 ]; then echo Failed.; exit 1; fi
 echo OK
 ${RM} -rf SCCS foo
 mkdir SCCS; cset -is .
 cp SAVE foo
-echo $N Creating a file with a comment ..............$NL
+echo $N Creating a file with a comment ..............................$NL
 admin $Q -n -y'THIS IS THE COMMENT' foo
 grep -q "c THIS IS THE COMMENT" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 ${RM} -rf SCCS foo
 mkdir SCCS; cset -is .
-echo $N File w/ comment, text, release ..............$NL
+echo $N File w/ comment, text, release ..............................$NL
 admin $Q -n -tD -r1.2 -y'THIS IS THE COMMENT' foo
 grep -q "c THIS IS THE COMMENT" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Bad comment.; exit 1; fi
 grep -q "`cat D`" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-echo $N Making sure that admin -r1.2 -z fails .......$NL
+echo $N Making sure that admin -r1.2 -z fails .......................$NL
 admin $Q -r1.2 -z foo 2>ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
-echo $N Adding a symbol to rev 1.2 with -S ..........$NL
+echo $N Adding a symbol to rev 1.2 with -S ..........................$NL
 admin $Q -SSLOW:1.2 foo
 grep -q '^.cSSLOW$' SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed to add symbol.; exit 1; fi
 grep -q '^.d R 1.2' SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed to add symbol in meta delta.; exit 1; fi
 echo OK
-echo $N Adding a symbol to rev 1.2 ..................$NL
+echo $N Adding a symbol to rev 1.2 ..................................$NL
 admin $Q -SSYMBOL:1.2 foo
 grep -q '^.cSSYMBOL$' SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Check for symbol presence after delta .......$NL
+echo $N Check for symbol presence after delta .......................$NL
 co $Q -l foo
 ci $Q -fy foo
 grep -q '^.cSSYMBOL$' SCCS/s.foo
 if [ $? -ne 0 ]; then echo Lost symbol.; exit 1; fi
 echo OK
-echo $N Add same symbol to rev 1.3 ..................$NL
+echo $N Add same symbol to rev 1.3 ..................................$NL
 admin $Q -SSYMBOL:1.3 foo 
 X=`grep -c '^.cSSYMBOL$' SCCS/s.foo`
 if [ $X -ne 2 ]; then echo failed.; exit 1; fi
 echo OK
-echo $N Adding a symbol to rev 1.3 with -S ..........$NL
+echo $N Adding a symbol to rev 1.3 with -S ..........................$NL
 admin $Q -SSLOW:1.3 foo
 X=`grep -c '^.cSSLOW$' SCCS/s.foo`
 if [ $X -ne 2 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Adding a symbol to TOT ......................$NL
+echo $N Adding a symbol to TOT ......................................$NL
 admin $Q -STOT: foo
 grep -q '^.cSTOT$' SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Changing TOT to rev 1.2 .....................$NL
+echo $N Changing TOT to rev 1.2 .....................................$NL
 admin $Q -STOT:1.2 foo
 X=`grep -c '^.cSTOT$' SCCS/s.foo`
 if [ $X -ne 2 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Putting TOT back to TOT .....................$NL
+echo $N Putting TOT back to TOT .....................................$NL
 admin $Q -STOT: foo
 X=`grep -c '^.cSTOT$' SCCS/s.foo`
 if [ $X -ne 3 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Trying symbol \'the symbol\' ..................$NL
+echo $N Trying symbol \'the symbol\' ..................................$NL
 admin $Q -S'the symbol':1.2 foo 
 grep -q '^.cSthe symbol$' SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed to add symbol properly.; exit 1; fi
@@ -182,7 +182,7 @@ admin -h foo 2> ERR
 grep -q "checks out OK" ERR
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Make sure symbols get right rev .............$NL
+echo $N Make sure symbols get right rev .............................$NL
 for i in 1 2 3
 do	echo $i > syms
 	if [ $i -eq 1 ]
@@ -198,7 +198,7 @@ do	X=`get -spr1.$i syms`
 	if [ $X -ne $i ]; then echo Failed on 1.$i; exit 1; fi
 done
 echo OK
-echo $N Make sure symbols can be updated ............$NL
+echo $N Make sure symbols can be updated ............................$NL
 n=1
 for i in 1 2 3 2 1
 do	admin $Q -SSYM:1.$i syms
@@ -211,7 +211,7 @@ do	admin $Q -SSYM:1.$i syms
 	fi
 done
 echo OK
-echo $N Make sure symbols go in once on same rev ....$NL
+echo $N Make sure symbols go in once on same rev ....................$NL
 echo foo > once
 ci -iSonce $Q once
 grep -q '^.cSonce$' SCCS/s.once
@@ -225,7 +225,7 @@ if [ $X -ne 1 ]; then echo added symbol twice.; exit 1; fi
 echo OK
 
 # "admin -h A foo" used to fail
-echo $N Checking argument processing ................$NL
+echo $N Checking argument processing ................................$NL
 date > Z
 ci $Q -i Z
 admin $Q -h Z foo

@@ -470,7 +470,8 @@ _sendLog() {
 
 _remark() {
 	if [ -f "BitKeeper/etc/SCCS/x.marked" ]; then return; fi
-	cat <<EOF
+	if [ "X$1" != XYES ]
+	then	cat <<EOF
 
 BitKeeper is running a consistency check on your system because it has
 noticed that this check has not yet been run on this repository.
@@ -478,10 +479,13 @@ This is a one time thing but takes quite a while on large repositories,
 roughly a minute per 1000 files in the repository.
 Please stand by and do not kill this process until it gets done.
 EOF
+	fi
 	bk cset -M1.0..
 	touch "BitKeeper/etc/SCCS/x.marked"
-	echo "Consistency check completed, thanks for waiting."
-	echo ""
+	if [ "X$1" != XYES ]
+	then	echo "Consistency check completed, thanks for waiting."
+		echo ""
+	fi
 }
 
 _commit() {
@@ -491,13 +495,14 @@ _commit() {
 	CHECKLOG=_checkLog
 	FORCE=NO
 	RESYNC=NO
+	QUIET=NO
 	while getopts dfFRsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=YES;;
 		f) CHECKLOG=:;;
 		F) FORCE=YES;;
 		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
-		s) COPTS="-s $COPTS";;
+		s) QUIET=YES; COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
 		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}comments$$;;
 		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}comments$$;;
@@ -505,7 +510,7 @@ _commit() {
 	done
 	shift `expr $OPTIND - 1`
 	_cd2root
-	if [ $RESYNC = "NO" ]; then _remark; fi
+	if [ $RESYNC = "NO" ]; then _remark $QUIET; fi
 	${BIN}sfiles -Ca > ${TMP}list$$
 	if [ $? != 0 ]
 	then	${RM} -f ${TMP}list$$

@@ -3,7 +3,7 @@
 # %K%
 
 cset -is .
-echo $N Test sccsmv w/ p locked file ................$NL
+echo $N Test sccsmv w/ p locked file ................................$NL
 rm -rf A B C D
 mkdir A B D E
 echo "This is file 1" > A/file1
@@ -33,7 +33,7 @@ if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit 1; fi
 DPATH=`prs -hr1.2.1.1 -d:DPN: B/file1`
 if [ ${DPATH}X != ""X ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test sccsmv w/ unlocked file ................$NL
+echo $N Test sccsmv w/ unlocked file ................................$NL
 clean B
 sccsmv B/file2 C/file3
 if [ -f C/file3 ]; then echo failed; exit 1; fi
@@ -44,7 +44,7 @@ if [ ${DPATH}X != "C/file3"X ]; then echo failed; exit 1; fi
 DPATH=`prs -hr1.1 -d:DPN: C/file3`
 if [ ${DPATH}X != "B/file2"X ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test sccsmv to directory ....................$NL
+echo $N Test sccsmv to directory ....................................$NL
 sccsmv B/file1 B/file4 C
 if [ ! -f C/SCCS/s.file1 ]; then echo failed; exit 1; fi
 if [ ! -f C/SCCS/s.file4 ]; then echo failed; exit 1; fi
@@ -53,7 +53,7 @@ mkdir B
 sccsmv C/file1 C/file4 B
 if [ ! -d C ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test sccsrm w/ p locked file ................$NL
+echo $N Test sccsrm w/ p locked file ................................$NL
 get $Q -e B/file1
 sccsrm B/file1
 if [ -f B/SCCS/p..del-file1 ]; then echo failed 1; exit 1; fi
@@ -61,28 +61,28 @@ if [ ! -f B/SCCS/s..del-file1 ]; then echo failed 2; exit 1; fi
 REV=`prs -hr+ -d:I: B/.del-file1`
 if [ ${REV}X != "1.7"X ]; then echo failed 3 $REV; exit 1; fi
 echo OK
-echo $N Test sccsrm w non p-locked file .............$NL
+echo $N Test sccsrm w non p-locked file .............................$NL
 sccsrm C/file3 
 if [ -f C/SCCS/p..del-file3 ]; then echo failed; exit 1; fi
 if [ ! -f C/SCCS/s..del-file3 ]; then echo failed; exit 1; fi
 DPATH=`prs -hr+ -d:DPN: C/.del-file3`
 if [ ${DPATH}X != "C/.del-file3"X ]; then echo failed; exit 1; fi
 echo OK
-echo $N Check implied file lists for rm-ed files ....$NL
+echo $N Check implied file lists for rm-ed files ....................$NL
 cd C
 co $Q
 if [ -f .del-file3 ]; then echo Failed - file was gotten; exit 1; fi
 echo OK
-echo $N Explicitly get a removed file ...............$NL
+echo $N Explicitly get a removed file ...............................$NL
 co $Q .del-file3
 if [ ! -f .del-file3 ]; then echo Failed to get file; exit 1; fi
 echo OK
-echo $N Clean all including rm-ed file ..............$NL
+echo $N Clean all including rm-ed file ..............................$NL
 clean
 if [ -f .del-file3 ]; then echo Failed to clean file; exit 1; fi
 echo OK
 cd ..
-echo $N Test sccsrm w/ -d option ....................$NL
+echo $N Test sccsrm w/ -d option ....................................$NL
 # this directory should be created by "bk setup"
 mkdir -p BitKeeper/deleted/SCCS
 clean A
@@ -93,7 +93,7 @@ if [ -f ${DDIR}/SCCS/p..del-file3 ]; then echo failed; exit 1; fi
 DPATH=`prs -hr+ -d:DPN: ${DDIR}/.del-file3`
 if [ ${DPATH}X != "${DDIR}/.del-file3"X ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test sccsrm w/ -d \& p locked file ...........$NL
+echo $N Test sccsrm w/ -d \& p locked file ...........................$NL
 get $Q -e A/file4
 REV=`prs -hr+ -d:I: A/file4`
 sccsrm -d A/file4 
@@ -104,7 +104,7 @@ if [ ${REV}X != "1.5"X ]; then echo failed; exit 1; fi
 DPATH=`prs -hr+ -d:DPN: ${DDIR}/.del-file4`
 if [ ${DPATH}X != "${DDIR}/.del-file4"X ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test sccsrm w/ -d \& duplicate name ..........$NL
+echo $N Test sccsrm w/ -d \& duplicate name ..........................$NL
 sccsrm -d B/file4
 if [ ! -f ${DDIR}/SCCS/s..del-file4~1 ]; then echo failed; exit 1; fi
 REV=`prs -hr+ -d:I: ${DDIR}/.del-file4~1`
@@ -112,7 +112,7 @@ if [ ${REV}X != "1.7"X ]; then echo failed; exit 1; fi
 DPATH=`prs -hr+ -d:DPN: ${DDIR}/.del-file4~1`
 if [ ${DPATH}X != "${DDIR}/.del-file4~1"X ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test sccsrm \& empty directory ...............$NL
+echo $N Test sccsrm \& empty directory ...............................$NL
 HERE=`pwd`
 cd D
 sccsrm -d file5 || { echo failed.; exit 1; }

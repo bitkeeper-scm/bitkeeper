@@ -32,7 +32,7 @@ I6 3
 I7 1
 1.2 6
 EOF
-echo $N "Check making sfile using delta -D............$NL"
+echo $N "Check making sfile using delta -D............................$NL"
 delta $S -y'' -Ddiff1 foo 2>${DEV_NULL}
 if [ $? != 0 ]; then echo Failed on Delta -D; exit 1; fi
 echo OK
@@ -47,14 +47,14 @@ ${CAT} <<'EOF' > CMP1
 7
 1.2 6
 EOF
-echo $N "Check gfile to verify correct creation.......$NL"
+echo $N "Check gfile to verify correct creation.......................$NL"
 get $S -r1.2 foo
 cmp -s foo CMP1
 if [ $? != 0 ]; then echo Failed on rev 1.2; diff foo CMP1; exit 1; fi
 echo OK
 ${RM} -f foo
 # See what kind of output is being generated ...
-echo $N "Check get -DD for BK style output ...........$NL"
+echo $N "Check get -DD for BK style output ...........................$NL"
 get $S -DD -r1.2 foo > CMP1
 cmp -s diff1 CMP1
 if [ $? != 0 ]; then echo Failed on rev 1.2; diff diff1 CMP1; exit 1; fi
@@ -66,7 +66,7 @@ I0 1
 1.2 1
 1.2 2
 EOF
-echo $N "Check delta -D for error when bad diff file..$NL"
+echo $N "Check delta -D for error when bad diff file..................$NL"
 delta $S -y'' -Ddiff1 foo 2>${DEV_NULL}
 if [ $? = 0 ]; then echo Failed by returning zero on Delta -D; exit 1; fi
 echo OK

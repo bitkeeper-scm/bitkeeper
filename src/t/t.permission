@@ -8,14 +8,14 @@ then
 	exit 0;
 fi
 
-echo $N Check in an executable file .................$NL
+echo $N Check in an executable file .................................$NL
 touch prog
 chmod 0751 prog
 ci -i $Q prog
 grep -q '^.cO-rwxr-x--x' SCCS/s.prog
 if [ $? -ne 0 ]; then echo Failed to add permissions; exit 1; fi
 echo OK
-echo $N Check permissions on checked out file .......$NL
+echo $N Check permissions on checked out file .......................$NL
 co $Q prog
 P=`/bin/ls -l prog`
 case "$P" in
@@ -26,7 +26,7 @@ case "$P" in
 	;;
 esac
 echo OK
-echo $N Check permissions on locked file ............$NL
+echo $N Check permissions on locked file ............................$NL
 co -l $Q prog
 P=`/bin/ls -l prog`
 case "$P" in
@@ -37,19 +37,19 @@ case "$P" in
 	;;
 esac
 echo OK
-echo $N Change permissions and check in .............$NL
+echo $N Change permissions and check in .............................$NL
 chmod 775 prog
 delta $S -yperms prog
 grep -q '^.cO-rwxrwx--x' SCCS/s.prog
 if [ $? -eq 0 ]; then echo added permissions and should not have; exit 1; fi
 if [ -f "SCCS/p.prog" ]; then echo Failed to remove p.prog; exit 1; fi
 echo OK
-echo $N Change permissions with admin . .............$NL
+echo $N Change permissions with admin . .............................$NL
 admin -m-rwx------ prog
 grep -q '^.cO-rwx------' SCCS/s.prog
 if [ $? -ne 0 ]; then echo failed to add permissions; exit 1; fi
 echo OK
-echo $N Check new permissions on checked out file ...$NL
+echo $N Check new permissions on checked out file ...................$NL
 co $Q prog
 P=`/bin/ls -l prog`
 case "$P" in
@@ -60,7 +60,7 @@ case "$P" in
 	;;
 esac
 echo OK
-echo $N Check old permissions on checked out file ...$NL
+echo $N Check old permissions on checked out file ...................$NL
 co -r1.1 $Q prog
 P=`/bin/ls -l prog`
 case "$P" in
@@ -71,7 +71,7 @@ case "$P" in
 	;;
 esac
 echo OK
-echo $N Check permissions on locked file ............$NL
+echo $N Check permissions on locked file ............................$NL
 co -l $Q prog
 P=`/bin/ls -l prog`
 case "$P" in

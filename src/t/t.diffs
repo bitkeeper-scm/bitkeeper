@@ -15,7 +15,7 @@ do	co $Q -l Mydiffs
 	${ECHO} "------------------------------------------------" >> Init
 	delta $Q -IInit Mydiffs
 done
-echo $N Checking diffs against readonly file ........$NL
+echo $N Checking diffs against readonly file ........................$NL
 co $Q -r1.9 Mydiffs
 diffs Mydiffs > D
 ${CAT} > W << EOF
@@ -26,7 +26,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
-echo $N Checking diff against edited file ...........$NL
+echo $N Checking diff against edited file ...........................$NL
 co $Q -l Mydiffs
 ${ECHO} foo >> Mydiffs
 diffs Mydiffs > D
@@ -38,7 +38,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
-echo $N Checking diff -r1.8 against edited file .....$NL
+echo $N Checking diff -r1.8 against edited file .....................$NL
 diffs -r1.8 Mydiffs > D
 ${CAT} > W <<EOF
 ===== Mydiffs 1.8 vs edited =====
@@ -50,7 +50,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
-echo $N Checking diff -r1.8 w/ no file ..............$NL
+echo $N Checking diff -r1.8 w/ no file ..............................$NL
 clean -u Mydiffs
 diffs -r1.8 Mydiffs > D
 ${CAT} > W <<EOF
@@ -62,7 +62,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
-echo $N Checking diff -r1.8 -r1.9 ...................$NL
+echo $N Checking diff -r1.8 -r1.9 ...................................$NL
 diffs -r1.8 -r1.9 Mydiffs > D
 ${CAT} > W <<EOF
 ===== Mydiffs 1.8 vs 1.9 =====
@@ -72,7 +72,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
-echo $N Checking diff -dSSS -r1.9 ...................$NL
+echo $N Checking diff -dSSS -r1.9 ...................................$NL
 admin $Q -SSSS:1.7 Mydiffs
 diffs -dSSS -r1.9 Mydiffs > D
 ${CAT} > W <<EOF
@@ -84,7 +84,7 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
 echo OK
-echo $N Checking diff -dSSS .........................$NL
+echo $N Checking diff -dSSS .........................................$NL
 diffs -dSSS Mydiffs > D
 ${CAT} > W <<EOF
 ===== Mydiffs 1.7 vs 1.10 =====

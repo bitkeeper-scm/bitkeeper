@@ -5,18 +5,18 @@
 echo some text >X
 echo other text >Y
 delta $Q -i X Y
-echo $N Remove all unmodified files .................$NL
+echo $N Remove all unmodified files .................................$NL
 get $Q X
 get $Q -e Y
 clean
 if [ -f X ] || [ -f Y ]; then	echo failed; exit 1; fi
 echo OK
-echo $N Remove only files on command line ...........$NL
+echo $N Remove only files on command line ...........................$NL
 get $Q X Y
 clean X
 if [ -f X ] || [ ! -f Y ]; then	echo failed; exit 1; fi
 echo OK
-echo $N With -u remove even modified files ..........$NL
+echo $N With -u remove even modified files ..........................$NL
 get $Q -e X
 echo more text >>X
 clean 2>/dev/null
@@ -25,7 +25,7 @@ clean -u X
 if [ -f X ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.X ]; then echo failed - still locked; exit 1; fi
 echo OK
-echo $N With -n leave gfiles alone ..................$NL
+echo $N With -n leave gfiles alone ..................................$NL
 get $Q X
 get $Q -e Y
 echo more text >>Y

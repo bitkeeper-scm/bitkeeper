@@ -18,7 +18,7 @@ do	co $Q -l a/b/c/Data
 	${ECHO} "------------------------------------------------" >> Init
 	delta $Q -IInit a/b/c/Data
 done
-echo $N Checking sccslog with -p option .............$NL
+echo $N Checking sccslog with -p option .............................$NL
 HOST=`gethost`
 if [ X$HOST != X ]
 then	HOST=@$HOST
@@ -57,7 +57,7 @@ sccslog -p a/b/c/Data | grep -v ${USER}@ | grep -v 'created on' | ${CAT} > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Checking sccslog with no options ............$NL
+echo $N Checking sccslog with no options ............................$NL
 ${CAT} > CMP1 <<EOF
 a/b/c/Data
   1.10 20/03/11 00:00:10 butthead${HOST} +1 -0
@@ -100,7 +100,7 @@ sccslog a/b/c/Data | head -36 | ${CAT} > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
-echo $N Checking sccslog with -r option..............$NL
+echo $N Checking sccslog with -r option..............................$NL
 ${CAT} > CMP1 <<EOF
 a/b/c/Data
   1.2 20/03/11 00:00:02 butthead${HOST} +1 -0
@@ -111,7 +111,7 @@ sccslog -r1.2 a/b/c/Data > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
-echo $N Checking sccslog with -c option..............$NL
+echo $N Checking sccslog with -c option..............................$NL
 ${CAT} > CMP1 <<EOF
 a/b/c/Data
   1.10 20/03/11 00:00:10 butthead${HOST} +1 -0
@@ -154,7 +154,7 @@ sccslog -c20/03..20/04 a/b/c/Data | ${CAT} > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
-echo $N Checking sccslog with -c/-r option...........$NL
+echo $N Checking sccslog with -c/-r option...........................$NL
 ${CAT} > CMP1 <<EOF
 a/b/c/Data
   1.4 20/03/11 00:00:04 butthead${HOST} +1 -0

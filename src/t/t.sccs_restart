@@ -4,7 +4,7 @@
 
 cset -is .
 ${RM} -rf FILE SCCS
-echo $N Check ci -i -l ..............................$NL
+echo $N Check ci -i -l ..............................................$NL
 echo HHHH > FILE
 ci $Q -i -l FILE
 if [ ! -w FILE ]; then echo Failed; exit 1; fi 
@@ -16,7 +16,7 @@ prs -d":I:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Check ci -l .................................$NL
+echo $N Check ci -l .................................................$NL
 echo JJJ >>FILE
 ci $Q -y -l FILE
 ${CAT} > CMP1 << EOF

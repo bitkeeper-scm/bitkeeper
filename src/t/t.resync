@@ -3,7 +3,7 @@
 # Copyright (c) 1999 Andrew Chang?
 # %K%
 
-echo $N Create initial repository ..............................$NL
+echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
 echo "logging: /dev/null" > $HERE/c
 echo "logging_ok: t" >>$HERE/c
@@ -15,7 +15,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
-echo $N Create some data .......................................$NL
+echo $N Create some data ............................................$NL
 mkdir src
 cd src
 echo foo > foo.c
@@ -24,16 +24,16 @@ echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
-echo $N Check pending ..........................................$NL
+echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
 if [ $P -ne 21 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
-echo $N Create a change set ....................................$NL
+echo $N Create a change set .........................................$NL
 bk commit $S -f -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
-echo $N Create a copy of the project ...........................$NL
+echo $N Create a copy of the project ................................$NL
 cd $HERE
 bk resync $Q project copy
 bk resolve $Q copy
@@ -42,7 +42,7 @@ cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
-echo $N Check circular rename ..................................$NL
+echo $N Check circular rename .......................................$NL
 cd $HERE/project/src
 for i in a b c
 do
@@ -77,7 +77,7 @@ ${ECHO} "this is b.c" > ref.c
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c"; exit 1; fi
 echo OK
-echo $N Check conflict within a patch ..........................$NL
+echo $N Check conflict within a patch ...............................$NL
 cd $HERE/project/src
 get $Q -e c.c
 echo "this is the old c.c" > c.c 
@@ -104,7 +104,7 @@ ${ECHO} "this is the old c.c" > ref.c
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
-echo $N Check conflict within a patch + circular rename.........$NL
+echo $N Check conflict within a patch + circular rename..............$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
@@ -125,7 +125,7 @@ ${ECHO} "this is the old c.c" > ref.c
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
-echo $N Check circular rename in two work space ................$NL
+echo $N Check circular rename in two work space .....................$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
@@ -162,7 +162,7 @@ ${ECHO} "this is a.c" > ref.c
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
-echo $N Check conflict caused by merge .........................$NL
+echo $N Check conflict caused by merge ..............................$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
@@ -190,7 +190,7 @@ C
 EOF
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
 echo OK
-echo $N Check name conflict caused by rename....................$NL
+echo $N Check name conflict caused by rename ........................$NL
 cd $HERE/project/src
 echo "this is file gca" > g.c
 ci $Q -i g.c
@@ -219,7 +219,7 @@ C
 EOF
 if [ $? -eq 0 ]; then echo failed - fail to detect conflict; else echo OK; fi
 
-echo $N Check resync w/ pending rename in target tree ..........$NL
+echo $N resync w/ pending rename in target tree .....................$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
@@ -232,7 +232,7 @@ grep -q "has uncommitted changes" resync.out
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi;
 rm -f resync.out
 
-echo $N Check resync w/ pending rename in source tree ..........$NL
+echo $N resync w/ pending rename in source tree .....................$NL
 cd $HERE/project/src
 get $Q -e a.c
 bk mv a.c f.c
@@ -254,7 +254,7 @@ diff $HERE/project/src/SCCS/s.c.c $HERE/copy/src/SCCS/s.c.c
 if [ $? -ne 0 ]; then echo failed on c.c; exit 1; fi;
 echo OK
 
-echo $N Key conflict in a single workspace .....................$NL
+echo $N Key conflict in a single workspace ..........................$NL
 # this test is time dependent
 # this colud fail on a very fast machine
 echo "12" > $HERE/project/src/aa.c
@@ -267,7 +267,7 @@ KEY2=`bk prs -hr+ -d:LONGKEY: $HERE/project/src/aa.c`
 if [ "${KEY1}"X = "${KEY2}"X ]; then echo failed: duplicate key; exit 1; fi
 echo OK
 rm -f  $HERE/project/src/SCCS/s.aa.c  $HERE/project/src/SCCS/s.bb.c
-echo $N Key conflict in two workspace ..........................$NL
+echo $N Key conflict in two workspace ...............................$NL
 # this test is time dependent
 # this colud fail on a very fast machine
 echo "12" > $HERE/project/src/dup.c
@@ -278,7 +278,7 @@ KEY2=`bk prs -hr1.0 -d:LONGKEY: $HERE/copy/src/dup.c`
 if [ "${KEY1}"X = "${KEY2}"X ]; then echo failed: duplicate key; exit 1; fi
 echo OK
 rm -f $HERE/project/src/SCCS/s.dup.c $HERE/copy/src/SCCS/s.dup.c
-echo $N Check resync with binary file...........................$NL
+echo $N Check resync with binary file ...............................$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
@@ -310,13 +310,13 @@ bk resolve $Q $HERE/copy2
 bk get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
-echo $N Check resync with skiped ChangeSet delta to new tree....$NL
+echo $N Check resync with skiped ChangeSet delta to new tree ........$NL
 cd $HERE
 rm -rf  $HERE/copy2 
 bk resync $Q -r1.5 $HERE/copy $HERE/copy2  > resync.out 2>&1
 grep -q "resync from version 1.0 forward" resync.out
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
-echo $N Check resolve w/ merge and delete event.................$NL
+echo $N Check resolve w/ merge and delete event .....................$NL
 cd $HERE/project/src
 cat > merge.c << EOF
 111
@@ -368,7 +368,7 @@ echo OK
 echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE
 rm -fr project copy
-echo $N Create initial repository ..............................$NL
+echo $N Create initial repository ...................................$NL
 echo "logging: /dev/null" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
@@ -387,12 +387,12 @@ cp aaa.c ccc.c
 bk ci $Q -i aaa.c bbb.c ccc.c
 bk commit $S -f -yCset > /dev/null 2>&1
 echo OK
-echo $N Create a copy of the project ...........................$NL
+echo $N Create a copy of the project ................................$NL
 cd $HERE
 bk resync $Q project copy > /dev/null 2>&1
 bk resolve $Q copy > /dev/null 2>&1
 echo OK
-echo $N Commit parallel work ...................................$NL
+echo $N Commit parallel work ........................................$NL
 cd $HERE/project/src
 for i in aaa.c bbb.c
 do
@@ -417,7 +417,7 @@ bk commit $S -ybc << EOF > /dev/null 2>&1
 y
 EOF
 echo OK
-echo $N Resync project to copy, check for no disappear .........$NL
+echo $N Resync project to copy, check for no disappear ..............$NL
 cd $HERE
 bk resync $Q project copy > /dev/null 2>&1
 cd $HERE/copy

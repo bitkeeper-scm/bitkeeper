@@ -2,7 +2,7 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
-echo $N Checking Delta in Negative Time zone ........$NL
+echo $N Checking Delta in Negative Time zone ........................$NL
 echo "some data" > TIME
 TZ=UTC+8 delta $S -i  TIME
 ${CAT} > CMP1 <<EOF
@@ -13,7 +13,7 @@ prs -d":TZ:" TIME > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Checking Delta in Positive Time zone ........$NL
+echo $N Checking Delta in Positive Time zone ........................$NL
 get $S -e TIME
 echo "more data" >> TIME
 TZ=UTC-8 delta $S -y"" TIME
@@ -25,7 +25,7 @@ prs -d":TZ:" -r1.2 TIME  > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Checking Delta in 'GMT(UTC)' Time zone ........$NL
+echo $N Checking Delta in 'GMT(UTC)' Time zone ........................$NL
 get $S -e TIME
 echo "more data" >> TIME
 TZ=UTC delta $S -y"" TIME

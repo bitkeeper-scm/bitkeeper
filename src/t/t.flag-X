@@ -4,7 +4,7 @@
 
 # Do not use this feature.
 # This features is likely to be removed in the future
-echo $N Test x flag .................................$NL
+echo $N Test x flag .................................................$NL
 echo "echo this is a shell script > CMP1" > test_script.sh
 admin $Q -n -fSHELL -itest_script.sh test_script.sh
 ${RM} -f test_script.sh
@@ -13,14 +13,14 @@ echo this is a shell script > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Test delete of x flag .......................$NL
+echo $N Test delete of x flag .......................................$NL
 admin $Q -FSHELL test_script.sh
 rm -f CMP1 CMP2
 clean test_script.sh
 co $Q test_script.sh
 if [ -f CMP1 ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test symlink create .........................$NL
+echo $N Test symlink create .........................................$NL
 echo "xx" > symfile
 ln -s symfile symlink
 ls -l | awk '/^l/ { print "ln -s", $11, $9 }' > make_sym.sh
