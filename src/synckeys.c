@@ -327,10 +327,10 @@ get_key(char *buf, int flags)
 }
 
 private int
-skipit(MDBM *skip, char *key)
+skipit(HASH *skip, char *key)
 {
 	if (skip == NULL) return (0);
-	if (mdbm_fetch_str(skip, key)) return (1);
+	if (hash_fetchStr(skip, key)) return (1);
 	return (0);
 }
 
@@ -349,7 +349,7 @@ skipit(MDBM *skip, char *key)
  * @END@
  */
 int
-prunekey(sccs *s, remote *r, MDBM *skip, int outfd, int flags,
+prunekey(sccs *s, remote *r, HASH *skip, int outfd, int flags,
 	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
