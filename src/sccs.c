@@ -7,7 +7,7 @@ WHATSTR("@(#)%K%");
  * sccs.c - provide semi compatible interfaces to the sccs front end command.
  *
  * create - Create (initialize) history files.  Same as bk new && bk get.
- * deledit - same as a delta -l
+ * deledit - same as a delta -L
  * delget - same as delta -u
  * val - alias for admin -hhhh
  *
@@ -37,7 +37,7 @@ deledit_main(int ac, char **av)
 	char	**nav = malloc((ac + 3) * sizeof(char*));
 
 	nav[0] = "delta";
-	nav[1] = "-l";
+	nav[1] = "-L";
         nav[2] = "-Y";
 	i = 1;
 	while (nav[i+2] = av[i++]);
