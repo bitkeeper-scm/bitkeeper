@@ -39,86 +39,6 @@ _get_cached_proxy(char **proxies)
 	return (addLine(proxies, strdup(buf)));
 }
 
-char **
-extract(char *buf, char *type, char **proxies)
-{
-	char *p, *q;
-
-	q = buf;
-	while (p = strstr(q, type)) {
-		char *t;
-		t = ++p;
-		while (*p && (*p != '\"') && (*p != ';')) p++;
-		*p = 0;
-		proxies = addLine(proxies, strdup(t));
-		*p = '\"';
-		q = ++p;
-	}
-	return proxies;
-}
-
-char **
-http_get_file(char *host, char *path, char **proxies)
-{
-	int fd;
-	char header[1024], buf[MAXLINE];
-
-	fd = connect_srv(host, 80, 0);
-	if (fd < 0) {
-		fprintf(stderr,
-			"http_get_file: cannot connect to to host %s\n", host);
-		return NULL;
-	}
-	sprintf(header,
-"GET %s HTTP/1.0\n\
-User-Agent: BitKeeper\n\
-Accept: text/html\n\n",
-path);
-	writen(fd, header, strlen(header));
-	while (recv(fd, buf, sizeof(buf), 0)) {
-		proxies = extract(buf, "\"PROXY ", proxies);
-		proxies = extract(buf, "\"SOCKS ", proxies);
-	}
-	close(fd);
-	return (proxies);
-}
-
-char **
-local_get_file(char *path,  char **proxies)
-{
-	FILE *f;
-	char buf[MAXLINE];
-
-	f = fopen(path, "r");
-	unless (f) {
-		fprintf(stderr,
-			"local_get_file: cannot open %s\n", path);
-		return NULL;
-	}
-	while (fgets(buf, sizeof(buf), f)) {
-		proxies = extract(buf, "\"PROXY ", proxies);
-		proxies = extract(buf, "\"SOCKS ", proxies);
-	}
-	fclose(f);
-	return (proxies);
-}
-
-char **
-get_config(char *url, char **proxies)
-{
-	char host[MAXPATH], path[MAXPATH];
-
-	if (strneq(url, "http://", 7)) {
-		parse_url(url, host, path);
-		return (http_get_file(host, path, proxies));
-	} else if (strneq(url, "file:/", 6)) {
-		return (local_get_file(&url[5], proxies));
-	} else {
-		fprintf(stderr, "unsupported url %s\n", url);
-		return NULL;
-	}
-
-}
 
 private char **
 _get_http_proxy_env(char **proxies)
@@ -272,7 +192,14 @@ _get_http_proxy_reg(char **proxies)
 
 	getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len);
 	if (buf[0]) {
-		proxies = get_config(buf, proxies);
+		/*
+		 * We need a JavaScript interpretor to parse the auto-config
+		 * pac file properly.  We killed pac file support on Unix
+		 * long time ago. Thers is no reason to do differently on
+		 * Windows. So just skip the pac and make the user set up
+		 * their proxy with envronment variable.
+		 */
+		return (proxies);
 	} else {
 		len = sizeof(buf);  /* important */
 		if (getReg(HKEY_CURRENT_USER,
