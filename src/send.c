@@ -224,7 +224,11 @@ send_main(int ac,  char **av)
 	/*
 	 * Mail the patch if necessary
 	 */
-	if (patch) mail(to, "BitKeeper patch", patch);
+	if (patch) {
+		char	**tolist = addLine(0, to);
+		bkmail("SMTP", tolist, "BitKeeper patch", patch);
+		freeLines(tolist, 0);
+	}
 
 out:	if (patch) {
 		unlink(patch);

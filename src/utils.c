@@ -541,12 +541,17 @@ bkd_connect(remote *r, int compress, int verbose)
 
 
 
-int 
+int
 send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 {
+	char	*cgi = WEB_BKD_CGI;
+
 	assert(r->wfd != -1);
 	if (r->type == ADDR_HTTP) {
-		if (http_send(r, msg, mlen, extra, "BitKeeper", WEB_BKD_CGI)) {
+		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
+			cgi = r->path + 8;
+		}
+		if (http_send(r, msg, mlen, extra, "BitKeeper", cgi)) {
 			fprintf(stderr, "http_send failed\n");
 			return (-1);
 		}
