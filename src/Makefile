@@ -44,6 +44,7 @@ UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
 BINS	= $(BK)
 RESOURCE=
+STRIP=strip
 
 # Override Solaris make.rules
 .SCCS_GET:
@@ -627,6 +628,7 @@ _image:
 		rm -rf tmp/bitkeeper; \
 		DIR=`pwd`/tmp/bitkeeper; set -e; \
 		BINDIR=$$DIR ${MAKE} -e install-nolinks; \
+		for i in $(BINS); do $(STRIP) $$DIR/$$i; done; \
 		BINDIR=$$DIR $(MAKE) -e bklinks; \
 		cd utils && BINDIR=$$DIR ${MAKE} -e image; \
 		rm -rf tmp; \

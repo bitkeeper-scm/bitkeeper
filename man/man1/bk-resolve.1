@@ -2,7 +2,7 @@
 .TH "bk resolve" 1 20%E% "\*(BC" "\*(UM"
 .\"    ============== BitKeeper resolve ==============
 .SH NAME
-bk resolve \- merge and/or apply new work after push/pull/resync
+bk resolve \- merge and/or apply new work after a push or a pull
 .SH SYNOPSIS
 .\" -F undoc
 .Bc bk resolve [\-aAcdqrtv1234] [
@@ -18,16 +18,16 @@ bk resolve \- merge and/or apply new work after push/pull/resync
 .LP
 After a 
 .BR bk\ push , 
-.BR bk\ pull , 
 or 
-.BR bk\ resync ,
+.BR bk\ pull , 
 use resolve to merge and/or apply
 new work.  Resolve is automatically run by the 
 .B bk pull
 and
 .B bk push
-commands, but must be run manually after a 
-.BR bk\ resync .
+commands, but must be run again after a 
+.B bk\ pull
+if there were conflicts which were not automerged.
 .LP
 If you want to preview the new changesets before merging, you can run
 .B bk csets 
@@ -150,6 +150,5 @@ at commit time.
 .SA merge 1
 .SA pull 1
 .SA push 1
-.SA resync 1
 .SH CATEGORY
 .B Repository

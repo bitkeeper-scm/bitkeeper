@@ -735,10 +735,7 @@ isIgnored(char *file)
 		}
 
 		/* ignore special file e.g. char/block/fifo file */
-		if (fast_lstat(gfile, &sbuf, 0)) {
-			perror(gfile);
-			return (1);
-		}
+		if (fast_lstat(gfile, &sbuf, 0)) return (1);
 		unless (sbuf.st_mode && S_IFREG|S_IFLNK) return (1);
 	}
 

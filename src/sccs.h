@@ -1027,7 +1027,7 @@ void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 char 	**get_http_proxy(void);
 int	confirm(char *msg);
-int	csetCreate(sccs *cset, int flags, char **syms);
+int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags, int ask);
 off_t	fsize(int fd);
 char	*separator(char *);
