@@ -2,7 +2,7 @@
 .TH "bk pull" 1 20%E% "\*(BC" "\*(UM"
 .\"    ============== Pulling changes into your repository ==============
 .SH NAME
-bk pull \- updates the repository from its parent
+bk pull \- update a repository from its parent[s]
 .SH SYNOPSIS
 .Bc bk pull [\-iqRt] [
 .OPTequal \-E env var
@@ -12,13 +12,20 @@ bk pull \- updates the repository from its parent
 .OPTreq \-c n
 .Bc ] [
 .ARGc parent
+ ...\c
 .B ]
 .SH DESCRIPTION
 .LP
-Pull updates a repository from its parent.  Changes are retrieved and
-automatically applied, if possible.  You will only be asked to resolve
-conflicts by hand if a file has overlapping changes (changes where both
-repositories have touched the same line in the same file).
+Pull updates a repository from its incoming parent[s].
+Changes are retrieved and automatically applied, if possible.
+You will only be asked to resolve conflicts by hand if a file
+has overlapping changes (changes where both repositories have
+touched the same line in the same file).
+.LP
+To see what would be pulled run
+.DS
+bk changes -R
+.DE
 .LP
 Pull normally runs resolve, the tool which applies the pulled changes,
 automatically.  Resolve will look at each change, make sure there are
@@ -32,8 +39,10 @@ apply the changes.
 You can override the default parent by specifying a different one.
 Doing so changes the parent for the duration of this command only.
 .LP
-If you've pulled in error you may use bk unpull to remove the changesets
-introduced by the pull.
+If you've pulled in error you may use bk unpull to remove the
+changesets introduced by the pull.
+Note! bk unpull will unpull the merge changeset, if any, discarding any
+merge work you may have done.
 .SH OPTIONS
 .TP
 .OPTreq \-c n
@@ -46,14 +55,6 @@ Export environment variable to remote site.
 .tp
 .B \-i
 Turn off automerge feature in resolve.
-.tp
-.B \-l
-This option has been obsoleted by bk changes.
-Please see bk help changes (-R/-L options)
-for more information on getting repository differences.
-.tp
-.B \-n
-This option has been obsoleted.  Please use bk changes.
 .tp
 .B \-q
 Be quiet.

@@ -1,40 +1,121 @@
 .so ../bk-macros
 .TH "bk parent" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk parent \- show or set the parent repository
+bk parent \- manage repository parent pointer[s]
 .SH SYNOPSIS
-.Bc bk parent [
-.Bc -lqpr] [
+.SS SETTING PARENT POINTERS
+.Bc bk parent -s [
+.B -inoq]
+.ARG repository
+.Bc [
 .ARGc repository
 .B ]
+.br
+.SS ADDING PARENT POINTERS
+.Bc bk parent -a [
+.B -inoq]
+.ARG repository
+.Bc [
+.ARGc repository
+.B ]
+.br
+.SS REMOVING PARENT POINTERS
+.Bc bk parent -r [
+.Bc -ioq] [
+.ARG repository
+.B ...]
+.br
+.SS LISTING PARENT POINTERS
+.Bc bk parent [-iloq]
 .SH DESCRIPTION
 .LP
-The parent command prints or sets the default location where the 
-\fBbk pull\fR/\fBbk push\fR commands get/put new work.
+The parent command is used to set, add, adjust,
+remove or list parent pointers for a repository.
+A parent pointer is a \*[BK] URL which is the location from or
+to which  a repository gets or sends updates when running
+.B bk pull
+or
+.BR "bk push" .
+The typical case is that a repository has only one ``parent''
+but it is possible for a repository to have multiple parent
+pointers and each pointer may be incoming, outcoming, or both.
 .LP
-With no argument, the command prints the parent name.  With an argument, it sets
-the parent to that argument.  
+When setting the parent pointer, the parent command is backwards compatible
+with earlier versions if and only if there is currently no parent pointer
+or there is one and only one push/pull parent pointer.  
 .LP
 The parent is automatically set when a repository is cloned and will be
 named according to the access method (see bk help url for more information).
 .SH OPTIONS
 .TP
+.B \-a
+Add the specfied parent pointer to the list of parents.
+May be combined with
+.B \-i
+or
+.B \-o
+to add just the incoming or outgoing parent pointer[s] respectively.
+.tp
+.B \-i
+Operate only on incoming (pull) parent pointers.  May be used when
+setting, adding, adjusting, removing, or listing parents.
+.tp
 .B \-l
-Use the specified parent URL literally.
-Without this option, the URL is normalized, i.e.,
+List the parent pointer[s] without any annotations, one per line.
+May be combined with
+.B \-i
+or
+.B \-o
+to list just the incoming or outgoing parents respectively.
+.tp
+.B \-n
+Do not "normalize the specified parent pointer, use it literally.
+Without this option, the pointer is normalized, i.e.,
 "localhost" is changed to the real hostname, relative paths are
-changed to absolute paths, etc.  
+changed to absolute paths, etc.  Forcing a relative path can sometimes
+be useful.
+.tp
+.B \-o
+Operate only on outgoing (push) parent pointers.  May be used when
+setting, adding, adjusting, removing, or listing parents.
 .tp
 .B \-q
-Run quietly.
-.tp
-.B \-p
-Just print parent without other text, useful for scripts.
+Do not produce output when adding/removing/listing parents.
+May be combined with
+.B \-i
+or 
+.B \-o
+to query whether the repository has an incoming (pull) or outgoing (push)
+parent pointer, exit status will be 0 if any matching parent pointers where
+found, otherwise exit status is 1.
 .tp
 .B \-r
 Remove the parent pointer.
+May be combined with
+.B \-i
+or
+.B \-o
+to remove just the incoming or outgoing parent pointer[s] respectively.
+Using 
+.B \-i
+or
+.B \-o
+on a bidirectional parent pointer converts the parent pointer to unidirectional.
+.tp
+.B \-s
+Set the parent pointer[s] to the specified list, replacing any existing 
+pointers.  This option is always required to override any existing parent
+pointers
+except in the case that there is only one bidirectional parent pointer and it
+is being replaced with one bidirectional parent pointer (backwards compat).
+.SH BUGS
+The term parent is somewhat of a misnomer in a peer to peer system.
+Since it is quite common to use \*[BK] repositories  in a
+parent/child relationship most of the time, we have stuck with
+the term.
 .SH "SEE ALSO"
 .SA bkd 1
+.SA changes 1
 .SA clone 1
 .SA pull 1
 .SA push 1

@@ -356,9 +356,6 @@
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
 #define	REPO_ID		"BitKeeper/log/repo_id"
-#define PARENT		"BitKeeper/log/parent"
-#define PUSH_PARENT	"BitKeeper/log/push-parent"
-#define PULL_PARENT	"BitKeeper/log/pull-parent"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
@@ -1083,8 +1080,6 @@ char	**getdir(char *);
 typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
 int	walksfiles(char *dir, walkfn fn, void *data);
-char	*getParent(void);
-char	**getParentList(char *, char **);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 MDBM	*generateTimestampDB(project *p);
 int	timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps);
@@ -1188,6 +1183,9 @@ void	set_or(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
 void	set_xor(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
 void	set_set(sccs *s, char *rev, set_pfunc p);
 int	saveStdin(char *tmpfile);
+char	**parent_pullp(void);
+char	**parent_pushp(void);
+char	**parent_allp(void);
 
 extern char *bk_vers;
 extern char *bk_utc;

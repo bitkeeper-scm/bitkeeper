@@ -30,6 +30,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 cores
+
 echo $N Clone repository ............................................$NL
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
 mkdir -p $HERE/tst
@@ -53,6 +54,7 @@ bk clone $Q $HERE/project sub_proj || exit 1
 if [ ! -d $HERE/project/src/sub_proj ]; then echo failed; exit 1; fi
 rm -rf $HERE/project/src/sub_proj
 echo OK
+
 echo $N Pull with no changes in child ...............................$NL
 cd $HERE/project/src
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR' || exit 1
@@ -84,6 +86,7 @@ else
  echo Pull with explicit remote parent ............................skipped
  echo Pull with explicit remote parent and username................skipped
 fi
+
 echo $N Pull with explicit local parent .............................$NL
 cd $HERE/copy
 HOSTNAME=`bk gethost`
@@ -92,17 +95,20 @@ revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
+
 echo $N Pull with explicit local parent and username ................$NL
 bk pull -t $Q $USER@$HOSTNAME:$HERE/project || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
+
 echo $N Pull from subdirectory of repository ........................$NL
 cd src
 bk pull -t $Q || { echo failed; exit 1; }
 revs=`bk prs -hd':I:\n' 'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
+
 echo $N Pull with mergeable changes in child ........................$NL
 bk get $Q -e bar.c
 echo line three >>bar.c
@@ -130,6 +136,7 @@ cmp -s ref-bar.c bar.c
 [ $? -eq 0 ] || { echo failed; diff ref-bar.c bar.c; exit 1; }
 echo OK
 bk clean 
+
 echo $N Push with no upstream deltas ................................$NL
 bk push $Q || { echo failed; exit 1; }
 mv ref-bar.c $HERE/project/src
@@ -141,6 +148,7 @@ cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 bk clean 
 rm -f ref-bar.c
+
 echo $N Push with an unrelated upstream delta .......................$NL
 cd $HERE/project
 date > stamp
@@ -154,13 +162,14 @@ mv h.x h.h
 bk delta $Q -ydvorak h.h
 cd ..
 bk commit $Q -yzxcvbnm
-bk parent $Q $HERE/copy
+bk parent $Q $HERE/copy || exit 1
 bk push $Q -t -a $HERE/project || { echo push w/ autopull failed; exit 1; }
-bk parent $Q $HERE/project
+bk parent $Q $HERE/project || exit 1
 bk findkey $KEY > foo
 if [ ! -s foo ]; then echo bad push; exit 1; fi
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
+
 echo $N Push with a conflicting upstream delta ......................$NL
 cd $HERE/project/src
 bk get $Q -e h.h
@@ -183,6 +192,7 @@ grep -q 'unresolved conflicts, nothing is applied' resolve.out || {
 KEY2="`bk prs -hd:KEY: -r+ $HERE/project/ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
+
 echo $N Resolve by hand and push again ..............................$NL
 bk resolve $Q -F -t <<EOF >resolve.out 2>&1
 m
@@ -209,6 +219,7 @@ KEY2="`cd $HERE/project && bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
+
 if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
  echo $N Push with explicit remote parent ............................$NL
  cd $HERE/copy
@@ -220,6 +231,7 @@ if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
 else
  echo Push with explicit remote parent ............................skipped
 fi
+
 echo $N Push with conflict in uncomitted remote delta ...............$NL
 cd $HERE/copy/src
 bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
@@ -236,6 +248,7 @@ bk push $HERE/copy > push.out 2>&1
 grep -q "has uncommitted changes" push.out
 if [ $? -ne 0 ]; then echo failed; cat push.out; exit 1; fi
 echo OK
+
 echo $N pull with a delete event ....................................$NL
 bk clone $Q $HERE/project $HERE/copy2
 cd $HERE/project/src
@@ -248,6 +261,7 @@ bk rm 'F!O#O$ B%A^R&RR(R)RR'
 bk commit $Q -ydelete2
 bk pull $Q -t $HERE/project || { echo failed; exit 1; }
 echo OK
+
 echo $N pull with a mvdir event .....................................$NL
 cd $HERE/project
 bk mvdir src src2/src3

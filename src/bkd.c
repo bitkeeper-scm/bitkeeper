@@ -196,7 +196,7 @@ do_cmds()
 {
 	int	ac;
 	char	**av;
-	int	i, ret, httpMode;
+	int	i, ret, httpMode, log;
 	int	debug = getenv("BK_DEBUG") != 0;
 	char	*peer = 0;
 
@@ -209,12 +209,13 @@ do_cmds()
 			}
 		}
 		getoptReset();
+		log = !streq(av[0], "putenv");
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.log) log_cmd(ac, av);
 			proj_reset(0); /* XXX needed? */
 
 			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
-			cmdlog_start(av, httpMode);
+			if (log) cmdlog_start(av, httpMode);
 
 			/*
 			 * Do the real work
@@ -222,12 +223,12 @@ do_cmds()
 			ret = cmds[i].cmd(ac, av);
 			if (peer) {
 				/* first command records peername */
-				cmdlog_addnote("peer", peer);
+				if (log) cmdlog_addnote("peer", peer);
 				peer = 0;
 			}
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
-			if (cmdlog_end(ret) & CMD_FAST_EXIT) {
+			if (log && (cmdlog_end(ret) & CMD_FAST_EXIT)) {
 				drain();
 				exit(ret);
 			}

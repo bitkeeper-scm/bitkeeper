@@ -36,10 +36,10 @@ pull_main(int ac, char **av)
 {
 	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
-	int	rc = 0, print_title = 0;
+	int	rc = 0;
 	opts	opts;
 	remote	*r;
-	char	**envVar = 0, **pList = 0;
+	char	**envVar = 0, **urls = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help pull");
@@ -76,22 +76,23 @@ pull_main(int ac, char **av)
 	}
 
 	loadNetLib();
-	has_proj("pull");
+	if (proj_cd2root()) {
+		fprintf(stderr, "pull: cannot find package root.\n");
+		exit(1);
+	}
 
 	/*
 	 * Get pull parent(s)
 	 */
 	if (av[optind]) {
 		while (av[optind]) {
-			pList = addLine(pList, strdup(av[optind++]));
+			urls = addLine(urls, strdup(av[optind++]));
 		}
 	} else {
-		pList = getParentList(PARENT, pList);
-		pList = getParentList(PULL_PARENT, pList);
-		unless (opts.quiet) print_title = 1;
+		urls = parent_pullp();
 	}
 
-	unless (pList) {
+	unless (urls) {
 err:		freeLines(envVar, free);
 		usage();
 		return (1);
@@ -100,11 +101,11 @@ err:		freeLines(envVar, free);
 	/*
 	 * pull from each parent
 	 */
-	EACH (pList) {
-		r = remote_parse(pList[i], 0);
+	EACH (urls) {
+		r = remote_parse(urls[i], 0);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
-		if (print_title) {
+		unless (opts.quiet) {
 			if (i > 1)  printf("\n");
 			fromTo("Pull", r, 0);
 		}
@@ -135,7 +136,7 @@ err:		freeLines(envVar, free);
 		if (rc) break;
 	}
 	
-	freeLines(pList, free);
+	freeLines(urls, free);
 	return (rc);
 }
 
@@ -334,10 +335,14 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			unless (i++) {
 				if (opts.dont) {
 					fprintf(stderr, "%s\n",
-"-------------------- Would receive the following csets ---------------------");
+					    "---------------------- "
+					    "Would receive the following csets "
+					    "----------------------");
 				} else {
 					fprintf(stderr, "%s\n",
-"---------------------- Receiving the following csets -----------------------");
+					    "---------------------- "
+					    "Receiving the following csets "
+					    "--------------------------");
 					opts.gotsome = 1;
 				}
 			}
@@ -359,7 +364,8 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		getline2(r, buf, sizeof(buf));
 		if (i) {
 			fprintf(stderr, "%s\n",
-"----------------------------------------------------------------------------");
+			    "---------------------------------------"
+			    "-------------------------------------");
 		}
 	}
 
@@ -463,10 +469,6 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		exit(1);
 	}
 	gzip = opts.gzip && r->port;
-	if (proj_cd2root()) {
-		fprintf(stderr, "pull: cannot find package root.\n");
-		exit(1);
-	}
 	unless (licenseAccept(1)) {
 		fprintf(stderr, "pull: failed to accept license, aborting.\n");
 		exit(1);

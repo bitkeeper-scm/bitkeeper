@@ -39,7 +39,7 @@ push_main(int ac, char **av)
 	int	try = -1; /* retry forever */
 	int	rc = 0, print_title = 0;
 	char	**envVar = 0;
-	char	**pList = NULL;
+	char	**urls = 0;
 	remote 	*r;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -79,7 +79,10 @@ push_main(int ac, char **av)
 	}
 
 	loadNetLib();
-	has_proj("push");
+	if (proj_cd2root()) {
+		fprintf(opts.out, "push: cannot find package root.\n");
+		exit(1);
+	}
 	unless (licenseAccept(1)) {
 		fprintf(stderr, "push: failed to accept license, aborting.\n");
 		exit(1);
@@ -90,24 +93,22 @@ push_main(int ac, char **av)
 	 */
 	if (av[optind]) {
 		while (av[optind]) {
-			pList = addLine(pList, strdup(av[optind++]));
+			urls = addLine(urls, strdup(av[optind++]));
 		}
 	} else {
-		pList = getParentList(PARENT, pList);
-		pList = getParentList(PUSH_PARENT, pList);
+		urls = parent_pushp();
 		if (opts.verbose) print_title = 1;
 	}
 
-	unless (pList) {
+	unless (urls) {
 err:		freeLines(envVar, free);
 		usage();
 		if (opts.out && (opts.out != stderr)) fclose(opts.out);
 		return (1);
 	}
 	
-
-	EACH (pList) {
-		r = remote_parse(pList[i], 0);
+	EACH (urls) {
+		r = remote_parse(urls[i], 0);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		opts.lcsets = opts.rcsets = opts.rtags = 0;
@@ -144,7 +145,7 @@ err:		freeLines(envVar, free);
 		if (rc) break;
 	}
 
-	freeLines(pList, free);
+	freeLines(urls, free);
 	freeLines(envVar, free);
 	if (opts.out && (opts.out != stderr)) fclose(opts.out);
 	return (rc);
@@ -299,9 +300,12 @@ tags:			fprintf(opts.out,
 			    opts.rtags, url);
 		} else if (opts.lcsets > 0) {
 			fprintf(opts.out, opts.doit ?
-"----------------------- Sending the following csets -----------------------\n":
-"---------------------- Would send the following csets ---------------------\n")
-			;
+			    "----------------------- "
+			    "Sending the following csets "
+			    "---------------------------\n":
+			    "----------------------- "
+			    "Would send the following csets "
+			    "------------------------\n");
 			if (opts.list) {
 				listIt(s, opts.list);
 			} else {
@@ -321,8 +325,8 @@ tags:			fprintf(opts.out,
 				if (n) fputs("\n", opts.out);
 			}
 			fprintf(opts.out,
-"---------------------------------------------------------------------------\n")
-			;
+			    "------------------------------------------"
+			    "-------------------------------------\n");
 			if (opts.rcsets && !opts.metaOnly) {
 				fprintf(opts.out, "except that the");
 				goto csets;
@@ -711,10 +715,6 @@ push(char **av, remote *r, char **envVar)
 	char 	buf[MAXKEY];
 
 	gzip = opts.gzip && r->port;
-	if (proj_cd2root()) {
-		fprintf(opts.out, "push: cannot find package root.\n");
-		exit(1);
-	}
 	if (opts.debug) fprintf(opts.out, "Root Key = \"%s\"\n", rootkey(buf));
 
 	ret = push_part1(r, rev_list, envVar);

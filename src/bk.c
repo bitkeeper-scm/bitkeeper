@@ -920,9 +920,7 @@ cmdlog_end(int ret)
 
 	purify_list();
 	bktmpcleanup();
-	unless (cmdlog_buffer[0] && proj_root(0)) {
-		return (flags);
-	}
+	unless (cmdlog_buffer[0]) return (flags);
 
 	/* add last minute notes */
 	if (cmdlog_repo && (cmdlog_flags&CMD_BYTES)) {
@@ -939,6 +937,10 @@ cmdlog_end(int ret)
 		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
 		fclose(f);
 	}
+
+	/* If we have no project root then bail out */
+	unless (proj_root(0)) goto out;
+
 	len = strlen(cmdlog_buffer) + 20;
 	EACH_KV (notes) len += kv.key.dsize + kv.val.dsize;
 	log = malloc(len);
@@ -983,6 +985,7 @@ cmdlog_end(int ret)
 	}
 	if (cmdlog_flags & (CMD_WRUNLOCK|CMD_RDUNLOCK)) repository_unlock(0);
 
+out:
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
 	cmdlog_flags = 0;

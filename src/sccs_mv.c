@@ -73,8 +73,7 @@ sccs_mv(char	*name,
 	char	**xlist = NULL;
 	sccs	*s = 0;
 	int	error = 0, was_edited = 0, has_diffs = 0;
-	int	flags = SILENT|DELTA_FORCE;
-	int	i;
+	int	i, flags;
 	time_t	gtime;
 	pfile   pf;
 	char	buf[1024];
@@ -135,7 +134,7 @@ err:		if (sname) free(sname);
 
 	if (HAS_PFILE(s)) {
 		was_edited = 1;
-		has_diffs = sccs_hasDiffs(s, flags, 1);
+		has_diffs = sccs_hasDiffs(s, SILENT, 1);
 		if (sccs_read_pfile("mvdir", s, &pf)) {
 			error |= 1;
 			fprintf(stderr, "%s: bad pfile\n", s->gfile);
@@ -209,6 +208,8 @@ err:		if (sname) free(sname);
 
 	if (isDelete && was_edited) {
 		if (has_diffs) {
+			flags = SILENT|DELTA_FORCE;
+
 			if (sccs_delta(s, flags, 0, 0, 0, 0) == -1) {
 				sccs_whynot("mv", s);
 				sccs_free(s);

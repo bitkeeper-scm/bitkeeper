@@ -1,0 +1,556 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for parent manipulation
+echo $N Create initial repositories .................................$NL
+no_logging project
+bk clone $Q . ../clone
+echo OK
+cores
+
+echo $N Make sure that we have incoming, outgoing parent set ........$NL
+# Make sure we don't have to be at the root.
+cd $HERE/clone
+mkdir src
+cd src
+bk parent -iq || exit 1
+bk parent -oq || exit 1
+bk parent -q || exit 1
+PARENT=file:/$HERE/project
+test "$PARENT" = "`bk parent -il`" || exit 1
+test "$PARENT" = "`bk parent -ol`" || exit 1
+test "$PARENT" = "`bk parent -l`" || exit 1
+echo OK
+
+echo $N Make sure we have the compat single parent pointer ..........$NL
+cd $HERE/clone
+test -f BitKeeper/log/parent || exit 1
+test "$PARENT" = "`cat BitKeeper/log/parent`" || exit 1
+echo OK
+
+echo $N Test backwards compat way of setting parent pointer .........$NL
+bk parent -q bk://some.host.com || exit 1
+PARENT=bk://some.host.com
+test "$PARENT" = "`bk parent -il`" || exit 1
+test "$PARENT" = "`bk parent -ol`" || exit 1
+test "$PARENT" = "`bk parent -l`" || exit 1
+bk parent -qr
+bk parent -q bk://different.host.com || exit 1
+PARENT=bk://different.host.com
+test "$PARENT" = "`bk parent -il`" || exit 1
+test "$PARENT" = "`bk parent -ol`" || exit 1
+test "$PARENT" = "`bk parent -l`" || exit 1
+echo OK
+
+echo $N Backwards compat should only work with no or one parent .....$NL
+bk parent -aq bk://some.host.com || exit 1
+bk parent -q bk://host.com 1>/dev/null 2>&1 && exit 1
+bk parent -qsi bk://host.com
+cat > WANT <<EOF
+Pull parent: bk://host.com
+EOF
+bk parent > GOT
+cmp -s WANT GOT || {
+	echo failed to set incoming only parent
+	cat GOT
+}
+test -f BitKeeper/log/parent && exit 1
+bk parent -q bk://host.com 1>/dev/null 2>&1 && exit 1
+echo OK
+
+echo $N Set single parent, make sure it overrides ...................$NL
+bk parent -sq bk://somewhere.org
+test `bk parent -l` = bk://somewhere.org || exit 1
+echo OK
+
+echo $N Set several parents, make sure they are all recorded ........$NL
+PARENT=file:/$HERE/project
+bk parent -sq $PARENT bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+$PARENT
+EOF
+cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
+echo OK
+
+echo $N Set incoming parents, make sure they are all recorded .......$NL
+bk parent -isq bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
+bk parent -ol > GOT
+cat > WANT <<EOF
+This repository has no push parent.
+EOF
+cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
+echo OK
+
+echo $N Set outgoing parents, make sure they are all recorded .......$NL
+bk parent -osq bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
+bk parent -ol > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
+bk parent -il > GOT
+cat > WANT <<EOF
+This repository has no pull parent.
+EOF
+cmp -s GOT WANT || { echo failed; diff -ur GOT WANT; exit 1; }
+echo OK
+
+echo $N Set single parent, make sure it overrides ...................$NL
+bk parent -sq bk://somewhere.org
+test `bk parent -l` = bk://somewhere.org || exit 1
+echo OK
+
+echo $N Add several parents, make sure they are all recorded ........$NL
+bk parent -qr
+bk parent -q $HERE/project || exit 1
+bk parent -aq bozo@somewhere.com:/tmp bk://ibm.com/a/b/c || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+$PARENT
+EOF
+cmp -s GOT WANT || {
+	echo failed
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Make sure the compat single parent pointer is removed .......$NL
+test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Add incoming only parent, check recording and listing .......$NL
+bk parent -aiq bk://oneway.com/incoming || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/incoming
+bozo@somewhere.com:/tmp
+$PARENT
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+$PARENT
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Add outgoing only parent, check recording and listing .......$NL
+bk parent -aoq bk://oneway.com/outgoing || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/incoming
+bk://oneway.com/outgoing
+bozo@somewhere.com:/tmp
+$PARENT
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/incoming
+bozo@somewhere.com:/tmp
+$PARENT
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/outgoing
+bozo@somewhere.com:/tmp
+$PARENT
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Check annotated listing of parents ..........................$NL
+bk parent > GOT
+cat > WANT <<EOF
+Pull parent: bk://oneway.com/incoming
+Push parent: bk://oneway.com/outgoing
+Push/pull parent: bk://ibm.com/a/b/c
+Push/pull parent: bozo@somewhere.com:/tmp
+Push/pull parent: $PARENT
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -i > GOT
+cat > WANT <<EOF
+Pull parent: bk://oneway.com/incoming
+Push/pull parent: bk://ibm.com/a/b/c
+Push/pull parent: bozo@somewhere.com:/tmp
+Push/pull parent: $PARENT
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -o > GOT
+cat > WANT <<EOF
+Push parent: bk://oneway.com/outgoing
+Push/pull parent: bk://ibm.com/a/b/c
+Push/pull parent: bozo@somewhere.com:/tmp
+Push/pull parent: $PARENT
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Remove one parent, check recording and listing ..............$NL
+bk parent -rq "$PARENT" || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/incoming
+bk://oneway.com/outgoing
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/incoming
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/outgoing
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Remove incoming parent, check recording and listing .........$NL
+bk parent -rq bk://oneway.com/incoming || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/outgoing
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bk://oneway.com/outgoing
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Remove outgoing parent, check recording and listing .........$NL
+bk parent -rq bk://oneway.com/outgoing || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Convert parent to incoming, check recording and listing .....$NL
+bk parent -roq bk://ibm.com/a/b/c || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Convert parent to outgoing, check recording and listing .....$NL
+bk parent -riq bozo@somewhere.com:/tmp || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cat > WANT <<EOF
+bk://ibm.com/a/b/c
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Convert to single outgoing, check recording and listing .....$NL
+bk parent -rq bk://ibm.com/a/b/c || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cat > WANT <<EOF
+This repository has no pull parent.
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Convert to incoming to bidirectional, check .................$NL
+bk parent -aq bozo@somewhere.com:/tmp || exit 1
+bk parent -l > GOT
+cat > WANT <<EOF
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of both directions
+	cat GOT
+	exit 1
+}
+bk parent -il > GOT
+cat > WANT <<EOF
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of incoming
+	cat GOT
+	exit 1
+}
+bk parent -ol > GOT
+cat > WANT <<EOF
+bozo@somewhere.com:/tmp
+EOF
+cmp -s GOT WANT || {
+	echo Failed listing of outgoing
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Make sure we put back the compat parent file ................$NL
+test -f BitKeeper/log/parent || exit 1
+echo OK
+
+echo $N Try remove non-existent parent, check status ................$NL
+bk parent -rq bogus && exit 1
+bk parent -riq bogus && exit 1
+bk parent -roq bogus && exit 1
+echo OK
+
+echo $N Remove all parents, check files and listing .................$NL
+bk parent -qr || exit 1
+test -f BitKeeper/log/push-parent && exit 1
+test -f BitKeeper/log/pull-parent && exit 1
+test -f BitKeeper/log/parent && exit 1
+echo OK
+
+echo $N Make sure we normalize parent pointers by default ...........$NL
+bk parent -q ../project || exit 1
+PARENT=file:/$HERE/project
+test "$PARENT" = "`bk parent -il`" || exit 1
+test "$PARENT" = "`bk parent -ol`" || exit 1
+test "$PARENT" = "`bk parent -l`" || exit 1
+test -f BitKeeper/log/parent || exit 1
+echo OK
+
+echo $N Make sure we can force non-normalized pointers ..............$NL
+bk parent -rq || exit 1
+bk parent -nq ../project || exit 1
+PARENT=../project
+test "$PARENT" = "`bk parent -il`" || exit 1
+test "$PARENT" = "`bk parent -ol`" || exit 1
+test "$PARENT" = "`bk parent -l`" || exit 1
+test -f BitKeeper/log/parent || exit 1
+echo OK
+
+echo $N Make sure the addition of a normalized one is not factored ..$NL
+bk parent -aq ../project || exit 1
+cat > WANT <<EOF
+../project
+file:/$HERE/project
+EOF
+bk parent -l > GOT
+cmp -s WANT GOT || {
+	echo failed short listing
+	cat GOT
+	exit 1
+}
+cat > WANT <<EOF
+Push/pull parent: ../project
+Push/pull parent: file:/$HERE/project
+EOF
+bk parent > GOT
+cmp -s WANT GOT || {
+	echo failed annotated listing
+	cat GOT
+	exit 1
+}
+test -f BitKeeper/log/parent && exit 1
+echo OK

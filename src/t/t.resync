@@ -701,7 +701,7 @@ bk commit $S -y"abc"
 # let's verify that you can have URL's for the first
 # argument
 cd $HERE/copy
-bk parent $Q junk
+bk parent $Q -sn junk
 bk pull $Q -R file://$HERE/project || {
 	echo failed resync with url
 	exit 1
