@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# Copyright (c) 1999 Larry McVoy
+# %K%
+
+echo $N Create a file with two branches .............................$NL
+echo foo > foo.c
+bk new $Q foo.c
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+echo OK
+echo $N Strip out the trunk and renumber ............................$NL
+get -e $Q foo.c
+delta $Q -y1.2 foo.c
+get -e -r1.1 $Q foo.c
+delta $Q -y1.1.1.1 foo.c
+admin $Q -Ssymbol:1.1.1.1 foo.c
+stripdel $Q -r1.2 foo.c
+renumber $Q foo.c
+grep -q "^.d D 1.1.1.1" SCCS/s.foo.c 
+if [ $? -eq 0 ]; then echo Failed to remove delta table entry.; exit 1; fi
+grep -q "^.d R 1.1.1.1" SCCS/s.foo.c 
+if [ $? -eq 0 ]; then echo Failed to move symbol.; exit 1; fi
+grep -q "^.d D 1.2" SCCS/s.foo.c 
+if [ $? -ne 0 ]; then echo Failed to move delta table entry to 1.2; exit 1; fi
+echo OK
