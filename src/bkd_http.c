@@ -868,7 +868,8 @@ http_src(char *path)
 	}
 
 	out(OUTER_TABLE INNER_TABLE
-	    "<tr><th>&nbsp;</th><th align=left>File&nbsp;name</th>\n"
+	    "<tr bgcolor=lightblue>"
+	    "<th>&nbsp;</th><th align=left>File&nbsp;name</th>\n"
 	    "<th>Rev</th>\n"
 	    "<th>&nbsp;</th>\n"
 	    "<th>Age</th>\n"
@@ -1234,7 +1235,7 @@ http_stats(char *page)
 		if (!streq(user, c_user)) {
 			if (c_user[0]) {
 				sprintf(buf,
-				    "<tr>\n"
+				    "<tr bgcolor=white>\n"
 				    "<td align=center>"
 				    "<a href=\"user=%s%s\">%s</a></td>\n"
 				    "<td align=center>%d</td>\n"
@@ -1261,7 +1262,7 @@ http_stats(char *page)
 	pclose(p);
 	if (all_cs > 0) {
 		sprintf(buf,
-		    "<tr>\n"
+		    "<tr bgcolor=white>\n"
 		    "<td align=center>"
 		    "<a href=\"user=%s%s\">%s</a></td>\n"
 		    "<td align=center>%d</td>\n"
@@ -1658,7 +1659,7 @@ http_related(char *file)
 
 	unless (s) http_error(500, "cannot initialize " CHANGESET);
 
-	i = snprintf(dspec, sizeof dspec, "%s<tr>\n"
+	i = snprintf(dspec, sizeof dspec, "%s<tr bgcolor=white>\n"
 			" <td align=right>:HTML_AGE:</td>\n"
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
