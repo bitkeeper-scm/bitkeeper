@@ -279,6 +279,7 @@ echo OK
 echo $N Test ignore lists with -x ...................................$NL
 bk edit $Q BitKeeper/etc/ignore
 cat <<EOF > BitKeeper/etc/ignore
+Desktop.ini
 LIST
 s.*
 *ore
@@ -310,6 +311,7 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Test disabling ignore lists with -ax ........................$NL
 sort <<EOF > LIST
+Desktop.ini
 LIST
 SCCS/OLD-s.foo
 SFILES

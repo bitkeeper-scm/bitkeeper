@@ -1417,6 +1417,8 @@ sccs_mkroot(char *path)
 {
 	char	buf[MAXPATH];
 
+	mkBkRootIcon(path); /* for win32 */
+
 	sprintf(buf, "%s/SCCS", path);
 	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
@@ -1466,6 +1468,8 @@ void
 sccs_unmkroot(char *path)
 {
 	char	buf[MAXPATH];
+
+	unmkBkRootIcon(path); /* for win32 */
 
 	sprintf(buf, "%s/SCCS", path);
 	if (rmdir(buf) == -1) {
