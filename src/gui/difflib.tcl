@@ -29,6 +29,7 @@ proc prev {} \
 	incr lastDiff -1
 	dot
 }
+
 proc visible {index} \
 {
 	if {[llength [.diffs.right bbox $index]] > 0} {
@@ -392,53 +393,4 @@ proc computeHeight {} \
 	set f [fontHeight [.diffs.left cget -font]]
 	set p [winfo height .diffs.left]
 	set gc($app.diffHeight) [expr {$p / $f}]
-}
-
-proc clearOrRecall {} \
-{
-	set which [.menu.searchClear cget -text]
-	if {$which == "Recall search"} {
-		searchrecall
-	} else {
-		searchreset
-	}
-}
-
-# Override searchsee definition so we scroll both windows
-proc searchsee {location} \
-{
-	scrollDiffs $location $location
-}
-
-proc search_keyboard_bindings {} \
-{
-	global search
-
-	bind all                <g>             "search g"
-	bind all                <colon>         "search :"
-	bind all                <slash>         "search /"
-	bind all                <question>      "search ?"
-	bind all                <Control-u>     searchreset
-	bind all                <Control-r>     searchrecall
-	bind $search(text)      <Return>        searchstring
-	bind $search(text)      <Control-u>     searchreset
-}
-
-proc search_init {} \
-{
-	global search app gc
-
-	set search(prompt) "Search for:"
-	set search(plabel) .menu.prompt
-	set search(dir) "/"
-	set search(text) .menu.search
-	set search(widget) .diffs.right
-	set search(next) .menu.searchNext
-	set search(prev) .menu.searchPrev
-	set search(focus) .
-	set search(clear) .menu.searchClear
-	set search(recall) .menu.searchClear
-	set search(status) .menu.info
-	#$search(widget) tag configure search \
-	#    -background $gc($app.searchColor) -font $gc($app.fixedBoldFont)
 }

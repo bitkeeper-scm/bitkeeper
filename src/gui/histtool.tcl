@@ -1248,7 +1248,7 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform fname
+	global  tcl_platform fname app
 
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
@@ -1256,6 +1256,7 @@ proc widgets {} \
 	set Opts(get) "-aum"
 	set Opts(line) "-u -t"
 	set yspace 20
+	set app hist
 	# cframe	- comment frame	
 	# apframe	- annotation/prs frame
 	# ctext		- comment text window
@@ -1266,17 +1267,12 @@ proc widgets {} \
 	set w(apframe) .p.b.p
 	set w(aptext) .p.b.p.t
 	set w(graph) .p.top.c
-	set search(prompt) ""
-	set search(dir) ""
-	set search(text) .cmd.t
-	set search(focus) $w(graph)
-	set search(widget) $w(aptext)
 	set stacked 1
 
 	if {$tcl_platform(platform) == "windows"} {
-		set py 0; set px 1; set bw 2
+		set gc(py) 0; set gc(px) 1; set gc(bw) 2
 	} else {
-		set py 1; set px 4; set bw 2
+		set gc(py) 1; set gc(px) 4; set gc(bw) 2
 	}
 	getConfig "hist"
 	option add *background $gc(BG)
@@ -1286,15 +1282,31 @@ proc widgets {} \
 		wm geometry . $gc(hist.geometry)
 	}
 	wm title . "histtool"
+
+# XXX: These bitmaps should be in a library!
+image create photo prevImage \
+    -format gif -data {
+R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
+WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
+}
+image create photo nextImage \
+    -format gif -data {
+R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
+XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
+}
+
 	frame .menus
 	    button .menus.quit -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Quit" -command done
 	    button .menus.help -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Help" -command { exec bk helptool histtool & }
 	    menubutton .menus.mb -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
@@ -1334,13 +1346,16 @@ proc widgets {} \
 		$m add command -label "All Changes" \
 		    -command {histtool $fname 1.1..}
 	    button .menus.cset -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "View changeset " -width 15 -command r2c -state disabled
 	    button .menus.difftool -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Diff tool" -command "diff2 1" -state disabled
 	    button .menus.file -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Select File" -command { selectFile }
 	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
@@ -1424,18 +1439,14 @@ proc widgets {} \
 	after idle {
 	    PaneCreate
 	}
-
-	frame .cmd -borderwidth 2 -relief ridge
-		entry $search(text) -width 30 -font $gc(hist.fixedBoldFont)
-		label .cmd.l -font $gc(hist.fixedBoldFont) -width 30 \
-		    -relief groove \
-		    -textvariable search(prompt)
-		grid .cmd.l -row 0 -column 0 -sticky ew
-		grid .cmd.t -row 0 -column 1 -sticky ew
+	frame .cmd 
+	search_widgets .cmd $w(aptext)
+	# Make graph the default window to have the focus
+	set search(focus) $w(graph)
 
 	grid .menus -row 0 -column 0 -sticky ew
 	grid .p -row 1 -column 0 -sticky ewns
-	grid .cmd -row 2 -column 0 -sticky ew
+	grid .cmd -row 2 -column 0 -sticky w
 	grid rowconfigure . 1 -weight 1
 	grid columnconfigure . 0 -weight 1
 	grid columnconfigure .cmd 0 -weight 1
@@ -1446,9 +1457,9 @@ proc widgets {} \
 	bind $w(graph) <Double-1>	{get "id"; break}
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
-	bind . <d>			"diffParent"
-	bind . <Button-2>		{history; break}
-	bind . <Double-2>		{history tags; break}
+	bind $w(graph) <d>		"diffParent"
+	bind $w(graph) <Button-2>	{history; break}
+	bind $w(graph) <Double-2>	{history tags; break}
 	bind $w(graph) $gc(hist.quit)	"exit"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
@@ -1503,18 +1514,22 @@ proc widgets {} \
 		bind . <Button-4>         "$w(aptext) yview scroll -5 units"
 		bind . <Button-5>         "$w(aptext) yview scroll 5 units"
 	}
+	$search(widget) tag configure search \
+	    -background $gc(hist.searchColor) -font $gc(hist.fixedBoldFont)
+	search_keyboard_bindings
+	bind all <n>	{
+	    set search(dir) "/"
+	    searchnext
+	}
+	bind all <p>	{
+	    set search(dir) "?"
+	    searchnext
+	}
+	searchreset
 
 	bind $w(aptext) <Button-1> { selectTag %W %x %y "" "B1"; break}
 	bind $w(aptext) <Button-3> { selectTag %W %x %y "" "B3"; break}
 	bind $w(aptext) <Double-1> { selectTag %W %x %y "" "D1"; break }
-
-	# Command window bindings.
-	bind $w(graph) <slash> "search /"
-	bind $w(graph) <question> "search ?"
-	bind $w(graph) <n> "searchnext"
-	bind $search(text) <Return> "searchstring"
-	$search(widget) tag configure search \
-	    -background $gc(hist.searchColor) -relief groove -borderwid 0
 
 	# highlighting.
 	$w(aptext) tag configure "newTag" -background $gc(hist.newColor)
@@ -1523,6 +1538,8 @@ proc widgets {} \
 
 	bindtags $w(aptext) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
+	# In the search window, don't listen to "all" tags.
+	bindtags $search(text) { .cmd.search Entry . }
 
 	wm deiconify .
 	focus $w(graph)
@@ -1545,7 +1562,6 @@ Please select a revision controled file"
 	close $f
 } ;# proc widgets
 
-#
 # Arguments:
 #   all - boolean (optional) : If set to 1, displays all csets
 #
