@@ -579,7 +579,7 @@ cd $HERE/clone
 ls > LS
 bk new $Q LS
 bk commit -ywhatever $Q
-bk push 2>OUT && {
+bk push 2>OUT 1>&2 && {
 	echo push should have failed
 	exit 1
 }
@@ -666,7 +666,7 @@ chmod +x BitKeeper/triggers/*
 waitForUnlock $HERE/project
 cd $HERE/clone
 rm -f BitKeeper/triggers/* $HERE/pre-resolve
-bk push 2>OUT && {
+bk push 2>OUT 1>&2 && {
 	echo push should have failed
 	cat OUT
 	exit 1
@@ -702,7 +702,7 @@ EOF
 chmod +x BitKeeper/triggers/*
 cd $HERE/clone
 rm -f BitKeeper/triggers/* $HERE/pre-resolve
-bk push 2>OUT && {
+bk push 2>OUT 1>&2 && {
 	echo push should have failed
 	exit 1
 }

@@ -334,6 +334,9 @@
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
+#define PARENT		"BitKeeper/log/parent"
+#define PUSH_PARENT	"BitKeeper/log/push-parent"
+#define PULL_PARENT	"BitKeeper/log/pull-parent"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
@@ -1066,6 +1069,7 @@ int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
 char	**getdir(char *); 
 char	*getParent(void);
+char	**getParentList(char *, char **);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
         *utc2tm(time_t t);
