@@ -1,9 +1,4 @@
 #include "sccs.h"
-#ifdef WIN32
-#include "uwtlib/ftw.h"
-#else
-#include <ftw.h>
-#endif
 WHATSTR("%W% %@%");
 
 /*
@@ -12,10 +7,11 @@ WHATSTR("%W% %@%");
  * TODO - make it find only files locked by a particular user
  */
 char *sfiles_usage = "\n\
-usage: sfiles [-aclpP] [-i[root]] [-r[root]] [directories]\n\n\
+usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
     -a		when used with -C, list all revs, not just the tip\n\
     -c		list only changed files (locked and modified)\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
+    -d		list directories under SCCS control (have SCCS subdir)\n\
     -g		list the gfile name, not the sfile name\n\
     -l		list only locked files\n\
     -p		(paranoid) opens each file to make sure it is an SCCS file\n\
@@ -30,20 +26,19 @@ usage: sfiles [-aclpP] [-i[root]] [-r[root]] [directories]\n\n\
     directories.\n\
 \n";
 
-int	aFlg, cFlg, Cflg, gFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg;
+int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg;
 int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
 MDBM	*idDB;
 MDBM	*csetDB;	/* database of {file if, tip id} */
 int	dups;
-int	file(char *f, int (*func)(), int depth);
+int	file(char *f, int (*func)());
 int	func(const char *filename, const struct stat *sb, int flag);
 int	hasDiffs(char *file);
 int	isSccs(char *s);
 void	rebuild(void);
 int	caches(const char *filename, const struct stat *sb, int flag);
-int	ids(const char *filename, const struct stat *sb, int flag);
 char	*name(char *);
 
 int
@@ -56,11 +51,12 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "acCglpPr|vx")) != -1) {
+	while ((c = getopt(ac, av, "acCdglpPr|vx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'c': cFlg++; break;
 		    case 'C': Cflg++; rFlg++; break;
+		    case 'd': dFlg++; break;
 		    case 'g': gFlg++; break;
 		    case 'l': lFlg++; break;
 		    case 'p': pFlg++; break;
@@ -86,13 +82,13 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(dups ? 1 : 0);
 	}
 	if (!av[optind]) {
-		ftw(".", func, 15);
+		ftw(".", func, 50);
 	} else {
 		for (i = optind; i < ac; ++i) {
 			if (isdir(av[i])) {
-				ftw(av[i], func, 15);
+				ftw(av[i], func, 50);
 			} else {
-				file(av[i], func, 15);
+				file(av[i], func);
 			}
 		}
 	}
@@ -101,10 +97,10 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 }
 
 /*
- * Handle a single file or a diretory.
+ * Handle a single file or a directory.
  */
 int
-file(char *f, int (*func)(), int depth)
+file(char *f, int (*func)())
 {
 	struct	stat sb;
 	char	*sfile, *gfile;
@@ -117,7 +113,7 @@ file(char *f, int (*func)(), int depth)
 		}
 		goto out;
 	} else if (!xFlg) {
-		func(sfile, &sb, 0);
+		func(sfile, &sb);
 	}
 out:	free(sfile);
 	free(gfile);
@@ -132,8 +128,17 @@ func(const char *filename, const struct stat *sb, int flag)
 	char	*sfile, *gfile;
 
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
+	if (dFlg) {
+		if (S_ISDIR(sb->st_mode)) {
+			char	buf[1024];
+
+			sprintf(buf, "%s/SCCS", file);
+			if (exists(buf)) printf("%s\n", file);
+		}
+		return (0);
+	}
+	if (S_ISDIR(sb->st_mode)) return (0);
 	if (xFlg) {
-		if (S_ISDIR(sb->st_mode)) return (0);
 		sfile = name2sccs(file);
 		gfile = sccs2name(sfile);
 		if (exists(gfile) && !exists(sfile)) printf("%s\n", gfile);
@@ -261,7 +266,7 @@ rebuild()
 	idDB = mdbm_open(NULL, 0, 0, 4096);
 	assert(idDB);
 	mdbm_pre_split(idDB, 1<<10);
-c:	ftw(".", caches, 15);
+c:	ftw(".", caches, 50);
 	if (rFlg) {
 		fclose(id_cache);
 		unlink("SCCS/z.id_cache");
