@@ -888,28 +888,22 @@ spawn_cmd(int flag, char **av)
 	return (WEXITSTATUS(ret));
 }
 
+int
 cset_lock()
 {
-	char	*uniq = aprintf("SCCS/csetlock%u", getpid());
-	struct	stat sbuf;
-
-	assert(exists(CHANGESET));
-	assert(streq(CHANGESET, "SCCS/s.ChangeSet"));
-	assert(!exists(uniq));
-	close(creat(uniq, 0444));
-	for (;;) {
-		unless (link(uniq, "SCCS/csetlock")) break;
-		stat(uniq, &sbuf);
-		if (sbuf.st_nlink == 2) break;
-		usleep(50000);
-	} 
-	unlink(uniq);
-	free(uniq);
+	/*
+	 * I wanted to assert that there is a cset file here but we can't
+	 * count on that.  There are very short windows where there is not
+	 * one, when we do the unlink and rename x.ChangeSet to s.ChangeSet.
+	 */
+	assert(exists(BKTMP));
+	return (sccs_lockfile(BKTMP "/csetlock", 0));
 }
 
+void
 cset_unlock()
 {
 	assert(exists(CHANGESET));
-	assert(exists("SCCS/csetlock"));
-	unlink("SCCS/csetlock");
+	assert(exists(BKTMP "/csetlock"));
+	unlink(BKTMP "/csetlock");
 }

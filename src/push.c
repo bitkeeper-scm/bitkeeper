@@ -207,7 +207,7 @@ updLogMarker(int ptype, int verbose, FILE *vf)
 	char	s_cset[] = CHANGESET, rev[MAXREV+1];
 	int	i;
 
-	cset_lock();
+	if (cset_lock()) return;
 	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
 
 		/*
@@ -234,8 +234,8 @@ updLogMarker(int ptype, int verbose, FILE *vf)
 
 			getcwd(buf, sizeof (buf));
 			fprintf(vf,
-				"updLogMarker: cannot access %s, pwd=%s\n",
-				s_cset, buf);
+			    "updLogMarker: cannot access %s, pwd=%s\n",
+			    s_cset, buf);
 		}
 	}
 	cset_unlock();
