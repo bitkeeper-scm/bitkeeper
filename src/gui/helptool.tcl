@@ -439,7 +439,7 @@ proc widgets {} \
 	bind .ctrl.topics <Button-2> { doPixSelect %x %y; break }
 	bind .ctrl.topics <Button-3> { doPixSelect %x %y; break }
 	bind .ctrl.topics <Motion> "break"
-	bind .text.help <Motion> "break"
+	bind .text.help <ButtonPress> "focus .text.help"
 	bind all <Control-e>	{ scroll "line" 1 }
 	bind all <Control-y>	{ scroll "line" -1 }
 	bind all <Down>		{ scroll "line" 1; break }
@@ -471,8 +471,8 @@ proc widgets {} \
 	}
 	bind .menu.entry <Return> { search }
 	bindtags .menu.entry { all .menu.entry Entry . }
-	bindtags .ctrl.topics {.ctrl.topics . all}
-	bindtags .text.help {.text.help . all}
+ 	bindtags .ctrl.topics {.ctrl.topics . all}
+	#bindtags .text.help {.text.help . all}
 	bind .text.help <Configure> {
 		global	gc pixelsPerLine firstConfig
 

@@ -1,0 +1,95 @@
+# Copyright (c) 2000 Larry McVoy
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Make sure that if we have a repository with bad local data, we pull,
+# it detects the bad data and restores, and the new files pulled in 
+# are not left behind.
+
+
+if [ X$Q = X ]
+then	L=-l
+else	L=
+fi
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+touch BitKeeper/etc/SCCS/x.marked
+echo OK
+echo $N Create some data, clone, create more data, pull .............$NL
+echo 1 > A
+bk new $Q A
+if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
+bk commit $S -a -y"This is a \"Change Set\""
+cd $HERE
+bk clone $Q project clone
+cd project
+echo 2 > B
+echo 3 > C
+echo 4 > D
+echo 5 > E
+bk new $Q B C D E
+bk commit $S -a -y"This is a \"Change Set\""
+cd $HERE/clone
+mv SCCS/s.A SCCS/s.WRONG_PLACE
+bk pull $Q > OUT 2>&1
+if [ $? -eq 0 ]
+then	echo failed to exit non-zero
+	exit 1
+fi
+for i in B C D E
+do	if [ -f $i ]
+	then	echo failed to clean up $i
+		exit 1
+	fi
+done
+grep -q 'check: SCCS/s.WRONG_PLACE should be SCCS/s.A' OUT || {
+	echo bad error message from pull:
+	cat OUT
+	exit 1
+}
+echo OK
+cores
+echo $N Create data in subdir, pull, make sure it removes dir .......$NL
+cd $HERE/project
+mkdir subdir
+cd subdir
+echo Nasty boy > personality
+bk new $Q personality
+bk commit $Q -ynasty
+cd $HERE/clone
+bk abort -f
+bk pull $Q > OUT 2>&1
+if [ $? -eq 0 ]
+then	echo failed to exit non-zero
+	exit 1
+fi
+for i in B C D E
+do	if [ -f $i ]
+	then	echo failed to clean up $i
+		exit 1
+	fi
+done
+if [ -d subdir ]
+then	echo failed to remove subdir
+	exit 1
+fi
+grep -q 'check: SCCS/s.WRONG_PLACE should be SCCS/s.A' OUT || {
+	echo bad error message from pull:
+	cat OUT
+	exit 1
+}
+echo OK
+cores

@@ -109,7 +109,7 @@ proc file_history {} \
 proc dotFile {{line {}}} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
-	global	RealFiles
+	global	RealFiles file
 
 	busy 1
 	if {$line != ""} { set lastFile $line }
@@ -259,16 +259,21 @@ proc busy {busy} \
 	update
 }
 
-proc pixSelect {x y} \
+proc pixSelect {x y {bindtype {}}} \
 {
-	global	lastFile line2File
+	global	lastFile line2File file
 
 	set line [.l.filelist.t index "@$x,$y"]
 	set x [.l.filelist.t get "$line linestart" "$line linestart +2 chars"]
 	if {$x != "  "} { return }
 	set line [lindex [split $line "."] 0]
 	set lastFile $line2File($line)
-	dotFile
+	if {$bindtype == "B1"} {	
+		dotFile
+	} else {
+		#puts stderr "D1 lastFile=($lastFile) file=($file)"
+		file_history
+	}
 }
 
 proc adjustHeight {diff list} \
@@ -475,15 +480,15 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-font $gc(cset.buttonFont) -text "Current diff" \
 		-command dot
 
-	    pack .menu.quit -side left
-	    pack .menu.help -side left
+	    pack .menu.quit -side left -fill y
+	    pack .menu.help -side left -fill y
+	    pack .menu.mb -side left -fill y
 	    pack .menu.prevFile -side left -fill y
 	    pack .menu.fmb -side left -fill y
 	    pack .menu.nextFile -side left -fill y
 	    pack .menu.prev -side left -fill y
-	    pack .menu.dot -side left
+	    pack .menu.dot -side left -fill y
 	    pack .menu.next -side left -fill y
-	    pack .menu.mb -side left -fill y
 	    # Add the search widgets to the menu bar
 	    search_widgets .menu .diffs.right
 
@@ -510,8 +515,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	grid columnconfigure .diffs.right 1 -weight 1
 
 	bind .diffs <Configure> { computeHeight }
-	$search(widget) tag configure search \
-	    -background $gc(cset.searchColor) -font $gc(cset.fixedBoldFont)
+	#$search(widget) tag configure search \
+	#    -background $gc(cset.searchColor) -font $gc(cset.fixedBoldFont)
 	keyboard_bindings
 	search_keyboard_bindings
 	searchreset
@@ -584,7 +589,8 @@ proc keyboard_bindings {} \
 		bind all <Button-4>	prev
 		bind all <Button-5>	next
 	}
-	bind .l.filelist.t <Button-1> { pixSelect %x %y }
+	bind .l.filelist.t <Button-1> { pixSelect %x %y "B1"; break}
+	bind .l.filelist.t <Double-1> { pixSelect %x %y "D1"; break }
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
 }
