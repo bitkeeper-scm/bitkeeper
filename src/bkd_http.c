@@ -41,6 +41,7 @@ private void	expand(char *s);
 private	char	root[MAXPATH];
 private int	embedded = 0;
 private int	expires = 0;
+private	char	*header_host;
 
 #define	COLOR		"lightblue"
 
@@ -94,29 +95,30 @@ cmd_httpget(int ac, char **av)
 {
 	char	buf[MAXPATH];
 	char	*name = &av[1][1];
-	int	state = 0;
 	int 	ret, i;
 	char	*s;
 	char	a[MAXPATH];
 	char	b[MAXPATH];
 
 	/*
-	 * Ignore the rest of the http header (if any), we don't care.
+	 * Read http header (if any).
 	 */
 	if (ac > 2) {
-		while (read(0, buf, 1) == 1) {
-			if (buf[0] == '\r') {
-				switch (state) {
-				    case 0: case 2: state++; break;
-				    default: state = 0;
+		while (fnext(buf, stdin)) {
+			// fputs(buf, stderr);
+			if (strneq(buf, "Host:", 5)) {
+				char	*s;
+				s = &buf[5];
+				while (isspace(*s)) s++;
+				if (header_host) {
+					free(header_host);
+					header_host = 0;
 				}
-			} else if (buf[0] == '\n') {
-				if (state == 1) state++;
-				else if (state == 3) break;
-				else state = 0;
-			} else {
-				state = 0;
+				header_host = strnonldup(s);
+			} else if (buf[0] == '\r' || buf[0] == '\n') {
+				break;
 			}
+			/* ignore everything else */
 		}
 	}
 
@@ -220,6 +222,13 @@ navbutton(int active, int tag, char *start, char *end)
 #else
 	sep = end;
 #endif
+
+	/*
+	 * XXX This use of the <base> tag is non-standard and causes
+	 * problems with some broswers.  (netscape 4.x reportedly)
+	 * Only one <base> is allowed and it must be in the <head>
+	 * section.
+	 */
 
 	/* control field; not an actual button */
 	if (start[0] == '!') {
@@ -384,15 +393,15 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 	char *fmt = 0;
 
 	out("<html>");
-
+	out("<head>");
 	if (titlestr) {
 		va_start(ptr, headerstr);
 		vsprintf(buf, titlestr, ptr);
 		va_end(ptr);
 
-		out("<head><title>");
+		out("<title>");
 		out(buf);
-		out("</title></head>\n");
+		out("</title>\n");
 
 		if (headerstr) {
 			va_start(ptr, headerstr);
@@ -402,13 +411,14 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 
 		fmt = buf;
 	}
-
-	out("<body alink=black link=black bgcolor=white>\n");
 	if (root && !streq(root, "")) {
 		out("<base href=");
 		out(root);
 		out(">\n");
 	}
+	out("</head>\n");
+
+	out("<body alink=black link=black bgcolor=white>\n");
 	out("<table width=100% bgcolor=black"
 	    " cellspacing=0 border=0 cellpadding=1>\n"
 	    "<tr><td>\n");
@@ -1696,8 +1706,14 @@ url(char *path)
 	static char buf[MAXPATH*2];
 
 	strcpy(buf, "http://");
-	strcat(buf, sccs_gethost());
-	sprintf(buf+strlen(buf), ":%d/", Opts.port ? Opts.port : BK_PORT);
+	if (header_host) {
+		strcat(buf, header_host);
+		strcat(buf, "/");
+	} else {
+		strcat(buf, sccs_gethost());
+		sprintf(buf+strlen(buf), ":%d/",
+		    Opts.port ? Opts.port : BK_PORT);
+	}
 	if (path) {
 		strcat(buf, path);
 		unless (buf[strlen(buf)-1] == '/') strcat(buf, "/");
