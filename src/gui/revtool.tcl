@@ -903,6 +903,7 @@ proc listRevs {r file {N {}}} \
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
 	if {$N != ""} { set n "-n$N" }
+	set errorCode [list]
 	set d [open "| bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null" "r"]
 
 	#puts "bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null"
