@@ -9157,7 +9157,18 @@ out:
 		s->state |= S_WARNED;
 		OUT;
 	}
-	
+
+#ifdef WIN32
+	/*
+	 * Win32 note: If gfile is in use, we can not delete 
+	 * it when we are done.It is better to bail now
+	 */
+	if (HAS_GFILE(s) &&
+	    !(flags & DELTA_SAVEGFILE) && fileBusy(s->gfile)) {
+		verbose((stderr, "delta: %s is busy\n", s->gfile));
+		OUT;
+	}
+#endif	
 	/*
 	 * OK, checking done, start the delta.
 	 */
