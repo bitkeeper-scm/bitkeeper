@@ -1,35 +1,30 @@
 
-# Override Solaris make.rules
-.SCCS_GET:
-	bk get -q $@
-
-SRC=data/*
-
 # Order is important, this is the order they will show up in helptool.
-SUM=	\
-	All-sum.fmt \
-	General-sum.fmt \
-	Basics-sum.fmt \
-	Repository-sum.fmt \
-	GUI-tools-sum.fmt \
-	File-sum.fmt \
-	Admin-sum.fmt \
-	Licensing-sum.fmt \
-	Compat-sum.fmt 
+SUM=All General Basics Repository GUI-tools File Admin Licensing Compat Utility 
 
-all: helptxt
+all:
+	@make pages
+	@make summaries
 
-roff: man2help.pl ../bk-macros
-	@$(MAKE) links
-	./man2help.pl -debug ../bk-macros bk- $(SRC)
+pages: ../bk-macros
+	@bk get -STq ../man1
+	./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
 
-helptxt: FRC
-	@$(MAKE) roff
-	-@for i in $(SUM); do test -f $$i && cat $$i; done > helptxt
-	-@cat `ls -1 *.fmt | grep -v sum.fmt` >> helptxt
+helptxt2:
+	cat *.fmt > helptxt2
+	@make summaries
+
+summaries: helptxt2 ../bk-macros
+	./help2sum.pl helptxt2
+	for i in $(SUM); \
+	do	cat $$i.fmt; \
+	done > helptxt
+	cat helptxt2 >> helptxt
+	grep '^help://' helptxt | sort > ALL
+	grep '^help://' helptxt | sort -u > UNIQUE
+	cmp -s ALL UNIQUE || { echo Not unique; diff ALL UNIQUE; }
 
 install:
-	@$(MAKE) links
 	@$(MAKE) clean
 	@$(MAKE) all
 	@$(MAKE) cp
@@ -37,15 +32,8 @@ install:
 cp:
 	cp helptxt /usr/libexec/bitkeeper/bkhelp.txt
 
-links:
-	-bk co -q ../man1 
-	/bin/rm -rf data
-	mkdir data
-	cd data && ln -s ../../man1/*.1 .
-
 FRC:
 
 clobber clean:
-	/bin/rm -rf data
-	/bin/rm -f *.fmt *.sum helptxt
+	/bin/rm -f *.fmt *.sum *.roff helptxt* ALL UNIQUE tmp
 	-bk clean
