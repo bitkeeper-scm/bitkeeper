@@ -59,7 +59,7 @@ usage:			system("bk help -s annotate");
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, iflags, proj)) continue;
 		unless (proj) proj = s->proj;
-		unless (s->tree) {
+		unless (HASGRAPH(s)) {
 			sccs_free(s);
 			continue;
 		}

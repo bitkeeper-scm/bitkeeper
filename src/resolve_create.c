@@ -772,7 +772,7 @@ res_loggingok(resolve *rs)
 	 */
 	sccs_close(resync);
 	sccs_close(here);
-	if (resync->tree->date > here->tree->date) {	/* easy */
+	if (sccs_ino(resync)->date > sccs_ino(here)->date) {	/* easy */
 		if (rename(resync->sfile, LOGGING_OK)) {
 			perror(LOGGING_OK);
 			rs->opts->errors = 1;

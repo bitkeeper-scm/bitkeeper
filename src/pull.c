@@ -421,7 +421,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		exit(1);
 	}
 	cset = sccs_init(csetFile, 0, 0);
-	unless (cset && cset->tree) {
+	unless (cset && HASGRAPH(cset)) {
 		fprintf(stderr, "pull: no ChangeSet file found.\n");
 		exit(1);
 	}

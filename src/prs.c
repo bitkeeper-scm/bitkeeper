@@ -63,7 +63,7 @@ usage:			system("bk help -s prs");
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, init_flags, proj)) continue;
 		unless (proj) proj = s->proj;
-		unless (s->tree) goto next;
+		unless (HASGRAPH(s)) goto next;
 		if (cset) {
 			delta	*d = sccs_getrev(s, cset, 0, 0);
 

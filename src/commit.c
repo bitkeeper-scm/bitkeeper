@@ -175,7 +175,7 @@ logs_pending(int ptype, int skipRecentCset, int grace)
 
 	graceInSeconds = grace * DAY; 
 	s = sccs_init(s_cset, 0, 0);
-	assert(s && s->tree);
+	assert(s && HASGRAPH(s));
 	for (d = sccs_top(s); d; d = d->next) {
 		if (d->published && (d->ptype == ptype)) sccs_color(s, d);
 	}
@@ -206,7 +206,7 @@ csetCount()
 	int 	i = 0;
 
 	s = sccs_init(s_cset, 0, 0);
-	assert(s && s->tree);
+	assert(s && HASGRAPH(s));
 
 	for (d = s->table; d; d = d->next) i++;
 	sccs_free(s);
@@ -267,7 +267,7 @@ pending(char *sfile)
 	int	ret;
 
 	unless (s) return (0);
-	unless (s->tree) {
+	unless (HASGRAPH(s)) {
 		sccs_free(s);
 		return (0);
 	}
@@ -808,7 +808,7 @@ config(FILE *f)
 	}
 
  	s = sccs_init(s_cset, INIT_NOCKSUM, NULL);
-	assert(s && s->tree);
+	assert(s && HASGRAPH(s));
 	fprintf(f, "ID:\t");
 	sccs_pdelta(s, sccs_ino(s), f);
 	fputs("\n", f);

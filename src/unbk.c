@@ -26,7 +26,7 @@ usage:		system("bk help unbk");
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, INIT_SAVEPROJ, proj)) continue;
 		unless (proj) proj = s->proj;
-		if (!s->tree) {
+		unless (HASGRAPH(s)) {
 			perror(s->sfile);
 			sccs_free(s);
 			errors |= 1;

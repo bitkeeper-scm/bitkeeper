@@ -39,7 +39,7 @@ usage:		fprintf(stderr, "usage: %s [-ns] [files...]\n", av[0]);
 		s = sccs_init(name, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
 		unless (s) continue;
 		unless (proj) proj = s->proj;
-		unless (s->tree) goto next;
+		unless (HASGRAPH(s)) goto next;
 		unless (s->bitkeeper) {
 			fprintf(stderr, "Not a BitKeeper file: %s\n", s->sfile);
 			goto next;

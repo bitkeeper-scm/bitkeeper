@@ -483,7 +483,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 			    t, name);
 			goto cleanup;
 		}
-		unless (s->tree == tmp) {
+		unless (sccs_ino(s) == tmp) {
 			SHOUT();
 			fprintf(stderr,
 			    "takepatch: root deltas do not match in %s\n",
@@ -942,7 +942,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
 		return -1;
 	}
-	if (!s->tree) {
+	unless (HASGRAPH(s)) {
 		SHOUT();
 		if (!(s->state & S_SFILE)) {
 			fprintf(stderr,

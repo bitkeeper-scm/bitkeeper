@@ -36,7 +36,7 @@ cp(char *from, char *to)
 	assert(from && to);
 	sfile = name2sccs(from);
 	unless (s = sccs_init(sfile, 0, 0)) return (1);
-	unless (s->tree && s->cksumok) return (1);
+	unless (HASGRAPH(s) && s->cksumok) return (1);
 	free(sfile);
 	sfile = name2sccs(to);
 	gfile = sccs2name(sfile);

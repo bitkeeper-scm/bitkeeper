@@ -69,7 +69,7 @@ usage:			system("bk help -s sccslog");
 			continue;
 		}
 		unless (proj) proj = s->proj;
-		unless (s->tree) goto next;
+		unless (HASGRAPH(s)) goto next;
 		if (Aflg) {
 			delta *d = sccs_top(s);
 

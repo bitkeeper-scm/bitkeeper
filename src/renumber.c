@@ -56,7 +56,7 @@ renumber_main(int ac, char **av)
 		s = sccs_init(name, flags, proj);
 		unless (s) continue;
 		unless (proj) proj = s->proj;
-		unless (s->tree) {
+		unless (HASGRAPH(s)) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
 			    av[0], s->sfile);
 			sfileDone();

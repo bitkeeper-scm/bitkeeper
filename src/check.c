@@ -150,7 +150,7 @@ check_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		if (!s->tree) {
+		unless (HASGRAPH(s)) {
 			if (!(s->state & S_SFILE)) {
 				fprintf(stderr, "check: %s doesn't exist.\n",
 				    s->sfile);
@@ -696,7 +696,7 @@ buildKeys()
 		perror("idcache");
 		exit(1);
 	}
-	unless (cset && cset->tree) {
+	unless (cset && HASGRAPH(cset)) {
 		fprintf(stderr, "check: ChangeSet file not inited\n");
 		exit (1);
 	}

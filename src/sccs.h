@@ -226,6 +226,7 @@
 #define	SET(s)		((s)->state & S_SET)
 
 #define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)
+#define	HASGRAPH(s)	((s)->tree)
 
 #define	BITKEEPER(s)	(s->bitkeeper)
 #define	RCS(s)		(s->xflags & X_RCS)

@@ -419,7 +419,7 @@ header(sccs *cset, int diffs)
 # set of deltas contained in the patch.  The rest of the patch, the part\n\
 # that BitKeeper cares about, is below these diffs.\n");
 	}
-	sccs_prsdelta(cset, cset->tree, 0, dspec, stdout);
+	sccs_prsdelta(cset, sccs_ino(cset), 0, dspec, stdout);
 	printf("# User:\t%s\n", sccs_getuser());
 	printf("# Host:\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
 	getRealCwd(pwd, sizeof(pwd));
@@ -822,7 +822,7 @@ doDiff(sccs *sc, char kind)
 	if (!d) return;
 	unless (e->parent) {
 		printf("--- New file ---\n+++ %s\t%s\n",
-		    sc->gfile, sc->tree->sdate);
+		    sc->gfile, sccs_ino(sc)->sdate);
 		sccs_get(sc, 0, 0, 0, 0, PRINT|SILENT, "-");
 		printf("\n");
 		return;
@@ -1205,7 +1205,7 @@ sccs_patch(sccs *s, cset_t *cs)
 				sccs_perfile(s, stdout);
 			}
 			s->rstop = s->rstart = s->tree;
-			sccs_pdelta(s, s->tree, stdout);
+			sccs_pdelta(s, sccs_ino(s), stdout);
 			printf("\n");
 		}
 

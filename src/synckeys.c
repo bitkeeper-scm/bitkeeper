@@ -62,7 +62,7 @@ probekey_main(int ac, char **av)
 	char	s_cset[] = CHANGESET;
 	char	rev[MAXREV+1];
 
-	unless ((s = sccs_init(s_cset, 0, 0)) && s->tree) {
+	unless ((s = sccs_init(s_cset, 0, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "Can't init changeset\n");
 		exit(1);
 	}
@@ -120,7 +120,7 @@ listkey_main(int ac, char **av)
 				return (5);
 		}
 	}
-	unless ((s = sccs_init(s_cset, 0, 0)) && s->tree) {
+	unless ((s = sccs_init(s_cset, 0, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "Can't init changeset\n");
 		return(3); /* cset error */
 	}

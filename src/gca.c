@@ -45,7 +45,7 @@ usage:			system("bk help -s gca");
 		perror(name);
 		exit(1);
 	}
-	if (!s->tree) {
+	unless (HASGRAPH(s)) {
 		perror(name);
 		exit(1);
 	}

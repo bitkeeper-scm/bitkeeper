@@ -72,7 +72,7 @@ usage:			system("bk help -s stripdel");
 		return (1);
 	}
 
-	unless ((s = sccs_init(name, 0, 0)) && s->tree) {
+	unless ((s = sccs_init(name, 0, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "stripdel: can't init %s\n", name);
 		return (1);
 	}
@@ -260,7 +260,7 @@ strip_list(s_opts opts)
 			if (s && doit(s, opts)) goto fail;
 			if (s) sccs_free(s);
 			s = sccs_init(name, SILENT|INIT_SAVEPROJ, proj);
-			unless (s && s->tree) {
+			unless (s && HASGRAPH(s)) {
 				fprintf(stderr,
 					    "stripdel: can't init %s\n", name);
 				goto fail;

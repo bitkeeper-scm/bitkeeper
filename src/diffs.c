@@ -107,7 +107,7 @@ usage:			system("bk help -s diffs");
 		char	*r1 = 0, *r2 = 0;
 
 		s = sccs_init(name, INIT_SAVEPROJ|flags, proj);
-		unless (s && s->tree) {
+		unless (s && HASGRAPH(s)) {
 			errors |= 2;
 			goto next;
 		}

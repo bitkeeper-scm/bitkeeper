@@ -64,7 +64,7 @@ unpull(int force, int quiet)
 	while (--r > t) if (r[-1] == ',') break;
 	assert(r && *r);
 	s = sccs_init(cset, 0, 0);
-	assert(s && s->tree);
+	assert(s && HASGRAPH(s));
 	d = sccs_top(s);
 	unless (streq(d->rev, r)) {
 		fprintf(stderr,

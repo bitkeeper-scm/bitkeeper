@@ -41,7 +41,7 @@ _rmdel_main(int ac, char **av, char *out)
 		return (1);
 	}
 
-	unless ((s = sccs_init(name, flags, 0)) && s->tree) {
+	unless ((s = sccs_init(name, flags, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "rmdel: can't init %s\n", name);
 		return (1);
 	}

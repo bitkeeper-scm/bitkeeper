@@ -333,7 +333,7 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 		return (1);
 	}
 	free(sfile);
-	unless (s->tree) {
+	unless (HASGRAPH(s)) {
 		fprintf(stderr, "No graph in %s?\n", s->gfile);
 		sccs_free(s);
 		return (1);

@@ -22,7 +22,7 @@ cat_main(int ac, char **av)
 			sccs_free(s);
 			continue;
 		}
-		unless (s->tree) {
+		unless (HASGRAPH(s)) {
 			sccs_free(s);
 			continue;
 		}

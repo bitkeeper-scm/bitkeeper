@@ -178,7 +178,7 @@ onefile:	fprintf(stderr,
 				s->gfile = strdup(Gname);
 			}
 		}
-		if (!s->tree) {
+		unless (HASGRAPH(s)) {
 			if (!(s->state & S_SFILE)) {
 				fprintf(stderr, "%s: %s doesn't exist.\n",
 				    prog, s->sfile);

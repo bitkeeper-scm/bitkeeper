@@ -42,7 +42,7 @@ fix_main(int ac,  char **av)
 		}
 		get(p, SILENT|PRINT, fix_file);
 		s = sccs_init(p, SILENT, 0);
-		unless (s && s->tree) {
+		unless (s && HASGRAPH(s)) {
 			fprintf(stderr, "%s does not exists\n", s->sfile);
 			sccs_free(s);
 			return (1);

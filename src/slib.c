@@ -605,7 +605,7 @@ dinsert(sccs *s, int flags, delta *d, int fixDate)
 	delta	*p;
 
 	debug((stderr, "dinsert(%s)", d->rev));
-	if (!s->tree) {
+	unless (s->tree) {
 		s->tree = d;
 		s->lastinsert = d;
 		debug((stderr, " -> ROOT\n"));
@@ -1463,14 +1463,14 @@ getCSetFile(sccs *s)
 
 	unless (s->proj && s->proj->root) return (0);
 	/*
-	 * Use cacched copy if available
+	 * Use cached copy if available
 	 */
 	if (s->proj->csetFile) return (strdup(s->proj->csetFile));
 	sprintf(file, "%s/%s", s->proj->root, CHANGESET);
 	if (exists(file)) {
 		sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
-		assert(sc->tree);
-		sccs_sdelta(sc, sc->tree, file);
+		assert(HASGRAPH(sc));
+		sccs_sdelta(sc, sccs_ino(sc), file);
 		sccs_free(sc);
 		s->proj->csetFile = strdup(file);
 		return (strdup(file));
@@ -1846,7 +1846,7 @@ findrev(sccs *s, char *rev)
 	debug((stderr,
 	    "findrev(%s in %s def=%s)\n",
 	    notnull(rev), s->sfile, defbranch(s)));
-	if (!s->tree) return (0);
+	unless (HASGRAPH(s)) return (0);
 	if (!rev || !*rev) {
 		if (LOGS_ONLY(s)) {
 			/* XXX - works only for 1 LOD trees */
@@ -1962,7 +1962,7 @@ sccs_nivPath(sccs *s)
 	delta	*d;
 
 	assert(s);
-	d = s->tree;
+	d = sccs_ino(s);
 
 	sccs_sdelta(s, d, buf);
 	explodeKey(buf, parts);
@@ -2748,7 +2748,7 @@ sccs_whynot(char *who, sccs *s)
 		fprintf(stderr, "%s: bad checksum in %s\n", who, s->sfile);
 		return;
 	}
-	unless (s->tree) {
+	unless (HASGRAPH(s)) {
 		fprintf(stderr, "%s: couldn't decipher delta table in %s\n",
 		    who, s->sfile);
 		return;
@@ -3586,7 +3586,7 @@ getflags(sccs *s, char *buf)
 	t = gettok(&p);
 	assert(t);
 	if ((f != 's') && (f != 'd') &&
-	    (!s->tree || !(d = rfind(s, t)))) {
+	    (!HASGRAPH(s) || !(d = rfind(s, t)))) {
 		/* ignore it. but keep it. */
 		return (0);
 	}
@@ -4121,7 +4121,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	}
 	mkgraph(s, flags);
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
-	if (s->tree) {
+	if (HASGRAPH(s)) {
 		u32 bits;
 
 		if (misc(s)) {
@@ -4264,7 +4264,7 @@ chk_gmode(sccs *s)
 	char 	*gfile;
 
 	unless (getenv("_BK_GMODE_DEBUG")) return;
-	if (!s || !s->tree) return; /* skip new file */
+	if (!s || !HASGRAPH(s)) return; /* skip new file */
 
 	gfile = sccs2name(s->sfile); /* Don't trust s->gfile, see bk admin -i */
 	gfileExists = !fast_lstat(gfile, &sbuf, 0);
@@ -6455,7 +6455,7 @@ err:		if (i2) free(i2);
 		fprintf(stderr, "get: bad chksum on %s\n", s->sfile);
 		goto err;
 	}
-	unless (s->tree) {
+	unless (HASGRAPH(s)) {
 		fprintf(stderr, "get: no/bad delta tree in %s\n", s->sfile);
 		goto err;
 	}
@@ -6602,7 +6602,7 @@ err:		return (-1);
 		fprintf(stderr, "sccscat: bad chksum on %s\n", s->sfile);
 		goto err;
 	}
-	unless (s->tree) {
+	unless (HASGRAPH(s)) {
 		fprintf(stderr, "sccscat: no/bad delta tree in %s\n", s->sfile);
 		goto err;
 	}
@@ -6750,7 +6750,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	unless (s->tree) {
+	unless (HASGRAPH(s)) {
 		fprintf(stderr,
 		    "getdiffs: no/bad delta tree in %s\n", s->sfile);
 		s->state |= S_WARNED;
@@ -8117,7 +8117,7 @@ sccs_clean(sccs *s, u32 flags)
 	delta	*d;
 
 	/* don't go removing gfiles without s.files */
-	unless (HAS_SFILE(s) && s->tree) {
+	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		verbose((stderr, "%s not under SCCS control\n", s->gfile));
 		return (0);
 	}
@@ -8669,7 +8669,7 @@ out:		sccs_unlock(s, 'z');
 		}
 	}
 
-	if (s->tree) {
+	if (HASGRAPH(s)) {
 		fprintf(stderr, "delta: %s already exists\n", s->sfile);
 		goto out;
 	}
@@ -11594,7 +11594,7 @@ out:
 		return rc;
 	}
 
-	unless (HAS_SFILE(s) && s->tree) {
+	unless (HAS_SFILE(s) && HASGRAPH(s)) {
 		fprintf(stderr, "delta: %s is not an SCCS file\n", s->sfile);
 		s->state |= S_WARNED;
 		OUT;
@@ -14520,7 +14520,7 @@ sccs_findKey(sccs *s, char *key)
 	delta	*e;
 	char	buf[MAXKEY];
 
-	unless (s && s->tree) return (0);
+	unless (s && HASGRAPH(s)) return (0);
 	debug((stderr, "findkey(%s)\n", key));
 	strcpy(buf, key);
 	explodeKey(buf, parts);
@@ -14999,30 +14999,6 @@ out:	if (s) {
 	return (0);
 }
 
-/*
- * Print a unique key for each delta.
- *
- * If we are doing this for resync, all print the list of leaves.
- * Note: if there is only one delta, i.e., 1.1 is also a leaf, I don't
- * print it twice.
- *
- * XXX - probably obsolete
- */
-void
-sccs_ids(sccs *s, u32 flags, FILE *out)
-{
-	delta	*d = s->tree;
-
-	sccs_pdelta(s, sccs_ino(s), out);
-	for (d = s->table; d; d = d->next) {
-		if (!d->kid && (d->type == 'D')) {
-			fprintf(out, " ");
-			sccs_pdelta(s, d, out);
-		}
-	}
-	fprintf(out, "\n");
-}
-
 void
 sccs_color(sccs *s, delta *d)
 {
@@ -15109,7 +15085,7 @@ sccs_stripdel(sccs *s, char *who)
 	int	locked;
 	delta	*e;
 
-	assert(s && s->tree && !HAS_PFILE(s));
+	assert(s && HASGRAPH(s) && !HAS_PFILE(s));
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
 	unless (locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "%s: can't get lock on %s\n", who, s->sfile);

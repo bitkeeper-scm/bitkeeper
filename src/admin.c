@@ -211,7 +211,7 @@ admin_main(int ac, char **av)
 		sc = sccs_init(name, init_flags, proj);
 		unless (sc) { name = sfileNext(); continue; }
 		if (!proj && (init_flags & INIT_SAVEPROJ)) proj = sc->proj;
-		unless (sc->tree) {
+		unless (HASGRAPH(sc)) {
 			fprintf(stderr,
 				"admin: can't read delta table in %s\n",
 			    sc->sfile);

@@ -349,7 +349,7 @@ clean_file(char **fileList)
 
 	EACH(fileList) {
 		s = sccs_init(fileList[i], INIT_NOCKSUM|INIT_SAVEPROJ, proj);
-		assert(s && s->tree);
+		assert(s && HASGRAPH(s));
 		unless(proj) proj = s->proj;
 		if (sccs_clean(s, SILENT)) {
 			printf("Cannot clean %s, Undo aborted\n", fileList[i]);

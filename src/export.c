@@ -123,7 +123,7 @@ usage:			system("bk help -s export");
 		t = name2sccs(buf1);
 		s = sccs_init(t, SILENT, 0);
 		free(t);
-		assert(s && s->tree);
+		assert(s && HASGRAPH(s));
 		q = strchr(p, BK_FS); 
 		assert(q);
 		*q++ = '\0';

@@ -589,7 +589,7 @@ pass2_renames(opts *opts)
 		unless (t[1] == 's') continue;
 
 		unless ((s = sccs_init(path, INIT, opts->resync_proj)) &&
-		    s->tree) {
+		    HASGRAPH(s)) {
 			if (s) sccs_free(s);
 			fprintf(stderr, "Ignoring %s\n", path);
 			continue;
@@ -2410,7 +2410,7 @@ copyAndGet(char *from, char *to, project *proj)
 		}
 	}
 	s = sccs_init(to, INIT_SAVEPROJ, proj);
-	assert(s && s->tree);
+	assert(s && HASGRAPH(s));
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, "-");
 	sccs_free(s);
 	return (0);
@@ -2486,7 +2486,7 @@ csets_in(opts *opts)
 	if (opts->didMerge) {
 		chdir(ROOT2RESYNC);
 		s = sccs_init(s_cset, 0, 0);
-		assert(s && s->tree);
+		assert(s && HASGRAPH(s));
 		d = sccs_top(s);
 		assert(d && d->merge);
 		in = fopen(CSETS_IN, "r");	/* RESYNC one */

@@ -81,7 +81,7 @@ usage:			system("bk help -s findkey");
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, INIT_SAVEPROJ, proj)) continue;
 		unless (proj) proj = s->proj;
-		unless (s->tree) {
+		unless (HASGRAPH(s)) {
 			sccs_free(s);
 			continue;
 		}

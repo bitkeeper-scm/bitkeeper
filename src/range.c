@@ -29,7 +29,7 @@ usage:			fprintf(stderr,
 	    	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) {
 			continue;
 		}
-		if (!s->tree) goto next;
+		unless (HASGRAPH(s)) goto next;
 		RANGE("range", s, expand, !quiet);
 		if (s->state & S_SET) {
 			printf("%s set:", s->gfile);

@@ -44,7 +44,7 @@ get(char *path, int flags, char *output)
 		s = sccs_init(p, SILENT, 0);
 		free(p);
 	}
-	unless (s && s->tree) {
+	unless (s && HASGRAPH(s)) {
 		if (s) sccs_free(s);
 		return (-1);
 	}

@@ -53,7 +53,7 @@ newroot(int single)
 		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
 	}
-	unless ((s = sccs_init(cset, 0, 0)) && s->tree) {
+	unless ((s = sccs_init(cset, 0, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "Cannot init ChangeSet.\n");
 		exit(1);
 	}
@@ -67,13 +67,14 @@ newroot(int single)
 		free(s->tree->random);
 	}
 	s->tree->random = strdup(buf);
-	sccs_sdelta(s, s->tree, key);
+	sccs_sdelta(s, sccs_ino(s), key);
 	sccs_newchksum(s);
 	sccs_free(s);
 	f = popen("bk sfiles", "r");
 	while (fnext(buf, f)) {
 		chop(buf);
-		unless ((s = sccs_init(buf, INIT_SAVEPROJ, proj)) && s->tree) {
+		s = sccs_init(buf, INIT_SAVEPROJ, proj);
+		unless (s && HASGRAPH(s)) {
 			rc = 1;
 			if (s) sccs_free(s);
 			continue;

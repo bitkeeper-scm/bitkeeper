@@ -95,7 +95,7 @@ list(char *gfile)
 	 * Find the full list of files we need work through - which is the
 	 * specified file plus any others which have the same root path.
 	 */
-	if ((s = sccs_init(sfile, 0, 0)) && s->tree) {
+	if ((s = sccs_init(sfile, 0, 0)) && HASGRAPH(s)) {
 		sccs_sdelta(s, sccs_ino(s), key);
 		mdbm_store_str(vals, key, sfile, 0);
 		sccs_free(s);
@@ -156,7 +156,7 @@ resync_list(char *gfile)
 		}
 
 		sprintf(cmd, "%s/%s", RESYNC2ROOT, kv.val.dptr);
-		s = sccs_init(cmd, 0, 0); assert(s && s->tree);
+		s = sccs_init(cmd, 0, 0); assert(s && HASGRAPH(s));
 		/* reset the proj->root to RESYNC root */
 		free(s->proj->root);
 		s->proj->root = strdup(".");
@@ -199,7 +199,7 @@ done:		mdbm_close(vals);
 	if (i == 1) {
 		kv = mdbm_first(vals);
 		if ((s = sccs_init(kv.val.dptr, 0, 0)) &&
-		    s->tree && !hasCsetDerivedKey(s)) {
+		    HASGRAPH(s) && !hasCsetDerivedKey(s)) {
 			sccs_free(s);
 			goto done;
 		}
