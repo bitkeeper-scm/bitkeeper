@@ -1153,19 +1153,13 @@ find_wish(void)
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
 	if ((path = getenv("BK_WISH")) && executable(path)) return (path);
 
-	path = aprintf("%s/tk/bin/bkgui", bin);
+	path = aprintf("%s/tcltk/bin/bkgui", bin);
 	if (executable(path)) {
-		safe_putenv("TCL_LIBRARY=%s/tk/lib/tcl8.4", bin);
-		safe_putenv("TK_LIBRARY=%s/tk/lib/tk8.4", bin);
+		safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
+		safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);
 		return (path);
 	}
 	free(path);
-	path = "/build/.wish/tk/bin/bkgui";
-	if (executable(path)) {
-		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.4");
-		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.4");
-		return (path);
-	}
 	fprintf(stderr, "Cannot find the graphical interpreter\n");
 	exit(1);
 }
