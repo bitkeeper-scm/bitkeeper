@@ -39,21 +39,13 @@ cygwinPath()
 private char *
 tclPath()
 {
-	static	char	*tclPath = NULL;
-	char	buf[MAXPATH], tmp[MAXPATH];
-	int	len = MAXPATH;
-#define TCL_KEY "Software\\Scriptics\\Tcl\\8.3"
+	static	char	*path;
+	extern	char	*bin;
 
-	if (tclPath) return (tclPath);
-	if (!getReg(HKEY_LOCAL_MACHINE, TCL_KEY, "Root", buf, &len)) {
-		return ("");
-	}
-	GetShortPathName(buf, tmp, MAXPATH);
-	localName2bkName(tmp, tmp);
-	tclPath = aprintf("%s/bin", tmp);
-	return (tclPath);
+	if (path) return (path);
+	path = aprintf("%s/tk/bin", bin);
+	return (path);
 }
-
 
 private int
 insertTclCygwinPath(char *bkpath, char *pathList)

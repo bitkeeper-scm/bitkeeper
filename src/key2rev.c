@@ -25,7 +25,7 @@ key2rev_main(int ac, char **av)
 		return (1);
 	}
 	name = name2sccs(av[1]);
-	unless (s = sccs_init(name, 0, 0)) {
+	unless (s = sccs_init(name, 0)) {
 		perror(name);
 		return (1);
 	}

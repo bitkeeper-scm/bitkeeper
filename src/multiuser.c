@@ -65,18 +65,17 @@ newroot(int single, char *ranbits)
 {
 	sccs	*s;
 	delta	*d;
-	project	*proj = 0;
 	int	rc = 0;
 	char	cset[] = CHANGESET;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 	FILE	*f;
 
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
 	}
-	unless ((s = sccs_init(cset, 0, 0)) && HASGRAPH(s)) {
+	unless ((s = sccs_init(cset, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "Cannot init ChangeSet.\n");
 		exit(1);
 	}
@@ -109,13 +108,12 @@ newroot(int single, char *ranbits)
 	f = popen("bk sfiles", "r");
 	while (fnext(buf, f)) {
 		chop(buf);
-		s = sccs_init(buf, INIT_SAVEPROJ, proj);
+		s = sccs_init(buf, 0);
 		unless (s && HASGRAPH(s)) {
 			rc = 1;
 			if (s) sccs_free(s);
 			continue;
 		}
-		unless (proj) proj = s->proj;
 		free(s->tree->csetFile);
 		s->tree->csetFile = strdup(key);
 		for (d = s->table; d && single; d = d->next) {
@@ -126,10 +124,15 @@ newroot(int single, char *ranbits)
 	}
 	pclose(f);
 	unless (single) return (rc);
-	system("bk get -egq BitKeeper/etc/config; "
-	    "bk get -qkp BitKeeper/etc/config | "
-	    "grep -v '^single_' > BitKeeper/etc/config;"
-	    "bk delta -qy'Convert to multi user' BitKeeper/etc/config");
-	system("bk commit -y'Convert to multi user'");
+	if (system("bk get -egq BitKeeper/etc/config") ||
+	    system("bk get -qkp BitKeeper/etc/config | "
+		"grep -v '^single_' > BitKeeper/etc/config") ||
+	    system("bk delta -qy'Convert to multi user' "
+		"BitKeeper/etc/config") ||
+	    system("bk commit -y'Convert to multi user'")) {
+		fprintf(stderr,
+		    "multiuser: editing BitKeeper/etc/config failed\n");
+		rc = 1;
+	}
 	return (rc);
 }

@@ -17,10 +17,13 @@ private void
 trigger_env(char *prefix, char *event, char *what)
 {
 	char	buf[100];
-	char	*repoid;
+	char	*repoid, *lic;
 
 	if (streq("BK", prefix)) {
 		put_trigger_env("BK", "SIDE", "client");
+		lic = licenses_accepted();
+		safe_putenv("BK_ACCEPTED=%s", lic);
+		free(lic);
 	} else {
 		put_trigger_env("BK", "SIDE", "server");
 		put_trigger_env("BK", "HOST", getenv("_BK_HOST"));
@@ -36,6 +39,9 @@ trigger_env(char *prefix, char *event, char *what)
 	sprintf(buf, "%d", getlevel());
 	put_trigger_env(prefix, "LEVEL", buf);
 	if (repoid = repo_id()) put_trigger_env(prefix, "REPO_ID", repoid);
+	put_trigger_env(prefix, "REALUSER", sccs_realuser());
+	put_trigger_env(prefix, "REALHOST", sccs_realhost());
+	put_trigger_env(prefix, "PLATFORM", bk_platform);
 }
 
 
@@ -60,9 +66,7 @@ trigger(char *cmd, char *when)
 	 */
 	if (getenv("BK_TRIGGER_PATH")) {
 		t = strdup("/etc");
-	} else if (bk_proj && bk_proj->root) {
-		t = strdup(bk_proj->root);
-	} else unless (t = sccs_root(0)) {
+	} else unless (t = proj_root(0)) {
 		ttyprintf("No root for triggers!\n");
 		return (0);
 	}
@@ -71,7 +75,6 @@ trigger(char *cmd, char *when)
 	} else {
 		strcpy(triggerDir, "BitKeeper/triggers");
 	}
-	free(t);
 
 	if (strneq(cmd, "remote pull", 11)) {
 		what = "outgoing";

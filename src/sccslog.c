@@ -40,7 +40,6 @@ private	struct {
 	u32	newline:1;	/* -n: like prs -n */
 	u32	basenames:1;	/* -p: do basenames */
 	u32	sort:1;		/* -s: time sorted pathname|rev output */
-	char	*dbuf;		/* where to put the formatted dspec */
 } opts;
 
 int
@@ -48,8 +47,7 @@ sccslog_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
-	int	save, c, flags = INIT_SAVEPROJ|SILENT;
-	project	*proj = 0;
+	int	save, c, flags = SILENT;
 	RANGE_DECL;
 
 	setmode(1, _O_TEXT);
@@ -81,11 +79,10 @@ usage:			system("bk help -s sccslog");
 	}
 
 	for (name = sfileFirst("sccslog", &av[optind], 0); name; ) {
-		unless (s = sccs_init(name, INIT_NOCKSUM|flags, proj)) {
+		unless (s = sccs_init(name, INIT_NOCKSUM|flags)) {
 			name = sfileNext();
 			continue;
 		}
-		unless (proj) proj = s->proj;
 		unless (HASGRAPH(s)) goto next;
 		do {
 			if (opts.uncommitted) {
@@ -108,11 +105,6 @@ usage:			system("bk help -s sccslog");
 next:		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
-	if (opts.dbuf) {
-		free(opts.dbuf);
-		opts.dbuf = 0;
-	}
 	verbose((stderr, "Total %d deltas\n", n));
 	if (n) {
 		pid_t	pid;
@@ -318,11 +310,10 @@ printlog(FILE *f)
 private void
 do_dspec(sccs *s, delta *d)
 {
-	unless (opts.dbuf) opts.dbuf = malloc(16<<10);
-	opts.dbuf[0] = 0;
-	sccs_prsbuf(s, d, PRS_ALL, opts.dspec, opts.dbuf);
+	char	**p = addLine(0, sccs_prsbuf(s, d, PRS_ALL, opts.dspec));
+
 	freeLines(d->comments, free);
-	d->comments = addLine(0, strdup(opts.dbuf));
+	d->comments = p;
 }
 
 /*

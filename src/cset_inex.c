@@ -298,7 +298,7 @@ doit(int flags, char *file, char *op, char *revs)
 	flags |= GET_EDIT;
 	sfile = name2sccs(file);
 	assert(sfile);
-	unless (s = sccs_init(sfile, 0, 0)) {
+	unless (s = sccs_init(sfile, 0)) {
 		fprintf(stderr, "cset: could not init %s\n", sfile);
 		free(sfile);
 		return (1);

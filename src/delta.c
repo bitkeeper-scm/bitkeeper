@@ -45,9 +45,7 @@ hasTriggers(void)
 	int	ret;
 
 	if (getenv("_IN_DELTA")) return (0);
-	if (bk_proj && bk_proj->root) {
-		t = strdup(bk_proj->root);
-	} else unless (t = sccs_root(0)) {
+	unless (t = proj_root(0)) {
 		return (0);
 	}
 	unless (streq(t, ".")) {
@@ -55,7 +53,6 @@ hasTriggers(void)
 	} else {
 		dir = strdup("BitKeeper/triggers");
 	}
-	free(t);
 	lines = getTriggers(dir, "pre-delta");
 	ret = lines != 0;
 	freeLines(lines, free);
@@ -102,7 +99,7 @@ int
 delta_main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = INIT_SAVEPROJ;
+	int	iflags = 0;
 	int	dflags = 0;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
@@ -118,7 +115,6 @@ delta_main(int ac, char **av)
 	MMAP	*init = 0;
 	pfile	pf;
 	int	dash, errors = 0, fire;
-	project	*proj = 0;
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -136,6 +132,7 @@ delta_main(int ac, char **av)
 	    streq(name, "enter") || streq(name, "add")) {
 		dflags |= NEWFILE;
 		sflags |= SF_NODIREXPAND;
+		sflags &= ~SF_WRITE_OK;
 	}
 
 	if (ac > 1 && streq("--help", av[1])) {
@@ -145,7 +142,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "1abcCdD:E|fg;GhI;ilm|M;npPqRrsuy|YZ|")) != -1) {
+	    getopt(ac, av, "1abcCdD:E|fg;GhI;ilm|M;npPqRrsuy|Y|Z|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -162,6 +159,7 @@ comment:		comments_save(optarg);
 		    case 'f': dflags |= DELTA_FORCE; break;	/* doc 2.0 ci */
 		    case 'i': dflags |= NEWFILE; 		/* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
+			      sflags &= ~SF_WRITE_OK;
 			      break;
 		    case 'l': ckopts = "edit";			/* doc 2.0 */ 
 			      checkout = 1;
@@ -181,7 +179,7 @@ comment:		comments_save(optarg);
 			    goto usage;
 
 		    /* LM flags */
-		    case '1': iflags |= INIT_ONEROOT; break;	/* undoc 2.0 */
+		    case '1': break;			/* undoc/ignored 2.0 */
 		    case 'a':					/* doc 2.0 */
 		    	dflags |= DELTA_AUTO;
 			dflags &= ~DELTA_FORCE;
@@ -206,7 +204,10 @@ comment:		comments_save(optarg);
 		    case 'M': mode = optarg; break;		/* doc 2.0 */
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
-		    case 'Y': dflags |= DELTA_DONTASK; break; 	/* doc 2.0 */
+		    case 'Y':
+			if (optarg) comments_savefile(optarg);
+			dflags |= DELTA_DONTASK;
+			break; 	/* doc 2.0 */
 		    case 'Z': 					/* doc 2.0 */
 			compp = optarg ? optarg : "gzip"; break;
 		    case 'E': encp = optarg; break; 		/* doc 2.0 */
@@ -227,6 +228,9 @@ usage:			sprintf(buf, "bk help -s %s", name);
 	}
 
 	if (dflags & NEWFILE) {
+		if (bk_mode() != BK_PRO) {
+			compp = "gzip";
+		}
 		unless (ignorePreference || compp) { 
 			compp  = user_preference("compression");
 			unless (compp && *compp) compp = NULL;
@@ -257,7 +261,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 
 	/* force them to do something sane */
 	if (!comments_got() &&
-	    dash && name && !(dflags & NEWFILE) && sfileNext()) {
+	    dash && name && !(dflags & (NEWFILE|DELTA_CFILE)) && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified without a checkin comment\n", av[0]);
 		goto usage;
@@ -295,13 +299,12 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			unless (d = comments_get(0)) goto usage;
 		}
 		if (mode) d = sccs_parseArg(d, 'O', mode, 0);
-		unless (s = sccs_init(name, iflags, proj)) {
+		unless (s = sccs_init(name, iflags)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();
 			errors |= 1;
 			continue;
 		}
-		unless (proj) proj = s->proj;
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;
@@ -375,7 +378,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			sccs_sdelta(s, d, key);
 			sccs_free(s);
 			strip_danglers(name, dflags);
-			s = sccs_init(name, iflags, proj);
+			s = sccs_init(name, iflags);
 			d = sccs_findKey(s, key);
 			assert(d);
 			nrev = d->rev;
@@ -424,7 +427,6 @@ next:		if (init) mclose(init);
 	}
 	sfileDone();
 	comments_done();
-	if (proj) proj_free(proj);
 	return (errors);
 }
 

@@ -330,7 +330,7 @@ that limit and you will need to purchase a commercial license to make any
 more changesets.
 $
 #eval-warn
-Warning: Evaluation licenses have a limited number changesets. Your
+Warning: Evaluation licenses have a limited number of changesets. Your
 changeset quota is now down to #BKARG# which is less than 50 changesets
 away from the limit.  You will not be able to commit any more changesets
 when the quota reaches zero.  Please upgrade to a commercial license.
@@ -762,55 +762,65 @@ $
 #bitkeeper.init
 #!/bin/sh
 #
-# bitkeeper    Start/stop the bitkeeper daemon.
-#         @(#)bitkeeper.init 1.1 Copyright (c) 2000 Larry McVoy
+# chkconfig: 2345 24 84
+# description: BitKeeper server for work
 
 # Source networking configuration.
 if [ -f /etc/sysconfig/network ]
-then . /etc/sysconfig/network
+then	. /etc/sysconfig/network
 
-     # Check that networking is up.
-     [ ${NETWORKING} = "no" ] && exit 0
+	# Check that networking is up.
+	[ ${NETWORKING} = "no" ] && exit 0
 fi
 [ -x /usr/bin/bk ] || exit 0
 VAR=/var/bitkeeper
 
 case "$1" in
-    start_msg) echo "Start BitKeeper daemons"
-          ;;
-    stop_msg)  echo "Stop BitKeeper daemons"
-          ;;
-    start)     cd $VAR || exit 1
-          test -f repositories || {
-               echo Nothing advertised
-               exit 0
-          }
-          while read dir opts
-          do   (
-               cd $dir || exit 1
-               F=`basename $dir`
-               bk bkd $opts -l$VAR/log.$F -P$VAR/pid.$F
-               echo Started bkd $opts in $dir
-               )
-          done < repositories
-          ;;
+    start_msg)	echo "Start BitKeeper daemons"
+		;;
+    stop_msg)	echo "Stop BitKeeper daemons"
+		;;
+    restart)	$0 stop
+		$0 start
+		;;
+    start)	cd $VAR || exit 1
+		test -f repositories || {
+			echo Nothing advertised
+			exit 0
+		}
+		while read dir opts
+		do	(
+			cd $dir || exit 1
+			F=`basename $dir`
+			CMD="bk bkd -d $opts -l$VAR/log.$F -P$VAR/pid.$F"
+			eval $CMD 2>> $VAR/errors
+			echo Started $CMD in $dir
+			)
+		done < repositories
+	    	;;
 
-    stop)
-          cd $VAR || exit 1
-          echo Shutting down BitKeeper daemons
-          for i in pid.*
-          do   kill -HUP `cat $i`
-               rm $i
-          done
-          ;;
+    stop)	
+		cd $VAR || exit 1
+		echo Shutting down BitKeeper daemons
+		for i in pid.*
+		do	kill `cat $i`
+			rm $i
+		done
+		;;
 
-    status)    ps -axf | grep bkd
-          ;;
+    status)	cd $VAR || exit 1
+		for i in pid.*
+		do	echo This pid should be running: `cat $i`
+		done
+		ps -axf | grep bkd
+		
+		;;
 
-    *)         echo "Usage: bitkeeper {start|stop}"
-          exit 1
-          ;;
+    *)		echo "Usage: bitkeeper {start|stop}"
+    		exit 1
+		;;
 esac
+
 exit 0
 $
 #bkl_new_preamble
@@ -874,4 +884,31 @@ When validating the license key signature for the current repository
 an error occured.  The current operation cannot be completed.
 The error was:
    #BKARG#
+$
+#lease-nonet
+Unable to obtain permission to use this version of BitKeeper (#BKARG#) 
+from lease.openlogging.org.  That server issues certificates to use BK
+for openlogging for 30 days at a time.  The bk binary needs to be able
+to make a http connection to lease.openlogging.org at least once a month.
+
+Look at 'bk help url' if you need to tell 'bk' about a proxy.
+$
+#lease-unsupported-version
+The version of BK that you are currently using (#BKARG#) is no longer
+supported by Bitmover.  Since you are using BitKeeper with in 
+openlogging mode, you must upgrade to the current version before
+continuing.
+Goto http://www.bitkeeper.com for the latest version.
+$
+#lease-other-error
+BitKeeper was unable to validate this version of BitKeeper.
+The error code returned from BitMover was:
+	#BKARG#
+Contact support@bitmover.com for assistance.
+$
+#lease-timesync
+Unable to obtain a permission to use this version of BitKeeper from
+lease.openlogging.org because the local clock on this computer is off
+by more than 24 hours.  Please verify the time on your computer and
+that the timezone is set correctly and try again.
 $

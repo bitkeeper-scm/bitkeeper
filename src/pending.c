@@ -21,7 +21,7 @@ $each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\n";
 		}
 	}
 	if (av[optind]) chdir(av[optind]);
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "pending: cannot find project root\n");
 		exit(1);
 	}

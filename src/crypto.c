@@ -29,6 +29,8 @@ private void	loadkey(char *file, rsa_key *key);
  *    # normally public key is used for this
  * -t
  *    # run internal test vectors on the library
+ * -h <data> [<key>]
+ *    # hash data with an optional key
  */
 
 private void
@@ -43,8 +45,9 @@ crypto_main(int ac, char **av)
 {
 	int	c;
 	int	mode = 0;
-	int	args;
+	int	args, optargs;
 	int	ret = 1;
+	char	*hash;
 	rsa_key	key;
 
 	if (ac > 1 && streq("--help", av[1])) {
@@ -52,9 +55,9 @@ crypto_main(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "istv")) != -1) {
+	while ((c = getopt(ac, av, "histv")) != -1) {
 		switch (c) {
-		    case 'i': case 's': case 't': case 'v':
+		    case 'h': case 'i': case 's': case 't': case 'v':
 			if (mode) usage();
 			mode = c;
 			break;
@@ -62,13 +65,15 @@ crypto_main(int ac, char **av)
 			usage();
 		}
 	}
+	optargs = 0;
 	switch (mode) {
 	    case 'i': args = 3; break;
 	    case 'v': args = 2; break;
 	    default: args = 1; break;
 	    case 't': args = 0; break;
+	    case 'h': args = 1; optargs = 1; break;
 	}
-	if (ac - optind != args) {
+	if (ac - optind < args || ac - optind > args + optargs) {
 		fprintf(stderr, "ERROR: wrong number of args!\n");
 		usage();
 	}
@@ -95,6 +100,15 @@ crypto_main(int ac, char **av)
 		break;
 	    case 't':
 		ret = cryptotest();
+		break;
+	    case 'h':
+		if (av[optind+1]) {
+			hash = secure_hashstr(av[optind], av[optind+1]);
+		} else {
+			hash = hashstr(av[optind]);
+		}
+		puts(hash);
+		free(hash);
 		break;
 	    default:
 		usage();
@@ -410,4 +424,53 @@ base64_main(int ac, char **av)
 		}
 	}
 	return (0);
+}
+
+char *
+secure_hashstr(char *str, char *key)
+{
+	int	hash = register_hash(&md5_desc);
+	unsigned long md5len, b64len;
+	char	*p;
+	char	md5[32];
+	char	b64[32];
+
+	if (hmac_memory(hash, key, strlen(key),
+		str, strlen(str), md5)) return (0);
+	b64len = sizeof(b64);
+	md5len = hash_descriptor[hash].hashsize;
+	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
+	for (p = b64; *p; p++) {
+		if (*p == '/') *p = '-';	/* dash */
+		if (*p == '+') *p = '_';	/* underscore */
+		if (*p == '=') {
+			*p = 0;
+			break;
+		}
+	}
+	return (strdup(b64));
+}
+
+char *
+hashstr(char *str)
+{
+	int	hash = register_hash(&md5_desc);
+	unsigned long md5len, b64len;
+	char	*p;
+	char	md5[32];
+	char	b64[32];
+
+	if (hash_memory(hash, str, strlen(str), md5)) return (0);
+	b64len = sizeof(b64);
+	md5len = hash_descriptor[hash].hashsize;
+	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
+	for (p = b64; *p; p++) {
+		if (*p == '/') *p = '-';	/* dash */
+		if (*p == '+') *p = '_';	/* underscore */
+		if (*p == '=') {
+			*p = 0;
+			break;
+		}
+	}
+	return (strdup(b64));
 }

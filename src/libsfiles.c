@@ -189,14 +189,14 @@ sfileFirst(char *cmd, char **Av, int Flags)
 				return (0);
 			}
 			concat_path(prefix, Av[0], "SCCS");
-			unless (d = opendir(sPath(prefix, 1))) {
+			unless (d = opendir(prefix)) {
 				/*
 				 * trim off the "SCCS" part
 				 * and try again
 				 */
 				prefix[strlen(prefix) - 4] = 0;
-				unless (d = opendir(sPath(prefix, 1))) {
-					perror(sPath(prefix, 1));
+				unless (d = opendir(prefix)) {
+					perror(prefix);
 				}
 			}
 			return (sfileNext());
@@ -212,7 +212,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	if (flags & SF_NODIREXPAND) return (0);
 	if (!d) {
 		strcpy(prefix, "SCCS");
-		d = opendir(sPath("SCCS", 1));
+		d = opendir("SCCS");
 	}
 	if (!d) {
 		/*
@@ -220,7 +220,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 		 * and try again
 		 */
 		prefix[0] = 0;
-		d = opendir(sPath(".", 1));
+		d = opendir(".");
 	}
 	return (sfileNext());
 }
@@ -257,7 +257,7 @@ oksccs(char *sfile, int flags, int complain)
 	ok = fast_lstat(g, &sbuf, 0) == 0;
 	if ((flags&SF_GFILE) && !ok) {
 		if (complain) {
-			unless (exists(sPath(sfile,0))) {
+			unless (exists(sfile)) {
 				fprintf(stderr,
 				    "%s: neither '%s' nor '%s' exists.\n",
 				    prog, g, sfile);
@@ -269,7 +269,7 @@ oksccs(char *sfile, int flags, int complain)
 		free(g);
 		return (0);
 	}
-	if ((flags&SF_WRITE_OK) && (!ok || !(sbuf.st_mode & 0600))) {
+	if ((flags&SF_WRITE_OK) && (!ok || !(sbuf.st_mode & 0200))) {
 		if (complain)
 			fprintf(stderr,
 			    "%s: %s: no write permission\n", prog, g);

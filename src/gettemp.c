@@ -11,7 +11,6 @@ private void
 setup_tmpdirs(void)
 {
 	int	i;
-	char	*root;
 	char	*envtmp;
 
 	/* Setup search path for where to put tempfiles */
@@ -21,24 +20,16 @@ setup_tmpdirs(void)
 	/*
 	 * Make BKTMP use absolute pathname
 	 */
-	root = sccs_root(0);
-	if (root) {
-		char	olddir[MAXPATH];
-		char	newdir[MAXPATH];
+	if (proj_root(0)) {
 		char	*tmp;
 
-		getcwd(olddir, sizeof(olddir));
-		chdir(root);
-		free(root);
-		mkdirp(BKTMP);
-		getcwd(newdir, sizeof(newdir));
-		tmp = aprintf("%s/" BKTMP, newdir);
+		tmp = aprintf("%s/" BKTMP, proj_root(0));
+		mkdirp(tmp);
 		/* Don't allow pathnames with shell characters */
 		if (strcspn(tmp, " \t\n\r\'\"><|`$&;[]*()\\") == strlen(tmp)) {
 			tmpdirs[tmpdirs_len++] = (strdup)(tmp);
 		}
 		free(tmp);
-		chdir(olddir);
 	}
 
 	/* /tmp on UNIX */

@@ -7,7 +7,7 @@
 
 #ifdef WIN32
 char *
-getHomeDir()
+getHomeDir(void)
 {
         char	*homeDir, *t;
 	char	home_buf[MAXPATH], tmp[MAXPATH];
@@ -27,7 +27,7 @@ getHomeDir()
 }
 #else
 char *
-getHomeDir()
+getHomeDir(void)
 {
         char *homeDir;
 
@@ -36,3 +36,34 @@ getHomeDir()
         return homeDir;
 }
 #endif
+
+char *
+getBkDir(void)
+{
+	static	char	*dir;
+	char	*t;
+	char	*bkdir =
+#ifdef WIN32
+		/* explorer disklikes .files */
+		"_bk"
+#else
+		".bk"
+#endif
+		;
+
+	if (dir) return (dir);
+
+	if (t = getHomeDir()) {
+		dir = aprintf("%s/%s", t, bkdir);
+		free(t);
+		unless (mkdir(dir, 0777)) return (dir);
+		free(dir);
+	}
+	dir = aprintf("%s/%s/%s", TMP_PATH, bkdir, sccs_realuser());
+	if (mkdirp(dir)) {
+		perror("mkdirp");
+		fprintf(stderr, "Failed to create %s\n", dir);
+		exit(1);
+	}
+	return (dir);
+}

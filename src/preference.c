@@ -17,7 +17,7 @@ preference_main(int ac, char **av)
 	}
 	if (ac != 1) return (1);
 	user_preference("xxx");
-	unless (bk_proj && (db = bk_proj->config)) return (1);
+	unless (db = proj_config(0)) return (1);
 	for (kv = mdbm_first(db); kv.key.dsize; kv = mdbm_next(db)) {
 		l = aprintf("%s: %s", kv.key.dptr, kv.val.dptr);
 		list = addLine(list, l);
@@ -37,11 +37,8 @@ user_preference(char *what)
 	char	*p;
 	MDBM	*db;
 
-	unless (bk_proj) return "";
-	db = proj_config(bk_proj);
-	unless (db) return ("");
-	p = mdbm_fetch_str(db, what);
-	unless (p) p = "";
+	unless (db = proj_config(0)) return ("");
+	unless (p = mdbm_fetch_str(db, what)) p = "";
 	return (p);
 }
 

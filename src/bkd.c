@@ -114,6 +114,7 @@ bkd_main(int ac, char **av)
 		/* NOTREACHED */
 	} else {
 		ids();
+		if (Opts.logfile) Opts.log = fopen(Opts.logfile, "a");
 		if (Opts.alarm) {
 			signal(SIGALRM, exit);
 			alarm(Opts.alarm);
@@ -154,8 +155,8 @@ get_byte_count()
 	off_t	byte_count = 0;
 	FILE *f = 0;
 
-	unless (bk_proj && bk_proj->root) return (0);
-	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	unless (proj_root(0)) return (0);
+	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
 	f = fopen(buf, "r");
 	if (f && fgets(buf, sizeof(buf), f)) {
 		if (strlen(buf) > 11) {
@@ -176,8 +177,8 @@ save_byte_count(unsigned int byte_count)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	unless (bk_proj && bk_proj->root) return;
-	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	unless (proj_root(0)) return;
+	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
 	f = fopen(buf, "w");
 	if (f) {
 		fprintf(f, "%u\n", byte_count);
@@ -192,7 +193,9 @@ do_cmds()
 	char	**av;
 	int	i, ret, httpMode;
 	int	debug = getenv("BK_DEBUG") != 0;
+	char	*peer = 0;
 
+	if (issock(1)) peer = peeraddr(1);
 	httpMode = Opts.http_hdr_out;
 	while (getav(&ac, &av, &httpMode)) {
 		if (debug) {
@@ -203,11 +206,7 @@ do_cmds()
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.log) log_cmd(i, ac, av);
-			if (!bk_proj ||
-			    !bk_proj->root || !isdir(bk_proj->root)) {
-				if (bk_proj) proj_free(bk_proj);
-				bk_proj = proj_init(0);
-			}
+			proj_reset(0); /* XXX needed? */
 
 			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
 			cmdlog_start(av, httpMode);
@@ -216,6 +215,11 @@ do_cmds()
 			 * Do the real work
 			 */
 			ret = cmds[i].cmd(ac, av);
+			if (peer) {
+				/* first command records peername */
+				cmdlog_addnote("peer", peer);
+				peer = 0;
+			}
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
 			if (cmdlog_end(ret) & CMD_FAST_EXIT) {

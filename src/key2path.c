@@ -12,7 +12,7 @@ key2path_main(int ac, char **av)
 	char	key[MAXKEY];
 	MDBM	*idDB;
 
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
 	}

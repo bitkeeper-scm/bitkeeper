@@ -21,14 +21,13 @@
 #define	INIT_avail	0x10000000	/* OLD: map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define	INIT_FIXDTIME	0x40000000	/* use g file mod time as delat time */
-#define	INIT_SAVEPROJ	0x80000000	/* project is loaned, do not free it */
+#define	INIT_SHUTUP	0x80000000	/* pass ADMIN_SHUTUP to checkrevs() */
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
 #define	INIT_HAScFILE	0x02000000	/* has c.file */
 #define	INIT_HASgFILE	0x04000000	/* has g.file */
 #define	INIT_HASpFILE	0x08000000	/* has p.file */
 #define	INIT_HASxFILE	0x00100000	/* has x.file */
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
-#define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
 
@@ -136,7 +135,6 @@
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
-#define	S_SAVEPROJ	0x00010000	/* do not free the project struct */
 #define	S_FORCELOGGING	0x00020000	/* Yuck - force it to logging */
 #define S_CONFIG	0x00040000	/* this is a config file */
 
@@ -314,11 +312,13 @@
 #define	OPENLOG_BACKUP	"http://config2.openlogging.org:80////LOG_ROOT///"
 #define	OPENLOG_HOST	"config.openlogging.org"
 #define	OPENLOG_HOST1   "config2.openlogging.org"
+#define	OPENLOG_LEASE	"http://lease.openlogging.org:80"
 #define	BK_WEBMAIL_URL	"http://webmail.bitkeeper.com:80"
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	HOSTME_CGI	"hostme_cgi"
 #define	WEB_MAIL_CGI	"web_mail"
+#define	LEASE_CGI	"bk_lease"
 #define	BK_CONFIG_URL	"http://config.bitkeeper.com:80"
 #define	BK_CONFIG_BCKUP	"http://config2.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
@@ -488,27 +488,8 @@ typedef struct serial {
 #define	S_EXCL	2
 #define	S_PAR	4
 
-/*
- * Rap on project roots.  In BitKeeper, lots of stuff wants to know
- * where the project root is relative to where we are.  We need to
- * use the ->root field for this, remembering to null it whenever
- * we change directories.
- *
- * We also need to wack commands that work in loops to reuse the root
- * pointer across sccs_init()s.  This means that loops should extract
- * the root pointer from the sccs pointer, null the sccs pointer, and
- * then put the root pointer into the next sccs pointer.  This means that
- * sccs_init() should *NOT* go find that root directory, it should do it
- * lazily in sccs_root().  That gives us a chance to pass it in.
- */
-typedef struct {
-	int	flags;		/* PROJ_* */
-	char	*root;		/* to the root of the project */
-	char	*csetFile;	/* Root key of ChangeSet file */
-	MDBM	*config;	/* config DB */
-} project;
+#include "proj.h"
 
-extern	project	*bk_proj;	/* bk.c sets this up */
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;
 
@@ -790,10 +771,10 @@ int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
-int	sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec, char *buf);
+char	*sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
-sccs	*sccs_init(char *filename, u32 flags, project *proj);
+sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
 int	sccs_open(sccs *s);
@@ -801,7 +782,7 @@ void	sccs_fitCounters(char *buf, int a, int d, int s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
-sccs	*sccs_csetInit(u32 flags, project *proj);
+sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
 int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
@@ -818,10 +799,8 @@ int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 void	sccs_pdelta(sccs *s, delta *d, FILE *out);
-char	*sccs_root(sccs *s);
-int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
-int	sccs_keyunlink(char *key, project *proj, MDBM *idDB, MDBM *dirs);
+int	sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
@@ -896,12 +875,11 @@ void	sccs_mkroot(char *root);
 char	*sccs_nivPath(sccs *s);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
-char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(int quiet);
 int	sccs_meta(sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_resolveFiles(sccs *s);
-sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
+sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
@@ -932,6 +910,7 @@ size_t	msize(MMAP *m);
 MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
 int 	licenseAccept(int prompt);
+char	*licenses_accepted(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
@@ -954,7 +933,7 @@ int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName, int isDir, int withsccs,
-	    int mustHaveRmarker, int wantRealName, project *proj, char *root);
+	    int mustHaveRmarker, int wantRealName, project *proj);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin(void);
 project	*chk_proj_init(sccs *s, char *file, int line);
@@ -971,7 +950,6 @@ time_t	uniq_drift(void);
 int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
-void	cd2root(void);
 pid_t	mail(char *to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
 int	get(char *path, int flags, char *output);
@@ -1004,9 +982,11 @@ int	repository_wrunlock(int all);
 int	repository_hasLocks(char *root, char *dir);
 void	repository_lockcleanup(void);
 void	comments_save(char *s);
+void	comments_savefile(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
+void	comments_writefile(char *file);
 void	host_done(void);
 delta	*host_get(delta *, int);
 void	user_done(void);
@@ -1025,6 +1005,7 @@ void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 char 	**get_http_proxy(void);
 int	confirm(char *msg);
+int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags, int ask);
 off_t	fsize(int fd);
 char	*separator(char *);
@@ -1037,6 +1018,7 @@ off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
 char	*getHomeDir(void);
+char	*getBkDir(void);
 char	*age(time_t secs, char *space);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef
@@ -1145,12 +1127,13 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
-int	run_check(char *partial, int fix);
+int	run_check(char *partial, int fix, int quiet);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign);
+char	*hashstr(char *str);
+char	*secure_hashstr(char *str, char *key);
 void	delete_cset_cache(char *rootpath, int save);
 int	nFiles(void);
-u32	bk_license(char *user);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
@@ -1162,10 +1145,19 @@ char	*loadfile(char *file, int *size);
 char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
+char	*findDotFile(char *old, char *new, char *buf);
+
+void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
+    int (*is_whitespace)(int i));
+void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
+int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
+    int (*compare)(int a, int b));
+int   diffline(char *left, char *right);
 
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
+extern char *bk_platform;
 
 int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */

@@ -32,11 +32,11 @@ usage:		fprintf(stderr, "Usage: graft file file\n");
 		return (1);
 	}
 	sfileDone();
-	unless ((s1 = sccs_init(name, 0, 0)) && HASGRAPH(s1)) {
+	unless ((s1 = sccs_init(name, 0)) && HASGRAPH(s1)) {
 		fprintf(stderr, "graft: can't init %s\n", name);
 		return (1);
 	}
-	unless ((s2 = sccs_init(name2, 0, 0)) && HASGRAPH(s2)) {
+	unless ((s2 = sccs_init(name2, 0)) && HASGRAPH(s2)) {
 		fprintf(stderr, "graft: can't init %s\n", name2);
 		sccs_free(s1);
 		if (s2) sccs_free(s2);

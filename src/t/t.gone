@@ -83,7 +83,7 @@ bk makepatch -e1.0.. > ../gone.e
 cd $HERE
 mkdir gonelog
 cd gonelog
-bk takepatch -ia -f ../gone.e
+bk takepatch -ia -f ../gone.e || exit 1
 cd $HERE
 bk clone $Q gonebase gone1
 bk clone $Q gonebase gone2

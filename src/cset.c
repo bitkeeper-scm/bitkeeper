@@ -27,18 +27,17 @@ typedef	struct cset {
 
 	/* numbers */
 	int	verbose;
+	int	notty;
 	int	fromStart;	/* if we did -R1.1..1.2 */
 	int	ndeltas;
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
 } cset_t;
 
-private int	csetCreate(sccs *cset, int flags, char **syms);
 private	void	csetlist(cset_t *cs, sccs *cset);
 private	int	marklist(char *file);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
-private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
-private	char	*file2str(char *f);
+private	delta	*mkChangeSet(sccs *cset, char *files, FILE *diffs);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc, char kind);
@@ -114,9 +113,8 @@ int
 cset_main(int ac, char **av)
 {
 	sccs	*cset;
-	int	dflags = 0, flags = 0;
+	int	flags = 0;
 	int	c, list = 0;
-	char	**syms = 0;
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
 	char	allRevs[6] = "1.0..";
@@ -132,10 +130,11 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	}
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
+	copts.notty = getenv("BK_NOTTY") != 0;
 
 	while (
 	    (c =
-	    getopt(ac, av, "c|e|Cd|DfHhi;lm|M|pqr|sS;vx;y|Y|")) != -1) {
+	    getopt(ac, av, "c|e|Cd|DfHhi;lm|M|pqr|svx;")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;		/* undoc 2.0 */
 		    case 'f': copts.force++; break;		/* undoc? 2.0 */
@@ -204,17 +203,6 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			copts.exclude++;
 			r[rd++] = optarg;
 			break;
-		    case 'y':					/* doc 2.0 */
-			comments_save(optarg);
-			dflags |= DELTA_DONTASK;
-			break;
-		    case 'Y':					/* doc 2.0 */
-			comments_save(cFile = file2str(optarg));
-			dflags |= DELTA_DONTASK;
-			break;
-		    case 'S': 					/* doc 2.0 */
-				syms = addLine(syms, strdup(optarg)); break;
-
 		    default:
 			sprintf(buf, "bk help -s %s", av[0]);
 			system(buf);
@@ -254,7 +242,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	} else if (flags & NEWFILE) {
 		fprintf(stderr, "cset: must specify package root.\n");
 		return (1);
-	} else if (sccs_cd2root(0, 0)) {
+	} else if (proj_cd2root()) {
 		fprintf(stderr, "cset: cannot find package root.\n");
 		return (1);
 	}
@@ -265,7 +253,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	if (copts.include) return (cset_inex(flags, "-i", r[0]));
 	if (copts.exclude) return (cset_inex(flags, "-x", r[0]));
 
-	cset = sccs_init(csetFile, flags & SILENT, 0);
+	cset = sccs_init(csetFile, flags & SILENT);
 	if (!cset) return (101);
 	copts.mixed = !LONGKEY(cset);
 
@@ -292,20 +280,10 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
-		freeLines(syms, free);
 		return (0);
 	}
-
-	/*
-	 * Otherwise, go figure out if we have anything to add to the
-	 * changeset file.
-	 * XXX - should allow them to pick and choose for multiple
-	 * changesets from one pending file.
-	 */
-	c = csetCreate(cset, dflags|flags, syms);
-	if (cFile) free(cFile);
-	freeLines(syms, free);
-	return (c);
+	fprintf(stderr, "cset: bad options\n");
+	return (1);
 }
 
 private void
@@ -352,7 +330,7 @@ cset_setup(int flags, int ask)
 	delta	*d = 0;
 	int	fd;
 
-	cset = sccs_init(csetFile, flags & SILENT, 0);
+	cset = sccs_init(csetFile, flags & SILENT);
 	assert(cset->proj);
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
@@ -539,7 +517,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 		perror("idcache");
 	}
 	lastkey = strdup(key);
-retry:	sc = sccs_keyinit(lastkey, INIT_FIXSTIME, 0, idDB);
+retry:	sc = sccs_keyinit(lastkey, INIT_FIXSTIME, idDB);
 	unless (sc) {
 		if (gone(lastkey, goneDB)) {
 			free(lastkey);
@@ -977,7 +955,7 @@ add(FILE *diffs, char *buf)
 	 * ChangeSet file. Since we ae going to sccs_free() and
 	 * return anyway..
 	 */
-	unless (s = sccs_init(buf, SILENT, 0)) {
+	unless (s = sccs_init(buf, SILENT)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -u ChangeSet");
 		cset_exit(1);
@@ -1011,9 +989,10 @@ add(FILE *diffs, char *buf)
  * Close the cset sccs* when done.
  */
 private delta	*
-mkChangeSet(sccs *cset, FILE *diffs)
+mkChangeSet(sccs *cset, char *files, FILE *diffs)
 {
 	delta	*d;
+	FILE	*f = fopen(files, "r");
 	char	buf[MAXPATH];
 
 	/*
@@ -1043,14 +1022,26 @@ mkChangeSet(sccs *cset, FILE *diffs)
 	fprintf(diffs, "0a0\n"); /* fake diff header */
 
 	/*
-	 * Read each file:rev from stdin and add that to the cset.
+	 * Read each file:rev from files and add that to the cset.
 	 * add() will ignore the ChangeSet entry itself.
 	 */
-	while (fgets(buf, sizeof(buf), stdin)) {
+	assert(f && files);
+	while (fgets(buf, sizeof(buf), f)) {
 		add(diffs, buf);
 	}
+	fclose(f);
 
 #ifdef CRAZY_WOW
+	Actually, this isn't so crazy wow.  I don't know what problem this
+	caused but I believe the idea was that we wanted time increasing
+	across all deltas in all files.  Sometimes the ChangeSet timestamp
+	is behind the deltas in that changeset which is clearly wrong.
+
+	Proposed fix is to record the highest fudged timestamp in global
+	file in the repo and make sure the cset file is always >= that one.
+	Should be done in the proj struct and written out when we free it
+	if it changed.
+
 	/*
 	 * Adjust the date of the new rev, scripts can make this be in the
 	 * same second.  It's OK that we adjust it here, we are going to use
@@ -1068,8 +1059,9 @@ mkChangeSet(sccs *cset, FILE *diffs)
 #endif
 	return (d);
 }
-private	int
-csetCreate(sccs *cset, int flags, char **syms)
+
+int
+csetCreate(sccs *cset, int flags, char *files, char **syms)
 {
 	delta	*d;
 	int	error = 0;
@@ -1084,7 +1076,7 @@ csetCreate(sccs *cset, int flags, char **syms)
 		cset_exit(1);
 	}
 
-	d = mkChangeSet(cset, fdiffs); /* write change set to diffs */
+	d = mkChangeSet(cset, files, fdiffs); /* write change set to diffs */
 
 	fclose(fdiffs);
 	unless (diffs = mopen(filename, "b")) {
@@ -1119,37 +1111,6 @@ out:	sccs_free(cset);
 	unlink(filename);
 	comments_done();
 	return (error);
-}
-
-private	char	*
-file2str(char *f)
-{
-	struct	stat sb;
-	int 	n;
-	int	fd = open(f, O_RDONLY, 0);
-	char	*s;
-
-	setmode(fd, O_TEXT);
-	if ((fd == -1) || (fstat(fd, &sb) == -1) || (sb.st_size == 0)) {
-		fprintf(stderr, "Can't get comments from %s\n", f);
-		if (fd != -1) close(fd);
-		return (0);
-	}
-	s = malloc(sb.st_size + 1);
-	if (!s) {
-		perror("malloc");
-		close(fd);
-		return (0);
-	}
-	/*
-	 * Note: On win32, n may be smaller than sb.st_size
-	 * because text mode remove \r when reading
-	 */
-	n = read(fd, s, sb.st_size);
-	assert((n >= 0) && (n <= sb.st_size));
-	s[n] = 0;
-	close(fd);
-	return (s);
 }
 
 /*
@@ -1201,7 +1162,9 @@ sccs_patch(sccs *s, cset_t *cs)
 		d = list[i];
 		assert(d);
 		if (cs->verbose > 2) fprintf(stderr, "%s ", d->rev);
-		if (cs->verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
+		if ((cs->verbose == 2) && !cs->notty) {
+			fprintf(stderr, "%c\b", spin[deltas % 4]);
+		}
 		if (i == n - 1) {
 			unless (s->gfile) {
 				fprintf(stderr, "\n%s%c%s has no path\n",
@@ -1274,7 +1237,7 @@ sccs_patch(sccs *s, cset_t *cs)
 		printf("\n");
 		deltas++;
 	}
-	if (cs->verbose == 2) {
+	if ((cs->verbose == 2) && !cs->notty) {
 		fprintf(stderr, "%d revisions\r", deltas);
 		fprintf(stderr, "%79s\r", "");
 	} else if (cs->verbose > 1) {

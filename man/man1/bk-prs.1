@@ -159,14 +159,20 @@ newline is not provided by any of the variables
 and one should be provided as needed.
 The list of variables which currently provide one are:
 .BR COMMENTS ,
-.BR PATH ,
 .BR DEFAULT ,
-.BR SYMBOLS .
+.BR PATH ,
+and
+.BR TAGS .
 .LP
-If a multi-line variable is printed as one line, i.e., without
+Multi-line variables are printed with no spacing or newlines between the
+lines by default.  You may insert spaces or newlines with a 
 .I $each() 
-(see below) providing a prefix and/or a suffix, then the lines are separated 
-by spaces.  The list of variables with this behavior is:
+loop like so
+.DS
+.B bk prs -d'$each(:C:){:C:\en}' \c
+foo.c
+.DE
+The list of variables with this behavior is:
 .BR C ,
 .BR GB ,
 .BR FD .
@@ -271,7 +277,7 @@ foo.c
 .DE
 The
 .B GB
-variable can not be used in a 
+variable may not be used in a 
 .IR $each() .
 .SS KEYWORDS
 Some fields are per file and are marked with
@@ -468,13 +474,13 @@ SIBLINGS	D	rev sibling's pointer in D
 .xx
 SPN	D	pathname of s.file as of D
 .xx
-SYMBOLS	D	symbolic tag portion of :DEFAULT:
-.xx
 SYMLINK	D	value of D's symlink target
 .xx
 T	D	time of D as HH:MM:SS
 .xx
 TAG	D	any symbolic tag[s] associated with D
+.xx
+TAGS	D	the symbolic tag portion of DEFAULT
 .xx
 TIME_T	D	D's date as GMT time_t, TZ and Fudge adjusted
 .xx

@@ -487,7 +487,7 @@ csetDiff(MDBM *not,  int wantTag)
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	int	n = 0;
 		
-	unless (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
+	unless (s = sccs_init(s_cset, INIT_NOCKSUM)) {
 		mdbm_close(db);
 		return (0);
 	}
@@ -571,7 +571,7 @@ send_file(remote *r, char *file, int extra, int gzip)
 	return (rc);
 }
 
-int 
+int
 skip_http_hdr(remote *r)
 {
 	char	buf[1024];
@@ -657,13 +657,12 @@ get_ok(remote *r, char *read_ahead, int verbose)
 char *
 repo_id(void)
 {
-	char	*root = sccs_root(0);
+	char	*root = proj_root(0);
 	char	*file;
 	char	*repoid;
 
 	unless (root) return (0);
 	file = aprintf("%s/" REPO_ID, root);
-	free(root);
 	repoid = loadfile(file, 0);
 	free(file);
 	unless (repoid) return (0);
@@ -677,7 +676,7 @@ rootkey(char *buf)
 	char	s_cset[] = CHANGESET;
 	sccs	*s;
 
-	s = sccs_init(s_cset, INIT_NOCKSUM, 0);
+	s = sccs_init(s_cset, INIT_NOCKSUM);
 	assert(s);
 	sccs_sdelta(s, sccs_ino(s), buf);
 	sccs_free(s);
@@ -720,7 +719,7 @@ put_trigger_env(char *prefix, char *v, char *value)
 void
 putroot(char *where)
 {
-	char	*root = sccs_root(0);
+	char	*root = proj_root(0);
 
 	if (root) {
 		if (streq(root, ".")) {
@@ -731,7 +730,6 @@ putroot(char *where)
 		} else {
 			safe_putenv("%s_ROOT=%s", where, root);
 		}
-		free(root);
 	}
 }
 
@@ -743,6 +741,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 {
 	int	i;
 	char	*root, *user, *host, *repo;
+	char	*lic;
 
 	if (r->host)
 		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
@@ -760,6 +759,12 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
 		free(repo);
 	}
+	lic = licenses_accepted();
+	fprintf(f, "putenv BK_ACCEPTED=%s\n", lic);
+	free(lic);
+	fprintf(f, "putenv BK_REALUSER=%s\n", sccs_realuser());
+	fprintf(f, "putenv BK_REALHOST=%s\n", sccs_realhost());
+	fprintf(f, "putenv BK_PLATFORM=%s\n", bk_platform);
 
 	/*
 	 * We have no Package root when we clone, so skip root related variables
@@ -769,18 +774,9 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	 */
 	unless (isClone) {
 		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
-
-		root = sccs_root(0);
-		if (root) {
-			if (streq(root, ".")) {
-				char	pwd[MAXPATH];
-
-				getcwd(pwd, MAXPATH);
-				fprintf(f, "putenv BK_ROOT=%s\n", pwd);
-			} else {
-				fprintf(f, "putenv BK_ROOT=%s\n", root);
-			}
-			free(root);
+		
+		if (root = proj_root(0)) {
+			fprintf(f, "putenv BK_ROOT=%s\n", root);
 		}
 	}
 
@@ -841,12 +837,18 @@ sendServerInfoBlock(int is_rclone)
 	out(sccs_getuser());
 	out("\nHOST=");
 	out(sccs_gethost());
+	out("\nREALUSER=");
+	out(sccs_realuser());
+	out("\nREALHOST=");
+	out(sccs_realhost());
+	out("\nPLATFORM=");
+	out(bk_platform);
 	if (repoid = repo_id()) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
 	}
 	out("\n@END@\n");
-} 
+}
 
 void
 http_hdr(int full)
@@ -1097,7 +1099,7 @@ savefile(char *dir, char *prefix, char *pathname)
 void
 has_proj(char *who)
 {
-	if (bk_proj && bk_proj->root) return;
+	if (proj_root(0)) return;
 	fprintf(stderr, "%s: cannot find package root\n", who);
 	exit(1);
 }
@@ -1227,17 +1229,18 @@ unsafe_path(char *s)
  * Otherwise do a full check.
  */
 int
-run_check(char *partial, int fix)
+run_check(char *partial, int fix, int quiet)
 {
 	int	ret;
 	struct	stat sb;
 	time_t	now = time(0);
 	char	*fixopt;
+	char	*opts = quiet ? "-ac" : "-acv";
 
  again:
 	fixopt = (fix ? "-f" : "--");
 	if (!partial || stat(CHECKED, &sb) || ((now - sb.st_mtime) > STALE)) {
-		ret = sys("bk", "-r", "check", "-ac", fixopt, SYS);
+		ret = sys("bk", "-r", "check", opts, fixopt, SYS);
 	} else {
 		ret = sysio(partial, 0, 0, "bk", "check", fixopt, "-", SYS);
 	}

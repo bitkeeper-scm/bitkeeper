@@ -156,12 +156,6 @@ cmd_rclone_part2(int ac, char **av)
 		setlevel(atoi(getenv("BK_LEVEL")));
 	}
 
-	/*
-	 * Invalidate the project cache, we have changed directory
-	 */
-	if (bk_proj) proj_free(bk_proj);
-	bk_proj = proj_init(0);
-
 	printf("@SFIO INFO@\n");
 	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
@@ -192,7 +186,7 @@ cmd_rclone_part2(int ac, char **av)
 		if (opts.verbose) {
 			fprintf(stderr, "Running consistency check ...\n");
 		}
-		run_check(0, 1);
+		run_check(0, 1, !opts.verbose);
 	}
 
 	p = user_preference("checkout");

@@ -13,11 +13,10 @@ int
 annotate_main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = INIT_SAVEPROJ, flags = BASE_FLAGS;
+	int	iflags = 0, flags = BASE_FLAGS;
 	int	c, errors = 0;
 	char	*t, *name, *rev = 0, *cdate = 0;
 	delta	*d;
-	project	*proj = 0;
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -57,8 +56,7 @@ annotate_main(int ac, char **av)
 	if (flags == BASE_FLAGS) flags |= GET_REVNUMS|GET_USER;
 	name = sfileFirst("get", &av[optind], SF_HASREVS);
 	for (; name; name = sfileNext()) {
-		unless (s = sccs_init(name, iflags, proj)) continue;
-		unless (proj) proj = s->proj;
+		unless (s = sccs_init(name, iflags)) continue;
 		unless (HASGRAPH(s)) {
 			sccs_free(s);
 			continue;
@@ -92,6 +90,5 @@ annotate_main(int ac, char **av)
 		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (errors);
 }

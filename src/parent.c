@@ -16,7 +16,7 @@ parent_main(int ac,  char **av)
 		return (0);
 	}
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "parent: cannot find package root.\n");
 		return (1);
 	}
@@ -100,8 +100,8 @@ getParent()
 	char	*p;
 	int	f, len;
 
-	assert(bk_proj && bk_proj->root);
-	p = aprintf("%s/%s", bk_proj->root, PARENT);
+	assert(proj_root(0));
+	p = aprintf("%s/%s", proj_root(0), PARENT);
 	f = open(p, 0, 0);
 	free(p);
 	unless (f >= 0) return (0);

@@ -2,7 +2,6 @@
 #include "sccs.h"
 
 #define	stdlog	opts->log ? opts->log : stderr
-#define	INIT	(INIT_SAVEPROJ|INIT_NOCKSUM)
 #define	CLEAN_RESYNC	0x01	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	0x02	/* blow away the PENDING dir */
 #define	CLEAN_OK	0x04	/* quietly exit 0 */
@@ -59,8 +58,6 @@ typedef struct {
 	MDBM	*rootDB;	/* db{ROOTKEY} = pathname in RESYNC */
 	MDBM	*idDB;		/* for the local repository, not RESYNC */
 	MDBM	*checkoutDB;	/* Save the original checkout state files */
-	project	*local_proj;	/* for the local repository, not RESYNC */
-	project	*resync_proj;	/* for RESYNC project */
 	FILE	*log;		/* if set, log to here */
 } opts;
 

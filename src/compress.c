@@ -182,6 +182,7 @@ gzipAll2fd(int rfd, int wfd, int level, int *in, int *out,
 	gzip_init(level);
 	setmode(rfd, _O_BINARY);
 	setmode(wfd, _O_BINARY);
+	if (getenv("BK_NOTTY")) verbose = 0;
 	while ((n = readn(rfd, buf, bsize)) > 0) { /* must use readn() here */
 		if (in) *in += n;
 		i = gzip2fd(buf, n, wfd, hflag);

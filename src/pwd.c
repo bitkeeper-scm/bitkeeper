@@ -51,6 +51,54 @@ pwd_main(int ac, char **av)
 		p++;
 	}
 #endif
-	printf("%s\n", bk_rpath ? _relativeName(p, 1, 0, 1, 1, 0, 0): p);
+	printf("%s\n", bk_rpath ? _relativeName(p, 1, 0, 1, 1, 0): p);
+	return (0);
+}
+
+/*
+ * Return the full pathname to a config file.
+ *   old = path to old name under home directory
+ *   new = path to new name under ~/.bk
+ *
+ * If the new file hasn't been created yet, then the old
+ * one is moved to the new location.
+ */
+char *
+findDotFile(char *old, char *new, char *buf)
+{
+	char	*home;
+	char	oldpath[MAXPATH];
+
+	concat_path(buf, getBkDir(), new);
+	if (!exists(buf) && (home = getHomeDir())) {
+		/* need to upgrade? */
+		concat_path(oldpath, home, old);
+		if (exists(oldpath)) {
+			rename(oldpath,  buf);
+			if (strrchr(old, '/')) {
+				*strrchr(oldpath, '/') = 0;
+				/* oldpath now points to parent dir */
+				if (emptyDir(oldpath)) rmdir(oldpath);
+			}
+		}
+		free(home);
+	}
+	mkdirf(buf);
+	return (buf);
+}
+
+int
+dotbk_main(int ac, char **av)
+{
+	char	buf[MAXPATH];
+
+	if (ac == 3) {
+		puts(findDotFile(av[1], av[2], buf));
+	} else if (ac == 1) {
+		puts(getBkDir());
+	} else {
+		fprintf(stderr, "usage: bk dotbk [old new]\n");
+		return (1);
+	}
 	return (0);
 }

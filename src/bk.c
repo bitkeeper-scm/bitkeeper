@@ -11,7 +11,6 @@ extern	unsigned build_timet;
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 char	**bk_environ;
-project	*bk_proj = 0;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
 int	cmdlog_flags;
@@ -32,7 +31,6 @@ private int	run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av);
 private int	usage(void);
 
 extern	void	platformInit(char **av);
-extern	int	proj_cd2root(project *p);
 
 /* KEEP THIS SORTED! */
 int	_g2sccs_main(int, char **);
@@ -41,7 +39,6 @@ int	adler32_main(int, char **);
 int	admin_main(int, char **);
 int	annotate_main(int, char **);
 int	applyall_main(int, char **);
-int	approve_main(int, char **);
 int	base64_main(int, char **);
 int	bkd_main(int, char **);
 int	cat_main(int, char **);
@@ -65,6 +62,7 @@ int	delget_main(int, char **);
 int	delta_main(int, char **);
 int	diffs_main(int, char **);
 int	diffsplit_main(int, char **);
+int	dotbk_main(int, char **);
 int	exists_main(int, char **);
 int	export_main(int, char **);
 int	f2csets_main(int, char **);
@@ -229,7 +227,6 @@ struct	command cmdtbl[] = {
 	{"abort", abort_main},			/* doc 2.0 */	
 	{"add", delta_main},			/* doc 2.0 */
 	{"admin", admin_main},			/* doc 2.0 */
-	{"approve", approve_main},		/* doc 2.0 */
 	{"annotate", annotate_main},		/* doc 2.0 */
 	{"base64", base64_main},		/* need doc 2.2 */
 	{"bkd", bkd_main },			/* doc 2.0 */
@@ -256,6 +253,7 @@ struct	command cmdtbl[] = {
 	{"delget", delget_main},		/* doc 2.0 */
 	{"diffs", diffs_main},			/* doc 2.0 */
 	{"diffsplit", diffsplit_main},
+	{"dotbk", dotbk_main},
 	{"edit", get_main},	/* aliases */	/* doc 2.0 */
 	{"enter", delta_main},			/* doc 2.0 */
 	{"export", export_main},		/* doc 2.0 */
@@ -474,10 +472,6 @@ main(int ac, char **av, char **env)
 	argv[0] = "help";
 	argv[1] = 0;
 
-	if (!bk_proj || !bk_proj->root || !isdir(bk_proj->root)) {
-		bk_proj = proj_init(0);
-	}
-
 	/*
 	 * Parse our options if called as "bk".
 	 * We support most of the sfiles options.
@@ -504,9 +498,7 @@ main(int ac, char **av, char **env)
 						perror(optarg);
 						return (1);
 					}
-					proj_free(bk_proj);
-					bk_proj = proj_init(0);
-				} else unless (proj_cd2root(bk_proj)) {
+				} else if (proj_cd2root()) {
 					fprintf(stderr, 
 					    "bk: Cannot find package root.\n");
 					return(1);
@@ -514,7 +506,7 @@ main(int ac, char **av, char **env)
 				dashr++;
 				break;
 			    case 'R':				/* doc 2.0 */
-				unless (proj_cd2root(bk_proj)) {
+				if (proj_cd2root()) {
 					fprintf(stderr, 
 					    "bk: Cannot find package root.\n");
 					return(1);
@@ -771,7 +763,7 @@ cmdlog_start(char **av, int httpMode)
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
 	}
 
-	unless (bk_proj && bk_proj->root) return;
+	unless (proj_root(0)) return;
 
 	for (len = 1, i = 0; av[i]; i++) {
 		len += strlen(av[i]) + 1;
@@ -799,8 +791,8 @@ cmdlog_start(char **av, int httpMode)
 
 	if (do_lock && (cmdlog_flags & CMD_WRLOCK)) {
 		if (i = repository_wrlock()) {
-			unless (strneq("remote ", av[0], 7) || !bk_proj) {
-				repository_lockers(bk_proj);
+			unless (strneq("remote ", av[0], 7) || !proj_root(0)) {
+				repository_lockers(0);
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
@@ -825,8 +817,8 @@ cmdlog_start(char **av, int httpMode)
 	}
 	if (do_lock && (cmdlog_flags & CMD_RDLOCK)) {
 		if (i = repository_rdlock()) {
-			unless (strneq("remote ", av[0], 7) || !bk_proj) {
-				repository_lockers(bk_proj);
+			unless (strneq("remote ", av[0], 7) || !proj_root(0)) {
+				repository_lockers(0);
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
@@ -917,7 +909,7 @@ cmdlog_end(int ret)
 	kvpair	kv;
 
 	purify_list();
-	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) {
+	unless (cmdlog_buffer[0] && proj_root(0)) {
 		return (flags);
 	}
 
@@ -957,11 +949,11 @@ cmdlog_end(int ret)
 	assert(len < savelen);
 	mdbm_close(notes);
 	notes = 0;
-	if (write_log(bk_proj->root, "cmd_log", 0, "%s", log)) {
+	if (write_log(proj_root(0), "cmd_log", 0, "%s", log)) {
 		return (flags);
 	}
 	if (cmdlog_repo &&
-	    write_log(bk_proj->root, "repo_log", LOG_MAXSIZE, "%s", log)) {
+	    write_log(proj_root(0), "repo_log", LOG_MAXSIZE, "%s", log)) {
 		return (flags);
 	}
 	free(log);
@@ -998,7 +990,7 @@ cmdlog_dump(int ac, char **av)
 	int	yelled = 0, c, all = 0;
 	RANGE_DECL;
 
-	unless (bk_proj && bk_proj->root) return;
+	unless (proj_root(0)) return;
 	while ((c = getopt(ac, av, "ac;")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
@@ -1009,7 +1001,7 @@ usage:			system("bk help cmdlog");
 		}
 	}
 	if (things && d[0]) cutoff = rangeCutOff(d[0]);
-	sprintf(buf, "%s/BitKeeper/log/%s", bk_proj->root,
+	sprintf(buf, "%s/BitKeeper/log/%s", proj_root(0),
 	    (all ? "cmd_log" : "repo_log"));
 	f = fopen(buf, "r");
 	unless (f) return;
@@ -1139,53 +1131,28 @@ find_prog(char *prog)
 }
 
 char *
-find_wish()
+find_wish(void)
 {
-	char *p, *s;
-	char path[MAXLINE];
-	static char wish_path[MAXPATH];
-	int more = 1;
+	static char	*path;
 
-#ifdef	__APPLE__
-	strcpy(wish_path,
-	    "/Applications/Wish Shell.app/Contents/MacOS/Wish Shell");
-	if (exists(wish_path)) return (wish_path);
-#endif
-	p  = getenv("PATH");
-	if (p) {;
-		sprintf(path, "%s%c/usr/local/bin", p, PATH_DELIM);
-		localName2bkName(path, path);
-	} else {
-		strcpy(path, "/usr/local/bin");
+	if (path) return (path);
+
+	/* If they set this, they can set TCL_LIB/TK_LIB as well */
+	if ((path = getenv("BK_WISH")) && executable(path)) return (path);
+
+	path = aprintf("%s/tk/bin/bkgui", bin);
+	if (executable(path)) {
+		safe_putenv("TCL_LIBRARY=%s/tk/lib/tcl8.3", bin);
+		safe_putenv("TK_LIBRARY=%s/tk/lib/tk8.3", bin);
+		return (path);
 	}
-	p = path;
-	while (more) {
-		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
-		if (*s == '\0') more = 0;
-		*s = '\0';
-		sprintf(wish_path, "%s/wish83%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.3%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish82%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.2%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish81%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.1%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish80%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish8.0%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		sprintf(wish_path, "%s/wish%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
-		p = ++s;
+	free(path);
+	path = "/build/.wish/tk/bin/bkgui";
+	if (executable(path)) {
+		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
+		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
+		return (path);
 	}
-	fprintf(stderr,
-		"Cannot find the \"wish\" interpreter, this usually means\n"
-		"the Tcl/Tk package is not installed on your system or it\n"
-		"is not in your path\n");
+	fprintf(stderr, "Cannot find the graphical interpreter\n");
 	exit(1);
 }

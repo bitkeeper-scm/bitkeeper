@@ -58,7 +58,7 @@ usage:			system("bk help -s stripdel");
 		return (1);
 	}
 
-	if ((config = proj_config(bk_proj)) &&
+	if ((config = proj_config(0)) &&
 	    (co = mdbm_fetch_str(config, "checkout"))) {
 		if (strieq(co, "get")) getFlags = GET_EXPAND;
 		if (strieq(co, "edit")) getFlags = GET_EDIT;
@@ -78,7 +78,7 @@ usage:			system("bk help -s stripdel");
 		return (1);
 	}
 
-	unless ((s = sccs_init(name, 0, 0)) && HASGRAPH(s)) {
+	unless ((s = sccs_init(name, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "stripdel: can't init %s\n", name);
 		return (1);
 	}
@@ -162,7 +162,7 @@ doit(sccs *s, s_opts opts)
 	 * Handle checkout modes
 	 */
 	if (getFlags && !CSET(s)) {
-		sccs	*s2 = sccs_init(s->sfile, 0, 0);
+		sccs	*s2 = sccs_init(s->sfile, 0);
 		sccs_get(s2, 0, 0, 0, 0, SILENT|getFlags, "-");
 		sccs_free(s2);
 	}
@@ -294,7 +294,6 @@ strip_list(s_opts opts)
 	char	*av[2] = {"-", 0};
 	sccs	*s = 0;
 	delta	*d;
-	project *proj = 0;
 	int 	rc = 1;
 
 	for (name = sfileFirst("stripdel", av, SF_HASREVS);
@@ -302,13 +301,12 @@ strip_list(s_opts opts)
 		if (!s || !streq(s->sfile, name)) {
 			if (s && doit(s, opts)) goto fail;
 			if (s) sccs_free(s);
-			s = sccs_init(name, SILENT|INIT_SAVEPROJ, proj);
+			s = sccs_init(name, SILENT);
 			unless (s && HASGRAPH(s)) {
 				fprintf(stderr,
 					    "stripdel: can't init %s\n", name);
 				goto fail;
 			}
-			unless (proj) proj = s->proj;
 		}
 		rev = sfileRev(); assert(rev);
 		d = findrev(s, rev); 
@@ -322,7 +320,6 @@ strip_list(s_opts opts)
 	if (s && doit(s, opts)) goto fail;
 	rc = 0;
 fail:	if (s) sccs_free(s);
-	if (proj) proj_free(proj);
 	sfileDone();
 	return (rc);
 }

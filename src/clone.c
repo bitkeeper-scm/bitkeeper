@@ -236,7 +236,7 @@ done:	if (rc) {
 	/*
 	 * Don't bother to fire trigger if we have no tree.
 	 */
-	if (bk_proj) trigger(av[0], "post");
+	if (proj_root(0)) trigger(av[0], "post");
 
 	/*
 	 * XXX This is a workaround for a csh fd lead:
@@ -263,12 +263,6 @@ clone2(opts opts, remote *r)
 	FILE	*f;
 	int	rc;
 
-	/*
-	 * Invalidate the project cache, we have changed directory
-	 */
-	if (bk_proj) proj_free(bk_proj);
-	bk_proj = proj_init(0);
-
 	f = fopen(checkfiles, "w");
 	assert(f);
 	sccs_rmUncommitted(opts.quiet, f);
@@ -289,9 +283,9 @@ clone2(opts opts, remote *r)
 			fprintf(stderr, "Running consistency check ...\n");
 		}
 		if (strieq("yes", user_preference("partial_check"))) {
-			rc = run_check(checkfiles, 1);
+			rc = run_check(checkfiles, 1, opts.quiet);
 		} else {
-			rc = run_check(0, 1);
+			rc = run_check(0, 1, opts.quiet);
 		}
 		if (rc) {
 			fprintf(stderr, "Consistency check failed, "
@@ -619,11 +613,7 @@ out:		chdir(from);
 	in_trigger("BK_STATUS=OK", opts.rev, from, fromid);
 	free(fromid);
 	chdir(from);
-	/*
-	 * Invalidate the project cache, we have changed directory
-	 */
-	if (bk_proj) proj_free(bk_proj);
-	bk_proj = proj_init(0);
+
 	putenv("BKD_REPO_ID=");
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	remote_free(r);
@@ -633,12 +623,20 @@ out:		chdir(from);
 private int
 out_trigger(char *status, char *rev, char *when)
 {
+	char	*lic;
+
 	safe_putenv("BK_REMOTE_PROTOCOL=%s", BKD_VERSION);
 	safe_putenv("BK_VERSION=%s", bk_vers);
 	safe_putenv("BK_UTC=%s", bk_utc);
 	safe_putenv("BK_TIME_T=%s", bk_time);
 	safe_putenv("BK_USER=%s", sccs_getuser());
 	safe_putenv("_BK_HOST=%s", sccs_gethost());
+	safe_putenv("BK_REALUSER=%s", sccs_realuser());
+	safe_putenv("BK_REALHOST=%s", sccs_realhost());
+	safe_putenv("BK_PLATFORM=%s", bk_platform);
+	lic = licenses_accepted();
+	safe_putenv("BK_ACCEPTED=%s", lic);
+	free(lic);
 	if (status) putenv(status);
 	if (rev) {
 		safe_putenv("BK_CSETS=1.0..%s", rev);
@@ -658,6 +656,9 @@ in_trigger(char *status, char *rev, char *root, char *repoid)
 	safe_putenv("BKD_USER=%s", sccs_getuser());
 	safe_putenv("BKD_UTC=%s", bk_utc);
 	safe_putenv("BKD_VERSION=%s", bk_vers);
+	safe_putenv("BKD_REALUSER=%s", sccs_realuser());
+	safe_putenv("BKD_REALHOST=%s", sccs_realhost());
+	safe_putenv("BKD_PLATFORM=%s", bk_platform);
 	if (status) putenv(status);
 	if (rev) {
 		safe_putenv("BK_CSETS=1.0..%s", rev);

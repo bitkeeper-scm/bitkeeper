@@ -80,7 +80,7 @@ k_err:			fprintf(stderr,
 		randomBits(buf);
 		ranbits = buf;
 	}
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "%s: cannot find package root\n", av[0]);
 		exit(1);
 	}
@@ -97,11 +97,11 @@ k_err:			fprintf(stderr,
 		sys("bk", "-r", "check", "-ac", SYS);
 		exit(0);
 	}
-	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
+	unless ((s = sccs_init(csetFile, INIT_NOCKSUM)) && s->tree) {
 		fprintf(stderr, "%s: cannot init ChangeSet file\n", av[0]);
 		exit(1);
 	}
-	unless ((sb = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
+	unless ((sb = sccs_init(csetFile, INIT_NOCKSUM)) && s->tree) {
 		fprintf(stderr, "%s: cannot init ChangeSet backup file\n",
 			av[0]);
 		exit(1);
@@ -111,7 +111,7 @@ k_err:			fprintf(stderr,
 	pruneEmpty(s, sb, m);
 	mdbm_close(m);
 	sccs_free(sb);
-	s = sccs_init(csetFile, ADMIN_SHUTUP|INIT_NOCKSUM, 0);
+	s = sccs_init(csetFile, ADMIN_SHUTUP|INIT_NOCKSUM);
 	unless (s && s->tree) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
 		exit(1);	/* leave it locked! */
@@ -120,7 +120,7 @@ k_err:			fprintf(stderr,
 	sccs_renumber(s, SILENT);
 	sccs_newchksum(s);
 	sccs_free(s);
-	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
+	unless ((s = sccs_init(csetFile, INIT_NOCKSUM)) && s->tree) {
 		fprintf(stderr, "Whoops, can't reinit ChangeSet\n");
 		exit(1);	/* leave it locked! */
 	}
@@ -156,7 +156,6 @@ rmKeys(MDBM *s)
 	MDBM	*dirs = mdbm_mem();
 	MDBM	*idDB;
 	kvpair	kv;
-	project	*proj = proj_init(0);
 
 	verbose((stderr, "Reading keys...\n"));
 	if (getKeys(m)) exit(1);
@@ -172,10 +171,9 @@ rmKeys(MDBM *s)
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
 		if (flags & PRUNE_JUST_CHANGESET) continue;
 		verbose((stderr, "%d removed\r", ++n));
-		sccs_keyunlink(kv.key.dptr, proj, idDB, dirs);
+		sccs_keyunlink(kv.key.dptr, idDB, dirs);
 	}
 	mdbm_close(idDB);
-	proj_free(proj);
 	verbose((stderr, "\n"));
 
 	verbose((stderr, "Removing directories...\n"));
@@ -451,12 +449,15 @@ rebuildTags(sccs *s)
 private void
 fixTags(sccs *s)
 {
-	delta	*d, *md;
+	delta	*d, *md, *p;
 	symbol	*sym;
 
 	/*
-	 * Only keep newest instance of each name
-	 * Move all symbols onto real deltas that are not D_GONE
+	 * Two phase fixing: do the sym table then the delta graph.
+	 * The first fixes most of it, but misses the tag graph merge nodes.
+	 *
+	 * Each phase has 2 parts: see if the tagged node is gone,
+	 * then see if the delta is gone.
 	 */
 	for (sym = s->symbols; sym; sym = sym->next) {
 		md = sym->metad;
@@ -506,6 +507,62 @@ fixTags(sccs *s)
 				md->comments = 0;
 			}
 			assert(!md->include && !md->exclude && !md->merge);
+		}
+	}
+	/*
+	 * same two cases as above, but for the tag merge nodes which
+	 * missed because there is no linkage in the symtable.
+	 * using this list only won't work because the symtable would
+	 * be out of date.  Since we need to do both, a single walk
+	 * through them minimizes the work.  The symtable is done first
+	 * so that it will not pass the tests here.  The only nodes
+	 * done here are non symbol bearing entries in the tag graph.
+	 *
+	 * This looks similar to the above but it is not the same.
+	 * the flow is the same, the data structure being tweaked is diff.
+	 */
+	for (d = s->table; d; d = d->next) {
+		unless (d->type == 'R') continue;
+		if ((p = d->parent) && (p->flags & D_GONE)) {
+			unless (p->parent) {
+				/* No where to move it: root it */
+				/* XXX: Can this ever happen?? */
+				fprintf(stderr,
+				    "csetprune: Tag node %s(%d) on pruned "
+				    "revision "
+				    "(%s) will be removed,\nbecause the "
+				    "revision has no parent to receive the "
+				    "tag.\nPlease write support@bitmover.com "
+				    "describing what you did to get this "
+				    "message.\nThis is a warning message, "
+				    "not a failure.\n",
+				    d->rev, d->serial, p->rev);
+				d->parent = s->tree;
+				continue;
+			}
+			/* Move Tag to Parent */
+			assert(!(p->parent->flags & D_GONE));
+			p = p->parent;
+			d->parent = p;
+			d->pserial = p->serial;
+		}
+		/* If node is deleted node, make into a 'R' node */
+		if (d->flags & D_GONE) {
+			/*
+			 * Convert a real delta to a meta delta
+			 * by removing info about the real delta.
+			 * then Ungone it.
+			 * XXX: Does the rev need to be altered?
+			 */
+			assert(d->type == 'D');
+			d->type = 'R';
+			d->flags &= ~(D_GONE|D_CKSUM|D_CSET);
+			d->added = d->deleted = d->same = 0;
+			if (d->comments) {
+				freeLines(d->comments, free);
+				d->comments = 0;
+			}
+			assert(!d->include && !d->exclude && !d->merge);
 		}
 	}
 }

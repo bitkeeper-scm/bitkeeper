@@ -34,7 +34,7 @@ shrink_main(int ac, char **av)
 		system("bk help shrink");
 		return (1);
 	}
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
 	}

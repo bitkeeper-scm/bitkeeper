@@ -14,13 +14,14 @@ setup_main(int ac, char **av)
 {
 	int	force = 0, allowNonEmptyDir = 0, ask = 1, c;
 	char	*package_path = 0, *config_path = 0, *t;
-	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
+	char	buf[MAXLINE], my_editor[1024];
 	char	here[MAXPATH];
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
 	char 	config[] = "BitKeeper/etc/config";
 	sccs	*s;
 	MDBM	*m, *flist = 0;
 	FILE	*f, *f1;
+	int	status;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help setup");
@@ -205,7 +206,7 @@ err:			unlink("BitKeeper/etc/config");
 	mdbm_close(m);
 
 	if (cset_setup(SILENT, ask)) goto err;
-	s = sccs_init(s_config, SILENT, NULL);
+	s = sccs_init(s_config, SILENT);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
 	s = sccs_restart(s);
@@ -214,17 +215,15 @@ err:			unlink("BitKeeper/etc/config");
 	sccs_free(s);
 	defaultIgnore();
 
-	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
-	sprintf(buf, "bk -R sfiles -pC > %s", setup_files);
-	system(buf);
-	sprintf(buf,
-	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);
-	system(buf);
-	unlink(setup_files);
- 	if (sccs_cd2root(0, 0) == -1) {
+	status = sys("bk", "commit", "-qFyInitial repository create", SYS);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+		fprintf(stderr, "setup: bk commit failed.\n");
+		return (1);
+	}
+ 	if (proj_cd2root()) {
                 fprintf(stderr, "setup: cannot find package root.\n");
-                exit(1);
-        }                           
+                return (1);
+        }
 	mkdir(BKMASTER, 0775);
 	enableFastPendingScan();
 	sendConfig();

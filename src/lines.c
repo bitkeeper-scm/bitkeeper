@@ -49,7 +49,7 @@ usage:			fprintf(stderr,
 	name = sfileFirst("lines", &av[optind], 0);
 	if (sfileNext() || !name) goto usage;
 
-	if (name && (s = sccs_init(name, INIT_NOCKSUM, 0))) {
+	if (name && (s = sccs_init(name, INIT_NOCKSUM))) {
 		ser = 0;
 		renumber(s->table);
 		if (n) {
@@ -174,13 +174,13 @@ pd(char *prefix, delta *d)
  * For each delta, if it is based on a node earlier than our ancestor,
  * adjust backwards so we get a complete graph.
  */
-delta	*
+private delta	*
 t(delta *a, delta *d)
 {
 	delta	*p;
 
 	for (p = d; p->r[2]; p = p->parent);
-	if (p->date < a->date) a = p;
+	if ((p->type != 'R') && (p->date < a->date)) a = p;
 	if (d->kid) a = t(a, d->kid);
 	if (d->siblings) a = t(a, d->siblings);
 	return (a);
@@ -196,6 +196,7 @@ ancestor(sccs *s, delta *d)
 
 	/* get back to the trunk */
 	for (a = d; a && a->r[2]; a = a->parent);
+	while (a->type == 'R') a = a->parent;
 	a = t(a, a);
 	return (a);
 }

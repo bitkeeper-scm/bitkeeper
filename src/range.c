@@ -32,7 +32,7 @@ usage:			fprintf(stderr,
 			}
 		} else {
 			if (s) sccs_free(s);
-			unless (s = sccs_init(name, INIT_NOCKSUM, 0)) {
+			unless (s = sccs_init(name, INIT_NOCKSUM)) {
 				continue;
 			}
 		}

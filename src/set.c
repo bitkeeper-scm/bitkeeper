@@ -126,16 +126,16 @@ set_main(int ac, char **av)
 	}
 	if (av[optind]) {
 		name = name2sccs(av[optind]);
-		s = sccs_init(name, INIT_NOCKSUM, 0);
+		s = sccs_init(name, INIT_NOCKSUM);
 		free(name);
 	} else {
 		char	cset[] = CHANGESET;
 
-		if (sccs_cd2root(0, 0)) {
+		if (proj_cd2root()) {
 			fprintf(stderr, "set: cannot find project root\n");
 			exit(1);
 		}
-		s = sccs_init(cset, INIT_NOCKSUM, 0);
+		s = sccs_init(cset, INIT_NOCKSUM);
 	}
 	unless (s && HASGRAPH(s)) {
 		perror(av[optind] ? av[optind] : CHANGESET);

@@ -20,13 +20,13 @@ unlink_main(int ac, char **av)
 }
 
 int
-sccs_keyunlink(char *key, project *proj, MDBM *idDB, MDBM *dirs)
+sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs)
 {
 	sccs	*s;
 	int	ret;
 	char	*t;
 
-	unless (s = sccs_keyinit(key, INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB)) {
+	unless (s = sccs_keyinit(key, INIT_NOCKSUM, idDB)) {
 		fprintf(stderr, "Cannot init key %s\n", key);
 		return (1);
 	}
@@ -53,15 +53,13 @@ keyunlink_main(int ac, char **av)
 	char	c;
 	int	errors = 0;
 	char	buf[MAXKEY];
-	project	*proj;
 	MDBM	*idDB;
 
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
-	sccs_cd2root(0, 0);
-	proj = proj_init(0);
+	proj_cd2root();
 	while (fnext(buf, stdin)) {
 		unless ((c = chop(buf)) == '\n') {
 			fprintf(stderr, "Bad key '%s%c'\n", buf, c);
@@ -69,7 +67,7 @@ keyunlink_main(int ac, char **av)
 			continue;
 		}
 		/* XXX - empty dirs, see csetprune.c:rmKeys */
-		errors |= sccs_keyunlink(buf, proj, idDB, 0);
+		errors |= sccs_keyunlink(buf, idDB, 0);
 	}
 	return (errors);
 }

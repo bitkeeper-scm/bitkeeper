@@ -514,7 +514,7 @@ _repair()
 	bk park		# otherwise edited file will failed the pull
 	echo "pulling a jumbo patch.."
 	bk pull -F ${_MASTER} || exit 1
-	echo "bk repair have resurrected all files not-gone in the remote"
+	echo "bk repair has resurrected all files not-gone in the remote"
 	echo "repository."
 	echo "If you intend to resurrect the deleted file, please"
 	echo "make sure its key is not in Bitkeeper/etc/gone."
@@ -536,7 +536,7 @@ _obscure() {
 		echo "obscure: will not obscure modified tree"
 		exit 1
 	}
-	bk -r admin -Znone
+	bk -r admin -Znone || exit 1
 	BK_FORCE=YES bk -r admin -O
 }
 
@@ -776,8 +776,14 @@ _regression() {		# /* doc 2.0 */
 	shift `expr $OPTIND - 1`
 	export DO_REMOTE PREFER_RSH
 
+	tdir=`bk bin`/t
+
+	test -x "$tdir"/doit || {
+	    echo The regression suite is not included with this release of Bitkeeper
+	    exit 1
+	}
 	# Do not use "exec" to invoke "./doit", it causes problem on cygwin
-	cd "`bk bin`/t" && time ./doit $V $X "$@"
+	cd "$tdir" && time ./doit $V $X "$@"
 }
 
 __init() {
