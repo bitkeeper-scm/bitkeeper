@@ -14,13 +14,19 @@
 #		ensure repository name does not have spaces
 #		validate all fields in entry widgets
 #
-#	Add check for .bkaccpted to augment the BK_ACCEPTED environment
-#	variable
+#	Ask Larry about normalizing the config file for easy parsing
 #
 
+if { [file type $argv0] == "link" } {
+	set rootDir [file dirname [file readlink $argv0]]
+} else {
+	set rootDir [file dirname $argv0]
+	puts "rootDir: $rootDir"
+}
 
 # Read descriptions for the config options
-source setup_messages.tcl
+set st_messages [file join $rootDir setup_messages.tcl]
+source $st_messages
 
 set msg1 "You are about create a new repository.  You may do this exactly once
 for each project stored in BitKeeper.  If there already is a 
@@ -110,7 +116,24 @@ proc dialog_wait { dlg width len } \
 
 proc license_check {}  \
 {
-	global ret_value
+	global ret_value env
+
+	#
+	# Make user accept license if environment var not set
+	#
+	if {[info exists env(BK_LICENSE)] && \
+	    [string compare $env(BK_LICENSE) "ACCEPTED"] == 0} {
+		return
+	} elseif {[ info exists env(HOME)] } {
+		set bkaccepted [file join $env(HOME) .bkaccepted]
+		if [ file exists $bkaccepted ] {
+			return 
+		} else {
+			puts ".bkaccepted does not exist"
+		}
+        } else {
+		puts "\$HOME not defined: Possibly NT????"
+	}
 
 	# open modal dialogue box
 
@@ -136,7 +159,7 @@ proc license_check {}  \
 
 	set fid [open "|bk help bkl" "r"]
 
-	#while { [ gets $fid line ] >= 0 } {
+	#while { [ gets $fid line ] != -1 } {
 	#	.lic.t.text insert end $line
 	#}
 
@@ -155,7 +178,6 @@ proc license_check {}  \
 
 	dialog_bottom .lic Agree "Don't Agree"
 
-
 	set rc [ dialog_wait .lic 600 480 ]
 	
 	if { $rc == 1 } {
@@ -163,28 +185,36 @@ proc license_check {}  \
 		exit
 	}
 
-	return
+	if {[info exist bkaccepted]} {
+		#puts "exist bkaccepted"
+		if [catch {open $bkaccepted w} fid] {
+			puts stderr "Cannot open $bkaccepted"
+		} else {
+			#puts stderr "touching .bkaccepted"
+			puts $fid "ACCEPTED"
+			close $fid
+	    	}
+	}
+
+	return 0
 }
 
-proc get_info {}  \
-{
-
-	puts "cool, you like our license"
-	return
-}
-
+#
+# Write .bkrc file so that the user does not have to reenter info such
+# as phone number and address
+#
 proc save_config_info {} \
 {
 	global st_cinfo env
 
-	puts "Writing config file: $env(HOME)"
+	#puts "Writing config file: $env(HOME)"
 	set bkrc [file join $env(HOME) .bkrc]
 	if [catch {open $bkrc w} fid] {
 		puts stderr "Cannot open $bkrc"
 	} else {
 		foreach el [lsort [array names st_cinfo]] {
 			puts $fid "${el}: $st_cinfo($el)"
-			puts "${el}: $st_cinfo($el)"
+			#puts "${el}: $st_cinfo($el)"
 		}
 		close $fid
 	}
@@ -198,11 +228,11 @@ proc read_bkrc {} \
 	set bkrc [file join $env(HOME) .bkrc]
 	set fid [open $bkrc "r"]
 
-	#while { [ gets $fid line ] >= 0 } {
+	#while { [ gets $fid line ] != -1 } {
 	#	.lic.t.text insert end $line
 	#}
 
-	while { [ gets $fid line ] >= 0 } {
+	while { [ gets $fid line ] != -1 } {
 
 		set col [string first ":" $line ]
 		set key [string range $line 0 [expr $col -1]]
@@ -213,9 +243,11 @@ proc read_bkrc {} \
 		set st_cinfo($key) $var
 	}
 
-	foreach el [lsort [array names st_cinfo]] {
-		puts "$el = $st_cinfo($el)"
-	}
+	if { $debug } {
+		foreach el [lsort [array names st_cinfo]] {
+			puts "$el = $st_cinfo($el)"
+		}
+    	}
 }
 
 proc create_repo {} \
@@ -234,6 +266,7 @@ proc create_repo {} \
 	
 	#puts "=========>Repo Name: ($st_repo_name) Description: ($des)"
 	# XXX wrap with catch and return valid return code
+	# probably should be an exec?!?
 	set fid [open "|bk setup -f -c$cfile -n'$escaped_des' $st_repo_name" w]
 
 	close $fid 
@@ -295,13 +328,16 @@ proc get_repo_name { w } \
 
 	pack $w
 
+	tkwait variable st_dlg_button
+	destroy .repo
+
         return 0
 }
 
 proc create_config { w } \
 {
 
-	global st_cinfo st_bk_cfg el
+	global st_cinfo st_bk_cfg rootDir st_dlg_button
 
 	set bcolor #ffffff
 	set mcolor #deeaf4	;# color for mandatory fields
@@ -326,7 +362,8 @@ proc create_config { w } \
             -text "The items on the right that are highlited are mandatory \
                    fields"
 
-	image create photo bklogo -file bklogo.gif
+	set logo [file join $rootDir bklogo.gif]
+	image create photo bklogo -file $logo
 	label $w.t.info.l -image bklogo
 
 	pack $w.t.info.l -side top -pady 10
@@ -406,6 +443,16 @@ proc create_config { w } \
 
 	pack $w.t
 	pack $w
+
+	tkwait variable st_dlg_button
+
+	#puts "st_dlg_button: $st_dlg_button"
+	if { $st_dlg_button != 0 } {
+		puts stderr "Cancelling creation of repository"
+		exit
+	}
+	destroy $w
+	return 0
 }
 
 proc main {} \
@@ -416,14 +463,8 @@ proc main {} \
 		set st_repo_name [lindex $argv 0]
 	}
 
-	#
-	# Make user accept license if environment var not set
-	#
-	catch { string compare "ACCEPTED" $env(BK_LICENSE) } msg 
-	if { $msg != 0 } {
-		puts $msg
-		license_check
-        }
+	license_check
+
 
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
@@ -435,14 +476,8 @@ proc main {} \
 	wm geometry . +$x+$y
 
 	get_repo_name .repo
-	tkwait variable st_dlg_button
-	destroy .repo
-
 	get_config_info
-
 	create_config .cconfig
-	tkwait variable st_dlg_button
-	destroy .cconfig
 
 	if {[create_repo] == 0} {
 		puts "repository created"
@@ -452,4 +487,4 @@ proc main {} \
 	}
 }
 
-main
+main;
