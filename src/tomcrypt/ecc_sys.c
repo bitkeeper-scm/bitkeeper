@@ -472,7 +472,7 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    if (mp_read_radix(&p, sets[key->idx].prime, 10) != MP_OKAY)                     { goto error; }
 
    /* get bA */
-   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) != CRYPT_OK)             { goto error; }
+   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p, key->idx) != CRYPT_OK)             { goto error; }
    
    /* get bA + Y */
    if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) != CRYPT_OK)    { goto error; }
@@ -480,7 +480,7 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    /* get mG */
    if (mp_read_radix(&mG->x, sets[key->idx].Gx, 16) != MP_OKAY)                    { goto error; }
    if (mp_read_radix(&mG->y, sets[key->idx].Gy, 16) != MP_OKAY)                    { goto error; }
-   if (ecc_mulmod(&m, mG, mG, &p) != CRYPT_OK)                                     { goto error; }
+   if (ecc_mulmod(&m, mG, mG, &p, key->idx) != CRYPT_OK)                                     { goto error; }
 
    /* compare mG to bA + Y */
    if (!mp_cmp(&mG->x, &pubkey.pubkey.x) && !mp_cmp(&mG->y, &pubkey.pubkey.y)) {
@@ -854,7 +854,7 @@ int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash,
    if (mp_read_radix(&p, sets[key->idx].prime, 10) != MP_OKAY)                     { goto error; }
 
    /* get bA */
-   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) != CRYPT_OK)             { goto error; }
+   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p, key->idx) != CRYPT_OK)             { goto error; }
    
    /* get bA + Y */
    if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) != CRYPT_OK)    { goto error; }
@@ -862,7 +862,7 @@ int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash,
    /* get mG */
    if (mp_read_radix(&mG->x, sets[key->idx].Gx, 16) != MP_OKAY)                    { goto error; }
    if (mp_read_radix(&mG->y, sets[key->idx].Gy, 16) != MP_OKAY)                    { goto error; }
-   if (ecc_mulmod(&m, mG, mG, &p) != CRYPT_OK)                                     { goto error; }
+   if (ecc_mulmod(&m, mG, mG, &p, key->idx) != CRYPT_OK)                                     { goto error; }
 
    /* compare mG to bA + Y */
    if (!mp_cmp(&mG->x, &pubkey.pubkey.x) && !mp_cmp(&mG->y, &pubkey.pubkey.y)) {

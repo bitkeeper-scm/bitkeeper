@@ -203,7 +203,7 @@ extern int ecc_sign_hash(const unsigned char *in,  unsigned long inlen,
 extern int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash, 
                                  unsigned long inlen, int *stat, 
                                  ecc_key *key);
-
+                                 
 extern int compress_y_point(ecc_point *pt, int idx, int *res);
 extern int expand_y_point(ecc_point *pt, int idx, int res);
 #endif

@@ -395,6 +395,9 @@ const char *crypt_build_settings =
 #if defined(DES)
    "   DES\n"
 #endif
+#if defined(CAST5)
+   "   CAST5\n"
+#endif
 
     "\nHashes built-in:\n"
 #if defined(SHA512)
@@ -445,6 +448,9 @@ const char *crypt_build_settings =
 #endif
 #if defined(SPRNG)
     "   SPRNG\n"
+#endif
+#if defined(RC4)
+    "   RC4\n"
 #endif
 
     "\nPK Algs:\n"

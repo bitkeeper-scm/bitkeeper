@@ -328,18 +328,6 @@ static void cookey(const unsigned long *raw1, unsigned long *keyout)
 }
 #endif
 
-static void scrunch(const unsigned char *outof, unsigned long *into)
-{
-    LOAD32H(into[0], outof);
-    LOAD32H(into[1], outof + 4);
-}
-
-static void unscrun(const unsigned long *outof, unsigned char *into)
-{
-    STORE32H(outof[0], into);
-    STORE32H(outof[1], into+4);
-}
-
 #ifndef CLEAN_STACK
 static void desfunc(unsigned long *block, const unsigned long *keys)
 #else
@@ -351,6 +339,7 @@ static void _desfunc(unsigned long *block, const unsigned long *keys)
 
     leftt = block[0];
     right = block[1];
+
     work = ((leftt >> 4)  ^ right) & 0x0f0f0f0fL;
     right ^= work;
     leftt ^= (work << 4);
@@ -376,8 +365,7 @@ static void _desfunc(unsigned long *block, const unsigned long *keys)
 
     for( round = 0; round < 8; round++)
     {
-        work  = (right << 28) | (right >> 4);
-        work ^= *keys++;
+        work  = ((right << 28) | (right >> 4)) ^ *keys++;
         fval  = SP7[ work        & 0x3fL]
               | SP5[(work >>  8) & 0x3fL]
               | SP3[(work >> 16) & 0x3fL]
@@ -389,8 +377,7 @@ static void _desfunc(unsigned long *block, const unsigned long *keys)
               | SP2[(work >> 24) & 0x3fL];
         leftt ^= fval;
 
-        work = (leftt << 28) | (leftt >> 4);
-        work ^= *keys++;
+        work = ((leftt << 28) | (leftt >> 4)) ^ *keys++;
         fval  = SP7[ work        & 0x3fL]
               | SP5[(work >>  8) & 0x3fL]
               | SP3[(work >> 16) & 0x3fL]
@@ -402,7 +389,6 @@ static void _desfunc(unsigned long *block, const unsigned long *keys)
               | SP2[(work >> 24) & 0x3fL];
         right ^= fval;
     }
-
     right = (right << 31) | (right >> 1);
     work = (leftt ^ right) & 0xaaaaaaaaL;
     leftt ^= work;
@@ -421,6 +407,7 @@ static void _desfunc(unsigned long *block, const unsigned long *keys)
     work = ((right >> 4) ^ leftt) & 0x0f0f0f0fL;
     leftt ^= work;
     right ^= (work << 4);
+    
     block[0] = right;
     block[1] = leftt;
 }
@@ -483,9 +470,11 @@ void des_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *
     _ARGCHK(pt != NULL);
     _ARGCHK(ct != NULL);
     _ARGCHK(key != NULL);
-    scrunch(pt, work);
+    LOAD32H(work[0], pt+0);
+    LOAD32H(work[1], pt+4);
     desfunc(work, key->des.ek);
-    unscrun(work, ct);
+    STORE32H(work[0],ct+0);
+    STORE32H(work[1],ct+4);
 }
 
 void des_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *key)
@@ -494,9 +483,11 @@ void des_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *
     _ARGCHK(pt != NULL);
     _ARGCHK(ct != NULL);
     _ARGCHK(key != NULL);
-    scrunch(ct, work);
+    LOAD32H(work[0], ct+0);
+    LOAD32H(work[1], ct+4);
     desfunc(work, key->des.dk);
-    unscrun(work, pt);
+    STORE32H(work[0],pt+0);
+    STORE32H(work[1],pt+4);
 }
 
 void des3_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *key)
@@ -505,11 +496,13 @@ void des3_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key 
     _ARGCHK(pt != NULL);
     _ARGCHK(ct != NULL);
     _ARGCHK(key != NULL);
-    scrunch(pt, work);
+    LOAD32H(work[0], pt+0);
+    LOAD32H(work[1], pt+4);
     desfunc(work, key->des3.ek[0]);
     desfunc(work, key->des3.ek[1]);
     desfunc(work, key->des3.ek[2]);
-    unscrun(work, ct);
+    STORE32H(work[0],ct+0);
+    STORE32H(work[1],ct+4);
 }
 
 void des3_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *key)
@@ -518,11 +511,13 @@ void des3_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key 
     _ARGCHK(pt != NULL);
     _ARGCHK(ct != NULL);
     _ARGCHK(key != NULL);
-    scrunch(ct, work);
+    LOAD32H(work[0], ct+0);
+    LOAD32H(work[1], ct+4);
     desfunc(work, key->des3.dk[0]);
     desfunc(work, key->des3.dk[1]);
     desfunc(work, key->des3.dk[2]);
-    unscrun(work, pt);
+    STORE32H(work[0],pt+0);
+    STORE32H(work[1],pt+4);
 }
 
 int des_test(void)

@@ -131,8 +131,8 @@ int rsa_exptmod(const unsigned char *in,  unsigned long inlen,
       if (mp_exptmod(&tmp, &key->dQ, &key->q, &tmpb) != MP_OKAY)    { goto error; }
 
       /* tmp = tmpa*qP + tmpb*pQ mod N */
-      if (mp_mulmod(&tmpa, &key->qP, &key->N, &tmpa) != MP_OKAY)    { goto error; }
-      if (mp_mulmod(&tmpb, &key->pQ, &key->N, &tmpb) != MP_OKAY)    { goto error; }
+      if (mp_mul(&tmpa, &key->qP, &tmpa) != MP_OKAY)                { goto error; }
+      if (mp_mul(&tmpb, &key->pQ, &tmpb) != MP_OKAY)                { goto error; }
       if (mp_addmod(&tmpa, &tmpb, &key->N, &tmp) != MP_OKAY)        { goto error; }
    } else {
       /* exptmod it */

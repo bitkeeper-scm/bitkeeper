@@ -5,14 +5,14 @@
 int ofb_start(int cipher, const unsigned char *IV, const unsigned char *key, 
               int keylen, int num_rounds, symmetric_OFB *ofb)
 {
-   int x;
+   int x, errno;
 
    _ARGCHK(IV != NULL);
    _ARGCHK(key != NULL);
    _ARGCHK(ofb != NULL);
 
-   if (cipher_is_valid(cipher) != CRYPT_OK) {
-      return CRYPT_ERROR;
+   if ((errno = cipher_is_valid(cipher)) != CRYPT_OK) {
+      return errno;
    }
 
    /* copy details */

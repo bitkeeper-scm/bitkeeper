@@ -250,13 +250,13 @@ static int dbl_point(ecc_point *P, ecc_point *R, mp_int *modulus)
    /* s = (3Xp^2 + a) / (2Yp) */
    if (mp_mul_2(&P->y, &tmp) != MP_OKAY)                   { goto error; } /* tmp = 2*y */
    if (mp_invmod(&tmp, modulus, &tmp) != MP_OKAY)          { goto error; } /* tmp = 1/tmp mod modulus */
-   if (mp_sqrmod(&P->x, modulus, &s) != MP_OKAY)           { goto error; } /* s = x^2 mod modulus */
-   if (mp_mul_d(&s, 3, &s) != MP_OKAY)                     { goto error; } /* s = 3*(x^2 mod modulus) */
-   if (mp_sub_d(&s, 3, &s) != MP_OKAY)                     { goto error; } /* s = 3*(x^2 mod modulus) - 3 */
+   if (mp_sqr(&P->x,  &s) != MP_OKAY)                      { goto error; } /* s = x^2  */
+   if (mp_mul_d(&s, 3, &s) != MP_OKAY)                     { goto error; } /* s = 3*(x^2) */
+   if (mp_sub_d(&s, 3, &s) != MP_OKAY)                     { goto error; } /* s = 3*(x^2) - 3 */
    if (mp_mulmod(&s, &tmp, modulus, &s) != MP_OKAY)        { goto error; } /* s = tmp * s mod modulus */
 
    /* Xr = s^2 - 2Xp */
-   if (mp_sqrmod(&s, modulus, &tmpx) != MP_OKAY)           { goto error; } /* tmpx = s^2 mod modulus */
+   if (mp_sqr(&s,  &tmpx) != MP_OKAY)                      { goto error; } /* tmpx = s^2  */
    if (mp_sub(&tmpx, &P->x, &tmpx) != MP_OKAY)             { goto error; } /* tmpx = tmpx - x */
    if (mp_submod(&tmpx, &P->x, modulus, &tmpx) != MP_OKAY) { goto error; } /* tmpx = tmpx - x mod modulus */
 
@@ -302,7 +302,7 @@ static int add_point(ecc_point *P, ecc_point *Q, ecc_point *R, mp_int *modulus)
    /* get s = (Yp - Yq)/(Xp-Xq) mod p */
    if (mp_submod(&P->x, &Q->x, modulus, &tmp) != MP_OKAY)     { goto error; } /* tmp = Px - Qx mod modulus */
    if (mp_invmod(&tmp, modulus, &tmp) != MP_OKAY)             { goto error; } /* tmp = 1/tmp mod modulus */
-   if (mp_submod(&P->y, &Q->y, modulus, &s) != MP_OKAY)       { goto error; } /* s = Py - Qy mod modulus */
+   if (mp_sub(&P->y, &Q->y, &s) != MP_OKAY)                   { goto error; } /* s = Py - Qy mod modulus */
    if (mp_mulmod(&s, &tmp, modulus, &s) != MP_OKAY)           { goto error; } /* s = s * tmp mod modulus */
 
    /* Xr = s^2 - Xp - Xq */
@@ -326,20 +326,31 @@ done:
 }
 
 /* perform R = kG where k == integer and G == ecc_point */
-static int ecc_mulmod(mp_int *k, ecc_point *G, ecc_point *R, mp_int *modulus)
+static int ecc_mulmod(mp_int *k, ecc_point *G, ecc_point *R, mp_int *modulus, int idx)
 {
    ecc_point *tG;
    int i, j, z, first, res;
    mp_digit d;
    unsigned char bits[768];
-
+   
    /* get bits of k */
    for (z = i = 0; z < (int)USED(k); z++) {
        d = DIGIT(k, z);
-       for (j = 0; j < 16; j++) {
-           bits[i++] = d&1;
-           d >>= 1;
-       }
+       
+#define DO1 bits[i++] = d&1; d >>= 1;
+#define DO2 DO1 DO1
+#define DO4 DO2 DO2
+
+       DO4; DO4; DO4; DO4
+
+#undef DO4
+#undef DO2
+#undef DO1
+
+//       for (j = 0; j < 16; j++) {
+//           bits[i++] = d&1;
+//           d >>= 1;
+//       }
    }
 
    /* make a copy of G incase R==G */
@@ -427,7 +438,7 @@ int ecc_test(void)
 
        /* then we should have G == (order + 1)G */
        if (mp_add_d(&order, 1, &order) != MP_OKAY)                  { goto error; }
-       if (ecc_mulmod(&order, G, GG, &modulus) != CRYPT_OK)      { goto error; }
+       if (ecc_mulmod(&order, G, GG, &modulus, i) != CRYPT_OK)      { goto error; }
        if (mp_cmp(&G->x, &GG->x) || mp_cmp(&G->y, &GG->y)) {
           res = CRYPT_FAIL_TESTVECTOR;
           goto done1;
@@ -510,7 +521,7 @@ int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
    if (mp_read_raw(&key->k, buf, keysize+1) != MP_OKAY)      { goto error; }
 
    /* make the public key */
-   if (ecc_mulmod(&key->k, base, &key->pubkey, &prime) != CRYPT_OK) { goto error; }
+   if (ecc_mulmod(&key->k, base, &key->pubkey, &prime, x) != CRYPT_OK) { goto error; }
    key->type = PK_PRIVATE;
 
    /* free up ram */
@@ -757,7 +768,6 @@ int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key,
    ecc_point *result;
    mp_int prime;
    int res, errno;
-   unsigned char buf[256];
 
    _ARGCHK(private_key != NULL);
    _ARGCHK(public_key != NULL);
@@ -785,19 +795,19 @@ int ecc_shared_secret(ecc_key *private_key, ecc_key *public_key,
    }
 
    if (mp_read_radix(&prime, sets[private_key->idx].prime, 10) != MP_OKAY) { goto error; }
-   if ((errno = ecc_mulmod(&private_key->k, &public_key->pubkey, result, &prime)) != CRYPT_OK) { res = errno; goto done1; }
+   if ((errno = ecc_mulmod(&private_key->k, &public_key->pubkey, result, &prime, private_key->idx)) != CRYPT_OK) { res = errno; goto done1; }
 
    x = mp_raw_size(&result->x);
-   mp_toraw(&result->x, buf);
    y = mp_raw_size(&result->y);
-   mp_toraw(&result->y, buf+x);
 
    if (*outlen < (x+y)) {
       res = CRYPT_BUFFER_OVERFLOW;
       goto done1;
    }
    *outlen = x+y;
-   memcpy(out, buf, x+y);
+   mp_toraw(&result->x, out);
+   mp_toraw(&result->y, out+x);
+
    res = CRYPT_OK;
    goto done1;
 error:
@@ -805,9 +815,6 @@ error:
 done1:
    mp_clear(&prime);
    del_point(result);
-#ifdef CLEAN_STACK
-   zeromem(buf, sizeof(buf));
-#endif
    return res;
 }
 

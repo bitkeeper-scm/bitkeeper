@@ -43,8 +43,8 @@ static unsigned long rng_ps2(unsigned char *buf, unsigned long len,
   int l;
   hash_state md;
 
-  md5_init(&md);
   for (j = 0; j < len; j += sizeof(lastx)) {
+    md5_init(&md);
     samples[0] = *T2_COUNT;
     samples[1] = *T3_COUNT;
     samples[2] = *IPU_TOP;

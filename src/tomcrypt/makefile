@@ -8,6 +8,9 @@
 # handling CFLAGS so that the x86 specific optimizations don't break
 # a build. This is easy to remedy though, for those that have problems.
 
+# The version
+VERSION=0.72
+
 #Compiler and Linker Names
 CC=gcc
 LD=ld
@@ -229,25 +232,8 @@ docs: crypt.tex
 	pdflatex crypt > /dev/null
 	rm -f $(LEFTOVERS)
 
-#This used to be the zipup target. I have split it into two seperate targets:
-#bz and zip. bz builds a crypt.tar.bz2 package, while zip builds a crypt.zip
-#package. I have removed the dos2unix commands, as this is a Linux makefile,
-#and these should not be needed. I also made it output the target to the
-#current directory instead of the root (/) directory. (Bad Tom!) We are
-#almost assured write permission in the current directory, but not in the root
-#directory. This means any user can now build a BZ image or a zip.
-#NOTE: This removes all pre-built compressed archives during clean.
-bz: clean docs
-	chdir .. ; rm -f crypt.tar.bz2 ; tar -c libtomcrypt/* > crypt.tar ; bzip2 -9v crypt.tar
-
-zip: clean docs
-	chdir .. ; rm -f crypt.zip ; zip -9 -r crypt.zip libtomcrypt/*
-
-#Makes a tar/gz archive of the library.
-gz: clean docs
-	chdir .. ; rm -f crypt.tar.gz ; tar -c libtomcrypt/* > crypt.tar ; gzip -9v crypt.tar
-
-#makes a tar/SZIP archive [slightly better than bzip2]
-szip: clean docs
-	chdir .. ; rm -f crypt.tar.szp ; tar -c libtomcrypt/* > crypt.tar ; szip -b41o64v255 crypt.tar crypt.tar.szp
-
+#zipup the project (take that!)
+zipup: clean docs
+	chdir .. ; rm -rf crypt* libtomcrypt-$(VERSION) ; mkdir libtomcrypt-$(VERSION) ; \
+	cp -R ./libtomcrypt/* ./libtomcrypt-$(VERSION)/ ; tar -c libtomcrypt-$(VERSION)/* > crypt-$(VERSION).tar ; \
+	bzip2 -9vv crypt-$(VERSION).tar ; zip -9 -r crypt-$(VERSION).zip libtomcrypt-$(VERSION)/*

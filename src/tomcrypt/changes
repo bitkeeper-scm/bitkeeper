@@ -1,3 +1,13 @@
+Nov 21th, 2002
+v0.72  -- Fixed bug in the prime testing.  In the Miller-Rabin test I was raising the base to "N-1" not "r".
+          The math still worked out fine because in effect it was performing a Fermat test.  Tested the new code and it 
+          works properly
+       -- Fixed some of the code where it was still using the old error syntax
+       -- Sped up the RSA decrypt/sign routines
+       -- Optimized the ecc_shared_secret routine to not use so much stack
+       -- Fixed up the makefile to make releases where the version # is in the file name and directory it will unzip
+          too
+
 Nov 19th, 2002
 v0.71  -- HELP TOM.  I need tuition for the January semester.  Now I don't want to force donations [nor will I ever]
           but I really need the help!  See my website http://tom.iahu.ca/help_tom.html for more details.  Please help
