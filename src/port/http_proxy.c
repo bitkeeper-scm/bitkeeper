@@ -17,7 +17,6 @@ save_cached_proxy(char *proxy)
 	unless (p) return;
 	sprintf(cached_proxy, "%s/%s", p, CACHED_PROXY);
 	f = fopen(cached_proxy, "wb");
-fprintf(stderr, "saving proxy:<%s>\n", proxy);
 	fputs(proxy, f);
 	fclose(f);
 }
@@ -49,7 +48,7 @@ extract(char *buf, char *type, char **proxies)
 	while (p = strstr(q, type)) {
 		char *t;
 		t = ++p;
-		while ((*p != '\"') && (*p != ';')) p++;
+		while (*p && (*p != '\"') && (*p != ';')) p++;
 		*p = 0;
 		proxies = addLine(proxies, strdup(t));
 		*p = '\"';
@@ -69,6 +68,7 @@ http_get_file(char *host, char *path, char **proxies)
 	if (fd < 0) {
 		fprintf(stderr,
 			"http_get_file: cannot connect to to host %s\n", host);
+		return NULL;
 	}
 	sprintf(header,
 "GET %s HTTP/1.0\n\
@@ -81,7 +81,27 @@ path);
 		proxies = extract(buf, "\"SOCKS ", proxies);
 	}
 	close(fd);
-	return proxies;
+	return (proxies);
+}
+
+char **
+local_get_file(char *path,  char **proxies)
+{
+	FILE *f;
+	char buf[MAXLINE];
+
+	f = fopen(path, "r");
+	unless (f) {
+		fprintf(stderr,
+			"local_get_file: cannot open %s\n", path);
+		return NULL;
+	}
+	while (fgets(buf, sizeof(buf), f)) {
+		proxies = extract(buf, "\"PROXY ", proxies);
+		proxies = extract(buf, "\"SOCKS ", proxies);
+	}
+	fclose(f);
+	return (proxies);
 }
 
 char **
@@ -92,9 +112,11 @@ get_config(char *url, char **proxies)
 	if (strneq(url, "http://", 7)) {
 		parse_url(url, host, path);
 		return (http_get_file(host, path, proxies));
+	} else if (strneq(url, "file:/", 6)) {
+		return (local_get_file(&url[5], proxies));
 	} else {
 		fprintf(stderr, "unsupported url %s\n", url);
-		return;
+		return NULL;
 	}
 
 }
