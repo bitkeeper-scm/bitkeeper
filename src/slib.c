@@ -4616,7 +4616,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	int	encoding = (flags&GET_ASCII) ? E_ASCII : s->encoding;
 	unsigned int sum;
 	FILE 	*out;
-	char	*buf, *base = 0, *f;
+	char	*buf, *base = 0, *f = 0;
 	MDBM	*DB = 0;
 	int	hash = 0;
 	int sccs_expanded, rcs_expanded;
@@ -4747,7 +4747,6 @@ out:			if (slist) free(slist);
 
 				for (t = buf; *t != '$' && *t != '\n'; t++);
 				if (*t == '$') {
-					int didit;
 					e = e2 = rcsexpand(s, d, e, &rcs_expanded);
 					if (rcs_expanded && (s->state & S_EXPAND1)) {
 						flags &= ~GET_RCSEXPAND;
@@ -5876,7 +5875,7 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 private inline int
 expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
 {
-	char	*e = fbuf, *e1, *e2;
+	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
 	if (s->encoding != E_ASCII) return (0);

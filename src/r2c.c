@@ -19,7 +19,7 @@ main(int ac, char **av)
 	char	buf[MAXPATH+200];
 	char	tmpfile[MAXPATH];
 	char	*t, *key, *shortkey;
-	FILE	*f;
+	FILE	*f = 0;
 	int	len;
 	RANGE_DECL;
 
