@@ -16,6 +16,9 @@ echo $N Test import of a patch file, look for patch fudge ...........$NL
 cat > c <<EOF
 logging: none
 license: $BK_LIC_P
+licsign1: $BK_LIC_P1
+licsign2: $BK_LIC_P2
+licsign3: $BK_LIC_P3
 description: BitKeeper Test repository
 email: nobody@nowhere.bk
 EOF

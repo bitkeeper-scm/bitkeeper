@@ -216,6 +216,9 @@ bk edit $Q config
 echo "description: BitKeeper Test repository" > config
 echo "email:		nobody@nowhere.bk" >> config
 echo "license: $BK_LIC_B" >> config
+echo "licsign1: $BK_LIC_B1" >> config
+echo "licsign2: $BK_LIC_B2" >> config
+echo "licsign3: $BK_LIC_B3" >> config
 echo "logging: private@me.com" >>  config
 bk ci $Q -y"set close logging"  config
 echo y | bk commit $Q -y"set close logging" > /dev/null 2>&1
