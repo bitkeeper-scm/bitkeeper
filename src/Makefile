@@ -25,7 +25,8 @@ BINLINKS= bk admin get delta unget rmdel prs
 
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) $(GNU)
 
-CFLAGS	= -g -O -Wall -Wno-parentheses -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
+CFLAGS	= -g -O -Wall -Wno-parentheses -Wno-char-subscripts \
+	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
 CPPFLAGS= -Izlib
 LINK	= $(LSCCS) $(LMDBM) $(LZLIB) $(XLIBS)
 LSCCS	= -L. -lsccs
@@ -96,8 +97,11 @@ ansi:
 
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 # Unfortunately it also turns off dangling else warnings.
+# -Wno-char-subscripts shuts up "subscript has type char", which comes
+# up all the time with broken <ctype.h> implementations.  (To be turned
+# back on for 1.1 or so.)
 Wall:
-	$(MAKE) CFLAGS="-g -DWALL -DLINT -Wall -Wno-parentheses -DPURIFY" all
+	$(MAKE) CFLAGS="-g -DWALL -DLINT -Wall -Wno-parentheses -Wno-char-subscripts -DPURIFY" all
 
 WWall:
 	$(MAKE) CFLAGS="-g -O -W -Wall -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -DPURIFY" all
