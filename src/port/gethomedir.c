@@ -55,6 +55,7 @@ getBkDir(void)
 
 	if (t = getHomeDir()) {
 		dir = aprintf("%s/%s", t, bkdir);
+		free(t);
 		unless (mkdir(dir, 0777)) return (dir);
 		free(dir);
 	}
