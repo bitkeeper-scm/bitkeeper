@@ -10,7 +10,7 @@ private int compressed(int);
 int
 cmd_clone(int ac, char **av)
 {
-	int	c;
+	int	c, rc;
 	int	gzip = 0;
 	char 	*p;
 
@@ -55,14 +55,17 @@ cmd_clone(int ac, char **av)
 		drain();
 		exit(1);
 	}
-	if (p && trigger(av, "pre", 0)) exit (1);
+	putenv("BK_OUTGOING=OK");
+	if (p && trigger(av, "pre")) exit (1);
 	if (p) out("@SFIO@\n");
 	if (gzip) {
-		return (compressed(gzip));
+		rc = compressed(gzip);
 	} else {
-		return (uncompressed());
+		rc = uncompressed();
 	}
-	if (p && trigger(av, "post", 0)) exit (1);
+	if (rc) putenv("BK_OUTGOING=CONFLICT");
+	if (p && trigger(av, "post")) exit (1);
+	return (rc);
 }
 	    
 private int

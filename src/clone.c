@@ -196,9 +196,17 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		sys("bk", "-r", "get", "-q", SYS);
 	}
 	
-	trigger(av, "post", ret);
 	rc  = 0;
-done:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
+done:	if (rc) {
+		putenv("BK_INCOMING=CONFLICT");
+	} else {
+		putenv("BK_INCOMING=OK");
+	}
+	/*
+	 * Don't borther to fire trigger if we have no tree
+	 */
+	if (bk_proj) trigger(av, "post");
+	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	repository_wrunlock(0);
 	unless (rc || opts.quiet) {
 		fprintf(stderr, "Clone completed successfully.\n");

@@ -283,8 +283,6 @@ that will work too, it just gets another patch.\n");
 		}
 
 		if (opts->noconflicts) {
-			int fd1;
-
 			SHOUT();
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
@@ -556,9 +554,7 @@ pass2_renames(opts *opts)
 		/* Yes, I want this increment before the continue */
 		n++;
 		t = strrchr(path, '/');
-		unless (t[1] == 's') {
-			continue;
-		}
+		unless (t[1] == 's') continue;
 
 		unless ((s = sccs_init(path, INIT, opts->resync_proj)) &&
 		    s->tree) {
