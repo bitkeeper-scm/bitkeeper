@@ -457,3 +457,13 @@ http_hdr()
 	out("Content-type: text/plain\n\n"); 
 	done = 1;
 }
+
+void
+flush2remote(remote *r)
+{
+	if (r->isSocket) {
+		flushSocket(r->wfd);
+	} else {
+		flush_fd(r->wfd); /* this is a no-op on Unix */
+	}
+}

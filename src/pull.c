@@ -87,11 +87,6 @@ usage:			system("bk help -s push");
 	return (rc);
 }
 
-int
-buf2fd(int gzip, char *buf, int len, int fd)
-{
-	return (gzip ? gunzip2fd(buf, len, fd) : write(fd, buf, len));
-}
 
 private int
 send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
@@ -377,12 +372,7 @@ takepatch(opts opts, int gzip, remote *r)
 	unless (opts.quiet) cmds[++n] = "-mvv";
 	cmds[++n] = 0;
 	pid = spawnvp_wPipe(cmds, &pfd);
-	if (gzip) gzip_init(6);
-	while ((n = read_blk(r, buf, sizeof(buf))) > 0) {
-		opts.in += n;
-		opts.out += buf2fd(gzip, buf, n, pfd);
-	}
-	if (gzip) gzip_done();
+	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
 	close(pfd);
 
 	n = waitpid(pid, &status, 0);

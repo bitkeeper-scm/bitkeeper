@@ -48,7 +48,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  lod.o logging.o mail.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o oclone.o opull.o opush.o \
 	  parent.o pending.o popen.o \
-	  port/executable.o port/findprog.o port/fullname.o \
+	  port/executable.o port/findprog.o port/fullname.o port/flushsocket.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
 	  port/mail.o port/platforminit.o \
 	  port/randomBits.o port/samepath.o port/sccs_lockfile.o \
@@ -589,6 +589,7 @@ parent.o:	parent.c $(H)
 pending.o:	pending.c $(H)
 popen.o:	popen.c $(H)
 port/findprog.o:	port/findprog.c $(H) 
+port/flushsocket.o:	port/flushsocket.c $(B) $(H)
 port/fullname.o:	port/fullname.c $(H)
 port/gethost.o:	port/gethost.c $(H)
 port/getinput.o:	port/getinput.c $(H)

@@ -221,16 +221,19 @@ remote_print(remote *r, FILE *f)
 pid_t
 tcp_pipe(remote *r)
 {
-	char	port[50];
-	char	*av[6] = {"bk", "_socket2pipe"};
+	char	port[50], pipe_size[50];
+	char	*av[8] = {"bk", "_socket2pipe"};
 	int	i = 2;
 
 	sprintf(port, "%d", r->port);
+	sprintf(pipe_size, "%d", BIG_PIPE);
 	if (r->httpd) av[i++] = "-h";
+	av[i++] = "-p";
+	av[i++] = pipe_size;
 	av[i++] = r->host;
 	av[i++] = port;
 	av[i] = 0;
-	return spawnvp_rwPipe(av, &(r->rfd), &(r->wfd));
+	return spawnvp_rwPipe(av, &(r->rfd), &(r->wfd), BIG_PIPE);
 }
 #endif
 
@@ -359,7 +362,7 @@ not compatible with Unix rshd.\n\
 #ifndef WIN32
 	signal(SIGCHLD, SIG_DFL);
 #endif
-	p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd));
+	p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd), BIG_PIPE);
 	if (freeme) free(freeme);
 	return (p);
 }

@@ -2,7 +2,7 @@
 
 private	char *cmd[] = { "bk", "-r", "sfio", "-o", 0, 0 };
 private int uncompressed();
-private int compressed(int);
+private int compressed(int, int);
 
 /*
  * Send the sfio file to stdout
@@ -58,8 +58,10 @@ cmd_clone(int ac, char **av)
 	putenv("BK_OUTGOING=OK");
 	if (p && trigger(av, "pre")) exit (1);
 	if (p) out("@SFIO@\n");
-	if (gzip) {
-		rc = compressed(gzip);
+	if (p) {
+		rc = compressed(gzip, 1);
+	} else if (gzip) {
+		rc = compressed(gzip, 0);
 	} else {
 		rc = uncompressed();
 	}
@@ -85,10 +87,11 @@ uncompressed()
 }
 
 private int
-compressed(int gzip)
+compressed(int level, int hflag)
 {
 	pid_t	pid;
 	int	n, rfd, status;
+	u32	hlen = 0;
 	char	buf[4096];
 
 #ifndef WIN32
@@ -98,11 +101,7 @@ compressed(int gzip)
 	if (pid == -1) {
 		return (1);
 	}
-	gzip_init(gzip);
-	while ((n = read(rfd, buf, sizeof(buf))) > 0) {
-		gzip2fd(buf, n, 1);
-	}
-	gzip_done();
+	gzipAll2fd(rfd, 1, level, 0, 0, hflag, 0);
 	waitpid(pid, &status, 0);
 	return (0);
 }

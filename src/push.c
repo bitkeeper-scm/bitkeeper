@@ -20,7 +20,6 @@ private	int	push(char **av, opts opts, remote *r, char **envVar);
 private	void	pull(opts opts, remote *r);
 private	void	listIt(sccs *s);
 private	void	listrev(delta *d);
-private char    *spin = "|/-\\";
 
 int
 push_main(int ac, char **av)
@@ -131,6 +130,9 @@ log_main(int ac, char **av)
 	if (qflag) {
 		for (i = 0; i < 3; i++) close(i); 
 		usleep(0); /* release cpu, so citool can exit */
+		fopen(NULL_FILE, "rt"); /* stdin */
+		fopen(DEV_NULL, "wt");	/* stdout */
+		fopen(DEV_NULL, "wt");	/* stderr */
 	}
 
 	i = 2;
@@ -339,8 +341,8 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	return (2);
 }
 
-private int
-genpatch(opts opts, int gzip, int wfd, char *rev_list)
+private u32
+genpatch(opts opts, int level, int wfd, char *rev_list)
 {
 	char	*makepatch[10] = {"bk", "makepatch", 0};
 	char	buf[4096];
@@ -360,34 +362,17 @@ genpatch(opts opts, int gzip, int wfd, char *rev_list)
 	assert(fd == 0);
 	pid = spawnvp_rPipe(makepatch, &rfd);
 	dup2(fd0, 0); close(fd0);
-	if (gzip) {
-		gzip_init(6);
-		while ((n = read(rfd, buf, sizeof(buf))) > 0) {
-			opts.in += n;
-			opts.out += gzip2fd(buf, n, wfd);
-			if (opts.verbose) {
-				fprintf(stderr, "%c\b", spin[i++ % 4]);
-			}
-		}
-		gzip_done();
-	} else {
-		while ((n = read(rfd, buf, sizeof(buf))) > 0) {
-			opts.in += n;
-			opts.out += write(wfd, buf, n);
-			if (opts.verbose) {
-				fprintf(stderr, "%c\b", spin[i++ % 4]);
-			}
-		}
-	}
+	gzipAll2fd(rfd, wfd, level, &(opts.in), &(opts.out), 1, opts.verbose);
 	close(rfd);
 	waitpid(pid, &status, 0);
 	return (opts.out);
 }
 
-private int
+private u32
 patch_size (opts opts, int gzip, char *rev_list)
 {
-	int fd, n;
+	int	fd;
+	u32	n;
 
 	fd = open(DEV_NULL, O_WRONLY, 0644);
 	assert(fd > 0);
@@ -441,8 +426,11 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	char	msgfile[MAXPATH];
 	MMAP    *m;
 	FILE	*f;
-	int	rc, extra = 0;
+	int	rc;
+	u32	extra = 0;
 	int	gzip;
+	int	nul = 0;
+	int	true = 1;
 
 	/*
 	 * If we are using ssh/rsh do not do gzip ourself
@@ -475,7 +463,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	mclose(m);
 
 	genpatch(opts, gzip, r->wfd, rev_list);
-	disconnect(r, 1); /* Important for bkd, we want to force eof */
+	flush2remote(r); /* important, without this, protocol will hang */
 
 	if (unlink(msgfile)) perror(msgfile);
 	if (rc == -1) {
