@@ -443,7 +443,6 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 			    "Not a BitKeeper revision controlled file"
 			set bkfile($side) 0
 		} else {
-			#set ltext "$lfile"
 			if {$r != "1.0"} {
 				set p [open "| bk prs -hr$r $dspec1 \"$f\""]
 			} else {
@@ -687,7 +686,7 @@ proc Page {view dir one} \
 	set y [lindex $p 1]
 	set w [winfo containing $x $y]
 	#puts "window=($w)"
-	if {[regexp {^.diffs} $w]} {
+	if {[regexp {^.diffs} $w] || [regexp {^.menu} $w]} {
 		page ".diffs" $view $dir $one
 		return 1
 	}

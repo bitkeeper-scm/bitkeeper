@@ -10441,6 +10441,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	/*
 	 * Do the delta table & misc.
 	 */
+	unless (locked || (locked = sccs_lock(sc, 'z'))) {
+		verbose((stderr, "admin: can't get lock on %s\n", sc->sfile));
+		OUT;
+	}
 	unless (sfile = fopen(sccsXfile(sc, 'x'), "w")) {
 		fprintf(stderr, "admin: can't create %s: ", sccsXfile(sc, 'x'));
 		perror("");
