@@ -11,8 +11,8 @@ WHATSTR("@(#)%K%");
 int
 main(int ac, char **av)
 {
-	char	*name, c;
-	int	errors = 0;
+	char	*name;
+	int	c, errors = 0;
 	int 	useCommonDir = 0;
 
 	debug_main(av);
