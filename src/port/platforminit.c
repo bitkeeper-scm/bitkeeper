@@ -7,6 +7,7 @@ void platformSpecificInit(char *name) {}
 #else
 void platformSpecificInit(char *name)
 {
+	setmode(0, _O_BINARY); /* needed for adler32 */
 	setmode(1, _O_BINARY);
 	setmode(2, _O_BINARY);
 

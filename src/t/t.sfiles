@@ -36,7 +36,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check explicit list with some files left out ................$NL
-sort <<EOF > .sfiles
+sort <<EOF | ${CAT} > .sfiles
 SCCS/s.ChangeSet
 SCCS/s.s.foo
 bar/blech/s.foo
