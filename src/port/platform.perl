@@ -32,6 +32,14 @@ sub bg_system
 	system("$cmd $args &");
 }
 
+# Unix exec
+# We need this becuase perl exec on win32 runs new program in "background"
+sub doExec
+{
+	exec @_;
+	die "doExec: exec failed: $!\n"; 
+}
+
 # Convert path to "standard" format
 # On unix, this is a no-op
 # This should match the localName2bkName()
