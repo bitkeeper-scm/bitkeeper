@@ -269,7 +269,7 @@ oksccs(char *sfile, int flags, int complain)
 		free(g);
 		return (0);
 	}
-	if ((flags&SF_WRITE_OK) && (!ok || !(sbuf.st_mode & 0600))) {
+	if ((flags&SF_WRITE_OK) && (!ok || !(sbuf.st_mode & 0200))) {
 		if (complain)
 			fprintf(stderr,
 			    "%s: %s: no write permission\n", prog, g);

@@ -248,7 +248,7 @@ echo "licsign2: $BKL_P2" >> c
 echo "licsign3: $BKL_P3" >> c
 BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
 cd project
-BK_USER=one; BK_HOST=one.com
+BK_USER=one; BK_HOST=one.com.bk_regression.bk
 export BK_USER BK_HOST
 cd $HERE/project
 echo hi > hi.c
@@ -257,8 +257,8 @@ if [ -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
 bk edit $Q BitKeeper/etc/config
 cp BitKeeper/etc/config config.sav
 bk co $Q -l hi.c
-for i in "" "one" "one@one.com" "one@one.com:$HERE/project" \
-	"@one.com" "@one.com:$HERE/project" \
+for i in "" "one" "one@$BK_HOST" "one@$BK_HOST:$HERE/project" \
+	"@$BK_HOST" "@$BK_HOST:$HERE/project" \
 	":$HERE/project" "one:$HERE/project" 
 do
 	cp config.sav BitKeeper/etc/config
@@ -502,6 +502,132 @@ cmp -s C C2 || {
 }
 test -f SCCS/c.init3 && {
 	echo failed to clean up the c.file
+	exit 1
+}
+echo OK
+
+echo $N Make sure we split long comment lines with -YFILENAME .......$NL
+cd $HERE/project
+ls > LS
+bk new $Q LS
+for i in 0 1 2 3 4 5 6 7 8 9
+do echo $N 1234567890$NL
+done > 100
+for i in 0 1 2 3 4 5 6 7 8 9
+do cat 100
+done > 1000
+for i in 0 1 2 3 4 
+do cat 1000
+done > 5000
+bk edit $Q LS
+bk delta -Y5000 $Q LS 2>ERR
+grep -q Splitting ERR || {
+	echo bad diagnostics
+	cat ERR
+	exit 1
+}
+bk prs -hd'$each(:C:){(:C:)}' -r+ LS > Y
+cmp -s Y 5000 || {
+	echo failed
+	diff Y 5000
+	ls -l Y 5000
+	exit 1
+}
+echo OK
+
+echo $N Make sure we split a long comment line with -ylong_comment ..$NL
+bk edit $Q LS
+bk delta -y`cat 5000` $Q LS 2>ERR
+grep -q Splitting ERR || {
+	echo bad diagnostics
+	cat ERR
+	exit 1
+}
+bk prs -hd'$each(:C:){(:C:)}' -r+ LS > Y
+cmp -s Y 5000 || {
+	echo failed
+	diff Y 5000
+	ls -l Y 5000
+	exit 1
+}
+echo OK
+
+echo $N Make sure we split long comment lines with -ylong_comment ...$NL
+bk edit $Q LS
+( cat 5000
+  echo ""
+  cat 100
+  echo ""
+  cat 100
+  echo ""
+) > 3lines
+bk delta -y"`cat 3lines`" $Q LS 2>ERR
+grep -q Splitting ERR || {
+	echo bad diagnostics
+	cat ERR
+	exit 1
+}
+cat 5000 100 100 > WANT
+bk prs -hd'$each(:C:){(:C:)}' -r+ LS > GOT
+cmp -s WANT GOT || {
+	echo failed
+	diff WANT GOT
+	ls -l WANT GOT
+	exit 1
+}
+echo OK
+
+echo $N Check multiline command line comments .......................$NL
+bk edit $Q LS
+bk delta -y'line 1
+line 2
+line 3' $Q LS 2>ERR
+bk undos > WANT <<EOF
+line 1
+line 2
+line 3
+EOF
+bk prs -hd'$each(:C:){(:C:)\n}' -r+ LS > GOT
+cmp -s WANT GOT || {
+	echo failed
+	diff WANT GOT
+	ls -l WANT GOT
+	exit 1
+}
+echo OK
+
+echo $N Check 1020 char comment .....................................$NL
+bk edit $Q LS
+( cat 1000; echo $N 01234567890123456789$NL ) > 1020
+bk delta -y`cat 1020` LS 2>ERR
+grep -q Splitting ERR && {
+	echo bad diagnostics
+	cat ERR
+	exit 1
+}
+bk prs -hd'$each(:C:){(:C:)}' -r+ LS > GOT
+cmp -s 1020 GOT || {
+	echo failed
+	diff 1020 GOT
+	ls -l 1020 GOT
+	exit 1
+}
+echo OK
+
+echo $N Check 2040 char comment .....................................$NL
+bk edit $Q LS
+cat 1020 1020 > 2040
+bk delta -y`cat 2040` LS 2>ERR
+grep -q Splitting ERR || {
+	echo bad diagnostics
+	cat ERR
+	exit 1
+}
+bk prs -hd'$each(:C:){(:C:)}' -r+ LS > GOT
+cmp -s 2040 GOT || {
+	echo failed
+	diff 2040 GOT
+	ls -l 2040 GOT
 	exit 1
 }
 echo OK

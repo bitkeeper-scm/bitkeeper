@@ -2478,9 +2478,9 @@ err:			unapply(save);
 
 	if (strieq("yes", user_preference("partial_check"))) {
 		fflush(save); /*  important */
-		ret = run_check(APPLIED, 0);
+		ret = run_check(APPLIED, 0, opts->quiet);
 	} else {
-		ret = run_check(0, 0);
+		ret = run_check(0, 0, opts->quiet);
 	}
 	if (ret) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");

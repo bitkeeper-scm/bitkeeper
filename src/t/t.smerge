@@ -14,9 +14,21 @@
 
 # still need to check fdiff output.
 
+D3="-Aall -a1,2,3 -d"
+
+echo "logging: none" > c
+echo "description: BitKeeper Test repository" >> c
+echo "email: nobody@nowhere.bk" >> c
+echo "license: $BKL_P" >> c
+echo "licsign1: $BKL_P1" >> c
+echo "licsign2: $BKL_P2" >> c
+echo "licsign3: $BKL_P3" >> c
+echo "eoln: unix" >> c
+BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
+cd project
+
 # Tests for smerge
 echo $N Create initial files ........................................$NL
-mkdir SCCS
 cat > gca <<EOF
    won't change
    won't change either
@@ -52,7 +64,7 @@ cat > gca <<EOF
    won't change
 EOF
 bk delta $Q -yremote gca || exit 1
-bk edit $Q -r1.1 gca || exit 1
+bk _get -e $Q -r1.1 gca || exit 1
 cat > gca <<EOF
    won't change
    won't change either
@@ -74,6 +86,8 @@ bk delta $Q -ylocal gca || exit 1
 echo OK
 echo $N Check default smerge output .................................$NL
 bk smerge gca 1.2 1.1.1.1 > out
+bk smerge $D3 gca 1.2 1.1.1.1 > out.open
+checkfiles out out.open
 cat - > out2 <<EOF
    won't change
    won't change either
@@ -114,8 +128,7 @@ cat - > out2 <<EOF
    won't change
    won't change
 EOF
-diff -u out out2 > DIFF.OUT
-if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
+checkfiles out out2
 rm -f gca
 echo OK
 echo $N Check gca smerge output .....................................$NL
@@ -123,6 +136,8 @@ echo $N Check gca smerge output .....................................$NL
 bk edit $Q gca || exit 1
 bk smerge -g gca 1.2 1.1.1.1 > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
+bk smerge $D3 -g gca 1.2 1.1.1.1 > out.open
+checkfiles out out.open
 cat > out2 <<EOF
    won't change
    won't change either
@@ -167,12 +182,13 @@ cat > out2 <<EOF
    won't change
    won't change
 EOF
-diff -u out out2 > DIFF.OUT
-if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
+checkfiles out out2
 echo OK
 echo $N Check 2WAY smerge output ....................................$NL
 bk smerge -2 gca 1.2 1.1.1.1 > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
+bk smerge $D3 -2 gca 1.2 1.1.1.1 > out.open
+checkfiles out out.open
 cmp -s out - <<EOF
    won't change
    won't change either
@@ -207,6 +223,8 @@ echo OK
 echo $N Check new-only smerge output ................................$NL
 bk smerge -n gca 1.2 1.1.1.1 > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
+bk smerge $D3 -n gca 1.2 1.1.1.1 > out.open
+checkfiles out out.open
 cmp -s out - <<EOF
    won't change
    won't change either
@@ -246,6 +264,8 @@ echo OK
 echo $N Trying adding annotations ...................................$NL
 bk smerge -gIm gca 1.2 1.1.1.1 > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
+bk smerge $D3 -gIm gca 1.2 1.1.1.1 > out.open
+checkfiles out out.open
 cat - > new <<EOF
 1.1           |    won't change
 1.1           |    won't change either
@@ -295,7 +315,7 @@ if [ $? -ne 0 ]; then echo failed; sdiff out new; exit 1; fi
 echo OK
 echo $N Test automerging ............................................$NL
 bk unedit $Q gca || exit 1
-bk edit $Q -r1.1 gca || exit 1
+bk _get -e $Q -r1.1 gca || exit 1
 cat > gca <<EOF
    won't change much
    won't change either
@@ -315,7 +335,9 @@ cat > gca <<EOF
 EOF
 bk delta $Q -ylocal2 gca || exit 1
 bk smerge gca 1.1.2.1 1.1.1.1 > out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; cat out; exit 1; fi
+bk smerge $D3 gca 1.1.2.1 1.1.1.1 > out.open
+checkfiles out out.open
 cat > out2 <<EOF
    won't change much
    won't change either
@@ -333,12 +355,13 @@ cat > out2 <<EOF
    won't change
    won't change
 EOF
-diff -u out out2 > DIFF.OUT
-if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
+checkfiles out out2
 echo OK
 echo $N Verify that content merge was needed ........................$NL
 bk smerge -gA3 gca 1.1.2.1 1.1.1.1 > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
+bk smerge $D3 -gA3 gca 1.1.2.1 1.1.1.1 > out.open
+checkfiles out out.open
 cmp -s out - <<EOF
    won't change much
    won't change either
@@ -388,13 +411,15 @@ bk edit $Q bar || exit 1
 echo a > bar
 echo $NX line without NL $NXL >> bar
 bk delta $Q -yremote bar || exit 1
-bk edit $Q -r1.1 bar || exit 1
+bk _get -e $Q -r1.1 bar || exit 1
 echo b > bar
 echo $NX line without NL $NXL >> bar
 cp bar bar.want
 bk delta $Q -ylocal bar || exit 1
 bk smerge bar 1.1 1.1.1.1 > bar.out
 cmp -s bar.out bar.want || { echo Failed to get correct merge; exit 1; }
+bk smerge $D3 bar 1.1 1.1.1.1 > bar.out.open
+checkfiles bar.out bar.out.open
 echo OK
 
 echo $N Demonstrate the added_oneside hueristic .....................$NL
@@ -445,7 +470,7 @@ last line of block matches
  last line of block matches
 >>>>>>>
 EOF
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; cat OUT; exit 1; fi
 echo OK
 
 echo $N show bug with common trailing lines .........................$NL
@@ -466,4 +491,64 @@ cmp -s OUT - <<EOF
 last line of block matches
 EOF
 if [ $? -ne 0 ]; then echo failed; cat OUT;exit 1; fi
+echo OK
+
+# Test a fmtool fdiff output with :-Im -f
+echo $N verify an fdiff output format ...............................$NL
+cat <<EOF > fdiffm
+a
+b
+c
+EOF
+bk new $Q fdiffm
+bk edit $Q fdiffm
+cat <<EOF > fdiffm
+main
+b
+c
+main end
+EOF
+bk delta $Q -ynone fdiffm
+bk _get $Q -e -r1.1
+cat <<EOF > fdiffm
+branch
+b
+c
+branch end
+EOF
+bk delta $Q -ynone fdiffm
+bk smerge -Im -f fdiffm 1.1 1.1.1.1 > fdiffm_R
+bk smerge $D3 -Im -f fdiffm 1.1 1.1.1.1 > fdiffm_RD3
+cat <<EOF > fdiffm_D
+M
+ 1.1.1.1       | branch
+L
+ 1.1           | a
+s
+R
+-1.1           | a
++1.1.1.1       | branch
+E
+ 1.1           | b
+ 1.1           | c
+M
+ 1.1.1.1       | branch end
+L
+s
+R
++1.1.1.1       | branch end
+E
+EOF
+cmp -s fdiffm_R fdiffm_D || {
+	echo failed
+	echo difference between actual and desired:
+	diff fdiffm_R fdiffm_D
+	exit 1
+}
+cmp -s fdiffm_RD3 fdiffm_D || {
+	echo failed
+	echo difference between actual and desired in diff3:
+	diff fdiffm_RD3 fdiffm_D
+	exit 1
+}
 echo OK

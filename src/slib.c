@@ -4355,6 +4355,7 @@ sccs_init(char *name, u32 flags, project *proj)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
+	lease_check(s);
 	return (s);
 }
 
@@ -4621,8 +4622,12 @@ sccs_csetInit(u32 flags, project *proj)
 	sccs	*cset = 0;
 
 	unless (rootpath = sccs_root(0)) goto ret;
-	strcpy(csetpath, rootpath);
-	strcat(csetpath, "/" CHANGESET);
+	if (streq(rootpath, ".")) {
+		strcpy(csetpath, CHANGESET);
+	} else {
+		strcpy(csetpath, rootpath);
+		strcat(csetpath, "/" CHANGESET);
+	}
 	debug((stderr, "sccs_csetinit: opening changeset '%s'\n", csetpath));
 	cset = sccs_init(csetpath, flags, proj);
 ret:
@@ -7737,12 +7742,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 		EACH(d->comments) {
 			/* metadata */
 			p = fmts(buf, "\001c ");
-			if (strlen(d->comments[i]) >= 1020) {
-				fprintf(stderr,
-				   "%s@@%s: Truncating comment to 1020 chars\n",
-				   s->gfile, d->rev);
-				d->comments[i][1019] = 0;
-			}
 			p = fmts(p, d->comments[i]);
 			*p++ = '\n';
 			*p   = '\0';
@@ -12305,8 +12304,7 @@ out:
 			init = 0;  /* prevent double free */
 			OUT;
 		}
-		prefilled =
-		    sccs_getInit(s,
+		prefilled = sccs_getInit(s,
 		    prefilled, init, flags&DELTA_PATCH, &e, 0, &syms);
 		/*
 		 * Normally, the syms list is passed in by the caller
@@ -13505,7 +13503,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		/* XXX TODO: we may need to the walk the comment graph	*/
 		/* to get the latest comment				*/
 		EACH(d->comments) {
-			if (!plen && !slen && j++) fc(' ');
+			j++;
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -13670,7 +13668,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		int i = 0, j = 0;
 		EACH(s->text) {
 			if (s->text[i][0] == '\001') continue;
-			if (!plen && !slen && j++) fc(' ');
+			j++;
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(s->text[i]);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -13764,7 +13762,8 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
-	if (streq(kw, "SYMBOLS")) {	/* $each(:SYMBOL:){S (:SYMBOL:)\n} */
+	/* $each(:TAG:){S (:TAG:)\n} */
+	if (streq(kw, "SYMBOLS") || streq(kw, "TAGS")) {
 		symbol	*sym;
 		int	j = 0;
 
@@ -13988,7 +13987,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		while (d->type == 'R') d = d->parent;
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
-			if (!plen && !slen && j++) fc(' ');
+			j++;
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(sym->symname);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -14448,7 +14447,7 @@ extractPrefix(const char *b, const char *end, char *kwbuf)
 			return (len);
 		}
 	}
-	return (-1);
+	return (0);
 }
 
 /*
@@ -15552,28 +15551,14 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 void
 sccs_md5delta(sccs *s, delta *d, char *b64)
 {
+	char	*hash;
 	char	key[MAXKEY+16];
-	char	md5[32];
-	int	hash = register_hash(&md5_desc);
-#define	ul	unsigned long	/* XXX - tomcrypt api sucks */
-	ul	md5len, b64len;
-	char	*p;
 
 	sccs_sdelta(s, d, key);
 	if (s->tree->random) strcat(key, s->tree->random);
-	hash_memory(hash, key, strlen(key), md5);
-	b64len = 30;
-	md5len = hash_descriptor[hash].hashsize;
-	base64_encode(md5, md5len, key, &b64len);
-	for (p = key; *p; p++) {
-		if (*p == '/') *p = '-';	/* dash */
-		if (*p == '+') *p = '_';	/* underscore */
-		if (*p == '=') {
-			*p = 0;
-			break;
-		}
-	}
-	sprintf(b64, "%08x%s", (u32)d->date, key);
+	hash = hashstr(key);
+	sprintf(b64, "%08x%s", (u32)d->date, hash);
+	free(hash);
 }
 
 void

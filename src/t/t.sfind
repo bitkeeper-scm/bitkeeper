@@ -96,7 +96,7 @@ if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 #cmp -s SFILES LIST
 #if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 echo OK
-bk cset $Q -yblah - <SFILES
+bk commit $Q -yblah - <SFILES
 bk co $Q -l s.foo bar/s.foo
 ls >> bar/s.foo
 echo $N Check the list of changed files .............................$NL
@@ -190,7 +190,7 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Commit work, check pending lists again ......................$NL
-bk sfind -s,,p -C | bk cset $Q -ysecond -
+bk sfind -s,,p -C | bk commit $Q -ysecond -
 bk sfind -s,,p -C | sort > SFILES
 if [ -s SFILES ]; then echo "Failed (short)"; cat SFILES; exit 1; fi
 bk sfind -s,,p -CA | sort > SFILES

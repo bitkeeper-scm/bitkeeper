@@ -222,6 +222,7 @@ static struct option const longopts[] =
   {"help", 0, 0, 141},
   {"binary", 0, 0, 142},
   {"ignore-trailing-cr", 0, 0, 143},
+  {"ignore-to-str", 1, 0, 144},
   {0, 0, 0, 0}
 };
 
@@ -564,6 +565,17 @@ main (argc, argv)
 	case 143:
 	  /* Ignore \r\n vs \n differences.  */
 	  ignore_trailing_cr_flag = 1;
+	  ignore_some_changes = 1;
+	  ignore_some_line_changes = 1;
+	  break;
+
+	case 144:
+	  /* Ignore characters upto and including parameter.  */
+	  if (strlen(optarg) < 1)
+	    fatal ("ignored string too short");
+	  if (strlen(optarg) > IGNORE_TO_STR_MAX)
+	    fatal ("ignored string too long");
+	  strncpy(ignore_to_str, optarg, IGNORE_TO_STR_MAX);
 	  ignore_some_changes = 1;
 	  ignore_some_line_changes = 1;
 	  break;

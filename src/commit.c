@@ -16,17 +16,17 @@ typedef struct {
 extern	char	*editor, *bin, *BitKeeper;
 extern	int	do_clean(char *, int);
 extern	int	loggingask_main(int, char**);
-private	int	make_comment(char *cmt, char *commentFile);
 private int	do_commit(char **av, c_opts opts, char *sym,
-					char *pendingFiles, char *commentFile);
+					char *pendingFiles, int dflags);
 
 int
 commit_main(int ac, char **av)
 {
-	int	c, doit = 0, force = 0, getcomment = 1;
+	int	c, doit = 0, force = 0;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
-	char	commentFile[MAXPATH], pendingFiles[MAXPATH] = "";
+	char	pendingFiles[MAXPATH] = "";
 	char	*sym = 0;
+	int	dflags = 0;
 	c_opts	opts  = {0, 0, 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
@@ -34,7 +34,6 @@ commit_main(int ac, char **av)
 		return (1);
 	}
 
-	bktmp(commentFile, "commit");
 	while ((c = getopt(ac, av, "aAdf:FRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;	/* doc 2.0 */
@@ -48,20 +47,20 @@ commit_main(int ac, char **av)
 		    case 's':	/* fall thru  *//* internal */	/* undoc 2.0 */
 		    case 'q':	opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'S':	sym = optarg; break;		/* doc 2.0 */
-		    case 'y':	doit = 1; getcomment = 0;	/* doc 2.0 */
-				if (make_comment(optarg, commentFile)) {
-					return (1);
-				}
-				break;
-		    case 'Y':	doit = 1; getcomment = 0;	/* doc 2.0 */
-				if (fileCopy(optarg, commentFile)) {
-					fprintf(stderr,
-					    "commit: cannot copy to comment "
-					    "file %s\n", commentFile);
-					unlink(commentFile);
-					return (1);
-				}
-				break;
+		    case 'y':					/* doc 2.0 */
+			dflags |= DELTA_DONTASK;
+			comments_save(optarg);
+			break;
+		    case 'Y':					/* doc 2.0 */
+			unless (exists(optarg) && (size(optarg) > 0)) {
+				fprintf(stderr,
+				    "commit: can't read comments from %s\n",
+				    optarg);
+				exit(1);
+			}
+			dflags |= DELTA_DONTASK;
+			comments_savefile(optarg);
+			break;
 		    case 'A':	/* internal option for regression test only */
 				/* do not document */		/* undoc 2.0 */
 				opts.no_autoupgrade = 1; break;
@@ -75,15 +74,22 @@ commit_main(int ac, char **av)
 		return (1);
 	}
 	unless(opts.resync) remark(opts.quiet);
-	if (pendingFiles[0] || (av[optind] && streq("-", av[optind]))) {
-		FILE *f;
-
-		if (getcomment && !pendingFiles[0]) {
+	if (pendingFiles[0]) {
+		if (av[optind] && streq("-", av[optind])) {
 			fprintf(stderr,
-			"You must use the -Y or -y option when using \"-\"\n");
+			    "commit: can't use -f when using \"-\"\n");
 			return (1);
 		}
-		unless (pendingFiles[0]) {
+	} else {
+		if (av[optind] && streq("-", av[optind])) {
+			FILE	*f;
+
+			unless (dflags & DELTA_DONTASK) {
+				fprintf(stderr,
+				    "You must use the -Y or -y "
+				    "option when using \"-\"\n");
+				return (1);
+			}
 			bktmp(pendingFiles, "list");
 			setmode(0, _O_TEXT);
 			f = fopen(pendingFiles, "wb");
@@ -92,32 +98,36 @@ commit_main(int ac, char **av)
 				fputs(buf, f);
 			}
 			fclose(f);
+		} else {
+			bktmp(pendingFiles, "bk_pending");
+			if (sysio(0, pendingFiles, 0,
+				"bk", "sfind", "-s,,p", "-C", SYS)) {
+				unlink(pendingFiles);
+				getMsg("duplicate_IDs", 0, 0, 0, stdout);
+				return (1);
+			}
 		}
-	} else {
-		bktmp(pendingFiles, "bk_pending");
-		if (sysio(0,
-		    pendingFiles, 0, "bk", "sfind", "-s,,p", "-C", SYS)) {
+	}
+	unless (force) {
+		if (size(pendingFiles) == 0) {
+			unless (opts.quiet) {
+				fprintf(stderr, "Nothing to commit\n");
+			}
 			unlink(pendingFiles);
-			unlink(commentFile);
-			getMsg("duplicate_IDs", 0, 0, 0, stdout);
+			return (0);
+		}
+		/* check is skipped with -F so 'bk setup' works */
+		if (sysio(pendingFiles, 0, 0, "bk", "check", "-c", "-", SYS)) {
+			unlink(pendingFiles);
 			return (1);
 		}
 	}
-	if ((force == 0) && (size(pendingFiles) == 0)) {
-		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
-		unlink(pendingFiles);
-		unlink(commentFile);
-		return (0);
-	}
-	if (sysio(pendingFiles, 0, 0, "bk", "check", "-c", "-", SYS)) {
-		unlink(pendingFiles);
-		unlink(commentFile);
-		return (1);
-	}
-	if (getcomment) {
+	unless (dflags & DELTA_DONTASK) {
 		char	*cmd, *p;
 		FILE	*f, *f1;
+		char	commentFile[MAXPATH];
 
+		bktmp(commentFile, "commit");
 		cmd = aprintf("bk _sort -u | "
 			"bk sccslog -DA - > %s", commentFile);
 		f = popen(cmd, "w");
@@ -133,18 +143,18 @@ commit_main(int ac, char **av)
 		fclose(f1);
 		pclose(f);
 		free(cmd);
+		if (!doit && comments_prompt(commentFile)) {
+			printf("Commit aborted.\n");
+			unlink(pendingFiles);
+			unlink(commentFile);
+			return (1);
+		}
+		dflags |= DELTA_DONTASK;
+		comments_savefile(commentFile);
+		unlink(commentFile);
 	}
 	do_clean(s_cset, SILENT);
-	if (doit) return (do_commit(av, opts, sym, pendingFiles, commentFile));
-	switch (comments_prompt(commentFile)) {
-	    case 0:
-		return (do_commit(av, opts, sym, pendingFiles, commentFile));
-	    default:
-		printf("Commit aborted.\n");
-		unlink(pendingFiles);
-		unlink(commentFile);
-		return (1);
-	}
+	return (do_commit(av, opts, sym, pendingFiles, dflags));
 }
 
 private int
@@ -167,20 +177,19 @@ pending(char *sfile)
 
 private int
 do_commit(char **av,
-	c_opts opts, char *sym, char *pendingFiles, char *commentFile)
+	c_opts opts, char *sym, char *pendingFiles, int dflags)
 {
-	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
-	int	status, rc, i;
-	int	fd, fd0;
-	char	buf[MAXLINE], sym_opt[MAXLINE] = "", cmt_opt[MAXPATH + 3], *p;
+	int	rc, i;
+	char	buf[MAXLINE], *p;
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
-	char	*cset[100] = {"bk", "cset", 0};
+	sccs	*cset;
+	char	**syms = 0;
 	FILE 	*f, *f2;
+	char	commentFile[MAXPATH];
 
 	unless (ok_commit(opts.alreadyAsked)) {
-out:		if (commentFile) unlink(commentFile);
-		if (pendingFiles) unlink(pendingFiles);
+out:		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
 
@@ -220,47 +229,32 @@ out:		if (commentFile) unlink(commentFile);
 	 */
 	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
 	safe_putenv("BK_PENDING=%s", p);
+
+	/* XXX could avoid if we knew if a trigger would fire... */
+	bktmp(commentFile, "comments");
+	comments_writefile(commentFile);
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
+
 	if (rc = trigger(av[0], "pre")) goto done;
 	i = 2;
-	if (opts.quiet) cset[i++] = "-q";
-	if (sym) {
-		sprintf(sym_opt, "-S%s", sym);
-		cset[i++] = sym_opt;
-	}
+	if (opts.quiet) dflags |= SILENT;
+	if (sym) syms = addLine(syms, strdup(sym));
 	if (f = fopen("SCCS/t.ChangeSet", "r")) {
 		while (fnext(buf, f)) {
-			char	*t;
-			
 			chop(buf);
-			t = aprintf("-S%s", buf);
-			cset[i++] = t; /* XXX leaks! */
-			assert(i < 90);
+			syms = addLine(syms, strdup(buf));
 		}
 		fclose(f);
 		unlink("SCCS/t.ChangeSet");
 	}
-	if (hasComment) {
-		sprintf(cmt_opt, "-Y%s", commentFile);
-		cset[i++] = cmt_opt;
-	}
-	cset[i] = 0;
-	fd0 = dup(0); close(0);
-	fd = open(p, O_RDONLY, 0);
-	assert(fd == 0);
-	status = spawnvp_ex(_P_WAIT, cset[0], cset);
-	close(0); dup2(fd0, 0); close(fd0);
+	cset = sccs_csetInit(0,0);
+	rc = csetCreate(cset, dflags, p, syms);
 
 	putenv("BK_STATUS=OK");
-	if (!WIFEXITED(status)) {
-		putenv("BK_STATUS=SIGNALED");
-		rc = 1;
-	} else if (rc = WEXITSTATUS(status)) {
-		putenv("BK_STATUS=FAILED");
-	}
+	if (rc) putenv("BK_STATUS=FAILED");
 	trigger(av[0], "post");
-done:	if (unlink(commentFile)) perror(commentFile);
-	if (unlink(pendingFiles)) perror(pendingFiles);
+done:	if (unlink(pendingFiles)) perror(pendingFiles);
+	unlink(commentFile);
 	if (pendingFiles2[0]) {
 		if (unlink(pendingFiles2)) perror(pendingFiles2);
 	}
@@ -273,20 +267,4 @@ done:	if (unlink(commentFile)) perror(commentFile);
 	 */
 	unless (opts.resync) logChangeSet(opts.quiet);
 	return (rc ? 1 : 0);
-}
-
-private	int
-make_comment(char *cmt, char *commentFile)
-{
-	int fd;
-	int flags = O_CREAT|O_TRUNC|O_WRONLY;
-
-	if ((fd = open(commentFile, flags, 0664)) == -1)  {
-		perror("commit");
-		return (1);
-	}
-	setmode(fd, O_TEXT);
-	write(fd, cmt, strlen(cmt));
-	close(fd);
-	return (0);
 }

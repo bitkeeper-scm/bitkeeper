@@ -49,13 +49,13 @@ comments_main(int ac, char **av)
 		}
 	}
 	if (comment) {
-		char	*p = comment;
+		delta	*d;
 
-		while (p = strrchr(comment, '\n')) {
-			lines = addLine(lines, strdup(p+1));
-			*p = 0;
-		}
-		lines = addLine(lines, strdup(comment));
+		comments_save(comment);
+		d = comments_get(0);
+		lines = d->comments;
+		d->comments = 0;
+		sccs_freetree(d);
 	} else if (file) {
 		unless (lines = readFile(file)) return (1);
 	}

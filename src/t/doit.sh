@@ -193,6 +193,9 @@ setup_env()
 	esac
 	chech_enclosing_repo
 
+	BK_HOST=bk_regression.bk
+	export BK_HOST
+
 	# turn off pager
 	BK_PAGER=cat
 	export BK_PAGER
@@ -253,16 +256,27 @@ clean_up()
 		exit 12
 	}
 
+	for i in 1 2 3 4 5 6 7 8 9 0
+	do	
+		rm -rf $BK_REGRESSION 2>/dev/null
+		test -d $BK_REGRESSION || break
+		sleep 1
+	done
 	rm -rf $BK_REGRESSION
 
-	if [ -d $BK_REGRESSION ];
-	then echo "cleanup: failed to rm $BK_REGRESSION"; exit 1;
-	fi
+	test -d $BK_REGRESSION && {
+		echo "cleanup: failed to rm $BK_REGRESSION"
+		exit 1
+	}
 
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
 	$DIFF $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
 
+	# Look for spare BK processes if we are Linux pased
+	test "`uname`" = Linux && {
+		ps -axu 2>/dev/null | grep bk | grep -v grep
+	}
 }
 
 init_main_loop()

@@ -134,6 +134,7 @@ delta_main(int ac, char **av)
 	    streq(name, "enter") || streq(name, "add")) {
 		dflags |= NEWFILE;
 		sflags |= SF_NODIREXPAND;
+		sflags &= ~SF_WRITE_OK;
 	}
 
 	if (ac > 1 && streq("--help", av[1])) {
@@ -143,7 +144,7 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c =
-	    getopt(ac, av, "1abcCdD:E|fg;GhI;ilm|M;npPqRrsuy|YZ|")) != -1) {
+	    getopt(ac, av, "1abcCdD:E|fg;GhI;ilm|M;npPqRrsuy|Y|Z|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;	/* undoc? 2.0 */
@@ -160,6 +161,7 @@ comment:		comments_save(optarg);
 		    case 'f': dflags |= DELTA_FORCE; break;	/* doc 2.0 ci */
 		    case 'i': dflags |= NEWFILE; 		/* doc 2.0 */
 			      sflags |= SF_NODIREXPAND;
+			      sflags &= ~SF_WRITE_OK;
 			      break;
 		    case 'l': ckopts = "edit";			/* doc 2.0 */ 
 			      checkout = 1;
@@ -204,7 +206,10 @@ comment:		comments_save(optarg);
 		    case 'M': mode = optarg; break;		/* doc 2.0 */
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
-		    case 'Y': dflags |= DELTA_DONTASK; break; 	/* doc 2.0 */
+		    case 'Y':
+			if (optarg) comments_savefile(optarg);
+			dflags |= DELTA_DONTASK;
+			break; 	/* doc 2.0 */
 		    case 'Z': 					/* doc 2.0 */
 			compp = optarg ? optarg : "gzip"; break;
 		    case 'E': encp = optarg; break; 		/* doc 2.0 */
@@ -258,7 +263,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 
 	/* force them to do something sane */
 	if (!comments_got() &&
-	    dash && name && !(dflags & NEWFILE) && sfileNext()) {
+	    dash && name && !(dflags & (NEWFILE|DELTA_CFILE)) && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified without a checkin comment\n", av[0]);
 		goto usage;

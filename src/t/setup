@@ -82,6 +82,15 @@ echon() {
 	echo $NX ${1+"$@"}$NXL
 }
 
+# args: GOT WANT
+checkfiles() {
+        cmp -s "$1" "$2" || {
+                echo "$1" and "$2" don\'t match
+                diff -u "$1" "$2"
+                exit 1
+        }
+}
+
 cd "$BK_REGRESSION" || exit 1
 
 # We need this because ksh on Solaris override $PATH from .profile

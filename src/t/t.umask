@@ -30,7 +30,7 @@ bk commit $S -a -y"This is \"Change Set\" A"
 echo OK
 
 echo $N Make sure that BitKeeper and subdirs are 0775 mode ..........$NL
-find . -type d -perm 0775 -print | sort > LIST
+find . -type d -perm 0775 -print | sort -u > LIST
 cat <<EOF > WANT
 .
 ./BitKeeper

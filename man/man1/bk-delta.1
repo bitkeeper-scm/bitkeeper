@@ -90,8 +90,11 @@ Run silently.
 .B \-u
 Follow check in with an unlocked check out like bk get.
 .tp
-.B \-Y
+.OPTopt \-Y file
 Prompt for one comment, then use it for all the files.
+If
+.ARG file
+is specified then take the comments from that file.
 .tp
 .OPTreq \-y comment
 Sets the revision comment to 

@@ -437,6 +437,3 @@ Key First"
 
 #endif
 
-static const char *ID_TAG = "hmac.c";
-
-

@@ -252,3 +252,50 @@ bk clean $Q a || {
 	exit 1
 }
 echo OK
+echo $N Checking diff with ignore-to-str option .....................$NL
+echo > a
+echo > b
+bk diff --ignore-to-str=x a b > DIFF || {
+	echo Fail same no char
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+echo 'x' > b
+bk diff --ignore-to-str=x a b > DIFF || {
+	echo Fail simple match
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+echo 'xa' > b
+
+bk diff -n --ignore-to-str=x a b > DIFF && {
+	echo Fail simple nonmatch
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+cat <<EOF > CMP
+d1 1
+a1 1
+a
+EOF
+cmp -s DIFF CMP || {
+	echo Fail nonmatch value
+	echo "==" Desired
+	cat CMP
+	echo "==" Actual
+	cat DIFF
+	exit 1
+}
+echo this is a xax text '' > a
+echo this is b xbx text '' > b
+bk diff --ignore-to-str='x ' --ignore-trailing-cr a b > DIFF || {
+	echo Fail
+	echo Same string with ignore-trailing set
+	echo output of diff:
+	cat DIFF
+	exit 1
+}
+echo OK

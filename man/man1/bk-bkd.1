@@ -250,9 +250,7 @@ We use the following in
 to provide anonymous read only access to some \*(BK repositories.  
 .DS
 #----------------------\ cut\ here\ --------------------------
-/home/bk/LMbench \-p5000 \-xcd \-xpush \-u99
-/home/bk/bitcluster \-p6000 \-xcd \-xpush \-u99
-/home/bk/one \-p7000 \-xcd \-xpush \-u99
+/bk -C \-u99 \-g10
 #----------------------\ cut\ here\ --------------------------
 .DE
 .LP
@@ -267,8 +265,8 @@ to start up \*(BK on bitkeeper.com (a Red Hat based Linux system):
 #----------------------\ cut\ here\ --------------------------
 #!/bin/sh
 #
-# bitkeeper	Start/stop the bitkeeper daemon.
-# 		@(#)bitkeeper.init 1.1 Copyright (c) 2000 Larry McVoy
+# chkconfig: 2345 24 84
+# description: BitKeeper server for work
 
 # Source networking configuration.
 if [ \-f /etc/sysconfig/network ]
@@ -285,6 +283,9 @@ case "$1" in
 		;;
     stop_msg)	echo "Stop BitKeeper daemons"
 		;;
+    restart)	$0 stop
+		$0 start
+		;;
     start)	cd $VAR || exit 1
 		test \-f repositories || {
 			echo Nothing advertised
@@ -294,28 +295,35 @@ case "$1" in
 		do	(
 			cd $dir || exit 1
 			F=`basename $dir`
-			bk bkd -C -d $opts \-l$VAR/log.$F \-P$VAR/pid.$F
-			echo Started bkd $opts in $dir
+			CMD="bk bkd \-d $opts \-l$VAR/log.$F \-P$VAR/pid.$F"
+			eval $CMD 2>> $VAR/errors
+			echo Started $CMD in $dir
 			)
 		done < repositories
-		;;
+	    	;;
 
     stop)	
 		cd $VAR || exit 1
 		echo Shutting down BitKeeper daemons
 		for i in pid.*
-		do	kill \-HUP `cat $i`
+		do	kill `cat $i`
 			rm $i
 		done
 		;;
 
-    status)	ps \-axf | grep bkd
+    status)	cd $VAR || exit 1
+		for i in pid.*
+		do	echo This pid should be running: `cat $i`
+		done
+		ps \-axf | grep bkd
+		
 		;;
 
     *)		echo "Usage: bitkeeper {start|stop}"
-		exit 1
+    		exit 1
 		;;
 esac
+
 exit 0
 #----------------------\ cut\ here\ --------------------------
 .DE

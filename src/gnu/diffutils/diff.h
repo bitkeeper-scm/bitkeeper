@@ -76,6 +76,10 @@ EXTERN int      ignore_space_change_flag;
 /* Ignore \r\n vs \n differences */
 EXTERN int      ignore_trailing_cr_flag;
 
+/* Ignore characters upto and including this string */
+#define         IGNORE_TO_STR_MAX	3
+EXTERN char     ignore_to_str[IGNORE_TO_STR_MAX+1];
+
 /* Ignore all horizontal white space (-w).  */
 EXTERN int      ignore_all_space_flag;
 

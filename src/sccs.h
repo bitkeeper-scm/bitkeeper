@@ -316,11 +316,13 @@
 #define	OPENLOG_BACKUP	"http://config2.openlogging.org:80////LOG_ROOT///"
 #define	OPENLOG_HOST	"config.openlogging.org"
 #define	OPENLOG_HOST1   "config2.openlogging.org"
+#define	OPENLOG_LEASE	"http://lease.openlogging.org:80"
 #define	BK_WEBMAIL_URL	"http://webmail.bitkeeper.com:80"
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	HOSTME_CGI	"hostme_cgi"
 #define	WEB_MAIL_CGI	"web_mail"
+#define	LEASE_CGI	"bk_lease"
 #define	BK_CONFIG_URL	"http://config.bitkeeper.com:80"
 #define	BK_CONFIG_BCKUP	"http://config2.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
@@ -950,6 +952,7 @@ size_t	msize(MMAP *m);
 MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
 int 	licenseAccept(int prompt);
+char	*licenses_accepted(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
@@ -1022,9 +1025,11 @@ int	repository_wrunlock(int all);
 int	repository_hasLocks(char *root, char *dir);
 void	repository_lockcleanup(void);
 void	comments_save(char *s);
+void	comments_savefile(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
+void	comments_writefile(char *file);
 void	host_done(void);
 delta	*host_get(delta *, int);
 void	user_done(void);
@@ -1043,6 +1048,7 @@ void	sccs_rmEmptyDirs(char *path);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 char 	**get_http_proxy(void);
 int	confirm(char *msg);
+int	csetCreate(sccs *cset, int flags, char *files, char **syms);
 int	cset_setup(int flags, int ask);
 off_t	fsize(int fd);
 char	*separator(char *);
@@ -1055,6 +1061,7 @@ off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
 char	*getHomeDir(void);
+char	*getBkDir(void);
 char	*age(time_t secs, char *space);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef
@@ -1169,13 +1176,14 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 void	saveEnviroment(char *patch);
 void	restoreEnviroment(char *patch);
-int	run_check(char *partial, int fix);
+int	run_check(char *partial, int fix, int quiet);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign);
+char	*hashstr(char *str);
+char	*secure_hashstr(char *str, char *key);
 int	write_log(char *root, char *file, int rotate, char *format, ...);
 void	delete_cset_cache(char *rootpath, int save);
 int	nFiles(void);
-u32	bk_license(char *user, int verbose);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
@@ -1188,11 +1196,20 @@ char	*loadfile(char *file, int *size);
 char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
+char	*findDotFile(char *old, char *new, char *buf);
 void	set_timestamps(char *sfile);
+
+void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
+    int (*is_whitespace)(int i));
+void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
+int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
+    int (*compare)(int a, int b));
+int   diffline(char *left, char *right);
 
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
+extern char *bk_platform;
 
 int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */
