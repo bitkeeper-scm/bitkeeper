@@ -332,7 +332,7 @@ cset_rel(sccs *s, delta *d, MDBM *mapdb)
 	key.dsize = strlen(keystr) + 1;
 	val = mdbm_fetch(mapdb, key);
 	assert(val.dsize == sizeof(csrel));
-	csrel = (val.dsize == sizeof(csrel)) ? (u16) *val.dptr : 0;
+	csrel = (val.dsize == sizeof(csrel)) ? (*(u16 *)val.dptr) : 0;
 	debug((stderr, "renumber: cset release == %u\n", csrel));
 	return (csrel);
 }

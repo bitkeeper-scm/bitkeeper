@@ -40,6 +40,7 @@ echo $N Restore initial and move revision numbers then fix ..........$NL
 cp -f sfoo SCCS/s.foo.c
 bk get $Q foo.c
 rm -f SCCS/s.foo.c
+rm -f top
 mv foo.c top
 sed -e 's/ D 1\.1\.1\.1 / D 1.5 /' -e 's/ D 1\.2 / D 1.1.1.1 /'  \
 	-e 's/ D 1\.5 / D 1.2 /' sfoo > SCCS/s.foo.c
@@ -67,6 +68,7 @@ echo $N Restore initial and move release numbers, then fix ..........$NL
 cp -f sfoo SCCS/s.foo.c
 bk get $Q foo.c
 rm -f SCCS/s.foo.c
+rm -f top
 mv foo.c top
 sed -e 's/ D 1\.1\.1\.1 / D 2.0.4.1 /' -e 's/ D 1\.2 / D 2.0.7.1 /'  \
 	sfoo > SCCS/s.foo.c
