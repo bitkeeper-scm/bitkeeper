@@ -267,6 +267,7 @@
 #define	D_CKSUM		0x00010000	/* delta has checksum */
 #define	D_MERGED	0x00020000	/* set on branch tip which is merged */
 #define	D_GONE		0x00040000	/* this delta is gone, don't print */
+#define	D_BLUE		0x00080000	/* when you need two colors */
 #define	D_ICKSUM	0x01000000	/* use checksum from init file */
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
