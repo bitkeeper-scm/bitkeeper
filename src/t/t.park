@@ -37,10 +37,10 @@ echo foo-new > foo.c
 echo bar-new >> bar.c
 cp foo.c foo.sav
 cp bar.c bar.sav
-bk park 2> /dev/null
+bk park 2> /dev/null || exit 1
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
-bk unpark 2> /dev/null 1>&2
+bk unpark 2> /dev/null 1>&2 || exit 1
 cmp -s foo.c foo.sav
 if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
 cmp -s bar.c bar.sav 
