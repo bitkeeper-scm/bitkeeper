@@ -335,10 +335,49 @@ proc get_repo_name { w } \
         return 0
 }
 
+#
+# Used to ensure that the mandatory fields have text. 
+# TODO: Check validity of entries as much as possible
+#       Get rid of sequence of if/then and make into loop so we can
+#          easily handle many entry boxes
+#
+proc check_config { widget } \
+{
+        global st_cinfo
+
+        if { "$st_cinfo(repository)" != "" } {
+                #puts "repository: $st_cinfo(repository)"
+                set repo 1
+        } else {
+                set repo 0
+        }
+        if { "$st_cinfo(logging)" != "" } {
+                #puts "logging: $st_cinfo(logging)"
+                set log 1
+        } else {
+                set log 0
+        }
+        if { "$st_cinfo(des)" != "" } {
+                #puts "descripton: $st_cinfo(des)"
+                set des 1
+        } else {
+                set des 0
+        }
+
+        if { ($repo == 1) && ($log == 1) && ($des == 1) } {
+                $widget.t.bb.b1 configure -state normal
+        } else {
+                $widget.t.bb.b1 configure -state disabled
+        }
+}
+
 proc create_config { w } \
 {
 
-	global st_cinfo st_bk_cfg rootDir st_dlg_button logo
+	global st_cinfo st_bk_cfg rootDir st_dlg_button logo widget
+
+	# Need to have global for w inorder to bind the keyRelease events
+	set widget $w
 
 	# set the default to openlogging.org
 	set st_cinfo(logging) "logging@openlogging.org"
@@ -371,7 +410,7 @@ proc create_config { w } \
 		frame $w.t.bb -bg $bcolor
 		    button $w.t.bb.b1 -text "Create Repository" -bg $bcolor \
 			-command "global st_dlg_button; set st_dlg_button 0" \
-			-state normal
+			-state disabled
 		    pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
 		    label $w.t.bb.l -image bklogo
 		    pack $w.t.bb.l -side left -expand 1 -padx 20 -pady 10
@@ -433,10 +472,28 @@ proc create_config { w } \
 	$w.t.e.des config -bg $mcolor
 	$w.t.e.logging config -bg $mcolor
 
+	#puts "W in main is $w"
+	bind $w.t.e.repository <KeyRelease> {
+		check_config $widget
+	}
+	bind $w.t.e.des <KeyRelease> {
+		check_config $widget
+	}
+	bind $w.t.e.logging <KeyRelease> {
+		check_config $widget
+	}
+	bind $w.t.e.repository <FocusIn> {
+		check_config $widget
+	}
+
+
 	$w.t config -background black
-	bind $w.t.e <Tab> {tk_focusNext %W}
-	bind $w.t.e <Shift-Tab> {tk_focusPrev %W}
-	bind $w.t.e <Control-n> {tk_focusNext %W}
+	#bind $w.t.e <Tab> {tk_focusNext %W}
+	#bind $w.t.e <Shift-Tab> {tk_focusPrev %W}
+	#bind $w.t.e <Control-n> {tk_focusNext %W}
+	bind Entry <Tab> {tk_focusNext %W}
+	bind Entry <Shift-Tab> {tk_focusPrev %W}
+	bind Entry <Control-n> {tk_focusNext %W}
 
 	focus $w.t.e.repository
 
