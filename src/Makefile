@@ -485,7 +485,7 @@ msg: gui/msg.tcl
 
 #rpm:	bk.spec production
 #	rpm -bb bk.spec
-rpm: pkg
+rpm: g pkg
 
 pkg: install-nolinks epmhelper.sh
 	rm -rf tmp/bitkeeper; \
