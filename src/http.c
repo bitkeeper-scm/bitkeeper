@@ -356,7 +356,7 @@ http_connect(remote *r, char *cgi_script)
 		*p++ = 0;
 		port = strtol(p, &p, 10);
 		assert(p);
-		cred = *p ? p : 0;
+		cred = (*p == ' ') ? p+1 : 0;
 		r->rfd = http_connect_srv(type, proxy_host,
 						port, cgi_script, r->trace);
 		r->wfd = r->rfd;

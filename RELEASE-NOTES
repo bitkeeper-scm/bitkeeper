@@ -16,7 +16,7 @@ New Features
 
   Support SCO and Tru64 platforms
 
-  Tcl/Tk is now included is distribution, eliminating dependancies on the
+  Tcl/Tk is now included is distribution, eliminating dependencies on the
   installed version.
 
   Windows support now uses Cygwin 1.3.22
@@ -24,10 +24,17 @@ New Features
   Consistency checks now display a progress bar unless -q is passed or BK_NOTTY
   is set.
 
+  All BitKeeper files are now stored in a $HOME/.bk subdirectory.
+  Old files are migrated automatically.
+
+  The new install image includes a graphical installer that is run by
+  default if $DISPLAY is set. (or on Windows) 
+
 Noteworthy Bug Fixes
 ----------------------------------------------------------------------------
 
-  2002-11-07-001 revtool fails when run on a certain repostiory
+  2000-04-17-003 Try to get the real user name if all we have is root
+  2002-11-07-001 revtool fails when run on a certain repository
   2002-12-09-004 some colors are missing from X configs
   2002-12-18-001 sfiles -i in corrupted tree dumps core
   2002-12-28-002 have rclone respect checkout preference
@@ -37,6 +44,7 @@ Noteworthy Bug Fixes
   2003-02-03-002 add remote level to push error messages
   2003-02-19-001 takepatch could fail if patches contain really long lines
   2003-05-20-002 Evaluation license quota error message "off-by-one"
+  2003-06-03-002 Sometimes -rREV1,REV2,REV3 would fail
 
   Fix permissions problems in resolve.  In some cases where a user
   only has partial write permissions to a repository, resolve could
@@ -66,6 +74,25 @@ Noteworthy Bug Fixes
   
   Do a better job of handling file comments with really long lines.  Also
   add a 'bk delta -Yfile' option like 'bk commit -Yfile'.
+
+  Fix performance problem with 'bk -r diffs -u'.
+
+  Fix problem with GUI tools where sometimes they would start out partially
+  constructed and then get redrawn correctly.
+
+  Add a BK_PATCH variable which contains the full path to the
+  patch file.  This is passed to pre-resolve triggers.
+
+  Fix the log format for a bkd to be less verbose.
+
+  Fix a bug in 'bk import -tpatch' were a failed patch that deletes a file
+  can leave that file locked without a gfile.
+
+  Fix problem with restarting a BKD where existing children are still
+  holding the socket open.
+
+  User authentication to HTTP proxies was broken in 3.0.1, it is fixed
+  again now.
 
 ===============================================================================
 Release notes for BitKeeper version 3.0.1.   These release notes cover
