@@ -35,6 +35,8 @@ private char	csetFile[] = CHANGESET;
 private int	flags = INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
 
+#define	CTMP	"BitKeeper/tmp/ChangeSet-all"
+
 /*
  * This data structure is so we don't have to search through all tuples in
  * the ChangeSet file for every file.  Instead, we sort the ChangeSet hash
@@ -175,7 +177,7 @@ usage:		fprintf(stderr, "%s", check_help);
 			return (2);
 		}
 	}
-fprintf(stderr, "check says %d\n", errors);
+	unlink(CTMP);
 	return (errors);
 }
 
@@ -187,7 +189,7 @@ fprintf(stderr, "check says %d\n", errors);
 private int
 checkAll(MDBM *db)
 {
-	FILE	*keys = fopen("BitKeeper/tmp/ChangeSet-all", "r");
+	FILE	*keys = fopen(CTMP, "r");
 	char	*t;
 	MDBM	*idDB, *goneDB;
 	MDBM	*warned = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
@@ -287,22 +289,28 @@ buildKeys()
 		exit (1);
 	}
 	unless (exists("BitKeeper/tmp")) mkdir("BitKeeper/tmp", 0777);
-	unlink("BitKeeper/tmp/ChangeSet-all");
-	system("bk sccscat -h ChangeSet | sort > BitKeeper/tmp/ChangeSet-all");
-	unless (exists("BitKeeper/tmp/ChangeSet-all")) {
-		fprintf(stderr, "Unable to create BitKeeper/tmp/ChangeSet-all");
+	unlink(CTMP);
+	sprintf(buf, "bk sccscat -h ChangeSet | sort > %s", CTMP);
+	system(buf);
+	unless (exists(CTMP)) {
+		fprintf(stderr, "Unable to create %s\n", CTMP);
 		exit(1);
 	}
-	csetKeys.malloc = malloc(sz = size("BitKeeper/tmp/ChangeSet-all"));
-	fd = open("BitKeeper/tmp/ChangeSet-all", 0, 0);
+	csetKeys.malloc = malloc(sz = size(CTMP));
+	fd = open(CTMP, 0, 0);
 	unless (read(fd, csetKeys.malloc, sz) == sz) {
-		perror("read on BitKeeper/tmp/ChangeSet-all");
+		perror(CTMP);
 		exit(1);
 	}
 	for (fd = 0, d = cset->table; d; d = d->next) {
 		fd += d->added;
 	}
-	fd *= 2;	/* in case there is exactly one delta per file */
+	/*
+	 * Allocate enough space for 2x the number of deltas (because of
+	 * separaters), plus the deltas in the cset, plus 2.
+	 */
+	fd *= 2;
+	fd += cset->nextserial + 2;	
 	csetKeys.deltas = malloc(fd * sizeof(char*));
 	csetKeys.r2i = r2i;
 
@@ -358,13 +366,14 @@ buildKeys()
 			strcpy(buf, s);
 		}
 		csetKeys.deltas[csetKeys.n++] = t;
+		assert(csetKeys.n < fd);
 		n++;
 		s = r;
 	}
 
 	/* Add in ChangeSet keys */
 	sccs_sdelta(cset, sccs_ino(cset), key);
-	csetKeys.deltas[csetKeys.n++] = (char*)1;
+	if (csetKeys.n > 0) csetKeys.deltas[csetKeys.n++] = (char*)1;
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
 	v.dptr = (void*)&csetKeys.n;
@@ -387,10 +396,10 @@ buildKeys()
 			}
 		}
 		csetKeys.deltas[csetKeys.n++] = strdup(buf);
+		assert(csetKeys.n < fd);
 	}
 	sccs_free(cset);
 	csetKeys.deltas[csetKeys.n] = (char*)1;
-
 	if (verbose > 1) {
 		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
 	}
@@ -550,6 +559,16 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	}
 
 	/*
+	 * Make sure we have no open branches
+	 */
+	if (sccs_admin(s, 0,
+	    SILENT|ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0, 0)) {
+	    	errors++;
+	}
+
+	if (csetKeys.n == 0) return (errors);
+
+	/*
 	 * Go through all the deltas that were foound in the ChangeSet
 	 * hash and belong to this file.
 	 * Make sure we can find the deltas in this file.
@@ -559,8 +578,12 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	v = mdbm_fetch(csetKeys.r2i, k);
 	assert(v.dsize);
 	bcopy(v.dptr, &i, sizeof(i));
+	assert(i < csetKeys.n);
 	do {
+		assert(csetKeys.deltas[i]);
+		assert(csetKeys.deltas[i] != (char*)1);
 		unless (d = sccs_findKey(s, csetKeys.deltas[i])) {
+			//dump(i);
 			a = csetFind(csetKeys.deltas[i]);
 			fprintf(stderr,
 			    "key %s is in\n\tChangeSet:%s\n\tbut not in %s\n",
@@ -578,15 +601,20 @@ check(sccs *s, MDBM *db, MDBM *marks)
 		}
 	} while (csetKeys.deltas[++i] != (char*)1);
 
-	/*
-	 * Make sure we have no open branches
-	 */
-	if (sccs_admin(s, 0,
-	    SILENT|ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0, 0)) {
-	    	errors++;
-	}
-
 	return (errors);
+}
+
+dump(int key)
+{
+	int	i;
+
+	for (i = 0; i < csetKeys.n; ++i) {
+		if (csetKeys.deltas[i] == (char*)1) {
+			fprintf(stderr, "-\n");
+		} else {
+			fprintf(stderr, "[%d]=%s\n", i, csetKeys.deltas[i]);
+		}
+	}
 }
 
 private void

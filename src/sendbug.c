@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin, *editor;
+extern char *editor;
 
 sendbug_main(int ac,  char **av)
 {

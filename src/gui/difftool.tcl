@@ -165,10 +165,9 @@ proc right {r l n} \
 # Get the sdiff, making sure it has no \r's from fucking dos in it.
 proc sdiff {L R} \
 {
-	global	rmList sdiffw bin
+	global	rmList sdiffw
 
 	set rmList ""
-	set undos [file join $bin undos]
 	# we need the extra quote arounf $R $L
 	# because win32 path may have space in it
 	set a [open "| grep {\r$} \"$L\"" r]
@@ -187,7 +186,7 @@ proc sdiff {L R} \
 		set tail [file tail $L]
 		set dotL [file join $dir .$tail]
 	}
-	exec $undos $L > $dotL
+	exec bk undos $L > $dotL
 	set dir [file dirname $R]
 	if {"$dir" == ""} {
 		set dotR .$R
@@ -195,7 +194,7 @@ proc sdiff {L R} \
 		set tail [file tail $R]
 		set dotR [file join $dir .$tail]
 	}
-	exec $undos $R > $dotR
+	exec bk undos $R > $dotR
 	set rmList [list $dotL $dotR]
 	return [open "| $sdiffw $dotL $dotR"]
 }
@@ -470,7 +469,7 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc bin dev_null lfile rfile
+	global argv0 argv argc dev_null lfile rfile
 
 	if {$argc < 2 || $argc > 3} {
 		puts "usage: $argv0 left right \[done\]"

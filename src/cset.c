@@ -222,7 +222,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: can not find project root.\n");
 		return (1);
 	}
-	cset = sccs_init(csetFile, flags, 0);
+	cset = sccs_init(csetFile, flags & SILENT, 0);
 	if (!cset) return (101);
 	copts.mixed = !(cset->state & S_KEY2);
 
@@ -1377,7 +1377,7 @@ csetCreate(sccs *cset, int flags, char **syms, int newlod)
 
 	/* XXX: can do a re-init?  There is a new delta */
 	sccs_free(cset);
-	unless (cset = sccs_init(csetFile, flags, 0)) {
+	unless (cset = sccs_init(csetFile, flags & SILENT, 0)) {
 		perror("init");
 		error = -1;
 		goto out;

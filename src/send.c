@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin;
-
 #define	BK_LOG "BitKeeper/log"
 
 private	char *

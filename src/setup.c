@@ -84,7 +84,7 @@ setup_main(int ac, char **av)
 	}
 	if (config_path == NULL) {
 		gethelp("setup_3", "", stdout);
-		sprintf(buf, "cp %sbitkeeper.config config", bin);
+		sprintf(buf, "cp %s/bitkeeper.config config", bin);
 		system(buf);
 		chmod("config", 0664);
 		while (1) {
@@ -99,7 +99,7 @@ setup_main(int ac, char **av)
 				sprintf(buf, "%s config", editor);
 			}
 			system(buf);
-			sprintf(buf, "cmp -s %sbitkeeper.config config", bin);
+			sprintf(buf, "cmp -s %s/bitkeeper.config config", bin);
 			if (system(buf)) {
 				break;
 			} else {

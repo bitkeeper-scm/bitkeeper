@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h" 
 
-extern char *bin;
-
 receive_main(int ac,  char **av)
 {
 	int	c, new = 0;

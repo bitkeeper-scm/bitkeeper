@@ -22,7 +22,7 @@ unwrap_main(int ac,  char **av)
 				fprintf(stderr,  "can not extract wrapper\n");
 				exit(1);
 			}
-			sprintf(wrap_path, "%sun%swrap", bin, wrap);
+			sprintf(wrap_path, "%s/un%swrap", bin, wrap);
 			if (executable(wrap_path)) {
 				char	*av[2] = {wrap_path, 0};
 

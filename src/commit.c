@@ -2,14 +2,12 @@
 #include "sccs.h"
 #include <time.h>
 
-extern char *editor, *pager, *bin;
-extern char *bk_dir;
-extern int resync, quiet;
+extern char *editor, *pager, *bin, *BitKeeper;
 
-char commit_file[MAXPATH], list[MAXPATH];
-int force = 0, lod = 0;
-int checklog = 1, getcomment = 1;
-char *sym = 0;
+private	char commit_file[MAXPATH], list[MAXPATH];
+private	int force = 0, lod = 0;
+private	int checklog = 1, getcomment = 1;
+private	char *sym = 0;
 
 private	void	make_comment(char *cmt);
 private int	do_commit();
@@ -17,7 +15,7 @@ private	int	checkConfig();
 
 commit_main(int ac, char **av)
 {
-	int	rc, c, doit = 0;
+	int	rc, c, doit = 0, resync = 0, quiet = 0;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 
 	sprintf(commit_file, "%s/bk_commit%d", TMP_PATH, getpid());
@@ -27,8 +25,8 @@ commit_main(int ac, char **av)
 		    case 'f':	checklog = 0; break;
 		    case 'F':	force = 1; break;
 		    case 'L':	lod = 1; break;
-		    case 'R':	resync = 1;
-				bk_dir = "../BitKeeper/";
+		    case 'R':	BitKeeper = "../BitKeeper/";
+				resync = 1;
 				break;
 		    case 's':	/* fall thru  */
 		    case 'q':	quiet = 1; break;
@@ -67,7 +65,7 @@ commit_main(int ac, char **av)
 	}
 	unlink(list);
 	do_clean(s_cset, SILENT);
-	if (doit) exit(do_commit());
+	if (doit) exit(do_commit(quiet));
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
@@ -79,7 +77,7 @@ commit_main(int ac, char **av)
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
 		    case 'u':
-			exit(do_commit()); break;
+			exit(do_commit(quiet)); break;
 		    case 'e':
 			sprintf(buf, "%s %s", editor, commit_file);
 			system(buf);
@@ -102,7 +100,7 @@ cat(char *file)
 }
 
 private int
-do_commit()
+do_commit(int quiet)
 {
 	int	hasComment =  (exists(commit_file) && (size(commit_file) > 0));
 	int	rc;
@@ -118,7 +116,7 @@ do_commit()
 		exit(1);
 	}
 	if (checklog) {
-		if (checkLog() != 0) {
+		if (checkLog(quiet) != 0) {
 			unlink(commit_file);
 			exit(1);
 		}
@@ -138,7 +136,7 @@ do_commit()
 	notify();
 	s = sccs_init(s_cset, 0, 0);
 	d = findrev(s, 0);
-	logChangeSet(d->rev);
+	logChangeSet(d->rev, quiet);
 	sccs_free(s);
 	return (rc);
 }
@@ -148,15 +146,15 @@ checkConfig()
 {
 	char	buf[MAXLINE], s_config[MAXPATH], g_config[MAXPATH];
 
-	sprintf(s_config, "%setc/SCCS/s.config", bk_dir);
-	sprintf(g_config, "%setc/config", bk_dir);
+	sprintf(s_config, "%setc/SCCS/s.config", BitKeeper);
+	sprintf(g_config, "%setc/config", BitKeeper);
 	unless (exists(s_config)) {
 		gethelp("chkconfig_missing", bin, stdout);
 		return (1);
 	}
 	if (exists(g_config)) do_clean(s_config, SILENT);
 	get(s_config, SILENT, 0);
-	sprintf(buf, "cmp -s %setc/config %sbitkeeper.config", bk_dir, bin);
+	sprintf(buf, "cmp -s %setc/config %s/bitkeeper.config", BitKeeper, bin);
 	if (system(buf) == 0) {
 		gethelp("chkconfig_inaccurate", bin, stdout);
 		return (1);

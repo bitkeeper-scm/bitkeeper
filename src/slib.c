@@ -3667,7 +3667,7 @@ stale(char *file)
 {
 	char	buf[300];
 	char	*t, *h = sccs_gethost();
-	int	n, fd = open(file, 0);
+	int	n, fd = open(file, 0, 0);
 
 	if (fd == -1) return (0);
 	if ((n = read(fd, buf, sizeof(buf))) <= 0) {

@@ -93,24 +93,23 @@ else
 	fi
 	DATE=/bin/date
 	DEV_NULL="/dev/null"
-	BK_BIN="`cd .. && pwd`"
+	BIN="`cd .. && pwd`"
 	if [ -d /usr/xpg4/bin ]
 	then  PATH=/usr/xpg4/bin:$PATH
 	fi
-	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
-	BK_BIN="$BK_BIN/"
+	PATH=$BIN:$BIN/gnu/bin:$PATH
 	binary_data=/bin/ls
 	binary_data2=/bin/rm
 	data="data"
 	uuencode="uuencode"
 	TST_DIR=/tmp
 	TMP=/tmp
-	export PATH BK_BIN
+	export PATH
 	unset CDPATH
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
 fi
 BK_LICENSE=ACCEPTED
-export TST_DIR CORES BK_BIN BK_REGRESSION BK_LICENSE
+export TST_DIR CORES BK_REGRESSION BK_LICENSE
 
 cores()
 {

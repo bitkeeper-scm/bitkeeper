@@ -4,13 +4,8 @@
 
 
 extern char	*editor, *pager, *bin;
-extern char	*bk_dir;
-extern int	resync, quiet;
+extern char	*BitKeeper;
 
-int	get(char *path, int flags, char *output);
-int	bkusers();
-int	setlog(char *user);
-char	*getlog(char *user);
 private char	*project_name();
 
 private	void
@@ -47,7 +42,7 @@ logAddr()
 
 	if (logaddr) return logaddr;
 	sprintf(config, "%s/bk_configY%d", TMP_PATH, getpid());
-	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
+	sprintf(buf, "%setc/SCCS/s.config", BitKeeper);
 	get(buf, SILENT|PRINT, config);
 	assert(exists(config));
 
@@ -101,7 +96,7 @@ sendConfig(char *to)
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm));
 	sprintf(config, "%s/bk_configX%d", TMP_PATH, getpid());
-	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
+	sprintf(buf, "%setc/SCCS/s.config", BitKeeper);
 	get(buf, SILENT|PRINT, config);
 	f1 = fopen(config, "rt");
 	while (fgets(buf, sizeof(buf), f1)) {
@@ -114,12 +109,12 @@ sendConfig(char *to)
 	bkusers(0, 0, f);
 	fprintf(f, "=====\n");
 	fclose(f);
-	sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);
+	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 	if (exists(buf)) {
 		f = fopen(config_log, "ab");
 		fprintf(f, "Alias  List:\n");
 		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
-		sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);
+		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 		get(buf, SILENT|PRINT, aliases);
 		f1 = fopen(aliases, "r");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -150,7 +145,7 @@ header(FILE *f)
 	gethelp("version", 0, f);
 	fprintf(f, "Repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
-	sprintf(parent_file, "%slog/parent", bk_dir);
+	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		FILE	*f1;
 
@@ -172,7 +167,7 @@ header(FILE *f)
 }
 
 void
-logChangeSet(char *rev)
+logChangeSet(char *rev, int quiet)
 {
 	char	commit_log[MAXPATH], buf[MAXLINE], *p;
 	char	subject[MAXLINE];
@@ -180,7 +175,7 @@ logChangeSet(char *rev)
 	FILE	*f;
 	int	dotCount = 0, n;
 
-	unless (streq("commit_and_maillog", getlog(NULL)))  return;
+	unless (streq("commit_and_maillog", getlog(NULL, quiet)))  return;
 
 	// XXX TODO  Determine if this is the first rev where logging is active.
 	// if so, send all chnage log from 1.0
@@ -264,11 +259,11 @@ notify()
 	char	subject[MAXLINE], *projectname;
 	FILE	*f;
 
-	sprintf(notify_file, "%setc/notify", bk_dir);
+	sprintf(notify_file, "%setc/notify", BitKeeper);
 	unless (exists(notify_file)) {
 		char	notify_sfile[MAXPATH];
 
-		sprintf(notify_sfile, "%setc/SCCS/s.notify", bk_dir);
+		sprintf(notify_sfile, "%setc/SCCS/s.notify", BitKeeper);
 		if (exists(notify_sfile)) {
 			get(notify_sfile, SILENT, "-");
 			assert(exists(notify_file));
@@ -377,7 +372,7 @@ status(int verbose, char *status_log)
 	f = fopen(status_log, "a");
 	fprintf(f, "Status for BitKeeper repository %s\n", fullname(".", 0));
 	gethelp("version", 0, f);
-	sprintf(parent_file, "%slog/parent", bk_dir);
+	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
 		f1 = fopen(parent_file, "r");
@@ -465,9 +460,12 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	int	first = 1;
 
 	if (bkarg == NULL) bkarg = "";
-	sprintf(buf, "%sbkhelp.txt", bin);
+	sprintf(buf, "%s/bkhelp.txt", bin);
 	f = fopen(buf, "rt");
-	assert(f);
+	unless (f) {
+		fprintf(stderr, "Unable to locate help file %s\n", buf);
+		exit(1);
+	}
 	sprintf(pattern, "#%s\n", help_name);
 	while (fgets(buf, sizeof(buf), f)) {
 		if (streq(pattern, buf)) {
@@ -496,11 +494,11 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 }
 
 int
-checkLog()
+checkLog(int quiet)
 {
 	char	ans[MAXLINE], buf[MAXLINE];
 
-	strcpy(buf, getlog(NULL));
+	strcpy(buf, getlog(NULL, quiet));
 	if (strneq("ask_open_logging:", buf, 17)) {
 		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");

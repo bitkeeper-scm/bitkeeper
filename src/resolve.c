@@ -55,7 +55,6 @@ resolve_main(int ac, char **av)
 	int	c;
 	int	comment = 0;	/* set if they used -y */
 	static	opts opts;	/* so it is zero */
-	extern	char *bk_dir;
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
@@ -109,9 +108,6 @@ resolve_main(int ac, char **av)
 	unless (comment || opts.comment) {
 		opts.comment = "Merge";
 	}
-
-	/* for commit */
-	bk_dir = "../BitKeeper/";
 
 	c = passes(&opts);
 	return (c);
@@ -993,9 +989,7 @@ flags_delta(resolve *rs,
 	edit_tip(rs, sfile, d, rfile, which);
 	sprintf(buf, "bk clean %s", sfile);
 	system(buf);
-	strcpy(buf, bin);
-	strcat(buf, "bk admin -r");
-	strcat(buf, d->rev);
+	sprintf(buf, "bk admin -r%s", d->rev);
 #define	add(s)		{ strcat(buf, " -f"); strcat(buf, s); }
 #define	del(s)		{ strcat(buf, " -F"); strcat(buf, s); }
 #define	doit(f,s)	if (bits&f) add(s) else del(s)
@@ -1536,7 +1530,7 @@ automerge(resolve *rs, names *n)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	sprintf(cmd, "%s%s %s %s %s %s", bin,
+	sprintf(cmd, "%s/%s %s %s %s %s", bin,
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
 	ret = system(cmd) & 0xffff;
 	if (do_free) {
@@ -1681,8 +1675,10 @@ commit(opts *opts)
 {
 	int	i;
 	char	*cmds[10];
+	extern	char *BitKeeper;
 
-	if (checkLog()) {
+	BitKeeper = "../BitKeeper/";
+	if (checkLog(opts->quiet)) {
 		fprintf(stderr, "Commit aborted, no changes applied");
 		exit(1);
 	}

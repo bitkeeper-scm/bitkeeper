@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin, *pager;
+extern char *pager;
 
 int
 pending_main(int ac, char **av)

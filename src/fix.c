@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin;
-
 fix_main(int ac,  char **av)
 {
 	int	c, i;

@@ -45,7 +45,7 @@ DPATH=`bk prs -hr1.5 -d:DPN: B/file1`
 if [ ${DPATH}X != ""X ]; then echo failed; exit 1; fi
 # Now check it in so later tests aren't confused.
 bk ci $Q -yrename B/file1
-bk -r check -a || exit 1
+bk -r check -a || { echo check exits $?; exit 1; }
 echo OK
 echo $N Test sccsmv w/ unlocked file ................................$NL
 bk mv B/file2 C/file3

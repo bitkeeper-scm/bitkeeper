@@ -4,11 +4,11 @@
 #define BK "bk"
 
 char	*editor = 0, *pager = 0, *bin = 0;
-char	*bk_dir = "BitKeeper/";
-int	resync = 0, quiet = 0;
+char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 
 char	*find_wish();
 char	*find_perl5();
+private void platformInit(char **av);
 
 int unedit_main(int, char **);
 int unlock_main(int, char **);
@@ -184,44 +184,29 @@ main(int ac, char **av)
 	 */
 
 	platformInit(av); 
-
-	/*
-	 * Set up Env variables
-	 */
-	assert(bin);
-	p = getenv("PATH");
-	unless (p && strneq(bin, getenv("PATH"), strlen(bin) - 1)) {
-		char path[MAXLINE];
-		int last = strlen(bin) -1;
-
-		assert(bin[last] == '/');
-		bin[last] = 0; /* trim tailing slash */
-		sprintf(path, "PATH=%s:%s", bin, getenv("PATH"));
-		bin[last] = '/'; /* restore tailing slash */
-		putenv(strdup(path));
-
+	if (av[1] && streq(av[1], "path") && !av[2]) {
+		fprintf(stderr, "%s\n", bin ? bin : "no path found");
+		exit(0);
 	}
-	sprintf(cmd_path, "BK_BIN=%s", bin);
-	putenv(strdup(cmd_path));
-
-	prog = basenm(av[0]);
 	argv[0] = "help";
 	argv[1] = 0;
 
 	/*
 	 * Parse our options if called as "bk".
 	 */
+	prog = basenm(av[0]);
 	if (streq(prog, "bk")) {
-		while ((c = getopt(ac, av, "r:R")) != -1) {
+		while ((c = getopt(ac, av, "rR")) != -1) {
 			switch (c) {
 			    case 'h':
 				return (help_main(1, argv));
 			    case 'r':
-				if (optarg) {
-					unless (chdir(optarg) == 0) {
-						perror(optarg);
+				if (av[optind] && isdir(av[optind])) {
+					unless (chdir(av[optind]) == 0) {
+						perror(av[optind]);
 						return (1);
 					}
+					optind++;
 				} else if (sccs_cd2root(0, 0) == -1) {
 					fprintf(stderr, 
 					    "bk: Can not find project root.\n");
@@ -245,6 +230,7 @@ main(int ac, char **av)
 		for (ac = 0; av[ac]; ac++);
 		if (dashr) {
 			unless (streq(prog, "sfiles")) {
+				getoptReset();
 				return (sfiles(ac, av));
 			}
 		}
@@ -265,7 +251,7 @@ main(int ac, char **av)
 	 */
 	if (streq(av[0], "pmerge")) {
 		argv[0] = "perl"; 
-		sprintf(cmd_path, "%s%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
@@ -278,7 +264,7 @@ main(int ac, char **av)
 	if (streq(av[0], "mkdiffs") ||
 	    streq(av[0], "rcs2sccs")) {
 		argv[0] = find_perl5();
-		sprintf(cmd_path, "%s%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
@@ -299,7 +285,7 @@ main(int ac, char **av)
 	    streq(av[0], "csettool") ||
 	    streq(av[0], "renametool")) {
 		argv[0] = find_wish();
-		sprintf(cmd_path, "%s%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
@@ -315,7 +301,7 @@ main(int ac, char **av)
 #else
 		argv[0] = "/bin/sh";
 #endif
-		sprintf(cmd_path, "%s%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
 			argv[i] = av[j];
@@ -346,7 +332,7 @@ main(int ac, char **av)
 #else
 	argv[0] = "/bin/sh";
 #endif
-	sprintf(cmd_path, "%sbk.script", bin);
+	sprintf(cmd_path, "%s/bk.script", bin);
 	argv[1] = cmd_path;
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
 	argv[i] = 0;
@@ -372,10 +358,11 @@ sfiles(int ac, char **av)
 		char	*sav[2];
 
 		signal(SIGCHLD, SIG_DFL);
-		close(p[0]);
+		/* dup stdout to the pipe and close stdout */
 		close(1);
 		dup(p[1]);
 		close(p[1]);
+		close(p[0]);
 		sav[0] = "sfiles";
 		sav[1] = 0;
 		status = sfiles_main(1, sav);
@@ -384,23 +371,45 @@ sfiles(int ac, char **av)
 			wait(0);
 			exit(status);
 		}
+		fflush(stdout);
+		close(1);
 		waitpid(pid, &status, 0);
 		if (WIFEXITED(status)) exit(WEXITSTATUS(status));
+		if (WIFSIGNALED(status)) {
+			fprintf(stderr,
+			    "Child was signaled with %d\n",
+			    WTERMSIG(status));
+			exit(WTERMSIG(status));
+		}
 		exit(100);
 	} else {		/* child runs command - */
+		char	*cmds[100];
+
+		assert(ac < 95);
 		close(p[1]);
 		close(0);
 		dup(p[0]);
 		close(p[0]);
+#if 0
+		cmds[0] = "bk";
+		for (i = 1; cmds[i] = av[i-1]; i++);
+		cmds[i++] = "-";
+		cmds[i] = 0;
+		execvp("bk", cmds);
+#else
+		for (i = 0; cmds[i] = av[i]; i++);
+		cmds[i++] = "-";
+		cmds[i] = 0;
 		/*
 		 * look up the internal command 
 		 */
 		for (i = 0; cmdtbl[i].name; i++) {
 			if (streq(cmdtbl[i].name, av[0])){
-				exit(cmdtbl[i].func(ac, av));
+				exit(cmdtbl[i].func(ac+1, cmds));
 			}
 		}
 		exit(101);
+#endif
 	}
 }
 
@@ -513,11 +522,10 @@ next:		p = ++s;
 private void
 platformInit(char **av)
 {
-	char	buf[MAXPATH], buf1[MAXPATH], *p, *q;
-	char	link[MAXPATH];
-	int	i = -1, len;
+	char	*b, *p, *t, *s;
+	char	buf[MAXPATH];
 
-	if (bin) return;
+	if (editor) return;
 #ifdef	WIN32
 	setmode(1, _O_BINARY);
 	setmode(2, _O_BINARY);
@@ -525,30 +533,60 @@ platformInit(char **av)
 	if ((editor = getenv("EDITOR")) == NULL) editor = "vi";
 	if ((pager = getenv("PAGER")) == NULL) pager = "more";
 
-	if ((bin = getenv("BK_BIN")) != NULL) {
-		sprintf(buf, "%sbk", bin);
-		if (exists(buf)) return;
-	}
+	unless (p = getenv("PATH")) return;	/* and pray */
 
-	if (IsFullPath(av[0]) && streq("bk", basenm(av[0]))) {
-		/* If user specified a absolute path, */
-		/* use that to compute BK_BIN 	      */
-		q = av[0];
-	} else {
-		/* compute BK_BIN from $PATH */
-		q = find_prog("bk");
-	}
-	if (q) {
-		if ((len = readlink(q, link, sizeof(link))) != -1) {
-			assert(len < sizeof(link));
-			sprintf(buf, "%s/", dirname(link));
-		}  else {
-			strcpy(buf1, q); /* because dirname stomp */
-			sprintf(buf, "%s/", dirname(buf1));
-		}
+	/* fully specified paths are respected */
+	if (IsFullPath(av[0])) {
+		t = strchr(av[0], '/');
+		*t = 0;
+		strcpy(buf, av[0]);
+		*t = '/';
+gotit:		
+		s = malloc(strlen(buf) + strlen(p) + 10);
+		sprintf(s, "PATH=%s:%s", buf, p);
+		putenv(s);
 		bin = strdup(buf);
+//fprintf(stderr, "%s\n", s);
 		return;
 	}
-	bin = strdup("/usr/libexec/bitkeeper/");
+
+	/* partially specified paths are respected */
+	if ((t = strchr(av[0], '/')) || exists(av[0])) {
+		getcwd(buf, sizeof(buf));
+		if (t && ((t-1) > av[0])) {
+			*t = 0;
+			strcat(buf, "/");
+			strcat(buf, av[0]);
+			*t = '/';
+		}
+		goto gotit;
+	}
+	
+	/*
+	 * Find the program and if it is a symlink, then add where it
+	 * points to the path.
+	 * Otherwise, set the bin dir to whereever we found the program.
+	 */
+	for (t = s = p; t = strchr(s, ':'); s = t + 1) {
+		*t = 0;
+		sprintf(buf, "%s/%s", s, av[0]);
+		if (readlink(buf, buf, sizeof(buf)) != -1) {
+			*t = ':';
+			unless (t = strrchr(buf, '/')) return;
+			*t = 0;
+			goto gotit;
+		} else if (exists(buf)) {
+			unless (IsFullPath(s)) {
+				getcwd(buf, sizeof(buf));
+				strcat(buf, "/");
+				strcat(buf, s);
+				bin = strdup(buf);
+			} else {
+				bin = strdup(s);
+			}
+			*t = ':';
+			return;
+		}
+	}
 	return;
 }

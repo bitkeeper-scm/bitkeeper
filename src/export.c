@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin;
-
 int
 export_main(int ac,  char **av)
 {
