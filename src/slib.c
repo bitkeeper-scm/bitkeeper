@@ -75,6 +75,7 @@ private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s, MDBM *m);
 private	int	parseConfig(char *buf);
+private void	fix_stime(sccs *s);
 
 int
 emptyDir(char *dir)
@@ -3598,7 +3599,6 @@ getflags(sccs *s, char *buf)
  * Add a symbol to the symbol table.
  * Return 0 if we added it, 1 if it's a dup.
  */
-//private int
 int
 addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 {
@@ -3986,6 +3986,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	char	*t;
 	static	int _YEAR4;
 	delta	*d;
+	int	rc;
 
 	if (strchr(name, '\n') || strchr(name, '\r')) {
 		fprintf(stderr,
@@ -4019,7 +4020,12 @@ sccs_init(char *name, u32 flags, project *proj)
 	} else {
 		if (check_gfile(s, flags)) return (0);
 	}
-	if (fast_lstat(s->sfile, &sbuf, 1) == 0) {
+	if (flags & INIT_SAVMOD) {
+		rc = lstat(s->sfile, &sbuf);
+	} else {
+		rc = fast_lstat(s->sfile, &sbuf, 1);
+	}
+	if (rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
 			free(s->gfile);
@@ -4036,6 +4042,7 @@ sccs_init(char *name, u32 flags, project *proj)
 		}
 		s->state |= S_SFILE;
 		s->size = sbuf.st_size;
+		if (flags & INIT_SAVMOD) s->stime = sbuf.st_mtime;
 	}
 	s->pfile = strdup(sccsXfile(s, 'p'));
 	s->zfile = strdup(sccsXfile(s, 'z'));
@@ -8931,6 +8938,37 @@ no_config:
 	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	Chmod(s->sfile, 0444);
+	if ((flags & DELTA_SAVEGFILE) &&
+	    (flags & DELTA_FIXMTIME) &&
+	    HAS_GFILE(s)) {
+		struct	stat	sb;
+		struct	utimbuf	ut;
+
+		assert(s->stime == 0);
+		/*
+		 * To prevent the "make" command from doing a "get" due to 
+		 * sfile's newer modification time, and then fail due to the
+		 * editable gfile, adjust sfile's modification to be just
+		 * before that of gfile's.
+		 * Note: It is ok to do this, because we've already recorded
+		 * the time of the delta in the delta table.
+		 * A potential pitfall would be that it may confuse the backup
+		 * program to skip the sfile when doing a incremental backup.
+		 * This is why we we only do this when the user set the
+		 * DELTA_FIXMTIME flag.
+		 */
+		if (lstat(s->gfile, &sb) == 0) {
+			ut.actime = time(0);
+			ut.modtime = sb.st_mtime - 1;
+			utime(s->sfile, &ut);
+		} else {
+			/* We should never get here */
+			perror(s->gfile);
+		}
+		
+	} else {
+		fix_stime(s);
+	}
 	if (BITKEEPER(s)) updatePending(s);
 	if (db) mdbm_close(db);
 	sccs_unlock(s, 'z');
@@ -10359,8 +10397,24 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 	Chmod(sc->sfile, 0444);
+	fix_stime(sc);
 	goto out;
 #undef	OUT
+}
+
+private void
+fix_stime(sccs *s)
+{
+	struct  utimbuf ut;
+
+	if (s->stime) {
+		/*
+		 * Fix mod time, otherwise, it may confuse the "make" command
+		 */
+		ut.actime = time(0);
+		ut.modtime = s->stime;
+		utime(s->sfile, &ut);
+	}
 }
 
 private	char *name;
@@ -10468,6 +10522,7 @@ out:
 		OUT;
 	}
 	Chmod(s->sfile, 0444);
+	fix_stime(s);
 	goto out;
 #undef	OUT
 }
@@ -11382,6 +11437,7 @@ abort:		fclose(sfile);
 		exit(1);
 	}
 	Chmod(s->sfile, 0444);
+	fix_stime(s);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -11815,6 +11871,7 @@ out:
 		struct	stat	sb;
 		struct	utimbuf	ut;
 
+		assert(s->stime == 0);
 		/*
 		 * To prevent the "make" command from doing a "get" due to 
 		 * sfile's newer modification time, and then fail due to the
@@ -11836,6 +11893,8 @@ out:
 			perror(s->gfile);
 		}
 		
+	} else {
+		fix_stime(s);
 	}
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);

@@ -540,7 +540,7 @@ doKey(cset_t *cs, char *key, char *val)
 		perror("idcache");
 	}
 	lastkey = strdup(key);
-retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, 0, idDB);
+retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM|INIT_SAVMOD, 0, idDB);
 	unless (sc) {
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
