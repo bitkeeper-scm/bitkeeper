@@ -58,7 +58,6 @@ diffs_main(int ac, char **av)
 	project	*proj = 0;
 	char	*Rev = 0, *cset = 0, *boundaries = 0;
 	char	*opts, optbuf[20];
-	char	rset[MAXPATH];
 	RANGE_DECL;
 
 	debug_main(av);
@@ -130,6 +129,7 @@ usage:			system("bk help -s diffs");
 		 * "bk export -tpatch -h -du -rrev1,rev2"
 		 */
 		switch (kind) { /* translate diff style option for bk export */
+		    default:		assert("bad diff style" == 0);
 		    case DF_DIFF:	/*
 					 * Force the "null" diff style
 					 * we need this becuase bk export
@@ -140,7 +140,6 @@ usage:			system("bk help -s diffs");
 		    case DF_RCS:	diff_opt = "-dn"; break;
 		    case DF_UNIFIED:	diff_opt = "-du"; break;
 		    case DF_SDIFF:	diff_opt = "-dy"; break;
-		    default:		assert("bad diff style" == 0);
 		}
 		rc = sys("bk", "export", "-tpatch", "-h", diff_opt, rev, SYS);
 		free(rev);
@@ -153,10 +152,6 @@ usage:			system("bk help -s diffs");
 	 */
 	if (things || boundaries || Rev) {
 		name = sfileFirst("diffs", &av[optind], 0);
-	} else if (cset) {
-		static	char *nav[] = { "-", 0 };
-
-		name = sfileFirst("diffs", nav, SF_GFILE);
 	} else {
 		name = sfileFirst("diffs", &av[optind], SF_GFILE);
 	}
@@ -166,7 +161,6 @@ usage:			system("bk help -s diffs");
 		char	*r1 = 0, *r2 = 0;
 		int	save = things;
 
-		if (cset && streq(name, CHANGESET)) goto next;
 		s = sccs_init(name, INIT_SAVEPROJ|flags, proj);
 		unless (s && HASGRAPH(s)) {
 			errors |= 2;
@@ -273,7 +267,6 @@ next:		if (s) sccs_free(s);
 	}
 	if (proj) proj_free(proj);
 	sfileDone();
-	if (cset) unlink(rset);
 	return (errors);
 }
 

@@ -223,9 +223,6 @@ sort keylist2 > keylist2_sorted
 cmp -s keylist1_sorted keylist2_sorted || { echo failed; exit 1; }
 echo OK
 
-exit
-
-
 echo $N Demonstrate out of order changesets .........................$NL
 no_logging p
 touch foo

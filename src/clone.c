@@ -153,7 +153,7 @@ private int
 clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
-	int	gzip, rc = 1;
+	int	gzip, rc = 2;
 
 	gzip = r->port ? opts.gzip : 0;
 	if (local && exists(local) && !emptyDir(local)) {
@@ -208,6 +208,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	/* create the new package */
 	if (initProject(local) != 0) goto done;
+	rc = 1;
 
 	/* eat the data */
 	if (sfio(opts, gzip, r) != 0) {
@@ -220,11 +221,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	if (r->port && isLocalHost(r->host) && (bk_mode() == BK_BASIC)) {
 		mkdir(BKMASTER, 0775);
 	}
-	
+
 	rc  = 0;
 done:	if (rc) {
 		putenv("BK_STATUS=FAILED");
-		mkdir("RESYNC", 0777);
+		if (rc == 1) mkdir("RESYNC", 0777);
 	} else {
 		putenv("BK_STATUS=OK");
 	}

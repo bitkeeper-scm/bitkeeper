@@ -183,22 +183,35 @@ write_blk(remote *r, char *buf, int len)
 	}
 }
 
+/*
+ * We have completed our transactions with a remote bkd and closed our
+ * write filehandle, now we want to wait until the remote bkd has
+ * finished so we can be sure all locks are freed.  We might have to
+ * read garbage data from the pipe in order to get to the EOF.  Since
+ * we might be attached to a random port that will never close we
+ * shouldn't wait forever.  For now, we wait until 2 Megs of junk has
+ * been read.
+ */
 void
 wait_eof(remote *r, int verbose)
 {
 	int	i;
+	int	bytes = 0;
 	char	buf[MAXLINE];
 
 	if (verbose) fprintf(stderr, "Waiting for remote to disconnect\n");
-	i = read_blk(r, buf, sizeof(buf) - 1);
-	if (i <= 0) {
-		if (verbose) fprintf(stderr, "Remote Disconnected\n");
-		return;
+	while (bytes < 2 * 1024 * 1024) {
+		i = read_blk(r, buf, sizeof(buf) - 1);
+		if (i <= 0) {
+			if (verbose) fprintf(stderr, "Remote Disconnected\n");
+			return;
+		}
+		bytes += i;
 	}
-
 	if (verbose) {
 		fprintf(stderr,
-			"wait_eof: Got %d unexpected byte(s) from remote\n", i);
+		    "wait_eof: Got %d unexpected byte(s) from remote\n",
+		    bytes);
 		buf[i] = 0;
 		fprintf(stderr, "buf=\"%s\"\n", buf);
 	}

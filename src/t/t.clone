@@ -26,9 +26,21 @@ if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; e
 P=`bk pending | wc -l`
 if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
+
 echo $N Clone with all pending deltas................................$NL
 cd $HERE
 bk clone $Q project copy || exit 1
 # the entire src directory should be gone
 [ -d copy/src ] && exit 1
+echo OK
+
+echo $N Test clone to illegal directory .............................$NL
+bk clone $Q project /XXX.cannotwrite/foo 2> OUT && {
+	echo clone should have failed
+	exit 1
+}
+if [ -d RESYNC ]
+then	echo should not have created RESYNC
+	exit 1
+fi
 echo OK

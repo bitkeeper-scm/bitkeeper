@@ -863,7 +863,7 @@ _repogca() {
 	else
 	    remote=$1
 	fi
-	bk -R changes -e -L -nd:REV: $remote > /tmp/LOCAL.$$
+	bk -R changes -e -L -nd:REV: "$remote" > /tmp/LOCAL.$$
 	bk -R prs -hnd:REV: ChangeSet | fgrep -v -f/tmp/LOCAL.$$ | head -1
 	rm -f /tmp/LOCAL.$$
 }
@@ -875,7 +875,7 @@ _c2r() {	# undoc
         REV=X
 	while getopts r: OPT
 	do	case $OPT in
-		r)	REV=@$OPTARG;;
+		r)	REV=@"$OPTARG";;
 		esac
 	done
 	if [ $REV = X ]
@@ -883,7 +883,7 @@ _c2r() {	# undoc
 		exit 1
 	fi
 	shift `expr $OPTIND - 1`
-	bk prs -r$REV -hnd:REV: "$@"
+	bk prs -r"$REV" -hnd:REV: "$@"
 }
 
 # ------------- main ----------------------
