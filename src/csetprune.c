@@ -34,6 +34,9 @@ private void pruneEmpty(sccs *s, sccs *sb, MDBM *m);
 private int getKeys(MDBM *m);
 private int flags;
 
+/* set to 1 to not unlink all the files.  Good for debugging */
+#define	JUST_CHANGESET	0
+
 int
 csetprune_main(int ac, char **av)
 {
@@ -92,6 +95,7 @@ csetprune_main(int ac, char **av)
 	verbose((stderr, "Serial compressing ChangeSet file...\n"));
 	sccs_scompress(s, SILENT);
 	sccs_free(s);
+	if (JUST_CHANGESET) exit(0);
 	verbose((stderr, "Regenerating ChangeSet file checksums...\n"));
 	sys("bk", "checksum", "-fv", "ChangeSet", SYS);
 	rename("SCCS/s..ChangeSet", "SCCS/b.ChangeSet");
@@ -134,6 +138,7 @@ rmKeys(MDBM *s)
 	}
 	verbose((stderr, "Removing files...\n"));
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
+		if (JUST_CHANGESET) continue;
 		verbose((stderr, "%d removed\r", ++n));
 		sccs_keyunlink(kv.key.dptr, proj, idDB, dirs);
 	}
@@ -273,18 +278,20 @@ rebuildTags(sccs *s)
 	 * Only keep newest instance of each name
 	 */
 	for (sym = s->symbols; sym; sym = sym->next) {
-		assert(sym->symname && sym->metad && sym->d);
+		md = sym->metad;
+		d = sym->d;
+		assert(sym->symname && md && d);
 		if (mdbm_store_str(symdb, sym->symname, "", MDBM_INSERT)) {
 			/* no error, just ignoring duplicates */
+			MK_GONE(s, md);
 			sym->metad = sym->d = 0;
 			continue;
 		}
-		md = sym->metad;
-		d = sym->d;
 		assert(md->type != 'D' || md == d);
 		/* If tag on a deleted node, (if parent) move tag to parent */
 		if (d->flags & D_GONE) {
 			unless (d->parent) {
+				MK_GONE(s, md);
 				sym->metad = sym->d = 0;
 				continue;
 			}
