@@ -34,6 +34,7 @@ proc dot {} \
 {
 	global	Diffs DiffsEnd diffCount lastDiff
 
+	if {![info exists Diffs($lastDiff)]} {return}
 	scrollDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
 	highlightDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
 	.diffs.status.middle configure -text "Diff $lastDiff of $diffCount"

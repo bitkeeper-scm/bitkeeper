@@ -104,7 +104,7 @@ proc searchactive {} \
 
 proc searchstring {} \
 {
-	global	search
+	global	search lastDiff
 
 	if {[info exists search(focus)]} { focus $search(focus) }
 	set string [$search(text) get]
@@ -123,9 +123,11 @@ proc searchstring {} \
 	} elseif {("$string" != "") && ($search(dir) == "g")} {
 		if {[string is integer $string]} {
 			catch {$search(widget) see diff-${string}}
+			set lastDiff $string
 			#set n [$search(widget) mark names]
 			#set l [$search(widget) index diff-${string}]
 			#displayMessage "l=($l) trying mark=(diff-${string})"
+			if {[info procs dot] != ""} { dot }
 			return
 		} else {
 			$search(status) configure -text "$string not integer"
