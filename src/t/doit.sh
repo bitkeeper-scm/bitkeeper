@@ -68,6 +68,27 @@ check_path()
 	rm -f $TMP/cmp1$$ $TMP/cmp2$$
 }
 
+# Make sure the "if [ -w ... ]" construct works under this id.
+check_w()
+{
+	touch $TMP/data$$
+	chmod 000 $TMP/data$$
+	if [ -w $TMP/data$$ ]
+	then
+		echo "======================================================="
+		echo "A file with mode 000 is still writable under your uid:"
+		echo "	`id`"
+		echo "Most likely you are running under the root account."
+		echo "Please run the regression test under a non-privilege"
+		echo "account, because the regression test check write access"
+		echo "of some files and expect them to be  non-writable."
+		echo "======================================================="
+		rm -f $TMP/data$$
+		exit 1
+	fi
+	rm -f $TMP/data$$
+}
+
 # setup env variables for regression test
 setup_env()
 {
@@ -98,6 +119,7 @@ setup_env()
 		unix_common_setup
 		;;
 	esac
+	check_w
 
 	unset BK_BIN
 	BK_LICENSE=ACCEPTED
@@ -201,6 +223,11 @@ init_main_loop
 for i in $list
 do	echo ------------ ${i#t.} test
 	mkdir -p $BK_REGRESSION/.tmp || exit 1
+	# Someone reported that ksh on solaris will
+	# pick the $HOME/.profile and override our $PATH setting
+	# which is intended to pick up  /usr/xpg4/bin/grep
+	# This is not yet reproducable on BitMover's solaris
+	# platform.
 	cat setup $i | @FAST_SH@ $dashx
 	EXIT=$?
 	if [ $EXIT != 0 ]

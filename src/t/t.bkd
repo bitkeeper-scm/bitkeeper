@@ -20,6 +20,7 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+bk sane 2> sane.out || { echo failed; cat sane.out; exit 1; }
 echo OK
 echo $N Create some data ............................................$NL
 mkdir src

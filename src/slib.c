@@ -11611,8 +11611,10 @@ done:	free_pfile(&pf);
 private void
 show_d(delta *d, FILE *out, char *vbuf, char *format, int num)
 {
-	d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
-	if (out) fprintf(out, format, num);
+	if (out) {
+		fprintf(out, format, num);
+		d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
+	}
 	if (vbuf) {
 		char	dbuf[512];
 
@@ -11626,8 +11628,10 @@ show_d(delta *d, FILE *out, char *vbuf, char *format, int num)
 private void
 show_s(delta *d, FILE *out, char *vbuf, char *str) {
 
-	d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
-	if (out) fputs(str, out);
+	if (out) {
+		fputs(str, out);
+		d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
+	}
 	if (vbuf) {
 		strcat(vbuf, str);
 		assert(strlen(vbuf) < 1024);
@@ -12838,7 +12842,7 @@ fprintDelta(FILE *out, char *vbuf,
 	const char *b, *t, *q = dspec;
 	char	kwbuf[KWSIZE], rightVal[VSIZE], leftVal[VSIZE];
 	char	op;
-	int	len, printed = 0;
+	int	len;
 
 	while (q <= end) {
 		if (*q == '\\') {
@@ -12945,7 +12949,6 @@ dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
 			q = &suffix[slen + 1];
 		} else {
 			fc(*q++);
-			printed  = 1;
 		}
 	}
 	return (0);

@@ -36,11 +36,26 @@ int
 chk_host()
 {
 	char	*host = sccs_gethost();
+	char	*p;
+
+	if (host && (p = strrchr(host, '.')) && streq(&p[1], "localdomain")) {
+		fprintf(stderr,
+"==========================================================================\n"
+"sane: Warning: bad host name: \"%s\".\n"
+"\"%s\" does not look like a real domain name.\n"
+"==========================================================================\n",
+		host, &p[1]);
+	}
 
 	if (host && strchr(host, '.') && !strneq(host, "localhost", 9)) {
 		return (0);
 	}
-	fprintf(stderr, "sane: bad host name: %s\n", host ? host : "<empty>");
+	fprintf(stderr,
+"==========================================================================\n"
+"sane: bad host name: \"%s\". BitKeeper wants a fully qualified hostname.\n"
+"Name such as \"localhost.*\" is also illegal.\n"
+"==========================================================================\n",
+	host ? host : "<empty>");
 	return (1);
 }
 

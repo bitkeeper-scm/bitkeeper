@@ -439,4 +439,24 @@ bk prs -h -r+ -d'$each(:FD:){<(:FD:)>\n}' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
 echo OK
-rm -f FILE SCCS/s.FILE
+echo $N "checking prs -nn option .....................................$NL"
+bk admin $Q -Ssym2:1.2 FILE
+bk admin $Q -Ssym4:1.4 FILE
+cat > X <<EOF
+1.4 = sym4
+1.2 = sym2
+EOF
+bk undos X > CMP1
+bk prs -nn -hd'$each(:SYMBOL:){:I: = (:SYMBOL:)}' FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
+echo OK
+echo $N "checking prs -n option ......................................$NL"
+cat > X <<EOF
+1.4 = sym4,1.2 = sym2,
+EOF
+bk undos X > CMP1
+bk prs -n -hd'$each(:SYMBOL:){:I: = (:SYMBOL:),}' FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; sdiff -w80 CMP[12]; exit 1; fi
+echo OK

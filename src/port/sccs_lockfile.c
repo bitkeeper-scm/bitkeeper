@@ -14,7 +14,7 @@ sccs_lockfile(char *lockfile, int tries)
 		if ((close(open(lockfile,
 			O_CREAT|O_WRONLY|O_EXCL, GROUP_MODE))) == 0) return (0);
 		
-		if (tries && (tries-- == 0)) {
+		if (tries && (--tries == 0)) {
 			fprintf(stderr, "timed out waiting for %s\n", lockfile);
 			return (-1);
 		}
