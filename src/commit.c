@@ -552,8 +552,6 @@ config(FILE *f)
 	pclose(f1);
 	fputs("\n", f);
 
-	dspec = "$each(:FD:){Proj:      (:FD:)\\n}ID:        :KEY:\n";
-	do_prsdelta(s_cset, "1.0", 0, dspec, f);
 	fprintf(f, "%-10s %s", "User:", sccs_getuser());
 	fprintf(f, "\n%-10s %s", "Host:", sccs_gethost());
 	p = sccs_root(0);
@@ -573,6 +571,9 @@ config(FILE *f)
 	assert(s && s->tree);
 	s->state &= ~S_SET;
 	d = sccs_top(s);
+	fprintf(f, "%-10s ", "ID:");
+	sccs_pdelta(s, sccs_ino(s), f);
+	fputs("\n", f);
 	fprintf(f, "%-10s %s\n", "Revision:", d->rev);
 	fprintf(f, "%-10s ", "Cset:");
 	sccs_pdelta(s, d, f);
@@ -582,7 +583,10 @@ config(FILE *f)
 	fprintf(f, "%-10s %s", "Date:", ctime(&tm));
 	assert(db);
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		if (streq("description", kv.key.dptr)) {
+		if (streq("description", kv.key.dptr) ||
+		    streq("bkweb", kv.key.dptr) ||
+		    streq("master", kv.key.dptr) ||
+		    streq("homepage", kv.key.dptr)) {
 			fprintf(f, "%-10s: %u\n", kv.key.dptr,
 					adler32(0, kv.val.dptr, kv.val.dsize));
 		} else {
