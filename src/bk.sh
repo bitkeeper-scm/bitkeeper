@@ -29,9 +29,47 @@ _inode() {		# /* undoc? 2.0 */
 }
 
 # This removes the tag graph
-_fixtags() {		# /* undoc 2.0 */
+_striptags() {
 	__cd2root
-	_BK_PRUNE_TAGS=Y bk admin -z ChangeSet
+	_BK_STRIPTAGS=Y bk admin -z ChangeSet
+}
+
+# Show what would be sent
+_keysync() {
+	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
+	then	echo usage root1 root2
+		exit 1
+	fi
+	test -d "$1" -a -d "$2" || {
+		echo usage root1 root2
+		exit 1
+	}
+	HERE=`pwd`
+	__keysync "$1" "$2" > /tmp/sync$$
+	__keysync "$2" "$1" >> /tmp/sync$$
+	if [ X$PAGER != X ]
+	then	$PAGER /tmp/sync$$
+	else	more /tmp/sync$$
+	fi
+	/bin/rm -f /tmp/sync$$
+}
+
+__keysync() {
+	cd "$1" >/dev/null
+	bk _probekey > /tmp/sync1$$
+	cd $HERE >/dev/null
+	cd "$2" >/dev/null
+	bk _listkey < /tmp/sync1$$ > /tmp/sync2$$
+	cd $HERE >/dev/null
+	cd $1 >/dev/null
+	bk _prunekey < /tmp/sync2$$ > /tmp/sync3$$
+	if [ -s /tmp/sync3$$ ]
+	then	echo ===== Found in $1 but not in $2 =======
+		cat /tmp/sync3$$
+	else	echo ===== $2 is a superset of $1 =====
+		echo ""
+	fi
+	/bin/rm -f /tmp/sync[123]$$
 }
 
 # For each file which is modified,

@@ -93,6 +93,14 @@ cmp -s SCCS/s.ChangeSet SAVE || {
 }
 bk admin -hhhq || exit 1
 echo OK
+
+echo $N Add same tag to a new cset as part of the cset ..............$NL
+ls > RST
+bk new $Q RST
+bk commit $Q -SNEW -yNEW2 || exit 1
+bk admin -hhhq || exit 1
+echo OK
+
 echo $N Clone repository ............................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
@@ -239,7 +247,7 @@ echo OK
 echo $N Make sure that tag chksum == 0 ..............................$NL
 cd $HERE/project
 bk tag $Q project
-CHKSUM=`bk prs -had'$if(:DT:=R){:DSUM:}' ChangeSet`
+CHKSUM=`bk prs -nhad'$if(:DT:=T){:DSUM:}' ChangeSet`
 if [ "$CHKSUM" -ne 0 ]
 then	echo failed, CHKSUM = $CHKSUM
 	bk prs -ad':I: :DT: :DSUM: :KEY:\n' ChangeSet
@@ -297,25 +305,6 @@ grep -q 'OLD STYLE' SCCS/s.ChangeSet || { echo no tag; exit 1; }
 grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
 echo OK
 
-echo $N Create a new changeset with an new tag, 1.x pull it, no tag .$NL
-cd $HERE/new
-ls > XYZ
-bk new $Q XYZ
-bk commit $Q -ycset1 -S'NEW TAG'
-grep -q 'cS0' SCCS/s.ChangeSet || { echo No tag graph found; exit 1; }
-KEY=`bk prs -hr+ -d:KEY: ChangeSet`
-cd $HERE/old
-/usr/libexec/bitkeeper-1.2/bk pull -t $Q bk://localhost:$P || exit 1
-grep -q 'NEW TAG' SCCS/s.ChangeSet && { echo tag was sent; exit 1; }
-grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
-GOT=`bk prs -hr+ -d:KEY: ChangeSet`
-if [ X"$KEY" != X"$GOT" ]
-then	echo "KEY $KEY"
-	echo "GOT $GOT"
-	exit 1
-fi
-echo OK
-
 echo $N Create a new changeset with an old tag, opull it, works .....$NL
 cd $HERE
 rm -rf new old
@@ -341,11 +330,12 @@ grep -q 'OLD STYLE' SCCS/s.ChangeSet || { echo no tag; exit 1; }
 # grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
 echo OK
 
-echo $N Create a new changeset with an new tag, opull it, no tag ....$NL
+echo $N Create a new changeset, add a new tag, opull it, no tag .....$NL
 cd $HERE/new
 ls > XYZ
 bk new $Q XYZ
-bk commit $Q -ycset1 -S'NEW TAG'
+bk commit $Q -ycset1 
+bk tag $Q 'NEW TAG'
 grep -q 'cS0' SCCS/s.ChangeSet || { echo No tag graph found; exit 1; }
 KEY=`bk prs -hr+ -d:KEY: ChangeSet`
 cd $HERE/old
@@ -361,11 +351,29 @@ then	echo "KEY $KEY"
 fi
 echo OK
 
+echo $N Create a new changeset with an new tag, 1.x pull it, fails...$NL
+cd $HERE/new
+bk edit $Q XYZ
+bk delta $Q -ywww XYZ
+bk commit $Q -ycset1 -S'NEW TAG'
+grep -q 'cS0' SCCS/s.ChangeSet || { echo No tag graph found; exit 1; }
+KEY=`bk prs -hr+ -d:KEY: ChangeSet`
+cd $HERE/old
+/usr/libexec/bitkeeper-1.2/bk pull -t bk://localhost:$P 2>OUT
+S=$?
+kill -9 `cat $HERE/pid`
+test $S -eq 0 && {
+	echo should have failed and did not
+	cat OUT
+	exit 1
+}
+echo OK
+find /tmp -name 'csort*' -print | xargs /bin/rm -f 2>/dev/null
+
 echo $N Test 1.x push from old to new with old style tag ............$NL
 cd $HERE
 rm -rf new old
 tar xf TAR
-kill -9 `cat $HERE/pid`
 cd new
 P=50000
 bk bkd -d -p$P -P$HERE/pid 2>/dev/null
@@ -471,17 +479,16 @@ cd $HERE/new
 bk idcache -q
 ls > LS
 bk new $Q LS
-bk commit $Q -ycset1 -S'NEW NEW'
-bk commit $Q -ycset1 -SNEWBIE
+bk commit $Q -ycset1 
+bk tag $Q 'NEW NEW'
+bk edit $Q LS
+bk delta -ywww $Q LS
+bk commit $Q -ycset1 
+bk tag $Q NEWBIE
 _BK_NO_TAG_GRAPH=YES bk tag -q 'OLD OLD'
 _BK_NO_TAG_GRAPH=YES bk tag -q 'OLDY'
 KEY=`bk prs -hr+ -d:KEY: ChangeSet`
-BK_GETLINE=YES bk opush -t $Q bk://localhost:$P 2>OUT || exit 1
-grep -q 'not sending new tags in compat mode' OUT || {
-	echo failed to warn about compat mode tags
-	cat OUT
-	exit 1
-}
+bk opush -t $Q bk://localhost:$P 2>OUT || exit 1
 cores
 cd $HERE/old
 grep -q 'NEW NEW' SCCS/s.ChangeSet && { echo sent new tag; exit 1; }
@@ -565,6 +572,58 @@ grep -q 'd R 1.2 ' SCCS/s.ChangeSet && {
 	else
 		echo OK, admin -z fixed it at least.
 	fi
+	exit 1
+}
+echo OK
+
+echo $N Test propogation of the first tag ...........................$NL
+cd $HERE
+rm -rf tagpush tagchild
+no_logging tagpush
+ls > file
+bk new $Q file
+bk commit $Q -ywhatever
+bk clone $Q $HERE/tagpush $HERE/tagchild
+bk tag $Q TAG
+cd $HERE/tagchild
+bk pull $Q || {
+	echo pull failed
+	exit 1
+}
+grep -q 'd R 1.2 ' SCCS/s.ChangeSet || {
+	echo failed to send removed delta
+	exit 1
+}
+grep -q 'STAG' SCCS/s.ChangeSet || {
+	echo failed to send tag
+	exit 1
+}
+grep -q 'S0 l' SCCS/s.ChangeSet || {
+	echo failed to mark tag in tag graph correctly
+	exit 1
+}
+echo OK
+
+echo $N Test propogation of a tag added with a commit ...............$NL
+cd $HERE/tagpush
+bk edit $Q file
+bk delta -ywww $Q file
+bk commit $Q -ywhatever -STAG_NO_2
+cd $HERE/tagchild
+bk pull $Q || {
+	echo pull failed
+	exit 1
+}
+grep -q 'STAG_NO_2' SCCS/s.ChangeSet || {
+	echo failed to send tag
+	exit 1
+}
+grep -q 'S4 l' SCCS/s.ChangeSet || {
+	echo failed to mark leaf tag in tag graph correctly
+	exit 1
+}
+grep -q 'S0$' SCCS/s.ChangeSet || {
+	echo failed to mark root tag in tag graph correctly
 	exit 1
 }
 echo OK

@@ -11,7 +11,7 @@ prs_main(int ac, char **av)
 	delta	*e;
 	int	reverse = 0, doheader = 1;
 	int	init_flags = INIT_NOCKSUM|INIT_SAVEPROJ;
-	int	flags = 0, nflag = 0;
+	int	flags = 0;
 	int	opposite = 0;
 	int	rc = 0, c;
 	char	*name, *xrev = 0;
@@ -40,7 +40,7 @@ prs_main(int ac, char **av)
 		    case 'h': doheader = 0; break;	/* doc 2.0 */
 		    case 'm': flags |= PRS_META; break;	/* doc 2.0 */
 		    case 'M': expand = 3; break;	/* doc 2.0 */
-		    case 'n': nflag++; break;	/* doc 2.0 */
+		    case 'n': flags |= PRS_LF; break;	/* doc 2.0 */
 		    case 'o': opposite = 1; doheader = 0; break; /* doc 2.0 */
 		    case 'x': xrev = optarg; break;	/* doc 2.0 */
 		    case 'v': noisy = 1; break;	/* doc 2.0 */
@@ -53,13 +53,6 @@ usage:			system("bk help -s prs");
 			if (year4) free(year4);
 			return (1);
 		}
-	}
-
-	switch (nflag) {
-	    case 0: break; /* no op */
-	    case 1: flags |= PRS_LF; break;
-	    case 2: flags |= PRS_LFLF; break;
-	    default: goto usage;
 	}
 
 	if (things && cset) {

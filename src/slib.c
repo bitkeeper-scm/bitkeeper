@@ -6959,8 +6959,22 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	*p, *t;
 	int	bits = 0;
 	int	gonechkd = 0;
-	int	prune_tags = (s->state & S_CSET) && getenv("_BK_PRUNE_TAGS");
+	int	strip_tags = (s->state & S_CSET) && getenv("_BK_STRIPTAGS");
+	int	version = SCCS_VERSION;
 
+	if (getenv("_BK_SCCS_VERSION")) {
+		version = atoi(getenv("_BK_SCCS_VERSION"));
+		switch (version) {
+		    case SCCS_VERSION:
+			break;
+		    case SCCS_VERSION_COMPAT:
+			strip_tags = 1;
+			break;
+		    default:
+			fprintf(stderr,
+			    "Bad version %s, defaulting to current\n", version);
+		}
+	}
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
 	fputs("\001hXXXXX\n", out);
@@ -6972,6 +6986,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(streq(s->table->rev, "1.0"));
 			break;
 		}
+		if (strip_tags && (d->type == 'R')) d->flags |= D_GONE;
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
@@ -7179,15 +7194,18 @@ delta_table(sccs *s, FILE *out, int willfix)
 
 			for (sym = s->symbols; sym; sym = sym->next) {
 				unless (sym->metad == d) continue;
-				p = fmts(buf, "\001cS");
-				p = fmts(p, sym->name);
-				*p++ = '\n';
-				*p   = '\0';
-				fputmeta(s, buf, out);
+				if (!strip_tags || 
+				    streq(KEY_FORMAT2, sym->name)) {
+					p = fmts(buf, "\001cS");
+					p = fmts(p, sym->name);
+					*p++ = '\n';
+					*p   = '\0';
+					fputmeta(s, buf, out);
+				}
 			}
 		}
-		/* automagically prune tag serials from non-csetfiles */
-		if (!prune_tags && d->symGraph && (s->state & S_CSET)) {
+		/* automagically strip tag serials from non-csetfiles */
+		if (!strip_tags && d->symGraph && (s->state & S_CSET)) {
 			p = fmts(buf, "\001cS");
 			if (d->ptag) {
 				p = fmtd(p, d->ptag);
@@ -7221,7 +7239,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			}
 		}
 		if (!d->next) {
-			sprintf(buf, "\001cV%u\n", SCCS_VERSION);
+			sprintf(buf, "\001cV%u\n", version);
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_XFLAGS) {
@@ -11518,14 +11536,7 @@ out:
 	s->numdeltas++;
 
 	EACH (syms) {
-		if (!(flags & DELTA_PATCH) && dupSym(s->symbols, syms[i], 0)) {
-			fprintf(stderr,
-			    "delta: symbol %s exists in %s\n",
-			    syms[i], s->sfile);
-			fprintf(stderr, "use admin to override old value\n");
-		} else {
-			addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
-		}
+		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
 	}
 
 	/*
@@ -12016,11 +12027,11 @@ done:	free_pfile(&pf);
 }
 
 private void
-show_d(delta *d, FILE *out, char *vbuf, char *format, int num)
+show_d(sccs *s, delta *d, FILE *out, char *vbuf, char *format, int num)
 {
 	if (out) {
 		fprintf(out, format, num);
-		d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
+		s->prs_output = 1;
 	}
 	if (vbuf) {
 		char	dbuf[512];
@@ -12033,11 +12044,11 @@ show_d(delta *d, FILE *out, char *vbuf, char *format, int num)
 }
 
 private void
-show_s(delta *d, FILE *out, char *vbuf, char *str) {
+show_s(sccs *s, delta *d, FILE *out, char *vbuf, char *str) {
 
 	if (out) {
 		fputs(str, out);
-		d->flags |= D_SET; /* for PRS_LF or PRS_LFLF */
+		s->prs_output = 1;
 	}
 	if (vbuf) {
 		strcat(vbuf, str);
@@ -12069,11 +12080,11 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 {
 	char	*p, *q;
 #define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
-#define	fc(c)	show_d(d, out, vbuf, "%c", c)
-#define	fd(n)	show_d(d, out, vbuf, "%d", n)
-#define	fx(n)	show_d(d, out, vbuf, "0x%x", n)
-#define	f5d(n)	show_d(d, out, vbuf, "%05d", n)
-#define	fs(str)	show_s(d, out, vbuf, str)
+#define	fc(c)	show_d(s, d, out, vbuf, "%c", c)
+#define	fd(n)	show_d(s, d, out, vbuf, "%d", n)
+#define	fx(n)	show_d(s, d, out, vbuf, "0x%x", n)
+#define	f5d(n)	show_d(s, d, out, vbuf, "%05d", n)
+#define	fs(str)	show_s(s, d, out, vbuf, str)
 
 	if (streq(kw, "Dt")) {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
@@ -12232,7 +12243,11 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "DT")) {
 		/* delta type */
-		fc(d->type);
+		if ((d->type == 'R') && d->symGraph) {
+			fc('T');
+		} else {
+			fc(d->type);
+		}
 		return (strVal);
 	}
 
@@ -12839,6 +12854,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		int	j = 0;
 
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
+		while (d->type == 'R') d = d->parent;
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
 			if (!plen && !slen && j++) fc(' ');
@@ -13153,11 +13169,13 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (d->flags & D_MERGED) {
 			delta	*m;
 
-			for (m = s->table;
-			    m && (m->merge != d->serial); m = m->next);
-			assert(m);
-			fs(m->rev);
-			space = 1;
+			for (m = s->table; m; m = m->next) {
+				if (m->merge == d->serial) {
+					if (space) fs(" ");
+					fs(m->rev);
+					space = 1;
+				}
+			}
 		}
 		unless (d = d->kid) return (space ? strVal : nullVal);
 		if (space) fs(" ");
@@ -13498,13 +13516,9 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	if (d->type != 'D' && !(flags & PRS_ALL)) return (0);
 	if ((s->state & S_SET) && !(d->flags & D_SET)) return (0);
 	end = &dspec[strlen(dspec) - 1];
-	d->flags &= ~D_SET; /* clear the D_SET flag */
+	s->prs_output = 0;
 	fprintDelta(out, NULL, dspec, end, s, d);
-	if (d->flags&D_SET) { /* re-check D_SET after fprinDelta return */
-		if (flags&PRS_LFLF) fputc('\n', out);
-		return (1);
-	}
-	d->flags |= D_SET; /* restore old D_SET value, just in case */
+	if (s->prs_output && (flags & PRS_LF)) fputc('\n', out);
 	return (0);
 }
 
@@ -13665,6 +13679,12 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 	if (d->random) fprintf(out, "R %s\n", d->random);
 	if ((d->flags & D_SYMBOLS) || d->symGraph) {
 		if ((flags & PRS_COMPAT) && d->symGraph) {
+			if (d->type == 'D') {
+				fprintf(stderr,
+				    "This tree may not be sent in " 
+				    "compatibility mode due to tags.\n");
+				return (1);
+			}
 			fprintf(stderr,
 			    "Warning: not sending new tags in compat mode\n");
 			goto text;
@@ -13719,35 +13739,25 @@ text:	if (d->flags & D_TEXT) {
 	return (0);
 }
 
-private int
+private void
 prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	int non_empty = 0;
-
-	if (d->next) non_empty = prs_reverse(s, d->next, flags, dspec, out);
-	if (d->flags & D_SET) {
-		non_empty |= sccs_prsdelta(s, d, flags, dspec, out);
-	}
-	return (non_empty);
+	if (d->next) prs_reverse(s, d->next, flags, dspec, out);
+	if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
 }
 
-private int
+private void
 prs_forward(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-	int non_empty = 0;
 	for (; d; d = d->next) {
-		if (d->flags & D_SET) {
-			non_empty |= sccs_prsdelta(s, d, flags, dspec, out);
-		}
+		if (d->flags & D_SET) sccs_prsdelta(s, d, flags, dspec, out);
 	}
-	return (non_empty);
 }
 
 int
 sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
-	int	i;
 
 	if (!dspec) dspec = ":DEFAULT:";
 	GOODSCCS(s);
@@ -13769,12 +13779,10 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 		}
 	}
 	if (reverse) {
-		 i = prs_reverse(s, s->table, flags, dspec, out);
+		 prs_reverse(s, s->table, flags, dspec, out);
 	} else {
-		 i = prs_forward(s, s->table, flags, dspec, out);
+		 prs_forward(s, s->table, flags, dspec, out);
 	}
-	/* i is ture if there is at least one non-empty record */
-	if (i && (flags& PRS_LF)) putc('\n', out);
 	return (0);
 }
 

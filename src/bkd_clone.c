@@ -22,7 +22,7 @@ cmd_clone(int ac, char **av)
 	if (p) {
 		sendServerInfoBlock();
 	} else {
-		cmd[3] = "-co";		/* compat mode for the sfio */
+		out("ERROR-Clone is not supported in compatibility mode.\n");
 	}
 
 	if (!exists("BitKeeper/etc")) {

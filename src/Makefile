@@ -418,7 +418,9 @@ rpm:	bk.spec production
 	rpm -bb bk.spec
 
 # Touch this and die.  --lm
-install: install-nolinks
+install: install-nolinks bklinks binlinks
+
+bklinks:
 	@if uname -s | grep _NT; \
 	then	LN=cp; EXE=.exe; \
 	else	LN=ln; EXE=; \
@@ -428,7 +430,13 @@ install: install-nolinks
 		then	rm -f $(BINDIR)/$$file$$EXE; \
 			$$LN $(BINDIR)/bk$$EXE $(BINDIR)/$$file$$EXE; \
 		fi; \
-	done; \
+	done
+
+binlinks:
+	@if uname -s | grep _NT; \
+	then	LN=cp; EXE=.exe; \
+	else	LN=ln; EXE=; \
+	fi; \
 	if [ -w /usr/bin ]; \
 	then	for file in $(BINLINKS); \
 		do	rm -f /usr/bin/$$file; \
@@ -465,7 +473,7 @@ install-nolinks: all
 image: all
 	@-rm -rf tmp
 	DIR=`pwd`/tmp/bitkeeper; set -e; \
-	BINDIR=$$DIR $(MAKE) -e install-nolinks; \
+	BINDIR=$$DIR $(MAKE) -e install-nolinks bklinks; \
 	cd utils && BINDIR=$$DIR $(MAKE) -e image 
 	@-rm -rf tmp
 
