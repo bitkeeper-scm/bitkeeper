@@ -8205,33 +8205,25 @@ count_lines(delta *d)
 	return (count_lines(d->parent) + d->added - d->deleted);
 }
 
-/* Look for files containing binary data that BitKeeper cannot handle.
- * This consists of (a) NULs, (b) \n followed by \001.
+/*
+ * Look for files containing binary data that BitKeeper cannot handle,
+ * when in text mode.
+ * Righ now only NUL is unsupported
+ * "\n\001" used to cause problem, this has been fixed.
+ *
+ * XXX Performance warning: This is slow if we get a very large text file
  */
 int
 ascii(char *file)
 {
 	MMAP	*m = mopen(file, "b");
 	u8	*p, *end;
-	int	beginning = 1;
 
 	if (!m) return (2);
 	for (p = (u8*)m->where, end = (u8*)m->end; p < end; p++) {
-		switch (*p) {
-		    case '\0':	
+		unless (*p) { /* null is not allowed */
 			mclose(m);
 			return (0);
-		    case '\n':	
-			beginning = 1;
-			break;
-		    case '\001':
-			if (beginning) {
-				mclose(m);
-				return (0);
-			}
-			/* FALLTHRU */
-		    default:
-			beginning = 0;
 		}
 	}
 	mclose(m);
