@@ -151,8 +151,7 @@ cmd_httpget(int ac, char **av)
 	unless (streq(name, "license") || bk_options()&BKOPT_WEB) {
 		unless (has_temp_license()) {
 			http_error(503,
-			    "bkWeb option is disabled: %s",
-			    upgrade_msg);
+			    "BK/Web option has not been purchased.");
 		}
 	}
 

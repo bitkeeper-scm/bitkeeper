@@ -167,9 +167,8 @@ usage:			system("bk help -s export");
 			p = strchr(p, '/');
 			unless (p) {
 				fprintf(stderr,
-				    "%s: Cannot trim path; path too short. "
-				    "File skipped.\n",
-				    p_sav);
+				    "Cannot trim short path, "
+				    "file %s skipped.\n", p_sav);
 				goto next;
 			}
 			p++;

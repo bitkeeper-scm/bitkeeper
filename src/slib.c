@@ -2363,8 +2363,7 @@ chk_nlbug(sccs *s)
 			p = buf + 3;
 			while (isdigit(*p)) p++;
 			if (*p == 'N' && sawblank) {
-				getMsg("saw_blanknonl", s->sfile,
-				    0, 0, stderr);
+				getMsg("saw_blanknonl", s->sfile, 0, stderr);
 				ret = 1;
 			}
 		}
@@ -6722,11 +6721,7 @@ getLinkBody(sccs *s,
 	} else {
 		unless (symlink(d->symlink, f) == 0 ) {
 #ifdef WIN32
-			fprintf(stderr,
-"===========================================================================\n"
-"%s: You are trying to create a symlink on a win32 file system.\n"
-"This file type is not supported on this platform.\n"
-"===========================================================================\n",
+			getMsg("symlink", s->gfile, '=', stderr);
 			s->gfile);
 #else
 			perror(f);
@@ -13546,7 +13541,7 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "BF")) {
 		/* branch flag */
-		/* Bitkeeper does not have a branch flag */
+		/* BitKeeper does not have a branch flag */
 		/* but we can derive the value		 */
 		// re-check this when LOD is done
 		if (d->rev) {

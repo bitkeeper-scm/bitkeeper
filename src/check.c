@@ -390,12 +390,7 @@ chk_dfile(sccs *s)
 	*p = 'd';
 	if  (!(d->flags & D_CSET) && !exists(s->sfile)) { 
 		*p = 's';
-		fprintf(stderr,
-"===========================================================================\n"
-"check: %s has pending deltas but no d.file\n"
-"You can fix this by running \"bk -R sfiles -P\"\n"
-"===========================================================================\n",
-			s->gfile);
+		getMsg("missing_dfile", s->gfile, '=', stdout);
 		return (1);
 	}
 	*p = 's';
@@ -415,18 +410,9 @@ chk_gfile(sccs *s)
 	 */
 	if (isreg(s->gfile) || isSymlnk(s->gfile)) return (0);
 	if (isdir(s->gfile)) {
+
 		type = "directory";
-err:		fprintf(stderr,
-"===========================================================================\n\
-file/directory conflict: %s\n\
-The name above is both a %s and a revision controlled file.\n\
-The revision controlled file can not be checked out because the directory\n\
-is where the file wants to be.  To correct this:\n\
-1) Move the %s to a different name;\n\
-2) Check out the file \"bk get %s\"\n\
-3) If you want to get rid of the file, then use bk rm to get rid of it\n\
-===========================================================================\n",
-		    s->gfile, type, type, s->gfile);
+err:		getMsg2("file_dir_conflict", s->gfile, type, '=', stderr);
 		return (1);
 	} else {
 		type = "unknown-file-type";
@@ -651,7 +637,7 @@ chk_eoln(sccs *s, int eoln_native)
 private void
 warnPoly(void)
 {
-	getMsg("warn_poly", 0, 0, 0, stdout);
+	getMsg("warn_poly", 0, 0, stdout);
 	touch(POLY, 0664);
 }
 
@@ -1131,7 +1117,7 @@ check(sccs *s, HASH *db)
 	}
 
 	/*
-	 * Check Bitkeeper invariants, such as:
+	 * Check BitKeeper invariants, such as:
 	 *  - no open branches (unless we are in a logging repository)
 	 *  - xflags implied by s->state matches top-of-trunk delta.
 	 */

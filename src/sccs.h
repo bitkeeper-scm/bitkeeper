@@ -1187,6 +1187,7 @@ int	saveStdin(char *tmpfile);
 char	**parent_pullp(void);
 char	**parent_pushp(void);
 char	**parent_allp(void);
+int	restore_backup(char *backup_sfio);
 char	*parent_normalize(char *);
 
 extern char *bk_vers;
@@ -1194,5 +1195,8 @@ extern char *bk_utc;
 extern char *bk_time;
 extern char *bk_platform;
 
-int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
+int	getMsg(char *msg_name, char *bkarg, char b, FILE *outf);
+int	getMsg2(char *msg_name, char *arg, char *arg2, char b, FILE *outf);
+int	getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
+int	getMsgv(char *msg_name, char **bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */

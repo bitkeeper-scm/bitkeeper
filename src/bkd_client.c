@@ -62,7 +62,7 @@ remote_parse(const char *url, int skip_checks)
 			if (r) r->type = ADDR_FILE;;
 		} else if (strneq("file:/", p, 6)) {
 			fprintf(stderr,
-			    "\"file\" is a illegal host name.\n"
+			    "\"file\" is an illegal host name.\n"
 			    "Did you mean \"file://path\"?\n");
 			r = NULL;
 		} else {

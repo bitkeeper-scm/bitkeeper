@@ -17,7 +17,7 @@ opark_main(int ac, char **av)
 
 	if (ac == 2 && streq("--help", av[1])) {
 		fprintf(stderr,
-		    "Park is deprecated interface, please do not use it\n");
+		    "Park is a deprecated interface, please do not use it\n");
 		return (0);
 	}
 
@@ -27,9 +27,10 @@ opark_main(int ac, char **av)
 		    case 'p':	purge = atoi(optarg); break;	/* doc 2.0 */
 		    case 'q':	qflag = 1; break;		/* doc 2.0 */
 		    case 'y':	comment = optarg; break;	/* doc 2.0 */
-		    default: 	fprintf(stderr,
-			   "Usage: bk park [-l] [-q] [-p num] [ -y comment]\n");
-				return (1);
+		    default:
+			fprintf(stderr,
+			   "Usage: bk park [-l] [-q] [-p num] [-y comment]\n");
+			return (1);
 		}
 	}
 
@@ -171,7 +172,7 @@ ounpark_main(int ac, char **av)
 
 	if (ac == 2 && streq("--help", av[1])) {
 		fprintf(stderr,
-		    "Unpark is deprecated interface, please do not use it\n");
+		    "Unpark is a deprecated interface, please do not use it\n");
 		return (0);
 	}
 

@@ -257,18 +257,14 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
-		    case -2:	fprintf(opts.out,
-"You are trying to push to an unrelated package. The root keys for the\n\
-ChangeSet file do not match.  Please check the pathnames and try again.\n");
+		    case -2:	getMsg("unrelated_repos", 0, 0, opts.out);
 				close(fd);
 				unlink(rev_list);
 				sccs_free(s);
 				if (r->type == ADDR_HTTP) disconnect(r, 2);
 				return (1); /* needed to force bkd unlock */
-		    case -3:	unless  (opts.forceInit) {
-					fprintf(opts.out,
-					    "You are pushing to an a empty "
-					    "directory\n");
+		    case -3:	unless (opts.forceInit) {
+		    			getMsg("no_repo", 0, 0, opts.out);
 					sccs_free(s);
 					if (r->type == ADDR_HTTP) {
 						disconnect(r, 2);
@@ -504,8 +500,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	n = genpatch(gzip, r->wfd, rev_list);
 	if ((r->type == ADDR_HTTP) && (m != n)) {
 		fprintf(opts.out,
-			"Error: patch have change size from %d to %d\n",
-			m, n);
+		    "Error: patch has changed size from %d to %d\n", m, n);
 		disconnect(r, 2);
 		return (-1);
 	}
@@ -526,10 +521,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	if (opts.debug) {
 		fprintf(opts.out, "Send done, waiting for remote\n");
 		if (r->type == ADDR_HTTP) {
-			fprintf(opts.out,
-				"Note: since httpd batches a large block of\n"
-				"output together before it sends back a reply,\n"
-				"this can take a while, please wait...\n");
+			getMsg("http_delay", 0, 0, opts.out);
 		}
 	}
 	return (0);

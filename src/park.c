@@ -322,7 +322,7 @@ err:		if (s) sccs_free(s);
 	sprintf(buf, "bk  sfio -qo < %s/%s > %s/%s",
 		PARK2ROOT, sfio_list, PARK2ROOT, parkfile);
 	if (system(buf)) {
-		fprintf(stderr, "failed to create %s, i/o error ?\n", parkfile);
+		fprintf(stderr, "failed to create %s, i/o error?\n", parkfile);
 		goto err;
 	}
 
@@ -402,7 +402,7 @@ printComments(char *parkfile)
 
 	switch (check_compat(buf)) {
 	    case -1:
-		fprintf(stderr, "Bad park file , version mismatch ?\n");
+		fprintf(stderr, "Bad park file, version mismatch?\n");
 		return;
 	    case 1: compat_mode = 1;
 		break;
@@ -487,7 +487,7 @@ copyFileOrLink(char *from, char *to)
 		} else if (isSymlnk(from)) {
 			symlnkCopy(from, to);
 		} else {
-			fprintf(stderr, "%s: unsopported from type\n", from);
+			fprintf(stderr, "%s: unsupported from type\n", from);
 			rc = -1;
 		}
 	}
@@ -647,7 +647,7 @@ copyGSPfile(char *oldpath, char *key,
 	} else {
 		newGpath = key2Gpath(key, idDB);
 		if (!newGpath) {
-			fprintf(stderr, "can not find path for key %s\n", key);
+			fprintf(stderr, "cannot find path for key %s\n", key);
 			return (-1);
 		}
 	}
@@ -1143,7 +1143,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 
 	switch (check_compat(path)) {
 	    case -1:
-		fprintf(stderr, "Bad park file , version mismatch ?\n");
+		fprintf(stderr, "Bad park file, version mismatch?\n");
 		fclose(f);
 		goto err;
 	    case 1: compat_mode = 1;
@@ -1211,7 +1211,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 							force, &idDB, f3);
 		} else {
 			error |= 1;
-			fprintf(stderr, "Unknow file type: %s\n", buf2);
+			fprintf(stderr, "Unknown file type: %s\n", buf2);
 		}
 		mclose(m);
 	}

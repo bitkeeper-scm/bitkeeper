@@ -432,28 +432,25 @@ repository_lockcleanup(void)
 	chdir(root);
 
 	if (repository_mine('r')) {
-		ttyprintf(
-"WARNING: process %u is exiting and it has left the repository at\n"
-"%s read locked!!  This is the result of a process that has been\n"
-"killed prematurely or is a bug.\n"
-"The stale lock will be removed.\n",
-			getpid(), root);
+		char	*pid = aprintf("%u", getpid());
+		
+		getMsg2("read_locked", pid, root, '=', stderr);
+		free(pid);
 		repository_rdunlock(0);
 	}
 
 	if (repository_mine('w')) {
-		ttyprintf(
-"ERROR: process %u is exiting and it has left the repository at\n"
-"%s write locked!!  This is the result of a process that has been\n"
-"killed prematurely or is a bug.\n",
-			getpid(), root);
+		char	*pid = aprintf("%u", getpid());
+		
+		getMsg2("write_locked", pid, root, '=', stderr);
+		free(pid);
 		/*
 		 * No need to keep the lock if we also have a RESYNC dir
 		 */
 		if (isdir(ROOT2RESYNC)) repository_wrunlock(0);
 	}
 	/*
-	 * Unfortunatly this is run in atexit() so we can't portably change
+	 * Unfortunately this is run in atexit() so we can't portably change
 	 * the exit status if an error occurs.
 	 */
 }

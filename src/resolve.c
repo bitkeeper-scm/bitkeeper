@@ -42,7 +42,6 @@ private	int	pendingRenames(void);
 private void	checkins(opts *opts, char *comment);
 private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
-private	void	restore(opts *o);
 private void	resolve_post(opts *o, int c);
 private void	unapply(FILE *f);
 private int	copyAndGet(opts *opts, char *from, char *to);
@@ -2224,44 +2223,10 @@ chkCaseChg(FILE *f)
 		chomp(buf);
 		getRealName(buf, localDB, realname);
 		unless (streq(buf, realname)) {
-			char	*case_folding_err =
-"\n\
-============================================================================\n\
-BitKeeper has detected a \"Case-Folding file system\". e.g. FAT and NTFS.\n\
-What this means is that your file system ignores case differences when it looks\n\
-for directories and files. This also means that it is not possible to rename\n\
-a path correctly if there exists a similar path with only upper/lower case\n\
-differences.\n\
-BitKeeper wants to rename:\n\
-    %s -> %s\n\
-Your file system is changing it to:\n\
-    %s -> %s\n\
-BitKeeper considers this an error, since this may not be what you have\n\
-intended.  The recommended work around for this problem is as follows:\n\
-a) Exit from this resolve session.\n\
-b) Run \"bk mv\" to move the directory or file with upper/lower case\n\
-   changes to a temporary location.\n\
-c) Run \"bk mv\" again to move from the temporary location to\n\
-   %s\n\
-d) Run \"bk commit\" to record the new location in a changeset.\n\
-e) Run \"bk resolve\" or \"bk pull\" again.\n\
-f) You should also inform owners of other repositories to avoid using path\n\
-   of similar names.\n\
-============================================================================\n";
-			char	*unknown_err =
-"\n\
-============================================================================\n\
-Unknown rename error, wanted:\n\
-    %s -> %s\n\
-Got:\n\
-    %s -> %s\n\
-============================================================================\n";
 			if (strcasecmp(buf, realname) == 0) {
-				fprintf(stderr, case_folding_err, buf,
-				    		buf, buf, realname, buf);
+				getMsg("case_folding", 0, '=', stderr);
 			} else {
-				fprintf(stderr, unknown_err,
-						buf, buf, buf, realname);
+				assert("Unknown error" == 0);
 			}
 			return (-1);
 		}
@@ -2378,7 +2343,7 @@ pass4_apply(opts *opts)
 	mdbm_close(permDB);
 
 	if (eperm) {
-		getMsg("write_perms", 0, 0, '=', stderr);
+		getMsg("write_perms", 0, '=', stderr);
 		resolve_cleanup(opts, 0);
 	}
 
@@ -2388,8 +2353,8 @@ pass4_apply(opts *opts)
 	 */
 	if (size(BACKUP_LIST) > 0) {
 		unlink(BACKUP_SFIO);
-		if (sysio(BACKUP_LIST, BACKUP_SFIO, 0,
-						"bk", "sfio", "-omq", SYS)) {
+		if (sysio(BACKUP_LIST,
+		    BACKUP_SFIO, 0, "bk", "sfio", "-omq", SYS)) {
 			fprintf(stderr,
 			    "Unable to create backup %s from %s\n",
 			    BACKUP_SFIO, BACKUP_LIST);
@@ -2402,7 +2367,7 @@ pass4_apply(opts *opts)
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 			if (rm_sfile(buf, 1)) {
 				fclose(save);
-				restore(opts);
+				restore_backup(BACKUP_SFIO);
 				resolve_cleanup(opts, 0);
 			}
 		}
@@ -2413,7 +2378,7 @@ pass4_apply(opts *opts)
 	 * Pass 4c - apply the files.
 	 */
 	unless (save = fopen(APPLIED, "w+")) {
-		restore(opts);
+		restore_backup(BACKUP_SFIO);
 		resolve_cleanup(opts, 0);
 	}
 	fflush(f);
@@ -2429,7 +2394,7 @@ pass4_apply(opts *opts)
 			    "resolve: failed to remove conflict %s\n",
 			    &buf[offset]);
 			unapply(save);
-			restore(opts);
+			restore_backup(BACKUP_SFIO);
 			resolve_cleanup(opts, 0);
 		}
 		if (opts->log) {
@@ -2440,7 +2405,7 @@ pass4_apply(opts *opts)
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
 err:			unapply(save);
-			restore(opts);
+			restore_backup(BACKUP_SFIO);
 			resolve_cleanup(opts, 0);
 		} else {
 			opts->applied++;
@@ -2623,33 +2588,6 @@ unapply(FILE *f)
 		rm_sfile(buf, 0);
 	}
 	fclose(f);
-}
-
-/*
- * Go through and put everything back.
- */
-private	void
-restore(opts *o)
-{
-	if (sysio(BACKUP_SFIO, 0, 0, "bk", "sfio", "-im", SYS)) {
-		fprintf(stderr,
-"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\
-Your repository is only partially restored.   This is an error.  Please \n\
-examine the list of failures above and find out why they were not renamed.\n\
-You must move them into place by hand before the repository is usable.\n");
-		fprintf(stderr, "\nA backup sfio is in %s\n", BACKUP_SFIO);
-		fprintf(stderr, "\
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-	} else {
-		fprintf(stderr,
-"Your repository should be back to where it was before the resolve started.\n\
-We are running a consistency check to verify this.\n");
-		if (sys("bk", "-r", "check", "-a", SYS) == 0) {
-			fprintf(stderr, "Check passed.\n");
-		} else {
-			fprintf(stderr, "Check FAILED, contact BitMover.\n");
-		}
-	}
 }
 
 private	void
