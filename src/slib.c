@@ -8342,7 +8342,12 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	 * set up the "old" file
 	 */
 	d = findrev(s, pf->oldrev);
-	assert(d);
+	unless (d) {
+		fprintf(stderr,
+		    "%s: Cannot find base revision \"%s\", bad p.file?\n",
+		    s->sfile, pf->oldrev);
+		return (-1);
+	}
 	flags =  GET_ASCII|SILENT|PRINT;
 	if (expandKeyWord) flags |= GET_EXPAND;
 	if (isRegularFile(d->mode)) {

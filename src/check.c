@@ -516,14 +516,17 @@ no_gfile(sccs *s)
 private int
 gfile_unchanged(sccs *s)
 {
-	pfile pf;
+	pfile	pf;
+	int	rc;
 
 	if (sccs_read_pfile("check", s, &pf)) {
 		fprintf(stderr, "%s: cannot read pfile\n", s->gfile);
 		return (1);
 	}
 	
-	if (diff_gfile(s, &pf, 0, DEV_NULL) == 1) return (1);
+	rc = diff_gfile(s, &pf, 0, DEV_NULL);
+	if (rc == 1) return (1); /* no changed */
+	if (rc != 0) return (rc); /* error */
 
 	/*
 	 * If RCS/SCCS keyword enabled, try diff it with keyword expanded
@@ -536,7 +539,7 @@ private int
 readonly_gfile(sccs *s)
 {
 	if ((HAS_PFILE(s) && exists(s->gfile) && !writable(s->gfile))) {
-		if (gfile_unchanged(s)) {
+		if (gfile_unchanged(s) == 1) {
 			unlink(s->pfile);
 			s->state &= ~S_PFILE;
 			if (resync) return (0);
