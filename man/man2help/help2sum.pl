@@ -4,12 +4,12 @@ eval "exec perl -Ssw $0 $@"
 
 sub main
 {
+	$ENV{'GROFF_NO_SGR'} = 1;
 	$MAN = "-man";
-        unless (system("echo | groff -mgan >/dev/null 2>/dev/null")) {
+        unless (($^O eq "MSWin32") ||
+		system("echo | groff -mgan >/dev/null 2>/dev/null")) {
                 $MAN = "-mgan";
         }
-
-	$ENV{'GROFF_NO_SGR'} = 1;
 
 	# We are trying to generate All.sum and each of the category.sum's.
 	# All we do is put the data in the file.

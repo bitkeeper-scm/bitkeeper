@@ -590,9 +590,6 @@ _mvdir() {		# /* doc 2.0 */
 	__bkfiles "$1" "Moving"
 	
 	bk -r check -a || exit 1;
-	# Win32 note: must use relative path or drive:/path
-	# because cygwin mv interpret /path relative to the mount tables.
-	# XXX TODO we should move this code to a C function
 	mkdir -p "$2"
 	rmdir "$2"
 	mv "$1" "$2"
@@ -1228,6 +1225,13 @@ __do_win32_uninstall()
 
 		# *NOTE* UNWISE.EXE runs as a background process!
 		eval $UNINSTALL_CMD
+
+		# write cygwin upgrade notice to desktop
+		DESKTOP=`bk _getreg HKEY_CURRENT_USER \
+		    'Software/Microsoft/Windows/CurrentVersion/Explorer/Shell Folders' \
+		    Desktop`
+		bk getmsg install-cygwin-upgrade | bk undos -r \
+		    > $DESKTOP/BitKeeper-Cygwin-notice.txt
 
 		#Busy wait: wait for UNWISE.EXE to exit
 		cnt=0;

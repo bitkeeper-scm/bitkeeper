@@ -78,6 +78,7 @@ int	get_main(int, char **);
 int	gethelp_main(int, char **);
 int	gethost_main(int, char **);
 int	getmsg_main(int, char **);
+int	getreg_main(int, char **);
 int	getuser_main(int, char **);
 int	gnupatch_main(int, char **);
 int	gone_main(int, char **);
@@ -203,6 +204,7 @@ struct	command cmdtbl[] = {
 	{"_find", find_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
+	{"_getreg", getreg_main},
 	{"_gzip", gzip_main }, 
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
