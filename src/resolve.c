@@ -2168,7 +2168,7 @@ unfinished(opts *opts)
  * We leave stuff in place if we are being called from apply;
  * if we are called from unapply, we try and clean up everything.
  */
-private void
+private int
 rm_sfile(char *sfile, int leavedirs)
 {
 	char	*p;
@@ -2177,10 +2177,14 @@ rm_sfile(char *sfile, int leavedirs)
 	sys("bk", "clean", sfile, SYS);
 	if (unlink(sfile)) {
 		perror(sfile);
-		return;
+		return (-1);
 	}
 	p = strrchr(sfile, '/');
-	unless (p) return;
+	unless (p) {
+		/* This should never happen, we at least have SCCS/ */
+		fprintf(stderr, "No slash in %s??\n", sfile);
+		return (-1);
+	}
 	for (;;) {
 		*p-- = 0;
 		if (isdir(sfile)) {
@@ -2190,12 +2194,17 @@ rm_sfile(char *sfile, int leavedirs)
 				sprintf(rdir, "%s/%s", ROOT2RESYNC, sfile);
 				if (isdir(rdir)) break;
 			}
-			if (emptyDir(sfile)) rmdir(sfile); /* careful */
+			/* careful */
+			if (emptyDir(sfile) && rmdir(sfile)) {
+				perror(sfile);
+				return (-1);
+			}
 		}
 		while ((p > sfile) && (*p != '/')) p--;
 		if (p >= sfile) continue;
 		break;
 	}
+	return (0);
 }
 
 /*
@@ -2285,7 +2294,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, first = 1, flags, ret;
+	int	eperm = 0, flags, ret;
 	FILE	*f = 0;
 	FILE	*save = 0;
 	char	buf[MAXPATH];
@@ -2358,10 +2367,9 @@ pass4_apply(opts *opts)
 			mdbm_close(permDB);
 			resolve_cleanup(opts, 0);
 		}
-		if (writeCheck(r, permDB) && first) {
-			first = 0;
-			eperm = 1;
-		}
+		/* Can I write where the file wants to go? */
+		if (writeCheck(r, permDB)) eperm = 1;
+
 		sccs_sdelta(r, sccs_ino(r), key);
 		sccs_free(r);
 		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
@@ -2375,6 +2383,9 @@ pass4_apply(opts *opts)
 				fclose(save); 
 				resolve_cleanup(opts, 0);
 			}
+			/* Can I write where it used to live? */
+			if (writeCheck(l, permDB)) eperm = 1;
+
 			fprintf(save, "%s\n", l->sfile);
 			sccs_free(l);
 		}
@@ -2405,7 +2416,11 @@ pass4_apply(opts *opts)
 		while (fnext(buf, save)) {
 			chop(buf);
 			if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
-			rm_sfile(buf, 1);
+			if (rm_sfile(buf, 1)) {
+				fclose(save);
+				restore(opts);
+				resolve_cleanup(opts, 0);
+			}
 		}
 		fclose(save);
 	}
@@ -2506,30 +2521,42 @@ writeCheck(sccs *s, MDBM *db)
 {
 	char	*t;
 	char	path[MAXPATH];
+	struct	stat	sb;
 
-	strcpy(path, s->sfile + 7);	/* RESYNC/SCCS want SCCS */
+	t = s->sfile;
+	if (strneq(t, "RESYNC/", 7)) t += 7;
+	strcpy(path, t);	/* RESYNC/SCCS want SCCS */
 	if (t = strrchr(path, '/')) *t = 0;
-	if (mdbm_fetch_str(db, path)) return (0);
-	mdbm_store_str(db, path, "", MDBM_INSERT);
-	if (isdir(path) && writable(path)) {
-		if (streq(path, "SCCS")) return (0);
-		t[-5] = 0;
-		if (isdir(path) && writable(path)) return (0);
-		unless (writable(path)) {
-			fprintf(stderr, "No write permission: %s\n", path);
-			return (1);
+	while (1) {
+		t = strrchr(path, '/');
+		if (mdbm_store_str(db, path, "", MDBM_INSERT)) return (0);
+		unless (fast_lstat(path, &sb, 0)) {
+			if (S_ISDIR(sb.st_mode)) {
+				if (access(path, W_OK) != 0) {
+					fprintf(stderr,
+					    "No write permission: %s\n", path);
+					return (1);
+				}
+				/* Must check parent of SCCS dir */
+				unless (t && streq(t, "/SCCS") ||
+					streq(path, "SCCS")) {
+					return (0);
+				}
+			} else {
+				/*
+				 * File where a directory needs to be,
+				 * The rest of resolve will deal with
+				 * this, just make sure we can write
+				 * this directory so it can.
+				 */
+			}
 		}
-		/* we can write the parent, so OK */
-		return (0);
-	}
-	if (isdir(path)) {
-		fprintf(stderr, "No write permission: %s\n", path);
-		return (1);
-	}
-	if (exists(path)) {
-		fprintf(stderr,
-		    "File where a directory needs to be: %s\n", path);
-		return (1);
+		if (t) {
+			*t = 0;
+		} else {
+			if (streq(path, ".")) break;
+			strcpy(path, ".");
+		}
 	}
 	return (0);
 }
