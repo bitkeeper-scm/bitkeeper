@@ -1062,6 +1062,8 @@ int	spawn_cmd(int flag, char **av);
 int	getRealName(char *path, MDBM *db, char *realname);
 int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
 int	delta_table(sccs *s, FILE *out, int willfix);
+struct tm
+        *utc2tm(time_t t);
 
 extern char *bk_vers;
 extern char *bk_utc;
