@@ -259,7 +259,7 @@ proc search {} \
 
 	if {$search_word == "" } {
 		set search_word \
-		    "REPLACE all of this whith a word, and click search"
+		    "REPLACE all of this with a word, and click search"
 		update
 		return
 	}

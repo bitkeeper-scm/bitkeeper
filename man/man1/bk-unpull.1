@@ -2,17 +2,13 @@
 .TH "bk unpull" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
 bk unpull \- remove changesets added by bk pull
-.br
-or
-.br
-bk unpull \- undo a bk pull
 .SH SYNOPSIS
 .B bk unpull [-fq]
 .SH DESCRIPTION
 .LP
 bk unpull will remove changesets added by the most recent bk pull command.
-If you have commited a local changeset, you will not be able to unpull
-until you bk undo that changeset.  
+If a local changeset has been committed, a bk unpull can not be executed
+until that changeset is removed by bk undo.
 .SH OPTIONS
 .TP
 .B \-f

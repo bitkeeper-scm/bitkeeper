@@ -50,7 +50,10 @@ be used to navigate between the files.
 If a dash (-) is given as an argument, 
 .B
 difftool
-takes a list of files to view from stdin. For example, bk sfiles -gc | bk difftool -
+takes a list of files to view from stdin. For example, 
+.DS
+bk sfiles -gc | bk difftool -
+.DE
 .LP
 If only one file is specified and that file is a locked and modified file,
 .B difftool
