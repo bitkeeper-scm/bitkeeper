@@ -57,7 +57,6 @@ private void	progress(int force);
 private int	chk_diffs(sccs *s);
 private	void	append_rev(MDBM *db, char *name, char *rev);
 
-
 private char *
 hasfile(char *file, char type, MDBM *sDB)
 {
@@ -541,7 +540,6 @@ struct winfo {
 	int	sccsdirlen;
 };
 
-
 private void
 add_to_winfo(winfo *wi, char *file, int sccs)
 {
@@ -554,15 +552,23 @@ add_to_winfo(winfo *wi, char *file, int sccs)
 		if (pathneq("s.", file, 2)) {
 			wi->sfiles = addLine(wi->sfiles, strdup(file));
 		} else {
-			if (pathneq("c.", file, 2) &&
-			    (p = strrchr(file, '@'))) {
+			if (pathneq("c.", file, 2)) {
+				/*
+				 * If there is no @rev, make sure we
+				 * don't miss the case where we have
+				 * both a c.file and c.file@rev
+				 */
+				if (p = strrchr(file, '@')) {
+					*p++ = 0;
+				} else {
+					p = "";
+				}
 				/*
 				 * Special handling for c.file@rev entry
 				 * append the @rev part to the value field
 				 * so we can print the correct file
 				 * name if it turns out to be a junk file.
 				 */
-				*p++ = 0;
 				append_rev(wi->sDB, file, p);
 				return;
 			}
