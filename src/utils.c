@@ -532,7 +532,7 @@ void
 sendEnv(FILE *f, char **envVar)
 {
 	int	i;
-	char	*p, *root, *user, *host;
+	char	*root, *user, *host;
 
 	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
 
@@ -726,21 +726,27 @@ char *
 aprintf(char *fmt, ...)
 {
 	va_list	ptr;
-	int	rc, size = 512;
+	int	rc, size = strlen(fmt) + 64;
 	char	*buf = malloc(size);
 
 	va_start(ptr, fmt);
-
 	rc = vsnprintf(buf, size, fmt, ptr);
-	while ((rc == -1) || (rc >= size)) {
-		if (rc == -1) size *= 2;
-		if (rc >= size) size = rc + 1;
-		free(buf);
-		buf = (char *) malloc(size);
-		assert(buf);
-		rc = vsnprintf(buf, size, fmt, ptr);
-	}
 	va_end(ptr);
+	/*
+	 * On IRIX, it truncates and returns size-1.
+	 * We can't assume that that is OK, even though that might be
+	 * a perfect fit.  We always bump up the size and try again.
+	 * This can rarely lead to an extra alloc that we didn't need,
+	 * but that's tough.
+	 */
+	while ((rc < 0) || (rc >= (size-1))) {
+		size *= 2;
+		free(buf);
+		buf = malloc(size);
+		va_start(ptr, fmt);
+		rc = vsnprintf(buf, size, fmt, ptr);
+		va_end(ptr);
+	}
 	return (buf); /* caller should free */
 }
 

@@ -496,7 +496,7 @@ import_finish () {
 	if [ X$QUIET = X ]; then echo OK; fi
 	
 	rm -f ${TMP}import$$ ${TMP}admin$$
-	bk sfiles -r
+	bk idcache -q
 	# So it doesn't run consistency check.
 	touch BitKeeper/etc/SCCS/x.marked
 	if [ X$QUIET = X ]
