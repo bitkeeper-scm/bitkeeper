@@ -530,6 +530,7 @@ typedef	struct sccs {
 	char	**flags;	/* flags in the middle that we didn't grok */
 	char	**text;		/* descriptive text */
 	int	state;		/* GFILE/SFILE etc */
+	char	*random;	/* random bits for file ID */
 	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
 	int	nextserial;	/* next unused serial # */
@@ -605,7 +606,7 @@ typedef struct patch {
 	struct	patch *next;	/* guess */
 } patch;
 
-#define	PATCH_VERSION	"# BitKeeper Patch version 0.4\n"
+#define	PATCH_VERSION	"# Patch vers:\t0.5\n"
 
 #define	PATCH_LOCAL	0x0001	/* patch is from local file */
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */

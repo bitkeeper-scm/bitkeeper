@@ -7,7 +7,7 @@ usage: prs [-hmv] [-c<d>] [-I<rev>] [-r<r>] [files...]\n\n\
     -c<date>	Cut off dates.  See sccsrange(1) for details.\n\
     -C		do not include branch deltas which are not merged\n\
     -d<spec>    Specify output data specification\n\
-    -h		Supress range header.\n\
+    -h		Suppress range header.\n\
     -m		print metadata, such as users and symbols.\n\
     -r<rev>	Specify a revision, or part of a range.\n\
     -v		Complain about SCCS files that do not match the range.\n\n\

@@ -2675,6 +2675,10 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'O':
 		modeArg(d, &buf[3]);
 		break;
+	    case 'R':
+		assert(s->random == 0);
+	    	s->random = strnonldup(&buf[3]);
+		break;
 	    case 'S':
 		symArg(s, d, &buf[3]);
 		break;
@@ -3340,6 +3344,7 @@ sccs_init(char *name, u32 flags)
 			return (0);
 		}
 	}
+	signal(SIGPIPE, SIG_IGN);
 #ifdef	ANSIC
 	signal(SIGINT, SIG_IGN);
 #else
@@ -3459,6 +3464,7 @@ sccs_free(sccs *s)
 		free(l);
 	}
 	if (s->root) free(s->root);
+	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	free(s);
 #ifdef	ANSIC
@@ -3739,7 +3745,7 @@ almostUnique(int harder)
  * Use /dev/urandom, /dev/random if present.  Otherwise use anything else
  * we can find.
  */
-moreUnique(char *buf)
+randomBits(char *buf)
 {
 	int	fd;
 
@@ -3750,7 +3756,7 @@ moreUnique(char *buf)
 
 		read(fd, &a, 4);
 		read(fd, &b, 4);
-		sprintf(buf, "R %x%x", a, b);
+		sprintf(buf, "%x%x", a, b);
 		close(fd);
 	}
 }
@@ -5061,7 +5067,7 @@ sccs_cat(sccs *s, u32 flags, char *printOut)
 {
 	int	lines = 0, locked = 0, error;
 
-	debug((stderr, "sccscat(%s, %s, %s, %s, %s, %x, %s)\n",
+	debug((stderr, "sccscat(%s, %x, %s)\n",
 	    s->sfile, flags, printOut));
 	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "sccscat: couldn't open %s\n", s->sfile);
@@ -5591,6 +5597,11 @@ delta_table(sccs *s, FILE *out, int willfix)
 				}
 				fputmeta(s, buf, out);
 			}
+		}
+		if (!d->next && s->random) {
+			fputmeta(s, "\001cR", out);
+			fputmeta(s, s->random, out);
+			fputmeta(s, "\n", out);
 		}
 		if (d->flags & D_SYMBOLS) {
 			symbol	*sym;
@@ -6558,10 +6569,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			}
 			s->state |= S_BITKEEPER|S_CSETMARKED;	
 			first->flags |= D_CKSUM;
-			unless (flags & DELTA_PATCH) {
-				sprintf(buf, "%s", fullname(s->gfile, 0));
-				n->comments = addLine(n->comments, strdup(buf));
-			}
 		} else {
 			t = relativeName(s, 0, 0);
 			assert(t);
@@ -6605,14 +6612,14 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		n->sym = 0;
 	}
 	unless (nodefault || (flags & DELTA_PATCH)) {
+		randomBits(buf);
+		if (buf[0]) s->random = strdup(buf);
 		if (n0) n = n0;
 		unless (hasComments(n)) {
-			sprintf(buf, "%s created on %s by %s",
-			    fullname(s->gfile, 0), n->sdate, n->user);
+			sprintf(buf, "BitKeeper file %s",
+			    fullname(s->gfile, 0));
 			n->comments = addLine(n->comments, strdup(buf));
 		}
-		moreUnique(buf);
-		if (buf[0]) n->comments = addLine(n->comments, strdup(buf));
 	}
 	if (delta_table(s, sfile, 1)) {
 		error++;
@@ -10080,6 +10087,7 @@ do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
  *	f d default
  *	f e encoding
  *	f x bitkeeper bits
+ *	R random
  *	T descriptive text
  *	T descriptive text
  *	...
@@ -10095,6 +10103,7 @@ sccs_perfile(sccs *s, FILE *out)
 	if (s->state & S_RCS) i |= X_RCSEXPAND;
 	if (s->state & S_EXPAND1) i |= X_EXPAND1;
 	if (i) fprintf(out, "f x %u\n", i);
+	if (s->random) fprintf(out, "R %s\n", s->random);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
 	fprintf(out, "\n");
 }
@@ -10141,6 +10150,11 @@ err:			fprintf(stderr,
 		if (bits & X_RCSEXPAND) s->state |= S_RCS;
 		if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 		unused = 0;
+		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
+	}
+	if (strneq(buf, "R ", 2)) {
+		unused = 0;
+		s->random = strnonldup(&buf[2]);
 		unless (fnext(buf, in)) goto err; chop(buf); (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
