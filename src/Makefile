@@ -454,7 +454,6 @@ merge: merge.sh
 
 clone: bkdsubstr clone.sh
 	rm -f clone
-	cp clone.sh clone
 	./bkdsubstr < clone.sh > clone
 	chmod +x clone
 	chmod -w clone
