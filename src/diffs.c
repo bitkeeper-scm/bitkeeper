@@ -125,7 +125,10 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 				r1 = s->rstart->rev;
 			}
 		}
-		if (HAS_GFILE(s) && !IS_WRITABLE(s)) ex = GET_EXPAND;
+		/* XXX - probably busted in split root */
+		if (HAS_GFILE(s) && !IS_WRITABLE(s) && (things <= 1)) {
+			ex = GET_EXPAND;
+		}
 
 		/*
 		 * Errors come back as -1/-2/-3/0

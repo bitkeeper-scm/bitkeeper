@@ -29,7 +29,7 @@ int	rangeList(sccs *sc, char *rev);
 	debug((stderr, \
 	    "RANGE(%s, %s, %d, %d)\n", me, s->gfile, expand, noisy)); \
 	rangeReset(s); \
-	if (!things) if ((r[0] = sfileRev())) things++; \
+	if (!things) if ((r[0] = sfileRev())) things = tokens(notnull(r[0])); \
 	if (things) { \
 		if (rangeAdd(s, r[0], d[0])) { \
 			if (noisy) { \

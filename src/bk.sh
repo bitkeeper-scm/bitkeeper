@@ -384,9 +384,9 @@ _diffr() {
 		for i in $LREVS
 		do	if [ $D = YES ]
 			then	(cd $LEFT && ${BIN}cset -R${i}..$i)
-			else	echo "$LEFT/ChangeSet:$i"
+			else	echo "ChangeSet:$i"
 			fi
-		done | $CMD -
+		done | (cd $LEFT && $CMD -)
 	fi
 	if [ "X$RREVS" != X ]
 	then
@@ -397,7 +397,7 @@ _diffr() {
 			then	(cd $RIGHT && ${BIN}cset -R${i}..$i)
 			else	echo "$RIGHT/ChangeSet:$i"
 			fi
-		done | $CMD -
+		done | (cd $RIGHT && $CMD -)
 	fi
 	) | $PAGER
 }
