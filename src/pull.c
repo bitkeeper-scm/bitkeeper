@@ -22,6 +22,13 @@ private int	pull(char **av, opts opts, remote *r, char **envVar);
 private	int	resolve(opts opts, remote *r);
 private	int	takepatch(opts opts, int gzip, remote *r);
 
+private void
+usage(void)
+{			
+	system("bk help -s pull");
+}
+
+
 int
 pull_main(int ac, char **av)
 {
@@ -58,15 +65,18 @@ pull_main(int ac, char **av)
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;
 		    default:
-usage:			system("bk help -s pull");
-			return (1);
+			    usage();
+			    return(1);
 		}
 	}
 
 	loadNetLib();
 	has_proj("pull");
 	r = remote_parse(av[optind], 0);
-	unless (r) goto usage;
+	unless (r) {
+		usage();
+		return 1;
+	}
 	if (opts.debug) r->trace = 1;
 	for (;;) {
 		rc = pull(av, opts, r, envVar);
@@ -389,7 +399,10 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	char	*root;
 	int	gzip, rc;
 
-	unless (r) usage();
+	unless (r) {
+		usage();
+		exit(1);
+	}
 	gzip = opts.gzip && r->port;
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "pull: cannot find package root.\n");

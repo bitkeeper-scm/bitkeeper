@@ -3,9 +3,48 @@
 .SH NAME 
 bk config-etc \- configuring \*(BK per repository
 .SH DESCRIPTION
-Repository configuration information is contained in the BitKeeper/etc/config
-file.  License information, logging information, user preferences 
-and BKWeb preferences can be defined in this file.
+\*(BK config files contain repository configuration information including
+project description, licensing information, logging information, 
+user preferences, BKWeb preferences, and contact information.
+Each \*(BK repository must have the minimum configuration
+information available in order to properly execute \*(BK commands.
+.LP
+Repository configuration information can be stored in two files, a
+repository level config file and a system level config file:
+.TP 2.6i
+.B
+BitKeeper/etc/config
+Repository level config file (required)
+.tp
+.B
+/etc/BitKeeper/etc/config
+System level config file (optional)
+.LP
+Repository level configuration specifications always take precedence over
+system level specifications, meaning,
+if both BitKeeper/etc/config and /etc/BitKeeper/etc/config files exist, 
+BitKeeper/etc/config values are augmented by /etc/BitKeeper/etc/config
+values that do not exist in BitKeeper/etc/config.   BitKeeper/etc/config
+values will not be replaced by values in /etc/BitKeeper/etc/config.
+.LP
+Minimum content requirements for the BitKeeper/etc/config file 
+are the key value pairs for 
+.DS
+logging:
+description:
+email:
+.DE
+(See "CONFIG FILE ENTRIES" section below for allowed values.)
+.LP
+A default config file may be created in order to make setup easier
+consistent for every repository on the system by creating a file,
+.DS
+/etc/BitKeeper/etc/config.template
+.DE
+that is readable by all bk users on that system.
+If this file exists, bk setup will automatically use that as the 
+BitKeeper/etc/config file.  See bk help setup for more information.
+.SH "CONFIG FILE ENTRIES"
 .SS LICENSE KEY
 .LP
 The use of \*(BK without Open Logging enabled requires a commercial
@@ -44,6 +83,34 @@ single_host:\c
 Please note, single user repositories can be changed to multi-user 
 repositories, but they can not be changed back to single_user repositories.
 See bk multiuser.
+.SS "PROJECT INFORMATION"
+.LP
+The config file can contain information that helps describe the project.
+The description field is required.
+.DS
+description:
+category:
+.DE
+The values for these entries can be anything.
+.SS "CONTACT INFORMATION"
+.LP
+By filling in the contact information, you are providing a contact
+person for the project in the event that BitKeeper discovers a 
+problem that requires local intervention.
+The email field is the only required field.
+.DS
+contact:
+email:
+street:
+city:
+state:
+postal:
+country:
+phone:
+cell:
+pager:
+hours:
+.DE
 .SS USER PREFERENCES
 .LP
 Repository preferences can be defined in the BitKeeper/etc/config file.
@@ -121,6 +188,7 @@ homepage: http://www.bitkeeper.com
 .SH "SEE ALSO"
 .SA config-gui 1
 .SA config 1
+.SA setup
 .\" help://configuration
 .\" help://user preferences
 .\" help://repository preferences
