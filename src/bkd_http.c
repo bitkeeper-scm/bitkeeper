@@ -15,7 +15,7 @@ private void	http_patch(char *rev);
 private void	http_gif(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
-private void	header(char *path, char *color, char *title, ...);
+private void	header(char *path, char *color, char *title, char *header, ...);
 private void	learn();
 private void	trailer(char *path);
 private char	*findRoot(char *name);
@@ -124,26 +124,36 @@ cmd_httpget(int ac, char **av)
 
 
 private void
-header(char *path, char *color, char *fmt, ...)
+header(char *path, char *color, char *titlestr, char *headerstr, ...)
 {
 	char buf[MAXPATH];
 	va_list ptr;
 	MDBM *m;
 	char *t;
+	char *fmt = 0;
 
 	out("<html>");
 
-	if (fmt) {
-		va_start(ptr, fmt);
-		vsprintf(buf, fmt, ptr);
+	if (titlestr) {
+		va_start(ptr, headerstr);
+		vsprintf(buf, titlestr, ptr);
 		va_end(ptr);
+
 		out("<head><title>");
 		out(buf);
 		out("</title></head>\n");
+
+		if (headerstr) {
+			va_start(ptr, headerstr);
+			vsprintf(buf, headerstr, ptr);
+			va_end(ptr);
+		}
+
 		fmt = buf;
 	}
 
 	out("<body alink=black link=black bgcolor=white>\n");
+
 	if (root && !streq(root, "")) {
 		out("<base href=");
 		out(root);
@@ -151,7 +161,7 @@ header(char *path, char *color, char *fmt, ...)
 	}
 	unless (include(path, "header.txt")) {
 		m = loadConfig(".", 0);
-		if (m && (t = mdbm_fetch_str(m, "description"))) {
+		if (m && (t = mdbm_fetch_str(m, "description")) && strlen(t) < 2000) {
 			title(fmt, t, color);
 		} else {
 			pwd_title(fmt, color);
@@ -173,40 +183,33 @@ findRoot(char *name)
 	int	tries = 256;
 	static	char url[MAXPATH*2];
 
-	sprintf(path, "%s/BitKeeper/etc", name);
-	if (isdir(path)) {
-		chdir(name);
-		if (Opts.port) {
-			sprintf(url, "http://%s:%d%s",
-			    sccs_gethost(), Opts.port, name-1);
-		} else {
-			sprintf(url, "http://%s%s", sccs_gethost(), name-1);
-		}
-		root = url;
-		return ("index.html");
-	}
-	for (s = strrchr(name, '/'); s && (s != name); ) {
-		*s = 0;
-		sprintf(path, "%s/BitKeeper/etc", name);
-		unless (--tries) break;		/* just in case */
+	s = name + strlen(name) + 1;
+
+	while (s > name) {
+		for (t = s; *t != '/' && t > name; --t)
+			;
+		unless (t > name) break;
+
+		sprintf(path, "%.*s/BitKeeper/etc", t-name, name);
+
 		if (isdir(path)) {
-			chdir(name);
+			sprintf(path, "%.*s", t-name, name);
+			chdir(path);
 			if (Opts.port) {
-				sprintf(url, "http://%s:%d%s",
-				    sccs_gethost(), Opts.port, name-1);
+				sprintf(url, "http://%s:%d/%s",
+				    sccs_gethost(), Opts.port, path);
 			} else {
 				sprintf(url,
-				    "http://%s%s", sccs_gethost(), name-1);
+				    "http://%s/%s", sccs_gethost(), path);
 			}
 			root = url;
-			return (s + 1);
+			return (t + 1);
 		}
-		t = strrchr(name, '/');
-		*s = '/';
-		s = t;
+		s = t-1;
 	}
-	return (0);
+	return 0;
 }
+
 
 private void
 httphdr(char *file)
@@ -257,7 +260,7 @@ http_changes(char *rev)
 			"</tr>\n";
 
 	httphdr(".html");
-	header(0, COLOR_CHANGES, "ChangeSet Summaries");
+	header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
 
 	out("<table width=100% border=1 cellpadding=2 cellspacing=0 bgcolor=white>\n");
 	out("<tr bgcolor=#d0d0d0>\n");
@@ -317,7 +320,7 @@ http_cset(char *rev)
 
 	httphdr("cset.html");
 
-	header("cset", COLOR_CSETS, "Changeset details for %s", rev);
+	header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
 
 	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
@@ -418,27 +421,14 @@ pwd_title(char *t, char *color)
 private void
 trailer(char *path)
 {
-	if (include(path, "trailer.txt")) {
-		/* user trailer -- do a hr, then a right-justified
-		   "learn more about bitkeeper [logo]" */
-		out("<hr>\n"
-		    "<p align=right>\n"
-		    "<a href=http://www.bitkeeper.com>\n"
-		    "<font color=black size=-2>Learn more about BitKeeper</font>\n"
-		    "<img src=trailer.gif alt=\"\"></a>\n"
-		    "</p>");
-	} else {
-		/* no trailer -- simply center the bitkeeper logo and do the
-		 * learn about underneath it
-		 */
-		out("<hr>\n"
-		    "<center>\n"
-		    "<a href=http://www.bitkeeper.com>\n"
-		    "<img src=trailer.gif alt=\"\">\n"
-		    "<br><font color=black>Learn more about BitKeeper</font>"
-		    "</a>\n"
-		    "</center>\n");
-	}
+	include(path, "trailer.txt");
+
+	out("<hr>\n"
+	    "<p align=right>\n"
+	    "<a href=http://www.bitkeeper.com>\n"
+	    "<font color=black size=-2>Learn more about BitKeeper</font>\n"
+	    "<img src=trailer.gif alt=\"\"></a>\n"
+	    "</p>");
 	out("</body></html>\n");
 }
 
@@ -487,7 +477,7 @@ http_hist(char *pathrev)
 		"</tr>\n";
 
 	httphdr(".html");
-	header("hist", COLOR_HIST, "Revision history for %s", pathrev);
+	header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
 
 	if (s = strrchr(pathrev, '@')) {
 		*s++ = 0;
@@ -548,7 +538,7 @@ http_src(char *path)
 		exit(1);
 	}
 	httphdr(".html");
-	header("src", COLOR_SRC, "Source directory &lt;%s&gt;",
+	header("src", COLOR_SRC, "Source directory &lt;%s&gt;", 0,
 	    path[1] ? path : "project root");
 
 	out("<table border=1 cellpadding=2 cellspacing=0 width=100% ");
@@ -626,7 +616,7 @@ http_anno(char *pathrev)
 
 	httphdr(".html");
 
-	header("anno", COLOR_ANNO, "Annotated listing of %s", pathrev);
+	header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
 
 	out("<pre><font size=2>");
 	unless (s = strrchr(pathrev, '@')) exit(1);
@@ -654,7 +644,7 @@ http_anno(char *pathrev)
 private void
 http_both(char *pathrev)
 {
-	header("Not implemented yet, check back soon", "red", 0);
+	header(0, "red", "Not implemented yet, check back soon", 0);
 	out("<pre><font size=2>");
 	out("</pre>\n");
 	trailer(0);
@@ -716,7 +706,7 @@ http_diffs(char *pathrev)
 
 
 	httphdr(".html");
-	header("diffs", COLOR_DIFFS, "Changes for %s", pathrev);
+	header("diffs", COLOR_DIFFS, "Changes for %s", 0, pathrev);
 
 	unless (s = strrchr(pathrev, '@')) exit(1);
 	*s++ = 0;
@@ -767,7 +757,9 @@ http_patch(char *rev)
 	httphdr(".html");
 
 	header("rev", COLOR_PATCH,
-	    "Patch for ChangeSet <a href=/cset@%s>%s</a>", rev, rev);
+	    "Patch for ChangeSet <a href=/cset@%s>%s</a>",
+	    "Patch for ChangeSet %s",
+	    rev, rev);
 
 	out("<pre><font size=2>");
 	sprintf(buf, "bk export -T -h -x -tpatch -r%s", rev);
@@ -868,7 +860,7 @@ http_index()
 	out(t ? t : "ChangeSet activity");
 	out("\n"
 	    "</title></head>\n"
-	    "<body>");
+	    "<body alink=black link=black bgcolor=white>\n");
 
 	unless (include(0, "homepage.txt")) {
 		if (t) {
