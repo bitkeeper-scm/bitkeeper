@@ -617,7 +617,7 @@ trial_image trial-image:
 	$(MAKE) -e trial _image
 
 image:
-	LDFLAGS=-s $(MAKE) -e all _image
+	$(MAKE) -e all _image
 
 # Win32 note: Wise install script does not respect the BINDIR env variable
 # It picks up the image at C:/Program Files/BitKeeper
