@@ -972,7 +972,7 @@ add(FILE *diffs, char *buf)
 
 	p = basenm(buf);
 	*p = 'd';
-	unlink(buf); /* remove d.file */
+	if (d == sccs_top(s)) unlink(buf); /* remove d.file */
 
 	sccs_sdelta(s, sccs_ino(s), buf);
 	fprintf(diffs, "> %s ", buf);
