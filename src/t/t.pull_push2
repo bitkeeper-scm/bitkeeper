@@ -1,0 +1,51 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for pull, push, and clone.
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir src
+cd src
+echo foo > 'F!O#O$ B%A^R&RR(R)RR'
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+bk commit $S -a -yCset
+echo OK
+echo $N pull to a repo with edited files ............................$NL
+bk clone $Q $HERE/project $HERE/copy
+cd $HERE/project/src
+bk edit $Q bar.c h.h
+echo new > bar.c
+echo new > h.h
+bk delta $Q -ynew_stuff bar.c h.h
+bk commit $S -ynew_stuff
+cd $HERE/copy/src
+bk edit $Q bar.c h.h
+echo new2 > bar.c
+echo new2 > h.h
+bk pull  2> pull.out
+grep -q "bar.c is edited" pull.out || { echo failed; exit 1; }
+grep -q "h.h is edited" pull.out || { echo failed; exit 1; }
+echo OK
+echo $N push to a repo with edited files ............................$NL
+cd $HERE/project
+bk push $HERE/copy 2> push.out
+grep -q "bar.c is edited" push.out || { echo failed; exit 1; }
+grep -q "h.h is edited" push.out || { echo failed; exit 1; }
+echo OK
