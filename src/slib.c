@@ -9720,9 +9720,9 @@ getHistoricPath(sccs *s, char *rev)
 
 private int
 mkDiffTarget(sccs *s, char *rev, char kind,
-		u32 flags, int here, char *target , pfile *pf, int mapOneZero)
+			u32 flags, int here, char *target , pfile *pf)
 {
-	if (mapOneZero && (s->state & S_ONEZERO) &&  streq(rev, "1.0")) {
+	if ((s->state & S_ONEZERO) &&  streq(rev, "1.0")) {
 		strcpy(target, DEV_NULL);
 		return (0);
 	}
@@ -9776,7 +9776,7 @@ rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	 * Create the lfile for diff,
 	 * rfile is DEV_NULL
 	 */
-	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf, 1)) goto done;
+	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf)) goto done;
 
 	/*
 	 * Make the tag string used for labeling the diff output
@@ -9801,7 +9801,7 @@ rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	 * Create the rfile for diff,
 	 * lfile is DEV_NULL
 	 */
-create:	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0, 0)) goto done;
+create:	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0)) goto done;
 
 	/*
 	 * Make the tag string used for labeling the diff output
@@ -9835,8 +9835,8 @@ normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	/*
 	 * Create the lfile & rfile for diff
 	 */
-	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf, 1)) goto done;
-	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0,  0)) goto done;
+	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf)) goto done;
+	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0 )) goto done;
 
 	if (kind == DF_GNU_PATCH) {
 		lpath = getHistoricPath(s, lrev); assert(lpath);
