@@ -3,7 +3,6 @@
 int
 cmd_chg_part1(int ac, char **av)
 {
-	int	c;
 	int 	rfd, i, j;
 	char 	buf[MAXLINE];
 	char	*new_av[100];

@@ -928,3 +928,15 @@ lease.openlogging.org because the local clock on this computer is off
 by more than 24 hours.  Please verify the time on your computer and
 that the timezone is set correctly and try again.
 $
+#bkstate-wrong-file
+The file BitKeeper/etc/bkstate is a special internal file created and
+maintained by BitKeeper.  This repository has some other file stored
+in the same location.  The bkstate file in this repository needs to be
+deleted or move to a new location before commits will succeed.
+$
+#bkstate-wrong-location
+In the current repository the BitKeeper internal file BitKeeper/etc/bkstate
+has been renamed to #BKARG# for some reason.
+The file needs to be returned to its correct location before commits
+will succeed in this repository.
+$
