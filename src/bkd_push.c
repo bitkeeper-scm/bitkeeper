@@ -68,9 +68,8 @@ cmd_push(int ac, char **av)
 #endif
 		unless (verbose) tp[3] = 0;
 		if (gzip) {
-			fd2 = dup(2); close(2);
 			/* Arrange to have stderr go to stdout */
-			fd = dup(1); assert(fd == 2);
+			fd2 = dup(2); dup2(1, 2);
 			pid = spawnvp_wPipe(tp, &wfd);
 			if (pid == -1) {
 				outc(BKD_EXITOK);
@@ -90,9 +89,8 @@ cmd_push(int ac, char **av)
 			gzip_done();
 			close(wfd);
 		} else {
-			fd2 = dup(2); close(2);
 			/* Arrange to have stderr go to stdout */
-			fd = dup(1); assert(fd == 2);
+			fd2 = dup(2); dup2(1, 2);
 			pid = spawnvp_ex(_P_NOWAIT, tp[0], tp);
 			if (pid == -1) {
 				close(2); dup2(fd2, 2);
