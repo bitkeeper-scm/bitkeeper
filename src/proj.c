@@ -3,6 +3,14 @@
 #include "logging.h"
 
 /*
+ * This file contains a series of accessor functions for the project
+ * struct that caches information about the current repository.  There
+ * is a global project struct that always matches the current
+ * directory.  This struct is private to proj.c and it used whenever 0
+ * is passed to these functions.
+ */
+
+/*
  * Don't treat chdir() special here.
  */
 #undef	chdir
@@ -24,8 +32,8 @@ struct project {
 	project	*rparent;	/* if RESYNC, point at enclosing repo */
 
 	/* per proj cache data */
-	char	*license;
-	u32	licensebits;
+	char	*license;	/* filled from lease_licenseKey() */
+	u32	licensebits;	/* LOG_* and LIC_* from fetchLicenseBits() */
 	u8	leaseok:1;
 
 	/* internal state */
@@ -84,6 +92,10 @@ projcache_delete(project *p)
 	}
 }
 
+/*
+ * Return a project struct for the project that contains the given
+ * directory.
+ */
 project *
 proj_init(char *dir)
 {
@@ -184,6 +196,11 @@ curr_proj(void)
 	return (proj.curr);
 }
 
+/*
+ * Return the full path to the root directory in the current project.
+ * Data is calculated the first time this function in called. And the
+ * old data is returned from then on.
+ */
 char *
 proj_root(project *p)
 {
@@ -193,6 +210,9 @@ proj_root(project *p)
 	return (p->root);
 }
 
+/*
+ * chdir to the root of the current tree we are in
+ */
 int
 proj_cd2root(void)
 {
@@ -200,6 +220,12 @@ proj_cd2root(void)
 	return (-1);
 }
 
+/*
+ * When given a pathname to a file, this function returns the pathname
+ * to the file relative to the current project.  If the file is not under
+ * the current project then, NULL is returned.
+ * The returned path is allocated with malloc() and the user must free().
+ */
 char *
 proj_relpath(project *p, char *path)
 {
@@ -219,7 +245,10 @@ proj_relpath(project *p, char *path)
 	}
 }
 
-// remove all other calls to loadConfig ??
+/*
+ * Return a populated MDBM for the config file in the current project.
+ * XXX - remove all other calls to loadConfig ??
+ */
 MDBM *
 proj_config(project *p)
 {
@@ -229,9 +258,7 @@ proj_config(project *p)
 	return (p->config);
 }
 
-/*
- * Return the ChangeSet file id.
- */
+/* Return the root key of the ChangeSet file in the current project. */
 char	*
 proj_rootkey(project *p)
 {
@@ -282,6 +309,7 @@ proj_rootkey(project *p)
 	return (p->rootkey);
 }
 
+/* Return the root key of the ChangeSet file in the current project. */
 char *
 proj_md5rootkey(project *p)
 {
@@ -294,6 +322,12 @@ proj_md5rootkey(project *p)
 	return (p->md5rootkey);
 }
 
+/*
+ * Clear any data cached for the current project root.
+ * Call this function whenever the current data is made invalid.
+ * When passed an explicit project then only that project is cleared.
+ * Otherwise, all projects are flushed.
+ */
 void
 proj_reset(project *p)
 {
@@ -334,6 +368,11 @@ proj_reset(project *p)
 	}
 }
 
+/*
+ * proj_chdir() is a wrapper for chdir() that also updates
+ * the current default project.
+ * We map chdir() to this function by default.
+ */
 int
 proj_chdir(char *newdir)
 {

@@ -4,7 +4,6 @@
 
 private	void	print_title(void);
 
-private project *proj;
 private	int	expandkeywords;
 
 private void
@@ -312,7 +311,6 @@ gnupatch_main(int ac, char **av)
 	 * all done, clean up
 	 */
 	mdbm_close(db);
-	if (proj) proj_free(proj);
 	if (cset1) free(cset1);
 	if (cset2) free(cset2);
 	chdir((char *) TMP_PATH);

@@ -45,7 +45,6 @@ park_main(int ac, char **av)
 	char	sfio_list[MAXPATH], parkfile[MAXPATH], buf[MAXPATH];
 	char	changedfile[MAXPATH], parkedfile[MAXPATH];
 	char	*tname = 0, *sname = 0;
-	char	*p;
 	char 	**comments = NULL, **ccomments = NULL;
 	int 	lflag = 0, qflag = 0, purge = 0, try = 0, force = 0;
 	int	rc = 0, clean = 0, aflag = 0, unedit = 1, ask = 1;
@@ -81,8 +80,7 @@ park_main(int ac, char **av)
 
 	sfio_list[0] = parkfile[0] = changedfile[0] = parkedfile[0] = 0;
 
-	p = _relativeName(".", 1, 0, 1, 0, 0);
-	unless (p) {
+	unless (proj_root(0)) {
 		fprintf(stderr, "Can't find package root\n");
 err:		if (s) sccs_free(s);
 		if (tname) free(tname);
@@ -100,7 +98,6 @@ err:		if (s) sccs_free(s);
 		fprintf(stderr, "Can't chdir to package root\n");
 		goto err;
 	}
-	strcpy(buf, p);
 
 	if (lflag) return (listParkFile());
 	if (purge) return (purgeParkFile(purge));

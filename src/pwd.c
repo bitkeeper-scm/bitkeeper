@@ -50,7 +50,7 @@ pwd_main(int ac, char **av)
 		p++;
 	}
 #endif
-	printf("%s\n", bk_rpath ? _relativeName(p, 1, 0, 1, 1, 0): p);
+	printf("%s\n", bk_rpath ? _relativeName(p, 1, 1, 1, 0): p);
 	return (0);
 }
 

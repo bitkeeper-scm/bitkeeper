@@ -354,7 +354,7 @@ getRelativeName(char *name, project *proj)
 
 	/* TODO: we should cache the root value for faster lookup */
 	t = sccs2name(name);
-	rpath = strdup(_relativeName(t, 0, 0, 0, 0, proj));
+	rpath = strdup(_relativeName(t, 0, 0, 0, proj));
 	free(t);
 	return rpath;
 }

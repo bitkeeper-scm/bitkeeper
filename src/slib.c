@@ -1570,8 +1570,8 @@ sccs_unmkroot(char *path)
  * I need to cache changeset lookups.
  */
 char	*
-_relativeName(char *gName, int isDir, int withsccs,
-	    int mustHaveRmarker, int wantRealName, project *proj)
+_relativeName(char *gName, int isDir, int mustHaveRmarker, int wantRealName,
+    project *proj)
 {
 	char	*t, *s;
 	char	*root;
@@ -1627,13 +1627,6 @@ _relativeName(char *gName, int isDir, int withsccs,
 		if (buf2[0] == 0) strcpy(buf2, ".");
 		return (buf2);
 	}
-	if (withsccs) {
-		char *sName;
-
-		sName = name2sccs(buf2);
-		strcpy(buf2, sName);
-		free(sName);
-	}
 	return(buf2);
 }
 
@@ -1641,15 +1634,14 @@ _relativeName(char *gName, int isDir, int withsccs,
 /*
  * Trim off the RESYNC/ part of the pathname, that's garbage.
  */
-char	*
-relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
+private char	*
+relativeName(sccs *sc, int mustHaveRmarker)
 {
 	char	*s, *g;
 
 	g = sccs2name(sc->sfile);
-	s = _relativeName(g, 0, withsccs, mustHaveRmarker, 1, sc->proj);
+	s = _relativeName(g, 0, mustHaveRmarker, 1, sc->proj);
 	free(g);
-
 	unless (s) return (0);
 
 	if (strncmp("RESYNC/", s, 7) == 0) s += 7;
@@ -7908,7 +7900,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, 1, s->proj);
+		char *r = _relativeName(s->gfile, 0, 1, 1, s->proj);
 		if (r && !streq(d->pathname, r)) RET(1);
 	}
 
@@ -8181,7 +8173,7 @@ diff_gmode(sccs *s, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *q, *r = _relativeName(s->sfile, 0, 0, 1, 1, s->proj);
+		char *q, *r = _relativeName(s->sfile, 0, 1, 1, s->proj);
 
 		if (r) {
 			q = sccs2name(r);
@@ -8499,7 +8491,7 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	if (BITKEEPER(s)) {
-		char *t = relativeName(s, 0, 1);
+		char *t = relativeName(s, 1);
 
 		unless (t) {
 			fprintf(stderr,
@@ -8869,8 +8861,8 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * because we cannot trust the gfile name on
 			 * win32 case-folding file system.
 			 */
-			p = _relativeName(s->sfile, 0, 0, 0, 1, s->proj);
-			q = sccs2name(p);		
+			p = _relativeName(s->sfile, 0, 0, 1, s->proj);
+			q = sccs2name(p);
 			pathArg(d, q);
 			free(q);
 		}
@@ -9099,7 +9091,7 @@ out:		sccs_unlock(s, 'z');
 	}
 
 	buf[0] = 0;
-	t = relativeName(s, 0, 0);
+	t = relativeName(s, 0);
 	if (CSET(s) || (t && !IsFullPath(t))) {
 		if ((strlen(t) > 14) &&
 		    strneq("BitKeeper/etc/", t, 14)) {
