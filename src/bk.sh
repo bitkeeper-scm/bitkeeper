@@ -263,6 +263,18 @@ _receive() {
 
 # Clone a repository, usage "clone from to"
 _clone() {
+	for arg in "$@"
+	do	case "$arg" in
+		-*)	;;
+		*)	if [ -z "$from" ]
+			then from="$arg"
+			elif [ -z "$to" ]
+			then to="$arg"
+			else echo 'usage: clone [opts] from to' >&2; exit 1
+			fi
+			;;
+		esac
+	done
 	if [ -d $to ]
 	then echo "clone: warning: $to exists" >&2
 	fi

@@ -126,17 +126,12 @@ echo OK
 echo $N Make sure delta -G works ....................................$NL
 ${ECHO} "G change data" > init3
 echo "89/01/02 03:04:00" > CMP1 
-case X`uname -s` in
-    XLinux*|XCYGWIN*)
-	touch -t 0102030489 init3
-	;;
-    XHP-UX*|XFreeBSD*|XSunOS*|XIRIX*)
-	touch -t 8901020304.00 init3
-	;;
-    *)
-	echo do not know how to touch on this platform, edit t.delta
-    	;;
-esac
+if touch -t 0102030489 init3 > ${DEV_NULL} 2>&1
+then :
+elif touch -t 8901020304.00 init3 > ${DEV_NULL} 2>&1
+then :
+else echo do not know how to touch on this platform, edit t.delta >&2
+fi
 delta $Q -i -G init3
 prs -h -d":D: :T:" init3 > CMP2
 # on NT, cygwin added 02 seconds

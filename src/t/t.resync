@@ -42,6 +42,15 @@ cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
+echo $N Create a copy of the project with clone .....................$NL
+cd ..
+bk clone $Q project clone
+if [ ! -d clone ]; then echo failed to make top level directory; exit 1; fi
+cd clone
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
+echo OK
 echo $N Check circular rename .......................................$NL
 cd $HERE/project/src
 for i in a b c

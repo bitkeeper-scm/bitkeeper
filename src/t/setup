@@ -80,7 +80,12 @@ else
 	uuencode="uuencode"
 	TST_DIR=/tmp
 	TMP=/tmp
-	USR_TMP=/usr/tmp
+	if [ -d /usr/tmp ]
+	then USR_TMP=/usr/tmp
+	elif [ -d /var/tmp ]
+	then USR_TMP=/var/tmp
+	else USR_TMP=`pwd`	# better than nothing.
+	fi
 	unset CDPATH
 fi
 REGRESSION=$TST_DIR/.regression-$USER

@@ -132,6 +132,7 @@ xprint(char *f)
 	if (!strneq("BitKeeper/log/", f, 14)) printf("%s\n", f);
 }
 
+void
 xfile(char *file)
 {
 	char	*sfile = name2sccs(file);
@@ -146,6 +147,7 @@ xfile(char *file)
 
 /*
  * Handle a single file.
+ * XXX zw: does this do stuff twice, or do I need more sleep?
  */
 int
 file(char *f, int (*func)())
@@ -153,6 +155,7 @@ file(char *f, int (*func)())
 	struct	stat sb;
 	char	*s;
 	char	*sfile = 0;
+	int	ret;
 
 	/*
 	 * If they gave us a name and it doesn't exist and it is not an SCCS
@@ -164,7 +167,11 @@ file(char *f, int (*func)())
 		if (lstat(sfile, &sb) != 0) return (-1);
 		f = sfile;
 	}
-	if (sccs_filetype(f)) return (func(f, &sb));
+	if (sccs_filetype(f)) {
+		ret = func(f, &sb);
+		if (sfile) free(sfile);
+		return (ret);
+	}
 
 	s = strrchr(f, '/');
 	if ((s >= f + 4) && strneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
@@ -183,9 +190,9 @@ file(char *f, int (*func)())
 		s = name2sccs(f);
 	}
 	if (s && (lstat(s, &sb) == 0)) {
-		func(s, &sb);
+		ret = func(s, &sb);
 		free(s);
-		return (0);
+		return (ret);
 	}
 	if (s) free(s);
 	if (sfile) free(sfile);
