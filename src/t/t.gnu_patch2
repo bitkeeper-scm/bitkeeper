@@ -23,9 +23,9 @@ echo $N Create 2 change set \& export ................................$NL
 # commit the config file
 mkdir src
 cd $HERE/project/src
-echo foo > foo.c
-bk admin $Q -r1.1 -ifoo.c  foo.c
-rm foo.c
+echo foo > foo_init.c
+bk admin $Q -r1.1 -ifoo_init.c  foo.c
+rm foo_init.c
 bk co $Q -l foo.c
 bk commit $S -a -y"This is \"Change Set\" A"
 echo foo-new >> foo.c
@@ -45,12 +45,12 @@ if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 rm -rf $HERE/a $HERE/b
 echo $N Test file w no 1.0 delta ....................................$NL
 cd $HERE/project/src
-echo bar > bar.c
-bk admin $Q -r1.1 -ibar.c  bar.c
-rm bar.c
-echo bar2 > bar2.c
-bk admin $Q -r1.1 -ibar2.c  bar2.c
-rm bar2.c
+echo bar > bar_init.c
+bk admin $Q -r1.1 -ibar_init.c  bar.c
+rm bar_init.c
+echo bar2 > bar2_init.c
+bk admin $Q -r1.1 -ibar2_init.c  bar2.c
+rm bar2_init.c
 bk co $Q -l bar2.c
 echo bar2-new >> bar2.c
 bk ci $Q -y bar2.c

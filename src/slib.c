@@ -4133,6 +4133,45 @@ sccs_close(sccs *s)
 }
 
 /*
+ * a) If gfile exists and writable, insist p.file exist
+ * b) If p.file exists, insist gfile writable or absent
+ * Note 1: "delta -n" and "admin -i" violate  'a'
+ * Note 2: "edit -g" may violate 'b'
+ */
+private void
+chk_gmode(sccs *s)
+{
+	struct	stat sbuf;
+	int	pfileExists, gfileExists, gfileWritable;
+	char 	*gfile;
+
+	if (!s || !s->tree) return; /* skip new file */
+
+	gfile = sccs2name(s->sfile); /* Don't trust s->gfile, see bk admin -i */
+	gfileExists = !fast_lstat(gfile, &sbuf, 0);
+	gfileWritable = (gfileExists && (sbuf.st_mode & 0200));
+	if (S_ISLNK(sbuf.st_mode)) return; /* skip smylink */
+	pfileExists = exists(sccs_Xfile(s, 'p'));
+
+	if (gfileWritable) {
+		unless (pfileExists) {
+			fprintf(stderr,
+			    "ERROR: %s: writable gfile with no p.file\n",
+			    gfile);
+		};
+	}
+
+	if (pfileExists) {
+		if (gfileExists && !gfileWritable) {
+			fprintf(stderr,
+			    "ERROR: %s: p.file with read only gfile\n",
+			    gfile);
+		}
+	}
+	free(gfile);
+}
+
+/*
  * Free up all resources associated with the file.
  * This is the last thing you do.
  */
@@ -4146,6 +4185,7 @@ sccs_free(sccs *s)
 	if (s->io_error && !s->io_warned) {
 		fprintf(stderr, "%s: unreported I/O error\n", s->sfile);
 	}
+	chk_gmode(s);
 	sccsXfile(s, 0);
 	if (s->table) sccs_freetable(s->table);
 	for (sym = s->symbols; sym; sym = t) {

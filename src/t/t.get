@@ -15,7 +15,7 @@
 SAVE=`bk getuser`
 no_logging project
 echo Hallo > date
-bk admin $Q -n -idate date; rm date
+bk new $Q date
 echo $N Check for path in initial checkin ...........................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -25,7 +25,7 @@ echo OK
 mkdir -p aa/bb/cc/dd
 cd aa/bb/cc/dd
 echo Hallo > date
-bk admin $Q -n -idate date; rm date
+bk new $Q date
 echo $N Check for path in sub dir1 ..................................$NL
 grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -34,7 +34,7 @@ if [ $? -ne 0 ]; then echo Wrong path found.; exit 1; fi
 echo OK
 cd ../../../..
 echo Hallo > aa/bb/cc/dd/date2
-bk admin $Q -n -iaa/bb/cc/dd/date2 aa/bb/cc/dd/date2; rm aa/bb/cc/dd/date2
+bk new $Q  aa/bb/cc/dd/date2
 echo $N Check for path in sub dir2 ..................................$NL
 grep -q '^.cP.*date2$' aa/bb/cc/dd/SCCS/s.date2
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
@@ -151,6 +151,7 @@ echo $N Get -eg should remove readonly gfile ........................$NL
 bk get $S -eg date
 if [ -f "date" ]; then echo failed, did not remove file; exit 1; fi
 if writable date; then echo failed, added writable file; exit 1; fi
+bk unlock -p date
 echo OK
 echo $N Make sure get -n works ......................................$NL
 echo HI > T
@@ -165,6 +166,7 @@ if [ "`bk get $S -pu T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Make sure get -na works .....................................$NL
 echo HI > T
+chmod -w T
 if [ "`bk get $S -pan T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Make sure get -m works ......................................$NL

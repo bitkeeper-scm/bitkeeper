@@ -40,10 +40,10 @@ if [ $? -eq 0 ]; then echo Bad exit code 0.; exit 1; fi
 echo OK
 rm -f ERR
 echo $N Creating a file from foo ....................................$NL
-cp $HERE/SAVE foo
-bk admin $Q -ifoo foo
+cp $HERE/SAVE foo_init
+bk admin $Q -ifoo_init foo
 if [ ! -f SCCS/s.foo ]; then echo Failed.; exit 1; fi
-if [ ! -f foo ]; then echo Failed - gfile was removed.; exit 1; fi
+if [ ! -f foo_init ]; then echo Failed - gfile was removed.; exit 1; fi
 set `grep -v "^.cF" SCCS/s.foo | wc -w`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
@@ -125,9 +125,9 @@ if [ $? -eq 0 ]; then echo Failed.; exit 1; fi
 echo OK
 
 cd $HERE; rm -rf project; no_logging project
-cp $HERE/SAVE foo
+cp $HERE/SAVE foo_init
 echo $N Creating a file with a comment ..............................$NL
-bk admin $Q -n -y'THIS IS THE COMMENT' foo
+bk admin $Q -n -y'THIS IS THE COMMENT' -ifoo_init foo
 grep -q "c THIS IS THE COMMENT" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK

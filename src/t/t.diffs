@@ -13,8 +13,7 @@
 # %K%
 
 echo 1.1 > Mydiffs
-bk admin -q -n -iMydiffs Mydiffs
-rm -f Mydiffs
+bk new -q Mydiffs
 # D 1.2 93/03/11 00:50:40.000 butthead 2 1  9/2/44
 # C added 4.x etc targets
 for i in 2 3 4 5 6 7 8 9 10

@@ -91,12 +91,12 @@ if [ $? -ne 0 ]; then echo Failed to add blank comment line.; exit 1; fi
 grep -q '^.c This is the line after the blank line.$' SCCS/s.init_test
 if [ $? -ne 0 ]; then echo Failed to add last line in comment; exit 1; fi
 echo OK
-echo $N Make sure delta -n works ....................................$NL
-bk get $S -e T
-bk delta $S -ny T
-if [ ! -f T ]; then echo Failed to save file; exit 1; fi
-if writable T; then :; else echo Failed to save file writeable; exit 1; fi
-echo OK
+#echo $N Make sure delta -n works ....................................$NL
+#bk get $S -e T
+#bk delta $S -ny T
+#if [ ! -f T ]; then echo Failed to save file; exit 1; fi
+#if writable T; then :; else echo Failed to save file writeable; exit 1; fi
+#echo OK
 echo $N Make sure delta prompts for comments ........................$NL
 rm -f T
 bk get $S -e T

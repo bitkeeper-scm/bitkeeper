@@ -147,10 +147,11 @@ echo $N No change to SCCS expand file .. check sfiles -c ............$NL
 echo %""K% > sccsexp
 bk ci $Q -i sccsexp
 bk get $Q sccsexp
-mv sccsexp sccsexp.ro
+mv sccsexp sccsexp.expn
 bk get $Q -e sccsexp
 rm -f sccsexp
-mv sccsexp.ro sccsexp
+mv sccsexp.expn sccsexp
+chmod +w sccsexp
 result=`bk sfiles -c sccsexp | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to SCCS expand file .. check clean ................$NL
@@ -161,13 +162,16 @@ echo '$Revision$' > rcsexp
 bk ci $Q -i rcsexp
 bk admin -fRCS rcsexp
 bk get $Q rcsexp
-mv rcsexp rcsexp.ro
+mv rcsexp rcsexp.expn
 bk get $Q -e rcsexp
 rm -f rcsexp
-mv rcsexp.ro rcsexp
+mv rcsexp.expn rcsexp
+chmod +w rcsexp
 result=`bk sfiles -c rcsexp | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to RCS expand file ....check clean ................$NL
+bk unedit rcsexp
+bk edit $Q rcsexp
 bk clean $Q rcsexp
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to expand first keyword only .. check sfiles -c ...$NL
@@ -175,10 +179,11 @@ echo %""@% > exp1
 echo %""K% >> exp1 
 bk ci $Q -i exp1
 bk get $Q exp1
-mv exp1 exp1.ro
+mv exp1 exp1.expn
 bk get $Q -e exp1
 rm -f exp1
-mv exp1.ro exp1
+mv exp1.expn exp1
+chmod +w exp1
 result=`bk sfiles -c exp1 | wc -l`
 if [ $result -ne 1 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to expand first keyword only .. check clean .......$NL

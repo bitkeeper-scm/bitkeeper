@@ -113,8 +113,7 @@ echo $N Include/exclude ixg0 ........................................$NL
 rm -rf SCCS
 # Build up a file with 1.1 .. 1.4
 echo 1.1 > i
-bk admin $Q -n -ii i
-rm i
+bk new $Q i
 for i in 2 3 4
 do	bk get -s -e i
 	echo 1.$i >> i
