@@ -74,7 +74,6 @@ int	gone_main(int, char **);
 int	graft_main(int, char **);
 int	grep_main(int, char **);
 int	gzip_main(int, char **);
-int	has_main(int, char **);
 int	help_main(int, char **);
 int	helpsearch_main(int, char **);
 int	helptopics_main(int, char **);
@@ -140,6 +139,7 @@ int	sccslog_main(int, char **);
 int	scompress_main(int, char **);
 int	send_main(int, char **);
 int	sendbug_main(int, char **);
+int	set_main(int, char **);
 int	setlod_main(int, char **);
 int	setup_main(int, char **);
 int	setup_main(int, char **);
@@ -249,7 +249,6 @@ struct	command cmdtbl[] = {
 	{"grep", grep_main},			/* doc 2.0 */
 	{"gnupatch", gnupatch_main},		/* doc 2.0 */
 	{"gone", gone_main},			/* doc 2.0 */
-	{"has", has_main},
 	{"help", help_main},			/* doc 2.0 */
 	{"helpsearch", helpsearch_main},	/* undoc 2.0 */
 	{"helptopics", helptopics_main},	/* undoc 2.0 */
@@ -306,6 +305,7 @@ struct	command cmdtbl[] = {
 	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
 	{"send", send_main},			/* doc 2.0 */
 	{"sendbug", sendbug_main},		/* doc 2.0 */
+	{"set", set_main},
 	{"setlod", setlod_main},		/* doc 2.0 as lod */
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */

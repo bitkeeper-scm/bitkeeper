@@ -373,8 +373,8 @@ To fix all bad writable file, use the following command:\n\
 \t\"bk -r check -w | bk -R edit -g -\"\n\
 ===========================================================================\n",
 			    s->gfile, s->gfile);
-			return (32);
 		}
+		return (32);
 	}
 	return (0);
 }

@@ -86,9 +86,10 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete, int isUnDelete)
 	int	error = 0, was_edited = 0;
 	int	flags = SILENT|DELTA_FORCE;
 	MMAP	*nulldiff;
+	time_t	gtime;
 
 //fprintf(stderr, "sccs_mv(%s, %s, %d, %d)\n", name, dest, isDir, isDelete);
-	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) return (1);
+	unless (s = sccs_init(name, INIT_NOCKSUM|INIT_FIXSTIME, 0)) return (1);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
 		sccs_free(s);
@@ -163,6 +164,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete, int isUnDelete)
 		free(q);
 	}
 	if (error) goto out;
+	gtime = s->gtime; /* save this, we need it later */
 	sccs_free(s);
 	/* For split root config; We recompute sfile here */
 	/* we don't want the sPath() adjustment		  */
@@ -204,6 +206,9 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete, int isUnDelete)
 			goto out;
 		}
 	}
+	s->gtime = gtime;
+	fix_stime(s);
+	
 	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);
