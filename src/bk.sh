@@ -285,11 +285,11 @@ _resync() {
 		PRS2="ssh $SSH -x $THOST
 		    'cd $TDIR && exec bk prs -r1.0.. -bhd:KEY: ChangeSet'"
 		# Much magic in this next line.
-		INIT=-`ssh $SSH -x $THOST "if test -d $TDIR;
-		    then if test -d $TDIR/BitKeeper/etc;
-			then if test -d $TDIR/RESYNC; then echo inprog; fi;
-			else echo no; fi;
-		    else mkdir -p $TDIR; echo i; fi"`
+		INIT=-`ssh $SSH -x $THOST sh -c "'if test -d $TDIR; \
+		    then if test -d $TDIR/BitKeeper/etc; \
+			then if test -d $TDIR/RESYNC; then echo inprog; fi; \
+			else echo no; fi; \
+		    else mkdir -p $TDIR; echo i; fi'"`
 		if [ x$INIT = x-no ]
 		then	echo "resync: $2 is not a Bitkeeper project root"
 			exit 1
