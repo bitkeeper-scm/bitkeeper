@@ -2,8 +2,11 @@
 #include "sccs.h"
 
 extern char *editor, *pager, *bin;
+private int	mkconfig(FILE *out, MDBM *flist);
 private void    usage(void);
 private void	defaultIgnore();
+private void	printField(FILE *out, MDBM *flist, char *field);
+private MDBM	*addField(MDBM *flist, char *field);
 
 int
 setup_main(int ac, char **av)
@@ -14,14 +17,14 @@ setup_main(int ac, char **av)
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
 	char 	config[] = "BitKeeper/etc/config";
 	sccs	*s;
-	MDBM	*m, *cat;
-	FILE	*f;
+	MDBM	*m, *cat, *flist = 0;
+	FILE	*f, *f1;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help setup");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "ac:ef")) != -1) {
+	while ((c = getopt(ac, av, "ac:efF:")) != -1) {
 		switch (c) {
 		    case 'c':					/* doc 2.0 */
 		    	unless(exists(optarg)) {
@@ -38,6 +41,9 @@ setup_main(int ac, char **av)
 			break;
 		    case 'f':					/* doc 2.0 */
 			force = 1;
+			break;
+		    case 'F':
+			flist = addField(flist, optarg);
 			break;
 		    case 'a':
 			ask = 0;	/* don't ask */
@@ -81,8 +87,9 @@ setup_main(int ac, char **av)
 		/* notepad.exe wants text mode */
 		f = fopen("BitKeeper/etc/config", "wt");
 		assert(f);
-		mkconfig(f);
+		mkconfig(f, flist);
 		fclose(f);
+		if (flist) mdbm_close(flist);
 		chmod("BitKeeper/etc/config", 0664);
 again:		printf("Editor to use [%s] ", editor);
 		unless (fgets(my_editor, sizeof(my_editor), stdin)) {
@@ -96,12 +103,16 @@ again:		printf("Editor to use [%s] ", editor);
 		}
 		system(buf);
 	} else {
-		unless (exists(config_path)) {
+		unless (f1 = fopen(config_path, "rt")) {
 			fprintf(stderr, "setup: can't open %s\n", config_path);
 			fprintf(stderr, "You need to use a fullpath\n");
 			exit(1);
 	    	}
-		fileCopy(config_path, config);
+		f = fopen(config, "wb");
+		assert(f);
+		while (fnext(buf, f1)) printField(f, flist, buf);
+		fclose(f);
+		fclose(f1);
 	}
 
 	unless (m = loadConfig(".", 0)) {
@@ -215,4 +226,141 @@ usage()
 {
 	system("bk help -s setup");
 	exit(1);
+}
+
+private MDBM *
+addField(MDBM *flist, char *field)
+{
+	char	*p;
+
+	unless (flist) flist = mdbm_open(NULL, 0, 0, 1024);
+
+	p = strchr(field, '=');
+	unless (p) {
+		fprintf(stderr,
+		    "setup: Cannot find assignment operator \"=\"\n"
+		    "Bad -F option \"%s\", ignored\n", field);
+		return (flist);
+	}
+	*p++ = 0;
+	mdbm_store_str(flist, field, p, MDBM_REPLACE);
+	return (flist);
+}
+
+/*
+ * Find field separator
+ */
+private char *
+fieldSeparator(char *field)
+{
+	char	*p;
+
+	/*
+	 * Check for filter prefix
+	 * e.g. [awc:/home/bk/bugfixes]checkout:get
+	 */
+	if (field[0] == '[')  {
+		/* Skip over the possible colon inside the filter */
+		p = strchr(field, ']');
+		unless (p) return (NULL); /* not a proper filter */
+		p = strchr(++p, ':');
+	} else {
+		p = strchr(field, ':');
+	}
+	return (p);
+}
+
+private void
+printField(FILE *out, MDBM *flist, char *field)
+{
+	char	*p, *val;
+
+	unless (flist) {
+use_default:	fputs(field, out);
+		return;
+	}
+
+	p = fieldSeparator(field);
+	unless (p) goto use_default;
+	*p = 0;
+	val = mdbm_fetch_str(flist, field);
+	unless (val) goto use_default;
+
+	/*
+	 * If we get here, user wants to override the default value
+	 */
+	fprintf(out, "%s: %s\n", field, val);
+	mdbm_delete_str(flist, field);
+}
+
+private int
+mkconfig(FILE *out, MDBM *flist)
+{
+	FILE	*in;
+	int	found = 0;
+	int	first = 1;
+	char	buf[200], pattern[200];
+	char	*val;
+	kvpair	kv;
+
+
+	/*
+	 * If there is a local config file template, use that
+	 */
+	if (in = fopen("/etc/BitKeeper/config", "rt")) {
+		while (fnext(buf, in))	printField(out, flist, buf);
+		fclose(in);
+		return (0);
+	}
+
+	sprintf(buf, "%s/bkmsg.txt", bin);
+	unless (in = fopen(buf, "rt")) {
+		fprintf(stderr, "Unable to open %s\n", buf);
+		return (-1);
+	}
+	getMsg("config_preamble", 0, "# ", out);
+	fputs("\n", out);
+
+	/*
+	 * look for config template
+	 */
+	while (fgets(buf, sizeof(buf), in)) {
+		if (streq("#config_template\n", buf)) {
+			found = 1;
+			break;
+		}
+	}
+	unless (found) {
+		fclose(in);
+		return (-1);
+	}
+
+	/*
+	 * Now print the help message for each config entry
+	 */
+	while (fgets(buf, sizeof(buf), in)) {
+		if (first && (buf[0] == '#')) continue;
+		first = 0;
+		if (streq("$\n", buf)) break;
+		chop(buf);
+		sprintf(pattern, "config_%s", buf);
+		getMsg(pattern, 0, "# ", out);
+		if (flist && (val = mdbm_fetch_str(flist, buf))) {
+			fprintf(out, "%s: %s\n", buf, val);
+			mdbm_delete_str(flist, buf);
+		} else {
+			fprintf(out, "%s: \n", buf);
+		}
+	}
+	fclose(in);
+
+	unless (flist) return (0);
+
+	/*
+	 * Append user supplied field which have no overlap in template file
+	 */
+	for (kv = mdbm_first(flist); kv.key.dsize; kv = mdbm_next(flist)) {
+		fprintf(out, "%s: %s\n", kv.key.dptr, kv.val.dptr);
+	}
+	return (0);
 }
