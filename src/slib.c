@@ -214,11 +214,11 @@ char	*
 mode2FileType(mode_t m)
 {
 	if (S_ISREG(m)) {
-		return  "FILE";
+		return ("FILE");
 	} else if (S_ISLNK(m)) {
-		return  "SYMLINK";
+		return ("SYMLINK");
 	} else {
-		return  "unsupported file type";
+		return ("unsupported file type");
 	}
 }
 
@@ -243,7 +243,10 @@ fileTypeOk(mode_t m)
 }
 
 
-int
+/*
+ * Not to be used before first sccs_init() call.
+ */
+private int
 Chmod(char *fname, mode_t mode)
 {
 	return (chmod(fname, UMASK(mode)));
@@ -11665,7 +11668,7 @@ loadDB(char *file, int (*want)(char *), int style)
 again:	unless (f = fopen(file, "rt")) {
 		if (first && streq(file, IDCACHE)) {
 			first = 0;
-			system("bk sfiles -r");
+			if (system("bk sfiles -r")) goto out;
 			goto again;
 		}
 		if (first && streq(file, GONE) && exists(SGONE)) {

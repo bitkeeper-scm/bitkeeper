@@ -400,7 +400,10 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 	}
 
 	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
-		system("bk sfiles -r");
+		if (system("bk sfiles -r")) {
+			fprintf(stderr, "cset: can not build %s\n", IDCACHE);
+			exit(1);
+		}
 		doneFullRebuild = 1;
 		unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 			perror("idcache");
@@ -610,7 +613,10 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
 			if (verbose) fputs("Rebuilding caches...\n", stderr);
-			system("bk sfiles -r");
+			if (system("bk sfiles -r")) {
+				fprintf(stderr,
+				    "cset: can not build %s\n", IDCACHE);
+			}
 			doneFullRebuild = 1;
 			unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 				perror("idcache");

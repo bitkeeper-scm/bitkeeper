@@ -1250,7 +1250,7 @@ rebuild_id(char *id)
 "takepatch: miss in idcache\n\tfor %s,\n\
 \trebuilding (this can take a while)...", id);
 	}
-	system("bk sfiles -r");
+	(void)system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 		perror("SCCS/x.id_cache");

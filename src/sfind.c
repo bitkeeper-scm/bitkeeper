@@ -295,13 +295,14 @@ rebuild()
 
 	unless (rFlg) goto c;
 
-	unless ((i = open("SCCS/z.id_cache", O_CREAT|O_EXCL, 0600)) > 0) {
+	unless ((i = open("SCCS/z.id_cache", O_CREAT|O_EXCL, 0666)) > 0) {
 		fprintf(stderr, "sfiles: can't lock id cache\n");
 		exit(1);
 	}
 	close(i);	/* unlink it when we are done */
-	unless (id_cache = fopen("SCCS/x.id_cache", "w")) {
-		perror("SCCS/x.id_cache");
+	unlink(IDCACHE);
+	unless (id_cache = fopen(IDCACHE, "w")) {
+		perror(IDCACHE);
 		exit(1);
 	}
 	fprintf(id_cache, "\
