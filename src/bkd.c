@@ -27,6 +27,7 @@ bkd_main(int ac, char **av)
 
 	loadNetLib();
 	bzero(&Opts, sizeof(Opts));	/* just in case */
+	Opts.errors_exit = 1;
 
 	/*
 	 * Win32 note: -u/-t options have no effect on win32; win32 cannot
@@ -42,39 +43,37 @@ bkd_main(int ac, char **av)
 	while ((c = getopt(ac, av,
 			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
 		switch (c) {
-		    case 'c': Opts.count = atoi(optarg); break;
-		    case 'C': Opts.safe_cd = 1; break;
+		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
-		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
 		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
-		    case 'L':					/* doc 2.0 */
-			logRoot = strdup(optarg); break;
-		    case 'V':
+		    case 'V':	/* XXX - should be documented */
 			vRootPrefix = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
-		    case 'q': Opts.quiet = 1; break; 		/* undoc? 2.0 */
-		    case 'E': putenv((strdup)(optarg)); break;	/* undoc 2.0 */
 		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
 			Opts.start = 1; Opts.daemon = 1; break;
 		    case 'R': 					/* doc 2.0 */
 			Opts.remove = 1; Opts.daemon = 1; break;
-		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
-		    case 'x':
+		    case 'x':					/* doc 2.0 */
 			exclude(optarg); 
-			if (streq(optarg, "cd")) Opts.nocd = 1;
 #ifdef WIN32
 			xcmds = addLine(xcmds, strdup(optarg));
 #endif
-			break;					/* doc 2.0 */
+			break;
+		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */
+		    case 'e': break;				/* undoc */
+		    case 'E': putenv((strdup)(optarg)); break;	/* undoc */
+		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
+		    case 'q': Opts.quiet = 1; break; 		/* undoc */
+		    case 't': Opts.alarm = atoi(optarg); break;	/* undoc */
 		    default: usage();
 	    	}
 	}

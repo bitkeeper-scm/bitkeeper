@@ -1117,6 +1117,7 @@ int	chk_host(void);
 int	chk_user(void);
 int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
+int	unsafe_path(char *s);
 
 extern char *bk_vers;
 extern char *bk_utc;

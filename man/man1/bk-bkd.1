@@ -3,52 +3,139 @@
 .SH NAME
 bk bkd \- the \*(BK daemon
 .SH SYNOPSIS
-.Bc bk bkd [\-dDehiR] [
-.OPTreq \-L dir
-.Bc ] [
-.OPTreq \-l log
-.Bc ] [
-.OPTreq \-P pfile
-.Bc ] [
-.OPTreq \-p port
-.Bc ] [
-.OPTreq \-s dir
-.Bc ] [
-.OPTreq \-t num
-.Bc ] [
-.OPTreq \-g gid
-.Bc ] [
-.OPTreq \-u uid
-.Bc ] [
-.OPTreq \-x cmd
-.B ]
+.Bc bk bkd [\-CdDhiR] [more opts]
 .SH DESCRIPTION
 .LP
-The \*(BK daemon, bkd, is used to get information about a
-repository from a remote machine.  It is run in one of three ways,
-.sp
-.RS .5i
-a) via rsh/ssh, i.e., "rsh remote host bk bkd -e",
-.br
-b) via ssh as a login shell, and/or
-.br
-c) as a stand-alone daemon, i.e., "bkd \-d".
-.RE
+The \*(BK daemon, bkd, is used to synchronize and query repositories.
+It is usually run in one of three ways:
+.TP 4
+a)
+automatically started when accessing a remote repository via rsh, ssh, and/or
+the file system;
+.tp
+b)
+automatically started via ssh as a login shell;
+.tp
+c)
+manually started as a long running stand-alone daemon.
 .LP
 The method used depends on how the remote repository is named.
 See 
-.B bk url
+.B bk help url
 for details on the naming syntax.
 .LP
-The preferred method is via ssh, since ssh provides a secure channel.
-.LP
 The stand-alone daemon method has no security, other than the
-ability to run in read-only mode.  The daemon does support compression.
+ability to run in read-only mode and/or the ability to limit chdir.
 If security is a requirement, use 
 .B ssh
-to get to the daemon.  See below for configuring the daemon as a login
-shell.
-.SS WIN32
+to get to the daemon.  See below for information on
+configuring the daemon as a login shell.
+.SH "ANONYMOUS ACCESS"
+.LP
+The most common use of the stand-alone daemon is for anonymous access
+to a repository.  To provide read-only, anonymous access, you can run:
+.DS
+bk bkd \-d \-xpush
+.DE
+.LP
+This will allow anyone to read (but not write) all repositories at or below
+the directory in which the bkd was started.
+.LP
+If you want to export a single repository, pick a port number, and 
+do this:
+.DS
+cd /u/linux
+bk bkd \-d \-p5555 \-xcd \-xpush
+.DE
+.LP
+This says to run in daemon mode, bind to port 5555, and disallow the
+"cd" and "push" commands.  By disallowing the "cd" command, the daemon
+at port 5555 is tied to the repository in the current working directory
+(bkd needs to be run at the root of the repository).  By disallowing the
+"push" command, the repository is protected from updates.
+.LP
+Clients can get to this repository by using the BK URLs of
+.DS    
+bk://host.domain:5555
+http://host.domain:5555
+.DE
+.br
+i.e.,
+.DS
+$ bk clone bk://host.domain:5555 my_tree
+.DE
+Use the http URLs allows access through most firewalls.  \*(BK supports
+accessing repositories through http proxies, including authenticated
+proxies.
+.SH SECURED ACCESS VIA SSH
+Secure access is provided via 
+.BR ssh .
+There two ways to invoke 
+.BR ssh :
+.tp 4
+a)
+when the repository is specified in this form: 
+[\c
+.ARGc user @]
+.ARGc host :
+.ARG pathname ,
+.B ssh
+will be called to run
+.B bk bkd
+on the remote host.  When the client command completes, the 
+.B ssh 
+connection is broken and the 
+.B bkd
+daemon goes away.
+.tp
+b)
+when the repository is specified in this form: 
+.Bc bk://user@host[
+.ARG pathname \fB]\fR,
+.B ssh
+will be called to remote login to 
+.B host
+and will expect that the login shell is the \*(BK daemon.
+.LP
+.SS BKD LOGIN SHELL
+On Red Hat Linux, the following steps are necessary to add a \*(BK 
+daemon login shell:
+create a simple shell script, call it 
+.BR bkd , 
+put it someplace like 
+.BR /usr/libexec/bitkeeper/bkd ,
+add the full path to the script in 
+.BR /etc/shells ,
+and add a user with that path as their shell.
+.LP
+An example 
+.B bkd
+shell script which works for us is:
+.DS
+#!/bin/sh
+exec bk bkd -C -xcd
+.DE
+.LP
+.B Note:
+using the bkd as a login shell when accessing the system using
+.BR rsh 
+is unsupported for two reasons: 
+.B rsh 
+is insecure and there is a bug which prevents correct operation 
+in this configuration.
+.SH BK/WEB
+The bkd is a self contained http server which provides the optional
+BK/Web feature of \*(BK.  In order for this feature to work, one of
+two things must be true:
+.TP 4
+a)
+The bkd must be run at the root of a repository which contains a 
+commercial license which has the BK/Web option enabled;
+.tp
+b)
+The bkd must be run on a machine which is directly connected to the
+Internet.
+.SH WINDOWS BASED BKD
 .LP
 At this time, bkd support on win32 is as a stand-alone daemon only
 and is restricted to one bkd service per host.  To initially start the
@@ -87,151 +174,22 @@ On WinNT:
 .DS
 go to start->control\ panel->services->BitKeeper\ service->startup
 select disable
-.SH COMMANDS
-.LP
-\*(BK client programs interact with the daemon directly using
-the following commands. These commands are not intended for user
-access, however, it may be useful to access the commands directly
-for debugging.  When debugging, telnet to the \*(BK port and issue
-the commands.
-.LP
-The command summary is below.  The options tend to track the client
-commands fairly closely.
-.sp
-.RS .5i
-cd pathname
-.br
-clone [\-q] [\-z[0\-9]]
-.br
-get /filename HTTP/1.0
-.br
-help
-.br
-pull [\-lnq] [\-z[0\-9]]
-.br
-push [\-q] [\-z[0\-9]]
-.br
-pwd
-.br
-rootkey
-.br
-status [\-v]
-.br
-version
-.RE
-.LP
-The client commands parse their options, connect to the server, and
-send the appropriate commands to complete the action.  When started
-with the \-l option, all sent commands are logged.
-.SH "ANONYMOUS ACCESS"
-.LP
-The most common use of the stand-alone daemon is for anonymous access
-to a repository.  To provide read-only, anonymous access, you can run:
-.DS
-bk bkd \-d \-xpush
-.DE
-.LP
-This will allow anyone to read (but not write) all repositories on the
-system running the daemon.
-.LP
-If you want to export a single repository, pick a port number, and 
-do this:
-.DS
-cd /u/linux
-bk bkd \-d \-p5555 \-xcd \-xpush
-.DE
-.LP
-This says to run in daemon mode, bind to port 5555, and disallow the
-"cd" and "push" commands.  By disallowing the "cd" command, the daemon
-at port 5555 is tied to the repository in the current working directory
-(bkd needs to be run at the root of the repository).  By disallowing the
-"push" command, the repository is protected from updates.
-.LP
-Clients can get to this repository by using the BK URL of
-.DS    
-bk://host.domain:5555
-.DE
-.br
-i.e.,
-.DS
-$ bk clone bk://host.domain:5555 my_tree
-.DE
-.SH SECURED ACCESS VIA SSH
-Secure access is provided via 
-.BR ssh .
-There two ways to invoke 
-.BR ssh :
-.tp .5i
-a)
-when the repository is specified in this form: 
-[\c
-.ARGc user @]
-.ARGc host :
-.ARG pathname ,
-.B ssh
-will be called to run
-.B bk bkd -e
-on the remote host.  When the client command completes, the 
-.B ssh 
-connection is broken and the 
-.B bkd
-daemon goes away.
-.tp
-b)
-when the repository is specified in this form: 
-.Bc bk://user@host[
-.ARG pathname \fB]\fR,
-.B ssh
-will be called to remote login to 
-.B host
-and will expect that the login shell is the \*(BK daemon.
-.LP
-.SS BKD LOGIN SHELL
-On Red Hat Linux, the following steps are necessary to add a \*(BK 
-daemon login shell:
-create a simple shell script, call it 
-.BR bkd , 
-put it someplace like 
-.BR /usr/libexec/bitkeeper/bkd ,
-add the full path to the script in 
-.BR /etc/shells ,
-and add a user with that path as their shell.
-.LP
-An example 
-.B bkd
-shell script which works for us is:
-.DS
-#!/bin/sh
-exec bk bkd -e
-.DE
-.LP
-.B Note:
-this does not work with 
-.BR rsh ,
-but it is somewhat pointless to have 
-.B rsh 
-work since it is insecure.
 .SH OPTIONS
 .TP 1i
+.B \-C
+This option provides a slightly more secure mode of
+operation in that the bkd will refuse to change directories up out of 
+the directory in which it was started.
+.tp
 .B \-d
-Run as a daemon.
+Run as a daemon.  Implies \-C.
 .tp
 .B \-D
 Debug mode, do not fork and run in the background.
 .tp
-.B \-e
-Exit on any error.
-.tp
 .B \-h
 Make bkd print http headers on all outgoing bk push, bk pull,
-and bk clone messages.  Use when bkd is run in a cgi environment.
-.tp
-.B \-i
-Interactive, provide prompts.
-.tp
-.OPTreq \-L dir
-Specify the directory under which one or more logging repositories can
-be stored.  
+and bk clone messages.  Use when bkd is called from a cgi script.
 .tp
 .OPTreq \-l log
 Log accesses in 
@@ -244,33 +202,44 @@ is not specified, then log to stderr.
 Write the pid of daemon process into this file at startup.
 .tp
 .OPTreq \-p port
-Specify an alternative port.  The default port is currently
-0x3962 (aka 14690) but that will change once we get a
-reserved port. 
-.tp
-.B \-R
-Shutdown the bkd service.  (Use for winNT and win2000 only.) 
-.tp
-.OPTreq \-s dir
-Specify the start directory of the bkd.  (Use for winNT and win2000 only.)
-.tp
-.OPTreq \-t num
-Exit after 
-.ARG num
-seconds. (used when debugging)
+Specify an alternative port.  The default port is 0x3962 (aka 14690).
+This option implies \-d.
 .tp
 .OPTreq \-g uid
 Run with effective group id
-.ARG gid (POSIX compatible systems only).
+.ARG gid "(POSIX compatible systems only)."
 .tp
 .OPTreq \-u uid
 Run with effective user id
-.ARG uid (POSIX compatible systems only).
+.ARG uid "(POSIX compatible systems only)."
 .tp
 .OPTreq \-x cmd
 Exclude 
 .ARG cmd
-from the allowed command list.
+from the allowed command list.  The list of commands which may be excluded
+currently are:
+abort,
+cd,
+check,
+clone,
+get,
+httpget,
+pull,
+push,
+pwd,
+rclone,
+rootkey,
+status,
+synckeys,
+and
+version.
+.SH WINDOWS ONLY OPTIONS
+.TP 1i
+.B \-R
+Shutdown the bkd service.
+.tp
+.OPTreq \-s dir
+Specify the directory in which the bkd starts.
 .SH EXAMPLES
 .LP
 We use the following in 
@@ -322,7 +291,7 @@ case "$1" in
 		do	(
 			cd $dir || exit 1
 			F=`basename $dir`
-			bk bkd $opts \-l$VAR/log.$F \-P$VAR/pid.$F
+			bk bkd -C -d $opts \-l$VAR/log.$F \-P$VAR/pid.$F
 			echo Started bkd $opts in $dir
 			)
 		done < repositories
@@ -366,6 +335,9 @@ since it is export controlled.
 .\" help://daemon
 .\" help://demon
 .\" help://security
+.\" help://secure
+.\" help://bkweb
+.\" help://bk/web
 .SH CATEGORY
 .B Repository
 .br

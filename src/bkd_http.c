@@ -49,7 +49,7 @@ private int	expires = 0;
 #define	INNER_END	"</table>"
 #define OUTER_END	"</td></tr></table>\n"
 
-#define BKWEB_SERVER_VERSION	"0.2"
+#define BKWEB_SERVER_VERSION	"0.3"
 #define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 private char	arguments[MAXPATH];
@@ -127,13 +127,20 @@ cmd_httpget(int ac, char **av)
 	/*
 	 * Go find the project root.
 	 * If they pass in //pathname/to/root/whatever, we'll do a cd first.
+	 * Security checking to make sure we are below where we started,
+	 * as in bkd_cd.c
 	 */
 	if (*name == '/') {
-		if (Opts.nocd) {
-			http_error(403, "Absolute paths are not allowed");
-		}
+		char	a[MAXPATH];
+		char	b[MAXPATH];
+
+		getcwd(a, MAXPATH);
 		unless (name = findRoot(name)) {
 			http_error(503, "Can't find project root");
+		}
+		getcwd(b, MAXPATH);
+		unless ((strlen(b) >= strlen(a)) && strneq(a, b, strlen(a))) {
+			http_error(403, "illegal cd command");
 		}
 	} else {
 		strcpy(root, url(""));
@@ -159,6 +166,9 @@ cmd_httpget(int ac, char **av)
 			ret = strneq(pages[i].name, name, pages[i].size);
 		}
 		if (ret) {
+			if (unsafe_path(name + pages[i].size)) {
+				http_error(403, "illegal pathname");
+			}
 			http_page(pages[i].page, pages[i].content,
 			    (pages[i].flags & HAS_ARG) ? pages[i].arg
 						       : name + pages[i].size);
@@ -166,6 +176,9 @@ cmd_httpget(int ac, char **av)
 		}
 	}
 
+	if (unsafe_path(name)) {
+		http_error(403, "illegal pathname");
+	}
 	sprintf(buf, "BitKeeper/html/%s", name);
 	if (isreg(buf)) {
 		http_file(buf);		/* XXX - doesn't respect base url */
@@ -176,7 +189,6 @@ cmd_httpget(int ac, char **av)
 	}
 	exit(0);
 }
-
 
 private void
 whoami(char *fmt, ...)

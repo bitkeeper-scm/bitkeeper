@@ -1050,3 +1050,31 @@ line2av(char *cmd, char **av)
 	av[i] = 0;
 	return;
 }
+
+/*
+ * Return true if there any symlinks or .. components of the path.
+ * Nota bene: we do not check the last component, that is typically
+ * anno/../bk-2.0.x/Makefile@+ stuff.
+ */
+int
+unsafe_path(char *s)
+{
+	char	buf[MAXPATH];
+	struct	stat sb;
+
+	strcpy(buf, s);
+	unless (s = strrchr(buf, '/')) return (0);
+	for (;;) {
+		/* no .. components */
+		if (streq(s, "/..")) return (1);
+		*s = 0;
+		if (lstat(buf, &sb)) return (1);
+		/* we've chopped the last component, it must be a dir */
+		unless (S_ISDIR(sb.st_mode)) return (1);
+		unless (s = strrchr(buf, '/')) {
+			/* might have started with ../someplace */
+			return (streq(buf, ".."));
+		}
+	}
+	/*NOTREACHED*/
+}
