@@ -53,6 +53,14 @@ getBkDir(void)
 
 	if (dir) return (dir);
 
+	if (t = getenv("BK_BKDIR")) {
+		unless (isdir(t)) {
+			fprintf(stderr, "BKDIR (%s) doesn't exist.\n", t);
+			exit(1);
+		}
+		dir = strdup(t);
+		return (dir);
+	}
 	if (t = getHomeDir()) {
 		dir = aprintf("%s/%s", t, bkdir);
 		free(t);
