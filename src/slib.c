@@ -11579,13 +11579,16 @@ out:		if (f) fclose(f);
 
 /*
  * Get all the ids associated with a changeset.
- * The db is db{fileId} = csetId.
+ * The db is db{root rev Id} = cset rev Id.
  *
  * Note: does not call sccs_restart, the caller of this sets up "s".
  */
 int
 csetIds(sccs *s, char *rev)
 {
+	kvpair	kv;
+	char	*t;
+
 	assert(s->state & S_HASH);
 	if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 		sccs_whynot("get", s);
@@ -11594,6 +11597,22 @@ csetIds(sccs *s, char *rev)
 	unless (s->mdbm) {
 		fprintf(stderr, "get: no mdbm found\n");
 		return (-1);
+	}
+	
+	/* If we are the new key format, then we shouldn't have mixed keys */
+	if (s->state & S_KEY2) return (0);
+
+	/*
+	 * If there are both long and short keys, then use the long form
+	 * and delete the short form (the long form is later).
+	 */
+	for (kv = mdbm_first(s->mdbm); kv.key.dsize; kv = mdbm_next(s->mdbm)) {
+		unless (t = sccs_iskeylong(kv.key.dptr)) continue;
+		*t = 0;
+		if (mdbm_fetch_str(s->mdbm, kv.key.dptr)) {
+			mdbm_delete_str(s->mdbm, kv.key.dptr);
+		}
+		*t = '|';
 	}
 	return (0);
 }
