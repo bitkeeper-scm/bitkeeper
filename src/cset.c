@@ -1179,6 +1179,7 @@ mkChangeSet(sccs *cset, FILE *diffs)
 		add(diffs, buf);
 	}
 
+#ifdef CRAZY_WOW
 	/*
 	 * Adjust the date of the new rev, scripts can make this be in the
 	 * same second.  It's OK that we adjust it here, we are going to use
@@ -1188,7 +1189,6 @@ mkChangeSet(sccs *cset, FILE *diffs)
 		d->dateFudge = (cset->table->date - d->date) + 1;
 		d->date += d->dateFudge;
 	}
-#ifdef CRAZY_WOW
 	/* Add ChangeSet entry */
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	fprintf(diffs, "> %s", buf);
@@ -1266,7 +1266,6 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 {
 	delta	*d;
 	int	error = 0;
-	time_t	date;
 	MMAP	*diffs;
 	FILE	*fdiffs;
 	MDBM	*totdb = 0;
@@ -1290,7 +1289,6 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 		exit(1);
 	}
 
-	date = d->date;
 	if (sym) d->sym = strdup(sym);
 	d->flags |= D_CSET;	/* XXX: longrun, don't tag cset file */
 
@@ -1317,7 +1315,6 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 		error = -1;
 		goto out;
 	}
-	assert(d->date == date); /* make sure time stamp did not change */
 
 	/* XXX: can do a re-init?  There is a new delta */
 	sccs_free(cset);
