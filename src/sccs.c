@@ -58,7 +58,7 @@ delget_main(int ac, char **av)
 val_main(int ac, char **av)
 {
 	int	i;
-	char	**nav = malloc(ac + 2);
+	char	**nav = malloc((ac + 2) * sizeof(char*));
 
 	nav[0] = "admin";
 	nav[1] = "-hhh";
