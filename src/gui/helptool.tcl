@@ -2,6 +2,30 @@
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
 # %W% %@%
 
+proc main {} \
+{
+
+	bk_init
+	widgets
+
+	restoreGeometry "help" 
+	getHelp
+
+	# This must be done after getFiles, because getFiles may cause the
+	# app to exit. If that happens, the window size will be small, and
+	# that small size will be saved. We don't want that to happen. So,
+	# we only want this binding to happen if the app successfully starts
+	# up
+	bind . <Destroy> {
+		if {[string match %W "."]} {
+			saveState
+		}
+	}
+
+	after idle [list wm deiconify .]
+
+}
+
 #
 # Sets the global 'line' to the x'th line after 'line'
 #
@@ -346,14 +370,6 @@ proc widgets {} \
 	getConfig "help"
 	loadState
 
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	if {[info exists State(geometry@$res)]} {
-		wm geometry . $State(geometry@$res)
-
-	} elseif {"$gc(help.geometry)" != ""} {
-		wm geometry . $gc(help.geometry)
-	}
-
 	option add *background $gc(BG)
 
 	set rootX [winfo screenwidth .]
@@ -409,11 +425,13 @@ proc widgets {} \
 		-yscrollcommand [list .ctrl.yscroll set] \
 		-xscrollcommand [list .ctrl.xscroll set]
 	    scrollbar .ctrl.yscroll \
+	        -borderwidth 1 \
 		-width $gc(help.scrollWidth) \
 		-command ".ctrl.topics yview" \
 		-background $gc(help.scrollColor) \
 		-troughcolor $gc(help.troughColor)
 	    scrollbar .ctrl.xscroll \
+	        -borderwidth 1 \
 		-troughcolor $gc(help.troughColor) \
 		-background $gc(help.scrollColor) \
 		-orient horiz \
@@ -531,8 +549,7 @@ proc widgets {} \
 	    -relief ridge -borderwid 1
 
 	. configure -background $gc(BG)
-	wm deiconify .
-	focus .menu.entry
+	after idle [list after 1 focus .menu.entry]
 }
 
 proc busy {busy} \
@@ -651,7 +668,7 @@ proc saveState {} \
 	# to this instance.
 	array set tmp [array get State]
 	catch {::appState load help tmp}
-	set res [winfo screenwidth .]x[winfo screenheight .]
+	set res [winfo vrootwidth .]x[winfo vrootheight .]
 	set tmp(geometry@$res) [wm geometry .]
 
 	# Generally speaking, errors at this point are no big
@@ -664,17 +681,5 @@ proc saveState {} \
 		puts stderr "error writing config file: $result"
 	}
 }
-bk_init
-widgets
-getHelp
 
-# This must be done after getFiles, because getFiles may cause the
-# app to exit. If that happens, the window size will be small, and
-# that small size will be saved. We don't want that to happen. So,
-# we only want this binding to happen if the app successfully starts
-# up
-bind . <Destroy> {
-	if {[string match %W "."]} {
-		saveState
-	}
-}
+main

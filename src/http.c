@@ -419,14 +419,14 @@ http_send(remote *r, char *msg,
 		proxy_auth = proxyAuthHdr(r->cred);
 	}
 	header = aprintf(
-	    "POST /cgi-bin/%s HTTP/1.0\n"
+	    "POST http://%s:%d/cgi-bin/%s HTTP/1.0\n"
 	    "%s"			/* optional proxy authentication */
 	    "User-Agent: %s\n"
 	    "Accept: text/html\n"
 	    "Host: %s:%d\n"
 	    "Content-type: %s\n"
 	    "Content-length: %u\n\n",
-	    cgi_script, proxy_auth, user_agent, 
+	    r->host, r->port, cgi_script, proxy_auth, user_agent, 
 	    r->host, r->port,
 	    BINARY, mlen + extra);
 

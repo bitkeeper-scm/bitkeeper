@@ -12055,7 +12055,7 @@ out:
 		strcpy(pf.newrev, rev);
 	}
 
-	if (MONOTONIC(s) && d->dangling) {
+	if (d->dangling) {
 		if (diffs && !(flags & DELTA_PATCH)) {
 			fprintf(stderr,
 			    "delta: dangling deltas may not be "
@@ -12186,6 +12186,13 @@ out:
 	}
 	dinsert(s, flags, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
+
+	/* Uses n->parent, has to be after dinsert() */
+	if ((flags & DELTA_MONOTONIC) && !(sccs_xflags(n) & X_MONOTONIC)) {
+		n->xflags |= sccs_xflags(n->parent);
+		n->xflags |= X_MONOTONIC;
+		n->flags |= D_XFLAGS;
+	}
 
 	EACH (syms) {
 		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
@@ -13999,7 +14006,8 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "DANGLING")) {
-		if (MONOTONIC(s) && d->dangling) {
+		/* don't clause on MONOTONIC, we had a bug there, see chgset */
+		if (d->dangling) {
 			fs(d->rev);
 			return (strVal);
 		}
@@ -15042,7 +15050,19 @@ sccs_findMD5(sccs *s, char *md5)
 int
 isKey(char *key)
 {
-	return (strchr(key, '|') || (isxdigit(key[0]) && (strlen(key) == 30)));
+	int	i;
+
+	if (strchr(key, '|')) return (1);
+	if (isxdigit(key[0]) && (strlen(key) == 30)) {
+		for (i = 1; i < 8; i++) unless (isxdigit(key[i])) return (0);
+		for (; i < 30; i++) {
+			unless (isalnum(key[i]) || (key[i] == '-') || (key[i] == '_')) {
+				return (0);
+			}
+		}
+		return (1);
+	}
+	return (0);
 }
 
 /*
@@ -15792,6 +15812,7 @@ smartRename(char *old, char *new)
 
 #undef	rename
 	unless (rc = rename(old, new)) return (0);
+	if (streq(old, new)) return (0);
 	save = errno;
 	if (chmod(new, 0700)) {
 		debug((stderr, "smartRename: chmod failed for %s, errno=%d\n",
@@ -15800,6 +15821,7 @@ smartRename(char *old, char *new)
 		unless (rc = rename(old, new)) return (0);
 		old = fullname(old, 0);
 		new = fullname(new, 0);
+		if (streq(old, new)) return (0);
 		fprintf(stderr,
 		    "rename: cannot rename from %s to %s, errno=%d\n",
 		    old, new, errno);

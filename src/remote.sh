@@ -32,7 +32,7 @@ case $CMD in
 	set -e
 	rm -rf /build/$BKDIR
 	test -d .images && {
-		find .images -mtime +3 -print > .list$BK_USER
+		find .images -type f -mtime +3 -print > .list$BK_USER
 		test -s .list$BK_USER && xargs /bin/rm -f < .list$BK_USER
 	}
 	sleep 5		# give the other guys time to get rcp'ed and started

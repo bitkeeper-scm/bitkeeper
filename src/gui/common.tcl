@@ -249,6 +249,64 @@ proc tmpfile {name} \
 	return $filename
 }
 
+proc restoreGeometry {app {w .} {force 0}} \
+{
+	global State gc
+
+	# The presence of the global variable 'geometry' means that the
+	# user specified a geometry on the command line. If that happens
+	# we don't want to override that here.
+	if {!$force && [info exists ::geometry]} return
+
+	set rwidth [winfo vrootwidth $w]
+	set rheight [winfo vrootheight $w]
+
+	set res ${rwidth}x${rheight}
+	if {[info exists State(geometry@$res)]} {
+		set geometry $State(geometry@$res)
+	} elseif {[info exists gc($app.geometry)]} {
+		set geometry $gc($app.geometry)
+	}
+	if {![info exists geometry]} return
+
+	if {[catch {
+		regexp {([0-9]+)x([0-9]+)} $geometry -> width height
+		set width [expr {$width > $rwidth ? $rwidth : $width}]
+		set height [expr {$height > $rheight ? $rheight : $height}]
+	} message]} {
+		# punt! 
+		return
+	}
+
+	# Since we are setting the size of the window we must turn
+	# geometry propagation off
+	catch {grid propagate $w 0}
+	catch {pack propagate $w 0}
+
+	# Instead of using [wm geometry] we directly configure the width
+	# and height of the window. This is because "wm geometry" will 
+	# treat its arguments as grid units if "gridding" is turned on. We
+	# want to deal with raw pixel values. 
+	#
+	# Also note that only the width/height is restored; the position of
+	# the window on the screen is not restored. We did this in 3.0 but
+	# discovered this caused problems with some virtual desktops (ie:
+	# a window might be restored to a virtual desktop that is not 
+	# presently visible).
+	$w configure -width $width -height $height
+
+	# Bzzt.  I like the restore feature.  --lm
+	if {![info exists gc($app.noAutoRestoreXY)]} {
+		# Skip the width by ht stuff
+		set l [expr [string length $width] + [string length $height]]
+		incr l
+		set loc [string range $geometry $l end]
+		if {$loc != ""} {
+			wm geometry $w $loc
+		}
+	}
+}
+
 # usage: bgExec ?options? command ?arg? ?arg ..?
 #
 # this command exec's a program, waits for it to finish, and returns

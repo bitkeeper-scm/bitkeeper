@@ -121,6 +121,7 @@ fromTo(char *op, remote *f, remote *t)
 {
 	char	*from, *to;
 	remote	*tmp;
+	int	width;
 
 	assert(f || t);
 	if (f) {
@@ -137,7 +138,10 @@ fromTo(char *op, remote *f, remote *t)
 		to = remote_unparse(tmp);
 		remote_free(tmp);
 	}
-	printf("%s %s -> %s\n", op, from, to);
+	width = strlen(op) - 3;
+	if (width < 0) width = 0;
+	printf("%s %s\n%*s -> %s\n", op, from, width, "", to);
+	fflush(stdout);
 	free(from);
 	free(to);
 }
@@ -428,10 +432,7 @@ done:	putenv("BK_RESYNC=FALSE");
 private int
 pull(char **av, opts opts, remote *r, char **envVar)
 {
-	sccs	*cset;
-	char	csetFile[MAXPATH] = CHANGESET;
 	char	key_list[MAXPATH];
-	char	buf[MAXPATH];
 	int	gzip, rc;
 
 	unless (r) {
@@ -449,14 +450,6 @@ pull(char **av, opts opts, remote *r, char **envVar)
 			upgrade_msg);
 		exit(1);
 	}
-	cset = sccs_init(csetFile, 0);
-	unless (cset && HASGRAPH(cset)) {
-		fprintf(stderr, "pull: no ChangeSet file found.\n");
-		exit(1);
-	}
-	sccs_sdelta(cset, sccs_ino(cset), buf);
-	sccs_free(cset);  /* for win32 */
-
 	rc = pull_part1(av, opts, r, key_list, envVar);
 	if (rc) return (rc); /* fail */
 	if (pull_part2(av, opts, r, key_list, envVar)) return (1); /* fail */

@@ -103,10 +103,24 @@ See bk help config-etc.
 .tp
 .B YEAR4
 display dates as 4 digit years 
+.tp
+.B EOLN_NATIVE
+use the operating system's native end-of-line termination.
+EOLN_NATIVE is set to "on" by default.  To make the
+default have EOLN_NATIVE be set to "off" put eoln:unix in the
+BitKeeper/etc/config file (see bk help config-etc).
+.tp
+.B NOMERGE
+do not attempt to automerge this file, treat it as if it were a
+binary file and force a choose local or choose remote style merge.
+.tp
+.OPTreq DEFAULT= rev
+set the default branch or revision used by the
+.BR bk\ get
+command.
 .RE
 .LP
-.if t .TP .8i
-.if n .TP 1.6i
+.tp
 .OPTreq \-F f
 delete flag 
 .ARG f ,
@@ -194,16 +208,13 @@ recalculate file checksum.
 compress stored s.file with 
 .ARG alg
 which may be:
-.if t .RS .8i
-.if n .RS .4i
-.if t .tp 1.1i
-.if n .tp 1.2i
-.if t .ll +1.9i
-.if n .ll +1.5i
+.if t .RS .7i
+.if n .RS .7i
+.if t .tp
+.if n .tp
 .B  gzip
-uses the
+like 
 .BR gzip (1)
-compression algorithm to compress the data section of the s.files.
 .tp
 .B none
 no compression

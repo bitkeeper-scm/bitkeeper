@@ -861,7 +861,6 @@ int
 write_log(char *root, char *file, int rotate, char *format, ...)
 {
 	FILE	*f;
-	char	*user;
 	char	path[MAXPATH];
 	off_t	logsize;
 	va_list	ap;
@@ -877,10 +876,9 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 			return (1);
 		}
 	}
-	user = sccs_getuser();
 	fprintf(f, "%c%s %lu %s: ",
 	    log_versions[LOGVER],
-	    user ? user : "Phantom.User", time(0), bk_vers);
+	    sccs_user(), time(0), bk_vers);
 	va_start(ap, format);
 	vfprintf(f, format, ap);
 	va_end(ap);
@@ -909,6 +907,7 @@ cmdlog_end(int ret)
 	kvpair	kv;
 
 	purify_list();
+	bktmpcleanup();
 	unless (cmdlog_buffer[0] && proj_root(0)) {
 		return (flags);
 	}

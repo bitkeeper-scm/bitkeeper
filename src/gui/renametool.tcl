@@ -1177,8 +1177,6 @@ proc main {} \
 {
 	global argv0 argv argc QUIET State
 
-	wm withdraw .
-
 	set x [lindex $argv 0]
 	if {"$x" == "-q"} {
 		set QUIET "-q"
@@ -1189,10 +1187,7 @@ proc main {} \
 	widgets
 
 	loadState
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	if {[info exists State(geometry@$res)]} {
-		after idle [list wm geometry . $State(geometry@$res)]
-	}
+	restoreGeometry rename
 	update idletasks
 	wm deiconify .
 

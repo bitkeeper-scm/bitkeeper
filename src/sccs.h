@@ -77,6 +77,7 @@
 #define	DELTA_HASH	0x04000000	/* treat as hash (MDBM) file */
 #define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
 #define	DELTA_CFILE	0x00100000	/* read cfile and do not prompt */
+#define	DELTA_MONOTONIC	0x00200000	/* preserve MONOTONIC flag */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 #define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
@@ -313,6 +314,7 @@
 #define	OPENLOG_HOST	"config.openlogging.org"
 #define	OPENLOG_HOST1   "config2.openlogging.org"
 #define	OPENLOG_LEASE	"http://lease.openlogging.org:80"
+#define	OPENLOG_LEASE2	"http://lease2.openlogging.org:80"
 #define	BK_WEBMAIL_URL	"http://webmail.bitkeeper.com:80"
 #define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
@@ -381,15 +383,6 @@ typedef	char		**globv;
  * Fri Apr  9 1999:  this has grown to 124 bytes.  We might want to think
  * about reducing the size.  That means a 5K delta file takes 620K in
  * memory just for the graph.
- *
- * Fri Nov 29 2002: and it keeps growing.  We need to rethink this a bit, we
- * could lose the mr and ignore fields, we never use those, just turn the
- * file to readonly if we ever see them.  We could also move infrequently
- * used fields to a list hanging off of the sccs struct, i.e., random,
- * csetFile, symlink.  We could lose sdate, we're going to have to
- * eventually when the date is a time_t in the binary s.file.  That's at
- * least 20 bytes.  And move the "type" to bit fields and put it down
- * next to the other ones.  That's 260K for the kernel's cset file.
  *
  * Something else we ought to do: our own allocator/deallocator which allocates
  * enough memory for all the data structures at init time.  That way we can
@@ -811,6 +804,7 @@ void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
+char	*sccs_host(void);
 int	sccs_getComments(char *, char *, delta *);
 int	sccs_getHostName(delta *);
 int	sccs_getUserName(delta *);
@@ -831,6 +825,7 @@ delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
 char	*sccs_realuser(void);
+char	*sccs_user(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -908,6 +903,7 @@ size_t	msize(MMAP *m);
 MMAP	*mrange(char *start, char *stop, char *mode);
 int	linelen(char *s);
 int 	licenseAccept(int prompt);
+int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);

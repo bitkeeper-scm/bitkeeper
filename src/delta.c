@@ -114,7 +114,7 @@ delta_main(int ac, char **av)
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
-	int	dash, errors = 0, fire;
+	int	dash, errors = 0, fire, dangling;
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -357,6 +357,8 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		}
 
 		s->encoding = sccs_encoding(s, encp, compp);
+		dangling = MONOTONIC(s) && sccs_top(s)->dangling;
+		if (dangling) df |= DELTA_MONOTONIC;
 		rc = sccs_delta(s, df, d, init, diffs, 0);
 		if (rc == -4) {	/* interrupt in comment prompt */
 			errors |= 4;
@@ -369,7 +371,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			goto next;
 		}
 
-		if (MONOTONIC(s) && sccs_top(s)->dangling) {
+		if (dangling) {
 			delta	*d = sccs_getrev(s, nrev, 0, 0);
 			char	key[MAXKEY];
 

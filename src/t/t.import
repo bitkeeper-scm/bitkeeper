@@ -197,6 +197,7 @@ bk get $Q -r+ -p foo > foo.now
 cmp -s foo.now foo.ref || { echo failed; exit 1; }
 rm -f foo.now foo.ref bar.ref
 if [ -f bar ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.foo ]; then echo failed to unlock foo; exit 1; fi
 echo OK
 rm -rf $HERE/A $HERE/B $HERE/EDIT/*.rej
 echo $N Make sure we allow a file to be patched multiple times ......$NL
@@ -303,6 +304,11 @@ U=akushner@bitmover.com+`bk getuser -r`
 test "`bk prs -hr+ -nd:P:@:HOST:+:IMPORTER: foo`" = "$U" || {
 	echo did not pick up email address, wanted $U
 	bk prs -r+ -nd':P:@:HOST:+:IMPORTER:' foo
+	exit 1
+}
+test "`bk prs -hr+ -nd:P:@:HOST:+:IMPORTER: ChangeSet`" = "$U" || {
+	echo did not pick up email address, wanted $U
+	bk prs -r+ -nd':P:@:HOST:+:IMPORTER:' ChangeSet
 	exit 1
 }
 bk changes -r+ > C

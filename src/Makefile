@@ -508,35 +508,43 @@ gui-nowrap GUI-nowrap:
 
 revtool: tclwrap gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/appState.tcl
-	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/search.tcl gui/appState.tcl gui/revtool.tcl \
-	    | $(TCLWRAP) > revtool
+	(echo 'wm withdraw .';\
+	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	     gui/search.tcl gui/appState.tcl gui/revtool.tcl) \
+	| $(TCLWRAP) > revtool
 
 citool: tclwrap gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
 	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl \
 	gui/appState.tcl
-	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/progress.tcl gui/search.tcl gui/ciedit.tcl \
-	    gui/appState.tcl gui/citool.tcl | $(TCLWRAP) > citool
+	(echo 'wm withdraw .' ; \
+	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	     gui/progress.tcl gui/search.tcl gui/ciedit.tcl \
+	     gui/appState.tcl gui/citool.tcl) \
+	| $(TCLWRAP) > citool
 
 setuptool: tclwrap gui/setuptool.tcl gui/lib/tkwizard.tcl \
 	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl
-	cat port/$(SYS)_platform.tcl gui/config.tcl \
-	   gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl \
+	   (echo 'wm withdraw .' ;\
+	    cat port/$(SYS)_platform.tcl gui/config.tcl \
+	        gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl) \
 	   | $(TCLWRAP) > setuptool
 
 helptool: tclwrap gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/appState.tcl
-	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl \
-	    gui/helptool.tcl | $(TCLWRAP) > helptool
+	(echo "wm withdraw ." ; \
+	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	     gui/appState.tcl \
+	     gui/helptool.tcl)\
+	 | $(TCLWRAP) > helptool
 
 difftool: tclwrap gui/search.tcl gui/config.tcl gui/difftool.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \
 	gui/appState.tcl
-	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
-	    gui/difftool.tcl | $(TCLWRAP) > difftool
+	(echo "wm withdraw .";\
+	 cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
+	     gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
+	     gui/difftool.tcl) \
+	 | $(TCLWRAP) > difftool
 
 bugform: tclwrap gui/search.tcl gui/config.tcl gui/bugform.tcl \
 	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl \
@@ -548,30 +556,37 @@ bugform: tclwrap gui/search.tcl gui/config.tcl gui/bugform.tcl \
 csettool: tclwrap gui/csettool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl \
 	gui/appState.tcl
-	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/difflib.tcl gui/appState.tcl \
-	    gui/csettool.tcl | $(TCLWRAP) > csettool
+	(echo 'wm withdraw .';\
+	 cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
+	     gui/common.tcl gui/difflib.tcl gui/appState.tcl \
+	     gui/csettool.tcl)\
+	| $(TCLWRAP) > csettool
 
 renametool: tclwrap \
 	gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/appState.tcl
-	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/renametool.tcl | \
-	    $(TCLWRAP) > renametool
+	(echo 'wm withdraw .';\
+	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	     gui/appState.tcl gui/renametool.tcl) \
+	| $(TCLWRAP) > renametool
 
 fmtool: tclwrap gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 	gui/common.tcl gui/difflib.tcl gui/appState.tcl
-	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl | \
-	    $(TCLWRAP) > fmtool
+	(echo 'wm withdraw .';\
+	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	     gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl) \
+	| $(TCLWRAP) > fmtool
 
 fm3tool: tclwrap gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl gui/appState.tcl
-	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/appState.tcl gui/fm3tool.tcl | $(TCLWRAP) > fm3tool
+	(echo 'wm withdraw .';\
+	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	     gui/appState.tcl gui/fm3tool.tcl) \
+	| $(TCLWRAP) > fm3tool
 
 msgtool: gui/msgtool.tcl
-	cp gui/msgtool.tcl msgtool
+	(echo "wm withdraw ."; cat gui/msgtool.tcl) \
+	| $(TCLWRAP) > msgtool
 
 install: install-nolinks binlinks
 

@@ -65,5 +65,9 @@ getBkDir(void)
 		fprintf(stderr, "Failed to create %s\n", dir);
 		exit(1);
 	}
+	t = strrchr(dir, '/');
+	*t = 0;
+	chmod(dir, 0777);	/* make /tmp/.bk world writable */
+	*t = '/';
 	return (dir);
 }

@@ -489,9 +489,6 @@ proc widgets {L R O} \
 	getConfig "fm"
 	option add *background $gc(BG)
 	set g [wm geometry .]
-	if {("$g" == "1x1+0+0") && ("$gc(fm.geometry)" != "")} {
-		wm geometry . $gc(fm.geometry)
-	}
 	if {$gc(fm.diffHeight) < $gc(fm.mergeHeight)} {
 		set scroll $gc(fm.diffHeight)
 	} else {
@@ -762,19 +759,14 @@ proc fmtool {} \
 {
 	global State
 
-	wm withdraw .
-
 	bk_init
 	startup 1
 
 	loadState
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	if {[info exists State(geometry@$res)]} {
-		after idle [list wm geometry . $State(geometry@$res)]
-	}
+	restoreGeometry fm
 
+	after idle [list wm deiconify .]
 	update idletasks
-	wm deiconify .
 
 	bind . <Destroy> {
 		if {[string match %W .]} {

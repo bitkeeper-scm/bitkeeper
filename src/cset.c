@@ -1069,6 +1069,11 @@ csetCreate(sccs *cset, int flags, char *files, char **syms)
 	FILE	*fdiffs;
 	char	filename[MAXPATH];
 
+	if ((cset->nextserial > 200) && getenv("BK_REGRESSION")) {
+		fprintf(stderr, "Too many changesets for regressions.\n");
+		exit(1);
+	}
+
 	bktmp(filename, "cdif");
 	unless (fdiffs = fopen(filename, "w+")) {
 		perror(filename);

@@ -9,6 +9,8 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+# See also src/Notes/MONOTONIC
+
 echo $N Mark a file as MONOTONIC, add a delta, check for danglers ...$NL
 no_logging project
 bk admin -fMONOTONIC BitKeeper/etc/config
@@ -84,7 +86,7 @@ test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 2 || {
 echo OK
 
 # XXX - this is a pretty pointless test, we're just making sure we don't send
-# the dangling delta in a pull, which has little to do with danlgers.
+# the dangling delta in a pull, which has little to do with danglers.
 echo $N Pull to fill in missing csets, check for no danglers ........$NL
 bk pull $Q || exit 1
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 || {
@@ -207,12 +209,26 @@ test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 	echo should have had dangling deltas
 	exit 1
 }
+# The following prs shows 1.2 .. 1.5 as danglers
+# bk prs -nd':I: :FLAGS: :DANGLING:' BitKeeper/etc/config
 bk edit $Q BitKeeper/etc/config
 echo whatever >> BitKeeper/etc/config
 bk delta $Q -yaddition BitKeeper/etc/config || exit 1
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 || {
 	echo should not have had dangling deltas
 	bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config
+	exit 1
+}
+# The top delta should be the 1.2 delta we just added.
+test `bk prs -r+ -hnd:I: BitKeeper/etc/config` = 1.2 || {
+	echo Failed to strip danglers
+	bk prs -nd':I: :DANGLING:' BitKeeper/etc/config
+	exit 1
+}
+test `bk prs -r+ -hnd:FLAGS: BitKeeper/etc/config` = "BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC" || {
+	echo failed to preserve flags
+	bk prs -r+ -hnd'GOT :FLAGS:' BitKeeper/etc/config
+	echo Wanted BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
 	exit 1
 }
 echo OK

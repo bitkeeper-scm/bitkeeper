@@ -49,6 +49,16 @@ EOF
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
+echo $N Checking diff filename\|1.8..1.9 with edited gfile ...........$NL
+bk diffs 'Mydiffs|1.8..1.9' > D || exit 1
+bk undos > W <<EOF
+===== Mydiffs 1.8 vs 1.9 =====
+9a10
+> 1.9
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK
 echo $N Checking diff -r1.8 w/ no file ..............................$NL
 bk unedit Mydiffs
 bk diffs -r1.8 Mydiffs > D || exit 1
@@ -74,6 +84,16 @@ if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff -r1.8 -r1.9 ...................................$NL
 bk diffs -r1.8 -r1.9 Mydiffs > D || exit 1
+bk undos > W <<EOF
+===== Mydiffs 1.8 vs 1.9 =====
+9a10
+> 1.9
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK
+echo $N Checking diff filename\|1.8..1.9 .............................$NL
+bk diffs 'Mydiffs|1.8..1.9' > D || exit 1
 bk undos > W <<EOF
 ===== Mydiffs 1.8 vs 1.9 =====
 9a10
@@ -137,7 +157,7 @@ if [ -s D ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
 echo $N Checking diffs with readonly wrong gfile ....................$NL
 bk _get $Q -r1.1 Mydiffs || exit 1
-bk diffs Mydiffs > D || exit 1
+bk diffs -r+ Mydiffs > D || exit 1
 if [ -s D ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK
 echo $N Checking diffs -r1.8 with readonly wrong gfile ..............$NL

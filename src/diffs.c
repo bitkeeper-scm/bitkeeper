@@ -48,6 +48,8 @@ private int	cset_boundries(sccs *s, char *rev);
  *  diffs -r<rev1> -r<rev2> file or echo 'file|<rev1>' | bk diffs -r<rev2> -
  *	state of gfile doesn't matter
  *		diff <rev1> <rev2>
+ *
+ *  XXX - need a -N which makes diffs more like diff -Nr, esp. w/ diffs -r@XXX
  */
 
 int
@@ -140,21 +142,12 @@ usage:			system("bk help -s diffs");
 		freopen(rset, "r", stdin);
 	}
 		
-	/* XXX - if we are doing boundaries | diffs
-	 * then we don't need the GFILE.
-	 * Currently turned off in sfiles.
-	 *
-	 * Replace the "optimization" below with SF_WRITE_OK.
-	 * if (!things && !Rev && !IS_WRITABLE(s)) goto next;
-	 */
-	if (things || boundaries || Rev) {
-		name = sfileFirst("diffs", &av[optind], 0);
-	} else if (cset) {
+	if (cset) {
 		static	char *nav[] = { "-", 0 };
 
 		name = sfileFirst("diffs", nav, SF_GFILE);
 	} else {
-		name = sfileFirst("diffs", &av[optind], SF_GFILE|SF_WRITE_OK);
+		name = sfileFirst("diffs", &av[optind], 0);
 	}
 	while (name) {
 		int	ex = 0;
@@ -163,6 +156,16 @@ usage:			system("bk help -s diffs");
 		int	save = things;
 
 		if (cset && streq(name, CHANGESET)) goto next;
+		/* unless we are given endpoints, don't diff */
+		unless (things || boundaries || Rev || sfileRev()) {
+			char	*gfile = sccs2name(name);
+
+			unless (writable(gfile)) {
+				free(gfile);
+				goto next;
+			}
+			free(gfile);
+		}
 		s = sccs_init(name, flags);
 		unless (s && HASGRAPH(s)) {
 			errors |= 2;
@@ -266,7 +269,10 @@ usage:			system("bk help -s diffs");
 			fprintf(stderr,
 			    "diffs of %s failed.\n", s->gfile);
 		}
-next:		if (s) sccs_free(s);
+next:		if (s) {
+			sccs_free(s);
+			s = 0;
+		}
 		name = sfileNext();
 		things = save;
 	}

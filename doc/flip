@@ -1,0 +1,13 @@
+
+# %%Page: 2 2
+# %%BeginPageSetup
+# BP
+# 180 rotate
+# -785 -607 translate
+while(<>) {
+	print;
+	next unless /%%Page: 2 2/;
+	$_ = <>; print;
+	$_ = <>; print;
+	print "180 rotate\n-785 -607 translate\n"
+}

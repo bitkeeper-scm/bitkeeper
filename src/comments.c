@@ -23,7 +23,7 @@ comments_save(char *s)
 
 	if (saved) freeLines(saved, free);
 	saved = 0;
-	split = splitLine(s, "\n", 0);
+	split = splitLineToLines(s, 0);
 	EACH(split) {
 		len = strlen(split[i]);
 		if (len <= MAXCMT) {

@@ -14,22 +14,11 @@ proc widgets {} \
 
 	option add *background $gc(BG)
 
-	set g [wm geometry .]
-	wm title . "Diff Tool"
-
 	set gc(bw) 1
 	if {$tcl_platform(platform) == "windows"} {
 		set gc(py) -2; set gc(px) 1
 	} else {
 		set gc(py) 1; set gc(px) 4
-	}
-
-	set res [winfo screenwidth .]x[winfo screenheight .]
-	if {[info exists State(geometry@$res)]} {
-		wm geometry . $State(geometry@$res)
-
-	} elseif {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
-		wm geometry . $gc(diff.geometry)
 	}
 
 	createDiffWidgets .diffs
@@ -120,8 +109,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 	# smaller than this doesn't look good.
 	wm minsize . 300 300
-
-	.diffs.status.middle configure -text "Welcome to difftool!"
 
 	#bind .diffs.left <Button-1> {stackedDiff %W %x %y "B1"; break}
 	#bind .diffs.right <Button-1> {stackedDiff %W %x %y "B1"; break}
@@ -359,7 +346,6 @@ proc getFiles {} \
 	}
 	# Now add the menubutton items if necessary
 	if {[llength $files] >= 1} {
-		wm deiconify .
 		.menu.fmb configure -text "Files ([llength $files])"
 		set menu(widget) [menu .menu.fmb.menu]
 		set item 1
@@ -525,18 +511,41 @@ proc saveState {} \
 		puts stderr "error writing config file: $result"
 	}
 }
-bk_init
-widgets
-getFiles
 
-# This must be done after getFiles, because getFiles may cause the
-# app to exit. If that happens, the window size will be small, and
-# that small size will be saved. We don't want that to happen. So,
-# we only want this binding to happen if the app successfully starts
-# up
-bind . <Destroy> {
-	if {[string match %W "."]} {
-		saveState
+proc main {} \
+{
+	wm title . "Diff Tool - initializing..."
+
+	bk_init
+	widgets
+
+	restoreGeometry diff
+
+	# if the user is on a slow box and just does "bk difftool", it 
+	# can take a long time to fire up. On my slow VirtualPC box it
+	# can take up to 15 seconds. This at least gives a minimal 
+	# clue that someting is happening...
+	.diffs.status.middle configure -text "initializing..."
+
+	wm deiconify .
+	update 
+
+#	after idle [list after 1 getFiles]
+	getFiles
+
+	# This must be done after getFiles, because getFiles may cause the
+	# app to exit. If that happens, the window size will be small, and
+	# that small size will be saved. We don't want that to happen. So,
+	# we only want this binding to happen if the app successfully starts
+	# up
+	bind . <Destroy> {
+		if {[string match %W "."]} {
+			saveState
+		}
 	}
+
+	wm title . "Diff Tool"
 }
+
+main
 

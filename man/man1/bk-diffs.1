@@ -4,8 +4,6 @@
 bk diffs \- show differences in revision controlled files
 .SH SYNOPSIS
 .Bc bk diffs [\-bBcDfhMnpsuUvw] [
-.OPTreq \-C rev
-.Bc ] [
 .OPTreq \-d date
 .Bc ] [
 .OPTreq \-l rev
@@ -48,7 +46,7 @@ the two forms are shown because it is sometimes useful to diff a subset,
 which may be accomplished by filtering the output of bk rset.
 .DS
 $ bk rset -l<rev> | bk -R diffs -u -
-$ bk diffs -C<rev> -u
+$ bk -r diffs -r@<rev> -u
 .DE
 .SH OPTIONS
 .if t .TP
