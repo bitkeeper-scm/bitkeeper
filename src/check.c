@@ -700,7 +700,7 @@ checkAll(MDBM *db)
 				    "ERROR: duplicate line in ChangeSet\n");
 			}
 		}
-		fclose(f);
+		pclose(f);
 		f = fopen(ctmp, "r");
 		sprintf(buf, "%s.p", ctmp);
 		keys = fopen(buf, "w");

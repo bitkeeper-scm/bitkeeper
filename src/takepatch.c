@@ -710,7 +710,7 @@ metaUnionFile(char *file, char *cmd)
 			fputs(buf, w);
 		}
 		fclose(w);
-		fclose(f);
+		pclose(f);
 		chmod(file, 0444);
 	}
 }
@@ -749,7 +749,7 @@ metaUnionResyncFile(char *from, char *to)
 		if (buf[0] == '#') continue;
 		fputs(buf, w);
 	}
-	fclose(f);
+	pclose(f);
 	fclose(w);
 	chmod(temp, 0444);
 	unlink(to);
