@@ -172,6 +172,7 @@ extern	char *strdup(char *s);
 #define	DIFF_HEADER	GET_HEADER
 #define	GET_PREFIX	\
 	    (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|GET_PREFIXDATE)
+#define	GET_DTIME	0x00080000	/* gfile get delta's mode time */
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: unedit - discard changes */
 

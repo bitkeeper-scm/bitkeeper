@@ -4860,6 +4860,15 @@ out:		if (slist) free(slist);
 			chmod(s->gfile, UMASK(0444));
 		}
 	}
+
+	if (d && (flags&GET_DTIME) && !(flags&PRINT)){
+		struct utimbuf ut;
+
+		assert(d->sdate);
+		ut.actime = ut.modtime = date2time(d->sdate, d->zone, EXACT);
+		utime(s->gfile, &ut);
+	}
+
 #ifdef S_ISSHELL
 	if ((s->state & S_ISSHELL) && ((flags & PRINT) == 0)) {
 		char cmd[MAXPATH], *t;
@@ -5631,14 +5640,22 @@ private inline int
 expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
 {
 	char	*e = fbuf;
+	int expanded;
 
 	if (s->encoding != E_ASCII) return (0);
 	if (!(flags & (GET_EXPAND|GET_RCSEXPAND))) return 0;
+	//XXXX TODO: need to make this work for S_EXPAND1
 	if (flags & GET_EXPAND) {
-		e = expand(s, d, e, 0);
+		e = expand(s, d, e, &expanded);
+		if (s->state & S_EXPAND1) {
+			if (expanded) flags &= ~GET_EXPAND;
+		}
 	}
 	if (flags & GET_RCSEXPAND) {
-		e = rcsexpand(s, d, e, 0);
+		e = rcsexpand(s, d, e, &expanded);
+		if (s->state & S_EXPAND1) {
+			if (expanded) flags &= ~GET_RCSEXPAND;
+		}
 	}
 	return strnleq(e, sbuf);
 }

@@ -20,7 +20,6 @@ usage: get [-bdeFgHkmnpqsu] [-c<date>] [-G<name>] \n\
     -F		don't check the checksum\n\
     -g		just do locking, don't get the file\n\
     -G<name>	place the output file in <name>\n\
-    -H		place the outout file in historic path\n
     -i<revs>	include specified revs in the get (rev, rev and/or rev-rev)\n\
     -k		don't expand keywords\n\
     -m		prefix each line with revision number\n\
@@ -33,6 +32,8 @@ usage: get [-bdeFgHkmnpqsu] [-c<date>] [-G<name>] \n\
     -r<r>	get revision <r>\n\
     -R		revision is part of pathname, i.e., foo.c:1.2\n
     -s		run quietly\n\
+    -T		make output file modification same as\n\
+		its corresponding delta\n\
     -u		prefix each line with user id\n\
     -x<revs>	exclude specified list of revs in get (same as -i)\n\n\
     Not implemented:\n\
@@ -60,7 +61,7 @@ get_main(int ac, char **av, char *out)
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
-	while ((c = getopt(ac, av, "bc;dDeFgG:Hi;kmM|nNpPqr;Rstux;")) != -1) {
+	while ((c = getopt(ac, av, "bc;dDeFgG:Hi;kmM|nNpPqr;RstTux;")) != -1) {
 		switch (c) {
 		    case 'b': flags |= GET_BRANCH; break;
 		    case 'c': cdate = optarg; break;
@@ -84,6 +85,7 @@ get_main(int ac, char **av, char *out)
 		    case 'R': hasrevs = SF_HASREVS; break;
 		    case 's': flags |= SILENT; break;
 		    case 't': break;	/* compat, noop */
+		    case 'T': flags |= GET_DTIME; break;
 		    case 'u': flags |= GET_USER; break;
 		    case 'x': xLst = optarg; break;
 
