@@ -57,7 +57,8 @@ post-incoming.regression-test
 TRIGGER CLASSES
 .LP
 There are four event classes which activate triggers: incoming
-events, outgoing events, deltas, and commits.  The incoming event is broken into
+events, outgoing events, deltas, and commits.  
+The incoming event is broken into
 multiple events: incoming, resolve, and apply.
 .LP
 Most events may have triggers which run before and/or after the event.
@@ -239,6 +240,9 @@ is valid only on the outgoing end of a pull or a push.
 The other variable is BK_REMOTECSETS.
 Both variables are valid in pre-outgoing and post-outgoing
 triggers only.
+.ip BK_PATCH
+Valid only in the pre-resolve trigger,
+and contains the full pathname of the file containing the patch being resolved.
 .ip BK_PENDING
 Contains the name of a file which
 contains the list of files with pending deltas.

@@ -233,7 +233,7 @@ chk_id(void)
 	fprintf(f, "%s%s|", buf, sccs_zone(time(0)));
 
 	/*host*/
-	fprintf(f, "%s|", sccs_gethost());
+	fprintf(f, "%s|", sccs_realhost());
 
 	/*path*/
 	path[0] = 0;
@@ -241,7 +241,7 @@ chk_id(void)
 	fprintf(f, "%s|", path);
 
 	/*user*/
-	fprintf(f, "%s|", sccs_getuser());
+	fprintf(f, "%s|", sccs_realuser());
 
 	/*randbits*/
 	if (rng_get_bytes(buf, 3, 0) != 3) {
