@@ -9,6 +9,7 @@
 #	Add error checking for:
 #		ensure repository name does not have spaces
 #		validate all fields in entry widgets
+#	Add dialog box to chose directory	
 #
 # Arguments:
 # 	optional arg for the name of the repository
@@ -16,22 +17,12 @@
 
 set debug 0
 
-catch {exec bk bin} bin
-set image [file join $bin "bklogo.gif"]
-if {[file exists $image]} {
-        #set bklogo [image create photo -file $image]
-        image create photo bklogo -file $image
-        #label $w.logo -image $bklogo -bd 0
-}
-
 proc dialog_position { dlg width len } \
 {
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
-	#puts $swidth; puts $sheight
 	set x [expr {($swidth/2) - 100}]
 	set y [expr {($sheight/2) - 100}]
-	#wm geometry $dlg 400x400+$x+$y
 	wm geometry $dlg ${width}x${len}+$x+$y
 }
 
@@ -44,7 +35,6 @@ proc dialog { widgetname title trans  } \
 	if {$trans} {
 		wm transient $widgetname
 	}
-	#Handle wm Close choice.
 	wm protocol $widgetname \
 	    WM_DELETE_WINDOW "handle_close $widgetname "
 }
@@ -130,7 +120,7 @@ proc license_check {}  \
 	while { ! [ eof $fid ]} {
 		.lic.t.text insert end [ read $fid 1000 ]
 	}
-	close $fid
+	catch { close $fid }
 	pack .lic.t.lbl -side top 
 	pack .lic.t.text -side bottom -fill both -expand 1 
 	    pack .lic.t.text.scrl -side right -fill y 
@@ -149,7 +139,7 @@ proc license_check {}  \
 		} else {
 			#puts stderr "touching .bkaccepted"
 			puts $fid "ACCEPTED"
-			close $fid
+			catch { close $fid }
 	    	}
 	}
 	catch {wm deiconify .} err
@@ -172,7 +162,7 @@ proc save_config_info {} \
 			puts $fid "${el}: $st_cinfo($el)"
 			#puts "${el}: $st_cinfo($el)"
 		}
-		close $fid
+		catch { close $fid }
 	}
 	return
 }
@@ -185,27 +175,35 @@ proc update_info {field value} \
 
 proc read_bkrc {} \
 {
-	global env st_cinfo debug st_g w
+	global env st_cinfo debug st_g w gc
 
 	set fid [open $st_g(bkrc) "r"]
-	#while { [ gets $fid line ] != -1 } {
-	#	.lic.t.text insert end $line
-	#}
 	while { [ gets $fid line ] != -1 } {
 		set col [string first ":" $line ]
 		set key [string range $line 0 [expr {$col - 1}]]
-		set var [string range $line [expr {$col + 1}] \
+		set val [string range $line [expr {$col + 1}] \
 		     [string length $line]]
-	        set var [string trimleft $var]
-	        set var [string trimright $var]
-		set st_cinfo($key) $var
-		update_info $key $var
+	        set val [string trim $val]
+		# Make sure we use argv[1] for the repo name if set
+		if {$key == "repository"} {
+			if {$st_cinfo(repository) == ""} {
+				set st_cinfo(repository) "$val"
+			}
+		} else {
+			set st_cinfo($key) $val
+		}
+		#puts "key=($key) val=($val)"
+		if {($key == "category") && ($val != "")} {
+			$gc(catmenu).menu invoke "$val"
+		}
+		update_info $key $val
 	}
 	if {$debug} {
 		foreach el [lsort [array names st_cinfo]] {
 			puts "$el = $st_cinfo($el)"
 		}
     	}
+	check_config
 }
 
 # Generate etc/config file and then create the repository
@@ -224,7 +222,7 @@ proc create_repo {} \
 		puts $cfid "${el}: $st_cinfo($el)"
 		if {$debug} { puts "${el}: $st_cinfo($el)" }
 	}
-	close $cfid
+	catch { close $cfid }
 	set repo $st_cinfo(repository)
 	catch { exec bk setup -f -c$cfile $repo } msg
 	if {$msg != ""} {
@@ -275,6 +273,12 @@ proc check_config {} \
         } else {
                 set log 0
         }
+        if {[info exists st_cinfo(email)] && ($st_cinfo(email) != "")} {
+                #puts "email: $st_cinfo(email)"
+                set email 1
+        } else {
+                set email 0
+        }
         if {[info exists st_cinfo(description)] && 
 	    ($st_cinfo(description) != "")} {
                 #puts "descripton: $st_cinfo(description)"
@@ -282,26 +286,34 @@ proc check_config {} \
         } else {
                 set desc 0
         }
-        if {[info exists st_cinfo(category)] && ($st_cinfo(category) != "")} {
-                #puts "descripton: $st_cinfo(description)"
-                set cat 1
+        if {[info exists st_cinfo(category)]} {
+	    if {($st_cinfo(category) != "") && 
+	        ($st_cinfo(category) != "Please Select a Category")} {
+			#puts "category: $st_cinfo(category)"
+                	set cat 1
+		}
         } else {
                 set cat 0
         }
-        if {($repo == 1) && ($log == 1) && ($desc == 1) && ($cat == 1)} {
+        if {($repo == 1) && ($log == 1) && ($desc == 1) && ($cat == 1) &&
+	    ($email == 1)} {
                 $w(create) configure -state normal
         } else {
                 $w(create) configure -state disabled
         }
 }
 
+# Set the color and text for the pulldown when it is selected
 #
 proc setCat {cat} \
 {
 	global gc st_cinfo
 
-	$gc(catmenu) configure -text $cat
+	$gc(catmenu) configure \
+	    -text $cat \
+	    -bg $gc(setup.BG)
 	set st_cinfo(category) "$cat"
+	check_config
 	return
 	
 }
@@ -311,44 +323,56 @@ proc createCatMenu {w} \
 {
 	global gc
 
-	set categories [list]
-	set sub_categories [list]
 	set gc(catmenu) $w
 
-	menubutton $gc(catmenu) -font $gc(setup.fixedFont) -relief raised \
+	menubutton $gc(catmenu) \
+	    -font $gc(setup.fixedFont) \
+	    -relief raised \
 	    -bg $gc(setup.BG) \
-	    -text "Select Category" -width 30 -state normal \
+	    -text "Please Select a Category" \
+	    -width 30 \
+	    -state normal \
 	    -menu $gc(catmenu).menu 
-	#-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-	#set gc(cmenu) [menu $w.menu]
 	set cmenu [menu $gc(catmenu).menu]
-	set num 0
 
 	set fid [open "|bk getmsg setup_categories" "r"]
 	while {[gets $fid c] != -1} {
 		$cmenu add command -label $c \
 		    -command "setCat [list $c]"
-		#puts stderr "c=$c"
 	}
-	catch {close $fid} err
+	catch { close $fid } err
 }
 
-proc create_config {} \
+proc create_config {widget} \
 {
 	global st_cinfo st_g rootDir st_dlg_button logo w
 	global gc tcl_platform
 
+	catch {exec bk bin} bin
+	set logo [file join $bin "bklogo.gif"]
+	if {[file exists $logo]} {
+		#set bklogo [image create photo -file $logo]
+		image create photo bklogo -file $logo
+	}
+	set swidth [winfo screenwidth .]
+	set sheight [winfo screenheight .]
+	set x [expr {($swidth/2) - 100}]
+	set y [expr {($sheight/2) - 100}]
+	#puts "y=($y) x=($x) sw=($swidth) sh=($sheight)"
+
         getConfig "setup"
 
-	# Need to have global for w inorder to bind the keyRelease events
+	wm geometry . +10+10; # Fix and make a configurable option
+
 	set st_cinfo(logging) "logging@openlogging.org"
 
-	set w(main)      .c
+	set w(main)      $widget
 	set w(buttonbar) $w(main).t.bb
 	set w(create)    $w(main).t.bb.b1
 	set w(quit)      $w(main).t.bb.b2
 	set w(logo)      $w(main).t.bb.l
 	set w(label)     $w(main).t.l
+	set w(help)      $w(main).t.t.t
 	set w(info)      $w(main).t.info
 	set w(msg)       $w(main).t.info.msg
 	set w(entry)     $w(main).t.e
@@ -358,16 +382,16 @@ proc create_config {} \
 		label $w(main).t.label \
 		    -text "Configuration Info" \
 		    -bg $gc(setup.BG)
-		frame $w(main).t.l -bg $gc(setup.BG)
-		frame $w(main).t.e -bg $gc(setup.BG)
-		frame $w(main).t.info -bg $gc(setup.BG)
+		frame $w(label) -bg $gc(setup.BG)
+		frame $w(entry) -bg $gc(setup.BG)
+		frame $w(info) -bg $gc(setup.BG)
 		    message $w(msg) \
 			-width 200 \
 			-bg $gc(setup.mandatoryColor) \
 			-text "The highlighted items on the right are \
 			    mandatory  fields"
 		    pack $w(msg) -side bottom  -pady 10
-		# create button bar on bottom
+		# create button bar at the bottom of the app
 		frame $w(buttonbar) -bg $gc(setup.BG)
 		    button $w(create) \
 			-text "Create Repository" \
@@ -382,14 +406,18 @@ proc create_config {} \
 			-bg $gc(setup.BG) \
 			-command "global st_dlg_button; set st_dlg_button 1"
 		    pack $w(quit) -side left -expand 1 -padx 20 -pady 10
-	# text widget to contain info about config options
+	# text widget to contain help about config options
 	frame $w(main).t.t -bg $gc(setup.BG)
-	    text $w(main).t.t.t -width 80 -height 10 -wrap word \
+	    text $w(help) \
+		-width 80 \
+		-height 10 \
+		-wrap word \
 		-background $gc(setup.mandatoryColor) \
 		-yscrollcommand " $w(main).t.t.scrl set " 
-	    scrollbar $w(main).t.t.scrl -bg $gc(setup.BG) \
-	    -command "$w(main).t.t.t yview"
-	pack $w(main).t.t.t -fill both -side left -expand 1
+	    scrollbar $w(main).t.t.scrl \
+		-bg $gc(setup.BG) \
+		-command "$w(help) yview"
+	pack $w(help) -fill both -side left -expand 1
         pack $w(main).t.t.scrl -side left -fill both
 	pack $w(buttonbar) -side bottom  -fill x -expand 1
 	pack $w(main).t.t -side bottom -fill both -expand 1
@@ -399,12 +427,16 @@ proc create_config {} \
 
 	foreach desc $st_g(topics) {
 		    #puts "desc: ($desc) desc: ($desc)"
-		    label $w(label).$desc -text "$desc" -justify right \
-			-bg $gc(setup.BG) -font $gc(setup.fixedFont)
+		    label $w(label).$desc \
+			-text "$desc" \
+			-justify right \
+			-bg $gc(setup.BG) \
+			-font $gc(setup.fixedFont)
 		    if {$desc == "category"} {
-		    	createCatMenu $w(main).t.e.$desc
+			    createCatMenu $w(main).t.e.$desc
 		    } else {
-			    entry $w(entry).$desc -width 30 -relief sunken \
+			    entry $w(entry).$desc \
+				-width 30 -relief sunken \
 				-bd 2 -bg $gc(setup.BG) \
 				-textvariable st_cinfo($desc) \
 				-font $gc(fixedFont)
@@ -416,19 +448,23 @@ proc create_config {} \
 		    }
 		    grid $w(label).$desc  -pady 1 -sticky e -ipadx 3
 		    bind $w(entry).$desc <FocusIn> "
-			$w(main).t.t.t configure -state normal;\
-			$w(main).t.t.t delete 1.0 end;\
-			$w(main).t.t.t insert insert \$st_g($desc);\
-			$w(main).t.t.t configure -state disabled"
+			$w(help) configure -state normal;\
+			$w(help) delete 1.0 end;\
+			$w(help) insert insert \$st_g($desc);\
+			$w(help) configure -state disabled"
 	}
 	# Highlight mandatory fields
 	$w(entry).repository config -bg $gc(setup.mandatoryColor)
 	$w(entry).description config -bg $gc(setup.mandatoryColor)
 	$w(entry).logging config -bg $gc(setup.mandatoryColor)
 	$w(entry).email config -bg $gc(setup.mandatoryColor)
+	$w(entry).category config -bg $gc(setup.mandatoryColor)
 
 	bind $w(entry).repository <KeyRelease> {
-		#check_config $widget
+		check_config
+	}
+	bind $w(entry).category <ButtonRelease> {
+		check_config
 	}
 	bind $w(entry).description <KeyRelease> {
 		check_config
@@ -451,15 +487,7 @@ proc create_config {} \
 	pack $w(main).t
 	pack $w(main)
 	wm protocol . WM_DELETE_WINDOW "handle_close ."
-	#if {[$w.t.e.repository selection present] == 1} {
-	#	puts "Repository selected"
-	#}
-	tkwait variable st_dlg_button
-	if {$st_dlg_button != 0} {
-		puts stderr "Cancelling creation of repository"
-		exit
-	}
-	destroy $w(main)
+
 	return 0
 }
 
@@ -514,24 +542,18 @@ proc getMessages {} \
 			set st_g($topic) ""
 		}	
 	}
-	catch {close $fid}
-	catch {close $hfid}
+	catch { close $fid }
+	catch { close $hfid }
 }
 
 proc main {} \
 {
 	global env argc argv st_repo_name st_dlg_button st_cinfo st_g w
+	global gc
 
 	setbkdir
 	license_check
 	getMessages
-
-	set swidth [winfo screenwidth .]
-	set sheight [winfo screenheight .]
-	set x [expr {($swidth/2) - 100}]
-	set y [expr {($sheight/2) - 100}]
-
-	wm geometry . +$x+$y
 
 	# Override the repo name found in the .bkrc file if argc is set
 	if {$argc == 1} {
@@ -539,18 +561,25 @@ proc main {} \
 	} else {
 		set st_cinfo(repository) ""
 	}
-	create_config
+	create_config .c
 	get_config_info
+
+	tkwait variable st_dlg_button
+	if {$st_dlg_button != 0} {
+		puts stderr "Cancelling creation of repository"
+		exit
+	}
 	if {[create_repo] == 0} {
+		destroy $w(main)
 		tk_messageBox -title "Repository Created" \
 		    -type ok -icon info \
 		    -message "$st_cinfo(repository) repository created"
 		exit
 	} else {
+		destroy $w(main)
 		displayMessage "Failed to create repository"
 	}
 }
 
-#console show
 bk_init
 main
