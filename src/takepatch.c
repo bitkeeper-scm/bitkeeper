@@ -640,6 +640,7 @@ apply:
 	patchList = 0;
 	no = 0;
 	line = 0;
+	if (gcaPath) free(gcaPath);
 	return (0);
 }
 

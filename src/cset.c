@@ -30,7 +30,7 @@ usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
 int	csetCreate(sccs *cset, int flags, char *sym);
 int	csetInit(sccs *cset, int flags, char *sym);
 void	csetlist(sccs *cset);
-void	csetList(sccs *cset, char *rev);
+void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 void	csetDeltas(sccs *sc, delta *start, delta *d);
 void	dump(MDBM *db, FILE *out);
 int	sameState(const char *file, const struct stat *sb);
@@ -68,7 +68,7 @@ main(int ac, char **av)
 	int	flags = 0;
 	int	c, list = 0;
 	char	*sym = 0;
-	int	cFile = 0;
+	int	cFile = 0, ignoreDeleted = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -77,9 +77,10 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "c|dil|m|t;pr|R|sS;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "c|dDil|m|t;pr|R|sS;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'd': doDiffs++; break;
+		    case 'D': ignoreDeleted++; break;
 		    case 'i':
 			flags |= EMPTY|NEWFILE;
 			break;
@@ -188,11 +189,13 @@ usage:		fprintf(stderr, "%s", cset_help);
 		RANGE("cset", cset, 1, 1);
 		csetlist(cset);
 next:		sccs_free(cset);
+		if (cFile) free(comment);
 		purify_list();
 		return (0);
 	    case 2:
-	    	csetList(cset, r[0]);
+	    	csetList(cset, r[0], ignoreDeleted);
 		sccs_free(cset);
+		if (cFile) free(comment);
 		purify_list();
 		return (0);
 	}
@@ -205,6 +208,7 @@ next:		sccs_free(cset);
 	 */
 	c = csetCreate(cset, flags, sym);
 	if (cFile) free(comment);
+	purify_list();
 	return (c);
 }
 
@@ -258,19 +262,15 @@ intr:		sccs_whynot("cset", cset);
 }
 
 void
-csetList(sccs *cset, char *rev)
+csetList(sccs *cset, char *rev, int ignoreDeleted)
 {
 	MDBM	*db = csetIds(cset, rev, 1);	/* db{fileId} = csetId */
 	MDBM	*idDB;				/* db{fileId} = pathname */
 	kvpair	kv;
-	datum	k, v;
 	char	*t;
 	sccs	*sc;
 	delta	*d;
 	int  	doneFullRebuild = 0;
-
-	fprintf(stderr, "cset -t currently unimplemented\n");
-	exit(1);
 
 	if (!db) {
 		fprintf(stderr,
@@ -279,57 +279,40 @@ csetList(sccs *cset, char *rev)
 	}
 
 	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
-		perror("idcache");
-		exit(1);
+		system("bk sfiles -r");
+		doneFullRebuild = 1;
+		unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+			perror("idcache");
+			exit(1);
+		}
 	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		k = kv.key;
-retry:		v = mdbm_fetch(idDB, k);
-		unless (v.dsize) {
-			/* cache miss, rebuild cache */
-			unless (doneFullRebuild) {
-				mdbm_close(idDB);
-				fprintf(stderr, "Rebuilding caches...\n");
-				system("bk sfiles -r");
-				doneFullRebuild = 1;
-				unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
-					perror("idcache");
-					exit(1);
-				}
-				goto retry;
-			}
-			fprintf(stderr,
-				"cset: missing id %s, sfile removed?\n",
-				kv.key.dptr);
-			continue;
-		}
-		t = name2sccs(v.dptr);
-		unless (sc = sccs_init(t, NOCKSUM)) {
+		t = kv.key.dptr;
+		unless (sc = sccs_keyinit(t, NOCKSUM, idDB)) {
 			fprintf(stderr, "cset: init of %s failed\n", t);
 			exit(1);
 		}
-		free(t);
 		unless (d = sccs_findKey(sc, kv.val.dptr)) {
 			fprintf(stderr,
 			    "cset: can't find delta '%s' in %s\n",
 			    kv.val.dptr, sc->sfile);
 			exit(1);
 		}
-// XXX TODO: This should probably be an option
-//#define	IGNORE_DELETED_FILES_AT_LIST
-#ifdef	IGNORE_DELETED_FILES_AT_LIST
-		/*
-		 * filter out deleted file
-		 */
-		assert(d->pathname);
-		p = strrchr(d->pathname, '/');
-		p = p ? &p[1] : d->pathname;
-		len = strlen(p);
-		if ((len >= 6) && (strncmp(p, ".del-", 5) == 0)) {
-			sccs_free(sc);
-			continue;
+		if (ignoreDeleted) {
+			char *p;
+			int len;
+			/*
+			 * filter out deleted file
+			 */
+			assert(d->pathname);
+			p = strrchr(d->pathname, '/');
+			p = p ? &p[1] : d->pathname;
+			len = strlen(p);
+			if ((len >= 6) && (strncmp(p, ".del-", 5) == 0)) {
+				sccs_free(sc);
+				continue;
+			}
 		}
-#endif
 		printf("%s:%s\n", sc->gfile, d->rev);
 		sccs_free(sc);
 	}
@@ -520,6 +503,8 @@ next:
 	mdbm_close(idDB);
 	mdbm_close(pdb);
 	mdbm_close(db);
+	if (csetid) free(csetid);
+	if (sort) fclose(sort);
 	sprintf(buf, "/tmp/csort%d", getpid()); unlink(buf);
 	if (verbose && makepatch) {
 		fprintf(stderr,
@@ -829,7 +814,6 @@ csetCreate(sccs *cset, int flags, char *sym)
 	assert(d->date == date); /* make sure time stamp did not change */
 out:	sccs_free(cset);
 	commentsDone(saved);
-	purify_list();
 	return (error);
 }
 
@@ -941,4 +925,5 @@ sccs_patch(sccs *s)
 		fprintf(stderr, "\n");
 	}
 	ndeltas += deltas;
+	if (list) free(list);
 }
