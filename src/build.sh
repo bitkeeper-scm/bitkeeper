@@ -1,11 +1,15 @@
 #!/bin/sh
 
+orig_args="$@"
+
 #Set up environment for Microsoft VC++ compiler
 ms_env()
 {
 	test "$MSYSBUILDENV" || {
-		echo ERROR not running in official MSYS build environment
-		exit 1
+		echo running in wrong environment, respawning...
+		bk get -S ./buildenv.sh
+		export BK_USEMSYS=1
+		exec bk sh ./buildenv.sh $0 "$orig_args"
 	}
 
 	SYS=win32
