@@ -3917,6 +3917,12 @@ sccs_init(char *name, u32 flags, project *proj)
 	static	int _YEAR4;
 	delta	*d;
 
+	if (strchr(name, '\n') || strchr(name, '\r')) {
+		fprintf(stderr,
+		   "bad file name, file name must not contain LF or CR "
+		   "charcter\n", name);
+		return (0);
+	}
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));

@@ -149,6 +149,15 @@ out:
 		return (0);
 	}
 
-	if (host[0]) done = 1;
+	if (host[0]) {
+		if (strchr(host, '\n') || strchr(host, '\r')) {
+			fprintf(stderr,
+			    "bad host name: host name must not contain LF or "
+			    "CR  character\n");
+			host[0] = 0; /* erase bad host name */
+		} else {
+		 	done = 1;
+		}
+	}
 	return (host);
 }
