@@ -172,13 +172,23 @@ logChangeSet(char *rev, int quiet)
 	char	commit_log[MAXPATH], buf[MAXLINE], *p;
 	char	subject[MAXLINE];
 	char	start_rev[1024];
+	char	*to = logAddr();
 	FILE	*f;
 	int	dotCount = 0, n;
+	char 	*av[] = {
+		"bk",
+		"log",
+		"http://www.bitkeeper.com/cgi-bin/logit",
+		to,
+		subject, 
+		commit_log,
+		0
+	};
 
-	unless(is_open_logging(logAddr())) {
+	unless(is_open_logging(to)) {
 		sendConfig("config@openlogging.org", 1, 1);
 	}
-	if (streq("none", logAddr())) return;
+	if (streq("none", to)) return;
 
 	// XXX TODO  Determine if this is the first rev where logging is active.
 	// if so, send all chnage log from 1.0
@@ -214,8 +224,21 @@ logChangeSet(char *rev, int quiet)
 		printf("sending ChangeSet to %s...\n", logAddr());
 	}
 	sprintf(subject, "BitKeeper ChangeSet log: %s", project_name());
-	mail(logAddr(), subject, commit_log);
+#ifdef WIN32
+	/*
+	 * On win32, there is not portable email interface,
+	 * so we use HTTP to do open logging.
+	 */
+	if (is_open_logging(to)) {
+		if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(commit_log);
+	} else {
+		mail(to, subject, commit_log);
+		unlink(commit_log);
+	}
+#else
+	mail(to, subject, commit_log);
 	unlink(commit_log);
+#endif
 }
 
 int
@@ -379,9 +402,6 @@ sent sucessfully.\n\
 	assert(uname(&ubuf) == 0);
 	if (strstr(ubuf.sysname, "IRIX")) {
 		sprintf(buf, "%s %s < %s", mail, to, file);
-	} else if (strstr(ubuf.sysname, "Windows")) {
-		sprintf(buf,
-		    "%s/%s -s \"%s\" %s < %s", bin, mail, subject, to, file);
 	}  else {
 		sprintf(buf, "%s -s \"%s\" %s < %s", mail, subject, to, file);
 	}
