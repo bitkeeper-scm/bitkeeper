@@ -1656,13 +1656,24 @@ has_temp_license()
 	char ack[5];
 	int fd;
 	int timeleft = 30;
+#define PULL	0x01
+#define	CLONE	0x02
+	int need = PULL|CLONE;
+	int i;
 
 	extern int licenseServer[2];
 	extern time_t licenseEnd;
 
-	fd = licenseServer[0];
-
 	if (time(0) < licenseEnd) return 1;
+
+
+	for (i=0; cmds[i].name; i++) {
+		if (streq(cmds[i].name, "pull")) need &= ~PULL;
+		if (streq(cmds[i].name, "clone")) need &= ~CLONE;
+	}
+	if (need) return 0;
+
+	fd = licenseServer[0];
 
     again:
 	FD_ZERO(&fds);
