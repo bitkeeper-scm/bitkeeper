@@ -1,0 +1,93 @@
+.so bk-macros
+.TH "bk bkscc" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk bkscc \- BitKeeper and SCC API
+.SH DESCRIPTION
+.LP
+The bkscc.dll is a dynamic library which allows BitKeeper to integrate with
+any IDE which supports the Microsoft SCC API interface. In this document
+we will assume the IDE is VC++, since this is the IDE we have tested.
+After bkscc.dll is installed VC++ will discover the library automatically
+by looking it up in the registry.  VC++ will automatically add a
+"source control" entry under the "project" menu. Most of the BitKeeper
+functions can be accessed via the new menu entry.
+.LP
+If you are a BitKeeper user, you will notice there some conflicts
+between BitKeeper terminology and VC++ terminology.
+What the SCC API calls a "project" is not the same as a BitKeeper
+Project.  A typical SCC API Project usually contains one binary for
+example, a ".exe" or ".dll" file.  A typical BitKeeper project/package 
+can contain multiple ".exe" and ".dll" files. 
+.LP
+A VC++ workspace is roughly equivalent to a BitKeeper repository.
+.LP
+A VC++ workspace file is roughly equivalent to a typical master (or
+top-level) Makefile.
+.LP
+A VC++ project is equivalent to a sub-directory in a BitKeeper
+repository.
+.LP
+A VC++ project file is roughly equivalent to a mini Makefile sitting
+a sub-directory of a BitKeeper repository.
+.LP
+While it is possible to create a different mapping of VC++ concepts to
+BitKeeper concepts, the above mapping is the cleanest and simplest.
+Staying within the above model is strongly recommended.
+.SH RECOMMENDED USAGE
+.LP
+As a consequence of the above model, the workspace must be the first
+file created.  It must be placed at the BitKeeper root directory and
+it must be the first file added to the repository. A typical usage
+scenario is as follows:
+.TP
+.B 1
+Start up the VC++ GUI
+.tp
+.B 2
+Left  click on file->new-workspace
+.tp
+.B 3
+After the workspace file is created, add text to the workspace file
+and select "add to source control".  A BitKeeper
+setup screen to create a Master repository will pop-up. 
+Fill in the form and left click the "create repository" button. 
+This automatically creates a BitKeeper root directory as the 
+parent directory the workspace file.
+.tp
+.B 4
+At this point the BitKeeper repository is created.
+You can start adding project(s) to the workspace, (Since the
+VC++ workspace directory is the same as the BitKeeper root
+directory, we can use the term BitKeeper root and workspace
+interchangeably.)
+.tp
+.B 5
+Left click on file->new->project;
+.B IMPORTANT: 
+always select "add to current workspace",
+when this menu is used.  This will create a sub-directory
+under the BitKeeper root where all project files will go.
+.tp
+.B 6
+Follow the usual VC++ procedure to create the type of VC++ project
+wanted.( e.g a win32 application)
+.tp
+.B 7
+Right click on the project file and select "add to source control"
+.tp
+.B 8
+Edit/compile/debug source code until ready to create a ChangeSet.
+To create a ChangeSet: left click on project->source\ control->BitKeeper.
+This will invoke bk citool.  Add checkin comments
+and push the "commit" button to create a BitKeeper ChangeSet.
+.SH BUGS
+.LP
+Closing a workspace file and opening a different one
+without restarting VC++ will cause a warning message
+about mixing multiple workspaces together. This is because VC++
+does not inform the source code control provider of workspace
+switching event.
+.SH "SEE ALSO"
+.SA citool 1
+.SH CATEGORY
+.B GUI-tools
