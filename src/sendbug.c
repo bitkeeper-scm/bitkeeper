@@ -14,7 +14,8 @@ sendbug_main(int ac,  char **av)
 {
 	char	buf[MAXLINE], bug[MAXPATH], cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
-	int	i, j, c, rc, webmail, textmode = 0;
+	char	*display;
+	int	i, j, c, rc, webmail, mswin = 0, textmode = 0;
 	FILE	*f;
 	remote	*r;
 	MMAP	*m;
@@ -25,6 +26,7 @@ sendbug_main(int ac,  char **av)
 	 */
 #ifdef	WIN32
 	webmail = 1;
+	mswin = 1;
 #else
 	webmail = 0;
 #endif
@@ -44,8 +46,8 @@ sendbug_main(int ac,  char **av)
 		}
 	}
 
-	unless ((textmode == 1) || ((getenv("DISPLAY") == NULL) ||
-	    streq(getenv("DISPLAY"), ""))) {
+	display = getenv("DISPLAY");
+	if (!textmode && ((display && !streq(display, "")) || mswin)) {
 		argv[0] = find_wish();
 		sprintf(cmd_path, "%s/bugform", bin);
 		argv[1] = cmd_path;
