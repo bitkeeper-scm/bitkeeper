@@ -257,8 +257,6 @@ getline2(remote *r, char *buf, int size)
 	}
 }
 
-private jmp_buf	jmp;
-private	handler	old;
 private	int	caught;
 private	void	abort_prompt(int dummy) { caught++; }
 
@@ -272,7 +270,7 @@ prompt(char *msg, char *buf)
 	int	ret;
 
 	caught = 0;
-	old = sig_catch(abort_prompt);
+	sig_catch(abort_prompt);
 	write(2, msg, strlen(msg));
 	write(2, " ", 1);
 	ret = getline(0, buf, MAXPATH) > 1;
@@ -280,7 +278,7 @@ prompt(char *msg, char *buf)
 		fprintf(stderr, "\n(interrupted)\n");
 		assert(!ret);
 	}
-	(void)sig_catch(old);
+	sig_restore();
 	return (ret);
 }
 
@@ -291,16 +289,16 @@ confirm(char *msg)
 	int	gotsome;
 
 	caught = 0;
-	old = sig_catch(abort_prompt);
+	sig_catch(abort_prompt);
 	fflush(stdout);
-	write(2, msg, strlen(msg));
-	write(2, " (y/n) ", 7);
+	write(1, msg, strlen(msg));
+	write(1, " (y/n) ", 7);
 	gotsome = getline(0, buf, sizeof(buf)) > 1;
 	if (caught) {
 		fprintf(stderr, "\n(interrupted)\n");
 		assert(!gotsome);
 	}
-	(void)sig_catch(old);
+	sig_restore();
 	return (gotsome && ((buf[0] == 'y') || (buf[0] == 'Y')));
 }
 
@@ -310,13 +308,19 @@ confirm(char *msg)
 int
 prompt_main(int ac, char **av)
 {
-	int	c;
+	int	i, c, ret, ask = 1, nogui = 0;
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
+	char	*type = 0;
 	pid_t	pid;
-	int	ret;
 
-	while ((c = getopt(ac, av, "f:n:p:t:y:")) != -1) {
+	while ((c = getopt(ac, av, "cegiwxf:n:p:t:y:")) != -1) {
 		switch (c) {
+		    case 'c': ask = 0; break;
+		    case 'e': type = "-E"; break;
+		    case 'g': nogui = 1; break;
+		    case 'i': type = "-I"; break;
+		    case 'w': type = "-W"; break;
+		    case 'x': /* ignored, see notice() for why */ break;
 		    case 'f': file = optarg; break;
 		    case 'n': no = optarg; break;
 		    case 'p': prog = optarg; break;
@@ -330,9 +334,8 @@ prompt_main(int ac, char **av)
 err:		system("bk help -s prompt");
 		exit(1);
 	}
-	if (getenv("BK_GUI")) {
-		int	i;
-		char	*nav[18];
+	if (getenv("BK_GUI") && !nogui) {
+		char	*nav[19];
 
 		nav[i=0] = "bk";
 		nav[++i] = "msgtool";
@@ -340,12 +343,14 @@ err:		system("bk help -s prompt");
 			nav[++i] = "-T";
 			nav[++i] = title;
 		}
-		assert(no);
-		nav[++i] = "-N";
-		nav[++i] = no;
+		if (no) {
+			nav[++i] = "-N";
+			nav[++i] = no;
+		}
 		assert(yes);
 		nav[++i] = "-Y";
 		nav[++i] = yes;
+		if (type) nav[++i] = type;
 		if (file) {
 			nav[++i] = "-F";
 			nav[++i] = file;
@@ -362,6 +367,24 @@ err:		system("bk help -s prompt");
 		exit(2);
 	}
 
+	if (type) {
+		int	len, half;
+
+		switch (type[1]) {
+		    case 'x': type = 0; break;
+		    case 'E': type = "Error"; break;
+		    case 'I': type = "Info"; break;
+		    case 'W': type = "Warning"; break;
+		}
+		len = strlen(type) + 2;
+		half = (80 - len) / 2;
+		for (i = 0; i < half; ++i) fputc('=', stdout);
+		fputc(' ', stdout);
+		fputs(type, stdout);
+		fputc(' ', stdout);
+		for (i = 0; i < half; ++i) fputc('=', stdout);
+		fputc('\n', stdout);
+	}
 	if (file || prog) {
 		FILE	*f;
 		char	buf[1024];
@@ -386,6 +409,8 @@ err:		system("bk help -s prompt");
 		fputs(av[optind], stdout);
 		fputc('\n', stdout);
 	}
+	/* No exit status if no prompt */
+	unless (ask) exit(0);
 	exit(confirm(yes ? yes : "OK") ? 0 : 1);
 }
 
@@ -843,25 +868,25 @@ remote_lock_fail(char *buf, int verbose)
 }
 
 /*
- * Return ture if reposirory have less than BK_MAX_FILES file
+ * Return the number of files in a repository.
  */
 int
-smallTree(int threshold)
+nFiles(void)
 {
         FILE    *f;
         int     i = 0;
         char    buf[ 2 * MAXKEY + 10];
+	char	*p = getenv("_BK_NFILES");
  
         f = popen("bk -R get -qkp ChangeSet", "r");
         assert(f);
         while (fnext(buf, f)) {
-                if (++i > threshold) {
-                        pclose(f);
-                        return (0);
-                }
+                i++;
         }
         pclose(f);
-        return (1);
+	/* regressions: allow it to be adjusted up only */
+	if (p && (atoi(p) > i)) i = atoi(p);
+        return (i);
 }         
 
 /*

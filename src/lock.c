@@ -3,8 +3,8 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private jmp_buf	jmp;
-private	void abort_lock(int dummy) { longjmp(jmp, 1); }
+private	int	caught;
+private	void	abort_lock(int dummy) { caught++; }
 
 /*
  * lock - repository level locking
@@ -43,25 +43,7 @@ usage:			system("bk help -s lock");
 	if (av[optind]) chdir(av[optind]);
 	sccs_cd2root(0, 0);
 	pid = getpid();
-	if (setjmp(jmp)) {
-		/*
-		 * Win32 note: 
-		 * You cannot do a cygwin "kill" to a non-cygwin process
-		 * such as "bk lock -w". You will get "Operation not permitted"
-		 * This means, on win32, we will never get here...
-	 	 * 
-		 * Also, according to the win32 docs on the raise() interfaces,
-		 * there is no parameter to specifies the pid, only the signal.
-		 * This means you can only send a signal to yourself. It is
-		 * not clear how win32 translate a cntl-c to a signal for a
-		 * The console may have takean over the context of the
-		 $ application to rasie() the signal.
-		 */
-		if (what == 'r') repository_rdunlock(0);
-		if (what == 'w') repository_wrunlock(0);
-		exit(0);
-	}
-	(void)sig_catch(abort_lock);
+	sig_catch(abort_lock);
 	switch (what) {
 	    case 'r':	/* read lock the repository */
 		if (repository_rdlock()) {
@@ -72,7 +54,8 @@ usage:			system("bk help -s lock");
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(500000);
-		} while (repository_mine('r'));
+		} while (repository_mine('r') && !caught);
+		if (caught) repository_rdunlock(0);
 		exit(0);
 	    
 	    case 'w':	/* write lock the repository */
@@ -84,7 +67,8 @@ usage:			system("bk help -s lock");
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(500000);
-		} while (repository_mine('w'));
+		} while (repository_mine('w') && !caught);
+		repository_wrunlock(0);
 		exit(0);
 
 	    case 'l':	/* list lockers / exit status */

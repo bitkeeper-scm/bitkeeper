@@ -307,6 +307,7 @@
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
+#define	OPENLOG_ADDR	"logging@openlogging.org"
 #define	OPENLOG_URL	"http://config.openlogging.org:80////LOG_ROOT///"
 #define	OPENLOG_BACKUP	"http://config2.openlogging.org:80////LOG_ROOT///"
 #define	OPENLOG_HOST	"config.openlogging.org"
@@ -871,7 +872,8 @@ void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
 typedef	void (*handler)(int);
-handler	sig_catch(handler);
+void	sig_catch(handler);
+void	sig_restore(void);
 int	sig_ignore(void);
 void	sig_default(void);
 int	csetIds(sccs *cset, char *rev);
@@ -1135,6 +1137,9 @@ int	run_check(char *partial);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign);
 void	delete_cset_cache(char *rootpath, int save);
+int	nFiles(void);
+u32	bk_license(char *user);
+void	notice(char *key, char *arg, char *type);
 
 extern char *bk_vers;
 extern char *bk_utc;

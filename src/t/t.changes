@@ -16,10 +16,10 @@
 echo $N Create initial repository ...................................$NL
 cat > c <<EOF
 logging: none
-license: $BK_LIC_P
-licsign1: $BK_LIC_P1
-licsign2: $BK_LIC_P2
-licsign3: $BK_LIC_P3
+license: $BKL_P
+licsign1: $BKL_P1
+licsign2: $BKL_P2
+licsign3: $BKL_P3
 description: BitKeeper Test repository
 email: nobody@nowhere.bk
 EOF

@@ -10,22 +10,20 @@
  * 		Unix  version  of sccs_getXXXX
  * -------------------------------------------------------------
  */
-private jmp_buf	jmp;
-private	handler	old;
 private	int	counter;
 private	void	intr(int dummy) { counter++; };
 
 private	void
-catch()
+catch(void)
 {
 	counter = 0;
-	old = sig_catch((handler)intr);
+	sig_catch((handler)intr);
 }
 
 private	int
 caught(char *what)
 {
-	sig_catch(old);
+	sig_restore();
 	if (counter) fprintf(stderr, "\n%s aborted due to interrupt.\n", what);
 	return (counter);
 }

@@ -142,9 +142,10 @@ fi
 echo OK
 # Note that we are in the repository with the newer key in the slot.
 echo $N Pull them, should not ask, should union, oldest in slot .....$NL
-echo n | bk pull $Q -t ../project >/dev/null 2>&1
+echo n | bk pull -d -t ../project > OUT 2>&1
 test -d RESYNC && {
 	echo failed to use existing logging_ok, left RESYNC
+	cat OUT
 	exit 1
 }
 KEY=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
@@ -409,9 +410,10 @@ rm BitKeeper/etc/SCCS/s.logging_ok
 # User from removed file
 BK_USER=joe
 BK_HOST=blow.dork
-echo y | bk pull $Q -t ../project >/dev/null 2>&1
+echo y | bk pull -d -t ../project >OUT 2>&1
 test -d RESYNC && {
 	echo failed to use existing logging_ok, left RESYNC
+	cat OUT
 	exit 1
 }
 cat <<EOF > X
