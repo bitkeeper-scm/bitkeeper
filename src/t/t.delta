@@ -126,15 +126,17 @@ echo OK
 echo $N Make sure delta -G works ....................................$NL
 # work around for cygwin bug : off by one hour
 ${ECHO} "G change data" > init3
+echo "89/01/02 03:04:00" > CMP1 
 case X`uname -s` in
-    XIRIX*)	touch -t 8901020304.00 init3
-		echo "89/01/02 03:04:00" > CMP1 
-    	;;
-    XCYGWIN*)	touch -m 0102030489 init3
-		echo "89/01/02 03:04:00" > CMP1 
+    XCYGWIN*)
+	# XXX - Andrew this looks wrong
+	touch -t 0102030489 init3
 	;;
-    *)		touch -m 0102030489 init3
-		echo "89/01/02 03:04:00" > CMP1 
+    XHP-UX*|XFreeBSD*|XSunOS*|XIRIX*)
+	touch -t 8901020304.00 init3
+	;;
+    *)
+	echo do not know how to touch on this platform, edit t.delta
     	;;
 esac
 delta $Q -i -G init3
@@ -143,8 +145,6 @@ prs -h -d":D: :T:" init3 > CMP2
 case X`uname -s` in
     XCYGWIN*)	sed -e"s/:02$/:00/" CMP2 >  CMPX
 		sed -e"s/ 04:04:/ 03:04:/" CMPX > CMP2
-	;;
-	*)
 	;;
 esac
 cmp -s CMP1 CMP2
