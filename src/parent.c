@@ -104,7 +104,7 @@ getParent()
 	p = aprintf("%s/%s", bk_proj->root, PARENT);
 	f = open(p, 0, 0);
 	free(p);
-	unless (f) return (0);
+	unless (f >= 0) return (0);
 	len = fsize(f);
 	p = calloc(1, len+1);
 	if (read(f, p, len) != len) {
