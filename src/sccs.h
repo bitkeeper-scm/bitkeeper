@@ -64,6 +64,8 @@
 #define	GET_FULLPATH	0x00000010	/* like GET_MODNAME but full relative */
 #define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
 #define	GET_SEQ		0x00000040	/* get -O: prefix with sequence no */
+#define	GET_COMMENTS	0x00000080	/* diffs -H: prefix diffs with hist */
+#define	DIFF_COMMENTS	GET_COMMENTS
 #define	GET_PREFIX	\
     (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
      GET_FULLPATH|GET_PREFIXDATE|GET_SEQ)
@@ -1181,6 +1183,15 @@ void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
 int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
     int (*compare)(int a, int b));
 int   diffline(char *left, char *right);
+typedef	void (*set_pfunc)(sccs *, delta *);
+ser_t	*set_get(sccs *s, char *rev);
+void	set_list(sccs *s, char *rev, set_pfunc p);
+void	set_member(sccs *s, char *rev, ser_t *map, set_pfunc p);
+void	set_diff(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_and(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_or(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_xor(sccs *s, ser_t *a, ser_t *b, set_pfunc p);
+void	set_set(sccs *s, char *rev, set_pfunc p);
 
 extern char *bk_vers;
 extern char *bk_utc;

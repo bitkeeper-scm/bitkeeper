@@ -54,13 +54,12 @@ int
 diffs_main(int ac, char **av)
 {
 	int	flags = DIFF_HEADER|SILENT, verbose = 0, rc, c;
-	int	errors = 0;
+	int	empty = 0, errors = 0;
 	char	kind;
 	char	*name;
 	project	*proj = 0;
-	char	*Rev = 0, *cset = 0, *boundaries = 0;
+	char	*Rev = 0, *boundaries = 0;
 	char	*opts, optbuf[20];
-	char	rset[MAXPATH];
 	RANGE_DECL;
 
 	debug_main(av);
@@ -77,14 +76,19 @@ diffs_main(int ac, char **av)
 	opts = optbuf;
 	*opts++ = '-';
 	*opts = 0;
-	while ((c = getopt(ac, av, "bBcC|d;Dfhl|Mnpr|R|suUvw")) != -1) {
+	while ((c = getopt(ac, av, "bBcC|d;DefhHl|Mnpr|R|suUvw")) != -1) {
 		switch (c) {
 		    case 'b': /* fall through */		/* doc 2.0 */
 		    case 'B': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
+		    case 'H':
+			flags |= DIFF_COMMENTS;
+			putenv("BK_YEAR4=YES");  /* rm when YEAR4 is default */
+			break;
 		    case 'c': kind = DF_CONTEXT; break;		/* doc 2.0 */
-		    case 'C': cset = optarg; break;		/* doc */
+		    case 'C': getMsg("diffs-C", 0, 0, 0, stdout); exit(0);
 		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
+		    case 'e': empty = 1; break;
 		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
 		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
@@ -122,39 +126,13 @@ usage:			system("bk help -s diffs");
 		return (1);
 	}
 
-	if (cset) {
-		char	*cmd = aprintf("bk rset -l%s", cset);
-
-		if (av[optind]) {
-			fprintf(stderr, "%s: No files with -C\n", av[0]);
-			free(cmd);
-			return(1);
-		}
-		if (sccs_cd2root(0, 0) == -1) {
-			fprintf(stderr, "Cannot find repository root.\n");
-			return (1);
-		}
-		bktmp(rset, "rset");
-		cmd = aprintf("bk rset -l%s > %s", cset, rset);
-		system(cmd);
-		free(cmd);
-		freopen(rset, "r", stdin);
-	}
-		
-	if (cset) {
-		static	char *nav[] = { "-", 0 };
-
-		name = sfileFirst("diffs", nav, SF_GFILE);
-	} else {
-		name = sfileFirst("diffs", &av[optind], 0);
-	}
+	name = sfileFirst("diffs", &av[optind], 0);
 	while (name) {
 		int	ex = 0;
 		sccs	*s = 0;
 		char	*r1 = 0, *r2 = 0;
 		int	save = things;
 
-		if (cset && streq(name, CHANGESET)) goto next;
 		/* unless we are given endpoints, don't diff */
 		unless (things || boundaries || Rev || sfileRev()) {
 			char	*gfile = sccs2name(name);
@@ -194,11 +172,16 @@ usage:			system("bk help -s diffs");
 					r[0] = "+";
 				}
 			}
-			RANGE("diffs", s, 0, (flags & SILENT) == 0);
+			if (rangeProcess("diffs", s, 0,
+			    (flags & SILENT) == 0, 1, &things, rd, r, d)) {
+				unless (empty) goto next;
+				s->rstart = s->tree;
+			}
 			if (restore) r[0] = "=";
 		}
 		if (things) {
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
+			if ((things == 2) && (s->rstart == s->rstop)) goto next;
 			if (s->rstop) r2 = s->rstop->rev;
 			/*
 			 * If we did a date specification and that covered only
@@ -278,7 +261,6 @@ next:		if (s) {
 	}
 	if (proj) proj_free(proj);
 	sfileDone();
-	if (cset) unlink(rset);
 	return (errors);
 }
 

@@ -1,3 +1,11 @@
+#diffs-C
+The diffs -C option has been replaced with the -r@rev syntax.  To get the
+same effect as
+
+	bk diffs -C1.123
+try
+	bk -r diffs -r@1.123 -r=
+$
 #monotonic
 If a file is marked as monotonically increasing, and that file has "dangling
 deltas", i.e., deltas which are ahead of the top changeset, then the monotonic
