@@ -471,6 +471,11 @@ main(int ac, char **av, char **env)
 		}
 	}
 
+	if (getenv("BK_REGRESSION") && exists("/build/die")) {
+		fprintf(stderr, "Forced shutdown.\n");
+		exit(1);
+	}
+
 	unless (getenv("BK_TMP")) bktmpenv();
 	/*
 	 * Windows seems to have a problem with stderr under rxvt's.

@@ -389,12 +389,18 @@ get_options()
 get_options $@
 setup_env 
 init_main_loop
+test $PLATFORM = WIN32 && bk bkd -R
 
 # Main Loop #
 FAILED=
 BADOUTPUT=
 for i in $list
 do
+	test -f /build/die && {
+		echo Forced shutdown, dieing.
+		test $PLATFORM = WIN32 && bk bkd -R
+		exit 1
+	}
 echo ''
 	LEN=`echo ${i#t.} | wc -c`
 	LEN=`expr 40 - $LEN`
@@ -480,6 +486,7 @@ I hope your testing experience was positive! :-)
 done
 rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
 test $BK_LIMITPATH && rm -rf $BK_LIMITPATH
+test $PLATFORM = WIN32 && bk bkd -R
 echo
 EXIT=100	# Because I'm paranoid
 echo ------------------------------------------------
