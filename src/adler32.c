@@ -41,6 +41,7 @@ do_checksum(int dataOnly)
 	char	buf[MAXLINE];
 	int	doDiffs = 0;
 	uLong	sum;
+	unsigned int byte_count = 0;
 
 	if (dataOnly) goto Patch;
 
@@ -61,6 +62,7 @@ abort:			fprintf(stderr, "adler32 aborting\n");
 			goto Patch;
 		}
 		fputs(buf, stdout);
+		byte_count += strlen(buf);
 		if (feof(stdin)) {
 eof:			fprintf(stderr, "adler32: did not see patch EOF\n");
 			return (1);
@@ -81,8 +83,10 @@ eof:			fprintf(stderr, "adler32: did not see patch EOF\n");
 			}
 			sum = adler32(sum, "#", 1);
 			fputs("#", stdout);
+			byte_count++;
 			sum = adler32(sum, buf, strlen(buf));
 			fputs(buf, stdout);
+			byte_count += strlen(buf);
 			if (feof(stdin)) goto eof;
 		}
 	}
@@ -93,6 +97,7 @@ eof:			fprintf(stderr, "adler32: did not see patch EOF\n");
 	while (fnext(buf, stdin)) {
 		if (streq(buf, PATCH_PATCH)) break;
 		fputs(buf, stdout);
+		byte_count += strlen(buf);
 		if (feof(stdin)) goto eof;
 	}
 
@@ -104,13 +109,17 @@ Patch:
 	while (fnext(buf, stdin)) {
 		if (streq(buf, PATCH_ABORT)) goto abort;
 		if (streq(buf, PATCH_END)) {
-end:			printf("# Patch checksum=%.8lx\n", sum);
+end:			sprintf(buf, "# Patch checksum=%.8lx\n", sum);
+			fputs(buf, stdout);
+			byte_count += strlen(buf);
 			fflush(stdout);
 			while (fnext(buf, stdin));
+			save_byte_count(byte_count);
 			return (0);
 		}
 		sum = adler32(sum, buf, strlen(buf));
 		fputs(buf, stdout);
+		byte_count += strlen(buf);
 		if (feof(stdin)) goto eof;
 	}
 	unless (dataOnly) goto eof;

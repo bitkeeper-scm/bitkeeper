@@ -269,12 +269,49 @@ drain(int fd)
 	while (read(fd, buf, sizeof(buf)) > 0);
 }
 
+off_t
+get_byte_count()
+{
+
+	char buf[MAXPATH];
+	off_t	byte_count = 0;
+	FILE *f;
+
+	unless (bk_proj && bk_proj->root) return (0);
+	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	f = fopen(buf, "r");
+	if (f) {
+		assert(sizeof(off_t) == 4);
+		fscanf(f, "%u", &byte_count);
+		fclose(f);
+		unlink(buf);
+	}
+	return (byte_count);
+}
+
+
+void
+save_byte_count(unsigned int byte_count)
+{
+	FILE	*f;
+	char	buf[MAXPATH];
+
+	unless (bk_proj && bk_proj->root) return;
+	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	f = fopen(buf, "w");
+	if (f) {
+		fprintf(f, "%u\n", byte_count);
+		fclose(f);
+	}
+}
+
 private	void
 do_cmds()
 {
 	int	ac;
 	char	**av;
 	int	i, ret;
+	int	flags = 0;
 
 	while (getav(&ac, &av)) {
 		getoptReset();
@@ -285,8 +322,19 @@ do_cmds()
 				if (bk_proj) proj_free(bk_proj);
 				bk_proj = proj_init(0);
 			}
-			cmdlog_start(av);
-			if ((ret = cmds[i].cmd(ac, av)) != 0) {
+
+			flags = cmdlog_start(av);
+
+			/*
+			 * Do the real work
+			 */
+			ret = cmds[i].cmd(ac, av);
+
+			cmdlog_end(0, flags);
+
+			if (cmds[i].cmd == cmd_pull) out("OK-Unlocked\n");
+			if (flags & CMD_FAST_EXIT) exit(ret);
+			if (ret != 0) {
 				if (Opts.interactive) {
 					out("ERROR-CMD FAILED\n");
 				}
@@ -295,8 +343,6 @@ do_cmds()
 					drain(0);
 					exit(ret);
 				}
-			} else {
-				cmdlog_end(0);
 			}
 		} else if (av[0]) {
 			out("ERROR-BAD CMD: ");

@@ -15,8 +15,6 @@ please contact sales@bitmover.com\n";
 
 char	*find_wish();
 char	*find_perl5();
-void	cmdlog_start(char **av);
-void	cmdlog_end(int ret);
 void	cmdlog_exit(void);
 int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
@@ -261,7 +259,7 @@ main(int ac, char **av)
 	cmdlog_buffer[0] = 0;
 	if (i = setjmp(exit_buf)) {
 		i -= 1000;
-		cmdlog_end(i);
+		cmdlog_end(i, 0);
 		return (i >= 0 ? i : 1);
 	}
 	atexit(cmdlog_exit);
@@ -342,7 +340,7 @@ main(int ac, char **av)
 		if (streq(cmdtbl[i].name, prog)){
 			cmdlog_start(av);
 			ret = cmdtbl[i].func(ac, av);
-			cmdlog_end(ret);
+			cmdlog_end(ret, 0);
 			exit(ret);
 		}
 	}
@@ -362,7 +360,7 @@ main(int ac, char **av)
 		argv[i] = 0;
 		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret);
+		cmdlog_end(ret, 0);
 		exit(ret);
 	}
 
@@ -393,7 +391,7 @@ main(int ac, char **av)
 		argv[i] = 0;
 		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret);
+		cmdlog_end(ret, 0);
 		exit(ret);
 	}
 
@@ -410,7 +408,7 @@ main(int ac, char **av)
 		argv[i] = 0;
 		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret);
+		cmdlog_end(ret, 0);
 		exit(ret);
 	}
 
@@ -421,7 +419,7 @@ main(int ac, char **av)
 	    streq(prog, "diff3")) {
 		cmdlog_start(av);
 		ret = spawnvp_ex(_P_WAIT, av[0], av);
-		cmdlog_end(ret);
+		cmdlog_end(ret, 0);
 		exit(ret);
 	}
 
@@ -437,8 +435,9 @@ main(int ac, char **av)
 	argv[1] = cmd_path;
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
 	argv[i] = 0;
+	cmdlog_start(av);
 	ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-	cmdlog_end(ret);
+	cmdlog_end(ret, 0);
 	exit(ret);
 }
 
@@ -449,37 +448,39 @@ void
 cmdlog_exit(void)
 {
 	purify_list();
-	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
+	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT, 0);
 }
 
 private	struct {
 	char	*name;
-	int	len;
+	int	flags;
 } repolog[] = {
-	{"pull", 4 },
-	{"push", 4 },
-	{"commit", 6 },
-	{"remote pull", 11 },
-	{"remote push", 11 },
-	{"remote clone", 12 },
+	{"pull", 0},
+	{"push", 0},
+	{"commit", 0},
+	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
+	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK},
+	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
 	{ 0, 0 },
 };
 
-void
+int
 cmdlog_start(char **av)
 {
-	int	i, len = 0;
+	int	i, len = 0, cflags = 0;
 
 	cmdlog_buffer[0] = 0;
-	unless (bk_proj && bk_proj->root) return;
-
 	cmdlog_repo = 0;
+
 	for (i = 0; repolog[i].name; i++) {
 		if (streq(repolog[i].name, av[0])) {
+			cflags = repolog[i].flags;
 			cmdlog_repo = 1;
 			break;
 		}
 	}
+	unless (bk_proj && bk_proj->root) return (cflags);
+
 	if (cmdlog_repo) {
 		sprintf(cmdlog_buffer,
 		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
@@ -494,19 +495,34 @@ cmdlog_start(char **av)
 			strcpy(cmdlog_buffer, av[i]);
 		}
 	}
+	if (cflags & CMD_WRLOCK) {
+		if (repository_wrlock()) {
+			out("ERROR-Unable to lock repository for update.\n");
+			exit(1);
+		}
+	}
+	if (cflags & CMD_RDLOCK) {
+		if (repository_rdlock()) {
+			out("ERROR-Can't get read lock on the repository.\n");
+			exit(1);
+		}
+	}
 	if (cmdlog_repo) {
 		int ret ;
 
-		if ((bk_mode() == BK_BASIC)  && !streq("commit", av[0])) return;
+		if ((bk_mode() == BK_BASIC)  && !streq("commit", av[0])) {
+			return (cflags);
+		}
 		ret = trigger(cmdlog_buffer, "pre", 0);
 
 		unless (ret == 0) exit(ret);
 	}
+	return (cflags);
 
 }
 
 void
-cmdlog_end(int ret)
+cmdlog_end(int ret, int flags)
 {
 	FILE	*f;
 	char	*user, *file;
@@ -514,6 +530,10 @@ cmdlog_end(int ret)
 
 	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
+
+	if (flags & CMD_WRLOCK) repository_wrunlock(0);
+	if (flags & CMD_RDLOCK) repository_rdunlock(0);
+
 	if (cmdlog_repo) {
 		file = "repo_log";
 	} else {
@@ -536,7 +556,9 @@ cmdlog_end(int ret)
 	if (ret == LOG_BADEXIT) {
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
-		fprintf(f, "%s = %d\n", cmdlog_buffer, ret);
+		fprintf(f, "%s = %d", cmdlog_buffer, ret);
+		if (flags&CMD_BYTES) fprintf(f, " xfered=%u", get_byte_count());
+		fputs("\n", f);
 	}
 	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {
 		char	old[MAXPATH];
@@ -609,14 +631,14 @@ bk_sfiles(int ac, char **av)
 	if (status = sfind_main(1, sav)) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
-		cmdlog_end(status);
+		cmdlog_end(status, 0);
 		exit(status);
 	}
 	fflush(stdout);
 	close(1);
 	waitpid(pid, &status, 0);
 	if (WIFEXITED(status)) {
-		cmdlog_end(WEXITSTATUS(status));
+		cmdlog_end(WEXITSTATUS(status), 0);
 		exit(WEXITSTATUS(status));
 	}
 #ifndef WIN32
@@ -624,11 +646,11 @@ bk_sfiles(int ac, char **av)
 		fprintf(stderr,
 		    "Child was signaled with %d\n",
 		    WTERMSIG(status));
-		cmdlog_end(WTERMSIG(status));
+		cmdlog_end(WTERMSIG(status), 0);
 		exit(WTERMSIG(status));
 	}
 #endif
-	cmdlog_end(100);
+	cmdlog_end(100, 0);
 	exit(100);
 }
 

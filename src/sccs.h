@@ -248,6 +248,14 @@
 #define D_TEXT		0x80000000	/* delta has updated text */
 
 /*
+ * Flags for command log
+ */
+#define CMD_BYTES	0x00000001	/* log command byte count */
+#define CMD_FAST_EXIT	0x00000002	/* exit when done */
+#define CMD_WRLOCK	0x00000004	/* need to use repository write lock */
+#define CMD_RDLOCK	0x00000008	/* need to use repository read lock */
+
+/*
  * Signal handling.
  * Caught signals do not restart system calls.
  */
@@ -866,8 +874,10 @@ int	cset_setup(int flags);
 off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *action, char *when, int status);
-void	cmdlog_start(char **av);
-void	cmdlog_end(int ret);
+int	cmdlog_start(char **av);
+void	cmdlog_end(int ret, int flags);
+off_t	get_byte_count();
+void	save_byte_count(unsigned int byte_count);
 int	bk_mode();
 int	cat(char *file);
 char	*bk_model();
