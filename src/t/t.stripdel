@@ -119,12 +119,12 @@ if [ $? -ne 0 ]; then echo failed commit; exit 1; fi
 echo OK
 echo $N "Merge copy2 -> copy1, copy2 -> proj, copy1 -> proj ..........$NL"
 cd $HERE/copy1
-bk pull $Q $HERE/copy2
+bk pull -t $Q $HERE/copy2
 bk admin $Q -Sright ChangeSet
 cd $HERE/proj
-bk pull $Q $HERE/copy2
+bk pull -t $Q $HERE/copy2
 bk admin $Q -Sleft ChangeSet
-bk pull $Q $HERE/copy1
+bk pull -t $Q $HERE/copy1
 if [ $? -ne 0 ]; then echo failed pull; exit 1; fi
 echo OK
 echo $N Check stripdel managing tree with twice merged cset -1- .....$NL
