@@ -131,6 +131,7 @@ _setup() {
 
 # This will go find the root if we aren't at the top
 _changes() {
+	__cd2root
 	echo ChangeSet | ${BIN}sccslog $@ - | $PAGER
 }
 
@@ -553,10 +554,6 @@ _unlock() {
 	${BIN}clean -n "$@"
 }
 
-_mkdiffs() {
-	exec perl ${BIN}mkdiffs "$@"
-}
-
 _mv() {
 	${BIN}sccsmv "$@"
 }
@@ -930,34 +927,67 @@ __nusers() {
 	then	rm -f ${TMP}users$$
 		exit 1
 	fi
-	sort -u ${TMP}users$$ | wc -l
-	${RM} -f ${TMP}users$$
+	if [ -f ${BK_ETC}SCCS/s.aliases ]
+	then ${BIN}get -kps ${BK_ETC}aliases > ${TMP}aliases$$
+	fi
+	`__perl` -w ${BIN}count_user ${TMP}aliases$$ ${TMP}users$$
+	${RM} -f ${TMP}users$$ ${TMP}aliases$$
 }
 
 __has_unconfirmed_openlogging()
 {
-	# If we have a logging_ok message, then we are done.
-	if [ `grep "^logging_ok:" ${BK_ETC}config | wc -l` -gt 0 ]
-	then	return 1
+	LOGGING_OK=`_getLog`
+	if [ "$LOGGING_OK" = "yes" ]; then return 1; fi
+	if [ "$LOGGING_OK" = "no" -a `__nusers` -le 1 ]; then return 1; fi
+
+	if [ `__logAddr | grep '@openlogging.org$' | wc -l` -eq 0 ]
+	then 
+		# They are pointing the log to a private address
+		# so just mail out the config file
+		__sendConfig config@openlogging.org 
+		return 1
 	fi
-	LOGADDR=`__logAddr`
-	if [ `echo $LOGADDR | grep '@openlogging.org$' | wc -l` -gt 0 ]
-	then return 0
-	else __sendConfig config@openlogging.org
-	     return 1
-	fi
+	return 0
 }
 
-_logging_ok() {
+_getLog()
+{
 	__cd2root
-	${BIN}get -q ${BK_ETC}config
+	LOGOK=`${BIN}get -kps ${BK_ETC}config | \
+					grep "^logging_ok:" | tr -d '[\t, ]'`
+	case X${LOGOK} in
+	Xlogging_ok:t)
+		# Old syntax: "logging_ok: t" => "yes"
+		echo "yes";
+		;;
+	Xlogging_ok:*)
+		echo ${LOGOK#*:}
+		;;
+	*)	echo "not_set";
+		;;
+	esac
+	return 0
+}
 
-	if __has_unconfirmed_openlogging
-	then __gethelp log_query $LOGADDR ; RC=1
-	else RC=0
+_setLog()
+{
+	if [ "$1" != "yes" -a "$1" != "no" ] 
+	then echo "usage:  setLog ues|no"
+	     return 1;
 	fi
-	${BIN}clean ${BK_ETC}config
-	return $RC
+	# Can not disable logging when there are
+	# more then 1 user, unless it is BitKeeper/Pro
+	__cd2root
+	if [ "$1" = "no" -a `__nusers` -gt 1 ]
+	then return 1
+	fi;
+	if [ -f ${BK_ETC}config ]; then ${BIN}clean ${BK_ETC}config; fi
+	${BIN}get -seg ${BK_ETC}config
+	${BIN}get -kps ${BK_ETC}config | grep -v "^logging_ok:" |\
+	sed -e '/^logging:/a\
+logging_ok:	'$1 > ${BK_ETC}config
+	${BIN}delta -q -y'Logging OK' ${BK_ETC}config
+	return 0
 }
 
 
@@ -967,29 +997,25 @@ _logging_ok() {
 # XXX - should probably ask once for each user.
 __checkLog() {
 	if __has_unconfirmed_openlogging
-	then 	__gethelp log_query $LOGADDR
+	then 	__gethelp log_query `__logAddr`
 		echo $N "OK [y/n]? "$NL
 		read x
 		case X$x in
 	    	    X[Yy]*)
-			${BIN}clean ${BK_ETC}config
-			${BIN}get -seg ${BK_ETC}config
-			${BIN}get -kps ${BK_ETC}config | \
-			sed -e '/^logging:/a\
-logging_ok:	to '$LOGADDR > ${BK_ETC}config
-			${BIN}delta -y'Logging OK' ${BK_ETC}config
-			return
+			_setLog "yes"; return
+			;;
+	    	    X[Nn]*)
+			if _setLog "no" ; then return; fi
 			;;
 		esac
 		__gethelp log_abort
-		${BIN}clean ${BK_ETC}config
 		exit 1
-	else	${BIN}clean ${BK_ETC}config
-		return
+	else	return 
 	fi
 }
 
 __logChangeSet() {
+	if [ `_getLog` = "no" ]; then return; fi
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
 	if [ x$key != x ]
@@ -1129,11 +1155,7 @@ _commit() {
 		__chkConfig && LOGADDR=`__logAddr` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		export LOGADDR
-		nusers=`__nusers` ||
-		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
-		if [ $nusers -gt 1 ]
-		then $CHECKLOG
-		fi
+		$CHECKLOG
 		${BIN}sfiles -C |
 		    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 		EXIT=$?
@@ -1142,9 +1164,7 @@ _commit() {
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
-		if [ $nusers -gt 1 ]
-		then __logChangeSet $REV
-		fi
+		__logChangeSet $REV
 		exit $EXIT;
 	fi
 	while true
@@ -1164,11 +1184,7 @@ _commit() {
 			__chkConfig && LOGADDR=`__logAddr` ||
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			export LOGADDR
-			nusers=`__nusers` ||
-			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
-			if [ $nusers -gt 1 ]
-			then $CHECKLOG
-			fi
+			$CHECKLOG
 			${BIN}sfiles -C |
 			    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 			EXIT=$?
@@ -1177,9 +1193,7 @@ _commit() {
 			# Assume top of trunk is the right rev
 			# XXX TODO: Needs to account for LOD
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
-			if [ $nusers -gt 1 ]
-			then __logChangeSet $REV
-			fi
+			__logChangeSet $REV
 	    	 	exit $EXIT;
 		 	;;
 		    Xe*)
@@ -1292,6 +1306,8 @@ _regression() {
 #
 # We also use this file for error messages so the format is that all
 # help tags are of the form help_whatever
+#
+# Note: this function is also called by citool.tcl
 __gethelp() {
 	sed -n  -e '/^#'$1'$/,/^\$$/{' \
 		-e '/^#/d; /^\$/d; s|#BKARG#|'"$2"'|; p' \
@@ -1520,7 +1536,9 @@ cmd=$1
 shift
 
 case $cmd in
-    resync|resolve|pmerge|rcs2sccs)
+    mkdiffs|rcs2sccs|resolve|pmerge)
+	exec perl ${BIN}$cmd "$@";;
+    resync)	# needs perl 5 - for now.
 	exec `__perl` ${BIN}$cmd "$@";;
     fm|fm3|citool|sccstool|fmtool|fm3tool|difftool|helptool|csettool|renametool)
 	exec $wish -f ${BIN}${cmd}${tcl} "$@";;

@@ -5,7 +5,7 @@
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
 echo "logging: /dev/null" > $HERE/c
-echo "logging_ok: t" >>$HERE/c
+echo "logging_ok: no" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
 cd project
