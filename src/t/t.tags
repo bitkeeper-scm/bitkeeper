@@ -370,7 +370,7 @@ test $S -eq 0 && {
 	exit 1
 }
 echo OK
-find /tmp -name 'csort*' -print | xargs /bin/rm -f 2>/dev/null
+/bin/rm -f /tmp/csort*
 
 echo $N Test 1.x push from old to new with old style tag ............$NL
 cd $HERE
