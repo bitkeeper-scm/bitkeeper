@@ -103,6 +103,7 @@ echo OK
 
 echo $N Clone repository ............................................$NL
 cd $HERE
+if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
 bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
 bk clone $Q $HERE/project $HERE/copy2 || { echo failed; exit 1; }
 bk clone $Q $HERE/project $HERE/copy3 || { echo failed; exit 1; }
@@ -110,7 +111,8 @@ bk clone $Q $HERE/project $HERE/copy3 || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
-[ x$parent = xfile:/$HERE/project ] || { echo wrong parent $parent; exit 1; }
+[ x$parent = xfile:$SLASH$HERE/project ] || \
+					{ echo wrong parent $parent; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 echo $N Create a changeset in compat mode with a tag ................$NL

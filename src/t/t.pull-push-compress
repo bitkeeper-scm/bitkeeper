@@ -44,13 +44,15 @@ echo OK
 cores
 echo $N Clone repository ............................................$NL
 cd $HERE
+if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
 bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
 bk -r$HERE/copy  admin -Z 
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 [ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
-[ x$parent = xfile:/$HERE/project ] || { echo wrong parent $parent; exit 1; }
+[ x$parent = xfile:$SLASH$HERE/project ] || \
+					{ echo wrong parent $parent; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 echo $N Pull with no changes in child ...............................$NL
