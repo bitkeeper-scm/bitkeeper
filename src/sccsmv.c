@@ -151,7 +151,7 @@ usage:		system("bk help mv"); /* bk mv is prefered interface	*/
 	 * is located at the root of the tree, 
 	 * "bk mvdir project-root" => moving the BitKeeper sub-tree.
 	 */
-	gettemp(tempfile, "bk_mvdir");
+	bktmp(tempfile, "bk_mvdir");
 	cmd = aprintf("bk sfiles \"%s\" | "
 			"bk prs -hr1.1 -nd:DPN: - | grep BitKeeper/ > %s",
 			from, tempfile);
