@@ -148,4 +148,4 @@ cd $REGRESSION || exit 1
 if [ -d SCCS ]; then echo "There should be no SCCS directory here."; exit 1; fi
 # save the list of file cuurently in $TMP
 # check it when again when we are in clean up
-ls $TMP > ${USR_TMP}/T 
+ls -a $TMP > ${USR_TMP}/T.${USER}-$$ 

@@ -51,11 +51,13 @@ SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
-	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h
+	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h \
+	  comments.c host.c user.c
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/vitool.tcl \
 	  gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl gui/mkindex.tcl \
-	  resync.perl uuwrap.sh unuuwrap.sh
+	  resync.perl uuwrap.sh unuuwrap.sh port/unix_platform.sh \
+	  port/unix_platform.tcl port/unix_platform.perl pmerge.perl
 MISC	= bkhelp.txt config.h.in configure substvars.in install.in \
 	  bitkeeper.config
 
@@ -149,10 +151,10 @@ clobber distclean: clean-obj clean-bin clean-cfg clean-src
 rebuild: clean-obj clean-bin
 
 srcs src: FORCE
-	-get -s $(SRCS) $(HDRS) $(SCRSRCS)
+	-get -s $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
-	-get -se $(SRCS) $(HDRS) $(SCRSRCS)
+	-get -se $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
