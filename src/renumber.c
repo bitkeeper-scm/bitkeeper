@@ -22,8 +22,8 @@ WHATSTR("@(#)%K%");
 private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);
 private int	taken(MDBM *db, delta *d);
-private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release,
-		    MDBM *lodDb, ser_t *map);
+private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t *release,
+		    MDBM *lodDb, ser_t *map, ser_t thislod);
 private ser_t	whichlod(sccs *s, delta *d, MDBM *lodDb);
 
 private	char	*renumber_help = "\n\
@@ -67,7 +67,7 @@ usage:		fputs(renumber_help, stderr);
 			sfileDone();
 			return (1);
 		}
-		sccs_renumber(s, 0, 0, flags);
+		sccs_renumber(s, 0, 0, 0, 0, flags);
 		if (dont) {
 			unless (quiet) {
 				fprintf(stderr,
@@ -95,7 +95,8 @@ usage:		fputs(renumber_help, stderr);
  */
 
 void
-sccs_renumber(sccs *s, ser_t nextlod, MDBM *lodDb, u32 flags)
+sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb, \
+    char *base, u32 flags)
 {
 	delta	*d;
 	ser_t	i;
@@ -105,25 +106,28 @@ sccs_renumber(sccs *s, ser_t nextlod, MDBM *lodDb, u32 flags)
 	ser_t	*map = calloc(size, sizeof(ser_t));
 	ser_t	defserial = 0;
 	int	defisbranch = 1;
+	int	branch = 0;
 	ser_t	maxrel = 0;
 	char	def[20];	/* X.Y.Z each 5 digit plus term = 18 */
 
 	/* Ignore lod mapping if this is ChangeSet or file is not BK */
-	if (!(s->state & S_BITKEEPER) || (s->state & S_CSET))  lodDb = 0;
-
-	/* Save current default branch */
-	if (d = sccs_top(s)) {
-		defserial = d->serial;	/* serial doesn't change */
-		if (s->defbranch) {
-			char	*ptr;
-			for (ptr = s->defbranch; *ptr; ptr++) {
-				unless (*ptr == '.') continue;
-				defisbranch = 1 - defisbranch;
+	if (!(s->state & S_BITKEEPER) || (s->state & S_CSET)) {
+		lodDb = 0;
+		/* Save current default branch */
+		if (d = sccs_top(s)) {
+			defserial = d->serial;	/* serial doesn't change */
+			if (s->defbranch) {
+				char	*ptr;
+				for (ptr = s->defbranch; *ptr; ptr++) {
+					unless (*ptr == '.') continue;
+					defisbranch = 1 - defisbranch;
+				}
 			}
-			free(s->defbranch);
-			s->defbranch=0;
 		}
 	}
+
+	if (s->defbranch) free(s->defbranch);
+	s->defbranch=0;
 
 	for (i = 1; i < s->nextserial; i++) {
 		unless (d = sfind(s, i)) {
@@ -134,10 +138,14 @@ sccs_renumber(sccs *s, ser_t nextlod, MDBM *lodDb, u32 flags)
 			 */
 			continue;
 		}
-		release = redo(s, d, db, flags, release, lodDb, map);
-		if (maxrel < d->r[0]) maxrel = d->r[0];
-		if (!defserial || defserial != i)  continue;
+		if (redo(s, d, db, flags, &release, lodDb, map, thislod)) {
+			/* delta is on active lod, so set defbranch */
+			branch = d->r[0];
+		}
+		if (maxrel < release) maxrel = release;
+		if (!defserial || defserial != i) continue;
 		/* Restore default branch */
+		assert(!s->defbranch);
 		unless (defisbranch) {
 			assert(d->rev);
 			s->defbranch = strdup(d->rev);
@@ -145,12 +153,31 @@ sccs_renumber(sccs *s, ser_t nextlod, MDBM *lodDb, u32 flags)
 		}
 		/* restore 1 or 3 digit branch? 1 if BK or trunk */
 		if (s->state & S_BITKEEPER || d->r[2] == 0) {
-			sprintf(def, "%d", d->r[0]);
+			sprintf(def, "%u", d->r[0]);
 			s->defbranch = strdup(def);
 			continue;
 		}
 		sprintf(def, "%d.%d.%d", d->r[0], d->r[1], d->r[2]);
 		s->defbranch = strdup(def);
+	}
+	if (lodDb && !s->defbranch) {
+		if (branch) {
+			sprintf(def, "%u", branch);
+			s->defbranch = strdup(def);
+		}
+		else if (base) {
+			unless(d = sccs_findKey(s, base)) {
+				fprintf(stderr,
+				    "renumber: ERROR: no key %s in %s\n",
+				    base, s->sfile);
+				/* XXX no way to return error */
+				goto out;
+			}
+			s->defbranch = strdup(d->rev);
+		}
+		else {
+			s->defbranch = strdup("1.0");
+		}
 	}
 	if (s->defbranch) {
 		sprintf(def, "%d", maxrel);
@@ -159,6 +186,7 @@ sccs_renumber(sccs *s, ser_t nextlod, MDBM *lodDb, u32 flags)
 			s->defbranch = 0;
 		}
 	}
+out:
 	free(map);
 	mdbm_close(db);
 }
@@ -270,21 +298,23 @@ whichlod(sccs *s, delta *d, MDBM *lodDb)
 }
 
 private	int
-redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
-    ser_t *map)
+redo(sccs *s, delta *d, MDBM *db, int flags, ser_t *release, MDBM *lodDb,
+    ser_t *map, ser_t thislod)
 {
 	delta	*p;
 
-	unless (p = d->parent) {
+	/* XXX hack because not all files have 1.0, special case 1.1 */
+	p = d->parent;
+	unless (p || streq(d->rev, "1.1")) {
 		remember(db, d);
-		return (release);
+		return (0);
 	}
 
 	if (d->flags & D_META) {
 		for (p = d->parent; p->flags & D_META; p = p->parent);
 		memcpy(d->r, p->r, sizeof(d->r));
 		newRev(s, flags, db, d);
-		return (release);
+		return (0);
 	}
 
 	/*
@@ -292,23 +322,25 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
 	 * Sort so X.1 is printed first.
 	 */
 	if ((!d->r[2] && d->r[1] == 1) || (!d->r[1] && d->r[3] == 1)) {
+		int	retcode = 0;
 		if (lodDb) {
 			ser_t	lod;
 			unless (lod = whichlod(s, d, lodDb)) {
 				/* XXX: how to communicate error? for
 				 * now stick it on a new lod?
 				 */
-				d->r[0] = ++release;
+				d->r[0] = ++(*release);
 				fprintf(stderr,
 				    "renumber: whichlod returned 0, so "
-				    "starting a new lod %u\n", release);
+				    "starting a new lod %u\n", *release);
 			}
 			else {
 				d->r[0] = lod;
+				if (lod == thislod) retcode = 1;
 			}
 		}
 		unless (map[d->r[0]]) {
-			map[d->r[0]] = ++release;
+			map[d->r[0]] = ++(*release);
 		}
 		d->r[0] = map[d->r[0]];
 		d->r[1] = 1;
@@ -316,7 +348,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
 		d->r[3] = 0;
 		unless (taken(db, d)) {
 			newRev(s, flags, db, d);
-			return (release);
+			return (retcode);
 		}
 		d->r[1] = 0;
 		d->r[2] = 0;
@@ -326,7 +358,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
 			assert(d->r[2] < 65535);
 		} while (taken(db, d));
 		newRev(s, flags, db, d);
-		return (release);
+		return (retcode);
 	}
 
 	/*
@@ -343,7 +375,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
 		d->r[1] = p->r[1] + 1;
 		unless (taken(db, d)) {
 			newRev(s, flags, db, d);
-			return (release);
+			return (0);
 		}
 		d->r[1] = p->r[1];
 		d->r[2] = 0;
@@ -353,7 +385,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
 			assert(d->r[2] < 65535);
 		} while (taken(db, d));
 		newRev(s, flags, db, d);
-		return (release);
+		return (0);
 	}
 	
 	/*
@@ -368,7 +400,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
 	d->r[3] = p->r[3] + 1;
 	if (!taken(db, d)) {
 		newRev(s, flags, db, d);
-		return (release);
+		return (0);
 	}
 
 	/* Try a new branch */
@@ -379,5 +411,5 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, MDBM *lodDb,
 		assert(d->r[2] < 65535);
 	} while (taken(db, d));
 	newRev(s, flags, db, d);
-	return (release);
+	return (0);
 }

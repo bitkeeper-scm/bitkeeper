@@ -788,6 +788,11 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 			}
 			free(s->defbranch);
 			s->defbranch = 0;
+			sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+			unless (sccs_restart(s)) {
+				perror("restart");
+				exit(1);
+			}
 		}
 	}
 	unless (tableGCA) goto apply;
@@ -968,6 +973,7 @@ apply:
 		uncommitted(localPath);
 		return -1;
 	}
+	/* must have restored defbranch (setlod above) before fixing */
 	if (fixLod(s)) {
 		s->proj = 0; sccs_free(s);
 		return (-1);
