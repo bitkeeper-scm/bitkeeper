@@ -81,6 +81,7 @@
 #define	ADMIN_BK	0x01000000	/* check BitKeeper invariants */
 #define	ADMIN_GONE	0x02000000	/* check integrity w/o GONE deltas */
 #define	ADMIN_ADD1_0	0x04000000	/* insert a 1.0 delta */
+#define	ADMIN_RM1_0	0x08000000	/* remove a 1.0 delta */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
@@ -559,6 +560,7 @@ typedef	struct sccs {
 	int	version;	/* file format version */
 	int	userLen;	/* maximum length of any user name */
 	int	revLen;		/* maximum length of any rev name */
+	u32	initFlags;	/* how we were opened */
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
@@ -727,6 +729,7 @@ delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags, project *proj);
 sccs	*sccs_restart(sccs *s);
+sccs	*sccs_reopen(sccs *s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
 void	sccs_close(sccs *);

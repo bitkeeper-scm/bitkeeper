@@ -45,3 +45,24 @@ link_main(int ac, char **av)
 	}
 	return (errors);
 }
+
+int
+exists_main(int ac, char **av)
+{
+	char	c;
+	int	errors = 0;
+	char	buf[MAXPATH];
+
+	while (fgets(buf, sizeof(buf), stdin)) {
+		unless ((c = chop(buf)) == '\n') {
+			fprintf(stderr, "Bad filename '%s%c'\n", buf, c);
+			exit(2);
+		}
+		if (exists(buf)) {
+			printf("%s\n", buf);
+			exit(0);
+		}
+	}
+	exit(1);
+}
+
