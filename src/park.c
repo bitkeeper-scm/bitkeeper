@@ -172,12 +172,13 @@ unpark_main(int ac, char **av)
 		return (0);
 	}
 
-	if (av[1]) return (do_unpark(atoi(av[1]))); /* unpark parkefile-n */
 
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "Can't find package root\n");
 		return (0);
 	}
+
+	if (av[1]) return (do_unpark(atoi(av[1]))); /* unpark parkefile-n */
 
 	dh = opendir(BKTMP);
 	unless (dh) {

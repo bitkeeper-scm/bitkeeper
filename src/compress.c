@@ -42,6 +42,7 @@ gzip_hdr(int rfd)
 
 	hlen = 0;
 	if (readn(rfd, (char *) &hlen, sizeof(hlen)) != sizeof(hlen)) {
+		fprintf(stderr, "BAD gzip hdr\n");
 		return (0); /* force EOF */
 	}
 	return (ntohs(hlen));

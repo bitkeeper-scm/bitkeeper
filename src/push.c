@@ -255,16 +255,16 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
+		if (getenv("BK_REMOTE_LEVEL") &&
+		    (atoi(getenv("BK_REMOTE_LEVEL")) < getlevel())) {
+			fprintf(stderr,
+			    "push: cannot push to lower level repository\n");
+			disconnect(r, 2);
+			return (-1);
+		}
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainNonStandardMsg(r, buf, sizeof(buf));
-	}
-	if (getenv("BK_REMOTE_LEVEL") &&
-	    (atoi(getenv("BK_REMOTE_LEVEL")) < getlevel())) {
-	    	fprintf(stderr,
-		    "push: cannot push to lower level repository\n");
-		disconnect(r, 2);
-		return (-1);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
