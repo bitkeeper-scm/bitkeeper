@@ -16002,7 +16002,7 @@ sparc_fclose(FILE *f)
 #else
 	ret = fclose(f);
 #endif
-	flushDcache();
+	unless (getenv("BK_NO_SPARC_FLUSH")) flushDcache();
 	return (ret);
 }
 
