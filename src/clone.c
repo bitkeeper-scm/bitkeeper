@@ -219,10 +219,6 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	if (clone2(opts, r)) goto done;
 
-	if (r->port && isLocalHost(r->host) && (bk_mode() == BK_BASIC)) {
-		mkdir(BKMASTER, 0775);
-	}
-
 	rc  = 0;
 done:	if (rc) {
 		putenv("BK_STATUS=FAILED");

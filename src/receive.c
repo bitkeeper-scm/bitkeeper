@@ -44,11 +44,6 @@ usage:			fprintf(stderr,
 		}
 	}
 
-	if (!new && bk_mode() == BK_BASIC) {
-		fprintf(stderr, upgrade_msg);
-		exit(1);
-	}
-
 	sprintf(buf, "bk unwrap | bk takepatch %s", opts);
 	return (system(buf));
 }

@@ -46,13 +46,6 @@ cmd_synckeys(int ac, char **av)
 		return (1);
 	}
 
-	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) {
-		out("ERROR-bkd std cannot access non-master repository\n");
-		out("@END@\n");
-		drain();
-		return (1);
-	}
-		
 	signal(SIGCHLD, SIG_DFL); /* for free bsd */
 	sprintf(cmd, "bk _listkey -r > BitKeeper/tmp/lk%d", getpid());
 	l = popen(cmd, "w");

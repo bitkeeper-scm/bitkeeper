@@ -208,69 +208,6 @@ bk clone $Q -rbad http://localhost:$P $HERE/junk2
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 
-
-# Check bk basic mode behaviour
-echo $N Make sure bk/basic limits access to master repository only ..$NL
-cd $HERE/copy/BitKeeper/etc
-bk edit $Q config
-echo "description: BitKeeper Test repository" > config
-echo "email:		nobody@nowhere.bk" >> config
-echo "license: $BK_LIC_B" >> config
-echo "licsign1: $BK_LIC_B1" >> config
-echo "licsign2: $BK_LIC_B2" >> config
-echo "licsign3: $BK_LIC_B3" >> config
-echo "logging: private@me.com" >>  config
-bk ci $Q -y"set close logging"  config
-echo y | bk commit $Q -y"set close logging" > /dev/null 2>&1
-P=50000
-cd $HERE
-bk bkd -q -d -p$P -c6
-while [ $? -eq 2 ]
-do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c6 
-done
-cd $HERE
-bk clone bk://localhost:$P/copy $HERE/copy3 2> bk.out1
-grep -q "bkd std cannot access non-master" bk.out1
-if [ $? -ne 0 ]; then echo failed 1; cat bk.out1; exit 1; fi
-cd $HERE/copy2
-bk pull -c0 bk://localhost:$P/$HERE/copy 2> bk.out2
-grep -q "bkd std cannot access non-master" bk.out2
-if [ $? -ne 0 ]; then echo failed 2; cat bk.out1 bk.out2; exit 1; fi
-waitForUnlock $HERE/copy
-bk push -c0 bk://localhost:$P/$HERE/copy 2> bk.out3
-grep -q "bkd std cannot access non-master" bk.out3
-if [ $? -ne 0 ]; then echo failed 3; cat bk.out2 bk.out3; exit 1; fi
-echo OK
-
-echo $N Make sure bk/basic allows clone from master repository ......$NL
-waitForUnlock $HERE/copy
-mkdir $HERE/copy/BitKeeper/etc/.master
-bk clone $Q bk://localhost:$P/$HERE/copy $HERE/copy3
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-echo OK
-
-echo $N Make sure bk/basic allows push to master repository .........$NL
-cd $HERE/copy2
-ls > JUNK
-bk new $Q JUNK
-(cd $HERE/copy; bk _loggingaccepted; )
-bk commit $Q -ywhatever || exit 1
-bk push -t bk://localhost:$P/$HERE/copy 2> bk.out
-if [ $? -eq 0 ]; then echo failed; cat bk.out; exit 1; fi
-grep -q "pushing to is .* changesets" bk.out
-if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
-echo OK
-
-echo $N Make sure bk/basic allows pull from master repository .......$NL
-cd $HERE/copy
-bk lock -U
-cd $HERE/copy2
-bk undo -fqr+ || exit 1
-bk pull $Q -t bk://localhost:$P/$HERE/copy
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-echo OK
-
 echo $N Make sure bkd -C disallows cd to parent dir .................$NL
 cd $HERE/project/src
 P=50000

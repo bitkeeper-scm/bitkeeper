@@ -38,10 +38,6 @@ mv_main(int ac, char **av)
 	int	c;
 
 	has_proj("mv");
-	if ((bk_mode() == BK_BASIC) && !isMasterTree()) {
-		fprintf(stderr, upgrade_msg);
-		return(1);
-	}
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help mv");
 		return (0);

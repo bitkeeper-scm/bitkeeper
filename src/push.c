@@ -115,14 +115,6 @@ err:		freeLines(envVar);
 			rc = push(av, r, envVar);
 			if (rc != -2) break; /* -2 means locked */
 			if (try == 0) break;
-			if (bk_mode() == BK_BASIC) {
-				if (try > 0) {
-					fprintf(opts.out,
-				    	    "push: retry request detected: %s",
-				    	    upgrade_msg);
-				}
-				break;
-			}
 			if (try != -1) --try;
 			if (opts.verbose) {
 				fprintf(opts.out,
@@ -713,12 +705,6 @@ push(char **av, remote *r, char **envVar)
 	}
 	if (opts.debug) fprintf(opts.out, "Root Key = \"%s\"\n", rootkey(buf));
 
-	if ((bk_mode() == BK_BASIC) && !opts.metaOnly &&
-	    !isLocalHost(r->host) && exists(BKMASTER)) {
-		fprintf(opts.out,
-		    "Cannot push from master repository: %s", upgrade_msg);
-		exit(1);
-	}
 	ret = push_part1(r, rev_list, envVar);
 	if (opts.debug) {
 		fprintf(opts.out, "part1 returns %d\n", ret);

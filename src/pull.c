@@ -114,14 +114,6 @@ err:		freeLines(envVar);
 			rc = pull(av, opts, r, envVar);
 			if (rc != -2) break;
 			if (try == 0) break;
-			if (bk_mode() == BK_BASIC) {
-				if (try > 0) {
-					fprintf(stderr,
-					    "pull: retry request detected: %s",
-					    upgrade_msg);
-				}
-				break;
-			}
 			if (try != -1) --try;
 			unless(opts.quiet) {
 				fprintf(stderr,
@@ -452,12 +444,6 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	gzip = opts.gzip && r->port;
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "pull: cannot find package root.\n");
-		exit(1);
-	}
-	if ((bk_mode() == BK_BASIC) &&
-	    !isLocalHost(r->host) && exists(BKMASTER)) {
-		fprintf(stderr, "Cannot pull from master repository: %s",
-			upgrade_msg);
 		exit(1);
 	}
 	cset = sccs_init(csetFile, 0, 0);

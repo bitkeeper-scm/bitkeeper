@@ -29,13 +29,6 @@ cmd_chg_part1(int ac, char **av)
 		return (1);
 	}
 
-	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) {
-		out("ERROR-bkd std cannot access non-master repository\n");
-		out("@END@\n");
-		drain();
-		return (1);
-	}
-
 	out("@OK@\n");
 	new_av[0] =  "bk";
 	new_av[1] =  "changes";
@@ -91,13 +84,6 @@ cmd_chg_part2(int ac, char **av)
 		return (1);
 	}
 
-	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) {
-		out("ERROR-bkd std cannot access non-master repository\n");
-		out("@END@\n");
-		drain();
-		return (1);
-	}
-		
 	getline(0, buf, sizeof(buf));
 	if (streq("@NOTHING TO SEND@", buf)) {
 		rc = 0;

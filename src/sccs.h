@@ -347,7 +347,7 @@
 #define	UNKNOWN_HOST	"nowhere"
 
 #define BK_FREE		0
-#define BK_BASIC	1
+/* #define BK_BASIC	1  -not used */
 #define BK_PRO		2
 #define BK_BADMODE	999
 int	bk_mode(void);

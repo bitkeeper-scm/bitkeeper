@@ -387,15 +387,6 @@ that will work too, it just gets another patch.\n");
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
 		}
 
-		if (bk_mode() == BK_BASIC) {
-			SHOUT();
-			fprintf(stderr,
-			   "BitKeeper/Basic should not have rename conflict\n");
-			opts->resolveNames = 1;
-			pass2_renames(opts);
-			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
-		}
-
 		/*
 		 * Now do the same thing, calling the resolver.
 		 */

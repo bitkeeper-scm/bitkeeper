@@ -119,10 +119,6 @@ send_main(int ac,  char **av)
 	char	*url = NULL;
 	FILE	*f;
 
-	if (bk_mode() == BK_BASIC) {
-		fprintf(stderr, upgrade_msg);
-		exit(1);
-	}
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help send");
 		return (0);

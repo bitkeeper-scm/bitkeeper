@@ -226,11 +226,6 @@ localTrigger(char *event, char *what, char **triggers)
 {
 	int	i, rc = 0;
 
-	/*
-	 * BK/basic does not support client side triggers.
-	 */
-	if ((bk_mode() == BK_BASIC)) return (0);
-
 	trigger_env("BK", event, what);
 
 	EACH(triggers) {
@@ -247,11 +242,6 @@ remotePreTrigger(char *event, char *what, char **triggers)
 	int	i, rc = 0, lclone = getenv("BK_LCLONE") != 0;
 	char	output[MAXPATH], buf[MAXLINE];
 	FILE	*f;
-
-	/*
-	 * BK/basic only supports triggers in master repository.
-	 */
-	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) return (0);
 
 	trigger_env("BKD", event, what);
 
@@ -315,11 +305,6 @@ private int
 remotePostTrigger(char *event, char *what, char **triggers)
 {
 	int	fd1, i, rc = 0;
-
-	/*
-	 * BK/basic only supports triggers in master repository.
-	 */
-	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) return (0);
 
 	trigger_env("BKD", event, what);
 	/*

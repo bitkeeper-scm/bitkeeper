@@ -669,14 +669,6 @@ synckeys_main(int ac, char **av)
 		fprintf(stderr, "synckeys: cannot find package root.\n"); 
 		exit(1);
 	}
-
-	if ((bk_mode() == BK_BASIC) &&
-	    !isLocalHost(r->host) && exists(BKMASTER)) {
-		fprintf(stderr, 
-		    "Cannot sync from master repository: %s", upgrade_msg);
-		exit(1);
-	}
-
 	synckeys(r, flags);
 	remote_free(r);
 	return (0);
