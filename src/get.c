@@ -34,8 +34,6 @@ usage: get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]\n\
    -u		prefix each line with the user who last modified it\n\
    -x<list>	exclude revs in <list>\n";
 
-extern void rcs(char *cmd, int ac, char **av) NORETURN;
-
 /*
  * The weird setup is so that I can #include this file into sccssh.c
  */
