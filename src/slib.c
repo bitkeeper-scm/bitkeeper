@@ -8680,7 +8680,7 @@ finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
 				if (lf_pend &&
 				    lf_pend == whatstate((const serlist*)state))
 				{
-					sum += '\n';
+					s->dsum += '\n';
 					lf_pend = 0;
 				}
 				continue;
