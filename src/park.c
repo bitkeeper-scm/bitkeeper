@@ -143,7 +143,7 @@ do_unpark(int id)
 		printf(
 "==========================================================================\n");
 	}
-	rc = sysio(parkfile, 0, 0, "bk", "patch", "-p1", "-g1", "-u", SYS);
+	rc = sysio(parkfile, 0, 0, "bk", "patch", "-p1", "-g1", "-fu", SYS);
 	if (rc) {
 		fprintf(stderr, "Cannot unpark %s\n", parkfile);
 		/* Do not unlink the parkfile,  user may want to re-try */
@@ -152,6 +152,7 @@ do_unpark(int id)
 	fprintf(stderr, "Unpark of %s is successful\n", parkfile);
 	unlink(parkfile); /* careful */
 	unlink(parkCommentFile); /* careful */
+	return (0);
 }
 
 int

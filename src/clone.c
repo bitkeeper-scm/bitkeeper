@@ -81,14 +81,12 @@ usage()
     	exit(1);
 }
 
-
 private int
 send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 {
-	char	buf[MAXPATH];
+	char	buf[MAXPATH], *p;
 	FILE    *f;
-	MMAP    *m;
-	int	rc;
+	int	rc, len;
 
 	gettemp(buf, "clone");
 	f = fopen(buf, "w");
@@ -101,9 +99,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	m = mopen(buf, "r");
-	rc = send_msg(r, m->where,  msize(m), 0, opts.gzip);
-	mclose(m);
+	rc = send_file(r, buf, 0, opts.gzip);	
 	unlink(buf);
 	return (rc);
 }
