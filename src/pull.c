@@ -353,7 +353,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
 	}
-	if ((bk_mode() == BK_BASIC) && exists("BitKeeper/etc/.master")) {
+	if ((bk_mode() == BK_BASIC) && exists(BKMASTER)) {
 		fprintf(stderr, "Cannot pull from master repository: %s",
 			upgrade_msg);
 		exit(1);

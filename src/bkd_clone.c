@@ -25,7 +25,7 @@ cmd_clone(int ac, char **av)
 		out("ERROR-Not at package root\n");
 		exit(1);
 	}
-	if ((bk_mode() == BK_BASIC) && !exists("BitKeeper/etc/.master")) {
+	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) {
 		out("ERROR-bkd std cannot access non-master repository\n");
 		exit(1);
 	}

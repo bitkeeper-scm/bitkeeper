@@ -181,7 +181,8 @@ _mvdir() {		# /* doc 2.0 */
 	
 	bk -r check -a || exit 1;
 	# Win32 note: must use relative path or drive:/path
-	# because cygwin mv interprete /path relative to mount tables.
+	# because cygwin mv interpret /path relative to the mount tables.
+	# XXX TODO we should move this code to a C function
 	mkdir -p $2
 	rmdir $2
 	mv $1 $2

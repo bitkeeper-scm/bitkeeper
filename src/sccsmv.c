@@ -4,6 +4,19 @@
 WHATSTR("@(#)%K%");
 
 /*
+ * Returm true if Master repository
+ */
+private int
+isMasterTree()
+{
+	char root[MAXPATH];
+	
+	unless (bk_proj->root) return (0);
+	concat_path(root, bk_proj->root, BKMASTER);
+	return (exists(root));
+}
+
+/*
  * Emulate mv(1)
  *
  * usage: mv a b
@@ -17,6 +30,10 @@ mv_main(int ac, char **av)
 	int	errors = 0;
 	int	dofree = 0;
 
+	if ((bk_mode() == BK_BASIC) && !isMasterTree()) {
+		fprintf(stderr, upgrade_msg);
+		return(1);
+	}
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help mv");
 		return (0);

@@ -368,6 +368,15 @@ that will work too, it just gets another patch.\n");
 			exit(1);
 		}
 
+		if (bk_mode() == BK_BASIC) {
+			SHOUT();
+			fprintf(stderr,
+			   "BitKeeper/Basic should not have rename conflict\n");
+			listPendingRenames();
+			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
+			exit(1);
+		}
+
 		/*
 		 * Now do the same thing, calling the resolver.
 		 */
@@ -532,10 +541,6 @@ pass1_renames(opts *opts, sccs *s)
 	if (nameOK(opts, s)) {
 		unlink(sccs_Xfile(s, 'm'));
 		sccs_free(s);
-		return;
-	}
-	if (bk_mode() == BK_BASIC) {
-		fprintf(stderr, "File rename detected, %s", upgrade_msg);
 		return;
 	}
 

@@ -17,8 +17,8 @@ win32_common_setup()
 {
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
-	TMP=`../bk _nativepath /tmp`
-	if [ -z "$TST_DIR" ]; then TST_DIR="$TMP"; fi
+	TMP=`../bk _nativepath $TEMP`
+	if [ -z "$TST_DIR" ]; then TST_DIR=`../bk _nativepath /tmp`; fi
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
 	touch $TMP/BitKeeper_nul

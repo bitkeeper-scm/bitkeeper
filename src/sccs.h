@@ -317,6 +317,7 @@
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
+#define BKMASTER	"BitKeeper/etc/.master"
 #define	GONE		"BitKeeper/etc/gone"
 #define CSETS_IN	"BitKeeper/etc/csets-in"
 #define CSETS_OUT	"BitKeeper/etc/csets-out"

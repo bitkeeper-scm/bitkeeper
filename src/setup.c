@@ -174,7 +174,7 @@ again:		printf("Editor to use [%s] ", editor);
                 fprintf(stderr, "setup: cannot find package root.\n");
                 exit(1);
         }                           
-	mkdir("BitKeeper/etc/.master", 0775);
+	mkdir(BKMASTER, 0775);
 	sendConfig("setups@openlogging.org", "1.0");
 	return (0);
 }

@@ -14,7 +14,7 @@
 if [ X$PLATFORM = X"WIN32" ]
 then
 	binary_data="`bk bin`/bk.exe"
-	binary_data2="`bk bin`/blat.exe"
+	binary_data2="`bk bin`/diff.exe"
 else 
 	binary_data="/bin/ls"
 	binary_data2="/bin/rm"

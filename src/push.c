@@ -633,7 +633,7 @@ push(char **av, opts opts, remote *r, char **envVar)
 		exit(1);
 	}
 	if ((bk_mode() == BK_BASIC) && !opts.metaOnly &&
-	    exists("BitKeeper/etc/.master")) {
+	    exists(BKMASTER)) {
 		fprintf(stderr, "Cannot push from master repository: %s",
 			upgrade_msg);
 		exit(1);
