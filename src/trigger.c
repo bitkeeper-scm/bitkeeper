@@ -155,7 +155,7 @@ runit(char *file, char *output)
 	char	*my_av[10];
 	char	trigger[MAXPATH];
 
-	sprintf(trigger, "BK_TRIGGER=%s", basename(file));
+	sprintf(trigger, "BK_TRIGGER=%s", basenm(file));
 	putenv(trigger);	/* OK to not dup, transitory */
 	if (output) {
 		fd1 = dup(1); close(1); 
