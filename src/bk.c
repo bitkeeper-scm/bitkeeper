@@ -92,6 +92,7 @@ int	keysort_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
 int	level_main(int, char **);
+int	license_main(int, char **);
 int	lines_main(int, char **);
 int	link_main(int, char **);
 int	listkey_main(int, char **);
@@ -199,6 +200,7 @@ struct	command cmdtbl[] = {
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
 	{"_lconfig", lconfig_main},	
+	{"_license", license_main},
 	{"_lines", lines_main},	
 	{"_link", link_main},	
 	{"_listkey", listkey_main},	
