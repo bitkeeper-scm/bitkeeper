@@ -5,23 +5,20 @@ proc getConfig {prog} \
 	set app $prog
 
 	if {$tcl_platform(platform) == "windows"} {
-		#set _d(fixedFont) {{Lucida Console} 9}
-		#set _d(fixedBoldFont) {{Lucida Console} 9 bold}
-		set _d(fixedFont) {6x13}
-		set _d(fixedBoldFont) {6x13bold}
-
-		#set _d(fixedBoldFont) {helvetica 9 roman bold}
-		#set _d(fixedFont -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso8859-1
-		#set _d(fixedBoldFont -misc-fixed-bold-r-semicondensed--13-120-75-75-c-60-iso8859-1
-		set _d(buttonFont) {helvetica 9 roman bold}
-		set _d(noticeFont) {helvetica 10 roman bold}
+		set f {Courier New}
+		set ps 8
+		set _d(fixedFont) [list $f $ps normal]
+		set _d(fixedBoldFont) [list $f $ps bold]
+		set _d(fm.activeOldFont) [list $f $ps normal]
+		set _d(fm.activeNewFont) [list $f $ps normal]
+		set _d(buttonFont) {Arial 8 roman}
+		set _d(noticeFont) {Arial 8 roman bold}
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
-		set _d(scrollWidth) 18		;# scrollbar width
-		set _d(help.scrollWidth) 20	;# helptool scrollbar width
-		set _d(fm.activeOldFont) {{Lucida Console} 9 bold}
-		set _d(fm.activeNewFont) {{Lucida Console} 9 bold}
-		set _d(ci.filesHeight) 10
+		set _d(scrollWidth) 12		;# scrollbar width
+		set _d(help.scrollWidth) 14	;# helptool scrollbar width
+		set _d(ci.filesHeight) 8
+		set _d(ci.commentsHeight) 7	;# height of comment window
 	} else {
 		set _d(fixedFont) {6x13}
 		set _d(fixedBoldFont) {6x13bold}
@@ -34,6 +31,7 @@ proc getConfig {prog} \
 		set _d(fm.activeOldFont) {6x13bold}
 		set _d(fm.activeNewFont) {6x13bold}
 		set _d(ci.filesHeight) 9	;# num files to show in top win
+		set _d(ci.commentsHeight) 8	;# height of comment window
 		set _d(fm.editor) "fm2tool"
 	}
 
@@ -76,7 +74,6 @@ proc getConfig {prog} \
 	set _d(ci.excludeColor) red	;# color of the exclude X
 	set _d(ci.editor) ciedit	;# editor: ciedit=builtin, else in xterm
 	set _d(ci.display_bytes) 8192	;# number of bytes to show in new files
-	set _d(ci.commentsHeight) 6	;# height of comment window
 	set _d(ci.diffHeight) 30	;# number of lines in the diff window
 	set _d(ci.rescan) 0		;# Do a second scan to see if anything
 					;# changed. Values 0 - off 1 - on
