@@ -151,26 +151,43 @@ file(char *f, int (*func)())
 {
 	struct	stat sb;
 	char	*s;
+	char	*sfile = 0;
 
-	if (lstat(f, &sb) != 0) return (-1);
+	/*
+	 * If they gave us a name and it doesn't exist and it is not an SCCS
+	 * file name, then try and expand it and if that works keep going.
+	 */
+	if (lstat(f, &sb) != 0) {
+		if (sccs_filetype(f)) return (-1);
+		sfile = name2sccs(f);
+		if (lstat(sfile, &sb) != 0) return (-1);
+		f = sfile;
+	}
 	if (sccs_filetype(f)) return (func(f, &sb));
 
 	s = strrchr(f, '/');
 	if ((s >= f + 4) && strneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
 		if (xFlg) xprint(f);
+		if (sfile) free(sfile);
 	    	return (0);
 	}
 
 	/*
 	 * OK, try and convert it to a sfile and do that.
 	 */
-	s = name2sccs(f);
+	if (sfile) {
+		s = sfile;
+		sfile = 0;
+	} else {
+		s = name2sccs(f);
+	}
 	if (s && (lstat(s, &sb) == 0)) {
 		func(s, &sb);
 		free(s);
 		return (0);
 	}
 	if (s) free(s);
+	if (sfile) free(sfile);
 	return (func(f, &sb));
 }
 
