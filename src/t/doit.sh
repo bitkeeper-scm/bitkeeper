@@ -23,10 +23,11 @@ win32_common_setup()
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
 	touch $TMP/BitKeeper_nul
-	if [ X$USER = X ]; then USER=`bk getuser`; fi
+	BK_USER=`bk getuser`
 	# Admin user is special, remap to a differnt user before we run the test
-	if [ X$USER = XAdministrator ]; then USER=Administrator-test; fi
-	if [ X$USER = Xadministrator ]; then USER=administrator-test; fi
+	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
+	if [ X$BK_USER = Xadministrator ]; then BK_USER=administrator-test; fi
+	USER="$BK_USER"	# some regression test uses $USER
 
 	# don't run remote regressions on NT
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
@@ -34,7 +35,7 @@ win32_common_setup()
 
 	# turn off pager - needed in win98
 	PAGER=cat
-	export PAGER
+	export PAGER BK_USER
 }
 
 unix_common_setup()
