@@ -169,11 +169,18 @@ if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
 echo OK
 echo $N checkout:EDIT w resolve rename conflict .....................$NL
+# remove some csets to bring it below limit in the regression env
+(cd $HERE/edit_1 && bk undo -sqfa1.2)
+(cd $HERE/edit_2 && bk undo -sqfa1.2)
 cd $HERE/edit_1/src
-bk mv foo1.c foo2.c
+bk mv foo.c foo2.c
 bk commit $Q -yrename
-cd $HERE/edit_2/src
-bk mv foo1.c foo3.c
+cd $HERE/edit_2
+bk unedit BitKeeper/etc/config
+bk edit $Q BitKeeper/etc/config
+echo "checkout:EDIT" >> BitKeeper/etc/config
+cd src
+bk mv foo.c foo3.c
 bk commit $Q -yrename
 bk pull -t $Q $HERE/edit_1 2> /dev/null <<EOF
 r
