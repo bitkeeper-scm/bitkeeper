@@ -23,6 +23,8 @@ enum {
 	REMOTE
 };
 
+#define VALID(lines, i) ((lines) && (i) < (int)(lines)[0] && (lines)[i])
+
 private	char	*revs[3];
 private	char	*file;
 private	int	automerge = 0;
@@ -248,6 +250,7 @@ fagets(FILE *fh)
 	return (ret);
 }
 
+
 /*
  * return true if lines are the same
  */
@@ -256,17 +259,15 @@ sameLines(char **a, char **b)
 {
 	int	i;
 
-	if (a == b) return (1);
-	unless (a && b) return (0);
 	EACH(a) {
 		char	*al, *bl;
-		unless (b[i]) return (0);
+		unless (VALID(b, i)) return (0);
 		al = strchr(a[i], '\t');
 		bl = strchr(b[i], '\t');
 		assert(al && bl);
 		unless (streq(al, bl)) return (0);
 	}
-	if (b[i]) return (0);
+	if (VALID(b, i)) return (0);
 	return (1);
 }
 
@@ -385,7 +386,7 @@ popLine(char **lines)
 			free(lines[1]);
 		}
 	}
-	for (i = 1; lines[i]; i++) lines[i] = lines[i + 1];
+	EACH(lines) lines[i] = lines[i + 1];
 	return(ret);
 }
 	
@@ -535,7 +536,7 @@ unidiff(char **gca, char **new)
 			}
 		}
 	}
-	while (gca && gcaline < (int)gca[0] && gca[gcaline]) {
+	while (VALID(gca, gcaline)) {
 		char	*n;
 		n = malloc(strlen(gca[gcaline]) + 2);
 		n[0] = ' ';
