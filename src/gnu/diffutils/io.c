@@ -209,6 +209,9 @@ find_and_hash_each_line (current)
   char const *suffix_begin = current->suffix_begin;
   char const *bufend = current->buffer + current->buffered_chars;
   int use_line_cmp = ignore_some_line_changes;
+  int ign_len;
+  if (*ignore_to_str)
+  	ign_len= strlen(&ignore_to_str[1]);
 
   while ((char const *) p < suffix_begin)
     {
@@ -217,6 +220,18 @@ find_and_hash_each_line (current)
       /* Compute the equivalence class for this line.  */
 
       h = 0;
+      if (ignore_to_str[0])
+        {
+	  while ((c = *p++) != '\n')
+	    if (c == ignore_to_str[0])
+	      if (strncmp(p, &ignore_to_str[1], ign_len) == 0)
+	        {
+		  p += ign_len;
+	          break;
+	        }
+	  if (c == '\n')
+            p = (unsigned char const*)ip;
+	}
 
       /* Hash this line until we find a newline. */
       if (ignore_case_flag)
