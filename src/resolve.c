@@ -383,14 +383,13 @@ pass3:	if (opts->pass3) pass3_resolve(opts);
 void
 saveKey(opts *opts, char *key, char *file)
 {
+	if (opts->debug) fprintf(stderr, "saveKey(%s)->%s\n", key, file);
 	if (mdbm_store_str(opts->rootDB, key, file, MDBM_INSERT)) {
 		fprintf(stderr, "Duplicate key: %s\n", key);
 		fprintf(stderr, "\twanted by %s\n", file);
 		fprintf(stderr,
 		    "\tused by %s\n", mdbm_fetch_str(opts->rootDB, key));
 		resolve_cleanup(opts, 0);
-	} else if (opts->debug) {
-		fprintf(stderr, "saveKey(%s)->%s\n", key, file);
 	}
 }
 

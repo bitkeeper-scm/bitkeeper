@@ -128,7 +128,11 @@ findkey(sccs *s, look l)
 			sccs_sdelta(s, d, key);
 			unless (streq(key, l.key)) continue;
 		} 
-		if (l.random) unless (streq(d->random, l.random)) continue;
+		if (l.random) {
+			unless (d->random && streq(d->random, l.random)) {
+				continue;
+			}
+		}
 		if (l.cksum) unless (d->sum == l.cksum) continue;
 		if (l.utc) unless (d->date == l.utc) continue;
 		if (l.path) unless (streq(d->pathname, l.path)) continue;
