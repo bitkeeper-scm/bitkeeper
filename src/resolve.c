@@ -870,6 +870,80 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 }
 
 /*
+ * Resolve a file type by taking the file the winning delta and checking it
+ * over the losing delta.
+ * winner == REMOTE means the local is delta-ed with the remote's data.
+ */
+void
+type_delta(resolve *rs,
+	char *sfile, delta *l, delta *r, char *rfile, int winner)
+{
+	char	buf[MAXPATH+100];
+	char	*g = sccs2name(sfile);
+	delta	*o, *n;		/* old -> new */
+	sccs	*s;
+	int	loser;
+
+	if (rs->opts->debug) {
+		fprintf(stderr, "type(%s, %s, %s, %s)\n", sfile,
+		    l->rev, r->rev, winner == LOCAL ? "local" : "remote");
+	}
+
+	/*
+	 * XXX - there is some question here as to should I do a get -i.
+	 * This is not clear.
+	 */
+	if (winner == LOCAL) {
+		loser = -REMOTE;
+		o = r;
+		n = l;
+	} else {
+		loser = -LOCAL;
+		o = l;
+		n = r;
+	}
+	edit_tip(rs, sfile, o, rfile, loser);
+	if (S_ISREG(n->mode)) {
+		sprintf(buf, "bk get -kpq -r%s %s > %s", n->rev, sfile, g);
+		if (system(buf)) {
+			fprintf(stderr, "%s failed\n", buf);
+			exit(1);
+		}
+		chmod(g, n->mode);
+	} else if (S_ISLNK(n->mode)) {
+		assert(n->symlink);
+		if (symlink(n->symlink, g)) {
+			perror(g);
+			exit(1);
+		}
+	} else {
+		fprintf(stderr,
+		    "type_delta called on unknown file type %o\n", n->mode);
+		exit(1);
+	}
+	free(g);
+	sprintf(buf, "%sbk delta -q -y'Merge file types: %s -> %s' %s",
+	    bin, mode2FileType(o->mode), mode2FileType(n->mode), sfile);
+	if (system(buf)) {
+		fprintf(stderr, "%s failed\n", buf);
+		exit(1);
+	}
+	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
+	sfile = buf;
+	sccs_free(rs->s);
+	s = sccs_init(sfile, INIT, rs->opts->resync_proj);
+	assert(s);
+	if (rs->opts->debug) {
+		fprintf(stderr, "type reopens %s (%s)\n", sfile, s->gfile);
+	}
+	rs->s = s;
+	rs->d = sccs_getrev(s, "+", 0, 0);
+	assert(rs->d);
+	free(rs->dname);
+	rs->dname = name2sccs(rs->d->pathname);
+}
+
+/*
  * Add a null permissions delta to the specified tip.
  */
 void
@@ -962,6 +1036,7 @@ flags_delta(resolve *rs,
  * Set up to add a delta to the file, such as a rename or mode delta.
  * If which is set, update the r.file with the new data.
  *	which == LOCAL means do local rev, REMOTE means do remote rev.
+ * If the which value is negative, it means don't get the data.
  */
 private	void
 edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
@@ -973,10 +1048,10 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "edit_tip(%s %s %s)\n",
-		    sfile, d->rev, which == LOCAL ? "local" : "remote");
+		    sfile, d->rev, abs(which) == LOCAL ? "local" : "remote");
 	}
-	sprintf(buf, "%sbk get -e%s -r%s %s",
-	    bin, rs->opts->log ? "" : "q", d->rev, sfile);
+	sprintf(buf, "%sbk get -e%s%s -r%s %s",
+	    bin, which < 0 ? "g" : "", rs->opts->log ? "" : "q", d->rev, sfile);
 	system(buf);
 	if (which) {
 		t = strrchr(sfile, '/');
@@ -994,7 +1069,7 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 		/* 0123456789012
 		 * merge deltas 1.9 1.8 1.8.1.3 lm 00/01/15 00:25:18
 		 */
-		if (which == LOCAL) {
+		if (abs(which) == LOCAL) {
 			free(rs->revs->local);
 			rs->revs->local = strdup(newrev);
 		} else {
@@ -1302,7 +1377,7 @@ do_delta(opts *opts, sccs *s)
  * Merge a conflict, manually or automatically.
  * We handle permission conflicts here as well.
  *
- * XXX - we need to handle flags, descriptive text, and symbols.
+ * XXX - we need to handle descriptive text, lods, and symbols.
  * The symbol case is weird: a conflict is when the same symbol name
  * is in both branches without one below the trunk.
  */
@@ -1325,9 +1400,20 @@ conflict(opts *opts, char *sfile)
 	 * The smart programmer will notice that the case where both sides
 	 * changed the mode to same thing is just silently merged below.
 	 *
-	 * The annoyed programmer will note that the mode resolver may
+	 * The annoyed programmer will note that the resolver may
 	 * replace the sccs pointer.
 	 */
+	unless (fileType(d.local->mode) == fileType(d.remote->mode)) {
+		rs->opaque = (void*)&d;
+		resolve_filetypes(rs);
+		s = rs->s;
+		if (opts->errors) return;
+		/* Need to re-init these, the resolve stomped on the s-> */
+		d.local = sccs_getrev(s, rs->revs->local, 0, 0);
+		d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
+		d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
+	}
+
 	unless (d.local->mode == d.remote->mode) {
 		rs->opaque = (void*)&d;
 		resolve_modes(rs);
@@ -1347,6 +1433,10 @@ conflict(opts *opts, char *sfile)
 		resolve_flags(rs);
 		s = rs->s;
 		if (opts->errors) return;
+		/* Need to re-init these, the resolve stomped on the s-> */
+		d.local = sccs_getrev(s, rs->revs->local, 0, 0);
+		d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
+		d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
 	}
 
 	if (opts->debug) {
@@ -1357,8 +1447,36 @@ conflict(opts *opts, char *sfile)
 	if (opts->noconflicts) {
 	    	fprintf(stderr,
 		    "resolve: can't process conflict in %s\n", s->gfile);
-		resolve_free(rs);
+err:		resolve_free(rs);
 		opts->errors = 1;
+		return;
+	}
+
+	/*
+	 * See if we merged some symlink conflicts, if so
+	 * there can't be any conflict left.
+	 */
+	if (S_ISLNK(fileType(d.local->mode))) {
+		int	flags;
+		delta	*e;
+
+		assert(d.local->mode == d.remote->mode);
+		if (sccs_get(rs->s, 0, 0, 0, 0, SILENT, "-")) {
+			sccs_whynot("delta", rs->s);
+			goto err;
+		}
+		if (!IS_LOCKED(rs->s) && edit(rs)) goto err;
+		comments_save("Auto merged");
+		e = comments_get(0);
+		sccs_restart(rs->s);
+		flags = DELTA_DONTASK|DELTA_FORCE|(rs->opts->quiet? SILENT : 0);
+		if (sccs_delta(rs->s, flags, e, 0, 0, 0)) {
+			sccs_whynot("delta", rs->s);
+			goto err;
+		}
+	    	rs->opts->resolved++;
+		unlink(sccs_Xfile(rs->s, 'r'));
+		resolve_free(rs);
 		return;
 	}
 

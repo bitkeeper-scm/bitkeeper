@@ -26,11 +26,12 @@ OBJ	= adler32.o admin.o bkd.o bkd_cd.o bkd_client.o bkd_clone.o \
 	  rcs.o receive.o rechksum.o renumber.o repo.o resolve.o \
 	  resolve_contents.o resolve_create.o resolve_flags.o \
 	  resolve_generic.o resolve_modes.o resolve_renames.o \
+	  resolve_filetypes.o \
 	  rmdel.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o sendconfig.o setlog.o setup.o sfiles.o \
 	  sfio.o sids.o sinfo.o slib.o smoosh.o status.o stripdel.o \
 	  takepatch.o undo.o undos.o unique.o unwrap.o user.o utils.o \
-	  version.o what.o zgets.o zone.o
+	  version.o what.o zgets.o zone.o license.o
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/gzio.o zlib/infblock.o zlib/infcodes.o zlib/inffast.o \

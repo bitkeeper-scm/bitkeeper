@@ -7580,7 +7580,7 @@ checkin(sccs *s,
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
-		delta *d = n0 ? n0 : n;
+		delta	*d = n0 ? n0 : n;
 
 		randomBits(buf);
 		if (buf[0]) s->random = strdup(buf);
