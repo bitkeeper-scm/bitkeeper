@@ -158,6 +158,17 @@ err:			unlink("BitKeeper/etc/config");
 		if (config_path) goto err;
 		goto again;
 	}
+	if ((t = mdbm_fetch_str(m, "single_user")) && strchr(t, '@')) {
+		fprintf(stderr, "Setup: single_user should not have a hostname.\n");
+		if (config_path[0]) goto err;
+		goto again;
+	}
+	if ((mdbm_fetch_str(m, "single_user") != 0) ^
+	    (mdbm_fetch_str(m, "single_host") != 0)) {
+		fprintf(stderr, "Setup: single_user and single_host must appear together.\n");
+		if (config_path[0]) goto err;
+		goto again;
+	}		
 #if 0	/* this makes setuptool appear to hang up when a non-approved
          * category is given.
 	 */
