@@ -247,7 +247,7 @@ proc diffFiles {L R} \
 	set n 1
 	set l [open "| bk get -kqp \"$L\"" r]
 	set tail [file tail $L]
-	set tmp [file join $tmp_dir $tail]
+	set tmp [file join $tmp_dir $tail-[pid]]
 	set t [open $tmp w]
 	while {[gets $l buf] >= 0} {
 		puts $t "$buf"
