@@ -1,0 +1,44 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2003 Larry McVoy
+# %K%
+
+echo $N Make sure we can find keys with a date of 0 - 70/01/01 etc ..$NL
+mkdir SCCS
+bk base64 -d <<EOF > SCCS/s.Makefile
+AUgyODM1MwoBcyAwMDAwMC8wMDAwMC8wMDAwMAoBZCBEIDEuMSA3MC8wMS8wMSAw
+MDowMDowMCBGYWtlIDIgMQoBYyB3d3R0dHR0c3Nyb29vb29vb25ubm5tbW1sbGxr
+aWlpaGdmZWVlZWVlZWRkZGNjYmFhYWFhTUZDICAgICAgICAgIAoBY0YxCgFjSzI3
+Mzk3CgFlCgFzIDAwMDAwLzAwMDAwLzAwMDAwCgFkIEQgMS4wIDcwLzAxLzAxIDAw
+OjAwOjAwIEZha2UgMSAwCgFjIHNza2NjYjIKAWNCYmlsbEBwdXJwbGUuM3BhcmRh
+dGEuY29tfENoYW5nZVNldHwyMDAxMDgwMjIxNDU0Mnw1OTQ4Mnw5MDc2ZmQ4NTgz
+Nzc3Mjk3CgFjSHB1cnBsZS4zcGFyZGF0YS5jb20KAWNLMDAwMDAKAWNQdHBkc3Jj
+L2tlcm5lbC9NYWtlZmlsZQoBY08tcnctcnctci0tCgFjUjAwMDAwMDAwCgFjVjQK
+AWNYMHg4YjEKAWUKAXUKAVUKAWYgZSAwCgFmIHggMHg4YjEKAXQKAVQKAUkgMQoB
+RSAxCg==
+EOF
+test `bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|19700101000000|00000|00000000"` = "Makefile|1.0" || {
+	echo failed to find the 1.0 delta
+	exit 1
+}
+test `bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|19700101000001|27397"` = "Makefile|1.1" || {
+	echo failed to find the 1.1 delta
+	exit 1
+}
+echo OK
+
+echo $N Make sure we do not find keys w/ a garbage date .............$NL
+test X`bk findkey "Fake@purple.3pardata.com|tpdsrc/kernel/Makefile|0|27397"` = "XMakefile|1.1" && {
+	echo Should not have found the delta
+	exit 1
+}
+echo OK

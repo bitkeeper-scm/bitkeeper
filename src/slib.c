@@ -2229,6 +2229,48 @@ nextdata(sccs *s)
 }
 
 /*
+ * Look for a bug in the weave that could be created by bitkeeper
+ * versions 3.0.1 or older.  It happens when a file is delta'ed on
+ * Windows when it ends in a bare \r without a trailing \n.
+ *
+ * This function gets run from check.c if checksums are being verified
+ * right after we have walked the weave to check checksums.  If a
+ * 'no-newline' marker is seen in the file then getRegBody() sets
+ * s->has_nonl.  And we skip this call if s->has_nonl is not set, that
+ * way the weave is only extracted twice on a subset of the files.
+ *
+ * This code is a simple pattern match that looks for a blank line
+ * followed by end marker with a no-newline flag.
+ *
+ * The function should be removed after all customers have upgraded
+ * beyond 3.0.1.
+ */
+int
+chk_nlbug(sccs *s)
+{
+	char	*buf, *p;
+	int	sawblank = 0;
+	int	ret = 0;
+
+	seekto(s, s->data);
+	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
+	while (buf = nextdata(s)) {
+		if (buf[0] == '\001' && buf[1] == 'E') {
+			p = buf + 3;
+			while (isdigit(*p)) p++;
+			if (*p == 'N' && sawblank) {
+				getMsg("saw_blanknonl", s->sfile,
+				    0, 0, stderr);
+				ret = 1;
+			}
+		}
+		sawblank = (buf[0] == '\n');
+	}
+	if ((s->encoding & E_GZIP) && zgets_done()) ret = 1;
+	return (ret);
+}
+
+/*
  * This does standard SCCS expansion, it's almost 100% here.
  * New stuff added:
  * %@%	user@host
@@ -6339,6 +6381,7 @@ out:			if (slist) free(slist);
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
 			unless (*n == 'N') {
+				s->has_nonl = 1;
 				unless (flags & GET_SUM) fputc('\n', out);
 				lf_pend = 0;
 				if (flags & NEWCKSUM) sum += '\n';
@@ -15153,8 +15196,12 @@ sccs_findKey(sccs *s, char *key)
 	user = parts[0];
 	host = parts[1];
 	path = parts[2];
+	/*
+	 * We allow date2time to return 0 because of old Teamware deltas we
+	 * did not fudge in the 3pardata import.
+	 */
 	date = date2time(&parts[3][2], 0, EXACT);
-	if (date == 0) return (0); /* date == 0 => bad key */
+	if (!date && !streq(&parts[3][2], "700101000000")) return (0);
 	if (parts[4]) {
 		cksum = atoi(parts[4]);
 		cksump = &cksum;
