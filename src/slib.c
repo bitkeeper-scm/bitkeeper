@@ -334,6 +334,7 @@ sccs_freetree(delta *tree)
 		free(tree->csetFile);
 	}
 	if (tree->cset) free(tree->cset);
+	if (tree->sym) free(tree->sym);
 	free(tree);
 }
 
@@ -7229,6 +7230,7 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 		return (-1);
 	}
 	m = sccs_getInit(s, 0, iF, 1, &e, 0);
+	fclose(iF);
 	if (m->rev) free(m->rev);
 	m->rev = strdup(parent->rev);
 	bcopy(parent->r, m->r, sizeof(m->r));
@@ -8941,6 +8943,7 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 {
 	FILE	*f = 0;
 	delta	*d, *a = 0, *b = 0;
+	char	*n[3];
 	
 	for (d = s->table; d; d = d->next) {
 		d->flags &= ~D_VISITED;
@@ -8977,11 +8980,14 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 				perror("R.file");
 				return (-1);
 			}
-			fprintf(f, "rename %s %s %s\n",
-			    name2sccs(lpath),
-			    name2sccs(gpath),
-			    name2sccs(rpath));
+			n[0] = name2sccs(lpath);
+			n[1] = name2sccs(gpath);
+			n[2] = name2sccs(rpath);
+			fprintf(f, "rename %s %s %s\n", n[0], n[1], n[2]);
 			fclose(f);
+			free(n[0]);
+			free(n[1]);
+			free(n[2]);
 		}
 		return (1);
 	}
@@ -8990,9 +8996,14 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 			perror("R.file");
 			return (-1);
 		}
-		fprintf(f, "rename %s %s %s\n",
-		    name2sccs(lpath), name2sccs(gpath), name2sccs(rpath));
+		n[0] = name2sccs(lpath);
+		n[1] = name2sccs(gpath);
+		n[2] = name2sccs(rpath);
+		fprintf(f, "rename %s %s %s\n", n[0], n[1], n[2]);
 		fclose(f);
+		free(n[0]);
+		free(n[1]);
+		free(n[2]);
 	}
 	return (0);
 }

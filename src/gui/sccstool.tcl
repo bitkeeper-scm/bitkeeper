@@ -233,7 +233,7 @@ proc listRevs {file} \
 	# Figure out the biggest size of any node.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| lines $lineOpts $file 2>/dev/null" "r"]
+	set d [open "| bk lines $lineOpts $file 2>/dev/null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -299,7 +299,7 @@ proc prs {} \
 	set rev1 [getRev 2]
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	if {"$rev1" != ""} {
-		set prs [open "| prs {$dspec} -r$rev1 $file 2>/dev/null"]
+		set prs [open "| bk prs {$dspec} -r$rev1 $file 2>/dev/null"]
 		while { [gets $prs str] >= 0 } {
 			.p.bottom.t insert end "$str\n"
 		}
@@ -312,7 +312,7 @@ proc history {} \
 {
 	global	file dspec
 
-	set prs [open "| prs -m {$dspec} $file 2>/dev/null"]
+	set prs [open "| bk prs -m {$dspec} $file 2>/dev/null"]
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	while { [gets $prs str] >= 0 } {
 		.p.bottom.t insert end "$str\n"
@@ -325,8 +325,8 @@ proc renumber {} \
 {
 	global	file
 
-	#set prs [open "| renumber -n $file 2>&1" "r"]
-	exec renumber -n $file 2>/tmp/renumber
+	#set prs [open "| bk renumber -n $file 2>&1" "r"]
+	exec bk renumber -n $file 2>/tmp/renumber
 	set prs [open "/tmp/renumber" "r"]
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	while { [gets $prs str] >= 0 } {
@@ -361,7 +361,7 @@ proc get {} \
 	if {$base == "s.ChangeSet"} {
 		set get [open "| bk cset -l$rev1 | bk sccslog - 2>/dev/null"]
 	} else {
-		set get [open "| get -mudPr$rev1 $file 2>/dev/null"]
+		set get [open "| bk get -mudPr$rev1 $file 2>/dev/null"]
 	}
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	while { [gets $get str] >= 0 } {
@@ -387,8 +387,8 @@ proc diff2 {} \
 		set rexp {^!@XXX!@FOO$}
 	} else {
 		# XXX file names
-		set a [open "| get $getOpts -kPr$rev1 $file >/tmp/$rev1 2>/dev/null" "w"]
-		set b [open "| get $getOpts -kPr$rev2 $file >/tmp/$rev2 2>/dev/null" "w"]
+		set a [open "| bk get $getOpts -kPr$rev1 $file >/tmp/$rev1 2>/dev/null" "w"]
+		set b [open "| bk get $getOpts -kPr$rev2 $file >/tmp/$rev2 2>/dev/null" "w"]
 		catch { close $a; }
 		catch { close $b; }
 		set diffs [open "| diff $diffOpts /tmp/$rev1 /tmp/$rev2"]
@@ -617,7 +617,7 @@ proc widgets {} \
 	    button .menus.quit -font $bfont -width 7 -relief raised \
 		-pady $pady -text "Quit" -command done
 	    button .menus.help -font $bfont -width 7 -relief raised \
-		-pady $pady -text "Help" -command { exec bithelp sccs & }
+		-pady $pady -text "Help" -command { exec bk bithelp sccs & }
 	    button .menus.new -font $bfont -width 7 -relief raised \
 		-pady $pady -text "Open" -command openFile
 	    button .menus.prev -font $bfont -width 7 -relief raised \
@@ -678,10 +678,10 @@ proc widgets {} \
 
 	bind .p.top.c <1> { prs; break }
 	bind .p.top.c <3> "diff2; break"
-	bind .p.top.c <Alt-h> { exec bithelp sccs & }
+	bind .p.top.c <Alt-h> { exec bk bithelp sccs & }
 	bind .p.top.c <Control-e> ".p.bottom.t yview scroll 1 units"
 	bind .p.top.c <Control-f> ".p.bottom.t yview scroll 1 pages"
-	bind .p.top.c <Control-h> { exec bithelp sccs & }
+	bind .p.top.c <Control-h> { exec bk bithelp sccs & }
 	bind .p.top.c <Control-q> done
 	bind .p.top.c <Control-u> ".p.bottom.t yview scroll -1 pages"
 	bind .p.top.c <Control-y> ".p.bottom.t yview scroll -1 units"
@@ -751,7 +751,7 @@ proc sccstool {name} \
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
 	set bad 0
-	set file [exec sfiles $name 2>/dev/null]
+	set file [exec bk sfiles $name 2>/dev/null]
 	.info.l configure -text $file
 	listRevs $file 
 	history 

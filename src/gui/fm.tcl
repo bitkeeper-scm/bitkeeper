@@ -491,7 +491,7 @@ proc sdiff {L R} \
 		set tail [file tail $L]
 		set dotL [file join $dir .$tail]
 	}
-	exec undos $L > $dotL
+	exec bk undos $L > $dotL
 	set dir [file dirname $R]
 	if {"$dir" == ""} {
 		set dotR .$R
@@ -499,7 +499,7 @@ proc sdiff {L R} \
 		set tail [file tail $R]
 		set dotR [file join $dir .$tail]
 	}
-	exec undos $R > $dotR
+	exec bk undos $R > $dotR
 	set rmList [list $dotL $dotR]
 	return [open "| sdiff -w1 $dotL $dotR"]
 }
@@ -796,7 +796,7 @@ proc widgets {L R O} \
 		    -text "Done" -width 7 -command save -state disabled
 		button .merge.menu.help -width 7 -bg grey \
 		    -font $buttonFont -text "Help" \
-		    -command { exec bithelp fm & }
+		    -command { exec bk bithelp fm & }
 		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
 		grid .merge.menu.quit -row 1 
 		grid .merge.menu.restart -row 1 -column 1
