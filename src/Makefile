@@ -465,10 +465,6 @@ B=bkd.h lib_tcp.h
 M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
 
-# check for library-specific things
-config.h: configure.sh configure.inc
-	./configure.sh
-
 shell.o: substvars
 	echo 'char *shell() { return ("@FEATURE_SH@"); }' | \
 							./substvars > shell.c
@@ -503,7 +499,7 @@ cset.o:		cset.c $(H) range.h $(Z)
 cset_inex.o:	cset_inex.c $(H) $(Z)
 delta.o:	delta.c $(H)
 diffs.o:	diffs.c $(H) range.h
-dirname.o:	dirname.c config.h
+dirname.o:	dirname.c
 export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 files.o:	files.c $(H)
@@ -535,7 +531,7 @@ libsfiles.o:	libsfiles.c $(H)
 libusers.o:	libusers.c $(H) range.h
 license.o:	license.c $(H)
 lines.o:	lines.c $(H)
-localtm.o:	localtm.c $(H) config.h
+localtm.o:	localtm.c $(H)
 lock.o:		lock.c $(H)
 locking.o:	locking.c $(H)
 log.o:		log.c $(H)

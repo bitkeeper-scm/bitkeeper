@@ -8,7 +8,6 @@
  * The extra hour is for daylight savings time.
  */
 #include "system.h"
-#include "config.h"
 
 long
 localtimez(time_t tt, struct tm *tmz)
