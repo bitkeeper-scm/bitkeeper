@@ -31,12 +31,13 @@ usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
 
 #include "comments.c"
 int	newrev(sccs *s, pfile *pf);
+project	*proj;
 
 int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = 0;
+	int	iflags = INIT_SAVEPROJ;
 	int	dflags = 0;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
@@ -174,11 +175,12 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		if (dflags & DELTA_DONTASK) {
 			unless (d = getComments(0)) goto usage;
 		}
-		unless (s = sccs_init(name, iflags, 0)) {
+		unless (s = sccs_init(name, iflags, proj)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();
 			continue;
 		}
+		unless (proj) proj = s->proj;
 		if (dflags & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				dflags &= ~NEWFILE;
