@@ -1831,8 +1831,16 @@ proc edit_done {} \
 	bindtags .merge.t {.merge.t all}
 
 	# This code handles it as long as the changes are inside a merge
-	set d "d$lastDiff"
-	set e "e$lastDiff"
+	if {[.merge.t compare d$lastDiff != "d$lastDiff linestart"]} {
+		.merge.t mark set d$lastDiff \
+		    [.merge.t index "d$lastDiff linestart"]
+	}
+	if {[.merge.t compare e$lastDiff != "e$lastDiff linestart"]} {
+		.merge.t mark set e$lastDiff \
+		    [.merge.t index "e$lastDiff lineend+1c"]
+	}
+	set d [.merge.t index d$lastDiff]
+	set e [.merge.t index e$lastDiff]
 	set here [.merge.t index current]
 	set l 0
 	set lines [list]
@@ -2253,7 +2261,7 @@ proc edit_clear {} \
 	.merge.hi configure -state disabled
 }
 
-# XXX - when we restore a manual merge we do not rehilite the diff winows
+# XXX - when we restore a manual merge we do not rehilite the diff windows
 proc edit_restore {c} \
 {
 	global	lastDiff diffCount UNMERGED conf_todo restore
