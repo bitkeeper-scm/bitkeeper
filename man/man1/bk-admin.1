@@ -61,9 +61,6 @@ which can be any of:
 .if n .RS .4i
 .if t .tp 1.1i  
 .if n .tp 1.1i
-.B ALWAYS_EDIT
-always follow a delta with an edit, leaving a locked file.
-.tp
 .B BITKEEPER
 mark the file as a \*(BK file (very rarely used, \fBnot\fP recommended)
 .tp
@@ -78,6 +75,9 @@ expand SCCS keywords, i.e., %\fIK\fP% etc.
 .tp
 .B YEAR4
 display dates as 4 digit years (breaks \*(AT compatibility)
+.tp
+.B EOLN_NATIVE
+use operating system's native end-of-line termination.
 .sp .25
 .ti -1.1i
 Flags with arguments are:
