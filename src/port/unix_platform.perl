@@ -72,13 +72,14 @@ sub cpio_out
 	local($q, $list) = ($_[0], $_[1]);
 
 	$cpioq = $q ? ' 2>/dev/null' : 'v';
-	system("cpio -oc$cpioq < $list")
+	system("cpio -o$cpioq < $list")
 		&& die "cpio -o: unsuccessful exit $?\n";
 }
 
 sub cpio_in
 {
-	system("cpio -icdm 2>/dev/null") 
+	#system("cpio -icdm 2>/dev/null") 
+	system("cpio -idm 2>/dev/null") 
 		&& die "cpio -i: unsuccessful exit $?\n";
 }
 
