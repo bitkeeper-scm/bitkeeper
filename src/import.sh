@@ -568,6 +568,5 @@ init() {
 }
 
 init
-__logCommand "$@"
 import "$@"
 exit 0
