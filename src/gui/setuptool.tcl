@@ -282,6 +282,47 @@ proc check_config { widget } \
         }
 }
 
+#
+proc setCat {cat} \
+{
+	global gc st_cinfo
+
+	$gc(catmenu) configure -text $cat
+	set st_cinfo(category) "$cat"
+	return
+	
+}
+
+# Create the hierarchical menus that are from the redhat rpm list
+proc createCatMenu {w} \
+{
+	global gc
+
+	set categories [list]
+	set gc(catmenu) $w
+
+	menubutton $gc(catmenu) -font $gc(setup.buttonFont) -relief raised \
+	    -bg $gc(setup.BG) \
+	    -text "Select Category" -width 30 -state normal \
+	    -menu $gc(catmenu).menu 
+	#-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+	#set gc(cmenu) [menu $w.menu]
+	set cmenu [menu $gc(catmenu).menu]
+
+	set fid [open "|bk getmsg setup_categories" "r"]
+	while {[gets $fid c] != -1} {
+		set cat [lindex [split $c "/"] 0]
+		if {!([lsearch $categories $cat] >= 0)} {
+			lappend categories $cat
+			$cmenu add command -label $cat \
+			    -command "setCat [list $cat]"
+		}
+		puts stderr "cat=$cat"
+		#$gc(cmenu) add command -label $cat
+	}
+	catch {close $fid} err
+}
+
 proc create_config {w} \
 {
 	global st_cinfo st_g rootDir st_dlg_button logo widget
@@ -339,8 +380,12 @@ proc create_config {w} \
 		    #puts "desc: ($desc) desc: ($desc)"
 		    label $w.t.l.$desc -text "$desc" -justify right \
 			-bg $gc(setup.BG)
-		    entry $w.t.e.$desc -width 30 -relief sunken -bd 2 \
-                        -bg $gc(setup.BG) -textvariable st_cinfo($desc)
+		    if {$desc == "category"} {
+		    	createCatMenu $w.t.e.$desc
+		    } else {
+			    entry $w.t.e.$desc -width 30 -relief sunken -bd 2 \
+				-bg $gc(setup.BG) -textvariable st_cinfo($desc)
+		    }
 		    if {$tcl_platform(platform) == "windows"} {
 			    grid $w.t.e.$desc  -pady 1
 		    } else {
@@ -406,7 +451,7 @@ proc setbkdir {} \
 		if {![file isdirectory $st_g(bkdir)]} {
 			catch {file mkdir $st_g(bkdir)} err
 		}
-		set set_g(bkrc) [file join $st_g(bkdir) _bkrc]
+		set st_g(bkrc) [file join $st_g(bkdir) _bkrc]
 	} elseif {[info exists env(HOME)]} {
 		set st_g(bkdir) $env(HOME)
 		set st_g(bkrc) [file join $st_g(bkdir) .bkrc]
