@@ -22,6 +22,7 @@ main(int ac, char **av)
 {
 	sccs	*s = 0;
 	int	flags = SILENT;
+	int	sflags = SF_GFILE;
 	int	c;
 	char	*name;
 
@@ -36,7 +37,7 @@ usage:		fputs(clean_help, stderr);
 	while ((c = getopt(ac, av, "npqr:suv")) != -1) {
 		switch (c) {
 		    case 'p': flags |= PRINT; break;
-		    case 'u': flags |= CLEAN_UNEDIT; break;
+		    case 'u': flags |= CLEAN_UNEDIT; sflags &= ~SF_GFILE; break;
 		    case 'n': flags |= CLEAN_UNLOCK; break;
 		    case 'v': flags &= ~SILENT; break;
 
@@ -53,17 +54,18 @@ usage:		fputs(clean_help, stderr);
 	 * Too dangerous to unedit everything automagically,
 	 * make 'em spell it out.
 	 */
+
 	if (flags & CLEAN_UNEDIT) {
 		unless (name =
 		    sfileFirst("clean",
-				&av[optind], SF_GFILE|SF_NODIREXPAND)) {
+				&av[optind], sflags|SF_NODIREXPAND)) {
 			fprintf(stderr,
 			    "clean: must have explicit list "
 			    "when discarding changes.\n");
 			exit(1);
 		}
 	} else {
-		name = sfileFirst("clean", &av[optind], SF_DELETES|SF_GFILE);
+		name = sfileFirst("clean", &av[optind], SF_DELETES|sflags);
 	}
 	while (name) {
 		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM, 0))) {

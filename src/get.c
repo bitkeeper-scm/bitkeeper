@@ -16,12 +16,15 @@ usage: get [-bdeFgHkmnpqsu] [-c<date>] [-G<name>] \n\
 		Symbols may be specified instead of dates, in which case\n\
 		the date of the associated revision is used.\n\
     -d		prefix each line with date (not time)\n\
-    -D		output a delta instead of a file\n\
+    -D		output a delta as diff(1) style diffs instead of a file\n\
+    -DD		output a delta as BK style diffs instead of a file\n\
+    -DDD	output a delta as hash (MDBM) style diffs instead of a file\n\
     -e		get file for editing (locked)\n\
     -F		don't check the checksum\n\
     -g		just do locking, don't get the file\n\
     -G<name>	place the output file in <name>\n\
     -i<revs>	include specified revs in the get (rev, rev and/or rev-rev)\n\
+    -h		reverse the files sense of hash (turn on if off)\n\
     -k		don't expand keywords\n\
     -m		prefix each line with revision number\n\
     -M<rev>	merge with revision <rev>\n
@@ -55,6 +58,7 @@ get_main(int ac, char **av, char *out)
 	int	gdir = 0;
 	int	getdiff = 0;
 	int	hasrevs = 0;
+	int	dohash = 0;
 
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
@@ -62,16 +66,17 @@ get_main(int ac, char **av, char *out)
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
-	while ((c = getopt(ac, av, "bc;dDeFgG:Hi;kmM|nNpPqr;RstTux;")) != -1) {
+	while ((c = getopt(ac, av, "bc;dDeFgG:hHi;kmM|nNpPqr;RstTux;")) != -1) {
 		switch (c) {
 		    case 'b': flags |= GET_BRANCH; break;
 		    case 'c': cdate = optarg; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;
-		    case 'D': getdiff = 1; break;
+		    case 'D': getdiff++; break;
 		    case 'e': flags |= GET_EDIT; break;
 		    case 'F': iflags |= INIT_NOCKSUM; break;
 		    case 'g': flags |= GET_SKIPGET; break;
 		    case 'G': Gname = optarg; break;
+		    case 'h': dohash = 1; break;
 		    case 'H': flags |= GET_PATH; break;
 		    case 'i': iLst = optarg; break;
 		    case 'k': flags &= ~GET_EXPAND; break;
@@ -98,7 +103,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 	if (flags & GET_PREFIX) {
 		if (flags & GET_EDIT) {
 			fprintf(stderr, "get: can't mix -e with -dNum\n");
-			exit(1);
+			return(1);
 		}
 	}
 	if (flags & GET_EDIT) flags &= ~GET_EXPAND;
@@ -132,6 +137,20 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 		fprintf(stderr, "get: can't specify more than one rev.\n");
 		return (1);
 	}
+	switch (getdiff) {
+	    case 0: break;
+	    case 1: flags |= GET_DIFFS; break;
+	    case 2: flags |= GET_BKDIFFS; break;
+	    case 3: flags |= GET_HASHDIFFS; break;
+	    default:
+		fprintf(stderr, "get: invalid D flag value %d\n", getdiff);
+		return(1);
+	}
+	if (getdiff && (flags & GET_PREFIX)) {
+		fprintf(stderr, "get: -D and prefixes not supported\n");
+		return(1);
+	}
+		
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, iflags, 0)) continue;
 		if (Gname) {
@@ -170,8 +189,15 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			}
 			rev = d->rev;
 		}
+		if (dohash) {
+			if (s->state & S_HASH) {
+				s->state &= ~S_HASH;
+			} else {
+				s->state |= S_HASH;
+			}
+		}
 		if (hasrevs) rev = sfileRev();
-		if (getdiff
+		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
 			unless (BEEN_WARNED(s)) {

@@ -371,6 +371,10 @@ _unedit() {
 	${BIN}clean -u "$@"
 }
 
+_unlock() {
+	${BIN}clean -u "$@"
+}
+
 _mv() {
 	${BIN}sccsmv "$@"
 }
@@ -614,7 +618,6 @@ _commit() {
 		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		EXIT=$?
 		/bin/rm -f /tmp/comments$$
-		${BIN}csetmark -r+
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
@@ -650,7 +653,6 @@ _commit() {
 			# Assume top of trunk is the right rev
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
-			${BIN}csetmark -r+
 			if [ $nusers -gt 1 ]
 			then _sendLog $REV
 			fi
@@ -765,7 +767,7 @@ _commandHelp() {
 			;;
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
-		unedit|check)
+		unlock|unedit|check)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)

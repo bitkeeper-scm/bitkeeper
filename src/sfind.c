@@ -41,6 +41,7 @@ FILE	*id_cache;
 MDBM	*idDB;
 MDBM	*csetDB;	/* database of {file if, tip id} */
 int	dups;
+int	mixed;		/* running in mixed long/short mode */
 int	file(char *f, int (*func)());
 int	func(const char *filename, const struct stat *sb, int flag);
 int	hasDiffs(char *file);
@@ -283,6 +284,7 @@ rebuild()
 		sccs_free(cset);
 		exit(1);
 	}
+	mixed = !(cset->state & S_KEY2);
 
 	if (Cflg) {
 		unless (csetDB = csetIds(cset, 0, 1)) {
@@ -325,6 +327,7 @@ visit(delta *d)
 	if (d->parent) visit(d->parent);
 }
 
+#ifdef	CRAZY_WOW
 /*
  * Print out everything leading from start to d, not including start.
  * XXX - stolen from cset.c - both copies need to go in slib.c.
@@ -351,6 +354,22 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	// Is this an issue?  I think makepatch handles them.
 	if (d->type == 'D') printf("%s:%s\n", sc->sfile, d->rev);
 }
+#endif
+
+save(sccs *sc, MDBM *idDB, char *buf)
+{
+	if (mdbm_store_str(idDB, buf, sc->gfile, MDBM_INSERT)) {
+		if (errno == EEXIST) {
+			fprintf(stderr,
+			    "Duplicate id '%s' for %s\n  Used by %s\n",
+			    buf, sc->gfile, buf);
+			dups++;
+		} else {
+			perror("mdbm_store");
+			exit(1);
+		}
+	}
+}
 
 int
 caches(const char *filename, const struct stat *sb, int flag)
@@ -358,8 +377,9 @@ caches(const char *filename, const struct stat *sb, int flag)
 	register char *file = (char *)filename;
 	sccs	*sc;
 	register delta *d, *e;
-	datum	k, v;
 	char	buf[MAXPATH*2];
+	char	*t;
+	int	n;
 
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
@@ -375,24 +395,19 @@ caches(const char *filename, const struct stat *sb, int flag)
 		delta	*ino = sccs_ino(sc);
 
 		sccs_sdelta(sc, sccs_ino(sc), buf);
-		/* update the id cache if 
-		 * a) there is no path for the root - BAD, or
-		 * b) if the root path != current path.
-		 */
-		if (!ino->pathname || !streq(ino->pathname, sc->gfile)) {
+		/* update the id cache only if root path != current path. */
+		assert(ino->pathname);
+		unless (streq(ino->pathname, sc->gfile)) {
 			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 		}
-		/* XXX: could use mdbm_store_str and mdbm_fetch_str */
-		k.dptr = buf;
-		k.dsize = strlen(buf) + 1;
-		v.dptr = sc->gfile;
-		v.dsize = strlen(sc->gfile) + 1;
-		if (mdbm_store(idDB, k, v, MDBM_INSERT)) {
-			v = mdbm_fetch(idDB, k);
-			fprintf(stderr,
-		    	"Duplicate id '%s' for %s\n  Used by %s\n",
-		    	buf, sc->gfile, v.dptr);
-				dups++;
+		save(sc, idDB, buf);
+		if (mixed && (t = sccs_iskeylong(buf))) {
+			*t = 0;
+			unless (streq(ino->pathname, sc->gfile)) {
+				fprintf(id_cache, "%s %s\n", buf, sc->gfile);
+			}
+			save(sc, idDB, buf);
+			*t = '|';
 		}
 	}
 
@@ -408,13 +423,31 @@ caches(const char *filename, const struct stat *sb, int flag)
 		return (0);
 	}
 
-	/* Go look for it in the cset */
+	/*
+	 * If it's marked, we're done.
+	 */
+	if (d->flags & D_CSET) {
+		sccs_free(sc);
+		return;
+	}
+
+	printf("%s:%s\n", sc->sfile, d->rev);
+	while (aFlg && d->parent && !(d->parent->flags & D_CSET)) {
+		d = d->parent;
+		printf("%s:%s\n", sc->sfile, d->rev);
+	}
+
+#ifdef	CRAZY_WOW
+	/* Go look for long and short versions in the cset */
 	sccs_sdelta(sc, sccs_ino(sc), buf);
-	k.dptr = buf;
-	k.dsize = strlen(buf) + 1;
-	v = mdbm_fetch(csetDB, k);
-	if (v.dsize) {
-		if (e = sccs_findKey(sc, v.dptr)) {
+	unless (t = mdbm_fetch_str(csetDB, buf)) {
+		if (t = sccs_iskeylong(buf)) {
+			*t = 0;
+			t = mdbm_fetch_str(csetDB, buf);
+		}
+	}
+	if (t) {
+		if (e = sccs_findKey(sc, t)) {
 			while (e && (e->type != 'D')) e = e->parent;
 			if (e != d) {
 				if (aFlg) {
@@ -432,12 +465,10 @@ caches(const char *filename, const struct stat *sb, int flag)
 			printf("%s:%s\n", sc->sfile, d->rev);
 		}
 	}
+#endif
 	sccs_free(sc);
 	return (0);
 }
-
-
-
 
 _ftw_get_flag(const char *dir, struct stat *sb)
 {

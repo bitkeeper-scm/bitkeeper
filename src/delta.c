@@ -8,6 +8,7 @@ usage: delta [-AcGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
     -c		Skip the checksum generation (not advised)\n\
     -D<file>	Specify a file of diffs to be used as the change\n\
     -G		use gfile mod time as checkin time\n\
+    -h		treat the file as a hash (MDBM) file\n\
     -i		Initial checkin, create a new revision history\n\
     -l		Follow checkin with a locked checkout like ``get -e''\n\
     -L<lod>	Delta is the lod.1, i.e., creates a new line of development\n\
@@ -58,7 +59,7 @@ main(int ac, char **av)
 help:		fprintf(stderr, delta_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "acD:g;GI;ilL;m;npqRS;sy|Y")) != -1) {
+	while ((c = getopt(ac, av, "acD:g;GhI;ilL;m;npqRS;sy|Y")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'g': fprintf(stderr, "-g Not implemented.\n");
@@ -86,6 +87,7 @@ help:		fprintf(stderr, delta_help);
 			      sflags = ~(SF_GFILE | SF_WRITE_OK);
 			      break;
 		    case 'G': iflags |= INIT_GTIME; break;
+		    case 'h': dflags |= DELTA_HASH; break;
 		    case 'I': initFile = optarg; break;
 		    case 'i': dflags |= NEWFILE; sflags |= SF_NODIREXPAND; break;
 		    case 'l': gflags |= GET_SKIPGET|GET_EDIT;

@@ -12,20 +12,21 @@ usage: check [-av]\n\n\
     -a		warn if the files listed are a subset of the repository\n\
     -v		list each file which is OK\n\n";
 
-MDBM	*buildKeys(void);
+MDBM	*buildKeys();
 char	*csetFind(char *key);
 int	check(sccs *s, MDBM *db);
 char	*getRev(char *root, char *key, MDBM *idDB);
 char	*getFile(char *root, MDBM *idDB);
 int	verbose;
 int	all;		/* if set, check every darn entry in the ChangeSet */
+int	mixed;
 
 int
 main(int ac, char **av)
 {
 	int	c;
 	MDBM	*db;
-	MDBM	*checked = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
 	int	errors = 0;
 	int	e;
@@ -48,11 +49,21 @@ usage:		fprintf(stderr, "%s", check_help);
 		}
 	}
 
+	if (all && (!av[optind] || !streq("-", av[optind]))) {
+		fprintf(stderr, "check: -a syntax is ``bk -r check -a''\n");
+		return (1);
+	}
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "check: can not find project root.\n");
 		return (1);
 	}
+	unless (s = sccs_init(CHANGESET, 0, 0)) {
+		fprintf(stderr, "Can't init ChangeSet\n");
+		exit(1);
+	}
+	mixed = (s->state & S_KEY2) == 0;
 	db = buildKeys();
+	sccs_free(s);
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, 0, 0);
@@ -67,16 +78,38 @@ usage:		fprintf(stderr, "%s", check_help);
 			sccs_free(s);
 			continue;
 		}
+
+		/*
+		 * Store the full length key and only if we are in mixed mode,
+		 * also store the short key.  We want all of them to be
+		 * unique.
+		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
-		if (mdbm_store_str(checked, buf, "Y", 0)) {
-			fprintf(stderr, "check: problem storing %s\n", buf);
+		if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
+			if (errno == EEXIST) {
+				fprintf(stderr,
+				    "Same key %s used by %s and %s\n",
+				    buf, s->gfile, mdbm_fetch_str(keys, buf));
+			} else {
+				perror("mdbm_store_str");
+			}
+			errors++;
 		}
-		t = sccs_iskeylong(buf);
-		assert(t);
-		*t = 0;
-		if (mdbm_store_str(checked, buf, "Y", 0)) { /* store short */
-			fprintf(stderr, "check: problem storing short %s\n",
-			    buf);
+		if (mixed) {
+			t = sccs_iskeylong(buf);
+			assert(t);
+			*t = 0;
+			if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
+				if (errno == EEXIST) {
+					fprintf(stderr,
+					    "Same key %s used by %s and %s\n",
+					    buf, s->gfile,
+					    mdbm_fetch_str(keys, buf));
+				} else {
+					perror("mdbm_store_str");
+				}
+				errors++;
+			}
 		}
 		if (e = check(s, db)) {
 			errors += e;
@@ -86,7 +119,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		sccs_free(s);
 	}
 	sfileDone();
-	if (all) errors += checkAll(checked);
+	if (all) errors += checkAll(keys);
 	purify_list();
 	return (errors ? 1 : 0);
 }
@@ -95,16 +128,25 @@ usage:		fprintf(stderr, "%s", check_help);
  * Look at the list handed in and make sure that we checked everything that
  * is in the ChangeSet file.  This will always fail if you are doing a partial
  * check.
+ *
+ * Also check that all files are where they are supposed to be.
  */
 checkAll(MDBM *db)
 {
-	FILE	*keys = popen("bk sccscat ChangeSet", "r");
+	FILE	*keys = popen("bk sccscat -h ChangeSet", "r");
 	char	*t;
 	int	errors = 0;
+	MDBM	*idDB;
+	sccs	*s;
+	delta	*d;
 	char	buf[MAXPATH*3];
 
 	unless (keys) {
 		perror("checkAll");
+		exit(1);
+	}
+	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+		perror("idcache");
 		exit(1);
 	}
 	while (fnext(buf, keys)) {
@@ -119,6 +161,33 @@ checkAll(MDBM *db)
 		errors++;
 	}
 	pclose(keys);
+	keys = popen("bk get -skp ChangeSet", "r");
+	unless (keys) {
+		perror("checkAll");
+		exit(1);
+	}
+	while (fnext(buf, keys)) {
+		t = strchr(buf, ' ');
+		assert(t);
+		*t++ = 0;
+		unless (s = sccs_keyinit(buf, 0, idDB)) {
+			fprintf(stderr, "keyinit(%s) failed.\n", buf);
+			exit(1);
+		}
+		s->state |= S_RANGE2;
+		unless (d = sccs_getrev(s, 0, 0, 0)) {
+			fprintf(stderr, "check: can't get TOT in %s\n",
+			    s->sfile);
+			exit(1);
+		}
+		/*
+		 * The location recorded and the location found should match.
+		 */
+		if (streq(s->gfile, d->pathname)) continue;	/* cool */
+		fprintf(stderr, "check: %s should be %s\n",
+		    s->sfile, d->pathname);
+		errors++;
+	}
 	return (errors);
 }
 
@@ -133,7 +202,7 @@ buildKeys()
 {
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*idDB;
-	FILE	*keys = popen("bk sccscat ChangeSet", "r");
+	FILE	*keys = popen("bk sccscat -h ChangeSet", "r");
 	char	*t;
 	int	n = 0;
 	int	e = 0;
@@ -146,7 +215,7 @@ buildKeys()
 		perror("buildkeys");
 		exit(1);
 	}
-	unless (idDB = loadIdDB()) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
@@ -232,7 +301,7 @@ buildKeys()
  */
 listCsetRevs(char *key)
 {
-	FILE	*keys = popen("bk sccscat -m ChangeSet", "r");
+	FILE	*keys = popen("bk sccscat -hm ChangeSet", "r");
 	char	*t;
 	int	first = 1;
 	char	buf[MAXPATH*3];
@@ -323,14 +392,15 @@ check(sccs *s, MDBM *db)
 		sccs_sdelta(s, d, buf);
 		unless (val = mdbm_fetch_str(db, buf)) {
 			char	*term;
-			if (term = sccs_iskeylong(buf)) {
+
+			if (mixed && (term = sccs_iskeylong(buf))) {
 				*term = 0;
 				val = mdbm_fetch_str(db, buf);
 			}
 		}
 		unless (val) {
 			fprintf(stderr,
-		    "%s: marked delta %s should be in ChangeSet but is not\n",
+		    "%s: marked delta %s should be in ChangeSet but is not.\n",
 			    s->sfile, d->rev);
 			errors++;
 		} else if (verbose > 1) {
@@ -381,7 +451,7 @@ csetFind(char *key)
 	FILE	*p;
 	char	*s;
 
-	sprintf(buf, "bk sccscat -m ChangeSet | grep '%s'", key);
+	sprintf(buf, "bk sccscat -hm ChangeSet | grep '%s'", key);
 	unless (p = popen(buf, "r")) return (strdup("[popen failed]"));
 	unless (fnext(buf, p)) {
 		pclose(p);
