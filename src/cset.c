@@ -573,8 +573,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
-			if (verbose > 0)
-				fputs("Rebuilding caches...\n", stderr);
+			if (verbose > 0) fputs("Rebuilding caches...\n", stderr);
 			system("bk sfiles -r");
 			doneFullRebuild = 1;
 			unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
@@ -1105,9 +1104,8 @@ sccs_patch(sccs *s)
 		if (e->flags & D_SET) n++;
 		unless (e->flags & D_META) continue;
 		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
-		unless (d && (d->flags & D_SET)) continue;
-		for (d = e->parent; d && (d->type != 'D'); d = d->parent) {
-			d->flags |= D_SET;
+		if (d && (d->flags & D_SET)) {
+			e->flags |= D_SET;
 			n++;
 		}
 	}
