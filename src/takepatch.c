@@ -1,6 +1,6 @@
 /* Copyright (c) 1999 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 /*
  * takepatch - apply a BitKeeper patch file

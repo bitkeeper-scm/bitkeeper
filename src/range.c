@@ -1,6 +1,6 @@
 /* Copyright (c) 1998 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 /*
  * range.c - get endpoints of a range of deltas

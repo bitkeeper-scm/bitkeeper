@@ -1,6 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 char	*delta_help = "\n\
 usage: delta [-AcGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
     -a		Auto mode, check in new or changed file automatically\n\

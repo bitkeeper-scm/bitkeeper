@@ -1,5 +1,5 @@
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 void	prevs(sccs *d);
 delta	*trunk(delta *d);

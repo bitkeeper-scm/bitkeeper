@@ -1,6 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 char	*get_help = "\n\
 usage: get [-bdeFgHkmnpqsu] [-c<date>] [-G<name>] \n\
            [-i<revs>] [-r<revs>] [-x<revs>] [files...] OR [-]\n\n\

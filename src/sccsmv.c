@@ -1,6 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 /*
  * Emulate mv(1)
@@ -147,10 +147,11 @@ out:	if (s) sccs_free(s);
 int
 mv(char *src, char *dest)
 {
+	mksccsdir(dest);
 	if (rename(src, dest)) {	/* try mv(1) */
 		char	cmd[MAXPATH*2 + 5];
 
-		sprintf(cmd, "mv %s %s", src, dest);
+		sprintf(cmd, "/bin/mv %s %s", src, dest);
 		if (system(cmd)) return (1);
 	}
 	return (0);

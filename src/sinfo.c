@@ -1,6 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 /*
  * info - display information about edited files.

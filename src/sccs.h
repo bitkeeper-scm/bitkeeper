@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <netdb.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include "purify.h"
 #else
@@ -598,7 +599,7 @@ extern	int	optopt;
 extern	char	*optarg;
 int	getopt(int ac, char **av, char *opts);
 
-int	sccs_admin(sccs *sc, int flgs, int encoding,
+int	sccs_admin(sccs *sc, int flgs, int *encoding,
 	    admin *f, admin *l, admin *u, admin *s, char *txt);
 int	sccs_checkin(sccs *s, int flags, delta *d);
 int	sccs_delta(sccs *s, int flags, delta *d, FILE *init, FILE *diffs);

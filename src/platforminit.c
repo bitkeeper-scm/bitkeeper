@@ -1,5 +1,5 @@
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 #ifdef WIN32
 void platformSpecificInit(char * name, int flag)

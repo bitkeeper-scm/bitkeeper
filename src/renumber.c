@@ -1,6 +1,6 @@
 /* Copyright (c) 1998 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 #ifdef	PROFILE
 #define	private static

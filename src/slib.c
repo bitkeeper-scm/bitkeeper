@@ -8,7 +8,7 @@
  * Copyright (c) 1997-1998 Larry McVoy.	 All rights reserved.
  */
 #include "sccs.h"
-WHATSTR("%W% %K%");
+WHATSTR("@(#)%K%");
 
 delta	*sfind(sccs *s, int serial);
 private delta	*rfind(sccs *s, char *rev);
@@ -114,10 +114,22 @@ size(char *s)
 int
 emptyDir(char *dir)
 {
-	struct	stat sbuf;
+	DIR *d;
+	struct dirent *e;
 
-	if (lstat(dir, &sbuf) == -1) return 0;
-	return (sbuf.st_nlink == 2);	/* . and .. */
+	d = opendir(dir);
+	unless (d) {
+		perror(dir);
+		return (0);
+	}
+	
+	while (e = readdir(d)) {
+		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
+		closedir(d);
+		return (0);
+	}
+	closedir(d);
+	return (1);
 }
 
 /*
@@ -3410,8 +3422,9 @@ sccs_free(sccs *s)
 /*
  * We want SCCS/s.foo or path/to/SCCS/s.foo
  * ATT allows s.foo or path/to/s.foo.
- * Since we do a pretty good job of putting stuff in SCCS/s.*, we skip
- * that check here.
+ * We insist on SCCS/s. unless in ATT compat mode.
+ * XXX ATT compat mode sucks - it's really hard to operate on a
+ * gfile named s.file .
  */
 int
 is_sccs(char *name)
@@ -3419,10 +3432,20 @@ is_sccs(char *name)
 	char	*s = rindex(name, '/');
 
 	if (!s) {
+#ifdef	ATT_SCCS
 		if (name[0] == 's' && name[1] == '.') return (1);
+#endif
 		return (0);
 	}
-	if (s[1] == 's' && s[2] == '.') return (1);
+	if (s[1] == 's' && s[2] == '.') {
+#ifdef	ATT_SCCS
+		return (1);
+#endif
+		/* SCCS/s.c
+		   4321012
+		 */
+		if ((name <= &s[-4]) && strneq("SCCS", &s[-4], 4)) return (1);
+	}
 	return (0);
 }
 
@@ -3461,18 +3484,18 @@ sccs2name(char *sfile)
  * Make the sccs dir if we need one.
  */
 void
-mksccsdir(sccs *sc)
+mksccsdir(char *sfile)
 {
-	char	*s = rindex(sc->sfile, '/');
+	char	*s = rindex(sfile, '/');
 
 	if (!s) return;
-	if ((s >= sc->sfile + 4) &&
+	if ((s >= sfile + 4) &&
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
-#ifdef SPLIT_ROOT
-		unless (exists(sc->sfile)) mkDir(sc->sfile);
+#if defined(SPLIT_ROOT)
+		unless (exists(sfile)) mkDir(sfile);
 #else
-		mkdir(sc->sfile, 0775);
+		mkdir(sfile, 0775);
 #endif
 		*s = '/';
 	}
@@ -5178,7 +5201,8 @@ inline int
 isAscii(c)
 {
 	if (c & 0x60) return (1);
-	return (c == '\n') || (c == '\b') || (c == '\r') || (c == '\t');
+	return (c == '\f') || 
+	    (c == '\n') || (c == '\b') || (c == '\r') || (c == '\t');
 }
 
 /*
@@ -6067,6 +6091,7 @@ openInput(sccs *s, int flags, FILE **inp)
 	    default:
 	    case E_ASCII:
 		mode = "rt"; /* read in text mode */
+		/* fall through, check if we are really ascii */
 	    case E_UUENCODE:
 		if (streq("-", file)) {
 			*inp = stdin;
@@ -7271,15 +7296,15 @@ sym_err:		error = 1; sc->state |= S_WARNED;
  * For large files, this is a win.
  */
 int
-sccs_admin(sccs *sc, int flags, int new_enc,
+sccs_admin(sccs *sc, int flags, int *new_encp,
 	admin *f, admin *l, admin *u, admin *s, char *text)
 {
 	FILE	*sfile = 0;
-	int	error = 0, locked, i, old_enc = 0;
+	int	new_enc, error = 0, locked, i, old_enc = 0;
 	char	*t;
 	BUF	(buf);
 
-	unless (new_enc) new_enc = E_ASCII;
+	new_enc = new_encp ? *new_encp : sc->encoding;
 	GOODSCCS(sc);
 	unless (flags & CHECKFILE) {
 		unless (locked = lock(sc, 'z')) {
@@ -8344,7 +8369,7 @@ sccs_delta(sccs *s, int flags, delta *prefilled, FILE *init, FILE *diffs)
 
 	assert(s);
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
-	if (flags & NEWFILE) mksccsdir(s);
+	if (flags & NEWFILE) mksccsdir(s->sfile);
 	bzero(&pf, sizeof(pf));
 	unless(locked = lock(s, 'z')) {
 		fprintf(stderr, "delta: can't get lock on %s\n", s->sfile);

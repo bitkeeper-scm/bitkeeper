@@ -1,6 +1,6 @@
 /* Copyright (c) 1998 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 private	char	*help = "\n\
 usage: admin options [-] OR [file file file...]\n\n\
@@ -47,7 +47,7 @@ usage: admin options [-] OR [file file file...]\n\n\
 			exit(1); \
 		    }
 
-int	do_checkin(char *nm, int enc, int fl, char *rev, char *newf, char *com);
+int	do_checkin(char *nm, int *ep, int fl, char *rev, char *newf, char *com);
 void	clearCset(sccs *s, int flags);
 void	clearPath(sccs *s, int flags);
 int	setMerge(sccs *sc, char *merge, char *rev);
@@ -64,7 +64,7 @@ main(int ac, char **av, char **ev)
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
 	char	*name;
-	int	encoding = E_ASCII, error = 0;
+	int	encoding, *encp = 0, error = 0;
 	int	bigpad = 0;
 	int	fastSymOK = 1, fastSym, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0;
@@ -130,8 +130,8 @@ main(int ac, char **av, char **ev)
 		    case 'T':	text = ""; break;
 		/* singletons */
 		    case 'B':	bigpad++; break;
-		    case 'b':	encoding = E_UUENCODE; break;
-		    case 'g':	encoding = E_UUGZIP; break;
+		    case 'b':	encp = &encoding, encoding = E_UUENCODE; break;
+		    case 'g':	encp = &encoding, encoding = E_UUGZIP; break;
 		    case 'h':	flags |= VERBOSE|CHECKFILE; break;
 		    case 'H':
 				flags |= VERBOSE|CHECKASCII|CHECKFILE;
@@ -139,9 +139,15 @@ main(int ac, char **av, char **ev)
 		    case 'S':	fastSymOK = 0; break;
 		    case 'q':	flags |= SILENT; break;
 		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;
-		    case 'U':	encoding = E_ASCII; flags |= NEWCKSUM; break;
+		    case 'U':	encp = &encoding;
+		    		encoding = E_ASCII;
+				flags |= NEWCKSUM;
+				break;
 		    case 'z':	flags |= NOCKSUM|NEWCKSUM; break;
-		    case 'Z':	encoding = E_GZIP; flags |= NEWCKSUM; break;
+		    case 'Z':	encoding = E_GZIP;
+		    		encp = &encoding;
+		   		flags |= NEWCKSUM;
+				break;
 		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
 				goto usage;
 		}
@@ -189,7 +195,7 @@ main(int ac, char **av, char **ev)
 	if (fastSym) flags |= (MAP_WRITE|NOCKSUM);
 	while (name) {
 		if (flags & NEWFILE) {
-			if (do_checkin(name, encoding, flags&(SILENT|NEWFILE),
+			if (do_checkin(name, encp, flags&(SILENT|NEWFILE),
 			    rev, newfile, comment)) {
 				error  = 1;
 				name = sfileNext();
@@ -240,7 +246,7 @@ main(int ac, char **av, char **ev)
 				goto next;
 			}
 		}
-		if (sccs_admin(sc, flags, encoding, f, l, u, s, text)) {
+		if (sccs_admin(sc, flags, encp, f, l, u, s, text)) {
 			unless (BEEN_WARNED(sc)) {
 				fprintf(stderr,
 				    "admin of %s failed.\n",
@@ -324,7 +330,7 @@ clearPath(sccs *s, int flags)
  * to stuff the initFile into the sccs* and have checkin() respect that.
  */
 int
-do_checkin(char *name, int encoding,
+do_checkin(char *name, int *encp,
 	int flags, char *rev, char *newfile, char *comment)
 {
 	delta	*d = 0;
@@ -332,7 +338,7 @@ do_checkin(char *name, int encoding,
 	int	error;
 
 	unless (s = sccs_init(name, flags)) { return (-1); }
-	s->encoding = encoding;
+	s->encoding = encp ? *encp : E_ASCII;
 	if (HAS_SFILE(s)) {
 		fprintf(stderr, "admin: %s exists.\n", s->sfile);
 		sccs_free(s);

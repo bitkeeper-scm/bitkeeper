@@ -1,7 +1,7 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "sccs.h"
 #include "range.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 /*
  * diffs - show differences of SCCS revisions.
