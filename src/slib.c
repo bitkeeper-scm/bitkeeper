@@ -6115,7 +6115,16 @@ getLinkBody(sccs *s,
 		*ln = 1;
 	} else {
 		unless (symlink(d->symlink, f) == 0 ) {
+#ifdef WIN32
+			fprintf(stderr,
+"===========================================================================\n"
+"%s: You are trying to create a symlink on a win32 file system.\n"
+"This file type is not supported on this platform.\n"
+"===========================================================================\n",
+			s->gfile);
+#else
 			perror(f);
+#endif
 			return 1;
 		}
 		*ln = 0;
