@@ -48,12 +48,11 @@ sccs_rm(char *name, int useCommonDir)
 	char	*t, *b;
 	int	try = 0;
 	int	error = 0;
-	extern	char *_relativeName();
 
 	sfile = name2sccs(name);
 	b = basenm(sfile);
 	if (useCommonDir) {
-		_relativeName(&b[2], 0, 0, 1, root);
+		_relativeName(&b[2], 0, 0, 1, 0, root);
 		unless(root[0]) {
 			fprintf(stderr, "sccsrm: can not find root?\n");
 			return (1);

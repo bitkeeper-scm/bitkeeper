@@ -1422,14 +1422,32 @@ getCSetFile(sccs *s)
  * I need to cache changeset lookups.
  */
 char	*
-_relativeName(char *gName,
-	    int isDir, int withsccs, int mustHaveRmarker, char *root)
+_relativeName(char *gName, int isDir,
+		int withsccs, int mustHaveRmarker, project *proj, char *root)
 {
-	char	*t, *s, *top;
+	char	*t, *s, *top, tmp[MAXPATH];
 	int	i, j;
 	static	char buf[MAXPATH];
 
-	t = fullname(gName, 0);
+	strcpy(tmp, fullname(gName, 0));
+	t = tmp;
+
+	if (proj && proj->root) {
+		int len;
+		
+		if (!IsFullPath(proj->root)) {
+			s = strdup(fullname(proj->root, 0));
+			free(proj->root);
+			proj->root = s;
+		}
+		len = strlen(proj->root);
+		if (strneq(proj->root, t, len)) {
+			s = &t[len];
+			assert((*s == '\0') || (*s == '/'));
+			goto got_root;
+		}
+	}
+
 	strcpy(buf, t); top = buf;
 	if (buf[0] && buf[1] == ':') top = &buf[2]; /* for WIN32 path */
 	assert(top[0] == '/');
@@ -1474,6 +1492,8 @@ _relativeName(char *gName,
 	for (j = 1; j <= i; ++j) {
 		for (--s; (*s != '/') && (s > t); s--);
 	}
+
+got_root:
 	if (root) {
 		int len = s - t;
 		strncpy(root, t, len); root[len] = 0;
@@ -1502,7 +1522,7 @@ relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 	char	*s, *g;
 
 	g = sccs2name(sc->sfile);
-	s = _relativeName(g, 0, withsccs, mustHaveRmarker, NULL);
+	s = _relativeName(g, 0, withsccs, mustHaveRmarker, sc->proj, NULL);
 	free(g);
 
 	unless (s) return (0);
@@ -1582,7 +1602,7 @@ sPath(char *name, int isDir)
 	}
 	free(path);
 
-	path = _relativeName(name, isDir, 0, 0, gRoot);
+	path = _relativeName(name, isDir, 0, 0, 0, gRoot);
 	if (IsFullPath(path)) return path; /* no root marker */
 	if (hasRootFile(gRoot, sRoot)) {
 		concat_path(buf, sRoot, path);
@@ -5283,7 +5303,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	} else if (flags & GET_PATH) {
 		/* put the file in its historic location */
 		assert(d->pathname);
-		_relativeName(".", 1 , 0, 0, path); /* get groot */
+		_relativeName(".", 1 , 0, 0, s->proj, path); /* get groot */
 		concat_path(path, path, d->pathname);
 		f = path;
 		unlink(f);
@@ -6859,7 +6879,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
+		char *r = _relativeName(s->gfile, 0, 0, 1, s->proj, 0);
 		if (r && !patheq(d->pathname, r)) RET(1);
 	}
 
@@ -7151,7 +7171,7 @@ diff_gmode(sccs *s, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
+		char *r = _relativeName(s->gfile, 0, 0, 1, s->proj, 0);
 		if (r && !patheq(d->pathname, r)) return (3);
 	}
 
@@ -7802,7 +7822,7 @@ get_sroot(char *sfile, char *sroot)
 	char *g;
 	g = sccs2name(sfile); /* strip SCCS */
 	sroot[0] = 0;
-	_relativeName(g, 0, 0, 1, sroot);
+	_relativeName(g, 0, 0, 1, 0, sroot);
 	free(g);
 }
 
