@@ -41,7 +41,10 @@ pwd_main(int ac, char **av)
 		buf[2] = ':';
 		p = &buf[1];
 	}
-	if (shortname) GetShortPathName(p, p, sizeof buf - (p - buf));
+	if (shortname) {
+		GetShortPathName(p, p, sizeof buf - (p - buf));
+		nt2bmfname(p, p); /* needed for win98 */
+	}
 	if (cygwin) { 
 		p[1] = p[0];
 		p[-1] = p[0] = '/'; 

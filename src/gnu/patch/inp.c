@@ -234,7 +234,11 @@ plan_a (char const *filename)
      When creating files, the files do not actually exist.  */
   if (size)
     {
-      int ifd = open (filename, O_RDONLY|binary_transput);
+#ifdef __CYGWIN__
+      int ifd = open (filename, O_RDONLY|O_TEXT);
+#else
+      int ifd = open (filename, O_RDONLY);
+#endif
       size_t buffered = 0, n;
       if (ifd < 0)
 	pfatal ("can't open file %s", quotearg (filename));

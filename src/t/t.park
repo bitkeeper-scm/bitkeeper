@@ -76,3 +76,20 @@ EOF
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+if [ "$PLATFORM" = "WIN32" ]
+then #--------------------------------------------------------------------
+echo $N Check park/unpark with mix Unix Dos EOLN ....................$NL
+bk admin $Q -fEOLN_NATIVE bar.c
+bk edit $Q bar.c
+# This test assume echo output in binary mode
+echo -e "new-new\r" >> bar.c
+cp bar.c bar.ref
+cp foo.c foo.ref
+bk park 2> /dev/null
+if [ -f bar.c ]; then echo failed; exit 1; fi
+if [ -f foo.c ]; then echo failed; exit 1; fi
+bk unpark 2> /dev/null 1>&2
+cmp -s bar.c bar.ref || { echo failed; exit 1; }
+cmp -s foo.c foo.ref || { echo failed; exit 1; }
+echo OK
+fi   #--------------------------------------------------------------------

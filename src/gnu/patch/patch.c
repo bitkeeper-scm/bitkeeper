@@ -52,6 +52,7 @@ struct outstate
   FILE *ofp;
   int after_newline;
   int zero_output;
+  int io_mode; /* text or binary */
 };
 
 /* procedures */
@@ -113,6 +114,19 @@ char const program_name[] = "patch";
 
 int main PARAMS ((int, char **));
 
+int io_mode(char *name)
+{
+	FILE * f;
+	char cmd[2048];
+
+#ifdef __CYGWIN__
+	sprintf(cmd, "bk prs -hr+ -d':FLAGS:' %s | grep -q EOLN_NATIVE", name);
+	return (system(cmd) ? O_BINARY : O_TEXT);
+#else
+	return (O_BINARY);
+#endif
+}
+
 int
 main (int argc, char **argv)
 {
@@ -120,10 +134,6 @@ main (int argc, char **argv)
     bool somefailed = FALSE;
     struct outstate outstate;
     char numbuf[LINENUM_LENGTH_BOUND + 1];
-
-#ifdef __CYGWIN__
-    setmode(1, _O_BINARY);
-#endif
 
     init_time ();
 
@@ -189,6 +199,7 @@ main (int argc, char **argv)
 
       if (!skip_rest_of_patch)
 	get_input_file (inname, outname);
+       outstate.io_mode = io_mode(inname);
     
       if (!instat.st_size && log_names && outname) 
 	say ("Creating file %s\n", quotearg (outname));
@@ -1173,9 +1184,16 @@ apply_hunk (struct outstate *outstate, LINENUM where)
 static FILE *
 create_output_file (char const *name, int open_flags)
 {
-  int fd = create_file (name, O_WRONLY | binary_transput | open_flags,
+  int fd;
+  FILE *f;
+  char mode[3] = {'w', 0, 0};
+
+  fd = create_file (name, O_WRONLY | open_flags,
 			instat.st_mode);
-  FILE *f = fdopen (fd, binary_transput ? "wb" : "w");
+#ifdef __CYGWIN__
+  mode[1] = (open_flags & O_TEXT) ? 't' : 'b';
+#endif
+  f = fdopen (fd, mode);
   if (! f)
     pfatal ("Can't create file %s", quotearg (name));
   return f;
@@ -1186,6 +1204,7 @@ create_output_file (char const *name, int open_flags)
 static void
 init_output (char const *name, int open_flags, struct outstate *outstate)
 {
+  open_flags |= outstate->io_mode; /* text or binary */
   outstate->ofp = name ? create_output_file (name, open_flags) : (FILE *) 0;
   outstate->after_newline = 1;
   outstate->zero_output = 1;
