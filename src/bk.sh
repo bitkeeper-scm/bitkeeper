@@ -420,7 +420,7 @@ __status() {
 		echo "`${BIN}sfiles | wc -l` files under revision control."
 		echo "`${BIN}sfiles -x | wc -l` files not under revision control."
 		echo "`${BIN}sfiles -c | wc -l` files modified and not checked in."
-		echo "`${BIN}sfiles -C | wc -l` files with checked in but uncommitted deltas."
+		echo "`${BIN}sfiles -C | wc -l` files with checked in, but not committed, deltas."
 	fi
 }
 
