@@ -23,7 +23,7 @@ static void syntax(char *buf)
  * Pre-diff explanation: max 64kB
  */
 #define EXPLANATION 65536
-static struct arg_cnv{
+struct arg_cnv {
 	const char *name;
 	char *target;
 };

@@ -519,7 +519,7 @@ atoi(register char *s)
 	return (val);
 }
 
-private inline int
+int
 atoi_p(char **sp)
 {
 	register int val = 0;
@@ -2006,6 +2006,7 @@ rfind(sccs *s, char *rev)
 private char *
 defbranch(sccs *s)
 {
+	if (BITKEEPER(s)) return ("1");
 	if (s->defbranch) return (s->defbranch);
 	return ("65535");
 }
@@ -2188,7 +2189,7 @@ sccs_setpathname(sccs *s)
 {
 	delta	*d;
 
-	assert(s && !s->defbranch);
+	assert(s);
 	/* XXX: If 'not in view file' -- get a name to use
 	 * and store it in s->spathname:
 	 * For now, just store pathname in spathname
@@ -8877,11 +8878,10 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	} else {
 		unless (d->user) d->user = strdup(sccs_getuser());
 		unless (d->hostname && sccs_gethost()) {
-			if (getenv("BK_PATCH_IMPORT")) {
-				char	*h;
+			char	*imp, *h;
 
-				h = aprintf("%s[%s]",
-					sccs_gethost(), sccs_realuser());
+			if (imp = getenv("BK_IMPORTER")) {
+				h = aprintf("%s[%s]", sccs_gethost(), imp);
 				hostArg(d, h);
 				free(h);
 			} else {
@@ -9417,6 +9417,12 @@ private inline int
 isleaf(register sccs *s, register delta *d)
 {
 	if (d->type != 'D') return (0);
+	/*
+	 * June 2002: ignore lod stuff, we're removing that feature.
+	 * We'll later add back the support for 2.x, 3.x, style numbering
+	 * and then we'll need to remove this.
+	 */
+	if (d->r[0] > 1) return (0);
 
 	if (d->flags & D_MERGED) {
 		delta	*t;
@@ -10583,7 +10589,9 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
-		unless (locked = sccs_lock(sc, 'z')) {
+		char	z = (flags & ADMIN_FORCE) ? 'Z' : 'z';
+
+		unless (locked = sccs_lock(sc, z)) {
 			verbose((stderr,
 			    "admin: can't get lock on %s\n", sc->sfile));
 			error = -1; sc->state |= S_WARNED;
@@ -12954,8 +12962,8 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 	if (streq(kw, "DL")) {
-		/* :DL: = :Li:/:Ld:/:Lu: */
-		KW("Li"); fc('/'); KW("Ld"); fc('/'); KW("Lu");
+		/* :DL: = :LI:/:LD:/:LU: */
+		KW("LI"); fc('/'); KW("LD"); fc('/'); KW("LU");
 		return (strVal);
 	}
 
@@ -13079,6 +13087,24 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* :A: = :Z::Y: :M:I:Z: */
 		KW("Z"); KW("Y"); fc(' ');
 		KW("M"); KW("I"); KW("Z");
+		return (strVal);
+	}
+
+	if (streq(kw, "LI")) {
+		/* lines inserted */
+		fd(d->added);
+		return (strVal);
+	}
+
+	if (streq(kw, "LD")) {
+		/* lines deleted */
+		fd(d->deleted);
+		return (strVal);
+	}
+
+	if (streq(kw, "LU")) {
+		/* lines unchanged */
+		fd(d->same);
 		return (strVal);
 	}
 
@@ -13811,10 +13837,24 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "HT") || streq(kw, "HOST")) {
-		/* host */
+		/* host without any importer name */
 		if (d->hostname) {
-			fs(d->hostname);
+			for (p = d->hostname; *p && (*p != '['); ) {
+				fc(*p++);
+			}
 			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "IMPORTER")) {
+		/* importer name */
+		if (d->hostname) {
+			for (p = d->hostname; *p && (*p != '['); p++);
+			if (*p) {
+				while (*(++p) != ']') fc(*p);
+				return (strVal);
+			}
 		}
 		return (nullVal);
 	}
@@ -13910,12 +13950,12 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "DSUM")) {
 		if (d->flags & D_CKSUM) {
-			f5d((int)d->sum);
+			fd((int)d->sum);
 			return (strVal);
 		}
 		if (d->type == 'R') {
 			assert(d->sum == 0);
-			fs("00000");
+			fs("0");
 			return (strVal);
 		}
 		return (nullVal);
@@ -15283,8 +15323,8 @@ sccs_reCache(int quiet)
 int
 gone(char *key, MDBM *db)
 {
-	unless (strchr(key, '|')) return (0);
 	unless (db) return (0);
+	unless (strchr(key, '|')) return (0);
 	return (mdbm_fetch_str(db, key) != 0);
 }
 

@@ -88,6 +88,7 @@
 #define	ADMIN_ADD1_0	0x04000000	/* insert a 1.0 delta */
 #define	ADMIN_RM1_0	0x08000000	/* remove a 1.0 delta */
 #define	ADMIN_OBSCURE	0x00100000	/* remove comments, obscure data */
+#define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
@@ -843,6 +844,7 @@ char    *fullname(char *, int);
 int	fileType(mode_t m);
 char	chop(char *s);
 void	chomp(char *s);
+int	atoi_p(char **p);
 int	sccs_filetype(char *name);
 void	concat_path(char *, char *, char *);
 void	cleanPath(char *path, char cleanPath[]);
@@ -897,6 +899,8 @@ int	sccs_unlockfile(const char *file);
 int	sccs_mylock(const char *lockf);
 int	sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp);
 
+sccs	*sccs_unzip(sccs *s);
+sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
 void	sccs_renumber(sccs *s, u32 flags);
 char 	*sccs_iskeylong(char *key);
@@ -1014,6 +1018,7 @@ off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
+void	cmdlog_addnote(char *note);
 int	cmdlog_end(int ret);
 off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
@@ -1084,9 +1089,11 @@ void	sccs_color(sccs *s, delta *d);
 int	out(char *buf);
 int	getlevel(void);
 int	isSymlnk(char *s);
-void	cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
+delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s);
+int	cset_diffs(sccs *s, ser_t ser);
+int	cweave_init(sccs *s, int extras);
 int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);
@@ -1101,6 +1108,8 @@ int	unmkBkRootIcon(char *path);
 char	*fast_getcwd(char *buf, int len);
 void	sccs_tagcolor(sccs *s, delta *d);
 int	checkXflags(sccs *s, delta *d, int what);
+void	metaUnionResync1(void);
+void	metaUnionResync2(void);
 int	sccs_istagkey(char *key);
 char	*testdate(time_t t);
 void	putroot(char *where);
@@ -1120,6 +1129,8 @@ char	**getTriggers(char *dir, char *prefix);
 void	comments_cleancfile(char *file);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
+void	saveEnviroment(char *patch);
+void	restoreEnviroment(char *patch);
 int	run_check(char *partial);
 char	*key2path(char *key, MDBM *idDB);
 
@@ -1127,5 +1138,5 @@ extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
 
-int	getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf);
+int	getMsg(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf);
 #endif	/* _SCCS_H_ */

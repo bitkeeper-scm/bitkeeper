@@ -262,9 +262,15 @@ usage:		fprintf(stderr,
 int
 getmsg_main(int ac, char **av)
 {
+	char	b = 0;
+
 	unless (av[1]) {
 		fprintf(stderr, "usage: getmsg msg_name bkarg\n");
 		exit(1);
 	}
-	return (getMsg(av[1], av[2], 0, stdout) == 0);
+	if (streq(av[1], "-=")) {
+		b = '=';
+		av++;
+	}
+	return (getMsg(av[1], av[2], 0, b, stdout) == 0);
 }

@@ -36,6 +36,7 @@ int	abort_main(int, char **);
 int	adler32_main(int, char **);
 int	admin_main(int, char **);
 int	annotate_main(int, char **);
+int	applyall_main(int, char **);
 int	approve_main(int, char **);
 int	bkd_main(int, char **);
 int	cat_main(int, char **);
@@ -65,6 +66,7 @@ int	fdiff_main(int, char **);
 int	find_main(int, char **);
 int	findkey_main(int, char **);
 int	fix_main(int, char **);
+int	fixlod_main(int, char **);
 int	gca_main(int, char **);
 int	get_main(int, char **);
 int	gethelp_main(int, char **);
@@ -182,6 +184,7 @@ int	zone_main(int, char **);
 
 struct	command cmdtbl[] = {
 	{"_adler32", adler32_main},
+	{"_applyall", applyall_main},
 	{"_converge", converge_main},
 	{"_cleanpath", cleanpath_main},
 	{"_exists", exists_main},
@@ -247,6 +250,7 @@ struct	command cmdtbl[] = {
 	{"fdiff", fdiff_main},			/* undoc? 2.0 */
 	{"findkey", findkey_main},		/* doc 2.0 */
 	{"fix", fix_main},			/* doc 2.0 */
+	{"_fix_lod1", fixlod_main},		/* undoc 2.0 */
 	{"gca", gca_main},			/* doc 2.0 */
 	{"get", get_main},			/* doc 2.0 */
 	{"gethelp", gethelp_main},		/* undoc? 2.0 */
@@ -687,27 +691,10 @@ private	struct {
 	{ 0, 0 },
 };
 
-/*
- * Return true if it is Logging patch
- * i.e we want push part2 of meta patch
- */
-private int
-isMeta(char **av)
-{
-	int i = 1;
-
-	unless (streq(av[0], "remote push part2")) return (0);
-	while (av[i]) {
-		if (streq("-e", av[i++])) return (1);
-	}
-	return (0);
-}
-
 void
 cmdlog_start(char **av, int httpMode)
 {
 	int	i, len;
-	int	try = 1, how_long = 1;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -728,12 +715,18 @@ cmdlog_start(char **av, int httpMode)
 	 * we enter part 2, with the up-to-date pid.
 	 */
 	if (httpMode) {
+		if (strneq(av[0], "remote push part", 16)) {
+			int	meta = 0;
+			for (i = 1; av[i]; i++) {
+				if (streq("-e", av[i])) meta = 1;
+			}
+			if (meta) cmdlog_flags &= ~(CMD_WRLOCK|CMD_WRUNLOCK);
+		}
 		if (cmdlog_flags & CMD_WRLOCK) cmdlog_flags |= CMD_WRUNLOCK;
 		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
 		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
-		if (isMeta(av)) cmdlog_flags |= CMD_RETRYLOCK;
-	}            
+	}
 
 	unless (bk_proj && bk_proj->root) return;
 
@@ -754,27 +747,12 @@ cmdlog_start(char **av, int httpMode)
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
 	if (cmdlog_flags & CMD_WRLOCK) {
-retry:		if (i = repository_wrlock()) {
+		if (i = repository_wrlock()) {
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
-				if ((cmdlog_flags & CMD_RETRYLOCK) &&
-				    (try++ < 10)) {
-					fprintf(stderr,
-					    "%s(%d): lock busy, retry %d.\n",
-					    av[0], getpid(), try);
-					how_long <<= 1;
-					sleep(how_long);
-					goto retry;
-				}
-				if (cmdlog_flags & CMD_RETRYLOCK) {
-					fprintf(stderr,
-				           "%s(%d): failed to get lock, "
-					   "try %d.\n",
-					   av[0], getpid(), try);
-				}
 				out(LOCK_WR_BUSY);
 				break;
 			    case LOCKERR_PERM:
@@ -792,10 +770,6 @@ retry:		if (i = repository_wrlock()) {
 			 */
 			if (strneq("remote ", av[0], 7)) drain();
 			exit(1);
-		}
-		if (try > 1) {
-			fprintf(stderr, "%s(%d): got lock on try %d.\n",
-			    av[0], getpid(), try);
 		}
 	}
 	if (cmdlog_flags & CMD_RDLOCK) {
@@ -825,6 +799,14 @@ retry:		if (i = repository_wrlock()) {
 		}
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
+}
+
+private	char	**notes = 0;
+
+void
+cmdlog_addnote(char *note)
+{
+	notes = addLine(notes, strdup(note));
 }
 
 int
@@ -871,10 +853,16 @@ cmdlog_end(int ret)
 	if (ret == LOG_BADEXIT) {
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
+		int	i;
+
 		fprintf(f, "%s = %d", cmdlog_buffer, ret);
 		if (cmdlog_flags&CMD_BYTES) {
 			fprintf(f, " xfered=%u", (u32)get_byte_count());
 		}
+		EACH (notes) {
+			fprintf(f, " %s", notes[i]);
+		}
+		freeLines(notes);
 		fputs("\n", f);
 	}
 	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {

@@ -198,7 +198,10 @@ hostname are taken from the email header
 and the subject line 
 is used as the checkin comment for each file, as well as the first
 line of the changeset comment.  If there is any preamble above the patch,
-that is used as the rest of the changeset comments.
+that is used as the rest of the changeset comments.  Note that importing 
+an email patch records the name of the importer as well as the name of
+author (which is derived from the email).  The importer name is available
+via the :IMPORTER: key word, see bk help prs for more information.
 .LP
 This part of import makes use of code copyrighted by Linus Torvalds
 and is used with permission.
@@ -264,6 +267,7 @@ may leave work half done in the destination package.  It is suggested that
 the import destination repository is a clone of the original package in case of
 a failed import.
 .SH "SEE ALSO"
+.SA prs 1
 .SA rcs2sccs 1
 .SA undos 1
 .SH CATEGORY

@@ -64,9 +64,13 @@ help_main(int ac,  char **av)
 					synopsis, av[i], bin, out);
 		}
 		if (system(buf) != 0) {
-			f = fopen(out, "ab");
-			fprintf(f, "No help for %s, check spelling.\n", av[i]);
-			fclose(f);
+			sprintf(buf, "bk getmsg -= %s >> %s", av[i], out);
+			if (system(buf) != 0) {
+				f = fopen(out, "ab");
+				fprintf(f,
+				    "No help for %s, check spelling.\n", av[i]);
+				fclose(f);
+			}
 		}
 	}
 print:

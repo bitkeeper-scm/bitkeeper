@@ -64,7 +64,7 @@ setup_main(int ac, char **av)
 	}
 	license();
 	unless(force) {
-		getMsg("setup_1", 0, 0, stdout);
+		getMsg("setup_1", 0, 0, '-', stdout);
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
@@ -89,7 +89,7 @@ setup_main(int ac, char **av)
 	if (config_path == NULL) {
 		FILE 	*f;
 
-		getMsg("setup_3", 0, 0, stdout);
+		getMsg("setup_3", 0, 0, '-', stdout);
 		/* notepad.exe wants text mode */
 		f = fopen("BitKeeper/etc/config", "wt");
 		assert(f);
@@ -177,7 +177,7 @@ err:			unlink("BitKeeper/etc/config");
 	if ( (t = mdbm_fetch_str(m, "category")) && strlen(t) > 0) {
 		gettemp(buf, "cat");
 		if (f = fopen(buf, "wt")) {
-			getMsg("setup_categories", 0, 0, f);
+			getMsg("setup_categories", 0, 0, 0, f);
 			fclose(f);
 		}
 		if (f = fopen(buf, "rt")) {
@@ -341,7 +341,7 @@ mkconfig(FILE *out, MDBM *flist)
 		fprintf(stderr, "Unable to open %s\n", buf);
 		return (-1);
 	}
-	getMsg("config_preamble", 0, "# ", out);
+	getMsg("config_preamble", 0, "# ", 0, out);
 	fputs("\n", out);
 
 	/*
@@ -381,7 +381,7 @@ mkconfig(FILE *out, MDBM *flist)
 		if (streq("$\n", buf)) break;
 		chop(buf);
 		sprintf(pattern, "config_%s", buf);
-		getMsg(pattern, 0, "# ", out);
+		getMsg(pattern, 0, "# ", 0, out);
 		if (flist && (val = mdbm_fetch_str(flist, buf))) {
 			fprintf(out, "%s: %s\n", buf, val);
 			mdbm_delete_str(flist, buf);

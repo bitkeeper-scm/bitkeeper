@@ -117,7 +117,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 	status = pclose(f);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-		getMsg("undo_error", bin, 0, stdout);
+		getMsg("undo_error", bin, 0, 0, stdout);
 		cat(undo_list);
 		goto err;
 	}

@@ -49,7 +49,6 @@ private int	copyAndGet(opts *opts, char *from, char *to);
 private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
-private	void	log_cleanup(void);
 private void	save_checkout_state(MDBM *DB, sccs *s);
 private void	restore_checkouts(opts *opts);
 
@@ -180,13 +179,17 @@ listPendingRenames()
 private void
 setRepoType(opts *opts)
 {
-	if (exists(LOG_TREE)) opts->logging = 1;
+	if (exists(LOG_TREE)) {
+		opts->logging = 1;
+		putenv("BK_TRIGGER_PATH=/etc");
+	}
 }
 
 /*
  * For logging repository, we defer resolving path conflict
  * by moving  the conflicting remote file to the BitKeeper/conflicts
  * directory.
+ * XXX - older inode should win so we converge?
  */
 private void
 removePathConflict(opts *opts, resolve *rs)
@@ -194,12 +197,16 @@ removePathConflict(opts *opts, resolve *rs)
 	char	*t, path[MAXPATH], encpath[MAXPATH];
 	int	n = 0;
 
-	sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
-	sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
-	while (exists(path) || exists(encpath)) {
-		sprintf(path,
-		    "BitKeeper/conflicts/SCCS/%s~%d", basenm(rs->dname), n++);
+	if (slotTaken(opts, rs->dname)) {
+		sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
 		sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
+		while (exists(path) || exists(encpath)) {
+			sprintf(path, "BitKeeper/conflicts/SCCS/%s~%d",
+			    basenm(rs->dname), n++);
+			sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
+		}
+	} else {
+		strcpy(path, rs->dname);
 	}
 	mkdirf(path);
 	sccs_close(rs->s); /* for win32 */
@@ -2290,7 +2297,7 @@ pass4_apply(opts *opts)
 	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
 		cmd = "remote apply";
 	}
-	if (!opts->logging && (ret = trigger(cmd,  "pre"))) {
+	if (ret = trigger(cmd,  "pre")) {
 		switch (ret) {
 		    case 3: flags = CLEAN_MVRESYNC; break;
 		    case 2: flags = CLEAN_RESYNC; break;
@@ -2298,6 +2305,10 @@ pass4_apply(opts *opts)
 		}
 		mdbm_close(permDB);
 		resolve_cleanup(opts, CLEAN_NOSHOUT|flags);
+	}
+
+	if (opts->logging) { /* hard-coded logging tree trigger */
+		metaUnionResync1();
 	}
 	
 	/*
@@ -2362,7 +2373,7 @@ pass4_apply(opts *opts)
 	mdbm_close(permDB);
 
 	if (eperm) {
-		getMsg("write_perms", 0, 0, stderr);
+		getMsg("write_perms", 0, 0, '=', stderr);
 		resolve_cleanup(opts, 0);
 	}
 
@@ -2435,6 +2446,10 @@ err:			unapply(save);
 	 * did not change case after we copied it
 	 */
 	if (isCaseFoldingFS() && chkCaseChg(save)) goto err;
+
+	if (opts->logging) { /* hard-coded logging tree trigger */
+		metaUnionResync2();
+	}
 
 	unless (opts->quiet) {
 		fprintf(stderr,
@@ -2558,7 +2573,11 @@ copyAndGet(opts *opts, char *from, char *to)
 		getFlags = default_getFlags;
 		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
 	}
-	if (getFlags) {
+	if (opts->logging) {
+		unless (strneq(to, "BitKeeper/etc/SCCS", 18)) {
+			assert(!HAS_GFILE(s));
+		}
+	} else if (getFlags) {
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
 		assert(!HAS_GFILE(s));
@@ -2659,43 +2678,6 @@ csets_in(opts *opts)
 	}
 }
 
-/*
- * Move the RESYNC dir off to the side and try an undo if we can.
- */
-private void
-log_cleanup()
-{
-	FILE	*f;
-	char	buf[MAXPATH];
-	char	subject[MAXPATH*2];
-	char	save[MAXPATH];
-
-	savefile(".", "RESYNC-", save);
-	if (rename("RESYNC", save)) return;
-	unless (f = fopen(LOG_KEYS, "r")) return;
-	strcpy(buf, "-a");
-	while (fgets(&buf[2], sizeof(buf) - 2, f)) {
-		chop(&buf[2]);
-		if (sys("bk", "undo", "-f", buf, SYS)) {
-			sprintf(subject, "LOGGING: undo -f %s in ", buf);
-			getcwd(buf, sizeof(buf));
-			strcat(subject, buf);
-			strcat(subject, " failed; left ");
-			strcat(subject, save);
-			mail("dev@bitmover.com", subject, LOG_KEYS);
-		} else {
-			sprintf(subject, "LOGGING: undo -f %s in ", buf);
-			getcwd(buf, sizeof(buf));
-			strcat(subject, buf);
-			strcat(subject, " worked; left ");
-			strcat(subject, save);
-			mail("dev@bitmover.com", subject, LOG_KEYS);
-		}
-	}
-	fclose(f);
-	unlink(LOG_KEYS);
-}
-
 void
 resolve_cleanup(opts *opts, int what)
 {
@@ -2738,20 +2720,16 @@ resolve_cleanup(opts *opts, int what)
 		unlink(dir);
 		sys("mv", "RESYNC", dir, SYS);
 	} else {
-		if (exists(LOG_TREE)) {
-			log_cleanup();
-		} else {
-			if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
-				assert(!exists("RESYNC/ChangeSet"));
-				unlink(ROOT2RESYNC "/SCCS/p.ChangeSet");
-				rename(ROOT2RESYNC "/BitKeeper/tmp/r.ChangeSet",
-				    ROOT2RESYNC "/SCCS/r.ChangeSet");
-			}
-			fprintf(stderr,
-			    "resolve: RESYNC directory left intact.\n");
+		if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
+			assert(!exists("RESYNC/ChangeSet"));
+			unlink(ROOT2RESYNC "/SCCS/p.ChangeSet");
+			rename(ROOT2RESYNC "/BitKeeper/tmp/r.ChangeSet",
+			    ROOT2RESYNC "/SCCS/r.ChangeSet");
 		}
+		fprintf(stderr,
+		    "resolve: RESYNC directory left intact.\n");
 	}
-	
+
 	if (what & CLEAN_PENDING) {
 		if (pendingFile[0] && !getenv("TAKEPATCH_SAVEDIRS")) {
 			unlink(pendingFile);
@@ -2819,7 +2797,7 @@ restore_checkouts(opts *opts)
 		sccs	*s;
 		s = sccs_keyinit(kv.key.dptr, INIT, 
 		    opts->local_proj, opts->idDB);
-		
+
 		unless (s) continue;
 
 		switch (kv.val.dptr[0]) {
@@ -2839,9 +2817,8 @@ restore_checkouts(opts *opts)
 		if (getFlags) {
 			sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 		}
+		sccs_free(s);
 	}
 	mdbm_close(opts->checkoutDB);
 	opts->checkoutDB = 0;
 }
-
-		

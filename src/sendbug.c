@@ -66,7 +66,7 @@ sendbug_main(int ac,  char **av)
 		    "Subject: BK Bug\n\n",
 		    sccs_getuser(), sccs_gethost());
 	}
-	getMsg("bugtemplate", 0, 0, f);
+	getMsg("bugtemplate", 0, 0, 0, f);
 	fclose(f);
 	sprintf(buf, "%s %s", editor, bug);
 	system(buf);
