@@ -195,7 +195,7 @@ send_main(int ac,  char **av)
 		out = "";
 	} else {
 		patch = aprintf("%s/bk_patch%u", TMP_PATH, getpid());
-		f = fopen(patch, "wb");
+		f = fopen(patch, "w");
 		assert(f);
 		out = aprintf(" >> %s", patch);
 	}

@@ -2,7 +2,8 @@
 #include "../sccs.h"
 
 #ifdef	WIN32
-private int	link(const char *from, const char *to);
+#define	link(f, t)	win32link(f, t)
+private int	win32link(const char *from, const char *to);
 #endif
 
 private	char	*uniqfile(const char *file);
@@ -172,7 +173,6 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 	int	i, n;
 
 	unless ((fd = share_open(file)) >= 0) return (-1);
-	setmode(fd, _O_BINARY);
 	bzero(buf, sizeof(buf));
 	if ((flen = fsize(fd)) < 0) {
 		perror("fsize");
@@ -263,7 +263,7 @@ uniqfile(const char *file)
  * link() as a "fast copy" interface.
  */
 private int
-link(const char *from, const char *to)
+win32link(const char *from, const char *to)
 {
 	errno = EPERM;
 	return (-1);

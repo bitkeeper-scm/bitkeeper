@@ -437,7 +437,7 @@ rebuild()
 		perror("bktmp_local");
 		exit(1);
 	}
-	unless (id_cache = fopen(id_tmp, "wb")) {
+	unless (id_cache = fopen(id_tmp, "w")) {
 		perror(id_tmp);
 		exit(1);
 	}

@@ -7326,7 +7326,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		unlink(tmpfile);
 		goto done2;
 	}
-	unless (lbuf = fopen(tmpfile, "w+b")) {
+	unless (lbuf = fopen(tmpfile, "w+")) {
 		perror(tmpfile);
 		fprintf(stderr, "getdiffs: couldn't open %s\n", tmpfile);
 		s->state |= S_WARNED;

@@ -114,7 +114,7 @@ err:		if (s) sccs_free(s);
 
 	bktmp(changedfile, "cfile");
 	if (av[optind] && streq(av[optind], "-")) {
-		f = fopen(changedfile, "wb");
+		f = fopen(changedfile, "w");
 		while (fnext(buf, stdin)) {
 			char *gname, *sname;
 			char buf2[MAXPATH];
@@ -155,7 +155,7 @@ err:		if (s) sccs_free(s);
 	 */
 	bktmp(parkedfile, "parkf");
 	f = fopen(changedfile, "rt");
-	f2 = fopen(parkedfile, "wb");
+	f2 = fopen(parkedfile, "w");
 	assert(f); assert(f2);
 	while (fnext(buf, f)) {
 		char	tmp[MAXPATH];
@@ -201,7 +201,7 @@ err:		if (s) sccs_free(s);
 		 * Break out to different file type
 		 * and store parked data in the t.file
 		 */
-		out = fopen(tname, "wb");
+		out = fopen(tname, "w");
 		if (!HAS_SFILE(s) && S_ISREG(s->mode)) {
 			rc |= parkfile_header(s, top, "EXTRA_REG", out);
 			fclose(out); out = NULL;
@@ -280,7 +280,7 @@ err:		if (s) sccs_free(s);
 	 * # COMMENT: This is a optional parkfile comment, line 2
 	 * #
 	 */
-	f = fopen("ChangeSet", "wb");
+	f = fopen("ChangeSet", "w");
 	fprintf(f, "%s\n", PARKFILE_VERSION);
 	/* We are in PARKDIR, so bk_proj is wrong, but we don't use it here */
 	s = sccs_init(PARK2ROOT "/" CHANGESET, INIT_SAVEPROJ, bk_proj);
@@ -367,7 +367,7 @@ printComments(char *parkfile)
 	FILE	*f;
 	char	buf[MAXLINE];
 
-	f = fopen(parkfile, "rb");
+	f = fopen(parkfile, "r");
 	assert(f);
 	while (fnext(buf, f)) {
 		chomp(buf);
@@ -737,7 +737,7 @@ do_text_diffs_unpark(MMAP *m, char *path, MDBM **idDB, FILE *unpark_list)
 	while (buf = mkline(mnext(m))) {
 		if (strneq(buf, "# COMMENT: ", 11)) {
 			if (!cname) cname = tname2cname(path);
-			if (!cf) cf = fopen(cname, "wb");
+			if (!cf) cf = fopen(cname, "w");
 			fprintf(cf, "%s\n", &buf[11]);
 		} else if (streq(buf, "#")) break;
 	}
@@ -1117,7 +1117,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 	 * if not, warn, but allow user to orveride
 	 */
 	f = fopen(sfio_list, "rt");
-	f3 = fopen(unpark_list, "wb");
+	f3 = fopen(unpark_list, "w");
 	fnext(path, f); /* skip the "Fake" ChangeSet file for Now */
 	chomp(path);
 	unless (streq("ChangeSet", path)) {

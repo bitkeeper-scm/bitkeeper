@@ -109,6 +109,10 @@ main(int ac, char **av)
 	struct	stat asb;
 	off_t	sf_size, d_size, a_size;
 
+#ifdef	WIN32
+	_fmode = _O_BINARY;
+#endif
+
 	if (ac != 3) {
 		fprintf(stderr,
 		    "usage: %s sfio data\n", av[0]);

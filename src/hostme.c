@@ -67,7 +67,7 @@ hostme_main(int ac, char **av)
 		fprintf(stderr, "Can't allocate temp file\n");
 		usage();
 	}
-	unless (f = fopen(hostme_info, "wb")) return (1);
+	unless (f = fopen(hostme_info, "w")) return (1);
 
 	fprintf(f, "project=%s\n", opts.project);
 	fprintf(f, "repository=%s\n", opts.repository);

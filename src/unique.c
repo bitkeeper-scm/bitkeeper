@@ -86,7 +86,6 @@ private int
 atomic_create(char *noused, char *lock, int me)
 {
 	int	fd, flags = O_EXCL|O_CREAT|O_WRONLY;
-	FILE 	*f;
 	char	buf[100];
 
 	if (getenv("BK_REGRESSION")) flags &= ~O_EXCL; /* for faster test */

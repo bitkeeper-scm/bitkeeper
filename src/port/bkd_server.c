@@ -506,7 +506,7 @@ out:		if (cmd) free(cmd);
 	/*
 	 * Here is where we enter the bkd_service_loop()
 	 */
-	if (StartService(schService, --ac, (LPDWORD)++av) == 0) {
+	if (StartService(schService, --ac, (LPCTSTR *)++av) == 0) {
 		fprintf(stderr, "%s cannot start service. %s\n",
 		    SERVICEDISPLAYNAME, getError(err, 256));
 		goto out;
@@ -754,7 +754,8 @@ logMsg(char *msg)
 	HANDLE	evtSrc = RegisterEventSource(NULL, SERVICENAME);
 
 	unless (evtSrc) return;
-	ReportEvent(evtSrc, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, &msg, NULL);
+	ReportEvent(evtSrc, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0,
+		(LPCTSTR *)&msg, NULL);
 	DeregisterEventSource(evtSrc);
 }
 #endif

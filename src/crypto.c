@@ -134,7 +134,7 @@ make_keypair(int bits, char *secret, char *public)
 	}
 	size = sizeof(out);
 	if (rsa_export(out, &size, PK_PRIVATE_OPTIMIZED, &key)) goto err;
-	f = fopen(secret, "wb");
+	f = fopen(secret, "w");
 	unless (f) {
 		fprintf(stderr, "crypto: can open %s for writing\n", secret);
 		return(2);
@@ -143,7 +143,7 @@ make_keypair(int bits, char *secret, char *public)
 	fclose(f);
 	size = sizeof(out);
 	if (rsa_export(out, &size, PK_PUBLIC, &key)) goto err;
-	f = fopen(public, "wb");
+	f = fopen(public, "w");
 	unless (f) {
 		fprintf(stderr, "crypto: can open %s for writing\n", public);
 		return(2);

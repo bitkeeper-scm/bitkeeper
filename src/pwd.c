@@ -12,7 +12,6 @@ pwd_main(int ac, char **av)
 	char	buf[MAXPATH], *p;
 	int	c, shortname = 0, bk_rpath = 0;
 
-	setmode(1, _O_BINARY);
 	while ((c = getopt(ac, av, "sr")) != -1) {
 		switch (c) {
 			case 's': shortname = 1; break;

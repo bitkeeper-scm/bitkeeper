@@ -765,7 +765,7 @@ init_idcache()
 		perror("bktmp_local");
 		exit(1);
 	}
-	unless (idcache = fopen(id_tmp, "wb")) {
+	unless (idcache = fopen(id_tmp, "w")) {
 		perror(id_tmp);
 		exit(1);
 	}

@@ -187,7 +187,7 @@ _get_http_proxy_reg(char **proxies)
 	int	proxyEnable = 0;
 
 	if (getRegDWord(HKEY_CURRENT_USER,
-			KEY, "ProxyEnable", &proxyEnable) == 0) {
+			KEY, "ProxyEnable", (DWORD *)&proxyEnable) == 0) {
 		goto done;
 	}
 	if (proxyEnable == 0) goto done;

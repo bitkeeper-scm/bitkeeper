@@ -2729,7 +2729,7 @@ resolve_cleanup(opts *opts, int what)
 	 * Get the patch file name from RESYNC before deleting RESYNC.
 	 */
 	sprintf(buf, "%s/%s", ROOT2RESYNC, "BitKeeper/tmp/patch");
-	unless (f = fopen(buf, "rb")) {
+	unless (f = fopen(buf, "r")) {
 		fprintf(stderr, "Warning: no BitKeeper/tmp/patch\n");
 		pendingFile[0] = 0;
 	} else {

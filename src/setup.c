@@ -116,7 +116,7 @@ again:		flush_fd0(); /* for Win/98 and Win/ME */
 			fprintf(stderr, "You need to use a fullpath\n");
 			exit(1);
 	    	}
-		f = fopen(config, "wb");
+		f = fopen(config, "w");
 		assert(f);
 		while (fnext(buf, f1)) printField(f, flist, buf);
 		fclose(f);

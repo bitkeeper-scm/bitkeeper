@@ -188,7 +188,7 @@ sccs_gone(int quiet, FILE *f)
 		unless (IS_EDITED(s)) {
 			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
 		}
-		g = fopen(g_gone, "rb");
+		g = fopen(g_gone, "r");
 		while (fnext(key, g)) mdbm_store_str(db, key, "", MDBM_INSERT);
 		fclose(g);
 		s = sccs_restart(s);
@@ -200,7 +200,7 @@ sccs_gone(int quiet, FILE *f)
 	}
 	/* do not close the mdbm yet, we are using that memory */
 	sortLines(lines, 0);
-	unless (g = fopen(g_gone, "wb")) {
+	unless (g = fopen(g_gone, "w")) {
 		perror(g_gone);
 		exit(1);
 	}

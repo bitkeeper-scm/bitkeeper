@@ -42,6 +42,10 @@ main(int ac, char **av)
 	char	tmpdir[MAXPATH];
 	char	buf[MAXPATH];
 
+#ifdef	WIN32
+	_fmode = _O_BINARY;
+#endif
+
 	/* rxvt bugs */
 	setbuf(stderr, 0);
 	setbuf(stdout, 0);

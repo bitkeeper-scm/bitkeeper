@@ -81,7 +81,7 @@ parent_main(int ac,  char **av)
 
 	strcpy(buf, PARENT);
 	mkdirf(buf);
-	f = fopen(PARENT, "wb");
+	f = fopen(PARENT, "w");
 	unless (f) {
 		perror(PARENT);
 		return (1);

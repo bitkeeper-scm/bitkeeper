@@ -14,12 +14,11 @@ STRIP := strip
 export CC LD
 
 all: build version.sh
+	-rm -rf bin lib
 	TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
-	then	rm -rf bin lib; \
-		gunzip < $$TCLVER | tar xf -; \
-	else \
-		./build bin/tclsh bin/bkgui; \
+	then	gunzip < $$TCLVER | tar xf -; \
+	else	./build bin/tclsh bin/bkgui; \
 	fi
 	./build install
 

@@ -42,7 +42,7 @@ setup_tmpdirs(void)
 	}
 
 	/* /tmp on UNIX */
-	tmpdirs[tmpdirs_len++] = TMP_PATH;
+	tmpdirs[tmpdirs_len++] = (char *)TMP_PATH;
 
 	assert(tmpdirs_len < sizeof(tmpdirs)/sizeof(char *));
 	for (i = 0; i < tmpdirs_len; i++) {

@@ -60,7 +60,7 @@ loadfile(char *file, int *size)
 	char	*ret;
 	int	len;
 
-	f = fopen(file, "rb");
+	f = fopen(file, "r");
 	unless (f) return (0);
 
 	if (fstat(fileno(f), &statbuf)) {

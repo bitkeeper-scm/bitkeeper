@@ -73,7 +73,7 @@ empty:		unless (qflag) printf("Nothing to park\n");
 	 */
 	if (comment) {
 		sprintf(parkfile, "%s/parkcomment-%d", BKTMP, try);
-		f = fopen(parkfile, "wb"); assert(f);
+		f = fopen(parkfile, "w"); assert(f);
 		fprintf(f, "%s\n", comment);
 		fclose(f);
 	}

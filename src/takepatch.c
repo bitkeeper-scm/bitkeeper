@@ -702,7 +702,7 @@ metaUnionFile(char *file, char *cmd)
 	}
 	unless (ok) {
 		unlink(file);
-		w = fopen(file, "wb");
+		w = fopen(file, "w");
 		assert(w);
 		fputs(METAUNIONHEAD, w);
 		f = popen(cmd, "r");
@@ -742,7 +742,7 @@ metaUnionResyncFile(char *from, char *to)
 	sprintf(temp, "%s.cp", to);
 	unlink(temp);
 	sprintf(buf, "cat %s %s | bk _sort -u", from, to);
-	w = fopen(temp, "wb");
+	w = fopen(temp, "w");
 	f = popen(buf, "r");
 	fputs(METAUNIONHEAD, w);
 	while (fnext(buf, f)) {
@@ -1780,7 +1780,7 @@ getLocals(sccs *s, delta *g, char *name)
 			
 		assert(d);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
-		unless (t = fopen(tmpf, "wb")) {
+		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
 			exit(1);
 		}
@@ -2349,7 +2349,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			close(creat(t, 0666));
 		}
 		unless (isLogPatch && !newProject) {
-			unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+			unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
 				perror("RESYNC/BitKeeper/tmp/patch");
 				exit(1);
 			}
@@ -2362,7 +2362,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
 			perror("RESYNC/BitKeeper/tmp/patch");
 			exit(1);
 		}

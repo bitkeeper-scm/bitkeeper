@@ -66,7 +66,7 @@ help_main(int ac,  char **av)
 		if (system(buf) != 0) {
 			sprintf(buf, "bk getmsg -= %s >> %s", av[i], out);
 			if (system(buf) != 0) {
-				f = fopen(out, "ab");
+				f = fopen(out, "a");
 				fprintf(f,
 				    "No help for %s, check spelling.\n", av[i]);
 				fclose(f);
