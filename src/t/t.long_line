@@ -109,7 +109,7 @@ bk co $Q -l long1
 sed -e's/1/X/g' < long1 > tmp
 bk undos tmp > long1
 cp long1 long1_1.2.sav
-bk ci $Q -y long1
+bk ci $Q -y long1 || exit 1
 bk co $Q long1
 sed -e's/\%I\%/1.2/g' < tmp > X
 bk undos X > long1.ref

@@ -102,6 +102,7 @@ int	mklock_main(int, char **);
 int	mtime_main(int, char **);
 int	multiuser_main(int, char **);
 int	mv_main(int, char **);
+int	mydiff_main(int, char **);
 int	names_main(int, char **);
 int	newroot_main(int, char **);
 int	oclone_main(int, char **);
@@ -263,6 +264,7 @@ struct	command cmdtbl[] = {
 	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
 	{"mv", mv_main},			/* doc 2.0 */
 	{"multiuser", multiuser_main},		/* doc 2.0 */
+	{"mydiff", mydiff_main},
 	{"names", names_main},			/* doc 2.0 */
 	{"newroot", newroot_main},		/* doc 2.0 */
 	{"new", delta_main},	/* aliases */	/* doc 2.0 */

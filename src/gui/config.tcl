@@ -51,11 +51,12 @@ proc getConfig {prog} \
 	set _d(diffWidth) 65		;# width of side by side diffs
 	set _d(geometry) ""		;# default size/location
 	set _d(listBG) #e8e8e8		;# topics / lists background
-	set _d(mergeHeight) 20		;# height of a merge window
+	set _d(mergeHeight) 24		;# height of a merge window
 	set _d(mergeWidth) 80		;# width of a merge window
 	set _d(newColor) lightblue     	;# color of new revision/diff
 	set _d(noticeColor) #b0b0e0	;# messages, warnings
 	set _d(oldColor) #d070ff     	;# color of old revision/diff
+	set _d(mergeColor) lightblue	;# color of merge region
 	set _d(searchColor) yellow	;# highlight for search matches
 	set _d(selectColor) lightblue	;# current file/item/topic
 	set _d(statusColor) lightblue	;# various status windows
@@ -87,6 +88,14 @@ proc getConfig {prog} \
 	# fmtool fonts: See operating specific section above
 	set _d(fm.activeLeftColor) orange  ;# Color of active left region
 	set _d(fm.activeRightColor) yellow ;# Color of active right region
+	set _d(fm3.comments) 1		;# show comments window
+	set _d(fm3.firstdiff) -
+	set _d(fm3.lastdiff) +
+	set _d(fm3.nextdiff) bracketright
+	set _d(fm3.prevdiff) bracketleft
+	set _d(fm3.nextconflict) braceright
+	set _d(fm3.prevconflict) braceleft
+	set _d(fm3.undo) u
 
 	set _d(help.linkColor) blue	;# hyperlinks
 	set _d(help.topicsColor) orange	;# highlight for topic search matches

@@ -205,14 +205,16 @@ int
 c_fm3tool(resolve *rs)
 {
 	char	*av[10];
+	int	i;
 
-	av[0] = "bk";
-	av[1] = "fm3tool";
-	av[2] = rs->tnames->local;
-	av[3] = rs->tnames->gca;
-	av[4] = rs->tnames->remote;
-	av[5] = rs->s->gfile;
-	av[6] = 0;
+	av[i=0] = "bk";
+	av[++i] = "fm3tool";
+	av[++i] = "-f";
+	av[++i] = rs->revs->local;
+	av[++i] = rs->revs->gca;
+	av[++i] = rs->revs->remote;
+	av[++i] = rs->s->gfile;
+	av[++i] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
 	return (0);
 }

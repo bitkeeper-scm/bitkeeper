@@ -15,7 +15,7 @@
 date > date
 bk ci $Q -i -l date
 echo new > date
-bk ci $Q -y date
+bk ci $Q -y date || exit 1
 echo $N Make sure get -r1.1 works w/ no b flag ......................$NL
 bk get $S -er1.1 date
 if [ ! -f SCCS/p.date ]; then echo Failed, did not edit file.; exit 1; fi
