@@ -1,0 +1,111 @@
+.so bk-macros
+.TH "bk approve" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk approve \- review and approve changesets
+.SH SYNOPSIS
+.Bc bk approve [
+.OPTreq \-r rev
+.Bc ] [
+.OPTreq \-t approval_tag
+.B ]
+.SH DESCRIPTION
+.LP
+The
+.B bk approve 
+command is used to review all changes added to a repository since the
+last approval.  
+.B bk approve
+walks the user through
+each file changed since the last approval, shows the differences, gives
+the user a chance to edit the changes and/or comment on the changes.
+.LP
+For each file, the user is prompted with the file name.  Hitting return
+will show the current list of command options.  Any command option which
+is likely to produce more than a screenful of output is run through 
+$PAGER (or more if $PAGER is not set).
+The command list as of the writing of this manual page is:
+.TP .5i
+a
+approve all changes and end the approval process.
+.tp
+c
+run $EDITOR to generate comments for this file.  Note: this is generally
+unneeded, the graphical checkin tool is run at the end.
+.tp
+d
+do unified diffs of the two versions of the file.
+.tp
+dd
+do regular diffs of the two versions of the file.
+.tp
+D
+diff the two versions of the file graphically.
+.tp
+e
+run $EDITOR to edit the most recent version of the file.
+Note: the diffs are in "filename@@" for easy inclusion in another buffer.
+.tp
+f
+run the graphical file merge on the two versions of the file.
+.tp
+h
+show the history of unapproved changes in this file.
+.tp
+H
+graphically show the history of unapproved changes in this file.
+.tp
+l
+list all files that have changed since the last approval.
+.tp
+n
+go to next file.
+.tp
+p
+diff all changes in all files since the last approval point.
+.tp
+q
+quit the approval process, leaving it unfinished.
+.LP
+Note that if a revision is used instead of the default last approval point,
+all of the above comments referring to the approval point really refer to 
+the specified revision.
+.LP
+Editing the changes may be done with the \*(BK file merge tool; if this
+is used then the left file is the version as of the last approval and 
+the right version is the current version of the file.
+.LP
+When all files have been examined, the last step is to group the changes
+(if any) in a changeset, and then to move the approve tag forward to that
+changeset (or the most recent changeset if no changes were checked in).
+.SH OPTIONS
+.if t .TP .75i
+.if n .TP 1.25i
+.OPTreq \-r rev
+Use
+.ARG rev
+as the last approval point instead of the default which is the most recent
+changeset with an 
+.B approved
+tag.
+.tp
+.OPTreq \-t tag
+Use
+.ARG tag
+as the approval tag instead of the default
+.BR approved .
+.SH WARNING
+If 
+.B bk approve
+is run in a tree with modified files, those modified files will be used
+rather than the latest checked in files.  This can result in the approval
+process being mixed in with new work.  The suggest approach is to run this
+command in a clean tree.
+.SH BUGS
+It might be nice to have a way to check in comments even if the file is
+left alone.  Sort of a poor man's review notes.  We intend to address
+this need with a different tool.
+.SH CREDITS
+The idea for this command came from Jack Moffitt <jack@icecast.org>
+as well as Linus Torvalds.
+.SH CATEGORY
+.B File

@@ -3578,7 +3578,8 @@ check_gfile(sccs *s, int flags)
 	if (lstat(s->gfile, &sbuf) == 0) {
 		unless ((flags & INIT_NOGCHK) || fileTypeOk(sbuf.st_mode)) {
 			verbose((stderr,
-				"unsupported file type: %s\n", s->gfile));
+			    "unsupported file type: %s (%s) 0%06o\n",
+			    s->sfile, s->gfile, sbuf.st_mode & 0177777));
 err:			free(s->gfile);
 			free(s->sfile);
 			free(s);

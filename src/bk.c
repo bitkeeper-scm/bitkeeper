@@ -29,6 +29,7 @@ extern	int proj_cd2root(project *p);
 int abort_main(int, char **);
 int adler32_main(int, char **);
 int admin_main(int, char **);
+int approve_main(int, char **);
 int annotate_main(int, char **);
 int bkd_main(int, char **);
 int cat_main(int, char **);
@@ -181,6 +182,7 @@ struct command cmdtbl[] = {
 	{"abort", abort_main},		/* doc 2.0 */	
 	{"add", delta_main},		
 	{"admin", admin_main},		/* doc 2.0 */
+	{"approve", approve_main},	/* doc 2.0 */
 	{"annotate", annotate_main},	/* doc 2.0 */
 	{"bkd", bkd_main },		/* doc 2.0 */
 	{"cat", cat_main},		/* doc 2.0 */
@@ -448,7 +450,12 @@ spawn_cmd(int flag, char **av)
 	/*
 	 * This test always failed with bash in cygwin1.1.6, why ?
 	 */
-	unless (WIFEXITED(ret)) {
+	if (WIFSIGNALED(ret)) {
+		unless (WTERMSIG(ret) == SIGPIPE) {
+			fprintf(stderr,
+			    "%s died from %d\n", av[0], WTERMSIG(ret));
+		}
+	} else unless (WIFEXITED(ret)) {
 		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
 		return (127);
 	}

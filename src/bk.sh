@@ -23,6 +23,20 @@ __cd2root() {
 	done
 }
 
+# shorthand to dig out renames
+_renames() {
+	case "X$1" in
+	    X-r[0-9]*)
+		;;
+	    *)
+	    	echo 'usage renames -r<rev> OR renames -r<rev>,<rev>'
+		exit 1
+		;;
+	esac
+	__cd2root
+	bk rset -h "$1" | awk -F@ '{ if ($1 != $2) print $2 " -> " $1 }'
+}
+
 # shorthand
 _inode() {		# /* undoc? 2.0 */
 	bk prs -hr+ -d':ROOTKEY:\n' "$@"
