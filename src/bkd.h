@@ -84,6 +84,7 @@ extern	struct cmd cmds[];
 extern	int exists(char *);
 extern	bkdopts Opts;
 extern	char cmdlog_buffer[];
+extern	char *logRoot;
 
 remote	*remote_parse(char *url, int is_clone);
 char	*remote_unparse(remote *r);

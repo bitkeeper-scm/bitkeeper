@@ -603,10 +603,6 @@ push_part2(char **av, opts opts,
 		}
 	}
 
-	/*
-	 * XXX TODO process the pass2 pre-push trigger here
-	 * We should look for a @TRIGGER INFO@ block here
-	 */
 	if (opts.debug) fprintf(stderr, "Remote terminated\n");
 
 	if (opts.metaOnly) {
