@@ -15834,7 +15834,7 @@ sccs_md5delta(sccs *s, delta *d, char *b64)
 
 	sccs_sdelta(s, d, key);
 	if (s->tree->random) strcat(key, s->tree->random);
-	hash = hashstr(key);
+	hash = hashstr(key, strlen(key));
 	sprintf(b64, "%08x%s", (u32)d->date, hash);
 	free(hash);
 }

@@ -144,7 +144,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	rc = send_file(r, buf, 0, opts.gzip);	
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }

@@ -122,7 +122,7 @@ send_abort_msg(remote *r)
 	fprintf(f, "abort\n");
 	fclose(f);
 
-	rc = send_file(r, buf, 0, 0);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }

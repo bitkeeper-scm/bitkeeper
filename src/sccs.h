@@ -754,6 +754,7 @@ typedef struct {
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
 	char 	*cred;		/* user:passwd for proxy authentication */
+	char	*seed;		/* seed saved to validate bkd */
 	int	contentlen;	/* len from http header (recieve only) */
 	pid_t	pid;		/* if pipe, pid of the child */
 } remote;
@@ -1171,8 +1172,8 @@ void	restoreEnviroment(char *patch);
 int	run_check(char *partial, int fix, int quiet);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign, int version);
-char	*hashstr(char *str);
-char	*secure_hashstr(char *str, char *key);
+char	*hashstr(char *str, int len);
+char	*secure_hashstr(char *str, int len, char *key);
 void	delete_cset_cache(char *rootpath, int save);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);

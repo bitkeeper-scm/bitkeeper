@@ -157,7 +157,7 @@ send_part1_msg(opts opts, remote *r, char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	rc = send_file(r, buf, 0, opts.gzip);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }
@@ -265,7 +265,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 		assert(m > 0);
 		extra = m + 6;
 	}
-	rc = send_file(r, buf, extra, opts.gzip);
+	rc = send_file(r, buf, extra);
 	unlink(buf);
 
 	n = gensfio(opts, opts.verbose, gzip, r->wfd);

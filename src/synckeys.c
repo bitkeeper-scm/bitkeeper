@@ -575,7 +575,7 @@ send_sync_msg(remote *r)
 	system(cmd);
 	free(cmd);
 
-	send_file(r, buf, 0, 0);	
+	send_file(r, buf, 0);
 	unlink(buf);
 }
 

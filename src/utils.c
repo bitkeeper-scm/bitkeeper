@@ -577,8 +577,8 @@ bkd_connect(remote *r, int compress, int verbose)
 
 
 
-int
-send_msg(remote *r, char *msg, int mlen, int extra, int compress)
+private int
+send_msg(remote *r, char *msg, int mlen, int extra)
 {
 	char	*cgi = WEB_BKD_CGI;
 
@@ -597,26 +597,29 @@ send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 			return (-1);
 		}
 	}
-	return 0;
+	return (0);
 }
 
 
 int
-send_file(remote *r, char *file, int extra, int gzip)
+send_file(remote *r, char *file, int extra)
 {
-	int	fd, rc, len = size(file);
-	char	*p = malloc(len);
+	MMAP	*m;
+	int	rc, len;
+	char	*q, *hdr;
 
-	assert(p);
-	fd = open(file, O_RDONLY, 0);
-	assert(fd >= 0);
-	if (read(fd, p, len) != len) {
-		perror(file);
-		return (-1);
-	}
-	close(fd);
-	rc = send_msg(r, p,  len, extra, gzip);
-	free (p);
+	m = mopen(file, "r");
+	assert(m);
+	assert(strneq(m->mmap, "putenv ", 7));
+	len = m->size;
+
+	q = secure_hashstr(m->mmap, len, "11ef64c95df9b6227c5654b8894c8f00");
+	hdr = aprintf("putenv BK_AUTH_HMAC=%d|%d|%s\n", len, extra, q);
+	free(q);
+	rc = send_msg(r, hdr, strlen(hdr), len+extra);
+	free(hdr);
+	unless (rc) if (write_blk(r, m->mmap, len) != len) rc = -1;
+	mclose(m);
 	return (rc);
 }
 
@@ -870,15 +873,25 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	EACH(envVar) {
 		fprintf(f, "putenv %s\n", envVar[i]);
 	}
+	unless (r->seed) bkd_seed(0, 0, &r->seed);
+	fprintf(f, "putenv BK_SEED=%s\n", r->seed);
+
 }
 
 int
 getServerInfoBlock(remote *r)
 {
+	int	ret = 1; /* protocol error, never saw @END@ */
+	int	gotseed = 0;
+	int	i;
+	char	*newseed;
 	char	buf[4096];
 
 	while (getline2(r, buf, sizeof(buf)) > 0) {
-		if (streq(buf, "@END@")) return (0); /* ok */
+		if (streq(buf, "@END@")) {
+			ret = 0; /* ok */
+			break;
+		}
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
 		if (strneq(buf, "PROTOCOL", 8)) {
 			safe_putenv("BK_REMOTE_%s", buf);
@@ -887,16 +900,27 @@ getServerInfoBlock(remote *r)
 			if (strneq(buf, "REPO_ID=", 8)) {
 				cmdlog_addnote("rmts", buf+8);
 			}
+			if (strneq(buf, "SEED=", 5)) gotseed = 1;
 		}
 	}
-	return (1); /* protocol error, never saw @END@ */
+	assert(r->seed);	/* I should have always sent a seed */
+	if (gotseed) {
+		i = bkd_seed(r->seed, getenv("BKD_SEED"), &newseed);
+	} else {
+		i = 1;
+		newseed = 0;
+	}
+	safe_putenv("BKD_SEED_OK=%d", !i);
+	if (r->seed) free(r->seed);
+	r->seed = newseed;
+	return (ret);
 }
 
 void
 sendServerInfoBlock(int is_rclone)
 {
 	char	buf[MAXPATH];
-	char	*repoid;
+	char	*repoid, *p;
 
 	out("@SERVER INFO@\n");
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
@@ -935,6 +959,11 @@ sendServerInfoBlock(int is_rclone)
 	if (repoid = repo_id()) {
 		sprintf(buf, "\nREPO_ID=%s", repoid);
 		out(buf);
+	}
+	/* only send back a seed if we recieved one */
+	if (p = getenv("BKD_SEED")) {
+		out("\nSEED=");
+		out(p);
 	}
 	out("\n@END@\n");
 }

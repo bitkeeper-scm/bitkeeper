@@ -96,7 +96,7 @@ usage:			system("bk help -s upgrade");
 	while (p[-1] != '\n') --p;
 	strcpy(buf, p);	/* hmac */
 	*p = 0;
- 	p = secure_hashstr(index, "WXVTpmDYN1GusoFq5hkAoA");
+ 	p = secure_hashstr(index, strlen(index), "WXVTpmDYN1GusoFq5hkAoA");
 	unless (streq(p, buf)) {
 		fprintf(stderr, "upgrade: INDEX corrupted\n");
 		free(index);

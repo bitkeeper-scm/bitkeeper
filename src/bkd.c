@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "tomcrypt/mycrypt.h"
 
 private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
@@ -122,14 +123,14 @@ bkd_main(int ac, char **av)
 }
 
 private	void
-usage()
+usage(void)
 {
 	system("bk help -s bkd");
 	exit(1);
 }
 
 void
-drain()
+drain(void)
 {
 	char	buf[1024];
 	int	i = 0;
@@ -145,7 +146,7 @@ drain()
 }
 
 off_t
-get_byte_count()
+get_byte_count(void)
 {
 
 	char buf[MAXPATH];
@@ -184,7 +185,7 @@ save_byte_count(unsigned int byte_count)
 }
 
 void
-do_cmds()
+do_cmds(void)
 {
 	int	ac;
 	char	**av;
@@ -357,6 +358,59 @@ findcmd(int ac, char **av)
 	return (-1);
 }
 
+private struct {
+	char	*buf;
+	int	i, len;
+	char	*hash;
+} hmac;
+
+private void
+parse_hmac(char *p)
+{
+        int     len, extra;
+
+	if (hmac.buf) {
+		free(hmac.buf);
+		free(hmac.hash);
+		hmac.buf = 0;
+	}
+	len = strtoul(p, &p, 10);
+	unless (len && (*p == '|')) goto bad;
+	extra = strtoul(p+1, &p, 10);
+	unless (*p == '|') goto bad;
+	++p;
+	unless (hmac.buf = malloc(len)) goto bad;
+	hmac.hash = strdup(p);
+	hmac.i = 0;
+	hmac.len = len;
+	return;
+bad:
+	putenv("BK_AUTH_HMAC=BAD");
+}
+
+private int
+nextbyte(void)
+{
+        char    ret;
+	char	*h;
+
+	unless (in(&ret, 1)) return (0);
+	if (hmac.buf) {
+		hmac.buf[hmac.i++] = ret;
+		if (hmac.i == hmac.len) {
+			h = secure_hashstr(hmac.buf, hmac.len,
+			    "11ef64c95df9b6227c5654b8894c8f00");
+			safe_putenv("BK_AUTH_HMAC=%s",
+			    streq(h, hmac.hash) ? "GOOD" : "BAD");
+			free(h);
+			free(hmac.buf);
+			free(hmac.hash);
+			memset(&hmac, 0, sizeof(hmac));
+		}
+	}
+	return (ret);
+}
+
 private	int
 getav(int *acp, char ***avp, int *httpMode)
 {
@@ -376,7 +430,7 @@ getav(int *acp, char ***avp, int *httpMode)
 	 *     This can be done easily with shellSplit()
 	 */
 	if (Opts.interactive) out("BK> ");
-	for (ac = i = 0; len != 0 && in(&buf[i], 1) == 1; i++) {
+	for (ac = i = 0; len != 0 && (buf[i] = nextbyte()); i++) {
 		--len;
 		if (i >= sizeof(buf) - 1) {
 			out("ERROR-command line too long\n");
@@ -401,7 +455,7 @@ getav(int *acp, char ***avp, int *httpMode)
 		}
 		/* skip \r */
 		if (buf[i] == '\r') {
-			in(&buf[i], 1);
+			buf[i] = nextbyte();
 			--len;
 		}
 		if (buf[i] == '\n') {
@@ -423,6 +477,14 @@ getav(int *acp, char ***avp, int *httpMode)
 				inspace = 1;
 				continue;
 			}
+
+			/*
+			 * Process HMAC header
+			 */
+			if ((ac == 2) && streq("putenv", av[0]) &&
+			    strneq("BK_AUTH_HMAC=", av[1], 13)) {
+				parse_hmac(av[1] + 13);
+			}
 			*acp = ac;
 			*avp = av;
 			return (1);
@@ -436,4 +498,118 @@ getav(int *acp, char ***avp, int *httpMode)
 		}
 	}
 	return (0);
+}
+
+
+/*
+ * The following routines are used to setup a handshake between
+ * bk clients and servers to authenticate that they are not being
+ * spoofed by another program.
+ *
+ * client <-> server
+ *
+ * X=rand        -->  bkd
+ * client        <--  H(X),Y=rand (store repoid/Y)
+ * H(Y),Z=rand   -->  bkd (check with stored Y)
+ * client        <--  H(Z)
+ *
+ * The code looks like this:
+ * client				server
+ *   bkd_seed(0, 0, &pass1)
+ *        pass1 sent to bkd     -->
+ *					bkd_seed(0, pass1, &pass2)
+ *					bkd_saveSeed(BK_REPOID, pass2)
+ *				<--  pass2 sent to bk
+ *   bkd_seed(pass1, pass2, &pass3)
+ *        pass3 sent to bkd     -->
+ *					pass2 = bkd_restoreSeed(BK_REPOID)
+ *					bkd_seed(pass2, pass3, &pass4)
+ *				<--  pass4 sent to bk
+ *   bkd_seed(pass3, pass4, 0);
+ */
+int
+bkd_seed(char *oldseed, char *newval, char **newout)
+{
+	char	*p, *h, *r;
+	int	ret = 0;
+	char	rand[64];
+
+	/* validate newval */
+	if (newval && oldseed) {
+		h = secure_hashstr(oldseed, strlen(oldseed),
+		    "43c0e4830eab85d9078971c5bcae5ef4");
+		if (p = strchr(newval, '|')) *p = 0;
+		unless (streq(h, newval)) ret = 1;
+		free(h);
+		if (p) *p = '|';
+	} else {
+		if (oldseed) ret = 1;
+	}
+	if (newout) {
+		rng_get_bytes(rand, sizeof(rand), 0);
+		r = hashstr(rand, sizeof(rand));
+		if (newval) {
+			h = secure_hashstr(newval, strlen(newval),
+			    "43c0e4830eab85d9078971c5bcae5ef4");
+			*newout = aprintf("%s|%s", h, r);
+			free(h);
+			free(r);
+		} else {
+			*newout = r;
+		}
+	}
+#if 0
+	ttyprintf("%u: %s %s %s %d\n", getpid(),
+	    oldseed, newval, newout ? *newout : "-", ret);
+#endif
+	return (ret);
+}
+
+
+private
+char *
+seedFile(char *repoid)
+{
+	char	*ret, *h;
+
+	unless (repoid) repoid = "no repoid";
+	ret = aprintf("%s/seeds/%s", getDotBk(),
+	    (h = hashstr(repoid, strlen(repoid))));
+	free(h);
+	return (ret);
+}
+
+
+/*
+ * XXX how do I clean up stale values?
+ */
+void
+bkd_saveSeed(char *repoid, char *seed)
+{
+	char	*d;
+	int	fd;
+
+	d = seedFile(repoid);
+	mkdirf(d);
+	fd = creat(d, 0664);
+	free(d);
+	if (fd < 0) {
+		perror("bkd_saveSeed");
+		return;
+	}
+	write(fd, seed, strlen(seed));
+	close(fd);
+}
+
+char *
+bkd_restoreSeed(char *repoid)
+{
+	char	*d, *ret;
+
+	d = seedFile(repoid);
+	ret = loadfile(d, 0);
+	unless (ret) perror("bkd_restoreSeed");
+	unlink(d);
+	free(d);
+	return (ret);
 }
