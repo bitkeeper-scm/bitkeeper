@@ -266,6 +266,10 @@ clean_up()
 	ls -a $TMP  > $TMP/T.${USER}-new
 	$DIFF $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
 
+	# Look for spare BK processes if we are Linux pased
+	test "`uname`" = Linux && {
+		ps -axu 2>/dev/null | grep 'bk '
+	}
 }
 
 init_main_loop()

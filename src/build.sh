@@ -4,7 +4,6 @@
 ms_env()
 {
 	SYS=win32
-	MAKE="make -e"
 	CC=cl
 	LD=link
 	MKLIB=./win32/util/mklib
@@ -68,22 +67,20 @@ cygwin_env()
 {
 	unset MAKEFLAGS CFLAGS LDFALGS LD;
 	CC=gcc;
-	MAKE="make -e";
 }
 
 test "X$G" = X && G=-g
 test "X$CC" = X && CC=gcc
 test "X$LD" = X && LD=$CC
-test "X$MAKE" = X && MAKE=gmake
 test "X$WARN" = X && WARN=YES  
 
 case "X`uname -s`" in
     *_NT*)
     	;;
-    *)	GNU=/opt/gnu/bin:/usr/local/bin:/usr/freeware/bin:/opt/groff/bin
-	SCCS=/usr/ccs/bin
+    *)	AR=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
-	PATH=$GNU:$SCCS:$GREP:$PATH
+	GNU=/opt/gnu/bin:/usr/local/bin:/usr/gnu/bin:/usr/freeware/bin
+	PATH=${GREP}:/bin:/usr/bin:/usr/bsd:${GNU}:${AR}
 	export PATH
 	if [ X$1 = X"-u" ]; then shift; fi; # -u option is ignored on Unix  
 	;;
@@ -91,8 +88,6 @@ esac
 case "X`uname -s`" in
 	XSunOS)	XLIBS="-lnsl -lsocket -lresolv"
 		export XLIBS
-		MAKE="/usr/ccs/bin/make -e"
-		export MAKE
 		CHECK=1
 		;;
 	XSCO_SV)
@@ -100,8 +95,7 @@ case "X`uname -s`" in
 		export XLIBS
 		CHECK=1
 		;;
-	XAIX)	MAKE=make
-		CHECK=1
+	XAIX)	CHECK=1
 		;;
 	XWindows_NT|XCYGWIN_NT*)
 		if [ X$1 = X"-u" ]; 
@@ -112,19 +106,17 @@ case "X`uname -s`" in
 		fi
 		;;
 	XOSF1)
-		MAKE=gmake
 		CC=gcc
 		LD=gcc
 		G=-g
 		CHECK=1
 		WARN=NO
-		export CC LD G MAKE WARN
+		export CC LD G WARN
 		;;
 	XDarwin)
-		MAKE=make
 		CC=cc
 		LD=cc
-		export CC LD MAKE
+		export CC LD 
 		CCXTRA="-DHAVE_GMTOFF -no-cpp-precomp"
 		;;
 	*)
@@ -168,6 +160,6 @@ test -z "$BK_STATIC" || {
 }
 
 if [ $WARN = NO ]
-then	$MAKE WARNINGS= "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
-else	$MAKE "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
+then	make -e WARNINGS= "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
+else	make -e "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
 fi
