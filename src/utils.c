@@ -114,3 +114,33 @@ confirm(char *msg)
 	if (getline(0, buf, sizeof(buf)) <= 1) return (0);
 	return ((buf[0] == 'y') || (buf[0] == 'Y'));
 }
+
+/*
+ * Return an MDBM with all the keys from the ChangeSet file
+ * as db{key} = rev.
+ */
+MDBM	*
+csetKeys(MDBM *not)
+{
+	char	buf[MAXKEY];
+	sccs	*s;
+	delta	*d;
+	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	int	n = 0;
+		
+	unless (s = sccs_init("SCCS/s.ChangeSet", INIT_NOCKSUM, 0)) {
+		mdbm_close(db);
+		return (0);
+	}
+	for (d = s->table; d; d = d->next) {
+		sccs_sdelta(s, d, buf);
+		unless (not && mdbm_fetch_str(not, buf)) {
+			mdbm_store_str(db, buf, d->rev, 0);
+			n++;
+		}
+	}
+	sccs_free(s);
+	if (n) return (db);
+	mdbm_close(db);
+	return (0);
+}

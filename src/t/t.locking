@@ -66,10 +66,10 @@ echo OK
 echo $N Make sure clone fails with existing write lock in source \#2 .$NL
 cd $HERE/project
 P=50000
-bk bkd -d -p$P -t60 2>/dev/null
+bk bkd -d -p$P -t120 2>/dev/null
 while [ $? -eq 2 ]
 do	P=`expr $P + 1`
-	bk bkd -d -p$P -t60 2>/dev/null
+	bk bkd -d -p$P -t120 2>/dev/null
 done
 cd $HERE
 bk clone $Q bk://localhost:$P clone 2>/dev/null

@@ -6,21 +6,20 @@
 int
 cmd_rootkey(int ac, char **av)
 {
-	char	buf[MAXPATH];
-	FILE	*p;
+	char	buf[MAXKEY];
+	sccs	*s;
 		
 	unless (exists("BitKeeper/etc")) {
 		out("ERROR: not at a project root\n");
 		return (-1);
 	}
-	p = popen("bk prs -hr+ -d:ROOTKEY: ChangeSet", "r");
-	if (fnext(buf, p)) {
-		out(buf);
-	} else {
-		out("ERROR-no root key found\n");
-		pclose(p);
+	unless (s = sccs_init("SCCS/s.ChangeSet", INIT_NOCKSUM, 0)) {
+		out("ERROR: init of CHangeSet failed\n");
 		return (-1);
 	}
-	pclose(p);
+	sccs_sdelta(s, sccs_ino(s), buf);
+	out(buf);
+	out("\n");
+	sccs_free(s);
 	return (0);
 }

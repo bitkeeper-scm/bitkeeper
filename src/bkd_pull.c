@@ -4,6 +4,7 @@ private	void	listIt(sccs *s);
 private	void	listrev(delta *d);
 private int	uncompressed(char *tmpfile);
 private int	compressed(int gzip, char *tmpfile);
+extern	MDBM	*csetKeys(MDBM *);
 
 private	char	*cset[] = { "bk", "cset", "-m", "-", 0 };
 
@@ -16,9 +17,10 @@ cmd_pull(int ac, char **av)
 	FILE	*f = 0;
 	MDBM	*them = 0, *me = 0;
 	int	list = 0, error = 0, bytes = 0;
-	int	doit = 1, verbose = 1, first = 1;
+	int	doit = 1, verbose = 1;
 	int	gzip = 0;
 	kvpair	kv;
+	datum	d;
 	char	*t;
 	int	c;
 	sccs	*s;
@@ -59,30 +61,9 @@ cmd_pull(int ac, char **av)
 	}
 
 	/*
-	 * Get the local keys
+	 * Get the set of keys not present in them.
 	 */
-	unless (f = popen("bk prs -r1.0.. -bhad':KEY: :REV:' ChangeSet", "r")) {
-		error = -1;
-		goto out;
-	}
-	unless (me = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) OUT;
-	while (fnext(buf, f)) {
-		chop(buf);
-		unless (t = strchr(buf, ' ')) OUT;
-		*t++ = 0;
-		unless (mdbm_fetch_str(them, buf)) {
-			if (first) {
-				// XXX
-				out("Different project, root key mismatch\n");
-				goto out;
-			}
-			mdbm_store_str(me, t, "", 0);
-			bytes += strlen(t) + 1;
-		}
-		first = 0;
-	}
-	pclose(f); f = 0;
-	unless (bytes) {
+	unless (me = csetKeys(them)) {
 		if (doit) out("OK-Nothing to send.\n");
 		repository_rdunlock(0);
 		out("OK-Unlocked\n");
@@ -104,9 +85,9 @@ cmd_pull(int ac, char **av)
 	}
 	bytes = 0;
 	for (kv = mdbm_first(me); kv.key.dsize != 0; kv = mdbm_next(me)) {
-		if (doit) fprintf(f, "%s\n", kv.key.dptr);
+		if (doit) fprintf(f, "%s\n", kv.val.dptr);
 		if (list) {
-			delta	*d = sccs_getrev(s, kv.key.dptr, 0, 0);
+			delta	*d = sccs_getrev(s, kv.val.dptr, 0, 0);
 
 			d->flags |= D_SET;
 		} else if (verbose) {
@@ -115,9 +96,9 @@ cmd_pull(int ac, char **av)
 			} else {
 				out(" ");
 			}
-			out(kv.key.dptr);
+			out(kv.val.dptr);
 		}
-		bytes += kv.key.dsize;
+		bytes += kv.val.dsize;
 		if (bytes >= 50) {
 			if (verbose) out("\n");
 			bytes = 0;
@@ -145,7 +126,6 @@ cmd_pull(int ac, char **av)
 	}
 
 out:
-	if (f) pclose(f);
 	if (them) mdbm_close(them);
 	if (me) mdbm_close(me);
 	repository_rdunlock(0);
