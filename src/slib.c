@@ -10636,13 +10636,13 @@ sccs_keyinit(char *key,int flags, MDBM *idDB)
 	}
 	s = sccs_init(p, flags);
 	free(p);
-	unless (s && HAS_SFILE(s)) return (0);
+	unless (s && HAS_SFILE(s))  goto out;
 	sccs_sdelta(buf, sccs_ino(s));
-	unless (streq(buf, key)) {
-		sccs_free(s);
-		return (0);
-	}
+	unless (streq(buf, key))  goto out;
 	return (s);
+
+out:	if (s) sccs_free(s);
+	return (0);
 }
 
 /*

@@ -63,15 +63,15 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	p = strrchr(s->sfile, '/');
 	if (p) {
 		*p = 0;
-		if (isEmptyDir(s->sfile)) rmDir(s->sfile);
+		if (emptyDir(s->sfile)) rmDir(s->sfile);
 		q = strrchr(s->sfile, '/');
 		*p = '/';
 		if (q) {
 			*q = 0;
-			if (isEmptyDir(s->sfile)) rmDir(s->sfile);
+			if (emptyDir(s->sfile)) rmDir(s->sfile);
 			*q = '/';
 		} else {
-			if (isEmptyDir(".")) rmDir(".");
+			if (emptyDir(".")) rmDir(".");
 		}
 	}
 
@@ -122,12 +122,12 @@ mv(char *src, char *dest)
 		if (p) {
 			*p = 0;
 			if (!exists(dest)) {
-				sprintf(cmd, "mkdir -p %s", dest);
+				sprintf(cmd, "/bin/mkdir -p %s", dest);
 				if (system(cmd)) return (1);
 			}
 			*p = '/';
 		}
-		sprintf(cmd, "mv %s %s", src, dest);
+		sprintf(cmd, "/bin/mv %s %s", src, dest);
 		if (system(cmd)) return (1);
 	}
 	return (0);
@@ -143,25 +143,3 @@ int rmDir(char *dir)
 	}
 }
 
-isEmptyDir(char *dir)
-{
-        DIR *d;
-        struct dirent *e;
-
-        d = opendir(dir);
-        unless (d) {
-                perror(dir);
-                return 0;
-        }
-
-        while ( e = readdir(d)) {
-                if (streq(e->d_name, ".") ||
-                    streq(e->d_name, "..")) {
-                        continue;
-                }
-                closedir(d);
-                return 0;
-        }
-        closedir(d);
-        return 1;
-}          
