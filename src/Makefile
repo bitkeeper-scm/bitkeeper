@@ -458,7 +458,7 @@ image: all
 	cd utils && $(MAKE) image BINDIR=$$DIR
 
 # Rules for test builds.
-HOSTS	= sun sgi hp aix work ppc freebsd freebsd3 alpha
+HOSTS	= `chosts build`
 
 crankit:
 	@cwd=`pwd`; set -x; \
