@@ -611,7 +611,7 @@ http_cset(char *rev)
 	if (i == -1) http_error(500, "buffer overflow in http_cset");
 
 	putenv("BK_YEAR4=1");
-	sprintf(buf, "bk cset -r%s", rev);
+	sprintf(buf, "bk cset -r'%s'", rev);
 	unless (f = popen(buf, "r")) {
 		http_error(500,
 		    "bk cset -r%s failed: %s",
@@ -1004,7 +1004,7 @@ http_anno(char *pathrev)
 	*s++ = 0;
 
 	out("<pre><font size=2>");
-	sprintf(buf, "bk annotate -uma -r%s %s", s, pathrev);
+	sprintf(buf, "bk annotate -uma -r'%s' %s", s, pathrev);
 
 	/*
 	 * Do not show the license key in config file
@@ -1143,9 +1143,9 @@ http_diffs(char *pathrev)
 	out(INNER_END OUTER_END);
 
 	if (strstr(s, "..")) {
-		sprintf(buf, "bk diffs -ur%s %s", s, pathrev);
+		sprintf(buf, "bk diffs -ur'%s' %s", s, pathrev);
 	} else {
-		sprintf(buf, "bk diffs -uR%s %s", s, pathrev);
+		sprintf(buf, "bk diffs -uR'%s' %s", s, pathrev);
 	}
 	f = popen(buf, "r");
 	out("<pre>\n"
@@ -1179,7 +1179,7 @@ http_patch(char *rev)
 	}
 
 	out("<pre><font size=2>");
-	sprintf(buf, "bk export -T -h -x -tpatch -r%s", rev);
+	sprintf(buf, "bk export -T -h -x -tpatch -r'%s'", rev);
 	f = popen(buf, "r");
 	color(0);
 	while (fgets(buf, sizeof(buf), f)) {
