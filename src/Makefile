@@ -50,7 +50,8 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  mail.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o multiuser.o names.o newrev.o oclone.o opull.o opush.o \
 	  park.o parent.o pending.o \
-	  port/bkd_client.o port/lock.o port/mnext.o port/popen.o \
+	  port/bkd_client.o port/check_gfile.o \
+	  port/lock.o port/mnext.o port/popen.o \
 	  port/executable.o port/fileinfo.o port/findprog.o port/fullname.o \
 	  port/flushsocket.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
@@ -624,6 +625,7 @@ parent.o:	parent.c $(H)
 park.o:		park.c $(H)
 pending.o:	pending.c $(H)
 popen.o:	popen.c $(H)
+port/check_gfile.o:	port/check_gfile.c $(H) 
 port/fileinfo.o:	port/fileinfo.c $(H) 
 port/findprog.o:	port/findprog.c $(H) 
 port/flushsocket.o:	port/flushsocket.c $(B) $(H)

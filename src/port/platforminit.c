@@ -28,6 +28,7 @@ platformInit(char **av)
 	int	flags = SILENT;	/* for debugging */
 	mode_t	m;
 #ifdef WIN32
+	// XXX buf2 should be a malloced buffer
 	char	buf2[10 * MAXPATH], buf1[MAXPATH];
 #endif
 	extern char    *editor, *pager, *bin;
@@ -86,6 +87,8 @@ gotit:
 			putenv(s);
 		}
 #ifdef WIN32
+#undef getcwd
+#define getcwd(a, b)	nt_getcwd(a, b)
 		/* convert to lower case: because W98 gives us upper case av */
 		p = av[0];
 		while (*p) { *p = tolower(*p); p++; }

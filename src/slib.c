@@ -3500,48 +3500,6 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	return (0);
 }
 
-/*
- * Return 0 for OK, -1 for error.
- */
-int
-check_gfile(sccs *s, int flags)
-{
-	struct	stat sbuf;
-
-	if (lstat(s->gfile, &sbuf) == 0) {
-		unless ((flags & INIT_NOGCHK) || fileTypeOk(sbuf.st_mode)) {
-			verbose((stderr,
-			    "unsupported file type: %s (%s) 0%06o\n",
-			    s->sfile, s->gfile, sbuf.st_mode & 0177777));
-err:			free(s->gfile);
-			free(s->sfile);
-			free(s);
-			return (-1);
-		}
-		s->state |= S_GFILE;
-		s->mode = sbuf.st_mode;
-		s->gtime = (flags & INIT_GTIME) ? sbuf.st_mtime : 0;
-		if (S_ISLNK(sbuf.st_mode)) {
-			char link[MAXPATH];
-			int len;
-
-			len = readlink(s->gfile, link, sizeof(link));
-			if ((len > 0 )  && (len < sizeof(link))){
-				link[len] = 0;
-				if (s->symlink) free(s->symlink);
-				s->symlink = strdup(link);
-			} else {
-				verbose((stderr,
-				    "cannot read sym link: %s\n", s->gfile));
-				goto err;
-			}
-		}
-	} else {
-		s->state &= ~S_GFILE;
-		s->mode = 0;
-	}
-	return (0);
-}
 
 /* [user][@host][:path] */
 private	remote *
@@ -3815,6 +3773,9 @@ flushDcache()
  * If the file doesn't exist, the graph isn't set up.
  * It should be OK to have multiple files open at once.
  * If the project is passed in, use it, else init one if we are in BK mode.
+ * 
+ * XXX TODO for win32 performance: Need to add a quick_lstat() interface.
+ * XXX This interface only return mode and size, but not st_*time 
  */
 sccs*
 sccs_init(char *name, u32 flags, project *proj)
