@@ -432,6 +432,10 @@ pending() {
 
 chkConfig() {
 	cd2root
+	# We might be inside RESYNC.
+	if [ -d ../RESYNC ]
+	then	cd ..
+	fi
 	if [ ! -f  BitKeeper/etc/SCCS/s.config ]
 	then
 		gethelp chkconfig_missing $BIN
@@ -477,7 +481,7 @@ logAddr() {
 		exit 1 
 		;;
 	esac
-	export LOGADDR=${LOG#*:} 
+	echo ${LOG#*:} 
 }
 
 # Log the changeset to openlogging.org or wherever they said to send it.
@@ -534,11 +538,11 @@ commit() {
 	DOIT=no
 	GETCOMMENTS=yes
 	COPTS=
-	FORCE=no
+	GETLOGADDR=doLog
 	while getopts dfsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=yes;;
-		f) FORCE=yes;;
+		f) GETLOGADDR=logAddr;;
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
 		y) DOIT=yes; GETCOMMENTS=no; echo "$OPTARG" > /tmp/comments$$;;
@@ -569,7 +573,8 @@ commit() {
 	then	if [ -f /tmp/comments$$ ]
 		then	COMMENTS="-Y/tmp/comments$$"
 		fi
-		if [ $FORCE = no ]; then doLog; else logAddr; fi
+		LOGADDR=`$GETLOGADDR` || exit 1
+		export LOGADDR
 		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		EXIT=$?
 		/bin/rm -f /tmp/comments$$
@@ -594,7 +599,8 @@ commit() {
 			if [ -s /tmp/comments$$ ]
 			then	COMMENTS="-Y/tmp/comments$$"
 			fi
-			if [ $FORCE = no ]; then doLog; else logAddr; fi
+			LOGADDR=`$GETLOGADDR` || exit 1
+			export LOGADDR
 			${BIN}sfiles -C |
 			    eval ${BIN}cset "$COMMENTS" $COPTS $@ -
 			EXIT=$?
