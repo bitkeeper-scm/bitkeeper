@@ -4173,17 +4173,15 @@ sccs_init(char *name, u32 flags, project *proj)
 	if (rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
-			free(s->gfile);
+ err:			free(s->gfile);
 			free(s->sfile);
+			unless(proj || !s->proj) proj_free(s->proj);
 			free(s);
 			return (0);
 		}
 		if (sbuf.st_size == 0) {
 			verbose((stderr, "Zero length file: %s\n", s->sfile));
-			free(s->gfile);
-			free(s->sfile);
-			free(s);
-			return (0);
+			goto err;
 		}
 		s->state |= S_SFILE;
 		s->size = sbuf.st_size;
@@ -4217,6 +4215,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			free(s->sfile);
 			free(s->gfile);
 			free(s->pfile);
+			unless (proj || !s->proj) proj_free(s->proj);
 			free(s);
 			return (0);
 		}
@@ -4255,6 +4254,10 @@ sccs_init(char *name, u32 flags, project *proj)
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (HASGRAPH(s)) {
 		if (misc(s)) {
+			unless (proj || !s->proj) {
+				proj_free(s->proj);
+				s->proj = 0;
+			}
 			sccs_free(s);
 			return (0);
 		}
