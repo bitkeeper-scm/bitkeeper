@@ -391,8 +391,8 @@ typedef struct {
 	char	*root;		/* to the root of the project */
 } project;
 
-#define	PROJ_RESYNC	0x00000001	/* Locked by resync */
-#define	PROJ_READER	0x00000002	/* Locked by reader */
+#define	PROJ_WRLOCK	0x00000001	/* Locked by resync */
+#define	PROJ_RDLOCK	0x00000002	/* Locked by reader */
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 

@@ -1412,7 +1412,7 @@ automerge(resolve *rs, names *n)
 			fprintf(stderr,
 			    "Content merge of %s OK\n", rs->s->gfile);
 		}
-		if (edit(rs)) return;
+		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 		comment = "Auto merged";
 		gotComment = 1;
 		d = getComments(0);

@@ -2545,7 +2545,7 @@ meta(sccs *s, delta *d, char *buf)
 		zoneArg(d, &buf[3]);
 		break;
 	    default:
-		fprintf(stderr, "Ignoring %.5s...\n", buf);
+		fprintf(stderr, "Ignoring %.5s", buf);
 		/* got unknown field, force read only mode */
 		s->state |= S_READ_ONLY;
 	}
@@ -3140,9 +3140,9 @@ sccs_initProject(sccs *s)
 	 * Go figure out if we are locked.
 	 */
 	sprintf(path, "%s/RESYNC", root);
-	if (exists(path)) p->flags |= PROJ_RESYNC;
+	if (exists(path)) p->flags |= PROJ_WRLOCK;
 	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
-	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_READER;
+	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_RDLOCK;
 	return (p);
 }
 
@@ -3152,89 +3152,6 @@ sccs_freeProject(project *p)
 	unless (p) return;
 	if (p->root) free(p->root);
 	free(p);
-}
-
-private inline int
-resync_locked(project *p)
-{
-	return (p && (p->flags & PROJ_RESYNC));
-}
-
-private inline int
-reader_locked(project *p)
-{
-	return (p && (p->flags & PROJ_READER));
-}
-
-int
-sccs_locked(project *p)
-{
-	return ((resync_locked(p) || reader_locked(p)) &&
-	    (getenv("BK_IGNORELOCK") == 0));
-}
-
-/* used to tell us who is blocking the lock */
-void
-sccs_lockers(project *p)
-{
-	unless (p) return;
-	if (sccs_locked(p)) {
-		fprintf(stderr, "Entire repository is locked");
-		if (resync_locked(p)) fprintf(stderr, " by RESYNC directory");
-		if (reader_locked(p)) fprintf(stderr, " by READER lock");
-		fprintf(stderr, ".\n");
-	}
-}
-
-/*
- * Try and get a read lock for the whole repository.
- * Return true if it worked.
- */
-repository_rdlock()
-{
-	char	path[MAXPATH];
-	int	first = 1;
-
-	unless (exists("BitKeeper/etc")) return(-1);
-
-	/*
-	 * We go ahead and create the lock and then see if there is a
-	 * write lock.  If there is, we lost the race and we back off.
-	 */
-again:	unless (exists(READER_LOCK_DIR)) {
-		mkdir(READER_LOCK_DIR, 0777);
-		chmod(READER_LOCK_DIR, 0777);	/* kill their umask */
-	}
-	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
-	close(creat(path, 0666));
-	unless (exists(path)) {
-		/* try removing and recreating the lock dir.
-		 * This cleans up bad modes in some cases.
-		 */
-		if (first) {
-			rmdir(READER_LOCK_DIR);
-			first = 0;
-			goto again;
-		}
-		return (-1);
-	}
-	if (exists(ROOT2RESYNC)) {
-		unlink(path);
-		return (-1);
-	}
-	return (0);
-}
-
-int
-repository_rdunlock()
-{
-	char	path[MAXPATH];
-
-	unless (exists("BitKeeper/etc")) return(-1);
-
-	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
-	unlink(path);
-	return (0);
 }
 
 /*
@@ -3345,11 +3262,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			 * This is a little bogus - we are looking for a
 			 * a project when there may not be one.
 			 */
-			if (s->proj = proj ? proj : sccs_initProject(s)) {
-				if (sccs_locked(s->proj)) {
-					s->state |= S_READ_ONLY;
-				}
-			}
+			s->proj = proj ? proj : sccs_initProject(s);
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3381,10 +3294,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	/*
 	 * Don't go look for BK root if not a BK file.
 	 */
-	if (s->state & S_BITKEEPER) {
-		s->proj = proj ? proj : sccs_initProject(s);
-		if (sccs_locked(s->proj)) s->state |= S_READ_ONLY;
-	}
+	if (s->state & S_BITKEEPER) s->proj = proj ? proj : sccs_initProject(s);
 
 	/*
 	 * Let them force YEAR4
@@ -3670,19 +3580,24 @@ name2sccs(char *name)
  * create SCCS/<type>.foo.c
  */
 int
-sccs_lock(sccs *sccs, char type)
+sccs_lock(sccs *s, char type)
 {
-	char	*s;
+	char	*t;
 	int	lockfd;
 
-	if ((type == 'z') && (sccs->state & S_READ_ONLY)) return (0);
-	s = sccsXfile(sccs, type);
+	if (type == 'z') {
+		if (s->state & S_READ_ONLY) return (0);
+		if (repository_locked(s->proj) && repository_unlock(s->proj)) {
+		    	return (0);
+		}
+	}
+	t = sccsXfile(s, type);
 	lockfd =
-	    open(s, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
+	    open(t, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
 
 	if (lockfd >= 0) close(lockfd);
-	if ((lockfd >= 0) && (type == 'z')) sccs->state |= S_ZFILE;
-	debug((stderr, "lock(%s) = %d\n", sccs->sfile, lockfd >= 0));
+	if ((lockfd >= 0) && (type == 'z')) s->state |= S_ZFILE;
+	debug((stderr, "lock(%s) = %d\n", s->sfile, lockfd >= 0));
 	return (lockfd >= 0);
 }
 
@@ -4815,7 +4730,7 @@ write_pfile(sccs *s, int flags, delta *d,
 	}
 	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
-		sccs_lockers(s->proj);
+		repository_lockers(s->proj);
 		return (-1);
 	}
 	unless (sccs_lock(s, 'p')) {
@@ -9984,7 +9899,7 @@ sccs_delta(sccs *s,
 	unless(locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "delta: can't get write lock on %s\n", s->sfile);
-		sccs_lockers(s->proj);
+		repository_lockers(s->proj);
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);

@@ -41,7 +41,7 @@ RANLIB	= ranlib
 SCCSOBJ	= dirname.o filecopy.o getopt.o gettemp.o glob.o libdiff.o librange.o \
 	  libsfiles.o localtm.o mkdir.o mmap.o newrev.o popen.o purify.o      \
 	  rcs.o sccs_mv.o slib.o zgets.o unique.o finddirs.o libcommit.o \
-	  libusers.o utils.o
+	  libusers.o utils.o locking.o
 PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
 	  port/disksp.o
@@ -203,7 +203,7 @@ t/doit: t/doit.sh substvars
 
 FORCE:
 
-bkd: $(BKDOBJ)
+bkd: $(BKDOBJ) $(LIBS)
 	$(CC) $(CFLAGS) $(BKDOBJ) $(LINK) -o bkd
 
 gnu: FORCE
@@ -591,10 +591,10 @@ crankit:
 	done; wait
 
 crankturn: build crank
-	$(MAKE) crankit CRANKCMD=./crank
+	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD=./crank crankit
 
 cranktest:
-	$(MAKE) crankit CRANKCMD="bk regression"
+	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD="bk regression" crankit
 
 build: build.sh
 	/bin/rm -f build
@@ -618,7 +618,6 @@ crank: crank.sh
 commondeps = system.h unix.h config.h mdbm/mdbm.h purify.h mmap.h
 sccsdeps   = $(commondeps) sccs.h
 
-# Installed executables
 adler32.o:	adler32.c $(sccsdeps)
 admin.o:	admin.c $(sccsdeps)
 check.o:	check.c $(sccsdeps) range.h
@@ -627,21 +626,37 @@ clean.o:	clean.c $(sccsdeps)
 cset.o:		cset.c $(sccsdeps) range.h comments.c host.c user.c
 delta.o:	delta.c $(sccsdeps) comments.c
 diffs.o:	diffs.c $(sccsdeps) range.h
+dirname.o:	dirname.c config.h
 fdiff.o:	fdiff.c $(sccsdeps)
+filecopy.o:	filecopy.c $(sccsdeps)
 g2sccs.o:	g2sccs.c $(sccsdeps)
 get.o:		get.c $(sccsdeps)
 gethost.o:	gethost.c
+getopt.o:	getopt.c $(sccsdeps)
+gettemp.o:	gettemp.c $(sccsdeps)
 getuser.o:	getuser.c
+glob.o:		glob.c $(sccsdeps)
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(sccsdeps)
+libdiff.o:	libdiff.c $(sccsdeps)
+librange.o:	librange.c $(sccsdeps) range.h
+libsfiles.o:	libsfiles.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
+localtm.o:	localtm.c $(commondeps)
+locking.o:	locking.c $(sccsdeps)
+mkdir.o:	mkdir.c $(sccsdeps)
+mmap.o:		mmap.c $(sccsdeps)
 mtime.o:	mtime.c
+newrev.o:	newrev.c $(sccsdeps)
+popen.o:	popen.c $(sccsdeps)
 prs.o:		prs.c $(sccsdeps) range.h
+purify.o:	purify.c $(commondeps)
 range.o:	range.c $(sccsdeps) range.h
+rcs.o:		rcs.c $(sccsdeps)
 rechksum.o:	rechksum.c $(sccsdeps)
 renumber.o:	renumber.c $(sccsdeps)
 rmdel.o:	rmdel.c $(sccsdeps) range.h
-stripdel.o:	stripdel.c $(sccsdeps) range.h
+sccs_mv.o:	sccs_mv.c $(sccsdeps)
 sccscat.o:	sccscat.c $(sccsdeps) range.h
 sccslog.o:	sccslog.c $(sccsdeps) range.h
 sccsmv.o:	sccsmv.c $(sccsdeps)
@@ -653,31 +668,13 @@ sids.o:		sids.c $(sccsdeps)
 sinfo.o:	sinfo.c $(sccsdeps)
 slib.o:		slib.c $(sccsdeps) zgets.h
 smoosh.o:	smoosh.c $(sccsdeps)
+stripdel.o:	stripdel.c $(sccsdeps) range.h
 takepatch.o:	takepatch.c $(sccsdeps)
 undos.o:	undos.c
-what.o:		what.c $(sccsdeps)
-zone.o:		zone.c $(commondeps)
-
-# libsccs
-dirname.o:	dirname.c config.h
-filecopy.o:	filecopy.c $(sccsdeps)
-getopt.o:	getopt.c $(sccsdeps)
-gettemp.o:	gettemp.c $(sccsdeps)
-glob.o:		glob.c $(sccsdeps)
-libdiff.o:	libdiff.c $(sccsdeps)
-librange.o:	librange.c $(sccsdeps) range.h
-libsfiles.o:	libsfiles.c $(sccsdeps)
-localtm.o:	localtm.c $(commondeps)
-mkdir.o:	mkdir.c $(sccsdeps)
-mmap.o:		mmap.c $(sccsdeps)
-newrev.o:	newrev.c $(sccsdeps)
-popen.o:	popen.c $(sccsdeps)
-purify.o:	purify.c $(commondeps)
-rcs.o:		rcs.c $(sccsdeps)
-sccs_mv.o:	sccs_mv.c $(sccsdeps)
-zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
-
 utils.o $(BKDOBJ):	$(commondeps) bkd.h lib_tcp.h
+what.o:		what.c $(sccsdeps)
+zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
+zone.o:		zone.c $(commondeps)
 
 $(RESOBJ):	resolve.h $(commondeps)
 
