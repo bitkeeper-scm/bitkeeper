@@ -37,6 +37,7 @@ int	abort_main(int, char **);
 int	adler32_main(int, char **);
 int	admin_main(int, char **);
 int	annotate_main(int, char **);
+int	applyall_main(int, char **);
 int	approve_main(int, char **);
 int	bkd_main(int, char **);
 int	cat_main(int, char **);
@@ -180,6 +181,7 @@ int	zone_main(int, char **);
 
 struct	command cmdtbl[] = {
 	{"_adler32", adler32_main},
+	{"_applyall", applyall_main},
 	{"_converge", converge_main},
 	{"_cleanpath", cleanpath_main},
 	{"_createlod", _createlod_main},
@@ -669,7 +671,6 @@ void
 cmdlog_start(char **av, int httpMode)
 {
 	int	i, len;
-	int	try = 1, how_long = 1;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -695,14 +696,7 @@ cmdlog_start(char **av, int httpMode)
 			for (i = 1; av[i]; i++) {
 				if (streq("-e", av[i])) meta = 1;
 			}
-			if (meta) {
-				if (av[0][16] == '1') {
-					cmdlog_flags &= ~CMD_WRLOCK;
-				} else {
-					cmdlog_flags |=
-						CMD_WRLOCK | CMD_RETRYLOCK;
-				}
-			}
+			if (meta) cmdlog_flags &= ~(CMD_WRLOCK|CMD_WRUNLOCK);
 		}
 		if (cmdlog_flags & CMD_WRLOCK) cmdlog_flags |= CMD_WRUNLOCK;
 		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
@@ -729,27 +723,12 @@ cmdlog_start(char **av, int httpMode)
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
 	if (cmdlog_flags & CMD_WRLOCK) {
-retry:		if (i = repository_wrlock()) {
+		if (i = repository_wrlock()) {
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
-				if ((cmdlog_flags & CMD_RETRYLOCK) &&
-				    (try++ < 10)) {
-					fprintf(stderr,
-					    "%s(%d): lock busy, retry %d.\n",
-					    av[0], getpid(), try);
-					how_long <<= 1;
-					sleep(how_long);
-					goto retry;
-				}
-				if (cmdlog_flags & CMD_RETRYLOCK) {
-					fprintf(stderr,
-				           "%s(%d): failed to get lock, "
-					   "try %d.\n",
-					   av[0], getpid(), try);
-				}
 				out(LOCK_WR_BUSY);
 				break;
 			    case LOCKERR_PERM:
@@ -767,10 +746,6 @@ retry:		if (i = repository_wrlock()) {
 			 */
 			if (strneq("remote ", av[0], 7)) drain();
 			exit(1);
-		}
-		if (try > 1) {
-			fprintf(stderr, "%s(%d): got lock on try %d.\n",
-			    av[0], getpid(), try);
 		}
 	}
 	if (cmdlog_flags & CMD_RDLOCK) {

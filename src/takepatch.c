@@ -138,6 +138,16 @@ usage:		system("bk help -s takepatch");
 
 	p = init(input, flags, &proj);
 
+	if (streq(input, "-") && isLogPatch && !newProject) {
+		char	*applyall[] = {"bk", "_applyall", 0};
+
+		mclose(p);
+		mdbm_close(goneDB);
+		mdbm_close(idDB);
+
+		spawnvp_ex(_P_NOWAIT, "bk", applyall);
+		return(0);
+	}
 	/*
 	 * Find a file and go do it.
 	 */
@@ -1802,6 +1812,7 @@ init(char *inputFile, int flags, project **pp)
 		u32	diffsblank:1;	/* previous line was \n after diffs */
 	}	st;
 	int	line = 0, j = 0;
+	char	incoming[MAXPATH];
 
 	bzero(&st, sizeof(st));
 	st.preamble = 1;
@@ -1865,7 +1876,7 @@ init(char *inputFile, int flags, project **pp)
 		 * Save the patch in the pending dir
 		 * and record we're working on it.
 		 */
-		unless (savefile("PENDING", 0, pendingFile)) {
+		unless (savefile("PENDING", ".incoming", pendingFile)) {
 			SHOUT();
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
@@ -2092,6 +2103,13 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror("fclose on patch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
+		strcpy(incoming, pendingFile);
+		unless (savefile("PENDING", 0, pendingFile)) {
+			SHOUT();
+			perror("PENDING");
+			cleanup(CLEAN_RESYNC);
+		}
+		rename(incoming, pendingFile);
 		unless (flags & SILENT) {
 			NOTICE();
 			fprintf(stderr,
@@ -2103,7 +2121,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror(pendingFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
-		if (isLogPatch) {
+		if (isLogPatch && newProject) {
 			resync_lock();
 			assert(exists("BitKeeper/etc"));
 			close(creat(LOG_TREE, 0666));
@@ -2111,12 +2129,14 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			mkdirp(ROOT2RESYNC "/BitKeeper/etc");
 			close(creat(t, 0666));
 		}
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
-			perror("RESYNC/BitKeeper/tmp/patch");
-			exit(1);
+		unless (isLogPatch && !newProject) {
+			unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+				perror("RESYNC/BitKeeper/tmp/patch");
+				exit(1);
+			}
+			fprintf(g, "%s\n", pendingFile);
+			fclose(g);
 		}
-		fprintf(g, "%s\n", pendingFile);
-		fclose(g);
 	} else {
 		resync_lock();
 		unless (m = mopen(inputFile, "b")) {

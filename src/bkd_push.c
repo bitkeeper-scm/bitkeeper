@@ -187,16 +187,11 @@ cmd_push_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	/*
-	 * Allow conflicts in logging patch by stomping on "-c".
-	 * Tell takepatch it's logging so we drop the write lock while
-	 * getting the patch.  We don't bother getting the write lock
-	 * back because takepatch will have locked the tree with the
-	 * RESYNC directory, which is a long lived write lock.
+	 * Tell takepatch to recieve a logging patch.  It will just
+	 * save the patch and spawn inself in the background.  to
+	 * apply and resolve the changes.
 	 */
-	if (metaOnly) {
-		repository_wrunlock(0);
-		takepatch[3] = "-L";
-	}
+	if (metaOnly) takepatch[3] = "-aL";
 	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
 	dup2(fd2, 2); close(fd2);
 	gunzipAll2fd(0, pfd, gzip, 0, 0);
@@ -214,6 +209,7 @@ cmd_push_part2(int ac, char **av)
 		fflush(stdout);
 	}
 	fputs("@END@\n", stdout);
+	fflush(stdout);
 	if (!WIFEXITED(status)) {
 		putenv("BK_STATUS=SIGNALED");
 		rc = 1;
@@ -224,7 +220,8 @@ cmd_push_part2(int ac, char **av)
 		rc = 1;
 		goto done;
 	}
-	unless (bk_proj) bk_proj = proj_init(0); /* for new logging tree */
+	if (metaOnly) goto done; /* no need for resolve */
+	unless (bk_proj) bk_proj = proj_init(0);
 
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
@@ -276,9 +273,7 @@ cmd_push_part2(int ac, char **av)
 	}
 
 done:	/*
-	 * Note: in the logging tree case, if there was an error, we do not
-	 * have a write lock on the repository unless the error path left the
-	 * RESYNC directory.
+	 * Fire up the post-trigger (for non-logging tree only)
 	 */
 	if (metaOnly) av[0] = "remote log push";
 	putenv("BK_RESYNC=FALSE");
