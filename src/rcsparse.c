@@ -436,15 +436,28 @@ rcs_rootkey(RCS *rcs)
 
 	d = rcs->tree;
 	while (d->dead && d->kid) d = d->kid;
+
+	/*
+	 * Generate the random bits for this file.  The key point is
+	 * that the final rootkey needs to be unique, but
+	 * deterministic so that if a user does another incremental
+	 * import, they will get the same data.
+	 *
+	 * We can only use the information from the 1.1 delta of the
+	 * input file, and nominally only comments on that delta are
+	 * not already included in the key.  But we include a hash of
+	 * the rest of the bits in the key so that this file is less
+	 * likely to have conflicts when moved to the delted
+	 * directory.  (People can dupicate RCS files in a CVS
+	 * tree...)
+	 */
 	str = rcs->text;
-	if (str)
-		randbits = adler32(randbits, str, strlen(str));
+	if (str) randbits = adler32(randbits, str, strlen(str));
 	str = d->comments;
-	if (str)
-		randbits = adler32(randbits, str, strlen(str));
+	if (str) randbits = adler32(randbits, str, strlen(str));
+
 	tp = utc2tm(d->date-1);
-	rcs->rootkey =
-		aprintf("%s@%s|%s|%02d%02d%02d%02d%02d%02d|%05u|%08x",
+	str = aprintf("%s@%s|%s|%02d%02d%02d%02d%02d%02d",
 			d->author,
 			sccs_gethost(),
 			rcs->workfile,
@@ -453,9 +466,11 @@ rcs_rootkey(RCS *rcs)
 			tp->tm_mday,
 			tp->tm_hour,
 			tp->tm_min,
-			tp->tm_sec,
-			randbits & 0xffff,
-			randbits);
+			tp->tm_sec);
+	randbits = adler32(randbits, str, strlen(str));
+	rcs->rootkey = aprintf("%s|%05u|%08x",
+	    str, randbits & 0xffff, randbits);
+	free(str);
 }
 
 #define	ERR(msg)	{ error = msg; goto err; }
@@ -946,15 +961,14 @@ select_branch(RCS *rcs, char *cvsbranch)
 				exit(1);
 			}
 		}
-		free(branchname);
-		branchname = 0;
 		/* (brev = branch) =~ s/\.0\.(\d+)$/$1.1/ */
 		p = strrchr(brev, '.');
 		if (!p || p[-2] != '.' || p[-1] != '0') {
 			fprintf(stderr,
-"WARNING: revision %s is not in expected form X.Y.0.Z in %s\n"
+"WARNING: Branch tag %s points at revision %s which is not\n"
+"         in expected form of X.Y.0.Z in %s\n"
 "         This usually means that tag is not a branch tag.\n",
-			    brev, rcs->rcsfile);
+			   branchname,  brev, rcs->rcsfile);
 			/*
 			 * Here we need to make a rev that will cause the
 			 * code below to act like we have a branch point that
@@ -969,6 +983,8 @@ select_branch(RCS *rcs, char *cvsbranch)
 			strcpy(p - 1, p + 1);  /* not portable?? (overlap) */
 			strcat(p, ".1");
 		}
+		free(branchname);
+		branchname = 0;
 		d = rcs_findit(rcs, brev);
 		unless (d) {
 			p[-2] = 0;  /* X.Y */
