@@ -36,6 +36,8 @@ bk pull $Q 2> OUT && {
 }
 grep -q 'Conflicts during automerge of file' OUT || {
 	echo pull should have had conflict
+	bk cat file
+	cat OUT
 	exit 1
 }
 echo ur | bk resolve $Q -t 2>OUT || {

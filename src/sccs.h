@@ -1163,6 +1163,13 @@ char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
 
+void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
+    int (*is_whitespace)(int i));
+void	close_gaps(u8 *vec, int n, int (*compare)(int a, int b));
+int	diff_algor(int m, int n, u8 *lchg, u8 *rchg,
+    int (*compare)(int a, int b));
+int   diffline(char *left, char *right);
+
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
