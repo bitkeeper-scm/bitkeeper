@@ -239,6 +239,16 @@ bk ci $Q -i link file
 bk commit $S -a -y"This is a \"Change Set\""
 echo OK
 cores
+echo $N Export the repository .......................................$NL
+bk export $HERE/copy
+if test -h $HERE/copy/link; then
+    echo OK
+else
+    echo failed
+    exit 1
+fi
+
+cores
 bk -r check -a
 echo $N Save a tarball of the repository ............................$NL
 cd $HERE
