@@ -169,5 +169,8 @@ cd $HERE/copy1/BitKeeper/etc
 bk commit $Q -y"cset for old logged file"
 bk mv logged ../logged.old
 echo 3333 > logged
-bk new $Q logged
-if [ $? -eq 0 ]; then echo "failed (known bug)"; else echo OK; fi
+bk new $Q logged 2> new.out
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+grep -q "key allready used in ChangeSet file" new.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK

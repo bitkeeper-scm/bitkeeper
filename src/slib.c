@@ -8235,7 +8235,7 @@ checkin(sccs *s,
 		if (bk_etc && !(flags&DELTA_PATCH)) {
 			sccs *sc;
 			delta *cset_root, *d_tmp;
-			char s_cset[MAXPATH];
+			char tmp[MAXPATH];
 			char *root = sccs_root(s);
 
 			/*
@@ -8246,9 +8246,9 @@ checkin(sccs *s,
 			 * indendently in two related repositories, they
 			 * will have the same root key.
 			 */
-			sprintf(s_cset, "%s/%s", root, CHANGESET);
+			sprintf(tmp, "%s/%s", root, CHANGESET);
 			free(root);
-			sc = sccs_init(s_cset, INIT_SAVEPROJ, s->proj);
+			sc = sccs_init(tmp, INIT_SAVEPROJ, s->proj);
 			assert(sc);
 			cset_root = findrev(sc, "1.0");
 			assert(cset_root);
@@ -8264,11 +8264,21 @@ checkin(sccs *s,
 			n0 = sccs_dInit(n0, 'D', s, 0);
 			sccs_free(sc);
 
-			//XXX FIXME: Need to check the key/gone/cset database
-			//XXX to make sure the file is not already created
-			//XXX and moved/deleted . We should just failed the
-			//XXX operation if the above condition is detected 
-
+			/*
+			 * Check the ChangeSet database
+			 * to make sure the file is not already created
+			 * and used in a ChangeSet
+			 */
+			sccs_sdelta(s, n0, buf);
+			sprintf(tmp, "bk -R grep \"^%s \" %s > %s",
+						   buf, CHANGESET, DEV_NULL);
+			if (system(tmp) == 0) {
+				fprintf(stderr, 
+					"delta: %s: key allready used"
+					" in ChangeSet file\n", s->sfile);
+				s->state |= S_WARNED;
+				goto abort;
+			}
 			dinsert(s, flags, n0, 0);
 		} else {
 			n0 = sccs_dInit(n0, 'D', s, nodefault);
