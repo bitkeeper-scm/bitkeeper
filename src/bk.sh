@@ -942,8 +942,10 @@ _clonemod() {
 	bk pull
 }
 
+# XXX undocumented alias from 3.0.4 
 _leaseflush() {
-	rm -f `bk dotbk`/lease/`bk gethost -r`
+        echo Please use 'bk lease flush' now. 1>&2
+	bk lease flush -a
 }
 
 __find_merge_errors() {
