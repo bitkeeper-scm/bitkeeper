@@ -358,6 +358,15 @@ main(int ac, char **av)
 	char	*prog, *argv[MAXARGS];
 	char	sopts[30];
 
+	if (getenv("BK_SHOWPROC")) {
+		FILE	*f = fopen("/dev/tty", "w");
+
+		fprintf(f, "BK(%d)", getpid());
+		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
+		fprintf(f, "\n");
+		fclose(f);
+	}
+
 	cmdlog_buffer[0] = 0;
 	if (i = setjmp(exit_buf)) {
 		i -= 1000;

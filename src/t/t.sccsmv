@@ -170,7 +170,7 @@ echo OK
 echo $N Test sccsmv to directory that does not exist ................$NL
 date > C/file6
 bk new $Q C/file6
-bk mv C CCCC
+bk mvdir C CCCC
 if [ ! -f CCCC/SCCS/s.file6 ]
 then	echo failed to move file; exit 1
 fi
@@ -288,7 +288,7 @@ cd sub1
 echo sub > sub
 bk new $Q sub || exit 1
 cd ../..
-bk mv foo foo2 || exit 1
+bk mvdir foo foo2 || exit 1
 if [ -f foo/sub1/SCCS/s.sub ]; then
 	echo 'failed (bug 2001-06-15-002)'
 else

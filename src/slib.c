@@ -3104,6 +3104,7 @@ tagwalk(sccs *s, delta *d)
 {
 	unless (d) return ((delta*)1);	/* this is an error case */
 
+	/* note that the stripdel path has used D_RED */
 	if (d->flags & D_BLUE) return(0);
 	d->flags |= D_BLUE;
 
@@ -10227,14 +10228,17 @@ insert_1_0(sccs *s)
 	d = sccs_dInit(d, 'D', s, 0);
 }
 
-void
+private int
 remove_1_0(sccs *s)
 {
-	delta	*d;
+	if (streq(s->tree->rev, "1.0") && !(s->state & S_FAKE_1_0)) {
+		delta	*d;
 
-	assert(streq(s->tree->rev, "1.0"));
-	s->tree->flags |= D_GONE;
-	for (d = s->table; d; d = d->next) adjust_serials(d, -1);
+		s->tree->flags |= D_GONE;
+		for (d = s->table; d; d = d->next) adjust_serials(d, -1);
+		return (1);
+	}
+	return (0);
 }
 
 int
@@ -10485,7 +10489,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if (flags & ADMIN_ADD1_0) {
 		insert_1_0(sc);
 	} else if (flags & ADMIN_RM1_0) {
-		remove_1_0(sc);
+		unless (remove_1_0(sc)) flags &= ~ADMIN_RM1_0;
 	}
 
 	if ((flags & NEWCKSUM) == 0) {
@@ -10512,30 +10516,32 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	debug((stderr, "seek to %d\n", sc->data));
 	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc & E_GZIP) zputs_init();
-	if (new_enc != old_enc) {
+	/* if old_enc == new_enc, this is slower but handles both cases */
+	sc->encoding = old_enc;
+	while (buf = nextdata(sc)) {
+		sc->encoding = new_enc;
+		if (flags & ADMIN_ADD1_0) {
+			fputbumpserial(sc, buf, 1, sfile);
+		} else if (flags & ADMIN_RM1_0) {
+			if (strneq(buf, "\001I 1\n", 5)) {
+				sc->encoding = old_enc;
+				buf = nextdata(sc);
+				assert(strneq(buf, "\001E 1\n", 5));
+				assert(!nextdata(sc));
+				break;
+			}
+			fputbumpserial(sc, buf, -1, sfile);
+		} else {
+			fputdata(sc, buf, sfile);
+		}
 		sc->encoding = old_enc;
-		while (buf = nextdata(sc)) {
-			sc->encoding = new_enc;
-			if (flags & ADMIN_ADD1_0) {
-				fputbumpserial(sc, buf, 1, sfile);
-			} else if (flags & ADMIN_RM1_0) {
-				fputbumpserial(sc, buf, -1, sfile);
-			} else {
-				fputdata(sc, buf, sfile);
-			}
-			sc->encoding = old_enc;
-		}
-	} else {
-		while (buf = nextdata(sc)) {
-			if (flags & ADMIN_ADD1_0) {
-				fputbumpserial(sc, buf, 1, sfile);
-			} else if (flags & ADMIN_RM1_0) {
-				fputbumpserial(sc, buf, -1, sfile);
-			} else {
-				fputdata(sc, buf, sfile);
-			}
-		}
 	}
+	if (flags & ADMIN_ADD1_0) {
+		sc->encoding = new_enc;
+		fputdata(sc, "\001I 1\n", sfile);
+		fputdata(sc, "\001E 1\n", sfile);
+	}
+
 	/* not really needed, we already wrote it */
 	sc->encoding = new_enc;
 	if (fflushdata(sc, sfile)) {
