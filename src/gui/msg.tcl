@@ -22,6 +22,7 @@ proc init {} {
 	set options(-ok) "OK"
 	set options(-cancel) ""
 	set options(-title) "BitKeeper message"
+	set options(-textWidth) 80
 
 	set error 0
 	while {[llength $argv] > 0} {
@@ -62,20 +63,36 @@ proc init {} {
 
 	if {!$error} {
 		if {[string match "-" $message]} {
-			set options(-message) ""
-			set maxWidth 0
+			set options(-message) [read stdin]
+		} else {
+			set options(-message) $message
+		}
 
-			while {[gets stdin line] != -1} {
+
+		# this block of code attempts to determine
+		# an optimum width for the text widget without the
+		# expense of converting all tabs to spaces.
+		set maxWidth 0
+		set havetabs 0
+		foreach line [split $options(-message) \n] {
+			if {!$havetabs && [string first \t $line] >= 0} {
+				set havetabs 1
+			}
+
+			if {!$havetabs} {
 				set l [string length $line]
+
 				if {$l > $maxWidth} {
 					set maxWidth $l
 				}
-				append options(-message) "$line\n"
 			}
-			set options(-maxWidth) $maxWidth
+		}
 
+		if {$havetabs} {
+			set options(-textWidth) 80
 		} else {
-			set options(-message) $message
+			set options(-textWidth) \
+			    [expr {$maxWidth > 160? 160 : $maxWidth}]
 		}
 	}
 }
@@ -166,7 +183,7 @@ proc widgets {} {
 		text $widgets(text) \
 		    -highlightthickness 0 \
 		    -borderwidth 0 \
-		    -width $options(-maxWidth) \
+		    -width $options(-textWidth) \
 		    -height $height \
 		    -wrap none \
 		    -borderwidth 0 \
@@ -197,9 +214,9 @@ proc widgets {} {
 		    -xscrollcommand [list scroll x] \
 		    -yscrollcommand [list scroll y] 
 
-		# The newlines are added to give a little bit of a 
-		# top and bottom margin
-		$widgets(text) insert end "\n$options(-message)\n"
+		# The newline is added to give the illusion of a top
+		# margin.
+		$widgets(text) insert end "\n$options(-message)"
 		$widgets(text) configure -state disabled
 
 		grid $widgets(text) \
@@ -216,9 +233,9 @@ proc widgets {} {
 		# have a defined -minsize. These add a little margin
 		# to the text widget, so text isn't scrunched up to 
 		# the edges of the widget
-		grid columnconfigure $widgets(message) 0 -weight 0 -minsize 12
+		grid columnconfigure $widgets(message) 0 -weight 0 -minsize 4
 		grid columnconfigure $widgets(message) 1 -weight 1
-		grid columnconfigure $widgets(message) 2 -weight 0 -minsize 12
+		grid columnconfigure $widgets(message) 2 -weight 0 -minsize 4
 		grid columnconfigure $widgets(message) 3 -weight 0
 
 		# The text widget won't have focus since it's disabled,
