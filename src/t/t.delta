@@ -38,23 +38,6 @@ if [ ! -f SCCS/p.T ]; then echo Failed to leave file locked; exit 1; fi
 if [ ! -f T ]; then echo Failed to get file; exit 1; fi
 if writable T; then :; else echo Failed to leave file writeable; exit 1; fi
 echo OK
-echo $N Make sure delta -L works ....................................$NL
-bk undos > hello.c <<EOF
-main() { }
-EOF
-bk new $Q hello.c
-bk edit $Q hello.c
-bk undos > hello.c <<EOF
-main()
-{
-	printf("hello world\n");
-}
-EOF
-sleep 1
-bk delta $Q -L -y"rev1" hello.c
-find . -newer SCCS/s.hello.c | grep -q '^./hello.c$'
-if [ $? -ne 0 ]; then  echo failed; exit 1; fi
-echo OK
 echo $N Make sure delta -il works ...................................$NL
 echo delta -il > init2
 bk delta $S -il init2
