@@ -1220,7 +1220,8 @@ _relativeName(sccs *sc, int withsccs, int mustHaveCS)
 	if (buf[0] && buf[1] == ':') top = &buf[2]; /* account for WIN32 path */
 	assert(top[0] == '/');
 	s = strrchr(buf, '/');
-	strcpy(&s[1], "s.ChangeSet");
+	for (--s; (*s != '/') && (s > top); s--);
+	strcpy(++s, BKROOT);
 	if (exists(buf)) {
 		debug((stderr, "relname1: %s\n", basenm(sc->gfile)));
 		return (basenm(sc->gfile));

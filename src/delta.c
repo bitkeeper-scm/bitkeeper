@@ -31,7 +31,6 @@ usage: delta [-cGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
  */
 
 #include "comments.c"
-int	newrev(sccs *s, pfile *pf);
 
 int
 main(int ac, char **av)
@@ -188,20 +187,3 @@ next:		if (init) fclose(init);
 	return (0);
 }
 
-int
-newrev(sccs *s, pfile *pf)
-{
-	FILE *f;
- 	unless (f = fopen(s->pfile, "r")) {     
-                fprintf(stderr, "delta: can't open %s\n", s->pfile);   
-		perror("get_newrev");
-		return -1;
-	}
-	if (fscanf(f, "%s %s ", pf->oldrev, pf->newrev) != 2) {
-                fprintf(stderr, "delta: can't get new rev\n");   
-		fclose(f);
-		return -1;
-	}
-	fclose(f);
-	return 0;
-}
