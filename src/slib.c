@@ -7603,8 +7603,16 @@ diff_gmode(sccs *s, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, 1, s->proj, 0);
-		if (r && !streq(d->pathname, r)) return (3);
+		char *q, *r = _relativeName(s->sfile, 0, 0, 1, 1, s->proj, 0);
+
+		if (r) {
+			q = sccs2name(r);
+			if (!streq(d->pathname, q)) {
+				free(q);
+				return (3);
+			}
+			free(q);
+		}
 	}
 
 	unless (sameFileType(s, d)) return (1);
