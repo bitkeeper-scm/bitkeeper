@@ -1,3 +1,38 @@
+Hidden changesets
+-----------------
+
+ChangeSet comments
+------------------
+    When the ChangeSet file is selected in citool, put a message in the diffs
+    window like so:
+
+    +---------------------------------------------------------------------+
+    | Describe the bug or feature you added to the following files:       |
+    |                                                                     |
+    | foo.c                                                               |
+    |   ci comments for foo.c                                             |
+    |                                                                     |
+    | bar.c                                                               |
+    |   ci comments for bar.c                                             |
+    +---------------------------------------------------------------------+
+
+    Victor's point is to make the description and handling of the check be
+    configurable such that you can ask for an authorization # or bugid 
+    and fail the checkin if they don't have.
+
+    citool without ChangeSet
+    ------------------------
+
+    When you do a checkin without doing the ChangeSet, then the next time
+    you run citool, bring up the old deltas and make them read only so
+    that people can't modify the comments.
+
+    Partial ChangeSets
+    ------------------
+
+    Provide a way to select a subset of the deltas to add to the ChangeSet.
+
+-------------------------------------------------------------------------------
 When we have to merge because of conflicts, then there has to also be a
 conflict in the ChangeSet file.  That should be handled by creating a new
 changeset at the time the user checks in all the merges.

@@ -688,7 +688,7 @@ logging_ok:	to '$LOGADDR > ${cfgDir}config
 	fi
 }
 
-_sendLog() {
+_logChangeSet() {
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
 	if [ x$key != x ]
@@ -714,6 +714,7 @@ _sendLog() {
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( echo ---------------------------------
 	  ${BIN}sccslog -r$REV ChangeSet
+	  ${BIN}cset -r+ | ${BIN}sccslog -
 	  echo ---------------------------------
 	  ${BIN}cset -c -r$R ) | _mail $LOGADDR "BitKeeper log: $P" 
 }
@@ -748,7 +749,8 @@ _commit() {
 		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
 		s|q) QUIET=YES; COPTS="-s $COPTS";;
 		S) SYM="-S$OPTARG";;
-		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}commit$$;;
+		y) DOIT=YES; GETCOMMENTS=NO
+		   ${ECHO} "$OPTARG" > ${TMP}commit$$;;
 		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}commit$$;;
 		esac
 	done
@@ -802,7 +804,7 @@ _commit() {
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 		if [ $nusers -gt 1 ]
-		then _sendLog $REV
+		then _logChangeSet $REV
 		fi
 		exit $EXIT;
 	fi
@@ -836,7 +838,7 @@ _commit() {
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			if [ $nusers -gt 1 ]
-			then _sendLog $REV
+			then _logChangeSet $REV
 			fi
 	    	 	exit $EXIT;
 		 	;;
@@ -1134,13 +1136,12 @@ fi
 cmd=$1
 shift
 
-# Run our stuff first if we can find it, else
-# we don't know what it is, try running it and hope it is out there somewhere.
+# Run our stuff first if we can find it.
 # win32 note: we test for the tcl script first, because it has .tcl suffix
 for w in citool sccstool vitool fm fm3
 do	if [ $cmd = $w ]
 	then	
-		# pick up our own wish shell if it exist
+		# pick up our own wish shell if it exists
 		PATH=$BIN:$PATH exec $wish -f ${GUI_BIN}${cmd}${tcl} "$@"
 	fi
 done
