@@ -8,7 +8,7 @@ WHATSTR("@(#)%K%");
  * TODO - make it find only files locked by a particular user
  */
 private	char *sfiles_usage = "\n\
-usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
+usage: sfiles [-aAcCdDglkpPRrux] [directories]\n\n\
     -a		examine all files, even if listed in BitKeeper/etc/ignore\n\
     -A		when used with -C, list all revs, not just the tip\n\
     -c		list only changed files (locked and modified)\n\
