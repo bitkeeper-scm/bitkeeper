@@ -238,48 +238,6 @@ _csets() {
 	exit 1
 }
 
-
-# usage: __mail to subject
-# XXX - probably needs to be in port/mailto.sh and included.
-# DO NOT change how this works, IRIX is sensitive.
-__mail() {
-	TO=$1
-	shift
-	SUBJ="$@"
-	
-	if [ X$BK_TRACE_LOG = XYES ]; then cat > $DEV_NULL; return; fi
-	# Try to find sendmail, it works better, especially on IRIX.
-	for i in /usr/bin /usr/sbin /usr/lib /usr/etc /etc /bin
-	do	if [ -x "$i/sendmail" ]
-		then	(
-			echo "To: $TO"
-			if [ "X$SUBJ" != X ]
-			then	echo "Subject: $SUBJ"
-			fi
-			echo ""
-			cat
-			) | $i/sendmail -i $TO
-			return
-		fi
-	done
-
-	# We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX
-	case "`uname -s`" in
-	    *IRIX*)
-		if [ -x /usr/bin/mailx ]
-		then	mailx $TO
-		else	mail $TO
-		fi
-		return
-		;;
-	esac
-
-	if [ -x /usr/bin/mailx ]
-	then	mailx -s "$SUBJ" $TO
-	else	mail -s "$SUBJ" $TO
-	fi
-}
-
 # Advertise this repository for remote lookup
 _advertise() {
 	FILE=${BIN}tmp/advertised
@@ -577,29 +535,6 @@ _root() {
 	__cd2root
 	pwd
 	exit 0
-}
-
-_sendbug() {
-	${BIN}gethelp bugtemplate >${TMP}bug$$
-	$EDITOR ${TMP}bug$$
-	while true
-	do	echo $N "(s)end, (e)dit, (q)uit? "$NL
-		read x
-		case X$x in
-		    Xs*) cat ${TMP}bug$$ |
-			    __mail bitkeeper-bugs@bitmover.com "BK Bug"
-		 	 ${RM} -f ${TMP}bug$$
-			 echo Your bug has been sent, thank you.
-	    	 	 exit 0;
-		 	 ;;
-		    Xe*) $EDITOR ${TMP}bug$$
-			 ;;
-		    Xq*) ${RM} -f ${TMP}bug$$
-			 echo No bug sent.
-			 exit 0
-			 ;;
-		esac
-	done
 }
 
 # Make links in /usr/bin (or wherever they say).
