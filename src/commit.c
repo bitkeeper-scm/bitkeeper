@@ -9,6 +9,7 @@ typedef struct {
 	u32	checklog:1;
 	u32	quiet:1;
 	u32	lod:1;
+	u32	resync:1;
 } c_opts;
 
 extern	char	*editor, *bin, *BitKeeper;
@@ -41,7 +42,7 @@ commit_main(int ac, char **av)
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 	char	commentFile[MAXPATH], pendingDeltas[MAXPATH];
 	char	*sym = 0;
-	c_opts	opts  = {1, 0 , 0};
+	c_opts	opts  = {1, 0 , 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
 		fputs(commit_help, stderr);
@@ -56,7 +57,7 @@ commit_main(int ac, char **av)
 		    case 'F':	force = 1; break;
 		    case 'L':	opts.lod = 1; break;
 		    case 'R':	BitKeeper = "../BitKeeper/";
-				resync = 1;
+				opts.resync = 1;
 				break;
 		    case 's':	/* fall thru  */ 	/* internal option */
 		    case 'q':	opts.quiet = 1; break;
@@ -73,7 +74,7 @@ commit_main(int ac, char **av)
 		printf("Can not find root directory\n");
 		exit(1);
 	}
-	unless(resync) remark(opts.quiet);
+	unless(opts.resync) remark(opts.quiet);
 	sprintf(pendingDeltas, "%s/bk_list%d", TMP_PATH, getpid());
 	sprintf(buf, "bk sfiles -CA > %s", pendingDeltas);
 	if (system(buf) != 0) {
@@ -95,7 +96,6 @@ commit_main(int ac, char **av)
 	}
 	unlink(pendingDeltas);
 	do_clean(s_cset, SILENT);
-	//if (doit) exit(do_commit(quiet, checklog, lod, sym, commentFile));
 	if (doit) exit(do_commit(opts, sym, commentFile));
 
 	while (1) {
@@ -149,7 +149,7 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 		exit(1);
 	}
 	if (opts.checklog) {
-		if (checkLog(opts.quiet) != 0) {
+		if (checkLog(opts.quiet, opts.resync) != 0) {
 			unlink(commentFile);
 			exit(1);
 		}

@@ -1694,7 +1694,7 @@ commit(opts *opts)
 	extern	char *BitKeeper;
 
 	BitKeeper = "../BitKeeper/";
-	if (checkLog(opts->quiet)) {
+	if (checkLog(opts->quiet, 1)) {
 		fprintf(stderr, "Commit aborted, no changes applied");
 		exit(1);
 	}

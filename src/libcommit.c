@@ -494,9 +494,9 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 }
 
 int
-checkLog(int quiet)
+checkLog(int quiet, int resync)
 {
-	char	ans[MAXLINE], buf[MAXLINE];
+	char	ans[MAXLINE], buf[MAXLINE], *r_opt;
 
 	strcpy(buf, getlog(NULL, quiet));
 	if (strneq("ask_open_logging:", buf, 17)) {
@@ -515,13 +515,19 @@ checkLog(int quiet)
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
-		sendConfig("config@openlogging.org", 1, 1);
+		r_opt = resync ? "-R" : "";
+		sprintf(buf,
+		    "bk sendconfig %s -Q1 config@openlogging.org &", r_opt);
+		system(buf);
 		return (0);
 	} else if (streq("need_seats", buf)) {
 		gethelp("seat_info", "", stdout);
 		return (1);
 	} else if (streq("commit_and_mailcfg", buf)) {
-		sendConfig("config@openlogging.org", 1, 1);
+		r_opt = resync ? "-R" : "";
+		sprintf(buf,
+		    "bk sendconfig %s -Q1 config@openlogging.org &", r_opt);
+		system(buf);
 		return (0);
 	} else if (streq("commit_and_maillog", buf)) {
 		return (0);

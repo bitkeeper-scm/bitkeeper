@@ -724,7 +724,7 @@ void	mail(char *to, char *subject, char *file);
 void	logChangeSet(char *rev, int q);
 char	*getlog(char *u, int q);
 int	setlog(char *u);
-int	checkLog(int q);
+int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *help_name, char *bkarg, FILE *f);
 void	status(int verbose, char *status_log);
