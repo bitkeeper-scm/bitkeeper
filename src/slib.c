@@ -1496,6 +1496,7 @@ _relativeName(char *gName, int isDir, int withsccs,
 	extern 	char pwd[]; /* set in fullname() */
 
 	strcpy(tmp, fullname(gName, 0));
+	if (!IsFullPath(tmp)) return (0);
 	t = tmp;
 
 	if (proj && proj->root) {

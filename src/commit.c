@@ -627,7 +627,7 @@ logChangeSet(int l, char *rev, int quiet)
 		sccs_free(s);
 	}
 
-	unless (l & LOG_OPEN) sendConfig("config@openlogging.org");
+	unless (l & LOG_OPEN) sendConfig("config@openlogging.org", 1);
 	if (streq("none", to)) return;
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("Sending ChangeSet to %s...\n", logAddr());
@@ -884,14 +884,15 @@ config_main(int ac, char **av)
 }
 
 void
-sendConfig(char *to)
+sendConfig(char *to, int shutup)
 {
-	char 	*av[] = { "bk", "_lconfig", 0 };
+	char	*out = NULL;
 
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
 	if (getenv("BK_REGRESSION") && (logs_pending(1, 0, 0) < 20)) return;
 
-	spawnvp_ex(_P_NOWAIT, av[0], av);
+	if (shutup) out = DEV_NULL; /* redirect all message to /dev/null */
+	sysio(0, out, out, "bk", "_lconfig", SYS);
 }
