@@ -98,11 +98,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.reread -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Reread" -command {
-			global lname rname lfile rfile menu
-			#puts "$lfile $lname $rfile $rname"
-			readFiles $lfile $rfile $lname $rname
-		    }
+		-text "Reread" -command reread
 	    button .menu.help -bg $gc(diff.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Help" \
@@ -166,10 +162,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	bind .diffs <Configure> { computeHeight }
 	#bind .diffs.left <Button-1> {stackedDiff %W %x %y "B1"; break}
 	#bind .diffs.right <Button-1> {stackedDiff %W %x %y "B1"; break}
-
-	#foreach w {.diffs.left .diffs.right} {
-	#	bindtags $w {all Text .}
-	#}
+	foreach w {.diffs.left .diffs.right} {
+		bindtags $w {all Text .}
+	}
 	computeHeight
 
 	.diffs.left tag configure diff -background $gc(diff.oldColor)
@@ -257,6 +252,18 @@ proc getRev {file rev checkMods} \
 		exit 1
 	}
 	return $tmp
+}
+
+proc reread {} \
+{
+	global lname rname lfile rfile menu
+
+	#puts "$lfile $lname $rfile $rname"
+	if {[info exists lname] && [info exists rname]} {
+		readFiles $lfile $rfile $lname $rname
+	} else {
+		readFiles $lfile $rfile
+	}
 }
 
 proc usage {} \
@@ -361,6 +368,7 @@ proc getFiles {} \
 		set rfile [getRev $file $rev2 0]
 		lappend tmps $rfile
 		if {[checkFiles $lfile $rfile]} {
+			#displayMessage "$lfile $rfile $file $rev1 $rev2"
 			set t "$lfile $rfile $file $rev1 $rev2"
 			lappend files $t
 		}
@@ -380,9 +388,9 @@ proc getFiles {} \
 		}
 		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
 		    -side left -fill y -after .menu.help 
-		$m invoke 1
 		set menu(max) [$m index last]
 		set menu(selected) 1
+		$m invoke 1
 	} else {
 		# didn't find any valid arguments...
 		cleanup
@@ -439,6 +447,7 @@ proc pickFile {lf rf fname item {lr {}} {rr {}}} \
 	# If doesn't have a rev #, assume looking at non-bk files
 	if {$lr != ""} {
 		displayInfo $fname $fname $lr $rr
+		#displayMessage "$lf $rf fname=($fname) lr=$lr rr=$rr"
 		readFiles $lf $rf "$fname@$lr" "$fname@$rr"
 	} else {
 		displayInfo $lf $rf $lr $rr

@@ -372,6 +372,7 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 		.diffs.status.l configure -text "$f"
 		set f [file tail $R]
 		.diffs.status.r configure -text "$f"
+		.diffs.status.middle configure -text "... Diffing ..."
 	}
 	# Moved the deletes to displayInfo proc
 	#.diffs.left delete 1.0 end
@@ -413,11 +414,6 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 	    "<"	{ incr diffCount 1; left $r $l $n }
 	    ">"	{ incr diffCount 1; right $r $l $n }
 	}
-	# XXX: Might have to be changed for csettool vs. difftool
-	if {$diffCount == 0} { 
-		#puts "No differences"
-		return
-	}
 	catch {close $r}
 	catch {close $l}
 	catch {close $d}
@@ -432,12 +428,13 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
 
-	# XXX: Stuff from csettool -- might need to integrate it better
 	if {$diffCount > 0} {
 		set lastDiff 1
 		dot
 	} else {
 		set lastDiff 0
+		# XXX: Really should check to see whether status lines
+		# are different
 		.diffs.status.middle configure -text "No differences"
 	}
 }
