@@ -330,6 +330,9 @@ sort <<EOF > LIST
 SCCS/OLD-s.foo
 SFILES
 bar/lib
+SCCS/c.gone
+SCCS/c.gone@1.1
+SCCS/c.gone@1.2
 EOF
 bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
