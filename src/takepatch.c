@@ -88,6 +88,7 @@ private	char	*input;		/* input file name,
 private	int	encoding;	/* encoding before we started */
 private	char	*spin = "|/-\\";
 private	int	compat;		/* we are eating a compat patch, fail on tags */
+private	char	**errfiles;	/* files had errors during apply */
 
 /*
  * Structure for keys we skip when incoming, used for old LOD keys that
@@ -529,7 +530,11 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			   "takepatch: can't find key '%s' in id cache\n", t);
 error:			if (perfile) sccs_free(perfile);
 			if (gfile) free(gfile);
-			if (s) sccs_free(s);
+			if (s) {
+				errfiles =
+				    addLine(errfiles, sccs2name(s->sfile));
+				sccs_free(s);
+			}
 			free(name);
 			return (-1);
 		}
@@ -625,6 +630,7 @@ error:			if (perfile) sccs_free(perfile);
 	} else {
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, flags, perfile, proj);
+		if (rc < 0) errfiles = addLine(errfiles, sccs2name(s->sfile));
 	}
 	if (echo == 2) fprintf(stderr, "\n");
 	if (echo == 3) fprintf(stderr, " \n");
@@ -2480,7 +2486,7 @@ rebuild_id(char *id)
 private	void
 cleanup(int what)
 {
-	int	rc = 1;
+	int	i, rc = 1;
 
 	if (patchList) freePatchList();
 	if (idDB) mdbm_close(idDB);
@@ -2513,6 +2519,10 @@ cleanup(int what)
 		}
 	}
  done:
+	SHOUT2();
+	if (errfiles) fprintf(stderr,
+	    "Errors applying changes to the following files:\n\n");
+	EACH(errfiles) fprintf(stderr, "%s\n", errfiles[i]);
 	SHOUT2();
 	if (what & CLEAN_OK) rc = 0;
 	exit(rc);

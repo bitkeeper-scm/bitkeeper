@@ -80,7 +80,8 @@ mkdir dir1
 echo ff > dir1/ff
 mkdir dir2
 echo gg > dir2/gg
-bk new $Q dir1/ff dir2/gg || exit 1
+echo "space me" > "dir2/space file"
+bk new $Q dir1/ff dir2/gg "dir2/space file" || exit 1
 bk commit $Q -ystart || exit 1
 mkdir dir3
 chmod -w dir3
@@ -133,4 +134,80 @@ grep 'No write permission: dir2' OUT > /dev/null || {
 	cat OUT
 	exit 1
 }
+cd $HERE/proj
+bk abort -f
+bk -r check -acf || exit 1
+echo OK
+
+echon Test listing of files in conflict ...........................
+cd $HERE
+bk clone $Q proj copy3 || exit 1
+for d in proj copy3; do
+	cd $HERE/$d
+	for f in file dir1/ff dir2/gg "dir2/space file" ; do
+		bk edit $Q "$f"
+		echo $d >> $f
+		bk delta $Q -y"$d side" "$f" || exit 1
+	done
+	bk commit -y"$d" $Q || exit 1
+done
+cd $HERE/copy3
+bk pull $Q 2> OUT && {
+	echo pull should have had conflict
+	exit 1
+}
+# List files in conflict
+bk undos << EOF | sort > CMP1
+file
+dir1/ff
+dir2/gg
+dir2/space file
+EOF
+bk conflicts | sort > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
+# test ordering of prs options: sfile gfile REMOTE LOCAL GCA
+cd RESYNC > /dev/null
+bk sfiles -U "$@" | bk prs -hnr+ \
+-d'$if(:RREV:){:DPN:|:PN:|:LREV:|:RREV:|:GREV:|:RREV:|:PN:|:LREV:|:GREV:|:DPN:}' - > INPUT
+while IFS='|' read GF1 SF1 LR1 RR1 GR1 RR2 SF2 LR2 GR2 GF2
+do	test "$GF1" = "$GF2" || { echo Failed gfile; exit 1; }
+	test "$SF1" = "$SF2" || { echo Failed sfile; exit 1; }
+	test "$LR1" = "$LR2" || { echo Failed local rev; exit 1; }
+	test "$RR1" = "$RR2" || { echo Failed remote rev; exit 1; }
+	test "$GR1" = "$GR2" || { echo Failed gca rev; exit 1; }
+done < INPUT
+cd .. > /dev/null
+echo OK
+
+echon Testing output of conflicts command .........................
+bk undos << EOF | sort > CMP1
+file                 1 conflicts by bk 
+dir1/ff              1 conflicts by bk 
+dir2/gg              1 conflicts by bk 
+EOF
+bk conflicts -l | sort > CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
+echo OK
+
+echon Testing skip command ........................................
+bk conflicts | sed -e1d -e3d > CMP1
+bk resolve $Q << EOF > OUT 2>&1
+ul
+S
+ul
+EOF
+bk conflicts > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
+echo OK
+
+echon Testing locking of RESYNC dir ...............................
+touch RESYNC/BitKeeper/tmp/resolve_lock
+bk undos << EOF > CMP1
+Could not get lock on RESYNC directory.
+EOF
+bk resolve -q 2>&1 | head -1 > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff CMP[12]; exit 1; fi
 echo OK

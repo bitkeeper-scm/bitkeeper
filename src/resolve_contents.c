@@ -115,6 +115,7 @@ c_quit(resolve *rs)
 	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
 	chdir(RESYNC2ROOT);
 	restore_checkouts(rs->opts);
+	sccs_unlockfile(RESOLVE_LOCK);
 	exit(1);
 }
 
@@ -298,8 +299,8 @@ Alternatively, you use 'f' to try the graphical filemerge.\n\n");
 	return (1);
 }
 
-int
-c_commit(resolve *rs)
+private int
+commit(resolve *rs, int delta_now, int show_diffs, char *comments)
 {
 	if (rs->opts->debug) fprintf(stderr, "commit(%s)\n", rs->s->gfile);
 
@@ -307,6 +308,10 @@ c_commit(resolve *rs)
 		fprintf(stderr, "%s has not been merged\n", rs->s->gfile);
 		return (0);
 	}
+
+	/* If we came from fm3tool or similar, the sccs file flags could
+	 * be out of date.  sccs_hasDiffs() needs them to be correct */
+	rs->s = sccs_restart(rs->s);
 
 	if (rs->opts->force) goto doit;
 
@@ -316,15 +321,30 @@ c_commit(resolve *rs)
 	 * If in text only mode, then check in the file now.
 	 * Otherwise, leave it for citool.
 	 */
-doit:	if (rs->opts->textOnly) {
+doit:	if (delta_now) {
 		unless (sccs_hasDiffs(rs->s, 0, 0)) {
 			do_delta(rs->opts, rs->s, SCCS_MERGE);
 		} else {
-			do_delta(rs->opts, rs->s, 0);
+			if (show_diffs) {
+				sccs_diffs(rs->s, 0, 0, 0, DF_DIFF, 0, stdout);
+			}
+			do_delta(rs->opts, rs->s, comments);
 		}
 	}
 	rs->opts->resolved++;
 	return (1);
+}
+
+int
+c_commit(resolve *rs)
+{
+	return (commit(rs, rs->opts->textOnly, 0, 0));
+}
+
+int
+c_ccommit(resolve *rs)
+{
+	return (commit(rs, 1, 1, 0));
 }
 
 /*
@@ -364,7 +384,7 @@ c_ul(resolve *rs)
 	names	*n = rs->tnames;
 
 	unless (sys("cp", "-f", n->local, rs->s->gfile, SYS)) {
-		return (c_commit(rs));
+		return (commit(rs, 1, 0, "Use local revision"));
 	}
 	return (0);
 }
@@ -376,7 +396,7 @@ c_ur(resolve *rs)
 	names	*n = rs->tnames;
 
 	unless (sys("cp", "-f", n->remote, rs->s->gfile, SYS)) {
-		return (c_commit(rs));
+		return (commit(rs, 1, 0, "Use remote revision"));
 	}
 	return (0);
 }
@@ -384,6 +404,11 @@ c_ur(resolve *rs)
 private int
 c_skip(resolve *rs)
 {
+	if (IS_LOCKED(rs->s) && !sccs_hasDiffs(rs->s, 0, 1)) {
+		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
+		rs->s = sccs_restart(rs->s);
+		sccs_unedit(rs->s, 0);
+	}
 	++rs->opts->hadConflicts;
 	return (1);
 }
@@ -394,6 +419,8 @@ rfuncs	c_funcs[] = {
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "cl", "clear", "clear the screen", res_clear },
     { "C", "commit", "commit the merged file", c_commit },
+    { "CC", "commit w/comments",
+	    "commit the merged file with comments", c_ccommit },
     { "d", "diff", "diff the local file against the remote file", res_diff },
     { "D", "difftool",
       "run side-by-side graphical difftool on local and remote", res_difftool },

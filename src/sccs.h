@@ -590,6 +590,8 @@ typedef	struct sccs {
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
 	MDBM	*findkeydb;	/* Cache a map of delta key to delta* */
 	project	*proj;		/* If in BK mode, pointer to project */
+	void	*rrevs;		/* If has conflicts, revs in conflict */
+				/* Actually is of type "name *" in resolve.h */
 	u16	version;	/* file format version */
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
@@ -1160,6 +1162,7 @@ char	*loadfile(char *file, int *size);
 char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
+void	lockfile_cleanup(void);
 
 extern char *bk_vers;
 extern char *bk_utc;

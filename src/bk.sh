@@ -927,6 +927,80 @@ _clonemod() {
 	bk pull
 }
 
+_conflicts() {
+	FM3TOOL=0
+	REVTOOL=0
+	DIFF=0
+	DIFFTOOL=0
+	SHORTLIST=1
+	while getopts dDflp opt
+	do
+		case "$opt" in
+		d) DIFF=1;;
+		D) DIFFTOOL=1;;
+		f) FM3TOOL=1;;
+		l) SHORTLIST=0;;
+		p) REVTOOL=1;;
+		*)	echo "Usage: conflicts [-dDlfp] [glob]"
+			exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+
+	ROOTDIR=`bk root 2>/dev/null`
+	test $? -ne 0 && { echo "You must be in a BK repository"; exit 1; }
+	cd "$ROOTDIR" > /dev/null
+	test -d RESYNC || { echo "No files are in conflict"; exit 0; }
+	cd RESYNC > /dev/null
+
+	bk sfiles -U "$@" | bk prs -hnr+ \
+	-d'$if(:RREV:){:DPN:|:PN:|:LREV:|:RREV:|:GREV:}' - | \
+	while IFS='|' read GFILE SFILE LOCAL REMOTE GCA
+	do	if [ $SHORTLIST -eq 1 ]; then
+			echo $GFILE
+		else
+			bk _conflict "$GFILE" "$SFILE" $LOCAL $REMOTE
+		fi
+		if [ $DIFF -eq 1 ]; then
+			bk diffs -r${LOCAL}..${REMOTE} "$GFILE"
+		fi
+		if [ $DIFFTOOL -eq 1 ]; then
+			bk difftool -r$LOCAL -r$REMOTE "$GFILE"
+		fi
+		if [ $REVTOOL -eq 1 ]; then
+			bk revtool -G$GCA -l$LOCAL -r$REMOTE "$GFILE"
+		fi
+		if [ $FM3TOOL -eq 1 ]; then
+			echo "NOTICE: read-only merge of $GFILE"
+			echo "        No changes will be written."
+			bk fm3tool -N $LOCAL $GCA $REMOTE "$GFILE"
+		fi
+	done
+}
+
+__conflict() {
+	GFILE="$1"
+	SFILE="$2"
+	LOCAL=$3
+	REMOTE=$4
+
+	LINES=`bk smerge "$SFILE" $LOCAL $REMOTE | grep '^<<<<<<< gca' | wc -l`
+	CONFLICTS=`expr $LINES + 0`
+	# Return if we can automerge
+	test $CONFLICTS -eq 0 && return
+	LOCAL_ONLY=`bk set -d -r$REMOTE -r$LOCAL "$SFILE"`
+	REMOTE_ONLY=`bk set -d -r$LOCAL -r$REMOTE "$SFILE"`
+	bk set -x -r$REMOTE -r$LOCAL "$SFILE" | while read REV
+	do      echo "$SFILE|$REV"
+	done | bk prs -hnd':P:' - | sort -r -u > /tmp/u$$
+	USERS=
+	for i in `cat /tmp/u$$`
+	do	USERS="$i $USERS"
+	done
+	rm -f /tmp/u$$
+	printf "%-20s $CONFLICTS conflicts by $USERS\n" "$GFILE"
+}
+
 # ------------- main ----------------------
 __platformInit
 __init

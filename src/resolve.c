@@ -50,6 +50,7 @@ private int	writeCheck(sccs *s, MDBM *db);
 private	void	listPendingRenames(void);
 private	int	noDiffs(void);
 private void	save_checkout_state(MDBM *DB, sccs *s);
+private char	**find_files(opts *opts, int pfiles);
 
 private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
@@ -73,7 +74,7 @@ resolve_main(int ac, char **av)
 	setmode(0, _O_TEXT);
 	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	while ((c = getopt(ac, av, "l|y|m;aAcdFO;qrtvX;1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtvX;1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -82,20 +83,18 @@ resolve_main(int ac, char **av)
 			opts.debug = 1; putenv("BK_DEBUG_CMD=YES"); break;
 		    case 'F': opts.force = 1; break;		/* undoc? 2.0 */
 		    case 'l':					/* doc 2.0 */
-		    	if (optarg) {
+			if (optarg) {
 				opts.log = fopen(optarg, "a");
 			} else {
 				opts.log = stderr;
 			}
 			break;
 		    case 'm': opts.mergeprog = optarg; break;	/* doc 2.0 */
-		    case 'O':
-			opts.only = addLine(opts.only, strdup(optarg));
-			break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
 		    case 'X':
+			opts.partial = 1;
 			opts.excludes = addLine(opts.excludes, strdup(optarg));
 			break;
 		    case 'y': 					/* doc 2.0 */
@@ -120,10 +119,15 @@ resolve_main(int ac, char **av)
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) {
-		chdir(av[optind]);
+		chdir(av[optind++]);
 		if (bk_proj) proj_free(bk_proj);
 		bk_proj = proj_init(0);
 	}
+	if (av[optind]) opts.partial = 1;
+	while (av[optind]) {
+		opts.only = addLine(opts.only, strdup(av[optind++]));
+	}
+	if (opts.partial) opts.pass1 = opts.pass2 = opts.pass4 = 0;
 
 	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
 		opts.textOnly = 1; 
@@ -148,10 +152,24 @@ resolve_main(int ac, char **av)
 		default_getFlags = GET_EXPAND;
 	}
 
+	/*
+	 * Make sure we are where we think we are.
+	 */
+	unless (exists("BitKeeper/etc")) sccs_cd2root(0, 0);
+	unless (exists("BitKeeper/etc")) {
+		fprintf(stderr, "resolve: can't find package root.\n");
+		resolve_cleanup(&opts, 0);
+	}
+	unless (exists(ROOT2RESYNC)) {
+		fprintf(stderr,
+		    "resolve: can't find RESYNC dir, nothing to resolve?\n");
+		freeStuff(&opts);
+		exit(0);
+	}
 	c = passes(&opts);
+	resolve_post(&opts, c);
 	mdbm_close(localDB);
 	mdbm_close(resyncDB);
-	resolve_post(&opts, c);
 	return (c);
 }
 
@@ -244,20 +262,19 @@ passes(opts *opts)
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
 	FILE	*p;
+	int	rc = 1;
 
-	/*
-	 * Make sure we are where we think we are.  
-	 */
-	unless (exists("BitKeeper/etc")) sccs_cd2root(0, 0);
-	unless (exists("BitKeeper/etc")) {
-		fprintf(stderr, "resolve: can't find package root.\n");
-		resolve_cleanup(opts, 0);
-	}
-	unless (exists(ROOT2RESYNC)) {
-	    	fprintf(stderr,
-		    "resolve: can't find RESYNC dir, nothing to resolve?\n");
-		freeStuff(opts);
-		exit(0);
+	/* Make sure only one user is in here at a time. */
+	if (sccs_lockfile(RESOLVE_LOCK, 0, 0)) {
+		pid_t	pid;
+		char	*host = "UNKNOWN";
+		time_t	time;
+		sccs_readlockf(RESOLVE_LOCK, &pid, &host, &time);
+		fprintf(stderr, "Could not get lock on RESYNC directory.\n");
+		fprintf(stderr, "lockfile: %s\n", RESOLVE_LOCK);
+		fprintf(stderr, "Lock held by pid %d on host %s since %s\n",
+		    pid, host, ctime(&time));
+		return (1);
 	}
 
 	if (exists("SCCS/s.ChangeSet")) {
@@ -292,17 +309,17 @@ passes(opts *opts)
 	opts->pass = 1;
 	unless (p = popen("bk sfiles .", "r")) {
 		perror("popen of bk sfiles");
-		return (1);
+		goto out;
 	}
 	unless (opts->rootDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
 		pclose(p);
-		return (1);
+		goto out;
 	}
 	unless (opts->checkoutDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
 		pclose(p);
-		return (1);
+		goto out;
 	}
 	if (opts->log) {
 		fprintf(opts->log,
@@ -415,7 +432,7 @@ that will work too, it just gets another patch.\n");
 			old = n;
 			n = pass2_renames(opts);
 		} while (n && ((old == -1) || (n < old)));
-		if (n && opts->pass4) {
+		if (n && (opts->pass4 || opts->partial)) {
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
 			listPendingRenames();
@@ -439,11 +456,17 @@ pass3:	if (opts->pass3) pass3_resolve(opts);
 	if (opts->pass4) pass4_apply(opts);
 	
 	freeStuff(opts);
+	rc = 0;
+
+out:
+	/* Unlock the RESYNC dir so someone else can get in */
+	chdir(RESYNC2ROOT);
+	sccs_unlockfile(RESOLVE_LOCK);
 
 	/*
 	 * Whoohooo...
 	 */
-	return (0);
+	return (rc);
 }
 
 /* ---------------------------- Pass1 stuff ---------------------------- */
@@ -1505,10 +1528,10 @@ noDiffs()
 private	int
 pass3_resolve(opts *opts)
 {
-	char	buf[MAXPATH], s_cset[] = CHANGESET;
+	char	buf[MAXPATH], **conflicts, s_cset[] = CHANGESET;
 	FILE	*p;
-	int	n = 0;
-	int	mustCommit, pc, pe;
+	int	n = 0, i;
+	int	mustCommit = 0, pc, pe;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -1541,52 +1564,26 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * do an sfiles, open up each file, check for conflicts, and
 	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
-	unless (p = popen("bk sfiles .", "r")) {
-		perror("popen of sfiles");
-		resolve_cleanup(opts, 0);
-	}
-	while (fnext(buf, p)) {
-		char	*t = strrchr(buf, '/');
+	conflicts = find_files(opts, 0);
+	EACH(conflicts) {
+		char	*t = strrchr(conflicts[i], '/');
 
-		if (opts->debug) fprintf(stderr, "pass3: %s", buf);
+		if (streq(conflicts[i], "SCCS/s.ChangeSet")) continue;
 
-		chop(buf);
-		assert(t[1] == 's');
-		t[1] = 'r';
-		unless (exists(buf)) continue;
-		t[1] = 's';
-
-		if (streq("SCCS/s.ChangeSet", buf)) continue;
-
-		/*
-		 * We leave the r.files there but ignore them if we've
-		 * already merged these files.
-		 * We also allow you to remerge if you want.
-		 */
-		unless (opts->remerge) {
-			t[1] = 'p';
-			if (exists(buf)) continue;
-			t[1] = 's';
-		}
-		if ((opts->only && !match_globs(buf, opts->only, 0)) ||
-		    (opts->excludes && match_globs(buf, opts->excludes, 0))) {
-			++opts->hadConflicts;
-			continue;
-		}
+		if (opts->debug) fprintf(stderr, "pass3: %s", conflicts[i]);
 
 		if (opts->logging) {
 			t[1] = 'r';
-			unlink(buf);
+			unlink(conflicts[i]);
 			t[1] = 's';
 		} else {
-			conflict(opts, buf);
+			conflict(opts, conflicts[i]);
 		}
 		if (opts->errors) {
 			pclose(p);
 			goto err;
 		}
 	}
-	pclose(p);
 	unless (opts->logging) resolve_tags(opts);
 	unless (opts->quiet || !opts->resolved) {
 		fprintf(stdlog,
@@ -1599,10 +1596,22 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		resolve_cleanup(opts, 0);
 	}
 
+	/* hadConflicts only gets touched by automerge */
 	if (opts->hadConflicts) {
 		fprintf(stderr,
 		    "resolve: %d unresolved conflicts, nothing is applied.\n",
 		    opts->hadConflicts);
+		SHOUT2();
+		fprintf(stderr, "The following files did not automerge and "
+		    "must be resolved by hand:\n\n");
+		EACH(opts->notmerged) {
+			fprintf(stderr, "%s\n", opts->notmerged[i]);
+		}
+		freeLines(opts->notmerged, free);
+		opts->notmerged = 0;
+		fprintf(stderr, "\nRun \"bk resolve\" to interactively "
+		    "resolve the conflicts\n");
+		SHOUT2();
 		resolve_cleanup(opts, 0);
 	}
 
@@ -1610,10 +1619,11 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * Get -M the ChangeSet file if we need to, before calling citool
 	 * or commit.
 	 */
+	if (opts->partial) goto nocommit;
 	if (mustCommit = exists("SCCS/r.ChangeSet")) {
 		sccs	*s;
 		resolve	*rs;
-		
+
 		unless (opts->logging) {
 			s = sccs_init(s_cset, INIT, opts->resync_proj);
 			rs = resolve_init(opts, s);
@@ -1636,20 +1646,17 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	/*
 	 * Since we are about to commit, clean up the r.files
 	 */
-	unless (p = popen("bk sfiles .", "r")) {
-		perror("popen of sfiles");
-		resolve_cleanup(opts, 0);
-	}
-	while (fnext(buf, p)) {
-		char	*t = strrchr(buf, '/');
+	freeLines(conflicts, free);
+	opts->remerge = 1;  /* Make sure we catch all r.files */
+	conflicts = find_files(opts, 0);
+	EACH(conflicts) {
+		char	*t = strrchr(conflicts[i], '/');
 
-		chop(buf);
-		assert(t[1] == 's');
 		t[1] = 'r';
-		unless (exists(buf)) continue;
-		unlink(buf);
+		if (exists(conflicts[i])) unlink(conflicts[i]);
+		t[1] = 's';
 	}
-	pclose(p);
+nocommit:
 
 	/*
 	 * For logging repository, do not commit merge node
@@ -1678,7 +1685,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * in bothering a user for a merge.
 	 * Go ask about logging if we need to.  We never ask on a push.
 	 */
-	unless (pe && pendingEdits()) {
+	unless (opts->partial || (pe && pendingEdits())) {
 		if (opts->log) {
 			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
 		}
@@ -1687,24 +1694,67 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		commit(opts);
 		return (0);
 	}
-	
+
 	/*
 	 * Unless we are in textonly mode, let citool do all the work.
 	 */
 	unless (opts->textOnly) {
-		if (sys("bk", "citool", "-R", SYS)) {
-			syserr("failed, aborting.\n");
-			resolve_cleanup(opts, 0);
+		if (opts->partial) {
+			char	*p, **av, **pfiles = 0;
+			int	j = 0;
+
+			/* Save off the files that need deltas so we
+			 * can remove the r.file after the delta is done
+			 */
+			pfiles = find_files(opts, 1);
+			/* Run citool across any files in conflict that
+			 * have pending deltas.
+			 */
+			unless (nLines(pfiles)) {
+				unless (opts->resolved) {
+					fprintf(stderr,
+					    "No files listed need deltas\n");
+				}
+				return (0);
+			}
+			av = (char **)malloc((nLines(pfiles) + 5) *
+			    sizeof(*av));
+			av[j++] = "bk";
+			av[j++] = "citool";
+			av[j++] = "-R";
+			av[j++] = "-P";
+			EACH(pfiles) av[j++] = pfiles[i];
+			av[j] = 0;
+			spawnvp_ex(_P_WAIT, av[0], av);
+			free(av);
+			/* Now that citool is done, remove r.files for
+			 * files that no longer need a delta.
+			 */
+			EACH(pfiles) {
+				p = strrchr(pfiles[i], '/');
+				p[1] = 'p';
+				unless (exists(pfiles[i])) {
+					p[1] = 'r';
+					unlink(pfiles[i]);
+				}
+				p[1] = 's';
+			}
+			freeLines(pfiles, free);
+		} else {
+			if (sys("bk", "citool", "-R", SYS)) {
+				syserr("failed, aborting.\n");
+				resolve_cleanup(opts, 0);
+			}
+			if (pending(0) || pendingEdits()) {
+				fprintf(stderr, "Failed to check in/commit "
+				    "all files, aborting.\n");
+				resolve_cleanup(opts, 0);
+			}
+			opts->didMerge = opts->willMerge;
 		}
-		if (pending(0) || pendingEdits()) {
-			fprintf(stderr,
-			    "Failed to check in/commit all files, aborting.\n");
-			resolve_cleanup(opts, 0);
-		}
-		opts->didMerge = opts->willMerge;
 		return (0);
 	}
-		
+
 	/*
 	 * We always go look for pending and/or locked files even when
 	 * in textonly mode, because an earlier partial run could have
@@ -1716,7 +1766,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		resolve_cleanup(opts, 0);
 	}
 
-	if (pending(0)) {
+	if (!opts->partial && pending(0)) {
 		assert(!opts->noconflicts);
 		ok_commit(0);
 		commit(opts);
@@ -1742,6 +1792,8 @@ do_delta(opts *opts, sccs *s, char *comment)
 	if (sccs_delta(s, flags, d, 0, 0, 0)) {
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
 		resolve_cleanup(opts, 0);
+	} else {
+		unlink(sccs_Xfile(s, 'r'));
 	}
 }
 
@@ -1992,6 +2044,8 @@ same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 		unlink(sccs_Xfile(rs->s, 'r'));
 		return;
 	}
+	rs->opts->notmerged = addLine(rs->opts->notmerged,
+	    strdup(rs->s->gfile));
 	unless (WIFEXITED(ret)) {
 		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
 		rs->opts->errors = 1;
@@ -2734,12 +2788,13 @@ resolve_cleanup(opts *opts, int what)
 	char	buf[MAXPATH];
 	char	pendingFile[MAXPATH];
 	FILE	*f;
+	int	rc = 1;
 
 	unless (exists(ROOT2RESYNC)) chdir(RESYNC2ROOT);
 	unless (exists(ROOT2RESYNC)) {
 		fprintf(stderr, "cleanup: can't find RESYNC dir\n");
 		fprintf(stderr, "cleanup: nothing removed.\n");
-		exit(1);
+		goto exit;
 	}
 
 	/*
@@ -2792,7 +2847,7 @@ resolve_cleanup(opts *opts, int what)
 	freeStuff(opts);
 	unless (what & CLEAN_OK) {
 		unless (what & CLEAN_NOSHOUT) SHOUT2();
-		exit(1);
+		goto exit;
 	}
 
 	resolve_post(opts, 0);
@@ -2807,7 +2862,10 @@ resolve_cleanup(opts *opts, int what)
 	 * if (opts->didMerge && !opts->logging) ...
 	 */
 	if (!opts->logging) logChangeSet(1);
-	exit(0);
+	rc = 0;
+exit:
+	sccs_unlockfile(RESOLVE_LOCK);
+	exit(rc);
 }
 
 /*
@@ -2871,4 +2929,60 @@ restore_checkouts(opts *opts)
 	}
 	mdbm_close(opts->checkoutDB);
 	opts->checkoutDB = 0;
+}
+
+typedef	struct {
+	char	**files;
+	opts	*opts;
+	u32	pfiles_only:1;
+} cinfo;
+
+private int
+resolvewalk(char *file, struct stat *sb, void *data)
+{
+	char	*p, *q;
+	cinfo	*ci = (cinfo *)data;
+	opts	*opts = ci->opts;
+	int	e;
+
+	unless (p = strrchr(file, '/')) return (0);
+	unless (strneq(file, "./", 2)) return (0);
+	file += 2;
+	assert(p[1] = 's');
+	if (opts->partial && streq(file, "SCCS/s.ChangeSet")) return (0);
+	p[1] = 'r';
+	unless (ci->pfiles_only || exists(file)) goto out;
+	p[1] = 'p';
+	e = exists(file);
+	if (ci->pfiles_only && !e) goto out;
+	if (!ci->pfiles_only && !opts->remerge && e) goto out;
+	p[1] = 's';
+	q = sccs2name(file);
+	/* Add to the list if the sfile or gfile matches the ONLY list,
+	 * and does not match the EXCLUDE list.  Also add if neither
+	 * ONLY nor EXCLUDE list exists (!opts->partial).
+	 */
+	if (!opts->partial ||
+	    ((!opts->only || (match_globs(file, opts->only, 0) ||
+	    match_globs(q, opts->only, 0))) &&
+	    !(opts->excludes && (match_globs(file, opts->excludes, 0) ||
+	    match_globs(q, opts->excludes, 0))))) {
+		ci->files = addLine(ci->files, strdup(file));
+	}
+	free(q);
+out:	p[1] = 's';
+	return (0);
+}
+
+private char **
+find_files(opts *opts, int pfiles)
+{
+	cinfo   cinfo;
+
+	cinfo.files = 0;
+	cinfo.opts = opts;
+	cinfo.pfiles_only = pfiles;
+	chdir(ROOT2RESYNC);
+	walksfiles(".", resolvewalk, &cinfo);
+	return (cinfo.files);
 }

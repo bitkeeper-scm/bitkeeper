@@ -372,6 +372,7 @@ res_quit(resolve *rs)
 	assert(exists(RESYNC2ROOT "/" ROOT2RESYNC));
 	chdir(RESYNC2ROOT);
 	restore_checkouts(rs->opts);
+	sccs_unlockfile(RESOLVE_LOCK);
 	exit(1);
 	return (-1);
 }

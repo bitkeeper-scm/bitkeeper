@@ -383,6 +383,8 @@ GCA2	D	find the set GCA for D's parents
 .xx
 GFILE	F	pathname of the gfile
 .xx
+GREV	F	for a file with conflicts, the GCA of the unmerged tips
+.xx
 HASHCOUNT	D	count of key/value pairs in D if & only if hash file
 .xx
 HOST	D	hostname of D
@@ -409,12 +411,13 @@ LI	D	lines inserted in D (%u)
 .xx
 LU	D	lines unchanged in D (%u)
 .xx
-.xx
 Ld	D	lines deleted in D (%05u)
 .xx
 Li	D	lines inserted in D (%05u)
 .xx
 Lu	D	lines unchanged in D (%05u)
+.xx
+LREV	F	for a file with conflicts, the LOCAL unmerged tip
 .xx
 MD5KEY	D	Crypto based \*[BK] key of D
 .xx
@@ -451,6 +454,8 @@ REV	D	same as I, D's revision
 RI	D	revision numbers of D's includes/excludes 
 .xx
 ROOTKEY	F	key of the 1.0 delta, file's internal name
+.xx
+RREV	F	for a file with conflicts, the REMOTE unmerged tip
 .xx
 RWXMODE	D	D's file modes as ascii (-rwxrwxrwx)
 .xx
