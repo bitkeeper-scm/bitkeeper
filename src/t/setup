@@ -53,7 +53,6 @@ then
 	binary_data2="$BK_BIN/co.exe"
 	PATH=$_BK_BIN:$PATH
 	BK_BIN="$BK_BIN/"
-	USER="bk_test_user"
 	export PATH BK_BIN USER
 else
 	# we are on a unix box
@@ -134,14 +133,9 @@ else	NL=
 fi
 export PATH
 if [ X$USER = X ]; then USER=$LOGNAME; fi
-if [ X$USER = X ]; then
-	whoami > USER 2>${DEV_NULL}
-	USER=`cat USER`
-fi
-if [ X$USER = X ]; then
-	echo Can not figure out user name.
-	exit 1
-fi
+if [ X$USER = X ]; then USER=`getuser`; fi
+if [ X$HOSTNAME = X ]; then HOSTNAME=`gethost`; fi
+export USER HOSTNAME
 if [ -d $REGRESSION ]; then ${RM} -rf $REGRESSION; fi
 mkdir $REGRESSION || exit 1
 cd $REGRESSION || exit 1

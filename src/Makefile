@@ -2,9 +2,9 @@
 # @(#) %K%
 
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
-	  get gethost key2rev lines prs range rechksum renumber rmdel	 \
-	  sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids sinfo	 \
-	  stripdel smoosh takepatch undos what gca
+	  get gethost getuser key2rev lines prs range rechksum renumber	 \
+	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
+	  sinfo stripdel smoosh takepatch undos what gca
 PRIVATE	= nextsecond mtime zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex
@@ -219,6 +219,8 @@ stripdel: stripdel.o $(LIBS)
 	$(CC) $(CFLAGS) stripdel.o $(LINK) -o stripdel
 gethost: gethost.o $(LIBS)
 	$(CC) $(CFLAGS) gethost.o $(LINK) -o gethost
+getuser: getuser.o $(LIBS)
+	$(CC) $(CFLAGS) getuser.o $(LINK) -o getuser
 takepatch: takepatch.o $(LIBS)
 	$(CC) $(CFLAGS) takepatch.o $(LINK) -o takepatch
 sfiles: sfiles.o $(LIBS)
@@ -464,6 +466,7 @@ fdiff.o:	fdiff.c $(sccsdeps)
 g2sccs.o:	g2sccs.c $(sccsdeps)
 get.o:		get.c $(sccsdeps)
 gethost.o:	gethost.c
+getuser.o:	getuser.c
 key2rev.o:	key2rev.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
 prs.o:		prs.c $(sccsdeps) range.h

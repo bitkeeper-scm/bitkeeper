@@ -518,7 +518,7 @@ header(sccs *cset, int diffs)
 # that BitKeeper cares about, is below these diffs.\n");
 	}
 	sccs_prsdelta(cset, cset->tree, 0, dspec, stdout);
-	printf("# User:\t\t%s\n", getuser());
+	printf("# User:\t\t%s\n", sccs_getuser());
 	printf("# Host:\t\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
 	getcwd(pwd, sizeof(pwd));
 	printf("# Root:\t\t%s\n", pwd);

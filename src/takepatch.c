@@ -658,7 +658,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, char *root)
 	sccs	*s = 0;
 	delta	*d = 0;
 	int	newflags;
-	char	*getuser(), *now();
+	char	*now();
 	static	char *spin = "|/-\\";
 	int	n = 0;
 	char	lodkey[MAXPATH];
