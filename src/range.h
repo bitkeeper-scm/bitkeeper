@@ -32,3 +32,9 @@ int	rangeProcess(char *me, sccs *s, int expand, int noisy,
 	if (rangeProcess(me, s, expand, noisy, &things, rd, r, d)) goto next;
 
 #endif
+
+#define	RANGE_ERR(me, s, expand, noisy, err) \
+	if (rangeProcess(me, s, expand, noisy, &things, rd, r, d)) { \
+		err = 1; \
+		goto next; \
+	}

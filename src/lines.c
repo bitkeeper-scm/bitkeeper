@@ -53,7 +53,7 @@ usage:			fprintf(stderr,
 		ser = 0;
 		renumber(s->table);
 		if (things) {
-			RANGE("lines", s, 1, 1);
+			RANGE_ERR("lines", s, 1, 1, rc);
 			unless (s->rstart) goto next;
 			e = ancestor(s, s->rstart);
 			e->merge = 0;
@@ -63,6 +63,7 @@ usage:			fprintf(stderr,
 			e = sccs_getrev(s, rev, 0, 0);
 			unless (e) {
 				fprintf(stderr, "bad rev %s\n", rev);
+				rc = 1;
 				goto next;
 			}
 			printf("%s", e->rev);

@@ -882,6 +882,7 @@ proc setScrollRegion {} \
 proc listRevs {r file {N {}}} \
 {
 	global	bad Opts merges dev_null ht screen stacked gc w
+	global	errorCode
 
 	set screen(miny) 0
 	set screen(minx) 0
@@ -903,6 +904,12 @@ proc listRevs {r file {N {}}} \
 	# worth it until we do LOD names.
 	if {$N != ""} { set n "-n$N" }
 	set d [open "| bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null" "r"]
+
+	#puts "bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null"
+	if  {[lindex $errorCode 2] == 1} {
+		puts stderr "Error: Invalid revision number. rev=($r)"
+		exit 1;
+	}
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -2117,8 +2124,29 @@ proc arguments {} \
 	if {($rev1 != "") && (($rev2 == "") && ($gca == ""))} {
 		set srev $rev1
 	}
+
+	# regexes for valid revision numbers. This probably should be
+	# a function that uses a bk command to check whether the revision
+	# exists.
+	set r2 {^([1-9][0-9]*)\.([1-9][0-9]*)$}
+	set r4 {^([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)\.([1-9][0-9]*)$}
+	set d1 ""; set d2 ""
+	if {[info exists rev1] && $rev1 != ""} {
+		if {![regexp -- $r2 $rev1 d1] &&
+		    ![regexp -- $r4 $rev1 d2]} {
+			puts stderr "\"$rev1\" is not a valid revision number."
+			exit 1
+		}
+	}
+	if {[info exists rev2] && $rev2 != ""} {
+		if {![regexp -- $r2 $rev2 d1] &&
+		    ![regexp -- $r4 $rev2 d2]} {
+			puts stderr "\"$rev2\" is not a valid revision number."
+			exit 1
+		}
+	}
 	if {$fnum > 1} {
-		puts stderr "error: Too many args"
+		puts stderr "Error: Incorrect argument or too many arguments."
 		exit 1
 	} elseif {$fnum == 0} {
 		cd2root
@@ -2173,8 +2201,6 @@ proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
 	global file merge diffpair dfile
-
-	set ids 0
 
 	if {$gca != ""} {
 		set merge(G) $gca
