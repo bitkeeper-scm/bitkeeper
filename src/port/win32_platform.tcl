@@ -30,4 +30,5 @@ proc bk_init {} \
 	set file_start_stop {(.*)@(.*)\.\.(.*)}
 	set file_stop {(.*)@([0-9.]+$)}
 	set file_rev {(.*)@([0-9].*)}
+	set env(BK_GUI) "YES"
 }

@@ -1,0 +1,57 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Larry McVoy
+# %K%
+
+MYHOST=`bk gethost`
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+echo "logging: none" > $HERE/c
+echo "single_user: user1" >>$HERE/c
+echo "single_host: $MYHOST" >>$HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c   
+echo "email: nobody@nowhere.bk" >> $HERE/c
+echo "seats: 2" >>$HERE/c
+bk setup -f -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+mkdir $HERE/project/src
+cd $HERE/project/src
+echo foo > foo.c
+echo bar > bar.c
+bk ci $Q -i foo.c bar.c
+echo h > h.h
+bk ci $Q -i h.h
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+echo OK
+echo $N Attempt citool with commit which errors .....................$NL
+mkdir $HERE/project/BitKeeper/triggers
+cat > $HERE/project/BitKeeper/triggers/pre-commit <<EOF
+#!/bin/sh
+
+if [ "X\$BK_GUI" = X ]
+then	echo "The commit trigger is going to fail, sorry"
+else	bk msg "The commit trigger is going to fail, sorry"
+fi
+exit 1
+EOF
+chmod +x $HERE/project/BitKeeper/triggers/pre-commit
+bk citool
+echo OK
+echo
+echo You should have seen a popup, if you did not this test failed
