@@ -937,6 +937,11 @@ do_diff_merge(void)
 		memset(&conf, 0, sizeof(conf));
 		conf.start[GCA] = start - 1;
 		conf.end[GCA] = end - 1;
+		if (start - 1 > 0) {
+			conf.start_seq = body[GCA].lines[start - 2].seq;
+		}
+		conf.end_seq = body[GCA].lines[end - 1].seq;
+
 		diffwalk_range(ldiff, LEFT, &conf);
 		diffwalk_range(rdiff, RIGHT, &conf);
 
