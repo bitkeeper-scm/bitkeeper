@@ -257,7 +257,7 @@ cd  $HERE/copy
 # This is completely dependent on the ordering of file processing in resolve
 # If this doesn't work, check that the files are processed in this order:
 # File 1, File 2, File 3, File 4
-bk resolve -d $L $Q -t -yMerge << EOF 2> resolve.out
+bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
 r
 r
 r
