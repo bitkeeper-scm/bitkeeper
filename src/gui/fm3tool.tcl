@@ -804,7 +804,7 @@ proc smerge {} \
 		set force 0
 	}
 	if {$argc != 4} {
-		puts "Usage: fm3tool [-f] <local> <gca> <remote> <file>"
+		puts "Usage: fm3tool \[-f\] <local> <gca> <remote> <file>"
 		exit 1
 	}
 	set l [lindex $argv 0]
