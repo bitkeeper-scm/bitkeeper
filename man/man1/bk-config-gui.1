@@ -247,6 +247,14 @@ other option is xterm.
 .B ci.filesHeight
 number of files in the top window.
 .tp
+.B ci.rescan
+Set this to option to 1 if you would like citool to run again after
+doing the commit. Rescanning is useful if you do development in the
+manner where you modify many files that logically belong to separate
+changesets. This option then allows you to stay in citool and create
+different changesets for the files without restarting citool each
+time. Default:\ 0
+.tp
 .B cset.listHeight
 Number of lines in the list windows.
 Default:\ 12

@@ -367,9 +367,10 @@ histtool: gui/search.tcl gui/config.tcl gui/histtool.tcl gui/common.tcl \
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/search.tcl gui/histtool.tcl > histtool
 
-citool: gui/citool.tcl gui/common.tcl gui/progress.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl gui/progress.tcl \
-	    gui/citool.tcl > citool
+citool: gui/citool.tcl gui/config.tcl gui/common.tcl gui/progress.tcl \
+	port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
+	gui/progress.tcl gui/citool.tcl > citool
 
 _citool: gui/_citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
 	port/$(SYS)_platform.tcl gui/ciedit.tcl
