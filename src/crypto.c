@@ -339,7 +339,7 @@ validatedata(rsa_key *key, char *signfile)
 private char *
 publickey(int version)
 {
-	static	char *key;
+	char	*key;
 	unsigned long keylen;
 	int	i, len;
 	int	tmp;
@@ -367,7 +367,7 @@ publickey(int version)
 		coded[len-i-1] = tmp;
 	}
 	keylen = len;
-	unless (key) key = malloc(len);
+	key = malloc(len);
 	base64_decode(coded, len, key, &keylen);
 	free(coded);
 	return (key);
@@ -380,11 +380,14 @@ check_licensesig(char *key, char *sign, int version)
 	unsigned long	outlen;
 	rsa_key	rsakey;
 	char	*pubkey = publickey(version);
+	int	ret;
 	int	stat;
 
 	register_hash(&md5_desc);
 
-	if (rsa_import(pubkey, &rsakey) == CRYPT_ERROR) {
+	ret = rsa_import(pubkey, &rsakey);
+	free(pubkey);
+	if (ret == CRYPT_ERROR) {
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
 	}
@@ -659,7 +662,7 @@ err:		fprintf(stderr, "crypto decrypt: %s\n", crypt_error);
 private char *
 upgrade_secretkey(void)
 {
-	static	char *key;
+	char	*key;
 	unsigned long keylen;
 	int	i, len;
 	int	tmp;
@@ -689,7 +692,6 @@ upgrade_secretkey(void)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*
 ~~~~~~~~~~~~~~~~~~~~~~~~0`
 
-	if (key) return (key);
 	coded = strdup(coded);
 	len = strlen(coded);
 	for (i = 0; i < len/2; i++) {
@@ -709,13 +711,18 @@ upgrade_decrypt(char *infile, char *outfile)
 {
 	FILE	*fin, *fout;
 	rsa_key	rsakey;
+	int	ret;
+	char	*seckey;
 
 	unless (fin = fopen(infile, "r")) return (1);
 	unless (fout = fopen(outfile, "w")) {
 		fclose(fin);
 		return (1);
 	}
-	if (rsa_import(upgrade_secretkey(), &rsakey)) {
+	seckey = upgrade_secretkey();
+	ret = rsa_import(seckey, &rsakey);
+	free(seckey);
+	if (ret) {
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
 	}
