@@ -131,6 +131,28 @@ cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
 echo OK
+echo $N check a push to bkd with a gfile conflict ...................$NL
+P=50000
+cd $HERE
+bk bkd -d -p$P -c2  2> /dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -c2 2>/dev/null
+done
+cd $HERE/project
+echo data1 > conflict.c
+cd $HERE/copy
+echo data2 > old.c
+bk new $Q old.c
+bk commit $Q -yold.c
+bk push -c1 $Q bk://localhost:$P$HERE/project
+bk mv old.c conflict.c
+bk commit $Q -ygconflict
+echo "" | bk push -c1 bk://localhost:$P$HERE/project 2> bk.out 
+grep -q "Did not resolve 2 renames, abort" bk.out
+if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
+rm -f  $HERE/project/conflict.c
+echo OK
 # Check bk basic mode behaviour
 echo $N Make sure bk/basic limits access to master repository only ..$NL
 cd $HERE/copy/BitKeeper/etc
@@ -149,16 +171,16 @@ do	P=`expr $P + 1`
 	bk bkd -d -p$P -c6 2>/dev/null
 done
 cd $HERE
-bk clone bk://localhost:$P$HERE/copy $HERE/copy3 2> bk.out
-grep -q "bkd std cannot access non-master" bk.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk clone bk://localhost:$P$HERE/copy $HERE/copy3 2> bk.out1
+grep -q "bkd std cannot access non-master" bk.out1
+if [ $? -ne 0 ]; then echo failed 1; cat bk.out1; exit 1; fi
 cd $HERE/copy2
-bk pull bk://localhost:$P$HERE/copy 2> bk.out
-grep -q "bkd std cannot access non-master" bk.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-bk push bk://localhost:$P$HERE/copy 2> bk.out
-grep -q "bkd std cannot access non-master" bk.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk pull -c0 bk://localhost:$P$HERE/copy 2> bk.out2
+grep -q "bkd std cannot access non-master" bk.out2
+if [ $? -ne 0 ]; then echo failed 2; cat bk.out1 bk.out2; exit 1; fi
+bk push -c0 bk://localhost:$P$HERE/copy 2> bk.out3
+grep -q "bkd std cannot access non-master" bk.out3
+if [ $? -ne 0 ]; then echo failed 3; cat bk.out2 bk.out3; exit 1; fi
 echo OK
 echo $N Make sure bk/basic allows clone from master repository ......$NL
 mkdir $HERE/copy/BitKeeper/etc/.master
@@ -172,8 +194,8 @@ bk new $Q JUNK
 (cd $HERE/copy; bk _loggingaccepted; )
 bk commit $Q -ywhatever
 bk push -t $Q bk://localhost:$P$HERE/copy 2> bk.out
-grep -q "2 csets only in" bk.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+grep -q "4 csets only in" bk.out
+if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
 echo $N Make sure bk/basic allows pull from master repository .......$NL
 bk undo -fqr+

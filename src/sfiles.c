@@ -457,6 +457,11 @@ c:	lftw(".", caches);
 	if (id_cache) {
 		fprintf(id_cache, "#$sum$ %u\n", id_sum);
 		fclose(id_cache);
+		if (dups) {
+			fprintf(stderr, "Not updating idcache due to dups.\n");
+			unlink(id_tmp);
+			goto out;
+		}
 		if (sccs_lockfile(IDCACHE_LOCK, 16)) {
 			fprintf(stderr, "Not updating cache due to locking.\n");
 			unlink(id_tmp);
@@ -470,7 +475,7 @@ c:	lftw(".", caches);
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
-	sccs_free(cset);
+out:	sccs_free(cset);
 	mdbm_close(idDB);
 	if (proj) proj_free(proj);
 }
@@ -487,9 +492,12 @@ save(sccs *sc, MDBM *idDB, char *buf)
 {
 	if (mdbm_store_str(idDB, buf, sc->gfile, MDBM_INSERT)) {
 		if (errno == EEXIST) {
+			char	*sfile = name2sccs(mdbm_fetch_str(idDB, buf));
+
 			fprintf(stderr,
-			    "Duplicate key '%s' for %s\n  Used by %s\n",
-			    buf, sc->gfile, mdbm_fetch_str(idDB, buf));
+			    "ROOTKEY %s\n\tused by %s\n\tand by  %s\n",
+			    buf, sc->sfile, sfile);
+			free(sfile);
 			dups++;
 		} else {
 			perror("mdbm_store");

@@ -243,7 +243,7 @@ gnupatch_main(int ac, char **av)
 							fix_mod_time, db);
 	}
 
-	if (header) print_cset_log(cset1, cset2);
+	if (header && cset1) print_cset_log(cset1, cset2);
 	chdir(tmpdir);
 	/*
 	 * now "diff -Nr" the left & right tree

@@ -25,7 +25,7 @@
 .	ds BK BitKeeper
 .	ds UM \*(BK User's Manual
 .	ds AT ATT SCCS
-.	ds S SCCS
+.	ds SC SCCS
 .	ds R RCS
 .	ds UN UNIX
 .\}

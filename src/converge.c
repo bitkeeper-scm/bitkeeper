@@ -33,7 +33,7 @@ hasCsetDerivedKey(sccs *s)
 }  
 
 private int
-sys(char *cmd)
+_sys(char *cmd)
 {
 	int	ret;
 
@@ -76,7 +76,7 @@ converge_main(int ac, char **av)
 	for (c = 0; files[c]; c++) {
 		ret += converge(files[c], resync);
 		sprintf(buf, "bk clean -q %s", files[c]);
-		sys(buf);
+		_sys(buf);
 	}
 	return (ret);
 }
@@ -152,7 +152,7 @@ resync_list(char *gfile)
 			mkdirf(kv.val.dptr);
 			sprintf(cmd, "cp %s/%s %s",
 			    RESYNC2ROOT, kv.val.dptr, kv.val.dptr);
-			sys(cmd);
+			_sys(cmd);
 			mdbm_store_str(vals, kv.key.dptr, kv.val.dptr, 0);
 			continue;
 		}
@@ -167,9 +167,9 @@ resync_list(char *gfile)
 
 		mkdirf(kv.val.dptr);
 		sprintf(cmd, "cp %s/%s %s", RESYNC2ROOT, kv.val.dptr, t);
-		sys(cmd);
+		_sys(cmd);
 		sprintf(cmd, "bk get -qe %s", t);
-		sys(cmd);
+		_sys(cmd);
 
 		sprintf(cmd, "bk delta -dqy'Auto converge rename' %s", t);
 		system(cmd);
@@ -216,7 +216,7 @@ done:		mdbm_close(vals);
 	unlink(CTMP);
 	for (kv = mdbm_first(vals); kv.key.dptr; kv = mdbm_next(vals)) {
 		sprintf(buf, "bk get -kpq %s >> %s", kv.val.dptr, CTMP);
-		sys(buf);
+		_sys(buf);
 	}
 
 	/*
@@ -264,10 +264,10 @@ done:		mdbm_close(vals);
 	 */
 	if (winner && exists(sfile) && !streq(sfile, winner->sfile)) {
 		sprintf(key, "bk rm %s", gfile);
-		sys(key);
+		_sys(key);
 		sccs_close(winner); /* for win32 */
 		sprintf(key, "bk mv %s %s", winner->gfile, gfile);
-		sys(key);
+		_sys(key);
 	}
 
 	if (exists(CTMP)) {
@@ -279,11 +279,11 @@ done:		mdbm_close(vals);
 			sccs_free(winner);
 			winner = 0;
 			sprintf(key, "bk get -qeg %s", gfile);
-			sys(key);
+			_sys(key);
 			sprintf(key, "sort -u < %s > %s", CTMP, gfile);
-			sys(key);
-			sprintf(key, "bk delta -qy'Auto converge' %s", gfile);
-			sys(key);
+			_sys(key);
+			sprintf(key, "bk ci -qy'Auto converge' %s", gfile);
+			_sys(key);
 		} else {
 			/*
 			 * The file may be there because it is cset derived
@@ -291,13 +291,13 @@ done:		mdbm_close(vals);
 			 */
 			if (exists(sfile)) {
 				sprintf(key, "bk rm %s", gfile);
-				sys(key);
+				_sys(key);
 			}
 			sprintf(key, "sort -u < %s > %s", CTMP, gfile);
-			sys(key);
+			_sys(key);
 			sprintf(key,
 			    "bk delta -qiy'Auto converge/create' %s", gfile);
-			sys(key);
+			_sys(key);
 		}
 	}
 	mdbm_close(vals);

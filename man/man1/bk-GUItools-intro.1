@@ -2,7 +2,7 @@
 .TH "bk intro-gui-tools" 1 20%E% "\*(BC" "\*(UM"
 .\"    ============== BitKeeper Graphical User Interface  ==============
 .SH NAME
-bk Introduction
+bk GUItools-intro \- Introduction to \*(BK GUI tools
 .SH DESCRIPTION
 .LP
 While it is possible to use \*(BK as an "ASCII-only" tool, the GUI
@@ -27,9 +27,11 @@ Graphical interface for online Bitkeeper documentation.
 .tp
 .B fmtool
 Two-way file merge.  Usage: fm left right output.
-.tp
-.B fm3tool
-Three-way file merge.  Usage: fm3 left GCA right output.
+.\" XXX - removed fm3tool references because it does not exist in
+.\" 	  the man pages.  - amy 10/10/2000
+.\".tp
+.\".B fm3tool
+.\"Three-way file merge.  Usage: fm3 left GCA right output.
 .tp
 .B renametool
 Used to find renames when importing a patch.  Called
@@ -52,7 +54,7 @@ the window.
 .SA difftool 1
 .SA helptool 1
 .SA fmtool 1
-.SA fm3tool 1
+.\".SA fm3tool 1
 .SA renametool 1
 .SA histtool 1
 .SH CATEGORY

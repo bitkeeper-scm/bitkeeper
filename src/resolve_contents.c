@@ -49,10 +49,8 @@ int
 c_dgl(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH*2];
 
-	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->local, rs->pager);
-	sys(cmd, rs->opts);
+	do_diff(rs, n->gca, n->local, 1);
 	return (0);
 }
 
@@ -60,10 +58,8 @@ int
 c_dgr(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH*2];
 
-	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->remote, rs->pager);
-	sys(cmd, rs->opts);
+	do_diff(rs, n->gca, n->remote, 1);
 	return (0);
 }
 
@@ -71,10 +67,8 @@ int
 c_dlm(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH*2];
 
-	sprintf(cmd, "bk diff %s %s | %s", n->local, rs->s->gfile, rs->pager);
-	sys(cmd, rs->opts);
+	do_diff(rs, n->gca, rs->s->gfile, 1);
 	return (0);
 }
 
@@ -82,21 +76,16 @@ int
 c_drm(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH*2];
 
-	sprintf(cmd, "bk diff %s %s | %s", n->remote, rs->s->gfile, rs->pager);
-	sys(cmd, rs->opts);
+	do_diff(rs, n->remote, rs->s->gfile, 1);
 	return (0);
 }
 
 int
 c_em(resolve *rs)
 {
-	char	cmd[MAXPATH*2];
-
 	unless (exists(rs->s->gfile)) c_merge(rs);
-	sprintf(cmd, "%s %s", rs->editor, rs->s->gfile);
-	sys(cmd, rs->opts);
+	sys(rs->editor, rs->s->gfile, SYS);
 	return (0);
 }
 
@@ -132,11 +121,10 @@ c_merge(resolve *rs)
 {
 	names	*n = rs->tnames;
 	int	ret;
-	char	cmd[MAXPATH*4];
 
-	sprintf(cmd, "bk %s %s %s %s %s",
-	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
-	ret = sys(cmd, rs->opts) & 0xffff;
+	ret = sys("bk", rs->opts->mergeprog,
+	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
+	ret &= 0xffff;
 	/*
 	 * We need to restart even if there are errors, otherwise we think
 	 * the file is not writable.
@@ -149,7 +137,7 @@ c_merge(resolve *rs)
 		return (rs->opts->advance);
 	}
 	if (ret == 0xff00) {
-	    	fprintf(stderr, "Cannot execute '%s'\n", cmd);
+	    	fprintf(stderr, "Cannot execute '%s'\n", rs->opts->mergeprog);
 		rs->opts->errors = 1;
 		return (0);
 	}
@@ -165,10 +153,9 @@ c_merge(resolve *rs)
 int
 c_smerge(resolve *rs)
 {
-	names	*n = rs->tnames;
 	int	ret;
 	char	*branch;
-	char	cmd[MAXPATH*4];
+	char	opt[200];
 
 	branch = strchr(rs->revs->local, '.');
 	assert(branch);
@@ -177,8 +164,10 @@ c_smerge(resolve *rs)
 	} else {
 		branch = rs->revs->remote;
 	}
-	sprintf(cmd, "bk get -pM%s %s >%s", branch, rs->s->gfile, rs->s->gfile);
-	ret = sys(cmd, rs->opts) & 0xffff;
+	/* bk get -pM{branch} {rs->s->gfile} > {rs->s->gfile} */
+	sprintf(opt, "-pM%s", branch);
+	ret = sysio(0, rs->s->gfile, 0, "bk", "get", opt, rs->s->gfile, SYS);
+	ret &= 0xffff;
 	/*
 	 * We need to restart even if there are errors, otherwise we think
 	 * the file is not writable.
@@ -378,8 +367,9 @@ rfuncs	c_funcs[] = {
     { "f", "fmtool", "merge with graphical filemerge", c_fmtool },
     { "F", "fm3tool",
       "merge with graphical experimental 3 way filemerge", c_fm3tool },
-    { "hl", "hist local", "revision history of the local file", res_hl },
-    { "hr", "hist remote", "revision history of the remote file", res_hr },
+    { "h", "history", "revision history of all changes", res_h },
+    { "hl", "hist local", "revision history of the local changes", res_hl },
+    { "hr", "hist remote", "revision history of the remote changes", res_hr },
     { "H", "helptool", "show merge help in helptool", c_helptool },
     { "m", "merge", "automerge the two files", c_merge },
     { "p", "sccstool", "graphical picture of the file history", c_sccstool },
