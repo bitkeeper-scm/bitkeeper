@@ -216,7 +216,7 @@ localTrigger(char *event, char *what, char **triggers)
 private int
 remotePreTrigger(char *event, char *what, char **triggers)
 {
-	int	i, rc = 0;
+	int	i, rc = 0, lclone = getenv("BK_LCLONE") != 0;
 	char	output[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
@@ -228,20 +228,23 @@ remotePreTrigger(char *event, char *what, char **triggers)
 	trigger_env("BKD", event, what);
 
 	gettemp(output, "trigger");
-	fputs("@TRIGGER INFO@\n", stdout);
+	unless (lclone) fputs("@TRIGGER INFO@\n", stdout);
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
 		rc = runit(triggers[i], output);
 		f = fopen(output, "rt");
 		assert(f);
 		while (fnext(buf, f)) {
-			printf("%c%s", BKD_DATA, buf);
+			unless (lclone) printf("%c", BKD_DATA);
+			printf("%s", buf);
 		}
 		fclose(f);
 		if (rc) break;
 	}
-	printf("%c%d\n", BKD_RC, rc);
-	fputs("@END@\n", stdout);
+	unless (lclone) {
+		printf("%c%d\n", BKD_RC, rc);
+		fputs("@END@\n", stdout);
+	}
 	fflush(stdout);
 	unlink(output);
 	return (rc);

@@ -24,6 +24,9 @@ private int	initProject(char *root);
 private void	usage(void);
 private	void	lclone(opts, remote *, char *to);
 private int	linkdir(char *from, char *to, char *dir);
+private int	relink(char *a, char *b);
+private int	out_trigger(char *status, char *rev, char *when);
+private int	in_trigger(char *status, char *rev, char *root);
 extern	int	rclone_main(int ac, char **av);
 
 int
@@ -489,7 +492,6 @@ lclone(opts opts, remote *r, char *to)
 	char	skip[MAXPATH];
 	FILE	*f;
 	char	*p;
-	char	*av[2] = { "remote clone", 0 };
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -513,6 +515,14 @@ out1:		remote_free(r);
 		fprintf(stderr, "clone: unable to readlock %s\n", from);
 		goto out1;
 	}
+
+	/* give them a change to disallow it */
+	if (out_trigger(0, opts.rev, "pre")) {
+		repository_rdunlock(0);
+		remote_free(r);
+		exit(1);
+	}
+
 	chdir(here);
 	unless (to) to = basenm(r->path);
 	if (exists(to)) {
@@ -520,12 +530,7 @@ out1:		remote_free(r);
 out:		chdir(from);
 		repository_rdunlock(0);
 		remote_free(r);
-		putenv("BK_STATUS=FAILED");
-		sprintf(from, "_BK_HOST=%s", sccs_gethost());
-		putenv(from);
-		sprintf(dest, "_BK_USER=%s", sccs_getuser());
-		putenv(dest);
-		trigger(av, "post");
+		out_trigger("BK_STATUS=FAILED", opts.rev, "post");
 		exit(1);
 	}
 	if (mkdirp(to)) {
@@ -565,19 +570,61 @@ out:		chdir(from);
 	chdir(from);
 	repository_rdunlock(0);
 	chdir(dest);
+	unlink("BitKeeper/etc/SCCS/x.dfile");
 	rmdir("RESYNC");		/* undo wants it gone */
 	if (clone2(opts, r)) {
 		mkdir("RESYNC", 0777);
+		in_trigger("BK_STATUS=FAILED", opts.rev, from);
 		goto out;
 	}
+	in_trigger("BK_STATUS=OK", opts.rev, from);
 	chdir(from);
-	putenv("BK_STATUS=OK");
-	sprintf(from, "_BK_HOST=%s", sccs_gethost());
-	putenv(from);
-	sprintf(dest, "_BK_USER=%s", sccs_getuser());
-	putenv(dest);
-	trigger(av, "post");
+	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	exit(0);
+}
+
+private int
+out_trigger(char *status, char *rev, char *when)
+{
+	char	*av[2] = { "remote clone", 0 };
+
+	putenv(aprintf("BK_REMOTE_PROTOCOL=%s", BKD_VERSION));
+	putenv(aprintf("BK_VERSION=%s", bk_vers));
+	putenv(aprintf("BK_UTC=%s", bk_utc));
+	putenv(aprintf("BK_TIME_T=%s", bk_time));
+	putenv(aprintf("_BK_USER=%s", sccs_getuser()));
+	putenv(aprintf("_BK_HOST=%s", sccs_gethost()));
+	if (status) putenv(status);
+	if (rev) {
+		putenv(aprintf("BK_CSETS=1.0..%s", rev));
+	} else {
+		putenv("BK_CSETS=1.0..");
+	}
+	putenv("BK_LCLONE=YES");
+	return (trigger(av, when));
+}
+
+private int
+in_trigger(char *status, char *rev, char *root)
+{
+	char	*av[2] = { "clone", 0 };
+
+	putenv(aprintf("BKD_HOST=%s", sccs_gethost()));
+	putenv(aprintf("BKD_ROOT=%s", root));
+	putenv(aprintf("BKD_TIME_T=%s", bk_time));
+	putenv(aprintf("BKD_USER=%s", sccs_getuser()));
+	putenv(aprintf("BKD_UTC=%s", bk_utc));
+	putenv(aprintf("BKD_VERSION=%s", bk_vers));
+	unsetenv("_BK_USER");
+	unsetenv("_BK_HOST");
+	if (status) putenv(status);
+	if (rev) {
+		putenv(aprintf("BK_CSETS=1.0..%s", rev));
+	} else {
+		putenv("BK_CSETS=1.0..");
+	}
+	putenv("BK_LCLONE=YES");
+	return (trigger(av, "post"));
 }
 
 private int
@@ -602,6 +649,11 @@ linkdir(char *from, char *to, char *dir)
 	while (e = readdir(d)) {
 		unless (e->d_name[0] == 's') continue;
 		sprintf(buf, "%s/%s/SCCS/%s", from, dir, e->d_name);
+		if (access(buf, R_OK)) {
+			perror(buf);
+			closedir(d);
+			return (-1);
+		}
 		sprintf(dest, "%s/SCCS/%s", dir, e->d_name);
 		if (link(buf, dest)) {
 			perror(dest);
@@ -610,5 +662,128 @@ linkdir(char *from, char *to, char *dir)
 		}
 	}
 	closedir(d);
+	return (0);
+}
+
+/*
+ * Fix up hard links for files which are the same.
+ */
+int
+relink_main(int ac, char **av)
+{
+	char	here[MAXPATH];
+	char	from[MAXPATH];
+	char	buf[MAXPATH];
+	char	path[MAXPATH];
+	FILE	*f;
+	int	quiet = 0, linked, total, n;
+
+	if (av[1] && streq("-q", av[1])) quiet++, av++, ac--;
+
+	unless ((ac == 3) && isdir(av[1]) && isdir(av[2])) {
+		system("bk help -s relink");
+		exit(1);
+	}
+	getRealCwd(here, MAXPATH);
+	unless (chdir(av[1]) == 0) {
+		fprintf(stderr, "relink: cannot chdir to %s\n", av[1]);
+		exit(1);
+	}
+	unless (exists(BKROOT)) {
+		fprintf(stderr, "relink: %s is not a package root\n", av[1]);
+		exit(1);
+	}
+	if (repository_rdlock()) {
+		fprintf(stderr, "relink: unable to readlock %s\n", av[1]);
+		exit(1);
+	}
+	getRealCwd(from, MAXPATH);
+	f = popen("bk sfiles", "r");
+	chdir(here);
+	unless (chdir(av[2]) == 0) {
+		fprintf(stderr, "relink: cannot chdir to %s\n", av[2]);
+out:		chdir(from);
+		repository_rdunlock(0);
+		pclose(f);
+		exit(1);
+	}
+	unless (exists(BKROOT)) {
+		fprintf(stderr, "relink: %s is not a package root\n", av[2]);
+		goto out;
+	}
+	if (repository_wrlock()) {
+		fprintf(stderr, "relink: unable to writelock %s\n", av[2]);
+		goto out;
+	}
+	linked = total = n = 0;
+	while (fnext(buf, f)) {
+		total++;
+		chomp(buf);
+		sprintf(path, "%s/%s", from, buf);
+		switch (relink(path, buf)) {
+		    case 0: break;		/* no match */
+		    case 1: n++; break;		/* relinked */
+		    case 2: linked++; break;	/* already linked */
+		    case -1:			/* error */
+		    	repository_wrunlock(0);
+			goto out;
+		}
+	}
+	pclose(f);
+	repository_wrunlock(0);
+	chdir(from);
+	repository_rdunlock(0);
+	if (quiet) exit(0);
+	fprintf(stderr,
+	    "Relinked %u/%u files, %u already linked.\n", n, total, linked);
+	exit(0);
+}
+
+/*
+ * Figure out if we should relink 'em and do it.
+ * Here is why we don't sccs_init() the files.  We only link if they
+ * are identical, so if there are sccs errors, they are in both.
+ * Which means we lose no information by doing the link.
+ */
+private int
+relink(char *a, char *b)
+{
+	struct	stat sa, sb;
+
+	if (stat(a, &sa) || stat(b, &sb)) return (-1);
+	if (sa.st_size != sb.st_size) return (0);
+	if (sa.st_dev != sb.st_dev) return (-1);
+	if (sa.st_ino == sb.st_ino) return (2);
+	if (access(a, R_OK)) return (0);	/* I can't read it */
+	if (sameFiles(a, b)) {
+		char	buf[MAXPATH];
+		char	*p;
+
+		/*
+		 * Save the file in x.file,
+		 * do the link,
+		 * if that works, then unlink,
+		 * else try to restore.
+		 */
+		strcpy(buf, b);
+		p = strrchr(buf, '/');
+		assert(p && (p[1] == 's'));
+		p[1] = 'x';
+		if (rename(b, buf)) {
+			perror(b);
+			return (-1);
+		}
+		if (link(a, b)) {
+			perror(b);
+			unlink(b);
+			if (rename(buf, b)) {
+				fprintf(stderr, "Unable to restore %s\n", b);
+				fprintf(stderr, "File left in %s\n", buf);
+			}
+			return (-1);
+		}
+		unlink(buf);
+		return (1);
+	}
 	return (0);
 }
