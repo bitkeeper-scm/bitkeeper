@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h"
-#include "resolve.h" 
 
 #define	CTMP	"BitKeeper/tmp/CONTENTS"
 
@@ -155,14 +154,7 @@ resync_list(char *gfile)
 	unless (pvals) return (vals);
 
 	for (kv = mdbm_first(pvals); kv.key.dptr; kv = mdbm_next(pvals)) {
-		if (mdbm_fetch_str(vals, kv.key.dptr)) {
-			/*
-			 * Do not delete entry when you are in
-			 * the first next loop
-			 */
-			//mdbm_delete_str(pvals, kv.key.dptr);
-			continue;
-		}
+		if (mdbm_fetch_str(vals, kv.key.dptr)) continue;
 		unless (exists(kv.val.dptr)) {
 			mkdirf(kv.val.dptr);
 			sprintf(cmd, "cp %s/%s %s",
@@ -282,13 +274,8 @@ converge(char *gfile, int resync)
 			sys(key);
 		} else {
 			/*
-			 *	awc -> lm
-			 *	we should probably do this up above
-			 *	I am doing it here to highlight the cause
-			 * 	This happen when you have only the csetbase
-			 *	file and no winner. You are about to
-			 * 	create a new file, but you need to
-			 * 	bk rm the existing cset base file first.
+			 * The file may be there because it is cset derived
+			 * and there was no winner.  So we remove it.
 			 */
 			if (exists(sfile)) {
 				sprintf(key, "bk rm %s", gfile);
