@@ -498,7 +498,7 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 proc readFiles {L R {O {}}} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
-	global  lname rname
+	global  lname rname finfo
 	global  rBoth rDiff rSame nextBoth nextSame maxBoth maxDiff maxSame
 	global  types saved done Marks nextMark outputFile
 
@@ -515,7 +515,13 @@ proc readFiles {L R {O {}}} \
 
 	# append time to filename when called by csettool
 	# XXX: Probably OK to use same code for difftool, fmtool and csettool???
-	if {[info exists lname] && ($lname != "")} {
+	if {[info exists finfo(lt)] && ($finfo(lt)!= "")} {
+		.diffs.status.l configure -text "$finfo(l) ($finfo(lt))"
+		.diffs.status.r configure -text "$finfo(r) ($finfo(rt))"
+		balloon_help .diffs.status.l "$finfo(l)\n($finfo(lt))"
+		balloon_help .diffs.status.r "$finfo(r)\n($finfo(rt))"
+		.diffs.status.middle configure -text "... Diffing ..."
+	} elseif {[info exists lname] && ($lname != "")} {
 		set lt [clock format [file mtime $L] -format "%r %D"]
 		set rt [clock format [file mtime $R] -format "%r %D"]
 		.diffs.status.l configure -text "$lname ($lt)"
@@ -524,12 +530,12 @@ proc readFiles {L R {O {}}} \
 		balloon_help .diffs.status.r "$rname\n($rt)"
 		.diffs.status.middle configure -text "... Diffing ..."
 	} else {
-		set f [file tail $L]
-		.diffs.status.l configure -text "$f"
-		balloon_help .diffs.status.l "$f"
-		set f [file tail $R]
-		balloon_help .diffs.status.r "$f"
-		.diffs.status.r configure -text "$f"
+		set l [file tail $L]
+		.diffs.status.l configure -text "$l"
+		balloon_help .diffs.status.l "$l"
+		set r [file tail $R]
+		balloon_help .diffs.status.r "$r"
+		.diffs.status.r configure -text "$r"
 		.diffs.status.middle configure -text "... Diffing ..."
 	}
 	# fmtool stuff
