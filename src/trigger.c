@@ -38,22 +38,21 @@ trigger(char *action, char *when, int status)
 	sprintf(file, "%s/%s/%s-%s", bk_proj->root, TRIGGERS, when, what);
 	get(file, SILENT, "-");
 	if (access(file, X_OK) == 0) {
-		char	env[200];
 		char	cmd[MAXPATH*4];
 
 		if (status) {
-			sprintf(env, "%s='ERROR %d'", var, status);
-		} else if (t = getenv(var)) {
-			sprintf(env, "%s=%s", var, t);
-		} else {
-			sprintf(env, "%s=OK", var);
+			sprintf(cmd, "%s=ERROR %d", var, status);
+			putenv(strdup(cmd));
+		} else unless (t = getenv(var)) {
+			sprintf(cmd, "%s=OK", var);
+			putenv(strdup(cmd));
 		}
 		if (streq(when, "post")) {
-			sprintf(cmd, "cd %s; env %s %s %s %s",
-			    bk_proj->root, env, file, when, action, status);
+			sprintf(cmd, "cd %s; %s %s %s",
+			    bk_proj->root, file, when, action, status);
 		} else {
-			sprintf(cmd, "cd %s; env %s %s %s %s",
-			    bk_proj->root, env, file, when, action);
+			sprintf(cmd, "cd %s; %s %s %s",
+			    bk_proj->root, file, when, action);
 		}
 		if (system(cmd)) return (1);
 	}
