@@ -71,7 +71,6 @@ sfiles_main(int ac, char **av)
 	char	*path;
 
 	debug_main(av);
-	platformSpecificInit(NULL);
 	if ((ac > 1) && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		return (0);

@@ -104,7 +104,7 @@ takepatch_main(int ac, char **av)
 		return (0);
 	}
 
-	platformSpecificInit(NULL);
+	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
 	debug_main(av);
 	while ((c = getopt(ac, av, "acFf:imqsStv")) != -1) {

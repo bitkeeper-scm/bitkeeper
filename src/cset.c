@@ -126,7 +126,6 @@ cset_main(int ac, char **av)
 	char	buf[100];
 	RANGE_DECL;
 
-	platformSpecificInit(NULL);
 	debug_main(av);
 
 	if (ac > 1 && streq("--help", av[1])) {

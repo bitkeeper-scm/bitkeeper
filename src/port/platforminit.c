@@ -3,19 +3,6 @@
 WHATSTR("@(#)%K%");
 
 
-#ifndef WIN32
-void platformSpecificInit(char *name) {}
-#else
-void platformSpecificInit(char *name)
-{
-	setmode(0, _O_BINARY); /* needed for adler32 */
-	setmode(1, _O_BINARY);
-	setmode(2, _O_BINARY);
-
-	/* translate NT filename to bitkeeper format */
-	if (name) nt2bmfname(name, name);
-}
-#endif
 
 void
 platformInit(char **av)
@@ -27,11 +14,10 @@ platformInit(char **av)
 	int	n;
 	int	flags = SILENT;	/* for debugging */
 	mode_t	m;
-#ifdef WIN32
-	// XXX buf2 should be a malloced buffer
-	char	buf2[10 * MAXPATH], buf1[MAXPATH];
-#endif
 	extern char    *editor, *pager, *bin;
+#ifdef WIN32
+	extern	int _fmode;
+#endif
 
 
 	if (bin) return;
@@ -42,11 +28,13 @@ platformInit(char **av)
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 #ifdef WIN32
+	_fmode = _O_BINARY;
 	setmode(1, _O_BINARY);
 	setmode(2, _O_BINARY);
-	localName2bkName(av[0], buf1);	av[0] = buf1;
-	localName2bkName(p, buf2);	p = buf2;
 	for (n = 0; n < 3; n++) make_fd_uninheritable(n);
+
+	localName2bkName(av[0], av[0]);
+	localName2bkName(p, p);
 #endif
 
 	/*
@@ -66,23 +54,19 @@ gotit:
 		}
 		t = strrchr(buf, '/');
 		*t = 0;
-#ifdef WIN32
+
 		/*
+		 * For win32:
 		 * Convert to short path name, because the shell 
-		 * script can not handle space in path name.
+		 * cannot handle space in path name.
 		 */
 		GetShortPathName(buf, buf, sizeof(buf));
-#endif
+
 		localName2bkName(buf, buf);
 		bin = buf; /* buf is static */
 
 		if (add2path) {
-			/*
-			 * Hide the malloc from purify,
-			 * We can not free it until we exit anyway.
-			 */
-			s = (malloc)(2* strlen(buf) + strlen(p) + 30);
-			sprintf(s, "PATH=%s%c%s/gnu/bin%c%s",
+			s = aprintf("PATH=%s%c%s/gnu/bin%c%s",
 			    		buf, PATH_DELIM, buf, PATH_DELIM, p);
 			putenv(s);
 		}

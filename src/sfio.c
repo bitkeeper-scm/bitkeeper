@@ -57,7 +57,7 @@ sfio_main(int ac, char **av)
 {
 	int	c, mode = 0;
 
-	platformSpecificInit(NULL);
+	setmode(0, O_BINARY);
 	if (ac == 2 && streq(av[1], "--help")) {
 		system("bk help sfio");
 		return (0);

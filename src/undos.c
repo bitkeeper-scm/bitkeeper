@@ -18,7 +18,6 @@ undos_main(int ac, char **av)
 		return (0);
 	}
 
-	platformSpecificInit(NULL);
  	while ((c = getopt(ac, av, "n")) != -1) { 
 		switch (c) {
 		    case 'n': auto_new_line = 0; break;	/* doc 2.0 */

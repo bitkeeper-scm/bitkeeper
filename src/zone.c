@@ -37,7 +37,6 @@ zone_main(int ac, char **av)
 		system("bk help zone");
 		return (0);
 	}
-	platformSpecificInit(NULL);
 	zone = sccs_zone();
 	printf("%s\n", zone);
 	free(zone);

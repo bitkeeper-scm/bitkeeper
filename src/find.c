@@ -18,7 +18,6 @@ find_main(int ac, char **av)
 	int	i;
 
 	debug_main(av);
-	platformSpecificInit(NULL);
 	setmode(1, _O_TEXT); /* for notepad.exe in bk import */
 	if ((ac > 1) && streq("--help", av[1])) {
 		fprintf(stderr, "%s", files_usage);

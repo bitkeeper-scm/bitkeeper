@@ -7,7 +7,7 @@ private	int	do_checksum(int);
 int
 adler32_main(int ac, char **av)
 {
-	platformSpecificInit(NULL);
+	setmode(0, O_BINARY); /* for win32 */
 	return (do_checksum((ac == 2) && streq(av[1], "-w")));
 }
 
