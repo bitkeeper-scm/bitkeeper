@@ -276,6 +276,7 @@ usage:				system("bk help -s sfiles");
 		setmode(0, _O_TEXT); /* read file list in text mode */
 		while (fnext(buf, stdin)) {
 			chop(buf);
+			localName2bkName(buf, buf);
 			path = buf;
                         if (isdir(path)) {
 				walk(path, 0);
