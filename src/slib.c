@@ -37,6 +37,7 @@ private int	read_pfile(char *who, sccs *s, pfile *pf);
 private int	hasComments(delta *d);
 private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
+private int	stripChecks(sccs *s, delta *d, char *who);
 private delta*	csetFileArg(delta *d, char *name);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
@@ -45,10 +46,7 @@ delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
-private int	delta_rm(sccs *s, delta *d, FILE *sfile, int flags);
-private int	delta_rmchk(sccs *s, delta *d);
-private int	delta_destroy(sccs *s, delta *d, int flags);
-private int	delta_strip(sccs *s, delta *d, FILE *sfile, int flags);
+private int	delta_table(sccs *s, FILE *out, int willfix, int fixDate);
 private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
 private time_t	date2time(char *asctime, char *z, int roundup);
@@ -3703,7 +3701,7 @@ putserlist(sccs *sc, ser_t *s, FILE *out)
  * Generate a list of serials marked with D_SET tag
  */
 private ser_t *
-visitedmap(sccs *s)
+setmap(sccs *s, int bit)
 {
 	ser_t	*slist;
 	delta	*t;
@@ -3714,7 +3712,7 @@ visitedmap(sccs *s)
 	for (t = s->table; t; t = t->next) {
 		if (t->type != 'D') continue;
  		assert(t->serial <= s->nextserial);
-		if (t->flags & D_SET) {
+		if (t->flags & bit) {
 			slist[t->serial] = 1;
 		}
 	}
@@ -4436,7 +4434,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	int	hash = 0;
 
 	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
-		  : visitedmap(s);
+		  : setmap(s, D_SET);
 	if (error == 1) {
 		assert(!slist);
 		fprintf(stderr,
@@ -5371,8 +5369,9 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 			 * be extremely rare.
 			 */
 			delta *k = d;
-			while(k = sccs_kid(s, k))
-			    assert(k->flags & D_GONE);
+			while(k = sccs_kid(s, k)) {
+				assert(k->flags & D_GONE);
+			}
 
 			continue;
 		}
@@ -6774,11 +6773,12 @@ checkdups(sccs *s)
 	return (c);
 }
 
-static inline int
+private inline int
 isleaf(register delta *d)
 {
 	if (d->type != 'D') return (0);
 	for (d = d->kid; d; d = d->siblings) {
+		if (d->flags & D_GONE) continue;
 		if (d->type == 'D') return (0);
 	}
 	return (1);
@@ -6789,24 +6789,72 @@ isleaf(register delta *d)
  *	. no open branches
  */
 private int
-checkInvariants(sccs *sc)
+checkInvariants(sccs *s)
 {
 	delta	*d;
 	int	tips = 0;
 
-	for (d = sc->table; d; d = d->next) {
-		unless (d->r[2]) continue;	/* we only want branches */
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_GONE) continue;
 		if (!(d->flags & D_MERGED) && isleaf(d)) tips++;
 	}
-	unless (tips) return (0);
-	for (d = sc->table; d; d = d->next) {
-		unless (d->r[2]) continue;
+	unless (tips > 1) return (0);
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_GONE) continue;
 		if (!(d->flags & D_MERGED) && isleaf(d)) {
 			fprintf(stderr,
-			    "%s: unmerged branch %s\n", sc->sfile, d->rev);
+			    "%s: unmerged leaf %s\n", s->sfile, d->rev);
 		}
 	}
 	return (1);
+}
+
+/*
+ * Given a graph with some deltas marked as gone (D_SET|D_GONE),
+ * make sure that things will be OK with those deltas gone.
+ * Checks are:
+ *	. make sure each delta has no kids
+ *	. make sure each delta is not included/excluded anywhere else
+ */
+private int
+checkGone(sccs *s, int bit, char *who)
+{
+	ser_t	*slist = setmap(s, bit);
+	delta	*d;
+	int	i, error = 0;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & bit) {
+			if (d->kid && !(d->kid->flags & bit)) {
+				error++;
+				fprintf(stderr,
+				"%s: revision %s not at tip of branch in %s.\n",
+				    who, d->rev, s->sfile);
+				s->state |= S_WARNED;
+			}
+			continue;
+		}
+		EACH(d->include) {
+			if (slist[d->include[i]]) {
+				fprintf(stderr,
+				    "%s: %s:%s includes %s\n", s->sfile,
+				    who, d->rev, sfind(s, d->include[i])->rev);
+				error++;
+				s->state |= S_WARNED;
+			}
+		}
+		EACH (d->exclude) {
+			if (slist[d->exclude[i]]) {
+				fprintf(stderr,
+				    "%s: %s:%s excludes %s\n", s->sfile,
+				    who, d->rev, sfind(s, d->exclude[i])->rev);
+				error++;
+				s->state |= S_WARNED;
+			}
+		}
+	}
+	free(slist);
+	return (error);
 }
 
 private int
@@ -6827,7 +6875,7 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	int	error = 0;
 	delta	*e;
 
-	if (d->type == 'R') return (0);
+	if ((d->type == 'R') || (d->flags & D_GONE)) return (0);
 
 	if (d->flags & D_BADFORM) {
 		fprintf(stderr, "%s: bad rev '%s'\n", file, d->rev);
@@ -7555,7 +7603,7 @@ sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
 		return (error);
 	}
 	GOODSCCS(sc);
-	unless (flags & (ADMIN_BK|ADMIN_FORMAT)) {
+	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
 		unless (locked = sccs_lock(sc, 'z')) {
 			verbose((stderr,
 			    "admin: can't get lock on %s\n", sc->sfile));
@@ -7575,16 +7623,23 @@ out:
 	}
 
 	if ((flags & ADMIN_BK) && checkInvariants(sc)) OUT;
+	if ((flags & ADMIN_GONE) && checkGone(sc, D_GONE, "admin")) OUT;
 	if (flags & ADMIN_FORMAT) {
 		if (checkrevs(sc, flags) || checkdups(sc) ||
 		    ((flags & ADMIN_ASCII) && badchars(sc))) {
 			OUT;
 		}
+#if 0
+		/*
+		 * Until such time as we decide to rewrite all the serial
+		 * numbers when running stipdel, we can't do this.
+		 */
 		if (sc->nextserial != (sc->numdeltas + 1)) {
-			fprintf(stderr,
+			verbose((stderr,
 			    "admin: gaps in serials in %s (somewhat unusual)\n",
-			    sc->sfile);
+			    sc->sfile));
 		}
+#endif
 		verbose((stderr, "admin: %s checks out OK\n", sc->sfile));
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
@@ -8889,6 +8944,7 @@ out:
 	unlink(s->pfile);
 	if (s->state & S_BITKEEPER) updatePending(s, n);
 	goto out;
+#undef	OUT
 }
 
 /*
@@ -9747,8 +9803,11 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "SHORTKEY")) {
-		char	buf[30];
-		sprintf(buf, "%x", (int)d->date);
+		char	buf[MAXPATH+200];
+		char	*t;
+
+		sccs_sdelta(s, d, buf);
+		if (t = sccs_iskeylong(buf)) *t = 0;
 		fs(buf);
 		return (strVal);
 	}
@@ -10418,11 +10477,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 private void
 prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
-#ifdef	CRAZY_WOW
-	if (d->next && (d != s->rstart)) {
-#else
 	if (d->next && ((s->state & S_SET) || (d != s->rstart))) {
-#endif
 		prs_reverse(s, d->next, flags, dspec, out);
 	}
 	do_prs(s, d, flags, dspec, out);
@@ -10829,6 +10884,7 @@ sccs_lodmap(sccs *s)
 	delta	**lodmap;
 	delta	*d;
 	u16	next;
+
 	next = sccs_nextlod(s);
 	/* next now equals one more than greatest that exists
 	 * make room for having a lodmap[next] slot by extending it by one
@@ -10839,9 +10895,10 @@ sccs_lodmap(sccs *s)
 		return(0);
 	}
 
-	for (d = s->table; d; d->next) {
-		if (d->type == 'D' && d->r[1] == 1 && d->r[2] == 0)
+	for (d = s->table; d; d = d->next) {
+		if ((d->type == 'D') && (d->r[1] == 1) && (d->r[2] == 0)) {
 			lodmap[d->r[0]] = d;
+		}
 	}
 
 	return (lodmap);
@@ -10855,11 +10912,13 @@ sccs_lodmap(sccs *s)
  * XXX - this is also where we would handle pathnames, symbols, etc.
  */
 int
-sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
+sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 {
 	FILE	*f = 0;
 	delta	*d, *a = 0, *b = 0;
 	char	*n[3];
+
+	if (noRfile) goto mfile;
 
 	/*
 	 * b is that branch which needs to be merged.
@@ -10871,7 +10930,6 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 		if (!a) {
 			a = d;
 		} else {
-			assert(!b);
 			b = d;
 			/* Could break but I like the error checking */
 		}
@@ -10895,25 +10953,10 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 				b->rev, d->rev, a->rev, getuser(), now());
 		}
 		fclose(f);
-		if (lpath) {
-			unless (f = fopen(sccsXfile(s, 'm'), "w")) {
-				perror("R.file");
-				return (-1);
-			}
-			n[0] = name2sccs(lpath);
-			n[1] = name2sccs(gpath);
-			n[2] = name2sccs(rpath);
-			fprintf(f, "rename %s %s %s\n", n[0], n[1], n[2]);
-			fclose(f);
-			free(n[0]);
-			free(n[1]);
-			free(n[2]);
-		}
-		return (1);
 	}
-	if (lpath) {
+mfile:	if (lpath) {
 		unless (f = fopen(sccsXfile(s, 'm'), "w")) {
-			perror("R.file");
+			perror("m.file");
 			return (-1);
 		}
 		n[0] = name2sccs(lpath);
@@ -10925,7 +10968,7 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 		free(n[1]);
 		free(n[2]);
 	}
-	return (0);
+	return (b ? 1 : 0);
 }
 
 /*
@@ -11343,285 +11386,188 @@ debug_main(char **av)
 #endif
 
 /*
- * RMDEL - remove / destroy the delta.
- * If we are removing, it is just the one delta.
- * If we are destroying, it is from this delta forward.
+ * Return an alloced copy of the name of the sfile after the removed deltas
+ * are gone.
+ * Note that s->gfile may not be the same as s->table->pathname because we
+ * may be operating on RESYNC/foo/SCCS/s.bar.c instead of foo/SCCS/s.bar.c
+ *
+ * XXX - I'm using s->table to mean TOT.
  */
-int
-sccs_rmdel(sccs *s, delta *d, int destroy, u32 flags)
+char	*
+currentName(sccs *s)
 {
-	FILE	*sfile = 0;
-	int	error = 0;
+	delta	*d;
 	char	*t;
-	int	locked;
-	pfile	pf;
-
-	assert(s);
-	debug((stderr, "rmdel %s %x\n", s->gfile, flags));
-	bzero(&pf, sizeof (pf));
-	unless(locked = sccs_lock(s, 'z')) {
-		fprintf(stderr, "rmdel: can't get lock on %s\n", s->sfile);
-		error = -1; s->state |= S_WARNED;
-rmdelout:
-		if (sfile) fclose(sfile);
-		free_pfile(&pf);
-		if (locked) sccs_unlock(s, 'z');
-		debug((stderr, "rmdel returns %d\n", error));
-		return (error);
-	}
-#define	RMDELOUT	\
-	do { error = -1; s->state |= S_WARNED; goto rmdelout; } while (0)
-
-	if (!HAS_SFILE(s)) {
-		fprintf(stderr, "rmdel: no sfile\n");
-		RMDELOUT;
-	}
-
-	unless (s->tree) {
-		fprintf(stderr, "rmdel: bad delta table in %s\n", s->sfile);
-		RMDELOUT;
-	}
-
-	if (HAS_PFILE(s)) {
-		if (read_pfile("rmdel", s, &pf)) RMDELOUT;
-		if (streq(d->rev, pf.oldrev)) {
-			fprintf(stderr,
-				"rmdel: revision %s is locked in %s.\n"
-				"       Nothing removed.\n",
-				d->rev, s->sfile);
-			RMDELOUT;
-		}
-	}
-
-	if (destroy ? delta_destroy(s, d, flags) : delta_rmchk(s, d))
-		RMDELOUT;
-
-	if (!destroy)  {
-		d->type = 'R';	/* mark delta as Removed */
-		d->flags &= ~D_CKSUM;
-	}
+	int	len;
+	char	path[MAXPATH];
 
 	/*
-	 * OK, checking or destroying done.
-	 * Write out the new s.file.
+	 * LODXXX - needs to restrict this to the current LOD.
 	 */
-	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
-		fprintf(stderr, "rmdel: can't create %s: ", sccsXfile(s, 'x'));
-		perror("");
-		RMDELOUT;
-	}
+	for (d = s->table; d && (d->flags & D_GONE); d = d->next);
+	assert(d);
 
-	/* write out upper half */
-	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so chksum works */
-		sccs_unlock(s, 'x');
-		goto rmdelout;
-	}
+	/* If the current and old name are the same, use what we have */
+	if (streq(d->pathname, s->table->pathname)) return (strdup(s->sfile));
 
+	/* If we have no prefix, just convert to an s.file */
+	if (streq(s->gfile, s->table->pathname)) 
+	return (name2sccs(d->pathname));
+
+	/*
+	 * Figure out how much space we need
+	 */
+	t = strstr(s->table->pathname, s->gfile);
+	assert(t);
+	len = t - s->gfile;
+	strncpy(path, s->gfile, len);
+	path[len] = 0;
+	strcat(path, d->pathname);
+	fprintf(stderr, "RMDEL %s\n", path);
+	return (name2sccs(path));
+}
+
+/*
+ * Given an SCCS structure with a list of marked deltas, strip them from
+ * the delta table and place the striped body in out
+ */
+int
+stripDeltas(sccs *s, FILE *out)
+{
+	serlist *state = 0;
+	ser_t	*slist = 0;
+	int	print = 0;
+	char	*buf;
+	int	ser;
+
+	slist = setmap(s, D_SET);
+	state = allocstate(0, 0, s->nextserial);
+	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
 		zgets_init(s->where, s->size - s->data);
 		zputs_init();
 	}
-
-	/* write out lower half */
-	if (destroy ? delta_strip(s, d, sfile, flags)
-		    : delta_rm(s, d, sfile, flags)) {
-		RMDELOUT;
+	while (buf = nextdata(s)) {
+		if (isData(buf)) {
+			unless (print) fputdata(s, buf, out);
+			continue;
+		}
+		debug2((stderr, "%.*s", linelen(buf), buf));
+		ser = atoi(&buf[3]);
+		if (slist[ser] == 0) fputdata(s, buf, out);
+		changestate(state, buf[1], ser);
+		print =
+		    visitedstate((const serlist*)state, (const ser_t*)slist);
 	}
-	if (fflushdata(s, sfile)) {
-		sccs_unlock(s, 'x');
-		goto rmdelout;
-	}
+	free(state);
+	free(slist);
+	if (fflushdata(s, out)) return (1);
 	if (s->encoding & E_GZIP) zgets_done();
-	fseek(sfile, 0L, SEEK_SET);
-	fprintf(sfile, "\001h%05u\n", s->cksum);
-
-	sccs_close(s), fclose(sfile), sfile = NULL;
+	fseek(out, 0L, SEEK_SET);
+	fprintf(out, "\001h%05u\n", s->cksum);
+	sccs_close(s);
+	fclose(out);
 	unlink(s->sfile);		/* Careful. */
-	t = sccsXfile(s, 'x');
-	if (rename(t, s->sfile)) {
+	buf = sccsXfile(s, 'x');
+	if (rename(buf, s->sfile)) {
 		fprintf(stderr,
-		    "rmdel: can't rename(%s, %s) left in %s\n",
-		    t, s->sfile, t);
-		RMDELOUT;
+		    "stripdel: can't rename(%s, %s) left in %s\n",
+		    buf, s->sfile, buf);
+		return (1);
 	}
 	Chmod(s->sfile, 0444);
-	goto rmdelout;
+	return (0);
+}
+
+/*
+ * Strip out the deltas marked with D_SET.
+ */
+int
+sccs_stripdel(sccs *s, char *who)
+{
+	FILE	*sfile = 0;
+	int	error = 0;
+	int	locked;
+
+	assert(s && s->tree && !HAS_PFILE(s));
+	debug((stderr, "stripdel %s %x\n", s->gfile, flags));
+	unless (locked = sccs_lock(s, 'z')) {
+		fprintf(stderr, "%s: can't get lock on %s\n", who, s->sfile);
+		error = -1; s->state |= S_WARNED;
+out:
+		/* sfile closed by stripDeltas() */
+		if (locked) sccs_unlock(s, 'z');
+		debug((stderr, "stripdel returns %d\n", error));
+		return (error);
+	}
+#define	OUT	\
+	do { error = -1; s->state |= S_WARNED; goto out; } while (0)
+
+
+	if (stripChecks(s, 0, who)) OUT;
+
+	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
+		fprintf(stderr,
+		    "%s: can't create %s: ", who, sccsXfile(s, 'x'));
+		perror("");
+		OUT;
+	}
+
+	/* write out upper half */
+	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so chksum works */
+		fprintf(stderr,
+		    "%s: can't write delta table for %s\n", who, s->sfile);
+		sccs_unlock(s, 'x');
+		fclose(sfile);
+		OUT;
+	}
+
+	/* write out the lower half */
+	if (stripDeltas(s, sfile)) {
+		fprintf(stderr,
+		    "%s: can't write delta body for %s\n", who, s->sfile);
+		sccs_unlock(s, 'x');
+		OUT;
+	}
+	goto out;
+#undef	OUT
+}
+
+/*
+ * Remove the delta, leaving a delta of type 'R' behind.
+ */
+int
+sccs_rmdel(sccs *s, delta *d, u32 flags)
+{
+	d->flags |= D_SET;
+	if (stripChecks(s, d, "rmdel")) return (1);
+
+	d->type = 'R';	/* mark delta as Removed */
+	d->flags &= ~D_CKSUM;
+
+	return (sccs_stripdel(s, "rmdel"));
 }
 
 /*
  * Make sure it is OK to remove a delta.
  */
 private int
-delta_rmchk(sccs *s, delta *d)
+stripChecks(sccs *s, delta *d, char *who)
 {
-	delta	*n;
-	int	i, found;
-	char	*user = getuser();
+	if (checkGone(s, D_SET, who)) return (1);
 
-	/*
-	 * Reject the command if not by the same user who added the delta.
-	 * - must own the delta
-	 * - must be the tip of a branch (O'Reilly, HP-UX)
-	 * - must not be included or excluded by other delta (me)
-	 * - must not be rev 1.1 (more precisely: no parent) (me)
-	 */
-	unless (streq(d->user, user)) {
-		fprintf(stderr,
-		    "rmdel: hey, %s, only %s can rmdel %s from %s\n",
-			    user, d->user, d->rev, s->sfile);
-		return (1);
-	}
-
-	/* Must be tip of branch */
-	for (n = d->kid; n; n = n->siblings) {
-		if (n->type == 'D') {
-			fprintf(stderr,
-			    "rmdel: revision %s not at tip of branch in %s.\n",
-			    d->rev, s->sfile);
-			return (1);
-		}
-	}
-
-	/* Can't be included or excluded by any existing delta */
-	for (n = s->table; n; n = n->next) {
-		unless (n->type == 'D') continue;
-		found = 0;
-		EACH(n->include) {
-			if (n->include[i] == d->serial) {
-				found++;
-				break;
-			}
-		}
-		EACH(n->exclude) {
-			if (n->exclude[i] == d->serial) {
-				found++;
-				break;
-			}
-		}
-		if (found) {
-			fprintf(stderr,
-			    "rmdel: rev %s of %s is in inc/exc list of %s\n",
-			    d->rev, s->sfile, n->rev);
-			return (1);
-		}
-	}
-
+	unless (d) return (0);
 	/*
 	 * Do not let them remove the root.
 	 */
 	unless (d->parent) {	/* don't remove if this is 1.1 (no parent) */
 		fprintf(stderr,
-			"rmdel: can't remove root change %s in %s.\n"
-			"       Nothing removed.\n", d->rev, s->sfile);
+			"%s: can't remove root change %s in %s.\n",
+			who, d->rev, s->sfile);
+		s->state |= S_WARNED;
 		return (1);
 	}
 	return (0);
-}
-
-private int
-delta_rm(sccs *s, delta *d, FILE *sfile, int flags)
-{
-	register char	*buf;
-	ser_t 		serial = d->serial;
-
-	/* XXX: What kind of graceful failure would be desired?
-	 * 	Now is assert or die
-	 */
-
-	while (!eof(s)) {
-		unless (buf = nextdata(s)) break;
-
-		if (buf[0] == '\001' && serial == atoi(&buf[3])) {
-			register int checker = 0;
-			register int skip = 0;
-			if (buf[1] == 'D' || buf[1] == 'E') continue;
-			assert(buf[1] == 'I');
-			while (buf = nextdata(s)) {
-				checker = 1;
-				if (buf[0] == '\001') {
-					ser_t	num;
-					num = atoi(&buf[3]);
-					assert(num);
-					if (num == serial) break;
-					if (num == skip) {
-						assert(buf[1] == 'E');
-						skip = 0;
-					}
-					if (!skip && buf[1] == 'I')
-						skip = num;
-					fputdata(s, buf, sfile);
-				} else if (skip) {
-					fputdata(s, buf, sfile);
-				}
-				checker = 0;
-			}
-			assert(checker); /* eof may not be good enough */
-			assert(buf[1] == 'E' && serial == atoi(&buf[3]));
-			continue;
-		}
-		fputdata(s, buf, sfile);
-	}
-	return 0;
-}
-
-/*
- * Remove all deltas after the specified delta.
- * After means in table order, not graph order.
- */
-private int
-delta_destroy(sccs *s, delta *d, int flags)
-{
-	delta	*e;
-
-	/*
-	 * Mark all the nodes we want gone.
-	 * delta_table() respects the D_GONE flag.
-	 */
-	d = d->next;
-	for (e = s->table; e != d; e = e->next) {
-		assert(e);
-		e->flags |= D_GONE;
-		verbose((stderr,
-		    "rmdel: destroying %s:%s\n", s->gfile, e->rev));
-	}
-	/* s->table = d;
-	 * Anyone who uses the sccs structure after this must respect
-	 * D_GONE.
-	 */
-	return 0;
-}
-
-private int
-delta_strip(sccs *s, delta *d, FILE *sfile, int flags)
-{
-	register char	*buf;
-	ser_t		serial = d->serial;
-	ser_t		stop;
-
-	/* algo: strip every serial >= base_serial
-	 * 	eat *everything* between I serial and E serial
-	 *	(only serials of greater number can be contained within)
-	 *	remove all D and E serial outside of this.
-	 */
-
-	while (!eof(s) && (buf = nextdata(s))) {
-		if (buf[0] == '\001' && (stop = atoi(&buf[3])) >= serial) {
-			if (buf[1] == 'I') {
-				while (!eof(s) && (buf = nextdata(s))) {
-					if ((buf[0] == '\001') &&
-					    (atoi(&buf[3]) == stop)) {
-						assert(buf[1] == 'E');
-						break;
-					    }
-				}
-				continue;
-			}
-			assert(buf[1] == 'D' || buf[1] == 'E');
-			continue;
-		}
-		fputdata(s, buf, sfile);
-	}
-	return 0;
 }
 
 int
