@@ -359,6 +359,14 @@ _diffr() {
 	then	echo "Usage: diffr [diffs opts] repository different_repository"
 		exit 1
 	fi
+	if [ ! -d $1/BitKeeper/etc ]
+	then	echo $1 is not the root of a BitKeeper project.
+		exit 1
+	fi
+	if [ ! -d $2/BitKeeper/etc ]
+	then	echo $2 is not the root of a BitKeeper project.
+		exit 1
+	fi
 	HERE=`pwd`
 	cd $1
 	LEFT=`pwd`
