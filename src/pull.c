@@ -82,7 +82,7 @@ usage:			system("bk help -s push");
 	}
 	if (rc == 2) rc = 1; /* if retry failed, rest exit code to 1 */
 	remote_free(r);
-	trigger(av,  "post", rc);
+	unless (opts.metaOnly) trigger(av,  "post", rc);
 	freeLines(envVar);
 	return (rc);
 }
@@ -285,7 +285,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		/*
 		 * We are about to run resolve, fire pre trigger
 		 */
-		if (trigger(av, "pre", 0)) {
+		if (!opts.metaOnly && trigger(av, "pre", 0)) {
 			rc = 1;
 			goto done;
 		}
