@@ -7,8 +7,6 @@
 #define LINELEN	1024
 
 private int line, outfd = 2;
-private char buffer[LINELEN];
-
 private char *myname = "diffsplit";
 private char **argv;
 
@@ -25,18 +23,13 @@ static void syntax(char *buf)
  * Pre-diff explanation: max 64kB
  */
 #define EXPLANATION 65536
-private char explanation[EXPLANATION];
-
-static struct {
+static struct arg_cnv{
 	const char *name;
 	char *target;
-} arg_converion[] = {
-	{ "EXPLANATION", explanation }
 };
 
-#define NR_CONVERT (sizeof(arg_converion)/sizeof(arg_converion[0]))
 
-static void parse_args(int argc, char **arg)
+static void parse_args(int argc, char **arg, struct arg_cnv *arg_cnv, int n)
 {
 	int i;
 
@@ -48,17 +41,17 @@ static void parse_args(int argc, char **arg)
 	argc--;
 	for (i = 1; i < argc; i++) {
 		int j;
-		for (j = 0; j < NR_CONVERT; j++) {
-			if (!strcmp(argv[i], arg_converion[j].name))
-				argv[i] = arg_converion[j].target;
+		for (j = 0; j < n; j++) {
+			if (!strcmp(argv[i], arg_cnv[j].name)) 
+				argv[i] = arg_cnv[j].target;
 		}
 	}
 }
 
-static int read_line(void)
+static int read_line(char *buffer, int len)
 {
 	int retval = 0;
-	if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+	if (fgets(buffer, len, stdin) != NULL) {
 		line++;
 		retval = strlen(buffer);
 	}
@@ -80,7 +73,7 @@ static int trim_space(char *buf, int len)
 	return len;
 }
 
-static int copy_explanation(char *buf, int len, int n)
+static int copy_explanation(char *buf, int len, int n, char *explanation)
 {
 	int left = EXPLANATION - n;
 
@@ -95,14 +88,14 @@ static int copy_explanation(char *buf, int len, int n)
 	return n + len;
 }	
 
-char diffline[LINELEN];
 
-static int parse_explanation(void)
+static int parse_explanation(char *buffer, int blen,
+			char *diffline, int dlen, char *explanation)
 {
-	int n = 0, difflen = 0;
+	int	n = 0, difflen = 0;
 
 	for (;;) {
-		int len = read_line();
+		int len = read_line(buffer, sizeof(buffer));
 		if (!len)
 			break;
 		if (!memcmp(buffer, "---", 3)) {
@@ -110,11 +103,12 @@ static int parse_explanation(void)
 			return 1;
 		}
 		if (difflen) {
-			 n = copy_explanation(diffline, difflen, n);
+			 n = copy_explanation(diffline,
+						 difflen, n, explanation);
 			 difflen = 0;
 		}
 		if (memcmp(buffer, "diff ", 5)) {
-			n = copy_explanation(buffer, len, n);
+			n = copy_explanation(buffer, len, n, explanation);
 			continue;
 		}
 		memcpy(diffline, buffer, len+1);
@@ -124,24 +118,27 @@ static int parse_explanation(void)
 	exit(0);
 }
 
-static void cat_diff(void)
+static void cat_diff(char *buffer, int buf_len, char *diffline)
 {
 	int len;
 
 	write(outfd, diffline, strlen(diffline));
 	write(outfd, buffer, strlen(buffer));
-	while ((len = read_line()) > 0)
+	while ((len = read_line(buffer, buf_len)) > 0)
 		write(outfd, buffer, len);
 }
 
-static int parse_file(void)
+static int parse_file(char *explanation)
 {
-	int status;
+	int	status;
 	pid_t	pid;
+	char	buffer[LINELEN];
+	char	diffline[LINELEN];
 
-	parse_explanation();
+	parse_explanation(buffer, sizeof(buffer),
+		diffline, sizeof(diffline), explanation);
 	pid = spawnvp_wPipe(argv, &outfd, 0);
-	cat_diff();
+	cat_diff(buffer, sizeof(buffer), diffline);
 	close(outfd);
 	outfd = 2;
 	if (waitpid(pid, &status, 0) < 0)
@@ -157,8 +154,14 @@ static int parse_file(void)
 
 int diffsplit_main(int argc, char **argv)
 {
-	parse_args(argc, argv);
+	char	explanation[EXPLANATION];
+	struct	arg_cnv arg_converion[] = {
+			{ "EXPLANATION", explanation }
+	};
+#define NR_CONVERT (sizeof(arg_converion)/sizeof(arg_converion[0]))
 
-	parse_file();
+	parse_args(argc, argv, arg_converion, NR_CONVERT);
+
+	parse_file(explanation);
 	return 0;
 }
