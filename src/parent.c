@@ -234,8 +234,8 @@ getParentList(char *parentFile, char **pList)
 	char	*p;
 	FILE	*f;
 
-	assert(bk_proj && bk_proj->root);
-	p = aprintf("%s/%s", bk_proj->root, parentFile);
+	assert(proj_root(0));
+	p = aprintf("%s/%s", proj_root(0), parentFile);
 	f = fopen(p, "rt");
 	free(p);
 	unless (f) {

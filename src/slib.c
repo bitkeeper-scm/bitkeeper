@@ -3966,7 +3966,7 @@ sccs_init(char *name, u32 flags)
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
  err:			free(s->gfile);
 			free(s->sfile);
-			unless(proj || !s->proj) proj_free(s->proj);
+			proj_free(s->proj);
 			free(s);
 			return (0);
 		}
@@ -4018,7 +4018,7 @@ sccs_init(char *name, u32 flags)
 			free(s->sfile);
 			free(s->gfile);
 			free(s->pfile);
-			unless (proj || !s->proj) proj_free(s->proj);
+			proj_free(s->proj);
 			free(s);
 			return (0);
 		}
@@ -4057,10 +4057,6 @@ sccs_init(char *name, u32 flags)
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (HASGRAPH(s)) {
 		if (misc(s)) {
-			unless (proj || !s->proj) {
-				proj_free(s->proj);
-				s->proj = 0;
-			}
 			sccs_free(s);
 			return (0);
 		}
@@ -4325,6 +4321,7 @@ sccs_free(sccs *s)
 	if (s->findkeydb) mdbm_close(s->findkeydb);
 	if (s->spathname) free(s->spathname);
 	if (s->locs) free(s->locs);
+	if (s->proj) proj_free(s->proj);
 	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
@@ -7709,8 +7706,6 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 #define	RET(x)	{ different = x; goto out; }
 
-	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
-
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
 	/* A questionable feature for diffs */
 	if ((flags & GET_DIFFTOT) && (d != findrev(s, 0))) RET(1);
@@ -7916,6 +7911,8 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	pfile	pf;
 	int	ret;
 	delta	*d;
+
+	unless (HAS_GFILE(s) && HAS_PFILE(s)) return (0);
 
 	bzero(&pf, sizeof(pf));
 	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
@@ -15966,7 +15963,7 @@ generateTimestampDB(project *p)
 		return (0);
 	}
 
-	tsname = aprintf("%s/BitKeeper/etc/timestamps", p->root);
+	tsname = aprintf("%s/BitKeeper/etc/timestamps", proj_root(p));
 
 	db = mdbm_mem();
 	assert(db);
@@ -16002,7 +15999,7 @@ dumpTimestampDB(project *p, MDBM* db)
 
 	if (!timestampDBChanged) return;
 
-	tsname = aprintf("%s/BitKeeper/etc/timestamps", p->root);
+	tsname = aprintf("%s/BitKeeper/etc/timestamps", proj_root(p));
 	f = fopen(tsname, "w");
 	if (!f) {
 		free(tsname);

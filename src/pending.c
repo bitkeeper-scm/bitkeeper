@@ -307,7 +307,7 @@ pending_part1(options *opts, remote *r, char *key_list)
 	 */
 	bktmp(key_list, "pending_keylist");
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
-	s = sccs_init(s_cset, 0, 0);
+	s = sccs_init(s_cset, 0);
 	flags = PK_REVPREFIX|PK_RKEY;
 	rc = prunekey(s, r, opts->seen, fd, flags, 0, NULL, &rcsets, &rtags);
 	if (rc < 0) {

@@ -1131,6 +1131,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 	 * We need this to prevent "bk idcache" from decending into PARKDIR
 	 */
 	close(open(BKSKIP, O_CREAT|O_WRONLY, 0666));
+	mkdir("SCCS", 0777);
 
 	rc = sysio((id == -1) ? NULL : parkfile,
 				NULL, sfio_list, "bk", "sfio", "-i", SYS);

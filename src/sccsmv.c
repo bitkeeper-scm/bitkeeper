@@ -188,7 +188,7 @@ err:		unless (skip_lock) repository_wrunlock(0);
 	free(cmd);
 	while (fnext(buf, f)) {
 		chomp(buf);
-		unless (s = sccs_init(buf, INIT_NOCKSUM|INIT_FIXSTIME, 0)) {
+		unless (s = sccs_init(buf, INIT_NOCKSUM|INIT_FIXSTIME)) {
 			fprintf(stderr, "mvdir: cannot sccs_init(%s)\n", buf);
 			goto err;
 		}

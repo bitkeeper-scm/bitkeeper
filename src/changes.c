@@ -492,7 +492,7 @@ dumplog(slog *list, int *n)
  */
 private sccs *
 sccs_keyinitAndCache(char *key, int flags,
-    project *proj, MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
+    MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
 {
 	static	int	rebuilt = 0;
 	datum	k, v;
@@ -506,7 +506,7 @@ sccs_keyinitAndCache(char *key, int flags,
 		return (s);
 	}
  retry:
-	s = sccs_keyinit(key, flags, proj, *idDB);
+	s = sccs_keyinit(key, flags, *idDB);
 	unless (s || gone(key, goneDB)) {
 		unless (rebuilt) {
 			mdbm_close(*idDB);
@@ -636,7 +636,7 @@ loadcset(sccs *cset)
 private void
 cset(sccs *cset, FILE *f, char *dspec)
 {
-	int	flags = PRS_ALL, iflags = INIT_NOCKSUM|INIT_SAVEPROJ;
+	int	flags = PRS_ALL, iflags = INIT_NOCKSUM;
 	int 	i, j, m = 0, n = 0;
 	char	**keys;
 	slog	*list = 0, *ll, *ee;
@@ -645,7 +645,6 @@ cset(sccs *cset, FILE *f, char *dspec)
 	kvpair	kv;
 	datum	k, v;
 	MDBM 	*idDB, *goneDB, *graphDB, *csetDB;
-	project	*proj = bk_proj;
 
 	assert(dspec);
 	if (opts.newline) flags |= PRS_LF; /* for sccs_prsdelta() */
@@ -723,7 +722,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			assert(dkey);
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
-				keys[i], iflags, proj, &idDB, graphDB, goneDB);
+				keys[i], iflags, &idDB, graphDB, goneDB);
 			unless (s) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);

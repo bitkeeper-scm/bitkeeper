@@ -27,11 +27,8 @@ pwd_main(int ac, char **av)
 	 * before we do a getcwd(). This is a efficient way
 	 * to convert a relative path to a full path
 	 */
-	if (av[optind]) {
-		if (chdir(av[optind]) != 0) return (1);
-		proj_free(bk_proj);
-		bk_proj = proj_init(0);
-	}
+	if (av[optind] && (chdir(av[optind]) != 0)) return (1);
+
 	p = &buf[3]; /* reserve same space in front, we might need it below */
 	if (getRealCwd(p, sizeof buf -3) == NULL){
 		perror("getcwd");

@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "logging.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
