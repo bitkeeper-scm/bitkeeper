@@ -42,8 +42,6 @@ WHATSTR("@(#)%K%");
  *	rangeAdd(sccs *sc, char *rev, char *date) - add rev or date (symbol)
  */
 
-delta	*sfind(sccs *s, int serial);
-
 void
 rangeReset(sccs *sc)
 {

@@ -83,6 +83,7 @@ main(int ac, char **av)
 	int	fast = 0;	/* undocumented switch for scripts, 
 				 * skips cache rebuilds on file creates */
 
+	platformSpecificInit(NULL); 
 	input = stdin;
 	debug_main(av);
 	while ((c = getopt(ac, av, "acFf:iqsv")) != -1) {
@@ -96,7 +97,7 @@ main(int ac, char **av)
 		    case 'F': fast++; break;
 		    case 'f':
 			    infname = optarg;
-			    input = fopen(optarg, "rt");
+			    input = fopen(optarg, "rb");
 			    unless (input) {
 				    perror(optarg);
 				    exit(1);
@@ -360,7 +361,7 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags, int *np)
 	int	skip = 0;
 	patch	*p;
 
-	if (newFile == 1) goto delta;
+	if (newFile == 1) goto delta1;
 
 	fnext(buf, f); chop(buf); line++;
 	if (echo>3) fprintf(stderr, "%s\n", buf);
@@ -384,7 +385,7 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags, int *np)
 	}
 
 	/* go get the delta table entry for this delta */
-delta:	off = ftell(f);
+delta1:	off = ftell(f);
 	d = getRecord(f);
 	sccs_sdelta(s, d, buf);
 	if (tmp = sccs_findKey(s, buf)) {
@@ -437,7 +438,7 @@ delta:	off = ftell(f);
 		p->order = parent == d ? 0 : d->date;
 		if (echo>5) fprintf(stderr, "REM: %s %s %lu\n",
 				    d->rev, p->me, p->order);
-		unless (t = fopen(tmpf, "w")) {
+		unless (t = fopen(tmpf, "wb")) {
 			perror(tmpf);
 			exit(0);
 		}
@@ -691,8 +692,8 @@ apply:
 			p->initFile, p->initFile, p->diffFile, p->diffFile);
 					system(buf);
 				}
-				iF = fopen(p->initFile, "r");
-				dF = fopen(p->diffFile, "r");
+				iF = fopen(p->initFile, "rb");
+				dF = fopen(p->diffFile, "rb");
 				newflags = (echo > 2) ?
 				    DELTA_FORCE|DELTA_PATCH :
 				    DELTA_FORCE|DELTA_PATCH|SILENT;
@@ -715,8 +716,8 @@ apply:
 				cleanup(CLEAN_RESYNC);
 			}
 			if (perfile) sccscopy(s, perfile);
-			iF = fopen(p->initFile, "r");
-			dF = fopen(p->diffFile, "r");
+			iF = fopen(p->initFile, "rb");
+			dF = fopen(p->diffFile, "rb");
 			d = 0;
 			newflags = (echo > 2) ?
 			    NEWFILE|DELTA_FORCE|DELTA_PATCH :
@@ -807,7 +808,7 @@ getLocals(sccs *s, delta *g, char *name)
 	for (d = s->table; d != g; d = d->next) {
 		assert(d);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
-		unless (t = fopen(tmpf, "w")) {
+		unless (t = fopen(tmpf, "wb")) {
 			perror(tmpf);
 			exit(0);
 		}
@@ -990,7 +991,7 @@ init(FILE *p, int flags, char **resyncRootp)
 		} else {
 			*buf = '\0';
 		}
-		if ((f = fopen("RESYNC/BitKeeper/tmp/patch", "r")) &&
+		if ((f = fopen("RESYNC/BitKeeper/tmp/patch", "rb")) &&
 		    fnext(file, f)) {
 			fclose(f);
 			chop(file);
@@ -1045,7 +1046,7 @@ init(FILE *p, int flags, char **resyncRootp)
 			strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
 			sprintf(pendingFile, "PENDING/%s.%02d", buf, i);
 			if (exists(pendingFile)) continue;
-			if (f = fopen(pendingFile, "w+")) {
+			if (f = fopen(pendingFile, "wb+")) {
 				break;
 			} else {
 				SHOUT();
@@ -1060,7 +1061,7 @@ init(FILE *p, int flags, char **resyncRootp)
 				cleanup(CLEAN_RESYNC);
 			}
 		}
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
+		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
 			perror("RESYNC/BitKeeper/tmp/patch");
 			exit(1);
 		}
@@ -1192,6 +1193,7 @@ fileCopy(char *from, char *to)
 	int	n, from_fd, to_fd;
 	struct	stat sb;
 
+	/* NT note: must read and write in binary mode */
 	mkdirp(to);
 	if ((from_fd = open(from, 0, 0)) == -1) {
 		perror(from);
@@ -1237,8 +1239,10 @@ void
 cleanup(int what)
 {
 	if (what & CLEAN_RESYNC) {
+		char cmd[1024];
 		assert(exists("RESYNC"));
-		system("/bin/rm -rf RESYNC");
+		sprintf(cmd, "%s -rf RESYNC", RM);
+		system(cmd);
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}

@@ -10,6 +10,7 @@ main(void)
 	int	hwest, mwest;
 	char	sign = '+';
 
+	platformSpecificInit(NULL);
 	offset = localtimez(tt, &tm);
 	
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", &tm);

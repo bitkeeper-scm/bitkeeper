@@ -2,9 +2,9 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-#define	FTW_F		1			/* regular file */
-#define	FTW_D		2			/* directory */
-#define	FTW_NS		5			/* unstatable object */
+#define	LFTW_F		1			/* regular file */
+#define	LFTW_D		2			/* directory */
+#define	LFTW_NS		5			/* unstatable object */
 
 /*
  * sfiles - find SCCS files
@@ -43,12 +43,16 @@ MDBM	*csetDB;	/* database of {file if, tip id} */
 int	dups;
 int	mixed;		/* running in mixed long/short mode */
 int	file(char *f, int (*func)());
-int	func(const char *filename, const struct stat *sb, int flag);
+int	func(const char *filename, struct stat *sb, int flag);
 int	hasDiffs(char *file);
 int	isSccs(char *s);
 void	rebuild(void);
-int	caches(const char *filename, const struct stat *sb, int flag);
+int	caches(const char *filename, struct stat *sb, int flag);
 char	*name(char *);
+int	lftw(const char *dir,
+	    int(*func)(const char *file, struct stat *sb, int flag),
+	    int depth);
+
 
 int
 main(int ac, char **av)
@@ -56,6 +60,7 @@ main(int ac, char **av)
 	int	c, i;
 	char	*root = 0, *path;
 	
+	platformSpecificInit(NULL); 
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
@@ -101,6 +106,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		lftw(path, func, 15);
 	} else {
 		for (i = optind; i < ac; ++i) {
+			localName2bkName(av[i], av[i]);
 			if (isdir(av[i])) {
 				path =  xFlg ? av[i] : sPath(av[i], 1);
 				lftw(path, func, 15);
@@ -140,7 +146,7 @@ file(char *f, int (*func)())
 }
 
 int
-func(const char *filename, const struct stat *sb, int flag)
+func(const char *filename, struct stat *sb, int flag)
 {
 	register char *file = (char *)filename;
 	register char *s;
@@ -274,8 +280,9 @@ rebuild()
 {
 	int	i;
 	sccs	*cset;
+	char	csetName[512] = "SCCS/s.ChangeSet";
 
-	unless (cset = sccs_init("SCCS/s.ChangeSet", 0, 0)) {
+	unless (cset = sccs_init(csetName, 0, 0)) {
 		perror("sfiles: can't init ChangeSet");
 		exit(1);
 	}
@@ -372,7 +379,7 @@ save(sccs *sc, MDBM *idDB, char *buf)
 }
 
 int
-caches(const char *filename, const struct stat *sb, int flag)
+caches(const char *filename, struct stat *sb, int flag)
 {
 	register char *file = (char *)filename;
 	sccs	*sc;
@@ -473,11 +480,11 @@ caches(const char *filename, const struct stat *sb, int flag)
 _ftw_get_flag(const char *dir, struct stat *sb)
 {
 
-	if (lstat(dir, sb) != 0) return FTW_NS;
-	if ((S_ISDIR(sb->st_mode))) return FTW_D;
+	if (lstat(dir, sb) != 0) return LFTW_NS;
+	if ((S_ISDIR(sb->st_mode))) return LFTW_D;
 
 	/* everything else is considered a file */
-	return FTW_F;
+	return LFTW_F;
 }
 
 
@@ -502,7 +509,7 @@ lftw(const char *dir,
 
 	if ((rc = (*func)(dir, &sbuf, flag)) != 0) return rc;
 
-	if (flag != FTW_D) return 0;
+	if (flag != LFTW_D) return 0;
 
 	/*
 	 * if we get here, the top level node is a directory

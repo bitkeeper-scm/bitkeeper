@@ -25,9 +25,10 @@ RANLIB	= ranlib
 
 
 PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
-	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o 
+	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
+	  port/disksp.o
 SCCSOBJ	= slib.o range.o newrev.o getopt.o popen.o libdiff.o \
-	  sfiles.o purify.o zgets.o disksp.o  \
+	  sfiles.o purify.o zgets.o maketmp.o mkdir.o \
 	  dirname.o localtm.o ${PORTOBJ}
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
@@ -42,8 +43,11 @@ BINOBJ  = admin.o csetmark.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  fdiff.o check.o
 
 SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
-	  sfiles.c purify.c zgets.c disksp.c dirname.c fdiff.c \
-	  mdbm/mdbm.c mdbm/hash.c mdbm/debug.c \
+	  sfiles.c purify.c zgets.c dirname.c maketmp.c mkdir.c \
+	  fdiff.c mdbm/mdbm.c mdbm/hash.c mdbm/debug.c \
+	  port/getinput.c port/gethost.c port/fullname.c port/platforminit.c \
+	  port/sccs_root.c port/randomBits.c port/spawn.c port/samepath.c \
+	  port/disksp.c \
 	  zlib/adler32.c zlib/compress.c zlib/crc32.c zlib/gzio.c \
 	  zlib/uncompr.c zlib/deflate.c zlib/trees.c zlib/zutil.c \
 	  zlib/inflate.c zlib/infblock.c zlib/inftrees.c zlib/infcodes.c \
@@ -199,10 +203,10 @@ libsccs.a: $(SCCSOBJ)
 	$(AR) cr libsccs.a $(SCCSOBJ)
 	-$(RANLIB) libsccs.a
 
-cset_todo: cset_todo.o mdbm/libmdbm.a
-	$(CC) $(CFLAGS) -o cset_todo cset_todo.o $(LMDBM)
-zone: zone.o localtm.o
-	$(CC) $(CFLAGS) -o zone zone.o localtm.o
+cset_todo: cset_todo.o port/platforminit.o mdbm/libmdbm.a
+	$(CC) $(CFLAGS) -o cset_todo cset_todo.o port/platforminit.o $(LMDBM)
+zone: zone.o localtm.o port/platforminit.o
+	$(CC) $(CFLAGS) -o zone zone.o localtm.o port/platforminit.o
 fdiff: fdiff.o purify.o
 	$(CC) $(CFLAGS) fdiff.o purify.o -o fdiff
 

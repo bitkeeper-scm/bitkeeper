@@ -12,7 +12,6 @@
 #include "zgets.h"
 WHATSTR("@(#)%K%");
 
-delta	*sfind(sccs *s, int serial);
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, int flags, delta *d);
 private int	samebranch(delta *a, delta *b);
@@ -24,9 +23,6 @@ private void	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int oldsize, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
-#ifndef	ANSIC
-int		sig(int what, int sig);
-#endif
 private int	getflags(sccs *s, char *buf);
 private int	addsym(sccs *s, delta *d, delta *metad, char *a, char *b);
 private void	inherit(sccs *s, int flags, delta *d);
@@ -72,6 +68,8 @@ private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 delta *		sccs_kid(sccs *s, delta *d);  /* In range.c */
 private	delta*	getCksumDelta(sccs *s, delta *d);
+private int	fprintDelta(FILE *,
+			char *, const char *, const char *, sccs *, delta *);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -752,7 +750,7 @@ dinsert(sccs *s, int flags, delta *d)
  * Find the delta referenced by the serial number.
  */
 delta *
-sfind(sccs *s, int serial)
+sfind(sccs *s, ser_t serial)
 {
 	delta	*t;
 
@@ -1455,19 +1453,6 @@ relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 }
 
 #ifdef SPLIT_ROOT
-/*
- * make directory (including the parent)
- * TODO: replace the "system" call
- * will local mkdir() implementation
- */
-int
-mkDir(char *dir)
-{
-	char cmd[1024];
-
-	sprintf(cmd, "mkdir -p %s", dir);
-	return (system(cmd));
-}
 
 /*
  * If we get a rootfile, (i.e split root),
@@ -3271,7 +3256,10 @@ sccs_init(char *name, u32 flags, char *root)
 	} else {
 		extern int errno;
 		s->fd = open(s->sfile, 0, 0);
-		if ((s->fd < 0) && (errno != ENOENT)) perror("sccs_init");
+		if ((s->fd < 0) && (errno != ENOENT)) {
+			fprintf(stderr, "sccs_init: ");
+			perror(s->sfile);
+		}
 		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
 	}
 	if ((int)s->mmap == -1) {
@@ -3294,7 +3282,9 @@ sccs_init(char *name, u32 flags, char *root)
 			return (0);
 		}
 	}
-	signal(SIGPIPE, SIG_IGN);
+#ifndef WIN32
+	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
+#endif
 #ifdef	ANSIC
 	signal(SIGINT, SIG_IGN);
 #else
@@ -4850,6 +4840,21 @@ out:			if (slist) free(slist);
 		return (1);
 	}
 
+	/* Win32 restriction, must do this before we chmod to read only */
+	if (d && (flags&GET_DTIME) && !(flags&PRINT)){
+		struct utimbuf ut;
+
+		assert(d->sdate);
+		ut.actime = ut.modtime = date2time(d->sdate, d->zone, EXACT);
+		if (utime(s->gfile, &ut) != 0) {
+			char msg[1024];
+			
+			sprintf(msg, "%s: Can not set modificatime; ", s->gfile);
+			perror(msg);
+			s->state |= S_WARNED;
+			goto out;
+		}
+	}
 	if (flags&GET_EDIT) {
 		if (d->mode) {
 			chmod(s->gfile, UMASK(d->mode));
@@ -4864,13 +4869,6 @@ out:			if (slist) free(slist);
 		}
 	}
 
-	if (d && (flags&GET_DTIME) && !(flags&PRINT)){
-		struct utimbuf ut;
-
-		assert(d->sdate);
-		ut.actime = ut.modtime = date2time(d->sdate, d->zone, EXACT);
-		utime(s->gfile, &ut);
-	}
 
 #ifdef S_ISSHELL
 	if ((s->state & S_ISSHELL) && ((flags & PRINT) == 0)) {
@@ -5199,7 +5197,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	sprintf(tmpfile, "/tmp/%s-%s-%d", basenm(s->gfile), d->rev, getpid());
+	sprintf(tmpfile, "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), d->rev, getpid());
 	popened = openOutput(encoding, printOut, &out);
 	if (type == GET_HASHDIFFS) {
 		int	lines = 0;
@@ -5889,7 +5887,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	int	print = 0, different;
 	delta	*d;
 	char	sbuf[MAXLINE];
-	char	*name = 0;
+	char	*name = 0, *mode = "rb";
 	int	tmpfile = 0;
 	BUF	(fbuf);
 
@@ -5914,7 +5912,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
 		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
-		if (r && !streq(d->pathname, r)) RET(1);
+		if (r && !PathEqual(d->pathname, r)) RET(1);
 	}
 
 	/* 
@@ -5924,7 +5922,8 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	 */
 	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
 		tmpfile = 1;
-		sprintf(sbuf, "%s/getU%d", TMP_PATH, getpid());
+		sprintf(sbuf, "%s/getUXXXXXX", TMP_PATH);
+		unless (maketmp(sbuf)) RET(-1);
 		name = strdup(sbuf);
 		if (deflate_gfile(s, name)) {
 			unlink(name);
@@ -5933,9 +5932,10 @@ sccs_hasDiffs(sccs *s, u32 flags)
 		}
 	} else {
 		if (fix_lf(s->gfile) == -1) return (-1); 
+		mode = "rt";
 		name = strdup(s->gfile);
 	}
-	unless (tmp = fopen(name, "r")) {
+	unless (tmp = fopen(name, mode)) {
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
@@ -5973,12 +5973,12 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	RET(1);
 out:
 	if (s->encoding & E_GZIP) zgets_done();
+	if (tmp) fclose(tmp); /* must close before we unlink */
 	if (name) {
 		if (tmpfile) unlink(name);
 		free(name);
 	}
 	free_pfile(&pf);
-	if (tmp) fclose(tmp);
 	if (slist) free(slist);
 	if (state) free(state);
 	return (different);
@@ -6091,7 +6091,7 @@ diff_gmode(sccs *s, pfile *pf)
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
 		char *r = _relativeName(s->gfile, 0, 0, 1, 0);
-		if (r && !streq(d->pathname, r)) return (3);
+		if (r && !PathEqual(d->pathname, r)) return (3);
 	}
 
 	unless (sameFileType(s, d)) return (1);
@@ -6177,7 +6177,8 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	 */
 	if (isRegularFile(s->mode)) {
 		if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
-			sprintf(new, "%s/getU%d", TMP_PATH, getpid());
+			sprintf(new, "%s/getUXXXXXX", TMP_PATH);
+			unless (maketmp(new)) return (-1);
 			if (IS_WRITABLE(s)) {
 				if (deflate_gfile(s, new)) {
 					unlink(new);
@@ -6205,7 +6206,8 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	d = findrev(s, pf->oldrev);
 	assert(d);
 	if (isRegularFile(d->mode)) {
-		sprintf(old, "%s/get%d", TMP_PATH, getpid());
+		sprintf(old, "%s/getXXXXXX", TMP_PATH);
+		unless (maketmp(old)) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    GET_ASCII|SILENT|PRINT, old)) {
 			unlink(old);
@@ -6403,7 +6405,8 @@ sccs_clean(sccs *s, u32 flags)
 			if (s->state & S_RCS) flags |= GET_RCSEXPAND;
 		}
 	}
-	sprintf(tmpfile, "%s/diffg%d", TMP_PATH, getpid());
+	sprintf(tmpfile, "%s/diffgXXXXXX", TMP_PATH);
+	unless (maketmp(tmpfile)) return (1);
 	/*
 	 * hasDiffs() ignores keyword expansion differences.
 	 * And it's faster.
@@ -7954,7 +7957,7 @@ out:
 			}
 			goto user;
 		}
-		desc = fopen(text, "r");
+		desc = fopen(text, "rt"); /* must be text mode */
 		if (!desc) {
 			fprintf(stderr, "admin: can't open %s\n", text);
 			error = 1; sc->state |= S_WARNED;
@@ -8185,11 +8188,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 private void
 doctrl(sccs *s, char *pre, int val, FILE *out)
 {
-	char	small[10];
+	char	tmp[10];
 
-	sertoa(small, val);
+	sertoa(tmp, (unsigned short) val);
 	fputdata(s, pre, out);
-	fputdata(s, small, out);
+	fputdata(s, tmp, out);
 	fputdata(s, "\n", out);
 }
 
@@ -8844,159 +8847,6 @@ isValidUser(char *u)
 	return 1;
 }
 
-#ifndef	WIN32
-#ifdef	ANSIC
-private jmp_buf jmp;
-
-void	abort_ci() { longjmp(jmp, 1); }
-#endif
-
-int
-sccs_getComments(char *file, char *rev, delta *n)
-{
-	char	buf2[1024];
-
-	fprintf(stderr,
-	    "End comments with \".\" by itself, "
-	    "blank line, or EOF.\n");
-	assert(file);
-	if (rev) {
-		fprintf(stderr, "%s %s>>  ", file, rev);
-	} else {
-		fprintf(stderr, "%s>>  ", file);
-	}
-#ifdef	ANSIC
-	if (setjmp(jmp)) {
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
-		return (-1);
-	}
-	signal(SIGINT, abort_ci);
-#else
-	sig(UNBLOCK, SIGINT);
-#endif
-	while (fnext(buf2, stdin)) {
-		char	*t;
-
-		if (buf2[0] == '\n' || streq(buf2, ".\n"))
-			break;
-		/* Null the newline */
-		for (t = buf2; *t; t++);
-		t[-1] = 0;
-		n->comments = addLine(n->comments, strdup(buf2));
-		if (rev) {
-			fprintf(stderr, "%s %s>>  ", file, rev);
-		} else {
-			fprintf(stderr, "%s>>  ", file);
-		}
-	}
-#ifndef	ANSIC
-	if (sig(CAUGHT, SIGINT)) {
-		sig(BLOCK, SIGINT);
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
-		return (-1);
-	}
-#endif
-	return (0);
-}
-
-int
-sccs_getHostName(char *file, char *rev, delta *n)
-{
-	char	buf2[1024];
-
-	assert(file);
-	if (rev) {
-		fprintf(stderr, "%s %s>>  ", file, rev);
-	} else {
-		fprintf(stderr, "%s>>  ", file);
-	}
-#ifdef	ANSIC
-	if (setjmp(jmp)) {
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
-		return (-1);
-	}
-	signal(SIGINT, abort_ci);
-#else
-	sig(UNBLOCK, SIGINT);
-#endif
-	while (fnext(buf2, stdin)) {
-		char	*t;
-
-		/* Null the newline */
-		for (t = buf2; *t; t++);
-		t[-1] = 0;
-		if (isValidHost(buf2)) {
-			n->hostname = strdup(buf2);
-			break;
-		}
-		fprintf(stderr, "hostname of your machine>>  ");
-	}
-#ifndef	ANSIC
-	if (sig(CAUGHT, SIGINT)) {
-		sig(BLOCK, SIGINT);
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
-		return (-1);
-	}
-#endif
-	return (0);
-}
-
-
-int
-sccs_getUserName(char *file, char *rev, delta *n)
-{
-	char	buf2[1024];
-
-	assert(file);
-	if (rev) {
-		fprintf(stderr, "%s %s>>  ", file, rev);
-	} else {
-		fprintf(stderr, "%s>>  ", file);
-	}
-#ifdef	ANSIC
-	if (setjmp(jmp)) {
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
-		return (-1);
-	}
-	signal(SIGINT, abort_ci);
-#else
-	sig(UNBLOCK, SIGINT);
-#endif
-	while (fnext(buf2, stdin)) {
-		char	*t;
-
-		/* Null the newline */
-		for (t = buf2; *t; t++);
-		t[-1] = 0;
-		if (isValidUser(buf2)) {
-			n->user = strdup(buf2);
-			break;
-		}
-		fprintf(stderr, "user name>>  ");
-	}
-#ifndef	ANSIC
-	if (sig(CAUGHT, SIGINT)) {
-		sig(BLOCK, SIGINT);
-		fprintf(stderr,
-		    "\nCheck in aborted due to interrupt.\n");
-		sccs_freetree(n);
-		return (-1);
-	}
-#endif
-	return (0);
-}
-#endif	/* WIN32 */
-
 /*
  * Add a metadata delta to the tree.
  * There are no contents, just various fields which are defined in the
@@ -9604,7 +9454,8 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		diffFile[0] = 0;
 	} else {
 		strcpy(spaces, "=====");
-		sprintf(diffFile, "%s/diffs%d", TMP_PATH, getpid());
+		sprintf(diffFile, "%s/diffsXXXXXX", TMP_PATH);
+		unless (maketmp(diffFile)) return (-1);
 		diff(leftf, rightf, kind, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
@@ -9694,8 +9545,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	const char *suffix, int slen, sccs *s, delta *d)
 {
 	char	*p, *q;
-	private void	fprintDelta(FILE *, char *, const char *, const char *,
-				    sccs *, delta *);
 #define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
 #define	fc(c)	show_d(out, vbuf, "%c", c)
 #define	fd(d)	show_d(out, vbuf, "%d", d)

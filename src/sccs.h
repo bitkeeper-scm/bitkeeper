@@ -596,6 +596,9 @@ sccs	*check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 MDBM	*csetIds(sccs *cset, char *rev, int all);
+#ifndef ANSIC
+int     sig(int, int);
+#endif                                 
 void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);
 char	*sPath(char *name, int isDir);
@@ -603,7 +606,7 @@ delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, char *initFile);
 int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
-delta	*sfind(sccs *s, int ser);
+delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
 char 	*sccs_iskeylong(char *key);
