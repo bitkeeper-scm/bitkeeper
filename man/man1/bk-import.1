@@ -70,6 +70,15 @@ Do not commit the ChangeSet.
 .B \-f
 Force; do not prompt for list editing.
 .tp
+.B \-F
+Fast; run more quickly for large imports.
+.B NOTICE:
+use this option 
+.B only
+when you know that this is the only \*(BK activity you are doing. 
+Using this option on two parallel imports may cause \*(BK consistency
+problems.
+.tp
 .B \-H 
 do not pass \-h option to rcs2sccs (turns off verification, faster, unsafe).
 .tp

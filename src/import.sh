@@ -27,8 +27,7 @@ import() {
 	UNDOS=
 	VERBOSE=-q
 	VERIFY=-h
-	CLOCK_DRIFT=1
-	while getopts ACc:efHij:l:rS:t:uvxq opt
+	while getopts ACc:efFHij:l:rS:t:uvxq opt
 	do	case "$opt" in
 		A) FIX_ATTIC=YES;;		# doc 2.0
 		c) CUTOFF=-c$OPTARG;;		# doc 2.0
@@ -36,6 +35,8 @@ import() {
 		e) EX=YES;;			# undoc 2.0 - same as -x
 		x) EX=YES;;			# doc 2.0
 		f) FORCE=YES;;			# doc 2.0
+		F) CLOCK_DRIFT=5
+		   export CLOCK_DRIFT;;		# doc 2.1
 		H) VERIFY=;;			# doc 2.0
 		i) INC=YES;;			# doc 2.0
 		j) PARALLEL=$OPTARG;;		# doc 2.0
@@ -48,6 +49,10 @@ import() {
 		v) VERBOSE=;;			# doc 2.0
 		esac
 	done
+	test X$CLOCK_DRIFT != X -a X$PARALLEL != X1 && {
+		echo Parallel imports may not set CLOCK_DRIFT
+		exit 1
+	}
 	shift `expr $OPTIND - 1`
 	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
 	then	bk help -s import; exit 1;
@@ -66,7 +71,6 @@ import() {
 		then	echo import: no include/excludes allowed with patch files
 			exit 1
 		fi
-		unset CLOCK_DRIFT
 	else	if [ ! -d "$1" ]
 		then	echo import: "$1" is not a directory
 			exit 1
