@@ -469,6 +469,50 @@ _sdiffs() {		# /* doc 2.0 as diffs -s */
 	bk diffs -s "$@"
 }
 
+
+# Undelete a file
+_unrm () {
+	if [ "$1" = "" ]; then echo "Usage: bk unrm file"; exit 1; fi
+	__cd2root
+	cd BitKeeper/deleted
+	FORCE=no
+	if [ "$1" = "-f" ]; then FORCE=yes; shift; fi
+	rpath="$1"
+	LIST=/tmp/LIST$$
+	bk -r. prs -Dhnpr+ -d':GFILE:|:DPN:|:I:' | \
+					grep '^.*|.*'"$rpath"'.*|.*' | \
+					sort >$LIST
+	while read n
+	do
+		GFILE=`echo $n | cut -d'|' -f1 -`
+		RPATH=`echo $n | cut -d'|' -f2 -`
+		REV=`echo $n | cut -d'|' -f3 -`
+		echo "------------------------------------------------"
+		echo "File:		$GFILE"
+		bk prs -hnr+ \
+			-d'Deleted on:\t :D: :T: :TZ: by :USER:@:HOST:' $GFILE
+		bk prs -hr"$REV" $GFILE
+		echo -n "Undelete \"$GFILE\" back to \"$RPATH\" ? (y|n)> "
+		if [ "$FORCE" = "yes" ]
+		then
+			ans=y
+			echo "y"
+		else
+			read ans < /dev/tty
+		fi
+		if [ "$ans" = "y" -o "$ans" = "Y" ]
+		then
+			echo "Moving \"$GFILE\" -> \"$RPATH\""
+			bk -R mv "BitKeeper/deleted/$GFILE" "$RPATH"
+		else
+			echo "\"$GFILE\" skipped."
+			echo ""
+		fi
+	done < $LIST 
+	rm -f $LIST
+}
+
+
 _mvdir() {		# /* doc 2.0 */
 
 	case `bk version` in

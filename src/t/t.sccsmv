@@ -159,6 +159,11 @@ bk sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
 cd ..
+echo $N Test bk unrm ................................................$NL
+bk unrm -f file3  > /dev/null
+if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit; fi
+bk rm A/file3
+echo OK
 echo $N Test sccsmv to directory that does not exist ................$NL
 date > C/file6
 bk new $Q C/file6

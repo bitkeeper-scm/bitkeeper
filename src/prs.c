@@ -11,13 +11,14 @@ prs_main(int ac, char **av)
 	delta	*e;
 	int	reverse = 0, doheader = 1;
 	int	init_flags = INIT_NOCKSUM|INIT_SAVEPROJ;
-	int	flags = 0;
+	int	flags = 0, sf_flags = 0;
 	int	opposite = 0;
 	int	rc = 0, c;
 	char	*name, *xrev = 0;
 	char	*cset = 0;
 	int	noisy = 0;
 	int	expand = 1;
+	int	want_parent = 0;
 	char	*dspec = NULL, *year4 = NULL;
 	project	*proj = 0;
 	RANGE_DECL;
@@ -27,7 +28,7 @@ prs_main(int ac, char **av)
 		system("bk help prs");
 		return (1);
 	}
-	while ((c = getopt(ac, av, "abc;C;d:hmMnor|x:vY")) != -1) {
+	while ((c = getopt(ac, av, "abc;C;d:DhmMnopr|x:vY")) != -1) {
 		switch (c) {
 		    case 'a':					/* doc 2.0 */
 			/* think: -Ma, the -M set expand already */
@@ -37,11 +38,13 @@ prs_main(int ac, char **av)
 		    case 'b': reverse++; break;			/* doc 2.0 */
 		    case 'C': cset = optarg; break;		/* doc 2.0 */
 		    case 'd': dspec = optarg; break;		/* doc 2.0 */
+		    case 'D': sf_flags |= SF_DELETES; break;
 		    case 'h': doheader = 0; break;		/* doc 2.0 */
 		    case 'm': flags |= PRS_META; break;		/* doc 2.0 */
 		    case 'M': expand = 3; break;		/* doc 2.0 */
 		    case 'n': flags |= PRS_LF; break;		/* doc 2.0 */
 		    case 'o': opposite = 1; doheader = 0; break; /* doc 2.0 */
+		    case 'p': want_parent = 1; break;
 		    case 'x': xrev = optarg; break;		/* doc 2.0 */
 		    case 'v': noisy = 1; break;			/* doc 2.0 */
 		    case 'Y': year4 = strdup("BK_YEAR4=1");	/* undoc 2.0 */
@@ -59,7 +62,7 @@ usage:			system("bk help -s prs");
 		fprintf(stderr, "prs: -r or -C but not both.\n");
 		exit(1);
 	}
-	for (name = sfileFirst("prs", &av[optind], 0);
+	for (name = sfileFirst("prs", &av[optind], sf_flags);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, init_flags, proj)) continue;
 		unless (proj) proj = s->proj;
@@ -121,6 +124,34 @@ usage:			system("bk help -s prs");
 				} else {
 					e = findrev(s, xrev);
 					if (e) e->flags &= ~D_SET;
+				}
+			}
+		}
+
+		if (want_parent) {
+			unless (SET(s)) {
+				for (e = s->rstop; e; e = e->next) {
+					e->flags |= D_SET;
+					if (e == s->rstart) break;
+				}
+				s->state |= S_SET;
+			}
+			for (e = s->table; e; e = e->next) {
+				if (e->flags & D_SET) {
+					e->flags &= ~D_SET;
+					if (e->parent) {
+						e->parent->flags |= D_RED;
+					} else {
+						fprintf(stderr,
+					      "Warning: %s: %s has no parent\n",
+						    s->gfile, e->rev);
+					}
+				}
+			}
+			for (e = s->table; e; e = e->next) {
+				if (e->flags & D_RED) {
+					e->flags |= D_SET;
+					e->flags &= ~D_RED;
 				}
 			}
 		}
