@@ -894,19 +894,6 @@ _rmgone() {
 	}' | xargs -n 1 $CMD
 }
 
-# return the latest rev in this tree that also exists in the
-# remote tree.
-_repogca() {
-	if [ "X$1" = "X" ]; then
-	    remote=`bk parent -qp`
-	else
-	    remote=$1
-	fi
-	bk -R changes -e -L -nd:REV: $remote > /tmp/LOCAL.$$
-	bk -R prs -hnd:REV: ChangeSet | fgrep -v -f/tmp/LOCAL.$$ | head -1
-	rm -f /tmp/LOCAL.$$
-}
-
 # Union the contents of all meta files which match the base name.
 # Optimized to not look in any files which do not match the base name.
 _meta_union() {

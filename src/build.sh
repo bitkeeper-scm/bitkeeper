@@ -32,7 +32,7 @@ ms_env()
 }
 
 test "X$G" = X && G=-g
-test "X$CC" = X && CC=gcc
+test "X$CC" = X && CC="gcc -pipe"
 test "X$LD" = X && LD=$CC
 test "X$WARN" = X && WARN=YES  
 

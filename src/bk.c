@@ -140,6 +140,7 @@ int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
 int	receive_main(int, char **);
 int	renumber_main(int, char **);
+int	repogca_main(int, char **);
 int	relink_main(int, char **);
 int	repo_main(int, char **);
 int	resolve_main(int, char **);
@@ -319,6 +320,7 @@ struct	command cmdtbl[] = {
 	{"relink", relink_main},
 	{"renumber", renumber_main},		/* doc 2.0 */
 	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
+	{"repogca", repogca_main},
 	{"resolve", resolve_main},		/* doc 2.0 */
 	{"rev2cset", r2c_main},	/* alias */	/* doc 2.0 as r2c */
 	{"root", root_main},			/* doc 2.0 */
