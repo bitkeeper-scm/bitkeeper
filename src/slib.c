@@ -10626,7 +10626,7 @@ obscure(int uu, char *buf)
 	int	len;
 	char	*new;
 
-	for (len = 0; buf[len] != '\n'; len++);
+	for (len = 0; buf[len] && (buf[len] != '\n'); len++);
 	new = malloc(len+2);
 	strncpy(new, buf, len+1);
 	new[len+1] = 0;

@@ -34,7 +34,7 @@ echo OK
 
 echo $N Save a copy of the repository ...............................$NL
 bk -r get $Q
-tar cf $HERE/TAR `bk sfiles -g`
+tar cf ../TAR `bk sfiles -g | bk undos`
 echo OK
 
 echo $N Make sure that bk obscure fails .............................$NL
