@@ -74,7 +74,6 @@ pull_main(int ac, char **av)
 		}
 	}
 
-	loadNetLib();
 	has_proj("pull");
 	r = remote_parse(av[optind]);
 	unless (r) {
@@ -413,11 +412,11 @@ done:	putenv("BK_RESYNC=FALSE");
 	unlink(probe_list);
 
 	/*
-	 * XXX This is a workaround for a csh fd lead:
+	 * XXX This is a workaround for a csh fd leak:
 	 * Force a client side EOF before we wait for server side EOF.
-	 * Needed only if remote is running csh; csh have a fd lead
-	 * which cause it fail to send us EOF when we close stdout and stderr.
-	 * Csh only send us EOF and the bkd exit, yuck !!
+	 * Needed only if remote is running csh; csh has a fd leak
+	 * which causes it fail to send us EOF when we close stdout
+	 * and stderr.  Csh only sends us EOF and the bkd exit, yuck !!
 	 */
 	disconnect(r, 1);
 

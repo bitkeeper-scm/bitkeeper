@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/utime.h>
+#include <winsock2.h>
 #include "../../uwtlib/misc.h"
 #include "../../uwtlib/stat.h"
 #include "../../uwtlib/times.h"

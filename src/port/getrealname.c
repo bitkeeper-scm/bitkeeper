@@ -172,16 +172,6 @@ err:	fprintf(stderr, "getRealName failed: mypath=%s\n", mypath);
 #else
 
 /*
- * We need the GetLongPathName function.  We use the NewAPIs.h header
- * from the Windows SDK to include a emulated version on old win98. 
- */
-
-#define	WANT_GETLONGPATHNAME_WRAPPER
-#define	COMPILE_NEWAPIS_STUBS
-
-#include "../win32/uwtlib/NewAPIs.h"
-
-/*
  * File the official name for a file on the disk.  The name we pass in
  * might be a short name, or it might have the wrong case.  The quick way
  * to do this on Windows is to convert to the short name and then back

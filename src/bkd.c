@@ -3,28 +3,23 @@
 private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
-private	void	log_cmd(int ac, char **av);
+private	void	log_cmd(char *peer, int ac, char **av);
 private	void	usage(void);
 
 char 		*logRoot, *vRootPrefix;
-int		licenseServer[2];	/* bkweb license pipe */
-time_t		licenseEnd = 0;		/* when a temp bk license expires */
-time_t		requestEnd = 0;
-
-#define	Respond(s)	write(licenseServer[1], s, 4)
-
 
 int
 bkd_main(int ac, char **av)
 {
 	int	c;
+	int	port = 0;
+	int	daemon = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help bkd");
 		return (1);
 	}
 
-	loadNetLib();
 	bzero(&Opts, sizeof(Opts));	/* just in case */
 	Opts.errors_exit = 1;
 
@@ -34,16 +29,16 @@ bkd_main(int ac, char **av)
 	 * Unix note: -E/-s/-S/-R/-z options have no effect on Unix;
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
-	 * XXX Win32 note: WARNING: If you add a new optoin,  you _must_
+	 * XXX Win32 note: WARNING: If you add a new option,  you _must_
 	 * XXX propagate the option in  bkd_install_service() and 
 	 * XXX bkd_service_loop(). The NT service is a 3 level spawning
 	 * XXX architechture!! (The above functions are in port/bkd_server.c)
 	 */
 	while ((c = getopt(ac, av,
-			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:z")) != -1) {
+			"c:CdDeE:g:hil|L:p:P:qRSt:u:V:x:")) != -1) {
 		switch (c) {
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
-		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
+		    case 'd': daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
 		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
@@ -54,13 +49,12 @@ bkd_main(int ac, char **av)
 			break;
 		    case 'V':	/* XXX - should be documented */
 			vRootPrefix = strdup(optarg); break;
-		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
+		    case 'p': port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
-		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
 		    case 'S': 					/* undoc 2.0 */
-			Opts.start = 1; Opts.daemon = 1; break;
+			Opts.start = 1; daemon = 1; break;
 		    case 'R': 					/* doc 2.0 */
-			Opts.remove = 1; Opts.daemon = 1; break;
+			Opts.remove = 1; daemon = 1; break;
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x':					/* doc 2.0 */
 			exclude(optarg); 
@@ -71,11 +65,14 @@ bkd_main(int ac, char **av)
 		    case 'L': logRoot = strdup(optarg); break;	/* undoc */
 		    case 'q': Opts.quiet = 1; break; 		/* undoc */
 		    case 't': Opts.alarm = atoi(optarg); break;	/* undoc */
-		    case 'z': Opts.nt_service = 1; break;	/* undoc */
 		    default: usage();
 	    	}
 	}
 
+	if ((Opts.start || Opts.remove) && !win32()) {
+		fprintf(stderr, "bkd: -S and -R only make sense on Windows\n");
+		return (1);
+	}
 	if (logRoot && !IsFullPath(logRoot)) {
 		fprintf(stderr,
 		    "bad log root: %s: must be a full path name\n", logRoot);
@@ -88,8 +85,8 @@ bkd_main(int ac, char **av)
 		return (1);
 	}
 
-	if (Opts.port) {
-		Opts.daemon = 1;
+	if (port) {
+		daemon = 1;
 		if (Opts.interactive) {
 			fprintf(stderr,
 			    "Disabling interactive in daemon mode\n");
@@ -99,14 +96,9 @@ bkd_main(int ac, char **av)
 	core();
 	putenv("PAGER=cat");
 	putenv("_BK_IN_BKD=1");
-	if (Opts.daemon) {
-		if (tcp_pair(licenseServer) == 0) {
-			bkd_server(ac, av);
-		} else {
-			fprintf(stderr,
-			    "bkd: ``%s'' when initializing license server\n",
-			    strerror(errno));
-		}
+	if (daemon) {
+		safe_putenv("BKD_PORT=%d", port ? port : BK_PORT);
+		bkd_server(ac, av);
 		exit(1);
 		/* NOTREACHED */
 	} else {
@@ -122,14 +114,14 @@ bkd_main(int ac, char **av)
 }
 
 private	void
-usage()
+usage(void)
 {
 	system("bk help -s bkd");
 	exit(1);
 }
 
 void
-drain()
+drain(void)
 {
 	char	buf[1024];
 	int	i = 0;
@@ -145,7 +137,7 @@ drain()
 }
 
 off_t
-get_byte_count()
+get_byte_count(void)
 {
 
 	char buf[MAXPATH];
@@ -184,15 +176,20 @@ save_byte_count(unsigned int byte_count)
 }
 
 void
-do_cmds()
+do_cmds(void)
 {
 	int	ac;
 	char	**av;
 	int	i, ret, httpMode;
 	int	debug = getenv("BK_DEBUG") != 0;
 	char	*peer = 0;
+	int	logged_peer = 0;
 
-	if (issock(1)) peer = peeraddr(1);
+	unless (peer = getenv("BKD_PEER")) {
+		peer = "local";
+		logged_peer = 1;
+	}
+
 	httpMode = Opts.http_hdr_out;
 	while (getav(&ac, &av, &httpMode)) {
 		if (debug) {
@@ -202,24 +199,24 @@ do_cmds()
 		}
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
-			if (Opts.log) log_cmd(ac, av);
+			if (Opts.log) log_cmd(peer, ac, av);
 			if (!bk_proj ||
 			    !bk_proj->root || !isdir(bk_proj->root)) {
 				if (bk_proj) proj_free(bk_proj);
 				bk_proj = proj_init(0);
 			}
 
-			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
+			if (Opts.http_hdr_out) http_hdr();
 			cmdlog_start(av, httpMode);
 
 			/*
 			 * Do the real work
 			 */
 			ret = cmds[i].cmd(ac, av);
-			if (peer) {
+			if (peer && !logged_peer) {
 				/* first command records peername */
 				cmdlog_addnote("peer", peer);
-				peer = 0;
+				logged_peer = 1;
 			}
 			if (debug) ttyprintf("cmds[%d] = %d\n", i, ret);
 
@@ -249,7 +246,7 @@ do_cmds()
 }
 
 private	void
-log_cmd(int ac, char **av)
+log_cmd(char *peer, int ac, char **av)
 {
 	time_t	t;
 	struct	tm *tp;
@@ -263,7 +260,7 @@ log_cmd(int ac, char **av)
 	time(&t);
 	tp = localtimez(&t, 0);
 	if (putenv) {
-		fprintf(Opts.log, "%s %.24s ", Opts.remote, asctime(tp));
+		fprintf(Opts.log, "%s %.24s ", peer, asctime(tp));
 		sortLines(putenv, 0);
 		EACH(putenv) {
 			if (strneq("_BK_", putenv[i], 4) ||
@@ -277,7 +274,7 @@ log_cmd(int ac, char **av)
 		freeLines(putenv, free);
 		putenv = 0;
 	}
-	fprintf(Opts.log, "%s %.24s ", Opts.remote, asctime(tp));
+	fprintf(Opts.log, "%s %.24s ", peer, asctime(tp));
 	for (i = 0; i < ac; ++i) {
 		fprintf(Opts.log, "%s ", av[i]);
 	}
@@ -417,7 +414,7 @@ getav(int *acp, char ***avp, int *httpMode)
 			if ((ac >= 1) && streq("POST", av[0])) {
 				skip_http_hdr(&r);
 				len = r.contentlen;
-				http_hdr(Opts.daemon);
+				http_hdr();
 				*httpMode = 1;
 				ac = i = 0;
 				inspace = 1;

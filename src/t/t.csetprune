@@ -21,7 +21,7 @@ rm -rf simple
 TZ=UTC+0 no_logging simple
 touch a b c d
 bk new $Q a b c d
-TZ=EST bk commit $Q -SBASETAG -y1.2
+TZ=EST bk commit $Q -SBASETAG -y1.2 || exit 1
 bk prs -h -r+ -d':ROOTKEY:\n' a c > ../KEYS
 echo OK
 
@@ -33,7 +33,7 @@ bk clone $Q simple line
 cd line
 bk edit $Q a
 bk delta $Q -y1.2 a
-bk commit $Q -y1.3
+bk commit $Q -y1.3 || exit 1
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 tip=`bk prs -h -r+ -d':I:\n' ChangeSet`

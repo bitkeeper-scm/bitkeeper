@@ -2294,7 +2294,7 @@ delete_cset_cache(char *rootpath, int save)
 		if (strneq(files[i], "csetcache.", 10)) {
 			struct	stat statbuf;
 			strcpy(p, files[i]);
-			stat(buf, &statbuf);
+			fast_lstat(buf, &statbuf);
 			/* invert time to get newest first */
 			keep = addLine(keep,
 			    aprintf("%08x %s", (u32)~statbuf.st_atime, buf));
@@ -2328,7 +2328,7 @@ cset2rev(sccs *s, char *rev)
 	/*  stat cset file once per process */
 	unless (csetstat.st_mtime) {
 		s_cset = aprintf("%s/" CHANGESET, rootpath);
-		if (stat(s_cset, &csetstat)) goto ret;
+		if (fast_lstat(s_cset, &csetstat)) goto ret;
 	}
 	mpath = aprintf("%s/BitKeeper/tmp/csetcache.%x", rootpath,
 	    adler32(0, rev, strlen(rev)));
@@ -4275,6 +4275,52 @@ flushDcache()
 }
 #endif
 
+/*
+ * Return 0 for OK, -1 for error.
+ */
+int
+check_gfile(sccs *s, int flags)
+{
+	struct	stat sbuf;
+
+	if (fast_lstat(s->gfile, &sbuf) == 0) {
+		unless ((flags & INIT_NOGCHK) || fileTypeOk(sbuf.st_mode)) {
+			verbose((stderr,
+			    "unsupported file type: %s (%s) 0%06o\n",
+			    s->sfile, s->gfile, sbuf.st_mode & 0177777));
+err:			free(s->gfile);
+			free(s->sfile);
+			free(s);
+			return (-1);
+		}
+		s->state |= S_GFILE;
+		s->mode = sbuf.st_mode;
+		if (flags & (INIT_FIXDTIME|INIT_FIXSTIME)) {
+			s->gtime = sbuf.st_mtime;
+		} else {
+			s->gtime = 0;
+		}
+		if (S_ISLNK(sbuf.st_mode)) {
+			char link[MAXPATH];
+			int len;
+
+			len = readlink(s->gfile, link, sizeof(link));
+			if ((len > 0 )  && (len < sizeof(link))){
+				link[len] = 0;
+				if (s->symlink) free(s->symlink);
+				s->symlink = strdup(link);
+			} else {
+				verbose((stderr,
+				    "cannot read sym link: %s\n", s->gfile));
+				goto err;
+			}
+		}
+	} else {
+		s->state &= ~S_GFILE;
+		s->mode = 0;
+	}
+	return (0);
+}
 
 /*
  * Initialize an SCCS file.  Do this before anything else.
@@ -4323,7 +4369,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	} else {
 		if (check_gfile(s, flags)) return (0);
 	}
-	rc = fast_lstat(s->sfile, &sbuf, 1);
+	rc = fast_lstat(s->sfile, &sbuf);
 	if (rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
@@ -4444,7 +4490,7 @@ bad:		sccs_free(s);
 		return (0);
 	}
 	bzero(&sbuf, sizeof(sbuf));	/* file may not be there */
-	if (fast_lstat(s->sfile, &sbuf, 1) == 0) {
+	if (fast_lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= S_SFILE;
@@ -4593,7 +4639,7 @@ chk_gmode(sccs *s)
 	if (!s || !HASGRAPH(s)) return; /* skip new file */
 
 	gfile = sccs2name(s->sfile); /* Don't trust s->gfile, see bk admin -i */
-	gfileExists = !fast_lstat(gfile, &sbuf, 0);
+	gfileExists = !fast_lstat(gfile, &sbuf);
 	gfileWritable = (gfileExists && (sbuf.st_mode & 0200));
 	if (S_ISLNK(sbuf.st_mode)) return; /* skip smylink */
 	pfileExists = exists(sccs_Xfile(s, 'p'));

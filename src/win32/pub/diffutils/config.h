@@ -22,6 +22,9 @@
 #include <process.h>
 #include <sys/types.h>
 #include <sys/utime.h>
+#include <winsock2.h>
+#undef ERROR
+#undef DELETE
 #include "../../uwtlib/sys/wait.h"
 #include "../../uwtlib/misc.h"
 #include "../../uwtlib/stat.h"

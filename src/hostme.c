@@ -82,7 +82,6 @@ hostme_main(int ac, char **av)
 	r = remote_parse(url);
 	if (opts.debug) r->trace = 1;
 	assert(r);
-	loadNetLib();
 	http_connect(r);
 	r->isSocket = 1;
 	m = mopen(hostme_info, "r");

@@ -2551,7 +2551,7 @@ writeCheck(sccs *s, MDBM *db)
 	while (1) {
 		t = strrchr(path, '/');
 		if (mdbm_store_str(db, path, "", MDBM_INSERT)) return (0);
-		unless (fast_lstat(path, &sb, 0)) {
+		unless (fast_lstat(path, &sb)) {
 			if (S_ISDIR(sb.st_mode)) {
 				if (access(path, W_OK) != 0) {
 					fprintf(stderr,

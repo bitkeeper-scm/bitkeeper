@@ -84,20 +84,19 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
 	mailsplit.o mmap.o mtime.o names.o newroot.o \
 	opark.o parent.o park.o \
-	pending.o preference.o port/bkd_client.o port/bkd_server.o \
-	port/check_gfile.o \
-	port/filecopy.o port/fileinfo.o port/findpid.o \
-	port/flushsocket.o \
+	pending.o preference.o port/bkd_server.o \
+	port/check_rsh.o \
+	port/fast_lstat.o port/filecopy.o port/fileinfo.o port/findpid.o \
 	port/fullname.o port/gethomedir.o \
 	port/gethost.o port/getinput.o port/getnull.o \
 	port/getrealcwd.o port/getrealname.o port/globalroot.o port/gui.o \
 	port/hostColonPath.o port/http_proxy.o \
-	port/lock.o port/lock_dir.o port/mail.o port/mnext.o \
+	port/lock_dir.o port/mail.o port/mnext.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
 	port/randomBits.o \
 	port/rlimit.o port/samepath.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
-	port/sccs_root.o port/sig.o port/socket2pipe.o \
+	port/sccs_root.o port/sig.o \
 	port/spawn.o port/system.o \
 	port/tty.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \

@@ -87,6 +87,7 @@ int	gzip_main(int, char **);
 int	help_main(int, char **);
 int	helpsearch_main(int, char **);
 int	helptopics_main(int, char **);
+int	httpfetch_main(int, char **);
 int	hostme_main(int, char **);
 int	idcache_main(int, char **);
 int	isascii_main(int, char **);
@@ -164,7 +165,6 @@ int	shrink_main(int, char **);
 int	sinfo_main(int, char **);
 int	smerge_main(int, char **);
 int	shellSplit_test_main(int ac, char **av);
-int	socket2pipe_main(int, char **);
 int	sort_main(int, char **);
 int	sortmerge_main(int, char **);
 int	status_main(int, char **);
@@ -204,6 +204,7 @@ struct	command cmdtbl[] = {
 	{"_get", get_main},
 	{"_getreg", getreg_main},
 	{"_gzip", gzip_main }, 
+	{"_httpfetch", httpfetch_main },
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
 	{"_lconfig", lconfig_main},	
@@ -222,7 +223,6 @@ struct	command cmdtbl[] = {
 	{"_prunekey", prunekey_main},
 	{"_rclone", rclone_main},
 	{"_scompress", scompress_main},		/* undoc? 2.0 */
-	{"_socket2pipe", socket2pipe_main},	/* for win32 only */
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
 	{"_shellSplit_test", shellSplit_test_main},

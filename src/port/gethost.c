@@ -64,11 +64,12 @@ gethost(char *host, int hlen, int envOK)
 		return;
 	}
 	/*
-	 * Some system (e.g. win32)
-	 * reuires loading a library
-	 * before we call gethostbyname()
+	 * Win32 requires loading a library before we call
+	 * gethostbyname()
 	 */
-	loadNetLib();
+#ifdef	WIN32
+	nt_loadWinSock();
+#endif
 	if (gethostname(host, hlen) == -1) goto out;
 
 	/*
