@@ -393,5 +393,5 @@ error2:
 
 #endif /* RSA */
 
-static const char *ID_TAG = "rsa.c";
+static const char __attribute__((unused)) *ID_TAG = "rsa.c";
 

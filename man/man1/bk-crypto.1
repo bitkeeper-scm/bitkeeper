@@ -1,0 +1,54 @@
+.so ../bk-macros
+.TH "bk crypto 1 2002/09/03 "\*(BC" "\*(UM"
+.SH NAME
+bk crypto \- Cryptography services
+.SH SYNOPSIS
+.B bk crypto -i
+.ARG secret-key
+.ARG public-key
+.br
+.B bk crypto -s
+.ARG secret-key
+.B <
+.ARG data
+.B >
+.ARG signature
+.br
+.B bk crypto -v
+.ARG public-key
+.ARG signature
+.B <
+.ARG data
+.br
+.SH DESCRIPTION
+.LP
+The
+.B bk crypto
+command allow access to the cryptography subsystem of BitKeeper for
+use in scripts to sign and validate data.  This code uses a straight
+RSA signature scheme.
+.SH OPTIONS
+.if t .TP .6i
+.if n .TP 1i
+.B \-i
+Create a new RSA key pair.  This option creates a new random RSA keypair
+and saves the output in two filenames given on the command line.
+.tp
+.B \-s
+Create a RSA signature for data read from stdin using a private key. 
+Given a RSA private key created with the 'bk crypto -i' command, the
+.B \-s
+option will read arbitrary data from stdin and then write a signature
+to standard out that can be verified with the 'bk crypto -v' command.
+.tp
+.B \-v
+Validate a RSA signature using a public key.  This command will read
+arbitrary data from stdin and a RSA public key from the command line
+and will validate that the signature matchs the data and can only have
+be created by the matching private key.
+.SH EXIT STATUS
+0 if no problems and if RSA signature validates correctly.
+.SH "SEE ALSO"
+.SA base64 1
+.SH CATEGORY
+.B Utility

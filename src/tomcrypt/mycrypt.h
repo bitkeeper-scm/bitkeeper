@@ -95,7 +95,9 @@ extern char *crypt_error;
     ( ((((x)&CONST64(0xFFFFFFFFFFFFFFFF))>>((ulong64)(y)&CONST64(63))) | \
       ((x)<<((ulong64)(64-((y)&CONST64(63)))))) & CONST64(0xFFFFFFFFFFFFFFFF))
 
+#undef MAX
 #define MAX(x, y) ( ((x)>(y))?(x):(y) )
+#undef MIN
 #define MIN(x, y) ( ((x)<(y))?(x):(y) )
 
 /* ---- SYMMETRIC KEY STUFF -----
@@ -901,6 +903,10 @@ extern int hmac_file(int hash, const char *fname, const unsigned char *key,
 
 #ifdef __cplusplus
    }
+#endif
+
+#ifndef __GNUC__
+#define __attribute__(x)
 #endif
 
 #endif /* CRYPT_H_ */

@@ -304,5 +304,5 @@ int prng_is_valid(int idx)
 }
 
 
-static const char *ID_TAG = "crypt.c";
+static const char __attribute__((unused)) *ID_TAG = "crypt.c";
 

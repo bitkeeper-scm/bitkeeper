@@ -58,5 +58,5 @@ void ctr_decrypt(const unsigned char *ct, unsigned char *pt, int len, symmetric_
 
 #endif
 
-static const char *ID_TAG = "ctr.c";
+static const char __attribute__((unused)) *ID_TAG = "ctr.c";
 

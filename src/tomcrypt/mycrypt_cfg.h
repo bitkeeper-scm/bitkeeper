@@ -16,17 +16,17 @@
 
 /* What algorithms to include? comment out and rebuild to remove em */
 /* ciphers */
-#define BLOWFISH
-#define RC2
-#define RC5
-#define RC6
-#define SERPENT
-#define SAFERP  /* for the SAFER+ cipher */
-#define SAFER   /* for the SAFER K64, K128, SK64 and SK128 ciphers */
+//#define BLOWFISH
+//#define RC2
+//#define RC5
+//#define RC6
+//#define SERPENT
+//#define SAFERP  /* for the SAFER+ cipher */
+//#define SAFER   /* for the SAFER K64, K128, SK64 and SK128 ciphers */
 #define RIJNDAEL
-#define XTEA
-#define TWOFISH
-#define DES
+//#define XTEA
+//#define TWOFISH
+//#define DES
 
 /* Small Ram Variant of Twofish.  For this you must have TWOFISH defined.  This
  * variant requires about 4kb less memory but is considerably slower.  It is ideal
@@ -43,20 +43,20 @@
 /* #define TWOFISH_TABLES */
 
 /* modes */
-#define CFB
-#define OFB
-#define ECB
-#define CBC
+//#define CFB
+//#define OFB
+//#define ECB
+//#define CBC
 #define CTR
 
 /* hashes */
-#define SHA512
-#define SHA384
-#define SHA256
-#define TIGER
-#define SHA1
+//#define SHA512
+//#define SHA384
+//#define SHA256
+//#define TIGER
+//#define SHA1
 #define MD5
-#define MD4
+//#define MD4
 
 #ifdef SHA384
    #ifndef SHA512
@@ -68,7 +68,7 @@
 #define BASE64
 
 /* prngs */
-#define YARROW
+//#define YARROW
 #define SPRNG
 
 #ifdef YARROW
@@ -79,11 +79,11 @@
 
 /* PK code */
 #define MRSA     /* include RSA code ? */
-#define PKCS     /* include the RSA PKCS code? */
+//#define PKCS     /* include the RSA PKCS code? */
 
-#define MDH      /* Include Diffie-Hellman? */
+//#define MDH      /* Include Diffie-Hellman? */
 
-#define MECC     /* Include ECC code? */
+//#define MECC     /* Include ECC code? */
 
 /* packet code */
 #if defined(MRSA) || defined(MDH) || defined(MECC)
@@ -131,7 +131,7 @@
 #endif /* MECC */
 
 /* include GF math routines?  (not currently used by anything internally) */
-#define GF
+//#define GF
 
 /* include large integer math routines? */
 #define MPI
@@ -142,7 +142,7 @@
 #define SMALL_PRIME_TAB
 
 /* Include the ZLIB compression library */
-#define GZIP
+//#define GZIP
 
 #ifdef GZIP
    #ifndef OMIT_ZLIB
@@ -151,7 +151,7 @@
 #endif
 
 /* include HMAC support */
-#define HMAC
+//#define HMAC
 
 #ifdef MPI
    #include "mpi.h"

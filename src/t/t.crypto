@@ -1,0 +1,55 @@
+
+echo $N Setup new key pair ..........................................$NL
+bk crypto -i 1024 my.sec my.pub || {
+	echo keygen failed
+	exit 1
+}
+if [ ! \( -s my.sec -a -s my.pub \) ] 
+then	echo key files not created
+	exit 1
+fi
+echo OK
+
+echo $N Test signing a datafile .....................................$NL
+cat > data <<EOF
+This is a test
+file that we
+will sign to verify it is correct.
+EOF
+
+bk crypto -s my.sec < data > data.sig || {
+	echo sign failed
+	exit 1
+}
+echo OK
+
+echo $N Test that data validates with key ...........................$NL
+bk crypto -v my.pub data.sig < data || {
+	echo signature failed to validate
+	exit 1
+}
+
+# change data
+cp data data2
+echo $NX x $NXL >> data2
+
+bk crypto -v my.pub data.sig < data2 && {
+	echo signature should not have validated
+	exit 1
+}
+echo OK
+
+echo $N Run internal test vectors ...................................$NL
+bk crypto -t > OUT 2>ERR || {
+	echo tests failed
+	cat OUT
+	cat ERR
+	exit 1
+}
+egrep -i 'error|failed' OUT && {
+	echo regressions failed
+	cat OUT
+	cat ERR
+	exit 1
+}
+echo OK

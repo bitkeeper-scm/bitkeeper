@@ -39,5 +39,5 @@ unsigned long sprng_read(unsigned char *buf, unsigned long len, prng_state *prng
 
 
 
-static const char *ID_TAG = "sprng.c"; 
+static const char __attribute__((unused)) *ID_TAG = "sprng.c"; 
  

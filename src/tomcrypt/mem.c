@@ -15,5 +15,5 @@ void burn_stack(unsigned long len)
       burn_stack(len - sizeof(buf));
 }
 
-static const char *ID_TAG = "mem.c";
+static const char __attribute__((unused)) *ID_TAG = "mem.c";
 

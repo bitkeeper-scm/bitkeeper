@@ -138,5 +138,5 @@ int rng_make_prng(int bits, int wprng, prng_state *prng,
    return CRYPT_OK;
 }
 
-static const char *ID_TAG = "bits.c";
+static const char __attribute__((unused)) *ID_TAG = "bits.c";
 

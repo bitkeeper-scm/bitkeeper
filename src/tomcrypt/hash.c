@@ -43,5 +43,5 @@ int hash_file(int hash, const char *fname, unsigned char *dst)
     return CRYPT_OK;
 }
 
-static const char *ID_TAG = "hash.c"; 
+static const char __attribute__((unused)) *ID_TAG = "hash.c"; 
  

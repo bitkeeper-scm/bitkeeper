@@ -363,5 +363,5 @@ int rijndael_keysize(int *desired_keysize)
 
 
 
-static const char *ID_TAG = "aes.c";
+static const char __attribute__((unused)) *ID_TAG = "aes.c";
 
