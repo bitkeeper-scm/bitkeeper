@@ -29,6 +29,7 @@ manball: get
 install: manball
 	/bin/rm -rf $(BINDIR)/man
 	cp -R bk-man $(BINDIR)/man
+	find $(BINDIR)/man -type d -print | xargs chmod 775
 
 dist:
 	@rm -f PS PS2
