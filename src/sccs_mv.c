@@ -147,7 +147,7 @@ mv(char *src, char *dest)
 		if (p) {
 			*p = 0;
 			if (!exists(dest)) {
-				if (mkDir(dest)) return (1);
+				if (mkdir_p(dest)) return (1);
 			}
 			*p = '/';
 		}

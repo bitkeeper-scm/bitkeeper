@@ -27,9 +27,23 @@ _logCommand() {
 	do	if [ -d $PREFIX$DIR ]
 		then	LDIR=${PREFIX}BitKeeper/log
 			if [ ! -d $LDIR ]
-			then	mkdir $LDIR || { pwd; ls . BitKeeper; exit 1;}
+			then	mkdir $LDIR
 			fi
-			echo "${USER}: $@" >> ${LDIR}/cmd 2>/dev/null
+			if [ ! -f ${LDIR}/cmd ]
+			then	touch ${LDIR}/cmd
+				chmod 666 ${LDIR}/cmd
+			fi
+		       if [ ! -w ${LDIR} -a -f ${LDIR}/cmd -a ! -w ${LDIR}/cmd ]
+		    	then	echo No write permission on BitKeeper/log/cmd
+				return
+			fi
+			if [ ! -w ${LDIR}/cmd ]
+			then	mv ${LDIR}/cmd ${LDIR}/ocmd
+				cp ${LDIR}/ocmd ${LDIR}/cmd 
+				chmod 666 ${LDIR}/cmd
+				rm ${LDIR}/ocmd
+			fi
+			echo "${USER}: $@" >> ${LDIR}/cmd
 			return
 		fi
 		PREFIX="../$PREFIX"
@@ -130,9 +144,7 @@ _setup() {
 	fi
 	# Check in the initial changeset.
 	${BIN}sfiles -C | ${BIN}cset -s -y"Initial repository create" -
-	EXIT=$?
-	${RM} -f ${TMP}comments$$
-	exit $EXIT
+	exit $?
 }
 
 # This will go find the root if we aren't at the top
@@ -533,14 +545,12 @@ _chkConfig() {
 	if [ ! -f  ${cfgDir}SCCS/s.config ]
 	then
 		_gethelp chkconfig_missing $BIN
-		${RM} -f ${TMP}comments$$
 		exit 1
 	fi
 	${BIN}get -q ${cfgDir}config 
 	cmp -s ${cfgDir}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
 	then	_gethelp chkconfig_inaccurate $BIN
-		${RM} -f ${TMP}comments$$
 		exit 1
 	fi
 }
@@ -573,9 +583,11 @@ _logAddr() {
 	Xlogging:*)
 		;;
 	*)	echo "Bad config file, can not find logging entry"
-		${RM} -f ${TMP}comments$$
 		${BIN}clean ${cfgDir}config
 		exit 1 
+		;;
+	Xlogging:.*bitkeeper.openlogging.org)
+		LOG=changesets@openlogging.org
 		;;
 	esac
 	echo ${LOG#*:} 
@@ -608,13 +620,11 @@ s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
 _checkLog() {
-	grep -q "^logging_ok:" ${cfgDir}config
-	if [ $? -eq 0 ]
+	if [ `grep "^logging_ok:" ${cfgDir}config | wc -l` -eq 0 ]
 	then	${BIN}clean ${cfgDir}config
 		return
 	fi
-	echo $LOGADDR | grep -q "@openlogging.org$"
-	if [ $? -eq 0 ]
+	if [ `echo $LOGADDR | grep "@openlogging.org$" | wc -l` -eq 0 ]
 	then
 		_gethelp log_query $LOGADDR
 		echo $N "OK [y/n]? "$NL
@@ -631,7 +641,6 @@ logging_ok:	to '$LOGADDR > ${cfgDir}config
 			;;
 		esac
 		_gethelp log_abort
-	 	${RM} -f ${TMP}comments$$
 		${BIN}clean ${cfgDir}config
 		exit 1
 	else
@@ -669,14 +678,7 @@ _sendLog() {
 _remark() {
 	if [ -f "BitKeeper/etc/SCCS/x.marked" ]; then return; fi
 	if [ "X$1" != XYES ]
-	then	cat <<EOF
-
-BitKeeper is running a consistency check on your system because it has
-noticed that this check has not yet been run on this repository.
-This is a one time thing but takes quite a while on large repositories,
-roughly a minute per 1000 files in the repository.
-Please stand by and do not kill this process until it gets done.
-EOF
+	then	_gethelp consistency_check
 	fi
 	${BIN}cset -M1.0..
 	touch "BitKeeper/etc/SCCS/x.marked"
@@ -702,8 +704,8 @@ _commit() {
 		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
 		s) QUIET=YES; COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
-		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}comments$$;;
-		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}comments$$;;
+		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}commit$$;;
+		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}commit$$;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -711,7 +713,7 @@ _commit() {
 	if [ $RESYNC = "NO" ]; then _remark $QUIET; fi
 	${BIN}sfiles -Ca > ${TMP}list$$
 	if [ $? != 0 ]
-	then	${RM} -f ${TMP}list$$
+	then	${RM} -f ${TMP}list$$ ${TMP}commit$$
 		_gethelp duplicate_IDs
 		exit 1
 	fi
@@ -719,15 +721,15 @@ _commit() {
 	then	
 		if [ $FORCE = NO -a ! -s ${TMP}list$$ ]
 		then	echo Nothing to commit
-			${RM} -f ${TMP}list$$
+			${RM} -f ${TMP}list$$ ${TMP}commit$$
 			exit 0
 		fi
-		${BIN}sccslog -C - < ${TMP}list$$ > ${TMP}comments$$
+		${BIN}sccslog -C - < ${TMP}list$$ > ${TMP}commit$$
 	else	if [ $FORCE = NO ]
 		then	N=`wc -l < ${TMP}list$$`
 			if [ $N -eq 0 ]
 			then	echo Nothing to commit
-				${RM} -f ${TMP}list$$
+				${RM} -f ${TMP}list$$ ${TMP}commit$$
 				exit 0
 			fi
 		fi
@@ -736,18 +738,20 @@ _commit() {
 	COMMENTS=
 	L=----------------------------------------------------------------------
 	if [ $DOIT = YES ]
-	then	if [ -f ${TMP}comments$$ ]
-		then	COMMENTS="-Y${TMP}comments$$"
+	then	if [ -f ${TMP}commit$$ ]
+		then	COMMENTS="-Y${TMP}commit$$"
 		fi
-		LOGADDR=`_logAddr` || exit 1
+		LOGADDR=`_logAddr` ||
+		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		export LOGADDR
-		nusers=`_users | wc -l` || exit 1
+		nusers=`_users | wc -l` || 
+		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		if [ $nusers -gt 1 ]
 		then $CHECKLOG
 		fi
 		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		EXIT=$?
-		${RM} -f ${TMP}comments$$
+		${RM} -f ${TMP}commit$$ ${TMP}list$$ 
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
@@ -760,26 +764,28 @@ _commit() {
 	do	
 		echo ""
 		echo "---------$L"
-		cat ${TMP}comments$$
+		cat ${TMP}commit$$
 		echo "---------$L"
 		echo ""
 		echo $N "Use these comments (e)dit, (a)bort, (u)se? "$NL
 		read x
 		case X$x in
 		    X[uy]*) 
-			if [ -s ${TMP}comments$$ ]
-			then	COMMENTS="-Y${TMP}comments$$"
+			if [ -s ${TMP}commit$$ ]
+			then	COMMENTS="-Y${TMP}commit$$"
 			fi
-			LOGADDR=`_logAddr` || exit 1
+			LOGADDR=`_logAddr` || 
+			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			export LOGADDR
-			nusers=`_users | wc -l` || exit 1
+			nusers=`_users | wc -l` || 
+			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			if [ $nusers -gt 1 ]
 			then $CHECKLOG
 			fi
 			${BIN}sfiles -C |
 			    eval ${BIN}cset "$COMMENTS" $COPTS $@ -
 			EXIT=$?
-			${RM} -f ${TMP}comments$$
+			${RM} -f ${TMP}commit$$ ${TMP}list$$
 			# Assume top of trunk is the right rev
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
@@ -788,10 +794,12 @@ _commit() {
 			fi
 	    	 	exit $EXIT;
 		 	;;
-		    Xe*) $EDITOR ${TMP}comments$$
+		    Xe*)
+			$EDITOR ${TMP}commit$$
 			;;
-		    Xa*) ${RM} -f ${TMP}comments$$
+		    Xa*) 
 			echo Commit aborted.
+			${RM} -f ${TMP}commit$$ ${TMP}list$$
 			exit 0
 			;;
 		esac

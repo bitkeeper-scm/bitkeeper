@@ -56,19 +56,19 @@ ${RM} -f copy/BitKeeper/etc/SCCS/x.id_cache
 ${RM} -f project/BitKeeper/etc/SCCS/x.marked
 ${RM} -f copy/BitKeeper/etc/SCCS/x.marked
 ${RM} -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
-diff -r project copy
-if [ $? != 0 ]; then echo Failed because of differences; exit 1; fi
+diff -r project copy > diff$$
+if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 echo $N Make sure we can wrap and unwrap patches ....................$NL
 cd $HERE/project
-bk send $Q -wuu -  | bk unwrap | while read x
+bk send $Q -wuu -  | bk unwrap | ( while read x
 do	case "$x" in
 	    "# Patch vers:"*)
 		echo "$x";
 		exec cat;
 		;;
 	esac
-done > p1
+done ) > p1
 bk send $Q -  | bk unwrap > p2
 diff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
@@ -86,8 +86,8 @@ ${RM} -f uu/BitKeeper/etc/SCCS/x.id_cache
 ${RM} -f project/BitKeeper/etc/SCCS/x.marked
 ${RM} -f uu/BitKeeper/etc/SCCS/x.marked
 ${RM} -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
-diff -r project uu
-if [ $? != 0 ]; then echo Failed because of differences; exit 1; fi
+diff -r project uu > diff$$
+if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 echo $N Create copy using send / receive 1 cset at a time ...........$NL
 cd $HERE/project
@@ -104,8 +104,8 @@ ${RM} -f csets/BitKeeper/etc/SCCS/x.id_cache
 ${RM} -f project/BitKeeper/etc/SCCS/x.marked
 ${RM} -f csets/BitKeeper/etc/SCCS/x.marked
 ${RM} -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
-diff -r project csets
-if [ $? != 0 ]; then echo Failed because of differences; exit 1; fi
+diff -r project csets > diff$$
+if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
 echo $N Make sure that it records sends .............................$NL
 cd $HERE/project

@@ -27,7 +27,7 @@ echo $N Trying to diffs unchanged binary data .......................$NL
 diffs uuencode > d.out 2>&1
 touch d.ref
 cmp -s d.out d.ref
-if [ $? -ne 0 ]; then echo Failed; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed; diff d.out d.ref; exit 1; fi
 echo OK
 echo $N Trying to check in unchanged binary data ....................$NL
 echo uuencode | ci $Q -y -

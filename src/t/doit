@@ -10,14 +10,16 @@ else	dashx=
 fi
 if [ X"$*" != X ]
 then	list="$*"
-else	list=`echo t.*`
+else	list=`ls -1 t.* | grep -v '.swp'`
 fi
 
 for i in $list
 do	n=${i#t.}
 	echo ------------ $n tests
+	ls -1 /tmp > /usr/tmp/T
 	cat setup $i cleanup | sh $dashx
 	EXIT=$?
+	ls -1 /tmp | diff - /usr/tmp/T
 	if [ $EXIT != 0 ]
 	then	echo Test exited with error $EXIT
 		exit $EXIT
