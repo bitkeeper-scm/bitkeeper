@@ -1,0 +1,118 @@
+STRACE_ARGS="-f -q -c -e trace=file -S calls"
+
+echo $N Setup test project ..........................................$NL
+no_logging project
+mkdir dir1
+mkdir dir2
+mkdir dir2/dir3
+mkdir dir4
+echo 1 > file1
+echo 2 > dir1/file2
+echo 3 > dir1/file3
+echo 4 > dir2/file4
+echo 5 > dir2/dir3/file5
+bk delta -il $Q dir1/file2 dir1/file3 dir2/file4 dir2/dir3/file5 || exit 1
+bk commit $Q -ycset1 || exit 1
+echo more >> dir1/file2
+echo more >> dir2/dir3/file5
+bk delta -ymore $Q -l dir1/file2 dir2/dir3/file5 || exit 1
+bk commit $Q -ymore || exit 1
+echo mods >> file1
+echo mods >> dir2/file4
+echo OK
+
+# make sure we record gfiles
+BK_CONFIG=clock_skew:1
+export BK_CONFIG
+sleep 2
+
+echo $N Measure syscalls on initial sfiles -c .......................$NL
+strace $STRACE_ARGS bk sfiles -c >/dev/null 2>out.raw
+grep -v ^exec < out.raw | perl -pe 'substr($_, 0, 31) = ""' > out
+cat <<EOF > expected
+    calls    errors syscall
+--------- --------- ----------------
+      173        44 lstat64
+       63         4 open
+       58           fstat64
+        1           chdir
+        1           chmod
+        1         1 readlink
+        1           stat64
+--------- --------- ----------------
+      298        49 total
+EOF
+checkfiles out expected
+echo OK
+
+echo $N Measure syscalls on cached sfiles -c ........................$NL
+strace $STRACE_ARGS bk sfiles -c >/dev/null 2>out.raw
+grep -v ^exec < out.raw | perl -pe 'substr($_, 0, 31) = ""' > out
+cat <<EOF > expected
+    calls    errors syscall
+--------- --------- ----------------
+      121        37 lstat64
+       46         3 open
+       45           fstat64
+        1           chdir
+        1           chmod
+        1         1 readlink
+        1           stat64
+--------- --------- ----------------
+      216        41 total
+EOF
+checkfiles out expected
+echo OK
+
+echo $N Measure syscalls on check ...................................$NL
+strace $STRACE_ARGS bk -r check -ac >/dev/null 2>out.raw
+grep -v ^exec < out.raw | perl -pe 'substr($_, 0, 31) = ""' > out
+cat <<EOF > expected
+    calls    errors syscall
+--------- --------- ----------------
+      252        58 lstat64
+      130        12 open
+      118           fstat64
+       26         5 access
+       18        10 unlink
+       12         5 chmod
+        9           chdir
+        8           stat64
+        5         5 readlink
+        4           execve
+        3           link
+        1           rename
+--------- --------- ----------------
+      586        95 total
+EOF
+checkfiles out expected
+echo OK
+
+echo $N Measure syscalls on clone ...................................$NL
+cd $HERE
+strace $STRACE_ARGS bk clone -q project copy >/dev/null 2>out.raw
+grep -v ^exec < out.raw | perl -pe 'substr($_, 0, 31) = ""' > out
+cat <<EOF > expected
+    calls    errors syscall
+--------- --------- ----------------
+      687       257 lstat64
+      432        36 open
+      389           fstat64
+       40         8 chmod
+       39        16 access
+       34        17 unlink
+       27         6 stat64
+       24         9 execve
+       23           chdir
+       20         3 mkdir
+       18           getcwd
+       15        15 readlink
+        5           link
+        3         1 rmdir
+        2           rename
+--------- --------- ----------------
+     1758       368 total
+EOF
+checkfiles out expected
+echo OK
+

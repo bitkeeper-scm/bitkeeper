@@ -1081,10 +1081,10 @@ typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
 int	walksfiles(char *dir, walkfn fn, void *data);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
-MDBM	*generateTimestampDB(project *p);
-int	timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps);
-void	dumpTimestampDB(project *p, MDBM* db);
-void	updateTimestampDB(sccs *s, MDBM *timestamps, int diff);
+HASH	*generateTimestampDB(project *p);
+int	timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps);
+void	dumpTimestampDB(project *p, HASH *db);
+void	updateTimestampDB(sccs *s, HASH *timestamps, int diff);
 struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);

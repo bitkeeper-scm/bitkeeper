@@ -1202,7 +1202,7 @@ date2time(char *asctime, char *z, int roundup)
 }
 
 /*
- * Force sfile's mod time to be one second before gfile's mod time
+ * Force sfile's mod time to be 2 seconds before gfile's mod time
  */
 void
 fix_stime(sccs *s)
@@ -1229,10 +1229,7 @@ fix_stime(sccs *s)
 	 * so we need to set the mod time to gtime - 2 to compmensate.
 	 */
 	ut.modtime = s->gtime - 2;
-	if (utime(s->sfile, &ut)) {
-		fprintf(stderr, "fix_stime: failed\n");
-		perror(s->sfile);
-	}
+	(void)utime(s->sfile, &ut);
 }
 
 /*
@@ -6627,6 +6624,7 @@ out:			if (slist) free(slist);
 			s->state |= S_WARNED;
 			goto out;
 		}
+		unless (flags & PRINT) s->gtime = ut.modtime;
 	}
 	unless (hash && (flags&GET_HASHONLY)) {
 		int 	rc = 0;
@@ -16187,50 +16185,39 @@ smartMkdir(char *dir, mode_t mode)
  * existing entries are modified or new ones added. This does not matter
  * as the checks that caused the entry to be deleted will fail next time
  */
+#define	TIMESTAMPS	"BitKeeper/log/timestamps"
+
 private int timestampDBChanged = 0;
 
 /*
  * we need to parse the timestamp file. Its format is:
- * relative/file/path gfile_mtime gfile_size permissions sfile_mtime sfile_size
- *
- * This must be parsed backwards to cope with spaces in file names
+ * relative/file/path|gfile_mtime|gfile_size|permissions|sfile_mtime|sfile_size
  */
 private int
 parseTimestamps(char *buf, tsrec *ts)
 {
-	char	*rover;
+	char	*p;
 
-	/* parse sfile_size */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->sfile_size = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
-
-	/* parse sfile_mtime */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->sfile_mtime = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
-
-	/* parse permissions */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->permissions = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
+	/* parse gfile_mtime */
+	ts->gfile_mtime = strtoul(buf, &p, 16);
+	unless (p && (*p == BK_FS)) return (0);		/* bogus entry */
 
 	/* parse gfile size */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->gfile_size = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
+	ts->gfile_size = strtoul(p + 1, &p, 10);
+	unless (p && (*p == BK_FS)) return (0);		/* bogus entry */
+
+	/* parse permissions */
+	ts->permissions = strtoul(p + 1, &p, 8);
+	unless (p && (*p == BK_FS)) return (0);		/* bogus entry */
 
 	/* parse sfile_mtime */
-	rover = strrchr(buf, ' ');
-	if (!rover) return 0;	/* bogus entry */
-	ts->gfile_mtime = strtoul(rover + 1, 0, 0);
-	*rover = '\0';
+	ts->sfile_mtime = strtoul(p + 1, &p, 16);
+	unless (p && (*p == BK_FS)) return (0);		/* bogus entry */
 
-	/* now got the relative path name to file at the start */
+	/* parse sfile_size */
+	ts->sfile_size = strtoul(p + 1, &p, 10);
+	unless (p && (*p == 0)) return (0);		/* bogus entry */
+
 	return (1);
 }
 
@@ -16238,68 +16225,66 @@ parseTimestamps(char *buf, tsrec *ts)
  * generate a timestamp database - cannot use loadDB as it can't cope with
  * this format - or I couldn't figure out how! (andyc).
  */
-MDBM*
+HASH *
 generateTimestampDB(project *p)
 {
 	/* want to use the timestamp database */
 	FILE	*f = 0;
-	MDBM	*db;
+	HASH	*db;
 	char	*tsname;
 	char	buf[MAXLINE];
-	char	*pref;
 
-	pref = user_preference("clock_skew");
-	if (streq(pref, "off")) return (0);
+	if (streq(user_preference("clock_skew"), "off")) return (0);
 
-	tsname = aprintf("%s/BitKeeper/tmp/TIMESTAMPS", proj_root(p));
-
-	db = mdbm_mem();
+	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
+	db = hash_new();
 	assert(db);
 	if (f = fopen(tsname, "r")) {
 		while (fnext(buf, f)) {
-			tsrec	ts;
-			if (parseTimestamps(buf, &ts)) {
-				datum k;
-				datum v;
-				k.dptr = buf;
-				k.dsize = strlen(buf);
-				v.dptr = (char*) &ts;
-				v.dsize = sizeof(ts);
-				mdbm_store(db, k, v, MDBM_INSERT);
-			} else
-				/* the database has invalid information in it
+			tsrec	*ts;
+			char	*p;
+
+			chomp(buf);
+			unless (p = strchr(buf, BK_FS)) {
+bad:				/* the database has invalid information in it
 				 * so get it regenerated
 				 */
 				timestampDBChanged = 1;
+				continue;
+			}
+			*p++ = 0;
+			ts = hash_fetchAlloc(db, buf, 0, sizeof(tsrec));
+			unless (parseTimestamps(p, ts)) goto bad;
 		}
 		fclose(f);
 	}
 	free(tsname);
-	return db;
+	return (db);
 }
 
 void
-dumpTimestampDB(project *p, MDBM* db)
+dumpTimestampDB(project *p, HASH *db)
 {
 	FILE	*f = 0;
 	char	*tsname;
 	kvpair	kv;
 
-	if (!timestampDBChanged) return;
+	unless (timestampDBChanged) return;
 
-	tsname = aprintf("%s/BitKeeper/tmp/TIMESTAMPS", proj_root(p));
-	f = fopen(tsname, "w");
-	if (!f) {
+	tsname = aprintf("%s/%s", proj_root(p), TIMESTAMPS);
+	unless (f = fopen(tsname, "w")) {
 		free(tsname);
-		return; /* leave stale timestamp file there */
+		return;			/* leave stale timestamp file there */
 	}
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		tsrec	*ts = (tsrec*) kv.val.dptr;
+	for (kv = hash_first(db); kv.key.dptr; kv = hash_next(db)) {
+		tsrec	*ts = (tsrec *)kv.val.dptr;
+
 		assert(kv.val.dsize == sizeof(*ts));
-		fwrite(kv.key.dptr, sizeof(char), kv.key.dsize, f);
-		fprintf(f, " %ld %ld 0%o %ld %ld\n",
-			ts->gfile_mtime, ts->gfile_size,
-			ts->permissions, ts->sfile_mtime, ts->sfile_size);
+		fprintf(f, "%s%c%lx%c%ld%c0%o%c%lx%c%ld\n",
+		    kv.key.dptr, BK_FS,
+		    ts->gfile_mtime, BK_FS, ts->gfile_size, BK_FS,
+		    ts->permissions, BK_FS,
+		    ts->sfile_mtime, BK_FS, ts->sfile_size);
 		if (ferror(f)) {
 			/* some error writing the timestamp db so delete it */
 			unlink(tsname);
@@ -16315,10 +16300,8 @@ dumpTimestampDB(project *p, MDBM* db)
  * of the given file
  */
 int
-timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps)
+timeMatch(project *proj, char *gfile, char *sfile, HASH *timestamps)
 {
-	datum	k;
-	datum	v;
 	tsrec	*ts;
 	char	*relpath;
 	int	ret = 0;
@@ -16326,42 +16309,36 @@ timeMatch(project *proj, char *gfile, char *sfile, MDBM *timestamps)
 
 	unless (proj) return (0);
 	relpath = proj_relpath(proj, gfile);
-	k.dptr = relpath;
-	k.dsize = strlen(relpath) + 1;
-	v = mdbm_fetch(timestamps, k);
-	if (v.dsize == 0) goto out;	/* no entry for file */
-	assert(v.dsize == sizeof(*ts));
-	ts = (tsrec*) v.dptr;
+	ts = (tsrec *)hash_fetch(timestamps, relpath, 0, 0);
+	free(relpath);
+	unless (ts) goto out;			/* no entry for file */
 
 	if (lstat(gfile, &sb) != 0) goto out;	/* might not exist */
 
-	if (sb.st_mtime != ts->gfile_mtime
-	    || sb.st_size != ts->gfile_size
-	    || sb.st_mode != ts->permissions) {
-		goto out;		    /* gfile doesn't match */
+	if ((sb.st_mtime != ts->gfile_mtime) ||
+	    (sb.st_size != ts->gfile_size) ||
+	    (sb.st_mode != ts->permissions)) {
+		goto out;			/* gfile doesn't match */
 	}
 	if (lstat(sfile, &sb) != 0) {
 		/* We should never get here */
 		perror(sfile);
 		goto out;
 	}
-	if (sb.st_mtime != ts->sfile_mtime || sb.st_size != ts->sfile_size) {
-		goto out;		    /* sfile doesn't match */
+	if ((sb.st_mtime != ts->sfile_mtime) ||
+	    (sb.st_size != ts->sfile_size)) {
+		goto out;			/* sfile doesn't match */
 	}
 
 	/* as far as we're concerned, the file hasn't changed */
 	ret = 1;
- out:
-	free(relpath);
-	return (ret);
+ out:	return (ret);
 }
 
 void
-updateTimestampDB(sccs *s, MDBM *timestamps, int different)
+updateTimestampDB(sccs *s, HASH *timestamps, int different)
 {
-	datum	k;
-	datum	v;
-	tsrec	ts;
+	tsrec	ts, *tsp;
 	struct	stat	sb;
 	char	*relpath;
 	const time_t one_week = 7 * 24 * 60 * 60;   /* # of seconds in week */
@@ -16380,21 +16357,17 @@ updateTimestampDB(sccs *s, MDBM *timestamps, int different)
 	}
 
 	relpath = proj_relpath(s->proj, s->gfile);
-	k.dptr = relpath;
-	k.dsize = strlen(relpath) + 1;
-
 	if (different) {
-		mdbm_delete(timestamps, k);
+		hash_delete(timestamps, relpath, 0);
 		goto out;
 	}
 
-	if (lstat(s->gfile, &sb) != 0) goto out; /* might not exist */
+	if (lstat(s->gfile, &sb) != 0) goto out;	/* might not exist */
 	ts.gfile_mtime = sb.st_mtime;
 	ts.gfile_size = sb.st_size;
 	ts.permissions = sb.st_mode;
 
-	if (lstat(s->sfile, &sb) != 0) {
-		/* We should never get here */
+	if (lstat(s->sfile, &sb) != 0) {	/* We should never get here */
 		perror(s->sfile);
 		goto out;
 	}
@@ -16402,29 +16375,18 @@ updateTimestampDB(sccs *s, MDBM *timestamps, int different)
 	ts.sfile_size = sb.st_size;
 
 	now = time(0);
-	if ((now - ts.gfile_mtime) < clock_skew)
-		mdbm_delete(timestamps, k);
-	else {
-		v = mdbm_fetch(timestamps, k);
-		if (v.dsize == 0) {
-			/* no entry for file */
-			v.dptr = (char*) &ts;
-			v.dsize = sizeof(ts);
-			mdbm_store(timestamps, k, v, MDBM_INSERT);
-		} else {
-			v.dptr = (char*) &ts;
-			v.dsize = sizeof(ts);
-			mdbm_store(timestamps, k, v, MDBM_REPLACE);
-		}
+	if ((now - ts.gfile_mtime) < clock_skew) {
+		hash_delete(timestamps, relpath, 0);
+	} else {
+		tsp = hash_fetchAlloc(timestamps, relpath, 0, sizeof(tsrec));
+		memcpy(tsp, &ts, sizeof(ts));
 		timestampDBChanged = 1;
 	}
-out:
-	free(relpath);
+out:	free(relpath);
 }
 
 #if	defined(linux) && defined(sparc)
 #undef	fclose
-
 sparc_fclose(FILE *f)
 {
 	int	ret;
@@ -16437,5 +16399,4 @@ sparc_fclose(FILE *f)
 	unless (getenv("BK_NO_SPARC_FLUSH")) flushDcache();
 	return (ret);
 }
-
 #endif

@@ -231,11 +231,6 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	if (clone2(opts, r)) goto done;
-	/* set timestamps */
-	unless (opts.quiet) {
-		fprintf(stderr, "Updating file timestamps...\n");
-	}
-	sys("bk", "-r", "timestamp", SYS);
 
 	rc  = 0;
 done:	if (rc) {
@@ -316,9 +311,11 @@ clone2(opts opts, remote *r)
 
 	p = user_preference("checkout");
 	if (strieq(p, "edit")) {
-		sys("bk", "-Ur", "edit", "-q", SYS);
+		unless (opts.quiet) fprintf(stderr, "Checking out files...\n");
+		sys("bk", "-Ur", "edit", "-Tq", SYS);
 	} else if (strieq(p, "get")) {
-		sys("bk", "-Ur", "get", "-q", SYS);
+		unless (opts.quiet) fprintf(stderr, "Checking out files...\n");
+		sys("bk", "-Ur", "get", "-Tq", SYS);
 	}
 	return (0);
 }
