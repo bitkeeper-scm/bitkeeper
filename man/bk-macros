@@ -124,8 +124,17 @@
 .	if n .sp -\\n[PD]u
 .	TP \\$1
 ..
+.de ip
+.	if t .sp -(u;\\n[PD]u)
+.	if t .sp (u;\\n[PD]u/4)
+.	if n .sp -\\n[PD]u
+.	IP \\$1 \\$2
+..
 .if t .ds BU \(bu
-.if n .ds BU \&. 
+.if n .ds BU \(rh
+.de LI
+.	ip \*[BU] \\$1
+..
 .de _SA
 .\" SEE ALSO sections...  printed=bk man; online=bk help
 .	if t .BR bk-\\$1 (\\$2)

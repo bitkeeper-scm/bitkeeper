@@ -399,8 +399,7 @@ out:		if (commentFile) unlink(commentFile);
 		putenv("BK_STATUS=SIGNALED");
 		rc = 1;
 	} else if (rc = WEXITSTATUS(status)) {
-		sprintf(buf, "BK_STATUS=%d", rc);
-		putenv(buf);
+		putenv("BK_STATUS=FAILED");
 	}
 	trigger(av, "post");
 done:	if (unlink(commentFile)) perror(commentFile);

@@ -293,7 +293,6 @@ cmd_pull_part1(int ac, char **av)
 	FILE	*f;
 
 	sendServerInfoBlock();
-	setLocalEnv(OUTGOING);
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");
@@ -358,7 +357,6 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	sendServerInfoBlock();
-	setLocalEnv(OUTGOING); /* TODO skip this if not httpd */
 
 	/*
 	 * What we want is: remote => bk _prunekey => serials
@@ -402,14 +400,14 @@ cmd_pull_part2(int ac, char **av)
 
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
-	 * Set up the BK_CSETS env variable for the trigger script
 	 */
 	sprintf(buf, "BK_CSETLIST=%s", revs);
 	putenv((strdup)(buf));
-	sprintf(buf, "BK_LOCALCSETS=%d", local);
-	putenv((strdup)(buf));
-	sprintf(buf, "BK_REMOTECSETS=%d", rem);
-	putenv((strdup)(buf));
+	unless (local) {
+		putenv("BK_STATUS=NOTHING");
+	} else if (dont) {
+		putenv("BK_STATUS=DRYRUN");
+	}
 
 	if (!metaOnly && trigger(av,  "pre")) {
 		rc = 1;

@@ -102,8 +102,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	bktemp(buf);
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, INCOMING);
-	setLocalEnv(INCOMING);
+	sendEnv(f, envVar);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "pull_part1");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
@@ -133,13 +132,13 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r, "_OUTGOING");
+		getServerInfoBlock(r);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 	}
-	if (getenv("BK_OUTGOING_LEVEL") &&
-	    (atoi(getenv("BK_OUTGOING_LEVEL")) > getlevel())) {
+	if (getenv("BKD_LEVEL") &&
+	    (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 	    	fprintf(stderr,
 		    "pull: cannot pull to lower level repository\n");
 		disconnect(r, 2);
@@ -149,6 +148,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		disconnect(r, 2);
 		return (1);
 	}
+	if (opts.dont) putenv("BK_STATUS=DRYRUN");
 	if (!opts.metaOnly && trigger(av, "pre")) return (1);
 	bktemp(probe_list);
 	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
@@ -175,8 +175,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	bktemp(msg_file);
 	f = fopen(msg_file, "w");
 	assert(f);
-	sendEnv(f, envVar, INCOMING);
-	setLocalEnv(INCOMING);
+	sendEnv(f, envVar);
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
@@ -235,7 +234,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r, "_OUTGOING");
+		getServerInfoBlock(r);
 		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
@@ -304,7 +303,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			fprintf(stderr, "Nothing to pull from %s\n", p);
 			free(p);
 		}
-		putenv("BK_STATUS=NOTHING");
+		putenv("BK_STATUS=DRYRUN");
 		goto done;
 	}
 
@@ -331,7 +330,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		unless (opts.noresolve) {
 			if (resolve(opts, r)) {
 				rc = 1;
-				putenv("BK_STATUS=CONFLICT");
+				putenv("BK_STATUS=CONFLICTS");
 				goto done;
 			}
 		}

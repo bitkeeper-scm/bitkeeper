@@ -6,9 +6,6 @@
 #include "lib_tcp.h"
 #include "zlib/zlib.h"
 
-#define OUTGOING 0
-#define INCOMING 1
-
 /*
  * Version 1.2 - removes the @DONE@ in the push path.
  *	We slipped the "to/from host:path" into the pull/push in this
@@ -129,8 +126,8 @@ int	prunekey(sccs *, remote *, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
-int	getServerInfoBlock(remote *r, char *direction);
-void	sendEnv(FILE *f, char **envVar, int in_out);
+int	getServerInfoBlock(remote *r);
+void	sendEnv(FILE *f, char **envVar);
 void	setLocalEnv(int in_out);
 void	wait_eof(remote *r, int verbose);
 void	flush2remote(remote *r);

@@ -115,12 +115,12 @@ echo OK
 echo $N Make sure clone is passed the right variables ...............$NL
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/sh
-set | grep BK_ | sort > $HERE/pre-outgoing
+set | grep BK | sort > $HERE/pre-outgoing
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
 #!/bin/sh
-set | grep BK_ | sort > $HERE/post-outgoing
+set | grep BK | sort > $HERE/post-outgoing
 EOF
 chmod +x BitKeeper/triggers/*
 cd $HERE
@@ -162,7 +162,7 @@ echo $N Make sure pull is passed the right variables ................$NL
 cd project
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/sh
-set | grep BK_ | sort > $HERE/pre-outgoing
+set | grep BK | sort > $HERE/pre-outgoing
 cp \$BK_CSETLIST $HERE/CSETS
 exit 1
 EOF
@@ -189,12 +189,6 @@ test -d RESYNC && {
 	exit 1
 }
 echo OK
-test -z "$DUMP_VARS" || {
-	echo ========== pre-outgoing ==========
-	cat $HERE/pre-outgoing
-	echo ========== post-outgoing ==========
-	cat $HERE/post-outgoing
-}
 
 echo $N Make sure pre-incoming triggers fail the pull ...............$NL
 rm $HERE/project/BitKeeper/triggers/pre-outgoing
@@ -202,7 +196,7 @@ cd $HERE/clone
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-incoming <<EOF
 #!/bin/sh
-set | grep BK_ | sort > $HERE/pre-incoming
+set | grep BK | sort > $HERE/pre-incoming
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -225,7 +219,7 @@ cd $HERE/clone
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
-set | grep BK_ | sort > $HERE/pre-resolve
+set | grep BK | sort > $HERE/pre-resolve
 pwd > $HERE/PWD
 exit 1
 EOF
@@ -278,6 +272,7 @@ rm BitKeeper/triggers/* $HERE/changes
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/sh
 bk changes - < \$BK_CSETLIST > $HERE/changes
+set | grep BK | sort -u > $HERE/post-incoming
 EOF
 chmod +x BitKeeper/triggers/*
 bk pull $Q || {
@@ -297,6 +292,10 @@ grep -q ChangeSet@1.3 $HERE/changes || {
 	exit 1
 }
 echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== post-incoming ==========
+	cat $HERE/post-incoming
+}
 
 echo $N Fail a push in pre-incoming and make sure we clean up .......$NL
 rm $HERE/pre-* $HERE/post-*
@@ -305,7 +304,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-incoming <<EOF
 #!/bin/sh
 echo I am the remote pre-incoming trigger and I am failing
-set | grep BK_ | sort > $HERE/pre-incoming
+set | grep BK | sort > $HERE/pre-incoming
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -342,7 +341,7 @@ rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
 echo pre-resolve failing
-set | grep BK_ | sort >> $HERE/pre-resolve
+set | grep BK | sort >> $HERE/pre-resolve
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*

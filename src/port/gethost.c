@@ -13,7 +13,7 @@ sccs_gethost(void)
 
 	if (done) return (host[0] ? host : UNKNOWN_HOST);
 
-	if (h = getenv("BK_HOST")) {
+	if ((h = getenv("BK_HOST")) && !getenv("BK_EVENT")) {
 		assert(strlen(h) <= 256);
 		strcpy(host, h);
 		done = 1;

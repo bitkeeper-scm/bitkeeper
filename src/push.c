@@ -251,8 +251,7 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 	bktemp(buf);
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, OUTGOING);
-	setLocalEnv(OUTGOING);
+	sendEnv(f, envVar);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "push_part1");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
@@ -286,9 +285,9 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r, "_INCOMING");
-		if (getenv("BK_INCOMING_LEVEL") &&
-		    (atoi(getenv("BK_INCOMING_LEVEL")) < getlevel())) {
+		getServerInfoBlock(r);
+		if (getenv("BKD_LEVEL") &&
+		    (atoi(getenv("BKD_LEVEL")) < getlevel())) {
 			fprintf(stderr,
 			    "push: cannot push to lower level repository\n");
 			disconnect(r, 2);
@@ -453,8 +452,7 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	bktemp(msgfile);
 	f = fopen(msgfile, "wb");
 	assert(f);
-	sendEnv(f, envVar, OUTGOING);
-	setLocalEnv(OUTGOING);
+	sendEnv(f, envVar);
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
@@ -494,8 +492,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	bktemp(msgfile);
 	f = fopen(msgfile, "wb");
 	assert(f);
-	sendEnv(f, envVar, OUTGOING);
-	setLocalEnv(OUTGOING);
+	sendEnv(f, envVar);
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
@@ -558,6 +555,30 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 }
 
 private int
+maybe_trigger(remote *r, opts opts)
+{
+	char	buf[20];
+	int	n;
+
+	/* Looking for @TRIGGER INFO@\n
+	 *             012345678901023
+	 */
+	buf[n = 0] = '@';
+	for (n = 1; n < 14; n++) {
+		if ((read_blk(r, &buf[n], 1) != 1) ||
+		    (buf[n] != "@TRIGGER INFO@\n"[n])) {
+			buf[n] = 0;
+			if (opts.verbose) write(2, buf, n);
+			return (0);
+		}
+	}
+	if (getTriggerInfoBlock(r, 1|opts.verbose)) {
+		return (1);
+	}
+	return (0);
+}
+
+private int
 push_part2(char **av, opts opts,
 			remote *r, char *rev_list, int ret, char **envVar)
 {
@@ -576,7 +597,7 @@ push_part2(char **av, opts opts,
 		send_end_msg(opts, r, "@NOTHING TO SEND@\n", rev_list, envVar);
 		done = 1;
 	} else if (ret == 1) {
-		putenv("BK_STATUS=CONFLICT");
+		putenv("BK_STATUS=CONFLICTS");
 		send_end_msg(opts, r, "@CONFLICT@\n", rev_list, envVar);
 		if (opts.autopull) do_pull = 1;
 		done = 1;
@@ -603,7 +624,7 @@ push_part2(char **av, opts opts,
 	if (remote_lock_fail(buf, opts.verbose)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r, "_INCOMING");
+		getServerInfoBlock(r);
 	}
 	if (done) goto done;
 
@@ -637,7 +658,14 @@ push_part2(char **av, opts opts,
 	if (streq(buf, "@RESOLVE INFO@")) {
 		while ((n = read_blk(r, buf, 1)) > 0) {
 			if (buf[0] == BKD_NUL) break;
-			if (opts.verbose) write(2, buf, n);
+			if (buf[0] == '@') {
+				if (maybe_trigger(r, opts)) {
+					rc = 1;
+					goto done;
+				}
+			} else if (opts.verbose) {
+				write(2, buf, n);
+			}
 		}
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
@@ -657,12 +685,13 @@ push_part2(char **av, opts opts,
 	} else {
 		unlink(CSETS_OUT);
 		rename(rev_list, CSETS_OUT);
+		putenv("BK_CSETLIST=" CSETS_OUT);
 		rev_list[0] = 0;
 	}
 	putenv("BK_STATUS=OK");
 
 done:	if (!opts.metaOnly) {
-		if (rc) putenv("BK_STATUS=CONFLICT");
+		if (rc) putenv("BK_STATUS=CONFLICTS");
 		trigger(av, "post");
 	}
 	if (rev_list[0]) unlink(rev_list);

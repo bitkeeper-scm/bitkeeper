@@ -481,13 +481,13 @@ add_cd_command(FILE *f, remote *r)
 }
 
 void
-put_trigger_env(char *where, char *v, char *value)
+put_trigger_env(char *prefix, char *v, char *value)
 {
 	char *env;
 	char *buf;
 	char *e;
 
-	env = aprintf("BK%s_%s", where, v);
+	env = aprintf("%s_%s", prefix, v);
 	if ((e = getenv(env)) && streq(e, value)) return;
 	buf = aprintf("%s=%s", env, value);
 	putenv(strdup(buf));
@@ -500,7 +500,7 @@ putroot(char *where)
 	char	*root = sccs_root(0);
 	char	*e, *buf, *env;
 
-	env = aprintf("BK%s_ROOT", where);
+	env = aprintf("%s_ROOT", where);
 
 	if (root) {
 		if (streq(root, ".")) {
@@ -529,32 +529,21 @@ putroot(char *where)
  * This also have the side effect of setting up local env
  */
 void
-sendEnv(FILE *f, char **envVar, int in_out)
+sendEnv(FILE *f, char **envVar)
 {
 	int	i;
-	char	*p, *root, *user, *host, *direction;
+	char	*p, *root, *user, *host;
 
 	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
 
-	direction =  in_out ? "_INCOMING" : "_OUTGOING";  
-
-	fprintf(f, "putenv BK%s_VERSION=%s\n", direction, bk_vers);
-	fprintf(f, "putenv BK%s_UTC=%s\n", direction, bk_utc);
-	fprintf(f, "putenv BK%s_TIME_T=%s\n", direction, bk_time);
+	fprintf(f, "putenv BK_VERSION=%s\n", bk_vers);
+	fprintf(f, "putenv BK_UTC=%s\n", bk_utc);
+	fprintf(f, "putenv BK_TIME_T=%s\n", bk_time);
+	fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
 	user = sccs_getuser();
-	fprintf(f, "putenv BK%s_USER=%s\n", direction, user);
-	fprintf(f, "putenv BK_USER=%s\n", user);
-
+	fprintf(f, "putenv _BK_USER=%s\n", user);
 	host = sccs_gethost();
-	fprintf(f, "putenv BK%s_HOST=%s\n", direction, host);
-	fprintf(f, "putenv BK_HOST=%s\n", host);
-
-	unless (getenv("BK_HOST")) {
-		p = aprintf("BK_HOST=%s", host);
-		putenv(p);
-	}
-
-	fprintf(f, "putenv BK%s_LEVEL=%d\n", direction, getlevel());
+	fprintf(f, "putenv _BK_HOST=%s\n", host);
 
 	root = sccs_root(0);
 	if (root) {
@@ -562,9 +551,9 @@ sendEnv(FILE *f, char **envVar, int in_out)
 			char	pwd[MAXPATH];
 
 			getcwd(pwd, MAXPATH);
-			fprintf(f, "putenv BK%s_ROOT=%s\n", direction, pwd);
+			fprintf(f, "putenv BK_ROOT=%s\n", pwd);
 		} else {
-			fprintf(f, "putenv BK%s_ROOT=%s\n", direction, root);
+			fprintf(f, "putenv BK_ROOT=%s\n", root);
 		}
 		free(root);
 	}
@@ -573,71 +562,22 @@ sendEnv(FILE *f, char **envVar, int in_out)
 	}
 }
 
-void
-setLocalEnv(int in_out)
-{
-	char *p, *root, *user, *host, *ldirection;
-
-	ldirection =  in_out ? "_INCOMING" : "_OUTGOING"; 
-
-	p = aprintf("BK%s_VERSION=%s", ldirection, bk_vers); putenv(p);
-	p = aprintf("BK%s_UTC=%s", ldirection, bk_utc); putenv(p);
-	p = aprintf("BK%s_TIME_T=%s", ldirection, bk_time); putenv(p);
-	user = sccs_getuser();
-	p = aprintf("BK%s_USER=%s", ldirection, user); putenv(p);
-	unless (getenv("BK_USER")) {
-		p = aprintf("BK_USER=%s", user);
-		putenv(p);
-	}
-
-	host = sccs_gethost();
-	p = aprintf("BK%s_HOST=%s", ldirection, host); putenv(p);
-	unless (getenv("BK_HOST")) {
-		p = aprintf("BK_HOST=%s", host);
-		putenv(p);
-	}
-
-	p = aprintf("BK%s_LEVEL=%d", ldirection, getlevel()); putenv(p);
-	root = sccs_root(0);
-	if (root) {
-		if (streq(root, ".")) {
-			char	pwd[MAXPATH];
-
-			getcwd(pwd, MAXPATH);
-			p = aprintf("BK%s_ROOT=%s", ldirection, pwd);
-			putenv(p);
-		} else {
-			p = aprintf("BK%s_ROOT=%s", ldirection, root);
-			putenv(p);
-		}
-		free(root);
-	}
-}
-
-
 int
-getServerInfoBlock(remote *r, char *direction)
+getServerInfoBlock(remote *r)
 {
 	char	*p, buf[4096];
-	int	len;
 
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq(buf, "@END@")) return (0); /* ok */
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
-		len = strlen(buf); 
-		/*
-		 * 11 is the length of longest prefix + null termination byte
-	 	 * Note: This memory is de-allocated at exit
-		 */
-		p = (char *) malloc(len + 11 + strlen(direction)); assert(p); 
 		if (strneq(buf, "PROTOCOL", 8)) {
-			sprintf(p, "BK_REMOTE_%s", buf);
+			p = aprintf("BK_REMOTE_%s", buf);
 		} else {
-			sprintf(p, "BK%s_%s", direction, buf);
+			p = aprintf("BKD_%s", buf);
 		}
 		putenv(p);
 	}
-	return (1); /* protocol error */
+	return (1); /* protocol error, never saw @END@ */
 }
 
 void
@@ -809,4 +749,40 @@ isLocalHost(char *h)
 {
 	unless (h) return (0);
 	return(streq("localhost", h) || streq("127.0.0.1", h));
+}
+
+char	*
+savefile(char *dir, char *prefix, char *pathname)
+{
+	int	i, fd;
+
+	/*
+	 * Save the file in the passed in dir.
+	 */
+	if (!isdir(dir) && (mkdir(dir, 0777) == -1)) return (0);
+	
+	/* Force this group writable */
+	(void)chmod(dir, 0775);
+	for (i = 1; ; i++) {				/* CSTYLED */
+		struct	tm *tm;
+		time_t	now = time(0);
+		char	buf[MAXPATH];
+		char	path[MAXPATH];
+
+		tm = localtime(&now);
+		strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
+		if (prefix) {
+			sprintf(path, "%s/%s%s.%02d", dir, prefix, buf, i);
+		} else {
+			sprintf(path, "%s/%s.%02d", dir, buf, i);
+		}
+		fd = open(path, O_CREAT|O_EXCL|O_WRONLY, 0666);
+		if ((fd == -1) || (close(fd) != 0)) continue;
+		if (pathname) {
+			strcpy(pathname, path);
+			return (pathname);
+		} else {
+			return (strdup(path));
+		}
+	}
 }

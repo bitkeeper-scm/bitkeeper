@@ -258,6 +258,7 @@ prunekey(sccs *s, remote *r, int outfd,
 	char	key[MAXKEY] = "";
 	delta	*d;
 	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
+	char	*p;
 
 	unless (getline2(r, key, sizeof(key)) > 0) {
 		unless (quiet) {
@@ -338,6 +339,10 @@ empty:	for (d = s->table; d; d = d->next) {
 	if (remote_csets) *remote_csets = rcsets;
 	if (remote_tags) *remote_tags = rtags;
 	if (local_only) *local_only = local;
+	p = aprintf("BK_LOCALCSETS=%d", local);
+	putenv(p);
+	p = aprintf("BK_REMOTECSETS=%d", rcsets);
+	putenv(p);
 	rc = local; 
 
 done:	return (rc);

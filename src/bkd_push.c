@@ -148,10 +148,8 @@ cmd_push_part1(int ac, char **av)
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock();
-	setLocalEnv(INCOMING);
 
-	if (getenv("BK_OUTGOING_LEVEL") && 
-	    (atoi(getenv("BK_OUTGOING_LEVEL")) > getlevel())) {
+	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
 		drain();
 		return (1);
@@ -270,7 +268,6 @@ cmd_push_part2(int ac, char **av)
 	}
 
 	sendServerInfoBlock();
-	setLocalEnv(INCOMING);
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {
@@ -341,6 +338,7 @@ cmd_push_part2(int ac, char **av)
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
+	putenv("BK_REMOTE=YES");
 	if (!metaOnly && (c = trigger(pr,  "pre"))) {
 		if (c == 2) {
 			system("bk abort -fp");

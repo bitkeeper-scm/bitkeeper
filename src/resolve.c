@@ -2105,19 +2105,38 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, first = 1, flags;
+	int	eperm = 0, first = 1, flags, ret;
 	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
 	char 	realname[MAXPATH];
 	MDBM	*permDB = mdbm_mem();
+	char	*fake_av[2] = { "apply", 0 };
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
 
 	unfinished(opts);
 
+	/*
+	 * Call the pre-apply trigger if there is one so that we have
+	 * one last chance to bail out.
+	 */
+	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
+	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
+		fake_av[0] = "remote apply";
+	}
+	if (!opts->logging && (ret = trigger(fake_av,  "pre"))) {
+		switch (ret) {
+		    case 3: flags = CLEAN_MVRESYNC; break;
+		    case 2: flags = CLEAN_RESYNC; break;
+		    default: flags = CLEAN_RESYNC|CLEAN_PENDING; break;
+		}
+		mdbm_close(permDB);
+		resolve_cleanup(opts, flags);
+	}
+	
 	/*
 	 * Pass 4a - check for edited files and build up a list of files to
 	 * backup and remove.
@@ -2546,6 +2565,13 @@ resolve_cleanup(opts *opts, int what)
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
 		sys(RM, "-rf", "RESYNC", SYS);
+	} else if (what & CLEAN_MVRESYNC) {
+		char	*dir = savefile(".", "RESYNC-", 0);
+
+		assert(exists("RESYNC"));
+		assert(dir);
+		unlink(dir);
+		sys("mv", "RESYNC", dir, SYS);
 	} else {
 		if (exists(LOG_TREE)) {
 			log_cleanup();

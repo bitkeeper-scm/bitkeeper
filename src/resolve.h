@@ -7,6 +7,7 @@
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
 #define	CLEAN_OK	4	/* quietly exit 0 */
 #define	DO_LOG		8	/* do logging */
+#define	CLEAN_MVRESYNC	16	/* mv RESYNC RESYNC-YYYY-MM-DD-%03d */
 #define	SHOUT() \
 	fputs("===================== ERROR ========================\n", stderr);
 #define	SHOUT2() \

@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2000, David Parsons & Larry McVoy & Andrew Chang
+ * Copyright (c) 2001 Larry McVoy & Andrew Chang
  */
 
 #include "bkd.h"
-private int localTrigger(char **);
-private int remotePreTrigger(char **);
-private int remotePostTrigger(char **);
+private int localTrigger(char *, char *, char **);
+private int remotePreTrigger(char *, char *, char **);
+private int remotePostTrigger(char *, char *, char **);
 
 int put_trigger_env(char *where, char *v, char *value);
 
@@ -14,24 +14,26 @@ int put_trigger_env(char *where, char *v, char *value);
  * set up the trigger environment
  */
 private void
-trigger_env(char *what)
+trigger_env(char *prefix, char *event, char *what)
 {
-	char buf[2*MAXPATH];
-	char *direction;
+	char	buf[100];
 
-	if (strneq(what, "incoming", 8))
-		direction = "_INCOMING";
-	else if (strneq(what, "outgoing", 8))
-		direction = "_OUTGOING";
-	else
-		direction = "";
-
-	putroot(direction);
-	put_trigger_env(direction, "HOST", sccs_gethost());
-	put_trigger_env(direction, "USER", sccs_getuser());
-	put_trigger_env(direction, "TIME_T", bk_time);
-	put_trigger_env(direction, "UTC", bk_utc);
-	put_trigger_env(direction, "VERSION", bk_vers);
+	if (streq("BK", prefix)) {
+		put_trigger_env("BK", "SIDE", "client");
+	} else {
+		put_trigger_env("BK", "SIDE", "server");
+		put_trigger_env("BK", "HOST", getenv("_BK_HOST"));
+		put_trigger_env("BK", "USER", getenv("_BK_USER"));
+	}
+	put_trigger_env(prefix, "HOST", sccs_gethost());
+	put_trigger_env(prefix, "USER", sccs_getuser());
+	put_trigger_env("BK", "EVENT", event);
+	putroot(prefix);
+	put_trigger_env(prefix, "TIME_T", bk_time);
+	put_trigger_env(prefix, "UTC", bk_utc);
+	put_trigger_env(prefix, "VERSION", bk_vers);
+	sprintf(buf, "%d", getlevel());
+	put_trigger_env(prefix, "LEVEL", buf);
 }
 
 
@@ -47,36 +49,39 @@ trigger(char **av, char *when)
 	char	buf[MAXPATH], tbuf[MAXPATH];
 	char	*what, *t, **triggers = 0;
 	char	*triggerDir = "BitKeeper/triggers";
-	int	len, resync, rc = 0;
+	char	*event = 0;
+	int	len, resolve, rc = 0;
 	struct	dirent *e;
 	DIR	*dh;
 
 	t = av[0];
 	if (strneq(t, "remote pull", 11)) {
 		what = "outgoing";
-		putenv("BK_EVENT=outgoing pull");
+		event = "outgoing pull";
 	} else if (strneq(t, "push", 4)) {
 		what = "outgoing";
-		putenv("BK_EVENT=outgoing push");
+		event = "outgoing push";
 	} else if (strneq(t, "remote clone", 12)) {
 		what = "outgoing";
-		putenv("BK_EVENT=outgoing clone");
+		event = "outgoing clone";
 	} else if (strneq(t, "remote push", 11)) {
 		what = "incoming";
-		putenv("BK_EVENT=incoming push");
+		event = "incoming push";
 	} else if (streq(t, "resolve") || streq(t, "remote resolve")) {
-		what = "resolve";
-		putenv("BK_EVENT=resolve");
+		what = event = "resolve";
 	} else if (strneq(t, "clone", 5)) {
 		/* XXX - can this happen?  Where's the trigger? */
 		what = "incoming";
-		putenv("BK_EVENT=incoming clone");
+		event = "incoming clone";
 	} else if (strneq(t, "pull", 4)) {
 		what = "incoming";
-		putenv("BK_EVENT=incoming pull");
+		event = "incoming pull";
+	} else if (strneq(t, "apply", 5) || strneq(t, "remote apply", 12)) {
+		what = event = "apply";
+		sprintf(tbuf, "%s/%s", RESYNC2ROOT, triggerDir);
+		triggerDir = tbuf;
 	} else if (strneq(t, "commit", 6)) {
-		what = "commit";
-		putenv("BK_EVENT=commit");
+		what = event = "commit";
 	} else if (strneq(t, "remote log push", 15)) {
 		/*
 		 * logs triggers are global over all logging trees
@@ -85,7 +90,7 @@ trigger(char **av, char *when)
 		triggerDir = tbuf;
 		concat_path(triggerDir, logRoot, "triggers");
 		what = "incoming-log";
-		putenv("BK_EVENT=incoming log");
+		event = "incoming log";
 	} else {
 		fprintf(stderr,
 			"Warning: Unknown trigger event: %s, ignored\n", av[0]);
@@ -96,8 +101,8 @@ trigger(char **av, char *when)
 	sys("bk", "get", "-q", triggerDir, SYS);
 
 	/* Run the incoming trigger in the RESYNC dir if there is one.  */
-	resync = (triggerDir != tbuf) && streq(what, "resolve");
-	if (resync) {
+	resolve = (triggerDir != tbuf) && streq(what, "resolve");
+	if (resolve) {
 		assert(isdir(ROOT2RESYNC));
 	    	chdir(ROOT2RESYNC);
 		triggerDir = RESYNC2ROOT "/BitKeeper/triggers";
@@ -107,8 +112,6 @@ trigger(char **av, char *when)
 	 * Find all the trigger scripts associated with this event.
 	 * XXX TODO need to think about the spilt root case
 	 */
-	sprintf(buf, "BK_TRIGGER=%s-%s", when, what);
-	putenv((strdup)(buf));
 	sprintf(buf, "%s-%s", when, what);
 	len = strlen(buf);
 	dh = opendir(triggerDir);
@@ -124,28 +127,24 @@ trigger(char **av, char *when)
 	}
 	closedir(dh);
 	unless (triggers) {
-		if (resync) chdir(RESYNC2ROOT);
+		if (resolve) chdir(RESYNC2ROOT);
 		return (0);
 	}
 
 	/*
-	 * Stuff some more useful crud in the environment.
-	 */
-	trigger_env(what);
-
-	/*
 	 * Sort it and run the triggers
 	 */
+	unless (getenv("BK_STATUS")) putenv("BK_STATUS=UNKNOWN");
 	sortLines(triggers);
 	unless (strneq(av[0], "remote ", 7))  {
-		rc = localTrigger(triggers);
+		rc = localTrigger(event, what, triggers);
 	} else if (streq(when, "pre")) {
-		rc = remotePreTrigger(triggers);
+		rc = remotePreTrigger(event, what, triggers);
 	} else 	{
-		rc = remotePostTrigger(triggers);
+		rc = remotePostTrigger(event, what, triggers);
 	}
 	freeLines(triggers);
-	if (resync) chdir(RESYNC2ROOT);
+	if (resolve) chdir(RESYNC2ROOT);
 	return (rc);
 }
 
@@ -154,7 +153,10 @@ runit(char *file, char *output)
 {
 	int	status, rc, j = 0, fd1, fd;
 	char	*my_av[10];
+	char	trigger[MAXPATH];
 
+	sprintf(trigger, "BK_TRIGGER=%s", basename(file));
+	putenv(trigger);	/* OK to not dup, transitory */
 	if (output) {
 		fd1 = dup(1); close(1); 
 		fd = open(output, O_CREAT|O_TRUNC|O_WRONLY, 0666);
@@ -181,14 +183,16 @@ runit(char *file, char *output)
  * Both pre and post client triggers are handled here
  */
 private int
-localTrigger(char **triggers)
+localTrigger(char *event, char *what, char **triggers)
 {
 	int	i, rc = 0;
 
 	/*
-	 * BK/basic does not support client side trigger
+	 * BK/basic does not support client side triggers.
 	 */
 	if ((bk_mode() == BK_BASIC)) return (0);
+
+	trigger_env("BK", event, what);
 
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;
@@ -199,16 +203,18 @@ localTrigger(char **triggers)
 }
 
 private int
-remotePreTrigger(char **triggers)
+remotePreTrigger(char *event, char *what, char **triggers)
 {
 	int	i, rc = 0;
 	char	output[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
 	/*
-	 * BK/basic only support bkd trigger on master repository
+	 * BK/basic only supports triggers in master repository.
 	 */
 	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) return (0);
+
+	trigger_env("BKD", event, what);
 
 	gettemp(output, "trigger");
 	fputs("@TRIGGER INFO@\n", stdout);
@@ -264,15 +270,16 @@ getTriggerInfoBlock(remote *r, int verbose)
 }
 
 private int
-remotePostTrigger(char **triggers)
+remotePostTrigger(char *event, char *what, char **triggers)
 {
 	int	fd1, i, rc = 0;
 
 	/*
-	 * BK/basic only support bkd trigger on master repository
+	 * BK/basic only supports triggers in master repository.
 	 */
 	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) return (0);
 
+	trigger_env("BKD", event, what);
 	/*
 	 * Process post trigger for remote client
 	 *

@@ -775,7 +775,6 @@ delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
 char	*sccs_realhost(void);
 char	*sccs_getuser(void);
-char	*sccs_realuser(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -997,6 +996,7 @@ char	*isHostColonPath(char *);
 int	hasGUIsupport();
 char	*GUI_display();
 int	cat(char *file);
+char	*savefile(char *dir, char *prefix, char *pathname);
 
 extern char *bk_vers;
 extern char *bk_utc;

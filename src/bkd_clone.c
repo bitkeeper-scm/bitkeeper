@@ -22,7 +22,6 @@ cmd_clone(int ac, char **av)
 	p = getenv("BK_REMOTE_PROTOCOL");
 	if (p) {
 		sendServerInfoBlock();
-		setLocalEnv(OUTGOING);
 	} else {
 		out("ERROR-Clone is not supported in compatibility mode.\n");
 	}

@@ -1527,37 +1527,13 @@ init(char *inputFile, int flags, project **pp)
 		 * Save the patch in the pending dir
 		 * and record we're working on it.
 		 */
-		if (!isdir("PENDING") && (mkdir("PENDING", 0777) == -1)) {
+		unless (savefile("PENDING", 0, pendingFile)) {
 			SHOUT();
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);
 		}
-		/* Force this group writable */
-		(void)chmod("PENDING", 0775);
-		for (i = 1; ; i++) {				/* CSTYLED */
-			struct	tm *tm;
-			time_t	now = time(0);
-			char	buf2[100];
-
-			tm = localtime(&now);
-			strftime(buf2, sizeof(buf2), "%Y-%m-%d", tm);
-			sprintf(pendingFile, "PENDING/%s.%02d", buf2, i);
-			if (exists(pendingFile)) continue;
-			if (f = fopen(pendingFile, "wb+")) {
-				break;
-			} else {
-				SHOUT();
-				perror(pendingFile);
-				fputs("Check permissions on PENDING\n", stderr);
-				cleanup(CLEAN_RESYNC);
-			}
-			if (i > 100) {
-				SHOUT();
-				fprintf(stderr,
-				    "takepatch: too many patches.\n");
-				cleanup(CLEAN_RESYNC);
-			}
-		}
+		f = fopen(pendingFile, "wb+");
+		assert(f);
 		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
 			perror("RESYNC/BitKeeper/tmp/patch");
 			exit(1);

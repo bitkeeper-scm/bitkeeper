@@ -1,3 +1,9 @@
+[Mon Mar  5 22:47:34 PST 2001]
+
+I've been testing this by taking two copies of the bitcluster tree, stuff
+the triggers into there, and testing on work and disks.  I need to write
+some tests but have not done so yet.
+
 [Thu Dec 14 19:40:09 PST 2000]
 
 Basic trigger overview.
@@ -72,210 +78,62 @@ Paranoid mode for gatekeeper trees
     }
     exit 0
 
-BK_CSETLIST
-    If set, contains the name of a file which contains the list of 
-    changesets being received.
-BK_CSETS
-    If set, contains the list of changesets being sent.
-BK_EVENT
-    Set to the event type (pull/push/etc)
-BK_LOCALCSETS
-    If set, the number of local changesets (and/or tags) which are not
-    present in the remote repository.
-BK_LOCAL_HOST
-    BK's idea of the local host name.
-BK_LOCAL_ROOT
-    The root of the local repository.
-BK_LOCAL_TIME_T
-    The Unix style timestamp of the local version of BK.
-BK_LOCAL_USER
-    BK's idea of the local user name.
-BK_LOCAL_UTC
-    The timestamp of the local version of BK expressed as YYYYMMDDHHMMSS.
-BK_LOCAL_VERSION
-    The version of the local BK either as the symbolic name or the UTC.
-BK_PENDING
-    Set in the commit triggers; contains the name of a file which contains
-    the list of files with pending deltas.
-BK_REMOTECSETS
-    If set, the number of remote changesets (and/or tags) which are not
-    present in the local repository.
-BK_REMOTE_HOST
-BK_REMOTE_ROOT
-BK_REMOTE_TIME_T
-BK_REMOTE_USER
-BK_REMOTE_UTC
-BK_REMOTE_VERSION
-    Same as the local version only for the remote repository or BK.
-BK_STATUS
-    If set, contains status about the command associated with the trigger.
-BK_TRIGGER
-    Set the the trigger class (but not instance).  I.e., pre-incoming.
 
-========== pre-commit ==========
-BK_EVENT=commit
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/project
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_PENDING=/tmp/bk_pendingQl1pzl
-    File
-    File format is
-    SCCS/s.c.c@1.1
-    src/foo/SCCS/s.foo.c@1.19
-    ...
-BK_TRIGGER=pre-commit
-========== post-commit ==========
-BK_EVENT=commit
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/project
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_PENDING=/tmp/bk_pendingQl1pzl
-    File, same as above
-BK_STATUS=OK
-BK_TRIGGER=post-commit
-========== pre-outgoing ==========
-BK_CSETS=1.0..1.1
-BK_EVENT='outgoing clone'
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/project
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_REMOTE_HOST=work.bitmover.com
-BK_REMOTE_ROOT=/tmp/.regression-lm/clone
-BK_REMOTE_TIME_T=976513398
-BK_REMOTE_USER=lm
-BK_REMOTE_UTC=20001211054318
-BK_REMOTE_VERSION=20001211054318
-BK_TRIGGER=pre-outgoing
-========== post-outgoing ==========
-BK_CSETS=1.0..1.1
-BK_EVENT='outgoing clone'
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/project
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_REMOTE_HOST=work.bitmover.com
-BK_REMOTE_ROOT=/tmp/.regression-lm/clone
-BK_REMOTE_TIME_T=976513398
-BK_REMOTE_USER=lm
-BK_REMOTE_UTC=20001211054318
-BK_REMOTE_VERSION=20001211054318
-BK_STATUS=OK
-BK_TRIGGER=post-outgoing
-========== pre-outgoing ==========
-BK_CSETLIST=BitKeeper/tmp/bkQhAi2b
-    File
-    File format is
-    1.2
-    1.3
-    1.4
-    1.4.1.1
-    In other words, a list of revisions, one revision per line.
-BK_EVENT='outgoing pull'
-BK_LOCALCSETS=2
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/project
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_REMOTECSETS=0
-BK_REMOTE_HOST=work.bitmover.com
-BK_REMOTE_ROOT=/tmp/.regression-lm/clone
-BK_REMOTE_TIME_T=976513398
-BK_REMOTE_USER=lm
-BK_REMOTE_UTC=20001211054318
-BK_REMOTE_VERSION=20001211054318
-BK_TRIGGER=pre-outgoing
-========== post-outgoing ==========
-BK_CSETLIST=BitKeeper/tmp/bkQhAi2b
-BK_EVENT='outgoing pull'
-BK_LOCALCSETS=2
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/project
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_REMOTECSETS=0
-BK_REMOTE_HOST=work.bitmover.com
-BK_REMOTE_ROOT=/tmp/.regression-lm/clone
-BK_REMOTE_TIME_T=976513398
-BK_REMOTE_USER=lm
-BK_REMOTE_UTC=20001211054318
-BK_REMOTE_VERSION=20001211054318
-BK_STATUS=1
-BK_TRIGGER=post-outgoing
-========== pre-incoming ==========
-BK_EVENT='incoming pull'
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/clone
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_REMOTE_HOST=work.bitmover.com
-BK_REMOTE_ROOT=/tmp/.regression-lm/project
-BK_REMOTE_TIME_T=976513398
-BK_REMOTE_USER=lm
-BK_REMOTE_UTC=20001211054318
-BK_REMOTE_VERSION=20001211054318
-BK_TRIGGER=pre-incoming
-========== pre-resolve ==========
-BK_CSETLIST=BitKeeper/etc/csets-in
-BK_EVENT=resolve
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/clone/RESYNC
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_REMOTE_HOST=work.bitmover.com
-BK_REMOTE_ROOT=/tmp/.regression-lm/project
-BK_REMOTE_TIME_T=976513398
-BK_REMOTE_USER=lm
-BK_REMOTE_UTC=20001211054318
-BK_REMOTE_VERSION=20001211054318
-BK_TRIGGER=pre-resolve
-====== pre-push-incoming ==========
-BK_EVENT='incoming push'
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/project
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_REMOTE_HOST=work.bitmover.com
-BK_REMOTE_ROOT=/tmp/.regression-lm/clone
-BK_REMOTE_TIME_T=976513398
-BK_REMOTE_USER=lm
-BK_REMOTE_UTC=20001211054318
-BK_REMOTE_VERSION=20001211054318
-BK_TRIGGER=pre-incoming
-====== pre-resolve ==========
-BK_CSETLIST=BitKeeper/etc/csets-in
-BK_EVENT=resolve
-BK_LOCAL_HOST=work.bitmover.com
-BK_LOCAL_ROOT=/tmp/.regression-lm/project/RESYNC
-BK_LOCAL_TIME_T=976513398
-BK_LOCAL_USER=lm
-BK_LOCAL_UTC=20001211054318
-BK_LOCAL_VERSION=20001211054318
-BK_REMOTE_HOST=work.bitmover.com
-BK_REMOTE_ROOT=/tmp/.regression-lm/clone
-BK_REMOTE_TIME_T=976513398
-BK_REMOTE_USER=lm
-BK_REMOTE_UTC=20001211054318
-BK_REMOTE_VERSION=20001211054318
-BK_STATUS=OK
-BK_TRIGGER=pre-resolve
+Trigger catagories:
+    c-	-> pre-commit
+    c+  -> post-commit
+    i-  -> pre-incoming
+    i+  -> post-incoming
+    o-  -> pre-outgoing
+    o+  -> post-outgoing
+    r-  -> pre-resolve
+
+Trigger variable	Valid in	Meaning
+----------------	--------	-------
+BK_CSETLIST		i+, o-, r-	File containing list of cset revs.
+
+BK_CSETS		o-, o+		List of outgoing csets.
+
+BK_EVENT		All		Event type, such as clone.
+
+BK_HOST			All		Client host
+BKD_HOST		i-, i+, o-, o+	Server host
+
+BK_LEVEL		All		The "level" of the client repository.
+BKD_LEVEL		i+, o-, o+	The "level" of the server repository.
+
+BK_LOCALCSETS		o-, o+		The number of csets in outgoing repo
+					not found in incoming repo.
+
+BK_PENDING		c-, c+		File containing the list of deltas
+					about to be committed.
+
+BK_REMOTECSETS		o-, o+		The number of csets in incoming repo
+					not found in outgoing repo.
+
+BK_ROOT			All		Client root
+BKD_ROOT		i-, i+, o-, o+	Server root
+
+BK_SIDE			i-, i+, o-, o+	client|server, indicates which side is
+					running the trigger.
+
+BK_STATUS		c+, i+, o+	OK means the command worked,
+					other values mean an error or a
+					dry run.
+
+BK_TIME_T		All		Date of the BK binary as a time_t.
+BKD_TIME_T		i-, i+, o-, o+	Date of server BK binary as a time_t.
+
+BK_TRIGGER		All		The basename of the trigger program.
+
+BK_USER			All		Client user
+BKD_USER		i-, i+, o-, o+	Server user
+
+BK_UTC			All		Date of the BK binary as YYYYMMDDHHMMSS
+BKD_UTC			i-, i+, o-, o+	Date of the server BK binary 
+
+BK_VERSION		All		Version of the BK binary as the version
+					string which may be a symbolic tag.  If
+					the BK version was not tagged, then the
+					UTC.
+BKD_VERSION		i-, i+, o-, o+	Version of the server BK binary.
