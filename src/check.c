@@ -216,6 +216,7 @@ To fix all bad writable file, use the following command:\n\
 				unlink(IDCACHE);
 			}
 			unlink(IDCACHE_LOCK);
+			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
 	if ((all || resync) && checkAll(keys)) errors |= 8;

@@ -294,6 +294,8 @@ again:
 	system(path);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	unlink(path);
+	sprintf(path, "%s/%s", p->root, IDCACHE);
+	chmod(path, GROUP_MODE);
 	return (0);
 }
 

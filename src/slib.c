@@ -1505,20 +1505,6 @@ sccs_mkroot(char *path)
 }
 
 /*
- * Return the id file as a FILE *
- */
-FILE	*
-idFile(sccs *s)
-{
-	char	file[MAXPATH];
-
-	unless (s->proj && s->proj->root) return (0);
-	sprintf(file, "%s/%s", s->proj->root, IDCACHE);
-	// XXX - locking of this file.
-	return (fopen(file, "a"));
-}
-
-/*
  * Return the ChangeSet file id.
  */
 char	*

@@ -467,6 +467,7 @@ c:	lftw(".", caches);
 				unlink(IDCACHE);
 			}
 			unlink(IDCACHE_LOCK);
+			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
 	sccs_free(cset);
