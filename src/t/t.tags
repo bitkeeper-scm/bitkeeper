@@ -628,6 +628,125 @@ grep -q 'S0$' SCCS/s.ChangeSet || {
 }
 echo OK
 
+echo $N Make sure we pick up tags from SCCS/t.ChangeSet .............$NL
+cd $HERE/tagpush
+bk edit $Q file
+bk delta -ywww $Q file
+echo 't.tag' > SCCS/t.ChangeSet
+echo 't.tag2' >> SCCS/t.ChangeSet
+echo 'I am a tag with spaces' >> SCCS/t.ChangeSet
+bk commit $Q -ywhatever 
+test -f SCCS/t.ChangeSet && {
+	echo failed to remove t.ChangeSet after commit
+	exit 1
+}
+grep -q '^.cSt.tag' SCCS/s.ChangeSet || {
+	echo failed to add tag to ChangeSet file
+	exit 1
+}
+grep -q '^.cSt.tag2' SCCS/s.ChangeSet || {
+	echo failed to add tag2 to ChangeSet file
+	exit 1
+}
+grep -q '^.cSI am a tag with spaces' SCCS/s.ChangeSet || {
+	echo failed to add I am a tag with spaces to ChangeSet file
+	exit 1
+}
+echo OK
+
+# Test the case where the same tag is on multiple entries on each side.
+# It should find the last one on each side.
+echo $N Test propogation of a tag added with a commit, pick remote ..$NL
+cd $HERE/tagpush
+bk edit $Q file
+bk delta -ywww $Q file
+bk commit $Q -ywhatever -Ssame_tag
+cd $HERE/tagchild
+bk pull $Q || {
+	echo pull failed
+	exit 1
+}
+# Now alternate between sides
+for  i in 1 2 3
+do	for dir in tagpush tagchild
+	do	cd $HERE/$dir
+		bk edit $Q file
+		bk delta -ywww $Q file
+		bk commit $Q -ywhatever -Ssame_tag
+	done
+done
+cd $HERE
+tar cf tagchild.TAR tagchild
+cd $HERE/tagchild
+#  ( echo ""
+#   echo x
+#   echo p
+#   echo t
+#   echo q
+#   ) | bk pull
+echo r | bk pull $Q 2>/dev/null
+test -d RESYNC && {
+	echo failed to resolve
+	exit 1
+}
+test X`bk prs -hr1.5.1.3 -nd:TAG: ChangeSet` = Xsame_tag || {
+	echo Failed to add tag to tip of branch, 1.5.1.3
+	bk prs ChangeSet
+	exit 1
+}
+echo OK
+#bk revtool
+
+echo $N Test propogation of a tag added with a commit, pick merge ...$NL
+cd $HERE
+rm -rf tagchild
+tar xf tagchild.TAR
+cd $HERE/tagchild
+echo m | bk pull $Q 2>/dev/null
+test -d RESYNC && {
+	echo failed to resolve
+	exit 1
+}
+test X`bk prs -hr+ -nd:TAG: ChangeSet` = Xsame_tag || {
+	echo Failed to add tag to merge
+	bk prs ChangeSet
+	exit 1
+}
+echo OK
+#bk revtool
+
+echo $N Tag conflict only, try to choose merge, should fail .........$NL
+cd $HERE
+cd $HERE/tagpush
+bk tag $Q -r1.3 old_tag
+cd $HERE/tagchild
+bk tag $Q -r1.4 old_tag
+( echo ""
+  echo x
+  echo m
+  echo q
+) | bk pull $Q 2>OUT 
+test -d RESYNC || {
+	echo should have failed to resolve
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Choose local, should work fine. .............................$NL
+( echo ""
+  echo x
+  echo l
+  echo q
+) | bk resolve $Q 2>OUT 
+test -d RESYNC && {
+	echo failed to resolve
+	cat OUT
+	exit 1
+}
+echo OK
+
+
 # Create a repository
 # clone it
 # tag it

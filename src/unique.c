@@ -80,15 +80,6 @@ keysHome()
 	return (keysFile = (strdup)(path));
 }
 
-time_t
-ageInSeconds(char *path)
-{
-	struct	stat sbuf;
-
-	if (lstat(path, &sbuf) == 0) return (sbuf.st_mtime);
-	return (0);
-}
-
 /* -1 means error, 0 means OK */
 int
 uniq_lock()
@@ -110,14 +101,11 @@ uniq_lock()
 	}
 
 	sprintf(linkpath, "%s.%d", lock, me);
-	if (age = ageInSeconds(linkpath)) {
-		if (age < 30) {
-			fprintf(stderr, "Stale lock? %s\n", linkpath);
-		}
+	unless (f = fopen(linkpath, "w")) {
 		unlink(linkpath);
+		f = fopen(linkpath, "w");
 	}
-		
-	f = fopen(linkpath, "w");
+	assert(f);
 	fprintf(f, "%d\n", me);
 	fclose(f);
 	while (link(linkpath, lock) != 0) {

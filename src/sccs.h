@@ -983,6 +983,7 @@ int	sys(char *first, ...);
 int	sysio(char *in, char *out, char *err, char *first, ...);
 char	*sccs_zone();
 MDBM	*sccs_tagConflicts(sccs *s);
+int	sccs_tagleaves(sccs *, delta **, delta **);
 
 int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 

@@ -2711,7 +2711,7 @@ symGraph(sccs *s, delta *d)
 		assert(!d->mtag);
 		return;
 	}
-	assert(!d->symGraph);
+	if (d->symGraph) return;
 	for (p = s->table; p && !p->symLeaf; p = p->next);
 	if (p) {
 		d->ptag = p->serial;
@@ -2751,8 +2751,8 @@ samelod(delta *a, delta *b)
 }
 
 /* XXX - does not handle lods */
-private int
-tagleaves(sccs *s, delta **l1, delta **l2)
+int
+sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 {
 	symbol	*sym, *a, *b;
 	int	first = 1;
@@ -2797,7 +2797,7 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	char	*zone = sccs_zone();
 	MMAP	*m;
 
-	if (tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
+	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	assert(l1 && l2);
 	/*
 	 * If we are automerging, then use the later of the two tag tips.
@@ -2836,7 +2836,7 @@ sccs_tagConflicts(sccs *s)
 	char	*t;
 	symbol	*sy1, *sy2;
 
-	if (tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
+	if (sccs_tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	unless (l2) return (0);
 
 	/* We always return an MDBM even if it is just an automerge case
@@ -2859,6 +2859,13 @@ sccs_tagConflicts(sccs *s)
 	/*
 	 * OK, for each symbol only in the left, see if there is one of the
 	 * same name only in the right.
+	 *
+	 * Imagine a tree like so:
+	 *	[ 1.5, "foo" ]
+	 *	[ 1.6, "foo" ]	[ 1.5.1.1, "foo" ]
+	 *	[ 1.7, "foo" ]
+	 *
+	 * We want to store 1.7,1.5.1.1 as the conflict.
 	 */
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
 		unless (sy1->left && !sy1->right) continue;
@@ -2874,11 +2881,24 @@ sccs_tagConflicts(sccs *s)
 			if (streq(sy1->rev, sy2->rev)) continue;
 			/*
 			 * OK, we really have a conflict, save it.
+			 * If it is already there, make sure that our version
+			 * has later serials on both sides.
 			 */
 			sprintf(buf,
 			    "%d %d", sy1->metad->serial, sy2->metad->serial);
 			if (mdbm_store_str(db, sy1->name, buf, MDBM_INSERT)) {
-				assert("duplicate tag conflict" == 0);
+				char	*old = mdbm_fetch_str(db, sy1->name);
+				int	a = 0, b = 0;
+
+				assert(old);
+				sscanf(old, "%d %d", &a, &b);
+				assert(a && b);
+				if ((a > sy1->metad->serial) ||
+				    (b > sy2->metad->serial)) {
+				    	continue;
+				}
+				mdbm_store_str(db,
+				    sy1->name, buf, MDBM_REPLACE);
 		    	}
 		}
 	}
@@ -2931,7 +2951,7 @@ checkSymGraph(sccs *s, int flags)
 	/* Allow open tag branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
 
-	if (tagleaves(s, &l1, &l2)) return (128);
+	if (sccs_tagleaves(s, &l1, &l2)) return (128);
 	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
 	unless (l1 && l2) return (0);
 	if ((l1->flags & D_GONE) || (l2->flags & D_GONE)) return (0);
@@ -3462,11 +3482,7 @@ getflags(sccs *s, char *buf)
 }
 
 /*
- * Read a symbol out of the old format flags section and add it to the
- * symbol table.
- * The cool thing to note is that this is the only item of this sort
- * associated with the delta and that the date is the same as this delta
- * so we can just add it to the delta's comments.
+ * Add a symbol to the symbol table.
  * Return 0 if we added it, 1 if it's a dup.
  */
 private int

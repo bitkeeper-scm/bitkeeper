@@ -60,13 +60,63 @@ t_remote(resolve *rs)
 	return (1);
 }
 
+private int
+t_revtool(resolve *rs)
+{
+	char    *av[7];
+	char    revs[2][MAXREV+2];
+	int     i;
+	tags	*t = (tags *)rs->opaque;
+
+	av[i=0] = "bk";
+	av[++i] = "revtool";
+	sprintf(revs[0], "-l%s", t->local->rev);
+	sprintf(revs[1], "-r%s", t->remote->rev);
+	av[++i] = revs[0];
+	av[++i] = revs[1];
+	av[++i] = rs->s->gfile;
+	av[++i] = 0;
+	spawnvp_ex(_P_NOWAIT, "bk", av);
+	return (0);
+}
+
+int
+t_tags(resolve *rs)
+{
+	sys("bk", "tags", SYS);
+	return (0);
+}
+
+int
+t_merge(resolve *rs)
+{
+	FILE	*f;
+	tags	*t = (tags *)rs->opaque;
+
+	unless (exists("SCCS/r.ChangeSet")) {
+		fprintf(stderr,
+"This is a tag conflict only, there is no merge changeset.\n"
+"You must pick the local or remote tag location.\n");
+		return (0);
+	}
+	/* close the graph, doesn't matter which side, we're adding a new tag */
+	sccs_tagMerge(rs->s, t->local, 0);
+	f = fopen("SCCS/t.ChangeSet", "a");
+	fprintf(f, "%s\n", t->name);
+	fclose(f);
+	return (1);
+}
+
 rfuncs	t_funcs[] = {
     { "?", "help", "print this help", t_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "cl", "clear", "clear the screen", res_clear },
     { "l", "local", "use the local changeset", t_local },
+    { "m", "merge", "move the tag to the merge changeset", t_merge },
+    { "p", "revtool", "graphical picture of the file history", t_revtool },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "remote", "use the remote changeset", t_remote },
+    { "t", "tags", "print the tag history", t_tags },
     { "x", "explain", "explain the choices", t_explain },
     { 0, 0, 0, 0 }
 };

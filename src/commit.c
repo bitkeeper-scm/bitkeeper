@@ -263,7 +263,7 @@ do_commit(char **av, c_opts opts, char *sym,
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "", cmt_opt[MAXPATH + 3], *p;
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
-	char	*cset[10] = {"bk", "cset", 0};
+	char	*cset[100] = {"bk", "cset", 0};
 	FILE 	*f, *f2;
 #define	MAX_PENDING_LOG 20
 
@@ -382,6 +382,18 @@ out:		if (commentFile) unlink(commentFile);
 	if (sym) {
 		sprintf(sym_opt, "-S%s", sym);
 		cset[i++] = sym_opt;
+	}
+	if (f = fopen("SCCS/t.ChangeSet", "r")) {
+		while (fnext(buf, f)) {
+			char	*t;
+			
+			chop(buf);
+			t = aprintf("-S%s", buf);
+			cset[i++] = t;
+			assert(i < 90);
+		}
+		fclose(f);
+		unlink("SCCS/t.ChangeSet");
 	}
 	if (hasComment) {
 		sprintf(cmt_opt, "-Y%s", commentFile);
