@@ -73,7 +73,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
+	dirs.o delta.o diffs.o diffsplit.o dir_gif.o \
 	export.o file_gif.o \
 	find.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
@@ -125,13 +125,14 @@ SCRIPTS	= applypatch bk.script import resync \
 LOCALSCR= build
 PSCR	= t/doit
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
-LIBS	= $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a
+LIBS	= libc/libc.a $(UWTLIB) zlib/libz.a mdbm/libmdbm.a \
+	  tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
 CFLAGS	= $(CC_DEBUG)
-CPPFLAGS= -Izlib -Imdbm
+CPPFLAGS= -Ilibc/include -Izlib -Imdbm
 # Override this if you don't have it.
 RANLIB	= ranlib
 SRCS	= bk.c $(OBJ:.o=.c) \
@@ -259,7 +260,7 @@ rebuild:
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
 	-@rm -rf tmp
-	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib tomcrypt; \
+	-@for i in ../doc ../man gnu gui utils win32 mdbm zlib tomcrypt libc; \
 	do	cd $(HERE)/$$i && $(MAKE) clobber; \
 	done
 
@@ -325,6 +326,9 @@ mdbm/libmdbm.a: FORCE
 
 tomcrypt/libtomcrypt.a: FORCE
 	cd tomcrypt && $(MAKE) "CC=$(CC)" "CFLAGS=$(CFLAGS)"
+
+libc/libc.a: FORCE
+	cd libc && $(MAKE)
 
 bkres.o: win32/data/bk.rc bk.ico
 	windres -i win32/data/bk.rc -o bkres.o

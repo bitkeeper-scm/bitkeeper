@@ -24,8 +24,9 @@ else
 	STRIP=strip
 endif
 SFIO_OBJS=sfio.o sfio_utils.o
-SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o
+SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o ../libc/libc.a
 SFIO=sfio$(EXE)
+CPPFLAGS=-I../libc/include
 VERS	:= $(shell test -x vers || bk get vers; ./vers)
 IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 
