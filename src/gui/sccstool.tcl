@@ -28,6 +28,7 @@ proc ht {id} \
 # orange-yellow) Maybe -> old, new, bad, 
 #
 # red - do a red rectangle
+# lightblue - do a lightblue rectangle
 # arrow - do a $arrow outline
 # orange - do a orange rectangle
 # yellow - do a yellow rectangle
@@ -43,12 +44,18 @@ proc highlight {id type} \
 	set y2 [lindex $bb 3]
 
 	switch $type {
-	    red     {\
-	        set bg [.p.top.c create rectangle \
-		      $x1 $y1 $x2 $y2 -outline "red" -width 1.5]}
+	    revision {\
+		set bg [.p.top.c create rectangle \
+		    $x1 $y1 $x2 $y2 -outline $color(revision) -width 1]}
+	    merge   {\
+		set bg [.p.top.c create rectangle \
+		    $x1 $y1 $x2 $y2 -outline $color(merge) -width 1]}
 	    arrow   {\
 		set bg [.p.top.c create rectangle \
 		    $x1 $y1 $x2 $y2 -outline $color(arrow) -width 1]}
+	    red     {\
+	        set bg [.p.top.c create rectangle \
+		    $x1 $y1 $x2 $y2 -outline "red" -width 1.5]}
 	    orange  {\
 		set bg [.p.top.c create rectangle \
 		    $x1 $y1 $x2 $y2 -outline "" -fill orange -tags orange]}
@@ -135,31 +142,46 @@ proc dateSeparate { } { \
                         #puts "SAME: cur: $curday prev: $prevday $rev $nrev"
                 } else {
                         set x $revX($rev)
+	
+			set date_array [split $prevday "/"]
+			set day [lindex $date_array 1]
+			set mon [lindex $date_array 2]
+			set yr [lindex $date_array 0]
+			set date "$day/$mon\n$yr"
 
                         # place vertical line short dx behind revision bbox
                         set lx [ expr $x - 15 ]
                         .p.top.c create line $lx $miny $lx $maxy -width 1 \
-                                -fill "lightblue"
+			    -fill "lightblue"
 
                        # Attempt to center datestring between verticals
                         set tx [expr $x - (($x - $lastx)/2) - 13]
                         .p.top.c create text $tx $ty -fill $color(date) \
-				-anchor n -text "$prevday" -font $font(date)
+			    -justify center \
+			    -anchor n -text "$date" -font $font(date)
 
                         set prevday $curday
                         set lastx $x
                 }
         }
-	set tx [expr $screen(maxx) - (($screen(maxx) - $x)/2) + 50]
+
+	set date_array [split $curday "/"]
+	set day [lindex $date_array 1]
+	set mon [lindex $date_array 2]
+	set yr [lindex $date_array 0]
+	set date "$day/$mon\n$yr"
+
+	set tx [expr $screen(maxx) - (($screen(maxx) - $x)/2) + 20]
 	.p.top.c create text $tx $ty -fill $color(date) -anchor n \
-		-text "$curday" -font $font(date)
+		-text "$date" -font $font(date)
 }
 
 
 # Add the revs starting at location x/y.
 proc addline {y xspace ht l} \
 {
-	global	bad font font wid revX revY color merges parent line_rev screen
+	global	bad font wid revX revY color merges parent line_rev screen
+	global  stacked
 
 	set last -1
 	set ly [expr $y - [expr $ht / 2]]
@@ -181,7 +203,15 @@ proc addline {y xspace ht l} \
 		}
 
 		# make revision two lines
-		regsub -- "\-" $rev "\n" txt	
+		if ($stacked) {
+			set jnk [split $rev "-"]
+			set jnk_user [lindex $jnk 1]
+			set jnk_rev [lindex $jnk 0]
+			set txt "$jnk_user\n$jnk_rev"
+			#set txt join [lindex $jnk 1] "\n" [lindex $jnk 0] 
+		} else {
+			set txt $rev
+		}
 
 		set x [expr $xspace * $serial]
 		set b [expr $x - 2]
@@ -193,17 +223,22 @@ proc addline {y xspace ht l} \
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [.p.top.c create text $x $y -fill "red" \
-			    -anchor sw -text "$txt" -font $font(bold) \
-			    -tags "$rev"]
+			    -anchor sw -text "$txt" -justify center \
+			    -font $font(bold) -tags "$rev"]
 			highlight $id "red"
 			incr bad
 		} else {
 			set id [.p.top.c create text $x $y -fill #241e56 \
-			    -anchor sw -text "$txt" -font $font(bold) \
-			    -tags "$rev"]
+			    -anchor sw -text "$txt" -justify center \
+			    -font $font(bold) -tags "$rev"]
+			if {$m == 1} { 
+				highlight $id "merge"
+			} else {
+				highlight $id "revision"
+			}
 		}
 		#puts "ADD $word -> $rev @ $x $y"
-		if {$m == 1} { highlight $id "arrow" }
+		#if {$m == 1} { highlight $id "arrow" }
 
 		if { $x < $screen(minx) } { set screen(minx) $x }
 		if { $x > $screen(maxx) } { set screen(maxx) $x }
@@ -348,7 +383,7 @@ proc mergeArrow {m ht} \
 
 proc listRevs {file} \
 {
-	global	bad font lineOpts merges dev_null line_rev ht screen
+	global	bad font lineOpts merges dev_null line_rev ht screen stacked
 
 	set screen(miny) 0
 	set screen(minx) 0
@@ -373,6 +408,7 @@ proc listRevs {file} \
 			set word [lindex $node 0]
 
 			# figure out whether name or revision is the longest
+			# so we can find the largest text string in the list
 			set revision [split $word '-']
 			set rev [lindex $revision 0]
 			set programmer [lindex $revision 1]
@@ -380,12 +416,17 @@ proc listRevs {file} \
 			set revlen [string length $rev]
 			set namelen [string length $programmer]
 
-			if {$revlen > $namelen} { 
-				set txt $rev
-				set l $revlen
+			if ($stacked) {
+				if {$revlen > $namelen} { 
+					set txt $rev
+					set l $revlen
+				} else {
+					set txt $programmer
+					set l $namelen
+				}
 			} else {
-				set txt $programmer
-				set l $namelen
+				set txt $word
+				set l [string length $word]
 			}
 
 			if {($l > $len) && ([string first '-BAD' $rev] == -1)} {
@@ -902,7 +943,7 @@ proc busy {busy} \
 
 proc widgets {} \
 {
-	global	font search swid diffOpts getOpts color
+	global	font search swid diffOpts getOpts color stacked
 	global	lineOpts dspec wish yspace paned file tcl_platform 
 
 	set dspec \
@@ -913,6 +954,8 @@ proc widgets {} \
 	set yspace 20
 	set search(text) ""
 	set search(dir) ""
+	set stacked 1
+
 	if {$tcl_platform(platform) == "windows"} {
 		set font(plain) {helvetica 9 roman}
 		set font(date) {helvetica 9 roman}
@@ -935,6 +978,8 @@ proc widgets {} \
 	# if 6x13 doesn't work
 
 	set color(arrow) darkblue
+	set color(merge) darkblue
+	set color(revision) darkblue
 	set color(date) slategrey
 	set color(branchArrow) $color(arrow)
 	set color(mergeArrow) $color(arrow)
@@ -986,7 +1031,7 @@ proc widgets {} \
 		pack .p.top.c -expand true -fill both
 
 	    frame .p.bottom -borderwidth 2 -relief sunken
-		text .p.bottom.t -width 80 -height 20 -font $font(plain) \
+		text .p.bottom.t -width 80 -height 30 -font $font(plain) \
 		    -xscrollcommand { .p.bottom.xscroll set } \
 		    -yscrollcommand { .p.bottom.yscroll set } \
 		    -wrap none 
