@@ -84,6 +84,8 @@ cset_map(sccs *s, int extras)
 	s->nloc = s->nextserial + extras;
 	s->locs = calloc(s->nloc, sizeof(loc));
 	assert(s->encoding == E_ASCII);
+	unless (s->size) return (0);
+
 	p = s->mmap + s->data; /* set p to start of delta body */
 	while (p < (s->mmap + s->size)) {
 		assert(strneq(p, "\001I ", 3));
@@ -138,7 +140,7 @@ earlier(sccs *s, delta *a, delta *b)
 cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 {
 	int	i, error, added = 0;
-	delta	*d, *e, *p;
+	delta	*d, *e, *p, *m;
 	ser_t	serial; /* serial number for 'd' */ 
 	char	*t, *r;
 	char	**syms = 0;
@@ -160,6 +162,8 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		 * We only get here if we do "takepatch -i"
 		 */
 		s->table = d;
+		s->tree = d; /* sccs_findKey() wants this */
+		d->next = NULL;
 		serial = 1;
 	} else if (earlier(s, s->table, d)) {
 		/*
@@ -226,8 +230,8 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		assert(p);
 		d->pserial = p->serial;
 		d->parent = p;
-		d->same = p->same + p->added; /* fix line count */
 	}
+	if ((d->type == 'D') && (s->tree != d)) d->same = 1;
 
 	/*
 	 * Fix up d->serial

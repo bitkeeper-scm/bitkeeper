@@ -10896,6 +10896,13 @@ newcmd:
 	if (HASH(s) && (getHashSum(s, n, diffs) != 0)) {
 		return (-1);
 	}
+
+	/*
+	 * For ChangeSet file, force d->same to one
+	 * because we do not maintain this field in the cweave code
+	 */
+	if (CSET(s)) *up = 1;
+
 	return (0);
 }
 

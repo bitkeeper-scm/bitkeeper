@@ -521,8 +521,9 @@ cleanup:		if (perfile) sccs_free(perfile);
 		    nfound, reallyNew ? "new file " : "", gfile);
 		if ((echo != 2) && (echo != 3)) fprintf(stderr, "\n");
 	}
-	if (s && CSET(s)) {
-		rc = applyCsetPatch(s->sfile, nfound, flags, perfile, proj);
+	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
+		rc = applyCsetPatch(s ? s->sfile : 0 ,
+						nfound, flags, perfile, proj);
 	} else {
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, flags, perfile, proj);
@@ -881,7 +882,7 @@ chkEmpty(sccs *s, MMAP *dF)
 	int	len;
 
 	
-	unless (dF->size > 0) return (0);
+	unless (dF && (dF->size > 0)) return (0);
 	if (s->state & S_CSET) return (0);
 
 	/*
@@ -1012,9 +1013,8 @@ applyCsetPatch(char *localPath,
 		return -1;
 	}
 apply:
-	assert(s && CSET(s));
-	cset_map(s, nfound);
 	p = patchList;
+	if (p && p->pid) cset_map(s, nfound);
 	while (p) {
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
@@ -1073,7 +1073,6 @@ apply:
 				encoding = s->encoding; /* save for later */
 				s->encoding &= ~E_GZIP;
 			}
-			cset_map(s, nfound);
 			iF = p->initMmap;
 			dF = p->diffMmap;
 			if (isLogPatch) {
@@ -1081,8 +1080,9 @@ apply:
 				s->xflags |= X_LOGS_ONLY;
 				if (chkEmpty(s, dF)) return -1;
 			}
-			cset_insert(s, iF, dF, NULL);
-			mclose(iF); /* dF done below after cset_write */
+			cset_map(s, nfound);
+			cset_insert(s, iF, dF, p->pid);
+			s->bitkeeper = 1;
 		}
 		p = p->next;
 	}
