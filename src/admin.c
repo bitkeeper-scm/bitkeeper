@@ -280,8 +280,10 @@ main(int ac, char **av)
 		sc = sccs_init(name, init_flags, 0);
 		if (was_edited) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
+			char *nrev;
 
-			if (sccs_get(sc, pf.newrev, 0, 0, 0, gflags, "-")) {
+			nrev = findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
+			if (sccs_get(sc, nrev, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "can not adjust p file\n");	
 			}
 		}
