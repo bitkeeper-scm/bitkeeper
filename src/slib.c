@@ -14042,6 +14042,13 @@ smartRename(char *old, char *new)
 	return (rc);
 }
 
+int
+smartMkdir(char *dir, int mode)
+{
+	if (isdir(dir)) return 0;
+	return ((mkdir)(dir, mode));
+}
+
 #if	defined(linux) && defined(sparc)
 #undef	fclose
 
