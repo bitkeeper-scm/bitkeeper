@@ -448,7 +448,7 @@ typedef struct delta {
  */
 typedef	struct symbol {			/* symbolic tags */
 	struct	symbol *next;		/* s->symbols sorted on date list */
-	char	*name;			/* STABLE */
+	char	*symname;		/* STABLE */
 	char	*rev;			/* 1.32 */
 	delta	*d;			/* delta associated with this one */
 					/* only for absolute revs, not LOD */
@@ -563,9 +563,9 @@ typedef	struct sccs {
 	time_t	gtime;		/* gfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
 	project	*proj;		/* If in BK mode, pointer to project */
-	int	version;	/* file format version */
-	int	userLen;	/* maximum length of any user name */
-	int	revLen;		/* maximum length of any rev name */
+	u16	version;	/* file format version */
+	u16	userLen;	/* maximum length of any user name */
+	u16	revLen;		/* maximum length of any rev name */
 	u32	initFlags;	/* how we were opened */
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */

@@ -1700,6 +1700,18 @@ char *
 sPath(char *name, int isDir) { return name; }
 #endif /* SPLIT_ROOT */
 
+private inline symbol *
+findSym(symbol *s, char *name)
+{
+	symbol	*sym;
+
+	unless (name) return (0);
+	for (sym = s; sym; sym = sym->next) {
+		if (sym->symname && streq(name, sym->symname)) return (sym);
+	}
+	return (0);
+}
+
 /*
  * Revision number/branching theory of operation:
  *	rfind() does an exact match - use this if you want a specific delta.
@@ -1726,7 +1738,7 @@ name2rev(sccs *s, char **rp)
 
 again:
 	for (sym = s->symbols; sym; sym = sym->next) {
-		if (streq(rev, sym->name)) {
+		if (sym->symname && streq(rev, sym->symname)) {
 			rev = sym->rev;
 			if (isdigit(rev[0])) {
 				*rp = rev;
@@ -2803,32 +2815,45 @@ samelod(delta *a, delta *b)
 int
 sccs_tagleaves(sccs *s, delta **l1, delta **l2)
 {
-	symbol	*sym, *a, *b;
+	delta	*d;
+	symbol	*sym;
 	int	first = 1;
+	char	*arev, *aname, *brev, *bname;
 
-	for (sym = s->symbols; sym; sym = sym->next) {
-		unless (sym->metad->symLeaf) continue;
+	/*
+	 * This code used to walk the symbol table list but that doesn't
+	 * work because a tag graph node might not have a symbol; tag
+	 * automerges do not have symbols.  So there is no entry in the
+	 * symbol table.
+	 */
+	aname = bname = "?";
+	for (d = s->table; d; d = d->next) {
+		unless (d->symLeaf) continue;
+		for (sym = s->symbols; sym; sym = sym->next) {
+			if (sym->metad == d) break;
+		}
 		unless (*l1) {
-			a = sym;
-			*l1 = sym->metad;
+			arev = d->rev;
+			if (sym) aname = sym->symname;
+			*l1 = d;
 			continue;
 		}
 		unless (*l2) {
-			b = sym;
-			*l2 = sym->metad;
+			brev = d->rev;
+			if (sym) bname = sym->symname;
+			*l2 = d;
 			continue;
 		}
 		if (first) {
 			fprintf(stderr,
 			    "Unmerged tag tips:\n"
 			    "\t%-16s %s\n\t%-16s %s\n\t%-16s %s\n",
-			    a->metad->rev, a->name,
-			    b->metad->rev, b->name,
-			    sym->metad->rev, sym->name);
+			    arev, aname, brev, bname,
+			    sym->metad->rev, sym->symname);
 		    	first = 0;
 		} else {
 			fprintf(stderr,
-			    "\t%-16s %s\n", sym->metad->rev, sym->name);
+			    "\t%-16s %s\n", d->rev, sym ? sym->symname : "?");
 		}
 	}
 	return (!first);	/* first == 1 means no errors */
@@ -2920,7 +2945,7 @@ sccs_tagConflicts(sccs *s)
 		unless (sy1->left && !sy1->right) continue;
 		for (sy2 = s->symbols; sy2; sy2 = sy2->next) {
 			unless (sy2->right && !sy2->left &&
-			    streq(sy1->name, sy2->name)) {
+			    streq(sy1->symname, sy2->symname)) {
 			    	continue;
 			}
 			/*
@@ -2935,8 +2960,8 @@ sccs_tagConflicts(sccs *s)
 			 */
 			sprintf(buf,
 			    "%d %d", sy1->metad->serial, sy2->metad->serial);
-			if (mdbm_store_str(db, sy1->name, buf, MDBM_INSERT)) {
-				char	*old = mdbm_fetch_str(db, sy1->name);
+			if (mdbm_store_str(db, sy1->symname, buf, MDBM_INSERT)) {
+				char	*old = mdbm_fetch_str(db, sy1->symname);
 				int	a = 0, b = 0;
 
 				assert(old);
@@ -2947,7 +2972,7 @@ sccs_tagConflicts(sccs *s)
 				    	continue;
 				}
 				mdbm_store_str(db,
-				    sy1->name, buf, MDBM_REPLACE);
+				    sy1->symname, buf, MDBM_REPLACE);
 		    	}
 		}
 	}
@@ -3012,7 +3037,7 @@ checkSymGraph(sccs *s, int flags)
 	}
 	assert(s1 && s2);
 	verbose((stderr, "%s: unmerged tags %s/%s and %s/%s\n",
-	    s->gfile, s1->rev, s1->name, s2->rev, s2->name));
+	    s->gfile, s1->rev, s1->symname, s2->rev, s2->symname));
 	return (128);
 }
 
@@ -3542,9 +3567,7 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	/* If we can't find it, just pass it through */
 	if (!d && !(d = rfind(s, rev))) return (0);
 
-	for (sym = s->symbols; sym; sym = sym->next) {
-		if (streq(sym->name, val)) break;
-	}
+	sym = findSym(s->symbols, val);
 	if (sym && streq(sym->rev, rev)) {
 		return (1);
 	} else {
@@ -3552,7 +3575,7 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 		assert(sym);
 	}
 	sym->rev = strdup(rev);
-	sym->name = strdup(val);
+	sym->symname = strdup(val);
 	sym->d = d;
 	sym->metad = metad;
 	d->flags |= D_SYMBOLS;
@@ -4245,7 +4268,7 @@ sccs_free(sccs *s)
 	if (s->table) sccs_freetable(s->table);
 	for (sym = s->symbols; sym; sym = t) {
 		t = sym->next;
-		if (sym->name) free(sym->name);
+		if (sym->symname) free(sym->symname);
 		if (sym->rev) free(sym->rev);
 		free(sym);
 	}
@@ -7338,9 +7361,9 @@ delta_table(sccs *s, FILE *out, int willfix)
 			for (sym = s->symbols; sym; sym = sym->next) {
 				unless (sym->metad == d) continue;
 				if (!strip_tags || 
-				    streq(KEY_FORMAT2, sym->name)) {
+				    streq(KEY_FORMAT2, sym->symname)) {
 					p = fmts(buf, "\001cS");
-					p = fmts(p, sym->name);
+					p = fmts(p, sym->symname);
 					*p++ = '\n';
 					*p   = '\0';
 					fputmeta(s, buf, out);
@@ -8918,7 +8941,7 @@ private int
 checkOpenBranch(sccs *s, int flags)
 {
 	delta	*d;
-	int	ret = 0, tips = 0;
+	int	ret = 0, tips = 0, symtips = 0;
 	u8	*lodmap = 0;
 	ser_t	next;
 
@@ -8951,6 +8974,7 @@ checkOpenBranch(sccs *s, int flags)
 				    s->sfile, d->rev));
 				ret = 1;
 			}
+			if (d->symLeaf) symtips++;
 		}
 		if (d->flags & D_GONE) continue;
 		unless (isleaf(s, d)) continue;
@@ -8958,7 +8982,7 @@ checkOpenBranch(sccs *s, int flags)
 		tips++;
 	}
 
-	unless (tips) {
+	unless (tips || (symtips > 1)) {
 		if (lodmap) free(lodmap);
 		return (ret);
 	}
@@ -8966,6 +8990,11 @@ checkOpenBranch(sccs *s, int flags)
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
 		if (streq(d->rev, "1.0")) continue;
+		if ((symtips > 1) && d->symLeaf) {
+			verbose((stderr,
+			    "%s: unmerged symleaf %s\n", s->sfile, d->rev));
+			ret = 1;
+		}
 		unless (isleaf(s, d)) continue;
 		unless (lodmap[d->r[0]] > 1) continue;
 		verbose((stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev));
@@ -9447,7 +9476,14 @@ symArg(sccs *s, delta *d, char *name)
 
 	unless (CSET(s)) return;	/* no tags on regular files */
 
-	/* stash away the parent (and maybe merge) serial numbers */
+	/*
+	 * Stash away the parent (and maybe merge) serial numbers
+	 *
+	 * Note that if this is a tag merge and there is no symbol on
+	 * this node, then it never gets added to the symbol table.
+	 * So you can't walk the symbol table looking for metad->symLeaf
+	 * to find leaves.  See sccs_tagleaves().
+	 */
 	if (isdigit(*name)) {
 		d->symGraph = 1;
 		d->ptag = atoi(name);
@@ -9469,7 +9505,7 @@ symArg(sccs *s, delta *d, char *name)
 
 	sym = calloc(1, sizeof(*sym));
 	sym->rev = strdup(d->rev);
-	sym->name = strnonldup(name);
+	sym->symname = strnonldup(name);
 	if (!s->symbols) {
 		s->symbols = s->symTail = sym;
 	} else {
@@ -9486,7 +9522,7 @@ symArg(sccs *s, delta *d, char *name)
 	/*
 	 * If this succeeds, then ALL keys must be in long key format
 	 */
-	if (CSET(s) && streq(d->rev, "1.0") && streq(sym->name, KEY_FORMAT2)) {
+	if (CSET(s) && streq(d->rev, "1.0") && streq(sym->symname, KEY_FORMAT2)) {
 	    	s->xflags |= X_LONGKEY;
 	}
 }
@@ -9578,9 +9614,7 @@ dupSym(symbol *symbols, char *s, char *rev)
 {
 	symbol	*sym;
 
-	for (sym = symbols; sym; sym = sym->next) {
-		if (streq(sym->name, s)) break;
-	}
+	sym = findSym(symbols, s);
 	/* If rev isn't set, then any name match is enough */
 	if (sym && !rev) return (1);
 	return (sym && streq(sym->rev, rev));
@@ -12849,7 +12883,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			unless (sym->d == d) continue;
 			j++;
 			fs("S ");
-			fs(sym->name);
+			fs(sym->symname);
 			fc('\n');
 		}
 		if (j) return (strVal);
@@ -13068,7 +13102,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			unless (sym->d == d) continue;
 			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
-			fs(sym->name);
+			fs(sym->symname);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
@@ -13885,7 +13919,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		}
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->metad == d) continue;
-			fprintf(out, "S %s\n", sym->name);
+			fprintf(out, "S %s\n", sym->symname);
 		}
 		if (d->symGraph) fprintf(out, "s g\n");
 		if (d->symLeaf) fprintf(out, "s l\n");
@@ -13968,7 +14002,7 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 	if (flags & PRS_META) {
 		symbol	*sym;
 		for (sym = s->symbols; sym; sym = sym->next) {
-			fprintf(out, "S %s %s\n", sym->name, sym->rev);
+			fprintf(out, "S %s %s\n", sym->symname, sym->rev);
 		}
 	}
 	unless (SET(s)) {
