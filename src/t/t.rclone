@@ -54,7 +54,7 @@ P=50000
 bk bkd -q -p$P -c8
 while [ $? -eq 2 ]
 do      P=`expr $P + 1`
-        bk bkd -q -p$P -c7
+        bk bkd -q -p$P -c8
 done 
 
 bk clone $Q $HERE/project bk://localhost:$P/$HERE/copy
@@ -79,8 +79,14 @@ bk clone -EBK_TESTVAR=XYZ $Q project http://localhost:$P/copy4
 echo OK
 # TODO test virtual host/root support
 
-echo $N rclone to illegal path ......................................$NL
-bk clone project http://localhost:$P//tmp/foozz.$$ 2> OUT
-if [ $? -eq 0 ]; then echo should have failed; exit 1; fi
-grep -q 'illegal cd' OUT || exit 1
+echo $N rClone to illegal path ......................................$NL
+bk clone $HERE/project http://localhost:$P//tmp/foozz.$$ 2> OUT && {
+       echo should have failed
+       exit 1
+}
+grep -q 'illegal cd' OUT || {
+       echo bad error message
+       cat OUT
+       exit 1
+}
 echo OK
