@@ -583,11 +583,8 @@ http_cset(char *rev)
 	}
 
 	while (fnext(buf, f)) {
-		unless (strneq("ChangeSet@", buf, 10)) {
-			if (d = strrchr(buf, '@')) {
-				if (streq(d, "@1.0\n")) continue;
-			}
-		}
+		if (strneq("ChangeSet@", buf, 10)) continue;
+		if ((d = strrchr(buf, '@')) && streq(d, "@1.0\n")) continue;
 		lines = addLine(lines, strdup(buf));
 	}
 	pclose(f);
@@ -619,6 +616,8 @@ http_cset(char *rev)
 	    "border=0 cellpadding=4>\n");
 
 	if (lines) {
+		sprintf(buf, "ChangeSet@%s\n", rev);
+		write(fd, buf, strlen(buf));
 		EACH(lines) write(fd, lines[i], strlen(lines[i]));
 		freeLines(lines);
 		close(fd);
@@ -721,28 +720,31 @@ trailer(char *path)
 	}
 }
 
-int
-htmlify(char *from, char *html, int n)
+private int
+htmlify(char *str, int len)
 {
-	char	*s, *t;
+	char	*end = str + len;
 	int	h;
+	char	buf[MAXPATH];
 
-	h = 0;
-	for (s = from, t = html; n--; s++) {
-		if (*s == '<') {
-			*t++ = '&'; *t++ = 'l';
-			*t++ = 't'; *t++ = ';';
-			h += 4;
-		} else if (*s == '>') {
-			*t++ = '&'; *t++ = 'g';
-			*t++ = 't'; *t++ = ';';
-			h += 4;
-		} else {
-			*t++ = *s;
-			h++;
+	for (h = 0; str < end; str++) {
+		if (*str == '<' || *str == '>') {
+			buf[h++] = '&';
+			buf[h++] = (*str == '<') ? 'l': 'g';
+			buf[h++] = 't';
+			buf[h++] = ';';
+		}
+		else
+			buf[h++] = *str;
+
+		if (h > MAXPATH-10) {
+			if (writen(1, buf, h) != h) return 0;
+			h = 0;
 		}
 	}
-	return (h);
+	if (h > 0 && writen(1, buf, h) != h) return 0;
+
+	return 1;
 }
 
 /* pathname[@rev] */
@@ -934,7 +936,6 @@ http_anno(char *pathrev)
 {
 	FILE	*f;
 	char	buf[4096];
-	char	html[8192];
 	int	n;
 	char	*s, *d;
 	MDBM	*m;
@@ -967,10 +968,7 @@ http_anno(char *pathrev)
 			" | sed -e's/| license:.*$/| license: XXXXXXXXXXXXX/'");
 	}
 	f = popen(buf, "r");
-	while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
-		n = htmlify(buf, html, n);
-		writen(1, html, n);
-	}
+	while ((n = fread(buf, 1, sizeof(buf), f)) > 0) htmlify(buf, n);
 	pclose(f);
 	out("</pre>\n");
 	if (!embedded) trailer("anno");
@@ -1030,19 +1028,20 @@ private void
 http_diffs(char *pathrev)
 {
 	FILE	*f;
-	char	buf[16<<10];
-	char	html[18<<10];
+	char	*av[100];
 	char	*s;
 	MDBM	*m;
 	int	n;
 	int	i;
 	char	dspec[MAXPATH*2];
+	char	argrev[100];
+	char	buf[4096];
 
 
 	whoami("diffs/%s", pathrev);
 
 	i = snprintf(dspec, sizeof dspec,
-		"%s<tr>\n"
+		"-d%s<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
 		" <td align=center><a href=anno/:GFILE:@:I:%s>:I:</a></td>\n"
@@ -1050,10 +1049,15 @@ http_diffs(char *pathrev)
 		"</tr>\n%s", prefix, navbar, suffix);
 
 	if (i == -1) {
-		http_error(500, "buffer overflow in http_diffs");
+		http_error(500, "buffer overflow (#1) in http_diffs");
 	}
+
 	unless (s = strrchr(pathrev, '@')) {
 		http_error(503, "malformed rev %s", pathrev);
+	}
+
+	if (snprintf(argrev, sizeof argrev, "-r%s", 1+s) == -1) {
+		http_error(500, "buffer overflow (#2) in http_diffs");
 	}
 
 	if (!embedded) {
@@ -1062,8 +1066,7 @@ http_diffs(char *pathrev)
 	}
 
 	*s++ = 0;
-	//out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
-	//out("bgcolor=white>\n");
+
 	out(OUTER_TABLE INNER_TABLE
 	    "<tr bgcolor=lightblue>\n"
 	    " <th>Age</th>\n"
@@ -1071,10 +1074,17 @@ http_diffs(char *pathrev)
 	    " <th>Annotate</th>\n"
 	    " <th align=left>Comments</th>\n"
 	    "</tr>\n");
-	sprintf(buf, "bk prs -hr%s -d'%s' %s", s, dspec, pathrev);
-	f = popen(buf, "r");
-	while (fnext(buf, f)) out(buf);
-	pclose(f);
+
+	av[i=0] = "bk";
+	av[++i] = "prs";
+	av[++i] = "-h";
+	av[++i] = argrev;
+	av[++i] = dspec;
+	av[++i] = pathrev;
+	av[++i] = 0;
+
+	spawnvp_ex(_P_WAIT, "bk", av);
+
 	out(INNER_END OUTER_END);
 
 	if (strstr(s, "..")) {
@@ -1083,17 +1093,17 @@ http_diffs(char *pathrev)
 		sprintf(buf, "bk diffs -uR%s %s", s, pathrev);
 	}
 	f = popen(buf, "r");
-	out("<pre>");
-	out("<font size=2>");
+	out("<pre>\n"
+	    "<font size=2>\n");
 	color(0);
 	fnext(buf, f);
 	while (fnext(buf, f)) {
-		n = htmlify(buf, html, strlen(buf));
-		color(html[0]);
-		writen(1, html, n);
+		color(buf[0]);
+		htmlify(buf, strlen(buf));
 	}
 	pclose(f);
-	out("</pre>\n");
+	out("</font>\n"
+	    "</pre>\n");
 	if (!embedded) trailer("diffs");
 }
 
@@ -1101,8 +1111,7 @@ private void
 http_patch(char *rev)
 {
 	FILE	*f;
-	char	buf[16<<10];
-	char	html[18<<10];
+	char	buf[4096];
 	int	n;
 	char	*s;
 	MDBM	*m;
@@ -1122,14 +1131,13 @@ http_patch(char *rev)
 	f = popen(buf, "r");
 	color(0);
 	while (fgets(buf, sizeof(buf), f)) {
-		n = htmlify(buf, html, strlen(buf));
-		color(html[0]);
-		if (html[0] == 'd') {
+		color(buf[0]);
+		if (buf[0] == 'd') {
 			out("<table width=100%>\n");
 			out("<tr bgcolor=lightblue><td>");
 		}
-		writen(1, html, n);
-		if (html[0] == 'd') out("</td></tr></table>");
+		htmlify(buf, strlen(buf));
+		if (buf[0] == 'd') out("</td></tr></table>");
 	}
 	pclose(f);
 	out("</pre>\n");
