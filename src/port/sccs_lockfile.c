@@ -66,7 +66,7 @@ sccs_lockfile(char *lockfile, int tries)
 			return (0);
 		}
 		unlink(path);	/* less likely to leave turds */
-		if (tries && (tries-- == 0)) {
+		if (tries && (--tries == 0)) {
 			fprintf(stderr, "timed out waiting for %s\n", lockfile);
 			return (-1);
 		}
