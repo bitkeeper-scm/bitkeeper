@@ -317,8 +317,7 @@ _clone() {
 }
 
 # Advertise this repository for remote lookup
-_advertise()
-{
+_advertise() {
 	FILE=${BIN}tmp/advertised
 	while getopts l opt
 	do	case "$opt" in
@@ -856,26 +855,25 @@ __mail() {
 			echo ""
 			cat
 			) | $i/sendmail -i $TO
-			exit 0
+			return
 		fi
 	done
 
 	# We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX
-	# Like lots of other things don't work on IRIX.
 	case "`uname -s`" in
 	    *IRIX*)
 		if [ -x /usr/bin/mailx ]
-		then	exec mailx $TO
-		else	exec mail $TO
+		then	mailx $TO
+		else	mail $TO
 		fi
+		return
 		;;
 	esac
 
 	if [ -x /usr/bin/mailx ]
-	then	exec mailx -s "$SUBJ" $TO
-	else	exec mail -s "$SUBJ" $TO
+	then	mailx -s "$SUBJ" $TO
+	else	mail -s "$SUBJ" $TO
 	fi
-	exit 1
 }
 
 __logAddr() {
@@ -995,6 +993,41 @@ __logChangeSet() {
 	  ${BIN}cset -c -r$R ) | __mail $LOGADDR "BitKeeper log: $P"
 }
 
+# Used to force a notify event, mostly for testing.
+_notify() {
+	__cd2root
+	__notify
+}
+
+# If there is a notify file, then notify the users in there of a new
+# changeset.
+__notify() {
+	test -f BitKeeper/etc/SCCS/s.notify -o -f BitKeeper/etc/notify ||
+	    return
+	test -f BitKeeper/etc/notify || ${BIN}get -q BitKeeper/etc/notify
+	test -s BitKeeper/etc/notify || return
+	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
+	U=`${BIN}getuser`
+	if [ "X$P" = X ]
+	then	SUBJECT="BitKeeper changeset by $U"
+	else	SUBJECT="BitKeeper changeset in $P by $U"
+	fi
+	{
+	  _version
+	  echo BitKeeper repository `${BIN}gethost`:`pwd`
+	  if [ -f BitKeeper/log/parent ]
+	  then	echo "Parent repository is `cat BitKeeper/log/parent`"
+	  fi
+	  echo ""
+	  ${BIN}sccslog -r+ ChangeSet
+	  ${BIN}cset -r+ | ${BIN}sccslog -
+	} > /tmp/notify$$
+	for i in `cat BitKeeper/etc/notify`
+	do	__mail "$i" "$SUBJECT" < /tmp/notify$$
+	done
+	$RM -f /tmp/notify$$
+}
+
 __remark() {
 	if [ -f "BitKeeper/etc/SCCS/x.marked" ]; then return; fi
 	if [ "X$1" != XYES ]
@@ -1078,6 +1111,7 @@ _commit() {
 		    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 		EXIT=$?
 		${RM} -f ${TMP}commit$$ ${TMP}list$$
+		__notify
 		# Assume top of trunk is the right rev
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
@@ -1112,6 +1146,7 @@ _commit() {
 			    ${BIN}cset "$COMMENTS" ${SYM:+"$SYM"} $COPTS $@ -
 			EXIT=$?
 			${RM} -f ${TMP}commit$$ ${TMP}list$$
+			__notify
 			# Assume top of trunk is the right rev
 			# XXX TODO: Needs to account for LOD
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
