@@ -32,13 +32,16 @@ sub main()
 		}
 		if (/^CATEGORY\s*$/) {
 			$_ = <>;
-			chop;
-			s/^\s*//;
-			unless (defined($cat{$_})) {
-				open($_, ">>$_.summaries");
-				$cat{$_} = 1;
+			while ($_ !~ /^$/) {
+				chop;
+				s/^\s*//;
+				unless (defined($cat{$_})) {
+					open($_, ">>$_.summaries");
+					$cat{$_} = 1;
+				}
+				print $_ "$line\n";
+				$_ = <>;
 			}
-			print $_ "$line\n";
 		}
 	}
 	$section = "All";

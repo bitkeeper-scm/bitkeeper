@@ -187,7 +187,12 @@ EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
 cd $HERE/project/src
 test -f SCCS/s.'S P A C E S' || { echo failed; exit 1; }
-test -f 'S P A C E S,v' && { echo failed to remove ,v file; ls; exit 1; }
+test -f 'S P A C E S,v' && {
+	echo failed to remove ,v file
+	ls
+	cat $HERE/import.out
+	exit 1
+}
 echo OK
 
 echo $N Test RCS import of a file with a backslash in the name ......$NL
@@ -225,7 +230,12 @@ EOF
 ( echo RCS; echo no ) | bk import import_dir project > import.out 2>&1
 cd $HERE/project/src
 test -f SCCS/s.'I\ m' || { echo failed; exit 1; }
-test -f 'I\ m,v' && { echo failed to remove ,v file; ls; exit 1; }
+test -f 'I\ m,v' && {
+	echo failed to remove ,v file
+	ls
+	cat $HERE/import.out
+	exit 1
+}
 echo OK
 
 echo $N Test RCS import of a file starting with - ...................$NL

@@ -29,6 +29,14 @@ to each of the specified files.  There are options to restrict the set if
 revisions to print, a very commonly used one is
 .OPTreq -r + ,
 \ which restricts the set to the most recent revision.
+.LP
+With no options prs output defaults to giving information on all revisions
+of all files in the present directory that are under \*(BK control.  
+Output is given as follows: the name of the file and range of revisions
+is followed by a detailed account of each revision.  Revision number, 
+revision date and time, user who made that revision, what the relative
+path from root of repository is to that file, the comments that go
+with that revision, and documents if the file has been renamed.
 .SH OPTIONS
 .if t .TP .7i
 .if n .TP 1i
@@ -39,7 +47,7 @@ Print info on all deltas, not just data deltas.
 Reverse the order of the printed deltas.
 .tp
 .OPTreq \-c date
-Cut-off dates.  See 
+Cut-off dates.  See Range Specifications (below) or 
 ._SA range 1
 for details.
 .tp
@@ -370,6 +378,10 @@ HASHCOUNT	D	count of key/value pairs in D if & only if hash file
 .xx
 HOST	D	hostname of D
 .xx
+HTML_C	D	Comments in a form suitable for web pages.
+.xx
+HTML_AGE	D	Age in a form suitable for web pages.
+.xx
 I	D	D's revision number
 .xx
 KEY	D	\*[BK] key of D
@@ -392,8 +404,6 @@ MGP	D	D's merge parent's serial number
 .xx
 MODE	D	D's file modes as an octal (777)
 .xx
-MODE	D	D's file modes as an octal (777)
-.xx
 MPARENT	D	D's merge parent's revision
 .xx
 NEXT	D	next entry after D in delta table 
@@ -412,11 +422,13 @@ R	D	the first field in D's rev (R.L.B.S)
 .xx
 RANDOM	F	Random bits part of ROOTKEY
 .xx
+RENAME	D	D's path if different from parent's path
+.xx
 REV	D	same as I, D's revision
 .xx
 RI	D	revision numbers of D's includes/excludes 
 .xx
-ROOTKEY	F	key of the 1.0 delta, files internal name
+ROOTKEY	F	key of the 1.0 delta, file's internal name
 .xx
 RWXMODE	D	D's file modes as ascii (-rwxrwxrwx)
 .xx
@@ -473,4 +485,6 @@ Z	D	@(#)
 Not very compatible with \*(AT dspec; this should be considered a feature
 unless you are trying to maintain old scripts.
 .SH CATEGORY
-.B Basics
+.B Common
+.br
+.B File

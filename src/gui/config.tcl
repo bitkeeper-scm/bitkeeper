@@ -37,6 +37,8 @@ proc getConfig {prog} \
 	set _d(searchColor) yellow	;# highlight for search matches
 	set _d(selectColor) lightblue	;# current file/item/topic
 	set _d(statusColor) lightblue	;# various status windows
+	#XXX: Not documented yet
+	set _d(infoColor) yellow	;# color of info line in difflib
 	set _d(textBG) white		;# text background
 	set _d(textFG) black		;# text color
 	set _d(scrollColor) #d9d9d9	;# scrollbar bars
@@ -80,17 +82,21 @@ proc getConfig {prog} \
 	set _d(hist.textWidth) 92	   ;# width of text windows
 	set _d(hist.textHeight) 30	   ;# height of lower window
 	set _d(hist.showHistory) "1M"	   ;# History to show in graph on start
+	# XXX: not documented yet
+	set _d(hist.savehistory) 5	   ;# Max number of files to save in
+					    #     file list
 
 	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
 
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry
-		set appdir [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
-		set bkdir [file join $appdir BitKeeper]
-		if {![file isdirectory $bkdir]} { file mkdir $bkdir }
-		set rcfile [file join $bkdir _bkgui]
+		set gc(appdir) [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
+		set gc(bkdir) [file join $gc(appdir) BitKeeper]
+		if {![file isdirectory $gc(bkdir)]} { file mkdir $gc(bkdir) }
+		set rcfile [file join $gc(bkdir) _bkgui]
 	} else {
 		set rcfile "~/.bkgui"
+		set gc(bkdir) "~"
 	}
 	if {[file readable $rcfile]} { source $rcfile }
 

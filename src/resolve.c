@@ -25,6 +25,7 @@
 #include <windows.h>
 #endif
 #include "resolve.h"
+#include "logging.h"
 
 extern	char	*bin;
 private	void	commit(opts *opts);
@@ -876,7 +877,9 @@ rename_file(resolve *rs)
 {
 	opts	*opts = rs->opts;
 	char	*to;
+	int	how = 0;
 
+again:
 	if (opts->debug) {
 		fprintf(stderr, ">> rename_file(%s)\n", rs->d->pathname);
 	}
@@ -920,9 +923,10 @@ rename_file(resolve *rs)
 	 */
 	if (streq(rs->snames->local, rs->snames->gca)) {
 		to = rs->snames->remote;
-		if (slotTaken(opts, to)) to = 0;
+		if (how = slotTaken(opts, to)) to = 0;
 	} else if (streq(rs->snames->gca, rs->snames->remote)) {
 		to = rs->snames->local;
+		/* XXX - I'm not sure that this makes sense. */
 		if (exists(to)) to = 0;
 	} else {
 		to = 0;
@@ -982,14 +986,15 @@ rename_file(resolve *rs)
 	unless (opts->resolveNames) return (-1);
 
 	/*
-	 * This makes the pass3 not automerge.
-	if (opts->automerge) {
-		fprintf(stderr, "resolve: cannot autorename %s\n", rs->dname);
-		return (-1);
-	}
+	 * Figure out why we have a conflict, if it is like a create
+	 * conflict, try that.
 	 */
-
-	return (resolve_renames(rs));
+	if (how && (resolve_create(rs, how) == EAGAIN)) {
+		how = 0;
+		goto again;
+	} else {
+		return (resolve_renames(rs));
+	}
 }
 
 /*
@@ -1239,7 +1244,8 @@ flags_delta(resolve *rs,
 	assert(n < 38);	/* matches 40 in declaration */
 	av[++n] = 0;
 
-	if (spawnvp_ex(_P_WAIT, av[0], av)) {
+	n = spawnvp_ex(_P_WAIT, av[0], av);
+	if (!WIFEXITED(n) || WEXITSTATUS(n)) {
 		for (i = 0; av[i]; ++i) fprintf(stderr, "%s ", av[i]);
 		fprintf(stderr, "failed\n");
 		freeStuff(rs->opts);
@@ -1519,14 +1525,24 @@ slotTaken(opts *opts, char *slot)
 		char	*gfile = sccs2name(slot);
 
 		if (exists(gfile)) {
+			int	conf;
+
+			conf = isdir(gfile) ? DIR_CONFLICT : GFILE_CONFLICT;
 			if (opts->debug) {
 			    	fprintf(stderr,
-				    "%s exists in local repository\n", gfile);
+				    "%s %s exists in local repository\n",
+				    conf == DIR_CONFLICT ? "dir" : "file",
+				    gfile);
 			}
 			free(gfile);
 			chdir(ROOT2RESYNC);
-			return (GFILE_CONFLICT);
+			return (conf);
 		} else if (pathConflict(opts, gfile)) {
+			if (opts->debug) {
+			    	fprintf(stderr,
+				    "directory %s exists in local repository\n",
+				    gfile);
+			}
 			free(gfile);
 			chdir(ROOT2RESYNC);
 			return (DIR_CONFLICT);
@@ -2047,15 +2063,6 @@ automerge(resolve *rs, names *n)
 		unlink(sccs_Xfile(rs->s, 'r'));
 		return;
 	}
-#ifdef WIN32
-#error "lm -> awc: look carefully at the return value out of sys"
-	if (ret == 0xff00) {
-	    	fprintf(stderr, "Cannot execute '%s'\n", cmd);
-		rs->opts->errors = 1;
-		unlink(rs->s->gfile);
-		return;
-	}
-#endif
 	unless (WIFEXITED(ret)) {
 		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
 		rs->opts->errors = 1;
@@ -2208,7 +2215,8 @@ commit(opts *opts)
 		cmds[++i] = cmt;
 	}
 	cmds[++i] = 0;
-	unless (spawnvp_ex(_P_WAIT, "bk", cmds)) {
+	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
 		if (cmt) free(cmt);
 		return;
 	}
@@ -2249,8 +2257,12 @@ private int
 bk_check()
 {
 	char	*av[5] = {"bk", "-r", "check", "-a", 0};
+	int	status;
 
-	return (spawnvp_ex(_P_WAIT, av[0], av) != 0);
+	status = spawnvp_ex(_P_WAIT, av[0], av);
+	unless (WIFEXITED(status))  return (1);  /* fail */
+	return (WEXITSTATUS(status) != 0);   
+
 }
 
 /*
@@ -2259,9 +2271,10 @@ bk_check()
 private void
 rm_sfile(char *sfile)
 {
-	char *p;
+	char	*p;
 
 	assert(!IsFullPath(sfile));
+	sys("bk", "clean", sfile, SYS);
 	if (unlink(sfile)) {
 		perror(sfile);
 		return;
@@ -2286,7 +2299,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, first = 1;
+	int	eperm = 0, first = 1, isLoggingRepository = 0;
 	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
@@ -2340,6 +2353,9 @@ pass4_apply(opts *opts)
 			eperm = 1;
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
+		if ((r->state&(S_CSET|S_LOGS_ONLY)) == (S_CSET|S_LOGS_ONLY)) {
+			isLoggingRepository = 1;
+		}
 		sccs_free(r);
 		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
 			/*
@@ -2506,6 +2522,7 @@ Got:\n\
 		fprintf(stderr,
 		    "Consistency check passed, resolve complete.\n");
 	}
+	unless (isLoggingRepository) logChangeSet(logging(0, 0, 0) , 0, 1);
 	resolve_cleanup(opts, CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING);
 	/* NOTREACHED */
 	return (0);

@@ -12,6 +12,8 @@
 
 static z_stream gzip_in;
 static z_stream gzip_out;
+private int gzip();
+private int gunzip();
 
 /*
  * Initializes compression; level is compression level from 1 to 9
@@ -109,40 +111,60 @@ gunzip2fd(char *input, int len, int fd)
 	}
 }
 
-#ifdef MAIN
-main(int ac, char **av)
+
+int
+gzip_main(int ac, char **av)
 {
+	int c, rc, uflag = 0, gzip_level = 0;
+
 	unless (av[1]) {
 		fprintf(stderr, "usage: %s -z|-u\n", av[0]);
 		exit(1);
 	}
-	gzip_init(6);
-	if (streq(av[1], "-z")) {
-		gzip();
-	} else {
-		gunzip();
+	while ((c = getopt(ac, av, "z:u")) != -1) { 
+		switch (c) {
+		    case 'u':	uflag; break;
+		    case 'z':	gzip_level = atoi(optarg); break;
+		    default:  
+usage:			    	fprintf(stderr,
+					"usage bk _gzip [-z[n] | -u]\n");
+			   	return (1);
+		}
 	}
+
+	if (uflag && gzip_level) goto usage;	
+	if (gzip_level) {
+		gzip_init(gzip_level); 
+		rc = gzip();
+	} else {
+		gzip_init(6); 
+		rc = gunzip();
+	}
+	return (rc);
 }
 
+private int
 gzip()
 {
-	char	buf[8192];
+	char	buf[4096];
 	int	n;
 
 	while ((n = read(0, buf, sizeof(buf))) > 0) {
 		gzip2fd(buf, n, 1);
 	}
 	gzip_done();
+	return (0);
 }
 
+private int
 gunzip()
 {
-	char	buf[8192];
+	char	buf[4096];
 	int	n;
 
 	while ((n = read(0, buf, sizeof(buf))) > 0) {
 		gunzip2fd(buf, n, 1);
 	}
 	gzip_done();
+	return (0);
 }
-#endif

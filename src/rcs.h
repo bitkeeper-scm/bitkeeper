@@ -45,6 +45,7 @@ typedef	struct {
 	char	*defbranch;	/* defbranch, if set */
 	char	*text;		/* descriptive text */
 	char	*file;		/* file name */
+	char	*kk;		/* -kk is default; -kb for binary */
 } RCS;
 
 RCS	*rcs_init(char *file);

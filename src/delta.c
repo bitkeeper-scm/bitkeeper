@@ -68,10 +68,9 @@ delta_main(int ac, char **av)
 	}
 
 	while ((c = getopt(ac, av,
-			   "1acdD:E|fg;GhI;ilm|M;npPqRrS;suy|YZ|")) != -1) {
+			   "1abcdD:E|fg;GhI;ilm|M;npPqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
-		    case '1': iflags |= INIT_ONEROOT; break;
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;
 		    case 'p': dflags |= PRINT; break;
 		    case 'y':
@@ -106,9 +105,17 @@ comment:		comments_save(optarg);
 			    goto usage;
 
 		    /* LM flags */
+		    case '1': iflags |= INIT_ONEROOT; break;
 		    case 'a':
 		    	dflags |= DELTA_AUTO;
 			dflags &= ~DELTA_FORCE;
+			break;
+		    case 'b':	/* -b == -Ebinary */
+			if (streq(name, "new")) {
+		    		enc = E_BINARY;
+			} else {
+				goto usage;
+			}
 			break;
 		    case 'c': iflags |= INIT_NOCKSUM; break;
 		    case 'd': /* internal interface, do not document */
@@ -144,6 +151,11 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			gflags |= GET_EXPAND;
 			checkout = 1;
 		}
+	}
+
+	if ((encp || compp) && !(dflags & NEWFILE)) {
+		fprintf(stderr, "-Z is allowed with -i option only\n");
+		goto usage;
 	}
 
 	enc = sccs_encoding(0, encp, compp);

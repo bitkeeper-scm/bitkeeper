@@ -31,9 +31,19 @@ proc search {dir} \
 {
 	global	search
 
-	set search(dir) $dir
 	searchreset
-	set search(prompt) "Search for:"
+	set search(dir) $dir
+	if {$dir == ":"} {
+		$search(menu) configure -text "Goto Line"
+		set search(prompt) "Goto Line:"
+
+	} elseif {$dir == "g"} {
+		$search(menu) configure -text "Goto Diff"
+		set search(prompt) "Goto diff:"
+	} else {
+		$search(menu) configure -text "Search Text"
+		set search(prompt) "Search for:"
+	}
 	focus $search(text)
 	searchbuttons both disabled
 }
@@ -98,13 +108,40 @@ proc searchactive {} \
 
 proc searchstring {} \
 {
-	global	search
+	global	search lastDiff
 
-	if {[info exists search(focus)]} { focus $search(focus) }
+	if {[info exists search(focus)]} { 
+		focus $search(focus) 
+	}
+	# One would think that [0-9][0-9]* would be the more appropriate
+	# regex to find an integer... -ask
 	set string [$search(text) get]
 	if {"$string" == ""} {
 		searchreset
 		return
+	} elseif {("$string" != "") && ($search(dir) == ":")} {
+		if {[string match {[0-9]*} $string]} {
+		    $search(widget) see "$string.0"
+		} elseif {[string match {[0-9]*} $string] || 
+		    ($string == "end") || ($string == "last")} {
+			$search(widget) see end
+		} else {
+			$search(status) configure -text "$string not integer"
+		}
+		return
+	} elseif {("$string" != "") && ($search(dir) == "g")} {
+		if {[string match {[0-9]*} $string]} {
+			catch {$search(widget) see diff-${string}}
+			set lastDiff $string
+			#set n [$search(widget) mark names]
+			#set l [$search(widget) index diff-${string}]
+			#displayMessage "l=($l) trying mark=(diff-${string})"
+			if {[info procs dot] != ""} { dot }
+			return
+		} else {
+			$search(status) configure -text "$string not integer"
+			return
+		}
 	} else {
 		set search(string) $string
 		if {[info exists search(clear)]} {
@@ -127,6 +164,8 @@ proc searchstring {} \
 proc searchnext {} \
 {
 	global	search
+
+	if {![info exists search(string)]} {return}
 
 	if {$search(dir) == "/"} {
 		set w [$search(widget) \
@@ -159,12 +198,135 @@ proc searchnext {} \
 	return 1
 }
 
+proc gotoLine {} \
+{
+	global search
+
+	set location ""
+
+	$search(widget) index $location
+	searchsee $location
+	exit
+}
+
 # Default widget scroller, overridden by tools such as difftool
 proc searchsee {location} \
 {
 	global	search
 
 	$search(widget) see $location
+}
+
+proc clearOrRecall {} \
+{
+	global search 
+
+	set which [$search(clear) cget -text]
+	if {$which == "Recall search"} {
+		searchrecall
+	} else {
+		searchreset
+	}
+}
+
+proc search_keyboard_bindings {{nc {}}} \
+{
+	global search
+
+	if {$nc == ""} {
+		bind all                <g>             "search g"
+		bind all                <colon>         "search :"
+		bind all                <slash>         "search /"
+		bind all                <question>      "search ?"
+	}
+	bind all                <Control-u>     searchreset
+	bind all                <Control-r>     searchrecall
+	bind $search(text)      <Return>        searchstring
+	bind $search(text)      <Control-u>     searchreset
+}
+
+proc search_init {w s} \
+{
+	global search app gc
+
+	set search(prompt) "Search for:"
+	set search(plabel) $w.prompt
+	set search(dir) "/"
+	set search(text) $w.search
+	set search(menu) $w.smb
+	set search(widget) $s
+	set search(next) $w.searchNext
+	set search(prev) $w.searchPrev
+	set search(focus) .
+	set search(clear) $w.searchClear
+	set search(recall) $w.searchClear
+	set search(status) $w.info
+}
+
+proc search_widgets {w s} \
+{
+	global search app gc
+
+	search_init $w $s
+
+	label $search(plabel) -font $gc($app.buttonFont) -width 11 \
+	    -relief flat \
+	    -textvariable search(prompt)
+
+	# XXX: Make into a pulldown-menu! like is sccstool
+	menubutton $search(menu) -font $gc($app.buttonFont) -relief raised \
+	    -bg $gc($app.buttonColor) -pady $gc(py) -padx $gc(px) \
+	    -borderwid $gc(bw) \
+	    -text "Search" -width 15 -state normal \
+	    -menu $search(menu).menu
+	    set m [menu $search(menu).menu]
+	    $m add command -label "Search text" -command {
+		$search(menu) configure -text "Search text"
+		search /
+		# XXX
+	    }
+	    $m add command -label "Goto Diff" -command {
+		$search(menu) configure -text "Goto Diff"
+		search g
+		# XXX
+	    }
+	    $m add command -label "Goto Line" -command {
+		$search(menu) configure -text "Goto Line"
+		search :
+		# XXX
+	    }
+	entry $search(text) -width 20 -font $gc($app.buttonFont)
+	button $search(prev) -font $gc($app.buttonFont) \
+	    -bg $gc($app.buttonColor) \
+	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+	    -image prevImage \
+	    -state disabled -command {
+		    searchdir ?
+		    searchnext
+	    }
+	button $search(next) -font $gc($app.buttonFont) \
+	    -bg $gc($app.buttonColor) \
+	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+	    -image nextImage \
+	    -state disabled -command {
+		    searchdir /
+		    searchnext
+	    }
+	button $search(clear) -font $gc($app.buttonFont) \
+	    -bg $gc($app.buttonColor) \
+	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+	    -text "Clear search" -state disabled -command { clearOrRecall }
+	label $search(status) -width 20 -font $gc($app.buttonFont) -relief flat
+
+	pack $search(menu) -side left -expand 1 -fill y
+	pack $search(text) -side left
+	pack $search(prev) -side left -fill y
+	pack $search(clear) -side left -fill y
+	pack $search(next) -side left -fill y
+	pack $search(status) -side left -expand 1 -fill x
+
+	$search(widget) tag configure search \
+	    -background $gc($app.searchColor) -font $gc($app.fixedBoldFont)
 }
 
 proc example_main_widgets {} \

@@ -70,9 +70,6 @@ sub man2help
 	print O <<EOF;
 <html>
 <body bgcolor=white>
-<table width=100%><tr>
-<td align=middle><img src=/gifs/bklogo.gif></td>
-</tr></table>
 <pre>
 EOF
 	if ($name =~ /^${prefix}(.*)/o) {
@@ -107,9 +104,22 @@ EOF
 		"groff -rhelpdoc=1 -man -P-u -P-b -Tascii | uniq";
 	open(G, "$cmd |");
 	while (<G>) {
+		s/bk bk /bk /;
+		s/>bk bk</>bk</;
+		if (/<a href/) {
+			print O;
+			next;
+		}
 		s/</\&lt;/g;
 		s/>/\&gt;/g;
-		print O;
+		if (/^[A-Z]+.*/ && !/^BitMover/) {
+			chop;
+			print O "<strong>$_</strong>\n";
+		} elsif (/(.*)(BitKeeper User's Manual)(.*)/) {
+			print O "$1<img src=/gifs/bklogo.gif>$3\n";
+		} else {
+			print O;
+		}
 	}
 	close(O);
 	close(G);
@@ -141,7 +151,9 @@ sub summary()
 		print O ".SH COMMANDS\n";
 		print O ".nf\n";
 	}
-	print O "$summary\n";
+	$_ = $summary;
+	/(^bk\s)([0-9A-Za-z-_]+)(.*)/;
+	print O "<a href=bk-$2-1.html>bk $2</a>$3\n";
 	close(O);
 }
 

@@ -340,8 +340,12 @@ chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
 	unless (s) {
 		char *sfile = name2sccs(gfile);
 		s = init(sfile, INIT_NOCKSUM, sDB, gDB);
+		unless (s && s->tree) {
+			fprintf(stderr, "sfiles: %s: bad sfile\n", sfile);
+			if (s) sccs_free(s);
+			return;
+		}
 		free(sfile);
-		assert(s);
 		local_s = 1;
 	}
 	
@@ -885,6 +889,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
 skip:			mdbm_close(gDB);
 			mdbm_close(sDB);
+			closedir(dh);
 			return;
 		}
 

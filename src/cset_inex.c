@@ -259,7 +259,8 @@ commit(int quiet, delta *d)
 	if (quiet) cmds[++i] = "-s";
 	cmds[++i] = comment;
 	cmds[++i] = 0;
-	if (i = spawnvp_ex(_P_WAIT, "bk", cmds)) {
+	i = spawnvp_ex(_P_WAIT, "bk", cmds);
+	if (!WIFEXITED(i) || WEXITSTATUS(i)) {
 		free(comment);
 		fprintf(stderr, "Commit says %d\n", i);
 		return (1);
@@ -271,7 +272,7 @@ commit(int quiet, delta *d)
 private int
 undoit(MDBM *m)
 {
-	int	i, pid, worked = 1;
+	int	i, rc, pid, worked = 1;
 	char	*t;
 	FILE	*f;
 	char	*av[10];
@@ -308,7 +309,8 @@ undoit(MDBM *m)
 		av[++i] = rev;
 		av[++i] = buf;
 		av[++i] = 0;
-		if (spawnvp_ex(_P_WAIT, av[0], av)) {
+		rc = spawnvp_ex(_P_WAIT, av[0], av);
+		if (!WIFEXITED(rc) || WEXITSTATUS(rc)) {
 			for (i = 0; av[i]; ++i) {
 				if (i) fprintf(stderr, " ");
 				fprintf(stderr, "%s", av[i]);

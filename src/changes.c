@@ -105,7 +105,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 			 * the logging cache.
 			 */
 			sprintf(cmd,
-			    "bk cset -r%s | sort | grep -v '^ChangeSet' | bk sccslog -i%d - > %s",
+			    "bk cset -Hr%s | bk _sort | bk sccslog -i%d - > %s",
 			    buf, indent, tmpfile);
 			system(cmd);
 			if (cat(tmpfile)) break;

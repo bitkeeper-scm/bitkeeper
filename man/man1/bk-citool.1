@@ -11,8 +11,8 @@ bk citool \- \*(BK graphical check-in tool
 .SH DESCRIPTION
 The
 .B citool
-command is a graphical interface for checking in modified files.
-Without any arguments,
+application is a graphical interface for checking in modified files.
+When called with no arguments,
 .B citool
 examines the current repository for
 modified files, pending files, and files not under revision control.
@@ -27,8 +27,8 @@ and have to follow the restrictions imposed by
 .BR sfiles .
 .LP
 Citool has three main windows:  the top window contains the list of
-files with modifications, the middle window is for entering comments,
-and the bottom window displays differences for modified files and 
+new files and files with modifications, the middle window is for entering 
+comments, and the bottom window displays differences for modified files and 
 the contents for new files. 
 .LP
 Typical usage is to move to each file, add comments, and repeat
@@ -43,11 +43,11 @@ The comments are not applied to the files until
 .BR [Commit]
 is clicked.
 .LP
-The files with the question mark icon are files that are not under 
-revision control. To add the new files to the changeset, click on 
-the question mark icon or use the Control-t key to 
-tag the file. When clicked on, the question mark icons becomes a
-check mark, indicating that the file will be part of the cset.
+The question mark icon to the left of the file name denotes files that 
+are not under revision control. To add the new files to the changeset, 
+click on the question mark icon or use the Control-t key to add the file 
+to the current changeset.  Clicking on the question mark changes the icon to
+a check mark, indicating that the file will be part of the cset.
 .LP
 Some of the new files might be files that you do not wish to put
 under revision control and having them visible clutters up the file
@@ -64,6 +64,8 @@ button. The \*(BK /etc/ignore file is not updated
 until the changeset is committed. The ignore file is a revision
 controlled file like any other \*(BK file and can be edited with a
 text editor if you want to remove or add files to the ignore list.
+The entries that are selected to be ignored are not added to the ignore 
+file until the changeset is commited.
 .LP
 At times, you might wish to exclude files from a changeset. For
 example, if you are working on a file and have made changes to
@@ -102,6 +104,12 @@ Scroll the differences down 1 line
 .tp
 .B Shift-UpArrow
 Scroll the differences up 1 line
+.tp
+.B MouseWheel
+Scroll the differences 1 screen 
+.tp
+.B Shift-MouseWheel
+Scroll the file list window 1 screen
 .if t .TP 1.2i
 .if n .TP 1.7i
 .B Control-l
@@ -119,6 +127,9 @@ about include/exclude and new files.
 .tp
 .B Control-T
 Toggle all new file into or out off the changeset. 
+.tp
+.B Control-Enter
+Do the commit. Same as clicking on the Commit button.
 .tp
 .B Control-q
 Same as clicking the [Quit] button.
@@ -205,6 +216,11 @@ repository.   After it is unlocked, the
 should work.
 .SH SEE ALSO
 .SA ci 1
+.SA sfiles 1
 .SA ignore 1
 .SH CATEGORY
 .B GUI-tools
+.br
+.B Common
+.br
+.B Repository

@@ -1,0 +1,204 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# These tests are for the case where the remote side is renaming a file
+# to what is a local conflict.  In other words:
+# local$ touch conflict
+# remote$ bk mv some_file conflict
+# local$ bk pull
+
+# XXX - todo
+# rename to junk/middle when junk/middle/end is what exists.
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+HERE=`bk pwd`
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+bk commit $S -a -yCset 
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+echo OK
+echo $N Clone and create gfile conflict .............................$NL
+cd $HERE
+bk clone $Q project copy
+cd copy
+echo I am the CONFLICT > CONFLICT
+cd $HERE/project
+bk mv src/foo.c CONFLICT
+bk commit $Q -ywhatever 
+cd $HERE/copy
+bk resync $Q
+cd $HERE
+tar cf TAR copy
+echo OK
+echo $N Resolve by removing local conflict ..........................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+cat > CMDS <<EOF
+rl
+y
+q
+EOF
+bk resolve -l -a $Q < CMDS > OUT 2>&1
+if [ -d RESYNC ]
+then	echo failed to finish resolve
+	cat OUT
+	exit 1
+fi
+if [ ! -f SCCS/s.CONFLICT ]
+then	echo failed to move s.CONFLICT
+	cat OUT
+	exit 1
+fi
+if [ -f src/SCCS/s.foo.c ]
+then	echo failed to move src/SCCS/s.foo.c
+	cat OUT
+	exit 1
+fi
+if [ "`bk get -qkp CONFLICT`" != foo ]
+then	echo bad contents in CONFLICT
+	cat OUT
+	exit 1
+fi
+echo OK
+echo $N Resolve by moving local conflict ............................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+cat > CMDS <<EOF
+ml
+JUNK
+q
+EOF
+bk resolve -l -a $Q < CMDS > OUT 2>&1
+if [ -d RESYNC ]
+then	echo failed to finish resolve
+	cat OUT
+	exit 1
+fi
+if [ ! -f SCCS/s.CONFLICT ]
+then	echo failed to move s.CONFLICT
+	cat OUT
+	exit 1
+fi
+if [ -f src/SCCS/s.foo.c ]
+then	echo failed to move src/SCCS/s.foo.c
+	cat OUT
+	exit 1
+fi
+if [ "`bk get -qkp CONFLICT`" != foo ]
+then	echo bad contents in CONFLICT
+	cat OUT
+	exit 1
+fi
+if [ ! -f JUNK ]
+then	echo failed to leave local file in JUNK
+	cat OUT
+	exit 1
+fi
+echo OK
+
+echo $N Create directory conflict ...................................$NL
+cd $HERE/copy
+mkdir DIRECTORY
+cd $HERE/project
+bk mv src/bar.c DIRECTORY
+bk commit $Q -ywhatever 
+cd $HERE/copy
+bk resync $Q
+cd $HERE
+tar cf TAR copy
+echo OK
+echo $N Resolve by removing local conflict ..........................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+cat > CMDS <<EOF
+rl
+y
+q
+EOF
+bk resolve -d -l -a $Q < CMDS > OUT 2>&1
+if [ -d RESYNC ]
+then	echo failed to finish resolve
+	cat OUT
+	exit 1
+fi
+if [ ! -f SCCS/s.DIRECTORY ]
+then	echo failed to move s.DIRECTORY
+	cat OUT
+	exit 1
+fi
+if [ -f src/SCCS/s.bar.c ]
+then	echo failed to move src/SCCS/s.bar.c
+	cat OUT
+	exit 1
+fi
+if [ "`bk get -qkp DIRECTORY`" != bar ]
+then	echo bad contents in DIRECTORY
+	cat OUT
+	exit 1
+fi
+echo OK
+echo $N Resolve by moving local conflict ............................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+cat > CMDS <<EOF
+ml
+JUNKDIR
+q
+EOF
+bk resolve -d -l -a $Q < CMDS > OUT 2>&1
+if [ -d RESYNC ]
+then	echo failed to finish resolve
+	cat OUT
+	exit 1
+fi
+if [ ! -f SCCS/s.DIRECTORY ]
+then	echo failed to move s.DIRECTORY
+	cat OUT
+	exit 1
+fi
+if [ -f src/SCCS/s.bar.c ]
+then	echo failed to move src/SCCS/s.bar.c
+	cat OUT
+	exit 1
+fi
+if [ "`bk get -qkp DIRECTORY`" != bar ]
+then	echo bad contents in DIRECTORY
+	cat OUT
+	exit 1
+fi
+if [ ! -d JUNKDIR ]
+then	echo failed to leave local dir JUNKDIR
+	cat OUT
+	exit 1
+fi
+echo OK

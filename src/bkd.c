@@ -4,7 +4,7 @@
 #include "bkd.h"
 
 private	void	bkd_server(void);
-private	void	do_cmds(void);
+private	void	do_cmds(int);
 private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp);
@@ -12,12 +12,15 @@ private	void	log_cmd(int i, int ac, char **av);
 private	void	reap(int sig);
 private	void	usage();
 private	void	ids();
+char 	*logRoot;
+
 
 int
 bkd_main(int ac, char **av)
 {
 	int	c;
 	char	*uid = 0;
+	int	want_http_hdr = 0; /* needed to run under cgi environment */
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help bkd");
@@ -25,16 +28,36 @@ bkd_main(int ac, char **av)
 	}
 
 	loadNetLib();
-	while ((c = getopt(ac, av, "c:dDeE:il|p:P:Rs:St:u:x:")) != -1) {
+
+        if (streq(basenm(av[0]), "web_bkd")) {
+		/*
+		 * We do not do option processing in cgi environment
+		 */
+		want_http_hdr = 1;
+		Opts.errors_exit = 1;
+		/*
+		 * Work around for security: disable pull & clone for now
+		 * We need a way to allow a limited "cd" command.
+		 * user can only cd to a approved list of directory
+		 */
+		exclude("pull"); 
+		exclude("clone"); 
+		goto doit;
+        }
+
+	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;
 		    case 'D': Opts.debug = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
 		    case 'i': Opts.interactive = 1; break;
+		    case 'h': want_http_hdr = 1; break;
 		    case 'l':
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
+		    case 'L':
+			logRoot = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;
 		    case 'P': Opts.pidfile = optarg; break;
 #ifdef WIN32
@@ -75,7 +98,7 @@ bkd_main(int ac, char **av)
 			alarm(Opts.alarm);
 #endif
 		}
-		do_cmds();
+doit:		do_cmds(want_http_hdr);
 		return (0);
 	}
 }
@@ -149,7 +172,7 @@ bkd_server()
 		close(0); dup(n);
 		close(1); dup(n);
 		close(n);
-		do_cmds();
+		do_cmds(0);
 		exit(0);
 	}
 }
@@ -195,7 +218,8 @@ bkd_service_loop(int ac, char **av)
 	while (1)
 	{
 		char sbuf[20];
-		char *av[10] = {"socket_helper", "-s", sbuf, "bk", "bkd", 0};
+		char *av[10] =
+			    {"bk", "_socket2pipe", "-s", sbuf, "bk", "bkd", 0};
 		int n;
 		n = accept(sock, 0 , 0);
 		/*
@@ -270,12 +294,17 @@ bkd_server()
 }
 #endif /* WIN32 */
 
-private void
-drain(int fd)
+void
+drain()
 {
 	char	buf[1024];
+	int	i = 0;
 
-	while (read(fd, buf, sizeof(buf)) > 0);
+	close(1); /* in case remote is waiting for input */
+	while (getline(0, buf, sizeof(buf))) {
+		if (streq("@END@", buf)) break;
+		if (i++ > 20) break; /* just in case */
+	}
 }
 
 off_t
@@ -318,7 +347,7 @@ save_byte_count(unsigned int byte_count)
 }
 
 private	void
-do_cmds()
+do_cmds(int want_http_hdr)
 {
 	int	ac;
 	char	**av;
@@ -335,23 +364,25 @@ do_cmds()
 				bk_proj = proj_init(0);
 			}
 
-			flags = cmdlog_start(av);
+			if (want_http_hdr) http_hdr();
+			flags = cmdlog_start(av, want_http_hdr);
 
 			/*
 			 * Do the real work
 			 */
 			ret = cmds[i].cmd(ac, av);
 
-			cmdlog_end(0, flags);
+			flags = cmdlog_end(ret, flags);
 
-			if (flags & CMD_FAST_EXIT) exit(ret);
+			if (flags & CMD_FAST_EXIT) {
+				exit(ret);
+			}
 			if (ret != 0) {
 				if (Opts.interactive) {
 					out("ERROR-CMD FAILED\n");
 				}
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
-					drain(0);
 					exit(ret);
 				}
 			}
@@ -380,18 +411,22 @@ log_cmd(int i, int ac, char **av)
 	fprintf(Opts.log, "\n");
 }
 
-/* remove the specified command from the cmds array */
+/*
+ * Remove any command with the specfied prefix from the command array
+ */
 private	void
-exclude(char *cmd)
+exclude(char *cmd_prefix)
 {
 	struct	cmd c[100];
-	int	i, j;
+	int	i, j, len;
 	int	foundit = 0;
 
 	for (i = 0; cmds[i].name; i++);
 	assert(i < 99);
 	for (i = j = 0; cmds[i].name; i++) {
-		unless (streq(cmd, cmds[i].name)) {
+		len = strlen(cmd_prefix);
+		unless ((strlen(cmds[i].realname) >= len) &&
+			strneq(cmd_prefix, cmds[i].realname, len)) {
 			c[j++] = cmds[i];
 		} else {
 			foundit++;
@@ -401,9 +436,10 @@ exclude(char *cmd)
 		cmds[i] = c[i];
 	}
 	cmds[i].name = 0;
+	cmds[i].realname = 0;
 	cmds[i].cmd = 0;
 	unless (foundit) {
-		fprintf(stderr, "bkd: command '%s' not found\n", cmd);
+		fprintf(stderr, "bkd: command '%s' not found\n", cmd_prefix);
 	}
 }
 
@@ -414,10 +450,22 @@ findcmd(int ac, char **av)
 
 	if (ac == 0) return (-1);
 	for (i = 0; cmds[i].name; ++i) {
-		if (strcmp(av[0], cmds[i].name) == 0) {
+		if (strcasecmp(av[0], cmds[i].name) == 0) {
 			if (streq(av[0], "pull")) av[0] = "remote pull";
 			if (streq(av[0], "push")) av[0] = "remote push";
 			if (streq(av[0], "clone")) av[0] = "remote clone";
+			if (streq(av[0], "pull_part1")) {
+				av[0] = "remote pull part1";
+			}
+			if (streq(av[0], "pull_part2")) {
+				av[0] = "remote pull part2";
+			}
+			if (streq(av[0], "push_part1")) {
+				av[0] = "remote push part1";
+			}
+			if (streq(av[0], "push_part2")) {
+				av[0] = "remote push part2";
+			}
 			return (i);
 		}
 	}
@@ -437,13 +485,18 @@ getav(int *acp, char ***avp)
 		if ((buf[i] == '\r') || (buf[i] == '\n')) {
 			buf[i] = 0;
 			av[ac] = 0;
+#if 0
 			if ((ac > 2) && strneq("HTTP/1", av[2], 6)) {
 				av[0] = "httpget";
 			}
+#endif
 			*acp = ac;
 			*avp = av;
 			return (1);
 		}
+		/*
+		 * XXX FIXME: This could fail if there is space in a argument
+		 */
 		if (isspace(buf[i])) {
 			buf[i] = 0;
 			inspace = 1;

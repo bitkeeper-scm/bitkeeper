@@ -1,56 +1,67 @@
 .so bk-macros
-.TH "bk gui" 1 20%E% "\*(BC" "\*(UM"
-.SH NAME
-bk gui \- \*(BK Graphical User Interface overview
+.TH "bk config-files" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME 
+bk config-files \- \*(BK configuration files
 .SH DESCRIPTION
 .LP
-\*(BK includes several useful graphical tools.
-This man page provides a brief overview of the GUI tools,
-with pointers to more detailed information for each tool.
+There are several config files that can be manipulated by
+a \*(BK user.
+
+.SH USER PREFERENCES
 .LP
-After the overview, there is a section on GUI configuration, describing how
-to change the default colors, fonts, sizes, geometry and other tool specific
-features.
-.if t .TP .75i
-.if n .TP 1.25i
-.B citool
-Used when adding files or changes to files to the
-repository.  Probably the most frequently used GUI tool. People
-who hate GUI interfaces admit to liking this tool.
+User preferences can be defined in the BitKeeper/etc/config file.
+The general format for the user preference config file is 
+.DS
+[filter]:preference:option
+.DE
+Currently, checkout is the only user preference supported.
+To set, add a line to the BitKeeper/etc/config file as follows:
+.DS
+checkout:option
+.DE
+Where option is one of:
+.RS 1i
+.TP
+.B get
+Automatically do a bk get
+.ARG file
+after doing a bk delta
+.ARG file .
+(Checkout in read-only mode.)
 .tp
-.B csettool
-Used to view changesets.
-Shows the check-in comments and the  diffs of each file in a
-changeset.
-You can get to a particular changeset by running
-.B histtool
-on a file, finding and selecting a change in that file,
-then click on 
-.B "View changeset"
-to see all the other files which were modified at the same time.
-Useful for code reviews and tracking down bugs.
+.B edit
+Automatically do a bk edit
+.ARG file
+after doing a bk delta
+.ARG file .
+(Checkout in edit mode.)
 .tp
-.B difftool
-Used for side-by-side viewing of differences.  Used on two
-files or on a modified file (diffs against the checked in version).
+.B none
+Clear the gfile after doing a bk delta
+.ARG file .
+(This is the default.)
+.RE
+.LP
+Preferences can be set per user, per host, or per repository via filters.
+.RS 1i
+.TP
+.B per user
+[jdoe]:checkout:get
 .tp
-.B helptool
-This is the graphical interface for online \*(BK documentation.
-It has hyperlinked information, search facilities, and a table of contents.
+.B per host
+[@xyz.com]:checkout:none
 .tp
-.B fmtool
-Two-way file merge program.  It walks you through differences
-between two files and allows selecting either change.
+.B per user@host
+[jdoe@xyz.com]:checkout:get
 .tp
-.B renametool
-Used to  find renames when importing a diff-style patch.
-Called automatically from
-.BR "bk import -tpatch" .
-.tp
-.B histtool
-The primary tool for viewing file history and contents.  Probably 
-the second most popular GUI tool - just about everything in this tool is
-clickable to get more information about changes. 
+.B per repository
+[/path/to/repository]:checkout:edit
+.br
+[@xyz.com:/path/to/repository]:checkout:get
+.br
+[jdoe@xyz.com:/path/to/repository]:checkout:edit 
+.RE
+
 .SH GUI CONFIGURATION
 BitKeeper uses a configuration file called 
 .B .bkgui
@@ -67,7 +78,7 @@ where
 .B $HOME 
 refers to the users home directory.
 .LP
-On Microsoft Windows NT and Windows 98 systems 
+On Microsoft Windows NT and Windows 98 systems,
 .B %SystemRoot%\eProfiles\e%User%\eApplication  Data\eBitKeeper\e_bkgui 
 is the location of the config file; this path is usually
 .B c:\ewinnt\eProfiles\e%User%\eApplication\ Data\eBitKeeper\e_bkgui
@@ -81,7 +92,7 @@ as machine name, domain name, etc.
 .LP
 The 
 .B .bkgui
-file consists lines that set configuration options.
+file consists of lines that set configuration options.
 A typical configuration line looks like this:
 .ft R
 .DS
@@ -90,17 +101,17 @@ set gc(BG) #f0f0f
 .DE
 The items that make up a config line are as follows:
 .DS
-set	tcl command used to assign values to variables
-gc(BG)	array value
-#f0f0f0	hexadecimal color value
+set     tcl command used to assign values to variables
+gc(BG)  array value
+#f0f0f0 hexadecimal color value
 .DE
 Each variable in the config file may take one of two forms, 
 tool specific or global.  Tool specific variables, which apply only
 to the named tool, have the tool
 name as a prefix, i.e.,
 .DS
-set gc(cset.fixedFont)	{fixed 12 roman}
-set gc(buttonColor)	blue
+set gc(cset.fixedFont)  {fixed 12 roman}
+set gc(buttonColor)     blue
 .DE
 whereas global variables, which apply to all tools unless there is a
 tool specific version defined as well, look like
@@ -145,20 +156,20 @@ entry boxes, and text widgets showing contents of files.
 Default:\ {fixed 12 roman}
 .tp
 .B fixedBoldFont
-Bold font used to highlight things like difference within
+Bold font used to highlight text such as difference within
 lines in difftool.  Default:\ {fixed 12 roman bold}
 .tp
 .B buttonFont
 Font used in buttons.  Default:\ {times 12 roman bold}
 .tp
 .B scrollWidth
-Width of the scroll bar widget in pixels. Default:\ 12
+Width of the scrollbar widget in pixels. Default:\ 12
 in everything except 
 .B helptool
 where the default is 14.
 .tp
 .B buttonColor
-Color of button when in unselected state. Default:\ #d0d0d0
+Color of button when in an unselected state. Default:\ #d0d0d0
 .tp
 .B listBG
 Color for the help topic widget and list backgrounds
@@ -207,19 +218,19 @@ Default:\ #d9d9d9
 Color of the scrollbar troughs.  Default:\ lightblue
 .tp
 .B BG
-Background color for misc widgets not listed
+Background color for miscellaneous widgets not listed
 above. Default:\ #f0f0f0
 .tp
 .B diffHeight
 Height of a difference window in number of lines. Used
-in citool, csettool, difftool, fm3tool, fmtool,
+in citool, csettool, difftool, fmtool,
 and renametool.  Default:\ 30 in everything except
 .B difftool 
 where it is 50 lines.
 .tp
 .B diffWidth
 Width of a difference window in number of characters.
-Used in csettool, difftool, fm3tool, and fmtool,
+Used in csettool, difftool, and fmtool,
 and renametool.  Default:\ 65
 .tp
 .B geometry
@@ -252,12 +263,12 @@ should be placed at the upper left of the screen.
 Default:\ none
 .tp
 .B mergeHeight
-Height of a merge window. Used in fmtool and
-fm3tool. Default 20
+Height of a merge window. Used in fmtool.
+Default 20
 .tp
-.B mergeHeight
-Width of a merge window. Used in fmtool and
-fm3tool. Default 80
+.B mergeWidth
+Width of a merge window. Used in fmtool.
+Default 80
 .tp
 .B quit
 Key used to exit from the gui tools. Default:\ <Control-q>
@@ -339,16 +350,25 @@ Color of the box surrounding the regular revisions.
 Default:\ darkblue
 .tp
 .B hist.revColor
-Fill color of the unselected box. Default:\ #9fb6b8
+Fill color of the unselected node. Default:\ #9fb6b8
+.tp
+.B hist.tagColor
+Fill color of tagged nodes. Default:\ #9fb6b8
 .tp
 .B hist.selectColor
 Highlight color for the selected annotated line. Default:\ #adb8f6
 .tp
 .B hist.commentHeight
-Height of the comment window above the annotated file listing. Default:\ #9fb6b8
+Height of the comment window above the annotated file listing. Default:\ 5
+.tp
+.B hist.textWidth
+Width of widget that displays the file content. Default:\ 92
+.tp
+.B hist.textHeight
+Height of widget that displays the file content. Default:\ 50
 .tp
 .B hist.showHistory
-The time period of revisions that is shown. The value needs to be a
+The time period of revisions that are shown. The value needs to be a
 valid entry for the prs -R option. Default:\ 1M
 .tp
 .B hist.dateColor
@@ -367,7 +387,6 @@ The GUI configuration was designed and is maintained by Aaron Kushner.
 .SA helptool 1
 .SA histtool 1
 .SA fmtool 1
-.SA fm3tool 1
 .SA renametool 1
 .\" help://GUI
 .\" help://GUI-config
@@ -375,4 +394,8 @@ The GUI configuration was designed and is maintained by Aaron Kushner.
 .\" help://gui config
 .\" help://gui configuration
 .SH CATEGORY
+.B Overview
+.br
+.B Admin
+.br
 .B GUI-tools

@@ -87,6 +87,49 @@ keysort_main(int ac, char **av)
 	return (0);
 }
 
+/*
+ * Sort stdin in a way that is consistent across all platforms (avoids locale).
+ */
+int
+sort_main(int ac, char **av)
+{
+	char	buf[MAXKEY*2];
+	char	*last = 0, **lines = 0;
+	int	i, c, uflag = 0;
+	size_t	n = 0;
+	int	string_sort(const void *a, const void *b);
+
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help sort");
+		return (0);
+	}
+
+	while ((c =getopt(ac, av, "u")) != -1) {
+		switch (c) {
+		    case 'u': uflag = 1; break;
+		    default:
+			system("bk help -s sort");
+		}
+	}
+
+#ifdef WIN32
+	setmode(0, _O_TEXT); 
+#endif
+	while (fgets(buf, sizeof(buf), stdin)) {
+		chop(buf);
+		lines = addLine(lines, strdup(buf));
+		n++;
+	}
+	qsort((void*)&lines[1], n, sizeof(char *), string_sort);
+	EACH(lines) {
+		if (uflag && last && streq(last, lines[i])) continue;
+		fprintf(stdout, "%s\n", lines[i]);
+		last = lines[i];
+	}
+	free(lines);
+	return (0);
+}
+
 int
 string_sort(const void *a, const void *b)
 {

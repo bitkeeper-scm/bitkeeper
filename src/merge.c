@@ -37,7 +37,8 @@ merge_main(int ac, char **av)
 	rc = spawnvp_ex(_P_WAIT, new_av[0], new_av);
 	/* restore parent's stdout */
 	close(1); dup2(fd1, 1);
-	return (rc);
+	unless (WIFEXITED(rc)) return (-1);
+	return (WEXITSTATUS(rc));
 }
 
 
@@ -59,7 +60,7 @@ sortmerge_main(int ac, char **av)
 	}
 
 	/* GCA is ignored */
-	sprintf(cmd, "cat %s %s | sort -u > %s", av[1], av[3], av[4]);
+	sprintf(cmd, "cat %s %s | bk _sort -u > %s", av[1], av[3], av[4]);
 	unless (system(cmd)) return (0); /* ok */
 	return (2); /* error */
 }

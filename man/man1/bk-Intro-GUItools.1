@@ -1,0 +1,67 @@
+.so bk-macros
+.TH "bk Intro-GUItools" 1 20%E% "\*(BC" "\*(UM"
+.\"    ============== BitKeeper Graphical User Interface  ==============
+.SH NAME
+bk Intro-GUItools \- Introduction to \*(BK GUI tools
+.SH DESCRIPTION
+.LP
+While it is possible to use \*(BK as an "ASCII-only" tool, the GUI
+tools help make \*(BK exceedingly powerful and easy to use. In this
+section, we provide a brief overview of the GUI tools, although each tool
+is covered more thoroughly in its own section.
+.if t .TP .75i
+.if n .TP 1.25i
+.B citool
+Used to check in files and create changesets. Also, files can
+be excluded from the changeset via citool.
+.tp
+.B csettool
+Used to view the files in a changeset.  Shows the check-in comments and the 
+diffs for each file in the changeset.  
+You can get to a particular changeset by running
+.B histtool
+on a file, finding and selecting a change in that file,
+then click on 
+.B "View changeset"
+to see all the other files which were modified at the same time.
+Useful for code reviews and tracking down bugs.
+.tp
+.B difftool
+Used for side-by-side viewing of differences.  Used on two
+files or on a modified file (diffs against the checked in version).
+.tp
+.B helptool
+This is the graphical interface for online \*(BK documentation.
+It has hyperlinked information, search facilities, and a table of contents.
+.tp
+.B fmtool
+Two-way file merge program that displays the differences
+between two files and allows selecting either change.
+.\" XXX - removed fm3tool references because it does not exist in
+.\" 	  the man pages.  - amy 10/10/2000
+.\".tp
+.\".B fm3tool
+.\"Three-way file merge.  Usage: fm3 left GCA right output.
+.tp
+.B renametool
+Used to find renames when importing a patch.  Invoked
+automatically when "bk import -tpatch" is run.
+.tp
+.B histtool
+The primary tool for viewing file history and contents.  After citool,
+histtool will be the gui-tool you use most often - just about everything 
+in this tool is clickable to get more information about changes. 
+
+.SH "SEE ALSO"
+.SA citool 1
+.SA csettool 1
+.SA difftool 1
+.SA helptool 1
+.SA fmtool 1
+.\".SA fm3tool 1
+.SA renametool 1
+.SA histtool 1
+.SH CATEGORY
+.B GUI-tools
+.br
+.B Overview

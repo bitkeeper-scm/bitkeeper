@@ -4,21 +4,24 @@
 bk merging \- help on merging conflicts
 .SH DESCRIPTION
 .LP
-This section documents the merge process started by the resolve command,
-see 
+This section documents the merge process started by the resolve command.
+See 
 .B bk resolve
-for details on how to run resolve.
+for details on using resolve.
 .LP
-While in resolve, you can hit return to see a summary of the commands.
+While in resolve, you can hit the return key to see a summary of
+the commands.
 .LP
 The 
 .B bk resolve
-command will prompt you on each file that has conflicts.
-A conflict is defined to be two deltas made in parallel in different
+command prompts you on each file that has conflicts.
+A conflict is defined as two deltas made in parallel in different
 repositories.  If the conflict does not have any overlapping lines,
-then it may have been automerged, depending on how
+then it may have been automerged, depending if
 .B bk resolve
-was run.
+was run with the 
+.B -a
+option.
 .LP
 There are other sorts of conflicts, besides the usual file content
 conflicts.  \*(BK manages file names, permissions, flags, symbols,
@@ -26,15 +29,16 @@ and descriptive text in the same way as it manages file contents.
 That means that you can have a permissions conflict if, for example, one
 person changed the file to 0755 mode and another changed it to 0777 mode.
 .LP
-The resolve process for all conflicts is fairly similar.  You'll be
-prompted for each type of conflict on each file, hit return (or "?" or
-"help") and you'll be given a brief summary of the conflict and list
-of choices.  The choices usually include a more detailed explanation
-of the situation, we try to consistently make this available as the "x"
-command (as in eXplain).
+The resolve process for all conflicts is fairly similar.  For each
+type of conflict on each file, you will be prompted for an action.
+To view a brief summary of the conflict and a list of available
+actions, hit return (or "?" or "help").  The choices usually include
+a more detailed explanation of the situation; we try to consistently
+make this available as the "x" command (as in eXplain).
 .LP
-There are commands for diffing the files, viewing file history, several
-different merge tools, etc.  See the command summary for the full list.
+Some of the available actions allow you to diff the files, view
+file history, and merge using graphical tools, etc.  See the command
+summary for the full list.
 .SH "VIEW DIFFERENCES AND HISTORY"
 .LP
 To see the diffs use the "d" command.  For side-by-side diffs, use the
@@ -42,12 +46,14 @@ To see the diffs use the "d" command.  For side-by-side diffs, use the
 common ancestor using "dr" or "dl".  Type "D" to get a graphical, color
 coded side-by-side diff browser.
 .LP
-There are built in commands to show the history of the file, see "h",
-"hl", "hr".  In addition, "p" starts the the graphical file browser.  You
-can see diffs between versions by clicking the left button on the earlier
-rev and the right button on a later rev.  The bottom of the screen will
-show the diffs.  If you type Return at the prompt, the 3 revisions forming
-the merge are part of the help message.
+There are also built-in commands to show the history of the file (see
+"h", "hl", "hr").  In addition, "p" starts the the graphical file
+browser which allows you to view the difference between versions by
+clicking the left button on the earlier rev and the right button on
+a later rev.  The bottom of the screen will show the diffs.  If you
+type Return at the prompt, the three revisions forming the merge are
+part of the help message.
+
 .SH "MERGING CONTENTS"
 .LP
 When in resolve, there are four different files for each merge.  They
@@ -65,32 +71,32 @@ The merged file.
 .B GCA
 A common ancestor of the local/remote versions.
 .LP
-Your goal is to generate the merge file.  There are several ways to
-do this.
+Your goal is to generate the merge file using one of the methods below.
 .LP
-The easiest merge (and most popular) is one with no overlapping lines,
-you can merge that using the "m" command.  That command runs a merge
-command which does a three-way diff and merge, warning you if there are
-overlapping lines.  If there are overlaps, you have to edit the merged
-file (use the "e" command), find the markers which look like "<<<<" or
-">>>>", and manually fix the conflicts.  You need to be careful with
-this command; just because lines do not overlap does not mean that the
-merge makes semantic sense.
+The easiest and most popular merge method is to use the "m" command
+for cases where there are no overlapping lines. This method performs
+a three-way diff and merge and warns you when there are overlapping
+lines.  If there are overlaps, you have to edit the merged file (use
+the "e" command), find the conflict markers which look like "<<<<"
+or ">>>>", and manually fix the conflicts.  This command requires
+care since non-overlapping lines does not mean that the merge makes
+semantic sense.
 .LP
 If the merge looks complicated, a good approach is to start up the
-file browser with "p" and start up a side-by-side filemerge with "f".
-Then you can walk through the diffs, picking and choosing.  If you
-get confused about who added what, you can go to the browser and left
-click on the common ancestor and right click on each of the two tips of
-the trunk/branch to see who added what.  
+file browser with "p" and then start up a side-by-side filemerge with
+"f".  Then walk through the diffs, picking and choosing with blocks
+of code to use.  If you get confused about who added what, you can go
+to the history tool browser (histtool) and left click on the common
+ancestor and right click on each of the two tips of the trunk/branch
+to see who added what.
 .LP
 It is also possible to use a combination of graphical tools and the
 automatic merge.  You can type "p" to run the file browser, "D" to run
 difftool, "m" to do the merge, and then "e" to edit the merged file.
-The file browser is run in background, so you can go look at the various
-changes as described above.  Warning: if you are running your editor
-and the file merge program, then both are working on the same output
-file and whichever one writes it last, overwrites any earlier versions.
+The file browser is run in so you can look at the various changes as
+described above.  Warning: if you are running your editor and the
+file merge program, then both are working on the same output file
+and whichever one writes it last, overwrites any earlier versions.
 .LP
 There is a three-way file merge but it is not currently supported and we
 don't suggest you use it.  You can take a look by typing "F", it may be
@@ -126,15 +132,17 @@ pathname where the merged content should be placed
 The merge process is not complete until you commit the file with the
 "C" command at the resolve prompt.  This means you can merge repeatedly
 until you are happy with the results.  Each time you merge and save,
-however, you are overwriting the previous merge attempt.
+however, you overwrite the previous merge attempt.
 .LP
 When you are happy with your merged file, click done in filemerge,
-quit in the file browser, and type "C" at the prompt to commit to
-that file and move on to the next one.
+exit the file browser, and type "C" at the prompt to commit
+the file and move on to the next one.
 .SH "SEE ALSO"
 .SA merge 1
 .SA fmtool 1
 .SA histtool 1
 .SA resolve 1
 .SH CATEGORY
+.B Overview
+.br
 .B Repository

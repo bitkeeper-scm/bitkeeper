@@ -2,6 +2,8 @@
 char		*http_time(void);
 private	char	*type(char *name);
 private void	httphdr(char *file);
+private	char	*url(char *path);
+private void	http_error(int status, char *fmt, ...);
 private void	http_file(char *file);
 private void	http_index();
 private void	http_changes(char *rev);
@@ -13,13 +15,30 @@ private void	http_src(char *pathrev);
 private void	http_hist(char *pathrev);
 private void	http_patch(char *rev);
 private void	http_gif(char *path);
-private void	title(char *title);
-private void	pwd_title(char *t);
-private void	header(char *path);
+private void	title(char *title, char *desc, char *color);
+private void	pwd_title(char *t, char *color);
+private void	header(char *path, char *color, char *title, char *header, ...);
+private void	printnavbar();
 private void	learn();
-private void	logo(char *path);
+private void	trailer(char *path);
+private char	*units(char *t);
 private char	*findRoot(char *name);
 private	char	*root;
+
+#define	COLOR_TOP	"lightblue"	/* index.html */
+#define	COLOR_CHANGES	"lightblue"	/* ChangeSet */
+#define	COLOR_CSETS	"lightblue"	/* cset */
+#define	COLOR_HIST	"lightblue"	/* hist */
+#define	COLOR_ANNO	"lightblue"	/* anno */
+#define	COLOR_SRC	"lightblue"	/* src */
+#define	COLOR_DIFFS	"lightblue"	/* diffs */
+#define	COLOR_PATCH	"lightblue"	/* patch */
+
+#define BKWEB_SERVER_VERSION	"0.2"
+
+char arguments[MAXPATH] = { 0 };
+char navbar[MAXPATH] = { 0 };
+char thisPage[MAXPATH] = { 0 };
 
 /*
  */
@@ -32,24 +51,35 @@ cmd_httpget(int ac, char **av)
 	char	*s;
 
 	/*
-	 * Ignore the rest of the http header, we don't care.
+	 * Ignore the rest of the http header (if any), we don't care.
 	 */
-	while (read(0, buf, 1) == 1) {
-		if (buf[0] == '\r') {
-			switch (state) {
-			    case 0: case 2: state++; break;
-			    default: state = 0;
-		    	}
-		} else if (buf[0] == '\n') {
-			if (state == 1) state++;
-			else if (state == 3) break;
-			else state = 0;
-		} else {
-			state = 0;
-	    	}
+	if (ac > 2) {
+		while (read(0, buf, 1) == 1) {
+			if (buf[0] == '\r') {
+				switch (state) {
+				    case 0: case 2: state++; break;
+				    default: state = 0;
+				}
+			} else if (buf[0] == '\n') {
+				if (state == 1) state++;
+				else if (state == 3) break;
+				else state = 0;
+			} else {
+				state = 0;
+			}
+		}
 	}
-	unless (*name) name = "index.html";
+
+	if (s = strchr(name, '?')) {
+		*s++ = 0;
+		strcpy(arguments, s);
+		strcpy(navbar, s);
+	} else {
+		arguments[0] = 0;
+	}
+
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) exit(1);
+	unless (*name) name = "index.html";
 
 	/*
 	 * Go find the project root.
@@ -57,29 +87,20 @@ cmd_httpget(int ac, char **av)
 	 */
 	if (*name == '/') {
 		unless (name = findRoot(name)) {
-			out("ERROR-can't find project root\n");
-			out(buf);
+			http_error(503, "Can't find project root");
 			exit(1);
 		}
-	} else {
-		static	char url[1000];
+	} else root = url(0);
 
-		if (Opts.port) {
-			sprintf(url, "http://%s:%d", sccs_gethost(), Opts.port);
-		} else {
-			sprintf(url, "http://%s", sccs_gethost());
-		}
-		root = url;
-	}
-
+#if 0
 	unless (bk_options()&BKOPT_WEB) {
-		sprintf(buf, "ERROR-bkWeb option is disabled: %s", upgrade_msg);
-		out(buf);
+		http_error(503, "bkWeb option is disabled: %s", upgrade_msg);
 		exit(1);
 	}
+#endif
 
 	unless (av[1]) {
-		out("ERROR-get what?\n");
+		http_error(404, "get what?\n");
 		exit(1);
 	}
 	sprintf(buf, "BitKeeper/html/%s", name);
@@ -107,9 +128,187 @@ cmd_httpget(int ac, char **av)
 		http_anno(&name[5]);
 	} else if (strneq(name, "diffs/", 6)) {
 		http_diffs(&name[6]);
+	} else {
+		http_error(404, "Page &lt;%s&gt; not found", name);
 	}
 	exit(0);
 }
+
+
+private void
+whoami(char *fmt, ...)
+{
+	va_list ptr;
+
+	va_start(ptr, fmt);
+	vsprintf(thisPage, fmt, ptr);
+	va_end(ptr);
+
+	if (navbar[0]) {
+		strcat(navbar, "|");
+		strcat(navbar, thisPage);
+	} else {
+		strcpy(navbar, "nav=");
+		strcat(navbar, thisPage);
+	}
+}
+
+
+private void
+navbutton(int active, int tag, char *start, char *end)
+{
+	char *sep;
+	char *p;
+	char buf[MAXPATH];
+	int ct;
+
+	for (sep = start; sep < end && *sep != '#'; ++sep)
+	    ;
+	out("<a style=\"text-decoration: none\" ");
+	if (tag) {
+		ct = start-arguments;
+
+		if (arguments[ct-1] == '|') --ct;
+
+		sprintf(buf, "href=\"%.*s?%.*s\">",
+		    sep-start, start, ct, arguments);
+	} else {
+		sprintf(buf, "href=\"%.*s\">", sep-start,start);
+	}
+	out(buf);
+	out(active ? "<font size=2 color=lightblue>"
+		   : "<font size=2 color=yellow>");
+
+	if (strneq(start,"ChangeSet", 9)) {
+		if (start[9] != '@') {
+			out("All ChangeSets");
+		} else if (start[10] == '+') {
+			out("Latest ChangeSet");
+		} else {
+			ct = atoi(start+11);
+			sprintf(buf,
+			    "Changesets in the last %d %s",
+			    ct, units(start+11));
+			out(buf);
+		}
+		start = 0;
+	} else if (strneq(start, "index.html", 10)) {
+		out("Home");
+		start = 0;
+	} else if (strneq(start, "hist/", 5)) {
+		out("History of ");
+		start += 5;
+	} else if (strneq(start, "anno/", 5)) {
+		out("Annotations for ");
+		start += 5;
+	} else if (strneq(start, "diffs/", 6)) {
+		out("Diffs for ");
+		start += 6;
+	} else if (strneq(start, "patch@", 6)) {
+		out("All diffs for ");
+		start += 6;
+	} else if (strneq(start, "cset@", 5)) {
+		out("ChangeSet ");
+		start += 5;
+	} else if (strneq(start, "src", 3)) {
+		start += 3;
+		if (sep-start == 2 && strneq(start, "/.", 2)) {
+			out("Sources");
+			start = 0;
+		} else {
+			for (p = sep; p > start && *p != '/'; --p)
+				;
+			start = p;
+			if (*start == '/') ++start;
+		}
+	}
+	if (start) {
+	    sprintf(buf, "%.*s", sep-start, start);
+	    out(buf);
+	}
+	out("</font></a>\n");
+	unless (active) out("<font size=2 color=white>"
+			    "<img src=arrow.gif alt=&gt;&gt;>"
+			    "</font>\n");
+}
+
+
+private void
+printnavbar()
+{
+	char *start, *end;
+	int first = 1;
+
+	out("<!-- [");out(navbar);out("] -->\n");
+	/* put in a navigation bar */
+	out("<table width=100% cellpadding=4>\n"
+	    "<tr bgcolor=black><td align=left>\n");
+	if (strneq(navbar, "nav=", 4)) {
+		for (start = arguments+4; *start; ++start) {
+			for (end = start; *end && *end != '|'; ++end)
+				;
+			navbutton(0, !first,start,end);
+			start = end;
+			first = 0;
+		}
+	}
+	navbutton(1, !first, thisPage, thisPage+strlen(thisPage));
+
+	out("</td></tr></table>\n");
+}
+
+
+private void
+header(char *path, char *color, char *titlestr, char *headerstr, ...)
+{
+	char buf[MAXPATH];
+	va_list ptr;
+	MDBM *m;
+	char *t;
+	char *fmt = 0;
+	char *s;
+
+	out("<html>");
+
+	if (titlestr) {
+		va_start(ptr, headerstr);
+		vsprintf(buf, titlestr, ptr);
+		va_end(ptr);
+
+		out("<head><title>");
+		out(buf);
+		out("</title></head>\n");
+
+		if (headerstr) {
+			va_start(ptr, headerstr);
+			vsprintf(buf, headerstr, ptr);
+			va_end(ptr);
+		}
+
+		fmt = buf;
+	}
+
+	out("<body alink=black link=black bgcolor=white>\n");
+	if (root && !streq(root, "")) {
+		out("<base href=");
+		out(root);
+		out("/>\n");
+	}
+
+	printnavbar();
+
+	unless (include(path, "header.txt")) {
+		m = loadConfig(".", 0);
+		if (m && (t = mdbm_fetch_str(m, "description")) && strlen(t) < 2000) {
+			title(fmt, t, color);
+		} else {
+			pwd_title(fmt, color);
+		}
+		if (m) mdbm_close(m);
+	}
+}
+
+
 
 /*
  * Given a pathname, try and find a BitKeeper/etc below.
@@ -121,18 +320,11 @@ findRoot(char *name)
 	char	*s, *t;
 	char	path[MAXPATH];
 	int	tries = 256;
-	static	char url[MAXPATH*2];
 
 	sprintf(path, "%s/BitKeeper/etc", name);
 	if (isdir(path)) {
 		chdir(name);
-		if (Opts.port) {
-			sprintf(url, "http://%s:%d%s",
-			    sccs_gethost(), Opts.port, name-1);
-		} else {
-			sprintf(url, "http://%s%s", sccs_gethost(), name-1);
-		}
-		root = url;
+		root = url(name);
 		return ("index.html");
 	}
 	for (s = strrchr(name, '/'); s && (s != name); ) {
@@ -141,14 +333,7 @@ findRoot(char *name)
 		unless (--tries) break;		/* just in case */
 		if (isdir(path)) {
 			chdir(name);
-			if (Opts.port) {
-				sprintf(url, "http://%s:%d%s",
-				    sccs_gethost(), Opts.port, name-1);
-			} else {
-				sprintf(url,
-				    "http://%s%s", sccs_gethost(), name-1);
-			}
-			root = url;
+			root = url(name);
 			return (s + 1);
 		}
 		t = strrchr(name, '/');
@@ -164,9 +349,15 @@ httphdr(char *file)
 	char	buf[2048];
 
 	sprintf(buf,
-	    "HTTP/1.0 200 OK\r\n%s\r\nServer: bkhttp/0.1\r\n"
-	    "Content-Type: %s\r\nLast-Modified: %s\r\n\r\n",
-	    http_time(), type(file), http_time());
+	    "HTTP/1.0 200 OK\r\n"
+	    "%s\r\n"
+	    "Server: bkhttp/%s\r\n"
+	    "Content-Type: %s\r\n"
+	    "Last-Modified: %s\r\n"
+	    "\r\n",
+	    http_time(),
+	    BKWEB_SERVER_VERSION,
+	    type(file), http_time());
 	out(buf);
 }
 
@@ -189,31 +380,35 @@ http_changes(char *rev)
 	char	*av[100];
 	int	i;
 	char	buf[2048];
+	char    dspec[MAXPATH];
 	MDBM	*m;
 	char	*d;
-	char	*dspec =
-	    "-d<tr bgcolor=#d8d8f0><td><font size=2>"
-	    "&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
-	    "$if(:DOMAIN:){@:DOMAIN:}&nbsp;&nbsp;"
-	    "<a href=cset@:REV:><font color=red> [details]</font></a>"
-	    "&nbsp;&nbsp;<a href=patch@:REV:>"
-	    "<font color=red>[all diffs]</font></a>"
-	    "</td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;"
-	    "tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}"
-	    "$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)"
-	    "</td></tr>\n}<tr><td>&nbsp;&nbsp;</td></tr>\n";
-	httphdr(".html");
-	header("ChangeSet");
-	m = loadConfig(".", 0);
-	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 2000)) {
-		sprintf(buf, "%s<hr>ChangeSet Summaries", d);
-		title(buf);
+
+	if (rev) {
+		whoami("ChangeSet@%s", rev);
 	} else {
-		pwd_title("ChangeSet summaries");
+		whoami("ChangeSet");
 	}
-	if (m) mdbm_close(m);
-	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
-	out("bgcolor=white>\n");
+
+	sprintf(dspec,  "-d<tr>\n"
+			" <td align=right>:HTML_AGE:</td>\n"
+			" <td align=center>:USER:</td>\n"
+			" <td align=center"
+			"$if(:TAG:){ bgcolor=yellow}>"
+			"<a href=cset@:I:?%s>:I:</a>"
+			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
+			"</td>\n"
+			" <td>:HTML_C:</td>\n"
+			"</tr>\n", navbar);
+
+	httphdr(".html");
+	header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
+
+	out("<table width=100% border=1 cellpadding=2 cellspacing=0 bgcolor=white>\n");
+	out("<tr bgcolor=#d0d0d0>\n");
+    	out("<th>Age</th><th>Author</th><th>Rev</th>");
+	out("<th align=left>&nbsp;Comments</th></tr>\n");
+
 	av[i=0] = "bk";
 	av[++i] = "prs";
 	av[++i] = "-h";
@@ -227,33 +422,39 @@ http_changes(char *rev)
 	putenv("BK_YEAR4=1");
 	spawnvp_ex(_P_WAIT, "bk", av);
 	out("</table>\n");
-	logo("ChangeSet");
+	trailer("ChangeSet");
 }
 
 private void
 http_cset(char *rev)
 {
 	char	buf[2048];
+	char	path[MAXPATH];
 	FILE	*f;
 	MDBM	*m;
-	char	*d;
-	char	*dspec = 
-	    "<tr bgcolor=#d8d8f0><td><font size=-1>&nbsp;"
+	int	i;
+	char	*d, **lines = 0;
+	char	dspec[MAXPATH*2];
+
+	whoami("cset@%s", rev);
+
+	sprintf(dspec,
+	    "<tr bgcolor=#d8d8f0><td>&nbsp;"
 	    ":GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
 	    "$if(:DOMAIN:){@:DOMAIN:}"
 	    "$if(:GFILE:=ChangeSet){"
-	      "&nbsp;&nbsp;<a href=patch@:REV:>"
-	      "<font color=red>[all diffs]</font></a>"
+	      "&nbsp;&nbsp;<a href=patch@:REV:?%s>"
+	      "<font color=darkblue>[all diffs]</font></a>"
 	    "}"
 	    "$if(:GFILE:!=ChangeSet){"
-	      "&nbsp;&nbsp;<a href=hist/:GFILE:>"
-	      "<font color=red>[history]</font></a>"
-	      "&nbsp;&nbsp;<a href=anno/:GFILE:@:REV:>"
-	      "<font color=red>[annotate]</font></a>"
-	      "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:>"
-	      "<font color=red>[diffs]</font></a>"
+	      "&nbsp;&nbsp;<a href=hist/:GFILE:?%s>"
+	      "<font color=darkblue>[history]</font></a>"
+	      "&nbsp;&nbsp;<a href=anno/:GFILE:@:REV:?%s>"
+	      "<font color=darkblue>[annotate]</font></a>"
+	      "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:?%s>"
+	      "<font color=darkblue>[diffs]</font></a>"
 	    "}"
-	    "</font></td>"
+	    "</td>"
 	    "$each(:TAG:){"
 	      "<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;"
 	      "tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n"
@@ -261,31 +462,39 @@ http_cset(char *rev)
 	    "$each(:C:){"
 	      "<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>"
 	    "}"
-	    "<tr><td>&nbsp;</td></tr>\n";
+	    "<tr><td>&nbsp;</td></tr>\n", navbar, navbar, navbar, navbar);
 
 	httphdr("cset.html");
-	header("cset");
-	m = loadConfig(".", 0);
-	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
-		sprintf(buf, "%s<hr>ChangeSet details for %s", d, rev);
-		title(buf);
-	} else {
-		sprintf(buf, "ChangeSet details for changeset %s", rev);
-		pwd_title(buf);
-	}
-	if (m) mdbm_close(m);
+
+	header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
+
 	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
 
 	putenv("BK_YEAR4=1");
-	sprintf(buf, "bk cset -r%s | sort | grep -v '@1.0' | bk prs -h -d'%s' -", rev, dspec);
+	sprintf(buf, "bk cset -r%s", rev);
 	unless (f = popen(buf, "r")) exit(1);
-	while (fgets(buf, sizeof(buf), f)) {
-		out(buf);
+	while (fnext(buf, f)) {
+		if (strneq("ChangeSet@", buf, 10)) continue;
+		d = strrchr(buf, '@');
+		if (streq(d, "@1.0\n")) continue;
+		lines = addLine(lines, strdup(buf));
 	}
 	pclose(f);
+	unless (lines) exit(1);
+	sortLines(lines);
+	gettemp(path, "cset");
+	f = fopen(path, "w");
+	fprintf(f, "ChangeSet@%s\n", rev);
+	EACH(lines) fputs(lines[i], f);
+	fclose(f);
+	sprintf(buf, "bk prs -h -d'%s' - < %s", dspec, path);
+	unless (f = popen(buf, "r")) exit(1);
+	while (fnext(buf, f)) out(buf);
+	pclose(f);
+	unlink(path);
 	out("</table>\n");
-	logo("cset");
+	trailer("cset");
 }
 
 private void
@@ -299,18 +508,6 @@ cat2net(char *path)
 		writen(1, buf, n);
 	}
 	close(fd);
-}
-
-private void
-header(char *path)
-{
-	out("<html><body alink=black link=black bgcolor=white>\n");
-	if (root && !streq(root, "")) {
-		out("<base href=");
-		out(root);
-		out("/>\n");
-	}
-	unless (include(path, "header.html")) learn();
 }
 
 include(char *path, char *file)
@@ -341,47 +538,57 @@ include(char *path, char *file)
 }
 
 private void
-title(char *title)
+title(char *title, char *desc, char *color)
 {
 	unless (title) return;
-	out("<table bgcolor=lightyellow width=100% cellpadding=4 cellspacing=0>\n");
-	out("<tr><td align=middle><font color=black><hr>");
+
+	out("<table bgcolor=lightyellow width=100% cellpadding=0 cellspacing=0>\n");
+	out("<tr><td align=middle bgcolor=");
+	out(color);
+	out("><font color=black><hr>");
+	if (desc) {
+		out(desc);
+		out("\n<hr>\n");
+	}
 	out(title);
-	out("<hr></td></tr></table><br>\n");
+	out("<hr></td></tr></table>\n");
 }
 
 private void
-pwd_title(char *t)
+pwd_title(char *t, char *color)
 {
 	char	pwd[MAXPATH];
-	char	buf[MAXPATH*2];
 
 	pwd[0] = 0;
 	getcwd(pwd, sizeof(pwd));
-	sprintf(buf, "%s<hr>%s", pwd, t);
-	title(buf);
+	title(t, pwd, color);
 }
 
 private void
-learn()
+trailer(char *path)
 {
-	out("<table width=100% cellpadding=4 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td align=middle><a href=http://www.bitkeeper.com>\n");
-	out("<font color=white>Learn more about BitKeeper</a></td></tr>");
-	out("</table>\n");
-}
+	include(path, "trailer.txt");
 
-private void
-logo(char *path)
-{
-	(void)include(path, "trailer.html");
-	out("<table width=100% cellpadding=0 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td><font size=1>&nbsp;</td></tr></table>\n");
-	out("<p align=center><a href=http://www.bitkeeper.com>");
-	out("<img src=logo.gif></a></p>\n");
-	out("</body></html>\n");
+	if (isreg("BitKeeper/html/logo.gif")) {
+		out("<hr>\n"
+		    "<font color=black size=-2>\n"
+		    "<table border=0 bgcolor=white width=100%>\n"
+		    "<tr>\n"
+		    "<td align=left>"
+		    "<img src=\"logo.gif\" alt=\"\"></img></td>\n"
+		    "<td align=right><a href=http://www.bitkeeper.com>"
+		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\">"
+		    "</a></td></tr></table></font>\n");
+	} else {
+		out("<hr>\n"
+		    "<p align=center>\n"
+		    "<a href=http://www.bitkeeper.com>\n"
+		    "<font color=black size=-2>\n"
+		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
+		    "</font>\n"
+		    "</p>");
+		out("</body></html>\n");
+	}
 }
 
 int
@@ -412,45 +619,49 @@ htmlify(char *from, char *html, int n)
 private void
 http_hist(char *pathrev)
 {
-	char	buf[4096];
-	char	html[8192];
+	char	buf[16<<10];
 	char	*s, *d;
+	FILE	*f;
 	MDBM	*m;
-	char	*dspec =
-	    "<tr bgcolor=#d8d8f0><td><font size=2>"
-	    "&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
-	    "$if(:DOMAIN:){@:DOMAIN:}&nbsp;&nbsp;"
-	    "<a href=anno/:GFILE:@:REV:><font color=red> [annotate]</font></a>"
-	    "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:>"
-	    "<font color=red>[diffs]</font></a>"
-	    "</td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;"
-	    "tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}"
-	    "$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)"
-	    "</td></tr>}<tr><td>&nbsp;&nbsp;</td></tr>\n";
+	char	dspec[MAXPATH*2];
+
+	whoami("hist/%s", pathrev);
+
+	sprintf(dspec,
+		"<tr>\n"
+		" <td align=right>:HTML_AGE:</td>\n"
+		" <td align=center>:USER:</td>\n"
+		" <td align=center"
+		"$if(:TAG:){ bgcolor=yellow}"
+		"$if(:RENAME:){$if(:I:!=1.1){ bgcolor=orange}}>"
+		"<a href=diffs/:GFILE:@:I:?%s>:I:</a>"
+		"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
+		"</td>\n <td>:HTML_C:</td>\n"
+		"</tr>\n", navbar);
 
 	httphdr(".html");
-	header("hist");
-	m = loadConfig(".", 0);
-	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
-		sprintf(html, "%s<hr>Revision history for %s", d, pathrev);
-		title(html);
-	} else {
-		sprintf(html, "Revision history for %s", pathrev);
-		pwd_title(html);
-	}
-	if (m) mdbm_close(m);
+	header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
+
 	if (s = strrchr(pathrev, '@')) {
 		*s++ = 0;
 		sprintf(buf, "bk prs -hd'%s' -r%s %s", dspec, s, pathrev);
 	} else {
 		sprintf(buf, "bk prs -hd'%s' %s", dspec, pathrev);
 	}
-	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
+	out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
+	out("<tr bgcolor=lightblue>\n");
+	out(" <th>Age</th>\n");
+	out(" <th>Author</th>\n");
+	out(" <th>Rev</th>\n");
+	out(" <th align=left>Comments</th>\n");
+	out("</tr>\n");
 	putenv("BK_YEAR4=1");
-	system(buf);
+	f = popen(buf, "r");
+	while (fnext(buf, f)) out(buf);
+	pclose(f);
 	out("</table>\n");
-	logo("hist");
+	trailer("hist");
 }
 
 /* pathname */
@@ -468,21 +679,26 @@ http_src(char *path)
 	struct	stat sbuf;
 	struct	dirent *e;
 	time_t	now;
-	char	*dspec = 
+	char 	dspec[MAXPATH*2];
+
+	whoami("src/%s", path);
+
+	sprintf(dspec, 
 	    "<tr bgcolor=lightyellow>"
-	    "<td><img src=file.gif></td>"
-	    "<td>"
-	      "$if(:GFILE:=ChangeSet){<a href=ChangeSet@+>:G:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:>:G:</a>}"
+	    " <td><img src=file.gif></td>"
+	    " <td>"
+	      "$if(:GFILE:=ChangeSet){<a href=ChangeSet@+?%s>&nbsp;:G:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:?%s>&nbsp;:G:</a>}"
 	    "</td>"
-	    "<td align=right>"
-	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:>:REV:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:>:REV:</a>}"
+	    " <td align=center>"
+	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:?%s>&nbsp;:REV:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:?%s>:REV:</a>}"
 	    "</td>"
-	    "<td align=right><font size=2>:AGE:</font></td>"
-	    "<td align=center>:USER:</td>"
-	    "<td>:C:&nbsp;</td>"
-	    "</tr>\n";
+	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
+	    " <td align=center>:USER:</td>"
+	    " <td>:HTML_C:&nbsp;</td>"
+	    "</tr>\n", navbar, navbar, navbar, navbar);
+
 
 	if (!path || !*path) path = ".";
 	unless (d = opendir(path)) {
@@ -490,19 +706,9 @@ http_src(char *path)
 		exit(1);
 	}
 	httphdr(".html");
-	header("src");
-	m = loadConfig(".", 0);
-	if (m && (s = mdbm_fetch_str(m, "description")) && (strlen(s) < 1900)) {
-		sprintf(html, "%s<hr>Source directory &lt;%s&gt;",
-		    s, path[1] ? path : "project root");
-		title(html);
-	} else {
-		sprintf(html,
-		    "Source directory &lt;%s&gt;",
-		    path[1] ? path : "project root");
-		pwd_title(html);
-	}
-	if (m) mdbm_close(m);
+	header("src", COLOR_SRC, "Source directory &lt;%s&gt;", 0,
+	    path[1] ? path : "project root");
+
 	out("<table border=1 cellpadding=2 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
 	out("<tr><th>&nbsp;</th><th align=left>File&nbsp;name</th>");
@@ -514,7 +720,7 @@ http_src(char *path)
 
 	now = time(0);
 	while (e = readdir(d)) {
-		if (streq(".", e->d_name) || streq("SCCS", e->d_name)) continue;
+		if (streq(".", e->d_name) || streq("SCCS", e->d_name) || streq("..", e->d_name)) continue;
 		if (path[1]) {
 			sprintf(buf, "%s/%s", path, e->d_name);
 		} else {
@@ -522,32 +728,22 @@ http_src(char *path)
 		}
 		if (lstat(buf, &sbuf) == -1) continue;
 		if (path[1]) {
-			sprintf(buf, "<a href=src/%s/%s>", path, e->d_name);
+			sprintf(buf, "<a href=src/%s/%s?%s>", path, e->d_name, navbar);
 		} else {
-			sprintf(buf, "<a href=src/%s>", e->d_name);
+			sprintf(buf, "<a href=src/%s?%s>", e->d_name, navbar);
 		}
-		for (s = age(now - sbuf.st_mtime), t = abuf; *s; s++) {
-			if (*s == ' ') {
-				*t++ = '&'; *t++ = 'n'; *t++ = 'b';
-				*t++ = 's'; *t++ = 'p'; *t++ = ';';
-			} else {
-				*t++ = *s;
-			}
-		}
-		*t = 0;
+		//s = age(now - sbuf.st_mtime, "&nbsp;");
 		if (S_ISDIR(sbuf.st_mode)) {
-			sprintf(html, "%s%s&nbsp;%s/%s%s%s\n",
+			sprintf(html, 
 			  "<tr bgcolor=lightblue>"
-			  "<td><img src=dir.gif></td><td>",
+			  "<td><img src=%s></td><td>&nbsp;"
+			  "%s%s</td><td>&nbsp;</td>"		/* rev */
+			  "<td align=right>&nbsp;</td>"
+			  "<td>&nbsp;</td>"			/* user */
+			  "<td>&nbsp;</td></tr>\n",		/* comments */
+			  "dir.gif",
 			  buf,
-			  e->d_name,			/* file */
-			  "</td>"
-			  "<td>&nbsp;</td>"		/* rev */
-			  "<td align=right><font size=2>",
-			  abuf,
-			  "</font></td>"
-			  "<td>&nbsp;</td>"		/* user */
-			  "<td>&nbsp;</td></tr>\n");	/* comments */
+			  e->d_name);
 			names = addLine(names, strdup(html));
 		}
 	}
@@ -570,7 +766,7 @@ http_src(char *path)
 	}
 	freeLines(names);
 	out("</table><br>\n");
-	logo("src");
+	trailer("src");
 }
 
 private void
@@ -584,17 +780,12 @@ http_anno(char *pathrev)
 	MDBM	*m;
 
 	httphdr(".html");
-	header("anno");
-	m = loadConfig(".", 0);
-	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
-		sprintf(html, "%s<hr>Annotated listing of %s", d, pathrev);
-		title(html);
-	} else {
-		sprintf(html, "Annotated listing of %s", pathrev);
-		pwd_title(html);
-	}
-	if (m) mdbm_close(m);
-	out("<pre><font size=2>\n");
+
+	whoami("anno/%s", pathrev);
+
+	header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
+
+	out("<pre><font size=2>");
 	unless (s = strrchr(pathrev, '@')) exit(1);
 	*s++ = 0;
 	sprintf(buf, "bk annotate -uma -r%s %s", s, pathrev);
@@ -614,24 +805,23 @@ http_anno(char *pathrev)
 	}
 	pclose(f);
 	out("</pre>\n");
-	logo("anno");
+	trailer("anno");
 }
 
 private void
 http_both(char *pathrev)
 {
-	header(0);
-	title("Not implemented yet, check back soon");
-	out("<pre><font size=2>\n");
+	header(0, "red", "Not implemented yet, check back soon", 0);
+	out("<pre><font size=2>");
 	out("</pre>\n");
-	logo(0);
+	trailer(0);
 }
 
 #define BLACK 1
 #define	OLD 2
 #define	NEW 3
 #define	BOLD 4
-void
+private void
 color(char c)
 {
 	static	int clr;
@@ -670,29 +860,59 @@ http_diffs(char *pathrev)
 	FILE	*f;
 	char	buf[16<<10];
 	char	html[18<<10];
-	int	n;
 	char	*s;
+	MDBM	*m;
+	int	n;
+	char	dspec[MAXPATH*2];
+
+
+	whoami("diffs/%s", pathrev);
+
+	sprintf(dspec,
+		"<tr>\n"
+		" <td align=right>:HTML_AGE:</td>\n"
+		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
+		" <td align=center><a href=anno/:GFILE:@:I:?%s>:I:</a></td>\n"
+		" <td>:HTML_C:</td>\n"
+		"</tr>\n", navbar);
 
 	httphdr(".html");
-	header("diffs");
-	out("<pre><font size=2>\n");
+	header("diffs", COLOR_DIFFS, "Changes for %s", 0, pathrev);
+
 	unless (s = strrchr(pathrev, '@')) exit(1);
 	*s++ = 0;
+	out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
+	out("bgcolor=white>\n");
+	out("<tr bgcolor=lightblue>\n");
+	out(" <th>Age</th>\n");
+	out(" <th>Author</th>\n");
+	out(" <th>Annotate</th>\n");
+	out(" <th align=left>Comments</th>\n");
+	out("</tr>\n");
+	sprintf(buf, "bk prs -hr%s -d'%s' %s", s, dspec, pathrev);
+	f = popen(buf, "r");
+	while (fnext(buf, f)) out(buf);
+	pclose(f);
+	out("</table>\n");
+
 	if (strstr(s, "..")) {
 		sprintf(buf, "bk diffs -ur%s %s", s, pathrev);
 	} else {
 		sprintf(buf, "bk diffs -uR%s %s", s, pathrev);
 	}
 	f = popen(buf, "r");
+	out("<pre>");
+	out("<font size=2>");
 	color(0);
-	while (fgets(buf, sizeof(buf), f)) {
+	fnext(buf, f);
+	while (fnext(buf, f)) {
 		n = htmlify(buf, html, strlen(buf));
 		color(html[0]);
 		writen(1, html, n);
 	}
 	pclose(f);
 	out("</pre>\n");
-	logo("diffs");
+	trailer("diffs");
 }
 
 private void
@@ -702,21 +922,35 @@ http_patch(char *rev)
 	char	buf[16<<10];
 	char	html[18<<10];
 	int	n;
+	char	*s;
+	MDBM	*m;
 
 	httphdr(".html");
-	header("patch");
-	out("<pre><font size=2>\n");
+
+	whoami("patch@%s", rev);
+
+	header("rev", COLOR_PATCH,
+	    "All diffs for ChangeSet %s",
+	    0,
+	    rev, navbar, rev);
+
+	out("<pre><font size=2>");
 	sprintf(buf, "bk export -T -h -x -tpatch -r%s", rev);
 	f = popen(buf, "r");
 	color(0);
 	while (fgets(buf, sizeof(buf), f)) {
 		n = htmlify(buf, html, strlen(buf));
 		color(html[0]);
+		if (html[0] == 'd') {
+			out("<table width=100%>\n");
+			out("<tr bgcolor=lightblue><td>");
+		}
 		writen(1, html, n);
+		if (html[0] == 'd') out("</td></tr></table>");
 	}
 	pclose(f);
 	out("</pre>\n");
-	logo("patch");
+	trailer("patch");
 }
 
 private void
@@ -728,9 +962,13 @@ http_gif(char *name)
 	extern	int file_len;
 	extern	char dir_gif[];
 	extern	int dir_len;
+	extern	char back_gif[];
+	extern	int back_len;
+	extern	char arrow_gif[];
+	extern	int arrow_len;
 
 	if (*name == '/')  name++;
-	if (streq(name, "bkpowered.gif") || streq(name, "logo.gif")) {
+	if (streq(name, "bkpowered.gif") || streq(name, "trailer.gif")) {
 		httphdr("BK.gif");
 		writen(1, bkpowered_gif, bkpowered_len);
 	} else if (streq(name, "file.gif")) {
@@ -739,7 +977,30 @@ http_gif(char *name)
 	} else if (streq(name, "dir.gif")) {
 		httphdr("BK.gif");
 		writen(1, dir_gif, dir_len);
+	} else if (streq(name, "back.gif")) {
+		httphdr("BK.gif");
+		writen(1, back_gif, back_len);
+	} else if (streq(name, "arrow.gif")) {
+		httphdr("BK.gif");
+		writen(1, arrow_gif, arrow_len);
 	}
+}
+
+private char*
+units(char *t)
+{
+	int	n = atoi(t);
+
+	while (isdigit(*t)) t++;
+	switch (*t) {
+	    case 'm': return (n > 1 ? "minutes" : "minute");
+	    case 'h': case 'H': return (n > 1 ? "hours" : "hour");
+	    case 'd': case 'D': return (n > 1 ? "days" : "day");
+	    case 'w': case 'W': return (n > 1 ? "weeks" : "week");
+	    case 'M': return (n > 1 ? "months" : "month");
+	    case 'y': case 'Y': return (n > 1 ? "years" : "year");
+	    default: return ("unknown units");
+    	}
 }
 
 private void
@@ -747,9 +1008,11 @@ http_index()
 {
 	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT, 0);
 	delta	*d;
-	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w, t1m, t2m;
+	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w;
+	time_t	t4w, t8w, t12w, t6m, t9m, t1y, t2y, t3y;
 	int	c1h=0, c1d=0, c2d=0, c3d=0, c4d=0;
-	int	c1w=0, c2w=0, c3w=0, c1m=0, c2m=0, c=0;
+	int	c1w=0, c2w=0, c3w=0, c4w=0, c8w=0, c12w=0, c6m=0, c9m=0;
+	int	c1y=0, c2y=0, c3y=0, c=0;
 	char	buf[MAXPATH*2];
 	char	*t;
 	MDBM	*m;
@@ -763,8 +1026,14 @@ http_index()
 	t1w = now - (7*24*60*60);
 	t2w = now - (14*24*60*60);
 	t3w = now - (21*24*60*60);
-	t1m = now - (31*24*60*60);
-	t2m = now - (62*24*60*60);
+	t4w = now - (31*24*60*60);
+	t8w = now - (2*31*24*60*60);
+	t12w = now - (3*31*24*60*60);
+	t6m = now - (6*31*24*60*60);
+	t9m = now - (9*31*24*60*60);
+	t1y = now - (365*24*60*60);
+	t2y = now - (2*365*24*60*60);
+	t3y = now - (3*365*24*60*60);
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		if (d->date >= t1h) c1h++;
@@ -775,25 +1044,55 @@ http_index()
 		if (d->date >= t1w) c1w++;
 		if (d->date >= t2w) c2w++;
 		if (d->date >= t3w) c3w++;
-		if (d->date >= t1m) c1m++;
-		if (d->date >= t2m) c2m++;
+		if (d->date >= t4w) c4w++;
+		if (d->date >= t8w) c8w++;
+		if (d->date >= t12w) c12w++;
+		if (d->date >= t6m) c6m++;
+		if (d->date >= t9m) c9m++;
+		if (d->date >= t1y) c1y++;
+		if (d->date >= t2y) c2y++;
+		if (d->date >= t3y) c3y++;
 		c++;
 	}
 	sccs_free(s);
 	httphdr(".html");
-	header(0);
-	m = loadConfig(".", 0);
-	if (m && (t = mdbm_fetch_str(m, "description")) && (strlen(t) < 1900)) {
-		title(t);
-	} else {
-		pwd_title("ChangeSet activity");
+
+	if (m = loadConfig(".", 0)) {
+		t = mdbm_fetch_str(m, "description");
+		mdbm_close(m);
 	}
-	if (m) mdbm_close(m);
+
+	/* don't use header() here; this is one place where the regular
+	 * header.txt is not needed
+	 */
+	out("<html><head><title>\n");
+	out(t ? t : "ChangeSet activity");
+	out("\n"
+	    "</title></head>\n"
+	    "<body alink=black link=black bgcolor=white>\n");
+	if (root && !streq(root, "")) {
+		out("<base href=");
+		out(root);
+		out("/>\n");
+	}
+
+	whoami("index.html");
+
+	printnavbar();
+
+	unless (include(0, "homepage.txt")) {
+		if (t) {
+			title("ChangeSet activity", t, COLOR_TOP);
+		} else {
+			pwd_title("ChangeSet activity", COLOR_TOP);
+		}
+	}
+
 	out("<table width=100%>\n");
 #define	DOIT(c, l, u, t) \
 	if (c && (c != l)) { \
 		out("<tr><td width=45%>&nbsp;</td>"); \
-		sprintf(buf, "<td><a href=ChangeSet@-%s>", u); \
+		sprintf(buf, "<td><a href=ChangeSet@-%s?%s>", u, navbar); \
 		out(buf); \
 		sprintf(buf, \
 		    "%d&nbsp;ChangeSets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
@@ -808,22 +1107,29 @@ http_index()
 	DOIT(c3d, c2d, "3d", "three&nbsp;days");
 	DOIT(c4d, c3d, "4d", "four&nbsp;days");
 	DOIT(c1w, c4d, "7d", "week");
-	DOIT(c2w, c1w, "14d", "two&nbsp;weeks");
-	DOIT(c3w, c2w, "21d", "three&nbsp;weeks");
-	DOIT(c1m, c3w, "31d", "month");
-	DOIT(c2m, c1m, "62d", "two&nbsp;months");
+	DOIT(c2w, c1w, "2w", "two&nbsp;weeks");
+	DOIT(c3w, c2w, "3w", "three&nbsp;weeks");
+	DOIT(c4w, c3w, "4w", "four&nbsp;weeks");
+	DOIT(c8w, c4w, "8w", "eight&nbsp;weeks");
+	DOIT(c12w, c8w, "12w", "twelve&nbsp;weeks");
+	DOIT(c6m, c12w, "6M", "six&nbsp;months");
+	DOIT(c9m, c6m, "9M", "nine&nbsp;months");
+	DOIT(c1y, c9m, "1y", "year");
+	DOIT(c2y, c1y, "2y", "two&nbsp;years");
+	DOIT(c3y, c2y, "3y", "three&nbsp;years");
 	out("<tr><td>&nbsp;</td><td>");
-	out("<a href=ChangeSet>");
+	sprintf(buf,"<a href=ChangeSet?%s>", navbar);
+	out(buf);
 	sprintf(buf, "All %d ChangeSets", c);
 	out(buf);
 	out("</a></td><td>&nbsp;</td></tr>");
 	out("<tr><td>&nbsp;</td>");
 	sprintf(buf,
-	    "<td><a href=src>Browse the source tree</a></td>");
+	    "<td><a href=src?%s>Browse the source tree</a></td>", navbar);
 	out(buf);
 	out("<td>&nbsp;</td></tr>");
 	out("</table>\n");
-	logo(0);
+	trailer(0);
 }
 
 
@@ -872,4 +1178,58 @@ type(char *name)
 		return "text/html";
 	}
 	return "text/plain";
+}
+
+
+private void
+http_error(int status, char *fmt, ...)
+{
+        char    buf[2048];
+	va_list	ptr;
+
+        sprintf(buf,
+            "HTTP/1.0 %d Error\r\n"
+            "%s\r\n"
+            "Server: bkhttp/%s\r\n"
+            "Content-Type: text/html\r\n"
+            "\r\n",
+            status, http_time(), BKWEB_SERVER_VERSION);
+        out(buf);
+
+	strcpy(buf, "<html><head><title>Error!</title></head>\n"
+		    "<body alink=black link=black bgcolor=white>\n"
+		    "<h2><center>\n");
+	va_start(ptr,fmt);
+	vsprintf(buf+strlen(buf), fmt, ptr);
+	va_end(ptr);
+	strcat(buf, "\n</h2></center>\n");
+	out(buf);
+	out("<hr>\n"
+	    "<table width=100%>\n"
+	    "<tr>\n"
+	    "<th valign=top align=left>bkhttp/" BKWEB_SERVER_VERSION " server on ");
+	out(url(0));
+	out("</th>\n"
+	    "<td align=right><a alink=white link=white href=www.bitkeeper.com>\n"
+	    "<img src=/trailer.gif alt=\"Learn more about BitKeeper\">\n"
+	    "</a></td>\n"
+	    "</tr>\n"
+	    "</table>\n");
+	out("</body>\n");
+}
+
+private char *
+url(char *path)
+{
+	static char buf[MAXPATH*2];
+
+	strcpy(buf, "http://");
+	strcat(buf, sccs_gethost());
+	if (Opts.port) sprintf(buf+strlen(buf), ":%d", Opts.port);
+	if (path) {
+		strcat(buf, "/");
+		strcat(buf, path);
+		unless (buf[strlen(buf)-1] == '/') strcat(buf, "/");
+	}
+	return buf;
 }

@@ -1,0 +1,138 @@
+
+Specification for a tool to help managers review code
+
+High Level Overview:
+
+Code reviews are a very important aspect of managing software projects and
+is vital to maintaining high quality standards. While BitKeeper provides
+tools such as histtool and csettool which aid the code review process,
+there are no formalized tools or methods of tracking and approving review
+changes. This design document specifies a new set of features that will
+enable managers to annotate code and then track the status of the changes.
+
+Based on the philosophy that people should fix their own code, the
+reviewtool implementation allows managers to annotate code with comments
+and suggestions and then mail these recommendations to the appropriate
+developer as an email attachment.
+
+When the developer receives the Code Change Transmittal (CCT) file, they
+start csettool and read in the CCT file. Csettool will then bring up the
+correct changeset and will highlight the files that require modifications.
+
+
+Applications that will need to be modified:
+
+Implementing the review features will require modifying csettool and
+difftool.  csettool will have a new button for annotating diffs and
+will also require a method to jump to a specific delta within a file.
+Difftool should also be able to jump directly to a specific diff within
+a file.
+
+Steps Reviewer Takes:
+
+When a new cset arrives at a designated repository, a trigger will send
+email notification to the project managers. A project manager can then
+pull the new changes into their private tree and run csettool to browse
+the changes. Csettool, when started with the 'bk csettool -r+' command
+displays a list of modified files for the most recent changeset and the
+differences between the files and their parents. The reviewer selects
+files that interest them and then browses the differences to examine
+the changes.  If the reviewer would like to annotate a specific diff, she
+selects the diff with the mouse and then clicks on the annotate button. A
+new window will then pop up that contains the selected code and a place
+to add comments. The review widget that the manager uses will look like
+the following:
+
++--------------------------------+
+| file.c    | user@host          |
++--------------------------------+
+|                                |
+| int                            |  <- Not sure this block is needed since
+| some_func {                    |     the delta key has this information
+|    bad_code                    |
+|    more_bad_code               |     I just wanted more state so that the
+| }                              |     reviewer doesn't have to move windows
+|                                |     out of the way to see the diff windows
+|                                |     in csettool. The more I think about it,
++--------------------------------+     the less I see a need for this block.
+| reviewer@host.com:             |     However, I think the answer might be
+|                                |     to have an option to insert the left
+| Please replace bad_code with   |     or right code into the comments section
+| good code.                     |     so that the reviewer will have something
++--------------------------------+     to base her comments off of.
+| SEND | NEXT | SAVE |           |
++--------------------------------+
+
+Question: Should all of the change comments be sent at once? What should be
+the method of jumping to the next block of code to change (i.e. do we allow
+more than one review widget to be up at any given time?). Before sending,
+shouldn't we allow the reviewer to review all of the changes that they are
+sending and cancel certain ones? Since the changeset represents the work
+of one user, should we allow the email to get sent to others than the 
+original author?)
+
+Steps reviewee takes:
+
+After receiving the CCT file via email or shared disk location, the user
+starts csettool with an argument that reads in the CCT file:
+
+	bk csettool --review=file1.cct
+
+In addition, there should be a way of interactively reading in the CCT file
+while csettool is active.
+
+Once the review file is read, csettool will display the files that have 
+review comments in a new highlighted color. The user clicks on one of 
+the annotated files and gets a popup with the reviewers comments.
+An edit button will be available on csettool so that the user can bring
+up edittool with the file and have it jump directly to the referenced
+diff block. The user then modifies the code to meet the reviewers comments
+and saves the edits. The edittool window also has a pane where the user
+can add comments so that when citool is started, the c.file is already
+available.
+
+
+CCT file Format:
+
+(Larry, I am sure this needs work -- never had to do a BNF before)
+
+cct_file ::= comment_lines | data_lines
+comment_lines ::= comments_lines comment_line | comment_line
+comment_line ::= POUND_SIGN text
+data_lines ::= version_line changeset_line date reviewer_line diff_blocks
+date ::= d date_string
+reviewer_line ::= R email
+email ::= 
+version_line ::= V version
+version ::= INTEGER.INTEGER
+changest_line ::= C bk_changeset_key
+diff_blocks ::= diff_blocks | diff_block
+diff_block ::= file_line delta_line review_comment_line seperator
+file_line ::= F bk_file_key
+delta_line ::= D INTEGER
+review_comment_line ::= c STRING
+seperator ::= <seperator>   (I don't know what kind of sep tag to use)
+
+Thoughts: Probably should have a way of noting which changes were done 
+and a way to send the completed CCT back to the reviewer with updates?
+
+Example CCT file:
+
+# Some comment about this file format
+# and version of bk that created it
+V 1.0
+C ask@bitmover.com|ChangeSet|20001030171131|10528
+R lm@bitmover.com
+d 30OCT2000  (should be a real date format)
+<==>
+F ask@bitmover.com|srg/gui/setuptool|20000209033051|20390|8b828de3ce7fe93d
+D 3
+c Move the globals into an array variable
+<==>
+F ask@bitmover.com|srg/gui/citool|20000209033051|20390|8b828de3ce7fe93d
+D 1
+c Use a better font on NT
+
+(I couldn't help myself with the CCT abreviation below. Reminded me of
+the Navy terminology we had for system upgrade notices -- Change Transmittal
+notices. Probably should be CRT - code review transmittal?)

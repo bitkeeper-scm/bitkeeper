@@ -183,6 +183,7 @@ cd $HERE/clone
 bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
 cd $HERE/project
+while ! bk lock -s; do true; done
 bk pull -t $HERE/clone > OUT 2>&1
 if [ "`cat OUT`" != "Nothing to pull." ]
 then	echo failed - bad status message

@@ -439,7 +439,7 @@ proc widgets {} \
 	bind .ctrl.topics <Button-2> { doPixSelect %x %y; break }
 	bind .ctrl.topics <Button-3> { doPixSelect %x %y; break }
 	bind .ctrl.topics <Motion> "break"
-	bind .text.help <Motion> "break"
+	bind .text.help <ButtonPress> "focus .text.help"
 	bind all <Control-e>	{ scroll "line" 1 }
 	bind all <Control-y>	{ scroll "line" -1 }
 	bind all <Down>		{ scroll "line" 1; break }
@@ -452,17 +452,27 @@ proc widgets {} \
 	bind all <End>		 ".text.help yview -pickplace end; break"
 	bind all <Control-Up>	{ doNext -1 }
 	bind all <Control-Down>	{ doNext 1 }
-	bind all <Control-Left>	"doNextSection -1"
+	bind all <Control-Left>	 "doNextSection -1"
 	bind all <Control-Right> "doNextSection 1"
 	bind all <Alt-Left>	{ upStack }
 	bind all <Alt-Right>	{ downStack }
 	bind all $gc(help.quit)	{ exit }
-	bind all <Button-4> 	{ scroll "page" -1; break }
-	bind all <Button-5> 	{ scroll "page" 1; break }
+	if {$tcl_platform(platform) == "windows"} {
+		bind all <MouseWheel> {
+		    if {%D < 0} {
+			scroll "page" 1
+		    } else {
+			scroll "page" -1
+		    }
+		}
+	} else {
+		bind all <Button-4> 	{ scroll "page" -1; break }
+		bind all <Button-5> 	{ scroll "page" 1; break }
+	}
 	bind .menu.entry <Return> { search }
 	bindtags .menu.entry { all .menu.entry Entry . }
-	bindtags .ctrl.topics {.ctrl.topics . all}
-	bindtags .text.help {.text.help . all}
+ 	bindtags .ctrl.topics {.ctrl.topics . all}
+	#bindtags .text.help {.text.help . all}
 	bind .text.help <Configure> {
 		global	gc pixelsPerLine firstConfig
 

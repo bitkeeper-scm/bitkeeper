@@ -1,0 +1,25 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 1999 Andrew Chang?
+# %K%
+
+HERE=`bk pwd`
+echo $N Create a file ...............................................$NL
+no_logging project
+echo data > foo.c
+bk ci $Q -i foo.c
+mv SCCS/s.foo.c SCCS/s.bar.c
+bk names bar.c 2> /dev/null
+if [ $? -ne 0 ]; then echo fail; fi
+if [ ! -f SCCS/s.foo.c ]; then echo fail; fi
+echo OK;

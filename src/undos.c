@@ -2,16 +2,15 @@
 #include "sccs.h"
 
 private	void	undos(char *s);
-private void	doit(FILE *f, int auto_new_line);
 extern	void	platformSpecificInit(char *);
+int	auto_new_line = 1;
 
 int
 undos_main(int ac, char **av)
 {
 	FILE	*f;
 	char	buf[1024];
-	int 	fd, c;
-	int	auto_new_line = 1;
+	int 	c;
 
 	if (ac == 2 && !strcmp("--help", av[1])) {
 		system("bk help undos");
@@ -27,55 +26,65 @@ undos_main(int ac, char **av)
 			return (1);
 		}
 	}
-
 	unless (av[optind]) {
-		doit(stdin, auto_new_line);
-	} else {
-		while (av[optind]) {
-			f = fopen(av[optind], "rb");
-			unless (f) {
-				perror(av[optind]);
-				exit(1);
-			}
-			doit(f, auto_new_line);
-			fclose(f);
-			optind++;
-		}
+		undos_stdin();
+		return (0);
+	}
+	while (av[optind]) {
+		undos(av[optind++]);
 	}
 	return (0);
-
 }
 
-/* kill the newline and the \r */
-private	void
-undos(register char *s)
+/*
+ * Both of these routines strip out \r's.
+ * If you have "text\r More text" and you have auto_new_line on then
+ * it does a s|\r|\n| otherwise it does a s|\r||.
+ */
+private void
+undos_stdin()
 {
-	static char last = '\0';
-	if (!s[0]) return;
-	/*
-	 * This code is strange because we need to
-	 * handle lines longer than the 1K buffer size
-	 */
-	if ((last == '\r') && (s[0] == '\n')) return;
-	while (s[1]) s++;
-	last = s[0];
-	if (last == '\r') *s-- = 0;
-	if ((s[-1] == '\r') && (s[0] == '\n')) {
-		s[-1] = '\n';
-		s[0] = '\0';
-		return;
+	char	c;
+
+	while ((c = getchar()) != EOF) {
+		unless (c == '\r') {
+			putchar(c);
+			continue;
+		}
+again:		switch (c = getchar()) {
+		    case EOF:
+			if (auto_new_line) putchar('\n');
+			return;
+		    case '\n':
+		    	putchar(c);
+			break;
+		    case '\r':
+			if (auto_new_line) putchar('\n');
+			goto again;
+		    default:
+		    	putchar(c);
+			break;
+		}
 	}
 }
 
 private void
-doit(FILE *f, int auto_new_line)
+undos(char *file)
 {
-	char	buf[1024];
+	MMAP	*m = mopen(file, "r");
+	char	*p;
+	u32	sz;
 
-	buf[0] = 0;
-	while (fgets(buf, sizeof(buf), f)) {
-		undos(buf);
-		fputs(buf, stdout);
+	unless (m) {
+		perror(file);
 	}
-	if (auto_new_line && !strchr(buf, '\n')) fputc('\n', stdout);
+	for (p = m->where, sz = m->size; sz--; p++) {
+		unless (*p == '\r') {
+			putchar(*p);
+			continue;
+		}
+		if (p[1] == '\n') continue;
+		if (auto_new_line) putchar('\n');
+	}
+	mclose(m);
 }

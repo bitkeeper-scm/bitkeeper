@@ -1,0 +1,33 @@
+.so bk-macros
+.TH "bk cat" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk cat \- concatenate and display file contents
+.SH SYNOPSIS
+.B bk cat
+.FILES
+.SH DESCRIPTION
+bk cat prints files to standard output.  
+If there exists a file,
+.ARG foo.c ,
+bk cat prints that file to standard output.
+If there is an sfile
+(SCCS/\c
+.ARGc s.foo.c ) 
+for the directory, but 
+.ARG foo.c 
+does not exist, bk cat will get the file and 
+print it to standard output.
+.LP
+Essentially this command does two different things depending on context.
+If the foo.c file exists in a directory, bk uses the native cat 
+to print the file.  If the file does not exist in the directory, 
+but SCCS/s.foo.c exists then
+.sp
+.RS .5i
+.B bk get -kp
+.ARG foo.c
+.sp
+.RE
+is run to print the file.
+.SH CATEGORY
+.B File

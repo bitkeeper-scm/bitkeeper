@@ -1,9 +1,9 @@
 /*
-sccs_resolveFile() - the gcapath is s->gfile.  And the error check is that
+sccs_resolveFile() - the gcapath is s->gfile.  Add the error check is that
 left||right->path == s->gfile.
 */
 
-/* Copyright (c) 1999 L.W.McVoy */
+/* Copyright (c) 1999-2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
 #include "zlib/zlib.h"
@@ -54,6 +54,8 @@ private	void	freePatchList();
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private void	merge(char *gfile);
+private	sccs	*expand(sccs *s, project *proj);
+private	sccs	*unexpand(sccs *s);
 
 private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -73,6 +75,7 @@ private	char	pendingFile[MAXPATH];
 private lod_t	*lodstruct = 0;	/* used for fixing lod after smooshing */
 private	char	*input;		/* input file name,
 				 * either "-" or a patch file */
+private	int	encoding;	/* encoding before we started */
 private	char	*spin = "|/-\\";
 
 int
@@ -200,7 +203,7 @@ usage:		system("bk help -s takepatch");
 	 * 
 	 * Note: BK_NO_CONVERGE is for used in regression test only
 	 */
-	if (conflicts && !getenv("BK_NO_CONVERGE")) {
+	if (conflicts && !isLogPatch && !getenv("BK_NO_CONVERGE")) {
 		char key[MAXKEY], gfile[MAXPATH];
 		chdir(ROOT2RESYNC);
 		f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
@@ -234,7 +237,9 @@ usage:		system("bk help -s takepatch");
 		if (!echo) resolve[++i] = "-q";
 		if (textOnly) resolve[++i] = "-t";
 		if (noConflicts) resolve[++i] = "-c";
-		error = spawnvp_ex(_P_WAIT, resolve[0], resolve);
+		i = spawnvp_ex(_P_WAIT, resolve[0], resolve);
+		unless (WIFEXITED(i)) return (-1);
+		error = WEXITSTATUS(i);
 	}
 	exit(error);
 }
@@ -290,7 +295,7 @@ merge(char *gfile)
 		system(buf);
 		sprintf(buf, "bk get -qpr%s %s >> %s", r, gfile, TMP);
 		system(buf);
-		sprintf(buf, "sort -u < %s > %s", TMP, gfile);
+		sprintf(buf, "bk _sort -u < %s > %s", TMP, gfile);
 		system(buf);
 		sprintf(buf, "bk ci -qdPyauto-union %s", gfile);
 		system(buf);
@@ -480,6 +485,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 		}
 	}
 	tableGCA = 0;
+	encoding = s ? s->encoding : 0;
 	while (extractDelta(name, s, newFile, p, flags, &nfound)) {
 		if (newFile) newFile = 2;
 	}
@@ -814,8 +820,8 @@ chkEmpty(sccs *s, MMAP *dF)
 {
 	if ((dF->size > 0) &&
 	    !(s->state & S_CSET) &&
-	    (strlen(s->sfile) > 19) &&
-	    !strneq(s->sfile, "RESYNC/BitKeeper/etc/", 19)) {
+	    (strlen(s->sfile) > 17) &&
+	    !strneq(s->sfile, "RESYNC/BitKeeper/", 17)) {
 		fprintf(stderr,
 			"Logging patch should not have source content\n");
 		return (1); /* failed */
@@ -890,6 +896,8 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 			return -1;
 		}
 	}
+	/* convert to uncompressed, it's faster, we saved the mode above */
+	if (s->encoding & E_GZIP) s = expand(s, proj);
 	/* save current LOD setting, as it might change */
 	if (d = findrev(s, "")) {
 		sccs_sdelta(s, d, lodkey);
@@ -1028,7 +1036,22 @@ apply:
 				    p->resyncFile);
 				return -1;
 			}
-			if (perfile) sccscopy(s, perfile);
+			if (perfile) {
+				sccscopy(s, perfile);
+				/*
+				 * For takepatch performance
+				 * turn off compression when we are in 
+				 * takepatch.
+				 * 
+				 * Note: Since this is a new file from remote,
+				 * there is no local setting. We save the 
+				 * compression setting of the remote file
+				 * and use that as the new local file when
+				 * when takepatch is done.
+				 */
+				encoding = s->encoding; /* save for later */
+				s->encoding &= ~E_GZIP;
+			}
 			if (p->initFile) {
 				iF = mopen(p->initFile, "b");
 			} else {
@@ -1068,6 +1091,7 @@ apply:
 	s->proj = 0; sccs_free(s);
 	s = sccs_init(patchList->resyncFile, 0, proj);
 	assert(s);
+	if (encoding & E_GZIP) s = unexpand(s);
 	if (lodkey[0]) { /* restore LOD setting */
 		unless (d = sccs_findKey(s, lodkey)) {
 			fprintf(stderr, "takepatch: can't find lod key %s\n",
@@ -1704,6 +1728,25 @@ private	void
 fileCopy2(char *from, char *to)
 {
 	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
+}
+
+private	sccs *
+expand(sccs *s, project *proj)
+{
+	s = sccs_restart(s);
+	sccs_admin(s, 0, NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0);
+	s = sccs_restart(s);
+	return (s);
+}
+
+private	sccs *
+unexpand(sccs *s)
+{
+	s = sccs_restart(s);
+	if (sccs_admin(s, 0, NEWCKSUM, 0, "gzip", 0, 0, 0, 0, 0, 0)) {
+		sccs_whynot("admin", s);
+	}
+	s = sccs_restart(s);
 }
 
 private	int

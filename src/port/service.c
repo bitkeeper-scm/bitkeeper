@@ -59,6 +59,7 @@ bkd_install_service(bkdopts *opts)
 	}
 	sprintf(cmd, "\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
 		    path, opts->port, opts->count, start_dir, getenv("PATH"));
+	if (getenv("BK_REGRESSION")) strcat(cmd, " -E \"BK_REGRESSION=YES\"");
 	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if ( schSCManager )
 	{

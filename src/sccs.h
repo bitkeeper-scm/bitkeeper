@@ -202,12 +202,17 @@
 
 /*
  * Encoding flags.
+ * Bit 0 and 1 are data encoding (bit 1 is reserved for future use)
+ * Bit 2 is compression mode (gzip or none)
  */
+#define E_DATAENC	0x3
+#define E_COMP		0x4
+
 #define	E_ASCII		0		/* no encoding */
 #define	E_UUENCODE	1		/* uuenecode it (traditional) */
-#define	E_UUGZIP	2		/* gzip and uuencode */
-#define E_DATAENC	(E_UUENCODE | E_UUGZIP)
 #define	E_GZIP		4		/* gzip the data */
+
+#define	E_BINARY	E_UUENCODE	/* default binary encoding */
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
 #define	HAS_PFILE(s)	((s)->state & S_PFILE)
@@ -271,8 +276,10 @@
  */
 #define CMD_BYTES	0x00000001	/* log command byte count */
 #define CMD_FAST_EXIT	0x00000002	/* exit when done */
-#define CMD_WRLOCK	0x00000004	/* need to use repository write lock */
-#define CMD_RDLOCK	0x00000008	/* need to use repository read lock */
+#define CMD_WRLOCK	0x00000004	/* write lock */
+#define CMD_RDLOCK	0x00000008	/* read lock */
+#define CMD_WRUNLOCK	0x00000010	/* write unlock */
+#define CMD_RDUNLOCK	0x00000020	/* read unlock */
 
 /*
  * Signal handling.
@@ -299,6 +306,11 @@
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
 #define	OPENLOG_HOME	"bitmover.com"
+#define	OPENLOG_URL	"http://www.openlogging.org:80///LOG_ROOT///" 
+#define	OPENLOG_IP	"http://208.184.147.196:80///LOG_ROOT///" 
+#define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
+#define	WEB_BKD_CGI	"web_bkd"
+#define	WEB_MAIL_CGI	"web_mail"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
@@ -394,6 +406,8 @@ typedef struct delta {
 	struct	delta *siblings;	/* pointer to other branches */
 	struct	delta *next;		/* all deltas in table order */
 	int	flags;			/* per delta flags */
+	u32	published:1;	
+	u32	ptype:1;	
 } delta;
 
 /*
@@ -623,6 +637,8 @@ typedef struct patch {
 #define PATCH_LOGGING	"# Patch type:\tLOGGING\n"
 #define PATCH_REGULAR	"# Patch type:\tREGULAR\n"
 
+#define	BK_RELEASE	"2.O"	/* this is lame, we need a sccs keyword */
+
 /*
  * Patch envelops for adler32.
  */
@@ -662,6 +678,11 @@ struct command
 typedef struct {
 	u16	port;		/* remote port if set */
 	u16	loginshell:1;	/* if set, login shell is the bkd */
+	u16	httpd:1;	/* if set, httpd is the bkd */
+	u16	trace:1;	/* for debug, trace send/recv msg */
+	u16	isSocket:1;	/* if set, rfd and wfd is socket */
+	int	rfd;		/* read fd for the remote channel */
+	int	wfd;		/* write fd for the remote channel */
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
@@ -848,10 +869,10 @@ int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
 void	cd2root();
 pid_t	mail(char *to, char *subject, char *file);
-void	logChangeSet(int, char *rev, int q);
+void	logChangeSet(int, char *rev, int quiet);
 char	*getlog(char *u, int q);
 int	setlog(char *u);
-int	connect_srv(char *srv, int port);
+int	connect_srv(char *srv, int port, int trace);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
@@ -915,25 +936,30 @@ char 	**get_http_proxy();
 int	confirm(char *msg);
 int	setlod_main(int ac, char **av);
 MDBM *	loadOK();
-void	config(char *rev, FILE *f);
+void	config(FILE *f);
 int	ok_commit(int l, int alreadyAsked);
 int	cset_setup(int flags);
 off_t	fsize(int fd);
 char	*separator(char *);
-int	trigger(char *action, char *when, int status);
-int	cmdlog_start(char **av);
-void	cmdlog_end(int ret, int flags);
+int	trigger(char **av, char *when, int status);
+int	cmdlog_start(char **av, int want_http_hdr);
+int	cmdlog_end(int ret, int flags);
 off_t	get_byte_count();
 void	save_byte_count(unsigned int byte_count);
 int	bk_mode();
 int	cat(char *file);
 char	*bk_model(char *buf, int len);
 char	*getHomeDir();
-char	*age(time_t secs);
+char	*age(time_t secs, char *space);
 void	sortLines(char **);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef
 int	sys(char *first, ...);
 int	sysio(char *in, char *out, char *err, char *first, ...);
 
+int     http_connect(remote *r, char *cgi_script);
+int     http_send(remote *, char *, size_t, size_t, char *, char *); 
+char *	user_preference(char *what, char buf[MAXPATH]);
+int	bktemp(char *buf);
+void	updLogMarker(int ptype);
 #endif	/* _SCCS_H_ */

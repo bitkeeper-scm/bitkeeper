@@ -40,7 +40,10 @@ proc highlight {id type {rev ""}} \
 {
 	global gc w
 
-	set bb [$w(graph) bbox $id]
+	catch {set bb [$w(graph) bbox $id]} err
+	#puts "In highlight: id=($id) err=($err)"
+	# If node to highlight is not in view, err=""
+	if {$err == ""} { return "$err" }
 	# Added a pixel at the top and removed a pixel at the bottom to fix 
 	# lm complaint that the bbox was touching the characters at top
 	# -- lm doesn't mind that the bottoms of the letters touch, though
@@ -124,6 +127,64 @@ proc revMap {file} \
         }
 }
 
+# If in annotated diff output, find parent and diff between parent 
+# and selected rev.
+#
+# If only a node in the graph is selected, then do the diff between it 
+# and its parent
+#
+proc diffParent {} \
+{
+	global w file rev1 rev2
+
+	set rev ""
+	set b ""
+	# See if node is selected and then try to get the revision number
+	set id [$w(graph) find withtag old]
+	if {$id != ""} {
+		set tags [$w(graph) gettags $id]
+		set bb [$w(graph) bbox $id]
+		set x1 [expr {[lindex $bb 0] - 1}]
+		set y1 [expr {[lindex $bb 1] - 1}]
+		set x2 [expr {[lindex $bb 2] + 1}]
+		set y2 [expr {[lindex $bb 3] + 1}]
+		if {$bb != ""} {
+			set b [$w(graph) find enclosed $x1 $y1 $x2 $y2]
+			set tag [lindex $b 2]
+			set tags [$w(graph) gettags $tag]
+			if {[lsearch $tags revtext] >= 0} { 
+				set rev_user [lindex $tags 0]
+				set rev [lindex [split $rev_user "-"] 0]
+				#puts "tags=($tags) rev=($rev)"
+			}
+		}
+	}
+	#puts "id=($id) rev=($rev)"
+	set selectedLine [$w(aptext) tag ranges select]
+	if {$selectedLine != ""} {
+		set l [lindex $selectedLine 0]
+		set line [$w(aptext) get $l "$l lineend - 1 char"]
+		if {[regexp \
+		    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line m user rev]} {
+			set parent [exec prs -d:PARENT:  -hr${rev} $file]
+			#puts "if: line=($line)"
+			#puts "rev=($rev) parent=($parent) f=($file)"
+			displayDiff $parent $rev
+		}
+	} elseif {$rev != ""} {
+		set rev1 [exec prs -d:PARENT: -hr${rev} $file]
+		set rev2 $rev
+		set base [file tail $file]
+		if {$base == "ChangeSet"} {
+			csetdiff2
+			return
+		}
+		busy 1
+		displayDiff $rev1 $rev2
+	}
+	return
+}
+
 # 
 # Center the selected bitkeeper tag in the middle of the canvas
 #
@@ -140,7 +201,7 @@ proc revMap {file} \
 proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 {
 	global curLine cdim gc file dev_null dspec rev2rev_name
-	global w rev1 srev errorCode comments_mapped
+	global w rev1 srev errorCode comments_mapped firstnode
 
 	if {[info exists fname]} {unset fname}
 
@@ -183,9 +244,14 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		}
 		$win see $curLine
 	# Search for annotated file output or annotated diff output
+	# display comment window if we are in annotated file output
 	} elseif {[regexp \
 	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match fname rev]} {
 		set annotated 1
+		# set global rev1 so that r2c and csettool know which rev
+		# to view when a line is selected. Line has precedence over
+		# a selected node
+		set rev1 $rev
 		$w(aptext) configure -height 15
 		#.p.b configure -background green
 		$w(ctext) configure -height $gc(hist.commentHeight) 
@@ -257,13 +323,29 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	if {[info exists rev2rev_name($rev)]} {
 		set revname $rev2rev_name($rev)
 	} else {
-		# menubuttons don't have the flash option
-		for {set x 0} {$x < 50} {incr x} {
-			.menus.mb configure -background green
-			update
-			.menus.mb configure -background $gc(hist.buttonColor)
+		# node is not in the view, get and display it, but
+		# don't mess with the lower windows.
+
+		set parent [exec prs -d:PARENT:  -hr${rev} $file]
+		if {$parent != 0} { 
+			set prev $parent
+		} else {
+			set prev $rev
 		}
+		#puts "prev=($prev)"
+		listRevs "-R${prev}.." "$file"
+		revMap "$file"
+		dateSeparate
+		setScrollRegion
+		set first [$w(graph) gettags $firstnode]
 		$w(graph) xview moveto 0 
+		set hrev [lineOpts $rev]
+		set rc [highlight $hrev "old"]
+		#if {$rc == ""} {
+			#puts "trying to highlight rev=($rev) hrev=($hrev1)"
+		#}
+		set revname $rev2rev_name($rev)
+		
 		# XXX: This can be done cleaner -- coalesce this
 		# one and the bottom if into one??
 		if {($annotated == 0) && ($bindtype == "D1")} {
@@ -273,6 +355,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 			if {"$file" == "ChangeSet"} {
 				csettool
 			} else {
+				#puts "getting r2c for rev=($rev)"
 				r2c
 			}
 		}
@@ -312,6 +395,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		return
 	}
 	if {($bindtype == "D1") && ($annotated == 1)} {
+		set rev1 $rev
 		if {"$file" == "ChangeSet"} {
 	    		csettool
 		} else {
@@ -319,7 +403,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		}
 	}
 	return
-}
+} ;# proc selectTag
 
 # Separate the revisions by date with a vertical bar
 # Prints the date on the bottom of the pane
@@ -494,6 +578,7 @@ proc line {s width ht} \
 	set word [lindex $l [expr {[llength $l] - 1}]]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
 	regexp {(.*)-([^-]*)} $word dummy rev last
+	if {($last == "") || ($first == "")} {return}
 	set diff [expr {$last - $first}]
 	incr diff
 	set len [expr {$xspace * $diff}]
@@ -634,7 +719,7 @@ proc setScrollRegion {} \
 	#puts "bb_all=>($bb_all)"
 }
 
-proc listRevs {file} \
+proc listRevs {range file} \
 {
 	global	bad Opts merges dev_null ht screen stacked gc w
 
@@ -644,6 +729,10 @@ proc listRevs {file} \
 	set screen(maxy) 0
 	set lines ""
 
+	$w(graph) delete all
+	$w(graph) configure -scrollregion {0 0 0 0}
+
+	#puts "in listRevs range=($range) file=($file)"
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
 	#$w(graph) create text 0 0 -anchor nw -text " "
@@ -651,7 +740,7 @@ proc listRevs {file} \
 	# Figure out the biggest node and its length.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| bk _lines $Opts(line) $Opts(line_time) \"$file\" 2>$dev_null" "r"]
+	set d [open "| bk _lines $Opts(line) $range \"$file\" 2>$dev_null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -713,14 +802,14 @@ proc listRevs {file} \
 	return 0
 } ;# proc listRevs
 
-# If called from the bottom selection mechanism, we give getLeftRev a
-# handle to the revision box
+# If called from the button selection mechanism, we give getLeftRev a
+# handle to the graph revision node
+#
 proc getLeftRev { {id {}} } \
 {
 	global	rev1 rev2 w comments_mapped
 
-	# tear down comment window if user is using mouse to click on
-	# the canvas
+	# destroy comment window if user is using mouse to click on the canvas
 	if {$id == ""} {
 		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
@@ -796,6 +885,9 @@ proc filltext {win f clear {msg {}}} \
 	if {$clear == 1 } { busy 0 }
 }
 
+#
+# Called from B1 binding -- selects a node and prints out the cset info
+#
 proc prs {} \
 {
 	global file rev1 dspec dev_null search w
@@ -910,6 +1002,15 @@ proc diff2 {difftool {id {}} } \
 		difftool $file $rev1 $rev2
 		return
 	}
+	displayDiff $rev1 $rev2
+}
+
+# Display the difference text between two revisions. 
+proc displayDiff {rev1 rev2} \
+{
+
+	global file w tmp_dir dev_null Opts
+
 	set r1 [file join $tmp_dir $rev1-[pid]]
 	catch { exec bk get $Opts(get) -kPr$rev1 $file >$r1}
 	set r2 [file join $tmp_dir $rev2-[pid]]
@@ -952,12 +1053,13 @@ proc csetdiff2 {{rev {}}} \
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
 		filltext $w(aptext) $c 0
-		set log [open "| bk cset -Hr$r | sort | bk sccslog -" r]
+		set log [open "| bk cset -Hr$r | bk _sort | bk sccslog -" r]
 		filltext $w(aptext) $log 0
 	}
 	busy 0
 }
 
+# Bring up csettool for a given set of revisions as selected by the mouse
 proc r2c {} \
 {
 	global file rev1 rev2
@@ -1012,6 +1114,7 @@ proc diffs {diffs l} \
 
 proc done {} \
 {
+	saveHistory
 	exit
 }
 
@@ -1143,10 +1246,10 @@ proc busy {busy} \
 	update
 }
 
-proc widgets {fname} \
+proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform
+	global  tcl_platform fname app
 
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
@@ -1154,6 +1257,7 @@ proc widgets {fname} \
 	set Opts(get) "-aum"
 	set Opts(line) "-u -t"
 	set yspace 20
+	set app hist
 	# cframe	- comment frame	
 	# apframe	- annotation/prs frame
 	# ctext		- comment text window
@@ -1164,35 +1268,49 @@ proc widgets {fname} \
 	set w(apframe) .p.b.p
 	set w(aptext) .p.b.p.t
 	set w(graph) .p.top.c
-	set search(prompt) ""
-	set search(dir) ""
-	set search(text) .cmd.t
-	set search(focus) $w(graph)
-	set search(widget) $w(aptext)
 	set stacked 1
 
-	if {$tcl_platform(platform) == "windows"} {
-		set py 0; set px 1; set bw 2
-	} else {
-		set py 1; set px 4; set bw 2
-	}
 	getConfig "hist"
 	option add *background $gc(BG)
+
+	if {$tcl_platform(platform) == "windows"} {
+		set gc(py) 0; set gc(px) 1; set gc(bw) 2
+		set gc(histfile) [file join $gc(bkdir) "_bkhistory"]
+	} else {
+		set gc(py) 1; set gc(px) 4; set gc(bw) 2
+		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
+	}
 
 	set Opts(line_time)  "-R-$gc(hist.showHistory)"
 	if {"$gc(hist.geometry)" != ""} {
 		wm geometry . $gc(hist.geometry)
 	}
 	wm title . "histtool"
+
+# XXX: These bitmaps should be in a library!
+image create photo prevImage \
+    -format gif -data {
+R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
+WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
+}
+image create photo nextImage \
+    -format gif -data {
+R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
+XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
+}
+
 	frame .menus
 	    button .menus.quit -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Quit" -command done
 	    button .menus.help -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Help" -command { exec bk helptool histtool & }
 	    menubutton .menus.mb -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
@@ -1232,20 +1350,44 @@ proc widgets {fname} \
 		$m add command -label "All Changes" \
 		    -command {histtool $fname 1.1..}
 	    button .menus.cset -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "View changeset " -width 15 -command r2c -state disabled
 	    button .menus.difftool -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Diff tool" -command "diff2 1" -state disabled
+	    menubutton .menus.fmb -font $gc(hist.buttonFont) -relief raised \
+		-bg $gc(hist.buttonColor) \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+		-text "Select File" -width 12 -state normal \
+		-menu .menus.fmb.menu
+		set gc(fmenu) [menu .menus.fmb.menu]
+		$gc(fmenu) add command -label "View new file" \
+		    -command { 
+		    	set fname [selectFile]
+			if {$fname != ""} {
+				histtool $fname "-$gc(hist.showHistory)"
+			}
+		    }
+		#$gc(fmenu) add command -label "ChangeSet" \
+		#    -command {
+		#	cd2root
+		#	set fname ChangeSet
+		#    	histtool ChangeSet -$gc(hist.showHistory)
+		#    }
+		$gc(fmenu) add separator
+		$gc(fmenu) add command -label "$fname" \
+		    -command "histtool $fname -$gc(hist.showHistory)"
+		getHistory
 	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
-			-side left
+			.menus.fmb -side left -fill y
 	    } else {
 		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.mb .menus.cset -side left
+			.menus.mb .menus.cset .menus.fmb -side left -fill y
 	    }
-
 	frame .p
 	    frame .p.top -borderwidth 2 -relief sunken
 		scrollbar .p.top.xscroll -wid $gc(hist.scrollWidth) \
@@ -1319,18 +1461,14 @@ proc widgets {fname} \
 	after idle {
 	    PaneCreate
 	}
-
-	frame .cmd -borderwidth 2 -relief ridge
-		entry $search(text) -width 30 -font $gc(hist.fixedBoldFont)
-		label .cmd.l -font $gc(hist.fixedBoldFont) -width 30 \
-		    -relief groove \
-		    -textvariable search(prompt)
-		grid .cmd.l -row 0 -column 0 -sticky ew
-		grid .cmd.t -row 0 -column 1 -sticky ew
+	frame .cmd 
+	search_widgets .cmd $w(aptext)
+	# Make graph the default window to have the focus
+	set search(focus) $w(graph)
 
 	grid .menus -row 0 -column 0 -sticky ew
 	grid .p -row 1 -column 0 -sticky ewns
-	grid .cmd -row 2 -column 0 -sticky ew
+	grid .cmd -row 2 -column 0 -sticky w
 	grid rowconfigure . 1 -weight 1
 	grid columnconfigure . 0 -weight 1
 	grid columnconfigure .cmd 0 -weight 1
@@ -1341,9 +1479,10 @@ proc widgets {fname} \
 	bind $w(graph) <Double-1>	{get "id"; break}
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
-	bind . <Button-2>		{history; break}
-	bind . <Double-2>		{history tags; break}
-	bind $w(graph) $gc(hist.quit)	"exit"
+	bind $w(graph) <d>		"diffParent"
+	bind $w(graph) <Button-2>	{history; break}
+	bind $w(graph) <Double-2>	{history tags; break}
+	bind $w(graph) $gc(hist.quit)	"done"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
 	bind $w(graph) <Next>		"$w(aptext) yview scroll  1 pages"
@@ -1367,23 +1506,52 @@ proc widgets {fname} \
 	bind $w(graph) <Right>		"$w(graph) xview scroll  1 units"
 	bind $w(graph) <Shift-Home>	"$w(graph) xview moveto 0"
 	bind $w(graph) <Shift-End>	"$w(graph) xview moveto 1.0"
-        bind . <Shift-Button-4> 	"$w(graph) xview scroll -1 pages"
-        bind . <Shift-Button-5> 	"$w(graph) xview scroll 1 pages"
-        bind . <Control-Button-4> 	"$w(graph) yview scroll -1 units"
-        bind . <Control-Button-5> 	"$w(graph) yview scroll 1 units"
-        bind . <Button-4> 		"$w(aptext) yview scroll -5 units"
-        bind . <Button-5>		"$w(aptext) yview scroll 5 units"
+	if {$tcl_platform(platform) == "windows"} {
+		bind . <Shift-MouseWheel>   { 
+		    if {%D < 0} {
+		    	$w(graph) xview scroll -1 pages
+		    } else {
+		    	$w(graph) xview scroll 1 pages
+		    }
+		}
+		bind . <Control-MouseWheel> {
+		    if {%D < 0} {
+			$w(graph) yview scroll 1 units
+		    } else {
+			$w(graph) yview scroll -1 units
+		    }
+		}
+		bind . <MouseWheel> {
+		    if {%D < 0} {
+			$w(aptext) yview scroll 5 units
+		    } else {
+			$w(aptext) yview scroll -5 units
+		    }
+		}
+	} else {
+		bind . <Shift-Button-4>   "$w(graph) xview scroll -1 pages"
+		bind . <Shift-Button-5>   "$w(graph) xview scroll 1 pages"
+		bind . <Control-Button-4> "$w(graph) yview scroll -1 units"
+		bind . <Control-Button-5> "$w(graph) yview scroll 1 units"
+		bind . <Button-4>         "$w(aptext) yview scroll -5 units"
+		bind . <Button-5>         "$w(aptext) yview scroll 5 units"
+	}
+	$search(widget) tag configure search \
+	    -background $gc(hist.searchColor) -font $gc(hist.fixedBoldFont)
+	search_keyboard_bindings
+	bind all <n>	{
+	    set search(dir) "/"
+	    searchnext
+	}
+	bind all <p>	{
+	    set search(dir) "?"
+	    searchnext
+	}
+	searchreset
+
 	bind $w(aptext) <Button-1> { selectTag %W %x %y "" "B1"; break}
 	bind $w(aptext) <Button-3> { selectTag %W %x %y "" "B3"; break}
 	bind $w(aptext) <Double-1> { selectTag %W %x %y "" "D1"; break }
-
-	# Command window bindings.
-	bind $w(graph) <slash> "search /"
-	bind $w(graph) <question> "search ?"
-	bind $w(graph) <n> "searchnext"
-	bind $search(text) <Return> "searchstring"
-	$search(widget) tag configure search \
-	    -background $gc(hist.searchColor) -relief groove -borderwid 0
 
 	# highlighting.
 	$w(aptext) tag configure "newTag" -background $gc(hist.newColor)
@@ -1392,22 +1560,97 @@ proc widgets {fname} \
 
 	bindtags $w(aptext) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
+	# In the search window, don't listen to "all" tags.
+	bindtags $search(text) { .cmd.search Entry . }
 
+	wm deiconify .
 	focus $w(graph)
 	. configure -background $gc(BG)
+} ;# proc widgets
+
+proc selectFile {} \
+{
+	global gc fname
+
+	set file [tk_getOpenFile]
+	if {$file == ""} {return}
+	catch {set f [open "| bk sfiles -g \"$file\"" r]} err
+	if { ([gets $f fname] <= 0)} {
+		set rc [tk_dialog .new "Error" "$file is not under revision control.\nPlease select a revision controled file" "" 0 "Cancel" "Select Another File" "Exit BitKeeper"]
+		if {$rc == 2} {exit} elseif {$rc == 1} { selectFile }
+	} else {
+		#displayMessage "file=($file) err=($err)"
+		# XXX: Need to add in a function so that we can check for
+		# duplicates
+		if {$fname != "ChangeSet"} {
+			$gc(fmenu) add command -label "$fname" \
+			    -command "histtool $fname -$gc(hist.showHistory)" 
+		}
+	}
+	close $f
+	return $fname
 }
 
-#
+# XXX: Should only save the most recent (10?) files that were looked at
+# should be a config option
+proc saveHistory {} \
+{
+	global gc
+
+	set num [$gc(fmenu) index end]
+	set h [open "$gc(histfile)" w]
+	if {[catch {open $gc(histfile) w} fid]} {
+		puts stderr "Cannot open $bkrc"
+	} else {
+		# Start at 3 so we skip over the "Add new" and sep entries
+		set start 3
+		set saved [expr $gc(hist.savehistory) + 2]
+		if {$num > $saved} {
+			set start [expr $num - $gc(hist.savehistory)]
+		}
+		for {set i $start} {$i <= $num} {incr i 1} {
+			set index $i
+			set fname [$gc(fmenu) entrycget $index -label]
+			#puts [$gc(fmenu) entryconfigure $index]
+			#puts "i=($i) label=($fname)"
+			puts $fid "$fname"
+		}
+		catch {close $h}
+	}
+	return
+}
+
+proc getHistory {} \
+{
+	global gc
+
+	if {![file exists $gc(histfile)]} {
+		#puts stderr "no history file exists"
+		return
+	}
+	set h [open "$gc(histfile)"]
+	while {[gets $h file] >= 0} {
+		if {$file == "ChangeSet"} {continue}
+		$gc(fmenu) add command -label "$file" \
+		    -command "histtool $file -$gc(hist.showHistory)" 
+	}
+	catch {close $h}
+}
+
 # Arguments:
 #   all - boolean (optional) : If set to 1, displays all csets
 #
 # This variable is a placeholder -- I expect that we will put an
 # option/menu in that will allow the user to select last month, week, etc.
 #
-proc histtool {fname R} \
+proc histtool {lfname R} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
-	global  srev Opts gc file rev2rev_name cdim firstnode
+	global  srev Opts gc file rev2rev_name cdim firstnode fname
+
+	# Set global so that other procs know what file we should be
+	# working on. Need this when menubutton is selected
+	set fname $lfname
 
 	busy 1
 	$w(graph) delete all
@@ -1419,10 +1662,12 @@ proc histtool {fname R} \
 	if {[info exists firstnode]} { unset firstnode }
 
 	set bad 0
-	set file [exec bk sfiles -g $fname 2>$dev_null]
-	if {"$file" == ""} {
-		puts "No such file $fname"
-		exit 0
+	set file [exec bk sfiles -g $lfname 2>$dev_null]
+	while {"$file" == ""} {
+		displayMessage "No such file \"$lfname\" rev=($R) \nPlease \
+select a new file to view"
+		set lfname [selectFile]
+		set file [exec bk sfiles -g $lfname 2>$dev_null]
 	}
 	if {[catch {exec bk root $file} proot]} {
 		wm title . "histtool: $file $R"
@@ -1435,7 +1680,7 @@ proc histtool {fname R} \
 		set Opts(line_time) "-R$R"
 	}
 	# If valid time range given, do the graph
-	if {[listRevs "$file"] == 0} {
+	if {[listRevs $Opts(line_time) "$file"] == 0} {
 		revMap "$file"
 		dateSeparate
 		setScrollRegion
@@ -1446,17 +1691,19 @@ proc histtool {fname R} \
 			history "-r$srev"
 		}
 	} else {
-		set ago [exec bk prs -hr+ -d:AGE: $fname]
+		set ago ""
+		catch {set ago [exec bk prs -hr+ -d:AGE: $lfname]}
 		# XXX: Highlight this in a different color? Yellow?
 		$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 		$w(aptext) insert end  "Error: No data within the given time\
 period; please choose a longer amount of time.\n
-The file $fname was last modified $ago ago."
+The file $lfname was last modified ($ago) ago."
+		histtool $lfname +
 	}
 	set search(prompt) "Welcome"
 	focus $w(graph)
 	busy 0
-}
+} ;#histool
 
 proc init {} \
 {
@@ -1523,21 +1770,39 @@ proc lineOpts {rev} \
 	return $rev
 }
 
+wm withdraw .
 init
 arguments
 if {$fname == ""} {
 	cd2root
 	# This should match the CHANGESET path defined in sccs.h
 	set fname ChangeSet
+	catch {exec bk sane} err
+	if {[lindex $errorCode 2] == 1} {
+		displayMessage "$err" 0
+	}
+} else {
+	# If we haven't brought up the gui yet, die if a bad file was given
+	set file [exec bk sfiles -g $fname 2>$dev_null]
+	if {"$file" == ""} {
+		puts stderr "No such file \"$fname\""
+		exit
+	}
 }
-widgets $fname
+
+widgets
 histtool $fname "-$gc(hist.showHistory)"
 
-if {$rev1 != ""} {
+if {$rev1 == ""} {
+	histtool $fname "-$gc(hist.showHistory)"
+} else {
+	#puts stderr "rev1=($rev1) srev=($srev)"
+	set srev $rev1
+	histtool $fname "-$rev1"
 	set rev1 [lineOpts $rev1]
 	highlight $rev1 "old"
 }
-if {$rev2 != ""} {
+if {[info exists rev2] && ($rev2 != "")} {
 	set rev2 [lineOpts $rev2]
 	highlight $rev2 "new"
 	diff2 2

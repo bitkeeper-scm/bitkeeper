@@ -1,0 +1,68 @@
+int sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp, admin *f, admin *z, admin *u, admin *s, char *mode, char *text)	-- admin the specified file.
+int sccs_cat(sccs *s, u32 flags, char *printOut)	-- cat a sccs file, formatted according to flags
+int sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs, char **syms)	-- check in a sccs file
+int sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out, char *lLabel, char *rLabel)	-- diff the gfile or the specified (or implied) rev
+int new_sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *, char *lLabel, char *rLabel)	-- orphan
+int sccs_encoding(sccs *s, char *enc, char *comp)	-- orphan
+int sccs_get(sccs *s, char *rev, char *mRev, char *iLst, char *xLst, u32 flags, char *printOut)			-- check out a sccs file
+int sccs_clean(sccs *s, u32 flags)	-- unedit or clean a sccs file
+int sccs_info(sccs *s, u32 flags)	-- display information about the status of a sccs file
+int sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)	-- the guts of ``bk prs''
+int sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)	-- print prs for a single revision
+delta *sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)	-- return the delta associated with a revision or a date
+delta *sccs_findDelta(sccs *s, delta *d)	-- orphan
+sccs *sccs_init(char *filename, u32 flags, project *proj)	-- initialize a sccs file
+sccs *sccs_restart(sccs *s)	-- reinitialize a sccs file after modifications
+void sccs_free(sccs *s)		-- free all resources for a sccs file (when you're done with it)
+void sccs_freetree(delta *tree)	-- free a delta tree
+void sccs_close(sccs *s)	-- close all open files associated with a sccs*
+sccs *sccs_csetInit(u32 flags, project *proj)	-- do sccs_init on the ChangeSet file.
+char **sccs_files(char **, int)`	-- orphan
+ser_t sccs_nextlod(sccs *s)	-- get the serial number of the next available lod
+int sccs_smoosh(char *left, char *right)	-- orphan
+delta *sccs_parseArg(delta *d, char what, char *arg, int defaults)	-- partially fill in a delta*, creating it if necessary.
+void sccs_whynot(char *who, sccs *s)	-- tell why we can't initialize a sccs file.
+int sccs_addSym(sccs *, u32 flags, char *)	-- add a new symbol to a sccs file
+void sccs_ids(sccs *s, u32 flags, FILE *out)	-- print a unique key for each delta (marked obsolete?)
+int sccs_hasDiffs(sccs *s, u32 flags, int inex)	-- does the sccs file have differences from the checked-out file?
+void sccs_print(delta *d)	-- print a header describing this delta(?).
+delta *sccs_getInit(sccs *s, delta *d, MMAP *f, int patch, int *errorp, int *linesp, char ***symsp)	-- initialize as much of a delta* as we can from the sccs file.
+delta *sccs_ino(sccs *)	-- return the inode (the first delta) of a sccs file
+int sccs_rmdel(sccs *s, delta *d, u32 flags)	-- remove a delta (by setting it to type 'R')
+int sccs_stripdel(sccs *s, char *who)	-- lower level delta removal; removes all deltas with the D_SET flag.
+int sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)	-- print the diffs (as insert/delete actions) for a specified revision.
+void sccs_pdelta(sccs *s, delta *d, FILE *out)	-- print a delta header (in changekey format?)
+char *sccs_root(sccs *s)	-- return a strdup()'ed copy of the root for this project
+int sccs_cd2root(sccs *, char *optional_root)	-- chdir to the package root.
+delta *sccs_key2delta(sccs *sc, char *key)	-- orphan
+char *sccs_impliedList(sccs *s, char *who, char *base, char *rev)	--  Return a list of revisions from rev to the first gca of base.
+int sccs_sdelta(sccs *s, delta *, char *)	-- return the checksum (== the length) of the checksum for a delta.
+void sccs_shortKey(sccs *s, delta *, char *)	-- return a shortened version of the changeset key for a delta.
+void sccs_perfile(sccs *, FILE *)	-- print metadata/status of a sccs file.
+sccs *sccs_getperfile(MMAP *, int *)	-- get the metadata out of a sccs file.
+char *sccs_gethost(void)	-- get our fully qualified hostname.
+int sccs_getComments(char *, char *, delta *)	-- ask the user for comments to use in a delta
+int sccs_getHostName(delta *)	-- ask the user for a hostname to use in a delta
+int sccs_getUserName(delta *)	-- ask the user for a username to use in a delta
+void sfileUnget(void)	-- orphan
+char *sfileFirst(char *cmd, char **Av, int Flags)	-- find_first() for sfiles (return the first file; subsequent files are retrieved with sfileNext; when you're done you need to do sfileDone() to reclaim data structures)
+char *sfileNext(void)	-- find_next() for sfiles.
+void sfileDone(void)	-- reclaim sfileFirst()/sfileNext() data structures.
+void rangeReset(sccs *sc)	-- 
+
+MDBM *sccs_mykeys(char *rev)	-- populate a MDBM with my cset keys for the given revision numbers (default is ``1.0..'')
+MDBM *sccs_keys2mdbm(FILE *f)	-- read a file (one item/line) and return a MDBM* containing its contents.
+
+void sortLines(char**)		-- sort an array of strings, using strcmp.
+char *age(time_t secs)		-- return a string describing the age of secs.
+char *getHomeDir()		-- return a strdup()ed copy of your homedir.
+char *bk_model(char* buf, int len) -- return a string describing what sort of BK we are
+				
+int cat(char *file)		-- copy a file to fd 1
+int bk_mode()			-- return what sort of BK we are.
+void save_byte_count(int count)	-- write count to {top}/BitKeeper/log/byte_count
+off_t get_byte_count()		-- read count from  {top}/BitKeeper/log/byte_count
+
+int sys(char*,...)		-- run a command
+int sysio(char *in, char* out, char *err, char*, ...)	-- run a command with specified stdin, stdout, stderr
+

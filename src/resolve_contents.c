@@ -124,24 +124,19 @@ c_merge(resolve *rs)
 
 	ret = sys("bk", rs->opts->mergeprog,
 	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
-	ret &= 0xffff;
-	/*
-	 * We need to restart even if there are errors, otherwise we think
-	 * the file is not writable.
-	 */
 	sccs_restart(rs->s);
-	if (ret == 0) {
+	unless (WIFEXITED(ret)) {
+	    	fprintf(stderr, "Cannot execute '%s'\n", rs->opts->mergeprog);
+		rs->opts->errors = 1;
+		return (0);
+	}
+	if (WEXITSTATUS(ret) == 0) {
 		unless (rs->opts->quiet) {
 			fprintf(stderr, "merge of %s OK\n", rs->s->gfile);
 		}
 		return (rs->opts->advance);
 	}
-	if (ret == 0xff00) {
-	    	fprintf(stderr, "Cannot execute '%s'\n", rs->opts->mergeprog);
-		rs->opts->errors = 1;
-		return (0);
-	}
-	if ((ret >> 8) == 1) {
+	if (WEXITSTATUS(ret) == 1) {
 		fprintf(stderr, "Conflicts during merge of %s\n", rs->s->gfile);
 		return (rs->opts->force);
 	}

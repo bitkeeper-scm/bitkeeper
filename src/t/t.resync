@@ -572,8 +572,7 @@ bk commit $S -y'additional symbol test 2'
 bk resync -t $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 grep -q 'Sadditional symbol' SCCS/s.ChangeSet
-if [ $? != 0 ]; then echo failed; exit 1; fi
-echo OK
+if [ $? != 0 ]; then echo failed; else echo OK; fi
 
 echo $N Test propagation of a symbol added later by itself ..........$NL
 cd $HERE/project
@@ -581,8 +580,7 @@ bk admin $Q -S'YAsymbol:1.5' ChangeSet
 bk resync -t $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
 grep -q 'YAsymbol' SCCS/s.ChangeSet
-if [ $? != 0 ]; then echo failed; exit 1; fi
-echo OK
+if [ $? != 0 ]; then echo failed; else echo OK; fi
 cores
 
 # TEST: Check for parallel work winds up losing a file

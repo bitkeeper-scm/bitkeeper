@@ -114,6 +114,7 @@ err:		perror(file);
 
 	new(rcs);
 	rcs->file = strdup(file);
+	rcs->kk = "-kk";
 
 	/* head */
 	skip_white(m);
@@ -181,14 +182,29 @@ acc:	skip_white(m);
 	skip_white(m);
 	unless (p = mwhere(m)) goto err;
 
-	/* XXX - this usually means a binary */
 	if (strneq(p, "expand", 6)) {
 		unless (advance(m, '@')) goto err;
-		for ( ;; ) {
-			unless (advance(m, '@')) goto err;
-			if (*m->where != '@') break;
-			m->where++;
+		skip_white(m);
+		if (strneq(m->where, "b@", 2)) {
+			rcs->kk = "-kb";
+		} else if (strneq(m->where, "v@", 2)) {
+			rcs->kk = "-kv";
+		} else if (strneq(m->where, "kv@", 3)) {
+			rcs->kk = "-kkv";
+		} else if (strneq(m->where, "kvl@", 4)) {
+			rcs->kk = "-kkvl";
+		} else if (strneq(m->where, "k@", 2)) {
+			rcs->kk = "-kk";
+		} else if (strneq(m->where, "o@", 2)) {
+			rcs->kk = "-ko";
+		} else if (strneq(m->where, "v@", 2)) {
+			rcs->kk = "-kv";
+		} else {
+			fprintf(stderr,
+			    "\n!!! Warning: unknown expand statement in %s\n",
+			    file);
 		}
+		unless (advance(m, '@')) goto err;
 		unless (advance(m, ';')) goto err;
 	}
 	skip_white(m);
@@ -471,15 +487,16 @@ err:		perror("EOF in log?");
 	unless (*p++ == '@') goto err;
 	for (t = buf; p < m->end; p++) {
 		if ((*p == '@') && (p[1] != '@')) {
+			unless (t[-1] == '\n') *t++ = '\n';
 			*t = 0;
 			d->comments = strdup(buf);
 			m->where = p + 1;
 			break;
 		} 
-		if (++l < 1024) *t++ = *p;
+		if ((++l < 1023) && (*p != '\r')) *t++ = *p;
 		if (*p == '@') p++;	/* unquote it */
 	}
-	if (l >= 1024) {
+	if (l >= 1023) {
 		fprintf(stderr,
 		    "%s: Truncated log message line to 1024 bytes\n",
 		    rcs->file);

@@ -1,369 +1,20 @@
 # difftool - view differences; loosely based on fmtool
-# Copyright (c) 1999 by Larry McVoy; All rights reserved
-# @(#) difftool.tcl 1.31@(#) akushner@vermin.dsl.snfc21.pacbell.net
-
-proc next {} \
-{
-	global	diffCount lastDiff search
-
-	if {[searchactive]} {
-		set search(dir) "/"
-		searchnext
-		return
-	}
-	if {$lastDiff == $diffCount} { return }
-	incr lastDiff
-	dot
-}
-
-proc prev {} \
-{
-	global	Diffs DiffsEnd diffCursor diffCount lastDiff search
-
-	if {[searchactive]} {
-		set search(dir) "?"
-		searchnext
-		return
-	}
-	if {$lastDiff == 1} { return }
-	incr lastDiff -1
-	dot
-}
-
-proc dot {} \
-{
-	global	Diffs DiffsEnd diffCount lastDiff
-
-	scrollDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
-	highlightDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
-	.diffs.status.middle configure -text "Diff $lastDiff of $diffCount"
-	.menu.dot configure -text "Center on diff $lastDiff"
-	if {$lastDiff == 1} {
-		.menu.prev configure -state disabled
-	} else {
-		.menu.prev configure -state normal
-	}
-	if {$lastDiff == $diffCount} {
-		.menu.next configure -state disabled
-	} else {
-		.menu.next configure -state normal
-	}
-}
-
-proc highlightDiffs {start stop} \
-{
-	global	gc
-
-	.diffs.left tag delete d
-	.diffs.right tag delete d
-	.diffs.left tag add d $start $stop
-	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -font $gc(diff.fixedBoldFont)
-	.diffs.right tag configure d -font $gc(diff.fixedBoldFont)
-}
-
-proc topLine {} \
-{
-	return [lindex [split [.diffs.left index @1,1] "."] 0]
-}
-
-
-proc scrollDiffs {start stop} \
-{
-	global	gc
-
-	# Either put the diff beginning at the top of the window (if it is
-	# too big to fit or fits exactly) or
-	# center the diff in the window (if it is smaller than the window).
-	set Diff [lindex [split $start .] 0]
-	set End [lindex [split $stop .] 0]
-	set size [expr {$End - $Diff}]
-	# Center it.
-	if {$size < $gc(diff.diffHeight)} {
-		set j [expr {$gc(diff.diffHeight) - $size}]
-		set j [expr {$j / 2}]
-		set i [expr {$Diff - $j}]
-		if {$i < 0} {
-			set want 1
-		} else {
-			set want $i
-		}
-	} else {
-		set want $Diff
-	}
-
-	set top [topLine]
-	set move [expr {$want - $top}]
-	.diffs.left yview scroll $move units
-	.diffs.right yview scroll $move units
-	.diffs.right xview moveto 0
-	.diffs.left xview moveto 0
-	.diffs.right see $start
-	.diffs.left see $start
-}
-
-proc chunks {n} \
-{
-	global	Diffs DiffsEnd nextDiff
-
-	set l [.diffs.left index "end - 1 char linestart"]
-	set Diffs($nextDiff) $l
-	set e [expr {$n + [lindex [split $l .] 0]}]
-	set DiffsEnd($nextDiff) "$e.0"
-	incr nextDiff
-}
-
-proc same {r l n} \
-{
-	set lines {}
-	while {$n > 0} {
-		gets $l line
-		lappend lines $line
-		gets $r line
-		incr n -1
-	}
-	set l [join $lines "\n"]
-	.diffs.left insert end "$l\n"
-	.diffs.right insert end "$l\n";
-}
-
-proc changed {r l n} \
-{
-	chunks $n
-	set llines {}
-	set rlines {}
-	while {$n > 0} {
-		gets $l line
-		lappend llines $line
-		gets $r line
-		lappend rlines $line
-		incr n -1
-	}
-	set lc [join $llines "\n"]
-	set rc [join $rlines "\n"]
-	.diffs.left insert end "$lc\n" diff
-	.diffs.right insert end "$rc\n" diff
-}
-
-proc left {r l n} \
-{
-	chunks $n
-	set lines {}
-	set newlines ""
-	while {$n > 0} {
-		gets $l line
-		lappend lines $line
-		set newlines "$newlines\n"
-		incr n -1
-	}
-	set lc [join $lines "\n"]
-	.diffs.left insert end "$lc\n" diff
-	.diffs.right insert end "$newlines" 
-}
-
-proc right {r l n} \
-{
-	chunks $n
-	set lines {}
-	set newlines ""
-	while {$n > 0} {
-		gets $r line
-		lappend lines $line
-		set newlines "$newlines\n"
-		incr n -1
-	}
-	set rc [join $lines "\n"]
-	.diffs.left insert end "$newlines" 
-	.diffs.right insert end "$rc\n" diff
-}
-
-# Get the sdiff. making sure it has no \r's from fucking dos in it.
-proc sdiff {L R} \
-{
-	global	rmList sdiffw
-
-	set rmList ""
-	set a [open "| grep {\r$} \"$L\"" r]
-	set b [open "| grep {\r$} \"$R\"" r]
-	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
-		catch { close $a }
-		catch { close $b }
-		return [open "| $sdiffw \"$L\" \"$R\"" r]
-	}
-	catch { close $a }
-	catch { close $b }
-	foreach {f} {L R} {
-		set dir [eval file dirname $f]
-		if {"$dir" == ""} {
-			eval set dot($f) ".$$f"
-		} else {
-			set tail [eval file tail $f]
-			set dot($f) [file join $dir .$tail]
-		}
-		eval exec bk undos $$f > $dot($f)
-	}
-	set rmList [list $dot(L) $dot(R)]
-	return [open "| $sdiffw $dot($f) $dot($f)"]
-}
-
-proc readFiles {L Ln R Rn} \
-{
-	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
-	global  lfile lname rfile rname
-
-	# Trying to get reread to work correctly -- I don't like this 
-	# approach
-	set lfile $L; set lname $Ln
-	set rfile $R; set rname $Rn
-
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
- 	set t [clock format [file mtime $L] -format "%r %D"]
-	.diffs.status.l configure -text "$Ln ($t)"
- 	set t [clock format [file mtime $R] -format "%r %D"]
-	.diffs.status.r configure -text "$Rn ($t)"
-	.diffs.status.middle configure -text "... Diffing ..."
-	.diffs.left delete 1.0 end
-	.diffs.right delete 1.0 end
-
-	. configure -cursor watch
-	update
-	set lineNo 1
-	set diffCount 0
-	set nextDiff 1
-	array set DiffsEnd {}
-	array set Diffs {}
-	set n 1
-	set l [open $L r]
-	set r [open $R r]
-	set d [sdiff $L $R]
-
-	gets $d last
-	if {$last == "" || $last == " "} { set last "S" }
-	while { [gets $d diff] >= 0 } {
-		incr lineNo 1
-		if {$diff == "" || $diff == " "} { set diff "S" }
-		if {$diff == $last} {
-			incr n 1
-		} else {
-			switch $last {
-			    "S"	{ same $r $l $n }
-			    "|"	{ incr diffCount 1; changed $r $l $n }
-			    "<"	{ incr diffCount 1; left $r $l $n }
-			    ">"	{ incr diffCount 1; right $r $l $n }
-			}
-			set n 1
-			set last $diff
-		}
-	}
-	switch $last {
-	    "S"	{ same $r $l $n }
-	    "|"	{ incr diffCount 1; changed $r $l $n }
-	    "<"	{ incr diffCount 1; left $r $l $n }
-	    ">"	{ incr diffCount 1; right $r $l $n }
-	}
-	if {$diffCount == 0} { puts "No differences"; exit }
-	close $r
-	close $l
-	catch { close $d }
-	if {"$rmList" != ""} {
-		foreach rm $rmList {
-			file delete $rm
-		}
-	}
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
-	. configure -cursor left_ptr
-	.diffs.left configure -cursor left_ptr
-	.diffs.right configure -cursor left_ptr
-	set lastDiff 1
-	dot
-}
+# Copyright (c) 1999-2000 by Larry McVoy; All rights reserved
+# %A% %@%
 
 # --------------- Window stuff ------------------
-proc yscroll { a args } \
-{
-	eval { .diffs.left yview $a } $args
-	eval { .diffs.right yview $a } $args
-}
-
-proc xscroll { a args } \
-{
-	eval { .diffs.left xview $a } $args
-	eval { .diffs.right xview $a } $args
-}
-
-proc Page {view dir one} \
-{
-	set p [winfo pointerxy .]
-	set x [lindex $p 0]
-	set y [lindex $p 1]
-	page ".diffs" $view $dir $one
-	return 1
-}
-
-proc page {w xy dir one} \
-{
-	global	gc
-
-	if {$xy == "yview"} {
-		set lines [expr {$dir * $gc(diff.diffHeight)}]
-	} else {
-		# XXX - should be width.
-		set lines 16
-	}
-	if {$one == 1} {
-		set lines [expr {$dir * 1}]
-	} else {
-		incr lines -1
-	}
-	.diffs.left $xy scroll $lines units
-	.diffs.right $xy scroll $lines units
-}
-
-proc fontHeight {f} \
-{
-	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
-}
-
-proc computeHeight {} \
-{
-	global	gc
-
-	update
-	set f [fontHeight [.diffs.left cget -font]]
-	set p [winfo height .diffs.left]
-	set gc(diff.diffHeight) [expr {$p / $f}]
-}
-
-proc clearOrRecall {} \
-{
-	set which [.menu.searchClear cget -text]
-	if {$which == "Recall search"} {
-		searchrecall
-	} else {
-		searchreset
-	}
-}
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform search gc d
+	global	scroll wish tcl_platform search gc d app
 
-	set search(prompt) "Search for:"
-	set search(dir) "/"
-	set search(text) .menu.search
-	set search(widget) .diffs.right
-	set search(next) .menu.searchNext
-	set search(prev) .menu.searchPrev
-	set search(focus) .
-	set search(clear) .menu.searchClear
-	set search(recall) .menu.searchClear
-	set search(status) .menu.info
+	# Set global app var so that difflib knows which global config
+	# vars to read
+	set app "diff"
 	if {$tcl_platform(platform) == "windows"} {
-		set py -2; set px 1; set bw 2
+		set gc(py) -2; set gc(px) 1; set gc(bw) 2
 	} else {
-		set py 1; set px 4; set bw 2
+		set gc(py) 1; set gc(px) 4; set gc(bw) 2
 	}
 	getConfig "diff"
 	option add *background $gc(BG)
@@ -454,93 +105,61 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	frame .menu
 	    button .menu.prev -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-image prevImage -state disabled -command {
 			searchreset
 			prev
 		}
 	    button .menu.next -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-image nextImage -state disabled -command {
 			searchreset
 			next
 		}
 	    button .menu.quit -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-text "Quit" -command cleanup
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+		-text "Quit" -command cleanup 
 	    button .menu.reread -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Reread" -command {
 			global lname rname lfile rfile
 			#puts "$lfile $lname $rfile $rname"
 			readFiles $lfile $lname $rfile $rname
 		    }
 	    button .menu.help -bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Help" \
 		-command { exec bk helptool difftool & }
 	    button .menu.dot -bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
+		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-font $gc(diff.buttonFont) -text "Current diff" \
-		-command dot
-	    label .menu.prompt -font $gc(diff.buttonFont) -width 11 \
-		-relief flat \
-		-textvariable search(prompt)
-	    entry $search(text) -width 20 -font $gc(diff.buttonFont)
-	    button .menu.searchPrev -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-image prevImage \
-		-state disabled -command {
-			searchdir ?
-			searchnext
-		}
-	    button .menu.searchNext -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-image nextImage \
-		-state disabled -command {
-			searchdir /
-			searchnext
-		}
-	    button .menu.searchClear -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-text "Clear search" -state disabled -command { clearOrRecall }
-	    label $search(status) -width 20 -font $gc(diff.buttonFont) \
-		-relief flat
-	    button .menu.filePrev -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-image prevImage \
-		-state disabled -command { prevFile }
-
-	    button .menu.fileNext -font $gc(diff.buttonFont) \
-		-bg $gc(diff.buttonColor) \
-		-pady $py -padx $px -borderwid $bw \
-		-image nextImage \
-		-state normal -command { nextFile }
-
-	    menubutton .menu.mb -font $gc(diff.buttonFont) -relief raised \
-		-bg $gc(diff.buttonColor) -pady $py -padx $px \
-		-borderwid $bw -text "Files" -width 15 -state normal \
-		-menu .menu.mb.menu
+		-width 15 -command dot
+            button .menu.filePrev -font $gc(diff.buttonFont) \
+                -bg $gc(diff.buttonColor) \
+                -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+                -image prevImage \
+                -state disabled -command { prevFile }
+            button .menu.fileNext -font $gc(diff.buttonFont) \
+                -bg $gc(diff.buttonColor) \
+                -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+                -image nextImage \
+                -state normal -command { nextFile }
+            menubutton .menu.fmb -font $gc(diff.buttonFont) -relief raised \
+                -bg $gc(diff.buttonColor) -pady $gc(py) -padx $gc(px) \
+                -borderwid $gc(bw) -text "Files" -width 15 -state normal \
+                -menu .menu.mb.menu
 
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
 	    pack .menu.reread -side left
-	    pack .menu.prev -side left
+	    pack .menu.prev -side left -fill y 
 	    pack .menu.dot -side left
-	    pack .menu.next -side left
-	    pack .menu.prompt -side left
-	    pack $search(text) -side left
-	    pack .menu.searchPrev -side left -fill y
-	    pack .menu.searchClear -side left
-	    pack .menu.searchNext -side left -fill y
-	    pack $search(status) -side left -expand 1 -fill x
+	    pack .menu.next -side left -fill y
+
+	    search_widgets .menu .diffs.right
 
 	grid .menu -row 0 -column 0 -sticky ew
 	grid .diffs -row 1 -column 0 -sticky nsew
@@ -570,14 +189,16 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    -background $gc(diff.searchColor) -font $gc(diff.fixedBoldFont)
 
 	keyboard_bindings
+	search_keyboard_bindings
 	searchreset
 	. configure -background $gc(BG)
+	wm deiconify .
 }
 
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
-	global	search gc
+	global	search gc tcl_platform
 
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
@@ -607,16 +228,15 @@ proc keyboard_bindings {} \
 	bind all		<n>		next
 	bind all		<space>		next
 	bind all		<p>		prev
-	bind all		<Button-4>	prev
-	bind all		<Button-5>	next
 	bind all		<period>	dot
-	bind all		<slash>		"search /"
-	bind all		<question>	"search ?"
-	bind all		<Control-u>	searchreset
-	bind all		<Control-r>	searchrecall
-	bind $search(text)	<Return>	searchstring
-	bind $search(text)	<Control-u>	searchreset
-
+	if {$tcl_platform(platform) == "windows"} {
+		bind all <MouseWheel> {
+		    if {%D < 0} { next } else { prev }
+		}
+	} else {
+		bind all <Button-4>	prev
+		bind all <Button-5>	next
+	}
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
 }
@@ -665,12 +285,17 @@ proc usage {} \
 
 proc getFiles {} \
 {
-	global argv0 argv argc dev_null tmp_dir gc tcl_platform
-	global tmps lfile rfile menu lname rname
+	global argv0 argv argc dev_null lfile rfile tmp_dir
+	global gc tcl_platform tmps menu lname rname
+
+	set rev1 ""
+	set rev2 ""
+
 
 	if {$argc > 3} { usage }
 	set files [list]
 	set tmps [list]
+
 	set cfiles ""
 
 	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
@@ -702,6 +327,10 @@ proc getFiles {} \
 					lappend tmps $lfile
 					eval lappend files \
 					    {"$rfile $rname $lfile $lname"}
+					set lname "$rfile"
+					set lnorev $rfile
+					set rnorev $rfile
+					set rev1 "+"
 				}
 			}
 		} else {
@@ -719,6 +348,9 @@ proc getFiles {} \
 			if {[file exists $rfile] != 1} { usage }
 			set rname $rfile
 			set lfile [getRev $rfile $rev1 0]
+			set lnorev $rfile
+			set rnorev $rfile
+			set rev2 "+"
 			set lname "$rfile@$rev1"
 			eval lappend files {"$rfile $rname $lfile $lname"}
 			lappend tmps $lfile
@@ -727,6 +359,8 @@ proc getFiles {} \
 			set lname $lfile
 			set rfile [lindex $argv 1]
 			set rname $rfile
+			set lnorev $lfile
+			set rnorev $rfile
 			eval lappend files {"$rfile $rname $lfile $lname"}
 		}
 	} else {  ;# bk difftool -r<rev> -r<rev2> file
@@ -741,6 +375,8 @@ proc getFiles {} \
 		set rfile [getRev $file $rev2 0]
 		set rname "$file@$rev2"
 		lappend tmps $rfile
+		set lnorev $file 
+		set rnorev $file
 		eval lappend files {"$rfile $rname $lfile $lname"}
 	}
 	#puts "files=($files)"
@@ -824,6 +460,9 @@ proc nextFile {} \
 	} else {
 		.menu.fileNext configure -state disabled
 	}
+	displayInfo $lnorev $rnorev $rev1 $rev2
+	readFiles $lfile $rfile $lname $rname
+	foreach tmp $tmps { file delete $tmp }
 }
 
 # Override searchsee definition so we scroll both windows

@@ -13,6 +13,31 @@ proc cd2root {} \
 		set dir [file join $dir ..]
 		incr n -1
 	}
-	puts "Can not find project root"
-	exit 1
+	set dir [pwd]
+	displayMessage \
+		"Unable to find the project root.\nCurrent directory is $dir" \
+		1
+}
+
+proc displayMessage {msg {exit {}}} \
+{
+
+    global tcl_platform
+
+    if {$tcl_platform(platform) == "windows"} {
+        tk_messageBox -title "Error" -type ok -icon error -message $msg
+        #error "Fatal"
+	if {$exit == 1} {
+		exit 1
+	} else {
+		return
+	}
+    } else {
+        puts stderr $msg
+	if {$exit == 1} {
+		exit 1
+	} else {
+		return
+	}
+    }
 }

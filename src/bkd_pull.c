@@ -2,10 +2,14 @@
 
 private	void	listIt(sccs *s);
 private	void	listrev(delta *d);
+private	void	listIt2(sccs *s);
+private	void	listrev2(delta *d);
 private int	uncompressed(char *tmpfile);
 private int	compressed(int gzip, char *tmpfile);
 extern	MDBM	*csetKeys(MDBM *);
 
+#define	OPULL
+#ifdef	OPULL
 private	char	*cset[] = { "bk", "makepatch", "-", 0 };
 
 int
@@ -38,13 +42,13 @@ cmd_pull(int ac, char **av)
 		    case 'l': list = 1; verbose = 0; break;
 		    case 'n': doit = 0; break;
 		    case 'q': verbose = 0; break;
-		    case 'z': 
+		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
-	    	}
+		}
 	}
-	
+
 	/*
 	 * Get the remote keys
 	 */
@@ -166,7 +170,7 @@ compressed(int gzip, char *csets_out)
 	int	rfd, status;
 	char	buf[8192];
 
-#ifndef WIN32
+#ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL);
 #endif
 	fd0 = dup(0); close(0);
@@ -199,12 +203,14 @@ listIt(sccs *s)
 	}
 }
 
+
 private void
 listrev(delta *d)
 {
 	char	*t;
 	int	i;
 	char	buf[100];
+	FILE	*f;
 
 	assert(d);
 	out("OK-ChangeSet@");
@@ -220,7 +226,7 @@ listrev(delta *d)
 		strcat(buf, d->sdate);
 	}
 	for (t = buf; *t != '/'; t++); *t++ = '-';
-	for ( ; *t != '/'; t++); *t = '-';
+	for (; *t != '/'; t++); *t = '-';
 	out(buf);
 	if (d->zone) {
 		out("-");
@@ -237,6 +243,245 @@ listrev(delta *d)
 		out("OK-  ");
 		out(d->comments[i]);
 		out("\n");
-    	}
+	}
 	out("OK-\n");
+
+	/*
+	 * XXX FIXME: This is slow, we should do this
+	 * without a sub process for each cset
+	 */
+	sprintf(buf, "bk cset -Hr%s", d->rev);
+	f = popen(buf, "r");
+	assert(f);
+	while (fnext(buf, f)) {
+		out("OK-");
+		out(buf);
+	}
+	fclose(f);
+}
+
+private void
+listIt2(sccs *s)
+{
+	delta   *d;
+	int	first = 1;
+
+	fputs("@CHANGE LIST@\n", stdout);
+	for (d = s->table; d; d = d->next) {
+		unless (d->type == 'D') continue;
+		if (d->flags & D_VISITED) continue;
+		if (first) {
+			first = 0;
+		} else {
+			printf("%c\n", BKD_DATA);
+		}
+		listrev2(d);
+	}
+	fputs("@END@\n", stdout);
+}
+#endif /* OPULL */
+
+
+private void
+listrev2(delta *d)
+{
+	char	*t;
+	int	i;
+	char	buf[100];
+	FILE	*f;
+
+	assert(d);
+	printf("%cChangeSet@%s, ", BKD_DATA, d->rev);
+	if (atoi(d->sdate) <= 68) {
+		strcpy(buf, "20");
+		strcat(buf, d->sdate);
+	} else if (atoi(d->sdate) > 99) {	/* must be 4 digit years */
+		strcpy(buf, d->sdate);
+	} else {
+		strcpy(buf, "19");
+		strcat(buf, d->sdate);
+	}
+	for (t = buf; *t != '/'; t++); *t++ = '-';
+	for (; *t != '/'; t++); *t = '-';
+	fputs(buf, stdout);
+	if (d->zone) {
+		printf("-%s", d->zone);
+	}
+	printf(", %s", d->user);
+	if (d->hostname) {
+		printf("@%s", d->hostname);
+	}
+	fputs("\n", stdout);
+	EACH(d->comments) {
+		printf("%c%s\n", BKD_DATA, d->comments[i]);
+	}
+	printf("%c\n", BKD_DATA);
+
+	/*
+	 * XXX FIXME: This is slow, we should do this
+	 * without a sub process for each cset
+	 */
+	sprintf(buf, "bk cset -Hr%s", d->rev);
+	f = popen(buf, "r");
+	assert(f);
+	while (fnext(buf, f)) {
+		printf("%c%s", BKD_DATA, buf);
+	}
+	pclose(f);
+}
+
+int
+cmd_pull_part1(int ac, char **av)
+{
+	char	*p, buf[4096];
+	char	*probekey_av[] = {"bk", "_probekey", 0};
+	int	status, rfd;
+	pid_t	pid;
+	FILE	*f;
+
+	sendServerInfoBlock();
+
+	p = getenv("BK_CLIENT_PROTOCOL");
+	unless (p && streq(p, BKD_VERSION)) {
+		out("ERROR-protocol version mismatch, want: ");
+		out(BKD_VERSION); 
+		out(", got ");
+		out(p ? p : "");
+		out("\n");
+		drain();
+		return (1);
+	}
+
+	if ((bk_mode() == BK_BASIC) && !exists("BitKeeper/etc/.master")) {
+		out("ERROR-bkd std cannot access non-master repository\n");
+		out("@END@\n");
+		close(1);
+		return (1);
+	}
+
+#ifndef	WIN32
+	signal(SIGCHLD, SIG_DFL); /* hpux */
+#endif
+	fputs("@OK@\n", stdout);
+	pid = spawnvp_rPipe(probekey_av, &rfd);
+	f = fdopen(rfd, "r");
+	while (fnext(buf, f)) {
+		fputs(buf, stdout);
+	}
+	fclose(f);
+	fflush(stdout);
+	waitpid(pid, &status, 0);
+	return (0);
+}
+
+
+int
+cmd_pull_part2(int ac, char **av)
+{
+	int	c, rc = 0, fd, local_count, remote_count, debug = 0;
+	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
+	char	buf[4096], rev_list[MAXPATH], s_cset[] = CHANGESET;
+	char	gzip_str[30] = "";
+	FILE 	*f;
+	sccs	*s;
+	remote	r;
+
+	while ((c = getopt(ac, av, "delnqz|")) != -1) {
+		switch (c) {
+		    case 'z':
+			gzip = optarg ? atoi(optarg) : 6;
+			if (gzip < 0 || gzip > 9) gzip = 6;
+			break;
+		    case 'd': debug = 1; break;
+		    case 'e': metaOnly = 1; break;
+		    case 'l': list = 1; break;
+		    case 'n': dont = 1; break;
+		    case 'q': verbose = 0; break;
+		    default: break;
+		}
+	}
+
+	sendServerInfoBlock();
+
+	/*
+	 * What we want is: remote => bk _prunekey => rev_list
+	 */
+	bktemp(rev_list);
+
+	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
+	bzero(&r, sizeof(r));
+	s = sccs_init(s_cset, 0, 0);
+	assert(s && s->tree);
+	if (prunekey(s, &r, fd, 1, &local_count, &remote_count) < 0) {
+		sccs_free(s);
+		rc = 1;
+		goto done;
+	}
+	close(fd);
+
+	if (fputs("@OK@\n", stdout) < 0) {
+		perror("fputs ok");
+	}
+	fflush(stdout);
+	if (verbose || list) {
+		printf("@REV LIST@\n");
+		if (local_count == 0) {
+			printf("@END@\n");
+			goto next;
+		}
+		f = fopen(rev_list, "rt");
+		assert(f);
+		while (fnext(buf, f)) {
+			printf("%c%s", BKD_DATA, buf);
+		}
+		printf("@END@\n");
+		fclose(f);
+
+	}
+	if (list) listIt2(s);
+
+
+next:	sccs_free(s);
+
+	if (dont) {
+		fflush(stdout);
+		rc = 0;
+		goto done;
+	}
+
+	if (local_count == 0) {
+		fputs("@NOTHING TO SEND@\n", stdout);
+		fflush(stdout);
+		rc = 0;
+		goto done;
+	}
+
+	/*
+	 * Fire up the pre-trigger (for non-logging tree only)
+	 * Set up the BK_REVLISTFILE env variable for the trigger script
+	 */
+	sprintf(buf, "BK_REVLISTFILE=%s", rev_list);
+	putenv(buf);
+	if (!metaOnly && trigger(av,  "pre", 0)) {
+		putenv("BK_REVLISTFILE=");
+		rc = 1;
+		goto done;
+	}
+	putenv("BK_REVLISTFILE=");
+
+	fputs("@PATCH@\n", stdout);
+	fflush(stdout);
+	if (gzip) sprintf(gzip_str, "| bk _gzip -z%d", gzip);
+	sprintf(buf, "bk makepatch %s - < %s %s",
+				metaOnly ? "-e" : "", rev_list, gzip_str);
+	if (system(buf)) {
+		fprintf(stderr, "cmd_pull_part2: makepatch failed\n");
+	}
+
+	/*
+	 * Fire up the post-trigger (for non-logging tree only)
+	 */
+done:	if (!metaOnly) trigger(av,  "post", rc);
+	unlink(rev_list);
+	return (rc);
 }

@@ -107,7 +107,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		    BK_UNDO);
 	}
 	if (streq(qflag, "")) printf("Running consistency check...\n");
-	if ((rc = system("bk -r check -a")) == 2) { /* 2 mean try again */
+	if ((rc = system("bk -r check -af")) == 2) { /* 2 mean try again */
 		if (streq(qflag, "")) {
 			printf("Running consistency check again ...\n");
 		}
@@ -180,7 +180,7 @@ mk_list(char *rev_list, char *rev)
 	sprintf(cmd, "bk cset -ffr%s > %s", rev, rev_list);
 	if (system(cmd) != 0) {
 		printf("undo: %s\n", cmd);
-		printf("undo: cannot extact revision list\n");
+		printf("undo: cannot extract revision list\n");
 		return (NULL);
 	}
 	free(cmd);

@@ -4,6 +4,9 @@
 .SH NAME 
 bk export \- checks out clear-text version of all \*(BK files
 .SH SYNOPSIS
+.B bk export \-tpatch [\-hT] [\-d u|c]
+.OPTreq \-r rev1,rev2
+.br
 .Bc bk export [\-tplain] [\-kTvw] [
 .OPTreq \-i pat
 .Bc ] [
@@ -14,9 +17,6 @@ bk export \- checks out clear-text version of all \*(BK files
 .ARGc source
 .B ]
 .ARG dest
-.br
-.B bk export \-tpatch [\-hT] [\-d u|c]
-.OPTreq \-r rev1,rev2
 .SH DESCRIPTION
 .LP
 The
@@ -27,16 +27,18 @@ repository which contains checked-out copies of all the files under
 .RB ( diff
 .BR \-urN )
 patches between any two revisions of the source tree.
-By default, bk export only export user files, files under
-the BitKeeper directory are not exported. This behaviour can be
+By default, bk export only exports user files.  Files under
+the BitKeeper directory are not exported.  This behaviour can be
 changed with the -i and -x options.
+.LP
 If you are trying the export a patch for a sub-directory, and
-some of the file in that directory have been move in/out of the
-directory. You want to make sure the out-of-view file look
-like deteled file. This is done by replacing the @rev part of 
+some of the files in that directory have been moved out of the
+directory. You want to make sure the out-of-view file looks
+like deleted file. This is done by replacing the @rev part of 
 the out-of-view file to @1.0. You can do this using the following command:
-.BR
+.DS
 bk rset -rA,B | your_script | bk gnupatch 
+.DE
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i

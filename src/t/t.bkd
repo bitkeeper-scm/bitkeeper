@@ -146,6 +146,9 @@ echo data2 > old.c
 bk new $Q old.c
 bk commit $Q -yold.c
 bk push -c1 $Q bk://localhost:$P$HERE/project
+cd $HERE/project
+while ! bk lock -s; do true; done
+cd $HERE/copy
 bk mv old.c conflict.c
 bk commit $Q -ygconflict
 echo "" | bk push -c1 bk://localhost:$P$HERE/project 2> bk.out 
@@ -193,7 +196,7 @@ ls > JUNK
 bk new $Q JUNK
 (cd $HERE/copy; bk _loggingaccepted; )
 bk commit $Q -ywhatever
-bk push -t $Q bk://localhost:$P$HERE/copy 2> bk.out
+bk push -t bk://localhost:$P$HERE/copy 2> bk.out
 grep -q "4 csets only in" bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
