@@ -740,7 +740,7 @@ next:		if (getline2(r, buf, bsize) <= 0) break;
 			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
 	}
 	freeLines(lines);
-	exit(1);
+	return;
 }
 
 int

@@ -194,6 +194,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		exit(1);
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);

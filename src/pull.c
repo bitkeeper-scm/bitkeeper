@@ -159,6 +159,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		exit(1);
 	}
 	if (getenv("BKD_LEVEL") &&
 	    (atoi(getenv("BKD_LEVEL")) > getlevel())) {

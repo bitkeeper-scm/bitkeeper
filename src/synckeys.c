@@ -591,6 +591,7 @@ synckeys(remote *r, int flags)
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		exit(1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
 

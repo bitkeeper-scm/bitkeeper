@@ -112,6 +112,7 @@ pending_main(int ac, char **av)
 		fclose(stdout);
 		waitpid(pid, 0, 0);
 	}
+	if (pending < 0) return (2); /* 2 means error */
 	return (pending ? 0 : 1);
 }
 
@@ -259,6 +260,15 @@ pending_part1(options *opts, remote *r, char *key_list)
 	int	flags, fd, rc, rcsets = 0, rtags = 0;
 	sccs	*s;
 
+	/*
+	 * Even when opts->cset is off, we still
+	 * do the keysync. I've considered streamlining this case,
+	 * but keysync is quiet efficient, I am not sure it really
+	 * buy us that much. Another reason to skip optimizing this
+	 * case is that almost 90% percent of the time, user want to
+	 * know about new cset in the remote repository. Why optimize
+	 * a rare case ?
+	 */
 	if (bkd_connect(r, 0, 1)) return (-1);
 	send_part1_msg(opts, r);
 	if (r->rfd < 0) return (-1);
@@ -272,6 +282,7 @@ pending_part1(options *opts, remote *r, char *key_list)
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		return (-1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
 
@@ -291,11 +302,11 @@ pending_part1(options *opts, remote *r, char *key_list)
 ChangeSet file do not match.  Please check the pathnames and try again.\n");
 			close(fd);
 			sccs_free(s);
-			return (1); /* needed to force bkd unlock */
+			return (-1); /* needed to force bkd unlock */
 		    case -3:
 			printf("You are syncing to an empty directory\n");
 			sccs_free(s);
-			return (1); /* empty dir */
+			return (-1); /* empty dir */
 			break;
 		}
 		close(fd);
@@ -317,7 +328,7 @@ pending_part2(options *opts, remote *r, char *key_list, int rcsets)
 	char	buf[MAXLINE];
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0, 0)) {
-		return (1);
+		return (-1);
 	}
 
 	send_part2_msg(opts, r, key_list, rcsets);
@@ -358,7 +369,7 @@ private int
 doit_remote(options *opts, char *url)
 {
 	char    key_list[MAXPATH] = "";
-	int     rcsets = 0, pending = 0;
+	int     rcsets = 0, pending = -1;
 	remote  *r;
 
 	loadNetLib();
@@ -366,7 +377,7 @@ doit_remote(options *opts, char *url)
 	r = remote_parse(url, 1);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
-		return (pending);
+		return (-1);
 	}
 
 	rcsets = pending_part1(opts, r, key_list);

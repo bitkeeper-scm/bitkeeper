@@ -573,6 +573,7 @@ changes_part1(remote *r, char **av, char *key_list)
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		return (-1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
 
