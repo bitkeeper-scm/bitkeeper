@@ -179,7 +179,7 @@ newRev(sccs *s, int flags, MDBM *db, delta *d)
 		free(d->rev);
 		d->rev = strdup(buf);
 	}
-	remember(db, d);
+	if (d->type == 'D') remember(db, d);
 }
 
 private	void
