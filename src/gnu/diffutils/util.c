@@ -639,32 +639,40 @@ analyze_hunk (hunk, first0, last0, first1, last1, deletes, inserts)
 	if (!ignore_blank_lines_flag || files[0].linbuf[i][0] != '\n')
 	  {
 	    struct regexp_list *r;
-	    char const *line = files[0].linbuf[i];
+	    char *line = (char *) files[0].linbuf[i];
 	    int len = files[0].linbuf[i + 1] - line;
+	    char c;
 
+	    /* regexec doesn't take a length parameter, so we have to
+	       do this instead.  Bleah.  */
+	    c = line[len]; line[len] = '\0';
 	    for (r = ignore_regexp_list; r; r = r->next)
-	      if (0 <= re_search (&r->buf, line, len, 0, len, 0))
+	      if (regexec (&r->buf, line, 0, 0, 0) == 0)
 		break;	/* Found a match.  Ignore this line.  */
 	    /* If we got all the way through the regexp list without
 	       finding a match, then it's nontrivial.  */
 	    if (!r)
 	      trivial = 0;
+	   line[len] = c;
 	  }
 
       for (i = next->line1; i <= l1 && trivial; i++)
 	if (!ignore_blank_lines_flag || files[1].linbuf[i][0] != '\n')
 	  {
 	    struct regexp_list *r;
-	    char const *line = files[1].linbuf[i];
+	    char *line = (char *) files[1].linbuf[i];
 	    int len = files[1].linbuf[i + 1] - line;
+	    char c;
 
+	    c = line[len]; line[len] = '\0';
 	    for (r = ignore_regexp_list; r; r = r->next)
-	      if (0 <= re_search (&r->buf, line, len, 0, len, 0))
+	      if (regexec (&r->buf, line, 0, 0, 0) == 0)
 		break;	/* Found a match.  Ignore this line.  */
 	    /* If we got all the way through the regexp list without
 	       finding a match, then it's nontrivial.  */
 	    if (!r)
 	      trivial = 0;
+	    line[len] = c;
 	  }
     }
   while ((next = next->link) != 0);

@@ -36,10 +36,6 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 LIBOBJS = @LIBOBJS@
 
-# Some System V machines do not come with libPW.
-# If this is true for you, use the GNU alloca.o here.
-ALLOCA = @ALLOCA@
-
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 edit_program_name = sed '@program_transform_name@'
@@ -60,17 +56,16 @@ SHELL = /bin/sh
 # The source files for all of the programs.
 srcs=diff.c analyze.c cmpbuf.c cmpbuf.h io.c context.c ed.c normal.c ifdef.c \
 	util.c dir.c memchr.c waitpid.c \
-	version.c diff.h regex.c regex.h side.c system.h \
+	version.c diff.h side.c system.h \
 	diff3.c sdiff.c cmp.c error.c xmalloc.c getopt.c getopt1.c getopt.h \
-	fnmatch.c fnmatch.h alloca.c
+	fnmatch.c fnmatch.h
 distfiles = $(srcs) README INSTALL NEWS diagmeet.note Makefile.in \
 	stamp-h.in config.hin configure configure.in COPYING ChangeLog \
-	diff.texi diff.info* texinfo.tex \
-	install-sh mkinstalldirs
+	diff.texi install-sh mkinstalldirs
 
 PROGRAMS = cmp diff diff3 sdiff
 
-all: $(PROGRAMS) info
+all: $(PROGRAMS)
 
 COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -I. -I$(srcdir) $(CFLAGS)
 
@@ -79,7 +74,7 @@ COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -I. -I$(srcdir) $(CFLAGS)
 
 diff_o = diff.o analyze.o cmpbuf.o dir.o io.o util.o \
 	context.o ed.o ifdef.o normal.o side.o \
-	fnmatch.o getopt.o getopt1.o regex.o version.o $(ALLOCA) $(LIBOBJS)
+	fnmatch.o getopt.o getopt1.o version.o $(LIBOBJS)
 diff: $(diff_o)
 	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(diff_o) $(LIBS)
 
@@ -105,7 +100,6 @@ diff.dvi: diff.texi
 
 $(diff_o): diff.h system.h
 cmp.o diff3.o sdiff.o: system.h
-context.o diff.o regex.o: regex.h
 cmp.o diff.o diff3.o sdiff.o getopt.o getopt1.o: getopt.h
 diff.o fnmatch.o: fnmatch.h
 analyze.o cmpbuf.o cmp.o: cmpbuf.h

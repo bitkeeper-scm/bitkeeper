@@ -19,7 +19,7 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 #include "system.h"
 #include <stdio.h>
-#include "regex.h"
+#include <regex.h>
 
 #define TAB_WIDTH 8
 
@@ -95,7 +95,7 @@ EXTERN char *file_label[2];
 
 struct regexp_list
 {
-  struct re_pattern_buffer buf;
+  regex_t buf;
   struct regexp_list *next;
 };
 

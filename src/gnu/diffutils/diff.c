@@ -646,14 +646,18 @@ add_regexp (reglist, pattern)
      char const *pattern;
 {
   struct regexp_list *r;
-  char const *m;
+  char rerr[80];
+  int m;
 
   r = (struct regexp_list *) xmalloc (sizeof (*r));
-  bzero (r, sizeof (*r));
-  r->buf.fastmap = xmalloc (256);
-  m = re_compile_pattern (pattern, strlen (pattern), &r->buf);
+  m = regcomp (&r->buf, pattern, REG_EXTENDED|REG_NOSUB);
   if (m != 0)
-    error ("%s: %s", pattern, m);
+    {
+      regerror (m, &r->buf, rerr, sizeof (rerr));
+      error ("%s: %s", pattern, rerr);
+      free (r);
+      return;
+    }
 
   /* Add to the start of the list, since it's easier than the end.  */
   r->next = *reglist;

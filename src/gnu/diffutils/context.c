@@ -443,17 +443,21 @@ find_function (file, linenum, linep, lenp)
     {
       /* See if this line is what we want.  */
       struct regexp_list *r;
-      char const *line = file->linbuf[i];
+      char *line = (char *) file->linbuf[i];
       size_t len = file->linbuf[i + 1] - line;
+      char c;
 
+      c = line[len]; line[len] = '\0';
       for (r = function_regexp_list; r; r = r->next)
-	if (0 <= re_search (&r->buf, line, len, 0, len, 0))
+	if (regexec (&r->buf, line, 0, 0, 0) == 0)
 	  {
 	    *linep = line;
 	    *lenp = len;
 	    find_function_last_match = i;
+	    line[len] = c;
 	    return;
 	  }
+      line[len] = c;
     }
   /* If we search back to where we started searching the previous time,
      find the line we found last time.  */
