@@ -7195,7 +7195,7 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 		sccs_sdelta(s, d->parent, parent);
 		unless (strcmp(parent, me) < 0) {
 			fprintf(stderr,
-			    "\t%s: %s,%s have same date and bad key order\n",
+			    "\tcheckrev: %s,%s have same date and bad key order\n",
 			    d->rev, d->parent->rev);
 		}
 	}
@@ -7901,20 +7901,38 @@ sym_err:		error = 1; sc->state |= S_WARNED;
  * For large files, this is a win.
  */
 int
-sccs_admin(sccs *sc, u32 flags, int *new_encp, int *new_compp,
+sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
 	admin *f, admin *l, admin *u, admin *s, char *text)
 {
 	FILE	*sfile = 0;
-	int	new_enc, error = 0, locked, i, old_enc = 0;
+	int	new_enc, new_comp, error = 0, locked, i, old_enc = 0;
 	char	*t;
 	BUF	(buf);
 
-	new_enc = new_encp ? *new_encp : sc->encoding;
+	if (new_encp) {
+		if (streq(new_encp, "text")) new_enc = E_ASCII;
+		else if (streq(new_encp, "ascii")) new_enc = E_ASCII;
+		else if (streq(new_encp, "binary")) new_enc = E_UUENCODE;
+		else if (streq(new_encp, "uugzip")) new_enc = E_UUGZIP;
+		else {
+			fprintf(stderr,	"admin: unknown encoding format %s\n",
+				new_encp);
+			return (-1);
+		}
+	} else	new_enc = (sc->encoding & E_DATAENC);
+
 	if (new_compp) {
-		if (*new_compp & E_GZIP) 
-			new_enc |= E_GZIP;
-		else	new_enc &= ~E_GZIP;
-	}
+		if (streq(new_compp, "gzip")) new_comp = E_GZIP;
+		else if (streq(new_compp, "none")) new_comp = 0;
+		else {
+			fprintf(stderr, "admin: unknown compression format %s\n",
+				new_compp);
+			return (-1);
+		}
+	} else	new_comp = (sc->encoding & ~E_DATAENC);
+
+	new_enc |= new_comp;
+	debug((stderr, "new_enc is %d\n", new_enc));
 	if (new_enc == (E_GZIP|E_UUGZIP)) {
 		fprintf(stderr,
 			"can't compress a file with E_UUGZIP encoding\n");
@@ -8017,62 +8035,123 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		char	*v = &f[i].thing[1];
 
 		flags |= NEWCKSUM;
-		switch (f[i].thing[0]) {
-		    char	buf[500];
+		if (isupper(f[i].thing[0])) {
+			char *fl = f[i].thing;
+			
+			v = strchr(v, '=');
+			if (v) *v++ = '\0';
+			if (v && *v == '\0') v = 0;
 
-		    case 'b':	if (add)
+			if (streq(fl, "EXPAND1")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_EXPAND1;
+				else
+					sc->state &= ~S_EXPAND1;
+			} else if (streq(fl, "BK")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_BITKEEPER;
+				else
+					sc->state &= ~S_BITKEEPER;
+			} else if (streq(fl, "RCS")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_RCS;
+				else
+					sc->state &= ~S_RCS;
+			} else if (streq(fl, "YEAR4")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_YEAR4;
+				else
+					sc->state &= ~S_YEAR4;
+			} else if (streq(fl, "SHELL")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_ISSHELL;
+				else
+					sc->state &= ~S_ISSHELL;
+			} else if (streq(fl, "BRANCHOK")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_BRANCHOK;
+				else
+					sc->state &= ~S_BRANCHOK;
+			} else if (streq(fl, "DEFAULT")) {
+				if (sc->defbranch) free(sc->defbranch);
+				sc->defbranch = v ? strdup(v) : 0;
+			} else if (streq(fl, "ENCODING")) {
+				/* XXX Need symbolic values */
+				if (v) {
+					new_enc = atoi(v);
+					verbose((stderr, "New encoding %d\n", new_enc));
+				} else {
+					fprintf(stderr,
+						"admin: -fENCODING requires a value\n");
+					error = 1;
+					sc->state |= S_WARNED;
+				}
+			}
+#if 0 /* Not in this tree yet... */
+			else if (streq(fl, "HASH")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_HASH;
+				else
+					sc->state &= ~S_HASH;
+			}
+#endif
+			else {
+				if (v) fprintf(stderr,
+					       "admin: unknown flag %s=%s\n",
+					       fl, v);
+				else fprintf(stderr,
+					     "admin: unknown flag %s\n", fl);
+
+				error = 1;
+				sc->state |= S_WARNED;
+			}
+			continue;
+
+		noval:	fprintf(stderr,
+				"admin: flag %s can't have a value\n", fl);
+			error = 1;
+			sc->state = S_WARNED;
+		} else {
+			switch (f[i].thing[0]) {
+				char	buf[500];
+
+			case 'b':
+				if (add)
 					sc->state |= S_BRANCHOK;
 				else
 					sc->state &= ~S_BRANCHOK;
 				break;
-		    case 'd':	if (sc->defbranch) free(sc->defbranch);
+			case 'd':
+				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
 				break;
-		    case 'e':	if (*v) new_enc = atoi(v);
+			case 'e':
+				if (*v) new_enc = atoi(v);
 				verbose((stderr, "New encoding %d\n", new_enc));
 		   		break;
-		    case 'E':	if (add)
-					sc->state |= S_EXPAND1;
-				else
-					sc->state &= ~S_EXPAND1;
-				break;
-		    case 'B':	if (add)
-					sc->state |= S_BITKEEPER;
-				else
-					sc->state &= ~S_BITKEEPER;
-				break;
-		    case 'R':	if (add)
-					sc->state |= S_RCS;
-				else
-					sc->state &= ~S_RCS;
-				break;
-		    case 'Y':	if (add)
-					sc->state |= S_YEAR4;
-				else
-					sc->state &= ~S_YEAR4;
-				break;
-#ifdef S_ISSHELL
-		    case 'X':	if (add)
-					sc->state |= S_ISSHELL;
-				else
-					sc->state &= ~S_ISSHELL;
-				break;
-#endif
-		    default:	sprintf(buf, "%c %s", v[-1], v);
+			default:
+				sprintf(buf, "%c %s", v[-1], v);
 				if (add) {
 					sc->flags =
-					    addLine(sc->flags, strdup(buf));
+						addLine(sc->flags, strdup(buf));
 				} else {
 					unless (removeLine(sc->flags, buf)) {
 						verbose((stderr,
-						    "admin: flag %s not "
-						    "found in %s\n",
-						    buf, sc->sfile));
+					"admin: flag %s not found in %s\n",
+							 buf, sc->sfile));
 						error = 1;
 						sc->state |= S_WARNED;
 					}
 				}
 				break;
+			}
 		}
 	}
 
@@ -10537,7 +10616,9 @@ private void
 do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 {
 	int	i;	/* used by EACH */
+#if 0
 	lod	*lod;
+#endif
 	symbol	*sym;
 	char	type;
 

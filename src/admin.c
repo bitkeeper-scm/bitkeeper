@@ -14,8 +14,6 @@ usage: admin options [- | file file file...]\n\
     -y<comment>		comment for change\n\
     -n			create new SCCS history file\n\
     -i[<file>]		read initial text from <file> (default stdin)\n\
-    -b			force file to be treated as binary\n\
-    -g			same as -b, but compress file before checking in\n\
     -t[<file>]		read description from <file>\n\
     -T			clear description\n\
     -h			check s.file structure\n\
@@ -35,14 +33,19 @@ usage: admin options [- | file file file...]\n\
 \n\
     -B			make the landing pad bigger\n\
     -C			remove the changeset information\n\
-    -Z			compress stored s.file\n\
-    -U			uncompres stored s.file (undoes -Z)\n\
+    -Z[alg]		compress stored s.file with <alg>, which may be:\n\
+		gzip	like gzip(1) (default)
+		none	no compression
+    -E[enc]		treat file as encoded with <enc>, which may be:
+		text	plain text
+		ascii	same
+		binary	binary file (must uuencode before diffing)
+		uugzip	same, but compress before uuencode
     -u			make sure that all dates are increasing\n\
 			(dangerous, this changes the keys)\n\
 \n\
     -a<u>|<g>		add user/group (ATT compat)\n\
-    -e<u>|<g>		delete user/group (ATT compat)\n\
-    -A<u>|<g>		delete user/group (ATT compat)\n";
+    -e<u>|<g>		delete user/group (ATT compat)\n";
 
 
 #define	OP(W, V, F) if (next##W < A_SZ-1) { \
@@ -53,9 +56,11 @@ usage: admin options [- | file file file...]\n\
 			exit(1); \
 		    }
 
-int	do_checkin(char *nm, int *ep, int fl, char *rev, char *newf, char *com);
+int	do_checkin(char *nm, char *ep, int fl,
+		   char *rev, char *newf, char *com);
 void	clearCset(sccs *s, int flags);
 void	clearPath(sccs *s, int flags);
+void	touch(sccs *s);
 int	setMerge(sccs *sc, char *merge, char *rev);
 
 int
@@ -71,8 +76,8 @@ main(int ac, char **av, char **ev)
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
 	char	*name;
-	int	encoding = 0, *encp = 0, error = 0;
-	int	compress = 0, *compp = 0;
+	char	*encp = 0, *compp = 0;
+	int	error = 0;
 	int	bigpad = 0;
 	int	fastSym, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0, touchGfile = 0;
@@ -88,11 +93,11 @@ main(int ac, char **av, char **ev)
 	bzero(s, sizeof(s));
 	bzero(l, sizeof(l));
 	while ((c =
-	    getopt(ac, av, "a;A;e;f;F;d;i|L;m;M;np|r;y|sS;Tt|BbCghHPquUzZ")) != -1) {
+	    getopt(ac, av, "a;e;f;F;d;i|nr;y|M;m;p|PZ|E;L|S;t|TBChHsquz"))
+	       != -1) {
 		switch (c) {
 		/* user|group */
 		    case 'a':	OP(u, optarg, A_ADD); break;
-		    case 'A':
 		    case 'e':	OP(u, optarg, A_DEL); break;
 		/* flags */
 		    case 'f':	OP(f, optarg, A_ADD); break;
@@ -126,12 +131,15 @@ main(int ac, char **av, char **ev)
 		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
 				break;
-		/* Changeset info */
-		    case 'C':	rmCset = 1; flags |= NEWCKSUM; break;
+		    case 'P':	rmPath = 1; flags |= NEWCKSUM; break;
+		/* encoding and compression */
+		    case 'Z':	compp = optarg ? optarg : "gzip";
+				flags |= NEWCKSUM;
+				touchGfile++;
+				break;
+		    case 'E':	encp = optarg; break;
 		/* LOD's */
 		    case 'L':	OP(l, optarg, A_ADD); break;
-		/* Pathname info */
-		    case 'P':	rmPath = 1; flags |= NEWCKSUM; break;
 		/* symbols */
 		    case 'S':	OP(s, optarg, A_ADD); break;
 		/* text */
@@ -139,25 +147,15 @@ main(int ac, char **av, char **ev)
 		    case 'T':	text = ""; break;
 		/* singletons */
 		    case 'B':	bigpad++; break;
-		    case 'b':	encp = &encoding, encoding = E_UUENCODE; break;
-		    case 'g':	encp = &encoding, encoding = E_UUGZIP; break;
+		    case 'C':	rmCset = 1; flags |= NEWCKSUM; break;
 		    case 'h':	flags |= ADMIN_FORMAT; break;
 		    case 'H':	flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
 				break;
 		    case 's':
 		    case 'q':	flags |= SILENT; break;
 		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;
-		    case 'U':	compp = &compress;
-				compress &= ~E_GZIP;
-				flags |= NEWCKSUM;
-				break;
 		    case 'z':	init_flags |= INIT_NOCKSUM;
 		    		flags |= NEWCKSUM;
-				touchGfile++;
-				break;
-		    case 'Z':	compp = &compress;
-				compress |= E_GZIP;
-		   		flags |= NEWCKSUM;
 				touchGfile++;
 				break;
 		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
@@ -332,15 +330,28 @@ clearPath(sccs *s, int flags)
  * to stuff the initFile into the sccs* and have checkin() respect that.
  */
 int
-do_checkin(char *name, int *encp,
+do_checkin(char *name, char *encp,
 	int flags, char *rev, char *newfile, char *comment)
 {
 	delta	*d = 0;
 	sccs	*s;
-	int	error;
+	int	error, enc;
 
 	unless (s = sccs_init(name, flags, 0)) { return (-1); }
-	s->encoding = encp ? *encp : E_ASCII;
+	/* XXX Duplicate code with sccs_admin() */
+	if (encp) {
+		if (streq(encp, "text")) enc = E_ASCII;
+		else if (streq(encp, "ascii")) enc = E_ASCII;
+		else if (streq(encp, "binary")) enc = E_UUENCODE;
+		else if (streq(encp, "uugzip")) enc = E_UUGZIP;
+		else {
+			fprintf(stderr,	"admin: unknown encoding format %s\n",
+				encp);
+			return (-1);
+		}
+	} else	enc = E_ASCII;
+
+	s->encoding = enc;
 	if (HAS_SFILE(s)) {
 		fprintf(stderr, "admin: %s exists.\n", s->sfile);
 		sccs_free(s);
@@ -429,6 +440,7 @@ setMerge(sccs *sc, char *merge, char *rev)
 	return 0;
 }
 
+void
 touch(sccs *s) 
 {
 	struct utimbuf ut;

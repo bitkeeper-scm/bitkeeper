@@ -250,7 +250,7 @@ echo -------------- in multiple files:
 for i in FILE1 FILE2 FILE3 FILE4
 do cp SCCS/s.FILE SCCS/s.$i
 done
-admin -qsA=1.3 FILE2
+admin -qSA=1.3 FILE2
 echo $N Range test -cA  in only some files ...........$NL
 GOOD=`prs -cA FILE2 | head -1`
 if [ "$GOOD" != "`prs -cA FILE1 FILE2 FILE3 FILE4 | head -1`" ]
@@ -427,7 +427,7 @@ get $S YEAR4
 if [ '01/10/01' != "`cat YEAR4`" ]; then echo Failed on 1.3.; exit 1; fi
 echo OK
 echo $N Checking Y2K date expansion w -fY ...........$NL
-admin $Q -fY YEAR4
+admin $Q -fYEAR4 YEAR4
 get $S -r1.1 YEAR4
 if [ '06/23/1997' != "`cat YEAR4`" ]; then echo Failed on 1.1.; exit 1; fi
 get $S YEAR4

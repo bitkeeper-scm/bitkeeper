@@ -505,7 +505,7 @@ typedef struct patch {
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
 #define	PATCH_META	0x0004	/* delta is metadata */
 
-int	sccs_admin(sccs *sc, u32 flgs, int *encoding, int *compress,
+int	sccs_admin(sccs *sc, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_checkin(sccs *s, u32 flags, delta *d);

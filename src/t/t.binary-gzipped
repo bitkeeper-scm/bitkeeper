@@ -11,7 +11,7 @@ chmod u+w ${data}
 echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g >> $data
 cp $data saved_bin
 binary_data=saved_bin
-admin $Q -i${data} -b uuencode
+admin $Q -i${data} -Ebinary uuencode
 co $Q -l uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
@@ -71,7 +71,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK 
 echo $N Trying to check in some gzipped+uu data .....$NL
 cp ${binary_data} data
-admin $Q -idata -g gzipuu
+admin $Q -idata -Euugzip gzipuu
 co -l $Q gzipuu
 cmp -s ${binary_data} gzipuu
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
@@ -120,9 +120,9 @@ if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 cmp -s data gzipped
 if [ $? -ne 0 ]; then echo Failed - files differ.; diff data gzipped; exit 1; fi
 echo OK
-echo $N "admin -Z; admin -U should be a no-op........."$NL
+echo $N "admin -Z; admin -Znone should be a no-op....."$NL
 cp SCCS/s.gzipped SCCS/s.cmp
-admin $Q -U cmp
+admin $Q -Znone cmp
 cmp SCCS/s.cmp SCCS/s.ref
 if [ $? -ne 0 ]; then echo Failed - files differ.; diff SCCS/s.cmp SCCS/s.ref; exit 1; fi
 echo OK
@@ -142,7 +142,7 @@ if [ $? -ne 0 ]; then echo Clean failed ; exit 1; fi
 if [ -f gzipped ]; then echo Clean failed ; exit 1; fi
 echo OK
 echo $N Make a gzipped file ascii ...................$NL
-admin -U gzipped
+admin -Znone gzipped
 grep -q '^.f e 0$' SCCS/s.gzipped
 if [ $? -ne 0 ]; then echo Wrong encoding.; exit 1; fi
 echo OK

@@ -139,7 +139,7 @@ if [ -f core ]; then echo core dumped; exit 1; fi
 if [ -w date ]; then echo date is writable and should not be; exit 1; fi
 if [ "$X" = "`wc date`" ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
-echo $N RCS keywords should fail w/o -fR ............$NL
+echo $N RCS keywords should fail w/o -fRCS ..........$NL
 get $S -e date
 ${ECHO} '$Id$' > date
 ci $S -y date
@@ -147,8 +147,8 @@ get $S date
 if [ -w date ]; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' != "`cat date`" ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N RCS keywords should work w/ -fR .............$NL
-admin $Q -fR date
+echo $N RCS keywords should work w/ -fRCS ...........$NL
+admin $Q -fRCS date
 get $S date
 if [ -w date ]; then echo date is writable and should not be; exit 1; fi
 if [ '$Id$' = "`cat date`" ]; then echo Failed.; exit 1; fi
