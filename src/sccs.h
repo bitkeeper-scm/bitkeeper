@@ -501,6 +501,7 @@ void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
 char	**sccs_files(char **, int);
+u16	sccs_nextlod(sccs *s);
 int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
