@@ -523,7 +523,7 @@ import_text () {
 
 	cd "$2"
 	if [ X$QUIET = X ]; then msg Checking in plain text files...; fi
-	bk ci -1i $VERBOSE - < ${TMP}import$$ || Done 1
+	bk ci -i $VERBOSE - < ${TMP}import$$ || Done 1
 }
 
 import_RCS () {

@@ -59,12 +59,12 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
-	delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
+	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
 	export.o fdiff.o file_gif.o \
 	find.o findkey.o fix.o fixlod.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	isascii.o key2rev.o key2path.o keysort.o kvfile.o level.o \
+	idcache.o isascii.o key2rev.o key2path.o keysort.o kvfile.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
@@ -95,7 +95,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	resolve_renames.o resolve_tags.o rmdel.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
-	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
+	set.o setup.o sfiles.o sfio.o shrink.o sinfo.o \
 	slib.o smerge.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o timestamp.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \

@@ -2320,7 +2320,7 @@ pass4_apply(opts *opts)
 	save = fopen(BACKUP_LIST, "w+");
 	assert(save);
 	unlink(PASS4_TODO);
-	sprintf(key, "bk sfind %s > " PASS4_TODO, ROOT2RESYNC);
+	sprintf(key, "bk sfiles %s > " PASS4_TODO, ROOT2RESYNC);
 	if (system(key) || !(f = fopen(PASS4_TODO, "r+")) || !save) {
 		fprintf(stderr, "Unable to create|open " PASS4_TODO);
 		fclose(save);

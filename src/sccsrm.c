@@ -59,7 +59,7 @@ sccs_rmName(sccs *s, int useCommonDir)
 			return (NULL);
 		}
 		sprintf(path, "%s/BitKeeper/deleted/SCCS",
-				fullname(sPath(s->proj->root, 1), 0));
+		    fullname(s->proj->root, 0));
 		t = &path[strlen(path)];
 		*t++ = '/';
 	} else {
