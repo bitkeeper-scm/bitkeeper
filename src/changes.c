@@ -336,8 +336,6 @@ doit(int dash)
 				if (want(s, e)) e->flags |= D_SET;
 				if (e == s->rstart) break;
 			}
-		} else {
-			s->state &= ~S_SET;
 		}
 	} else if (dash) {
 		while (fgets(cmd, sizeof(cmd), stdin)) {

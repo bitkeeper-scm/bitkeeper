@@ -33,9 +33,7 @@ win32_common_setup()
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
 	export DO_REMOTE
 
-	# turn off pager - needed in win98
-	PAGER=cat
-	export PAGER BK_USER
+	export BK_USER
 }
 
 unix_common_setup()
@@ -200,6 +198,9 @@ setup_env()
 	check_w
 	chech_enclosing_repo
 
+	# turn off pager - needed in win98
+	BK_PAGER=cat
+	export BK_PAGER
 
 	unset BK_BIN _BK_GMODE_DEBUG
 	BK_LICENSE=ACCEPTED
