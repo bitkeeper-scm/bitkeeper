@@ -19,7 +19,7 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
 {
     unsigned char pub_expt[512], ecc_shared[256], IV[MAXBLOCKSIZE], skey[MAXBLOCKSIZE];
     ecc_key pubkey;
-    unsigned long x, y, z, pubkeysize;
+    unsigned long x, y, pubkeysize;
     int keysize, blocksize, hashsize;
     symmetric_CTR ctr;
 
@@ -122,7 +122,7 @@ int ecc_decrypt(const unsigned char *in,  unsigned long len,
                       ecc_key *key)
 {
    unsigned char shared_secret[256], skey[MAXBLOCKSIZE];
-   unsigned long x, y, z, res, hashsize, blocksize;
+   unsigned long x, y, res, hashsize, blocksize;
    int cipher, hash, keysize;
    ecc_key pubkey;
    symmetric_CTR ctr;

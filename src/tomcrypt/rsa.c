@@ -347,7 +347,6 @@ int rsa_import(const unsigned char *in, rsa_key *key)
 
    /* test packet header */
    if (packet_valid_header((unsigned char *)in, PACKET_SECT_RSA, PACKET_SUB_KEY) == CRYPT_ERROR) { 
-      crypt_error = "Invalid input for rsa_import().";
       return CRYPT_ERROR;
    }
 

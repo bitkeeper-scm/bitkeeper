@@ -1,5 +1,8 @@
 # MAKEFILE for GCC
-CFLAGS = -O3 -Wall -Wsign-compare -Wno-unused -c -I./ -I./zlib/
+#
+# Tom ST Denis
+#
+CFLAGS = -O6 -Wall -Wsign-compare -c -I./ -I./zlib/
 CC=gcc
 
 #linker
@@ -13,8 +16,8 @@ ARFLAGS=rs
 EXT=.exe
 
 #change this to where you want the .h and .a file to be installed
-LIBPATH = C:/mingw32/lib
-INCPATH = C:/mingw32/include
+LIBPATH=C:/mingw32/lib
+INCPATH=C:/mingw32/include
 
 #change this to the name of your copy command
 CP      = copy

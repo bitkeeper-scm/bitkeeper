@@ -1,4 +1,16 @@
--- not yet released
+Sept 19th, 2002
+v0.64  -- wrote makefile for the GBA device [and hacked the demos/test.c file to support it conditionally]
+       -- Fixed error in PK (e.g. ECC, RSA, DH) import functions where I was clobbering the packet error messages
+       -- fixed more typos in the manual
+       -- removed all unused variables from the core library (ignore the ID_TAG stuff)
+       -- added "const char *crypt_build_settings" string which is a build time constant that gives a listing
+          of all the build time options.  Useful for debugging since you can send that to me and I will know what 
+          exactly you had set for the mycrypt_cfg.h file.
+       -- Added control over endianess.  Out of the box it defaults to endianess neutral but you can trivially 
+          configure the library for your platform.  Using this I boosted RC5 from 660Mbit/sec to 785Mbit/sec on my 
+          Athlon box.  See "mycrypt_cfg.h" for more information.
+
+Sept 11th, 2002
 v0.63  -- Made hashsum demo output like the original md5sum program 
        -- Made additions to the examples in the manual (fixed them up a bunch)
        -- Merged in the base64 code from Wayne Scott (wscott@bitmover.com)

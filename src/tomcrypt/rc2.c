@@ -55,7 +55,7 @@ const struct _cipher_descriptor rc2_desc = {
 int rc2_setup(const unsigned char *key, int keylen, int rounds, symmetric_key *skey)
 {
    unsigned *xkey = skey->rc2.xkey;
-   unsigned char x, tmp[128];
+   unsigned char tmp[128];
    unsigned T8, TM;
    int i, bits;
 

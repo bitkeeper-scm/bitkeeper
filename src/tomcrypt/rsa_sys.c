@@ -23,7 +23,7 @@ int rsa_encrypt(const unsigned char *in,  unsigned long len,
 {
    unsigned char sym_IV[MAXBLOCKSIZE], sym_key[MAXBLOCKSIZE], rsa_in[4096], rsa_out[4096];
    symmetric_CTR ctr;
-   unsigned long x, y, z, blklen, rsa_size;
+   unsigned long x, y, blklen, rsa_size;
    int keylen;
 
    /* are the parameters valid? */

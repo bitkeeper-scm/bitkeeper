@@ -7,6 +7,22 @@
 #ifndef MYCRYPT_CFG_H
 #define MYCRYPT_CFG_H
 
+/* Controls endianess and size of registers.  Leave uncommented to get platform neutral [slower] code */
+
+/* #define ENDIAN_LITTLE */
+/* #define ENDIAN_BIG */
+
+/* #define ENDIAN_32BITWORD */
+/* #define ENDIAN_64BITWORD */
+
+#if defined(ENDIAN_BIG) || defined(ENDIAN_LITTLE) && !(defined(ENDIAN_32BITWORD) || defined(ENDIAN_64BITWORD))
+    #error You must specify a word size as well as endianess in mycrypt_cfg.h
+#endif
+
+#if !(defined(ENDIAN_BIG) || defined(ENDIAN_LITTLE))
+   #define ENDIAN_NEUTRAL
+#endif
+
 /* Clean the stack after sensitive functions.  Not always required... 
  * With this defined most of the ciphers and hashes will clean their stack area
  * after usage with a (sometimes) huge penalty in speed.  Normally this is not

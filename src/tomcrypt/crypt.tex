@@ -44,7 +44,7 @@
 \def\gap{\vspace{0.5ex}}
 \makeindex
 \begin{document}
-\title{Tiny Crypto Library \\ ``LibTomCrypt'' \\ Version 0.63}
+\title{Tiny Crypto Library \\ ``LibTomCrypt'' \\ Version 0.64}
 \author{Tom St Denis \\
 Algonquin College \\
 \\
@@ -1483,23 +1483,27 @@ int establish_secure_socket(int sock, int mode, unsigned char *key,
    if (mode == 0) {
       /* mode 0 so we send first */
       if (send(sock, buf, x, 0) != x) {
+         crypt_error = "Error writing socket in establish_secure_socket()."
          res = CRYPT_ERROR;
          goto done2;
       }          
 
       /* get their key */
       if (recv(sock, buf2, 4096, 0) <= 0) {
+         crypt_error = "Error reading socket in establish_secure_socket()."
          res = CRYPT_ERROR;
          goto done2;
       }
    } else {
       /* mode >0 so we send second */
       if (recv(sock, buf2, 4096, 0) <= 0) {
+         crypt_error = "Error reading socket in establish_secure_socket()."
          res = CRYPT_ERROR;
          goto done2;
       }
 
       if (send(sock, buf, x, 0) != x) {
+         crypt_error = "Error writing socket in establish_secure_socket()."
          res = CRYPT_ERROR;
          goto done2;
       }
@@ -2028,7 +2032,6 @@ $n$ it requires $\sqrt n$ work.  The following table sumarizes the work required
 \begin{tabular}{|c|c|}
     \hline ECC Key Size (bits) & Work Factor ($log_2$) \\
     \hline 192 & 96  \\
-    \hline 224 & 112 \\
     \hline 256 & 128 \\
     \hline 384 & 192 \\
     \hline 521 & 260.5 \\

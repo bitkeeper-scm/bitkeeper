@@ -603,7 +603,6 @@ int ecc_import(const unsigned char *in, ecc_key *key)
 
    /* check type */
    if (packet_valid_header((unsigned char *)in, PACKET_SECT_ECC, PACKET_SUB_KEY) == CRYPT_ERROR) { 
-      crypt_error = "Invalid input for ecc_import().";
       return CRYPT_ERROR;
    }
 

@@ -21,7 +21,6 @@ int rc5_setup(const unsigned char *key, int keylen, int num_rounds, symmetric_ke
 #endif
 {
     unsigned long L[64], S[50], A, B, i, j, v, s, t, l;
-    int idx;
 
     /* test parameters */
     if (num_rounds == 0) { 
