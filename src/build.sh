@@ -3,19 +3,25 @@
 CC=gcc
 LD=gcc
 MAKE=gmake
-uname -s | grep "_NT"
-if [ $?  != 0 ]
-then PATH=/opt/gnu/bin:/usr/local/bin:/usr/freeware/bin:/usr/ccs/bin:$PATH
-fi
-case `uname -s` in
-	SunOS)	XLIBS="-lnsl -lsocket"
+case "X`uname -s`" in
+    *_NT*)
+    	;;
+    *)	GNU=/opt/gnu/bin:/usr/local/bin:/usr/freeware/bin
+	SCCS=/usr/ccs/bin
+	GREP=/usr/xpg4/bin:/usr/xpg2/bin
+	PATH=$GNU:$SCCS:$GREP:$PATH
+	export PATH
+	;;
+esac
+case "X`uname -s`" in
+	XSunOS)	XLIBS="-lnsl -lsocket"
 		export XLIBS
 		MAKE="make -e"
 		export MAKE
 		;;
-	AIX)	MAKE=make
+	XAIX)	MAKE=make
 		;;
-	Windows_NT|CYGWIN_NT*)
+	XWindows_NT|XCYGWIN_NT*)
 		SYS=win32
 		MAKE="make -e"
 		CC=cl
