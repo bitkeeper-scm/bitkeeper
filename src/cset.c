@@ -1142,7 +1142,7 @@ sccs_patch(sccs *s, cset_t *cs)
 {
 	delta	*d;
 	int	deltas = 0, prs_flags = (PRS_PATCH|SILENT);
-	int	i, n, newfile, empty; 
+	int	i, n, newfile, empty, encoding;
 	delta	**list;
 
         if (sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
@@ -1150,6 +1150,10 @@ sccs_patch(sccs *s, cset_t *cs)
 		fprintf(stderr,
 		    "Run ``bk -r check -a'' for more information.\n");
 		cset_exit(1);
+	}
+	if (s->state & S_CSET) {
+		encoding = s->encoding;
+		if (encoding & E_GZIP) sccs_unzip(s);
 	}
 	if (cs->compat) prs_flags |= PRS_COMPAT;
 
@@ -1233,10 +1237,7 @@ sccs_patch(sccs *s, cset_t *cs)
 			int	rc = 0;
 
 			if (s->state & S_CSET) {
-				if (d->added) {
-					rc = sccs_getdiffs(s,
-					    d->rev, GET_HASHDIFFS, "-");
-				}
+				if (d->added) rc = cset_diffs(s, d->serial);
 			} else unless (empty) {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
@@ -1258,6 +1259,7 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 	cs->ndeltas += deltas;
 	if (list) free(list);
+	if ((s->state & S_CSET) && (encoding & E_GZIP)) sccs_gzip(s);
 }
 
 
