@@ -293,6 +293,10 @@ proc ::tkwizard::wizProxy-configure {name args} \
 
         # Some attributes require additional processing
         switch -exact -- $option {
+	    -height -
+	    -width {
+		$wizConfig(toplevel) configure $option $value
+	    }
             -background {
                 $wizConfig(toplevel) configure -background $value
             }

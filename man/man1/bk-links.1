@@ -1,7 +1,7 @@
 .so ../bk-macros
 .TH "bk links" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk links \- make links to the bitkeeper binary installation directory
+bk links \- make links to the BitKeeper binary installation directory
 .SH SYNOPSIS
 .\"
 .B bk links
@@ -10,11 +10,18 @@ bk links \- make links to the bitkeeper binary installation directory
 .SH DESCRIPTION
 .LP
 Makes links from BitKeeper commands in the specified public directory to 
-the executables in which the BitKeeper binary is installed.  
-.LP
-Makes links to /usr/bin if no public directory is specified.
-.LP
+the executables in the named BitKeeper binary directory.
 This is typically used after installing BitKeeper as a non-root user.
+.LP
+The links are made to /usr/bin if no public directory is specified.
+.LP
+The purpose of the symbolic links is to provide compatible interfaces for
+those tools which understand the \*[ATT] system.  \*[BK] deliberately 
+chooses to look like \*[SC] so that programs such as make(1), patch(1),
+emacs(1), and others will automatically work with \*[BK] the same way
+they worked with \*[SC].  \*[BK] is not an \*[SC] based system, it 
+just appears as such on the command line for compatibility with existing
+applications.
 .SH EXAMPLE
 .DS
 $ bk links /usr/libexec/bitkeeper /usr/local/bin
