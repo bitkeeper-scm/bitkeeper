@@ -27,7 +27,8 @@ help_main(int ac,  char **av)
 				fprintf( f,
 	"		-------------- %s help ---------------\n\n", av[i]);
 				fclose(f);
-				sprintf(buf, "%sbk %s --help 2>&1", bin, av[i]);
+				sprintf(buf, "%sbk %s --help >> %s 2>&1",
+							bin, av[i], help_out);
 				system(buf);
 			} else {
 				f = fopen(help_out, "ab");
