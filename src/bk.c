@@ -84,6 +84,7 @@ int repo_main(int, char **);
 int pull_main(int, char **);
 int log_main(int, char **);
 int abort_main(int, char **);
+int graft_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"unlock", unlock_main },
@@ -167,6 +168,7 @@ struct command cmdtbl[100] = {
 	{"pull", pull_main},
 	{"log", log_main},
 	{"abort", abort_main},
+	{"graft", graft_main},
 	{0, 0},
 };
 

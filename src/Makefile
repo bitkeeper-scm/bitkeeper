@@ -16,7 +16,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  cset.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o files.o finddirs.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getlog.o getopt.o \
-	  gettemp.o getuser.o glob.o help.o host.o isascii.o \
+	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
 	  key2rev.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
 	  lod.o log.o logaddr.o logchangeset.o mkdir.o mmap.o \
@@ -499,6 +499,7 @@ Z=zlib/zlib.h zlib/zconf.h
 abort.o:	abort.c $(H) $(Z)
 adler32.o:	adler32.c $(H) $(Z)
 admin.o:	admin.c $(H)
+bk.o:		bk.c $(H)
 bkd.o:		bkd.c $(B) $(H) $(Z)
 bkd_cd.o:	bkd_cd.c $(B) $(H) $(Z)
 bkd_client.o:	bkd_client.c $(B) $(H) $(Z)
@@ -511,7 +512,6 @@ bkd_pwd.o:	bkd_pwd.c $(B) $(H) $(Z)
 bkd_rootkey.o:	bkd_rootkey.c $(B) $(H) $(Z)
 bkd_status.o:	bkd_status.c $(B) $(H) $(Z)
 bkd_version.o:	bkd_version.c $(B) $(H) $(Z)
-bk.o:		bk.c $(H)
 bkusers.o:	bkusers.c $(H)
 check.o:	check.c $(H) range.h
 chksum.o:	chksum.c
@@ -524,21 +524,27 @@ cset.o:		cset.c $(H) range.h $(Z)
 delta.o:	delta.c $(H)
 diffs.o:	diffs.c $(H) range.h
 dirname.o:	dirname.c config.h
+disksp.o:	port/disksp.c $(H)
 export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 filecopy.o:	filecopy.c $(H)
 finddirs.o:	finddirs.c $(H)
+findprog.o:	port/findprog.c $(H) 
 fix.o:		fix.c $(H)
+fullname.o:	port/fullname.c $(H)
 g2sccs.o:	g2sccs.c $(H)
 gca.o:		gca.c $(H)
 get.o:		get.c $(H)
 gethelp.o:	gethelp.c $(H)
 gethost.o:	gethost.c
+gethost.o:	port/gethost.c $(H)
+getinput.o:	port/getinput.c $(H)
 getlog.o:	getlog.c $(H)
 getopt.o:	getopt.c $(H)
 gettemp.o:	gettemp.c $(H)
 getuser.o:	getuser.c
 glob.o:		glob.c $(H)
+graft.o:	graft.c $(H)
 help.o:		help.c $(H)
 host.o:		host.c $(H)
 isascii.o:	isascii.c
@@ -551,6 +557,7 @@ libsfiles.o:	libsfiles.c $(H)
 libusers.o:	libusers.c $(H) range.h
 lines.o:	lines.c $(H)
 localtm.o:	localtm.c $(H)
+lock.o:		lock.c $(H)
 locking.o:	locking.c $(H)
 lod.o:		lod.c $(H) range.h $(Z)
 logaddr.o:	logaddr.c $(H)
@@ -562,28 +569,19 @@ names.o:	names.c $(H)
 newrev.o:	newrev.c $(H)
 parent.o:	parent.c $(H)
 pending.o:	pending.c $(H)
-popen.o:	popen.c $(H)
-disksp.o:	port/disksp.c $(H)
-findprog.o:	port/findprog.c $(H) 
-fullname.o:	port/fullname.c $(H)
-gethost.o:	port/gethost.c $(H)
-getinput.o:	port/getinput.c $(H)
 platforminit.o:	port/platforminit.c $(H)
-randomBits.o:	port/randomBits.c $(H)
-samepath.o:	port/samepath.c $(H)
-sccs_root.o:	port/sccs_root.c $(H)
-spawn.o:	port/spawn.c $(H)
+popen.o:	popen.c $(H)
 prs.o:		prs.c $(H) range.h
 pull.o:		pull.c $(B) $(H) $(Z)
 purify.o:	purify.c $(H)
 push.o:		push.c $(B) $(H) $(Z)
 r2c.o:		r2c.c $(H) range.h
+randomBits.o:	port/randomBits.c $(H)
 range.o:	range.c $(H) range.h
 rcs.o:		rcs.c $(H)
 receive.o:	receive.c $(H)
 rechksum.o:	rechksum.c $(H)
 renumber.o:	renumber.c $(H)
-lock.o:		lock.c $(H)
 resolve.o:	resolve.c resolve.h $(H)
 resolve_contents.o:	resolve_contents.c resolve.h $(H)
 resolve_create.o:	resolve_create.c resolve.h $(H)
@@ -592,7 +590,9 @@ resolve_generic.o:	resolve_generic.c resolve.h $(H)
 resolve_modes.o:	resolve_modes.c resolve.h $(H)
 resolve_renames.o:	resolve_renames.c resolve.h $(H)
 rmdel.o:	rmdel.c $(H)
+samepath.o:	port/samepath.c $(H)
 sccs_mv.o:	sccs_mv.c $(H)
+sccs_root.o:	port/sccs_root.c $(H)
 sccscat.o:	sccscat.c $(H) range.h
 sccslog.o:	sccslog.c $(H) range.h
 sccsmv.o:	sccsmv.c $(H)
@@ -608,6 +608,7 @@ sids.o:		sids.c $(H)
 sinfo.o:	sinfo.c $(H)
 slib.o:		slib.c $(H) zgets.h
 smoosh.o:	smoosh.c $(H)
+spawn.o:	port/spawn.c $(H)
 status.o:	status.c $(H)
 stripdel.o:	stripdel.c $(H) range.h
 takepatch.o:	takepatch.c $(H) $(Z)

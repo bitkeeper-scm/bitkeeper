@@ -42,6 +42,7 @@ private int	stripChecks(sccs *s, delta *d, char *who);
 private delta*	csetFileArg(delta *d, char *name);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
+private delta*	randomArg(delta *d, char *arg);
 private delta*	zoneArg(delta *d, char *arg);
 delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
@@ -486,6 +487,7 @@ freedelta(delta *d)
 	if (d->symlink && !(d->flags & D_DUPLINK)) free(d->symlink);
 	if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
 	if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
+	if (d->random) free(d->random);
 	if (d->zone && !(d->flags & D_DUPZONE)) free(d->zone);
 	if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
 		free(d->csetFile);
@@ -2567,8 +2569,7 @@ meta(sccs *s, delta *d, char *buf)
 		modeArg(d, &buf[3]);
 		break;
 	    case 'R':
-		assert(s->random == 0);
-	    	s->random = strnonldup(&buf[3]);
+		randomArg(d, &buf[3]);
 		break;
 	    case 'S':
 		symArg(s, d, &buf[3]);
@@ -3593,7 +3594,6 @@ sccs_free(sccs *s)
 	freeLines(s->flags);
 	freeLines(s->text);
 	if (s->proj && !(s->state & S_SAVEPROJ)) proj_free(s->proj);
-	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
 	bzero(s, sizeof(*s));
@@ -6412,9 +6412,9 @@ delta_table(sccs *s, FILE *out, int willfix)
 				fputmeta(s, buf, out);
 			}
 		}
-		if (!d->next && s->random) {
+		if (d->random) {
 			p = fmts(buf, "\001cR");
-			p = fmts(p, s->random);
+			p = fmts(p, d->random);
 			*p++ = '\n';
 			*p   = '\0';
 			fputmeta(s, buf, out);
@@ -7733,7 +7733,7 @@ checkin(sccs *s,
 		delta	*d = n0 ? n0 : n;
 
 		randomBits(buf);
-		if (buf[0]) s->random = strdup(buf);
+		if (buf[0]) d->random = strdup(buf);
 		unless (hasComments(d)) {
 			sprintf(buf, "BitKeeper file %s",
 			    fullname(s->gfile, 0));
@@ -8012,9 +8012,11 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 
 	/*
 	 * Make sure that the revision is well formed.
+	 * The random part says that we allow x.y.z.0 if has random bits;
+	 * that is for grafted trees.
 	 */
 	if (!d->r[0] || (!d->r[2] && !d->r[1] && (d->r[0] != 1)) ||
-	    (d->r[2] && !d->r[3]))
+	    (d->r[2] && (!d->r[3] && !d->random)))
 	{
 		unless (flags & ADMIN_SHUTUP) {
 			fprintf(stderr, "%s: bad revision %s (parent = %s)\n",
@@ -8300,6 +8302,9 @@ hostArg(delta *d, char *arg) { ARG(hostname, D_NOHOST, D_DUPHOST); }
 
 private delta *
 pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
+
+private delta *
+randomArg(delta *d, char *arg) { ARG(random, 0, 0); }
 
 /*
  * Handle either 0664 style or -rw-rw-r-- style.
@@ -8912,12 +8917,12 @@ insert_1_0(sccs *s)
 		d->date = t->date;	/* somebody is using this key already */
 		d->sum = t->sum;
 	} else {
-		unless (s->random) {
+		unless (d->random) {
 			char	buf[20];
 
 			buf[0] = 0;
 			randomBits(buf);
-			if (buf[0]) s->random = strdup(buf);
+			if (buf[0]) d->random = strdup(buf);
 		}
 		d->date = t->date - 1;
 		d->sum = (unsigned short) almostUnique(1);
@@ -9807,13 +9812,7 @@ skip:
 
 	/* Random bits are used only for 1.0 deltas in conversion scripts */
 	if (WANT('R')) {
-		unless (streq("1.0", d->rev)) {
-			fprintf(stderr, "sccs_getInit: random only on 1.0\n");
-		} else if (sc) {
-			sc->random = strnonldup(&buf[2]);
-		} else {
-			fprintf(stderr, "sccs_getInit: random needs sccs\n");
-		}
+		d->random = strnonldup(&buf[2]);
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -9833,9 +9832,16 @@ skip:
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
+	/* Random bits are used only for 1.0 deltas in conversion scripts */
 	if (WANT('V')) {
-		assert(sc);
-		sc->version = atoi(&buf[3]);
+		unless (streq("1.0", d->rev)) {
+			fprintf(stderr, "sccs_getInit: version only on 1.0\n");
+		} else if (sc) {
+			int	vers = atoi(&buf[3]);
+
+			if (sc->version < vers) sc->version = vers;
+		}
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* Excludes are optional and are specified as keys.
@@ -9882,6 +9888,10 @@ out:	if (d) {
 			type = 'R';
 		}
 		d->type = type;
+		if (patch) {
+			free(d->rev);
+			d->rev = 0;
+		}
 	}
 	*errorp = error;
 	if (linesp) *linesp += lines;
@@ -10160,6 +10170,23 @@ chknewlod(sccs *s, delta *d)
 }
 
 /*
+ * Make this delta start off as a .0.
+ */
+private void
+dot0(sccs *s, delta *d)
+{
+	int	i = 1;
+	char	buf[MAXREV];
+
+	do {
+		sprintf(buf, "1.0.%d.0", i++);
+	} while (rfind(s, buf));
+	free(d->rev);
+	d->rev = strdup(buf);
+	explode_rev(d);
+}
+
+/*
  * delta the specified file.
  *
  * Init file implies the old NODEFAULT flag, i.e., if there was an init
@@ -10214,8 +10241,8 @@ out:
 			goto out;
 		}
 		prefilled =
-		    sccs_getInit(s, prefilled, init, flags&DELTA_PATCH,
-				 &e, 0, &syms);
+		    sccs_getInit(s,
+		    prefilled, init, flags&DELTA_PATCH, &e, 0, &syms);
 		unless (prefilled && !e) {
 			fprintf(stderr, "delta: bad init file\n");
 			goto out;
@@ -10266,6 +10293,7 @@ out:
 				}
 			}
 			unless (flags & NEWFILE) {
+#ifdef	BREAKS_GRAFTING
 				/* except the very first delta   */
 				/* all rev are subject to rename */
 				/* if x.1 then ensure new LOD */
@@ -10273,6 +10301,16 @@ out:
 				/* free(prefilled->rev);
 				 * prefilled->rev = 0;
 				 */
+#endif
+
+				/*
+				 * If we have random bits, we are the root of
+				 * some other file, so make our rev start at
+				 * .0
+				 *
+				 * LODXXX - this screws up the LOD stuff.
+				 */
+				if (prefilled->random) dot0(s, prefilled);
 			}
 		}
 	}
@@ -12180,7 +12218,6 @@ sccs_perfile(sccs *s, FILE *out)
 	if (s->state & S_HASH) i |= X_HASH;
 
 	if (i) fprintf(out, "f x %u\n", i);
-	if (s->random) fprintf(out, "R %s\n", s->random);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
 	if (s->version) fprintf(out, "V %u\n", s->version);
 	fprintf(out, "\n");
@@ -12233,11 +12270,6 @@ err:			fprintf(stderr,
 		if (bits & X_ISSHELL) s->state |= S_ISSHELL;
 #endif
 		if (bits & X_HASH) s->state |= S_HASH;
-		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
-	}
-	if (strneq(buf, "R ", 2)) {
-		unused = 0;
-		s->random = strnonldup(&buf[2]);
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
@@ -12324,6 +12356,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	}
 	if (s->tree->pathname) assert(start->pathname);
 	if (start->pathname) fprintf(out, "P %s\n", start->pathname);
+	if (start->random) fprintf(out, "R %s\n", start->random);
 	if (start->flags & D_SYMBOLS) {
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->metad == start) continue;
@@ -12338,6 +12371,9 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		} else {
 			fprintf(out, "T\n");
 		}
+	}
+	if ((flags & PRS_GRAFT) && s->version) {
+		fprintf(out, "V %u\n", s->version);
 	}
 	EACH(start->exclude) {
 		delta	*d = sfind(s, start->exclude[i]);
@@ -13006,14 +13042,17 @@ sccs_findKey(sccs *s, char *key)
 		cksump = &cksum;
 	};
 	random = parts[5];
-	if (random) { /* then sfile must have random and it must match */
-		unless (s->random && streq(s->random, random)) return (0);
-	}
 	if (samekey(s->tree, user, host, path, date, cksump))
 		return (s->tree);
 	for (e = s->table;
 	    e && !samekey(e, user, host, path, date, cksump);
 	    e = e->next);
+
+	unless (e) return (0);
+
+	/* Any delta may have random bits (grafted files) */
+	if (random) unless (e->random && streq(e->random, random)) return (0);
+
 	return (e);
 }
 
@@ -13061,8 +13100,7 @@ sccs_pdelta(sccs *s, delta *d, FILE *out)
 	    d->pathname ? d->pathname : "",
 	    sccs_utctime(d),
 	    d->sum);
-	unless (s && s->tree && sccs_ino(s) == d && s->random) return;
-	fprintf(out, "|%s", s->random);
+	if (d->random) fprintf(out, "|%s", d->random);
 }
 
 /* Get the checksum of the 5 digit checksum */
@@ -13082,9 +13120,9 @@ sccs_sdelta(sccs *s, delta *d, char *buf)
 	    sccs_utctime(d),
 	    d->sum);
 	assert(len);
-	unless (s && s->tree && sccs_ino(s) == d && s->random) return (len);
+	unless (d->random) return (len);
 	for (tail = buf; *tail; tail++);
-	len += sprintf(tail, "|%s", s->random);
+	len += sprintf(tail, "|%s", d->random);
 	return (len);
 }
 
