@@ -343,10 +343,43 @@ validatedata(rsa_key *key, char *signfile)
 	return (ret);
 }
 
+int
+check_licensesig(char *key, char *sign)
+{
+	char	signbin[256];
+	unsigned long	outlen;
+	rsa_key	rsakey;
+	char	*pubkey;
+	int	stat;
+
+	register_hash(&md5_desc);
+
+	pubkey = aprintf("%s/bklicense.pub", bin);
+	loadkey(pubkey, &rsakey);
+
+	outlen = sizeof(signbin);
+	if (base64_decode(sign, strlen(sign), signbin, &outlen)) {
+ err:		fprintf(stderr, "licsign: %s\n", crypt_error);
+		return (-1);
+	}
+
+	if (rsa_verify(signbin, key, strlen(key), &stat, &rsakey)) goto err;
+	return (stat ? 0 : -1);
+}
 
 private	int
 cryptotest(void)
 {
+	extern void	store_tests(void);
+	extern void	cipher_tests(void);
+	extern void	hash_tests(void);
+	extern void	ctr_tests(void);
+	extern void	rng_tests(void);
+	extern void	test_prime(void);
+	extern void	rsa_test(void);
+	extern void	pad_test(void);
+	extern void	base64_test(void);
+	extern void	time_hash(void);
 
 	store_tests();
 	cipher_tests();

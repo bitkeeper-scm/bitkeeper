@@ -122,7 +122,7 @@ UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
 LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf bklicense.pub
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= bk admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -545,11 +545,15 @@ install-nolinks: all
 	@if [ ! -d $(BINDIR)/t ]; \
 	then	mkdir $(BINDIR)/t; \
 	fi
-	@-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
-	@cp -f t/doit t/t.* t/setup t/x.chk_env $(BINDIR)/t
 	@rm -f $(BINDIR)/MANIFEST
-	@./bk checksum -s $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup \
+	@rm -f tests
+	@bk sfiles -g t/SCCS/s.t.* | grep -v '\.local$$' > tests
+	@echo t/setup t/x.chk_env >> tests
+	@./bk get -Sq `cat tests`
+	@cp -f t/doit `cat tests` $(BINDIR)/t
+	@./bk checksum -s $(BINS) $(SCRIPTS) $(DATA) t/doit `cat tests` \
 		| sort > $(BINDIR)/MANIFEST
+	@rm -f tests
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
 	do	rm -f $(BINDIR)/$$1; \
