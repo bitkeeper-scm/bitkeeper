@@ -4,7 +4,7 @@
 bk parent \- show or set the parent repository
 .SH SYNOPSIS
 .Bc bk parent [
-.Bc -qr] [
+.Bc -qpr] [
 .ARGc repository
 .B ]
 .SH DESCRIPTION
@@ -19,6 +19,9 @@ The parent is automatically set when a repository is cloned and will be
 named according to the access method (see bk help url for more information).
 .SH OPTIONS
 .TP
+.B \-p
+Return parent pointer only, this is useful for scripts.
+.tp
 .B \-q
 Run quietly.
 .tp
