@@ -66,6 +66,7 @@ private	void	fitCounters(char *buf, int a, int d, int s);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private u32	state2xflags(u32 state);
+private u32	xflags2state(u32 xflags);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
 private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 

@@ -140,6 +140,35 @@ sendConfig(char *to)
 	unlink(config_log);
 }
 
+header(FILE *f)
+{
+	char	parent_file[MAXPATH];
+	char	buf[MAXPATH];
+	char	*p;
+
+	gethelp("version", 0, f);
+	fprintf(f, "Repository %s:%s\n",
+	    sccs_gethost(), fullname(".", 0));
+	sprintf(parent_file, "%slog/parent", bk_dir);
+	if (exists(parent_file)) {
+		FILE	*f1;
+
+		f1 = fopen(parent_file, "rt");
+		if (fgets(buf, sizeof(buf), f1)) {
+			fputs("Parent repository ", f);
+			fputs(buf, f);
+		}
+		fclose(f1);
+	}
+	p = project_name();
+	if (p[0]) {
+		fprintf(f,
+		    "Changeset in %s by %s\n", p, sccs_getuser());
+	} else {
+		fprintf(f, "Changeset by %s\n", sccs_getuser());
+	}
+	fprintf(f, "\n");
+}
 
 void
 logChangeSet(char *rev)
@@ -170,6 +199,7 @@ logChangeSet(char *rev)
 	sprintf(p, "%d", n);
 	sprintf(commit_log, "%s/commit_log%d", TMP_PATH, getpid());
 	f = fopen(commit_log, "wb");
+	header(f);
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
 	sprintf(buf, "%ssccslog -r%s ChangeSet >> %s", bin, rev, commit_log);
@@ -225,8 +255,8 @@ project_name()
 void
 notify()
 {
-	char buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
-	char parent_file[MAXPATH], subject[MAXLINE], *projectname;
+	char	buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
+	char	parent_file[MAXPATH], subject[MAXLINE], *projectname;
 	FILE *f;
 
 	sprintf(notify_file, "%setc/notify", bk_dir);
@@ -241,20 +271,7 @@ notify()
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
 	f = fopen(notify_log, "wb");
-	gethelp("version", 0, f);
-	fprintf(f, "BitKeeper repository %s:%s\n",
-					sccs_gethost(), fullname(".", 0));
-	sprintf(parent_file, "%slog/parent", bk_dir);
-	if (exists(parent_file)) {
-		FILE *f1;
-		f1 = fopen(parent_file, "rt");
-		if (fgets(buf, sizeof(buf), f1)) {
-			fputs("Parent repository ", f);
-			fputs(buf, f);
-		}
-		fclose(f1);
-	}
-	fprintf(f, "\n");
+	header(f);
 	fclose(f);
 	sprintf(buf, "%ssccslog -r+ ChangeSet >> %s", bin, notify_log);
 	system(buf);
@@ -263,7 +280,7 @@ notify()
 	projectname = project_name();
 	if (projectname[0]) {
 		sprintf(subject, "BitKeeper changeset in %s by %s",
-						projectname, sccs_getuser());
+		    projectname, sccs_getuser());
 	} else {
 		sprintf(subject, "BitKeeper changeset by %s", sccs_getuser());
 	}
