@@ -1,5 +1,7 @@
 /* Copyright (c) 1998 L.W.McVoy */
 #include "sccs.h"
+#include "range.h"
+
 WHATSTR("@(#)%K%");
 
 /*
@@ -114,6 +116,7 @@ rangeAdd(sccs *sc, char *rev, char *date)
  * Mark everything from here until we hit the starting point.
  * If the starting point is someplace we wouldn't hit, complain.
  */
+void
 rangeMark(sccs *s, delta *d, delta *start)
 {
 	do {
@@ -139,6 +142,7 @@ sccs_kid(sccs *s, delta *d)
 	return (e);
 }
 
+void
 walkMerge(sccs *s, delta *d)
 {
 	for (d = sfind(s, d->merge); d; d = d->parent) {
@@ -162,9 +166,10 @@ walkMerge(sccs *s, delta *d)
  * hit another delta in the set or the trunk.
  * XXX - needs to treat LODs like trunk.
  */
+int
 rangeConnect(sccs *s)
 {
-	delta	*d, *e;
+	delta	*d;
 
 	/*
 	 * Work the starting point (1.2.1.4) back onto the trunk.
@@ -174,7 +179,7 @@ rangeConnect(sccs *s)
 	if (d->merge) walkMerge(s, d);
 	while (d && d->r[2]) {
 		// printf("DO %s\n", d->rev);
-		if (d = sccs_kid(s, d)) {
+		if ((d = sccs_kid(s, d))) {
 			d->flags |= D_SET;
 			if (d->merge) walkMerge(s, d);
 		}
@@ -191,7 +196,7 @@ rangeConnect(sccs *s)
 
 	unless (d) {
 		fprintf(stderr, "Unable to connect %s to %s\n",
-		    s->rstart, s->rstop);
+		    s->rstart->rev, s->rstop->rev);
 		for (d= s->table; d; d = d->next) d->flags &= ~D_SET;
 		return (-1);
 	}
@@ -199,6 +204,7 @@ rangeConnect(sccs *s)
 	return (0);
 }
 
+void
 rangeSetExpand(sccs *s)
 {
 	delta	*d;
@@ -216,6 +222,7 @@ rangeSetExpand(sccs *s)
  * If there are any ranges, clear the rstart/rstop and call the
  * range code, then walk the range and mark the tree.
  */
+int
 rangeList(sccs *sc, char *rev)
 {
 	char	*s;
@@ -299,8 +306,7 @@ roundType(char *s)
 
 #ifdef	RANGE_MAIN
 
-#include "range.h"
-
+void
 old2new(delta *d, delta *stop)
 {
 	unless (d) return;
@@ -308,6 +314,7 @@ old2new(delta *d, delta *stop)
 	fprintf(stderr, " %s", d->rev);
 }
 
+void
 new2old(delta *d, delta *stop)
 {
 	unless (d) return;
@@ -315,6 +322,7 @@ new2old(delta *d, delta *stop)
 	unless (d == stop) old2new(d->next, stop);
 }
 
+int
 main(int ac, char **av)
 {
 	sccs	*s;
@@ -364,5 +372,6 @@ usage:			fprintf(stderr,
 		fprintf(stderr, "\n");
 next:		sccs_free(s);
 	}
+	return (0);
 }
 #endif

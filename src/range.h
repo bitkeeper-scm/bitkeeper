@@ -1,6 +1,12 @@
 #ifndef	_RANGE_H
 #define	_RANGE_H
 
+void	rangeReset(sccs *sc);
+int	rangeAdd(sccs *sc, char *rev, char *date);
+int	rangeConnect(sccs *s);
+void	rangeSetExpand(sccs *s);
+int	rangeList(sccs *sc, char *rev);
+
 #define	RANGE_DECL	int	things = 0, rd = 0; \
 			char	*r[2], *d[2]; \
 			\
@@ -22,7 +28,7 @@
 	debug((stderr, \
 	    "RANGE(%s, %s, %d, %d)\n", me, s->gfile, expand, noisy)); \
 	rangeReset(s); \
-	if (!things) if (r[0] = sfileRev()) things++; \
+	if (!things) if ((r[0] = sfileRev())) things++; \
 	if (things) { \
 		if (rangeAdd(s, r[0], d[0])) { \
 			if (noisy) { \
@@ -47,7 +53,7 @@
 	if (expand) { \
 		unless (things) { \
 			if (s->tree && streq(s->tree->rev, "1.0")) { \
-				if (s->rstart = s->tree->kid) { \
+				if ((s->rstart = s->tree->kid)) { \
 					s->rstop = s->table; \
 				} \
 			} else { \
