@@ -4,12 +4,17 @@
 # Copyright (c) 1999 Andrew Chang
 # %W% %@%
 
-proc platformInit {} \
+proc bk_init {} \
 {
-	global tcl_platform env dev_null tmp_dir wish auto_path unix_bin bin
-	global bithelp difftool helptool sccstool sdiffw getDir bk_prs file_rev
+	global env dev_null tmp_dir wish auto_path unix_bin bin
+	global bithelp difftool helptool sccstool sdiffw bk_prs file_rev
 	
 	# init for WIN32 env
+	if {[info exists env(BK_BIN)]} {
+		set bin	$env(BK_BIN)
+	} else {
+		set bin	"C:\\Program Files\\BitKeeper"
+	}
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
 	set dev_null "nul"
 	set wish "@WISH@.exe"
@@ -20,9 +25,5 @@ proc platformInit {} \
 	set tmp_dir $env(TEMP)
 	set auto_path "$bin $auto_path"
 	set file_rev {(.*)@([0-9].*)}
-
-	# This does not work in wrap mode
-	# On win95 this hang the system
-	set getDir "tk_chooseDirectory"
 
 }

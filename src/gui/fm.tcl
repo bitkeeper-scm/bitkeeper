@@ -985,29 +985,6 @@ proc confirm {msg l} \
 }
 
 
-proc platformPath {} \
-{
-	global bin env
-
-	if {[info exists env(BK_BIN)]} {
-		set bin $env(BK_BIN)
-	} else {
-		set bin "/usr/bitkeeper"
-	}
-
-	#XXX TODO: make bk_tagfile a config variable
-	#XXX       for NT, it should be "sccslog.exe"
-	set bk_tagfile "sccslog"
-
-	set tmp [file join $bin $bk_tagfile]
-	if  [ file executable $tmp ] {
-		return
-	} else {
-		puts "Installation problem: $tmp does not exist or not executable"
-		exit
-	}
-}
-
 # --------------- main ------------------
 proc main {} \
 {
@@ -1017,8 +994,7 @@ proc main {} \
 		puts "usage: $argv0 left right output\n\or\n$argv0"
 		exit
 	}
-	platformPath
-	platformInit
+	bk_init
 	set lfile ""
 	set rfile ""
 	set outputFile ""

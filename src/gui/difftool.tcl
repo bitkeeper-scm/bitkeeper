@@ -446,17 +446,6 @@ proc keyboard_bindings {} \
 	bind all <period>	dot
 }
 
-proc init {} \
-{
-	global	bin env tcl_platform
-
-	if { $tcl_platform(platform) == "windows"} {
-		set bin $env(BK_BIN)
-	} else {
-		set bin "/usr/bin"
-	}
-	platformInit
-}
 
 proc main {} \
 {
@@ -466,7 +455,7 @@ proc main {} \
 		puts "usage: $argv0 left right \[done\]"
 		exit
 	}
-	init
+	bk_init
 	set lfile ""
 	set rfile ""
 	set a [split $argv " "]

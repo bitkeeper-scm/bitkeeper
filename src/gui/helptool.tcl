@@ -267,24 +267,6 @@ proc getHelp {} \
 	doSelect 1
 }
 
-proc platformPath {} \
-{
-	global bin env
-
-	# BK_BIN is set by bk.sh
-	set bin $env(BK_BIN)
-	set bk_tagfile "sccslog"
-
-	set tmp [file join $bin $bk_tagfile]
-	if  [ file executable $tmp ] {
-		return
-	} else {
-		puts "Installation problem: $tmp does not exist or not executable"
-		exit
-	}
-}
-
-platformPath
-platformInit
+bk_init
 widgets
 getHelp
