@@ -228,7 +228,7 @@ file_init(file_t *f, char *filename)
 	l = 0;
 	p = f->m->where;
 	while (p) {
-		int	len;
+		char	*start;
 
 		if (l+1 >= f->n) {
 			ld_t	*tmp;
@@ -250,9 +250,9 @@ file_init(file_t *f, char *filename)
 			f->lines[l].anno = 0;
 		}
 		f->lines[l].line = p;
-		len = 0;
-		while (p < end && *p++ != '\n') ++len;
-		f->lines[l].len = len + 1;
+		start = p;
+		while (p < end && *p++ != '\n');
+		f->lines[l].len = p - start;
 		if (p == end) p = 0;
 		++l;
 	}

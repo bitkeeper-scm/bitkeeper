@@ -196,7 +196,7 @@ wait_eof(remote *r, int verbose)
 		return;
 	}
 	fprintf(stderr,
-		"wait_eof: Got %d unexpectied byte(s) from remote\n", i);
+		"wait_eof: Got %d unexpected byte(s) from remote\n", i);
 	buf[i] = 0;
 	fprintf(stderr, "buf=\"%s\"\n", buf);
 }
