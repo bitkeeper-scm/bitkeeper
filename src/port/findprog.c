@@ -15,7 +15,7 @@ findprog(char *prog)
 	for (s = t = path; *t; t++) {
 		if (*t == PATH_DELIM) {
 			*t = 0;
-			sprintf(buf, "%s/%s", s, prog);
+			sprintf(buf, "%s/%s", *s ? s : ".", prog);
 			if (executable(buf)) {
 				free(path);
 				return (1);
@@ -37,7 +37,7 @@ prog2path(char *prog)
 	for (s = t = path; *t; t++) {
 		if (*t == PATH_DELIM) {
 			*t = 0;
-			sprintf(buf, "%s/%s", s, prog);
+			sprintf(buf, "%s/%s", *s ? s : ".", prog);
 			if (executable(buf)) {
 				free(path);
 				return (strdup(buf));
