@@ -151,6 +151,7 @@ c_merge(resolve *rs)
 	syserr("\n");
 	fprintf(stderr,
 	    "Merge of %s failed for unknown reasons\n", rs->s->gfile);
+	unlink(rs->s->gfile);
 	return (0);
 }
 
