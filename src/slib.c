@@ -6683,6 +6683,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	}
 	tmpfile = aprintf("%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), d->rev, getpid());
 	popened = openOutput(s, encoding, printOut, &out);
+	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	if (type == GET_HASHDIFFS) {
 		int	lines = 0;
 		int	f = PRINT;
