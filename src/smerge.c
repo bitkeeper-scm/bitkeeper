@@ -655,7 +655,7 @@ private char **
 unidiff(char **gca, char **new)
 {
 	char	gcafile[MAXPATH], newfile[MAXPATH];
-	char	buf[128];
+	char	*buf;
 	char	*cmd;
 	FILE	*f;
 	int	i;
@@ -680,11 +680,12 @@ unidiff(char **gca, char **new)
 	cmd = aprintf("diff --rcs --minimal %s %s", gcafile, newfile);
 	f = popen(cmd, "r");
 	line = 0;
-	while (fnext(buf, f)) {
+	while (buf = fagets(f)) {
 		char	*n;
 		int	l, cnt;
 		assert(buf[0] == 'd' || buf[0] == 'a');
 		l = strtol(buf + 1, &n, 10);
+		assert(n != buf + 1);
 		cnt = strtol(n, 0, 10);
 		if (buf[0] == 'd') {
 			while (line < l - 1) {
@@ -713,13 +714,16 @@ unidiff(char **gca, char **new)
 				++line;
 			}
 			while (cnt--) {
-				fnext(buf, f);
-				n = malloc(strlen(buf) + 2);
+				char	*data = fagets(f);
+				assert(data);
+				n = malloc(strlen(data) + 2);
 				n[0] = '+';
-				strcpy(n + 1, buf);
+				strcpy(n + 1, data);
+				free(data);
 				out = addLine(out, n);
 			}
 		}
+		free(buf);
 	}
 	while (VALID(gca, gcaline)) {
 		char	*n;
