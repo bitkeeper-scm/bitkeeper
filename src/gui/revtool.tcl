@@ -161,6 +161,10 @@ proc diffParent {} \
 		set y2 [expr {[lindex $bb 3] + 1}]
 		if {$bb != ""} {
 			set b [$w(graph) find enclosed $x1 $y1 $x2 $y2]
+			# Tags for the different indexes
+			# t(0)=1.130-kush revsion
+			# t(1)=old/new
+			# t(2)=1.130-kush revtext current
 			set tag [lindex $b 2]
 			set tags [$w(graph) gettags $tag]
 			if {[lsearch $tags revtext] >= 0} { 
@@ -186,6 +190,13 @@ proc diffParent {} \
 		set rev1 [exec bk prs -d:PARENT: -hr${rev} $file]
 		set rev2 $rev
 		set base [file tail $file]
+		# not fully working -- need to reset nodes when clicking on
+		# a new node
+		#set hrev1 [lineOpts $rev1]
+		#set hrev2 [lineOpts $rev2]
+		#highlight $hrev1 "old"
+		#highlight $hrev2 "new"
+
 		if {$base == "ChangeSet"} {
 			csetdiff2
 			return
@@ -914,10 +925,12 @@ proc filltext {win f clear {msg {}}} \
 #
 proc prs {} \
 {
-	global file rev1 dspec dev_null search w
+	global file rev1 dspec dev_null search w diffpair
 
 	getLeftRev
 	if {"$rev1" != ""} {
+		set diffpair(left) $rev1
+		set diffpair(right) ""
 		busy 1
 		set prs [open "| bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
 		filltext $w(aptext) $prs 1
@@ -1384,24 +1397,11 @@ proc widgets {} \
 		set gc(py) 1; set gc(px) 4; set gc(bw) 2
 		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
 	}
-
 	set Opts(line_time)  "-R-$gc(rev.showHistory)"
 	if {"$gc(rev.geometry)" != ""} {
 		wm geometry . $gc(rev.geometry)
 	}
 	wm title . "revtool"
-
-# XXX: These bitmaps should be in a library!
-image create photo prevImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
-WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
-}
-image create photo nextImage \
-    -format gif -data {
-R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
-XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
-}
 
 	frame .menus
 	    button .menus.quit -font $gc(rev.buttonFont) -relief raised \
@@ -1766,6 +1766,7 @@ proc revtool {lfname R} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  srev Opts gc file rev2rev_name cdim firstnode fname
+	global  merge diffpair
 
 	# Set global so that other procs know what file we should be
 	# working on. Need this when menubutton is selected
@@ -1835,6 +1836,24 @@ The file $lfname was last modified ($ago) ago."
 	}
 	if {$out != ""} {
 		centerRev $out
+	}
+	# Make sure we don't lose the highlighting when we do a select Range
+	if {[info exists merge(G)] && ($merge(G) != "")} {
+		set gca [lineOpts $merge(G)]
+		highlight $gca "gca"
+		set rev2 [lineOpts $merge(r)]
+		highlight $rev2 "remote"
+		set rev1 [lineOpts $merge(l)]
+		highlight $rev1 "local"
+	} else {
+		if {[info exists diffpair(left)] && ($diffpair(left) != "")} {
+			set rev1 [lineOpts $diffpair(left)]
+			highlight $rev1 "old"
+		}
+		if {[info exists diffpair(right)] && ($diffpair(right) != "")} {
+			set rev2 [lineOpts $diffpair(right)]
+			highlight $rev2 "new"
+		}
 	}
 	set search(prompt) "Welcome"
 	focus $w(graph)
@@ -1952,12 +1971,21 @@ proc lineOpts {rev} \
 }
 
 
+# merge: if we were started by resolve, make sure we don't lose track of
+#        the gca, local, and remote when we do a select range
 proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
-	global file
+	global file merge diffpair
 
 	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
+	if {$gca != ""} {
+		set merge(G) $gca
+		set merge(l) $rev1
+		set merge(r) $rev2
+	} elseif {$rev2 != ""} { 
+		set diffpair(right) $rev2 
+	}
 	if {$srev != ""} {  ;# If -a option
 		revtool $fname "-$srev"
 		set rev1 [lineOpts $srev]
@@ -1967,22 +1995,14 @@ proc startup {} \
 	} elseif {$rev1 == ""} { ;# if no arguments
 		revtool $fname "-$gc(rev.showHistory)"
 	} else { ;# if -l argument
+		set diffpair(left) $rev1
 		set srev $rev1
 		revtool $fname "-$rev1"
-		set rev1 [lineOpts $rev1]
-		highlight $rev1 "old"
 	}
 	if {[info exists rev2] && ($rev2 != "")} {
-		set rev2 [lineOpts $rev2]
-		highlight $rev2 "remote"
+		set diffpair(right) $rev2
 		diff2 2
 	} 
-	if {$gca != ""} {
-		set gca [lineOpts $gca]
-		highlight $gca "gca"
-		# If gca is set, we know we have a local node that needs color
-		highlight $rev1 "local"
-	}
 }
 
 wm withdraw .
