@@ -48,6 +48,7 @@ BitKeeper can currently handle the following types of files:
 
     plain	- these are regular files which are not under revision control
     SCCS	- SCCS files which are not presently under BitKeeper
+    RCS		- files controlled by RCS or CVS
 
 If the files you wish to import do not match any of these forms, you will
 have to write your own conversion scripts.  See the rcs2sccs perl script
@@ -145,32 +146,13 @@ EOF
 		fi
 	done < /tmp/sccs$$
 	echo OK
-	eval import_$type $FROM $TO
-	import_finish $FROM $TO $type
+	eval import_validate_$type $FROM $TO
+	import_transfer $FROM $TO
+	eval import_doimport_$type $TO
+	import_finish $TO
 }
 
-# This function figures out what sort of tar include / files_from facility
-# If you don't support -T (aka --files-from) or -I include, then add the
-# thing you do support here and fix the case below where this gets called.
-get_tar () {
-	tar --help > /tmp/help$$ 2>&1
-	grep -q 'files-from=NAME' /tmp/help$$
-	if [ $? -eq 0 ]
-	then	/bin/rm /tmp/help$$
-		echo "GNU"
-		return
-	fi
-	grep -q '[-I include-file]' /tmp/help$$
-	if [ $? -eq 0 ]
-	then	/bin/rm /tmp/help$$
-		echo "SunOS"
-		return
-	fi
-	echo UNKNOWN
-	return
-}
-
-import_finish () {
+import_transfer () {
 	FROM=$1
 	TO=$2
 	TYPE=$3
@@ -193,73 +175,88 @@ import_finish () {
 	echo Importing files
 	echo "	from $FROM"
 	echo "	to   $TO"
-	# XXX - this should go try the various tar options until it can make
-	# one work and use that.
-	TAR=`get_tar`
-	case $TAR in
-	    GNU)
-		tar cpfT - /tmp/import$$ | (cd $TO && tar xpf -)
-		;;
-	    SunOS)
-		tar cpf - -I /tmp/import$$ | (cd $TO && tar xpf -)
-	    	;;
-	    *)
-	    	echo "Imports currently supported GNU and Solaris tar."
-	    	echo "You need to edit the import script and add your"
-	    	echo "and tar configuration."
-		echo "Please mail the diffs to bitkeeper@bitmover.com"
-		exit 1;
-		;;
-	esac
-	cd $TO
-	echo "Checking in $NFILES files"
-	grep -v 'SCCS/s\.' /tmp/import$$ | bk ci -is -
-	if [ $TYPE = SCCS ]
-	then	echo Checking for and fixing Teamware corruption
-		bk sfiles | bk renumber -q -
+	cd $FROM
+	sfio -oq < /tmp/import$$ | (cd $TO && sfio -iq) || exit 1
+}
+
+import_doimport_text () {
+	cd $1
+	echo Checking in plain text files...
+	ci -is - < /tmp/import$$ || exit 1
+}
+
+import_doimport_RCS () {
+	cd $1
+	echo Converting RCS files.
+	echo WARNING: Branches will be discarded.
+	echo Ignore errors relating to missing newlines at EOF.
+	rcs2sccs -htq - < /tmp/import$$ || exit 1
+	xargs rm -f < /tmp/import$$
+}
+
+import_doimport_SCCS () {
+	cd $1
+	echo Checking for and fixing Teamware corruption...
+	sfiles | renumber -q -
+	if [ -s /tmp/reparent$$ ]
+	then	echo Reparenting files from some other BitKeeper project...
+		sed 's/ BitKeeper$//' < /tmp/reparent$$ | \
+		while read x
+		do	if [ -f $x ]
+			then	echo $x
+			fi
+		done | admin -C -
 		echo OK
-		if [ -s /tmp/reparent$$ ]
-		then	echo Reparenting files from some other BitKeeper project
-			sed 's/ BitKeeper$//' < /tmp/reparent$$ | \
-			while read x
-			do	if [ -f $x ]
-				then	echo $x
-				fi
-			done | bk admin -C -
-			echo OK
-		fi
-		echo Making sure all files have pathnames, proper dates, and checksums
-		bk sfiles -g | while read x
-		do	bk admin -q -u -p$x $x
-			bk rechksum -f $x
-		done
-		echo OK
-		echo Validating all SCCS files
-		bk sfiles | bk admin -qH - > /tmp/admin$$
-		if [ -z /tmp/admin$$ ]
-		then	echo OK
-		else	echo Import failed because
-			cat /tmp/admin$$
-			exit 1
-		fi
 	fi
-	rm -f /tmp/sccs$$ /tmp/import$$ /tmp/notsccs$$ /tmp/reparent$$ /tmp/rep$$
+	rm -f /tmp/reparent$$
+	echo Making sure all files have pathnames, proper dates, and checksums
+	sfiles -g | while read x
+	do	admin -q -u -p$x $x
+		rechksum -f $x
+	done
+}
+
+import_finish () {
+	cd $1
+	echo Validating all SCCS files
+	bk sfiles | bk admin -qH - > /tmp/admin$$
+	if [ -z /tmp/admin$$ ]
+	then	echo OK
+	else	echo Import failed because
+		cat /tmp/admin$$
+		exit 1
+	fi
+	
+	rm -f /tmp/import$$ /tmp/admin$$
 	bk sfiles -r
 	echo "Creating initial changeset (should have $NFILES + 1 lines)"
 	bk commit -f -y'Import changeset'
 }
 
-import_SCCS () {
+import_validate_SCCS () {
 	FROM=$1
 	TO=$2
 	cd $FROM
+	grep 'SCCS/s\.' /tmp/import$$ > /tmp/sccs$$
+	grep -v 'SCCS/s\.' /tmp/import$$ > /tmp/notsccs$$
+	if [ -s /tmp/sccs$$ -a -s /tmp/notsccs$$ ]
+	then	NOT=`wc -l < /tmp/notsccs$$ | sed 's/ //g'`
+		echo
+		echo Skipping $NOT non-SCCS files
+		echo $N "Do you want to see this list of files? [No] " $NL
+		read x
+		case "$x" in
+		y*)	sed 's/^/	/' < /tmp/notsccs$$ | more ;;
+		esac
+		mv /tmp/sccs$$ /tmp/import$$
+		rm -f /tmp/notsccs$$
+	fi
 	bk sfiles -cg $FROM > /tmp/changed$$
 	if [ -s /tmp/changed$$ ]
 	then	echo The following files are locked and modified in $FROM
 		cat /tmp/changed$$
 		echo
 		echo Can not import unchecked in SCCS files
-		rm -f /tmp/sccs$$ /tmp/import$$ /tmp/reparent$$ /tmp/changed$$
 		exit 1
 	fi
 	rm -f /tmp/changed$$
@@ -293,40 +290,42 @@ EOF
 		esac
 		echo OK
 	fi
-	grep -q 'RCS/.*,v' /tmp/import$$
-	if [ $? = 0 ]
-	then	echo bk: can not import RCS files with SCCS files
-		exit 1
-	fi
-	grep 'SCCS/s\.' /tmp/import$$ > /tmp/sccs$$
-	grep -v 'SCCS/s\.' /tmp/import$$ > /tmp/notsccs$$
-	if [ -s /tmp/sccs$$ -a -s /tmp/notsccs$$ ]
-	then	NOT=`wc -l < /tmp/notsccs$$ | sed 's/ //g'`
+}
+
+import_validate_RCS () {
+	grep ',v$' /tmp/import$$ >/tmp/rcs$$
+	grep -v ',v$' /tmp/import$$ >/tmp/notrcs$$
+	if [ -s /tmp/rcs$$ -a -s /tmp/notrcs$$ ]
+	then	NOT=`wc -l < /tmp/notrcs$$ | sed 's/ //g'`
 		echo
-		echo Skipping $NOT non-SCCS files
+		echo Skipping $NOT non-RCS files
 		echo $N "Do you want to see this list of files? [No] " $NL
 		read x
 		case "$x" in
-		y*)	sed 's/^/	/' < /tmp/notsccs$$ | more ;;
+		y*)	sed 's/^/	/' < /tmp/notrcs$$ | more ;;
 		esac
-		mv /tmp/sccs$$ /tmp/import$$
+		mv /tmp/rcs$$ /tmp/import$$
+		rm -f /tmp/notrcs$$
 	fi
 }
 
-import_RCS () {
-	echo "Importing RCS files is not implemented yet"
-	exit 1
-}
-
-import_text () {
+import_validate_text () {
 	FROM=$1
 	TO=$2
 	cd $FROM
-	egrep 'RCS/|SCCS/s\.' /tmp/import$$ > /tmp/sccs$$
-	if [ -s /tmp/sccs$$ ]
-	then	echo bk: can not import SCCS or RCS files mixed with plain text
-		rm -f /tmp/sccs$$ /tmp/import$$
-		exit 1
+	egrep 'SCCS/s\.|,v$' /tmp/import$$ > /tmp/nottext$$
+	egrep -v 'SCCS/s\.|,v$' /tmp/import$$ > /tmp/text$$
+	if [ -s /tmp/text$$ -a -s /tmp/nottext$$ ]
+	then	NOT=`wc -l < /tmp/nottext$$ | sed 's/ //g'`
+		echo
+		echo Skipping $NOT non-RCS files
+		echo $N "Do you want to see this list of files? [No] " $NL
+		read x
+		case "$x" in
+		y*)	sed 's/^/	/' < /tmp/nottext$$ | more ;;
+		esac
+		mv /tmp/text$$ /tmp/import$$
+		rm -f /tmp/nottext$$
 	fi
 }
 
