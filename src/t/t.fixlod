@@ -62,12 +62,12 @@ test `bk prs -r2 -hd:I: ChangeSet` = 2.1 || {
 }
 echo OK
 
-# use cp because clone will not work since it has illegal structures
-cd $HERE
-cp -r project clone
+# use tar because clone will not work since it has illegal structures
+cd $HERE/project
+tar cf ../save.tar .
 
 echo $N Fix version 1 LOD structures ................................$NL
-cd project
+#cd $HERE/project
 bk _fix_lod1 > out1 2> err1 || {
 	echo Failed fix
 	echo STDOUT:
@@ -87,9 +87,12 @@ test `wc -l < results` -eq 0 || {
 echo OK
 
 echo $N Converge to repos which each fixed lod ......................$NL
+mkdir $HERE/clone
 cd $HERE/clone
+tar xf ../save.tar
 bk _fix_lod1 > out1 2> err1 || {
 	echo Failed fix
+	cat err1
 	exit 1
 }
 bk -r prs -hnd'$if(:R:!=1){:GFILE:|:I:}' > results
