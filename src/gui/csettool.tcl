@@ -786,7 +786,7 @@ proc keyboard_bindings {} \
 	}
 	bind all <Alt-Up> { adjustHeight 1 -1 }
 	bind all <Alt-Down> { adjustHeight -1 1 }
-	bind all $gc(quit)	exit
+	bind all $gc(cset.quit)	exit
 	bind all <space>	next
 	bind all <n>		next
 	bind all <p>		prev

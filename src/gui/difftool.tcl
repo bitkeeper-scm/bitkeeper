@@ -551,7 +551,7 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
-	bind all		$gc(quit)	exit
+	bind all		$gc(diff.quit)	exit
 	bind all		<n>		next
 	bind all		<space>		next
 	bind all		<p>		prev

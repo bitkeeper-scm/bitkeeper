@@ -456,7 +456,7 @@ proc widgets {} \
 	bind all <Control-Right> "doNextSection 1"
 	bind all <Alt-Left>	{ upStack }
 	bind all <Alt-Right>	{ downStack }
-	bind all $gc(quit)	{ exit }
+	bind all $gc(help.quit)	{ exit }
 	bind all <Button-4> 	{ scroll "page" -1; break }
 	bind all <Button-5> 	{ scroll "page" 1; break }
 	bind .menu.entry <Return> { search }
