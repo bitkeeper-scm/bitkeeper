@@ -123,11 +123,11 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-echo "I am the project file" > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-bk new $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo "I am the project file" > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+bk new $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 cd $HERE
 bk resync -t $Q project copy
 tar cf SAVE.copy copy
@@ -137,16 +137,16 @@ bk resolve -t $Q $L copy >/dev/null 2>&1 <<EOF
 rl
 y
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find copy 
 	exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.1" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'; exit 1
+if [ `bk prs -hr+ -d:I: copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.1" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'; exit 1
 fi
 echo OK
 
@@ -163,16 +163,16 @@ fi
 if [ "`cat copy/LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/LOCAL; exit 1
 fi
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find copy
 	exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.1" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'; exit 1
+if [ `bk prs -hr+ -d:I: copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.1" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'; exit 1
 fi
 echo OK
 
@@ -239,11 +239,11 @@ mr
 REMOTE
 a
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'; exit 1
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'; exit 1
 fi
 if [ -f copy/SCCS/s.REMOTE -o -f copy/REMOTE ]
 then	echo Should not have applied REMOTE
@@ -266,11 +266,11 @@ mr
 REMOTE
 u
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'; exit 1
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -295,11 +295,11 @@ bk resolve $Q $L -t -yYO_BABY_YO_BABY copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'; exit 1
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -386,10 +386,10 @@ cp -rp project copy
 cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
-bk mv OLDNAME 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+bk mv OLDNAME 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 cd $HERE
 bk resync -t $Q project copy
 tar cf SAVE.copy copy
@@ -399,17 +399,17 @@ bk resolve -t $Q $L copy >/dev/null 2>&1 <<EOF
 rl
 y
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find copy
 	exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.2" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'
-	bk prs -h -d'REV :I:' copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+if [ `bk prs -hr+ -d:I: copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.2" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'
+	bk prs -h -d'REV :I:' copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 	exit 1
 fi
 echo OK
@@ -427,17 +427,17 @@ fi
 if [ "`cat copy/LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/LOCAL; exit 1
 fi
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find copy
 	exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.2" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'
-	bk prs -h -d'REV :I:' copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+if [ `bk prs -hr+ -d:I: copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.2" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'
+	bk prs -h -d'REV :I:' copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 	exit 1
 fi
 echo OK
@@ -502,11 +502,11 @@ bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'; exit 1
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -586,12 +586,12 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-echo "I am the project file" > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-bk new $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo "I am the project file" > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+bk new $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-bk new $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+bk new $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 # Remote this to make it the pending deltas case
 bk commit $Q -ywhatever
 cd $HERE
@@ -607,23 +607,23 @@ y
 q
 EOF
 cd copy
-if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.1" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.1" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
@@ -640,23 +640,23 @@ rr
 y
 EOF
 cd copy
-bk get $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+bk get $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
+if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
 then	echo Failed to leave old file in place
-	cat 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+	cat 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 	exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo bad data in deleted file, should be project; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
@@ -680,16 +680,16 @@ fi
 if [ "`cat LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat LOCAL; exit 1
 fi
-if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.1" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.1" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'; exit 1
 fi
 if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
@@ -755,16 +755,16 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk get -q copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+bk get -q copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk resolve -t $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'; exit 1
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -842,12 +842,12 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
-echo "I am the project file" > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-bk new $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo "I am the project file" > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+bk new $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-bk new $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+bk new $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 cd $HERE
 bk resync -t $Q project copy
 tar cf SAVE.copy copy
@@ -861,23 +861,23 @@ y
 q
 EOF
 cd copy
-if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.1" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.1" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK
@@ -913,11 +913,11 @@ cp -rp project copy
 cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
-bk mv OLDNAME 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+bk mv OLDNAME 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-bk new $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo "I am the copy file" > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+bk new $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
@@ -932,23 +932,23 @@ y
 q
 EOF
 cd copy
-if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.2" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.2" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'; exit 1
 fi
-if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Deleted file missing
 	bk _find .
 	exit 1
 fi
-if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
+if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
 echo OK
@@ -969,16 +969,16 @@ fi
 if [ "`cat LOCAL`" != "I am the copy file" ]
 then	echo Bad data in local file; cat LOCAL; exit 1
 fi
-if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find .
 	exit 1
 fi
-if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the project file" ]
+if [ "`cat 'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the project file" ]
 then	echo Failed to put new file in place; exit 1
 fi
-if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.2" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.2" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'; exit 1
 fi
 echo OK
 
@@ -1041,16 +1041,16 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk get -q copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+bk get -q copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Failed to leave local file; exit 1
 fi
-if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'; exit 1
+if [ "`cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
@@ -1183,17 +1183,17 @@ rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 # project:
-#	create B%A	!#$%^&*)(-_+={}]:;"<>,.?
+#	create B%A	!#$%^&*)(-_+={}]:;<>,.?
 # copy:
-#	create B%A	!#$%^&*)(-_+={}]:;"<>,.?
+#	create B%A	!#$%^&*)(-_+={}]:;<>,.?
 # resync
 cd project
-echo Hi there, I am a conflict file > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-bk new $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo Hi there, I am a conflict file > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+bk new $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk commit $Q -ywhatever
 cd $HERE/copy
-echo Hi there, I am a conflict file > 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
-bk new $Q 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+echo Hi there, I am a conflict file > 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
+bk new $Q 'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk commit $Q -ywhatever
 cd $HERE
 bk resync -t $Q project copy
@@ -1217,13 +1217,13 @@ EOF
 if [ ! -f LOCAL ]
 then	echo Failed to rename local file; cat XXX; exit 1
 fi
-if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
-then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;"<>,.?' file
+if [ ! -f 'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
+then	echo Failed to get 'B%A	!#$%^&*)(-_+={}]:;<>,.?' file
 	bk _find .
 	exit 1
 fi
-if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;"<>,.?'` != "1.1" ]
-then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;"<>,.??'; exit 1
+if [ `bk prs -hr+ -d:I: 'B%A	!#$%^&*)(-_+={}]:;<>,.?'` != "1.1" ]
+then	echo 'Added new rev to B%A	!#$%^&*)(-_+={}]:;<>,.??'; exit 1
 fi
 echo OK
 
@@ -1286,12 +1286,12 @@ echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk get -q copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?'
+bk get -q copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?'
 bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
-if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;"<>,.?' ]
+if [ ! -f copy/'B%A	!#$%^&*)(-_+={}]:;<>,.?' ]
 then	echo Failed to leave local file; exit 1
 fi
 if [ ! -f copy/REMOTE ]
