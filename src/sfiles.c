@@ -487,9 +487,12 @@ save(sccs *sc, MDBM *idDB, char *buf)
 {
 	if (mdbm_store_str(idDB, buf, sc->gfile, MDBM_INSERT)) {
 		if (errno == EEXIST) {
+			char	*sfile = name2sccs(mdbm_fetch_str(idDB, buf));
+
 			fprintf(stderr,
-			    "Duplicate key '%s' for %s\n  Used by %s\n",
-			    buf, sc->gfile, mdbm_fetch_str(idDB, buf));
+			    "ROOTKEY %s\n\tused by %s\n\tand by  %s\n",
+			    buf, sc->sfile, sfile);
+			free(sfile);
 			dups++;
 		} else {
 			perror("mdbm_store");
