@@ -7,7 +7,8 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  sinfo stripdel smoosh takepatch undos what gca
 PRIVATE	= nextsecond mtime zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
-	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex
+	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex \
+	  renametool
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
@@ -55,7 +56,8 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl \
 	  gui/helptool.tcl gui/mkindex.tcl resync.perl uuwrap.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
-	  port/unix_platform.perl pmerge.perl gui/csettool.tcl
+	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
+	  gui/renametool.tcl
 MISC	= bkhelp.txt config.h.in configure substvars.in install.in \
 	  bitkeeper.config t/doit.sh
 
@@ -388,6 +390,11 @@ csettool: gui/csettool.tcl port/unix_platform.tcl substvars
 	./substvars port/unix_platform.tcl gui/csettool.tcl > csettool.T
 	chmod +x csettool.T
 	mv -f csettool.T csettool
+
+renametool: gui/renametool.tcl port/unix_platform.tcl substvars
+	./substvars port/unix_platform.tcl gui/renametool.tcl > renametool.T
+	chmod +x renametool.T
+	mv -f renametool.T renametool
 
 fm: gui/fm.tcl port/unix_platform.tcl substvars
 	./substvars port/unix_platform.tcl gui/fm.tcl > fm.T

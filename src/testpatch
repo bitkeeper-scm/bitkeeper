@@ -1,0 +1,96 @@
+#! /bin/sh
+
+USAGE="usage: $0 [repo] -rA -rB"
+
+case $1 in
+	-r*)	;;
+	*)	cd $1 || { echo "cannot access $1"; exit 1; }
+		shift;;
+esac
+if [ $# -ne 2 ]
+then	echo $USAGE >&2
+	exit 1
+fi
+case $1 in
+	-r*)	A=${1#-r};;
+	*)	echo $USAGE >&2
+		exit 1;;
+esac
+case $2 in
+	-r*)	B=${2#-r};;
+	*)	echo $USAGE >&2
+		exit 1;;
+esac
+
+dir=/tmp/tp$$/
+Adir=${dir}A
+Bdir=${dir}B
+Rdir=${dir}R
+
+mkdir -p $dir
+
+set -e
+echo Exporting revision $A ...
+bk export -kwr$A $Adir
+echo Exporting revision $B ...
+bk export -kwr$B $Bdir
+echo Creating repository up to revision $A ...
+bk resync -qa -r..$A . $Rdir
+set +e
+
+echo Creating patch file ...
+cd $dir
+diff -Nru -x BitKeeper -x ChangeSet A B | grep -v '^diff' > A-B
+cd R
+bk -r edit -q
+echo Patching ...
+bk patch -p1 -E --verbose <../A-B >../patch.out 2>&1
+find . -name '*.rej' >../REJECT
+if [ -s ../REJECT ]
+then	echo REJECT
+	cat ../REJECT
+	exit 1
+fi
+echo Checking for renames/deletes/creates
+/bin/rm -f $dir/deletes $dir/creates
+egrep 'Creating|Removing' ../patch.out | while read what dummy file junk
+do	if [ $what = Removing ]
+	then	echo $file >> $dir/deletes
+	else	echo $file >> $dir/creates
+	fi
+done
+if [ -f $dir/deletes ]
+then	echo "(cat $dir/deletes; echo ""; cat $dir/creates) | bk renametool"
+	pwd
+	find . -name '*resync*'
+	(cat $dir/deletes; echo ""; cat $dir/creates) | bk renametool
+	echo Hit return
+	read x
+fi
+find . -name '*.orig' | xargs /bin/rm -f
+bk -r ci -q -y'commit message'
+# New files will show up in sfiles -x.
+# Deleted files will show up as p.files with no gfiles (and there should
+# be no gfiles at this point).
+bk sfiles -x | grep -v BitKeeper | bk delta -i -
+find . -name 'p.*' | while read pfile
+do	gfile=`echo $pfile | sed 's|SCCS/p.||'`
+	bk rm $gfile
+done
+
+# Commit changeset, get all the files out, and see what we've got.
+bk sfiles -C | bk cset -ybundle -
+bk sfiles | grep -v 'SCCS/s\.\.del' | bk get -kq -
+cd ..
+echo Diffing ...
+diff -ruN -x SCCS -x BitKeeper -x ChangeSet A R | grep -v '^diff' >A-R
+sed '/^+++/d' A-B >A-Bx
+sed '/^+++/d' A-R >A-Rx
+if cmp A-Bx A-Rx
+then 	echo OK
+	cd /
+	rm -rf $dir
+else	echo DIFFERENT
+	diff A-Bx A-Rx
+fi
+

@@ -1,0 +1,997 @@
+# renametool - deal with files which have been renamed/added/deleted
+# Copyright (c) 1999 by Larry McVoy; All rights reserved
+# %A% %@%
+
+proc next {} \
+{
+	global	diffCount lastDiff DiffsEnd
+
+	if {[visible $DiffsEnd($lastDiff)] == 0} {
+		Page "yview" 1 0
+		return
+	}
+	if {$lastDiff < $diffCount} {
+		incr lastDiff
+		dot
+	}
+}
+
+proc prev {} \
+{
+	global	Diffs lastDiff
+
+	if {[visible $Diffs($lastDiff)] == 0} {
+		Page "yview" -1 0
+		return
+	}
+	if {$lastDiff > 1} {
+		incr lastDiff -1
+		dot
+	}
+}
+
+proc visible {index} \
+{
+	if {[llength [.diffs.right bbox $index]] > 0} {
+		return 1
+	}
+	return 0
+}
+
+proc dot {} \
+{
+	global	Diffs DiffsEnd diffCount lastDiff
+
+	scrollDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
+	highlightDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
+	.diffs.status.middle configure -text "Diff $lastDiff of $diffCount"
+	if {$lastDiff == 1} {
+		.menu.prev configure -state disabled
+	} else {
+		.menu.prev configure -state normal
+	}
+	if {$lastDiff == $diffCount} {
+		.menu.next configure -state disabled
+	} else {
+		.menu.next configure -state normal
+	}
+}
+
+proc highlightDiffs {start stop} \
+{
+	global	boldFont
+
+	.diffs.left tag delete d
+	.diffs.right tag delete d
+	.diffs.left tag add d $start $stop
+	.diffs.right tag add d $start $stop
+	.diffs.left tag configure d -foreground black -font $boldFont
+	.diffs.right tag configure d -foreground black -font $boldFont
+}
+
+proc topLine {} \
+{
+	return [lindex [split [.diffs.left index @1,1] "."] 0]
+}
+
+
+proc scrollDiffs {start stop} \
+{
+	global	diffHeight
+
+	# Either put the diff beginning at the top of the window (if it is
+	# too big to fit or fits exactly) or
+	# center the diff in the window (if it is smaller than the window).
+	set Diff [lindex [split $start .] 0]
+	set End [lindex [split $stop .] 0]
+	set size [expr $End - $Diff]
+	# Center it.
+	if {$size < $diffHeight} {
+		set j [expr $diffHeight - $size]
+		set j [expr $j / 2]
+		set i [expr $Diff - $j]
+		if {$i < 0} {
+			set want 1
+		} else {
+			set want $i
+		}
+	} else {
+		set want $Diff
+	}
+
+	set top [topLine]
+	set move [expr $want - $top]
+	.diffs.left yview scroll $move units
+	.diffs.right yview scroll $move units
+}
+
+proc chunks {n} \
+{
+	global	Diffs DiffsEnd nextDiff
+
+	set l [.diffs.left index "end - 1 char linestart"]
+	set Diffs($nextDiff) $l
+	set e [expr $n + [lindex [split $l .] 0]]
+	set DiffsEnd($nextDiff) "$e.0"
+	incr nextDiff
+}
+
+proc same {r l n} \
+{
+	set lines {}
+	while {$n > 0} {
+		gets $l line
+		lappend lines $line
+		gets $r line
+		incr n -1
+	}
+	set l [join $lines "\n"]
+	.diffs.left insert end "$l\n"
+	.diffs.right insert end "$l\n";
+}
+
+proc changed {r l n} \
+{
+	chunks $n
+	set llines {}
+	set rlines {}
+	while {$n > 0} {
+		gets $l line
+		lappend llines $line
+		gets $r line
+		lappend rlines $line
+		incr n -1
+	}
+	set lc [join $llines "\n"]
+	set rc [join $rlines "\n"]
+	.diffs.left insert end "$lc\n" diff
+	.diffs.right insert end "$rc\n" diff
+}
+
+proc left {r l n} \
+{
+	chunks $n
+	set lines {}
+	set newlines ""
+	while {$n > 0} {
+		gets $l line
+		lappend lines $line
+		set newlines "$newlines\n"
+		incr n -1
+	}
+	set lc [join $lines "\n"]
+	.diffs.left insert end "$lc\n" diff
+	.diffs.right insert end "$newlines" 
+}
+
+proc right {r l n} \
+{
+	chunks $n
+	set lines {}
+	set newlines ""
+	while {$n > 0} {
+		gets $r line
+		lappend lines $line
+		set newlines "$newlines\n"
+		incr n -1
+	}
+	set rc [join $lines "\n"]
+	.diffs.left insert end "$newlines" 
+	.diffs.right insert end "$rc\n" diff
+}
+
+# Get the sdiff, making sure it has no \r's from fucking dos in it.
+proc sdiff {L R} \
+{
+	global	rmList sdiffw bin
+
+	set rmList ""
+	set undos [file join $bin undos]
+	# we need the extra quote arounf $R $L
+	# because win32 path may have space in it
+	set a [open "| grep {\r$} \"$L\"" r]
+	set b [open "| grep {\r$} \"$R\"" r]
+	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
+		catch { close $a }
+		catch { close $b }
+		return [open "| $sdiffw \"$L\" \"$R\"" r]
+	}
+	catch { close $a }
+	catch { close $b }
+	set dir [file dirname $L]
+	if {"$dir" == ""} {
+		set dotL .$L
+	} else {
+		set tail [file tail $L]
+		set dotL [file join $dir .$tail]
+	}
+	exec $undos $L > $dotL
+	set dir [file dirname $R]
+	if {"$dir" == ""} {
+		set dotR .$R
+	} else {
+		set tail [file tail $R]
+		set dotR [file join $dir .$tail]
+	}
+	exec $undos $R > $dotR
+	set rmList [list $dotL $dotR]
+	return [open "| $sdiffw $dotL $dotR"]
+}
+
+proc clear {state} \
+{
+	.diffs.left configure -state normal
+	.diffs.right configure -state normal
+	.diffs.status.l configure -text ""
+	.diffs.status.r configure -text ""
+	.diffs.status.middle configure -text ""
+	.diffs.left delete 1.0 end
+	.diffs.right delete 1.0 end
+	.diffs.left configure -state $state
+	.diffs.right configure -state $state
+}
+
+proc diffFiles {L R} \
+{
+	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
+
+	clear normal
+	.diffs.status.l configure -text "$L"
+	.diffs.status.r configure -text "$R"
+
+	set lineNo 1
+	set diffCount 0
+	set nextDiff 1
+	array set DiffsEnd {}
+	array set Diffs {}
+	set n 1
+	set l [open "| bk get -kqp $L" r]
+	set tail [file tail $L]
+	set tmp [file join "/tmp" $tail]
+	set t [open $tmp w]
+	while {[gets $l buf] >= 0} {
+		puts $t "$buf"
+	}
+	close $l
+	close $t
+	set l [open $tmp r]
+	set r [open $R r]
+	set d [sdiff $tmp $R]
+
+	gets $d last
+	if {$last == "" || $last == " "} { set last "S" }
+	while { [gets $d diff] >= 0 } {
+		incr lineNo 1
+		if {$diff == "" || $diff == " "} { set diff "S" }
+		if {$diff == $last} {
+			incr n 1
+		} else {
+			switch $last {
+			    "S"	{ same $r $l $n }
+			    "|"	{ incr diffCount 1; changed $r $l $n }
+			    "<"	{ incr diffCount 1; left $r $l $n }
+			    ">"	{ incr diffCount 1; right $r $l $n }
+			}
+			set n 1
+			set last $diff
+		}
+	}
+	switch $last {
+	    "S"	{ same $r $l $n }
+	    "|"	{ incr diffCount 1; changed $r $l $n }
+	    "<"	{ incr diffCount 1; left $r $l $n }
+	    ">"	{ incr diffCount 1; right $r $l $n }
+	}
+	close $r
+	close $l
+	catch { close $d }
+	if {"$rmList" != ""} {
+		foreach rm $rmList {
+			file delete $rm
+		}
+	}
+	.diffs.left configure -state disabled
+	.diffs.right configure -state disabled
+	if {$diffCount > 0} {
+		set lastDiff 1
+		dot
+	} else {
+		set lastDiff 0
+		.diffs.status.middle configure -text "No differences"
+	}
+	file delete $tmp
+}
+
+proc fillFile {which file} \
+{
+	clear normal
+	set f [open $file r]
+	set data [read $f]
+	$which insert end $data
+	close $f
+	.files.l configure -state disabled
+	.files.r configure -state disabled
+	.diffs.status.r configure -text "$file"
+
+}
+
+proc getFiles {} \
+{
+	global	leftCount rightCount leftFile rightFile listHt diffHeight
+
+	busy 1
+	.files.l configure -state normal
+	.files.r configure -state normal
+	set leftFile ""
+	set rightFile ""
+	set leftCount 0
+	set rightCount 0
+	set left 1
+	while {[gets stdin file] >= 0} {
+		if {$file == ""} {
+			set left 0
+			continue
+		}
+		if {$left == 1} {
+			.files.l insert end "$file\n"
+			incr leftCount
+		} else {
+			.files.r insert end "$file\n"
+			incr rightCount
+		}
+	}
+	if {$leftCount == 0 && $rightCount == 0} { exit 0 }
+	if {$leftCount > $rightCount} {
+		set ht $leftCount
+	} else {
+		set ht $rightCount
+	}
+	if {$ht > 12} { set ht 12 }
+	set diff [expr $listHt - $ht]
+	incr diffHeight $listHt
+	incr listHt -$diff
+	.diffs.left configure -height $diffHeight
+	.diffs.right configure -height $diffHeight
+	.files.l configure -state disabled -height $listHt
+	.files.r configure -state disabled -height $listHt
+	if {$leftCount > 0} { Select .files.l leftLine leftFile 1.0 }
+	if {$rightCount > 0} { Select .files.r rightLine rightFile 1.0 }
+	busy 0
+}
+
+proc DeleteAll {} \
+{
+	global	leftLine leftFile leftCount rightCount
+
+	busy 1
+	.files.l tag delete select
+	.files.l configure -state normal
+	while {$leftCount > 0} {
+		set f [.files.l get 1.0 "1.0 lineend"]
+		sh "bk rm $f\n"
+		.files.l delete 1.0 "1.0 lineend + 1 char"
+		incr leftCount -1
+	}
+	set leftFile ""
+	set leftLine 0.0
+	.files.l configure -state disabled
+	.menu.prev configure -state disabled
+	.menu.next configure -state disabled
+	.menu.deleteAll configure -state disabled
+	.menu.delete configure -state disabled
+	.menu.history configure -state disabled
+	.menu.guess configure -state disabled
+	clear disabled
+	busy 0
+}
+
+proc CreateAll {} \
+{
+	global	rightLine rightFile rightCount leftCount
+
+	busy 1
+	.files.r tag delete select
+	.files.r configure -state normal
+	while {$rightCount > 0} {
+		set f [.files.r get 1.0 "1.0 lineend"]
+		sh "bk new $f\n"
+		.files.r delete 1.0 "1.0 lineend + 1 char"
+		incr rightCount -1
+	}
+	set rightFile ""
+	set rightLine 0.0
+	.files.r configure -state disabled
+	.menu.createAll configure -state disabled
+	.menu.create configure -state disabled
+	clear disabled
+	busy 0
+}
+
+proc Delete {doit} \
+{
+	global	leftLine leftFile leftCount rightFile
+
+	busy 1
+	if {$doit == 1} { sh "bk rm $leftFile\n" }
+	.files.l tag delete select
+	.files.l configure -state normal
+	.files.l delete $leftLine "$leftLine lineend + 1 char"
+	incr leftCount -1
+	# Reuse that code.
+	if {$leftCount == 0} { DeleteAll; return }
+	set leftFile [.files.l get $leftLine "$leftLine lineend"]
+	if {$leftFile == ""} {
+		set leftLine [.files.l index "$leftLine - 1 lines"]
+		set leftFile [.files.l get $leftLine "$leftLine lineend"]
+	}
+	.files.l tag add \
+	    select "$leftLine linestart" "$leftLine lineend + 1 char"
+	.files.l tag configure select -background #b0b0f0 \
+	    -relief groove -borderwid 1
+	if {$doit == 1} {
+		if {$leftFile != "" && $rightFile != ""} {
+			diffFiles $leftFile $rightFile
+			.menu.rename configure -state normal
+		} else {
+			clear disabled
+		}
+		.files.l configure -state disabled
+		busy 0
+	}
+}
+
+proc Create {doit} \
+{
+	global	rightLine rightFile rightCount leftFile
+
+	busy 1
+	if {$doit == 1} { sh "bk new $rightFile\n" }
+	.files.r tag delete select
+	.files.r configure -state normal
+	.files.r delete $rightLine "$rightLine lineend + 1 char"
+	incr rightCount -1
+	# Reuse that code.
+	if {$rightCount == 0} { CreateAll; return }
+	set rightFile [.files.r get $rightLine "$rightLine lineend"]
+	if {$rightFile == ""} {
+		set rightLine [.files.r index "$rightLine - 1 lines"]
+		set rightFile [.files.r get $rightLine "$rightLine lineend"]
+	}
+	.files.r tag add \
+	    select "$rightLine linestart" "$rightLine lineend + 1 char"
+	.files.r tag configure select -background #b0b0f0 \
+	    -relief groove -borderwid 1
+	if {$doit == 1} {
+		if {$leftFile != "" && $rightFile != ""} {
+			diffFiles $leftFile $rightFile
+			.menu.rename configure -state normal
+		} else {
+			clear disabled
+		}
+		.files.r configure -state disabled
+		busy 0
+	}
+}
+
+proc Rename {} \
+{
+	global	leftFile rightFile
+
+	busy 1
+	sh "bk mv $leftFile $rightFile\n"
+	Create 0
+	Delete 0
+	if {$leftFile != "" && $rightFile != ""} {
+		diffFiles $leftFile $rightFile
+		.menu.rename configure -state normal
+		.menu.guess configure -state normal
+	} else {
+		clear disabled
+		.menu.rename configure -state disabled
+		.menu.guess configure -state disabled
+	}
+	.files.l configure -state disabled
+	.files.r configure -state disabled
+	busy 0
+}
+
+proc sh {buf} \
+{
+	global	undoLine
+
+	.files.sh tag delete select
+	.files.sh configure -state normal
+	.files.sh insert end $buf select
+	.files.sh configure -state disabled
+	.files.sh tag configure select -background #b0b0f0 \
+	    -relief groove -borderwid 1
+	.menu.undo configure -state normal
+	.menu.apply configure -state normal
+	set undoLine [.files.sh index "end - 2 chars linestart"]
+}
+
+proc Undo {} \
+{
+	global	undoLine leftCount rightCount
+
+	.files.sh tag delete select
+	set buf [.files.sh get $undoLine "$undoLine lineend"]
+	.files.sh configure -state normal
+	.files.sh delete $undoLine "$undoLine lineend + 1 char"
+	.files.sh configure -state disabled
+	if {[regexp {^bk mv (.*) (.*)$} $buf dummy from to]} {
+		.files.l configure -state normal
+		.files.l insert end "$from\n"
+		.files.l configure -state disabled
+		.files.r configure -state normal
+		.files.r insert end "$to\n"
+		.files.r configure -state disabled
+		incr leftCount 1
+		incr rightCount 1
+		.menu.createAll configure -state normal
+		.menu.deleteAll configure -state normal
+	} elseif {[regexp {^bk rm (.*)$} $buf dummy rm]} {
+		.files.l configure -state normal
+		.files.l insert end "$rm\n"
+		.files.l configure -state disabled
+		incr leftCount 1
+		.menu.deleteAll configure -state normal
+	} elseif {[regexp {^bk new (.*)$} $buf dummy new]} {
+		.files.r configure -state normal
+		.files.r insert end "$new\n"
+		.files.r configure -state disabled
+		incr rightCount 1
+		.menu.createAll configure -state normal
+	}
+	set undoLine [.files.sh index "end - 2 chars linestart"]
+	set undoFile [.files.sh get $undoLine "$undoLine lineend"]
+	if {$undoFile != ""} {
+		set l $undoLine
+		.files.sh tag add select "$l linestart" "$l lineend + 1 char"
+		.files.sh tag configure select -background #b0b0f0 \
+		    -relief groove -borderwid 1
+	} else {
+		.menu.undo configure -state disabled
+		.menu.apply configure -state disabled
+	}
+}
+
+proc sccsFile {type file} \
+{
+	set dir [file dirname $file]
+	set tail [file tail $file]
+	if {$dir == ""} {
+		return [file join SCCS "$type.$tail"]
+	} else {
+		return [file join $dir SCCS "$type.$tail"]
+	}
+}
+
+# This needs to try to apply this, checking each file for a destination
+# conflict.  If there is one, then leave that file in the sh window and
+# go on.
+proc Apply {} \
+{
+	global	undoLine leftCount rightCount
+
+	.files.sh configure -state normal
+	set l 1
+	set buf [.files.sh get "$l.0" "$l.0 lineend"]
+	while {$buf != ""} {
+		if {[regexp {^bk mv (.*) (.*)$} $buf dummy from to]} {
+			# want to move the [sp].file by hand, the caller
+			# of this tool will check them in.
+			set sfrom [sccsFile s $from]
+			set pfrom [sccsFile p $from]
+			set sto [sccsFile s $to]
+			set pto [sccsFile p $to]
+			if {[file exists $sto]} {
+				set status 1
+				set msg "$sto exists"
+			} else {
+				file rename -- $sfrom $sto
+				file rename -- $pfrom $pto
+				set status 0
+				set msg ""
+			}
+		} elseif {[regexp {^bk rm (.*)$} $buf dummy rm]} {
+			set status [catch {exec bk rm $rm} msg]
+		} elseif {[regexp {^bk new (.*)$} $buf dummy new]} {
+			set status [catch {exec bk new -q $new} msg]
+		}
+		# puts "buf=$buf status=$status msg=$msg"
+		if {$status == 0} {
+			.files.sh delete "$l.0" "$l.0 lineend + 1 char"
+		} else {
+			# XXX - need an error message popup.
+			incr l
+		}
+		set buf [.files.sh get "$l.0" "$l.0 lineend"]
+	}
+	if {$l == 1.0 && $leftCount == 0 && $rightCount == 0} { exit 0 }
+	.files.sh tag delete select
+	.files.sh configure -state disabled
+	if {$l == 1.0} {
+		.menu.undo configure -state disabled
+		.menu.apply configure -state disabled
+		set undoLine 0.0
+	} else {
+		set undoLine 1.0
+		.files.sh tag add select "1.0 linestart" "1.0 lineend + 1 char"
+		.files.sh tag configure select -background #b0b0f0 \
+		    -relief groove -borderwid 1
+	}
+}
+
+proc history {} \
+{
+	global	leftFile
+
+	exec bk sccstool $leftFile &
+}
+
+# --------------- Window stuff ------------------
+proc busy {busy} \
+{
+	if {$busy == 1} {
+		. configure -cursor watch
+		.files.l configure -cursor watch
+		.files.r configure -cursor watch
+		.files.sh configure -cursor watch
+		.diffs.left configure -cursor watch
+		.diffs.right configure -cursor watch
+		.menu configure -cursor watch
+	} else {
+		. configure -cursor hand2
+		.menu configure -cursor hand1
+		.files.l configure -cursor hand2
+		.files.r configure -cursor hand2
+		.files.sh configure -cursor hand2
+		.diffs.left configure -cursor gumby
+		.diffs.right configure -cursor gumby
+	}
+	update
+}
+
+proc pixSelect {which line file x y} \
+{
+	set l [$which index "@$x,$y linestart"]
+	Select $which $line $file $l
+}
+
+proc Select {which line file l} \
+{
+	global	leftFile rightFile leftLine rightLine undoLine rightCount
+
+	set foo [$which get "$l linestart" "$l lineend"]
+	if {$foo != ""} {
+		set $file $foo
+		$which tag delete select
+		$which tag add select "$l linestart" "$l lineend + 1 char"
+		$which tag configure select -background #b0b0f0 \
+		    -relief groove -borderwid 1
+		if {$leftFile != ""} {
+			.menu.history configure -state normal
+		}
+		if {$leftFile != "" && $rightFile != ""} {
+			diffFiles $leftFile $rightFile
+			.menu.rename configure -state normal
+		}
+		if {$leftFile != ""} { 
+			.menu.delete configure -state normal
+			if {$rightCount > 0} {
+				.menu.guess configure -state normal
+			}
+		}
+		if {$rightFile != ""} { .menu.create configure -state normal }
+		if {$file == "undoFile"} { .menu.undo configure -state normal }
+	}
+	set $line $l
+}
+
+proc yscroll { a args } \
+{
+	eval { .diffs.left yview $a } $args
+	eval { .diffs.right yview $a } $args
+}
+
+proc xscroll { a args } \
+{
+	eval { .diffs.left xview $a } $args
+	eval { .diffs.right xview $a } $args
+}
+
+proc Page {view dir one} \
+{
+	set p [winfo pointerxy .]
+	set x [lindex $p 0]
+	set y [lindex $p 1]
+	page ".diffs" $view $dir $one
+	return 1
+}
+
+proc page {w xy dir one} \
+{
+	global	diffHeight
+
+	if {$xy == "yview"} {
+		set lines [expr $dir * $diffHeight]
+	} else {
+		# XXX - should be width.
+		set lines 16
+	}
+	if {$one == 1} {
+		set lines [expr $dir * 1]
+	} else {
+		incr lines -1
+	}
+	.diffs.left $xy scroll $lines units
+	.diffs.right $xy scroll $lines units
+}
+
+proc fontHeight {f} \
+{
+	return [expr [font metrics $f -ascent] + [font metrics $f -descent]]
+}
+
+proc computeHeight {} \
+{
+	global	diffHeight
+
+	update
+	set f [fontHeight [.diffs.left cget -font]]
+	set p [winfo height .diffs.left]
+	set diffHeight [expr $p / $f]
+}
+
+proc widgets {} \
+{
+	global	leftColor rightColor scroll boldFont diffHeight
+	global	buttonFont wish bithelp listHt
+
+	set boldFont {clean 12 roman bold}
+	set listFont {clean 12 roman }
+	set buttonFont {clean 12 roman bold}
+	set diffFont {clean 12 roman}
+	set leftWid 60
+	set rightWid 60
+	set diffHeight 20
+	set tcolor lightseagreen
+	set leftColor orange
+	set rightColor yellow
+	set swid 12
+	set listHt 8
+	set geometry ""
+	if {[file readable ~/.renametoolrc]} {
+		source ~/.renametoolrc
+	}
+	set g [wm geometry .]
+	if {("$g" == "1x1+0+0") && ("$geometry" != "")} {
+		wm geometry . $geometry
+	}
+	wm title . "Rename Tool"
+
+	set py 2
+	set px 4
+	set bw 2
+	frame .menu -background #b0b0c0
+	    button .menu.prev -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "<< Diff" -state disabled -command prev
+	    button .menu.next -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text ">> Diff" -state disabled -command next
+	    button .menu.history -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "History" -state disabled \
+		-command history
+	    button .menu.delete -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Delete" -state disabled -command "Delete 1"
+	    button .menu.deleteAll -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Delete All" -command DeleteAll
+	    button .menu.guess -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Guess" -command Guess 
+	    button .menu.rename -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Rename" -state disabled -command Rename 
+	    button .menu.create -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Create" -state disabled -command "Create 1"
+	    button .menu.createAll -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Create All" -command CreateAll
+	    button .menu.undo -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Undo" -state disabled -command Undo
+	    button .menu.apply -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Apply" -state disabled -command Apply
+	    button .menu.quit -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Quit" -command exit 
+	    button .menu.help -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-font $buttonFont -text "Help" \
+		-command { exec bk helptool renametool & }
+	    pack .menu.prev  -side left
+	    pack .menu.next -side left
+	    pack .menu.history -side left
+	    pack .menu.delete -side left
+	    pack .menu.deleteAll -side left
+	    pack .menu.guess -side left
+	    pack .menu.rename -side left
+	    pack .menu.create -side left
+	    pack .menu.createAll -side left
+	    pack .menu.apply -side left
+	    pack .menu.undo -side left
+	    pack .menu.quit -side right
+	    pack .menu.help -side right
+
+	frame .files
+	    label .files.deletes -font $buttonFont -relief raised -borderwid 1 \
+	    	-background #b0b0c0 -text "Deleted files"
+	    label .files.creates -font $buttonFont -relief raised -borderwid 1 \
+	    	-background #b0b0c0 -text "Created files"
+	    label .files.resolved -font $buttonFont -relief raised \
+		-borderwid 1 -background #b0b0c0 -text "Resolved files"
+	    text .files.l -height $listHt -wid 1 \
+		-state disabled -wrap none -font $listFont \
+		-xscrollcommand { .files.xsl set } \
+		-yscrollcommand { .files.ysl set }
+	    scrollbar .files.xsl -wid $swid -troughcolor $tcolor \
+		-orient horizontal -command ".files.l xview"
+	    scrollbar .files.ysl -wid $swid -troughcolor $tcolor \
+		-orient vertical -command ".files.l yview"
+	    text .files.r -height $listHt -wid 1 \
+		-state disabled -wrap none -font $listFont \
+		-xscrollcommand { .files.xsr set } \
+		-yscrollcommand { .files.ysr set }
+	    scrollbar .files.xsr -wid $swid -troughcolor $tcolor \
+		-orient horizontal -command ".files.r xview"
+	    scrollbar .files.ysr -wid $swid -troughcolor $tcolor \
+		-orient vertical -command ".files.r yview"
+	    text .files.sh -height $listHt -wid 1 \
+		-state disabled -wrap none -font $listFont \
+		-xscrollcommand { .files.xssh set } \
+		-yscrollcommand { .files.yssh set }
+	    scrollbar .files.xssh -wid $swid -troughcolor $tcolor \
+		-orient horizontal -command ".files.sh xview"
+	    scrollbar .files.yssh -wid $swid -troughcolor $tcolor \
+		-orient vertical -command ".files.sh yview"
+	    grid .files.deletes -row 0 -column 0 -sticky ewns
+	    grid .files.creates -row 0 -column 2 -sticky ewns
+	    grid .files.resolved -row 0 -column 4 -sticky ewns
+	    grid .files.l -row 1 -column 0 -sticky ewns
+	    grid .files.ysl -row 0 -rowspan 3 -column 1 -sticky nse 
+	    grid .files.xsl -row 2 -column 0 -sticky ew
+	    grid .files.r -row 1 -column 2 -sticky ewns
+	    grid .files.ysr -row 0 -column 3 -sticky nse -rowspan 3
+	    grid .files.xsr -row 2 -column 2 -sticky ew
+	    grid .files.sh -row 1 -column 4 -sticky ewns
+	    grid .files.yssh -row 0 -column 5 -sticky nse -rowspan 3
+	    grid .files.xssh -row 2 -column 4 -sticky ew
+
+	frame .diffs
+	    frame .diffs.status
+		label .diffs.status.l -background $leftColor \
+		    -font $buttonFont -relief sunken -borderwid 2
+		label .diffs.status.middle -background #b0b0f0 \
+		    -font $buttonFont -wid 26 -relief sunken -borderwid 2
+		label .diffs.status.r -background $rightColor \
+		    -font $buttonFont -relief sunken -borderwid 2
+		grid .diffs.status.l -row 0 -column 0 -sticky ew
+		grid .diffs.status.middle -row 0 -column 1
+		grid .diffs.status.r -row 0 -column 2 -sticky ew
+	    text .diffs.left -width $leftWid -height $diffHeight \
+		-state disabled -wrap none -font $diffFont \
+		-xscrollcommand { .diffs.xscroll set } \
+		-yscrollcommand { .diffs.yscroll set }
+	    text .diffs.right -width $rightWid -height $diffHeight \
+		-state disabled -wrap none -font $diffFont
+	    scrollbar .diffs.xscroll -wid $swid -troughcolor $tcolor \
+		-orient horizontal -command { xscroll }
+	    scrollbar .diffs.yscroll -wid $swid -troughcolor $tcolor \
+		-orient vertical -command { yscroll }
+	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
+	    #grid .diffs.l -row 0 -column 0 -sticky nsew
+	    #grid .diffs.r -row 0 -column 2 -sticky nsew
+	    grid .diffs.left -row 1 -column 0 -sticky nsew
+	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
+	    grid .diffs.right -row 1 -column 2 -sticky nsew
+	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
+	    grid .diffs.xscroll -columnspan 3
+
+	grid .menu -row 0 -column 0 -sticky we
+	grid .files -row 1 -column 0 -sticky nsew
+	grid .diffs -row 2 -column 0 -sticky nsew
+	grid rowconfigure . 2 -weight 1
+	grid rowconfigure .diffs 1 -weight 1
+	grid columnconfigure . 0 -weight 1
+	grid columnconfigure .files 0 -weight 1
+	grid columnconfigure .files 2 -weight 1
+	grid columnconfigure .files 4 -weight 1
+	grid columnconfigure .diffs.status 0 -weight 1
+	grid columnconfigure .diffs.status 2 -weight 1
+	grid columnconfigure .diffs 0 -weight 1
+	grid columnconfigure .diffs 2 -weight 1
+	grid columnconfigure .menu 0 -weight 1
+
+	# smaller than this doesn't look good.
+	wm minsize . 700 350
+
+	bind .diffs <Configure> { computeHeight }
+	keyboard_bindings
+	foreach w {.diffs.left .diffs.right} {
+		bindtags $w {all Text .}
+	}
+	set foo [bindtags .diffs.left]
+	computeHeight
+
+	.diffs.left tag configure diff -background $leftColor
+	.diffs.right tag configure diff -background $rightColor
+}
+
+# Set up keyboard accelerators.
+proc keyboard_bindings {} \
+{
+	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
+	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
+	bind all <Up> { if {[Page "yview" -1 1] == 1} { break } }
+	bind all <Down> { if {[Page "yview" 1 1] == 1} { break } }
+	bind all <Left> { if {[Page "xview" -1 1] == 1} { break } }
+	bind all <Right> { if {[Page "xview" 1 1] == 1} { break } }
+	bind all <Home> {
+		global	lastDiff
+
+		set lastDiff 1
+		dot
+		.diffs.left yview -pickplace 1.0
+		.diffs.right yview -pickplace 1.0
+	}
+	bind all <End> {
+		global	lastDiff diffCount
+
+		set lastDiff $diffCount
+		dot
+		.diffs.left yview -pickplace end
+		.diffs.right yview -pickplace end
+	}
+	bind all <q>		exit
+	bind all <space>	next
+	bind all <n>		next
+	bind all <p>		prev
+	bind all <period>	dot
+
+	bind .files.l <ButtonPress> {
+		pixSelect .files.l leftLine leftFile %x %y
+	}
+	bind .files.r <ButtonPress> {
+		pixSelect .files.r rightLine rightFile %x %y
+	}
+	bind .files.sh <ButtonPress> {
+		pixSelect .files.sh undoLine undoFile %x %y
+	}
+	bind .files.r <Double-1> {
+		global	rightFile
+
+		pixSelect .files.r rightLine rightFile %x %y
+		fillFile .diffs.right $rightFile
+		break
+	}
+}
+
+proc main {} \
+{
+	global argv0 argv argc bin dev_null
+
+	set bin "/usr/bitkeeper"
+	set dev_null "/dev/null"
+	bk_init
+	widgets
+	getFiles
+}
+
+main

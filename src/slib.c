@@ -6216,15 +6216,30 @@ sccs_clean(sccs *s, u32 flags)
 	unless (sameFileType(s, d)) {
 		unless (flags & PRINT) {
 			fprintf(stderr,
-			    "%s has different file type, needs delta.\n",
+			    "%s has different file types, needs delta.\n",
 			    s->gfile);
                 } else {
 			printf("===== %s (file type) %s vs edited =====\n",
-			s->gfile, pf.oldrev);
+			    s->gfile, pf.oldrev);
 			printf("< %s\n-\n", mode2FileType(d->mode));
 			printf("> %s\n", mode2FileType(s->mode));
  		}
 		free_pfile(&pf);
+		return (2);
+	}
+
+	if ((s->state & S_BITKEEPER)  &&
+	    !streq(relativeName(s, 0, 1), d->pathname)) {
+		unless (flags & PRINT) {
+			fprintf(stderr,
+			    "%s has different pathnames, needs delta.\n",
+			    s->gfile);
+                } else {
+			printf("===== %s (pathnames) %s vs edited =====\n",
+			    s->gfile, pf.oldrev);
+			printf("< %s\n-\n", d->pathname);
+			printf("> %s\n", relativeName(s, 0, 1));
+ 		}
 		return (2);
 	}
 
