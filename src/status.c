@@ -26,7 +26,12 @@ status_main(int ac, char **av)
 			return (1);
 		}
 	}
-	if (package_path = av[optind]) chdir(package_path);
+	if (package_path = av[optind]) {
+		if (chdir(package_path)) {
+			perror(package_path);
+			return (1); /* failed */
+		}
+	}
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "status: cannot find root directory\n");
 		return(1);  /* error exit */
