@@ -264,14 +264,19 @@ getConfig()
 private void
 merge(char *gfile)
 {
+	char	*s, l[200], g[200], r[200];
 	char	*sfile = name2sccs(gfile);
 	char	*rfile = name2sccs(gfile);
-	char	*t = strrchr(rfile, '/');
+	char	*mfile = name2sccs(gfile);
+	char	*t, buf[MAXPATH];
+	int	hasRfile, hasMfile;
+	
 
-	t[1] = 'r';
-	if (exists(rfile)) {
-		char	*s, l[200], g[200], r[200];
-		char	buf[MAXPATH];
+	t = strrchr(rfile, '/'), t[1] = 'r';
+	t = strrchr(mfile, '/'), t[1] = 'm';
+	hasRfile = exists(rfile);
+	hasMfile = exists(mfile);
+	if (hasRfile || hasMfile) {
 		FILE	*f;
 
 		/*
@@ -281,25 +286,32 @@ merge(char *gfile)
 		f = fopen(rfile, "r");
 		fscanf(f, "merge deltas %s %s %s", l, g, r);
 		fclose(f);
-#define	TMP	"BitKeeper/tmp/CONTENTS"
-		sprintf(buf, "bk get -qpr%s %s > %s", l, gfile, TMP);
-		system(buf);
-		sprintf(buf, "bk get -qpr%s %s >> %s", r, gfile, TMP);
-		system(buf);
 		s = strchr(l, '.'); s++;
 		s = strchr(s, '.');
-		sprintf(buf, "bk get -eqgM%s %s", s ? l : r, gfile);
-		system(buf);
-		sprintf(buf, "sort -u < %s > %s", TMP, gfile);
-		system(buf);
-		sprintf(buf, "bk ci -qPyauto-union %s", gfile);
-		system(buf);
-		unlink(rfile);
-		t[1] = 'm';
-		unlink(rfile); /* unlink m.file */
+#define	TMP	"BitKeeper/tmp/CONTENTS"
+		if (hasRfile) {
+			sprintf(buf, "bk get -eqgM%s %s", s ? l : r, gfile);
+			system(buf);
+			sprintf(buf, "bk get -qpr%s %s > %s", l, gfile, TMP);
+			system(buf);
+			sprintf(buf, "bk get -qpr%s %s >> %s", r, gfile, TMP);
+			system(buf);
+			sprintf(buf, "sort -u < %s > %s", TMP, gfile);
+			system(buf);
+			sprintf(buf, "bk ci -qPyauto-union %s", gfile);
+			system(buf);
+		} else { /* we have a m.file */
+			sprintf(buf, "bk get -eqM%s %s", s ? l : r, gfile);
+			system(buf);
+			sprintf(buf, "bk ci -qPyauto-path-converge %s", gfile);
+			system(buf);
+		}
+		if (hasRfile) unlink(rfile);
+		if (hasMfile) unlink(mfile);
 	} /* else remote update only */
 	free(sfile);
 	free(rfile);
+	free(mfile);
 }
 
 private	delta *
