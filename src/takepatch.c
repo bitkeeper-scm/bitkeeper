@@ -126,9 +126,8 @@ extractPatch(FILE *p, int flags)
 	char	*name;
 	int	newFile = 0;
 	char	*gfile;
+	static	int rebuilt = 0;	/* static - do it once only */
 	char	buf[1200];
-
-sccs	*sccs_getperfile(FILE *, int *);
 
 	/*
 	 * Patch format for continuing file:
@@ -161,8 +160,12 @@ sccs	*sccs_getperfile(FILE *, int *);
 	if (echo>3) fprintf(stderr, "%s\n", buf);
 	k.dptr = buf;
 	k.dsize = strlen(buf) + 1;
-	v = mdbm_fetch(idDB, k);
+again:	v = mdbm_fetch(idDB, k);
 	unless (v.dptr || newFile) {
+		unless (rebuilt++) {
+			rebuild_id();
+			goto again;
+		}
 		fprintf(stderr,
 		    "takepatch: can't find key '%s' in id cache\n", buf);
 		cleanup(CLEAN_RESYNC);
@@ -858,6 +861,17 @@ fileCopy(char *from, char *to)
 	system(s);
 	free(s);
 	return (0);
+}
+
+rebuild_id()
+{
+	fprintf(stderr, "takepatch: miss in idcache, rebuilding...\n");
+	system("bk sfiles -r");
+	if (idDB) mdbm_close(idDB);
+	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+		perror("SCCS/x.id_cache");
+		exit(1);
+	}
 }
 
 cleanup(int what)

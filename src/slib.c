@@ -9696,7 +9696,9 @@ loadDB(char *file, int (*want)(char *))
 again:	unless (f = fopen(file, "rt")) {
 		if (first) {
 			first = 0;
-			fprintf(stderr, "Rebuilding caches...\n");
+			fprintf(stderr,
+			    "loadDB(%s) failed, rebuilding caches...\n",
+			    file);
 			system("bk sfiles -r");
 			goto again;
 		}

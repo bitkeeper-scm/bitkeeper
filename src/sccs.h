@@ -631,6 +631,7 @@ int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 void	sccs_sdelta(char *, delta *);
+sccs	*sccs_getperfile(FILE *, int *);
 void	sfileUnget(void);
 char	*sfileNext(void);
 char	*sfileRev(void);

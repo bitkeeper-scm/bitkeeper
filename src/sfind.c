@@ -134,6 +134,7 @@ func(const char *filename, const struct stat *sb, int flag)
 	register char *s;
 	char	*sfile, *gfile;
 
+	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	if (dFlg) {
 		if (S_ISDIR(sb->st_mode)) {
@@ -328,6 +329,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	datum	k, v;
 	char	buf[MAXPATH*2];
 
+	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	for (s = file; *s; s++);
 	for ( ; s > file; s--) if (s[-1] == '/') break;		/* CSTYLED */
@@ -470,7 +472,15 @@ lftw(const char *dir,
 		sprintf(tmp_buf, "%s%s%s", dir, slash, e->d_name);
 		flag = _ftw_get_flag(tmp_buf, &sbuf);
 		if (S_ISDIR(sbuf.st_mode)) {
-			lftw(tmp_buf, func, 0);
+			/*
+			 * Do not let sfind cross into other project roots.
+			 */
+			char	root[MAXPATH];
+			
+			sprintf(root, "%s/BitKeeper/etc", tmp_buf);
+			unless (isdir(root)) {
+				lftw(tmp_buf, func, 0);
+			}
 		} else {
 			if ((rc = (*func)(tmp_buf, &sbuf, flag)) != 0) {
 				goto done;
