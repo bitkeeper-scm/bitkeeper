@@ -314,7 +314,30 @@ status(int verbose, char *status_log)
 	}
 
 	if (verbose) {
-		// XXX This section is under construction 
+		sprintf(buf, "%sbkusers", bin);
+		f1 = popen(buf, "r");
+		while (fgets(buf, sizeof(buf), f1)) {
+			fprintf(f, "User:\t%s", buf);
+		}
+		pclose(f1);
+		sprintf(buf, "%ssfiles -x", bin);
+		f1 = popen(buf, "r");
+		while (fgets(buf, sizeof(buf), f1)) {
+			fprintf(f, "Extra:\t%s", buf);
+		}
+		pclose(f1);
+		sprintf(buf, "%ssfiles -cg", bin);
+		f1 = popen(buf, "r");
+		while (fgets(buf, sizeof(buf), f1)) {
+			fprintf(f, "Modified:\t%s", buf);
+		}
+		pclose(f1);
+		sprintf(buf, "%ssfiles -Cg", bin);
+		f1 = popen(buf, "r");
+		while (fgets(buf, sizeof(buf), f1)) {
+			fprintf(f, "Uncommitted:\t%s", buf);
+		}
+		pclose(f1);
 	} else {
 		int i;
 
