@@ -1314,7 +1314,7 @@ fi
 cmd=$1
 shift
 
-PATH="$BK_OLDPATH"
+test "X$BK_USEMSYS" = "X" && PATH="$BK_OLDPATH"
 if type "$cmd" > /dev/null 2>&1
 then
 	exec $cmd "$@"

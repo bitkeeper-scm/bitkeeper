@@ -4,13 +4,9 @@
 # can be used when building bk.
 #
 # It is assumed to be run like this:
-#    `bk bin`/gnu/bin/sh buildsh
+#    BK_USEMSYS=1 bk sh ./update_buildenv
 #
 # so it get executed by the MSYS shell from an existing bk installation.
-# We can't assume that that MSYS shell is the correct version so the first
-# this we do a build a current MSYS environment in tmp/build and then
-# spawn a new windows that is running the new MSYS shell.  BK can then
-# be built and tested in that shell
 
 # restrict path do only things of interest
 PATH=/bin	# for sed
@@ -20,8 +16,24 @@ PATH=/bin:$MSYSWINDIR/system32:$MSYSWINDIR
 BK_PATH=$(mount | tr 'A-Z' 'a-z' | sed -ne 's,\(.\):,/\1,' -e 's,\\,/,g' -e 's,/gnu/bin,,' -e 's, on /bin type.*,,p') 
 PATH=$PATH:$BK_PATH
 
-mkdir -p /c/build
 D=/c/build/buildenv
+mkdir -p $D
+
+W32TOOLS=/c/build/win32tools
+test -d $W32TOOLS || bk clone bk://data.bitmover.com/win32tools $W32TOOLS
+
+# generate hash of this script
+bk crypto -h - < $0 > /c/build/HASH.want
+bk get -S win32/msysver.sh
+(cd win32; ./msysver.sh) >> /c/build/HASH.want
+bk prs -hnd:KEY: -r+ $W32TOOLS/ChangeSet >> /c/build/HASH.want
+
+# if we already have the right stuff, then exit.
+cmp -s $D/HASH /c/build/HASH.want && {
+	rm -f /c/build/HASH.want
+	exit 0
+}
+
 echo removing old buildenv
 rm -rf $D || {
 	echo cannot remove $D
@@ -31,8 +43,6 @@ rm -rf $D || {
 # build and install new msys
 (cd win32; make MSYSBIN=$D msys)
 
-W32TOOLS=/c/build/win32tools
-test -d $W32TOOLS || bk clone bk://data.bitmover.com/win32tools $W32TOOLS
 bk sfiles -Ug $W32TOOLS | bk get -S -
 
 # build mingw
@@ -54,7 +64,10 @@ tar -C$D/groff -xzf $W32TOOLS/groff-1.19.1-alpha-bin.tar.gz
 # create custom startup scripts with fixed PATH
 rm -f $D/etc/profile
 echo PATH=/bin:/mingw/bin:$BK_PATH:/perl/bin:/groff/bin:$MSYSWINDIR/system32:$MSYSWINDIR > $D/etc/profile
-echo HOME=`pwd` >> $D/etc/profile
+#echo HOME=`pwd` >> $D/etc/profile
+echo "unset BK_USEMSYS" >> $D/etc/profile
+echo "unset BK_OLDPATH" >> $D/etc/profile
+echo "export MSYSBUILDENV=1" >> $D/etc/profile
 
 WD=`cd $D; bk pwd -s`
 echo "export GROFF_TMAC_PATH='$WD/groff/share/groff/site-tmac;$WD/groff/share/groff/1.19.1/tmac'" >> $D/etc/profile
@@ -69,6 +82,4 @@ echo "c:/build /build" > $D/etc/fstab
 echo PS1=\'BUILD \\W \\$ \' >> $D/etc/profile
 cp $D/bin/sh.exe $D/bin/bash.exe
 
-# start new cmd shell window with new shell
-#   XXX probably fails on win98
-cmd //c start $D/bin/sh --login
+mv /c/build/HASH.want $D/HASH

@@ -41,7 +41,6 @@ msys: ./msysver.sh MSYSKEY FORCE
 			tar -C$(MSYSBIN) -xf-; \
 		MSYSVER=`./msysver.sh`; \
 		test -n "$$MSYSVER" -a \! -f "$$MSYSVER" && { \
-	                test -d /build/obj || mkdir -m 777 -p /build/obj; \
 			(cd msys; bk sfiles -Ug | tar -czf $$MSYSVER -T-); \
 			chmod 666 $$MSYSVER; \
 		}; \
