@@ -212,10 +212,10 @@ EOF
 }
 
 
-transfer_RCS() { transfer "$@" }
-transfer_SCCS() { transfer "$@" }
-transfer_text() { transfer "$@" }
-transfer_patch() { return }
+transfer_RCS() { transfer "$@"; }
+transfer_SCCS() { transfer "$@"; }
+transfer_text() { transfer "$@"; }
+transfer_patch() { return; }
 
 transfer() {
 	FROM=$1

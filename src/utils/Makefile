@@ -12,7 +12,7 @@ munge: munge.c
 image: munge extractor.c
 	@test -r "$(PROG)" -a -r "$(IMAGE)" && \
 	    ( \
-	    munge $(PROG) $(IMAGE); \
+	    ./munge $(PROG) $(IMAGE); \
 	    NAME=`basename $(IMAGE) | \
 	    sed -e s/.tar// -e s/.tar.gz// -e s/.tgz//`; \
 	    $(CC) extractor.c _data.o -o $${NAME}.bin; \
