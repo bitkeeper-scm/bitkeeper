@@ -13,7 +13,7 @@ REPO=$TREE-$USER
 cd /build || exit 1
 rm -rf $REPO
 set -e
-BK_LICENSE=ACCEPTED PREFER_RSH=YES bk clone $TREE_HOST:$BKR $REPO
+BK_LICENSE=ACCEPTED PREFER_RSH=YES bk clone -z0 $TREE_HOST:$BKR $REPO
 cd $REPO/src
 cat <<EOF | bk -R get -qS -
 src/build.sh
