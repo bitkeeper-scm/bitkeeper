@@ -508,6 +508,7 @@ done:	if (rc) {
 		 */
 		unlink(CSETS_OUT);
 		if (rename(rev_list, CSETS_OUT)) perror(CSETS_OUT);
+		chmod(CSETS_OUT, 0444);
 		sprintf(envbuf, "BK_REVLISTFILE=%s", CSETS_OUT);
 		putenv(envbuf);
 	}

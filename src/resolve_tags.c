@@ -131,6 +131,7 @@ resolve_tags(opts *opts)
 		t.remote = d;
 		while (!resolve_loop("resolve_tags", rs, t_funcs));
 	}
+	sccs_free(local);
 	resolve_free(rs);
 	return (1);
 }
