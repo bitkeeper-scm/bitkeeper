@@ -247,7 +247,7 @@ out:		if (pendingFiles) unlink(pendingFiles);
 		fclose(f);
 		unlink("SCCS/t.ChangeSet");
 	}
-	cset = sccs_csetInit(0,0);
+	cset = sccs_csetInit(0);
 	rc = csetCreate(cset, dflags, p, syms);
 
 	putenv("BK_STATUS=OK");

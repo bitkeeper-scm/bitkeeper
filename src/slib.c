@@ -4302,7 +4302,7 @@ sccs_csetInit(u32 flags)
 	sccs	*cset = 0;
 
 	unless (rootpath = proj_root(0)) return (0);
-	if (streq(rootpath, ".")) {
+	if (samepath(rootpath, ".")) {
 		strcpy(csetpath, CHANGESET);
 	} else {
 		strcpy(csetpath, rootpath);

@@ -284,7 +284,7 @@ check_main(int ac, char **av)
 		}
 		if (csetpointer) {
 			char	buf[MAXKEY + 20];
-			char	*csetkey = proj_csetrootkey(s->proj);
+			char	*csetkey = proj_csetrootkey(0);
 
 			fprintf(stderr,
 			    "check: "
