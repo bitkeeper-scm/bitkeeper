@@ -82,8 +82,12 @@ main(int ac, char **av)
 
 	input = stdin;
 	debug_main(av);
-	while ((c = getopt(ac, av, "acFf:iv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:iqsv")) != -1) {
 		switch (c) {
+		    case 'q':
+		    case 's':
+		    /* Ignored for option consistency.  */
+		    break;
 		    case 'a': resolve++; break;
 		    case 'c': noConflicts++; break;
 		    case 'F': fast++; break;
