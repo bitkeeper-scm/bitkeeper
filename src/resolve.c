@@ -1975,6 +1975,7 @@ pass4_apply(opts *opts)
 				unlink(orig);
 				exit(1);
 			}
+			sccs_clean(l, SILENT); 
 			sccs_close(l);
 			if (backup(opts, l->sfile, backups, save)) {
 				unlink(orig);
