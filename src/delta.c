@@ -2,36 +2,24 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
-/* undocumented:
-   -n		preserve gfile, kill pfile; SCCS compat\n\
-   -r		obsolete, SCCS compat\n\
-   -R		respect rev (?)\n\
-   -s		same as -q\n\
-*/
-private	char	*delta_help = "\n\
-usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
-   -1		force one-root mode\n\
-   -a		check in new work automatically\n\
-   -c		don't verify file checksum\n\
-   -D<file>	take diffs from <file>\n\
-   -E		set file encoding (like admin)\n\
-   -f		force creation of a null delta when invoked as ci\n\
-   -h		invert sense of file's hash flag\n\
-   -i		initial checkin, create a new revision history\n\
-   -I<file>	use init file for meta data\n\
-   -l		follow check in with a locked check out like ``get -e''\n\
-   -M<mode>	set the permissions on the new delta to <mode>\n\
-   -p		print differences before prompting for comments\n\
-   -q		run silently.\n\
-   -S<sym>	set the symbol <sym> to be the revision created\n\
-   -u		follow check in with an unlocked check out like ``get''\n\
-   -Y		prompt for one comment, then use it for all the files\n\n\
-   -y<comment>	sets the revision comment to <comment>\n\
-   -Z, -Z<alg>	compress stored s.file with <alg>, which may be:\n\
-		gzip	like gzip(1)\n\
-		none	no compression\n";
 
 int	newrev(sccs *s, pfile *pf);
+
+char *
+user_preference(char *what, char buf[MAXPATH])
+{
+	char *p;
+
+	unless (bk_proj) return "";
+	unless (bk_proj->config) {
+		unless (bk_proj->root) return "";
+		bk_proj->config = loadConfig(bk_proj->root, 0);
+		unless (bk_proj->config) return "";
+	}
+	p = mdbm_fetch_str(bk_proj->config, what);
+	unless (p) p = "";
+	return (p);
+}
 
 int
 delta_main(int ac, char **av)
@@ -42,14 +30,14 @@ delta_main(int ac, char **av)
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
 	int	isci = 0;
-	int	checkout = 0;
+	int	checkout = 0, ignorePreference = 0;
 	int	c, rc, enc;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*name;
 	char	**syms = 0;
-	char	*compp = 0, *encp = 0;
-	char	*mode = 0;
+	char	*compp = 0, *encp = 0, *p;
+	char	*mode = 0, buf[MAXPATH];
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
@@ -74,11 +62,12 @@ delta_main(int ac, char **av)
 	}
 
 	if (ac > 1 && streq("--help", av[1])) {
-help:		fputs(delta_help, stderr);
+help:		system("bk help delta");
 		return (1);
 	}
+
 	while ((c = getopt(ac, av,
-			   "1acD:E|fg;GhI;ilm|M;npqRrS;suy|YZ|")) != -1) {
+			   "1acD:E|fg;GhI;ilm|M;npPqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case '1': iflags |= INIT_ONEROOT; break;
@@ -128,6 +117,7 @@ comment:		comments_save(optarg);
 		    case 'h': dflags |= DELTA_HASH; break;
 		    case 'I': initFile = optarg; break;
 		    case 'M': mode = optarg; break;
+		    case 'P': ignorePreference = 1;  break;
 		    case 'R': dflags |= DELTA_PATCH; break;
 		    case 'S': syms = addLine(syms, strdup(optarg)); break;
 		    case 'Y': dflags |= DELTA_DONTASK; break;
@@ -140,6 +130,19 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			return (1);
 		}
 	}
+
+	unless (ignorePreference || checkout) {
+		p = user_preference("checkout", buf);
+		if (streq(p, "edit")) {
+			gflags |= GET_SKIPGET|GET_EDIT;
+			dflags |= DELTA_SAVEGFILE;
+			checkout = 1;
+		} else if (streq(p, "get")) {
+			gflags |= GET_EXPAND;
+			checkout = 1;
+		}
+	}
+
 	enc = sccs_encoding(0, encp, compp);
 	if (enc == -1) goto usage;
 
@@ -206,11 +209,9 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		}
 
 		nrev = NULL;
-		unless (dflags & NEWFILE) {
-			if (checkout && (newrev(s, &pf) == -1)) {
-				goto next;
-			}
-			nrev = pf.newrev;
+		if (HAS_PFILE(s)) {
+			if (newrev(s, &pf) == -1) goto next;
+			if (checkout && (gflags &GET_EDIT)) nrev = pf.newrev;
 		}
 		s->encoding = sccs_encoding (s, encp, compp);
 		rc = sccs_delta(s, dflags, d, init, diffs, syms);
@@ -232,6 +233,23 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 				goto next;
 			}
 			if (rc == -3) nrev = pf.oldrev;
+
+			/*
+			 * If GET_SKIPGET is set, sccs_get() will
+			 * remove the gfile if it is readonly. (don't know why)
+			 * So need to fix up the mode before we call sccs_get()
+			 * note that this only happen with new file, For
+			 * non-new file, if the gfile is not writable
+			 * the sccs_delta() above should have failed.
+			 */
+			if ((dflags&NEWFILE) &&
+					(gflags&GET_EDIT) && !IS_WRITABLE(s)) {
+				if (chmod(s->gfile, s->mode|0200)) {
+					perror(s->gfile);
+				}
+				s->mode |= 0200;
+			}
+
 			if (sccs_get(s, nrev, 0, 0, 0, gflags, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,

@@ -42,7 +42,7 @@ bk get $Q -e -r1.5 -M1.3.1.1 FILE
 bk delta $Q -y FILE
 echo 6 > X
 bk undos X > CMP1
-bk prs -h -r1.6 -d':MGP:' FILE > CMP2
+bk prs -h -r1.6 -d':MGP:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -63,7 +63,7 @@ if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 bk delta $Q -y FILE
 echo 7 > X 
 bk undos X > CMP1
-bk prs -h -r1.7 -d':MGP:' FILE > CMP2
+bk prs -h -r1.7 -d':MGP:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -72,7 +72,7 @@ bk co $Q -l -r1.7 -M1.3.1.2 FILE
 bk ci $Q -y FILE
 echo 7 > X 
 bk undos X > CMP1
-bk prs -h -r1.8 -d':MGP:' FILE > CMP2
+bk prs -h -r1.8 -d':MGP:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -82,7 +82,7 @@ bk delta $Q -y FILE
 bk admin -M1.3.1.1 FILE
 echo 6 > X 
 bk undos X > CMP1
-bk prs -h -r1.9 -d':MGP:' FILE > CMP2
+bk prs -h -r1.9 -d':MGP:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
@@ -90,7 +90,7 @@ echo $N Check admin -r -M ...........................................$NL
 bk admin -r1.8 -M1.3.1.1 FILE
 echo 6 > X 
 bk undos X > CMP1
-bk prs -h -r1.8 -d':MGP:' FILE > CMP2
+bk prs -h -r1.8 -d':MGP:\n' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK

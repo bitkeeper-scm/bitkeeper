@@ -20,10 +20,11 @@ bkd_main(int ac, char **av)
 	char	*uid = 0;
 
 	loadNetLib();
-	while ((c = getopt(ac, av, "c:deE:il|p:P:Rs:St:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:il|p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;
+		    case 'D': Opts.debug = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
 		    case 'i': Opts.interactive = 1; break;
 		    case 'l':
@@ -100,9 +101,10 @@ bkd_server()
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
 
 	
-	if (fork()) exit(0);
-	setsid();	/* lose the controlling tty */
+	unless (Opts.debug) if (fork()) exit(0);
+	unless (Opts.debug) setsid();	/* lose the controlling tty */
 	signal(SIGCHLD, reap);
+	signal(SIGPIPE, SIG_IGN);
 	if (Opts.alarm) {
 		signal(SIGALRM, exit);
 		alarm(Opts.alarm);
@@ -115,6 +117,8 @@ bkd_server()
 	}
 	while (1) {
 		int	n = tcp_accept(sock);
+
+		if (n == -1) continue;
 
 		if (fork()) {
 		    	close(n);
@@ -269,12 +273,52 @@ drain(int fd)
 	while (read(fd, buf, sizeof(buf)) > 0);
 }
 
+off_t
+get_byte_count()
+{
+
+	char buf[MAXPATH];
+	off_t	byte_count = 0;
+	FILE *f = 0;
+
+	unless (bk_proj && bk_proj->root) return (0);
+	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	f = fopen(buf, "r");
+	if (f && fgets(buf, sizeof(buf), f)) {
+		if (strlen(buf) > 11) {
+			fprintf(stderr, "Holy big transfer, Batman!\n");
+			fclose(f);
+			return ((off_t)0xffffffff);
+		}
+		byte_count = strtoul(buf, 0, 10);
+	}
+	if (f) fclose(f);
+	return (byte_count);
+}
+
+
+void
+save_byte_count(unsigned int byte_count)
+{
+	FILE	*f;
+	char	buf[MAXPATH];
+
+	unless (bk_proj && bk_proj->root) return;
+	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	f = fopen(buf, "w");
+	if (f) {
+		fprintf(f, "%u\n", byte_count);
+		fclose(f);
+	}
+}
+
 private	void
 do_cmds()
 {
 	int	ac;
 	char	**av;
 	int	i, ret;
+	int	flags = 0;
 
 	while (getav(&ac, &av)) {
 		getoptReset();
@@ -285,8 +329,18 @@ do_cmds()
 				if (bk_proj) proj_free(bk_proj);
 				bk_proj = proj_init(0);
 			}
-			cmdlog_start(av);
-			if ((ret = cmds[i].cmd(ac, av)) != 0) {
+
+			flags = cmdlog_start(av);
+
+			/*
+			 * Do the real work
+			 */
+			ret = cmds[i].cmd(ac, av);
+
+			cmdlog_end(0, flags);
+
+			if (flags & CMD_FAST_EXIT) exit(ret);
+			if (ret != 0) {
 				if (Opts.interactive) {
 					out("ERROR-CMD FAILED\n");
 				}
@@ -295,8 +349,6 @@ do_cmds()
 					drain(0);
 					exit(ret);
 				}
-			} else {
-				cmdlog_end(0);
 			}
 		} else if (av[0]) {
 			out("ERROR-BAD CMD: ");
@@ -377,9 +429,12 @@ getav(int *acp, char ***avp)
 
 	if (Opts.interactive) out("BK> ");
 	for (ac = i = 0; in(&buf[i], 1) == 1; i++) {
-		if (buf[i] == '\n') {
+		if ((buf[i] == '\r') || (buf[i] == '\n')) {
 			buf[i] = 0;
 			av[ac] = 0;
+			if ((ac > 2) && strneq("HTTP/1", av[2], 6)) {
+				av[0] = "httpget";
+			}
 			*acp = ac;
 			*avp = av;
 			return (1);

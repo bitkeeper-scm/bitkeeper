@@ -35,6 +35,7 @@ private	int	all;	/* if set, check every darn entry in the ChangeSet */
 private	int	resync;	/* called in resync dir */
 private	int	fix;	/* if set, fix up anything we can */
 private	int	goneKey;/* if set, list gone key only */
+private	int	badWritable; /* if set, list bad writable file only */
 private	int	names;	/* if set, we need to fix names */
 private	int	mixed;	/* mixed short/long keys */
 private	project	*proj;
@@ -86,7 +87,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acfgpRv")) != -1) {
+	while ((c = getopt(ac, av, "acfgpRvw")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'f': fix++; break;
@@ -95,9 +96,15 @@ usage:		fprintf(stderr, "%s", check_help);
 		    case 'p': polyList++; break;
 		    case 'R': resync++; break;
 		    case 'v': verbose++; break;
+		    case 'w': badWritable++; break;
 		    default:
 			goto usage;
 		}
+	}
+
+	if (goneKey && badWritable) {
+		fprintf(stderr, "check: cannot have both -g and -w\n");
+		return (1);
 	}
 
 	if (all && (!av[optind] || !streq("-", av[optind]))) {
@@ -139,6 +146,25 @@ usage:		fprintf(stderr, "%s", check_help);
 			}
 			sccs_free(s);
 			continue;
+		}
+
+		unless (HAS_PFILE(s)) {
+			if (S_ISREG(s->mode) && IS_WRITABLE(s)) {
+				if (badWritable) {
+					printf("%s\n", s->gfile);
+				} else {
+					fprintf(stderr,
+"===========================================================================\n\
+check: %s writable but not checked out, this usually means that you have\n\
+modified a file without first doing a \"bk edit\". To fix the problem,\n\
+do a \"bk -R edit -g %s\" to change the file to checked out status.\n\
+To fix all bad writable file, use the following command:\n\
+\t\"bk -r check -w | bk -R edit -g -\"\n\
+===========================================================================\n",
+				    	s->gfile, s->gfile);
+				}
+				errors |= 32; 
+			}
 		}
 
 		/*
@@ -197,7 +223,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		if (names) {
 			fprintf(stderr, "check: trying to fix names...\n");
 			system("bk -r names");
-			system("bk sfiles -r");
+			system("bk idcache");
 			return (2);
 		}
 	}
@@ -263,7 +289,7 @@ checkAll(MDBM *db)
 			goto full;
 		}
 		sprintf(buf,
-		    "bk sccscat -h %s/ChangeSet | bk keysort", RESYNC2ROOT);
+		    "bk sccscat -h %s/ChangeSet | bk _keysort", RESYNC2ROOT);
 		f = popen(buf, "r");
 		while (fgets(buf, sizeof(buf), f)) {
 			if (mdbm_store_str(local, buf, "", MDBM_INSERT)) {
@@ -336,7 +362,11 @@ listFound(MDBM *db)
 	}
 	if (resync) return;
 	fprintf(stderr,
-	    "Add keys to BitKeeper/etc/gone if the files are gone for good.\n");
+"===========================================================================\n\
+Add keys to BitKeeper/etc/gone if the files are gone for good.\n\
+To add all missing key to the gone file, use the following command:\n\
+\t\"bk -r check -ag | bk gone -\"\n\
+===========================================================================\n");
 }
 
 private void
@@ -392,7 +422,7 @@ buildKeys()
 	}
 	unless (exists("BitKeeper/tmp")) mkdir("BitKeeper/tmp", 0777);
 	unlink(CTMP);
-	sprintf(buf, "bk sccscat -h ChangeSet | bk keysort > %s", CTMP);
+	sprintf(buf, "bk sccscat -h ChangeSet | bk _keysort > %s", CTMP);
 	system(buf);
 	unless (exists(CTMP)) {
 		fprintf(stderr, "Unable to create %s\n", CTMP);
@@ -589,13 +619,18 @@ getRev(char *root, char *key, MDBM *idDB)
 private void
 markCset(sccs *s, delta *d)
 {
+	time_t	now = time(0);
+
 	do {
 		if (d->flags & D_SET) {
-			poly = 1;
+			/* warn if in the last 1.5 months */
+			if ((now - d->date) < (45 * 24 * 60 * 60)) poly = 1;
 			if (polyList) {
 				fprintf(stderr,
-				    "check: %s: %s in more than one cset\n",
-				    s->gfile, d->rev);
+				    "check: %s@%s "
+				    "(%s@%s %.8s) in multiple csets\n",
+				    s->gfile, d->rev,
+				    d->user, d->hostname, d->sdate);
 			}
 		}
 		d->flags |= D_SET;

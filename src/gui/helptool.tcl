@@ -106,7 +106,7 @@ proc stackReset {} \
 }
 
 # Pop up the stack one if we can.
-proc back {} \
+proc upStack {} \
 {
 	global	line stack stackMax stackPos
 
@@ -119,7 +119,7 @@ proc back {} \
 	}
 }
 
-proc forw {} \
+proc downStack {} \
 {
 	global	line stack stackMax stackPos
 
@@ -136,72 +136,109 @@ proc bkhelp {topic} \
 {
 	global line line2full gc
 
-	set topic $line2full($line)
 	set msg "BitKeeper help -- $topic"
 	wm title . $msg
-	set f [open "| bk help -p $topic"]
+	set f [open "| bk help $gc(help.helptext) -p $topic"]
 	.text.help configure -state normal
 	.text.help delete 1.0 end
-	set first 1
+	set lineno 1
 	while {[gets $f help] >= 0} {
-		if {[string first "bk " $help] == -1} {
-			.text.help insert end "$help\n"
-		} else {
-			embedded_tag "$help"
+		.text.help insert end "$help\n"
+		if {[regexp {^[A-Z][ \t\nA-Z.?\-\|]+$} $help]} {
+			set i "$lineno.0"
+			.text.help tag add "bold" $i "$i lineend"
 		}
-
-		if {$first == 1} {
-			set first 0
-			if {[regexp {^[ \t]*[-=]} $help]} {
-				.text.help insert 1.0 "\n"
-				.text.help insert end "\n"
-				.text.help tag \
-				    add "title" 1.0 "3.0 lineend + 1 char"
-			}
-		}
+		incr lineno
 	}
+	.text.help tag add "bold" 2.0 "2.0 lineend + 1 char"
+	set i "$lineno.0"
+	.text.help tag add "bold" "$i - 2 lines" end
 	catch {close $f} dummy
 	.text.help configure -state disabled
-	.text.help tag configure seealso -foreground $gc(help,linkColor) \
-	    -underline true
+	bk_highlight
 }
 
-# Find each occurrence of bk <cmd> or bk help <cmd> and tag cmd.
-proc embedded_tag {line} \
+proc highlight {tag index len} \
 {
-		#puts "LINE=$line"
-	while {$line != ""} {
-		set start [string first "bk " $line]
-		if {$start == -1} { break }
-		set end [expr {$start + 7}]
-		set t [string range $line $start $end]
-		#puts "  big?=$t"
-		if {$t == "bk help "} { incr start 5 }
-		# It may have been "bk helptool"
-		incr end 4
-		set t [string range $line $start $end]
-		if {$t == "bk helptool "} { incr start 9 }
-		incr start 2
-		set t [string range $line 0 $start]
-		#puts "  chop=$t"
-		.text.help insert end "$t"
-		incr start
-		set line [string range $line $start end]
-		#puts "  line=$line"
-		set end [string wordend $line 0]
-		incr end -1
-		set tag [string range $line 0 $end]
-		#puts "  tag=$tag"
-		if {[topic2line $tag] != ""} {
-			.text.help insert end "$tag" "$tag seealso"
-			.text.help tag bind $tag <Button-1> \
-			    "getSelection $tag; stackReset; doSelect 1"
-			incr end
-			set line [string range $line $end end]
+	set index2 [.text.help index "$index + $len chars"]
+	.text.help tag add $tag $index $index2
+	.text.help tag add seealso $index $index2
+	.text.help tag bind \
+	    $tag <Button-1> "getSelection $tag; stackReset; doSelect 1"
+}
+
+# Look for each <bk> word, then find the next word,
+# if next_word == help|helptool
+#	if word is a topic
+#		highlight that word
+#	else
+#		highlight help|helptool
+# else
+#	if word is a topic
+#		highlight that word
+#	else
+#		highlight "bk"
+# XXX - maybe recode this in C as an option to "bk help"?
+proc bk_highlight {} \
+{
+	set index 4.0
+	set t .text.help
+	while {"$index" != ""} {
+		set index [$t search \
+		    -count bklen -regexp {(^| |`|"|/)bk([ ]+|$)} $index end]
+		if {"$index" == ""} { break }
+
+		# Get start of "bk"
+		if {[$t get $index] == " "} {
+			set bkindex [$t index "$index + 1 chars"]
+		} else {
+			set bkindex $index
+		}
+
+		# skip past " bk ".
+		set index [$t index "$index + $bklen chars"]
+
+		# Get next word
+		set w1index [$t search \
+		    -count w1len -regexp {[a-zA-Z0-9_\-]+} $index end]
+		if {"$w1index" == ""} {
+			highlight bk $bkindex 2
+			break
+		}
+		set w1 [$t get $w1index [$t index "$w1index + $w1len chars"]]
+#puts "WORD1=$w1 @ $w1index .. $w1len"
+		if {[regexp {^(help|helptool)$} $w1]} {
+			# skip past "$w1".
+			set index [$t index "$w1index + $w1len chars"]
+
+			# Get next word
+			set w2index [$t search \
+			    -count w2len -regexp {[a-zA-Z0-9_\-]+} $index end]
+			if {"$w2index" == ""} {
+				highlight $w1 $w1index $w1len
+				break
+			}
+			set w2 [$t get \
+			    $w2index [$t index "$w2index + $w2len chars"]]
+#puts "WORD2=$w2 @ $w2index .. $w2len"
+			if {[topic2line $w2] != ""} {
+				highlight $w2 $w2index $w2len
+				set index [$t index "$w2index + $w2len chars"]
+			} else {
+				highlight $w1 $w1index $w1len
+				set index [$t index "$w1index + $w1len chars"]
+			}
+			continue
+		}
+
+		if {[topic2line $w1] != ""} {
+			highlight $w1 $w1index $w1len
+			set index [$t index "$w1index + $w1len chars"]
+		} else {
+			highlight bk $bkindex 2
+			set index [$t index "$bkindex + 2 chars"]
 		}
 	}
-	# Even if it is empty, we want the newline.
-	.text.help insert end "$line\n"
 }
 
 proc topic2line {key} \
@@ -229,7 +266,7 @@ proc search {} \
 	.ctrl.topics tag remove "search" 1.0 end
 	.text.help configure -state normal
 	.text.help delete 1.0 end
-	set f [open "| bk helpsearch -l $search_word" "r"]
+	set f [open "| bk helpsearch $gc(help.helptext) -l $search_word" "r"]
 	set last ""
 	while {[gets $f line] >= 0} {
 		set tab [string first "\t" $line"]
@@ -241,7 +278,7 @@ proc search {} \
 			set last $key
 			.text.help insert end "$key\n" "$key seealso"
 			.text.help tag bind $key <Button-1> \
-			    "getSelection $key; stackReset; doSelect 1"
+			    "getSelection $key; stackReset; doSelect 1; break"
 			set l [topic2line $key]
 			if {"$l" != ""} {
 				.ctrl.topics tag add "search" \
@@ -252,7 +289,7 @@ proc search {} \
 	}
 	catch {close $f} dummy
 	.text.help configure -state disabled
-	.text.help tag configure seealso -foreground $gc(help,linkColor) \
+	.text.help tag configure seealso -foreground $gc(help.linkColor) \
 	    -underline true
 }
 
@@ -279,8 +316,8 @@ proc scroll {what dir} \
 	} elseif {$dir == -1 && $a == 0 && $line > 1.0} {
 		doNext -1
 	} elseif {$what == "page"} {
-		set x [expr {$gc(help,height) - 1}]
-		set x [expr {$x * $dir}]
+		set x [expr $gc(help.height) - 1]
+		set x [expr $x * $dir]
 		.text.help yview scroll $x units
 	} else {
 		.text.help yview scroll $dir units
@@ -296,28 +333,25 @@ proc widgets {} \
 	set stackPos 0
 
 	if {$tcl_platform(platform) == "windows"} {
-		set swid 20
 		set py 0
 	} else {
-		set swid 14
 		set py 1
 	}
-	getConfig "help" ".helptoolrc"
+	getConfig "help"
+	if {"$gc(help.geometry)" != ""} { wm geometry . $gc(help.geometry) }
+	option add *background $gc(BG)
 
 	set rootX [winfo screenwidth .]
 	set rootY [winfo screenheight .]
-	if {"$gc(help,geometry)" != ""} {
-		wm geometry . $gc(help,geometry)
-	}
 	wm title . "BitKeeper Help"
 	set firstConfig 1
 
 	frame .menu -borderwidth 0 -relief flat
-	    button .menu.done -text "Quit" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.done -text "Quit" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command { exit }
-	    button .menu.help -text "Help" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.help -text "Help" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command {
 			global	line
 
@@ -325,21 +359,21 @@ proc widgets {} \
 			set line [topic2line helptool]
 			doSelect 1
 		}
-	    button .menu.back -text "Back" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
-		-state disabled -command { back }
-	    button .menu.forw -text "Forw" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
-		-state disabled -command { forw }
-	    button .menu.clear -text "Clear search" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.back -text "Back" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
+		-state disabled -command { upStack }
+	    button .menu.forw -text "Forw" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
+		-state disabled -command { downStack }
+	    button .menu.clear -text "Clear search" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command { clearSearch }
-	    button .menu.search -text "Search:" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.search -text "Search:" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command { search }
-	    entry .menu.entry -font $gc(help,fixedboldFont) -borderwid 1 \
-		-background $gc(help,backgroundColor) -relief sunken \
-		-textvariable search_word
+	    entry .menu.entry -font $gc(help.fixedBoldFont) -borderwid 1 \
+		-background $gc(help.textBG) -fg $gc(help.textFG) \
+		-relief sunken -textvariable search_word
 	    grid .menu.done -row 0 -column 0 -sticky ew
 	    grid .menu.help -row 0 -column 1 -sticky ew
 	    grid .menu.back -row 0 -column 3 -sticky ew
@@ -350,16 +384,20 @@ proc widgets {} \
 	    grid columnconfigure .menu 7 -weight 1
 	frame .ctrl -borderwidth 0 -relief flat
 	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
-		-font $gc(help,fixedFont) -width 14 \
-		-background $gc(help,backgroundColor) \
+		-height $gc(help.height) \
+		-font $gc(help.fixedFont) -width 14 \
+		-background $gc(help.listBG) \
 		-yscrollcommand { .ctrl.yscroll set } \
 		-xscrollcommand { .ctrl.xscroll set }
-	    scrollbar .ctrl.yscroll -width $swid \
+	    scrollbar .ctrl.yscroll -width $gc(help.scrollWidth) \
 		-command ".ctrl.topics yview" \
-		-troughcolor $gc(help,troughColor)
+		-background $gc(help.scrollColor) \
+		-troughcolor $gc(help.troughColor)
 	    scrollbar .ctrl.xscroll \
-		-troughcolor $gc(help,troughColor) \
-		-orient horiz -width $swid -command ".ctrl.topics xview"
+		-troughcolor $gc(help.troughColor) \
+		-background $gc(help.scrollColor) \
+		-orient horiz \
+		-width $gc(help.scrollWidth) -command ".ctrl.topics xview"
 
 	    grid .ctrl.topics -row 0 -column 0 -sticky nsew
 	    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
@@ -367,16 +405,18 @@ proc widgets {} \
 	    grid rowconfigure .ctrl 0 -weight 1
 
 	frame .text -borderwidth 0 -relief flat
-	    text .text.help -wrap none -font $gc(help,fixedFont) \
-		-width 78 -height $gc(help,height) -padx 4 \
-		-background $gc(help,backgroundColor) \
+	    text .text.help -wrap none -font $gc(help.fixedFont) \
+		-width $gc(help.width) -height $gc(help.height) -padx 4 \
+		-background $gc(help.textBG) -fg $gc(help.textFG) \
 		-xscrollcommand { .text.x2scroll set } \
 		-yscrollcommand { .text.y2scroll set }
 	    scrollbar .text.x2scroll -orient horiz \
-		-troughcolor $gc(help,troughColor) \
-		-width $swid -command ".text.help xview"
-	    scrollbar .text.y2scroll -width $swid \
-		-troughcolor $gc(help,troughColor) \
+		-troughcolor $gc(help.troughColor) \
+		-background $gc(help.scrollColor) \
+		-width $gc(help.scrollWidth) -command ".text.help xview"
+	    scrollbar .text.y2scroll -width $gc(help.scrollWidth) \
+		-troughcolor $gc(help.troughColor) \
+		-background $gc(help.scrollColor) \
 		-command ".text.help yview"
 
 	    grid .text.help -row 0 -column 1 -sticky nsew
@@ -395,23 +435,34 @@ proc widgets {} \
 	grid columnconfigure . 0 -weight 0
 	grid columnconfigure . 1 -weight 1
 
-	bind .ctrl.topics <ButtonPress> { doPixSelect %x %y }
-	bind . <Control-e>	{ scroll "line" 1 }
-	bind . <Control-y>	{ scroll "line" -1 }
-	bind . <Down>		{ scroll "line" 1 }
-	bind . <Up>		{ scroll "line" -1 }
-	bind . <Left>		"doNextSection -1"
-	bind . <Right>		"doNextSection 1"
-	bind . <Prior>		{ scroll "page" -1 }
-	bind . <Next>		{ scroll "page" 1 }
-	bind . <Alt-Left>	{ back }
-	bind . <Alt-Right>	{ forw }
-	bind . <Home>		 ".text.help yview -pickplace 1.0"
-	bind . <End>		 ".text.help yview -pickplace end"
-	bind . <Escape>		{ exit }
-	bind . <Button-4> { scroll "page" -1 }
-	bind . <Button-5> { scroll "page" 1 }
+	bind .ctrl.topics <Button-1> { doPixSelect %x %y; break }
+	bind .ctrl.topics <Button-2> { doPixSelect %x %y; break }
+	bind .ctrl.topics <Button-3> { doPixSelect %x %y; break }
+	bind .ctrl.topics <Motion> "break"
+	bind .text.help <Motion> "break"
+	bind all <Control-e>	{ scroll "line" 1 }
+	bind all <Control-y>	{ scroll "line" -1 }
+	bind all <Down>		{ scroll "line" 1; break }
+	bind all <Up>		{ scroll "line" -1; break }
+	bind all <Left>		".text.help xview scroll -1 units; break"
+	bind all <Right>	".text.help xview scroll 1 units; break"
+	bind all <Prior>	{ scroll "page" -1; break }
+	bind all <Next>		{ scroll "page" 1; break }
+	bind all <Home>		 ".text.help yview -pickplace 1.0; break"
+	bind all <End>		 ".text.help yview -pickplace end; break"
+	bind all <Control-Up>	{ doNext -1 }
+	bind all <Control-Down>	{ doNext 1 }
+	bind all <Control-Left>	"doNextSection -1"
+	bind all <Control-Right> "doNextSection 1"
+	bind all <Alt-Left>	{ upStack }
+	bind all <Alt-Right>	{ downStack }
+	bind all $gc(help.quit)	{ exit }
+	bind all <Button-4> 	{ scroll "page" -1; break }
+	bind all <Button-5> 	{ scroll "page" 1; break }
 	bind .menu.entry <Return> { search }
+	bindtags .menu.entry { all .menu.entry Entry . }
+	bindtags .ctrl.topics {.ctrl.topics . all}
+	bindtags .text.help {.text.help . all}
 	bind .text.help <Configure> {
 		global	gc pixelsPerLine firstConfig
 
@@ -419,19 +470,22 @@ proc widgets {} \
 		# This gets executed once, when we know how big the text is
 		if {$firstConfig == 1} {
 			set h [winfo height .text.help]
-			set pixelsPerLine [expr {$h / $gc(help,height)}]
+			set pixelsPerLine [expr {$h / $gc(help.height)}]
 			set firstConfig 0
 		}
 		set x [expr {$x / $pixelsPerLine}]
-		set gc(help,height) $x
+		set gc(help.height) $x
 	}
-	.ctrl.topics tag configure "select" -background $gc(help,highlightColor) \
+	.ctrl.topics tag configure "select" -background $gc(help.selectColor) \
 	    -relief ridge -borderwid 1
-	.text.help tag configure "title" -background #8080c0 \
-	    -relief groove -borderwid 2
-	.ctrl.topics tag configure "search" -background $gc(help,searchColor) \
+	.text.help tag configure "title" -background #8080c0
+	.text.help tag configure "bold" -font $gc(help.fixedBoldFont)
+	.text.help tag configure seealso -foreground $gc(help.linkColor) \
+	    -underline true
+	.ctrl.topics tag configure "search" -background $gc(help.topicsColor) \
 	    -relief ridge -borderwid 1
 	focus .menu.entry
+	. configure -background $gc(BG)
 }
 
 proc busy {busy} \
@@ -465,10 +519,23 @@ proc getSelection {argv} \
 
 proc getHelp {} \
 {
-	global	nTopics argv line lines aliases line2full
+	global	nTopics argv line lines aliases line2full gc
 
 	set nTopics 0
-	set f [open "| bk helptopiclist"]
+	set file [lindex $argv 0]
+	if {[regexp {^-f} $file]} {
+		if {$file == "-f"} {
+			set file [lindex $argv 1]
+			set gc(help.helptext) "-f$file"
+			set keyword [lindex $argv 2]
+		} else {
+			set gc(help.helptext) $file
+			set keyword [lindex $argv 1]
+		}
+	} else {
+		set keyword [lindex $argv 0]
+	}
+	set f [open "| bk helptopics $gc(help.helptext)"]
 	.ctrl.topics configure -state normal
 	set section ""
 	while {[gets $f topic] >= 0} {
@@ -506,8 +573,8 @@ proc getHelp {} \
 	catch {close $f} dummy
 	.ctrl.topics configure -state disabled
 	.text.help configure -state disabled
-	if {$argv != ""} {
-		getSelection $argv
+	if {$keyword != ""} {
+		getSelection $keyword
 	} else {
 		set line 1.0
 	}

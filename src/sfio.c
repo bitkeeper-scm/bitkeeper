@@ -27,9 +27,9 @@ WHATSTR("@(#)%K%");
 #define	SFIO_VERS	(doModes ? SFIO_VERSMODE : SFIO_VERSNOMODE)
 #define	u32		unsigned int
 
-private	int	sfio_out(void);
-private int	out_file(char *file, struct stat *);
-private int	out_link(char *file, struct stat *);
+private	int	sfio_out();
+private int	out_file(char *file, struct stat *, off_t *byte_count);
+private int	out_link(char *file, struct stat *, off_t *byte_count);
 private	int	sfio_in(int extract);
 private int	in_link(char *file, int todo, int extract);
 private int	in_file(char *file, int todo, int extract);
@@ -60,7 +60,7 @@ sfio_main(int ac, char **av)
 
 	platformSpecificInit(NULL);
 	if (ac == 2 && streq(av[1], "--help")) goto usage;
-	while ((c = getopt(ac, av, "imopqs")) != -1) {
+	while ((c = getopt(ac, av, "imopq")) != -1) {
 		switch (c) {
 		    case 'i': if (mode) goto usage; mode = M_IN;   break;
 		    case 'o': if (mode) goto usage; mode = M_OUT;  break;
@@ -89,14 +89,19 @@ sfio_out()
 	char	buf[1024];
 	char	len[5];
 	struct	stat sb;
+	off_t	byte_count = 0;
+	int	n;
 
 	setmode(0, _O_TEXT); /* read file list in text mode */
 	writen(1, SFIO_VERS, 10);
+	byte_count = 10;
 	while (fnext(buf, stdin)) {
 		chop(buf);
-		sprintf(len, "%04d", strlen(buf));
+		n = strlen(buf);
+		sprintf(len, "%04d", n);
 		writen(1, len, 4);
-		writen(1, buf, strlen(buf));
+		writen(1, buf, n);
+		byte_count += (n + 4);
 		if (lstat(buf, &sb)) return (1);
 		if (S_ISLNK(sb.st_mode)) {
 			unless (doModes) {
@@ -106,18 +111,19 @@ sfio_out()
 				stat(buf, &sb);
 				goto reg;
 			}
-			if (out_link(buf, &sb)) return (1);
+			if (out_link(buf, &sb, &byte_count)) return (1);
 		} else if (S_ISREG(sb.st_mode)) {
-reg:			if (out_file(buf, &sb)) return (1);
+reg:			if (out_file(buf, &sb, &byte_count)) return (1);
 		} else {
 			fprintf(stderr, "unknown file type %s ignored\n",  buf);
 		}
 	}
+	save_byte_count(byte_count);
 	return (0);
 }
 
 private int
-out_link(char *file, struct stat *sp)
+out_link(char *file, struct stat *sp, off_t *byte_count)
 {
 	char	buf[1024];
 	char	len[11];
@@ -136,19 +142,19 @@ out_link(char *file, struct stat *sp)
 	 * symlink as "SLNK001024".
 	 */
 	sprintf(len, "SLNK%06u", (unsigned int)n);
-	writen(1, len, 10);
-	writen(1, buf, n);
+	*byte_count += writen(1, len, 10);
+	*byte_count += writen(1, buf, n);
 	sum += adler32(sum, buf, n);
 	sprintf(buf, "%010u", sum);
-	writen(1, buf, 10);
+	*byte_count = writen(1, buf, 10);
 	assert(doModes);
 	sprintf(buf, "%03o", sp->st_mode & 0777);
-	writen(1, buf, 3);
+	*byte_count = writen(1, buf, 3);
 	return (0);
 }
 
 private int
-out_file(char *file, struct stat *sp)
+out_file(char *file, struct stat *sp, off_t *byte_count)
 {
 	char	buf[1024];
 	char	len[11];
@@ -161,11 +167,13 @@ out_file(char *file, struct stat *sp)
 		return (1);
 	}
 	sprintf(len, "%010u", (unsigned int)sp->st_size);
-	writen(1, len, 10);
+	n = writen(1, len, 10);
+	*byte_count += n;
 	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
 		nread += n;
 		sum += adler32(sum, buf, n);
 		if (writen(1, buf, n) != n) return (1);
+		*byte_count += n;
 	}
 	if (nread != sp->st_size) {
 		fprintf(stderr, "Size mismatch on %s %u:%u\n",
@@ -173,10 +181,12 @@ out_file(char *file, struct stat *sp)
 		return (1);
 	}
 	sprintf(buf, "%010u", sum);
-	writen(1, buf, 10);
+	n = writen(1, buf, 10);
+	*byte_count += n;
 	if (doModes) {
 		sprintf(buf, "%03o", sp->st_mode & 0777);
-		writen(1, buf, 3);
+		n = writen(1, buf, 3);
+		*byte_count += n;
 	}
 	close(fd);
 	return (0);
@@ -189,6 +199,7 @@ sfio_in(int extract)
 	char	datalen[11];
 	int	len;
 	int	n;
+	off_t	byte_count = 0;
 
 	bzero(buf, sizeof(buf));
 	if (readn(0, buf, 10) != 10) {
@@ -207,6 +218,7 @@ sfio_in(int extract)
 			perror("read");
 			return (1);
 		}
+		byte_count += n;
 		buf[5] = 0;
 		len = 0;
 		sscanf(buf, "%04d", &len);
@@ -219,6 +231,7 @@ sfio_in(int extract)
 			perror("read");
 			return (1);
 		}
+		byte_count += len;
 		buf[len] = 0;
 		if (readn(0, datalen, 10) != 10) {
 			perror("read");
@@ -234,6 +247,7 @@ sfio_in(int extract)
 			if (in_file(buf, len, extract)) return (1);
 		}
 	}
+	save_byte_count(byte_count);
 }
 
 private int

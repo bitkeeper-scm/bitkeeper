@@ -8,13 +8,10 @@ WHATSTR("@(#)%K%");
 
 private	char	*cset_help = "\n\
 usage: cset [opts]\n\n\
-    -c		like -m, except generate only ChangeSet diffs\n\
-    -d<range>	do unified diffs for the range\n\
     -C		clear and remark all ChangeSet boundries\n\
     -h		With -r listing, show historic path\n\
     -H		With -r listing, hide Changeset file from file list\n\
     -i<list>	create a new cset on TOT that includes the csets in <list>\n\
-    -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
     -p		print the list of deltas being added to the cset\n\
     -q		Run silently\n\
@@ -68,6 +65,43 @@ private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
 private char	*spin = "|/-\\";
 
+int
+makepatch_main(int ac, char **av)
+{
+	int	i, m = 0;
+	char	*s;
+	char	*nav[20];
+
+	/*
+	 * bk makepatch [-v] [-c<range>] [-d<range>] [-r<range>] [-]
+	 */
+	nav[0] = "makepatch";
+	for (i = 1; av[i]; ++i) {
+		if (i > 15) {
+			fprintf(stderr, "Too many args\n");
+			exit(1);
+		}
+		nav[i] = av[i];
+		s = &nav[i][1];
+		while (*s == 'v') s++;
+		if (*s == 'r') {
+			*s = 'm';
+			m = 1;
+		}
+	}
+	unless (m) {
+		if (streq(nav[i-1], "-")) {
+			nav[i-1] = "-m";
+			nav[i] = "-";
+		} else {
+			nav[i++] = "-m";
+		}
+		ac++;
+	}
+	nav[ac] = 0;
+	return (cset_main(ac, nav));
+}
+
 /*
  * cset.c - changeset command
  */
@@ -89,6 +123,7 @@ cset_main(int ac, char **av)
 usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
+
 	if (streq(av[0], "makepatch")) copts.makepatch++;
 
 	while (
@@ -261,7 +296,7 @@ spawn_checksum_child(void)
 {
 	pid_t	pid;
 	int	pfd;
-	char	*av[3] = {"bk", "adler32", 0};
+	char	*av[3] = {"bk", "_adler32", 0};
 
 	/*
 	 * spawn a child with a write pipe
@@ -343,7 +378,7 @@ private void
 header(sccs *cset, int diffs)
 {
 	char	*dspec =
-		"$each(:FD:){# Proj:\t(:FD:)}\n# ID:\t:KEY:";
+		"$each(:FD:){# Proj:\t(:FD:)\n}# ID:\t:KEY:\n";
 	int	save = cset->state;
 	time_t	t = time(0);
 	char	pwd[MAXPATH];
@@ -625,7 +660,7 @@ csetlist(cset_t *cs, sccs *cset)
 			unlink(cat);
 			goto fail;
 		}
-		sprintf(buf, "bk keysort < %s > %s", cat, csort);
+		sprintf(buf, "bk _keysort < %s > %s", cat, csort);
 		if (system(buf)) {
 			unlink(cat);
 			goto fail;
@@ -1059,6 +1094,7 @@ private	char	*
 file2str(char *f)
 {
 	struct	stat sb;
+	int 	n;
 #ifdef WIN32
 	int	fd = open(f, O_RDONLY|_O_TEXT, 0);
 #else
@@ -1077,8 +1113,13 @@ file2str(char *f)
 		close(fd);
 		return (0);
 	}
-	read(fd, s, sb.st_size);
-	s[sb.st_size] = 0;
+	/*
+	 * Note: On win32, n may be smaller than sb.st_size
+	 * because text mode remove \r when reading
+	 */
+	n = read(fd, s, sb.st_size);
+	assert((n >= 0) && (n <= sb.st_size));
+	s[n] = 0;
 	close(fd);
 	return (s);
 }

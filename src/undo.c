@@ -21,6 +21,10 @@ undo_main(int ac,  char **av)
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo"
 
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "undo: cannot find package root.\n");
+		exit(1);
+	}
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {
 		    case 'a':
@@ -31,13 +35,9 @@ undo_main(int ac,  char **av)
 		    case 'r': rev = optarg; ckRev++; break;
 		    case 's': save = 0; break;
 		    default :
-			fprintf(stderr, "unknow option <%c>\n", c);
+			fprintf(stderr, "unknown option <%c>\n", c);
 			exit(1);
 		}
-	}
-	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "undo: cannot find package root.\n");
-		exit(1);
 	}
 	unless (rev) {
 		fprintf(stderr, "usage bk undo [-afqs] -rcset-revision\n");
@@ -145,9 +145,9 @@ getrev(char *top_rev)
 	checkRev(top_rev);
 	sprintf(tmpfile, "%s/bk_tmp%d", TMP_PATH, getpid());
 	/* use special prune code triggered by a revision starting with '*' */
-	sprintf(cmd,					/* CSTYLED */
-		"bk -R prs -ohMa -r'*'%s -d\":REV:,\\c\" ChangeSet > %s",
-		top_rev, tmpfile);
+	sprintf(cmd,
+	    "bk -R prs -ohMa -r'*'%s -d':REV:,' ChangeSet > %s",
+	    top_rev, tmpfile);
 	system(cmd);
 	fd = open(tmpfile, O_RDONLY, 0);
 	if (buf) free(buf);

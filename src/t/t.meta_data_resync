@@ -30,7 +30,7 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
-if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
 bk commit $S -a -yCset
@@ -71,7 +71,7 @@ EOF
 MODE=`bk prs -h -r1.4 -d":MODE:" foo.c`
 if [ "$MODE" != "100740" ]
 then	echo failed with mode $MODE
-	bk prs -h -d':REV: :MODE:' foo.c
+	bk prs -h -d':REV: :MODE:\n' foo.c
 	exit 1
 fi
 echo OK
@@ -87,6 +87,8 @@ bk clone $Q $HERE/project $HERE/copy
 cd $HERE/project/src
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 bar.c
 bk commit $Q -yabc
+# save a copy of SCCS/s.bar.c for the rollback test
+cp SCCS/s.bar.c $HERE/ref
 bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
@@ -99,6 +101,12 @@ bk resync -t $Q $HERE/project $HERE/copy
 bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check rollback of flags .....................................$NL
+bk clone $Q -r1.5 $HERE/copy $HERE/copy2
+cd $HERE/copy2/src
+diff $HERE/copy2/src/SCCS/s.bar.c  $HERE/ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check propagation of flags \& permission .....................$NL
@@ -140,7 +148,7 @@ bk resolve -t $Q $HERE/copy
 cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-bk prs -r+ -h -d":MODE:\n:FD:" h.h > CMP1
+bk prs -r+ -h -d':MODE:\n$each(:FD:){(:FD:)\n}' h.h > CMP1
 cat > X <<EOF
 100722
 this is a text entry line 1
@@ -148,7 +156,13 @@ this is a text entry line 2
 EOF
 bk undos X > CMP2
 cmp CMP1 CMP2
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]
+then	echo failed
+	sdiff -w80 CMP1 CMP2
+	cat -n CMP1
+	cat -n CMP2
+	exit 1
+fi
 echo OK
 echo $N Check flags conflict ........................................$NL
 cd $HERE/project/src
@@ -166,9 +180,29 @@ u
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "BITKEEPER,YEAR4,RCS,SCCS,SINGLE,EXPAND1,CSETMARKED" ]
+if [ "$FLAGS" != "YEAR4,RCS,SCCS,SINGLE,EXPAND1" ]
 then	echo failed with mode $FLAGS
-	bk prs -h -d':REV:\t:FLAGS:' foo.c
+	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
+	exit 1
+fi
+echo OK
+echo $N Check flags conflict2 .......................................$NL
+cd $HERE/project/src
+bk admin $Q -FSCCS foo.c
+bk commit $S -yperm2
+cd $HERE/copy/src
+bk admin $Q -FRCS -FYEAR4 -FSCCS -FEXPAND1 foo.c
+bk commit $S -yperm3
+bk resync -t $Q $HERE/project $HERE/copy
+cd $HERE
+bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
+l
+EOF
+cd $HERE/copy/src
+FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
+if [ "$FLAGS" != "SINGLE" ]
+then	echo failed with mode $FLAGS
+	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1
 fi
 echo OK

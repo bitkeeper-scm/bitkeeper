@@ -906,6 +906,106 @@ sccs_fixDates(sccs *s)
 	fixDates(0, s->table);
 }
 
+char	*
+age(time_t when)
+{
+	if (when <= (10*60)) {
+		return ("10 minutes");
+	} else if (when <= (15*60)) {
+		return ("15 minutes");
+	} else if (when <= (30*60)) {
+		return ("30 minutes");
+	} else if (when <= (45*60)) {
+		return ("45 minutes");
+	} else if (when <= (60*60)) {
+		return ("60 minutes");
+	} else if (when <= (2*60*60)) {
+		return ("2 hours");
+	} else if (when <= (3*60*60)) {
+		return ("3 hours");
+	} else if (when <= (4*60*60)) {
+		return ("4 hours");
+	} else if (when <= (5*60*60)) {
+		return ("5 hours");
+	} else if (when <= (6*60*60)) {
+		return ("6 hours");
+	} else if (when <= (7*60*60)) {
+		return ("7 hours");
+	} else if (when <= (8*60*60)) {
+		return ("8 hours");
+	} else if (when <= (12*60*60)) {
+		return ("12 hours");
+	} else if (when <= (24*60*60)) {
+		return ("24 hours");
+	} else if (when <= (2*24*60*60)) {
+		return ("2 days");
+	} else if (when <= (3*24*60*60)) {
+		return ("3 days");
+	} else if (when <= (4*24*60*60)) {
+		return ("4 days");
+	} else if (when <= (5*24*60*60)) {
+		return ("5 days");
+	} else if (when <= (6*24*60*60)) {
+		return ("6 days");
+	} else if (when <= (7*24*60*60)) {
+		return ("7 days");
+	} else if (when <= (14*24*60*60)) {
+		return ("2 weeks");
+	} else if (when <= (21*24*60*60)) {
+		return ("3 weeks");
+	} else if (when <= (28*24*60*60)) {
+		return ("4 weeks");
+#define	MONTH	2628000
+	} else if (when <= (2*MONTH)) {
+		return ("2 months");
+	} else if (when <= (3*MONTH)) {
+		return ("3 months");
+	} else if (when <= (4*MONTH)) {
+		return ("4 months");
+	} else if (when <= (5*MONTH)) {
+		return ("5 months");
+	} else if (when <= (6*MONTH)) {
+		return ("6 months");
+	} else if (when <= (7*MONTH)) {
+		return ("7 months");
+	} else if (when <= (8*MONTH)) {
+		return ("8 months");
+	} else if (when <= (9*MONTH)) {
+		return ("9 months");
+	} else if (when <= (10*MONTH)) {
+		return ("10 months");
+	} else if (when <= (11*MONTH)) {
+		return ("11 months");
+	} else if (when <= (12*MONTH)) {
+		return ("12 months");
+#define	YEAR	31536000
+	} else if (when <= (2*YEAR)) {
+		return ("2 years");
+	} else if (when <= (3*YEAR)) {
+		return ("3 years");
+	} else if (when <= (4*YEAR)) {
+		return ("4 years");
+	} else if (when <= (5*YEAR)) {
+		return ("5 years");
+	} else if (when <= (6*YEAR)) {
+		return ("6 years");
+	} else if (when <= (7*YEAR)) {
+		return ("7 years");
+	} else if (when <= (8*YEAR)) {
+		return ("8 years");
+	} else if (when <= (9*YEAR)) {
+		return ("9 years");
+	} else if (when <= (10*YEAR)) {
+		return ("10 years");
+	} else if (when <= (11*YEAR)) {
+		return ("11 years");
+	} else if (when <= (12*YEAR)) {
+		return ("12 years");
+	} else {
+		return ("more than twelve years");
+	}
+}
+
 private void
 uniqRoot(sccs *s)
 {
@@ -1272,7 +1372,10 @@ cleanPath(char *path, char cleanPath[])
 	/* trim trailing '/' */
 	if ((*p == '/') && (p != top))  p--;
 	while (p >= top) { 	/* scan backward */
-		if ((p >= &top[2]) && (p[-2] == '/') &&
+		if (p == &top[1] && (p[-1] == '.') && (p[0] == '.')) {
+			dotCnt++; p = &p[-2];	/* process ".." in the front */
+			break;
+		} else if ((p >= &top[2]) && (p[-2] == '/') &&
 		    (p[-1] == '.') && (p[0] == '.')) {
 			dotCnt++; p = &p[-3];	/* process "/.." */
 		} else if ((p >= &top[1]) && (p[-1] == '/') &&
@@ -1775,6 +1878,7 @@ findrev(sccs *s, char *rev)
 		}
 		/* get max X.Y that is on same branch or tip of biggest */
 		for (e = s->table; e; e = e->next) {
+			if (e->flags & D_GONE) continue;
 			if (e->type != 'D'
 			    || (e->r[2] != 0)
 			    || (e->r[0] > a))  continue;
@@ -1788,8 +1892,7 @@ findrev(sccs *s, char *rev)
 			}
 		}
 		unless (e) e = f;	/* can't find, use max of lesser */
-		assert(e);
-		debug((stderr, "findrev(%s) =  %s\n", rev, e->rev));
+		debug((stderr, "findrev(%s) =  %s\n", rev, e ? e->rev: ""));
 		return (e);
 	    case 2:
 	    case 4:
@@ -2054,17 +2157,17 @@ defIsVer(sccs *s)
 /*
  * Get the delta that is the basis for this edit.
  * Get the revision name of the new delta.
+ * Sep 2000 - removed branch, we don't support it.
  */
 private delta *
-getedit(sccs *s, char **revp, int branch)
+getedit(sccs *s, char **revp)
 {
 	char	*rev = *revp;
 	u16	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
 	static	char buf[MAXREV];
 
-	debug((stderr,
-	    "getedit(%s, %s, b=%d)\n", s->gfile, notnull(*revp), branch));
+	debug((stderr, "getedit(%s, %s)\n", s->gfile, notnull(*revp)));
 	/*
 	 * use the findrev logic to get to the delta.
 	 */
@@ -2102,7 +2205,7 @@ ok:
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	else if (!branch && !morekids(e, (s->state & S_BITKEEPER))) {
+	else if (!morekids(e, (s->state & S_BITKEEPER))) {
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -2823,10 +2926,15 @@ mkgraph(sccs *s, int flags)
 nextdelta:	unless (buf = fastnext(s)) {
 bad:
 			fprintf(stderr,
-			    "%s: bad delta on line %d, expected `%s', "
-			    "line follows:\n\t",
+			    "%s: bad delta on line %d, expected `%s'",
 			    s->sfile, line, expected);
-			fprintf(stderr, "``%.*s''\n", linelen(buf)-1, buf);
+			if (buf) {
+				fprintf(stderr,
+				    ", line follows:\n\t``%.*s''\n",
+				    linelen(buf)-1, buf);
+			} else {
+				fprintf(stderr, "\n");
+			}
 			sccs_freetable(s->table);
 			s->table = 0;
 			return;
@@ -3055,9 +3163,6 @@ misc(sccs *s)
 		if (strneq(buf, "\001f R\n", 5)) {	/* XXX - obsolete */
 			s->state |= S_RCS;
 			continue;
-		} else if (strneq(buf, "\001f b\n", 5)) {
-			s->state |= S_BRANCHOK;
-			continue;
 		} else if (strneq(buf, "\001f Y\n", 5)) { /* XXX - obsolete */
 			s->state |= S_YEAR4;
 			continue;
@@ -3071,16 +3176,8 @@ misc(sccs *s)
 			}
 
 			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
-			if (bits & X_YEAR4) s->state |= S_YEAR4;
-			if (bits & X_SCCS) s->state |= S_SCCS;
-			if (bits & X_RCS) s->state |= S_RCS;
-			if (bits & X_SINGLE) s->state |= S_SINGLE;
-			if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
-#ifdef S_ISSHELL
-			if (bits & X_ISSHELL) s->state |= S_ISSHELL;
-#endif
-			if (bits & X_HASH) s->state |= S_HASH;
+			s->state |= xflags2state(bits);
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
 		    strneq(buf, "\001f z _", 6)) {	/* XXX - obsolete */
@@ -3329,6 +3426,81 @@ err:			free(s->gfile);
 	return (0);
 }
 
+/* [user][@host][:path] */
+private	remote *
+pref_parse(char *buf)
+{
+	remote	*r;
+	char	*p;
+	int 	want_path = 0, want_host = 0;
+	
+	new(r);
+	unless (*buf) return (r);
+	/* user */
+	if (p = strchr(buf, '@')) {
+		if (buf != p) {
+			*p = 0; r->user = strdup(buf);
+		}
+		buf = p + 1;
+		want_host = 1;
+	}
+	/* host */
+	if (p = strchr(buf, ':')) {
+		if (buf != p) {
+			if (r->user || want_host) {
+				*p = 0; r->host = strdup(buf);
+				want_host = 0;
+			} else {
+				*p = 0; r->user = strdup(buf);
+			}
+		}
+		buf = p + 1;
+		want_path = 1;
+	}
+	if (*buf) {
+		if (want_path) {
+			r->path = strdup(buf);
+		} else if (want_host) {
+			r->host = strdup(buf);
+		} else {
+			assert(r->user == NULL);
+			r->user = strdup(buf);
+		}
+	}
+	return (r);
+}
+
+/*
+ * filter: retutn 1 if match
+ */
+int
+filter(char *buf)
+{
+	remote *r;
+	char *h;
+
+	r = pref_parse(buf);
+	if ((r->user) && !streq(r->user, sccs_getuser())) {
+nup:		remote_free(r);
+		return (0);
+	}
+
+	h = sccs_gethost();
+	unless (h) h = "";
+	if ((r->host) && !streq(r->host, h)) goto nup;
+
+	unless (IsFullPath(bk_proj->root)) {
+		char *t = fullname(bk_proj->root, 0);
+
+		assert(t);
+		free(bk_proj->root);
+		bk_proj->root = strdup(t);
+	}
+	if ((r->path) && !streq(r->path, bk_proj->root)) goto nup;
+	remote_free(r);
+	return (1);
+}
+
 /*
  * Parse a line from the config file
  * a) reject all lines without a ':' character
@@ -3339,11 +3511,43 @@ err:			free(s->gfile);
 int
 parseConfig(char *buf)
 {
-	char *p, *q;
+	char *p, *q, *end_filter = 0;
 	
-	p = strchr(buf, ':');
+	/*
+	 * If it has a filter, extract filter part
+	 */
+	if (*buf == '[') {
+		end_filter = strchr(buf, ']');
+		unless (end_filter) return 0;
+		p = strchr(&end_filter[1], ':');
+	} else {
+		p = strchr(buf, ':');
+	}
+
 	unless (p) return 0;
-	*p++ = ' ';
+
+	/*
+	 * Handle the [user][@host][:path]/pref_key: vale syntax
+	 */
+	*p = 0;
+	if (end_filter) {
+		char *t;
+
+		*end_filter = 0;
+		t = &end_filter[1];
+		/*
+		 * Ignore the line if not match 
+		 * for per user/host/path filter
+		 */
+		unless (filter(&buf[1])) return (0); 
+		*p++ = ' ';
+		memmove(buf, t, strlen(t) + 1);
+		p  = (p - (t - buf)); /* adjust  p to account for memmove */
+		assert(p[-1] == ' ');
+	} else {
+		*p++ = ' ';
+	}
+
 	if (strneq(buf, "logging_ok ", 11)) {
 		strcpy(buf, "CONVERT ME PLEASE\n");
 		return (1);
@@ -3388,7 +3592,7 @@ loadConfig(char *root, int convert)
 	 * Otherwise, check it out.
 	 */
 	if (exists(g_config)) {
-		DB = loadDB(g_config, parseConfig, DB_NOBLANKS|DB_USELAST);
+		DB = loadDB(g_config, parseConfig, DB_NOBLANKS|DB_USEFIRST);
 		goto check;
 	}
 	unless (exists(s_config)) return 0;
@@ -3413,7 +3617,7 @@ loadConfig(char *root, int convert)
 		sccs_free(s1);
 		return (0);
 	}
-	DB = loadDB(x_config, parseConfig, DB_NOBLANKS|DB_USELAST);
+	DB = loadDB(x_config, parseConfig, DB_NOBLANKS|DB_USEFIRST);
 	unlink(x_config);
 	sccs_free(s1);
 check:	if (convert && (t = mdbm_fetch_str(DB, "CONVERT")) &&
@@ -3499,6 +3703,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	struct	stat sbuf;
 	char	*t;
 	static	int YEAR4;
+	delta	*d;
 
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
@@ -3616,7 +3821,7 @@ sccs_init(char *name, u32 flags, project *proj)
 		if ((errno == ENOENT) || (errno == ENOTDIR)) {
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
-			s->cksumok = -1;
+			s->cksumok = 1;		/* but not done */
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3642,6 +3847,22 @@ sccs_init(char *name, u32 flags, project *proj)
 		if (misc(s)) {
 			sccs_free(s);
 			return (0);
+		}
+	}
+
+	/*
+	 * Verify xflag implied by s->state is the same as 
+	 * the xflags implied by the top-of-trunk delta.
+	 */
+	d = sccs_getrev(s, "+", 0, 0);
+	if (d) {
+		int x1, x2;
+		x1 = state2xflags(s->state) & X_XFLAGS;
+		x2 = sccs_getxflags(d) & X_XFLAGS;
+		if (x2 && (x1 != x2)) {
+			fprintf(stderr,
+			"sccs_int: %s: warning: inconsistent xflags: %x, %x\n",
+							s->sfile, x1, x2);
 		}
 	}
 
@@ -5221,8 +5442,8 @@ write_pfile(sccs *s, int flags, delta *d,
 	char	*tmp, *tmp2;
 
 	if (WRITABLE(s) && !(flags & GET_SKIPGET)) {
-		fprintf(stderr,
-		    "Writeable %s exists, skipping it.\n", s->gfile);
+		verbose((stderr,
+		    "Writeable %s exists, skipping it.\n", s->gfile));
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -5348,7 +5569,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	} else {
 		/* With -G/somewhere/foo.c we need to check the gfile again */
 		if (WRITABLE(s) && writable(s->gfile)) {
-			fprintf(stderr, "Writeable %s exists\n", s->gfile);
+			verbose((stderr, "Writeable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char *)-1);
 		} else if ((flags & GET_NOREGET) && exists(s->gfile)) {
@@ -5491,7 +5712,8 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	if ((s->encoding != E_ASCII) || hash) {
 		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
 	}
-	unless (s->state & S_KEYWORDS) flags &= ~(GET_EXPAND|GET_RCSEXPAND);
+	unless (s->state & S_SCCS) flags &= ~(GET_EXPAND);
+	unless (s->state & S_RCS) flags &= ~(GET_RCSEXPAND);
 
 	if (flags & GET_MODNAME) base = basenm(s->gfile);
 	/*
@@ -5527,7 +5749,8 @@ out:			if (slist) free(slist);
 		}
 		popened = openOutput(encoding, f, &out);
 		unless (out) {
-			fprintf(stderr, "getRegody: Can't open %s for writing\n", f);
+			fprintf(stderr,
+			    "getRegBody: Can't open %s for writing\n", f);
 			fflush(stderr);
 			goto out;
 		}
@@ -5893,13 +6116,7 @@ err:		if (i2) free(i2);
 	}
 	if (rev && streq(rev, "+")) rev = 0;
 	if (flags & GET_EDIT) {
-#if 0
-		int	f = (s->state & S_BRANCHOK) ? flags&GET_BRANCH : 0;
-#else
-		int	f = 0;
-#endif
-
-		d = getedit(s, &rev, f);
+		d = getedit(s, &rev);
 		if (!d) {
 			fprintf(stderr, "get: can't find revision %s in %s\n",
 			    notnull(rev), s->sfile);
@@ -6345,7 +6562,8 @@ badcksum(sccs *s, int flags)
 	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
 	seekto(s, 0);
-	filesum = atoi(&s->mmap[2]);
+	s->cksum = filesum = atoi(&s->mmap[2]);
+	s->cksumdone = 1;
 	debug((stderr, "File says sum is %d\n", filesum));
 	t = s->mmap + 8;
 	end -= 16;
@@ -6801,20 +7019,9 @@ delta_table(sccs *s, FILE *out, int willfix)
 	*p++ = '\n';
 	*p   = '\0';
 	fputmeta(s, buf, out);
-	if (s->state & S_BRANCHOK) {
-		fputmeta(s, "\001f b\n", out);
-	}
 	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
-	if (s->state & S_YEAR4) bits |= X_YEAR4;
-	if (s->state & S_SCCS) bits |= X_SCCS;
-	if (s->state & S_SINGLE) bits |= X_SINGLE;
-	if (s->state & S_RCS) bits |= X_RCS;
-	if (s->state & S_EXPAND1) bits |= X_EXPAND1;
 	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
-#ifdef S_ISSHELL
-	if (s->state & S_ISSHELL) bits |= X_ISSHELL;
-#endif
-	if (s->state & S_HASH) bits |= X_HASH;
+	bits |= state2xflags(s->state);
 	if (bits) {
 		char	buf[40];
 
@@ -7514,21 +7721,32 @@ sccs_clean(sccs *s, u32 flags)
 		return (2);
 	}
 
-	if ((s->state & S_BITKEEPER)  &&
-	    !streq(relativeName(s, 0, 1), d->pathname)) {
-		unless (flags & PRINT) {
+	if (s->state & S_BITKEEPER) {
+		char *t = relativeName(s, 0, 1);
+
+		unless (t) {
 			fprintf(stderr,
-			    "%s has different pathnames, needs delta.\n",
-			    s->gfile);
-                } else {
-			printf("===== %s (pathnames) %s vs edited =====\n",
-			    s->gfile, pf.oldrev);
-			printf("< %s\n-\n", d->pathname);
-			printf("> %s\n", relativeName(s, 0, 1));
- 		}
-		free_pfile(&pf);
-		return (2);
-	}
+			"%s: cannot compute relative path, no project root ?\n",
+				s->gfile);
+			free_pfile(&pf);
+			return (1);
+		}
+		if (!streq(t, d->pathname)) {
+			unless (flags & PRINT) {
+				verbose((stderr,
+				   "%s has different pathnames, needs delta.\n",
+				    s->gfile));
+			} else {
+				printf(
+				    "===== %s (pathnames) %s vs edited =====\n",
+				    s->gfile, pf.oldrev);
+				printf("< %s\n-\n", d->pathname);
+				printf("> %s\n", t);
+			}
+			free_pfile(&pf);
+			return (2);
+		}
+	} 
 
 	if (S_ISLNK(s->mode)) {
 		if (streq(s->symlink, d->symlink)) {
@@ -7909,6 +8127,7 @@ checkin(sccs *s,
 	admin	l[2];
 	int	no_lf = 0;
 	int	error = 0;
+	int	user_file = 1;
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -8024,6 +8243,7 @@ checkin(sccs *s,
 		/* XXX - EXPAND1 too? */
 		s->state |= S_SCCS;		/* default to SCCS keywords */
 	}
+	if (flags & DELTA_HASH) s->state |= S_HASH;
 	s->version = SCCS_VERSION;		/* auto upgrades in patch */
 	n->serial = s->nextserial++;
 	s->table = n;
@@ -8065,6 +8285,7 @@ checkin(sccs *s,
 				first->csetFile = strdup(buf);
 			}
 			first->flags |= D_CKSUM;
+			user_file = 0;
 		} else {
 			t = relativeName(s, 0, 0);
 			assert(t);
@@ -8072,19 +8293,23 @@ checkin(sccs *s,
 				unless (first->csetFile) {
 					first->csetFile = getCSetFile(s);
 				}
+				if ((strlen(t) > 10) &&
+				    strneq("BitKeeper/", t, 10)) {
+					user_file = 0;
+				}
 			}
 		}
 	}
 	if (s->state & S_BITKEEPER) {
 		MDBM	*m;
 		delta	*d;
-		char	*user, *host;
+		char	*user, *host, *always_edit;
 
 		unless (s->proj && s->proj->root) goto no_config;
 		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
 		user = mdbm_fetch_str(m, "single_user");
 		host = mdbm_fetch_str(m, "single_host");
-		unless (user && host) goto no_config;
+		unless (user && host) goto multi_user;
 		d = s->tree;
 		free(d->user);
 		d->user = strdup(user);
@@ -8103,11 +8328,11 @@ checkin(sccs *s,
 		}
 		s->state |= S_SINGLE;
 		first->xflags |= X_SINGLE;
-		mdbm_close(m);
+
+multi_user:	mdbm_close(m);
 	}
 
 no_config:
-	if (flags & DELTA_HASH) s->state |= S_HASH;
 	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto abort;
@@ -9080,7 +9305,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	n = sccs_dInit(n, 'D', sc, 0);
 	unless (p) p = findrev(sc, 0);
 	rev = p->rev;
-	getedit(sc, &rev, f);
+	getedit(sc, &rev);
 	n->rev = strdup(rev);
 	n->pserial = p->serial;
 	n->serial = sc->nextserial++;
@@ -9114,10 +9339,13 @@ name2xflg(char *fl)
 		return X_RCS;
 	} else if (streq(fl, "YEAR4")) {
 		return X_YEAR4;
+	} else if (streq(fl, "HASH")) {
+		return X_HASH;
 	} else if (streq(fl, "SINGLE")) {
 		return X_SINGLE;
+	} else if (streq(fl, "SHELL")) {
+		return X_ISSHELL;
 	}
-	assert("bad flag" == 0);
 	return (0);			/* lint */
 }
 
@@ -9142,7 +9370,6 @@ state2xflags(u32 state)
 {
 	u32	xflags = 0;
 
-	if (state & S_BITKEEPER) xflags |= X_BITKEEPER;
 	if (state & S_RCS) xflags |= X_RCS;
 	if (state & S_SCCS) xflags |= X_SCCS;
 	if (state & S_SINGLE) xflags |= X_SINGLE;
@@ -9151,7 +9378,6 @@ state2xflags(u32 state)
 	if (state & S_ISSHELL) xflags |= X_ISSHELL;
 #endif
 	if (state & S_EXPAND1) xflags |= X_EXPAND1;
-	if (state & S_CSETMARKED) xflags |= X_CSETMARKED;
 	if (state & S_HASH) xflags |= X_HASH;
 	return (xflags);
 }
@@ -9161,7 +9387,6 @@ xflags2state(u32 xflags)
 {
 	u32	state = 0;
 
-	if (xflags & X_BITKEEPER) state |= S_BITKEEPER;
 	if (xflags & X_RCS) state |= S_RCS;
 	if (xflags & X_SCCS) state |= S_SCCS;
 	if (xflags & X_SINGLE) state |= S_SINGLE;
@@ -9170,7 +9395,6 @@ xflags2state(u32 xflags)
 	if (xflags & X_ISSHELL) state |= S_ISSHELL;
 #endif
 	if (xflags & X_EXPAND1) state |= S_EXPAND1;
-	if (xflags & X_CSETMARKED) state |= S_CSETMARKED;
 	if (xflags & X_HASH) state |= S_HASH;
 	return (state);
 }
@@ -9183,33 +9407,35 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 
 	assert(flag);
 
+	mask = name2xflg(flag);
 	/*
 	 * If this is the first time we touch n->xflags,
 	 * initialize it from sc->state.
 	 */
 	unless (n && (n->flags & D_XFLAGS)) {
-		xflags = state2xflags(sc->state);
+		xflags = state2xflags(sc->state) & X_XFLAGS;
 	} else {
 		xflags = n->xflags;
 	}
 
-	mask = name2xflg(flag);
 	if (add) {
 		if (xflags & mask) {
 			verbose((stderr,
-				"admin: %s %s flag is already on, ignored\n",
+				"admin: warning: %s %s flag is already on\n",
 				sc->sfile, flag));
 			return;
 		} 
 		xflags |= mask;
+		sc->state |= xflags2state(mask);
 	} else {
 		unless (xflags & mask) {
 			verbose((stderr,
-				"admin: %s %s flag is already off, ignored \n",
+				"admin: warning: %s %s flag is already off\n",
 				sc->sfile, flag));
 			return;
 		}
 		xflags &= ~mask;
+		sc->state &= ~xflags2state(mask);
 	}
 	assert(n);
 	n->flags |= D_XFLAGS;
@@ -9222,9 +9448,9 @@ int
 sccs_getxflags(delta *d)
 {
 	unless (d) return (0);
-	if (d->flags & D_XFLAGS) return (d->xflags);
+	if (d->flags & D_XFLAGS) return (d->xflags & X_XFLAGS);
 	if (d->parent) return (sccs_getxflags(d->parent));
-	return (X_DEFAULTS);
+	return (0); /* old sfile, xflags values unknown */
 }                    
 
 /*
@@ -9408,6 +9634,15 @@ out:
 		flags |= NEWCKSUM;
 	}
 	if (mode) {
+		delta *n = sccs_getrev(sc, "+", 0, 0);
+
+		assert(n);
+		if ((n->flags & D_MODE) && n->symlink) {
+			fprintf(stderr,
+				"admin: %s: chmod on symlink is illegal\n",
+				sc->gfile);
+			OUT;
+		} 
 		ALLOC_D();
 		addMode("admin", sc, d, mode);
 		flags |= NEWCKSUM;
@@ -9473,13 +9708,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 
 	/*
-	 * b	turn on branching support (S_BRANCHOK)
-	 * e	encoding
-	 * d	default branch (sc->defbranch)
-	 * R	turn on rcs keyword expansion (S_RCS)
-	 * Y	turn on 4 digit year printouts
-	 *
-	 * Anything else, just eat it.
+	 * flags, unkwown single letter passed through.
 	 */
 	for (i = 0; f && f[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
@@ -9494,41 +9723,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (v && *v == '\0') v = 0;
 			ALLOC_D();
 
-			if (streq(fl, "SCCS")) {
+			if (name2xflg(fl) & X_XFLAGS) {
 				if (v) goto noval;
 				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_SCCS;
-				else
-					sc->state &= ~S_SCCS;
-			} else if (streq(fl, "EXPAND1")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_EXPAND1;
-				else
-					sc->state &= ~S_EXPAND1;
-			} else if (streq(fl, "RCS")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_RCS;
-				else
-					sc->state &= ~S_RCS;
-			} else if (streq(fl, "YEAR4")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_YEAR4;
-				else
-					sc->state &= ~S_YEAR4;
-			} else if (streq(fl, "SINGLE")) {
-				if (v) goto noval;
-				changeXFlag(sc, d, flags, add, fl);
-				if (add)
-					sc->state |= S_SINGLE;
-				else
-					sc->state &= ~S_SINGLE;
 			/* Flags below are non propagated */
 			} else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
 				if (v) goto noval;
@@ -9536,45 +9733,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_BITKEEPER;
 				else
 					sc->state &= ~S_BITKEEPER;
-#ifdef S_ISSHELL
-			} else if (streq(fl, "SHELL")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_ISSHELL;
-				else
-					sc->state &= ~S_ISSHELL;
-#endif
-			} else if (streq(fl, "BRANCHOK")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_BRANCHOK;
-				else
-					sc->state &= ~S_BRANCHOK;
 			} else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
-			} else if (streq(fl, "ENCODING")) {
-				/* XXX Need symbolic values */
-				if (v) {
-					new_enc = atoi(v);
-					verbose((stderr, "New encoding %d\n", new_enc));
-				} else {
-					fprintf(stderr,
-						"admin: -fENCODING requires a value\n");
-					error = 1;
-					sc->state |= S_WARNED;
-				}
-			}
-#if 0 /* Not in this tree yet... */
-			else if (streq(fl, "HASH")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_HASH;
-				else
-					sc->state &= ~S_HASH;
-			}
-#endif
-			else {
+			} else {
 				if (v) fprintf(stderr,
 					       "admin: unknown flag %s=%s\n",
 					       fl, v);
@@ -9594,12 +9756,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			switch (f[i].thing[0]) {
 				char	buf[500];
 
-			case 'b':
-				if (add)
-					sc->state |= S_BRANCHOK;
-				else
-					sc->state &= ~S_BRANCHOK;
-				break;
 			case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
@@ -10694,40 +10850,6 @@ out:
 			    streq(prefilled->pathname, "ChangeSet")) {
 				s->state |= S_CSET;
 		    	}
-			if (prefilled->flags & D_XFLAGS) {
-				/*  XXX this code will be affected by LOD */
-				u32 bits = prefilled->xflags;
-				if (bits & X_BITKEEPER) {
-					s->state |= S_BITKEEPER;
-				} else {
-					s->state &= ~S_BITKEEPER;
-				}
-				if (bits & X_YEAR4) {
-					s->state |= S_YEAR4;
-				} else {
-					s->state &= ~S_YEAR4;
-				}
-				if (bits & X_RCS) {
-					s->state |= S_RCS;
-				} else {
-					s->state &= ~S_RCS;
-				}
-				if (bits & X_SCCS) {
-					s->state |= S_SCCS;
-				} else {
-					s->state &= ~S_SCCS;
-				}
-				if (bits & X_SINGLE) {
-					s->state |= S_SINGLE;
-				} else {
-					s->state &= ~S_SINGLE;
-				}
-				if (bits & X_EXPAND1) {
-					s->state |= S_EXPAND1;
-				} else {
-					s->state &= ~S_EXPAND1;
-				}
-			}
 			if (prefilled->flags & D_TEXT) {
 				if (s->text) {
 					freeLines(s->text);
@@ -10961,6 +11083,20 @@ out:
 		fprintf(stderr, "delta: can't create %s: ", sccsXfile(s, 'x'));
 		perror("");
 		OUT;
+	}
+
+	/*
+	 * If the new delta is a top-of-trunk, update the xflags
+	 * This is needed to maintain the xflags invariant:
+	 * s->state should always match sccs_getxflag(tot);
+	 * where "tot" is the top-of-trunk delta in the
+	 * current LOD
+ 	 */
+	if (init && (flags&DELTA_PATCH) && (n->flags & D_XFLAGS)) {
+		if (n == sccs_getrev(s, "+", 0, 0)) {
+			s->state &= ~(S_XFLAGS);
+			s->state |= xflags2state(sccs_getxflags(n)) & S_XFLAGS;
+		}
 	}
 
 	if (delta_table(s, sfile, 1)) {
@@ -11712,7 +11848,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 
-	if (streq(kw, "P")) {
+	if (streq(kw, "P") || streq(kw, "USER")) {
 		/* programmer */
 		if (d->user) {
 			fs(d->user);
@@ -11747,7 +11883,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* to get the latest comment				*/
 		EACH(d->comments) {
 			if (d->comments[i][0] == '\001') continue;
-			if (j++ > 0) fc('\n');
+			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -11772,19 +11908,19 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "Y")) {
 		/* moudle type, not implemented */
-		fs("??");
+		fs("");
 		return (strVal);
 	}
 
 	if (streq(kw, "MF")) {
 		/* MR validation flag, not implemented	*/
-		fs("??");
+		fs("");
 		return (strVal);
 	}
 
 	if (streq(kw, "MP")) {
 		/* MR validation pgm name, not implemented */
-		fs("??");
+		fs("");
 		return (strVal);
 	}
 
@@ -11859,7 +11995,13 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "Ds")) {
-		return (KW("I"));
+		/* default branch or "none", see also DFB */
+		if (s->defbranch) {
+			fs(s->defbranch);
+		} else {
+			fs("none");
+		}
+		return (strVal);
 	}
 
 	if (streq(kw, "ND")) {
@@ -11874,7 +12016,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		int i = 0, j = 0;
 		EACH(s->text) {
 			if (s->text[i][0] == '\001') continue;
-			if (j++ > 0) fc('\n');
+			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(s->text[i]);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -11903,7 +12045,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "F")) {
-		/* s file name */
+		/* s file basename */
 		if (s->sfile) {
 			/* scan backward for '/' */
 			for (p = s->sfile, q = &p[strlen(p) -1];
@@ -11924,11 +12066,118 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	/* ======== BITKEEPER SPECIFIC KEYWORDS ========== */
+	if (streq(kw, "G")) {
+		/* g file basename */
+		if (s->gfile) {
+			/* scan backward for '/' */
+			for (p = s->gfile, q = &p[strlen(p) -1];
+				(q > p) && (*q != '/'); q--);
+			if (*q == '/') q++;
+			fs(q);
+		}
+		return (strVal);
+	}
+
+	if (streq(kw, "DSUMMARY")) {
+	/* :DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu: */
+	 	KW("DT"); fc(' '); KW("I"); fc(' '); KW("D"); fc(' ');
+		KW("T"); KW("TZ"); fc(' '); KW("P");
+		if (d->hostname) { fc('@'); fs(d->hostname); } fc(' ');
+	 	KW("DS"); fc(' '); KW("DP"); fc(' '); KW("DL");
+		return (strVal);
+	}
+
+	if (streq(kw, "PATH")) {	/* $if(:DPN:){P :DPN:\n} */
+		if (d->pathname) {
+			fs("P ");
+			fs(d->pathname);
+			fc('\n');
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "SYMBOLS")) {	/* $each(:SYMBOL:){S (:SYMBOL:)\n} */
+		symbol	*sym;
+		int	j = 0;
+
+		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
+		for (sym = s->symbols; sym; sym = sym->next) {
+			unless (sym->d == d) continue;
+			j++;
+			fs("S ");
+			fs(sym->name);
+			fc('\n');
+		}
+		if (j) return (strVal);
+		return (nullVal);
+		
+	}
+
+	if (streq(kw, "COMMENTS")) {	/* $if(:C:){$each(:C:){C (:C:)}\n} */
+		int i, j = 0;
+		/* comments */
+		/* XXX TODO: we may need to the walk the comment graph	*/
+		/* to get the latest comment				*/
+		EACH(d->comments) {
+			if (d->comments[i][0] == '\001') continue;
+			fs("C ");
+			fs(d->comments[i]);
+			fc('\n');
+		}
+		if (j) return (strVal);
+		return (nullVal);
+		
+	}
+
+	if (streq(kw, "DEFAULT")) {
+		KW("DSUMMARY");
+		fc('\n');
+		KW("PATH");
+		KW("SYMBOLS");
+		KW("COMMENTS");
+		fs("------------------------------------------------\n");
+		return (strVal);
+	}
+
 	if (streq(kw, "X_FLAGS")) {
 		char	buf[20];
 
-		sprintf(buf, "0x%x\n", sccs_getxflags(d));
+		sprintf(buf, "0x%x", sccs_getxflags(d));
 		fs(buf);
+		return (strVal);
+	}
+
+	if (streq(kw, "CSETFILE")) {
+		if (s->tree->csetFile) {
+			fs(s->tree->csetFile);
+			return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "RANDOM")) {
+		if (s->tree->random) {
+			fs(s->tree->random);
+			return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "ENC")) {
+		switch (s->encoding) {
+		    case E_ASCII:
+			fs("ascii"); return (strVal);
+		    case E_UUENCODE:
+			fs("binary"); return (strVal);
+		    case E_UUGZIP:
+			fs("uugzip"); return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "VERSION")) {
+		fd(s->version);
 		return (strVal);
 	}
 
@@ -11936,10 +12185,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		int	comma = 0;
 		int	flags = sccs_getxflags(d);
 
-		if (flags & X_BITKEEPER) {
-			fs("BITKEEPER");
-			comma = 1;
-		}
 		if (flags & X_YEAR4) {
 			if (comma) fs(","); fs("YEAR4"); comma = 1;
 		}
@@ -11954,9 +12199,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		}
 		if (flags & X_EXPAND1) {
 			if (comma) fs(","); fs("EXPAND1"); comma = 1;
-		}
-		if (flags & X_CSETMARKED) {
-			if (comma) fs(","); fs("CSETMARKED"); comma = 1;
 		}
 		if (flags & X_HASH) {
 			if (comma) fs(","); fs("HASH"); comma = 1;
@@ -12008,7 +12250,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			}
 			if (sccs_iskeylong(kv.val.dptr)) n++;
 		}
-		fprintf(out, "%d\n", n);
+		fprintf(out, "%d", n);
 		return (strVal);
 	}
 
@@ -12039,7 +12281,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
-			j++;
+			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(sym->name);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -12141,12 +12383,39 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "CHKSUM")) {
+	if (streq(kw, "AGE")) {	/* how recently modified */
+		time_t	when = time(0) - (d->date - d->dateFudge);
+
+		fs(age(when));
+		return (strVal);
+	}
+
+	if (streq(kw, "DSUM")) {
 		if (d->flags & D_CKSUM) {
 			char	buf[20];
 
 			sprintf(buf, "%d", (int)d->sum);
 			fs(buf);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "FSUM")) {
+		unless (s->cksumdone) badcksum(s, SILENT);
+		if (s->cksumok) {
+			char	buf[20];
+
+			sprintf(buf, "%d", (int)s->cksum);
+			fs(buf);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "SYMLINK")) {
+		if (d->symlink) {
+			fs(d->symlink);
 			return (strVal);
 		}
 		return (nullVal);
@@ -12269,7 +12538,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "TIP")) {
-		unless (sccs_isleaf(s, d)) {
+		if (sccs_isleaf(s, d)) {
 			fs(d->rev);
 			return (strVal);
 		}
@@ -12490,22 +12759,38 @@ fprintDelta(FILE *out, char *vbuf,
 			    default:  fc('\\'); q++; break;
 			}
 		} else if (*q == ':') {		/* keyword expansion */
-			b = &q[1];
-			len = extractKeyword(b, end, ":", kwbuf);
+			len = extractKeyword(&q[1], end, ":", kwbuf);
 			if ((len > 0) && (len < KWSIZE) &&
 			    (kw2val(out, NULL, "", 0, kwbuf,
 				    "", 0, s, d) != notKeyword)) {
 				/* got a keyword */
-				q = &b[len + 1];
+				q = &q[len + 2];
 			} else {
 				/* not a keyword */
 				fc(*q++);
 			}
-		} else if ((*q == '$') &&	/* conditional expansion */
-		    (q[1] == 'i') && (q[2] == 'f') &&
-		    (q[3] == '(') && (q[4] == ':')) {
-			b = &q[5];
-			len = extractKeyword(b, end, ":", kwbuf);
+		} else if ((*q == '$') && strneq(q, "$unless(:", 9)) {
+			len = extractKeyword(&q[9], end, ":", kwbuf);
+			if (len < 0) { return (printLF); } /* error */
+			leftVal[0] = 0;
+			t = extractOp(&q[10 + len], end, rightVal, &op); 
+			unless (t) return(printLF); /* error */
+			if (t[1] != '{') {
+				/* syntax error */
+				fprintf(stderr,
+				    "must have '{' in conditional string\n");
+				return (printLF);
+			}
+			if (len && (len < KWSIZE) &&
+			    (kw2val(NULL, op ? leftVal: NULL, "",
+			    0, kwbuf, "", 0,  s, d) == strVal) &&
+			    (!op || eval(leftVal, op, rightVal))) {
+			    	goto dont;
+			} else {
+				goto doit;
+			}
+		} else if ((*q == '$') && strneq(q, "$if(:", 5)) {
+			len = extractKeyword(&q[5], end, ":", kwbuf);
 			if (len < 0) { return (printLF); } /* error */
 			leftVal[0] = 0;
 			t = extractOp(&q[6 + len], end, rightVal, &op); 
@@ -12517,20 +12802,20 @@ fprintDelta(FILE *out, char *vbuf,
 				return (printLF);
 			}
 			if (len && (len < KWSIZE) &&
-			    (kw2val(NULL, op ? leftVal: NULL,
-				    "", 0, kwbuf, "", 0,  s, d) == strVal) &&
+			    (kw2val(NULL, op ? leftVal: NULL, "",
+			    0, kwbuf, "", 0,  s, d) == strVal) &&
 			    (!op || eval(leftVal, op, rightVal))) {
 				const char *cb;	/* conditional spec */
 				int clen;
 
-				cb = b = &t[2];
+doit:				cb = b = &t[2];
 				clen = extractStatement(b, end);
 				if (clen < 0) { return (printLF); } /* error */
 				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
 				q = &b[clen + 1];
 			} else {
-				int bcount  = 1; /* brace count */
-				for (t = &t[2]; bcount > 0 ; t++) {
+				int	bcount; /* brace count */
+dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
 					if (*t == '{') {
 						bcount++;
 					} else if (*t == '}') {
@@ -12542,7 +12827,7 @@ fprintDelta(FILE *out, char *vbuf,
 				if (t[0] != '}') {
 					/* syntax error */
 					fprintf(stderr,
-					    "unbalance '{' in dspec string\n");
+					    "unbalanced '{' in dspec string\n");
 					return (printLF);
 				}
 				q = &t[1];
@@ -12558,7 +12843,7 @@ fprintDelta(FILE *out, char *vbuf,
 			if ((b[klen + 1] != ')') && (b[klen + 2] != '{')) {
 				/* syntax error */
 				fprintf(stderr,
-	    "must have '((:keywod:){..}{' in conditional prefix/suffix\n");
+	    "must have '((:keyword:){..}{' in conditional prefix/suffix\n");
 				return (printLF);
 			}
 			prefix = &b[klen + 3];
@@ -12584,7 +12869,7 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	if ((s->state & S_SET) && !(d->flags & D_SET)) return;
 	if (fprintDelta(out, NULL,
 	    dspec, end = &dspec[strlen(dspec) - 1], s, d)) {
-	    	fputc('\n', out);
+	    	//fputc('\n', out);
 	}
 }
 
@@ -12606,16 +12891,8 @@ sccs_perfile(sccs *s, FILE *out)
 	if (s->defbranch) fprintf(out, "f d %s\n", s->defbranch);
 	if (s->encoding) fprintf(out, "f e %d\n", s->encoding);
 	if (s->state & S_BITKEEPER) i |= X_BITKEEPER;
-	if (s->state & S_YEAR4) i |= X_YEAR4;
-	if (s->state & S_RCS) i |= X_RCS;
-	if (s->state & S_SCCS) i |= X_SCCS;
-	if (s->state & S_SINGLE) i |= X_SINGLE;
-	if (s->state & S_EXPAND1) i |= X_EXPAND1;
 	if (s->state & S_CSETMARKED) i |= X_CSETMARKED;
-#ifdef S_ISSHELL
-	if (s->state & S_ISSHELL) i |= X_ISSHELL;
-#endif
-	if (s->state & S_HASH) i |= X_HASH;
+	i |= state2xflags(s->state);
 
 	if (i) fprintf(out, "f x %u\n", i);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
@@ -12661,16 +12938,8 @@ err:			fprintf(stderr,
 
 		unused = 0;
 		if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
-		if (bits & X_YEAR4) s->state |= S_YEAR4;
-		if (bits & X_RCS) s->state |= S_RCS;
-		if (bits & X_SCCS) s->state |= S_SCCS;
-		if (bits & X_SINGLE) s->state |= S_SINGLE;
-		if (bits & X_EXPAND1) s->state |= S_EXPAND1;
 		if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
-#ifdef S_ISSHELL
-		if (bits & X_ISSHELL) s->state |= S_ISSHELL;
-#endif
-		if (bits & X_HASH) s->state |= S_HASH;
+		s->state |= xflags2state(bits);
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	while (strneq(buf, "T ", 2)) {
@@ -12809,13 +13078,8 @@ int
 sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
-#define	DEFAULT_DSPEC \
-":DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
-$if(:DPN:){P :DPN:\n}$each(:SYMBOL:){S (:SYMBOL:)\n}\
-$if(:C:){$each(:C:){C (:C:)}\n}\
-------------------------------------------------"
 
-	if (!dspec) dspec = DEFAULT_DSPEC;
+	if (!dspec) dspec = ":DEFAULT:";
 	GOODSCCS(s);
 	if (flags & PRS_PATCH) {
 		do_patch(s,
@@ -12906,57 +13170,6 @@ sig(int what, int sig)
 }
 #endif	/* !ANSIC */
 
-/* --------------------- module smoosh ---------------------------- */
-
-private inline int
-strmatch(char *s, char *t)
-{
-	if (!s && !t) return (1);
-	if ((s && !t) || (!s && t) || strcmp(s, t)) return (0);
-	return (1);
-}
-
-/*
- * Check user/host/pathname/date/lines/comments
- */
-private inline int
-samedelta(delta *l, delta *r)
-{
-	return ((l->added == r->added) &&
-	    (l->deleted == r->deleted) &&
-	    (l->same == r->same) &&
-	    strmatch(l->user, r->user) &&
-	    strmatch(l->hostname, r->hostname) &&
-	    strmatch(l->pathname, r->pathname) &&
-	    strmatch(l->sdate, r->sdate));
-}
-
-void
-because(delta *a, delta *b)
-{
-	unless (a && b) {
-		printf("Because one is missing\n");
-		return;
-	}
-	sccs_print(a);
-	sccs_print(b);
-	printf("Because ");
-	if (a->added != b->added) printf("added ");
-	if (a->deleted != b->deleted) printf("deleted ");
-	if (a->same != b->same) printf("same ");
-	unless (strmatch(a->user, b->user))
-		printf("user '%s' '%s' ", a->user, b->user);
-	unless (strmatch(a->hostname, b->hostname))
-		printf("hostname '%s' '%s' ", a->hostname, b->hostname);
-	unless (strmatch(a->pathname, b->pathname))
-		printf("pathname '%s' '%s' ", a->pathname, b->pathname);
-	unless (strmatch(a->sdate, b->sdate))
-		printf("sdate '%s' '%s'", a->sdate, b->sdate);
-	printf("\n");
-}
-
-private sccs	*left, *right;	/* globals for graft. */
-
 /*
  * return the number of nodes, including this one, in this subgraph.
  */
@@ -12982,93 +13195,6 @@ addNodes(sccs *s, delta **list, int j, delta *d)
 	addNodes(s, list, j, d->kid);
 	while (list[j]) j++;
 	addNodes(s, list, j, d->siblings);
-}
-
-/*
- * Spit out the command line for a mkpatch which will generate the new work
- * in the left file for incorporation into the right file.
- */
-private void
-mkpatch(sccs *s, delta *a)
-{
-	delta	**alist;
-	int	i;
-
-	alist = calloc((i = numNodes(a)) + 1, sizeof(delta *));
-	addNodes(s, alist, 0, a);
-	qsort((void*)alist, i, sizeof(delta *), dcmp);
-	i = 0;
-	while (alist[i]) {
-		if ((alist[i+1] != 0) && (alist[i+1] == alist[i])) {
-			i++;
-			continue;
-		}
-		printf("%s%c%s\n", left->gfile, BK_FS, alist[i++]->rev);
-	}
-	free(alist);
-}
-
-/*
- * The two deltas passed in are the same.   Link them.
- * For each kid/sibling, try linking that one as well.
- * If they don't link up, spit out the rmdel and mkpatch lines which
- * will regenerate the union from the left and right into the right.
- */
-private void
-linktree(sccs *s, delta *l, delta *r)
-{
-	delta	*a, *b;
-
-	if (l->link || r->link) return;		/* insurance */
-	l->link = r;
-	r->link = l;
-	//printf("L(%s%c, %s%c)\n", l->rev, l->type, r->rev, r->type);
-
-	/*
-	 * What I want is a loop like this:
-	 *
-	 *	foreach lk (l->kid, @l->siblings) {
-	 *		foreach rk (r->kid, @r->siblings) {
-	 *			if samedelta(lk, rk) ....
-	 *		}
-	 *	}
-	 */
-	for (a = l->kid; a; a = a->siblings) {
-		if (a->type != 'D') continue;
-		assert(!a->link);
-		for (b = r->kid; b; b = b->siblings) {
-			if ((b->type != 'D') || b->link) continue;
-			if (samedelta(a, b)) {
-				linktree(s, a, b);
-			}
-		}
-	}
-	for (a = l->kid; a; a = a->siblings) {
-		unless (a->link || (a->type != 'D')) mkpatch(s, a);
-	}
-}
-
-int
-sccs_smoosh(char *lfile, char *rfile)
-{
-	int	error = 0;
-
-	left = sccs_init(lfile, 0, 0);
-	right = sccs_init(rfile, 0, 0);
-	if (!left || !HAS_SFILE(left) || !right || !HAS_SFILE(right)) {
-		error = 100;
-		goto out;
-	}
-	if (!samedelta(left->tree, right->tree)) {
-		because(left->tree, right->tree);
-		error = 101;
-		goto out;
-	}
-	linktree(left, left->tree, right->tree);
-out:	sccs_free(left);
-	sccs_free(right);
-	left = right = 0;
-	return (error);
 }
 
 private inline int
@@ -13635,10 +13761,9 @@ sccs_ino(sccs *s)
 int
 sccs_reCache(void)
 {
-	char	*av[4];
+	char	*av[3];
 
-	/* sfiles -r */
-	av[0] = "bk";  av[1] = "sfiles"; av[2] = "-r"; av[3] = 0;
+	av[0] = "bk";  av[1] = "idcache"; av[2] = 0;
 	return spawnvp_ex(_P_WAIT, av[0], av);
 }
 
@@ -13969,6 +14094,7 @@ sccs_stripdel(sccs *s, char *who)
 	FILE	*sfile = 0;
 	int	error = 0;
 	int	locked;
+	delta	*e;
 
 	assert(s && s->tree && !HAS_PFILE(s));
 	debug((stderr, "stripdel %s %s\n", s->gfile, who));
@@ -13993,6 +14119,15 @@ out:
 		perror("");
 		OUT;
 	}
+
+	/*
+	 * find the new top-of-trunk
+	 * XXX Is this good enough ??
+	 */
+	e = sccs_getrev(s, "+", 0, 0);
+	assert(e);
+	s->state &= ~(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|S_SINGLE);
+	s->state |= xflags2state(sccs_getxflags(e));
 
 	/* write out upper half */
 	if (delta_table(s, sfile, 0)) {  /* 0 means as-is, so chksum works */

@@ -26,14 +26,14 @@ __cd2root() {
 # Run csettool on the list of csets, if any
 _csets() {
 	__cd2root
-	if [ -f RESYNC/BitKeeper/etc/csets ]
-	then	echo Viewing RESYNC/BitKeeper/etc/csets
+	if [ -f RESYNC/BitKeeper/etc/csets-in ]
+	then	echo Viewing RESYNC/BitKeeper/etc/csets-in
 		cd RESYNC
-		exec bk csettool "$@" -r`cat BitKeeper/etc/csets`
+		exec bk csettool "$@" -r`cat BitKeeper/etc/csets-in`
 	fi
-	if [ -f BitKeeper/etc/csets ]
-	then	echo Viewing BitKeeper/etc/csets
-		exec bk csettool "$@" -r`cat BitKeeper/etc/csets`
+	if [ -f BitKeeper/etc/csets-in ]
+	then	echo Viewing BitKeeper/etc/csets-in
+		exec bk csettool "$@" -r`cat BitKeeper/etc/csets-in`
 	fi
 	echo "Can not find csets to view."
 	exit 1
@@ -94,6 +94,21 @@ _extras() {
 	fi
 }
 
+_idcache() {
+	__cd2root
+	while getopts f opt
+	do	case "$opt" in
+		f) rm -f BitKeeper/etc/SCCS/z.id_cache;;
+		esac
+	done
+	bk sfiles -r
+}
+
+_keycache() {
+	bk sfiles -k
+}
+
+
 _jove() {
 	bk get -qe "$@" 2> /dev/null
 	exec jove $@
@@ -125,8 +140,6 @@ _sdiffs() {
 
 _mvdir() {
 
-	# XXX TODO: Make sure resolve clean up empty dir
-	# XXX       after applying mvdir cset
 	case `bk version` in
 	*Basic*)
 		echo "bk mvdir is not supported in this BitKeeper Basic"
@@ -137,26 +150,26 @@ _mvdir() {
 	if [ ! -d $1 ]; then echo $1 is not a directory; exit 1; fi
 	if [ -e $2 ]; then echo $2 already exist; exit 1; fi
 	
+	bk -r check -a || exit 1;
 	# Win32 note: must use relative path or drive:/path
 	# because cygwin mv interprete /path relative to mount tables.
 	mkdir -p $2
 	rmdir $2
 	mv $1 $2
 	cd $2
-	bk sfiles | bk edit -q -
+	bk sfiles -u | bk edit -q -
 	bk sfiles | bk delta -q -ymvdir -
-	# update id cache
-	bk sfiles -r
+	bk idcache
 }
 
 _rmdir() {
-
 	if [ X$2 != X ]; then echo "usage bk rmdir dir"; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
+	bk -r check -a || exit 1;
 	XNUM=`bk sfiles -x $1 | wc -l`
 	if [ "$XNUM" -ne 0 ]
 	then
-		echo "There are unchecked files under $1";
+		echo "There are extra files under $1";
 		bk sfiles -x $1
 		exit 1
 	fi

@@ -12,11 +12,6 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	delta *d;
 	int flags = SILENT;
 
-	/*
-	 * Ignore file under the BitKeeper directory
-	 */
-	if ((strlen(path) >= 10) && strneq(path, "BitKeeper/", 10)) return;
-
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path))  return;
 	d = findrev(s, rev);
@@ -150,7 +145,7 @@ print_cset_log(char *cset1, char *cset2)
 	char buf[MAXLINE];
 	char revs[50], xrev[50];
 	char *dspec =
-"-d# :D:\t:P:@:HT:\t:I:\n$each(:C:){# (:C:)}\n# --------------------------------------------";
+"-d# :D:\t:P:@:HT:\t:I:\n$each(:C:){# (:C:)\n}# --------------------------------------------\n";
 	char *prs_av[] = {"bk", "prs", "-hb", revs, xrev, dspec, "ChangeSet", 0};
 
 	printf("#\n# The following is the BitKeeper ChangeSet Log\n");
@@ -177,14 +172,13 @@ gnupatch_main(int ac, char **av)
 	FILE *pipe;
 	MDBM *db;
 
-	while ((c = getopt(ac, av, "hTd:")) != -1) { 
+	while ((c = getopt(ac, av, "hTd|")) != -1) { 
 		switch (c) {
-		case 'h':	header = 0; break; /* disable header */
-		case 'T':	fix_mod_time = 1; break; 
-		case 'd':	diff_style = optarg; break;
-		default:
-				fprintf(stderr,
-					"Usage: gnupatch [-hT] [-d u|c|n]\n");
+		    case 'h':	header = 0; break; /* disable header */
+		    case 'T':	fix_mod_time = 1; break; 
+		    case 'd':	diff_style = optarg ? optarg : ""; break;
+		    default:	fprintf(stderr,
+				    "Usage: gnupatch [-hT] [-d[u|c|n]]\n");
 				return (1);
 		}
 	}

@@ -89,6 +89,7 @@ private	char	*spin = "|/-\\";
 int
 takepatch_main(int ac, char **av)
 {
+	FILE 	*f;
 	char	*buf;
 	MMAP	*p;
 	int	c;
@@ -110,7 +111,7 @@ takepatch_main(int ac, char **av)
 		switch (c) {
 		    case 'q':
 		    case 's':
-			/* Ignored for option consistency.  */
+			/* undoc, Ignored for option consistency.  */
 			break;
 		    case 'a': resolve++; break;
 		    case 'c': noConflicts++; break;
@@ -181,23 +182,34 @@ usage:		fprintf(stderr, takepatch_help);
 		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
 		    remote, remote == 1 ? "" : "s", conflicts, files);
 	}
+
+	/* save byte count for logs */
+	f = fopen("BitKeeper/log/byte_count", "w");
+	if (f) {
+		fprintf(f, "%u\n", size(pendingFile));
+		fclose(f);
+	}
+
 	if (remote) {
 		get_configs();
 	} else {
 		cleanup(CLEAN_RESYNC | CLEAN_PENDING);
 	}
 	if (resolve) {
+		char 	*resolve[7] = {"bk", "resolve", "-q", 0, 0, 0, 0};
+		int 	i;
+
 		if (echo) {
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		if (textOnly) {
-			system(echo ? "bk resolve -t" : "bk resolve -qt");
-		} else {
-			system(echo ? "bk resolve" : "bk resolve -q");
-		}
+		i = 2;
+		if (!echo) resolve[++i] = "-q";
+		if (textOnly) resolve[++i] = "-t";
+		if (noConflicts) resolve[++i] = "-c";
+		error = spawnvp_ex(_P_WAIT, resolve[0], resolve);
 	}
-	exit(0);
+	exit(error);
 }
 
 /*
@@ -251,7 +263,7 @@ get_configs()
 			 * We use ci here, because we do not want to
 			 * create a new delta if there is no diffs
 			 */
-			system("bk ci -qyauto-merge RESYNC/BitKeeper/etc/gone");
+			system("bk ci -qPyauto-merge RESYNC/BitKeeper/etc/gone");
 		}
     	}
 }
@@ -585,7 +597,7 @@ one.  This usually means you are trying to apply a patch intended for a\n\
 different repository.  You can find the correct repository by running the\n\
 following command at the top of each repository until you get a match with\n\
 the changeset ID at the top of the patch:\n\
-    bk prs -hr1.0 -d:KEY: ChangeSet\n\n", stderr);
+    bk prs -hr1.0 -d':KEY:\\n' ChangeSet\n\n", stderr);
     	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
@@ -782,7 +794,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	char	lodkey[MAXPATH];
 	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
 	int	confThisFile;
-#define	CSETS	"RESYNC/BitKeeper/etc/csets"
 	FILE	*csets = 0;
 
 	unless (p) return (0);
@@ -928,7 +939,11 @@ apply:
 
 					assert(d);
 					unless (csets) {
-						csets = fopen(CSETS, "w");
+						char csets_in[MAXPATH];
+
+						sprintf(csets_in, "%s/%s",
+							ROOT2RESYNC, CSETS_IN);
+						csets = fopen(csets_in, "w");
 						assert(csets);
 					}
 					unless (first) fprintf(csets, ",");

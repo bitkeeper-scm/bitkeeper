@@ -6,13 +6,12 @@ private int	uncompressed(char *tmpfile);
 private int	compressed(int gzip, char *tmpfile);
 extern	MDBM	*csetKeys(MDBM *);
 
-private	char	*cset[] = { "bk", "cset", "-m", "-", 0 };
+private	char	*cset[] = { "bk", "makepatch", "-", 0 };
 
 int
 cmd_pull(int ac, char **av)
 {
 	char	buf[4096];
-	char	tmpfile[MAXPATH];
 	char	csetfile[200] = CHANGESET;
 	FILE	*f = 0;
 	MDBM	*them = 0, *me = 0;
@@ -25,19 +24,14 @@ cmd_pull(int ac, char **av)
 
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
-		exit(1);
+		return (1);
 	}
 	if ((bk_mode() == BK_BASIC) && !exists("BitKeeper/etc/.master")) {
 		out("ERROR-bkd std cannot access non-master repository\n");
-		exit(1);
+		return (1);
 	}
 
-	unless (repository_rdlock() == 0) {
-		out("ERROR-Can't get read lock on the repository.\n");
-		exit(1);
-	} else {
-		out("OK-read lock granted\n");
-	}
+	out("OK-read lock granted\n");
 
 	while ((c = getopt(ac, av, "lnqz|")) != -1) {
 		switch (c) {
@@ -68,16 +62,18 @@ cmd_pull(int ac, char **av)
 	unless (me = csetKeys(them)) {
 		putenv("BK_OUTGOING=NOTHING");
 		out("OK-Nothing to send.\n");
-		repository_rdunlock(0);
-		out("OK-Unlocked\n");
+		out("OK-Unlocked\n"); /* lock is relaesed when we return */
 		goto out;
 	}
 	out("OK-something to send.\n");
 	if (doit) {
 		if (verbose || list) out(
 "OK--------------------- Sending the following csets ---------------------\n");
-		gettemp(tmpfile, "push");
-		f = fopen(tmpfile, "w");
+		f = fopen(CSETS_OUT, "w");
+		unless (f) {
+			perror(CSETS_OUT);
+			OUT;
+		}
 	} else {
 		putenv("BK_OUTGOING=DRYRUN");
 		if (verbose || list) out(
@@ -122,22 +118,22 @@ cmd_pull(int ac, char **av)
 	unless (doit) goto out;
 
 	fclose(f); f = 0;
+	chmod(CSETS_OUT, 0666);
 
 	if (gzip) {
-		error = compressed(gzip, tmpfile);
+		error = compressed(gzip, CSETS_OUT);
 	} else {
-		error = uncompressed(tmpfile);
+		error = uncompressed(CSETS_OUT);
 	}
 
 out:
 	if (them) mdbm_close(them);
 	if (me) mdbm_close(me);
-	repository_rdunlock(0);
-	exit(error);
+	return (error);
 }
 
 private int
-uncompressed(char *tmpfile)
+uncompressed(char *csets_out)
 {
 	int	fd0, fd;
 	int	status;
@@ -146,28 +142,24 @@ uncompressed(char *tmpfile)
 	/*
 	 * What I want is to run cset with stdin being the file.
 	 */
-
 	fd0 = dup(0); close(0);
-	fd = open(tmpfile, 0,  0);
+	fd = open(csets_out, 0,  0);
 	assert(fd == 0);
 	pid = spawnvp_ex(_P_NOWAIT, cset[0], cset);
 	if (pid == -1) {
-		repository_rdunlock(0);
 		out("ERROR-fork failed\n");
 		return (1);
 	}
 	close(0); dup2(fd0, 0); close(fd0);
 	waitpid(pid,  &status, 0);
-	unlink(tmpfile);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));
 	}
 	return (100);
 }
 
-//XXX this code path have no regression test
 private int
-compressed(int gzip, char *tmpfile)
+compressed(int gzip, char *csets_out)
 {
 	pid_t	pid;
 	int	fd0, fd, n;
@@ -178,11 +170,11 @@ compressed(int gzip, char *tmpfile)
 	signal(SIGCHLD, SIG_DFL);
 #endif
 	fd0 = dup(0); close(0);
-	fd = open(tmpfile, 0,  0);
+	fd = open(csets_out, 0,  0);
 	pid = spawnvp_rPipe(cset, &rfd);
 	if (pid == -1) {
-		repository_rdunlock(0);
-		exit(1);
+		out("ERROR-fork failed\n");
+		return (1);
 	}
 	close(0); dup2(fd0, 0); close(fd0);
 	gzip_init(gzip);
@@ -191,7 +183,6 @@ compressed(int gzip, char *tmpfile)
 	}
 	gzip_done();
 	waitpid(pid, &status, 0);
-	unlink(tmpfile);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));
 	}

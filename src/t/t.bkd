@@ -13,7 +13,7 @@
 # Copyright (c) 1999 Andrew Chang?
 # awc@etp2.bitmover.com|src/t/t.repository|20000322041145|27344
 
-OK_LICENSE=BKL33148331000bffb7b0968001fff
+OK_LICENSE=BKL43148331000b0ffb7b09680010fff
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi

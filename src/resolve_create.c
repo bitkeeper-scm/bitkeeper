@@ -758,7 +758,7 @@ res_loggingok(resolve *rs)
 	}
 	unlink(left);
 	unlink(right);
-	sprintf(cmd, "bk delta -y'Auto merged' %s %s",
+	sprintf(cmd, "bk delta -Py'Auto merged' %s %s",
 	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
 	if (sys(cmd, rs->opts)) {
 		perror(cmd);
@@ -879,7 +879,7 @@ sc_rml(resolve *rs)
 		exit(1);
 	}
 	sprintf(repo,
-	    "bk delta -y'Delete: %s' %s", ((sccs*)rs->opaque)->gfile, resync);
+	    "bk delta -Py'Delete: %s' %s", ((sccs*)rs->opaque)->gfile, resync);
 	if (sys(repo, rs->opts)) {
 		perror(repo);
 		exit(1);
@@ -921,7 +921,7 @@ sc_rmr(resolve *rs)
 		exit(1);
 	}
 	sprintf(repo,
-	    "bk delta -y'Delete: %s' %s", ((sccs*)rs->opaque)->gfile, resync);
+	    "bk delta -Py'Delete: %s' %s", ((sccs*)rs->opaque)->gfile, resync);
 	if (sys(repo, rs->opts)) {
 		perror(repo);
 		exit(1);

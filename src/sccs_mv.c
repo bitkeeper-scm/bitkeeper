@@ -40,6 +40,13 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		return (1);
 	}
 
+	if (!HAS_PFILE(s) && S_ISREG(s->mode) && IS_WRITABLE(s)) {
+		fprintf(stderr,
+		    "sccsmv: %s is writable but not edited\n",
+		    s->gfile);
+		return (1);
+	}
+
 	/* XXX - shouldn't this call sccs_clean()? */
 	if (HAS_PFILE(s) && !HAS_GFILE(s)){
 		unlink(s->pfile);	
@@ -210,7 +217,7 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 			sprintf(path, "%s/%s", p->root, IDCACHE);
 			unlink(path);
 			mdbm_close(idDB);
-			system("bk sfiles -r");
+			system("bk idcache");
 			goto again;
 		}
 		fprintf(stderr, "Key %s exists for %s\n", key, t);

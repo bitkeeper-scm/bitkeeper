@@ -49,8 +49,14 @@ setup_main(int ac, char **av)
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
 	}
-	mkdirp(package_path);
-	if (chdir(package_path) != 0) exit(1);
+	if (mkdirp(package_path)) {
+		perror(package_path);
+		exit(1);
+	}
+	if (chdir(package_path) != 0) {
+		perror(package_path);
+		exit(1);
+	}
 	sccs_mkroot(".");
 	if (config_path == NULL) {
 		FILE 	*f;
@@ -125,7 +131,7 @@ again:		printf("Editor to use [%s] ", editor);
 	defaultIgnore();
 
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
-	sprintf(buf, "bk -R sfiles -C > %s", setup_files);
+	sprintf(buf, "bk -R sfiles -pC > %s", setup_files);
 	system(buf);
 	sprintf(buf,
 	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);
@@ -151,7 +157,7 @@ defaultIgnore()
 		return;
 	}
 	close(fd);
-	system("bk new -q BitKeeper/etc/ignore");
+	system("bk new -Pq BitKeeper/etc/ignore");
 }
 
 private void

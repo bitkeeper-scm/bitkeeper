@@ -115,7 +115,6 @@ stale:					fprintf(stderr,
 					assert(!exists(lock));
 					continue;
 				}
-				assert(pid > 0);
 			}
 			unless (pid) goto stale;
 			if (pid == getpid()) {
@@ -194,7 +193,7 @@ uniq_regen()
 	 * Only called with a locked cache, so we can overwrite it.
 	 */
 	unless (tmp) return (-1);
-	sprintf(cmd, "bk -R sfiles -k > %s", tmp);
+	sprintf(cmd, "bk -R keycache > %s", tmp);
 	system(cmd);
 	uniq_unlock();
 	return (uniq_open());

@@ -33,7 +33,7 @@ echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
-if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
@@ -89,7 +89,7 @@ bk push $Q || { echo failed; exit 1; }
 cd $HERE/project/BitKeeper/triggers
 while true
 do
-	bk lock || { continue; }
+	bk lock -s || { continue; }
 	break
 done
 rm -f *
@@ -132,17 +132,17 @@ fi
 echo $N Pull w/failure triggers .....................................$NL
 cd $HERE/copy
 bk pull -t -c0 $Q && { echo failed; exit 1; }
-bk lock || { echo failed; exit 1; }
+bk lock -s || { echo failed; exit 1; }
 cd $HERE/project
-bk lock || { echo failed; exit 1; }
+bk lock -s || { echo failed; exit 1; }
 echo OK
 
 cd $HERE/copy
 echo $N Push w/failure triggers .....................................$NL
 bk push -c0 $Q && { echo failed; exit 1; }
-bk lock || { echo failed; exit 1; }
+bk lock -s || { echo failed; exit 1; }
 cd $HERE/project
-bk lock || { echo failed; exit 1; }
+bk lock -s || { echo failed; exit 1; }
 echo OK
 echo $N auto-mirroring ..............................................$NL
 cd $HERE/project/BitKeeper/triggers

@@ -63,7 +63,7 @@ rm -f copy/BitKeeper/etc/SCCS/x.id_cache
 rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f copy/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
-rm -f copy/BitKeeper/etc/csets
+rm -f copy/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f copy/BitKeeper/log/*
 diff -r project copy > diff$$
@@ -97,7 +97,7 @@ rm -f uu/BitKeeper/etc/SCCS/x.id_cache
 rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f uu/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
-rm -f uu/BitKeeper/etc/csets
+rm -f uu/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f uu/BitKeeper/log/*
 diff -r project uu > diff$$
@@ -118,7 +118,7 @@ rm -f csets/BitKeeper/etc/SCCS/x.id_cache
 rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f csets/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
-rm -f csets/BitKeeper/etc/csets
+rm -f csets/BitKeeper/etc/csets-in
 rm -f project/BitKeeper/log/*
 rm -f csets/BitKeeper/log/*
 diff -r project csets > diff$$

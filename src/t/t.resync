@@ -46,7 +46,7 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
-if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
 bk commit $S -a -y"This is a \"Change Set\""
@@ -96,7 +96,7 @@ echo "File 1" > a.c
 echo "File 2" > b.c
 echo "File 3" > c.c
 # XXX - used to be bk repo || sleep 2
-while ! bk lock; do true; done
+while ! bk lock -s; do true; done
 bk ci $Q -i a.c b.c c.c
 rm -f a.c b.c c.c
 bk commit $S -yabc

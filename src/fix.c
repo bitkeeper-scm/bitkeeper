@@ -16,7 +16,7 @@ fix_main(int ac,  char **av)
 		    case 'q': break;
 		    case 'v': qflag = ""; break;
 		    default :
-			fprintf(stderr, "unknow option <%c>\n", c);
+			fprintf(stderr, "unknown option <%c>\n", c);
 			exit(1);
 		}
 	}

@@ -18,7 +18,7 @@ export_main(int ac,  char **av)
 	FILE	*f;
 	char	*type = 0;
 
-	while ((c = getopt(ac, av, "d:Dhkqt:Twvi:x:r:")) != -1) {
+	while ((c = getopt(ac, av, "d:hkt:Twvi:x:r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;
 		    case 'q':	break; /* no op; for interface consistency */
@@ -48,11 +48,16 @@ usage:			fprintf(stderr,
 		}
 	}
 
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "export: can not find package root.\n");
+		exit(1);
+	}
 	unless (type) type = "plain";
 	if (streq(type, "patch")) {
 		unless (diff_style) diff_style = "u";
-		sprintf(buf, "bk rset -hr%s | bk gnupatch -d%c %s %s",
-		    rev, diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
+		sprintf(buf, "bk rset -hr%s %s %s | bk gnupatch -d%c %s %s",
+		    rev, include, exclude,
+		    diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
 		return (system(buf));
 	}
 
@@ -89,6 +94,7 @@ usage:			fprintf(stderr,
 	while (fgets(buf, sizeof(buf), f)) {
 		char	*t, output[MAXPATH];
 		int	flags = 0;
+		struct	stat sb;
 
 		chop(buf);
 		p = strchr(buf, '@');
@@ -105,14 +111,6 @@ usage:			fprintf(stderr,
 		*q++ = '\0';
 		d = findrev(s, q);
 		assert(d);
-		/*
-		 * Do not export file under the BitKeeper directory
-		 */
-		if ((strlen(p) >= 10) &&
-		    strneq("BitKeeper/", p, 10)) {
-			sccs_free(s);
-			continue;
-		}
 		sprintf(output, "%s/%s", dst_path, p);
 		unless (vflag) flags |= SILENT;
 		unless (kflag) flags |= GET_EXPAND;
@@ -128,7 +126,13 @@ usage:			fprintf(stderr,
 			fprintf(stderr, "cannot export to %s\n", output);
 		}
 		sccs_free(s);
-		if (wflag) chmod(output, 0644);
+		if (wflag) {
+			if (stat(output, &sb)) {
+				perror(output);
+			} else {
+				chmod(output, sb.st_mode | S_IWUSR);
+			}
+		}
 	}
 	fclose(f);
 	unlink(file_rev);

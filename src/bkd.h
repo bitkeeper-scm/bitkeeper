@@ -29,10 +29,9 @@
 typedef	int (*func)(int, char **);
 int	cmd_cd(int ac, char **av);
 int	cmd_clone(int ac, char **av);
-int	cmd_diffs(int ac, char **av);
-int	cmd_get(int ac, char **av);
 int	cmd_eof(int ac, char **av);
 int	cmd_help(int ac, char **av);
+int	cmd_httpget(int ac, char **av);
 int	cmd_pull(int ac, char **av);
 int	cmd_push(int ac, char **av);
 int	cmd_pwd(int ac, char **av);
@@ -50,6 +49,7 @@ struct cmd {
 typedef struct {
 	u32	interactive:1;		/* show prompts, etc */
 	u32	errors_exit:1;		/* exit on any error */
+	u32	debug:1;		/* don't fork for daemons, etc. */
 	u32	daemon:1;		/* listen for TCP connections */
 	u32	start:1;		/* start NT bkd service */
 	u32	remove:1;		/* remove NT bkd service */
@@ -62,19 +62,6 @@ typedef struct {
 	uid_t	uid;			/* run as uid */
 	char	remote[16];		/* a.b.c.d of client */
 } bkdopts;
-
-/*
- * BK "URL" formats are:
- *	bk://user@host:port/pathname
- *	user@host:pathname
- * In most cases, everything except the pathname is optional.
- */
-typedef struct {
-	u16	port;		/* remote port if set */
-	char	*user;		/* remote user if set */
-	char	*host;		/* remote host if set */
-	char	*path;		/* pathname (must be set) */
-} remote;
 
 /*
  * Default BitKeeper port.

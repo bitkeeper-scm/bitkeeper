@@ -8,7 +8,7 @@ eval "exec perl -Ssw $0 $@"
 foreach $_ (@undoc) {
 	$topics{$_} = 1;
 }
-open(T, "bk helptopiclist|");
+open(T, "bk helptopics|");
 while (<T>) {
 	last if /^Aliases/;
 	next unless /^  /;

@@ -49,6 +49,7 @@ usage:			fprintf(stderr,
 			fprintf(stderr, "%s %s..%s:",
 			    s->gfile, s->rstart->rev, s->rstop->rev);
 			old2new(s->rstop, s->rstart);
+#ifdef bogus
 			fprintf(stderr, "\n");
 			fprintf(stderr, "%s %s..%s:",
 			    s->gfile, s->rstop->rev, s->rstart->rev);
@@ -56,6 +57,7 @@ usage:			fprintf(stderr,
 				fprintf(stderr, " %s", e->rev);
 				if (e == s->rstart) break;
 			}
+#endif
 		}
 		fprintf(stderr, "\n");
 next:		sccs_free(s);

@@ -76,7 +76,7 @@ cat > CMP1 << EOF
 1.2
 1.1
 EOF
-bk prs -h -d":I:" symlink > CMP2
+bk prs -h -d':I:\n' symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 bk co $Q symlink
@@ -85,8 +85,12 @@ mv file2.tmp file2
 cmp -s symlink file2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-echo $N Symlink to real file conversion .............................$NL
+echo $N check chmod on symlink ......................................$NL
 bk co $Q -l symlink
+bk admin -m-rwx------ symlink 2> /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Symlink to real file conversion .............................$NL
 rm -f symlink
 echo "this is a real file" > symlink
 cp symlink symlink.ref

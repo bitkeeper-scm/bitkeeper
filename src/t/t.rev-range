@@ -64,7 +64,7 @@ if [ ! -f SCCS/s.stdin ]; then echo Failed.; exit 1; fi
 set `grep -v "^.cF" SCCS/s.stdin | wc -w`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; mkdir project; cd project
 echo $N Creating an empty file with rel 3.1 .........................$NL
 bk admin $Q -r3.1 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
@@ -73,7 +73,7 @@ grep -q 'd D 3.1 ' SCCS/s.empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; mkdir project; cd project
 echo $N Creating an empty file with rel 1.2.3.4 .....................$NL
 bk admin $Q -r1.2.3.4 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
@@ -82,13 +82,13 @@ grep -q 'd D 1.2.3.4 ' SCCS/s.empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; mkdir project; cd project
 echo $N Attempting bad create with rel 1.2.3 ........................$NL
 bk admin $Q -r1.2.3 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; mkdir project; cd project
 echo $N Attempting bad create with rel 1.2.3.4.9999 .................$NL
 bk admin $Q -r1.2.3.4.9999 -n empty 2> ERR
 if [ $? -eq 0 ]; then echo Failed - exit code.; exit 1; fi
@@ -132,7 +132,7 @@ grep -q "c THIS IS THE COMMENT" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 
-cd $HERE; rm -rf project; no_logging project
+cd $HERE; rm -rf project; mkdir project; cd project
 echo $N File w/ comment, text, release ..............................$NL
 bk admin $Q -n -t$HERE/D -r1.2 -y'THIS IS THE COMMENT' foo
 grep -q "c THIS IS THE COMMENT" SCCS/s.foo
@@ -263,6 +263,6 @@ bk _get $Q -l -r1.1.1 -M1.1.2 foo
 bk ci $Q -f -y1.1.1.3 foo
 bk co $Q -l -M1.1.1 foo
 bk ci $Q -f -y1.3 foo
-bk prs -M -hd:I: -r..1.1.1.3 foo | grep -q '^1\.1$'
+bk prs -M -hd':I:\n' -r..1.1.1.3 foo | grep -q '^1\.1$'
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK

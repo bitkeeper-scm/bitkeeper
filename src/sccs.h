@@ -43,11 +43,7 @@
 #define	GET_PREFIXDATE	0x00200000	/* get -d: show date */
 #define GET_PATH	0x00400000	/* use delta (original) path */
 #define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
-#if 0
-#define	GET_BRANCH	0x00010000	/* force a branch when creating delta */
-#else
 #define	GET_ALIGN	0x00010000	/* nicely align prefix output */
-#endif
 #define	GET_FORCE	0x00020000	/* do it even with errors */
 #define	GET_HEADER	0x00040000	/* diff: print header */
 #define	DIFF_HEADER	GET_HEADER
@@ -124,7 +120,7 @@
 #define	S_SOPEN		0x00000010	/* s->sfile is open */
 #define	S_WARNED	0x00000020	/* error message already sent */
 #define	S_RCS		0x00000040	/* expand RCS keywords */
-#define	S_BRANCHOK	0x00000080	/* branching allowed */
+/* AVAILABLE      	0x00000080	*/
 #define	S_EXPAND1	0x00000100	/* expand first line of keyowrds only */
 #define	S_CHMOD		0x00000200	/* change the file back to 0444 mode */
 #define	S_YEAR4		0x00000400	/* print out the year as 4 digits */
@@ -148,8 +144,8 @@
 #define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
 #define	S_SCCS		0x20000000	/* expand SCCS keywords */
 #define	S_SINGLE	0x40000000	/* inherit user/host */
-
-#define	S_KEYWORDS	(S_SCCS|S_RCS)	/* any sort of keyword */
+#define S_XFLAGS	(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|\
+			 S_SCCS|S_SINGLE)
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
@@ -190,10 +186,12 @@
 #define	X_HASH		0x00000040	/* mdbm file */
 #define	X_SCCS		0x00000080	/* SCCS keywords */
 #define	X_SINGLE	0x00000100	/* single user, inherit user/host */
-
-			/* users can change these */
-#define	X_USER		(X_RCS|X_YEAR4|X_EXPAND1|X_SCCS)
-#define	X_DEFAULTS	(X_BITKEEPER|X_SCCS|X_CSETMARKED)
+#if 0
+/* Do not re-use this bit until we are sure no production repository use it. */
+#define	X_ALWAYS_EDIT	0x00000200	/* stays in edit mode after delta/ci */
+#endif
+#define X_XFLAGS	(X_RCS|X_YEAR4|X_ISSHELL|X_EXPAND1|X_HASH|\
+			 X_SCCS|X_SINGLE)
 
 /*
  * Encoding flags.
@@ -248,6 +246,14 @@
 #define D_TEXT		0x80000000	/* delta has updated text */
 
 /*
+ * Flags for command log
+ */
+#define CMD_BYTES	0x00000001	/* log command byte count */
+#define CMD_FAST_EXIT	0x00000002	/* exit when done */
+#define CMD_WRLOCK	0x00000004	/* need to use repository write lock */
+#define CMD_RDLOCK	0x00000008	/* need to use repository read lock */
+
+/*
  * Signal handling.
  * Caught signals do not restart system calls.
  */
@@ -274,7 +280,8 @@
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
-#define	LASTPUSH	"BitKeeper/etc/pushed"
+#define CSETS_IN	"BitKeeper/etc/csets-in"
+#define CSETS_OUT	"BitKeeper/etc/csets-out"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	TRIGGERS	"BitKeeper/triggers"
 #define	CHANGESET	"SCCS/s.ChangeSet"
@@ -292,6 +299,9 @@
 #define BK_FREE		0
 #define BK_BASIC	1
 #define BK_PRO		2
+
+#define BKOPT_WEB	0x0001
+#define BKOPT_ALL	0xffff
 
 #define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)
@@ -361,7 +371,6 @@ typedef struct delta {
 	struct	delta *kid;		/* next delta on this branch */
 	struct	delta *siblings;	/* pointer to other branches */
 	struct	delta *next;		/* all deltas in table order */
-	struct	delta *link;		/* link to a matching delta (smoosh) */
 	int	flags;			/* per delta flags */
 } delta;
 
@@ -495,6 +504,7 @@ typedef	struct sccs {
 	int	userLen;	/* maximum length of any user name */
 	int	revLen;		/* maximum length of any rev name */
 	u32	cksumok:1;	/* check sum was ok */
+	u32	cksumdone:1;	/* check sum was checked */
 	u32	grafted:1;	/* file has grafts */
 } sccs;
 
@@ -613,6 +623,21 @@ struct command
         char *name;
         int (*func)(int, char **);
 };      
+
+/*
+ * BK "URL" formats are:
+ *	bk://user@host:port/pathname
+ *	user@host:pathname
+ * In most cases, everything except the pathname is optional.
+ */
+typedef struct {
+	u16	port;		/* remote port if set */
+	u16	loginshell:1;	/* if set, login shell is the bkd */
+	char	*user;		/* remote user if set */
+	char	*host;		/* remote host if set */
+	char	*path;		/* pathname (must be set) */
+} remote;
+
 
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
@@ -800,7 +825,7 @@ int	setlog(char *u);
 int	connect_srv(char *srv, int port);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
-int	gethelp(char *help_name, char *bkarg, char *prefix, FILE *f);
+int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
 int	is_open_logging(char *logaddr);
 void	status(int verbose, FILE *out);
 void	notify();
@@ -865,11 +890,15 @@ int	cset_setup(int flags);
 off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *action, char *when, int status);
-void	cmdlog_start(char **av);
-void	cmdlog_end(int ret);
+int	cmdlog_start(char **av);
+void	cmdlog_end(int ret, int flags);
+off_t	get_byte_count();
+void	save_byte_count(unsigned int byte_count);
 int	bk_mode();
 int	cat(char *file);
-char	*bk_model();
+char	*bk_model(char *buf, int len);
 char	*getHomeDir();
+char	*age(time_t secs);
+void	sortLines(char **);
 
 #endif	/* _SCCS_H_ */

@@ -34,7 +34,7 @@ prs_main(int ac, char **av)
 	int	init_flags = INIT_NOCKSUM|INIT_SAVEPROJ;
 	int	flags = 0;
 	int	opposite = 0;
-	int	c;
+	int	rc = 0, c;
 	char	*name, *xrev = 0;
 	char	*cset = 0;
 	int	noisy = 0;
@@ -86,7 +86,10 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		if (cset) {
 			delta	*d = sccs_getrev(s, cset, 0, 0);
 
-			if (!d) goto next;
+			if (!d) {
+				rc = 1;
+				goto next;
+			}
 			rangeCset(s, d);
 		} else {
 			RANGE("prs", s, expand, noisy);
@@ -96,7 +99,11 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		assert(s->rstop);
 		if (flags & PRS_ALL) sccs_markMeta(s);
 		if (doheader) {
-			printf("======== %s %s", s->gfile, s->rstart->rev);
+			printf("======== %s %s%s%s",
+			    s->gfile,
+			    opposite ? "!" : "",
+			    s->rstart->rev,
+			    (xrev && streq(xrev, "1st")) ? "+" : "");
 			if (s->rstop != s->rstart) {
 				printf("..%s", s->rstop->rev);
 			}
@@ -113,23 +120,34 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		}
 		if (xrev) {
 			unless (s->state & S_SET) { 
+				int	check = strcmp(xrev, "1st");
+
 				for (e = s->rstop; e; e = e->next) {
-					unless (streq(xrev, e->rev)) {
+					unless (check && streq(xrev, e->rev)) {
 						e->flags |= D_SET;
 					}
 					if (e == s->rstart) break;
 				}
 				s->state |= S_SET;
+				unless (check) s->rstart->flags &= ~D_SET;
 			} else {
-				e = findrev(s, xrev);
-				if (e) e->flags &= ~D_SET;
+				if (streq(xrev, "1st")) {
+					s->rstart->flags &= ~D_SET;
+				} else {
+					e = findrev(s, xrev);
+					if (e) e->flags &= ~D_SET;
+				}
 			}
 		}
 		sccs_prs(s, flags, reverse, dspec, stdout);
-next:		sccs_free(s);
+		sccs_free(s);
+		continue;
+		
+next:		rc = 1;
+		sccs_free(s);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
 	if (year4) free(year4);
-	return (0);
+	return (rc);
 }

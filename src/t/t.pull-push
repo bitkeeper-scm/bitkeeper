@@ -33,7 +33,7 @@ echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
-if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
@@ -57,7 +57,7 @@ bk delta $Q -y2 foo.c
 bk commit $Q -y2
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
-revs=`bk prs -hd:I: src/foo.c | wc -l`
+revs=`bk prs -hd':I:\n' src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
@@ -65,14 +65,14 @@ if [ $DO_REMOTE = YES ]; then
  cd $HERE/copy
  echo $N Pull with explicit remote parent ............................$NL
  bk pull -t $Q localhost:$HERE/project || { echo failed; exit 1; }
- revs=`bk prs -hd:I: src/foo.c | wc -l`
+ revs=`bk prs -hd':I:\n' src/foo.c | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
  echo OK
  echo $N Pull with explicit remote parent and username ...............$NL
  cd $HERE/copy
  bk pull -t $Q $USER@localhost:$HERE/project || { echo failed; exit 1; }
- revs=`bk prs -hd:I: src/foo.c | wc -l`
+ revs=`bk prs -hd':I:\n' src/foo.c | wc -l`
  [ $revs -eq 2 ] || { echo failed; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
  echo OK
@@ -84,19 +84,19 @@ echo $N Pull with explicit local parent .............................$NL
 cd $HERE/copy
 HOSTNAME=`bk gethost`
 bk pull -t $Q $HOSTNAME:$HERE/project || { echo failed; exit 1; }
-revs=`bk prs -hd:I: src/foo.c | wc -l`
+revs=`bk prs -hd':I:\n' src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 echo $N Pull with explicit local parent and username ................$NL
 bk pull -t $Q $USER@$HOSTNAME:$HERE/project || { echo failed; exit 1; }
-revs=`bk prs -hd:I: src/foo.c | wc -l`
+revs=`bk prs -hd':I:\n' src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 echo $N Pull from subdirectory of repository ........................$NL
 cd src
 bk pull -t $Q || { echo failed; exit 1; }
-revs=`bk prs -hd:I: foo.c | wc -l`
+revs=`bk prs -hd':I:\n' foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
 echo $N Pull with mergeable changes in child ........................$NL

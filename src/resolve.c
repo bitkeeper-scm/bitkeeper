@@ -969,7 +969,7 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	}
 	edit_tip(rs, sfile, d, rfile, which);
 	t = sccs2name(sfile);
-	sprintf(buf, "bk delta %s -y'Merge rename: %s -> %s' %s",
+	sprintf(buf, "bk delta %s -Py'Merge rename: %s -> %s' %s",
 	    rs->opts->log ? "" : "-q", d->pathname, t, sfile);
 	free(t);
 	sys(buf, rs->opts);
@@ -1031,7 +1031,7 @@ type_delta(resolve *rs,
 		exit(1);
 	}
 	free(g);
-	sprintf(buf, "bk delta -q -y'Merge file types: %s -> %s' %s",
+	sprintf(buf, "bk delta -q -Py'Merge file types: %s -> %s' %s",
 	    mode2FileType(o->mode), mode2FileType(n->mode), sfile);
 	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
@@ -1068,7 +1068,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 		    sfile, d->rev, a, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
-	sprintf(buf, "bk delta %s -y'Change mode to %s' -M%s %s",
+	sprintf(buf, "bk delta %s -Py'Change mode to %s' -M%s %s",
 	    rs->opts->log ? "" : "-q", a, a, sfile);
 	if (sys(buf, rs->opts)) {
 		fprintf(stderr, "%s failed\n", buf);
@@ -1099,9 +1099,8 @@ flags_delta(resolve *rs,
 {
 	char	buf[MAXPATH];
 	sccs	*s;
-	int	bits = flags & X_USER;
+	int	bits = flags & X_XFLAGS;
 
-	assert(bits);
 	if (rs->opts->debug) {
 		fprintf(stderr, "flags(%s, %s, 0x%x, %s)\n",
 		    sfile, d->rev, bits, which == LOCAL ? "local" : "remote");
@@ -1109,7 +1108,7 @@ flags_delta(resolve *rs,
 	edit_tip(rs, sfile, d, rfile, which);
 	sprintf(buf, "bk clean %s", sfile);
 	sys(buf, rs->opts);
-	sprintf(buf, "bk admin -r%s", d->rev);
+	sprintf(buf, "bk admin -qr%s", d->rev);
 #define	add(s)		{ strcat(buf, " -f"); strcat(buf, s); }
 #define	del(s)		{ strcat(buf, " -F"); strcat(buf, s); }
 #define	doit(f,s)	if (bits&f) add(s) else del(s)
@@ -1118,6 +1117,11 @@ flags_delta(resolve *rs,
 	doit(X_RCS, "RCS");
 	doit(X_SCCS, "SCCS");
 	doit(X_EXPAND1, "EXPAND1");
+#ifdef S_ISSHELL
+	doit(X_ISSHELL, "SHELL");
+#endif
+	doit(X_HASH, "HASH");
+	doit(X_SINGLE, "SINGLE");
 	strcat(buf, " ");
 	strcat(buf, sfile);
 	if (rs->opts->debug) fprintf(stderr, "cmd: [%s]\n", buf);
@@ -1961,7 +1965,7 @@ err:		unlink(left);
 	unlink(left);
 	unlink(right);
 	sccs_close(rs->s); /* for win32 */
-	sprintf(cmd, "bk delta -y'Auto merged' %s %s",
+	sprintf(cmd, "bk delta -Py'Auto merged' %s %s",
 	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
 	if (sys(cmd, rs->opts)) {
 		perror(cmd);
@@ -2030,12 +2034,12 @@ pending(int checkComments)
 	int	ret;
 
 	unless (checkComments) {
-		f = popen("bk sfiles -C", "r");
+		f = popen("bk sfiles -pC", "r");
 		ret = fgetc(f) != EOF;
 		pclose(f);
 		return (ret);
 	}
-	f = popen("bk sfiles -CA | bk sccslog -CA -", "r");
+	f = popen("bk sfiles -pCA | bk sccslog -CA -", "r");
 	while (fnext(buf, f)) {
 		unless (t = strchr(buf, '\t')) {
 			pclose(f);
@@ -2420,7 +2424,7 @@ unapply(FILE *f)
 	rewind(f);
 	while (fnext(buf, f)) {
 		chop(buf);
-		unlink(buf);	// XXX -> rm_sfile()
+		rm_sfile(buf);
 	}
 	fclose(f);
 }
@@ -2436,7 +2440,9 @@ restore(opts *o)
 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\
 Your repository is only partially restored.   This is an error.  Please \n\
 examine the list of failures above and find out why they were not renamed.\n\
-You must move them into place by hand before the repository is usable.\n\
+You must move them into place by hand before the repository is usable.\n");
+		fprintf(stderr, "\nA backup sfio is in %s\n", BACKUP_SFIO);
+		fprintf(stderr, "\
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 	} else {
 		fprintf(stderr,
@@ -2493,12 +2499,12 @@ resolve_cleanup(opts *opts, int what)
 	/*
 	 * If we are done, save the csets file.
 	 */
-	sprintf(buf, "%s/%s", ROOT2RESYNC, "BitKeeper/etc/csets");
+	sprintf(buf, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	if ((what & CLEAN_OK) && exists(buf)) {
-		rename(buf, "BitKeeper/etc/csets");
+		rename(buf, CSETS_IN);
 		if (opts->log) {
 			fprintf(stdlog,
-			    "rename(%s, BitKeeper/etc/csets)\n", buf);
+			    "rename(%s, %s)\n", buf, CSETS_IN);
 		}
 	}
 
@@ -2523,8 +2529,6 @@ resolve_cleanup(opts *opts, int what)
 		SHOUT2();
 		exit(1);
 	}
-	repository_wrunlock(1);
-	repository_lockers(0);
 	exit(0);
 }
 

@@ -290,20 +290,34 @@ parent_delta(sccs *s, char *rev)
 	return (p ? strdup(p->rev) : NULL);
 }
 
+void
+fix_rev(sccs *s, char **rev, char rev_buf[])
+{
+	delta *d;
+
+	if ((*rev == 0) || streq("+", *rev)) {
+		d = findrev(s, 0);
+		assert(d);
+		strcpy(rev_buf, d->rev);
+		*rev = rev_buf;
+	}
+}
 
 private int
-parse_rev(sccs *s, char *args, char **rev1, char **rev2)
+parse_rev(sccs *s, char *args, char **rev1, char **rev2, char rev_buf[])
 {
 	char *p;
 
-	unless (args) return;
+	unless (args) args = "+";
 	p = strchr(args, ',');
 	if (p) {
 		*rev1 = args;
 		*p++ = 0;
 		*rev2 = p;
+		fix_rev(s, rev2, rev_buf);
 	} else {
 		*rev2 = args;
+		fix_rev(s, rev2, rev_buf);
 		*rev1 = parent_delta(s, *rev2);
 		unless (rev1) {
 			fprintf(stderr, "rev %s has no parent delta\n");
@@ -320,6 +334,7 @@ rset_main(int ac, char **av)
 	int	c, show_all = 0;
 	char	*rev1 = 0, *rev2 = 0 , tmpf1[MAXPATH], tmpf2[MAXPATH];
 	char	*root_key, *start_key, *end_key, s_cset[] = CHANGESET;
+	char	rbuf[20];
 	sccs	*s = 0;
 	MDBM	*db1, *db2, *idDB, *goneDB = 0, *short2long = 0;
 	kvpair	kv;
@@ -333,7 +348,7 @@ rset_main(int ac, char **av)
 	s = sccs_init(s_cset, SILENT|INIT_SAVEPROJ, 0);
 	assert(s);
 
-	while ((c = getopt(ac, av, "ahHl:r:")) != -1) {
+	while ((c = getopt(ac, av, "ahHl|r|")) != -1) {
 		switch (c) {
 		case 'a':	opts.show_all = 1;  /* show deleted files */
 				break;
@@ -345,13 +360,13 @@ rset_main(int ac, char **av)
 				rev1 = optarg;
 				break;
 		case 'r':	opts.rflg = 1;
-				if (parse_rev(s, optarg, &rev1, &rev2)) {
+				if (parse_rev(s, optarg, &rev1, &rev2, rbuf)) {
 					return (1); /* parse failed */
 				}
 				break;
 		default:
 usage:				fprintf(stderr,
-				"Usage: rset [-a] [-h] [-H] -rrev1[,rev2]\n");
+		    "Usage: rset [-a] [-h] [-H] [-l<rev>|-r[<rev1>,]<rev2>]\n");
 				if (s) sccs_close(s);
 				return (1);
 		}

@@ -53,7 +53,7 @@ do	case "$D" in
 	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
 	echo $N Verifying data checksum .....................................$NL
-	A=`bk prs -r1.1 -hd:CHKSUM: ${D}foo`
+	A=`bk prs -r1.1 -hd:DSUM: ${D}foo`
 	B=`bk chksum < ../SAVE`
 	if [ $A -ne $B ]; then echo Failed - chksums $A $B differ; exit 1; fi
 	echo OK

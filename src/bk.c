@@ -15,11 +15,10 @@ please contact sales@bitmover.com\n";
 
 char	*find_wish();
 char	*find_perl5();
-void	cmdlog_start(char **av);
-void	cmdlog_end(int ret);
 void	cmdlog_exit(void);
 int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
+private int	run_cmd(char *prog, int is_bk, int ac, char **av);
 
 extern	void	getoptReset();
 extern	void	platformInit(char **av);
@@ -57,9 +56,8 @@ int graft_main(int, char **);
 int grep_main(int, char **);
 int gone_main(int, char **);
 int help_main(int, char **);
-int helpaliases_main(int, char **);
 int helpsearch_main(int, char **);
-int helptopiclist_main(int, char **);
+int helptopics_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int keysort_main(int, char **);
@@ -71,6 +69,8 @@ int logging_main(int, char **);
 int loggingaccepted_main(int ac, char **av);
 int loggingask_main(int ac, char **av);
 int loggingto_main(int, char **);
+int mail_main(int, char **);
+int makepatch_main(int, char **);
 int merge_main(int, char **);
 int mklock_main(int, char **);
 int mtime_main(int, char **);
@@ -86,8 +86,6 @@ int r2c_main(int, char **);
 int range_main(int, char **);
 int rcs2sccs_main(int, char **);
 int rcsparse_main(int, char **);
-int rdiffs_main(int, char **);
-int rget_main(int, char **);
 int receive_main(int, char **);
 int rechksum_main(int, char **);
 int renumber_main(int, char **);
@@ -106,9 +104,7 @@ int setup_main(int, char **);
 int sfiles_main(int, char **);
 int sfind_main(int, char **);
 int sfio_main(int, char **);
-int sids_main(int, char **);
 int sinfo_main(int, char **);
-int smoosh_main(int, char **);
 int status_main(int, char **);
 int stripdel_main(int, char **);
 int takepatch_main(int, char **);
@@ -125,15 +121,19 @@ int zone_main(int, char **);
 
 /* do not change the next line, it's parsed in helpcheck.pl */
 struct command cmdtbl[] = {
+	{"_adler32", adler32_main},
 	{"_createlod", _createlod_main},
-	{"_find", find_main }, /* internal helper function */
+	{"_find", find_main }, 		/* internal helper function */
+	{"_keysort", keysort_main},
+	{"_lines", lines_main},	
 	{"_logging", logging_main},
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
+	{"_mail", mail_main},
 	{"_get", get_main},
+	{"_unlink", unlink_main },
 	{"abort", abort_main},
-	{"adler32", adler32_main},
 	{"admin", admin_main},
 	{"annotate", annotate_main},
 	{"bkd", bkd_main },
@@ -150,83 +150,76 @@ struct command cmdtbl[] = {
 	{"cset", cset_main},
 	{"delta", delta_main},
 	{"diffs", diffs_main},
-	{"edit", get_main},	/* aliases */
+	{"edit", get_main},		/* aliases */
 	{"export", export_main},
-	{"fdiff", fdiff_main},
+	{"fdiff", fdiff_main},		/* undocumented */
 	{"fix", fix_main},
 	{"g2sccs", g2sccs_main},
 	{"gca", gca_main},
 	{"get", get_main},
-	{"gethelp", gethelp_main},
+	{"gethelp", gethelp_main},	/* undocumented */
 	{"gethost", gethost_main},
 	{"getmsg", getmsg_main},
 	{"getuser", getuser_main},
-	{"graft", graft_main},
+	{"graft", graft_main},		/* undocumented */
 	{"grep", grep_main},
 	{"gnupatch", gnupatch_main},
 	{"gone", gone_main},
 	{"help", help_main},
-	{"helpaliases", helpaliases_main},
 	{"helpsearch", helpsearch_main},
-	{"helptopiclist", helptopiclist_main},
-	{"info", sinfo_main},	/* aliases */
+	{"helptopics", helptopics_main},
+	{"info", sinfo_main},
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
-	{"keysort", keysort_main},
-	{"lines", lines_main},
 	{"lock", lock_main},
 	{"lod", lod_main},
 	{"log", log_main},
+	{"makepatch", makepatch_main},
 	{"merge", merge_main},
-	{"mklock", mklock_main}, /* for regression test only */
-	{"mtime", mtime_main},
+	{"mklock", mklock_main},	/* for regression test only, undoc */
+	{"mtime", mtime_main},		/* for regression test only, undoc */
 	{"mv", mv_main},
 	{"names", names_main},
-	{"new", delta_main},	/* aliases */
+	{"new", delta_main},		/* aliases */
 	{"parent", parent_main},
 	{"pending", pending_main},
 	{"prs", prs_main},
 	{"pull", pull_main},
 	{"push", push_main},
-	{"pwd", pwd_main},
+	{"pwd", pwd_main},		/* for regression test only, undoc */
 	{"r2c", r2c_main},
 	{"range", range_main},
 	{"rcs2sccs", rcs2sccs_main},
 	{"rcsparse", rcsparse_main},
-	{"rdiffs", rdiffs_main},
-	{"rget", rget_main},
 	{"receive", receive_main},
 	{"rechksum", rechksum_main},
 	{"renumber", renumber_main},
-	{"repo", repo_main},
+	{"repo", repo_main},		/* obsolete, undocumented */
 	{"resolve", resolve_main},
-	{"rev2cset", r2c_main},
+	{"rev2cset", r2c_main},		/* alias, documented as r2c */
 	{"rset", rset_main},
 	{"rm", rm_main},
 	{"rmdel", rmdel_main},
 	{"sane", sane_main},
 	{"sccscat", sccscat_main},
 	{"sccslog", sccslog_main},
-	{"sccsmv", mv_main},
-	{"sccsrm", rm_main},
+	{"sccsmv", mv_main},		/* alias, documented as mv */
+	{"sccsrm", rm_main},		/* alias, documented as rm */
 	{"send", send_main},
 	{"sendbug", sendbug_main},
 	{"setlod", setlod_main},
 	{"setup", setup_main },
-	{"sfiles", sfiles_main},
+	{"sfiles", sfind_main}, 	/* aliases */
 	{"sfind", sfind_main},
 	{"sfio", sfio_main},
-	{"sids", sids_main},
-	{"sinfo", sinfo_main},
-	{"smoosh", smoosh_main},
+	{"sinfo", sinfo_main},		/* alias, documented as info */
 	{"status", status_main},
 	{"stripdel", stripdel_main},
 	{"takepatch", takepatch_main},
 	{"undo", undo_main},
 	{"undos", undos_main},
 	{"unedit", unedit_main},
-	{"unget", unedit_main},	/* aliases */
-	{"unlink", unlink_main },
+	{"unget", unedit_main},		/* aliases */
 	{"unlock", unlock_main },
 	{"unwrap", unwrap_main},
 	{"users", users_main},
@@ -245,21 +238,19 @@ usage()
 	exit(1);
 }
 
+#define	MAXARGS	1024
+
 int
 main(int ac, char **av)
 {
-	int	i, j;
-	char	cmd_path[MAXPATH];
-	char	*argv[100];
-	int	c;
-	int	is_bk = 0, dashr = 0;
-	int	ret;
-	char	*prog;
+	int	i, c, is_bk = 0, dashr = 0;
+	int	flags, ret;
+	char	*prog, *argv[MAXARGS];
 
 	cmdlog_buffer[0] = 0;
 	if (i = setjmp(exit_buf)) {
 		i -= 1000;
-		cmdlog_end(i);
+		cmdlog_end(i, 0);
 		return (i >= 0 ? i : 1);
 	}
 	atexit(cmdlog_exit);
@@ -286,7 +277,7 @@ main(int ac, char **av)
 	prog = basenm(av[0]);
 	if (streq(prog, "bk")) {
 		is_bk = 1;
-		while ((c = getopt(ac, av, "rR")) != -1) {
+		while ((c = getopt(ac, av, "hrR")) != -1) {
 			switch (c) {
 			    case 'h':
 				return (help_main(1, argv));
@@ -333,20 +324,32 @@ main(int ac, char **av)
 		return (0);
 	}
 
+	flags = cmdlog_start(av);
+	ret = run_cmd(prog, is_bk, ac, av);
+	cmdlog_end(ret, flags);
+	exit(ret);
+}
+
+
+private int
+run_cmd(char *prog, int is_bk, int ac, char **av)
+{
+	int	i, j, flags, ret;
+	char	cmd_path[MAXPATH];
+	char	*argv[MAXARGS];
+
 	/*
 	 * look up the internal command 
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
 		if (streq(cmdtbl[i].name, prog)){
-			cmdlog_start(av);
 			ret = cmdtbl[i].func(ac, av);
-			cmdlog_end(ret);
-			exit(ret);
+			return (ret);
 		}
 	}
 	unless(is_bk) {
 		fprintf(stderr, "%s is not a linkable command\n",  prog);
-		exit(1);
+		return (1);
 	}
 
 	/*
@@ -356,12 +359,16 @@ main(int ac, char **av)
 		argv[0] = "perl"; 
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				exit(1);
+			}
+			argv[i] = av[j];
+		}
 		argv[i] = 0;
-		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret);
-		exit(ret);
+		return (ret);
 	}
 
 	/*
@@ -372,6 +379,8 @@ main(int ac, char **av)
 	    streq(prog, "citool") ||
 	    streq(prog, "_citool") ||
 	    streq(prog, "sccstool") ||
+	    streq(prog, "histtool") ||
+	    streq(prog, "histool") ||
 	    streq(prog, "setuptool") ||
 	    streq(prog, "fmtool") ||
 	    streq(prog, "fm3tool") ||
@@ -385,14 +394,20 @@ main(int ac, char **av)
 #endif
 		signal(SIGTERM, SIG_IGN);
 		argv[0] = find_wish();
+		if (streq(prog, "sccstool")) prog = "histtool";
+		if (streq(prog, "histool")) prog = "histtool";
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				exit(1);
+			}
+			argv[i] = av[j];
+		}
 		argv[i] = 0;
-		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret);
-		exit(ret);
+		return (ret);
 	}
 
 	/*
@@ -403,27 +418,24 @@ main(int ac, char **av)
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				return (1);
+			}
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		cmdlog_end(ret);
-		exit(ret);
+		return (ret);
 	}
 
 	/*
 	 * Is it a known C program ?
 	 */
 	if (streq(prog, "patch") ||
-#ifdef WIN32
-	    streq(prog, "pwd") ||
-#endif
 	    streq(prog, "diff3")) {
-		cmdlog_start(av);
 		ret = spawnvp_ex(_P_WAIT, av[0], av);
-		cmdlog_end(ret);
-		exit(ret);
+		return (ret);
 	}
 
 	/*
@@ -436,11 +448,16 @@ main(int ac, char **av)
 	argv[0] = shell();
 	sprintf(cmd_path, "%s/bk.script", bin);
 	argv[1] = cmd_path;
-	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
+	for (i = 2, j = 0; av[j]; i++, j++) {
+		if (i >= (MAXARGS-10)) {
+			fprintf(stderr, "bk: too many args\n");
+			return (1);
+		}
+		argv[i] = av[j];
+	}
 	argv[i] = 0;
 	ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-	cmdlog_end(ret);
-	exit(ret);
+	return (ret);
 }
 
 #define	LOG_MAXSIZE	(32<<10)
@@ -450,43 +467,45 @@ void
 cmdlog_exit(void)
 {
 	purify_list();
-	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
+	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT, 0);
 }
 
 private	struct {
 	char	*name;
-	int	len;
+	int	flags;
 } repolog[] = {
-	{"pull", 4 },
-	{"push", 4 },
-	{"commit", 6 },
-	{"remote pull", 11 },
-	{"remote push", 11 },
-	{"remote clone", 12 },
+	{"pull", CMD_BYTES},
+	{"push", CMD_BYTES},
+	{"commit", CMD_WRLOCK},
+	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
+	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK},
+	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
 	{ 0, 0 },
 };
 
-void
+int
 cmdlog_start(char **av)
 {
-	int	i, len = 0;
+	int	i, len, cflags = 0;
 
 	cmdlog_buffer[0] = 0;
-	unless (bk_proj && bk_proj->root) return;
-
 	cmdlog_repo = 0;
+
 	for (i = 0; repolog[i].name; i++) {
 		if (streq(repolog[i].name, av[0])) {
+			cflags = repolog[i].flags;
 			cmdlog_repo = 1;
 			break;
 		}
 	}
+	unless (bk_proj && bk_proj->root) return (cflags);
+
 	if (cmdlog_repo) {
 		sprintf(cmdlog_buffer,
 		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
 	}
-	for (i = 0; av[i]; i++) {
-		len += strlen(av[i]);
+	for (len = 1, i = 0; av[i]; i++) {
+		len += strlen(av[i]) + 1;
 		if (len >= sizeof(cmdlog_buffer)) continue;
 		if (i || cmdlog_repo) {
 			strcat(cmdlog_buffer, " ");
@@ -495,19 +514,40 @@ cmdlog_start(char **av)
 			strcpy(cmdlog_buffer, av[i]);
 		}
 	}
+	if (cflags & CMD_WRLOCK) {
+		if (repository_wrlock()) {
+			out("ERROR-Unable to lock repository for update.\n");
+			exit(1);
+		}
+	}
+	if (cflags & CMD_RDLOCK) {
+		if (repository_rdlock()) {
+			out("ERROR-Can't get read lock on the repository.\n");
+			exit(1);
+		}
+	}
+	if (cflags & CMD_BYTES) save_byte_count(0); /* init to zero */
+
 	if (cmdlog_repo) {
 		int ret ;
 
-		if ((bk_mode() == BK_BASIC)  && !streq("commit", av[0])) return;
+		if ((bk_mode() == BK_BASIC)  && !streq("commit", av[0])) {
+			return (cflags);
+		}
 		ret = trigger(cmdlog_buffer, "pre", 0);
 
-		unless (ret == 0) exit(ret);
+		unless (ret == 0) {
+			if (cflags & CMD_WRLOCK) repository_wrunlock(0);
+			if (cflags & CMD_RDLOCK) repository_rdunlock(0);
+			exit(ret);
+		}
 	}
+	return (cflags);
 
 }
 
 void
-cmdlog_end(int ret)
+cmdlog_end(int ret, int flags)
 {
 	FILE	*f;
 	char	*user, *file;
@@ -515,6 +555,10 @@ cmdlog_end(int ret)
 
 	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
+
+	if (flags & CMD_WRLOCK) repository_wrunlock(0);
+	if (flags & CMD_RDLOCK) repository_rdunlock(0);
+
 	if (cmdlog_repo) {
 		file = "repo_log";
 	} else {
@@ -537,7 +581,9 @@ cmdlog_end(int ret)
 	if (ret == LOG_BADEXIT) {
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
-		fprintf(f, "%s = %d\n", cmdlog_buffer, ret);
+		fprintf(f, "%s = %d", cmdlog_buffer, ret);
+		if (flags&CMD_BYTES) fprintf(f, " xfered=%u", get_byte_count());
+		fputs("\n", f);
 	}
 	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {
 		char	old[MAXPATH];
@@ -547,6 +593,7 @@ cmdlog_end(int ret)
 		rename(path, old);
 	} else {
 		fclose(f);
+		chmod(path, 0666);
 	}
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -609,14 +656,14 @@ bk_sfiles(int ac, char **av)
 	if (status = sfind_main(1, sav)) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
-		cmdlog_end(status);
+		cmdlog_end(status, 0);
 		exit(status);
 	}
 	fflush(stdout);
 	close(1);
 	waitpid(pid, &status, 0);
 	if (WIFEXITED(status)) {
-		cmdlog_end(WEXITSTATUS(status));
+		cmdlog_end(WEXITSTATUS(status), 0);
 		exit(WEXITSTATUS(status));
 	}
 #ifndef WIN32
@@ -624,11 +671,11 @@ bk_sfiles(int ac, char **av)
 		fprintf(stderr,
 		    "Child was signaled with %d\n",
 		    WTERMSIG(status));
-		cmdlog_end(WTERMSIG(status));
+		cmdlog_end(WTERMSIG(status), 0);
 		exit(WTERMSIG(status));
 	}
 #endif
-	cmdlog_end(100);
+	cmdlog_end(100, 0);
 	exit(100);
 }
 
