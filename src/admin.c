@@ -248,19 +248,13 @@ main(int ac, char **av)
 		if (rmCset) clearCset(sc, flags, rmCset);
 		if (rmPath) clearPath(sc, flags);
 		if (doDates) sccs_fixDates(sc);
-		if (m) {
-			delta	*d;
-
-			sc->state |= S_RANGE2;
-			if (d = sccs_getrev(sc, rev, 0, 0)) d = modeArg(d, m);
-		}
 		if (merge) {
 			if (setMerge(sc, merge, rev) == -1) {
 				error = 1;
 				goto next;
 			}
 		}
-		if (sccs_admin(sc, flags, encp, compp, f, 0, u, s, text)) {
+		if (sccs_admin(sc, flags, encp, compp, f, 0, u, s, m, text)) {
 			sccs_whynot("admin", sc);
 			error = 1;
 		}

@@ -484,7 +484,7 @@ typedef struct patch {
 #define	PATCH_META	0x0004	/* delta is metadata */
 
 int	sccs_admin(sccs *sc, u32 flgs, char *encoding, char *compress,
-	    admin *f, admin *l, admin *u, admin *s, char *txt);
+	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs);
 int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *);
