@@ -930,7 +930,7 @@ __nusers() {
 	if [ -f ${BK_ETC}SCCS/s.aliases ]
 	then ${BIN}get -kps ${BK_ETC}aliases > ${TMP}aliases$$
 	fi
-	`__perl` -w ${BIN}count_user ${TMP}aliases$$ ${TMP}users$$
+	perl -w ${BIN}count_user ${TMP}aliases$$ ${TMP}users$$
 	${RM} -f ${TMP}users$$ ${TMP}aliases$$
 }
 
