@@ -244,6 +244,27 @@ bk cat data | grep -q 'This should fail!' && {
 }
 echo OK
 
+echo $N Catch read only destinations ................................$NL
+bk setup -f -c$HERE/c $HERE/dest
+chmod 555 $HERE/dest
+mkdir $HERE/data
+cd $HERE/data
+for i in 1 2 3 4 5 6
+do	echo hi mom > data$i
+done
+bk import -tplain $HERE/data $HERE/dest >OUT 2>&1 && {
+	echo failed to exit with an error
+	cat OUT
+	exit 1
+}
+grep -q 'not writable' OUT || {
+	echo failed to warn about write permission
+	cat OUT
+	exit 1
+}
+chmod 777 $HERE/dest
+echo OK
+
 TESTDATA=/home/bk/test_data
 
 test -d $TESTDATA/lmbench && {

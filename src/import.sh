@@ -87,6 +87,10 @@ import() {
 	if [ ! -d "$2/BitKeeper" ]
 	then	echo "$2 is not a BitKeeper package"; exit 1
 	fi
+	if [ ! -w "$2" -o ! -w "$2/BitKeeper" ]
+	then	echo import: "$2" is not writable
+		exit 1
+	fi
 	HERE=`bk pwd`
 	if [ $TYPE != patch ]
 	then	cd "$1"
