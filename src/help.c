@@ -13,8 +13,9 @@ help_main(int ac,  char **av)
 	char	*opt = 0, *synopsis = "";
 	FILE	*f, *f1;
 	char	*file = 0;
+	char 	*new_av[2] = {"help", 0 };
 
-	if ((ac == 1) || (ac == 2 && streq("--help", av[1]))) {
+	if (ac == 2 && streq("--help", av[1])) {
 		sprintf(buf, "bk help help | %s", pager);
 		system(buf);
 		return (0);
@@ -35,6 +36,10 @@ help_main(int ac,  char **av)
 	}
 	sprintf(out, "%s/bk_help%d", TMP_PATH, getpid());
 	unlink(out);
+	unless (av[optind]) {
+		av = new_av;
+		optind = -0;
+	}
 	if (opt) {
 		for (av[i = optind]; av[i]; i++) {
 			if (file) {
