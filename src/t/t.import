@@ -581,6 +581,9 @@ test -f results/SCCS/s.Makefile || exit 1
 echo OK
 }
 
+# Note: There is no "execute bit" in win32 File system
+if [ $PLATFORM != "WIN32" ]
+then #-----------------------------------------------------------------
 test -d $TESTDATA/import-RCS+x && {
 echo $N Make import w/ undos does not lose execute bits .............$NL
 cd $HERE
@@ -606,6 +609,7 @@ grep -q RCS F || {
 }
 echo OK
 }
+fi #-------------------------------------------------------------------
 
 test -d $TESTDATA/import-CVS.1 && {
 

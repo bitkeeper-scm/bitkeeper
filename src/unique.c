@@ -98,7 +98,6 @@ atomic_create(char *noused, char *lock, int me)
 	FILE 	*f;
 	char	buf[100];
 
-	if (getenv("BK_REGRESSION")) flags &= ~O_EXCL; /* for faster test */
 	fd = open(lock, flags, 0666);
 	if (fd < 0) return (-1);
 	
@@ -159,7 +158,7 @@ uniq_lock()
 			 * because some pid (e.g 844) would pop
 			 * a bogus Norton virus alert.
 			 */
-			fscanf(f, "#%d\n", &pid);
+			fscanf(f, "#%u\n", &pid);
 			fclose(f);
 			unless (pid) continue;	/* must be gone */
 			assert(pid != me);
