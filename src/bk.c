@@ -717,12 +717,16 @@ cmdlog_start(char **av, int httpMode)
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
 			}
-			if (i == -1) {
+			switch (i) {
+			    case LOCKERR_LOST_RACE:
 				out(LOCK_WR_BUSY);
-			} else if (i == -2) {
+				break;
+			    case LOCKERR_PERM:
 				out(LOCK_PERM);
-			} else {
+				break;
+			    default:
 				out(LOCK_UNKNOWN);
+				break;
 			}
 			out("\n");
 			/*
@@ -743,12 +747,16 @@ cmdlog_start(char **av, int httpMode)
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
 			}
-			if (i == -1) {
+			switch (i) {
+			    case LOCKERR_LOST_RACE:
 				out(LOCK_RD_BUSY);
-			} else if (i == -2) {
+				break;
+			    case LOCKERR_PERM:
 				out(LOCK_PERM);
-			} else {
+				break;
+			    default:
 				out(LOCK_UNKNOWN);
+				break;
 			}
 			out("\n");
 			/*

@@ -508,6 +508,10 @@ extern	char *upgrade_msg;
 #define	LOCK_PERM	"ERROR-Lock fail: possible permission problem."
 #define	LOCK_UNKNOWN	"ERROR-Unknown lock error."
 
+#define	LOCKERR_NOREPO		-1
+#define	LOCKERR_PERM		-2
+#define	LOCKERR_LOST_RACE	-3
+
 /*
  * Bumped whenever we change any file format.
  * 2 - bumped to invalidate old binaries with bad date code.

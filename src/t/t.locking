@@ -69,8 +69,12 @@ bk edit $Q A
 writable A || { echo failed to lock A; exit 1; }
 echo OK
 echo $N Make sure delta fails with existing read lock ...............$NL
-bk delta $Q -yXXX A 2> /dev/null
-if [ ! -w A ]; then echo failed to fail delta; exit 1; fi
+bk delta $Q -yXXX A 2> OUT
+test -w A || {
+	echo failed to fail delta
+	cat OUT
+	exit 1
+}
 echo OK
 
 echo $N Make sure clean works with existing read lock ...............$NL
@@ -88,8 +92,16 @@ bk edit $Q A
 writable A || { echo failed to lock A; exit 1; }
 echo OK
 echo $N Make sure delta fails with existing write lock ..............$NL
-bk delta $Q -yXXX A 2> /dev/null
-if [ ! -w A ]; then echo failed to fail delta; exit 1; fi
+bk lock -l > LOCKS 2>&1
+bk delta $Q -yXXX A 2> OUT
+test -w A || {
+	echo failed to fail delta
+	echo LOCKS:
+	cat LOCKS
+	echo DELTA OUTPUT
+	cat OUT
+	exit 1
+}
 echo OK
 echo $N Make sure clone fails with existing write lock in source ....$NL
 cd $HERE
@@ -110,8 +122,11 @@ done
 cd $HERE
 bk clone bk://localhost:$P clone 2> clone.out
 echo "ERROR-Can't get read lock on the repository." > ref
-cmp -s clone.out ref
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cmp -s clone.out ref || {
+	echo Failed
+	diff clone.out ref
+	exit 1
+}
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
 fi #------------------------------------------------------------------------

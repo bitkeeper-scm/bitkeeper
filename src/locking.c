@@ -5,7 +5,7 @@
  */
 #include "system.h"
 #include "sccs.h"
-#if 0
+#if 1
 #define	ldebug(x)	if (getenv("BK_DBGLOCKS")) {\
 				pwd(); \
 				ttyprintf("[%d]==> ", getpid()); \
@@ -18,7 +18,7 @@ pwd() { char p[MAXPATH]; getRealCwd(p, MAXPATH); ttyprintf("%s ",p); }
 #endif
 
 private	project *
-getproj()
+getproj(void)
 {
 	project	*p;
 
@@ -215,13 +215,13 @@ repository_lockers(project *p)
  * Try and get a read lock for the whole repository.
  * Return -1 if failed, 0 if it worked.
  */
-int
-repository_rdlock()
+private int
+rdlock(void)
 {
 	char	path[MAXPATH];
 	project	*p;
 
-	unless (p = getproj()) return (0);
+	unless (p = getproj()) return (LOCKERR_NOREPO);
 	ldebug(("repository_rdlock(%s)\n", p->root));
 
 	/*
@@ -238,7 +238,7 @@ repository_rdlock()
 	unless (exists(path)) {
 		ldebug(("RDLOCK by %d failed, no perms?\n", getpid()));
 		proj_free(p);
-		return (-2); /* possible permission problem */
+		return (LOCKERR_PERM);
 	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
 	if (exists(path)) {
@@ -246,25 +246,37 @@ repository_rdlock()
 		unlink(path);
 		proj_free(p);
 		ldebug(("RDLOCK by %d failed, write locked\n", getpid()));
-		return (-1);
+		return (LOCKERR_LOST_RACE);
 	}
 	proj_free(p);
 	ldebug(("RDLOCK %d\n", getpid()));
 	return (0);
 }
 
+int
+repository_rdlock()
+{
+	int	i, ret;
+
+	for (i = 0; i < 10; ++i) {
+		unless (ret = rdlock()) return (0);
+		usleep(10000);
+	}
+	return (ret);
+}
+
 /*
  * Try and get a write lock for the whole repository.
  * Return -1 if failed, 0 if it worked.
  */
-int
-repository_wrlock()
+private int
+wrlock(void)
 {
 	char	path[MAXPATH];
 	char	lock[MAXPATH];
 	project	*p;
 
-	unless (p = getproj()) return (0);
+	unless (p = getproj()) return (LOCKERR_NOREPO);
 	ldebug(("repository_wrlock(%s)\n", p->root));
 
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
@@ -277,14 +289,14 @@ repository_wrlock()
 	if (sccs_lockfile(lock, 0, 0, 0)) {
 		proj_free(p);
 		ldebug(("WRLOCK by %d failed, lockfile failed\n", getpid()));
-		return (-2); /* possible permission problem */
+		return (LOCKERR_PERM);
 	}
 
 	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
 	if (exists(path)) {
 		sccs_unlockfile(lock);
 		ldebug(("WRLOCK by %d failed, RESYNC won\n"));
-		return (-1);
+		return (LOCKERR_LOST_RACE);
 	}
 
 	/*
@@ -293,7 +305,7 @@ repository_wrlock()
 	if (repository_hasLocks(p->root, READER_LOCK_DIR)) {
 	    	sccs_unlockfile(lock);
 		ldebug(("WRLOCK by %d failed, readers won\n", getpid()));
-		return (-1);
+		return (LOCKERR_LOST_RACE);
 	}
 	proj_free(p);
 	/* XXX - this should really be some sort cookie which we pass through,
@@ -302,6 +314,18 @@ repository_wrlock()
 	putenv("BK_IGNORELOCK=YES");
 	ldebug(("WRLOCK %d\n", getpid()));
 	return (0);
+}
+
+int
+repository_wrlock()
+{
+	int	i, ret;
+
+	for (i = 0; i < 10; ++i) {
+		unless (ret = wrlock()) return (0);
+		usleep(10000);
+	}
+	return (ret);
 }
 
 /*
