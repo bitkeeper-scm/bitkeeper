@@ -5,7 +5,7 @@
 
 char *editor = 0, *pager = 0, *bin = 0; 
 char *bk_etc = "BitKeeper/etc/";
-int resync = 0;
+int resync = 0, quiet = 0;
 
 void cd2root();
 void platformInit();
@@ -351,13 +351,32 @@ status(int verbose, char *status_log)
 void
 gethelp(char *help_name, char *bkarg)
 {
-	char buf[MAXLINE];
+	char buf[MAXLINE], pattern[MAXLINE];
+	FILE *f;
 
-	sprintf(buf, "
-sed -n  -e '/^#'%s'$/,/^$$/{' \
--e '/^#/d; /^$/d; s|#BKARG#|'\"%s\"'|; p' \
--e '}' %sbkhelp.txt", help_name, bkarg, bin);
-	system(buf);
+	if (bkarg == NULL) bkarg = "";
+	sprintf(buf, "%sbkhelp.txt", bin);
+	f = fopen(buf, "r");
+	sprintf(pattern, "#%s\n", help_name);
+	while (fgets(buf, sizeof(buf), f)) {
+		if (streq(pattern, buf)) break;
+	}
+	while (fgets(buf, sizeof(buf), f)) {
+		char *p;
+
+		if (streq("$\n", buf)) break;
+		p = strstr(buf, "#BKARG#");
+		if (p) {
+			*p = 0;
+			fputs(buf, stdout);
+			fputs(bkarg, stdout);
+			fputs(&p[7], stdout);
+		} else {
+			fputs(buf, stdout);
+		}
+	}
+	fclose(f);
+
 }
 
 

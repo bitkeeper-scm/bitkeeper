@@ -5,10 +5,10 @@
 
 extern char *editor, *pager, *bin;
 extern char *bk_etc;
-extern int resync;
+extern int resync, quiet;
 
 char commit_file[MAXPATH], list[MAXPATH];
-int force = 0, lod = 0, quiet = 0;
+int force = 0, lod = 0;
 int checklog = 1, getcomment = 1;
 char *sym = 0;
 void cd2root();

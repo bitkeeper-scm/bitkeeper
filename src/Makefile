@@ -10,7 +10,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
 	  isascii resyncwrap r2c rename setlog getlog setup commit status \
-	  bkusers logaddr sendconfig logchangeset
+	  bkusers gethelp logaddr sendconfig logchangeset
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build
@@ -321,6 +321,8 @@ status: status.o $(LIBS)
 	$(CC) $(CFLAGS) status.o $(LINK) -o status
 bkusers: bkusers.o $(LIBS)
 	$(CC) $(CFLAGS) bkusers.o $(LINK) -o bkusers
+gethelp: gethelp.o $(LIBS)
+	$(CC) $(CFLAGS) gethelp.o $(LINK) -o gethelp
 sendconfig: sendconfig.o $(LIBS)
 	$(CC) $(CFLAGS) sendconfig.o $(LINK) -o sendconfig
 logchangeset: logchangeset.o $(LIBS)
