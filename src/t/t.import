@@ -20,16 +20,196 @@ echo foo > X
 bk undos X > import_dir/src/foo.c
 rm -f X
 touch import_dir/src/boo.c
-trap 'echo some command failed to exit 0; cat $HERE/import.out' 0
-set -e
-( echo plain; echo no ) | bk import import_dir project > import.out 2>&1
+( echo plain; echo no ) | bk import import_dir project > import.out 2>&1 || {
+	echo Failed
+	cat $HERE/import.out
+	exit 1
+}
 cd $HERE/project/src
-[ -f SCCS/s.foo.c ]
+test -f SCCS/s.foo.c || exit 1
 bk get $Q foo.c
 cmp -s foo.c $HERE/import_dir/src/foo.c
-[ -f SCCS/s.boo.c ]
+test -f SCCS/s.boo.c || exit 1
 bk get $Q boo.c
-cmp -s boo.c $HERE/import_dir/src/boo.c
+cmp boo.c $HERE/import_dir/src/boo.c || exit 1
+echo OK
+
+echo $N Test import of a patch into a tree with edited BK files .....$NL
+cd $HERE
+no_logging EDIT
+cat > foo <<EOF
+A
+B
+C
+D
+EOF
+cat > bar <<EOF
+A
+B
+C
+D
+EOF
+bk new $Q foo bar
+bk commit $Q -ywhatever foo
+cd $HERE
+tar cf TAR EDIT
+cd EDIT
+bk edit $Q foo bar
+cat >> foo <<EOF
+E
+F
+G
+EOF
+bk diffs -u > BitKeeper/tmp/P
+bk unedit $Q foo
+bk edit $Q foo
+bk import $Q -tpatch BitKeeper/tmp/P . || exit 1
+echo OK
+
+echo $N Test import of a patch into a tree with modified BK files ...$NL
+cd $HERE
+rm -rf EDIT
+tar xf TAR
+cd EDIT
+bk edit $Q foo bar
+cat >> foo <<EOF
+E
+F
+G
+EOF
+bk diffs -u > BitKeeper/tmp/P
+bk unedit $Q foo
+bk edit $Q foo
+echo hi mom >> foo
+cp foo BitKeeper/tmp
+bk import -tpatch BitKeeper/tmp/P . > BitKeeper/tmp/PLOG 2>&1 && {
+	echo Patch should have failed because the file was modified
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+grep -q 'File foo seems to be modified already' BitKeeper/tmp/PLOG || {
+	echo Failed to flag that foo was modified
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+test -w foo || {
+	echo Failed to leave foo writeable
+	exit 1
+}
+cmp -s foo BitKeeper/tmp/foo || {
+	echo failed to leave foo contents
+	diff foo BitKeeper/tmp/foo
+	echo PATCH
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+echo OK
+
+echo $N Make sure a patch creating a file does not overwrite ........$NL
+cd $HERE/EDIT
+mkdir a b
+echo 'I am the patch file being imported.' > a/extra
+diff -Nur a b > BitKeeper/tmp/P
+rm -rf a b
+echo hi mom > extra
+cp extra BitKeeper/tmp
+bk import -tpatch BitKeeper/tmp/P . > BitKeeper/tmp/PLOG 2>&1 && {
+	echo Patch should have failed because the file exists
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+grep -q 'File extra is not under BitKeeper control' BitKeeper/tmp/PLOG || {
+	echo Failed to flag that extra is not a BK file
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+test -w extra || {
+	echo Failed to leave extra writeable
+	exit 1
+}
+cmp -s extra BitKeeper/tmp/extra || {
+	echo failed to leave extra contents
+	diff extra BitKeeper/tmp/extra
+	echo PATCH
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+echo OK
+
+echo $N Test import of an email patch ...............................$NL
+cd $HERE
+rm -rf EDIT
+tar xf TAR
+cd EDIT/BitKeeper/etc
+bk edit $Q config
+echo "license: $BK_LIC_P" > config
+echo "logging: none" >> config
+echo "logging_ask: no" >> config
+bk delta $Q -yprivate
+bk commit $Q -yprivate
+bk multiuser >/dev/null 2>&1
+cd $HERE/EDIT
+bk edit $Q foo bar
+cat >> foo <<EOF
+E
+F
+G
+EOF
+bk diffs -hu > BitKeeper/tmp/P
+bk unedit foo
+cat > BitKeeper/tmp/E <<EOF
+From akushner@bitmover.com  Fri May 25 13:48:55 2001
+Delivery-Date: Fri May 25 10:23:31 2001
+Return-Path: <akushner@bitmover.com>
+Received: from adsl-63-193-121-233.dsl.snfc21.pacbell.net (adsl-63-193-121-233.dsl.snfc21.pacbell.net [63.193.121.233])
+        by bitmover.com (8.8.7/8.8.7) with ESMTP id KAA01840
+        for <lm@bitmover.com>; Fri, 25 May 2001 10:18:34 -0700
+Received: from localhost (localhost [127.0.0.1])
+        by adsl-63-193-121-233.dsl.snfc21.pacbell.net (Postfix) with ESMTP id EA417400E
+        for <lm@bitmover.com>; Fri, 25 May 2001 10:18:34 -0700 (PDT)
+Date: Fri, 25 May 2001 10:18:34 -0700 (PDT)
+From: Aaron Kushner <akushner@bitmover.com>
+X-X-Sender:  <akushner@vermin.dsl.snfc21.pacbell.net>
+To: Larry McVoy <lm@bitmover.com>
+Subject: citool cursor fix
+Message-ID: <Pine.LNX.4.33.0105251015230.3751-100004@vermin.dsl.snfc21.pacbell.net>
+MIME-Version: 1.0
+
+Comment line 1
+Comment line 2
+Comment line 3
+Comment line 4
+EOF
+cat BitKeeper/tmp/P >> BitKeeper/tmp/E
+bk import -temail < BitKeeper/tmp/E > BitKeeper/tmp/PLOG 2>&1 || {
+	echo import failed
+	cat BitKeeper/tmp/PLOG
+	exit 1
+}
+bk get $Q foo
+grep -q G foo || {
+	echo failed to apply patch
+	exit 1
+}
+U=`bk getuser`
+test "`bk prs -hr+ -nd:P:@:HOST: foo`" = akushner@bitmover.com\[$U\] || {
+	echo did not pick up email address
+	bk prs -nd:P:@:HOST: foo
+	exit 1
+}
+bk changes -r+ > C
+grep -q 'citool cursor fix' C || {
+	echo Did not pick up subject line
+	cat C
+	exit 1
+}
+for i in 1 2 3 4
+do	grep -q "Comment line $i" C || {
+		echo did not pick up line $i
+		cat C
+		exit 1
+	}
+done
 echo OK
 
 # XXX - we do not test for links pointing outside the tree
@@ -61,11 +241,12 @@ bk get $Q link
 cmp -s link $HERE/import_dir/src/foo.c
 echo OK
 
-echo $N Test import of a patch file .................................$NL
+echo $N Test import of a patch which modifies a file ................$NL
 cd $HERE
 mkdir -p import_new/src
 echo "foo-new" > X
 bk undos X >  $HERE/import_new/src/foo.c
+rm import_dir/src/link
 diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd $HERE/project/src
@@ -80,7 +261,6 @@ then
 fi
 echo OK
 
-cd $HERE
 echo $N Test import of a patch file which deletes a file ............$NL
 cd $HERE/project
 bk export ../export
