@@ -117,7 +117,7 @@ getParkComment(int *err)
         }
 	if (caught("Park")) {
 		*err = 1;
-		freeLines(comments);
+		freeLines(comments, free);
 		return (NULL);
 	}
         return (comments);

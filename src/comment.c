@@ -214,7 +214,7 @@ getfiles(char *csetrev)
 
 	waitpid(pid, &status, 0);
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		freeLines(files);
+		freeLines(files, free);
 		return (0);
 	}
 	return (files);
@@ -284,7 +284,7 @@ change_comments(char *file, char *rev, char **comments)
 		comments[i] = 0;
 	}
 	unless (comments && comments[1]) goto err;
-	freeLines(d->comments);
+	freeLines(d->comments, free);
 	d->comments = comments;
 	if (d->comments) sccs_newchksum(s);
  err:	if (s) sccs_free(s);

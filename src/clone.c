@@ -101,7 +101,7 @@ err:		if (r) remote_free(r);
 		if (l->host) {
 			remote_free(r);
 			remote_free(l);
-			freeLines(envVar);
+			freeLines(envVar, free);
 			getoptReset();
 			av[0] = "_rclone";
 			return (rclone_main(ac, av));
@@ -111,7 +111,7 @@ err:		if (r) remote_free(r);
 
 	if (opts.debug) r->trace = 1;
 	rc = clone(av, opts, r, av[optind+1], envVar);
-	freeLines(envVar);
+	freeLines(envVar, free);
 	remote_free(r);
 	return (rc);
 }
@@ -410,7 +410,7 @@ sccs_rmUncommitted(int quiet, FILE *f)
 		s[1] = 'd';
 		unlink(files[i]);
 	}
-	freeLines(files);
+	freeLines(files, free);
 
 	/*
 	 * We have a clean tree, enable the "fast scan" mode for pending file

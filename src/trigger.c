@@ -153,7 +153,7 @@ trigger(char *cmd, char *when)
 	} else 	{
 		rc = remotePostTrigger(event, what, triggers);
 	}
-	freeLines(triggers);
+	freeLines(triggers, free);
 	if (streq(what, "resolve")) chdir(RESYNC2ROOT);
 	return (rc);
 }
@@ -181,7 +181,7 @@ getTriggers(char *dir, char *prefix)
 		if (files[i][flen - 1] == '~') continue;
 		lines = addLine(lines, aprintf("%s/%s", dir, files[i]));
 	}
-	freeLines(files);
+	freeLines(files, free);
 	return (lines);
 }
 

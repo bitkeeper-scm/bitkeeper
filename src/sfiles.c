@@ -706,7 +706,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 		debug((stderr, "DIR\t%s\n", d[i]));
 		lftw_inner(path, base + n, sb, ignore, func);
 	}
-	freeLines(d);
+	freeLines(d, free);
 }
 
 private	void

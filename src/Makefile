@@ -65,7 +65,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
 	isascii.o key2rev.o key2path.o keysort.o kvfile.o level.o \
-	lib_tcp.o libcommit.o libdiff.o librange.o \
+	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
@@ -144,7 +144,7 @@ RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
 	  mdbm/mdbm.h mdbm/tune.h mmap.h purify.h range.h rcs.h \
-	  resolve.h sccs.h system.h \
+	  liblines.h resolve.h sccs.h system.h \
 	  tomcrypt/mpi-config.h tomcrypt/mpi.h tomcrypt/mycrypt_cfg.h \
 	  tomcrypt/mpi-types.h tomcrypt/mycrypt.h \
 	  zgets.h zlib/deflate.h \

@@ -43,7 +43,7 @@ lockers(char *path)
 	EACH(lines) {
 		ldebug(("DIR=%s/%s\n", path, lines[i]));
 		while (lines[i] && !isdigit(lines[i][0])) {
-			removeLineN(lines, i);
+			removeLineN(lines, i, free);
 		}
 	}
 	return (lines);
@@ -64,7 +64,7 @@ cleandir(char *dir)
 		ldebug(("unlink(%s)\n", path));
 		unlink(path);
 	}
-	freeLines(lines);
+	freeLines(lines, free);
 	sprintf(path, "%s/lock", dir);
 	unlink(path);
 	ldebug(("unlink(%s)\n", path));
@@ -104,7 +104,7 @@ repository_hasLocks(char *root, char *dir)
 		sprintf(path, "%s/%s/%s", root ? root : ".", dir, lines[i]);
 		unless (sccs_stalelock(path, 1)) n++;
 	}
-	freeLines(lines);
+	freeLines(lines, free);
 	ldebug(("repository_hasLocks(%s/%s) = %d\n", root ?root : ".", dir, n));
 	return (n);
 }
@@ -203,7 +203,7 @@ repository_lockers(project *p)
 		fprintf(stderr, "\tWrite locker: %s\n", lines[i]);
 		n++;
 	}
-	freeLines(lines);
+	freeLines(lines, free);
 
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	lines = lockers(path);
@@ -214,7 +214,7 @@ repository_lockers(project *p)
 		fprintf(stderr, "\tRead  locker: %s\n", lines[i]);
 		n++;
 	}
-	freeLines(lines);
+	freeLines(lines, free);
     	if (freeit) proj_free(p);
 	return (n);
 }

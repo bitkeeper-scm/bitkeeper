@@ -366,6 +366,8 @@ typedef	unsigned short	u16;
 typedef	unsigned char	u8;
 typedef	char		**globv;
 
+#include "liblines.h"
+
 /*
  * Struct delta - describes a single delta entry.
  *
@@ -865,11 +867,6 @@ char	*basenm(char *);
 char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, char kind, char *opts, char *out);
-char	**addLine(char **space, char *line);
-void	freeLines(char **space);
-int	removeLine(char **space, char *s);
-void	removeLineN(char **space, int rm);
-char	*joinLines(char *sep, char **space);
 int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
@@ -1030,7 +1027,6 @@ void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
 char	*getHomeDir(void);
 char	*age(time_t secs, char *space);
-void	sortLines(char **);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef
 int	sys(char *first, ...);

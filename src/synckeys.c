@@ -270,7 +270,7 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 		}
 	}
 	out("@END MATCHES@\n");
-	freeLines(lines);
+	freeLines(lines, free);
 
 	/*
 	 * Phase 2, send the non marked keys.
@@ -464,7 +464,7 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 			write(outfd, tags[i], strlen(tags[i]));
 			write(outfd, "\n", 1);
 		}
-		freeLines(tags);
+		freeLines(tags, free);
 	}
 
 empty:	for (d = s->table; d; d = d->next) {

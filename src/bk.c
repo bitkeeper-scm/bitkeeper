@@ -902,7 +902,7 @@ cmdlog_end(int ret)
 		EACH (notes) {
 			fprintf(f, " %s", notes[i]);
 		}
-		freeLines(notes);
+		freeLines(notes, free);
 		fputs("\n", f);
 	}
 	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {

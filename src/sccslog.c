@@ -217,7 +217,7 @@ printConsolidatedLog(FILE *f)
 	EACH (lines) {
 		fprintf(f, "%s\n", lines[i]);
 	}
-	freeLines(lines);
+	freeLines(lines, free);
 	freeComment(db);
 }
 
@@ -321,7 +321,7 @@ do_dspec(sccs *s, delta *d)
 	unless (opts.dbuf) opts.dbuf = malloc(16<<10);
 	opts.dbuf[0] = 0;
 	sccs_prsbuf(s, d, PRS_ALL, opts.dspec, opts.dbuf);
-	freeLines(d->comments);
+	freeLines(d->comments, free);
 	d->comments = addLine(0, strdup(opts.dbuf));
 }
 

@@ -22,11 +22,11 @@ preference_main(int ac, char **av)
 		l = aprintf("%s: %s", kv.key.dptr, kv.val.dptr);
 		list = addLine(list, l);
 	}
-	sortLines(list);
+	sortLines(list, 0);
 	EACH(list) {
 		printf("%s\n", list[i]);
 	}
-	freeLines(list);
+	freeLines(list, free);
 	return (0);
 }
 
