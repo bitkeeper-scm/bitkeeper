@@ -150,8 +150,6 @@
 #define	S_SINGLE	0x40000000	/* inherit user/host */
 #define S_XFLAGS	(S_RCS|S_YEAR4|S_ISSHELL|S_EXPAND1|S_HASH|S_SCCS|S_SINGLE)
 
-#define	S_KEYWORDS	(S_SCCS|S_RCS)	/* any sort of keyword */
-
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
 /*
