@@ -4797,7 +4797,7 @@ private	sum_t
 getCksumDelta(sccs *s, delta *d)
 {
 	delta	*t;
-	for (t = d; t; t = d->parent) {
+	for (t = d; t; t = t->parent) {
 		if (t->added || t->deleted) return (t->sum);
 	}
 	return (0);
@@ -6851,7 +6851,13 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	}
 	dinsert(s, flags, n);
 	s->numdeltas++;
+	if (n->sym) {
+		addsym(s, n, n, n->rev, n->sym);
+		free(n->sym);
+		n->sym = 0;
+	}
 	/* need random set before the call to sccs_sdelta */
+	/* XXX: changes n, so must be after n->sym stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
 		randomBits(buf);
 		if (buf[0]) s->random = strdup(buf);
@@ -6881,11 +6887,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			}
 		}
 	} 
-	if (n->sym) {
-		addsym(s, n, n, n->rev, n->sym);
-		free(n->sym);
-		n->sym = 0;
-	}
 	if (delta_table(s, sfile, 1, 1)) {
 		error++;
 		goto abort;
