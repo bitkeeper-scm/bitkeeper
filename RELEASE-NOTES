@@ -1,4 +1,26 @@
 ===============================================================================
+Release notes for BitKeeper version 3.2.4.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+None known, this should be a simple upgrade.
+
+New Features
+----------------------------------------------------------------------------
+- New files may be commented in citool.
+- Pre-tag and pre-fix triggers.
+
+Noteworthy bug fixes
+----------------------------------------------------------------------------
+- fix a performance problem with background openlogging processes.
+- remove patch fuzz in bk import
+
+===============================================================================
 Release notes for BitKeeper version 3.2.3.   These release notes cover
 the following topics:
 

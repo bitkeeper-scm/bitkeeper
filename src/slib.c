@@ -10452,17 +10452,15 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 
 	/*
 	 * "sym" means TOT of current LOD.
-	 * "sym:" means TOT of current LOD.
-	 * "sym:1.2" means that rev.
-	 * "sym:1" or "sym:1.2.1" means TOT of that branch.
-	 * "sym;" and the other forms mean do it only if symbol not present.
+	 * "sym|" means TOT of current LOD.
+	 * "sym|1.2" means that rev.
 	 */
 	for (i = 0; s && s[i].flags; ++i) {
 		sym = strdup(s[i].thing);
-		if ((rev = strrchr(sym, ':'))) {
+		if ((rev = strrchr(sym, '|')) || (rev = strrchr(sym, ':'))) {
 			*rev++ = 0;
 		}
-
+		/* Note: rev is set or null from above test */
 		unless (d = findrev(sc, rev)) {
 			verbose((stderr,
 			    "%s: can't find %s in %s\n",
@@ -10472,12 +10470,21 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			continue;
 		}
 		if (!rev || !*rev) rev = d->rev;
-		if (badTag(me, s[i].thing, flags)) goto sym_err;
+		if (badTag(me, sym, flags)) goto sym_err;
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
 			goto sym_err;
 		}
+
+		// XXX - if anyone calls admin directly with two tags this can
+		// be wrong.  bk tag doesn't.
+		// We should just get rid of the multiple tag thing, it was
+		// over engineered.
+		unless (d == sccs_top(sc)) safe_putenv("BK_TAG_REV=%s", d->rev);
+		safe_putenv("BK_TAG=%s", sym);
+		if (trigger("tag", "pre")) goto sym_err;
+
 		n = calloc(1, sizeof(delta));
 		n->next = sc->table;
 		sc->table = n;

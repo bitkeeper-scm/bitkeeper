@@ -56,8 +56,8 @@ post-incoming.regression-test
 .SS
 TRIGGER CLASSES
 .LP
-There are four event classes which activate triggers: incoming
-events, outgoing events, deltas, and commits.  
+There are multiple event classes which may activate triggers: incoming
+events, outgoing events, deltas, commits, tags, and fix -c.
 The incoming event is broken into
 multiple events: incoming, resolve, and apply.
 .LP
@@ -97,6 +97,14 @@ exit 2 indicates that the trigger called delta itself, upon which the
 calling delta command treats it as a successful delta.
 .LI
 Other than 2, all other non-zero exit values will fail the delta.
+.EV pre-fix
+called before a changeset is fixed (see bk fix(1)).
+Typically used as part of a process to record the renaming of changesets in
+bug tracking systems.
+.LI
+exit 0 allows the fix.
+.LI
+non-zero exit values will fail the fix.
 .EV pre-incoming
 called before an incoming push/pull is started.
 .LI
@@ -106,6 +114,31 @@ typically used for locking down a repository.
 .LI
 may be used to fail the event based on remote user, host, directory,
 and/or \*(BK version.
+.EV post-incoming
+called after the data has been applied to the tree.
+.LI
+typically used for notification.
+.EV pre-outgoing
+called before an outgoing pull/push/clone event.
+.LI
+non-zero exit status fails the outgoing event.
+.LI
+typically used for locking down a repository.
+.EV post-outgoing
+called after the outgoing event.
+.LI
+typically used for notification.
+.EV pre-tag
+called before a tag event, such as a bk commit with a specified tag or
+a bk tag.
+.LI
+exit 0 allows the tag.
+.LI
+exit 1 causes the tag operation to fail as well as the commit operation if
+the tag was part of a commit.
+.LI
+exit 2 causes the tag operation to fail but allows the commit operation to
+proceed if the tag was part of a commit.
 .EV pre-resolve
 called after the data has been union-ed in the RESYNC directory.
 .LI
@@ -135,20 +168,16 @@ exit 3 fails the pull/push but leaves the patch in PENDING and the
 RESYNC tree in PENDING/RESYNC-<date>.
 .LI
 typically used to examine changes before taking them.
-.EV post-incoming
-called after the data has been applied to the tree.
-.LI
-typically used for notification.
-.EV pre-outgoing
-called before an outgoing pull/push/clone event.
-.LI
-non-zero exit status fails the outgoing event.
-.LI
-typically used for locking down a repository.
-.EV post-outgoing
-called after the outgoing event.
-.LI
-typically used for notification.
+.SS
+TRIGGER LOCKING
+.LP
+Triggers are called with a locked repository.
+When a post trigger is called, the repository is read locked, even in 
+the case that the event was an event which changed the repository.
+A read lock will allow the trigger to do outgoing events, such as a push,
+but will prevent incoming events.
+Pre-incoming and pre-commit triggers will be called with a write locked
+repository.
 .SS
 TRIGGER SECURITY ISSUES
 .LP
@@ -293,7 +322,7 @@ this is set to "server" if the trigger is running on the server repository.
 Otherwise this is set to "client".
 .ip BK_STATUS
 The status of the command, if known.  Values may include:
-.RS
+.RS 
 .ip NOTHING
 There was nothing to pull or push.
 .ip FAILED
@@ -310,6 +339,13 @@ The command completed successfully.
 .ip UNKNOWN
 Unknown status.
 .RE
+.ip BK_TAG
+If set, contains the value of the symbolic tag to be added to the repository.
+Valid only in pre-tag trigger.
+.ip BK_TAG_REV
+If set, contains the changeset revision on which the tag will be placed.
+This will be set if and only if the revision is not the most recent revision.
+Valid only in pre-tag trigger.
 .ip BK_TIME_T
 The Unix style timestamp of the client side BK binary.
 .ip BKD_TIME_T
@@ -329,12 +365,6 @@ The version of the client side BK binary as the symbolic name or the UTC.
 .ip BKD_VERSION
 The version of the server side BK binary as the symbolic name or the UTC.
 .SS
-LOCKING
-.LP
-When a post trigger is called, the repository is read locked.  A read
-lock will allow the trigger to do outgoing events, such as a push,
-but will prevent incoming events.  Pre-incoming and pre-commit triggers
-will be called with a write locked repository.
 .SH "EXAMPLE 1"
 .DS
 .ft CW
@@ -429,7 +459,15 @@ bk prompt -y"Reenter bugid" -n"No bugid is required" "$msg" && exit 1
 exit 0
 .ft
 .DE
+.SH BUGS
+The locking 
 .SH SEE ALSO
+.SA commit 1
+.SA delta 1
+.SA fix 1
 .SA prompt 1
+.SA pull 1
+.SA push 1
+.SA tag 1
 .SH CATEGORY
 .B Repository

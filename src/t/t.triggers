@@ -77,6 +77,63 @@ then	echo bad pending list
 fi
 echo OK
 
+echo $N Check tag trigger environment variables without rev .........$NL
+cd $HERE
+tar cf TAR project
+cd project
+cat > BitKeeper/triggers/pre-tag <<EOF
+#!/bin/bash
+set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-tag
+exit 0
+EOF
+chmod +x BitKeeper/triggers/pre-tag
+bk tag $Q check_vars
+grep -q BK_TAG=check_vars $HERE/pre-tag || {
+	echo No BK_TAG in environment or wrong value
+	exit 1
+}
+grep -q BK_TAG_REV $HERE/pre-tag && {
+	echo Should not have set BK_TAG_REV
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-tag ==========
+	cat $HERE/pre-tag
+}
+
+echo $N Check tag trigger environment variables with rev ............$NL
+bk tag $Q -r1.1 primordial_ooze
+grep -q BK_TAG=primordial_ooze $HERE/pre-tag || {
+	echo No BK_TAG in environment or wrong value
+	exit 1
+}
+grep -q BK_TAG_REV=1.1 $HERE/pre-tag || {
+	echo Should have set BK_TAG_REV=1.1
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-tag ==========
+	cat $HERE/pre-tag
+}
+
+echo $N Make sure tag can be told to fail and it does so nicely .....$NL
+cat > BitKeeper/triggers/pre-tag <<EOF
+#!/bin/bash
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+bk tag foo && {
+	echo failed to exit with an error status
+	exit 1
+}
+echo OK
+cd $HERE
+rm -rf project
+tar xf TAR
+cd project
+
 echo $N Make sure we get the list of pending files in pre-commit ....$NL
 cat > BitKeeper/triggers/pre-commit <<EOF
 #!/bin/bash 
