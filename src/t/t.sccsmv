@@ -118,16 +118,15 @@ cd D
 sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
-# Commented out until Andrew fixes this.
-#echo $N Edit G, rm G, bk mv G, should create rm delta ................$NL
-#date > G
-#bk new $Q G
-#cp SCCS/s.G S.G
-#bk edit $Q G
-#${RM} -f G
-#bk rm G
-#cmp -s S.G SCCS/s..del-G
-#if [ $? = 0 ]; then echo Failed to add rm delta; exit 1; fi
-#if [ -f p.G ]; then echo Failed to rm p.G; exit 1; fi
-#if [ -f p..del-G ]; then echo Failed to rm p..del-G; exit 1; fi
-#echo OK
+echo $N Edit G, rm G, bk mv G, should create rm delta ...............$NL
+date > G
+bk new $Q G
+cp SCCS/s.G S.G
+bk edit $Q G
+${RM} -f G
+bk rm G 2> $DEV_NULL
+cmp -s S.G SCCS/s..del-G
+if [ $? = 0 ]; then echo Failed to add rm delta; exit 1; fi
+if [ -f p.G ]; then echo Failed to rm p.G; exit 1; fi
+if [ -f p..del-G ]; then echo Failed to rm p..del-G; exit 1; fi
+echo OK

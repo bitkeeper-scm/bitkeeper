@@ -1470,7 +1470,7 @@ sPath(char *name, int isDir)
 	if (hasRootFile(gRoot, sRoot)) {
 		concat_path(buf, sRoot, path);
 	} else {
-		concat_path(buf, gRoot, path);
+		return (name);
 	}
 	cleanPath(buf, buf);
 	debug((stderr, "sPath(%s) -> %s\n", name, buf));
