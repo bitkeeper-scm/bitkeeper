@@ -15,31 +15,35 @@ extern	time_t	requestEnd;
  * XXX - need to do groups.
  */
 void
-ids(char *uid, char *gid)
+ids()
 {
 	uid_t	u;
 	gid_t	g;
 
-	if (gid && isdigit(gid[0])) {
-		g = atoi(gid);
+	if (Opts.gid && isdigit(Opts.gid[0])) {
+		g = atoi(Opts.gid);
+		if (Opts.log) fprintf(Opts.log, "Run as GID %u\n", getgid());
 #ifdef	__hpux__
 		setresgid((gid_t)-1, g, (gid_t)-1);
 #else
 		setegid(g);
 #endif
+		if (Opts.log) fprintf(Opts.log, "Set to GID %u\n", getegid());
 	}
-	if (uid && isdigit(uid[0])) {
-		u = atoi(uid);
+	if (Opts.uid && isdigit(Opts.uid[0])) {
+		u = atoi(Opts.uid);
+		if (Opts.log) fprintf(Opts.log, "Run as UID %u\n", getuid());
 #ifdef	__hpux__
 		setresuid((uid_t)-1, u, (uid_t)-1);
 #else
 		seteuid(u);
 #endif
+		if (Opts.log) fprintf(Opts.log, "Set to UID %u\n", geteuid());
 	}
 }
 #else
 void
-ids(char *uid, char *gid) {} /* no-op */
+ids() {} /* no-op */
 #endif
 
 
@@ -97,11 +101,6 @@ requestWebLicense()
 }
 #endif
 
-
-
-
-
-
 #ifndef WIN32
 void
 bkd_server(char **not_used)
@@ -116,19 +115,21 @@ bkd_server(char **not_used)
 	if (sock < 0) exit(-sock);
 	unless (Opts.debug) if (fork()) exit(0);
 	unless (Opts.debug) setsid();	/* lose the controlling tty */
+	if (Opts.pidfile) {
+		FILE	*f = fopen(Opts.pidfile, "w");
+
+		if (f) {
+			fprintf(f, "%u\n", getpid());
+			fclose(f);
+		}
+	}
+	ids();
 	signal(SIGCHLD, reap);
 	signal(SIGPIPE, SIG_IGN);
 	if (Opts.alarm) {
 		signal(SIGALRM, exit);
 		alarm(Opts.alarm);
 	}
-	if (Opts.pidfile) {
-		FILE	*f = fopen(Opts.pidfile, "w");
-
-		fprintf(f, "%u\n", getpid());
-		fclose(f);
-	}
-
 	maxfd = (sock > licenseServer[1]) ? sock : licenseServer[1];
 
 	while (1) {

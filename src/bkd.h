@@ -72,9 +72,10 @@ typedef struct {
 	int	alarm;			/* exit after this many seconds */
 	int	count;			/* exit after this many connections */
 	u16	port;			/* listen on this port */
+	char	*uid;			/* desired uid or null */
+	char	*gid;			/* desired gid or null */
 	char	*pidfile;		/* write the daemon pid here */
 	char	*startDir;		/* start up directory for daemon */
-	uid_t	uid;			/* run as uid */
 	char	remote[16];		/* a.b.c.d of client */
 } bkdopts;
 

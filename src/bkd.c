@@ -22,8 +22,6 @@ int
 bkd_main(int ac, char **av)
 {
 	int	c;
-	char	*uid = 0;
-	char	*gid = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help bkd");
@@ -31,6 +29,7 @@ bkd_main(int ac, char **av)
 	}
 
 	loadNetLib();
+	bzero(&Opts, sizeof(Opts));	/* just in case */
 
 	/*
 	 * Win32 note: -u/-t options have no effect on win32; win32 cannot
@@ -46,7 +45,7 @@ bkd_main(int ac, char **av)
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
 		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
 		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
-		    case 'g': gid = optarg; break;		/* doc 2.0 */
+		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
@@ -65,7 +64,7 @@ bkd_main(int ac, char **av)
 		    case 'R': 					/* doc 2.0 */
 			Opts.remove = 1; Opts.daemon = 1; break;
 		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
-		    case 'u': uid = optarg; break;		/* doc 2.0 */
+		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
 		    case 'x': exclude(optarg); 
 #ifdef WIN32
 			      xcmds = addLine(xcmds, strdup(optarg));
@@ -95,7 +94,6 @@ bkd_main(int ac, char **av)
 		    	Opts.interactive = 0;
 		}
 	}
-	if (uid || gid) ids(uid);
 	core();
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
@@ -109,6 +107,7 @@ bkd_main(int ac, char **av)
 		exit(1);
 		/* NOTREACHED */
 	} else {
+		ids();
 		if (Opts.alarm) {
 			signal(SIGALRM, exit);
 			alarm(Opts.alarm); /* this is no-op on win32 */
