@@ -178,6 +178,22 @@ logs_pending(int ptype, int skipRecentCset)
 	return (i);
 }
 
+private
+csetCount()
+{
+	sccs 	*s;
+	delta	*d;
+	char 	s_cset[] = CHANGESET;
+	int 	i = 0;
+
+	s = sccs_init(s_cset, 0, 0);
+	assert(s && s->tree);
+
+	for (d = s->table; d; d = d->next) i++;
+	sccs_free(s);
+	return (i);
+}
+
 int
 ok_commit(int l, int alreadyAsked)
 {
@@ -242,6 +258,7 @@ pending(char *sfile)
 	return (ret);
 }
 
+
 /*
  * Return true if pname is NULL or all blank
  */
@@ -265,7 +282,8 @@ do_commit(char **av,
 	char    s_logging_ok[] = LOGGING_OK;
 	char	*cset[100] = {"bk", "cset", 0};
 	FILE 	*f, *f2;
-#define	MAX_PENDING_LOG 20
+#define	MAX_PENDING_LOG 40
+#define	MAX_EVAL_CSET  150
 	int	max_pending = MAX_PENDING_LOG, log_quota;
 
 	if (getenv("BK_NEEDMORECSETS")) max_pending += 10;
@@ -351,6 +369,31 @@ out:		if (commentFile) unlink(commentFile);
 , BK_SINGLE_THRESHOLD);
 			goto out;
 		}
+		if (!(l&LOG_OPEN) && isEvalLicense()) {
+			int	cset_quota = MAX_EVAL_CSET - csetCount(); 
+
+			if (getenv("BK_REGRESSION")) {
+				cset_quota -= (MAX_EVAL_CSET - 3);
+			}
+
+			if (cset_quota <= 0) {
+				printf(
+"============================================================================\n"
+"Error: Evaluation license are limited to %d ChangeSets. If you need to make\n"
+"ChangeSet, you need to buy a commercial license or turn on open logging.\n"
+"============================================================================\n"
+, MAX_EVAL_CSET);
+				goto out;
+			} else if (cset_quota <= 50) {
+				printf(
+"============================================================================\n"
+"Warning: Evaluation license are limited to %d ChangeSets. Your ChangeSet\n"
+"quota is now down to %d. You will not be able to commit ChangeSet if your\n"
+"ChangeSet quota is down to zero. Please purchase a commercial license.\n"
+"============================================================================\n"
+, MAX_EVAL_CSET, cset_quota);
+			}
+		} 
 	}
 	if (pending(s_logging_ok)) {
 		int     len = strlen(s_logging_ok); 

@@ -139,12 +139,6 @@ log_main(int ac, char **av)
 		fopen(DEV_NULL, "wt");	/* stderr */
 	}
 
-	if (dflag) {
-		char 	buf[MAXKEY];
-
-		fprintf(stderr, "bk log: Root Key = \"%s\"\n", rootkey(buf));
-	}
-
 	i = 2;
 	if (dflag) log_av[i++] = "-d";
 	if (qflag) log_av[i++] = "-q";
@@ -753,12 +747,17 @@ push(char **av, opts opts, remote *r, char **envVar)
 	int	ret;
 	int	gzip;
 	char	rev_list[MAXPATH];
+	char 	buf[MAXKEY];
 
 	gzip = opts.gzip && r->port;
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "push: cannot find package root.\n");
 		exit(1);
 	}
+	if (opts.debug) {
+		fprintf(stderr, "Root Key = \"%s\"\n", rootkey(buf));
+	}
+
 	if ((bk_mode() == BK_BASIC) && !opts.metaOnly &&
 	    !isLocalHost(r->host) && exists(BKMASTER)) {
 		fprintf(stderr, "Cannot push from master repository: %s",
