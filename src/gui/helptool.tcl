@@ -255,7 +255,7 @@ proc topic2line {key} \
 
 proc search {} \
 {
-	global	search_word lines gc
+	global	search_word lines gc opts
 
 	if {$search_word == "" } {
 		set search_word \
@@ -263,11 +263,16 @@ proc search {} \
 		update
 		return
 	}
+	if ($gc(help.exact)) {
+		set opts ""
+	} else {
+		set opts " -a"
+	}
 	.ctrl.topics tag remove "select" 1.0 end
 	.ctrl.topics tag remove "search" 1.0 end
 	.text.help configure -state normal
 	.text.help delete 1.0 end
-	set f [open "| bk helpsearch $gc(help.helptext) -l $search_word" "r"]
+	set f [open "| bk helpsearch $gc(help.helptext)$opts -l $search_word" "r"]
 	set last ""
 	while {[gets $f line] >= 0} {
 		set tab [string first "\t" $line"]

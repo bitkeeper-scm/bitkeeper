@@ -93,6 +93,7 @@ proc getConfig {prog} \
 	set _d(help.height) 50		;# number of rows to display
 	set _d(help.width) 72		;# number of columns to display
 	set _d(help.helptext) ""	;# -f<helptextfile> - undocumented
+	set _d(help.exact) 0		;# helpsearch, allows partial matches
 
 	set _d(rename.listHeight) 8
 
