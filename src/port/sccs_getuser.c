@@ -46,7 +46,6 @@ sccs_getuser(void)
 	if (s) return (s);
 #endif
 	s = getenv("BK_USER");
-	unless (s && s[0]) s = getenv("LOGNAME");
 #ifndef WIN32
 	unless (s && s[0]) s = getenv("USER");
 #endif
