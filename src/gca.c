@@ -14,6 +14,7 @@ main(int ac, char **av)
 	char	*name, *r1 = 0, *r2 = 0;
 	delta	*d1, *d2;
 	int	trunk = 0, c;
+	char	*inc = 0, *exc = 0;
 
 	while ((c = getopt(ac, av, "r|t")) != -1) {
 		switch (c) {
@@ -51,9 +52,14 @@ usage:			fprintf(stderr, "usage gca -rRev -rRev file\n");
 		fprintf(stderr, "gca: could not find '%s' or '%s'\n", r1, r2);
 		return (1);
 	}
-	d1 = sccs_gca(s, d1, d2, trunk ? 0 : 1);
-	printf("%s\n", d1->rev);
+	d1 = sccs_gca(s, d1, d2, &inc, &exc, trunk ? 0 : 1);
+	fputs(d1->rev, stdout);
+	if (inc) printf(" -i%s", inc);
+	if (exc) printf(" -x%s", exc);
+	putchar('\n');
 	sfileDone();
+	if (inc) free(inc);
+	if (exc) free(exc);
 	sccs_free(s);
 	purify_list();
 	return (0);

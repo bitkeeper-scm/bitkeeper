@@ -9,6 +9,5 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "usage: gethelp help_name bkarg\n");
 		exit(1);
 	}
-	gethelp(av[1], av[2], stdout);
-	return (0);
+	return (gethelp(av[1], av[2], stdout) == 0);
 }

@@ -9,11 +9,12 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  bkd commit getlog isascii names push r2c resolve setlog setup \
-	  status bkusers gethelp logaddr sendconfig logchangeset version
-SCRIPTS	= rcs2sccs testfast bk import oldresync uuwrap unuuwrap pmerge \
+	  bkd bkusers clone commit fix gethelp getlog help isascii logaddr \
+	  logchangeset names parent push r2c receive rename resolve \
+	  resyncwrap send sendconfig setlog setup status unwrap version
+SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset build pull clone resync oldresolve merge \
+	  renametool mkdiffs lodset build pull clone resync merge \
 	  gzip_uuwrap ungzip_uuwrap
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
@@ -345,6 +346,20 @@ logchangeset: logchangeset.o $(LIBS)
 	$(CC) $(CFLAGS) logchangeset.o $(LINK) -o logchangeset
 version: version.o $(LIBS)
 	$(CC) $(CFLAGS) version.o $(LINK) -o version
+help: help.o $(LIBS)
+	$(CC) $(CFLAGS) help.o $(LINK) -o help
+parent: parent.o $(LIBS)
+	$(CC) $(CFLAGS) parent.o $(LINK) -o parent
+clone: clone.o $(LIBS)
+	$(CC) $(CFLAGS) clone.o $(LINK) -o clone
+send: send.o $(LIBS)
+	$(CC) $(CFLAGS) send.o $(LINK) -o send
+unwrap: unwrap.o $(LIBS)
+	$(CC) $(CFLAGS) unwrap.o $(LINK) -o unwrap
+receive: receive.o $(LIBS)
+	$(CC) $(CFLAGS) receive.o $(LINK) -o receive
+fix: fix.o $(LIBS)
+	$(CC) $(CFLAGS) fix.o $(LINK) -o fix
 
 # Links.
 ci: delta

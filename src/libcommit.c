@@ -7,6 +7,7 @@ char *editor = 0, *pager = 0, *bin = 0;
 char *bk_dir = "BitKeeper/";
 int resync = 0, quiet = 0;
 char *getlog(char *user);
+int get(char *path, int flags, char *output);
 
 void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
@@ -144,10 +145,9 @@ void
 logChangeSet(char *rev)
 {
 	char commit_log[MAXPATH], buf[MAXLINE], *p;
-	char getlog_out[MAXPATH];
 	char subject[MAXLINE];
 	char start_rev[1024];
-	FILE *f, *f1;
+	FILE *f;
 	int dotCount = 0, n;
 
 	unless (streq("commit_and_maillog", getlog(NULL)))  return;
@@ -190,11 +190,19 @@ logChangeSet(char *rev)
 	unlink(commit_log);
 }
 
+int
 get(char *path, int flags, char *output)
 {
-	sccs *s = sccs_init(path, SILENT, 0);
+	sccs *s;
 	int ret;
 
+	if (sccs_filetype(path) == 's') {
+		s = sccs_init(path, SILENT, 0);
+	} else {
+		char *p = name2sccs(path);
+		s = sccs_init(p, SILENT, 0);
+		free(p);
+	}
 	unless (s) return (-1);
 	ret = sccs_get(s, 0, 0, 0, 0, flags, output);
 	sccs_free(s);
@@ -422,11 +430,12 @@ status(int verbose, char *status_log)
 	fclose(f);
 }
 
-void
+int
 gethelp(char *help_name, char *bkarg, FILE *outf)
 {
 	char buf[MAXLINE], pattern[MAXLINE];
 	FILE *f;
+	int found = 0;
 
 	if (bkarg == NULL) bkarg = "";
 	sprintf(buf, "%sbkhelp.txt", bin);
@@ -434,7 +443,10 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	assert(f);
 	sprintf(pattern, "#%s\n", help_name);
 	while (fgets(buf, sizeof(buf), f)) {
-		if (streq(pattern, buf)) break;
+		if (streq(pattern, buf)) {
+			found = 1;
+			break;
+		}
 	}
 	while (fgets(buf, sizeof(buf), f)) {
 		char *p;
@@ -451,6 +463,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 		}
 	}
 	fclose(f);
+	return (found);
 }
 
 
@@ -459,8 +472,12 @@ cd2root()
 {
 	char *root = sccs_root(0);
 	
+	unless (root) {
+		fprintf(stderr, "Can not find root.\n");
+		exit(1);
+	}
 	if (chdir(root) != 0) {
-		perror("chdir");
+		perror(root);
 		exit(1);
 	}
 	free(root);
@@ -483,6 +500,10 @@ platformInit()
 	char buf[MAXPATH];
 	int i = -1;
 
+#ifdef WIN32
+	setmode(1, _O_BINARY);
+	setmode(2, _O_BINARY);
+#endif
 	if ((editor = getenv("EDITOR")) == NULL) editor="vi";
 	if ((pager = getenv("PAGER")) == NULL) pager="more";
 

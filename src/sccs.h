@@ -674,7 +674,7 @@ int	fileCopy(char *from, char *to);
 off_t	size(char *s);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
-delta	*sccs_gca(sccs *, delta *l, delta *r, int best);
+delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName,
 	    int isDir, int withsccs, int mustHaveRmarker, char *root);
 void	rcs(char *cmd, int argc, char **argv);
@@ -695,7 +695,7 @@ void	cd2root();
 void	platformInit();
 void	mail(char *to, char *subject, char *file);
 void	logChangeSet(char *rev);
-void	gethelp(char *help_name, char *bkarg, FILE *f);
+int	gethelp(char *help_name, char *bkarg, FILE *f);
 void	status(int verbose, char *status_log);
 void	notify();
 char	*logAddr();

@@ -239,104 +239,6 @@ _csets() {
 }
 
 
-# Figure out what we have sent and only send the new stuff.  If we are
-# sending to stdout, we don't log anything, and we send exactly what they
-# asked for.
-__sendlog() {
-	T=$1
-	R=$2
-	if [ X$T = X- ]
-	then	echo $R
-		return
-	fi
-	if [ ! -d BitKeeper/log ]; then	mkdir BitKeeper/log; fi
-	SENDLOG=BitKeeper/log/send-$1
-	touch $SENDLOG			# make make an empty log which is
-					# what we want for the cats below
-
-	if [ X$R = X ]			# We are sending the whole thing
-	then	${BIN}prs -hd:KEY: ChangeSet| sort > ${TMP}here$$
-	else	${BIN}prs -hd:KEY: -r$R ChangeSet| sort > ${TMP}here$$
-	fi
-	sort -u < $SENDLOG > ${TMP}has$$
-	FIRST=YES
-	comm -23 ${TMP}here$$ ${TMP}has$$ | ${BIN}key2rev ChangeSet |
-	while read x
-	do	if [ $FIRST != YES ]
-		then	echo $N ",$x"$NL
-		else	echo $N "$x"$NL
-			FIRST=NO
-		fi
-	done > ${TMP}rev$$
-	R=`cat ${TMP}rev$$`
-	${RM} -f ${TMP}here$$ ${TMP}has$$ ${TMP}rev$$
-	if [ "X$R" = X ]; then return; fi
-	if [ X$R = X ]
-	then	${BIN}prs -hd:KEY: ChangeSet > $SENDLOG
-	else	(cat $SENDLOG; ${BIN}prs -hd:KEY: -r$R ChangeSet ) |
-		    sort -u > ${TMP}here$$
-		cat ${TMP}here$$ > $SENDLOG
-		${RM} -f ${TMP}here$$
-	fi
-	echo $R
-}
-
-_send() {
-	V=-vv
-	D=
-	WRAPPER=cat
-	REV=1.0..
-	FORCE=NO
-	DASH=
-	while getopts dfqr:w: opt
-	do	case "$opt" in
-		    d) D=-d;;
-		    f) FORCE=YES;;
-		    q) V=;;
-		    r) REV=$OPTARG;;
-		    w) WRAPPER="$OPTARG";;
-		    \?) exit 1;;
-		    *) DASH="-";;	# SGI's getopts eats a blank "-".
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	if [ X$DASH = "X-" -a "X$1" = "X" ]
-	then	TO=-
-	else	TO=$1
-	fi
-	if [ X$TO = X -o X$2 != X ]
-	then	echo "usage: bk send [-dq] [-wWrapper] [-rCsetRevs] user@host|-"
-		exit 1
-	fi
-	__cd2root
-	if [ X$TO != X- ]
-	then	if [ $FORCE = NO ]
-		then	REV=`__sendlog $TO $REV`
-			if [ X$REV = X ]
-			then	echo Nothing to send to $TO, use -f to force.
-				exit 0
-			fi
-		fi
-	fi
-	case X$TO in
-	    X-)	MAIL=cat
-	    	;;
-	    Xhoser@nevdull.com)
-		MAIL=cat
-		;;
-	    *)	MAIL="__mail $TO 'BitKeeper patch'"
-	    	;;
-	esac
-	( echo "This BitKeeper patch contains the following changesets:";
-	  echo "$REV" | sed 's/,/ /g';
-	  if [ "X$WRAPPER" != Xcat ]
-	  then	echo ""; echo "## Wrapped with $WRAPPER ##"; echo "";
-	  	${BIN}cset $D -m$REV $V | bk ${WRAPPER}wrap
-	  else ${BIN}cset $D -m$REV $V
-	  fi
-	) | $MAIL
-}
-
 # usage: __mail to subject
 # XXX - probably needs to be in port/mailto.sh and included.
 # DO NOT change how this works, IRIX is sensitive.
@@ -378,81 +280,6 @@ __mail() {
 	fi
 }
 
-_unwrap() {
-	while read x
-	do	case "$x" in
-		    "# Patch vers:"*)
-			(echo "$x"; cat)
-			exit $?
-			;;
-		    "## Wrapped with "*)
-			set `echo "$x"`
-			WRAP=$4
-			if [ ! -x ${BIN}un${WRAP}wrap ]
-			then	echo \
-			    "bk receive: don't have ${WRAP} wrappers" > /dev/tty
-				exit 1
-			fi
-			${BIN}un${WRAP}wrap
-			;;
-		esac
-	done
-}
-
-_receive() {
-	OPTS=
-	NEW=NO
-	while getopts aciv opt
-	do	case "$opt" in
-		    a) OPTS="-a $OPTS";;
-		    c) OPTS="-c $OPTS";;
-		    i) OPTS="-i $OPTS"; NEW=YES;;
-		    v) OPTS="-v $OPTS";;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	if [ X$1 = X -o X$2 != X ]
-	then	echo 'usage: bk receive [takepatch options] pathname'
-		exit 1
-	fi
-	if [ ! -d "$1" -a $NEW = YES ]; then mkdir -p $1; fi
-	cd $1
-	_unwrap | ${BIN}takepatch $OPTS
-	exit $?
-}
-
-# Clone a repository, usage "clone from to"
-_oldclone() {
-	FROM=
-	TO=
-	for arg in "$@"
-	do	case "$arg" in
-		-*)	;;
-		*)	if [ -z "$FROM" ]
-			then	FROM="$arg"
-			elif [ -z "$TO" ]
-			then	TO="$arg"
-			else	echo 'usage: clone [opts] from to' >&2; exit 1
-			fi
-			;;
-		esac
-	done
-	if [ X$TO = X ]
-	then	echo  'usage: clone [opts] from to' >&2
-		exit 1
-	fi
-	if [ -d $TO ]
-	then	echo "clone: $TO exists" >&2
-		exit 1
-	fi
-	exec `__perl` ${BIN}oldresync -ap "$@"
-}
-
-_rootkey() {
-	__cd2root
-	${BIN}prs -hd:ROOTKEY: -r+ ChangeSet
-}
-
 # Manually set the parent pointer for a repository.
 # With no args, print the parent pointer.
 _parent() {
@@ -484,16 +311,6 @@ _parent() {
 	$RM -f BitKeeper/log/parent
 	echo $P > BitKeeper/log/parent
 	echo Set parent to $P
-}
-
-_oldpull() {
-	__cd2root
-	exec `__perl` ${BIN}oldresync -A "$@"
-}
-
-_oldpush() {
-	__cd2root
-	exec `__perl` ${BIN}oldresync -Ab "$@"
 }
 
 _diffr() {
@@ -753,36 +570,6 @@ _chmod() {
 	done
 }
 
-# Usage: fix file
-_fix() {
-	Q=-q
-	while getopts qv opt
-	do	case "$opt" in
-		q) ;;
-		v) Q=;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	for f in $*
-	do	if [ -w $f ]
-		then	echo $f is already edited
-			continue
-		fi
-		if [ -f "${f}-.fix" ]
-		then	echo ${f}-.fix exists, skipping that file
-			continue
-		fi
-		${BIN}get $Q -kp $f > "${f}-.fix"
-		REV=`${BIN}prs -hr+ -d:REV: $f`
-		${BIN}stripdel $Q -r$REV $f
-		if [ $? -eq 0 ]
-		then	${BIN}get $Q -eg $f
-			mv "${f}-.fix" $f
-		else	$RM "${f}-.fix"
-		fi
-	done
-}
-
 _after() {
 	AFTER=
 	while getopts r: opt
@@ -1036,28 +823,6 @@ _topics() {
 	${BIN}gethelp help_topiclist
 }
 
-_help() {
-	if [ $# -eq 0 ]
-	then	${BIN}gethelp help | $PAGER
-		exit 0
-	fi
-
-	(
-	for i in $*
-	do
-		if grep -q "^#help_$i$" ${BIN}bkhelp.txt
-		then	${BIN}gethelp help_$i $BIN
-		elif [ -x "${BIN}$i" ]
-		then	echo "                -------------- $i help ---------------"
-			echo
-			${BIN}$i --help 2>&1
-		else
-			echo No help for $i, check spelling.
-		fi
-	done
-	) | $PAGER
-}
-
 _export() {
 	Q=-q
 	K=
@@ -1211,7 +976,7 @@ if [ X"$1" = X ]
 then	__usage
 elif [ X"$1" = X-h ]
 then	shift
-	_help "$@"
+	${BIN}help "$@"
 	exit $?
 elif [ X"$1" = X-r ]
 then	if [ X$2 != X -a -d $2 ]
@@ -1248,7 +1013,7 @@ cmd=$1
 shift
 
 case $cmd in
-    oldresync|oldresolve|pmerge|rcs2sccs)
+    pmerge)
 	exec perl ${BIN}$cmd "$@";;
     rcs2sccs|mkdiffs)	# needs perl 5 - for now.
 	exec `__perl` ${BIN}$cmd "$@";;

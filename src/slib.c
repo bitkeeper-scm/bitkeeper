@@ -66,6 +66,8 @@ private	void	fitCounters(char *buf, int a, int d, int s);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private u32	state2xflags(u32 state);
+private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
+private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -4012,6 +4014,115 @@ setmap(sccs *s, int bit, int all)
 		}
 	}
 	return (slist);
+}
+
+struct	liststr {
+	struct liststr	*next;
+	char		*str;
+};
+
+private int
+insertstr(struct liststr **list, char *str)
+{
+	struct liststr	*item = malloc(sizeof(*item));
+
+	item->next = *list;
+	item->str = str;
+	*list = item;
+	return (1 + strlen(str));	/* include room for join or term */
+}
+
+private char *
+buildstr(struct liststr *list, int len)
+{
+	struct liststr	*p;
+	char		*str;
+	int		offset = 0;
+
+	unless (len) return (0);
+	str = malloc(len + 1);
+	for (p = list; p ; p = p->next) {
+		offset += sprintf(&str[offset], "%s,", p->str);
+	}
+	assert(offset == len);
+	if (offset) str[offset - 1] = '\0';
+	return (str);
+}
+
+private void
+freestr(struct liststr *list)
+{
+	struct liststr	*p;
+
+	for ( ; list ; list = p) {
+		p = list->next;
+		free(list);
+	}
+}
+
+/* compress a set of serials.  Assume 'd' is basis version and compute
+ * include and exclude strings to go with it.  The strings are a
+ * comma separated list of numbers
+ */
+
+private int
+compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
+{
+	struct	liststr	*inclist = 0, *exclist = 0;
+	int	inclen = 0, exclen = 0;
+	ser_t	*slist;
+	delta	*t, *n = d;
+	int	i;
+	int	active;
+
+	assert(d);
+	assert(set);
+
+	*exc = *inc = 0;
+
+	slist = calloc(s->nextserial, sizeof(ser_t));
+	assert(slist);
+
+	for (t = s->table; t; t = t->next) {
+		if (t->type != 'D') continue;
+
+ 		assert(t->serial <= s->nextserial);
+
+		/* if an ancestor and not excluded, or if included */
+		active = ((t == n && slist[t->serial] != S_EXCL)
+			|| slist[t->serial] == S_INC);
+
+		if (t == n)  n = t->parent;
+
+		unless (active || set[t->serial])  continue;
+
+		unless (set[t->serial]) {
+			/* it's active and we don't want it set */
+			exclen += insertstr(&exclist, t->rev);
+			continue;
+		}
+		unless (active) {
+			/* not active and we'd like it set */
+			inclen += insertstr(&inclist, t->rev);
+		}
+
+		EACH(t->include) {
+			unless(slist[t->include[i]])
+				slist[t->include[i]] = S_INC;
+		}
+		EACH(t->exclude) {
+			unless(slist[t->exclude[i]])
+				slist[t->exclude[i]] = S_EXCL;
+		}
+	}
+
+	if (inclen) *inc = buildstr(inclist, inclen);
+	if (exclen) *exc = buildstr(exclist, exclen);
+
+	if (slist)   free(slist);
+	if (exclist) freestr(exclist);
+	if (inclist) freestr(inclist);
+	return (0);
 }
 
 /*
@@ -12245,10 +12356,66 @@ gca2(sccs *s, delta *left, delta *right)
 	return (d);
 }
 
-delta	*
-sccs_gca(sccs *s, delta *left, delta *right, int best)
+/* XXX: could be one pass through table to do everything.
+ * instead it is more or less 5 pass:
+ *   gca (from bigger of left and right until gca)
+ *   lmap (all of table)
+ *   rmap (all of table)
+ *   gmap (all of table)
+ *   (not walking table, but do set equation for all elements in set)
+ *   compress (all of table)
+ *
+ * could do as one really intense and messy loop, or could do with
+ * streams somehow
+ */
+
+private delta *
+gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 {
-	return (best ? gca2(s, left, right) : gca(left, right));
+	delta	*ret = 0;
+	delta	*gca;
+	ser_t	*lmap, *rmap, *gmap;
+	ser_t	serial;
+	int	errp;
+
+	*inc = *exc = 0;
+	unless (s && s->nextserial && left && right) return (0);
+
+	/* get three sets, fiddle with them, then compress */
+	gca = gca2(s, left, right);
+
+	errp = 0;
+	lmap = serialmap(s, left, 0, 0, 0, &errp);
+	rmap = serialmap(s, right, 0, 0, 0, &errp);
+	gmap = serialmap(s, gca, 0, 0, 0, &errp);
+
+	if (errp || !lmap || !rmap || !gmap) goto bad;
+
+	/* Compute simple set gca: (left & right) | ((left | right) & gca) */
+	serial = (left->serial > right->serial)
+		? left->serial : right->serial;
+	for ( ; serial > 0; serial--) {
+		gmap[serial] = ((lmap[serial] && rmap[serial])
+			|| ((lmap[serial] || rmap[serial]) && gmap[serial]));
+	}
+
+	/* gmap was gca2 expanded.  It is now the set gca.
+	 * compress it to be -i and -x relative to gca2 result
+	 */
+
+	if (compressmap(s, gca, gmap, inc, exc))  goto bad;
+	ret = gca;
+
+bad:	if (lmap) free (lmap);
+	if (rmap) free (rmap);
+	if (gmap) free (gmap);
+	return (ret);
+}
+
+delta	*
+sccs_gca(sccs *s, delta *left, delta *right, char **inc, char **exc, int best)
+{
+	return (best ? gca3(s, left, right, inc, exc) : gca(left, right));
 }
 
 private int
