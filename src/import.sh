@@ -3,7 +3,51 @@
 # import.sh - import various sorts of files into BitKeeper
 # %W% %@%
 
-# usage: import fromdir to_project
+function help_import {
+	cat <<EOF
+    ================= Importing files into BitKeeper =================
+
+If you have not yet set up a project, try "bk help setup".  
+
+If you have a tree full of files which you wish to include, go to your
+tree and make sure there is nothing in it except for the files you want
+to revision control (or see the section of file specification below).
+Then do this:
+
+    $ bk import ~/src_files ~/project
+
+This will copy all of the files *below* ~/src/files into the project/src
+directory and check in the initial revision of the files.  Your original
+files are left untouched.
+
+Warning: this import command follows symbolic links and expands them.  
+BitKeeper currently does not support symbolic links directly.
+
+File specification
+------------------
+
+Suppose that you have a tree which has other stuff in it, such as .o's
+or core files, whatever.  You happen to know that the files you want are
+all of the form *.c *.h or Makefile and you want to pick up just them.
+To do that, try the -include and/or -exclude options and enter the
+patterns one per line:
+
+    $ bk import -include ~/src_files ~/project
+    End patterns with "." by itself or EOF
+    Include>> *.c
+    Include>> *.h
+    Include>> Makefile
+    Include>> .
+
+There is a -exclude option as well, that works the same way except it
+excludes patterns.
+
+Note that both patterns are regular expressions which are applied to
+pathnames of the files.  You can exclude things like foo/skipthis_dir.
+
+EOF
+}
+
 function import {
 	INCLUDE=""
 	EXCLUDE=""
@@ -17,8 +61,8 @@ function import {
 	    -i*) INC=YES; shift;;
 	    -e*) EX=YES; shift;;
 	esac
-	if [ X"$1" = X -o X"$2" = X -o X"$3" != X ]
-	then	echo Usage: bk import fromDir toDir; exit 0
+	if [ X"$1" = "X--help" -o X"$1" = X -o X"$2" = X -o X"$3" != X ]
+	then	help_import
 		exit 0
 	fi
 	if [ ! -d "$1" ]
@@ -113,7 +157,7 @@ EOF
 			exit 1
 		fi
 	done < /tmp/import$$
-	g2sccs < /tmp/import$$ > /tmp/sccs$$ 
+	bk g2sccs < /tmp/import$$ > /tmp/sccs$$ 
 	while read x 
 	do	if [ -e $x ]
 		then	echo import: $x exists, entire import aborted
@@ -150,10 +194,10 @@ function import_finish {
 	cpio -p -dmLV --quiet $TO < /tmp/import$$ 
 	cd $TO
 	echo "Checking in $NFILES files"
-	grep -v 'SCCS/s\.' /tmp/import$$ | xargs ci -is
+	grep -v 'SCCS/s\.' /tmp/import$$ | bk ci -is -
 	if [ $TYPE = SCCS ]
 	then	echo Checking for and fixing Teamware corruption
-		sfiles | renumber -q -
+		bk sfiles | bk renumber -q -
 		echo OK
 		if [ -s /tmp/reparent$$ ]
 		then	echo Reparenting files from some other BitKeeper project
@@ -162,29 +206,29 @@ function import_finish {
 			do	if [ -f $x ]
 				then	echo $x
 				fi
-			done | admin -C -
+			done | bk admin -C -
 			echo OK
 		fi
 		echo Making sure all files have pathnames
-		sfiles -g | while read x
-		do	admin -q -p$x $x
+		bk sfiles -g | while read x
+		do	bk admin -q -p$x $x
 		done
 		echo OK
 		echo Validating all SCCS files
-		sfiles | admin -qh -
+		bk sfiles | bk admin -qh -
 		echo OK
 	fi
 	rm -f /tmp/sccs$$ /tmp/import$$ /tmp/notsccs$$ /tmp/reparent$$ /tmp/rep$$
-	sfiles -r
+	bk sfiles -r
 	echo "Creating initial changeset (should have $NFILES + 2 lines)"
-	cset -y'Initial changeset'
+	bk sfiles -C | bk cset -y'Initial changeset'
 }
 
 function import_SCCS {
 	FROM=$1
 	TO=$2
 	cd $FROM
-	sfiles -cg $FROM > /tmp/changed$$
+	bk sfiles -cg $FROM > /tmp/changed$$
 	if [ -s /tmp/changed$$ ]
 	then	echo The following files are locked and modified in $FROM
 		cat /tmp/changed$$
@@ -271,16 +315,6 @@ function init {
 	if [ X$EDITOR = X ]
 	then	EDITOR=vi
 	fi
-
-	# XXXX Must be last.
-	BIN=
-	for i in /usr/bitsccs /usr/bitkeeper /usr/local/bitkeeper \
-	    /usr/local/bin/bitkeeper /usr/bin/bitkeeper /usr/bin
-	do	if [ -x $i/sccslog ]
-		then	BIN="$i/"
-			return
-		fi
-	done
 }
 
 init

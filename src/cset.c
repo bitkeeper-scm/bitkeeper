@@ -100,6 +100,14 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (av[optind] && streq(av[optind], "-")) optind++;
 
 	if (av[optind]) {
+		unless (isdir(av[optind])) {
+			if (flags & NEWFILE) {
+				char	path[1024];
+
+				sprintf(path, "mkdir -p %s", av[optind]);
+				system(path);
+			}
+		}
 		if (chdir(av[optind])) {
 			perror(av[optind]);
 			return (1);
@@ -125,6 +133,8 @@ usage:		fprintf(stderr, "%s", cset_help);
 	 */
 	if (list && (things < 1)) {
 		fprintf(stderr, "cset: must specify a revision.\n");
+		sccs_free(cset);
+		purify_list();
 		exit(1);
 	}
 	switch (list) {
@@ -133,6 +143,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		if (plus) {
 			if (cset->rstart == cset->rstop) {
 next:				sccs_free(cset);
+				purify_list();
 				exit(0);
 			}
 			/* XXX - this needs to be sccs_kid(cset, cset->rstart)
@@ -141,8 +152,14 @@ next:				sccs_free(cset);
 			if (cset->rstart->kid) cset->rstart = cset->rstart->kid;
 		}
 		csetlist(cset);
+		sccs_free(cset);
+		purify_list();
 		return (0);
-	    case 2: csetList(cset, r[0]); return (0);
+	    case 2:
+	    	csetList(cset, r[0]);
+		sccs_free(cset);
+		purify_list();
+		return (0);
 	}
 
 	/*
@@ -152,33 +169,6 @@ next:				sccs_free(cset);
 	 * changesets from one pending file.
 	 */
 	return (csetCreate(cset, flags, sym));
-}
-
-int
-csetCreate(sccs *cset, int flags, char *sym)
-{
-	delta	*d;
-	int	error = 0;
-
-	d = mkChangeSet(cset);
-	unless (cset = sccs_init(csetFile, GTIME|flags)) {
-		perror("init");
-		goto out;
-	}
-	if (sym) d->sym = strdup(sym);
-
-	/*
-	 * Make /dev/tty where we get input.
-	 */
-	close(0);
-	open("/dev/tty", 0, 0);
-	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
-		sccs_whynot("cset", cset);
-		error = 1;
-	}
-out:	sccs_free(cset);
-	commentsDone(saved);
-	return (error);
 }
 
 int
@@ -279,6 +269,7 @@ retry:		v = mdbm_fetch(idDB, k);
 			fprintf(stderr, "cset: init of %s failed\n", t);
 			exit(1);
 		}
+		free(t);
 		unless (d = sccs_findKey(sc, kv.val.dptr)) {
 			fprintf(stderr,
 			    "cset: can't find delta '%s' in %s\n",
@@ -362,6 +353,7 @@ retry:		v = mdbm_fetch(idDB, k);
 			fprintf(stderr, "cset: init of %s failed\n", t);
 			exit(1);
 		}
+		free(t);
 		unless (d = sccs_findKey(sc, kv.val.dptr)) {
 			fprintf(stderr,
 			    "cset: can't find key '%s' in %s\n",
@@ -470,7 +462,7 @@ add(MDBM *csDB, char *buf)
 		system("bk clean -u ChangeSet");
 		exit(1);
 	}
-		
+	sccs_free(s);
 }
 
 /*
@@ -484,7 +476,7 @@ mkChangeSet(sccs *cset)
 {
 	MDBM	*csDB;
 	FILE	*sort;
-	delta	*d;
+	delta	*d, *r;
 	char	buf[1024];
 	char	key[1024];
 
@@ -519,7 +511,15 @@ mkChangeSet(sccs *cset)
 
 	sort = popen("sort > ChangeSet", "wt");
 	assert(sort);
-	sccs_sdelta(key, sccs_ino(cset));
+	r = sccs_ino(cset);
+	/* adjust the date of the new rev, scripts make this be in the
+	 * same second.
+	 */
+	if (d->date == r->date) {
+		d->dateFudge++;
+		d->date++;
+	}
+	sccs_sdelta(key, r);
 	sccs_sdelta(buf, d);
 	if (mdbm_store_str(csDB, key, buf, MDBM_REPLACE)) {
 		perror("cset MDBM store in csDB");
@@ -589,3 +589,35 @@ unlock(char *lockName)
 		perror("unlink:");
 	}
 }
+
+int
+csetCreate(sccs *cset, int flags, char *sym)
+{
+	delta	*d;
+	int	error = 0;
+
+	d = mkChangeSet(cset);
+	unless (cset = sccs_init(csetFile, GTIME|flags)) {
+		perror("init");
+		goto out;
+	}
+	if (sym) d->sym = strdup(sym);
+
+	/*
+	 * Make /dev/tty where we get input.
+	 */
+#undef	close
+#undef	open
+	close(0);
+	open("/dev/tty", 0, 0);
+	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
+		sccs_whynot("cset", cset);
+		error = 1;
+	}
+	//close(0);
+out:	sccs_free(cset);
+	commentsDone(saved);
+	purify_list();
+	return (error);
+}
+

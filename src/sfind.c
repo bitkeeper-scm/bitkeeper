@@ -77,8 +77,12 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			exit(1);
 		}
 		/* perror is in sccs_root, don't do it twice */
-		unless (sccs_cd2root(0, 0) == 0) exit(1);
+		unless (sccs_cd2root(0, 0) == 0) {
+			purify_list();
+			exit(1);
+		}
 		rebuild();
+		purify_list();
 		exit(dups ? 1 : 0);
 	}
 	if (!av[optind]) {
@@ -92,6 +96,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			}
 		}
 	}
+	purify_list();
 	exit(0);
 }
 
@@ -261,6 +266,7 @@ c:	ftw(".", caches, 15);
 		fclose(id_cache);
 		unlink("SCCS/z.id_cache");
 	}
+	sccs_free(cset);
 }
 
 visit(delta *d)

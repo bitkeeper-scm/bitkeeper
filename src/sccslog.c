@@ -49,7 +49,7 @@ main(int ac, char **av)
 		fprintf(stderr, log_help);
 		return (0);
 	}
-	while ((c = getopt(ac, av, "c;hpr|v")) != -1) {
+	while ((c = getopt(ac, av, "c;pr|v")) != -1) {
 		switch (c) {
 		    case 'p': pflag++; break;
 		    case 'v': flags &= ~SILENT; break;
@@ -73,7 +73,10 @@ again:		unless (s = sccs_init(name, NOCKSUM|flags)) {
 			 */
 			unless (inroot) {
 				inroot = 1;
-				if (sccs_cd2root(0, 0) == 0) goto again;
+				if (sccs_cd2root(0, 0) == 0) {
+					sccs_free(s);
+					goto again;
+				}
 			}
 			goto next;
 		}
@@ -95,9 +98,11 @@ next:		sccs_free(s);
 	}
 	sfileDone();
 	verbose((stderr, "Total %d deltas\n", n));
-	sortlog(flags);
-	printlog();
-	freelog();
+	if (n) {
+		sortlog(flags);
+		printlog();
+		freelog();
+	}
 	purify_list();
 	return (0);
 }

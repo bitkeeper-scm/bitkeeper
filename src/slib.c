@@ -3028,6 +3028,7 @@ sccs_free(sccs *s)
 		free(l->name);
 		free(l);
 	}
+	if (s->root) free(s->root);
 	free(s);
 #ifdef	ANSIC
 	signal(SIGINT, SIG_DFL);

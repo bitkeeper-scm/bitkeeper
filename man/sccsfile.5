@@ -55,15 +55,14 @@ The delta table consists of a variable number of entries of the form:
 ^A\fBc \fIcomments\fR .\|.\|.
 ^A\fBB \fIchange set file id\fR (*)
 ^A\fBC \fIchange set id\fR (*)
-^A\fBD \fIoptional checksum of the gfile\fR (*)
+^A\fBF \fItime fudge\fR (*)
 ^A\fBH \fIhostname.domainname\fR (*) (+)
 ^A\fBI \fIinclude list\fR (*) 
-^A\fBL \fIline of development tag serial\fR (*)
+^A\fBK \fIoptional checksum of the gfile\fR (*)
+^A\fBL \fIline of development tag ser ser ...\fR (*)
 ^A\fBM \fImerge serial number\fR (*)
 ^A\fBP \fIpathname\fR (*) (+)
 ^A\fBS \fIsymbolic tag\fR (*)
-^A\fBT \fItime adjust\fR (*)
-^A\fBU \fImicrosecond time resolution\fR (*)
 ^A\fBX \fIexclude list\fR (*)
 ^A\fBZ \fItimezone (actually minutes west of GMT)\fR (*) (+)
 .RB ^A e
@@ -136,11 +135,12 @@ then the delta does not belong to a change set.  If a descendent has such a
 field, then this delta belongs to the same change set as the descendent.
 A delta may belong to only one change set, so this field does not repeat.
 .TP
-.RB ^A D
-An optional checksum, conditional on one of the BitKeeper 
-.B x
-flag values.  Typically used in the ChangeSet for greater reliability, but may
-be used in all files.
+.RB ^A F
+Time is supposed to march forwards across all deltas added to the file.  Due
+to clock skew or configuration problems, time may appear to walk backwards.
+If a delta is added where time walks backwards, this field will be present 
+with a value, when added the delta's date, makes the time stamp go forwards.
+This field is used to provide an ordering over all deltas in a file.
 .TP
 .RB ^A H
 The hostname and domain name of the machine on which this delta was created.
@@ -157,15 +157,29 @@ serials starting with the named serial number and working up to the
 greatest common ancestor of the delta being extracted and the delta referred
 to by this serial number.
 .TP
+.RB ^A K
+A checksum of the delta.  The data checksummed is the
+.BI g. file
+without any keywords expanded, and the sum is the same 16 bit unsigned 
+sum as used for the entire file.  If the 
+.BI g. file
+size is 0, then the sum is the bottom 5 digits of the microsecond portion
+of the time of day.
+.TP
 .RB ^A L
 \*[BK] introduces the concept of a \fIline of development\fP (LOD) to \*[S]. 
 This field is is the marker which names the start of an LOD.  The symbol is
 placed on the \fB.0\fR version of the LOD, in other words, the LOD symbol
-is placed on the last node before the start of the LOD.
-The marker is followed by the serial number of the first revision in the LOD,
-if that revision exists.  When an LOD moves from the trunk to a branch, another
-LOD marker is placed on the last revision on the trunk, with the serial number
-pointing to the head of the branch which continues the LOD.
+is placed on the last node before the start of the LOD.   If there are 
+deltas in the LOD, i.e., LOD.1, LOD.2, etc., then there will be at least
+one serial number following the LOD marker.  
+When the first node of a new LOD is created, the serial number of that node is
+added after the .0 delta's LOD marker.
+When a LOD moves from one branch (or the trunk) to another
+branch, then the serial number of the 
+head of the new branch will be added to the .0 delta's LOD marker.  The 
+LOD serial numbers are always in lowest to highest (oldest to most recent)
+order.
 See
 .BR lod.ps
 in the \*[BK] DocSet for more details on lines of development.
@@ -188,13 +202,6 @@ A symbolic name for the delta.
 See
 .BR tags (5)
 for more details on symbolic names in \*[BKS].
-.TP
-.RB ^A T
-The number of seconds between this delta and the previous delta in the delta
-table.  Normally, this is
-the difference between the two dates.  However, if the dates go backwards,
-this time will be the previous delta's time plus one second.
-This field is used to provide a partial ordering over all deltas in a file.
 .TP
 .RB ^A U
 An optional field, typically only used in the ChangeSet file, which records

@@ -134,50 +134,6 @@ Have fun!
 EOF
 }
 
-function help_import {
-	cat <<EOF
-    ================= Importing files into BitKeeper =================
-
-If you have not yet set up a project, try "bk help setup".  
-
-If you have a tree full of files which you wish to include, go to your
-tree and make sure there is nothing in it except for the files you want
-to revision control (or see the section of file specification below).
-Then do this:
-
-    $ bk import ~/src_files ~/project
-
-This will copy all of the files *below* ~/src/files into the project/src
-directory and check in the initial revision of the files.  Your original
-files are left untouched.
-
-Warning: this import command follows symbolic links and expands them.  
-BitKeeper currently does not support symbolic links directly.
-
-File specification
-------------------
-
-Suppose that you have a tree which has other stuff in it, such as .o's
-or core files, whatever.  You happen to know that the files you want are
-all of the form *.c *.h or Makefile and you want to pick up just them.  To
-do that, try the -pick option and enter the patterns one per line:
-
-    $ bk import -include ~/src_files ~/project
-    End patterns with "." by itself or EOF
-    Include>> *.c
-    Include>> *.h
-    Include>> Makefile
-    Include>> .
-
-There is a -exclude option as well, that works the same way except it
-excludes patterns.
-
-Note that both patterns are regular expressions which are applied to
-pathnames of the files.  You can exclude things like foo/skipthis_dir.
-
-EOF
-}
-
 function help_basics {
 	cat <<EOF
     ================= BitKeeper revision basics =================
@@ -543,6 +499,9 @@ To resolve, run
 
     $ bk resolve destination
 
+After the resolve is completed, all of the new work will have been moved from
+the RESYNC directory into the destination.
+
 SEE ALSO
     bk help pending
     bk help commit
@@ -794,6 +753,11 @@ function send {
 }
 
 function resync {
+	V=-vv
+	if [ "X$1" = "X-q" ]
+	then	shift
+		V=
+	fi
 	if [ ! -d "$1/BitKeeper/etc" ]
 	then	echo "resync: $1 is not a BitKeeper project root"
 	fi
@@ -806,11 +770,11 @@ function resync {
 		if [ ! -d "$2" ]
 		then	exit 1
 		fi
-		TPOPTS="-ivv"
+		INIT="-i"
 	else	if [ ! -d "$2/BitKeeper/etc" ]
 		then	echo "resync: $2 is not a BitKeeper project root"
 		fi
-		TPOPTS="-vv"
+		INIT=
 	fi
 	HERE=`pwd`
 	cd $1
@@ -823,17 +787,24 @@ function resync {
 		exit 1
 	fi
 	cd $FROM
-	bk smoosh ChangeSet $TO/ChangeSet | sed 's/ChangeSet://' | while read x
-	do	bk cset -l$x
-	done | sort -u > /tmp/list$$
+	if [ $INIT = "-i" ]
+	then	bk prs -hd:I: ChangeSet | while read x
+		do	bk cset -l$x
+		done | sort -u > /tmp/list$$
+	else
+		bk smoosh ChangeSet $TO/ChangeSet | \
+		sed 's/ChangeSet://' | while read x
+		do	bk cset -l$x
+		done | sort -u > /tmp/list$$
+	fi
 	if [ -s /tmp/list$$ ]
-	then	bk makepatch -vv - > /tmp/resync$$ < /tmp/list$$
+	then	bk makepatch $V - > /tmp/resync$$ < /tmp/list$$
 	else	echo "resync: $TO is a superset of $FROM"
 		exit 0
 	fi
 	/bin/rm /tmp/list$$
 	cd $TO
-	bk takepatch $TPOPTS < /tmp/resync$$
+	bk takepatch $V $INIT < /tmp/resync$$
 	/bin/rm /tmp/resync$$
 	exit 0
 }
@@ -969,11 +940,11 @@ function pending {
 }
 
 function commit {
-	exec ${BIN}sfiles -C | ${BIN}cset -
+	exec ${BIN}sfiles -C | ${BIN}cset $@ -
 }
 
 function commitmerge {
-	exec ${BIN}sfiles -C | ${BIN}cset -yMerge -
+	exec ${BIN}sfiles -C | ${BIN}cset -yMerge $@ -
 }
 
 function take {
