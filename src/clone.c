@@ -29,7 +29,7 @@ clone_main(int ac, char **av)
 	opts	opts;
 	char	**envVar = 0;
 	char	*getParent(char *);
-	remote 	*r;
+	remote 	*r = 0,  *l = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help clone");
@@ -63,6 +63,29 @@ clone_main(int ac, char **av)
 	 */
 	r = remote_parse(av[optind], 1);
 	unless (r) usage();
+	l = remote_parse(av[optind + 1], 1);
+	unless (l) {
+err:		if (r) remote_free(r);
+		if (l) remote_free(l);
+		usage();
+	}
+	/*
+	 * Source and destination cannot both be remote 
+	 */
+	if (l->host && r->host) goto err;
+
+	/*
+	 * If the destination address is remote, call bk _rclone instead;
+	 */
+	if (l->host) {
+		remote_free(r);
+		remote_free(l);
+		freeLines(envVar);
+		getoptReset();
+		av[0] = "_rclone";
+		return (rclone_main(ac, av));
+	}
+
 	if (opts.debug) r->trace = 1;
 	rc = clone(av, opts, r, av[optind+1], envVar);
 	freeLines(envVar);

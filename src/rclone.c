@@ -9,11 +9,11 @@ typedef	struct {
 } opts;
 
 private void usage();
-private int rclone(char **av, opts opts, remote *r);
-private int rclone_part1(opts opts, remote *r);
-private int rclone_part2(char **av, opts opts, remote *r);
-private int send_part1_msg(opts opts, remote *r);
-private int send_sfio_msg(opts opts, remote *r);
+private int rclone(char **av, opts opts, remote *r, char **envVar);
+private int rclone_part1(opts opts, remote *r, char **envVar);
+private int rclone_part2(char **av, opts opts, remote *r, char **envVar);
+private int send_part1_msg(opts opts, remote *r, char **envVar);
+private int send_sfio_msg(opts opts, remote *r, char **envVar);
 private u32 gensfio(opts opts, int verbose, int level, int wfd);
 
 int
@@ -21,16 +21,20 @@ rclone_main(int ac, char **av)
 {
 	int	c, rc, isLocal;
 	opts	opts;
+	char    **envVar = 0;
 	remote	*l, *r;
 
 	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "dqr;z|")) != -1) {
+	while ((c = getopt(ac, av, "dE:qr;w|z|")) != -1) {
 		switch (c) {
 		    case 'd': opts.debug = 1; break;
+		    case 'E':
+			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'q': opts.verbose = 0; break;
 		    case 'r': opts.rev = optarg; break;
+		    case 'w': /* ignored */ break;
 		    case 'z':
 			opts.gzip = optarg ? atoi(optarg) : 6;
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
@@ -63,7 +67,8 @@ rclone_main(int ac, char **av)
 	r = remote_parse(av[optind + 1], 0);
 	unless (r) usage();
 
-	rc = rclone(av, opts, r);
+	rc = rclone(av, opts, r, envVar);
+	freeLines(envVar);
 	remote_free(r);
 	return (rc);
 }
@@ -76,7 +81,7 @@ usage()
 }
 
 private int
-rclone(char **av, opts opts, remote *r)
+rclone(char **av, opts opts, remote *r, char **envVar)
 {
 	char	*ebuf = 0;
 	int	rc;
@@ -88,8 +93,8 @@ rclone(char **av, opts opts, remote *r)
 		putenv("BK_CSETS=1.0..");
 	}
 	if (rc = trigger(av, "pre"))  goto done;
-	if (rc = rclone_part1(opts, r))  goto done;
-	rc = rclone_part2(av, opts, r);
+	if (rc = rclone_part1(opts, r, envVar))  goto done;
+	rc = rclone_part2(av, opts, r, envVar);
 
 	if (rc) {
 		putenv("BK_STATUS=FAILED");
@@ -104,12 +109,12 @@ done:	putenv("BK_CSETS=");
 }
 
 private int
-rclone_part1(opts opts, remote *r)
+rclone_part1(opts opts, remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
-	send_part1_msg(opts, r);
+	send_part1_msg(opts, r, envVar);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
@@ -130,7 +135,7 @@ rclone_part1(opts opts, remote *r)
 }
 
 private  int
-send_part1_msg(opts opts, remote *r)
+send_part1_msg(opts opts, remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
@@ -145,7 +150,7 @@ send_part1_msg(opts opts, remote *r)
 	gettemp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, NULL, r, 0);
+	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part1");
 	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.rev) fprintf(f, " -r%s", opts.rev); 
@@ -160,7 +165,7 @@ send_part1_msg(opts opts, remote *r)
 }
 
 private int
-rclone_part2(char **av, opts opts, remote *r)
+rclone_part2(char **av, opts opts, remote *r, char **envVar)
 {
 	int	rc = 0, n;
 	char	buf[MAXPATH];
@@ -170,7 +175,7 @@ rclone_part2(char **av, opts opts, remote *r)
 		goto done;
 	}
 
-	send_sfio_msg(opts, r);
+	send_sfio_msg(opts, r, envVar);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
@@ -226,7 +231,7 @@ sfio_size(opts opts, int gzip)
 }           
 
 private  int
-send_sfio_msg(opts opts, remote *r)
+send_sfio_msg(opts opts, remote *r, char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
@@ -242,7 +247,7 @@ send_sfio_msg(opts opts, remote *r)
 	gettemp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, NULL, r, 0);
+	sendEnv(f, envVar, r, 0);
 	fprintf(f, "rclone_part2");
 	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.rev) fprintf(f, " -r%s", opts.rev); 

@@ -38,23 +38,27 @@ bk _rclone $Q -r1.1 $HERE/project $HERE/copy2 || { echo failed; exit 1; }
 [ -d copy2 ] || { echo failed; exit 1; }
 [ ! -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 echo OK
+# In this test we call the rclone code via the bk clone interface
 echo $N rClone via bk:// ............................................$NL
 cd $HERE
 rm -rf copy copy2
 P=50000
-bk bkd -q -p$P -c5
+bk bkd -q -p$P -c7
 while [ $? -eq 2 ]
 do      P=`expr $P + 1`
-        bk bkd -q -p$P -c5
+        bk bkd -q -p$P -c7
 done 
-bk _rclone $Q $HERE/project bk://localhost:$P/$HERE/copy
+bk clone $Q $HERE/project bk://localhost:$P/$HERE/copy
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 echo OK
 echo $N rClone via http:// ..........................................$NL
-bk _rclone $Q $HERE/project http://localhost:$P/$HERE/copy2
+bk clone $Q $HERE/project http://localhost:$P/$HERE/copy2
 [ -f copy2/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
-bk _rclone -r1.1 $Q project http://localhost:$P/copy3
+bk clone -r1.1 $Q project http://localhost:$P/copy3
 [ -d copy3 ] || { echo failed; exit 1; }
 [ ! -f copy3/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+bk clone -EBK_TESTVAR=XYZ $Q project http://localhost:$P/copy4
+[ -d copy4 ] || { echo failed; exit 1; }
+[ -f copy4/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 echo OK
 # TODO test virtual host/root support
