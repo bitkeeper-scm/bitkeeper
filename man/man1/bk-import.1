@@ -73,10 +73,6 @@ do not import anything after
 .ARG tag .
 (RCS/CVS only)
 .tp
-.B \-e
-Prompts for a regular expression to apply to the list
-of files.  All matches are excluded.
-.tp
 .B \-f
 Force; do not prompt for list editing.
 .tp
@@ -84,7 +80,7 @@ Force; do not prompt for list editing.
 do not pass \-h option to rcs2sccs (turns off verification, faster, unsafe).
 .tp
 .B \-i
-Like \-e but includes only files which match.
+Like \-x but includes only files which match.
 .tp
 .OPTreq \-j n
 n-way parallel for RCS conversion.
@@ -134,6 +130,10 @@ Used with -tCVS or -tRCS.
 .tp
 .B \-v
 Be verbose.
+.tp
+.B \-x
+Prompts for a regular expression to apply to the list
+of files.  All matches are excluded.
 .SH "SEE ALSO"
 .SA rcs2sccs 1
 .SA undos 1

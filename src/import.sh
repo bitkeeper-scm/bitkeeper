@@ -28,8 +28,8 @@ import() {
 	while getopts c:efHij:l:rS:t:uvxq opt
 	do	case "$opt" in
 		c) CUTOFF=-c$OPTARG;;	# /* doc 2.0 */
-		e) EX=YES;;			# /* doc 2.0 */
-		x) EX=YES;;			# /* same as -e, needs doc */
+		e) EX=YES;;			# /* undoc 2.0 - same as -x */
+		x) EX=YES;;			# /* doc 2.0 */
 		f) FORCE=YES;;			# /* doc 2.0 */
 		H) VERIFY=;;			# /* doc 2.0 */
 		i) INC=YES;;			# /* doc 2.0 */
@@ -39,7 +39,7 @@ import() {
 		r) RENAMES=NO;;			# /* doc 2.0 */
 		t) TYPE=$OPTARG;;		# /* doc 2.0 */
 		q) QUIET=-q; export _BK_SHUT_UP=YES;;	# /* doc 2.0 */
-		u) UNDOS=-u;;			# /* undoc? 2.0 */
+		u) UNDOS=-u;;			# /* doc 2.0 */
 		v) VERBOSE=;;			# /* doc 2.0 */
 		esac
 	done
