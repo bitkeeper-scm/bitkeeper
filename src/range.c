@@ -7,7 +7,7 @@ old2new(delta *d, delta *stop)
 {
 	unless (d) return;
 	unless (d == stop) old2new(d->next, stop);
-	fprintf(stderr, " %s", d->rev);
+	printf(" %s", d->rev);
 }
 
 int
@@ -38,28 +38,28 @@ usage:			fprintf(stderr,
 		if (!s->tree) goto next;
 		RANGE("range", s, expand, 1);
 		if (s->state & S_SET) {
-			fprintf(stderr, "%s set:", s->gfile);
+			printf("%s set:", s->gfile);
 			for (e = s->table; e; e = e->next) {
 				unless (e->type == 'D') continue;
 				if (e->flags & D_SET) {
-					fprintf(stderr, " %s", e->rev);
+					printf(" %s", e->rev);
 				}
 			}
 		} else {
-			fprintf(stderr, "%s %s..%s:",
+			printf("%s %s..%s:",
 			    s->gfile, s->rstart->rev, s->rstop->rev);
 			old2new(s->rstop, s->rstart);
 #ifdef bogus
-			fprintf(stderr, "\n");
-			fprintf(stderr, "%s %s..%s:",
+			printf("\n");
+			printf("%s %s..%s:",
 			    s->gfile, s->rstop->rev, s->rstart->rev);
 			for (e = s->rstop; e; e = e->next) {
-				fprintf(stderr, " %s", e->rev);
+				printf(" %s", e->rev);
 				if (e == s->rstart) break;
 			}
 #endif
 		}
-		fprintf(stderr, "\n");
+		printf("\n");
 next:		sccs_free(s);
 	}
 	return (0);

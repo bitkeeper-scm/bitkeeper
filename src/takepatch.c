@@ -856,7 +856,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	int	pending = 0;
 	char	*now();
 	int	n = 0;
-	char	lodkey[MAXPATH];
+	char	lodkey[MAXKEY];
 	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
 	int	confThisFile;
 	FILE	*csets = 0;
@@ -912,7 +912,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	unless (s) return (-1);
 
 	/* save current LOD setting, as it might change */
-	if (d = findrev(s, "")) {
+	if (d = sccs_top(s)) {
 		sccs_sdelta(s, d, lodkey);
 		if (s->defbranch) {
 			u8	*ptr;
@@ -1644,7 +1644,10 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			}
 
 			unless (mkpatch) {
-				unless (fnext(buf, stdin)) goto missing;
+				unless (fnext(buf, stdin)) {
+					perror("fnext");
+					goto missing;
+				}
 				continue;
 			}
 
@@ -1672,7 +1675,10 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				fprintf(stderr, "Discard: %s", buf);
 			}
 
-			unless (fnext(buf, stdin)) goto missing;
+			unless (fnext(buf, stdin)) {
+				perror("fnext");
+				goto missing;
+			}
 		}
 		if (st.preamble) nothingtodo();
 		if (mkpatch) fprintf(stderr, "\b: %d deltas\n", j);

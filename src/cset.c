@@ -292,7 +292,18 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	}
 
 	if (list) {
-		RANGE("cset", cset, copts.dash ? 0 : 3, 1);
+		int	expand;
+
+		if (copts.dash) {
+			expand = 0;
+		} else if (r[1]) {
+			expand = 3; 
+		} else if (closedRange(r[0]) == 1) {
+			expand = 3;
+		} else {
+			expand = 2;
+		}
+		RANGE("cset", cset, expand, 1);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
