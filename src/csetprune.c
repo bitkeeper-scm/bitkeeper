@@ -267,55 +267,92 @@ found(delta *start, delta *stop)
 }
 
 /*
- * recurse the graph, terminating on already in symGraph
- * Side affect: color things BLUE.  This is used by main rebuildTags()
- * to hit multiple tips if there are multiple tips in content graph.
+ * Make the Tag graph mimic the real graph.
+ * All symbols are on 'D' deltas, so wire them together
+ * based on that graph.  This means making some of the merge
+ * deltas into merge deltas on the tag graph.
+ * Algorithm uses d->ptag on deltas not in the tag graph
+ * to cache graph information.
+ * These settings are ignored elsewhere unless d->symGraph is set.
  */
 
-private delta *
-_rebuildTags(sccs *s, delta *d)
+private int
+mkTagGraph(sccs *s)
 {
-	delta	*p = 0;
-	delta	*m = 0;
+	delta	*d, *p, *m;
+	int	i;
+	int	tips = 0;
 
-	if (!d || d->symGraph) return (d);
-	d->flags |= D_BLUE;	/* side affect needed for rebuildTags() */
+	/* in reverse table order */
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) continue;
+		if (d->flags & D_GONE) continue;
 
-	/* recurse down parent, then merge */
-	if (d->parent) p = _rebuildTags(s, d->parent);
-	if (d->merge)  {
-		m = sfind(s, d->merge);
-		assert(m);
-		m = _rebuildTags(s, m);
-	}
+		/* initialize that which might be inherited later */
+		d->mtag = d->ptag = 0;
 
-	/* if only one side has value, make sure it is in p */
-	if (!p) {
-		p = m;
-		m = 0;
-	}
-	/* if both sides, may have to make this a merge node in tag graph */
-	else if (m) {
-		/* if neither in the path of the other: this is a merge */
-		unless (found(p, m)) {
-			d->ptag = p->serial;
-			d->mtag = m->serial;
-			d->symGraph = 1;
-			return (d);
+		/* go from real parent to tag parent (and also for merge) */
+		if (p = d->parent) {
+			unless (p->symGraph) {
+				p = (p->ptag) ? sfind(s, p->ptag) : 0;
+			}
 		}
-		/* else one contains the other, so only use newer */
-		if (m->serial > p->serial) p = m;
 		m = 0;
-	}
+		if (d->merge) {
+			m = sfind(s, d->merge);
+			assert(m);
+			unless (m->symGraph) {
+				m = (m->ptag) ? sfind(s, m->ptag) : 0;
+			}
+		}
 
-	/* p now equals the next symGraph'd node up the graph */
+		/*
+		 * p and m are parent and merge in tag graph
+		 * this section only deals with adjustments if they
+		 * are not okay.
+		 */
+		/* if only one, have it be 'p' */
+		if (!p && m) {
+			p = m;
+			m = 0;
+		}
+		/* if both, but one is contained in other: use newer as p */
+		if (p && m && found(p, m)) {
+			if (m->serial > p->serial) p = m;
+			m = 0;
+		}
+		/* p and m are now as we would like them.  assert if not */
+		assert(p || !m);
 
-	if (d->flags & D_SYMBOLS) {
-		if (p) d->ptag = p->serial;
-		d->symGraph = 1;
-		return (d);
+		/* If this has a symbol, it is in tag graph */
+		if (d->flags & D_SYMBOLS) {
+			unless (d->symLeaf) tips++;
+			d->symGraph = 1;
+			d->symLeaf = 1;
+		}
+		/*
+		 * if this has both, then make it part of the tag graph
+		 * unless it is already part of the tag graph.
+		 * The cover just the 'm' side.  p will be next.
+		 */
+		if (m) {
+			assert(p);
+			unless (d->symLeaf) tips++;
+			d->symGraph = 1;
+			d->symLeaf = 1;
+			d->mtag = m->serial;
+			if (m->symLeaf) tips--;
+			m->symLeaf = 0;
+		}
+		if (p) {
+			d->ptag = p->serial;
+			if (d->symGraph) {
+				if (p->symLeaf) tips--;
+				p->symLeaf = 0;
+			}
+		}
 	}
-	return (p);
+	return (tips);
 }
 
 private void
@@ -324,6 +361,7 @@ rebuildTags(sccs *s)
 	delta	*d, *md;
 	symbol	*sym;
 	MDBM	*symdb = mdbm_mem();
+	int	tips;
 
 	/*
 	 * Only keep newest instance of each name
@@ -363,19 +401,13 @@ rebuildTags(sccs *s)
 	 * and D_GONE all 'R' nodes in graph.
 	 */
 	for (d = s->table; d; d = d->next) {
-		d->flags &= ~D_BLUE;	/* reset for use in next for loop */
 		unless (d->type == 'R') continue;
 		assert(!(d->flags & D_SYMBOLS));
 		MK_GONE(s, d);
 	}
-	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_GONE) continue;
-		assert(d->type == 'D');
-		if (d->flags & D_BLUE) continue;
-		/* XXX: if single tip, could assert following only run once */
-		md = _rebuildTags(s, d);
-		if (md) md->symLeaf = 1;
-	}
+	tips = mkTagGraph(s);
+	verbose((stderr, "Tag graph rebuilt with %d tip%s\n",
+		tips, (tips != 1) ? "s" : ""));
 	mdbm_close(symdb);
 }
 
@@ -501,6 +533,7 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 	sc = s;
 	scb = sb;
 	_pruneEmpty(sc->table);
+	verbose((stderr, "Rebuilding Tag Graph...\n"));
 	rebuildTags(sc);
 	sccs_reDup(sc);
 	sccs_newchksum(sc);
