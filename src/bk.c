@@ -529,7 +529,7 @@ platformInit(char **av)
 	int	flags = SILENT;	/* for debugging */
 
 	if (bin) return;
-	if ((editor = getenv("EDITOR")) == NULL) editor = strdup("vi");
+	if ((editor = getenv("EDITOR")) == NULL) editor = strdup(EDITOR);
 	if ((pager = getenv("PAGER")) == NULL) pager = strdup(PAGER);
 
 	unless (p = getenv("PATH")) return;	/* and pray */

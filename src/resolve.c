@@ -1185,7 +1185,7 @@ pass3_resolve(opts *opts)
 	 * Make sure the renames are done first.
 	 * XXX - doesn't look in RENAMES, should it?
 	 */
-	unless (p = popen("bk files . -name 'm.*'", "r")) {
+	unless (p = popen("bk files -name 'm.*' .", "r")) {
 		perror("popen of find");
 		exit (1);
 	}
