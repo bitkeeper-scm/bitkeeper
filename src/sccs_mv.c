@@ -18,7 +18,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	pfile	pf;
 	int	flags = SILENT|DELTA_FORCE; 
 
-	s = sccs_init(name, INIT_NOCKSUM);
+	unless (s = sccs_init(name, INIT_NOCKSUM)) return (1);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
 		sccs_free(s);
