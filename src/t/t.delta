@@ -373,6 +373,7 @@ grep -q 'big has nulls' OUT || grep -q 'delta is binary' OUT || {
 	exit 1
 }
 echo OK
+
 echo $N Make sure we disallow .bk_skip file  .........................$NL
 touch .bk_skip
 bk new .bk_skip 2> new.out
@@ -380,6 +381,7 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "not allowed" new.out
 if [ $? -ne 0 ]; then echo failed 2; exit 1; fi
 echo OK
+
 echo $N Check compresssion: gzip preference .........................$NL
 cd $HERE/project/BitKeeper/etc
 bk edit $Q config
@@ -390,6 +392,7 @@ bk new $Q init2
 bk compression init2 | grep -q "gzip"
 if  [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Check compresssion: none preference .........................$NL
 cd $HERE/project/BitKeeper/etc
 bk edit $Q config
@@ -402,3 +405,20 @@ bk compression init3 | grep -q "none"
 if  [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
+echo $N Check that bad p.file revisions are caught and fixed ........$NL
+cd $HERE/project
+bk edit $Q init3
+mv SCCS/p.init3 P
+sed s/1.2/1.1/ < P > SCCS/p.init3
+bk delta $Q -ybad init3 > OUT 2>&1 || exit 1
+grep -q 'invalid nextrev 1.1 in p.file, using 1.2 instead' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test 1.2 = `bk prs -hr+ -nd:I: init3` || {
+	echo failed to override bad revision in p.file
+	bk prs init3
+	exit 1
+}
+echo OK

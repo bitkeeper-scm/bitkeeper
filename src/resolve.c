@@ -1210,7 +1210,7 @@ flags_delta(resolve *rs,
 {
 	char	*av[40];
 	char	buf[MAXPATH];
-	char	fbuf[8][12];	/* Must match list below */
+	char	fbuf[10][25];	/* Must match list below */
 	int	n, i, f;
 	sccs	*s;
 	int	bits = flags & X_MAYCHANGE;
@@ -1238,6 +1238,7 @@ flags_delta(resolve *rs,
 	doit(X_EXPAND1, "EXPAND1");
 	doit(X_SCCS, "SCCS");
 	doit(X_EOLN_NATIVE, "EOLN_NATIVE");
+	doit(X_NOMERGE, "NOMERGE");
 	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
 	av[++n] = sfile;
 	assert(n < 38);	/* matches 40 in declaration */
@@ -1870,10 +1871,11 @@ automerge(resolve *rs, names *n)
 			fprintf(stderr,
 			    "Not automerging binary '%s'\n", rs->s->gfile);
 		}
-		rs->opts->hadConflicts++;
+nomerge:	rs->opts->hadConflicts++;
 		unlink(rs->s->gfile);
 		return;
 	}
+	if (NOMERGE(rs->s)) goto nomerge;
 
 	unless (n) {
 		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);

@@ -1919,6 +1919,18 @@ defbranch(sccs *s)
 	return ("65535");
 }
 
+private int
+lodstart(char *rev)
+{
+	char	*p;
+
+	p = strchr(rev, '.');
+	assert(p);
+	p++;
+	if (strchr(p, '.')) return (0);
+	return (streq("1", p));
+}
+
 /*
  * Find the specified delta.  The rev can be
  *	(null)	get top of the default branch
@@ -10199,6 +10211,8 @@ name2xflg(char *fl)
 		return X_EOLN_NATIVE;
 	} else if (streq(fl, "KV")) {
 		return X_KV;
+	} else if (streq(fl, "NOMERGE")) {
+		return X_NOMERGE;
 	}
 	return (0);			/* lint */
 }
@@ -10234,16 +10248,16 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	if (add) {
 		if (xflags & mask) {
 			verbose((stderr,
-				"admin: warning: %s %s flag is already on\n",
-				sc->sfile, flag));
+			    "admin: warning: %s %s flag is already on\n",
+			    sc->sfile, flag));
 			return (0);
 		} 
 		xflags |= mask;
 	} else {
 		unless (xflags & mask) {
 			verbose((stderr,
-				"admin: warning: %s %s flag is already off\n",
-				sc->sfile, flag));
+			    "admin: warning: %s %s flag is already off\n",
+			    sc->sfile, flag));
 			return (0);
 		}
 		xflags &= ~mask;
@@ -10551,7 +10565,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
 		char	*v = &f[i].thing[1];
 
-		//flags |= NEWCKSUM;
 		if (isupper(f[i].thing[0])) {
 			char *fl = f[i].thing;
 
@@ -10562,40 +10575,34 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				ALLOC_D();
-				flagsChanged += changeXFlag(sc, d, flags, add, fl);
+				flagsChanged +=
+				    changeXFlag(sc, d, flags, add, fl);
 			}
-#if 0
-			else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_BITKEEPER;
-				else
-					sc->state &= ~S_BITKEEPER;
-			}
-#endif
 			else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
 				flagsChanged++;
 			} else {
-				if (v) fprintf(stderr,
-					       "admin: unknown flag %s=%s\n",
-					       fl, v);
-				else fprintf(stderr,
+				if (v) {
+					fprintf(stderr,
+					  "admin: unknown flag %s=%s\n", fl, v);
+				} else {
+					fprintf(stderr,
 					     "admin: unknown flag %s\n", fl);
-
+				}
 				error = 1;
 				sc->state |= S_WARNED;
 			}
 			continue;
 
 		noval:	fprintf(stderr,
-				"admin: flag %s can't have a value\n", fl);
+			    "admin: flag %s can't have a value\n", fl);
 			error = 1;
 			sc->state = S_WARNED;
 		} else {
+			char	*buf;
+
 			switch (f[i].thing[0]) {
-				char	*buf;
 			    case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
@@ -11863,8 +11870,8 @@ sccs_delta(sccs *s,
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
 	char	*t;
-	delta	*d = 0, *n = 0;
-	char	*tmpfile = 0;
+	delta	*d = 0, *p, *n = 0;
+	char	*rev, *tmpfile = 0;
 	int	added, deleted, unchanged;
 	int	locked;
 	pfile	pf;
@@ -12007,6 +12014,21 @@ out:
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
 		OUT;
 	}
+
+	/*
+	 * Catch p.files with bogus revs.
+	 */
+	rev = d->rev;
+	p = getedit(s, &rev);
+	assert(p);	/* we just found it above */
+	unless (streq(rev, pf.newrev) || 
+	    (lodstart(pf.newrev) && !findrev(s, pf.newrev))) {
+		fprintf(stderr,
+		    "delta: invalid nextrev %s in p.file, using %s instead.\n",
+		    pf.newrev, rev);
+		strcpy(pf.newrev, rev);
+	}
+
 	if (pf.mRev || pf.xLst || pf.iLst) flags |= DELTA_FORCE;
 	debug((stderr, "delta found rev\n"));
 	if (diffs) {
@@ -12122,7 +12144,7 @@ out:
 	 * initial version in the pfile to make conditions tighter.
 	 */
 	unless (flags & DELTA_PATCH) {
-		if (BITKEEPER(s) && n->r[1] == 1 && n->r[2] == 0) {
+		if (BITKEEPER(s) && lodstart(n->rev)) {
 			if (s->defbranch) {
 				free(s->defbranch);
 				s->defbranch = 0;
@@ -13465,6 +13487,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		}
 		if (flags & X_KV) {
 			if (comma) fs(","); fs("KV"); comma = 1;
+		}
+		if (flags & X_NOMERGE) {
+			if (comma) fs(","); fs("NOMERGE"); comma = 1;
 		}
 		return (strVal);
 	}

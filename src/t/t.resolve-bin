@@ -22,6 +22,7 @@ fi
 data="data"
 
 no_logging proj
+cp -rp $HERE/proj $HERE/ascii
 echo $N Trying to check in some binary data .........................$NL
 cp ${binary_data} ${data}
 chmod u+w ${data}
@@ -63,6 +64,62 @@ echo $N Make sure we get to the binary menu .........................$NL
 grep -q "binary conflict" OUT || {
 	echo failed to get to binary menu
 	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Add an ascii file but mark it no-merge ......................$NL
+cd $HERE/ascii
+cat > ascii <<EOF
+Hi mom,
+this is 
+an ascii
+file
+which
+we
+will modify.
+EOF
+bk new $Q ascii
+bk admin $Q -fNOMERGE ascii
+bk commit $Q -ybaseline
+bk clone $Q $HERE/ascii $HERE/nomerge
+bk flags ascii | grep -q NOMERGE || {
+	echo failed to add flag
+	bk flags ascii
+	exit 1
+}
+echo OK
+
+echo $N Try to automerge a file which has been marked no merge ......$NL
+bk edit $Q ascii
+mv ascii XXX
+sed s/file/FILE/ < XXX > ascii
+bk delta -ywhatever $Q ascii
+bk commit $Q -yconflict
+cd ../nomerge
+bk edit $Q ascii
+echo foobar >> ascii
+bk delta -ywhatever $Q ascii
+bk commit $Q -yconflict
+bk pull -R $Q
+(echo ''; echo q) | bk resolve -t > OUT 2>&1
+grep -q "binary conflict" OUT || {
+	echo failed to get to binary menu
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Use the remote version, verify that it worked ...............$NL
+(echo 'ur'; echo q) | bk resolve -t > OUT 2>&1
+test -d RESYNC && {
+	cat OUT
+	exit 1
+}
+bk get -q ascii
+bk cat $HERE/ascii/ascii | cmp - ascii || {
+	echo failed to use remote
+	bk cat $HERE/ascii/ascii | diff - ascii
 	exit 1
 }
 echo OK

@@ -100,7 +100,7 @@ do_diff(resolve *rs, char *left, char *right, int wait)
 	char	tmp[MAXPATH];
 
 	bktemp(tmp);
-	sysio(0, tmp, 0, "bk", "diff", left, right, SYS);
+	sysio(0, tmp, 0, "bk", "diff", "-a", left, right, SYS);
 	more(rs, tmp);
 	unlink(tmp);
 	return (0);

@@ -12,7 +12,8 @@ b_help(resolve *rs)
 "---------------------------------------------------------------------------\n\
 Binary: %s\n\n\
 New work has been modified locally and remotely and must be merged.\n\
-Because this is a binary, you have to choose either the local or remote.\n\n\
+Because this is a binary or a file marked non-mergable,\n\
+you have to choose either the local or remote.\n\n\
 GCA:    %s\n\
 Local:  %s\n\
 Remote: %s\n\
@@ -100,6 +101,9 @@ rfuncs	b_funcs[] = {
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "cl", "clear", "clear the screen", res_clear },
     { "C", "commit", "commit the merged file", b_commit },
+    { "d", "diff", "diff the file, even if it is binary", res_diff },
+    { "D", "difftool",
+      "run side-by-side graphical difftool on local and remote", res_difftool },
     { "h", "history", "revision history of all changes", res_h },
     { "hl", "hist local", "revision history of the local changes", res_hl },
     { "hr", "hist remote", "revision history of the remote changes", res_hr },
@@ -109,6 +113,8 @@ rfuncs	b_funcs[] = {
     { "t", "text", "go to the text file resolver", b_ascii },
     { "ul", "use local", "use the local version of the file", b_ul },
     { "ur", "use remote", "use the remote version of the file", b_ur },
+    { "vl", "view local", "view the local file", res_vl },
+    { "vr", "view remote", "view the remote file", res_vr },
     { "x", "explain", "explain the choices", b_explain },
     { 0, 0, 0, 0 }
 };

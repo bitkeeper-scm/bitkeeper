@@ -205,7 +205,7 @@ bk ci $Q -y"new-content" foo.c
 bk commit $S -y"new-content"
 bk resync -t $Q $HERE/project $HERE/copy
 cd $HERE
-bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
+bk resolve -t $Q $HERE/copy 2>$HERE/OUT 1>&2 <<EOF
 r
 m
 C
@@ -213,8 +213,12 @@ EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
 if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,SINGLE,EOLN_NATIVE" ]
-then	echo failed with mode $FLAGS
+then	echo
+	echo failed with mode $FLAGS
+	echo "WANT BITKEEPER,EXPAND1,CSETMARKED,SINGLE,EOLN_NATIVE"
+	echo "GOT  $FLAGS"
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
+	cat $HERE/OUT
 	exit 1
 fi
 echo OK

@@ -14,23 +14,32 @@ flags(int bits)
 #define	fs(s)	strcat(buf, s)
 
 	buf[0] = 0;
-	if (bits & X_YEAR4) {
-		if (comma) fs(","); fs("YEAR4"); comma = 1;
-	}
 	if (bits & X_RCS) {
 		if (comma) fs(","); fs("RCS"); comma = 1;
 	}
-	if (bits & X_SCCS) {
-		if (comma) fs(","); fs("SCCS"); comma = 1;
-	}
-	if (bits & X_EXPAND1) {
-		if (comma) fs(","); fs("EXPAND1"); comma = 1;
+	if (bits & X_YEAR4) {
+		if (comma) fs(","); fs("YEAR4"); comma = 1;
 	}
 #ifdef X_SHELL
 	if (bits & X_SHELL) {
 		if (comma) fs(","); fs("SHELL"); comma = 1;
 	}
 #endif
+	if (bits & X_EXPAND1) {
+		if (comma) fs(","); fs("EXPAND1"); comma = 1;
+	}
+	if (bits & X_SCCS) {
+		if (comma) fs(","); fs("SCCS"); comma = 1;
+	}
+	if (bits & X_EOLN_NATIVE) {
+		if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
+	}
+	if (bits & X_KV) {
+		if (comma) fs(","); fs("KV"); comma = 1;
+	}
+	if (bits & X_NOMERGE) {
+		if (comma) fs(","); fs("NOMERGE"); comma = 1;
+	}
 	unless (buf[0]) strcat(buf, "<none>");
 	assert(strlen(buf) < sizeof buf);
 	return (buf);

@@ -212,6 +212,9 @@ pflags(u32 flags)
 	if (flags & X_LONGKEY) {
 		if (comma) fs(","); fs("LONGKEY"); comma = 1;
 	}
+	if (flags & X_NOMERGE) {
+		if (comma) fs(","); fs("NOMERGE"); comma = 1;
+	}
 	unless (comma) fs("<NONE>");
 }
 
@@ -233,6 +236,7 @@ a2xflag(char *flag)
 	if (streq(flag, "LOGS_ONLY")) return (X_LOGS_ONLY);
 	if (streq(flag, "EOLN_NATIVE")) return (X_EOLN_NATIVE);
 	if (streq(flag, "LONGKEY")) return (X_LONGKEY);
+	if (streq(flag, "NOMERGE")) return (X_NOMERGE);
 	fprintf(stderr, "Unknown flag: %s\n", flag);
 	return (0);
 }
