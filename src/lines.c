@@ -4,15 +4,16 @@
 WHATSTR("@(#)%K%");
 
 private void	prevs(delta *d);
-private void	branches(delta *d);
+private void	_prevs(delta *d);
+private void	pd(char *prefix, delta *d);
 private void	renumber(delta *d);
-private void	p(delta *d);
-delta *ancestor(sccs *s, delta *d);
+private	delta	*ancestor(sccs *s, delta *d);
 private int	flags;
 private sccs	*s;
 private int	sort;	/* append -timet */
 private int	ser;
 private	char	*rev;
+private	delta	*tree;	/* oldest node we're displaying */
 
 int
 lines_main(int ac, char **av)
@@ -80,34 +81,36 @@ renumber(delta *d)
 	if (d->type == 'D') d->pserial = ser++;
 }
 
-/*
- * First, find the leaf delta which is on the trunk and list that.
- * Then walk all the leaves and print them out.
- * We print the leaves in order.  The ordering is set up such that it
- * works out nicely for sccstool.  That means that we want to order it so
- * 	- we go down as far as we can and
- *	- in (towards trunk) as far as we can
- * we swipe the deleted and added fields and rename them to depth and width.
- * XXX - youngest is only an approximately right answer.  The real
- * deal is that I want the leaf with the oldest done node.
- */
 private void
 prevs(delta *d)
 {
-	p(d);
-	branches(d);
+	unless (d->kid) d = d->parent;
+	tree = d;
+	pd("", d);
+	_prevs(d->kid);
+	_prevs(d->siblings);
 }
 
 private void
-branches(delta *d)
+_prevs(delta *d)
 {
-	if (!d) return;
-	if (((d->r[3] <= 1) || ((d->r[1] <= 1) && !d->r[2])) &&
-	    (d->type != 'R') && !(d->flags & D_VISITED)) {
-		p(d);
+	unless (d && (d->type == 'D')) return;
+
+	/*
+	 * If we are a branch start, then print our parent.
+	 */
+	if ((d->r[3] == 1) ||
+	    ((d->r[0] > 1) && (d->r[1] == 1) && !d->r[2])) {
+	    	pd("", d->parent);
 	}
-	branches(d->kid);
-	branches(d->siblings);
+
+	pd(" ", d);
+	if (d->kid) {
+		_prevs(d->kid);
+	} else {
+		printf("\n");
+	}
+	_prevs(d->siblings);
 }
 
 private void
@@ -121,68 +124,40 @@ pd(char *prefix, delta *d)
 		delta	*p = sfind(s, d->merge);
 
 		assert(p);
-		printf("%c%s", BK_FS, p->rev);
-		if (flags & GET_USER) printf("-%s", p->user);
-		if (sort) printf("-%u", p->pserial);
+		if (p->date > tree->date) {
+			printf("%c%s", BK_FS, p->rev);
+			if (flags & GET_USER) printf("-%s", p->user);
+			if (sort) printf("-%u", p->pserial);
+		}
 	}
 }
 
-private void
-p(delta *d)
+/*
+ * For each delta, if it is based on a node earlier than our ancestor,
+ * adjust backwards so we get a complete graph.
+ */
+delta	*
+t(delta *a, delta *d)
 {
-	char	*prefix = "";
+	delta	*p;
 
-	if (d->parent) {
-		pd("", d->parent);
-		prefix = " ";
-	}
-	while (d && (d->type != 'R') && !(d->flags & D_VISITED)) {
-		d->flags |= D_VISITED;
-		pd(prefix, d);
-		//if (d->kid && (d->kid->r[2] != d->r[2])) break;
-		d = d->kid;
-		prefix = " ";
-	}
-	printf("\n");
+	for (p = d; p->r[2]; p = p->parent);
+	if (p->date < a->date) a = p;
+	if (d->kid) a = t(a, d->kid);
+	if (d->siblings) a = t(a, d->siblings);
+	return (a);
 }
 
 /*
  * Find a common trunk based ancestor for everything from d onward.
  */
-delta *
+private delta *
 ancestor(sccs *s, delta *d)
 {
-	delta	*a, *e;
-	int	redo = 0;
+	delta	*a;
 
-	/*
-	 * First include all the branches.
-	 */
+	/* get back to the trunk */
 	for (a = d; a && a->r[2]; a = a->parent);
-	for (d = s->table; d != a; d = d->next) {
-		unless (d->r[3] == 1) continue;
-		for (e = d->parent; e->r[2]; e = e->parent);
-		if (e->date < a->date) {
-			a = e;
-		}
-	}
+	a = t(a, a);
 	return (a);
-
-#if 0
-	/*
-	 * Now see if we need to go back because of merge deltas
-	 */
-	for (d = s->table; d != a; d = d->next) {
-		unless (d->merge) continue;
-		e = sfind(s, d->merge);
-//fprintf(stderr, "CHECK %s vs %s\n", e->rev, a->rev);
-		for ( ; e->r[2]; e = e->parent);
-		if (e->date < a->date) {
-			a = e;
-			redo = 1;	/* Do I really need this? */
-		}
-	}
-//fprintf(stderr, "A=%s\n", a->rev);
-	return (redo ? ancestor(s, a) : a);
-#endif
 }

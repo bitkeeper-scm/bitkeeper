@@ -583,7 +583,8 @@ proc setScrollRegion {} \
 	set bb [$w(graph) bbox outside]
 	$w(graph) configure -scrollregion $bb
 	$w(graph) xview moveto 1
-	$w(graph) yview moveto .5
+	$w(graph) yview moveto 0
+	$w(graph) yview scroll 4 units
 
 	# The cdim array keeps track of the size of the scrollable region
 	# and the entire canvas region
@@ -789,7 +790,7 @@ proc history {{opt {}}} \
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
 		filltext $w(ap) $f 1 "There are no tags for $file"
 	} else {
-		set f [open "| bk prs -h {$dspec} \"$file\" 2>$dev_null"]
+		set f [open "| bk prs -h {$dspec} $opt \"$file\" 2>$dev_null"]
 		filltext $w(ap) $f 1 "There is no history"
 	}
 }
@@ -1151,23 +1152,41 @@ proc widgets {fname} \
 		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
-		$m add command -label "Last Day" -command {sccstool $fname D}
+		$m add command -label "Last Day" -command {sccstool $fname -1D}
+		$m add command -label "Last 2 Days" \
+		    -command {sccstool $fname -2D}
+		$m add command -label "Last 3 Days" \
+		    -command {sccstool $fname -3D}
+		$m add command -label "Last 4 Days" \
+		    -command {sccstool $fname -4D}
+		$m add command -label "Last 5 Days" \
+		    -command {sccstool $fname -5D}
+		$m add command -label "Last 6 Days" \
+		    -command {sccstool $fname -6D}
 		$m add command -label "Last Week" \
-		    -command {sccstool $fname W}
-		$m add command -label "Last Month" \
-		    -command {sccstool $fname 1M}
-		$m add command -label "Last Two Months" \
-		    -command {sccstool $fname 2M}
-		$m add command -label "Last Three Months" \
-		    -command {sccstool $fname 3M}
-		$m add command -label "Last Six Months" \
-		    -command {sccstool $fname 6M}
-		$m add command -label "Last Nine Months" \
-		    -command {sccstool $fname 9M}
+		    -command {sccstool $fname -W}
+		$m add command -label "Last 2 Weeks" \
+		    -command {sccstool $fname -2W}
+		$m add command -label "Last 3 Weeks" \
+		    -command {sccstool $fname -3W}
+		$m add command -label "Last 4 Weeks" \
+		    -command {sccstool $fname -4W}
+		$m add command -label "Last 5 Weeks" \
+		    -command {sccstool $fname -5W}
+		$m add command -label "Last 6 Weeks" \
+		    -command {sccstool $fname -6W}
+		$m add command -label "Last 2 Months" \
+		    -command {sccstool $fname -2M}
+		$m add command -label "Last 3 Months" \
+		    -command {sccstool $fname -3M}
+		$m add command -label "Last 6 Months" \
+		    -command {sccstool $fname -6M}
+		$m add command -label "Last 9 Months" \
+		    -command {sccstool $fname -9M}
 		$m add command -label "Last Year" \
-		    -command {sccstool $fname Y}
+		    -command {sccstool $fname -1Y}
 		$m add command -label "All Changes" \
-		    -command {sccstool $fname A}
+		    -command {sccstool $fname 1.1..}
 	    button .menus.cset -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
@@ -1341,7 +1360,7 @@ proc widgets {fname} \
 # This variable is a placeholder -- I expect that we will put an
 # option/menu in that will allow the user to select last month, week, etc.
 #
-proc sccstool {fname {period {}}} \
+proc sccstool {fname R} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  srev Opts gc file rev2rev_name cdim firstnode
@@ -1362,23 +1381,11 @@ proc sccstool {fname {period {}}} \
 		exit 0
 	}
 	if {[catch {exec bk root $file} proot]} {
-		wm title . "sccstool: $file"
+		wm title . "sccstool: $file $R"
 	} else {
-		wm title . "sccstool: $proot: $file"
+		wm title . "sccstool: $proot: $file $R"
 	}
-	switch $period {
-	    D  { set Opts(line_time) "-R-1D" }
-	    W  { set Opts(line_time) "-R-1W" }
-	    1M { set Opts(line_time) "-R-1M" }
-	    2M { set Opts(line_time) "-R-2M" }
-	    3M { set Opts(line_time) "-R-3M" }
-	    6M { set Opts(line_time) "-R-6M" }
-	    9M { set Opts(line_time) "-R-9M" }
-	    Y  { set Opts(line_time) "-R-1Y" }
-	    A  { set Opts(line_time) "-R1.0.." }
-	    default { set Opts(line_time) "-R-$gc(sccs.showHistory)"
-	    }
-	}
+	set Opts(line_time) "-R$R"
 	# If valid time range give, do the graph
 	if {[listRevs "$file"] == 0} {
 		revMap "$file"
@@ -1387,7 +1394,7 @@ proc sccstool {fname {period {}}} \
 		set first [$w(graph) gettags $firstnode]
 		# If first is not 1.0, create a dummy node that indicates
 		# that there is more data to the left
-		history
+		history "-r$R"
 	} else {
 		set ago [exec bk prs -hr+ -d:AGE: $fname]
 		# XXX: Highlight this is a different color? Yellow?
@@ -1460,7 +1467,7 @@ proc lineOpts {rev} \
 	global	Opts file
 
 	# Call lines to get this rev in the same format as we are using.
-	set f [open "| bk lines $Opts(line) $Opts(line_time) -r$rev \"$file\""]
+	set f [open "| bk lines $Opts(line) -r$rev \"$file\""]
 	gets $f rev
 	cach {close $f} err
 	return $rev
@@ -1474,7 +1481,7 @@ if {$fname == ""} {
 	set fname ChangeSet
 }
 widgets $fname
-sccstool $fname
+sccstool $fname "-$gc(sccs.showHistory)"
 
 if {$rev1 != ""} {
 	set rev1 [lineOpts $rev1]
