@@ -65,12 +65,12 @@ bk sfiles -C | bk commit $Q -ycmt3 -
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 cat > X <<EOF
-SCCS/s.ChangeSet@ChangeSet@1.2@ChangeSet@1.3
-src/SCCS/s.h.h@src/h.h@1.1@src/h.h@1.2
-src/SCCS/s.t.c@src/t.c@1.0@src/t.c@1.1
+ChangeSet@ChangeSet@1.2@ChangeSet@1.3
+src/h.h@src/h.h@1.1@src/h.h@1.2
+src/t.c@src/t.c@1.0@src/t.c@1.1
 EOF
 bk undos X > CMP1
-bk -R mkrev -r1.2,1.3 > CMP2
+bk -R rset -hr1.2,1.3 > CMP2
 cmp -s CMP1 CMP2
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK

@@ -444,29 +444,15 @@ proc getFiles {revs} \
 		update
 		incr line
 		.filelist.t insert end "ChangeSet $cset\n" cset
-		set c [open "| bk cset -hr$cset | sort" r]
+		set c [open "| bk cset -hr$cset | grep -v ^ChangeSet@ | sort" r]
 		while { [gets $c buf] >= 0 } {
 			incr fileCount
 			incr line
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
-			set done 0
-			set pattern "(.*)/->/(.*)(@.*)\$"
-			if {[regexp $pattern $buf dummy oldName newName revs]} {
-				set RealFiles($fileCount) "  $newName$revs"
-				set buf "$oldName$revs"
-				set done 1
-			}
-			regexp $file_start_stop $buf dummy file start stop
-			if {$start == $stop} {
-				set revs $start
-			} else {
-				set revs $start..$stop
-			}
-			set buf "$file@$revs"
-			if {$done == 0} {
-				set RealFiles($fileCount) "  $buf"
-			}
+			regexp  "(.*)@(.*)@(.*)" $buf dummy name oname rev
+			set RealFiles($fileCount) "  $name@$rev"
+			set buf "$oname@$rev"
 			.filelist.t insert end "  $buf\n"
 		}
 		catch { close $c }

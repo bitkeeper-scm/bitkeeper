@@ -42,7 +42,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  gettemp.o getuser.o glob.o gnupatch.o graft.o help.o host.o isascii.o \
 	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o log.o logging.o merge.o mkdir.o mklock.o mkrev.o mmap.o \
+	  lod.o log.o logging.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/mail.o port/platforminit.o \
@@ -52,7 +52,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o \
-	  resolve_renames.o resolve_filetypes.o rmdel.o \
+	  resolve_renames.o resolve_filetypes.o rmdel.o rset.o \
 	  sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o setup.o \
 	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
@@ -67,7 +67,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/uncompr.o zlib/zutil.o
 SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fmtool fm3tool \
-	  renametool setuptool mkdiffs gzip_uuwrap ungzip_uuwrap
+	  renametool setuptool gzip_uuwrap ungzip_uuwrap
 LOCALSCR= testfast build crank
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
@@ -328,10 +328,6 @@ import: import.sh port/$(SYS)_platform.sh substvars
 pmerge: pmerge.perl port/$(SYS)_platform.perl
 	cat pmerge.perl port/$(SYS)_platform.perl > pmerge
 	chmod +x pmerge
-
-mkdiffs: mkdiffs.perl port/$(SYS)_platform.perl
-	cat mkdiffs.perl port/$(SYS)_platform.perl > mkdiffs
-	chmod +x mkdiffs
 
 resync: resync.sh
 	rm -f resync

@@ -41,12 +41,15 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 }
 
 private void
-process(char *sfile, char *path1, char *rev1,
+process(char *path0, char *path1, char *rev1,
 	char *path2, char *rev2, char *tmpdir, int fix_mod_time, MDBM *db)
 {
 	sccs *s;
+	char *t;
 
-	s = sccs_init(sfile, SILENT|INIT_SAVEPROJ, proj);
+	t = name2sccs(path0);
+	s = sccs_init(t, SILENT|INIT_SAVEPROJ, proj);
+	free(t);
 	assert(s);
 	unless (proj) proj = s->proj;
 	unless ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
@@ -163,7 +166,7 @@ gnupatch_main(int ac, char **av)
 {
 	char buf[MAXPATH * 3];
 	char tmpdir[MAXPATH];
-	char *sfile, *path1, *rev1, *path2, *rev2;
+	char *path0, *path1, *rev1, *path2, *rev2;
 	char *cset1 = 0,  *cset2 = 0;
 	char *diff_style = 0;
 	char diff_opts[50] ;
@@ -209,7 +212,7 @@ gnupatch_main(int ac, char **av)
 	 */
 	while (fgets(buf, sizeof(buf), stdin)) {
 		chop(buf);
-		sfile = buf;
+		path0 = buf;
 		path1 = strchr(buf, '@');
 		assert(path1);
 		*path1++ = 0;
@@ -223,7 +226,7 @@ gnupatch_main(int ac, char **av)
 		assert(rev2);
 		*rev2++ = 0;
 		if (header) print_entry(path1, rev1, path2, rev2);
-		if (streq(sfile, CHANGESET)) {
+		if (streq(path0, "ChangeSet")) {
 			cset1 = strdup(rev1);
 			cset2 = strdup(rev2);
 			continue;
@@ -231,7 +234,7 @@ gnupatch_main(int ac, char **av)
 		/*
 		 * populate the left & right tree
 		 */
-		process(sfile, path1, rev1, path2, rev2, tmpdir,
+		process(path0, path1, rev1, path2, rev2, tmpdir,
 							fix_mod_time, db);
 	}
 

@@ -175,7 +175,7 @@ mk_list(char *rev_list, char *rev)
 
 	assert(rev);
 	cmd = malloc(strlen(rev) + 100);
-	sprintf(cmd, "bk cset -ffl%s > %s", rev, rev_list);
+	sprintf(cmd, "bk cset -ffr%s > %s", rev, rev_list);
 	if (system(cmd) != 0) {
 		printf("undo: %s\n", cmd);
 		printf("undo: cannot extact revision list\n");
