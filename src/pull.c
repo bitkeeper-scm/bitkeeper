@@ -124,7 +124,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	char	buf[MAXPATH];
 	int	rc, n, fd;
 
-	if (bkd_connect(r, opts.gzip)) return (-1);
+	if (bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
 	if (send_part1_msg(opts, r, probe_list, envVar)) return (-1);
 
 	if (r->httpd) skip_http_hdr(r);
@@ -221,7 +221,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	int	rc = 0, n, i;
 	char	*pr[2] = { "resolve", 0 };
 
-	if (r->httpd && bkd_connect(r, opts.gzip)) return (-1);
+	if (r->httpd && bkd_connect(r, opts.gzip, !opts.quiet)) return (-1);
 	if (send_keys_msg(opts, r, probe_list, envVar)) {
 		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;

@@ -661,7 +661,7 @@ done:	if (level == 0) {
 		if (opts.summarize) print_summary();
 
 		/*
-		 * We only enable fast scan mode if we stated at the root
+		 * We only enable fast scan mode if we started at the root
 		 */
 		if (opts.fixdfile && isdir("BitKeeper/etc/SCCS")) {
 			enableFastPendingScan();

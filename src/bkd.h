@@ -119,6 +119,7 @@ int	send_msg(remote *r, char *msg, int mlen, int extra, int compress);
 int	send_file(remote *r, char *file, int extra, int gzip);
 int	skip_hdr(remote *r);
 int	getTriggerInfoBlock(remote *r, int verbose); 
+int	bkd_connect(remote *r, int compress, int verbose);
 void	disconnect(remote *r, int how);
 void	drain();
 char	**getClientInfoBlock();

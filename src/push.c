@@ -264,7 +264,7 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 	sccs	*s;
 	delta	*d;
 
-	if (bkd_connect(r, opts.gzip)) return (-1);
+	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
 	send_part1_msg(opts, r, rev_list, envVar);
 	if (r->rfd < 0) return (-1);
 
@@ -550,7 +550,7 @@ push_part2(char **av, opts opts,
 	char	buf[4096];
 	int	n, rc = 0, done = 0, do_pull = 0;
 
-	if (r->httpd && bkd_connect(r, opts.gzip)) {
+	if (r->httpd && bkd_connect(r, opts.gzip, opts.verbose)) {
 		rc = 1;
 		goto done;
 	}
