@@ -515,7 +515,7 @@ proc dot {} \
 	if {[isConflict $lastDiff]} {
 		set buf [.merge.t get $d $e]
 		if {$buf == $UNMERGED} {
-			.merge.menu.l configure -bg red
+			.merge.menu.l configure -bg $gc($app.conflictBG)
 			$w insert end "Merge this conflict by clicking on\n"
 			$w insert end "the lines that you want.\n"
 			$w insert end "-Deleted lines start with \"-\".\n" gca
@@ -557,7 +557,7 @@ no shift means add at the bottom.
 To hand edit, click the merge window.}
 		}
 	} else {
-		.merge.menu.l configure -bg white
+		.merge.menu.l configure -bg $gc($app.textBG)
 		$w insert end \
 {This conflict has been automerged.
 To hand edit, click the merge window.}
@@ -1202,7 +1202,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		if {[file exists $logo]} {
 		    image create photo bklogo -file $logo
 		    label $menu.logo -image bklogo \
-			-bg white -relief flat -borderwid 3
+			-background $gc($app.logoBG) -relief flat -borderwid 3
 		    grid $menu.logo -row 2 -column 0 -sticky ew
 		}
 
@@ -1231,7 +1231,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-height 7 -borderwidth 0 \
 		-background $gc(fm3.textBG) -fg $gc(fm3.textFG) \
 		-wrap word -font $gc($app.fixedFont)
-	    frame $prs.sep -height 3 -background black
+	    frame $prs.sep -height 3 -background #000000
 	    grid $prs.left -row 0 -column 0 -sticky nsew
 	    grid $prs.cscroll -row 0 -column 1 -sticky ns
 	    grid $prs.right -row 0 -column 2 -sticky nsew
@@ -1697,6 +1697,7 @@ proc edit_save {} \
 proc edit_clear {} \
 {
 	global	lastDiff diffCount UNMERGED conf_todo restore
+	global app gc
 
 	set d "d$lastDiff"
 	set e "e$lastDiff"
@@ -1705,7 +1706,7 @@ proc edit_clear {} \
 	if {$buf == $UNMERGED} {
 		incr conf_todo -1
 		status
-		.merge.menu.l configure -bg lightyellow
+		.merge.menu.l configure -background $gc($app.unmergeBG)
 		if {$conf_todo == 0} {
 			.menu.file.m entryconfigure Save -state normal
 		}
@@ -1721,6 +1722,7 @@ proc edit_clear {} \
 proc edit_restore {c} \
 {
 	global	lastDiff diffCount UNMERGED conf_todo restore
+	global gc app
 
 	if {[info exists restore("$c$lastDiff")] == 0} { return }
 
@@ -1728,7 +1730,7 @@ proc edit_restore {c} \
 	if {[isConflict $lastDiff]} {
 		if {$c == "a"} {
 			incr conf_todo
-			.merge.menu.l configure -bg red
+			.merge.menu.l configure -background $gc($app.conflictBG)
 			.menu.file.m entryconfigure Save -state disabled
 		}
 		status
@@ -1783,6 +1785,7 @@ proc undo {} \
 proc change {lines replace orig pipe} \
 {
 	global	lastDiff diffCount UNMERGED conf_todo restore undo annotate
+	global gc app
 
 	edit_save
 	set next [expr $lastDiff + 1]
@@ -1793,7 +1796,7 @@ proc change {lines replace orig pipe} \
 	if {$buf == $UNMERGED} {
 		incr conf_todo -1
 		status
-		.merge.menu.l configure -bg lightyellow
+		.merge.menu.l configure -bg $gc($app.unmergeBG)
 		if {$conf_todo == 0} {
 			.menu.file.m entryconfigure Save -state normal
 		}
@@ -1831,7 +1834,7 @@ proc change {lines replace orig pipe} \
 	}
 	.merge.hi configure -state disabled
 	if {[.merge.t get $d $e] == $UNMERGED} {
-		.merge.menu.l configure -bg red
+		.merge.menu.l configure -background $gc($app.conflictBG)
 	}
 	edit_save
 }

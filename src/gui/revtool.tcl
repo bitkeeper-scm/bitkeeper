@@ -67,7 +67,7 @@ proc drawAnchor {x1 y1 x2 y2} {
 #
 # revision - (default style box) gc(rev.revOutline)
 # merge -
-# red - do a red rectangle
+# bad - do a "bad" rectangle (red, unless user changes gc(rev.badColor))
 # arrow - do a $arrow outline
 # old - do a rectangle in gc(rev.oldColor)
 # new - do a rectangle in gc(rev.newColor)
@@ -110,10 +110,10 @@ proc highlight {id type {rev ""}} \
 		#puts "highlight: arrow ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.arrowColor) -width 1]}
-	    red     {\
-		#puts "highlight: red ($rev)"
+	    bad     {\
+		#puts "highlight: bad ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline "red" -width 1.5 -tags "$rev"]}
+		    -outline $gc(rev.badColor) -width 1.5 -tags "$rev"]}
 	    old  {
 		#puts "highlight: old ($rev) id($id)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
@@ -559,7 +559,7 @@ proc centerRev {revname} \
 proc dateSeparate { } \
 {
 
-	global serial2rev rev2date revX revY ht screen gc w
+	global serial2rev rev2date revX revY ht screen gc w app
 	global month
 
 	set curday ""
@@ -606,7 +606,7 @@ proc dateSeparate { } \
 				set lx [ expr {$x - 15}]
 				$w(graph) create line $lx $miny $lx $maxy \
 				    -width 1 \
-				    -fill "lightblue" \
+				    -fill $gc(rev.dateLineColor) \
 				    -tags date_line
 
 				# Attempt to center datestring between verticals
@@ -679,10 +679,11 @@ proc addline {y xspace ht l} \
 			    -tag "l_$rnum pline"
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
-			set id [$w(graph) create text $x $y -fill "red" \
+			set id [$w(graph) create text $x $y \
+			    -fill $gc(rev.badColor) \
 			    -anchor sw -text "$txt" -justify center \
 			    -font $gc(rev.fixedBoldFont) -tags "$rev revtext"]
-			highlight $id "red" $rev
+			highlight $id "bad" $rev
 			incr bad
 		} else {
 			set id [$w(graph) create text $x $y -fill #241e56 \
@@ -746,7 +747,7 @@ proc balloon_aux_s {w rev1} \
 	    -padx 5 -pady 2 \
 	    -borderwidth 1 \
 	    -justify left \
-	    -background lightyellow
+	    -background $gc(rev.balloonColor)
 	pack $t.l -fill both
 	set x [expr [winfo rootx $w]+6+[winfo width $w]/2]
 	set y [expr [winfo rooty $w]+6+[winfo height $w]/2]
@@ -1620,8 +1621,8 @@ proc PaneCreate {} \
 	}
 	set ysize [expr {[winfo reqheight .p.top] + [winfo reqheight .p.b.p]}]
 	set percent [expr {[winfo reqheight .p.b] / double($ysize)}]
-	.p configure -height $ysize -width $xsize -background black
-	frame .p.fakesb -height $gc(rev.scrollWidth) -background grey \
+	.p configure -height $ysize -width $xsize -background $gc(rev.sashBG)
+	frame .p.fakesb -height $gc(rev.scrollWidth) -background $gc(rev.BG) \
 	    -borderwid 1 -relief sunken
 	    scrollbar .p.fakesb.x\
 	    	    -wid $gc(rev.scrollWidth) \
@@ -1629,16 +1630,16 @@ proc PaneCreate {} \
 		    -background $gc(rev.scrollColor) \
 		    -troughcolor $gc(rev.troughColor)
 	    frame .p.fakesb.y -width $gc(rev.scrollWidth) \
-	    	-background grey -bd 2
+	    	-background $gc(rev.BG) -bd 2
 	    grid .p.fakesb.x -row 0 -column 0 -sticky ew
 	    grid .p.fakesb.y -row 0 -column 1 -sticky ns -padx 2
 	    grid columnconfigure .p.fakesb 0 -weight 1
 	place .p.fakesb -in .p -relx .5 -rely $percent -y -2 \
 	    -relwidth 1 -anchor s
-	frame .p.sash -height 2 -background black
+	frame .p.sash -height 2 -background $gc(rev.sashBG)
 	place .p.sash -in .p -relx .5 -rely $percent -relwidth 1 \
 	    -anchor center
-	frame .p.grip -background grey \
+	frame .p.grip -background $gc(rev.BG) \
 		-width 13 -height 13 -bd 2 -relief raised -cursor double_arrow
 	place .p.grip -in .p -relx 1 -x -50 -rely $percent -anchor center
 	place .p.top -in .p -x 0 -rely 0.0 -anchor nw -relwidth 1.0 -height -2

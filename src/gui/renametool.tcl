@@ -59,14 +59,18 @@ proc dot {} \
 
 proc highlightDiffs {start stop} \
 {
-	global	gc
+	global	gc app
 
 	.diffs.l tag delete d
 	.diffs.r tag delete d
 	.diffs.l tag add d $start $stop
 	.diffs.r tag add d $start $stop
-	.diffs.l tag configure d -foreground black -font $gc(rename.fixedBoldFont)
-	.diffs.r tag configure d -foreground black -font $gc(rename.fixedBoldFont)
+	.diffs.l tag configure d \
+	    -foreground  $gc($app.textFG) \
+	    -font $gc(rename.fixedBoldFont)
+	.diffs.r tag configure d \
+	    -foreground $gc($app.textFG) \
+	    -font $gc(rename.fixedBoldFont)
 }
 
 proc topLine {} \

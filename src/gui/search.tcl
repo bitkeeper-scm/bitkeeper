@@ -359,6 +359,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 proc example_main_widgets {} \
 {
+	global gc app
 	#global	search 
 
 	set search(prompt) ""
@@ -378,6 +379,6 @@ proc example_main_widgets {} \
 	bind .p.top.c <n> "searchnext"
 	bind $search(text) <Return> "searchstring"
 	$search(widget) tag configure search \
-	    -background yellow -relief groove -borderwid 0
+	    -background $gc($app.searchColor) -relief groove -borderwid 0
 }
 
