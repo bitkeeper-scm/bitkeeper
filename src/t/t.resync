@@ -95,8 +95,7 @@ cd $HERE/project/src
 echo "File 1" > a.c
 echo "File 2" > b.c
 echo "File 3" > c.c
-# XXX - used to be bk repo || sleep 2
-while ! bk lock -s; do true; done
+bk lock -U
 bk ci $Q -i a.c b.c c.c
 rm -f a.c b.c c.c
 bk commit $S -yabc

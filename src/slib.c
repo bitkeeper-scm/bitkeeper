@@ -4670,10 +4670,7 @@ sccs_lock(sccs *s, char type)
 	if (READ_ONLY(s)) return (0);
 	
 	verbose = (s->state & SILENT) ? 0 : 1;
-	if ((type == 'z') && repository_locked(s->proj) &&
-	    (repository_cleanLocks(s->proj, 1, 1, 0, verbose) != 0)) {
-		return (0);
-	}
+	if ((type == 'z') && repository_locked(s->proj)) return (0);
 
 	/* get -e does Z lock so we can skip past the repository locks */
 	if (type == 'Z') type = 'z';

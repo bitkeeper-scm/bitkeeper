@@ -694,6 +694,8 @@ pull(remote *r)
 	char	*url = remote_unparse(r);
 	int	i;
 
+	/* We have a read lock which we need to drop before we can pull. */
+	repository_rdunlock(0);
 	cmd[i = 0] = "bk";
 	cmd[++i] = "pull";
 	unless (opts.verbose) cmd[++i] = "-q";
