@@ -23,7 +23,7 @@ WHATSTR("@(#)%K%");
  * to behave differently.
  */
 private	char	*diffs_help = "\n\
-usage: diffs [-acDMPsuU] [-d<d>] [-r<r>] [files...]\n\n\
+usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -a		do diffs on all sfiles\n\
     -c		do context diffs\n\
     -d<dates>	diff using date or symbol\n\
@@ -51,9 +51,9 @@ int
 diffs_main(int ac, char **av)
 {
 	sccs	*s;
-	int	all = 0, flags = DIFF_HEADER|SILENT, c, rc;
+	int	all = 0, flags = DIFF_HEADER|SILENT, c;
 	char	kind;
-	char	*name, *lLabel = 0, *rLabel = 0;
+	char	*name;
 	project	*proj = 0;
 	RANGE_DECL;
 
@@ -68,7 +68,7 @@ diffs_main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "acd;DfhMnpP|r|suUv")) != -1) {
+	while ((c = getopt(ac, av, "acd;DfhMnpr|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'h': flags &= ~DIFF_HEADER; break;
@@ -77,18 +77,9 @@ diffs_main(int ac, char **av)
 		    case 'f': flags |= GET_MODNAME; break;
 		    case 'M': flags |= GET_REVNUMS; break;
 		    case 'p': kind = DF_PDIFF; break;
-		    case 'P': kind = DF_GNU_PATCH; 
-			      if (lLabel = optarg) {
-					unless (rLabel = strchr(lLabel, ',')) {
-						goto usage; 
-					}
-					*rLabel++ = 0;
-			      } 
-			      break;
 		    case 'n': kind = DF_RCS; break;
 		    case 's': kind = DF_SDIFF; break;
 		    case 'u': kind = DF_UNIFIED; break;
-		    case 'v': flags &= ~SILENT; break;
 		    case 'U': flags |= GET_USER; break;
 		    RANGE_OPTS('d', 'r');
 		    default:
@@ -170,9 +161,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
 		 */
-		rc = sccs_diffs(s, r1, r2,
-			ex|flags, kind, stdout, lLabel, rLabel);
-		switch (rc) { 
+		switch (sccs_diffs(s, r1, r2, ex|flags, kind, stdout, 0, 0)) {
 		    case -1:
 			fprintf(stderr,
 			    "diffs -s of %s failed.\n", s->gfile);
