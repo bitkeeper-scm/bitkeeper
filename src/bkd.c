@@ -15,6 +15,7 @@ private char	**exCmds;
 int
 bkd_main(int ac, char **av)
 {
+	char	*p;
 	int	port = 0;
 	int	daemon = 0;
 	int	i, c;
@@ -47,8 +48,9 @@ bkd_main(int ac, char **av)
 	 * XXX architechture!! (The above functions are in port/bkd_server.c)
 	 */
 	while ((c =
-	    getopt(ac, av, "c:CdDeE:g:hi:l|L:p:P:qRSt:u:V:x:")) != -1) {
+	    getopt(ac, av, "Bc:CdDeE:g:hi:l|L:p:P:qRSt:u:V:x:")) != -1) {
 		switch (c) {
+		    case 'B': Opts.buffer_clone = 1; break;
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
@@ -82,7 +84,18 @@ bkd_main(int ac, char **av)
 	}
 	EACH(unenabled) exclude(unenabled[i], 0);
 	freeLines(unenabled, 0);
-
+#ifdef WIN32
+	if (Opts.buffer_clone) {
+		fprintf(stderr,
+"bkd: The option -b to buffer clone data is not available on Windows.\n");
+		return (1);
+	}
+#else
+	if ((p = user_preference("bufferclone")) &&
+	    (strieq(p, "yes") || streq(p, "1"))) {
+		Opts.buffer_clone = 1;
+	}
+#endif
 	if ((Opts.start || Opts.remove) && !win32()) {
 		fprintf(stderr, "bkd: -S and -R only make sense on Windows\n");
 		return (1);

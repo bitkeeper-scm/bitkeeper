@@ -82,6 +82,7 @@ typedef struct {
 	u32	http_hdr_out:1;		/* print http header to output */
 	u32	quiet:1;		/* quiet mode */
 	u32	safe_cd:1;		/* do not allow chdir up */
+	u32	buffer_clone:1;		/* stream clone from copy */
 	FILE	*log;			/* if set, log commands to here */
 	int	alarm;			/* exit after this many seconds */
 	int	count;			/* exit after this many connections */

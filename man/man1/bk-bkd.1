@@ -3,7 +3,7 @@
 .SH NAME
 bk bkd \- the \*(BK daemon
 .SH SYNOPSIS
-.Bc bk bkd [\-CdDhR] [more opts]
+.Bc bk bkd [\-BCdDhR] [more opts]
 .SH DESCRIPTION
 .LP
 The \*(BK daemon, bkd, is used to synchronize and query repositories.
@@ -184,6 +184,24 @@ select disable
 This option provides a slightly more secure mode of
 operation in that the bkd will refuse to change directories up out of 
 the directory in which it was started.
+.tp
+.B \-B
+This option make clones from this bkd be buffered in
+.B BitKeeper/tmp
+before being transfered to the remote user rather than being
+transfered directly.  This allows the repository read lock to be
+released early so that users on a slow network connection won't
+deadlock the repository.  The tradeoff is the diskspace requirement
+for the repository will double.  Multiple clones in parallel will only
+generate one copy of the repository and share it.  This option can be
+enabled by default by adding
+.DS
+buffer_clone:yes
+.DE
+to
+.B BitKeeper/etc/config.
+.br
+(This option is not supported on the Windows platform.)
 .tp
 .B \-d
 Run as a daemon.  Implies \-C.
