@@ -51,3 +51,6 @@
 #define	RETSIGTYPE	void
 #define	same_file(a, b)	(-1)
 #define bzero(b, l)	memset(b, 0, l)
+
+#define popen(c, m)	safe_popen(c, m)
+#define pclose(f)	safe_pclose(f)

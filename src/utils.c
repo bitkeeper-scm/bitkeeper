@@ -1117,7 +1117,7 @@ getdir(char *dir)
 	}
 	lines = addLine(lines, strdup("f"));
 	assert(streq("f", lines[1]));
-	removeLineN(lines, 1);
+	removeLineN(lines, 1, free);
 
 	do {
 		unless (streq(file, ".") || streq(file, "..")) {

@@ -361,9 +361,6 @@ int	bk_mode(void);
 
 typedef	unsigned short	ser_t;
 typedef	unsigned short	sum_t;
-typedef	unsigned int	u32;
-typedef	unsigned short	u16;
-typedef	unsigned char	u8;
 typedef	char		**globv;
 
 #include "liblines.h"
