@@ -1092,7 +1092,7 @@ void	do_cmds();
 void	core();
 void	ids();
 void	requestWebLicense();
-void	http_hdr();
+void	http_hdr(int full);
 pid_t	bkd_tcp_connect(remote *r);
 int	check_rsh(char *remsh);
 int	smartMkdir(char *pathname, mode_t mode);
