@@ -25,7 +25,6 @@ repo_nfiles(sccs *s)
 			fclose(f);
 		}
 	}
-	free(c);
 	free(n);
 	unless (i) {
 		int     free = (s == 0);
@@ -34,5 +33,6 @@ repo_nfiles(sccs *s)
 		i = sccs_hashcount(s);
 		if (free) sccs_free(s);
 	}
+	free(c);
 	return (i);
 }
