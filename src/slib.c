@@ -4287,7 +4287,6 @@ sccs_init(char *name, u32 flags, project *proj)
 {
 	sccs	*s;
 	struct	stat sbuf;
-	char	*t;
 	static	int _YEAR4;
 	int	rc;
 
@@ -4313,11 +4312,12 @@ sccs_init(char *name, u32 flags, project *proj)
 
 	s->initFlags = flags;
 	s->proj = proj ? proj : proj_init(s);
-	t = strrchr(s->sfile, '/');
-	if (t && streq(t, "/s.ChangeSet")) {
+
+	if (isCsetFile(s->sfile)) {
 		s->xflags |= X_HASH;
 		s->state |= S_CSET;
 	}
+
 	if (flags & INIT_NOSTAT) {
 		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
 	} else {
@@ -4343,6 +4343,9 @@ sccs_init(char *name, u32 flags, project *proj)
 		s->size = sbuf.st_size;
 	} else if (CSET(s)) {
 		int	bad;
+		char	*t;
+
+		t = strrchr(s->sfile, '/');
 		/* t still points at last slash in s->sfile */
 		assert(*t == '/');
 

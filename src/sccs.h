@@ -900,6 +900,7 @@ void	sig_catch(handler);
 void	sig_restore(void);
 int	sig_ignore(void);
 void	sig_default(void);
+int	isCsetFile(char *);
 int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
