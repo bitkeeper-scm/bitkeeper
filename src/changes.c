@@ -274,7 +274,10 @@ recurse(delta *d)
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+#define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
+		"+:LI: -:LD:" \
+		"\n" \
+		"$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -740,7 +743,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			 * when this function returns, "list" will contain
 			 * all member deltas/dspec in "s" for this cset
 			 */
-			list = 	collectDelta(s, d, list, dspec, &n);
+			list = collectDelta(s, d, list, dspec, &n);
 		}
 		freeLines(keys, free); /* reduce mem foot print, could be huge */
 		free(ee);
