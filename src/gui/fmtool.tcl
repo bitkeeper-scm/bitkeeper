@@ -279,11 +279,19 @@ proc highlightDiffs {} \
 	foreach {Diff End} $rDiff {
 		.diffs.left tag add d $Diff $End
 		.diffs.right tag add d $Diff $End
+		.diffs.left tag add diff $Diff $End
+		.diffs.right tag add diff $Diff $End
 	}
-	.diffs.left tag configure d -foreground black \
-	    -font $gc(fm.fixedBoldFont)
-	.diffs.right tag configure d -foreground black \
-	    -font $gc(fm.fixedBoldFont)
+	.diffs.left tag configure d \
+	    -foreground black \
+	    -font $gc(fm.activeOldFont)
+	.diffs.right tag configure d \
+	    -foreground black \
+	    -font $gc(fm.activeNewFont)
+	.diffs.left tag configure diff \
+	    -background $gc(fm.oldColor)
+	.diffs.right tag configure diff \
+	    -background $gc(fm.newColor)
 }
 
 # overrides 'dot' from difflib.tcl
@@ -334,9 +342,9 @@ proc scrollDiffs {where} \
 	.diffs.left tag add highLight $Diff $End
 	.diffs.right tag add highLight $Diff $End
 	.diffs.left tag configure highLight -font $gc(fm.fixedBoldFont) \
-	    -foreground black -background #e0e0e0
+	    -foreground black -background $gc(fm.activeLeftColor)
 	.diffs.right tag configure highLight -font $gc(fm.fixedBoldFont) \
-	    -foreground black -background #e0e0e0
+	    -foreground black -background $gc(fm.activeRightColor)
 }
 
 proc resolved {n} \
