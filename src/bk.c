@@ -287,8 +287,7 @@ main(int ac, char **av)
 	/*
 	 * Is it is a perl 5 script ?
 	 */
-	if (streq(av[0], "mkdiffs") ||
-	    streq(av[0], "rcs2sccs")) {
+	if (streq(av[0], "mkdiffs")) {
 		argv[0] = find_perl5();
 		sprintf(cmd_path, "%s/%s", bin, av[0]);
 		argv[1] = cmd_path;
