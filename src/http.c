@@ -10,8 +10,6 @@
 #define	SEND_BOGUS	2
 #define	SEND_NOCONNECT	3
 
-#define	BINARY	"application/octet-stream"
-
 extern void save_cached_proxy(char *proxy);
 
 #define	SOCKS_REQUEST_GRANTED		90
@@ -92,7 +90,7 @@ proxyAuthHdr(const char *cred)
 	char	*t1, *t2;
 
 	t1 = str2base64(cred);
-	t2 = aprintf("Proxy-Authorization: BASIC %s\n", t1);
+	t2 = aprintf("Proxy-Authorization: BASIC %s\r\n", t1);
 	free(t1);
 	return (t2);
 }
@@ -419,16 +417,17 @@ http_send(remote *r, char *msg,
 		proxy_auth = proxyAuthHdr(r->cred);
 	}
 	header = aprintf(
-	    "POST http://%s:%d/cgi-bin/%s HTTP/1.0\n"
+	    "POST http://%s:%d/cgi-bin/%s HTTP/1.0\r\n"
 	    "%s"			/* optional proxy authentication */
-	    "User-Agent: %s\n"
-	    "Accept: text/html\n"
-	    "Host: %s:%d\n"
-	    "Content-type: %s\n"
-	    "Content-length: %u\n\n",
-	    r->host, r->port, cgi_script, proxy_auth, user_agent, 
+	    "User-Agent: %s\r\n"
+	    "Accept: text/html\r\n"
+	    "Host: %s:%d\r\n"
+	    "Content-type: application/octet-stream\r\n"
+	    "Content-length: %u\r\n"
+	    "\r\n",
+	    r->host, r->port, cgi_script, proxy_auth, user_agent,
 	    r->host, r->port,
-	    BINARY, mlen + extra);
+	    mlen + extra);
 
 	if (*proxy_auth) free(proxy_auth);
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
