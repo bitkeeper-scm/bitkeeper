@@ -48,6 +48,7 @@ ms_env()
 	# in the Makefile.
 	XTRA=win32
 	INSTALL=install-nolinks
+	RESOURCE=bk.res
 
 	#
 	# XXX Need to set the VC++ path when we build via rsh
@@ -59,6 +60,7 @@ ms_env()
 	export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
 	export INCLUDE LIB CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
 	export BK UWT_H WIN_UTIL BINDIR XTRA INSTALL PATH
+	export RESOURCE
 }
 
 #Set up environment for cygwin tools
