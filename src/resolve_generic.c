@@ -109,6 +109,7 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 	for (i = 0; rf[i].spec && !streq(rf[i].spec, "!"); i++);
 	if (rf[i].spec) bang = i;
 	while (1) {
+		flush_fd0(); /* For Win98 and Win/ME */
 		fprintf(stderr, "(%s) %s>> ", name, rs->prompt);
 		getline(0, buf, sizeof(buf));
 		unless (buf[0]) strcpy(buf, "?");
