@@ -32,7 +32,7 @@ Remote: %s\n\
 int
 c_explain(resolve *rs)
 {
-	system("bk help merge");
+	system("bk help merging");
 	return (0);
 }
 
@@ -253,7 +253,8 @@ needs_merge(resolve *rs)
 	char	*t;
 	int	ok = 1;
 
-	unless (exists(rs->s->gfile)) return (0);
+	unless (exists(rs->s->gfile)) return (1);
+	if (rs->s->encoding & E_BINARY) return (0);
 
 	unless (m = mopen(rs->s->gfile, "r")) {
 		fprintf(stderr, "%s cannot be opened\n", rs->s->gfile);
@@ -348,6 +349,30 @@ c_shell(resolve *rs)
 	return (0);
 }
 
+/* An alias for !cp $BK_LOCAL $BK_MERGE */
+int
+c_ul(resolve *rs)
+{
+	names	*n = rs->tnames;
+
+	unless (sys("cp", "-f", n->local, rs->s->gfile, SYS)) {
+		return (c_commit(rs));
+	}
+	return (0);
+}
+
+/* An alias for !cp $BK_REMOTE $BK_MERGE */
+int
+c_ur(resolve *rs)
+{
+	names	*n = rs->tnames;
+
+	unless (sys("cp", "-f", n->remote, rs->s->gfile, SYS)) {
+		return (c_commit(rs));
+	}
+	return (0);
+}
+
 rfuncs	c_funcs[] = {
     { "?", "help", "print this help", c_help },
     { "!", "shell", "escape to an interactive shell", c_shell },
@@ -376,6 +401,8 @@ rfuncs	c_funcs[] = {
     { "s", "sccsmerge", "merge the two files using SCCS' algorthm", c_smerge },
     { "sd", "sdiff",
       "side-by-side diff of the local file vs. the remote file", res_sdiff },
+    { "ul", "use local", "use the local version of the file", c_ul },
+    { "ur", "use remote", "use the remote version of the file", c_ur },
     { "v", "view merge", "view the merged file", c_vm },
     { "vl", "view local", "view the local file", res_vl },
     { "vr", "view remote", "view the remote file", res_vr },
@@ -393,12 +420,16 @@ rfuncs	c_funcs[] = {
 int
 resolve_contents(resolve *rs)
 {
-	names	*n = calloc(1, sizeof(*n));
+	names	*n;
+	char	*nm;
 	delta	*d;
-	char	*nm = basenm(rs->s->gfile);
 	int	ret;
 	char	buf[MAXPATH];
 
+	if (rs->s->encoding & E_BINARY) return (resolve_binary(rs));
+
+	n = calloc(1, sizeof(*n));
+	nm = basenm(rs->s->gfile);
 	d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 	assert(d);
 	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);

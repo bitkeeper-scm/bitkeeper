@@ -111,7 +111,6 @@ _lclone() {
 	cd $HERE
 	mkdir -p $TO
 	cd $TO
-	bk sane
 	while read x
 	do
 		if [ "$x" != "." -a -d $FROM/$x/BitKeeper ]
@@ -123,6 +122,7 @@ _lclone() {
 		mkdir -p $x/SCCS
 		find $FROM/$x/SCCS -type f -name 's.*' -print | bk _link $x/SCCS
 	done < /tmp/dirs$$
+	bk sane
 	while [ -d $FROM/BitKeeper/readers ]
 	do	kill $LOCKPID 2>/dev/null
 		kill -0 $LOCKPID 2>/dev/null || {

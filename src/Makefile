@@ -46,7 +46,8 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  key2rev.o keysort.o \
 	  level.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o logflags.o logging.o mail.o merge.o mkdir.o mklock.o mmap.o \
+	  lock.o lod.o logflags.o logging.o \
+	  mail.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o multiuser.o names.o newrev.o oclone.o opull.o opush.o \
 	  park.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o port/flushsocket.o \
@@ -57,7 +58,7 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  port/getnull.o port/http_proxy.o port/service.o \
 	  prs.o pull.o purify.o push.o pwd.o r2c.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
-	  lock.o resolve.o resolve_contents.o resolve_create.o \
+	  resolve.o resolve_binaries.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o resolve_tags.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o root.o rset.o \
 	  sane.o sccs.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \

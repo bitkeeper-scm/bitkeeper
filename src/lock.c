@@ -4,7 +4,7 @@
 WHATSTR("@(#)%K%");
 
 private jmp_buf	jmp;
-private	handler	abort_lock(int dummy) { longjmp(jmp, 1); }
+private	void abort_lock(int dummy) { longjmp(jmp, 1); }
 
 /*
  * lock - repository level locking

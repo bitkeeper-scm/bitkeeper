@@ -220,7 +220,7 @@ getline2(remote *r, char *buf, int size)
 
 private jmp_buf	jmp;
 private	handler	old;
-private	handler	abort_prompt(int dummy) { longjmp(jmp, 1); }
+private	void	abort_prompt(int dummy) { longjmp(jmp, 1); }
 
 /*
  * Prompt the user and get an answer.

@@ -9,7 +9,7 @@
  */
 private jmp_buf	jmp;
 private	handler	old;
-private	void	abort_ci() { longjmp(jmp, 1); }
+private	void	abort_ci(int dummy) { longjmp(jmp, 1); }
 
 int
 sccs_getComments(char *file, char *rev, delta *n)
@@ -31,7 +31,7 @@ sccs_getComments(char *file, char *rev, delta *n)
 		sig_catch(old);
 		return (-1);
 	}
-	old = sig_catch(abort_ci);
+	old = sig_catch((handler)abort_ci);
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if ((buf2[0] == 0) || streq(buf2, "."))
 			break;
@@ -57,7 +57,7 @@ sccs_getHostName(delta *n)
 		sig_catch(old);
 		return (-1);
 	}
-	old = sig_catch(abort_ci);
+	old = sig_catch((handler)abort_ci);
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if (isValidHost(buf2)) {
 			n->hostname = strdup(buf2);
@@ -81,7 +81,7 @@ sccs_getUserName(delta *n)
 		sig_catch(old);
 		return (-1);
 	}
-	old = sig_catch(abort_ci);
+	old = sig_catch((handler)abort_ci);
 	fprintf(stderr, "User name>>  ");
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		char	*t;

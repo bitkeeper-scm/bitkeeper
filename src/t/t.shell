@@ -46,6 +46,13 @@ cat > file <<EOF
 EOF
 bk ci $Q -i file
 if [ ! -f SCCS/s.file ]; then echo failed to create history; exit 1; fi
+cp /bin/sh binary
+bk new $Q -b binary
+bk prs -hr+ binary | grep -q binary || {
+	echo bad encoding
+	bk prs -hr+ binary
+	exit 1
+}
 touch BitKeeper/etc/SCCS/x.marked
 bk commit $Q -ywhatever 
 echo OK
@@ -79,6 +86,7 @@ grep -q ESCAPE_FROM_NEW_YORK OUT || {
 	exit 1
 }
 echo OK
+
 echo $N Make sure shell escapes to run a command work ...............$NL
 cd ..
 rm -rf copy
@@ -96,6 +104,152 @@ cat > DIFFS <<EOF
 EOF
 cmp -s DIFFS OUT || {
 	echo failed to run diffs on local/remote files
+	exit 1
+}
+echo OK
+
+echo $N Modify the binary in both, resync it, check merge ...........$NL
+cd $HERE
+rm -rf */RESYNC */PENDING
+bk edit $Q copy/binary project/binary
+cp -f /bin/ls copy/binary
+cp -f /bin/rm project/binary
+for i in copy project
+do	cd $HERE/$i
+	bk delta $Q -y$i
+	bk commit -y$i $Q
+done
+cd $HERE/copy
+bk resync $Q
+cd ..
+tar cf TAR copy
+cd copy
+echo OK
+
+echo $N Make sure ul works ..........................................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+# First one is for the binary and the second one is for the file.
+( echo ''
+  echo ul
+  echo ul
+  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+test -d RESYNC && {
+	echo failed to complete resolve
+	cat OUT
+	exit 1
+}
+bk cat binary | cmp - /bin/ls || {
+	echo failed to use local version of binary
+	exit 1
+}
+bk cat file | grep -q copy || {
+	echo failed to use local version of file
+	bk cat file
+	exit 1
+}
+echo OK
+
+echo $N Make sure ur works ..........................................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+# First one is for the binary and the second one is for the file.
+( echo ''
+  echo ur
+  echo ur
+  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+test -d RESYNC && {
+	echo failed to complete resolve
+	cat OUT
+	exit 1
+}
+bk cat binary | cmp - /bin/rm || {
+	echo failed to use remote version
+	exit 1
+}
+bk cat file | grep -q project || {
+	echo failed to use remote version of file
+	bk cat file
+	exit 1
+}
+echo OK
+
+echo $N Make sure shell escapes to use local works ..................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+( echo '!cp $BK_LOCAL $BK_MERGE'
+  echo C
+  echo '!cp $BK_LOCAL $BK_MERGE'
+  echo C
+  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+test -d RESYNC && {
+	echo failed to complete resolve
+	exit 1
+}
+bk cat binary | cmp - /bin/ls || {
+	echo failed to use local version
+	exit 1
+}
+bk cat file | grep -q copy || {
+	echo failed to use local version of file
+	bk cat file
+	exit 1
+}
+echo OK
+
+echo $N Make sure shell escapes to use remote works .................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+( echo '!cp $BK_REMOTE $BK_MERGE'
+  echo C
+  echo '!cp $BK_REMOTE $BK_MERGE'
+  echo C
+  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+test -d RESYNC && {
+	echo failed to complete resolve
+	exit 1
+}
+bk cat binary | cmp - /bin/rm || {
+	echo failed to use remote version
+	exit 1
+}
+bk cat file | grep -q project || {
+	echo failed to use remote version of file
+	bk cat file
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can force text resolution ......................$NL
+cd $HERE
+rm -rf copy
+tar xf TAR
+cd copy
+# First one is for the binary and the second one is for the file.
+( echo t
+  echo ur
+  echo ur
+  echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
+test -d RESYNC && {
+	echo failed to complete resolve
+	cat OUT
+	exit 1
+}
+bk cat binary | cmp - /bin/rm || {
+	echo failed to use remote version
+	exit 1
+}
+bk cat file | grep -q project || {
+	echo failed to use remote version of file
+	bk cat file
 	exit 1
 }
 echo OK
