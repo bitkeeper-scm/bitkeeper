@@ -471,6 +471,7 @@ echo rl
 echo y
 echo q
 ) | bk resolve -t >OUT 2>&1 || exit 1
+unset BK_DEBUG_CMD
 test -d RESYNC && {
 	echo failed to complete resolve
 	exit 1

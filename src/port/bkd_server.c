@@ -270,8 +270,8 @@ bkd_server(int ac, char **av)
 		if ((Opts.count > 0) && (--(Opts.count) == 0)) break;
 		if (bkd_quit == 1) break;
 	}
-done:
 #ifdef	WIN32
+done:
 	if (sHandle) reportStatus(sHandle, SERVICE_STOPPED, NO_ERROR, 0);
 	argv_free(nav, 9);
 	_exit(0); /* We don't want to process atexit() in this */
@@ -332,6 +332,8 @@ argv_save(int ac, char **av, char **nav, int j)
 	nav[j] = 0;
 }
 
+#ifdef	WIN32
+
 private int
 argv_size(char **nav)
 {
@@ -349,7 +351,6 @@ argv_free(char **nav, int j)
 	while (nav[j]) free(nav[j++]);
 }
 
-#ifdef	WIN32
 /**************************************************************
  * Code to start and stop a win32 service
  **************************************************************/

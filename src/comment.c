@@ -67,7 +67,7 @@ comments_main(int ac, char **av)
 		 * Is it OK that we broke reading files to edit from
 		 * stdin?
 		 */
-		if (sccs_cd2root(0, 0)) {
+		if (proj_cd2root()) {
 			fprintf(stderr,
 			    "comments: can't find repository root\n");
 			exit(1);
@@ -147,7 +147,7 @@ comments_main(int ac, char **av)
 		}
 	} else {
 		unless (lines) {
-			if (sccs_cd2root(0, 0)) {
+			if (proj_cd2root()) {
 				fprintf(stderr,
 				    "comments: can't find repository root\n");
 				exit(1);
@@ -259,7 +259,7 @@ write_editfile(FILE *f, char **files, int to_stdout)
 			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
 			goto next;
 		}
-		name = _relativeName(s->gfile, 0, 0, 0, 1, bk_proj, 0);
+		name = _relativeName(s->gfile, 0, 0, 0, 0);
 		if (to_stdout) {
 			fprintf(f, "### Comments for %s%c%s\n",
 			    name, BK_FS, d->rev);
