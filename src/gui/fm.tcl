@@ -241,7 +241,13 @@ proc selectFiles {} \
 
 	set lfile [tk_getOpenFile -title "Select Left File"] ; 
 	if {("$lfile" == "")} return;
-	readFiles $lfile $dev_null $outputFile
+ 	set t [clock format [file mtime $lfile] -format "%r %D"]
+	.diffs.l configure -text "$lfile ($t)"
+	.diffs.left configure -state normal
+	set fd [open $lfile r]
+	.diffs.left insert end  [read $fd] 
+	.diffs.left configure -state disabled
+	close $fd
 	set rfile [tk_getOpenFile -title "Select Right File"]; 
 	if {("$rfile" == "")} return;
 	readFiles $lfile $rfile $outputFile
@@ -503,12 +509,14 @@ proc sdiff {L R} \
 
 	set rmList ""
 	set undos [file join $bin undos]
-	set a [open "| grep {\r$} $L" r]
-	set b [open "| grep {\r$} $R" r]
+	# we need the extra quote arounf $R $L
+	# because win32 path may have space in it
+	set a [open "| grep {\r$} \"$L\"" r]
+	set b [open "| grep {\r$} \"$R\"" r]
 	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
 		catch { close $a }
 		catch { close $b }
-		return [open "| $sdiffw $L $R" r]
+		return [open "| $sdiffw \"$L\" \"$R\"" r]
 	}
 	catch { close $a }
 	catch { close $b }
@@ -543,12 +551,8 @@ proc readFiles {L R O} \
 	.diffs.right configure -state normal
  	set t [clock format [file mtime $L] -format "%r %D"]
 	.diffs.l configure -text "$L ($t)"
-	if {($R != "$dev_null")} {
- 		set t [clock format [file mtime $R] -format "%r %D"]
-		.diffs.r configure -text "$R ($t)"
-	} else {
-		.diffs.r configure -text ""
-	}
+ 	set t [clock format [file mtime $R] -format "%r %D"]
+	.diffs.r configure -text "$R ($t)"
 	.merge.l configure -text "$O"
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
