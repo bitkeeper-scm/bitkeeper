@@ -15,13 +15,13 @@ usage: sfiles [-aAcCdDglkpPRrux] [directories]\n\n\
     -A		when used with -p, list all revs, not just the tip\n\
     -c		list changed files (locked and modified)\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
-    -e		list everything in quick scan mode\n
-    -E		list everything in detail scan mode\n
+    -e		list everything in quick scan mode\n\
+    -E		list everything in detail scan mode\n\
     -j		list junk file under the SCCC directory\n\
     -g		list the gfile name, not the sfile name\n\
     -l		list locked files (p.file and/or z.file)\n\
     -m		annotate the output with state markers\n\
-    -n		list unchanged (no-change) files\n
+    -n		list unchanged (no-change) files\n\
     -u		list unlocked files\n\
     -p		list file with pending delta(s)\n\
     -x		list files which have no revision control files\n\
