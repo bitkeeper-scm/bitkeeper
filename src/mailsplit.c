@@ -224,14 +224,15 @@ static int parse_headers(void)
 static int parse_mail(void)
 {
 	int retval, status;
+	pid_t	pid;
 
 	if (!parse_headers())
 		syntax("mail header error");
-	spawnvp_wPipe(argv, &outfd, 0);
+	pid = spawnvp_wPipe(argv, &outfd, 0);
 	retval = skip_space();
 	close(outfd);
 	outfd = 2;
-	if (wait(&status) < 0)
+	if (waitpid(pid, &status, 0) < 0)
 		syntax("unable to wait for child");
 	if (WIFSIGNALED(status))
 		syntax("child killed");

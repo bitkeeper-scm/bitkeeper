@@ -137,13 +137,14 @@ static void cat_diff(void)
 static int parse_file(void)
 {
 	int status;
+	pid_t	pid;
 
 	parse_explanation();
-	spawnvp_wPipe(argv, &outfd, 0);
+	pid = spawnvp_wPipe(argv, &outfd, 0);
 	cat_diff();
 	close(outfd);
 	outfd = 2;
-	if (wait(&status) < 0)
+	if (waitpid(pid, &status, 0) < 0)
 		syntax("unabel to wait for child");
 	if (WIFSIGNALED(status))
 		syntax("child killed");
