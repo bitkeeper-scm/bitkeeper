@@ -253,11 +253,13 @@ test -f moved || {
 }
 echo OK
 
-echo $N bk get, then bk edit -S preserve gfile if no keyword ........$NL
+echo $N bk get, then bk edit preserve gfile if no keyword ...........$NL
+bk edit $Q BitKeeper/etc/config
+echo checkout:GET >> BitKeeper/etc/config 
 bk admin $Q -FSCCS moved
 touch ref
 sleep 1
-bk edit $Q -S moved
+bk edit $Q moved
 find . -newer ref | grep -q "^./moved$"
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
