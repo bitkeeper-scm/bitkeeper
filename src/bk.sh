@@ -637,8 +637,8 @@ _links() {
 	fi
 	for i in admin get delta unget rmdel prs bk
 	do	/bin/rm -f ${DIR}/$i
-		echo "ln -s ${BK_BIN}$i ${DIR}/$i"
-		ln -s ${BK_BIN}$i ${DIR}/$i
+		echo "ln -s ${BK_BIN}bk ${DIR}/$i"
+		ln -s ${BK_BIN}bk ${DIR}/$i
 	done
 }
 
