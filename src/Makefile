@@ -10,11 +10,13 @@ ifeq "$(OSTYPE)" "cygwin"
 	EXE=.exe
 	XTRA=win32
 	STRIP=true
+	BKLINK=bklink.exe
 else
 	SYS=unix
 	EXE=
 	XTRA=gnu
 	STRIP=strip
+	BKLINK=
 endif
 
 # You can set this to anywhere you like and do a "build production" and you'll
@@ -29,6 +31,7 @@ LD	=cc
 G	=-g
 TRIAL	=0
 TCLWRAP	=./tclwrap
+IMGDIR	=$(HERE)/tmp/bitkeeper
 
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 #  Unfortunately it also turns off dangling else warnings.
@@ -129,16 +132,13 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o tomcrypt/hmac.o
 SCRIPTS	= applypatch bk.script import resync \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
-	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap \
-	$(BINLINKS)
-LOCALSCR= testfast build
+	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap
+LOCALSCR= build
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a $(UWTLIB)
-LINKS	= ci co edit unget
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
-BINLINKS= admin$(EXE) get$(EXE) delta$(EXE) unget$(EXE) rmdel$(EXE) prs$(EXE)
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
@@ -259,7 +259,7 @@ clean-gcov: FORCE
 	-@rm -f *.bb *.bbg *.da *.gcov
 
 clean-bin: FORCE
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
 	-@cd gnu && $(MAKE) clean 
@@ -278,7 +278,7 @@ rebuild:
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
 	-@rm -rf tmp
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
@@ -367,18 +367,6 @@ bklink: bklink.c
 
 $(BK): bk.o $(LIBS) $(RESOURCE)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB) $(RESOURCE)
-	if [ $(SYS) = win32 ]; \
-	then	$(MAKE) bklink; \
-		for file in $(BINLINKS); \
-		do	rm -f $$file; \
-			cp bklink.exe $$file; \
-		done; \
-	else \
-		for file in $(BINLINKS); \
-		do	rm -f $$file; \
-			ln bk $$file; \
-		done; \
-	fi
 
 testfast: testfast.perl
 	rm -f testfast
@@ -512,40 +500,24 @@ GUI: FORCE
 gui-nowrap GUI-nowrap:
 	@cd gui && make nowrap
 
-install: install-nolinks binlinks
+install: installdir
+	tmp/bitkeeper/bk install -f $(BINDIR)
+	$(BINDIR)/bk links $(BINDIR) /usr/bin
 
-binlinks:
-	if [ -w /usr/bin ]; \
-	then	for file in $(BINLINKS); \
-		do	rm -f /usr/bin/$$file; \
-			ln -s $(BINDIR)/$$file /usr/bin/$$file; \
-		done; \
-	fi
-
-install-nolinks: $(BINLINKS)
-	@-if [ $(BINDIR) = "/usr/libexec/bitkeeper" ]; then \
-		find $(BINDIR) -type d | xargs chmod +w; \
-		/bin/rm -rf $(BINDIR)/* 2>/dev/null; \
-		test -d $(BINDIR) && \
-		    mv $(BINDIR) /usr/libexec/BKJUNK$$$$; \
-	fi
-	@test -d $(BINDIR) || mkdir -p $(BINDIR)
-	tar cf - $(BINS) $(SCRIPTS) | (cd $(BINDIR) && tar xf -)
-	cp $(DATA) $(BINDIR)
-	test -x gui/bin/bkgui || exit 1
-	@rm -rf $(BINDIR)/gui
-	mkdir $(BINDIR)/gui
-	@cp -rp gui/bin gui/lib $(BINDIR)/gui
-	@-rm -rf $(BINDIR)/t
+installdir: $(BKLINK)
+	rm -rf $(IMGDIR)
+	mkdir -p $(IMGDIR)
+	tar cf - $(BINS) $(BKLINK) $(SCRIPTS) gui/bin gui/lib | \
+		(cd $(IMGDIR) && tar xf -)
+	cp $(DATA) $(IMGDIR)
 	@if [ $(SYS) = unix ]; \
-	then (cd gnu && $(MAKE) install BINDIR=$(BINDIR)) ;\
+	then (cd gnu && $(MAKE) install BINDIR=$(IMGDIR)) ;\
 	     bk get -S ../man/Makefile; \
-	     cd ../man && $(MAKE) install BINDIR=$(BINDIR) ;\
+	     cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
 	fi
 	@if [ $(SYS) = win32 ]; \
-	then cd win32 && $(MAKE) BINDIR=$(BINDIR) install; \
+	then cd win32 && $(MAKE) BINDIR=$(IMGDIR) install; \
 	fi
-	-@find $(BINDIR) -type d -print | xargs chmod ug+w
 	@true
 
 trial_image trial-image:
@@ -555,12 +527,9 @@ image:
 	test -x $(BK) || $(MAKE) p || exit 1
 	$(MAKE) -e _image
 
-_image:
-	rm -rf tmp/bitkeeper; \
-	DIR=`pwd`/tmp/bitkeeper; set -e; \
-	BINDIR=$$DIR ${MAKE} -e install-nolinks; \
-	for i in $(BINS); do $(STRIP) $$DIR/$$i; done; \
-	cd utils && BINDIR=$$DIR ${MAKE} -e image; 
+_image: installdir
+	for i in $(BINS); do $(STRIP) $(IMGDIR)/$$i; done; \
+	cd utils && BINDIR=$(IMGDIR) ${MAKE} -e image; 
 
 crankturn: crank.sh remote.sh
 	REPO=$(REPO) URL=$(URL) REMOTE=remote.sh LOG=$(LOG) bash crank.sh

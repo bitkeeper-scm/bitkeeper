@@ -1134,6 +1134,82 @@ __keysort()
     bk _sort "$@"
 }
 
+# usage: install dir
+# installs bitkeeper in directory <dir> such that the new
+# bk will be located at <dir>/bk
+# Any existing 'bk' directory will be deleted.
+_install()
+{
+	FORCE=0
+	while getopts f opt
+	do
+		case "$opt" in
+		f) FORCE=1;;	# force
+		*) echo "usage: bk install [-f] <destdir>"
+	 	   exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	test X"$1" = X -o X"$2" != X && {
+		echo "usage: bk install [-f] <destdir>"
+		exit 1
+	}
+	DEST="$1"
+	SRC=`bk bin`
+
+	test -d "$DEST" && {
+		test `cd "$DEST"; bk pwd` = "$SRC" && {
+			echo "bk install: destination == souce"
+			exit 1
+		}
+		test $FORCE -eq 0 && {
+			echo "bk install: destination exists, failed (add -f to force)"
+			exit 1
+		}
+		# uninstall can be missing
+		"$DEST"/bk which -i uninstall >/dev/null 2>&1 && {
+			"$DEST"/bk uninstall 2> /dev/null
+			rm -rf "$DEST" || {
+				echo "bk install: failed to remove $DEST"
+				exit 1
+			}
+		}
+	}
+	mkdir -p "$DEST" || {
+		echo "bk install: Unable to write to $DEST, failed"
+		exit 1
+	}
+	# copy data
+	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar -xf -)
+	
+	# binlinks
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then	TARG=bklink.exe
+	else	TARG=bk
+	fi
+	# This does the right thing on Windows (msys)
+	for prog in admin get delta unget rmdel prs; do
+		ln "$DEST"/$TARG "$DEST"/$prog
+	done
+	# permissions
+	bk _find "$DEST" -type f | while read f; do
+		chown root $f 2> /dev/null
+		chgrp root $f 2> /dev/null
+		chmod -w $f
+	done
+	bk _find "$DEST" -type d | while read f; do
+		chown root $f 2> /dev/null
+		chgrp root $f 2> /dev/null
+		chmod -w $f
+	done
+}
+
+_uninstall()
+{
+	chmod -R +w `bk bin`
+	exit 0
+}
+
 # ------------- main ----------------------
 __platformInit
 __init
