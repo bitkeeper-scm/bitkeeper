@@ -34,7 +34,7 @@ usage:		fprintf(stderr,
 int
 gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 {
-	char	buf[MAXLINE], pattern[MAXLINE];
+	char	buf[MAXLINE];
 	FILE	*f;
 	int	found = 0;
 	char	*t;
@@ -66,7 +66,6 @@ gethelp(char *helptxt, char *topic, char *bkarg, char *prefix, FILE *outf)
 	if (bkarg == NULL) bkarg = "";
 	if (synopsis) {			/* print synopsis only */
 		int	first = 1;
-		int	dousage = 1;
 
 		while (fgets(buf, sizeof(buf), f)) {
 			if (strneq("SYNOPSIS", buf, 8)) break;
@@ -191,7 +190,7 @@ helpsearch_main(int ac, char **av)
 	char	p[500], buf[MAXPATH], name[200];
 	int	substrings = 0, Long = 0, Debug = 0;
 	int	c, len;
-	char	*t, *str, *word;
+	char	*str, *word;
 	FILE	*f;
 	char	*file = 0;
 	MDBM	*printed = mdbm_mem();

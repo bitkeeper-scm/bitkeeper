@@ -10,6 +10,9 @@ WHATSTR("@(#)%K%");
 
 private int repository_stale(char *path, int discard, int verbose);
 
+extern	int	lockLeak(char *path, char *lock);
+
+
 int
 repository_locked(project *p)
 {
@@ -125,7 +128,6 @@ repository_cleanLocks(project *p, int r, int w, int all, int verbose)
 	int	left = 0;
 	DIR	*D;
 	struct	dirent *d;
-	struct	stat sbuf;
 
 	unless (r || w) return (0);
 

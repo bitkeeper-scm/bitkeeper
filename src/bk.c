@@ -862,7 +862,7 @@ cmdlog_dump(int ac, char **av)
 {
 	FILE	*f;
 	time_t	t, cutoff = 0;
-	char	*p, *s;
+	char	*p;
 	char	*version;
 	char	*user;
 	char	buf[MAXPATH*3];

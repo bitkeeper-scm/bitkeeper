@@ -12,12 +12,12 @@ int
 unbk_main(int ac, char **av)
 {
 	sccs	*s;
-	int	c, errors = 0;
+	int	errors = 0;
 	char	*name;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		system("bk help unbk");
+		system("bk help unbk");
 		return (1);
 	}
 

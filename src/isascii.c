@@ -38,8 +38,8 @@ printable(char c)
 void
 printFilteredText(MMAP *m)
 {
-	u8	*p, *q, *end;
-	int	cnt = 0, i = 0, j = 0;
+	u8	*p, *end;
+	int	cnt = 0;
 #define	MIN_LEN	8
 
 	for (p = (u8*)m->where, end = (u8*)m->end; p < end; ) {

@@ -4,6 +4,8 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
+private	int	cset_boundries(sccs *s, char *rev);
+
 /*
  * diffs - show differences of SCCS revisions.
  *
@@ -21,6 +23,29 @@ WHATSTR("@(#)%K%");
  *	diffs
  *	diffs -dalpha1
  * to behave differently.
+ *
+ * Rules for -r option:
+ *
+ *  diffs file
+ *	no gfile or readonly gfile
+ *		skip
+ *	edited gfile
+ *		diff TOT gfile
+ *  diffs -r<rev> file   or  echo 'file|<rev>' | bk diffs -
+ *	no gfile or readonly gfile
+ *		diff <rev> TOT    (don't diff with gfile)
+ *	edited gfile
+ *		diff <rev> gfile
+ *  diffs -r+ file
+ *	no gfile
+ *		skip
+ *	readonly gfile
+ *		diff TOT gfile (and do keywork expansion on TOT)
+ *	edited gfile
+ *		diff TOT gfile
+ *  diffs -r<rev1> -r<rev2> file or echo 'file|<rev1>' | bk diffs -r<rev2> -
+ *	state of gfile doesn't matter
+ *		diff <rev1> <rev2>
  */
 
 int
@@ -233,6 +258,7 @@ next:		if (s) sccs_free(s);
 	return (errors);
 }
 
+private int
 cset_boundries(sccs *s, char *rev)
 {
 	delta	*d = sccs_getrev(s, rev, 0, 0);

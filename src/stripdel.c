@@ -190,7 +190,7 @@ marktags(sccs *s, delta *d)
 /*
  * Find ourselves a new leaf.
  */
-private int
+private void
 newleaf(sccs *s)
 {
 	delta	*d;

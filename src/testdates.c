@@ -1,5 +1,7 @@
 #include <time.h>
 #include <stdio.h>
+#include "system.h"
+#include "sccs.h"
 
 #define	DAY	(60*60*24)
 #define	WEEK	(DAY*7)

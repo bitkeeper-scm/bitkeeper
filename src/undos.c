@@ -9,8 +9,6 @@ int	auto_new_line = 1;
 int
 undos_main(int ac, char **av)
 {
-	FILE	*f;
-	char	buf[1024];
 	int 	c;
 
 	if (ac == 2 && !strcmp("--help", av[1])) {

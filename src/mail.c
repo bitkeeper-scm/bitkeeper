@@ -10,9 +10,8 @@ lconfig_main(int ac, char **av)
 	char	url[] = BK_CONFIG_URL;
 	char	url_backup[] = BK_CONFIG_BCKUP;
 	char	*to = "config@openlogging.org";
-	char	*p;
 	FILE	*f;
-	int	pflag = 0, debug = 0, c, n, rc;
+	int	pflag = 0, debug = 0, c, rc;
 	remote	*r;
 	MMAP	*m;
 
@@ -60,7 +59,7 @@ lconfig_main(int ac, char **av)
 	}
 
 	sprintf(from, "%s@%s", sccs_getuser(), sccs_gethost());
-	sprintf(subject, "BitKeeper config: %u",
+	sprintf(subject, "BitKeeper config: %lu",
 			    adler32(0, package_name(), strlen(package_name())));
 
 	gettemp(config_log, "config");

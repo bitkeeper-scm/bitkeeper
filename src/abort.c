@@ -27,7 +27,7 @@ abort_main(int ac, char **av)
 		    case 'f': force = 1; break; 	/* doc 2.0 */
 		    case 'p': leavepatch = 1; break; 	/* undoc? 2.0 */
 		    default:
-usage:			system("bk help -s abort");
+			system("bk help -s abort");
 			return (1);
 		}
 	}

@@ -23,7 +23,6 @@ usage:		system("bk help level");
 int
 setlevel(int level)
 {
-	char	buf[200];
 	char	*root, *lfile;
 	FILE	*f;
 
@@ -46,7 +45,8 @@ setlevel(int level)
 	return (0);
 }
 
-getlevel()
+int
+getlevel(void)
 {
 	char	*root, *lfile;
 

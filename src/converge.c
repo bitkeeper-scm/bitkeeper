@@ -32,15 +32,6 @@ hasCsetDerivedKey(sccs *s)
         return (streq(buf1, buf2));
 }  
 
-private int
-_sys(char *cmd)
-{
-	int	ret;
-
-	ret = system(cmd);
-	return (ret);
-}
-
 /*
  * Usage: converge [-R]
  */
@@ -48,7 +39,6 @@ int
 converge_main(int ac, char **av)
 {
 	int	ret = 0, c, resync = 0;
-	char	buf[MAXPATH];
 	char	*files[] = {
 			"BitKeeper/etc/gone",
 			"BitKeeper/etc/ignore",
@@ -135,10 +125,8 @@ resync_list(char *gfile)
 	MDBM	*pvals, *vals;
 	kvpair	kv;
 	char	cmd[MAXPATH*2];
-	char	*base, *r, *t;
-	int	i;
+	char	*t;
 	sccs	*s;
-	delta	*d;
 
 	chdir(RESYNC2ROOT);
 	pvals = list(gfile);
@@ -178,7 +166,7 @@ resync_list(char *gfile)
 private int
 converge(char *gfile, int resync)
 {
-	char	buf[MAXPATH], key[MAXKEY];
+	char	key[MAXKEY];
 	char	*sfile;
 	char	*get[10] = { "bk", "get", "-kpq", 0, 0 };
 	sccs	*s, *winner = 0;

@@ -2531,7 +2531,6 @@ csets_in(opts *opts)
 	sccs	*s;
 	delta	*d;
 	FILE	*in, *out;
-	int	c;
 	char	s_cset[] = CHANGESET;
 	char	buf[MAXPATH];
 

@@ -3,6 +3,8 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+private	int	sccs_gone(int quiet, FILE *f);
+
 /*
  * Emulate rm(1)
  *
@@ -44,9 +46,8 @@ char *
 sccs_rmName(sccs *s, int useCommonDir)
 {
 	char	path[MAXPATH];
-	char	*p, *r, *t, *b;
+	char	*r, *t, *b;
 	int	try = 0;
-	int	error = 0;
 	delta	*d;
 
 	b = basenm(s->sfile);
@@ -85,6 +86,7 @@ sccs_rmName(sccs *s, int useCommonDir)
 	return(strdup(path));
 }
 
+int
 sccs_rm(char *name, char *del_name, int useCommonDir)
 {
 	char	*rmName;
@@ -148,7 +150,7 @@ usage:			      system("bk help -s gone");
 	exit(0);
 }
 
-int
+private int
 sccs_gone(int quiet, FILE *f)
 {
 	sccs	*s;

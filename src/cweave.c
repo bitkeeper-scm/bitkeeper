@@ -137,10 +137,11 @@ earlier(sccs *s, delta *a, delta *b)
  *
  * XXX Do we need any special processing for meta delta?
  */
+void
 cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 {
 	int	i, error, added = 0;
-	delta	*d, *e, *p, *m;
+	delta	*d, *e, *p;
 	ser_t	serial; /* serial number for 'd' */ 
 	char	*t, *r;
 	char	**syms = 0;

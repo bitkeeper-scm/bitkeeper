@@ -6,6 +6,7 @@
 
 private char *usage = "pwd [-scr] [path]\n";
 
+int
 pwd_main(int ac, char **av)
 {
 	char	buf[MAXPATH], *p;

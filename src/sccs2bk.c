@@ -1,6 +1,7 @@
 /* Copyright (c) 2001 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "zlib/zlib.h"
 WHATSTR("@(#)%K%");
 
 private	project	*proj = 0;
@@ -368,7 +369,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 		EACH(d->comments) {
 			fprintf(fh, "c %s\n", d->comments[i]);
 		}
-		if (d->dateFudge) fprintf(fh, "F %u\n", d->dateFudge);
+		if (d->dateFudge) fprintf(fh, "F %lu\n", d->dateFudge);
 	}
 	fprintf(fh, "------------------------------------------------\n");
 	fclose(fh);

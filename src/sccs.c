@@ -31,6 +31,7 @@ create_main(int ac, char **av)
 	exit(0);
 }
 
+int
 deledit_main(int ac, char **av)
 {
 	int	i;
@@ -44,6 +45,7 @@ deledit_main(int ac, char **av)
 	return (delta_main(ac + 2, nav));
 }
 
+int
 delget_main(int ac, char **av)
 {
 	int	i;
@@ -57,6 +59,7 @@ delget_main(int ac, char **av)
 	return (delta_main(ac + 2, nav));
 }
 
+int
 val_main(int ac, char **av)
 {
 	int	i;

@@ -224,8 +224,6 @@ private char **
 _get_http_proxy(char **proxies)
 {
 	char	*p, *q, buf[MAXLINE];
-	char	proxy_host[MAXPATH];
-	int	proxy_port = -1;
 
 	p = getenv("http_proxy");  /* http://proxy.host:8080 */
 	if (p && *p && strneq("http://", p, 7) && (q = strchr(&p[7], ':'))) {

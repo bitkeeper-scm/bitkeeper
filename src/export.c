@@ -20,7 +20,7 @@ export_main(int ac,  char **av)
 	char	src_path[MAXPATH], dst_path[MAXPATH];
 	sccs	*s;
 	delta	*d;
-	FILE	*f, *f1;
+	FILE	*f;
 	char	*type = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {

@@ -12,7 +12,7 @@ _get_main(int ac, char **av, char *out)
 	sccs	*s;
 	int	iflags = INIT_SAVEPROJ, flags = GET_EXPAND, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
-	char	*t, *prog;
+	char	*prog;
 	char	*mRev = 0;
 	delta	*d;
 	int	gdir = 0;

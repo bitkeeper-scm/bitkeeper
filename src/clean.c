@@ -32,7 +32,7 @@ clean_main(int ac, char **av)
 		    case 'v': flags &= ~SILENT; break;		/* doc 2.0 */
 			break;
 		    default:
-usage:			system("bk help -s clean");
+			system("bk help -s clean");
 			return (1);
 		}
 	}

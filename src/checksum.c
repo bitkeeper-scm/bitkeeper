@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "zlib/zlib.h"
 WHATSTR("@(#)%K%");
 
 private int	do_chksum(int fd, int off, int *sump);
@@ -188,7 +189,7 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 private int
 chksum_sccs(char **files, char *offset)
 {
-	int	sum, fd, i;
+	int	sum, i;
 	int	off = 0;
 	char	buf[MAXPATH];
 

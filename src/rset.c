@@ -99,6 +99,7 @@ find_key(MDBM *db, char *rootkey, MDBM **s2l)
 /*
  * return true if file is deleted
  */
+int
 isNullFile(char *rev, char *file)
 {
 	if ((strlen(basenm(file)) >= 6) && strneq(basenm(file), ".del-", 5)) {
@@ -349,15 +350,12 @@ parse_rev(sccs *s, char *args,
 int
 rset_main(int ac, char **av)
 {
-	int	c, show_all = 0;
+	int	c;
 	char	*rev1 = 0, *rev2 = 0, *revM = 0;
-	char	tmpf1[MAXPATH], tmpf2[MAXPATH];
-	char	*root_key, *start_key, *end_key, s_cset[] = CHANGESET;
+	char	s_cset[] = CHANGESET;
 	char	rbuf[20];
 	sccs	*s = 0;
-	MDBM	*db1, *db2, *idDB, *goneDB = 0, *short2long = 0;
-	kvpair	kv;
-	datum	k;
+	MDBM	*db1, *db2, *idDB;
 	options	opts = { 0, 0, 0, 0};
 
 	if (ac == 2 && streq("--help", av[1])) {

@@ -9,7 +9,7 @@ private void
 mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 					int fix_mod_time, MDBM *db)
 {
-	char *p, tmp_path[MAXPATH];
+	char	tmp_path[MAXPATH];
 	delta *d;
 	int flags = SILENT;
 
@@ -146,7 +146,6 @@ print_entry(char *path1, char *rev1, char *path2, char *rev2)
 private void
 print_cset_log(char *cset1, char *cset2)
 {
-	char buf[MAXLINE];
 	char revs[50], xrev[50];
 	char *dspec =
 "-d# :D:\t:P:@:HT:\t:I:\n$each(:C:){# (:C:)\n}# --------------------------------------------\n";
@@ -168,6 +167,7 @@ done:	printf("#\n");
 	fflush(stdout);
 }
 
+int
 gnupatch_main(int ac, char **av)
 {
 	char buf[MAXPATH * 3];

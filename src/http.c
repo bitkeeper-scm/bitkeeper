@@ -3,6 +3,7 @@
  */    
 #include "system.h"
 #include "sccs.h"
+#include "bkd.h"
 
 #define	SEND_SUCCESS	0
 #define	SEND_FAILURE	1

@@ -166,8 +166,7 @@ unpark_main(int ac, char **av)
 {
 	struct	dirent *e;
 	DIR	*dh;
-	int	c, rc, i, n = 0, top = 0, purge = 0;
-	char	parkfile[MAXPATH], parkCommentFile[MAXPATH];
+	int	i, top = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		fprintf(stderr,

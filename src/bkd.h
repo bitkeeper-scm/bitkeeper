@@ -165,7 +165,7 @@ int	flushSocket(int fd);
 void	try_clone1_2(int quiet, int gzip,
 				char *rev, remote *r, char *local, char *msg);
 int	remote_lock_fail(char *buf, int verbose);
-unsigned long ns_sock_host2ip(char, int);
 void	drainErrorMsg(remote *r, char *buf, int bsize);
 int	listType(char *type);
+void	send_flush_block(remote *r);
 #endif

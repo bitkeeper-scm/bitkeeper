@@ -5,6 +5,7 @@
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
+int
 hasGUIsupport()
 {
 #ifdef WIN32

@@ -156,7 +156,7 @@ gzip_main(int ac, char **av)
 		    case 'u':	gzip_level = -1; break;
 		    case 'z':	gzip_level = atoi(optarg); break;
 		    default:  
-usage:			    	fprintf(stderr,
+			    	fprintf(stderr,
 					"usage bk _gzip [-z[n] | -u]\n");
 			   	return (1);
 		}

@@ -8,6 +8,12 @@
 #include "system.h"
 #include "sccs.h"
 
+private	int	chk_host(void);
+private	int	chk_user(void);
+private	int	chk_permissions(void);
+private	int	chk_idcache(void);
+
+int
 sane_main(int ac, char **av)
 {
 	int	c, readonly = 0, errors = 0;
@@ -43,8 +49,8 @@ sane_main(int ac, char **av)
 }
 
 /* insist on a valid host */
-int
-chk_host()
+private int
+chk_host(void)
 {
 	char	*host = sccs_gethost();
 	char	*p;
@@ -74,8 +80,8 @@ chk_host()
 	return (1);
 }
 
-int
-chk_user()
+private int
+chk_user(void)
 {
 	char	*user = sccs_getuser();
 
@@ -149,8 +155,8 @@ again:	unless (exists(path)) {
 	return (0);
 }
 
-int
-chk_permissions()
+private int
+chk_permissions(void)
 {
 	return (write_chkdir("BitKeeper", 1) |
 	    write_chkdir("BitKeeper/etc", 1) |
@@ -163,11 +169,9 @@ chk_permissions()
 	    write_chkdir("SCCS", 1));
 }
 
-int
-chk_idcache()
+private int
+chk_idcache(void)
 {
-	int	i;
-
 	if (exists(IDCACHE_LOCK)) {
 		fprintf(stderr, "ID cache is locked\n");
 		return (1);

@@ -169,3 +169,7 @@ int	slotTaken(opts *opts, char *slot);
 void	do_delta(opts *opts, sccs *s, char *comment);
 int	oldsys(char *cmd, opts *o);
 void	export_revs(resolve *rs);
+int	resolve_tags(opts *opts);
+void	resolve_dump(resolve *rs);
+int	do_diff(resolve *rs, char *left, char *right, int wait);
+int	resolve_binary(resolve *rs);

@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "logging.h"
+#include "zlib/zlib.h"
 #include <time.h>
 
 /*
@@ -708,7 +709,7 @@ printConfig(FILE *f, char *root, char *header)
 		    streq("bkweb", kv.key.dptr) ||
 		    streq("master", kv.key.dptr) ||
 		    streq("homepage", kv.key.dptr)) {
-			fprintf(f, "%-10s: %u\n", kv.key.dptr,
+			fprintf(f, "%-10s: %lu\n", kv.key.dptr,
 					adler32(0, kv.val.dptr, kv.val.dsize));
 		} else {
 			fprintf(f, "%-10s: %s\n", kv.key.dptr, kv.val.dptr);
@@ -805,14 +806,14 @@ config(FILE *f)
 	fprintf(f, "User:\t%s\n", sccs_getuser());
 	fprintf(f, "Host:\t%s\n", sccs_gethost());
 	p = sccs_root(0);
-	fprintf(f, "Root:\t%u\n", adler32(0, p, strlen(p)));
+	fprintf(f, "Root:\t%lu\n", adler32(0, p, strlen(p)));
 	free(p);
 	sprintf(buf, "%slog/parent", BitKeeper);
 	if (exists(buf)) {
 		f1 = fopen(buf, "rt");
 		if (fgets(buf, sizeof(buf), f1)) {
 			chop(buf);
-			fprintf(f, "Parent:\t%u\n",
+			fprintf(f, "Parent:\t%lu\n",
 						adler32(0, buf, strlen(buf)));
 		}
 		fclose(f1);

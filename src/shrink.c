@@ -3,16 +3,16 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-int shrink_main(int ac, char **av);
-int token(MDBM *m, char *t);
-int print(MDBM *m, char *t);
-int _print(MDBM *m, char *t);
-int add(MDBM *m, char *t);
-int addn(MDBM *m, char *t, int i);
-int sort(MDBM *m);
-int convert_init(void);
-int tou(unsigned char *s);
-unsigned char *toc(unsigned int val);
+
+private	void	token(MDBM *m, char *t);
+private	void	print(MDBM *m, char *t);
+private	void	_print(MDBM *m, char *t);
+private	void	add(MDBM *m, char *t);
+private	void	addn(MDBM *m, char *t, int i);
+private	void	sort(MDBM *m);
+private	void	convert_init(void);
+private	int	tou(unsigned char *s);
+private	u8	*toc(u32 val);
 
 /*
  * TODO - keep track of any root keys which occur more than once.
@@ -21,11 +21,11 @@ unsigned char *toc(unsigned int val);
  * I can use the high bit to indicate that this is the last char in a
  * token and then not put the | or space there.
  */
+int
 shrink_main(int ac, char **av)
 {
 	char	buf[MAXKEY*2];
 	char	*s, *t;
-	char	save;
 	FILE	*f;
 	int	start, end;
 	MDBM	*m = mdbm_mem();
@@ -96,20 +96,19 @@ shrink_main(int ac, char **av)
 	exit(0);
 }
 
+private void
 token(MDBM *m, char *t)
 {
-	char	*s;
-
 	add(m, t);
 }
 
+private void
 print(MDBM *m, char *t)
 {
-	char	*s;
-
 	_print(m, t);
 }
 
+private void
 _print(MDBM *m, char *t)
 {
 	datum	k, v;
@@ -127,6 +126,7 @@ _print(MDBM *m, char *t)
 	printf("%s", toc(n));
 }
 
+private void
 add(MDBM *m, char *t)
 {
 	datum	k, v;
@@ -147,6 +147,7 @@ add(MDBM *m, char *t)
 	mdbm_store(m, k, v, MDBM_REPLACE);
 }
 
+private void
 addn(MDBM *m, char *t, int i)
 {
 	datum	k, v;
@@ -158,6 +159,7 @@ addn(MDBM *m, char *t, int i)
 	mdbm_store(m, k, v, MDBM_REPLACE);
 }
 
+private void
 sort(MDBM *m)
 {
 	kvpair	kv;
@@ -195,6 +197,8 @@ sort(MDBM *m)
 #define	BASE	124
 
 u8	a2i[256], i2a[256];
+
+private void
 convert_init()
 {
 	a2i[2] = 0; i2a[0] = 2;
@@ -323,6 +327,7 @@ convert_init()
 	a2i[127] = 123; i2a[123] = 127;
 }
 
+private int
 tou(u8 *s)
 {
 	u32	val = 0;
@@ -332,7 +337,7 @@ tou(u8 *s)
 	return (val);
 }
 
-u8*
+private u8*
 toc(u32 val)
 {
 	u8	reverse[6];

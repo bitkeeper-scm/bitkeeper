@@ -18,7 +18,7 @@ setup_main(int ac, char **av)
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
 	char 	config[] = "BitKeeper/etc/config";
 	sccs	*s;
-	MDBM	*m, *cat, *flist = 0;
+	MDBM	*m, *flist = 0;
 	FILE	*f, *f1;
 
 	if (ac == 2 && streq("--help", av[1])) {

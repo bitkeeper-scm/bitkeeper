@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "zlib/zlib.h"
 #define	NTAGS	50
 WHATSTR("@(#)%K%");
 

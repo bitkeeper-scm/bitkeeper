@@ -41,7 +41,7 @@ rclone_common(int ac, char **av, opts *opts)
 			out(", got ");
 			out(p ? p : "");
 			out("\n");
-err:			drain();
+			drain();
 			return (NULL);
 		}
 	}
@@ -77,7 +77,6 @@ int
 cmd_rclone_part1(int ac, char **av)
 {
 	opts	opts;
-	char	pbuf[MAXPATH];
 	char	*path, *p;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
@@ -203,7 +202,7 @@ done:
 private int
 getsfio(int verbose, int gzip)
 {
-	int	n, status, pfd;
+	int	status, pfd;
 	u32	in, out;
 	char	*cmds[10] = {"bk", "sfio", "-i", "-q", 0};
 	pid_t	pid;

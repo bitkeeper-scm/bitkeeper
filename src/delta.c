@@ -48,7 +48,6 @@ delta_main(int ac, char **av)
 	int	isci = 0;
 	int	checkout = 0, ignorePreference = 0;
 	int	c, rc, enc;
-	int	save_gfile_if_no_key_word = 0;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*name;

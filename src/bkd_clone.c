@@ -13,7 +13,6 @@ cmd_clone(int ac, char **av)
 	int	c, rc;
 	int	gzip = 0, delay = -1;
 	char 	*p, *rev = 0, *ebuf = 0;
-	extern	int want_eof;
 
 	/*
 	 * If BK_REMOTE_PROTOCOL is not defined,

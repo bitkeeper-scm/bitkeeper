@@ -50,7 +50,7 @@ annotate_main(int ac, char **av)
 		    case 'u': flags |= GET_USER; break;		/* doc 2.0 */
 
 		    default:
-usage:			system("bk help -s annotate");
+			system("bk help -s annotate");
 			return (1);
 		}
 	}

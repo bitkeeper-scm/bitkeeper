@@ -559,7 +559,6 @@ find_root(char *dir, char *root)
 private void
 walk(char *dir, int level)
 {
-	struct dirent   *e;
 	char	**dh, **sdh;
 	int	i;
 	char	buf[MAXPATH], *p;
@@ -871,7 +870,6 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 	MDBM	*sDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	fifo	dlist = {0, 0};
 	fifo	slist = {0, 0};
-	struct dirent   *e;
 	char	**dh;
 	int 	dir_len = strlen(dir);
 	char	*p, *gfile;

@@ -3,6 +3,7 @@
  */
 #include "resolve.h"
 
+int
 b_help(resolve *rs)
 {
 	int	i;

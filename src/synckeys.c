@@ -9,6 +9,7 @@
  * XXX - all the lods will overlap near the top, if we have a lot of
  * lods, this may become an issue.
  */
+private void
 lod_probekey(sccs *s, delta *d, FILE *f)
 {
 	int	i, j;
@@ -35,6 +36,7 @@ lod_probekey(sccs *s, delta *d, FILE *f)
 	fprintf(f, "%s\n", key);
 }
 
+private void
 tag_probekey(sccs *s, FILE *f)
 {
 	delta	*d;
@@ -340,7 +342,7 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 	unless (streq(key, "@LOD MATCH@")) {
 		unless (quiet) {
 			fprintf(stderr,
-			    "prunekey: protocol error: %s key\n");
+			    "prunekey: protocol error: %s key\n", key);
 		}
 		return (-1);
 	}
@@ -448,7 +450,6 @@ empty:	for (d = s->table; d; d = d->next) {
 	}
 	if (flags & PK_LREV) { /* list the tags */
 		for (d = s->table; d; d = d->next) {
-			symbol	*sym;
 			char	*tag;
 			
 			if (d->flags & D_RED) continue;
@@ -470,12 +471,13 @@ empty:	for (d = s->table; d; d = d->next) {
 	putenv(p);
 	rc = local; 
 
-done:	return (rc);
+	return (rc);
 }
 
 /*
  * For debugging, set things up to get the key list.
  */
+int
 prunekey_main(int ac, char **av)
 {
 	remote	r;
@@ -536,9 +538,8 @@ private int
 synckeys(remote *r, int flags)
 {
 	char	buf[MAXPATH], s_cset[] = CHANGESET;
-	int	rc, n;
+	int	rc;
 	sccs	*s;
-	delta	*d;
 
 	if (bkd_connect(r, 0, 1)) return (-1);
 	send_sync_msg(r);

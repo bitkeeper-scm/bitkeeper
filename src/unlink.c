@@ -50,7 +50,6 @@ int
 exists_main(int ac, char **av)
 {
 	char	c;
-	int	errors = 0;
 	char	buf[MAXPATH];
 
 	while (fgets(buf, sizeof(buf), stdin)) {

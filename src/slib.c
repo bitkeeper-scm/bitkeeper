@@ -10,6 +10,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "zgets.h"
+#include "bkd.h"
 WHATSTR("@(#)%K%");
 
 private delta	*rfind(sccs *s, char *rev);
@@ -27,7 +28,6 @@ private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
 private int	getflags(sccs *s, char *buf);
 private void	inherit(sccs *s, int flags, delta *d);
-private void	linktree(sccs *s, delta *l, delta *r);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
 private sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
 private int	fflushdata(sccs *s, FILE *out);
@@ -65,8 +65,6 @@ private int	fprintDelta(FILE *,
 private	void	fitCounters(char *buf, int a, int d, int s);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
-private u32	dt2dflags(u32 dt);
-private u32	dflags2dt(u32 dflags);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
 private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
@@ -258,8 +256,6 @@ chomp(char *s)
 void
 chopslash(register char *s)
 {
-	char	c;
-
 	while (*s++);
 	if (s[-2] == '/') s[-2] = 0;
 }
@@ -1275,7 +1271,7 @@ sccsrev(delta *d)
 private int
 ancestor(sccs *s, delta *d, delta *p)
 {
-	delta	*e, *m;
+	delta	*e;
 
 	unless (d) return (0);
 	unless (d->serial >= p->serial) return (0);
@@ -1359,7 +1355,7 @@ cleanPath(char *path, char cleanPath[])
 	p = &path[strlen(path) - 1];
 
 	/* for win32 path */
-	top = (path[1] == ':')  ? top = &path[2] : path;
+	top = (path[1] == ':') ? &path[2] : path;
 
 	/* trim trailing slash(s) */
 	while ((p >= top) && (*p == '/')) p--;
@@ -1585,7 +1581,6 @@ _relativeName(char *gName, int isDir, int withsccs,
 	int	i, j;
 	char	tmp[MAXPATH], buf[MAXPATH];
 	static  char buf2[MAXPATH];
-	extern 	char pwd[]; /* set in fullname() */
 
 	strcpy(tmp, fullname(gName, 0));
 	if (!IsFullPath(tmp)) return (0);
@@ -3695,7 +3690,6 @@ getflags(sccs *s, char *buf)
 	char	f = buf[3];
 	char	*t;
 	delta	*d = 0;
-	char	rev[MAXREV];
 
 	if (buf[0] != '\001' || buf[1] != 'f' || buf[2] != ' ') return (0);
 	t = gettok(&p);
@@ -4085,7 +4079,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	struct	stat sbuf;
 	char	*t;
 	static	int _YEAR4;
-	delta	*d;
 	int	rc;
 
 	if (strchr(name, '\n') || strchr(name, '\r')) {
@@ -4228,8 +4221,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	mkgraph(s, flags);
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (HASGRAPH(s)) {
-		u32 bits;
-
 		if (misc(s)) {
 			sccs_free(s);
 			return (0);
@@ -4755,9 +4746,9 @@ date(delta *d, time_t tt)
 
 	getDate(d);
 	if (d->date != tt) {
-		fprintf(stderr, "Date=[%s%s] d->date=%u tt=%u\n",
+		fprintf(stderr, "Date=[%s%s] d->date=%lu tt=%lu\n",
 		    d->sdate, d->zone, d->date, tt);
-		fprintf(stderr, "Fudge = %d\n", d->dateFudge);
+		fprintf(stderr, "Fudge = %d\n", (int)d->dateFudge);
 		fprintf(stderr, "Internal error on dates, aborting.\n");
 		assert(d->date == tt);
 	}
@@ -4774,7 +4765,7 @@ testdate(time_t t)
 
 	if (date2time(date, zone, EXACT) != t) {
 		fprintf(stderr, "Internal error on dates, aborting.\n");
-		fprintf(stderr, "time_t=%u vs %u date=%s zone=%s\n",
+		fprintf(stderr, "time_t=%lu vs %lu date=%s zone=%s\n",
 		    date2time(date, zone, EXACT), t, date, zone);
 		exit(1);
 	}
@@ -6093,11 +6084,6 @@ getKey(MDBM *DB, char *buf, int flags, char *root)
 	    default:
 		return (1);
 	}
-}
-
-getKvBody(sccs *s, char *printOut, int flags, delta *d,
-		int *ln, char *iLst, char *xLst)
-{
 }
 
 private int
@@ -7979,7 +7965,6 @@ private int
 deflate_gfile(sccs *s, char *tmpfile)
 {
 	FILE	*in, *out;
-	char	cmd[MAXPATH];
 	int	n;
 
 	unless (out = fopen(tmpfile, "w")) return (-1);
@@ -8562,7 +8547,6 @@ private int
 openInput(sccs *s, int flags, FILE **inp)
 {
 	char	*file = (flags&DELTA_EMPTY) ? DEV_NULL : s->gfile;
-	char	buf[MAXPATH];
 	char	*mode = "rb";	/* default mode is binary mode */
 	int 	compress;
 
@@ -9029,7 +9013,6 @@ out:		sccs_unlock(s, 'z');
 		first->xflags |= (s->xflags & X_SINGLE);
 	}
 
-no_config:
 	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto out;
@@ -10013,7 +9996,6 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 {
 	delta	*n;
 	char	*rev;
-	int 	f = 0;  /* XXX this may be affected by LOD */
 
 	/*
  	 * Until we fix the ChangeSet processing code
@@ -10621,10 +10603,10 @@ int
 sccs_scompress(sccs *s)
 {
 	FILE	*sfile = 0;
-	int	ser, error = 0, locked = 0, i, adjust;
+	int	ser, error = 0, locked = 0, i;
 	char	*t;
 	char	*buf;
-	delta	*d, *e;
+	delta	*d;
 	ser_t	*orig, *remap;
 
 	unless (locked = sccs_lock(s, 'z')) {
@@ -11540,7 +11522,6 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
 	delta	*m;
 	int	i, e = 0;
 	FILE	*sfile = 0;
-	char	*sccsXfile();
 	char	*t;
 	char	*buf;
 	char	**syms;
@@ -12932,7 +12913,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "HTML_C")) {
-		int	i, j;
+		int	i;
 		char	html_ch[20];
 		unsigned char *p;
 

@@ -60,7 +60,7 @@ do_print(char *path)
 {
 	char *t = strrchr(path, '/');
 
-	t = t ? ++t : path;
+	t = t ? (t+1) : path;
 
 	unless (globs) {
 		printf("%s\n", path);

@@ -89,7 +89,6 @@ uniq_lock()
 	char	linkpath[MAXPATH];
 	char	*lock = lockHome();
 	int	me = getpid();
-	time_t	age;
 	static	int flags = -1;
 
 	if (flags == -1) {

@@ -15,10 +15,8 @@ sendbug_main(int ac,  char **av)
 	char	buf[MAXLINE], bug[MAXPATH], cmd_path[MAXPATH];
 	char	*argv[MAXARGS];
 	char	*display;
-	int	i, j, c, rc, webmail, mswin = 0, textmode = 0;
+	int	c, rc, webmail, mswin = 0, textmode = 0;
 	FILE	*f;
-	remote	*r;
-	MMAP	*m;
 
 	/*
 	 * On windows webmail is the default

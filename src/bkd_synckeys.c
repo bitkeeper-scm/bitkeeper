@@ -7,7 +7,7 @@ int
 cmd_synckeys(int ac, char **av)
 {
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
-	int	c, n, status;
+	int	n, status;
 	MMAP    *m;
 	FILE	*l;
 

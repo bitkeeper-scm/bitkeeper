@@ -7,7 +7,8 @@
  * %W% %@%
  */
 #include <stdio.h>
-#define	unless(f) if (!(f))
+#include "system.h"
+#include "sccs.h"
 
 int
 uuencode_main(int ac, char **av)
@@ -27,6 +28,7 @@ uuencode_main(int ac, char **av)
 	return (0);
 }
 
+int
 uudecode_main(int ac, char **av)
 {
 	FILE	*f;

@@ -60,6 +60,8 @@ private void	merge(char *gfile);
 private	sccs	*expand(sccs *s, project *proj);
 private	sccs	*unexpand(sccs *s);
 private	int	skipPatch(MMAP *p);
+private	void	getConfig(void);
+private	void	getGone(void);
 
 private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -188,7 +190,7 @@ usage:		system("bk help -s takepatch");
 	/* save byte count for logs */
 	f = fopen("BitKeeper/log/byte_count", "w");
 	if (f) {
-		fprintf(f, "%u\n", size(pendingFile));
+		fprintf(f, "%lu\n", size(pendingFile));
 		fclose(f);
 	}
 
@@ -259,7 +261,8 @@ usage:		system("bk help -s takepatch");
  * they did, if there is no config file, use the contents of the
  * enclosing repository.
  */
-getConfig()
+private void
+getConfig(void)
 {
 	chdir(ROOT2RESYNC);
 	unless (exists("BitKeeper/etc/SCCS/s.config")) {
@@ -270,7 +273,8 @@ getConfig()
 	chdir(RESYNC2ROOT);
 }
 
-getGone()
+private void
+getGone(void)
 {
 	
 	/* XXX - if this is edited, we don't get those changes */
@@ -347,7 +351,7 @@ getRecord(MMAP *f)
 private void
 shout(void)
 {
-	static shouted = 0;
+	static	int	shouted = 0;
 
 	if (shouted) return; /* already done shouting */
 	SHOUT();
@@ -428,7 +432,7 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			if (rebuild_id(t)) {
 				fprintf(stderr,
 				    "ID cache problem causes abort.\n");
-cleanup:			if (perfile) sccs_free(perfile);
+				if (perfile) sccs_free(perfile);
 				if (gfile) free(gfile);
 				if (s) sccs_free(s);
 				free(name);
@@ -939,8 +943,6 @@ applyCsetPatch(char *localPath,
 	MMAP	*dF;
 	sccs	*s = 0;
 	delta	*d = 0;
-	int	newflags;
-	int	pending = 0;
 	int	n = 0;
 	char	lodkey[MAXKEY];
 	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
@@ -2184,6 +2186,7 @@ unexpand(sccs *s)
 		sccs_whynot("admin", s);
 	}
 	s = sccs_restart(s);
+	return (s);
 }
 
 private	int

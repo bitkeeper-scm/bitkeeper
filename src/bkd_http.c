@@ -1,5 +1,6 @@
 #include "bkd.h"
 #include "logging.h"
+#include "range.h"
 typedef void (*vfn)(char *);
 
 private char	*http_time(void);
@@ -30,11 +31,12 @@ private void	pwd_title(char *t, char *color);
 private void	header(char *path, char *color, char *title, char *header, ...);
 private void	printnavbar();
 private char	*parseurl(char *);
-private void	learn();
 private void	trailer(char *path);
 private char	*units(char *t);
 private char	*findRoot(char *name);
 private int	has_temp_license();
+private int	include(char *path, char *file);
+
 private	char	root[MAXPATH];
 private int	embedded = 0;
 private int	expires = 0;
@@ -372,7 +374,6 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 	MDBM *m;
 	char *t;
 	char *fmt = 0;
-	char *s;
 
 	out("<html>");
 
@@ -497,8 +498,6 @@ http_changes(char *rev)
 	int	i;
 	char	buf[2048];
 	char    dspec[MAXPATH];
-	MDBM	*m;
-	char	*d;
 
 	if (rev) {
 		whoami("ChangeSet@%s", rev);
@@ -556,7 +555,6 @@ http_cset(char *rev)
 	char	*av[100];
 	char	buf[2048];
 	FILE	*f;
-	MDBM	*m;
 	int	i;
 	int	fd;
 	char	*d, **lines = 0;
@@ -673,6 +671,7 @@ cat2net(char *path)
 	close(fd);
 }
 
+private int
 include(char *path, char *file)
 {
 	char	buf[MAXPATH];
@@ -786,9 +785,7 @@ http_hist(char *pathrev)
 {
 	char	*av[100];
 	char	revision[100];
-	char	*s, *d;
-	FILE	*f;
-	MDBM	*m;
+	char	*s;
 	int	i;
 	char	dspec[MAXPATH*2];
 
@@ -855,14 +852,12 @@ http_hist(char *pathrev)
 private void
 http_src(char *path)
 {
-	char	buf[32<<10], abuf[30];
+	char	buf[32<<10];
 	char	html[MAXPATH];
 	char	**names = 0;
 	int	i;
-	MDBM	*m;
 	DIR	*d;
 	FILE	*f;
-	char	*s, *t;
 	struct	stat sbuf;
 	struct	dirent *e;
 	time_t	now;
@@ -977,8 +972,7 @@ http_anno(char *pathrev)
 	FILE	*f;
 	char	buf[4096];
 	int	n, empty = 1;
-	char	*s, *d;
-	MDBM	*m;
+	char	*s;
 
 	/* pick up the separator in the revision, but cut it apart after
 	 * all the headers have been displayed
@@ -1081,8 +1075,6 @@ http_diffs(char *pathrev)
 	FILE	*f;
 	char	*av[100];
 	char	*s;
-	MDBM	*m;
-	int	n;
 	int	i;
 	char	dspec[MAXPATH*2];
 	char	argrev[100];
@@ -1163,9 +1155,6 @@ http_patch(char *rev)
 {
 	FILE	*f;
 	char	buf[4096];
-	int	n;
-	char	*s;
-	MDBM	*m;
 
 	whoami("patch@%s", rev);
 
@@ -1266,7 +1255,7 @@ http_stats(char *page)
 	/* don't use whoami, because I need to have absolute urls for
 	 * the parent pages in the navbar
 	 */
-	sprintf(navbar, "?nav=!-|index.html|stats|!+", root, root);
+	sprintf(navbar, "?nav=!-|index.html|stats|!+");
 	sprintf(thisPage, "stats");
 
 	if (!embedded) {
@@ -1834,13 +1823,9 @@ parseurl(char *url)
 private void
 http_related(char *file)
 {
-	char	*av[100];
-	int	i, j;
-	int     flen;
+	int	i;
 	char	buf[2048];
 	char    dspec[MAXPATH];
-	char	*d;
-	char	*c;
 	FILE	*f;
 	int	count = 0;
 	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT, 0);
@@ -2037,7 +2022,7 @@ http_search(char *junk)
 	}
 	unless (f = popen(buf, "r")) http_error(404, "grep failed?\n");
 	
-next:	while (fnext(buf, f)) {
+	while (fnext(buf, f)) {
 		file = buf;
 		unless (rev = strchr(buf, '\t')) continue;
 		*rev++ = 0;

@@ -9,6 +9,8 @@ void	rangeSetExpand(sccs *s);
 int	rangeList(sccs *sc, char *rev);
 int	rangeProcess(char *me, sccs *s, int expand, int noisy,
 		     int *things, int rd, char **r, char **d);
+time_t	rangeCutOff(char *spec);
+int	closedRange(char *s);
 
 #define	RANGE_DECL	int	things = 0, rd = 1; \
 			char	*r[2], *d[2]; \

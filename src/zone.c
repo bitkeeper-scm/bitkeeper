@@ -5,7 +5,6 @@ char	*
 sccs_zone(time_t tt)
 {
 	static	char buf[8];
-	struct	tm *tm;
 	long	offset;
 	int	hwest, mwest;
 	char	sign = '+';

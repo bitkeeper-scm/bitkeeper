@@ -1,5 +1,6 @@
 #include "../system.h"
 #include "../sccs.h"
+#include "../bkd.h"
 
 /*
  * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
@@ -100,6 +101,7 @@ bkd_tcp_connect(remote *r)
 
 
 #ifndef WIN32
+int
 check_rsh(char *remsh)
 {
 	/*
@@ -109,6 +111,7 @@ check_rsh(char *remsh)
 	return (0);
 }
 #else
+int
 check_rsh(char *remsh)
 {
 	char *t;

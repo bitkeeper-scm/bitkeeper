@@ -53,7 +53,7 @@ mv_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac < 3) {
-usage:		system("bk help -s mv");
+		system("bk help -s mv");
 		return (1);
 	}
 	dest = av[ac-1];

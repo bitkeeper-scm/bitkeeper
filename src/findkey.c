@@ -26,7 +26,7 @@ int
 findkey_main(int ac, char **av)
 {
 	sccs	*s;
-	int	expand = 2, errors = 0, c;
+	int	errors = 0, c;
 	project	*proj = 0;
 	look	look;
 	char	*name;
@@ -59,7 +59,7 @@ findkey_main(int ac, char **av)
 		    case 't': look.utc = utc(optarg); break;
 		    case 'u': look.user = optarg; break;
 		    default:
-usage:			system("bk help -s findkey");
+			system("bk help -s findkey");
 			return (1);
 		}
 	}
@@ -84,7 +84,7 @@ usage:			system("bk help -s findkey");
 			continue;
 		}
 		findkey(s, look);
-next:		sccs_free(s);
+		sccs_free(s);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);

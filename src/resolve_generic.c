@@ -52,7 +52,7 @@ pnames(char *prefix, names *n)
 void
 resolve_dump(resolve *rs)
 {
-	fprintf(stderr, "=== resolve dump of 0x%x ===\n", rs);
+	fprintf(stderr, "=== resolve dump of 0x%x ===\n", (int)rs);
 	if (rs->prompt) fprintf(stderr, "prompt: %s\n", rs->prompt);
 	if (rs->s) fprintf(stderr, "sfile: %s\n", rs->s->sfile);
 	if (rs->key) fprintf(stderr, "key: %s\n", rs->key);
@@ -64,7 +64,7 @@ resolve_dump(resolve *rs)
 	if (rs->snames) pnames("snames", rs->snames);
 	if (rs->tnames) pnames("tnames", rs->tnames);
 	fprintf(stderr, "n: %d\n", rs->n);
-	if (rs->opaque) fprintf(stderr, "opaque: %x\n", rs->opaque);
+	if (rs->opaque) fprintf(stderr, "opaque: %x\n", (int)rs->opaque);
 	if (rs->res_gcreate) fprintf(stderr, "gcreate conflict\n");
 	if (rs->res_screate) fprintf(stderr, "screate conflict\n");
 	if (rs->res_dirfile) fprintf(stderr, "dirfile conflict\n");

@@ -41,7 +41,7 @@ help_main(int ac,  char **av)
 		optind = -0;
 	}
 	if (opt) {
-		for (av[i = optind]; av[i]; i++) {
+		for (i = optind; av[i]; i++) {
 			if (file) {
 				sprintf(buf,
 				    "bk helpsearch -f%s -%s %s >> %s",
@@ -55,7 +55,7 @@ help_main(int ac,  char **av)
 		}
 		goto print;
 	}
-	for (av[i = optind]; av[i]; i++) {
+	for (i = optind; av[i]; i++) {
 		if (file) {
 			sprintf(buf,
 			    "bk gethelp %s -f%s %s %s >> %s",
