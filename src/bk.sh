@@ -1023,8 +1023,7 @@ __sendConfig() {
 	  echo "Host:		`hostname`"
 	  echo "Root:		`pwd`"
 	  echo "Date:		`date`"
-	  ${BIN}get -ps ${BK_ETC}config | \
-	    grep -v '^#' ${BK_ETC}config | grep -v '^$'
+	  ${BIN}get -ps ${BK_ETC}config | grep -v '^#' | grep -v '^$'
 	) | __mail $1 "BitKeeper config: $P"
 }
 
