@@ -2,6 +2,12 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
+if [ "$PLATFORM" = "WIN32" ]
+then
+	echo "Symlink is not supported on win32, test skipped"
+	exit 0
+fi
+
 echo $N Create a symlink ............................$NL
 umask 0
 cset -is .
