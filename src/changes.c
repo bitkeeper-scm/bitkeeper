@@ -492,7 +492,7 @@ dumplog(slog *list, int *n)
  */
 private sccs *
 sccs_keyinitAndCache(char *key, int flags,
-    project *proj, MDBM *idDB, MDBM *graphDB, MDBM *goneDB)
+    project *proj, MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
 {
 	static	int	rebuilt = 0;
 	datum	k, v;
@@ -506,16 +506,16 @@ sccs_keyinitAndCache(char *key, int flags,
 		return (s);
 	}
  retry:
-	s = sccs_keyinit(key, flags, proj, idDB);
+	s = sccs_keyinit(key, flags, proj, *idDB);
 	unless (s || gone(key, goneDB)) {
 		unless (rebuilt) {
-			mdbm_close(idDB);
+			mdbm_close(*idDB);
 			if (sccs_reCache(1)) {
 				fprintf(stderr,
 				    "changes: cannot build %s\n",
 				    IDCACHE);
 			}
-			unless (idDB =
+			unless (*idDB =
 			    loadDB(IDCACHE,
 				0, DB_KEYFORMAT|DB_NODUPS)) {
 				perror("idcache");
@@ -731,7 +731,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 			assert(dkey);
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
-				keys[i], iflags, proj, idDB, graphDB, goneDB);
+				keys[i], iflags, proj, &idDB, graphDB, goneDB);
 			unless (s) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);
