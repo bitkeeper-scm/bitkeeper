@@ -7,37 +7,48 @@ bk compatibility \- Compatibility issues
 \*(BK tries to make a transition from other source control management 
 products easier by offering commands commonly used in other products
 as aliases to \*(BK commands.
+.LP
+For example, the following are equivalent in \*(BK:
+.DS
+bk deledit
+bk delta -l
+.DE
 .SH SCCS
-.TP
-.B bk add
+.TP 1i
+.B add
 Add a file to the repository.  Same as bk delta.
-.B bk create
+.tp
+.B create
 Create (initialize) history files.  Same as bk new && bk get.
 .\" XXX what is it really?  looks like bk get.  not bk new.  what am i missing?
 .tp
-.B bk deledit
+.B deledit
 Follow a check-in with a locked check-out.  Same as bk delta -l.
 .tp
-.B bk delget
+.B delget
 Follow a check-in with an unlocked check-out.  Same as bk delta -u.
 .tp
-.B bk enter
+.B enter
 Add a new file to the repository.  Same as bk new.
 .tp
-.B bk sccsdiff
+.B sccsdiff
 Show differences in revision control files.  Same as bk diffs.
 .tp
-.B bk val
+.B val
 Check s.file structure and time stamps.  Same as bk admin -hhhh
 .\" XXX I don't know what admin -hhhh does.
-.SH RCS/CVS
+.SH RCS
 .TP
-.B bk ci
+.B ci
 Check in a file.  Same as bk delta.
 .tp
-.B bk co
+.B co
 Check out a file.  Same as bk edit.
 .SH "SEE ALSO"
-.SA 
+.SA delta 1
+.SA diffs
+.SA get 1
+.SA new 1
+.SA admin 1
 .SH CATEGORY
 .B Compat
