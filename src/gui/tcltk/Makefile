@@ -15,7 +15,7 @@ export CC LD
 
 all: build version.sh
 	-rm -rf bin lib
-	TCLVER=`./version.sh`; \
+	-TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; \
 	else	./build bin/tclsh bin/bkgui; \
@@ -56,8 +56,8 @@ tk/$S/configure: TKKEY
 install: ./version.sh
 	find bin lib -type d -print | xargs chmod ug+w
 	rm -rf ../bin ../lib
-	cp -rp bin lib ..
-	TCLVER=`./version.sh`; \
+	cp -r bin lib ..
+	-TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a \! -f "$$TCLVER" ]; \
 	then	test -d /build/obj || { \
 			mkdir /build/obj; \

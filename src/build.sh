@@ -16,15 +16,6 @@ ms_env()
 	SYS=win32
 	BK="bk.exe"
 
-	gcc --version | grep -q cyg && test -d /mingw/bin && {
-		PATH=/mingw/bin:$PATH
-	}
-	gcc --version | grep -q cyg && test -d c:/mingw/bin && {
-		PATH=/c/mingw/bin:/cygdrive/c/mingw/bin:$PATH
-	}
-	gcc --version | grep -q cyg && test -d d:/mingw/bin && {
-		PATH=/d/mingw/bin:/cygdrive/d/mingw/bin:$PATH
-	}
 	gcc --version | grep -q cyg && {
 		echo No Mingw GCC found, I quit.
 		exit 1
@@ -48,7 +39,7 @@ test "X$LD" = X && LD=$CC
 test "X$WARN" = X && WARN=YES  
 
 case "X`uname -s`" in
-    *_NT*)
+    *_NT*|*_98*)
     	;;
     *)	AR=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
@@ -70,7 +61,7 @@ case "X`uname -s`" in
 		;;
 	XAIX)	CHECK=1
 		;;
-	X*_NT**)
+	X*_NT*|X*_98*)
 		ms_env;
 		;;
 	XOSF1)
