@@ -864,6 +864,18 @@ append_rev(MDBM *db, char *name, char *rev, char *buf)
 	return (buf);
 }
 
+private int
+isBKRoot(char *dir)
+{
+	char	*buf;
+	int	rc;
+
+	buf = aprintf("%s/%s", dir, BKROOT);
+	rc = exists(buf);
+	free(buf);
+	return (rc);
+}
+
 /*
  * Called for each directory that has an SCCS subdirectory
  */
@@ -933,7 +945,9 @@ sccsdir(char *dir, int level, char **sdh, char buf[MAXPATH])
 		/*
 		 * Do not descend into another project root. e.g RESYNC
 		 */
-		if ((level > 0)  && patheq(dh[i], "BitKeeper")) {
+		if ((level > 0) &&
+		    streq(dh[i], BKDIR) &&
+		    isBKRoot(dir)) {
 skip:			mdbm_close(gDB);
 			mdbm_close(sDB);
 			freeLines(dh);
