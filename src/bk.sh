@@ -284,17 +284,39 @@ __mail() {
 # With no args, print the parent pointer.
 _parent() {
 	__cd2root
+	REMOVE=NO
+	QUIET=NO
+	FILE=BitKeeper/log/parent
+	while getopts qr opt
+	do	case "$opt" in
+		q) QUIET=YES;;
+		r) REMOVE=YES;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ $REMOVE = YES ]
+	then	test -f $FILE && $RM -f $FILE
+		if [ $QUIET = NO ]
+		then	test -f $FILE || echo Removed parent pointer.
+		fi
+		if [ -f $FILE ]
+		then	exit 1
+		else	exit 0
+		fi
+	fi
 	case "X$1" in
 	    *:*)
-	    	$RM -f BitKeeper/log/parent
-	    	echo $1 > BitKeeper/log/parent
-		echo Set parent to $1
+	    	$RM -f $FILE
+	    	echo $1 > $FILE
+		if [ $QUIET = NO ]
+		then	echo Set parent to $1
+		fi
 		exit 0
 		;;
 	esac
 	if [ "X$1" = X ]
-	then	if [ -f BitKeeper/log/parent ]
-		then	echo Parent repository is `cat BitKeeper/log/parent`
+	then	if [ -f $FILE ]
+		then	echo Parent repository is `cat $FILE`
 			exit 0
 		fi
 		echo "Must specify parent root directory"
@@ -308,9 +330,12 @@ _parent() {
 	cd $1 || { echo Can not find $1; exit 1; }
 	P=`${BIN}gethost`:`pwd`
 	cd $HERE
-	$RM -f BitKeeper/log/parent
-	echo $P > BitKeeper/log/parent
-	echo Set parent to $P
+	$RM -f $FILE
+	echo $P > $FILE
+	if [ $QUIET = NO ]
+	then	echo Set parent to $P
+	fi
+	exit 0
 }
 
 _diffr() {
@@ -608,7 +633,7 @@ _undo() {
 	shift `expr $OPTIND - 1`
 	__cd2root
 	if [ X"$REVS" = X ]
-	then	echo "usage bk undo [-fqs] -r<cset-revisions>"
+	then	echo "usage bk undo [-fqs] -a<cset-rev> | -r<cset-revs>"
 		exit 1
 	fi
 	${BIN}cset -ffl$REVS > ${TMP}rmlist$$
