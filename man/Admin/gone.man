@@ -52,4 +52,4 @@ If that complains, run the
 command on the listed keys.
 .SH SEE ALSO
 .LP
-.B bk help edit
+.SA edit

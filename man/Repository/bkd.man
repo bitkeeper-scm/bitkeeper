@@ -228,13 +228,8 @@ Needs access control based on authenticated users.
 .B bk help parent
 .br
 .B bk help initscripts
-.SH ALIASES
-.BR anonymous (Repository)
-.br
-.BR deamon (Repository)
-.br
-.BR daemon (Repository)
-.br
-.BR demon (Repository)
-.br
-.BR security (Repository)
+.\" help://Repository/anonymous
+.\" help://Repository/deamon
+.\" help://Repository/daemon
+.\" help://Repository/demon
+.\" help://Repository/security

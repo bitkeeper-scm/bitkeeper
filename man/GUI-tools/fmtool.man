@@ -87,5 +87,4 @@ Scroll the diffs or the merge window up one line.
 .tp
 .B UpArrow
 Scroll the diffs or the merge window up one line.
-.SH ALIASES
-.BR fm (GUI-tools)
+.\" help://GUI-tools/fm

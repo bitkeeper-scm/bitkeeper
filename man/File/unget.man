@@ -26,7 +26,5 @@ unget is an alias for unedit; unget is the ATT SCCS compatible name.
 .B bk help clean
 .br
 .B bk help unlock
-.SH ALIASES
-.B unget (File)
-.br
-.B unedit (File)
+.\" help://File/unget
+.\" help://File/unedit

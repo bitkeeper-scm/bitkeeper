@@ -153,8 +153,8 @@ This command does way too much and should be split apart.  Other than the
 traditional ATT options, do not depend on these options for scripts.
 .SH SEE ALSO
 .LP
-.B bk help tag
+.SA tag
 .br
-.B bk help chmod
+.SA chmod
 .br
-.B bk help keywords
+.SA keywords

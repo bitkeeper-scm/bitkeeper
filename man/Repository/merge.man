@@ -108,5 +108,4 @@ quit in the file browser, and type "C" at the prompt to commit to
 that file and move on to the next one.
 .SH "SEE ALSO"
 .B bk help resolve
-.SH ALIASES
-.BR merging (Repository)
+.\" help://Repository/merging

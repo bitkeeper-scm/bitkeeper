@@ -158,8 +158,5 @@ ChangeSet@1.733, 2000-05-27 14:24:48-07:00, lm@work.bitmover.com
 ChangeSet@1.731.1.1, 2000-05-27 14:16:42-07:00, lm@work.bitmover.com
   Forgot to wait for child process in changes.c.
 .XA
-.SH ALIASES
-.BR notification (Repository)
-.br
-.BR notify (Repository)
-
+.\" help://Repository/notification
+.\" help://Repository/notify

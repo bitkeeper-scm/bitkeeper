@@ -30,5 +30,4 @@ need to read
 .B bk help qs_developer
 .br
 .B bk help qs_setup
-.SH ALIASES
-.BR Quickstart (General)
+.\" help://General/Quickstart

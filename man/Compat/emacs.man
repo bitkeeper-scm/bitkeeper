@@ -74,6 +74,4 @@ the file for editing, and rename it back.  Do all the rearrangement from
 a shell prompt.  Kill all your buffers before running
 .B bk citool
 to avoid the problem.
-.SH ALIASES
-.BR Compat (vc)
-
+.\" help://Compat/vc
