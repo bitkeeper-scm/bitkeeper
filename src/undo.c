@@ -5,13 +5,13 @@
 #define	BACKUP_SFIO "BitKeeper/tmp/undo_backup_sfio"
 
 extern char *bin;
-private char	*getrev(char *);
-private char	**mk_list(char *, char *);
+
+private char	**getrev(char *rev, int aflg);
+private char	**mk_list(char *, char **);
 private int	clean_file(char **);
 private	int	moveAndSave(char **fileList);
 private int	move_file(void);
 private int	do_rename(char **, char *);
-private void	checkRev(char *);
 private int	check_patch(void);
 private int	doit(char **fileList, char *rev_list, char *qflag);
 private	void	save_log_markers(void);
@@ -22,12 +22,17 @@ private	int	checkout;
 int
 undo_main(int ac,  char **av)
 {
-	int	c, rc, 	force = 0, save = 1, ckRev = 0;
+	int	c, rc, 	force = 0, save = 1;
 	char	buf[MAXLINE];
 	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
+	FILE	*f;
+	int	i;
+	int	status;
+	char	**csetrev_list = 0;
 	char	*qflag = "", *vflag = "-v";
 	char	*cmd = 0, *rev = 0;
-	char	**fileList;
+	int	aflg = 0;
+	char	**fileList = 0;
 #define	LINE "---------------------------------------------------------\n"
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo_backup"
@@ -40,15 +45,14 @@ undo_main(int ac,  char **av)
 		fprintf(stderr, "undo: cannot find package root.\n");
 		exit(1);
 	}
+	
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {
-		    case 'a':					/* doc 2.0 */
-			rev = getrev(optarg);
-			unless (rev) return (0); /* we are done */
-			break;
+		    case 'a': aflg = 1;				/* doc 2.0 */
+			/* fall though */
+		    case 'r': rev = optarg; break;		/* doc 2.0 */
 		    case 'f': force  =  1; break;		/* doc 2.0 */
 		    case 'q': qflag = "-q"; vflag = ""; break;	/* doc 2.0 */
-		    case 'r': rev = optarg; ckRev++; break;	/* doc 2.0 */
 		    case 's': save = 0; break;			/* doc 2.0 */
 		    default :
 			fprintf(stderr, "unknown option <%c>\n", c);
@@ -64,21 +68,23 @@ usage:			system("bk help -s undo");
 
 	save_log_markers();
 	unlink(BACKUP_SFIO); /* remove old backup file */
-	if (ckRev) checkRev(rev);
-	sprintf(rev_list, "%s/bk_rev_list%d",  TMP_PATH, getpid());
-	fileList = mk_list(rev_list, rev);
+	unless (csetrev_list = getrev(rev, aflg)) {
+		/* No revs we are done. */
+		return (0);
+	}
+	rev = 0;  /* don't use wrong value */
+	gettemp(rev_list, "bk_rev_list");
+	fileList = mk_list(rev_list, csetrev_list);
 	if (!fileList || clean_file(fileList)) goto err;
 
-	sprintf(undo_list, "%s/bk_undo_list%d",  TMP_PATH, getpid());
-	cmd = malloc(strlen(rev) + strlen(undo_list) + 200);
-	sprintf(cmd, "bk stripdel -Ccr%s ChangeSet 2> %s", rev, undo_list);
-	if (system(cmd) != 0) {
-		getMsg("undo_error", bin, 0, stdout);
-		cat(undo_list);
+	gettemp(undo_list, "bk_undo_list");
+	cmd = aprintf("bk stripdel -Cc - 2> %s", undo_list);
+	f = popen(cmd, "w");
+	free(cmd);
+	unless (f) {
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
 		freeLines(fileList);
-		if (cmd) free(cmd);
 		if (size(BACKUP_SFIO) > 0) {
 			if (sysio(BACKUP_SFIO, 0, 0,
 						"bk", "sfio", "-im", SYS)) {
@@ -106,7 +112,15 @@ err:		if (undo_list[0]) unlink(undo_list);
 		sys(RM, "-rf", "RESYNC", SYS);
 		exit(1);
 	}
-
+	EACH (csetrev_list) {
+		fprintf(f, "ChangeSet%c%s\n", BK_FS, csetrev_list[i]);
+	}
+	status = pclose(f);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+		getMsg("undo_error", bin, 0, stdout);
+		cat(undo_list);
+		goto err;
+	}
 	unless (force) {
 		printf(LINE);
 		cat(rev_list);
@@ -125,14 +139,18 @@ err:		if (undo_list[0]) unlink(undo_list);
 			fprintf(stderr, "Saving a backup patch...\n");
 		}
 		unless (isdir(BK_TMP)) mkdirp(BK_TMP);
-		sprintf(cmd, "bk cset %s -ffm%s > %s", vflag, rev, BK_UNDO);
-		system(cmd);
+		cmd = aprintf("bk cset %s -ffm - > %s", vflag, BK_UNDO);
+		f = popen(cmd, "w");
+		free(cmd);
+		if (f) {
+			EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
+			pclose(f);
+		}
 		if (check_patch()) {
 			printf("Failed to create undo backup %s\n", BK_UNDO);
 			goto err;
 		}
 	}
-	free(cmd); cmd = 0;
 
 	sig_ignore();
 
@@ -240,63 +258,65 @@ checkRev(char *rev)
 	}
 }
 
-private char *
-getrev(char *top_rev)
+private char **
+getrev(char *top_rev, int aflg)
 {
-	static char *buf;
-	char	tmpfile[MAXPATH];
-	char	cmd[MAXKEY];
-	int	fd, len, sz;
-	char	*retptr = 0;
+	char	*cmd;
 	int	status;
+	char	**list = 0;
+	FILE	*f;
+	char	revline[MAXREV+1];
 
 	checkRev(top_rev);
-	sprintf(tmpfile, "%s/bk_tmp%d", TMP_PATH, getpid());
-	sprintf(cmd,
-	    "bk -R prs -ohMa -r'1.0..%s' -d':REV:,' ChangeSet > %s",
-	    top_rev, tmpfile);
-	status = system(cmd);
+	if (aflg) {
+		cmd = aprintf("bk -R prs -ohnMa -r'1.0..%s' -d:REV: ChangeSet",
+		    top_rev);
+	} else{
+		cmd = aprintf("bk -R prs -hnr'%s' -d:REV: ChangeSet", 
+		    top_rev);
+	}
+	f = popen(cmd, "r");
+	free(cmd);
+	while (fnext(revline, f)) {
+		chomp(revline);
+		list = addLine(list, strdup(revline));
+	}
+	status = pclose(f);
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		fprintf(stderr, "undo: prs failed\n");
 		exit(1);
 	}
-	fd = open(tmpfile, O_RDONLY, 0);
-	if (buf) free(buf);
-	sz = size(tmpfile);
-	if (sz) {
-		buf = (malloc)(sz + 1);
-		if ((len = read(fd, buf, sz)) < 0) {
-			perror(tmpfile);
-			exit(1);
-		}
-		buf[len] = 0;
-		retptr = buf;
-	}
-	close(fd);
-	unlink(tmpfile);
-	return (retptr);
+	return (list);
 }
 
-char **
-mk_list(char *rev_list, char *rev)
+private char **
+mk_list(char *rev_list, char **csetrev_list)
 {
 	char	*p, *cmd, buf[MAXLINE];
 	char	**flist = 0;
 	FILE	*f;
+	int	i;
+	int	status;
 	MDBM	*db;
 	kvpair	kv;
 
-	assert(rev);
-	cmd = malloc(strlen(rev) + 100);
-	sprintf(cmd, "bk cset -ffr%s > %s", rev, rev_list);
-	if (system(cmd) != 0) {
+	assert(csetrev_list);
+	cmd = aprintf("bk cset -ffl - > %s", rev_list);
+	f = popen(cmd, "w");
+	if (f) {
+		EACH(csetrev_list) fprintf(f, "%s\n", csetrev_list[i]);
+	}
+	status = pclose(f);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		printf("undo: %s\n", cmd);
 		printf("undo: cannot extract revision list\n");
 		return (NULL);
 	}
 	free(cmd);
 	if (size(rev_list) == 0) {
-		printf("undo: nothing to undo in \"%s\"\n", rev);
+		printf("undo: nothing to undo in \"");
+		EACH(csetrev_list) printf("%s,", csetrev_list[i]);
+		printf("\"\n");
 		exit(0);
 	}
 	f = fopen(rev_list, "rt");
