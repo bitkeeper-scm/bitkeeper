@@ -345,10 +345,18 @@ c_shell(resolve *rs)
 	sprintf(buf, "BK_REMOTE=%s", n->remote); putenv(strdup(buf));
 	sprintf(buf, "BK_MERGE=%s", rs->s->gfile); putenv(strdup(buf));
 	unless (rs->shell && rs->shell[0]) {
+#ifdef WIN32
+		/*
+		 * This strange syntax is to make sure we spwan the bash
+		 * shell via cmd.exe. This is needed to avoid some fd conflict.
+		 */
+		(system)("bash -i");
+#else
 		system("sh -i");
+#endif
 		return (0);
 	}
-	system(rs->shell);
+	(system)(rs->shell);
 	return (0);
 }
 

@@ -13,6 +13,19 @@
 # Copyright (c) 2000 Larry McVoy
 # %K%
 
+#
+# This test is not portable to WIN32;
+# In the test, if we redirect stdin, we will lost it (stdin) after we spawn
+# the cygwin shell.
+# The shell escape feature itself seems to work, however. We just cannot
+# test it in a test script on WIN32.
+#
+if [ X$PLATFORM = X"WIN32" ]
+then
+	echo "This test is not supported on WIN32"
+	exit 0;
+fi
+
 HERE=`bk pwd`
 echo $N Create initial repository ...................................$NL
 no_logging project
@@ -53,6 +66,9 @@ tar cf TAR copy
 cd copy
 echo OK
 echo $N Make sure shell escapes to an interactive shell work ........$NL
+# XXX WIN32 note: the following construct does not work on WIN32
+# If we redirect stdin, we will lost it after we spawn the cygwin shell
+# Must be some type of fd conflict...
 ( echo '!'
   echo echo ESCAPE_FROM_NEW_YORK
   echo exit

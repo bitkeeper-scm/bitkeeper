@@ -692,6 +692,7 @@ again:	/* doDiffs can make it two pass */
 			fprintf(stderr,
 			    "File named by key\n\t%s\n\tis missing and key is "
 			    "not in a committed gone delta, aborting.\n", buf);
+			fflush(stderr); /* for win32 */
 			goto fail;
 		}
 	}
