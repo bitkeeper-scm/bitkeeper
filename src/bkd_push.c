@@ -66,7 +66,7 @@ cmd_push(int ac, char **av)
 		if (gzip) {
 			pid = spawnvp_wPipe(tp, &wfd);
 			if (pid == -1) {
-				out("@DONE@\n");
+				outc(BKD_EXITOK);
 				goto out;
 			}
 			gzip_init(gzip);
@@ -88,12 +88,12 @@ cmd_push(int ac, char **av)
 			pid = spawnvp_ex(_P_NOWAIT, tp[0], tp);
 			if (pid == -1) {
 				close(2); dup2(fd2, 2);
-				out("@DONE@\n");
+				outc(BKD_EXITOK);
 				goto out;
 			}
 		}
 		waitpid(pid, &status, 0);
-		out("@DONE@\n");
+		outc(BKD_EXITOK);
 		if (WIFEXITED(status)) {
 			if (error = WEXITSTATUS(status)) goto out;
 		} else {

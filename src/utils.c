@@ -12,6 +12,12 @@ out(char *buf)
 }
 
 int
+outc(char c)
+{
+	return (writen(1, &c, 1));
+}
+
+int
 outfd(int to, char *buf)
 {
 	return (writen(to, buf, strlen(buf)));

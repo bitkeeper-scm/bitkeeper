@@ -9,7 +9,15 @@
 #include "sccs.h"
 #include "zlib/zlib.h"
 
-#define	BKD_VERSION	"BKD version 1.1"
+/*
+ * Version 1.2 - removes the @DONE@ in the push path.
+ */
+#define	BKD_VERSION	"BKD version 1.2"
+
+/*
+ * These need to be one byte so that we can do char at a time I/O for status.
+ */
+#define	BKD_EXITOK	'\004'	/* ^D */
 
 /*
  * Functions take (int ac, char **av)
