@@ -127,6 +127,10 @@ int io_mode(char *name)
 #endif
 }
 
+#define M_PATCH 0
+#define M_DELET 1
+#define M_CREAT 2
+
 int
 main (int argc, char **argv)
 {
@@ -134,6 +138,7 @@ main (int argc, char **argv)
     bool somefailed = FALSE;
     struct outstate outstate;
     char numbuf[LINENUM_LENGTH_BOUND + 1];
+    int mode;
 
     init_time ();
 
@@ -201,8 +206,11 @@ main (int argc, char **argv)
 	get_input_file (inname, outname);
        outstate.io_mode = io_mode(inname);
     
-      if (!instat.st_size && log_names && outname) 
+      mode = M_PATCH;
+      if (!instat.st_size && log_names && outname) {
 	say ("Creating file %s\n", quotearg (outname));
+	mode = M_CREAT;
+      }
 
       if (diff_type == ED_DIFF) {
 	outstate.zero_output = 0;
@@ -338,8 +346,6 @@ main (int argc, char **argv)
 			   "s" + (last_offset == 1));
 		    say (".\n");
 		}
-	        if (log_names && outname) 
-		  say ("Patching file %s\n", quotearg (outname));
 	    }
 	}
 
@@ -377,6 +383,7 @@ main (int argc, char **argv)
 		  || (pch_says_nonexistent (reverse ^ 1) == 2
 		      && ! posixly_correct)))
 	    {
+	      mode = M_DELET;
 	      if (log_names)
 		say ("Removing file %s\n", quotearg (outname));
 	      if (verbosity == VERBOSE)
@@ -436,6 +443,11 @@ main (int argc, char **argv)
 		}
 	    }
       }
+
+      if ((mode == M_PATCH) && log_names && outname) {
+	  say ("Patching file %s\n", quotearg (outname));
+      }
+
       if (diff_type != ED_DIFF) {
 	if (fclose (rejfp) != 0)
 	    write_fatal ();
@@ -549,7 +561,6 @@ static struct option const longopts[] =
   {"quoting-style", required_argument, NULL, CHAR_MAX + 8},
   {"lognames", no_argument, NULL, CHAR_MAX + 9},
   {"forcetime", no_argument, NULL, CHAR_MAX + 10},
-  {"bkimport", no_argument, NULL, CHAR_MAX + 11},
   {NULL, no_argument, NULL, 0}
 };
 
@@ -610,7 +621,6 @@ static char const *const option_help[] =
 "  --posix  Conform to the POSIX standard.",
 "  --lognames  Log the creation and/or deletion of files.",
 "  --forcetime  Force the time stamps, ignore mismatches.",
-"  --bkimport  Unedit files first, do not allow patching of non-BK files.",
 "",
 "  -d DIR  --directory=DIR  Change the working directory to DIR first.",
 #if HAVE_SETMODE
@@ -815,9 +825,6 @@ get_some_switches (void)
 		break;
 	    case CHAR_MAX + 10:
 		forcetime = 1;
-		break;
-	    case CHAR_MAX + 11:
-		bkimport = 1;
 		break;
 	    default:
 		usage (stderr, 2);
