@@ -1919,6 +1919,18 @@ defbranch(sccs *s)
 	return ("65535");
 }
 
+private int
+lodstart(char *rev)
+{
+	char	*p;
+
+	p = strchr(rev, '.');
+	assert(p);
+	p++;
+	if (strchr(p, '.')) return (0);
+	return (streq("1", p));
+}
+
 /*
  * Find the specified delta.  The rev can be
  *	(null)	get top of the default branch
@@ -11863,8 +11875,8 @@ sccs_delta(sccs *s,
 	FILE	*sfile = 0;	/* the new s.file */
 	int	i, free_syms = 0, error = 0;
 	char	*t;
-	delta	*d = 0, *n = 0;
-	char	*tmpfile = 0;
+	delta	*d = 0, *p, *n = 0;
+	char	*rev, *tmpfile = 0;
 	int	added, deleted, unchanged;
 	int	locked;
 	pfile	pf;
@@ -12007,6 +12019,21 @@ out:
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
 		OUT;
 	}
+
+	/*
+	 * Catch p.files with bogus revs.
+	 */
+	rev = d->rev;
+	p = getedit(s, &rev);
+	assert(p);	/* we just found it above */
+	unless (streq(rev, pf.newrev) || 
+	    (lodstart(pf.newrev) && !findrev(s, pf.newrev))) {
+		fprintf(stderr,
+		    "delta: invalid nextrev %s in p.file, using %s instead.\n",
+		    pf.newrev, rev);
+		strcpy(pf.newrev, rev);
+	}
+
 	if (pf.mRev || pf.xLst || pf.iLst) flags |= DELTA_FORCE;
 	debug((stderr, "delta found rev\n"));
 	if (diffs) {
@@ -12122,7 +12149,7 @@ out:
 	 * initial version in the pfile to make conditions tighter.
 	 */
 	unless (flags & DELTA_PATCH) {
-		if (BITKEEPER(s) && n->r[1] == 1 && n->r[2] == 0) {
+		if (BITKEEPER(s) && lodstart(n->rev)) {
 			if (s->defbranch) {
 				free(s->defbranch);
 				s->defbranch = 0;
