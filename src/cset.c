@@ -130,7 +130,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	}
 
 	if (streq(av[0], "makepatch")) copts.makepatch = 1;
-	copts.notty = getenv("BK_NOTTY");
+	copts.notty = (getenv("BK_NOTTY") != 0);
 
 	while (
 	    (c =
