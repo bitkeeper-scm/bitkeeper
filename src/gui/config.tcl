@@ -84,6 +84,7 @@ proc getConfig {prog} \
 					;# changed. Values 0 - off 1 - on
 
 	set _d(cset.listHeight) 12
+	set _d(cset.annotation) ""   ;# annotation options (eg: "-aum")
 
 	set _d(diff.diffHeight) 50
 	set _d(diff.searchColor) lightblue ;# highlight for search matches

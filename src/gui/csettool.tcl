@@ -12,6 +12,16 @@ proc nextFile {} \
 	dotFile
 }
 
+proc redoFile {} \
+{
+	# Preserve the current view, re-do all the magic, then restore
+	# the view
+	set view [diffView]
+	dotFile
+	diffView $view
+	
+}
+
 proc prevFile {} \
 {
 	global	lastFile
@@ -51,6 +61,7 @@ proc dotFile {{line {}}} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
 	global	RealFiles file finfo
+	global gc
 
 	busy 1
 	set finfo(lt) ""
@@ -92,8 +103,20 @@ proc dotFile {{line {}}} \
 	set tmp [file tail "$file"]
 	set l [file join $tmp_dir $tmp-${parent}_[pid]]
 	set r [file join $tmp_dir $tmp-${stop}_[pid]]
-	catch { exec bk get -qkpr$parent "$file" > $l}
-	catch { exec bk get -qkpr$stop "$file" > $r}
+	if {$::showAnnotations} {
+		set annotate "$gc(cset.annotation)"
+		if {[string index $annotate 0] != "-"} {
+			set annotate "-$annotate"
+		}
+		if {[string first "a" $annotate] == -1} {
+			append annotate "a"
+		}
+		if {$annotate == "-a"} {set annotate "-aum"}
+	} else {
+		set annotate ""
+	}
+	catch { exec bk get -qkpr$parent $annotate "$file" > $l}
+	catch { exec bk get -qkpr$stop $annotate "$file" > $r}
 	displayInfo $file $file $parent $stop 
 	readFiles $l $r
 	catch {file delete $l $r}
@@ -299,7 +322,7 @@ proc widgets {} \
 		-background $gc(cset.scrollColor) \
 		-orient vertical -command ".l.filelist.t yview"
 	    grid .l.filelist.t -row 0 -column 0 -sticky news
-	    grid .l.filelist.yscroll -row 0 -column 1 -sticky nse -rowspan 2
+	    grid .l.filelist.yscroll -row 0 -column 1 -sticky nse 
 	    grid .l.filelist.xscroll -row 1 -column 0 -sticky ew
 	    grid rowconfigure .l.filelist 0 -weight 1
 	    grid rowconfigure .l.filelist 1 -weight 0
@@ -321,7 +344,7 @@ proc widgets {} \
 		-background $gc(cset.scrollColor) \
 		-orient vertical -command ".l.sccslog.t yview"
 	    grid .l.sccslog.t -row 0 -column 0 -sticky news
-	    grid .l.sccslog.yscroll -row 0 -column 1 -sticky ns -rowspan 2
+	    grid .l.sccslog.yscroll -row 0 -column 1 -sticky ns
 	    grid .l.sccslog.xscroll -row 1 -column 0 -sticky ew
 	    grid rowconfigure .l.sccslog 0 -weight 1
 	    grid rowconfigure .l.sccslog 1 -weight 0
@@ -363,6 +386,13 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "File" -width 8 -state normal \
 		-menu .menu.fmb.menu
 		set fmenu(widget) [menu .menu.fmb.menu]
+	    $fmenu(widget) add checkbutton \
+	        -label "Show Annotations" \
+	        -onvalue 1 \
+	    	-offvalue 0 \
+	        -variable showAnnotations \
+	        -command redoFile
+	    $fmenu(widget) add separator
 	    button .menu.nextFile -font $gc(cset.buttonFont) \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -519,7 +549,7 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc app
+	global argv0 argv argc app showAnnotations gc
 
 	# Set 'app' so that the difflib code knows which global config
 	# vars to read
@@ -570,6 +600,10 @@ proc main {} \
 	}
 
 	widgets
+
+	if {$gc(cset.annotation) != ""} {
+		set showAnnotations 1
+	}
 
 	if {$stdin == 1} {
 		getFiles "-"
