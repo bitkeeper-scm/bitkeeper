@@ -230,7 +230,18 @@ fagets(FILE *fh)
 		len += strlen(ret + len);
 		if (len + 1 < size) break;
 		size <<= 1;
+#ifdef	HAVE_REALLOC
 		ret = realloc(ret, size);
+#else		
+		{
+			/* cheap realloc()  bah! */
+			char	*new;
+			new = malloc(size);
+			strcpy(new, ret);
+			free(ret);
+			ret = new;
+		}
+#endif
 	}
 	return (ret);
 }
@@ -521,7 +532,7 @@ unidiff(char **gca, char **new)
 			}
 		}
 	}
-	while (gca && gca[gcaline]) {
+	while (gca && gcaline < (int)gca[0] && gca[gcaline]) {
 		char	*n;
 		n = malloc(strlen(gca[gcaline]) + 2);
 		n[0] = ' ';
