@@ -19,7 +19,7 @@ no_logging project
 echo data > foo.c
 bk ci $Q -i foo.c
 mv SCCS/s.foo.c SCCS/s.bar.c
-bk names bar.c
-
-
-
+bk names bar.c 2> /dev/null
+if [ $? -ne 0 ]; then echo fail; fi
+if [ ! -f SCCS/s.foo.c ]; then echo fail; fi
+echo OK;
