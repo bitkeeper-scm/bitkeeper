@@ -62,6 +62,7 @@ csetprune_main(int ac, char **av)
 		sys("bk", "admin", "-z", "ChangeSet", SYS);
 		sys("bk", "renumber", "-q", "ChangeSet", SYS);
 		sys("bk", "checksum", "-fv", "ChangeSet", SYS);
+		sys("bk", "newroot", SYS);
 		sys("bk", "-r", "check", "-ac", SYS);
 		exit(0);
 	}
@@ -121,6 +122,7 @@ rmKeys(MDBM *s)
 	MDBM	*dirs = mdbm_mem();
 	MDBM	*idDB;
 	kvpair	kv;
+	char	*gname, *gname_end;
 	project	*proj = proj_init(0);
 
 	verbose((stderr, "Reading keys...\n"));
@@ -135,6 +137,24 @@ rmKeys(MDBM *s)
 	}
 	verbose((stderr, "Removing files...\n"));
 	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
+		/* Filter out of list : important BK files */
+		for (gname = kv.key.dptr; *gname; gname++) {
+			if (*gname == '|') break;
+		}
+		assert(*gname == '|');
+		gname++;
+		for (gname_end = gname; *gname_end; gname_end++) {
+			if (*gname_end == '|') break;
+		}
+		assert(*gname_end == '|');
+		*gname_end = '\0';
+		if (streq(gname, GCHANGESET) || strneq(gname, "BitKeeper/", 10))
+		{
+			verbose((stderr, "Keeping %s\n", gname));
+			*gname_end = '|';
+			continue;
+		}
+		*gname_end = '|';
 		verbose((stderr, "%d removed\r", ++n));
 		sccs_keyunlink(kv.key.dptr, proj, idDB, dirs);
 	}
@@ -290,75 +310,63 @@ unDup(sccs *s)
 #undef	UNDUP
 }
 
-/*
- * Find all the tags associated with this delta and move them to the
- * parent, if there is a parent.  Otherwise delete them.
- */
-private void
-moveTags(delta *d)
-{
-	symbol	*sym;
-
-	for (sym = sc->symbols; sym; sym = sym->next) {
-		unless (sym->metad->type == 'R') continue;
-		unless (sym->d == d) continue;
-		unless (d->parent) {
-			sym->d = 0;
-			continue;
-		}
-		debug((stderr,
-		    "TAG %s moved from %s to %s\n",
-		    sym->symname, d->rev, d->parent->rev));
-		sym->d = d->parent;
-		d->parent->flags |= D_SYMBOLS;
-		free(sym->metad->rev);
-		sym->metad->rev = strdup(d->parent->rev);
-		/* I'm not positive they are all bushy */
-		assert(sym->metad->pserial == d->serial);
-		sym->metad->pserial = d->parent->serial;
-	}
-}
-
 private void
 rebuildTags(sccs *s)
 {
-	delta	*d;
+	delta	*d, *md;
 	delta	*last = 0;
-	symbol	*sym, *sym2;
+	symbol	*sym;
+	MDBM	*symdb = mdbm_mem();
 
 	/*
-	 * Remove duplicate syms on the same real delta.
+	 * Only keep newest instance of each name
 	 */
 	for (sym = s->symbols; sym; sym = sym->next) {
-		for (sym2 = s->symbols; sym2; sym2 = sym2->next) {
-			if (sym == sym2) continue;
-			unless ((sym->d == sym2->d) &&
-			    streq(sym->symname, sym2->symname)) {
-			    	continue;
+		assert(sym->symname && sym->metad && sym->d);
+		if (mdbm_store_str(symdb, sym->symname, "", MDBM_INSERT)) {
+			/* no error, just ignoring duplicates */
+			sym->metad = sym->d = 0;
+			continue;
+		}
+		md = sym->metad;
+		d = sym->d;
+		assert(md->type != 'D' || md == d);
+		/* If tag on a deleted node, (if parent) move tag to parent */
+		if (d->flags & D_GONE) {
+			unless (d->parent) {
+				sym->metad = sym->d = 0;
+				continue;
 			}
-			sym2->d = sym2->metad = 0;
-		}
-	}
-	
-	/*
-	 * Remove all the tag only deltas and rebuild the tag graph
-	 */
-	for (d = s->table; d; d = d->next) {
-		for (sym = s->symbols; sym; sym = sym->next) {
-			if (sym->metad == d) break;
-		}
-		if (sym) {
-			if (last) {
-				last->ptag = d->serial;
-			} else {
-				d->symLeaf = 1;
+			/*
+			 * If symbol is on a real delta which is now deleted, 
+			 * make this delta into a 'R' type and ungone it.
+			 * Parent pointer will already be set correctly.
+			 */
+			if (md->type == 'D') {
+				sccs_deltaD2R(md);
+				md->flags &= ~D_GONE;
 			}
-			last = d;
-			d->symGraph = 1;
-		} else if (d->type == 'R') {
-			d->flags |= D_GONE;
+			else {
+				assert(md->parent == d);
+				md->parent = d->parent;
+				md->pserial = d->pserial;
+			}
+			d = d->parent;
+			sym->d = d;
+			if (md->rev) free(md->rev);
+			md->rev = strdup(d->rev);
+			md->flags |= D_SYMBOLS;
+			d->flags |= D_SYMBOLS;
 		}
+		if (last) {
+			last->ptag = md->serial;
+		} else {
+			md->symLeaf = 1;
+		}
+		last = md;
+		md->symGraph = 1;
 	}
+	mdbm_close(symdb);
 }
 
 private void
@@ -436,7 +444,6 @@ _pruneEmpty(delta *d)
 	if (d->added) return;		/* Note: do this after inc/exc check */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
 	d->flags |= D_GONE;
-	if (d->flags & D_SYMBOLS) moveTags(d);
 	if (d->flags & D_MERGED) {
 		delta	*m;
 
@@ -477,7 +484,8 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 	unDup(s);
 
 	/*
-	 * Mark the empty deltas.
+	 * Mark the empty deltas, reset tag tree structure
+	 * Delete 'R' tags with no symbols (tag graph merge nodes)
 	 */
 	for (n = s->table; n; n = n->next) {
 		unless (n->type == 'R') {
@@ -488,9 +496,13 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 				n->added = 0;
 			}
 		}
+		else unless (n->flags & D_SYMBOLS) {
+			n->flags &= D_GONE;
+		}
 		n->ptag = n->mtag = 0;
 		n->symGraph = 0;
 		n->symLeaf = 0;
+		n->flags &= ~D_SYMBOLS;
 	}
 	sc = s;
 	scb = sb;
