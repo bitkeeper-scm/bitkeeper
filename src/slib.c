@@ -6127,6 +6127,8 @@ out:			if (slist) free(slist);
 			if ((flags & GET_PREFIX) && (flags & GET_ALIGN)) {
 				delta *tmp = sfind(s, (ser_t) print);
 
+				if (flags&GET_SEQ)
+					fprintf(out, "%6d ", seq);
 				if (flags&(GET_MODNAME|GET_FULLPATH))
 					fprintf(out, "%s ", base);
 				if (flags&GET_PREFIXDATE)
@@ -6139,12 +6141,12 @@ out:			if (slist) free(slist);
 					    "%-*s ", s->revLen, tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d ", lines);
-				if (flags&GET_SEQ)
-					fprintf(out, "%6d ", seq);
 				fprintf(out, align);
 			} else if (flags & GET_PREFIX) {
 				delta *tmp = sfind(s, (ser_t) print);
 
+				if (flags&GET_SEQ)
+					fprintf(out, "%6d\t", seq);
 				if (flags&(GET_MODNAME|GET_FULLPATH))
 					fprintf(out, "%s\t", base);
 				if (flags&GET_PREFIXDATE)
@@ -6155,8 +6157,6 @@ out:			if (slist) free(slist);
 					fprintf(out, "%s\t", tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d\t", lines);
-				if (flags&GET_SEQ)
-					fprintf(out, "%6d\t", seq);
 			}
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;

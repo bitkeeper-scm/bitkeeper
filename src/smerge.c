@@ -35,6 +35,7 @@ private	int	merge_common = 1;
 private	int	merge_content;
 private	int	fdiff;
 private	FILE	*fl, *fr;
+private	char	*anno = 0;
 
 int
 smerge_main(int ac, char **av)
@@ -46,7 +47,7 @@ smerge_main(int ac, char **av)
 	int	start = 0, end = 0;
 	int	ret;
 
-	while ((c = getopt(ac, av, "23Aacefhnr:s")) != -1) {
+	while ((c = getopt(ac, av, "23A:aCcefhnr:s")) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -57,13 +58,16 @@ smerge_main(int ac, char **av)
 		    case 'n': /* newonly (like -2 except marks added lines) */
 			mode = MODE_NEWONLY;
 			break;
+		    case 'A': /* Add annotations */
+		    	anno = optarg;
+			break;
 		    case 'a': /* automerge non-overlapping changes */
 			automerge = 1;
 			break;
 		    case 'f': /* fdiff output mode */
 			fdiff = 1;
 			break;
-		    case 'A': /* do not collapse same changes on both sides */
+		    case 'C': /* do not collapse same changes on both sides */
 			merge_common = 0;
 			break;
 		    case 'e': /* show examples */
@@ -98,7 +102,10 @@ smerge_main(int ac, char **av)
 	file = av[optind + 3];
 	for (i = 0; i < 3; i++) {
 		revs[i] = av[optind + i];
-		sprintf(buf, "bk get -qkpOr%s %s", revs[i], file);
+		sprintf(buf, "bk get %s%s -qkpOr%s %s",
+		    anno ? "-a" : "",
+		    anno ? anno : "",
+		    revs[i], file);
 		inputs[i] = popen(buf, "r");
 		assert(inputs[i]);
 	}
@@ -136,6 +143,22 @@ usage(void)
 	system("bk help -s smerge");
 }
 
+private char *
+skipseq(char *p)
+{
+	if (anno) {
+		while (isspace(*p) ||
+		    isdigit(*p) || (*p == '-') || (*p == '+')) {
+		    	p++;
+		}
+	} else {
+		p = strchr(p, '\t');
+		assert(p);
+		p++;
+	}
+	return (p);
+}
+
 private void
 printline(char *line, int preserve_char)
 {
@@ -144,11 +167,7 @@ printline(char *line, int preserve_char)
 		fputc(line[0], stdout);
 		++line;
 	}
-	unless (show_seq) {
-		line = strchr(line, '\t');
-		assert(line);
-		++line;
-	}
+	unless (show_seq) line = skipseq(line);
 	if (fdiff) {
 		fputc(' ', fl);
 		fputs(line, fl);
@@ -267,8 +286,8 @@ sameLines(char **a, char **b)
 	EACH(a) {
 		char	*al, *bl;
 		unless (VALID(b, i)) return (0);
-		al = strchr(a[i], '\t');
-		bl = strchr(b[i], '\t');
+		al = strchr(a[i], anno ? '|' : '\t');
+		bl = strchr(b[i], anno ? '|' : '\t');
 		assert(al && bl);
 		unless (streq(al, bl)) return (0);
 	}
@@ -382,7 +401,7 @@ popLine(char **lines)
 	if (show_seq) {
 		ret = lines[1];
 	} else {
-		char	*trail = strchr(lines[1], '\t') + 1;
+		char	*trail = skipseq(lines[1]);
 		if (mode == MODE_2WAY) {
 			ret = trail;
 		} else {
