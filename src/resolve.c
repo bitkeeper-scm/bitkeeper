@@ -969,11 +969,14 @@ again:
 		to = 0;
 	}
 	if (to) {
+		char	*mfile;
+
 		sccs_close(rs->s); /* for win32 */
 		if (rename(rs->s->sfile, to)) {
 			mkdirf(to);
 			if (rename(rs->s->sfile, to)) return (-1);
 		}
+		mfile = strdup(sccs_Xfile(rs->s, 'm'));
 		if (rs->revs) {
 			delta	*d;
 			char	rfile[MAXPATH];
@@ -982,14 +985,17 @@ again:
 			t[1] = 'r';
 			strcpy(rfile, to);
 			t[1] = 's';
-			if (rename(sccs_Xfile(rs->s, 'r'), rfile)) return (-1);
+			if (rename(sccs_Xfile(rs->s, 'r'), rfile)) {
+				free(mfile);
+				return (-1);
+			}
 			if (rs->opts->log) {
 				fprintf(rs->opts->log,
 				    "rename(%s, %s)\n",
 				    sccs_Xfile(rs->s, 'r'), rfile);
 			}
-			rs->s = sccs_restart(rs->s); 
-			assert(rs->s);
+			sccs_free(rs->s);
+			rs->s = sccs_init(to, INIT_NOCKSUM);
 			d = sccs_findrev(rs->s, rs->revs->local);
 			assert(d);
 			t = name2sccs(d->pathname);
@@ -1010,7 +1016,8 @@ again:
 			    "rename(%s, %s)\n", rs->s->sfile, to);
 		}
 		opts->renames2++;
-		unlink(sccs_Xfile(rs->s, 'm'));
+		(void)unlink(mfile);	/* may not exist */
+		free(mfile);
 	    	return (0);
 	}
 
@@ -1116,6 +1123,13 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	t = sccs2name(sfile);
 	sprintf(buf, "-PyMerge rename: %s -> %s", d->pathname, t);
 	free(t);
+
+	/*
+	 * We are holding this open in the calling process, have to close it
+	 * for winblows.
+	 * XXX - why not do an internal delta?
+	 */
+	win32_close(rs->s);
 	if (rs->opts->log) {
 		sys("bk", "delta", buf, sfile, SYS);
 	} else {
@@ -1991,7 +2005,7 @@ nomerge:	rs->opts->hadConflicts++;
 same:		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 		comments_save("Auto merged");
 		d = comments_get(0);
-		sccs_restart(rs->s);
+		rs->s = sccs_restart(rs->s);
 		flags = DELTA_DONTASK|DELTA_FORCE|SILENT;
 		if (sccs_delta(rs->s, flags, d, 0, 0, 0)) {
 			sccs_whynot("delta", rs->s);
