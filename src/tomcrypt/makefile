@@ -10,7 +10,7 @@ AR=ar
 ARFLAGS=rs
 
 #executable extension.  You can leave this blank for *nix platforms
-EXT=
+EXT=.exe
 
 #change this to where you want the .h and .a file to be installed
 LIBPATH = C:/mingw32/lib

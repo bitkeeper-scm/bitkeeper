@@ -156,8 +156,7 @@ done:
 }
 
 int rsa_signpad(const unsigned char *in,  unsigned long inlen, 
-                      unsigned char *out, unsigned long *outlen, 
-                      int wprng, prng_state *prng)
+                      unsigned char *out, unsigned long *outlen)
 {
    unsigned long x, y;
    if (*outlen < (3 * inlen)) {

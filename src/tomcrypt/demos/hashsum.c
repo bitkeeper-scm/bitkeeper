@@ -36,14 +36,10 @@ int main(int argc, char **argv)
 
    for (z = 2; z < argc; z++) {
       hash_file(idx,argv[z],hash_buffer);
-
-      printf("\n%-20s ", argv[z]);
-      for (x = 0; x < (int)hash_descriptor[idx].hashsize; ) {
+      for (x = 0; x < (int)hash_descriptor[idx].hashsize; x++) {
           printf("%02x",hash_buffer[x]);
-          if (!(++x&3))  printf(" ");
-          if (!(x&31)) printf("\n%-20s ", "");
       }
-      printf("\n");
+      printf("  %s\n", argv[z]);
    }
    return EXIT_SUCCESS;
 }

@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 /* version */
-#define CRYPT   0x0062
+#define CRYPT   0x0063
 
 /* max size of either a cipher/hash block or symmetric key [largest of the two] */
 #define MAXBLOCKSIZE           128
@@ -666,8 +666,7 @@ extern int rsa_pad(const unsigned char *in,  unsigned long inlen,
                          int wprng, prng_state *prng);
 
 extern int rsa_signpad(const unsigned char *in,  unsigned long inlen, 
-                             unsigned char *out, unsigned long *outlen, 
-                             int wprng, prng_state *prng);
+                             unsigned char *out, unsigned long *outlen);
 
 extern int rsa_depad(const unsigned char *in,  unsigned long inlen, 
                            unsigned char *out, unsigned long *outlen);
@@ -688,9 +687,8 @@ extern int rsa_decrypt(const unsigned char *in,  unsigned long len,
                              rsa_key *key);
 
 extern int rsa_sign(const unsigned char *in, unsigned long inlen, 
-                          unsigned char *out, unsigned long *outlen, int hash, 
-                          prng_state *prng, int wprng, 
-                          rsa_key *key);
+                          unsigned char *out, unsigned long *outlen, 
+                          int hash, rsa_key *key);
 
 extern int rsa_verify(const unsigned char *sig, const unsigned char *msg, 
                             unsigned long inlen, int *stat, 

@@ -1,3 +1,8 @@
+-- not yet released
+v0.63  -- Made hashsum demo output like the original md5sum program 
+       -- Made additions to the examples in the manual (fixed them up a bunch)
+       -- Merged in the base64 code from Wayne Scott (wscott@bitmover.com)
+
 Aug 29th, 2002
 v0.62  -- Added the CLEAN_STACK functionality to several of the hashes I forgot to update.
 

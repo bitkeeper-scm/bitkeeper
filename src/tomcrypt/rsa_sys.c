@@ -33,7 +33,7 @@ int rsa_encrypt(const unsigned char *in,  unsigned long len,
    }
 
    /* setup the CTR key */
-   keylen = 32;                                                              /* default to 256-bit keys */
+   keylen = 32;                                                             /* default to 256-bit keys */
    if (cipher_descriptor[cipher].keysize(&keylen) == CRYPT_ERROR) {
       crypt_error = "Could not get suggested key size in rsa_encrypt().";
       return CRYPT_ERROR;
@@ -97,14 +97,6 @@ int rsa_encrypt(const unsigned char *in,  unsigned long len,
    /* encrypt the message */
    ctr_encrypt(in, out+y, len, &ctr);
    y += len;
-/*
-   for (x = 0; x < len; ) {
-       z = ((len-x)>blklen)?blklen:(len-x);
-       ctr_encrypt(&in[x], &out[y], z, &ctr);
-       x += z;
-       y += z;
-   }
-*/
 
    /* store the header */
    packet_store_header(out, PACKET_SECT_RSA, PACKET_SUB_ENCRYPTED, y);
@@ -191,14 +183,6 @@ int rsa_decrypt(const unsigned char *in,  unsigned long len,
 
    /* decrypt the message */
    ctr_decrypt(in+y, out, len, &ctr);
-/*
-   for (x = 0; x < len; ) {
-       z = ((len-x)>blklen)?blklen:(len-x);
-       ctr_decrypt(&in[y], &out[x], z, &ctr);
-       x += z;
-       y += z;
-   }
-*/   
    
    /* clean up */
    zeromem(sym_key, sizeof(sym_key));
@@ -220,8 +204,7 @@ offset    |  length   |    Contents
 
 int rsa_sign(const unsigned char *in,  unsigned long inlen, 
                    unsigned char *out, unsigned long *outlen, 
-                   int hash, prng_state *prng, int wprng, 
-                   rsa_key *key)
+                   int hash, rsa_key *key)
 {
    unsigned long hashlen, rsa_size, x, y;
    unsigned char rsa_in[4096], rsa_out[4096];
@@ -233,8 +216,7 @@ int rsa_sign(const unsigned char *in,  unsigned long inlen,
    }
 
    /* are the parameters valid? */
-   if (prng_is_valid(wprng) == CRYPT_ERROR ||
-      hash_is_valid(hash)  == CRYPT_ERROR) {
+   if (hash_is_valid(hash)  == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
 
@@ -246,7 +228,7 @@ int rsa_sign(const unsigned char *in,  unsigned long inlen,
 
    /* pad it */
    x = sizeof(rsa_in);
-   if (rsa_signpad(rsa_in, hashlen, rsa_out, &x, wprng, prng) == CRYPT_ERROR) {
+   if (rsa_signpad(rsa_in, hashlen, rsa_out, &x) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
 
