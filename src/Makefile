@@ -304,7 +304,7 @@ FORCE:
 gnu: $(BK) FORCE
 	@bk get -sS gnu/Makefile
 	@if uname -s | grep _NT; \
-	then cd gnu && $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
+	then cd gnu && cmd /c $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
 	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
 
