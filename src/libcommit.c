@@ -422,11 +422,12 @@ status(int verbose, char *status_log)
 	fclose(f);
 }
 
-void
+int
 gethelp(char *help_name, char *bkarg, FILE *outf)
 {
 	char buf[MAXLINE], pattern[MAXLINE];
 	FILE *f;
+	int found = 0;
 
 	if (bkarg == NULL) bkarg = "";
 	sprintf(buf, "%sbkhelp.txt", bin);
@@ -434,7 +435,10 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	assert(f);
 	sprintf(pattern, "#%s\n", help_name);
 	while (fgets(buf, sizeof(buf), f)) {
-		if (streq(pattern, buf)) break;
+		if (streq(pattern, buf)) {
+			found = 1;
+			break;
+		}
 	}
 	while (fgets(buf, sizeof(buf), f)) {
 		char *p;
@@ -451,6 +455,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 		}
 	}
 	fclose(f);
+	return (found);
 }
 
 
@@ -459,8 +464,12 @@ cd2root()
 {
 	char *root = sccs_root(0);
 	
+	unless (root) {
+		fprintf(stderr, "Can not find root.\n");
+		exit(1);
+	}
 	if (chdir(root) != 0) {
-		perror("chdir");
+		perror(root);
 		exit(1);
 	}
 	free(root);

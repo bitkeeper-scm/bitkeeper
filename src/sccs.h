@@ -669,7 +669,7 @@ void	cd2root();
 void	platformInit();
 void	mail(char *to, char *subject, char *file);
 void	logChangeSet(char *rev);
-void	gethelp(char *help_name, char *bkarg, FILE *f);
+int	gethelp(char *help_name, char *bkarg, FILE *f);
 void	status(int verbose, char *status_log);
 void	notify();
 char	*logAddr();

@@ -420,33 +420,6 @@ _receive() {
 	exit $?
 }
 
-# Clone a repository, usage "clone from to"
-_clone() {
-	FROM=
-	TO=
-	for arg in "$@"
-	do	case "$arg" in
-		-*)	;;
-		*)	if [ -z "$FROM" ]
-			then	FROM="$arg"
-			elif [ -z "$TO" ]
-			then	TO="$arg"
-			else	echo 'usage: clone [opts] from to' >&2; exit 1
-			fi
-			;;
-		esac
-	done
-	if [ X$TO = X ]
-	then	echo  'usage: clone [opts] from to' >&2
-		exit 1
-	fi
-	if [ -d $TO ]
-	then	echo "clone: $TO exists" >&2
-		exit 1
-	fi
-	exec `__perl` ${BIN}resync -ap "$@"
-}
-
 # Advertise this repository for remote lookup
 _advertise() {
 	FILE=${BIN}tmp/advertised
@@ -463,39 +436,6 @@ _advertise() {
 		echo "$KEY	$PWD" >> ${FILE}$$
 		mv -f ${FILE}$$ $FILE
 	fi
-}
-
-# Manually set the parent pointer for a repository.
-# With no args, print the parent pointer.
-_parent() {
-	__cd2root
-	case "X$1" in
-	    *:*)
-	    	$RM -f BitKeeper/log/parent
-	    	echo $1 > BitKeeper/log/parent
-		echo Set parent to $1
-		exit 0
-		;;
-	esac
-	if [ "X$1" = X ]
-	then	if [ -f BitKeeper/log/parent ]
-		then	echo Parent repository is `cat BitKeeper/log/parent`
-			exit 0
-		fi
-		echo "Must specify parent root directory"
-		exit 1
-	fi
-	if [ ! -d "$1/BitKeeper/etc" ]
-	then	echo "$1 is not a BitKeeper project root"
-		exit 1
-	fi
-	HERE=`pwd`
-	cd $1 || { echo Can not find $1; exit 1; }
-	P=`${BIN}gethost`:`pwd`
-	cd $HERE
-	$RM -f BitKeeper/log/parent
-	echo $P > BitKeeper/log/parent
-	echo Set parent to $P
 }
 
 # Pull: update from parent repository.  You can feed this any resync
@@ -990,28 +930,6 @@ _topics() {
 	${BIN}gethelp help_topiclist
 }
 
-_help() {
-	if [ $# -eq 0 ]
-	then	${BIN}gethelp help | $PAGER
-		exit 0
-	fi
-
-	(
-	for i in $*
-	do
-		if grep -q "^#help_$i$" ${BIN}bkhelp.txt
-		then	${BIN}gethelp help_$i $BIN
-		elif [ -x "${BIN}$i" ]
-		then	echo "                -------------- $i help ---------------"
-			echo
-			${BIN}$i --help 2>&1
-		else
-			echo No help for $i, check spelling.
-		fi
-	done
-	) | $PAGER
-}
-
 _export() {
 	Q=-q
 	K=
@@ -1165,7 +1083,7 @@ if [ X"$1" = X ]
 then	__usage
 elif [ X"$1" = X-h ]
 then	shift
-	_help "$@"
+	${BIN}help "$@"
 	exit $?
 elif [ X"$1" = X-r ]
 then	if [ X$2 != X -a -d $2 ]
