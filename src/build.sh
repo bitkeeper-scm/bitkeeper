@@ -53,7 +53,6 @@ case "X`uname -s`" in
 		LINK_LIB="libsccs.a mdbm/libmdbm.a zlib/libz.a $UWTLIB"
 		LINK_LIB="$LINK_LIB $WIN32_LIBS"
 		BK="bk.exe"
-		BKMERGE="bkmerge.exe"
 		LDFLAGS="-nologo -debug"
 		AR=`pwd`/win32/util/mklib
 		# BINDIR should really be :C:/Program Files/BitKeeper
@@ -70,7 +69,7 @@ case "X`uname -s`" in
 		INSTALL=install-nolinks
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
 		export CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
-		export BK BKMERGE UWT_H WIN_UTIL BINDIR XTRA INSTALL
+		export BK UWT_H WIN_UTIL BINDIR XTRA INSTALL
 		;;
 	*)
 		CHECK=1

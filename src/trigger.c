@@ -36,7 +36,11 @@ trigger(char *action, char *when, int status)
 
 	sprintf(file, "%s/%s/%s-%s", bk_proj->root, TRIGGERS, when, what);
 	get(file, SILENT, "-");
+#ifdef WIN32
+	if (exists(file)) {
+#else
 	if (access(file, X_OK) == 0) {
+#endif
 		char	cmd[MAXPATH*4];
 
 		if (status) {
@@ -47,8 +51,13 @@ trigger(char *action, char *when, int status)
 			putenv((strdup)(cmd));
 		}
 		sprintf(file, "%s/%s-%s", TRIGGERS, when, what);
+#ifdef WIN32
+		sprintf(cmd,
+		    "bash -c \"cd %s; %s %s %s\"", bk_proj->root, file, when, action);
+#else
 		sprintf(cmd,
 		    "cd %s; %s %s %s", bk_proj->root, file, when, action);
+#endif
 		if (system(cmd)) return (1);
 	}
 	return (0);

@@ -23,7 +23,7 @@ XTRA=
 UWTLIB	=
 UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
-BINS	= $(BK) $(BKMERGE)
+BINS	= $(BK)
 
 # Override Solaris make.rules
 .SCCS_GET:

@@ -90,10 +90,10 @@ echo OK
 echo $N Create failure triggers .....................................$NL
 cd $HERE
 cd project/BitKeeper/triggers
-rm -f *
 echo "#! /bin/sh"                > bad
 echo "exit 1"                   >> bad
 chmod +x bad
+rm -f post-*
 for y in commit incoming outgoing;do
 	cp -f bad pre-$y
 done
