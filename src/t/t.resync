@@ -310,24 +310,28 @@ do	mv SCCS/s.FILE$n SCCS/s.$n
 	if [ -f SCCS/m.FILE$n ]; then mv SCCS/m.FILE$n SCCS/m.$n; fi
 	/bin/rm -f $n
 done
+
 cd  $HERE/copy
 bk resolve -1 $L $Q -t -yMerge << EOF 2> resolve.out
+?
 m
 src/junk
-r
+?
+l
+?
 l
 u
 EOF
-if [ $? != 0 ]; then echo failed; cat resolve.out; exit 1; fi
+if [ $? != 0 ]; then echo failed; head -100 resolve.out; exit 1; fi
 cd  $HERE/copy/src
 if [ "`get -qp a.c`" != "File 2" ]
 then	echo a.c is not File 2; exit 1
 fi
-if [ "`get -qp b.c`" != "File 1" ]
-then	echo b.c is not File 1; exit 1
+if [ "`get -qp b.c`" != "File 3" ]
+then	echo b.c is not File 3; exit 1
 fi
-if [ "`get -qp junk`" != "File 3" ]
-then	echo c.c is not File 3; exit 1
+if [ "`get -qp junk`" != "File 1" ]
+then	echo c.c is not File 1; exit 1
 fi
 if [ "`get -qp c.c`" != "File 4" ]
 then	echo d.c is not File 4; exit 1

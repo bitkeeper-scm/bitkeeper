@@ -429,24 +429,35 @@ pass2_renames(opts *opts)
 {
 	char	path[MAXPATH];
 	sccs	*s;
-	DIR	*dir;
-	struct dirent *d;
+	FILE	*f;
 	int	n = 0;
 	resolve	*rs;
+	char	*t;
 
 	if (opts->debug) fprintf(stderr, "pass2_renames\n");
 
-	unless (dir = opendir("BitKeeper/RENAMES/SCCS")) return (0);
-	while (d = readdir(dir)) {
-		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
-		sprintf(path, "BitKeeper/RENAMES/SCCS/%s", d->d_name);
+	unless (exists("BitKeeper/RENAMES/SCCS")) return (0);
 
-		/* may have just deleted it but be in readdir cache */
+	/*
+	 * This needs to be an find|sort or the regressions don't pass
+	 * because some filesystems do not do FIFO ordering on directory
+	 * files (think hashed directories.
+	 */
+	unless (f =
+	    popen("find BitKeeper/RENAMES/SCCS -type f -print |sort", "r")) {
+	    	return (0);
+	}
+	while (fnext(path, f)) {
+		chop(path);
+
+		/* may have just been deleted it but be in readdir cache */
 		unless (exists(path)) continue;
 
 		/* Yes, I want this increment before the continue */
 		n++;
-		unless (d->d_name[0] == 's') continue;
+		t = strrchr(path, '/');
+		unless (t[1] == 's') continue;
+
 		unless ((s = sccs_init(path, INIT, opts->resync_proj)) &&
 		    s->tree) {
 			if (s) sccs_free(s);
@@ -471,7 +482,7 @@ pass2_renames(opts *opts)
 		}
 		resolve_free(rs);
 	}
-	closedir(dir);
+	pclose(f);
 	return (n);
 }
 
