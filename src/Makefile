@@ -39,10 +39,10 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
-	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
+	  gettemp.o getuser.o glob.o gnupatch.o graft.o help.o host.o isascii.o \
 	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o log.o logging.o merge.o mkdir.o mklock.o mmap.o \
+	  lod.o log.o logging.o merge.o mkdir.o mklock.o mkrev.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/mail.o port/platforminit.o \

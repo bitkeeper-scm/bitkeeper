@@ -50,6 +50,7 @@ int get_main(int, char **);
 int gethelp_main(int, char **);
 int gethost_main(int, char **);
 int getuser_main(int, char **);
+int gnupatch_main(int, char **);
 int graft_main(int, char **);
 int gone_main(int, char **);
 int help_main(int, char **);
@@ -66,6 +67,7 @@ int loggingask_main(int ac, char **av);
 int loggingto_main(int, char **);
 int merge_main(int, char **);
 int mklock_main(int, char **);
+int mkrev_main(int, char **);
 int mtime_main(int, char **);
 int mv_main(int, char **);
 int names_main(int, char **);
@@ -145,6 +147,7 @@ struct command cmdtbl[] = {
 	{"gethost", gethost_main},
 	{"getuser", getuser_main},
 	{"graft", graft_main},
+	{"gnupatch", gnupatch_main},
 	{"gone", gone_main},
 	{"help", help_main},
 	{"info", sinfo_main},	/* aliases */
@@ -157,6 +160,7 @@ struct command cmdtbl[] = {
 	{"log", log_main},
 	{"merge", merge_main},
 	{"mklock", mklock_main}, /* for regression test only */
+	{"mkrev", mkrev_main},
 	{"mtime", mtime_main},
 	{"mv", mv_main},
 	{"names", names_main},
