@@ -178,7 +178,7 @@ echo OK
 echo $N Simulate editing a forward file by hand .....................$NL
 cd $HERE
 rm -rf lots
-tar xf TAR
+tar xmf TAR
 cd lots
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 	echo should have had dangling deltas
@@ -203,7 +203,7 @@ echo OK
 echo $N Edit a MONOTONIC file, delta it, should strip danglers ......$NL
 cd $HERE
 rm -rf lots
-tar xf TAR
+tar xmf TAR
 cd lots
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 	echo should have had dangling deltas
@@ -309,7 +309,7 @@ echo OK
 echo $N Edit a MONOTONIC file, put non-dangling parent in it, clean .$NL
 cd $HERE
 rm -rf lots
-tar xf TAR
+tar xmf TAR
 cd lots
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 	echo should have had dangling deltas
@@ -341,7 +341,7 @@ echo OK
 echo $N Make sure we cannot remove the MONOTONIC flag with danglers .$NL
 cd $HERE
 rm -rf lots
-tar xf TAR
+tar xmf TAR
 cd lots
 test `bk prs -hnd'$if(:DANGLING:){:I:}' BitKeeper/etc/config | wc -l` -eq 0 && {
 	echo should have had dangling deltas

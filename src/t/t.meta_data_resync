@@ -188,7 +188,7 @@ echo OK
 echo $N Check flags conflict2 .......................................$NL
 cd $HERE
 rm -rf project copy
-tar xf repo.tar
+tar xmf repo.tar
 cd $HERE/project/src
 bk admin $Q -FSCCS foo.c
 bk commit $S -yxflags2
@@ -220,7 +220,7 @@ echo OK
 echo $N Check flags conflict3 .......................................$NL
 cd $HERE
 rm -rf project copy
-tar xf repo.tar
+tar xmf repo.tar
 cd $HERE/project/src
 bk edit $Q foo.c
 echo new-data > foo.c
@@ -251,7 +251,7 @@ echo OK
 echo $N Check flags conflict automerge...............................$NL
 cd $HERE
 rm -rf project copy
-tar xf repo.tar
+tar xmf repo.tar
 cd $HERE/project/src
 bk admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
 bk commit $S -yperm2

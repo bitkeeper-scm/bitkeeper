@@ -69,7 +69,7 @@ echo OK
 echo $N Make sure an import does not commit unrelated deltas ........$NL
 cd $HERE
 rm -rf EDIT
-tar xf TAR
+tar xmf TAR
 cd EDIT
 bk edit $Q foo bar
 cat >> foo <<EOF
@@ -98,7 +98,7 @@ echo OK
 echo $N Test import of a patch into a tree with modified BK files ...$NL
 cd $HERE
 rm -rf EDIT
-tar xf TAR
+tar xmf TAR
 cd EDIT
 bk edit $Q foo bar
 cat >> foo <<EOF
@@ -231,7 +231,7 @@ echo OK
 echo $N Test import of an email patch ...............................$NL
 cd $HERE
 rm -rf EDIT
-tar xf TAR
+tar xmf TAR
 cd EDIT/BitKeeper/etc
 bk edit $Q config
 echo "license: $BKL_P" > config

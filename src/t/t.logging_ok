@@ -65,7 +65,7 @@ echo OK
 echo $N Same thing, in opposite direction ...........................$NL
 cd $HERE
 rm -rf project copy
-tar xf TAR
+tar xmf TAR
 cd $HERE/project
 bk pull -t $Q ../copy
 bk get $Q BitKeeper/etc/logging_ok

@@ -94,7 +94,7 @@ echo OK
 echo $N Make sure shell escapes to run a command work ...............$NL
 cd ..
 rm -rf copy
-tar xf TAR
+tar xmf TAR
 cd copy
 ( echo '!diff $BK_LOCAL $BK_REMOTE'
   echo q ) | bk resolve $Q > OUT 2>/dev/null
@@ -134,7 +134,7 @@ echo OK
 echo $N Make sure ul works ..........................................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xmf TAR
 cd copy
 # First one is for the binary and the second one is for the file.
 ( echo ''
@@ -160,7 +160,7 @@ echo OK
 echo $N Make sure ur works ..........................................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xmf TAR
 cd copy
 # First one is for the binary and the second one is for the file.
 ( echo ''
@@ -186,7 +186,7 @@ echo OK
 echo $N Make sure shell escapes to use local works ..................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xmf TAR
 cd copy
 ( echo '!cp $BK_LOCAL $BK_MERGE'
   echo C
@@ -211,7 +211,7 @@ echo OK
 echo $N Make sure shell escapes to use remote works .................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xmf TAR
 cd copy
 ( echo '!cp $BK_REMOTE $BK_MERGE'
   echo C
@@ -236,7 +236,7 @@ echo OK
 echo $N Make sure we can force text resolution ......................$NL
 cd $HERE
 rm -rf copy
-tar xf TAR
+tar xmf TAR
 cd copy
 # First one is for the binary and the second one is for the file.
 ( echo t

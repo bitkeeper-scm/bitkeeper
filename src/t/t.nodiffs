@@ -62,7 +62,7 @@ echo OK
 echo $N Resolve -t should also autocomment ..........................$NL
 cd ..
 rm -rf copy
-tar xf TAR
+tar xmf TAR
 cd copy
 ( echo s
   echo C ) | bk resolve -t $Q 2>resolve.out

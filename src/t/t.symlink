@@ -264,9 +264,9 @@ echo OK
 echo $N Check that a symlink to file transition resyncs .............$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE
+tar xmf SAVE
 mv SL copy
-tar xf SAVE
+tar xmf SAVE
 cd SL
 bk edit $Q link
 rm link
@@ -287,9 +287,9 @@ echo OK
 echo $N Check that a file to symlink transition resyncs .............$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE
+tar xmf SAVE
 mv SL copy
-tar xf SAVE
+tar xmf SAVE
 cd SL
 bk edit $Q file
 rm file
@@ -311,9 +311,9 @@ echo OK
 echo $N Check symlink to file, choosing file ........................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE
+tar xmf SAVE
 mv SL copy
-tar xf SAVE
+tar xmf SAVE
 cd SL
 bk edit $Q link
 rm link
@@ -349,7 +349,7 @@ echo OK
 echo $N Check symlink to file, choosing symlink .....................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk pull -R -t $Q $HERE/SL
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
@@ -368,9 +368,9 @@ echo OK
 echo $N Check file to symlink, choosing file ........................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE
+tar xmf SAVE
 mv SL copy
-tar xf SAVE
+tar xmf SAVE
 cd SL
 bk edit $Q link
 rm link
@@ -406,7 +406,7 @@ echo OK
 echo $N Check file to symlink, choosing symlink .....................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd SL
 bk pull -R -t $Q $HERE/copy
 bk resolve $Q -t <<EOF >RESOLVE 2>&1
@@ -425,7 +425,7 @@ echo OK
 echo $N Check file to symlink, with rename, choosing symlink ........$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk mv link renamed
 bk commit $Q -ymv
@@ -447,7 +447,7 @@ echo OK
 echo $N Both renamed, symlink converted to file, choose l l .........$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk mv link copy
 bk commit $Q -ymv
@@ -485,7 +485,7 @@ echo OK
 echo $N Both renamed, symlink converted to file, choose l r .........$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk mv link copy
 bk commit $Q -ymv
@@ -523,7 +523,7 @@ echo OK
 echo $N Make sure edited symlinks do not fail checks ................$NL
 cd $HERE
 rm -rf SL copy
-tar xf SAVE2
+tar xmf SAVE2
 cd copy
 bk -r edit $Q
 bk -r check -a 2>OUT || {

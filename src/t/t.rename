@@ -114,7 +114,7 @@ if [ $? -ne 0 ]; then echo failed; cat resolve.out; diff PRS PRS2; exit 1; fi
 echo OK
 cd ..
 rm -rf a b
-tar xf chkpt.tar
+tar xmf chkpt.tar
 echo $N resync b to a ...............................................$NL
 cd $HERE/a
 bk pull -R $Q ../b

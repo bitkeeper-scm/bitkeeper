@@ -441,7 +441,7 @@ echo OK
 echo $N Test propogation of a tag added with a commit, pick merge ...$NL
 cd $HERE
 rm -rf tagchild
-tar xf tagchild.TAR
+tar xmf tagchild.TAR
 cd $HERE/tagchild
 echo m | bk pull $Q 2>/dev/null
 test -d RESYNC && {
