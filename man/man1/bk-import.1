@@ -4,52 +4,33 @@
 .SH NAME
 bk import \- import a set of files into a \*(BK package
 .SH SYNOPSIS
-.Bc bk import [-CfHqvr] [
-.OPTreq \-S s
-.B ] \-tpatch
+.B bk import -tpatch [OPTIONS] 
 .ARG patch
-.ARG dest
+.ARG destination
 .br
-.Bc bk import [-CfHiqvx] [
-.OPTreq \-S s
-.Bc ] [
-.OPTreq \-l f
-.B ] \-tplain
-.ARG dir
-.ARG dest
+.B bk import -tplain [OPTIONS]
+.ARG directory
+.ARG destination
 .br
-.Bc bk import [-CfHiqvx] [
-.OPTreq \-S s
-.Bc ] [
-.OPTreq \-l f
-.B ] \-tSCCS
-.ARG dir
-.ARG dest
+.B bk import -tRCS\ \  [OPTIONS]
+.ARG directory
+.ARG destination
 .br
-.Bc bk import [-ACfHiquvx] [
-.OPTreq \-c tag
-.Bc ] [
-.OPTreq \-j n
-.Bc ] [
-.OPTreq \-l f
-.Bc ] [
-.OPTreq \-S s
-.Bc ] \-t
-.ARGc CVS
-.Bc |
-.ARG RCS
-.ARG dir
-.ARG dest
+.B bk import -tSCCS\  [OPTIONS]
+.ARG directory
+.ARG destination
 .SH DESCRIPTION
 .LP
-Use bk import to put non-\*(BK files into a \*(BK package.  Non-\*(BK files
-include plain text files, patches (diffs), SCCS, CVS, and RCS files.
-bk import leaves the original files intact.
+Use bk import to put plain text files, patches (diff -Nur), SCCS files, and 
+RCS and CVS files (in this document RCS will mean both RCS AND CVS)
+into a \*(BK package.  bk import does its work outside of your original tree
+thus leaving the original files intact while importing them into a 
+\*(BK package.
 .LP
-In the case of CVS, RCS, SCCS files,
+In the case of RCS and SCCS files,
 import should only be invoked once into a destination package.
 It can be used repeatedly if you are importing 
-traditional (or alien) patches into a repository over time.  
+traditional patches (diff -Nur) into a repository over time.  
 .LP
 A more detailed explanation of importing the different types of files
 can be found below.
@@ -83,18 +64,8 @@ can be found below.
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
-.B \-A
-Attic processing (CVS import only).  Moves all files which do not have
-name conflicts from the Attic subdirectories to the enclosing repository,
-i.e., "mv Attic/*,v .".
-.tp
 .B \-C
 Do not commit the ChangeSet.
-.tp
-.OPTreq \-c tag
-do not import anything after
-.ARG tag .
-(RCS/CVS only)
 .tp
 .B \-f
 Force; do not prompt for list editing.
@@ -103,24 +74,20 @@ Force; do not prompt for list editing.
 do not pass \-h option to rcs2sccs (turns off verification, faster, unsafe).
 .tp
 .B \-i
-Like \-x but includes only files which match.
+Prompts for a regular expression to apply to the list of files.
+All matches are included. (For use with all types except patches.)
 .tp
-.OPTreq \-j n
-n-way parallel for RCS conversion.
-.tp
-.OPTreq \-l f
+.OPTreq \-l file
 Use the list of files in 
-.ARG f .
+.ARG file .
+(For use with all types except patches.)
 .tp
 .B \-q
 Be quiet.
 .tp
-.B \-r
-Do not do rename processing when doing patch imports. (Patch only.)
-.tp
-.OPTreq \-S s
+.OPTreq \-S sym
 Add tag 
-.ARG s
+.ARG sym
 to the changeset created around the import
 .tp
 .OPTreq \-t type
@@ -146,37 +113,56 @@ Import CVS files
 Import SCCS files
 .RE
 .tp
-.B \-u
-Run files through bk undos first; this will convert
-DOS style end of lines to Unix style end of lines.
-(CVS/RCS only.)
-.tp
 .B \-v
 Be verbose.
 .tp
 .B \-x
 Prompts for a regular expression to apply to the list
-of files.  All matches are excluded.
+of files.  All matches are excluded.  (For use with all types except patches.)
+.SH "RCS OPTIONS"
+.if t .TP
+.if n .TP .8i
+.B \-A
+Attic processing (CVS import only).  Moves all files which do not have
+name conflicts from the Attic subdirectories to the enclosing repository,
+i.e., "mv Attic/*,v .".
+.tp
+.OPTreq \-c tag
+do not import anything after
+.ARG tag .
+.tp
+.OPTreq \-j n
+n-way parallel for RCS conversion.
+.tp
+.B \-u
+Run files through bk undos first; this will convert
+DOS style end of lines to Unix style end of lines.
+.SH "PATCH OPTIONS"
+.if t .TP
+.if n .TP .4i
+.tp
+.B \-r
+Do not do rename processing when doing patch imports.
 .SH "IMPORTING PATCHES"
 .LP
-Importing patches can be done multiple times into a package.  
-A rename in import is the deletion of one file followed by the
-creation of another file.  Thus, import handles
-file renames in the following way: 
-it remembers all the deleted files
-and all the new files and then launches bk renametool for the
-user to manually match a deleted file with a new file.
-.DS
-bk import -tpatch patch_file destination_repository
-.DE
-.SH "IMPORTING CVS OR RCS FILES"
+\*(BK can be used to track external work by importing patches (diff -Nur)
+into a \*(BK package.  \*(BK can help with downsides of patches, namely that
+renames are not tracked well and that there generally aren't very good comments 
+if any at all attached to the changes being made.
+.\" XXX - I don't know
+.\" if the above is a completely true and pertinent statement.
+A rename in a patch is viewed as the deletion of one file and the
+creation of another file, so to track these, bk import will launch 
+bk renametool which is the graphical tool used to manually 
+match the deleted files with the newly created files.
+.SH "IMPORTING RCS FILES"
 .LP
-bk import will assume that the default branch of the CVS tree
-is the one to be imported, other branches are discarded.  
-Metadata from the CVS/RCS files is preserved upon import.
-.DS
-bk import -v -tCVS warehouse ~/new_package
-.DE
+The default branch of the RCS tree is the one that will be imported.
+All other branches are discarded. 
+.\" which is okay because
+.\" XXX - Ask lm why.  I'm not sure why this is okay.
+Metadata from the ,v files is preserved upon import.  Thus saving
+the history of your files.
 .LP
 This is a one time only import.  Importing to a clone of the destination 
 package is advised in case the import fails, the package won't get
@@ -219,12 +205,9 @@ File name pattern to exclude>> .
 .DE
 .SH "IMPORTING SCCS FILES"
 .LP
-Teamware and other SCCS files can be imported.  The history of the file is preserved, but
-the unmerged branches are discarded.  This is okay because the necessary 
-metadata is in the mainline.  
-.DS
-bk import -tSCCS /path/to/src_files ~/package
-.DE
+Teamware and other SCCS files can be imported.  The history of the file is
+preserved, but the unmerged branches are discarded.  This is okay because 
+the necessary metadata is in the mainline.  
 .LP
 Importing \*(BK files is not supported; use bk clone.
 .SH "ERROR HANDLING"
