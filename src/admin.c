@@ -81,6 +81,7 @@ main(int ac, char **av)
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	delta	*d = 0;
+	int 	was_edited;
 	pfile	pf;
 
 	debug_main(av);
@@ -250,7 +251,18 @@ main(int ac, char **av)
 				goto next;
 			}
 		}
-		if (HAS_PFILE(sc)) newrev(sc, &pf);
+		if (IS_EDITED(sc)) {
+			was_edited = 1;
+			newrev(sc, &pf);
+			if (sccs_clean(sc, SILENT)) {
+				fprintf(stderr,
+					"admin: can not clean %s\n", sc->gfile);
+				sccs_free(sc);
+				goto next;
+			}
+		} else {
+			was_edited = 0;
+		}
 		/*
 		 * if we just created a new file, reuse the new delta
 		 */
@@ -262,14 +274,13 @@ main(int ac, char **av)
 		}
 		if (touchGfile) touch(sc);
 		/*
-		 * re init the graph so we can find the new delta
+		 * re init so sccs_get would work
 		 */
 		sccs_free(sc);
 		sc = sccs_init(name, init_flags, 0);
-		if (HAS_PFILE(sc) && findrev(sc, pf.newrev)) {
-			int gflags = GET_SKIPGET|GET_EDIT;
+		if (was_edited) {
+			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
 
-			unlink(sc->pfile);
 			if (sccs_get(sc, pf.newrev, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "can not adjust p file\n");	
 			}
