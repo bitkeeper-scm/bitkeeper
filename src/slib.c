@@ -2889,8 +2889,11 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	len = strlen(k1) + strlen(k1) + 2000;
 	if (tag) len += strlen(tag);
 	buf = malloc(len);
+	/* XXX - if we ever remove |ChangeSet| from the keys fix P below */
+	checkSingle();
 	sprintf(buf,
-	    "M 0.0 %s%s %s@%s 0 0 0/0/0\n%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
+	    "M 0.0 %s%s %s@%s 0 0 0/0/0\nP ChangeSet\n"
+	    "%s%s%ss g\ns l\ns %s\ns %s\n%s\n",
 	    time2date(tt), sccs_zone(tt), sccs_getuser(), sccs_gethost(),
 	    tag ? "S " : "",
 	    tag ? tag : "",
@@ -10201,7 +10204,16 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		n->next = sc->table;
 		sc->table = n;
 		n = sccs_dInit(n, 'R', sc, 0);
-		n->sum = (unsigned short) almostUnique(1);
+		/*
+		 * n->sum = (unsigned short) almostUnique(1);
+		 *
+		 * We don't write out the sum because we use chksum of zero to
+		 * mean that this is a tag not a changeset.
+		 * XXX - this is completely broken.  Changesets can have zero
+		 * checksums.  The only place we use this is in the synckeys
+		 * processing and we need to hand that info across some other
+		 * way, like in the environment or an optional trailer block.
+		 */
 		n->rev = strdup(d->rev);
 		explode_rev(n);
 		n->pserial = d->serial;
@@ -11708,6 +11720,7 @@ skip:
 				    &buf[2], sc->sfile);
 				sc->state |= S_WARNED;
 				error++;
+				goto out;
 			} else {
 				d->include = addSerial(d->include, e->serial);
 			}
@@ -11732,6 +11745,7 @@ skip:
 				    &buf[2], sc->sfile);
 				sc->state |= S_WARNED;
 				error++;
+				goto out;
 			} else {
 				d->merge = e->serial;
 			}
@@ -11862,7 +11876,8 @@ out:	if (d) {
 		}
 #endif
 	}
-	*errorp = error;
+	assert(errorp || !error);
+	if (errorp) *errorp = error;
 	if (linesp) *linesp += lines;
 	if (symsp) *symsp = syms;
 	return (d);

@@ -1,68 +1,121 @@
 .so ../bk-macros
 .TH "bk files" 1 20%E% "\*(BC" "\*(UM"
-.SH NAME 
-bk files \- summary of BitKeeper file types
+.SH NAME
+bk files \- demo program to show file name expansion
+.SH SYNOPSIS
+.B bk files
+.BKARGS
 .SH DESCRIPTION
 .LP
-For each file under revision control, there are a number of files
-associated with the main file.  The following list describes the
-purpose of each file:
-.if t .TP 1i
-.if n .TP 1.4i
-.I foo.c
-.I gfile
-(aka "gotten" file), this is your source file
-.\"this is your source file (aka "gotten" file)
+Most \*(BK commands operate on a set of files.
+File names can be implied, be specified as arguments, be implied with
+a directory name argument, or be specified as a list on stdin.
+.LP
+.tp 4
+Implied (nothing specified)
+If no files are specified, the default list is \f(CWSCCS/s.*\fP, i.e.,
+the set of revision controlled files associated with the current working
+directory.
 .TP
-.I SCCS/s.foo.c
-.IR s.file \ -
-the revision history of all versions of the gfile
+Listed
+If the command invocation includes a list of files at the end then those 
+files and only those files are operated upon by the command.
+If any of the specified files are a directory then the list is expanded
+to include all revision controlled files associated with the specified
+directory.
 .TP
-.I SCCS/p.foo.c
-.IR p.file \ -
-the lock file, created when the file is edited.  The pfile
-contains the following columns:
-.nf
-.if n .ta .3i +0i +1.1i +1i +.8i
-.if n .sp
-.if t .ta .3i +0i +.75i +.75i +.75i
-.if t .in +2
-.if t .ft CW
-	parent	new	
-	revision	revision	user	date/time
-	1.5	1.6	lm	01/01/2000 12:43:54
-.fi
-.if n .sp
-.if t .in
-.if t .ft
-This file is an exclusive lock whose existence indicates 
-that the gfile has been checked out for editing.  Unlike 
-ATT SCCS, \*(BK allows only one locker at a time.
+All files
+A common thing to want to do is to run a command against all files under
+revision control.
+There is an easy way to do this:
+.DS
+bk -r command
+.DE
+is the same as 
+.DS
+cd `bk root`			# go to the top of the repository
+bk sfiles | bk command -	# run command on all files
+.DE
 .TP
-.I SCCS/z.foo.c
-.IR z.file \ -
-a lock file created when locking or checking 
-in a new version. This is an exclusive lock used when
-updating or locking the s.file.  
+All files at or below a directory
+A common thing to want to do is to run a command against all files under
+revision control in a sub tree.
+There is an easy way to do this:
+.DS
+bk -r. command
+.DE
+is the same as 
+.DS
+bk sfiles | bk command -	# run command on all files
+.DE
+It is just the same as the previous form except it does not change to the
+top of the repository first.
+Any directory may be specified, not just ".".
 .TP
-.I SCCS/x.foo.c
-.IR x.file \ -
-a temporary file which contains the new version
-of the s.file under construction.  When the check-in is
-finished, the s.file is removed and the x.file is moved
-into its place.
+STDIN
+If the command invocation has as its last argument a "-" then the command
+reads the standard input stream for a list of files, one per line, on
+which to operate.
 .TP
-.I SCCS/c.foo.c
-.IR c.file \ -
-a temporary copy of check in comments, currently used only by
-.B bk
-.BR citool .
-.TP
-.I SCCS/d.foo.c
-.IR d.file \ -
-a temporary file that indicates there is at least one pending delta in the
-s.file.
+WILDCARDS
+It is possible to restrict the command to a specified set of files using
+what are called wild cards (or globs in Unix terminology).
+If a name specified includes a glob pattern then only files matching
+that pattern are processed.
+Only the basename of the file is compared against the glob, not the 
+full path name.
+The patterns are standard Unix glob patterns (see bk help glob) with one
+exception for convience: a "=" may be used in place of a "*" to match 
+any pattern.  In order for the "=" alias to work, an environment variable
+\f(CWBK_GLOB_TRANSLATE_EQUAL\fP
+must be set to the value
+\f(CWYES\fP.
+To match all header files both of the following do the same thing:
+.DS
+export BK_GLOB_TRANSLATE_EQUAL=YES
+bk diffs =.h
+bk diffs '*.h'
+.DE
+If you have a file with an "=" or other glob characters in its name
+you will need to either quote those characters with a proceeding 
+backslash (i.e., "\\*.h" matches a file named "*.h"), or if the file
+name specified contains a "/" then no glob expansion is applied. 
+This makes it possible to do things like
+.DS
+bk diffs './*.h'
+.DE
+and have that match the file named "*.h".
+.SH EXCEPTIONS
+Certain commands do not autoexpand directories because the commands are 
+destructive.
+An example is bk unedit, this command throws away any changes made to files
+and it refuses to autoexpand to all files, the files must be specified.
+.SH EXAMPLES
+See changes in the current directory:
+.DS
+bk diffs
+.DE
+See all changes in the repository:
+.DS
+bk -r diffs
+.DE
+See all changes to header files in the repository:
+.DS
+bk -r diffs =.h
+.DE
+List all C or header files containing the phrase "sccs" in their name:
+.DS
+bk -r files '*sccs*.[ch]'
+.DE
+.\" Not until I merge in sfiles -1
+.\" See all modified files in directory "DIR":
+.\" .DS
+.\" bk -rDIR files -c
+.\" .DE
+.SH SEE ALSO
+.SA glob 1
+.SA sfiles 1
 .SH CATEGORY
-.B Overview
-.br
 .B File
+.br
+.B Repository

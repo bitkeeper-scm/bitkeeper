@@ -1,4 +1,6 @@
-#! @FAST_SH@
+
+# No #!, it's done with shell() in bk.c
+
 #
 # %W%  Copyright (c) Andrew Chang
 # platform specific stuff for bk.sh

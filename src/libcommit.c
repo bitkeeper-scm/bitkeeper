@@ -208,6 +208,7 @@ getMsgv(char *msg_name, char **bkargs, char *prefix, char b, FILE *outf)
 	int	n;
 	char	buf[MAXLINE], pattern[MAXLINE];
 
+	unless (msg_name) return (0);
 	sprintf(buf, "%s/bkmsg.txt", bin);
 	unless (f = fopen(buf, "rt")) {
 		fprintf(stderr, "Unable to open %s\n", buf);

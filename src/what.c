@@ -13,7 +13,7 @@ private	int	print_id(char *file);
 int
 what_main(int ac, char **av)
 {
-	int	i;
+	char	*name, *gfile;
 	int	doit(char *file);
 
 	debug_main(av);
@@ -21,63 +21,45 @@ what_main(int ac, char **av)
 		system("bk help what");
 		exit(1);
 	}
-	if ((ac == 2) && streq(av[1], "-")) {
-		char	buf[MAXPATH];
-
-		while (fnext(buf, stdin)) {
-			chop(buf);
-			print_id(buf);
-		}
-	} else {
-		for (i = 1; i < ac; ++i) {
-			print_id(av[i]);
-		}
+	for (name = sfileFirst("what", &av[1], 0); name; name = sfileNext()) {
+		gfile = sccs2name(name);
+		print_id(gfile);
+		free(gfile);
 	}
+	sfileDone();
 	return (0);
 }
 
 private int
 print_id(char *file)
 {
-	int	fd;
-	struct	stat sbuf;
-	char	*save, *p, *end;
+	FILE	*f;
+	char	*p, *cmd;
+	int	printed;
+	char	buf[MAXLINE];
 
-	if ((fd = open(file, 0, 0)) == -1) {
-		perror(file);
-		return (-1);
+	cmd = aprintf("bk cat %s", file);
+	unless (f = popen(cmd, "r")) {
+		free(cmd);
+		return (1);
 	}
-	if (fstat(fd, &sbuf) == -1) {
-		perror("fstat");
-		close(fd);
-		return (-1);
-	}
-	if (!S_ISREG(sbuf.st_mode) || (sbuf.st_size == 0)) {
-		close(fd);
-		return (-1);
-	}
-	save = p = mmap(0, sbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	end = p + sbuf.st_size;
-	close(fd);
-	if ((int)(long)p == -1) {
-		perror("mmap");
-		return (-1);
-	}
-	printf("%s:\n", file);
-	while (p < end - 4) {
-		if (p[0] == '@' && p[1] == '(' && p[2] == '#' && p[3] == ')') {
-			putchar('\t');
-			p += 4;
-			while (p < end) {
-				if (*p == '\n' || *p == '"' || *p == 0) break;
-				putchar(*p);
-				p++;
+	free(cmd);
+	while (fnext(buf, f)) {
+		unless (p = strstr(buf, "@(#)")) continue;
+		printed = 0;
+		p += 4;
+		for (;;) {
+			if ((*p == '\r') ||
+			    (*p == '\n') || (*p == '"') || (*p == 0)) break;
+			unless (printed) {
+				printf("%s:", file);
+				printed = 1;
 			}
-			putchar('\n');
-		} else {
+			putchar(*p);
 			p++;
 		}
+		if (printed) putchar('\n');
 	}
-	munmap(save, sbuf.st_size);
+	pclose(f);
 	return (0);
 }

@@ -69,7 +69,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
-	export.o fdiff.o file_gif.o \
+	export.o fdiff.o file_gif.o files.o \
 	find.o findcset.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
@@ -256,10 +256,10 @@ production_image: rebuild p image
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # Read the checkin comments on this delta before changing this.
 clean-obj: FORCE
-	-@rm -f bk bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
+	-@rm -f bk bk.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
 		$(TOMCRYPTOBJ) $(SCRIPTS)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
-	-@rm -f $(LIBS) shell.c bkdsubstr bkmsg.txt bkhelp.txt a.out
+	-@rm -f $(LIBS) bkdsubstr bkmsg.txt bkhelp.txt a.out
 	-@rm -f core $(WIN_TMP)
 	-@cd gnu && $(MAKE) clean-obj
 	-@cd win32 && $(MAKE) clean-obj
@@ -281,10 +281,10 @@ clean clobber distclean: rebuild FORCE
 
 rebuild:
 	-@rm -f *.bb *.bbg *.da *.gcov bklink.[eo]?? bk.res
-	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
+	-@rm -f bk.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
 		$(TOMCRYPTOBJ)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
-	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out
+	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
 	-@cd gnu && $(MAKE) clean clean-obj
@@ -328,7 +328,8 @@ nonet nonet_test localtest:
 	BK_NONET=YES PREFER_RSH=YES $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
+	-./bk get -qS t/setup t/x.chk_env
+	-./bk -rt get -qS 't.*'
 	cd t && ./doit -i
 
 t/doit: t/doit.sh substvars
@@ -402,8 +403,8 @@ testfast: testfast.perl
 	cp testfast.perl testfast
 	chmod +x testfast
 
-bk.script: bk.sh port/$(SYS)_platform.sh substvars
-	./substvars port/$(SYS)_platform.sh bk.sh > bk.script
+bk.script: bk.sh port/$(SYS)_platform.sh
+	cat port/$(SYS)_platform.sh bk.sh > bk.script
 	chmod +x bk.script 
 
 bkmsg.txt: bkmsg.doc bk.ver Makefile
@@ -499,8 +500,8 @@ ungzip_b64wrap: ungzip_b64wrap.sh
 	cp ungzip_b64wrap.sh ungzip_b64wrap
 	chmod +x ungzip_b64wrap
 
-import: import.sh port/$(SYS)_platform.sh substvars
-	./substvars port/$(SYS)_platform.sh import.sh > import.T
+import: import.sh port/$(SYS)_platform.sh
+	cat port/$(SYS)_platform.sh import.sh > import.T
 	chmod +x import.T
 	mv -f import.T import
 
@@ -640,7 +641,7 @@ install-nolinks: $(BINLINKS)
 	fi
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	tar cf - $(BINS) $(SCRIPTS) | (cd $(BINDIR) && tar xf -)
-	cp $(DATA) $(BINDIR)
+	cp -f $(DATA) $(BINDIR)
 	test -x /build/.wish/tk/bin/bkgui || exit 1
 	@rm -rf $(BINDIR)/tk
 	@cp -rp /build/.wish/tk $(BINDIR)
@@ -710,11 +711,6 @@ depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
 $(OBJ): $(HDRS)
-
-shell.o: substvars
-	echo 'char *shell() { return ("@FEATURE_SH@"); }' | \
-							./substvars > shell.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c $(CC_OUT)
 
 $(TOMCRYPTOBJ): tomcrypt/mpi-config.h tomcrypt/mpi-types.h tomcrypt/mpi.h \
 		tomcrypt/mycrypt.h tomcrypt/mycrypt_cfg.h tomcrypt/aes_tab.c

@@ -33,6 +33,7 @@ private	char prefix[MAXPATH];	/* path/to/dir/SCCS/ */
 private	char buf[MAXPATH];	/* pathname we actually pass back */
 private	int unget;		/* if set, return path again */
 private	char *prog;		/* av[0], sort of */
+private	char *glob;		/* if set, filter through this */
 private	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
 
 private	int oksccs(char *s, int flags, int complain);
@@ -137,6 +138,16 @@ norev:
 	if (isDelete(buf) && !(flags & SF_DELETES)) {
 		goto again;
 	}
+	if (glob) {
+		char	*f = strrchr(buf, '/');
+
+		if (f) {
+			f += 3;
+		} else {
+			f = &buf[2];
+		}
+		unless (match_one(f, glob, 0)) goto again;
+	}
 	if (oksccs(buf, flags, !(flags & SF_SILENT))) {
 		return (buf);
 	}
@@ -147,6 +158,13 @@ char *
 sfileRev()
 {
 	return (rev[0] ? rev : 0);
+}
+
+int
+sfiles_glob(char *glob)
+{
+	if (getenv("BK_NO_FILE_GLOB")) return (0);
+	return (!strchr(glob, '/') && is_glob(glob));
 }
 
 /*
@@ -161,6 +179,21 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	rev[0] = 0;
 	prog = cmd;
 	flags = Flags|SF_HASREVS; 
+	if (Av[0]) {
+		int	i;
+
+		for (i = 0; Av[i+1]; ++i);
+		if (streq("-", Av[i])) {
+			if ((i > 0) && sfiles_glob(Av[i-1])) {
+				glob = strdup(Av[i-1]);
+				Av[i-1] = "-";
+				Av[i] = 0;
+			}
+		} else if (sfiles_glob(Av[i])) {
+			glob = strdup(Av[i]);
+			Av[i] = 0;
+		}
+	}
 	if (Av[0]) {
 		if (streq("-", Av[0])) {
 			if (Av[1]) {
@@ -238,6 +271,8 @@ sfileDone()
 		if (flist != stdin) fclose(flist);
 		flist = 0;
 	}
+	if (glob) free(glob);
+	glob = 0;
 	prog = "";
 }
 

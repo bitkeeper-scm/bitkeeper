@@ -445,9 +445,9 @@ tree.
 The error caused by this undo is:
 $
 #version
-BitKeeper#BKARG#version is 20030923175951 for x86-glibc22-linux
-Built by: lm@demo.bitmover.com in /home/lm/bk-3.1.x-merge/src
-Built on: Tue Sep 23 11:00:15 PDT 2003
+BitKeeper#BKARG#version is @version@
+Built by: @builder@
+Built on: @built_date@
 $
 #config_preamble
 This is the BitKeeper configuration for this package.

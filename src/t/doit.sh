@@ -19,12 +19,11 @@ win32_common_setup()
 	PLATFORM="WIN32"
 	WINDOWS=YES
 	DEV_NULL="nul"
-	TMP=`../bk _nativepath $TEMP`
 	if [ -z "$TST_DIR" ]; then TST_DIR=`../bk _nativepath /tmp`; fi
 	BK_FS="|"
 	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
-	touch $TMP/BitKeeper_nul
+	touch `../bk _nativepath $TEMP`/BitKeeper_null
 	BK_USER=`bk getuser`
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$BK_USER = XAdministrator ]; then BK_USER=Administrator-test; fi
@@ -33,7 +32,7 @@ win32_common_setup()
 	export BK_USER
 
 	# don't run remote regressions on NT
-	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
+	DO_REMOTE=NO
 	export DO_REMOTE
 
 	BIN1="`bk bin`/bk.exe"
@@ -56,7 +55,6 @@ unix_common_setup()
 	PLATFORM="UNIX"
 	WINDOWS=NO
 	DEV_NULL="/dev/null"
-	TMP="/tmp"
 	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp"; fi
 	TST_DIR=`bk pwd $TST_DIR`       # if symlink, force to real path
 	CWD="/bin/pwd"
@@ -142,9 +140,9 @@ check_path()
 # Make sure the "if [ -w ... ]" construct works under this id.
 check_w()
 {
-	touch $TMP/data$$
-	chmod 000 $TMP/data$$
-	if [ -w $TMP/data$$ ]
+	touch /tmp/data$$
+	chmod 000 /tmp/data$$
+	if [ -w /tmp/data$$ ]
 	then
 		echo "======================================================="
 		echo "A file with mode 000 is still writable under your uid:"
@@ -154,10 +152,10 @@ check_w()
 		echo "account, because the regression test check write access"
 		echo "of some files and expect them to be  non-writable."
 		echo "======================================================="
-		rm -f $TMP/data$$
+		rm -f /tmp/data$$
 		exit 1
 	fi
-	rm -f $TMP/data$$
+	rm -f /tmp/data$$
 }
 
 
@@ -210,6 +208,7 @@ setup_env()
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
 	HERE=$BK_REGRESSION
 	BK_TMP=$BK_REGRESSION/.tmp
+	TMPDIR=/tmp/.tmp-$USER
 	BKL_P=BKL5413557503d719ed00001200ffffe
 	BKL_P1=YgAAAo0AAAADgAAAADsCeUepwSCv8vdzC+zfqSI/LcdNEi6Oqas5Wj01Fa7w/0rY
 	BKL_P2=dGV7TM68nu7/Yw1sr5iwwEB4/BrY5EerWnFGYHhlOmnrgok04a4Ln/lLTpfFmpyd
@@ -222,6 +221,7 @@ setup_env()
 	BKL_EX1=YgAAAo4AAAADgQAAAAFQoPDeRRdpqjJLu30dIZFxdyKx9/rKDuF5WLctEEQzXfcM
 	BKL_EX2=7C4OKLdN/zrNavYbU24iyPR362lgpT6X4A4CvZBLc3cqGtDhX0tO/PWRlb3xr1nN
 	BKL_EX3=4OfnMtUM6SsjQ/kNebbbrnJjKLgSfu/61sVkQXaQ3rmEQXvg72eGHrKjnZT1FA==
+	BK_GLOB_TRANSLATE_EQUAL=NO
 }
 
 clean_up()
@@ -260,6 +260,10 @@ clean_up()
 		exit 12
 	}
 
+	# Make sure there are no stale files in $TMPDIR
+	ls -a $TMPDIR > $TMPDIR/T.${USER}-new
+	$DIFF $TMPDIR/T.${USER}-new $TMPDIR/T.${USER}
+
 	for i in 1 2 3 4 5 6 7 8 9 0
 	do	
 		rm -rf $BK_REGRESSION 2>/dev/null
@@ -272,33 +276,25 @@ clean_up()
 		echo "cleanup: failed to rm $BK_REGRESSION"
 		exit 1
 	}
-
-	# Make sure there are no stale files in $TMP
-	ls -a $TMP  > $TMP/T.${USER}-new
-	$DIFF $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
 }
 
 init_main_loop()
 {
-	touch $TMP/T.${USER} $TMP/T.${USER}-new
 	if [ -d $BK_REGRESSION ]; then rm -rf $BK_REGRESSION; fi
 
 	if [ -d $BK_REGRESSION ];
 	then echo "failed to rm $BK_REGRESSION"; exit 1;
 	fi
 
-	# Save the list of file currently in $TMP
-	# check it again for tmp file leak when we are in clean_up()
-	ls -a $TMP > $TMP/T.${USER}
-
 	BK_PATH=$PATH
 	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
-	export USER BK_FS BK_REGRESSION HERE BK_TMP NL N Q S CORES
+	export USER BK_FS BK_REGRESSION HERE BK_TMP TMPDIR NL N Q S CORES
 	export NXL NX
 	export BKL_P BKL_EX BKL_B
 	export BKL_P1 BKL_P2 BKL_P3
 	export BKL_B1 BKL_B2 BKL_B3
 	export BKL_EX1 BKL_EX2 BKL_EX3
+	export BK_GLOB_TRANSLATE_EQUAL
 }
 
 #
@@ -358,12 +354,32 @@ get_options()
 get_options $@
 setup_env 
 init_main_loop
+
 # Main Loop #
 FAILED=
 for i in $list
 do	echo ------------ ${i#t.} test
         bk leaseflush
-	mkdir -p $BK_REGRESSION/.tmp || exit 1
+	mkdir -p $BK_TMP || exit 1
+
+	# Let's be safe out there boys and girls
+	case $TMPDIR in
+	    /tmp)	echo Bad tmpdir, I quit
+			exit 1
+			;;
+	    /tmp/*)	;;
+	    *)		Really weird TMPDIR $tmpdir, I quit
+			exit 1
+			;;
+	esac
+	rm -rf $TMPDIR || exit 1
+	mkdir -p $TMPDIR || exit 1
+
+	# Save the list of file currently in $TMPDIR
+	# check it again for tmp file leak when we are in clean_up()
+	touch $TMPDIR/T.${USER}-new
+	ls -a $TMPDIR > $TMPDIR/T.${USER}
+
 	cat setup $i | @TEST_SH@ $dashx
 	EXIT=$?
 	if [ $EXIT -ne 0 ]
@@ -374,7 +390,7 @@ do	echo ------------ ${i#t.} test
 	fi
 	clean_up
 done
-rm -f $TMP/T.${USER} $TMP/T.${USER}-new
+rm -f $TMPDIR/T.${USER} $TMPDIR/T.${USER}-new
 test "X$FAILED" = X && {
 	echo ------------------------------------------------
 	echo All requested tests passed, must be my lucky day

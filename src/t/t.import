@@ -457,13 +457,13 @@ cd $HERE
 mkdir -p import_sccs2/src
 cd $HERE/import_sccs2/src
 echo star > '*.c'
-bk ci $Q -i -l '*.c'
-echo "bar-new" > '*.c'
+bk ci $Q -i -l './*.c'
+echo "bar-new" > './*.c'
 bk ci $Q -y '*.c'
 cd $HERE
 ( echo SCCS; echo no ) | bk import import_sccs2 project  > import.out 2>&1
 cd $HERE/project/src
-bk get $Q '*.c' $HERE/import_sccs2/src/'*.c'
+bk get $Q './*.c' $HERE/import_sccs2/src/'*.c'
 cmp -s '*.c' $HERE/import_sccs2/src/'*.c'
 echo OK
 
