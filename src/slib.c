@@ -14980,7 +14980,9 @@ sccs_pdelta(sccs *s, delta *d, FILE *out)
 }
 
 /* Get the checksum of the 5 digit checksum */
-
+/*
+ * XXX why does this get an 'sccs *' ??
+ */
 int
 sccs_sdelta(sccs *s, delta *d, char *buf)
 {

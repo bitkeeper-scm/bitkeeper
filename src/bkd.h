@@ -120,7 +120,7 @@ extern	char cmdlog_buffer[];
 extern	char *logRoot;
 
 void	bkd_server(char **);
-remote	*remote_parse(char *url, int is_clone);
+remote	*remote_parse(const char *url, int is_clone);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
@@ -141,7 +141,6 @@ int	outfd(int fd, char*buf);
 
 int	read_blk(remote *r, char *c, int len);
 int	write_blk(remote *r, char *c, int len);
-remote	*remote_parse(char *p, int is_clone);
 sccs *	mk_probekey(FILE *f);
 void	sccs_color(sccs *s, delta *d);
 int	getline2(remote *r, char *buf, int size); 

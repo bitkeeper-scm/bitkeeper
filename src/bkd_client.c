@@ -14,19 +14,22 @@ extern	char	cmdlog_buffer[];
  * If nothing is passed in, use `bk parent`.
  */
 remote *
-remote_parse(char *p, int skip_checks)
+remote_parse(const char *url, int skip_checks)
 {
 	char	*freeme = 0;
 	static	int echo = -1;
 	int	append = 0;
 	remote	*r;
+	char	*p;
 
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
-	unless (p && *p) {
+	unless (url && *url) {
 		unless (freeme = getParent()) return (0);
 		append = 1;
 		p = freeme;
+	} else {
+		freeme = p = strdup(url);
 	}
 	unless (p) {
 		if (freeme) free(freeme);
