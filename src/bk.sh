@@ -481,8 +481,12 @@ _unrm () {
 		return 1
 	fi
 
+	bk root > /dev/null || return 1
+
+	# Assume the path name specified is relative to the current directory
+	rpath=`bk pwd -r`'/.*'"$1"
+
 	__cd2root
-	rpath="$1"
 	LIST=/tmp/LIST$$
 	DELDIR=BitKeeper/deleted
 	cd $DELDIR
@@ -491,8 +495,8 @@ _unrm () {
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
 		sort -r -n | cut -d'|' -f2 | \
-		prs -Dhnpr+ -d':GFILE:|:DPN:|:I:' - | \
-		grep '^.*|.*'"$rpath"'.*|.*' >$LIST
+		prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
+		grep '^.*|.*'"$rpath"'.*' >$LIST
 
 	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
 	if [ "$NUM" -eq 0 ]
@@ -514,7 +518,6 @@ _unrm () {
 	do
 		GFILE=`echo $n | cut -d'|' -f1 -`
 		RPATH=`echo $n | cut -d'|' -f2 -`
-		REV=`echo $n | cut -d'|' -f3 -`
 
 		# If there is only one match, and it is a exact match,
 		# don't ask for confirmation.
@@ -530,7 +533,7 @@ _unrm () {
 			  -d'Deleted on:\t:D: :T::TZ: by :USER:@:HOST:' $GFILE
 			echo "---"
 			echo "Top delta before it is deleted:"
-			bk prs -hr"$REV" $GFILE
+			bk prs -hpr+ $GFILE
 
 			echo -n \
 			    "Undelete this file back to \"$RPATH\"? (y|n|q)> "

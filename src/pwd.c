@@ -4,18 +4,19 @@
 
 
 
-private char *usage = "pwd [-sc] [path]\n";
+private char *usage = "pwd [-scr] [path]\n";
 
 pwd_main(int ac, char **av)
 {
 	char	buf[MAXPATH], *p;
-	int	c, shortname = 0, cygwin = 0;
+	int	c, shortname = 0, cygwin = 0, bk_rpath = 0;
 
 	setmode(1, _O_BINARY);
-	while ((c = getopt(ac, av, "sc")) != -1) {
+	while ((c = getopt(ac, av, "scr")) != -1) {
 		switch (c) {
 			case 's': shortname = 1; break;
 			case 'c': cygwin = 1; break; /* output cygwin path */
+			case 'r': bk_rpath = 1; break; /* bk relative path */
 			default: fprintf(stderr, usage); exit(1);
 		}
 	}
@@ -32,6 +33,7 @@ pwd_main(int ac, char **av)
 	if (getRealCwd(p, sizeof buf -3) == NULL){
 		perror("getcwd");
 	}
+
 #ifdef WIN32 /* handle drive, shortname and cygwin path */
 	if (*p == '/') {
 		buf[1] = 'A' + _getdrive() - 1;
@@ -48,6 +50,6 @@ pwd_main(int ac, char **av)
 		p++;
 	}
 #endif
-	printf("%s\n", p);
+	printf("%s\n", bk_rpath ? _relativeName(p, 1, 0, 1, 1, 0, 0): p);
 	return (0);
 }
