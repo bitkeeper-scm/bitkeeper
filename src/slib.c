@@ -11338,7 +11338,7 @@ sccs_read_pfile(char *who, sccs *s, pfile *pf)
 		fprintf(stderr, "Empty p.file %s - aborted.\n", s->pfile);
 		return (-1);
 	}
-	if ((tmp = fopen(s->pfile, "r")) < 0)  {
+	unless (tmp = fopen(s->pfile, "r")) {
 		fprintf(stderr, "pfile: can't open %s\n", s->pfile);
 		free(mRev);
 		return (-1);
