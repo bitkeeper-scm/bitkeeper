@@ -3271,10 +3271,16 @@ parseConfig(char *buf)
 		strcpy(buf, "CONVERT ME PLEASE\n");
 		return (1);
 	}
-	unless (isspace(*p)) return (1);	/* we're done */
-	for (q = p; *q && isspace(*q); q++);
-	unless (*q) return (0);			/* garbage */
-	while (*p++ = *q++);			/* leftshift over the spc */
+	if (isspace(*p)) {
+		for (q = p; *q && isspace(*q); q++);
+		unless (*q) return (0);		/* garbage */
+		while (*p++ = *q++);		/* leftshift over the spc */
+	}
+	p = strrchr(buf, '\n');
+	assert(p);
+	q = &p[-1] ;
+	while (isspace(*q)) q--;		/* trim trailing space */
+	if (q != &p[-1]) strcpy(&q[1], "\n");
 	return (1);
 }
 

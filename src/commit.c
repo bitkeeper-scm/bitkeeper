@@ -314,15 +314,17 @@ logChangeSet(int l, char *rev, int quiet)
 	if (l & LOG_OPEN) {
 		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
 		if (pid == -1) unlink(commit_log);
-		fprintf(stdout, "Waiting for http...\n");
+		fprintf(stdout, "Sending ChangeSet log via http...\n");
+		fflush(stdout); /* needed for citool */
+		/* do not do waitpid(), let http xfer run in back ground */
 	} else {
 		pid = mail(to, subject, commit_log);
 		if (pid == -1) unlink(commit_log);
-		fprintf(stdout, "Waiting for mailer...\n");
+		fprintf(stdout, "Sending ChangeSet log via email...\n");
+		fflush(stdout); /* needed for citool */
+		waitpid(pid, 0, 0);
+		unlink(commit_log);
 	}
-	fflush(stdout); /* needed for citool */
-	waitpid(pid, 0, 0);
-	unlink(commit_log);
 }
 
 void
