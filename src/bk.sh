@@ -286,6 +286,26 @@ _extras() {
 	bk sfiles -x
 }
 
+_jove() {
+	bk get -qe "$@" 2> /dev/null
+	jove $@
+}
+
+_joe() {
+	bk get -qe "$@" 2> /dev/null
+	joe $@
+}
+
+_jed() {
+	bk get -qe "$@" 2> /dev/null
+	jed $@
+}
+
+_vim() {
+	bk get -qe "$@" 2> /dev/null
+	vim $@
+}
+
 _vi() {
 	bk get -qe "$@" 2> /dev/null
 	vi $@
@@ -419,10 +439,15 @@ _man() {
 
 _root() {
 	if [ X$1 = X -o X$1 = X--help ]
-	then	echo usage: root pathname
+	then	echo "usage: root [pathname]"
 		exit 1
 	fi
-	cd `dirname $1`
+	if [ X$1 != X ]
+	then	if [ ! -d $1 ]
+		then	cd `dirname $1`
+		else	cd $1
+		fi
+	fi
 	__cd2root
 	pwd
 	exit 0

@@ -97,6 +97,8 @@ purify+mdbm:
 	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_MDBM -DPURIFY_FREQ=50" all
 purify:
 	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=50" all
+PURIFY:
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=1" all
 gprof:
 	$(MAKE) CFLAGS="-g -pg -O2" all
 # Recent gcc only profiles libc if you do it this way.
@@ -146,7 +148,7 @@ production_purify: rebuild purify install
 production_image: rebuild p image
 
 # Cleanup targets.
-clean-obj: FORCE
+clean clean-obj: FORCE
 	-/bin/rm -f $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-/bin/rm -f $(LIBS) bkdsubstr bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
@@ -271,7 +273,8 @@ stamp-ver:: bk
 
 # Because we need the execute bit on
 utils/os utils/gnu-os: bk
-	./bk get utils/os utils/gnu-os
+	@if [ ! -x utils/os ]; then ./bk get utils/os; fi
+	@if [ ! -x utils/gnu-os ]; then ./bk get utils/gnu-os; fi
 
 uuwrap: uuwrap.sh substvars
 	./substvars uuwrap.sh > uuwrap.T

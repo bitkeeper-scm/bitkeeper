@@ -4,16 +4,16 @@
  * adds timezone information and makes the interface a bit
  * friendlier.
  * We copy the struct tm returned by localtime, and return the
- * timezone offset in seconds normalized to (-43200, 43200].
+ * timezone offset in seconds normalized to (-12h, +13h].
+ * The extra hour is for daylight savings time.
  */
-
 #include "system.h"
 
 long
 localtimez(time_t tt, struct tm *tmz)
 {
-	struct tm *tm;
-	int offset;
+	struct tm	*tm;
+	int		offset;
 
 	tm = localtime(&tt);
 
@@ -43,9 +43,11 @@ localtimez(time_t tt, struct tm *tmz)
 	offset -= (tm->tm_hour*60 + tm->tm_min)*60 + tm->tm_sec;
 #endif
 
-	/* Normalize offset to (-43200, 43200].  */
-	while (offset <= -43200) offset += 86400;
-	while (offset > 43200) offset -= 86400;
+	/* Normalize offset to (-12h, 13h].
+	 * Thanks to Chris Wedgwood for the fix.
+	 */
+	while (offset <= -(12*60*60)) offset += (24*60*60);
+	while (offset > (13*60*60)) offset -= (24*60*60);
 
-	return offset;
+	return (offset);
 }
