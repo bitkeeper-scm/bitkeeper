@@ -34,7 +34,7 @@ prs_main(int ac, char **av)
 	int	init_flags = INIT_NOCKSUM|INIT_SAVEPROJ;
 	int	flags = 0;
 	int	opposite = 0;
-	int	c;
+	int	rc = 0, c;
 	char	*name, *xrev = 0;
 	char	*cset = 0;
 	int	noisy = 0;
@@ -86,7 +86,10 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		if (cset) {
 			delta	*d = sccs_getrev(s, cset, 0, 0);
 
-			if (!d) goto next;
+			if (!d) {
+				rc = 1;
+				goto next;
+			}
 			rangeCset(s, d);
 		} else {
 			RANGE("prs", s, expand, noisy);
@@ -126,10 +129,14 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 			}
 		}
 		sccs_prs(s, flags, reverse, dspec, stdout);
-next:		sccs_free(s);
+		sccs_free(s);
+		continue;
+		
+next:		rc = 1;
+		sccs_free(s);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
 	if (year4) free(year4);
-	return (0);
+	return (rc);
 }
