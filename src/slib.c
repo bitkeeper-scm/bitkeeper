@@ -4879,16 +4879,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 		if (d->flags & D_MODE) {
 		    	unless (d->parent && sameMode(d->parent, d)) {
-#define USE_OCTAL_MODE
-#ifdef	USE_OCTAL_MODE
-				if (d->glink) {
-					assert(S_ISLNK(d->mode));
-					sprintf(buf,
-					    "\001cO%o %s\n", d->mode, d->glink);
-				} else {
-					sprintf(buf, "\001cO%o\n", d->mode);
-				}
-#else /* "ascii mode string */
 				if (d->glink) {
 					assert(S_ISLNK(d->mode));
 					sprintf(buf,
@@ -4898,7 +4888,6 @@ delta_table(sccs *s, FILE *out, int willfix)
 					sprintf(buf,
 						"\001cO%s\n", mode2a(d->mode));
 				}
-#endif
 				fputsum(s, buf, out);
 			}
 		}
