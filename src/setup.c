@@ -14,11 +14,22 @@ setup_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "c:fn:")) != -1) {
 		switch (c) {
-		    case 'c':	localName2bkName(optarg, optarg);
-				config_path = fullname(optarg, 0);
-				break;
-		    case 'f':	force = 1; break;
-		    case 'n':	project_name = optarg; break;
+		    case 'c':	
+		    	unless(exists(optarg)) {
+				fprintf(stderr, 
+				    "setup: %s doesn't exist. Exiting\n",
+				    optarg);
+				exit(1);
+			}
+			localName2bkName(optarg, optarg);
+			config_path = fullname(optarg, 0);
+			break;
+		    case 'f':
+			force = 1;
+			break;
+		    case 'n':
+			project_name = optarg;
+			break;
 		}
 	}
 	unless (project_path = av[optind]) {
