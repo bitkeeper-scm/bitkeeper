@@ -71,7 +71,7 @@ commit_main(int ac, char **av)
 	}
 
 	if (sccs_cd2root(0, 0) == -1) {
-		printf("Cannot find root directory\n");
+		fprintf(stderr, "Cannot find root directory\n");
 		return (1);
 	}
 	unless(opts.resync) remark(opts.quiet);
@@ -216,7 +216,7 @@ out:		if (commentFile) unlink(commentFile);
 	 * If no package_name, nag user to update config file
 	 */
 	if (is_openlogging(l) && !goodPackageName(package_name())) {
-		printf(
+		fprintf(stderr,
 "============================================================================\n"
 "Warning: Package name is Null or Blank. Please add an entry to the \n"
 "\"Description:\" field in the \"BitKeeper/etc/config\" file\n"
