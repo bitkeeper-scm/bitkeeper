@@ -32,7 +32,8 @@ import() {
 	VERBOSE=-q
 	VERIFY=-h
 	LOCKPID=
-	while getopts ACc:efFHij:l:p:qRrS:t:uvxy: opt
+	FUZZOPT=-F0
+	while getopts ACc:efFHij:l:p:qRrS:t:uvxy:z: opt
 	do	case "$opt" in
 		A) FIX_ATTIC=YES;;		# doc 2.0
 		c) CUTOFF=-c$OPTARG;;		# doc 2.0
@@ -55,6 +56,7 @@ import() {
 		u) UNDOS=-u;;			# doc 2.0
 		v) VERBOSE=;;			# doc 2.0
 		y) COMMENTS="$OPTARG";;
+		z) FUZZOPT="-F$OPTARG";;
 		esac
 	done
 	test X$CLOCK_DRIFT != X -a X$PARALLEL != X1 && {
@@ -388,7 +390,7 @@ import_patch() {
 	if [ $CONFLICT = YES ]; then Done 1; fi
 	
 
-	bk patch -g1 -f $PATCHARG -ZsE -z '=-PaTcH_BaCkUp!' \
+	bk patch -g1 -f $PATCHARG -ZsE -z '=-PaTcH_BaCkUp!' $FUZZOPT \
 	    --forcetime --lognames < ${TMP}patch$$ > ${TMP}plog$$ 2>&1
     	
 	# patch exits with 0 if no rejects

@@ -176,6 +176,20 @@ and exit with a failure.
 Set the message for the delta comments for all files to
 .B <comment>
 rather than "Import patch PATCHNAME".
+.tp
+.OPTreq \-z fuzz
+Control the acceptance of fuzz by
+.B bk patch
+by passing the argument
+.B \-F
+.ARG fuzz
+to
+.B patch
+rather than the default
+.B \-F0
+, which indicates strict matching.  See the
+.B bk help patch
+manpage for further information. 
 .SH "IMPORTING PATCHES"
 .LP
 \*(BK can be used to track external work by importing patches (diff -Nur)
