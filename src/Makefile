@@ -375,13 +375,13 @@ lodset: lodset.sh
 # It is structured like this so that rebuilding prs doesn't
 # force bk.ver (and thus the bk script) to be regenerated.
 bk.ver: stamp-ver
-stamp-ver:: ../SCCS/s.ChangeSet
-	./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet >bk.v
+stamp-ver:: ../SCCS/s.ChangeSet utils/os utils/gnu-os
+	( echo `utils/os` \
+	  `./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` ) >bk.v
 	mv -f bk.v bk.ver
 	touch stamp-ver
 stamp-ver:: prs
 	touch stamp-ver
-
 
 uuwrap: uuwrap.sh substvars
 	./substvars uuwrap.sh > uuwrap.T
