@@ -929,30 +929,48 @@ __nusers() {
 	sort -u ${TMP}users$$ | wc -l
 	${RM} -f ${TMP}users$$
 }
-	
+
+__has_unconfirmed_openlogging()
+{
+	# If we have a logging_ok message, then we are done.
+	if [ `grep "^logging_ok:" ${BK_ETC}config | wc -l` -gt 0 ]
+	then	return 1
+	fi
+	LOGADDR=`__logAddr`
+	if [ `echo $LOGADDR | grep '@openlogging.org$' | wc -l` -gt 0 ]
+	then return 0
+	else __sendConfig config@openlogging.org
+	     return 1
+	fi
+}
+
+_logging_ok() {
+	__cd2root
+	${BIN}get -q ${BK_ETC}config
+
+	if __has_unconfirmed_openlogging
+	then __gethelp log_query $LOGADDR ; RC=1
+	else RC=0
+	fi
+	${BIN}clean ${BK_ETC}config
+	return $RC
+}
+
 
 # Log the changeset to openlogging.org or wherever they said to send it.
 # If they agree to the logging, record that fact in the config file.
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
 __checkLog() {
-	# If we have a logging_ok message, then we are done.
-	if [ `grep "^logging_ok:" ${BK_ETC}config | wc -l` -gt 0 ]
-	then	${BIN}clean ${BK_ETC}config
-		return
-	fi
-
-	# If we are sending to openlogging.org, then ask if OK first.
-	if [ `echo $LOGADDR | grep '@openlogging.org$' | wc -l` -gt 0 ]
-	then
-		__gethelp log_query $LOGADDR
+	if __has_unconfirmed_openlogging
+	then 	__gethelp log_query $LOGADDR
 		echo $N "OK [y/n]? "$NL
 		read x
 		case X$x in
 	    	    X[Yy]*)
 			${BIN}clean ${BK_ETC}config
 			${BIN}get -seg ${BK_ETC}config
-			${BIN}get -kps ${BK_ETC}config |
+			${BIN}get -kps ${BK_ETC}config | \
 			sed -e '/^logging:/a\
 logging_ok:	to '$LOGADDR > ${BK_ETC}config
 			${BIN}delta -y'Logging OK' ${BK_ETC}config
@@ -962,8 +980,8 @@ logging_ok:	to '$LOGADDR > ${BK_ETC}config
 		__gethelp log_abort
 		${BIN}clean ${BK_ETC}config
 		exit 1
-	else
-		__sendConfig config@openlogging.org
+	else	${BIN}clean ${BK_ETC}config
+		return
 	fi
 }
 
