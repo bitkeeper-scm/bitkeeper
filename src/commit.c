@@ -11,11 +11,8 @@ char commit_file[MAXPATH], list[MAXPATH];
 int force = 0, lod = 0;
 int checklog = 1, getcomment = 1;
 char *sym = 0;
-void cd2root();
-char * logAddr();
+
 void make_comment(char *cmt);
-void cp_comment(char *file);
-void gethelp(char *help_name, char *bkarg, FILE *f);
 
 main(int ac, char **av)
 {

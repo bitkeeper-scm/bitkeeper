@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-void gethelp(char *help_name, char *bkarg, FILE *f);
-
 int
 main(int ac, char **av)
 {

@@ -3,9 +3,6 @@
 
 extern char *editor, *pager, *bin;
 
-void cd2root();
-void platformInit();
-
 int
 main(int ac, char **av)
 {

@@ -659,6 +659,18 @@ int	uniq_update(char *key, time_t t);
 int	uniq_root(char *key);
 int	uniq_close(void);
 
+void	cd2root();
+void	platformInit();
+void	mail(char *to, char *subject, char *file);
+void	logChangeSet(char *rev);
+void	gethelp(char *help_name, char *bkarg, FILE *f);
+void	status(int verbose, char *status_log);
+void	notify();
+char	*logAddr();
+char	*project_name(); 
+void	init_aliases();
+char	*cname_user(char *username); 
+
 typedef	char **globv;
 globv	read_globs(FILE *f, globv oldglobs);
 char	*match_globs(char *string, globv globs);

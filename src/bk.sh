@@ -728,7 +728,7 @@ _undo() {
 
 	${BIN}stripdel -Ccr$1 ChangeSet 2> ${TMP}undo$$
 	if [ $? != 0 ]
-	then	__gethelp undo_error $BIN
+	then	${BIN}gethelp undo_error $BIN
 		cat ${TMP}undo$$
 		$RM ${TMP}undo$$
 		exit 1
@@ -804,24 +804,6 @@ _pending() {
 	exec ${BIN}sfiles -CA | ${BIN}sccslog - | $PAGER
 }
 
-__chkConfig() {
-	if [ ! -f  ${BK_ETC}SCCS/s.config ]
-	then
-		__gethelp chkconfig_missing $BIN
-		return 1
-	fi
-	if [ -f ${BK_ETC}config ]
-	then	${BIN}clean ${BK_ETC}config
-	fi
-	${BIN}get -q ${BK_ETC}config
-	cmp -s ${BK_ETC}config ${BIN}bitkeeper.config
-	if [ $? -eq 0 ]
-	then	__gethelp chkconfig_inaccurate $BIN
-		return 1
-	fi
-	return 0
-}
-
 _users() {
 	${BIN}bkusers "$@"
 }
@@ -849,7 +831,7 @@ _root() {
 }
 
 _sendbug() {
-	__gethelp bugtemplate >${TMP}bug$$
+	${BIN}gethelp bugtemplate >${TMP}bug$$
 	$EDITOR ${TMP}bug$$
 	while true
 	do	echo $N "(s)end, (e)dit, (q)uit? "$NL
@@ -913,7 +895,7 @@ _regression() {
 #
 # text may not contain a line which begins with a hash or dollar sign.
 # text may contain occurrences of ## (double hashes) which are
-# replaced by the second argument to __gethelp, if any.  This text may
+# replaced by the second argument to gethelp, if any.  This text may
 # not contain a hash either.  For command help texts, the second arg
 # is $BIN.  The tags must be unique and nonempty, and may not contain
 # spaces or shell or regexp metachars.
@@ -921,22 +903,15 @@ _regression() {
 # We also use this file for error messages so the format is that all
 # help tags are of the form help_whatever
 #
-# Note: this function is also called by citool.tcl
-__gethelp() {
-	sed -n  -e '/^#'$1'$/,/^\$$/{' \
-		-e '/^#/d; /^\$/d; s|#BKARG#|'"$2"'|; p' \
-		-e '}' ${BIN}bkhelp.txt
-}
-
 # List all help and command topics, it's the combo of what is in bin and
 # what is in the help file.  This is used for helptool.
 _topics() {
-	__gethelp help_topiclist
+	${BIN}gethelp help_topiclist
 }
 
 _help() {
 	if [ $# -eq 0 ]
-	then	__gethelp help | $PAGER
+	then	${BIN}gethelp help | $PAGER
 		exit 0
 	fi
 
@@ -944,7 +919,7 @@ _help() {
 	for i in $*
 	do
 		if grep -q "^#help_$i$" ${BIN}bkhelp.txt
-		then	__gethelp help_$i $BIN
+		then	${BIN}gethelp help_$i $BIN
 		elif [ -x "${BIN}$i" ]
 		then	echo "                -------------- $i help ---------------"
 			echo
