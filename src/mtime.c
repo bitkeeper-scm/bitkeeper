@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include "system.h"
+
 int
 mtime_main(int ac, char **av)
 {
@@ -25,7 +27,7 @@ mtime_main(int ac, char **av)
 	 * GNU's touch seems to set things in local time.
 	 * We'll see if this is portable.
 	 */
-	t = localtime(&st.st_mtime);
+	t = localtimez(&st.st_mtime, 0);
 	printf("%d-%02d-%02d-%02d:%02d:%02d\n",
 	    t->tm_year + 1900,
 	    t->tm_mon + 1,

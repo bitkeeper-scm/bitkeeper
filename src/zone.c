@@ -5,14 +5,14 @@ char	*
 sccs_zone()
 {
 	time_t	tt = time(0);
-	struct	tm tm;
+	struct	tm *tm;
 	char	tmp[10];
 	long	offset;
 	int	hwest, mwest;
 	char	sign = '+';
 
-	offset = localtimez(tt, &tm);
-	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", &tm);
+	tm = localtimez(&tt, &offset);
+	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
 
 	/*
 	 * What I want is to have 8 hours west of GMT to be -08:00.

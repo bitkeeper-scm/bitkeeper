@@ -836,7 +836,7 @@ savefile(char *dir, char *prefix, char *pathname)
 		char	buf[MAXPATH];
 		char	path[MAXPATH];
 
-		tm = localtime(&now);
+		tm = localtimez(&now, 0);
 		strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
 		if (prefix) {
 			sprintf(path, "%s/%s%s.%02d", dir, prefix, buf, i);
