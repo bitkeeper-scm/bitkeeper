@@ -222,11 +222,12 @@ pid_t
 tcp_pipe(remote *r)
 {
 	char	port[50], pipe_size[50];
-	char	*av[8] = {"bk", "_socket2pipe"};
+	char	*av[9] = {"bk", "_socket2pipe"};
 	int	i = 2;
 
 	sprintf(port, "%d", r->port);
 	sprintf(pipe_size, "%d", BIG_PIPE);
+	if (r->trace) av[i++] = "-d";
 	if (r->httpd) av[i++] = "-h";
 	av[i++] = "-p";
 	av[i++] = pipe_size;

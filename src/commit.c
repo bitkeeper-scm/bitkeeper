@@ -35,7 +35,7 @@ commit_main(int ac, char **av)
 		return (1);
 	}
 
-	sprintf(commentFile, "%s/bk_commit%d", TMP_PATH, getpid());
+	gettemp(commentFile, "bk_commit");
 	while ((c = getopt(ac, av, "aAdf:FLRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;
@@ -88,8 +88,7 @@ commit_main(int ac, char **av)
 			return (1);
 		}
 		unless (pendingFiles[0]) {
-			sprintf(pendingFiles,
-					"%s/bk_list%d", TMP_PATH, getpid());
+			gettemp(pendingFiles, "bk_list");
 			setmode(0, _O_TEXT);
 			f = fopen(pendingFiles, "wb");
 			assert(f);
@@ -542,7 +541,7 @@ config(FILE *f)
 	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 	if (exists(buf)) {
 		fprintf(f, "Alias  List:\n");
-		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
+		gettemp(aliases, "bk_aliases");
 		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 		get(buf, SILENT|PRINT, aliases);
 		f1 = fopen(aliases, "r");

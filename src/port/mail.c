@@ -27,7 +27,7 @@ mail(char *to, char *subject, char *file)
 			FILE *f, *pipe;
 			char *av[] = {sendmail, "-i", to, 0};
 
-			pid = spawnvp_wPipe(av, &wfd);
+			pid = spawnvp_wPipe(av, &wfd, 0);
 			if (pid == -1) return (pid);
 			pipe = fdopen(wfd, "w");
 			fprintf(pipe, "To: %s\n", to);
@@ -51,10 +51,10 @@ mail(char *to, char *subject, char *file)
 	assert(i == 0);
 	if (strstr(ubuf.sysname, "IRIX")) {
 		char *av[] = {mail, to};
-		pid = spawnvp_wPipe(av, &wfd);
+		pid = spawnvp_wPipe(av, &wfd, 0);
 	}  else {
 		char *av[] = {mail, "-s", subject, to};
-		pid = spawnvp_wPipe(av, &wfd);
+		pid = spawnvp_wPipe(av, &wfd, 0);
 	}
 	dup2(fd0, 0);
 	return (pid);

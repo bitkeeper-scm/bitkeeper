@@ -318,6 +318,12 @@ in_file(char *file, int todo, int extract)
 		todo -= n;
 		sum += adler32(sum, buf, n);
 		unless (extract) continue;
+		/*
+		 * This write statement accounts for 57% sfio's execution
+		 * time on NT. Replacing it with stream mode I/0 did not help
+		 * much.  Another 35% is consumed by the mkdir() call in
+		 * mkfile(). File I/O on NT is 4X slower than Linux.
+		 */
 		if (writen(fd, buf, n) != n) goto err;
 	}
 	if (todo) {

@@ -460,8 +460,9 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	/*
 	 * Httpd wants the message length in the header
 	 * We have to comoute the ptach size before we sent
+	 * 6 is the size of "@END@" string
 	 */
-	if (r->httpd) extra = patch_size(opts, gzip, rev_list);
+	if (r->httpd) extra = patch_size(opts, gzip, rev_list) + 6;
 
 	m = mopen(msgfile, "r");
 	assert(extra >= 0);
@@ -469,6 +470,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	mclose(m);
 
 	genpatch(opts, gzip, r->wfd, rev_list);
+	write_blk(r, "@END@\n", 6); /* important for win32 socket helper */
 	flush2remote(r); /* important, without this, protocol will hang */
 
 	if (unlink(msgfile)) perror(msgfile);

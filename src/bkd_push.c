@@ -324,6 +324,10 @@ cmd_push_part2(int ac, char **av)
 	dup2(fd2, 2); close(fd2);
 	gunzipAll2fd(0, pfd, gzip, 0, 0);
 	close(pfd);
+	getline(0, buf, sizeof(buf));
+	if (!streq("@END@", buf)) {
+		fprintf(stderr, "cmd_push: warning: lost end marker\n");
+	}
 
 	waitpid(pid, &status, 0);
 	rc =  WEXITSTATUS(status);
