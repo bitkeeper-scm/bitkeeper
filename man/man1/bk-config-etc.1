@@ -56,12 +56,29 @@ that looks like:
 .DS
 license: <license key>
 .DE
-.SS OPEN LOGGING
+.SS LOGGING
+.LP
+If there is an address to which you would like logs to be sent add
+a line to BitKeeper/etc/config:
+.DS
+logging:\c
+.ARG address
+.DE
 .LP
 To set up Open Logging for the repository add a line to BitKeeper/etc/config:
 .DS
 logging: logging@openlogging.org
 .DE
+.SS LOGGING CONFIRMATION
+.LP
+To configure the repository to not ask for confirmation
+to send logs, put the
+following line in the BitKeeper/etc/config file:
+.DS
+logging_ask:no
+.DE
+By doing this you are agreeing to send logs for all instances of
+this repository.
 .SS DISABLE LOGGING
 .LP
 To disable logging add a line to BitKeeper/etc/config:
