@@ -26,11 +26,10 @@ localtimez(time_t tt, struct tm *tmz)
 	offset	= tm->tm_gmtoff;
 
 #elif defined HAVE_EXTERN_TIMEZONE
-	/*
-	 * Note that configure will define HAVE_EXTERN_TIMEZONE only if
-	 * all three of daylight, timezone, and altzone exist.  This is
-	 * because we will get the offset wrong everywhere but in the USA
-	 * if we try to calculate it using only timezone.
+	/* Note that configure will not define HAVE_EXTERN_TIMEZONE unless
+	 * both timezone and altzone exist.  This is because we will
+	 * get the offset wrong everywhere but in the USA if we try
+	 * to calculate it using only timezone.
 	 */
 	offset	= -((tm->tm_isdst > 0) ? altzone : timezone);
 

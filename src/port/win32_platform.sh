@@ -5,7 +5,7 @@
 #
 
 # We need this because "exec" can not handle "drive:/path" format 
-win2cygPath()
+__win2cygPath()
 {
 	case "$1" in
 	*:\\*)	# convert c:\path to //c/path format
@@ -20,7 +20,7 @@ win2cygPath()
 }
 
 # We need this because "exec" can not handle "drive:/path" format 
-winExec()
+__winExec()
 {
 	cmd=$1; shift
 	win2cygPath $cmd; _cmd=$cygPath;
@@ -28,13 +28,13 @@ winExec()
 }
 
 
-_platformInit()
+__platformInit()
 {
 		# WIN32 specific stuff
-		win2cygPath $BK_BIN; _BK_BIN=$cygPath;
-		win2cygPath $UNIX_BIN; _UNIX_BIN=$cygPath;
-		win2cygPath $TCL_BIN; _TCL_BIN=$cygPath;
-		win2cygPath $VIM; _VIM=$cygPath;
+		__win2cygPath $BK_BIN; _BK_BIN=$cygPath;
+		__win2cygPath $UNIX_BIN; _UNIX_BIN=$cygPath;
+		__win2cygPath $TCL_BIN; _TCL_BIN=$cygPath;
+		__win2cygPath $VIM; _VIM=$cygPath;
 		# must set up unix path
 		# used by resolve & GUI(tcl) scripts
 		PATH=$_BK_BIN:$_UNIX_BIN:$_TCL_BIN:$PATH
@@ -61,9 +61,7 @@ _platformInit()
 }
 
 # Log whatever they wanted to run in the logfile if we can find the root
-_logCommand() {
+__logCommand() {
 	# this function will be implemented in C on win32 platform
 	echo "" > nul	#stub
 }
-
-

@@ -55,9 +55,11 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl \
 	  gui/helptool.tcl gui/mkindex.tcl resync.perl uuwrap.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
-	  port/unix_platform.perl pmerge.perl gui/csettool.tcl
-MISC	= bkhelp.txt config.h.in configure substvars.in install.in \
-	  bitkeeper.config t/doit.sh
+	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
+	  port/win32_platform.perl port/win32_platform.tcl \
+	  port/win32_platform.sh
+MISC	= bkhelp.txt config.h.in configure substvars.in bitkeeper.config \
+	  t/doit.sh
 
 all: $(ALL)
 

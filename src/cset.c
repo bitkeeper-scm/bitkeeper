@@ -751,7 +751,7 @@ void
 csetlist(cset_t *cs, sccs *cset)
 {
 	char	*t;
-	FILE	*list;
+	FILE	*list = 0;
 	char	buf[MAXPATH*2];
 	char	cat[30], csort[30];
 	char	*csetid;

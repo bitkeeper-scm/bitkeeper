@@ -228,7 +228,6 @@ main(int ac, char **av)
 			continue;
 		}
 		if (bigpad) sc->state |= S_BIGPAD;
-#ifndef	USE_STDIO
 		if (fastSym && sc->landingpad) {
 			int rc;
 		    	rc = sccs_addSym(sc, flags, s[0].thing);
@@ -236,7 +235,6 @@ main(int ac, char **av)
 			if (rc != EAGAIN) goto next;
 
 		}
-#endif
 		if (dopath) {
 			if (sc->tree->pathname) {
 				verbose((stderr,

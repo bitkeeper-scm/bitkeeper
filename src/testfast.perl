@@ -1,4 +1,4 @@
-#! @PERL@ -s
+#! /usr/bin/perl -s
 
 # For each SCCS file specified on stdin
 #	copy the file to /tmp/SCCS/<file>

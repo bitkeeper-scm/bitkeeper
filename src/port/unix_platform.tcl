@@ -1,4 +1,4 @@
-#! @WISH@
+#! /usr/bin/wish -f
 
 # Platform specific setup for tcl scripts
 # Copyright (c) 1999 Andrew Chang
