@@ -114,6 +114,22 @@ $
 Please fill out the configuration template in your editor.
 This is used for support purposes as well as licensing.
 $
+#patch_1
+An internal BK file encountered a problem during its initialization.
+To investigate this problem further, please run
+    bk -r check -a
+$
+#patch_2
+An internal BK file encountered a problem while generating a file diff.
+To investigate this problem further, please run
+    bk -r check -a
+$
+#patch_3
+An internal BK file encountered a problem while verifying checksum
+of a gzipped block of data.
+To investigate this problem further, please run
+    bk -r check -a
+$
 #chkconfig_missing
 
 Your BitKeeper package is missing the config file

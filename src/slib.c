@@ -11378,6 +11378,48 @@ newcmd:
 	return (0);
 }
 
+/* 
+ * fast makepatch for cset file.
+ * this does the makepatch backwards -- from newest to oldest
+ * that allows for single pass through the weave.
+ * takepatch does similar tricks to put the file back together.
+ *
+ * normal format:
+ * 0a0
+ * > file1_key delta_key
+ * > file2_key delta_key
+ *
+ * the makepatch code is responsible for that final newline
+ */
+
+int
+cset_diffs(sccs *s, ser_t serial)
+{
+	u8	*line;
+	int	len;
+	u32	ser = 0;
+
+	assert(s);
+	assert(s->state & S_CSET);
+	assert(serial != 1);
+	while (line = nextdata(s)) {
+		unless (strneq(line, "\001I ", 3)) continue;
+		ser = atoi(&line[3]);
+		if (ser <= serial) break;
+	}
+	assert (line);
+	assert (ser == serial);
+	fputs("0a0\n", stdout);
+	while (line = nextdata(s)) {
+		if (*line == '\001') break;
+		fputs("> ", stdout);
+		len = linelen(line);
+		fwrite(line, len, 1, stdout);
+	}
+	assert(strneq(line, "\001E ", 3));
+	return (0);
+}
+
 /*
  * Patch format is a little different, it looks like
  * 0a0

@@ -291,4 +291,19 @@ cd $HERE/unrelated
 waitForUnlock $HERE/unrelated
 echo OK
 
+echo $N pull from read-only server should work fine .................$NL
+cd $HERE/project
+echo hi > test
+bk new $Q test
+bk commit $Q -ytt || exit 1
+chmod -w SCCS
+cd $HERE/copy2
+bk pull $Q || {
+	echo pull failed
+	chmod +w $HERE/project/SCCS
+	exit 1
+}
+chmod +w $HERE/project/SCCS
+echo OK
+
 # XXX TODO need test case for pull/pull/clone to/from space in pathname
