@@ -98,12 +98,9 @@ resolve_main(int ac, char **av)
 
 #ifndef WIN32
 	if (opts.pass3 && !opts.textOnly && !getenv("DISPLAY")) {
-		fprintf(stderr, "%s %s\n",
-		    "resolve: no DISPLAY variable found, ",
-		    "either set one or use -t");
-		exit(1);
+		opts.textOnly = 1; 
 	}
-	if (opts.pass3 && !opts.textOnly && !opts.quiet) {
+	if (opts.pass3 && !opts.textOnly && !opts.quiet && getenv("DISPLAY")) {
 		fprintf(stderr,
 		    "Using %s as graphical display\n", getenv("DISPLAY"));
 	}

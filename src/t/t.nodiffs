@@ -52,7 +52,7 @@ cd ..
 tar cf TAR copy 
 cd copy
 ( echo s
-  echo C ) | bk resolve $Q 2>/dev/null	# No -t!!!  And no progress bar
+  echo C ) | env DISPLAY=none:0 bk resolve $Q 2>/dev/null
 grep -q 'SCCS merge' SCCS/s.file || {
 	echo failed to detect a no diffs and autocheckin
 	head SCCS/s.file
