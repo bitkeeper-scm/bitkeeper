@@ -2,13 +2,28 @@
 #include "system.h"
 #include "sccs.h"
 #include "zlib/zlib.h"
+#include "logging.h"
 WHATSTR("@(#)%K%");
 
-private int sccs2bk(sccs *s, char *csetkey);
-private void branchfudge(sccs *s);
-private void regen(sccs *s, char *key);
+/*
+ * Verbosity:
+ *   0 - quiet
+ *   1 - default: only names of files followed by \r
+ *   2 - alterations: mapping version numbers
+ *   3 - everything, including things that worked with no alterations.
+ *       XXX: level 3 not reachable through import -t SCCS interface
+ */
+
+private int sccs2bk(sccs *s, int verbose, char *csetkey);
+private void regen(sccs *s, int verbose, char *key);
 private int verify = 1;
 private	int mkinit(sccs *s, delta *d, char *file, char *key);
+private int makeMerge(sccs *s, int verbose);
+private void removeSerN(ser_t *space, int rm);
+private void collapse(sccs *s, int verbose, delta *d, delta *m);
+private void fixTable(sccs *s, int verbose);
+private void handleFake(sccs *s);
+private void ptable(sccs *s);
 
 /*
  * Convert an SCCS (including Sun Teamware) file
@@ -18,25 +33,43 @@ sccs2bk_main(int ac, char **av)
 {
 	sccs	*s;
 	int	c, errors = 0;
+	int	verbose = 1;
 	char	*csetkey = 0;
 	char	*name;
+	int	licChk = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		system("bk help sccs2bk");
+		/* There is no man page, because this is internal for import */
+usage:		/* system("bk help -s sccs2bk"); */
+		fprintf(stderr,
+		    "Usage: bk sccs2bk -c<rootkey> [-q] <file> ...\n");
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "c|h")) != -1) {
+	while ((c = getopt(ac, av, "c|hLqv")) != -1) {
 		switch (c) {
 		    case 'c': csetkey = optarg; break;
 		    case 'h': verify = 0; break;
+		    case 'L': licChk = 1; break;
+		    case 'q': verbose = 0; break;
+		    case 'v': verbose++; break;
 		    default: goto usage;
 		}
 	}
 
+	unless (bk_mode(0) == BK_PRO) {
+		if (verbose) {
+			fputs("sccs2bk: operation requires "
+			    "a BK Pro license\n", stderr);
+		}
+		return (1);
+	}
+	if (licChk) return (0);
+
 	unless (csetkey) goto usage;
 
+	putenv("BK_CONFIG=checkout:none");
 	for (name = sfileFirst("sccs2bk", &av[optind], 0);
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, 0)) continue;
@@ -46,34 +79,30 @@ usage:		system("bk help sccs2bk");
 			errors |= 1;
 			continue;
 		}
-		fprintf(stderr, "Converting %-65s\r", s->gfile);
-		errors |= sccs2bk(s, csetkey);
+		if (verbose) {
+			fprintf(stderr, "Converting %-65s%c", s->gfile,
+			    verbose == 1 ? '\r' : '\n');
+		}
+		errors |= sccs2bk(s, verbose, csetkey);
 		s = 0;	/* freed by sccs2bk */
 	}
 	sfileDone();
-	fprintf(stderr, "\n");
+	if (verbose == 1) fprintf(stderr, "\n");
 	return (errors);
 }
 
 /*
  * sccs2bk to BK.
- * 1. Reorder the date timestamps such that we will keep the same graph.
+ * 1. Restructure graph to uphold BK invariants
  * 2. Issue a series of shell command which rebuilds the file.
  */
 private int
-sccs2bk(sccs *s, char *csetkey)
+sccs2bk(sccs *s, int verbose, char *csetkey)
 {
 	delta	*d;
 	int	i;
 
-	for (d = s->table; d; d = d->next) {
-		unless (d->include) continue;
-		assert(!d->merge);
-		EACH(d->include);
-		assert(!d->include[i]);
-		assert(d->include[i-1]);
-		d->merge = d->include[i-1];
-	}
+	if (makeMerge(s, verbose)) return (1);
 
 	/*
 	 * Strip the dangling branches by coloring the graph and
@@ -97,70 +126,82 @@ sccs2bk(sccs *s, char *csetkey)
 				break;
 			}
 		}
-		if (d->flags & D_GONE) {
+		if ((d->flags & D_GONE) && verbose > 1) {
 			fprintf(stderr,
 			    "Stripping old BitKeeper data in %s\n", s->gfile);
 		}
 	}
 
 	/*
-	 * Go fudge the trunk timestamps so that they are earlier than
-	 * the branches.
+	 * Fix delta with date == 0 (teamware fakes)
+	 * And fix the tree structure so that trunk delta after fork
+	 * is older than branch delta after fork and that
+	 * all time is monotonically increasing.
 	 */
-	branchfudge(s);
+	handleFake(s);
+	fixTable(s, verbose);
 
 	/*
 	 * Go spit out the commands to regen this
 	 */
-	regen(s, csetkey);
+	regen(s, verbose, csetkey);
 
 	return (0);
 }
 
-private int
-old2new(const void *a, const void *b)
-{
-	return ((*(delta**)a)->date - (*(delta**)b)->date);
-}
-
+/*
+ * read map key <serial> => val <rev> in new imported system
+ * no entry if <rev> -eq <d->rev>
+ */
 char	*
-rev(MDBM *revs, char *r)
+rev(MDBM *revs, delta *r)
 {
-	char	*map;
+	datum	k, v;
 
-	if (map = mdbm_fetch_str(revs, r)) return (map);
-	return (r);
+	k.dsize = sizeof(ser_t);
+	k.dptr = (void*)&r->serial;
+	v = mdbm_fetch(revs, k);
+	if (v.dsize) return ((char*)v.dptr);
+	return (r->rev);
 }
 
 private void
-regen(sccs *s, char *key)
+regen(sccs *s, int verbose, char *key)
 {
 	delta	*d;
 	delta	**table = malloc(s->nextserial * sizeof(delta*));
-	pid_t	pid = getpid();
 	int	n = 0;
 	int	i;
+	int	src_flags = PRINT|GET_FORCE|SILENT;
+	int	dest_flags = PRINT|SILENT;
 	char	*sfile = s->sfile;
 	char	*gfile = s->gfile;
 	char	*tmp;
 	char	*a1, *a2, *a3;
 	MDBM	*revs = mdbm_mem();
+	sccs	*s2, *sget;
 	pfile	pf;
+	int	crnl;
 
-	for (d = s->table; d; d = d->next) {
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, (ser_t) i)) continue;
 		if (!(d->flags & D_GONE) && (d->type == 'D')) {
 			table[n++] = d;
 		}
 	}
-	qsort(table, n, sizeof(delta*), old2new);
 	sccs_close(s);
 	tmp = strdup(sfile);
 	a1 = strrchr(tmp, '/');
 	a1[3] = ',';
 	a1[4] = 0;
 	rename(sfile, tmp);
+	/* Get a clean copy just to use for 'get' on the original */
+	sget = sccs_init(tmp, 0);
+	assert(sget);
+	sget->xflags &= ~X_EOLN_NATIVE;
 	close(creat(gfile, 0664));
-	if (mkinit(s, s->tree, tmp, key)) {
+	/* Teamware uses same uuencode flag, so read it */
+	if (mkinit(s, s->tree, tmp, key) || (sget->encoding & E_UUENCODE)) {
 		sys("bk", "delta",
 		    "-q", "-Ebinary", "-RiISCCS/.init", gfile, SYS);
 	} else {
@@ -169,138 +210,133 @@ regen(sccs *s, char *key)
 	for (i = 0; i < n; ++i) {
 		d = table[i];
 		mkinit(s, d, 0, 0);
-		if (d->include) {
-			delta	*inc = sfind(s, d->include[1]);
+		if (d->merge) {
+			delta	*m = sfind(s, d->merge);
 
-			assert(inc);
-			assert(d->include[2] == 0);
-			a1 = aprintf("-egr%s", rev(revs, d->parent->rev));
-			a2 = aprintf("-M%s", rev(revs, inc->rev));
+			assert(m);
+			a1 = aprintf("-egr%s", rev(revs, d->parent));
+			a2 = aprintf("-M%s", rev(revs, m));
 			sys("bk", "_get", "-q", a1, a2, gfile, SYS);
 			free(a1);
 			free(a2);
 		} else {
 			a1 = aprintf("-egr%s",
-				i ? rev(revs, d->parent->rev) : "1.0");
+				i ? rev(revs, d->parent) : "1.0");
 			sys("bk", "_get", "-q", a1, gfile, SYS);
 			free(a1);
 		}
 		if (sccs_read_pfile("sccs2bk", s, &pf)) exit(1);
 		unless (streq(d->rev, pf.newrev)) {
-			mdbm_store_str(revs, d->rev, pf.newrev, 0);
-			unless (d->r[2]) {
+			datum	k, v;
+
+			if (verbose > 1) {
 				fprintf(stderr,
-				    "MAP %s@%s -> %s\n",
-				    gfile, d->rev, pf.newrev);
+				    "MAP %s(%d)@%s -> %s\n", gfile, d->serial,
+				    d->rev, pf.newrev);
+			}
+			k.dsize = sizeof(ser_t);
+			k.dptr = (void*)&d->serial;
+			v.dsize = strlen(pf.newrev) + 1;
+			v.dptr = (void*)pf.newrev;
+			if (mdbm_store(revs, k, v, MDBM_INSERT)) {
+				v = mdbm_fetch(revs, k);
+				fprintf(stderr, "%s: serial %d in use by "
+				    "%s and %s.\n", s->sfile, d->serial,
+				    pf.newrev, (char*)v.dptr);
+				/* XXX: what should errors do? */
+				exit(1);
 			}
 		}
 		free_pfile(&pf);
-		a1 = aprintf("-kpr%s", d->rev);
-		sysio(0, gfile, 0, "bk", "get", "-q", a1, tmp, SYS);
+		/*
+		 * use GET_FORCE because we want to 'get' even if bad graph.
+		 * '-r=<serial>' because some sfile have duplicate revisions
+		 * Note: if change options here, then change in loop below
+		 */
+		a1 = aprintf("=%d", d->serial);
+		if (sccs_get(sget, a1, 0, 0, 0, src_flags, gfile)) {
+			fprintf(stderr, "FAIL: get -kPr%s %s\n",
+			    a1, gfile);
+			exit (1);
+		}
 		free(a1);
 		sys("bk", "delta", "-q", "-RISCCS/.init", gfile, SYS);
 	}
 
-	/*
-	 * Now that we have the entries in the right order, go fix up the dates.
-	 */
-	sys("bk", "admin", "-u", gfile, SYS);
-
+        s2 = sccs_init(s->sfile, 0);
+        assert(s2);
 	unless (1 || verify) goto out;
 
-	fprintf(stderr, "Verifying %-66s\r", gfile);
+        if (sccs_admin(s2, 0,
+            ADMIN_FORMAT|ADMIN_BK|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0, 0)) {
+                perror(s->sfile);
+                exit(1);
+        }
+	if (verbose) {
+		fprintf(stderr, "Verifying %-66s%c", gfile,
+		    verbose > 1 ? '\n' : '\r');
+	}
+	crnl = 0;
+	s2->xflags &= ~X_EOLN_NATIVE;
 	for (i = 0; i < n; ++i) {
 		d = table[i];
-		a1 = aprintf("-kpr%s", rev(revs, d->rev));
-		a2 = aprintf("/tmp/A%u", pid);
-		sysio(0, a2, 0, "bk", "get", "-q", a1, gfile, SYS);
+		a1 = aprintf("%s", rev(revs, d));
+		a2 = bktmp(0, "diffA");
+		assert(a2 && a2[0]);
+		if (sccs_get(s2, a1, 0, 0, 0, dest_flags, a2)) {
+			fprintf(stderr, "FAIL: get -kpr%s %s\n", a1, gfile);
+			exit (1);
+		}
 
 		free(a1);
-		a1 = aprintf("-kpr%s", d->rev);
-		a3 = aprintf("/tmp/B%u", pid);
-		sysio(0, a3, 0, "bk", "get", "-q", a1, tmp, SYS);
-		unless (sameFiles(a2, a3)) {
-			fprintf(stderr, "%s@%s != orig@%s\n\n",
-			    gfile, rev(revs, d->rev), d->rev);
-			a1 = aprintf("bk diff /tmp/A%u /tmp/B%u", pid, pid);
-			system(a1);
-			//exit(1);
+		a1 = aprintf("=%d", d->serial);
+		a3 = bktmp(0, "diffB");
+		assert(a3 && a3[0]);
+		if (sccs_get(sget, a1, 0, 0, 0, src_flags, a3)) {
+			fprintf(stderr, "FAIL: get -kPr%s %s\n", a1, gfile);
+			exit (1);
 		}
-		//fprintf(stderr, "%s@%s OK\n", gfile, rev(revs, d->rev));
+		unless (sameFiles(a2, a3)) {
+			/* check to see if only diff because of \r\n in orig */
+			free(a1);
+			a1 = bktmp(0, "diffC");
+			assert(a1 && a1[0]);
+			if (diff(a2, a3, DF_DIFF, a1)) {
+				fprintf(stderr, "\n%s@%s != orig@%s\n",
+				    gfile, rev(revs, d), d->rev);
+				sys("echo", "diff", a2, a3, ">", a1, SYS);
+				sys("cat", a1, SYS);
+				/* exit(1); */
+			}
+			unlink(a1);
+			crnl = 1;
+			if (verbose > 2) {
+				fprintf(stderr,
+				    "%s@%s != orig@%s - <cr><lf> only\n",
+				    gfile, rev(revs, d), d->rev);
+			}
+		}
+		if (verbose > 2) {
+			fprintf(stderr, "%s@%s OK\n", gfile, rev(revs, d));
+		}
 		unlink(a2);
 		unlink(a3);
 		free(a1);
 		free(a2);
 		free(a3);
 	}
-out:	unlink(tmp);
-	unlink("SCCS/.init");
+	if (verbose == 2 && crnl) {
+		fprintf(stderr, "%s: differs only by <cr><lf>\n", gfile);
+	}
+out:	unlink("SCCS/.init");
+	sccs_close(sget);	/* WIN 32 : close before unlinking tmp */
+	unlink(tmp);
 	free(table);
 	mdbm_close(revs);
-	if (do_checkout(s)) exit(1);
+	if (do_checkout(s2)) exit(1);
+	sccs_free(s2);
+	sccs_free(sget);
 	sccs_free(s);
-}
-
-/*
- * Teamware files do not converge based on dates.
- * When I wrote smoosh, the destination was the side that moved onto
- * a branch.
- * Since what they are importing is likely to be their "main" tree, they
- * will want to preserve their branch structure.
- *
- * I have to be later than my parent, my merge parent, and my earlier siblings.
- */
-private void
-fudge(sccs *s, delta *d)
-{
-	unless (d) return;
-	/*
-	 * We fudge GONE/removed deltas anyway because they are in the list
-	 * and if we skip them it screws up other processing.
-	 */
-	if (d->parent) {
-		time_t	latest = d->parent->date;
-
-		if (d->merge) {
-			delta	*mparent = sfind(s, d->merge);
-
-			if (mparent->date >= latest) {
-				latest = mparent->date;
-			}
-		}
-		if (d->parent->kid != d) {
-			delta	*e, *last = 0;
-
-			for (e = d->parent->kid; e != d; e = e->siblings) {
-				if ((e->type == 'D') && !(e->flags & D_GONE)) {
-					last = e;
-				}
-			}
-			assert(last);
-			if (last->date >= latest) {
-				latest = last->date;
-			}
-		}
-		if (latest >= d->date) {
-			int	f = (latest - d->date) + 1;
-
-			d->dateFudge += f;
-			d->date += f;
-		}
-	}
-	fudge(s, d->siblings);
-	fudge(s, d->kid);
-}
-
-private void
-branchfudge(sccs *s)
-{
-	/* Teamware has time_t's of 0. */
-	if (streq(s->tree->rev, "1.1")) {
-		s->tree->dateFudge++;
-		s->tree->date++;
-	}
-	fudge(s, s->tree);
 }
 
 /*
@@ -320,7 +356,7 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 
 	if (file) {
 		char	*p;
-		p = aprintf("bk get -qkpr1.1 %s", file);
+		p = aprintf("bk get -qkPr1.1 %s", file);
 		fh = popen(p, "r");
 		free(p);
 		while (size = fread(buf, 1, sizeof(buf), fh)) {
@@ -374,4 +410,269 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 	fprintf(fh, "------------------------------------------------\n");
 	fclose(fh);
 	return (binary);
+}
+
+private void
+ptable(sccs *s)
+{
+	delta	*d;
+	int	i;
+
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, (ser_t) i)) continue;
+		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+			continue;
+		}
+		fprintf(stderr, "%-10.10s %10s i=%2u s=%2u d=%s f=%lu\n",
+		    s->gfile, d->rev, i, d->serial, d->sdate, d->dateFudge);
+	}
+}
+
+/*
+ * Teamware grafts files together by putting a delta in by user "Fake"
+ * with a time_t of 0 (Jan 1, 1970).  We use the earliest name for the file.
+ * Having it be 0 isn't useful.
+ * Sometimes there are multiple fakes.
+ * Our (really lm's) solution: No real code should be before 1971.
+ * Find first delta after 1971.  This is the first real delta.
+ * Move all fakes to near this first real delta.
+ * And set the username for the fakes to the username in the first real delta.
+ *
+ * If no real deltas exist, then move fakes to near 1971 and use user BKFake.
+ */
+
+#define	CUTOFFDATE	31536000	/* Fri Jan  1  0:00:00 GMT 1971 */
+
+private void
+handleFake(sccs *s)
+{
+	delta	*d;
+	int	i;
+	time_t	date = CUTOFFDATE;
+	char	*user = "BKFake";
+
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, (ser_t) i)) continue;
+		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+			continue;
+		}
+		unless (d->date >= CUTOFFDATE) continue;
+		date = d->date;
+		user = d->user;
+		break;
+	}
+
+	/* only fix the first 'i' deltas in count down fashion */
+	while (i > 1) {
+		i--;
+		unless (d = sfind(s, (ser_t) i)) continue;
+		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+			continue;
+		}
+		date--;
+		d->date = date;
+		strftime(d->sdate, strlen(d->sdate)+1,
+		    "%y/%m/%d %H:%M:%S", gmtime(&d->date));
+		assert(!streq(d->user, user));
+		free(d->user);
+		d->user = strdup(user);
+	}
+}
+
+/*
+ * See if d->merge ancestory of d contains d->parent.
+ * If yes, collapse merge branch onto same branch as d
+ * 
+ * fixes problem of non bk structure (note: 1.1.1.1 is older than 1.2):
+ *  1.1 ------------- 1.2
+ *   +---- 1.1.1.1 ----+
+ *
+ * becomes instead:
+ *  1.1 ---- 1.1.1.1 ---- 1.2
+ *
+ * The numbering gets fixed as we export this and import into a bk setup.
+ */
+private void
+collapse(sccs *s, int verbose, delta *d, delta *m)
+{
+	delta	*b, *p, *e, **ep;
+
+	p = d->parent;
+	assert(m && p);
+
+	/*
+	 * See if merge ancestory contains parent.
+	 * b == base of merge ancestory whose parent is (possibly) p
+	 */
+	for (b = m; b && b->parent; b = b->parent) {
+		unless (b->parent->serial > p->serial) break;
+	}
+	unless (b && b->parent == p) return;
+	if (verbose > 1) {
+		fprintf(stderr,
+		    "Inlining graph: new parent of %s(%d) => %s(%d)\n",
+		    d->rev, d->serial, m->rev, m->serial);
+	}
+
+	/*
+	 * Do surgery on 'p' kids list:
+	 *   1. delete b from current location in list
+	 *   2. put b where ever d was, removing d from list
+	 */
+	for (ep = &p->kid; (e = *ep); ep = &e->siblings) {
+		if (e == b) break;
+	}
+	assert(e);
+	*ep = b->siblings;	/* delete b */
+	for (ep = &p->kid; (e = *ep); ep = &e->siblings) {
+		if (d == e) break;
+	}
+	assert(e);
+	*ep = b;		/* put b in place of p; deleting p */
+	b->siblings = d->siblings;
+
+	/* surgery at other end of graph: merge becomes parent of d */
+	d->siblings = m->kid;
+	m->kid = d;
+	d->parent = m;
+	d->pserial = m->serial;
+	d->merge = 0;
+	assert(d->include);
+	free(d->include);
+	d->include = 0;
+}
+
+/*
+ * removeSerN()
+ * chop a serial out of the list
+ */
+private void
+removeSerN(ser_t *space, int rm)
+{
+	int	i;
+
+	assert(rm < space[0]);
+	assert(rm > 0);
+	space[rm] = 0;
+	for (i = rm; (++i < space[0]) && space[i]; ) {
+		space[i-1] = space[i];
+		space[i] = 0;
+	}
+}
+
+/*
+ * makeMerge - when seeing a list of includes, make it a merge pointer.
+ * teamware does a -i on the tip of a merge
+ */
+private int
+makeMerge(sccs *s, int verbose)
+{
+	delta	*d, *m;
+	int	i, empty;
+
+	/* table order, mark things to ignore, and find merge markers */
+	for (d = s->table; d; d = d->next) {
+		if (d->type == 'R') {
+			d->flags |= D_GONE;
+			continue;
+		}
+		unless (d->include) continue;
+		assert(!d->merge);
+
+		EACH(d->include) {
+			if ((m = sfind(s, d->include[i])) && (m->type == 'D')) {
+				continue;
+			}
+			removeSerN(d->include, i);
+			i--;	/* we shifted, so repeat this index */
+		}
+		empty = 1;
+		EACH(d->include) empty = 0;	/* go to end of list */
+		if (empty) {
+			free(d->include);
+			d->include = 0;
+			continue;
+		}
+		assert(!d->include[i]);
+		assert(d->include[i-1]);
+		m = sfind(s, d->include[i-1]);
+		assert(m && m->type == 'D');
+		d->merge = d->include[i-1];
+		collapse(s, verbose, d, m);
+	}
+	return (0);
+}
+
+/*
+ * fixTable - set "fudge" so time marches forward
+ * and possibly swap branch and trunk.
+ * 
+ * Teamware files do not converge based on dates.
+ * When I (lm) wrote smoosh, the destination was the side that moved onto
+ * a branch.
+ * Since what they are importing is likely to be their "main" tree, they
+ * will want to preserve their branch structure.
+ *
+ * This code sometimes swaps parent and merge pointers to achieve:
+ *   1. keep the same table order
+ *   2. pass the bitkeeper invariants
+ *   3. leave the tip of the trunk as the tip of the trunk
+ */
+private void
+fixTable(sccs *s, int verbose)
+{
+	delta	*d = 0, *e = 0, *m = 0;
+	int	i;
+	u32	maxfudge = 0;
+
+	/* reverse table order of just the deltas being imported */
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, (ser_t) i)) continue;
+		unless (!(d->flags & D_GONE) && (d->type == 'D')) {
+			continue;
+		}
+		/*
+		 * Fudge dates to support the BK invariant
+		 * that the table order dates are always increasing.
+		 * Ties in time are resolved by alphabetized keys.
+		 * Don't worry about keys here, because we are setting time
+		 * always going forward.
+		 */
+		if (e && d->date <= e->date) {
+			int	f = (e->date - d->date) + 1;
+
+			d->dateFudge += f;
+			d->date += f;
+			if (f > maxfudge) maxfudge = f;
+		}
+		e = d;
+		/*
+		 * Swap the merge and parent if needed.
+		 * The outcome is to keep the trunk tip
+		 * on the trunk after import.
+		 */
+		unless (d && d->merge) continue;
+		m = sfind(s, d->merge);
+		assert(m);
+		if (sccs_needSwap(d->parent, m)) {
+			if (verbose > 1) {
+				fprintf(stderr,
+				    "Need to swap in %s => %s & %s\n",
+				    d->rev, d->parent->rev, m->rev);
+			}
+			/*
+			 * XXX: This is a hack of the graph optimized
+			 * for our needs.  See renumber.c:parentSwap()
+			 * for a complete rewiring job.
+			 */
+			d->merge = d->pserial;
+			d->pserial = m->serial;
+			d->parent = m;
+		}
+	}
+	if (verbose > 2) ptable(s);
+	if (verbose > 1 && e) {
+		fprintf(stderr, "%s: maxfudge=%u lastfudge=%lu\n",
+		    s->gfile, maxfudge, e->dateFudge);
+	}
 }

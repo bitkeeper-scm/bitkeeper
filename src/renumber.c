@@ -207,6 +207,10 @@ taken(MDBM *db, delta *d)
  * The goal is to determine which branch was the trunk at the time
  * of the merge and make sure that branch is the parent of the merge
  * delta.
+ *
+ * XXX: sccs2bk() relies on this only needing ->parent and ->pserial.
+ * If this routine is changed to use ->kid, ->siblings, and such here,
+ * then make a copy of this in sccs2bk.c first.
  */
 int
 sccs_needSwap(delta *p, delta *m)

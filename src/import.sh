@@ -159,6 +159,12 @@ import() {
 	fi
 	mycd "$2"
 	TO="`bk pwd`"
+	if [ $TYPE = SCCS ]
+	then	bk _logging | grep -q 'license is current' || {
+			echo "Import -tSCCS requires a BK Pro license"
+			Done 1
+		}
+	fi
 	bk sane || Done 1	# verifiy hostname from -H is OK
 	bk lock -w &
 	LOCKPID=$!
@@ -737,7 +743,8 @@ explain_tag_problem ()
 import_SCCS () {
 	mycd "$TO"
 	msg Converting SCCS files...
-	bk sccs2bk $VERIFY -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
+	bk sccs2bk $QUIET $VERIFY `test X$VERBOSE = X && echo -v` \
+	    -c`bk prs -hr+ -nd:ROOTKEY: ChangeSet` - < ${TMP}import$$ ||
 	    Done 1
 	/bin/rm -f ${TMP}cmp$$
 	test -f SCCS/FAILED && Done 1
@@ -767,7 +774,7 @@ import_finish () {
 		    $QUIET $SYMBOL -y'Import changeset'
 	else	
 		tag=
-		if [ $GAP -gt 0 -a $TAGS = "YES" -a -s $TAGFILE ]
+		if [ "$GAP" -gt 0 -a "$TAGS" = YES -a -s "$TAGFILE" ]
 		then	tag=-T$TAGFILE
 		fi
 		if [ X$QUIET = X ]
@@ -803,8 +810,27 @@ validate_SCCS () {
 		mv ${TMP}sccs$$ ${TMP}import$$
 	fi
 	/bin/rm -f ${TMP}notsccs$$ ${TMP}sccs$$
-	echo Looking for BitKeeper files, please wait...
-	grep 'SCCS/s\.' ${TMP}import$$ | prs -hr -nd':PN: :TYPE:' - | grep ' BitKeeper' > ${TMP}reparent$$
+	if [ X$QUIET = X ]
+	then	echo Looking for BitKeeper files, please wait...
+	fi
+	# need lease from BK repo to do ops in the SCCS repo
+	# only need for one operation, as then we'll have a lease
+	mycd "$TO"
+	val=`bk _preference license`
+	test "$val" || {
+		echo "No commercial license found."
+		Done 1
+	}
+	SCFG="license:$val"
+	for key in licsign1 licsign2 licsign3
+	do
+		val=`bk _preference $key`
+		test "$val" && SCFG="$SCFG;$key:$val"
+	done
+	mycd "$FROM"
+	grep 'SCCS/s\.' ${TMP}import$$ | \
+	    BK_CONFIG="$SCFG" bk prs -hr+ -nd':PN: :TYPE:' - | \
+	    grep ' BitKeeper' > ${TMP}reparent$$
 	if [ -s ${TMP}reparent$$ ]
 	then	cat <<EOF
 
