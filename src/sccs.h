@@ -746,7 +746,7 @@ int	repository_rdlock(void);
 int	repository_wrlock(void);
 int	repository_rdunlock(int force);
 int	repository_wrunlock(void);
-int	repository_stale(char *path, int discard);
+int	repository_stale(char *path, int discard, int verbose);
 
 void	comments_save(char *s);
 int	comments_got(void);
