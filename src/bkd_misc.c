@@ -88,10 +88,11 @@ cmd_putenv(int ac, char **av)
 int
 cmd_abort(int ac, char **av)
 {
-	int	rc;
+	int	status, rc;
 
 	out("@ABORT INFO@\n");
-	rc = system("bk abort -f 2>&1");
+	status = system("bk abort -f 2>&1");
+	rc = WEXITSTATUS(status); 
 	fputc(BKD_NUL, stdout);
 	fputc('\n', stdout);
 	if (rc) printf("%c%d\n", BKD_RC, rc);
@@ -103,10 +104,11 @@ cmd_abort(int ac, char **av)
 int
 cmd_check(int ac, char **av)
 {
-	int	rc;
+	int	status, rc;
 
 	out("@CHECK INFO@\n");
-	rc = system("bk -r check -a 2>&1");
+	status = system("bk -r check -a 2>&1");
+	rc = WEXITSTATUS(status); 
 	fputc(BKD_NUL, stdout);
 	fputc('\n', stdout);
 	if (rc) printf("%c%d\n", BKD_RC, rc);
