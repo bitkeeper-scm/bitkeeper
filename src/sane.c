@@ -40,10 +40,10 @@ chk_host()
 
 	if (host && (p = strrchr(host, '.')) && streq(&p[1], "localdomain")) {
 		fprintf(stderr,
-"==========================================================================\n"
+"================================================================\n"
 "sane: Warning: bad host name: \"%s\".\n"
-"\"%s\" does not look like a real domain name.\n"
-"==========================================================================\n",
+"\"%s\" does not look like a valid domain name.\n"
+"================================================================\n",
 		host, &p[1]);
 	}
 
@@ -51,10 +51,11 @@ chk_host()
 		return (0);
 	}
 	fprintf(stderr,
-"==========================================================================\n"
-"sane: bad host name: \"%s\". BitKeeper wants a fully qualified hostname.\n"
-"Name such as \"localhost.*\" is also illegal.\n"
-"==========================================================================\n",
+"================================================================\n"
+"sane: bad host name: \"%s\".\n"
+"BitKeeper requires a fully qualified hostname.\n"
+"Names such as \"localhost.*\" are also illegal.\n"
+"================================================================\n",
 	host ? host : "<empty>");
 	return (1);
 }
@@ -66,13 +67,15 @@ chk_user()
 
 	if (streq(user, "root")) {
 		fprintf(stderr,
-		    "Warning: running as root is not a good idea!\n");
-		fprintf(stderr, "Set BK_USER to your real user name.\n");
+		    "Warning: running BitKeeper as root is not a good idea!\n");
+		fprintf(stderr, 
+		    "Set the BK_USER environment variable to your real user name.\n");
 		return (0);
 	}
 	if (strchr(user, '@')) {
 		fprintf(stderr, "User name may not contain an @ sign.\n");
-		fprintf(stderr, "Set BK_USER to your real user name.\n");
+		fprintf(stderr, 
+		    "Set the BK_USER environment variable to your real user name.\n");
 		return (1);
 	}
 	unless (user) {
