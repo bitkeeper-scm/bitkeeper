@@ -798,6 +798,7 @@ _rev2cset() {
 }
 
 _pending() {
+	__cd2root
 	exec ${BIN}sfiles -CA | ${BIN}sccslog - | $PAGER
 }
 

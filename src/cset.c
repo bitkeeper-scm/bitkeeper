@@ -469,7 +469,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 	for (kv = mdbm_first(cset->mdbm);
 	    kv.key.dsize != 0; kv = mdbm_next(cset->mdbm)) {
 		t = kv.key.dptr;
-		unless (sc = sccs_keyinit(t, INIT_NOCKSUM, idDB)) {
+		unless (sc = sccs_keyinit(t, INIT_NOCKSUM, 0, idDB)) {
 			if (gone(t, goneDB)) continue;
 			fprintf(stderr, "cset: init of %s failed\n", t);
 			cset_exit(1);
@@ -666,7 +666,7 @@ doKey(cset_t *cs, char *key, char *val)
 		perror("idcache");
 	}
 	lastkey = strdup(key);
-retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
+retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, 0, idDB);
 	unless (sc) {
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {

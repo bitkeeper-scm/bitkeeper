@@ -1215,19 +1215,22 @@ cleanPath(char *path, char cleanPath[])
 int
 sccs_cd2root(sccs *s, char *root)
 {
-	char	*r;
+	if (root) {
+		chdir(root);
+	} else if (s && s->proj && s->proj->root) {
+		chdir(s->proj->root);
+	} else {
+		char	*r = sccs_root(0);
 
-	if (root) r = root;
-	else r = sccs_root(s);
-
-	if (r && (chdir(r) == 0)) {
-		unless (exists(BKROOT)) {
-			perror(BKROOT);
-			return (-1);
-		}
-		return (0);
+		unless (r) return (-1);
+		chdir(r);
+		free(r);
 	}
-	return (-1);
+	unless (exists(BKROOT)) {
+		perror(BKROOT);
+		return (-1);
+	}
+	return (0);
 }
 
 void
@@ -1284,13 +1287,11 @@ FILE	*
 idFile(sccs *s)
 {
 	char	file[MAXPATH];
-	char	*root;
 
-	unless (root = sccs_root(s)) return (0);
-	sprintf(file, "%s/%s", root, IDCACHE);
+	unless (s->proj && s->proj->root) return (0);
+	sprintf(file, "%s/%s", s->proj->root, IDCACHE);
 	// XXX - locking of this file.
 	return (fopen(file, "a"));
-	return (0);
 }
 
 /*
@@ -1300,11 +1301,10 @@ char	*
 getCSetFile(sccs *s)
 {
 	char	file[MAXPATH];
-	char	*root;
 	sccs	*sc;
 
-	unless (root = sccs_root(s)) return (0);
-	sprintf(file, "%s/%s", root, CHANGESET);
+	unless (s->proj && s->proj->root) return (0);
+	sprintf(file, "%s/%s", s->proj->root, CHANGESET);
 	if (exists(file)) {
 		sc = sccs_init(file, INIT_NOCKSUM, 0);
 		assert(sc->tree);
@@ -2990,7 +2990,10 @@ addsym(sccs *s, delta *d, delta *metad, char *rev, char *val)
 	return (1);
 }
 
-sccs *
+/*
+ * Return 0 for OK, -1 for error.
+ */
+int
 check_gfile(sccs *s, int flags)
 {
 	struct	stat sbuf;
@@ -3003,7 +3006,7 @@ check_gfile(sccs *s, int flags)
 err:			free(s->gfile);
 			free(s->sfile);
 			free(s);
-			return (0);
+			return (-1);
 		}
 		s->state |= S_GFILE;
 		s->mode = sbuf.st_mode;
@@ -3027,16 +3030,75 @@ err:			free(s->gfile);
 		s->state &= ~S_GFILE;
 		s->mode = 0;
 	}
-	return (s);
+	return (0);
+}
+
+/*
+ * Initialize the project struct.
+ * We don't put it in the sccs in case there isn't one, the caller can do it.
+ */
+project	*
+sccs_initProject(sccs *s)
+{
+	char	*root;
+	project	*p;
+	char	path[MAXPATH];
+
+	assert(s->proj == 0);
+
+	/* XXX - should set a flag that says NO project if this fails */
+	unless (root = sccs_root(s)) return (0);
+	p = calloc(1, sizeof(*p));
+	p->root = root;
+
+	/*
+	 * Go figure out if we are locked.
+	 */
+	sprintf(path, "%s/RESYNC", root);
+	if (exists(path)) p->flags |= PROJ_RESYNC;
+	return (p);
+}
+
+void
+sccs_freeProject(project *p)
+{
+	unless (p) return;
+	if (p->root) free(p->root);
+	free(p);
+}
+
+private inline int
+resync_locked(project *p)
+{
+	return (p && (p->flags & PROJ_RESYNC));
+}
+
+private inline int
+locked(project *p)
+{
+	return (resync_locked(p));
+}
+
+/* used to tell us who is blocking the lock */
+private void
+lockers(project *p)
+{
+	unless (p) return;
+	if (locked(p)) {
+		fprintf(stderr, "Entire repository is locked");
+		if (resync_locked(p)) fprintf(stderr, " by RESYNC directory");
+		fprintf(stderr, ".\n");
+	}
 }
 
 /*
  * Initialize an SCCS file.  Do this before anything else.
  * If the file doesn't exist, the graph isn't set up.
  * It should be OK to have multiple files open at once.
+ * If the project is passed in, use it, else init one if we are in BK mode.
  */
 sccs*
-sccs_init(char *name, u32 flags, char *root)
+sccs_init(char *name, u32 flags, project *proj)
 {
 	sccs	*s;
 	struct	stat sbuf;
@@ -3056,18 +3118,11 @@ sccs_init(char *name, u32 flags, char *root)
 		return (0);
 	}
 	t = strrchr(s->sfile, '/');
-	if (t) {
-		if (streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
-	} else {
-		// awc -> lm : this seem to be a impossbile code path
-		// if we get here, there should be no '/' in s->sfile
-		// do you mean streq(s->sfile, "s.ChangeSet") ?
-		if (streq(s->sfile, "SCCS/s.ChangeSet")) s->state |= S_CSET;
-	}
+	if (t && streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
 		s->state |= S_NOSCCSDIR;
 	}
-	unless (check_gfile(s, flags)) return (0);
+	if (check_gfile(s, flags)) return (0);
 	if (lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
@@ -3090,10 +3145,8 @@ sccs_init(char *name, u32 flags, char *root)
 	s->zfile = strdup(sccsXfile(s, 'z'));
 	if (isreg(s->pfile)) s->state |= S_PFILE;
 	if (isreg(s->zfile)) s->state |= S_ZFILE;
-	if (root) {
-		s->root = root;
-		s->state |= S_CACHEROOT;
-	}
+	s->proj = proj ? proj : sccs_initProject(s);
+	if (locked(s->proj)) s->state |= S_READ_ONLY;
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
 	s->fd = -1;
@@ -3164,6 +3217,7 @@ sccs_init(char *name, u32 flags, char *root)
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (s->tree) {
 		if (misc(s)) {
+			if (flags & INIT_SAVEPROJ) s->proj = 0;
 			sccs_free(s);
 			return (0);
 		}
@@ -3192,7 +3246,7 @@ sccs_restart(sccs *s)
 	struct	stat sbuf;
 
 	assert(s);
-	unless (check_gfile(s, 0)) {
+	if (check_gfile(s, 0)) {
 bad:		sccs_free(s);
 		return (0);
 	}
@@ -3293,7 +3347,7 @@ sccs_free(sccs *s)
 	freeLines(s->usersgroups);
 	freeLines(s->flags);
 	freeLines(s->text);
-	if ((s->root) && ((s->state & S_CACHEROOT) == 0)) free(s->root);
+	if (s->proj) sccs_freeProject(s->proj);
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
@@ -4375,11 +4429,12 @@ write_pfile(sccs *s, int flags, delta *d,
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	if (!sccs_lock(s, 'z')) {
+	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
+		lockers(s->proj);
 		return (-1);
 	}
-	if (!sccs_lock(s, 'p')) {
+	unless (sccs_lock(s, 'p')) {
 		fprintf(stderr, "get: can't plock %s\n", s->gfile);
 		sccs_unlock(s, 'z');
 		return (-1);
@@ -6785,7 +6840,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs, char *
 			s->state |= S_BITKEEPER|S_CSETMARKED;
 			first->flags |= D_CKSUM;
 		} else {
-			if (sccs_root(s)) {
+			if (s->proj && s->proj->root) {
 				unless (first->csetFile) {
 					first->csetFile = getCSetFile(s);
 				}
@@ -9089,7 +9144,9 @@ sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs, char *
 	if (flags & NEWFILE) mksccsdir(s->sfile);
 	bzero(&pf, sizeof(pf));
 	unless(locked = sccs_lock(s, 'z')) {
-		fprintf(stderr, "delta: can't get lock on %s\n", s->sfile);
+		fprintf(stderr,
+		    "delta: can't get write lock on %s\n", s->sfile);
+		lockers(s->proj);
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);
@@ -12257,7 +12314,7 @@ sccs_iskeylong(char *t)
  * Return NULL if the file is there but does not have the same root inode.
  */
 sccs	*
-sccs_keyinit(char *key, u32 flags, MDBM *idDB)
+sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 {
 	datum	k, v;
 	char	*p;
@@ -12281,7 +12338,7 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 		p = name2sccs(t);
 		*r = '|';
 	}
-	s = sccs_init(p, flags, 0);
+	s = sccs_init(p, flags, proj);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
 	sccs_sdelta(s, sccs_ino(s), buf);
@@ -12292,7 +12349,10 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	free(localkey);
 	return (s);
 
-out:	if (s) sccs_free(s);
+out:	if (s) {
+		if (flags & INIT_SAVEPROJ) s->proj = 0;
+		sccs_free(s);
+	}
 	if (localkey) free(localkey);
 	return (0);
 }

@@ -68,21 +68,7 @@ usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 again:		unless (s = sccs_init(name, INIT_NOCKSUM|flags, 0)) {
 			continue;
 		}
-		if (!s->tree) {
-			/*
-			 * XXX - what this should do is try opening
-			 * root/name and only switch to root if that
-			 * works.
-			 */
-			unless (inroot) {
-				inroot = 1;
-				if (sccs_cd2root(0, 0) == 0) {
-					sccs_free(s);
-					goto again;
-				}
-			}
-			goto next;
-		}
+		unless (s->tree) goto next;
 		RANGE("sccslog", s, 1, 0);
 		save = n;
 		sccslog(s);

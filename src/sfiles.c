@@ -645,6 +645,7 @@ lftw(const char *dir, lftw_func func)
 			ignore = read_globs(ignoref, 0);
 			fclose(ignoref);
 		}
+		free(root);
 	}
 
 	strcpy(path, dir);
