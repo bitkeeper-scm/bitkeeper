@@ -1171,6 +1171,7 @@ char	*repo_id(void);
 void	fromTo(char *op, remote *r, remote *l);
 u32	adler32_file(char *filename);
 char	*findDotFile(char *old, char *new, char *buf);
+char	*platform(void);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));

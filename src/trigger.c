@@ -41,7 +41,7 @@ trigger_env(char *prefix, char *event, char *what)
 	if (repoid = repo_id()) put_trigger_env(prefix, "REPO_ID", repoid);
 	put_trigger_env(prefix, "REALUSER", sccs_realuser());
 	put_trigger_env(prefix, "REALHOST", sccs_realhost());
-	put_trigger_env(prefix, "PLATFORM", bk_platform);
+	put_trigger_env(prefix, "PLATFORM", platform());
 }
 
 
