@@ -6062,6 +6062,8 @@ sccs_hasDiffs(sccs *s, u32 flags)
 		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
 		RET(-1);
 	}
+	/* A questionable feature for diffs */
+	if ((flags & GET_DIFFTOT) && (d != findrev(s, 0))) RET(1);
 
 	/* If the file type changed, it is a diff */
 	if (d->flags & D_MODE) {

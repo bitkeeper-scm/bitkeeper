@@ -54,6 +54,7 @@ main(int ac, char **av)
 	int	all = 0, flags = DIFF_HEADER|SILENT, c, rc;
 	char	kind;
 	char	*name, *lLabel = 0, *rLabel = 0;
+	project	*proj = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -120,7 +121,10 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		int	ex = 0;
 		char	*r1 = 0, *r2 = 0;
 
-		unless ((s = sccs_init(name, flags, 0))) goto next;
+		unless ((s = sccs_init(name, INIT_SAVEPROJ|flags, proj))) {
+			goto next;
+		}
+		unless (proj) proj = s->proj;
 		RANGE("diffs", s, 0, (flags & SILENT) == 0);
 		if (things) {
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
@@ -139,6 +143,28 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		if (HAS_GFILE(s) && !IS_WRITABLE(s) && (things <= 1)) {
 			ex = GET_EXPAND;
 		}
+
+		/*
+		 * Optimize out the case where we have a locked file with
+		 * no changes at TOT.
+		 */
+		if (!things && IS_EDITED(s) && 
+		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex)) goto next;
+		
+		/*
+		 * Optimize out the case where we we are readonly and diffing
+		 * TOT.
+		 *
+		 * This makes the following fail when foo.c TOT is 1.10:
+		 *	bk get -r1.5 foo.c
+		 *	bk diffs
+		 * It's questionable but for now we'll leave it.
+		 *
+		 * If we eliminate get -r without -p or -r+ then we can
+		 * put this back.
+		 *
+		if (!things && !IS_EDITED(s)) goto next;
+		 */
 
 		/*
 		 * Errors come back as -1/-2/-3/0
@@ -162,6 +188,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 next:		if (s) sccs_free(s);
 		name = sfileNext();
 	}
+	sccs_freeProject(proj);
 	sfileDone();
 	purify_list();
 	return (0);
