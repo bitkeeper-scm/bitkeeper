@@ -258,7 +258,7 @@ bad:			fprintf(stderr, "%s/keys is corrupted, fixing.\n", tmp);
 		}
 		sum += u32sum(path);
 		s = strchr(path, ' ');
-		if ((chop(path) != '\n') || !s) goto bad;
+		if (!s || (chop(path) != '\n')) goto bad;
 		*s++ = 0;
 		t = (time_t)strtoul(s, 0, 0);
 
