@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *editor, *pager, *bin;
-
 int
 main(int ac, char **av)
 {
@@ -26,5 +24,6 @@ main(int ac, char **av)
 	while (fgets(buf, sizeof(buf), f)) fputs(buf, stdout);
 	fclose(f);
 	unlink(status_log);
+	return (0);
 }
 

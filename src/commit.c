@@ -18,6 +18,7 @@ main(int ac, char **av)
 	int c, doit = 0;
 	int rc;
 	char buf[MAXLINE];
+	char s_cset[MAXPATH] = CHANGESET;
 
 	platformInit();
 
@@ -64,8 +65,7 @@ main(int ac, char **av)
 		system(buf);
 	}
 	unlink(list);
-	sprintf(buf, "%sclean -q ChangeSet", bin);
-	system(buf);
+	do_clean(s_cset, SILENT);
 	if (doit) exit (do_commit());
 
 	while (1) {
@@ -93,7 +93,8 @@ main(int ac, char **av)
 do_commit()
 {
 	int hasComment =  (exists(commit_file) && (size(commit_file) > 0));
-	char buf[MAXLINE], sym_opt[MAXLINE] = "", changeset[MAXPATH] = CHANGESET;
+	char buf[MAXLINE], sym_opt[MAXLINE] = "";
+	char s_cset[MAXPATH] = CHANGESET;
 	char commit_list[MAXPATH];
 	int rc;
 	sccs *s;
@@ -122,7 +123,7 @@ do_commit()
 	unlink(commit_file);
 	unlink(commit_list);
 	notify();
-	s = sccs_init(changeset, 0, 0);
+	s = sccs_init(s_cset, 0, 0);
 	d = findrev(s, 0);
 	logChangeSet(d->rev);
 	sccs_free(s);
@@ -131,27 +132,19 @@ do_commit()
 
 checkLog()
 {
-	char buf[MAXLINE], buf2[MAXLINE];
+	char ans[MAXLINE], buf[MAXLINE], buf2[MAXLINE];
 	char getlog_out[MAXPATH];
 	FILE *f;
+	char *getlog(char *user);
 
-	sprintf(getlog_out, "%s/bk_getlog%d", TMP_PATH, getpid());
-	sprintf(buf, "%sgetlog %s > %s", bin, resync ? "-R" : "", getlog_out);
-	system(buf);
-	f = fopen(getlog_out, "rt");
-	fgets(buf, sizeof(buf), f);
-	chop(buf);
-	fclose(f);
-	unlink(getlog_out);
+	strcpy(buf, getlog(NULL));
 	if (strneq("ask_open_logging:", buf, 17)) {
 		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
-		fgets(buf, sizeof(buf), stdin);
-		if ((buf[0] == 'Y') || (buf[0] == 'y')) {
+		fgets(ans, sizeof(ans), stdin);
+		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
 			char *cname = &buf[17];
-			sprintf(buf2, "%ssetlog %s %s",
-						bin, resync ? "-R" : "", cname);
-			system(buf2);
+			setlog(cname);
 			return (0);
 		} else {
 			gethelp("log_abort", logAddr(), stdout);
@@ -160,12 +153,10 @@ checkLog()
 	} else if (strneq("ask_close_logging:", buf, 18)) {
 		gethelp("close_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
-		fgets(buf, sizeof(buf), stdin);
-		if ((buf[0] == 'Y') || (buf[0] == 'y')) {
+		fgets(ans, sizeof(ans), stdin);
+		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
 			char *cname = &buf[18];
-			sprintf(buf2, "%ssetlog %s %s",
-						bin, resync ? "-R" : "", cname);
-			system(buf2);
+			setlog(cname);
 			return (0);
 		} else {
 			sendConfig("config@openlogging.org");
@@ -189,19 +180,17 @@ checkLog()
 checkConfig()
 {
 	char buf[MAXLINE];
+	char s_config[MAXPATH];
+	char g_config[MAXPATH];
 	
-	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
-	unless (exists(buf)) {
+	sprintf(s_config, "%setc/SCCS/s.config", bk_dir);
+	sprintf(g_config, "%setc/config", bk_dir);
+	unless (exists(s_config)) {
 		gethelp("chkconfig_missing", bin, stdout);
 		return 1;
 	}
-	sprintf(buf, "%setc/config", bk_dir);
-	if (exists(buf)) {
-		sprintf(buf, "%sclean %setc/config", bin, bk_dir);
-		system(buf);
-	}
-	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
-	get(buf, SILENT, 0);
+	if (exists(g_config)) do_clean(s_config, SILENT);
+	get(s_config, SILENT, 0);
 	sprintf(buf, "cmp -s %setc/config %sbitkeeper.config", bk_dir, bin);
 	if (system(buf) == 0) {
 		gethelp("chkconfig_inaccurate", bin, stdout);

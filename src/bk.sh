@@ -337,6 +337,47 @@ _send() {
 	) | $MAIL
 }
 
+# usage: __mail to subject
+# XXX - probably needs to be in port/mailto.sh and included.
+# DO NOT change how this works, IRIX is sensitive.
+__mail() {
+	TO=$1
+	shift
+	SUBJ="$@"
+	
+	if [ X$BK_TRACE_LOG = XYES ]; then cat > $DEV_NULL; return; fi
+	# Try to find sendmail, it works better, especially on IRIX.
+	for i in /usr/bin /usr/sbin /usr/lib /usr/etc /etc /bin
+	do	if [ -x "$i/sendmail" ]
+		then	(
+			echo "To: $TO"
+			if [ "X$SUBJ" != X ]
+			then	echo "Subject: $SUBJ"
+			fi
+			echo ""
+			cat
+			) | $i/sendmail -i $TO
+			return
+		fi
+	done
+
+	# We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX
+	case "`uname -s`" in
+	    *IRIX*)
+		if [ -x /usr/bin/mailx ]
+		then	mailx $TO
+		else	mail $TO
+		fi
+		return
+		;;
+	esac
+
+	if [ -x /usr/bin/mailx ]
+	then	mailx -s "$SUBJ" $TO
+	else	mail -s "$SUBJ" $TO
+	fi
+}
+
 _unwrap() {
 	while read x
 	do	case "$x" in

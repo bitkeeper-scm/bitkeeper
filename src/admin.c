@@ -81,7 +81,7 @@ main(int ac, char **av)
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	delta	*d = 0;
-	int 	was_edited;
+	int 	was_edited, new_delta = 0;
 	pfile	pf;
 
 	debug_main(av);
@@ -100,9 +100,9 @@ main(int ac, char **av)
 		    case 'a':	OP(u, optarg, A_ADD); break;
 		    case 'e':	OP(u, optarg, A_DEL); break;
 		/* flags */
-		    case 'f':	OP(f, optarg, A_ADD); break;
+		    case 'f':	OP(f, optarg, A_ADD); new_delta = 1; break;
 		    case 'F':
-		    case 'd':	OP(f, optarg, A_DEL); break;
+		    case 'd':	OP(f, optarg, A_DEL); new_delta = 1; break;
 		/* new file options */
 		    case 'i':	newfile = optarg ? optarg : "-";
 				flags |= NEWFILE; break;
@@ -140,8 +140,8 @@ main(int ac, char **av)
 		/* symbols */
 		    case 'S':	OP(s, optarg, A_ADD); break;
 		/* text */
-		    case 't':	text = optarg ? optarg : ""; break;
-		    case 'T':	text = ""; break;
+		    case 't':	text = optarg ? optarg : ""; new_delta = 1; break;
+		    case 'T':	text = ""; new_delta = 1; break;
 		/* singletons */
 		    case 'B':	bigpad++; break;
 		    case 'C':	rmCset++; flags |= NEWCKSUM; break;
@@ -251,17 +251,18 @@ main(int ac, char **av)
 				goto next;
 			}
 		}
-		if (IS_EDITED(sc)) {
-			was_edited = 1;
-			newrev(sc, &pf);
-			if (sccs_clean(sc, SILENT)) {
-				fprintf(stderr,
+		if (new_delta) {
+			if (IS_EDITED(sc)) {
+				was_edited = 1;
+				newrev(sc, &pf);
+				if (sccs_clean(sc, SILENT)) {
+					fprintf(stderr,
 					"admin: can not clean %s\n", sc->gfile);
-				sccs_free(sc);
-				goto next;
-			}
-		} else {
-			was_edited = 0;
+					goto next;
+				}
+			} else {
+				was_edited = 0;
+		}
 		}
 		/*
 		 * if we just created a new file, reuse the new delta
@@ -278,7 +279,7 @@ main(int ac, char **av)
 		 */
 		sccs_free(sc);
 		sc = sccs_init(name, init_flags, 0);
-		if (was_edited) {
+		if (new_delta && was_edited) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
 			char *nrev;
 

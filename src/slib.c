@@ -6723,6 +6723,13 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	if (read_pfile("clean", s, &pf)) return (1);
+	if (pf.mRev) {
+		fprintf(stderr,
+		    "%s has merge pointer, not cleaned.\n", s->gfile);
+		free_pfile(&pf);
+		return (0);
+	}
+		
 	unless (d = findrev(s, pf.oldrev)) {
 		free_pfile(&pf);
 		return (1);
