@@ -65,9 +65,10 @@ rm -rf copy
 tar xf TAR
 cd copy
 ( echo s
-  echo C ) | bk resolve -t $Q 2>/dev/null
+  echo C ) | bk resolve -t $Q 2>resolve.out
 grep -q 'SCCS merge' SCCS/s.file || {
 	echo failed to detect a no diffs and autocheckin
+	cat resolve.out
 	head SCCS/s.file
    	exit 1
 }

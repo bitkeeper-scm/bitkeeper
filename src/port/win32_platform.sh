@@ -4,44 +4,32 @@
 # platform specific stuff for bk.sh
 #
 
-# We need this because "exec" can not handle "drive:/path" format 
-__win2cygPath()
-{
-	case "$1" in
-	*:\\*)	# convert c:\path to //c/path format
-		cygPath="//${1%:\\*}/${1#*:\\}"			
-		;;
-	*:/*)	# convert c:/path to //c/path format
-		cygPath="//${1%:/*}/${1#*:/}"	
-		;;
-	*)	cygPath=$1
-		;;
-	esac
-}
 
-# We need this because "exec" can not handle "drive:/path" format 
-__winExec()
+# Convert cygwin path to win32 native path
+# e.g. /tmp => C:/cygwin/tmp
+# The native path is returned in short form
+__nativepath()
 {
-	cmd=$1; shift
-	__win2cygPath $cmd; _cmd=$cygPath;
-	exec "$_cmd" "$@"
+	if [ "$1" = "" ]
+	then echo "Usage: bk _nativepath path"
+	else (cd $1 && bk pwd -s)
+	fi
 }
 
 
 __platformInit()
 {
 		# WIN32 specific stuff
-		TMP=/tmp
+		TMP=`__nativepath /tmp`
 		DEV_NULL=nul
 		wish=${_TCL_BIN}/wish83.exe
 		ext=".exe"
 		tcl=".tcl"
-		PAGER=less
 
 		if [ X$EDITOR = X ]
 		then EDITOR=notepad.exe
 		fi
 		if [ X$PAGER = X ]
-		then PAGER=less
+		then PAGER="less -E"
 		fi
 }

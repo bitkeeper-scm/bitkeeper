@@ -117,7 +117,7 @@ MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 default:
 	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
-	then PAGER=less; \
+	then PAGER="less -E"; \
 	else PAGER=more; \
 	fi; \
 	bk get -qp HEADER LICENSE BUILD.txt | $${PAGER}

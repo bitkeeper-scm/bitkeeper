@@ -17,9 +17,9 @@ win32_common_setup()
 {
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
-	TMP="/tmp"
+	TMP=`../bk _nativepath /tmp`
 	if [ -z "$TST_DIR" ]; then TST_DIR="$TMP"; fi
-	BK_BIN=`cd .. && ./bk pwd -sf`
+	BK_BIN=`cd .. && ./bk pwd -s`
 	CWD="$BK_BIN/bk pwd"
 	touch $TMP/BitKeeper_nul
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
@@ -96,13 +96,13 @@ setup_env()
 	case X$OSTYPE in
 	    Xcygwin|Xcygwin32)
 		win32_common_setup
-		BK_BIN=`cd .. && ./bk pwd -scf`
+		BK_BIN=`cd .. && ./bk pwd -sc`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 		check_path;
 		;;
 	    Xmks)
 		win32_common_setup
-		BK_BIN=`cd .. && ./bk pwd -sf`
+		BK_BIN=`cd .. && ./bk pwd -s`
 		# MKS uses semi colon as path delimiter
 		PATH="$BK_BIN;$BK_BIN/gnu/bin;$PATH"
 		check_path;
@@ -112,7 +112,7 @@ setup_env()
 		# uwin seems to map all file name to lower case
 		# uwin cp command adds .exe for binary files
 		win32_common_setup
-		BK_BIN=`cd .. && ./bk pwd -sf`
+		BK_BIN=`cd .. && ./bk pwd -s`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 		check_path;
 		;;

@@ -983,4 +983,5 @@ char *	user_preference(char *what, char buf[MAXPATH]);
 int	bktemp(char *buf);
 char	*bktmpfile();	/* return a char* to a just created temp file */
 void	updLogMarker(int ptype);
+char	*getRealCwd(char *, size_t);
 #endif	/* _SCCS_H_ */
