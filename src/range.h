@@ -8,7 +8,7 @@ void	rangeCset(sccs *s, delta *d);
 void	rangeSetExpand(sccs *s);
 int	rangeList(sccs *sc, char *rev);
 int	rangeProcess(char *me, sccs *s, int expand, int noisy,
-		     int things, int rd, char **r, char **d);
+		     int *things, int rd, char **r, char **d);
 
 #define	RANGE_DECL	int	things = 0, rd = 1; \
 			char	*r[2], *d[2]; \
@@ -29,6 +29,6 @@ int	rangeProcess(char *me, sccs *s, int expand, int noisy,
 	    break
 
 #define	RANGE(me, s, expand, noisy) \
-	if (rangeProcess(me, s, expand, noisy, things, rd, r, d)) goto next;
+	if (rangeProcess(me, s, expand, noisy, &things, rd, r, d)) goto next;
 
 #endif
