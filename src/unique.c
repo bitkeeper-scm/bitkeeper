@@ -64,7 +64,7 @@ lockHome()
 private char	*
 keysHome(void)
 {
-	private	char	*keysFile = 0;
+	static	char	*keysFile = 0;
 	char	*t;
 	char	path[MAXPATH];
 

@@ -398,9 +398,8 @@ bkd_server(int ac, char **av)
 
 /* e.g. return env string " -E \"BK_DOTBK=path\"" */
 private char *
-genEnvArgs(char *envVar)
+genEnvArgs(char *buf, char *envVar)
 {
-	static	char	buf[MAXLINE];
 	char	*v;
 
 	unless (v = getenv(envVar)) return ("");
@@ -422,6 +421,7 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	char	**nav;
 	char	*eVars[] = {"BK_REGRESION", "BK_DOTBK", "PATH", 0};
 	int	i, len, try = 0;
+	char	buf[MAXLINE];
 
 	if (GetModuleFileName(NULL, path, sizeof(path)) == 0) {
 		fprintf(stderr, "Unable to install %s - %s\n",
@@ -439,14 +439,14 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\"",
 		path, opts->port, opts->count, start_dir);
 	len = strlen(p) + 1;
-	for (i = 0; eVars[i]; i++) len += strlen(genEnvArgs(eVars[i]));
+	for (i = 0; eVars[i]; i++) len += strlen(genEnvArgs(buf, eVars[i]));
 	nav = malloc((ac + 1) * sizeof(char *));
 	argv_save(ac, av, nav, 0);
 	len += argv_size(nav);
 	cmd = malloc(len);
 	strcpy(cmd, p);
 	free(p);
-	for (i = 0; eVars[i]; i++) strcat(cmd, genEnvArgs(eVars[i]));
+	for (i = 0; eVars[i]; i++) strcat(cmd, genEnvArgs(buf, eVars[i]));
 	for (i = 0; nav[i]; i++) {
 		strcat(cmd, " \"");
 		strcat(cmd, nav[i]);
