@@ -12,7 +12,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  isascii resyncwrap r2c rename
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset count_user getlog
+	  renametool mkdiffs lodset count_user getlog build
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
@@ -508,51 +508,25 @@ image: all
 	cd utils && $(MAKE) image BK_BIN=$$DIR
 
 # Rules for test builds.
-HOST		= work
-TREE		= prerelease
-BUILDFAST	= va ppc freebsd
-BUILDSLOW	= sun sgi hp aix
-BUILDHOSTS	= $(BUILDFAST) $(BUILDSLOW)
-CRANKTURN	= $(MAKE) crank-me
+BUILDHOSTS	= sun sgi hp aix va ppc freebsd
+CRANKTURN	= ./build
 CRANKTEST	= bk regression
-crank-me:
-	@HOST=$(HOST) TREE=$(TREE) CC=gcc MAKE=gmake DIR=/tmp; \
-	PREFER_RSH=YES; export PREFER_RSH; \
-	case `uname -s` in \
-		IRIX)	PATH=/usr/freeware/bin:$PATH; \
-			export PATH;; \
-		SunOS)	XLIBS="XLIBS=-lnsl";; \
-		AIX)	MAKE=make DIR=/usr/tmp;; \
-		HP-UX)	unset PREFER_RSH;; \
-	esac; \
-	cwd=`pwd`; set -ex; \
-	cd $$DIR; \
-	[ -d autobuild ] || mkdir autobuild; \
-	cd autobuild; rm -rf $$TREE; \
-	$$PRSH time bk clone -q $$HOST:/home/bk/$$TREE $$TREE; \
-	cd $$TREE/src; \
-	time $$MAKE p image CC=$$CC $$XLIBS; \
-	(cd /usr/libexec/bitkeeper; rm -rf *); \
-	echo /usr/libexec | ./utils/bk-*; \
-	time bk regression; \
-	cp utils/bk-* $$cwd
 
 crank:
 	@cwd=`pwd`; set -x; \
-	for host in $(BUILDHOSTS); do \
-	rsh $$host "cd $$cwd && $(CRANKCMD) >$$host.log 2>&1" & \
-	done; \
-	wait
+	for host in $(BUILDHOSTS); \
+	do	time rsh $$host "cd $$cwd && $(CRANKCMD)" & \
+	done; wait
 
-crankturn:
+crankturn: build
 	$(MAKE) crank CRANKCMD="$(CRANKTURN)"
+
 cranktest:
 	$(MAKE) crank CRANKCMD="$(CRANKTEST)"
-crank-fast:
-	$(MAKE) crankturn BUILDHOSTS="$(BUILDFAST)"
-crank-slow:
-	$(MAKE) crankturn BUILDHOSTS="$(BUILDSLOW)"
-	
+
+build: build.sh
+	cp build.sh build
+
 # The default .c.o rule is broken with some Makes.
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
