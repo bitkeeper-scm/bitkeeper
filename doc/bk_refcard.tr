@@ -2,38 +2,26 @@
 .\" groff bk_refcard
 .nr HM 0.25i      \" Header Margin
 .nr FM 0.25i      \" Footer Margin
-.nr LL 3.5i       \" Line Length
+.nr LL 3.0i       \" Line Length
+.nr GUTTER .5i	  \" Gutter
 .nr PO 0.25i      \" Page Offset
 .nr PL 8.5i	  \" Page length
 .nr PS 10	  \" Point size
 .nr VS \n[PS]+2   \" Vertical spacing
+.nr COL 1	  \" Current column
+.nr COLS 5	  \" Max number of columns
 .ll \n[LL]u
 .po \n[PO]u
 .pl \n[PL]u
 .ps \n[PS]
 .vs \n[VS]
-.de HEADER
-.	sp |\\n[HM]u
-..
-.de FOOTER
-.	ps 10
-.	ft R
-.	ce 1
-Copyright \(co 2000 BitMover, Inc.
-.	ps
-.	ft
-.	bp
-..
-.\" Header margin
-.wh 0 HEADER
-.wh \n[PL]u-\n[FM]u FOOTER
 .\" Define our own box drawing routines using some nifty features of
 .\" GNU troff.  We may come back and add drop shadows at some point.
 .de B1
 .	br
 .	ne 2i
 .	mk a
-.	sp .5
+.	sp .25
 ..
 .de B2
 .	sp -.5
@@ -53,7 +41,7 @@ Copyright \(co 2000 BitMover, Inc.
 .	po +.05i
 .	sp -.7
 \\D'P 0 0 \\n[WIDTH]u 0 0 -.05i -\\n[WIDTH]u 0'
-.	po
+.	po \\n[PO]u
 ..
 .\" Section header with optional size adjust
 .de SH
@@ -96,11 +84,23 @@ Copyright \(co 2000 BitMover, Inc.
 .	RESET
 .	in \\n[INDENT1]u
 ..
-.\"#
-.\"# PAGE ONE
-.\"#
+.de FOOTER
+.	nr COL +1
+.	ie \\n[COL]>\\n[COLS] \{\
+.		bp
+.		sp |\n[HM]u
+.		nr COL 1
+.		nr PO .25i \}
+.	el \{\
+.		sp |\\n[TOP]u
+.		nr PO +\\n[LL]u
+.		nr PO +\\n[GUTTER]u \}
+..
+.wh \n[PL]u-\n[FM]u FOOTER
+.sp |\n[HM]u
+.mk TOP
 .ce 1000
-.ps 22
+.ps 16
 .ft B
 BitKeeper Reference Card
 .sp 1.25
