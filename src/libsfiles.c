@@ -99,6 +99,7 @@ again:
 		}
 		strcpy(buf, name);
 		localName2bkName(buf, buf);
+		cleanPath(buf, buf); /* for win98 */
 		debug((stderr, "sfiles::AV got %s\n", buf));
 	}
 

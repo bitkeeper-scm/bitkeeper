@@ -170,11 +170,10 @@ private void
 unPublish(sccs *s, delta *d)
 {
 	unless (d && !(d->flags & D_RED)) return;
-	assert(d->type == 'D');
-	unPublish(s, d->parent);
-	if (d->merge) unPublish(s, sfind(s, d->merge));
 	d->flags |= D_RED; 
 	d->published = 0;
+	if (d->parent) unPublish(s, d->parent);
+	if (d->merge) unPublish(s, sfind(s, d->merge));
 }
 
 void
