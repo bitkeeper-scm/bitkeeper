@@ -137,7 +137,7 @@ usage:			system("bk help -s changes");
 	 *       the dash in case "4" is a key list.
 	 */
 	if (opts.local) {
-		/* "bk changes -L url */
+		/* bk changes -L url */
 		unless (url = av[optind]) {
 			unless (url = freeme = getParent()) {
 				fprintf(stderr, "No repository specified?!\n");
@@ -487,11 +487,12 @@ dumplog(slog *list, int *n)
  */
 private sccs *
 sccs_keyinitAndCache(char *key, int flags,
-				project *proj, MDBM *idDB, MDBM *graphDB)
+    project *proj, MDBM *idDB, MDBM *graphDB, MDBM *goneDB)
 {
+	static	int	rebuilt = 0;
 	datum	k, v;
 	sccs	*s;
-	
+
 	k.dptr = key;
 	k.dsize = strlen(key);
 	v = mdbm_fetch(graphDB, k);
@@ -499,9 +500,26 @@ sccs_keyinitAndCache(char *key, int flags,
 		memcpy(&s, v.dptr, sizeof (sccs *));
 		return (s);
 	}
-
+ retry:
 	s = sccs_keyinit(key, flags, proj, idDB);
-	/* (s == NULL) is OK, could be a Gnone file */
+	unless (s || gone(key, goneDB)) {
+		unless (rebuilt) {
+			mdbm_close(idDB);
+			if (sccs_reCache(1)) {
+				fprintf(stderr,
+				    "changes: cannot build %s\n",
+				    IDCACHE);
+			}
+			unless (idDB =
+			    loadDB(IDCACHE,
+				0, DB_KEYFORMAT|DB_NODUPS)) {
+				perror("idcache");
+			}
+			rebuilt = 1;
+			goto retry;
+		}
+		fprintf(stderr, "Cannot sccs_init(), key = %s\n", key);
+	}
 	v.dptr = (void *) &s;
 	v.dsize = sizeof (sccs *);
 	if (mdbm_store(graphDB, k, v, MDBM_INSERT)) { /* cache the new entry */
@@ -708,14 +726,8 @@ cset(sccs *cset, FILE *f, char *dspec)
 			assert(dkey);
 			*dkey++ = 0;
 			s = sccs_keyinitAndCache(
-				keys[i], iflags, proj, idDB, graphDB);
-			unless (s) {
-				if (gone(keys[i], goneDB)) continue;
-				fprintf(stderr,
-					"Cannot sccs_init(), key = %s\n",
-					keys[i]);
-				continue;
-			}
+				keys[i], iflags, proj, idDB, graphDB, goneDB);
+			unless (s) continue;
 			d = sccs_findKey(s, dkey);
 			assert(d);
 
