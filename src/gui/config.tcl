@@ -63,6 +63,7 @@ proc getConfig {prog} \
 	set _d(searchColor) yellow	;# highlight for search matches
 	set _d(selectColor) lightblue	;# current file/item/topic
 	set _d(statusColor) lightblue	;# various status windows
+	set _d(tabstops)  8		;# tabstops for text widgets
 
 	#XXX: Not documented yet
 	set _d(infoColor) powderblue	;# color of info line in difflib

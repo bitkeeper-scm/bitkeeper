@@ -1093,6 +1093,10 @@ proc widgets {} \
 
 	.diffs.l tag configure diff -background $gc(rename.oldColor)
 	.diffs.r tag configure diff -background $gc(rename.newColor)
+
+	.diffs.l configure -tabs [tabstops .diffs.l $gc(rename.tabstops)]
+	.diffs.r configure -tabs [tabstops .diffs.r $gc(rename.tabstops)]
+
 	. configure -background $gc(BG)
 	wm deiconify .
 }

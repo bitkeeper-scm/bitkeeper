@@ -9,7 +9,8 @@ BitKeeper uses a configuration file called
 for the 
 configuration of the \*(BK graphical tools.
 The configuration file is used to modify
-colors, fonts, and widget dimensions. 
+colors, fonts, widget dimensions and other
+features. 
 .LP
 On 
 .SM UNIX
@@ -243,6 +244,12 @@ Default 20
 .B mergeWidth
 Width of a merge window. Used in fmtool.
 Default 80
+.tp
+.B tabstops
+The displayed width of a tab, expressed as a number of characters in
+the current font. The actual width is the value of the option times 
+the width of the character 'M'. 
+Default: 8
 .tp
 .B quit
 Key used to exit from the gui tools. Default:\ <Control-q>
