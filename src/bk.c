@@ -505,7 +505,7 @@ bk_sfiles(int ac, char **av)
 	close(1); dup(pfd); close(pfd);
 	if (status = sfiles_main(1, sav)) {
 		kill(pid, SIGTERM);
-		wait(0);
+		waitpid(pid, 0, 0);
 		log_end(status);
 		exit(status);
 	}
