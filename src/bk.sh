@@ -22,12 +22,17 @@ _cd2root() {
 # Log whatever they wanted to run in the logfile if we can find the root
 _logCommand() {
 	DIR="BitKeeper/etc"
+	PREFIX=""
 	for i in 1 2 3 4 5 6 7 8 9 0
-	do	if [ -d $DIR ]
-		then	echo "${USER}: $@" >> $DIR/cmdlog 2>/dev/null
+	do	if [ -d $PREFIX$DIR ]
+		then	LDIR=${PREFIX}BitKeeper/log
+			if [ ! -d $LDIR ]
+			then	mkdir $LDIR || { pwd; ls . BitKeeper; exit 1 }
+			fi
+			echo "${USER}: $@" >> ${LDIR}/cmd 2>/dev/null
 			return
 		fi
-		DIR="../$DIR"
+		PREFIX="../$PREFIX"
 	done
 }
 
@@ -66,7 +71,7 @@ _setup() {
 
 	mkdir -p "$1"
 	cd $1 || exit 1
-	mkdir -p BitKeeper/etc BitKeeper/bin BitKeeper/caches
+	mkdir -p BitKeeper/etc
 	if [ "X$NAME" = X ]
 	then	_gethelp setup_2
 		while :
@@ -135,75 +140,138 @@ _changes() {
 	echo ChangeSet | ${BIN}sccslog $@ -
 }
 
+# Figure out what we have sent and only send the new stuff.  If we are
+# sending to stdout, we don't log anything, and we send exactly what they
+# asked for.
+_sendlog() {
+	T=$1
+	R=$2
+	if [ X$T = X- ]
+	then	echo $R
+		return
+	fi
+	if [ ! -d BitKeeper/log ]; then	mkdir BitKeeper/log; fi
+	SENDLOG=BitKeeper/log/send-$1
+	touch $SENDLOG			# make make an empty log which is
+					# what we want for the cats below
+
+	if [ X$R = X ]			# We are sending the whole thing
+	then	${BIN}prs -hd:KEY: ChangeSet| sort > ${TMP}here$$
+	else	${BIN}prs -hd:KEY: -r$R ChangeSet| sort > ${TMP}here$$
+	fi
+	sort -u < $SENDLOG > ${TMP}has$$
+	FIRST=YES
+	comm -23 ${TMP}here$$ ${TMP}has$$ | ${BIN}key2rev ChangeSet |
+	while read x
+	do	if [ $FIRST != YES ]
+		then	echo $N ",$x"$NL
+		else	echo $N "$x"$NL
+			FIRST=NO
+		fi
+	done > ${TMP}rev$$
+	R=`cat ${TMP}rev$$`
+	${RM} -f ${TMP}here$$ ${TMP}has$$ ${TMP}rev$$
+	if [ "X$R" = X ]; then return; fi
+	if [ X$R = X ]
+	then	${BIN}prs -hd:KEY: ChangeSet > $SENDLOG
+	else	(cat $SENDLOG; ${BIN}prs -hd:KEY: -r$R ChangeSet ) |
+		    sort -u > ${TMP}here$$
+		cat ${TMP}here$$ > $SENDLOG
+		${RM} -f ${TMP}here$$
+	fi
+	echo $R
+}
+
 _send() {
 	V=-vv
 	D=
-	PIPE=cat
-	REV=
-	while getopts dp:qr: opt
+	WRAPPER=cat
+	REV=1.0..
+	FORCE=NO
+	while getopts dfqr:w: opt
 	do	case "$opt" in
 		    d) D=-d;;
-		    p) PIPE="$OPTARG"; CMD="$OPTARG";;
+		    f) FORCE=YES;;
 		    q) V=;;
 		    r) REV=$OPTARG;;
+		    w) WRAPPER="$OPTARG";;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	if [ X$1 = X -o X$2 != X ]
-	then	echo "usage: bk send [-dq] [-ppipe] [-rcset_revs] user@host|-"
+	then	echo "usage: bk send [-dq] [-wWrapper] [-rCsetRevs] user@host|-"
 		exit 1
 	fi
 	_cd2root
-	if [ ! -d BitKeeper/log ]; then	mkdir BitKeeper/log; fi
-	OUTPUT=$1
-	if [ X$REV = X ]
-	then	
-		if [ X$OUTPUT != X- ]
-		then	LOG=BitKeeper/log/$1
-			if [ -f $LOG ]
-			then	sort -u < $LOG > ${TMP}has$$
-				${BIN}prs -hd:KEY: ChangeSet| sort > ${TMP}here$$
-				FIRST=YES
-				comm -23 ${TMP}here$$ ${TMP}has$$ |
-				${BIN}key2rev ChangeSet | while read x
-				do	if [ $FIRST != YES ]
-					then	echo $N ",$x"$NL
-					else	echo $N "$x"$NL
-						FIRST=NO
-					fi
-				done > ${TMP}rev$$
-				REV=`cat ${TMP}rev$$`
-				${RM} -f ${TMP}here$$ ${TMP}has$$ ${TMP}rev$$
-				if [ "X$REV" = X ]
-				then	echo Nothing new to send to $OUTPUT
-					exit 0
-				fi
-			else	REV=`${BIN}prs -hr+ -d:I: ChangeSet`
+	TO=$1
+	if [ X$TO != X- ]
+	then	if [ $FORCE = NO ]
+		then	REV=`_sendlog $TO $REV`
+			if [ X$REV = X ]
+			then	echo Nothing to send to $TO, use -f to force.
+				exit 0
 			fi
-	    		${BIN}prs -hd:KEY: ChangeSet > $LOG
-		fi
-	else	
-		LOG=BitKeeper/log/$OUTPUT
-		if [ -f $LOG ]
-		then	(cat $LOG; ${BIN}prs -hd:KEY: -r$REV ChangeSet) |
-			    sort -u > ${TMP}log$$
-		    	cat ${TMP}log$$ > $LOG
-			${RM} -f ${TMP}log$$
-		else	${BIN}prs -hd:KEY: -r$REV ChangeSet > $LOG
 		fi
 	fi
-	case X$OUTPUT in
+	case X$TO in
 	    X-)	MAIL=cat
 	    	;;
-	    *)	MAIL="${MAIL_CMD} -s 'BitKeeper patch' $OUTPUT"
+	    Xhoser@nevdull.com)
+		MAIL=cat
+		;;
+	    *)	MAIL="${MAIL_CMD} -s 'BitKeeper patch' $TO"
 	    	;;
 	esac
-	( if [ "X$PIPE" != Xcat ]
-	  then	echo "Wrapped with $PIPE"
-	  fi
-	  echo "This patch contains the following changesets:";
+	( echo "This BitKeeper patch contains the following changesets:";
 	  echo "$REV" | sed 's/,/ /g';
-	  ${BIN}cset $D -m$REV $V | eval $PIPE ) | eval $MAIL
+	  if [ "X$WRAPPER" != Xcat ]
+	  then	echo ""; echo "## Wrapped with $WRAPPER ##"; echo "";
+	  	${BIN}cset $D -m$REV $V | bk ${WRAPPER}wrap 
+	  else ${BIN}cset $D -m$REV $V 
+	  fi
+	) | eval "$MAIL"
+}
+
+_unwrap() {
+	while read x
+	do	case "$x" in
+		    "# Patch vers:"*)
+			(echo "$x"; cat)
+			exit $?
+			;;
+		    "## Wrapped with "*)
+			set `echo "$x"`
+			WRAP=$4
+			if [ ! -x ${BIN}un${WRAP}wrap ]
+			then	echo \
+			    "bk receive: don't have ${WRAP} wrappers" > /dev/tty
+				exit 1
+			fi
+			${BIN}un${WRAP}wrap
+			;;
+		esac
+	done
+}
+
+_receive() {
+	OPTS=
+	NEW=NO
+	while getopts aciv opt
+	do	case "$opt" in
+		    a) OPTS="-a $OPTS";;
+		    c) OPTS="-c $OPTS";;
+		    i) OPTS="-i $OPTS"; NEW=YES;;
+		    v) OPTS="-v $OPTS";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ X$1 = X -o X$2 != X ]
+	then	echo "usage: bk receive [takepatch options] pathname"
+	fi
+	if [ ! -d $1 -a $NEW = YES ]; then mkdir -p $1; fi
+	cd $1
+	_unwrap | ${BIN}takepatch $OPTS
+	exit $?
 }
 
 _save() {
@@ -725,7 +793,7 @@ _commandHelp() {
 				    backups|debug|sendbug|commit|pending|send|\
 				    resync|changes|undo|save|docs|RCS|status|\
 				    sccsmv|mv|sccsrm|rm|version|root|export|\
-				    users)
+				    users|receive|wrap|unwrap)
 					_gethelp help_$i $BIN | $PAGER
 					;;
 				    *)
@@ -856,9 +924,9 @@ case "$1" in
 	echo Running regression is currently broken
 	exit 1
 	;;
-    setup|changes|pending|commit|sendbug|send|\
+    setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|docs|rm|new|version|\
-    root|status|export|users|sdiffs)
+    root|status|export|users|sdiffs|unwrap)
 	cmd=$1
     	shift
 	_$cmd "$@"

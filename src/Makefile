@@ -3,7 +3,7 @@ BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  cset g2sccs range zone gethost undos chksum rechksum \
 	  sccsmv sccsrm sccscat key2rev check fdiff adler32
-SCRIPTS	= rcs2sccs testfast bk import resolve resync
+SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
@@ -67,7 +67,7 @@ HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/vitool.tcl \
 	  gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl gui/mkindex.tcl \
-	  resync.perl
+	  resync.perl uuwrap.sh unuuwrap.sh
 
 all: $(ALL)
 
@@ -288,6 +288,16 @@ bk: bk.sh port/platform.sh substvars prs
 	chmod +x bk.T2
 	/bin/rm -f bk.ver platform.sh.T bk.T
 	mv -f bk.T2 bk
+
+uuwrap: uuwrap.sh substvars
+	./substvars uuwrap.sh >uuwrap.T
+	chmod +x uuwrap.T
+	mv -f uuwrap.T uuwrap
+
+unuuwrap: unuuwrap.sh substvars
+	./substvars unuuwrap.sh >unuuwrap.T
+	chmod +x unuuwrap.T
+	mv -f unuuwrap.T unuuwrap
 
 import: import.sh substvars
 	./substvars import.sh >import.T

@@ -1,0 +1,124 @@
+#!/bin/sh
+
+# Copyright (c) 1999 lm
+# %K%
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+echo "logging: /dev/null" > $HERE/c
+echo "logging_ok: t" >>$HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data and some changesets ........................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+bk commit $S -f -yCset
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+for i in 2 3 4 5 6
+do	
+	bk edit $Q foo.c bar.c
+	date >> foo.c
+	date >> bar.c
+	bk ci $Q -y$i foo.c bar.c
+	bk commit $S -f -yCset$i
+done
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+echo OK
+echo $N Create a copy of the project using send / receive ...........$NL
+cd $HERE/project
+bk send $Q -  | bk receive -ia ../copy 
+if [ ! -d ../copy/BitKeeper ]; then echo failed to receive; exit 1; fi
+if [ ! -f ../copy/src/SCCS/s.h.h ]; then echo failed to receive; exit 1; fi
+cd $HERE/project; bk -r clean
+cd $HERE/copy; bk -r clean
+cd $HERE
+${RM} -f project/BitKeeper/etc/SCCS/x.id_cache
+${RM} -f copy/BitKeeper/etc/SCCS/x.id_cache
+${RM} -f project/BitKeeper/etc/SCCS/x.marked
+${RM} -f copy/BitKeeper/etc/SCCS/x.marked
+${RM} -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
+diff -r project copy
+if [ $? != 0 ]; then echo Failed because of differences; exit 1; fi
+echo OK
+echo $N Make sure we can wrap and unwrap patches ....................$NL
+cd $HERE/project
+bk send $Q -wuu -  | bk unwrap | while read x
+do	case "$x" in
+	    "# Patch vers:"*)
+		echo "$x";
+		exec cat;
+		;;
+	esac
+done > p1
+bk send $Q -  | bk unwrap > p2
+diff p1 p2
+if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi
+${RM} -f p1 p2
+echo OK
+echo $N Create copy using send / receive and wrappers ...............$NL
+cd $HERE/project
+bk send $Q -wuu -  | bk receive -ia ../uu
+if [ ! -d ../uu/BitKeeper ]; then echo failed to receive; exit 1; fi
+cd $HERE/project; bk -r clean
+cd $HERE/uu; bk -r clean
+cd $HERE
+${RM} -f project/BitKeeper/etc/SCCS/x.id_cache
+${RM} -f uu/BitKeeper/etc/SCCS/x.id_cache
+${RM} -f project/BitKeeper/etc/SCCS/x.marked
+${RM} -f uu/BitKeeper/etc/SCCS/x.marked
+${RM} -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
+diff -r project uu
+if [ $? != 0 ]; then echo Failed because of differences; exit 1; fi
+echo OK
+echo $N Create copy using send / receive 1 cset at a time ...........$NL
+cd $HERE/project
+bk send $Q -r..1.1 -  | bk receive -ia ../csets
+if [ ! -d ../csets/BitKeeper ]; then echo failed to receive; exit 1; fi
+for i in 2 3 4 5 6 7
+do	bk send $Q -r1.$i -  | bk receive -a ../csets
+done
+cd $HERE/project; bk -r clean
+cd $HERE/csets; bk -r clean
+cd $HERE
+${RM} -f project/BitKeeper/etc/SCCS/x.id_cache
+${RM} -f csets/BitKeeper/etc/SCCS/x.id_cache
+${RM} -f project/BitKeeper/etc/SCCS/x.marked
+${RM} -f csets/BitKeeper/etc/SCCS/x.marked
+${RM} -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
+diff -r project csets
+if [ $? != 0 ]; then echo Failed because of differences; exit 1; fi
+echo OK
+echo $N Make sure that it records sends .............................$NL
+cd $HERE/project
+echo "Nothing to send to hoser@nevdull.com, use -f to force." > YYY
+bk send $Q -r..1.3 hoser@nevdull.com > XXX
+cmp -s XXX YYY
+if [ $? = 0 -o ! -s XXX ]; then echo failed to create patch; exit 1; fi
+for i in 1.1 1.2 1.3 ..1.3 ..1.2
+do	bk send $Q -r$i hoser@nevdull.com > XXX
+	cmp -s XXX YYY
+	if [ $? != 0 ]; then echo created patch ..$i twice; cat XXX; exit 1; fi
+done
+echo OK
+echo $N Make sure that it does not overrecord sends .................$NL
+cd $HERE/project
+bk send $Q -r1.4 hoser@nevdull.com > XXX
+cmp -s XXX YYY
+if [ $? = 0 ]; then echo failed to create patch 1.4; exit 1; fi
+bk send $Q hoser@nevdull.com > XXX
+cmp -s XXX YYY
+if [ $? = 0 ]; then echo failed to create patch 1.5..; exit 1; fi
+echo OK

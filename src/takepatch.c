@@ -158,7 +158,7 @@ usage:		fprintf(stderr, takepatch_help);
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		system("bk resolve");
+		system(echo ? "bk resolve" : "bk resolve -q");
 	}
 	exit(0);
 }
