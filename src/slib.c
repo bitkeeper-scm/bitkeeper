@@ -4385,6 +4385,11 @@ err:		if (slist) free(slist);
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & MODNAME) base = basenm(s->gfile);
 	unless (out)  goto skip_data;
+	if (S_ISLNK(d->mode) && (flags & PRINT)) {
+		char tmp[1024];
+		fprintf(out, "SYMLINK -> %s\n", d->glink);
+		goto get_done;
+	}
 	seekto(s, s->data);
 	sum = 0;
 	while (next(buf, s)) {
@@ -4448,6 +4453,7 @@ err:		if (slist) free(slist);
 		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
 		    d->sum, sum, d->rev, s->sfile);
 	}
+get_done:
 	debug((stderr, "GET done\n"));
 	if (popened) {
 		pclose(out);
@@ -5261,11 +5267,9 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 	switch (ret) {
 	    case 0:	/* diff return no diffs, now check file type changes */
 		d = findrev(s, pf->oldrev);
-		unless (d->flags & D_MODE) return 1;
-		if (s->state & GFILE) {
-			assert(s->mode);
-			if (fileType(s->mode) != fileType(d->mode)) return 0;
-		}
+		unless ((d->flags & D_MODE) && (s->state & GFILE)) return 1;
+		assert(s->mode);
+		if (fileType(s->mode) != fileType(d->mode)) return 0;
 		if (S_ISLNK(s->mode)) return streq(s->glink, d->glink);	
 		return (1);
 	    case 1:	/* diffs */
@@ -5337,7 +5341,7 @@ sccs_clean(sccs *s, int flags)
 	}
 	unless (s->tree) return (-1);
 	unless (HAS_PFILE(s)) {
-		if (!IS_WRITABLE(s) || S_ISLNK(s->mode)) {
+		if (S_ISLNK(s->mode) || !IS_WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
 			unlinkGfile(s);
 			return (0);
@@ -5353,6 +5357,33 @@ sccs_clean(sccs *s, int flags)
 		verbose((stderr, "%s not checked out\n", s->gfile));
 		return (0);
 	}
+
+	if (S_ISLNK(s->mode)) {
+		delta	*d;
+
+		if (read_pfile("clean", s, &pf)) return (1);
+		unless (d = findrev(s, pf.oldrev)) {
+			free_pfile(&pf);
+			return (1);
+		}
+		if (streq(s->glink, d->glink)) {
+			verbose((stderr, "Clean %s\n", s->gfile));
+			unlinkGfile(s);
+			free_pfile(&pf);
+			return (0);
+		}
+		unless (flags & PRINT) {
+			fprintf(stderr,
+			    "%s has been modified, needs delta.\n", s->gfile);
+		} else {
+			printf("===== %s (link) %s vs %s =====\n", 
+			    s->gfile, pf.oldrev, "edited");
+			printf("< %s\n-\n> %s\n", d->glink, s->glink);
+			free_pfile(&pf);
+		}
+		return (2);
+	}
+
 	/*
 	 * XXX - there is a bug somewhere that leaves stuff edited when it
 	 * isn't.  I suspect some interactions with make, but I'm not
@@ -5520,6 +5551,24 @@ openInput(sccs *s, int flags, FILE **inp)
 }
 
 /*
+ * Decide when to update the "mode" field;
+ * Update the mode if
+ * a) file type changed, or
+ * b) glink field changed, or
+ * c) has no parent (i.e p == null)
+ * Changes in permission field are ignored.
+ */
+int
+shouldUpdMode (sccs *s, delta *p)
+{
+#define sameFileType(a, b) (fileType(a->mode) == fileType(b->mode))
+	unless(p) return 1;
+	if (!sameFileType(s, p)) return 1;
+	if (s->glink == p->glink) return 0; 
+	if (s->glink) return (!streq(s->glink, p->glink));
+}
+
+/*
  * Do most of the initialization on a delta.
  */
 delta *
@@ -5557,23 +5606,22 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			}
 		}
 #endif
-#define SYM_LINK_AUTO_MODE
-#ifdef	SYM_LINK_AUTO_MODE
-		unless (d->flags & D_MODE) {
-			/*
-			 * auto update the mode if new delte is a sym-link
-			 */
-			if ((s->state & GFILE) && S_ISLNK(s->mode)) {
-				assert(d->mode == 0);
-				d->mode = s->mode;
-				d->glink = s->glink;
-				s->glink = 0;
-				d->flags |= D_MODE;
-			}
-		}
-#endif
 	}
 	return (d);
+}
+
+private void
+updMode(sccs *s, delta *d, delta *dParent)
+{
+	if ((s->state & GFILE) && !(d->flags & D_MODE)) {
+		if (shouldUpdMode(s, dParent)) {
+			assert(d->mode == 0);
+			d->mode = s->mode;
+			d->glink = s->glink;
+			s->glink = 0;
+			d->flags |= D_MODE;
+		}
+	}
 }
 
 private void
@@ -5648,12 +5696,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		n = calloc(1, sizeof(*n));
 	}
 	n = sccs_dInit(n, 'D', s, nodefault);
-	unless (n->flags & D_MODE) {
-		if (s->state & GFILE) {
-			if (!S_ISLNK(s->mode)) n->mode = s->mode;
-			n->flags |= D_MODE;
-		}
-	}
+	updMode(s, n, 0);
 	if (!n->rev) n->rev = strdup("1.1");
 	explode_rev(n);
 	unless (s->state & NOSCCSDIR) {
@@ -5713,9 +5756,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	buf[0] = 0;
 	fputsum(s, "\001I 1\n", sfile);
 	s->dsum = 0;
-	if ((S_ISLNK(s->mode)) || (S_ISDIR(s->mode))) {
-			goto skip_data;
-	}
+	if (S_ISLNK(n->mode)) goto skip_data;
 	if (!(flags & PATCH) && (s->encoding > E_ASCII)) {
 		/* XXX - this is incorrect, it needs to do it depending on
 		 * what the encoding is.
@@ -7788,16 +7829,7 @@ out:
 	}
 	if (error) OUT;
 	n = sccs_dInit(n, 'D', s, init != 0);
-	/*
-	 * if file type changed, force a mode update
-	 */
-	if (s->state & GFILE) {
-		if (fileType(d->mode) != fileType(s->mode)) {
-			assert(s->mode);
-			n->mode = s->mode;
-			n->flags |= D_MODE;
-		}
-	}
+	updMode(s, n, d);
 
 	if (!n->rev) {
 		if (pf.sccsrev[0]) {
