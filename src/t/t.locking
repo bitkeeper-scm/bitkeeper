@@ -190,10 +190,6 @@ bk push -c0 $Q
 if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
 echo OK
 
-# Disable this test on win32, doing a cygwin "kill" into non-cygwin bk
-# process causes the unwnated "Signal 15" message
-if [ "$PLATFORM" != "WIN32" ]
-then #------------------------------------------------------------------
 echo $N Make sure push fails with existing write lock in dest .......$NL
 cd $HERE/project
 rm -rf BitKeeper/readers BitKeeper/writer
@@ -207,14 +203,15 @@ bk push -c0 > OUT 2>&1 && {
 	kill $PID
 	exit 1
 }
-kill $PID
 grep -q 'ERROR-Unable to lock repository for update.' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1
 }
+cd $HERE/project
+rm -rf BitKeeper/writer
+bk lock -U	# removing lock makes it exit
 echo OK
-fi #-------------------------------------------------------------------
 
 echo $N Make sure push succeeds with no locks in destination ........$NL
 cd $HERE/project

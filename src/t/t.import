@@ -138,7 +138,7 @@ echo OK
 rm -f extra
 bk unedit $Q foo
 
-echo $N Make sure a patch undo a patch delete when patch failded ....$NL
+echo $N Make sure a patch undo a patch delete when patch failed .....$NL
 # make a patch
 cd $HERE
 bk export -tplain -r+ $HERE/EDIT $HERE/A
@@ -256,10 +256,10 @@ grep -q G foo || {
 	echo failed to apply patch
 	exit 1
 }
-U=`bk getuser`
-test "`bk prs -hr+ -nd:P:@:HOST::IMPORTER: foo`" = akushner@bitmover.com$U || {
-	echo did not pick up email address
-	bk prs -nd':P:@:HOST::IMPORTER:' foo
+U=akushner@bitmover.com+`bk getuser -r`
+test "`bk prs -hr+ -nd:P:@:HOST:+:IMPORTER: foo`" = "$U" || {
+	echo did not pick up email address, wanted $U
+	bk prs -r+ -nd':P:@:HOST:+:IMPORTER:' foo
 	exit 1
 }
 bk changes -r+ > C

@@ -723,9 +723,6 @@ init() {
 	else    NL=
 		N=-n
 	fi
-	if [ X$EDITOR = X ]
-	then	EDITOR=vi
-	fi
 }
 
 init

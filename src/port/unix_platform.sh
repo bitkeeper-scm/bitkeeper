@@ -27,10 +27,7 @@ __platformInit()
 	then wish=wish8.0
 	else wish=wish
 	fi
-	if [ "X$EDITOR" = X ]
-	then EDITOR=vi
-	fi
-	if [ "X$PAGER" = X ]
-	then PAGER=more
-	fi
+	test "X$EDITOR" = X && EDITOR=vi
+	test "X$PAGER" = X && PAGER=more
+	export PAGER EDITOR GUI_BIN RM ECHO TMP DEV_NULL MAIL_CMD AWK wish
 }

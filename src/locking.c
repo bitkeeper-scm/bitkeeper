@@ -189,7 +189,14 @@ repository_lockers(project *p)
 	lines = lockers(path);
 	EACH(lines) {
 		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, lines[i]);
-		if (sccs_stalelock(path, 1)) continue;
+		if (sccs_stalelock(path, 0)) {
+			char	lock[MAXPATH];
+
+			sprintf(lock, "%s/%s/lock", p->root, WRITER_LOCK_DIR);
+			if (sameFiles(path, lock)) unlink(lock);
+			unlink(path);
+			continue;
+		}
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		fprintf(stderr, "\tWrite locker: %s\n", lines[i]);
 		n++;

@@ -48,9 +48,6 @@ When called with this option, bk delta will not create a null delta on
 an edited, but unmodified file.
 .sp
 .tp
-.B \-c
-Do not verify file checksum (slight performance win).
-.tp
 .B \-C
 Take checkin comments from 
 .if t .IR SCCS/c.filename .
@@ -112,13 +109,6 @@ gzip - like
 .br
 none -  no compression
 .SH BUGS
-The
-.B bk delta
-command does not yet use the 
-.B SCCS/c.file
-comment caches created by
-.BR "bk citool" .
-.LP
 The format of the init file is not documented.
 .SH "SEE ALSO"
 .SA ci 1
