@@ -59,7 +59,6 @@ cmd_pull_part1(int ac, char **av)
 		return (1);
 	}
 
-	signal(SIGCHLD, SIG_DFL); /* hpux */
 	fputs("@OK@\n", stdout);
 	pid = spawnvp_rPipe(probekey_av, &rfd, 0);
 	f = fdopen(rfd, "r");

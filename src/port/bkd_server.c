@@ -199,6 +199,7 @@ bkd_server(char **not_used)
 		close(0); dup(n);
 		close(1); dup(n);
 		close(n);
+		signal(SIGCHLD, SIG_DFL);	/* restore signals */
 		do_cmds();
 		exit(0);
 	}

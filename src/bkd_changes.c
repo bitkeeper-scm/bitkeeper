@@ -107,8 +107,6 @@ cmd_chg_part2(int ac, char **av)
 		goto skip;
 	}
 
-	signal(SIGCHLD, SIG_DFL); /* for free bsd */
-
 	/*
 	 * What we want is: keys -> "bk changes opts -" -> BitKeeper/tmp/chgXXX
 	 */

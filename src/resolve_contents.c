@@ -348,9 +348,8 @@ c_shell(resolve *rs)
 	}
 	av[0] = "sh";
 	av[1] = "-c";
-	av[2] = "--";
-	av[3] = rs->shell;
-	av[4] = 0;
+	av[2] = rs->shell;
+	av[3] = 0;
 	spawnvp_ex(_P_WAIT, av[0], av);
 	return (0);
 }
