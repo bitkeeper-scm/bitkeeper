@@ -45,24 +45,11 @@ proc widgets {} \
 		-wrap none -font $gc(diff.fixedFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
-	    # Annotated listing information
-	    text .diffs.left_annotate -width 10 \
-		-height 0 -padx 0 -borderwidth 0 -setgrid 1 \
-		-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
-		-wrap none -font $gc(diff.fixedFont) \
-		-xscrollcommand { .diffs.xscroll set } \
-		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -bg $gc(diff.textBG) -fg $gc(diff.textFG) \
 		-height $gc(diff.diffHeight) \
 		-width $gc(diff.diffWidth) \
 		-borderwidth 0 \
 		-state disabled -wrap none -font $gc(diff.fixedFont)
-	    text .diffs.right_annotate -width 10 \
-		-height 0 -padx 0 -borderwidth 0 -setgrid 1 \
-		-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
-		-wrap none -font $gc(diff.fixedFont) \
-		-xscrollcommand { .diffs.xscroll set } \
-		-yscrollcommand { .diffs.yscroll set }
 	    scrollbar .diffs.xscroll -wid $gc(diff.scrollWidth) \
 		-troughcolor $gc(diff.troughColor) \
 		-background $gc(diff.scrollColor) \
@@ -72,25 +59,12 @@ proc widgets {} \
 		-background $gc(diff.scrollColor) \
 		-orient vertical -command { yscroll }
 
-	    if {1} {
-		grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
-		grid .diffs.left -row 1 -column 0 -sticky nsew
-		grid .diffs.yscroll -row 1 -column 1 -sticky ns
-		grid .diffs.right -row 1 -column 2 -sticky nsew
-		grid .diffs.xscroll -row 2 -column 0 -sticky ew
-		grid .diffs.xscroll -columnspan 5
-	    } else {
-		grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
-		grid .diffs.left_annotate -row 1 -column 0 -sticky nsew
-		grid .diffs.left -row 1 -column 1 -sticky nsew
-		grid .diffs.yscroll -row 1 -column 2 -sticky ns
-		grid .diffs.right_annotate -row 1 -column 3 -sticky nsew
-		grid .diffs.right -row 1 -column 4 -sticky nsew
-		grid .diffs.xscroll -row 2 -column 0 -sticky ew
-		grid .diffs.xscroll -columnspan 5
-		#grid forget .diffs.left_annotate
-		#grid forget .diffs.right_annotate
-	    }
+	    grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
+	    grid .diffs.left -row 1 -column 0 -sticky nsew
+	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
+	    grid .diffs.right -row 1 -column 2 -sticky nsew
+	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
+	    grid .diffs.xscroll -columnspan 5
 
 image create photo prevImage \
     -format gif -data {
@@ -149,8 +123,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
                 -state normal -command { nextFile }
             menubutton .menu.fmb -font $gc(diff.buttonFont) -relief raised \
                 -bg $gc(diff.buttonColor) -pady $gc(py) -padx $gc(px) \
-                -borderwid $gc(bw) -text "Files" -width 15 -state normal \
-                -menu .menu.mb.menu
+                -borderwid $gc(bw) -text "Files" -width 6 -state normal \
+                -menu .menu.fmb.menu
 
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
@@ -287,16 +261,14 @@ proc getFiles {} \
 {
 	global argv0 argv argc dev_null lfile rfile tmp_dir
 	global gc tcl_platform tmps menu lname rname
-
-	set rev1 ""
-	set rev2 ""
-
+	global lnorev rnorev rev1 rev2
 
 	if {$argc > 3} { usage }
 	set files [list]
 	set tmps [list]
-
 	set cfiles ""
+	set rev1 ""
+	set rev2 ""
 
 	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
 	#puts "argc=($argc) argv=($argv)"
@@ -340,6 +312,9 @@ proc getFiles {} \
 			lappend tmps $lfile
 			set lname "$rfile"
 			eval lappend files {"$rfile $rname $lfile $lname"}
+			set lnorev $rfile
+			set rnorev $rfile
+			set rev1 "+"
 		}
 	} elseif {$argc == 2} { ;# bk difftool -r<rev> file
 		set a [lindex $argv 0]
@@ -383,7 +358,7 @@ proc getFiles {} \
 
 	# Now add the menubutton items if necessary
 	if {[llength $files] > 1} {
-		set m [menu .menu.mb.menu]
+		set m [menu .menu.fmb.menu]
 		set item 1
 		foreach e $files {
 			set rf [lindex $e 0]; set rn [lindex $e 1]
@@ -393,12 +368,13 @@ proc getFiles {} \
 			    -command "pickFile $lf $ln $rf $rn $item"
 			incr item
 		}
-		pack configure .menu.filePrev .menu.mb .menu.fileNext \
+		pack configure .menu.filePrev .menu.fmb .menu.fileNext \
 		    -side left -after .menu.help 
 		$m invoke 1
 		set menu(max) [$m index last]
 		set menu(selected) 1
 	} elseif {[llength $files] == 1} {
+		displayInfo $lnorev $rnorev $rev1 $rev2
 		readFiles $lfile $lname $rfile $rname
 	} else {
 		cleanup
@@ -430,6 +406,7 @@ proc pickFile {lf ln rf rn item} \
 		.menu.filePrev configure -state normal
 		.menu.fileNext configure -state normal
 	}
+	#displayInfo $lnorev $rnorev $rev1 $rev2
 	readFiles $lf $ln $rf $rn
 }
 
@@ -439,7 +416,7 @@ proc prevFile {} \
 	global menu
 	if {$menu(selected) > 1} {
 		incr menu(selected) -1
-		.menu.mb.menu invoke $menu(selected)
+		.menu.fmb.menu invoke $menu(selected)
 		#puts "invoking $menu(selected)"
 		.menu.filePrev configure -state normal
 	} else {
@@ -452,17 +429,15 @@ proc prevFile {} \
 proc nextFile {} \
 {
 	global menu
+
 	if {$menu(selected) < $menu(max)} {
 		incr menu(selected)
-		.menu.mb.menu invoke $menu(selected)
+		.menu.fmb.menu invoke $menu(selected)
 		#puts "invoking $menu(selected)"
 		.menu.filePrev configure -state normal
 	} else {
 		.menu.fileNext configure -state disabled
 	}
-	displayInfo $lnorev $rnorev $rev1 $rev2
-	readFiles $lfile $rfile $lname $rname
-	foreach tmp $tmps { file delete $tmp }
 }
 
 # Override searchsee definition so we scroll both windows

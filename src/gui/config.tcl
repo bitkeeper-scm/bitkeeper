@@ -38,7 +38,7 @@ proc getConfig {prog} \
 	set _d(selectColor) lightblue	;# current file/item/topic
 	set _d(statusColor) lightblue	;# various status windows
 	#XXX: Not documented yet
-	set _d(infoColor) yellow	;# color of info line in difflib
+	set _d(infoColor) powderblue	;# color of info line in difflib
 	set _d(textBG) white		;# text background
 	set _d(textFG) black		;# text color
 	set _d(scrollColor) #d9d9d9	;# scrollbar bars

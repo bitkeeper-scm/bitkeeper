@@ -1,3 +1,18 @@
+#
+# This search library code can be called from other bk tcl/tk applications
+#
+# To add the search feature to a new app, you need to add the following
+# lines:
+#
+# search_widgets .enclosing_frame .widget_to_search
+# search_keyboard_bindings
+#
+# The search_widgets procedure takes two arguments. The first argument
+# is the enclosing widget that the search buttons and prompts will be
+# packed into. The second argument is the widget that search will do
+# its searching in.
+# 
+
 proc searchbuttons {button state} \
 {
 	global	search

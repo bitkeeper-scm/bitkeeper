@@ -249,33 +249,47 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 
 	.diffs.left tag configure "select" -background $gc($app.infoColor)
 	.diffs.right tag configure "select" -background $gc($app.infoColor)
-	set dspec1 "{-dEncoding=(:ENC:) Path=(:DPN:) Flags=(:FLAGS:) Mode=(:RWXMODE:)\n}"
-	set dspec2 "{-dEncoding=(:ENC:) Flags=(:FLAGS:) Path=(:DPN:)\n}"
+	set dspec1 "{-d:DPN:\n\tFlags :FLAGS:\n\tMode :RWXMODE:\n}"
+	set dspec2 "{-dFlags :FLAGS:\nPath :DPN:\n}"
 
 	catch {set f [open "| bk sfiles -g \"$lfile\"" r]} err
 	if { ([gets $f fname] <= 0)} {
 		set ltext "Not a BitKeeper revision controlled file"
 	} else {
-		set ltext "$lfile"
+		#set ltext "$lfile"
 		if {$parent != "1.0"} {
 			set p [open "| bk prs -hr$parent $dspec1 \"$lfile\""]
 		} else {
 			set p [open "| bk prs -hr$parent $dspec2 \"$lfile\""]
 		}
-		gets $p ltext
+		while { [gets $p line] >= 0 } {
+			if {![info exists ltext]} {
+				set ltext "$line"
+			} else {
+				set ltext "$ltext\n$line"
+			}
+			#puts stderr "ltext=($ltext)"
+		}
 		catch {close $p}
 	}
 	catch {set f [open "| bk sfiles -g \"$rfile\"" r]} err
 	if { ([gets $f fname] <= 0)} {
 		set rtext "Not a BitKeeper revision controlled file"
 	} else {
-		set rtext "$rfile"
+		#set rtext "$rfile"
 		if {$parent != "1.0"} {
 			set p [open "| bk prs -hr$stop $dspec1 \"$rfile\""]
 		} else {
 			set p [open "| bk prs -hr$stop $dspec2 \"$rfile\""]
 		}
-		gets $p rtext
+		while { [gets $p line] >= 0 } {
+			if {![info exists rtext]} {
+				set rtext "$line"
+			} else {
+				set rtext "$rtext\n$line"
+			}
+			#puts stderr "rtext=($rtext)"
+		}
 		catch {close $p}
 	}
 	#puts stderr "R=($rfile) L=($lfile) parent=($parent) stop=($stop)"
