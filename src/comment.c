@@ -2,33 +2,50 @@
 #include "system.h"
 #include "sccs.h"
 
-private	char	**readFile(char *file, char *delete);
-private	char	**editComments(sccs *s, delta *d);
+private	char	**readFile(char *file);
+private char	**getfiles(char *csetrev);
+private void	write_editfile(FILE *f, char **files);
+private void	read_editfile(FILE *f);
+
 extern	char	*editor;
+
+
+private void
+usage(void)
+{
+	system("bk help -s comment");
+	exit(1);
+}
 
 /*
  * comment - all the updating of checkin comments
  *
- * bk comment [-y<new>] [-r<rev>] files
+ * bk comments [-y<new>] [-r<rev>] files
  *
  * If you don't pass it a comment, it pops you into the editor on the old one.
  *
  * TODO - do not allow them to change comments in pulled changesets.
  */
 int
-comment_main(int ac, char **av)
+comments_main(int ac, char **av)
 {
-	sccs	*s = 0;
-	delta	*d;
 	char	*name, *file = 0, *comment = 0, *rev = "+";
 	int	c;
+	char	**files = 0;
 	char	**lines = 0;
-
-	while ((c = getopt(ac, av, "r|y|Y|")) != -1) {
+	char	*csetrev = 0;
+	int	to_stdout = 0;
+	char	tmp[MAXPATH];
+	FILE	*tf;
+	
+	while ((c = getopt(ac, av, "C|pr|y|Y|")) != -1) {
 		switch (c) {
+		    case 'C': csetrev = optarg; break;
+		    case 'p': to_stdout = 1; break;
 		    case 'y': comment = optarg; break;
 		    case 'Y': file = optarg; break;
 		    case 'r': rev = optarg; break;
+		    default: usage(); break;
 		}
 	}
 	if (comment) {
@@ -40,80 +57,249 @@ comment_main(int ac, char **av)
 		}
 		lines = addLine(lines, strdup(comment));
 	} else if (file) {
-		unless (lines = readFile(file, 0)) return (1);
+		unless (lines = readFile(file)) return (1);
 	}
 	unless (editor = getenv("EDITOR")) editor = "vi";
 
-	for (name = sfileFirst("comment", &av[optind], SF_NODIREXPAND);
-	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, 0, 0)) continue;
-		unless (HASGRAPH(s)) goto next;
-		unless (d = sccs_getrev(s, rev, 0, 0)) {
-			fprintf(stderr, "%s|%s not found\n", s->gfile, rev);
-			goto next;
-		}
-		unless (lines) {
-			lines = editComments(s, d);
-			freeLines(d->comments);
-			d->comments = lines;
-			lines = 0;
-		} else {
-			freeLines(d->comments);
-			d->comments = lines;
-		}
-		if (d->comments) sccs_newchksum(s);
-next:		sccs_free(s);
+	if (av[optind] && streq(av[optind], "-")) {
+		/*
+		 * Is it OK that we broke reading files to edit from
+		 * stdin?
+		 */
+		read_editfile(stdin);
+		return (0);
 	}
+
+	/*
+	 * Get list of files/revs to edit.  It is either the set if files
+	 * in a changeset or a list of files on the command line.
+	 */
+	if (csetrev) {
+		files = getfiles(csetrev);
+	} else {
+		for (name = sfileFirst("comment", &av[optind], SF_NODIREXPAND);
+		     name; name = sfileNext()) {
+			files = addLine(files, 
+			    aprintf("%s%c%s", name, BK_FS, rev));
+		}
+	}
+	gettemp(tmp, "cmt");
+	unless (tf = fopen(tmp, "w")) {
+		perror(tmp);
+		return (1);
+	}
+	if (lines) {
+		int	i;
+
+		/* set all files to same comment */
+		EACH (files) {
+			int	j;
+			char	*sfile = strdup(files[i]);
+			char	*rev;
+			char	*gfile;
+			rev = strchr(sfile, BK_FS);
+			*rev++ = 0;
+			gfile = sccs2name(sfile);
+			
+			fprintf(tf, "# Change the comments to %s%c%s below\n",
+			    gfile, BK_FS, rev);
+			free(gfile);
+			free(sfile);
+			EACH_INDEX(lines, j) {
+				fprintf(tf, "%s\n", lines[j]);
+			}
+		}
+	} else {
+		write_editfile(tf, files);
+	}
+	fclose(tf);
+	if (to_stdout) {
+		char	buf[MAXLINE];
+		int	cnt;
+
+		unless (tf = fopen(tmp, "r")) {
+			perror(tmp);
+			return (1);
+		}
+		while (cnt = fread(buf, 1, sizeof(buf), tf)) {
+			fwrite(buf, 1, cnt, stdout);
+		}
+		fclose(tf);
+		unlink(tmp);
+		return (0);
+	}
+	unless (lines) sys(editor, tmp, SYS);
+	unless (tf = fopen(tmp, "r")) {
+		perror(tmp);
+		return (1);
+	}
+	read_editfile(tf);
+	fclose(tf);
+	unlink(tmp);
 	return (0);
 }
 
 private char **
-editComments(sccs *s, delta *d)
+readFile(char *file)
 {
-	char	tmp[MAXPATH];
-	FILE	*f;
-	char	**lines;
-	int	i;
-	char	buf[200];
+        FILE    *f = fopen(file, "r");
+        char    buf[1024];
+        char    **lines = 0;
 
-	gettemp(tmp, "cmt");
-	unless (f = fopen(tmp, "w")) {
-		perror(tmp);
-		return (0);
-	}
-	sprintf(buf, "# Change the comment to %s@%s below and exit.\n",
-	    s->gfile, d->rev);
-	fputs(buf, f);
-	EACH(d->comments) {
-		fprintf(f, "%s\n", d->comments[i]);
-	}
-	fclose(f);
-	sys(editor, tmp, SYS);
-	lines = readFile(tmp, buf);
-	unlink(tmp);
-	return (lines);
+        unless (f) {
+                perror(file);
+                return (0);
+        }
+        while (fnext(buf, f)) {
+                chomp(buf);
+                lines = addLine(lines, strdup(buf));
+        }
+        fclose(f);
+        return (lines);
 }
 
-private char **
-readFile(char *file, char *delete)
-{
-	FILE	*f = fopen(file, "r");
-	char	buf[1024];
-	char	**lines = 0;
 
-	unless (f) {
-		perror(file);
+private char **
+getfiles(char *csetrev)
+{
+	char	**files = 0;
+	char	*av[30];
+	int	i;
+	char	*rev = aprintf("-r%s", csetrev);
+	pid_t	pid;
+	int	status;
+	int	pfd;
+	FILE	*f;
+	char	buf[MAXLINE];
+	char	*t;
+
+	av[i=0] = "bk";
+	av[++i] = "rset";
+	av[++i] = rev;
+	av[++i] = 0;
+	
+	pid = spawnvp_rPipe(av, &pfd, 0);
+	if (pid == -1) {
+		perror("spawnvp_rPipe");
 		return (0);
 	}
-	while (fnext(buf, f)) {
-		if (delete && streq(delete, buf)) {
-			delete = 0;
-			continue;
-		}
-		delete = 0;
-		chomp(buf);
-		lines = addLine(lines, strdup(buf));
+	free(rev);
+	unless (f = fdopen(pfd, "r")) {
+		perror("fdopen");
+		return(0);
 	}
-	fclose(f);
-	return (lines);
+	while (fgets(buf, sizeof(buf), f)) {
+		char	*sfile;
+		chomp(buf);
+		t = strchr(buf, BK_FS);
+		assert(t);
+		*t++ = 0;
+		t = strstr(t, "..");
+		assert(t);
+		t += 2;
+		sfile = name2sccs(buf);
+		files = addLine(files, aprintf("%s%c%s", sfile, BK_FS, t));
+		free(sfile);
+	}
+
+	waitpid(pid, &status, 0);
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		freeLines(files);
+		return (0);
+	}
+	return (files);
+}
+
+private void
+write_editfile(FILE *f, char **files)
+{
+	int	i;
+	
+	EACH(files) {
+		sccs	*s;
+		delta	*d;
+		char	*t;
+		char	*name;
+		int	j;
+
+		name = strdup(files[i]);
+		t = strchr(name, BK_FS);
+		*t++ = 0;
+		
+		unless (s = sccs_init(name, 0, 0)) continue;
+		unless (HASGRAPH(s)) goto next;
+		unless (d = sccs_getrev(s, t, 0, 0)) {
+			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
+			goto next;
+		}
+		fprintf(f, "# Change the comments to %s%c%s below\n",
+		    s->gfile, BK_FS, d->rev);
+		EACH_INDEX(d->comments, j) {
+			fprintf(f, "%s\n", d->comments[j]);
+		}
+next:		sccs_free(s);
+		free(name);
+	}
+}
+
+private void
+change_comments(char *file, char *rev, char **comments)
+{
+	sccs	*s = 0;
+	delta	*d;
+	char	*sfile = 0;
+	
+	sfile = name2sccs(file);
+	unless (s = sccs_init(sfile, 0, 0)) goto err;
+	unless (HASGRAPH(s)) goto err;
+	unless (d = sccs_getrev(s, rev, 0, 0)) {
+		fprintf(stderr, "%s|%s not found\n", s->gfile, rev);
+		goto err;
+	}
+	freeLines(d->comments);
+	d->comments = comments;
+	if (d->comments) sccs_newchksum(s);
+ err:	if (s) sccs_free(s);
+	if (sfile) free(sfile);
+}
+
+private void
+read_editfile(FILE *f)
+{
+	char	buf[MAXLINE];
+	char	**comments = 0;
+	char	*last_file = 0;
+	char	*last_rev = 0;
+	
+	while (fgets(buf, sizeof(buf), f)) {
+		char	file[MAXPATH];
+		char	*rev;
+
+		chomp(buf);
+		if (sscanf(buf, "# Change the comments to %s below",
+			file) == 1) {
+			rev = strchr(file, BK_FS);
+			if (rev) {
+				*rev++ = 0;
+			} else {
+				rev = "+";
+			}
+			if (last_file) {
+				change_comments(last_file, last_rev, comments);
+				free(last_file);
+				free(last_rev);
+				comments = 0;
+			}
+			last_file = strdup(file);
+			last_rev = strdup(rev);
+		} else {
+			comments = addLine(comments, strdup(buf));
+		}
+	}
+	if (last_file) {
+		change_comments(last_file, last_rev, comments);
+		free(last_file);
+		free(last_rev);
+		comments = 0;
+	}
 }
