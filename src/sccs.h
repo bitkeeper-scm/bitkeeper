@@ -282,8 +282,9 @@
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
 
-#define BK_BASIC	0
-#define BK_PRO		1
+#define BK_FREE		0
+#define BK_BASIC	1
+#define BK_PRO		2
 
 #define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)
@@ -861,5 +862,6 @@ void	cmdlog_start(char **av);
 void	cmdlog_end(int ret);
 int	bk_mode();
 int	cat(char *file);
+char	*bk_model();
 
 #endif	/* _SCCS_H_ */

@@ -8,7 +8,6 @@ version_main()
 		gethelp("version", " ", 0, stdout);
 		return (0);
 	}
-	gethelp("version",
-			bk_mode() ? " Professional " : " Basic ", 0, stdout);
+	gethelp("version", bk_model(), 0, stdout);
 	return (0);
 }
