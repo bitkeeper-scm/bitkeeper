@@ -225,9 +225,7 @@ onefile:	fprintf(stderr,
 			rev = d->rev;
 		}
 		if (BITKEEPER(s) && (flags & GET_EDIT) && rev && !branch_ok) {
-			fprintf(stderr,
-			    "Do not use -r to create branch, "
-			    "use \"bk setlod\"\n");
+			fprintf(stderr, "Cannot create branch\n");
 			errors = 1;
 			sccs_free(s);
 			continue;

@@ -443,12 +443,13 @@ nameOK(opts *opts, sccs *s)
 
 	/*
 	 * Are we in the right sfile? (through LOD shuffling, might not be)
+	 * XXX: still true with single tip LOD design
 	 */
 	sccs_setpathname(s);
 	unless (streq(s->spathname, s->sfile)) {
 		if (opts->debug) {
 			fprintf(stderr, "nameOK(%s) => sfile %s is not same "
-			    "path as LOD top %s\n", s->gfile, s->sfile,
+			    "path as current top %s\n", s->gfile, s->sfile,
 			    s->spathname);
 		}
 		return (0);
