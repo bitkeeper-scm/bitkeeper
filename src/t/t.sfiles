@@ -431,4 +431,21 @@ EOF
 bk sfiles -idD | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
 cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
 echo OK
+
+echo $N Test limiting sfiles to one level ...........................$NL
+sort > $HERE/sfiles.ref <<EOF
+jjjjjj SCCS/OLD-s.foo
+jjjjjj SCCS/c.gone
+jjjjjj SCCS/c.gone@1.1
+jjjjjj SCCS/c.gone@1.2
+xxxxxx SFILES
+u   n  SCCS/s.bad
+     D BitKeeper
+     d .
+     d bar
+EOF
+bk sfiles -1idD | sort > $HERE/sfiles.out || { echo failed 1; exit 1; }
+cmp -s $HERE/sfiles.ref $HERE/sfiles.out || { echo failed 2; diff -u $HERE/sfiles.ref $HERE/sfiles.out; exit 1; }
+echo OK
+
 set +e

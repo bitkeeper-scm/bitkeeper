@@ -39,6 +39,7 @@ typedef struct {
 	u32	dflg:1;
 	u32	Dflg:1;
 	u32	fixdfile:1;		/* fix up  the dfile tag */
+	u32	onelevel:1;
 	u32	progress:1;		/* if set, send progress to stdout */
 	FILE	*out;			/* send output here */
 	u32     summarize:1;     	/* summarize output only */
@@ -163,8 +164,9 @@ sfiles_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "aAcCdDeEgGijlno:p|P|s:StuUvx")) != -1) {
+	while ((c = getopt(ac, av, "1aAcCdDeEgGijlno:p|P|s:StuUvx")) != -1) {
 		switch (c) {
+		    case '1':	opts.onelevel = 1; break;
 		    case 'a':	opts.all = 1; break;		/* doc 2.0 */
 		    case 'A':					/* undoc? 2.0 */
 				opts.pending = opts.Aflg = 1; break;
@@ -531,6 +533,7 @@ struct winfo {
 	char	*sccsdir;
 	int	sccsdirlen;
 	project	*proj;
+	int	seenfirst;
 };
 
 private void
@@ -601,11 +604,20 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 			if (p = strrchr(wi->sccsdir, '/')) *++p = 0;
 			wi->sccsdirlen = strlen(wi->sccsdir);
 		} else {
-			if (opts.Dflg) {
+			if (opts.dflg || opts.Dflg) {
 				strcpy(&file[n], "/SCCS");
-				nonsccs = !exists(file);
+				nonsccs = !exists(file) || emptyDir(file);
 				file[n] = 0;
-				if (nonsccs) print_it("     D", file, 0);
+				if (opts.Dflg && nonsccs) {
+					print_it("     D", file, 0);
+				}
+				if (opts.dflg && !nonsccs) {
+					print_it("     d", file, 0);
+				}
+			}
+			if (opts.onelevel) {
+				if (wi->seenfirst) return (-1);
+				wi->seenfirst = 1;
 			}
 		}
 	} else {
@@ -910,17 +922,6 @@ sccsdir(winfo *wi)
 
 	d_count++;
 	if (opts.progress) progress(1);
-
-	if (opts.dflg || opts.Dflg) {
-		strcpy(buf, dir);
-		buf[strlen(buf)-1] = 0;
-		i = nLines(slist);
-		if (i > 0) {
-			if (opts.dflg) print_it("     d", buf, 0);
-		} else {
-			if (opts.Dflg) print_it("     D", buf, 0);
-		}
-	}
 
 	/*
 	 * First eliminate as much as we can from SCCS dir;

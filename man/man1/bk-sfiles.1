@@ -4,7 +4,7 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc bk [-r] sfiles [\-acdDeEgijlnrSuUvx] [
+.Bc bk [-r] sfiles [\-1acdDeEgGijlnrSuUvx] [
 .OPTreq \-o file
 .Bc ] [
 .OPTopt \-p A|C
@@ -40,6 +40,9 @@ the
 options.
 .if n .TP .9i
 .if t .TP .5i
+.B \-1
+Only examine one directory level.  Do not go into subdirectories.
+.tp
 .B \-a
 examine all files, even if listed in BitKeeper/etc/ignore.
 .tp
