@@ -4578,7 +4578,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	unless (flags & GET_HASHONLY) {
 		f = d ? setupOutput(s, printOut, flags, d) : printOut;
-		unless (f) {
+		if ((f == (char *) 0) || (f == (char *)-1)) {
 out:			if (slist) free(slist);
 			if (state) free(state);
 			if (DB) mdbm_close(DB);
