@@ -28,8 +28,7 @@ usage: admin options [- | file file file...]\n\
     -m<mode>		set the mode of the file\n\
     -M<merge>		Merge branch <merge> into TOT or <rev>\n\
     -S<sym>:<rev>	associate <sym> with <rev>\n\
-    -p<path>:<rev>	set/change path of <rev> to <path>\n\
-    -P<rev>		revert to default path for <rev>\n\
+    -p<path>		set path of the most recent delta to <path>\n\
 \n\
     -B			make the landing pad bigger\n\
     -C			remove the changeset marks\n\
@@ -77,7 +76,7 @@ main(int ac, char **av)
 	char	*encp = 0, *compp = 0;
 	int	error = 0;
 	int	bigpad = 0;
-	int	fastSym = 0, dopath = 0, rmCset = 0, rmPath = 0;
+	int	fastSym = 0, dopath = 0, rmCset = 0;
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	delta	*d = 0;
@@ -129,7 +128,6 @@ main(int ac, char **av)
 		    		flags |= ADMIN_SHUTUP|NEWCKSUM;
 				dopath++;
 				break;
-		    case 'P':	rmPath = 1; flags |= NEWCKSUM; break;
 		/* encoding and compression */
 		    case 'Z':	compp = optarg ? optarg : "gzip";
 				flags |= NEWCKSUM;
@@ -174,8 +172,7 @@ main(int ac, char **av)
 	/* XXX ADMIN_BK? */
 	if ((merge) &&
 	    ((flags & ~(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|SILENT|NEWCKSUM)) ||
-	    nextf || nextu || nexts || nextp || comment || path ||
-	    rmCset || rmPath || doDates)) {
+	    nextf || nextu || nexts || nextp || comment || path || rmCset || doDates)) {
 		fprintf(stderr, "admin: -M option must be alone or with -r\n");
 		goto usage;
 	}
@@ -237,16 +234,13 @@ main(int ac, char **av)
 			if (rc != EAGAIN) goto next;
 		}
 		if (dopath) {
-			if (sc->tree->pathname) {
-				verbose((stderr,
-				    "%s has a path already.\n", sc->sfile));
-			} else {
-				sc->tree->pathname =
-				    strdup(path ? path : sc->gfile);
-			}
+			delta	*top = findrev(sc, 0);
+
+			if (top->pathname && !(top->flags & D_DUPPATH)) free(top->pathname);
+			top->flags &= ~(D_NOPATH|D_DUPPATH);
+			top->pathname = strdup(path ? path : sc->gfile);
 		}
 		if (rmCset) clearCset(sc, flags, rmCset);
-		if (rmPath) clearPath(sc, flags);
 		if (doDates) sccs_fixDates(sc);
 		if (merge) {
 			if (setMerge(sc, merge, rev) == -1) {
@@ -294,28 +288,6 @@ clearCset(sccs *s, int flags, int which)
 			d->csetFile = 0;
 		} else {
 			d->csetFile = 0;
-		}
-	}
-}
-
-void
-clearPath(sccs *s, int flags)
-{
-	delta	*d;
-	int	name = 0;
-
-	for (d = s->table; d; d = d->next) {
-		if (d->pathname && !(d->flags & D_DUPPATH)) {
-			if (!name) {
-				verbose((stderr,
-				    "RM paths from %s\n", s->sfile));
-				name = 1;
-			}
-			verbose((stderr, "\tPATH: %s\n", d->pathname));
-			free(d->pathname);
-			d->pathname = 0;
-		} else {
-			d->pathname = 0;
 		}
 	}
 }
