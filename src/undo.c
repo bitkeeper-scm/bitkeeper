@@ -72,13 +72,18 @@ err:		if (undo_list[0]) unlink(undo_list);
 			if (sysio(BACKUP_SFIO, 0, 0,
 						"bk", "sfio", "-im", SYS)) {
 				fprintf(stderr,
-"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-"Your repository is only partially restored\n"
-"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+"Your repository is only partially restored.   This is an error.  Please\n"
+"examine the list of failures above and find out why they were not restored.\n"
+"You must restore them place by hand before the repository is usable.\n"
+"\n"
+"A backup sfio is in %s\n"
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+				BACKUP_SFIO);
 				exit(1);
 			}
 			fprintf(stderr,
-"Your repository should be backto where it was before undo started\n"
+"Your repository should be back to where it was before undo started\n"
 "We are running a consistency check to verify this.\n");
 			if (sys("bk", "-r", "check", "-a", SYS)) {
 				fprintf(stderr, "check FAILED\n");
@@ -132,11 +137,6 @@ err:		if (undo_list[0]) unlink(undo_list);
 	}
 	chdir(RESYNC2ROOT);
 
-	freeLines(fileList);
-	unlink(rev_list); unlink(undo_list);
-	unlink(BACKUP_SFIO);
-	sys(RM, "-rf", "RESYNC", SYS);
-
 	if (streq(qflag, "") && save) {
 		printf("Patch containing these undone deltas left in %s\n",
 		    BK_UNDO);
@@ -149,6 +149,12 @@ err:		if (undo_list[0]) unlink(undo_list);
 		rc = system("bk -r check -a ");
 	}
 	sig_default();
+
+	freeLines(fileList);
+	unlink(rev_list); unlink(undo_list);
+	if (rc) return (rc); /* do not remove backup if check failed */
+	unlink(BACKUP_SFIO);
+	sys(RM, "-rf", "RESYNC", SYS);
 	return (rc);
 }
 
@@ -425,6 +431,27 @@ move_file()
 
 	/*
 	 * Cannot trust fileList, because file may be renamed
+	 *
+	 * Paranoid, check for name conflict before we throw it over the wall
+	 */
+	f = popen("bk sfiles", "r");
+	while (fnext(from, f)) {
+		chop(from);
+		sprintf(to, "../%s", from);
+		/*
+		 * This should never happen if the repo is in a sane state
+		 */
+		if (exists(to)) {
+			fprintf(stderr, "%s: name conflict\n", to);
+			rc = -1;
+			break;
+		};
+	}
+	pclose(f);
+	if (rc) return (rc); /* if error, abort */
+
+	/*
+	 * Throw the file "over the wall"
 	 */
 	f = popen("bk sfiles", "r");
 	while (fnext(from, f)) {
