@@ -4,7 +4,7 @@
 bk smerge \- smart text-based 3-way file merge
 .SH SYNOPSIS
 .\"
-.Bc bk smerge [\-23efhns] [
+.Bc bk smerge [\-2efghns] [
 .OPTreq \-A mergefcns
 .Bc ] [
 .OPTreq \-a mergefcns
@@ -23,12 +23,15 @@ This command does a smart 3-way file merge.
 .B \-2
 Enable the 2 way output format (like diff3)
 .tp
-.B \-3
-Enable the 3 way output format (shows gca)
+.B \-g
+Enable 'gca' output format that show the local and
+remote files like a unified diff between the GCA and that file.
+This is the recommended output format, but not the default becauses
+it confuses people the first time they see it.
 .tp
 .B \-n
 Enable the 'newonly' output format.  (like
-.B \-3
+.B \-2
 except it marks added lines)
 .tp
 .B \-e
@@ -43,9 +46,10 @@ default.
 .OPTreq \-A mergefcns
 Display a list of merge functions seperated by commas.  See \-a.
 \-Aall will turn off all automerging.
+.tp
 .B \-f
 Enable fdiff output.  (Used internally by 
-.B  fm3merge
+.Bc fm3merge
 )
 .tp
 .B \-s

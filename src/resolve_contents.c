@@ -27,6 +27,9 @@ Remote: %s\n\
 	}
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Typical command sequence: 'e' 'C';\n");
+	fprintf(stderr, 
+"Options to the 'e' and 'm' commands are passed to smerge.\n\
+	 (-g is very useful!)\n");
 	fprintf(stderr, "Difficult merges may be helped by 'p'.\n");
 	fprintf(stderr, "\n");
 	return (0);
@@ -267,7 +270,8 @@ needs_merge(resolve *rs)
 		return (0);
 	}
 	while ((t = mnext(m)) && ((m->end - t) > 7)) {
-		if (strneq(t, "<<<<<<", 6)) {
+		if (strneq(t, "<<<<<<", 6) ||
+		    strneq(t, ">>>>>>", 6)) {
 			ok = 0;
 			break;
 		}
@@ -279,12 +283,12 @@ needs_merge(resolve *rs)
 "\nThe file has unresolved conflicts.  These conflicts are marked in the\n\
 file like so\n\
 \n\
-	<<<<<<< local src/bk.sh 1.189.1.1 vs 1.191\n\
-	-old version of file\n\
-	+changes made in revision 1.191 of src/bk.sh\n\
-	<<<<<<< remote src/bk.sh 1.189.1.1 vs 1.189.1.5 \n\
-	-old version of file\n\
-	+changes made in revision 1.189.1.5 of src/bk.sh\n\
+	<<<<<<< gca src/bk.sh 1.189.1.1\n\
+	lines from ancestor of both local and remote files\n\
+	<<<<<<< local src/bk.sh 1.191\n\
+	changes made in revision 1.191 of src/bk.sh\n\
+	<<<<<<< remote src/bk.sh 1.189.1.5 \n\
+	changes made in revision 1.189.1.5 of src/bk.sh\n\
 	>>>>>>>\n\
 \n\
 Use 'e' to edit the file and resolve these conflicts.\n\

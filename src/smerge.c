@@ -43,7 +43,7 @@ enum {
 
 private	char	*revs[3];
 private	char	*file;
-private	int	mode = MODE_GCA;
+private	int	mode;
 private	int	show_seq;
 private	int	fdiff;
 private	FILE	*fl, *fr;
@@ -59,13 +59,14 @@ smerge_main(int ac, char **av)
 	int	start = 0, end = 0;
 	int	ret;
 
+	mode = MODE_3WAY;
 	while ((c = getopt(ac, av, "23A:a:efhnpr:s")) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
 			break;
-		    case '3': /* 3 way format (shows gca) */
-			mode = MODE_3WAY;
+		    case 'g': /* gca format */
+			mode = MODE_GCA;
 			break;
 		    case 'n': /* newonly (like -2 except marks added lines) */
 			mode = MODE_NEWONLY;
@@ -79,6 +80,7 @@ smerge_main(int ac, char **av)
 			break;
 		    case 'f': /* fdiff output mode */
 			fdiff = 1;
+			if (mode == MODE_3WAY) mode = MODE_GCA;
 			break;
 		    case 'e': /* show examples */
 			show_examples();
@@ -102,10 +104,8 @@ smerge_main(int ac, char **av)
 		usage();
 		return (2);
 	}
-	if (mode == MODE_3WAY && fdiff) {
-		fprintf(stderr, "3way mode is not legal with fdiff output\n");
-		return (2);
-	}
+	if (fdiff) assert(mode != MODE_3WAY);
+
 	file = av[optind + 3];
 	for (i = 0; i < 3; i++) {
 		revs[i] = av[optind + i];
@@ -734,7 +734,22 @@ show_examples(void)
 {
 	fputs(
 "Summary of bk smerge output formats\n\
-default\n\
+default		(3 way format (shows gca))\n\
+    <<<<<<< gca slib.c 1.642.1.6\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
+    		  assert(sc->tree);\n\
+    		  sccs_sdelta(sc, sc->tree, file);\n\
+    <<<<<<< local slib.c 1.645\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
+    		  assert(HASGRAPH(sc));\n\
+    		  sccs_sdelta(sc, sccs_ino(sc), file);\n\
+    <<<<<<< remote slib.c 1.642.2.1\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
+    		  assert(sc->tree);\n\
+    		  sccs_sdelta(sc, sc->tree, file);\n\
+    >>>>>>>\n\
+\n\
+-g	(Shows local and remove files as a diff from the GCA)\n\
     <<<<<<< local slib.c 1.642.1.6 vs 1.645\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     -             assert(sc->tree);\n\
@@ -749,21 +764,6 @@ default\n\
     >>>>>>>\n\
 \n\
 -2	(2 way format (like diff3))\n\
-    <<<<<<< local slib.c 1.645\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
-    		  assert(HASGRAPH(sc));\n\
-    		  sccs_sdelta(sc, sccs_ino(sc), file);\n\
-    <<<<<<< remote slib.c 1.642.2.1\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
-    		  assert(sc->tree);\n\
-    		  sccs_sdelta(sc, sc->tree, file);\n\
-    >>>>>>>\n\
-\n\
--3	(3 way format (shows gca))\n\
-    <<<<<<< gca slib.c 1.642.1.6\n\
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
-    		  assert(sc->tree);\n\
-    		  sccs_sdelta(sc, sc->tree, file);\n\
     <<<<<<< local slib.c 1.645\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     		  assert(HASGRAPH(sc));\n\
