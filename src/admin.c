@@ -44,7 +44,6 @@ admin_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-		//fprintf(stderr, "%s", help);
 		system("bk help admin");
 		return (1);
 	}
@@ -156,10 +155,6 @@ admin_main(int ac, char **av)
 		    "admin: comment may only be specified with -i and/or -n\n");
 		goto usage;
 	}
-	if (compp && streq(compp, "none") && (bk_mode() != BK_PRO)) {
-		/* fail silently */
-		return (0);
-	}
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */
@@ -250,7 +245,7 @@ admin_main(int ac, char **av)
 		if (new_delta) {
 			if (IS_EDITED(sc)) {
 				was_edited = 1;
-				newrev(sc, &pf);
+				sccs_read_pfile("admin", sc, &pf);
 				if (unlink(sc->pfile)) {
 					fprintf(stderr,
 					"admin: cannot unlink %s\n", sc->pfile);

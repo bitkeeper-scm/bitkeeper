@@ -1,0 +1,128 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2003 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Commercial
+# Can't gzip the ChangeSet file
+# Can gzip other files
+# Can ungzip other files
+echo $N Create commercial repository and check gzip on ChangeSet ....$NL
+echo "logging: none" > c
+echo "description: BitKeeper Test repository" >> c
+echo "email: nobody@nowhere.bk" >> c
+echo "license: $BKL_P" >> c
+echo "licsign1: $BKL_P1" >> c
+echo "licsign2: $BKL_P2" >> c
+echo "licsign3: $BKL_P3" >> c
+echo "eoln: unix" >> c
+BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c project
+cd project
+bk admin -Znone ChangeSet
+bk admin -Zgzip ChangeSet
+test "`bk compression ChangeSet`" = "ChangeSet none" || {
+	echo should not have compressed the ChangeSet file
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can gzip other files ...........................$NL
+cd BitKeeper/etc
+bk admin -Zgzip config
+test "`bk compression config`" = "config gzip" || {
+	echo should have compressed the config file
+	bk compression config
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can ungzip other files .........................$NL
+bk admin -Znone config
+test "`bk compression config`" = "config none" || {
+	echo should have uncompressed the config file
+	exit 1
+}
+echo OK
+
+# Openlogging
+# Can't gzip the ChangeSet file
+# Can gzip other files
+# Can't ungzip other files
+echo $N Create openlogging repository and check gzip on ChangeSet ...$NL
+cd $HERE
+echo "logging: logging@openlogging.org " > $HERE/c
+echo "logging_ok: a@b" >> $HERE/c
+echo "logging_ok: b@b" >> $HERE/c
+echo "logging_ok: c@b" >> $HERE/c
+echo "logging_ok: d@b" >> $HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c
+echo "email:            nobody@nowhere.bk" >> $HERE/c
+MYHOST=`bk gethost`
+BK_LOGGING_OK=YES BK_HOST=bk_regression.bitkeeper.com bk setup -f -c$HERE/c open
+BK_HOST=$MYHOST
+cd open
+bk admin -Znone ChangeSet
+bk admin -Zgzip ChangeSet
+test "`bk compression ChangeSet`" = "ChangeSet none" || {
+	echo should not have compressed the ChangeSet file
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can gzip other files ...........................$NL
+cd BitKeeper/etc
+bk admin -Zgzip config
+test "`bk compression config`" = "config gzip" || {
+	echo should have compressed the config file
+	bk compression config
+	exit 1
+}
+echo OK
+
+echo $N Make sure we cannot ungzip other files ......................$NL
+bk admin -Znone config
+test "`bk compression config`" = "config none" && {
+	echo should not have uncompressed the config file
+	exit 1
+}
+echo OK
+
+# Single user
+# Can't gzip the ChangeSet file
+# Can gzip other files
+# Can't ungzip other files
+echo $N Create single user repository and check gzip on ChangeSet ...$NL
+cd $HERE
+no_logging single
+bk admin -Znone ChangeSet
+bk admin -Zgzip ChangeSet
+test "`bk compression ChangeSet`" = "ChangeSet none" || {
+	echo should not have compressed the ChangeSet file
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can gzip other files ...........................$NL
+cd BitKeeper/etc
+bk admin -Zgzip config
+test "`bk compression config`" = "config gzip" || {
+	echo should have compressed the config file
+	bk compression config
+	exit 1
+}
+echo OK
+
+echo $N Make sure we cannot ungzip other files ......................$NL
+bk admin -Znone config
+test "`bk compression config`" = "config none" && {
+	echo should not have uncompressed the config file
+	exit 1
+}
+echo OK
+

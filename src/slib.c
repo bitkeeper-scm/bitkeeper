@@ -16,7 +16,7 @@
 WHATSTR("@(#)%K%");
 
 private delta	*rfind(sccs *s, char *rev);
-private void	dinsert(sccs *s, int flags, delta *d, int fixDate);
+private void	dinsert(sccs *s, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
 private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
@@ -576,7 +576,7 @@ sccs_freetable(delta *t)
  * Make sure to keep this up for all inherited fields.
  */
 void
-sccs_inherit(sccs *s, u32 flags, delta *d)
+sccs_inherit(sccs *s, delta *d)
 {
 	delta	*p;
 
@@ -691,7 +691,7 @@ sccs_reDup(sccs *s)
  * invariant that a delta in the graph is always correct.
  */
 private void
-dinsert(sccs *s, int flags, delta *d, int fixDate)
+dinsert(sccs *s, delta *d, int fixDate)
 {
 	delta	*p;
 
@@ -744,7 +744,7 @@ dinsert(sccs *s, int flags, delta *d, int fixDate)
 		debug((stderr, " -> %s (kid, moved sib %s)\n",
 		    p->rev, d->siblings->rev));
 	}
-	sccs_inherit(s, flags, d);
+	sccs_inherit(s, d);
 	if (fixDate) uniqDelta(s);
 }
 
@@ -3744,17 +3744,19 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
-	sccs_inherit(s, flags, d);
+	sccs_inherit(s, d);
 	d = d->kid;
 	s->tree->kid = 0;
 	while (d) {
 		delta	*therest = d->kid;
 
 		d->kid = 0;
-		dinsert(s, flags, d, 0);
+		dinsert(s, d, 0);
 		d = therest;
 	}
-	if (checkrevs(s, flags) & 1) s->state |= S_BADREVS;
+	unless (flags & INIT_WACKGRAPH) {
+		if (checkrevs(s, 0)) s->state |= S_BADREVS|S_READ_ONLY;
+	}
 
 	/*
 	 * For all the metadata nodes, go through and propogate the data up to
@@ -4393,7 +4395,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = 1;		/* but not done */
-			return (s);
+			goto out;
 		} else {
 			fputs("sccs_init: ", stderr);
 			perror(s->sfile);
@@ -4407,7 +4409,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	debug((stderr, "mapped %s for %d at 0x%p\n",
 	    s->sfile, (int)s->size, s->mmap));
 	if (((flags&INIT_NOCKSUM) == 0) && badcksum(s, flags)) {
-		return (s);
+		goto out;
 	} else {
 		s->cksumok = 1;
 	}
@@ -4458,7 +4460,7 @@ sccs_init(char *name, u32 flags, project *proj)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s);
+out:	lease_check(s);
 	return (s);
 }
 
@@ -9374,7 +9376,7 @@ out:		sccs_unlock(s, 'z');
 		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		n0->flags |= D_CKSUM;
 		n0->sum = (unsigned short) almostUnique(1);
-		dinsert(s, flags, n0, !(flags & DELTA_PATCH));
+		dinsert(s, n0, !(flags & DELTA_PATCH));
 
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
@@ -9428,7 +9430,7 @@ out:		sccs_unlock(s, 'z');
 	} else {
 		l[0].flags = 0;
 	}
-	dinsert(s, flags, n, !(flags & DELTA_PATCH));
+	dinsert(s, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 	EACH (syms) {
 		addsym(s, n, n, !(flags & DELTA_PATCH), n->rev, syms[i]);
@@ -10475,7 +10477,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		n->flags |= D_SYMBOLS;
 		d->flags |= D_SYMBOLS;
 		sc->numdeltas++;
-		dinsert(sc, 0, n, 1);
+		dinsert(sc, n, 1);
 		if (addsym(sc, d, n, 1, rev, sym)) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
@@ -10528,7 +10530,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->sum = (unsigned short) almostUnique(0);
 		n->flags |= D_CKSUM;
 	}
-	dinsert(sc, 0, n, 1);
+	dinsert(sc, n, 1);
 	return (n);
 }
 
@@ -10643,7 +10645,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		enc = 0;
 	}
 
-	if (sc && CSET(sc)) comp = 0;	/* never compress ChangeSet file */
+	/* never compress ChangeSet file */
+	if (sc && CSET(sc)) compp = "none";
 
 	if (compp) {
 		if (streq(compp, "gzip")) {
@@ -10651,8 +10654,8 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		} else if (streq(compp, "none")) {
 			comp = 0;
 		} else {
-			fprintf(stderr, "admin: unknown compression format %s\n",
-				compp);
+			fprintf(stderr,
+			    "admin: unknown compression format %s\n", compp);
 			return (-1);
 		}
 	} else if (sc) {
@@ -10816,8 +10819,10 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	assert(!z); /* XXX used to be LOD item */
 
 	new_enc = sccs_encoding(sc, new_encp, new_compp);
-	if (new_enc == -1) return -1;
-
+	if (new_enc == -1) return (-1);
+	unless ((flags & ADMIN_FORCE) || CSET(sc) || bkcl(0)) {
+		new_enc |= E_GZIP;
+	}
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
@@ -12287,7 +12292,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
 	m->next = s->table;
 	s->table = m;
 	s->numdeltas++;
-	dinsert(s, 0, m, fixDate);
+	dinsert(s, m, fixDate);
 	EACH (syms) {
 		addsym(s, m, m, 0, m->rev, syms[i]);
 	}
@@ -12657,7 +12662,7 @@ out:
 			goto out;
 		}
 	}
-	dinsert(s, flags, n, !(flags & DELTA_PATCH));
+	dinsert(s, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;
 
 	/* Uses n->parent, has to be after dinsert() */

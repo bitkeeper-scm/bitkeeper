@@ -12,6 +12,8 @@
  * The second is for flags which are function specific.
  * Be VERY CAREFUL to not mix and match.  If I see a DELTA_ in sccs_get()
  * I will be coming after you with a blowtorch.
+ * We've hit problems with flags being passed to sccs_init() being used for
+ * lower level functions that want different flags.  See WACKGRAPH.
  */
 #define	SILENT		0x00000001	/* do work quietly */
 #define	PRINT		0x00000002	/* get/delta/clean [diffs] to stdout */
@@ -31,6 +33,7 @@
 #define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
+#define	INIT_WACKGRAPH	0x00020000	/* we're wacking the graph, no errors */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -355,6 +358,7 @@
 #define BK_FREE		0
 #define BK_BASIC	1
 #define BK_PRO		2
+#define BK_SINGLE	3
 #define BK_BADMODE	999
 int	bk_mode(void);
 
@@ -804,7 +808,7 @@ delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 int	sccs_addSym(sccs *, u32 flags, char *);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
-void	sccs_inherit(sccs *s, u32 flags, delta *d);
+void	sccs_inherit(sccs *s, delta *d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
