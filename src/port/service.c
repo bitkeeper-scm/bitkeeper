@@ -169,6 +169,7 @@ helper(LPVOID param)
 	WaitForSingleObject(hServerStopEvent, INFINITE);
 	bkd_quit = 1;
 	raise(SIGINT); /* interrupt blocking accept() in service main loop */
+	return (0);
 }
 
 int
