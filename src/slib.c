@@ -171,6 +171,28 @@ a2mode(char *mode)
 	return (m);
 }
 
+mode_t
+getMode(char *arg)
+{
+	mode_t	m;
+
+	if (isdigit(*arg)) {
+		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
+		m |= S_IFREG;
+	} else {
+		m = a2mode(arg);
+	}
+	unless (m & 0200) {
+		fprintf(stderr, "Warning: adding owner write permission\n");
+		m |= 0200;
+	}
+	unless (m & 0400) {
+		fprintf(stderr, "Warning: adding owner read permission\n");
+		m |= 0400;
+	}
+	return (m);
+}
+
 /* value is overwritten on each call */
 char	*
 mode2a(mode_t m)
@@ -8317,16 +8339,13 @@ modeArg(delta *d, char *arg)
 	unsigned int m;
 
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
-	if (isdigit(*arg)) {
-		for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
-		m |= S_IFREG;
-	} else {
-		m = a2mode(arg);
-		if (S_ISLNK(m))	 {
-			char *p = strchr(arg , ' ');
-			d->symlink = strnonldup(++p);
-			assert(!(d->flags & D_DUPLINK));
-		}
+	m = getMode(arg);
+	if (S_ISLNK(m))	 {
+		char *p = strchr(arg , ' ');
+		
+		assert(p);
+		d->symlink = strnonldup(++p);
+		assert(!(d->flags & D_DUPLINK));
 	}
 	if (d->mode = m) d->flags |= D_MODE;
 	return (d);
@@ -8738,12 +8757,16 @@ private void
 addMode(char *me, sccs *sc, delta *n, char *mode)
 {
 	char	buf[50];
+	mode_t	m;
+	char	*newmode;
 
 	assert(mode);
 	assert(n);
-	sprintf(buf, "Change mode to %s", mode);
+	m = getMode(mode);
+	newmode = mode2a(m);
+	sprintf(buf, "Change mode to %s", newmode);
 	n->comments = addLine(n->comments, strdup(buf));
-	n = modeArg(n, mode);
+	n = modeArg(n, newmode);
 }
 
 private u32
