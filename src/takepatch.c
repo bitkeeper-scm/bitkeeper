@@ -780,6 +780,24 @@ fixLod(sccs *s)
 }
 
 /*
+ * Make sure user files have no content
+ * This function is called we process a logging patch
+ */
+private int
+chkEmpty(sccs *s, MMAP *dF)
+{
+	if ((dF->size > 0) &&
+	    !(s->state & S_CSET) &&
+	    (strlen(s->sfile) > 19) &&
+	    !strneq(s->sfile, "RESYNC/BitKeeper/etc/", 19)) {
+		fprintf(stderr,
+			"Logging patch should not have source content\n");
+		return (1); /* failed */
+	}
+	return (0); /* ok */
+}
+
+/*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
  * If the file does exist, copy it, rip out the old stuff, and then apply
@@ -944,6 +962,7 @@ apply:
 					dF = p->diffMmap;
 					p->diffMmap = 0;
 				}
+				if (isLogPatch && chkEmpty(s, dF)) return -1;
 				newflags = 
 				    DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
 				if (echo <= 2) newflags |= SILENT;
@@ -984,7 +1003,6 @@ apply:
 				return -1;
 			}
 			if (perfile) sccscopy(s, perfile);
-			if (isLogPatch) s->state |= S_LOGS_ONLY;
 			if (p->initFile) {
 				iF = mopen(p->initFile, "b");
 			} else {
@@ -996,6 +1014,10 @@ apply:
 			} else {
 				dF = p->diffMmap;
 				p->diffMmap = 0;
+			}
+			if (isLogPatch) {
+				if (chkEmpty(s, dF)) return -1;
+				s->state |= S_LOGS_ONLY;
 			}
 			d = 0;
 			newflags = 

@@ -164,7 +164,7 @@ KEY3=`bk -R prs -r1.0 -hd':ROOTKEY:\n' ChangeSet |
 if [ X$KEY1 != X$KEY2 ]; then echo failed 1; exit 1; fi
 if [ X$KEY1 != X$KEY3 ]; then echo failed 2; exit 1; fi
 echo OK
-echo $N Make sure we detect duplicate create ub Bitkeeper/etc........$NL
+echo $N Make sure we detect duplicate create in Bitkeeper/etc........$NL
 cd $HERE/copy1/BitKeeper/etc
 bk commit $Q -y"cset for old logged file"
 bk mv logged ../logged.old
