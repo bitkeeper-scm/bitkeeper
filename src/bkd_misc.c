@@ -84,3 +84,18 @@ cmd_putenv(int ac, char **av)
 	}
 	return (0);
 }
+
+int
+cmd_abort(int ac, char **av)
+{
+	int	rc;
+
+	out("@ABORT INFO@\n");
+	rc = system("bk abort -f 2>&1");
+	fputc(BKD_NUL, stdout);
+	fputc('\n', stdout);
+	if (rc) printf("%c%d\n", BKD_RC, rc);
+	fflush(stdout);
+	out("@END@\n");
+	return (rc);
+}

@@ -566,7 +566,7 @@ shell.o: substvars
 							./substvars > shell.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c $(CC_OUT)
 
-abort.o:	abort.c $(H) $(Z) resolve.h
+abort.o:	abort.c $(H) $(B) $(Z) resolve.h
 adler32.o:	adler32.c $(H) $(Z)
 admin.o:	admin.c $(H)
 annotate.o:	annotate.c $(H)

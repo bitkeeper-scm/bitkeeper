@@ -28,6 +28,7 @@
  * Commands are allowed to read/write state from the global Opts.
  */
 typedef	int (*func)(int, char **);
+int	cmd_abort(int ac, char **av);
 int	cmd_cd(int ac, char **av);
 int	cmd_clone(int ac, char **av);
 int	cmd_eof(int ac, char **av);

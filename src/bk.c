@@ -626,6 +626,7 @@ private	struct {
 	char	*name;
 	int	flags;
 } repolog[] = {
+	{"abort", CMD_FAST_EXIT},
 	{"pull", CMD_BYTES},
 	{"push", CMD_BYTES},
 	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},

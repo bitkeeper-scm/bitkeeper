@@ -1,10 +1,11 @@
 /* Copyright (c) 2000 L.W.McVoy */
-#include "system.h"
-#include "sccs.h"
+#include "bkd.h"
 #include "resolve.h"
 WHATSTR("@(#)%K%");
 
 void	abort_patch();
+private int send_abort_msg();
+private int remoteAbort(remote *r);
 
 /*
  * Abort a pull/resync by deleting the RESYNC dir and the patch file in
@@ -30,7 +31,17 @@ usage:			system("bk help -s abort");
 			return (1);
 		}
 	}
-	if (av[optind]) chdir(av[optind]);
+	if (av[optind]) {
+		remote *r;
+
+		r = remote_parse(av[optind], 0);
+		unless (r) {
+			fprintf(stderr, "Cannot parse \"%s\"\n", av[optind]);
+			return (1);
+		}
+		if (r->host) return (remoteAbort(r));
+		chdir(av[optind]);
+	}
 	sccs_cd2root(0, 0);
 	unless (exists(ROOT2RESYNC)) {
 		fprintf(stderr, "No RESYNC dir, nothing to abort.\n");
@@ -89,4 +100,53 @@ abort_patch(int leavepatch)
 	repository_wrunlock(1);
 	repository_lockers(0);
 	exit(0);
+}
+
+private int
+send_abort_msg(remote *r)
+{
+	char	buf[MAXPATH];
+	FILE	*f;
+	int	rc;
+
+	gettemp(buf, "abort");
+	f = fopen(buf, "w");
+	assert(f);
+	sendEnv(f, NULL, r, 1);
+	if (r->path) add_cd_command(f, r);
+	fprintf(f, "abort\n");
+	fclose(f);
+
+	rc = send_file(r, buf, 0, 0);
+	unlink(buf);
+	return (rc);
+}
+
+private int
+remoteAbort(remote *r)
+{
+	char	buf[MAXPATH];
+	int	rc = 0;
+
+	if (bkd_connect(r, 0, 1)) return (1);
+	if (send_abort_msg(r)) return (1);
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
+
+	
+	getline2(r, buf, sizeof (buf));
+	unless (streq("@ABORT INFO@", buf)) return (1); /* protocol error */
+
+	while (getline2(r, buf, sizeof (buf)) > 0) {
+		if (buf[0] == BKD_NUL) break;
+		printf("%s\n", buf);
+	}
+	getline2(r, buf, sizeof (buf));
+	if (buf[0] == BKD_RC) {
+		rc = atoi(&buf[1]);
+		getline2(r, buf, sizeof (buf));
+	}
+	unless (streq("@END@", buf)) return(1); /* protocol error */
+	disconnect(r, 1);
+	wait_eof(r, 0);
+	return (rc);
 }
