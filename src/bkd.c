@@ -306,8 +306,9 @@ findcmd(int ac, char **av)
 private	int
 getav(int *acp, char ***avp, int *httpMode)
 {
+#define	MAX_AV	50
 	static	char buf[MAXKEY * 2];		/* room for two keys */
-	static	char *av[50];
+	static	char *av[MAX_AV];
 	static	remote r = { 0, 0, 0, 0, 0, 0, 1, 0, 0 ,0 };
 	int	i, inspace = 1, inQuote = 0;
 	int	ac;
@@ -317,6 +318,14 @@ getav(int *acp, char ***avp, int *httpMode)
 	 */
 	if (Opts.interactive) out("BK> ");
 	for (ac = i = 0; in(&buf[i], 1) == 1; i++) {
+		if (i >= sizeof(buf) - 1) {
+			out("ERROR-command line too long\n");
+			return (0);
+		}
+		if (ac >= MAX_AV - 1) {
+			out("ERROR-too many argument\n");
+			return (0);
+		}
 		if (inQuote) {
 			if (buf[i] == '\"') {
 				buf[i] = 0;
