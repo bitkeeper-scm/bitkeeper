@@ -658,6 +658,7 @@ proc both {both off} \
 proc readSmerge {} \
 {
 	global	UNMERGED conf_todo errorCode smerge annotate conflicts
+	global	gc
 
 	set fd [open $smerge r]
 	set merged 0
@@ -677,6 +678,17 @@ proc readSmerge {} \
 	} else {
 		set off 1
 	}
+
+	# setting the tabstops must be done after computing the offset
+	# so that the first tabstop is after any prefixed text. This,
+	# because Tk tries to put the text after the first tab as close 
+	# as possible to the *first* tabstop rather than the *nearest* 
+	# tabstop. Feh.
+	set firstTab [expr {$gc(fm3.tabstops) + $off}]
+	set secondTab [expr {$firstTab + $gc(fm3.tabstops)}]
+	.diffs.left  configure -tabs [tabstops .diffs.left $firstTab $secondTab]
+	.diffs.right configure -tabs [tabstops .diffs.right $firstTab $secondTab]
+	
 	while { [gets $fd line] >= 0 } {
 		set what [string index $line 0]
 		if {$what == "L"} {
@@ -1269,6 +1281,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	.merge.menu.t tag configure un -background $gc($app.sameColor)
 	.merge.menu.t tag configure reverse -background $gc($app.charColor)
 	.merge.menu.t tag configure hand -background $gc($app.handColor)
+
+	.merge.t configure -tabs [tabstops .merge.t $gc(fm3.tabstops)]
 
 	foreach w {.diffs.left .diffs.right} {
 		bind $w <Button-1> {click %W 1 0; break}
