@@ -343,6 +343,9 @@ proc create_config { w } \
 
 	global st_cinfo st_bk_cfg rootDir st_dlg_button logo
 
+	# set the default to openlogging.org
+	set st_cinfo(logging) "logging@openlogging.org"
+
 	set bcolor #ffffff
 	set mcolor #deeaf4	;# color for mandatory fields
 
@@ -353,21 +356,15 @@ proc create_config { w } \
 	wm geometry . +$x+$y
 
 	frame $w -bg $bcolor
+	    frame $w.t -bd 2 -relief raised -bg $bcolor
+		label $w.t.lable -text "Configuration Info" -bg $bcolor
+		frame $w.t.l -bg $bcolor
+		frame $w.t.e -bg $bcolor
+		frame $w.t.info -bg $bcolor
+		message $w.t.info.msg -width 200 -bg $bcolor  \
+		    -text "The items on the right that are highlited are \
+		           mandatory fields"
 
-	frame $w.t -bd 2 -relief raised -bg $bcolor
-
-	label $w.t.lable -text "Configuration Info" -bg $bcolor
-
-	frame $w.t.l -bg $bcolor
-	frame $w.t.e -bg $bcolor
-	frame $w.t.info -bg $bcolor
-	
-	message $w.t.info.msg -width 200 -bg $bcolor  \
-            -text "The items on the right that are highlited are mandatory \
-                   fields"
-
-	#set logo [file join $rootDir bklogo.gif]
-	#image create photo bklogo -file $logo
 	image create photo bklogo -data $logo
 	label $w.t.info.l -image bklogo
 
@@ -376,20 +373,18 @@ proc create_config { w } \
 
 	# create button bar on bottom
 	frame $w.t.bb -bg $bcolor
-
-	button $w.t.bb.b1 -text "Create Repository" -bg $bcolor \
+	    button $w.t.bb.b1 -text "Create Repository" -bg $bcolor \
 		-command "global st_dlg_button; set st_dlg_button 0"
-	pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
-	button $w.t.bb.b2 -text "Exit" -bg $bcolor \
+	    pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
+	    button $w.t.bb.b2 -text "Exit" -bg $bcolor \
 		-command "global st_dlg_button; set st_dlg_button 1"
-	pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
+	    pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
 
 	# text widget to contain info about config options
 	frame $w.t.t -bg $bcolor
-	text $w.t.t.t -width 80 -height 10 -wrap word -background $mcolor \
-	    -yscrollcommand " $w.t.t.scrl set " 
-
-	scrollbar $w.t.t.scrl -bg $bcolor \
+	    text $w.t.t.t -width 80 -height 10 -wrap word -background $mcolor \
+		-yscrollcommand " $w.t.t.scrl set " 
+	    scrollbar $w.t.t.scrl -bg $bcolor \
 	    -command "$w.t.t.t yview"
 
 	pack $w.t.t.t -fill both -side left -expand 1
@@ -405,7 +400,6 @@ proc create_config { w } \
 	foreach { description var } {
 		"description:" des 
 		"open logging server:" logging 
-		"Security:" security 
 		"Contact Name:" contact 
 		"Email:" email
 		"Street:" street 
@@ -501,13 +495,13 @@ proc getMessages {} \
 	set st_bk_cfg(des) { Descriptive name for your project. }
 
 	set st_bk_cfg(msg1) { You are about create a new repository.  You may \
- do this exactly once for each project stored in BitKeeper.  If there already \
- is a BitKeeper repository for this project, you should do
+ do this exactly once for each project stored in BitKeeper.  If a BitKeeper \
+ repository for this project exists, do the following:
 
     bk clone project_dir my_project_dir
 
- If you create a new project rather than resyncing a copy, you 
- will not be able to exchange work between the two projects. }
+ If you create a new project rather than resyncing a copy, you will not be \
+ able to exchange work between the two projects. }
 
 
 	set fid [open "|bk gethelp config_template" "r"]
@@ -521,7 +515,7 @@ proc getMessages {} \
 		while { [ gets $hfid help ] != -1 } {
 			set found 1
 			#puts "$topic: $help"
-			append st_bk_cfg($topic) $help
+			append st_bk_cfg($topic) $help " "
 		}
 		if { $found == 0 } {
 			set st_bk_cfg($topic) ""
@@ -597,6 +591,7 @@ d8SR8a0yHhfhJr8AgqIg6TuWlVRYTXahPX+iE7J7GyW/TrVCJHxvT/7ym78hAQEAOw==}
 
 }
 
+bk_init
 getLogo
 getMessages
 main
