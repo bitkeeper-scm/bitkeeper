@@ -622,6 +622,14 @@ apply:
 	s = sccs_init(patchList->resyncFile, 0);
 	assert(s);
 	gcaPath = gca ? name2sccs(gca->pathname) : 0;
+	/* 2 of the clauses below need this and it's cheap so... */
+	for (p = patchList; p; p = p->next) {
+		unless (p->flags & PATCH_LOCAL) continue;
+		assert(p->me);
+		d = sccs_findKey(s, p->me);
+		assert(d);
+		d->flags |= D_LOCAL;
+	}
 	unless (localPath) {
 		/* must be new file */
 		conflicts += sccs_resolveFile(s, 0, 0, 0);
@@ -633,13 +641,6 @@ apply:
 		    localPath, remotePath, gcaPath, gca ? gca->rev : ""));
 		/* local != remote */
 		assert(gcaPath);
-		for (p = patchList; p; p = p->next) {
-			unless (p->flags & PATCH_LOCAL) continue;
-			assert(p->me);
-			d = sccs_findKey(s, p->me);
-			assert(d);
-			d->flags |= D_LOCAL;
-		}
 		conflicts +=
 		    sccs_resolveFile(s, localPath, gcaPath, remotePath);
 	}

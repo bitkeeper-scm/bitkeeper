@@ -6324,27 +6324,6 @@ openInput(sccs *s, int flags, FILE **inp)
 }
 
 /*
- * Decide when to update the "mode" field;
- * Update the mode if
- * a) file type changed, or
- * b) symlink field changed, or
- * c) has no parent (i.e p == null)
- * Changes in permission field are ignored.
- * Returns
- *	1 if should update
- *	0 if should not update
- */
-int
-shouldUpdMode (sccs *s, delta *p)
-{
-	unless (p) return (1);
-	unless (sameFileType(s, p)) return (1);
-	if (s->symlink == p->symlink) return (1); 
-	if (s->symlink) return (!streq(s->symlink, p->symlink));
-	return (1);
-}
-
-/*
  * Do most of the initialization on a delta.
  */
 delta *
@@ -6388,13 +6367,26 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 }
 
 /*
+ * This poorly named function is trying to decide if the files are the
+ * same type, and if they are symlinks, are they the same value.
+ */
+int
+needsMode(sccs *s, delta *p)
+{
+	unless (p) return (1);
+	unless (sameFileType(s, p)) return (1);
+	unless (s->symlink) return (0);
+	return (!streq(s->symlink, p->symlink));
+}
+
+/*
  * Update the mode field and the symlink field.
  */
 private void
 updMode(sccs *s, delta *d, delta *dParent)
 {
-	if ((s->state & S_GFILE) && !(d->flags & D_MODE) &&
-	    shouldUpdMode(s, dParent)) {
+	if ((s->state & S_GFILE) &&
+	    !(d->flags & D_MODE) && needsMode(s, dParent)) {
 		assert(d->mode == 0);
 		d->mode = s->mode;
 		if (s->symlink) {
@@ -9044,7 +9036,8 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		free_pfile(&pf);
 		return (-3);
 	}
-	sprintf(tmpfile, "%s", dirname(s->gfile));
+	strcpy(tmp2, s->gfile);		/* because dirname stomps */
+	sprintf(tmpfile, "%s", dirname(tmp2));
 	here = writable(tmpfile);
 	if (here) {
 		sprintf(tmpfile, "%s-%s", s->gfile, left);
