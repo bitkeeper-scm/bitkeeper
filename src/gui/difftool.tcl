@@ -250,7 +250,7 @@ proc readFiles {L R} \
 	    "<"	{ incr diffCount 1; left $r $l $n }
 	    ">"	{ incr diffCount 1; right $r $l $n }
 	}
-	if {$diffCount == 0} { exit }
+	if {$diffCount == 0} { puts "No differences"; exit }
 	close $r
 	close $l
 	catch { close $d }

@@ -101,8 +101,11 @@ WWall:
 fullwarn:
 	$(MAKE) CFLAGS="-g -fullwarn -DLINT -DPURIFY" all
 
-# production builds
+# Platform specific builds
+solaris:
+	$(MAKE) -e CC=gcc XLIBS=-lnsl p install
 
+# production builds
 p:
 	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer $(CF)" all
 ndebug:

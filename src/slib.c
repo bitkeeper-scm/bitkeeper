@@ -4420,6 +4420,9 @@ write_pfile(sccs *s, int flags, delta *d,
 	return (0);
 }
 
+/*
+ * Returns: valid address if OK, (char*)-1 if error, 0 if not ok but not error.
+ */
 char *
 setupOutput(sccs *s, char *printOut, int flags, delta *d)
 {
@@ -4440,9 +4443,10 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		if (WRITABLE(s) && writable(s->gfile)) {
 			fprintf(stderr, "Writeable %s exists\n", s->gfile);
 			s->state |= S_WARNED;
-			return 0;
+			return (char *)-1;
 		} else if ((flags & GET_NOREGET) && exists(s->gfile)) {
-			verbose((stderr, "%s is already checked out\n", s->gfile));
+			verbose((stderr,
+			    "%s is already checked out\n", s->gfile));
 			s->state |= S_WARNED;
 			return 0;
 		}
@@ -4578,7 +4582,10 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 out:			if (slist) free(slist);
 			if (state) free(state);
 			if (DB) mdbm_close(DB);
-			return (1);
+			/*
+			 * -1 means it was an error, 0 means it's OK.
+			 */
+			return (f == (char*)-1);
 		}
 		popened = openOutput(encoding, f, &out);
 		unless (out) {
