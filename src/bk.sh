@@ -996,7 +996,7 @@ __mail() {
 	shift
 	SUBJ="$@"
 	
-	if [ X$BK_TRACE_LOG = XYES ]; then return; fi
+	if [ X$BK_TRACE_LOG = XYES ]; then cat > $DEV_NULL; return; fi
 	# Try to find sendmail, it works better, especially on IRIX.
 	for i in /usr/bin /usr/sbin /usr/lib /usr/etc /etc /bin
 	do	if [ -x "$i/sendmail" ]

@@ -42,6 +42,7 @@ __platformInit()
 		BIN=$BK_BIN
 		RM=rm.exe
 		TMP="${TEMP}/"
+		DEV_NULL=nul
 		ECHO=${BIN}/bin_mode_echo.exe
 		MAIL_CMD=${BIN}/mail.exe
 		wish=${_TCL_BIN}/wish81.exe

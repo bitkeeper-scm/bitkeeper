@@ -10,6 +10,7 @@ __platformInit()
 	RM=/bin/rm
 	ECHO=echo
 	TMP=/tmp/
+	DEV_NULL=/dev/null
 	if [ -x /usr/bin/mailx ]
 	then	MAIL_CMD=mailx
 	else	MAIL_CMD=mail

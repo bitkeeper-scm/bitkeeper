@@ -200,6 +200,8 @@ static void try_help PARAMS((char const *));
 static void undotlines PARAMS((FILE *, int, int, int));
 static void usage PARAMS((void));
 
+#undef DIFF_PROGRAM
+#define DIFF_PROGRAM "diff"
 static char const diff_program[] = DIFF_PROGRAM;
 
 static struct option const longopts[] =
@@ -1172,7 +1174,7 @@ read_diff (filea, fileb, output_placement)
 	  dup2 (fds[1], STDOUT_FILENO);
 	  close (fds[1]);
 	}
-      execve (diff_program, (char **) argv, environ);
+      execvp (diff_program, (char **) argv);
       /* Avoid stdio, because the parent process's buffers are inherited.  */
       write (STDERR_FILENO, diff_program, strlen (diff_program));
       write (STDERR_FILENO, ": not found\n", 12);
