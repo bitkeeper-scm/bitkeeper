@@ -35,9 +35,11 @@ bkd_main(int ac, char **av)
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
 	 */
-	while ((c = getopt(ac, av, "c:dDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
+	while ((c = getopt(ac, av,
+			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
+		    case 'C': Opts.safe_cd = 1; break;
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
 		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
