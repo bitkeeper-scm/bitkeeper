@@ -313,7 +313,6 @@ bkd_service_loop(int ac, char **av)
 	 */
 	sock = (SOCKET) tcp_server(Opts.port ? Opts.port : BK_PORT, 1);
 	if (sock < 0) goto done;
-	reportStatus(sHandle, SERVICE_RUNNING, NO_ERROR, 0);
 
 	if (Opts.startDir) {
 		if (chdir(Opts.startDir) != 0) {
@@ -332,6 +331,7 @@ bkd_service_loop(int ac, char **av)
 	 */
 	sprintf(pipe_size, "%d", BIG_PIPE);
 	argv_save(ac, av, nav, 9);
+	reportStatus(sHandle, SERVICE_RUNNING, NO_ERROR, 0);
 	for (;;) {
 		n = accept(sock, 0 , 0);
 		/*
@@ -411,6 +411,7 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 {
 	SC_HANDLE   schService = 0;
 	SC_HANDLE   schSCManager = 0;
+	SERVICE_STATUS serviceStatus;
 	char	path[1024], here[1024];
 	char	*start_dir, *cmd, *p, *q;
 	char	**nav;
@@ -490,9 +491,26 @@ out:		if (cmd) free(cmd);
 		    SERVICEDISPLAYNAME, getError(err, 256));
 		goto out;
 	}
+
+	/*
+	 * Make sure the service is fully started before we return
+	 */
+	for (try = 0; QueryServiceStatus(schService, &serviceStatus) &&
+		serviceStatus.dwCurrentState == SERVICE_START_PENDING; ) {
+		if (try++ > 3) break;
+		usleep(10000);
+	}
+	if (serviceStatus.dwCurrentState != SERVICE_RUNNING) {
+		fprintf(stderr,
+		    "Warning: %s did not start fully.\n", SERVICEDISPLAYNAME);
+		goto out;
+	}
+	usleep(100000);
+
 	unless (Opts.quiet) { 
 		fprintf(stderr, "%s started.\n", SERVICEDISPLAYNAME);
 	}
+	
 	goto out;
 }
 
