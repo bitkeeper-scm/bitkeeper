@@ -118,7 +118,9 @@ sccs_stalelock(const char *file, int discard)
 	if (streq(host, sccs_realhost()) && !isLocalHost(host)) {
 		if (kill(pid, 0) == -1) {
 stale:			if (discard) unlink((char*)file);
-			if (getenv("BK_DEBUG")) ttyprintf("STALE %s\n", file);
+			if (getenv("BK_DBGLOCKS")) {
+				ttyprintf("STALE %s\n", file);
+			}
 			free(host);
 			return (1);
 		}

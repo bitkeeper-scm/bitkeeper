@@ -73,20 +73,6 @@ cleandir(char *dir)
 }
 
 /*
- * Clean up stale locks.
- * Return 1 if unable to clean it
- */
-private	int
-chk_stale(char *path)
-{
-	if (sccs_stalelock(path, 1)) {
-		ldebug(("clean(%s)\n", path));
-		return (0);
-	}
-	return (1);
-}
-
-/*
  * Make a lockfile name, this matches what we do for writers.
  */
 private void
@@ -106,14 +92,20 @@ rdlockfile(char *root, char *path)
  * which don't have link(2).  See sccs_lockfile().
  */
 int
-repository_hasLocks(char *dir)
+repository_hasLocks(char *root, char *dir)
 {
 	char	**lines = lockers(dir);
 	int	i, n = 0;
+	char	path[MAXPATH];
 
-	ldebug(("repository_hasLocks(%s)\n", dir));
-	EACH(lines) n++;
+	sprintf(path, "%s/%s", root ? root : ".", dir);
+	lines = lockers(dir);
+	EACH(lines) {
+		sprintf(path, "%s/%s/%s", root ? root : ".", dir, lines[i]);
+		unless (sccs_stalelock(path, 1)) n++;
+	}
 	freeLines(lines);
+	ldebug(("repository_hasLocks(%s/%s) = %d\n", root ?root : ".", dir, n));
 	return (n);
 }
 
@@ -143,7 +135,6 @@ repository_locked(project *p)
 {
 	int	freeit = 0;
 	int	ret = 0;
-	int	first = 1;
 	char	*s;
 	char	path[MAXPATH];
 
@@ -152,28 +143,22 @@ repository_locked(project *p)
 		freeit = 1;
 	}
 	ldebug(("repository_locked(%s)\n", p->root));
-	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
-	if (exists(path)) return (1);
-again:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-	ret = repository_hasLocks(path);
+	ret = repository_hasLocks(p->root, READER_LOCK_DIR);
 	unless (ret) {
 		if ((s = getenv("BK_IGNORELOCK")) && streq(s, "YES")) {
 			if (freeit) proj_free(p);
+			ldebug(("repository_locked(%s) = 0\n", p->root));
 			return (0);
 		}
-		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
-		ret = repository_hasLocks(path);
+		sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+		if (exists(path)) return (1);
+		ret = repository_hasLocks(p->root, WRITER_LOCK_DIR);
 		unless (ret) {
 			sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
-			ret = repository_hasLocks(path);
+			ret = exists(path);
 		}
 	}
-	if (ret && first) {
-		repository_cleanLocks(p, 1, 1, 0);
-		first = 0;
-		ldebug(("repository_locked(%s), Try #2\n", p->root));
-		goto again;
-	}
+	ldebug(("repository_locked(%s) = %d\n", p->root, ret));
     	if (freeit) proj_free(p);
 	return (ret);
 }
@@ -224,62 +209,6 @@ repository_lockers(project *p)
 	freeLines(lines);
     	if (freeit) proj_free(p);
 	return (n);
-}
-
-/*
- * Clean out stale locks.
- */
-int
-repository_cleanLocks(project *p, int r, int w, int verbose)
-{
-	char	path[MAXPATH];
-	char	*host, **lines;
-	int	freeit = 0;
-	int	left = 0;
-	int	i;
-
-	unless (r || w) return (0);
-	unless (p) {
-		unless (p = getproj()) return (0);
-		freeit = 1;
-	}
-	ldebug(("repository_cleanLocks(%s, %d, %d)\n", p->root, r, w));
-
-	unless (host = sccs_realhost()) {
-		fprintf(stderr, "bk: can't figure out my hostname\n");
-		if (freeit) proj_free(p);
-		return (-1);
-	}
-
-	unless (r) goto write;
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-	unless (exists(path)) goto write;
-	lines = lockers(path);
-	EACH(lines) {
-		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, lines[i]);
-		left += chk_stale(path);
-	}
-	freeLines(lines);
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-	rmdir(path);
-
-	unless (w) goto out;
-write:	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
-	unless (exists(path)) goto out;
-
-	lines = lockers(path);
-	EACH(lines) {
-		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, lines[i]);
-		left += chk_stale(path);
-	}
-	freeLines(lines);
-	sprintf(path, "%s/%s/lock", p->root, WRITER_LOCK_DIR);
-	left += chk_stale(path);
-	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
-	rmdir(path);
-
-out:	if (freeit) proj_free(p);
-	return (left ? -1 : 0);
 }
 
 /*
@@ -345,25 +274,26 @@ repository_wrlock()
 	}
 
 	sprintf(lock, "%s/%s", p->root, WRITER_LOCK);
-	if (sccs_lockfile(lock, 1, 0, 0)) {
+	if (sccs_lockfile(lock, 0, 0, 0)) {
 		proj_free(p);
 		ldebug(("WRLOCK by %d failed, lockfile failed\n", getpid()));
 		return (-2); /* possible permission problem */
 	}
 
-	sprintf(lock, "%s/%s", p->root, ROOT2RESYNC);
-	if (exists(lock)) {
+	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+	if (exists(path)) {
 		sccs_unlockfile(lock);
 		ldebug(("WRLOCK by %d failed, RESYNC won\n"));
+		return (-1);
 	}
 
 	/*
 	 * Make sure no readers sneaked in
 	 */
-	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
-	if (repository_hasLocks(path)) {
+	if (repository_hasLocks(p->root, READER_LOCK_DIR)) {
 	    	sccs_unlockfile(lock);
 		ldebug(("WRLOCK by %d failed, readers won\n", getpid()));
+		return (-1);
 	}
 	proj_free(p);
 	/* XXX - this should really be some sort cookie which we pass through,

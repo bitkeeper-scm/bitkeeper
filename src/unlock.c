@@ -123,7 +123,7 @@ repo(u32 flags)
 
 	if (flags & RLOCK) {
 		repository_rdunlock(1);
-		if (repository_hasLocks(READER_LOCK_DIR)) {
+		if (repository_hasLocks(0, READER_LOCK_DIR)) {
 			fprintf(stderr, "read unlock failed.\n");
 			repository_lockers(0);
 			error++;
@@ -132,7 +132,7 @@ repo(u32 flags)
 
 	if (flags & WLOCK) {
 		repository_wrunlock(1);
-		if (repository_hasLocks(WRITER_LOCK_DIR)) {
+		if (repository_hasLocks(0, WRITER_LOCK_DIR)) {
 			fprintf(stderr, "write unlock failed.\n");
 			repository_lockers(0);
 			error++;

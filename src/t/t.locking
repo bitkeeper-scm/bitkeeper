@@ -199,10 +199,10 @@ grep -q 'Nothing to pull' OUT || {
 }
 echo OK
 echo $N Make sure commit respects repository lock ...................$NL
-mkdir -p $HERE/project/RESYNC/stuff
 bk co $Q -l D
 date > D
 bk ci $Q -ynew_styff D
+mkdir -p $HERE/project/RESYNC/stuff
 bk commit $Q -y"should-failed" > commit.out 2>&1
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q 'ERROR-Unable to lock repository for update.' commit.out || {
