@@ -769,8 +769,9 @@ print_it(char state[5], char *file, char *rev)
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
 	if (opts.useronly) {
-		if (streq(gfile, "ChangeSet") ||
-		    (strlen(gfile) > 10) && strneq(gfile, "BitKeeper/", 10)) {
+		if (streq(gfile, "ChangeSet") && isdir(BKROOT)) return;
+		if (strneq(gfile, "BitKeeper/", 10) && 
+		    !strneq(gfile, "BitKeeper/triggers/",19) && isdir(BKROOT)) {
 			return;
 		}
 	}
