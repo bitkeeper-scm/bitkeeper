@@ -14,7 +14,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  send sendconfig setlog setup status unwrap version
 SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset build pull clone resync merge \
+	  renametool mkdiffs lodset build crank pull clone resync merge \
 	  gzip_uuwrap ungzip_uuwrap
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
@@ -78,6 +78,10 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh pull.sh \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh
 MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
+
+default:
+	@get -s HEADER LICENSE BUILD
+	@cat HEADER LICENSE BUILD | more
 
 all: $(ALL)
 
@@ -597,27 +601,31 @@ image: all
 	cd utils && $(MAKE) image BK_BIN=$$DIR
 
 # Rules for test builds.
-BUILDHOSTS	= sun sgi hp aix work ppc freebsd freebsd3 alpha
-CRANKTURN	= ./build
-CRANKTEST	= bk regression
+HOSTS	= sun sgi hp aix work ppc freebsd freebsd3 alpha
 
-crank:
+crankit:
 	@cwd=`pwd`; set -x; \
-	for host in $(BUILDHOSTS); \
+	for host in $(HOSTS); \
 	do	time rsh $$host "cd $$cwd && $(CRANKCMD)" & \
 	done; wait
 
-crankturn: build
-	$(MAKE) crank CRANKCMD="$(CRANKTURN)"
+crankturn: build crank
+	$(MAKE) crankit CRANKCMD=./crank
 
 cranktest:
-	$(MAKE) crank CRANKCMD="$(CRANKTEST)"
+	$(MAKE) crankit CRANKCMD="bk regression"
 
 build: build.sh
 	/bin/rm -f build
 	cp build.sh build
 	chmod +x build
 	chmod -w build
+
+crank: crank.sh
+	/bin/rm -f crank
+	cp crank.sh crank
+	chmod +x crank
+	chmod -w crank
 
 # The default .c.o rule is broken with some Makes.
 .c.o:

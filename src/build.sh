@@ -1,9 +1,5 @@
 #!/bin/sh
 
-HOST=work
-TREE=prerelease
-USER=`bk getuser`
-REPO=$TREE-$USER
 CC=gcc
 MAKE=gmake
 PATH=/usr/local/bin:/usr/freeware/bin:/usr/ccs/bin:$PATH
@@ -14,11 +10,4 @@ case `uname -s` in
 	AIX)	MAKE=make
 		;;
 esac
-
-cd /tmp || exit 1
-rm -rf $REPO
-set -e
-PREFER_RSH=YES bk clone $HOST:/home/bk/$TREE $REPO > LOG-$USER 2>&1
-cd $REPO/src
-$MAKE CC=$CC $XLIBS production >> ../../LOG-$USER 2>&1
-bk regression >> ../../LOG-$USER 2>&1 
+$MAKE CC=$CC $XLIBS "$@"
