@@ -32,7 +32,7 @@ usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
     bk cset -ralpha..beta | bk sccslog -\n\n";
 
 int	csetCreate(sccs *cset, int flags, char *sym);
-int	csetInit(sccs *cset, int flags, char *sym);
+int	csetInit(sccs *cset, int flags);
 void	csetlist(sccs *cset);
 void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 void	csetDeltas(sccs *sc, delta *start, delta *d);
@@ -188,7 +188,13 @@ usage:		fprintf(stderr, "%s", cset_help);
 	 * If we are initializing, then go create the file.
 	 * XXX - descriptive text.
 	 */
-	if (flags & NEWFILE) return (csetInit(cset, flags, sym));
+	if (flags & NEWFILE) {
+		if (sym) {
+			fprintf(stderr, "cset: no symbols allowed with -i.\n");
+			exit(1);
+		}
+		return (csetInit(cset, flags));
+	}
 
 	/*
 	 * List a specific rev.
@@ -321,7 +327,7 @@ spawn_checksum_child(void)
 }
 
 int
-csetInit(sccs *cset, int flags, char *sym)
+csetInit(sccs *cset, int flags)
 {
 	delta	*d = 0;
 
@@ -341,12 +347,8 @@ csetInit(sccs *cset, int flags, char *sym)
 	if (flags & DELTA_DONTASK) unless (d = getComments(d)) goto intr;
 	unless(d = getHostName(d)) goto intr;
 	unless(d = getUserName(d)) goto intr;
-
-	cset->state |= S_CSET;
-	if (sym) {
-		if (!d) d = calloc(1, sizeof(*d));
-		d->sym = strdup(sym);
-	}
+	d->sym = strdup(KEY_FORMAT2);
+	cset->state |= S_CSET|S_KEY2;
 	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
 intr:		sccs_whynot("cset", cset);
 		sccs_free(cset);
@@ -357,7 +359,6 @@ intr:		sccs_whynot("cset", cset);
 		purify_list();
 		return (1);
 	}
-
 	close(creat("SCCS/x.id_cache", 0664));
 	sccs_free(cset);
 	commentsDone(saved);
@@ -497,6 +498,27 @@ mark(sccs *s, delta *d)
 	} while (d && !(d->flags & D_CSET));
 }
 
+/*
+ * Return true if the two keys describe the same file.
+ * If we are in KEY_FORMAT2 it's easy, they match or they don't.
+ * Otherwise we'll try short versions.
+ */
+int
+samefile(sccs *s, char *key1, char *key2)
+{
+	char	*a, *b;
+	int	ret;
+
+	if (streq(key1, key2)) return (1);
+	if (s->state & S_KEY2) return (0);
+	if (a = sccs_iskeylong(key1)) *a = 0;
+	if (b = sccs_iskeylong(key2)) *b = 0;
+	ret = streq(key1, key2);
+	if (a) *a = '|';
+	if (b) *b = '|';
+	return (ret);
+}
+
 int
 doKey(char *key, char *val)
 {
@@ -533,8 +555,10 @@ doKey(char *key, char *val)
 	/*
 	 * If we have a match, just mark the delta and return,
 	 * we'll finish later.
+	 *
+	 * With long/short keys mixed, we have to be a little careful here.
 	 */
-	if (lastkey && streq(lastkey, key)) {
+	if (lastkey && samefile(sc, lastkey, key)) {
 		unless (d = sccs_findKey(sc, val)) return (-1);
 		mark(sc, d);
 		return (0);
@@ -658,58 +682,49 @@ csetlist(sccs *cset)
 	csetid = strdup(buf);
 
 	/*
-	 * Get the full list of key tuples in a sorted file.
+	 * Get the list of key tuples in a sorted file.
+	 * The list should not contain the ChangeSet file key.
 	 */
 	gettemp(cat, "/tmp/cat1XXXXXX");
 	gettemp(csort, "/tmp/csortXXXXXX");
-
-	/*
-	 * Add in all the ChangeSet keys
-	 */
-
-	unless (list = fopen(csort, "w")) {
-		perror("open csort");
-		goto fail;
-	}
-	for (d = cset->table; d; d = d->next) {
-		if (d->flags & D_SET) {
-			sccs_sdelta(cset, d, buf);
-			fprintf(list, "%s %s\n", csetid, buf);
-		}
-	}
-	fclose(list);
-	
-	/* add in all the other keys */
 	if (sccs_cat(cset, PRINT, cat)) {
 		sccs_whynot("cset", cset);
 		goto fail;
 	}
-	sprintf(buf, "sort %s -o %s", cat, cat);
+	sprintf(buf, "sort < %s > %s", cat, csort);
 	if (system(buf)) goto fail;
-	sprintf(buf, "grep -v '^%s' %s >> %s", csetid, cat, csort);
-	if (system(buf) == 2) goto fail;
-
-	free(csetid);
-
-	if (makepatch) {
-		pid = spawn_checksum_child();
-		if (pid == -1) goto fail;
-	}
-
-	if (makepatch || doDiffs) header(cset, doDiffs);
-	
+	unlink(cat);
 	unless (list = fopen(csort, "r")) {
 		perror(buf);
 		goto fail;
 	}
+	
+	/* checksum the output */
+	if (makepatch) {
+		pid = spawn_checksum_child();
+		if (pid == -1) goto fail;
+	}
+	if (makepatch || doDiffs) header(cset, doDiffs);
 again:	/* doDiffs can make it two pass */
 	if (!doDiffs && makepatch) {
 		printf("%s", PATCH_CURRENT);
+	}
+
+	/*
+	 * Do the ChangeSet deltas first, takepatch needs it to be so.
+	 */
+	for (d = cset->table; d; d = d->next) {
+		if (d->flags & D_SET) {
+			sccs_sdelta(cset, d, buf);
+			fprintf(list, "%s %s\n", csetid, buf);
+			if (doKey(csetid, buf)) goto fail;
+		}
 	}
 	while (fnext(buf, list)) {
 		chop(buf);
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
+		if (streq(csetid, buf)) continue;
 		if (doKey(buf, t)) goto fail;
 	}
 	if (doDiffs && makepatch) {
@@ -736,13 +751,13 @@ again:	/* doDiffs can make it two pass */
 		}
 	}
 
-	unlink(cat);
 	unlink(csort);
+	free(csetid);
 	return;
 
  fail:
-	unlink(cat);
 	unlink(csort);
+	free(csetid);
 	exit(1);
 }
 

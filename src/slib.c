@@ -7434,6 +7434,14 @@ symArg(sccs *s, delta *d, char *name)
 	 */
 	sym->d = sym->metad = d;
 	d->flags |= D_SYMBOLS;
+
+	/*
+	 * If this succeeds, then ALL keys must be in long key format
+	 */
+	if ((s->state & S_CSET) &&
+	    streq(d->rev, "1.0") && streq(name, KEY_FORMAT2)) {
+	    	s->state |= S_KEY2;
+	}
 	return;
 }
 

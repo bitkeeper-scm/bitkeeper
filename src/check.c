@@ -25,13 +25,14 @@ main(int ac, char **av)
 {
 	int	c;
 	MDBM	*db;
-	MDBM	*checked = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
 	int	errors = 0;
 	int	e;
 	char	*name;
 	char	buf[MAXPATH];
 	char	*t;
+	int	mixed;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -52,6 +53,13 @@ usage:		fprintf(stderr, "%s", check_help);
 		fprintf(stderr, "check: can not find project root.\n");
 		return (1);
 	}
+	unless (s = sccs_init(CHANGESET, 0, 0)) {
+		fprintf(stderr, "Can't init ChangeSet\n");
+		exit(1);
+	}
+	mixed = (s->state & S_KEY2) == 0;
+	sccs_free(s);
+	
 	db = buildKeys();
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
@@ -67,16 +75,38 @@ usage:		fprintf(stderr, "%s", check_help);
 			sccs_free(s);
 			continue;
 		}
+
+		/*
+		 * Store the full length key and only if we are in mixed mode,
+		 * also store the short key.  We want all of them to be
+		 * unique.
+		 */
 		sccs_sdelta(s, sccs_ino(s), buf);
-		if (mdbm_store_str(checked, buf, "Y", 0)) {
-			fprintf(stderr, "check: problem storing %s\n", buf);
+		if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
+			if (errno == EEXIST) {
+				fprintf(stderr,
+				    "Same key %s used by %s and %s\n",
+				    buf, s->gfile, mdbm_fetch_str(keys, buf));
+			} else {
+				perror("mdbm_store_str");
+			}
+			errors++;
 		}
-		t = sccs_iskeylong(buf);
-		assert(t);
-		*t = 0;
-		if (mdbm_store_str(checked, buf, "Y", 0)) { /* store short */
-			fprintf(stderr, "check: problem storing short %s\n",
-			    buf);
+		if (mixed) {
+			t = sccs_iskeylong(buf);
+			assert(t);
+			*t = 0;
+			if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
+				if (errno == EEXIST) {
+					fprintf(stderr,
+					    "Same key %s used by %s and %s\n",
+					    buf, s->gfile,
+					    mdbm_fetch_str(keys, buf));
+				} else {
+					perror("mdbm_store_str");
+				}
+				errors++;
+			}
 		}
 		if (e = check(s, db)) {
 			errors += e;
@@ -86,7 +116,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		sccs_free(s);
 	}
 	sfileDone();
-	if (all) errors += checkAll(checked);
+	if (all) errors += checkAll(keys);
 	purify_list();
 	return (errors ? 1 : 0);
 }

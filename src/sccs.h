@@ -2,13 +2,6 @@
 #ifndef	_SCCS_H_
 #define	_SCCS_H_
 
-#define	seekto(s,o)	s->where = (s->mmap + o)
-#define	eof(s)		((s->encoding & E_GZIP) ? \
-			    zeof() : (s->where >= s->mmap + s->size))
-
-#define PATCH_CURRENT	"# Patch vers:\t0.6\n"
-#define PATCH_NOSUM	"# Patch vers:\t0.5\n" 
-
 /*
  * Flags that modify some operation (passed to sccs_*).
  *
@@ -107,7 +100,10 @@
 #define S_ISSHELL	0x00200000	/* this is a shell script */
 #define	S_SET		0x00400000	/* the tree is marked with a set */
 #define	S_CSETMARKED	0x00800000	/* X_CSETMARKED match */
-#define S_CACHEROOT	0x01000000	/* do'nt free the root entry */
+#define S_CACHEROOT	0x01000000	/* don't free the root entry */
+#define	S_KEY2		0x02000000	/* all keys are version 2 format */
+
+#define	KEY_FORMAT2	"BK key2"
 
 /*
  * Options to sccs_diffs()
@@ -220,6 +216,9 @@
 #define	UNKNOWN_USER	"anon"
 
 #define	isData(buf) (buf[0] != '\001')
+#define	seekto(s,o)	s->where = (s->mmap + o)
+#define	eof(s)		((s->encoding & E_GZIP) ? \
+			    zeof() : (s->where >= s->mmap + s->size))
 
 typedef	unsigned short	ser_t;
 typedef	unsigned short	sum_t;
@@ -485,6 +484,15 @@ typedef struct patch {
 	struct	patch *next;	/* guess */
 } patch;
 
+/*
+ * Patch file format strings.
+ */
+#define PATCH_CURRENT	"# Patch vers:\t0.6\n"
+#define PATCH_NOSUM	"# Patch vers:\t0.5\n" 
+
+/*
+ * Internal to takepatch
+ */
 #define	PATCH_LOCAL	0x0001	/* patch is from local file */
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
 #define	PATCH_META	0x0004	/* delta is metadata */
