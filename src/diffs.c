@@ -32,7 +32,7 @@ diffs_main(int ac, char **av)
 	char	kind;
 	char	*name;
 	project	*proj = 0;
-	char	*rev = 0, *cset = 0;
+	char	*Rev = 0, *cset = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -57,7 +57,7 @@ diffs_main(int ac, char **av)
 		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
 		    case 'p': kind = DF_PDIFF; break;	/* doc 2.0 */
 		    case 'n': kind = DF_RCS; break;	/* doc 2.0 */
-		    case 'R': rev = optarg; break;	/* doc 2.0 */
+		    case 'R': Rev = optarg; break;	/* doc 2.0 */
 		    case 's': kind = DF_SDIFF; break;	/* doc 2.0 */
 		    case 'u': kind = DF_UNIFIED; break;	/* doc 2.0 */
 		    case 'U': flags |= GET_USER; break;	/* doc 2.0 */
@@ -69,7 +69,7 @@ usage:			system("bk help -s diffs");
 		}
 	}
 
-	if ((things && (cset || rev)) || (cset && rev)) {
+	if ((things && (cset || Rev)) || (cset && Rev)) {
 		fprintf(stderr, "%s: -C/-R must be alone\n", av[0]);
 		return (1);
 	}
@@ -80,7 +80,7 @@ usage:			system("bk help -s diffs");
 	 * do the parent against that rev if no gfile.
 	 * If we specified no revs then there must be a gfile.
 	 */
-	if (rev || cset) things = 2;
+	if (cset) things = 2;
 	if ((flags & GET_PREFIX) && (things != 2) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
 		    "%s: must have both revisions with -d|u|m|s\n", av[0]);
@@ -90,7 +90,7 @@ usage:			system("bk help -s diffs");
 	/* XXX - if we are doing cset | diffs then we don't need the GFILE.
 	 * Currently turned off in sfiles.
 	 */
-	if (all || things || cset || rev) {
+	if (all || things || cset || Rev) {
 		name = sfileFirst("diffs", &av[optind], 0);
 	} else {
 		name = sfileFirst("diffs", &av[optind], SF_GFILE);
@@ -107,17 +107,10 @@ usage:			system("bk help -s diffs");
 		unless (proj) proj = s->proj;
 		if (cset) {
 			if (cset_boundries(s, cset)) goto next;
-		} else if (rev) {
-			delta	*d = sccs_getrev(s, rev, 0, 0);
-
-			unless (d && d->parent) {
-				fprintf(stderr,
-				    "No rev or parent for %s\n", rev);
-				errors |= 1;
-				goto next;
-			}
-			s->rstart = d->parent;
-			s->rstop = d;
+		} else if (Rev) {
+			/* r1 == r2  means diff against the parent(s)(s)  */
+			/* XXX TODO: probably needs to support -R+	  */
+			r1 = r2 = Rev;
 		} else {
 			RANGE("diffs", s, 0, (flags & SILENT) == 0);
 		}
@@ -143,7 +136,7 @@ usage:			system("bk help -s diffs");
 		 * Optimize out the case where we have a locked file with
 		 * no changes at TOT.
 		 */
-		if (!things && IS_EDITED(s) && 
+		if (!things && !Rev && IS_EDITED(s) && 
 		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) goto next;
 		
 		/*

@@ -11705,13 +11705,17 @@ doDiff(sccs *s, u32 flags, char kind, char *leftf, char *rightf,
  * r1 & r2 are user specified rev; can be incomplete 
  */
 private int
-mapRev(sccs *s, u32 flags,
-		char *r1, char *r2, char **rev1, char **rev1M, char **rev2, pfile *pf)
+mapRev(sccs *s, u32 flags, char *r1, char *r2,
+			char **rev1, char **rev1M, char **rev2, pfile *pf)
 {
 	char *lrev, *lrevM = 0, *rrev;
 
 	if (r1 && r2) {
-		lrev = r1;
+		if (r1 == r2) { /* r1 == r2 means diffs against parent(s) */
+			sccs_parent_revs(s, r2, &lrev, &lrevM);
+		} else {
+			lrev = r1;
+		}
 		rrev = r2;
 	} else if (r1) {
 		if (HAS_PFILE(s)) {
