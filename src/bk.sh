@@ -1579,7 +1579,7 @@ _export() {
 	fi
 	
 	${BIN}cset $D -t`${BIN}prs $R -hd:I: ChangeSet` \
-	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
+	| eval egrep -v "'^ChangeSet'" $INCLUDE $EXCLUDE \
 	| sed 's/[@:]/ /' | while read file rev
 	do
 		PN=`${BIN}prs -r$rev -hd:DPN: $SRC/$file`
