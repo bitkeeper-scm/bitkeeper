@@ -514,7 +514,7 @@ delta	*sccs_ino(sccs *);
 int	sccs_rmdel(sccs *s, delta *d, int destroy, u32 flags);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 void	sccs_pdelta(sccs *s, delta *d, FILE *out);
-char	*sccs_root(sccs *, char *optional_root);
+char	*sccs_root(sccs *s);
 int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
@@ -537,7 +537,6 @@ delta	*findrev(sccs *, char *);
 delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
-char	*sccs_root(sccs *, char *);
 char	*getuser(void);
 
 delta	*modeArg(delta *d, char *arg);
@@ -562,6 +561,7 @@ char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, char kind, char *out);
 char	**addLine(char **space, char *line);
+void	freeLines(char **space);
 int	roundType(char *r);
 sccs	*check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
@@ -613,5 +613,10 @@ int	gone(char *key, MDBM *db);
 int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
 char	*_relativeName(char *gName,
 	    int isDir, int withsccs, int mustHaveRmarker, char *root);
+
+typedef	char **globv;
+globv	read_globs(FILE *f, globv oldglobs);
+char	*match_globs(char *string, globv globs);
+void	free_globs(globv globs);
 
 #endif	/* _SCCS_H_ */

@@ -1198,13 +1198,20 @@ cleanPath(char *path, char cleanPath[])
  * All of this pathname/changeset shit needs to be reworked.
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  */
+
 /*
- * Change directories to the project root or return -1.
+ * Change directories to the project root or return -1.  If the second
+ * arg is non-null, then that's the root, and we aren't to call
+ * sccs_root to find it.  The only place that does that is
+ * takepatch.c, and it probably shouldn't.
  */
 int
 sccs_cd2root(sccs *s, char *root)
 {
-	char	*r = sccs_root(s, root);
+	char	*r;
+
+	if (root) r = root;
+	else r = sccs_root(s);
 
 	if (r && (chdir(r) == 0)) {
 		unless (exists(BKROOT)) {
@@ -1262,7 +1269,7 @@ idFile(sccs *s)
 	char	file[MAXPATH];
 	char	*root;
 	
-	unless (root = sccs_root(s, 0)) return (0);
+	unless (root = sccs_root(s)) return (0);
 	sprintf(file, "%s/%s", root, IDCACHE);
 	// XXX - locking of this file.
 	return (fopen(file, "a"));
@@ -1279,7 +1286,7 @@ getCSetFile(sccs *s)
 	char	*root;
 	sccs	*sc;
 	
-	unless (root = sccs_root(s, 0)) return (0);
+	unless (root = sccs_root(s)) return (0);
 	sprintf(file, "%s/%s", root, CHANGESET);
 	if (exists(file)) {
 		sc = sccs_init(file, INIT_NOCKSUM, 0);
@@ -3356,10 +3363,7 @@ name2sccs(char *name)
 	/* maybe it has the SCCS in it already */
 	s = rindex(name, '/');
 	if ((s >= name + 4) && strneq(s - 4, "SCCS/", 5)) {
-		unless (sccs_filetype(name)) {
-			fprintf(stderr, "Bad name: %s\n", name);
-			assert("Garbage in SCCS dir" == 0);
-		}
+		unless (sccs_filetype(name)) return (0);
 		name = strdup(name);
 		s = strrchr(name, '/');
 		s[1] = 's';
@@ -6612,7 +6616,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs)
 			s->state |= S_BITKEEPER|S_CSETMARKED;	
 			first->flags |= D_CKSUM;
 		} else {
-			if (sccs_root(s, 0)) {
+			if (sccs_root(s)) {
 				unless (first->csetFile) {
 					first->csetFile = getCSetFile(s);
 				}

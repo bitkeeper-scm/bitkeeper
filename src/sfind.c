@@ -2,18 +2,15 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-#define	LFTW_F		1			/* regular file */
-#define	LFTW_D		2			/* directory */
-#define	LFTW_NS		5			/* unstatable object */
-
 /*
  * sfiles - find SCCS files
  *
  * TODO - make it find only files locked by a particular user
  */
 char *sfiles_usage = "\n\
-usage: sfiles [-acCdglpPrx] [directories]\n\n\
+usage: sfiles [-aAcCdglpPrx] [directories]\n\n\
     -a		when used with -C, list all revs, not just the tip\n\
+    -A		examine all files, even if listed in BitKeeper/etc/ignore\n\
     -c		list only changed files (locked and modified)\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
     -d		list directories under SCCS control (have SCCS subdir)\n\
@@ -35,39 +32,40 @@ usage: sfiles [-acCdglpPrx] [directories]\n\n\
 \n";
 
 int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg, xFlg, uFlg;
-int	Dflg;
+int	Dflg, Aflg;
 int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
 MDBM	*idDB;
 int	dups;
 int	mixed;		/* running in mixed long/short mode */
-int	file(char *f, int (*func)());
-int	func(const char *filename, const struct stat *sb, int flag);
 int	hasDiffs(char *file);
 int	isSccs(char *s);
 void	rebuild(void);
-int	caches(const char *filename, const struct stat *sb, int flag);
 char	*name(char *);
 sccs	*cset;
-int	lftw(const char *dir,
-	     int(*func)(const char *file, const struct stat *sb, int flag),
-	     int depth);
+
+typedef	void (*lftw_func)(const char *path, int mode);
+void	file(const char *f, lftw_func func);
+void	lftw(const char *dir, lftw_func func);
+void	process(const char *filename, int mode);
+void	caches(const char *filename, int mode);
 
 int
 main(int ac, char **av)
 {
 	int	c, i;
 	char	*path;
-	
-	platformSpecificInit(NULL); 
+
+	platformSpecificInit(NULL);
 	if ((ac > 1) && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "acCdDglpPruvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDglpPruvx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
+		    case 'A': Aflg++; break;
 		    case 'c': cFlg++; break;
 		    case 'C': Cflg++; rFlg++; break;
 		    case 'd': dFlg++; break;
@@ -103,7 +101,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 	}
 	if (!av[optind]) {
 		path = xFlg ? "." : sPath(".", 1);
-		lftw(path, func, 15);
+		lftw(path, process);
 	} else {
 		/*
 		 * XXX - why ca't we used sfileFirst/next to expand these?
@@ -112,10 +110,10 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			localName2bkName(av[i], av[i]);
 			if (isdir(av[i])) {
 				path =  xFlg ? av[i] : sPath(av[i], 1);
-				lftw(path, func, 15);
+				lftw(path, process);
 			} else {
 				path =  xFlg ? av[i] : sPath(av[i], 0);
-				file(path, func);
+				file(path, process);
 			}
 		}
 	}
@@ -147,68 +145,45 @@ xfile(char *file)
 
 /*
  * Handle a single file.
- * XXX zw: does this do stuff twice, or do I need more sleep?
  */
-int
-file(char *f, int (*func)())
+void
+file(const char *f, lftw_func func)
 {
-	struct	stat sb, fb;
-	char	*s;
-	char	*sfile = 0;
-	int	ret;
+	struct	stat sb;
+	char	*g = 0;
 
 	/*
-	 * If they gave us a name and it doesn't exist and it is not an SCCS
-	 * file name, then try and expand it and if that works keep going.
+	 * Process this name as both an s.file and a gfile,
+	 * whichever exists.
 	 */
-	if (lstat(f, &fb) != 0) {
-		if (sccs_filetype(f)) return (-1);
-		sfile = name2sccs(f);
-		if (lstat(sfile, &sb) != 0) return (-1);
-		f = sfile;
-	}
-	if (sccs_filetype(f)) {
-		ret = func(f, &fb);
-		if (sfile) free(sfile);
-		return (ret);
-	}
+	if (strstr(f, "SCCS/s.")) g = sccs2name(f);
+	else g = name2sccs(f);
 
-	s = strrchr(f, '/');
-	if ((s >= f + 4) && strneq(s - 4, "SCCS/", 5) && !sccs_filetype(f)) {
-		if (xFlg) xprint(f);
-		if (sfile) free(sfile);
-	    	return (0);
-	}
-
-	/*
-	 * OK, try and convert it to a sfile and do that.
-	 */
-	if (sfile) {
-		s = sfile;
-		sfile = 0;
+	if (lstat(f, &sb)) {
+		if (errno != ENOENT) perror(f);
 	} else {
-		s = name2sccs(f);
+		func(f, (sb.st_mode & S_IFMT));
 	}
-	if (s && (lstat(s, &sb) == 0)) {
-		ret = func(s, &sb);
-		free(s);
-		return (ret);
+	unless (g) return;
+	
+	if (lstat(g, &sb)) {
+		if (errno != ENOENT) perror(g);
+	} else {
+		func(g, (sb.st_mode & S_IFMT));
 	}
-	if (s) free(s);
-	if (sfile) free(sfile);
-	return (func(f, &fb));
+	free(g);
 }
 
-int
-func(const char *filename, const struct stat *sb, int flag)
+void
+process(const char *filename, int mode)
 {
 	register char *file = (char *)filename;
 	register char *s;
 
-	debug((stderr, "sfind func(%s)\n", filename));
+	debug((stderr, "sfind process(%s)\n", filename));
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	if (dFlg || Dflg) {
-		if (S_ISDIR(sb->st_mode)) {
+		if (S_ISDIR(mode)) {
 			char	buf[MAXPATH];
 
 			sprintf(buf, "%s/SCCS", file);
@@ -223,7 +198,7 @@ func(const char *filename, const struct stat *sb, int flag)
 				if (streq(file, "SCCS") ||
 				    ((s = strrchr(file, '/')) &&
 				    streq(s, "/SCCS"))) {
-				    	return (0);;
+				    	return;
 				}
 
 				/*
@@ -235,23 +210,23 @@ func(const char *filename, const struct stat *sb, int flag)
 				}
 			}
 		}
-		return (0);
+		return;
 	}
-	if (S_ISDIR(sb->st_mode)) return (0);
+	if (S_ISDIR(mode)) return;
 	s = strrchr(file, '/');
 
 	if ((s >= file + 4) &&
 	    strneq(s - 4, "SCCS/", 5) && !sccs_filetype(file)) {
 		if (xFlg) xprint(file);
-	    	return (0);
+	    	return;
 	}
 
 	if (xFlg) {
 		xfile(file);
-		return (0);
+		return;
 	}
-	unless (sccs_filetype(file) == 's') return 0;
-	debug((stderr, "sfind func2(%s)\n", filename));
+	unless (sccs_filetype(file) == 's') return;
+	debug((stderr, "sfind process2(%s)\n", filename));
 	s = strrchr(file, '/');
 	assert(s);
 	s++;
@@ -259,7 +234,7 @@ func(const char *filename, const struct stat *sb, int flag)
 		*s = 'p';
 		if (exists(file)) {
 			*s = 's';
-			if (uFlg) return(0);
+			if (uFlg) return;
 			if (lFlg || (cFlg && hasDiffs(file))) {
 				printf("%s\n", name(file));
 			}
@@ -268,19 +243,18 @@ func(const char *filename, const struct stat *sb, int flag)
 			printf("%s\n", name(file));
 		}
 		*s = 's';
-		return (0);
+		return;
 	}
 	/* XXX - this should be first. */
 	if (Pflg) {
-		if (!isSccs(file)) return (0);
+		if (!isSccs(file)) return;
 	} else if (pFlg) {
 		if ((s-file < 5) || (s[-2] != 'S') || (s[-3] != 'C') ||
 		    (s[-4] != 'C') || (s[-5] != 'S')) {
-			if (!isSccs(file)) return (0);
+			if (!isSccs(file)) return;
 		}
 	}
 	printf("%s\n", name(file));
-	return (0);
 }
 
 char	*
@@ -377,7 +351,7 @@ rebuild()
 # The file is used for performance during makepatch/takepatch commands.\n");
 	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(idDB);
-c:	lftw(".", caches, 15);
+c:	lftw(".", caches);
 	if (id_cache) {
 		fclose(id_cache);
 		unlink(IDCACHE_LOCK);
@@ -409,8 +383,8 @@ save(sccs *sc, MDBM *idDB, char *buf)
 	}
 }
 
-int
-caches(const char *filename, const struct stat *sb, int flag)
+void
+caches(const char *filename, int mode)
 {
 	char	*file = (char *)filename;
 	sccs	*sc;
@@ -418,13 +392,13 @@ caches(const char *filename, const struct stat *sb, int flag)
 	char	buf[MAXPATH*2];
 	char	*t;
 
-	if (S_ISDIR(sb->st_mode)) return (0);
+	if (S_ISDIR(mode)) return;
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
-	unless (sccs_filetype(file) == 's') return (0);
-	unless (sc = sccs_init(file, INIT_NOCKSUM, 0)) return (0);
+	unless (sccs_filetype(file) == 's') return;
+	unless (sc = sccs_init(file, INIT_NOCKSUM, 0)) return;
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);
-		return (0);
+		return;
 	}
 	if (vFlg) printf("%s\n", sc->gfile);
 
@@ -451,14 +425,14 @@ caches(const char *filename, const struct stat *sb, int flag)
 	/* XXX - should this be (Cflg && !(sc->state & S_CSET)) ? */
 	unless (Cflg) {
 		sccs_free(sc);
-		return (0);
+		return;
 	}
 
 	/* find the leaf of the current LOD and check it */
 	sc->state |= S_RANGE2;
 	unless (d = sccs_getrev(sc, 0, 0, 0)) {
 		sccs_free(sc);
-		return (0);
+		return;
 	}
 
 	/*
@@ -466,7 +440,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	 */
 	if (d->flags & D_CSET) {
 		sccs_free(sc);
-		return (0);
+		return;
 	}
 
 	printf("%s:%s\n", gFlg ? sc->gfile : sc->sfile, d->rev);
@@ -476,63 +450,40 @@ caches(const char *filename, const struct stat *sb, int flag)
 	}
 
 	sccs_free(sc);
-	return (0);
 }
-
-int
-_ftw_get_flag(const char *dir, struct stat *sb)
-{
-
-	if (lstat(dir, sb) != 0) return LFTW_NS;
-	if ((S_ISDIR(sb->st_mode))) return LFTW_D;
-
-	/* everything else is considered a file */
-	return LFTW_F;
-}
-
 
 /*
- * Walk a directory tree recusivly, 
- * A tree pointed to by a sym-link is ignored
- * TODO: handle the "depth" parameter
+ * Walk a directory tree recursively.  Does not follow symlinks.  This
+ * is a subroutine used exclusively by lftw() (below).  It processes
+ * the current directory, and the callback function must not change
+ * directories.
+ *
+ * path points to the buffer in which the pathname is constructed.  It
+ * is shared among all recursive instances.  base points one past the
+ * last slash in the pathname.  sb points to a stat structure; ignore
+ * is the list of globs which match filenames to ignore; func is the
+ * function to call with the file name; depth is whether to process a
+ * directory name before or after its children.
  */
-int
-lftw(const char *dir,
-	int (*func)(const char *file, const struct stat *sb, int flag),
-	int depth)
+#define GFILE(s) ((isalpha((s)[0]) && (s)[1] == '.') ? (s)+2 : (s))
+
+void
+lftw_inner(char *path, char *base, struct stat *sb,
+	   globv ignore, lftw_func func)
 {
-	DIR	*d;
-	struct	dirent *e;
-	struct	stat sbuf;
-	char	tmp_buf[MAXPATH];
-	char	*slash = "/";
-	int	flag, rc = 0, len;
-	long	lastInode = 0;
+	DIR		*d;
+	struct dirent	*e;
+	int		mode, n;
+#ifndef WIN32
+	ino_t		lastInode = 0;
+#endif
 
-	flag = _ftw_get_flag(dir, &sbuf);
-
-	if ((rc = (*func)(dir, &sbuf, flag)) != 0) return rc;
-
-	if (flag != LFTW_D) return 0;
-
-	/*
-	 * if we get here, the top level node is a directory
-	 * now we process its children
-	 */
-	len = strlen(dir);
-	if ((len > 1) && (dir[len -1] == '/')) slash = "";
-	if ((d = opendir(dir)) == NULL) {
-		perror(dir);
-		return rc;
+	if ((d = opendir(path)) == NULL) {
+		perror(path);
+		return;
 	}
-	/* CSTYLED */
-	for (;;) {
-		e = readdir(d);
-		if (e == NULL) goto done;
-		if ((strcmp(e->d_name, ".") == 0) ||
-		    (strcmp(e->d_name, "..") == 0))
-			continue;  /* skip "." && ".." */
-
+	if (base[-1] != '/') *base++ = '/';
+	while ((e = readdir(d)) != NULL) {
 #ifndef WIN32
 		/*
 		 * Linux 2.3.x NFS bug, skip repeats.
@@ -540,27 +491,80 @@ lftw(const char *dir,
 		if (lastInode == e->d_ino) continue;
 		lastInode = e->d_ino;
 #endif
+		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
+			continue;
+		}
+		if (match_globs(GFILE(e->d_name), ignore)) {
+			debug((stderr, "SKIP\t%s\n", e->d_name));
+			continue;
+		}
+		if (base - path + strlen(e->d_name) + 2 > MAXPATH) {
+			fprintf(stderr, "lftw: path too long\n[%s%s]\n",
+				path, e->d_name);
+			continue;
+		}
+		strcpy(base, e->d_name);
 
-		/* now we do the real work */
-		sprintf(tmp_buf, "%s%s%s", dir, slash, e->d_name);
-		flag = _ftw_get_flag(tmp_buf, &sbuf);
-		if (S_ISDIR(sbuf.st_mode)) {
-			/*
-			 * Do not let sfind cross into other project roots.
-			 */
-			char	root[MAXPATH];
-			
-			sprintf(root, "%s/BitKeeper/etc", tmp_buf);
-			unless (isdir(root)) {
-				lftw(tmp_buf, func, 0);
-			}
-		} else {
-			if ((rc = (*func)(tmp_buf, &sbuf, flag)) != 0) {
-				goto done;
-			}
+#ifdef DT_UNKNOWN
+		if (e->d_type != DT_UNKNOWN) mode = DTTOIF(e->d_type);
+		else
+#endif
+		if (lstat(path, sb)) {
+			perror(path);
+			continue;
+		} else mode = (sb->st_mode & S_IFMT);
+
+		debug((stderr, "FUNC\t%s\n", e->d_name));
+		func(path, mode);
+
+		if (!S_ISDIR(mode)) continue;
+
+		/* Do not cross into other project roots (e.g. RESYNC).  */
+		n = strlen(base);
+		strcat(base, "/" BKROOT);
+		if (exists(path)) continue;
+
+		/* Descend directory.  */
+		base[n] = '\0';
+		debug((stderr, "DIR\t%s\n", e->d_name));
+		lftw_inner(path, base + n, sb, ignore, func);
+	}
+	closedir(d);
+}
+
+void
+lftw(const char *dir, lftw_func func)
+{
+	FILE		*ignoref;
+	globv		ignore = NULL;
+	char		*root;
+	char		path[MAXPATH];
+	struct stat	st;
+
+	unless (Aflg || (root = sccs_root(0)) == NULL) {
+		sprintf(path, "%s/BitKeeper/etc/ignore", root);
+		if ((ignoref = fopen(path, "r")) != NULL) {
+			ignore = read_globs(ignoref, 0);
+			fclose(ignoref);
 		}
 	}
-done:
-	closedir(d);
-	return rc;
+
+	strcpy(path, dir);
+	/*
+	 * Special case: process the starting path directly,
+	 * even if it's dot.
+	 */
+	if (lstat(path, &st)) {
+		perror(path);
+		return;
+	} else if (! S_ISDIR(st.st_mode)) {
+		errno = ENOTDIR;
+		perror(path);
+		return;
+	} else {
+		func(path, (st.st_mode & S_IFMT));
+	}
+	lftw_inner(path, path+strlen(path), &st, ignore, func);
+
+	if (ignore) free_globs(ignore);
 }

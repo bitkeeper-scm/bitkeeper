@@ -239,3 +239,22 @@ if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
 FOO="`sfiles s.foo`"
 if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
 echo OK
+cat <<EOF > BitKeeper/etc/ignore
+LIST
+s.*
+*ore
+EOF
+echo $N Test ignore lists with -u ...................................$NL
+sfiles -u | sort > SFILES
+if [ `wc -l <SFILES` -ne 0 ]; then echo Failed.; cat SFILES; exit 1; fi
+echo OK
+echo $N Test ignore lists with -x ...................................$NL
+sort <<EOF > LIST
+SAVE
+SCCS/OLD-s.foo
+SFILES
+EOF
+sfiles -x | sort > SFILES
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+echo OK

@@ -35,7 +35,7 @@ PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/disksp.o
 SCCSOBJ	= slib.o range.o newrev.o getopt.o popen.o libdiff.o \
 	  sfiles.o purify.o zgets.o gettemp.o mkdir.o \
-	  filecopy.o dirname.o localtm.o mmap.o ${PORTOBJ}
+	  filecopy.o dirname.o localtm.o mmap.o glob.o
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
@@ -136,7 +136,7 @@ clean-bin: FORCE
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
-	    config.cache config.log bk.ver
+	    config.cache config.log bk.ver stamp-ver
 
 clean-src: FORCE
 	bk clean
@@ -185,8 +185,8 @@ zlib/libz.a: $(ZLIBOBJ)
 mdbm/libmdbm.a: $(MDBMOBJ)
 	$(AR) cr mdbm/libmdbm.a $(MDBMOBJ)
 	-$(RANLIB) mdbm/libmdbm.a
-libsccs.a: $(SCCSOBJ)
-	$(AR) cr libsccs.a $(SCCSOBJ)
+libsccs.a: $(SCCSOBJ) $(PORTOBJ)
+	$(AR) cr libsccs.a $(SCCSOBJ) $(PORTOBJ)
 	-$(RANLIB) libsccs.a
 
 zone: zone.o localtm.o port/platforminit.o
@@ -296,9 +296,15 @@ bk: bk.sh bk.ver port/unix_platform.sh substvars
 	mv -f bk.T bk
 
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
-bk.ver: prs ../SCCS/s.ChangeSet
+# It is structured like this so that rebuilding prs doesn't
+# force bk.ver (and thus the bk script) to be regenerated.
+bk.ver: stamp-ver
+stamp-ver:: ../SCCS/s.ChangeSet
 	./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet >bk.v
 	mv -f bk.v bk.ver
+	touch stamp-ver
+stamp-ver:: prs
+	touch stamp-ver
 
 uuwrap: uuwrap.sh substvars
 	./substvars uuwrap.sh > uuwrap.T
@@ -461,6 +467,7 @@ slib.o:		slib.c $(sccsdeps) zgets.h
 smoosh.o:	smoosh.c $(sccsdeps)
 takepatch.o:	takepatch.c $(sccsdeps)
 what.o:		what.c $(sccsdeps)
+glob.o:		glob.c $(sccsdeps)
 
 zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
 purify.o:	purify.c $(commondeps)
@@ -471,6 +478,7 @@ chksum.o:	chksum.c
 gethost.o:	gethost.c
 nextsecond.o:	nextsecond.c
 mtime.o:	mtime.c
+sfio.o:		sfio.c
 
 mdbm/hash.o:	mdbm/hash.c mdbm/mdbm.h
 mdbm/mdbm.o:	mdbm/mdbm.c mdbm/common.h mdbm/tune.h mdbm/mdbm.h

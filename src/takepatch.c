@@ -998,13 +998,11 @@ init(char *inputFile, int flags, char **resyncRootp)
 	MMAP	*m;
 	uLong	sumC = 0, sumR = 0;
 
-	root = sccs_root(0, 0);
-	
 	if (newProject) {
 		initProject();
 		*resyncRootp = strdup("RESYNC");
 	} else {
-		root = sccs_root(0, 0);
+		root = sccs_root(0);
 		if (!root && emptyDir(".")) {
 			/* If we are invoked in an empty directory,
 			 * assume they meant -i.
