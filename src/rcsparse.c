@@ -392,7 +392,7 @@ dates(RCS *rcs)
 		n--;
 		d->printed = 1;
 		d->date = sccs_date2time(d->sdate, "0:00");
-		if (d->parent && (d->parent->date > d->date)) {
+		if (d->parent && (d->parent->date >= d->date)) {
 			d->dateFudge = (d->parent->date - d->date) + 1;
 			d->date += d->dateFudge;
 fprintf(stderr, "%s@%s %u\n", rcs->file, d->rev, (unsigned)d->dateFudge);
@@ -406,7 +406,7 @@ fprintf(stderr, "%s@%s %u\n", rcs->file, d->rev, (unsigned)d->dateFudge);
 			n--;
 			d->printed = 1;
 			d->date = sccs_date2time(d->sdate, "0:00");
-			if (d->parent && (d->parent->date > d->date)) {
+			if (d->parent && (d->parent->date >= d->date)) {
 				d->dateFudge = (d->parent->date - d->date) + 1;
 				d->date += d->dateFudge;
 fprintf(stderr, "%s@%s %u\n", rcs->file, d->rev, (unsigned)d->dateFudge);

@@ -27,7 +27,7 @@ import() {
 	UNDOS=
 	VERBOSE=-q
 	VERIFY=-h
-	while getopts Ac:efHij:l:rS:t:uvxq opt
+	while getopts ACc:efHij:l:rS:t:uvxq opt
 	do	case "$opt" in
 		A) FIX_ATTIC=YES;;		# doc 2.0
 		c) CUTOFF=-c$OPTARG;;		# doc 2.0

@@ -47,6 +47,7 @@ private int	expires = 0;
 #define OUTER_END	"</td></tr></table>\n"
 
 #define BKWEB_SERVER_VERSION	"0.2"
+#define	NOFUDGE(d)	(d->date - d->dateFudge)
 
 private char	arguments[MAXPATH];
 private char	navbar[MAXPATH];
@@ -1371,22 +1372,22 @@ http_index(char *page)
 			continue;
 		}
 		assert(d->type == 'D');
-		if (d->date >= t1h) c1h++;
-		if (d->date >= t1d) c1d++;
-		if (d->date >= t2d) c2d++;
-		if (d->date >= t3d) c3d++;
-		if (d->date >= t4d) c4d++;
-		if (d->date >= t1w) c1w++;
-		if (d->date >= t2w) c2w++;
-		if (d->date >= t3w) c3w++;
-		if (d->date >= t4w) c4w++;
-		if (d->date >= t8w) c8w++;
-		if (d->date >= t12w) c12w++;
-		if (d->date >= t6m) c6m++;
-		if (d->date >= t9m) c9m++;
-		if (d->date >= t1y) c1y++;
-		if (d->date >= t2y) c2y++;
-		if (d->date >= t3y) c3y++;
+		if (NOFUDGE(d) >= t1h) c1h++;
+		if (NOFUDGE(d) >= t1d) c1d++;
+		if (NOFUDGE(d) >= t2d) c2d++;
+		if (NOFUDGE(d) >= t3d) c3d++;
+		if (NOFUDGE(d) >= t4d) c4d++;
+		if (NOFUDGE(d) >= t1w) c1w++;
+		if (NOFUDGE(d) >= t2w) c2w++;
+		if (NOFUDGE(d) >= t3w) c3w++;
+		if (NOFUDGE(d) >= t4w) c4w++;
+		if (NOFUDGE(d) >= t8w) c8w++;
+		if (NOFUDGE(d) >= t12w) c12w++;
+		if (NOFUDGE(d) >= t6m) c6m++;
+		if (NOFUDGE(d) >= t9m) c9m++;
+		if (NOFUDGE(d) >= t1y) c1y++;
+		if (NOFUDGE(d) >= t2y) c2y++;
+		if (NOFUDGE(d) >= t3y) c3y++;
 		c++;
 	}
 	sccs_free(s);

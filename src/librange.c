@@ -119,7 +119,9 @@ rangeAdd(sccs *sc, char *rev, char *date)
 		time_t	cutoff = backDate(s+1);
 
 		for (tmp = sc->table; tmp; tmp = tmp->next) {
-			if (tmp->date >= cutoff) tmp->flags |= D_SET;
+			if ((tmp->date - tmp->dateFudge) >= cutoff) {
+				tmp->flags |= D_SET;
+			}
 		}
 		sc->state |= S_SET;
 		return (0);
