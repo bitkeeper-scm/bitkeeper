@@ -23,6 +23,7 @@ usage: admin options [- | file file file...]\n\
     -f<f><val>		set flag\n\
 	EXPAND1		expand keywords in first keyword containing line only\n\
 	RCS		expand RCS keywords\n\
+	SCCS		expand SCCS keywords\n\
 	YEAR4		store dates as 4 digit years (breaks SCCS compat)\n\
     -F<f>		delete flag <f>\n\
 \n\
@@ -174,7 +175,7 @@ main(int ac, char **av)
 		fprintf(stderr, "admin: -h option must be alone.\n");
 		goto usage;
 	}
-	if ((merge) && ((flags & ~(ADMIN_CHECKS|SILENT|NEWCKSUM)) ||
+	if (merge && ((flags & ~(ADMIN_CHECKS|SILENT|NEWCKSUM)) ||
 	    nextf || nextu || nexts || nextp || comment || path || rmCset ||
 	    newfile || doDates)) {
 		fprintf(stderr, "admin: -M option must be alone or with -r\n");
@@ -192,10 +193,15 @@ main(int ac, char **av)
 		    "admin: comment may only be specifed with -i and/or -n\n");
 		goto usage;
 	}
-	if (rev && (!(flags & NEWFILE) && !merge && !m)) {
+	if (rev && (!(flags & NEWFILE) && !merge && !m && !nextf)) {
 		fprintf(stderr, "%s %s\n",
 		    "admin: revision may only be specified with",
-		    "-i and/or -n or -M or -m\n");
+		    "-i and/or -n or -M or -m or -f or -F\n");
+		goto usage;
+	}
+	if ((flags & NEWFILE) && nextf) {
+		fprintf(stderr,
+		    "admin: can not have -f with -i and/or -n\n");
 		goto usage;
 	}
 	if ((flags & NEWFILE) && text && !text[0]) {
@@ -289,10 +295,7 @@ main(int ac, char **av)
 				was_edited = 0;
 			}
 		}
-		/*
-		 * if we just created a new file, reuse the new delta
-		 */
-		if (flags & NEWFILE) d = findrev(sc, rev);
+		if (rev) d = findrev(sc, rev);
 		if (sccs_admin(
 			    sc, d, flags, encp, compp, f, 0, u, s, m, text)) {
 			sccs_whynot("admin", sc);

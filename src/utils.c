@@ -31,22 +31,36 @@ int
 getline(int in, char *buf, int size)
 {
 	int	i = 0;
-	int	c;
+	char	c;
 
+	buf[0] = 0;
+	size--;
+	unless (size) return (-3);
 	for (;;) {
 		switch (read(in, &c, 1)) {
 		    case 1:
 			if ((buf[i] = c) == '\n') {
 				buf[i] = 0;
-				return (i);
+				return (i + 1);	/* we did read a newline */
 			}
-			if (++i == size) return (-2);
+			if (++i == size) {
+				buf[i] = 0;
+				return (-2);
+			}
 			break;
+#if 0
+		    /*
+		     * This is bad - 0 means EOF in some situations
+		     * The question is: does 0 ever mean try again?
+		     */
 		    case 0:
 			usleep(100000);
 			break;	/* try again */
+#endif
 		    default:
-			return (-1);
+			unless (errno == EINTR) {
+				return (-1);
+			}
 		}
 	}
 }

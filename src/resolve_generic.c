@@ -60,10 +60,7 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 	while (1) {
 		fprintf(stderr, "%s>> ", rs->prompt);
 		getline(0, buf, sizeof(buf));
-		unless (buf) {
-			fprintf(stderr, "Try ? for help\n");
-			continue;
-		}
+		unless (buf[0]) strcpy(buf, "?");
 
 again:		/* 100 tries for the same file means we're hosed.  */
 		if (++rs->n == 100) return (ELOOP);
@@ -73,7 +70,8 @@ again:		/* 100 tries for the same file means we're hosed.  */
 			goto again;
 		}
 		if (rs->opts->debug) {
-			fprintf(stderr, "Calling %s on %s\n", rf[i].name, name);
+			fprintf(stderr,
+			    "[%s] Calling %s on %s\n", buf, rf[i].name, name);
 		}
 		if (ret = rf[i].func(rs)) {
 			if (rs->opts->debug) {

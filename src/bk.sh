@@ -412,9 +412,10 @@ _receive() {
 	done
 	shift `expr $OPTIND - 1`
 	if [ X$1 = X -o X$2 != X ]
-	then	echo "usage: bk receive [takepatch options] pathname"
+	then	echo 'usage: bk receive [takepatch options] pathname'
+		exit 1
 	fi
-	if [ ! -d $1 -a $NEW = YES ]; then mkdir -p $1; fi
+	if [ ! -d "$1" -a $NEW = YES ]; then mkdir -p $1; fi
 	cd $1
 	_unwrap | ${BIN}takepatch $OPTS
 	exit $?
@@ -613,6 +614,14 @@ _locked() {
 		exit 0
 	}
 	exit 1
+}
+
+_extra() {
+	${BIN}sfiles -x
+}
+
+_extras() {
+	${BIN}sfiles -x
 }
 
 _new() {
@@ -1216,7 +1225,7 @@ then	if [ X$2 != X -a -d $2 ]
 		shift
 	fi
 	# bk -r sfiles -c == bk sfiles -c.
-	if [ "X$1" != Xsfiles ]
+	if [ "X$1" != Xsfiles -a "X$1" != "Xextras" -a "X$1" != "Xextra" ]
 	then	${BIN}sfiles | ${BIN}bk "$@" -
 		exit $?
 	fi

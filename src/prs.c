@@ -48,7 +48,7 @@ main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "abc;C;d:hmMor|v")) != -1) {
 		switch (c) {
-		    case 'a': flags |= PRS_ALL; break;
+		    case 'a': expand = 2; flags |= PRS_ALL; break;
 		    case 'b': reverse++; break;
 		    case 'C': cset = optarg; break;
 		    case 'd': dspec = optarg; break;
@@ -79,7 +79,7 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		} else {
 			RANGE("prs", s, expand, noisy);
 			/* happens when we have only 1.0 delta */
-			unless(s->rstart) goto next;
+			unless (s->rstart) goto next;
 		}
 		assert(s->rstop);
 		if (flags & PRS_ALL) sccs_markMeta(s);

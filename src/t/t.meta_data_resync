@@ -34,7 +34,7 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
-if [ $P -ne 21 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
 bk commit $S -f -yCset
@@ -45,7 +45,6 @@ cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
 bk resync $Q project copy
-bk resolve $Q copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -69,20 +68,17 @@ cd $HERE/copy/src
 admin -m-rwx-w---- foo.c
 bk commit $S -yperm3
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q -f - $HERE/copy << EOF
+bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 r
-C
+u
 EOF
-MODE=`bk prs -h -r1.4 -d":MODE:" foo.c`
+MODE=`prs -h -r1.4 -d":MODE:" foo.c`
 if [ "$MODE" != "100740" ]
-then	echo "failed (Known bug)"  
-	${RM} -rf $HERE/copy/PENDING $HERE/copy/RESYNC
-	cd $HERE/project/src
-	bk undo -f -q -r1.4
-	cd $HERE/copy/src
-	bk undo -f -q -r1.4
-else	echo OK;
+then	echo failed with mode $MODE
+	prs -h -d':REV: :MODE:' foo.c
+	exit 1
 fi
+echo OK
 echo $N Check propagation of symbol .................................$NL
 cd $HERE/project/src
 admin $Q -SBASE_LINE:1.1 bar.c
@@ -156,4 +152,24 @@ this is a text entry line 2
 EOF
 cmp CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check flags conflict ........................................$NL
+cd $HERE/project/src
+admin $Q -fEXPAND1 -fRCS -fYEAR4 foo.c
+bk commit $S -yperm2
+cd $HERE/copy/src
+admin $Q -fEXPAND1 foo.c
+bk commit $S -yperm3
+bk resync $Q $HERE/project $HERE/copy
+bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
+r
+u
+EOF
+FLAGS=`prs -h -r1.4 -d:FLAGS: foo.c`
+if [ "$FLAGS" != "BITKEEPER,YEAR4,RCS,SCCS,EXPAND1,CSETMARKED" ]
+then	echo failed with mode $FLAGS
+	prs -h -d':REV:\t:FLAGS:' foo.c
+	#cat SCCS/s.foo.c
+	exit 1
+fi
 echo OK

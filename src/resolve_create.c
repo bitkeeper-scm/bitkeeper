@@ -148,7 +148,7 @@ res_mr(resolve *rs)
 	char	buf[MAXPATH];
 	char	*t;
 
-	unless (prompt("Move remote file to:", buf)) return (0);
+	unless (prompt("Move file to:", buf)) return (0);
 	if (sccs_filetype(buf) != 's') {
 		t = name2sccs(buf);
 		strcpy(buf, t);
@@ -425,7 +425,7 @@ ok_local(sccs *s, int check_pending)
 		fprintf(stderr, "Can't init the conflicting local file\n");
 		exit(1);
 	}
-	if (IS_EDITED(s) && sccs_clean(s, SILENT)) {
+	if ((IS_EDITED(s) || IS_LOCKED(s)) && sccs_clean(s, SILENT)) {
 		fprintf(stderr,
 		    "Can not [re]move modified local file %s\n", s->gfile);
 		return (0);
@@ -452,6 +452,7 @@ sc_ml(resolve *rs)
 	sccs	*s;
 
 	unless (prompt("Move local file to:", buf)) return (0);
+	if (rs->opts->debug) fprintf(stderr, "%s\n", buf);
 	if (sccs_filetype(buf) != 's') {
 		to = name2sccs(buf);
 	} else {
@@ -480,6 +481,7 @@ sc_ml(resolve *rs)
 	 * OK, there is no conflict so we can actually move this file to
 	 * the resync directory.  What we do is copy it into the RENAMES
 	 * dir and then call move_remote() to do the work.
+	 * We call saveKey here because we are adding it to the tree.
 	 */
 	do {
 		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
@@ -492,6 +494,8 @@ sc_ml(resolve *rs)
 		exit(1);
 	}
 	s = sccs_init(path, INIT, rs->opts->resync_proj);
+	sccs_sdelta(s, sccs_ino(s), path);
+	saveKey(rs->opts, path, to);
 	rs2 = resolve_init(rs->opts, s);
 	if (move_remote(rs2, to)) {
 		perror(to);
@@ -542,7 +546,7 @@ sc_remove(resolve *rs)
 
 rfuncs	gc_funcs[] = {
     { "?", "help", "print this help", gc_help },
-    { "a", "abort", "abort the patch", res_abort },
+    { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "d", "diff", "diff the local file against the remote file", res_diff },
     { "e", "explain", "explain the choices", gc_explain },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
@@ -559,7 +563,7 @@ rfuncs	gc_funcs[] = {
 
 rfuncs	sc_funcs[] = {
     { "?", "help", "print this help", sc_help },
-    { "a", "abort", "abort the patch", res_abort },
+    { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "d", "diff", "diff the local file against the remote file", res_diff },
     { "e", "explain", "explain the choices", sc_explain },
     { "hl", "hist local", "revision history of the local file", res_hl },

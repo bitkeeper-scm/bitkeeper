@@ -85,7 +85,7 @@ sendConfig(char *to)
 	}
 	status(0, config_log);
 
-	dspec = "$each(:FD:){Project:\\t(:FD:)}\\nChangeSet ID:\\t:LONGKEY:";
+	dspec = "$each(:FD:){Proj:\\t(:FD:)}\\nID:\\t:KEY:";
 	f = fopen(config_log, "wb");
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
 	fclose(f);
@@ -504,5 +504,52 @@ platformInit()
 			putenv(buf);
 		}
 	}
+}
+
+checkLog()
+{
+	char ans[MAXLINE], buf[MAXLINE], buf2[MAXLINE];
+	char getlog_out[MAXPATH];
+	FILE *f;
+	char *getlog(char *user);
+
+	strcpy(buf, getlog(NULL));
+	if (strneq("ask_open_logging:", buf, 17)) {
+		gethelp("open_log_query", logAddr(), stdout);
+		printf("OK [y/n]? ");
+		fgets(ans, sizeof(ans), stdin);
+		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
+			char *cname = &buf[17];
+			setlog(cname);
+			return (0);
+		} else {
+			gethelp("log_abort", logAddr(), stdout);
+			return (1);
+		}
+	} else if (strneq("ask_close_logging:", buf, 18)) {
+		gethelp("close_log_query", logAddr(), stdout);
+		printf("OK [y/n]? ");
+		fgets(ans, sizeof(ans), stdin);
+		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
+			char *cname = &buf[18];
+			setlog(cname);
+			return (0);
+		} else {
+			sendConfig("config@openlogging.org");
+			return (0);
+		}
+	} else if (streq("need_seats", buf)) {
+		gethelp("seat_info", "", stdout);
+		return (1);
+	} else if (streq("commit_and_mailcfg", buf)) {
+		sendConfig("config@openlogging.org");
+		return (0);
+	} else if (streq("commit_and_maillog", buf)) {
+		return (0);
+	} else {
+		fprintf(stderr, "unknown return code <%s>\n", buf);
+		return (1);
+	}
+	
 }
 

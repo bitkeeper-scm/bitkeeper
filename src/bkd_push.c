@@ -21,9 +21,9 @@ cmd_push(int ac, char **av, int in, int out, int err)
 	pid_t	pid;
 	int	c, verbose = 1;
 	char	buf[100];
-	static	char *prs[] = { "bk", "prs", "-bhad:KEY:", "ChangeSet", 0 };
-	static	char *tp[] = { "bk", "takepatch", "-ac", "-vv", 0 };
-				    /* see verbose below   ^^ */
+	static	char *prs[] = { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
+	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
+				    /* see verbose below    ^^ */
 
 	if (!exists("BitKeeper/etc")) {
 		writen(err, "Not at project root\n");

@@ -98,6 +98,7 @@
 #define	S_GFILE		0x00000002	/* s->gfile exists as a regular file */
 #define	S_PFILE		0x00000004	/* SCCS/p.file exists */
 #define S_EDITED	(S_SFILE|S_PFILE|S_GFILE)
+#define S_LOCKED	(S_SFILE|S_PFILE)
 #define	S_ZFILE		0x00000008	/* SCCS/z.file exists */
 #define	S_SOPEN		0x00000010	/* s->sfile is open */
 #define	S_WARNED	0x00000020	/* error message already sent */
@@ -124,6 +125,9 @@
 #define	S_HASH		0x04000000	/* this file is an MDBM file */
 #define	S_FAKE_1_0	0x08000000	/* the 1.0 delta is a fake */
 #define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
+#define	S_SCCS		0x20000000	/* expand SCCS keywords */
+
+#define	S_KEYWORDS	(S_SCCS|S_RCS)	/* any sort of keyword */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
@@ -157,12 +161,17 @@
  * They are stored on disk.
  */
 #define	X_BITKEEPER	0x00000001	/* BitKeeper file, not SCCS */
-#define	X_RCSEXPAND	0x00000002	/* RCS keywords */
+#define	X_RCS		0x00000002	/* RCS keywords */
 #define	X_YEAR4		0x00000004	/* 4 digit years */
 #define	X_ISSHELL	0x00000008	/* This is a shell script */
 #define	X_EXPAND1	0x00000010	/* Expand first line of keywords only */
 #define	X_CSETMARKED	0x00000020	/* ChangeSet boundries are marked */
 #define	X_HASH		0x00000040	/* mdbm file */
+#define	X_SCCS		0x00000080	/* SCCS keywords */
+
+			/* users can change these */
+#define	X_USER		(X_RCS|X_YEAR4|X_EXPAND1|X_SCCS)
+#define	X_DEFAULTS	(X_BITKEEPER|X_SCCS|X_CSETMARKED)
 
 /*
  * Encoding flags.
@@ -180,6 +189,7 @@
 #define	BEEN_WARNED(s)	((s)->state & S_WARNED)
 #define	IS_WRITABLE(s)	((s)->mode & 0200)
 #define IS_EDITED(s)	((((s)->state&S_EDITED) == S_EDITED) && IS_WRITABLE(s))
+#define IS_LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
 #define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile(s->mode))
 
 #define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)

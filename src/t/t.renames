@@ -1357,7 +1357,7 @@ then	echo Failed to leave PENDING dir
 fi
 echo OK
 echo $N Clean the edit and try the first pass of resolve ............$NL
-bk unedit $Q A
+unedit $Q A
 takepatch $Q -f PENDING/*
 resolve $L $Q -234
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]

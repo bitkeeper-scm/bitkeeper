@@ -536,7 +536,7 @@ void
 header(sccs *cset, int diffs)
 {
 	char	*dspec =
-		"$each(:FD:){# Project:\t(:FD:)}\n# ChangeSet ID: :LONGKEY:";
+		"$each(:FD:){# Proj:\t(:FD:)}\n# ID:\t:KEY:";
 	int	save = cset->state;
 	time_t	t = time(0);
 	char	pwd[MAXPATH];
@@ -548,11 +548,11 @@ header(sccs *cset, int diffs)
 # that BitKeeper cares about, is below these diffs.\n");
 	}
 	sccs_prsdelta(cset, cset->tree, 0, dspec, stdout);
-	printf("# User:\t\t%s\n", sccs_getuser());
-	printf("# Host:\t\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
+	printf("# User:\t%s\n", sccs_getuser());
+	printf("# Host:\t%s\n", sccs_gethost() ? sccs_gethost() : "?");
 	getcwd(pwd, sizeof(pwd));
-	printf("# Root:\t\t%s\n", pwd);
-	printf("# Date:\t\t%s", ctime(&t));
+	printf("# Root:\t%s\n", pwd);
+	printf("# Date:\t%s", ctime(&t));
 	cset->state = save;
 }
 

@@ -95,13 +95,14 @@ main(int ac, char **av)
 	int	remote = 0;
 	int	resolve = 0;
 	project	*proj = 0;
+	int	textOnly = 0;
 	int	fast = 0;	/* undocumented switch for scripts,
 				 * skips cache rebuilds on file creates */
 
 	platformSpecificInit(NULL);
 	input = "-";
 	debug_main(av);
-	while ((c = getopt(ac, av, "acFf:imqsSv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:imqsStv")) != -1) {
 		switch (c) {
 		    case 'q':
 		    case 's':
@@ -116,6 +117,7 @@ main(int ac, char **av)
 		    case 'i': newProject++; break;
 		    case 'm': mkpatch++; break;
 		    case 'S': saveDirs++; break;
+		    case 't': textOnly++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
 		}
@@ -182,7 +184,11 @@ usage:		fprintf(stderr, takepatch_help);
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		system(echo ? "bk resolve" : "bk resolve -q");
+		if (textOnly) {
+			system(echo ? "bk resolve -t" : "bk resolve -qt");
+		} else {
+			system(echo ? "bk resolve" : "bk resolve -q");
+		}
 	}
 	exit(0);
 }
@@ -216,6 +222,7 @@ extractPatch(char *name, MMAP *p, int flags, int fast, project *proj)
 	sccs	*s = 0;
 	sccs	*perfile = 0;
 	int	newFile = 0;
+	int	reallyNew = 0;
 	char	*gfile = 0;
 	int	nfound = 0, rc;
 	static	int rebuilt = 0;	/* static - do it once only */
@@ -242,7 +249,7 @@ extractPatch(char *name, MMAP *p, int flags, int fast, project *proj)
 	line++;
 	name = name2sccs(name);
 	if (strneq("New file: ", t, 10)) {
-		newFile = 1;
+		reallyNew = newFile = 1;
 		perfile = sccs_getperfile(p, &line);
 		t = mkline(mnext(p));
 		line++;
@@ -285,6 +292,7 @@ cleanup:		if (perfile) sccs_free(perfile);
 	 * new file.  But if we have a match, we want to use it.
 	 */
 	if (s) {
+		reallyNew = 0;
 		if (newFile && (echo > 3)) {
 			fprintf(stderr,
 			    "takepatch: new file %s already exists.\n", name);
@@ -356,7 +364,8 @@ cleanup:		if (perfile) sccs_free(perfile);
 	}
 	gfile = sccs2name(name);
 	if (echo>1) {
-		fprintf(stderr, "Applying %3d revisions to %s ", nfound, gfile);
+		fprintf(stderr, "Applying %3d revisions to %s%s ",
+		    nfound, reallyNew ? "new file " : "", gfile);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
 	if (patchList && tableGCA) getLocals(s, tableGCA, name);
@@ -503,7 +512,7 @@ one.  This usually means you are trying to apply a patch intended for a\n\
 different repository.  You can find the correct repository by running the\n\
 following command at the top of each repository until you get a match with\n\
 the changeset ID at the top of the patch:\n\
-    bk prs -hr1.0 -d:LONGKEY: ChangeSet\n\n", stderr);
+    bk prs -hr1.0 -d:KEY: ChangeSet\n\n", stderr);
     	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
@@ -1102,7 +1111,7 @@ initProject()
 MMAP	*
 init(char *inputFile, int flags, project **pp)
 {
-	char	buf[MAXPATH];
+	char	buf[MAXPATH];		/* used ONLY for input I/O */
 	char	*root, *t;
 	int	i, len, havexsum = 0;	/* XXX - right default? */
 	int	started = 0;
@@ -1170,6 +1179,7 @@ init(char *inputFile, int flags, project **pp)
 	 */
 	if (mkdir("RESYNC", 0775) == -1) {
 		char	file[MAXPATH];
+		char	buf2[MAXPATH];
 
 		if (errno != EEXIST) {
 			SHOUT();
@@ -1177,11 +1187,11 @@ init(char *inputFile, int flags, project **pp)
 			cleanup(0);
 		}
 
-		file[0] = buf[0] = 0;
+		file[0] = buf2[0] = 0;
 		if ((f = fopen("RESYNC/BitKeeper/tmp/pid", "r")) &&
-		    fnext(buf, f)) {
+		    fnext(buf2, f)) {
 			fclose(f);
-			chop(buf);
+			chop(buf2);
 		}
 		if ((f = fopen("RESYNC/BitKeeper/tmp/patch", "rb")) &&
 		    fnext(file, f)) {
@@ -1190,13 +1200,13 @@ init(char *inputFile, int flags, project **pp)
 		}
 
 		SHOUT();
-		if (buf[0] && file[0]) {
+		if (buf2[0] && file[0]) {
 			fprintf(stderr,
 		      "takepatch: RESYNC dir locked by pid %s for patch %s\n",
-				buf, file);
-		} else if (buf[0]) {
+				buf2, file);
+		} else if (buf2[0]) {
 			fprintf(stderr,
-			      "takepatch: RESYNC dir locked by pid %s\n", buf);
+			      "takepatch: RESYNC dir locked by pid %s\n", buf2);
 		} else {
 			fprintf(stderr, "takepatch: RESYNC dir exists\n");
 		}
@@ -1231,10 +1241,11 @@ init(char *inputFile, int flags, project **pp)
 		for (i = 1; ; i++) {				/* CSTYLED */
 			struct	tm *tm;
 			time_t	now = time(0);
+			char	buf2[100];
 
 			tm = localtime(&now);
-			strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
-			sprintf(pendingFile, "PENDING/%s.%02d", buf, i);
+			strftime(buf2, sizeof(buf2), "%Y-%m-%d", tm);
+			sprintf(pendingFile, "PENDING/%s.%02d", buf2, i);
 			if (exists(pendingFile)) continue;
 			if (f = fopen(pendingFile, "wb+")) {
 				break;
@@ -1266,6 +1277,11 @@ init(char *inputFile, int flags, project **pp)
 				} else if (streq(buf, PATCH_NOSUM)) {
 					havexsum = 0;
 					oldformat();
+				} else {
+					if (strneq("# Patch vers:", buf, 13)) {
+						fprintf(stderr,
+						    "Bad vers: %s", buf);
+					}
 				}
 			}
 

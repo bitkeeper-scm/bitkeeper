@@ -58,7 +58,7 @@ cmd_pull(int ac, char **av, int in, int out, int err)
 	/*
 	 * Get the local keys
 	 */
-	unless (f = popen("bk prs -bhad':KEY: :REV:' ChangeSet", "r")) {
+	unless (f = popen("bk prs -r1.0.. -bhad':KEY: :REV:' ChangeSet", "r")) {
 		error = -1;
 		goto out;
 	}
@@ -71,7 +71,6 @@ cmd_pull(int ac, char **av, int in, int out, int err)
 			if (first) {
 				writen(out,
 				    "Different project, root key mismatch\n");
-				fprintf(stderr, "ERROR\n");
 				goto out;
 			}
 			mdbm_store_str(me, t, "", 0);
@@ -107,7 +106,8 @@ cmd_pull(int ac, char **av, int in, int out, int err)
 	}
 	if (verbose) writen(err, 
 "\n-----------------------------------------------------------------------\n");
-	unless (doit) exit(0);
+	unless (doit) goto out;
+
 	fclose(f); f = 0;
 
 	/*

@@ -13,6 +13,8 @@
 #define	SFILE_CONFLICT	1
 #define	GFILE_CONFLICT	2
 #define	RESYNC_CONFLICT	3
+#define	LOCAL		1
+#define	REMOTE		2
 
 /* passed around everywhere to record state */
 typedef struct {
@@ -57,6 +59,15 @@ typedef struct {
 	char	*remote;
 } names;
 
+/*
+ * Used for differences other than contents or renames, i.e., perms.
+ */
+typedef struct {
+	delta	*local;
+	delta	*gca;
+	delta	*remote;
+} deltas;
+
 typedef	int (*rfunc)();
 
 /* there has to be one with "?" as the index */
@@ -95,7 +106,7 @@ typedef	struct resolve {
 } resolve;
 
 
-void	automerge(resolve *rs);
+void	automerge(resolve *rs, names *n);
 void	resolve_cleanup(opts *opts, int what);
 int	resolve_create(resolve *rs, int type);
 int	resolve_contents(resolve *rs);
@@ -121,7 +132,9 @@ int	slotTaken(opts *opts, char *slot);
 resolve	*resolve_init(opts *opts, sccs *s);
 void	resolve_free(resolve *rs);
 int	resolve_loop(char *name, resolve *rs, rfuncs *rf);
-void	rev(resolve *r, char *sfile, delta *d, char *rfile, int which);
+void	rename_delta(resolve *r, char *sfile, delta *d, char *rfile, int which);
+void	mode_delta(resolve*, char *, delta *d, mode_t, char *rfile, int which);
+void	edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which);
 int	getline(int in, char *buf, int size);
 int	prompt(char *msg, char *buf);
 int	confirm(char *msg);
@@ -131,6 +144,8 @@ char	*res_getlocal(char *gfile);
 int	res_diff(resolve *rs);
 int	res_sdiff(resolve *rs);
 int	res_difftool(resolve *rs);
+int	res_sccstool(resolve *rs);
+int	c_sccstool(resolve *rs);
 int	res_mr(resolve *rs);
 int	res_vl(resolve *rs);
 int	res_vr(resolve *rs);
@@ -140,3 +155,4 @@ int	res_quit(resolve *rs);
 int	res_clear(resolve *rs);
 int	ok_local(sccs *s, int check_pending);
 int	get_revs(resolve *rs, names *n);
+char	*mode2a(mode_t m);

@@ -29,7 +29,7 @@ echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
-if [ $P -ne 21 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -f -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
@@ -127,7 +127,7 @@ cd ..
 date > stamp
 delta $Q -i stamp
 bk commit $Q -ytime
-KEY="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
+KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 cd $HERE/copy/src
 get $Q -e h.h
 sed 's/h/qwerty/' <h.h >h.x
@@ -137,7 +137,7 @@ cd ..
 bk commit $Q -yzxcvbnm
 bk push -a $Q || { echo push w/ autopull failed; exit 1; }
 cd $HERE/project
-KEY2="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
+KEY2="`bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 echo $N Push with a conflicting upstream delta ......................$NL
@@ -148,17 +148,21 @@ mv h.x h.h
 delta $Q -yrogue h.h
 cd ..
 bk commit $Q -yrogue
-KEY="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
+KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 cd $HERE/copy
 bk push -a $Q 2> resolve.out || { echo failed; cat resolve.out; exit 1; }
-grep -q 'resolve postponed' resolve.out || { echo no conflict; cat resolve.out; exit 1; }
-KEY2="`bk prs -hd:LONGKEY: -r+ $HERE/project/ChangeSet`"
+grep -q 'unresolved conflicts, nothing is applied' resolve.out ||
+    { cat resolve.out; exit 1; }
+KEY2="`bk prs -hd:KEY: -r+ $HERE/project/ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
 echo OK
 echo $N Resolve by hand and push again ..............................$NL
-bk resolve $Q -F -f - <<EOF 2>resolve.out
+bk resolve $Q -F -t <<EOF >resolve.out 2>&1
 m
 C
+whatever
+.
+u
 EOF
 [ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
 L=`get $Q -p src/h.h | wc -l`
@@ -167,23 +171,17 @@ cd $HERE
 cp -rp project project2
 cp -rp project project3
 cd copy
-KEY="`bk prs -hd:LONGKEY: -r+ ChangeSet`"
+KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 bk push $Q || { echo failed; exit 1; }
-KEY2="`cd $HERE/project && bk prs -hd:LONGKEY: -r+ ChangeSet`"
+KEY2="`cd $HERE/project && bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
 echo OK
 if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
  echo $N Push with explicit remote parent ............................$NL
- bk push $Q localhost:$HERE/project2 || { echo failed; exit 1; }
- KEY2="`cd $HERE/project2 && bk prs -hd:LONGKEY: -r+ ChangeSet`"
- [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
- echo OK
- echo $N Bare resync with remote destination .........................$NL
- bk resync $Q -a . localhost:$HERE/project3 || { echo failed; exit 1; }
- KEY2="`cd $HERE/project3 && bk prs -hd:LONGKEY: -r+ ChangeSet`"
+ bk push -t $Q localhost:$HERE/project2 || { echo failed; exit 1; }
+ KEY2="`cd $HERE/project2 && bk prs -hd:KEY: -r+ ChangeSet`"
  [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
  echo OK
 else
  echo Push with explicit remote parent ............................skipped
- echo Bare resync with remote destination .........................skipped
 fi

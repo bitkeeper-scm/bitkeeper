@@ -42,7 +42,7 @@ RANLIB	= ranlib
 SCCSOBJ	= dirname.o filecopy.o getopt.o gettemp.o glob.o libdiff.o librange.o \
 	  libsfiles.o localtm.o mkdir.o mmap.o newrev.o popen.o purify.o      \
 	  rcs.o sccs_mv.o slib.o zgets.o unique.o finddirs.o libcommit.o \
-	  libusers.o
+	  libusers.o utils.o
 PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
 	  port/disksp.o
@@ -52,9 +52,9 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/inflate.o zlib/infblock.o zlib/inftrees.o zlib/infcodes.o \
 	  zlib/infutil.o zlib/inffast.o
 RESOBJ =  resolve.o resolve_create.o resolve_contents.o resolve_generic.o \
-	  resolve_renames.o utils.o
+	  resolve_renames.o resolve_modes.o resolve_flags.o
 BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
-	  utils.o bkd_cmdtab.o lib_tcp.o bkd.o
+	  bkd_cmdtab.o lib_tcp.o bkd.o
 BINOBJ	= $(BINS:=.o)
 BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
@@ -66,7 +66,7 @@ HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h \
 	  comments.c host.c user.c resolve.h
-SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
+SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh pull.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
 	  gui/helptool.tcl gui/mkindex.tcl oldresync.perl uuwrap.sh \
@@ -74,7 +74,7 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
 	  port/win32_platform.sh gui/renametool.tcl merge.sh \
-	  gzip_uuwrap.sh ungzip_uuwrap.sh
+	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh
 MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
 
@@ -184,7 +184,8 @@ wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
-	-@get -es $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
+	-@get -es `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1 | sort -u`
+	$(MAKE) tags
 
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
@@ -320,8 +321,8 @@ chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
-push: push.o lib_tcp.o utils.o
-	$(CC) $(CFLAGS) push.o lib_tcp.o utils.o $(LIBS) -o push
+push: push.o lib_tcp.o 
+	$(CC) $(CFLAGS) push.o lib_tcp.o $(LIBS) -o push
 logaddr: logaddr.o $(LIBS)
 	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
 setlog: setlog.o $(LIBS)
@@ -674,7 +675,7 @@ rcs.o:		rcs.c $(sccsdeps)
 sccs_mv.o:	sccs_mv.c $(sccsdeps)
 zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
 
-$(BKDOBJ):	$(commondeps) bkd.h lib_tcp.h
+utils.o $(BKDOBJ):	$(commondeps) bkd.h lib_tcp.h
 
 $(RESOBJ):	resolve.h $(commondeps)
 

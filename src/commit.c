@@ -70,24 +70,35 @@ main(int ac, char **av)
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
-		sprintf(buf, "cat %s",  commit_file);
-		system(buf);
+		cat(commit_file);
 		printf("-------------------------------------------------\n");
 		printf("Use these comments (e)dit, (a)bort, (u)se? ");
-		fgets(buf, sizeof(buf), stdin); 
+		fflush(stdout);
+		unless (getline(0, buf, sizeof(buf)) > 0) goto Abort;
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
-		    case 'u':	exit(do_commit()); break;
-		    case 'e':	sprintf(buf, "%s %s", editor, commit_file);
-				system(buf);
-				break;
-		    case 'a':	printf("Commit aborted.\n");
-				unlink(list);
-				unlink(commit_file);
-				exit (1);
+		    case 'u':
+			exit(do_commit()); break;
+		    case 'e':
+			sprintf(buf, "%s %s", editor, commit_file);
+			system(buf);
+			break;
+		    case 'a':	
+Abort:			printf("Commit aborted.\n");
+			unlink(list);
+			unlink(commit_file);
+			exit (1);
 		}
 		
 	}
+}
+
+cat(char *file)
+{
+	MMAP	*m = mopen(file, "r");
+
+	write(1, m->mmap, m->size);
+	mclose(m);
 }
 
 do_commit()
@@ -128,53 +139,6 @@ do_commit()
 	logChangeSet(d->rev);
 	sccs_free(s);
 	return(rc);
-}
-
-checkLog()
-{
-	char ans[MAXLINE], buf[MAXLINE], buf2[MAXLINE];
-	char getlog_out[MAXPATH];
-	FILE *f;
-	char *getlog(char *user);
-
-	strcpy(buf, getlog(NULL));
-	if (strneq("ask_open_logging:", buf, 17)) {
-		gethelp("open_log_query", logAddr(), stdout);
-		printf("OK [y/n]? ");
-		fgets(ans, sizeof(ans), stdin);
-		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			char *cname = &buf[17];
-			setlog(cname);
-			return (0);
-		} else {
-			gethelp("log_abort", logAddr(), stdout);
-			return (1);
-		}
-	} else if (strneq("ask_close_logging:", buf, 18)) {
-		gethelp("close_log_query", logAddr(), stdout);
-		printf("OK [y/n]? ");
-		fgets(ans, sizeof(ans), stdin);
-		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			char *cname = &buf[18];
-			setlog(cname);
-			return (0);
-		} else {
-			sendConfig("config@openlogging.org");
-			return (0);
-		}
-	} else if (streq("need_seats", buf)) {
-		gethelp("seat_info", "", stdout);
-		return (1);
-	} else if (streq("commit_and_mailcfg", buf)) {
-		sendConfig("config@openlogging.org");
-		return (0);
-	} else if (streq("commit_and_maillog", buf)) {
-		return (0);
-	} else {
-		fprintf(stderr, "unknown return code <%s>\n", buf);
-		return (1);
-	}
-	
 }
 
 checkConfig()

@@ -40,7 +40,7 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
-if [ $P -ne 21 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
 bk commit $S -f -y"This is a \"Change Set\""
@@ -48,17 +48,8 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
 cores
-echo $N Create a copy of the project ................................$NL
-cd $HERE
-bk resync $Q project copy
-bk resolve $Q copy
-if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
-cd copy
-if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
-if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
-echo OK
 echo $N Create a copy of the project with clone .....................$NL
-cd ..
+cd $HERE
 bk clone $Q project clone
 if [ ! -d clone ]; then echo failed to make top level directory; exit 1; fi
 cd clone
@@ -74,8 +65,10 @@ case "$P" in
 	exit 1
 	;;
 esac
+cd $HERE
+bk clone $Q project copy
 echo $N Should not be able to resync unrelated repositories .........$NL
-cd ..
+cd $HERE
 bk setup -f -n'BitKeeper Test repo number two' -c$HERE/c project2
 if [ ! -d project2 ]; then echo failed to make top level directory; exit 1; fi
 cd project2
@@ -129,9 +122,6 @@ cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c"; exit 1; fi
 echo OK
 cores
-# Disabled until we have the new rename code in place
-if false
-then
 echo $N Check conflict within a patch ...............................$NL
 cd $HERE/project/src
 # d.c = File 2
@@ -164,7 +154,7 @@ rm -rf $HERE/copy
 tar xf chkpoint.tar
 bk resync $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
-bk resolve $Q
+bk resolve $L $Q
 get $Q a.c b.c c.c d.c
 $ECHO "File 3" > ref.c
 cmp -s ref.c a.c
@@ -188,82 +178,121 @@ tar xf chkpoint.tar
 # b.c = File 1
 # c.c = File 4
 # d.c = File 2
+cd $HERE/project/src
+if [ "`get -qp a.c`" != "File 3" ]
+then	echo a.c is not File 3; exit 1
+fi
+if [ "`get -qp b.c`" != "File 1" ]
+then	echo b.c is not File 1; exit 1
+fi
+if [ "`get -qp c.c`" != "File 4" ]
+then	echo c.c is not File 4; exit 1
+fi
+if [ "`get -qp d.c`" != "File 2" ]
+then	echo d.c is not File 2; exit 1
+fi
 
 # For $HERE/copy, we do a circular renames w/ counter clockwise rotation
 cd  $HERE/copy/src
 # a.c = File 2
 # b.c = File 3
 # c.c = File 1
-sccsmv a.c d.c
+sccsmv a.c tmp
 sccsmv b.c a.c
 sccsmv c.c b.c
-sccsmv d.c c.c
+sccsmv tmp c.c
+if [ "`get -qp a.c`" != "File 2" ]
+then	echo a.c is not File 2; exit 1
+fi
+if [ "`get -qp b.c`" != "File 3" ]
+then	echo b.c is not File 3; exit 1
+fi
+if [ "`get -qp c.c`" != "File 1" ]
+then	echo c.c is not File 1; exit 1
+fi
 bk commit $S -y'counter clockwise'
-bk resync $HERE/project $HERE/copy
+bk resync $Q $HERE/project $HERE/copy
 cp -rp $HERE/copy $HERE/SAVE
 cd  $HERE/copy/src
-# XXX - I think this will prompt you with the original file after you move it.
-bk resolve $Q -f - << EOF 2> resolve.out
-l
-m
-C
-l
-m
-C
-l
-m
-C
+# This is completely dependent on the ordering of file processing in resolve
+# If this doesn't work, check that the files are processed in this order:
+# File 1, File 2, File 3, File 4
+bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
+r
+r
+r
+src/d.c
+u
 EOF
-cat resolve.out
-get $Q
-for i in a b c
-do	echo ------ $i.c ---------
-	cat $i.c
-done
-${ECHO} "this is b.c" > ref.c
-cmp -s ref.c a.c
-if [ $? -ne 0 ]; then echo failed: wanted b.c; cat a.c; exit 1; fi
-${ECHO} "this is c.c" > ref.c
-cmp -s ref.c b.c
-if [ $? -ne 0 ]; then echo failed: wanted c.c; cat b.c; exit 1; fi
-${ECHO} "this is a.c" > ref.c
-cmp -s ref.c c.c
-if [ $? -ne 0 ]; then echo failed: wanted a.c; cat c.c; exit 1; fi
-if [ -s resolve.out ]; then
-    echo "failed (known bug)"
-    sed -n '/:/s/^/	/p' resolve.out
-else
-    echo OK
+if [ "`get -qp a.c`" != "File 3" ]
+then	echo a.c is not File 3; exit 1
 fi
+if [ "`get -qp b.c`" != "File 1" ]
+then	echo b.c is not File 1; exit 1
 fi
-echo $N Check conflict caused by merge ..............................$NL
+if [ "`get -qp c.c`" != "File 4" ]
+then	echo c.c is not File 4; exit 1
+fi
+if [ "`get -qp d.c`" != "File 2" ]
+then	echo d.c is not File 2; exit 1
+fi
+echo OK
+echo $N Check circular rename in two work spaces - alternate ........$NL
 cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
-cd  $HERE/copy/src
-# $HERE/project have circular rename w/ clockwise rotation
+# $HERE/project already has circular rename w/ clockwise rotation
+# a.c = File 3
+# b.c = File 1
+# c.c = File 4
+# d.c = File 2
+
 # For $HERE/copy, we do a circular renames w/ counter clockwise rotation
-sccsmv SCCS/s.a.c SCCS/s.d.c
-sccsmv SCCS/s.b.c SCCS/s.a.c
-sccsmv SCCS/s.c.c SCCS/s.b.c
-sccsmv SCCS/s.d.c SCCS/s.c.c
-bk commit $S -yrename
-cd  $HERE
-(cd $HERE/project && bk cset -m1.4) | (cd $HERE/copy && bk takepatch)
 cd  $HERE/copy/src
-bk resolve $Q -f - << EOF 2>resolve.out
+# a.c = File 2
+# b.c = File 3
+# c.c = File 1
+sccsmv a.c tmp
+sccsmv b.c a.c
+sccsmv c.c b.c
+sccsmv tmp c.c
+if [ "`get -qp a.c`" != "File 2" ]
+then	echo a.c is not File 2; exit 1
+fi
+if [ "`get -qp b.c`" != "File 3" ]
+then	echo b.c is not File 3; exit 1
+fi
+if [ "`get -qp c.c`" != "File 1" ]
+then	echo c.c is not File 1; exit 1
+fi
+bk commit $S -y'counter clockwise'
+bk resync $Q $HERE/project $HERE/copy
+cp -rp $HERE/copy $HERE/SAVE
+cd  $HERE/copy/src
+# This is completely dependent on the ordering of file processing in resolve
+# If this doesn't work, check that the files are processed in this order:
+# File 1, File 2, File 3, File 4
+bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
+m
+src/junk
 l
-m
-C
-r
-m
-C
 l
-m
-C
+u
 EOF
-if [ $? -ne 1 ]; then echo failed; cat resolve.out; exit 1; fi
+if [ "`get -qp a.c`" != "File 2" ]
+then	echo a.c is not File 3; exit 1
+fi
+if [ "`get -qp junk`" != "File 1" ]
+then	echo b.c is not File 1; exit 1
+fi
+if [ "`get -qp b.c`" != "File 3" ]
+then	echo c.c is not File 4; exit 1
+fi
+if [ "`get -qp c.c`" != "File 4" ]
+then	echo d.c is not File 2; exit 1
+fi
 echo OK
+
 echo $N Check name conflict caused by rename ........................$NL
 cd $HERE/project/src
 echo "this is file gca" > g.c
@@ -273,7 +302,7 @@ cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve $L $Q $HERE/copy
 cd $HERE/copy/src
 if [ ! -f SCCS/s.g.c ]; then echo failed, no g.c; fi
 cd $HERE/project/src
@@ -286,10 +315,8 @@ ci $Q -i p.c
 sccsmv p.c r.c
 bk commit $S -yrename
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q -f - << EOF 2> resolve.out
+bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
 r
-m
-C
 EOF
 if [ $? -eq 0 ]; then echo failed; cat resolve.out; exit 1; fi
 echo OK
@@ -318,7 +345,7 @@ tar xf chkpoint.tar
 clean $HERE/copy/src
 cd $HERE/copy/src
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q
+bk resolve $L $Q $L
 admin -z $HERE/project/src/SCCS/s.f.c $HERE/copy/src/SCCS/s.a.c
 diff $HERE/project/src/SCCS/s.f.c $HERE/copy/src/SCCS/s.a.c
 if [ $? -ne 0 ]; then echo failed on f.c; exit 1; fi;
@@ -371,7 +398,7 @@ ci $Q -y bdata
 bk commit $S -Sbinary2 -ybinary2
 bk resync $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
-bk resolve $Q
+bk resolve $L $Q
 get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; fi
@@ -381,7 +408,7 @@ get $Q bdata
 cmp -s bdata $binary_data
 if [ $? -ne 0 ]; then echo failed; fi
 (cd $HERE/copy && bk cset -mbinary2) | (cd $HERE/copy2 && bk takepatch)
-bk resolve $Q $HERE/copy2
+bk resolve $L $Q $HERE/copy2
 get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed test 4; cmp bdata $binary_data2; exit 1; fi
@@ -396,8 +423,9 @@ EOF
 echo "To be deleted" > delete.c
 ci $Q -i merge.c delete.c
 bk commit $S -y"abc"
+cd $HERE/project/src
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+bk resolve $L $Q $HERE/copy
 sccsrm delete.c
 if [ ! -f "SCCS/s..del-delete.c" ]; then echo failed; exit 1; fi
 co $Q -l merge.c
@@ -412,8 +440,7 @@ mv merge.tmp merge.c
 ci $Q -y merge.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q -a -f - $HERE/copy  << EOF
-EOF
+bk resolve $L $Q -a -t $HERE/copy
 if [ ! -f "SCCS/s..del-delete.c" ]
 then	echo failed to delete delete.c;
 	pwd
@@ -431,14 +458,16 @@ if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
 echo $N Merge back up should have no conflicts ......................$NL
 cd $HERE
-bk resync $Q -a copy project 2> resolve.out
+ci $Q -yrename project/src/f.c
+bk resync $Q copy project
+bk resolve project >resolve.out 2>&1
 if [ $? -ne 0 ]
-then echo "failed (known bug)"
-     sed -n '/check:/s/^/	/p' resolve.out
-else echo OK
+then echo failed
+     cat resolve.out
 fi
+echo OK
 rm -f resolve.out
-rm -rf $HERE/project/RESYNC
+
 echo $N Test propagation of a symbol on new changeset ...............$NL
 cd $HERE/project/src
 date > symbol_test
@@ -450,6 +479,7 @@ if [ ! -f src/SCCS/s.symbol_test ]; then echo failed to send file; exit 1; fi
 grep -q 'Ssymbol test' SCCS/s.ChangeSet
 if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test propagation of a stand alone symbol "(meta delta)" .......$NL
 cd $HERE/project
 date > dummy
@@ -461,6 +491,7 @@ cd $HERE/copy
 grep -q 'Slater symbol' SCCS/s.ChangeSet
 if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test propagation of a symbol added later and unrelated data..$NL
 cd $HERE/project
 admin $Q -S'additional symbol:1.1' SCCS/s.ChangeSet
@@ -473,17 +504,19 @@ cd $HERE/copy
 grep -q 'Sadditional symbol' SCCS/s.ChangeSet
 if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N Test propagation of a symbol added later by itself ..........$NL
 cd $HERE/project
-admin $Q -S'YAsymbol:1.5' SCCS/s.ChangeSet
+admin $Q -S'YAsymbol:1.5' ChangeSet
 bk resync $Q -a $HERE/project $HERE/copy
 cd $HERE/copy
-grep -q 'SYAsymbol' SCCS/s.ChangeSet
+grep -q 'YAsymbol' SCCS/s.ChangeSet
 if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
 cores
 
 # TEST: Check for parallel work winds up losing a file
+# This is a test for the ChangeSet file weave...
 echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE
 rm -fr project copy
@@ -509,7 +542,6 @@ echo OK
 echo $N Create a copy of the project ................................$NL
 cd $HERE
 bk resync $Q project copy
-bk resolve $Q copy
 echo OK
 echo $N Commit parallel work ........................................$NL
 cd $HERE/project/src
@@ -530,20 +562,26 @@ do
         mv $i.T $i
         bk ci $Q -y $i
 done
-bk commit $S -ybc << EOF
-y
-EOF
+bk commit $S -ybc
 echo OK
-echo $N Resync project to copy, check for no disappear ..............$NL
+echo $N Resync project to copy, check for file presence in cset .....$NL
 cd $HERE
 bk resync $Q project copy 
 cd $HERE/copy
-bk resolve $Q -f - << EOF
+bk resolve $L $Q -t << EOF > resolve.out 2>&1
 m
 C
+comment for merge
+.
+u
 EOF
+if [ $? != 0 ]; then echo failed; exit 1; fi
+if [ -d RESYNC ]
+then	echo failed to finish resolve; exit 1
+fi
+# There should be anything pending
 bk pending | grep -q "aaa.c"
-if [ $? -eq 0 ]; then echo "fail: disappeared"; exit 1; fi
+if [ $? -eq 0 ]; then echo "fail: disappeared from ChangeSet"; exit 1; fi
 echo OK
 echo $N Make sure that we update gfiles appropriately ...............$NL
 cd $HERE/copy/src
@@ -575,7 +613,8 @@ EOF
 ci $Q -i overlap.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q $HERE/copy
+cd $HERE; tar cf COPY copy; cd $HERE/project/src
+bk resolve $L $Q $HERE/copy
 co $Q -l overlap.c
 sed -e"s/222/222-left/" overlap.c > overlap.tmp
 mv overlap.tmp overlap.c
@@ -589,7 +628,8 @@ mv overlap.tmp overlap.c
 ci $Q -y overlap.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
-bk resolve $Q -a $HERE/copy 2> resolve.out
-grep -q "resolve postponed" resolve.out
+cd $HERE; tar cf COPY copy; cd $HERE/project/src
+bk resolve $L $Q -a $HERE/copy 2> resolve.out
+grep -q "unresolved conflicts, nothing is applied" resolve.out
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
 echo OK

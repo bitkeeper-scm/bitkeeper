@@ -23,6 +23,9 @@ Remote: %s\n\
 		    rs->funcs[i].spec, rs->funcs[i].help);
 	}
 	fprintf(stderr, "\n");
+	fprintf(stderr, "Typical command sequence: 'm' 'e' 'C';\n");
+	fprintf(stderr, "Difficult merges may be helped by 'p'.\n");
+	fprintf(stderr, "\n");
 	return (0);
 }
 
@@ -118,8 +121,7 @@ c_quit(resolve *rs)
 	int	ret;
 	char	cmd[MAXPATH*4];
 
-	/* IS_EDITED doesn't work - XXX */
-	if (exists(sccs_Xfile(rs->s, 'p'))) {
+	if (IS_LOCKED(rs->s)) {
 		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
 		sccs_clean(rs->s, CLEAN_UNEDIT);
 	}
@@ -135,7 +137,7 @@ c_merge(resolve *rs)
 
 	sprintf(cmd, "bk %s %s %s %s %s",
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
-	unless (IS_EDITED(rs->s)) {
+	unless (IS_LOCKED(rs->s)) {
 		if (edit(rs)) return (-1);
 	}
 	ret = system(cmd) & 0xffff;
@@ -143,6 +145,7 @@ c_merge(resolve *rs)
 		unless (rs->opts->quiet) {
 			fprintf(stderr, "merge of %s OK\n", rs->s->gfile);
 		}
+		sccs_restart(rs->s);
 		return (rs->opts->advance);
 	}
 	if (ret == 0xff00) {
@@ -151,9 +154,8 @@ c_merge(resolve *rs)
 		return (0);
 	}
 	if ((ret >> 8) == 1) {
-		if (rs->opts->advance && rs->opts->force) return (1);
 		fprintf(stderr, "Conflicts during merge of %s\n", rs->s->gfile);
-		return (0);
+		return (rs->opts->force);
 	}
 	fprintf(stderr,
 	    "Merge of %s failed for unknown reasons\n", rs->s->gfile);
@@ -175,6 +177,22 @@ c_sccstool(resolve *rs)
 	av[7] = rs->revs->gca;
 	av[8] = rs->s->gfile;
 	av[9] = 0;
+	spawnvp_ex(_P_NOWAIT, "bk", av);
+	return (0);
+}
+
+int
+c_fm3tool(resolve *rs)
+{
+	char	*av[10];
+
+	av[0] = "bk";
+	av[1] = "fm3tool";
+	av[2] = rs->tnames->local;
+	av[3] = rs->tnames->gca;
+	av[4] = rs->tnames->remote;
+	av[5] = rs->s->gfile;
+	av[6] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
 	return (0);
 }
@@ -235,7 +253,9 @@ needs_merge(resolve *rs)
 int
 c_commit(resolve *rs)
 {
-	unless (exists(rs->s->gfile)) {
+	if (rs->opts->debug) fprintf(stderr, "commit(%s)\n", rs->s->gfile);
+
+	unless (exists(rs->s->gfile) && writable(rs->s->gfile)) {
 		fprintf(stderr, "%s has not been merged\n", rs->s->gfile);
 		return (0);
 	}
@@ -243,9 +263,20 @@ c_commit(resolve *rs)
 	if (rs->opts->force) goto doit;
 
 	if (needs_merge(rs)) {
-		fprintf(stderr, "%s %s\n",
-		    "The file has unresolved conflicts. ",
-		    "Use 'e' to edit the file and resolve.");
+		fprintf(stderr, 
+"\nThe file has unresolved conflicts.  These conflicts are marked in the\n\
+file like so\n\
+\n\
+	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
+	changes made by user lm in revision 1.191 of bk.sh\n\
+	some more changes by lm
+	=======\n\
+	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
+	more changes by awc
+	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
+\n\
+Use 'e' to edit the file and resolve these conflicts.\n\
+Alternatively, you use 'f' to try the graphical filemerge.\n\n");
 		return (0);
 	}
 	
@@ -260,18 +291,20 @@ doit:	if (rs->opts->textOnly) do_delta(rs->opts, rs->s);
 
 rfuncs	c_funcs[] = {
     { "?", "help", "print this help", c_help },
-    { "a", "abort", "abort the patch", res_abort },
-    { "C", "commit", "commit to the merged file", c_commit },
+    { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "cl", "clear", "clear the screen", res_clear },
+    { "C", "commit", "commit to the merged file", c_commit },
     { "d", "diff", "diff the local file against the remote file", res_diff },
     { "D", "difftool",
-      "run graphical difftool on local and remote", res_difftool },
+      "run side by side graphical difftool on local and remote", res_difftool },
     { "dl", "diff local", "diff the GCA vs local file", c_dgl },
     { "dr", "diff remote", "diff the GCA vs remote file", c_dgr },
     { "dlm", "diff local merge", "diff the local file vs merge file", c_dlm },
     { "drm", "diff remote merge", "diff the remote file vs merge file", c_drm },
     { "e", "edit merge", "edit the merge file", c_em },
     { "f", "fmtool", "merge with graphical filemerge", c_fmtool },
+    { "F", "fm3tool",
+      "merge with graphical experimental 3 way filemerge", c_fm3tool },
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "H", "helptool", "show merge help in helptool", c_helptool },
@@ -280,8 +313,8 @@ rfuncs	c_funcs[] = {
     { "q", "quit", "immediately exit resolve", c_quit },
     { "sd", "sdiff",
       "side by side diff of the local file vs. the remote file", res_sdiff },
+    { "v", "view merge", "view the merged file", c_vm },
     { "vl", "view local", "view the local file", res_vl },
-    { "v", "view merge", "view the merge file", c_vm },
     { "vr", "view remote", "view the remote file", res_vr },
     { "x", "explain", "explain the choices", c_explain },
     { 0, 0, 0, 0 }
@@ -323,9 +356,15 @@ resolve_contents(resolve *rs)
 		freenames(n, 1);
 		return (-1);
 	}
-	ret = resolve_loop("resolve_contents", rs, c_funcs);
+	if (sameFiles(n->local, n->remote)) {
+		automerge(rs, n);
+		ret = 1;
+	} else {
+		ret = resolve_loop("resolve_contents", rs, c_funcs);
+	}
 	unlink(n->local);
 	unlink(n->gca);
 	unlink(n->remote);
+	freenames(n, 1);
 	return (ret);
 }

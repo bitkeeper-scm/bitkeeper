@@ -37,17 +37,14 @@ sccs_getComments(char *file, char *rev, delta *n)
 #else
 	sig(UNBLOCK, SIGINT);
 #endif
-	while (fnext(buf2, stdin)) {
+	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		char	*t;
 
-		if (buf2[0] == '\n' || streq(buf2, ".\n"))
+		if ((buf2[0] == 0) || streq(buf2, "."))
 			break;
-		/* Null the newline */
-		for (t = buf2; *t; t++);
-		t[-1] = 0;
 		n->comments = addLine(n->comments, strdup(buf2));
 		if (rev) {
-			fprintf(stderr, "%s %s>>  ", file, rev);
+			fprintf(stderr, "%s@%s>>  ", file, rev);
 		} else {
 			fprintf(stderr, "%s>>  ", file);
 		}
@@ -70,7 +67,7 @@ sccs_getHostName(char *file, char *rev, delta *n)
 
 	assert(file);
 	if (rev) {
-		fprintf(stderr, "%s %s>>  ", file, rev);
+		fprintf(stderr, "%s@%s>>  ", file, rev);
 	} else {
 		fprintf(stderr, "%s>>  ", file);
 	}
@@ -84,12 +81,7 @@ sccs_getHostName(char *file, char *rev, delta *n)
 #else
 	sig(UNBLOCK, SIGINT);
 #endif
-	while (fnext(buf2, stdin)) {
-		char	*t;
-
-		/* Null the newline */
-		for (t = buf2; *t; t++);
-		t[-1] = 0;
+	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if (isValidHost(buf2)) {
 			n->hostname = strdup(buf2);
 			break;
@@ -115,7 +107,7 @@ sccs_getUserName(char *file, char *rev, delta *n)
 
 	assert(file);
 	if (rev) {
-		fprintf(stderr, "%s %s>>  ", file, rev);
+		fprintf(stderr, "%s@%s>>  ", file, rev);
 	} else {
 		fprintf(stderr, "%s>>  ", file);
 	}
@@ -129,7 +121,7 @@ sccs_getUserName(char *file, char *rev, delta *n)
 #else
 	sig(UNBLOCK, SIGINT);
 #endif
-	while (fnext(buf2, stdin)) {
+	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		char	*t;
 
 		/* Null the newline */

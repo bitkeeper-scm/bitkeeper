@@ -3,7 +3,6 @@
  *
  * a) pull everything out of RESYNC into RENAMES which has pending name changes
  * b) build a DBM of rootkeys true/false of all the files in the RESYNC dir
- *    (takepatch could do this and leave it in BitKeeper/tmp).
  * c) process the files in RENAMES, resolving any conflicts, and put the file
  *    in RESYNC - if there isn't a file there already.  If there is, ask if 
  *    they want to move it and if so, move it to RENAMES.
@@ -25,11 +24,16 @@
 #include "resolve.h"
 #include "comments.c"
 
+extern	char	*bin;
+
 int
 main(int ac, char **av)
 {
 	int	c;
 	static	opts opts;	/* so it is zero */
+	extern	char *bk_dir;
+
+	platformInit();
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
@@ -57,6 +61,9 @@ main(int ac, char **av)
 		    case '2': opts.pass2 = 0; break;
 		    case '3': opts.pass3 = 0; break;
 		    case '4': opts.pass4 = 0; break;
+		    default:
+		    	fprintf(stderr, "resolve: bad opt %c\n", optopt);
+			exit(1);
 		}
     	}
 	unless (opts.mergeprog) opts.mergeprog = "merge";
@@ -79,6 +86,9 @@ main(int ac, char **av)
 		opts.textOnly = 1;	/* Good idea??? */
 	}
 
+	/* for commit */
+	bk_dir = "../BitKeeper/";
+
 	c = passes(&opts);
 	return (c);
 }
@@ -91,6 +101,7 @@ passes(opts *opts)
 {
 	sccs	*s;
 	char	buf[MAXPATH];
+	char	path[MAXPATH];
 	FILE	*p;
 
 	/*
@@ -107,19 +118,25 @@ passes(opts *opts)
 		exit(0);
 	}
 
-	unless (opts->idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
-		fprintf(stderr, "resolve: can't open %s\n", IDCACHE);
-		exit(1);
+	if (exists("SCCS/s.ChangeSet")) {
+		unless (opts->idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+			fprintf(stderr, "resolve: can't open %s\n", IDCACHE);
+			exit(1);
+		}
+	} else {
+		/* fake one for new repositories */
+		opts->idDB = mdbm_open(0, 0, 0, 0);
 	}
 	opts->local_proj = sccs_initProject(0);
 	chdir(ROOT2RESYNC);
 	opts->resync_proj = sccs_initProject(0);
 
 	/*
-	 * Pass 1 - move files to RESYNC and/or build up rootDB
+	 * Pass 1 - move files to RENAMES and/or build up rootDB
 	 */
 	opts->pass = 1;
-	unless (p = popen("bk sfiles .", "r")) {
+	sprintf(buf, "%ssfiles .", bin);
+	unless (p = popen(buf, "r")) {
 		perror("popen of bk sfiles");
 		return (1);
 	}
@@ -134,21 +151,28 @@ passes(opts *opts)
 		    opts->pass1 ? "" : ": build DB for later passes");
 	}
 	while (fnext(buf, p)) {
-		if (strneq("BitKeeper/RENAMES/SCCS/s.", buf, 25)) continue;
 		chop(buf);
 		unless (s = sccs_init(buf, INIT, opts->resync_proj)) continue;
+
+		/* save the key for ALL sfiles, RESYNC and RENAMES alike */
+		sccs_sdelta(s, sccs_ino(s), path);
+		saveKey(opts, path, s->sfile);
+
+		/* If we aren't doing pass 1, just remember the key */
 		unless (opts->pass1) {
 			char	path[MAXKEY];
 
-			sccs_sdelta(s, sccs_ino(s), path);
-			saveKey(opts, path, buf);
 			sccs_free(s);
-		} else {
-			pass1_renames(opts, s);
+			continue;
 		}
+
+		/* skip stuff we've already moved */
+		if (strneq("BitKeeper/RENAMES/SCCS/s.", buf, 25)) continue;
+
+		pass1_renames(opts, s);
 	}
 	pclose(p);
-	if (opts->pass1 && !opts->quiet) {
+	if (opts->pass1 && !opts->quiet && opts->renames) {
 		fprintf(stdlog,
 		    "resolve: found %d renames in pass 1\n", opts->renames);
 	}
@@ -189,7 +213,7 @@ that will work too, it just gets another patch.\n");
 		} while (n && ((old == -1) || (n < old)));
 
 		unless (n) {
-			unless (opts->quiet) {
+			unless (opts->quiet || !opts->renames2) {
 				fprintf(stdlog,
 				    "resolve: resolved %d renames in pass 2\n",
 				    opts->renames2);
@@ -239,8 +263,8 @@ pass3:	if (opts->pass3) pass3_resolve(opts);
 /* ---------------------------- Pass1 stuff ---------------------------- */
 
 /*
- * Save the key away so we know what we have in the RESYNC directory.
- * This is called for each file in the RESYNC dir.
+ * Save the key away so we know what we have.
+ * This is called for each file in (or added to) the RESYNC dir.
  */
 void
 saveKey(opts *opts, char *key, char *file)
@@ -287,8 +311,8 @@ nameOK(opts *opts, sccs *s)
 		sccs_sdelta(s, sccs_ino(s), buf);
 		if (opts->debug) {
 		    fprintf(stderr,
-			"nameOK(%s) = pathmatch %d\n",
-			s->gfile, streq(path, buf));
+			"nameOK(%s) => paths match, keys %smatch\n",
+			s->gfile, streq(path, buf) ? "" : "don't ");
 		}
 		sccs_free(local);
 		return (streq(path, buf));
@@ -310,14 +334,16 @@ nameOK(opts *opts, sccs *s)
 		chdir(ROOT2RESYNC);
 		if (opts->debug) {
 			fprintf(stderr,
-			    "nameOK(%s) = 0 because key match\n", s->gfile);
+			    "nameOK(%s) => keys match, paths don't match\n",
+			    s->gfile);
 		}
 		return (0);
 	} else if (exists(s->gfile)) {
 		chdir(ROOT2RESYNC);
 		if (opts->debug) {
 			fprintf(stderr,
-			    "nameOK(%s) = 0 because of gfile\n", s->gfile);
+			    "nameOK(%s) => no sfile, but has local gfile\n",
+			    s->gfile);
 		}
 		return (0);
 	}
@@ -327,7 +353,7 @@ nameOK(opts *opts, sccs *s)
 }
 
 /*
- * Pass 1 - move to RENAMES and/or build up the DBM of root keys in RESYNC.
+ * Pass 1 - move to RENAMES
  */
 void
 pass1_renames(opts *opts, sccs *s)
@@ -338,8 +364,6 @@ pass1_renames(opts *opts, sccs *s)
 	char	*rfile;
 
 	if (nameOK(opts, s)) {
-		sccs_sdelta(s, sccs_ino(s), path);
-		saveKey(opts, path, s->sfile);
 		sccs_free(s);
 		return;
 	}
@@ -560,7 +584,10 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 		}
 
 		ret = resolve_create(rs, how);
-		if (opts->debug) fprintf(stderr, "resolve_create = %d\n", ret);
+		if (opts->debug) {
+			fprintf(stderr, "resolve_create = %d %s\n",
+			    ret, ret == EAGAIN ? "EAGAIN" : "");
+		}
 		if (ret == EAGAIN) goto again;
 		return (ret);
 	}
@@ -602,7 +629,6 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 		fprintf(stderr,
 		    "%s -> %s = %d\n", rs->s->gfile, rs->d->pathname, ret);
 	}
-	saveKey(opts, buf, rs->dname);
 	opts->renames2++;
 	return (ret);
 }
@@ -657,6 +683,8 @@ rename_file(resolve *rs)
 		    rs->gnames->local, rs->gnames->gca, rs->gnames->remote);
 	}
 
+	assert(!streq(rs->gnames->local, rs->gnames->remote));
+
 	/*
 	 * See if we can just slide the file into place.
 	 * If remote moved, and local didn't, ok if !slotTaken.
@@ -677,15 +705,35 @@ rename_file(resolve *rs)
 			fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, to);
 		}
 		if (rs->revs) {
+			delta	*d;
+			char	rfile[MAXPATH];
 			char	*t = strrchr(to, '/');
 
-			assert(t);
 			t[1] = 'r';
-			if (rename(sccs_Xfile(rs->s, 'r'), to)) return (-1);
-			t[1] ='s';
+			strcpy(rfile, to);
+			t[1] = 's';
+			if (rename(sccs_Xfile(rs->s, 'r'), rfile)) return (-1);
+			if (rs->opts->log) {
+				fprintf(rs->opts->log,
+				    "rename(%s, %s)\n",
+				    sccs_Xfile(rs->s, 'r'), rfile);
+			}
+			d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
+			assert(d);
+			t = name2sccs(d->pathname);
+			unless (streq(t, to)) {
+				rename_delta(rs, to, d, rfile, LOCAL);
+			}
+			free(t);
+			d = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+			assert(d);
+			t = name2sccs(d->pathname);
+			unless (streq(t, to)) {
+				rename_delta(rs, to, d, rfile, REMOTE);
+			}
+			free(t);
 		}
 		opts->renames2++;
-		saveKey(opts, rs->key, to);
 		unlink(sccs_Xfile(rs->s, 'm'));
 	    	return (0);
 	}
@@ -721,11 +769,12 @@ move_remote(resolve *rs, char *sfile)
 
 	sccs_close(rs->s);
 	if (ret = rename(rs->s->sfile, sfile)) return (ret);
+	unlink(sccs_Xfile(rs->s, 'm'));
 	if (rs->opts->resolveNames) rs->opts->renames2++;
 	if (rs->opts->log) {
 		fprintf(rs->opts->log, "rename(%s, %s)\n", rs->s->sfile, sfile);
 	}
-	saveKey(rs->opts, rs->key, sfile);
+
 	/*
 	 * If we have revs, then there is an r.file, so move it too.
 	 * And delta the tips if they need it.
@@ -744,15 +793,19 @@ move_remote(resolve *rs, char *sfile)
 		d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 		assert(d);
 		t = name2sccs(d->pathname);
-		unless (streq(t, sfile)) rev(rs, sfile, d, rfile, 1);
+		unless (streq(t, sfile)) {
+			rename_delta(rs, sfile, d, rfile, LOCAL);
+		}
 		free(t);
 		d = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
 		assert(d);
 		t = name2sccs(d->pathname);
-		unless (streq(t, sfile)) rev(rs, sfile, d, rfile, 2);
+		unless (streq(t, sfile)) {
+			rename_delta(rs, sfile, d, rfile, REMOTE);
+		}
 		free(t);
-	} else {
-		unless (streq(rs->dname, sfile)) rev(rs, sfile, rs->d, 0, 0);
+	} else unless (streq(rs->dname, sfile)) {
+		rename_delta(rs, sfile, rs->d, 0, 0);
 	}
 	/* Nota bene: *s is may be out of date */
 	return (0);
@@ -760,11 +813,121 @@ move_remote(resolve *rs, char *sfile)
 
 /*
  * Add a null rename delta to the specified tip.
- * If which is set, update the r.file with the new data.
- *	which == 1 means do local rev, 2 means do remote rev.
  */
 void
-rev(resolve *rs, char *sfile, delta *d, char *rfile, int which)
+rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
+{
+	char	*t;
+	char	buf[MAXPATH+100];
+
+	if (rs->opts->debug) {
+		fprintf(stderr, "rename(%s, %s, %s, %s)\n", sfile,
+		    d->rev, d->pathname, which == LOCAL ? "local" : "remote");
+	}
+	edit_tip(rs, sfile, d, rfile, which);
+	t = sccs2name(sfile);
+	sprintf(buf, "%sdelta %s -y'Merge rename: %s -> %s' %s",
+	    bin, rs->opts->log ? "" : "-q", d->pathname, t, sfile);
+	free(t);
+	system(buf);
+}
+
+/*
+ * Add a null permissions delta to the specified tip.
+ */
+void
+mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
+{
+	char	*a = mode2a(m);
+	char	buf[MAXPATH];
+	sccs	*s;
+
+	if (rs->opts->debug) {
+		fprintf(stderr, "mode(%s, %s, %s, %s)\n",
+		    sfile, d->rev, a, which == LOCAL ? "local" : "remote");
+	}
+	edit_tip(rs, sfile, d, rfile, which);
+	sprintf(buf, "%sdelta %s -y'Change mode to %s' -M%s %s",
+	    bin, rs->opts->log ? "" : "-q", a, a, sfile);
+	if (system(buf)) {
+		fprintf(stderr, "%s failed\n", buf);
+		exit(1);
+	}
+	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
+	sfile = buf;
+	sccs_free(rs->s);
+	s = sccs_init(sfile, INIT, rs->opts->resync_proj);
+	assert(s);
+	if (rs->opts->debug) {
+		fprintf(stderr, "mode reopens %s (%s)\n", sfile, s->gfile);
+	}
+	rs->s = s;
+	rs->d = sccs_getrev(s, "+", 0, 0);
+	assert(rs->d);
+	free(rs->dname);
+	rs->dname = name2sccs(rs->d->pathname);
+}
+
+/*
+ * Add a null flags delta to the specified tip.
+ */
+void
+flags_delta(resolve *rs,
+	char *sfile, delta *d, int flags, char *rfile, int which)
+{
+	char	buf[MAXPATH];
+	sccs	*s;
+	int	bits = flags & X_USER;
+
+	assert(bits);
+	if (rs->opts->debug) {
+		fprintf(stderr, "flags(%s, %s, 0x%x, %s)\n",
+		    sfile, d->rev, bits, which == LOCAL ? "local" : "remote");
+	}
+	edit_tip(rs, sfile, d, rfile, which);
+	sprintf(buf, "%sclean %s", bin, sfile);
+	system(buf);
+	strcpy(buf, bin);
+	strcat(buf, "admin -r");
+	strcat(buf, d->rev);
+#define	add(s)		{ strcat(buf, " -f"); strcat(buf, s); }
+#define	del(s)		{ strcat(buf, " -F"); strcat(buf, s); }
+#define	doit(f,s)	if (bits&f) add(s) else del(s)
+
+	doit(X_YEAR4, "YEAR4");
+	doit(X_RCS, "RCS");
+	doit(X_SCCS, "SCCS");
+	doit(X_EXPAND1, "EXPAND1");
+	strcat(buf, " ");
+	strcat(buf, sfile);
+	if (rs->opts->debug) fprintf(stderr, "cmd: [%s]\n", buf);
+
+	if (system(buf)) {
+		fprintf(stderr, "%s failed\n", buf);
+		exit(1);
+	}
+	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
+	sfile = buf;
+	sccs_free(rs->s);
+	s = sccs_init(sfile, INIT, rs->opts->resync_proj);
+	assert(s);
+	if (rs->opts->debug) {
+		fprintf(stderr, "flags reopens %s (%s)\n", sfile, s->gfile);
+	}
+	rs->s = s;
+	rs->d = sccs_getrev(s, "+", 0, 0);
+	assert(rs->d);
+	free(rs->dname);
+	rs->dname = name2sccs(rs->d->pathname);
+}
+
+/*
+ * Set up to add a delta to the file, such as a rename or mode delta.
+ * If which is set, update the r.file with the new data.
+ *	which == LOCAL means do local rev, REMOTE means do remote rev.
+ */
+void
+edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 {
 	char	buf[MAXPATH+100];
 	FILE	*f;
@@ -772,10 +935,11 @@ rev(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	char	*newrev;
 
 	if (rs->opts->debug) {
-		fprintf(stderr, "rev(%s %s)\n", sfile, d->rev);
+		fprintf(stderr, "edit_tip(%s %s %s)\n",
+		    sfile, d->rev, which == LOCAL ? "local" : "remote");
 	}
-	sprintf(buf, "bk get -e%s -r%s %s",
-	    rs->opts->log ? "" : "q", d->rev, sfile);
+	sprintf(buf, "%sget -e%s -r%s %s",
+	    bin, rs->opts->log ? "" : "q", d->rev, sfile);
 	system(buf);
 	if (which) {
 		t = strrchr(sfile, '/');
@@ -785,7 +949,6 @@ rev(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 		t[1] = 's';
 		fnext(buf, f);
 		fclose(f);
-		fprintf(stderr, "%s\n", buf);
 		newrev = strchr(buf, ' ');
 		newrev++;
 		t = strchr(newrev, ' ');
@@ -794,7 +957,7 @@ rev(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 		/* 0123456789012
 		 * merge deltas 1.9 1.8 1.8.1.3 lm 00/01/15 00:25:18
 		 */
-		if (which == 1) {
+		if (which == LOCAL) {
 			free(rs->revs->local);
 			rs->revs->local = strdup(newrev);
 		} else {
@@ -805,16 +968,11 @@ rev(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 		    rs->revs->local, rs->revs->gca, rs->revs->remote);
 		fclose(f);
 	}
-	t = sccs2name(sfile);
-	sprintf(buf, "bk delta %s -y'Rename: %s -> %s' %s",
-	    rs->opts->log ? "" : "-q", d->pathname, t, sfile);
-	free(t);
-	system(buf);
 }
 
 /*
  * Return 1 if the pathname in question is in use in the repository by
- * an SCCS file.  
+ * an SCCS file that is not already in the RESYNC/RENAMES dirs.
  * Return 2 if the pathname in question is in use in the repository by
  * a file without an SCCS file.
  * Return 3 if the pathname in question is in use in the RESYNC dir.
@@ -926,7 +1084,8 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * do an sfiles, open up each file, check for conflicts, and
 	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
-	unless (p = popen("bk sfiles .", "r")) {
+	sprintf(buf, "%ssfiles .", bin);
+	unless (p = popen(buf, "r")) {
 		perror("popen of sfiles");
 		exit (1);
 	}
@@ -960,7 +1119,7 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 		}
 	}
 	pclose(p);
-	unless (opts->quiet) {
+	unless (opts->quiet || !opts->resolved) {
 		fprintf(stdlog,
 		    "resolve: resolved %d conflicts in pass 3\n",
 		    opts->resolved);
@@ -991,12 +1150,15 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		edit(rs);
 		unlink(sccs_Xfile(s, 'r'));
 		resolve_free(rs);
+	} else if (exists("SCCS/p.ChangeSet")) {
+		mustCommit = 1;
 	}
 
 	/*
 	 * Since we are about to commit, clean up the r.files
 	 */
-	unless (p = popen("bk sfiles .", "r")) {
+	sprintf(buf, "%ssfiles .", bin);
+	unless (p = popen(buf, "r")) {
 		perror("popen of sfiles");
 		exit (1);
 	}
@@ -1013,8 +1175,11 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 
 	/*
 	 * Always do autocommit if there are no pending changes.
+	 * We supply a default comment because there is little point
+	 * in bothering a user for a merge.
 	 */
 	unless (!mustCommit || pending() || pendingCheckins()) {
+		unless (opts->comment) opts->comment = "Merge";
 		commit(opts);
 		return (0);
 	}
@@ -1045,7 +1210,8 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * in textonly mode, because an earlier partial run could have
 	 * been in a different mode.  So be safe.
 	 */
-	unless (p = popen("bk sfiles -c", "r")) {
+	sprintf(buf, "%ssfiles -c", bin);
+	unless (p = popen(buf, "r")) {
 		perror("popen of find");
 		exit (1);
 	}
@@ -1054,12 +1220,22 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		open_and_delta(opts, buf);
 	}
 	pclose(p);
+	
 	if (opts->errors) {
 		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		exit(1);
 	}
 
-	commit(opts);
+	sprintf(buf, "%ssfiles -C", bin);
+	unless (p = popen(buf, "r")) {
+		perror("popen of find");
+		exit (1);
+	}
+	n = 0;
+	while (fnext(buf, p)) n++;
+	pclose(p);
+
+	if (n) commit(opts);
 
 	return (0);
 }
@@ -1085,16 +1261,50 @@ do_delta(opts *opts, sccs *s)
 
 /*
  * Merge a conflict, manually or automatically.
+ * We handle permission conflicts here as well.
+ *
+ * XXX - we need to handle flags, descriptive text, and symbols.
+ * The symbol case is weird: a conflict is when the same symbol name
+ * is in both branches without one below the trunk.
  */
 void
 conflict(opts *opts, char *sfile)
 {
 	sccs	*s;
+	delta	*l, *r, *g;
 	resolve	*rs;
+	deltas	d;
 	
 	s = sccs_init(sfile, INIT, opts->resync_proj);
 	rs = resolve_init(opts, s);
 	assert(streq(rs->dname, s->sfile));
+
+	d.local = sccs_getrev(s, rs->revs->local, 0, 0);
+	d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
+	d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
+	/*
+	 * The smart programmer will notice that the case where both sides
+	 * changed the mode to same thing is just silently merged below.
+	 *
+	 * The annoyed programmer will note that the mode resolver may
+	 * replace the sccs pointer.
+	 */
+	unless (d.local->mode == d.remote->mode) {
+		rs->opaque = (void*)&d;
+		resolve_modes(rs);
+		s = rs->s;
+		if (opts->errors) return;
+	}
+
+	/*
+	 * Merge changes to the flags (RCS/SCCS/EXPAND1/etc).
+	 */
+	unless (sccs_getxflags(d.local) == sccs_getxflags(d.remote)) {
+		rs->opaque = (void*)&d;
+		resolve_flags(rs);
+		s = rs->s;
+		if (opts->errors) return;
+	}
 
 	if (opts->debug) {
 		fprintf(stderr, "Conflict: %s: %s %s %s\n",
@@ -1109,12 +1319,13 @@ conflict(opts *opts, char *sfile)
 		return;
 	}
 
-	gotComment = 0; comment = 0;
 	if (opts->automerge) {
-		automerge(rs);
+		automerge(rs, 0);
+		resolve_free(rs);
 		return;
 	}
 	resolve_contents(rs);
+	resolve_free(rs);
 }
 
 int
@@ -1141,24 +1352,31 @@ get_revs(resolve *rs, names *n)
  * Try to automerge.
  */
 void
-automerge(resolve *rs)
+automerge(resolve *rs, names *n)
 {
 	char	cmd[MAXPATH*4];
 	int	ret;
 	char	*name = basenm(rs->d->pathname);
 	names	tmp;
+	int	do_free = 0;
 	int	flags;
 	
-	sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
-	tmp.local = strdup(cmd);
-	sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->gca);
-	tmp.gca = strdup(cmd);
-	sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->remote);
-	tmp.remote = strdup(cmd);
-	if (get_revs(rs, &tmp)) {
-		rs->opts->errors = 1;
-		freenames(&tmp, 0);
-		return;
+	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
+
+	unless (n) {
+		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
+		tmp.local = strdup(cmd);
+		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->gca);
+		tmp.gca = strdup(cmd);
+		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->remote);
+		tmp.remote = strdup(cmd);
+		if (get_revs(rs, &tmp)) {
+			rs->opts->errors = 1;
+			freenames(&tmp, 0);
+			return;
+		}
+		n = &tmp;
+		do_free = 1;
 	}
 
 	/*
@@ -1167,18 +1385,21 @@ automerge(resolve *rs)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	sprintf(cmd, "bk %s %s %s %s %s",
-	    rs->opts->mergeprog, tmp.local, tmp.gca, tmp.remote, rs->s->gfile);
+	sprintf(cmd, "%s%s %s %s %s %s", bin,
+	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
 	ret = system(cmd) & 0xffff;
-	unlink(tmp.local);
-	unlink(tmp.gca);
-	unlink(tmp.remote);
-	freenames(&tmp, 0);
+	if (do_free) {
+		unlink(tmp.local);
+		unlink(tmp.gca);
+		unlink(tmp.remote);
+		freenames(&tmp, 0);
+	}
 	if (ret == 0) {
 		delta	*d;
 
-		if (rs->opts->verbose) {
-			fprintf(stderr, "automerge of %s OK\n", rs->s->gfile);
+		unless (rs->opts->quiet) {
+			fprintf(stderr,
+			    "Content merge of %s OK\n", rs->s->gfile);
 		}
 		if (edit(rs)) return;
 		comment = "Auto merged";
@@ -1266,9 +1487,13 @@ pendingRenames()
 int
 pending()
 {
-	FILE	*f = popen("bk sfiles -C", "r");
-	int	ret = fgetc(f) != EOF;
+	char	buf[MAXPATH];
+	FILE	*f;
+	int	ret;
 
+	sprintf(buf, "%ssfiles -C", bin);
+	f = popen(buf, "r");
+	ret = fgetc(f) != EOF;
 	pclose(f);
 	return (ret);
 }
@@ -1279,11 +1504,16 @@ pending()
 int
 pendingCheckins()
 {
-	FILE	*f = popen("bk sfiles -c", "r");
 	char	buf[MAXPATH];
+	FILE	*f;
+	int	ret;
+
+	sprintf(buf, "%ssfiles -c", bin);
+	f = popen(buf, "r");
 
 	while (fnext(buf, f)) {
 		chop(buf);
+		/* Huh? */
 		if (streq("SCCS/s.ChangeSet", buf)) continue;
 		pclose(f);
 		return (1);
@@ -1303,8 +1533,13 @@ commit(opts *opts)
 	int	ret;
 	char	*s = malloc(100 + (opts->comment ? strlen(opts->comment) : 0));
 
-	sprintf(s, "bk commit -RFf%s %s%s",
-	    opts->quiet ? "s" : "",
+	if (checkLog()) {
+		fprintf(stderr, "Commit aborted, no changes applied");
+		exit(1);
+	}
+
+	sprintf(s, "%scommit -RFf%s %s%s",
+	    bin, opts->quiet ? "s" : "",
 	    opts->comment ? "-y" : "",
 	    opts->comment ? opts->comment : "");
 	if (opts->debug) fprintf(stderr, "%s\n", s);
@@ -1316,7 +1551,7 @@ commit(opts *opts)
 		exit(1);
 	}
 	ret >>= 8;
-	fprintf(stderr, "Commit exited %u\n", ret);
+	fprintf(stderr, "Commit aborted, no changes applied.\n", ret);
 	exit(1);
 }
 
@@ -1357,7 +1592,7 @@ pass4_apply(opts *opts)
 	 * once by takepatch and then once by nameOK() in pass1.
 	 */
 	chdir(RESYNC2ROOT);
-	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
+	sprintf(key, "%ssfiles %s", bin, ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		perror("popen of bk sfiles");
 		exit (1);
@@ -1371,14 +1606,14 @@ pass4_apply(opts *opts)
 			exit(1);
 		}
 		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
-			    exit(1);	/* ??? */
+			exit(1);	/* ??? */
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
 		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
 			/*
 			 * This should not happen, the repository is locked.
 			 */
-			if (IS_EDITED(l)) {
+			if (IS_EDITED(l) || IS_LOCKED(l)) {
 				fprintf(stderr,
 				    "Will not overwrite edited %s\n", l->gfile);
 				exit(1);
@@ -1405,7 +1640,7 @@ pass4_apply(opts *opts)
 	/*
 	 * Pass 4c - apply the files.
 	 */
-	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
+	sprintf(key, "%ssfiles %s", bin, ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		perror("popen of bk sfiles");
 		exit (1);
@@ -1444,17 +1679,19 @@ pass4_apply(opts *opts)
 		    "resolve: applied %d files in pass 4\n", opts->applied);
 		fprintf(stdlog, "resolve: rebuilding caches...\n");
 	}
-	system("bk sfiles -r");
+	sprintf(buf, "%ssfiles -r", bin);
+	system(buf);
 	unless (opts->quiet) {
-		fprintf(stdlog, "resolve: running consistency check...\n");
+		fprintf(stderr, "running consistency check, please wait...\n");
 	}
-	unless (system("bk -r check -a") == 0) {
-		fprintf(stderr, "Failed.  Resolve not completed.\n");
+	sprintf(buf, "%ssfiles | %scheck -a -", bin, bin);
+	unless (system(buf) == 0) {
+		fprintf(stderr, "Check failed.  Resolve not completed.\n");
 		exit(1);
 	}
 	unless (opts->quiet) {
-		fprintf(stdlog,
-		    "resolve: consistency check passed, resolve complete.\n");
+		fprintf(stderr,
+		    "Consistency check passed, resolve complete.\n");
 	}
 	resolve_cleanup(opts, CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING);
 	/* NOTREACHED */

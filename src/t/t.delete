@@ -83,13 +83,15 @@ echo j > h.h
 bk ci -yj $Q h.h
 bk commit $Q -ycset2
 cd $HERE
-bk resync $Q -A project clone >resync.log 2>&1
-if [ $? -ne 0 ]; then echo failed; cat resync.log; exit 1; fi
+bk resync $Q -a project clone >resync.log 2>&1
+if [ $? -ne 1 ]; then echo failed; cat resync.log; exit 1; fi
 cd clone
 if [ ! -d RESYNC ]; then echo failed: resolved already; exit 1; fi
-bk resolve -F -f - <<EOF >resolve.out 2>&1
+bk resolve -v -l -F -t <<EOF >resolve.out 2>&1
 m
-C
+Whatever dude.
+.
+u
 EOF
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
 echo OK

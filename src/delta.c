@@ -19,6 +19,7 @@ usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
    -i		initial checkin, create a new revision history\n\
    -I<file>	use init file for meta data\n\
    -l		follow check in with a locked check out like ``get -e''\n\
+   -M<mode>	set the permissions on the new delta to <mode>\n\
    -p		print differences before prompting for comments\n\
    -q		run silently.\n\
    -S<sym>	set the symbol <sym> to be the revision created\n\
@@ -49,6 +50,7 @@ main(int ac, char **av)
 	char	*name;
 	char	**syms = 0;
 	char	*compp = 0, *encp = 0;
+	char	*mode = 0;
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
@@ -73,7 +75,7 @@ help:		fputs(delta_help, stderr);
 		return (1);
 	}
 	while ((c = getopt(ac, av,
-			   "acD:E|fg;GhI;ilm|npqRrS;suy|YZ|")) != -1) {
+			   "acD:E|fg;GhI;ilm|M;npqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;
@@ -122,6 +124,7 @@ comment:		comment = optarg;
 		    case 'G': iflags |= INIT_GTIME; break;
 		    case 'h': dflags |= DELTA_HASH; break;
 		    case 'I': initFile = optarg; break;
+		    case 'M': mode = optarg; break;
 		    case 'R': dflags |= DELTA_PATCH; break;
 		    case 'S': syms = addLine(syms, strdup(optarg)); break;
 		    case 'Y': dflags |= DELTA_DONTASK; break;
@@ -183,6 +186,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		if (dflags & DELTA_DONTASK) {
 			unless (d = getComments(0)) goto usage;
 		}
+		if (mode) d = sccs_parseArg(d, 'O', mode, 0);
 		unless (s = sccs_init(name, iflags, proj)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();

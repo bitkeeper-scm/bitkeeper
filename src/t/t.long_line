@@ -97,8 +97,7 @@ echo OK
 cores
 echo $N Create a copy of the project ................................$NL
 cd $HERE
-bk resync $Q project copy
-bk resolve $Q copy
+resync $Q project copy
 if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
 cd copy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -127,12 +126,20 @@ echo OK
 echo $N Check clone of workspace w/ long line .......................$NL
 cd $HERE/project
 bk clone $Q $HERE/project $HERE/copy2
+cd $HERE/copy2
+cset $Q -m1.0.. > ../PATCH
 mkdir $HERE/copy3
-bk resync $Q -a -E $HERE/copy2 $HERE/copy3
+cd $HERE/copy3
+takepatch -aif ../PATCH
 cd $HERE/copy2/src
 co $Q long1
 cmp -s long1 $HERE/project/src/long1.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cd $HERE/copy3/src
+co $Q long1
+cmp -s long1 $HERE/project/src/long1.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cd $HERE/copy3/src
 echo OK
 echo $N Check diffs with long line ..................................$NL
 cd $HERE/project/src
