@@ -733,25 +733,22 @@ private	struct {
 } repolog[] = {
 	{"abort", CMD_FAST_EXIT},
 	{"check", CMD_FAST_EXIT},
+	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
 	{"pull", CMD_BYTES|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"push", CMD_BYTES|CMD_RDLOCK|CMD_RDUNLOCK},
-	{"commit", CMD_WRLOCK|CMD_WRUNLOCK},
-	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
+	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote pull part1", CMD_BYTES|CMD_RDLOCK},
 	{"remote pull part2", CMD_BYTES|CMD_FAST_EXIT|CMD_RDUNLOCK},
+	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote push part1", CMD_BYTES|CMD_WRLOCK},
 	{"remote push part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
-	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK|CMD_WRUNLOCK},
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
 	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
-	/*
-	 * This is a hack because we short circuit part2 in changes.c.
-	 * It opens a tiny race.
-	 */
-	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"undo", 0},
 	{ 0, 0 },
 };
 

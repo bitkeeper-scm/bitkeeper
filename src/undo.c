@@ -188,11 +188,13 @@ err:		if (undo_list[0]) unlink(undo_list);
 	sig_default();
 
 	freeLines(fileList, free);
-	unlink(rev_list); unlink(undo_list);
+	unlink(rev_list);
+	unlink(undo_list);
 	update_log_markers(!quiet);
 	if (rc) return (rc); /* do not remove backup if check failed */
 	unlink(BACKUP_SFIO);
 	sys(RM, "-rf", "RESYNC", SYS);
+	unlink(CSETS_IN);	/* no longer valid */
 	return (rc);
 }
 

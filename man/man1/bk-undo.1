@@ -4,8 +4,7 @@
 .SH NAME
 bk undo \- Undo a changeset or set of changesets
 .SH SYNOPSIS
-.\" XXX - lm, what to do with these [] around -a and -r arguments?
-.B bk undo [\-fqsv]
+.B "bk undo [\-fqsv]"
 .Bc [
 .OPTreq \-p patch
 .B ]
@@ -15,11 +14,10 @@ bk undo \- Undo a changeset or set of changesets
 .OPTreq \-r rev
 .B ]
 .SH DESCRIPTION
-.LP
 The undo command can be used to remove any changeset or set of
 changesets.   There are options to select specific changesets or all
 changesets after some point (which is what
-.B bk clone \-r
+.B "bk clone \-r"
 uses.)
 .LP
 To undo a bk pull use bk unpull.
@@ -78,12 +76,13 @@ Do not save undone changes as a patch.
 When prompting with the list of changes to be undone be verbose and list
 not only the changes but the deltas in each file in each changeset.
 .SH "SEE ALSO"
-.LP
 .SA makepatch 1
 .SA pull 1
 .SA stripdel 1
 .SA takepatch 1
 .SA terms 1
 .SA unpull 1
+.\" stuff
+
 .SH CATEGORY
 .B Repository
