@@ -23,10 +23,10 @@ echo licsign3: $BKL_P3 >> c
 BK_HOST=bk_regression.bitkeeper.com bk setup -f -cc license
 cd license
 P=50000
-bk bkd -q -d -p$P -c1
+bk bkd -q -d -p$P -ilicense -c1
 while [ $? -eq 2 ]
 do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -c1
+	bk bkd -q -d -p$P -ilicense -c1
 done
 export BK_LICURL=bk://localhost:$P/
 bk leaseflush
