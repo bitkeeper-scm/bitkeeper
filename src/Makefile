@@ -38,7 +38,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  bkd_version.o bk.o bkusers.o check.o chksum.o \
 	  clean.o clone.o comments.o commit.o compress.o \
 	  cset.o delta.o diffs.o dirname.o export.o fdiff.o \
-	  filecopy.o find.o finddirs.o fix.o g2sccs.o \
+	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getlog.o getopt.o \
 	  gettemp.o getuser.o glob.o help.o host.o isascii.o \
 	  key2rev.o lib_tcp.o libcommit.o libdiff.o librange.o \
@@ -503,7 +503,6 @@ export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 files.o:	files.c $(H)
 filecopy.o:	filecopy.c $(H)
-finddirs.o:	finddirs.c $(H)
 fix.o:		fix.c $(H)
 g2sccs.o:	g2sccs.c $(H)
 gca.o:		gca.c $(H)
