@@ -317,7 +317,7 @@ spawn_checksum_child(void)
 	/* for Child.
 	 * Replace stdin with the read end of the pipe.
 	 */
-	sprintf(cmd, "%sadler32", getenv("BK_BIN"));
+	sprintf(cmd, "%s%s", getenv("BK_BIN"), ADLER32);
 	rc = (close)(0);
 	if (rc == -1) perror("close");
 	assert(rc != -1);

@@ -18,7 +18,7 @@ ci -i $Q BitKeeper/etc/config
 mkdir src
 cd src
 echo Baseline > regression.sh
-cat > INIT <<EOF
+${CAT} > INIT <<EOF
 D 1.1 99/08/03 11:23:13-07:00 zack@zack.bitmover.com 0 0 0/0/0
 c Baseline
 P src/regression.sh
@@ -41,7 +41,7 @@ mkdir t/SCCS
 mv SCCS/s.regression.sh t/SCCS
 cd t
 get $S -e regression.sh
-cat > INIT <<EOF
+${CAT} > INIT <<EOF
 D 1.2 99/08/07 15:46:14-07:00 lm@lm.bitmover.com 0 0 0/0/0
 c Rename: src/regression.sh -> src/t/regression.sh
 P src/t/regression.sh
@@ -51,7 +51,7 @@ delta $Q -IINIT regression.sh
 bk commit $S -yRename
 $SLEEP
 get $S -e regression.sh
-cat > INIT <<EOF
+${CAT} > INIT <<EOF
 D 1.3 99/08/07 15:48:49-07:00 lm@lm.bitmover.com 0 0 0/0/0
 c obsolete
 P src/t/regression.sh
@@ -65,7 +65,7 @@ bk -r check -a || exit 1
 cd $HERE
 cd b/src
 get $S -e regression.sh
-cat > INIT <<EOF
+${CAT} > INIT <<EOF
 D 1.2 99/08/06 11:22:32-07:00 zack@zack.bitmover.com 0 0 0/0/0
 c Don't expect gzipping a uuencoded file to fail.
 P src/regression.sh
@@ -75,7 +75,7 @@ delta $Q -IINIT regression.sh
 bk commit $S -ywhatever
 bk -r check -a || exit 1
 get $S -e regression.sh
-cat > INIT <<EOF
+${CAT} > INIT <<EOF
 D 1.3 99/08/18 01:11:42-07:00 lm@lm.bitmover 0 0 0/0/0
 c Some linger prs cleanups.
 P src/regression.sh
@@ -89,15 +89,15 @@ bk -r check -a || exit 1
 cd $HERE
 bk resync $Q a b
 cd b
-cat > R <<EOF
+${CAT} > R <<EOF
 m
 C
 EOF
-resolve $Q -f R > /dev/null
-cat > PRS <<EOF
+bk resolve $Q -f R > /dev/null
+${CAT} > PRS <<EOF
 P src/t/regression.sh
 EOF
-prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' > PRS2
+prs -hr+ src/t/SCCS/s.regression.sh | grep '^P ' | ${CAT} > PRS2
 cmp -s PRS PRS2
 if [ $? != 0 ]; then echo failed; diff PRS PRS2; exit 1; fi
 echo OK

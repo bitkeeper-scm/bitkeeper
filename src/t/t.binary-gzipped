@@ -105,7 +105,7 @@ for h in 1 2 3 4 5 6 7 8 9 0
 do for i in q w e r t y u i o p
 do for j in a s d f g h j k l
 do for k in z x c v b n m
-do	echo $h $i $j $k $i $j $k >>gzipped
+do	${ECHO} $h $i $j $k $i $j $k >>gzipped
 done
 done
 done
@@ -128,7 +128,7 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; diff SCCS/s.cmp SCCS/s.ref; e
 echo OK
 rm -f SCCS/s.cmp SCCS/s.ref
 echo $N Trying to change some gzipped data ..........$NL
-ls -l > gzipped
+${ECHO} "here is some data" > gzipped
 cp gzipped ll
 ci $Q -y gzipped
 co $Q gzipped
