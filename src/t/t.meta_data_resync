@@ -163,7 +163,6 @@ bk commit $S -yperm3
 bk resync -t $Q $HERE/project $HERE/copy
 cd $HERE
 tar cf TAR copy project
-set -x
 bk resolve -t $Q $HERE/copy 2>/dev/null 1>&2 <<EOF
 r
 u

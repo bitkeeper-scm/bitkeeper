@@ -70,6 +70,58 @@ sed "s/$KEY/$BADKEY/" < SCCS/s-ChangeSet > SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk rechksum -f ChangeSet 2>/dev/null
 cd $HERE/copy
-bk pull $Q $HERE/project 2>/dev/null
+bk pull -t $Q $HERE/project 2>/dev/null
 if [ -d RESYNC ]; then echo failed to abort the takepatch; exit 1; fi
 echo OK
+
+echo $N Check for removed file in RESYNC dir ........................$NL
+cd $HERE
+rm -rf project copy
+tar xf SAVE
+cd project
+ls > LS
+bk new $Q LS
+bk commit $Q -ywhatever
+cd ../copy
+bk resync $Q $HERE/project
+cd $HERE
+tar cf COPY copy
+cd copy
+rm RESYNC/SCCS/s.LS
+bk resolve -t $Q 2>ERRORS
+if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
+if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi
+grep -q 'ERROR: missing or corrupted file' ERRORS
+if [ $? != 0 ]
+then	echo Bad error message
+	cat ERRORS
+	exit 1
+fi
+echo OK
+
+echo $N Check for corrupted file in RESYNC dir ......................$NL
+cd $HERE
+rm -rf copy
+tar xf COPY
+cd copy
+chmod +w RESYNC/SCCS/s.LS
+echo foo >> RESYNC/SCCS/s.LS
+chmod -w RESYNC/SCCS/s.LS
+bk resolve -t $Q 2>ERRORS
+if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
+if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi
+grep -q 'bad file checksum, corrupted file' ERRORS
+if [ $? != 0 ]
+then	echo Bad error message
+	cat ERRORS
+	exit 1
+fi
+echo OK
+
+# XXX - need these
+#
+# a) do the resolve, go to apply it, and hit a b.file
+# b) same thing with a create, make sure it deletes that one
+# c) remove the b.file and run resolve again, should work
+# d) same thing as a, except force an edit and make mods in repo
+# e) same things as d, except chmod -w a directory that needs to +w

@@ -17,7 +17,7 @@ private void	dinsert(sccs *s, int flags, delta *d, int fixDate);
 private int	samebranch(delta *a, delta *b);
 private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
-private int	badcksum(sccs *s);
+private int	badcksum(sccs *s, int flags);
 private int	printstate(const serlist *state, const ser_t *slist);
 private int	whatstate(const serlist *state);
 private int	visitedstate(const serlist *state, const ser_t *slist);
@@ -3426,7 +3426,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	debug((stderr, "mapped %s for %d at 0x%x\n",
 	    s->sfile, s->size, s->mmap));
 	s->state |= S_SOPEN;
-	if (((flags&INIT_NOCKSUM) == 0) && badcksum(s)) {
+	if (((flags&INIT_NOCKSUM) == 0) && badcksum(s, flags)) {
 		return (s);
 	} else {
 		s->cksumok = 1;
@@ -5944,7 +5944,7 @@ done3:		unlink(tmpfile);
  * Return true if bad cksum
  */
 private int
-signed_badcksum(sccs *s)
+signed_badcksum(sccs *s, int flags)
 {
 	register char *t;
 	register char *end = s->mmap + s->size;
@@ -5969,9 +5969,9 @@ signed_badcksum(sccs *s)
 	if ((sum_t)sum == filesum) {
 		s->cksumok = 1;
 	} else {
-		fprintf(stderr,
+		verbose((stderr,
 		    "Bad old style checksum for %s, got %d, wanted %d\n",
-		    s->sfile, (sum_t)sum, filesum);
+		    s->sfile, (sum_t)sum, filesum));
 	}
 	debug((stderr,
 	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
@@ -5982,7 +5982,7 @@ signed_badcksum(sccs *s)
  * Return true if bad cksum
  */
 private int
-badcksum(sccs *s)
+badcksum(sccs *s, int flags)
 {
 	register u8 *t;
 	register u8 *end = s->mmap + s->size;
@@ -6011,13 +6011,13 @@ badcksum(sccs *s)
 	if ((sum_t)sum == filesum) {
 		s->cksumok = 1;
 	} else {
-		if (signed_badcksum(s)) {
-			fprintf(stderr,
+		if (signed_badcksum(s, flags)) {
+			verbose((stderr,
 			    "Bad checksum for %s, got %d, wanted %d\n",
-			    s->sfile, (sum_t)sum, filesum);
+			    s->sfile, (sum_t)sum, filesum));
 		} else {
-			fprintf(stderr,
-			    "Accepting old 7 bit checksum for %s\n", s->sfile);
+			verbose((stderr,
+			    "Accepting old 7 bit checksum for %s\n", s->sfile));
 			return (0);
 		}
 	}
@@ -6025,7 +6025,6 @@ badcksum(sccs *s)
 	    "%s has %s cksum\n", s->sfile, s->cksumok ? "OK" : "BAD"));
 	return ((sum_t)sum != filesum);
 }
-
 
 inline int
 isAscii(c)
@@ -9231,7 +9230,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", sc->cksum);
 #ifdef	DEBUG
-	badcksum(sc);
+	badcksum(sc, flags);
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
 	if (old_enc & E_GZIP) zgets_done();

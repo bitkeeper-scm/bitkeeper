@@ -432,19 +432,20 @@ _root() {
 # Make links in /usr/bin (or wherever they say).
 _links() {
 	if [ X$1 = X ]
-	then	echo usage links bindir
+	then	echo "usage: bk links bk-bin-dir [public-dir]"
+		echo "Typical is bk links /usr/libexec/bitkeeper"
 		exit 1
 	fi
 	test -x $1/bk || { echo Can not find bin directory; exit 1; }
-	BINDIR=$1
+	BK=$1
 	if [ "X$2" != X ]
-	then	DIR=$2
-	else	DIR=/usr/bin
+	then	BIN=$2
+	else	BIN=/usr/bin
 	fi
 	for i in admin get delta unget rmdel prs bk
-	do	/bin/rm -f ${DIR}/$i
-		echo "ln -s ${BINDIR}bk ${DIR}/$i"
-		ln -s ${BINDIR}bk ${DIR}/$i
+	do	/bin/rm -f $BIN/$i
+		echo "ln -s $BK/$i $BIN/$i"
+		ln -s $BK/$i $BIN/$i
 	done
 }
 

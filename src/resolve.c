@@ -156,7 +156,7 @@ passes(opts *opts)
 		fprintf(stderr,
 		    "Verifying consistency of the RESYNC tree...\n");
 	}
-	unless (sys("bk -r check -R", opts) == 0) {
+	unless (sys("bk -r check -cR", opts) == 0) {
 		fprintf(stderr, "Check failed.  Resolve not even started.\n");
 		/* XXX - better help message */
 		exit(1);
@@ -1913,7 +1913,9 @@ pass4_apply(opts *opts)
 				perror("rename");
 				fprintf(stderr, "rename(%s, %s) failed\n",
 				    buf, &buf[offset]);
-			    	/* XXX - restore? */
+				restore(save, opts);
+				unlink(orig);
+				exit(1);
 			} else {
 				opts->applied++;
 				fprintf(get, "%s\n", &buf[offset]);

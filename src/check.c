@@ -35,7 +35,7 @@ private	int	names;	/* if set, we need to fix names */
 private	int	mixed;	/* mixed short/long keys */
 private	project	*proj;
 private char	csetFile[] = CHANGESET;
-private int	flags = INIT_SAVEPROJ|INIT_NOCKSUM;
+private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
 
 #define	CTMP	"BitKeeper/tmp/ChangeSet-all"
@@ -82,7 +82,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'f': fix++; break;
-		    case 'c': flags = INIT_SAVEPROJ; break;
+		    case 'c': flags &= ~INIT_NOCKSUM; break;
 		    case 'R': resync++; break;
 		    case 'v': verbose++; break;
 		    default:
@@ -109,8 +109,14 @@ usage:		fprintf(stderr, "%s", check_help);
 	if (all) init_idcache();
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
-		s = sccs_init(name, flags, proj);
-		if (!s) continue;
+		unless (s = sccs_init(name, flags, proj)) continue;
+		unless (s->cksumok == 1) {
+			fprintf(stderr,
+			    "%s: bad file checksum, corrupted file?\n",
+			    s->sfile);
+			sccs_free(s);
+			continue;
+		}
 		if (!s->tree) {
 			if (!(s->state & S_SFILE)) {
 				fprintf(stderr, "check: %s doesn't exist.\n",
@@ -168,7 +174,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		fclose(idcache);
 		unlink(IDCACHE_LOCK);
 	}
-	if (all && checkAll(keys)) errors |= 8;
+	if ((all || resync) && checkAll(keys)) errors |= 8;
 	mdbm_close(db);
 	mdbm_close(keys);
 	mdbm_close(marks);
@@ -202,17 +208,32 @@ usage:		fprintf(stderr, "%s", check_help);
  * Look at the list handed in and make sure that we checked everything that
  * is in the ChangeSet file.  This will always fail if you are doing a partial
  * check.
+ *
+ * Updated for RESYNC checks.  Only check keys if they are not in repository
+ * already.
  */
 private int
 checkAll(MDBM *db)
 {
-	FILE	*keys = fopen(CTMP, "r");
+	FILE	*keys;
 	char	*t;
 	MDBM	*idDB, *goneDB;
 	MDBM	*warned = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
+	if (resync) {
+		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
+		unless (exists(buf)) goto full;
+		sprintf(buf,
+		    "bk sccscat -h %s/ChangeSet | sort | comm -13 - %s > %s.p",
+		    RESYNC2ROOT, CTMP, CTMP);
+		system(buf);
+		sprintf(buf, "%s.p", CTMP);
+		keys = fopen(buf, "r");
+	} else {
+full:		keys = fopen(CTMP, "r");
+	}
 	unless (keys) {
 		perror("checkAll");
 		exit(1);
@@ -237,6 +258,8 @@ checkAll(MDBM *db)
 	mdbm_close(idDB);
 	mdbm_close(warned);
 	if (goneDB) mdbm_close(goneDB);
+	sprintf(buf, "%s.p", CTMP);
+	unlink(buf);
 	return (found != 0);
 }
 
@@ -245,11 +268,17 @@ listFound(MDBM *db)
 {
 	kvpair	kv;
 
-	fprintf(stderr,
-	    "Check: found in ChangeSet but not found in repository:\n");
+	if (resync) {
+		fprintf(stderr,
+		    "ERROR: missing or corrupted file[s] in RESYNC:\n");
+	} else {
+		fprintf(stderr,
+		    "Check: found in ChangeSet but not found in repository:\n");
+	}
 	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
 		fprintf(stderr, "    %s\n", kv.key.dptr);
 	}
+	if (resync) return;
 	fprintf(stderr,
 	    "Add keys to BitKeeper/etc/gone if the files are gone for good.\n");
 }
@@ -587,7 +616,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	if (csetKeys.n == 0) return (errors);
 
 	/*
-	 * Go through all the deltas that were foound in the ChangeSet
+	 * Go through all the deltas that were found in the ChangeSet
 	 * hash and belong to this file.
 	 * Make sure we can find the deltas in this file.
 	 *
