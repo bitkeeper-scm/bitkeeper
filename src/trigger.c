@@ -195,6 +195,40 @@ run_bkd_pre_trigger(char **triggers, char *when, char *what, char *event)
 	return (rc);
 }
 
+/*
+ * This function is called by client side to process the TRIGGER INFO block
+ * sent by run_bkd_trigger() above
+ */
+int
+getTriggerInfoBlock(remote *r, int verbose)
+{
+	char	buf[4096];
+	int	i =0, rc = 0;
+
+	while (getline2(r, buf, sizeof(buf)) > 0) {
+		if (buf[0] == BKD_DATA) {
+			unless (i++) {
+				if (verbose) fprintf(stderr,
+"------------------------- Remote trigger message --------------------------\n"
+				);
+			}
+			if (verbose) fprintf(stderr, "%s\n", &buf[1]);
+		} else if (buf[0] == BKD_RC) {
+			rc = atoi(&buf[1]);
+			if (rc && r->trace) {
+				fprintf(stderr, "trigger failed rc=%d\n", rc);
+			}
+		}
+		if (streq(buf, "@END@")) break;
+	}
+	if (i && verbose) {
+		fprintf(stderr, 
+"---------------------------------------------------------------------------\n"
+		);
+	}
+	return (rc);
+}
+
 private int
 run_bkd_post_trigger(char **triggers, char *when, char *what, char *event)
 {
