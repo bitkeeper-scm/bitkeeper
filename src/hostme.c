@@ -4,10 +4,10 @@ typedef	struct {
 	u32	debug:1;		/* -d debug mode */
 	u32	verbose:1;		/* -q shut up */
 	int	gzip;			/* -z[level] compression */
-	char	host[MAXPATH];		/* -h<host> where to host */
-	char	project[MAXPATH];	/* -p<pname> project name */
-	char	keyfile[MAXPATH];	/* -s<keyfile> loc of identity.pub */
-	char	repository[MAXPATH];	/* -r<rname> repository name */
+	char	*host;			/* -h<host> where to host */
+	char	*project;		/* -p<pname> project name */
+	char	*keyfile;		/* -s<keyfile> loc of identity.pub */
+	char	*repository;		/* -r<rname> repository name */
 } opts;
 
 private void usage();
@@ -15,23 +15,25 @@ private void usage();
 int
 hostme_main(int ac, char **av)
 {
-	int	c, rc, debug = 0;
+	int	c, rc;
 	opts	opts;
-	char	url[] = BK_HOSTME_URL;
-	char	hostme_info[MAXPATH];
-	char	public_key[1024];
+	char	*url = BK_HOSTME_URL;
+	char	*hostme_info;
+	char	*public_key;
+	int	fd;
 	FILE	*f;
 	remote	*r;
 	MMAP	*m;
+	int	i;
 
+	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
-
 	while ((c = getopt(ac, av, "s;r;p;h;dq")) != -1) {
 		switch (c) {
-		    case 'p': strcpy(opts.project, optarg); break;
-		    case 'h': strcpy(opts.host, optarg); break;
-		    case 'r': strcpy(opts.repository, optarg); break;
-		    case 's': strcpy(opts.keyfile, optarg); break;
+		    case 'p': opts.project = strdup(optarg); break;
+		    case 'h': opts.host = strdup(optarg); break;
+		    case 'r': opts.repository = strdup(optarg); break;
+		    case 's': opts.keyfile = strdup(optarg); break;
 		    case 'd': opts.debug = 1; break;
 		    case 'q': opts.verbose = 0; break;
 		    default:
@@ -39,19 +41,30 @@ hostme_main(int ac, char **av)
 		}
 	}
 
-	if (!exists(opts.keyfile)) {
+	unless (opts.keyfile) usage();
+	unless (exists(opts.keyfile)) {
 		printf("Keyfile \'%s\' does not exists.\n", opts.keyfile);
 		usage();
 	}
 
-	unless (f = fopen(opts.keyfile, "r")) {
+	fd = open(opts.keyfile, 0, 0);
+	unless (fd >= 0) {
 		fprintf(stderr, "Could not open keyfile %s\n", opts.keyfile);
 		usage();
 	}
-	fgets(public_key, sizeof(public_key), f);
-	fclose(f);
+	unless (i = fsize(fd)) {
+		fprintf(stderr, "Bad file size for %s\n", opts.keyfile);
+		usage();
+	}
+	public_key = malloc(i + 1);
+	read(fd, public_key, i);
+	public_key[i] = 0;
+	close(fd);
 
-	gettemp(hostme_info, "hinfo");
+	unless (hostme_info = bktmp(0, "hinfo")) {
+		fprintf(stderr, "Can't allocate temp file\n");
+		usage();
+	}
 	unless (f = fopen(hostme_info, "wb")) return (1);
 
 	fprintf(f, "type=%s\n", opts.project);
@@ -67,14 +80,15 @@ hostme_main(int ac, char **av)
 	r->isSocket = 1;
 	m = mopen(hostme_info, "r");
 	assert(m);
-	rc = http_send(r, m->where, msize(m), 0,
-			"BitKeeper/hostme", HOSTME_CGI);
+	rc = http_send(r,
+	    m->where, msize(m), 0, "BitKeeper/hostme", HOSTME_CGI);
 	mclose(m);
 	skip_http_hdr(r);
 	unless (rc) rc = get_ok(r, 0, 0);
 	disconnect(r, 2);
 	if (!opts.debug) unlink(hostme_info);
 	return (rc);
+	// XXX - not freeing memory.
 }
 
 private void
