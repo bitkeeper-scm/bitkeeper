@@ -5865,7 +5865,7 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
 	assert(n);
-	slist = serialmap(scb, n, 0, 0, 0, &errp);
+	slist = serialmap(scb, n, 0, 0, &errp);
 	if (errp) {
 err:		fprintf(stderr, "an errp error\n");
 		exit(1);

@@ -118,6 +118,7 @@ rmKeys(MDBM *s)
 	int	empty = 0;
 	int	n = 0;
 	MDBM	*m = mdbm_mem();
+	MDBM	*small = mdbm_mem();
 	MDBM	*dirs = mdbm_mem();
 	MDBM	*idDB;
 	kvpair	kv;
@@ -147,6 +148,22 @@ rmKeys(MDBM *s)
 		if (isdir(kv.key.dptr)) sccs_rmEmptyDirs(kv.key.dptr);
 	}
 	mdbm_close(dirs);
+
+	verbose((stderr, "Computing short keys...\n"));
+	for (kv = mdbm_first(m); kv.key.dsize; kv = mdbm_next(m)) {
+		if (t = sccs_iskeylong(kv.key.dptr)) {
+			*t = 0;
+			if (mdbm_store_str(small, kv.key.dptr, \
+			    "", MDBM_INSERT))
+			{
+				fprintf(stderr,
+					"Duplicate short key?\nKEY: %s\n",
+					kv.key.dptr);
+				exit (1);
+			}
+			*t = '|';
+		}
+	}
 
 	verbose((stderr, "Processing ChangeSet file...\n"));
 	sys("bk", "admin", "-Znone", "SCCS/s.ChangeSet", SYS);
@@ -180,6 +197,7 @@ rmKeys(MDBM *s)
 			assert(t);
 			*t = 0;
 			if (mdbm_fetch_str(m, line)) continue;
+			if (mdbm_fetch_str(small, line)) continue;
 			if (first) {
 				fprintf(out, "\001I %u\n", ser);
 				first = 0;
@@ -192,6 +210,7 @@ rmKeys(MDBM *s)
 done:			fclose(in);
 			fclose(out);
 			mdbm_close(m);
+			mdbm_close(small);
 			debug((stderr, "%d empty deltas\n", empty));
 			return (empty);
 		}
@@ -268,6 +287,27 @@ pruneList(ser_t *list)
 	}
 }
 
+private void
+unDup(sccs *s)
+{
+	delta	*d;
+
+#define	UNDUP(field, flag, str) \
+	if (d->flags & flag) { \
+		d->field = strdup(d->field); \
+		d->flags &= ~flag; \
+	}
+
+	for (d = s->table; d; d = d->next) {
+		UNDUP(pathname, D_DUPPATH, "path");
+		UNDUP(hostname, D_DUPHOST, "host");
+		UNDUP(zone, D_DUPZONE, "zone");
+		UNDUP(csetFile, D_DUPCSETFILE, "csetFile");
+		UNDUP(symlink, D_DUPLINK, "symlink");
+	}
+#undef	UNDUP
+}
+
 /*
  * Find all the tags associated with this delta and move them to the
  * parent, if there is a parent.  Otherwise delete them.
@@ -285,7 +325,7 @@ moveTags(delta *d)
 		}
 		debug((stderr,
 		    "TAG %s moved from %s to %s\n",
-		    sym->name, d->rev, d->parent->rev));
+		    sym->symname, d->rev, d->parent->rev));
 		sym->d = d->parent;
 		d->parent->flags |= D_SYMBOLS;
 		free(sym->metad->rev);
@@ -310,7 +350,7 @@ rebuildTags(sccs *s)
 		for (sym2 = s->symbols; sym2; sym2 = sym2->next) {
 			if (sym == sym2) continue;
 			unless ((sym->d == sym2->d) &&
-			    streq(sym->name, sym2->name)) {
+			    streq(sym->symname, sym2->symname)) {
 			    	continue;
 			}
 			sym2->d = sym2->metad = 0;
@@ -450,6 +490,8 @@ private void
 pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 {
 	delta	*n;
+
+	unDup(s);
 
 	/*
 	 * Mark the empty deltas.
