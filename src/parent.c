@@ -11,6 +11,7 @@ parent_main(int ac,  char **av)
 	FILE	*f;
 	int	c, do_remove = 0, quiet = 0;
 	remote	*r;
+	char	*fp;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help parent");
@@ -68,8 +69,9 @@ parent_main(int ac,  char **av)
 				return (1);
 			}
 			unless (IsFullPath(r->path)) {
-				free(r->path);
+				fp = r->path;
 				r->path = strdup(fullname(r->path, 0));
+				free(fp);
 			}
 		}
 		if (r->host) free(r->host);
