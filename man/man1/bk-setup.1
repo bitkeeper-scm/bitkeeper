@@ -27,6 +27,11 @@ administrative purposes.
 The setup command will prompt you for a description of the package. In
 addition, you will be asked to edit a configuration file containing 
 information about your new repository.
+.LP
+A system wide default config file may be created in 
+/etc/BitKeeper/etc/config.template.  If this file is detected when 
+bk setup is run, without the -c option, it will be used as the 
+default BitKeeper/etc/config file automatically.
 .SH OPTIONS
 .if t .TP .9i
 .if n .TP 1.8i
@@ -120,5 +125,6 @@ repository, see
 .SA Howto 1
 .SA Howto-setup 1
 .SA import 1
+.SA config-etc
 .SH CATEGORY
 .B Repository
