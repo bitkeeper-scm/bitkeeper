@@ -42,14 +42,14 @@ proc dot {} \
 
 proc highlightDiffs {start stop} \
 {
-	global	diffbFont
+	global	gc
 
 	.diffs.left tag delete d
 	.diffs.right tag delete d
 	.diffs.left tag add d $start $stop
 	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -font $diffbFont
-	.diffs.right tag configure d -font $diffbFont
+	.diffs.left tag configure d -font $gc(diff,bFont)
+	.diffs.right tag configure d -font $gc(diff,bFont)
 }
 
 proc topLine {} \
@@ -60,7 +60,7 @@ proc topLine {} \
 
 proc scrollDiffs {start stop} \
 {
-	global	diffHeight
+	global	gc
 
 	# Either put the diff beginning at the top of the window (if it is
 	# too big to fit or fits exactly) or
@@ -69,8 +69,8 @@ proc scrollDiffs {start stop} \
 	set End [lindex [split $stop .] 0]
 	set size [expr $End - $Diff]
 	# Center it.
-	if {$size < $diffHeight} {
-		set j [expr $diffHeight - $size]
+	if {$size < $gc(diff,diffHeight)} {
+		set j [expr $gc(diff,diffHeight) - $size]
 		set j [expr $j / 2]
 		set i [expr $Diff - $j]
 		if {$i < 0} {
@@ -290,10 +290,10 @@ proc Page {view dir one} \
 
 proc page {w xy dir one} \
 {
-	global	diffHeight
+	global	gc
 
 	if {$xy == "yview"} {
-		set lines [expr $dir * $diffHeight]
+		set lines [expr $dir * $gc(diff,diffHeight)]
 	} else {
 		# XXX - should be width.
 		set lines 16
@@ -314,26 +314,18 @@ proc fontHeight {f} \
 
 proc computeHeight {} \
 {
-	global	diffHeight
+	global	gc
 
 	update
 	set f [fontHeight [.diffs.left cget -font]]
 	set p [winfo height .diffs.left]
-	set diffHeight [expr $p / $f]
+	set gc(diff,diffHeight) [expr $p / $f]
 }
 
 proc widgets {} \
 {
-	global	leftColor rightColor scroll diffHeight
-	global	wish tcl_platform diffbFont search
+	global	scroll wish tcl_platform search gc
 
-	set leftWidth 65
-	set rightWidth 65
-	set diffHeight 50
-	set tcolor lightseagreen
-	set leftColor orange
-	set rightColor yellow
-	set bcolor #d0d0d0
 	set search(prompt) "Search for:"
 	set search(dir) ""
 	set search(text) .menu.search
@@ -342,50 +334,63 @@ proc widgets {} \
 	set search(prev) .menu.searchPrev
 	if {$tcl_platform(platform) == "windows"} {
 		set py -2; set px 1; set bw 2
-		set diffFont {helvetica 9 roman}
-		set diffbFont {helvetica 9 roman bold}
-		set buttonFont {helvetica 9 roman bold}
-		set lFont {hevlvetica 9 roman }
+		set gc(diff,pFont) {helvetica 9 roman}
+		set gc(diff,bFont) {helvetica 9 roman bold}
+		set gc(diff,BFont) {helvetica 9 roman bold}
+		set gc(diff,lFont) {hevlvetica 9 roman }
 		set swid 20
 	} else {
 		set py 1; set px 4; set bw 2
-		set buttonFont {times 12 roman bold}
-		set diffFont {fixed 12 roman}
-		set diffbFont {fixed 12 roman bold}
-		set lFont {fixed 12 roman bold}
+		set gc(diff,bFont) {fixed 12 roman bold}
+		set gc(diff,pFont) {fixed 12 roman}
+		set gc(diff,BFont) {times 12 roman bold}
+		set gc(diff,lFont) {fixed 12 roman bold}
 		set swid 14
 	}
-	set geometry ""
-	if {[file readable ~/.difftoolrc]} {
-		source ~/.difftoolrc
-	}
+	set gc(diff,leftWidth) 65
+	set gc(diff,rightWidth) 65
+	set gc(diff,diffHeight) 50
+	set gc(diff,tColor) lightseagreen
+	set gc(diff,bColor) white
+	set gc(diff,BColor) #d0d0d0
+	set gc(diff,oColor) orange
+	set gc(diff,nColor) yellow
+	set gc(diff,statusColor) lightblue
+	set gc(diff,geometry) ""
+
+	getDefaults "diff" ".difftoolrc"
+
 	set g [wm geometry .]
-	if {("$g" == "1x1+0+0") && ("$geometry" != "")} {
-		wm geometry . $geometry
+	if {("$g" == "1x1+0+0") && ("$gc(diff,geometry)" != "")} {
+		wm geometry . $gc(diff,geometry)
 	}
 	wm title . "Diff Tool"
 
 	frame .diffs
 	    frame .diffs.status
-		label .diffs.status.l -background $leftColor \
-		    -font $lFont -relief sunken -borderwid 2
-		label .diffs.status.r -background $rightColor \
-		    -font $lFont -relief sunken -borderwid 2
+		label .diffs.status.l -background $gc(diff,oColor) \
+		    -font $gc(diff,lFont) -relief sunken -borderwid 2
+		label .diffs.status.r -background $gc(diff,nColor) \
+		    -font $gc(diff,lFont) -relief sunken -borderwid 2
 		label .diffs.status.middle \
-		    -foreground black -background lightblue \
-		    -font $lFont -wid 20 -relief sunken -borderwid 2
+		    -foreground black -background $gc(diff,statusColor) \
+		    -font $gc(diff,lFont) -wid 20 -relief sunken -borderwid 2
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
-	    text .diffs.left -width $leftWidth -height $diffHeight \
-		-bg white -state disabled -wrap none -font $diffFont \
+	    text .diffs.left -width $gc(diff,leftWidth) \
+		-height $gc(diff,diffHeight) \
+		-bg $gc(diff,bColor) -state disabled \
+		-wrap none -font $gc(diff,pFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
-	    text .diffs.right -width $rightWidth -height $diffHeight \
-		-bg white -state disabled -wrap none -font $diffFont
-	    scrollbar .diffs.xscroll -wid $swid -troughcolor $tcolor \
+	    text .diffs.right -bg $gc(diff,bColor) \
+		-height $gc(diff,diffHeight) \
+		-width $gc(diff,rightWidth) \
+		-state disabled -wrap none -font $gc(diff,pFont)
+	    scrollbar .diffs.xscroll -wid $swid -troughcolor $gc(diff,tColor) \
 		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $swid -troughcolor $tcolor \
+	    scrollbar .diffs.yscroll -wid $swid -troughcolor $gc(diff,tColor) \
 		-orient vertical -command { yscroll }
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
@@ -395,36 +400,36 @@ proc widgets {} \
 	    grid .diffs.xscroll -columnspan 3
 
 	frame .menu
-	    button .menu.prev -font $buttonFont -bg $bcolor \
+	    button .menu.prev -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Previous" -state disabled -command prev
-	    button .menu.next -font $buttonFont -bg $bcolor \
+	    button .menu.next -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Next" -state disabled -command next
-	    button .menu.quit -font $buttonFont -bg $bcolor \
+	    button .menu.quit -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command exit 
-	    button .menu.reread -font $buttonFont -bg $bcolor \
+	    button .menu.reread -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Reread" -command getFiles 
-	    button .menu.help -bg $bcolor \
+	    button .menu.help -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-font $buttonFont -text "Help" \
+		-font $gc(diff,BFont) -text "Help" \
 		-command { exec bk helptool difftool & }
-	    button .menu.dot -bg $bcolor \
+	    button .menu.dot -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-font $buttonFont -text "Current diff" \
+		-font $gc(diff,BFont) -text "Current diff" \
 		-command dot
-	    label .menu.prompt -font $buttonFont -width 12 -relief groove \
+	    label .menu.prompt -font $gc(diff,BFont) -width 12 -relief groove \
 		-textvariable search(prompt)
-	    entry $search(text) -width 20 -font $buttonFont
-	    button .menu.searchPrev -font $buttonFont -bg $bcolor \
+	    entry $search(text) -width 20 -font $gc(diff,BFont)
+	    button .menu.searchPrev -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Previous" -state disabled -command {
 			searchdir ?
 			searchnext
 		}
-	    button .menu.searchNext -font $buttonFont -bg $bcolor \
+	    button .menu.searchNext -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Next" -state disabled -command {
 			searchdir /
@@ -464,8 +469,8 @@ proc widgets {} \
 	set foo [bindtags .diffs.left]
 	computeHeight
 
-	.diffs.left tag configure diff -background $leftColor
-	.diffs.right tag configure diff -background $rightColor
+	.diffs.left tag configure diff -background $gc(diff,oColor)
+	.diffs.right tag configure diff -background $gc(diff,nColor)
 
 	keyboard_bindings
 }

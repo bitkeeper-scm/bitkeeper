@@ -373,22 +373,24 @@ setuptool: gui/setuptool.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	    gui/setuptool.tcl > setuptool
 
 helptool: gui/helptool.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/helptool.tcl > helptool
+	cat port/$(SYS)_platform.tcl gui/common.tcl gui/helptool.tcl > helptool
 
 difftool: gui/search.tcl gui/difftool.tcl port/$(SYS)_platform.tcl
-	cat gui/search.tcl port/$(SYS)_platform.tcl gui/difftool.tcl > difftool
+	cat gui/search.tcl port/$(SYS)_platform.tcl gui/common.tcl \
+	    gui/difftool.tcl > difftool
 
 csettool: gui/csettool.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/csettool.tcl > csettool
 
 renametool: gui/renametool.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/renametool.tcl > renametool
+	cat port/$(SYS)_platform.tcl gui/common.tcl \
+	    gui/renametool.tcl > renametool
 
 fmtool: gui/fmtool.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/fmtool.tcl > fmtool
+	cat port/$(SYS)_platform.tcl gui/common.tcl gui/fmtool.tcl > fmtool
 
 fm3tool: gui/fm3tool.tcl
-	cat gui/fm3tool.tcl > fm3tool
+	cat gui/common.tcl gui/fm3tool.tcl > fm3tool
 
 # Touch this and die.  --lm
 install: install-nolinks
