@@ -6,10 +6,10 @@ LD = link
 
 CPPFLAGS = 
 DEFS = -DHAVE_CONFIG_H
-CFLAGS = -O2 -G3 -Og -Oi -Oy -DWIN32 -D_WIN32 -D_MT -D_DLL -MD
+CFLAGS = -W0 -O2 -G3 -Og -Oi -Oy -DWIN32 -D_WIN32 -D_MT -D_DLL -MD
 LDFLAGS = -nologo -debug
 LIBS=msvcrt.lib oldnames.lib kernel32.lib ws2_32.lib mswsock.lib advapi32.lib user32.lib gdi32.lib comdlg32.lib winspool.lib ole32.lib ../../uwtlib/libuwt.a
-LIBOBJS = ../../../port/system.o ../../../port/spawn.o
+LIBOBJS = ../../uwtlib/libuwt.a
 
 DEFAULT_EDITOR_PROGRAM = notepad
 DIFF_PROGRAM = diff
@@ -33,7 +33,8 @@ PROGRAMS = cmp.exe diff.exe diff3.exe sdiff.exe
 all: $(PROGRAMS)
 	cp ${PROGRAMS} ../../..
 
-COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -ID:/projects/bk/src/win32/pub/diffutils -I. -I../../uwtlib -I$(srcdir) $(CFLAGS) -Fo$@
+#COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -ID:/projects/bk/src/win32/pub/diffutils -I. -I../../uwtlib -I$(srcdir) $(CFLAGS) -Fo$@
+COMPILE = $(CC) -c $(CPPFLAGS) $(DEFS) -I. -I../../uwtlib -I$(srcdir) $(CFLAGS) -Fo$@
 
 .c.o:
 	$(COMPILE) $< 
@@ -56,19 +57,19 @@ cmp_o = cmp.o cmpbuf.o error.o getopt.o getopt1.o xmalloc.o version.o $(LIBOBJS)
 cmp.exe: $(cmp_o)
 	$(LD) -out:$@ $(LDFLAGS) $(cmp_o) $(LIBS)
 
-$(diff_o): diff.h system.h
+$(diff_o): diff.h system.h config.h regex.h
 cmp.o diff3.o sdiff.o: system.h
 cmp.o diff.o diff3.o sdiff.o getopt.o getopt1.o: getopt.h
 diff.o fnmatch.o: fnmatch.h
 analyze.o cmpbuf.o cmp.o: cmpbuf.h
 
-cmp.o: cmp.c
+cmp.o: cmp.c config.h
 	$(COMPILE) -DNULL_DEVICE=\"$(NULL_DEVICE)\" $(srcdir)/cmp.c
 
 diff3.o: diff3.c
 	$(COMPILE) -DDIFF_PROGRAM=\"$(DIFF_PROGRAM)\" $(srcdir)/diff3.c
 
-sdiff.o: sdiff.c
+sdiff.o: sdiff.c config.h
 	$(COMPILE) -DDEFAULT_EDITOR_PROGRAM=\"$(DEFAULT_EDITOR_PROGRAM)\" \
 		-DDIFF_PROGRAM=\"$(DIFF_PROGRAM)\" $(srcdir)/sdiff.c
 

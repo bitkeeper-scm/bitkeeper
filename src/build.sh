@@ -35,7 +35,7 @@ case `uname -s` in
 		RANLIB="true"
 		U=win32/uwtlib
 		UWTLIB=$U/libuwt.a
-		UH1="$U/dirent.h $U/misc.h $U/re_map.h $U/wait.h"
+		UH1="$U/dirent.h $U/misc.h $U/re_map.h $U/sys/wait.h"
 		UH2="$U/stat.h $U/utsname.h $U/ftw.h $U/mman.h"
 		UH3="$U/re_map_decl.h  $U/times.h"
 		UWT_H="$UH1 $UH2 $UH3"

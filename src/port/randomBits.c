@@ -101,6 +101,7 @@ almostUnique(int harder)
 		return (val.QuadPart % 100000);
 	}
 	CoCreateGuid(&guid); /* get 128 bits unique id */
+	memmove(&h1, &(guid.Data1), sizeof (u32));
 	return (h1 % 100000);
 }
 #endif

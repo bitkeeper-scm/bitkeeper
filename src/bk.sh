@@ -283,7 +283,7 @@ _regression() {
 	done
 	shift `expr $OPTIND - 1`
 	export DO_REMOTE PREFER_RSH
-	cd "`bk bin`/t" && exec ./doit $V $X "$@"
+	cd "`bk bin`/t" && exec time ./doit $V $X "$@"
 }
 
 __init() {
