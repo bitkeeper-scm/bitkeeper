@@ -866,6 +866,7 @@ char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, char kind, char *opts, char *out);
 char	**addLine(char **space, char *line);
+int	nLines(char **space);
 void	freeLines(char **space);
 int	removeLine(char **space, char *s);
 void	removeLineN(char **space, int rm);
@@ -1146,6 +1147,7 @@ pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
 int	isCaseFoldingFS(char *root);
+void	smerge_saveseq(u32 seq);
 
 extern char *bk_vers;
 extern char *bk_utc;

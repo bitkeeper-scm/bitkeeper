@@ -375,15 +375,27 @@ addLine(char **space, char *line)
 	return (space);
 }
 
+/* return number of lines in array */
+int
+nLines(char **space)
+{
+	int	i;
+
+	if (addLine_lastp == space) {
+		i = addLine_lasti;
+	} else {
+		EACH(space);
+	}
+	return (i-1);
+}
+
 void
 sortLines(char **space)
 {
-	int	i;
 	int	string_sort(const void *a, const void *b);
 
 	if (!space) return;
-	EACH(space);
-	qsort((void*)&space[1], i-1, sizeof(char*), string_sort);
+	qsort((void*)&space[1], nLines(space), sizeof(char*), string_sort);
 }
 
 void
@@ -6641,11 +6653,10 @@ out:			if (slist) free(slist);
 				for (e = buf; *e != '\n'; sum += *e++);
 				sum += '\n';
 			}
+			if (flags&GET_SEQ) smerge_saveseq(seq);
 			if ((flags & GET_PREFIX) && (flags & GET_ALIGN)) {
 				delta *tmp = sfind(s, (ser_t) print);
 
-				if (flags&GET_SEQ)
-					fprintf(out, "%6d ", seq);
 				if (flags&(GET_MODNAME|GET_FULLPATH))
 					fprintf(out, "%s ", base);
 				if (flags&GET_PREFIXDATE)
@@ -6662,8 +6673,6 @@ out:			if (slist) free(slist);
 			} else if (flags & GET_PREFIX) {
 				delta *tmp = sfind(s, (ser_t) print);
 
-				if (flags&GET_SEQ)
-					fprintf(out, "%6d\t", seq);
 				if (flags&(GET_MODNAME|GET_FULLPATH))
 					fprintf(out, "%s\t", base);
 				if (flags&GET_PREFIXDATE)
