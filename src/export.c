@@ -89,6 +89,7 @@ usage:			fprintf(stderr,
 	while (fgets(buf, sizeof(buf), f)) {
 		char	*t, output[MAXPATH];
 		int	flags = 0;
+		struct	stat sb;
 
 		chop(buf);
 		p = strchr(buf, '@');
@@ -128,7 +129,13 @@ usage:			fprintf(stderr,
 			fprintf(stderr, "cannot export to %s\n", output);
 		}
 		sccs_free(s);
-		if (wflag) chmod(output, 0644);
+		if (wflag) {
+			if (stat(output, &sb)) {
+				perror(output);
+			} else {
+				chmod(output, sb.st_mode | S_IWUSR);
+			}
+		}
 	}
 	fclose(f);
 	unlink(file_rev);
