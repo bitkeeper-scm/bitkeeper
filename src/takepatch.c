@@ -941,7 +941,7 @@ getLocals(sccs *s, delta *g, char *name)
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
 		unless (t = fopen(tmpf, "wb")) {
 			perror(tmpf);
-			exit(0);
+			exit(1);
 		}
 		s->rstart = s->rstop = d;
 		sccs_restart(s);

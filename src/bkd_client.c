@@ -248,6 +248,7 @@ bkd(int compress, remote *r, int *sock)
 	switch (p = fork()) {
 	    case -1: perror("fork"); return (-1);
 	    case 0:
+		setsid();
 		close(0);
 		dup(inout[1]);
 		close(1);
@@ -255,7 +256,7 @@ bkd(int compress, remote *r, int *sock)
 	    	execvp(cmd[0], cmd);
 		exit(1);
 	    default:
-		signal(SIGCHLD, SIG_IGN);
+		signal(SIGCHLD, SIG_DFL);
 		close(inout[1]);
 		*sock = inout[0];
 	    	return (p);
@@ -268,10 +269,10 @@ bkd_reap(pid_t resync, int sock)
 	int	i;
 
 	close(sock);
-	if (resync) {
+	if (resync > 0) {
 		kill(resync, SIGTERM);
 		for (i = 0; i < 100; ++i) {
-			if (waitpid(resync, 0, WNOHANG)) break;
+			if (waitpid(resync, 0, WNOHANG) == resync) return;
 			usleep(10000);
 		}
 		kill(resync, SIGKILL);

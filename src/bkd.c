@@ -84,7 +84,7 @@ bkd_server()
 		if (fork()) {
 		    	close(n);
 			/* reap 'em if you got 'em */
-			waitpid((pid_t)-1, 0, WNOHANG);
+			reap(0);
 			continue;
 		}
 
