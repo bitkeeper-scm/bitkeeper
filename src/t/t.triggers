@@ -43,6 +43,14 @@ grep -q BK_STATUS=OK $HERE/post-commit || {
 	cat $HERE/post-commit
 	exit 1
 }
+grep -q "pre-commit returns 0" BitKeeper/log/cmd_log || {
+	echo should have logged trigger
+	exit 1
+}
+grep -q "post-commit returns 0" BitKeeper/log/cmd_log || {
+	echo should have logged trigger
+	exit 1
+}
 echo OK
 test -z "$DUMP_VARS" || {
 	echo ========== pre-commit ==========
@@ -393,6 +401,10 @@ test -d RESYNC && {
 }
 test -f $HERE/pre-resolve || {
 	echo failed to call trigger
+	exit 1
+}
+grep -q "pre-resolve returns 1" BitKeeper/log/cmd_log || {
+	echo should have logged trigger
 	exit 1
 }
 echo OK
