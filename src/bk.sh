@@ -802,7 +802,7 @@ _regression() {		# /* doc 2.0 */
 	DO_REMOTE=NO	# don't run remote by default
 	V=
 	X=
-	while getopts lsvx OPT
+	while getopts lrsvx OPT
 	do	case $OPT in
 		l)	DO_REMOTE=NO;;
 		r)	DO_REMOTE=YES;;
