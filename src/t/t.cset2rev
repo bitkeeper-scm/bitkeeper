@@ -1,0 +1,60 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2002 Wayne Scott
+# %K%
+
+echo $N Create initial repository using setup .......................$NL
+no_logging project
+echo 1 > file1
+bk new $Q file1 || exit 1
+echo 2 > file2
+bk new $Q file2
+bk commit -y1 $Q || exit 1
+bk edit $Q file1 || exit 1
+bk delta -y12 $Q file1 || exit 1
+echo 3 > file3
+bk new $Q file3
+bk commit -St2 -y2 $Q || exit 1
+bk edit $Q file2 file3
+bk delta -y233 $Q file2 file3 || exit 1
+bk commit -y3 $Q
+echo OK
+
+echo $N Check -r@ options ...........................................$NL
+x=`bk prs -r@1.2 -hd:GFILE::REV: file1 file2 file3`
+if [ "$x" != "file11.1file21.1" ]
+then	echo wrong: $x
+	bk changes -v -r1.2 | cat
+	exit 1
+fi
+x=`bk prs -r@t2 -hd:GFILE::REV: file1 file2 file3`
+if [ "$x" != "file11.2file21.1file31.1" ]
+then	echo wrong: $x
+	bk changes -v -rt2 | cat
+	exit 1
+fi
+x=`bk prs -r@1.4 -hd:GFILE::REV: file1 file2 file3`
+if [ "$x" != "file11.2file21.2file31.2" ]
+then	echo wrong: $x
+	bk changes -v -r1.4 | cat
+	exit 1
+fi
+echo OK
+
+echo $N Check -r@ range .............................................$NL
+x=`bk prs -r@1.2..@t2 -hd:GFILE::REV: file1 file2 file3`
+if [ "$x" != "file11.2file11.1file21.1" ]
+then	echo wrong: $x
+	exit 1
+fi
+echo OK

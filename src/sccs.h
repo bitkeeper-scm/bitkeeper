@@ -1142,6 +1142,7 @@ int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
 int	run_check(char *partial);
 char	*key2path(char *key, MDBM *idDB);
+void	delete_cset_cache(char *rootpath, int save);
 void	set_timestamps(sccs *s);
 
 extern char *bk_vers;

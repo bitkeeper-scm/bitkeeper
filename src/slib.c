@@ -75,6 +75,7 @@ private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s);
 private	int	parseConfig(char *buf, char **k, char **v);
+private	delta	*cset2rev(sccs *s, char *rev);
 
 private	delta	*delta_lmarker;	/* old-style log marker */
 private	delta	*delta_cmarker;	/* old-style config marker */
@@ -2242,6 +2243,12 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	if (rev) {
 		if (strchr(s, '|')) {
 			d = sccs_findKey(sc, s);
+		} else if (s[0] == '@') {
+			if (CSET(sc)) {
+				d = findrev(sc, s+1);
+			} else {
+				d = cset2rev(sc, s+1);
+			}
 		} else {
 			d = findrev(sc, s);
 		}
@@ -2296,6 +2303,122 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 		}
 	}
 	return (tmp);
+}
+
+void
+delete_cset_cache(char *rootpath, int save)
+{
+	char	**files;
+	char	**keep = 0;
+	int	i;
+	char	*p;
+	char	buf[MAXPATH];
+
+	/* delete old caches here, keep newest */
+	sprintf(buf, "%s/BitKeeper/tmp", rootpath);
+	files = getdir(buf);
+	p = buf + strlen(buf);
+	*p++ = '/';
+	EACH (files) {
+		if (files[i][0] == '@') {
+			struct	stat statbuf;
+			strcpy(p, files[i]);
+			stat(buf, &statbuf);
+			/* invert time to get newest first */
+			keep = addLine(keep,
+			    aprintf("%08x %s", (u32)~statbuf.st_atime, buf));
+		}
+	}
+	freeLines(files);
+	sortLines(keep);
+	EACH (keep) {
+		if (i > save) {
+			p = strchr(keep[i], ' ');
+			unlink(p+1);
+		}
+	}
+	freeLines(keep);
+}
+
+private delta *
+cset2rev(sccs *s, char *rev)
+{
+	static	struct	stat	csetstat = {0};
+	char	*rootpath = 0;
+	char	*mpath = 0;
+	MDBM	*m = 0;
+	delta	*ret = 0;
+	char	*s_cset = 0;
+	char	*deltakey;
+	char	rootkey[MAXKEY];
+
+	unless (rootpath = sccs_root(0)) goto ret;
+
+	/*  stat cset file once per process */
+	unless (csetstat.st_mtime) {
+		s_cset = aprintf("%s/" CHANGESET, rootpath);
+		if (stat(s_cset, &csetstat)) goto ret;
+	}
+	mpath = aprintf("%s/BitKeeper/tmp/@%s", rootpath, rev);
+	if (exists(mpath) &&
+	    (m = mdbm_open(mpath, O_RDONLY, 0600, 0))) {
+		/* validate it still matches cset file */
+		char	*x;
+
+		if (!(x = mdbm_fetch_str(m, "STAT")) ||
+		    strtoul(x, &x, 16) != (unsigned long)csetstat.st_mtime ||
+		    strtoul(x, 0, 16) != (unsigned long)csetstat.st_size) {
+			mdbm_close(m);
+			unlink(mpath);
+			m = 0;
+		}
+	}
+	unless (m) {
+		sccs	*sc;
+		MDBM	*csetm;
+		char	buf[20];
+
+		/* fetch MDBM from ChangeSet */
+		unless (s_cset) s_cset = aprintf("%s/" CHANGESET, rootpath);
+		unless (sc = sccs_init(s_cset, 0, 0)) goto ret;
+		if (sccs_get(sc, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+			csetm = 0;
+		} else {
+			csetm = sc->mdbm;
+			sc->mdbm = 0;
+		}
+		sccs_free(sc);
+
+		delete_cset_cache(rootpath, 1);	/* save newest */
+
+		/* write new MDBM */
+		m = mdbm_open(mpath, O_RDWR|O_CREAT|O_TRUNC, 0666, 0);
+		unless (m) {
+			if (csetm) mdbm_close(csetm);
+			goto ret;
+		}
+		if (csetm) {
+			kvpair	kv;
+
+			EACH_KV (csetm) {
+				mdbm_store(m, kv.key, kv.val, MDBM_REPLACE);
+			}
+			mdbm_close(csetm);
+		}
+		sprintf(buf, "%lx %lx",
+		    (unsigned long)csetstat.st_mtime,
+		    (unsigned long)csetstat.st_size);
+		mdbm_store_str(m, "STAT", buf, MDBM_REPLACE);
+	}
+	sccs_sdelta(s, sccs_ino(s), rootkey);
+	deltakey = mdbm_fetch_str(m, rootkey);
+	if (deltakey) ret = sccs_findKey(s, deltakey);
+	mdbm_close(m);
+ ret:
+	if (s_cset) free(s_cset);
+	if (mpath) free(mpath);
+	if (rootpath) free(rootpath);
+	return (ret);
 }
 
 private inline int
