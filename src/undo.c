@@ -102,7 +102,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 	unlink(rev_list); unlink(undo_list);
 
 	if (streq(qflag, "") && save) {
-		printf("Patch containing these undone deltas left in %s",
+		printf("Patch containing these undone deltas left in %s\n",
 		    BK_UNDO);
 	}
 	if (streq(qflag, "")) printf("Running consistency check...\n");
