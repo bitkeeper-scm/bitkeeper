@@ -195,6 +195,13 @@ cmd_rclone_part2(int ac, char **av)
 		run_check(0, 1);
 	}
 
+	p = user_preference("checkout");
+	if (strieq(p, "edit")) {
+		sys("bk", "-Ur", "edit", "-q", SYS);
+	} else if (strieq(p, "get")) {
+		 sys("bk", "-Ur", "get", "-q", SYS);
+	}
+
 	/* restore original stderr */
 	dup2(fd2, 2); close(fd2);
 	fputc(BKD_NUL, stdout);
