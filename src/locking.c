@@ -83,7 +83,7 @@ rdlockfile(char *root, char *path)
 	assert(root);
 	assert(host);
 	sprintf(path,
-	    "%s/%s/%d@%s.lock", root, READER_LOCK_DIR, getpid(), host);
+	    "%s/%s/%u@%s.lock", root, READER_LOCK_DIR, getpid(), host);
 }
 
 /*
