@@ -76,7 +76,10 @@ expand SCCS keywords, i.e., %\fIK\fP% etc.
 display dates as 4 digit years 
 .tp
 .B EOLN_NATIVE
-use operating system's native end-of-line termination
+use the operating system's native end-of-line termination.
+EOLN_NATIVE is set to "on" by default.  To make the
+default have EOLN_NATIVE be set to "off" put eoln:unix in the
+BitKeeper/etc/config file (see bk help config-etc).
 .sp .25
 .ti -1.1i
 Flags with arguments are:
@@ -197,5 +200,6 @@ Do not depend on these options for scripts.
 .SA prs 1
 .SA tag 1
 .SA keywords
+.SA config-etc
 .SH CATEGORY
 .B Admin
