@@ -16,7 +16,7 @@ private	void	printlog(FILE *);
 private void	pdelta(delta *d, FILE *f);
 private	void	do_dspec(sccs *s, delta *d);
 private	void	sccslog(sccs *s);
-private	void	reallocDelta(delta *d);
+private	void	reallocDelta(sccs *s, delta *d);
 private	void	freelog(void);
 private	int	isBlank(char *p);
 private	char	**str2line(char **lines, char *prefix, char *str);
@@ -129,6 +129,19 @@ next:		sccs_free(s);
 }
 
 /*
+ * Compare to deltas in a way suitable for qsort.
+ */
+int
+sccs_dcmp(delta *d1, delta *d2)
+{
+	char	k1[MAXKEY], k2[MAXKEY];
+
+	sccs_sdelta(0, d1, k1);
+	sccs_sdelta(0, d2, k2);
+	return (strcmp(k2, k1));
+}
+
+/*
  * Note that these two are identical except for the d1/d2 assignment.
  */
 private	int
@@ -139,10 +152,10 @@ compar(const void *a, const void *b)
 	d1 = *((delta**)a);
 	d2 = *((delta**)b);
 	if (d2->date != d1->date) return (d2->date - d1->date);
-	unless (ChangeSet) return (strcmp(d2->pathname, d1->pathname));
+	unless (ChangeSet) return (sccs_dcmp(d1, d2));
 	if (streq(d1->pathname, GCHANGESET)) return (-1);
 	if (streq(d2->pathname, GCHANGESET)) return (1);
-	return (strcmp(d2->pathname, d1->pathname));
+	return (sccs_dcmp(d1, d2));
 }
 
 private	int
@@ -153,10 +166,10 @@ forwards(const void *a, const void *b)
 	d1 = *((delta**)b);
 	d2 = *((delta**)a);
 	if (d2->date != d1->date) return (d2->date - d1->date);
-	unless (ChangeSet) return (strcmp(d2->pathname, d1->pathname));
+	unless (ChangeSet) return (sccs_dcmp(d1, d2));
 	if (streq(d1->pathname, GCHANGESET)) return (-1);
 	if (streq(d2->pathname, GCHANGESET)) return (1);
-	return (strcmp(d2->pathname, d1->pathname));
+	return (sccs_dcmp(d1, d2));
 }
 
 private	void
@@ -257,7 +270,7 @@ pdelta(delta *d, FILE *f)
 		fprintf(f, "%s|%s\n", d->pathname, d->rev);
 		return;
 	}
-	if (streq(d->pathname, "ChangeSet")) {
+	if (d->pathname && streq(d->pathname, "ChangeSet")) {
 		indent = 0;
 	} else {
 		indent = opts.indent;
@@ -326,16 +339,8 @@ sccslog(sccs *s)
 	unless (SET(s)) {
 		if (CSET(s)) ChangeSet = 1;
 		for (d = s->table, n++; d; n++, d = d->next) {
-			if (d->zone) {
-				assert(d->zone[0]);
-				assert(d->zone[1]);
-				assert(d->zone[2]);
-				assert(d->zone[3]);
-				assert(d->zone[4]);
-				assert(d->zone[5]);
-				assert(!d->zone[6]);
-			}
 			if (opts.dspec) do_dspec(s, d);
+			unless (d->pathname) d->pathname = strdup(s->gfile);
 			unless (d->next) break;
 		}
 		if (list) {
@@ -351,7 +356,7 @@ sccslog(sccs *s)
 		if (d->flags & D_SET) {
 			if (CSET(s)) ChangeSet = 1;
 			if (opts.dspec) do_dspec(s, d);
-			reallocDelta(d);
+			reallocDelta(s, d);
 			e = d->next;
 			d->next = list;
 			list = d;
@@ -371,7 +376,7 @@ sccslog(sccs *s)
  * Put them on the list (destroying the delta table list).
  */
 private	void
-reallocDelta(delta *d)
+reallocDelta(sccs *s, delta *d)
 {
 	if (d->zone) {
 		if (d->flags & D_DUPZONE) {
@@ -383,6 +388,7 @@ reallocDelta(delta *d)
 		d->flags &= ~D_DUPPATH;
 		d->pathname = strdup(d->pathname);
 	}
+	unless (d->pathname) d->pathname = strdup(s->gfile);
 	if (d->flags & D_DUPHOST) {
 		d->flags &= ~D_DUPHOST;
 		d->hostname = strdup(d->hostname);
@@ -402,9 +408,6 @@ freelog()
 	}
 	if (sorted) free(sorted);
 }
-
-
-
 
 
 
