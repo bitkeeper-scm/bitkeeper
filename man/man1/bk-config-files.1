@@ -27,7 +27,7 @@ Automatically do a bk get
 .ARG file
 after doing a bk delta
 .ARG file .
-(Checkout in read only mode.)
+(Checkout in read-only mode.)
 .tp
 .B edit
 Automatically do a bk edit
@@ -78,7 +78,7 @@ where
 .B $HOME 
 refers to the users home directory.
 .LP
-On Microsoft Windows NT and Windows 98 systems 
+On Microsoft Windows NT and Windows 98 systems,
 .B %SystemRoot%\eProfiles\e%User%\eApplication  Data\eBitKeeper\e_bkgui 
 is the location of the config file; this path is usually
 .B c:\ewinnt\eProfiles\e%User%\eApplication\ Data\eBitKeeper\e_bkgui
@@ -92,7 +92,7 @@ as machine name, domain name, etc.
 .LP
 The 
 .B .bkgui
-file consists lines that set configuration options.
+file consists of lines that set configuration options.
 A typical configuration line looks like this:
 .ft R
 .DS
@@ -156,20 +156,20 @@ entry boxes, and text widgets showing contents of files.
 Default:\ {fixed 12 roman}
 .tp
 .B fixedBoldFont
-Bold font used to highlight things like difference within
+Bold font used to highlight text such as difference within
 lines in difftool.  Default:\ {fixed 12 roman bold}
 .tp
 .B buttonFont
 Font used in buttons.  Default:\ {times 12 roman bold}
 .tp
 .B scrollWidth
-Width of the scroll bar widget in pixels. Default:\ 12
+Width of the scrollbar widget in pixels. Default:\ 12
 in everything except 
 .B helptool
 where the default is 14.
 .tp
 .B buttonColor
-Color of button when in unselected state. Default:\ #d0d0d0
+Color of button when in an unselected state. Default:\ #d0d0d0
 .tp
 .B listBG
 Color for the help topic widget and list backgrounds
@@ -218,7 +218,7 @@ Default:\ #d9d9d9
 Color of the scrollbar troughs.  Default:\ lightblue
 .tp
 .B BG
-Background color for misc widgets not listed
+Background color for miscellaneous widgets not listed
 above. Default:\ #f0f0f0
 .tp
 .B diffHeight
@@ -266,7 +266,7 @@ Default:\ none
 Height of a merge window. Used in fmtool.
 Default 20
 .tp
-.B mergeHeight
+.B mergeWidth
 Width of a merge window. Used in fmtool.
 Default 80
 .tp
@@ -350,16 +350,25 @@ Color of the box surrounding the regular revisions.
 Default:\ darkblue
 .tp
 .B hist.revColor
-Fill color of the unselected box. Default:\ #9fb6b8
+Fill color of the unselected node. Default:\ #9fb6b8
+.tp
+.B hist.tagColor
+Fill color of tagged nodes. Default:\ #9fb6b8
 .tp
 .B hist.selectColor
 Highlight color for the selected annotated line. Default:\ #adb8f6
 .tp
 .B hist.commentHeight
-Height of the comment window above the annotated file listing. Default:\ #9fb6b8
+Height of the comment window above the annotated file listing. Default:\ 5
+.tp
+.B hist.textWidth
+Width of widget that displays the file content. Default:\ 92
+.tp
+.B hist.textHeight
+Height of widget that displays the file content. Default:\ 50
 .tp
 .B hist.showHistory
-The time period of revisions that is shown. The value needs to be a
+The time period of revisions that are shown. The value needs to be a
 valid entry for the prs -R option. Default:\ 1M
 .tp
 .B hist.dateColor

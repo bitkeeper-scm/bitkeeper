@@ -551,7 +551,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
-	global	search gc
+	global	search gc tcl_platform
 
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
@@ -579,8 +579,6 @@ proc keyboard_bindings {} \
 	bind all		<n>		next
 	bind all		<space>		next
 	bind all		<p>		prev
-	bind all		<Button-4>	prev
-	bind all		<Button-5>	next
 	bind all		<period>	dot
 	bind all		<g>		"search g"
 	bind all		<colon>		"search :"
@@ -590,7 +588,14 @@ proc keyboard_bindings {} \
 	bind all		<Control-r>	searchrecall
 	bind $search(text)	<Return>	searchstring
 	bind $search(text)	<Control-u>	searchreset
-
+	if {$tcl_platform(platform) == "windows"} {
+		bind all <MouseWheel> {
+		    if {%D < 0} { next } else { prev }
+		}
+	} else {
+		bind all <Button-4>	prev
+		bind all <Button-5>	next
+	}
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
 }

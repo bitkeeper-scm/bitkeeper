@@ -1,5 +1,7 @@
 .so bk-macros
 .TH "bk histtool" 1 20%E% "\*(BC" "\*(UM"
+
+
 .\"    =============== BitKeeper Graphical History Browser ===============
 .SH NAME
 bk histtool \- \*(BK graphical history browser
@@ -9,44 +11,44 @@ bk histtool \- \*(BK graphical history browser
 .B ]
 .SH DESCRIPTION
 .LP
-The histtool command is used to graphically browse file history.
-It may be used on any file under revision control, including the
-ChangeSet file. When no filename is given, the entire package history
-is shown.
+The histtool program is used to view the checkin comments and the graph of 
+a project or file.  Histtool may be used to view any file under revision 
+control, including the ChangeSet file. When no filename is given, 
+the entire package history is shown.
 .LP
-When the tool starts, there are two windows, the top window
+Two windows are displayed when histtool is started, the top window
 which is used to display the graph of revision history and the bottom
 window which is used to show history or differences between versions.
 .SH "HISTORY AND DIFFERENCES"
 .LP
-When the histtool starts up, the entire revision history of the file
-is in the text window.
+Upon startup, the bottom window contains the last month's revision
+history for the for the file or project.
 .LP
 To view the history for just one revision, left click once on that
 revision in the graph.
 .LP
-To see differences between two revisions, left click once on the older
+To see the differences between two revisions, left click once on the older
 revision and right click once on the newer revision.  The differences
 will be displayed in the text window.  You can right click on another
 revision and diff again.  The default diff format is
 .B \-u
 (unified diffs).
 .LP
+To see the contents of a file, double click the left mouse button
+on the revision node in the graph.  The text shown for the file is
+annotated with the user name and the latest revision that modified
+the line. The file text is generated with the
+.B bk get \-ump
+command.
+.LP
 Once the annotated file listing is shown, you can then click on
-the lines to view the checkin comments that are associated with the
-revision that the line represents. Double clicking on an annotated
-line brings up csettool and shows all of the other files that were
-modified in the same changeset as the selected line.
+the text to view the checkin comments associated with the chosen
+line. Double clicking on an annotated line brings up csettool and
+shows all of the other files that were modified in the same changeset
+as the selected line.
 .LP
 To get a side\-by\-side view of the differences, select the two revisions
 and click on the "Diff tool" button.
-.LP
-To see the entire file for a given revision, double click the left
-mouse button on the revision.  The text shown for the file is
-annotated with the user name and revision level for each line. This
-text is generated with the 
-.B bk get \-ump
-command.
 .SH CHANGESETS
 .LP
 When operating on the ChangeSet file, the behavior is slightly
@@ -55,10 +57,10 @@ of the changeset and the history of the changes to each file contained
 in that changeset.
 .LP
 If you click left/right on a range of changesets, you will get the
-history of the entire range of changesets.  To see the history and
-the differences in detail, you can click on the "View changeset"
-button and that will pop up a changeset browser.  Typical usage is to
-browse the ChangeSet file with histtool and drill down using
+history of the entire range of changesets.  To see the history and the
+differences in detail, you can click on the "View changeset" button
+to bring up the changeset browser tool, csettool.  Typical usage is
+to browse the ChangeSet file with histtool and drill down using
 .B bk
 .BR csettool .
 .SH BINDINGS
@@ -113,6 +115,15 @@ Scroll text window to the top.
 .tp
 .B End
 Scroll text window to the bottom.
+.tp
+.B MouseWheel
+Scroll the text window up or down.
+.tp
+.B Shift-MouseWheel
+Scroll the graph left or right.
+.tp
+.B Control-MouseWheel
+Scroll the graph up or down.
 .TP
 .B s
 Show the raw SCCS file.
@@ -126,6 +137,9 @@ are shown.
 .tp
 .B h
 Show the entire revision history comments.
+.tp
+.B t
+Show only csets that have a tag associated with them.
 .tp 
 .B /
 Search the text window for a string.
