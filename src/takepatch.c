@@ -1,6 +1,7 @@
 /* Copyright (c) 1999 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "zlib.h"
 WHATSTR("@(#)%K%");
 
 /*
@@ -34,6 +35,7 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
 
+
 delta	*getRecord(FILE *f);
 int	extractPatch(char *name, FILE *p, int flags, int fast);
 int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int, int*);
@@ -44,6 +46,10 @@ void	initProject(void);
 FILE	*init(FILE *p, int flags);
 int	mkdirp(char *file);
 int	fileCopy(char *from, char *to);
+void	rebuild_id(char *id);
+void	cleanup(int what);
+void	changesetExists(void);
+void	notfirst(void);
 
 int	echo = 0;	/* verbose level, higher means more diagnostics */
 int	line;		/* line number in the patch file */
@@ -56,6 +62,8 @@ delta	*gca;		/* The oldest parent found in the patch */
 int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
 FILE	*input;		/* input file pointer, either stdin or a patch file */
+char	*infname;
+
 
 int
 main(int ac, char **av)
@@ -78,7 +86,9 @@ main(int ac, char **av)
 		    case 'a': resolve++; break;
 		    case 'c': noConflicts++; break;
 		    case 'F': fast++; break;
-		    case 'f': input = fopen(optarg, "rt"); break;
+		    case 'f':
+			    infname = optarg;
+			    input = fopen(optarg, "rt"); break;
 		    case 'i': newProject++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
@@ -328,6 +338,7 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags, int *np)
 
 	fnext(buf, f); chop(buf); line++;
 	if (echo>3) fprintf(stderr, "%s\n", buf);
+	if (strneq(buf, "# Patch checksum=", 17)) return 0;
 	pid = strdup(buf);
 	/*
 	 * This code assumes that the patch order is 1.1..1.100
@@ -398,7 +409,8 @@ delta:	off = ftell(f);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", fileNum);
 		p->diffFile = strdup(tmpf);
 		p->order = parent == d ? 0 : d->date;
-		if (echo>5) fprintf(stderr, "REM: %s %s %u\n", d->rev, p->me, p->order);
+		if (echo>5) fprintf(stderr, "REM: %s %s %lu\n",
+				    d->rev, p->me, p->order);
 		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
 			exit(0);
@@ -430,29 +442,33 @@ delta:	off = ftell(f);
 	return (0);
 }
 
-changesetExists()
+void
+changesetExists(void)
 {
-	fprintf(stderr, 
+	fputs(
 "You are trying to create a ChangeSet file in a repository which already has\n\
 one.  This usually means you are trying to apply a patch intended for a\n\
 different repository.  You can find the correct repository by running the\n\
 following command at the top of each repository until you get a match with\n\
 the changeset ID at the top of the patch:\n\
-    bk prs -hr1.0 -d:LONGKEY: ChangeSet\n\n");
+    bk prs -hr1.0 -d:LONGKEY: ChangeSet\n\n", stderr);
     	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
-noconflicts()
+void
+noconflicts(void)
 {
-	fprintf(stderr,
+	fputs(
 "takepatch was instructed not to accept conflicts into this tree.\n\
-Please resync in the opposite direction and then reapply this patch.\n");
+Please resync in the opposite direction and then reapply this patch.\n",
+stderr);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
-notfirst()
+void
+notfirst(void)
 {
-	fprintf(stderr,
+	fputs(
 "takepatch: when creating a project, as you are currently doing, you have\n\
 to resync from version 1.0 forward.  Please try again, with a command like\n\
 \n\
@@ -460,7 +476,8 @@ to resync from version 1.0 forward.  Please try again, with a command like\n\
 or\n\
 \tbk send 1.0.. user@host.com\n\
 \n\
-takepatch has not cleaned up your destination, you need to do that.\n");
+takepatch has not cleaned up your destination, you need to do that.\n",
+stderr);
 	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 
@@ -469,11 +486,44 @@ ahead(char *pid, char *sfile)
 {
 	fprintf(stderr,
 	    "takepatch: can't find parent ID\n\t%s\n\tin %s\n", pid, sfile);
-	fprintf(stderr,
+	fputs(
 "This patch is ahead of your tree, you need to get an earlier patch first.\n\
 Look at your tree with a ``bk changes'' and do the same on the other tree,\n\
-and get a patch that is based on a common ancestor.\n");
+and get a patch that is based on a common ancestor.\n", stderr);
 	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+}
+
+void
+nothingtodo(void)
+{
+	fprintf(stderr,
+"takepatch: nothing to do in patch, which probably means a patch version\n\
+mismatch.  You need to make sure that the software generating the patch is\n\
+the same as the software accepting the patch.  We were looking for\n\
+%s", PATCH_VERSION);
+	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+}
+
+void
+noversline(char *name)
+{
+	fprintf(stderr,
+"takepatch: the version line on %s is missing or does not match the
+format understood by this program.\n\
+You need to make sure that the software generating the patch is\n\
+the same as the software accepting the patch.  We were looking for\n\
+%s", name, PATCH_VERSION);
+	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+}
+
+void
+badXsum(void)
+{
+	fputs(
+"takepatch: patch checksum is invalid.\n\
+The patch was probably corrupted in transit.  Get a new copy and try again.\n",
+stderr);
+	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
 /*
@@ -529,7 +579,8 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 	assert(gca);
 	assert(gca->rev);
 	assert(gca->pathname);
-	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n", gca->rev, s->sfile);
+	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n",
+			      gca->rev, s->sfile);
 	if (d = sccs_next(s, sccs_getrev(s, gca->rev, 0, 0))) {
 		if (sccs_rmdel(s, d, 1, SILENT)) {
 			unless (BEEN_WARNED(s)) {
@@ -731,7 +782,7 @@ getLocals(sccs *s, delta *g, char *name)
 		p->order = d->date;
 		if (echo>5) {
 			fprintf(stderr,
-			    "LOCAL: %s %s %u\n", d->rev, p->me, p->order);
+			    "LOCAL: %s %s %lu\n", d->rev, p->me, p->order);
 		}
 		insertPatch(p);
 		n++;
@@ -799,9 +850,10 @@ init(FILE *p, int flags)
 {
 	char	buf[MAXPATH];
 	char	file[MAXPATH];
-	int	i;
+	int	i, len;
 	int	started = 0;
 	FILE	*f, *g;
+	uLong	sumC = 0, sumR = 0;
 
 	if (newProject) {
 		initProject();
@@ -892,19 +944,20 @@ tree:
 					perror("fputs on patch");
 					cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 				}
+				if (strneq(buf, "# Patch checksum=", 17)) {
+					sumR = strtoul(buf+17, 0, 16);
+					break;
+				}
+				
+				len = strlen(buf);
+				sumC = adler32(sumC, buf, len);
 			} else {
 				if (echo > 4) {
 					fprintf(stderr, "Discard: %s", buf);
 				}
 			}
 		}
-		unless (started) {
-			fprintf(stderr,
-"takepatch: nothing to do in patch, which probably means a patch version\n\
-mismatch.  You need to make sure that the software generating the patch is\n\
-the same as the software accepting the patch.  We were looking for\n\
-%s", PATCH_VERSION);
-		}
+		unless (started) nothingtodo();
 		if (fflush(f) || fsync(fileno(f))) {
 			perror("fsync on patch");
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
@@ -913,10 +966,26 @@ the same as the software accepting the patch.  We were looking for\n\
 			fprintf(stderr,
 			    "takepatch: saved patch in %s\n", pendingFile);
 		}
-		fseek(f, 0, 0);
 	} else {
 		f = p;
+		fnext(buf, f);
+		if (!streq(buf, PATCH_VERSION)) noversline(infname);
+					do {
+			len = strlen(buf);
+			sumC = adler32(sumC, buf, len);
+			fnext(buf, f);
+		} while (!strneq(buf, "# Patch checksum=", 17));
+		sumR = strtoul(buf+17, 0, 16);
 	}
+
+	unless (sumR) {
+		fputs("takepatch: missing trailer line on patch\n",
+		      stderr);
+		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+	}
+	unless (sumR == sumC) badXsum();
+
+	rewind(f);
 	fnext(buf, f);		/* skip version number */
 	line = 1;
 
@@ -991,10 +1060,12 @@ fileCopy(char *from, char *to)
 	return (0);
 }
 
+void
 rebuild_id(char *id)
 {
-	fprintf(stderr, "takepatch: miss in idcache\n\tfor %s,\n", id);
-	fprintf(stderr, "\trebuilding (this can take a while)...", id);
+	fprintf(stderr,
+"takepatch: miss in idcache\n\tfor %s,\n\
+\trebuilding (this can take a while)...", id);
 	system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
@@ -1004,6 +1075,7 @@ rebuild_id(char *id)
 	fprintf(stderr, "done\n");
 }
 
+void
 cleanup(int what)
 {
 	if (what & CLEAN_RESYNC) {

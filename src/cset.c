@@ -2,9 +2,12 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "zlib.h"
+
 #include "comments.c"
 #include "host.c"
 #include "user.c"
+
 WHATSTR("@(#)%K%");
 
 char	*cset_help = "\n\
@@ -43,6 +46,7 @@ void	doRange(sccs *sc);
 void	doList(sccs *sc);
 void	doDiff(sccs *sc, int kind);
 delta	*sfind(sccs *, ser_t);
+void	sccs_patch(sccs *);
 
 FILE	*id_cache;
 MDBM	*idDB = 0;
@@ -78,6 +82,7 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
+	if (streq(av[0], "makepatch")) makepatch++;
 
 	while ((c = getopt(ac, av, "c|d|Dim|t;pr|R|sS;vy|Y|")) != -1) {
 		switch (c) {
@@ -99,6 +104,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 				csetOnly++;
 				makepatch++;
 			}
+			/* fall through */
 		    case 'm':
 			if (c == 'm') makepatch++;
 		    	list |= 1;
@@ -218,6 +224,99 @@ next:		sccs_free(cset);
 	return (c);
 }
 
+/*
+ * Compute a checksum over the interesting part of the output.
+ * This is from the PATCH_VERSION line (inclusive) all the way to the end.
+ * The "# Patch checksum=..." line is not checksummed.
+ *
+ * If there are human readable diffs above PATCH_VERSION, they get their
+ * own checksum.
+ *
+ * adler32() is in zlib.
+ */
+
+void
+do_checksum(void)
+{
+	char buf[2*MAXPATH];
+	int len;
+	int doXsum = 0;
+	uLong sum = 0;
+
+	while (fnext(buf, stdin)) {
+		if (streq(buf, PATCH_VERSION)) {
+			if (!doXsum) doXsum = 1;
+			else {
+				printf("# Human readable diff checksum=%.8lx\n", sum);
+				sum = 0;
+			}
+		} else if (streq(buf,
+		 "# that BitKeeper cares about, is below these diffs.\n")) {
+			doXsum = 1;
+		}
+		if (doXsum) {
+			len = strlen(buf);
+			sum = adler32(sum, buf, len);
+		}
+		fputs(buf, stdout);
+	}
+	printf("# Patch checksum=%.8lx\n", sum);
+}	
+
+/*
+ * Spin off a subprocess and rejigger stdout to feed into its stdin.
+ * The subprocess will run a checksum over the text of the patch
+ * (everything from "# Patch vers:\t0.6" on down) and append a trailer
+ * line.
+ *
+ * XXX Andrew - this needs to be ifdefed for NT.
+ */
+
+pid_t
+spawn_checksum_child(void)
+{
+	int p[2], fd;
+	pid_t pid;
+
+	if (pipe(p)) {
+		perror("pipe");
+		return -1;
+	}
+
+	pid = fork();
+	if (pid == -1) {
+		perror("fork");
+		return -1;
+	} else if (pid) {
+		/* Parent.
+		 * Replace stdout with the write end of the pipe.
+		 * There must have been nothing written to stdout before this.
+		 * The odd parentheses hide the operation from purify,
+		 * which will get confused otherwise.
+		 */
+		fd = fileno(stdout);
+		(close)(fd);
+		(dup2)(p[1], fd);
+		close(p[0]);
+		close(p[1]);
+		return pid;
+
+	} else {
+		/* Child.
+		 * Replace stdin with the read end of the pipe.
+		 */
+		fd = fileno(stdin);
+		(close)(fd);
+		(dup2)(p[0], fd);
+		close(p[0]);
+		close(p[1]);
+
+		/* Now go do the real work... */
+		do_checksum();
+		exit(0);
+	}
+}
+
 int
 csetInit(sccs *cset, int flags, char *sym)
 {
@@ -328,10 +427,10 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 /*
  * Do whatever it is they want - for now - just print the revs.
  */
+void
 doit(sccs *sc)
 {
-	delta	*d;
-	static	first = 1;
+	static	int first = 1;
 
 	unless (sc) {
 		if (doDiffs && makepatch) printf("\n");
@@ -351,6 +450,7 @@ doit(sccs *sc)
 	}
 }
 
+void
 header(sccs *cset, int diffs)
 {
 	char	*dspec =
@@ -376,6 +476,7 @@ header(sccs *cset, int diffs)
 	cset->state = save;
 }
 
+void
 mark(sccs *s, delta *d)
 {
 	/*
@@ -397,8 +498,8 @@ int
 doKey(char *key, char *val)
 {
 	static	MDBM *idDB;
-	static	doneFullRebuild;
-	static	doneFullRemark;
+	static	int doneFullRebuild;
+	static	int doneFullRemark;
 	static	sccs *sc;
 	static	char *lastkey;
 	delta	*d;
@@ -479,13 +580,13 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 			    sc->sfile);
 			return (-1);
 		}
-		fprintf(stderr,
+		fputs(
 "\nBitKeeper has found a file which is missing some metadata.  That metadata\n\
 is being automatically generated and added to all files.  If your repository\n\
 is large, this is going to take a while - it has to rewrite each file.\n\
 This is a one time event to upgrade this repository to the latest format.\n\
-Please stand by.\n\n");
-		sprintf(buf, "bk csetmark -av", verbose ? "-v" : "");
+Please stand by.\n\n", stderr);
+		sprintf(buf, "bk csetmark -a%c", verbose ? 'v' : '\0');
 		system(buf);
 		doneFullRemark++;
 		goto retry;
@@ -493,6 +594,23 @@ Please stand by.\n\n");
 	unless (d = sccs_findKey(sc, val)) return (-1);
 	mark(sc, d);
 	return (0);
+}
+
+/* Convenience wrapper around mkstemp().  */
+static void
+gettemp(char *buf, const char *tmpl)
+{
+	int fd;
+	
+	strcpy(buf, tmpl);
+	fd = mkstemp(buf);
+	if (fd != -1) {
+		close(fd);
+		return;
+	}
+
+	perror("mkstemp");
+	exit(1);
 }
 
 /*
@@ -505,9 +623,10 @@ csetlist(sccs *cset)
 	char	*t;
 	FILE	*list;
 	char	buf[MAXPATH*2];
+	char	cat[30], csort[30];
 	char	*csetid;
-	char	*lastkey = 0;
-	int	didHeader = 0;
+	pid_t	pid = -1;
+	int	status;
 
 	if (dash) {
 		delta	*d;
@@ -531,70 +650,78 @@ csetlist(sccs *cset)
 	/*
 	 * Get the full list of key tuples in a sorted file.
 	 */
-	sprintf(buf, "/tmp/cat%d", getpid());
-	if (sccs_cat(cset, PRINT, buf)) {
+	gettemp(cat, "/tmp/cat1XXXXXX");
+	gettemp(csort, "/tmp/csortXXXXXX");
+
+	if (sccs_cat(cset, PRINT, cat)) {
 		sccs_whynot("cset", cset);
-		exit(1);
+		goto fail;
 	}
-	sprintf(buf, "sort < /tmp/cat%d > /tmp/cat2%d", getpid(), getpid());
-	system(buf);
-	sprintf(buf,
-	    "grep '^%s' /tmp/cat2%d > /tmp/csort%d",
-	    csetid, getpid(), getpid());
-	system(buf);
-	sprintf(buf,
-	    "grep -v '^%s' /tmp/cat2%d >> /tmp/csort%d",
-	    csetid, getpid(), getpid());
-	system(buf);
-	sprintf(buf, "/tmp/cat%d", getpid());
-	unlink(buf);
-	sprintf(buf, "/tmp/cat2%d", getpid());
-	unlink(buf);
+	sprintf(buf, "sort %s -o %s", cat, cat);
+	if (system(buf)) goto fail;
+	sprintf(buf, "grep '^%s' %s > %s", csetid, cat, csort);
+	if (system(buf)) goto fail;
+	sprintf(buf, "grep -v '^%s' %s >> %s", csetid, cat, csort);
+	if (system(buf)) goto fail;
+
 	free(csetid);
 
-again:	/* doDiffs can make it two pass */
-	sprintf(buf, "/tmp/csort%d", getpid());
-	unless (list = fopen(buf, "r")) {
+	if (makepatch) {
+		pid = spawn_checksum_child();
+		if (pid == -1) goto fail;
+	}
+
+	if (makepatch || doDiffs) header(cset, doDiffs);
+	
+	unless (list = fopen(csort, "r")) {
 		perror(buf);
-		exit(1);
+		goto fail;
 	}
-	if (doDiffs) {
-		header(cset, 1);
-		didHeader++;
-	}
+again:	/* doDiffs can make it two pass */
 	if (!doDiffs && makepatch) {
-		unless (didHeader) header(cset, 0);
 		printf("%s", PATCH_VERSION);
 	}
-	while(fnext(buf, list)) {
+	while (fnext(buf, list)) {
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
-		if (doKey(buf, t)) {
-			sprintf(buf, "/tmp/csort%d", getpid());
-			unlink(buf);
-			exit(1);
-		}
-
+		if (doKey(buf, t)) goto fail;
 	}
 	if (doDiffs && makepatch) {
 		doKey(0, 0);
 		doDiffs = 0;
-		fclose(list);
+		rewind(list);
 		goto again;
 	}
 	fclose(list);
 	doKey(0, 0);
-	sprintf(buf, "/tmp/csort%d", getpid());
-	unlink(buf);
 	if (verbose && makepatch) {
 		fprintf(stderr,
 		    "makepatch: patch contains %d revisions\n", ndeltas);
 	}
+	if (makepatch) {
+		fclose(stdout);  /* give the child an EOF */
+		if (waitpid(pid, &status, 0) != pid) {
+			perror("waitpid");
+		}
+		if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+			fprintf(stderr,
+		  "makepatch: checksum process exited abnormally, status %d\n",
+				status);
+		}
+	}
+
+	unlink(cat);
+	unlink(csort);
+	return;
+
+ fail:
+	unlink(cat);
+	unlink(csort);
+	exit(1);
 }
 
 /*
  * Spit out the diffs.
- * XXX - TODO - generate a checksum of this data.
  */
 void
 doDiff(sccs *sc, int kind)
@@ -631,7 +758,6 @@ void
 doRange(sccs *sc)
 {
 	delta	*d, *e = 0;
-	int	first = 1;
 
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) e = d;
@@ -667,6 +793,7 @@ doList(sccs *sc)
 	printf("\n");
 }
 
+void
 visit(delta *d)
 {
 	d->flags |= D_SET;
@@ -939,7 +1066,7 @@ file2str(char *f)
 /*
  * All the deltas we want are marked so print them out.
  */
-int
+void
 sccs_patch(sccs *s)
 {
 	delta	*d, *e;

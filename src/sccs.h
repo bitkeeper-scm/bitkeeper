@@ -478,7 +478,7 @@ typedef struct patch {
 	struct	patch *next;	/* guess */
 } patch;
 
-#define	PATCH_VERSION	"# Patch vers:\t0.5\n"
+#define	PATCH_VERSION	"# Patch vers:\t0.6\n"
 
 #define	PATCH_LOCAL	0x0001	/* patch is from local file */
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
@@ -562,5 +562,9 @@ delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, char *initFile);
 int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
+
+/* Utility functions also in slib.c.  */
+int	exists(char *file);
+int	emptyDir(char *dir);
 
 #endif	/* _SCCS_H_ */

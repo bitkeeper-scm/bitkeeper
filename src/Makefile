@@ -343,7 +343,10 @@ gui/mkindex: gui/mkindex.tcl substvars
 
 prefix=/usr
 libexecdir=$(prefix)/bitkeeper
+
+# ATT SCCS doesn't respect the stored file mode.
 config.status: configure
+	chmod +x configure
 	./configure --no-create --prefix=$(prefix) --libexecdir=$(libexecdir)
 
 config.h: stamp-h
