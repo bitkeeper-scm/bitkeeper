@@ -63,6 +63,7 @@ getline(int in, char *buf, int size)
 {
 	int	ret, i = 0;
 	char	c;
+	int	sigs = sigcaught(SIGINT);
 	static	int echo = -1;
 
 	if (echo == -1) echo = getenv("BK_GETLINE") != 0;
@@ -84,13 +85,15 @@ getline(int in, char *buf, int size)
 			break;
 
 		    default:
-			unless (errno == EINTR) {
-				buf[i] = 0;
+			unless (errno == EINTR) {	/* for !SIGINT */
+err:				buf[i] = 0;
 				if (echo) {
 					perror("getline");
 					fprintf(stderr, "[%s]=%d\n", buf, ret);
 				}
 				return (-1);
+			} else if (sigs != sigcaught(SIGINT)) {
+				goto err;
 			}
 		}
 	}

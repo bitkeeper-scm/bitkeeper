@@ -12299,6 +12299,14 @@ private int	caught[_NSIG];
 private struct	sigaction savesig[_NSIG];
 private void	catch(int sig) { caught[sig]++; }
 
+int
+sigcaught(int sig)
+{
+	assert(sig > 0);
+	assert(sig < _NSIG);
+	return (caught[sig]);
+}
+
 /*
  * Signal theory of operation:
  *	block signals when initializing,
