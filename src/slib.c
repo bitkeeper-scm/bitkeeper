@@ -4353,6 +4353,18 @@ sccs_open(sccs *s)
 	if (s->fd == -1) s->fd = open(s->sfile, O_RDONLY, 0);
 	if (s->fd == -1) return (-1);
 	s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
+#if     defined(hpux)
+	if (s->mmap == (caddr_t)-1) {
+		/*
+		 * HP-UX won't let you have two shared mmap to the same file.
+		 */
+		debug((stderr,
+		       "MAP_SHARED failed, trying MAP_PRIVATE\n"));
+		s->mmap =
+		    mmap(0, s->size, PROT_READ, MAP_PRIVATE, s->fd, 0);
+		s->state |= S_MAPPRIVATE;
+	}
+#endif
 	if (s->mmap == (caddr_t) -1) {
 		close(s->fd);
 		s->fd = -1;
