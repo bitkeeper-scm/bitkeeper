@@ -57,21 +57,20 @@ The directory must be one of the following:
 			}
 		}
 		if (bad) continue;
-		if (access(buf, W_OK) != 0) {
+		if (chdir(buf) != 0) {
 			fprintf(stderr,
-"You have no write permission on %s, perhaps you need to do this as root?\n",
-			    buf);
+			    "Can not change directories to %s\n", buf);
 			continue;
 		}
-		if (chdir(buf) == 0) break;
-		fprintf(stderr,
-		    "We were unable to chdir(%s), try again\n\n", buf);
-	}
-
-	if (access("/usr/bin", W_OK) != 0) {
-		fprintf(stderr,
-"You have no write permission on /usr/bin, you need to run this as root.\n");
-		exit(1);
+		if (access("bitkeeper", W_OK) != 0) {
+			fprintf(stderr,
+				"You have no write permission on %s/bitkeeper,",
+			    buf);
+			fprintf(stderr,
+				"\nperhaps you need to do this as root?\n");
+			continue;
+		}
+		break;	/* yeah */
 	}
 	if (access("bitkeeper/bk", F_OK) == 0) {
 		fprintf(stderr,
@@ -100,12 +99,30 @@ The directory must be one of the following:
 		    "We were unable to create bitkeeper directory.\n");
 		exit(1);
 	}
-	system("BK_BIN=.; export BK_BIN; ./bk links");
-	fprintf(stderr, "\n");
-	if (access("/usr/bin/bk", X_OK) != 0) {
-		fprintf(stderr,
-		    "We were unable to create links in /usr/bin.\n");
-		exit(1);
+	if (access("/usr/bin", W_OK) != 0) {
+		fprintf(stderr, 
+"You have no write permission on /usr/bin, so no links will be created there.
+You need to add the bitkeeper directory to your path (not recommended), 
+or symlink bk into some public bin directory.
+
+If you want emacs vc mode to work, you need to create links for all of the
+following:
+
+	admin get delta unget rmdel prs bk
+
+If you just want make to work (so it automatically checks out files),
+the list is
+
+	get bk
+");
+	} else {
+		system("BK_BIN=.; export BK_BIN; ./bk links");
+		fprintf(stderr, "\n");
+		if (access("/usr/bin/bk", X_OK) != 0) {
+			fprintf(stderr,
+			    "We were unable to create links in /usr/bin.\n");
+			exit(1);
+		}
 	}
 	fprintf(stderr,
 "
