@@ -83,17 +83,7 @@ again:		unless (s = sccs_init(name, NOCKSUM|flags)) {
 			}
 			goto next;
 		}
-		if (rev = sfileRev()) {
-			if (things) {
-				fprintf(stderr, "%s %s\n",
-				    "sccslog: can't mix command line ",
-				    "and file:rev specifications");
-				exit(1);
-			}
-			s->rstart = s->rstop = sccs_getrev(s, rev, 0, 0);
-		} else {
-			RANGE("sccslog", s, 1, 0);
-		}
+		RANGE("sccslog", s, 1, 0);
 		save = n;
 		sccslog(s);
 		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));

@@ -7,17 +7,23 @@
 WHATSTR("%W%");
 
 char	*cset_help = "\n\
-usage: cset [-ps+] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
-    -+		with -l1.2..1.5 make that mean 1.3..1.5\n\
+usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
     -i		Create a new change set history rooted at <root>\n\
-    -l<rev>	List the filenames:revisions of only the new work in the cset\n\
+    -l<range>	List the filenames:revisions of the csets in <range>\n\
+    -m		Generate a patch (use with -l)\n\
+    -r<range>	List the filenames:rev..rev which match <range>\n\
+    -R<range>	Like -r but start on rev farther back (for diffs)\n\
     -t<rev>	List the filenames:revisions of the whole tree\n\
     -p		print the list of deltas being added to the cset\n\
-    -y<msg>	Sets the changeset comment to <msg>.\n\
+    -y<msg>	Sets the changeset comment to <msg>\n\
+    -Y<file>	Sets the changeset comment to the contents of <file>\n\
     -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
     -s		Run silently\n\n\
-    Ranges of revisions may be specified with the -l option.\n\
-    -l1.3..1.5 does 1.3, 1.4, and 1.5\n\n";
+    Ranges of revisions may be specified with the -l or the -r options.\n\
+    -l1.3..1.5 does 1.3, 1.4, and 1.5\n\n\
+    Useful idioms:\n\t\
+    bk cset -Ralpha..beta | bk diffs -\n\t\
+    bk cset -ralpha..beta | bk sccslog -\n\n";
 
 int	csetCreate(sccs *cset, int flags, char *sym);
 int	csetInit(sccs *cset, int flags, char *sym);
@@ -40,6 +46,9 @@ char	csetFile[] = "SCCS/s.ChangeSet";
 char	zcsetFile[] = "SCCS/z.ChangeSet";
 int	verbose = 0;
 int	dash, ndeltas;
+int	makepatch;	/* if set, act like makepatch */
+int	range;		/* if set, list file:rev..rev */
+			/* if set to 2, then list parent..rev */
 char	*spin = "|/-\\";
 
 /*
@@ -53,7 +62,6 @@ main(int ac, char **av)
 	int	flags = 0;
 	int	c, list = 0;
 	char	*sym = 0;
-	int	plus = 0;
 	int	cFile = 0;
 	RANGE_DECL;
 
@@ -63,12 +71,20 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "+il|t;psS;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "+il|m|t;pr|R|sS;vy|Y|")) != -1) {
 		switch (c) {
-		    case '+': plus++; break;
 		    case 'i':
 			flags |= EMPTY|NEWFILE;
 			break;
+		    case 'R':
+			range++;
+			/* fall through */
+		    case 'r':
+		    	range++;
+		    	/* fall through */
+		    case 'm':
+			if (c == 'm') makepatch++;
+			/* fall through */
 		    case 'l':
 		    	list |= 1;
 			if (optarg) {
@@ -158,19 +174,8 @@ usage:		fprintf(stderr, "%s", cset_help);
 	switch (list) {
 	    case 1:
 		RANGE("cset", cset, 1, 1);
-		if (plus) {
-			if (cset->rstart == cset->rstop) {
-next:				sccs_free(cset);
-				purify_list();
-				exit(0);
-			}
-			/* XXX - this needs to be sccs_kid(cset, cset->rstart)
-			 * when we build that interface.
-			 */
-			if (cset->rstart->kid) cset->rstart = cset->rstart->kid;
-		}
 		csetlist(cset);
-		sccs_free(cset);
+next:		sccs_free(cset);
 		purify_list();
 		return (0);
 	    case 2:
@@ -448,11 +453,14 @@ retry:		sc = sccs_keyinit(buf, NOCKSUM, idDB);
 		} else {
 			csetDeltas(sc, 0, d);
 		}
-		if (first) {
-			printf("%s", PATCH_VERSION);
-			first = 0;
+		if (makepatch) {
+			if (first) {
+				printf("%s", PATCH_VERSION);
+				first = 0;
+			}
+			sccs_patch(sc);
 		}
-		sccs_patch(sc);
+		if (range) doRange(sc);
 		sccs_free(sc);
 next:
 	} while (fgets(buf, sizeof(buf), sort));
@@ -462,6 +470,31 @@ next:
 	if (verbose) {
 		fprintf(stderr,
 		    "makepatch: patch contains %d revisions\n", ndeltas);
+	}
+}
+
+doRange(sccs *sc)
+{
+	delta	*d, *e = 0;
+
+	for (d = sc->table; d; d = d->next) {
+		if (d->flags & D_VISITED) {
+			e = d;
+		} else if (e) {
+			break;
+		}
+	}
+	for (d = sc->table; d && !(d->flags & D_VISITED); d = d->next);
+	if (!d) return;
+	if (range == 2) e = e->parent;
+	if (e == d) {
+		if (range == 2) return;
+		printf("%s:%s\n", sc->sfile, d->rev);
+		return;
+	} else if (e) {
+		printf("%s:%s..%s\n", sc->sfile, e->rev, d->rev);
+	} else {
+		printf("%s:..%s\n", sc->sfile, d->rev);
 	}
 }
 
@@ -496,7 +529,9 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	}
 	// XXX - fixme - removed deltas not done.
 	// Is this an issue?  I think makepatch handles them.
-	//if (d->type == 'D') printf("%s:%s\n", sc->gfile, d->rev);
+	unless (makepatch || range) {
+		if (d->type == 'D') printf("%s:%s\n", sc->gfile, d->rev);
+	}
 }
 
 /*

@@ -10199,7 +10199,7 @@ out:		if (f) fclose(f);
 		if (want && !want(buf)) continue;
 		if (chop(buf) != '\n') {
 			fprintf(stderr, "bad path: <%s> in %s\n", buf, file);
-			assert("pathname overflow in cache" == 0);
+			return (0);
 		}
 		v = strchr(buf, ' ');
 		assert(v);

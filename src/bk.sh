@@ -57,6 +57,7 @@ Command topics:
     renumber	- repairs files damaged by Sun's Teamware product
     resolve	- resolve a patch
     resync	- resync two BitKeeper projects in the local file system
+    rm		- remove a file (or list of files)
     rmdel	- removes deltas
     save	- save a changeset
     sccslog	- like prs except it sorts deltas by date across all files
@@ -586,20 +587,42 @@ function help_docs {
 
 function help_mv {
 	cat <<EOF
-    =========== Renaming and/or deleting files in BitKeeper ===========
+    =========== Renaming files in BitKeeper ===========
 
 To move a file from A to B do this:
 
     $ bk mv A B
 
 That will move the checked out file (if any) as well as the revision control
-file.
-
-To delete a file, move it to an unused file name, such as .del-file like so:
-
-    $ bk mv garbage .del-garbage
+file.  Edited files can not currently be moved with bk mv, check them in first.
 
 EOF
+}
+
+function help_sccsmv {
+	help_mv
+}
+
+function help_rm {
+	cat <<EOF
+    =========== Removing files in BitKeeper ===========
+
+To remove a file from A to B do this:
+
+    $ bk rm foo.c
+
+This will move the file to a new name, such as .del-foo.c .  There is
+no way to actually remove a file hich has been propogated out of your
+respository other than finding every single instance of it in the world
+and removing each of them.  So be careful about creating files.
+
+Edited files can not currently be removed, check them in first.
+
+EOF
+}
+
+function help_sccsrm {
+	help_rm
 }
 
 function help_gui {
@@ -901,9 +924,9 @@ function send {
 	then	echo "Sending ChangeSet $REV to $OUTPUT"
 	fi
 	case X$OUTPUT in
-	    X-)	${BIN}cset -l$REV $V
+	    X-)	${BIN}cset -m$REV $V
 	    	;;
-	    *)	${BIN}cset -l$REV $V | mail -s "BitKeeper patch $REV" $OUTPUT
+	    *)	${BIN}cset -m$REV $V | mail -s "BitKeeper patch $REV" $OUTPUT
 	    	;;
 	esac
 }
@@ -928,17 +951,8 @@ function save {
 	if [ X$V != X ]
 	then	echo "Saving ChangeSet $REV in $OUTPUT"
 	fi
-	${BIN}cset -l$REV $V > $OUTPUT
+	${BIN}cset -m$REV $V > $OUTPUT
 	exit $?
-}
-
-# The ChangeSet file should always be first.
-# The sort -u is because we can call cset multiple times
-function csetSort {
-	sort -u > /tmp/save$$
-	grep '^ChangeSet:' < /tmp/save$$ 
-	grep -v '^ChangeSet:' < /tmp/save$$
-	rm /tmp/save$$
 }
 
 function resync {
@@ -966,13 +980,13 @@ function resync {
 		FDIR=${1#*:}
 		PRS="ssh -x $FHOST 
 		    'cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet'"
-		GEN_LIST="ssh -x $FHOST 'cd $FDIR && bk cset -l $V -'"
+		GEN_LIST="ssh -x $FHOST 'cd $FDIR && bk cset -m $V -'"
 		;;
 	*)
 		FHOST=
 		FDIR=$1
 		PRS="(cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet)"
-		GEN_LIST="(cd $FDIR && bk cset -l $V -)"
+		GEN_LIST="(cd $FDIR && bk cset -m $V -)"
 		;;
 	esac
 	case $2 in
@@ -1027,19 +1041,19 @@ function resync {
 	fi
 	eval $PRS  > /tmp/from$$
 	REV=`bk cset_todo /tmp/from$$ /tmp/to$$`
-	if [ X$V != X ]
-	then	echo --------- ChangeSets being sent -----------
-		echo "$REV"
-		echo -------------------------------------------
-	fi
 	/bin/rm /tmp/from$$ /tmp/to$$
 	if [ "X$REV" != X ]
-	then	echo "$REV" | eval $GEN_LIST > /tmp/list$$
+	then	if [ X$V != X ]
+		then	echo --------- ChangeSets being sent -----------
+			echo "$REV" | fmt -42
+			echo -------------------------------------------
+		fi
+		echo "$REV" | eval $GEN_LIST > /tmp/list$$
 	else	touch /tmp/list$$
 	fi
 	if [ -s /tmp/list$$ ]
 	then	eval $TKPATCH < /tmp/list$$
-	else	echo "resync: nothing to resync from $1 to $2"
+	else	echo "resync: nothing to resync from \"$1\" to \"$2\""
 	fi
 	/bin/rm /tmp/list$$
 	exit 0
@@ -1055,6 +1069,10 @@ function unedit {
 
 function mv {
 	sccsmv "$@"
+}
+
+function rm {
+	sccsrm "$@"
 }
 
 # Usage: undo [-f] [-F]
@@ -1073,7 +1091,7 @@ function undo {
 	then	bk sfiles -Ca > /tmp/p$$
 		if [ -s /tmp/p$$ ]
 		then	echo Repository has uncommitted changes, undo aborted
-			rm /tmp/p$$
+			/bin/rm /tmp/p$$
 			exit 1
 		fi
 	fi
@@ -1085,7 +1103,7 @@ function undo {
 		cat /tmp/p$$
 		echo ""
 		echo "Undo aborted"
-		rm /tmp/p$$ /tmp/undo$$
+		/bin/rm /tmp/p$$ /tmp/undo$$
 		exit 1
 	fi
 	if [ X$ASK = Xyes ]
@@ -1100,17 +1118,17 @@ function undo {
 			case X$x in
 		    	Xy*)	bk rmdel -D - < /tmp/undo$$
 				EXIT=$?
-				rm -f /tmp/undo$$
+				/bin/rm -f /tmp/undo$$
 				exit $EXIT
 				;;
-			*) 	rm -f /tmp/undo$$
+			*) 	/bin/rm -f /tmp/undo$$
 				exit 0
 				;;
 			esac
 		done
 	else	bk rmdel -D - < /tmp/undo$$
 		EXIT=$?
-		rm -f /tmp/undo$$
+		/bin/rm -f /tmp/undo$$
 		exit $EXIT
 	fi
 }
@@ -1144,7 +1162,7 @@ function commit {
 		 fi
 		 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		 ERR=$?
-		 rm -f /tmp/comments$$
+		 /bin/rm -f /tmp/comments$$
 		 exit $EXIT;
 	fi
 	while true
@@ -1163,12 +1181,12 @@ function commit {
 			 fi
 			 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 			 ERR=$?
-			 rm -f /tmp/comments$$
+			 /bin/rm -f /tmp/comments$$
 	    	 	 exit $EXIT;
 		 	 ;;
 		    Xe*) $EDITOR /tmp/comments$$
 			 ;;
-		    Xa*) rm -f /tmp/comments$$
+		    Xa*) /bin/rm -f /tmp/comments$$
 			 echo Commit aborted.
 			 exit 0
 			 ;;
@@ -1258,7 +1276,7 @@ EOF
 		 	 ;;
 		    Xe*) $EDITOR /tmp/bug$$
 			 ;;
-		    Xq*) rm -f /tmp/bug$$
+		    Xq*) /bin/rm -f /tmp/bug$$
 			 echo No bug sent.
 			 exit 0
 			 ;;
@@ -1297,7 +1315,8 @@ function commandHelp {
 				    history|tags|changesets|resync|merging|\
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
-				    resync|changes|undo|save|docs|mv)
+				    resync|changes|undo|save|docs|\
+				    sccsmv|mv|sccsrm|rm)
 					help_$i | $PAGER
 					;;
 				    *)

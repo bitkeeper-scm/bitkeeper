@@ -13,8 +13,8 @@ WHATSTR("%W%");
  * Copyright (c) 1999 L.W.McVoy
  */
 
-int	resum(sccs *s, delta *d, int flags);
-int	sumit(char *path, int *old, int *new);
+int	resum(sccs *s, delta *d, int flags, int old7bit);
+int	sumit(char *path, int *old, int *new, int old7bit);
 
 int
 main(int ac, char **av)
@@ -24,11 +24,13 @@ main(int ac, char **av)
 	int	doit;
 	char	*name;
 	int	flags = 0;
+	int	old = 0;
 	int	c;
 
-	while ((c = getopt(ac, av, "f")) != -1) {
+	while ((c = getopt(ac, av, "fo")) != -1) {
 		switch (c) {
-		    case 'f': flags |= FORCE;
+		    case 'f': flags |= FORCE; break;
+		    case 'o': old++; break;
 		}
 	}
 	for (name = sfileFirst("rechksum", &av[optind], 0);
@@ -42,7 +44,7 @@ main(int ac, char **av)
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
 			if (d->type == 'D') {
-				doit += resum(s, d, flags);
+				doit += resum(s, d, flags, old);
 			}
 		}
 		if (doit) {
@@ -64,7 +66,7 @@ main(int ac, char **av)
 }
 
 int
-resum(sccs *s, delta *d, int flags)
+resum(sccs *s, delta *d, int flags, int old7bit)
 {
 	int	old, new;
 	int	encoding = s->encoding;
@@ -96,7 +98,7 @@ resum(sccs *s, delta *d, int flags)
 	}
 	s->encoding = encoding;
 
-	if (sumit(s->gfile, &old, &new)) {
+	if (sumit(s->gfile, &old, &new, old7bit)) {
 		sccs_clean(s, SILENT);
 		return (0);
 	}
@@ -123,7 +125,7 @@ resum(sccs *s, delta *d, int flags)
 }
 
 int
-sumit(char *path, int *old, int *new)
+sumit(char *path, int *old, int *new, int old7bit)
 {
 	unsigned char buf[16<<10];
 	register unsigned char *u;

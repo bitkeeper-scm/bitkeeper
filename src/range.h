@@ -20,6 +20,7 @@
 
 #define	RANGE(me, s, expand, noisy) \
 	rangeReset(s); \
+	if (!things) if (r[0] = sfileRev()) things++; \
 	if (things) { \
 		if (rangeAdd(s, r[0], d[0])) { \
 			if (noisy) { \

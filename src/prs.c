@@ -56,16 +56,7 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, flags)) continue;
 		if (!s->tree) goto next;
-		if (rev = sfileRev()) {
-			if (things) {
-				fprintf(stderr, "%s %s\n",
-				    "prs: can't mix command line ",
-				    "and file:rev specifications");
-				    exit(1);
-			}
-		} else {
-			RANGE("prs", s, 1, noisy);
-		}
+		RANGE("prs", s, 1, noisy);
 		assert(s->rstart);
 		assert(s->rstop);
 		if (didone++) printf("\n");
