@@ -519,7 +519,13 @@ _repair()
 	bk park		# otherwise edited file will failed the pull
 	echo "pulling a jumbo patch.."
 	bk pull -F ${_MASTER} || exit 1
-	echo "You may want to do a \"bk rmgone\" to fix up the gone files"
+	echo "bk repair have resurrected all files not-gone in the remote"
+	echo "repository."
+	echo "If you intend to resurrect the deleted file, please"
+	echo "make sure its key is not in Bitkeeper/etc/gone."
+	echo "If you want a file stay in \"gone\" status, you may need to"
+	echo "run bk rmgone, and push BitKeeper/etc/gone file update to"
+	echo "the remote repositories."
 	
 }
 

@@ -1,0 +1,55 @@
+
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 1999 Andrew Chang?
+# wscott@wscott1.homeip.net|src/t/t.repository|20020204233553|06580
+
+HERE=`bk pwd`
+echo $N Create initial repository ...................................$NL
+no_logging project
+bk admin -Z
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N "Try to update a deleted (i.e gone) file" .....................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+bk commit $Q -ycset1
+bk clone $Q $HERE/project $HERE/copy
+rm -f foo.c SCCS/s.foo.c
+rm -f bar.c SCCS/s.bar.c
+bk -r check -ag | bk gone -q -
+bk commit $Q -yfoo_gone
+cd $HERE/copy/src
+bk mv foo.c foo2.c
+bk edit $Q foo2.c
+echo "new stuff" > foo2.c
+bk delta $Q -ynew_stuff foo2.c
+bk commit $Q -y"rename+new_stuff" foo2.c
+cd $HERE/project/src
+bk pull $HERE/copy  2> out
+grep -q "cannot accept updates" out || { echo failed; exit 1; }
+echo OK
+echo $N "Check bk repair" .............................................$NL
+cd $HERE/project/src
+bk repair $HERE/copy > /dev/null 2> /dev/null
+if [ ! -f SCCS/s.foo2.c ]; then echo failed; exit 1; fi
+if [ ! -f SCCS/s.bar.c ]; then echo warnning bar.c not restaored; fi
+#bk rmgone -n
+echo OK

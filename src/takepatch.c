@@ -725,7 +725,8 @@ goneError(char *buf)
 is marked as gone in this repository and therefor cannot accept updates.\n\
 The fact that you are getting updates indicates that the file is not gone\n\
 in the other repository and could be restored in this repository.\n\
-Contact BitMover for assistance, we'll have a tool to do this soon.\n", buf);
+if you want to \"un-gone\" the file(s) using the s.file from a remote\n\
+repository, try \"bk repair <remote repository>\"\n", buf);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 }
 
