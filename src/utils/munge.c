@@ -8,6 +8,7 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include "../system.h"
+#include "../zlib/zlib.h"
 #undef	system
 
 #define	uchar	unsigned char
@@ -55,7 +56,7 @@ setup(int out, char *prog, int fd)
 	    "unsigned char %s_data[%lu] = {\n", prog, (unsigned long)size);
 	writen(out, buf);
 	/*
-	 * Accoording lm, to keep hpux happy, we need stuff some non-zero
+	 * According lm, to keep hpux happy, we need stuff some non-zero
 	 * (random) value here.
 	 */
 	for (i = 0; init[i]; i++) {
@@ -70,7 +71,7 @@ uchar	*
 install(uchar *map, uchar *start, off_t size, int fd)
 {
 	uchar	*p, *end;
-	uchar	buf[81920];
+	uchar	buf[64<<10];
 	int	i, n;
 
 	end = map + size;
@@ -84,22 +85,20 @@ install(uchar *map, uchar *start, off_t size, int fd)
 			goto fill;
 		}
 	}
-	fprintf(stderr, "Did not find array\n");
+	printf("Did not find array\n");
 	exit(1);
 
-fill:	writen(1, "copying data ");
+fill:	printf("Inserting data ");
 	while ((n = read(fd, buf, sizeof(buf))) > 0) {
 		if ((p + n) > end) {
-			fprintf(stderr,
-			    "Error, writting outside mmap region\n");
+			fprintf(stderr, "Error, writing outside mmap region\n");
 			exit(1);
 		}
 		bcopy(buf, p, n);
-		write(1, ".", 1);
+		printf(".");
 		p += n;
 	}
-	write(1, "\n", 1);
-	writen(1, "done copying data\n");
+	printf(" done.\n");
 	return (p);
 }
 
@@ -119,6 +118,7 @@ main(int ac, char **av)
 		    "usage: %s sfio data\n", av[0]);
 		return (1);
 	}
+	setbuf(stdout, 0);
 
 	if ((sfio = open(av[1], O_RDONLY, 0)) < 0) {
 		perror(av[1]);
@@ -168,6 +168,5 @@ main(int ac, char **av)
 	p = install((uchar *)map, (uchar *)map, asb.st_size, sfio);
 	install((uchar *)map, p, asb.st_size, data);
 	munmap(map, asb.st_size);
-	write(1, "done.\n", 6);
 	return (0);
 }

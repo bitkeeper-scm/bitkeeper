@@ -3,11 +3,13 @@
  * Copyright (c) 1999 Larry McVoy
  */
 #include "../system.h"
+#include "../zlib/zlib.h"
+#undef	malloc
 #undef	mkdir
+#undef	putenv
+#undef	strdup
 #undef	system
 #undef	unlink
-#undef	putenv
-#undef	malloc
 
 #ifndef MAXPATH
 #define	MAXPATH		1024
@@ -15,30 +17,63 @@
 #ifdef	WIN32
 #define	mkdir(a, b)	_mkdir(a)
 #define	RMDIR		"rmdir /s /q"
+#define	BINDIR		"C:/PROGRA~1/BitKeeper"
 #else
 #define	RMDIR		"/bin/rm -rf"
+#define	BINDIR		"/usr/libexec/bitkeeper"
 #endif
+#define	TMP		"bksetup"
 
 extern unsigned int sfio_size;
 extern unsigned char sfio_data[];
 extern unsigned int data_size;
 extern unsigned char data_data[];
 
-void	extract(char *, char *, unsigned int, char *);
+void	extract(char *, char *, u32, char *);
 char	*findtmp(void);
+int	isdir(char*);
 
 main(int ac, char **av)
 {
-	char	*sfio;
-	char	instdir[MAXPATH];
-	char	cmd[4096];
+	char	*sfio, *dest = 0, *tmp = findtmp();
 	int	i, fd;
 	pid_t	pid = getpid();
-	char	*tmp = findtmp();
+	FILE	*f;
+	char	instdir[MAXPATH];
+	char	buf[MAXPATH];
 
-	fprintf(stderr, "Please wait while we unpack to a temp dir...\n");
+	/*
+	 * If they want to upgrade, go find that dir before we fix the path.
+	 */
+	if (av[1] && (streq(av[1], "-u") || streq(av[1], "--upgrade"))) {
+		if (chdir(tmp)) {
+			perror(tmp);
+			exit(1);
+		}
+		sprintf(buf, "bk bin > bindir%u", pid);
+		system(buf);
+		sprintf(buf, "bindir%u", pid);
+		f = fopen(buf, "r");
+		if (f && fgets(buf, sizeof(buf), f)) {
+			for (dest = buf; *dest; dest++);
+			*--dest = 0;
+			if (dest[-1] == '\r') dest[-1] = 0;
+			dest = strdup(buf);
+		} else {
+			dest = BINDIR;
+		}
+		if (f) fclose(f);
+		sprintf(buf, "bindir%u", pid);
+		unlink(buf);
+	} else if (av[1] && (av[1][0] != '-')) {
+		dest = av[1];
+	} else if (av[1]) {
+		fprintf(stderr, "usage: %s [-u || <directory>]\n", av[0]);
+		exit(1);
+	}
 
-	sprintf(instdir, "%s/bksetup%u", tmp, pid);
+	sprintf(instdir, "%s/%s%u", tmp, TMP, pid);
+	fprintf(stderr, "Please wait while we unpack in %s ...\n", instdir);
 	if (mkdir(instdir, 0700)) {
 		perror(instdir);
 		exit(1);
@@ -58,27 +93,48 @@ main(int ac, char **av)
 	
 	/* The name "sfio.exe" should work on all platforms */
 	extract("sfio.exe", sfio_data, sfio_size, instdir);
-	extract("data", data_data, data_size, instdir);
+	extract("sfioball", data_data, data_size, instdir);
 
 	/* Unpack the sfio file, this creates ./bitkeeper/ */
-	if (system("sfio.exe -im < data")) {
-		perror(cmd);
+#ifdef	WIN32
+	/* Winblows is so slow they need status */
+	if (system("sfio.exe -im < sfioball")) {
+#else
+	if (system("sfio.exe -iqm < sfioball")) {
+#endif
+		perror("sfio");
 		exit(1);
 	}
 	
-	sprintf(cmd, "bk installtool");
-	for (i = 1; av[i]; i++) {
-		strcat(cmd, " ");
-		strcat(cmd, av[i]);
+	if (dest) {
+		// XXX - what about spaces in dest?
+		fprintf(stderr, "Installing BitKeeper in %s\n", dest);
+		sprintf(buf, "bk install -f %s", dest);
+		system(buf);
+		fprintf(stderr, "\nInstalled version information:\n\n");
+		sprintf(buf, "%s/bk version", dest);
+		system(buf);
+		fprintf(stderr, "\n");
+	} else {
+		sprintf(buf, "bk installtool");
+		for (i = 1; av[i]; i++) {
+			strcat(buf, " ");
+			strcat(buf, av[i]);
+		}
+		av[i] = 0;
+#ifdef	WIN32
+		fprintf(stderr, "Running installer...\n");
+#endif
+		system(buf);
 	}
-	av[i] = 0;
-	system(cmd);
 
 	/* Clean up your room, kids. */
 	unless (getenv("BK_SAVE_INSTALL")) {
 		chdir("..");
-		sprintf(cmd, "%s bk%d", RMDIR, pid);
-		system(cmd);	/* careful */
+		fprintf(stderr,
+		    "Cleaning up temp files in %s%u ...\n", TMP, pid);
+		sprintf(buf, "%s %s%u", RMDIR, TMP, pid);
+		system(buf);	/* careful */
 	}
 
 	/*
@@ -88,26 +144,36 @@ main(int ac, char **av)
 }
 
 void
-extract(char *name, char *x_data, unsigned int x_size, char *instdir)
+extract(char *name, char *data, u32 size, char *dir)
 {
-	int	fd;
-	char	path[MAXPATH];
-	extern	int	errno;
-	static	pid_t pid = 0;
+	int	fd, n;
+	GZIP	*gz;
+	char	buf[BUFSIZ];
 
-	sprintf(path, "%s/%s", instdir, name);
-	fd = open(path, O_WRONLY | O_TRUNC | O_CREAT | O_EXCL, 0755);
+	sprintf(buf, "%s/%s.zz", dir, name);
+	fd = open(buf, O_WRONLY | O_TRUNC | O_CREAT | O_EXCL, 0755);
 	if (fd == -1) {
-		perror(path);
+		perror(buf);
 		exit(1);
 	}
 	setmode(fd, _O_BINARY);
-	if (write(fd, x_data, x_size) != x_size) {
-		perror("write");
-		unlink(path);
+	if (write(fd, data, size) != size) {
+		perror(buf);
 		exit(1);
 	}
 	close(fd);
+	unless (gz = gzopen(buf, "rb")) {
+		perror(buf);
+		exit(1);
+	}
+	sprintf(buf, "%s/%s", dir, name);
+	fd = open(buf, O_WRONLY | O_TRUNC | O_CREAT | O_EXCL, 0755);
+	setmode(fd, _O_BINARY);
+	while ((n = gzread(gz, buf, sizeof(buf))) > 0) {
+		write(fd, buf, n);
+	}
+	close(fd);
+	gzclose(gz);
 }
 
 int
@@ -166,4 +232,13 @@ findtmp(void)
 #else
 	return ("/tmp");
 #endif
+}
+
+int
+isdir(char *path)
+{
+	struct	stat sbuf;
+
+	if (stat(path, &sbuf)) return (0);
+	return (S_ISDIR(sbuf.st_mode));
 }

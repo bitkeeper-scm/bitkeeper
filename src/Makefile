@@ -362,7 +362,7 @@ libsccs.a: $(OBJ)
 bk.res: win32/data/bk.rc win32/data/bk.ico
 	rc.exe -fo bk.res -r win32/data/bk.rc
 
-bklink: bklink.c
+bklink.exe: bklink.c
 	$(CC) bklink.c
 
 $(BK): bk.o $(LIBS) $(RESOURCE)

@@ -39,31 +39,31 @@ IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 all image: $(BINDIR)/bk$(EXE) sfioball _data.$O $(IMAGE) 
 	$(STRIP) $(IMAGE)
 
-sfioball: installtool
+sfioball: installtool $(BINDIR)/bk$(EXE)
 	@echo Creating sfioball from BK in $(BINDIR) ...
 	cp installtool $(BINDIR)/gui/lib/installtool
-	# XXX - we need to fix the installer to the hardlinks because sfio does
-	# not handle hardlinks.
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
 	    bk sfio -mqo) > sfioball
 
-_data.$O: $(SFIO) munge$(EXE)
-	@echo Creating data
-	@./munge $(SFIO) sfioball
+_data.$O: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball
+	@echo Compressing data
+	@./zz sfio.zz < sfio$(EXE)
+	@./zz sfioball.zz < sfioball
+	@./munge sfio.zz sfioball.zz
 
 $(IMAGE): extractor.$O _data.$O
-	$(LD) $(LDFLAGS) extractor.$O _data.$O $(LIBS) $(LD_OUT)
+	$(LD) $(LDFLAGS) extractor.$O _data.$O $(LIBS) ../zlib/libz.a $(LD_OUT)
 
 extractor.$O: extractor.c
 	$(CC) $(CFLAGS) -c extractor.c
 
-sfio.$O: ../sfio.c
+sfio.$O: ../sfio.c sfio.h
 	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE ../sfio.c
 
 sfio_utils.$O: sfio_utils.c
 	$(CC) -c $(CFLAGS) -DSFIO_STANDALONE sfio_utils.c $(LD_OUT)
 
-$(SFIO): $(SFIO_OBJS)
+sfio$(EXE): $(SFIO_OBJS)
 	$(LD) $(LFLAGS) $(SFIO_OBJS) $(LIBS) ../zlib/libz.a $(LD_OUT)
 
 installtool: setupmain.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
@@ -77,9 +77,13 @@ munge.o: munge.c $H
 	$(CC) -c $(CFLAGS) munge.c $(CC_OUT)
 
 munge$(EXE): munge.o
-	$(LD) $(LFLAGS) munge.o $(LIBS) $(LD_OUT)
+	$(LD) $(LFLAGS) munge.o $(LIBS) ../zlib/libz.a $(LD_OUT)
+
+zz$(EXE): zz.c
+	$(CC) $(CFLAGS) -c zz.c
+	$(LD) $(LFLAGS) zz.$O $(LIBS) ../zlib/libz.a $(LD_OUT)
 
 clobber clean clean-obj:
-	/bin/rm -f _data _data.c _data.o a.out munge$(EXE) sfioball \
-	core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio installtool
+	/bin/rm -f _data _data.c _data.o a.out munge$(EXE) sfioball sfio zz \
+	core* bk-*.bin *.o *.exe *.obj *.pdb *.ilk sfio *.zz installtool
 	bk -r. clean

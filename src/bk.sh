@@ -746,15 +746,22 @@ _links() {		# /* undoc? 2.0 - what is this for? */
 		echo "Typical is bk links /usr/libexec/bitkeeper /usr/bin"
 		exit 1
 	fi
-	test -x "$1/bk" || { echo Can not find bin directory; exit 1; }
+	test -x "$1/bk" || {
+		echo ==========================================================
+		echo Can not find bin directory
+		echo ==========================================================
+		exit 0
+	}
 	BK="$1"
 	if [ "X$2" != X ]
 	then	BIN="$2"
 	else	BIN=/usr/bin
 	fi
 	test -w "$BIN" || {
-	    echo "bk links: can't write to $BIN"
-	    exit 1
+		echo ==========================================================
+		echo "bk links: can't write to ${BIN}, no links made."
+		echo ==========================================================
+		exit 0
 	}
 	for i in admin get delta unget rmdel prs bk
 	do	test -f "$BIN/$i" && {
