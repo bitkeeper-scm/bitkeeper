@@ -225,14 +225,19 @@ getrev(char *top_rev)
 	char	cmd[MAXKEY];
 	int	fd, len, sz;
 	char	*retptr = 0;
+	int	status;
 
 	checkRev(top_rev);
 	sprintf(tmpfile, "%s/bk_tmp%d", TMP_PATH, getpid());
 	/* use special prune code triggered by a revision starting with '*' */
 	sprintf(cmd,
-	    "bk -R prs -ohMa -r'*'%s -d':REV:,' ChangeSet > %s",
+	    "bk -R prs -ohMa -r'*%s' -d':REV:,' ChangeSet > %s",
 	    top_rev, tmpfile);
-	system(cmd);
+	status = system(cmd);
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		fprintf(stderr, "undo: prs failed\n");
+		exit(1);
+	}
 	fd = open(tmpfile, O_RDONLY, 0);
 	if (buf) free(buf);
 	sz = size(tmpfile);
