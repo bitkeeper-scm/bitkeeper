@@ -2242,14 +2242,18 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 * If it's a revision, go find it and use it.
 	 */
 	if (rev) {
-		if (strchr(s, '|')) {
-			d = sccs_findKey(sc, s);
-		} else if (s[0] == '@') {
-			if (CSET(sc)) {
-				d = findrev(sc, s+1);
+	again:
+		if (s[0] == '@') {
+			if (s[1] == '@') {
+				d = 0;
+			} else if (CSET(sc)) {
+				++s;
+				goto again;
 			} else {
 				d = cset2rev(sc, s+1);
 			}
+		} else if (strchr(s, '|')) {
+			d = sccs_findKey(sc, s);
 		} else {
 			d = findrev(sc, s);
 		}
@@ -2360,7 +2364,8 @@ cset2rev(sccs *s, char *rev)
 		s_cset = aprintf("%s/" CHANGESET, rootpath);
 		if (stat(s_cset, &csetstat)) goto ret;
 	}
-	mpath = aprintf("%s/BitKeeper/tmp/@%s", rootpath, rev);
+	mpath = aprintf("%s/BitKeeper/tmp/csetcache.%x", rootpath,
+	    adler32(0, rev, strlen(rev)));
 	if (exists(mpath) &&
 	    (m = mdbm_open(mpath, O_RDONLY, 0600, 0))) {
 		/* validate it still matches cset file */
@@ -2368,7 +2373,9 @@ cset2rev(sccs *s, char *rev)
 
 		if (!(x = mdbm_fetch_str(m, "STAT")) ||
 		    strtoul(x, &x, 16) != (unsigned long)csetstat.st_mtime ||
-		    strtoul(x, 0, 16) != (unsigned long)csetstat.st_size) {
+		    strtoul(x, 0, 16) != (unsigned long)csetstat.st_size ||
+		    !(x = mdbm_fetch_str(m, "REV")) ||
+		    !streq(x, rev)) {
 			mdbm_close(m);
 			unlink(mpath);
 			m = 0;
@@ -2410,6 +2417,7 @@ cset2rev(sccs *s, char *rev)
 		    (unsigned long)csetstat.st_mtime,
 		    (unsigned long)csetstat.st_size);
 		mdbm_store_str(m, "STAT", buf, MDBM_REPLACE);
+		mdbm_store_str(m, "REV", rev, MDBM_REPLACE);
 	}
 	sccs_sdelta(s, sccs_ino(s), rootkey);
 	deltakey = mdbm_fetch_str(m, rootkey);
@@ -16222,7 +16230,7 @@ sparc_fclose(FILE *f)
 #else
 	ret = fclose(f);
 #endif
-	flushDcache();
+	unless (getenv("BK_NO_SPARC_FLUSH")) flushDcache();
 	return (ret);
 }
 

@@ -34,11 +34,6 @@ all: os exe
 install: all
 	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
 	cp -f $(BINS) $(BINDIR)
-	@for i in $(BINS); \
-	do	D=`dirname $$i`; \
-		F=`basename $$i`; \
-		(cd $$D && ../../../bk chksum $$F); \
-	done >> $(BINDIR)/MANIFEST; \
 
 os: ../utils/os ../utils/gnu-os
 	(cd ../utils && ./os) > _os

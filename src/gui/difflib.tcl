@@ -105,10 +105,6 @@ proc createDiffWidgets {w} \
 	    .diffs.right tag configure diff -background $gc($app.newColor)
 	    bind .diffs <Configure> { computeHeight "diffs" }
 	    bind .diffs.status <Configure> { reconfigureStatus }
-
-	    .diffs.left configure  -tabs [tabstops .diffs.left $gc($app.tabstops)]
-	    .diffs.right configure -tabs [tabstops .diffs.right $gc($app.tabstops)]
-
 }
 
 proc next {} \

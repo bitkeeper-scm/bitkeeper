@@ -112,7 +112,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/md5.o tomcrypt/ctr.o tomcrypt/aes.o tomcrypt/hash.o \
 	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o
-GUI	= revtool citool helptool difftool csettool fmtool fm3tool msg \
+GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
 	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap \
       $(GUI) gzip_uuwrap ungzip_uuwrap bugform
@@ -156,7 +156,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/progress.tcl gui/search.tcl gui/msg.tcl gui/bugform.tcl\
+	  gui/progress.tcl gui/search.tcl gui/msgtool.tcl gui/bugform.tcl\
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -165,11 +165,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 default:
-	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
-	then PAGER="less -E"; \
-	else PAGER=more; \
-	fi; \
-	(bk cat HEADER; bk help bksrc; bk cat BUILD.txt) | $${PAGER}
+	bk cat BUILD.txt
 
 all: $(ALL)
 
@@ -240,7 +236,7 @@ clean-obj: FORCE
 	-@cd ../doc && $(MAKE) clean-obj
 
 clean-bin: FORCE
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
 	-@cd gnu && $(MAKE) clean 
 	-@cd win32 && $(MAKE) clean
 	cd t && rm -f doit
@@ -256,7 +252,7 @@ rebuild:
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core $(WIN_TMP)
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
 	-@cd ../doc && $(MAKE) clean clean-obj
@@ -498,8 +494,8 @@ fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/fm3tool.tcl > fm3tool
 
-msg: gui/msg.tcl
-	cat gui/msg.tcl > msg
+msgtool: gui/msgtool.tcl
+	cat gui/msgtool.tcl > msgtool
 
 #rpm:	bk.spec production
 #	rpm -bb bk.spec
@@ -542,19 +538,16 @@ binlinks:
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
-	-@find $(BINDIR) -type d -print | xargs chmod +w
+	-@find $(BINDIR) -type d -print | xargs chmod ug+w
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t
 	@if [ ! -d $(BINDIR)/t ]; \
 	then	mkdir $(BINDIR)/t; \
 	fi
 	@-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
-	@rm -f $(BINDIR)/MANIFEST
 	@list=`ls t/doit t/setup t/x.chk_env t/t.* \
 		| egrep -v '(.local|.swp|~)$$'`; \
-	cp -f $$list $(BINDIR)/t; \
-	./bk checksum -s $(BINS) $(SCRIPTS) $(DATA) $$list \
-		| sort > $(BINDIR)/MANIFEST
+	cp -f $$list $(BINDIR)/t
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
 	do	rm -f $(BINDIR)/$$1; \

@@ -122,6 +122,7 @@ int	park_main(int, char **);
 int	pending_main(int, char **);
 int	preference_main(int, char **);
 int	probekey_main(int, char **);
+int	prompt_main(int, char **);
 int	prs_main(int, char **);
 int	prunekey_main(int, char **);
 int	pull_main(int, char **);
@@ -297,6 +298,7 @@ struct	command cmdtbl[] = {
 	{"parent", parent_main},		/* doc 2.0 */
 	{"park", park_main},			/* doc 2.0 */
 	{"pending", pending_main},		/* doc 2.0 */
+	{"prompt", prompt_main},
 	{"prs", prs_main},			/* doc 2.0 */
 	{"pull", pull_main},			/* doc 2.0 */
 	{"push", push_main},			/* doc 2.0 */
@@ -592,7 +594,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "helptool") ||
 	    streq(prog, "csettool") ||
 	    streq(prog, "renametool") ||
-	    streq(prog, "msg")) {
+	    streq(prog, "msgtool")) {
 		sig_catch(SIG_IGN);
 		argv[0] = find_wish();
 		if (streq(prog, "fm2tool")) prog = "fmtool";

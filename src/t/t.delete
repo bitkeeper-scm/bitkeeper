@@ -51,8 +51,8 @@ cd $HERE/project/src
 bk get $Q -e bar.c
 bk delta -ywhatever $Q bar.c
 bk commit $Q -ywhatever
-cd $HERE
-bk resync -t $Q project clone 2>ERROR
+cd $HERE/clone
+bk pull $Q 2>ERROR
 grep -q 'This file is not where BitKeeper thinks it should be' ERROR
 if [ $? -ne 0 ]
 then	echo Failed to catch moved file; exit 1
@@ -78,10 +78,10 @@ bk edit $Q h.h
 echo j > h.h
 bk ci -yj $Q h.h
 bk commit $Q -ycset2
-cd $HERE
-bk resync -t $Q -a project clone >resync.log 2>&1
+cd $HERE/clone
+bk pull $Q >resync.log 2>&1
 if [ $? -ne 1 ]; then echo failed; cat resync.log; exit 1; fi
-cd clone
+#cd clone
 if [ ! -d RESYNC ]; then echo failed: resolved already; exit 1; fi
 bk resolve -l -F -t <<EOF >resolve.out 2>&1
 m

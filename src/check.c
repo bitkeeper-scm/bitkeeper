@@ -10,7 +10,7 @@
 WHATSTR("@(#)%K%");
 
 extern	int	sane_main(int ac, char **av);
-private	MDBM	*buildKeys(void);
+private	MDBM	*buildKeys(MDBM *idDB);
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *db);
 private	char	*getRev(char *root, char *key, MDBM *idDB);
@@ -31,6 +31,7 @@ private int	chk_eoln(sccs *s, int eoln_unix);
 private void	progress(int n, int err);
 private int	chk_merges(sccs *s);
 private sccs*	fix_merges(sccs *s);
+private	int	update_idcache(MDBM *idDB, MDBM *keys);
 
 private	int	nfiles;		/* for progress bar */
 private	int	verbose;
@@ -81,6 +82,7 @@ check_main(int ac, char **av)
 {
 	int	c, n;
 	MDBM	*db;
+	MDBM	*idDB;
 	MDBM	*keys = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	sccs	*s;
 	int	errors = 0, eoln_native = 1, want_dfile;
@@ -138,8 +140,16 @@ check_main(int ac, char **av)
 		nfiles = sccs_hashcount(cset);
 		fprintf(stderr, "Preparing to check %u files...\r", nfiles);
 	}
-	db = buildKeys();
-	if (all) init_idcache();
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+		perror("idcache");
+		exit(1);
+	}
+	db = buildKeys(idDB);
+	if (all) {
+		mdbm_close(idDB);
+		idDB = 0;
+		init_idcache();
+	}
 
 	/* This can legitimately return NULL */
 	/* XXX - I don't know for sure I always need this */
@@ -242,7 +252,7 @@ check_main(int ac, char **av)
 		sccs_free(s);
 	}
 	sfileDone();
-	if (all) {
+	if (all || update_idcache(idDB, keys)) {
 		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);
 		if (sccs_lockfile(IDCACHE_LOCK, 16, 0)) {
@@ -665,7 +675,6 @@ checkAll(MDBM *db)
 {
 	FILE	*keys;
 	char	*t;
-	MDBM	*idDB;
 	MDBM	*warned = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	int	found = 0;
 	char	buf[MAXPATH*3];
@@ -711,10 +720,6 @@ full:		keys = fopen(ctmp, "rt");
 		perror("checkAll");
 		exit(1);
 	}
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
-		perror("idcache");
-		exit(1);
-	}
 	while (fnext(buf, keys)) {
 		t = separator(buf);
 		assert(t);
@@ -726,7 +731,6 @@ full:		keys = fopen(ctmp, "rt");
 	}
 	fclose(keys);
 	if (found) listFound(warned);
-	mdbm_close(idDB);
 	mdbm_close(warned);
 	sprintf(buf, "%s.p", ctmp);
 	unlink(buf);
@@ -792,11 +796,10 @@ init_idcache()
  * this program is huge already.
  */
 private MDBM	*
-buildKeys()
+buildKeys(MDBM *idDB)
 {
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*r2i = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	MDBM	*idDB;
 	char	*s, *t = 0, *r;
 	int	n = 0;
 	int	e = 0;
@@ -808,10 +811,6 @@ buildKeys()
 
 	unless (db && r2i) {
 		perror("buildkeys");
-		exit(1);
-	}
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
-		perror("idcache");
 		exit(1);
 	}
 	unless (cset && HASGRAPH(cset)) {
@@ -940,7 +939,6 @@ buildKeys()
 	if (verbose > 2) {
 		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
 	}
-	mdbm_close(idDB);
 	if (e) exit(1);
 	return (db);
 }
@@ -1448,4 +1446,64 @@ chk_csetpointer(sccs *s)
 	}
 	free(csetkey);
 	return (0);
+}
+
+/*
+ * This function is called when we are doing a partial check after all
+ * the files have been read.  The idcache is in 'idDB', and the
+ * current pathnames to the checked files are in the 'keys' DB.  Look
+ * for any inconsistancies and then update the idcache if something is
+ * out of date.
+ *
+ * $idDB{rootkey} = pathname to where cache thinks the inode is
+ * $keys{rootkey} = pathname to where the inode actually is
+ * Both have long/short rootkeys.
+ *
+ * XXX Code to manipulate the id_cache should be moved to idcache.c in 4.0
+ */
+private int
+update_idcache(MDBM *idDB, MDBM *keys)
+{
+	kvpair	kv;
+	int	updated = 0;
+	char	*p, *e;
+	char	*cached;	/* idcache idea of where the file is */
+	char	*found;		/* where we found the gfile */
+	int	inkeyloc;	/* is gfile in inode location? */
+
+	EACH_KV (keys) {
+		p = strchr(kv.key.dptr, '|');
+		assert(p);
+		p++;
+		e = strchr(p, '|');
+		assert(e);
+		*e = 0;
+		found = kv.val.dptr;
+		inkeyloc = streq(p, found);
+		*e = '|';
+		cached = mdbm_fetch_str(idDB, kv.key.dptr);
+		/* FIXUP idDB if it is wrong */
+		if (inkeyloc) {
+			if (cached) {
+				updated = !streq(cached, found);
+				mdbm_delete(idDB, kv.key);
+			}
+		} else {
+			if (!cached || !streq(cached, found)) {
+				updated = 1;
+				mdbm_store(idDB, kv.key, kv.val, MDBM_REPLACE);
+			}
+		}
+	}
+	if (updated) {
+		init_idcache();
+		EACH_KV (idDB) {
+			fprintf(idcache, "%s %s\n", kv.key.dptr, kv.val.dptr);
+			idsum(kv.key.dptr);
+			idsum(kv.val.dptr);
+			idsum(" \n");
+		}
+	}
+	mdbm_close(idDB);
+	return (updated);
 }

@@ -1,5 +1,5 @@
 .\" help://comment
-.so bk-macros
+.so ../bk-macros
 .TH "bk comments" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
 bk comments \- change checkin comments
@@ -23,7 +23,8 @@ The comments may be specified on the command line, or if they are
 not, you will be placed in your editor to type in the comments.
 .LP
 If given
-.B \- for a file argument, then 
+.B \-
+for a file argument, then 
 .B comments
 will read a list of files and comments to be edited in batch.
 The format is like:
@@ -58,7 +59,11 @@ Generate the list of all comments in the files requested and write them to
 stdout.  This file can be edited and then later fed into 
 .B bk comments -
 on stdin to change the comments.
-.tp
+.LP
+If no files to edit is given on the command line then
+.B \-C+
+is assumed and the comments for the files in the last changeset are
+edited.
 .SH BUGS
 .B Nota bene:
 if the deltas being commented have been committed to a changeset and
