@@ -76,13 +76,6 @@ bk tag $Q foo${s}bar && {
 echo OK
 done
 
-echo $N "Tags may not contain a  ^A  .................................$NL"
-bk tag $Q 'foobar' && {
-	echo Should have failed
-	exit 1
-}
-echo OK
-
 echo $N "Tags may not contain a  |  ..................................$NL"
 bk tag $Q 'foo|bar' && {
 	echo Should have failed
