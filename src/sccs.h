@@ -137,6 +137,7 @@
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
 #define	S_SAVEPROJ	0x00010000	/* do not free the project struct */
 #define	S_FORCELOGGING	0x00020000	/* Yuck - force it to logging */
+#define S_CONFIG	0x00040000	/* this is a config file */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
@@ -215,6 +216,7 @@
 #define IS_LOCKED(s)	(((s)->state&S_LOCKED) == S_LOCKED)
 #define WRITABLE(s)	(IS_WRITABLE(s) && isRegularFile(s->mode))
 #define	CSET(s)		((s)->state & S_CSET)
+#define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
 
@@ -295,6 +297,7 @@
 #define	DB_KEYSONLY	0x08		/* boolean hashes */
 #define	DB_NOBLANKS	0x10		/* keys must have values or skip */
 #define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
+#define	DB_CONFIG	0x40		/* config file format */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 

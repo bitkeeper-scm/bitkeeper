@@ -76,6 +76,7 @@ private int	checkGone(sccs *s, int bit, char *who);
 char		*now();
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s);
+private	int	parseConfig(char *buf);
 
 int
 exists(char *s)
@@ -3682,18 +3683,22 @@ nup:		remote_free(r);
 		return (0);
 	}
 
-	h = sccs_gethost();
-	unless (h) h = "";
-	if ((r->host) && !streq(r->host, h)) goto nup;
-
-	unless (IsFullPath(bk_proj->root)) {
-		char *t = fullname(bk_proj->root, 0);
-
-		assert(t);
-		free(bk_proj->root);
-		bk_proj->root = strdup(t);
+	if (r->host) {
+		h = sccs_gethost();
+		unless (h && streq(h, r->host)) goto nup;
 	}
-	if ((r->path) && !streq(r->path, bk_proj->root)) goto nup;
+
+	if (r->path) {
+		unless (IsFullPath(bk_proj->root)) {
+			char *t = fullname(bk_proj->root, 0);
+
+			assert(t);
+			free(bk_proj->root);
+			bk_proj->root = strdup(t);
+		}
+		unless (streq(r->path, bk_proj->root)) goto nup;
+	}
+
 	remote_free(r);
 	return (1);
 }
@@ -3705,7 +3710,7 @@ nup:		remote_free(r);
  * c) replace ':' with space as field seperator.
  * d) skip the "logging_ok" field; MDBM does not like dup keys.
  */
-int
+private int
 parseConfig(char *buf)
 {
 	char *p, *q, *end_filter = 0;
@@ -3754,45 +3759,48 @@ parseConfig(char *buf)
 		unless (*q) return (0);		/* garbage */
 		while (*p++ = *q++);		/* leftshift over the spc */
 	}
-	p = strrchr(buf, '\n');
-	assert(p);
-	q = &p[-1] ;
+
+	while (*p) p++;				/* find end of line */
+	q = &p[-1];
+	if (*q == '\n') q--;
 	while (isspace(*q)) q--;		/* trim trailing space */
-	if (q != &p[-1]) strcpy(&q[1], "\n");
+	*++q = p[-1];
+	*++q = 0;
+	
 	return (1);
 }
 
 
 /*
  * Load config file into a MDBM DB
- * This function is called (indirectly) from sccs_init()
- * It also call sccs_init() itself, i.e potential mutual recursion.
- * Another form of potential recursion is:
- * 	Doing a "bk clean" on  config file (from upper level) may
- * 	actually trigger the config file to be checked out.
  */
 MDBM *
 loadConfig(char *root, int convert)
 {
 	MDBM	*DB = 0;
-	char 	s_config[MAXPATH];
-	char 	g_config[MAXPATH];
-	char 	x_config[MAXPATH];
-	sccs	*s1;
+	char 	*t, *config;
+	sccs	*s = 0;
 	project *proj = 0;
-	char	*t;
 
-	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
-	sprintf(g_config, "%s/BitKeeper/etc/config", root);
 	/*
 	 * If the config is already checked out, use that.
-	 * Otherwise, check it out.
 	 */
-	if (exists(g_config)) {
-		DB = loadDB(g_config, parseConfig, DB_NOBLANKS|DB_USEFIRST);
+	config = aprintf("%s/BitKeeper/etc/config", root);
+	if (exists(config)) {
+		DB = loadDB(config, parseConfig, DB_NOBLANKS|DB_USEFIRST);
+		free(config);
 		goto check;
 	}
-	unless (exists(s_config)) return 0;
+	free(config);
+
+	/*
+	 * No g file, so load it directly from the s.file
+	 */
+	config = aprintf("%s/BitKeeper/etc/SCCS/s.config", root);
+	unless (exists(config)) {
+out:		free(config);
+		return (0);
+	}
 
 	/*
 	 * Hand make a project struct, so sccs_init(s_config, ..) below
@@ -3800,24 +3808,22 @@ loadConfig(char *root, int convert)
 	 */
 	proj = calloc(1, sizeof(*proj));
 	proj->root = strdup(root);
-	s1 = sccs_init(s_config, SILENT, proj);
-	unless (s1) {
+	s = sccs_init(config, SILENT, proj);
+	unless (s) {
 		proj_free(proj);
-		return 0;
+		goto out;
 	}
-	if (gettemp(x_config, "bk_config")) {
-		fprintf(stderr, "Cannot create temp file\n");
-		sccs_free(s1);
-		return 0;
+	s->xflags |= X_HASH;
+	s->state |= S_CONFIG; /* This should really be stored on disk */
+	if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
+		sccs_free(s);
+		goto out;
 	}
-	if (sccs_get(s1, 0, 0, 0, 0, SILENT|PRINT, x_config)) {
-		unlink(x_config);
-		sccs_free(s1);
-		return (0);
-	}
-	DB = loadDB(x_config, parseConfig, DB_NOBLANKS|DB_USEFIRST);
-	unlink(x_config);
-	sccs_free(s1);
+	DB = s->mdbm;
+	s->mdbm = 0;
+	sccs_free(s);
+	free(config);
+
 check:	if (convert && (t = mdbm_fetch_str(DB, "CONVERT")) &&
 	    streq("ME PLEASE", t) && (config2logging(root) == 0)) {
 		mdbm_close(DB);
@@ -5819,7 +5825,7 @@ getCksumDelta(sccs *s, delta *d)
 }
 
 private sum_t
-getKey(MDBM *DB, char *buf, int flags)
+getKey(MDBM *DB, char *buf, int flags, char *root)
 {
 	char	*e;
 	int	len;
@@ -5830,7 +5836,10 @@ getKey(MDBM *DB, char *buf, int flags)
 	assert(len < MAXLINE);
 	if (len) strncpy(data, buf, len);
 	data[len] = 0;
-	if (flags & DB_KEYFORMAT) {
+	if (flags & DB_CONFIG) {
+		unless (parseConfig(data)) return (1);
+		e = strchr(data, ' ');
+	} else if (flags & DB_KEYFORMAT) {
 		e = separator(data);
 	} else {
 		e = strchr(data, ' ');
@@ -5898,7 +5907,11 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	}
 	if (HASH(s) && !(flags & GET_NOHASH)) {
 		hash = 1;
-		if (CSET(s)) hashFlags = DB_KEYFORMAT;
+		if (CSET(s)) {
+			hashFlags = DB_KEYFORMAT;
+		} else if (CONFIG(s)) {
+			hashFlags = DB_CONFIG;
+		}
 		unless ((encoding == E_ASCII) || (encoding == E_GZIP)) {
 			fprintf(stderr, "get: has files must be ascii.\n");
 			s->state |= S_WARNED;
@@ -5909,6 +5922,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 			s->state |= S_WARNED;
 			goto out;
 		}
+		assert(s->proj->root);
 	}
 
 	if (RCS(s) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
@@ -5985,7 +5999,8 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			if (hash) {
-				if (getKey(DB, buf, hashFlags|flags) == 1) {
+				if (getKey(DB, buf, hashFlags|flags,
+							s->proj->root) == 1) {
 					unless (flags & GET_HASHONLY) {
 						fnlputs(buf, out);
 					}
