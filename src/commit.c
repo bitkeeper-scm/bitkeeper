@@ -240,35 +240,16 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		hasComment? "-Y" : "", hasComment ? commentFile : "",
 		pendingFiles);
 	rc = system(buf);
-	if (rc == 0) {
-		/*
-		 * remove the d.file
-		 */
-		f = fopen(pendingFiles, "rt");
-		assert(f);
-		while (fgets(buf, sizeof(buf), f)) {
-			char *p, *q;
-
-			p = strchr(buf, '@');
-			*p = 0;
-			q = name2sccs(buf);
-			p = strrchr(q, '/');
-			p[1] = 'd';
-			unlink(q);
-			free(q);
-		}
-		fclose(f);
 /*
  * Do not enable this until
  * new BK binary is fully deployed
  */
 #ifdef NEXT_RELEASE
-		unless (opts.resync) {
-			sprintf(buf, "%setc/SCCS/x.dfile", BitKeeper);
-			close(open(buf, O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
-		}
-#endif
+	unless (opts.resync) {
+		sprintf(buf, "%setc/SCCS/x.dfile", BitKeeper);
+		close(open(buf, O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
 	}
+#endif
 	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);
 	notify();
