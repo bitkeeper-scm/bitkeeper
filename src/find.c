@@ -8,8 +8,7 @@ WHATSTR("@(#)%K%");
 private	char *files_usage = "\n\
 usage: _find [dir...] [-name bk_glob_pattern]\n\
 \n";
-private	void	walk(char *path);
-private	void	files(char *p);
+private int	do_print(char *path, struct stat *sb, void *data);
 private	char 	**globs = 0;
 
 int
@@ -28,104 +27,29 @@ find_main(int ac, char **av)
 		av[ac - 2] = 0;
 	}
 	unless (av[1]) {
-		files(0);
+		walkdir(".", do_print, 0);
 	} else {
 		for (i = 1; av[i]; ++i) {
-			files(av[i]);
+			walkdir(av[i], do_print, 0);
 		}
 	}
 	if (globs) freeLines(globs, free);
 	exit(0);
 }
 
-/*
- * Get the full pathname into the buffer and call the routine.
- */
-private void
-files(char *p)
+private int
+do_print(char *path, struct stat *sb, void *data)
 {
-	char	path[MAXPATH];
+	char	*t;
 
-	if (!p || streq(p, ".")) {
-		path[0] = 0;
-		walk(path);
-	} else {
-		strcpy(path, p);
-		walk(path);
-	}
-}
-
-private void
-do_print(char *path)
-{
-	char *t = strrchr(path, '/');
-
+	if (strneq(path, "./", 2)) path += 2;
+	t = strrchr(path, '/');
 	t = t ? (t+1) : path;
 
-	unless (globs) {
-		printf("%s\n", path);
-		return;
-	}
-	if (match_globs(t, globs, 0)) printf("%s\n", path);
-}
-
-
-/*
- * Walk a directory tree recursively.  Does not follow symlinks.  
- *
- * path points to the buffer in which the pathname is constructed.  It
- * is shared among all recursive instances.  
- */
-private	void
-walk(char *path)
-{
-	char		*end;		/* points at the null */
-	int		len;		/* length of the path before we added */
-	DIR		*d;
-	struct dirent	*e;
-	struct stat	sb;
-#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats */
-	ino_t		lastInode = 0;
-#endif
-
-	if ((d = opendir(path[0] ? path : ".")) == NULL) {
-		perror(path);
-		return;
-	}
-	if (path[0]) {
-		end = path + (len = strlen(path));
-	} else {
-		end = 0;
-		len = 0;
-	}
-	while ((e = readdir(d)) != NULL) {
-#ifndef WIN32	/* Linux 2.3.x NFS bug, skip repeats */
-		if (lastInode == e->d_ino) continue;
-		lastInode = e->d_ino;
-#endif
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
-			continue;
-		}
-
-		if ((strlen(e->d_name) + len + 5) > MAXPATH) {
-			fprintf(stderr, "files: path too long\n[%s/%s]\n",
-				path, e->d_name);
-			continue;
-		}
-		if (end) {
-			*end = '/';
-			strcpy(end + 1, e->d_name);
-		} else {
-			strcpy(path, e->d_name);
-		}
-		if (fast_lstat(path, &sb, 0)) {
-			/* Just ignore it, someone deleted it */
-			continue;
-		} else if (S_ISDIR(sb.st_mode)) {
-			walk(path);
-		} else if (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode)) {
-			do_print(path);
+	unless (S_ISDIR(sb->st_mode)) {
+		unless (globs && !match_globs(t, globs, 0)) {
+			printf("%s\n", path);
 		}
 	}
-	closedir(d);
+	return (0);
 }
