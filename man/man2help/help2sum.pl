@@ -5,7 +5,7 @@ eval "exec perl -Ssw $0 $@"
 sub main
 {
 	$MAN = "-man";
-	foreach $dir ('/usr/local/share',
+	foreach $dir ("$ENV{HOME}/groff/share", '/usr/local/share',
 	    '/usr/local/lib', '/opt/groff/share', '/usr/share', '/usr/lib') {
 		if (-f "${dir}/groff/tmac/tmac.gan") {
 			$MAN = "-mgan";

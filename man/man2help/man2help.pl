@@ -14,7 +14,8 @@ sub main
 		$prefix = shift(@ARGV);
 	}
 	$MAN = "-man";
-	foreach $dir ('/usr/local/share', '/opt/groff/share',
+	foreach $dir ("$ENV{HOME}/groff/share", 
+	    '/usr/local/share', '/opt/groff/share',
 	    '/usr/local/lib', '/usr/share', '/usr/lib') {
 		if (-f "${dir}/groff/tmac/tmac.gan") {
 			$MAN = "-mgan";

@@ -12,6 +12,7 @@ BK=	bk
 CC_OUT	=-o $@
 LD_OUT	=-o $@
 LD	=cc
+G	=-g
 
 # -Wno-parentheses shuts up "suggest parentheses around assignment ...".
 #  Unfortunately it also turns off dangling else warnings.
@@ -22,10 +23,10 @@ LD	=cc
 #         Perhaps this can be reenabled?
 # -Wno-format-y2k supresses complains about '%y' in strftime formats
 WARNINGS=-Wall -Wno-parentheses -Wno-char-subscripts -Wno-format-y2k
-CC_DEBUG=-g $(WARNINGS)
-CC_FAST_DEBUG=-g -O2 $(WARNINGS)
+CC_DEBUG=$G $(WARNINGS)
+CC_FAST_DEBUG=$G -O2 $(WARNINGS)
 CC_FAST	=$(CC_FAST_DEBUG)
-CC_WALL=-g -DLINT $(WARNINGS)
+CC_WALL=$G -DLINT $(WARNINGS)
 INSTALL=install
 XTRA=
 #UWTLIB is used on win32 only - passed in from build.sh
@@ -155,24 +156,24 @@ all: $(ALL)
 
 FREQ=50
 purify-mem:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FREQ=$(FREQ)" all
+	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FREQ=$(FREQ)" all
 purify+files:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_FREQ=$(FREQ)" all
+	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FILES -DPURIFY_FREQ=$(FREQ)" all
 purify+mdbm:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
+	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
 purify:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
+	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
 PURIFY:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=1" all
+	$(MAKE) CFLAGS="$G $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=1" all
 gprof:
-	$(MAKE) CFLAGS="-g -pg -O2" LDFLAGS=-pg all
+	$(MAKE) CFLAGS="$G -pg -O2" LDFLAGS=-pg all
 # Debugging...
 d:
-	$(MAKE) CFLAGS="-g -DDEBUG" all
+	$(MAKE) CFLAGS="$G -DDEBUG" all
 dp debug:
-	$(MAKE) CFLAGS="-g -DPURIFY -DDEBUG" all
+	$(MAKE) CFLAGS="$G -DPURIFY -DDEBUG" all
 dp2 debug2:
-	$(MAKE) CFLAGS="-g -DPURIFY -DDEBUG2" all
+	$(MAKE) CFLAGS="$G -DPURIFY -DDEBUG2" all
 
 gWall Wall:
 	$(MAKE) CFLAGS="$(CC_WALL)" all

@@ -22,10 +22,12 @@ bk_refcard.pdf: bk_refcard.tr bk_refcard.ps
 		PATH="${PATH}:${WIN32_GS_PATH}/lib:${WIN32_GS_PATH}/bin" \
 		cmd /c ps2pdf12.bat bk_refcard.ps; \
 	else \
-		case X`uname -n` in \
-		    Xqube*|Xmacos*) bk co -p bk_refcard.pdf.preformatted > bk_refcard.pdf;; \
-		    *) ps2pdf bk_refcard.ps;; \
-		esac; \
+		for i in `echo $$PATH | sed 's/:/ /g'`; \
+		do	test -x $$i/ps2pdf || continue; \
+			ps2pdf bk_refcard.ps; \
+		done; \
+		test -f bk_refcard.pdf || \
+		    bk co -p bk_refcard.pdf.preformatted > bk_refcard.pdf; \
 	fi
 
 gv: bk_refcard.tr

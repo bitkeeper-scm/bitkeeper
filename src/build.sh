@@ -71,9 +71,11 @@ cygwin_env()
 	MAKE="make -e";
 }
 
+test "$G" || G=-g
 test "$CC" || CC=gcc
 test "$LD" || LD=$CC
 test "$MAKE" || MAKE=gmake
+test "$WARN" || WARN=YES
 
 case "X`uname -s`" in
     *_NT*)
@@ -91,8 +93,10 @@ case "X`uname -s`" in
 		export XLIBS
 		MAKE="/usr/ccs/bin/make -e"
 		export MAKE
+		CHECK=1
 		;;
 	XAIX)	MAKE=make
+		CHECK=1
 		;;
 	XWindows_NT|XCYGWIN_NT*)
 		if [ X$1 = X"-u" ]; 
@@ -101,6 +105,15 @@ case "X`uname -s`" in
 		else 
 			ms_env;
 		fi
+		;;
+	XOSF1)
+		MAKE=gmake
+		CC=cc
+		LD=cc
+		G=-g3
+		CHECK=1
+		WARN=NO
+		export CC LD G MAKE WARN
 		;;
 	XDarwin)
 		MAKE=make
@@ -141,4 +154,7 @@ if [ "$CHECK" ]; then
     rm -f $$ $$.c
 fi
 
-$MAKE "CC=$CC $CCXTRA" "LD=$LD" "XLIBS=$XLIBS" "$@"
+if [ $WARN = NO ]
+then	$MAKE WARNINGS= "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
+else	$MAKE "CC=$CC $CCXTRA" "G=$G" "LD=$LD" "XLIBS=$XLIBS" "$@"
+fi
