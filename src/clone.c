@@ -74,7 +74,7 @@ clone_main(int ac, char **av)
 	if (link) {
 #ifdef WIN32
 		fprintf(stderr,
-		    "clone: sorry, -l option is not supported on Windows.\n"
+		    "clone: sorry, -l option is not supported on Windows.\n");
 		return (1);
 #else
 		return (lclone(opts, r, av[optind+1]));

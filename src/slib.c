@@ -6635,7 +6635,6 @@ getLinkBody(sccs *s,
 		unless (symlink(d->symlink, f) == 0 ) {
 #ifdef WIN32
 			getMsg("symlink", s->gfile, '=', stderr);
-			s->gfile);
 #else
 			perror(f);
 #endif
