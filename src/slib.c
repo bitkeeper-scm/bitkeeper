@@ -8186,10 +8186,7 @@ checkin(sccs *s,
 	}
 	if (t) strcpy(buf, t); /* pathname, we need this below */
 
-	/*
-	 * XXX - this is bad we should use the x.file
-	 */
-	sfile = fopen(s->sfile, "wb"); /* open in binary mode */
+	sfile = fopen(sccsXfile(s, 'x'), "wb");
 	/*
 	 * Do a 1.0 delta unless
 	 * a) there is a init file (nodefault), or
@@ -8442,14 +8439,26 @@ no_config:
 		if (popened) pclose(gfile); else fclose(gfile);
 	}
 	if (error) {
-abort:		fclose(sfile);
-		unlink(s->sfile);
+abort:		if (sfile) fclose(sfile);
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
+	t = sccsXfile(s, 'x');
+	if (fclose(sfile)) {
+		fprintf(stderr, "checkin: i/o error\n");
+		perror(t);
+		sfile = 0;
+		goto abort;
+	}
+	sfile = 0;
+	if (rename(t, s->sfile)) {
+		fprintf(stderr,
+			 "checkin: can't rename(%s, %s) left in %s\n",
+			t, s->sfile, t);
+		goto abort;
+	}
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	Chmod(s->sfile, 0444);
-	fclose(sfile);
 	if (s->state & S_BITKEEPER) updatePending(s);
 	sccs_unlock(s, 'z');
 	return (0);
