@@ -253,6 +253,8 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	# we don't bother trying to diff the info lines if not needed.
 	set bkfile(left) 1
 	set bkfile(right) 1
+	set text(left) ""
+	set text(right) ""
 
 	.diffs.left tag configure "select" -background $gc($app.infoColor)
 	.diffs.right tag configure "select" -background $gc($app.infoColor)
@@ -276,11 +278,24 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 				set p [open "| bk prs -hr$r $dspec2 \"$f\""]
 			}
 			while { [gets $p line] >= 0 } {
-				if {![info exists text($side)]} {
+				if {$text($side) == ""} {
 					set text($side) "$line"
 				} else {
 					set text($side) "$text($side)\n$line"
 				}
+			}
+			# Get info on a checked out file
+			if {$text($side) == ""} {
+				# XXX: I did it this fucked up way since
+				# file attributes on NT does not return the
+				# unix style attributes
+				catch {exec ls -l $f} ls
+				set perms [lindex [split $ls] 0]
+				if {[string length $perms] != 10} {
+					set perms "NA"
+				}
+				set text($side) \
+				    "$rfile\n\tFlags = NA\n\tMode = $perms"
 			}
 			catch {close $p}
 		}
@@ -303,6 +318,11 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	return
 }
 
+# L and R: Names of the left and right files. Might be a temporary
+#          file name with the form like: '/tmp/difftool.tcl@1.30-1284'
+#
+# Ln and Rn: File name with the revision appended
+#
 proc readFiles {L R {Ln {}} {Rn {}}} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
