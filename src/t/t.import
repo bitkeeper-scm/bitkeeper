@@ -241,7 +241,21 @@ echo "logging: none" >> config
 echo "logging_ask: no" >> config
 bk delta $Q -yprivate
 bk commit $Q -yprivate
-bk multiuser >/dev/null 2>&1
+bk multiuser 2> OUT || {
+	echo failed
+	cat OUT
+	exit 1
+}
+test `wc -l < OUT` -eq 1 || {
+	echo errors from multiuser
+	cat OUT
+	exit 1
+}
+grep -q "^ChangeSet revision" OUT || {
+	echo wrong output
+	cat OUT
+	exit 1
+}
 cd $HERE/EDIT
 bk edit $Q foo bar
 cat >> foo <<EOF
