@@ -4948,9 +4948,9 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	if (flags & GET_MODNAME) base = basenm(s->gfile);
 	/*
-	 * We want the data to start on a tab alingned boundry
+	 * We want the data to start on a tab aligned boundry
 	 */
-	if (flags & GET_PREFIX) {
+	if ((flags & GET_PREFIX) && (flags & GET_ALIGN)) {
 		int	len = 0;
 
 
@@ -5027,7 +5027,7 @@ out:			if (slist) free(slist);
 				for (e = buf; *e != '\n'; sum += *e++);
 				sum += '\n';
 			}
-			if (flags & GET_PREFIX) {
+			if ((flags & GET_PREFIX) && (flags & GET_ALIGN)) {
 				delta *tmp = sfind(s, (ser_t) print);
 
 				if (flags&GET_MODNAME)
@@ -5043,6 +5043,19 @@ out:			if (slist) free(slist);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d ", lines);
 				fprintf(out, align);
+			} else if (flags & GET_PREFIX) {
+				delta *tmp = sfind(s, (ser_t) print);
+
+				if (flags&GET_MODNAME)
+					fprintf(out, "%s\t", base);
+				if (flags&GET_PREFIXDATE)
+					fprintf(out, "%s\t", tmp->sdate);
+				if (flags&GET_USER)
+					fprintf(out, "%s\t", tmp->user);
+				if (flags&GET_REVNUMS)
+					fprintf(out, "%s\t", tmp->rev);
+				if (flags&GET_LINENUM)
+					fprintf(out, "%6d\t", lines);
 			}
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;
@@ -5312,7 +5325,11 @@ err:		if (i2) free(i2);
 	}
 	if (rev && streq(rev, "+")) rev = 0;
 	if (flags & GET_EDIT) {
+#if 0
 		int	f = (s->state & S_BRANCHOK) ? flags&GET_BRANCH : 0;
+#else
+		int	f = 0;
+#endif
 
 		d = getedit(s, &rev, f);
 		if (!d) {

@@ -776,7 +776,7 @@ proc widgets {} \
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
 	set diffOpts "-u"
-	set getOpts "-um"
+	set getOpts "-aum"
 	set lineOpts "-u -t"
 	set yspace 20
 	set search(text) ""
@@ -1018,16 +1018,12 @@ proc arguments {} \
 
 proc lineOpts {rev} \
 {
-	global	lineOpts bk_prs dev_null file
+	global	lineOpts file
 
-	# XXX - should regsub for it
-	if {"$lineOpts" != "-u"} {
-		return $rev
-	}
-	set prs [open "| $bk_prs -hr$rev -d:P: $file 2>$dev_null"]
-	gets $prs str
-	append rev "-"
-	append rev $str
+	# Call lines to get this rev in the same format as we are using.
+	set f [open "| bk lines $lineOpts -r$rev $file"]
+	gets $f rev
+	close $f
 	return $rev
 }
 

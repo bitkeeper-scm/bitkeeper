@@ -4,7 +4,7 @@
 WHATSTR("@(#)%K%");
 private	const char get_help[] = "\
 usage: get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]\n\
-   -b		force branch\n\
+   -a		align prefix output in a human readable form.\n\
    -c<date>	get the latest revision before the date\n\
    -d		prefix each line with the date it was last modified\n\
    -D		output a diff\n\
@@ -69,9 +69,11 @@ _get_main(int ac, char **av, char *out)
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
-	while ((c = getopt(ac, av, "bc;dDeFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
+	while ((c =
+	    getopt(ac, av, "ac;dDeFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
 		switch (c) {
-		    case 'b': flags |= GET_BRANCH; break;
+		    case 'a': flags |= GET_ALIGN; break;
+		    //case 'b': flags |= GET_BRANCH; break;
 		    case 'c': cdate = optarg; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;
 		    case 'D': getdiff++; break;

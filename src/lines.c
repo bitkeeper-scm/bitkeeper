@@ -10,6 +10,7 @@ private int	flags;
 private sccs	*s;
 private int	sort;	/* append -timet */
 private int	ser;
+private	char	*rev;
 
 int
 lines_main(int ac, char **av)
@@ -17,10 +18,11 @@ lines_main(int ac, char **av)
 	int	c;
 	char	*name;
 
-	while ((c = getopt(ac, av, "ut")) != -1) {
+	while ((c = getopt(ac, av, "ur;t")) != -1) {
 		switch (c) {
 		    case 'u': flags |= GET_USER; break;
 		    case 't': sort = 1; break;
+		    case 'r': rev = optarg; break;
 		    default:
 			fprintf(stderr, "usage lines [-u] file.\n");
 			return (1);
@@ -28,10 +30,19 @@ lines_main(int ac, char **av)
 	}
 
 	name = sfileFirst("lines", &av[optind], 0);
-	if (name && (s = sccs_init(name, 0, 0))) {
+	if (name && (s = sccs_init(name, INIT_NOCKSUM, 0))) {
 		ser = 0;
 		renumber(s->table);
-		prevs(s);
+		if (rev) {
+			delta	*d = sccs_getrev(s, rev, 0, 0);
+
+			assert(d);
+			printf("%s", d->rev);
+			if (flags & GET_USER) printf("-%s", d->user);
+			printf("\n");
+		} else {
+			prevs(s);
+		}
 		sccs_free(s);
 	}
 	sfileDone();

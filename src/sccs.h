@@ -36,7 +36,11 @@
 #define	GET_PREFIXDATE	0x00200000	/* get -d: show date */
 #define GET_PATH	0x00400000	/* use delta (original) path */
 #define	GET_SHUTUP	0x00800000	/* quiet on certain errors */
+#if 0
 #define	GET_BRANCH	0x00010000	/* force a branch when creating delta */
+#else
+#define	GET_ALIGN	0x00010000	/* nicely align prefix output */
+#endif
 #define	GET_FORCE	0x00020000	/* do it even with errors */
 #define	GET_HEADER	0x00040000	/* diff: print header */
 #define	DIFF_HEADER	GET_HEADER
