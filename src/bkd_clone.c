@@ -144,6 +144,7 @@ compressed(int level, int hflag)
 	char	*cmd;
 	int	rc = 1;
 
+	signal(SIGCHLD, SIG_DFL);
 	/* 
 	 * Generate list of sfiles and log markers to transfer to
 	 * remote site.  It is important that the markers appear in
@@ -162,7 +163,6 @@ compressed(int level, int hflag)
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
 	
 	sfiocmd = aprintf("cat %s %s | bk _sort | bk sfio -oq", tmpf1, tmpf2);
-	signal(SIGCHLD, SIG_DFL);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	fd = fileno(fh);
