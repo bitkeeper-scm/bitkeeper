@@ -593,6 +593,11 @@ _rmgone() {
 	# the keys in the gone file and output the sfile
 	# and gfile.  This, in turn is fed into xargs.
 	__cd2root
+	if [ ! -f BitKeeper/etc/SCCS/s.gone ]
+	then
+		echo "rmgone: there is no gone file"
+		exit 0
+	fi
 	bk -r prs -hr+ -nd':ROOTKEY: :SFILE: :GFILE:' | $AWK '
 	BEGIN {
 		while ("bk cat BitKeeper/etc/gone" | getline)
