@@ -26,6 +26,9 @@ then
 	BK_BIN=`cd .. && ./pwd.exe -s`
 	win2cygPath $BK_BIN; _BK_BIN=$cygPath;
 	TST_DIR=$TEMP
+	TMP=$TEMP
+	USR_TMP=C:/usr/tmp 
+	if [ ! -d $USR_TMP ]; then mkdir -p $USR_TMP 2> nul; fi
 	CAT="bin_mode_cat"
 	ECHO="bin_mode_echo"
 	RM=rm
@@ -76,6 +79,8 @@ else
 	data="data"
 	uuencode="uuencode"
 	TST_DIR=/tmp
+	TMP=/tmp
+	USR_TMP=/usr/tmp
 	unset CDPATH
 fi
 
@@ -119,3 +124,6 @@ if [ -d .regression-$USER ]; then ${RM} -rf .regression-$USER; fi
 mkdir .regression-$USER || exit 1
 cd .regression-$USER || exit 1
 if [ -d SCCS ]; then echo "There should be no SCCS directory here."; exit 1; fi
+# save the list of file cuurently in $TMP
+# check it when again when we are in clean up
+ls $TMP > ${USR_TMP}/T 
