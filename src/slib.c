@@ -2123,6 +2123,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				    y, tm->tm_mon+1, tm->tm_mday);
 				t += 10;
 			} else {
+				while (tm->tm_year > 100) tm->tm_year -= 100;
 				sprintf(t, "%02d/%02d/%02d",
 				    tm->tm_year, tm->tm_mon+1, tm->tm_mday);
 				t += 8;
@@ -2172,6 +2173,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				    tm->tm_mon+1, tm->tm_mday, y);
 				t += 10;
 			} else {
+				while (tm->tm_year > 100) tm->tm_year -= 100;
 				sprintf(t, "%02d/%02d/%02d",
 				    tm->tm_mon+1, tm->tm_mday, tm->tm_year);
 				t += 8;
