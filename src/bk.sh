@@ -1290,9 +1290,9 @@ _help() {
 	(
 	for i in $*
 	do
-		if grep -q "^#help_$i" ${BIN}bkhelp.txt
+		if grep -q "^#help_$i$" ${BIN}bkhelp.txt
 		then	__gethelp help_$i $BIN
-		elif [ -x "${BIN}$i" -a -x "${BIN}$i" ]
+		elif [ -x "${BIN}$i" ]
 		then	echo "                -------------- $i help ---------------"
 			echo
 			${BIN}$i --help 2>&1
