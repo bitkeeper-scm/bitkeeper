@@ -6403,6 +6403,7 @@ out:			if (slist) free(slist);
 		unless (out) {
 			fprintf(stderr,
 			    "getRegBody: Can't open %s for writing\n", f);
+			perror(f);
 			fflush(stderr);
 			goto out;
 		}

@@ -955,7 +955,9 @@ applyCsetPatch(char *localPath,
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
 	unless (localPath) {
-		mkdirf(p->resyncFile);
+		if (mkdirf(p->resyncFile)) {
+			perror(p->resyncFile);
+		}
 		goto apply;
 	}
 	fileCopy2(localPath, p->resyncFile);
@@ -1230,7 +1232,13 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		    p->localFile, p->resyncFile, p->pid, p->me);
 	}
 	unless (localPath) {
-		mkdirf(p->resyncFile);
+		if (mkdirf(p->resyncFile) == -1) {
+			if (errno == EINVAL) {
+				getMsg(
+				    "reserved_name", p->resyncFile, 0, stderr);
+				return (-1);
+			}
+		}
 		goto apply;
 	}
 	fileCopy2(localPath, p->resyncFile);
