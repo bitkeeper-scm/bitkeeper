@@ -553,6 +553,9 @@ _chkConfig() {
 		_gethelp chkconfig_missing $BIN
 		exit 1
 	fi
+	if [ -f ${cfgDir}config ]
+	then	${BIN}clean ${cfgDir}config
+	fi
 	${BIN}get -q ${cfgDir}config 
 	cmp -s ${cfgDir}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
@@ -787,6 +790,7 @@ _commit() {
 	${RM} -f ${TMP}list$$
 	COMMENTS=
 	L=----------------------------------------------------------------------
+	${BIN}clean -q ChangeSet
 	if [ $DOIT = YES ]
 	then	if [ -f ${TMP}commit$$ ]
 		then	COMMENTS="-Y${TMP}commit$$"
