@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-#define V(format, args...) // (fprintf(stderr, "%5d: ", getpid()), fprintf(stderr, format, ## args))
-
 /*
  * Don't treat chdir() special here.
  */
@@ -17,7 +15,10 @@ struct dirlist {
 struct project {
 	char	*root;		/* fullpath root of the project */
 	char	*csetrootkey;	/* Root key of ChangeSet file */
+	char	*csetmd5rootkey;/* MD5 root key of ChangeSet file */
 	MDBM	*config;	/* config DB */
+	HASH	*hash;		/* misc data, stored per tree */
+	project	*parent;	/* set if this is a RESYNC proj */
 
 	/* internal state */
     	int	refcnt;
@@ -30,36 +31,22 @@ private char	*find_root(char *dir);
 private project	*proj_curr = 0;
 private project	*proj_last = 0;
 private	project *proj_master_list = 0;
-private MDBM	*projcache = 0;
+private HASH	*projcache = 0;
 
 private project *
 projcache_lookup(char *dir)
 {
 	project	*ret = 0;
-	datum	k, v;
+	project	**p;
 
-	unless (projcache) {
-		projcache = mdbm_mem();
-		V("mdbm_mem()\n");
-	}
-	k.dptr = (char *)dir;
-	k.dsize = strlen(dir) + 1;
-	v = mdbm_fetch(projcache, k);
-	if (v.dsize) {
-		assert(v.dsize == sizeof(ret));
-		memcpy(&ret, v.dptr, sizeof(ret));
-	}
-	V("mdbm_fetch(%s) = %p\n", dir, ret);
+	unless (projcache) projcache = hash_new();
+	if (p = hash_fetch(projcache, dir, 0, 0)) ret = *p;
 	return (ret);
 }
 
 private void
 projcache_store(char *dir, project *p)
 {
-	datum	k, v;
-	int	status;
-
-
 	unless (streq(dir, p->root)) {
 		dirlist	*dl;
 
@@ -68,43 +55,20 @@ projcache_store(char *dir, project *p)
 		dl->next = p->dirs;
 		p->dirs = dl;
 	}
-	k.dptr = (char *)dir;
-	k.dsize = strlen(dir) + 1;
-	v = mdbm_fetch(projcache, k);
-	assert(v.dsize == 0);
-	v.dptr = (char *)&p;
-	v.dsize = sizeof(p);
-	V("mdbm_store(%s, %p)\n", dir, p);
-	status = mdbm_store(projcache, k, v, MDBM_INSERT);
-	if (status) {
-		V("mdbm_store: exists\n");
-		assert(0);
-	}
+	*(project **)hash_alloc(projcache, dir, 0, sizeof(p)) = p;
 }
 
 private void
 projcache_delete(project *p)
 {
-	datum	k;
-	int	status;
 	dirlist	*dl;
 
-	k.dptr = p->root;
-	k.dsize = strlen(p->root) + 1;
-
-	V("mdbm_delete(%s)\n", p->root);
-	status = mdbm_delete(projcache, k);
-	assert(status == 0);
+	hash_delete(projcache, p->root, 0);
 	dl = p->dirs;
 	while (dl) {
 		dirlist	*tmp = dl;
 
-		k.dptr = dl->dir;
-		k.dsize = strlen(dl->dir) + 1;
-
-		V("mdbm_delete(%s)\n", dl->dir);
-		status = mdbm_delete(projcache, k);
-		assert(status == 0);
+		hash_delete(projcache, dl->dir, 0);
 
 		free(dl->dir);
 		dl = dl->next;
@@ -117,6 +81,7 @@ proj_init(char *dir)
 {
 	project	*ret;
 	char	*root;
+	char	*t;
 
 	if (ret = projcache_lookup(dir)) goto done;
 
@@ -142,7 +107,16 @@ proj_init(char *dir)
 	if (!streq(root, dir) && IsFullPath(dir)) projcache_store(dir, ret);
 done:
 	++ret->refcnt;
-	V("proj_init() = %p (ref %d)\n", ret, ret->refcnt);
+
+	if ((t = strrchr(ret->root, '/')) && streq(t, "/RESYNC")) {
+		*t = 0;
+		ret->parent = proj_init(ret->root);
+		if (ret->parent && !streq(ret->parent->root, ret->root)) {
+			proj_free(ret->parent);
+			ret->parent = 0;
+		}
+		*t = '/';
+	}
 	return (ret);
 }
 
@@ -152,9 +126,12 @@ proj_free(project *p)
 	project	**m;
 	assert(p);
 
-	V("proj_free(%p (ref %d))\n", p, p->refcnt);
 	unless (--p->refcnt == 0) return;
 
+	if (p->parent) {
+		proj_free(p->parent);
+		p->parent = 0;
+	}
 	projcache_delete(p);
 
 	proj_reset(p);
@@ -260,6 +237,9 @@ char	*
 proj_csetrootkey(project *p)
 {
 	sccs	*sc;
+	FILE	*f;
+	char	*ret;
+	char	rkfile[MAXPATH];
 	char	buf[MAXPATH];
 
 	unless (p) p = curr_proj();
@@ -268,7 +248,19 @@ proj_csetrootkey(project *p)
 	/*
 	 * Use cached copy if available
 	 */
-	unless (p->csetrootkey) {
+	if (p->csetrootkey) return (p->csetrootkey);
+	if (p->parent && (ret = proj_csetrootkey(p->parent))) return (ret);
+
+	sprintf(rkfile, "%s/BitKeeper/tmp/ROOTKEY", p->root);
+	if (f = fopen(rkfile, "rt")) {
+		fnext(buf, f);
+		chomp(buf);
+		p->csetrootkey = strdup(buf);
+		fnext(buf, f);
+		chomp(buf);
+		p->csetmd5rootkey = strdup(buf);
+		fclose(f);
+	} else {
 		sprintf(buf, "%s/%s", p->root, CHANGESET);
 		if (exists(buf)) {
 			/*
@@ -279,11 +271,41 @@ proj_csetrootkey(project *p)
 			sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT);
 			assert(sc->tree);
 			sccs_sdelta(sc, sc->tree, buf);
-			sccs_free(sc);
 			p->csetrootkey = strdup(buf);
+			sccs_md5delta(sc, sc->tree, buf);
+			p->csetmd5rootkey = strdup(buf);
+			sccs_free(sc);
+			if (f = fopen(rkfile, "wt")) {
+				fputs(p->csetrootkey, f);
+				putc('\n', f);
+				fputs(p->csetmd5rootkey, f);
+				putc('\n', f);
+				fclose(f);
+			}
 		}
 	}
 	return (p->csetrootkey);
+}
+
+char *
+proj_csetmd5rootkey(project *p)
+{
+	char	*ret;
+
+	unless (p || (p = curr_proj())) return (0);
+
+	unless (p->csetmd5rootkey) proj_csetrootkey(p);
+	if (p->parent && (ret = proj_csetmd5rootkey(p->parent))) return (ret);
+	return (p->csetmd5rootkey);
+}
+
+HASH *
+proj_hash(project *p)
+{
+	unless (p || (p = curr_proj())) return (0);
+
+	unless (p->hash) p->hash = hash_new();
+	return (p->hash);
 }
 
 void
@@ -293,13 +315,18 @@ proj_reset(project *p)
 		if (p->csetrootkey) {
 			free(p->csetrootkey);
 			p->csetrootkey = 0;
+			free(p->csetmd5rootkey);
+			p->csetmd5rootkey = 0;
 		}
 		if (p->config) {
 			mdbm_close(p->config);
 			p->config = 0;
 		}
+		if (p->hash) {
+			hash_free(p->hash);
+			p->hash = 0;
+		}
 	} else {
-		V("proj_reset(0)\n");
 		p = proj_master_list;
 		while (p) {
 			proj_reset(p);

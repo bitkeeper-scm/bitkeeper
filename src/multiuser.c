@@ -105,6 +105,7 @@ newroot(int single, char *ranbits)
 	sccs_sdelta(s, sccs_ino(s), key);
 	sccs_newchksum(s);
 	sccs_free(s);
+	unlink("BitKeeper/tmp/ROOTKEY");
 	f = popen("bk sfiles", "r");
 	while (fnext(buf, f)) {
 		chop(buf);

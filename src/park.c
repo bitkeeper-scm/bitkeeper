@@ -640,20 +640,6 @@ copyGSPfile(char *oldpath, char *key,
 }
 
 /*
- * We need this to prevent "bk idcache" from decending into PARKDIR
- */
-private void
-mkFakeRoot(void)
-{
-	char p[] = BKROOT;
-	char q[] = CHANGESET;
-
-	mkdirp(p);
-	mkdirf(q);
-	close(open(CHANGESET, O_CREAT|O_WRONLY, 0666));
-}
-
-/*
  * Return true if two file are the same
  */
 private int
@@ -1088,7 +1074,10 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 		perror(PARKDIR);
 		goto err;
 	}
-	mkFakeRoot(); /* for bk idcache */
+	/*
+	 * We need this to prevent "bk idcache" from decending into PARKDIR
+	 */
+	close(open(BKSKIP, O_CREAT|O_WRONLY, 0666));
 
 	rc = sysio((id == -1) ? NULL : parkfile,
 				NULL, sfio_list, "bk", "sfio", "-i", SYS);

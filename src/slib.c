@@ -4042,7 +4042,7 @@ sccs_init(char *name, u32 flags)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	lease_check(s);
+	lease_check(s->proj);
 	return (s);
 }
 
