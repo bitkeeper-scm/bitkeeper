@@ -1078,10 +1078,8 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc bin dev_null
+	global argv0 argv argc
 
-	set bin "/usr/bitkeeper"
-	set dev_null "/dev/null"
 	bk_init
 	widgets
 	getFiles
