@@ -294,6 +294,7 @@ confirm(char *msg)
 		(void)sig_catch(old);
 		return (0);
 	}
+	old = sig_catch(abort_prompt);
 	fflush(stdout);
 	write(2, msg, strlen(msg));
 	write(2, " (y/n) ", 7);
@@ -301,7 +302,7 @@ confirm(char *msg)
 		(void)sig_catch(old);
 		return (0);
 	}
-	old = sig_catch(abort_prompt);
+	(void)sig_catch(old);
 	return ((buf[0] == 'y') || (buf[0] == 'Y'));
 }
 
@@ -387,8 +388,7 @@ err:		system("bk help -s prompt");
 		fputs(av[optind], stdout);
 		fputc('\n', stdout);
 	}
-	/* XXX - why does this not return exit codes exit if I use exit? */
-	return (confirm(yes ? yes : "OK") ? 0 : 1);
+	exit(confirm(yes ? yes : "OK") ? 0 : 1);
 }
 
 /*
