@@ -320,6 +320,14 @@ proc prevFile {} \
 	dotFile
 }
 
+proc nextCset {} \
+{
+}
+
+proc prevCset {} \
+{
+}
+
 proc dotFile {} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
@@ -535,7 +543,7 @@ proc widgets {} \
 
 	set boldFont {clean 12 roman bold}
 	set listFont {clean 12 roman }
-	set buttonFont {clean 12 roman bold}
+	set buttonFont {helvetica 12 roman bold}
 	set diffFont {clean 12 roman}
 	set leftWid 56
 	set rightWid 80
@@ -585,7 +593,7 @@ proc widgets {} \
 	    frame .diffs.status
 		label .diffs.status.l -background $leftColor \
 		    -font $buttonFont -relief sunken -borderwid 2
-		label .diffs.status.middle -background #b0b0f0 \
+		label .diffs.status.middle -background lightblue \
 		    -font $buttonFont -wid 26 -relief sunken -borderwid 2
 		label .diffs.status.r -background $rightColor \
 		    -font $buttonFont -relief sunken -borderwid 2
@@ -609,27 +617,48 @@ proc widgets {} \
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
 
-	set menuwid 6
+	set menuwid 7
+	set py 1
+	set px 4
+	set bw 2
 	frame .menu
+	    button .menu.prevCset -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "<< Cset" -width $menuwid -command prevCset
+	    button .menu.nextCset -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text ">> Cset" -width $menuwid -command nextCset
 	    button .menu.prevFile -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
 		-text "<< File" -width $menuwid -command prevFile
 	    button .menu.nextFile -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
 		-text ">> File" -width $menuwid -command nextFile
 	    button .menu.prev -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
 		-text "<< Diff" -width $menuwid -state disabled -command prev
 	    button .menu.next -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
 		-text ">> Diff" -width $menuwid -state disabled -command next
+	    button .menu.history -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "ChangeSet History" -command "exec bk sccstool &"
 	    button .menu.quit -font $buttonFont -bg grey \
+		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -width $menuwid -command exit 
 	    button .menu.help -width $menuwid -bg grey \
+		-pady $py -padx $px -borderwid $bw \
 		-font $buttonFont -text "Help" \
 		-command { exec bk helptool csettool & }
-	    grid .menu.prevFile
-	    grid .menu.nextFile
-	    grid .menu.prev 
-	    grid .menu.next
-	    grid .menu.quit
-	    grid .menu.help
+	    #grid .menu.prevCset -row 0 -column 0
+	    #grid .menu.nextCset -row 0 -column 1
+	    grid .menu.prevFile -row 1 -column 0
+	    grid .menu.nextFile -row 1 -column 1
+	    grid .menu.prev  -row 2 -column 0
+	    grid .menu.next -row 2 -column 1
+	    grid .menu.history -row 3 -column 0 -columnspan 2
+	    grid .menu.quit -row 4 -column 0 
+	    grid .menu.help -row 4 -column 1
 
 	grid .menu -row 0 -column 0 -sticky n
 	grid .filelist -row 0 -column 1 -sticky nsew
@@ -638,6 +667,7 @@ proc widgets {} \
 	grid rowconfigure . 0 -weight 0
 	grid rowconfigure . 1 -weight 1
 	grid rowconfigure .diffs 1 -weight 1
+	grid rowconfigure .menu 0 -weight 1
 	grid columnconfigure . 1 -weight 1
 	grid columnconfigure . 2 -weight 1
 	grid columnconfigure .filelist 0 -weight 1

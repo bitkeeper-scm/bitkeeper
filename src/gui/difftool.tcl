@@ -334,8 +334,8 @@ proc widgets {L R} \
 	set leftColor orange
 	set rightColor yellow
 	set swid 12
-	set boldFont {clean 12 roman bold}
-	set buttonFont {clean 10 roman bold}
+	set boldFont {helvetica 12 roman bold}
+	set buttonFont {helvetica 12 roman bold}
 	set geometry ""
 	if {[file readable ~/.difftoolrc]} {
 		source ~/.difftoolrc
@@ -350,10 +350,11 @@ proc widgets {L R} \
 	frame .diffs
 	    frame .diffs.status
 		label .diffs.status.l -background $leftColor \
-		    -font $buttonFont
+		    -font $buttonFont -relief sunken -borderwid 2
 		label .diffs.status.r -background $rightColor \
-		    -font $buttonFont
-		label .diffs.status.middle -background #b0b0f0 \
+		    -font $buttonFont -relief sunken -borderwid 2
+		label .diffs.status.middle \
+		    -foreground black -background lightblue \
 		    -font $buttonFont -wid 26 -relief sunken -borderwid 2
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
@@ -375,14 +376,21 @@ proc widgets {L R} \
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
 
+	set py 1
+	set px 4
+	set bw 2
 	frame .menu
 	    button .menu.prev -font $buttonFont -bg grey \
-		-text "Previous" -width 7 -state disabled -command prev
+		-pady $py -padx $px -borderwid $bw \
+		-text "Previous" -state disabled -command prev
 	    button .menu.next -font $buttonFont -bg grey \
-		-text "Next" -width 7 -state disabled -command next
+		-pady $py -padx $px -borderwid $bw \
+		-text "Next" -state disabled -command next
 	    button .menu.quit -font $buttonFont -bg grey \
-		-text "Quit" -width 7 -command exit 
-	    button .menu.help -width 7 -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Quit" -command exit 
+	    button .menu.help -bg grey \
+		-pady $py -padx $px -borderwid $bw \
 		-font $buttonFont -text "Help" \
 		-command { exec bk helptool difftool & }
 	    pack .menu.prev -side left
