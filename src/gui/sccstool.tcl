@@ -150,67 +150,6 @@ proc getTags {} \
 	        }
 }
 
-#
-# Create floating window that displays the list of all tags
-#
-proc showTags {} \
-{
-	global tag2rev gc curLine
-
-	getTags
-	set curLine 1.0
-
-	toplevel .tw
-	    frame .tw.top
-		text .tw.top.t -width 40 -height 10 \
-		    -font $gc(sccs.fixedFont) \
-		    -xscrollcommand { .tw.top.xscroll set } \
-		    -yscrollcommand { .tw.top.yscroll set } \
-		    -bg $gc(sccs.textBG) -fg $gc(sccs.textFG) -wrap none 
-		scrollbar .tw.top.xscroll -orient horizontal \
-		    -wid $gc(sccs.scrollWidth) -command { .tw.top.t xview } \
-		    -background $gc(sccs.scrollColor) \
-		    -troughcolor $gc(sccs.troughColor)
-		scrollbar .tw.top.yscroll -orient vertical \
-		    -wid $gc(sccs.scrollWidth) \
-		    -command { .tw.top.t yview } \
-		    -background $gc(sccs.scrollColor) \
-		    -troughcolor $gc(sccs.troughColor)
-	    frame .tw.bottom
-		button .tw.bottom.quit -font $gc(sccs.buttonFont) \
-		    -relief raised \
-		    -bg $gc(sccs.buttonColor) \
-		    -pady 3 -padx 3 -borderwid 3 \
-		    -text "Close" -command {destroy .tw}
-		button .tw.bottom.next -font $gc(sccs.buttonFont) \
-		    -relief raised \
-		    -bg $gc(sccs.buttonColor) \
-		    -pady 3 -padx 3 -borderwid 3 \
-		    -text "Next" -command {selectTag .tw.top.t 0 0 1}
-		button .tw.bottom.prev -font $gc(sccs.buttonFont) \
-		    -relief raised \
-		    -bg $gc(sccs.buttonColor) \
-		    -pady 3 -padx 3 -borderwid 3 \
-		    -text "Prev" -command {selectTag .tw.top.t 0 0 -1}
-
-	pack .tw.top.yscroll -side right -fill y
-	pack .tw.top.xscroll -side bottom -fill x
-	pack .tw.top.t -expand true -fill both
-	pack .tw.bottom.quit .tw.bottom.prev .tw.bottom.next \
-	    -side left -expand true -fill both
-	pack .tw.top .tw.bottom -side top -fill both
-
-	bind .tw.top.t <Button-1> { selectTag %W %x %y "" }
-	.tw.top.t tag configure "select" -background $gc(sccs.selectColor)
-	foreach tag [lsort [array names tag2rev]] {
-		#puts "tag=($tag) val=($tag2rev($tag))"
-		.tw.top.t insert end "$tag\n"
-	}
-	bindtags .tw.top.t {.tw.top.t . all}
-	# Now set the selection to the first tag
-	selectTag .tw.top.t 0 0 ""
-}
-
 # 
 # Center the selected bitkeeper tag in the middle of the canvas
 #
@@ -1286,7 +1225,6 @@ proc widgets {} \
         bind . <Control-Button-5> 	"$w(cvs) yview scroll 1 units"
         bind . <Button-4> 		"$w(ap) yview scroll -5 units"
         bind . <Button-5>		"$w(ap) yview scroll 5 units"
-	#bind $w(cvs) <Control-T>	"showTags"
 	bind $w(ap) <Button-1> { selectTag %W %x %y "" "B1" }
 	bind $w(ap) <Button-3> { selectTag %W %x %y "" "B3" }
 	bind $w(ap) <Double-1> { selectTag %W %x %y "" "D1" }
