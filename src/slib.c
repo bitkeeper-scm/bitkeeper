@@ -3657,6 +3657,33 @@ name2sccs(char *name)
 	return (newname);
 }
 
+private int
+stale(char *file)
+{
+	char	buf[300];
+	char	*t, *h = sccs_gethost();
+	int	n, fd = open(file, 0);
+
+	if (fd == -1) return (0);
+	if ((n = read(fd, buf, sizeof(buf))) <= 0) {
+		close(fd);
+		return (0);
+	}
+	buf[n-1] = 0;				/* null the newline */
+	close(fd);
+	unless (t = strchr(buf, ' ')) return (0);
+	*t++ = 0;
+	unless (streq(t, h)) return (0);	/* different hosts */
+	for (n = 0; n < 100; n++) {		/* about a second */
+		if (kill(atoi(buf), 0) == -1) {
+			unlink(file);
+			return (1);
+		}
+		usleep(10000);
+	}
+	return (0);
+}
+
 /*
  * create SCCS/<type>.foo.c
  */
@@ -3666,21 +3693,41 @@ sccs_lock(sccs *s, char type)
 	char	*t;
 	int	lockfd;
 
-	if (type == 'z') {
-		if (s->state & S_READ_ONLY) return (0);
-		if (repository_locked(s->proj) &&
-		    (repository_cleanLocks(s->proj, 0) != 0)) {
-		    	return (0);
-		}
+	if (s->state & S_READ_ONLY) {
+		return (0);
 	}
-	t = sccsXfile(s, type);
-	lockfd =
-	    open(t, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
+	
+	if ((type == 'z') && repository_locked(s->proj) &&
+	    (repository_cleanLocks(s->proj, 0) != 0)) {
+		return (0);
+	}
 
-	if (lockfd >= 0) close(lockfd);
-	if ((lockfd >= 0) && (type == 'z')) s->state |= S_ZFILE;
+	/* get -e does Z lock so we can skip past the repository locks */
+	if (type == 'Z') type = 'z';
+	t = sccsXfile(s, type);
+again:	lockfd =
+	    open(t, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
 	debug((stderr, "lock(%s) = %d\n", s->sfile, lockfd >= 0));
-	return (lockfd >= 0);
+	if ((lockfd == -1) && stale(t)) goto again;
+	if (lockfd == -1) {
+		return (0);
+	}
+	if (type == 'z') {
+		char	buf[20];
+		char	*h = sccs_gethost();
+
+		sprintf(buf, "%u ", getpid());
+		write(lockfd, buf, strlen(buf));
+		if (h) {
+			write(lockfd, h, strlen(h));
+		} else {
+			write(lockfd, "?", 1);
+		}
+		write(lockfd, "\n", 1);
+		s->state |= S_ZFILE;
+	}
+	close(lockfd);
+	return (1);
 }
 
 /*
@@ -4810,7 +4857,7 @@ write_pfile(sccs *s, int flags, delta *d,
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	unless (sccs_lock(s, 'z')) {
+	unless (sccs_lock(s, 'Z')) {
 		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
 		repository_lockers(s->proj);
 		return (-1);
@@ -6977,14 +7024,6 @@ sccs_clean(sccs *s, u32 flags)
 	char	tmpfile[50];
 	delta	*d;
 
-	/* clean up lock files but not gfile */
-	if (flags & CLEAN_UNLOCK) {
-		unlink(s->pfile);
-		sccs_unlock(s, 'z');
-		sccs_unlock(s, 'x');
-		return (0);
-	}
-
 	/* don't go removing gfiles without s.files */
 	unless (HAS_SFILE(s) && s->tree) {
 		verbose((stderr, "%s not under SCCS control\n", s->gfile));
@@ -6994,7 +7033,7 @@ sccs_clean(sccs *s, u32 flags)
 	unless (HAS_PFILE(s)) {
 		unless (WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
-			unless (flags & CLEAN_UNLOCK) unlinkGfile(s);
+			unlinkGfile(s);
 			return (0);
 		}
 		fprintf(stderr, "%s writable but not edited?\n", s->gfile);
@@ -7002,7 +7041,7 @@ sccs_clean(sccs *s, u32 flags)
 	}
 	if (flags & CLEAN_UNEDIT) {
 		unlink(s->pfile);
-		unless (flags & CLEAN_UNLOCK) unlinkGfile(s);
+		unlinkGfile(s);
 		return (0);
 	}
 

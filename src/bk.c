@@ -7,6 +7,8 @@ extern char *bin;
 char *find_wish();
 char *find_perl5();
 
+int unedit_main(int, char **);
+int unlock_main(int, char **);
 int files_main(int, char **);
 int bkd_main(int, char **);
 int setup_main(int, char **);
@@ -76,6 +78,7 @@ int repo_main(int, char **);
 int pull_main(int, char **);
 
 struct command cmdtbl[100] = {
+	{"unlock", unlock_main },
 	{"files", files_main },
 	{"bkd", bkd_main },
 	{"setup", setup_main },
@@ -100,9 +103,8 @@ struct command cmdtbl[100] = {
 	{"sendconfig", sendconfig_main},
 	{"takepatch", takepatch_main},
 	{"clean", clean_main},
-	{"unedit", clean_main},	/* aliases */
-	{"unget", clean_main},	/* aliases */
-	{"unlock", clean_main},	/* aliases */
+	{"unedit", unedit_main},
+	{"unget", unedit_main},	/* aliases */
 	{"prs", prs_main},
 	{"mv", mv_main},
 	{"sccsmv", mv_main},
