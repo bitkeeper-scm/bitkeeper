@@ -215,11 +215,13 @@ main(int ac, char **av)
 	sccs	*s;
 	delta	*e;
 	char	*name;
+	int	expand = 1;
 	int	c;
 	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "c;r;")) != -1) {
+	while ((c = getopt(ac, av, "ec;r;")) != -1) {
 		switch (c) {
+		    case 'e': expand = 2; break;
 		    RANGE_OPTS('c', 'r');
 		    default:
 usage:			fprintf(stderr,
@@ -233,7 +235,7 @@ usage:			fprintf(stderr,
 			continue;
 		}
 		if (!s->tree) goto next;
-		RANGE("range", s, 1, 1);
+		RANGE("range", s, expand, 1);
 		if (s->state & S_SET) {
 			fprintf(stderr, "%s set:", s->gfile);
 			for (e = s->table; e; e = e->next) {

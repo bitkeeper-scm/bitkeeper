@@ -405,12 +405,6 @@ caches(const char *filename, const struct stat *sb, int flag)
 		return (0);
 	}
 
-	/* This currently always fails */
-	if (d->cset) {
-		sccs_free(sc);
-		return (0);
-	}
-	
 	/* Go look for it in the cset */
 	sccs_sdelta(buf, sccs_ino(sc));
 	k.dptr = buf;

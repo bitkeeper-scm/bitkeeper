@@ -37,7 +37,6 @@ private int	read_pfile(char *who, sccs *s, pfile *pf);
 private int	hasComments(delta *d);
 private int	checkRev(char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
-private delta*	csetArg(delta *d, char *name);
 private delta*	csetFileArg(delta *d, char *name);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
@@ -475,7 +474,6 @@ sccs_freetree(delta *tree)
 	if (tree->csetFile && !(tree->flags & D_DUPCSETFILE)) {
 		free(tree->csetFile);
 	}
-	if (tree->cset) free(tree->cset);
 	if (tree->sym) free(tree->sym);
 	if (tree->glink) free(tree->glink);
 	free(tree);
@@ -2646,7 +2644,7 @@ meta(sccs *s, delta *d, char *buf)
 		csetFileArg(d, &buf[3]);
 		break;
 	    case 'C':
-		csetArg(d, &buf[3]);
+		d->flags |= D_CSET;
 		break;
 	    case 'K':
 		sumArg(d, &buf[3]);
@@ -2973,6 +2971,7 @@ misc(sccs *s)
 			if (bits & X_YEAR4) s->state |= S_YEAR4;
 			if (bits & X_RCSEXPAND) s->state |= S_RCS;
 			if (bits & X_EXPAND1) s->state |= S_EXPAND1;
+			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
 #ifdef S_ISSHELL
 			if (bits & X_ISSHELL) s->state |= S_ISSHELL;
 #endif
@@ -3994,7 +3993,6 @@ putlodlist(sccs *sc, ser_t *s, FILE *out)
 /*
  * Generate a list of serials marked with D_SET tag
  */
-
 private ser_t *
 visitedmap(sccs *s)
 {
@@ -4837,7 +4835,9 @@ out:		if (slist) free(slist);
 		pclose(out);
 	} else if (flags & PRINT) {
 		unless (streq("-", printOut)) fclose(out);
-	} else fclose(out);
+	} else {
+		fclose(out);
+	}
 
 	if (error) {
 		if (full(s->gfile)) {
@@ -5482,10 +5482,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, d->csetFile, out);
 			fputmeta(s, "\n", out);
 		}
-		if (d->cset) {
-			fputmeta(s, "\001cC", out);
-			fputmeta(s, d->cset, out);
-			fputmeta(s, "\n", out);
+		if (d->flags & D_CSET) {
+			fputmeta(s, "\001cC\n", out);
 		}
 		if (d->dateFudge) {
 			fputmeta(s, "\001cF", out);
@@ -5596,6 +5594,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	if (s->state & S_YEAR4) bits |= X_YEAR4;
 	if (s->state & S_RCS) bits |= X_RCSEXPAND;
 	if (s->state & S_EXPAND1) bits |= X_EXPAND1;
+	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
 #ifdef S_ISSHELL
 	if (s->state & S_ISSHELL) bits |= X_ISSHELL;
 #endif
@@ -6064,7 +6063,8 @@ sccs_clean(sccs *s, u32 flags)
 	unless (sameFileType(s, d)) {
 		unless (flags & PRINT) {
 			fprintf(stderr,
-			"%s has been modified, needs delta.\n", s->gfile);
+			    "%s has different file type, needs delta.\n",
+			    s->gfile);
                 } else {
 			printf("===== %s (file type) %s vs edited =====\n",
 			s->gfile, pf.oldrev);
@@ -6102,8 +6102,10 @@ sccs_clean(sccs *s, u32 flags)
 	 * sure.  The difference ends up being on a line with the keywords.
 	 */
 	if (access(s->gfile, W_OK)) {
-		flags |= GET_EXPAND;
-		if (s->state & S_RCS) flags |= GET_RCSEXPAND;
+		if (s->encoding == E_ASCII) {
+			flags |= GET_EXPAND;
+			if (s->state & S_RCS) flags |= GET_RCSEXPAND;
+		}
 	}
 	sprintf(tmpfile, "%s/diffg%d", TMP_PATH, getpid());
 	/*
@@ -6473,7 +6475,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 				sccs_sdelta(buf, n);
 				n->csetFile = strdup(buf);
 			}
-			s->state |= S_BITKEEPER;	
+			s->state |= S_BITKEEPER|S_CSETMARKED;	
 			n->flags |= D_CKSUM;
 		} else {
 			t = relativeName(s, 0, 0);
@@ -6482,7 +6484,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 				unless (n->csetFile) {
 					n->csetFile = getCSetFile(s);
 				}
-				s->state |= S_BITKEEPER;	
+				s->state |= S_BITKEEPER|S_CSETMARKED;	
 			}
 		}
 	} 
@@ -6924,9 +6926,6 @@ userArg(delta *d, char *arg)
  */
 private delta *
 csetFileArg(delta *d, char *arg) { ARG(csetFile, 0, D_DUPCSETFILE); }
-
-private delta *
-csetArg(delta *d, char *arg) { ARG(cset, 0, 0); }
 
 private delta *
 hostArg(delta *d, char *arg) { ARG(hostname, D_NOHOST, D_DUPHOST); }
@@ -7979,9 +7978,9 @@ skip:
 		unless (fnext(buf, f)) goto out; lines++; chop(buf);
 	}
 
-	/* Cset ID */
-	if (WANT('C')) {
-		unless (d->csetFile) d = csetArg(d, &buf[2]);
+	/* Cset marker */
+	if ((buf[0] == 'C') && !buf[1]) {
+		d->flags |= D_CSET;
 		unless (fnext(buf, f)) goto out; lines++; chop(buf);
 	}
 
@@ -10010,7 +10009,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		do_patch(s, start->kid, stop, flags, out);
 		do_patch(s, start->siblings, stop, flags, out);
 	}
-	type =start->type;
+	type = start->type;
 	if ((start->type == 'R') &&
 	    start->parent && streq(start->rev, start->parent->rev)) {
 	    	type = 'M';
@@ -10027,7 +10026,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	 * Order from here down is alphabetical.
 	 */
 	if (start->csetFile) fprintf(out, "B %s\n", start->csetFile);
-	if (start->cset) fprintf(out, "C %s\n", start->cset);
+	if (start->flags & D_CSET) fprintf(out, "C\n");
 	EACH(start->comments) {
 		assert(start->comments[i][0] != '\001');
 		fprintf(out, "c %s\n", start->comments[i]);

@@ -953,7 +953,7 @@ function send {
 		OUTPUT=$2
 	fi
 	if [ X$V != X ]
-	then	echo "Sending ChangeSet $REV to $OUTPUT"
+	then	echo "Sending ChangeSet $REV to $OUTPUT" 1>&2
 	fi
 	case X$OUTPUT in
 	    X-)	${BIN}cset $D -m$REV $V
@@ -1207,8 +1207,9 @@ function commit {
 		 then	COMMENTS="-Y/tmp/comments$$"
 		 fi
 		 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
-		 ERR=$?
+		 EXIT=$?
 		 /bin/rm -f /tmp/comments$$
+		 ${BIN}csetmark -r+
 		 exit $EXIT;
 	fi
 	while true
@@ -1226,7 +1227,7 @@ function commit {
 			 then	COMMENTS="-Y/tmp/comments$$"
 			 fi
 			 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
-			 ERR=$?
+			 EXIT=$?
 			 /bin/rm -f /tmp/comments$$
 	    	 	 exit $EXIT;
 		 	 ;;

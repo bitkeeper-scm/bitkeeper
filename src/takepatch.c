@@ -958,7 +958,8 @@ fileCopy(char *from, char *to)
 
 rebuild_id(char *id)
 {
-	fprintf(stderr, "takepatch: miss in idcache for %s, rebuilding...", id);
+	fprintf(stderr, "takepatch: miss in idcache\n\tfor %s,\n", id);
+	fprintf(stderr, "\trebuilding (this can take a while)...", id);
 	system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {

@@ -11,8 +11,7 @@ usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
     -d		do unified diffs for the range (used with -m)\n\
     -c		like -m, except generate only ChangeSet diffs for logging\n\
     -i		Create a new change set history rooted at <root>\n\
-    -l<range>	List the filenames:revisions of the csets in <range>\n\
-    -m		Generate a patch (use with -l)\n\
+    -m<range>	Generate a patch of the changesets in <range>\n\
     -r<range>	List the filenames:rev..rev which match <range>\n\
     -R<range>	Like -r but start on rev farther back (for diffs)\n\
     -t<rev>	List the filenames:revisions of the whole tree\n\
@@ -40,7 +39,9 @@ delta	*mkChangeSet(sccs *cset);
 void	explodeKey(char *key, char *parts[4]);
 char	*file2str(char *f);
 void	doRange(sccs *sc);
+void	doList(sccs *sc);
 void	doDiff(sccs *sc, int kind);
+delta	*sfind(sccs *, ser_t);
 
 FILE	*id_cache;
 MDBM	*idDB = 0;
@@ -77,9 +78,8 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "c|dDil|m|t;pr|R|sS;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "c|d|Dim|t;pr|R|sS;vy|Y|")) != -1) {
 		switch (c) {
-		    case 'd': doDiffs++; break;
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
 			flags |= DELTA_EMPTY|NEWFILE;
@@ -90,6 +90,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'r':
 		    	range++;
 		    	/* fall through */
+		    case 'd': 
+			if (c == 'd') doDiffs++;
+		    	/* fall through */
 		    case 'c':
 			if (c == 'c') {
 				csetOnly++;
@@ -97,8 +100,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 			}
 		    case 'm':
 			if (c == 'm') makepatch++;
-			/* fall through */
-		    case 'l':
 		    	list |= 1;
 			if (optarg) {
 				r[rd++] = notnull(optarg);
@@ -186,7 +187,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	switch (list) {
 	    case 1:
-		RANGE("cset", cset, 1, 1);
+		RANGE("cset", cset, dash ? 0 : 2, 1);
 		csetlist(cset);
 next:		sccs_free(cset);
 		if (cFile) free(comment);
@@ -321,28 +322,175 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 }
 
 /*
+ * Do whatever it is they want - for now - just print the revs.
+ */
+doit(sccs *sc)
+{
+	delta	*d;
+	static	first = 1;
+
+	unless (sc) {
+		first = 1;
+		return;
+	}
+	if (doDiffs) {
+		if (first && makepatch) {
+			time_t	t = time(0);
+
+			printf("\
+# This is a BitKeeper patch.  What follows are the unified diffs for the\n\
+# set of deltas contained in the patch.  The rest of the patch, the part\n\
+# that BitKeeper cares about, are below these diffs.  These diffs are\n\
+# mostly here so Linus can edit them :-)\n");
+			printf("#\n# Patch created by %s@%s on %s\n", 
+			    getuser(),
+			    sccs_gethost() ? sccs_gethost() : "?",
+			    ctime(&t));
+			first = 0;
+		}
+		doDiff(sc, DF_UNIFIED);
+	} else if (makepatch) {
+		if (first) {
+			printf("%s", PATCH_VERSION);
+			first = 0;
+		}
+		if (!csetOnly || (sc->state & S_CSET)) {
+			sccs_patch(sc);
+		}
+	} else if (range) {
+		doRange(sc);
+	} else {
+		doList(sc);
+	}
+}
+
+mark(sccs *s, delta *d)
+{
+	/*
+	 * Mark everything from here until the previous change set.
+	 */
+	do {
+		d->flags |= D_SET;
+		if (d->merge) {
+			delta	*e = sfind(s, d->merge);
+
+			assert(e);
+			unless (e->flags & D_CSET) mark(s, e);
+		}
+		d = d->parent;
+	} while (d && !(d->flags & D_CSET));
+}
+
+int
+doKey(char *key, char *val)
+{
+	static	MDBM *idDB;
+	static	doneFullRebuild;
+	static	doneFullRemark;
+	static	sccs *sc;
+	static	char *lastkey;
+	delta	*d;
+
+	/*
+	 * Cleanup code, called to reset state.
+	 */
+	unless (key) {
+		if (idDB) mdbm_close(idDB);
+		if (lastkey) free(lastkey);
+		if (sc) {
+			doit(sc);
+			sccs_free(sc);
+		}
+		doneFullRebuild = 0;
+		doneFullRemark = 0;
+		doit(0);
+		return (0);
+	}
+
+	/*
+	 * If we have a match, just mark the delta and return,
+	 * we'll finish later.
+	 */
+	if (lastkey && streq(lastkey, key)) {
+		unless (d = sccs_findKey(sc, val)) return (-1);
+		mark(sc, d);
+		return (0);
+	}
+
+	/*
+	 * This would be later - do the last file and clean up.
+	 */
+	if (sc) {
+		doit(sc);
+		sccs_free(sc);
+		free(lastkey);
+		sc = 0;
+		lastkey = 0;
+	}
+
+	/*
+	 * Set up the new file.
+	 */
+	unless (idDB || (idDB = loadDB("SCCS/x.id_cache", 0))) {
+		perror("idcache");
+	}
+	lastkey = strdup(key);
+retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
+	unless (sc) {
+		/* cache miss, rebuild cache */
+		unless (doneFullRebuild) {
+			mdbm_close(idDB);
+			fprintf(stderr, "Rebuilding caches...\n");
+			system("bk sfiles -r");
+			doneFullRebuild = 1;
+			unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+				perror("idcache");
+			}
+			goto retry;
+		}
+		fprintf(stderr, "cset: missing id %s, sfile removed?\n", key);
+		return (-1);
+	}
+	unless (sc->state & S_CSETMARKED) {
+		char	buf[MAXPATH];
+
+		if (doneFullRemark) {
+			fprintf(stderr,
+			    "cset: missing cset metadata in %s\n",
+			    sc->sfile);
+			return (-1);
+		}
+		fprintf(stderr,
+"\nBitKeeper has found a file which is missing some metadata.  That metadata\n\
+is being automatically generated and added to all files.  If your repository\n\
+is large, this is going to take a while - it has to rewrite each file.\n\
+This is a one time event to upgrade this repository to the latest format.\n\
+Please stand by.\n\n");
+		sprintf(buf, "bk csetmark -v", verbose ? "-v" : "");
+		system(buf);
+		doneFullRemark++;
+		goto retry;
+	}
+	unless (d = sccs_findKey(sc, val)) return (-1);
+	mark(sc, d);
+	return (0);
+}
+
+/*
  * List all the revisions which make up a range of changesets.
  * The list is sorted for performance.
  */
 void
 csetlist(sccs *cset)
 {
-	MDBM	*db;			/* db{fileId} = csetId */
-	MDBM	*pdb = 0;
-	MDBM	*idDB;			/* db{fileId} = pathname */
-	kvpair	kv;
-	char	*t, *p;
-	sccs	*sc;
-	delta	*d, *prev;
-	int  	doneFullRebuild = 0;
-	int	first = 1;
-	FILE	*sort;
+	char	*t;
+	FILE	*list;
 	char	buf[MAXPATH*2];
 	char	*csetid;
+	char	*lastkey = 0;
 
 	if (dash) {
 		delta	*d;
-		delta	*last = 0;
 
 		while(fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);
@@ -352,160 +500,62 @@ csetlist(sccs *cset)
 				    buf, cset->gfile);
 				exit(1);
 			}
-			d->flags |= D_VISITED;
+			d->flags |= D_SET;
 		}
-		cset->rstart = cset->rstop = 0;
-		for (d = cset->table; d; d = d->next) {
-			unless (d->flags & D_VISITED) continue;
-			unless (cset->rstop) {
-				cset->rstop = d;
-			}
-			last = d;
-		}
-		cset->rstart = last;
 	}
-	assert(cset->rstart);
-	unless (cset->rstop) cset->rstop = cset->rstart;
-	db = csetIds(cset, cset->rstop->rev, 1);
-	if (!db) {
-		fprintf(stderr,
-		    "Can't find changeset %s in %s\n",
-		    cset->rstop->rev, cset->sfile);
-		exit(1);
-	}
-	if (cset->rstart->parent) {
-		unless (sccs_restart(cset)) { perror("restart"); exit(1); }
-		pdb = csetIds(cset, cset->rstart->parent->rev, 1);
-	}
+
+	/* Save away the cset id */
 	sccs_sdelta(buf, sccs_ino(cset));
 	csetid = strdup(buf);
 
 	/*
-	 * List all files as file:rev..rev or file:..rev
-	 * Don't do ChangeSet, we'll come back to that one.
+	 * Get the full list of key tuples in a sorted file.
 	 */
-	sprintf(buf, "sort -t'|' +1 > /tmp/csort%d", getpid());
-	sort = popen(buf, "w");
-	for (kv = mdbm_first(db); kv.val.dsize; kv = mdbm_next(db)) {
-		if (streq(csetid, kv.key.dptr)) continue;
-		/* skip identicals */
-		if (pdb) {
-			char	*key = mdbm_fetch_str(pdb, kv.key.dptr);
-			if (key && streq(key, kv.val.dptr)) continue;
-		}
-		fprintf(sort, "%s %s\n", kv.key.dptr, kv.val.dptr);
-	}
-	pclose(sort);
-again:	/* doDiffs makes it two pass */
-	sprintf(buf, "/tmp/csort%d", getpid());
-	sort = fopen(buf, "r");
-
-	kv.key.dptr = csetid;
-	kv.key.dsize = strlen(csetid) + 1;
-	kv.val = mdbm_fetch(db, kv.key);
-	assert(kv.val.dsize);
-	sprintf(buf, "%s %s\n", csetid, kv.val.dptr);
-
-	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
-		perror("idcache");
-		sprintf(buf, "/tmp/csort%d", getpid()); unlink(buf);
+	sprintf(buf, "/tmp/cat%d", getpid());
+	if (sccs_cat(cset, PRINT, buf)) {
+		sccs_whynot("cset", cset);
 		exit(1);
 	}
+	sprintf(buf, "sort < /tmp/cat%d > /tmp/cat2%d", getpid(), getpid());
+	system(buf);
+	sprintf(buf,
+	    "grep '^%s' /tmp/cat2%d > /tmp/csort%d",
+	    csetid, getpid(), getpid());
+	system(buf);
+	sprintf(buf,
+	    "grep -v '^%s' /tmp/cat2%d >> /tmp/csort%d",
+	    csetid, getpid(), getpid());
+	system(buf);
+	sprintf(buf, "/tmp/cat%d", getpid());
+	unlink(buf);
+	sprintf(buf, "/tmp/cat2%d", getpid());
+	unlink(buf);
+	free(csetid);
 
-	/*
-	 * List the ChangeSet first.
-	 */
-	do {
+again:	/* doDiffs can make it two pass */
+	sprintf(buf, "/tmp/csort%d", getpid());
+	unless (list = fopen(buf, "r")) {
+		perror(buf);
+		exit(1);
+	}
+	while(fnext(buf, list)) {
 		for (t = buf; *t != ' '; t++);
 		*t++ = 0;
-retry:		sc = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
-		unless (sc) {
-			/* cache miss, rebuild cache */
-			unless (doneFullRebuild) {
-				mdbm_close(idDB);
-				fprintf(stderr, "Rebuilding caches...\n");
-				system("bk sfiles -r");
-				doneFullRebuild = 1;
-				unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
-					perror("idcache");
-					sprintf(buf, "/tmp/csort%d", getpid());
-					unlink(buf);
-					exit(1);
-				}
-				goto retry;
-			}
-			fprintf(stderr,
-				"cset: missing id %s, sfile removed?\n", buf);
-			goto next;
-		}
-		unless (d = sccs_findKey(sc, t)) {
-			fprintf(stderr,
-			    "cset: can't find key '%s' in %s\n", t, sc->sfile);
-			sprintf(buf, "/tmp/csort%d", getpid()); unlink(buf);
+		if (doKey(buf, t)) {
+			sprintf(buf, "/tmp/csort%d", getpid());
+			unlink(buf);
 			exit(1);
 		}
-		if (pdb) {
-			if (p = mdbm_fetch_str(pdb, buf)) {
-				unless (prev = sccs_findKey(sc, p)) {
-					fprintf(stderr,
-					    "cset: can't find '%s' in %s\n",
-					    p, sc->sfile);
-					sprintf(buf, "/tmp/csort%d", getpid());
-					unlink(buf);
-					exit(1);
-				}
-				csetDeltas(sc, prev, d);
-			} else {
-				csetDeltas(sc, 0, d);
-			}
-		} else {
-			csetDeltas(sc, 0, d);
-		}
-		if (doDiffs) {
-			if (first) {
-				time_t	t = time(0);
 
-				printf("\
-# This is a BitKeeper patch.  What follows are the unified diffs for the\n\
-# set of deltas contained in the patch.  The rest of the patch, the part\n\
-# that BitKeeper cares about, are below these diffs.  These diffs are\n\
-# mostly here so Linus can edit them :-)\n");
-				printf("#\n# Patch created by %s@%s on %s\n", 
-				    getuser(),
-				    sccs_gethost() ? sccs_gethost() : "?",
-				    ctime(&t));
-				first = 0;
-			}
-			doDiff(sc, DF_UNIFIED);
-			sccs_free(sc);
-			continue;
-		}
-
-		if (makepatch) {
-			if (first) {
-				printf("%s", PATCH_VERSION);
-				first = 0;
-			}
-			if (!csetOnly || (sc->state & S_CSET)) {
-				sccs_patch(sc);
-			}
-		}
-		if (range) doRange(sc);
-		sccs_free(sc);
-next:
-	} while (fgets(buf, sizeof(buf), sort));
-	if (doDiffs) {
+	}
+	fclose(list);
+	if (doDiffs && makepatch) {
 		doDiffs = 0;
-		first = 1;
-		mdbm_close(idDB);
 		goto again;
 	}
-	mdbm_close(idDB);
-	mdbm_close(pdb);
-	mdbm_close(db);
-	if (csetid) free(csetid);
-	if (sort) fclose(sort);
-	sprintf(buf, "/tmp/csort%d", getpid()); unlink(buf);
+	doKey(0, 0);
+	sprintf(buf, "/tmp/csort%d", getpid());
+	unlink(buf);
 	if (verbose && makepatch) {
 		fprintf(stderr,
 		    "makepatch: patch contains %d revisions\n", ndeltas);
@@ -523,13 +573,13 @@ doDiff(sccs *sc, int kind)
 
 	if (sc->state & S_CSET) return;	/* no changeset diffs */
 	for (d = sc->table; d; d = d->next) {
-		if (d->flags & D_VISITED) {
+		if (d->flags & D_SET) {
 			e = d;
 		} else if (e) {
 			break;
 		}
 	}
-	for (d = sc->table; d && !(d->flags & D_VISITED); d = d->next);
+	for (d = sc->table; d && !(d->flags & D_SET); d = d->next);
 	if (!d) return;
 	unless (e->parent) {
 		printf("--- New file ---\n+++ %s\t%s\n",
@@ -543,35 +593,53 @@ doDiff(sccs *sc, int kind)
 	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout);
 }
 
+/*
+ * Print the oldest..youngest
+ * XXX - does not make sure that they are both on the trunk.
+ */
 void
 doRange(sccs *sc)
 {
 	delta	*d, *e = 0;
+	int	first = 1;
 
 	for (d = sc->table; d; d = d->next) {
-		if (d->flags & D_VISITED) {
-			e = d;
-		} else if (e) {
-			break;
+		if (d->flags & D_SET) e = d;
+	}
+	unless (e) return;
+	if ((range == 2) && e->parent) e = e->parent;
+	printf("%s:%s..", sc->gfile, e->rev);
+	for (d = sc->table; d; d = d->next) {
+		if (d->flags & D_SET) {
+			printf("%s\n", d->rev);
+			return;
 		}
 	}
-	for (d = sc->table; d && !(d->flags & D_VISITED); d = d->next);
-	if (!d) return;
-	if (range == 2) e = e->parent;
-	if (e == d) {
-		if (range == 2) return;
-		printf("%s:%s\n", sc->sfile, d->rev);
-		return;
-	} else if (e) {
-		printf("%s:%s..%s\n", sc->sfile, e->rev, d->rev);
-	} else {
-		printf("%s:..%s\n", sc->sfile, d->rev);
+}
+
+void
+doList(sccs *sc)
+{
+	delta	*d;
+	int	first = 1;
+
+	printf("%s:", sc->gfile);
+	for (d = sc->table; d; d = d->next) {
+		if (d->flags & D_SET) {
+			if (first) {
+				first = 0;
+			} else {
+				printf(",");
+			}
+			printf("%s", d->rev);
+		}
 	}
+	printf("\n");
 }
 
 visit(delta *d)
 {
-	d->flags |= D_VISITED;
+	d->flags |= D_SET;
 	if (d->parent) visit(d->parent);
 }
 
@@ -582,12 +650,11 @@ void
 csetDeltas(sccs *sc, delta *start, delta *d)
 {
 	int	i;
-	delta	*sfind(sccs *, ser_t);
 
 	unless (d) return;
 	debug((stderr, "cD(%s, %s)\n", sc->gfile, d->rev));
-	if ((d == start) || (d->flags & D_VISITED)) return;
-	d->flags |= D_VISITED;
+	if ((d == start) || (d->flags & D_SET)) return;
+	d->flags |= D_SET;
 	csetDeltas(sc, start, d->parent);
 	/*
 	 * We don't need the merge pointer, it is part of the include list.
@@ -857,11 +924,11 @@ sccs_patch(sccs *s)
 	 * there.
 	 */
 	for (n = 0, e = s->table; e; e = e->next) {
-		if (e->flags & D_VISITED) n++;
+		if (e->flags & D_SET) n++;
 		unless (e->flags & D_META) continue;
-		for (d = e->parent; d->type != 'D'; d = d->parent);
-		if (d->flags & D_VISITED) {
-			e->flags |= D_VISITED;
+		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
+		if (d && (d->flags & D_SET)) {
+			e->flags |= D_SET;
 			n++;
 		}
 	}
@@ -871,7 +938,7 @@ sccs_patch(sccs *s)
 	 */
 	list = calloc(n, sizeof(delta*));
 	for (i = 0, d = s->table; d; d = d->next) {
-		if (d->flags & D_VISITED) {
+		if (d->flags & D_SET) {
 			assert(i < n);
 			list[i++] = d;
 		}
@@ -895,7 +962,7 @@ sccs_patch(sccs *s)
 				exit(1);
 			}
 			printf("== %s ==\n", top->pathname);
-			if (s->tree->flags & D_VISITED) {
+			if (s->tree->flags & D_SET) {
 				printf("New file: %s\n", d->pathname);
 				sccs_perfile(s, stdout);
 			}

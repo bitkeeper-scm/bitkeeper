@@ -42,7 +42,7 @@
 			goto next; \
 		} \
 	} \
-	if (expand && !(s->state & S_SET)) { \
+	if (expand) { \
 		unless (things) { \
 			s->rstart = s->tree; \
 			s->rstop = s->table; \
@@ -50,6 +50,7 @@
 		unless (s->rstart) s->rstart = s->rstop; \
 		unless (s->rstop) s->rstop = s->rstart; \
 	} \
+	/* If they wanted a set and we don't have one... */ \
 	if ((expand == 2) && !(s->state & S_SET)) { \
 		delta   *e; \
 		\

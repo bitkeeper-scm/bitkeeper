@@ -265,6 +265,9 @@ usage:	fprintf(stderr, "admin: usage error, try `admin --help' for info.\n");
 	return (1);
 }
 
+/*
+ * XXX - obsolete?
+ */
 void
 clearCset(sccs *s, int flags)
 {
@@ -283,16 +286,6 @@ clearCset(sccs *s, int flags)
 			d->csetFile = 0;
 		} else {
 			d->csetFile = 0;
-		}
-		if (d->cset) {
-			if (!name) {
-				verbose((stderr,
-				    "RM cset from %s\n", s->sfile));
-				name = 1;
-			}
-			verbose((stderr, "\tCSET: %s\n", d->cset));
-			free(d->cset);
-			d->cset = 0;
 		}
 	}
 }

@@ -228,6 +228,7 @@ extern	char *strdup(char *s);
 #define	S_BAD_DSUM	0x00100000	/* patch checksum mismatch */
 #define S_ISSHELL	0x00200000	/* this is a shell script */
 #define	S_SET		0x00400000	/* the tree is marked with a set */
+#define	S_CSETMARKED	0x00800000	/* X_CSETMARKED match */
 
 /*
  * Options to sccs_diffs()
@@ -258,6 +259,7 @@ extern	char *strdup(char *s);
 #define	X_YEAR4		0x00000004	/* 4 digit years */
 #define	X_ISSHELL	0x00000008	/* This is a shell script */
 #define	X_EXPAND1	0x00000010	/* Expand first line of keywords only */
+#define	X_CSETMARKED	0x00000020	/* ChangeSet boundries are marked */
 
 /*
  * Encoding flags.
@@ -310,6 +312,7 @@ extern	char *strdup(char *s);
 #define D_ICKSUM	0x01000000	/* use checksum from init file */
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
 #define	D_SET		0x04000000	/* range.c: marked as part of a set */
+#define	D_CSET		0x08000000	/* this delta is marked in cset file */
 
 /*
  * Signal handling.
@@ -381,8 +384,7 @@ typedef struct delta {
 	char	*hostname;		/* hostname where revision was made */
 	char	*pathname;		/* pathname to the file */
 	char	*zone;			/* 08:00 is time relative to GMT */
-	char	*cset;			/* id for delta in the ChangeSet file */
-	char	*csetFile;		/* id for ChangeSet file itself */
+	char	*csetFile;		/* id for ChangeSet file */
 	ser_t	merge;			/* serial number merged into here */
 	sum_t	sum;			/* checksum of gfile */
 	time_t	dateFudge;		/* make dates go forward */
@@ -599,7 +601,7 @@ typedef struct patch {
 	struct	patch *next;	/* guess */
 } patch;
 
-#define	PATCH_VERSION	"# BitKeeper Patch version 0.3\n"
+#define	PATCH_VERSION	"# BitKeeper Patch version 0.4\n"
 
 #define	PATCH_LOCAL	0x0001	/* patch is from local file */
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */
