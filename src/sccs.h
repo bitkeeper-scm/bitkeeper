@@ -119,6 +119,7 @@
 #define	S_KEY2		0x02000000	/* all keys are version 2 format */
 #define	S_HASH		0x04000000	/* this file is an MDBM file */
 #define	S_FAKE_1_0	0x08000000	/* the 1.0 delta is a fake */
+#define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
