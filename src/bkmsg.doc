@@ -630,6 +630,11 @@ x11/utilities
 x11/xfree86
 x11/xfree86/servers
 $
+#setuptool_step_BadUser
+You are logged in as '#BKARG#'. You may not create repositories when
+logged in as Administrator or root. Please log in as another user
+before trying to create a repository.
+$
 #setuptool_step_Begin
 You are about to create a new repository. Creating a new repository is
 something which is done if the data which you wish to manage is not
