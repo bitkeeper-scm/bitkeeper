@@ -72,8 +72,12 @@ proc registry_install {destination} \
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayName "BitKeeper $version"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayVersion $version
 	reg set $HKLMS\\$MWC\\Uninstall\\$id Publisher "BitMover, Inc."
+	# store the short name, because the uninstall code has a hack
+	# that assumes the name of the executable doesn't have a space. 
+	# Also need to use / rather than \ because we may execute this
+	# in an msys shell.
 	reg set $HKLMS\\$MWC\\Uninstall\\$id UninstallString \
-		 "[file nativename [file join $destination bkuninstall]] -S \"$destination\\install.log\""
+	    "[shortname $destination]/bkuninstall -S \"$destination\\install.log\""
 	reg set $HKLMS\\$MWC\\Uninstall\\$id URLInfoAbout \
 		 "http://www.bitkeeper.com"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id HelpLink \
@@ -189,7 +193,12 @@ proc addpath {dir} \
 	set path "$path;$dir"
 	reg modify $key Path $path $dir
 	reg broadcast Environment
+}
 
+proc shortname {dir} \
+{
+	catch {set dir [exec bk pwd -s $dir]}
+	return $dir
 }
 
 # file normalize is required to convert relative paths to absolute and
@@ -197,7 +206,8 @@ proc addpath {dir} \
 # c:/Program Files). file nativename is required to give the actual,
 # honest-to-goodness filename (read: backslashes instead of forward
 # slashes on windows). This is mostly used for human-readable filenames.
-proc normalize {dir} {
+proc normalize {dir} \
+{
 	if {[file exists $dir]} {
 		# If possible, use bk's notion of a normalized
 		# path. This only works if the file exists, though.
