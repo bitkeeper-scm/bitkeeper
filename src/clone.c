@@ -153,7 +153,7 @@ private int
 clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
-	int	gzip, rc = 1;
+	int	gzip, rc = 2;
 
 	gzip = r->port ? opts.gzip : 0;
 	if (local && exists(local) && !emptyDir(local)) {
@@ -213,6 +213,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	/* create the new package */
 	if (initProject(local) != 0) goto done;
+	rc = 1;
 
 	/* eat the data */
 	if (sfio(opts, gzip, r) != 0) {
@@ -225,11 +226,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	if (r->port && isLocalHost(r->host) && (bk_mode() == BK_BASIC)) {
 		mkdir(BKMASTER, 0775);
 	}
-	
+
 	rc  = 0;
 done:	if (rc) {
 		putenv("BK_STATUS=FAILED");
-		mkdir("RESYNC", 0777);
+		if (rc == 1) mkdir("RESYNC", 0777);
 	} else {
 		putenv("BK_STATUS=OK");
 	}
@@ -498,11 +499,7 @@ rmEmptyDirs(int quiet)
 private void
 lclone(opts opts, remote *r, char *to)
 {
-	char	here[MAXPATH];
-	char	from[MAXPATH];
-	char	dest[MAXPATH];
-	char	buf[MAXPATH];
-	char	skip[MAXPATH];
+	sccs	*s;
 	FILE	*f;
 	char	*p;
 	char	*fromid;
@@ -510,6 +507,12 @@ lclone(opts opts, remote *r, char *to)
 	struct	stat sb;
 	char	**files;
 	int	i;
+	int	hasrev;
+	char	here[MAXPATH];
+	char	from[MAXPATH];
+	char	dest[MAXPATH];
+	char	buf[MAXPATH];
+	char	skip[MAXPATH];
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -534,9 +537,23 @@ out1:		remote_free(r);
 		goto out1;
 	}
 
+	/* Make sure the rev exists before we get started */
+	if (opts.rev) {
+		if (s = sccs_csetInit(SILENT, 0)) {
+			hasrev = (sccs_getrev(s, opts.rev, 0, 0) != 0);
+			sccs_free(s);
+			unless (hasrev) {
+				fprintf(stderr, "ERROR: rev %s doesn't exist\n",
+				    opts.rev);
+				goto out2;
+			}
+		}
+	}
+
+
 	/* give them a change to disallow it */
 	if (out_trigger(0, opts.rev, "pre")) {
-		repository_rdunlock(0);
+out2:		repository_rdunlock(0);
 		remote_free(r);
 		exit(1);
 	}
