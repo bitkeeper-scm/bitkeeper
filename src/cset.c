@@ -1,12 +1,14 @@
 /* Copyright (c) 1999 Larry McVoy */
 #include "sccs.h"
+#include "range.h"
 #include "comments.c"
 #include "host.c"
 #include "user.c"
 WHATSTR("%W%");
 
 char	*cset_help = "\n\
-usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
+usage: cset [-ps+] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
+    -+		with -l1.2..1.5 make that mean 1.3..1.5\n\
     -i		Create a new change set history rooted at <root>\n\
     -l<rev>	List the filenames:revisions of only the new work in the cset\n\
     -t<rev>	List the filenames:revisions of the whole tree\n\
@@ -46,8 +48,8 @@ main(int ac, char **av)
 	int	flags = BRANCHOK;
 	int	c, list = 0;
 	char	*sym = 0;
-	char	*rev;
-	int	things = 0;
+	int	plus = 0;
+	RANGE_DECL;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -55,19 +57,20 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "il;t;psS;y|")) != -1) {
+	while ((c = getopt(ac, av, "+il;t;psS;y|")) != -1) {
 		switch (c) {
+		    case '+': plus++; break;
 		    case 'i':
 			flags |= EMPTY|NEWFILE;
 			break;
 		    case 'l':
 		    	list |= 1;
-			rev = optarg;
-			things += tokens(optarg);
+			r[rd++] = notnull(optarg);
+			things += tokens(notnull(optarg));
 			break;
 		    case 't':
 			list |= 2;
-			rev = optarg;
+			r[rd++] = optarg;
 			things += tokens(optarg);
 			break;
 		    case 'p': flags |= PRINT; break;
@@ -120,12 +123,26 @@ usage:		fprintf(stderr, "%s", cset_help);
 	/*
 	 * List a specific rev.
 	 */
+	if (list && (things < 1)) {
+		fprintf(stderr, "cset: must specify a revision.\n");
+		exit(1);
+	}
 	switch (list) {
 	    case 1:
-		rangeAdd(cset, rev, 0);
+		RANGE("cset", cset, 1, 1);
+		if (plus) {
+			if (cset->rstart == cset->rstop) {
+next:				sccs_free(cset);
+				exit(0);
+			}
+			/* XXX - this needs to be sccs_kid(cset, cset->rstart)
+			 * when we build that interface.
+			 */
+			cset->rstart = cset->rstart->kid;
+		}
 		csetlist(cset);
 		return (0);
-	    case 2: csetList(cset, rev); return (0);
+	    case 2: csetList(cset, r[0]); return (0);
 	}
 
 	/*

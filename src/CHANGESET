@@ -1,3 +1,7 @@
+When we have to merge because of conflicts, then there has to also be a
+conflict in the ChangeSet file.  That should be handled by creating a new
+changeset at the time the user checks in all the merges.
+
 It would be nice if the ChangeSet file had hints where the hint is a rev 
 number after the key.  Then you could look up the rev number and see if
 the key matched.  Might be a perf win, might not.

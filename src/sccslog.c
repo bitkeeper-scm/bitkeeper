@@ -69,7 +69,12 @@ again:		unless (s = sccs_init(name, NOCKSUM|flags)) {
 			continue;
 		}
 		if (!s->tree) {
-			if (sfileRev() && !inroot) {
+			/*
+			 * XXX - what this should do is try opening 
+			 * root/name and only switch to root if that
+			 * works.
+			 */
+			unless (inroot) {
 				inroot = 1;
 				if (sccs_cd2root(0, 0) == 0) goto again;
 			}

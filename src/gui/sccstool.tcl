@@ -357,7 +357,12 @@ proc get {} \
 	.p.top.c delete yellow
 	.p.top.c delete orange
 	set rev1 [getRev 2]; if {"$rev1" == ""} { return }
-	set get [open "| get -mudPr$rev1 $file 2>/dev/null"]
+	set base [file tail $file]
+	if {$base == "s.ChangeSet"} {
+		set get [open "| bk cset -l$rev1 | bk sccslog - 2>/dev/null"]
+	} else {
+		set get [open "| get -mudPr$rev1 $file 2>/dev/null"]
+	}
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	while { [gets $get str] >= 0 } {
 		.p.bottom.t insert end "$str\n"
@@ -375,27 +380,34 @@ proc diff2 {} \
 	.p.top.c delete yellow
 	set rev2 [getRev 3]
 	if {"$rev2" == ""} { return }
-	# XXX file names
-	set a [open "| get $getOpts -kPr$rev1 $file >/tmp/$rev1 2>/dev/null" "w"]
-	set b [open "| get $getOpts -kPr$rev2 $file >/tmp/$rev2 2>/dev/null" "w"]
-	catch { close $a; }
-	catch { close $b; }
-	set diffs [open "| diff $diffOpts /tmp/$rev1 /tmp/$rev2"]
+	set base [file tail $file]
+	if {$base == "s.ChangeSet"} {
+		set diffs [open "| bk cset -+l$rev1..$rev2 | bk sccslog - 2>/dev/null"]
+		set lexp {^!@XXX!@FOO$}
+		set rexp {^!@XXX!@FOO$}
+	} else {
+		# XXX file names
+		set a [open "| get $getOpts -kPr$rev1 $file >/tmp/$rev1 2>/dev/null" "w"]
+		set b [open "| get $getOpts -kPr$rev2 $file >/tmp/$rev2 2>/dev/null" "w"]
+		catch { close $a; }
+		catch { close $b; }
+		set diffs [open "| diff $diffOpts /tmp/$rev1 /tmp/$rev2"]
+		if {"$diffOpts" == "-u"} {
+			set lexp {^\+}
+			set rexp {^-}
+			gets $diffs str
+			gets $diffs str
+		} else {
+			set lexp {^>}
+			set rexp {^<}
+		}
+	}
+	set l 3
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	.p.bottom.t insert end "- $file version $rev1\n"
 	.p.bottom.t insert end "+ $file version $rev2\n\n"
 	.p.bottom.t tag add "oldTag" 1.0 "1.0 lineend + 1 char"
 	.p.bottom.t tag add "newTag" 2.0 "2.0 lineend + 1 char"
-	set l 3
-	if {"$diffOpts" == "-u"} {
-		set lexp {^\+}
-		set rexp {^-}
-		gets $diffs str
-		gets $diffs str
-	} else {
-		set lexp {^>}
-		set rexp {^<}
-	}
 	while { [gets $diffs str] >= 0 } {
 		.p.bottom.t insert end "$str\n"
 		incr l
