@@ -122,16 +122,16 @@ log_main(int ac, char **av)
 	}
 
 	/*
-	 * WIN32 note: Win32 wish shell maps the console to a
-	 * to a invisiable window, messages printed to tty will be invisiable.
-	 * We therefore have to send it to stdout, which will be read and
-	 * displayed by citool.
+	 * WIN32 note:
+	 * a) Win32 wish shell maps the console to a to a invisiable window,
+	 *    messages printed to tty will be invisiable.
+	 * b) We must close all of fd0, fd1 and fd2 to disconnect from
+	 *    from wish.exe, they seem to be tied to the same console.
 	 */
-#ifndef	WIN32
-	fclose(stdout); /* close stdout, so citool do'nt wait for us */
-	usleep(0); /* release cpu, so citool can exit */
-	fopen(DEV_TTY, "wb");
-#endif
+	if (qflag) {
+		for (i = 0; i < 3; i++) close(i); 
+		usleep(0); /* release cpu, so citool can exit */
+	}
 
 	i = 2;
 	if (dflag) log_av[i++] = "-d";
