@@ -1392,10 +1392,7 @@ _install()
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 
 		ODLL="$OBK/BkShellX.dll"
-		test -f "$ODLL" && {
-			"$DEST"/bkuninstall.exe -b 2>nul 1>&2 &
-			exit 2		# this forces installtool to exit
-		}
+		test -f "$ODLL" && exit 2	# This tells extract.c to reboot
 	fi
 	exit 0
 }

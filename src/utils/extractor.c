@@ -4,11 +4,13 @@
  */
 #include "../system.h"
 #include "../zlib/zlib.h"
+#ifdef WIN32
+#include "../win32/uwtlib/misc.h"
+#endif
 #undef	malloc
 #undef	mkdir
 #undef	putenv
 #undef	strdup
-#undef	system
 #undef	unlink
 #undef	fclose
 
@@ -34,11 +36,15 @@ void	extract(char *, char *, u32, char *);
 char	*findtmp(void);
 int	isdir(char*);
 void	rmTree(char *dir);
+#ifdef WIN32
+int	do_reboot(void);
+#endif
 
 main(int ac, char **av)
 {
 	char	*p, *sfio, *dest = 0, *tmp = findtmp();
 	int	i, fd;
+	int	rc = 0;
 	pid_t	pid = getpid();
 	FILE	*f;
 	char	tmpdir[MAXPATH];
@@ -189,7 +195,12 @@ main(int ac, char **av)
 #ifdef	WIN32
 		fprintf(stderr, "Running installer...\n");
 #endif
-		system(buf);
+		/*
+		 * Use our own version of system()
+		 * because the native one on win98 does not return the
+		 * correct exit code
+		 */
+		rc = system(buf);
 	}
 
 	/* Clean up your room, kids. */
@@ -204,6 +215,9 @@ main(int ac, char **av)
 	/*
 	 * Bitchin'
 	 */
+#ifdef WIN32
+	if (rc == 2) do_reboot();
+#endif
 	exit(0);
 }
 
@@ -311,14 +325,15 @@ isdir(char *path)
 void
 rmTree(char *dir)
 {
-	char cmd[MAXPATH + 12];
+	char buf[MAXPATH], cmd[MAXPATH + 12];
 
 	if (isWin98()) {
 		sprintf(cmd, "deltree /Y %s", dir);
 	} else {
 		sprintf(cmd, "rmdir /s /q %s", dir);
 	}
-	system(cmd);
+	/* use native system() funtion  so we get cmd.exe/command.com */
+	(system)(cmd);
 }
 
 #else
