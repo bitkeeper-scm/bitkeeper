@@ -293,9 +293,9 @@ private char *
 getrevs(int i, char *str)
 {
 	static	const	char	*envnames[] = {
-		"MERGE_REVS_LOCAL",
-		"MERGE_REVS_GCA",
-		"MERGE_REVS_REMOTE"
+		"BK_RL",
+		"BK_RG",
+		"BK_RR"
 	};
 	char	*ret = 0;
 	char	*verstr;

@@ -1818,34 +1818,17 @@ get_revs(resolve *rs, names *n)
 }
 
 private void
-export_rev(char **string, int *size, const char *name, const char *ver)
+export_rev(const char *name, const char *ver)
 {
-	int	len = strlen(name) + strlen(ver) + 14;
-	int	doputenv = 0;
-
-	if (*size < len) {
-		if (*string) free(*string);
-		*size = len + 16; /* extra just in case */
-		*string = malloc(*size);
-		doputenv = 1;
-	}
-	sprintf(*string, "MERGE_REVS_%s=%s", name, ver);
-	if (doputenv) {
-		int	ret;
-		ret = putenv(*string);
-		assert(ret == 0);
-	}
+	putenv(aprintf("BK_R%s=%s", name, ver));
 }
 
 void
 export_revs(resolve *rs)
 {
-	static	char	*strings[3];
-	static	int	size[3] = {0, 0, 0};
-
-	export_rev(&strings[0], &size[0], "LOCAL", rs->revs->local);
-	export_rev(&strings[1], &size[1], "GCA", rs->revs->gca);
-	export_rev(&strings[2], &size[2], "REMOTE", rs->revs->remote);
+	export_rev("L", rs->revs->local);
+	export_rev("G", rs->revs->gca);
+	export_rev("R", rs->revs->remote);
 }
 
 /*

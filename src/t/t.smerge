@@ -124,13 +124,13 @@ diff -u out out2 > DIFF.OUT
 if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK
 echo $N Check reading versions from enviroment ......................$NL
-export MERGE_REVS_LOCAL=1.2
-export MERGE_REVS_GCA=1.1
-export MERGE_REVS_REMOTE=1.1.1.1
+export BK_RL=1.2
+export BK_RG=1.1
+export BK_RR=1.1.1.1
 bk smerge -p junk1 junk2 junk3 gca > out 
-unset MERGE_REVS_LOCAL
-unset MERGE_REVS_GCA
-unset MERGE_REVS_REMOTE
+unset BK_RL
+unset BK_RG
+unset BK_RR
 diff -u out out2 > DIFF.OUT
 if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK

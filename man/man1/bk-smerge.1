@@ -49,8 +49,8 @@ expressed in the form "rev+includes-excludes" where rev is a normal
 revision number like "1.661" and includes and excludes are a comma
 separated list if revisions to include or exclude from the base
 revision. (The include and/or exclude lists can be omitted if they are
-empty.)  Also if the environmental variables
-MERGE_REVS_{LOCAL,GCA,REMOTE} are set, then those strings are used
+empty.)  If the environmental variables
+BK_R{L,G,R} are set, then those strings are used
 instead of the corresponding strings on the commandline.  This is for
 integration into the BK resolve command.
 .SH "MERGE ALGORITHMS"
