@@ -175,10 +175,13 @@ TAGS: srcs
 	@etags $(SRCS) $(HDRS)
 	@echo etags completed
 
-rsh rshtest:
-	PREFER_RSH=yes make test
+ssh sshtest:
+	$(MAKE) realtest
 
-test tests: $(ALL) t/doit
+test tests rsh rshtest:
+	PREFER_RSH=yes $(MAKE) realtest
+
+realtest: $(ALL) t/doit
 	@if [ ! -d tmp ]; then mkdir tmp; chmod 777 tmp; fi
 	@rm -f tmp/keys
 	-@get -q t/SCCS/s.t.* t/setup t/cleanup
