@@ -6442,6 +6442,55 @@ nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
 	}
 }
 
+private void
+_print_pfile(sccs *s)
+{
+	FILE	*f;
+	char	buf[200];
+
+	printf("%-16s", s->gfile);
+	f = fopen(s->pfile, "r");
+	if (fgets(buf, sizeof(buf), f)) {
+		char	*s;
+		for (s = buf; *s && *s != '\n'; ++s);
+		*s = 0;
+		printf(buf);
+	}
+	fclose(f);
+}
+
+private void
+sccs_infoMsg(sccs *s, char msgCode, u32 flags)
+{
+	char *gfile = s->gfile;
+
+	if (flags & SINFO_TERSE) {
+		printf("%s|%c\n", gfile, msgCode);
+		return;
+	}
+	switch (msgCode) {
+	    case 'x':	verbose((stderr, "%s not under SCCS control\n", gfile));
+			break;
+	    case 'u':	break; /* no long message */
+	    case 'p':	/* locked, but has no g file */
+			verbose((stderr, "%s not checked out\n", gfile));
+			break;
+	    case 'm':	_print_pfile(s);
+			printf(" (has merge pointer, needs delta)\n");
+			break;
+	    case 'c':	_print_pfile(s);
+			printf(" (modified, needs delta)\n");
+			break;
+	    case '?':	_print_pfile(s);
+			fprintf(stderr,
+		"couldn't compute diffs on %s, skipping\n", gfile);
+			break;
+	    case 'l':	_print_pfile(s);
+			printf("\n");
+			break;
+	}
+}
+
 /*
  * provide information about the editing status of a file.
  * XXX - does way too much work for this, shouldn't sccs init.
@@ -6451,44 +6500,32 @@ nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
 int
 sccs_info(sccs *s, u32 flags)
 {
-	FILE	*f;
-	char	buf[200];
-
 	unless (HAS_SFILE(s)) {
-		verbose((stderr, "%s not under SCCS control\n", s->gfile));
+		sccs_infoMsg(s, 'x', flags);
 		return (0);
 	}
 	GOODSCCS(s);
 	if (!HAS_PFILE(s)) {
+		sccs_infoMsg(s, 'u', flags);
 		return (0);
 	}
 	unless (HAS_GFILE(s)) {
-		verbose((stderr, "%s not checked out\n", s->gfile));
+		sccs_infoMsg(s, 'p', flags);
 		return (0);
 	}
-	sprintf(buf, "%s:", s->gfile);
-	printf("%-16s", s->gfile);
-	f = fopen(s->pfile, "r");
-	if (fgets(buf, sizeof(buf), f)) {
-		char	*s;
-		for (s = buf; *s && *s != '\n'; ++s)
-			;
-		*s = 0;
-		printf(buf);
-	}
-	fclose(f);
+
 	switch (sccs_hasDiffs(s, flags)) {
 	    case 2:
-		printf(" (has merge pointer, needs delta)\n");
+		sccs_infoMsg(s, 'm', flags);
 		return (1);
 	    case 1:
-		printf(" (modified, needs delta)\n");
+		sccs_infoMsg(s, 'c', flags);
 		return (1);
 	    case -1:
-		fprintf(stderr,
-		    "couldn't compute diffs on %s, skipping\n", s->gfile);
+		sccs_infoMsg(s, '?', flags);
 		return (1);
-	    default: printf("\n");
+	    default: 
+		sccs_infoMsg(s, 'l', flags);
 	}
 	return (0);
 }

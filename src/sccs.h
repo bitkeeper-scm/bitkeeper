@@ -69,6 +69,8 @@
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
 #define	PRS_PATCH	0x40000000	/* print in patch format */
 
+#define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
+
 /*
  * flags passed to sfileFirst
  */
