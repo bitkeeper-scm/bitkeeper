@@ -25,13 +25,10 @@ bk get -e -r1.1 $Q foo.c
 echo second > foo.c
 bk delta $Q -y1.1.1.1 foo.c
 cp SCCS/s.foo.c sfoo
-bk admin $Q -Ssymbol:1.1.1.1 foo.c
 bk stripdel $Q -r1.2 foo.c
 bk renumber $Q foo.c
 grep -q "^.d D 1.1.1.1" SCCS/s.foo.c 
 if [ $? -eq 0 ]; then echo Failed to remove delta table entry.; exit 1; fi
-grep -q "^.d R 1.1.1.1" SCCS/s.foo.c 
-if [ $? -eq 0 ]; then echo Failed to move symbol.; exit 1; fi
 grep -q "^.d D 1.2" SCCS/s.foo.c 
 if [ $? -ne 0 ]; then echo Failed to move delta table entry to 1.2; exit 1; fi
 echo OK

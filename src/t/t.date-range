@@ -253,31 +253,6 @@ then	echo failed with bracket - got bad range $X; exit 1
 fi
 echo OK
 
-echo -------------- in multiple files:
-# Make sure the same thing works with multiple files
-# We're testing to make sure that splitting dates get unsplit across each file.
-# Test D..D and (D,D]
-for i in FILE1 FILE2 FILE3 FILE4
-do cp SCCS/s.FILE SCCS/s.$i
-done
-bk admin -qSA=1.3 FILE2
-echo $N Range test -cA  in only some files ...........................$NL
-GOOD=`bk prs -cA FILE2 | head -1`
-if [ "$GOOD" != "`bk prs -cA FILE1 FILE2 FILE3 FILE4 | head -1`" ]
-then	echo Stomped on range; exit 1
-fi
-echo OK
-echo $N Range test -c..A in only some files .........................$NL
-GOOD=`bk prs -c..A FILE2 | head -1`
-if [ "$GOOD" != "`bk prs -c..A FILE1 FILE2 FILE3 FILE4 | head -1`" ]
-then	echo Stomped on range
-	echo $GOOD
-	bk prs -c..A FILE1 FILE2 FILE3 FILE4 | head -1
-	exit 1
-fi
-echo OK
-# -----------------------------------------------------------------
-
 for i in 1 2 3
 do	bk co -ql FILE3
 	ls >> FILE3

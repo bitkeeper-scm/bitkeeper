@@ -34,13 +34,6 @@ bk co $Q -l uuencode
 cmp -s ${binary_data} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
-echo $N Make sure symbols work on binary data .......................$NL
-bk clean uuencode
-bk admin $Q -Shi_there uuencode
-bk co $Q -l uuencode
-cmp -s ${binary_data} uuencode
-if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
-echo OK
 echo $N Trying to diffs unchanged binary data .......................$NL
 bk diffs uuencode > d.out 2>&1
 touch d.ref

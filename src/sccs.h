@@ -376,6 +376,8 @@ typedef struct delta {
 	char	**mr;			/* MR's are just passed through */
 	char	**comments;		/* Comment log */
 	/* New stuff in lm's sccs */
+	ser_t	ptag;			/* parent in tag graph */
+	ser_t	mtag;			/* merge parent in tag graph */
 	char	**text;			/* descriptive text log */
 	char	*hostname;		/* hostname where revision was made */
 	char	*pathname;		/* pathname to the file */
@@ -395,7 +397,8 @@ typedef struct delta {
 	struct	delta *kid;		/* next delta on this branch */
 	struct	delta *siblings;	/* pointer to other branches */
 	struct	delta *next;		/* all deltas in table order */
-	int	flags;			/* per delta flags */
+	u32	flags;			/* per delta flags */
+	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
 } delta;
 
 /*
@@ -422,6 +425,8 @@ typedef	struct symbol {			/* symbolic tags */
 	delta	*d;			/* delta associated with this one */
 					/* only for absolute revs, not LOD */
 	delta	*metad;			/* where the symbol lives on disk */
+	u32	left:1;			/* present in left branch */
+	u32	right:1;		/* present in right branch */
 } symbol;
 
 /*
@@ -783,7 +788,7 @@ char	*sccs_setpathname(sccs *s);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(int quiet);
-int	sccs_meta(sccs *s, delta *parent, MMAP *initFile);
+int	sccs_meta(sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
@@ -939,5 +944,7 @@ void	sortLines(char **);
 #define	SYS	(char*)0, 0xdeadbeef
 int	sys(char *first, ...);
 int	sysio(char *in, char *out, char *err, char *first, ...);
+char	*sccs_zone();
+MDBM	*sccs_tagConflicts(sccs *s);
 
 #endif	/* _SCCS_H_ */

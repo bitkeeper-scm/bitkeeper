@@ -971,7 +971,7 @@ apply:
 				MMAP	*m = p->initMmap;
 
 				unless (m) m = mopen(p->initFile, "b");
-				if (sccs_meta(s, d, m)) {
+				if (sccs_meta(s, d, m, 0)) {
 					perror("meta");
 					return -1;
 				}
@@ -1125,6 +1125,11 @@ apply:
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		s->proj = 0; sccs_free(s);
 		return (-1);
+	}
+	if (!confThisFile && (s->state & S_CSET) && 
+	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
+	    	confThisFile++;
+		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
 	s->proj = 0; sccs_free(s);

@@ -55,7 +55,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  prs.o pull.o purify.o push.o pwd.o r2c.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
-	  resolve_flags.o resolve_generic.o resolve_modes.o \
+	  resolve_flags.o resolve_generic.o resolve_modes.o resolve_tags.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o rset.o \
 	  sane.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o setup.o \
