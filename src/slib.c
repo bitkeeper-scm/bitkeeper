@@ -12509,14 +12509,14 @@ void
 fit(char *buf, unsigned int i)
 {
 	int	j;
-	float	f;
+	u32	f;
 	static	char *s[] = { "K", "M", "G", 0 };
 	if (i < 100000) {
 		sprintf(buf, "%05d\n", i);
 		return;
 	}
-	for (j = 0, f = 1000.; s[j]; j++, f *= 1000.) {
-		sprintf(buf, "%04.3g%s", i/f, s[j]);
+	for (j = 0, f = 1000; s[j]; j++, f *= 1000) {
+		sprintf(buf, "%04u%s", (i+(f-1))/f, s[j]);
 		if (strlen(buf) == 5) return;
 	}
 	sprintf(buf, "E2BIG");
