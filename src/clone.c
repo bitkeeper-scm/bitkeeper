@@ -10,6 +10,7 @@
 typedef struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
+	int	delay;			/* wait for (ssh) to drain */
 	int	gzip;			/* -z[level] compression */
 	char	*rev;			/* remove everything after this */
 	u32	in, out;		/* stats */
@@ -44,13 +45,14 @@ clone_main(int ac, char **av)
 
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
-	while ((c = getopt(ac, av, "dE:qr;z|")) != -1) {
+	while ((c = getopt(ac, av, "dE:qr;w|z|")) != -1) {
 		switch (c) {
 		    case 'd': opts.debug = 1; break;	/* undoc 2.0 */
 		    case 'E': 	/* doc 2.0 */
 			envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'q': opts.quiet = 1; break;	/* doc 2.0 */
 		    case 'r': opts.rev = optarg; break;	/* doc 2.0 */
+		    case 'w': opts.delay = atoi(optarg); break; /* undoc 2.0 */
 		    case 'z':	/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
@@ -98,6 +100,8 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	if (gzip) fprintf(f, " -z%d", gzip);
 	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.quiet) fprintf(f, " -q");
+	if (opts.delay) fprintf(f, " -w%d", opts.delay);
+	if (getenv("_BK_FLUSH_BLOCK")) fprintf(f, " -f");
 	fputs("\n", f);
 	fclose(f);
 

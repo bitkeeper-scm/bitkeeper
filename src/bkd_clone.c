@@ -11,7 +11,7 @@ int
 cmd_clone(int ac, char **av)
 {
 	int	c, rc;
-	int	gzip = 0;
+	int	gzip = 0, delay = 0;
 	char 	*p, *rev = 0, ebuf[200];
 
 	/*
@@ -35,8 +35,11 @@ cmd_clone(int ac, char **av)
 	}
 
 	cmd[4] = 0;
-	while ((c = getopt(ac, av, "qr|z|")) != -1) {
+	while ((c = getopt(ac, av, "qr|w|z|")) != -1) {
 		switch (c) {
+		    case 'w':
+			delay = atoi(optarg);
+			break;
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
 			if (gzip < 0 || gzip > 9) gzip = 6;
@@ -83,6 +86,13 @@ cmd_clone(int ac, char **av)
 	flushSocket(1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
 	if (p && trigger(av, "post")) exit (1);
+
+	/*
+	 * XXX Hack alert: workaround for a ssh bug
+	 * Give ssh sometime to drain the data
+	 * We should not need this if ssh is working correctly 
+	 */
+	if (delay) sleep(delay);
 	return (rc);
 }
 	    
