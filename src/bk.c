@@ -12,8 +12,6 @@ private	char log_buffer[MAXPATH*4];
 char	*find_wish();
 char	*find_perl5();
 extern	void	getoptReset();
-private void	platformInit(char **av);
-private int	bk_sfiles(int ac, char **av);
 private	void	log_start(char **av);
 private	void	log_end(int ret);
 private	void	log_dump();
@@ -215,10 +213,6 @@ main(int ac, char **av)
 	int	ret;
 	char	*prog;
 
-	/*
-	 * XXX TODO: implement "__logCommand"
-	 */
-
 	platformInit(av); 
 	assert(bin);
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
@@ -236,7 +230,6 @@ main(int ac, char **av)
 		bk_proj = proj_init(0);
 	}
 	log_buffer[0] = 0;
-	atexit(log_exit);
 
 	/*
 	 * Parse our options if called as "bk".
@@ -286,7 +279,7 @@ main(int ac, char **av)
 	}
 	getoptReset();
 
-	if (streq(av[0], "cmdlog")) {
+	if (streq(prog, "cmdlog")) {
 		log_dump();
 		return (0);
 	}
@@ -310,9 +303,9 @@ main(int ac, char **av)
 	/*
 	 * Is it a perl 4 script ?
 	 */
-	if (streq(av[0], "pmerge")) {
+	if (streq(prog, "pmerge")) {
 		argv[0] = "perl"; 
-		sprintf(cmd_path, "%s/%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
@@ -325,9 +318,9 @@ main(int ac, char **av)
 	/*
 	 * Is it a perl 5 script ?
 	 */
-	if (streq(av[0], "mkdiffs")) {
+	if (streq(prog, "mkdiffs")) {
 		argv[0] = find_perl5();
-		sprintf(cmd_path, "%s/%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
@@ -340,19 +333,19 @@ main(int ac, char **av)
 	/*
 	 * Handle Gui script
 	 */
-	if (streq(av[0], "fm") ||
-	    streq(av[0], "fm3") ||
-	    streq(av[0], "citool") ||
-	    streq(av[0], "sccstool") ||
-	    streq(av[0], "setuptool") ||
-	    streq(av[0], "fmtool") ||
-	    streq(av[0], "fm3tool") ||
-	    streq(av[0], "difftool") ||
-	    streq(av[0], "helptool") ||
-	    streq(av[0], "csettool") ||
-	    streq(av[0], "renametool")) {
+	if (streq(prog, "fm") ||
+	    streq(prog, "fm3") ||
+	    streq(prog, "citool") ||
+	    streq(prog, "sccstool") ||
+	    streq(prog, "setuptool") ||
+	    streq(prog, "fmtool") ||
+	    streq(prog, "fm3tool") ||
+	    streq(prog, "difftool") ||
+	    streq(prog, "helptool") ||
+	    streq(prog, "csettool") ||
+	    streq(prog, "renametool")) {
 		argv[0] = find_wish();
-		sprintf(cmd_path, "%s/%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
@@ -365,10 +358,9 @@ main(int ac, char **av)
 	/*
 	 * Handle shell script
 	 */
-	if (streq(av[0], "resync") || 
-		streq(av[0], "import")) {
+	if (streq(prog, "resync") || streq(prog, "import")) {
 		argv[0] = shell();
-		sprintf(cmd_path, "%s/%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
 			argv[i] = av[j];
@@ -383,10 +375,9 @@ main(int ac, char **av)
 	/*
 	 * Is it a known C program ?
 	 */
-	if (streq(av[0], "patch") ||
-	    streq(av[0], "diff3")) {
-		log_start(argv);
-		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+	if (streq(prog, "patch") || streq(prog, "diff3")) {
+		log_start(av);
+		ret = spawnvp_ex(_P_WAIT, av[0], av);
 		log_end(ret);
 		exit(ret);
 	}
@@ -473,14 +464,26 @@ log_end(int ret)
 private	void
 log_dump()
 {
-	char	path[MAXPATH];
+	FILE	*f;
+	time_t	t;
+	char	*p;
+	char	buf[4096];
 
 	unless (bk_proj && bk_proj->root) return;
-	sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
-	cat(path);
+	sprintf(buf, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+	unless (f = fopen(buf, "r")) return;
+	while (fgets(buf, sizeof(buf), f)) {
+		unless (p = strchr(buf, '@')) continue;
+		*p++ = 0;
+		t = strtoul(p, 0, 0);
+		unless (p = strchr(p, ':')) continue;
+		p++;
+		printf("%s %.19s%s", buf, ctime(&t), p);
+	}
+	fclose(f);
 }
 
-private int
+int
 bk_sfiles(int ac, char **av)
 {
 	pid_t	pid;
