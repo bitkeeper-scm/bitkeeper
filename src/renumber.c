@@ -338,6 +338,10 @@ parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
 		m->flags |= D_MERGED;
 		break;	/* only need to find one */
 	}
+	assert(!d->exclude);
+	assert(d->include);
+	free(d->include);
+	d->include = 0;
 
 	/*
 	 * Set old merge as new parent
@@ -366,6 +370,7 @@ parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
 	 */
 	d->merge = p->serial;
 	p->flags |= D_MERGED;
+	sccs_mergeset(s, "renumber", d, p);	/* assumes d->parent is set */
 
 	/* Swap parent and merge and we are done */
 	*pp = m;

@@ -760,6 +760,7 @@ char	*sccs_root(sccs *s);
 int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
+void	sccs_mergeset(sccs *s, char *who, delta *d, delta *m);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
