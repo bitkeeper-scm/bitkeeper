@@ -49,10 +49,10 @@ int
 c_dgl(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH*2];
+	char	cmd[MAXPATH];
 
-	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->local, rs->pager);
-	sys(cmd, rs->opts);
+	sprintf(cmd, "|%s", rs->pager);
+	sysio(0, cmd, 0, "bk", "diff", n->gca, n->local, SYS);
 	return (0);
 }
 
@@ -60,10 +60,10 @@ int
 c_dgr(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH*2];
+	char	cmd[MAXPATH];
 
-	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->remote, rs->pager);
-	sys(cmd, rs->opts);
+	sprintf(cmd, "|%s", rs->pager);
+	sysio(0, cmd, 0, "bk", "diff", n->gca, n->remote, SYS);
 	return (0);
 }
 
@@ -71,10 +71,10 @@ int
 c_dlm(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH*2];
+	char	cmd[MAXPATH];
 
-	sprintf(cmd, "bk diff %s %s | %s", n->local, rs->s->gfile, rs->pager);
-	sys(cmd, rs->opts);
+	sprintf(cmd, "|%s", rs->pager);
+	sysio(0, cmd, 0, "bk", "diff", n->gca, rs->s->gfile, SYS);
 	return (0);
 }
 
@@ -82,21 +82,18 @@ int
 c_drm(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH*2];
+	char	cmd[MAXPATH];
 
-	sprintf(cmd, "bk diff %s %s | %s", n->remote, rs->s->gfile, rs->pager);
-	sys(cmd, rs->opts);
+	sprintf(cmd, "|%s", rs->pager);
+	sysio(0, cmd, 0, "bk", "diff", n->remote, rs->s->gfile, SYS);
 	return (0);
 }
 
 int
 c_em(resolve *rs)
 {
-	char	cmd[MAXPATH*2];
-
 	unless (exists(rs->s->gfile)) c_merge(rs);
-	sprintf(cmd, "%s %s", rs->editor, rs->s->gfile);
-	sys(cmd, rs->opts);
+	sys(rs->editor, rs->s->gfile, SYS);
 	return (0);
 }
 
@@ -132,11 +129,10 @@ c_merge(resolve *rs)
 {
 	names	*n = rs->tnames;
 	int	ret;
-	char	cmd[MAXPATH*4];
 
-	sprintf(cmd, "bk %s %s %s %s %s",
-	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
-	ret = sys(cmd, rs->opts) & 0xffff;
+	ret = sys("bk", rs->opts->mergeprog,
+	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
+	ret &= 0xffff;
 	/*
 	 * We need to restart even if there are errors, otherwise we think
 	 * the file is not writable.
@@ -149,7 +145,7 @@ c_merge(resolve *rs)
 		return (rs->opts->advance);
 	}
 	if (ret == 0xff00) {
-	    	fprintf(stderr, "Cannot execute '%s'\n", cmd);
+	    	fprintf(stderr, "Cannot execute '%s'\n", rs->opts->mergeprog);
 		rs->opts->errors = 1;
 		return (0);
 	}
@@ -168,7 +164,7 @@ c_smerge(resolve *rs)
 	names	*n = rs->tnames;
 	int	ret;
 	char	*branch;
-	char	cmd[MAXPATH*4];
+	char	opt[200];
 
 	branch = strchr(rs->revs->local, '.');
 	assert(branch);
@@ -177,8 +173,10 @@ c_smerge(resolve *rs)
 	} else {
 		branch = rs->revs->remote;
 	}
-	sprintf(cmd, "bk get -pM%s %s >%s", branch, rs->s->gfile, rs->s->gfile);
-	ret = sys(cmd, rs->opts) & 0xffff;
+	/* bk get -pM{branch} {rs->s->gfile} > {rs->s->gfile} */
+	sprintf(opt, "-pM%s", branch);
+	ret = sysio(0, rs->s->gfile, 0, "bk", "get", opt, rs->s->gfile, SYS);
+	ret &= 0xffff;
 	/*
 	 * We need to restart even if there are errors, otherwise we think
 	 * the file is not writable.

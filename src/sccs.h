@@ -932,5 +932,9 @@ char	*bk_model(char *buf, int len);
 char	*getHomeDir();
 char	*age(time_t secs);
 void	sortLines(char **);
+	/* this must be the last argument to all calls to sys/sysio */
+#define	SYS	(char*)0, 0xdeadbeef
+int	sys(char *first, ...);
+int	sysio(char *in, char *out, char *err, char *first, ...);
 
 #endif	/* _SCCS_H_ */
