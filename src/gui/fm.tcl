@@ -988,7 +988,7 @@ proc platformPath {} \
 	global bin env
 	
 	if {[info exists env(BK_BIN)]} {
-		set bin env(BK_BIN)
+		set bin $env(BK_BIN)
 	} else {
 		set bin "/usr/bitkeeper"
 	}
