@@ -34,7 +34,7 @@ create_main(int ac, char **av)
 deledit_main(int ac, char **av)
 {
 	int	i;
-	char	**nav = malloc(ac + 2);
+	char	**nav = malloc((ac + 2) * sizeof(char*));
 
 	nav[0] = "delta";
 	nav[1] = "-l";
@@ -46,7 +46,7 @@ deledit_main(int ac, char **av)
 delget_main(int ac, char **av)
 {
 	int	i;
-	char	**nav = malloc(ac + 2);
+	char	**nav = malloc((ac + 2) * sizeof(char*));
 
 	nav[0] = "delta";
 	nav[1] = "-u";

@@ -421,11 +421,12 @@ import_RCS () {
 		do	d=`dirname $x`
 			test -d $d || continue	# done already
 			cd $d || exit 1
-			for i in *,v
-			do	test -e ../$i && {
-				    echo Not moving $d/$i due to name conflict
-				}
-				test ! -e ../$i && mv $i ..
+			# If there is a name conflict, do NOT use the Attic file
+			find . -name '*,v' -print | while read i
+			do	if [ -e "../$i" ] 
+				then	rm "$i"
+				else	mv "$i" ..
+				fi
 			done
 			cd ..
 			rmdir Attic || { touch ${TMP}failed$$; exit 1; }
@@ -436,7 +437,7 @@ import_RCS () {
 			exit 1
 		}
 		mv ${TMP}import$$ ${TMP}Attic$$
-		sed 's|Attic/||' < ${TMP}Attic$$ > ${TMP}import$$
+		sed 's|Attic/||' < ${TMP}Attic$$ | sort -u > ${TMP}import$$
 		rm ${TMP}Attic$$
 	fi
 	msg Converting RCS files.
