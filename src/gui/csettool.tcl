@@ -330,11 +330,11 @@ proc prevCset {} \
 
 proc file_history {} \
 {
-	global	lastFile Files file_start_stop file_stop
+	global	lastFile Files file_start_stop file_stop RealFiles
 
 	set line $Files($lastFile)
 	set line "$line.0"
-	set file [.filelist.t get $line "$line lineend"]
+	set file $RealFiles($lastFile)
 	if {[regexp "^  $file_start_stop" $file dummy file start stop] == 0} {
 		regexp "^  $file_stop" $file dummy f stop
 		set start $stop
@@ -346,7 +346,7 @@ proc file_history {} \
 proc dotFile {} \
 {
 	global	lastFile fileCount Files tmp_dir file_start_stop file_stop
-	global	bk_get bk_prs
+	global	bk_get bk_prs RealFiles
 
 	busy 1
 	if {$lastFile == 1} {
@@ -364,8 +364,8 @@ proc dotFile {} \
 	.filelist.t see $line
 	.filelist.t tag remove select 1.0 end
 	.filelist.t tag add select $line "$line lineend + 1 char"
-	set file [.filelist.t get $line "$line lineend"]
-	 if {[regexp "^  $file_start_stop" $file dummy file start stop] == 0} {
+	set file $RealFiles($lastFile)
+	if {[regexp "^  $file_start_stop" $file dummy file start stop] == 0} {
 		regexp "^  $file_stop" $file dummy f stop
 		set start $stop
 		set file $f
@@ -434,7 +434,7 @@ proc dotFile {} \
 proc getFiles {revs} \
 {
 	global	fileCount lastFile Files line2File file_start_stop bk_fs
-	global	bk_prs bk_cset
+	global	bk_prs bk_cset RealFiles
 
 	busy 1
 	.filelist.t configure -state normal
@@ -447,15 +447,28 @@ proc getFiles {revs} \
 		update
 		incr line
 		.filelist.t insert end "ChangeSet $cset\n" cset
-		set c [open "| $bk_cset -r$cset | sort" r]
+		set c [open "| $bk_cset -hr$cset | sort" r]
 		while { [gets $c buf] >= 0 } {
 			incr fileCount
 			incr line
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
+			set done 0
+			if {[regexp {(.*) (.*)([:@].*)$} \
+			    $buf dummy oldName newName revs]} {
+				set RealFiles($fileCount) "  $newName$revs"
+				set buf "$oldName$revs"
+				set done 1
+			}
 			regexp $file_start_stop $buf dummy file start stop
 			if {$start == $stop} {
-				set buf "$file$bk_fs$start"
+				set revs $start
+			} else {
+				set revs $start..$stop
+			}
+			set buf "$file$bk_fs$revs"
+			if {$done == 0} {
+				set RealFiles($fileCount) "  $buf"
 			}
 			.filelist.t insert end "  $buf\n"
 		}

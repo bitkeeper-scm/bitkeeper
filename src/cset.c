@@ -16,6 +16,9 @@ usage: cset [opts]\n\n\
     -d<range>	do unified diffs for the range\n\
     -C		clear and remark all ChangeSet boundries\n\
     -i		Create a new change set history rooted at <root>\n\
+    -h		When listing, in the file name as of the cset is not the\n\
+    		same as the current file name, list as\n\
+		<cset name> <current name>:rev\n\
     -l<range>	List each rev in range as file:rev,rev,rev (set format)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
@@ -45,6 +48,7 @@ typedef	struct cset {
 	int	remark;		/* clear & redo all the ChangeSet marks */
 	int	dash;
 	int	newlod;
+	int	historic;	/* list the historic name if different */
 
 	/* numbers */
 	int	verbose;
@@ -114,7 +118,8 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (streq(av[0], "makepatch")) copts.makepatch++;
 
-	while ((c = getopt(ac, av, "c|Cd|Dfi|l|Lm|M|pqr|R|sS;t;vy|Y|")) != -1) {
+	while (
+	    (c = getopt(ac, av, "c|Cd|Dfhi|l|Lm|M|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
@@ -122,6 +127,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 			text = optarg;
 			break;
 		    case 'f': copts.force++; break;
+		    case 'h': copts.historic++; break;
 		    case 'R':
 			copts.range++;
 			/* fall through */
@@ -963,6 +969,9 @@ doRange(cset_t *cs, sccs *sc)
 		if (d->flags & D_SET) e = d;
 	}
 	unless (e) return;
+	if (cs->historic && !streq(sc->gfile, e->pathname)) {
+		printf("%s ", e->pathname);
+	}
 	printf("%s%c%s..", sc->gfile, BK_FS, e->rev);
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
