@@ -190,3 +190,15 @@ then	echo failed - bad status message
 	exit 1
 fi
 echo OK
+echo $N Make sure commit respect repository lock  ....................$NL
+mkdir -p $HERE/project/RESYNC/stuff
+bk co $Q -l D
+date > D
+bk ci $Q -ynew_styff D
+bk commit $Q -y"should-failed" > commit.out
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo "ERROR-Unable to lock repository for update." > x
+bk undos x > ref
+cmp -s commit.out ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK

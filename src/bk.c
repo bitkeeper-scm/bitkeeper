@@ -253,7 +253,7 @@ main(int ac, char **av)
 	char	*argv[100];
 	int	c;
 	int	is_bk = 0, dashr = 0;
-	int	ret;
+	int	flags, ret;
 	char	*prog;
 
 	cmdlog_buffer[0] = 0;
@@ -338,9 +338,9 @@ main(int ac, char **av)
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
 		if (streq(cmdtbl[i].name, prog)){
-			cmdlog_start(av);
+			flags = cmdlog_start(av);
 			ret = cmdtbl[i].func(ac, av);
-			cmdlog_end(ret, 0);
+			cmdlog_end(ret, flags);
 			exit(ret);
 		}
 	}
@@ -457,7 +457,7 @@ private	struct {
 } repolog[] = {
 	{"pull", 0},
 	{"push", 0},
-	{"commit", 0},
+	{"commit", CMD_WRLOCK},
 	{"remote pull", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
 	{"remote push", CMD_BYTES|CMD_FAST_EXIT|CMD_WRLOCK},
 	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK},
@@ -515,7 +515,11 @@ cmdlog_start(char **av)
 		}
 		ret = trigger(cmdlog_buffer, "pre", 0);
 
-		unless (ret == 0) exit(ret);
+		unless (ret == 0) {
+			if (cflags & CMD_WRLOCK) repository_wrunlock(0);
+			if (cflags & CMD_RDLOCK) repository_rdunlock(0);
+			exit(ret);
+		}
 	}
 	return (cflags);
 
