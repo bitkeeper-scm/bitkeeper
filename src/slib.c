@@ -2850,7 +2850,12 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'V':
 		s->version = atoi(&buf[3]);
-		unless (s->version <= SCCS_VERSION) {
+		/*
+		 * XXX FIXME We should change this back to SCCS_VERSION
+		 * when we formally up SCCS_VERSION to 4
+		 */
+		//unless (s->version <= SCCS_VERSION) {
+		unless (s->version <= SCCS_LOGS_VERSION) {
 			fprintf(stderr,
 			    "Later file format version %d, forcing read only\n",
 			    s->version);
@@ -6980,7 +6985,11 @@ delta_table(sccs *s, FILE *out, int willfix)
 			}
 		}
 		if (!d->next) {
-			sprintf(buf, "\001cV%u\n", SCCS_VERSION);
+			if (s->state & S_LOGS_ONLY) {
+				sprintf(buf, "\001cV%u\n", SCCS_LOGS_VERSION);
+			} else {
+				sprintf(buf, "\001cV%u\n", SCCS_VERSION);
+			}
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_XFLAGS) {
@@ -8131,6 +8140,7 @@ checkin(sccs *s,
 	int	no_lf = 0;
 	int	error = 0;
 	int	bk_etc = 0;
+	int	short_key = 0;
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -8233,11 +8243,23 @@ checkin(sccs *s,
 			assert(sc);
 			cset_root = findrev(sc, "1.0");
 			assert(cset_root);
+			assert(cset_root->user);
+			assert(cset_root->hostname);
+			assert(cset_root->sdate);
+			assert(cset_root->zone);
 			n0->user = strdup(cset_root->user);
 			n0->hostname = strdup(cset_root->hostname);
 			n0->sdate = strdup(cset_root->sdate);
 			n0->zone = strdup(cset_root->zone);
-			n0->random = strdup(cset_root->random);
+			if (cset_root->random) {
+				n0->random = strdup(cset_root->random);
+			} else {
+				/*
+				 * If the ChangeSet file has short key
+				 * force short key for the derived key
+				 */
+				short_key = 1;
+			}
 			n0->flags |= D_CKSUM;
 			n0->sum = cset_root->sum;
 			n0->date = cset_root->date;
@@ -8311,7 +8333,7 @@ checkin(sccs *s,
 	unless (nodefault || (flags & DELTA_PATCH)) {
 		delta	*d = n0 ? n0 : n;
 
-		unless (d->random) {
+		if (!d->random && !short_key) {
 			randomBits(buf);
 			if (buf[0]) d->random = strdup(buf);
 		}

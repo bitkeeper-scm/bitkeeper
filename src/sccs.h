@@ -478,7 +478,8 @@ extern	char *upgrade_msg;
  * 3 - because random bits can now be on a per delta basis.
  * 4 - added X_LOGS_ONLY, DT_PLACEHOLDER & DT_NO_TRANSMIT flags
  */
-#define	SCCS_VERSION	4
+#define	SCCS_VERSION		3
+#define	SCCS_LOGS_VERSION	4
 
 /*
  * struct sccs - the delta tree, the data, and associated junk.
@@ -904,7 +905,7 @@ int	bk_sfiles(int ac, char **av);
 int	outc(char c);
 MDBM	*loadConfig(char *root, int convert);
 int	ascii(char *file);
-int	sccs_rm(char *name, int useCommonDir);
+int	sccs_rm(char *name, char *del_name, int useCommonDir);
 int	mkconfig(FILE *out);
 int	config2logging(char *root);
 int	logging(char *user, MDBM *configDB, MDBM *okDB);
