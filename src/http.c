@@ -329,7 +329,7 @@ http_send(remote *r, char *msg,
 	    "Accept: text/html\n"
 	    "Host: %s\n"
 	    "Content-type: %s\n"
-	    "Content-length:%u\n\n",
+	    "Content-length: %u\n\n",
 	    bk_url, user_agent, sccs_gethost(), BINARY, mlen + extra);
 
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
