@@ -12915,7 +12915,8 @@ mkDiffHdr(char kind, char tag[], char *buf, FILE *out)
 {
 	char	*marker, *date;
 
-	unless ((kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
+	unless ((kind == DF_UNIFIED) ||
+	    (kind == DF_PDIFF) || (kind == DF_CONTEXT)) {
 		fputs(buf, out);
 		return; 
 	}

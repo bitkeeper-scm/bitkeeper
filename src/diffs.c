@@ -92,7 +92,9 @@ diffs_main(int ac, char **av)
 		    case 'n': kind = DF_RCS; break;		/* doc 2.0 */
 		    case 'R': Rev = optarg; break;		/* doc 2.0 */
 		    case 's': kind = DF_SDIFF; break;		/* doc 2.0 */
-		    case 'u': kind = DF_UNIFIED; break;		/* doc 2.0 */
+		    case 'u': 
+		    	unless (kind == DF_PDIFF) kind = DF_UNIFIED;
+			break;
 		    case 'U': flags |= GET_USER; break;		/* doc 2.0 */
 		    case 'v': verbose = 1; break;		/* doc 2.0 */
 		    case 'w': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
