@@ -5,7 +5,7 @@
 
 WHATSTR("@(#)%K%");
 private int	undoit(MDBM *m);
-private int	doit(int flags, char *file, char *op, char *revs, delta *d);
+private int	doit(int flags, char *file, char *op, char *revs);
 private int	commit(int quiet, delta *d);
 private	delta	*getComments(char *op, char *revs);
 private void	clean(char *file);
@@ -80,7 +80,7 @@ cset_inex(int flags, char *op, char *revs)
 				revbuf = joinLines(",", rlist);
 				freeLines(rlist);
 				rlist = 0;
-				if (doit(flags, file, op, revbuf, d)) {
+				if (doit(flags, file, op, revbuf)) {
 					kill(pid, SIGKILL);
 					wait(0);
 					clean(file);
@@ -107,7 +107,7 @@ cset_inex(int flags, char *op, char *revs)
 		revbuf = joinLines(",", rlist);
 		freeLines(rlist);
 		rlist = 0;
-		if (doit(flags, file, op, revbuf, d)) {
+		if (doit(flags, file, op, revbuf)) {
 			kill(pid, SIGKILL);
 			wait(0);
 			clean(file);
@@ -167,7 +167,7 @@ getComments(char *op, char *revs)
 	av[i = 0] = "bk";
 	av[++i] = "prs";
 	av[++i] = "-h";
-	av[++i] = "-d:SHORTKEY:\n";
+	av[++i] = "-d:KEY:\n";
 	av[++i] = revs;
 	av[++i] = CHANGESET;
 	av[++i] = 0;
@@ -182,6 +182,7 @@ getComments(char *op, char *revs)
 		return (0);
 	}
 	d = calloc(1, sizeof(delta));
+	if (comments_got()) d = comments_get(d);
 	if (streq(op, "-i")) {
 		strcpy(buf, "Cset include: ");
 	} else {
@@ -214,15 +215,15 @@ commit(int quiet, delta *d)
 	sccs_freetree(d);
 	cmds[i=0] = "bk";
 	cmds[++i] = "commit";
-	cmds[++i] = "-dFa";
+	cmds[++i] = "-dF";
 	if (quiet) cmds[++i] = "-s";
 	cmds[++i] = comment;
 	cmds[++i] = 0;
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	if (!WIFEXITED(i) || WEXITSTATUS(i)) {
+		fprintf(stderr, "cset: commit says 0x%x\n", (u32)i);
 		free(comment);
 		unlink(tmp);
-		fprintf(stderr, "cset: commit says %d\n", i);
 		return (1);
 	}
 	free(comment);
@@ -287,12 +288,12 @@ undoit(MDBM *m)
 }
 
 private int
-doit(int flags, char *file, char *op, char *revs, delta *d)
+doit(int flags, char *file, char *op, char *revs)
 {
 	sccs	*s;
-	delta	*copy = 0;
+	delta	*d = 0;
 	char	*sfile;
-	int	i, ret;
+	int	ret;
 
 	flags |= GET_EDIT;
 	sfile = name2sccs(file);
@@ -331,16 +332,16 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 		sccs_free(s);
 		return (1);
 	}
-	if (flags & GET_SKIPGET) goto ok;
-	if (d) {
-		copy = calloc(1, sizeof(delta));
-		EACH(d->comments) {
-			copy->comments =
-			    addLine(copy->comments, strdup(d->comments[i]));
-		}
+	if (flags & GET_SKIPGET) goto ok;	/* we are the cset file */
+	if (comments_got()) {
+		d = comments_get(0);
+	} else {
+		char	*what = streq(op, "-x") ? "Exclude" : "Include";
+
+		d = sccs_parseArg(0, 'C', what, 0);
 	}
 	sccs_restart(s);
-	if (sccs_delta(s, SILENT|DELTA_FORCE, copy, 0, 0, 0)) {
+	if (sccs_delta(s, SILENT|DELTA_FORCE, d, 0, 0, 0)) {
 		fprintf(stderr, "cset: could not delta %s\n", s->gfile);
 		sccs_free(s);
 		return (1);
