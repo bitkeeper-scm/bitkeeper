@@ -1338,6 +1338,7 @@ _platformPath() {
 		then	BIN="$i/"
 			BK_BIN=$BIN
 			export BK_BIN
+			PATH=$BIN:/usr/xpg4/bin:$PATH
 			return
 		fi
 	done
@@ -1416,8 +1417,8 @@ for w in citool sccstool vitool fm fmtool fm3 fm3tool difftool helptool csettool
 do	if [ $cmd = $w ]
 	then
 		# pick up our own wish shell if it exists
-		PATH=$BIN:$PATH exec $wish -f ${GUI_BIN}${cmd}${tcl} "$@"
-	fi
+		exec $wish -f ${GUI_BIN}${cmd}${tcl} "$@"
+		fi
 done
 
 if [ -x ${BIN}$cmd${ext} -a ! -d ${BIN}$cmd ]
