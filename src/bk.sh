@@ -322,7 +322,6 @@ __init() {
 # ------------- main ----------------------
 __platformInit
 __init
-__logCommand "$@"
 
 if type "_$1" >/dev/null 2>&1
 then	cmd=_$1
