@@ -18,6 +18,9 @@ main(int ac, char **av)
 	int	doit(int, int);
 	int	off = 0;
 
+#ifdef WIN32
+	setmode(1, _O_BINARY);
+#endif
 	if (av[1] && streq(av[1], "--help")) {
 		fprintf(stderr, "usage: chksum [-o offset] [file]\n");
 		exit(1);
