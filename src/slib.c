@@ -75,7 +75,7 @@ private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 char		*now();
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
-private void	singleUser(sccs *s);
+private void	singleUser(sccs *s, MDBM *m);
 private	int	parseConfig(char *buf);
 
 
@@ -6966,7 +6966,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		unless (s->tree->xflags) {
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
-			singleUser(s);
+			singleUser(s, 0);
 			s->tree->xflags |= s->xflags & X_SINGLE;
 		}
 		/* for old binaries */
@@ -8337,18 +8337,20 @@ nullCheck(MMAP *m)
 }
 
 private void
-singleUser(sccs *s)
+singleUser(sccs *s, MDBM *m)
 {
-	MDBM	*m;
 	delta	*d;
 	char	*user, *host;
+	int	close_m = !m;
 
-	unless (s && s->proj && s->proj->root) return;
-	unless (m = loadConfig(s->proj->root, 0)) return;
+	if (!m) {
+		unless (s && s->proj && s->proj->root) return;
+		unless (m = loadConfig(s->proj->root, 0)) return;
+	}
 	user = mdbm_fetch_str(m, "single_user");
 	host = mdbm_fetch_str(m, "single_host");
 	unless (user && host) {
-		mdbm_close(m);
+		if (close_m) mdbm_close(m); /* skip pass from outside */
 		return;
 	}
 	d = s->tree;
@@ -8365,7 +8367,7 @@ singleUser(sccs *s)
 		d->hostname = s->tree->hostname;
 		d->flags |= D_DUPHOST;
 	}
-	mdbm_close(m);
+	if (close_m) mdbm_close(m); /* skip pass from outside */
 	s->xflags |= X_SINGLE;
 }
 
@@ -8392,6 +8394,7 @@ checkin(sccs *s,
 	int	error = 0;
 	int	bk_etc = 0;
 	int	short_key = 0;
+	MDBM	*db = 0;
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -8406,6 +8409,7 @@ out:		sccs_unlock(s, 'z');
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
 		s->state |= S_WARNED;
+		if (db) mdbm_close(db);
 		return (-1);
 	}
 	if (diffs) {
@@ -8516,7 +8520,19 @@ out:		sccs_unlock(s, 'z');
 	if (nodefault) {
 		if (prefilled) s->xflags |= prefilled->xflags;
 	} else if (s->encoding == E_ASCII) {
-		unless (CSET(s)) s->xflags |= X_DEFAULT;
+		unless (CSET(s)) {
+			/* check eoln preference */
+			if (s->proj) {
+				db = loadConfig(s->proj->root, 0);
+				if (db) {
+					char *p = mdbm_fetch_str(db, "eoln");
+					if (p && streq("native", p)) {
+						s->xflags |= X_EOLN_NATIVE;
+					}
+				}
+			}
+			s->xflags |= X_DEFAULT;
+		}
 	}
 	n->serial = s->nextserial++;
 	s->table = n;
@@ -8572,7 +8588,7 @@ out:		sccs_unlock(s, 'z');
 				first->csetFile = getCSetFile(s);
 			}
 		}
-		singleUser(s);
+		singleUser(s, db);
 		first->xflags |= (s->xflags & X_SINGLE);
 	}
 
@@ -8671,6 +8687,7 @@ no_config:
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	Chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
+	if (db) mdbm_close(db);
 	sccs_unlock(s, 'z');
 	return (0);
 }

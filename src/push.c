@@ -148,6 +148,7 @@ log_main(int ac, char **av)
 	assert(i < MAXARG);
 	getoptReset();
 	if (push_main(i, log_av)) {
+#ifdef OPENLOG_IP
 		/*
 		 * If openlog url failed, re-try with IP address
 		 * XXX FIXME DO we really want a hardwired IP addrsss here ??
@@ -162,6 +163,9 @@ log_main(int ac, char **av)
 			getoptReset();
 			return (push_main(i, log_av));
 		}
+#else
+		return (1);
+#endif
 	}
 	return (0); /* ok */
 }
@@ -228,10 +232,16 @@ needLogMarker(opts opts, remote *r)
 	unless(r->path) return (0);
 	unless(r->port == 80) return (0);
 	unless (streq(r->path, "///LOG_ROOT///")) return (0);
+#ifdef OPENLOG_IPHOST
 	unless (streq(r->host, OPENLOG_URLHOST) ||
 					streq(r->host, OPENLOG_IPHOST)) {
 		return (0);
 	}
+#else
+	unless (streq(r->host, OPENLOG_URLHOST)) {
+		return (0);
+	}
+#endif
 	return (1);
 }
 
