@@ -44,6 +44,10 @@ sane_main(int ac, char **av)
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");
 		errors++;
 	}
+
+	/* See the port/system.c in this same changeset */
+	assert(sizeof(pid_t) <= sizeof(int));
+
 	//chk_tcl();
 	//chk_ssh();
 	//chk_http();
