@@ -496,7 +496,7 @@ int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs,
-		   char ***symsp);
+		   char **syms);
 int	sccs_diffs(sccs *s, char *r1, char *r2,
 		u32 flags, char kind, FILE *, char *not_used1, char *not_used2);
 int	new_sccs_diffs(sccs *s, char *r1, char *r2,
