@@ -305,7 +305,6 @@ _clone() {
 }
 
 # Manually set the parent pointer for a repository.
-# resync is used mainly for URL canonicalization.
 _parent() {
 	_cd2root
 	case "X$1" in
@@ -338,22 +337,14 @@ _parent() {
 # changes (like cvs update).
 _pull() {
 	_cd2root
-	if [ -f BitKeeper/log/parent ]
-	then	exec ${BIN}resync -A "$@" `cat BitKeeper/log/parent` .
-	else	echo "No parent repository, cannot pull" >&2
-		exit 1
-	fi
+	exec ${BIN}resync -A "$@"
 }
 
 # Push: send changes back to parent.  If parent is ahead of you, this
 # pulls down those changes and stops; you have to merge and try again.
 _push() {
 	_cd2root
-	if [ -f BitKeeper/log/parent ]
-	then	exec ${BIN}resync -Ab "$@" `cat BitKeeper/log/parent` . 
-	else	echo "No parent repository, cannot push" >&2
-		exit 1
-	fi
+	exec ${BIN}resync -Ab "$@"
 }
 
 _diffr() {

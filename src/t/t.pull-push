@@ -45,8 +45,47 @@ bk pull $Q || { echo failed; exit 1; }
 revs=`prs -hd:I: src/foo.c | wc -l`
 [ $revs -eq 2 ] || { echo failed; exit 1; }
 echo OK
-echo $N Pull with mergeable changes in child ........................$NL
+if type ssh >$DEV_NULL 2>&1 || type rsh >$DEV_NULL 2>&1
+then
+ echo $N Pull with explicit remote parent ............................$NL
+ bk pull $Q localhost:$HERE/project || { echo failed; exit 1; }
+ revs=`prs -hd:I: src/foo.c | wc -l`
+ [ $revs -eq 2 ] || { echo failed; exit 1; }
+ echo OK
+ echo $N Pull with explicit remote parent and username ...............$NL
+ bk pull $Q $USER@localhost:$HERE/project || { echo failed; exit 1; }
+ revs=`prs -hd:I: src/foo.c | wc -l`
+ [ $revs -eq 2 ] || { echo failed; exit 1; }
+ echo OK
+else
+ echo No ssh or rsh - skipping remote tests
+fi
+# For the 'local' tests, we want to verify that we don't go through
+# ssh.
+echo '#! /bin/sh' >ssh
+echo 'exit 1' >>ssh
+chmod +x ssh
+oPATH=$PATH
+PATH=.:$PATH
+echo $N Pull with explicit local parent .............................$NL
+bk pull $Q $HOSTNAME:$HERE/project || { echo failed; exit 1; }
+revs=`prs -hd:I: src/foo.c | wc -l`
+[ $revs -eq 2 ] || { echo failed; exit 1; }
+echo OK
+echo $N Pull with explicit local parent and username ................$NL
+bk pull $Q $USER@$HOSTNAME:$HERE/project || { echo failed; exit 1; }
+revs=`prs -hd:I: src/foo.c | wc -l`
+[ $revs -eq 2 ] || { echo failed; exit 1; }
+echo OK
+PATH=$oPATH
+rm -f ssh
+echo $N Pull from subdirectory of repository ........................$NL
 cd src
+bk pull $Q || { echo failed; exit 1; }
+revs=`prs -hd:I: foo.c | wc -l`
+[ $revs -eq 2 ] || { echo failed; exit 1; }
+echo OK
+echo $N Pull with mergeable changes in child ........................$NL
 get $Q -e bar.c
 echo line three >>bar.c
 delta $Q -ythree bar.c

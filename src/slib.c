@@ -377,9 +377,8 @@ strnleq(register char *s, register char *t)
 	return (0);
 }
 
-/* XXX - make this private once tkpatch is part of slib.c */
 char	*
-getuser(void)
+sccs_getuser(void)
 {
 	static	char	*s;
 
@@ -4348,11 +4347,11 @@ write_pfile(sccs *s, int flags, delta *d,
 	}
 	fd = open(s->pfile, 2, 0);
 	tmp2 = now();
-	assert(getuser() != 0);
+	assert(sccs_getuser() != 0);
 	len = strlen(d->rev)
 	    + MAXREV + 2
 	    + strlen(rev)
-	    + strlen(getuser())
+	    + strlen(sccs_getuser())
 	    + strlen(tmp2)
 	    + (xLst ? strlen(xLst) + 3 : 0)
 	    + (mRev ? strlen(mRev) + 3 : 0)
@@ -4364,7 +4363,7 @@ write_pfile(sccs *s, int flags, delta *d,
 		len += (iLst ? strlen(iLst) + 3 : 0);
 	}
 	tmp = malloc(len);
-	sprintf(tmp, "%s %s %s %s", d->rev, rev, getuser(), tmp2);
+	sprintf(tmp, "%s %s %s %s", d->rev, rev, sccs_getuser(), tmp2);
 	if (i2) {
 		strcat(tmp, " -i");
 		strcat(tmp, i2);
@@ -6490,7 +6489,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 	if (nodefault) {
 		unless (d->user) d->user = strdup("Anon");
 	} else {
-		unless (d->user) d->user = strdup(getuser());
+		unless (d->user) d->user = strdup(sccs_getuser());
 		unless (d->hostname && sccs_gethost()) {
 			hostArg(d, sccs_gethost());
 		}
@@ -7528,7 +7527,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	 */
 	sprintf(buf,
 "\001s 00000/00000/00000\n\001d R %s %s %s %d %d\n\001cS%s\n\001e\n",
-	    rev, now(), getuser(), sc->nextserial++, d->serial, s);
+	    rev, now(), sccs_getuser(), sc->nextserial++, d->serial, s);
 	sc->numdeltas++;
 	/* XXX - timezone */
 	len = strlen(buf);
@@ -11379,10 +11378,10 @@ sccs_resolveFiles(sccs *s)
 	 */
 	if (a->flags & D_LOCAL) {
 		fprintf(f, "merge deltas %s %s %s %s %s\n",
-			a->rev, g->rev, b->rev, getuser(), now());
+			a->rev, g->rev, b->rev, sccs_getuser(), now());
 	} else {
 		fprintf(f, "merge deltas %s %s %s %s %s\n",
-			b->rev, g->rev, a->rev, getuser(), now());
+			b->rev, g->rev, a->rev, sccs_getuser(), now());
 	}
 	fclose(f);
 	unless (streq(g->pathname, a->pathname) &&
