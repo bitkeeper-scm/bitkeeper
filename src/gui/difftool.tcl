@@ -115,6 +115,8 @@ proc chunks {n} \
 
 proc same {r l n} \
 {
+	global diffCount
+
 	set lines {}
 	while {$n > 0} {
 		gets $l line
@@ -129,6 +131,8 @@ proc same {r l n} \
 
 proc changed {r l n} \
 {
+	global diffCount
+
 	chunks $n
 	set llines {}
 	set rlines {}
@@ -143,10 +147,15 @@ proc changed {r l n} \
 	set rc [join $rlines "\n"]
 	.diffs.left insert end "$lc\n" diff
 	.diffs.right insert end "$rc\n" diff
+	set loc [.diffs.right index end]
+	.diffs.right mark set diff-${diffCount} "$loc - 1 line"
+	.diffs.right mark gravity diff-${diffCount} left
 }
 
 proc left {r l n} \
 {
+	global diffCount
+
 	chunks $n
 	set lines {}
 	set newlines ""
@@ -159,10 +168,15 @@ proc left {r l n} \
 	set lc [join $lines "\n"]
 	.diffs.left insert end "$lc\n" diff
 	.diffs.right insert end "$newlines" 
+	set loc [.diffs.right index end]
+	.diffs.right mark set diff-${diffCount} "$loc - 1 line"
+	.diffs.right mark gravity diff-${diffCount} left
 }
 
 proc right {r l n} \
 {
+	global diffCount
+
 	chunks $n
 	set lines {}
 	set newlines ""
@@ -175,9 +189,12 @@ proc right {r l n} \
 	set rc [join $lines "\n"]
 	.diffs.left insert end "$newlines" 
 	.diffs.right insert end "$rc\n" diff
+	set loc [.diffs.right index end]
+	.diffs.right mark set diff-${diffCount} "$loc - 1 line"
+	.diffs.right mark gravity diff-${diffCount} left
 }
 
-# Get the sdiff. making sure it has no \r's from fucking dos in it.
+# Get the sdiff output. Make sure it contains no \r's from fucking DOS.
 proc sdiff {L R} \
 {
 	global	rmList sdiffw
@@ -217,8 +234,8 @@ proc readFiles {L Ln R Rn} \
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
 
 	if {![file exists $L] || ![file exists $R]} {
-		#XXX: display dialogue box on NT explaining that files don't
-		# exist
+		displayMessage "Either the left file ($L) or right file ($R)\n\
+does not exist"
 		return
 	}
 	.diffs.left configure -state normal
@@ -356,6 +373,7 @@ proc widgets {} \
 	global	scroll wish tcl_platform search gc d
 
 	set search(prompt) "Search for:"
+	set search(plabel) .menu.prompt
 	set search(dir) "/"
 	set search(text) .menu.search
 	set search(widget) .diffs.right
@@ -459,7 +477,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-pady $py -padx $px -borderwid $bw \
 		-font $gc(diff.buttonFont) -text "Current diff" \
 		-command dot
-	    label .menu.prompt -font $gc(diff.buttonFont) -width 11 \
+	    label $search(plabel) -font $gc(diff.buttonFont) -width 11 \
 		-relief flat \
 		-textvariable search(prompt)
 	    entry $search(text) -width 20 -font $gc(diff.buttonFont)
@@ -563,6 +581,8 @@ proc keyboard_bindings {} \
 	bind all		<Button-4>	prev
 	bind all		<Button-5>	next
 	bind all		<period>	dot
+	bind all		<g>		"search g"
+	bind all		<colon>		"search :"
 	bind all		<slash>		"search /"
 	bind all		<question>	"search ?"
 	bind all		<Control-u>	searchreset
@@ -574,7 +594,7 @@ proc keyboard_bindings {} \
 	bindtags $search(text) { .menu.search Entry . }
 }
 
-proc getrev {file rev checkMods} \
+proc getRev {file rev checkMods} \
 {
 	global	tmp_dir
 
@@ -623,7 +643,7 @@ proc getFiles {} \
 	if {$argc == 1} {
 		set rfile [lindex $argv 0]
 		set rname $rfile
-		set lfile [getrev $rfile "+" 1]
+		set lfile [getRev $rfile "+" 1]
 		lappend tmps $lfile
 		set lname "$rfile"
 	} elseif {$argc == 2} {
@@ -632,7 +652,7 @@ proc getFiles {} \
 			set rfile [lindex $argv 1]
 			if {[file exists $rfile] != 1} { usage }
 			set rname $rfile
-			set lfile [getrev $rfile $rev1 0]
+			set lfile [getRev $rfile $rev1 0]
 			set lname "$rfile@$rev1"
 			lappend tmps $lfile
 		} else {
@@ -645,12 +665,12 @@ proc getFiles {} \
 		set file [lindex $argv 2]
 		set a [lindex $argv 0]
 		if {![regexp -- {-r(.*)} $a junk rev1]} { usage }
-		set lfile [getrev $file $rev1 0]
+		set lfile [getRev $file $rev1 0]
 		set lname "$file@$rev1"
 		lappend tmps $lfile
 		set a [lindex $argv 1]
 		if {![regexp -- {-r(.*)} $a junk rev2]} { usage }
-		set rfile [getrev $file $rev2 0]
+		set rfile [getRev $file $rev2 0]
 		set rname "$file@$rev2"
 		lappend tmps $rfile
 	}

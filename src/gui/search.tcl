@@ -31,9 +31,15 @@ proc search {dir} \
 {
 	global	search
 
-	set search(dir) $dir
 	searchreset
-	set search(prompt) "Search for:"
+	set search(dir) $dir
+	if {$dir == ":"} {
+		set search(prompt) "Goto Line:"
+	} elseif {$dir == "g"} {
+		set search(prompt) "Goto diff:"
+	} else {
+		set search(prompt) "Search for:"
+	}
 	focus $search(text)
 	searchbuttons both disabled
 }
@@ -105,6 +111,26 @@ proc searchstring {} \
 	if {"$string" == ""} {
 		searchreset
 		return
+	} elseif {("$string" != "") && ($search(dir) == ":")} {
+		if {[string is integer $string]} {
+			$search(widget) see "$string.0"
+		} elseif {[string is integer $string] || $string == "end"} {
+			$search(widget) see end
+		} else {
+			$search(status) configure -text "$string not integer"
+		}
+		return
+	} elseif {("$string" != "") && ($search(dir) == "g")} {
+		if {[string is integer $string]} {
+			catch {$search(widget) see diff-${string}}
+			#set n [$search(widget) mark names]
+			#set l [$search(widget) index diff-${string}]
+			#displayMessage "l=($l) trying mark=(diff-${string})"
+			return
+		} else {
+			$search(status) configure -text "$string not integer"
+			return
+		}
 	} else {
 		set search(string) $string
 		if {[info exists search(clear)]} {
@@ -159,6 +185,17 @@ proc searchnext {} \
 	$search(widget) tag raise search
 	if {[info exists search(focus)]} { focus $search(focus) }
 	return 1
+}
+
+proc gotoLine {} \
+{
+	global search
+
+	set location ""
+
+	$search(widget) index $location
+	searchsee $location
+	exit
 }
 
 # Default widget scroller, overridden by tools such as difftool
