@@ -1,24 +1,25 @@
 #include "bkd.h"
 
-private	void	exclude(char *cmd);
+#define	Respond(s)	write(licenseServer[1], s, 4)
+
+private	void	exclude(char *cmd, int verbose);
+private void	unexclude(char **list, char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp, int *httpMode);
 private	void	log_cmd(int ac, char **av);
 private	void	usage(void);
-private	char	**xcmds = 0;		/* excluded command */
 
+private	char	**xcmds = 0;		/* excluded command */
 char 		*logRoot, *vRootPrefix;
 int		licenseServer[2];	/* bkweb license pipe */
 time_t		licenseEnd = 0;		/* when a temp bk license expires */
 time_t		requestEnd = 0;
 
-#define	Respond(s)	write(licenseServer[1], s, 4)
-
-
 int
 bkd_main(int ac, char **av)
 {
-	int	c;
+	int	i, c;
+	char	**unenabled = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help bkd");
@@ -28,6 +29,12 @@ bkd_main(int ac, char **av)
 	loadNetLib();
 	bzero(&Opts, sizeof(Opts));	/* just in case */
 	Opts.errors_exit = 1;
+
+	/*
+	 * Any commands off by default should be added here like so:
+	 *	unenabled = addLine(unenabled, "dangerous_command");
+	 * Note the freeLines below does not free the line itself.
+	 */
 
 	/*
 	 * Win32 note: -u/-t options have no effect on win32; win32 cannot
@@ -40,13 +47,13 @@ bkd_main(int ac, char **av)
 	 * XXX bkd_service_loop(). The NT service is a 3 level spawning
 	 * XXX architechture!! (The above functions are in port/bkd_server.c)
 	 */
-	while ((c = getopt(ac, av,
-			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:z")) != -1) {
+	while ((c =
+	    getopt(ac, av, "c:CdDeE:g:hi:l|L:p:P:qRs:St:u:V:x:z")) != -1) {
 		switch (c) {
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
-		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
+		    case 'i': unexclude(unenabled, optarg); break;
 		    case 'g': Opts.gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
@@ -63,12 +70,7 @@ bkd_main(int ac, char **av)
 		    case 'R': 					/* doc 2.0 */
 			Opts.remove = 1; Opts.daemon = 1; break;
 		    case 'u': Opts.uid = optarg; break;		/* doc 2.0 */
-		    case 'x':					/* doc 2.0 */
-			exclude(optarg); 
-#ifdef WIN32
-			xcmds = addLine(xcmds, strdup(optarg));
-#endif
-			break;
+		    case 'x': exclude(optarg, 1); break;	/* doc 2.0 */
 		    case 'c': Opts.count = atoi(optarg); break;	/* undoc */
 		    case 'e': break;				/* undoc */
 		    case 'E': putenv(optarg); break;		/* undoc */
@@ -79,6 +81,8 @@ bkd_main(int ac, char **av)
 		    default: usage();
 	    	}
 	}
+	EACH(unenabled) exclude(unenabled[i], 0);
+	freeLines(unenabled, 0);
 
 	if (logRoot && !IsFullPath(logRoot)) {
 		fprintf(stderr,
@@ -92,14 +96,7 @@ bkd_main(int ac, char **av)
 		return (1);
 	}
 
-	if (Opts.port) {
-		Opts.daemon = 1;
-		if (Opts.interactive) {
-			fprintf(stderr,
-			    "Disabling interactive in daemon mode\n");
-		    	Opts.interactive = 0;
-		}
-	}
+	if (Opts.port) Opts.daemon = 1;
 	core();
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
@@ -122,6 +119,14 @@ bkd_main(int ac, char **av)
 		do_cmds();
 		return (0);
 	}
+}
+
+private void
+unexclude(char **list, char *cmd)
+{
+	if (removeLine(list, cmd, 0) == 1) return;
+	fprintf(stderr, "bkd: %s was not excluded.\n", cmd);
+	exit(1);
 }
 
 private	void
@@ -231,9 +236,6 @@ do_cmds()
 				exit(ret);
 			}
 			if (ret != 0) {
-				if (Opts.interactive) {
-					out("ERROR-CMD FAILED\n");
-				}
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
 					drain();
@@ -290,7 +292,7 @@ log_cmd(int ac, char **av)
  * Remove any command with the specfied prefix from the command array
  */
 private	void
-exclude(char *cmd_prefix)
+exclude(char *cmd_prefix, int verbose)
 {
 	struct	cmd c[100];
 	int	i, j, len;
@@ -307,15 +309,20 @@ exclude(char *cmd_prefix)
 			foundit++;
 		}
 	}
+	unless (foundit) {
+		unless (verbose) return;
+		fprintf(stderr, "bkd: command '%s' not found.\n", cmd_prefix);
+		exit(1);
+	}
 	for (i = 0; i < j; i++) {
 		cmds[i] = c[i];
 	}
 	cmds[i].name = 0;
 	cmds[i].realname = 0;
 	cmds[i].cmd = 0;
-	unless (foundit) {
-		fprintf(stderr, "bkd: command '%s' not found\n", cmd_prefix);
-	}
+#ifdef WIN32
+	xcmds = addLine(xcmds, strdup(optarg));
+#endif
 }
 
 private	int
@@ -377,7 +384,6 @@ getav(int *acp, char ***avp, int *httpMode)
 	 * XXX TODO need to handle escaped quote character in args
 	 *     This can be done easily with shellSplit()
 	 */
-	if (Opts.interactive) out("BK> ");
 	for (ac = i = 0; len != 0 && in(&buf[i], 1) == 1; i++) {
 		--len;
 		if (i >= sizeof(buf) - 1) {
