@@ -225,7 +225,7 @@ bk mv d newd
 cd $HERE
 # is there a better way to make clone silent when the
 # check pass finds errors?
-if [ "X$Q" == "X-q" ]; then
+if [ "X$Q" = "X-q" ]; then
 	O=' 2> /dev/null'
 else
 	O=
