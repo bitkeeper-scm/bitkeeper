@@ -223,6 +223,7 @@ usage:		fprintf(stderr,
 	}
 	fclose(f);
 	mdbm_close(printed);
+	return (0);
 }
 
 int

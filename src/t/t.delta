@@ -253,6 +253,10 @@ bk co $Q -l hi.c
 echo hello > hi.c
 bk ci $Q -yhello hi.c
 if [ ! -f SCCS/p.hi.c ]; then echo failed; exit 1; fi
+if [ ! -f hi.c ]; then echo failed; exit 1; fi
+writable hi.c || { echo failed; exit 1; }
+echo OK
+echo $N Make sure delta works with always_edit in config file .......$NL
 cd $HERE/project/BitKeeper/etc
 bk edit $Q config
 echo "always_edit: true" >> config
@@ -261,4 +265,6 @@ cd $HERE/project
 echo lo > lo.c
 bk ci $Q -i lo.c
 if [ ! -f SCCS/p.lo.c ]; then echo failed; exit 1; fi
+if [ ! -f lo.c ]; then echo failed; exit 1; fi
+writable lo.c || { echo failed; exit 1; }
 echo OK

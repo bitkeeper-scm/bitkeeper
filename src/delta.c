@@ -229,7 +229,10 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		 */
 		effective_gflags = gflags;
 		if (s->state & S_ALWAYS_EDIT) {
-			effective_gflags |= GET_SKIPGET|GET_EDIT;
+			effective_gflags |= GET_EDIT;
+			if (effective_dflags & DELTA_SAVEGFILE) {
+				effective_gflags |= GET_SKIPGET;
+			}
 			do_checkout = 1;
 		}
 		if (rc == -2) goto next; /* no diff in file */
