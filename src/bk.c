@@ -154,7 +154,6 @@ int	sendbug_main(int, char **);
 int	set_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
-int	sfind_main(int, char **);
 int	sfio_main(int, char **);
 int	shrink_main(int, char **);
 int	sinfo_main(int, char **);
@@ -332,8 +331,8 @@ struct	command cmdtbl[] = {
 	{"set", set_main},
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */
-	{"sfiles", sfind_main}, /* aliases */ 	/* doc 2.0 */
-	{"sfind", sfind_main},			/* doc 2.0 as sfiles */
+	{"sfiles", sfiles_main},		/* doc 2.0 */
+	{"sfind", sfiles_main},	 /* alias */	/* doc 2.0 as sfiles */
 	{"sfio", sfio_main},			/* doc 2.0 */
 	{"sinfo", sinfo_main},	/* alias */	/* doc 2.0 as info */
 	{"smerge", smerge_main},		/* doc needed 2.0 */
@@ -1056,7 +1055,7 @@ bk_sfiles(char *opts, int ac, char **av)
 	int	j, pfd;
 	int	status;
 	int	sac = 1;
-	char	*sav[3] = {"sfind", 0, 0};
+	char	*sav[3] = {"sfiles", 0, 0};
 	char	*cmds[100] = {"bk"};
 
 	assert(ac < 95);
@@ -1073,7 +1072,7 @@ bk_sfiles(char *opts, int ac, char **av)
 	}
 	cmdlog_start(sav, 0);
 	close(1); dup(pfd); close(pfd);
-	if (status = sfind_main(sac, sav)) {
+	if (status = sfiles_main(sac, sav)) {
 		kill(pid, SIGTERM);
 		waitpid(pid, 0, 0);
 		cmdlog_end(status);
