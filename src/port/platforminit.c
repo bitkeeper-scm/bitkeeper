@@ -1,5 +1,5 @@
-#include "system.h"
-#include "sccs.h"
+#include "../system.h"
+#include "../sccs.h"
 WHATSTR("@(#)%K%");
 
 #ifndef WIN32
