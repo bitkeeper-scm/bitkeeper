@@ -18,7 +18,7 @@ fi
 # -w => windows
 if [ X${OSTYPE} = Xcygwin32 -o X${OSTYPE} = Xuwin ]
 then
-	BK_HOME=//c/bitkeeper
+	BK_BIN=//c/bitkeeper
 	TST_DIR=//c/tmp
 	CAT="bin_mode_cat"
 	ECHO="bin_mode_echo"
@@ -33,7 +33,7 @@ then
 		# /dev/null in uwin does not always work
 		# uwin seems to map all file name to lower case
 		# uwin cp command adds .exe for binary files
-		BK_HOME=/C/bitkeeper
+		BK_BIN=/C/bitkeeper
 		TST_DIR=/C/tmp
 		RM=/bin/rm
 		data="data.exe"
@@ -42,13 +42,13 @@ then
 	if [ X$1 = X-d ]
 	then
 		# "-d" means we are running tests in the development env
-		# set BK_HOME to the development tree
-		BK_HOME=`pwd`
+		# set BK_BIN to the development tree
+		BK_BIN=`pwd`
 		shift
 	fi
-	binary_data="$BK_HOME/bin/ci.exe"
-	binary_data2="$BK_HOME/bin/co.exe"
-	PATH=$BK_HOME/bin:$PATH
+	binary_data="$BK_BIN/bin/ci.exe"
+	binary_data2="$BK_BIN/bin/co.exe"
+	PATH=$BK_BIN/bin:$PATH
 	USER=`getuser`
 else
 	# we are on a unix box
@@ -61,18 +61,19 @@ else
 	DATE=/bin/date
 	DEV_NULL="/dev/null"
 	cd ..
-	BK_HOME=`pwd`
+	BK_BIN=`pwd`
 	cd t
 	if [ -d /usr/xpg4/bin ]
 	then  PATH=/usr/xpg4/bin:$PATH
 	fi
-	PATH=$BK_HOME:$PATH
+	PATH=$BK_BIN:$PATH
 	binary_data=/bin/ls
 	binary_data2=/bin/rm
 	data="data"
 	uuencode="uuencode"
 	TST_DIR=/tmp
 fi
+export PATH BK_BIN
 
 if [ X$1 = X-t ]
 then

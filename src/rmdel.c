@@ -484,13 +484,14 @@ Please check the list and try again.\n");
 int
 mkdirp(char *file)
 {
-	char	*s = strrchr(file, '/');
+	char	*s;
 	char	*t;
 	char	buf[MAXPATH];
 
 	strcpy(buf, file);	/* for !writable string constants */
 	unless (s = strrchr(buf, '/')) return (0);
 	*s = 0;
+	if (isdir(buf)) return (0);
 	for (t = buf; t < s; ) {
 		if (t > buf) *t++ = '/';
 		if (t < s) {
@@ -573,6 +574,33 @@ apply()
 	exit(0);
 }
 
+Rename(char *old, char *new)
+{
+	mkdirp(new);
+	if (exists(new) && unlink(new)) {
+		perror("unlink");
+		cleanup();
+	}
+	unless (rename(old, new)) {
+		return;
+	}
+	if (errno != EBUSY) {
+		perror("rename");
+		cleanup();
+	}
+
+	/*
+	 * NFS gives EBUSY under Linux sometimes, it's a Linux bug.
+	 * Try copying and unlinking the source.
+	 */
+	if (fileCopy(old, new) == 0) {
+		unlink(old);
+		return (0);
+	}
+	fprintf(stderr, "Unable to rename(%s, %s)\n", old, new);
+	cleanup();
+}
+
 done(int pass)
 {
 	FILE	*f;
@@ -591,13 +619,24 @@ done(int pass)
 
 			/*
 			 * Remove the file if we have a zero sized file.
+			 * We also remove the lock file because in the next
+			 * pass this zero lengthed file is gone so we won't
+			 * know to remove the lock file.
 			 */
 			if (size(&buf[3]) == 0) {
 				if (pass & MOVE_PASS) {
 					if (undo_v) {
 						fprintf(stderr, "rm %s\n", buf);
 					}
-					unless (undo_dont) unlink(buf);
+					unless (undo_dont) {
+						unlink(buf);
+						t = strrchr(buf, '/');
+						assert(t && (t[1] == 's'));
+						t[1] = 'z';
+						if (unlink(buf)) {
+							perror("unlink z.file");
+						}
+					}
 				}
 				goto un;
 			}
@@ -628,12 +667,19 @@ done(int pass)
 				}
 				if (pass & MOVE_PASS) {
 					if (undo_v) {
-						fprintf(stderr, "mv %s ../%s\n",
-						    &buf[3], name);
+						fprintf(stderr, "mv %s %s\n",
+						    &buf[3], path);
 					}
 					unless (undo_dont) {
-						unlink(name);
-						rename(&buf[3], name);
+						Rename(&buf[3], path);
+					}
+					sprintf(path, "../%s", &buf[3]);
+					if (undo_v) {
+						fprintf(stderr,
+						    "rm old %s\n", path);
+					}
+					unless (undo_dont) {
+						unlink(path);
 					}
 				}
 			} else if (pass & MOVE_PASS) {
@@ -642,8 +688,7 @@ done(int pass)
 					    "mv %s %s\n", &buf[3], buf);
 				}
 				unless (undo_dont) {
-					unlink(buf);
-					rename(&buf[3], buf);
+					Rename(&buf[3], buf);
 				}
 			}
 			sccs_free(s);
@@ -653,7 +698,7 @@ un:		if (pass & UNLOCK_PASS) {
 			t = strrchr(buf, '/');
 			assert(t && (t[1] == 's'));
 			t[1] = 'z';
-			unlink(buf);
+			if (unlink(buf)) perror("unlink z.file");
 		}
 	}
 	pclose(f);
