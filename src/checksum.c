@@ -24,16 +24,18 @@ checksum_main(int ac, char **av)
 	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0;
 	int	c;
 	char	*off = 0;
+	char	*rev = 0;
 	project	*proj = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {
 		system("bk help checksum");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "cfs|v")) != -1) {
+	while ((c = getopt(ac, av, "cfr;s|v")) != -1) {
 		switch (c) {
 		    case 'c': break;	/* obsolete */
 		    case 'f': fix = 1; break;			/* doc 2.0 */
+		    case 'r': rev = optarg; break;
 		    case 's': do_sccs = 1; off = optarg; break;
 		    case 'v': diags++; break;			/* doc 2.0 */
 		    default:  system("bk help -s checksum");
@@ -63,12 +65,24 @@ checksum_main(int ac, char **av)
 			    av[0], s->sfile);
 			continue;
 		}
-		if (CSET(s)) {
-			doit = bad = cset_resum(s, diags, fix);
+		doit = bad = 0;
+		/* should this be changed to use the range code? */
+		if (rev) {
+			unless (d = sccs_findrev(s, rev)) {
+				fprintf(stderr,
+				    "%s: unable to find rev %s in %s\n",
+				    av[0], rev, s->gfile);
+				continue;
+			}
+			c = sccs_resum(s, d, diags, fix);
+			if (c & 1) doit++;
+			if (c & 2) bad++;
 		} else {
-			doit = bad = 0;
-			for (d = s->table; d; d = d->next) {
-				if (d->type == 'D') {
+			if (CSET(s)) {
+				doit = bad = cset_resum(s, diags, fix);
+			} else {
+				for (d = s->table; d; d = d->next) {
+					unless (d->type == 'D') continue;
 					c = sccs_resum(s, d, diags, fix);
 					if (c & 1) doit++;
 					if (c & 2) bad++;
