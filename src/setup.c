@@ -2,6 +2,7 @@
 #include "sccs.h"
 
 extern char *editor, *pager, *bin;
+private void    usage(void);
 
 int
 setup_main(int ac, char **av)
@@ -29,9 +30,7 @@ setup_main(int ac, char **av)
 			force = 1;
 			break;
 		    default:
-			fprintf(stderr, "usage: setup [-f] [-c file] project\n");
-			return (1);   
-		
+			usage();
 		}
 	}
 	unless (package_path = av[optind]) {
@@ -136,4 +135,16 @@ again:		printf("Editor to use [%s] ", editor);
         }                           
 	sendConfig("setups@openlogging.org", "1.0");
 	return (0);
+}
+
+private void
+usage()
+{
+	fprintf(stderr,
+		    "\n\
+usage: setup [-f] [-c<config file>] directory\n\
+\n\
+	-f               Don't ask for confirmation.
+	-c<config file>  Configuration file to use for setup.\n\n");
+	exit(1);
 }
