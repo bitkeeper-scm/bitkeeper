@@ -89,11 +89,13 @@ cmd_clone(int ac, char **av)
 	if (p && trigger(av[0], "pre")) return (1);
 	if (p) out("@SFIO@\n");
 	if (p) {
-		if (Opts.buffer_clone) {
-			rc = spawn_copy(gzip);
-		} else {
-			rc = compressed(gzip, 1);
-		}
+		/*
+		 * Try to use our clone cache, but if it fails fall back
+		 * to the old clone code.
+		 */
+		rc = 1;
+		if (Opts.buffer_clone) rc = spawn_copy(gzip);
+		if (rc) rc = compressed(gzip, 1);
 	} else if (gzip) {
 		rc = compressed(gzip, 0);
 	} else {
@@ -210,8 +212,11 @@ spawn_copy(int level)
 
 		/* MUST unlink, so we don't corrupt other processes */
 		unlink(CLONESFIO);
-		sfd = open(CLONESFIO, O_CREAT|O_WRONLY, 0600);
-		assert(sfd > 0);
+		if ((sfd = open(CLONESFIO, O_CREAT|O_WRONLY, 0644)) < 0) {
+			fprintf(stderr, "Unable to open %s for writing\n",
+			    CLONESFIO);
+			return (-1);
+		}
 		signal(SIGCHLD, SIG_DFL);
 		pid = spawnvp_rPipe(sfiocmd, &rfd, BIG_PIPE);
 		if (pid == -1) return (1);
