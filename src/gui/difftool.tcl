@@ -41,14 +41,14 @@ proc dot {} \
 
 proc highlightDiffs {start stop} \
 {
-	global	boldFont
+	global	diffbFont
 
 	.diffs.left tag delete d
 	.diffs.right tag delete d
 	.diffs.left tag add d $start $stop
 	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -foreground black -font $boldFont
-	.diffs.right tag configure d -foreground black -font $boldFont
+	.diffs.left tag configure d -font $diffbFont
+	.diffs.right tag configure d -font $diffbFont
 }
 
 proc topLine {} \
@@ -324,18 +324,30 @@ proc computeHeight {} \
 
 proc widgets {L R} \
 {
-	global	leftColor rightColor scroll boldFont diffHeight
-	global	buttonFont wish bithelp
+	global	leftColor rightColor scroll diffHeight
+	global	wish bithelp tcl_platform diffbFont
 
-	set diffFont {clean 12 roman}
 	set diffWidth 55
 	set diffHeight 30
 	set tcolor lightseagreen
 	set leftColor orange
 	set rightColor yellow
-	set swid 12
-	set boldFont {helvetica 12 roman bold}
-	set buttonFont {helvetica 12 roman bold}
+	set bcolor #d0d0d0
+	if {$tcl_platform(platform) == "windows"} {
+		set py -2; set px 1; set bw 2
+		set diffFont {helvetica 9 roman}
+		set diffbFont {helvetica 9 roman bold}
+		set buttonFont {helvetica 9 roman bold}
+		set lFont {hevlvetica 9 roman }
+		set swid 18
+	} else {
+		set py 1; set px 4; set bw 2
+		set buttonFont {times 12 roman bold}
+		set diffFont {helvetica 12 roman}
+		set diffbFont {helvetica 11 roman bold}
+		set lFont {fixed 12 roman bold}
+		set swid 12
+	}
 	set geometry ""
 	if {[file readable ~/.difftoolrc]} {
 		source ~/.difftoolrc
@@ -350,12 +362,12 @@ proc widgets {L R} \
 	frame .diffs
 	    frame .diffs.status
 		label .diffs.status.l -background $leftColor \
-		    -font $buttonFont -relief sunken -borderwid 2
+		    -font $lFont -relief sunken -borderwid 2
 		label .diffs.status.r -background $rightColor \
-		    -font $buttonFont -relief sunken -borderwid 2
+		    -font $lFont -relief sunken -borderwid 2
 		label .diffs.status.middle \
 		    -foreground black -background lightblue \
-		    -font $buttonFont -wid 26 -relief sunken -borderwid 2
+		    -font $lFont -wid 20 -relief sunken -borderwid 2
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
@@ -376,20 +388,17 @@ proc widgets {L R} \
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
 
-	set py 1
-	set px 4
-	set bw 2
 	frame .menu
-	    button .menu.prev -font $buttonFont -bg grey \
+	    button .menu.prev -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Previous" -state disabled -command prev
-	    button .menu.next -font $buttonFont -bg grey \
+	    button .menu.next -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Next" -state disabled -command next
-	    button .menu.quit -font $buttonFont -bg grey \
+	    button .menu.quit -font $buttonFont -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command exit 
-	    button .menu.help -bg grey \
+	    button .menu.help -bg $bcolor \
 		-pady $py -padx $px -borderwid $bw \
 		-font $buttonFont -text "Help" \
 		-command { exec bk helptool difftool & }

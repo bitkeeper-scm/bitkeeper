@@ -754,6 +754,7 @@ proc widgets {} \
 {
 	global	font bfont arrow background search swid diffOpts getOpts
 	global	lineOpts dspec dspecnonl wish bithelp yspace paned file
+	global	tcl_platform
 
 	set dspec \
 "-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}  :DPN:\n\$each(:C:){\t(:C:)}\n"
@@ -765,12 +766,25 @@ proc widgets {} \
 	set yspace 20
 	set search(text) ""
 	set search(dir) ""
-	set swid 12
-	set font {helvetica 12 roman}
-	set bfont {helvetica 12 roman bold}
+	if {$tcl_platform(platform) == "windows"} {
+		set font {helvetica 9 roman}
+		set bfont {helvetica 9 roman bold}
+		set lFont {helvetica 9 roman bold}
+		set buttonFont {helvetica 9 roman bold}
+		set py 0; set px 1; set bw 2
+		set swid 18
+	} else {
+		set font {helvetica 12 roman}
+		set bfont {helvetica 12 roman bold}
+		set lFont {fixed 12 roman bold}
+		set buttonFont {times 12 roman bold}
+		set py 1; set px 4; set bw 2
+		set swid 12
+	}
 	set arrow #BCD2EE
 	set arrow darkblue
 	set background #9fb6b8
+	set bcolor #d0d0d0
 	set geometry ""
 	if {[file readable ~/.sccstoolrc]} {
 		source ~/.sccstoolrc
@@ -779,23 +793,20 @@ proc widgets {} \
 		wm geometry . $geometry
 	}
 	wm title . "SCCS Tool"
-	set py 1
-	set px 4
-	set bw 2
 	frame .menus
-	    button .menus.quit -font $bfont -relief raised \
-		-pady $py -padx $px -borderwid $bw \
+	    button .menus.quit -font $buttonFont -relief raised \
+		-bg $bcolor -pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command done
-	    button .menus.help -font $bfont -relief raised \
-		-pady $py -padx $px -borderwid $bw \
+	    button .menus.help -font $buttonFont -relief raised \
+		-bg $bcolor -pady $py -padx $px -borderwid $bw \
 		-text "Help" -command { exec bk helptool sccstool & }
-	    button .menus.cset -font $bfont -relief raised \
-		-pady $py -padx $px -borderwid $bw \
+	    button .menus.cset -font $buttonFont -relief raised \
+		-bg $bcolor -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
-	    button .menus.difftool -font $bfont -relief raised \
-		-pady $py -padx $px -borderwid $bw \
+	    button .menus.difftool -font $buttonFont -relief raised \
+		-bg $bcolor -pady $py -padx $px -borderwid $bw \
 		-text "Diff tool" -command "diff2 1" -state disabled
-	    label .menus.l -font $bfont -width 73 -relief groove \
+	    label .menus.l -font $lFont -width 50 -relief groove \
 		-pady $py -padx $px -borderwid $bw
 	    if {$file == "ChangeSet"} {
 		    .menus.cset configure -command csettool
@@ -836,8 +847,8 @@ proc widgets {} \
 	}
 
 	frame .cmd -borderwidth 2 -relief ridge
-		text .cmd.t -height 1 -width 30 -font $bfont
-		label .cmd.l -font $bfont -width 40 -relief groove \
+		text .cmd.t -height 1 -width 30 -font $buttonFont
+		label .cmd.l -font $buttonFont -width 40 -relief groove \
 		    -textvariable search(text)
 		pack .cmd.l -side left -fill x
 		pack .cmd.t -side left -fill x -expand true
@@ -891,7 +902,7 @@ proc widgets {} \
 	    -background lightblue -relief groove -borderwid 2
 
 	# highlighting.
-	.p.bottom.t tag configure "newTag" -background yellow -foreground blue
+	.p.bottom.t tag configure "newTag" -background yellow
 	.p.bottom.t tag configure "oldTag" -background orange
 
 	focus .p.top.c

@@ -756,20 +756,29 @@ proc computeHeight {w} \
 proc widgets {L R O} \
 {
 	global	leftColor rightColor scroll boldFont diffHeight mergeHeight
-	global	buttonFont wish bithelp
+	global	buttonFont wish bithelp tcl_platform
 
-	set diffFont {clean 12 roman}
+	if ($tcl_platform(platform) == "windows") {
+		set diffFont {terminal 9 roman}
+		set mergeFont {terminal 9 roman}
+		set boldFont {helvetica 9 roman bold}
+		set buttonFont {helvetica 9 roman bold}
+		set swid 18
+	} else {
+		set diffFont {helvetica 12 roman}
+		set mergeFont {helvetica 12 roman}
+		set boldFont {helvetica 12 roman bold}
+		set buttonFont {times 12 roman bold}
+		set swid 12
+	}
 	set diffWidth 55
 	set diffHeight 30
 	set mergeWidth 80
 	set mergeHeight 20
-	set mergeFont {clean 12 roman}
 	set tcolor lightseagreen
 	set leftColor orange
 	set rightColor yellow
-	set swid 12
-	set boldFont {clean 12 roman bold}
-	set buttonFont {clean 10 roman bold}
+	set bcolor #d0d0d0
 	set geometry ""
 	if {[file readable ~/.fmrc]} {
 		source ~/.fmrc
@@ -821,29 +830,29 @@ proc widgets {L R O} \
 	    scrollbar .merge.yscroll -wid $swid -troughcolor $tcolor \
 		-orient vertical -command { .merge.t yview }
 	    frame .merge.menu
-		button .merge.menu.open -width 7 -bg grey \
+		button .merge.menu.open -width 7 -bg $bcolor \
 		    -font $buttonFont -text "Open" \
 		    -command selectFiles
-		button .merge.menu.restart -font $buttonFont -bg grey \
+		button .merge.menu.restart -font $buttonFont -bg $bcolor \
 		    -text "Restart" -width 7 -state disabled -command restart
-		button .merge.menu.undo -font $buttonFont -bg grey \
+		button .merge.menu.undo -font $buttonFont -bg $bcolor \
 		    -text "Undo" -width 7 -state disabled -command undo
-		button .merge.menu.redo -font $buttonFont -bg grey \
+		button .merge.menu.redo -font $buttonFont -bg $bcolor \
 		    -text "Redo" -width 7 -state disabled -command redo
-		button .merge.menu.skip -font $buttonFont -bg grey \
+		button .merge.menu.skip -font $buttonFont -bg $bcolor \
 		    -text "Skip" -width 7 -state disabled -command skip
-		button .merge.menu.left -font $buttonFont -bg grey \
+		button .merge.menu.left -font $buttonFont -bg $bcolor \
 		    -text "Use\nLeft" -width 7 -state disabled -command useLeft
-		button .merge.menu.right -font $buttonFont -bg grey \
+		button .merge.menu.right -font $buttonFont -bg $bcolor \
 		    -text "Use\nright" -width 7 -state disabled -command useRight
-		label .merge.menu.l -font $buttonFont -bg grey \
+		label .merge.menu.l -font $buttonFont -bg $bcolor \
 		    -width 20 -relief groove -pady 2
-		button .merge.menu.save -font $buttonFont -bg grey \
+		button .merge.menu.save -font $buttonFont -bg $bcolor \
 		    -text "Done" -width 7 -command save -state disabled
-		button .merge.menu.help -width 7 -bg grey \
+		button .merge.menu.help -width 7 -bg $bcolor \
 		    -font $buttonFont -text "Help" \
 		    -command { exec $wish -f $bithelp fm & }
-		button .merge.menu.quit -font $buttonFont -bg grey \
+		button .merge.menu.quit -font $buttonFont -bg $bcolor \
 		    -text "Quit" -width 7 -command cmd_done
 		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
 		grid .merge.menu.open -row 1

@@ -132,11 +132,21 @@ proc scroll {dir} \
 
 proc widgets {} \
 {
-	global	line height firstConfig pixelsPerLine
+	global	line height firstConfig pixelsPerLine tcl_platform
 
 	# Defaults
-	set swid 12
-	set font 7x14
+	if {$tcl_platform(platform) == "windows"} {
+		set swid 18
+		set font {helvetica 9 roman}
+		set buttonFont {helvetica 9 roman bold}
+		set py 0
+	} else {
+		set swid 12
+		set font {helvetica 12 roman}
+		set buttonFont {times 12 roman bold}
+		set py 1
+	}
+	set bcolor #d0d0d0
 	set firstConfig 1
 
 	# Display specific junk
@@ -153,8 +163,8 @@ proc widgets {} \
 	wm title . "BitKeeper Help"
 
 	frame .ctrl -borderwidth 0 -relief flat
-	    button .ctrl.done -text "Dismiss" -font 7x13bold -borderwid 1 \
-		-pady 1 -background grey -command { exit }
+	    button .ctrl.done -text "Dismiss" -font $buttonFont -borderwid 1 \
+		-pady $py -background $bcolor -command { exit }
 	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
 		-font $font -width 14 \
 		-yscrollcommand { .ctrl.topicscroll set }
