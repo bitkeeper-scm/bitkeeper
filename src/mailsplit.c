@@ -1,11 +1,4 @@
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
-#include <string.h>
-#include <ctype.h>
-#include <sys/wait.h>
+#include "system.h"
 
 /*
  * Silly limits. 
@@ -239,7 +232,8 @@ static int run_program(void)
 
 	if (pipe(pipefd))
 		syntax("couldn't create pipes");
-	sigblock(sigmask(SIGCHLD) | sigmask(SIGPIPE));
+	signal(SIGCHLD, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
 	switch (fork()) {
 	case -1:
 		syntax("Fork failed");
@@ -264,7 +258,7 @@ static int parse_mail(void)
 	close(outfd);
 	outfd = 2;
 	if (wait(&status) < 0)
-		syntax("unabel to wait for child");
+		syntax("unable to wait for child");
 	if (WIFSIGNALED(status))
 		syntax("child killed");
 	if (!WIFEXITED(status))

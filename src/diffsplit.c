@@ -1,18 +1,10 @@
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
-#include <string.h>
-#include <ctype.h>
-#include <sys/wait.h>
+#include "system.h"
 
 /*
  * Silly limits. 
  * Max max 1kB lines, max 256-byte headers.
  */
 #define LINELEN	1024
-#define HDRLEN	256
 
 int line, outfd = 2;
 char buffer[LINELEN];
@@ -154,7 +146,8 @@ static int run_program(void)
 
 	if (pipe(pipefd))
 		syntax("couldn't create pipes");
-	sigblock(sigmask(SIGCHLD) | sigmask(SIGPIPE));
+	signal(SIGCHLD, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
 	switch (fork()) {
 	case -1:
 		syntax("Fork failed");
