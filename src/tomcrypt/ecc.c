@@ -8,6 +8,7 @@
 
 #ifdef MECC
 
+/* This holds the key settings.  ***MUST*** be organized by size from smallest to largest. */
 static const struct {
    int size;
    char *name, *prime, *B, *order, *Gx, *Gy;
@@ -251,8 +252,8 @@ static int dbl_point(ecc_point *P, ecc_point *R, mp_int *modulus)
    if (mp_mul_2(&P->y, &tmp) != MP_OKAY)                   { goto error; } /* tmp = 2*y */
    if (mp_invmod(&tmp, modulus, &tmp) != MP_OKAY)          { goto error; } /* tmp = 1/tmp mod modulus */
    if (mp_sqr(&P->x,  &s) != MP_OKAY)                      { goto error; } /* s = x^2  */
-   if (mp_mul_d(&s, 3, &s) != MP_OKAY)                     { goto error; } /* s = 3*(x^2) */
-   if (mp_sub_d(&s, 3, &s) != MP_OKAY)                     { goto error; } /* s = 3*(x^2) - 3 */
+   if (mp_mul_d(&s,(mp_digit)3, &s) != MP_OKAY)            { goto error; } /* s = 3*(x^2) */
+   if (mp_sub_d(&s,(mp_digit)3, &s) != MP_OKAY)            { goto error; } /* s = 3*(x^2) - 3 */
    if (mp_mulmod(&s, &tmp, modulus, &s) != MP_OKAY)        { goto error; } /* s = tmp * s mod modulus */
 
    /* Xr = s^2 - 2Xp */
@@ -565,10 +566,11 @@ static int compress_y_point(ecc_point *pt, int idx, int *result)
    if (mp_exptmod(&tmp, &tmp2, &p, &tmp) != MP_OKAY)       { goto error; } /* tmp  = (x^3 - 3x + b)^((p+1)/4) mod p */
 
    /* if tmp equals the y point give a 0, otherwise 1 */
-   if (mp_cmp(&tmp, &pt->y) == 0)
+   if (mp_cmp(&tmp, &pt->y) == 0) { 
       *result = 0;
-   else
+   } else {
       *result = 1;
+   }
    
    res = CRYPT_OK;
    goto done;
@@ -667,7 +669,7 @@ int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key
    /* output type and magic byte */
    y = PACKET_SIZE;
    buf2[y++] = type;
-   buf2[y++] = key->idx;
+   buf2[y++] = sets[key->idx].size;
 
    /* output x coordinate */
    OUTPUT_BIGNUM(&(key->pubkey.x), buf2, y, z);
@@ -701,7 +703,7 @@ int ecc_export(unsigned char *out, unsigned long *outlen, int type, ecc_key *key
 
 int ecc_import(const unsigned char *in, ecc_key *key)
 {
-   unsigned long x, y;
+   unsigned long x, y, s;
    int res, errno;
 
    _ARGCHK(in != NULL);
@@ -719,7 +721,14 @@ int ecc_import(const unsigned char *in, ecc_key *key)
 
    y = PACKET_SIZE;
    key->type = in[y++];
-   key->idx  = in[y++];
+   s = in[y++];
+   
+   for (x = 0; (s > (unsigned long)sets[x].size) && (sets[x].size); x++);
+   if (sets[x].size == 0) { 
+      res = CRYPT_INVALID_KEYSIZE;
+      goto error2;
+   }
+   key->idx = x;
 
    /* type check both values */
    if ((key->type != PK_PUBLIC) && (key->type != PK_PRIVATE))  {

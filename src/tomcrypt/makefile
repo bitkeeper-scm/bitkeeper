@@ -9,7 +9,7 @@
 # a build. This is easy to remedy though, for those that have problems.
 
 # The version
-VERSION=0.75
+VERSION=0.77
 
 #Compiler and Linker Names
 CC=gcc
@@ -34,10 +34,10 @@ CFLAGS += -c -I./ -Wall -Wsign-compare -W -Wno-unused -Werror  \
    -DXCLOCKS_PER_SEC=$(XCLOCKS_PER_SEC)
 
 #optimize for SPEED (comment out SIZE/DEBUG line as well)
-#CFLAGS += -O3 -fomit-frame-pointer -funroll-loops
+#CFLAGS += -O3 -funroll-loops
 
 #optimize for SIZE (comment out SPEED/DEBUG line as well)
-CFLAGS += -O2
+CFLAGS += -Os 
 
 #compile for DEBUGGING 
 #CFLAGS += -g3
@@ -154,11 +154,6 @@ CFLAGS += -DKR
 
 # include large integer math routines? (required by the PK code)
 CFLAGS += -DMPI
-
-# Use a small prime table?  It greatly reduces the size of prime.c at a little impact
-# in speed.
-#
-CFLAGS += -DSMALL_PRIME_TAB
 
 # include HMAC support
 CFLAGS += -DHMAC
