@@ -901,7 +901,7 @@ private void
 add(FILE *diffs, char *buf)
 {
 	sccs	*s;
-	char	*rev = 0;	/* lint */
+	char	*p, *rev = 0;	/* lint */
 	delta	*d;
 
 	unless ((chop(buf) == '\n') && (rev = strrchr(buf, BK_FS))) {
@@ -924,11 +924,17 @@ add(FILE *diffs, char *buf)
 		system("bk clean -u ChangeSet");
 		cset_exit(1);
 	}
+
+	p = basenm(buf);
+	*p = 'd';
+	unlink(buf); /* remove d.file */
+
 	sccs_sdelta(s, sccs_ino(s), buf);
 	fprintf(diffs, "> %s ", buf);
 	sccs_sdelta(s, d, buf);
 	fprintf(diffs, "%s\n", buf);
 	sccs_free(s);
+
 }
 
 /*
