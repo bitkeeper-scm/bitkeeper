@@ -91,6 +91,7 @@ usage:			system("bk help -s changes");
 		}
 		optarg = 0;
 	}
+	nav[nac] = 0;
 	if ((opts.local || opts.remote) && opts.rev) goto usage;
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
 	if (sccs_cd2root(0, 0)) {
