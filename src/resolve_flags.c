@@ -36,7 +36,7 @@ flags(int bits)
 	return (buf);
 }
 
-int
+private int
 f_help(resolve *rs)
 {
 	int	i;
@@ -79,7 +79,7 @@ Remote: %s@%s\n\t%s\n\
 	return (0);
 }
 
-int
+private int
 f_explain(resolve *rs)
 {
 	fprintf(stderr, 
@@ -96,7 +96,7 @@ file later using the following: \"bk admin -f<FLAG> file\".\n\
 }
 
 /* add the local modes to the remote file */
-int
+private int
 f_local(resolve *rs)
 {
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
@@ -109,7 +109,7 @@ f_local(resolve *rs)
 }
 
 /* add the remote modes to the local file */
-int
+private int
 f_remote(resolve *rs)
 {
 	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
@@ -121,13 +121,77 @@ f_remote(resolve *rs)
 	return (1);
 }
 
-rfuncs	f_funcs[] = {
+/*
+ * auto resolve flags according to the following table.
+ * 
+ * key: <gca val><local val><remote val> = <new val>
+ *
+ *  000 -> 0
+ *  001 -> 1
+ *  010 -> 1
+ *  011 -> 1
+ *  100 -> 0
+ *  101 -> 0
+ *  110 -> 0
+ *  111 -> 1
+ *
+ *   out = ((L ^ G) | (R ^ G)) ^ G
+ *   out = (L & R) | ~G & (~L & R | L & ~R)
+ *   out = (L & R) | ~G & (L ^ R)
+ */
+private int
+f_merge(resolve *rs)
+{
+	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
+	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+	delta	*g = sccs_getrev(rs->s, rs->revs->gca, 0, 0);
+	int	lf, rf, gf;
+	int	newflags;
+
+	lf = sccs_xflags(l);
+	rf = sccs_xflags(r);
+	gf = sccs_xflags(g);
+
+	newflags = (lf & rf) | ~gf & (lf ^ rf);
+
+	if (newflags == lf) {
+		f_local(rs);
+		unless (rs->opts->quiet) {
+			fprintf(stderr,
+"automerge OK.  Using flags from local copy.\n");
+		}
+	} else if (newflags == rf) {
+		f_remote(rs);
+		unless (rs->opts->quiet) {
+			fprintf(stderr,
+"automerge OK.  Using flags from remote copy.\n");
+		}
+	} else {
+		/* add the new modes to the local file */
+		sccs_close(rs->s); /* for win32 */
+		flags_delta(rs, rs->s->sfile, 
+			    l, newflags, sccs_Xfile(rs->s, 'r'), LOCAL);
+		/* remove delta must be refetched after previous delta */
+		r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+		flags_delta(rs, rs->s->sfile, 
+			    r, newflags, sccs_Xfile(rs->s, 'r'), REMOTE);
+		unless (rs->opts->quiet) {
+			fprintf(stderr,
+"automerge OK. Added merged flags (%s) to both local and remote files.\n",
+				flags(newflags));
+		}
+	}
+	return (1);
+}
+
+private	rfuncs	f_funcs[] = {
     { "?", "help", "print this help", f_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "cl", "clear", "clear the screen", res_clear },
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "l", "local", "use the flags on local file", f_local },
+    { "m", "merge", "attempt to automerge the flags conflict", f_merge },
     { "p", "revtool", "graphical picture of the file history", res_revtool },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "remote", "use the flags on remote file", f_remote },
@@ -145,6 +209,7 @@ resolve_flags(resolve *rs)
 		fprintf(stderr, "resolve_flags: ");
 		resolve_dump(rs);
 	}
+	if (rs->opts->automerge && f_merge(rs)) return (1);
 	rs->prompt = rs->s->gfile;
 	return (resolve_loop("flag conflict", rs, f_funcs));
 }
