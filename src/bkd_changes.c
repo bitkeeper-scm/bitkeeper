@@ -97,7 +97,7 @@ cmd_chg_part2(int ac, char **av)
 	}
 
 	/*
-	 * What we want is: keys -> "bk changes opts -" -> BitKeeper/tmp/chgXXX
+	 * What we want is: keys -> "bk changes opts -" -> tmpfile
 	 */
 	new_av[0] = "bk";
 	new_av[1] = "changes";
@@ -106,10 +106,13 @@ cmd_chg_part2(int ac, char **av)
 	new_av[j] = NULL;
 
 	/* Redirect stdout to the tmp file */
-	sprintf(cmd, "BitKeeper/tmp/chg%u", getpid());
+	bktmp(cmd, "chg");
 	fd1 = dup(1); close(1);
 	fd = open(cmd, O_WRONLY|O_CREAT|O_TRUNC, 0666);
-	if (fd < 0) perror(cmd);
+	if (fd < 0) {
+		perror(cmd);
+		exit(1);
+	}
 	assert(fd == 1);
 	pid = spawnvp_wPipe(new_av, &wfd, 0);
 	dup2(fd1, 1); close(fd1); /* restore fd1 */
