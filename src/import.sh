@@ -35,7 +35,8 @@ import() {
 	GAP=10
 	TAGS=YES
 	SKIP_OPT=""
-	while getopts Ab:c:CefFg:hH:ij:kl:qRrS:t:Tuvxy: opt
+	MKS=
+	while getopts Ab:c:CefFg:hH:ij:kl:MqRrS:t:Tuvxy: opt
 	do	case "$opt" in
 		A) ;;				# undoc 2.0 - old
 		b) BRANCH=-b$OPTARG;;		# undoc 3.0
@@ -53,6 +54,7 @@ import() {
 		j) PARALLEL=$OPTARG;;		# doc 2.0
 		k) SKIP_OPT="-k";;
 		l) LIST=$OPTARG;;		# doc 2.0
+		M) MKS=YES;;
 		S) SYMBOL=-S$OPTARG;;		# doc 2.0
 		r) RENAMES=NO;;			# doc 2.0
 		R) REJECTS=NO;;
@@ -312,7 +314,28 @@ EOF
 }
 
 
-transfer_RCS() { transfer "$@"; }
+transfer_RCS() {
+	transfer "$@";
+	test "$MKS" || return
+	cd "$2" || exit 1
+	pwd > /dev/tty
+	find . -type f -print | grep RCS/ > /dev/tty
+	find . -type f -print | grep RCS/ |
+	    xargs perl -w -i -e '$sym = 0; while(<>) {
+		$sym = 1 if /^symbols\s/;
+		$sym = 0 if /^locks\s*;/;
+		s/%2E/./g if $sym;
+		unless (/^ext$/) {
+			print;
+			next;
+		}
+		while (<>) {
+			# warn "SKIP $_";
+			last if /^\@$/;
+		}
+	}'
+}
+
 transfer_SCCS() { transfer "$@"; }
 transfer_text() { transfer "$@"; }
 transfer_patch() { return; }
