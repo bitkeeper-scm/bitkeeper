@@ -709,9 +709,14 @@ private char *
 readdiff(char *buf, int size, FILE *f)
 {
 	char	*ret;
+	int	c;
 
-	ret = fgets(buf, size, f);
-	if (ret && strneq(buf, "\\ No newline", 12)) ret = fgets(buf, size, f);
+	do {
+		if ((ret = fgets(buf, size, f)) && !strchr(buf, '\n')) {
+			/* skip to next newline */
+			while (((c = getc(f)) != EOF) && (c != '\n'));
+		}
+	} while (ret && strneq(buf, "\\ No newline", 12));
 	return (ret);
 }
 
@@ -722,11 +727,11 @@ readdiff(char *buf, int size, FILE *f)
 private void
 diffwalk_readcmd(difwalk *dw)
 {
-	char	buf[MAXLINE];
 	char	*p;
 	int	start, end;
 	int	cnt;
 	char	cmd;
+	char	buf[64];
 
 	unless (readdiff(buf, sizeof(buf), dw->diff)) {
 		dw->cmd.gcastart = dw->cmd.gcaend = INT_MAX;
