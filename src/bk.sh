@@ -898,4 +898,5 @@ then
 	exec $cmd "$@"
 else
 	echo "$cmd: command not found"
+	exit 1
 fi
