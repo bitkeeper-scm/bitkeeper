@@ -10,7 +10,6 @@ proc widgets {} \
 
 	# Set global app var so that difflib knows which global config
 	# vars to read
-	set app "diff"
 	if {$tcl_platform(platform) == "windows"} {
 		set gc(py) -2; set gc(px) 1; set gc(bw) 2
 	} else {
@@ -159,13 +158,13 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 	.diffs.status.middle configure -text "Welcome to difftool!"
 
-	bind .diffs <Configure> { computeHeight }
+	bind .diffs <Configure> { computeHeight "diffs" }
 	#bind .diffs.left <Button-1> {stackedDiff %W %x %y "B1"; break}
 	#bind .diffs.right <Button-1> {stackedDiff %W %x %y "B1"; break}
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
 	}
-	computeHeight
+	computeHeight "diffs"
 
 	.diffs.left tag configure diff -background $gc(diff.oldColor)
 	.diffs.right tag configure diff -background $gc(diff.newColor)
@@ -259,8 +258,10 @@ proc reread {} \
 	global lname rname lfile rfile menu
 
 	#puts "$lfile $lname $rfile $rname"
+	# Leaving this here since I would like to pass in lname and rname as
+	# an array
 	if {[info exists lname] && [info exists rname]} {
-		readFiles $lfile $rfile $lname $rname
+		readFiles $lfile $rfile
 	} else {
 		readFiles $lfile $rfile
 	}
@@ -427,7 +428,7 @@ proc cleanup {} \
 # Called from the menubutton -- updates the arrows and reads the correct file
 proc pickFile {lf rf fname item {lr {}} {rr {}}} \
 {
-	global menu lfile rfile 
+	global menu lfile rfile lname rname
 
 	# Set globals so that 'proc reread' knows which file to reread
 	set lfile $lf 
@@ -448,10 +449,14 @@ proc pickFile {lf rf fname item {lr {}} {rr {}}} \
 	if {$lr != ""} {
 		displayInfo $fname $fname $lr $rr
 		#displayMessage "$lf $rf fname=($fname) lr=$lr rr=$rr"
-		readFiles $lf $rf "$fname@$lr" "$fname@$rr"
+		set lname "$fname@$lr"
+		set rname "$fname@$rr"
+		readFiles $lf $rf
 	} else {
 		displayInfo $lf $rf $lr $rr
-		readFiles $lf $rf $lf $rf
+		set lname "$lf"
+		set rname "$rf"
+		readFiles $lf $rf
 	}
 	return
 }

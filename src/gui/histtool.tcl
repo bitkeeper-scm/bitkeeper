@@ -1277,7 +1277,6 @@ proc widgets {} \
 	set Opts(get) "-aum"
 	set Opts(line) "-u -t"
 	set yspace 20
-	set app hist
 	# cframe	- comment frame	
 	# apframe	- annotation/prs frame
 	# ctext		- comment text window
@@ -1560,11 +1559,11 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	$search(widget) tag configure search \
 	    -background $gc(hist.searchColor) -font $gc(hist.fixedBoldFont)
 	search_keyboard_bindings
-	bind all <n>	{
+	bind . <n>	{
 	    set search(dir) "/"
 	    searchnext
 	}
-	bind all <p>	{
+	bind . <p>	{
 	    set search(dir) "?"
 	    searchnext
 	}
@@ -1581,8 +1580,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 	bindtags $w(aptext) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
-	# In the search window, don't listen to "all" tags.
-	bindtags $search(text) { .cmd.search Entry . }
+	# In the search window, don't listen to "all" tags. (This is now done
+	# in the search.tcl lib) <remove if all goes well> -ask
+	#bindtags $search(text) { .cmd.search Entry }
 
 	wm deiconify .
 	focus $w(graph)
@@ -1614,7 +1614,7 @@ proc selectFile {} \
 			    -command "histtool $fname -$gc(hist.showHistory)" 
 		}
 	}
-	close $f
+	catch {close $f}
 	return $fname
 }
 

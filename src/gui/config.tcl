@@ -1,6 +1,8 @@
 proc getConfig {prog} \
 {
-	global tcl_platform gc
+	global tcl_platform gc app
+
+	set app $prog
 
 	if {$tcl_platform(platform) == "windows"} {
 		set _d(fixedFont) {{Lucida Console} 9}
