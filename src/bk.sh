@@ -472,42 +472,84 @@ _sdiffs() {		# /* doc 2.0 as diffs -s */
 
 # Undelete a file
 _unrm () {
-	if [ "$1" = "" ]; then echo "Usage: bk unrm file"; exit 1; fi
-	__cd2root
-	cd BitKeeper/deleted
 	FORCE=no
 	if [ "$1" = "-f" ]; then FORCE=yes; shift; fi
+
+	if [ "$1" = "" ]; then echo "Usage: bk unrm file"; exit 1; fi
+	if [ "$2" != "" ]
+	then	echo "You can only unrm one file at a time"
+		return 1
+	fi
+
+	__cd2root
 	rpath="$1"
 	LIST=/tmp/LIST$$
-	bk -r. prs -Dhnpr+ -d':GFILE:|:DPN:|:I:' | \
-					grep '^.*|.*'"$rpath"'.*|.*' | \
-					sort >$LIST
+	DELDIR=BitKeeper/deleted
+	cd $DELDIR
+	trap 'rm -f $LIST' 0
+
+	# Find all the possible files, sort with most recent delete first.
+	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
+		sort -r -n | cut -d'|' -f2 | \
+		prs -Dhnpr+ -d':GFILE:|:DPN:|:I:' - | \
+		grep '^.*|.*'"$rpath"'.*|.*' >$LIST
+
+	NUM=`wc -l $LIST | sed -e's/ *//' | cut -d' ' -f1`
+	if [ "$NUM" -eq 0 ]
+	then
+		echo "---------------"
+		echo "no file found"
+		echo "---------------"
+		return 2
+	fi
+	if [ "$NUM" -gt 1 ]
+	then
+		echo "------------------------------------------------"
+		echo "$NUM possible files found"
+		echo "------------------------------------------------"
+		echo ""
+	fi
+
 	while read n
 	do
 		GFILE=`echo $n | cut -d'|' -f1 -`
 		RPATH=`echo $n | cut -d'|' -f2 -`
 		REV=`echo $n | cut -d'|' -f3 -`
-		echo "------------------------------------------------"
-		echo "File:		$GFILE"
-		bk prs -hnr+ \
-			-d'Deleted on:\t :D: :T: :TZ: by :USER:@:HOST:' $GFILE
-		bk prs -hr"$REV" $GFILE
-		echo -n "Undelete \"$GFILE\" back to \"$RPATH\" ? (y|n)> "
+
+		# If there is only one match, and it is a exact match,
+		# don't ask for confirmation.
+		if [ $NUM -eq 1 -a "$rpath" = "$RPATH" ]; then FORCE=yes; fi;
+
 		if [ "$FORCE" = "yes" ]
 		then
 			ans=y
-			echo "y"
 		else
+			echo "------------------------------------------------"
+			echo "File:		$DELDIR/$GFILE"
+			bk prs -hnr+ \
+			  -d'Deleted on:\t:D: :T::TZ: by :USER:@:HOST:' $GFILE
+			echo "---"
+			echo "Top delta before it is deleted:"
+			bk prs -hr"$REV" $GFILE
+
+			echo -n \
+			    "Undelete this file back to \"$RPATH\"? (y|n|q)> "
 			read ans < /dev/tty
 		fi
-		if [ "$ans" = "y" -o "$ans" = "Y" ]
-		then
-			echo "Moving \"$GFILE\" -> \"$RPATH\""
-			bk -R mv "BitKeeper/deleted/$GFILE" "$RPATH"
-		else
-			echo "\"$GFILE\" skipped."
+
+		case "X$ans" in
+		    Xy|XY)
+			echo "Moving \"DELDIR/$GFILE\" -> \"$RPATH\""
+			bk -R mv "$DELDIR/$GFILE" "$RPATH"
+			;;
+		    Xq|XQ)
+			break
+			;;
+		    *)
+			echo "File skipped."
 			echo ""
-		fi
+			echo ""
+		esac
 	done < $LIST 
 	rm -f $LIST
 }

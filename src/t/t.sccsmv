@@ -160,7 +160,7 @@ if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
 echo OK
 cd ..
 echo $N Test bk unrm ................................................$NL
-bk unrm -f file3  > /dev/null
+bk unrm A/file3 > /dev/null
 if [ ! -f A/SCCS/s.file3 ]; then echo failed; exit; fi
 bk rm A/file3
 echo OK
