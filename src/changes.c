@@ -1,4 +1,6 @@
 #include "bkd.h"
+#include "range.h"
+
 #define	MAXARGS 100
 
 typedef struct {
@@ -110,8 +112,6 @@ usage:			system("bk help -s changes");
 	}
 }
 
-pid_t pagerPid = -1;
-
 /*
  * Set up page and connect it to our stdout
  */
@@ -212,10 +212,12 @@ doit(opts opts, int dash)
 	pid_t	pid, pgpid;
 	extern	char *pager;
 	char	*pager_av[MAXARGS];
-	int	i, fd1, pfd;
-	int	all = 0;
+	int	i, fd1, pfd, wantSet;
 	sccs	*s;
-	delta	*d;
+	delta	*e;
+	int     noisy = 0;
+	int     expand = 1;  
+	RANGE_DECL;
 
 	s = sccs_init(s_cset, SILENT, 0);
 	assert(s && s->tree);
@@ -223,45 +225,48 @@ doit(opts opts, int dash)
 		if (opts.doSearch) {
 			fprintf(stderr, "Warning: -s option ignored\n");
 		}
-		s->state |= S_SET;
-		d = findrev(s, opts.rev);
-		if (d) {
-			d->flags |= D_SET;
-		} else {
-			 fprintf(stderr, "Cannot find rev %s\n", opts.rev);
+
+		r[rd++] = notnull(opts.rev);
+		things += tokens(notnull(opts.rev));
+		RANGE("changes", s, expand, noisy)
+		unless (SET(s)) {
+			for (e = s->rstop; e; e = e->next) {
+				e->flags |= D_SET;
+				if (e == s->rstart) break;
+			}
 		}
-		
-	} else if (dash) {
 		s->state |= S_SET;
+	} else if (dash) {
 		while (fgets(cmd, sizeof(cmd), stdin)) {
 			/* ignore blank lines and comments */
 			if ((*cmd == '#') || (*cmd == '\n')) continue;
 			chomp(cmd);
-			d = sccs_getrev(s, cmd, NULL, 0);
-			unless (d) {
+			e = sccs_getrev(s, cmd, NULL, 0);
+			unless (e) {
 				fprintf(stderr, "Illegal line: %s", cmd);
 				sccs_free(s);
 				fclose(f);
 				return (1);
 			}
-			while (d->type == 'R') {
-				d = d->parent;
-				assert(d);
+			while (e->type == 'R') {
+				e = e->parent;
+				assert(e);
 			}
-			d->flags |= D_SET;
+			e->flags |= D_SET;
 		}
-	} else if (opts.doSearch) {
 		s->state |= S_SET;
-		for (d = s->table; d; d = d->next) {
-			if (d->type != 'D')  continue;
-			EACH(d->comments) {
-				if (searchMatch(d->comments[i], opts.search)) {
-					d->flags |= D_SET;
+	} else if (opts.doSearch) {
+		for (e = s->table; e; e = e->next) {
+			if (e->type != 'D')  continue;
+			EACH(e->comments) {
+				if (searchMatch(e->comments[i], opts.search)) {
+					e->flags |= D_SET;
 				}
 			}
 		}
+		s->state |= S_SET;
 	} else {
-		all = 1;
+		s->state &= ~S_SET; /* probably redundant */
 	}
 
 	/*
@@ -271,16 +276,17 @@ doit(opts opts, int dash)
 	f = fdopen(1, "wb"); /* needed by sccs_prsdelta() below */
 
 	gettemp(tmpfile, "changes");
+	wantSet = SET(s);
 	s->xflags |= X_YEAR4;
-	for (d = s->table; d; d = d->next) {
+	for (e = s->table; e; e = e->next) {
 		if (feof(f)) break; /* for early pager exit */
-		if (!all && !(d->flags & D_SET)) continue;
-		sccs_prsdelta(s, d, 0, spec, f);
+		if (wantSet && !(e->flags & D_SET)) continue;
+		sccs_prsdelta(s, e, 0, spec, f);
 		fflush(f);
 		if (opts.verbose) {
 			sprintf(cmd,
 			    "bk cset -Hr%s | bk _sort | bk sccslog -i%d - > %s",
-			    d->rev, opts.indent, tmpfile);
+			    e->rev, opts.indent, tmpfile);
 			system(cmd);
 			if (cat(tmpfile)) break;
 		}
@@ -292,6 +298,8 @@ doit(opts opts, int dash)
 	if (fd1 >= 0) { dup2(fd1, 1); close(fd1); }
 	if (pgpid >=0) waitpid(pgpid, 0, 0);
 	return (0);
+
+next:	return (1);
 }
 
 
