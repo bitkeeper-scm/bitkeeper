@@ -5,6 +5,32 @@ WHATSTR("@(#)%K%");
 
 int	newrev(sccs *s, pfile *pf);
 
+private int
+hasKeyword(sccs *s)
+{
+	return (s->xflags & (X_RCS|X_SCCS));
+}
+
+private int
+fix_gmode(sccs *s, int gflags)
+{
+	if ((gflags&GET_EDIT) && IS_WRITABLE(s))  return (0);
+	if (!(gflags&GET_EDIT) && !IS_WRITABLE(s))  return (0);
+
+	if (gflags&GET_EDIT) {
+		 s->mode |= 0200;	/* turn on write mode */
+	} else {
+		 s->mode |= 0400;	/* turn on read mode */ 
+		 s->mode &= ~0222;	/* turn off write mode */
+	}
+
+	if (chmod(s->gfile, s->mode)) {
+		perror(s->gfile);
+		return (1);
+	}
+	return (0);
+}
+
 int
 delta_main(int ac, char **av)
 {
@@ -16,10 +42,11 @@ delta_main(int ac, char **av)
 	int	isci = 0;
 	int	checkout = 0, ignorePreference = 0;
 	int	c, rc, enc;
+	int	save_gfile_if_no_key_word = 0;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*name;
-	char	*compp = 0, *encp = 0, *p;
+	char	*compp = 0, *encp = 0, *ckopts = "";
 	char	*mode = 0, buf[MAXPATH];
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
@@ -129,19 +156,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 	}
 
 	unless (ignorePreference || checkout) {
-		p = user_preference("checkout");
-		if (streq(p, "edit")) {
-			gflags |= GET_SKIPGET|GET_EDIT;
-			dflags |= DELTA_SAVEGFILE;
-			checkout = 1;
-		} else if (streq(p, "EDIT")) { /* edit + fixmitime */
-			gflags |= GET_SKIPGET|GET_EDIT;
-			dflags |= DELTA_SAVEGFILE|DELTA_FIXMTIME;
-			checkout = 1;
-		} else if (streq(p, "get")) {
-			gflags |= GET_EXPAND;
-			checkout = 1;
-		}
+		ckopts  = user_preference("checkout");
 	}
 
 	if ((encp || compp) && !(dflags & NEWFILE)) {
@@ -215,6 +230,34 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			}
 		}
 
+		/*
+		 * Checkout option does not applies to ChangeSet file
+		 * see rev 1.118
+		 */
+		unless (CSET(s)) {
+			if (streq(ckopts, "edit")) {
+				gflags |= GET_SKIPGET|GET_EDIT;
+				dflags |= DELTA_SAVEGFILE;
+				checkout = 1;
+			} else if (streq(ckopts, "EDIT")) { /* edit+fixmtime */
+				gflags |= GET_SKIPGET|GET_EDIT;
+				dflags |= DELTA_SAVEGFILE|DELTA_FIXMTIME;
+				checkout = 1;
+			} else if (streq(ckopts, "get")) {
+					gflags |= GET_EXPAND;
+					checkout = 1;
+			} else if (streq(ckopts, "GET")) {
+				if (hasKeyword(s))  {
+					gflags |= GET_EXPAND;
+					checkout = 1;
+				} else {
+					checkout = 2;
+					dflags |=
+						DELTA_SAVEGFILE|DELTA_FIXMTIME;
+				}
+			}
+		}
+
 		nrev = NULL;
 		if (HAS_PFILE(s)) {
 			if (newrev(s, &pf) == -1) {
@@ -223,6 +266,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			}
 			if (checkout && (gflags &GET_EDIT)) nrev = pf.newrev;
 		}
+
 		s->encoding = sccs_encoding (s, encp, compp);
 		rc = sccs_delta(s, dflags, d, init, diffs, 0);
 		if (rc == -2) goto next; /* no diff in file */
@@ -231,33 +275,24 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			errors |= 4;
 			goto next;
 		}
-		if (checkout && !CSET(s)) {
-			s = sccs_restart(s);
-			unless (s) {
-				fprintf(stderr,
-				    "%s: can't restart %s\n", av[0], name);
-				errors |= 8;
-				goto next;
+
+		s = sccs_restart(s);
+		unless (s) {
+			fprintf(stderr,
+			    "%s: can't restart %s\n", av[0], name);
+			errors |= 8;
+			goto next;
+		}
+
+		if ((checkout == 2) ||
+		    ((checkout == 1) && (dflags&NEWFILE))) {
+			if (fix_gmode(s, gflags)) {
+				errors |= 16;
 			}
+		}
+
+		if (checkout == 1) {
 			if (rc == -3) nrev = pf.oldrev;
-
-			/*
-			 * If GET_SKIPGET is set, sccs_get() will
-			 * remove the gfile if it is readonly. (don't know why)
-			 * So need to fix up the mode before we call sccs_get()
-			 * note that this only happen with new file, For
-			 * non-new file, if the gfile is not writable
-			 * the sccs_delta() above should have failed.
-			 */
-			if ((dflags&NEWFILE) &&
-					(gflags&GET_EDIT) && !IS_WRITABLE(s)) {
-				if (chmod(s->gfile, s->mode|0200)) {
-					perror(s->gfile);
-					errors |= 16;
-				}
-				s->mode |= 0200;
-			}
-
 			if (sccs_get(s, nrev, 0, 0, 0, gflags, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
