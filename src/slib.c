@@ -9860,6 +9860,11 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	if (streq(kw, "ROOTKEY")) {
+		if (out) sccs_pdelta(s, sccs_ino(s), out);
+		return (strVal);
+	}
+
 	if (streq(kw, "SHORTKEY")) {
 		char	buf[MAXPATH+200];
 		char	*t;

@@ -545,6 +545,72 @@ _sdiffs() {
 	${BIN}diffs -s "$@"
 }
 
+# usage: tag [r<rev>] symbol
+_tag() {
+	_cd2root
+	REV=
+	while getopts r: opt
+	do	case "$opt" in
+		r) REV=:$OPTARG;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ "X$1" = X ]
+	then	echo "Usage: tag [-r<rev>] tag_name"
+		exit 1
+	fi
+	${BIN}admin -S${1}$REV ChangeSet
+}
+
+# usage: gone key [key ...]
+_gone() {
+	_cd2root
+	if [ ! -d BitKeeper/etc ]
+	then	echo No BitKeeper/etc
+		exit 1
+	fi
+	cd BitKeeper/etc
+	if [ "X$1" = X ]
+	then	echo "usage: gone key [key ...]"
+		exit 1
+	fi
+	if [ -f SCCS/s.gone ]
+	then	${BIN}get -eq gone
+	fi
+	for i
+	do	echo "$i" >> gone
+	done
+	if [ -f SCCS/s.gone ]
+	then	${BIN}delta -yGone gone
+	else	${BIN}delta -i gone
+	fi
+}
+
+# usage: chmod mode file [file ...]
+_chmod() {
+	if [ "X$1" = X -o "X$2" = X ]
+	then	echo "usage: chmod mode file [file ...]"
+		exit 1
+	fi
+	MODE=$1
+	shift
+	for i
+	do	if [ -w $i ]
+		then 	echo $i is edited, skipping it
+			continue
+		fi
+		${BIN}get -qe $i
+		omode=`ls -l $i | sed 's/[ \t].*//'`
+		chmod $MODE $i
+		mode=`ls -l $i | sed 's/[ \t].*//'`
+		${BIN}clean $i
+		if [ $omode = $mode ]
+		then	continue
+		fi
+		${BIN}admin -m$mode $i
+	done
+}
+
 # Usage: fix file
 _fix() {
 	Q=-q
@@ -633,6 +699,7 @@ _undo() {
 	then	echo Failed to create undo backup $UNDO
 		exit 1
 	fi
+	# XXX Colon can not be a BK_FS on win32
 	sed 's/[:@]/ /' < ${TMP}rmlist$$ | while read f r
 	do	echo $f
 		${BIN}stripdel $Q -Cr$r $f
@@ -640,12 +707,12 @@ _undo() {
 		then	echo Undo of "$@" failed 1>&2
 			exit 1
 		fi
-	done > /tmp/mv$$
-	if [ $? != 0 ]; then /bin/rm -f /tmp/mv$$; exit 1; fi
+	done > ${TMP}mv$$
+	if [ $? != 0 ]; then $RM -f ${TMP}mv$$; exit 1; fi
 
 	# Handle any renames.  Done outside of stripdel because names only
 	# make sense at cset boundries.
-	${BIN}prs -hr+ -d':PN: :SPN:' - < /tmp/mv$$ | while read a b
+	${BIN}prs -hr+ -d':PN: :SPN:' - < ${TMP}mv$$ | while read a b
 	do	if [ $a != $b ]
 		then	if [ -f $b ]
 			then	echo Unable to mv $a $b, $b exists
@@ -661,6 +728,7 @@ _undo() {
 		fi
 		${BIN}renumber $b
 	done 
+	/bin/rm -f ${TMP}mv$$ ${TMP}rmlist$$ ${TMP}undo$$
 	if [ X$Q = X ]
 	then	echo Patch containing these undone deltas left in $UNDO,
 		echo running consistency check...
@@ -1128,7 +1196,7 @@ _commandHelp() {
 		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
 		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
 		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
-		    csettool|difftool|merging)
+		    csettool|difftool|merging|tag|gone|chmod)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		    *)
@@ -1272,7 +1340,7 @@ case "$1" in
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
     pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics)
+    topics|chmod|gone|tag)
 	cmd=$1
     	shift
 	_$cmd "$@"
