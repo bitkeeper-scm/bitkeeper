@@ -605,9 +605,9 @@ private void
 requestWebLicense()
 {
 
-#define LICENSE_HOST	"india.pell.portland.or.us"
+#define LICENSE_HOST	"bitmover.com"
 #define	LICENSE_PORT	80
-#define LICENSE_REQUEST	"/request-license"
+#define LICENSE_REQUEST	"/cgi-bin/request-license.cgi"
 
 	int f;
 	char buf[MAXPATH];
