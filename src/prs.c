@@ -3,14 +3,14 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 char	*prs_help = "\n\
-usage: prs [-mv] [-c<d>] [-I<rev>] [-r<r>] [files...]\n\n\
-    -1		Print exactly one record, as specified by -r/-c\n\
+usage: prs [-hmv] [-c<d>] [-I<rev>] [-r<r>] [files...]\n\n\
     -c<date>	Cut off dates.  See sccsrange(1) for details.\n\
+    -C		do not include branch deltas which are not merged\n\
     -d<spec>    Specify output data specification\n\
+    -h		Supress range header.\n\
     -m		print metadata, such as users and symbols.\n\
     -r<rev>	Specify a revision, or part of a range.\n\
     -v		Complain about SCCS files that do not match the range.\n\n\
-    -h		Supress range header.\n\n\
     Note that <date> may be a symbol, which implies the date of the\n\
     delta which matches the symbol.\n\n\
     Range specifications:\n\
@@ -29,6 +29,7 @@ main(int ac, char **av)
 	int	c;
 	char	*name;
 	int	noisy = 0;
+	int	expand = 1;
 	char	*dspec = NULL;
 	RANGE_DECL;
 
@@ -37,9 +38,10 @@ main(int ac, char **av)
 		fprintf(stderr, prs_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "bc;d:hmr|v")) != -1) {
+	while ((c = getopt(ac, av, "bc;Cd:hmr|v")) != -1) {
 		switch (c) {
-		    case 'b': reverse++;
+		    case 'b': reverse++; break;
+		    case 'C': expand = 3; break;
 		    case 'd':
 			dspec = optarg;
 			break;
@@ -58,7 +60,7 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 	    name; name = sfileNext()) {
 		unless (s = sccs_init(name, init_flags)) continue;
 		if (!s->tree) goto next;
-		RANGE("prs", s, 1, noisy);
+		RANGE("prs", s, expand, noisy);
 		assert(s->rstart);
 		assert(s->rstop);
 		if (didone++) printf("\n");

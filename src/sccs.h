@@ -357,7 +357,7 @@ typedef	unsigned char	u8;
  * and our sibling is 1.1.1.1.
  *
  * Note: we don't implement MRs - should we?
- * Fri Apr  9 1999:  his has grown to 124 bytes.  We might want to think
+ * Fri Apr  9 1999:  this has grown to 124 bytes.  We might want to think
  * about reducing the size.  That means a 5K delta file takes 620K in 
  * memory just for the graph.
  *

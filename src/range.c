@@ -39,6 +39,8 @@ WHATSTR("@(#)%K%");
  *	rangeAdd(sccs *sc, char *rev, char *date) - add rev or date (symbol)
  */
 
+delta	*sfind(sccs *s, int serial);
+
 void
 rangeReset(sccs *sc)
 {
@@ -137,6 +139,16 @@ sccs_kid(sccs *s, delta *d)
 	return (e);
 }
 
+walkMerge(sccs *s, delta *d)
+{
+	for (d = sfind(s, d->merge); d; d = d->parent) {
+		if (!d->r[2] || (d->flags & D_SET)) return;
+		d->flags |= D_SET;
+		if (d->merge) walkMerge(s, d);
+		// printf("ADD %s\n", d->rev);
+	}
+}
+
 /*
  * Connect the dots.  This picks the shortest path, tending towards
  * the trunk, between the two nodes.  The alg is to take the starting
@@ -144,25 +156,37 @@ sccs_kid(sccs *s, delta *d)
  * that this node is merged somewhere else; in that case, follow the
  * merge.  This doesn't always do the most obviously correct thing,
  * but it works.
+ *
+ * This also picks up anything merged into any of the deltas in the
+ * range.  That means we go backwards up the merge list until we
+ * hit another delta in the set or the trunk.
+ * XXX - needs to treat LODs like trunk.
  */
 rangeConnect(sccs *s)
 {
-	delta	*d;
+	delta	*d, *e;
 
 	/*
 	 * Work the starting point (1.2.1.4) back onto the trunk.
 	 */
 	d = s->rstart;
 	d->flags |= D_SET;
+	if (d->merge) walkMerge(s, d);
 	while (d && d->r[2]) {
-		if (d = sccs_kid(s, d)) d->flags |= D_SET;
+		// printf("DO %s\n", d->rev);
+		if (d = sccs_kid(s, d)) {
+			d->flags |= D_SET;
+			if (d->merge) walkMerge(s, d);
+		}
 	}
 
 	/*
 	 * Work backwards until they meet.
 	 */
 	for (d = s->rstop; d && !(d->flags & D_SET); d = d->parent) {
+		// printf("DO %s\n", d->rev);
 		d->flags |= D_SET;
+		if (d->merge) walkMerge(s, d);
 	}
 
 	unless (d) {
