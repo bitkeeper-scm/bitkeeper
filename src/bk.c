@@ -1120,6 +1120,17 @@ find_wish()
 	static char wish_path[MAXPATH];
 	int more = 1;
 
+	p = getenv("BK_WISH");
+	if (p) {
+		strcpy(wish_path,p);
+		unless (exists(wish_path)) {
+			fprintf(stderr, "bk: bad value for BK_WISH (%s)\n",
+				wish_path);
+			exit(1);
+		}
+		return (wish_path);
+	}
+
 #ifdef	__APPLE__
 	strcpy(wish_path,
 	    "/Applications/Wish Shell.app/Contents/MacOS/Wish Shell");
