@@ -82,7 +82,7 @@ usage:			system("bk help -s push");
 	}
 	if (rc == 2) rc = 1; /* if retry failed, rest exit code to 1 */
 	remote_free(r);
-	unless (opts.metaOnly) trigger(av,  "post", rc);
+	unless (opts.metaOnly) trigger(av, "post");
 	freeLines(envVar);
 	return (rc);
 }
@@ -285,7 +285,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		/*
 		 * We are about to run resolve, fire pre trigger
 		 */
-		if (!opts.metaOnly && trigger(av, "pre", 0)) {
+		if (!opts.metaOnly && trigger(av, "pre")) {
 			rc = 1;
 			goto done;
 		}
@@ -296,7 +296,9 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			}
 		}
 		rc = 0;
+		putenv("BK_INCOMING=OK");
 	}  else if (streq(buf, "@NOTHING TO SEND@")) {
+		putenv("BK_INCOMING=NOTHING");
 		rc = 0;
 	} else {
 		fprintf(stderr, "protocol error: <%s>\n", buf);
@@ -306,7 +308,8 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		rc = 1;
 	}
 
-done:	trigger(av, "post", rc);
+done:	if (rc) putenv("BK_INCOMING=CONFLICT");
+	trigger(av, "post");
 	unlink(probe_list);
 	/*
 	 * Wait for remote to disconnect

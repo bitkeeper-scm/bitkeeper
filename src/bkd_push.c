@@ -230,11 +230,29 @@ cmd_push_part1(int ac, char **av)
 	return (0);
 }
 
+private void
+triggerEnv(int dont, int nothing, int conflict)
+{
+	/*
+	 * The value of BK_INCOMING can be overriden later
+	 * if we hit error condition
+	 */
+	if (dont) {
+		putenv("BK_INCOMING=DRYRUN");
+	} else if (nothing) {
+		putenv("BK_INCOMING=NOTHING");
+	} else if (conflict) {
+		putenv("BK_INCOMING=CONFLICTS");
+	} else {
+		putenv("BK_INCOMING=OK");
+	}
+}
+
 int
 cmd_push_part2(int ac, char **av)
 {
 	int	fd2, pfd, c, n, rc = 0, gzip = 0, metaOnly = 0;
-	int	status, debug = 0;
+	int	status, debug = 0, dont = 0, nothing = 0, conflict = 0;
 	pid_t	pid;
 	char	buf[4096];
 	char	bkd_nul = BKD_NUL;
@@ -245,7 +263,7 @@ cmd_push_part2(int ac, char **av)
 #ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL);
 #endif
-	while ((c = getopt(ac, av, "dez|")) != -1) {
+	while ((c = getopt(ac, av, "denz|")) != -1) {
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
@@ -253,6 +271,7 @@ cmd_push_part2(int ac, char **av)
 			break;
 		    case 'd': debug = 1; break;
 		    case 'e': metaOnly = 1; break;
+		    case 'n': dont = 1; break;
 		    default: break;
 		}
 	}
@@ -275,7 +294,16 @@ cmd_push_part2(int ac, char **av)
 		 */
 		return (0);
 	}
-	if (streq(buf, "@NOTHING TO SEND@")) goto done;
+	if (streq(buf, "@NOTHING TO SEND@")) {
+		nothing = 1;
+	} else if (streq(buf, "@CONFLICT@")) {
+		conflict = 1;
+	}
+	triggerEnv(dont, nothing, conflict);
+	if (nothing || conflict) {
+		if (!metaOnly) trigger(av, "pre");
+		goto done;
+	}
 	if (!streq(buf, "@PATCH@")) {
 		fprintf(stderr, "expect @PATHCH@, got <%s>\n", buf);
 		rc = 1;
@@ -306,8 +334,13 @@ cmd_push_part2(int ac, char **av)
 	fflush(stdout);
 	write(1, &bkd_nul, 1);
 	fputs("@END@\n", stdout);
-	if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-		printf("ERROR-takepatch errored\n");
+	if (!WIFEXITED(status)) {
+		putenv("BK_INCOMING=SIGNALED");
+		rc = 1;
+		goto done;
+	}
+	if (WEXITSTATUS(status)) {
+		putenv("BK_INCOMING=CONFLICTS");
 		rc = 1;
 		goto done;
 	}
@@ -316,10 +349,9 @@ cmd_push_part2(int ac, char **av)
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 */
-	if (!metaOnly && trigger(av,  "pre", 0)) {
+	if (!metaOnly && trigger(av,  "pre")) {
 		system("bk abort -f");
-		rc = 1;
-		goto done;
+		return (1);
 	}
 
 	/*
@@ -343,16 +375,21 @@ cmd_push_part2(int ac, char **av)
 	write(1, &bkd_nul, 1);
 	fputs("@END@\n", stdout);
 	fflush(stdout);
-	if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-		printf("ERROR-resolve errored\n");
-		fputs("@END@\n", stdout);
+	if (!WIFEXITED(status)) {
+		putenv("BK_INCOMING=SIGNALED");
 		rc = 1;
+		goto done;
+	}
+	if (WEXITSTATUS(status)) {
+		putenv("BK_INCOMING=CONFLICTS");
+		rc = 1;
+		goto done;
 	}
 
 done:	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
 	if (metaOnly) av[0] = "remote log push";
-	trigger(av,  "post", rc);
+	trigger(av,  "post");
 	return (rc);
 }
