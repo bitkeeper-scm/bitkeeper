@@ -66,6 +66,7 @@ cmd_pull(int ac, char **av)
 	 * Get the set of keys not present in them.
 	 */
 	unless (me = csetKeys(them)) {
+		putenv("BK_OUTGOING=NOTHING");
 		out("OK-Nothing to send.\n");
 		repository_rdunlock(0);
 		out("OK-Unlocked\n");
@@ -78,6 +79,7 @@ cmd_pull(int ac, char **av)
 		gettemp(tmpfile, "push");
 		f = fopen(tmpfile, "w");
 	} else {
+		putenv("BK_OUTGOING=DRYRUN");
 		if (verbose || list) out(
 "OK-------------------- Would send the following csets -------------------\n");
 	}
