@@ -1,4 +1,38 @@
 ===============================================================================
+Release notes for BitKeeper version 3.2.3.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+
+None known, this should be a simple upgrade.
+
+New Features
+----------------------------------------------------------------------------
+
+- BitKeeper/templates/commit - if this file exists it is used as the default
+  checkin comments for a commit.  Typical usage is for sites which wish to 
+  have a predefined format for commit comments such as those which include
+  a bugid.  This is a new feature and it may change based on customer feedback
+  but the intent is to give customers more control over their processes.
+  See also: bk help templates
+
+- tabwidth configuration variable.  If you set gc(tabwidth) to a value other 
+  than 8 (the default) then the GUI tools will use this when displaying text.
+
+- bk checksum on the ChangeSet file is much faster than before.  Not a big
+  thing in general, just a note.
+
+- bk fix -c is more careful about fixing corrupt repositories.  It is no 
+  longer possible to do a fix -c on a repository where one or more of the
+  files involved in the fix are missing and are not named in the gone
+  file (BitKeeper/etc/gone).
+
+===============================================================================
 Release notes for BitKeeper version 3.2.2.   These release notes cover
 the following topics:
 
