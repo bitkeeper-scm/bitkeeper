@@ -49,7 +49,6 @@ proc highlight {id type {rev ""}} \
 	set x2 [lindex $bb 2]
 	set y2 [expr [lindex $bb 3] - 1]
 
-	#puts "highlight: REV ($rev)"
 	switch $type {
 	    revision {\
 		#puts "highlight: revision ($rev)"
@@ -124,34 +123,6 @@ proc revMap {file} \
         }
 }
 
-#
-# Build list of revision and tags so that we can jump to a specific tag
-#
-# This function should only be called if looking at the ChangeSet file
-# or no args given on the command line:
-#
-# bk prs  -bhd'$if(:SYMBOL:){:I: :SYMBOL:}\n' ChangeSet| sed -e '/^$/d'
-#
-proc getTags {} \
-{
-    	global tag2rev dev_null
-
-        set tags "-d\$if(:TAG:){:I:-:USER: :TAG:\n}"
-
-        # Sort in reverse order so that the highest number revision gets
-        # stored in the associative array for a given tag
-        # 
-        set fid [open "|bk prs -bh {$tags} ChangeSet 2>$dev_null" "r"]
-		while {[gets $fid s] >= 0} {
-			if { [string length $s] == 0 } {
-               			continue
-			}
-			set rev [lindex $s 0]
-			set tag [lindex $s 1]
-			set tag2rev($tag) $rev
-	        }
-}
-
 # 
 # Center the selected bitkeeper tag in the middle of the canvas
 #
@@ -167,7 +138,7 @@ proc getTags {} \
 #
 proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 {
-	global tag2rev curLine cdim gc file dev_null dspec rev2rev_name
+	global curLine cdim gc file dev_null dspec rev2rev_name
 	global w rev1 srev errorCode
 
 	# Keep track of whether we are being called from within the 
@@ -247,29 +218,32 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 
 	set name [$win get $curLine "$curLine lineend"]
 	if {$name == ""} { puts "Error: name=($name)"; return }
-	if {[info exists tag2rev($name)]} {
-		set revname $tag2rev($name)
+
+	if {[info exists rev2rev_name($rev)]} {
+		set revname $rev2rev_name($rev)
 	} else {
-		if {[info exists rev2rev_name($rev)]} {
-			set revname $rev2rev_name($rev)
-		} else {
-		    	.menus.view flash
-			$w(graph) xview moveto 0 
-			if {($annotated == 0) && ($bindtype == "D1")} {
-				get "rev" $rev
-			} elseif {($annotated == 1) && ($bindtype == "D1")} {
-				set rev1 $rev
-				if {"$file" == "ChangeSet"} {
-					csettool
-				} else {
-					r2c
-				}
-			}
-			return
+		# menubuttons don't have the flash option
+		for {set x 0} {$x < 50} {incr x} {
+			.menus.mb configure -background green
+			update
+			.menus.mb configure -background $gc(sccs.buttonColor)
 		}
+		$w(graph) xview moveto 0 
+		# XXX: This can be done cleaner -- coalesce this
+		# one and the bottom if into one??
+		if {($annotated == 0) && ($bindtype == "D1")} {
+			get "rev" $rev
+		} elseif {($annotated == 1) && ($bindtype == "D1")} {
+			set rev1 $rev
+			if {"$file" == "ChangeSet"} {
+				csettool
+			} else {
+				r2c
+			}
+		}
+		return
 	}
-	#puts "revname=($revname) rev=($rev)"
-	# warp to the selected revision
+	# center the selected revision in the canvas
 	if {$revname != ""} {
 		# XXX:
 		# If you go adding tags to the revisions, the index to 
@@ -298,7 +272,6 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		if {($bindtype == "D1") && ($annotated == 0)} {
 			get "id" $id
 		}
-		#puts "($curLine) line=($line) revname=($tag2rev($line))"
 	} else {
 		#puts "Error: tag not found ($line)"
 		return
@@ -349,7 +322,6 @@ proc dateSeparate { } { \
                         #puts "SAME: cur: $curday prev: $prevday $rev $nrev"
                 } else {
                         set x $revX($rev)
-	
 			set date_array [split $prevday "/"]
 			set day [lindex $date_array 1]
 			set mon [lindex $date_array 2]
@@ -498,7 +470,6 @@ proc line {s width ht} \
 		addline 0 $xspace $ht $l
 		return
 	}
-
 	# Use parent node on the graph as a starting point.
 	# px/py are the sw of the parent; x/y are the sw of the new branch.
 	set px $revX($rev)
@@ -514,7 +485,6 @@ proc line {s width ht} \
 	} else {
 		set prev $where($trunk)
 	}
-
 	# Go look for a space to put the branch.
 	set x1 [expr {$first * $xspace}]
 	set y 0
@@ -529,7 +499,6 @@ proc line {s width ht} \
 				break
 			}
 		}
-
 		# Try above.
 		if {"$prev" != "below"} {
 			set y1 [expr {$py - $ht - $y - $yspace}]
@@ -543,7 +512,6 @@ proc line {s width ht} \
 		}
 		incr y $yspace
 	}
-
 	set x [expr {$first * $xspace}]
 	set y $y2
 	addline $y $xspace $ht [lrange $l 1 end ]
@@ -575,7 +543,6 @@ proc mergeArrow {m ht} \
 	} else {
 		incr py -$ht
 	}
-
 	# If we are pointing backwards, then point at .s
 	if {$x < $px} {
 		incr x [expr {$wid($m) / 2}]
@@ -585,8 +552,9 @@ proc mergeArrow {m ht} \
 		incr x 2
 		incr px 2
 	}
-	$w(graph) lower [$w(graph) create line $px $py $x $y -arrowshape {4 4 4} \
-	    -width 1 -fill $gc(sccs.arrowColor) \-arrow last]
+	$w(graph) lower [$w(graph) create line $px $py $x $y \
+	    -arrowshape {4 4 4} -width 1 -fill $gc(sccs.arrowColor) \
+	    -arrow last]
 }
 
 #
@@ -673,7 +641,6 @@ proc listRevs {file} \
 				set txt $word
 				set l [string length $word]
 			}
-
 			if {($l > $len) && ([string first '-BAD' $rev] == -1)} {
 				set len $l
 				set big $txt
@@ -701,7 +668,6 @@ proc listRevs {file} \
 	foreach m $merges {
 		mergeArrow $m $ht
 	}
-
 	if {$bad != 0} {
 		wm title . "sccstool: $file -- $bad bad revs"
 	}
@@ -747,7 +713,6 @@ proc getRev {type {id {}} } \
 	if {$id == ""} {
 		set id [$w(graph) gettags current]
 	}
-	#puts "ID (all) is $id"
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
 	$w(graph) select clear
@@ -770,15 +735,18 @@ proc filltext {win f clear {msg {}}} \
 	}
 	catch {close $f} ignore
 	set numLines [$win index "end -1 chars linestart" ]
-	if {$numLines > 1.0} {
-		set line [$win get "end - 1 char linestart" end]
-		while {"$line" == "\n"} {
-			$win delete "end - 1 char linestart" end
-			set line [$win get "end - 1 char linestart" end]
-		}
-		$win insert end "\n"
-	} else {
-		if {$msg != ""} {$win insert end "$msg\n"}
+	# lm's code is broken -- need to fix correctly
+	if {0} {
+	    if {$numLines > 1.0} {
+		    set line [$win get "end - 1 char linestart" end]
+		    while {"$line" == "\n"} {
+			    $win delete "end - 1 char linestart" end
+			    set line [$win get "end - 1 char linestart" end]
+		    }
+		    $win insert end "\n"
+	    } else {
+		    if {$msg != ""} {$win insert end "$msg\n"}
+	    }
 	}
 	$win configure -state disabled
 	searchreset
@@ -832,7 +800,8 @@ proc sfile {} \
 }
 
 #
-# Displays annotated file listing in the bottom text widget
+# Displays annotated file listing or changeset listing in the bottom 
+# text widget 
 #
 proc get { type {val {}}} \
 {
@@ -847,17 +816,16 @@ proc get { type {val {}}} \
 	busy 1
 	set base [file tail $file]
 	if {$base != "ChangeSet"} {
-		set get [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
+		set get \
+		    [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
 		filltext $w(ap) $get 1
 		return
 	}
 	set rev2 $rev1
-	if {$type == "id"} {
-		csetdiff2
-	} elseif {$type == "rev"} {
-		csetdiff2 $rev1
+	switch $type {
+	    id		{ csetdiff2 }
+	    rev		{ csetdiff2 $rev }
 	}
-	    	
 }
 
 proc difftool {file r1 r2} \
@@ -892,7 +860,6 @@ proc diff2 {difftool {id {}} } \
 		difftool $file $rev1 $rev2
 		return
 	}
-
 	set r1 [file join $tmp_dir $rev1-[pid]]
 	catch { exec bk get $Opts(get) -kPr$rev1 $file >$r1}
 	set r2 [file join $tmp_dir $rev2-[pid]]
@@ -1131,7 +1098,7 @@ proc busy {busy} \
 proc widgets {fname} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform 
+	global  tcl_platform
 
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
@@ -1176,10 +1143,16 @@ proc widgets {fname} \
 	    button .menus.help -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Help" -command { exec bk helptool sccstool & }
-	    button .menus.view -font $gc(sccs.buttonFont) -relief raised \
+	    menubutton .menus.mb -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
-		-text "Show All" -width 15 -state normal \
-		-command {sccstool $fname 1} 
+		-text "Show History" -width 15 -state normal \
+		-menu .menus.mb.menu
+		set m [menu .menus.mb.menu]
+		$m add command -label "Last Day" -command {sccstool $fname D}
+		$m add command -label "Last Week" -command {sccstool $fname W}
+		$m add command -label "Last Month" -command {sccstool $fname M}
+		$m add command -label "Last Year" -command {sccstool $fname Y}
+		$m add command -label "All Csets" -command {sccstool $fname A}
 	    button .menus.cset -font $gc(sccs.buttonFont) -relief raised \
 		-bg $gc(sccs.buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
@@ -1188,11 +1161,11 @@ proc widgets {fname} \
 		-text "Diff tool" -command "diff2 1" -state disabled
 	    if {"$fname" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
-		    pack .menus.quit .menus.help .menus.view .menus.cset \
+		    pack .menus.quit .menus.help .menus.mb .menus.cset \
 			-side left
 	    } else {
 		    pack .menus.quit .menus.help .menus.difftool \
-			.menus.view .menus.cset -side left
+			.menus.mb .menus.cset -side left
 	    }
 
 	frame .p
@@ -1346,31 +1319,6 @@ proc widgets {fname} \
 	. configure -background $gc(BG)
 }
 
-# XXX: Is this dead code? --ask
-proc openFile {} \
-{
-	sccstool [tk_getOpenFile] 0
-}
-
-proc next {inc} \
-{
-	global	argv next
-
-	incr next $inc
-	set f [lindex $argv $next]
-	if {"$f" != ""} {
-		.menus.prev configure -state normal
-		.menus.next configure -state normal
-		sccstool $f 0
-	} else {
-		if {$inc < 0} {
-			.menus.prev configure -state disabled
-		} else {
-			.menus.next configure -state disabled
-		}
-	}
-}
-
 #
 # Arguments:
 #   all - boolean (optional) : If set to 1, displays all csets
@@ -1378,7 +1326,7 @@ proc next {inc} \
 # This variable is a placeholder -- I expect that we will put an
 # option/menu in that will allow the user to select last month, week, etc.
 #
-proc sccstool {fname {all {0}}} \
+proc sccstool {fname {period {}}} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  srev Opts gc file rev2rev_name
@@ -1402,17 +1350,14 @@ proc sccstool {fname {all {0}}} \
 	} else {
 		wm title . "sccstool: $proot: $file"
 	}
-
-	if {$all == 1} {
-		set Opts(line_time) "-R1.0.."
-		.menus.view configure  \
-		    -text "Show Last $gc(sccs.showHistory)" \
-		    -command {sccstool $fname 0}
-	} else {
-		set Opts(line_time) "-R-$gc(sccs.showHistory)"
-		.menus.view configure  \
-		    -text "Show All" \
-		    -command {sccstool $fname 1}
+	switch $period {
+	    D { set Opts(line_time) "-R-1D" }
+	    W { set Opts(line_time) "-R-1W" }
+	    M { set Opts(line_time) "-R-1M" }
+	    Y { set Opts(line_time) "-R-1Y" }
+	    A { set Opts(line_time) "-R1.0.." }
+	    default { set Opts(line_time) "-R-$gc(sccs.showHistory)"
+	    }
 	}
 	listRevs "$file"
 	revMap "$file"
@@ -1423,7 +1368,6 @@ proc sccstool {fname {all {0}}} \
 	set search(prompt) "Welcome"
 	focus $w(graph)
 	busy 0
-
 }
 
 proc init {} \
@@ -1499,7 +1443,7 @@ if {$fname == ""} {
 	set fname ChangeSet
 }
 widgets $fname
-sccstool $fname 0
+sccstool $fname
 
 if {$rev1 != ""} {
 	set rev1 [lineOpts $rev1]
