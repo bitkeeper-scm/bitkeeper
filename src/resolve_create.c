@@ -845,7 +845,6 @@ sc_rml(resolve *rs)
 	char	resync[MAXPATH];
 	int	filenum = 0;
 	char	*nm = basenm(((sccs*)rs->opaque)->gfile);
-	char	*quiet = rs->opts->quiet ? "-q" : "";
 
 	unless (rs->opts->force || confirm("Remove local file?")) return (0);
 	unless (ok_local((sccs*)rs->opaque, 0)) {
@@ -874,13 +873,13 @@ sc_rml(resolve *rs)
 	/*
 	 * Force a delta to lock it down to this name.
 	 */
-	sprintf(repo, "bk edit %s %s", quiet, resync);
+	sprintf(repo, "bk edit -q %s", resync);
 	if (sys(repo, rs->opts)) {
 		perror(repo);
 		exit(1);
 	}
-	sprintf(repo, "bk delta %s -y'Delete: %s' %s",
-	    quiet, ((sccs*)rs->opaque)->gfile, resync);
+	sprintf(repo,
+	    "bk delta -y'Delete: %s' %s", ((sccs*)rs->opaque)->gfile, resync);
 	if (sys(repo, rs->opts)) {
 		perror(repo);
 		exit(1);
