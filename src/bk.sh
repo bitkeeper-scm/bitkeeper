@@ -331,7 +331,7 @@ _push() {
 }
 
 _diffr() {
-	D=NO
+	DODIFFS=NO
 	DOPTS=
 	CMD=${BIN}sccslog
 	ALL=NO
@@ -340,21 +340,21 @@ _diffr() {
 	while getopts acdDflMprsuU opt
 	do	case "$opt" in
 		a) ALL=YES;;
-		c) D=YES; DOPTS="-c $DOPTS";;
-		d) D=YES;;
-		D) D=YES; DOPTS="-D $DOPTS";;
-		f) D=YES; DOPTS="-f $DOPTS";;
+		c) DODIFFS=YES; DOPTS="-c $DOPTS";;
+		d) DODIFFS=YES;;
+		D) DODIFFS=YES; DOPTS="-D $DOPTS";;
+		f) DODIFFS=YES; DOPTS="-f $DOPTS";;
 		l) LEFTONLY=YES;;
-		M) D=YES; DOPTS="-M $DOPTS";;
-		p) D=YES; DOPTS="-p $DOPTS";;
+		M) DODIFFS=YES; DOPTS="-M $DOPTS";;
+		p) DODIFFS=YES; DOPTS="-p $DOPTS";;
 		r) RIGHTONLY=YES;;
-		s) D=YES; DOPTS="-s $DOPTS";;
-		u) D=YES; DOPTS="-u $DOPTS";;
-		U) D=YES; DOPTS="-U $DOPTS";;
+		s) DODIFFS=YES; DOPTS="-s $DOPTS";;
+		u) DODIFFS=YES; DOPTS="-u $DOPTS";;
+		U) DODIFFS=YES; DOPTS="-U $DOPTS";;
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	if [ $D = YES ]; then CMD="${BIN}diffs $DOPTS"; fi
+	if [ $DODIFFS = YES ]; then CMD="${BIN}diffs $DOPTS"; fi
 	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
 	then	echo "Usage: diffr [diffs opts] repository different_repository"
 		exit 1
@@ -388,7 +388,7 @@ _diffr() {
 	(
 		cd $LEFT
 	    (
-		if [ $D = NO ]
+		if [ $DODIFFS = NO -a $ALL = YES ]
 		then	${BIN}sfiles -cg | while read x
 			do	echo $x
 				echo "  modified and not checked in."
@@ -397,13 +397,13 @@ _diffr() {
 		fi
 		(
 		if [ $ALL = YES ]
-		then	if [ $D = YES ]
+		then	if [ $DODIFFS = YES ]
 			then	${BIN}sfiles -c
 			fi
 			${BIN}sfiles -CRA
 		fi
 		for i in $LREVS
-		do	if [ $D = YES ]
+		do	if [ $DODIFFS = YES ]
 			then	${BIN}cset -R${i}..$i
 				else	echo "ChangeSet:$i"
 			fi
@@ -419,7 +419,7 @@ _diffr() {
 		
 		cd $RIGHT
 	    (
-		if [ $D = NO ]
+		if [ $DODIFFS = NO -a $ALL = YES ]
 		then	${BIN}sfiles -cg | while read x
 			do	echo $x
 				echo "  modified and not checked in."
@@ -428,13 +428,13 @@ _diffr() {
 		fi
 		(
 		if [ $ALL = YES ]
-		then	if [ $D = YES ]
+		then	if [ $DODIFFS = YES ]
 			then	${BIN}sfiles -c
 			fi
 			${BIN}sfiles -CRA
 		fi
 		for i in $RREVS
-		do	if [ $D = YES ]
+		do	if [ $DODIFFS = YES ]
 			then	${BIN}cset -R${i}..$i
 			else	echo "$RIGHT/ChangeSet:$i"
 			fi
