@@ -206,10 +206,10 @@ proc readFiles {L R} \
 
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
- 	set t [clock format [file mtime $L] -format "%r %D"]
-	.diffs.l configure -text "$L ($t)"
- 	set t [clock format [file mtime $R] -format "%r %D"]
-	.diffs.r configure -text "$R ($t)"
+	set f [file tail $L]
+	.diffs.l configure -text "$f"
+	set f [file tail $R]
+	.diffs.r configure -text "$f"
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
 
@@ -285,23 +285,25 @@ proc prevFile {} \
 
 proc dotFile {} \
 {
-	global	lastFile fileCount
+	global	lastFile fileCount Files
 
 	if {$lastFile == 1} {
-		#.menu.prev configure -state disabled
+		.filemenu.prev configure -state disabled
 	} else {
-		#.menu.prev configure -state normal
+		.filemenu.prev configure -state normal
 	}
 	if {$lastFile == $fileCount} {
-		#.menu.next configure -state disabled
+		.filemenu.next configure -state disabled
 	} else {
-		#.menu.next configure -state normal
+		.filemenu.next configure -state normal
 	}
-	set line "$lastFile.0"
-	.list.t tag remove select 1.0 end
-	.list.t tag add select $line "$line lineend + 1 char"
-	set file [.list.t get $line "$line lineend"]
-	regexp {(.*):(.*)\.\.(.*)} $file dummy file start stop
+	set line $Files($lastFile)
+	set line "$line.0"
+	.filelist.t see $line
+	.filelist.t tag remove select 1.0 end
+	.filelist.t tag add select $line "$line lineend + 1 char"
+	set file [.filelist.t get $line "$line lineend"]
+	regexp {^  (.*):(.*)\.\.(.*)} $file dummy file start stop
 	set tmp [file tail $file]
 	set l "/tmp/$tmp-$start"
 	set r "/tmp/$tmp-$stop"
@@ -313,27 +315,67 @@ proc dotFile {} \
 
 proc getFiles {revs} \
 {
-	global	fileCount lastFile
+	global	fileCount lastFile Files line2File
 
 	. configure -cursor watch
 	update
-	.list.t configure -state normal
-	.list.t delete 1.0 end
+	.filelist.t configure -state normal
+	.filelist.t delete 1.0 end
+	.sccslog.t configure -state normal
+	.sccslog.t delete 1.0 end
 	set fileCount 0
-	set c [open "| bk cset -R$revs" r]
-	while { [gets $c buf] >= 0 } {
-		incr fileCount
-		.list.t insert end "$buf\n"
+	set line 0
+	set dspec \
+"-dChangeSet :I: :D: :T: :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n"
+	set r [open "| bk -R prs -hr$revs -d:I: ChangeSet" r]
+	while {[gets $r cset] > 0} {
+		.status configure -text "Processing cset $cset"
+		update
+		incr line
+		.filelist.t insert end "ChangeSet $cset\n" cset
+		set c [open "| bk cset -R$cset" r]
+		while { [gets $c buf] >= 0 } {
+			incr fileCount
+			incr line
+			set line2File($line) $fileCount
+			set Files($fileCount) $line
+			.filelist.t insert end "  $buf\n"
+		}
+		catch { close $c }
+		set prs [open "| bk -R prs {$dspec} -hr$cset ChangeSet" r]
+		set first 1
+		while { [gets $c buf] >= 0 } {
+			if {$first == 1} {
+				.sccslog.t insert end "$buf\n" cset
+				set first 0
+			} else {
+				.sccslog.t insert end "$buf\n"
+			}
+		}
+		catch { close $c }
 	}
+	catch { close $r }
 	if {$fileCount == 0} { exit }
-	catch { close $c }
-	.list.t configure -state disabled
+	.filelist.t configure -state disabled
+	.sccslog.t configure -state disabled
 	. configure -cursor hand2
 	set lastFile 1
 	dotFile
 }
 
 # --------------- Window stuff ------------------
+proc pixSelect {x y} \
+{
+	global	lastFile line2File
+
+	set line [.filelist.t index "@$x,$y"]
+	set x [.filelist.t get "$line linestart" "$line linestart +2 chars"]
+	set line [lindex [split $line "."] 0]
+	if {$x != "  "} { incr line }
+	set lastFile $line2File($line)
+	dotFile
+}
+
 proc yscroll { a args } \
 {
 	eval { .diffs.left yview $a } $args
@@ -389,29 +431,21 @@ proc computeHeight {} \
 	set diffHeight [expr $p / $f]
 }
 
-proc pixSelect {x y} \
-{
-	global	lastFile
-
-	set line [.list.t index "@$x,$y"]
-	set lastFile [lindex [split $line "."] 0]
-	dotFile
-}
-
 proc widgets {} \
 {
 	global	leftColor rightColor scroll boldFont diffHeight
 	global	buttonFont wish bithelp
 
+	set boldFont {clean 12 roman bold}
+	set listFont {clean 12 roman }
+	set buttonFont {clean 12 roman bold}
 	set diffFont {clean 12 roman}
-	set diffWidth 55
+	set diffWidth 65
 	set diffHeight 30
 	set tcolor lightseagreen
 	set leftColor orange
 	set rightColor yellow
 	set swid 12
-	set boldFont {clean 12 roman bold}
-	set buttonFont {clean 10 roman bold}
 	set geometry ""
 	if {[file readable ~/.difftoolrc]} {
 		source ~/.difftoolrc
@@ -422,18 +456,32 @@ proc widgets {} \
 	}
 	wm title . "Cset Tool"
 
-	frame .list
-	    text .list.t -height 10 \
-		-state disabled -wrap none -font $diffFont \
-		-xscrollcommand { .list.xscroll set } \
-		-yscrollcommand { .list.yscroll set }
-	    scrollbar .list.xscroll -wid $swid -troughcolor $tcolor \
-		-orient horizontal -command ".list.t xview"
-	    scrollbar .list.yscroll -wid $swid -troughcolor $tcolor \
-		-orient vertical -command ".list.t yview"
-	    grid .list.t -row 0 -column 0 -sticky ewns
-	    grid .list.yscroll -row 0 -column 1 -sticky nse -rowspan 2
-	    grid .list.xscroll -row 1 -column 0 -sticky ew
+	frame .filelist
+	    text .filelist.t -height 9 -wid 30 \
+		-state disabled -wrap none -font $listFont \
+		-xscrollcommand { .filelist.xscroll set } \
+		-yscrollcommand { .filelist.yscroll set }
+	    scrollbar .filelist.xscroll -wid $swid -troughcolor $tcolor \
+		-orient horizontal -command ".filelist.t xview"
+	    scrollbar .filelist.yscroll -wid $swid -troughcolor $tcolor \
+		-orient vertical -command ".filelist.t yview"
+	    grid .filelist.t -row 0 -column 0 -sticky ewns
+	    grid .filelist.yscroll -row 0 -column 1 -sticky nse -rowspan 2
+	    grid .filelist.xscroll -row 1 -column 0 -sticky ew
+
+	frame .sccslog
+	    text .sccslog.t -height 9 -wid 20 \
+		-state disabled -wrap none -font $listFont \
+		-xscrollcommand { .sccslog.xscroll set } \
+		-yscrollcommand { .sccslog.yscroll set }
+	    scrollbar .sccslog.xscroll -wid $swid -troughcolor $tcolor \
+		-orient horizontal -command ".sccslog.t xview"
+	    scrollbar .sccslog.yscroll -wid $swid -troughcolor $tcolor \
+		-orient vertical -command ".sccslog.t yview"
+	    grid .sccslog.t -row 0 -column 0 -sticky ewns
+	    grid .sccslog.yscroll -row 0 -column 1 -sticky nse -rowspan 2
+	    grid .sccslog.xscroll -row 1 -column 0 -sticky ew
+
 	frame .diffs
 	    label .diffs.l -background $leftColor \
 		-font $buttonFont
@@ -457,36 +505,63 @@ proc widgets {} \
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
 
+	set menuwid 6
 	frame .menu
+	    label .menu.title -font $buttonFont -text "Diff\ncommands" \
+		-relief groove -borderwid 3 -background #b0b0f0
 	    button .menu.prev -font $buttonFont -bg grey \
-		-text "Previous" -width 7 -state disabled -command prev
+		-text "Previous" -width $menuwid -state disabled -command prev
 	    button .menu.next -font $buttonFont -bg grey \
-		-text "Next" -width 7 -state disabled -command next
+		-text "Next" -width $menuwid -state disabled -command next
 	    button .menu.quit -font $buttonFont -bg grey \
-		-text "Quit" -width 7 -command exit 
-	    button .menu.help -width 7 -bg grey \
+		-text "Quit" -width $menuwid -command exit 
+	    button .menu.help -width $menuwid -bg grey \
 		-font $buttonFont -text "Help" \
-		-command { exec bk helptool difftool & }
+		-command { exec bk helptool csettool & }
+	    grid .menu.title -sticky nsew
 	    grid .menu.prev 
 	    grid .menu.next
 	    grid .menu.quit
 	    grid .menu.help
 
+	frame .filemenu
+	    label .filemenu.title -font $buttonFont -text "File\ncommands" \
+		-relief groove -borderwid 3 -background #b0b0f0
+	    button .filemenu.prev -font $buttonFont -bg grey \
+		-text "Previous" -width $menuwid -state disabled \
+		-command prevFile
+	    button .filemenu.next -font $buttonFont -bg grey \
+		-text "Next" -width $menuwid -state disabled -command nextFile
+	    button .filemenu.quit -font $buttonFont -bg grey \
+		-text "Quit" -width $menuwid -command exit 
+	    button .filemenu.help -width $menuwid -bg grey \
+		-font $buttonFont -text "Help" \
+		-command { exec bk helptool csettool & }
+	    grid .filemenu.title -sticky nsew
+	    grid .filemenu.prev 
+	    grid .filemenu.next
+	    grid .filemenu.quit
+	    grid .filemenu.help
+
 	label .status -relief sunken -width 20 \
 	    -borderwidth 2 -anchor center -font {clean 12 roman}
 
-	grid .list -row 0 -column 0 -sticky nsew
-	grid .menu -row 0 -column 1 -sticky nsew
-	grid .diffs -row 1 -column 0 -columnspan 2 -sticky nsew
-	grid .status -row 2 -column 0 -sticky ew
-	grid rowconfigure .diffs 1 -weight 1
+	grid .filemenu -row 0 -column 0
+	grid .filelist -row 0 -column 1 -sticky nsew
+	grid .sccslog -row 0 -column 2 -sticky nsew
+	grid .menu -row 0 -column 3
+	grid .diffs -row 1 -column 0 -columnspan 4 -sticky nsew
+	grid .status -row 2 -column 0 -columnspan 4 -sticky ew
 	grid rowconfigure . 0 -weight 0
 	grid rowconfigure . 1 -weight 1
 	grid rowconfigure . 2 -weight 0
-	grid columnconfigure .list 0 -weight 1
+	grid rowconfigure .diffs 1 -weight 1
+	grid columnconfigure . 1 -weight 1
+	grid columnconfigure . 2 -weight 3
+	grid columnconfigure .filelist 0 -weight 1
+	grid columnconfigure .sccslog 0 -weight 1
 	grid columnconfigure .diffs 0 -weight 1
 	grid columnconfigure .diffs 2 -weight 1
-	grid columnconfigure . 0 -weight 1
 
 	# smaller than this doesn't look good.
 	wm minsize . 300 300
@@ -503,7 +578,9 @@ proc widgets {} \
 
 	.diffs.left tag configure diff -background $leftColor
 	.diffs.right tag configure diff -background $rightColor
-	.list.t tag configure select -background yellow -relief groove -borderwid 1
+	.filelist.t tag configure select -background yellow -relief groove -borderwid 1
+	.filelist.t tag configure cset -background #b0b0b0
+	.sccslog.t tag configure cset -background #b0b0b0
 }
 
 # Set up keyboard accelerators.
@@ -537,7 +614,7 @@ proc keyboard_bindings {} \
 	bind all <p>		prev
 	bind all <period>	dot
 
-	bind .list.t <ButtonPress> { pixSelect %x %y }
+	bind .filelist.t <ButtonPress> { pixSelect %x %y }
 }
 
 proc main {} \

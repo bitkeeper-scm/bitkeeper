@@ -1134,7 +1134,7 @@ _commandHelp() {
 		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
 		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
 		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
-		    difftool|merging)
+		    csettool|difftool|merging)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		    *)
@@ -1329,7 +1329,7 @@ shift
 
 # Run our stuff first if we can find it.
 # win32 note: we test for the tcl script first, because it has .tcl suffix
-for w in citool sccstool vitool fm fmtool fm3 fm3tool difftool helptool
+for w in citool sccstool vitool fm fmtool fm3 fm3tool difftool helptool csettool
 do	if [ $cmd = $w ]
 	then
 		# pick up our own wish shell if it exists
