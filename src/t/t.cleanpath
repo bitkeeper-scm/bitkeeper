@@ -14,6 +14,10 @@ echo $N checking "a/./b" ..............................................$NL
 P=`bk _cleanpath a/./b`
 if [ "$P" != "a/b" ]; then echo failed: expect a/b, got $P; exit 1; fi
 echo OK
+echo $N checking "./a/./b" ............................................$NL
+P=`bk _cleanpath ./a/./b`
+if [ "$P" != "a/b" ]; then echo failed: expect a/b, got $P; exit 1; fi
+echo OK
 echo $N checking "a/../b" .............................................$NL
 P=`bk _cleanpath a/../b`
 if [ "$P" != "b" ]; then echo failed: expect b, got $P; exit 1; fi
@@ -53,4 +57,40 @@ echo OK
 echo $N checking "C://a//b" ...........................................$NL
 P=`bk _cleanpath C://a//b`
 if [ "$P" != "C:/a/b" ]; then echo failed: expect /a/b, got $P; exit 1; fi
+echo OK
+echo $N checking "/" ..................................................$NL
+P=`bk _cleanpath /`
+if [ "$P" != "/" ]; then echo failed: expect /, got $P; exit 1; fi
+echo OK
+echo $N checking "/./" ................................................$NL
+P=`bk _cleanpath /./`
+if [ "$P" != "/" ]; then echo failed: expect /, got $P; exit 1; fi
+echo OK
+echo $N checking "//./" ...............................................$NL
+P=`bk _cleanpath //./`
+if [ "$P" != "/" ]; then echo failed: expect /, got $P; exit 1; fi
+echo OK
+echo $N checking "a/b/c/../.." ........................................$NL
+P=`bk _cleanpath a/b/c/../..`
+if [ "$P" != "a" ]; then echo failed: expect a, got $P; exit 1; fi
+echo OK
+echo $N checking "a/b/c/../../" .......................................$NL
+P=`bk _cleanpath a/b/c/../../`
+if [ "$P" != "a" ]; then echo failed: expect a, got $P; exit 1; fi
+echo OK
+echo $N checking "a/b/c/../..//" ......................................$NL
+P=`bk _cleanpath a/b/c/../..//`
+if [ "$P" != "a" ]; then echo failed: expect a, got $P; exit 1; fi
+echo OK
+echo $N checking "a/b//c/../..///" ....................................$NL
+P=`bk _cleanpath a/b//c/../..///`
+if [ "$P" != "a" ]; then echo failed: expect a, got $P; exit 1; fi
+echo OK
+echo $N checking \"..\" ...............................................$NL
+P=`bk _cleanpath ..`
+if [ "$P" != ".." ]; then echo failed: expect .., got $P; exit 1; fi
+echo OK
+echo $N checking \".\" ................................................$NL
+P=`bk _cleanpath .`
+if [ "$P" != "." ]; then echo failed: expect ., got $P; exit 1; fi
 echo OK
