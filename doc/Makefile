@@ -1,3 +1,8 @@
+# bk_refcard.tr needs groff version 1.15 or later, earlier version
+# does not work.  
+
+# For win32, WIN32_GS_PATH should points to the install directory of Ghost Script
+WIN32_GS_PATH=//c/gs/gs7.00
 
 all: bk_refcard.ps bk_refcard.pdf
 
@@ -8,13 +13,11 @@ pdf: bk_refcard.pdf
 bk_refcard.ps: bk_refcard.tr
 	groff -P-g -P-l bk_refcard.tr > bk_refcard.ps
 
-# On win32 we do not have the "ps2pdf" command yet
-# So just fake a pdf file for now
 bk_refcard.pdf: bk_refcard.tr bk_refcard.ps
 	if uname -s | grep -q NT; \
 	then \
-		echo faking a pdf file; \
-		cp /dev/null bk_refcard.pdf; \
+		PATH="${WIN32_GS_PATH}/lib:${WIN32_GS_PATH}/bin" \
+		//c/winnt/system32/cmd /c ps2pdf12.bat bk_refcard.ps; \
 	else \
 		ps2pdf bk_refcard.ps; \
 	fi
