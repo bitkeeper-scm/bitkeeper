@@ -191,10 +191,10 @@ Program:
 	[cset, co, delta, etc.  If you know which caused the problem]
 
 Release:
-	beta10-pre1
+	#BKEXEC# bk version | head -1
 
 OS:
-	[Linux, IRIX, NT, etc]
+	#BKEXEC# uname -a
 
 Synopsis:
 	[one line: i.e., sfiles dumps core when running on CP/M]

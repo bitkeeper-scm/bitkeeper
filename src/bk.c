@@ -58,6 +58,7 @@ int gone_main(int, char **);
 int help_main(int, char **);
 int helpsearch_main(int, char **);
 int helptopics_main(int, char **);
+int idcache_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int keysort_main(int, char **);
@@ -106,6 +107,7 @@ int sfind_main(int, char **);
 int sfio_main(int, char **);
 int sinfo_main(int, char **);
 int status_main(int, char **);
+int sortmerge_main(int, char **);
 int stripdel_main(int, char **);
 int takepatch_main(int, char **);
 int undo_main(int, char **);
@@ -132,6 +134,7 @@ struct command cmdtbl[] = {
 	{"_loggingto", loggingto_main},
 	{"_mail", mail_main},
 	{"_get", get_main},
+	{"_sortmerge", sortmerge_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},
 	{"admin", admin_main},
@@ -169,6 +172,7 @@ struct command cmdtbl[] = {
 	{"helpsearch", helpsearch_main},
 	{"helptopics", helptopics_main},
 	{"info", sinfo_main},
+	{"idcache", idcache_main},
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
 	{"lock", lock_main},

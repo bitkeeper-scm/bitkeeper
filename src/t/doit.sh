@@ -130,6 +130,11 @@ clean_up()
                 exit 11
 	fi
 	rm -rf $BK_REGRESSION
+
+	if [ -d $BK_REGRESSION ];
+	then echo "cleanup: failed to rm $BK_REGRESSION"; exit 1;
+	fi
+
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
 	diff $TMP/T.${USER}-new $TMP/T.${USER}
@@ -139,6 +144,10 @@ init_main_loop()
 {
 	touch $TMP/T.${USER} $TMP/T.${USER}-new
 	if [ -d $BK_REGRESSION ]; then rm -rf $BK_REGRESSION; fi
+
+	if [ -d $BK_REGRESSION ];
+	then echo "failed to rm $BK_REGRESSION"; exit 1;
+	fi
 
 	# XXX: Do we really need this ?
 	if [ -d $BK_REGRESSION/SCCS ]

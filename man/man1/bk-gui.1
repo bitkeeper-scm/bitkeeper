@@ -262,8 +262,18 @@ fm3tool. Default 80
 .B quit
 Key used to exit from the gui tools. Default:\ <Control-q>
 .SS TOOL SPECIFIC VARIABLES
-.if n .TP 2
+.if n .TP 3
 .if t .TP 4
+.B ci.commentsHeight
+height of the comments window.
+.tp
+.B ci.diffHeight
+height of the diffs window (the lower window).
+.tp
+.B ci.display_bytes
+Number of bytes to show in new files in citool. If set to 0, the entire
+file is displayed. Default:\ 8192
+.tp
 .B ci.editHeight
 Height of the popup editor.  Default:\ 30
 .tp
@@ -277,9 +287,8 @@ Color of the exclude icon (X character). Default:\ red
 Editor to use when the Edit button is clicked.  Default:\ ciedit (builtin),
 other option is xterm.
 .tp
-.B ci.display_bytes
-Number of bytes to show in new files in citool. If set to 0, the entire
-file is displayed. Default:\ 8192
+.B ci.filesHeight
+number of files in the top window.
 .tp
 .B cset.listHeight
 Number of lines in the list windows.

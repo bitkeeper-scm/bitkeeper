@@ -47,6 +47,9 @@ proc getConfig {prog} \
 	set _d(ci.excludeColor) red	;# color of the exclude X
 	set _d(ci.editor) ciedit	;# editor: ciedit=builtin, else in xterm
 	set _d(ci.display_bytes) 8192	;# number of bytes to show in new files
+	set _d(ci.filesHeight) 8	;# number of files to show in top win
+	set _d(ci.commentsHeight) 6	;# height of comment window
+	set _d(ci.diffHeight) 30	;# number of lines in the diff window
 
 	set _d(cset.listHeight) 12
 
@@ -74,6 +77,8 @@ proc getConfig {prog} \
 	set _d(hist.textWidth) 92	   ;# width of text windows
 	set _d(hist.textHeight) 30	   ;# height of lower window
 	set _d(hist.showHistory) "1M"	   ;# History to show in graph on start
+
+	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
 
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry

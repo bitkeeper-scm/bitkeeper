@@ -43,6 +43,7 @@ typedef struct {
 	q_item	*last;
 } fifo;
 
+private	jmp_buf	sfind_exit;
 private project *proj;
 private options	opts;
 private globv	ignore; 
@@ -164,6 +165,8 @@ sfind_main(int ac, char **av)
         int     c, i, sfiles_compat = 0; 
 	char	*path, *s, buf[MAXPATH];
 
+	if (setjmp(sfind_exit)) return (1); /* error exit */
+
 	if ((ac > 1) && streq("--help", av[1])) {
 		system("bk help sfiles");
 		return (0);
@@ -227,6 +230,7 @@ usage:				system("bk help -s sfiles");
 	}
 
 	unless (opts.out) opts.out = stdout;
+	fflush(opts.out); /* for win32 */
 	c_count = p_count = d_count = s_count = x_count = 0;
 
 	/*
@@ -709,13 +713,19 @@ print_it(char state[5], char *file, char *rev)
 	if (opts.show_markers) {
 		if (state[CSTATE] == 'j') {
 			assert(streq(state, " j "));
-			fprintf(opts.out, "jjjj ");
+			if (fprintf(opts.out, "jjjj ") != 5) {
+error:				perror("output error");
+				fflush(stderr);
+				longjmp(sfind_exit, 1); /* back to sfind_main */
+			}
 		} else {
-			fprintf(opts.out, "%s ", state);
+			if (fprintf(opts.out, "%s ", state) != 5) {
+				goto error;
+			}
 		}
 	}
 	if (opts.gfile || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
-		fputs(gfile, opts.out);	/* print gfile name */
+		if (fputs(gfile, opts.out) < 0) goto error;
 	} else {
 		sfile = name2sccs(gfile);
 		/*
@@ -723,11 +733,18 @@ print_it(char state[5], char *file, char *rev)
 		 * we should be able to better optimized the sPath() code
 		 * e.g. we could pass project struct into sPath()
 		 */
-		fputs(opts.splitRoot ? sPath(sfile, 0) : sfile, opts.out);
+		if (fputs(opts.splitRoot ?
+				sPath(sfile, 0) : sfile, opts.out) < 0) {
+			goto error;
+		}
 		free(sfile);
 	}
-	if (rev) fprintf(opts.out, "@%s", rev);
-	fputs("\n", opts.out);
+	if (rev) {
+		if (fprintf(opts.out, "@%s", rev) != (strlen(rev) + 1)) {
+			goto error;
+		}
+	}
+	if (fputs("\n", opts.out) < 0) goto error;
 }
 
 private void

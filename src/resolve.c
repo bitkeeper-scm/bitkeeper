@@ -47,11 +47,12 @@ private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
-private void	merge_loggingok(resolve *rs);
+private void	auto_sortmerge(resolve *rs);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj);
+private int	writeCheck(sccs *s, MDBM *db);
 #ifdef WIN32_FILE_SYSTEM
-private MDBM	*localDB;		/* real name cache for local tree */
+private MDBM	*localDB;	/* real name cache for local tree */
 private MDBM	*resyncDB;	/* real name cache for resyn tree */
 #endif
 
@@ -1463,7 +1464,7 @@ pass3_resolve(opts *opts)
 	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	FILE	*p;
 	int	n = 0;
-	int	mustCommit, pc, pe;
+	int	isLoggingRepository = 0, mustCommit, pc, pe;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -1562,10 +1563,15 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		resolve	*rs;
 		
 		s = sccs_init(s_cset, INIT, opts->resync_proj);
-		rs = resolve_init(opts, s);
-		edit(rs);
-		unlink(sccs_Xfile(s, 'r'));
-		resolve_free(rs);
+		if (s->state & S_LOGS_ONLY) {
+			isLoggingRepository  = 1;
+			sccs_free(s);
+		} else {
+			rs = resolve_init(opts, s);
+			edit(rs);
+			unlink(sccs_Xfile(s, 'r'));
+			resolve_free(rs);
+		}
 	} else if (exists("SCCS/p.ChangeSet")) {
 		/*
 		 * The only way I can think of this happening is if we are
@@ -1594,6 +1600,12 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		unlink(buf);
 	}
 	pclose(p);
+
+	/*
+	 * For logging repository, do not commit merge node
+	 */ 
+	if (isLoggingRepository) return (0);
+
 
 	/*
 	 * If there is nothing to do, bail out.
@@ -1724,6 +1736,17 @@ conflict(opts *opts, char *sfile)
 	deltas	d;
 	
 	s = sccs_init(sfile, INIT, opts->resync_proj);
+
+	/*
+	 * If we are in a logging repository
+	 * do not try to resolve conflict
+	 * i.e we allow open branch
+	 */
+	if (s->state & S_LOGS_ONLY) {
+		sccs_free(s);
+		return;
+	}
+
 	rs = resolve_init(opts, s);
 	assert(streq(rs->dname, s->sfile));
 
@@ -1815,7 +1838,7 @@ err:		resolve_free(rs);
 	}
 
 	if (streq(LOGGING_OK, rs->s->sfile)) {
-		merge_loggingok(rs);
+		auto_sortmerge(rs);
 		resolve_free(rs);
 		return;
 	}
@@ -1837,6 +1860,7 @@ get_revs(resolve *rs, names *n)
 		fprintf(stderr, "Unable to get %s\n", n->local);
 		return (-1);
 	}
+
 	if (sccs_get(rs->s, rs->revs->gca, 0, 0, 0, flags, n->gca)) {
 		fprintf(stderr, "Unable to get %s\n", n->gca);
 		return (-1);
@@ -1847,6 +1871,7 @@ get_revs(resolve *rs, names *n)
 	}
 	return (0);
 }
+
 
 /*
  * Try to automerge.
@@ -1938,44 +1963,17 @@ automerge(resolve *rs, names *n)
 }
 
 /*
- * Merge the logging_ok files, we just union the data.
+ * Sort merge two files, i.e we just union the data.
  */
 private void
-merge_loggingok(resolve *rs)
+auto_sortmerge(resolve *rs)
 {
-	char	left[MAXPATH];
-	char	right[MAXPATH];
-	char	cmd[MAXPATH*3];
+	char *tmp;
 
-	/*
-	 * save the contents before we start moving stuff around.
-	 */
-	gettemp(left, "left");
-	gettemp(right, "right");
-	sprintf(cmd, "bk _get -qp %s/%s > %s", RESYNC2ROOT, GLOGGING_OK, left);
-	if (sys(cmd, rs->opts) ||
-	    sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
-		fprintf(stderr, "get failed, can't merge.\n");
-err:		unlink(left);
-		unlink(right);
-		rs->opts->errors = 1;
-		return;
-	}
-	if (edit(rs)) goto err;
-	sprintf(cmd, "cat %s %s | sort -u > %s", left, right, GLOGGING_OK);
-	if (sys(cmd, rs->opts)) {
-		perror(cmd);
-		goto err;
-	}
-	unlink(left);
-	unlink(right);
-	sccs_close(rs->s); /* for win32 */
-	sprintf(cmd, "bk delta -Py'Auto merged' %s %s",
-	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
-	if (sys(cmd, rs->opts)) {
-		perror(cmd);
-		goto err;
-	}
+	tmp = rs->opts->mergeprog; 	/* save */
+	rs->opts->mergeprog = "_sortmerge";
+	automerge(rs, 0);
+	rs->opts->mergeprog = tmp;	/* restore */
 }
 
 /*

@@ -39,6 +39,7 @@ private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, delta *d, char *who);
 private delta*	csetFileArg(delta *d, char *name);
+private delta*	dtflagsArg(delta *, char *arg);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	randomArg(delta *d, char *arg);
@@ -67,6 +68,8 @@ private int	fprintDelta(FILE *,
 private	void	fitCounters(char *buf, int a, int d, int s);
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
+private u32	dt2dflags(u32 dt);
+private u32	dflags2dt(u32 dflags);
 private u32	state2xflags(u32 state);
 private u32	xflags2state(u32 xflags);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
@@ -2804,6 +2807,15 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'C':
 		d->flags |= D_CSET;
 		break;
+	    case 'E':
+		if ((buf[3] == ' ') && (buf[4] == 'd') && (buf[5] == ' ')) {
+			dtflagsArg(d, &buf[6]);
+		} else {
+			fprintf(stderr,
+			    "unknown entry <%s>, forcing read only\n", buf);
+			s->state |= S_READ_ONLY;
+		}
+		break;
 	    case 'K':
 		sumArg(d, &buf[3]);
 		break;
@@ -3177,6 +3189,7 @@ misc(sccs *s)
 
 			if (bits & X_BITKEEPER) s->state |= S_BITKEEPER;
 			if (bits & X_CSETMARKED) s->state |= S_CSETMARKED;
+			if (bits & X_LOGS_ONLY) s->state |= S_LOGS_ONLY;
 			s->state |= xflags2state(bits);
 			continue;
 		} else if (strneq(buf, "\001f &", 4) ||
@@ -3722,9 +3735,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	s->proj = proj ? proj : proj_init(s);
 	t = strrchr(s->sfile, '/');
 	if (t && streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
-	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
-		s->state |= S_NOSCCSDIR;
-	}
 	if (flags & INIT_NOSTAT) {
 		if ((flags & INIT_HASgFILE) && check_gfile(s, flags)) return 0;
 	} else {
@@ -6855,6 +6865,15 @@ delta_table(sccs *s, FILE *out, int willfix)
 		if (d->flags & D_CSET) {
 			fputmeta(s, "\001cC\n", out);
 		}
+		/*
+		 * Output the per delta flags
+		 */
+		bits = 0;
+		bits |= dflags2dt(d->flags & D_DT_ALL);
+		if (bits) {
+			sprintf(buf, "\001cE d 0x%x\n", bits);
+			fputmeta(s, buf, out);
+		}
 		if (d->dateFudge) {
 			p = fmts(buf, "\001cF");
 			p = fmttt(p, d->dateFudge);
@@ -7003,12 +7022,12 @@ delta_table(sccs *s, FILE *out, int willfix)
 	*p++ = '\n';
 	*p   = '\0';
 	fputmeta(s, buf, out);
+	bits = 0;
 	if (s->state & S_BITKEEPER) bits |= X_BITKEEPER;
 	if (s->state & S_CSETMARKED) bits |= X_CSETMARKED;
+	if (s->state & S_LOGS_ONLY) bits |= X_LOGS_ONLY;
 	bits |= state2xflags(s->state);
 	if (bits) {
-		char	buf[40];
-
 		sprintf(buf, "\001f x 0x%x\n", bits);
 		fputmeta(s, buf, out);
 	}
@@ -8111,7 +8130,7 @@ checkin(sccs *s,
 	admin	l[2];
 	int	no_lf = 0;
 	int	error = 0;
-	int	user_file = 1;
+	int	bk_etc = 0;
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -8146,18 +8165,28 @@ checkin(sccs *s,
 	 * Disallow '@' character in file name.
 	 */
 	t = basenm(s->sfile);
-	if (strchr(t, ':') || strchr(t, '@')) {
+	if (strchr(t, BK_FS)) {
 		fprintf(stderr,
-			"delta: %s: filename must not contain \":/@\"\n" , t);
+			"delta: %s: filename must not contain \"%c\"\n",
+			t, BK_FS);
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	/*
-	 * XXX - this is bad we should use the x.file
-	 */
-	sfile = fopen(s->sfile, "wb"); /* open in binary mode */
+
+	buf[0] = 0;
+	t = relativeName(s, 0, 0);
+	if ((s->state & S_CSET) || (t && !IsFullPath(t))) {
+		s->state |= S_BITKEEPER|S_CSETMARKED;
+		if ((strlen(t) > 14) &&
+		    strneq("BitKeeper/etc/", t, 14)) {
+			bk_etc = 1;
+		}
+	}
+	if (t) strcpy(buf, t); /* pathname, we need this below */
+
+	sfile = fopen(sccsXfile(s, 'x'), "wb");
 	/*
 	 * Do a 1.0 delta unless
 	 * a) there is a init file (nodefault), or
@@ -8169,7 +8198,6 @@ checkin(sccs *s,
 		first = n = prefilled ? prefilled : calloc(1, sizeof(*n));
 	} else {
 		first = n0 = calloc(1, sizeof(*n0));
-		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		/*
 		 * We don't do modes here.  The modes should be part of the
 		 * per LOD state, so each new LOD starting from 1.0 should
@@ -8183,9 +8211,63 @@ checkin(sccs *s,
 		n0->serial = s->nextserial++;
 		n0->next = 0;
 		s->table = n0;
-		n0->flags |= D_CKSUM;
-		n0->sum = (unsigned short) almostUnique(1);
-		dinsert(s, flags, n0, !(flags & DELTA_PATCH));
+		if (buf[0]) pathArg(n0, buf); /* pathname */
+
+		if (bk_etc && !(flags&DELTA_PATCH)) {
+			sccs *sc;
+			delta *cset_root, *d_tmp;
+			char tmp[MAXPATH];
+			char *root = sccs_root(s);
+
+			/*
+			 * File under BitKeeper/etc are special
+			 * It's root key is computed relative to
+			 * Changeset root key;
+			 * If a file of the same name is created
+			 * indendently in two related repositories, they
+			 * will have the same root key.
+			 */
+			sprintf(tmp, "%s/%s", root, CHANGESET);
+			free(root);
+			sc = sccs_init(tmp, INIT_SAVEPROJ, s->proj);
+			assert(sc);
+			cset_root = findrev(sc, "1.0");
+			assert(cset_root);
+			n0->user = strdup(cset_root->user);
+			n0->hostname = strdup(cset_root->hostname);
+			n0->sdate = strdup(cset_root->sdate);
+			n0->zone = strdup(cset_root->zone);
+			n0->random = strdup(cset_root->random);
+			n0->flags |= D_CKSUM;
+			n0->sum = cset_root->sum;
+			n0->date = cset_root->date;
+			n0->dateFudge = cset_root->dateFudge;
+			n0 = sccs_dInit(n0, 'D', s, 0);
+			sccs_free(sc);
+
+			/*
+			 * Check the ChangeSet database
+			 * to make sure the file is not already created
+			 * and used in a ChangeSet
+			 */
+			sccs_sdelta(s, n0, buf);
+			sprintf(tmp, "bk -R grep \"^%s \" %s > %s",
+						   buf, CHANGESET, DEV_NULL);
+			if (system(tmp) == 0) {
+				fprintf(stderr, 
+					"delta: %s: key allready used"
+					" in ChangeSet file\n", s->sfile);
+				s->state |= S_WARNED;
+				goto abort;
+			}
+			dinsert(s, flags, n0, 0);
+		} else {
+			n0 = sccs_dInit(n0, 'D', s, nodefault);
+			n0->flags |= D_CKSUM;
+			n0->sum = (unsigned short) almostUnique(1);
+			dinsert(s, flags, n0, !(flags & DELTA_PATCH));
+		}
+
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
 		n->next = n0;
@@ -8198,29 +8280,6 @@ checkin(sccs *s,
 	updMode(s, n, 0);
 	if (!n->rev) n->rev = n0 ? strdup("1.1") : strdup("1.0");
 	explode_rev(n);
-	/*
-	 * determine state to set BITKEEPER flag before dinsert
-	 * XXX: don't understand why, cloned old logic because
-	 * I needed to move part of the logic after dinsert
-	 */
-	unless (s->state & S_NOSCCSDIR) {
-		t = 0;
-		unless (s->state & S_CSET) {
-			t = relativeName(s, 0, 0);
-			assert(t);
-		}
-		if (s->state & S_CSET || (t && !IsFullPath(t))) {
-			s->state |= S_BITKEEPER|S_CSETMARKED;
-			first->flags |= D_CKSUM;
-		} else {
-			if (s->proj && s->proj->root) {
-				unless (first->csetFile) {
-					first->csetFile = getCSetFile(s);
-				}
-				s->state |= S_BITKEEPER|S_CSETMARKED;
-			}
-		}
-	}
 	if (nodefault) {
 		if (prefilled) s->state |= xflags2state(prefilled->xflags);
 	} else {
@@ -8252,15 +8311,22 @@ checkin(sccs *s,
 	unless (nodefault || (flags & DELTA_PATCH)) {
 		delta	*d = n0 ? n0 : n;
 
-		randomBits(buf);
-		if (buf[0]) d->random = strdup(buf);
+		unless (d->random) {
+			randomBits(buf);
+			if (buf[0]) d->random = strdup(buf);
+		}
+
 		unless (hasComments(d)) {
 			sprintf(buf, "BitKeeper file %s",
 			    fullname(s->gfile, 0));
 			d->comments = addLine(d->comments, strdup(buf));
 		}
 	}
-	unless (s->state & S_NOSCCSDIR) {
+	if (s->state & S_BITKEEPER) {
+		MDBM	*m;
+		delta	*d;
+		char	*user, *host, *always_edit;
+
 		if (s->state & S_CSET) {
 			unless (first->csetFile) {
 				first->sum = (unsigned short) almostUnique(1);
@@ -8269,31 +8335,17 @@ checkin(sccs *s,
 				first->csetFile = strdup(buf);
 			}
 			first->flags |= D_CKSUM;
-			user_file = 0;
 		} else {
-			t = relativeName(s, 0, 0);
-			assert(t);
-			if (t[0] != '/') {
-				unless (first->csetFile) {
-					first->csetFile = getCSetFile(s);
-				}
-				if ((strlen(t) > 10) &&
-				    strneq("BitKeeper/", t, 10)) {
-					user_file = 0;
-				}
+			unless (first->csetFile) {
+				first->csetFile = getCSetFile(s);
 			}
 		}
-	}
-	if (s->state & S_BITKEEPER) {
-		MDBM	*m;
-		delta	*d;
-		char	*user, *host, *always_edit;
 
 		unless (s->proj && s->proj->root) goto no_config;
 		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
 		user = mdbm_fetch_str(m, "single_user");
 		host = mdbm_fetch_str(m, "single_host");
-		unless (user && host) goto multi_user;
+		unless (user && host) goto no_config;
 		d = s->tree;
 		free(d->user);
 		d->user = strdup(user);
@@ -8313,7 +8365,7 @@ checkin(sccs *s,
 		s->state |= S_SINGLE;
 		first->xflags |= X_SINGLE;
 
-multi_user:	mdbm_close(m);
+		mdbm_close(m);
 	}
 
 no_config:
@@ -8387,14 +8439,27 @@ no_config:
 		if (popened) pclose(gfile); else fclose(gfile);
 	}
 	if (error) {
-abort:		fclose(sfile);
-		unlink(s->sfile);
+abort:		if (sfile) fclose(sfile);
 		sccs_unlock(s, 'z');
 		return (-1);
 	}
+	t = sccsXfile(s, 'x');
+	if (fclose(sfile)) {
+		fprintf(stderr, "checkin: i/o error\n");
+		perror(t);
+		sfile = 0;
+		goto abort;
+	}
+	sfile = 0;
+	if (rename(t, s->sfile)) {
+		fprintf(stderr,
+			 "checkin: can't rename(%s, %s) left in %s\n",
+			t, s->sfile, t);
+		goto abort;
+	}
+	assert(size(s->sfile) > 0);
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	Chmod(s->sfile, 0444);
-	fclose(sfile);
 	if (s->state & S_BITKEEPER) updatePending(s);
 	sccs_unlock(s, 'z');
 	return (0);
@@ -8500,6 +8565,11 @@ checkOpenBranch(sccs *s)
 	int	error =0, tips = 0;
 	u8	*lodmap = 0;
 	ser_t	next;
+
+	/*
+	 * Allows open branch for logging repository
+	 */
+	if (s->state & S_LOGS_ONLY) return (0);
 
 	next = sccs_nextlod(s);
 	/* next now equals one more than greatest that exists
@@ -8940,6 +9010,21 @@ pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
 
 private delta *
 randomArg(delta *d, char *arg) { ARG(random, 0, 0); }
+
+private delta *
+dtflagsArg(delta *d, char *arg)
+{
+	int	bits = 0;
+
+	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	if ((arg[0] == '0') && (arg[1] == 'x')) {
+		bits = strtol(&arg[2], 0, 16);
+	} else {
+		bits = atoi(arg);
+	}
+	d->flags |= dt2dflags(bits);
+	return (d);
+}
 
 /*
  * Handle either 0664 style or -rw-rw-r-- style.
@@ -9391,6 +9476,28 @@ addMode(char *me, sccs *sc, delta *n, char *mode)
 	sprintf(buf, "Change mode to %s", newmode);
 	n->comments = addLine(n->comments, strdup(buf));
 	n = modeArg(n, newmode);
+}
+
+private u32
+dt2dflags(u32 dt_flags)
+{
+	u32 dflags = 0;
+
+	if (dt_flags & DT_PLACEHOLDER) dflags |= D_PLACEHOLDER;
+	if (dt_flags & DT_NO_TRANSMIT) dflags |= D_NO_TRANSMIT;
+
+	return dflags;
+}
+
+private u32
+dflags2dt(u32 dflags)
+{
+	u32 dt = 0;
+
+	if (dflags & D_PLACEHOLDER) dt |= DT_PLACEHOLDER;
+	if (dflags & D_NO_TRANSMIT) dt |= DT_NO_TRANSMIT;
+
+	return dt;
 }
 
 private u32
@@ -10345,6 +10452,17 @@ skip:
 			d->comments = addLine(d->comments, strdup(p));
 		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
+	if (WANT('E')) {
+		if ((buf[1] == ' ') && (buf[2] == 'd') && (buf[3] == ' ')) {
+			d = dtflagsArg(d, &buf[4]);
+			unless (buf = mkline(mnext(f))) goto out; lines++;
+		} else {
+			fprintf(stderr, "%s: Bad E line: %s\n", sc->sfile, buf);
+			sc->state |= S_WARNED;
+			error++;
+		}
 	}
 
 	/* date fudges are optional */
@@ -13030,6 +13148,14 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	EACH(start->comments) {
 		assert(start->comments[i][0] != '\001');
 		fprintf(out, "c %s\n", start->comments[i]);
+	}
+	/*
+	 * For now, we only print the E line for logging patch
+	 * This may change when we start using other DT flags
+	 * such as DT_NO_TRANSMIT
+	 */
+	if (flags&PRS_PLACEHOLDER) {
+		fprintf(out, "E d 0x%x\n", DT_PLACEHOLDER);
 	}
 	if (start->dateFudge) fprintf(out, "F %d\n", (int)start->dateFudge);
 	EACH(start->include) {

@@ -41,3 +41,27 @@ merge_main(int ac, char **av)
 	return (rc);
 }
 
+
+/* usage bk sortmerge L G R M */
+int
+sortmerge_main(int ac, char **av)
+{
+	char	cmd[(MAXPATH * 3) + 20];
+
+	//XXX FIXME update man page
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help sortmerge");
+		return (0);
+	}
+
+	if (ac != 5) {
+		system("bk help -s sortmerge");
+		return (1);
+	}
+
+	/* GCA is ignored */
+	sprintf(cmd, "cat %s %s | sort -u > %s", av[1], av[3], av[4]);
+	unless (system(cmd)) return (0); /* ok */
+	return (2); /* error */
+}
+
