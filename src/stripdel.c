@@ -111,7 +111,7 @@ doit(sccs *s, s_opts opts)
 	}
 
 	if (HAS_PFILE(s)) {
-		if (sccs_clean(s, SILENT)) {
+		if (!HAS_GFILE(s) || sccs_clean(s, SILENT)) {
 			fprintf(stderr, 
 			    "stripdel: can't strip an edited file.\n");
 			return (1);
