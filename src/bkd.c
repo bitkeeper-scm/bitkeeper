@@ -98,6 +98,7 @@ bkd_main(int ac, char **av)
 	}
 	core();
 	putenv("PAGER=cat");
+	putenv("_BK_IN_BKD=1");
 	if (Opts.daemon) {
 		if (tcp_pair(licenseServer) == 0) {
 			bkd_server(ac, av);

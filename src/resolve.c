@@ -119,12 +119,13 @@ resolve_main(int ac, char **av)
 		bk_proj = proj_init(0);
 	}
 
-	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
+	if (opts.pass3 && !opts.textOnly && !gui_haveDisplay()) {
 		opts.textOnly = 1; 
 	}
-	if (opts.pass3 && !opts.textOnly && !opts.quiet && hasGUIsupport()) {
+	if (opts.pass3 &&
+	    !opts.textOnly && !opts.quiet && !win32() && gui_haveDisplay()) {
 		fprintf(stderr,
-		    "Using %s as graphical display\n", GUI_display());
+		    "Using %s as graphical display\n", gui_displayName());
 	}
 
 	if (opts.automerge) {

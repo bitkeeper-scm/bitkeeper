@@ -27,6 +27,7 @@ proc bk_init {} \
 	set file_stop {(.*)@([0-9.]+$)}
 	set file_rev {(.*)@([0-9].*)}
 	set env(BK_GUI) "YES"
+	catch { unset env(BK_NO_GUI_PROMPT) }
 
 	# turn off pager in bk commands
 	set env(PAGER) "cat"

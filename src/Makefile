@@ -238,7 +238,7 @@ clean-gcov: FORCE
 	-@rm -f *.bb *.bbg *.da *.gcov
 
 clean-bin: FORCE
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR)
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) bk.ico bk16.ico
 	-@cd ../doc && $(MAKE) clean-obj
 	-@cd ../man && $(MAKE) clean
 	-@cd gnu && $(MAKE) clean 

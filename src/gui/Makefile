@@ -115,7 +115,7 @@ fm3tool: $(COMMON) appState.tcl fm3tool.tcl
 helptool: $(COMMON) appState.tcl helptool.tcl
 	(echo 'wm withdraw .' ; cat $^) | $(TCLWRAP) > $(LIBDIR)/helptool
 
-msgtool: msgtool.tcl
+msgtool: common.tcl msgtool.tcl
 	(echo "wm withdraw ."; cat $^) | $(TCLWRAP) > $(LIBDIR)/msgtool
 
 renametool: $(COMMON) appState.tcl renametool.tcl
