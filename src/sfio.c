@@ -528,7 +528,23 @@ mkfile(char *file)
 	int	first = 1;
 
 	if (access(file, F_OK) == 0) {
-		fprintf(stderr, "%s exists\n", file);
+		char	realname[MAXPATH];
+
+		getRealName(file, NULL, realname);
+		unless (streq(file, realname)) {
+			fprintf(stderr,
+"\n"
+"==========================================================================\n"
+"Sfio has detected a name conflict between \"%s\" and \"%s\";\n"
+"This usually happen when you transfer file from a case-sensitive file\n"
+"system (e.g. Unix) to a case insensitive file system (e.g FAT, NTFS)\n"
+"Please rename one of the file and retry (see also \"bk helptool mv\")\n"
+"==========================================================================\n",
+			file, realname);
+		  
+		} else { 
+			fprintf(stderr, "%s already exists\n", file);
+		}
 		return (-1);
 	}
 again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
