@@ -1,87 +1,53 @@
 # %W% %K% 
 # This script expects a complete installation in pwd.
 #
-# supported options:
-#   -g    run in graphical mode (default if windows or DISPLAY is non-null)
-#   -i	  run interactively (not yet implemented)
-#   -f    force (ie: install to named directory)
-#   -u	  update (ie: install over existing installation)
-#
 
 catch {wm withdraw .}
 
-if {$tcl_platform(platform) == "windows"} {
-	bind . <F12> {console show}
-}
-
 proc main {} \
 {
-	global	argv env options installer tcl_platform
+	global	argv env options installer tcl_platform runtime
 
 	initGlobals
 
-	array set options {-g 0 -i 0 -f 0}
-	while {[string match -* [lindex $argv 0]]} {
-		set opt [lindex $argv 0]
-		set argv [lrange $argv 1 end]
-		set options($opt) 1
-		switch -exact -- $opt {
-			-u {set mode "update"}
-			-g {set mode "graphical"}
-			-i {set mode "interactive"}
-			-f {set mode "force"}
-			default {
-				puts stderr "unknown option \"$opt\""
-				usage
-				exit 1
-			}
-		}
-	}
-
-	if {[llength $argv] > 0} {
+	if {[llength $argv] == 1} {
 		set runtime(destination) [lindex $argv 0]
+	} elseif {[llength $argv] > 1} {
+		usage
+		exit 1
 	}
 
-	if {![info exists mode]} {
-		if {$tcl_platform(platform) == "windows"} {
-			set mode "graphical"
-		} elseif {[info exists env(DISPLAY)] && $env(DISPLAY) != ""} {
-			set mode "graphical"
-		} elseif {$runtime(destination) != ""} {
-			set mode "force"
-		} else {
-			set mode "interactive"
-		}
-	}
+	widgets
+	centerWindow . 500 350
+	. configure -step Welcome
+	. show
+	wm deiconify .
 
-	# FIXME: need to remove this to enable other command line options
-	set mode graphical
+	# ::done is set by the wizard code when the user presses
+	# done or cancel...
+	vwait ::done
+	exit $::done
 
-	# the various worker procs are responsible for exiting with an
-	# appropriate error code if there is a problem. If the proc 
-	# returns, installation was successful
-	switch -exact -- $mode {
-		update		{install.update}
-		graphical	{install.graphical}
-		force		{install.force}
-		interactive	{install.interactive}
-	}
-	exit 0
 }
 
-proc initGlobals {} {
+proc initGlobals {} \
+{
 	global runtime tcl_platform
 
 	set runtime(tmpdir) [pwd]
 	set runtime(destination) ""
 	if {$tcl_platform(platform) == "windows"} {
 		set runtime(places) \
-		    [list [file nativename {C:/Program Files}]]
+		    [list [normalize {C:/Program Files/BitKeeper}]]
 		set runtime(symlinkDir) ""
 		set id "./gnu/id"
 	} else {
 		set runtime(symlinkDir) "/usr/bin"
-		set runtime(places) [list /usr/libexec /opt /usr/local]
+		set runtime(places) {
+			/usr/libexec/bitkeeper 
+			/opt/bitkeeper 
+			/usr/local/bitkeeper
+		}
 		set id "id"
 	}
 	if {[catch {exec $id -un} ::runtime(user)]} {
@@ -91,192 +57,77 @@ proc initGlobals {} {
 	if {![string equal $::runtime(user) "root"]} {
 		set home [homedir]
 		if {[file exists [file join $home bin]]} {
-			lappend ::runtime(places) [file join $home bin]
+			lappend ::runtime(places) \
+			    [normalize [file join $home bin]]
 		} elseif {[file exists $home]} {
-			lappend ::runtime(places) $home
+			lappend ::runtime(places) \
+			    [normalize [file join $home bitkeeper]]
 		}
 	}
 
-	# see if bk is already installed; if so, make that the default
-	# destination (ie: the first item in the "places" variable)
-	cd /
-	if {![catch {exec bk bin} result]} {
-		set dir [file dirname $result]
-		set i [lsearch -exact $runtime(places) $dir] 
+	set oldinstall [findOldInstall]
+	if {$oldinstall ne ""} {
+		set i [lsearch -exact $runtime(places) $oldinstall]
 		if {$i == -1} {
-			set ::runtime(places) \
-			    [linsert $runtime(places) 0 $dir]
+			set runtime(places) \
+			    [linsert $runtime(places) 0 $oldinstall]
+			set i 0
 		}
-		set runtime(destination) $dir
 	} else {
-		set runtime(destination) [lindex $::runtime(places) 0]
+		set i 0
 	}
-
-}
-
-proc install.update {} {
-	global options
-
-	cd /
-	if {[catch {exec bk bin} result]} {
-		# crud.
-		puts stderr "cannot find existing installation"
-	}
-	set dir $result
-
-	# bk bin will return where the bk executable is; we want to install
-	# in the parent of that directory
-	set dir [file normalize [file dirname $dir]]
-	if {$options(-f)} {
-		install $dir
-	} else {
-		puts -nonewline "Overwrite installation in $dir? \[yes/no] "
-		flush stdout
-		gets stdin response 
-		set response [string tolower [string trim $response]]
-		if {$response == "yes"} {
-			install $dir
-		}
-	}
-}
-
-proc install.force {dir} {
-	global runtime
-	if {$dir == ""} {
-		usage
-		exit 1
-	}
-	set runtime(destination) $dir
-	install
-}
-
-proc install.graphical {} {
-	global errorCode
-
-	widgets
-	centerWindow . 500 350
-	. configure -step Welcome
-	. show
-	wm deiconify .
-
-	vwait ::done
-	exit $::done
+	set ::runtime(destination) [lindex $runtime(places) $i]
 
 }
 
 # this is where the actual install takes place
-proc install {} {
+proc install {} \
+{
 	global message tcl_platform runtime
 
-	set bkdir [file join $runtime(destination) bitkeeper]
 	set installfrom [pwd]
 
-	log "Here we go! (the next few lines are purely for debugging...\n"
-	log "installing from $runtime(tmpdir)\n"
-	log "installing to $runtime(destination)\n"
-	log "pwd: [pwd]\n"
-	log "*******"
+	log "installing..."
+	set err [catch {
+		doCommand bk install -f $runtime(destination)
+	} result]
 
-	# checkDestination will cause the pwd to be set to $dir,
-	# or will exit the installer with an appropriate error message
-	checkDestination $runtime(destination)
-
-	# the assumption is, this code will only be executed when the
-	# directory already exists and the user confirms that they want
-	# the directory overwritten
-	if {[llength [glob -nocomplain $bkdir/*]] > 0} {
-		log "Deleting existing installation..."
-		doCommand rmOldInstall $bkdir
-	}
-
-	if {![file exists $bkdir]} {
-		log "Making directory $bkdir..."
-		doCommand file mkdir $bkdir
-	}
-
-
-	doCommand -noreporting cd $runtime(destination)
-
-	log "moving files.."
-	doCommand exec mv $runtime(tmpdir)/bitkeeper $runtime(destination)
-
-	log "Adjusting permissions..."
-	doCommand exec find bitkeeper/. -print | xargs chmod a-w
-
-	log "There's more to do (links, ferinstance) that I'm not doing yet"
-	set bk [file normalize [file join . bitkeeper bk]]
-	if {[catch {exec $bk getuser} result]} {
-		log "Can't determine current user: $result\n" error
-		return -code error $user
+	if {$err == 0} {
+		set newbk [file join $runtime(destination) bk]
+		set version [doCommand -nolog $newbk version]
+		set m [string trim $::strings(InstallComplete)]
+		set m [string map [list %v $version] $m]
+		log "\n$m\n"
 	} else {
-		set user $result
-	}
-
-}
-
-proc moveFiles {} {
-	global runtime
-}
-
-
-proc setPath {} {
-	global env tcl_platform
-
-	if {$tcl_platform(platform) == "windows"} {
-		set gnu [file normalize [file join [pwd] gnu]]
-		set here [file normalize [pwd]]
-		set env(PATH) "$here;$gnu;$env(PATH)"
-	} else {
-		set env(PATH) "[pwd];$env(PATH)"
-	}
-
-}
-
-proc rmOldInstall {dir} {
-	foreach file [exec find bitkeeper -type f] {
-		file delete -force $file
-	}
-	foreach file [exec find bitkeeper -type d] {
-		if {$file == "." || $file == ".."} continue
-		file delete -force $file
+		log $result error
 	}
 }
 
-proc checkDestination {dir} \
+proc findOldInstall {} \
 {
-	global message
 
-	if {![file exists $dir]} {
-		if {[catch {file mkdir $dir} result]} {
-			puts stderr $result
-			exit 1
-		}
+	global env
+	set oldinstall ""
+	set PATH $env(PATH)
+	set env(PATH) $env(BK_OLDPATH)
+	set pwd [pwd] ;# too bad tcl's cd doesn't have a "cd -" equivalent
+	cd /
+	if {![catch {exec bk bin} result]} {
+		set oldinstall [normalize $result]
 	}
+	cd $pwd
+	set env(PATH) $PATH
+	return $oldinstall
+}
 
-	if {![file writable $dir]} {
-		set f [file nativename $dir]
-		puts stderr [format $message(NO_WRITE_PERM) $f]
-		exit 1
-	}
-
-	if {[catch {cd $dir} result]} {
-		puts stderr [format $message(CANT_CD) $f]
-		exit 1
-	}
-
-}    
-
-# exec a command and exit the installer if it fails
-proc doOrDie {args} {
-	set command [linsert $args 0 exec]
-	if {[catch $command result]} {
-		if {[llength [info commands "."]] == 1} {
-			tk_messageBox -message "unexpected error: $result"
-		} else {
-			puts stderr $result
-		}
-		exit 1
-	}
+# normalize is required to convert relative paths to absolute and
+# to convert short names (eg: c:/progra~1) into long names (eg:
+# c:/Program Files). nativename is required to give the actual,
+# honest-to-goodness filename (read: backslashes instead of forward
+# slashes on windows)
+proc normalize {dir} \
+{
+	return [file nativename [file normalize $dir]]
 }
 
 proc homedir {} \
@@ -284,7 +135,7 @@ proc homedir {} \
 	if {[info exists ::env(HOME)]} {
 		return $::env(HOME)
 	} else {
-		return [file normalize ~]
+		return [normalize ~]
 	}
 }
 
@@ -310,6 +161,8 @@ proc widgets {} \
 	. add step Welcome \
 	    -title "Welcome" \
 	    -body {
+		    global tcl_platform
+
 		    # this needs to be dynamic since part of the string
 		    # depends on a variable
 		    set map [list \
@@ -317,20 +170,22 @@ proc widgets {} \
 				 %B $::runtime(symlinkDir)\
 				]
 
-		    set d [string map $map $::strings(Welcome)]
+		    set p $tcl_platform(platform)
+		    set d [string map $map $::strings(Welcome.$p)]
 		    $this stepconfigure Welcome -description [unwrap $d]
 	    }
 
 	#-----------------------------------------------------------------------
-	. add step PickPlace \
-	    -title "Install Directory" \
-	    -description [unwrap $::strings(PickPlace)]
+	. add step PickPlace -title "Install Directory" 
 
 	. stepconfigure PickPlace -body {
-		global widgets
+		global widgets tcl_platform
 
 		set w [$this info workarea]
 
+		set p $tcl_platform(platform)
+		$this stepconfigure PickPlace \
+		    -description [unwrap $::strings(PickPlace.$p)]
 		if {![info exists ::runtime(destinationRB)]} {
 			set ::runtime(destinationRB) $::runtime(destination)
 		}
@@ -355,6 +210,7 @@ proc widgets {} \
 			if {$dir == ""} {
 				set label "Other..."
 			} else {
+				set dir [normalize $dir]
 				set label $dir
 			}
 
@@ -364,10 +220,16 @@ proc widgets {} \
 			    -borderwidth 1 \
 			    -highlightthickness 0 \
 			    -variable ::runtime(destinationRB) \
-			    -selectcolor #00008b \
 			    -value $dir \
 			    -padx 0 \
 			    -command [list setDestination $dir]
+
+			if {$tcl_platform(platform) == "unix"} {
+				# this gives the radiobuttons a nice
+				# "bk blue" color. Unfortunately, this
+				# option behaves differently on windows...
+				$w.rb-$row configure -selectcolor #00008b
+			}
 
 			grid $w.rb-$row -row $row -column 0 \
 			    -sticky ew -padx 0 -ipadx 0 -columnspan 2
@@ -441,7 +303,7 @@ proc widgets {} \
 	    -title "Existing Installation" \
 	    -body {
 		    set w [$this info workarea]
-		    set bk [file join $::runtime(destination)/bitkeeper/bk]
+		    set bk [file join $::runtime(destination)/bk]
 		    set map [list \
 				 %D $::runtime(destination) \
 				 %B $::runtime(symlinkDir)\
@@ -461,7 +323,6 @@ proc widgets {} \
 		    checkbutton $w.overwrite \
 			-anchor w \
 			-text "Yes, remove the existing installation" \
-			-selectcolor #00008b \
 			-borderwidth 1 \
 			-variable ::runtime(overwriteCheckbutton) \
 			-onvalue 1 \
@@ -474,6 +335,13 @@ proc widgets {} \
 				}
 			}
 
+		    if {$tcl_platform(platform) == "unix"} {
+			    # this gives the radiobuttons a nice
+			    # "bk blue" color. Unfortunately, this
+			    # option behaves differently on windows...
+			    $w.overwrite configure -selectcolor #00008b
+		    }
+	
 		    pack $w.overwrite -side top -fill x -anchor w -pady 16
 	    }
 
@@ -663,8 +531,7 @@ proc widgets {} \
 				}
 			}
 
-			set bkdir [file join $::runtime(destination) "bitkeeper"]
-			if {[file exists $bkdir]} {
+			if {[file exists $::runtime(destination)]} {
 				. configure -path existing
 			} else {
 				. configure -path new
@@ -672,14 +539,13 @@ proc widgets {} \
 
 		}
 	}
-
 }
 
 proc doInstall {} \
 {
-	global runtime
+	global runtime widgets
 
-	. configure -state busy
+	busy 1
 	if {[catch {install} error]} {
 		set ::runtime(installStatus) 1
 		log $error
@@ -687,7 +553,7 @@ proc doInstall {} \
 		set ::runtime(installStatus) 0
 	}
 
-	. configure -state normal
+	busy 0
 	return $::runtime(installStatus)
 }
 
@@ -700,28 +566,89 @@ proc log {string {tag {}}} \
 	update 
 }
 
+proc busy {on} \
+{
+	global widgets
+
+	if {$on} {
+		# the log widget has to be set separately because it
+		# doesn't share the same cursor as "." since it's a 
+		# text widget
+		. configure -state busy
+		$widgets(log) configure -cursor watch
+	} else {
+		. configure -state normal
+		$widgets(log) configure -cursor {}
+	}
+	update
+}
+
+# this is a cross between exec and our own bgexec; it runs a command
+# in a pipe with a fileevent so the GUI doesn't hang while the 
+# external process is running. Plus, if the command spews out data
+# we can see it as it gets generated (try setting the environment
+# variable BK_DEBUG to get a bunch of output from the installer)
 proc doCommand {args} \
 {
-	if {[string equal [lindex $args 0] -noreporting]} {
+	global pipeOutput errorCode
+
+	if {[string equal [lindex $args 0] -nolog]} {
 		set args [lrange $args 1 end]
-		set reporting 0
+		set log 0
 	} else {
-		set reporting 1
+		set log 1
+	}
+	
+	lappend args |& cat
+	set pipeOutput ""
+	set ::DONE 0
+	set p [open "|$args"]
+	fconfigure $p -blocking false
+	fileevent $p readable [list readPipe $p $log]
+
+	# This variable is set by readPipe when we get EOF on the pipe
+	vwait ::DONE
+
+	if {$::DONE != 0} {
+		set error "unexpected error"
+		if {[string length $pipeOutput] > 0} {
+			append error ": $pipeOutput"
+		}
+		return -code error $error
 	}
 
-	if {[catch $args result]} {
-		if {$reporting} {
-			log "error\n" error
-			log "$result\n" error
+	return $pipeOutput
+}
+
+proc readPipe {pipe log} {
+	global pipeOutput errorCode
+
+	# The channel is readable; try to read it.
+	set status [catch { gets $pipe line } result]
+
+	if {$status == 0 && $result >= 0} {
+		# successfully read the channel
+		if {$log} {
+			log "$line\n"
+		} else {
+			append pipeOutput "$line\n"
 		}
-		return -code error $result
+	} elseif {$status == 0 && [fblocked $pipe]} {
+		# read blocked; do nothing
 	} else {
-		if {$reporting} {
-			log "ok\n"
+		# either EOF or an error on the channel. Shut 'er down, boys!
+		fconfigure $pipe -blocking true
+		set errorCode [list NONE]
+		catch {close $pipe} result
+		if {[info exists errorCode] && 
+		    [lindex $errorCode 0] == "CHILDSTATUS"} {
+			set ::DONE [lindex $::errorCode 2]
+		} else {
+			set ::DONE 0
 		}
-		return $result
 	}
 }
+
 proc setDestination {dir} \
 {
 	global widgets
@@ -763,7 +690,7 @@ proc validateDestination {} \
 		return $message
 	}
 
-	if {![file writable $destination]} {
+	if {![file writable $destination] && ![file owned $destination]} {
 		set message "Write permission for \"$destination\" is denied"
 		return $message
 	}
@@ -842,10 +769,10 @@ proc unwrap {text} \
 	return $text
 }
 
-proc usage {} {
-	# this is a lame usage statement
+proc usage {} \
+{
 	set image "\[installer\]"
-	puts stderr "usage: $image ?-f? directory\n       $image ?-\[gu\]?"
+	puts stderr "usage: $image ?directory?"
 }
 
 
@@ -858,12 +785,12 @@ You have no write permission on /usr/bin, so no links will be created there.
 You need to add the bitkeeper directory to your path (not recommended), 
 or symlink bk into some public bin directory.  You can do that by running
 
-	%s/bitkeeper/bk links %s/bitkeeper [destination-dir]
+	%s/bk links %s [destination-dir]
 i.e.,
-	%s/bitkeeper/bk links %s/bitkeeper /usr/bin
+	%s/bk links %s /usr/bin
 ----------------------------------------------------------------------------
 }
-set message(NO_WRITE_PERM) {You have no write permission on %s/bitkeeper
+set message(NO_WRITE_PERM) {You have no write permission on %s
 Perhaps you want to run this as root?}
 set message(SUCCESS) {
 ----------------------------------------------------------------------------
@@ -886,36 +813,50 @@ For help
 # will be collapsed to paraphaphs so they will wrap when the GUI is
 # resized. The formatting here is just to make the code easier to
 # read.
-set strings(Welcome) {
+set strings(Welcome.windows) {
 	Thank you for installing BitKeeper.  
 
 	This installer will install BitKeeper in the location of your
-	choosing.  The BitKeeper binaries will be installed in a
-	subdirectory named "bitkeeper" so that it is easy to do a
-	manual uninstall if you wish.  The installer will also create
-	some symlinks, if you are running as root, from %B to
-	that directory to provide SCCS compatible interfaces for make,
-	patch, emacs, etc.
+	choosing.  We recommend that you choose to install the BitKeeper 
+	binaries in a subdirectory named "bitkeeper" so that it is easy 
+	to do a manual uninstall if you wish. 
 
 	When you are ready to continue, press Next.
 }
 
-set strings(PickPlace) {
-	The installation directory can be anywhere, but /usr/libexec
-	is recommended.  For example, if you enter /usr/local 
-	when asked for the installation directory, we will 
-	install bitkeeper in /usr/local/bitkeeper. 
+set strings(Welcome.unix) {
+	Thank you for installing BitKeeper.  
+
+	This installer will install BitKeeper in the location of your
+	choosing.  We recommend that you choose to install the
+	BitKeeper binaries in a subdirectory named "bitkeeper" so that
+	it is easy to do a manual uninstall if you wish. The installer
+	will also create some symlinks, if you are running as root,
+	from %B to that directory to provide SCCS compatible
+	interfaces for make, patch, emacs, etc.
+
+	When you are ready to continue, press Next.
+}
+
+set strings(PickPlace.unix) {
+	The installation directory can be anywhere, 
+	/usr/libexec/bitkeeper is recommended.  
+}
+
+set strings(PickPlace.windows) {
+	The installation directory can be anywhere, 
+	C:/Program Files/bitkeeper is recommended.  
 }
 
 set strings(Overwrite) {
-	BitKeeper appears to already be installed in %D/bitkeeper. 
+	BitKeeper appears to already be installed in %D. 
 	Please confirm the removal of the existing version before continuing.
 }
 
 set strings(Install) {
 	BitKeeper is ready to be installed.
 
-        Installation Directory: %D/bitkeeper
+        Installation Directory: %D
 }
 
 set strings(UnexpectedError) {
