@@ -64,7 +64,7 @@ no_logging() {
 	echo "email: nobody@nowhere.bk" >> c
 	echo "eoln: unix" >> c
 	echo "keyword: sccs" >> c
-	bk setup -f -cc $1
+	bk setup -f -cc $1 || { echo "Setup failed!"; exit 1; }
 	cd $1
 }
 

@@ -110,7 +110,7 @@ c_quit(resolve *rs)
 	if (IS_LOCKED(rs->s)) {
 		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
 		rs->s = sccs_restart(rs->s);
-		sccs_clean(rs->s, CLEAN_UNEDIT);
+		sccs_unedit(rs->s, 0);
 	}
 	exit(1);
 }

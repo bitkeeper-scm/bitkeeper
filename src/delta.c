@@ -11,7 +11,7 @@ hasKeyword(sccs *s)
 	return (s->xflags & (X_RCS|X_SCCS));
 }
 
-private int
+int
 fix_gmode(sccs *s, int gflags)
 {
 	/*

@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "bkd.h"
 
 #define	BK "bk"
 

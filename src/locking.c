@@ -12,7 +12,7 @@
 			} \
 			if (getenv("BK_DBGLOCKS")) ttyprintf x
 private void
-pwd() { char p[MAXPATH]; getRealCwd(p, MAXPATH); ttyprintf("%s ",p); }
+pwd(void) { char p[MAXPATH]; getRealCwd(p, MAXPATH); ttyprintf("%s ",p); }
 #else
 #define	ldebug(x)
 #endif

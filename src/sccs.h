@@ -65,7 +65,6 @@
     (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
      GET_FULLPATH|GET_PREFIXDATE|GET_SEQ)
 
-#define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
 
@@ -772,6 +771,7 @@ int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
 int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
+int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
@@ -941,6 +941,7 @@ char	*_relativeName(char *gName, int isDir, int withsccs,
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin(void);
 project	*chk_proj_init(sccs *s, char *file, int line);
+MDBM	*proj_config(project *p);
 void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
@@ -1112,6 +1113,7 @@ int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
 int	chk_host(void);
 int	chk_user(void);
+int	fix_gmode(sccs *s, int gflags);
 
 extern char *bk_vers;
 extern char *bk_utc;

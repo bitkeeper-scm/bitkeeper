@@ -71,7 +71,7 @@ private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
-private void	singleUser(sccs *s, MDBM *m);
+private void	singleUser(sccs *s);
 private	int	parseConfig(char *buf, char **k, char **v);
 
 private	delta	*delta_lmarker;	/* old-style log marker */
@@ -4047,6 +4047,21 @@ chk_proj_init(sccs *s, char *file, int line)
 	return (p);
 }
 
+/*
+ * Return config MDBM for this project.
+ * Do not free this MDBM!
+ */
+MDBM *
+proj_config(project *p)
+{
+	unless (p) return (0);
+	unless (p->config) {
+		unless (p->root) return (0);
+		p->config = loadConfig(p->root);
+	}
+	return (p->config);
+}
+
 int
 proj_cd2root(project *p)
 {
@@ -7494,7 +7509,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		unless (s->tree->xflags) {
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
-			singleUser(s, 0);
+			singleUser(s);
 			s->tree->xflags |= s->xflags & X_SINGLE;
 		}
 		/* for old binaries */
@@ -8439,11 +8454,6 @@ sccs_clean(sccs *s, u32 flags)
 		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, 0, stdout);
 		return (1);
 	}
-	if (flags & CLEAN_UNEDIT) {
-		unlink(s->pfile);
-		unlinkGfile(s);
-		return (0);
-	}
 
 	unless (HAS_GFILE(s)) {
 		verbose((stderr, "%s not checked out\n", s->gfile));
@@ -8569,6 +8579,62 @@ nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
 		return (1);
 	}
 }
+
+/*
+ * unedit the specified file.
+ *
+ * Return codes are passed out to exit() so don't error on warnings.
+ */
+int
+sccs_unedit(sccs *s, u32 flags)
+{
+	int	modified = 0;
+	MDBM	*config = proj_config(s->proj);
+	int	getFlags = 0;
+	char	*co;
+	int	currState = 0;
+	
+	/* don't go removing gfiles without s.files */
+	unless (HAS_SFILE(s) && HASGRAPH(s)) {
+		verbose((stderr, "%s not under SCCS control\n", s->gfile));
+		return (0);
+	}
+
+	if (config && (co = mdbm_fetch_str(config, "checkout"))) {
+		if (strieq(co, "get")) getFlags = GET_EXPAND;
+		if (strieq(co, "edit")) getFlags = GET_EDIT;
+	}
+	
+	if (HAS_PFILE(s)) {
+		if (!getFlags || sccs_hasDiffs(s, flags, 1)) modified = 1;
+		currState = GET_EDIT;
+	} else {
+		if (WRITABLE(s)) {
+			fprintf(stderr, 
+			    "%s writable but not edited?\n", s->gfile);
+			return (1);
+		} else {
+			verbose((stderr, "Clean %s\n", s->gfile));
+			if (HAS_GFILE(s)) currState = GET_EXPAND;
+		}
+	}
+	unlink(s->pfile);
+	if (!modified && getFlags && 
+	    (getFlags == currState || !(SCCS(s) || RCS(s)))) {
+		getFlags |= GET_SKIPGET;
+	} else {
+		unlinkGfile(s);
+	}
+	if (getFlags) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
+			return (1);
+		}
+		s = sccs_restart(s);
+		fix_gmode(s, getFlags);
+	}
+	return (0);
+}
+
 
 private void
 _print_pfile(sccs *s)
@@ -8897,22 +8963,18 @@ binaryCheck(MMAP *m)
 }
 
 private void
-singleUser(sccs *s, MDBM *m)
+singleUser(sccs *s)
 {
 	delta	*d;
 	char	*user, *host;
-	int	close_m = !m;
+	MDBM	*m;
 
-	if (!m) {
-		unless (s && s->proj && s->proj->root) return;
-		unless (m = loadConfig(s->proj->root)) return;
-	}
+	unless (s && s->proj) return;
+	unless (m = proj_config(s->proj)) return;
+
 	user = mdbm_fetch_str(m, "single_user");
 	host = mdbm_fetch_str(m, "single_host");
-	unless (user && host) {
-		if (close_m) mdbm_close(m); /* skip pass from outside */
-		return;
-	}
+	unless (user && host) return;
 	d = s->tree;
 	free(d->user);
 	d->user = strdup(user);
@@ -8927,7 +8989,6 @@ singleUser(sccs *s, MDBM *m)
 		d->hostname = s->tree->hostname;
 		d->flags |= D_DUPHOST;
 	}
-	if (close_m) mdbm_close(m); /* skip pass from outside */
 	s->xflags |= X_SINGLE;
 }
 
@@ -8969,7 +9030,6 @@ out:		sccs_unlock(s, 'z');
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
 		s->state |= S_WARNED;
-		if (db) mdbm_close(db);
 		return (-1);
 	}
 	if (diffs) {
@@ -9091,7 +9151,7 @@ out:		sccs_unlock(s, 'z');
 			/* check eoln preference */
 			s->xflags |= X_DEFAULT;
 			if (s->proj) {
-				db = loadConfig(s->proj->root);
+				db = proj_config(s->proj);
 				if (db) {
 					char *p = mdbm_fetch_str(db, "eoln");
 					if (p && streq("unix", p)) {
@@ -9153,7 +9213,7 @@ out:		sccs_unlock(s, 'z');
 		unless (flags & DELTA_PATCH) {
 			first->flags |= D_XFLAGS;
 			first->xflags = s->xflags;
-			singleUser(s, db);
+			singleUser(s);
 		}
 		if (CSET(s)) {
 			unless (first->csetFile) {
@@ -9271,7 +9331,6 @@ out:		sccs_unlock(s, 'z');
 	}
 	Chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
-	if (db) mdbm_close(db);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -11207,6 +11266,7 @@ newcmd:
 	return (0);
 }
 
+int
 sccs_hashcount(sccs *s)
 {
 	int	n;

@@ -34,15 +34,13 @@ preference_main(int ac, char **av)
 char *
 user_preference(char *what)
 {
-	char *p;
+	char	*p;
+	MDBM	*db;
 
 	unless (bk_proj) return "";
-	unless (bk_proj->config) {
-		unless (bk_proj->root) return "";
-		bk_proj->config = loadConfig(bk_proj->root);
-		unless (bk_proj->config) return "";
-	}
-	p = mdbm_fetch_str(bk_proj->config, what);
+	db = proj_config(bk_proj);
+	unless (db) return ("");
+	p = mdbm_fetch_str(db, what);
 	unless (p) p = "";
 	return (p);
 }
