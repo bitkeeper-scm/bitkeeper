@@ -72,5 +72,36 @@ case "X`uname -s`" in
 		export CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
 		export BK BKMERGE UWT_H WIN_UTIL BINDIR XTRA INSTALL
 		;;
+	*)
+		CHECK=1
+		;;
 esac
-$MAKE "CC=$CC" "LD=$LD" "XLIBS=$XLIBS" "$@"
+
+if [ "$CHECK" ]; then
+	# check to see if the system we're building on has dirname, tm_gmtoff,
+	# or altzone/localzone
+	#
+
+	# first dirname -- if the thing compiles, dirname() exists in libc
+	#
+	echo "main() { extern char *dirname();  dirname("a/b"); }" > $$.c
+	$CC -o $$ $$.c 1>/dev/null 2>/dev/null && CCXTRA="-DHAVE_DIRNAME"
+
+	# then look for tm_gmtoff, and if that doesn't exist, altzone/localzone
+	#
+	echo "#include <time.h>" 	                   > $$.c
+	echo "main() { struct tm *now; now->tm_gmtoff; }" >> $$.c
+
+	if $CC -o $$ $$.c 1>/dev/null 2>/dev/null; then
+		CCXTRA="$CCXTRA -DHAVE_GMTOFF"
+	else
+		echo "main() { extern int localzone, altzone;"  > $$.c
+		echo "         localzone; altzone; }"          >> $$.c
+		if $CC -o $$ $$.c 1>/dev/null 2>/dev/null; then
+			CCXTRA="$CCXTRA -DHAVE_LOCALZONE"
+		fi
+    fi
+    rm -f $$ $$.c
+fi
+
+$MAKE "CC=$CC $CCXTRA" "LD=$LD" "XLIBS=$XLIBS" "$@"
