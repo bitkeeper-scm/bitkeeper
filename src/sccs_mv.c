@@ -91,7 +91,7 @@ sccs_mv(char *name,
 	int	error = 0, was_edited = 0;
 	int	flags = SILENT|DELTA_FORCE;
 	int	i;
-	MMAP	*nulldiff;
+	MMAP	*nulldiff = NULL;
 	time_t	gtime;
 
 //ttyprintf("sccs_mv(%s, %s, %d, %d, %d)\n", name, dest, isDir, isDelete,force);
@@ -165,6 +165,8 @@ err:		if (sname) free(sname);
 		goto out;
 	}
 	if (HAS_PFILE(s) && !error) {
+		if (isDelete) {
+		}
 		was_edited = 1;
 		error = mv(s->pfile, q = mkXfile(sfile, 'p'));
 		free(q);
@@ -195,17 +197,30 @@ err:		if (sname) free(sname);
 		goto out;
 	}
 
-	/*
-	 * Setup a null diffs,  because we do not want to check in the
-	 * content changes when we "bk mv"
-	 */
-	nulldiff = mopen(NULL_FILE, "r");
+	if (isDelete && exists(ogfile)) {
+		/*
+		 * For delete: delta any content change with the path change
+		 */
+		if (was_edited) {
+			mv(ogfile, gfile);
+			s = sccs_restart(s); /* re-stat gfile */
+		} else {
+			unlink(ogfile);
+			nulldiff = mopen(NULL_FILE, "r");
+		}
+	} else {
+		/*
+		 * Setup a null diffs,  because we do not want to check in the
+		 * content changes when we "bk mv"
+		 */
+		nulldiff = mopen(NULL_FILE, "r");
+	}
 	if (sccs_delta(s, flags, d, 0, nulldiff, 0) == -1) {
 		error = 1;
 		goto out;
 	}
 	if (!error && exists(ogfile)) error = mv(ogfile, gfile);
-	if (was_edited) {
+	if (!isDelete && was_edited) {
 		s = sccs_restart(s);
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_SKIPGET|GET_EDIT, "-")) {
 			error = 1;
