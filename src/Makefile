@@ -7,13 +7,14 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  stripdel smoosh takepatch undos what
 PRIVATE	= nextsecond mtime zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
-	  sccstool citool vitool fm fm3 bithelp mkindex
+	  sccstool citool helptool difftool fm fm3 bithelp mkindex
 PSCR	= install.sh t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
 DATA	= bitkeeper.config bkhelp.txt
 
-LINKTO	= ci:delta co:get edit:get unedit:clean unget:clean
+LINKTO	= ci:delta co:get edit:get unedit:clean unget:clean fmtool:fm \
+	  fm3tool:fm3
 BINLINKS= bk admin get delta unget rmdel prs
 
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PRIVATE) $(PSCR) $(DATA)
@@ -50,10 +51,11 @@ HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h \
 	  comments.c host.c user.c
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
-	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/vitool.tcl \
-	  gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl gui/mkindex.tcl \
-	  resync.perl uuwrap.sh unuuwrap.sh port/unix_platform.sh \
-	  port/unix_platform.tcl port/unix_platform.perl pmerge.perl
+	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
+	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl gui/bithelp.tcl \
+	  gui/helptool.tcl gui/mkindex.tcl resync.perl uuwrap.sh \
+	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
+	  port/unix_platform.perl pmerge.perl
 MISC	= bkhelp.txt config.h.in configure substvars.in install.in \
 	  bitkeeper.config t/doit.sh
 
@@ -150,8 +152,11 @@ rebuild: clean-obj clean-bin
 srcs src: FORCE
 	-get -s $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
+wc: $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+
 get-e: FORCE
-	-get -se $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+	-@get -se $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
@@ -353,10 +358,20 @@ citool: gui/citool.tcl gui/common.tcl port/unix_platform.tcl substvars
 	chmod +x citool.T
 	mv -f citool.T citool
 
+helptool: gui/helptool.tcl port/unix_platform.tcl substvars
+	./substvars port/unix_platform.tcl gui/helptool.tcl > helptool.T
+	chmod +x helptool.T
+	mv -f helptool.T helptool
+
 vitool: gui/vitool.tcl substvars
 	./substvars gui/vitool.tcl > vitool.T
 	chmod +x vitool.T
 	mv -f vitool.T vitool
+
+difftool: gui/difftool.tcl port/unix_platform.tcl substvars
+	./substvars port/unix_platform.tcl gui/difftool.tcl > difftool.T
+	chmod +x difftool.T
+	mv -f difftool.T difftool
 
 fm: gui/fm.tcl port/unix_platform.tcl substvars
 	./substvars port/unix_platform.tcl gui/fm.tcl > fm.T

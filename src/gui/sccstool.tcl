@@ -114,7 +114,7 @@ proc addline {x y xspace ht l} \
 # All nodes use up the same amount of space, $w.
 proc line {s w ht} \
 {
-	global	bfont wid revX revY arrow where
+	global	bfont wid revX revY arrow where yspace
 
 	# space for node and arrow
 	set xspace [expr $w + 12]
@@ -154,8 +154,6 @@ proc line {s w ht} \
 	set x1 $px
 	set y 0
 	while {1 == 1} {
-		set yspace 4
-
 		# Try below.
 		if {"$prev" != "above"} {
 			set y1 [expr $py + $y + $yspace]
@@ -291,6 +289,21 @@ proc getRev {type} \
 	return $id
 }
 
+proc filltext {f} \
+{
+	global	search
+
+	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
+	while { [gets $f str] >= 0 } {
+		.p.bottom.t insert end "$str\n"
+	}
+	catch {close $f} ignore
+	.p.bottom.t configure -state disabled
+	searchreset
+	set search(text) "Welcome"
+	busy 0
+}
+
 proc prs {} \
 {
 	global file rev1 dspec dev_null bk_prs
@@ -298,82 +311,65 @@ proc prs {} \
 	.p.top.c delete yellow
 	.p.top.c delete orange
 	set rev1 [getRev 2]
-	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	if {"$rev1" != ""} {
+		busy 1
 		set prs [open "| $bk_prs {$dspec} -r$rev1 $file 2>$dev_null"]
-		while { [gets $prs str] >= 0 } {
-			.p.bottom.t insert end "$str\n"
-		}
-		close $prs
+		filltext $prs
+	} else {
+		set search(text) "Click on a revision"
 	}
-	.p.bottom.t configure -state disabled
 }
 
 proc history {} \
 {
 	global	file dspec dev_null bk_prs
 
-	set prs [open "| $bk_prs -m {$dspec} $file 2>$dev_null"]
-	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
-	while { [gets $prs str] >= 0 } {
-		.p.bottom.t insert end "$str\n"
-	}
-	close $prs
-	.p.bottom.t configure -state disabled
-}
-
-proc renumber {} \
-{
-	global	file tmp_dir bk_renumber
-
-	set tmpfile [file join $tmp_dir renumber]
-	exec $bk_renumber -n $file 2> $tmpfile
-	set prs [open $tmpfile "r"]
-	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
-	while { [gets $prs str] >= 0 } {
-		.p.bottom.t insert end "$str\n"
-	}
-	close $prs
-	.p.bottom.t configure -state disabled
+	busy 1
+	set f [open "| $bk_prs -m {$dspec} $file 2>$dev_null"]
+	filltext $f
 }
 
 proc sfile {} \
 {
 	global	file
 
-	set prs [open "$file" "r"]
-	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
-	while { [gets $prs str] >= 0 } {
-		.p.bottom.t insert end "$str\n"
-	}
-	close $prs
-	.p.bottom.t configure -state disabled
+	busy 1
+	set f [open "$file" "r"]
+	filltext $f
 }
 
 proc get {} \
 {
-	global file dev_null bk_cset bk_get
-	global rev1
+	global file dev_null bk_cset bk_get rev1 rev2 diffOpts
 
+	busy 1
 	.p.top.c delete yellow
 	.p.top.c delete orange
 	set rev1 [getRev 2]; if {"$rev1" == ""} { return }
 	set base [file tail $file]
-	if {$base == "s.ChangeSet"} {
-		set get [open "| $bk_cset -r$rev1 | sccslog - 2>$dev_null"]
-	} else {
+	if {$base != "s.ChangeSet"} {
 		set get [open "| $bk_get -mudPr$rev1 $file 2>$dev_null"]
+		filltext $get
+		return
 	}
-	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
-	while { [gets $get str] >= 0 } {
-		.p.bottom.t insert end "$str\n"
-	}
-	catch {close $get} ignore
-	.p.bottom.t configure -state disabled
+	set rev2 $rev1
+	csetdiff2
 }
 
+proc difftool {a b} \
+{
+	set x [expr [winfo rootx .]+150]
+	set y [expr [winfo rooty .]+50]
+	exec bk difftool -geometry +$x+$y $a $b /tmp/difftool &
+	after 100
+	while {[file exists /tmp/difftool] == 0} {
+		after 500
+	}
+	file delete -force $a $b /tmp/difftool
+	busy 0
+}
 
-proc diff2 {} \
+proc diff2 {fm} \
 {
 	global file rev1 rev2 diffOpts getOpts dspecnonl dev_null
 	global bk_cset tmp_dir
@@ -384,32 +380,77 @@ proc diff2 {} \
 	if {"$rev2" == ""} { return }
 	set base [file tail $file]
 	if {$base == "s.ChangeSet"} {
-		set diffs [open "| $bk_cset -r$rev1..$rev2 | sort | bk -R prs {$dspecnonl} -"]
-		set lexp {^!@XXX!@FOO$}
-		set rexp {^!@XXX!@FOO$}
-	} else {
-		# XXX file names
-		set a [open "| get $getOpts -kPr$rev1 $file >$tmp_dir/$rev1 2>$dev_null" "w"]
-		set b [open "| get $getOpts -kPr$rev2 $file >$tmp_dir/$rev2 2>$dev_null" "w"]
-		catch { close $a; }
-		catch { close $b; }
-		set diffs [open "| diff $diffOpts $tmp_dir/$rev1 $tmp_dir/$rev2"]
-		if {"$diffOpts" == "-u"} {
-			set lexp {^\+}
-			set rexp {^-}
-			gets $diffs str
-			gets $diffs str
-		} else {
-			set lexp {^>}
-			set rexp {^<}
-		}
+		csetdiff2
+		return
 	}
+	busy 1
+	set a [open "| get $getOpts -kPr$rev1 $file >$tmp_dir/$rev1 2>$dev_null" "w"]
+	set b [open "| get $getOpts -kPr$rev2 $file >$tmp_dir/$rev2 2>$dev_null" "w"]
+	catch { close $a; }
+	catch { close $b; }
+	if {$fm == 1} {
+		difftool $tmp_dir/$rev1 $tmp_dir/$rev2 
+		return
+	}
+
+	set diffs [open "| diff $diffOpts $tmp_dir/$rev1 $tmp_dir/$rev2"]
 	set l 3
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
 	.p.bottom.t insert end "- $file version $rev1\n"
 	.p.bottom.t insert end "+ $file version $rev2\n\n"
 	.p.bottom.t tag add "oldTag" 1.0 "1.0 lineend + 1 char"
 	.p.bottom.t tag add "newTag" 2.0 "2.0 lineend + 1 char"
+	diffs $diffs $l
+	.p.bottom.t configure -state disabled
+	searchreset
+	file delete -force $tmp_dir/$rev1 $tmp_dir/$rev2
+	busy 0
+}
+
+proc csetdiff2 {} \
+{
+	global file rev1 rev2 diffOpts dev_null bk_cset tmp_dir
+
+	busy 1
+	set l 3
+	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
+	.p.bottom.t insert end "- $file version $rev1\n"
+	.p.bottom.t insert end "+ $file version $rev2\n\n"
+	.p.bottom.t tag add "oldTag" 1.0 "1.0 lineend + 1 char"
+	.p.bottom.t tag add "newTag" 2.0 "2.0 lineend + 1 char"
+
+	set log [open "| bk -R sccslog -r$rev1..$rev2 ChangeSet "]
+	while { [gets $log str] >= 0 } {
+		.p.bottom.t insert end "$str\n"
+		incr l
+	}
+	close $log
+	set log [open "| $bk_cset -r$rev1..$rev2 | sort | bk -R sccslog -"]
+	while { [gets $log str] >= 0 } {
+		.p.bottom.t insert end "$str\n"
+		incr l
+	}
+	close $log
+	set diffs [open "| $bk_cset -R$rev1..$rev2 | sort | bk -R diffs  $diffOpts -"]
+	diffs $diffs $l
+	.p.bottom.t configure -state disabled
+	searchreset
+	busy 0
+}
+
+proc diffs {diffs l} \
+{
+	global	diffOpts
+
+	if {"$diffOpts" == "-u"} {
+		set lexp {^\+}
+		set rexp {^-}
+		gets $diffs str
+		gets $diffs str
+	} else {
+		set lexp {^>}
+		set rexp {^<}
+	}
 	while { [gets $diffs str] >= 0 } {
 		.p.bottom.t insert end "$str\n"
 		incr l
@@ -423,8 +464,6 @@ proc diff2 {} \
 		}
 	}
 	catch { close $diffs; }
-	.p.bottom.t configure -state disabled
-	file delete -force $tmp_dir/$rev1 $tmp_dir/$rev2
 }
 
 proc done {} \
@@ -434,55 +473,78 @@ proc done {} \
 
 proc search {dir} \
 {
-	global	searchdir cmd_text
+	global	search
 
-	set searchdir $dir
-	set cmd_text "Search for:"
+	set search(dir) $dir
+	set search(text) "Search for:"
 	.cmd.t delete 1.0 end
 	focus .cmd.t
 }
 
-proc searchend {} \
+proc searchreset {} \
 {
-	global	searchdir searchstring cmd_text start
+	global	search
+
+	if {$search(dir) == "/"} {
+		set search(start) "1.0"
+	} else {
+		set search(start) "end"
+	}
+}
+
+proc searchstring {} \
+{
+	global	search
 
 	set string [.cmd.t get 1.0 "end - 1 char"]
 	if {"$string" == ""} {
-		if {[info exists searchstring] == 0} {
-			set cmd_text "No search string"
+		if {[info exists search(string)] == 0} {
+			set search(text) "No search string"
 			focus .p.top.c
 			return
 		}
 	} else {
-		set searchstring $string
-		set start [.p.bottom.t index @1,1]
+		set search(string) $string
+		searchreset
 	}
-	if {$searchdir == "/"} {
-		set w [.p.bottom.t search -- $searchstring $start]
+	searchnext
+}
+
+proc searchnext {} \
+{
+	global	search
+
+	if {$search(dir) == "/"} {
+		set w \
+		    [.p.bottom.t search -- $search(string) $search(start) "end"]
+		set where "bottom"
 	} else {
 		set i ""
 		catch { set i [.p.bottom.t index search.first] }
-		if {"$i" != ""} { set start $i }
-		set w [.p.bottom.t search -backwards -- $searchstring $start]
+		if {"$i" != ""} { set search(start) $i }
+		set w [.p.bottom.t \
+		    search -backwards -- $search(string) $search(start) "1.0"]
+		set where "top"
 	}
 	if {"$w" == ""} {
-		set cmd_text "Not found"
+		set search(text) "Search hit $where, $search(string) not found"
 		focus .p.top.c
 		return
 	}
-	set cmd_text "found $searchstring at $w"
-	set l [string length $searchstring]
+	set search(text) "Found $search(string) at $w"
+	set l [string length $search(string)]
 	.p.bottom.t see $w
-	set start [.p.bottom.t index "$w + $l chars"]
+	set search(start) [.p.bottom.t index "$w + $l chars"]
 	.p.bottom.t tag remove search 1.0 end
 	.p.bottom.t tag add search $w "$w + $l chars"
+	.p.bottom.t tag raise search
 	focus .p.top.c
 }
 
 # All of the pane code is from Brent Welch.  He rocks.
 proc PaneCreate {} \
 {
-	global	percent swid
+	global	percent swid paned
 
 	# Figure out the sizes of the two windows and set the
 	# master's size and calculate the percent.
@@ -519,6 +581,7 @@ proc PaneCreate {} \
 	bind .p.grip <ButtonRelease-1> "PaneStop"
 
 	PaneGeometry
+	set paned 1
 }
 
 # When we get an resize event, don't resize the top canvas if it is
@@ -589,18 +652,38 @@ proc PaneStop {} \
 }
 
 
+proc busy {busy} \
+{
+	global	paned
+
+	if {$busy == 1} {
+		. configure -cursor watch
+		.p.top.c configure -cursor watch
+		.p.bottom.t configure -cursor watch
+	} else {
+		. configure -cursor hand2
+		.p.top.c configure -cursor hand2
+		.p.bottom.t configure -cursor gumby
+	}
+	if {$paned == 0} { return }
+	update
+}
+
 proc widgets {} \
 {
-	global	font bfont arrow background cmd_text swid diffOpts getOpts
-	global	lineOpts dspec dspecnonl wish bithelp
+	global	font bfont arrow background search swid diffOpts getOpts
+	global	lineOpts dspec dspecnonl wish bithelp yspace paned
 
 	set dspec \
-"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(:C:){\t(:C:)}\n"
+"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}  :DPN:\n\$each(:C:){\t(:C:)}\n"
 	set dspecnonl \
-"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(:C:){\t(:C:)}"
+"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}  :DPN:\n\$each(:C:){\t(:C:)}"
 	set diffOpts "-u"
-	set getOpts "-m"
-	set cmd_text ""
+	set getOpts "-um"
+	set lineOpts "-u"
+	set yspace 20
+	set search(text) ""
+	set search(dir) ""
 	set swid 12
 	set font -adobe-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*
 	set bfont -adobe-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*
@@ -609,7 +692,6 @@ proc widgets {} \
 	set arrow darkblue
 	set background #9fb6b8
 	set geometry ""
-	set lineOpts ""
 	if {[file readable ~/.sccstoolrc]} {
 		source ~/.sccstoolrc
 	}
@@ -621,7 +703,7 @@ proc widgets {} \
 	    button .menus.quit -font $bfont -width 7 -relief raised \
 		-pady $pady -text "Quit" -command done
 	    button .menus.help -font $bfont -width 7 -relief raised \
-		-pady $pady -text "Help" -command { exec $wish -f $bithelp sccs & }
+		-pady $pady -text "Help" -command { exec bk helptool sccstool & }
 #	    button .menus.new -font $bfont -width 7 -relief raised \
 #		-pady $pady -text "Open" -command openFile
 #	    button .menus.prev -font $bfont -width 7 -relief raised \
@@ -659,14 +741,15 @@ proc widgets {} \
 		pack .p.bottom.xscroll -side bottom -fill x
 		pack .p.bottom.t -expand true -fill both
 
+	set paned 0
 	after idle {
 	    PaneCreate
 	}
 
 	frame .cmd -borderwidth 2 -relief ridge
-		text .cmd.t -height 1 -width 20 -font $bfont
-		label .cmd.l -font $bfont -width 20 -relief groove \
-		    -textvariable cmd_text
+		text .cmd.t -height 1 -width 30 -font $bfont
+		label .cmd.l -font $bfont -width 40 -relief groove \
+		    -textvariable search(text)
 		pack .cmd.l -side left -fill x
 		pack .cmd.t -side left -fill x -expand true
 
@@ -681,40 +764,43 @@ proc widgets {} \
 	bind .p.bottom.t <2> "break"
 	bind .p.bottom.t <3> "break"
 
-	bind .p.top.c <1> { prs; break }
-	bind .p.top.c <3> "diff2; break"
-	bind .p.top.c <Alt-h> { exec $wish -f $bithelp sccs & }
-	bind .p.top.c <Control-e> ".p.bottom.t yview scroll 1 units"
-	bind .p.top.c <Control-f> ".p.bottom.t yview scroll 1 pages"
-	bind .p.top.c <Control-h> { exec $wish -f $bithelp sccs & }
-	bind .p.top.c <Control-q> done
-	bind .p.top.c <Control-u> ".p.bottom.t yview scroll -1 pages"
-	bind .p.top.c <Control-y> ".p.bottom.t yview scroll -1 units"
-	bind .p.top.c <Double-1> "get; break"
-	bind .p.top.c <Down> ".p.top.c yview scroll 1 units"
-	bind .p.top.c <Left> ".p.top.c xview scroll -1 units"
-	bind .p.top.c <Next> ".p.bottom.t yview scroll 1 pages"
-	bind .p.top.c <Prior> ".p.bottom.t yview scroll -1 pages"
-	bind .p.top.c <Right> ".p.top.c xview scroll 1 units"
-	bind .p.top.c <Shift-Down> ".p.top.c yview scroll 1 pages"
-	bind .p.top.c <Shift-Left> ".p.top.c xview scroll -1 pages"
-	bind .p.top.c <Shift-Right> ".p.top.c xview scroll 1 pages"
-	bind .p.top.c <Shift-Up> ".p.top.c yview scroll -1 pages"
-	bind .p.top.c <Up> ".p.top.c yview scroll -1 units"
-	bind .p.top.c <d> "diff2"
-	bind .p.top.c <g> "get"
-	bind .p.top.c <h> "history"
-	bind .p.top.c <n> "next"
-	bind .p.top.c <p> "prs"
-	bind .p.top.c <q> "exit"
-	bind .p.top.c <r> "renumber"
-	bind .p.top.c <s> "sfile"
+	bind .p.top.c <1>		{ prs; break }
+	bind .p.top.c <3>		"diff2 0; break"
+	bind .p.top.c <Double-1>	"get; break"
+	bind .p.top.c <d>		"diff2 1"
+	bind .p.top.c <h>		"history"
+	bind .p.top.c <q>		"exit"
+	bind .p.top.c <s>		"sfile"
+
+	bind .p.top.c <Prior>		".p.bottom.t yview scroll -1 pages"
+	bind .p.top.c <Next>		".p.bottom.t yview scroll  1 pages"
+	bind .p.top.c <Up>		".p.bottom.t yview scroll -1 units"
+	bind .p.top.c <Down>		".p.bottom.t yview scroll  1 units"
+	bind .p.top.c <Home>		".p.bottom.t yview -pickplace 1.0"
+	bind .p.top.c <End>		".p.bottom.t yview -pickplace end"
+	bind .p.top.c <Control-b>	".p.bottom.t yview scroll -1 pages"
+	bind .p.top.c <Control-f>	".p.bottom.t yview scroll  1 pages"
+	bind .p.top.c <Control-e>	".p.bottom.t yview scroll  1 units"
+	bind .p.top.c <Control-y>	".p.bottom.t yview scroll -1 units"
+
+	bind .p.top.c <Shift-Prior>	".p.top.c yview scroll -1 pages"
+	bind .p.top.c <Shift-Next>	".p.top.c yview scroll  1 pages"
+	bind .p.top.c <Shift-Up>	".p.top.c yview scroll -1 units"
+	bind .p.top.c <Shift-Down>	".p.top.c yview scroll  1 units"
+	bind .p.top.c <Shift-Left>	".p.top.c xview scroll -1 pages"
+	bind .p.top.c <Shift-Right>	".p.top.c xview scroll  1 pages"
+	bind .p.top.c <Left>		".p.top.c xview scroll -1 units"
+	bind .p.top.c <Right>		".p.top.c xview scroll  1 units"
+	bind .p.top.c <Shift-Home>	".p.top.c xview moveto 0"
+	bind .p.top.c <Shift-End>	".p.top.c xview moveto 1.0"
 
 	# Command window bindings.
 	bind .p.top.c <slash> "search /"
 	bind .p.top.c <question> "search ?"
-	bind .cmd.t <Return> "searchend"
-	.p.bottom.t tag configure search -background yellow
+	bind .p.top.c <n> "searchnext"
+	bind .cmd.t <Return> "searchstring"
+	.p.bottom.t tag configure search \
+	    -background lightblue -relief groove -borderwid 2
 
 	# highlighting.
 	.p.bottom.t tag configure "newTag" -background yellow -foreground blue
@@ -749,8 +835,9 @@ proc next {inc} \
 
 proc sccstool {name} \
 {
-	global	file bad revX revY cmd_text dev_null bk_sfiles
+	global	file bad revX revY search dev_null bk_sfiles
 
+	busy 1
 	.p.top.c delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
@@ -759,9 +846,12 @@ proc sccstool {name} \
 	.info.l configure -text $file
 	listRevs $file
 	history
-	set cmd_text "Welcome"
+	set search(text) "Welcome"
 	focus .p.top.c
+	busy 0
 }
+
+
 
 proc platformPath {} \
 {
@@ -787,6 +877,8 @@ proc init {} \
 	global bin bk_prs bk_cset bk_get bk_renumber bk_sfiles
 	global bk_lines
 
+	platformPath
+	platformInit
 	set bk_prs [file join $bin prs]
 	set bk_cset [file join $bin cset]
 	set bk_get [file join $bin get]
@@ -795,8 +887,6 @@ proc init {} \
 	set bk_lines [file join $bin lines]
 }
 
-platformPath
-platformInit
 init
 widgets
 if {"$argv" != ""} {
