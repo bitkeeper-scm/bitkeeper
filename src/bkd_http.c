@@ -560,13 +560,18 @@ http_cset(char *rev)
 	    "}"
 	    "</td>"
 	    "$each(:TAG:){"
-	      "<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;"
-	      "tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n"
+	      "<tr bgcolor=yellow>\n"
+	      "  <td>&nbsp;&nbsp;&nbsp;&nbsp;tag:&nbsp;&nbsp;(:TAG:)</td>\n"
+	      "</tr>\n"
 	    "}"
-	    "$each(:C:){"
-	      "<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>"
+	    "$each(:HTML_C:){"
+	      "<tr bgcolor=white>\n"
+	      "  <td>&nbsp;&nbsp;&nbsp;&nbsp;(:HTML_C:)</td>\n"
+	      "</tr>\n"
 	    "}"
-	    "<tr><td>&nbsp;</td></tr>\n%s",
+	    "<tr>\n"
+	    "  <td>&nbsp;</td>\n"
+	    "</tr>\n%s",
 	    prefix,
 	    navbar, navbar, navbar, navbar,
 	    suffix);
@@ -752,7 +757,8 @@ htmlify(char *from, char *html, int n)
 private void
 http_hist(char *pathrev)
 {
-	char	buf[16<<10];
+	char	*av[100];
+	char	revision[100];
 	char	*s, *d;
 	FILE	*f;
 	MDBM	*m;
@@ -762,13 +768,13 @@ http_hist(char *pathrev)
 	whoami("hist/%s", pathrev);
 
 	i = snprintf(dspec, sizeof(dspec),
-		"%s<tr>\n"
+		"-d%s<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:</td>\n"
 		" <td align=center"
 		"$if(:TAG:){ bgcolor=yellow}"
 		"$if(:RENAME:){$if(:I:!=1.1){ bgcolor=orange}}>"
-		"<a href=diffs/:GFILE:@:I:%s>:I:</a>"
+		"<a href=\"diffs/:GFILE:@:I:%s\">:I:</a>"
 		"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 		"</td>\n <td>:HTML_C:</td>\n"
 		"</tr>\n%s", prefix, navbar, suffix);
@@ -782,15 +788,20 @@ http_hist(char *pathrev)
 		header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
 	}
 
+	av[i=0] = "bk";
+	av[++i] = "prs";
+	av[++i] = "-h";
+	av[++i] = dspec;
 	if (s = strrchr(pathrev, '@')) {
 		*s++ = 0;
-		sprintf(buf, "bk prs -hd'%s' -r%s %s", dspec, s, pathrev);
-	} else {
-		sprintf(buf, "bk prs -hd'%s' %s", dspec, pathrev);
+		sprintf(revision, "-r%s", s);
+		av[++i] = revision;
 	}
+	av[++i] = pathrev;
+	av[++i] = 0;
+	out("<!-- dspec="); out(dspec); out(" -->\n");
+
 	FANCY_TABLE_BEGIN;
-	//out("<table border=1 cellpadding=1 cellspacing=0 width=100% "
-	//    "bgcolor=white>\n"
 	out("<table width=100% " TABLE_FORMAT ">\n"
 	    "<tr bgcolor=lightblue>\n"
 	    " <th>Age</th>\n"
@@ -798,10 +809,11 @@ http_hist(char *pathrev)
 	    " <th>Rev</th>\n"
 	    " <th align=left>Comments</th>\n"
 	    "</tr>\n");
+
 	putenv("BK_YEAR4=1");
-	f = popen(buf, "r");
-	while (fnext(buf, f)) out(buf);
-	pclose(f);
+
+	spawnvp_ex(_P_WAIT, "bk", av);
+
 	out("</table>\n");
 	FANCY_TABLE_END;
 	if (!embedded) trailer("hist");

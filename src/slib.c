@@ -11914,7 +11914,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "HTML_C")) {
-		int	i;
+		int	i, j;
+		char	html_ch[20];
+		unsigned char *p;
 
 		unless (d->comments && (int)(long)(d->comments[0])) {
 			fs("&nbsp;");
@@ -11925,9 +11927,17 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 				if (d->comments[i][0] == '\t') {
 					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
 					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
-					fs(&d->comments[i][1]);
+					p = &d->comments[i][1];
 				} else {
-					fs(d->comments[i]);
+					p = d->comments[i];
+				}
+				for ( ; *p ; ++p) {
+					if (isalnum(*p)) {
+						fc(*p);
+					} else {
+						sprintf(html_ch, "&#%d;", *p);
+						fs(html_ch);
+					}
 				}
 			}
 		}
