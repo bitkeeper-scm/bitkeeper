@@ -196,6 +196,9 @@ getRealName(char *path, MDBM *db, char *realname)
 	unless (GetShortPathName(path, buf, MAXPATH)) strcpy(buf, path);
 	unless (GetLongPathName(buf, realname, MAXPATH)) strcpy(realname, buf);
 
+	/* The win98 emulation code returns backslashes */
+	localName2bkName(realname, realname);
+
 	/* GetLongPathName puts a / at the end of directories. */
 	p = realname + strlen(realname);
 	if ((p > realname) && (p[-1] == '/')) p[-1] = 0;

@@ -31,7 +31,7 @@ patch: FORCE
 MSYSBIN = ../gnu
 msys: ./msysver.sh MSYSKEY FORCE
 	mkdir -p $(MSYSBIN)/tmp
-	MSYSVER=`./msysver.sh`; \
+	-MSYSVER=`./msysver.sh`; \
 	if [ -n "$$MSYSVER" -a -f "$$MSYSVER" ]; \
 	then	tar -C$(MSYSBIN) -xpzf $$MSYSVER; \
 	else	test -d msys || bk clone -r`tail -1 MSYSKEY` \
