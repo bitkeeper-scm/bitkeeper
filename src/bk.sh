@@ -704,15 +704,16 @@ _after() {		# /* undoc? 2.0 */
 	return $?
 }
 
-_man() {		# /* undoc 2.0 - its BS anyway.  doesn't work.  */
-	export MANPATH=`bk bin`/man:$MANPATH
-	for i in /usr/bin /bin /usr/local/bin /usr/sbin
-	do	if [ -x /usr/bin/man ]
-		then	exec /usr/bin/man $@
-		fi
-	done
-	echo Can not find man program
-	exit 1
+_man() {
+	B=`bk bin`/man
+	test -f ../man/bk-man/man1/bkd.1 && {
+		HERE=`pwd`
+		cd ../man/bk-man
+		B=`pwd`
+		cd $HERE
+	}
+	export MANPATH=$B:$MANPATH
+	exec man "$@"
 }
 
 # Make links in /usr/bin (or wherever they say).

@@ -305,15 +305,21 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 	return (0);
 }
 
-private void
+private int
 fix_rev(sccs *s, char **rev, char rev_buf[])
 {
 	delta *d;
 
 	d = sccs_getrev(s, (*rev && **rev) ? *rev : "+", 0, 0);
+	unless (d) {
+		fprintf(stderr, "Cannot find revision \"%s\"\n", 
+				(*rev && **rev) ? *rev : "+");
+		return (-1); /* failed */
+	}
 	assert(d);
 	strcpy(rev_buf, d->rev);
 	*rev = rev_buf;
+	return (0); /* ok */
 }
 
 private int
@@ -333,10 +339,10 @@ parse_rev(sccs *s, char *args,
 		if (*p == '.') *p++ = 0;
 		*p++ = 0;
 		*rev2 = p;
-		fix_rev(s, rev2, rev_buf);
+		if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
 	} else {
 		*rev2 = args;
-		fix_rev(s, rev2, rev_buf);
+		if (fix_rev(s, rev2, rev_buf)) return (1); /* failed */
 		if (sccs_parent_revs(s, *rev2, rev1, revM)) {
 			return (1); /* failed */
 		}

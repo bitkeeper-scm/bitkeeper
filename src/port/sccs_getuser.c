@@ -35,6 +35,13 @@ sccs_getuser(void)
 		    "character\n");
 		s = NULL;
 	}
+
+#ifdef WIN32 /* win32 have no effective uid */
+       /*
+	* Change all space in user name to dot
+	*/
+	_switch_char(s, s, ' ', '.');
+#endif
 	return (s);
 }
 
@@ -66,5 +73,12 @@ sccs_realuser(void)
 		    "character\n");
 		s = NULL;
 	}
+
+#ifdef WIN32 /* win32 have no effective uid */
+       /*
+	* Change all space in user name to dot
+	*/
+	_switch_char(s, s, ' ', '.');
+#endif
 	return (s);
 }
