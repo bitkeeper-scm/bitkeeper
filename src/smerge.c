@@ -93,6 +93,12 @@ smerge_main(int ac, char **av)
 	int	do_diff3 = 0;
 	int	identical = 0;
 
+	unless (bk_mode() == BK_PRO) {
+		enable_mergefcns("all", 0);
+		enable_mergefcns("1,2,3", 1);
+		do_diff3 = 1;
+	}
+
 	mode = MODE_3WAY;
 	while ((c = getopt(ac, av, "234A:a:defghI:npr:s")) != -1) {
 		switch (c) {
@@ -713,6 +719,22 @@ struct difwalk {
 };
 
 /*
+ * Read a line from the diff and return it.  The arguments are like fgets().
+ * We need to just skip lines about missing newlines, we don't actually
+ * read the lines so we don't need to know about the missing newline.
+ * We are just looking for line counts.
+ */
+private char *
+readdiff(char *buf, int size, FILE *f)
+{
+	char	*ret;
+
+	ret = fgets(buf, size, f);
+	if (ret && strneq(buf, "\\ No newline", 12)) ret = fgets(buf, size, f);
+	return (ret);
+}
+
+/*
  * Internal function.
  * Read next command from diff stream
  */
@@ -722,9 +744,10 @@ diffwalk_readcmd(difwalk *dw)
 	char	buf[MAXLINE];
 	char	*p;
 	int	start, end;
+	int	cnt;
 	char	cmd;
 
-	unless (fgets(buf, sizeof(buf), dw->diff)) {
+	unless (readdiff(buf, sizeof(buf), dw->diff)) {
 		dw->cmd.gcastart = dw->cmd.gcaend = INT_MAX;
 		return;
 	}
@@ -753,17 +776,23 @@ diffwalk_readcmd(difwalk *dw)
 		}
 		cnt = dw->cmd.gcaend - dw->cmd.gcastart;
 		while (cnt--) {
-			fgets(buf, sizeof(buf), dw->diff);
+			readdiff(buf, sizeof(buf), dw->diff);
 			assert(buf[0] == '<');
 			assert(buf[1] == ' ');
 		}
 		if (cmd == 'c') {
-			fgets(buf, sizeof(buf), dw->diff);
+			readdiff(buf, sizeof(buf), dw->diff);
 			assert(buf[0] == '-');
 		}
 	} else {
 		assert(dw->cmd.gcaend == dw->cmd.gcastart);
 		dw->cmd.gcaend = ++dw->cmd.gcastart;
+	}
+	cnt = dw->cmd.lines;
+	while (cnt--) {
+		readdiff(buf, sizeof(buf), dw->diff);
+		assert(buf[0] == '>');
+		assert(buf[1] == ' ');
 	}
 }
 
@@ -809,17 +838,11 @@ diffwalk_extend(difwalk *dw, int gcalineno)
 		++dw->end;
 	}
 	if (gcalineno >= dw->cmd.gcastart) {
-		char	buf[MAXLINE];
 		int	extra;
 
 		extra = dw->cmd.lines - (dw->cmd.gcaend - dw->cmd.gcastart);
 		dw->lines += extra;
 		dw->offset += extra;
-		while (dw->cmd.lines--) {
-			fgets(buf, sizeof(buf), dw->diff);
-			assert(buf[0] == '>');
-			assert(buf[1] == ' ');
-		}
 		dw->end = dw->cmd.gcaend;
 		diffwalk_readcmd(dw);
 		diffwalk_extend(dw, gcalineno);
