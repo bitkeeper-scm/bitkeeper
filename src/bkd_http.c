@@ -45,6 +45,11 @@ cmd_httpget(int ac, char **av)
 			state = 0;
 	    	}
 	}
+	unless (bk_options()&BKOPT_WEB) {
+		sprintf(buf, "ERROR-bkWeb option is disabled: %s", upgrade_msg);
+		out(buf);
+		exit(1);
+	}
 	unless (exists("BitKeeper/etc")) {
 		out("ERROR-not at project root\n");
 		exit(1);

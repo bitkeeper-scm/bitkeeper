@@ -300,6 +300,9 @@
 #define BK_BASIC	1
 #define BK_PRO		2
 
+#define BKOPT_WEB	0x0001
+#define BKOPT_ALL	0xffff
+
 #define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)
 #define	eof(s)		((s->encoding & E_GZIP) ? \
@@ -893,7 +896,7 @@ off_t	get_byte_count();
 void	save_byte_count(unsigned int byte_count);
 int	bk_mode();
 int	cat(char *file);
-char	*bk_model();
+char	*bk_model(char *buf, int len);
 char	*getHomeDir();
 char	*age(time_t secs);
 void	sortLines(char **);
