@@ -9503,7 +9503,7 @@ private int
 extractPrefix(const char *b, const char *end, char *kwbuf)
 {
 	const char *t;
-	int	len;
+	int	len, klen;
 
 	/*
 	 * XXX TODO, this does not support
@@ -9512,8 +9512,10 @@ extractPrefix(const char *b, const char *end, char *kwbuf)
 	 */
 	for (t = b; t <= end; t++) {
 		while ((t <= end) && (*t != '(')) t++;
-		if ((t <= end) && !strncmp(&t[1], kwbuf, strlen(kwbuf)) &&
-		    t[strlen(kwbuf) + 1] == ')') {
+		klen = strlen(kwbuf);
+		if ((t <= end) && (t[1] == ':') &&
+		     !strncmp(&t[2], kwbuf, klen) &&
+		     !strncmp(&t[klen + 2], ":)", 2)) {
 			len = t - b;
 			return (len);
 		}
@@ -9668,25 +9670,25 @@ fprintDelta(FILE *out, char *vbuf,
 			}
 		} else if ((*q == '$') &&	/* conditional prefix/suffix */
 		    (q[1] == 'e') && (q[2] == 'a') && (q[3] == 'c') &&
-		    (q[4] == 'h') && (q[5] == '(')) {
+		    (q[4] == 'h') && (q[5] == '(') && (q[6] == ':')) {
 			const char *prefix, *suffix;
-			int	plen, slen;
-			b = &q[6];
-			len = extractKeyword(b, end, ")", kwbuf);
-			if (len < 0) { return (printLF); } /* error */
-			if (b[len + 1] != '{') {
+			int	plen, klen, slen;
+			b = &q[7];
+			klen = extractKeyword(b, end, ":", kwbuf);
+			if (klen < 0) { return (printLF); } /* error */
+			if ((b[klen + 1] != ')') && (b[klen + 2] != '{')) {
 				/* syntax error */
 				fprintf(stderr,
-			    "must have '{' in conditional prefix/suffix\n");
+	    "must have '((:keywod:){..}{' in conditional prefix/suffix\n");
 				return (printLF);
 			}
-			prefix = b = &b[len + 2];
-			plen = extractPrefix(b, end, kwbuf);
-			suffix = &b[plen+len+2];
-			slen = extractSuffix(&b[plen+len+2], end);
+			prefix = &b[klen + 3];
+			plen = extractPrefix(prefix, end, kwbuf);
+			suffix = &prefix[plen + klen + 4];
+			slen = extractSuffix(suffix, end);
 			kw2val(
 			    out, NULL, prefix, plen, kwbuf, suffix, slen, s, d);
-			q = &b[plen + len + slen + 3];
+			q = &suffix[slen + 1];
 		} else {
 			fc(*q++);
 		}
@@ -9885,7 +9887,7 @@ sccs_prs(sccs *s, int flags, int reverse, char *dspec, FILE *out)
 	delta	*d;
 #define	DEFAULT_DSPEC \
 "D :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
-$if(:DPN:){P :DPN:\n}$each(C){C (C)}\n\
+$if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
 ------------------------------------------------"
 
 	if (!dspec) dspec = DEFAULT_DSPEC;
