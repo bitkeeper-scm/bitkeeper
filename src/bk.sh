@@ -1033,7 +1033,7 @@ __logAddr() {
 	__cd2root
 	while getopts R opt
 	do	case "$opt" in
-		R) BK_ETC="../BitKeeper/etc/";; # called from RESYNC
+		R) BK_ETC="../BitKeeper/etc/"; shift;; # called from RESYNC
 		esac
 	done
 	LOG=`${BIN}get -qp ${BK_ETC}config | grep "^logging:" | tr -d '[\t, ]'`
@@ -1094,7 +1094,7 @@ _getLog()
 	__cd2root
 	while getopts R opt
 	do	case "$opt" in
-		R) BK_ETC="../BitKeeper/etc/";; # called from RESYNC
+		R) BK_ETC="../BitKeeper/etc/"; shift;; # called from RESYNC
 		esac
 	done
 	NAME=$1
@@ -1107,7 +1107,7 @@ _setLog()
 	__cd2root
 	while getopts R opt
 	do	case "$opt" in
-		R) BK_ETC="../BitKeeper/etc/";; # called from RESYNC
+		R) BK_ETC="../BitKeeper/etc/"; shift;; # called from RESYNC
 		esac
 	done
 	if [ -f ${BK_ETC}config ]; then ${BIN}clean ${BK_ETC}config; fi
