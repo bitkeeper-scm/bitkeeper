@@ -85,6 +85,15 @@
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
 /*
+ * flags passed to sccs_lod()
+ */
+
+#define LOD_NEW		0x10000000	/* Setup a new LOD */
+#define LOD_CHECK	0x20000000	/* Check and fix all LOD settings */
+#define LOD_NORENAME	0x40000000	/* Skip the renaming part */
+#define LOD_RENUMBER	0x80000000	/* Fix possible lod renumber errors */
+
+/*
  * flags passed to sfileFirst
  */
 #define	SF_GFILE	0x00000001	/* gfile should be readable */
@@ -433,6 +442,7 @@ typedef	struct sccs {
 	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
 	char	*symlink;	/* if gfile is a sym link, the destination */
+	char	*spathname;	/* current spathname in view or not in view */
 	char	**usersgroups;	/* lm, beth, staff, etc */
 	int	encoding;	/* ascii, uuencode, gzip, etc. */
 	char	**flags;	/* flags in the middle that we didn't grok */
@@ -584,6 +594,7 @@ sccs	*sccs_restart(sccs *s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
+sccs	*sccs_csetInit(u32 flags, project *proj);
 char	**sccs_files(char **, int);
 u16	sccs_nextlod(sccs *s);
 int	sccs_smoosh(char *left, char *right);
@@ -620,6 +631,7 @@ void	rangeReset(sccs *sc);
 int	rangeAdd(sccs *sc, char *rev, char *date);
 int	tokens(char *s);
 delta	*findrev(sccs *, char *);
+delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
@@ -658,9 +670,12 @@ delta 	*mkOneZero(sccs *s);
 int     sig(int, int);
 #endif
 int	csetIds(sccs *cset, char *rev);
+int	csetIds_merge(sccs *cset, char *rev, char *merge);
 void	sccs_fixDates(sccs *);
 int	sccs_getxflags(delta *d);
 void	sccs_mkroot(char *root);
+char	*sccs_nivPath(sccs *s);
+char	*sccs_setpathname(sccs *s);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(void);
@@ -670,6 +685,8 @@ sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
+int	sccs_setlod(char *rev, u32 flags);
+void	sccs_renumber(sccs *s, MDBM *lodDb, u32 flags);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
 MMAP	*purify_mopen(char *file, char *mode, char *, int);
@@ -698,7 +715,7 @@ int	smartRename(char *old, char *new);
 void	concat_path(char *buf, char *first, char *second);
 void	free_pfile(pfile *pf);
 delta	*sccs_kid(sccs *s, delta *d);  /* In range.c */
-int	sccs_morekids(delta *d, int bk_mode);
+int	sccs_isleaf(delta *d);
 int	exists(char *file);
 int	emptyDir(char *dir);
 char	*dirname(char *path);
@@ -765,5 +782,21 @@ delta	*host_get(delta *);
 
 void	user_done();
 delta	*user_get(delta *);
+
+/* lod.c */
+struct lod;
+typedef struct lod lod_t;
+
+lod_t	*lod_init(sccs *cset, char *lodname, u32 flags);
+void	lod_free(lod_t *l);
+int	lod_setlod(lod_t *l, sccs *s, u32 flags);
+
+/* names.c */
+void	names_init(void);
+int	names_rename(char *old_spath, char *new_spath, u32 flags);
+void	names_cleanup(u32 flags);
+
+/* bk.c */
+int	bk_sfiles(int ac, char **av);
 
 #endif	/* _SCCS_H_ */
