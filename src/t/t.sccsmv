@@ -234,3 +234,36 @@ eval bk clone $Q project copy $O
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
+echo $N Test pulls into a project with an editted moved file ........$NL
+cd $HERE
+rm -rf project copy
+no_logging project
+date > d
+bk delta -i $Q d
+bk commit $Q -ywhatever
+cd $HERE
+bk clone $Q project copy
+cd project
+bk edit $Q d
+echo dd > d
+bk delta $Q -yd d
+echo ff > qqq
+bk new $Q qqq
+bk commit $Q -ywhat2 
+cd $HERE/copy
+echo ff > f
+bk new $Q f
+bk edit $Q f
+date >> f
+bk mv f newf
+bk pull $Q 2> OUT
+if [ $? -ne 0 ]; then
+	if [ "X$Q" == "X" ]; then cat OUT; fi
+	echo 'failed (bug 2001-07-09-001)'
+else
+    if [ ! -f SCCS/s.qqq ]; then
+	    echo failed
+	    exit 1
+    fi
+    echo OK
+fi
