@@ -25,7 +25,8 @@ sub doMerge
 
 	@flist = &getdiff();
 	close(PIPE_FD);
-	$out = "${tmp}merge$$";
+	$out = "${lfile}_new$$";
+	die "tmp file conflict, $out already exist\n" if (-e $out);
 	&mkMerge(@flist, $out);
 	&mv($out, $lfile);
 	foreach $f (@flist) { &force_unlink($f); };
@@ -649,11 +650,13 @@ sub mv
 
         # No?  Create the dir and try again.
         ($dir = $to) =~ s|/[^/]+$||;
-        &mkdirp($dir, 0775);
-        if (&force_rename($from, $to)) {
-                print "rename($from,$to) worked\n" if $debug;
-                return $OK;
-        }
+	unless ($dir eq $to) {
+        	&mkdirp($dir, 0775) unless $dir eq $to;
+        	if (&force_rename($from, $to)) {
+               		print "rename($from,$to) worked\n" if $debug;
+                	return $OK;
+        	}
+	}
 
         # Still didn't work?  Try copying it.
         &force_unlink($to);
