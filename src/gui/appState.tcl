@@ -16,7 +16,10 @@
 
 # this is the primary application interface to these functions; all other
 # functions are intended to be called only internally by this code
-namespace eval ::appState {}
+namespace eval ::appState {
+	variable filename
+	array set filename {}
+}
 
 proc ::appState {command app varname} \
 {
@@ -87,25 +90,21 @@ proc ::appState::load-1.0 {datavar statevar} \
 proc ::appState::filename {app} \
 {
 	global tcl_platform
+	variable filename
 
-	if {$tcl_platform(platform) == "windows"} {
-		package require registry
-		set dir [registry get [join {
-			HKEY_CURRENT_USER
-			Software
-			Microsoft
-			Windows
-			CurrentVersion
-			Explorer
-			{Shell Folders}
-		} \\] AppData]
-		set filename [file join $dir BitKeeper _bkgui.d $app.rc]
-
-	} else {
-		set filename [file join ~ .bkgui.d $app.rc]
+	# N.B. 'bk dotbk' has the side effect of moving the old config
+	# files to the new location (old=prior to 3.0.2). 
+	if {![info exists filename($app)]} {
+		set new $app.rc
+		if {[string equal $::tcl_platform(platform) "windows"]} {
+			set old [file join _bkgui.d $app.rc]
+		} else {
+			set old [file join .bkgui.d $app.rc]
+		}
+		set filename($app) [exec bk dotbk $old $new]
 	}
 
-	return $filename
+	return $filename($app)
 }
 
 proc ::appState::save {app statevar {version 1.0} {filename ""}} \
