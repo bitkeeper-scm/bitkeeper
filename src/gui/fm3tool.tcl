@@ -1958,6 +1958,7 @@ proc fm3tool {} \
 	.prs.left insert 1.0 "Loading..."
 	.prs.right insert 1.0 "Loading..."
 	after idle [list wm deiconify .]
+	after idle [list focus -force .]
 	update idletasks
 
 	readFile

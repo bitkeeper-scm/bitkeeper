@@ -30,6 +30,7 @@ proc main {} \
 	bk_init
 	app_init
 	widgets
+	after idle [list focus -force .]
 
 	if {$bkuser == "Administrator" || 
 	    $bkuser == "root"} {

@@ -531,6 +531,7 @@ proc main {} \
 	update 
 
 #	after idle [list after 1 getFiles]
+	after idle [list focus -force .]
 	getFiles
 
 	# This must be done after getFiles, because getFiles may cause the

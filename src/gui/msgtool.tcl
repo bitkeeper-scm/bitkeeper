@@ -6,6 +6,7 @@ proc main {} \
 	widgets
 
 	after idle [list wm deiconify .]
+	after idle [list focus -force .]
 }
 
 proc init {} \
