@@ -9,7 +9,7 @@
 # a build. This is easy to remedy though, for those that have problems.
 
 # The version
-VERSION=0.73
+VERSION=0.74
 
 #Compiler and Linker Names
 CC=gcc
@@ -61,14 +61,6 @@ CFLAGS += -DDEVRANDOM
 #
 #CFLAGS += -DCLEAN_STACK
 
-#Use fast PK routines.  Basically this limits the size of the private key in the
-#DH system to 256 bits.  The group order remains unchanged so the best
-#attacks are still GNFS (for DH upto 2560-bits)
-#
-#This will only speed up the key generation and encryption routines.  It lowers the
-#security so its by default not turned on.  USE AT YOUR RISK!
-#CFLAGS += -DFAST_PK
-
 # What algorithms to include? comment out and rebuild to remove em
 CFLAGS += -DBLOWFISH
 CFLAGS += -DRC2
@@ -105,6 +97,26 @@ CFLAGS += -DCAST5
 # precomputed S-boxes (Q0 and Q1) as well as precomputed GF multiplications [in the MDS].
 # This speeds up the cipher somewhat.
 #CFLAGS += -DTWOFISH_TABLES 
+
+#Small code variant of the SAFER+ cipher, uses same RAM but less code space
+#With this defined the cipher is slower.  On my x86 with GCC 3.2 it required 50KB less space
+CFLAGS += -DSAFERP_SMALL
+
+#Small Rijndael [saves 13KB on an x86]
+#With this defined the cipher is slower (by 50Mbit/sec on an Athon XP)
+CFLAGS += -DRIJNDAEL_SMALL
+
+#Use fast PK routines.  Basically this limits the size of the private key in the
+#DH system to 256 bits.  The group order remains unchanged so the best
+#attacks are still GNFS (for DH upto 2560-bits)
+#
+#This will only speed up the key generation and encryption routines.  It lowers the
+#security so its by default not turned on.  USE AT YOUR RISK!
+#CFLAGS += -DFAST_PK
+
+#Include the PK Packet functions (e.g. dh_encrypt)
+#Does not affect the key/hash routines (e.g. ecc_sign_hash)
+#CFLAGS += -DPK_PACKET
 
 # Chaining modes
 CFLAGS += -DCFB
@@ -229,7 +241,7 @@ install: library
 clean:
 	rm -f $(OBJECTS) $(TESTOBJECTS) $(HASHOBJECTS) $(CRYPTOBJECTS) $(SMALLOBJECTS) $(LEFTOVERS) $(LIBNAME)
 	rm -f $(TEST) $(HASH) $(COMPRESSED)
-	rm -f *stackdump *.lib *.exe *.obj demos/*.obj zlib/*.obj
+	rm -f *stackdump *.lib *.exe *.obj demos/*.obj zlib/*.obj *.bat
 
 #This builds the crypt.pdf file. Note that the rm -f *.pdf has been removed
 #from the clean command! This is because most people would like to keep the

@@ -117,6 +117,42 @@ extern const unsigned char safer_ebox[], safer_lbox[];
     iSHUF(b2, b); iPHT(b);    \
     iSHUF(b, b2); iPHT(b2);
     
+#ifdef SAFERP_SMALL    
+
+static void _round(unsigned char *b, int i, symmetric_key *skey) 
+{
+   ROUND(b, i);
+}
+
+static void _iround(unsigned char *b, int i, symmetric_key *skey)
+{
+   iROUND(b, i);
+}
+
+static void _lt(unsigned char *b, unsigned char *b2)
+{
+   LT(b, b2);
+}
+
+static void _ilt(unsigned char *b, unsigned char *b2)
+{
+   iLT(b, b2);
+}   
+
+#undef ROUND
+#define ROUND(b, i) _round(b, i, skey)
+
+#undef iROUND
+#define iROUND(b, i) _iround(b, i, skey)
+
+#undef LT
+#define LT(b, b2) _lt(b, b2)
+
+#undef iLT
+#define iLT(b, b2) _ilt(b, b2)
+
+#endif
+
 /* These are the 33, 128-bit bias words for the key schedule */
 const unsigned char safer_bias[33][16] = {
 {  70, 151, 177, 186, 163, 183,  16,  10, 197,  55, 179, 201,  90,  40, 172, 100},

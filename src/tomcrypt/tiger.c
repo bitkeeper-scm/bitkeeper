@@ -21,43 +21,6 @@ const struct _hash_descriptor tiger_desc =
 
 #define save_abc  aa = a; bb = b; cc = c;
 
-/* one round of the hash function */
-#define round(a,b,c,x,mul)                                                             \
-    c ^= x;                                                                            \
-    a -= t1[(c)&255] ^ t2[((c)>>16)&255] ^ t3[((c)>>32)&255] ^ t4[((c)>>48)&255];      \
-    b += t4[((c)>>8)&255] ^ t3[((c)>>24)&255] ^ t2[((c)>>40)&255] ^ t1[((c)>>56)&255]; \
-    b *= mul;
-
-/* one complete pass */
-#define pass(a,b,c,mul)    \
-    round(a,b,c,x[0],mul); \
-    round(b,c,a,x[1],mul); \
-    round(c,a,b,x[2],mul); \
-    round(a,b,c,x[3],mul); \
-    round(b,c,a,x[4],mul); \
-    round(c,a,b,x[5],mul); \
-    round(a,b,c,x[6],mul); \
-    round(b,c,a,x[7],mul);          
-
-/* The key mixing schedule */
-#define key_schedule                            \
-    x[0] -= x[7] ^ CONST64(0xA5A5A5A5A5A5A5A5); \
-    x[1] ^= x[0];                               \
-    x[2] += x[1];                               \
-    x[3] -= x[2] ^ ((~x[1])<<19);               \
-    x[4] ^= x[3];                               \
-    x[5] += x[4];                               \
-    x[6] -= x[5] ^ ((~x[4])>>23);               \
-    x[7] ^= x[6];                               \
-    x[0] += x[7];                               \
-    x[1] -= x[0] ^ ((~x[7])<<19);               \
-    x[2] ^= x[1];                               \
-    x[3] += x[2];                               \
-    x[4] -= x[3] ^ ((~x[2])>>23);               \
-    x[5] ^= x[4];                               \
-    x[6] += x[5];                               \
-    x[7] -= x[6] ^ CONST64(0x0123456789ABCDEF);    
-
 const static ulong64 table[4*256] = {
     CONST64(0x02AAB17CF7E90C5E) /*    0 */, CONST64(0xAC424B03E243A8EC) /*    1 */,
     CONST64(0x72CD5BE30DD5FCD3) /*    2 */, CONST64(0x6D019B93F6F97F3A) /*    3 */,
@@ -572,6 +535,48 @@ const static ulong64 table[4*256] = {
     CONST64(0xCD56D9430EA8280E) /* 1020 */, CONST64(0xC12591D7535F5065) /* 1021 */,
     CONST64(0xC83223F1720AEF96) /* 1022 */, CONST64(0xC3A0396F7363A51F) /* 1023 */};
 
+/* one round of the hash function */
+static void round(ulong64 *a, ulong64 *b, ulong64 *c, ulong64 x, ulong64 mul)
+{
+    *c ^= x;                                                                            
+    *a -= t1[(*c)&255] ^ t2[((*c)>>16)&255] ^ t3[((*c)>>32)&255] ^ t4[((*c)>>48)&255];      
+    *b += t4[((*c)>>8)&255] ^ t3[((*c)>>24)&255] ^ t2[((*c)>>40)&255] ^ t1[((*c)>>56)&255]; 
+    *b *= mul;
+}
+
+/* one complete pass */
+static void pass(ulong64 *a, ulong64 *b, ulong64 *c, ulong64 *x, ulong64 mul)
+{
+   round(a,b,c,x[0],mul); 
+   round(b,c,a,x[1],mul); 
+   round(c,a,b,x[2],mul); 
+   round(a,b,c,x[3],mul); 
+   round(b,c,a,x[4],mul); 
+   round(c,a,b,x[5],mul); 
+   round(a,b,c,x[6],mul); 
+   round(b,c,a,x[7],mul);          
+}   
+
+/* The key mixing schedule */
+static void key_schedule(ulong64 *x) {
+    x[0] -= x[7] ^ CONST64(0xA5A5A5A5A5A5A5A5); 
+    x[1] ^= x[0];                               
+    x[2] += x[1];                               
+    x[3] -= x[2] ^ ((~x[1])<<19);               
+    x[4] ^= x[3];                               
+    x[5] += x[4];                               
+    x[6] -= x[5] ^ ((~x[4])>>23);               
+    x[7] ^= x[6];                               
+    x[0] += x[7];                               
+    x[1] -= x[0] ^ ((~x[7])<<19);               
+    x[2] ^= x[1];                               
+    x[3] += x[2];                               
+    x[4] -= x[3] ^ ((~x[2])>>23);               
+    x[5] ^= x[4];                               
+    x[6] += x[5];                               
+    x[7] -= x[6] ^ CONST64(0x0123456789ABCDEF);
+}    
+
 #ifdef CLEAN_STACK
 static void _tiger_compress(hash_state *md)
 #else
@@ -591,11 +596,11 @@ static void tiger_compress(hash_state *md)
     b = md->tiger.state[1];
     c = md->tiger.state[2];
 
-    pass(a,b,c,5);
-    key_schedule;
-    pass(c,a,b,7);
-    key_schedule;
-    pass(b,c,a,9);
+    pass(&a,&b,&c,x,5);
+    key_schedule(x);
+    pass(&c,&a,&b,x,7);
+    key_schedule(x);
+    pass(&b,&c,&a,x,9);
 
     /* store state */
     md->tiger.state[0] = a ^ md->tiger.state[0];

@@ -1,3 +1,11 @@
+Nov 22nd, 2002 [later in the day]
+v0.74  -- Wrote a small variant of SAFER+ which shaved 50KB off the size of the library on x86 platforms
+       -- Wrote a build option to remove the PK packet functions [keeps the encrypt_key/sign_hash functions]
+       -- Wrote a small variant of Rijndael (trimmed 13KB)
+       -- Trimmed the TIGER/192 hash function a bit
+       -- Overall the entire lib compiled is 295KB [down from 400KB before]
+       -- Fixed a few minor oversights in the MSVC makefile
+
 Nov 22nd, 2002
 v0.73  -- Fixed bug in RC4 code where it could only use 255 byte keys.
        -- Fixed bug in yarrow code where it would allow cast5 or md2 to be used with it...

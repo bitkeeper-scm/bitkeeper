@@ -1,16 +1,4 @@
-/* format of encrypt message
-
-offset    | size  |  description
----------------------------------
-   0      |   1   |  cipher ID
-   1      |   1   |  hash ID
-   2      |   4   |  length of ECC public key
-   6      |   c   |  ECC public key
-   6+c    |   d   |  Cipher CTR IV value [size determined by block cipher chosen]
-   6+c+d  |   4   |  Length of ciphertext in bytes
-   10+c+d |   e   |  ciphertext
---------------------------------- 
-*/
+#ifdef PK_PACKET
 
 int ecc_encrypt(const unsigned char *in,  unsigned long len, 
                       unsigned char *out, unsigned long *outlen,
@@ -264,16 +252,6 @@ cannot find 'x' from (A, b).  'b' is perfectly decorrelated and reveals no
 information.  A reveals what kG is but not 'k' directly.  Therefore, 
 assuming finding 'k' given kG is hard, finding 'x' from b is hard too.
 
- * Message format for a message signature
-
-offset    | size  |  description
----------------------------------
-   0      |   1   | hash ID
-   1      |   4   | size of public key (A)
-   5      |   b   | public key (A)
-   5+b    |   4   | size of mp_int (b)
-   9+b    |   c   | mp_int (b)
----------------------------------
 */
 
 int ecc_sign(const unsigned char *in,  unsigned long inlen, 
@@ -499,6 +477,8 @@ done1:
 #endif
    return CRYPT_OK;
 }
+
+#endif
 
 int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
                           unsigned char *out,  unsigned long *len, 

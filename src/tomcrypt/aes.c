@@ -185,6 +185,26 @@ int rijndael_setup(const unsigned char *key, int keylen, int numrounds, symmetri
     f_rl(bo, bi, 1, k);     \
     f_rl(bo, bi, 2, k);     \
     f_rl(bo, bi, 3, k)
+    
+#ifdef RIJNDAEL_SMALL
+
+static void _fnround(unsigned long *bo, unsigned long *bi, unsigned long *k)
+{
+   f_nround(bo, bi, k);
+}
+
+static void _flround(unsigned long *bo, unsigned long *bi, unsigned long *k)
+{
+   f_lround(bo, bi, k);
+} 
+
+#undef   f_nround
+#define  f_nround(bo, bi, k) { _fnround(bo, bi, k); k += 4; }
+
+#undef   f_lround
+#define  f_lround(bo, bi, k) _flround(bo, bi, k)
+
+#endif
 
 void rijndael_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_key *skey)
 {   
@@ -223,7 +243,6 @@ void rijndael_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_
 };
 
 /* decrypt a block of text  */
-
 #define i_nround(bo, bi, k) \
     i_rn(bo, bi, 0, k);     \
     i_rn(bo, bi, 1, k);     \
@@ -236,6 +255,26 @@ void rijndael_ecb_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_
     i_rl(bo, bi, 1, k);     \
     i_rl(bo, bi, 2, k);     \
     i_rl(bo, bi, 3, k)
+    
+#ifdef RIJNDAEL_SMALL
+
+static void _inround(unsigned long *bo, unsigned long *bi, unsigned long *k)
+{
+   i_nround(bo, bi, k);
+}
+
+static void _ilround(unsigned long *bo, unsigned long *bi, unsigned long *k)
+{
+   i_lround(bo, bi, k);
+} 
+
+#undef   i_nround
+#define  i_nround(bo, bi, k) { _inround(bo, bi, k); k -= 4; }
+
+#undef   i_lround
+#define  i_lround(bo, bi, k) _ilround(bo, bi, k)
+
+#endif    
 
 void rijndael_ecb_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_key *skey)
 {   

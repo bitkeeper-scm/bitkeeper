@@ -44,7 +44,7 @@
 \def\gap{\vspace{0.5ex}}
 \makeindex
 \begin{document}
-\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.73}
+\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.74}
 \author{Tom St Denis \\
 Algonquin College \\
 \\
@@ -2409,6 +2409,10 @@ When TWOFISH\_TABLES is defined the cipher will use pre-computed (and fixed in c
 useful when TWOFISH\_SMALL is defined as the table values are computed on the fly.  When this is defined the code size
 will increase by approximately 500 bytes.  If this is defined but TWOFISH\_SMALL is not the cipher will still work but
 it will not speed up the encryption or decryption functions.
+
+\subsubsection{SAFERP\_SMALL and RIJNDAEL\_SMALL}
+These two build options let you use slower versions of the ciphers which are also much smaller.  In the case of the SAFER+
+implementation it ends up being 1/6th the size.  As for Rijndael its roughly half the size.
 
 
 \end{document}

@@ -1,16 +1,4 @@
-/* Encrypted Message Format:
-
-offset    |  length   |    Contents
-----------------------------------------------------------------------
-0         |    1      |  cipher ID
-1         |    4      |  length of RSA encrypted value (big endian format)
-5         |    q      |  the rsa_pad()'ed RSA encrypted value (big endian format)
-5+q       |    p      |  The CTR IV value used (varies in size based on cipher used)
-9+q+p     |    4      |  length of message (big endian format)
-9+q+p     |    j      |  ciphertext
-----------------------------------------------------------------------
-
-*/
+#ifdef PK_PACKET
 
 int rsa_encrypt(const unsigned char *in,  unsigned long len, 
                       unsigned char *out, unsigned long *outlen,
@@ -354,6 +342,8 @@ int rsa_verify(const unsigned char *sig, const unsigned char *msg,
 #endif
    return CRYPT_OK;
 }
+
+#endif
 
 /* these are smaller routines written by Clay Culver.  They do the same function as the rsa_encrypt/decrypt 
  * except that they are used to RSA encrypt/decrypt a single value and not a packet.
