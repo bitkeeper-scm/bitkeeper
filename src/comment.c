@@ -59,7 +59,7 @@ comments_main(int ac, char **av)
 	} else if (file) {
 		unless (lines = readFile(file)) return (1);
 	}
-	unless (editor = getenv("EDITOR")) editor = "vi";
+	unless (editor = getenv("EDITOR")) editor = EDITOR;
 
 	if (av[optind] && streq(av[optind], "-")) {
 		/*

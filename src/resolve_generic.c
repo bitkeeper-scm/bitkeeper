@@ -28,7 +28,7 @@ resolve_init(opts *opts, sccs *s)
 	}
 	rs->revs = getnames(sccs_Xfile(rs->s, 'r'), 'r');
 	unless (rs->pager = getenv("PAGER")) rs->pager = PAGER;
-	unless (rs->editor = getenv("EDITOR")) rs->editor = "vi";
+	unless (rs->editor = getenv("EDITOR")) rs->editor = EDITOR;
 	if (opts->debug) {
 		fprintf(stderr, "rs_init(%s)", rs->d->pathname);
 		if (rs->snames) fprintf(stderr, " snames");
