@@ -1431,17 +1431,20 @@ automerge(resolve *rs, names *n)
 	if (ret == 0xff00) {
 	    	fprintf(stderr, "Can not execute '%s'\n", cmd);
 		rs->opts->errors = 1;
+		unlink(rs->s->gfile);
 		return;
 	}
 	if ((ret >> 8) == 1) {
 		fprintf(stderr,
 		    "Conflicts during automerge of %s\n", rs->s->gfile);
 		rs->opts->hadConflicts++;
+		unlink(rs->s->gfile);
 		return;
 	}
 	fprintf(stderr,
 	    "Automerge of %s failed for unknown reasons\n", rs->s->gfile);
 	rs->opts->errors = 1;
+	unlink(rs->s->gfile);
 	return;
 }
 
@@ -1574,12 +1577,17 @@ int
 pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
-	char	buf[MAXPATH];
-	char	key[MAXKEY];
+	char	*t;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
 	FILE	*p;
 	FILE	*get;
+	FILE	*save;
 	int	n = 0;
+	char	buf[MAXPATH];
+	char	key[MAXKEY];
+	char	orig[MAXPATH];
+	void	restore(FILE *f);
+	void	unbackup(FILE *f);
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -1602,6 +1610,8 @@ pass4_apply(opts *opts)
 	 * edited files, but all files have been checked twice,
 	 * once by takepatch and then once by nameOK() in pass1.
 	 */
+	gettemp(orig, "orig");
+	save = fopen(orig, "w+");
 	chdir(RESYNC2ROOT);
 	sprintf(key, "%ssfiles %s", bin, ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
@@ -1613,10 +1623,12 @@ pass4_apply(opts *opts)
 		unless (r = sccs_init(buf, INIT, opts->resync_proj)) {
 			fprintf(stderr,
 			    "resolve: can't init %s - abort.\n", buf);
+			restore(save);
 			fprintf(stderr, "resolve: no files were applied.\n");
 			exit(1);
 		}
 		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			restore(save);
 			exit(1);	/* ??? */
 		}
 		sccs_sdelta(r, sccs_ino(r), key);
@@ -1627,21 +1639,26 @@ pass4_apply(opts *opts)
 			if (IS_EDITED(l) || IS_LOCKED(l)) {
 				fprintf(stderr,
 				    "Will not overwrite edited %s\n", l->gfile);
+				restore(save);
 				exit(1);
 			}
 			sccs_close(l);
 			/*
-			 * Right here we do something dangerous - we remove
-			 * the repository file and don't replace until down
-			 * below.  This is maybe not the right answer.
-			 * A better answer may be to move it to the x.file
-			 * and then move the other file in place, and then
-			 * remove the x.file.
+			 * Move the file out of the way, saving it, and
+			 * make space for the new file.  If this works
+			 * for all of them, we'll come back and remove these.
+			 * Otherwise, we put these back.
 			 */
-			unlink(l->sfile);
+			strcpy(buf, l->sfile);
+			t = strrchr(buf, '/');
+			t[1] = 'b';			/* b is for backup */
+			unlink(buf);
+			rename(l->sfile, buf);
 			if (opts->log) {
-				fprintf(stdlog, "unlink(%s)\n", l->sfile);
+				fprintf(stdlog,
+				    "rename(%s, %s)\n", l->sfile, buf);
 			}
+			fprintf(save, "%s\n", buf);
 			sccs_free(l);
 		}
 		sccs_free(r);
@@ -1653,10 +1670,12 @@ pass4_apply(opts *opts)
 	 */
 	sprintf(key, "%ssfiles %s", bin, ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
+		unbackup(save);
 		perror("popen of bk sfiles");
 		exit (1);
 	}
 	unless (get = popen("get -s -", "w")) {
+		unbackup(save);
 		perror("popen of get -");
 		exit (1);
 	}
@@ -1674,6 +1693,7 @@ pass4_apply(opts *opts)
 				perror("rename");
 				fprintf(stderr, "rename(%s, %s) failed\n",
 				    buf, &buf[offset]);
+			    	/* XXX - restore? */
 			} else {
 				opts->applied++;
 				fprintf(get, "%s\n", &buf[offset]);
@@ -1686,20 +1706,23 @@ pass4_apply(opts *opts)
 	pclose(p);
 	pclose(get);
 	unless (opts->quiet) {
-		fprintf(stdlog,
+		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
 		fprintf(stdlog, "resolve: rebuilding caches...\n");
 	}
 	sprintf(buf, "%ssfiles -r", bin);
 	system(buf);
 	unless (opts->quiet) {
-		fprintf(stderr, "running consistency check, please wait...\n");
+		fprintf(stderr,
+		    "resolve: running consistency check, please wait...\n");
 	}
 	sprintf(buf, "%ssfiles | %scheck -a -", bin, bin);
 	unless (system(buf) == 0) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
 		exit(1);
 	}
+	unbackup(save);
+	unlink(orig);
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "Consistency check passed, resolve complete.\n");
@@ -1707,6 +1730,74 @@ pass4_apply(opts *opts)
 	resolve_cleanup(opts, CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING);
 	/* NOTREACHED */
 	return (0);
+}
+
+/*
+ * Go through and remove the backup files.
+ */
+void
+unbackup(FILE *f)
+{
+	char	*t;
+	char	buf[MAXPATH];
+
+	fflush(f);
+	rewind(f);
+	while (fnext(buf, f)) {
+		chop(buf);
+		t = strrchr(buf, '/');
+		assert(t && (t[1] == 'b'));
+		unlink(buf);
+	}
+	fclose(f);
+}
+
+/*
+ * Go through and put everything back.
+ */
+void
+restore(FILE *f)
+{
+	char	*t;
+	char	from[MAXPATH];
+	char	to[MAXPATH];
+	int	failed = 0, n = 0;
+
+	fflush(f);
+	rewind(f);
+	while (fnext(from, f)) {
+		chop(from);
+		strcpy(to, from);
+		t = strrchr(to, '/');
+		t[1] = 's';
+		if (rename(from, to)) {
+			perror("rename");
+			fprintf(stderr,
+			    "Unable to restore %s to %s\n", from, to);
+			failed++;
+		} else {
+			n++;
+		}
+	}
+	fclose(f);
+	if (failed) {
+		fprintf(stderr,
+		    "Failed to restore %d/%d files\n", failed, failed+n);
+	}
+	fprintf(stderr, "Restored %d/%d files\n", n, failed+n);
+	if (failed == 0) {
+		fprintf(stderr,
+"Your repository should be back to where it was before the resolve started.\n\
+We are running a consistency check to verify this.\n");
+		system("bk -r check -a");
+	} else {
+		fprintf(stderr,
+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\
+Your repository is only partially restored.   This is an error.  Please \n\
+examine the list of failures above and find out why they were not renamed.\n\
+You must move them into place by hand before the repository is usable.\n\
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	}
 }
 
 void

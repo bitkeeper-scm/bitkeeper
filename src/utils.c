@@ -74,7 +74,7 @@ prompt(char *msg, char *buf)
 {
 	write(2, msg, strlen(msg));
 	write(2, " ", 1);
-	if (getline(0, buf, MAXPATH) > 0) return (1);
+	if (getline(0, buf, MAXPATH) > 1) return (1);
 	return (0);
 }
 
@@ -85,6 +85,6 @@ confirm(char *msg)
 
 	write(2, msg, strlen(msg));
 	write(2, " (y/n) ", 7);
-	if (getline(0, buf, sizeof(buf)) <= 0) return (0);
+	if (getline(0, buf, sizeof(buf)) <= 1) return (0);
 	return ((buf[0] == 'y') || (buf[0] == 'Y'));
 }
