@@ -51,7 +51,7 @@ cmd_cd(int ac, char **av)
 	char *rootkey, cleanedPath[MAXPATH], buf[MAXPATH];
 
 	unless (p) {
-		out("ERROR-cd command must have path arugment\n");
+		out("ERROR-cd command must have path argument\n");
 		return (1);
 	}
 

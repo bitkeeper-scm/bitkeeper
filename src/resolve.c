@@ -2360,7 +2360,7 @@ c) Run \"bk mv\" again to move from the temporary location to\n\
    %s\n\
 d) Run \"bk commit\" to record the new location in a changeset.\n\
 e) Run \"bk resolve\" or \"bk pull\" again.\n\
-f) You should also inform owners of other repositories to aviod using path\n\
+f) You should also inform owners of other repositories to avoid using path\n\
    of similar names.\n\
 ============================================================================\n";
 			char	*unknown_err =

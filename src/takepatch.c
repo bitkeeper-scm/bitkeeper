@@ -735,7 +735,7 @@ noconflicts(void)
 	SHOUT();
 	fputs(
 "takepatch was instructed not to accept conflicts into this tree.\n\
-Please make sure all pending deltas are comitted in this tree,\n\
+Please make sure all pending deltas are committed in this tree,\n\
 resync in the opposite direction and then reapply this patch.\n",
 stderr);
 	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
