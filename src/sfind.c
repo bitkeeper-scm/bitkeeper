@@ -435,7 +435,7 @@ caches(const char *filename, struct stat *sb, int flag)
 	 */
 	if (d->flags & D_CSET) {
 		sccs_free(sc);
-		return;
+		return (0);
 	}
 
 	printf("%s:%s\n", sc->sfile, d->rev);

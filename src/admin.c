@@ -34,13 +34,13 @@ usage: admin options [- | file file file...]\n\
     -B			make the landing pad bigger\n\
     -C			remove the changeset information\n\
     -Z[alg]		compress stored s.file with <alg>, which may be:\n\
-		gzip	like gzip(1) (default)
-		none	no compression
-    -E[enc]		treat file as encoded with <enc>, which may be:
-		text	plain text
-		ascii	same
-		binary	binary file (must uuencode before diffing)
-		uugzip	same, but compress before uuencode
+		gzip	like gzip(1) (default)\n\
+		none	no compression\n\
+    -E[enc]		treat file as encoded with <enc>, which may be:\n\
+		text	plain text\n\
+		ascii	same\n\
+		binary	binary file (must uuencode before diffing)\n\
+		uugzip	same, but compress before uuencode\n\
     -u			make sure that all dates are increasing\n\
 			(dangerous, this changes the keys)\n\
 \n\

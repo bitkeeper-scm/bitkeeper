@@ -3452,7 +3452,7 @@ is_sccs(char *name)
 		/* SCCS/s.c
 		   4321012
 		 */
-		if ((name <= &s[-4]) && strneq("SCCS", &s[-4], 4)) return (1);
+		if ((name <= &s[-4]) && PathnEqual("SCCS", &s[-4], 4)) return (1);
 	}
 	return (0);
 }

@@ -287,6 +287,7 @@ do_checksum(void)
 	printf("# Patch checksum=%.8lx\n", sum);
 }	
 
+#ifndef WIN32
 /*
  * Spin off a subprocess and rejigger stdout to feed into its stdin.
  * The subprocess will run a checksum over the text of the patch
@@ -338,6 +339,7 @@ spawn_checksum_child(void)
 		exit(0);
 	}
 }
+#endif
 
 int
 csetInit(sccs *cset, int flags)
@@ -721,10 +723,12 @@ csetlist(sccs *cset)
 	}
 
 	/* checksum the output */
+#ifndef WIN32
 	if (makepatch) {
 		pid = spawn_checksum_child();
 		if (pid == -1) goto fail;
 	}
+#endif
 	if (makepatch || doDiffs) header(cset, doDiffs);
 again:	/* doDiffs can make it two pass */
 	if (!doDiffs && makepatch) {
@@ -768,6 +772,7 @@ again:	/* doDiffs can make it two pass */
 	}
 	if (makepatch) {
 		fclose(stdout);  /* give the child an EOF */
+#ifndef WIN32
 		if (waitpid(pid, &status, 0) != pid) {
 			perror("waitpid");
 		}
@@ -776,6 +781,7 @@ again:	/* doDiffs can make it two pass */
 		  "makepatch: checksum process exited abnormally, status %d\n",
 				status);
 		}
+#endif
 	}
 	unlink(csort);
 	free(csetid);
@@ -1103,7 +1109,7 @@ csetCreate(sccs *cset, int flags, char *sym)
 	}
 	
 	date = d->date;
-	unless (cset = sccs_init(CHANGESET, flags, 0)) {
+	unless (cset = sccs_init(csetFile, flags, 0)) {
 		perror("init");
 		error = -1;
 		goto out;

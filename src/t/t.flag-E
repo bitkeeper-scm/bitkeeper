@@ -9,7 +9,7 @@ admin $Q -n -fEXPAND1 -itest.c test.c
 ${RM} -f test.c
 get $Q test.c
 ${ECHO} "XX@(#)test.c 1.1YY" > ref.c
-${ECHO} 'YY@W@ZZ' | sed s/@/%/g >> ref.c
+${ECHO} 'YY@W@ZZ' | sed s/@/%/g | ${CAT} >> ref.c
 cmp -s test.c ref.c
 if [ $? -ne 0 ]; then echo Failed; cat test.c; exit 1; fi
 echo OK

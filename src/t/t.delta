@@ -124,18 +124,45 @@ if [ ! -f init2 ]; then echo File not checked out.; exit 1; fi
 if [ -w init2 ]; then echo File not read only.; exit 1; fi
 echo OK
 echo $N Make sure delta -G works ....................$NL
+# work around for cygwin bug : off by one hour
 ${ECHO} "G change data" > init3
 case X`uname -s` in
     XIRIX*)	touch -t 8901020304.00 init3
+		echo "89/01/02 03:04:00" > CMP1 
     	;;
-    X*BSD)	touch -t 8901020304.00 init3
-    	;;
+    XCYGWIN*)	touch -m 0102030489 init3
+		echo "89/01/02 03:04:00" > CMP1 
+	;;
     *)		touch -m 0102030489 init3
+		echo "89/01/02 03:04:00" > CMP1 
     	;;
 esac
 delta $Q -i -G init3
-${ECHO} "89/01/02 03:04:00" > CMP1 
 prs -h -d":D: :T:" init3 > CMP2
+# on NT, cygwin added 02 seconds
+case X`uname -s` in
+    XCYGWIN*)	sed -e"s/:02$/:00/" CMP2 >  CMPX
+		sed -e"s/ 04:04:/ 03:04:/" CMPX > CMP2
+	;;
+	*)
+	;;
+esac
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
+get $Q -T init3
+# There is a bug in cygwin (version B20) ls/timezone code; 
+# It is off by one hour when we are in daylight saving time.
+ls -l --full-time init3 | awk '{print $9}' > CMP1
+prs -hr1.1 -d:T: init3 > CMP2
+case X`uname -s` in
+    XCYGWIN*)	sed -e"s/^04:/03:/" CMP2 > CMPX
+		mv CMPX CMP2
+		sed -e"s/^04:/03:/" CMP1 > CMPX
+		mv CMPX CMP1
+	;;
+	*)
+	;;
+esac
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; cat -n CMP[12]; exit 1; fi
 echo OK

@@ -28,7 +28,7 @@ admin $Q -n -fSHELL -imake_sym.sh make_sym.sh
 ${RM} -f make_sym.sh  symlink
 co $Q make_sym.sh
 if [ ! -h symlink ]; then echo failed; exit 1; fi;
-ls -l | awk '/^l/ { print "ln -s", $11, $9 }' > make_sym.ref
+ls -l | awk '/^l/ { print "ln -s", $11, $9 }' | ${CAT} > make_sym.ref
 cmp -s make_sym.sh make_sym.ref
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
