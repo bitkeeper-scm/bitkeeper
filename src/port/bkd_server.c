@@ -206,20 +206,19 @@ bkd_server(int ac, char **av)
 #define SERVICEDISPLAYNAME 	"BitKeeper Service"
 #define DEPENDENCIES       	""
 
-static SERVICE_STATUS		srvStatus;
-static SERVICE_STATUS_HANDLE	statusHandle;
-static HANDLE			hServerStopEvent = NULL;
-static char			err[256];
-int				bkd_quit = 0; /* global */
+static	SERVICE_STATUS		srvStatus;
+static	SERVICE_STATUS_HANDLE	statusHandle;
+static	HANDLE			hServerStopEvent = NULL;
+static	char			err[256];
+static	int			bkd_quit = 0; /* global */
 
-static void WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
-static char *getError(char *buf, int len);
-void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
-void bkd_remove_service(int verbose);
-void bkd_install_service(bkdopts *opts, int ac, char **av);
-void bkd_install_service(bkdopts *opts, int ac, char **av);
-void bkd_start_service(void (*service_func)(int, char**));
-void logMsg(char *msg);
+private	void	WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
+private	char	*getError(char *buf, int len);
+private	void	reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
+private	void	bkd_remove_service(int verbose);
+private	void	bkd_install_service(bkdopts *opts, int ac, char **av);
+private	void	bkd_start_service(void (*service_func)(int, char**));
+private	void	logMsg(char *msg);
 
 private void
 argv_save(int ac, char **av, char **nav, int j)
@@ -285,7 +284,7 @@ argv_free(char **nav, int j)
 	while (nav[j]) free(nav[j++]);
 }
 
-void
+private void
 bkd_service_loop(int ac, char **av)
 {
 	SOCKET	sock = 0;
@@ -297,10 +296,6 @@ bkd_service_loop(int ac, char **av)
 		"-p", pipe_size,	/* set pipe size */
 		"bk", "bkd", "-z",	/* bkd command */
 		0};
-	extern	int bkd_quit; /* This is set by the helper thread */
-	extern	int bkd_register_ctrl(void);
-	extern	void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
-	extern	void logMsg(char *);
 	SERVICE_STATUS_HANDLE   sHandle;
 	
 	/*
@@ -389,8 +384,6 @@ done:	if (sock) CloseHandle((HANDLE)sock);
 void
 bkd_server(int ac, char **av)
 {
-	extern void bkd_service_loop(int, char **);
-
 	if (Opts.start) { 
 		bkd_start_service(bkd_service_loop);
 		exit(0);
@@ -403,30 +396,21 @@ bkd_server(int ac, char **av)
 	}
 }
 
-static int
-envSize(char *envVar)
+/* e.g. return env string " -E \"BK_DOTBK=path\"" */
+private char *
+genEnvArgs(char *buf, char *envVar)
 {
-	char *e;
+	char	*v;
 
-	unless (e = getenv(envVar)) return (0);
-	return (strlen(envVar) + 1 + strlen(e));
-}
-
-/* e.g. append "-E \"BK_BKDIR=path\"" */
-static void
-addEnvVar(char *cmd, char *envVar)
-{
-	char	*p, *v;
-
-	unless (v = getenv(envVar)) return;
-	p = &cmd[strlen(cmd)];
-	sprintf(p, "-E \"%s=%s\"", envVar, v);
+	unless (v = getenv(envVar)) return ("");
+	sprintf(buf, " -E \"%s=%s\"", envVar, v);
+	return (buf);
 }
 
 /*
  * Install and start bkd service
  */
-void
+private void
 bkd_install_service(bkdopts *opts, int ac, char **av)
 {
 	SC_HANDLE   schService = 0;
@@ -435,8 +419,9 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	char	path[1024], here[1024];
 	char	*start_dir, *cmd, *p;
 	char	**nav;
-	char	*eVars[3] = {"BK_REGRESION", "BK_BKDIR", 0};
+	char	*eVars[] = {"BK_REGRESION", "BK_DOTBK", "PATH", 0};
 	int	i, len, try = 0;
+	char	buf[MAXLINE];
 
 	if (GetModuleFileName(NULL, path, sizeof(path)) == 0) {
 		fprintf(stderr, "Unable to install %s - %s\n",
@@ -451,17 +436,17 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 		start_dir = here;
 	}
 	
-	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
-		path, opts->port, opts->count, start_dir, getenv("PATH"));
+	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\"",
+		path, opts->port, opts->count, start_dir);
 	len = strlen(p) + 1;
-	for (i = 0; eVars[i]; i++) len += envSize(eVars[i]);
+	for (i = 0; eVars[i]; i++) len += strlen(genEnvArgs(buf, eVars[i]));
 	nav = malloc((ac + 1) * sizeof(char *));
 	argv_save(ac, av, nav, 0);
 	len += argv_size(nav);
 	cmd = malloc(len);
 	strcpy(cmd, p);
 	free(p);
-	for (i = 0; eVars[i]; i++) addEnvVar(cmd, eVars[i]);
+	for (i = 0; eVars[i]; i++) strcat(cmd, genEnvArgs(buf, eVars[i]));
 	for (i = 0; nav[i]; i++) {
 		strcat(cmd, " \"");
 		strcat(cmd, nav[i]);
@@ -538,7 +523,7 @@ out:		if (cmd) free(cmd);
 /*
  * start bkd service
  */
-void
+private void
 bkd_start_service(void (*service_func)(int, char **))
 {
 	SERVICE_TABLE_ENTRY dispatchTable[] = {
@@ -555,7 +540,7 @@ bkd_start_service(void (*service_func)(int, char **))
 /*
  * stop & remove the bkd service
  */
-void
+private void
 bkd_remove_service(int verbose)
 {
 	SC_HANDLE   schService;
@@ -612,7 +597,7 @@ bkd_remove_service(int verbose)
 /*
  * code for (mini) helper thread
  */
-DWORD WINAPI
+private DWORD WINAPI
 helper(LPVOID param)
 {
 	SOCKET	sock;
@@ -637,7 +622,7 @@ helper(LPVOID param)
 	}
 }
 
-int
+private int
 bkd_register_ctrl(void)
 {
 	DWORD threadId;
@@ -669,7 +654,7 @@ bkd_register_ctrl(void)
 /*
  * This function is called by the service control manager
  */
-void WINAPI
+private void WINAPI
 bkd_service_ctrl(DWORD dwCtrlCode)
 {
 	switch(dwCtrlCode)
@@ -696,7 +681,7 @@ bkd_service_ctrl(DWORD dwCtrlCode)
 /*
  * Belows are utilities functions used by the bkd service
  */
-char *
+private char *
 getError(char *buf, int len)
 {
 	int	rc;
@@ -717,7 +702,7 @@ getError(char *buf, int len)
 	return buf;
 }
 
-void
+private void
 reportStatus(SERVICE_STATUS_HANDLE sHandle, 
 			int dwCurrentState, int dwWin32ExitCode, int dwWaitHint)
 {
@@ -749,7 +734,7 @@ reportStatus(SERVICE_STATUS_HANDLE sHandle,
         }
 }
 
-void
+private void
 logMsg(char *msg)
 {
 	HANDLE	evtSrc = RegisterEventSource(NULL, SERVICENAME);

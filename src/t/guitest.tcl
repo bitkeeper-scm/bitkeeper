@@ -100,7 +100,7 @@ proc test_inputString {string {w ""}} \
 		, comma		. period
 		= equal		+ plus
 		- minus		_ underscore
-		! exclam	~ ascitilde
+		! exclam	~ asciitilde
 		` grave		@ at
 		$ dollar	#  numbersign
 		% percent	^ asciicircum

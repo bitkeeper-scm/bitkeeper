@@ -217,8 +217,6 @@ cmp -s clone/WANT GOT || {
 	diff clone/WANT GOT
 	exit 1
 }
-bk lock -U
-bk lock -U $HERE/clone
 echo OK
 
 echo $N Check bk changes -R url1 url2 ...............................$NL
@@ -353,7 +351,7 @@ cat <<EOF > expect
 1.5 C clone
  
 EOF
-diff -u expect chgs || {
+bk diff -u expect chgs || {
 	echo changes returned wrong data
 	exit 1
 }
@@ -424,5 +422,3 @@ bk changes -k -L -R ../clone1 | grep -v '^==== ' > GOT
 checkfiles WANT GOT
 echo OK
 
-# wait for bkd locks
-bk lock -U $HERE/project

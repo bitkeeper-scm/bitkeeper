@@ -94,7 +94,7 @@
 #define	ADMIN_OBSCURE	0x00100000	/* remove comments, obscure data */
 #define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 #define	ADMIN_NEWPATH	0x00400000	/* path changed, add a new null delta */
-#define	ADMIN_DELETE	0x00400000	/* file deleted, add a new null delta */
+#define	ADMIN_DELETE	0x00800000	/* file deleted, add a new null delta */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
@@ -880,6 +880,7 @@ char	*sccs2name(char *);
 char	*name2sccs(char *);
 int	diff(char *lfile, char *rfile, u32 kind, char *out);
 int	check_gfile(sccs*, int);
+char	*lock_dir(void);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
@@ -969,7 +970,7 @@ time_t	uniq_drift(void);
 int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
-pid_t	mail(char *to, char *subject, char *file);
+pid_t	smtpmail(char **to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
@@ -1040,7 +1041,7 @@ off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
 char	*getHomeDir(void);
-char	*getBkDir(void);
+char	*getDotBk(void);
 char	*age(time_t secs, char *space);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef
@@ -1052,11 +1053,14 @@ MDBM	*sccs_tagConflicts(sccs *s);
 void	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
+int	sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc);
 
 int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
 char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
+void	bktmpenv(void);
+char	*bktmpdir(char *buf, const char *template);
 char	*bktmp_local(char *buf, const char *template);
 void	bktmpcleanup(void);
 char	*getRealCwd(char *, size_t);
@@ -1068,7 +1072,7 @@ char	*strdup_tochar(const char *s, int c);
 void	ttyprintf(char *fmt, ...);
 void	enableFastPendingScan(void);
 char	*isHostColonPath(char *);
-int	gui_haveDisplay(void);
+int	gui_useDisplay(void);
 char	*gui_displayName(void);
 char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);
@@ -1178,6 +1182,7 @@ char	*findDotFile(char *old, char *new, char *buf);
 char	*platform(void);
 char	*find_prog(char *);
 char	*pager(void);
+int	bkmail(char *url, char **to, char *subject, char *file);
 void	set_timestamps(char *sfile);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),

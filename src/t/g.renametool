@@ -61,10 +61,6 @@ cd $P1
 bk -r clean > /dev/null 2>&1
 cd $P2
 bk -r clean > /dev/null 2>&1
-#bk import -tpatch $Q $DIFF $P1
-#cd $P1/src
-#bk co $Q
-#ln -s foo2 l_foo2
 echo OK
 
 echo $N Simple start up and exit.....................................$NL
@@ -98,4 +94,48 @@ src/foo2" | bk guitest --script test_script renametool >$OUT 2>&1
 err=$?
 if [ $err -ne 0 ] ; then echo "failed" ; exit 1 ; fi
 test -f $RC || { echo "failed"; exit 1; }
+echo OK
+
+echo $N fix for incr --1 \(More conflicts than will fit in listbox\)...$NL
+# this test assumes that gc(rename.listHeight) is 8; it creates 9
+# name conflicts which used to cause an error 
+cd $P1
+bk get $Q src/foo1
+bk get $Q src/foo2
+bk get $Q src/foo3
+cp src/foo3 src/foo4
+cp src/foo3 src/foo5
+cp src/foo3 src/foo6
+cp src/foo3 src/foo7
+cp src/foo3 src/foo8
+cp src/foo3 src/foo9
+mkdir src2
+cp src/foo* src2
+# renametool reads its list of files from stdin, so we need to specify
+# our test script as a file
+cat > test_script <<'EOF'
+test_buttonPress Quit
+after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+echo "src/foo1
+src/foo2
+src/foo3
+src/foo4
+src/foo5
+src/foo6
+src/foo7
+src/foo8
+src/foo9
+
+src2/foo1
+src2/foo2
+src2/foo3
+src2/foo4
+src2/foo5
+src2/foo6
+src2/foo7
+src2/foo8
+src2/foo9" | bk guitest --script test_script renametool >$OUT 2>&1
+err=$?
+if [ $err -ne 0 ] ; then echo "failed" ; cat $OUT ; exit 1 ; fi
 echo OK

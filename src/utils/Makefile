@@ -24,6 +24,7 @@ else
 	STRIP=strip
 endif
 SFIO_OBJS=sfio.o sfio_utils.o
+SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o
 SFIO=sfio$(EXE)
 VERS	:= $(shell test -x vers || bk get vers; ./vers)
 IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
@@ -31,10 +32,9 @@ IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE) 
 	$(STRIP) $(IMAGE)
 
-sfioball: installtool registry.tcl $(BINDIR)
+sfioball: installtool $(BINDIR)
 	@echo Creating sfioball from BK in $(BINDIR) ...
 	cp installtool $(BINDIR)/gui/lib/installtool
-	cp registry.tcl $(BINDIR)/gui/lib/registry.tcl
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
 	    bk sfio -mqo) > sfioball
 
@@ -44,8 +44,9 @@ _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball
 	@./zz sfioball.zz < sfioball
 	@./munge sfio.zz sfioball.zz
 
-$(IMAGE): extractor.o _data.o
-	$(LD) $(LDFLAGS) extractor.o _data.o $(LIBS) ../zlib/libz.a -o $@
+$(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o 
+	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
+	    ../zlib/libz.a -o $@
 
 extractor.o: extractor.c
 	$(CC) $(CFLAGS) -c extractor.c
@@ -59,9 +60,9 @@ sfio_utils.o: sfio_utils.c
 sfio$(EXE): $(SFIO_OBJS)
 	$(LD) $(LFLAGS) $(SFIO_OBJS) $(LIBS) ../zlib/libz.a -o $@
 
-installtool: setupmain.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
+installtool: installtool.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
 	../gui/imgsrc/bklogo.gif ../bk
-	(cat setupmain.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
+	(cat installtool.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
 	 echo "image create photo bklogo -data {`../bk base64<../gui/imgsrc/bklogo.gif`}";\
 	 echo "main"\
 	) > installtool

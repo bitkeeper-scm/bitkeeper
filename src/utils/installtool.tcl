@@ -42,7 +42,7 @@ proc initGlobals {} \
 	if {$tcl_platform(platform) == "windows"} {
 		set runtime(enableSccDLL) 1
 		set runtime(enableShellxLocal) 1
-		set runtime(enableShellxNetwork) 1
+		set runtime(enableShellxNetwork) 0
 		set runtime(places) \
 		    [list [normalize {C:/Program Files/BitKeeper}]]
 		set runtime(symlinkDir) ""
@@ -86,20 +86,42 @@ proc initGlobals {} \
 		set i 0
 	}
 	set ::runtime(destination) [lindex $runtime(places) $i]
+	if {$tcl_platform(platform) eq "windows"} {
+		set ::runtime(hasWinAdminPrivs) [hasWinAdminPrivs]
+	} else {
+		set ::runtime(hasWinAdminPrivs) 0
+	}
+}
 
+proc hasWinAdminPrivs {} \
+{
+	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
+	append key "\\Control\\Session Manager\\Environment"
+	set path [registry get $key Path]
+	# if this fails, it's almost certainly because the
+	# user doesn't have admin privs.
+	if {[catch {registry set $key Path $path}]} {
+		return 0
+	} else {
+		return 1
+	}
 }
 
 # this is where the actual install takes place
 proc install {} \
 {
-	global message tcl_platform runtime
+	global tcl_platform runtime
 
 	set installfrom [pwd]
 
 	set command [list doCommand bk install -vf]
-	if {$runtime(enableSccDLL)}	   {lappend command -s}
-	if {$runtime(enableShellxLocal)}   {lappend command -l}
-	if {$runtime(enableShellxNetwork)} {lappend command -n}
+	if {$runtime(hasWinAdminPrivs)} {
+		if {$runtime(enableSccDLL)}	   {lappend command -s}
+		if {$runtime(enableShellxLocal)}   {lappend command -l}
+		if {$runtime(enableShellxNetwork)} {lappend command -n}
+	}
+	if {$runtime(doSymlinks)} {lappend command -S}
+
 	# destination must be normalized, otherwise we run into a 
 	# bug in the msys shell where mkdir -p won't work with 
 	# DOS-style (backward-slash) filenames.
@@ -330,44 +352,41 @@ proc widgets {} \
 	    -body {
 		    set w [$this info workarea]
 		    set bk [file join $::runtime(destination)/bk]
-		    set map [list \
-				 %D $::runtime(destination) \
-				 %B $::runtime(symlinkDir)\
-				]
-		    lappend map %bk $bk
 
-		    set d [string map $map $::strings(InstallDLLs)]
-		    $this stepconfigure InstallDLLs -description [unwrap $d]
+		    if {$runtime(hasWinAdminPrivs)} {
+			    $this stepconfigure InstallDLLs \
+				-description [unwrap $::strings(InstallDLLs)]
+			    checkbutton $w.shellx-local \
+				-anchor w \
+				-text "Enable Explorer integration on LOCAL drives" \
+				-borderwidth 1 \
+				-variable ::runtime(enableShellxLocal) \
+				-onvalue 1 \
+				-offvalue 0 
+			    checkbutton $w.shellx-remote \
+				-anchor w \
+				-text "Enable Explorer integration on NETWORK drives" \
+				-borderwidth 1 \
+				-variable ::runtime(enableShellxNetwork) \
+				-onvalue 1 \
+				-offvalue 0 
+			    checkbutton $w.bkscc \
+				-anchor w \
+				-text "Enable VC++ integration" \
+				-borderwidth 1 \
+				-variable ::runtime(enableSccDLL) \
+				-onvalue 1 \
+				-offvalue 0 
 
-		    set ::runtime(installDLLs) 1
-
-		    checkbutton $w.shellx-local \
-			-anchor w \
-			-text "Enable Explorer integration on LOCAL drives" \
-			-borderwidth 1 \
-			-variable ::runtime(enableShellxLocal) \
-			-onvalue 1 \
-			-offvalue 0 
-		    checkbutton $w.shellx-remote \
-			-anchor w \
-			-text "Enable Explorer integration on NETWORK drives" \
-			-borderwidth 1 \
-			-variable ::runtime(enableShellxNetwork) \
-			-onvalue 1 \
-			-offvalue 0 
-		    checkbutton $w.bkscc \
-			-anchor w \
-			-text "Enable VC++ integration" \
-			-borderwidth 1 \
-			-variable ::runtime(enableSccDLL) \
-			-onvalue 1 \
-			-offvalue 0 
-
-		    frame $w.spacer1 -height 8 -borderwidth 0 
-		    pack $w.spacer1 -side top -fill x
-		    pack $w.shellx-local -side top -fill x -anchor w
-		    pack $w.shellx-remote -side top -fill x -anchor w
-		    pack $w.bkscc -side top -fill x -anchor w
+			    frame $w.spacer1 -height 8 -borderwidth 0 
+			    pack $w.spacer1 -side top -fill x
+			    pack $w.shellx-local -side top -fill x -anchor w
+			    pack $w.shellx-remote -side top -fill x -anchor w
+			    pack $w.bkscc -side top -fill x -anchor w
+		    } else {
+			    $this stepconfigure InstallDLLs \
+				-description [unwrap $::strings(InstallDLLsNoAdmin)]
+		    }
 	    }
 
 	#-----------------------------------------------------------------------
@@ -468,6 +487,7 @@ proc widgets {} \
 			    }
 		    }
 
+		    # symlinkDir == "" on Windows so this is always false
 		    if {[file writable $::runtime(symlinkDir)]} {
 			    set runtime(doSymlinks) 1
 		    } else {
@@ -631,10 +651,14 @@ proc doInstall {} \
 
 proc log {string {tag {}}} \
 {
+	set yview [$::widgets(log) yview]
 	$::widgets(log) configure -state normal
 	$::widgets(log) insert end $string $tag
 	$::widgets(log) configure -state disabled
-	$::widgets(log) see end-1c
+	# only scroll if the user hasn't manually scrolled
+	if {[lindex $yview 1] >= 1} {
+		$::widgets(log) see end-1c
+	}
 	update idletasks
 }
 
@@ -680,6 +704,13 @@ proc doCommand {args} \
 
 	# This variable is set by readPipe when we get EOF on the pipe
 	vwait ::DONE
+
+	if {$::DONE == 2} {
+		# exit immediately; system must reboot. If we don't
+		# exit it can cause the reboot process to hang on 
+		# Windows/Me
+		exit 2
+	}
 
 	if {$::DONE != 0} {
 		set error "unexpected error"
@@ -847,40 +878,6 @@ proc usage {} \
 	puts stderr "usage: $image ?directory?"
 }
 
-
-set message(CANT_CD) {cannot cd to %s}
-set message(PLEASE_WAIT) {Installing in %s, please wait...}
-set message(LINK_ERROR) {We were unable to create links in /usr/bin}
-set message(NO_LINKS) {
-----------------------------------------------------------------------------
-You have no write permission on /usr/bin, so no links will be created there.
-You need to add the bitkeeper directory to your path (not recommended), 
-or symlink bk into some public bin directory.  You can do that by running
-
-	%s/bk links %s [destination-dir]
-i.e.,
-	%s/bk links %s /usr/bin
-----------------------------------------------------------------------------
-}
-set message(NO_WRITE_PERM) {You have no write permission on %s
-Perhaps you want to run this as root?}
-set message(SUCCESS) {
-----------------------------------------------------------------------------
-		    Installation was successful.
-
-For more information, you can go to http://www.bitkeeper.com.  We strongly
-urge you to go to the web site and take the "Test drive", it answers 90%
-of new users' questions.
-
-For help
-	bk help
-    or
-	bk helptool
-
-			      Enjoy!
-----------------------------------------------------------------------------
-}
-
 # these strings will be reformatted; the newlines and leading spaces
 # will be collapsed to paraphaphs so they will wrap when the GUI is
 # resized. The formatting here is just to make the code easier to
@@ -925,14 +922,35 @@ set strings(Overwrite) {
 	Please confirm the removal of the existing version before continuing.
 }
 
-set strings(InstallDLLs) {
-	BitKeeper includes optional integration with Windows explorer
-	and Visual C++ 6.0. 
+set strings(InstallDLLsNoAdmin) {
+	BitKeeper includes optional integration with Windows Explorer
+	and Visual Studio (but not Visual Studio.net, that's coming soon).
 
-	The explorer integration can be enabled separately for local
+	You do not have sufficient privileges on this machine to install 
+	these features. These features must be must be installed from a user 
+	account that has Administrator privileges. 
+
+	These features are only available to commercial users of BitKeeper.
+	If you are evaluating BitKeeper for commercial use please make
+	sure you have received an evaluation key to enable these
+	features. See http://www.bitkeeper.com for information on
+	getting an evaluation key or a commercial license key.
+}
+
+set strings(InstallDLLs) {
+	BitKeeper includes optional integration with Windows Explorer
+	and Visual Studio (but not Visual Studio.net, that's coming soon).
+
+	The Explorer integration can be enabled separately for local
 	and remote hard drives.  Enabling this option on remote drives
 	can lead to performance problems if you have a slow or
 	unreliable network. 
+
+	These features are only available to commercial users of BitKeeper.
+	If you are evaluating BitKeeper for commercial use please make
+	sure you have received an evaluation key to enable these
+	features. See http://www.bitkeeper.com for information on
+	getting an evaluation key or a commercial license key.
 }
 
 set strings(Install) {
@@ -976,7 +994,7 @@ Installation of
 
 is completed. Enjoy BitKeeper and send support@bitmover.com
 any questions. Don't forget to try the quick and informative
-demo at http://www.bitkeeper.com/Test-Drive.html
+demo at http://www.bitkeeper.com/Test.html
 
 The BitKeeper Team
 }

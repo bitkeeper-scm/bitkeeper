@@ -1,11 +1,9 @@
-# usage: tclsh registry.tcl install destination
-# e.g. tclsh registry.tcl install 'c:/program files/bitkeeper'
-
-package require registry
+# usage: tclsh registry.tcl destination
+# e.g. tclsh registry.tcl "c:/bitkeeper"
 
 proc main {} \
 {
-	global argv options
+	global argv options reglog shortcutlog
 	
 	set options(shellx_network) 0
 	set options(shellx_local) 0
@@ -30,16 +28,30 @@ proc main {} \
 		exit 1
 	}
 
-	registry_install $destination
-	addpath $destination
-	writelog "$destination/registry.log"
+	set reglog {}
+	set shortcutlog {}
+	if {[catch {registry_install $destination}]} {
+		# failed, almost certainly because user doesn't have
+		# admin privs. Whatever the reason we can still do
+		# the startmenu and path stuff for this user
+		startmenu_install $destination
+		addpath user $destination
+		set exit 2
+	} else {
+		# life is good; registry was updated
+		startmenu_install $destination
+		addpath system $destination
+		set exit 0
+	}
 
-	exit 0
+	writelog $destination
+
+	exit $exit
 }
 
 proc registry_install {destination} \
 {
-	global env log options
+	global env reglog options
 
 	set bk [file join $destination bk.exe]
 	catch {exec $bk version -s} version
@@ -71,28 +83,63 @@ proc registry_install {destination} \
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayName "BitKeeper $version"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id DisplayVersion $version
 	reg set $HKLMS\\$MWC\\Uninstall\\$id Publisher "BitMover, Inc."
+	# store the short name, because the uninstall code has a hack
+	# that assumes the name of the executable doesn't have a space. 
+	# Also need to use / rather than \ because we may execute this
+	# in an msys shell.
 	reg set $HKLMS\\$MWC\\Uninstall\\$id UninstallString \
-		 "[file nativename [file join $destination bkuninstall]] -r -S \"$destination\\install.log\""
+	    "[shortname $destination]/bkuninstall -S \"$destination/install.log\""
 	reg set $HKLMS\\$MWC\\Uninstall\\$id URLInfoAbout \
 		 "http://www.bitkeeper.com"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id HelpLink \
-		 "http://www.bitmover.com"
+		 "http://www.bitkeeper.com/Support.html"
 
 }
 
+proc startmenu_install {dest {group "BitKeeper"}} \
+{
+	global env shortcutlog
+
+	set dest [shortname $dest]
+	set bk [shortname [file join $dest bk.exe]]
+	set uninstall [shortname [file join $dest bkuninstall.exe]]
+	set installlog [shortname [file join $dest install.log]]
+	lappend shortcutlog "CreateGroup \"$group\""
+	# by not specifying whether this is a common or user group 
+	# it will default to common if the user has admin privs and
+	# user if not.
+	progman CreateGroup "$group,"
+	progman AddItem "$bk helptool,BitKeeper Documentation,,,,,,,1"
+	progman AddItem "$bk sendbug,Submit bug report,,,,,,,1"
+	progman AddItem "$bk support,Request BitKeeper Support,,,,,,,1"
+	progman AddItem "$uninstall -S \"$installlog\",Uninstall BitKeeper,,,,,C:\\,,1"
+	progman AddItem "$dest\\bk_refcard.pdf,Quick Reference,,,,,,,0"
+	progman AddItem "$dest\\gnu\\msys.bat,Msys Shell,,,,,,,1"
+	progman AddItem "http://www.bitkeeper.com,BitKeeper on the Web,,,,,,,1"
+	progman AddItem "http://www.bitkeeper.com/Test.html,BitKeeper Test Drive,,,,,,,1"
+}
+# use dde to talk to the program manager
+proc progman {command details} \
+{
+	global reglog
+	set command "\[$command ($details)\]"
+	if {[catch {dde execute PROGMAN PROGMAN $command} error]} {
+		lappend reglog "error $error"
+	}
+}
 # perform a registry operation and save pertinent information to
 # a log
 proc reg {command args} \
 {
-	global log
+	global reglog
 	if {$command== "set"} {
 		set key [lindex $args 0]
 		set name [lindex $args 1]
 		set value [lindex $args 2]
 		if {$name eq ""} {
-			lappend log "set $key"
+			lappend reglog "set $key"
 		} else {
-			lappend log "set $key \[$name\]"
+			lappend reglog "set $key \[$name\]"
 		}
 		set command [list registry set $key $name $value]
 	} elseif {$command == "modify"} {
@@ -101,9 +148,9 @@ proc reg {command args} \
 		set value [lindex $args 2]
 		set newbits [lindex $args 3]
 		if {$newbits eq ""} {
-			lappend log "modify $key \[$name\]"
+			lappend reglog "modify $key \[$name\]"
 		} else {
-			lappend log "modify $key \[$name\] $newbits"
+			lappend reglog "modify $key \[$name\] $newbits"
 		}
 		set command [list registry set $key $name $value]
 	} else {
@@ -114,32 +161,54 @@ proc reg {command args} \
 	uplevel $command
 }
 
-# writes the data in the global variable 'log' to the named logfile
-proc writelog {file} \
+proc writelog {dest} \
 {
-	global log
-	set f [open $file w]
+	global reglog shortcutlog
+
 	# we process the data in reverse order since that is the
 	# order in which things must be undone
-	while {[llength $log] > 0} {
-		set item [lindex $log end]
-		set log [lrange $log 0 end-1]
+	set f [open "$dest/registry.log" w]
+	while {[llength $reglog] > 0} {
+		set item [lindex $reglog end]
+		set reglog [lrange $reglog 0 end-1]
+		puts $f $item
+	}
+	close $f
+
+	set f [open "$dest/shortcuts.log" w]
+	while {[llength $shortcutlog] > 0} {
+		set item [lindex $shortcutlog end]
+		set shortcutlog [lrange $shortcutlog 0 end-1]
 		puts $f $item
 	}
 	close $f
 }
 
-proc addpath {dir} \
+proc addpath {type dir} \
 {
-	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
-	append key "\\Control\\Session Manager\\Environment"
-	set path [registry get $key Path]
-	set dir [normalize [file nativename $dir]]
+	if {$type eq "system"} {
+		set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
+		append key "\\Control\\Session Manager\\Environment"
+	} else {
+		set key "HKEY_CURRENT_USER\\Environment"
+	}
+
+	if {[catch {set path [registry get $key Path]}]} {
+		# it's possible that there won't be a Path value
+		# if the key is under HKEY_CURRENT_USER
+		set path ""
+	}
+
+	# at this point it's easier to deal with a list of dirs
+	# rather than a string of semicolon-separated dirs
+	set path [split $path {;}]
+
 	# look through the path to see if this directory is already
 	# there (presumably from a previous install); no sense in
 	# adding a duplicate
-	foreach d [split $path {;}] {
-		set d [file normalize $d]
+	set dir [normalize $dir]
+	foreach d $path {
+		set d [normalize $d]
 		if {$d eq $dir} {
 			# dir is already in the path
 			return 
@@ -150,10 +219,16 @@ proc addpath {dir} \
 	# key (versus creating it). Andrew wanted to know the exact
 	# bits added to the path so we'll pass that info along so 
 	# it gets logged
-	set path "$path;$dir"
+	lappend path $dir
+	set path [join $path {;}]
 	reg modify $key Path $path $dir
 	reg broadcast Environment
+}
 
+proc shortname {dir} \
+{
+	catch {set dir [file attributes $dir -shortname]}
+	return $dir
 }
 
 # file normalize is required to convert relative paths to absolute and
@@ -161,11 +236,14 @@ proc addpath {dir} \
 # c:/Program Files). file nativename is required to give the actual,
 # honest-to-goodness filename (read: backslashes instead of forward
 # slashes on windows). This is mostly used for human-readable filenames.
-proc normalize {dir} {
+proc normalize {dir} \
+{
 	if {[file exists $dir]} {
 		# If possible, use bk's notion of a normalized
-		# path. This only works if the file exists, though.
-		catch {set dir [exec bk pwd $dir]}
+		# path. This only works if the file exists and
+		# we give a unixy anme (forward-slash, as given by
+		# tcl's normalize function) 
+		catch {set dir [exec bk pwd [file normalize $dir]]}
 		if {$dir eq ""} {
 			set dir [file nativename [file normalize $dir]]
 		}

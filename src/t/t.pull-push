@@ -298,16 +298,12 @@ cd $HERE/project
 bk push -nl $HERE/unrelated > push.out 2>&1
 grep -q "trying to synchronize with an unrelated" push.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/unrelated
-waitForUnlock $HERE/unrelated
 echo OK
 echo $N pull from unrelated project should error ....................$NL
 cd $HERE/project
 bk pull -nl $HERE/unrelated > pull.out 2>&1
 grep -q "trying to pull from an unrelated" pull.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cd $HERE/unrelated
-waitForUnlock $HERE/unrelated
 echo OK
 
 echo $N pull from read-only server should work fine .................$NL

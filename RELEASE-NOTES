@@ -19,6 +19,70 @@ or
 	bk command './*.c'
 
 There is a glob man page.
+===============================================================================
+Release notes for BitKeeper version 3.2.0.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+
+  On Microsoft Windows, BitKeeper no longer requires (or uses) Cygwin.
+  You may use Cygwin if you like but BitKeeper does not need it; BK
+  is completely self contained.
+
+  Registry management, uninstall, and upgrades should work substantially
+  better than they have in the past.
+
+New Features
+----------------------------------------------------------------------------
+
+  A simple pager called 'bk more' is included and will be used if no
+  suitable pager can be found.
+
+  Under Windows the SCCS dirs are now created with the "hidden" attribute.
+
+  HPUX 11.11 is now a supported platform.
+
+  A new command called 'bk lease'.  This is primarily for openlogging users.
+  Please see 'bk helptool lease' for more information.
+
+Noteworthy Bug Fixes
+----------------------------------------------------------------------------
+
+  2004-01-19-002: Fix resolve bug where 'vr' (view remote) didn't work
+  2004-01-27-001: Fix include/exclude processing in 'bk export'
+  2004-02-06-002: bk export: fix error case for missing src directory
+  2004-03-12-001: Don't delete a RESYNC directory we didn't create
+  2004-04-19-001: Fix regression in bk send
+  2004-04-23-001: Fix HTTP requests to match standards
+
+  Remove an extra unneeded consistency check on the first commit
+  after every clone.
+
+  Fixed bug in citool that causes comments for pending files to not
+  show up in the bottom window when the ChangeSet file is selected.
+
+  Fix problem in BkWeb where the "N weeks" times didn't match
+  reality.
+
+  Improve documentation for which characters are legal in tags and add more
+  error checks on tag names.
+ 
+  Prevent people from passing bad options to 'bk comments'.
+
+  Always write keys to BitKeeper/etc/csets-in instead of revs or
+  serial numbers.
+
+  Fix a case where 'bk repogca' could return the wrong answer.
+
+  Fix case where BitKeeper didn't work correctly with PGP 8.0 on
+  Windows.
+
+  Set time stamps correctly after running 'bk fix'.
 
 ===============================================================================
 Release notes for BitKeeper version 3.0.4.   These release notes cover

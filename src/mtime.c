@@ -28,7 +28,7 @@ mtime_main(int ac, char **av)
 	 * We'll see if this is portable.
 	 */
 	t = localtimez(&st.st_mtime, 0);
-	printf("%d-%02d-%02d-%02d:%02d:%02d\n",
+	printf("%d/%02d/%02d %02d:%02d:%02d\n",
 	    t->tm_year + 1900,
 	    t->tm_mon + 1,
 	    t->tm_mday,

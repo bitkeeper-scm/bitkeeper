@@ -4,12 +4,12 @@ eval "exec perl -Ssw $0 $@"
 
 sub main
 {
+	$ENV{'GROFF_NO_SGR'} = 1;
 	$MAN = "-man";
-        unless (system("echo | groff -mgan >/dev/null 2>/dev/null")) {
+        unless (($^O eq "MSWin32") ||
+		system("echo | groff -mgan >/dev/null 2>/dev/null")) {
                 $MAN = "-mgan";
         }
-
-	$ENV{'GROFF_NO_SGR'} = 1;
 
 	# We are trying to generate All.sum and each of the category.sum's.
 	# All we do is put the data in the file.
@@ -19,15 +19,17 @@ sub main
 			$line = "";
 			$_ = <>;
 			while ($_ !~ /^$/) {
+				$line .= "\n" if $line && /^\s*bk /;
 				chop;
 				s/^\s*//;
 				s/ \s+/ /g;
 				$line .= "$_ ";
 				$_ = <>;
 			}
-			$line =~ s/Bit- Keeper/BitKeeper/;
-			$line =~ s/\s*$//;
-			print A "$line\n";
+			$line .= "\n";
+			$line =~ s/Bit- Keeper/BitKeeper/g;
+			$line =~ s/\s+\n/\n/g;
+			print A $line;
 		}
 		if (/^CATEGORY\s*$/) {
 			$_ = <>;

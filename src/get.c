@@ -3,6 +3,9 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+private int	get_rollback(sccs *s, char *rev,
+		    char **iLst, char **xLst, char *prog);
+
 /*
  * The weird setup is so that I can #include this file into sccssh.c
  */
@@ -14,6 +17,7 @@ _get_main(int ac, char **av, char *out)
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
 	char	*prog;
 	char	*mRev = 0;
+	char	*rev_save;
 	delta	*d;
 	int	gdir = 0;
 	int	getdiff = 0;
@@ -171,7 +175,9 @@ onefile:	fprintf(stderr,
 		assert(realNameCache);
 	}
 
+	rev_save = rev;
 	for (; name; name = sfileNext()) {
+		rev = rev_save;
 		if (caseFoldingFS) {
 			/*
 			 * For win32 FS and Samba.
@@ -243,12 +249,6 @@ onefile:	fprintf(stderr,
 			}
 			rev = d->rev;
 		}
-		if (BITKEEPER(s) && (flags & GET_EDIT) && rev && !branch_ok) {
-			fprintf(stderr, "Cannot create branch\n");
-			errors = 1;
-			sccs_free(s);
-			continue;
-		}
 		if (BITKEEPER(s) &&
 		    (iLst || xLst) && !branch_ok && !(flags & GET_EDIT)) {
 			unless ((flags & PRINT) || Gname) {
@@ -258,13 +258,21 @@ onefile:	fprintf(stderr,
 				goto usage;
 			}
 		}
-		if (BITKEEPER(s) && rev && !branch_ok && !streq(rev, "+")) {
+		if (BITKEEPER(s) && rev && !branch_ok
+		    && !(flags & GET_EDIT) && !streq(rev, "+")) {
 			unless ((flags & PRINT) || Gname) {
 				fprintf(stderr,
 				    "%s: can't specify revisions without -p\n",
 				    av[0]);
 				goto usage;
 			}
+		}
+		if (BITKEEPER(s) && (flags & GET_EDIT) && rev && !branch_ok) {
+			/* recalc iLst and xLst to be relative to tip */
+			if (get_rollback(s, rev, &iLst, &xLst, av[0])) {
+				goto next;
+			}
+			rev = 0;	/* Use tip below */
 		}
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
@@ -277,7 +285,7 @@ onefile:	fprintf(stderr,
 			}
 			errors = 1;
 		}
-		sccs_free(s);
+next:		sccs_free(s);
 		/* sfileNext() will try and check out -G<whatever> */
 		if (Gname && !gdir) {
 			while ((name = sfileNext()) &&
@@ -289,6 +297,27 @@ onefile:	fprintf(stderr,
 	sfileDone();
 	if (realNameCache) mdbm_close(realNameCache);
 	return (errors);
+}
+
+private int
+get_rollback(sccs *s, char *rev, char **iLst, char **xLst, char *prog)
+{
+	char	*inc = *iLst, *exc = *xLst;
+	ser_t   *map;
+	delta	*d;
+
+	unless (d = sccs_findrev(s, rev)) {
+		fprintf(stderr,
+		    "%s: cannot find %s in %s\n", prog, rev, s->gfile);
+		return (1);
+	}
+	unless (map = sccs_set(s, d, inc, exc)) return (1);
+	d = sccs_top(s);
+	if (sccs_graph(s, d, map, iLst, xLst)) {
+		fprintf(stderr, "%s: cannot compute graph from set\n", prog);
+		return (1);
+	}
+	return (0);
 }
 
 int

@@ -94,7 +94,7 @@ checkfiles() {
 			test $STATUS -eq 0 && return
 		}
                 echo "$1" and "$2" don\'t match
-                diff -u "$1" "$2"
+                bk diff -u "$1" "$2"
                 exit 1
         }
 }

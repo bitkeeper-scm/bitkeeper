@@ -177,7 +177,9 @@ within the grace period.  This changeset will be created
 as normal, but you need to contact BitMover to purchase an
 updated license.
 
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -186,7 +188,9 @@ Your evaluation license for BitKeeper is less than one week away from
 expiring.  This changeset will be created as normal, but you need to
 contact BitMover to purchase a commercial license.
 
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -197,7 +201,9 @@ have contacted BitMover to purchase a new license.
 
 For more information, please run "bk helptool license"
 
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -213,7 +219,9 @@ these things, you may not create any changesets.
 You can get a temporary license by sending a mail request
 to sales@bitmover.com.  
 
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
@@ -233,7 +241,9 @@ Saying no means the changeset will neither be logged nor be
 created, which means a loss of the distributed functionality
 of BitKeeper.  If it is important that you keep the information
 private, you can contact BitMover for a closed use license.
-BitMover can be reached in the United States at 888-401-8808
+BitMover can be reached at:
+   +1-650-872-9900 (international and California)
+   888-401-8808 (toll free in the US & Canada) 
 during business hours (PST) or via email at sales@bitmover.com.
 
 Saying yes will send the changeset comments and per file comments.
@@ -727,8 +737,8 @@ you will not have to enter any data for the license, and all checkin
 comments made in your repository will be posted at www.openlogging.org.
 $
 #setuptool_step_LicenseKey
-Please enter the license key exactly as it was given to you. If this is a 
-version 5 license key you must also enter the key signatures.
+Please enter the license key and signatures exactly as they were given to
+you.
 
 If the license keys are in a file, click the "From file..." button and the 
 values will be extracted from the file. This should work even if the file 
@@ -1068,22 +1078,6 @@ $
 Unknown proxy entry: "#BKARG"
 If this is a legal proxy entry please file a bug report.
 $
-#no_mailer
-Cannot find a working mailer.  If you have access to an SMTP server,
-you can install the "blat" mailer with the following command:
-
-        blat -install <smtp_server_address> <your email address>
-
-If you have a non-standard connection, you can supply a bk_mail.bat file
-to connect BitKeeper to your mail server; the bk_mail.bat file should
-accept the three arguments, as follows:
-
-        bk_mail.bat file recipient subject
-
-You should put the bk_mail.bat file in the BitKeeper directory.
-The bk_mail.bat command should exit with status zero when the mail is
-sent successfully.
-$
 #http_delay
 Note: since httpd batches a large block of output together before it
 sends back a reply, this can take a while, please wait...
@@ -1317,6 +1311,47 @@ d) Run "bk commit" to record the new location in a changeset.
 e) Run "bk resolve" or "bk pull" again.
 f) You should also inform owners of other repositories to avoid using 
    similar names.
+$
+#win32-mailer-error
+Can not find a working mailer.
+
+If you have access to a SMTP server, you can install the "blat" mailer
+with the following command:
+
+	blat -install <smtp_server_address> <your email address>
+
+If you have a non-standard connection, you can supply a bk_mail.bat
+file to connect BitKeeper to your mail server; the bk_mail.bat file
+should accept the three auguments, as follows:
+
+	bk_mail.bat file recipient subject
+
+(recipient is a comma seperated list if there is more than one)
+
+You should put the bk_mail.bat file in the BitKeeper directory.
+The bk_mail.bat command should exit with status zero when the mail is
+sent sucessfully.
+$
+#install-cygwin-upgrade
+Thanks for installing BitKeeper.  We noticed that this was an upgrade
+from an earlier version of BitKeeper.  Earlier versions of BitKeeper
+required Cygwin (http://cygwin.com) and we did not uninstall Cygwin.
+
+Versions 3.2.0 and later of Bitkeeper no longer require Cygwin in
+order to function.  It is fine if Cygwin is left there, BitKeeper
+doesn't need it but BK will work fine from a Cygwin shell.
+
+We did not remove Cygwin as part of your upgrade because it is
+common for people to have customized their Cygwin installation.
+If you don't need or want Cygwin, the Cygwin documentation says that
+you may remove Cygwin by manually removing the following items:
+
+* The registry tree `Software\Cygnus Solutions' under
+   HKEY_LOCAL_MACHINE and/or HKEY_CURRENT_USER .
+* Anything under the Cygwin root folder, `C:\cygwin' by default.
+* Anything created by setup in its temporary working directory.
+
+For more information see http://cygwin.com/faq/faq0.html#SEC19
 $
 #changes_no_parent
 This repository has no parent.  You must set a parent with "bk parent" or

@@ -114,11 +114,11 @@ resolve_main(int ac, char **av)
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
-	if (opts.pass3 && !opts.textOnly && !gui_haveDisplay()) {
+	if (opts.pass3 && !opts.textOnly && !gui_useDisplay()) {
 		opts.textOnly = 1; 
 	}
 	if (opts.pass3 &&
-	    !opts.textOnly && !opts.quiet && !win32() && gui_haveDisplay()) {
+	    !opts.textOnly && !opts.quiet && !win32() && gui_useDisplay()) {
 		fprintf(stderr,
 		    "Using %s as graphical display\n", gui_displayName());
 	}

@@ -19,7 +19,7 @@ private char	*log_versions = "!@#$%^&*()-_=+[]{}|\\<>?/";	/* 25 of 'em */
 #define	LOGVER	0
 
 
-char	*find_wish(void);
+int	launch_wish(char *script, char **av);
 char	*find_perl5(void);
 private	void	cmdlog_exit(void);
 private	int	cmdlog_repo;
@@ -75,6 +75,7 @@ int	get_main(int, char **);
 int	gethelp_main(int, char **);
 int	gethost_main(int, char **);
 int	getmsg_main(int, char **);
+int	getreg_main(int, char **);
 int	getuser_main(int, char **);
 int	glob_main(int, char **);
 int	gnupatch_main(int, char **);
@@ -93,6 +94,7 @@ int	key2rev_main(int, char **);
 int	keycache_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
+int	lease_main(int, char **);
 int	level_main(int, char **);
 int	license_main(int, char **);
 int	lines_main(int, char **);
@@ -158,7 +160,6 @@ int	sccslog_main(int, char **);
 int	scompress_main(int, char **);
 int	send_main(int, char **);
 int	sendbug_main(int, char **);
-int	support_main(int, char **);
 int	set_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
@@ -207,6 +208,7 @@ struct	command cmdtbl[] = {
 	{"_findcset", findcset_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
+	{"_getreg", getreg_main},
 	{"_gzip", gzip_main }, 
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
@@ -291,11 +293,13 @@ struct	command cmdtbl[] = {
 	{"isascii", isascii_main},		/* doc 2.0 */
 	{"key2rev", key2rev_main},		/* doc 2.0 */
 	{"keycache", keycache_main},
+	{"lease", lease_main},
 	{"level", level_main},			/* doc 2.0 */
 	{"license", license_main},		/* undoc */
 	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"log", log_main},
+ 	{"mail", mail_main},
 	{"mailsplit", mailsplit_main},
 	{"makepatch", makepatch_main},		/* doc 2.0 */
 	{"mdiff", mdiff_main},
@@ -347,7 +351,7 @@ struct	command cmdtbl[] = {
 	{"sccsrm", rm_main},	/* alias */	/* doc 2.0 as mv */
 	{"send", send_main},			/* doc 2.0 */
 	{"sendbug", sendbug_main},		/* doc 2.0 */
-	{"support", support_main},	/* doc 3.0 */
+	{"support", sendbug_main},		/* doc 3.0 */
 	{"set", set_main},
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */
@@ -466,6 +470,7 @@ main(int ac, char **av, char **env)
 		fclose(f);
 	}
 
+	unless (getenv("BK_TMP")) bktmpenv();
 	/*
 	 * Windows seems to have a problem with stderr under rxvt's.
 	 * Force unbuffered mode.
@@ -640,20 +645,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		    (guis[i].alias && streq(guis[i].alias, prog))) {
 			continue;
 		}
-		prog = guis[i].prog;
-		sig_catch(SIG_IGN);
-		argv[0] = find_wish();
-		sprintf(cmd_path, "%s/gui/lib/%s", bin, prog);
-		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) {
-			if (i >= (MAXARGS-10)) {
-				fprintf(stderr, "bk: too many args\n");
-				exit(1);
-			}
-			argv[i] = av[j];
-		}
-		argv[i] = 0;
-		return (spawn_cmd(_P_WAIT, argv));
+		return (launch_wish(guis[i].prog, av+1));
 	}
 
 	/*
@@ -689,19 +681,8 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 
 	/* Handle GUI test */
 	if (streq(prog, "guitest")) {
-		sig_catch(SIG_IGN);
-		argv[0] = find_wish();
 		sprintf(cmd_path, "%s/t/guitest.tcl", bin);
-		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) {
-			if (i >= (MAXARGS-10)) {
-				fprintf(stderr, "bk: too many args\n");
-				exit(1);
-			}
-			argv[i] = av[j];
-		}
-		argv[i] = 0;
-		return (spawn_cmd(_P_WAIT, argv));
+		return (launch_wish(cmd_path, av+1));
 	}
 
 	/*
@@ -1189,25 +1170,71 @@ find_prog(char *prog)
 	return (0);
 }
 
-char *
-find_wish(void)
+int
+launch_wish(char *script, char **av)
 {
-	static char	*path;
-
-	if (path) return (path);
+	char	*path;
+	int	i, ret;
+	pid_t	pid;
+	char	cmd_path[MAXPATH];
+	char	*argv[MAXARGS];
 
 	/* If they set this, they can set TCL_LIB/TK_LIB as well */
-	if ((path = getenv("BK_WISH")) && executable(path)) return (path);
-
-	path = aprintf("%s/gui/bin/bkgui", bin);
-	if (executable(path)) {
-		safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
-		safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);
-		return (path);
+	unless ((path = getenv("BK_WISH")) && executable(path)) path = 0;
+	unless (path) {
+		path = aprintf("%s/gui/bin/bkgui", bin);
+		if (executable(path)) {
+			safe_putenv("TCL_LIBRARY=%s/tcltk/lib/tcl8.4", bin);
+			safe_putenv("TK_LIBRARY=%s/tcltk/lib/tk8.4", bin);
+		} else {
+			free(path);
+			path = 0;
+		}
 	}
-	free(path);
-	fprintf(stderr, "Cannot find the graphical interpreter\n");
-	exit(1);
+	unless (path) {
+		fprintf(stderr, "Cannot find the graphical interpreter\n");
+		exit(1);
+	}
+
+	putenv("BK_GUI=YES");
+	sig_catch(SIG_IGN);
+	argv[0] = path;
+	if (strchr(script, '/')) {
+		strcpy(cmd_path, script);
+	} else {
+		sprintf(cmd_path, "%s/gui/lib/%s", bin, script);
+	}
+	argv[1] = cmd_path;
+	i = 0;
+	while (1) {
+		if (i >= (MAXARGS-10)) {
+			fprintf(stderr, "bk: too many args\n");
+			exit(1);
+		}
+		argv[i+2] = av[i];
+		unless (av[i]) break;
+		i++;
+	}
+	if ((pid = spawnvp_ex(_P_NOWAIT, argv[0], argv)) < 0) {
+		fprintf(stderr, "bk: cannot spawn %s\n", argv[0]);
+	}
+#ifdef	WIN32
+	/*
+	 * If we are about to call a GUI command hide the console
+	 * since we won't be using it.  This is so that we don't have
+	 * a unused console windows in the background of the GUIs.
+	 * WARNING: after this we shouldn't try to do any console IO.
+	 * This does not work on Win/Me (probably also Win/98)
+	 */
+	unless (isWin98()) FreeConsole();
+#endif
+	if (waitpid(pid, &ret, 0) < 0) {
+		return (126);
+	} else if (!WIFEXITED(ret)) {
+		return (127);
+	} else {
+		return (WEXITSTATUS(ret));
+	}
 }
 
 char *

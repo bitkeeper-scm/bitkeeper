@@ -3755,6 +3755,7 @@ pref_parse(char *buf)
 	int 	want_path = 0, want_host = 0;
 	
 	new(r);
+	r->rfd = r->wfd = -1;
 	unless (*buf) return (r);
 	/* user */
 	if (p = strchr(buf, '@')) {
@@ -5230,6 +5231,12 @@ serialmap(sccs *s, delta *d, char *iLst, char *xLst, int *errp)
 	return (slist);
 bad:	free(slist);
 	return (0);
+}
+
+int
+sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc)
+{
+	return (compressmap(s, d, map, 0, (void **)inc, (void **)exc));
 }
 
 ser_t *
@@ -7041,7 +7048,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	int	error = 0;
 	int	side, nextside;
 	char	*buf;
-	char	*tmpfile = 0;
+	char	*tmpfile = 0, *tmppat = 0;
 	FILE	*lbuf = 0;
 	int	no_lf = 0;
 	ser_t	serial;
@@ -7075,7 +7082,9 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	tmpfile = aprintf("%s/%s-%s-%u", TMP_PATH, basenm(s->gfile), d->rev, getpid());
+	tmppat = aprintf("%s-%s", basenm(s->gfile), d->rev);
+	tmpfile = bktmp(0, tmppat);
+	free(tmppat);
 	popened = openOutput(s, encoding, printOut, &out);
 	setmode(fileno(out), O_BINARY); /* for win32 EOLN_NATIVE file */
 	if (type == GET_HASHDIFFS) {
@@ -7198,8 +7207,8 @@ done2:	/* for GET_HASHDIFFS, the encoding has been handled in getRegBody() */
 			ret = -1; /* i/o error: no disk space ? */
 		}
 		fclose(lbuf);
-done3:		unlink(tmpfile);
 	}
+done3:
 	if (flushFILE(out)) {
 		s->io_error = 1;
 		ret = -1; /* i/o error: no disk space ? */
@@ -7211,7 +7220,10 @@ done3:		unlink(tmpfile);
 	}
 	if (slist) free(slist);
 	if (state) free(state);
-	if (tmpfile) free(tmpfile);
+	if (tmpfile) {
+		unlink(tmpfile);
+		free(tmpfile);
+	}
 	return (ret);
 }
 
@@ -12910,18 +12922,19 @@ getHistoricPath(sccs *s, char *rev)
 
 private int
 mkDiffTarget(sccs *s,
-	char *rev, char *revM, u32 flags, char *target , pfile *pf)
+	char *rev, char *revM, u32 flags, char *target, pfile *pf)
 {
+	char	*pat;
+
 	if (streq(rev, "1.0")) {
 		strcpy(target, NULL_FILE);
 		return (0);
 	}
-	sprintf(target,
-	    "%s/%s-%s-%u", TMP_PATH, basenm(s->gfile), rev, getpid());
-	if (exists(target)) {
-		return (-1);
-	} else if (
-		(streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)){
+	pat = aprintf("%s-%s", basenm(s->gfile), rev);
+	bktmp(target, pat);
+	free(pat);
+
+	if ((streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)) {
 		assert(HAS_GFILE(s));
 		if (S_ISLNK(s->mode)) {
 			char	buf[MAXPATH];
@@ -12936,6 +12949,7 @@ mkDiffTarget(sccs *s,
 			fprintf(f, "SYMLINK -> %s\n", buf);
 			fclose(f);
 		} else {
+			unlink(target);
 			strcpy(target, s->gfile);
 		}
 	} else if (sccs_get(s, rev, revM, pf ? pf->iLst : 0,
@@ -13044,7 +13058,7 @@ sccs_loadkv(sccs *s)
 	char x_kv[MAXPATH];
 	extern MDBM *loadkv(char *file);
 
-	bktmp(x_kv, "bk_kv");
+	bktmp(x_kv, "kv");
 	sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_kv);
 	s->mdbm = loadkv(x_kv);
 	unlink(x_kv);

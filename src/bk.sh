@@ -23,13 +23,12 @@ qecho() {
 }
 
 __cd2root() {
-	while [ ! -d "BitKeeper/etc" ]
-	do	cd ..
-		if [ `pwd` = "/" ]
-		then	echo "bk: can not find package root."
-			exit 1
-		fi
-	done
+	root="`bk root 2> /dev/null`"
+	test $? -ne 0 && {
+		echo "bk: cannot find package root."
+		exit 1
+	}
+	cd "$root"
 }
 
 _preference() {
@@ -349,12 +348,14 @@ _csets() {		# /* doc 2.0 */
 	then	echo Viewing RESYNC/BitKeeper/etc/csets-in
 		cd RESYNC
 		bk changes -nd:I: - < BitKeeper/etc/csets-in |
-		    exec bk csettool "$@" -
+		    bk csettool "$@" -
+		exit 0
 	fi
 	if [ -f BitKeeper/etc/csets-in ]
 	then	echo Viewing BitKeeper/etc/csets-in
 		bk changes -nd:I: - < BitKeeper/etc/csets-in |
-		    exec bk csettool "$@" -
+		    bk csettool "$@" -
+		exit 0
 	fi
 	echo "Can not find csets to view."
 	exit 1
@@ -707,28 +708,30 @@ _man() {
 }
 
 # Make links in /usr/bin (or wherever they say).
-_links() {		# /* undoc? 2.0 - what is this for? */
+_links() {		# /* doc 3.0 */
 	if [ X"$1" = X ]
-	then	echo "usage: bk links bk-bin-dir [public-dir]"
-		echo "Typical usage is bk links /usr/libexec/bitkeeper /usr/bin"
+	then	echo "usage: bk links public-dir"
+		echo "Typical usage is bk links /usr/bin"
 		exit 1
 	fi
-	test -x "$1/bk" || {
-		echo ==========================================================
-		echo Can not find bin directory
-		echo ==========================================================
-		exit 0
-	}
-	BK="$1"
+	# The old usage had two arguments so we adjust for that here
 	if [ "X$2" != X ]
-	then	BIN="$2"
-	else	BIN=/usr/bin
+	then	BK="$1"
+		BIN="$2"
+	else	BK="`bk bin`"
+		BIN="$1"
 	fi
+	test -f "$BK/bkhelp.txt" || {
+		echo "bk links: bitkeeper not installed at $BK"
+		exit 2
+	}
+	test -f "$BIN/bkhelp.txt" && {
+		echo "bk links: destination can't be a bk tree ($BIN)"
+		exit 2
+	}
 	test -w "$BIN" || {
-		echo ==========================================================
-		echo "bk links: can't write to ${BIN}, no links made."
-		echo ==========================================================
-		exit 0
+		echo "bk links: cannot write to ${BIN}; links not created"
+		exit 2
 	}
 	for i in admin get delta unget rmdel prs bk
 	do	test -f "$BIN/$i" && {
@@ -908,8 +911,10 @@ _clonemod() {
 	bk pull `bk parent -il1`
 }
 
+# XXX undocumented alias from 3.0.4 
 _leaseflush() {
-	rm -f `bk dotbk`/lease/`bk gethost -r`
+        echo Please use 'bk lease flush' now. 1>&2
+	bk lease flush -a
 }
 
 __find_merge_errors() {
@@ -1099,6 +1104,11 @@ __keysort()
     bk _sort "$@"
 }
 
+__quoteSpace()
+{
+        echo "$1" | sed 's, ,\\ ,g'
+}
+
 __findRegsvr32()
 {
 	REGSVR32=""
@@ -1115,7 +1125,7 @@ __findRegsvr32()
 		done
 	fi
 
-	for drv in c d e f g h i j k l m n o p q r s t vu v w x y z
+	for drv in c d e f g h i j k l m n o p q r s t u v w x y z
 	do
 		for dir in WINDOWS/system32 WINDOWS/system WINNT/system32
 		do
@@ -1138,6 +1148,97 @@ __register_dll()
 	"$REGSVR32" -s "$1"
 }
 
+# For win32: extract the UninstallString from the registry
+__uninstall_cmd()
+{
+        if [ -f "$1/bk.exe" ]
+        then
+		VER=`"$1/bk.exe" version | head -1 | awk '{ print $4 }'`
+		case "$VER" in
+		    bk-*)
+			VERSION="$VER";
+			;;
+		    *)
+			VERSION="bk-$VER"
+		esac
+		"$SRC/gui/bin/tclsh" "$SRC/getuninstall.tcl" "$VERSION"
+        else
+		echo ""
+        fi
+}
+
+__do_win32_uninstall()
+{
+	SRC="$1"
+	DEST="$2"
+	OBK="$3"
+	OLOG="$OBK/install.log"
+	ODLL="$OBK/BkShellX.dll"
+	__uninstall_cmd "$2" > "$TEMP/bkuninstall_tmp$$"
+	UNINSTALL_CMD=`cat "$TEMP/bkuninstall_tmp$$"`
+
+	case "$UNINSTALL_CMD" in
+	    *UNWISE.EXE*)	# Uninstall bk3.0.x
+		mv "$DEST" "$OBK"
+
+		mkdir "$DEST"
+		for i in UNWISE.EXE UNWISE.INI INSTALL.LOG
+		do
+			cp "$OBK"/$i "$DEST"/$i
+		done
+
+		rm -rf "$OBK" 2> /dev/null
+		if [ -f "$ODLL" ]
+		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
+		    		 "BitKeeper$$" "\"$DEST/bkuninstall.exe\" \
+						  	-R \"$ODLL\" \"$OBK\""
+		fi
+
+		# *NOTE* UNWISE.EXE runs as a background process!
+		eval $UNINSTALL_CMD
+
+		# write cygwin upgrade notice to desktop
+		DESKTOP=`bk _getreg HKEY_CURRENT_USER \
+		    'Software/Microsoft/Windows/CurrentVersion/Explorer/Shell Folders' \
+		    Desktop`
+		bk getmsg install-cygwin-upgrade | bk undos -r \
+		    > $DESKTOP/BitKeeper-Cygwin-notice.txt
+
+		#Busy wait: wait for UNWISE.EXE to exit
+		cnt=0;
+		while [ -d "$DEST" ]
+		do
+			cnt=`expr $cnt + 1` 	
+			if [ "$cnt" -gt 60 ]; then break; fi
+			echo -n "."
+			sleep 2
+		done
+		if [ $cnt -gt 60 ]; then exit 2; fi; # force installtool to exit
+		;;
+	    *bkuninstall*)	# Uninstall bk3.2.x
+		mv "$DEST" "$OBK"
+
+		# replace $DEST with $OBK
+		X1=`__quoteSpace "$DEST"`
+		Y1=`__quoteSpace "$OBK"`
+		sed "s,$X1,$Y1,Ig" "$TEMP/bkuninstall_tmp$$" > "$TEMP/bk_cmd$$"
+		BK_INSTALL_DIR="$OBK"
+		export BK_INSTALL_DIR TEMP
+		TMP="$TEMP" sh "$TEMP/bk_cmd$$" > /dev/null 2>&1
+		rm -f "$TEMP/bkuninstall_tmp$$" "$TEMP/bk_cmd$$"
+		;;
+	    *)	
+		mv "$DEST" "$OBK"
+		rm -rf "$OBK" 2> /dev/null
+		if [ -f "$ODLL" ]
+		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
+		    		 "BitKeeper$$" "\"$DEST/bkuninstall.exe\" \
+						  	-R \"$ODLL\" \"$OBK\""
+		fi
+		;;
+	esac
+}
+
 # usage: install dir
 # installs bitkeeper in directory <dir> such that the new
 # bk will be located at <dir>/bk
@@ -1149,34 +1250,37 @@ _install()
 		set -x
 	}
 	FORCE=0
-	CHMOD=YES
+	CRANKTURN=NO
 	VERBOSE=NO
 	DLLOPTS=""
-	while getopts dfvlns opt
+	DOSYMLINKS=NO
+	while getopts dfvlnsS opt
 	do
 		case "$opt" in
 		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
 		n) DLLOPTS="-n $DLLOPTS";; # enable bkshellx for network drives
 		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
-		d) CHMOD=NO;;	# do not change permissions, dev install
+		d) CRANKTURN=YES;;# do not change permissions, dev install
 		f) FORCE=1;;	# force
+		S) DOSYMLINKS=YES;;
 		v) VERBOSE=YES;;
-		*) echo "usage: bk install [-dfv] <destdir>"
+		*) echo "usage: bk install [-dfvS] <destdir>"
 	 	   exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
 	test X"$1" = X -o X"$2" != X && {
-		echo "usage: bk install [-dfv] <destdir>"
+		echo "usage: bk install [-dfSv] <destdir>"
 		exit 1
 	}
 	DEST="$1"
 	SRC=`bk bin`
 
+	OBK="$DEST.old$$"
 	test -d "$DEST" && {
-		DEST=`cd "$DEST"; bk pwd`	
+		DEST=`bk pwd "$DEST"`
 		test "$DEST" = "$SRC" && {
-			echo "bk install: destination == souce"
+			echo "bk install: destination == source"
 			exit 1
 		}
 		test $FORCE -eq 0 && {
@@ -1184,18 +1288,10 @@ _install()
 			exit 1
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
-		chmod -R +w "$DEST" 2> /dev/null
+		(cd "$DEST"; find . -type d | xargs chmod ug+w)
 		if [ "X$OSTYPE" = "Xmsys" ]
 		then
-			OBK="$DEST.old$$"
-			ODLL="$OBK/BkShellX.dll"
-			mv "$DEST" "$OBK"
-			rm -rf "$OBK" 2> /dev/null
-			if [ -f "$ODLL" ]
-			then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
-			     "BitKeeper" \
-			     "\"$DEST/bkuninstall.exe\" -R \"$ODLL\" \"$OBK\""
-			fi
+			__do_win32_uninstall "$SRC" "$DEST" "$OBK"
 		else
 			rm -rf "$DEST"/* || {
 			    echo "bk install: failed to remove $DEST"
@@ -1211,12 +1307,18 @@ _install()
 		echo "bk install: Unable to write to $DEST, failed"
 		exit 1
 	}
+	# make DEST canonical full path w long names.
+	DEST=`bk pwd "$DEST"`
 	# copy data
 	V=
 	test $VERBOSE = YES && {
 		V=v
 		echo Installing data in "$DEST" ...
 	}
+	if [ "X$OSTYPE" = "Xmsys" ]
+	then 	echo "fixing up permissions, please wait..."
+		find "$SRC" | xargs chmod +w	# for Win/Me
+	fi
 	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar x${V}f -)
 	
 	# binlinks
@@ -1231,6 +1333,13 @@ _install()
 		ln "$DEST"/bk$EXE "$DEST"/$prog$EXE
 	done
 
+	# symlinks to /usr/bin
+	if [ "$DOSYMLINKS" = "YES" ]
+	then
+	        test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
+		"$DEST"/bk links /usr/bin
+	fi
+
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
 		# On Windows we want a install.log file
@@ -1242,21 +1351,30 @@ _install()
 			echo $prog$EXE >> "$INSTALL_LOG"
 		done
 
+		# fix home directory
+		#  dotbk returns $HOMEDIR/$USER/Application Data/Bitkeeper/_bk
+		bk dotbk | sed 's,/[^/]*/[^/]*/[^/]*/_bk, /home,' >> \
+			"$DEST"/gnu/etc/fstab
 	fi
 
 	# permissions
 	cd "$DEST"
-	test $CHMOD = YES && {
+	if [ $CRANKTURN = NO ]
+	then
 		(find . | xargs chown root) 2> /dev/null
 		(find . | xargs chgrp root) 2> /dev/null
-		find . | xargs chmod -w
-	}
+		find . | grep -v bkuninstall.exe | xargs chmod ugo-w
+	else
+		find . -type d | xargs chmod 777
+	fi
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
 		test $VERBOSE = YES && echo "updating registry..."
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
+		# This tells extract.c to reboot if it is needed
+		test $CRANKTURN = NO -a -f "$OBK/BkShellX.dll" && exit 2
 	fi
 	exit 0
 }
