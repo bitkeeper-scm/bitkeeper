@@ -13,6 +13,55 @@ WHATSTR("@(#)%K%");
  */
 #undef getcwd
 #define getcwd(a, b)	nt_getcwd(a, b)
+
+
+private char *
+cygwinPath()
+{
+	static	char	*cygwinPath = NULL;
+	char	buf[MAXPATH], tmp[MAXPATH];
+	int	len = MAXPATH;
+#define KEY "Software\\Cygnus Solutions\\Cygwin\\mounts v2\\/usr/bin"
+
+	if (cygwinPath) return (cygwinPath);
+	getReg(HKEY_LOCAL_MACHINE, KEY, "native", buf, &len);
+	GetShortPathName(buf, tmp, MAXPATH);
+	localName2bkName(tmp, tmp);
+	cygwinPath = strdup(tmp);
+	return (cygwinPath);
+	
+}
+
+
+private int
+insertCygwinPath(char *bkpath, char *pathList)
+{
+	char *p, *q, *r, *t;
+
+	/*
+	 * Force everything to lower case for easier compare
+	 */
+	for (t = pathList; *t; t++) *t = tolower(*t);
+	for (t = bkpath; *t; t++) *t = tolower(*t);
+
+	/*
+	 * Insert cygwin path after bk path
+	 */
+	p = strstr(pathList, bkpath);
+	if (p) {
+		t = strchr(p, ';');
+		if (t) {
+			*t++ = '\0';
+		} else {
+			t = "";
+		}
+		if (streq(t, cygwinPath())) return; /* already got cygwinpath */
+		q = aprintf("PATH=%s;%s;%s", pathList, cygwinPath(), t);
+		putenv(q);
+		return (0);
+	}
+	return (-1);
+}
 #endif
 
 void
@@ -108,11 +157,30 @@ gotit:
 		localName2bkName(buf, buf);
 		bin = buf; /* buf is static */
 
+#ifdef WIN32
+		/*
+		 * Needed by win32 Dos prompt environment; force a cygwin path
+		 * after the bk path. If gnu/bin is in the path, cygwin path
+		 * must be added after the gnu/bin path, so that we pick up
+		 * the correct diff and patch binary
+		 */
+		if (add2path) {
+			s = aprintf("PATH=%s%c%s/gnu/bin%c%s%c%s",
+			    		buf, PATH_DELIM,
+					buf, PATH_DELIM,
+					cygwinPath(), PATH_DELIM,
+					p);
+			putenv(s);
+		} else {
+			insertCygwinPath(buf, p);
+		}
+#else
 		if (add2path) {
 			s = aprintf("PATH=%s%c%s/gnu/bin%c%s",
 			    		buf, PATH_DELIM, buf, PATH_DELIM, p);
 			putenv(s);
 		}
+#endif
 		return;
 	}
 
