@@ -8830,6 +8830,7 @@ out:		sccs_unlock(s, 'z');
 		unless (flags & DELTA_PATCH) {
 			first->flags |= D_XFLAGS;
 			first->xflags = s->xflags;
+			singleUser(s, db);
 		}
 		if (CSET(s)) {
 			unless (first->csetFile) {
@@ -8844,7 +8845,6 @@ out:		sccs_unlock(s, 'z');
 				first->csetFile = getCSetFile(s->proj);
 			}
 		}
-		singleUser(s, db);
 		first->xflags |= (s->xflags & X_SINGLE);
 	}
 

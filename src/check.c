@@ -254,7 +254,7 @@ check_main(int ac, char **av)
 			sprintf(buf, "bk -r admin -C'%s'", csetkey);
 			system(buf);
 		}
-		if (names || xflags_failed) return (2);
+		if (names || xflags_failed || csetpointer) return (2);
 	}
 	if (csetKeys.malloc) {
 		int	i;

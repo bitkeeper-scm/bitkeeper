@@ -145,10 +145,9 @@ echo data1 > conflict.c
 cd $HERE/copy
 echo data2 > old.c
 bk new $Q old.c
-bk commit $Q -yold.c
-bk push -c1 $Q bk://localhost:$P
-cd $HERE/project
-while ! bk lock -s; do true; done
+bk commit $Q -yold.c || exit 1
+bk push -c1 $Q bk://localhost:$P || exit 1
+waitForUnlock $HERE/project
 cd $HERE/copy
 bk mv old.c conflict.c
 bk commit $Q -ygconflict
@@ -215,8 +214,9 @@ cd $HERE/copy2
 ls > JUNK
 bk new $Q JUNK
 (cd $HERE/copy; bk _loggingaccepted; )
-bk commit $Q -ywhatever
+bk commit $Q -ywhatever || exit 1
 bk push -t bk://localhost:$P/$HERE/copy 2> bk.out
+if [ $? -eq 0 ]; then echo failed; cat bk.out; exit 1; fi
 grep -q "pushing to is .* changesets" bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 echo OK
@@ -224,7 +224,7 @@ echo $N Make sure bk/basic allows pull from master repository .......$NL
 cd $HERE/copy
 while ! bk lock -s; do true; done
 cd $HERE/copy2
-bk undo -fqr+
+bk undo -fqr+ || exit 1
 bk pull $Q -t bk://localhost:$P/$HERE/copy
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
