@@ -305,7 +305,7 @@ logChangeSet(int l, char *rev, int quiet)
 	};
 	char	*mail_av[] = {
 		"bk",
-		"mail",
+		"_mail",
 		to,
 		subject,
 		commit_log,

@@ -641,7 +641,7 @@ proc listRevs {file} \
 	# Figure out the biggest node and its length.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| bk lines $Opts(line) $Opts(line_time) \"$file\" 2>$dev_null" "r"]
+	set d [open "| bk _lines $Opts(line) $Opts(line_time) \"$file\" 2>$dev_null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -687,7 +687,7 @@ proc listRevs {file} \
 	set len [expr {$len + 10}]
 	set bad 0
 
-	# If the time interval arg to 'bk lines' is too short, bail out
+	# If the time interval arg to 'bk _lines' is too short, bail out
 	if {$lines == ""} {
 		return 1
 	}
@@ -1493,7 +1493,7 @@ proc lineOpts {rev} \
 	global	Opts file
 
 	# Call lines to get this rev in the same format as we are using.
-	set f [open "| bk lines $Opts(line) -r$rev \"$file\""]
+	set f [open "| bk _lines $Opts(line) -r$rev \"$file\""]
 	gets $f rev
 	cach {close $f} err
 	return $rev

@@ -124,11 +124,14 @@ struct command cmdtbl[] = {
 	{"_createlod", _createlod_main},
 	{"_find", find_main }, 		/* internal helper function */
 	{"_keysort", keysort_main},
+	{"_lines", lines_main},	
 	{"_logging", logging_main},
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
+	{"_mail", mail_main},
 	{"_get", get_main},
+	{"_unlink", unlink_main },
 	{"abort", abort_main},
 	{"admin", admin_main},
 	{"annotate", annotate_main},
@@ -167,11 +170,9 @@ struct command cmdtbl[] = {
 	{"info", sinfo_main},
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
-	{"lines", lines_main},		/* XXX - should be _lines, undoc */
 	{"lock", lock_main},
 	{"lod", lod_main},
 	{"log", log_main},
-	{"mail", mail_main},		/* XXX - should be _mail, undoc */
 	{"merge", merge_main},
 	{"mklock", mklock_main},	/* for regression test only, undoc */
 	{"mtime", mtime_main},		/* for regression test only, undoc */
@@ -217,7 +218,6 @@ struct command cmdtbl[] = {
 	{"undos", undos_main},
 	{"unedit", unedit_main},
 	{"unget", unedit_main},		/* aliases */
-	{"unlink", unlink_main },	/* undoc, should be _unlink */
 	{"unlock", unlock_main },
 	{"unwrap", unwrap_main},
 	{"users", users_main},

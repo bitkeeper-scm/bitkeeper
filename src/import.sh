@@ -300,7 +300,7 @@ import_patch() {
 	    bk patch -p1 -ZsE -z '=-PaTcH_BaCkUp!' --forcetime --lognames > \
 		${TMP}plog$$ 2>&1
 	cat ${TMP}plog$$
-	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk unlink
+	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink
 	REJECTS=NO
 	find .  -name '*.rej' -print > ${TMP}rejects$$
 	while [ -s ${TMP}rejects$$ ]
@@ -383,7 +383,7 @@ import_RCS () {
 	echo WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]
 	then	bk rcs2sccs $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ || exit 1
-		bk unlink < ${TMP}import$$
+		bk _unlink < ${TMP}import$$
 		return
 	fi
 	LINES=`wc -l < ${TMP}import$$`
