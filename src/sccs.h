@@ -358,13 +358,6 @@
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
 
-#define BK_FREE		0
-/* #define BK_BASIC	1  -not used */
-#define BK_PRO		2
-#define BK_SINGLE	3
-#define BK_BADMODE	999
-int	bk_mode(void);
-
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
 #define	isData(buf)	((buf[0] != '\001') || \
 			    ((buf[0] == CNTLA_ESCAPE) && (buf[1] == '\001')))

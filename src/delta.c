@@ -1,6 +1,8 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
+
 WHATSTR("@(#)%K%");
 
 private int
@@ -127,6 +129,7 @@ delta_main(int ac, char **av)
 	char	*diffsFile = 0;
 	char	*name;
 	char	*compp = 0, *encp = 0, *ckopts = "";
+	char	*def_compp;
 	char	*mode = 0, buf[MAXPATH];
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
@@ -243,15 +246,8 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		iflags |= INIT_FIXSTIME;
 	}
 
-	if (dflags & NEWFILE) {
-		if (bk_mode() != BK_PRO) {
-			compp = "gzip";
-		}
-		unless (ignorePreference || compp) { 
-			compp  = user_preference("compression");
-			unless (compp && *compp) compp = NULL;
-		}
-	}
+	def_compp  = user_preference("compression");
+	unless (def_compp && *def_compp) def_compp = NULL;
 
 	if ((encp || compp) && !(dflags & NEWFILE)) {
 		fprintf(stderr, "-Z is allowed with -i option only\n");
@@ -327,6 +323,12 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			} else {
 				df |= NEWFILE;
 			}
+		}
+		if (dflags & NEWFILE) {
+			if (bk_mode(s->proj) != BK_PRO) {
+				compp = "gzip";
+			}
+			unless (ignorePreference || compp) compp = def_compp;
 		}
 
 		/*

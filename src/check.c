@@ -276,7 +276,7 @@ check_main(int ac, char **av)
 		}
 		if (csetpointer) {
 			char	buf[MAXKEY + 20];
-			char	*csetkey = proj_csetrootkey(0);
+			char	*csetkey = proj_rootkey(0);
 
 			fprintf(stderr,
 			    "check: "
@@ -1379,7 +1379,7 @@ csetFind(char *key)
 private int
 chk_csetpointer(sccs *s)
 {
-	char	*csetkey = proj_csetrootkey(s->proj);
+	char	*csetkey = proj_rootkey(s->proj);
 
 	if (s->tree->csetFile == NULL ||
 	    !(streq(csetkey, s->tree->csetFile))) {

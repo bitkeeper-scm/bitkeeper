@@ -9193,7 +9193,7 @@ out:		sccs_unlock(s, 'z');
 			first->flags |= D_CKSUM;
 		} else {
 			unless (first->csetFile) {
-				char	*c = proj_csetrootkey(s->proj);
+				char	*c = proj_rootkey(s->proj);
 
 				if (c) first->csetFile = strdup(c);
 			}

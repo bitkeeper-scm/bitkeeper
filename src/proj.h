@@ -46,13 +46,8 @@ MDBM	*proj_config(project *p);
 /*
  * Return the root key of the ChangeSet file in the current project.
  */
-char	*proj_csetrootkey(project *p);
-char	*proj_csetmd5rootkey(project *p);
-
-/*
- * Return a hash where we can stash random data that gets cached per repo.
- */
-HASH	*proj_hash(project *p);
+char	*proj_rootkey(project *p);
+char	*proj_md5rootkey(project *p);
 
 /*
  * proj_chdir() is a wrapper for chdir() that also updates
@@ -73,10 +68,8 @@ void	proj_reset(project *p);
 
 project *proj_fakenew(void);
 
-/*
- * return the license for the current project.
- *
- * (this function is implemented in lease.c)
- */
 char	*proj_license(project *p);
+u32	proj_licensebits(project *p);
+int	proj_leaseOK(project *p, int *newok);
+
 #endif
