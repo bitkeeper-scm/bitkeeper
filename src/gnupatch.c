@@ -17,23 +17,45 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 
 	sprintf(tmp_path, "%s/%s/%s", tmpdir, tag, path);
 	if (isNullFile(rev, path))  return;
-	d = findrev(s, rev);
-	assert(d);
-	unless ((d->mode == 0) || S_ISREG(d->mode)) {
-		fprintf(stderr,
-    "%s is not regular file, converted to empty file\n", d->pathname);
-		return;
-	}
-	free(s->gfile);
-	s->gfile = strdup(tmp_path);
-	check_gfile(s, 0);
-	mkdirf(tmp_path);
-	if (fix_mod_time) flags |= GET_DTIME;
-	if (expandkeywords) flags |= GET_EXPAND;
-	if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
-		fprintf(stderr, "Cannot get %s, rev %s\n",
-							s->sfile, rev);
-		exit(1);
+
+	if (streq(".", rev) &&  exists(s->gfile)) { /* cannot trust S_GFILE */
+		unless ((s->mode == 0) || S_ISREG(s->mode)) {
+			fprintf(stderr,
+	    "%s is not regular file, converted to empty file\n", s->gfile);
+			return;
+		}
+		/*
+		 * XXX What to do if expandkeywords = 1 ?
+		 *     Do we get the expanded copy if the checked out version
+		 *     is unexpanded?
+		 */
+		fileCopy(s->gfile, tmp_path);
+	} else {
+		char	*r = streq(".", rev) ? "+": rev;
+		char	*ogfile;
+
+		d = findrev(s, r);
+		assert(d);
+		unless ((d->mode == 0) || S_ISREG(d->mode)) {
+			fprintf(stderr,
+	    "%s is not regular file, converted to empty file\n", d->pathname);
+			return;
+		}
+
+		ogfile = s->gfile;
+		s->gfile = strdup(tmp_path);
+		check_gfile(s, 0); 	/* This changed S_state & S_GFILE */
+		mkdirf(tmp_path);
+		if (fix_mod_time) flags |= GET_DTIME;
+		if (expandkeywords) flags |= GET_EXPAND;
+		if (sccs_get(s, r, 0, 0, 0, flags, "-")) {
+			free(ogfile);
+			fprintf(stderr, "Cannot get %s, rev %s\n",
+								s->sfile, r);
+			exit(1);
+		}
+		free(s->gfile);
+		s->gfile = ogfile;
 	}
 	sprintf(tmp_path, "%s/%s", tag, path);
 	mdbm_store_str(db, tmp_path, "", MDBM_INSERT);
@@ -267,7 +289,7 @@ gnupatch_main(int ac, char **av)
 	 * and fix up the diff header
 	 */
 	unless (diff_style) diff_style = "u";
-	sprintf(diff_opts, "-Nr%c", diff_style[0]);
+	sprintf(diff_opts, "-Nr%s", diff_style);
 	spawnvp_rPipe(diff_av, &rfd, BIG_PIPE);
 	pipe = fdopen(rfd, "r");
 	while (fgets(buf, sizeof(buf), pipe)) {

@@ -97,6 +97,30 @@ usage:			system("bk help -s export");
 	}
 	strcpy(src_path, fullname(".", 0));
 
+	/*
+	 * rev == "." is a special case, there is no cset yet 
+	 */
+	if (rev && streq(".", rev)) {
+		char	output[MAXPATH];
+
+		sys("bk", "-r", "get", "-S", SYS);
+		f = popen("bk sfiles -luxg", "r");
+		while (fnext(buf, f)) {
+			chomp(buf);
+			if (!included(buf, include)) continue;
+			if (excluded(buf, exclude)) continue;
+			if (!sysfiles && strneq(buf, "BitKeeper/", 10)) {
+				continue;
+			}
+			if (streq(buf, "ChangeSet")) continue;
+			sprintf(output, "%s/%s", dst_path, buf);
+
+			fileCopy(buf, output);
+		}
+		pclose(f);
+		return (0);
+	}
+
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	if (rev) {
 		sprintf(buf, "bk rset -hl%s > %s", rev, file_rev);
@@ -172,19 +196,37 @@ next:		;
 	return (0);
 }
 
+private void
+fix_diff_opt(char *diff_style, char *diff_opt)
+{
+	if (!diff_style) {
+		strcpy(diff_opt, "-du"); /* default */
+	}  else if (diff_style[0] == '?') { /* for bk diffs -C */
+		diff_opt[0] = '\0';
+	} else { 
+		strcpy(diff_opt, "-d ");
+		diff_opt[2] = diff_style[0];
+	}
+	return;
+}
+
 private int
 export_patch(char *diff_style, char *rev,
 			char *include, char *exclude, int hflag, int tflag)
 {
 	FILE	*f, *f1;
 	char	buf[MAXLINE], file_rev[MAXPATH];
+	char	diff_opt[10];
 
 	unless (diff_style) diff_style = "u";
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	sprintf(buf, "bk rset -hr%s > %s", rev ? rev : "+", file_rev);
 	system(buf);
-	sprintf(buf, "bk gnupatch -d%c %s %s",
-	    diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
+
+	fix_diff_opt(diff_style, diff_opt);
+	sprintf(buf, "bk gnupatch %s %s %s",
+	    diff_opt, hflag ? "-h" : "", tflag ? "-T" : "");
+
 	f1 = popen(buf, "w");
 	f = fopen(file_rev, "rt");
 	assert(f);
@@ -194,7 +236,17 @@ export_patch(char *diff_style, char *rev,
 		chop(buf);
 		if (!included(buf, include)) continue;
 		if (excluded(buf, exclude)) continue;
-		/* Skip BitKeeper/ files (but pass deletes..) */
+		/*
+		 * Skip BitKeeper/ files (but pass deletes..)
+	  	 *
+		 * Email Note from Wayne Scott:
+		 * In general the only changes to files in the deleted
+		 * directory are when they are moved to that directory. 
+		 * This code requires that its starting location or the ending
+		 * location must be outside of bitkeeper.  We don't need
+		 * patches with changes for files that are deleted. We just
+		 * need the patch to have the delete.
+		 */
 		fstart = strchr(buf, BK_FS) + 1;
 		fend = strchr(fstart, BK_FS) + 1;
 		fend = strchr(fend, BK_FS) + 1;

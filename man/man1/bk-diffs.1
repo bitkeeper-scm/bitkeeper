@@ -4,7 +4,7 @@
 bk diffs \- show differences in revision controlled files
 .SH SYNOPSIS
 .Bc bk diffs [\-bBcDfhMnpsuUvw] [
-.OPTreq \-C rev
+.OPTreq \-C rev1,rev2
 .Bc ] [
 .OPTreq \-d date
 .Bc ] [
@@ -62,11 +62,12 @@ Ignore  changes  that  just  insert or delete blank lines.
 .B \-c
 Do context diffs.
 .tp
-.OPTreq \-C rev
-diff the repository against the specified changeset version
-.ARG rev .
-Useful if you want to capture the checked changes as well the
-work in progress (modified files).
+.OPTreq \-C rev1,rev2
+Diff the changeset rev2 against changeset rev1. If rev2 is absent,
+diff changeset rev1 against its parent. If rev2 is ".", diff the checked
+out files against changeset rev1. the last form is useful if you want to
+capture the checked changes as well the work in progress (modified files).
+"bk diffs -Crev1,rev2 -u" is same as "bk export -tpatch -h -du -rrev1,rev2"
 .tp
 .B \-D
 Prefix lines with dates.
