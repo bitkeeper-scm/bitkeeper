@@ -70,7 +70,7 @@ usage:			system("bk help -s push");
 
 	loadNetLib();
 	has_proj("push");
-	r = remote_parse(av[optind], 0);
+	r = remote_parse(av[optind]);
 	unless (r) goto usage;
 	if (opts.debug) r->trace = 1;
 	unless (licenseAccept(1)) {

@@ -647,7 +647,7 @@ doit_remote(char **av, char *url)
 
 	loadNetLib();
 	if (opts.remote) has_proj("changes");
-	r = remote_parse(url, 1);
+	r = remote_parse(url);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (1);

@@ -127,9 +127,7 @@ DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
 	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
-# FASTPURIFY does not do overrun/underrun checking at each alloc/free
-CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
-	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
+CFLAGS	= $(CC_DEBUG)
 CPPFLAGS= -Izlib -Imdbm
 # Override this if you don't have it.
 RANLIB	= ranlib

@@ -1070,6 +1070,7 @@ ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 
 int     http_connect(remote *r);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
+int	http_fetch_direct(char *url, char *file);
 char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
 void	bktmpenv(void);

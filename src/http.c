@@ -461,3 +461,48 @@ err:		if (header) free(header);
 	free(header);
 	return 0;
 }
+
+int
+http_fetch_direct(char *url, char *file)
+{
+	remote	*r;
+	char	*header = 0;
+	int	len;
+	int	rc = -1;
+	FILE	*f;
+	char	buf[MAXLINE];
+
+	r = remote_parse(url);
+	r->rfd = r->wfd = connect_srv(r->host, r->port, r->trace);
+	if (r->rfd < 0) goto out;
+	r->isSocket = 1;
+
+	header = aprintf(
+	    "GET %s HTTP/1.0\r\n"
+	    "User-Agent: BitKeeper/fetch\r\n"
+	    "Accept: text/html\r\n"
+	    "Host: %s:%d\r\n"
+	    "\r\n",
+	    url, r->host, r->port);
+	
+	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
+	len = strlen(header);
+	if (write_blk(r, header, len) != len) {
+		if (r->trace) fprintf(stderr, "Send failed\n");
+		goto out;
+	}
+	skip_http_hdr(r);
+	if (f = fopen(file, "w")) {
+		while (getline2(r, buf, sizeof(buf)) > 0) {
+			if (r->trace) fprintf(stderr, "-> %s\n", buf);
+			fprintf(f, "%s\n", buf);
+		}
+		fclose(f);
+		rc = 0;
+	}
+ out:
+	if (header) free(header);
+	disconnect(r, 2);
+	return (rc);
+}
+
