@@ -15,6 +15,26 @@ comments_save(char *s)
 	gotComment = 1;
 }
 
+void
+comments_savefile(char *s)
+{
+	FILE	*f = fopen(s, "r");
+	char	buf[MAXLINE];
+
+	unless (f) return;
+	gotComment = 1;
+	comment = "";
+	while (fnext(buf, f)) {
+		char *last = buf;
+		while (*last != 0 && *last != '\n') ++last;
+		unless (*last) fprintf(stderr, "Truncating comment line.\n");
+		*last = 0;	/* strip trailing NL */
+		saved = addLine(saved, strdup(buf));
+	}
+	if (saved) comment = 0;
+	fclose(f);
+}
+
 int
 comments_got()
 {
@@ -41,7 +61,7 @@ comments_get(delta *d)
 	int	i;
 
 	unless (d) d = calloc(1, sizeof(*d));
-	if (!comment && gotComment) return (d);
+	if (!comment && !saved && gotComment) return (d);
 	if (!comment) {
 		if (saved) {
 			EACH(saved) {
@@ -133,4 +153,19 @@ comments_cleancfile(char *file)
 		unlink(cfile);
 	}
 	free(cfile);
+}
+
+void
+comments_writefile(char *file)
+{
+	FILE	*f;
+	int	i;
+
+	if (f = fopen(file, "w")) {
+		if (comment) fprintf(f, "%s\n", comment);
+		EACH (saved) {
+			fprintf(f, "%s\n", saved[i]);
+		}
+		fclose(f);
+	}
 }

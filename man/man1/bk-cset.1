@@ -12,14 +12,6 @@ bk cset \- creates and manipulates changesets
 .OPTreq \-M range
 .Bc ] [
 .OPTreq \-r rev
-.Bc ] [
-.OPTreq \-S sym
-.Bc ] [
-.OPTreq \-x list
-.Bc ] [
-.OPTreq \-Y file
-.Bc ] [
-.OPTreq \-y msg
 .B ]
 .SH DESCRIPTION
 .LP
@@ -53,22 +45,9 @@ Run quietly.
 Print the list of deltas in ChangeSet revision,
 .ARG rev .
 .tp
-.OPTreq \-S sym
-Set
-.ARG sym
-to be a symbolic tag for this revision.
-.tp
 .OPTreq \-x list
 Create a new cset on TOT that excludes the csets in 
 .ARG list .
-.tp
-.OPTreq \-Y file
-Sets the changeset comment to the contents of
-.ARG file .
-.tp
-.OPTreq \-y msg
-Sets the changeset comment to 
-.ARG msg .
 .SH BUGS
 .LP
 This command does too much and needs to be split apart.
