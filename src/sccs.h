@@ -415,8 +415,10 @@ typedef struct delta {
 	struct	delta *siblings;	/* pointer to other branches */
 	struct	delta *next;		/* all deltas in table order */
 	u32	flags;			/* per delta flags */
-	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
 	u32	symGraph:1;		/* if set, I'm a symbol in the graph */
+	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
+					/* Needed for tag conflicts with 2 */
+					/* open tips, so maintained always */
 	u32	published:1;	
 	u32	ptype:1;	
 } delta;

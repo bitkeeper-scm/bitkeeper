@@ -60,18 +60,28 @@ echo $N Add new style tags ..........................................$NL
 bk tag $Q NEW
 grep -q '^.cS0' SCCS/s.ChangeSet || {
 	echo did not add tag pointing to the root node
-	cat SCCS/s.ChangeSet
+	egrep '^.cS|^.d ' SCCS/s.ChangeSet
+	exit 1
+}
+grep -q '^.cS0 l' SCCS/s.ChangeSet || {
+	echo did not add leaf flag
+	egrep '^.cS|^.d ' SCCS/s.ChangeSet
 	exit 1
 }
 bk tag $Q 'NEW TAG'
 grep -q '^.cS0' SCCS/s.ChangeSet || {
 	echo lost tag pointing to the root node
-	cat SCCS/s.ChangeSet
+	egrep '^.cS|^.d ' SCCS/s.ChangeSet
+	exit 1
+}
+grep -q '^.cS0 l' SCCS/s.ChangeSet && {
+	echo Root tag is still marked as leaf
+	egrep '^.cS|^.d ' SCCS/s.ChangeSet
 	exit 1
 }
 grep -q '^.cS5 l' SCCS/s.ChangeSet || {
 	echo Did not add tag pointing to previous tag
-	cat SCCS/s.ChangeSet
+	egrep '^.cS|^.d ' SCCS/s.ChangeSet
 	exit 1
 }
 cp SCCS/s.ChangeSet SAVE
@@ -162,7 +172,13 @@ bk resync $Q
 echo ""
 echo "x"
 echo r
-) | bk resolve -t $Q 2>OUT
+) | bk resolve -l -t $Q 2>OUT
+test -d RESYNC && {
+	echo resolve failed
+	cat OUT
+	egrep '^.cS|^.d ' RESYNC/SCCS/s.ChangeSet
+	exit 1
+}
 KEY=`bk prs -hrTAG -d:KEY: ChangeSet`
 if [ "$KEY" = "$LOCAL" ]
 then	echo Whoops, used local instead of remote

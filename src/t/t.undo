@@ -66,6 +66,7 @@ grep -q "Undo aborted" undo.out
 if [ $? -ne 0 ]; then echo "failed2"; exit 1; fi
 echo OK
 bk unedit foo.c
+
 echo $N Check undo of circular renames ..............................$NL
 echo bar > bar.c
 echo woo > woo.c
@@ -82,4 +83,22 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk undo $Q -fr+
 bk get $Q -p bar.c | grep -q bar
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+
+echo $N Check dangling tag undo .....................................$NL
+cd $HERE
+no_logging tag
+ls > file
+bk new $Q file
+bk commit -SRELEASE -ywhatever $Q
+bk edit -q file
+bk delta $Q -ywhatever file
+bk commit -ywhatever $Q
+bk tag $Q RELEASE
+bk tag $Q -r1.2 RELEASE
+bk undo $Q -fr1.3
+grep -q 'R 1.2' SCCS/s.ChangeSet && {
+	echo failed to remove the dangling tag
+	exit 1
+}
 echo OK

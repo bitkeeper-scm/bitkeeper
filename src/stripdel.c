@@ -156,14 +156,45 @@ noparent(delta *e)
 	return (f->flags & D_SET);
 }
 
+/*
+ * Start at the bottom, recurs to the top, and if the top tag is marked,
+ * return that info so the one below it can be marked.
+ */
+private int
+marktags(sccs *s, delta *d)
+{
+	assert(d);
+	if (d->ptag && marktags(s, sfind(s, d->ptag))) d->flags |= D_SET|D_GONE;
+	if (d->mtag && marktags(s, sfind(s, d->mtag))) d->flags |= D_SET|D_GONE;
+	return (d->flags & D_GONE);
+}
+
+/*
+ * Find ourselves a new leaf.
+ */
+private int
+newleaf(sccs *s)
+{
+	delta	*d;
+
+	for (d = s->table; d; d = d->next) {
+		if (d->symGraph && !(d->flags & D_GONE)) {
+			d->symLeaf = 1;
+			break;
+		}
+	}
+}
+
 int
 set_meta(sccs *s, int stripBranches, int *count)
 {
 	int	n, left;
 	int	redo_merge = 0;
-	delta	 *e;
+	delta	 *e, *leaf = 0;
 
 	for (n = left = 0, e = s->table; e; e = e->next) {
+		if (e->symLeaf) leaf = e;
+
 		if (stripBranches && e->r[2]) e->flags |= D_SET;
 
 		/* Mark metas if their true parent is marked. */
@@ -189,6 +220,12 @@ set_meta(sccs *s, int stripBranches, int *count)
 		}
 		left++;
 	}
+
+	if (leaf) {
+		marktags(s, leaf);
+		if (leaf->flags & D_GONE) newleaf(s);
+	}
+
 	/* Rebuild merge image:
 	 *   The D_MERGE tag means a delta is the parent of a merge
 	 *   relationship.  A delta can be a parent of more than one
