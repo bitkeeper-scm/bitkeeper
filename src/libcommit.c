@@ -7,6 +7,7 @@ char *editor = 0, *pager = 0, *bin = 0;
 char *bk_dir = "BitKeeper/";
 int resync = 0, quiet = 0;
 char *getlog(char *user);
+int get(char *path, int flags, char *output);
 
 void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
@@ -144,10 +145,9 @@ void
 logChangeSet(char *rev)
 {
 	char commit_log[MAXPATH], buf[MAXLINE], *p;
-	char getlog_out[MAXPATH];
 	char subject[MAXLINE];
 	char start_rev[1024];
-	FILE *f, *f1;
+	FILE *f;
 	int dotCount = 0, n;
 
 	unless (streq("commit_and_maillog", getlog(NULL)))  return;
@@ -190,6 +190,7 @@ logChangeSet(char *rev)
 	unlink(commit_log);
 }
 
+int
 get(char *path, int flags, char *output)
 {
 	sccs *s;

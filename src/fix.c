@@ -47,9 +47,9 @@ main(int ac,  char **av)
 		assert(d);
 		sprintf(buf, "%sstripdel %s -r%s %s",
 					bin, qflag, d->rev, av[i]);
+		sccs_free(s);
 		if (system(buf) == 0) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
-			sccs_free(s);
 			s = sccs_init(p, SILENT, 0);
 			assert(s);
 			if (sccs_get(s, 0, 0, 0, 0, gflags, "-")) {
@@ -64,8 +64,7 @@ main(int ac,  char **av)
 		} else {
 			unlink(fix_file);
 		}
-	}
-	sccs_free(s);
+	};
 	free(p);
 	return (0);
 }
