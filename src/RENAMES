@@ -1,3 +1,5 @@
+bk resync Remote Local
+
 	Local		Remote		Case #
 	not moved	not moved	1
 	not moved	moved		2
@@ -13,22 +15,38 @@ Case 1
 
 Case 2
 	a) user is not involved, but is warned that move is happening
-	b) Somehow, I need to remember that the local file needs to be
-	   moved and do that as part of the apply process.
+	b) Make an rfile with a rename entry
 
 Case 3
 	a) user is not involved, but is warned
-	b) move the RESYNC file into the same location as the local file,
-	   for now, error if that location is in use.
+	b) Make an rfile with a rename entry
 
 Case 4
 	a) user needs to be consulted to see which to use
-	b) if (use local name) {
-		treat like case 3
-	   } else {
-	   	treat like case 2
-	   }
+	   user can also pick a new name completely, so checks for
+	   conflicts in others that exist need to be done.
+	   This may cause a copy of sfiles from Local into RESYNC,
+	   if the user wants to rename something not involved in the
+	   patch (creating an additional case 4 entry from something
+	   that had been case 1). 
+	b) Make an rfile with a rename entry
 
 The format of the rename (R.file) is
 
 	local	gca	remote
+
+After processing all sfiles,
+    do for all files that have rfiles with rename entries:
+
+ 	move rfile and sfile to $PROJROOT/BitKeeper/rename/
+	move them back to the RESYNC directory with the new name
+	add deltas to the local and or remote branch so each match new name
+	move over the wall into Local repository
+
+Assumptions: Local and Remote are in same LOD
+
+Notes from design discussion:
+There are 4 namespaces: Remote, Local(before), Local(after), RESYNC.
+
+RESYNC namespace is initially same as Remote.
+After the move to and from BitKeeper/rename, RESYNC becomes Local(after).
