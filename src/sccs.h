@@ -980,6 +980,7 @@ char	*bktmpfile();	/* return a char* to a just created temp file */
 void	updLogMarker(int ptype, int verbose);
 char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
+MDBM	*csetDiff(MDBM *, int);
 
 extern char *bk_vers;
 extern char *bk_utc;

@@ -3725,7 +3725,7 @@ parseConfig(char *buf)
 	unless (p) return 0;
 
 	/*
-	 * Handle the [user][@host][:path]/pref_key: vale syntax
+	 * Handle the [user][@host][:path]/pref_key: value syntax
 	 */
 	*p = 0;
 	if (end_filter) {
@@ -3740,7 +3740,7 @@ parseConfig(char *buf)
 		unless (filter(&buf[1])) return (0); 
 		*p++ = ' ';
 		memmove(buf, t, strlen(t) + 1);
-		p  = (p - (t - buf)); /* adjust  p to account for memmove */
+		p  = (p - (t - buf)); /* adjust p to account for memmove */
 		assert(p[-1] == ' ');
 	} else {
 		*p++ = ' ';

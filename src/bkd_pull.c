@@ -5,7 +5,6 @@ private	void	listrev(delta *d);
 private	void	listIt2(sccs *s, int list);
 private int	uncompressed(char *tmpfile);
 private int	compressed(int gzip, char *tmpfile);
-extern	MDBM	*csetKeys(MDBM *);
 
 #define	OPULL
 #ifdef	OPULL
@@ -62,7 +61,7 @@ cmd_pull(int ac, char **av)
 	/*
 	 * Get the set of keys not present in them.
 	 */
-	unless (me = csetKeys(them)) {
+	unless (me = csetDiff(them, 0)) {
 		putenv("BK_STATUS=NOTHING");
 		out("OK-Nothing to send.\n");
 		out("OK-Unlocked\n"); /* lock is relaesed when we return */

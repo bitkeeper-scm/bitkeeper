@@ -255,10 +255,11 @@ confirm(char *msg)
 
 /*
  * Return an MDBM with all the keys from the ChangeSet file
- * as db{key} = rev.
+ * after subtracting the keys from the "not" database.
+ * The result are stored as db{key} = rev.
  */
 MDBM	*
-csetKeys(MDBM *not)
+csetDiff(MDBM *not,  int wantTag)
 {
 	char	buf[MAXKEY], s_cset[MAXPATH] = CHANGESET;
 	sccs	*s;
@@ -271,7 +272,7 @@ csetKeys(MDBM *not)
 		return (0);
 	}
 	for (d = s->table; d; d = d->next) {
-		unless (d->type == 'D') continue;
+		if (!wantTag && (d->type == 'R')) continue;
 		sccs_sdelta(s, d, buf);
 		unless (not && mdbm_fetch_str(not, buf)) {
 			mdbm_store_str(db, buf, d->rev, 0);
