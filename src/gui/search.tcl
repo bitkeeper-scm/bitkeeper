@@ -331,7 +331,7 @@ proc search_widgets {w s} \
 	    }
 	button $search(clear) -font $gc($app.buttonFont) \
 	    -bg $gc($app.buttonColor) \
-	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
+	    -pady $gc(py) -padx $gc(px) -borderwid $gc(bw) -width 15\
 	    -text "Clear search" -state disabled -command { clearOrRecall }
 	label $search(status) -width 20 -font $gc($app.buttonFont) -relief flat
 
