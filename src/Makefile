@@ -10,10 +10,10 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
 	  bkd bkusers commit fix gethelp getlog help isascii logaddr \
 	  logchangeset names parent push r2c receive resolve \
-	  send sendconfig setlog setup status unwrap version repo
+	  send sendconfig setlog setup status unwrap version repo pull
 SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset build crank pull clone resync merge \
+	  renametool mkdiffs lodset build crank clone resync merge \
 	  gzip_uuwrap ungzip_uuwrap
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
@@ -64,7 +64,7 @@ HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h \
 	  comments.c host.c user.c resolve.h
-SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh pull.sh \
+SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
 	  gui/helptool.tcl gui/mkindex.tcl oldresync.perl uuwrap.sh \
@@ -304,6 +304,8 @@ mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
 push: push.o lib_tcp.o $(LIBS)
 	$(CC) $(CFLAGS) push.o lib_tcp.o $(LINK) -o push
+pull: pull.o lib_tcp.o $(LIBS)
+	$(CC) $(CFLAGS) pull.o lib_tcp.o $(LINK) -o pull
 logaddr: logaddr.o $(LIBS)
 	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
 setlog: setlog.o $(LIBS)
@@ -463,12 +465,6 @@ resync: resync.sh
 	cp resync.sh resync
 	chmod +x resync
 	chmod -w resync
-
-pull: bkdsubstr pull.sh
-	rm -f pull
-	./bkdsubstr < pull.sh > pull
-	chmod +x pull
-	chmod -w pull
 
 bkdsubstr: bkd.h
 	grep BKD_VERSION bkd.h | sed -e 's/.*"b/b/' -e 's/".*//' > _bkdvers

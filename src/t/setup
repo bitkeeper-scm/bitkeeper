@@ -150,41 +150,6 @@ checkLocks () {
 	fi
 }
 
-# We don't want to do this expensive test unless we need to.
-check_for_rsh () {
-if [ X$DO_REMOTE != XNO ]; then
-	if [ X$PREFER_RSH != X ]
-	then
-		if type rsh >/dev/null 2>&1 &&
-			rsh localhost true </dev/null >/dev/null 2>&1
-		then	DO_REMOTE=YES
-		elif type ssh >/dev/null 2>&1 &&
-			ssh -o PasswordAuthentication=no localhost true \
-				</dev/null >/dev/null 2>&1
-		then	DO_REMOTE=YES
-			unset PREFER_RSH
-		else	DO_REMOTE=NO
-		fi
-	else
-		if type ssh >/dev/null 2>&1 &&
-			ssh -o PasswordAuthentication=no localhost true \
-				</dev/null >/dev/null 2>&1
-		then	DO_REMOTE=YES
-		elif type rsh >/dev/null 2>&1 &&
-			rsh localhost true </dev/null >/dev/null 2>&1
-		then	DO_REMOTE=YES
-			PREFER_RSH=YES
-		else	DO_REMOTE=NO
-		fi
-	fi
-	if [ $DO_REMOTE = NO ]
-	then	echo Skipping remote resync tests.
-		echo To test remote resync, you must be able to rsh 
-		echo or ssh to localhost with no password.
-	fi
-fi
-}
-
 if [ X$1 = X-t ]
 then
 	shift

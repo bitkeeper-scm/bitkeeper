@@ -10,7 +10,6 @@
 #    modifications under any license.
 
 # Tests for pull, push, and clone.
-check_for_rsh
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
 ${ECHO} "logging: none" > $HERE/c

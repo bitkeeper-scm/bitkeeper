@@ -54,10 +54,11 @@ cmd_pull(int ac, char **av, int in, int out)
 #define	OUT	{ error = 1; goto out; }
 	unless (them = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) OUT;
 	while (getline(in, buf, sizeof(buf)) > 0) {
+		if (streq("@ABORT@", buf)) OUT;
 		if (streq("@END@", buf)) break;
 		mdbm_store_str(them, buf, "", 0);
 	}
-	
+
 	/*
 	 * Get the local keys
 	 */

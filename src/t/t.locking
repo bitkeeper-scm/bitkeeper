@@ -89,7 +89,7 @@ bk repo -W
 bk repo -r
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE/clone
-bk pull $Q -i
+bk pull $Q -r
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
 bk resolve -t $Q
 echo OK

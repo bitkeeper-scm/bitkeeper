@@ -1,7 +1,9 @@
 #!@SH@
 
-# unuuwrap - the receiving side of a uuencode stream
-# @(#)unuuwrap.sh 1.3
+# gzip_unuuwrap - the receiving side of a gzip | uuencode stream
+# %W%
+
+PATH=$PATH:/usr/local/bin:/usr/freeware/bin
 
 cd /tmp
 TMP=unuu$$
