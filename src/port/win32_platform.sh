@@ -46,9 +46,9 @@ _platformInit()
 		TMP="${TEMP}/"
 		ECHO=${BIN}/bin_mode_echo.exe
 		MAIL_CMD=${BIN}/mail.exe
+		wish=${_TCL_BIN}/wish81.exe
 		ext=".exe"
 		tcl=".tcl"
-		wish=wish81
 
 		# XXX can not use a win32 native editor
 		# becuase they put themself in backgroud mode
