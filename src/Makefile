@@ -290,7 +290,7 @@ bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 bkhelp.txt: build FRC
-	@cd ../man/man2help && ../../src/build helptxt
+	@cd ../man/man2help && ../../src/build -u helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
 
 FRC:
