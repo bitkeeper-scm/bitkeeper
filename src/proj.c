@@ -47,6 +47,7 @@ private struct {
 	project	*curr;
 	project	*last;
 	HASH	*cache;
+	char	cwd[MAXPATH];
 } proj;
 
 private project *
@@ -102,17 +103,26 @@ proj_init(char *dir)
 	project	*ret;
 	char	*root;
 	char	*t;
+	char	*fdir, *cwd;
+	char	buf[MAXPATH];
 
-	if (ret = projcache_lookup(dir)) goto done;
+	if (IsFullPath(dir)) {
+		fdir = dir;
+	} else {
+		unless (cwd = proj_cwd()) return (0);
+		concat_path(buf, cwd, dir);
+		fdir = buf;
+	}
+	if (ret = projcache_lookup(fdir)) goto done;
 
 	/* missed the cache */
 	unless (root = find_root(fullname(dir, 0))) return (0);
 
-	unless (streq(root, dir)) {
-		/* I wasn't in root, was root it cache? */
+	unless (streq(root, fdir)) {
+		/* fdir is not a root, was root in cache? */
 		if (ret = projcache_lookup(root)) {
 			/* yes, make a new mapping */
-			if (IsFullPath(dir)) projcache_store(dir, ret);
+			projcache_store(fdir, ret);
 			goto done;
 		}
 	}
@@ -122,7 +132,7 @@ proj_init(char *dir)
 	ret->root = root;
 
 	projcache_store(root, ret);
-	if (!streq(root, dir) && IsFullPath(dir)) projcache_store(dir, ret);
+	unless (streq(root, fdir)) projcache_store(fdir, ret);
 done:
 	++ret->refcnt;
 
@@ -216,7 +226,12 @@ proj_root(project *p)
 int
 proj_cd2root(void)
 {
-	if (proj_root(0) && (chdir(proj_root(0)) == 0)) return (0);
+	char	*root = proj_root(0);
+
+	if (root && (chdir(root) == 0)) {
+		strcpy(proj.cwd, root);
+		return (0);
+	}
 	return (-1);
 }
 
@@ -380,6 +395,7 @@ proj_chdir(char *newdir)
 
 	ret = chdir(newdir);
 	unless (ret) {
+		unless (getcwd(proj.cwd, sizeof(proj.cwd))) proj.cwd[0] = 0;
 		if (proj.curr) {
 			if (proj.last) proj_free(proj.last);
 			proj.last = proj.curr;
@@ -387,6 +403,20 @@ proj_chdir(char *newdir)
 		}
 	}
 	return (ret);
+}
+
+/*
+ * proj_cwd() just returns a pointer to the current working directory.
+ * That information is saved by proj_chdir() so this function is very
+ * fast.
+ */
+char *
+proj_cwd(void)
+{
+	unless (proj.cwd[0]) {
+		if (proj_chdir(".")) return (0);
+	}
+	return (proj.cwd);
 }
 
 /*
