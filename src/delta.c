@@ -315,6 +315,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			errors |= 1;
 			continue;
 		}
+		lease_writeReq(s->proj);
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;

@@ -5,15 +5,8 @@
 bk resolve \- merge and/or apply new work after a push or a pull
 .SH SYNOPSIS
 .\" -F undoc
-.Bc bk resolve [\-aAcdqrtv1234] [
-.OPTreq \-l log
-.Bc ] [
-.OPTreq \-m merge
-.Bc ] [
-.OPTreq \-y comment
-.Bc ] [
-.ARGc package_root
-.B ]
+.B bk resolve [\-options] 
+.OPT repo
 .SH DESCRIPTION
 .LP
 After a 
@@ -25,13 +18,11 @@ new work.  Resolve is automatically run by the
 .B bk pull
 and
 .B bk push
-commands, but must be run again after a 
-.B bk\ pull
-if there were conflicts which were not automerged.
+commands but may be rerun to finish a previously uncompleted resolve.
 .LP
-If you want to preview the new changesets before merging, you can run
+In order to preview the new changesets before merging, run
 .B bk csets 
-and that will run csettool on the list of changes (which can
+and that will run csettool on the list of changes (which may
 be found in RESYNC/BitKeeper/etc/csets).
 .LP
 Resolve traverses all of the files, prompting you with a list of files
@@ -48,18 +39,10 @@ file flag conflicts
 .tp
 .B \*(BU
 file content conflicts
-.LP
-In the future, we will be adding resolve stages for the following:
-.TP .3i
+.tp
 .B \*(BU
 symbol "conflicts" (local and remote added the "alpha" symbol to
 different deltas)
-.tp
-.B \*(BU
-descriptive text conflicts
-.\".tp
-.\".B \*(BU
-.\"LOD name conflicts
 .LP
 When there are no conflicts left to be merged, resolve groups any merge
 changes into a changeset and moves everything into your repository.
@@ -69,12 +52,13 @@ will be locked and remain locked until you return to resolve and finish
 up the merge process.
 .LP
 For detailed help on the merge process, see 
-.BR bk\ help\ merge .
+.BR bk\ help\ resolving .
 .SH OPTIONS
 .if t .TP .8i
 .if n .TP 1i
 .B \-1
 Run only pass 1; similarly for 2 3 and 4.
+See PASSES section below.
 .tp
 .B \-a
 Automerge.  This will run a diff3\-based merge of
@@ -104,10 +88,15 @@ only if new non\-conflicting work appears in the patch.
 .B \-d
 Debugging (mainly useful to \*(BK developers).
 .tp
+.OPTreq \-i glob
+Include (resolve) files matching the glob pattern specified. 
+This option may be specified multiple times.
+See RESOLVING SUBSETS section below.
+.tp
 .OPTreq \-l log
 Log operations to 
 .ARG log
-(or stderr if destination specified).
+(or stderr if no destination is specified).
 This option is to provide for audit trails; support is not
 yet complete.
 .tp
@@ -135,6 +124,11 @@ with by hitting "C" in the resolve menu.
 Text\-only. Enables the text\-based resolve menu when doing 
 the final commit instead of using citool.
 .tp
+.OPTreq \-x glob
+Exclude (don't resolve) files matching the glob pattern specified. 
+This option may be specified multiple times.
+See RESOLVING SUBSETS section below.
+.tp
 .OPTreq \-y comment
 Use 
 .ARG comment
@@ -145,10 +139,81 @@ If
 .ARG comment
 is not present, resolve will prompt for one
 at commit time.
+.SH RESOLVING SUBSETS
+Include and/or exclude patterns may be used to control which
+files are resolved.
+This may be useful when unrelated changes by different engineers
+are being merged.
+To see which files will need to be merged run bk conflicts.
+.LP
+There may be multiple include and/or exclude patterns.
+The patterns are a file glob the same as used by bk ignore.
+Patterns are matched against the partial pathname from the root
+of the repository.
+If the partial pathname matches any of the exclude patterns then
+the file is skipped.
+If there are one or more include patterns but the partial
+pathname does not match any of the include patterns then the
+file is skipped.
+Exclude processing takes precendence over include processing.
+.LP
+If there are renames in the update and files which need renames
+are selected then the resolver will force the resolution of
+those renames first.
+Currently, the include/exclude selection process is applied to
+the name used after the rename resolution, which can be
+confusing.
+It may be easiest to run the rename resolution passes first with
+"bk resolve -12", list the conflicts with "bk conflicts", and
+then rerun resolve selecting the files to be resolved.
+.LP
+bk resolve must be run without specifying any subset of the files in order
+to fully complete.
+.SH PASSES
+.LP
+The resolver has four passes (phases), each with a different function.
+A given pass must be completed before the next pass can be started.
+Using options listed below, the user can specify which passes are
+to be run on a particular invocation of the resolver.  By default,
+the resolver attempts to complete all four passes.
+.LP
+The first pass looks through both the incoming and local changes to see
+if any files have been renamed.  If there are files that have been
+renamed, they are marked and put in a special BK-managed namespace where
+they await rename processing.
+.LP
+In the second pass, the files marked and saved in pass 1 are inspected
+to see if there are any rename conflicts.  That is, if a file was
+renamed in both the local and remote repositories with a different
+pathname in each.  If this is the case, the user is prompted to resolve
+the conflict.  In the other cases, the resolver can infer the correct
+pathname and relocates the file out of the special BK-managed namespace
+and into the proper place in the resolver working directory (usually
+named RESYNC).
+.LP
+The third pass examines all files looking for content conflicts.
+Content conflicts arise when either the contents, symbolic link
+destination, or file modes have been changed both in the local and
+remote repositories.  These changes can be automatically resolved
+without user input as long as the changes don't overlap.  In the case
+where automatic resolution is unsuccessful, the user is prompted to
+resolve the conflict manually.
+.LP
+After all the conflicts have been resolved, the fourth pass attempts
+to apply the changes to the local repository by moving the files out
+of the resolver working directory and into the local repository.  If
+this cannot be completed for some reason (permission problems, modified
+files in the local repository, etc.), the operation is aborted.  Any
+changes made to the local repository are removed, and the resolver
+working directory is left intact.  The user can then fix the problems
+that caused the error, then re-run the resolver to apply the changes
+to the local repository.
 .SH "SEE ALSO"
+.SA conflicts 1
 .SA csets 1
-.SA merge 1
+.SA merging 1
 .SA pull 1
 .SA push 1
+.SA conflicts 1
 .SH CATEGORY
 .B Repository

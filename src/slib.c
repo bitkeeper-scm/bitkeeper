@@ -9,6 +9,7 @@
  */
 #include "system.h"
 #include "sccs.h"
+#include "resolve.h"
 #include "zgets.h"
 #include "bkd.h"
 #include "logging.h"
@@ -4179,7 +4180,7 @@ sccs_init(char *name, u32 flags)
 	/*
 	 * Let them force YEAR4
 	 */
-	unless (_YEAR4) _YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
+	unless (_YEAR4) _YEAR4 = getenv("BK_YEAR2") ? -1 : 1;
 	if (_YEAR4 == 1) s->xflags |= X_YEAR4;
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
@@ -4425,6 +4426,7 @@ sccs_free(sccs *s)
 	if (s->spathname) free(s->spathname);
 	if (s->locs) free(s->locs);
 	if (s->proj) proj_free(s->proj);
+	if (s->rrevs) freenames(s->rrevs, 1);
 	unblock = s->unblock;
 	bzero(s, sizeof(*s));
 	free(s);
@@ -12155,7 +12157,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
 	mclose(iF);
 	if (m->rev) free(m->rev);
 	m->rev = strdup(parent->rev);
-	bcopy(parent->r, m->r, sizeof(m->r));
+	memcpy(m->r, parent->r, sizeof(m->r));
 	m->serial = s->nextserial++;
 	m->pserial = parent->serial;
 	m->next = s->table;
@@ -13241,7 +13243,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-
 	if (streq(kw, "Dn")) {
 		/* serial number of included deltas */
 		int i;
@@ -13781,7 +13782,6 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		return nullVal;
 	}
 
-	/* ======== BITKEEPER SPECIFIC KEYWORDS ========== */
 	if (streq(kw, "N")) {
 		fd(s->numdeltas);
 		return (strVal);
@@ -14550,6 +14550,90 @@ kw2val(FILE *out, char ***vbuf, const char *prefix, int plen, const char *kw,
 		/* don't clause on MONOTONIC, we had a bug there, see chgset */
 		if (d->dangling) {
 			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "RREV")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->remote) {
+			fs(n->remote);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "LREV")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->local) {
+			fs(n->local);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GREV")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->gca) {
+			fs(n->gca);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "RPN")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->remote && (d = findrev(s, n->remote))) {
+			fs(d->pathname);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "LPN")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->local && (d = findrev(s, n->local))) {
+			fs(d->pathname);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GPN")) {
+		names	*n;
+
+		unless (s->rrevs) {
+			s->rrevs = res_getnames(sccsXfile(s, 'r'), 'r');
+		}
+		n = (names *)s->rrevs;
+		if (n && n->gca && (d = findrev(s, n->gca))) {
+			fs(d->pathname);
 			return (strVal);
 		}
 		return (nullVal);
@@ -15544,7 +15628,6 @@ sccs_istagkey(char *key)
  *      s->findkeydb = 0;
  *   }
  */
-
 MDBM	*
 sccs_findKeyDB(sccs *s, u32 flags)
 {
@@ -15552,7 +15635,6 @@ sccs_findKeyDB(sccs *s, u32 flags)
 	datum	k, v;
 	MDBM	*findkey;
 	char	key[MAXKEY];
-	int	mixed = LONGKEY(s) == 0;
 
 	if (s->findkeydb) {	/* do not know if different selection crit */
 		mdbm_close(s->findkeydb);
@@ -15568,16 +15650,8 @@ sccs_findKeyDB(sccs *s, u32 flags)
 		v.dptr = (void*)&d;
 		v.dsize = sizeof(d);
 		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
-			fprintf(stderr, "fk cache: insert error for %s\n", key);
-			perror("insert");
-			mdbm_close(findkey);
-			return (0);
-		}
-		unless (mixed) continue;
-		*strrchr(key, '|') = 0;
-		k.dsize = strlen(key) + 1;
-		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
-			fprintf(stderr, "fk cache: insert error for %s\n", key);
+			fprintf(stderr,
+			    "findkey cache: insert error for %s\n", key);
 			perror("insert");
 			mdbm_close(findkey);
 			return (0);
@@ -15655,9 +15729,10 @@ sccs_findKey(sccs *s, char *key)
 		k.dptr = key;
 		k.dsize = strlen(key) + 1;
 		v = mdbm_fetch(s->findkeydb, k);
-		e = 0;
-		if (v.dsize) bcopy(v.dptr, &e, sizeof(e));
-		return (e);
+		if (v.dsize) {
+			memcpy(&e, v.dptr, sizeof(e));
+			return (e);
+		}
 	}
 	strcpy(buf, key);
 	explodeKey(buf, parts);
@@ -15671,6 +15746,10 @@ sccs_findKey(sccs *s, char *key)
 	date = date2time(&parts[3][2], 0, EXACT);
 	if (!date && !streq(&parts[3][2], "700101000000")) return (0);
 	if (parts[4]) {
+		/* If we went into the findkeyDB with a long key and failed
+		 * then we aren't supposed to find this key.
+		 */
+		if (s->findkeydb) return (0);
 		cksum = atoi(parts[4]);
 		cksump = &cksum;
 	}

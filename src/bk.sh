@@ -1413,6 +1413,113 @@ _install()
 	exit 0
 }
 
+_tclsh() {
+	PLATFORM=`uname -s | awk -F_ '{print $1}'`
+	TCLSH=`bk bin`/gui/bin/tclsh
+	if [ $PLATFORM == "MINGW32" ]; then
+		TCLSH=`win2msys $TCLSH`
+	fi
+	exec "$TCLSH" "$@"
+}
+
+_wish() {
+	PLATFORM=`uname -s | awk -F_ '{print $1}'`
+	WISH=`bk bin`/gui/bin/bkgui
+	if [ $PLATFORM == "MINGW32" ]; then
+		WISH=`win2msys $WISH`
+	fi
+	exec "$WISH" "$@"
+}
+
+_gui() {
+	_bkgui "$@"
+}
+
+_bkgui() {
+	_wish "$@"
+}
+
+_conflicts() {
+	FM3TOOL=0
+	REVTOOL=0
+	DIFF=0
+	DIFFTOOL=0
+	SHORTLIST=1
+	while getopts dDflp opt
+	do
+		case "$opt" in
+		d) DIFF=1;;
+		D) DIFFTOOL=1;;
+		f) FM3TOOL=1;;
+		l) SHORTLIST=0;;
+		p) REVTOOL=1;;
+		*)	echo "Usage: conflicts [-dDlfp] [glob]"
+			exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+
+	ROOTDIR=`bk root 2>/dev/null`
+	test $? -ne 0 && { echo "You must be in a BK repository"; exit 1; }
+	cd "$ROOTDIR" > /dev/null
+	test -d RESYNC || { echo "No files are in conflict"; exit 0; }
+	cd RESYNC > /dev/null
+
+	bk gfiles "$@" | grep -v '^ChangeSet$' | bk prs -hnr+ \
+	-d'$if(:RREV:){:GPN:|:LPN:|:RPN:|:GFILE:|:LREV:|:RREV:|:GREV:}' - | \
+	bk _sort | while IFS='|' read GPN LPN RPN GFILE LOCAL REMOTE GCA
+	do	export GFILE LPN RPN GPN LOCAL REMOTE GCA
+		if [ "$GFILE" != "$LPN" ]
+		then	PATHS="$GPN (renamed) LOCAL=$LPN REMOTE=$RPN"
+		else	test "$GFILE" = "$LPN" || {
+				echo GFILE=$GFILE LOCALPATH=$LPN
+				echo This is unexpected, paths are unknown
+				exit 1
+			}
+			PATHS="$GFILE"
+		fi
+		if [ $SHORTLIST -eq 1 ]; then
+			echo $PATHS
+		else
+			bk _conflict 
+		fi
+		if [ $DIFF -eq 1 ]; then
+			bk diffs -r${LOCAL}..${REMOTE} "$GFILE"
+		fi
+		if [ $DIFFTOOL -eq 1 ]; then
+			bk difftool -r$LOCAL -r$REMOTE "$GFILE"
+		fi
+		if [ $REVTOOL -eq 1 ]; then
+			bk revtool -G$GCA -l$LOCAL -r$REMOTE "$GFILE"
+		fi
+		if [ $FM3TOOL -eq 1 ]; then
+			echo "NOTICE: read-only merge of $GFILE"
+			echo "        No changes will be written."
+			bk fm3tool -N $LOCAL $GCA $REMOTE "$GFILE"
+		fi
+	done
+}
+
+__conflict() {
+	LINES=`bk smerge "$GFILE" $LOCAL $REMOTE | grep '^<<<<<<< gca' | wc -l`
+	CONFLICTS=`expr $LINES + 0`
+	# Return if we can automerge
+	test $CONFLICTS -eq 0 && return
+	bk set -x -r$REMOTE -r$LOCAL "$GFILE" | while read REV
+	do      echo "$GFILE|$REV"
+	done | bk prs -hnd':P:' - | bk _sort -r -u > /tmp/u$$
+	USERS=
+	for i in `cat /tmp/u$$`
+	do	USERS="$i $USERS"
+	done
+	rm -f /tmp/u$$
+	printf "%-20s $CONFLICTS conflicts by $USERS\n" "$GFILE"
+	test "$GFILE" = "$LPN" -a "$GFILE" = "$RPN" || {
+		printf "    %-16s %s\n" "GCA path:" "$GPN"
+		printf "    %-16s %s\n" "Local path:" "$LPN"
+		printf "    %-16s %s\n" "Remote path:" "$RPN"
+	}
+}
 
 # ------------- main ----------------------
 __platformInit

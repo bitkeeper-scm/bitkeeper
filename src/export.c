@@ -101,32 +101,6 @@ usage:			system("bk help -s export");
 	}
 	strcpy(src_path, fullname(".", 0));
 
-	/*
-	 * rev == "." is a special case, there is no cset yet 
-	 */
-	if (rev && streq(".", rev)) {
-		char	output[MAXPATH];
-
-		sys("bk", "-r", "get", "-S", SYS);
-		f = popen("bk sfiles -luxg", "r");
-		while (fnext(buf, f)) {
-			chomp(buf);
-			if ((excludes && match_globs(buf, excludes, 0)) ||
-			    (includes && !match_globs(buf, includes, 0))) {
-				continue;
-			}
-			if (!sysfiles && strneq(buf, "BitKeeper/", 10)) {
-				continue;
-			}
-			if (streq(buf, "ChangeSet")) continue;
-			sprintf(output, "%s/%s", dst_path, buf);
-
-			fileCopy(buf, output);
-		}
-		pclose(f);
-		return (0);
-	}
-
 	bktmp(file_rev, "file_rev");
 	if (rev) {
 		sprintf(buf, "bk rset -hl'%s' > '%s'", rev, file_rev);

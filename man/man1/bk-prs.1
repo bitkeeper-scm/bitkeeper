@@ -325,7 +325,7 @@ CSETREV	D	revision of first cset boundary after D
 .xx
 CSETFILE	F	key of the ChangeSet file for this file
 .xx
-D	D	D's date as YY/MM/DD (years may be 4 digits)
+D	D	D's date as YYYY/MM/DD (years may be 2 digits)
 .xx
 DANGLING	D	D's rev if & only if D is a dangling delta
 .xx
@@ -351,7 +351,7 @@ DSUM	D	D's 16 bit unsigned checksum
 .xx
 DSUMMARY	D	first line of :DEFAULT:
 .xx
-DT	D	the type (D|R|M) of D
+DT	D	D's type: (D|R|T) meaning (Data|Removed|Tag)
 .xx
 Dd	D	day part of D's date as DD
 .xx
@@ -391,6 +391,8 @@ GCA2	D	find the set GCA for D's parents
 .xx
 GFILE	F	pathname of the gfile
 .xx
+GREV	F	for a file with conflicts, the GCA of the unmerged tips
+.xx
 HASHCOUNT	D	count of key/value pairs in D if & only if hash file
 .xx
 HOST	D	hostname of D
@@ -417,12 +419,13 @@ LI	D	lines inserted in D (%u)
 .xx
 LU	D	lines unchanged in D (%u)
 .xx
-.xx
 Ld	D	lines deleted in D (%05u)
 .xx
 Li	D	lines inserted in D (%05u)
 .xx
 Lu	D	lines unchanged in D (%05u)
+.xx
+LREV	F	for a file with conflicts, the LOCAL unmerged tip
 .xx
 MD5KEY	D	Crypto based \*[BK] key of D
 .xx
@@ -459,6 +462,8 @@ REV	D	same as I, D's revision
 RI	D	revision numbers of D's includes/excludes 
 .xx
 ROOTKEY	F	key of the 1.0 delta, file's internal name
+.xx
+RREV	F	for a file with conflicts, the REMOTE unmerged tip
 .xx
 RWXMODE	D	D's file modes as ascii (-rwxrwxrwx)
 .xx

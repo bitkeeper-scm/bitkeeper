@@ -283,8 +283,7 @@ proj_rootkey(project *p)
 	char	rkfile[MAXPATH];
 	char	buf[MAXPATH];
 
-	unless (p) p = curr_proj();
-	unless (p) return (0);
+	unless (p || (p = curr_proj())) p = proj_fakenew();
 
 	/*
 	 * Use cached copy if available
@@ -330,7 +329,7 @@ proj_md5rootkey(project *p)
 {
 	char	*ret;
 
-	unless (p || (p = curr_proj())) return (0);
+	unless (p || (p = curr_proj())) p = proj_fakenew();
 
 	unless (p->md5rootkey) proj_rootkey(p);
 	if (p->rparent && (ret = proj_md5rootkey(p->rparent))) return (ret);

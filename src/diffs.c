@@ -88,7 +88,6 @@ diffs_main(int ac, char **av)
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
 		    case 'H':
 			flags |= DIFF_COMMENTS;
-			putenv("BK_YEAR4=YES");  /* rm when YEAR4 is default */
 			break;
 		    case 'I': kind |= DF_IFDEF; break;		/* internal */
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */

@@ -11,9 +11,12 @@ You may override the shell used with
 	BK_SHELL=/usr/local/bin/bash
 
 Interface changes:
-    bk grep has been rewritten, it mimics GNU grep for the most part.  
-    Backwards compat is basically gone.
 
+bk grep
+    bk grep has been rewritten, it mimics GNU grep for the most part.  
+    Backwards compat is basically gone but this one is far nicer.
+
+bk get/sccscat/grep
     All commands which take options to enable annotations have had those 
     options changed.  The commands are: grep, get, annotate, sccscat, diffs.
     The new interface is in general:
@@ -24,7 +27,9 @@ Interface changes:
     argument specifies which annotations, see the get man page for a full
     list.
 
-    sfiles has interface changes.  The unchanged interfaces are:
+bk sfiles
+    bk sfiles has many subtle interface changes to support GUI integration.
+    The unchanged interfaces are:
     -a (consider all files)
     -c (list changed files)
     -d (list directories with BK controlled files)
@@ -58,27 +63,50 @@ Interface changes:
 
     XXX - leave in -i as undocumented alias after making regressions work?
 
+bk get
     get -C is gone; use get -r@+ instead.  This @+ rev is special cased for
     performance.
 
-GLOB PROCESSING
----------------
+bk prs, changes, sccslog ...
+    In commands which produce date output, such as prs, changes, sccslog,
+    the old default was YY/MM/DD or YY-MM-DD but you could force it into
+    4 digits with BK_YEAR4=1.  The 4 digit years are now the default.
 
-BitKeeper now respects globs on the command line.  If you say
+bk resolve
+    bk resolve now goes straight into merge mode after attempting to automerge
+    all conflicts.
+
+    bk resolve may be used to resolve part of a set of conflicts, see the
+    man page for details.
+
+bk conflicts
+    This is a new command which lists which files have conflicts in the RESYNC
+    directory.  It may be used to examine changes to see who should resolve 
+    those changes.
+
+filetypes.1
+    This is a rename of the files.1 man page.
+
+bk files
+    This is a demo program to show file name expansion
+
+bk glob
+    BitKeeper now respects globs on the command line.  If you say
 
 	bk command '*.c'
 
-that means operate on all files that match *.c, not run the command on the
-single file named "*.c".  To get the old behaviour you can do either
+    that means operate on all files that match *.c, not run the command
+    on the single file named "*.c".  To get the old behaviour you can
+    do either
 
 	bk command './*.c'	# This does not do glob expansion
 
-or 
+    or 
 
 	export BK_NO_FILE_GLOB=TRUE
 	bk command './*.c'
 
-There is a glob man page.
+    There is a glob man page.
 ===============================================================================
 Release notes for BitKeeper version 3.2.3.   These release notes cover
 the following topics:

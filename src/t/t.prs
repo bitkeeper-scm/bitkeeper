@@ -14,6 +14,7 @@
 
 no_logging project
 export USER=bk
+export BK_YEAR2=YES
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/30 01:34:11' '97/06/23 01:33:45+06:30' '98/01/30 17:45:17-05:00'
 do	cat > INITX <<EOF
@@ -107,6 +108,15 @@ EOF
 bk prs -d':Dy:\n' -r1.1 FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+bk undos > CMP1 <<EOF
+======== FILE 1.1 ========
+1987
+EOF
+unset BK_YEAR2
+bk prs -d':Dy:\n' -r1.1 FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff -u CMP1 CMP2; exit 1; fi
+export BK_YEAR2=YES
 bk undos > CMP1 <<EOF
 ======== FILE 1.4 ========
 06

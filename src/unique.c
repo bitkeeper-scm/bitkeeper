@@ -150,10 +150,16 @@ uniq_lock()
 			unless (pid) continue;	/* must be gone */
 			assert(pid != me);
 			if (kill(pid, 0) != 0) {
+				if (unlink(lock) == 0) {
+					fprintf(stderr,
+					   "removing stale lock %s\n", lock);
+					continue;
+				}
 				fprintf(stderr,
-				   "removing stale lock %s\n", lock);
-				(void)unlink(lock);
-				continue;	/* go around again */
+				    "Unable to remove lock %s, "
+				    "error: %s, sleeping...\n",
+				    lock, strerror(errno));
+				sleep(10);
 			}
 			/* bitch every second */
 			if ((slept >= 1000) && !(slept % 1000)) {

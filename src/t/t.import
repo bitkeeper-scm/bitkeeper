@@ -11,6 +11,7 @@
 
 # Copyright (c) 1999 Andrew Chang
 # %K%
+export BK_YEAR2=YES
 
 echo $N Test import of a plain file .................................$NL
 no_logging project

@@ -560,7 +560,6 @@ http_changes(char *rev)
 	av[++i] = dspec;
 	av[++i] = "ChangeSet";
 	av[++i] = 0;
-	putenv("BK_YEAR4=1");
 	spawnvp_ex(_P_WAIT, "bk", av);
 	out(INNER_END OUTER_END);
 	if (!embedded) trailer("ChangeSet");
@@ -615,7 +614,6 @@ http_cset(char *rev)
 	i = snprintf(dspec, sizeof(dspec), buf, navbar, navbar, navbar);
 	if (i == -1) http_error(500, "buffer overflow in http_cset");
 
-	putenv("BK_YEAR4=1");
 	sprintf(buf, "bk cset -r'%s'", rev);
 	unless (f = popen(buf, "r")) {
 		http_error(500,
@@ -858,7 +856,6 @@ http_hist(char *pathrev)
 	    " <th align=left>Comments</th>\n"
 	    "</tr>\n");
 
-	putenv("BK_YEAR4=1");
 
 	spawnvp_ex(_P_WAIT, "bk", av);
 
@@ -966,7 +963,7 @@ http_src(char *path)
 	closedir(d);
 
 	sprintf(buf,
-	    "env BK_YEAR4=1 bk prs -hr+ -d'%s' %s", dspec, path[1] ? path : "");
+	    "bk prs -hr+ -d'%s' %s", dspec, path[1] ? path : "");
 	f = popen(buf, "r");
 	while (fgets(buf, sizeof(buf), f)) {
 		/*
