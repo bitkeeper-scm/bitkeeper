@@ -563,39 +563,39 @@ proc adjustHeight {diff list} \
 
 proc widgets {} \
 {
-	global	scroll gc wish tcl_platform
+	global	scroll gc wish tcl_platform d
 
 	if {$tcl_platform(platform) == "windows"} {
-		set gc(cset,listFont) {helvetica 9 roman}
-		set gc(cset,BFont) {helvetica 9 roman bold}
-		set gc(cset,pFont) {terminal 9 roman}
-		set gc(cset,bFont) {terminal 9 roman bold}
-		set gc(cset,lFont) {helvetica 9 roman bold}
-		set gc(cset,leftWidth) 40
-		set gc(cset,rightWidth) 80
+		set d(cset,listFont) {helvetica 9 roman}
+		set d(cset,BFont) {helvetica 9 roman bold}
+		set d(cset,pFont) {terminal 9 roman}
+		set d(cset,bFont) {terminal 9 roman bold}
+		set d(cset,lFont) {helvetica 9 roman bold}
+		set d(cset,leftWidth) 40
+		set d(cset,rightWidth) 80
 		set py 0; set px 1; set bw 2
 		set swid 18
 	} else {
-		set gc(cset,listFont) {fixed 12 roman}
-		set gc(cset,BFont) {times 12 roman bold}
-		set gc(cset,pFont) {fixed 12 roman}
-		set gc(cset,bFont) {fixed 12 roman bold}
-		set gc(cset,lFont) {fixed 12 roman bold}
-		set gc(cset,leftWidth) 55
-		set gc(cset,rightWidth) 80
+		set d(cset,listFont) {fixed 12 roman}
+		set d(cset,BFont) {times 12 roman bold}
+		set d(cset,pFont) {fixed 12 roman}
+		set d(cset,bFont) {fixed 12 roman bold}
+		set d(cset,lFont) {fixed 12 roman bold}
+		set d(cset,leftWidth) 55
+		set d(cset,rightWidth) 80
 		set py 1; set px 4; set bw 2
 		set swid 12
 	}
-	set gc(cset,diffHeight) 30
-	set gc(cset,bColor) #d0d0d0
-	set gc(cset,BColor) #d0d0d0
-	set gc(cset,tColor) lightseagreen
-	set gc(cset,statusColor) lightblue
-	set gc(cset,sColor) yellow
-	set gc(cset,oColor) orange
-	set gc(cset,rColor) yellow
-	set gc(cset,listHeight) 12
-	set gc(cset,geometry) ""
+	set d(cset,diffHeight) 30
+	set d(cset,bColor) #d0d0d0
+	set d(cset,BColor) #d0d0d0
+	set d(cset,tColor) lightseagreen
+	set d(cset,statusColor) lightblue
+	set d(cset,sColor) yellow
+	set d(cset,oColor) orange
+	set d(cset,rColor) yellow
+	set d(cset,listHeight) 12
+	set d(cset,geometry) ""
 
 	getDefaults "cset" ".csetoolrc"
 
@@ -627,9 +627,11 @@ proc widgets {} \
 		-xscrollcommand { .sccslog.xscroll set } \
 		-yscrollcommand { .sccslog.yscroll set } \
 		-background $gc(cset,bColor)
-	    scrollbar .sccslog.xscroll -wid $swid -troughcolor $gc(cset,tColor) \
+	    scrollbar .sccslog.xscroll -wid $swid \
+		-troughcolor $gc(cset,tColor) \
 		-orient horizontal -command ".sccslog.t xview"
-	    scrollbar .sccslog.yscroll -wid $swid -troughcolor $gc(cset,tColor) \
+	    scrollbar .sccslog.yscroll -wid $swid \
+		-troughcolor $gc(cset,tColor) \
 		-orient vertical -command ".sccslog.t yview"
 	    grid .sccslog.t -row 0 -column 0 -sticky ewns
 	    grid .sccslog.yscroll -row 0 -column 1 -sticky nse -rowspan 2
@@ -757,6 +759,8 @@ proc widgets {} \
 	.filelist.t configure -cursor left_ptr
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
+	bind all <Button-4> prev
+	bind all <Button-5> next
 }
 
 # Set up keyboard accelerators.

@@ -872,7 +872,7 @@ proc busy {busy} \
 
 proc widgets {} \
 {
-	global	search swid diffOpts getOpts gc stacked
+	global	search swid diffOpts getOpts gc stacked d
 	global	lineOpts dspec wish yspace paned file tcl_platform 
 
 	set dspec \
@@ -889,19 +889,19 @@ proc widgets {} \
 	set stacked 1
 
 	if {$tcl_platform(platform) == "windows"} {
-		set gc(sccs,pFont) {helvetica 9 roman}
-		set gc(sccs,dFont) {helvetica 9 roman}
-		set gc(sccs,bFont) {helvetica 9 roman bold}
-		set gc(sccs,lFont) {helvetica 9 roman bold}
-		set gc(sccs,BFont) {helvetica 9 roman bold}
+		set d(sccs,pFont) {helvetica 9 roman}
+		set d(sccs,dFont) {helvetica 9 roman}
+		set d(sccs,bFont) {helvetica 9 roman bold}
+		set d(sccs,lFont) {helvetica 9 roman bold}
+		set d(sccs,BFont) {helvetica 9 roman bold}
 		set py 0; set px 1; set bw 2
 		set swid 18
 	} else {
-		set gc(sccs,pFont) {6x13}
-		set gc(sccs,dFont) {6x13}
-		set gc(sccs,bFont) {6x13bold}
-		set gc(sccs,lFont) {6x13bold}
-		set gc(sccs,BFont) {6x13bold}
+		set d(sccs,pFont) {6x13}
+		set d(sccs,dFont) {6x13}
+		set d(sccs,bFont) {6x13bold}
+		set d(sccs,lFont) {6x13bold}
+		set d(sccs,BFont) {6x13bold}
 		set py 1; set px 4; set bw 2
 		set swid 12
 	}
@@ -909,18 +909,18 @@ proc widgets {} \
 	# maybe try: -misc-fixed-medium-*-*-*-13-*-*-*-*-*-*-*
 	# if 6x13 doesn't work
 
-	set gc(sccs,oColor) orange     ;# color of old revision
-	set gc(sccs,nColor) yellow     ;# color of new revision
-	set gc(sccs,sColor) yellow
-	set gc(sccs,bColor) #9fb6b8
-	set gc(sccs,BColor) #d0d0d0
-	set gc(sccs,arrow) darkblue
-	set gc(sccs,merge) darkblue
-	set gc(sccs,rev) darkblue
-	set gc(sccs,date) slategrey
-	set gc(sccs,branchArrow) $gc(sccs,arrow)
-	set gc(sccs,mergeArrow) $gc(sccs,arrow)
-	set gc(sccs,geometry) ""
+	set d(sccs,oColor) orange     ;# color of old revision
+	set d(sccs,nColor) yellow     ;# color of new revision
+	set d(sccs,sColor) yellow
+	set d(sccs,bColor) #9fb6b8
+	set d(sccs,BColor) #d0d0d0
+	set d(sccs,arrow) darkblue
+	set d(sccs,merge) darkblue
+	set d(sccs,rev) darkblue
+	set d(sccs,date) slategrey
+	set d(sccs,branchArrow) $d(sccs,arrow)
+	set d(sccs,mergeArrow) $d(sccs,arrow)
+	set d(sccs,geometry) ""
 
 	getDefaults "sccs" ".sccstooltrc"
 

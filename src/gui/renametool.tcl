@@ -805,36 +805,36 @@ proc adjustHeight {diff list} \
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform gc
+	global	scroll wish tcl_platform gc d
 
 	if {$tcl_platform(platform) == "windows"} {
-		set gc(rename,bFont) {helvetica 9 roman bold}
-		set gc(rename,pFont) {helvetica 9 roman }
-		set gc(rename,BFont) {helvetica 9 roman bold}
-		set gc(rename,lFont) {helvetica 9 roman bold}
+		set d(rename,bFont) {helvetica 9 roman bold}
+		set d(rename,pFont) {helvetica 9 roman }
+		set d(rename,BFont) {helvetica 9 roman bold}
+		set d(rename,lFont) {helvetica 9 roman bold}
 		set diffFont {helvetica 9 roman}
 		set swid 18
 		set y 0
 		set filesHt 9
 	} else {
-		set gc(rename,bFont) {fixed 12 roman bold}
-		set gc(rename,pFont) {fixed 12 roman }
-		set gc(rename,BFont) {times 12 roman bold}
-		set gc(rename,lFont) {times 12 roman bold}
+		set d(rename,bFont) {fixed 12 roman bold}
+		set d(rename,pFont) {fixed 12 roman }
+		set d(rename,BFont) {times 12 roman bold}
+		set d(rename,lFont) {times 12 roman bold}
 		set diffFont {fixed 12 roman}
 		set swid 12
 		set y 1
 		set filesHt 7
 	}
-	set gc(rename,leftWidth) 60
-	set gc(rename,rightWidth) 60
-	set gc(rename,diffHeight) 20
-	set gc(rename,listHeight) 8
-	set gc(rename,tColor) lightseagreen
-	set gc(rename,oColor) orange
-	set gc(rename,nColor) yellow
-	set gc(rename,bColor) ghostwhite
-	set gc(rename,geometry) ""
+	set d(rename,leftWidth) 60
+	set d(rename,rightWidth) 60
+	set d(rename,diffHeight) 20
+	set d(rename,listHeight) 8
+	set d(rename,tColor) lightseagreen
+	set d(rename,oColor) orange
+	set d(rename,nColor) yellow
+	set d(rename,bColor) ghostwhite
+	set d(rename,geometry) ""
 
 	getDefaults "rename" ".renametooltrc"
 
