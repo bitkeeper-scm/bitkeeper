@@ -440,7 +440,7 @@ walk(char *dir, int level)
 
 			sprintf(tmp, "%s/BitKeeper/etc/ignore", buf);
 			unless (exists(tmp)) get(buf, SILENT, "-");
-			if (ignoref = fopen(tmp, "r")) {
+			if (ignoref = fopen(tmp, "rt")) {
 				ignore = read_globs(ignoref, 0);
 				fclose(ignoref);
 			}

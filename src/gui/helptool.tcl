@@ -92,7 +92,7 @@ proc bkhelp {topic} \
 		set msg "BitKeeper help -- $topic"
 	}
 	wm title . $msg
-	set f [open "| bk help $topic"]
+	set f [open "| bk help -p $topic"]
 	.text.help configure -state normal
 	.text.help delete 1.0 end
 	set first 1

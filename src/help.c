@@ -9,13 +9,23 @@ help_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
 	char	help_out[MAXPATH];
-	int	i = 0;
+	int	c, i = 0, use_pager = 1;
 	FILE	*f;
 
 	if (ac == 1) {
 		sprintf(buf, "bk gethelp help | %s", pager);
 		system(buf);
 		return (0);
+	}
+	while ((c = getopt(ac, av, "p")) != -1) {
+		switch (c) {
+		case 'p':	use_pager = 0; /* disable pager */ 
+				break;
+		defaults:	fprintf(stderr,
+					"usage: bk help [-p] [topic]\n");
+				return (1);
+				break;
+		}
 	}
 	sprintf(help_out, "%s/bk_help%d", TMP_PATH, getpid());
 	while (av[++i]) {
@@ -38,8 +48,17 @@ help_main(int ac,  char **av)
 			}
 		}
 	}
-	sprintf(buf, "%s %s", pager, help_out);
-	system(buf);
+	if (use_pager) {
+		sprintf(buf, "%s %s", pager, help_out);
+		system(buf);
+	} else {
+		f = fopen(help_out, "rt");
+		while (fgets(buf, sizeof(buf), f)) {
+			fputs(buf, stdout);
+		}
+		fclose(f);
+	
+	}
 	unlink(help_out);
 	return (0);
 }
