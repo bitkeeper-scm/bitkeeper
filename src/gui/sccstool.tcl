@@ -61,6 +61,97 @@ proc chkSpace {x1 y1 x2 y2} \
 	return [.p.top.c find overlapping $x1 $y1 $x2 $y2]
 }
 
+#
+# Build arrays of revision to date mapping and
+# serial number to rev.
+#
+# These arrays are used to help place date separators in the graph window
+#
+proc revMap {file} \
+{
+        global rev2date serial2rev dev_null
+
+        set dspec "-d:Ds:-:P: :DS: :Dy:/:Dm:/:Dd:"
+        set fid [open "|bk prs -h {$dspec} $file 2>$dev_null" "r"]
+        while {[gets $fid s] >= 0} {
+                # probably should do a split
+                regexp {(.*) (.*) (.*)} $s dummy rev serial date
+                #puts "rev: ($rev) date: ($date)"
+                set rev2date($rev) $date
+                set serial2rev($serial) $rev
+        }
+}
+
+# Separate the revisions by date with a vertical bar
+# Prints the date on the bottom of the pane
+#
+# Walks down an array serial numbers and places bar when the date
+# changes
+#
+proc dateSeparate { } { \
+
+        global serial2rev rev2date revX revY arrow bfont ht
+
+        set curday ""
+        set prevday ""
+        set lastx 0
+
+        set minx 0
+        set miny 0
+        set maxx 0
+        set maxy 0
+
+        #foreach xvar [ lsort [array names revX]] {
+        #       if { $minx > $revX($xvar) } { set minx $revX($xvar) }
+        #       if { $maxx < $revX($xvar) } { set maxx $revX($xvar) }
+        #}
+
+        # Need the min and max y-values so that we can draw the bars
+        # and place the date text correctly
+        foreach yvar [ lsort [array names revY]] {
+                if { $miny > $revY($yvar) } { set miny $revY($yvar) }
+                if { $maxy < $revY($yvar) } { set maxy $revY($yvar) }
+        }
+        #puts "minx: $minx maxx: $maxx miny: $miny maxy: $maxy"
+
+        # take into account height of text when adding vertical bars
+        set miny [expr $miny - $ht]
+        set maxy [expr $maxy + $ht]
+
+	# Try to compensate for text size when canvas is small
+	if { $maxy < 50 } { set maxy [expr $maxy + 15] }
+
+        foreach ser [lsort -integer [array names serial2rev]] {
+
+                set rev $serial2rev($ser)
+                set date $rev2date($rev)
+
+                #puts "s#: $ser rv: $rev d: $date X:$revX($rev) Y:$revY($rev)" 
+
+                set curday $rev2date($rev)
+                if {[string compare $prevday $curday] == 0} {
+                        #puts "SAME: cur: $curday prev: $prevday $rev $nrev"
+                } else {
+                        set x $revX($rev)
+
+                        # place vertical short distance behind revision bbox
+                        set lx [ expr $x - 15 ]
+                        .p.top.c create line $lx $miny $lx $maxy -width 1 \
+                                -fill "lightblue"
+
+                       # Attempt to center datestring between verticals
+                        set tx [expr $x - (($x - $lastx)/2) - 13]
+                        .p.top.c create text $tx [expr $maxy - $ht] \
+                                -fill "green" -anchor n -text "$prevday" \
+                                -font $bfont
+
+                        set prevday $curday
+                        set lastx $x
+                }
+        }
+}
+
+
 # Add the revs starting at location x/y.
 proc addline {y xspace ht l} \
 {
@@ -241,7 +332,7 @@ proc mergeArrow {m ht} \
 
 proc listRevs {file} \
 {
-	global	bad bfont lineOpts merges dev_null line_rev
+	global	bad bfont lineOpts merges dev_null line_rev ht
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
@@ -953,7 +1044,7 @@ proc next {inc} \
 
 proc sccstool {name} \
 {
-	global	file bad revX revY search dev_null 
+	global	file bad revX revY search dev_null rev2date serial2rev
 
 	busy 1
 	.p.top.c delete all
@@ -967,6 +1058,12 @@ proc sccstool {name} \
 	}
 	.menus.l configure -text $file
 	listRevs $file
+
+	if { 0 } {
+	    revMap $file
+	    dateSeparate
+	}
+
 	history
 	set search(text) "Welcome"
 	focus .p.top.c
@@ -983,7 +1080,7 @@ proc init {} \
 
 proc arguments {} \
 {
-	global	rev1 rev2 argv file gca
+	global rev1 rev2 argv file gca 
 
 	set state flag
 	set rev1 ""
