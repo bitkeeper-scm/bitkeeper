@@ -156,14 +156,14 @@ bk park -y -a 2> /dev/null
 bk edit $Q binary_moved
 cp $binary_data3 binary_moved
 bk delta  $Q -uy"new" binary_moved
-if [ ! -f binary_moved ]; then echo failed; exit1; fi
+if [ ! -f binary_moved ]; then echo failed; exit 1; fi
 bk unpark 2> unpark.out 1>&2
 grep -q "unsafe to unpark over changed binary file" unpark.out || {
 							echo failed; exit 1; }
 echo OK
 echo $N Unpark \-f should overide local changed delta  ................$NL
 bk unpark -cf 2> /dev/null 1>&2
-if [ ! -f binary_moved ]; then echo failed; exit1; fi
+if [ ! -f binary_moved ]; then echo failed; exit 1; fi
 cmp -s $binary_data2 binary_moved || { echo failed; exit 1; }
 echo OK
 if [ "$PLATFORM" = "WIN32" ]

@@ -583,7 +583,7 @@ proc widgets {L R O} \
 		    -command useRight
 		label .merge.menu.l -font $gc(fm.buttonFont) \
 		    -bg $gc(fm.buttonColor) \
-		    -width 20 -relief groove -pady 2
+		    -width 20 -relief groove -pady 2 -borderwidth 2
 		button .merge.menu.save -font $gc(fm.buttonFont) \
 		    -bg $gc(fm.buttonColor) \
 		    -text "Done" -width 7 -command save -state disabled

@@ -269,10 +269,11 @@ proc widgets {} \
 
 	getConfig "cset"
 	option add *background $gc(BG)
+	set gc(bw) 1
 	if {$tcl_platform(platform) == "windows"} {
-		set gc(py) 0; set gc(px) 1; set gc(bw) 2
+		set gc(py) 0; set gc(px) 1
 	} else {
-		set gc(py) 1; set gc(px) 4; set gc(bw) 2
+		set gc(py) 1; set gc(px) 4
 	}
 
 	set g [wm geometry .]
