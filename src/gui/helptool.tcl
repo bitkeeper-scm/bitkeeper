@@ -55,8 +55,9 @@ proc doNextSection {x} \
 
 proc doPixSelect {x y} \
 {
-	global	line
+	global	line stackMax stackPos
 
+	set stackMax $stackPos
 	set line [.ctrl.topics index "@$x,$y linestart"]
 	doSelect 1
 }
@@ -66,7 +67,7 @@ proc doPixSelect {x y} \
 #
 proc doSelect {x} \
 {
-	global	line
+	global	line stack stackMax stackPos
 
 	busy 1
 	.ctrl.topics see $line
@@ -79,7 +80,55 @@ proc doSelect {x} \
 	.ctrl.topics tag add "select" $line "$line lineend + 1 char"
 	.ctrl.topics tag raise "select"
 	bkhelp $topic
+	incr stackPos
+	set stack($stackPos) $line
+	if {$stackMax < $stackPos} { set stackMax $stackPos }
+	if {$stackPos > 1} {
+		.menu.back configure -state normal
+	} else {
+		.menu.back configure -state disabled
+	}
+	if {$stackMax > $stackPos} {
+		.menu.forw configure -state normal
+	} else {
+		.menu.forw configure -state disabled
+	}
 	busy 0
+}
+
+# set the top of stack to where we are now, we are heading in a new direction.
+proc stackReset {} \
+{
+	global	stackMax stackPos
+
+	set stackMax $stackPos
+}
+
+# Pop up the stack one if we can.
+proc back {} \
+{
+	global	line stack stackMax stackPos
+
+	if {$stackPos > 1} {
+		incr stackPos -1
+		set line $stack($stackPos)
+		# because doSelect will push again
+		incr stackPos -1
+		doSelect 1
+	}
+}
+
+proc forw {} \
+{
+	global	line stack stackMax stackPos
+
+	if {$stackMax > $stackPos} {
+		incr stackPos
+		set line $stack($stackPos)
+		# because doSelect will push again
+		incr stackPos -1
+		doSelect 1
+	}
 }
 
 proc bkhelp {topic} \
@@ -140,7 +189,7 @@ proc embedded_tag {line} \
 		if {[topic2line $tag] != ""} {
 			.text.help insert end "$tag" "$tag seealso"
 			.text.help tag bind $tag <Button-1> \
-			    "getSelection $tag; doSelect 1"
+			    "getSelection $tag; stackReset; doSelect 1"
 			incr end
 			set line [string range $line $end end]
 		}
@@ -186,7 +235,7 @@ proc search {} \
 			set last $key
 			.text.help insert end "$key\n" "$key seealso"
 			.text.help tag bind $key <Button-1> \
-			    "getSelection $key; doSelect 1"
+			    "getSelection $key; stackReset; doSelect 1"
 			set l [topic2line $key]
 			if {"$l" != ""} {
 				.ctrl.topics tag add "search" \
@@ -234,7 +283,10 @@ proc scroll {what dir} \
 proc widgets {} \
 {
 	global	line help_height firstConfig pixelsPerLine tcl_platform
-	global	search_word
+	global	search_word stackMax stackPos
+
+	set stackMax 0
+	set stackPos 0
 
 	# Defaults
 	if {$tcl_platform(platform) == "windows"} {
@@ -275,6 +327,10 @@ proc widgets {} \
 			set line [topic2line helptool]
 			doSelect 1
 		}
+	    button .menu.back -text "Back" -font $buttonFont -borderwid 1 \
+		-pady $py -background $bcolor -state disabled -command { back }
+	    button .menu.forw -text "Forw" -font $buttonFont -borderwid 1 \
+		-pady $py -background $bcolor -state disabled -command { forw }
 	    button .menu.clear -text "Clear search" -font $buttonFont \
 		-borderwid 1 -pady $py -background $bcolor \
 		-command { clearSearch }
@@ -285,10 +341,12 @@ proc widgets {} \
 		-textvariable search_word
 	    grid .menu.done -row 0 -column 0 -sticky ew
 	    grid .menu.help -row 0 -column 1 -sticky ew
-	    grid .menu.clear -row 0 -column 2 -sticky ew
-	    grid .menu.search -row 0 -column 3 -sticky ew
-	    grid .menu.entry -row 0 -column 4 -sticky ew
-	    grid columnconfigure .menu 4 -weight 1
+	    grid .menu.back -row 0 -column 3 -sticky ew
+	    grid .menu.forw -row 0 -column 4 -sticky ew
+	    grid .menu.clear -row 0 -column 5 -sticky ew
+	    grid .menu.search -row 0 -column 6 -sticky ew
+	    grid .menu.entry -row 0 -column 7 -sticky ew
+	    grid columnconfigure .menu 7 -weight 1
 	frame .ctrl -borderwidth 0 -relief flat
 	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
 		-font $font -width 14 \
@@ -340,6 +398,8 @@ proc widgets {} \
 	bind . <Right>		"doNextSection 1"
 	bind . <Prior>		{ scroll "page" -1 }
 	bind . <Next>		{ scroll "page" 1 }
+	bind . <Alt-Left>	{ back }
+	bind . <Alt-Right>	{ forw }
 	bind . <Home>		 ".text.help yview -pickplace 1.0"
 	bind . <End>		 ".text.help yview -pickplace end"
 	bind . <Escape>		{ exit }
