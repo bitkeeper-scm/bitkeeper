@@ -30,7 +30,7 @@ be many repositories belonging to that package.
 A symbolic name (or tag) which is given to a particular
 revision of one or more files.  e.g., "Alpha1".
 .tp
-.B revision, delta
+.B revision, delta (files)
 One version of a particular file, or one change to a
 particular file, depending on context.  Sometimes we
 want to talk about the way the file is while sometimes
@@ -46,6 +46,14 @@ A changeset is the smallest thing which may be
 propagated between repositories.
 Deltas that aren't in changesets are called
 "uncommitted" or "pending" deltas.
+.tp
+.B ChangeSet Number
+Revision number for a ChangeSet.  These numbers fluctuate, 
+but stabilize, over time.  If you want an immutable, unique reference
+for a ChangeSet, use the ChangeSet Key.
+.tp
+.B ChangeSet Key
+Unique identifier for a ChangeSet.
 .tp
 .B pending
 Deltas which have been checked into a file but not yet
