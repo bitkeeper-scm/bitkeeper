@@ -115,9 +115,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 	} else if (streq("-", av[optind])) {
 		char	buf[MAXPATH];
 
-#ifdef WIN32
 		setmode(0, _O_TEXT); /* read file list in text mode */
-#endif
 		while (fnext(buf, stdin)) {
 			chop(buf);
 			path = xFlg ? buf : sPath(buf, 1);

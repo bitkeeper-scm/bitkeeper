@@ -17,7 +17,8 @@ extern	char	*editor, *bin, *BitKeeper;
 extern	int	do_clean(char *, int);
 extern	int	loggingask_main(int, char**);
 private	void	make_comment(char *cmt, char *commentFile);
-private int	do_commit(c_opts opts, char *sym, char *commentFile);
+private int	do_commit(c_opts opts, char *sym,
+					char *pendingFiles, char *commentFile);
 
 private char    *commit_help = "\n\
 usage: commit  [-adFRqS:y:Y:]\n\n\
@@ -34,9 +35,9 @@ usage: commit  [-adFRqS:y:Y:]\n\n\
 int
 commit_main(int ac, char **av)
 {
-	int	c, doit = 0, force = 0, getcomment = 1;
+	int	c, rc, doit = 0, force = 0, getcomment = 1;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
-	char	commentFile[MAXPATH], pendingDeltas[MAXPATH];
+	char	commentFile[MAXPATH], pendingFiles[MAXPATH];
 	char	*sym = 0;
 	c_opts	opts  = {0, 0, 0, 0};
 
@@ -66,6 +67,7 @@ commit_main(int ac, char **av)
 				break;
 		}
 	}
+
 	/* XXX: stub out lod operations */
 	if (opts.lod) {
 		fprintf(stderr,
@@ -80,28 +82,44 @@ commit_main(int ac, char **av)
 		exit(1);
 	}
 	unless(opts.resync) remark(opts.quiet);
-	sprintf(pendingDeltas, "%s/bk_list%d", TMP_PATH, getpid());
-	sprintf(buf, "bk sfiles -CA > %s", pendingDeltas);
-	if (system(buf) != 0) {
-		unlink(pendingDeltas);
-		unlink(commentFile);
-		gethelp("duplicate_IDs", 0, 0, stdout);
-		exit(1);
+	sprintf(pendingFiles, "%s/bk_list%d", TMP_PATH, getpid());
+	if (av[optind] && streq("-", av[optind])) {
+		FILE *f;
+
+		if (getcomment) {
+			fprintf(stderr,
+			"You must use the -Y or -y option when using \"-\"\n");
+			exit(1);
+		}
+		setmode(0, _O_TEXT);
+		f = fopen(pendingFiles, "wb");
+		assert(f);
+		while (fgets(buf, sizeof(buf), stdin)) {
+			fputs(buf, f);
+		}
+		fclose(f);
+	} else {
+		sprintf(buf, "bk sfiles -C > %s", pendingFiles);
+		if (system(buf) != 0) {
+			unlink(pendingFiles);
+			unlink(commentFile);
+			gethelp("duplicate_IDs", 0, 0, stdout);
+			exit(1);
+		}
 	}
-	if ((force == 0) && (size(pendingDeltas) == 0)) {
+	if ((force == 0) && (size(pendingFiles) == 0)) {
 		unless (opts.quiet) fprintf(stderr, "Nothing to commit\n");
-		unlink(pendingDeltas);
+		unlink(pendingFiles);
 		unlink(commentFile);
 		exit(0);
 	}
 	if (getcomment) {
 		sprintf(buf,
-		    "bk sccslog -C - < %s > %s", pendingDeltas, commentFile);
+		    "bk sccslog -CA - < %s > %s", pendingFiles, commentFile);
 		system(buf);
 	}
-	unlink(pendingDeltas);
 	do_clean(s_cset, SILENT);
-	if (doit) exit(do_commit(opts, sym, commentFile));
+	if (doit) exit(do_commit(opts, sym, pendingFiles, commentFile));
 
 	while (1) {
 		printf("\n-------------------------------------------------\n");
@@ -113,7 +131,7 @@ commit_main(int ac, char **av)
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
 		    case 'u':
-			exit(do_commit(opts, sym, commentFile));
+			exit(do_commit(opts, sym, pendingFiles, commentFile));
 			break;
 		    case 'e':
 			sprintf(buf, "%s %s", editor, commentFile);
@@ -121,7 +139,7 @@ commit_main(int ac, char **av)
 			break;
 		    case 'a':
 Abort:			printf("Commit aborted.\n");
-			unlink(pendingDeltas);
+			unlink(pendingFiles);
 			unlink(commentFile);
 			exit(1);
 		}
@@ -199,33 +217,30 @@ ok_commit(int l, int alreadyAsked)
 }
 
 private int
-do_commit(c_opts opts, char *sym, char *commentFile)
+do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
 	int	rc;
 	int	l = logging(0, 0, 0);
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
 	char	s_cset[MAXPATH] = CHANGESET;
-	char	commit_list[MAXPATH];
 	sccs	*s;
 	delta	*d;
 
 	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
+		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
 
-	sprintf(commit_list, "%s/commit_list%d", TMP_PATH, getpid());
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
-	sprintf(buf, "bk sfiles -C > %s", commit_list);
-	system(buf);
 	sprintf(buf, "bk cset %s %s %s %s%s < %s",
 		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,
 		hasComment? "-Y" : "", hasComment ? commentFile : "",
-		commit_list);
+		pendingFiles);
 	rc = system(buf);
 	unlink(commentFile);
-	unlink(commit_list);
+	unlink(pendingFiles);
 	notify();
 	s = sccs_init(s_cset, 0, 0);
 	assert(s);

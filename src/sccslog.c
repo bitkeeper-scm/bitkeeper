@@ -10,6 +10,7 @@ WHATSTR("@(#)%K%");
 
 private	char	*log_help = "\n\
 usage: sccslog [-pCv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
+    -A		select all uncommited deltas in a file.\n\
     -c<dates>	Cut off dates.  See 'bk help dates' for details.\n\
     -C		produce comments for a changeset\n\
     -p		show basenames instead of full pathnames.\n\
@@ -34,6 +35,7 @@ private	delta	*list, **sorted;
 private	int	n;
 private	int	pflag;		/* do basenames */
 private	int	Cflg;		/* comments for changesets */
+private	int	Aflg;		/* select all uncomitted deltas in a file */
 
 int
 sccslog_main(int ac, char **av)
@@ -44,16 +46,15 @@ sccslog_main(int ac, char **av)
 	project	*proj = 0;
 	RANGE_DECL;
 
-#ifdef WIN32
-	_setmode(_fileno(stdout), _O_BINARY);
-#endif
+	setmode(1, _O_BINARY);
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
 		fprintf(stderr, log_help);
 		return (0);
 	}
-	while ((c = getopt(ac, av, "Cc;pr|v")) != -1) {
+	while ((c = getopt(ac, av, "ACc;pr|v")) != -1) {
 		switch (c) {
+		    case 'A': Aflg++; break;
 		    case 'C': Cflg++; break;
 		    case 'p': pflag++; break;
 		    case 'v': flags &= ~SILENT; break;
@@ -72,6 +73,15 @@ usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 		unless (proj) proj = s->proj;
 		unless (s->tree) goto next;
 		RANGE("sccslog", s, 2, 0);
+		if (Aflg) {
+			delta *d = sccs_top(s);
+
+			while (d) {
+				if (d->flags & D_CSET) break;
+				d->flags |= D_SET;
+				d = d->parent;
+			}
+		}
 		save = n;
 		sccslog(s);
 		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));

@@ -14,9 +14,7 @@ cmd_push(int ac, char **av)
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
 				    /* see verbose below    ^^ */
 
-#ifdef WIN32
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-#endif
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		exit(1);

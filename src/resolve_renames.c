@@ -52,13 +52,13 @@ r_help(resolve *rs)
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
 The file has a name conflict of some type.\n\
-GCA:    %s@%s (greatest common ancestor)\n\
-Local:  %s@%s %s\n\
-Remote: %s@%s %s\n\
+GCA:    %s (greatest common ancestor)\n\
+Local:  %s %s\n\
+Remote: %s %s\n\
 ---------------------------------------------------------------------------\n",
-	    rs->gnames->gca, rs->revs->gca,
-	    rs->gnames->local, rs->revs->local, l,
-	    rs->gnames->remote, rs->revs->remote, r);
+	    rs->gnames->gca,
+	    rs->gnames->local, l,
+	    rs->gnames->remote, r);
 	fprintf(stderr, "Commands are:\n\n");
 	for (i = 0; rs->funcs[i].spec; i++) {
 		fprintf(stderr, "  %-4s - %s\n", 
