@@ -12,40 +12,6 @@ private int repository_stale(char *path, int discard, int verbose);
 
 extern	int	lockLeak(char *path, char *lock);
 
-/*
- * This is a generic version number which can be bumed any time we want
- * to shut down old binaries.
- * Version	Notes
- *	1	Unused
- *	2	bk-2.1.5 and later
- *	3	bk-3.0 (planned, for lock dir move)
- */
-#define	VERS	2
-
-private int
-dont_lock(char *root)
-{
-	MMAP	*m;
-	char	*p;
-	int	ret;
-
-	assert(root);
-	p = aprintf("%s/BitKeeper/etc/version", root);
-	unless (exists(p) && (m = mopen(p, "r"))) {
-		FILE	*f = fopen(p, "w");
-
-		if (f) {
-			fprintf(f, "%u\n", VERS);
-			fclose(f);
-		}
-		free(p);
-		return (0);
-	}
-	ret = atoi(m->where) > VERS;
-	mclose(m);
-	free(p);
-	return (ret);
-}
 
 int
 repository_locked(project *p)
@@ -254,7 +220,6 @@ repository_rdlock()
 		proj_free(p);
 		return (0);
 	}
-	if (dont_lock(p->root)) return (-1);
 
 	repository_cleanLocks(p, 1, 1, 0, 0);
 
@@ -304,7 +269,6 @@ repository_wrlock()
 		proj_free(p);
 		return (0);
 	}
-	if (dont_lock(p->root)) return (-1);
 
 	repository_cleanLocks(p, 1, 1, 0, 0);
 

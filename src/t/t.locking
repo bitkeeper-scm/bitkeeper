@@ -197,8 +197,7 @@ grep -q 'Nothing to pull' OUT || {
 	exit 1
 }
 echo OK
-
-echo $N Make sure commit respects repository lock  ...................$NL
+echo $N Make sure commit respect repository lock  ....................$NL
 mkdir -p $HERE/project/RESYNC/stuff
 bk co $Q -l D
 date > D
@@ -209,19 +208,4 @@ echo "ERROR-Unable to lock repository for update." > x
 bk undos x > ref
 cmp -s commit.out ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-echo OK
-
-echo $N Make sure we respect the locking version if present ..........$NL
-cd $HERE/project
-rm -rf RESYNC BitKeeper/readers BitKeeper/writers
-test -f BitKeeper/etc/version || {
-	echo no version file found
-	exit 1
-}
-echo 9999 > BitKeeper/etc/version
-# This won't work, it will just hang, but you get the idea.
-bk lock -r 2>/dev/null && {
-	echo lock should have failed
-	exit 1
-}
 echo OK
