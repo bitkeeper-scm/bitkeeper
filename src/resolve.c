@@ -1122,7 +1122,6 @@ flags_delta(resolve *rs,
 #endif
 	doit(X_HASH, "HASH");
 	doit(X_SINGLE, "SINGLE");
-	doit(X_ALWAYS_EDIT, "ALWAYS_EDIT");
 	strcat(buf, " ");
 	strcat(buf, sfile);
 	if (rs->opts->debug) fprintf(stderr, "cmd: [%s]\n", buf);
