@@ -46,6 +46,7 @@ cmd_cd(int ac, char **av)
 {
 	char *p = av[1];
 	char *rootkey, buf[MAXPATH], log_root[MAXPATH] = "";
+	extern int errno;
 
 #ifdef WIN32
 	/* convert /c:path => c:path */
@@ -82,10 +83,24 @@ cmd_cd(int ac, char **av)
 			out("\n");
 			return (1);
 		}
+
+		/*
+		 * XXX TODO need to check for permission error here
+		 */
 		unless (exists("BitKeeper/etc")) {
-			out("ERROR-");
-			out(p);
-			out(" is not a package root\n");
+			if (errno == ENOENT) {
+				out("ERROR-");
+				out(p);
+				out(" is not a package root\n");
+			} else if (errno == EACCES) {
+				out("ERROR-");
+				out(p);
+				out(" access denied\n");
+			} else {
+				out("ERROR-unknown error");
+				sprintf(buf, "errno = %d\n", errno);
+				out(buf);
+			}
 			return (1);
 		}
 	}

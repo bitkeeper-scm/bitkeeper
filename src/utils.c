@@ -549,3 +549,14 @@ drain_bkd1_2_msg(remote *r, char *buf, int bsize)
 	exit(1);
 }
 #endif
+
+int
+remote_lock_fail(char *buf, int verbose)
+{
+	if (streq(buf, LOCK_WR_BUSY) || streq(buf, LOCK_RD_BUSY) ||
+	    streq(buf, LOCK_PERM) || streq(buf, LOCK_UNKNOWN)) {
+		if (verbose) fprintf(stderr, "%s\n", buf);
+		return (1);
+	}
+	return (0);
+}

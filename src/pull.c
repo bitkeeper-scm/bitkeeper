@@ -124,8 +124,7 @@ pull_part1(opts opts, remote *r, char probe_list[], char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
-	if (streq(buf, "ERROR-Can't get read lock on the repository")) {
-		if (!opts.quiet) fprintf(stderr, "%s\n", buf);
+	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
@@ -209,8 +208,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	getline2(r, buf, sizeof (buf));
-	if (streq(buf, "ERROR-Can't get read lock on the repository")) {
-		if (!opts.quiet) fprintf(stderr, "%s\n", buf);
+	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);

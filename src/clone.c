@@ -120,8 +120,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 
 	if (r->httpd) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof (buf)) <= 0) return (-1);
-	if (streq(buf, "ERROR-Unable to lock repository for update.")) {
-		if (!opts.quiet) fprintf(stderr, "%s\n", buf);
+	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);

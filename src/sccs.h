@@ -494,6 +494,11 @@ extern	char *upgrade_msg;
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
 
+#define	LOCK_WR_BUSY	"ERROR-Unable to lock repository for update."
+#define	LOCK_RD_BUSY	"ERROR-Can't get read lock on the repository."
+#define	LOCK_PERM	"ERROR-Lock fail: possible permission problem."
+#define	LOCK_UNKNOWN	"ERROR-Unknown lock error."
+
 /*
  * Bumped whenever we change any file format.
  * XXX - this isn't timesafe.  It's not clear it wants to be, it's a file

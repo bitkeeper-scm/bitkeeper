@@ -233,7 +233,7 @@ repository_rdlock()
 	close(creat(path, 0666));
 	unless (exists(path)) {
 		proj_free(p);
-		return (-1);
+		return (-2); /* possible permission problem */
 	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	unless (!exists(path) || emptyDir(path)) {
@@ -291,7 +291,7 @@ fail:		proj_free(p);
 	close(creat(path, 0666));
 	unless (exists(path)) {
 		proj_free(p);
-		return (-1);
+		return (-2); /* possible permission problem */
 	}
 	/*
 	 * See the linux open(2) man page.

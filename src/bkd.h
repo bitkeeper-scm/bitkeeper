@@ -132,4 +132,5 @@ void	sendEnv(FILE *f, char **envVar);
 void	wait_eof(remote *r, int verbose);
 void	flush2remote(remote *r);
 void	try_clone1_2(int quiet, int gzip, char *rev, remote *r, char *local);
+int	remote_lock_fail(char *buf, int verbose);
 #endif
