@@ -623,6 +623,10 @@ do_print(char state[4], char *file, char *rev)
 	} else if (state[CSTATE] != 'j') {
 		s_count++;
 	}
+	if (opts.progress && 
+	    (((s_count - s_last) > 100) || ((x_count - x_last) > 100))) { 
+		progress();
+	}
 	if ((state[PSTATE] == 'p') && opts.pflg) goto print;
 
 	switch (state[LSTATE]) {
