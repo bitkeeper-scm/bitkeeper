@@ -9,7 +9,6 @@ typedef struct {
 	u32	stripBranches:1;
 	u32	checkOnly:1;
 	u32	quiet:1;
-	u32	forward:1;
 } s_opts;
 
 private	delta	*checkCset(sccs *s);
@@ -36,12 +35,11 @@ stripdel_main(int ac, char **av)
 		system("bk help stripdel");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "bcCdqr;")) != -1) {
+	while ((c = getopt(ac, av, "bcCqr;")) != -1) {
 		switch (c) {
 		    case 'b': opts.stripBranches = 1; break;	/* doc 2.0 */
 		    case 'c': opts.checkOnly = 1; break;	/* doc 2.0 */
 		    case 'C': opts.respectCset = 0; break;	/* doc 2.0 */
-		    case 'd': opts.forward = 1; break;
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    RANGE_OPTS('!', 'r');			/* doc 2.0 */
 		    default:
@@ -115,18 +113,6 @@ doit(sccs *s, s_opts opts)
 		s = sccs_restart(s);
 	}
 
-	if (MONOTONIC(s) && !opts.forward) {
-		verbose((stderr, 
-		    "Not stripping deltas from MONOTONIC file %s\n", s->gfile));
-		for (e = s->table; e; e = e->next) {
-			if ((e->flags & D_SET) && (e->type == 'D')) {
-				e->dangling = 1;
-			}
-		}
-		sccs_newchksum(s);
-		return (0);
-	}
-
 	if (opts.respectCset && (e = checkCset(s))) {
 		fprintf(stderr,
     			"stripdel: can't remove committed delta %s@%s\n",
@@ -135,7 +121,7 @@ doit(sccs *s, s_opts opts)
 	}
 
 	left = set_meta(s, opts.stripBranches, &n); 
-	if (opts.checkOnly) return (do_check(s, flags));
+	if (opts.checkOnly) return(do_check(s, flags));
 	unless (left) {
 		if (sccs_clean(s, SILENT)) {
 			fprintf(stderr,

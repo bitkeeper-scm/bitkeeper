@@ -1,13 +1,3 @@
-#monotonic
-If a file is marked as monotonically increasing, and that file has "dangling
-deltas", i.e., deltas which are ahead of the top changeset, then the monotonic
-flag may not be removed unless the dangling deltas are removed first.  You
-may remove those deltas with the following command:
-
-    bk prs -hnd'$if(:DANGLING:){:GFILE:|:I:}' <file> | bk stripdel -dC -
-
-and then you may remove the MONOTONIC flag.
-$
 #chk1
 A file is marked as gone (in BitKeeper/etc/gone) but is present in your
 repository, possibly missing some deltas.  This can happen if a different 
