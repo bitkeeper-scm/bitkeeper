@@ -233,7 +233,8 @@ repository_rdlock()
 		chmod(path, 0777);	/* kill their umask */
 	}
 	sprintf(path,
-	    "%s/%s/%d@%s", p->root, READER_LOCK_DIR, getpid(), sccs_gethost());
+	    "%s/%s/%d@%s.lock", p->root,
+	    READER_LOCK_DIR, getpid(), sccs_gethost());
 	close(creat(path, 0666));
 	unless (exists(path)) {
 		proj_free(p);
@@ -241,7 +242,7 @@ repository_rdlock()
 	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	unless (!exists(path) || emptyDir(path)) {
-		sprintf(path, "%s/%s/%d@%s",
+		sprintf(path, "%s/%s/%d@%s.lock",
 		    p->root, READER_LOCK_DIR, getpid(), sccs_gethost());
 		unlink(path);
 		proj_free(p);
@@ -289,7 +290,8 @@ fail:		proj_free(p);
 
 	sprintf(lock, "%s/%s", p->root, WRITER_LOCK);
 	sprintf(path,
-	    "%s/%s/%d@%s", p->root, WRITER_LOCK_DIR, getpid(), sccs_gethost());
+	    "%s/%s/%d@%s.lock", p->root,
+	    WRITER_LOCK_DIR, getpid(), sccs_gethost());
 	close(creat(path, 0666));
 	unless (exists(path)) {
 		proj_free(p);
@@ -332,7 +334,8 @@ repository_rdunlock(int force)
 
 	/* clean out our lock, if any */
 	sprintf(path,
-	    "%s/%s/%d@%s", p->root, READER_LOCK_DIR, getpid(), sccs_gethost());
+	    "%s/%s/%d@%s.lock", p->root,
+	    READER_LOCK_DIR, getpid(), sccs_gethost());
 	unlink(path);
 
 	/* clean up stale locks while we are here */
@@ -353,7 +356,7 @@ repository_locker(char type, pid_t pid, char *host)
 {
 	char path[MAXPATH];
 
-	sprintf(path, "%s/%d@%s", 
+	sprintf(path, "%s/%d@%s.lock", 
 		(type == 'r') ? READER_LOCK_DIR : WRITER_LOCK_DIR,
 		pid, host);
 	return (exists(path));
@@ -384,7 +387,8 @@ repository_wrunlock(int force)
 
 	/* clean out our lock, if any */
 	sprintf(path,
-	    "%s/%s/%d@%s", p->root, WRITER_LOCK_DIR, getpid(), sccs_gethost());
+	    "%s/%s/%d@%s.lock", p->root,
+	    WRITER_LOCK_DIR, getpid(), sccs_gethost());
 	if (exists(path)) {
 		if (unlink(path)) error++;
 		t = strrchr(path, '/');
@@ -424,9 +428,9 @@ private int
 repository_stale(char *path, int discard, int verbose)
 {
 	char	*s = strrchr(path, '/');
-	char	host[256];
+	char	host[256 + 5]; /* add 5 for the ".lock" part */
 	char	*thisHost = sccs_gethost();
-	int	flags = 0;
+	int	len, flags = 0;
 	u32	pid;
 
 	unless (thisHost) return (0);
@@ -435,6 +439,9 @@ repository_stale(char *path, int discard, int verbose)
 	if (s) s++; else s = path;
 	/* if the lock is not in the pid@host format, then not a real lock */
 	if (sscanf(s, "%d@%s", &pid, host) != 2) return (1);
+	len = strlen(host);
+	/* trim off the ".lock part */
+	if ((len > 5) && streq(".lock", &host[len - 5])) host[len - 5] = 0;
 	if (streq(host, thisHost) &&
 	    (kill((pid_t)pid, 0) != 0) && (errno == ESRCH)) {
 		if (discard) {
