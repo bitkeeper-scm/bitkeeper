@@ -439,8 +439,6 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	foreach {side f r} $files {
 		catch {set fd [open "| bk sfiles -g \"$f\"" r]} err
 		if { ([gets $fd fname] <= 0)} {
-			set text($side) \
-			    "Not a BitKeeper revision controlled file"
 			set bkfile($side) 0
 		} else {
 			if {$r != "1.0"} {
@@ -476,14 +474,9 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 	.diffs.right configure -state normal
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
-	.diffs.left insert end "$text(left)\n" select
-	.diffs.right insert end "$text(right)\n" select
-	# Pad out info lines
-	if {($bkfile(left) == 0) && ($bkfile(right) == 1)} {
-		.diffs.left insert end "\n\n" select
-	}
-	if {($bkfile(left) == 1) && ($bkfile(right) == 0)} {
-		.diffs.right insert end "\n\n" select
+	if {$bkfile(left) == 1 && $bkfile(right) == 1} {
+		.diffs.left insert end "$text(left)\n" select
+		.diffs.right insert end "$text(right)\n" select
 	}
 	# XXX: Check differences between the info lines
 	return
