@@ -99,7 +99,6 @@ printHdr(FILE *f, char *revsFile, char *rev, char *wrapper)
 	if (wrapper) fprintf(f, "## Wrapped with %s ##\n\n", wrapper);
 	fprintf(f, "\n");
 	fflush(f);
-	unless (f = stdout) fclose(f);
 }
 
 int
@@ -187,6 +186,7 @@ send_main(int ac,  char **av)
 	 * Print patch header
 	 */
 	printHdr(f, revsFile, rev, wrapper);
+	unless (f == stdout) fclose(f);
 
 	/*
 	 * Now make the patch

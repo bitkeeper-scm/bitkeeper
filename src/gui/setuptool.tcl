@@ -122,7 +122,7 @@ proc license_check {}  \
 	    scrollbar .lic.t.text.scrl -command ".lic.t.text yview"
 	    scrollbar .lic.t.text.scrl_h -command ".lic.t.text xview" \
 		-orient horizontal
-	set fid [open "|bk help bkl -p" "r"]
+	set fid [open "|bk help -p bkl" "r"]
 
 	#while { [ gets $fid line ] != -1 } {
 	#	.lic.t.text insert end $line

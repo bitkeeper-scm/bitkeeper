@@ -674,7 +674,7 @@ smallTree(int threshold)
 }         
 
 /*
- * This function works like sprintf(), expect it return a
+ * This function works like sprintf(), except it return a
  * malloc'ed buffer which caller should free when done
  */
 char *
