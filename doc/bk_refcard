@@ -29,13 +29,13 @@ Copyright \(co 2000 BitMover, Inc.
 .wh \n[PL]u-\n[FM]u FOOTER
 .\" Define our own box drawing routines using some nifty features of
 .\" GNU troff.  We may come back and add drop shadows at some point.
-.de TOP
+.de B1
 .	br
 .	ne 2i
 .	mk a
 .	sp .25
 ..
-.de BOX
+.de B2
 .	sp -.5
 .	in 0
 .	nf
@@ -100,7 +100,7 @@ http://www.bitkeeper.com
 .br
 .ce 0
 .sp .5
-.TOP
+.B1
 .H1
 BitKeeper Command Syntax:
 .LP
@@ -112,13 +112,13 @@ Perform operation at root of repository
 .IP -r
 Perform recursive operations
 .LP
-.BOX
+.B2
 .\" ############################
 .\" #
 .\" # Repository-Level Commands
 .\" #
 .\" ############################
-.TOP
+.B1
 .H1
 Repository-Level Commands
 .H2
@@ -200,14 +200,14 @@ status [\fIoptions\fB] [\fIfiles\fB]
 .H2
 tags [\fIoptions\fB] [\fIfiles\fB]
 .sp .5
-.BOX
+.B2
 .sp 1
 .\" ############################
 .\" #
 .\" # File-Level Commands
 .\" #
 .\" ############################
-.TOP
+.B1
 .H1
 File-Level Commands
 .H2
@@ -243,13 +243,13 @@ sccslog [\fIoptions\fB] [\fIfiles\fB]
 prs [\fIoptions\fB] [\fIfiles\fB]
 .H2
 ci [\fIoptions\fB] [\fIfiles\fB]
-.BOX
+.B2
 .\" ############################
 .\" #
 .\" # Files
 .\" #
 .\" ############################
-.TOP
+.B1
 .H1
 BitKeeper File Types:
 .IP foo.c 1i
@@ -261,7 +261,7 @@ p.file - lock file
 .IP SCCS/z.foo.c
 .IP SCCS/x.foo.c
 .IP SCCS/b.foo.c
-.BOX
+.B2
 .\" ############################
 .\" #
 .\" # Other stuff
@@ -272,7 +272,7 @@ p.file - lock file
 .\" # Ranges and Dates
 .\" #
 .\" ############################
-.TOP
+.B1
 .H1
 Range and Date Syntax
 .ps 10
@@ -290,4 +290,4 @@ Specify dates:
 .br
 -c98..98
 .sp .5
-.BOX
+.B2
