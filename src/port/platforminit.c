@@ -26,6 +26,7 @@ platformInit(char **av)
 	char	**newpath;
 	int	n;
 	int	flags = SILENT;	/* for debugging */
+	int	got_tilda = 0;
 	mode_t	m;
 	char    *paths[] = {"", "/gnu/bin", "/gui/bin", 0};
 	char	buf2[MAXPATH];
@@ -80,6 +81,11 @@ platformInit(char **av)
 		}
 	}
 #endif
+	/*
+	 * for t/t.path regression test. We need a simple path but
+	 * MSYS insists on expanding it, so we revert it here.
+	 */
+	if (getenv("_BK_FORCE_BASE_PATH")) av[0] = basenm(av[0]);
 
 	/*
 	 * Find the program and if it is a symlink, then add where it
@@ -102,6 +108,7 @@ platformInit(char **av)
 			verbose((stderr, "p='%s'\n", p));
 			while (1) {
 				if (t = strchr(s, PATH_DELIM)) *t = 0;
+				if (s[0] == '~') got_tilda = 1;
 				sprintf(buf, "%s/%s", s, av[0]);
 				if (t) *t = PATH_DELIM;
 				if (executable(buf) && !isdir(buf)) break;
@@ -109,6 +116,11 @@ platformInit(char **av)
 					verbose((stderr,
 						    "Can't find bk on PATH, "
 						    "bail and pray.\n"));
+					if (got_tilda) {
+						fprintf(stderr, 
+						    "Please expand ~ when "
+						    "setting your path.\n");
+					}
 					return;
 				}
 				s = t + 1;

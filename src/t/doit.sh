@@ -227,7 +227,7 @@ setup_env()
 	BK_GEOM=+1+1
 	export BK_GEOM
 
-	unset BK_BIN _BK_GMODE_DEBUG
+	unset _BK_GMODE_DEBUG
 	BK_REGRESSION=`cd $TST_DIR; bk pwd -s`/.regression-$USER
 	BK_CACHE="$BK_REGRESSION/cache"
 	HERE=`cd $TST_DIR; bk pwd -s`/.regression-$USER/sandbox
@@ -320,6 +320,7 @@ init_main_loop()
 	export BKL_P1 BKL_P2 BKL_P3
 	export BKL_EX1 BKL_EX2 BKL_EX3
 	export BK_GLOB_TRANSLATE_EQUAL
+	export BK_BIN
 	mkdir -p $BK_CACHE
 }
 
