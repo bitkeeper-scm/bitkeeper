@@ -13,7 +13,7 @@ all: os
 		do	test -f $$x || echo $$x; \
 		done | bk co -; \
 		test -f $$i/$$OS/Makefile || (cd $$i/$$OS && ../configure); \
-		(cd $$i/$$OS && make); \
+		(cd $$i/$$OS && $(MAKE)); \
 	done
 	@rm -rf bin
 	@mkdir bin
