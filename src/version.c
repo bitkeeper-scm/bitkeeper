@@ -10,10 +10,24 @@ version_main(int ac, char **av)
 {
 	char buf[100];
 	float	exp;
+	int	c;
+	char	*p;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help version");
 		return (0);
+	}
+	while ((c = getopt(ac, av, "s")) != -1) {
+		switch (c) {
+		    case 's':
+			p = bk_vers;
+			if (strneq(p, "bk-", 3)) p += 3;
+			puts(p);
+			return (0);
+		    default:
+			system("bk help -s version");
+			return (0);
+		}
 	}
 	lease_checking(0);
 	if (sccs_cd2root(0, 0) == -1) {
