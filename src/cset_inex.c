@@ -282,7 +282,7 @@ undoit(MDBM *m)
 	    "\n!!! Cset operation failed.  Undoing changes... !!!\n\n");
 	av[i=0] = "bk";
 	av[++i] = "sfiles";
-	av[++i] = "-ACg";
+	av[++i] = "-gpAC";
 	av[++i] = 0;
 	pid = spawnvp_rPipe(av, &i);
 	if (pid == -1) {

@@ -60,7 +60,7 @@ sfio_main(int ac, char **av)
 
 	platformSpecificInit(NULL);
 	if (ac == 2 && streq(av[1], "--help")) goto usage;
-	while ((c = getopt(ac, av, "imopqs")) != -1) {
+	while ((c = getopt(ac, av, "imopq")) != -1) {
 		switch (c) {
 		    case 'i': if (mode) goto usage; mode = M_IN;   break;
 		    case 'o': if (mode) goto usage; mode = M_OUT;  break;

@@ -131,7 +131,7 @@ again:		printf("Editor to use [%s] ", editor);
 	defaultIgnore();
 
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
-	sprintf(buf, "bk -R sfiles -C > %s", setup_files);
+	sprintf(buf, "bk -R sfiles -pC > %s", setup_files);
 	system(buf);
 	sprintf(buf,
 	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);

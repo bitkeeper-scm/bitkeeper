@@ -159,19 +159,17 @@ _mvdir() {
 	cd $2
 	bk sfiles -u | bk edit -q -
 	bk sfiles | bk delta -q -ymvdir -
-	# update id cache
-	bk sfiles -r
+	bk idcache
 }
 
 _rmdir() {
-
 	if [ X$2 != X ]; then echo "usage bk rmdir dir"; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
 	bk -r check -a || exit 1;
 	XNUM=`bk sfiles -x $1 | wc -l`
 	if [ "$XNUM" -ne 0 ]
 	then
-		echo "There are unchecked files under $1";
+		echo "There are extra files under $1";
 		bk sfiles -x $1
 		exit 1
 	fi

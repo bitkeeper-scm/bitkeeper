@@ -223,7 +223,7 @@ To fix all bad writable file, use the following command:\n\
 		if (names) {
 			fprintf(stderr, "check: trying to fix names...\n");
 			system("bk -r names");
-			system("bk sfiles -r");
+			system("bk idcache");
 			return (2);
 		}
 	}

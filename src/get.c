@@ -258,8 +258,8 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
 			unless (BEEN_WARNED(s)) {
-				fprintf(stderr,
-				    "get of %s failed, skipping it.\n", name);
+				verbose((stderr,
+				    "get of %s failed, skipping it.\n", name));
 			}
 			errors = 1;
 		}

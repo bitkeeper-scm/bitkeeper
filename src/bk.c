@@ -147,23 +147,23 @@ struct command cmdtbl[] = {
 	{"diffs", diffs_main},
 	{"edit", get_main},		/* aliases */
 	{"export", export_main},
-	{"fdiff", fdiff_main},
+	{"fdiff", fdiff_main},		/* undocumented */
 	{"fix", fix_main},
 	{"g2sccs", g2sccs_main},
 	{"gca", gca_main},
 	{"get", get_main},
-	{"gethelp", gethelp_main},
+	{"gethelp", gethelp_main},	/* undocumented */
 	{"gethost", gethost_main},
 	{"getmsg", getmsg_main},
 	{"getuser", getuser_main},
-	{"graft", graft_main},
+	{"graft", graft_main},		/* undocumented */
 	{"grep", grep_main},
 	{"gnupatch", gnupatch_main},
 	{"gone", gone_main},
 	{"help", help_main},
 	{"helpsearch", helpsearch_main},
 	{"helptopics", helptopics_main},
-	{"info", sinfo_main},		/* aliases */
+	{"info", sinfo_main},
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
 	{"lines", lines_main},		/* XXX - should be _lines, undoc */
@@ -190,33 +190,33 @@ struct command cmdtbl[] = {
 	{"receive", receive_main},
 	{"rechksum", rechksum_main},
 	{"renumber", renumber_main},
-	{"repo", repo_main},
+	{"repo", repo_main},		/* obsolete, undocumented */
 	{"resolve", resolve_main},
-	{"rev2cset", r2c_main},
+	{"rev2cset", r2c_main},		/* alias, documented as r2c */
 	{"rset", rset_main},
 	{"rm", rm_main},
 	{"rmdel", rmdel_main},
 	{"sane", sane_main},
 	{"sccscat", sccscat_main},
 	{"sccslog", sccslog_main},
-	{"sccsmv", mv_main},
-	{"sccsrm", rm_main},
+	{"sccsmv", mv_main},		/* alias, documented as mv */
+	{"sccsrm", rm_main},		/* alias, documented as rm */
 	{"send", send_main},
 	{"sendbug", sendbug_main},
 	{"setlod", setlod_main},
 	{"setup", setup_main },
-	{"sfiles", sfind_main}, /* aliases */
+	{"sfiles", sfind_main}, 	/* aliases */
 	{"sfind", sfind_main},
 	{"sfio", sfio_main},
-	{"sinfo", sinfo_main},
+	{"sinfo", sinfo_main},		/* alias, documented as info */
 	{"status", status_main},
 	{"stripdel", stripdel_main},
 	{"takepatch", takepatch_main},
 	{"undo", undo_main},
 	{"undos", undos_main},
 	{"unedit", unedit_main},
-	{"unget", unedit_main},	/* aliases */
-	{"unlink", unlink_main },
+	{"unget", unedit_main},		/* aliases */
+	{"unlink", unlink_main },	/* undoc, should be _unlink */
 	{"unlock", unlock_main },
 	{"unwrap", unwrap_main},
 	{"users", users_main},
@@ -235,12 +235,14 @@ usage()
 	exit(1);
 }
 
+#define	MAXARGS	1024
+
 int
 main(int ac, char **av)
 {
 	int	i, j;
 	char	cmd_path[MAXPATH];
-	char	*argv[100];
+	char	*argv[MAXARGS];
 	int	c;
 	int	is_bk = 0, dashr = 0;
 	int	flags, ret;
@@ -346,7 +348,13 @@ main(int ac, char **av)
 		argv[0] = "perl"; 
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				exit(1);
+			}
+			argv[i] = av[j];
+		}
 		argv[i] = 0;
 		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
@@ -377,7 +385,13 @@ main(int ac, char **av)
 		argv[0] = find_wish();
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
+		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				exit(1);
+			}
+			argv[i] = av[j];
+		}
 		argv[i] = 0;
 		cmdlog_start(argv);
 		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
@@ -393,6 +407,10 @@ main(int ac, char **av)
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				exit(1);
+			}
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
@@ -423,7 +441,13 @@ main(int ac, char **av)
 	argv[0] = shell();
 	sprintf(cmd_path, "%s/bk.script", bin);
 	argv[1] = cmd_path;
-	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
+	for (i = 2, j = 0; av[j]; i++, j++) {
+		if (i >= (MAXARGS-10)) {
+			fprintf(stderr, "bk: too many args\n");
+			exit(1);
+		}
+		argv[i] = av[j];
+	}
 	argv[i] = 0;
 	cmdlog_start(av);
 	ret = spawnvp_ex(_P_WAIT, argv[0], argv);

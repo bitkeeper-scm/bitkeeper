@@ -2034,12 +2034,12 @@ pending(int checkComments)
 	int	ret;
 
 	unless (checkComments) {
-		f = popen("bk sfiles -C", "r");
+		f = popen("bk sfiles -pC", "r");
 		ret = fgetc(f) != EOF;
 		pclose(f);
 		return (ret);
 	}
-	f = popen("bk sfiles -CA | bk sccslog -CA -", "r");
+	f = popen("bk sfiles -pCA | bk sccslog -CA -", "r");
 	while (fnext(buf, f)) {
 		unless (t = strchr(buf, '\t')) {
 			pclose(f);

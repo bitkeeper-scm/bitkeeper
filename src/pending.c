@@ -15,6 +15,6 @@ $each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\n";
 		fprintf(stderr, "pending: cannot find project root\n");
 		exit(1);
 	}
-	sprintf(buf, "bk sfiles -CA | bk prs -Yh '-d%s' - | %s", dspec, pager);
+	sprintf(buf, "bk sfiles -pCA | bk prs -Yh '-d%s' - | %s", dspec, pager);
 	return (system(buf));
 }

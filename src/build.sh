@@ -7,7 +7,7 @@ test "$MAKE" || MAKE=gmake
 case "X`uname -s`" in
     *_NT*)
     	;;
-    *)	GNU=/opt/gnu/bin:/usr/local/bin:/usr/freeware/bin
+    *)	GNU=/opt/gnu/bin:/usr/local/bin:/usr/freeware/bin:/opt/groff/bin
 	SCCS=/usr/ccs/bin
 	GREP=/usr/xpg4/bin:/usr/xpg2/bin
 	PATH=$GNU:$SCCS:$GREP:$PATH

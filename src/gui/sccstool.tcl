@@ -109,7 +109,7 @@ proc revMap {file} \
 {
         global rev2date serial2rev dev_null revX
 
-        set dspec "-d:Ds:-:P: :DS: :Dy:/:Dm:/:Dd: :UTC-FUDGE:\n"
+        set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd: :UTC-FUDGE:\n"
         set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
         while {[gets $fid s] >= 0} {
 		set rev [lindex $s 0]

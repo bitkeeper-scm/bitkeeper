@@ -2,41 +2,29 @@
 #include "system.h"
 #include "sccs.h"
 
-#define LSTATE	0	/* lock state	 */
-#define CSTATE	1	/* change state	 */
-#define PSTATE	2	/* pending state */
-#define P2STATE 3	/* extended pending state */
+#define LSTATE	0	/* lock state: l,u,j,x */
+#define CSTATE	1	/* change state: c,' ' */
+#define PSTATE	2	/* pending state: p,' ' */
  
 WHATSTR("@(#)%K%");
 
 
-private	char *sfind_usage = "\n\
-usage: sfind [-aACeEgvS] [-s<select_sets>] [-o<file>] [directories]\n\n\
-    -a		examine all files, even if listed in BitKeeper/etc/ignore\n\
-    -A		for used with -s,,p, list all revs, not just the tip\n\
-    -C		for used with -s,,p, list pending files in file@rev format\n\
-    -e		list everything in quick scan mode\n\
-    -E		list everything in detail scan mode\n\
-    -g		list the gfile name, not the sfile name\n\
-    -v		verbose mode: annotate the output with state markers\n\
-    -o<file>	send the file list to <file>, and progress info to stdout\n\
-    -S		summarize output\n\
-    -U		list user file only (hide BitKeeper administrative file)\n\
-";
+private	char *sfind_usage = "\
+usage: sfind [-acdDeEgijlSuUvx] [-p[C|A]] [-o<file>] [directories]\n";
 
 typedef struct {
-	u32     show_markers:1;		/* show markers		*/
-	u32     aflg:1;			/* disable ignore list	*/
-	u32	s1_lflg:1;
-	u32	s1_uflg:1;
-	u32	s1_jflg:1;
-	u32	s1_xflg:1;
-	u32	s2_cflg:1;
-	u32	s2_nflg:1;
-	u32	s3_pflg:1;
-	u32	s3_cflg:1;
-	u32     gflg:1;     		/* print gfile name	*/
-	u32     Aflg:1;			/* use with -s,,p show	*/
+	u32     show_markers:1;		/* -v: show markers */
+	u32     all:1;			/* -a: disable ignore list */
+	u32	locked:1;		/* -l: list locked files */
+	u32	unlocked:1;		/* -u: list unlocked files */
+	u32	junk:1;			/* -j: list junk in SCCS dirs */
+	u32	extras:1;		/* -x: list extra files */
+	u32	modified:1;		/* -c: list changed files */
+	u32	nflg:1;			/* -n: list unchanged files */
+					/* XXX -  seems wrong */
+	u32	pending:1;		/* -p: list pending files */
+	u32     gfile:1;     		/* print gfile name	*/
+	u32     Aflg:1;			/* use with -p show	*/
 					/* all pending deltas	*/
 	u32     Cflg:1;     		/* want file@rev format	*/
 	u32     splitRoot:1;   		/* split root mode	*/
@@ -44,8 +32,8 @@ typedef struct {
 					/* pending delta	*/
 	u32	progress:1;		/* if set, send progress to stdout */
 	FILE	*out;			/* send output here */
-	u32     Sflg:1;     		/* summarize output  	*/
-	u32     Uflg:1;     		/* list user file only 	*/
+	u32     summarize:1;     	/* summarize output only */
+	u32     useronly:1;     	/* list user file only 	*/
 } options;
 
 typedef struct _q_item {
@@ -140,37 +128,32 @@ parse_select(char *sets)
 	char *p;
 
 	p = sets;
-	/* prase set 1 */
+	/* parse set 1 */
 	while (*p && (*p != ',')) {
 		switch (*p) {
-		    case 'l': opts.s1_lflg = 1; break;
-		    case 'u': opts.s1_uflg = 1; break;
-		    case 'j': opts.s1_jflg = 1; break;
-		    case 'x': opts.s1_xflg = 1; break;
-		    defualt: fprintf(stderr, "unknown set 1 flag %c\n", *p);
+		    case 'l': opts.locked = 1; break;
+		    case 'u': opts.unlocked = 1; break;
+		    case 'j': opts.junk = 1; break;
+		    case 'x': opts.extras = 1; break;
+		    default: fprintf(stderr, "unknown set 1 flag %c\n", *p);
 		}
 		p++;
 	}
 	unless (*p++ == ',') return;
-	/* prase set 2 */
+	/* parse set 2 */
 	while (*p && (*p != ',')) {
 		switch (*p) {
-		    case 'c': opts.s2_cflg = 1; break;
-		    case 'n': opts.s2_nflg = 1; break;
+		    case 'c': opts.modified = 1; break;
+		    case 'n': opts.nflg = 1; break;
 		    default: fprintf(stderr, "unknown set 2 flag %c\n", *p);
 		}
 		p++;
 	}
 	unless (*p++ == ',') return;
-	/* prase set 3 */
+	/* parse set 3 */
 	while (*p && (*p != ',')) {
 		switch (*p) {
-		    case 'p': opts.s3_pflg = 1; break;
-		    case 'c': opts.s3_cflg = 1; //XXX FIXME
-			      fprintf(stderr,
-					"-s,,c is not implemented yet\n");
-			      exit(1);
-			      break; 
+		    case 'p': opts.pending = 1; break;
 		    default: fprintf(stderr, "unknown set 3 flag %c\n", *p);
 		}
 		p++;
@@ -178,56 +161,63 @@ parse_select(char *sets)
 	unless (*p++ == ',') return;
 }
 
-
 int
 sfind_main(int ac, char **av)
 {
         int     c, i, sfiles_compat = 0; 
-	char	*root, *path, buf[MAXPATH];
+	char	*path, *s, buf[MAXPATH];
 
 	if ((ac > 1) && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfind_usage);
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aAcCdDeEgklo:pPrRs:SuUvx")) != -1) {
+	while ((c = getopt(ac, av, "aAcCdDeEgijklo:p|rRs:SuUvx")) != -1) {
 		switch (c) {
-		    case 'a':	opts.aflg = 1; break;
-		    case 'A':	opts.s3_pflg = opts.Aflg = 1; break;
-		    case 'c':	opts.s2_cflg = 1; break;
-		    case 'g':	opts.gflg = 1; break;
+		    case 'a':	opts.all = 1; break;
+		    case 'A':	opts.pending = opts.Aflg = 1; break;
+		    case 'c':	opts.modified = 1; break;
+		    case 'C':	opts.pending = opts.Cflg = 1; break;
+		    case 'd':	sfiles_compat = 1; break;
+		    case 'D':	sfiles_compat = 1; break;
+		    case 'i':	/* see below */
+		    case 'E':	opts.modified = 1;
+				opts.nflg = 1;
+				opts.pending = 1;
+				/* fall thru */
+		    case 'e':	opts.junk = 1;
+				opts.extras = 1;
+				opts.locked = 1;
+				unless (c == 'i') opts.unlocked = 1;
+				opts.show_markers = 1;
+				break;
+		    case 'g':	opts.gfile = 1; break;
+		    case 'j':	opts.junk = 1; break;
 		    case 'k':	sfiles_compat = 1; break;
-		    case 'l':   opts.s1_lflg = 1; break;
+		    case 'l':   opts.locked = 1; break;
 		    case 'o':	unless (opts.out = fopen(optarg, "w")) {
 		    			perror(optarg);
 					exit(1);
 				}
 				opts.progress = 1;
 				break;
-		    case 'C':	opts.s3_pflg = opts.Cflg = 1; break;
-		    case 'd':	sfiles_compat = 1; break;
-		    case 'D':	sfiles_compat = 1; break;
-		    case 'v':	opts.show_markers = 1; break;
-		    case 'E':	opts.s2_cflg = 1;
-				opts.s2_nflg = 1;
-				opts.s3_pflg = 1;
-				opts.s3_cflg = 1;
-				/* fall thru */
-		    case 'e':	opts.s1_jflg = 1;
-				opts.s1_xflg = 1;
-				opts.s1_lflg = 1;
-				opts.s1_uflg = 1;
+		    case 'p':	opts.pending =1;
+				for (s = optarg; s && *s; s++) {
+					if (*s == 'A') {
+						opts.Aflg = 1;
+						opts.Cflg = 1;
+					} else if (*s == 'C') opts.Cflg = 1;
+					else goto usage;
+				}
 				break;
-		    case 'p':	sfiles_compat = 1; break;
-		    case 'P':	sfiles_compat = 1; break;
 		    case 'r':	sfiles_compat = 1; break;
 		    case 'R':	sfiles_compat = 1; break;
-		    case 's':	parse_select(optarg);
-				break;
-		    case 'S':	opts.Sflg = 1; break; /* summarize output */	
-		    case 'u':	opts.s1_uflg = 1; break;
-		    case 'U':	opts.Uflg = 1; break;
-		    case 'x':	opts.s1_xflg = opts.s1_jflg = 1; break;
+		    case 's':	parse_select(optarg); break;
+		    case 'S':	opts.summarize = 1; break;
+		    case 'u':	opts.unlocked = 1; break;
+		    case 'U':	opts.useronly = 1; break;
+		    case 'v':	opts.show_markers = 1; break;
+		    case 'x':	opts.extras = opts.junk = 1; break;
 		    default: 	goto usage;
 		}
 	}
@@ -244,10 +234,10 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 	 * If user did not select any option,
 	 * setup a default mode for them
 	 */
-	if (!opts.s1_uflg && !opts.s1_lflg && !opts.s1_jflg && !opts.s1_xflg &&
-	    !opts.s2_cflg && !opts.s2_nflg && !opts.s3_pflg && !opts.s3_cflg) {
-		opts.s1_uflg = 1;
-		opts.s1_lflg = 1;
+	if (!opts.unlocked && !opts.locked && !opts.junk && !opts.extras &&
+	    !opts.modified && !opts.nflg && !opts.pending) {
+		opts.unlocked = 1;
+		opts.locked = 1;
 	}
 
 	if (!av[optind]) {
@@ -294,21 +284,17 @@ chk_sfile(char *name, char state[5])
 		if (exists(name)) {
 			state[LSTATE] = 'l';
 			s[1] = 's';
-			if (opts.s2_cflg && 
+			if (opts.modified && 
 			    (sc = init(name, INIT_NOCKSUM, 0, 0)) &&
 			    chk_diffs(sc)) { 
 				state[CSTATE] = 'c';
-			} else {
-				state[CSTATE] = 'n';
 			}
 		} else {
 			s[1] = 'z';
 			if (exists(name)) {
 				state[LSTATE] = 'l';
-				state[CSTATE] = 'n';
 			} else {
 				state[LSTATE] = 'u';
-				state[CSTATE] = 'n';
 			}
 			s[1] = 's';
 		}
@@ -320,7 +306,6 @@ private void
 chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
 {
 	delta	*d;
-	char	*rev;
 	int	local_s = 0, printed = 0;
 	char	buf[MAXPATH];
 
@@ -422,7 +407,7 @@ file(char *f)
 	strcpy(name, f);
 	s = rindex(name, '/');
 	/*
-	 * There are tree possible condition
+	 * There are three possible condition
 	 * a) f is a sfile
 	 * b) f is a regular or new gfile
 	 * c) f is a junk file in the SCCS directory
@@ -445,7 +430,7 @@ file(char *f)
 		 * This can fool the current code into wronly treating them
 		 * as xtras.
 		 */
-		/* this file is a gname */
+		/* this file is not in SCCS/s. form */
 		sfile = name2sccs(f); 
 		unless (exists(sfile)) {
 			state[CSTATE] = 'x';
@@ -457,10 +442,10 @@ file(char *f)
 	}
 
 	/*
-	 * When we get here. buf contain the gname
+	 * When we get here. buf contains the gname
 	 * Now we check for pending deltas
 	 */
-	if (opts.s3_pflg && state[CSTATE] != 'x' &&  state[CSTATE] != 'j') {
+	if (opts.pending && state[CSTATE] != 'x' &&  state[CSTATE] != 'j') {
 		chk_pending(sc, buf, state, 0, 0);
 	} else  {
 		if (state[CSTATE] == 'x' || state[CSTATE] == 'j') {
@@ -480,15 +465,15 @@ private void
 print_summary()
 {
 	fprintf(opts.out, "%6d files under revision control.\n", s_count);
-	if (opts.s1_xflg) {
+	if (opts.extras) {
 		fprintf(opts.out,
 		    "%6d files not under revision control.\n", x_count);
 	}
-	if (opts.s2_cflg) {
+	if (opts.modified) {
 		fprintf(opts.out,
 		    "%6d files modified and not checked in.\n", c_count);
 	}
-	if (opts.s3_pflg) {
+	if (opts.pending) {
 		fprintf(opts.out,
 		    "%6d files with checked in, but not committed, deltas.\n",
 		    p_count);
@@ -511,7 +496,7 @@ walk(char *dir, int level)
 {
 	struct dirent   *e;
 	DIR	*dh, *sccs_dh;
-	char	buf[MAXPATH], *p, *root;
+	char	buf[MAXPATH], *p;
 	fifo	dlist = {0, 0};
 #ifndef WIN32
         ino_t	lastInode = 0;
@@ -524,7 +509,7 @@ walk(char *dir, int level)
 		 */
 		if (find_root(dir, buf)) {
 			opts.splitRoot = hasRootFile(buf, tmp);
-			if (!opts.aflg) {
+			if (!opts.all) {
 				FILE	*ignoref; 
 
 				sprintf(tmp, "%s/BitKeeper/etc/ignore", buf);
@@ -541,7 +526,7 @@ walk(char *dir, int level)
 			 * Dir is not a BitKeeper repository,
 			 * turn off all BitKeeper specific feature.
 			 */
-			opts.aflg = 1;
+			opts.all = 1;
 		}
 		assert(proj == 0);
 #if 0
@@ -599,7 +584,7 @@ walk(char *dir, int level)
 done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
 		if (proj) proj_free(proj); proj = 0;
-		if (opts.Sflg) print_summary();
+		if (opts.summarize) print_summary();
 	}
 	if (opts.progress) progress(0);
 }
@@ -607,23 +592,8 @@ done:	if (level == 0) {
 private void
 progress(int force)
 {
-	static	struct timeval tv;
-	struct	timeval now;
-	int	msec;
 	char	buf[100];
 
-/*
- * This is a good idea if you are displaying to a DSL line or a modem,
- * but sucks otherwise.  Sorry, DSL.
-	if (force <= 1) {
-		gettimeofday(&now, 0);
-		msec = (now.tv_sec - tv.tv_sec) * 1000;
-		msec += now.tv_usec / 1000;
-		msec -= tv.tv_usec / 1000;
-		if (tv.tv_sec && (msec < 11)) return;
-		tv = now;
-	}
-*/
 	if (!force && (s_last == s_count) && (x_last == x_count)) return;
 	sprintf(buf, "%d %d %d\n", s_count, x_count, d_count);
 	/* If we get an error, it usually means that we are to die */
@@ -656,7 +626,7 @@ isIgnored(char *file)
 	int len;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	unless (opts.aflg) {
+	unless (opts.all) {
 		if (match_globs(file, ignore)) {
 			debug((stderr, "SKIP\t%s\n", file));
 			return (1);
@@ -721,21 +691,27 @@ isTagFile(char *file)
 	return (strneq("BitKeeper/etc/SCCS/x.", gfile, 21));
 }
 
-
 private void
 print_it(char state[5], char *file, char *rev)
 {
 	char *sfile, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	if (opts.Uflg) {
+	if (opts.useronly) {
 		if (streq(gfile, "ChangeSet") ||
 		    (strlen(gfile) > 10) && strneq(gfile, "BitKeeper/", 10)) {
 			return;
 		}
 	}
-	if (opts.show_markers) fprintf(opts.out, "%s ", state);
-	if (opts.gflg || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
+	if (opts.show_markers) {
+		if (state[CSTATE] == 'j') {
+			assert(streq(state, " j "));
+			fprintf(opts.out, "jjjj ");
+		} else {
+			fprintf(opts.out, "%s ", state);
+		}
+	}
+	if (opts.gfile || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
 		fputs(gfile, opts.out);	/* print gfile name */
 	} else {
 		sfile = name2sccs(gfile);
@@ -767,19 +743,19 @@ do_print(char state[5], char *file, char *rev)
 	    (((s_count - s_last) > 100) || ((x_count - x_last) > 100))) { 
 		progress(1);
 	}
-	if (opts.Sflg) return; /* user wants summary only, skip the detail */
-	if ((state[PSTATE] == 'p') && opts.s3_pflg) goto print;
+	if (opts.summarize) return; /* skip the detail */
+	if ((state[PSTATE] == 'p') && opts.pending) goto print;
 
 	switch (state[LSTATE]) {
-	    case 'l':	if (opts.s1_lflg) goto print; break;
-	    case 'u':	if (opts.s1_uflg) goto print; break;
+	    case 'l':	if (opts.locked) goto print; break;
+	    case 'u':	if (opts.unlocked) goto print; break;
 	}
 
 	switch (state[CSTATE]) {
-	    case 'c':	if (opts.s2_cflg) goto print; break;
-	    case 'n':	if (opts.s2_nflg) goto print; break;
-	    case 'j':	if (opts.s1_jflg && !isTagFile(file)) goto print; break;
-	    case 'x':	if (opts.s1_xflg && !isIgnored(file)) goto print; break;
+	    case 'c':	if (opts.modified) goto print; break;
+	    case 'n':	if (opts.nflg) goto print; break;
+	    case 'j':	if (opts.junk && !isTagFile(file)) goto print; break;
+	    case 'x':	if (opts.extras && !isIgnored(file)) goto print; break;
 	}
 	return;
 
@@ -879,10 +855,15 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 		if (patheq(e->d_name, "SCCS")) continue;
 
 		/*
+		 * Allow people to prune their tree with ".bk_skip".
+		 */
+		if (streq(".bk_skip", e->d_name)) goto skip;
+
+		/*
 		 * Do not descend into another project root. e.g RESYNC
 		 */
 		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
-			mdbm_close(gDB);
+skip:			mdbm_close(gDB);
 			mdbm_close(sDB);
 			return;
 		}
@@ -919,7 +900,6 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 	 * the mdbm internal index.
 	 */
 	while (p = dequeue(&slist)) {
-
 		char 	*file;
 		char	state[5] = "    ";
 
@@ -936,12 +916,10 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 			file[0] = 's';
 			concat_path(buf, dir, "SCCS");
 			concat_path(buf, buf, file);
-			if (opts.s2_cflg &&
+			if (opts.modified &&
 			    (s = init(buf, INIT_NOCKSUM, sDB, gDB)) &&
 			    chk_diffs(s)) {
 				state[CSTATE] = 'c';
-			} else {
-				state[CSTATE] = 'n';
 			}
 		} else {
 			file[0] = 'z';
@@ -950,11 +928,10 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 			} else {
 				state[LSTATE] = 'u';
 			}
-			state[CSTATE] = 'n';
 		}
 
 		concat_path(buf, dir, gfile);
-		if (opts.s3_pflg) {
+		if (opts.pending) {
 			/*
 			 * check for pending deltas
 			 */
@@ -985,7 +962,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 	 * Check the sDB for "junk" file
 	 * XXX TODO: Do we consider the r.file and m.file "junk" file?
 	 */
-	if (opts.s1_jflg) {
+	if (opts.junk) {
 		kvpair  kv;
 		concat_path(buf, dir, "SCCS");
 		for (kv = mdbm_first(sDB); kv.key.dsize != 0;
@@ -1020,7 +997,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 	/*
 	 * Everything left in the gDB is extra
 	 */
-	if (opts.s1_xflg) {
+	if (opts.extras) {
 		for (k = mdbm_firstkey(gDB); k.dsize != 0;
 						k = mdbm_nextkey(gDB)) {
 			concat_path(buf, dir, k.dptr);

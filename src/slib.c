@@ -2926,10 +2926,15 @@ mkgraph(sccs *s, int flags)
 nextdelta:	unless (buf = fastnext(s)) {
 bad:
 			fprintf(stderr,
-			    "%s: bad delta on line %d, expected `%s', "
-			    "line follows:\n\t",
+			    "%s: bad delta on line %d, expected `%s'",
 			    s->sfile, line, expected);
-			fprintf(stderr, "``%.*s''\n", linelen(buf)-1, buf);
+			if (buf) {
+				fprintf(stderr,
+				    ", line follows:\n\t``%.*s''\n",
+				    linelen(buf)-1, buf);
+			} else {
+				fprintf(stderr, "\n");
+			}
 			sccs_freetable(s->table);
 			s->table = 0;
 			return;
@@ -5564,7 +5569,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	} else {
 		/* With -G/somewhere/foo.c we need to check the gfile again */
 		if (WRITABLE(s) && writable(s->gfile)) {
-			fprintf(stderr, "Writeable %s exists\n", s->gfile);
+			verbose((stderr, "Writeable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char *)-1);
 		} else if ((flags & GET_NOREGET) && exists(s->gfile)) {
@@ -13756,10 +13761,9 @@ sccs_ino(sccs *s)
 int
 sccs_reCache(void)
 {
-	char	*av[4];
+	char	*av[3];
 
-	/* sfiles -r */
-	av[0] = "bk";  av[1] = "sfiles"; av[2] = "-r"; av[3] = 0;
+	av[0] = "bk";  av[1] = "idcache"; av[2] = 0;
 	return spawnvp_ex(_P_WAIT, av[0], av);
 }
 

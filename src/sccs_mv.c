@@ -217,7 +217,7 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 			sprintf(path, "%s/%s", p->root, IDCACHE);
 			unlink(path);
 			mdbm_close(idDB);
-			system("bk sfiles -r");
+			system("bk idcache");
 			goto again;
 		}
 		fprintf(stderr, "Key %s exists for %s\n", key, t);
