@@ -28,6 +28,10 @@ setup_main(int ac, char **av)
 		    case 'f':
 			force = 1;
 			break;
+		    default:
+			fprintf(stderr, "usage: setup [-f] [-c file] project\n");
+			return (1);   
+		
 		}
 	}
 	unless (package_path = av[optind]) {
