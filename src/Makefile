@@ -39,7 +39,8 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
-	  gettemp.o getuser.o glob.o gnupatch.o graft.o help.o host.o isascii.o \
+	  gettemp.o getuser.o glob.o gnupatch.o graft.o grep.o \
+	  help.o host.o isascii.o \
 	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
 	  lod.o log.o logging.o merge.o mkdir.o mklock.o mmap.o \
@@ -518,6 +519,7 @@ gettemp.o:	gettemp.c $(H)
 getuser.o:	getuser.c
 glob.o:		glob.c $(H)
 graft.o:	graft.c $(H)
+grep.o:		grep.c $(H)
 help.o:		help.c $(H)
 host.o:		host.c $(H)
 isascii.o:	isascii.c
