@@ -4,8 +4,14 @@
 .SH NAME
 bk pull \- updates the repository from its parent
 .SH SYNOPSIS
-.B bk pull [\-ilnqrt] [\-z[0\-9]] [
+.if t \{\
+.B bk pull [\-ilnqrt] [\-z
+.I d
+.B ] [
 .IB parent ]
+.\}
+.if n
+bk pull [\-ilnqrt] [\-z<d>] [<parent>]
 .SH DESCRIPTION
 .LP
 pull updates a repository from its parent.  Changes are retrieved and
@@ -56,8 +62,10 @@ means do not use the GUI tools.)
 .TP
 .AN \-z d
 Do compression at level 
-.I d 
-if possible; default is 
+.IB d ,
+if possible, where
+.I d
+is an integer value 0-9; default is 
 .BR \-z6 .
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.

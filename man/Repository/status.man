@@ -4,8 +4,12 @@
 .SH NAME
 bk status \- show repository status
 .SH SYNOPSIS
+.if t \{\
 .B bk status [\-v] [
 .IB repository ]
+.\}
+.if n
+bk status [\-v] [<repository>]
 .SH DESCRIPTION
 .LP
 The status command tells you what is going in the the tree.  The default

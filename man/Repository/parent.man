@@ -4,8 +4,12 @@
 .SH NAME
 bk parent \- show or set the parent repository
 .SH SYNOPSIS
+.if t \{\
 .B bk [\-qr] parent [
 .IB repository ]
+.\}
+.if n
+bk [\-qr] parent [<repository>]
 .SH DESCRIPTION
 .LP
 The parent command prints or sets the default location where the 

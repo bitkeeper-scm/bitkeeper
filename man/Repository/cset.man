@@ -4,6 +4,7 @@
 .SH NAME
 bk cset \- creates and manipulates changesets
 .SH SYNOPSIS
+.if t \{\
 .B cset 
 .OA [\-CcHhpq] 
 .OA d range
@@ -16,6 +17,10 @@ bk cset \- creates and manipulates changesets
 .OA x list
 .OA Y file
 .OA y msg 
+.\}
+.if n
+bk cset [\-CcHhpq] [-d<range>] [i<list>] [l<range>] 
+[-M<range>] [-m<range>] [-r<range>] [-S<sym>] [-x<list>] [-Y<file>] [-y<msg>]
 .SH DESCRIPTION
 .LP
 The cset command is a low level command used to generate BitKeeper patches.

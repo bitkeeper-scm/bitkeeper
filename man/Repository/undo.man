@@ -4,10 +4,14 @@
 .SH NAME
 bk undo \- Undo a changeset or set of changesets
 .SH SYNOPSIS
+.if t \{\
 .B bk undo [\-fqs] \-a
 .IB rev\  | 
 .B \-r
 .I revs
+.\}
+.if n
+bk undo [\-fqs] \-a<rev> | -r<revs>
 .SH DESCRIPTION
 .LP
 The undo command can be used to remove any changeset or set of

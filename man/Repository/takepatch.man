@@ -4,8 +4,12 @@
 .SH NAME
 bk takepatch \- apply a BitKeeper patch
 .SH SYNOPSIS
-.B takepatch [\-acFimStv] [\-f 
+.if t \{\
+.B bk takepatch [\-acFimStv] [\-f 
 .IB file ]
+.\}
+.if n
+bk takepatch [\-acFimStv] [\-f<file>]
 .SH DESCRIPTION
 .LP
 The takepatch command is used to apply a BitKeeper patch.  BitKeeper patches

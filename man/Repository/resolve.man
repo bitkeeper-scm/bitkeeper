@@ -4,13 +4,20 @@
 .SH NAME
 bk resolve \- merge and/or apply new work after push/pull/resync
 .SH SYNOPSIS
-.B bk resolve [\-aAcdlqrt1234] [\-m
+.if t \{\
+.B bk resolve [\-aAcdqrt1234] [\-l
+.I log
+.B ] [\-m
 .I merge
 .B ] [\-y
 .I comment
 .B ] [
 .I package_root
 .B ]
+.\}
+.if n
+bk resolve [\-aAcdqrt1234] [-l <log>] 
+[\-m<merge>] [-y<comment>] [<package_root>]
 .SH DESCRIPTION
 .LP
 After a 

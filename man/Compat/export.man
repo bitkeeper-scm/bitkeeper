@@ -48,7 +48,7 @@ Set patch's diff style to Unified or Context diff.
 .B -h
 Disable patch header.
 .TP
-.AN -i pattern
+.AN -i pat
 Export only pathnames matching 
 .IR pattern .
 .TP 
@@ -68,7 +68,7 @@ Be verbose.
 .B -w
 Make files writable (default is read-only).
 .TP
-.AN -x pattern
+.AN -x pat
 Export all pathnames not matching 
 .IR pattern .
 .LP

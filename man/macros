@@ -97,12 +97,10 @@
 ..
 .de AL
 .\" Bold Italic for option arg:arg
-.if t \{\
+.if t
 .	BI \\$1 \\$2:\\$3
-\}
-.if n \{\ 
+.if n
 .	B \\$1 <\\$2>:<\\$3>
-\}
 ..
 .de AX
 .\" For onscreen text examples (input/output)

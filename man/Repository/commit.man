@@ -4,7 +4,17 @@
 .SH NAME
 bk commit \- commit deltas to a changeset
 .SH SYNOPSIS
-.B bk commit [\-dFRqS:y:Y:]
+.if t \{\
+.B bk commit [\-dFRqS
+.I tag
+.B :y
+.Ix
+.B :Y
+.I file
+.B ]
+.\}
+.if n
+bk commit [\-dFRqS<tag>:y<x>:Y<file>]
 .SH DESCRIPTION
 .LP
 Takes all of your current revisions and adds them to a changeset.

@@ -4,12 +4,16 @@
 .SH NAME
 bk import \- import a set of files into a BitKeeper package
 .SH SYNOPSIS
+.if t \{\
 .B bk import [\-efiqrv] [\-l
 .IB file ]
 .B [\-S
 .IB sym ]
 .B [\-t
 .IB type ]
+.\}
+.if n
+bk import [\-efiqrv] [\-l<file>] [-S<sym>] [-t<type>]
 .SH DESCRIPTION
 .LP
 If you have not yet set up a package, read the bk help setup section.

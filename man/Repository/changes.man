@@ -5,13 +5,17 @@
 bk changes \- show what changesets have been checked 
 into your local work area.
 .SH SYNOPSIS
+.if t \{\
 .B bk changes [\-v
 .IB num ] 
 .B [\-r
 .IB revs ]
+.\}
+.if n
+bk changes [-v<num>] [-r<revs>]
 .SH OPTIONS
 .TP
-.AN \-r rev
+.AN \-r revs
 Specifies the changesets to be listed, i.e., 1.100..
 .TP
 .B \-t

@@ -4,8 +4,14 @@
 .SH NAME
 bk push \- send local changes to the parent repository
 .SH SYNOPSIS
-.B bk push [\-aglntq] [\-z[0\-9]] [
+.if t \{\
+.B bk push [\-aglntq] [\-z
+.I d
+.B ] [
 .IB parent ]
+.\}
+.if n
+bk push [\-aglntq] [\-z<d>] [<parent>]
 .SH DESCRIPTION
 Push sends changes in the current repository back to its parent if
 and only if the current repository is a superset of the parent.
@@ -55,8 +61,10 @@ and that the parent is a superset).
 .TP
 .AN \-z d
 Do compression at level 
-.I d 
-if possible; default is 
+.IB d ,
+if possible, where
+.I d
+is an integer value 0-9; default is 
 .BR \-z6 .
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.

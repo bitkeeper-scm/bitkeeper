@@ -4,9 +4,13 @@
 .SH NAME
 bk tag \- tag the BitKeeper repository with a symbolic name
 .SH SYNOPSIS
+.if t \{\
 .B bk tag [\-r
 .IB rev ] 
 .B symbol
+.\}
+.if n
+bk tag [\-r<rev>] symbol
 .SH DESCRIPTION
 .LP
 Symbols (aka tags) are used when you want to record the state of a tree.

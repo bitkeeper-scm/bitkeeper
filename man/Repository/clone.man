@@ -4,10 +4,16 @@
 .SH NAME
 bk clone \- create a new copy of a package
 .SH SYNOPSIS
+.if t \{\
 .B bk clone [\-q] [\-r
 .I rev 
-.B ] [\-z[0\-9]] 
+.B ] [\-z
+.I d
+.B ]
 .I source destination
+.\}
+.if n
+bk clone [-q] [-r<rev>] [-z<d>] <source> <destination>
 .SH DESCRIPTION
 .LP
 The clone command copies from the source repository and creates a
@@ -44,8 +50,10 @@ Clone the repository up to and including cset
 .TP
 .AN \-z d
 Do compression at level 
+.IR d ,
+if possible, where
 .I d
-if possible; default is \-z6.
+is an integer value 0-9; default is \-z6.
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.
 .SH "SEE ALSO"

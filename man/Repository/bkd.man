@@ -4,18 +4,22 @@
 .SH NAME
 bk bkd \- the BitKeeper daemon
 .SH SYNOPSIS
+.if t \{\
 .B bk bkd [\-eid] [\-l
-.IB file ] 
+.IB log ]
 .B [\-P
 .IB file ] 
 .B [\-p
 .IB port ] 
 .B [\-t
-.IB alrm ] 
+.IB num ] 
 .B [\-u
-.IB id ] 
+.IB uid ] 
 .B [\-x
 .IB cmd ]
+.\}
+.if n
+bk bkd [-eid] [-l<log>] [-P<file>] [-p<port>] [-t<num>] [-u<uid>] [-x<cmd>]
 .SH DESCRIPTION
 .LP
 The BitKeeper daemon, bkd, is used to get information about a

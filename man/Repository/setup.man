@@ -4,10 +4,14 @@
 .SH NAME
 bk setup \- create a new BitKeeper package repository
 .SH SYNOPSIS
+.if t \{\
 .B bk setup [
-.AN \-c configfile
+.AN \-c config
 .B ] 
 .I directory
+.\}
+.if n
+bk setup [-c<config>] <directory>
 .SH DESCRIPTION
 .LP
 Before setting up a BitKeeper repository, you need to read the
