@@ -1683,7 +1683,7 @@ url(char *path)
 
 	strcpy(buf, "http://");
 	strcat(buf, sccs_gethost());
-	if (Opts.port) sprintf(buf+strlen(buf), ":%d", Opts.port);
+	sprintf(buf+strlen(buf), ":%d", Opts.port ? Opts.port : BK_PORT);
 	if (path) {
 		strcat(buf, "/");
 		strcat(buf, path);
