@@ -35,6 +35,7 @@ rechksum_main(int ac, char **av)
 	int	dont = 0;
 	int	verbose = 0;
 	int	c;
+	project	*p;
 
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sum_help);
@@ -51,8 +52,9 @@ usage:		fprintf(stderr, "%s", sum_help);
 	}
 	for (name = sfileFirst("rechksum", &av[optind], 0);
 	    name; name = sfileNext()) {
-		s = sccs_init(name, 0, 0);
+		s = sccs_init(name, INIT_SAVEPROJ, p);
 		if (!s) continue;
+		if (!p) p = s->proj;
 		unless (s->tree) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
 			    av[0], s->sfile);

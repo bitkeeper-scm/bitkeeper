@@ -162,69 +162,73 @@ struct command cmdtbl[100] = {
 	{0, 0},
 };
 
+usage()
+{
+	fprintf(stderr, "usage bk [-r[dir]] | -R command [options] [args]\n");
+	printf("Try bk help for help.\n");
+	exit(1);
+}
+
 main(int ac, char **av)
 {
-	int i, j;
-	char cmd_path[MAXPATH];
-	char *argv[100];
-	char *p;
+	int	i, j;
+	char	cmd_path[MAXPATH];
+	char	*argv[100];
+	char	*p;
+	int	c;
+	int	dashr = 0;
+	char	*prog;
 
 	/*
 	 * XXX TODO: implement "__logCommand"
 	 */
 	platformInit(); 
-	av[0] = basenm(av[0]);
-	if (streq(av[0], BK)) {
-		if (av[1] == NULL) {
-			printf("usage %s command '[options]' '[args]'\n");
-			printf("Try bk help for help.\n");
-			exit(0);
-		} else if (streq(av[1], "-h")) {
-			av++; ac--;
-			return (help_main(ac, av));
-		} else if (streq(av[1], "-r")) {
-			if (isdir(av[2])) {
-				chdir(av[2]);
-				av++; ac--;
-			} else {
+	prog = basenm(av[0]);
+	argv[0] = "help";
+	argv[1] = 0;
+
+	/*
+	 * Parse our options if called as "bk".
+	 */
+	if (streq(prog, "bk")) {
+		while ((c = getopt(ac, av, "r:R")) != -1) {
+			switch (c) {
+			    case 'h':
+				return (help_main(1, argv));
+			    case 'r':
+				if (optarg) {
+					unless (chdir(optarg) == 0) {
+						perror(optarg);
+						return (1);
+					}
+				} else if (sccs_cd2root(0, 0) == -1) {
+					fprintf(stderr, 
+					    "bk: Can not find project root.\n");
+					return(1);
+				}
+				dashr++;
+				break;
+			    case 'R':
 				if (sccs_cd2root(0, 0) == -1) {
 					fprintf(stderr, 
 					    "bk: Can not find project root.\n");
 					return(1);
 				}
-			}
-			av++; ac--;
-			if (streq(av[1], "-R")) {
-				sccs_cd2root(0, 0);
-				av++; ac--;
-			}
-			unless (streq(av[1], "sfiles")) {
-				char buf[MAXLINE];
-				char *p, *q;
-
-				strcpy(buf, "bk sfiles | bk");
-				p = &buf[strlen(buf)];
-				for (i = 1; q = av[i]; i++) {
-					*p++ = ' ';
-					*p++ = '\"';
-					while (*q) {
-						if (*q == '\"') *p = '\\';
-						*p++ = *q++;
-					}
-					*p++ = '\"';
-				}
-				*p++ = ' ';
-				*p++ = '-';
-				*p = '\0';
-				return(system(buf));
+				break;
+			    default:
+				usage();
 			}
 		}
-		if (streq(av[1], "-R")) {
-			sccs_cd2root(0, 0);
-			av++; ac--;
+		unless (prog = av[optind]) usage();
+		av = &av[optind];
+		for (ac = 0; av[ac]; ac++);
+		if (dashr) {
+			unless (streq(prog, "sfiles")) {
+				return (sfiles(ac, av));
+			}
 		}
-		av++; ac--;
 	}
+	getoptReset();
 
 	/*
 	 * Set up Env variables
@@ -250,7 +254,7 @@ main(int ac, char **av)
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
 		if (streq(cmdtbl[i].name, av[0])){
-			return((*(cmdtbl[i].func))(ac, av));
+			return (cmdtbl[i].func(ac, av));
 		}
 	}
 
@@ -345,6 +349,57 @@ main(int ac, char **av)
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
 	argv[i] = 0;
 	return (spawnvp_ex(_P_WAIT, argv[0], argv));
+}
+
+sfiles(int ac, char **av)
+{
+	pid_t	pid;
+	int	p[2];
+	int	i;
+
+	if (pipe(p)) {
+		perror("pipe");
+		exit(1);
+	}
+	pid = fork();
+	if (pid == -1) {
+		perror("fork");
+		exit(1);
+	} else if (pid) {	/* parent runs sfiles into pipe */
+		int	status;
+		char	*sav[2];
+
+		signal(SIGCHLD, SIG_DFL);
+		close(p[0]);
+		close(1);
+		dup(p[1]);
+		close(p[1]);
+		sav[0] = "sfiles";
+		sav[1] = 0;
+		status = sfiles_main(1, sav);
+		if (status) {
+			kill(pid, SIGTERM);
+			wait(0);
+			exit(status);
+		}
+		waitpid(pid, &status, 0);
+		if (WIFEXITED(status)) exit(WEXITSTATUS(status));
+		exit(100);
+	} else {		/* child runs command - */
+		close(p[1]);
+		close(0);
+		dup(p[0]);
+		close(p[0]);
+		/*
+		 * look up the internal command 
+		 */
+		for (i = 0; cmdtbl[i].name; i++) {
+			if (streq(cmdtbl[i].name, av[0])){
+				exit(cmdtbl[i].func(ac, av));
+			}
+		}
+		exit(101);
+	}
 }
 
 char *
