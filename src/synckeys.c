@@ -425,8 +425,10 @@ empty:	for (d = s->table; d; d = d->next) {
 			write(outfd, key, strlen(key));
 		}
 		if (flags & PK_LREV) {
-			sprintf(key, "%s\n", d->rev);
-			write(outfd, key, strlen(key));
+			if (d->type == 'D') {
+				sprintf(key, "%s\n", d->rev);
+				write(outfd, key, strlen(key));
+			}
 		}
 		if (flags & PK_LKEY) {
 			sccs_sdelta(s, d, key);
