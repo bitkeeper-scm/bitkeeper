@@ -126,11 +126,11 @@ _csets() {
 	if [ -f RESYNC/BitKeeper/etc/csets ]
 	then	echo Viewing RESYNC/BitKeeper/etc/csets
 		cd RESYNC
-		exec ${BIN}csettool -r`cat BitKeeper/etc/csets`
+		exec ${BIN}csettool "$@" -r`cat BitKeeper/etc/csets`
 	fi
 	if [ -f BitKeeper/etc/csets ]
 	then	echo Viewing BitKeeper/etc/csets
-		exec ${BIN}csettool -r`cat BitKeeper/etc/csets`
+		exec ${BIN}csettool "$@" -r`cat BitKeeper/etc/csets`
 	fi
 	echo "Can not find csets to view."
 	exit 1

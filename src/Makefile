@@ -175,6 +175,9 @@ TAGS: srcs
 	@etags $(SRCS) $(HDRS)
 	@echo etags completed
 
+rsh rshtest:
+	PREFER_RSH=yes make test
+
 test tests: $(ALL) t/doit
 	@if [ ! -d tmp ]; then mkdir tmp; chmod 777 tmp; fi
 	@rm -f tmp/keys

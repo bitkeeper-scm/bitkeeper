@@ -350,7 +350,7 @@ proc dotFile {} \
 	readFiles $l $r
 
 	set buf ""
-	set line [expr $Files($lastFile) - 1]
+	set line [lindex [split $line "."] 0]
 	while {[regexp {^ChangeSet (.*)$} $buf dummy crev] == 0} {
 		incr line -1
 		set buf [.filelist.t get "$line.0" "$line.0 lineend"]
