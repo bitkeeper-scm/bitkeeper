@@ -557,6 +557,72 @@ _sdiffs() {
 	${BIN}diffs -s "$@"
 }
 
+# usage: tag [r<rev>] symbol
+_tag() {
+	_cd2root
+	REV=
+	while getopts r: opt
+	do	case "$opt" in
+		r) REV=:$OPTARG;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ "X$1" = X ]
+	then	echo "Usage: tag [-r<rev>] tag_name"
+		exit 1
+	fi
+	${BIN}admin -S${1}$REV ChangeSet
+}
+
+# usage: gone key [key ...]
+_gone() {
+	_cd2root
+	if [ ! -d BitKeeper/etc ]
+	then	echo No BitKeeper/etc
+		exit 1
+	fi
+	cd BitKeeper/etc
+	if [ "X$1" = X ]
+	then	echo "usage: gone key [key ...]"
+		exit 1
+	fi
+	if [ -f SCCS/s.gone ]
+	then	${BIN}get -eq gone
+	fi
+	for i
+	do	echo "$i" >> gone
+	done
+	if [ -f SCCS/s.gone ]
+	then	${BIN}delta -yGone gone
+	else	${BIN}delta -i gone
+	fi
+}
+
+# usage: chmod mode file [file ...]
+_chmod() {
+	if [ "X$1" = X -o "X$2" = X ]
+	then	echo "usage: chmod mode file [file ...]"
+		exit 1
+	fi
+	MODE=$1
+	shift
+	for i
+	do	if [ -w $i ]
+		then 	echo $i is edited, skipping it
+			continue
+		fi
+		${BIN}get -qe $i
+		omode=`ls -l $i | sed 's/[ \t].*//'`
+		chmod $MODE $i
+		mode=`ls -l $i | sed 's/[ \t].*//'`
+		${BIN}clean $i
+		if [ $omode = $mode ]
+		then	continue
+		fi
+		${BIN}admin -m$mode $i
+	done
+}
+
 # Usage: fix file
 _fix() {
 	Q=-q
@@ -1136,7 +1202,7 @@ _commandHelp() {
 		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
 		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
 		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
-		    csettool|difftool|merging)
+		    csettool|difftool|merging|tag|gone|chmod)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		    *)
@@ -1280,7 +1346,7 @@ case "$1" in
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
     pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics)
+    topics|chmod|gone|tag)
 	cmd=$1
     	shift
 	_$cmd "$@"
