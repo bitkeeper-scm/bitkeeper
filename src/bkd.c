@@ -139,7 +139,7 @@ drain()
 	alarm(20);
 	shutdown(1, 1); /* We need this for local bkd */
 	close(1); /* in case remote is waiting for input */
-	while (getline(0, buf, sizeof(buf))) {
+	while (getline(0, buf, sizeof(buf)) >= 0) {
 		if (streq("@END@", buf)) break;
 		if (i++ > 200) break; /* just in case */
 	}

@@ -712,8 +712,6 @@ cmdlog_start(char **av, int httpMode)
 
 	if (cmdlog_flags & CMD_WRLOCK) {
 		if (i = repository_wrlock()) {
-			char junkMsg[MAXLINE];
-
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
 			}
@@ -734,16 +732,12 @@ cmdlog_start(char **av, int httpMode)
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (strneq("remote ", av[0], 7)) {
-				read(0, junkMsg, sizeof(junkMsg));
-			}
+			if (strneq("remote ", av[0], 7)) drain();
 			exit(1);
 		}
 	}
 	if (cmdlog_flags & CMD_RDLOCK) {
 		if (i = repository_rdlock()) {
-			char junkMsg[MAXLINE];
-
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
 			}
@@ -764,9 +758,7 @@ cmdlog_start(char **av, int httpMode)
 			 * We need this to make the bkd error message show up
 			 * on the client side.
 			 */
-			if (strneq("remote ", av[0], 7)) {
-				read(0, junkMsg, sizeof(junkMsg));
-			}
+			if (strneq("remote ", av[0], 7)) drain();
 			exit(1);
 		}
 	}

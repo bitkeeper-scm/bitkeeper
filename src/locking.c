@@ -284,12 +284,16 @@ wrlock(void)
 		mkdir(path, 0777);
 		chmod(path, 0777);	/* kill their umask */
 	}
+	unless (writable(path)) {
+		proj_free(p);
+		return (LOCKERR_PERM);
+	}
 
 	sprintf(lock, "%s/%s", p->root, WRITER_LOCK);
 	if (sccs_lockfile(lock, 0, 0, 0)) {
 		proj_free(p);
 		ldebug(("WRLOCK by %d failed, lockfile failed\n", getpid()));
-		return (LOCKERR_PERM);
+		return (LOCKERR_LOST_RACE);
 	}
 
 	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
