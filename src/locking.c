@@ -14,6 +14,7 @@ int	repository_rdlock(void);
 int	repository_wrlock(void);
 int	repository_rdunlock(int force);
 int	repository_wrunlock(void);
+int	repository_stale(char *path, int discard);
 
 int
 repository_locked(project *p)
@@ -62,7 +63,9 @@ repository_lockers(project *p)
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
 		unless (isdigit(d->d_name[0])) continue;
-		fprintf(stderr, "Write locker: %s\n", d->d_name);
+		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, d->d_name);
+		fprintf(stderr, "Write locker: %s%s\n",
+		    d->d_name, repository_stale(path, 0) ? " (stale)" : "");
 		n++;
 	}
 	closedir(D);
@@ -74,7 +77,9 @@ rd:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	}
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
-		fprintf(stderr, "Read  locker: %s\n", d->d_name);
+		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, d->d_name);
+		fprintf(stderr, "Read  locker: %s%s\n",
+		    d->d_name, repository_stale(path, 0) ? " (stale)" : "");
 		n++;
 	}
 	closedir(D);
@@ -91,12 +96,10 @@ repository_cleanLocks(project *p, int force)
 {
 	char	path[MAXPATH];
 	char	*host;
-	u32	pid;
 	int	freeit = 0;
 	int	left = 0;
 	DIR	*D;
 	struct	dirent *d;
-	int	flags = 0;
 	struct	stat sbuf;
 
 	unless (p) {
@@ -119,24 +122,12 @@ err:		if (freeit) proj_free(p);
 	}
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
+		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, d->d_name);
 		if (force) {
-			sprintf(path,
-			    "%s/%s/%s", p->root, READER_LOCK_DIR, d->d_name);
 			unlink(path);
 			continue;
 		}
-
-		pid = 0;
-		path[0] = 0;
-		sscanf(d->d_name, "%d@%s", &pid, path);
-		if (streq(path, host) &&
-		    (kill((pid_t)pid, 0) != 0) && (errno == ESRCH)) {
-		    	verbose((stderr, "bk: discarding stale lock %s\n",
-			    d->d_name));
-			sprintf(path,
-			    "%s/%s/%s", p->root, READER_LOCK_DIR, d->d_name);
-			unlink(path);
-		} else {
+		unless (repository_stale(path, 1)) {
 			left++;
 		}
 	}
@@ -156,22 +147,12 @@ write:	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	}
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
+		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, d->d_name);
 		if (force) {
 			unlink(path);
 			continue;
 		}
-
-		pid = 0;
-		path[0] = 0;
-		sscanf(d->d_name, "%d@%s", &pid, path);
-		if (streq(path, host) &&
-		    (kill((pid_t)pid, 0) != 0) && (errno == ESRCH)) {
-		    	verbose((stderr, "bk: discarding stale lock %s\n",
-			    d->d_name));
-			sprintf(path,
-			    "%s/%s/%s", p->root, WRITER_LOCK_DIR, d->d_name);
-			unlink(path);
-		} else {
+		unless (repository_stale(path, 1)) {
 			left++;
 		}
 	}
@@ -341,5 +322,29 @@ repository_wrunlock()
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	rmdir(path);
 out:	proj_free(p);
+	return (0);
+}
+
+int
+repository_stale(char *path, int discard)
+{
+	char	*s = strrchr(path, '/');
+	char	host[256];
+	char	*thisHost = sccs_gethost();
+	int	flags = 0;
+	u32	pid;
+
+	unless (thisHost) return (0);
+	if (s) s++; else s = path;
+	sscanf(s, "%d@%s", &pid, host);
+	if (streq(host, thisHost) &&
+	    (kill((pid_t)pid, 0) != 0) && (errno == ESRCH)) {
+		if (discard) {
+		    	verbose((stderr, "bk: discarding stale lock %s\n",
+			    path));
+			unlink(path);
+		}
+		return (1);
+	}
 	return (0);
 }

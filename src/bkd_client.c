@@ -155,7 +155,7 @@ void
 remote_print(remote *r, FILE *f)
 {
 	unless (r) return;
-	fprintf(f, "R=0x%x ", r);
+	fprintf(f, "R=0x%x ", (unsigned int)r);
 	if (r->user) fprintf(f, "USER=%s ", r->user);
 	if (r->host) fprintf(f, "HOST=%s ", r->host);
 	if (r->port) fprintf(f, "PORT=%u ", r->port);
@@ -169,7 +169,7 @@ remote_print(remote *r, FILE *f)
  * password prompts and other commands may use it for status.
  */
 pid_t
-bkd(int compress, remote *r, int fds[2])
+bkd(int compress, remote *r, int *sock)
 {
 	char	*t;
 	char	*remsh = "ssh";
@@ -182,14 +182,12 @@ bkd(int compress, remote *r, int fds[2])
 
 	if (r->port) {
 		assert(r->host);
-		fds[0] = fds[1] = tcp_connect(r->host, r->port);
+		*sock = tcp_connect(r->host, r->port);
 		return ((pid_t)0);
 	}
-
-	if (tcp_pair(inout) == -1) {
-err:		return ((pid_t)-1);
-	}
-	if (r->host) {
+	if (tcp_pair(inout) == -1) return ((pid_t)-1);
+	t = sccs_gethost();
+	if (r->host && (!t || !streq(t, r->host))) { 
 		if (((t = getenv("PREFER_RSH")) && streq(t, "YES")) ||
 		    !findprog("ssh")) {
 #ifdef	hpux
@@ -241,18 +239,17 @@ err:		return ((pid_t)-1);
 		exit(1);
 	    default:
 		close(inout[1]);
-		fds[0] = fds[1] = inout[0];
+		*sock = inout[0];
 	    	return (p);
     	}
 }
 
 void
-bkd_reap(pid_t resync, int fds[2])
+bkd_reap(pid_t resync, int sock)
 {
 	int	i;
 
-	close(fds[0]);
-	close(fds[1]);
+	close(sock);
 	if (resync) {
 		kill(resync, SIGTERM);
 		for (i = 0; i < 100; ++i) {

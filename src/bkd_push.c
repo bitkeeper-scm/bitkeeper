@@ -6,7 +6,9 @@ cmd_push(int ac, char **av)
 	int	error = 0;
 	pid_t	pid;
 	int	c, verbose = 1;
-	char	buf[100];
+	int	gzip = 0;
+	char	buf[4096];
+	int	p[2];
 	static	char *prs[] =
 	    { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
@@ -24,9 +26,13 @@ cmd_push(int ac, char **av)
 		out("OK-write lock granted\n");
 	}
 
-	while ((c = getopt(ac, av, "q")) != -1) {
+	while ((c = getopt(ac, av, "qz|")) != -1) {
 		switch (c) {
 		    case 'q': verbose = 0; break;
+		    case 'z': 
+			gzip = optarg ? atoi(optarg) : 6;
+			if (gzip < 0 || gzip > 9) gzip = 6;
+			break;
 	    	}
 	}
 	
@@ -59,15 +65,40 @@ cmd_push(int ac, char **av)
 	 */
 	bzero(buf, sizeof(buf));
 	if ((in(buf, 8) == 8) && streq(buf, "@PATCH@\n")) {
+		if (gzip && (pipe(p) == -1)) {
+			out("@DONE@\n");
+			goto out;
+		}
+
 		/*
 		 * Wait for takepatch to get done and then send ack.
 		 */
-		if (pid = fork()) {
-			int	status;
+		pid = fork();
+		if (pid == -1) {
+			out("@DONE@\n");
+			goto out;
+		} else if (pid) {
+			int	n, status;
 
-			if (pid == -1) {
-				out("@DONE@\n");
-				goto out;
+			/*
+			 * We get the data from the socket, uncompress,
+			 * and feed it to takepatch.
+			 */
+			if (gzip) {
+				close(p[0]);
+				gzip_init(gzip);
+				/*
+				 * NB: this read counts on the TCP shutdown()
+				 * interface working.  The other side shuts
+				 * the send side of the socket, and that needs
+				 * to show up here as an EOF.
+				 * If that doesn't work, we need two sockets.
+				 */
+				while ((n = read(0, buf, sizeof(buf))) > 0) {
+					gunzip2fd(buf, n, p[1]);
+				}
+				close(p[1]);
+				gzip_done();
 			}
 			waitpid(pid, &status, 0);
 			out("@DONE@\n");
@@ -78,6 +109,15 @@ cmd_push(int ac, char **av)
 				OUT;
 			}
 		} else {
+			if (gzip) {
+				close(0);
+				dup(p[0]);
+				close(p[0]);
+				close(p[1]);
+			}
+			/* Arrange to have stderr go to stdout */
+			close(2);
+			dup(1);
 			unless (verbose) tp[3] = 0;
 			execvp(tp[0], tp);
 		}

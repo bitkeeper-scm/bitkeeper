@@ -22,7 +22,7 @@ cmd_clone(int ac, char **av)
 		switch (c) {
 		    case 'z':
 			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 1 || gzip > 9) gzip = 6;
+			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'q':
 			cmd[4] = "-q";
@@ -48,14 +48,13 @@ uncompressed()
 {
 	pid_t	pid;
 
-	if (pid = fork()) {
+	pid = fork();
+	if (pid == -1) {
+		repository_rdunlock(0);
+		exit(1);
+	} else if (pid) {
 		int	status;
 
-		if (pid == -1) {
-			out("ERROR-fork failed\n");
-			repository_rdunlock(0);
-			exit(1);
-		}
 		waitpid(pid, &status, 0);
 		repository_rdunlock(0);
 		exit(0);
@@ -78,7 +77,7 @@ err:		repository_rdunlock(0);
 	}
 	pid = fork();
 	if (pid == -1) {
-		exit(1);
+		goto err;
 	} else if (pid) {
 		int	status;
 

@@ -68,14 +68,20 @@ extern	struct cmd cmds[];
 extern	int exists(char *);
 extern	bkdopts Opts;
 
-int	writen(int fd, char *s);
-int	readn(int from, char *buf, int size);
-int	getline(int in, char *buf, int size);
 remote	*remote_parse(char *url);
-void	remote_free(remote *r);
 char	*remote_unparse(remote *r);
+pid_t	bkd(int compress, remote *r, int *sock);
+void	bkd_reap(pid_t resync, int sock);
+int	getline(int in, char *buf, int size);
+int	gunzip2fd(char *input, int len, int fd);
+int	gzip2fd(char *input, int len, int fd);
+void	gzip_done(void);
+void	gzip_init(int level);
+int	in(char *s, int len);
+int	out(char *s);
+int	readn(int from, char *buf, int size);
+void	remote_free(remote *r);
 void	remote_print(remote *r, FILE *f);
-pid_t	bkd(int compress, remote *r, int fds[2]);
-void	bkd_reap(pid_t resync, int fds[2]);
+int	writen(int fd, char *s);
 
 #endif

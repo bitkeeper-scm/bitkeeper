@@ -1,8 +1,12 @@
 #include "bkd.h"
 
-void	do_cmds();
+void	bkd_server(void);
+void	do_cmds(void);
 int	findcmd(int ac, char **av);
 int	getav(int *acp, char ***avp);
+void	log_cmd(int i, int ac, char **av);
+void	readonly(void);
+void	reap(int sig);
 
 int
 main(int ac, char **av)
@@ -25,6 +29,7 @@ main(int ac, char **av)
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
 		bkd_server();
+		exit(1);
 		/* NOTREACHED */
 	} else {
 		do_cmds();
@@ -39,6 +44,7 @@ reap(int sig)
 	signal(SIGCHLD, reap);
 }
 
+void
 bkd_server()
 {
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
@@ -105,10 +111,11 @@ do_cmds()
 	}
 }
 
+void
 log_cmd(int i, int ac, char **av)
 {
 	time_t	t;
-	struct	tm tm, *tp;
+	struct	tm *tp;
 
 	time(&t);
 	tp = localtime(&t);
@@ -120,6 +127,7 @@ log_cmd(int i, int ac, char **av)
 }
 
 /* remove all write commands from the cmds array */
+void
 readonly()
 {
 	struct	cmd c[100];

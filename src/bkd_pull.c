@@ -42,7 +42,7 @@ cmd_pull(int ac, char **av)
 		    case 'q': verbose = 0; break;
 		    case 'z': 
 			gzip = optarg ? atoi(optarg) : 6;
-			if (gzip < 1 || gzip > 9) gzip = 6;
+			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 	    	}
 	}
@@ -160,6 +160,7 @@ uncompressed(char *tmpfile)
 		int	status;
 
 		if (pid == -1) {
+			repository_rdunlock(0);
 			out("ERROR-fork failed\n");
 			return (1);
 		}
@@ -173,6 +174,7 @@ uncompressed(char *tmpfile)
 		close(0);
 		open(tmpfile, 0, 0);
 		execvp(cset[0], cset);
+		exit(1);
 	}
 }
 
@@ -214,6 +216,7 @@ err:		repository_rdunlock(0);
 		close(1); dup(p[1]); close(p[1]);
 		close(p[0]);
 		execvp(cset[0], cset);
+		exit(1);
 	}
 }
 
