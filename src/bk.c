@@ -158,6 +158,7 @@ int	strings_main(int, char **);
 int	tagmerge_main(int, char **);
 int	takepatch_main(int, char **);
 int	testdates_main(int, char **);
+int	timestamp_main(int, char **);
 int	unbk_main(int, char **);
 int	undo_main(int, char **);
 int	undos_main(int, char **);
@@ -207,6 +208,7 @@ struct	command cmdtbl[] = {
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
 	{"_strings", strings_main},
+	{"_timestamp", timestamp_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},			/* doc 2.0 */	
 	{"add", delta_main},			/* doc 2.0 */

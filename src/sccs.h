@@ -1085,6 +1085,7 @@ void	updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int diff);
 struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
+void	set_timestamps(char *sfile);
 
 extern char *bk_vers;
 extern char *bk_utc;

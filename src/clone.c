@@ -233,10 +233,14 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	bk_proj = proj_init(0);
 	p = user_preference("checkout");
 	if (strieq(p, "edit")) {
-		sys("bk", "-r", "edit", "-qT", SYS);
+		sys("bk", "-r", "edit", "-q", SYS);
 	} else if (strieq(p, "get")) {
 		sys("bk", "-r", "get", "-q", SYS);
 	}
+	
+	/* fixup timestamps */
+	system("bk -r _timestamp");
+	
 
 	if (r->port && isLocalHost(r->host) && (bk_mode() == BK_BASIC)) {
 		mkdir(BKMASTER, 0775);
