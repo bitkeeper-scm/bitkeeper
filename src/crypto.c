@@ -107,9 +107,10 @@ crypto_main(int ac, char **av)
 		break;
 	    case 'h':
 		if (av[optind+1]) {
-			hash = secure_hashstr(av[optind], av[optind+1]);
+			hash = secure_hashstr(av[optind], strlen(av[optind]),
+			    av[optind+1]);
 		} else {
-			hash = hashstr(av[optind]);
+			hash = hashstr(av[optind], strlen(av[optind]));
 		}
 		puts(hash);
 		free(hash);
@@ -461,7 +462,7 @@ base64_main(int ac, char **av)
 }
 
 char *
-secure_hashstr(char *str, char *key)
+secure_hashstr(char *str, int len, char *key)
 {
 	int	hash = register_hash(&md5_desc);
 	unsigned long md5len, b64len;
@@ -469,13 +470,13 @@ secure_hashstr(char *str, char *key)
 	char	md5[32];
 	char	b64[32];
 
-	if (streq(str, "-")) {
+	if ((len == 1) && streq(str, "-")) {
 		if (hmac_filehandle(hash, stdin, key, strlen(key), md5)) {
 			return (0);
 		}
 	} else {
 		if (hmac_memory(hash, key, strlen(key),
-			str, strlen(str), md5)) return (0);
+			str, len, md5)) return (0);
 	}
 	b64len = sizeof(b64);
 	md5len = hash_descriptor[hash].hashsize;
@@ -492,7 +493,7 @@ secure_hashstr(char *str, char *key)
 }
 
 char *
-hashstr(char *str)
+hashstr(char *str, int len)
 {
 	int	hash = register_hash(&md5_desc);
 	unsigned long md5len, b64len;
@@ -500,10 +501,10 @@ hashstr(char *str)
 	char	md5[32];
 	char	b64[32];
 
-	if (streq(str, "-")) {
+	if ((len == 1) && streq(str, "-")) {
 		if (hash_filehandle(hash, stdin, md5)) return (0);
 	} else {
-		if (hash_memory(hash, str, strlen(str), md5)) return (0);
+		if (hash_memory(hash, str, len, md5)) return (0);
 	}
 	b64len = sizeof(b64);
 	md5len = hash_descriptor[hash].hashsize;
@@ -532,7 +533,7 @@ signed_loadFile(char *filename)
 	*p = 0;
 	while ((p > data) && (*p != '\n')) --p;
 	*p++ = 0;
-	hash = secure_hashstr(data, bk_utc);
+	hash = secure_hashstr(data, (p - data - 1), bk_utc);
 	unless (streq(hash, p)) {
 		free(data);
 		data = 0;
@@ -552,7 +553,7 @@ signed_saveFile(char *filename, char *data)
 	unless (f = fopen(tmpf, "w")) {
 		return (-1);
 	}
-	hash = secure_hashstr(data, bk_utc);
+	hash = secure_hashstr(data, strlen(data), bk_utc);
 	fprintf(f, "%s\n%s\n", data, hash);
 	fclose(f);
 	free(hash);

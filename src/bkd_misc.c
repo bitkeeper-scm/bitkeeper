@@ -98,6 +98,23 @@ cmd_putenv(int ac, char **av)
 	if (vRootPrefix && (len == 8) && strneq(av[1], "BK_VHOST", 8)) {
 		if (cd2vroot()) return (1);
 	}
+
+	/*
+	 * Handle BK_SEED processing
+	 */
+	if (strneq(av[1], "BK_SEED=", 8)) {
+		char	*seed, *oldseed = 0, *newseed;
+		int	i;
+
+		seed = av[1] + 8;
+		if (strchr(seed, '|')) {
+			oldseed = bkd_restoreSeed(getenv("BK_REPOID"));
+		}
+		i = bkd_seed(oldseed, seed, &newseed);
+		if (oldseed) safe_putenv("BK_SEED_OK=%d", !i);
+		unless (oldseed) bkd_saveSeed(getenv("BK_REPOID"), newseed);
+		safe_putenv("BKD_SEED=%s", newseed);
+	}
 	return (0);
 }
 

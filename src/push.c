@@ -165,7 +165,7 @@ send_part1_msg(remote *r, char rev_list[], char **envVar)
 	system(cmd);
 	free(cmd);
 
-	send_file(r, buf, 0, opts.gzip);	
+	send_file(r, buf, 0);
 	unlink(buf);
 }
 
@@ -401,7 +401,7 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 	fputs(msg, f);
 	fclose(f);
 
-	rc = send_file(r, msgfile, 0, opts.gzip);	
+	rc = send_file(r, msgfile, 0);
 	unlink(msgfile);
 	unlink(rev_list);
 	return (0);
@@ -465,7 +465,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 		extra = m + 6;
 	}
 
-	rc = send_file(r, msgfile, extra, opts.gzip);	
+	rc = send_file(r, msgfile, extra);
 
 	n = genpatch(gzip, r->wfd, rev_list);
 	if ((r->type == ADDR_HTTP) && (m != n)) {

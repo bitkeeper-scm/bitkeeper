@@ -441,7 +441,7 @@ send_part1_msg(remote *r, char **av)
 		free(cmd);
 	}
 
-	rc = send_file(r, buf, 0, 0);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }
@@ -469,7 +469,7 @@ send_end_msg(remote *r, char *msg)
 	fputs(msg, f);
 	fclose(f);
 
-	rc = send_file(r, msgfile, 0, 0);
+	rc = send_file(r, msgfile, 0);
 	unlink(msgfile);
 	return (rc);
 }
@@ -493,7 +493,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	fputs("\n", f);
 	fclose(f);
 
-	rc = send_file(r, msgfile, size(key_list) + 17, 0);
+	rc = send_file(r, msgfile, size(key_list) + 17);
 	unlink(msgfile);
 	f = fopen(key_list, "rt");
 	assert(f);

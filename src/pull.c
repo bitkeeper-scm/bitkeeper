@@ -26,7 +26,7 @@ private	int	takepatch(opts opts, int gzip, remote *r);
 
 private void
 usage(void)
-{			
+{
 	system("bk help -s pull");
 }
 
@@ -167,7 +167,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.debug) fprintf(f, " -d");
 	fputs("\n", f);
 	fclose(f);
-	rc = send_file(r, buf, 0, opts.gzip);	
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }
@@ -268,7 +268,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 		return (-1);
 	}
 
-	rc = send_file(r, msg_file, 0, opts.gzip);	
+	rc = send_file(r, msg_file, 0);
 	unlink(msg_file);
 	return (rc);
 }

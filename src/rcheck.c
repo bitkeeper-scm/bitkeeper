@@ -63,7 +63,7 @@ send_check_msg(remote *r)
 	fprintf(f, "check\n");
 	fclose(f);
 
-	rc = send_file(r, buf, 0, 0);
+	rc = send_file(r, buf, 0);
 	unlink(buf);
 	return (rc);
 }

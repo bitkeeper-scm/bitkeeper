@@ -108,7 +108,7 @@ bkmail(char *url, char **to, char *subject, char *file)
 	if (fin != stdin) fclose(fin);
 	fprintf(f, "\n.\n");
 	fclose(f);
-	rc = send_file(r, bkmsg, 0, 0);
+	rc = send_file(r, bkmsg, 0);
 	unlink(bkmsg);
 	free(bkmsg);
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
