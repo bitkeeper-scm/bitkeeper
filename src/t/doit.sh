@@ -136,8 +136,9 @@ check_w()
 # setup env variables for regression test
 setup_env()
 {
+	if [ -x $OSTYPE ]; then OSTYPE=`uname -s`; fi
 	case X$OSTYPE in
-	    Xcygwin|Xcygwin32)
+	    Xcygwin|Xcygwin32|XCYGWIN*)
 		win32_common_setup
 		BK_BIN=`cd .. && ./bk pwd -sc`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
