@@ -32,10 +32,9 @@ IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
 all image: $(BINDIR)/bk$(EXE) sfioball _data.o $(IMAGE) 
 	$(STRIP) $(IMAGE)
 
-sfioball: installtool registry.tcl $(BINDIR)
+sfioball: installtool $(BINDIR)
 	@echo Creating sfioball from BK in $(BINDIR) ...
 	cp installtool $(BINDIR)/gui/lib/installtool
-	cp registry.tcl $(BINDIR)/gui/lib/registry.tcl
 	@(cd $(BINDIR)/.. && find `basename $(BINDIR)` -type f | \
 	    bk sfio -mqo) > sfioball
 

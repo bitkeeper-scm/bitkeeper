@@ -1281,7 +1281,7 @@ _install()
 		set -x
 	}
 	FORCE=0
-	CHMOD=YES
+	CRANKTURN=NO
 	VERBOSE=NO
 	DLLOPTS=""
 	while getopts dfvlns opt
@@ -1290,7 +1290,7 @@ _install()
 		l) DLLOPTS="-l $DLLOPTS";; # enable bkshellx for local drives
 		n) DLLOPTS="-n $DLLOPTS";; # enable bkshellx for network drives
 		s) DLLOPTS="-s $DLLOPTS";; # enable bkscc dll
-		d) CHMOD=NO;;	# do not change permissions, dev install
+		d) CRANKTURN=YES;;# do not change permissions, dev install
 		f) FORCE=1;;	# force
 		v) VERBOSE=YES;;
 		*) echo "usage: bk install [-dfv] <destdir>"
@@ -1307,7 +1307,7 @@ _install()
 
 	OBK="$DEST.old$$"
 	test -d "$DEST" && {
-		DEST=`cd "$DEST"; bk pwd`	
+		DEST=`bk pwd "$DEST"`
 		test "$DEST" = "$SRC" && {
 			echo "bk install: destination == souce"
 			exit 1
@@ -1336,6 +1336,8 @@ _install()
 		echo "bk install: Unable to write to $DEST, failed"
 		exit 1
 	}
+	# make DEST canonical full path w long names.
+	DEST=`bk pwd "$DEST"`
 	# copy data
 	V=
 	test $VERBOSE = YES && {
@@ -1379,7 +1381,7 @@ _install()
 
 	# permissions
 	cd "$DEST"
-	test $CHMOD = YES && {
+	test $CRANKTURN = NO && {
 		(find . | xargs chown root) 2> /dev/null
 		(find . | xargs chgrp root) 2> /dev/null
 		find . | grep -v bkuninstall.exe | xargs chmod -w
@@ -1390,9 +1392,8 @@ _install()
 		test $VERBOSE = YES && echo "updating registry..."
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
-
-		ODLL="$OBK/BkShellX.dll"
-		test -f "$ODLL" && exit 2	# This tells extract.c to reboot
+		# This tells extract.c to reboot if it is needed
+		test $CRANKTURN = NO -a -f "$OBK/BkShellX.dll" && exit 2
 	fi
 	exit 0
 }

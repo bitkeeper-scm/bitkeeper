@@ -468,7 +468,7 @@ install: installdir
 	tmp/bitkeeper/bk install -d -f $(BINDIR)
 	-$(BINDIR)/bk links $(BINDIR) /usr/bin
 
-installdir:
+installdir: utils/registry.tcl
 	rm -rf $(IMGDIR)
 	mkdir -p $(IMGDIR)
 	tar cf - $(BINS) $(SCRIPTS) gui/bin gui/lib gui/images | \
@@ -479,7 +479,8 @@ installdir:
 		bk get -S ../man/Makefile; \
 		cd ../man && $(MAKE) install BINDIR=$(IMGDIR) ;\
 	else \
-		cd win32 && $(MAKE) BINDIR=$(IMGDIR) install; \
+		(cd win32 && $(MAKE) BINDIR=$(IMGDIR) install); \
+		cp utils/registry.tcl $(IMGDIR)/gui/lib; \
 	fi
 	@true
 
