@@ -55,7 +55,7 @@ mv_main(int ac, char **av)
 	}
 
 	if ((isDir = isdir(dest)) && streq(basenm(dest), "SCCS")) {
-		fprintf(stderr, "bk mv: %s is not a legal destination\n", dest);
+		fprintf(stderr, "mv: %s is not a legal destination\n", dest);
 		if (dofree) free(dest);
 		exit(1);
 	}
@@ -144,6 +144,15 @@ usage:		system("bk help mv"); /* bk mv is prefered interface	*/
 
 	localName2bkName(from, from);
 	localName2bkName(to, to);
+	if (streq(basenm(from), "SCCS")) {
+		fprintf(stderr, "mvdir: %s is not a movable directory\n", from);
+		return (1);
+	}
+	if (streq(basenm(to), "SCCS")) {
+		fprintf(stderr, "mvdir: %s is not a legal destination\n", to);
+		return (1);
+	}
+
 	if (isdir(to)) {
 		freeme = to = aprintf("%s/%s", to, basenm(from));
 	}
