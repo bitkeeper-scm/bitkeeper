@@ -301,7 +301,7 @@ mergeInList(sccs *s, char *revs)
 	t = revs;
 	while (t && *t) {
 		if (p = strchr(t, ',')) *p = 0;
-		d = findrev(s, t);
+		d = sccs_findrev(s, t);
 		if (d && d->merge) {
 			fprintf(stderr,
 			    "cset: Merge cset found in revision list: (%s).  "
