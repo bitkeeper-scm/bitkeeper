@@ -10,11 +10,11 @@ cmd_rootkey(int ac, char **av)
 	sccs	*s;
 		
 	unless (exists("BitKeeper/etc")) {
-		out("ERROR: not at a project root\n");
+		out("ERROR-not at a project root\n");
 		return (-1);
 	}
 	unless (s = sccs_init("SCCS/s.ChangeSet", INIT_NOCKSUM, 0)) {
-		out("ERROR: init of CHangeSet failed\n");
+		out("ERROR-init of ChangeSet failed\n");
 		return (-1);
 	}
 	sccs_sdelta(s, sccs_ino(s), buf);

@@ -109,6 +109,14 @@ bkd_server()
 	}
 }
 
+private void
+drain(int fd)
+{
+	char	buf[1024];
+
+	while (read(fd, buf, sizeof(buf)) > 0);
+}
+
 private	void
 do_cmds()
 {
@@ -126,6 +134,7 @@ do_cmds()
 				}
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
+					drain(0);
 					exit(1);
 				}
 			}

@@ -270,8 +270,13 @@ bkd_reap(pid_t resync, int sock)
 
 	close(sock);
 	if (resync > 0) {
+		/* give it a bit for the protocol to close */
+		for (i = 0; i < 20; ++i) {
+			if (waitpid(resync, 0, WNOHANG) == resync) return;
+			usleep(10000);
+		}
 		kill(resync, SIGTERM);
-		for (i = 0; i < 100; ++i) {
+		for (i = 0; i < 20; ++i) {
 			if (waitpid(resync, 0, WNOHANG) == resync) return;
 			usleep(10000);
 		}

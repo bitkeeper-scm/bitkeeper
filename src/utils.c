@@ -61,7 +61,7 @@ readn(int from, char *buf, int size)
 int
 getline(int in, char *buf, int size)
 {
-	int	i = 0;
+	int	ret, i = 0;
 	char	c;
 	static	int echo = -1;
 
@@ -70,7 +70,7 @@ getline(int in, char *buf, int size)
 	size--;
 	unless (size) return (-3);
 	for (;;) {
-		switch (read(in, &c, 1)) {
+		switch (ret = read(in, &c, 1)) {
 		    case 1:
 			if ((buf[i] = c) == '\n') {
 				buf[i] = 0;
@@ -85,6 +85,11 @@ getline(int in, char *buf, int size)
 
 		    default:
 			unless (errno == EINTR) {
+				buf[i] = 0;
+				if (echo) {
+					perror("getline");
+					fprintf(stderr, "[%s]=%d\n", buf, ret);
+				}
 				return (-1);
 			}
 		}
