@@ -9,11 +9,11 @@ unwrap_main(int ac,  char **av)
 	char buf[MAXLINE];
 
 	platformInit();  
-	while (fgets(buf, sizeof(buf), stdin)) {
+	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (strneq(buf, "# Patch vers:", 13)) {
-			fputs(buf, stdout);
-			while (fgets(buf, sizeof(buf), stdin)) {
-				fputs(buf, stdout);
+			fprintf(stdout, "%s\n", buf);
+			while (getline(0, buf, sizeof(buf)) > 0) {
+				fprintf(stdout, "%s\n", buf);
 			}
 			return (0);
 		} else if (strneq(buf, "## Wrapped with", 15)) {

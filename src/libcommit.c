@@ -3,11 +3,13 @@
 #include <time.h>
 
 
-char *editor = 0, *pager = 0, *bin = 0; 
-char *bk_dir = "BitKeeper/";
-int resync = 0, quiet = 0;
-char *getlog(char *user);
-int get(char *path, int flags, char *output);
+char	*editor = 0, *pager = 0, *bin = 0; 
+char	*bk_dir = "BitKeeper/";
+int	resync = 0, quiet = 0;
+char	*getlog(char *user);
+int	get(char *path, int flags, char *output);
+int	bkusers();
+int	setlog(char *user);
 
 void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
@@ -137,6 +139,7 @@ sendConfig(char *to)
 	unlink(config_log);
 }
 
+void
 header(FILE *f)
 {
 	char	parent_file[MAXPATH];
@@ -253,7 +256,7 @@ void
 notify()
 {
 	char	buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
-	char	parent_file[MAXPATH], subject[MAXLINE], *projectname;
+	char	subject[MAXLINE], *projectname;
 	FILE *f;
 
 	sprintf(notify_file, "%setc/notify", bk_dir);
@@ -366,7 +369,6 @@ status(int verbose, char *status_log)
 	char buf[MAXLINE], parent_file[MAXPATH];
 	char tmp_file[MAXPATH];
 	FILE *f, *f1;
-	extern int bkusers();
 
 	f = fopen(status_log, "a");
 	fprintf(f,"Status for BitKeeper repository %s\n",  fullname(".", 0));
@@ -378,10 +380,10 @@ status(int verbose, char *status_log)
 		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);	
 		fclose(f1);
 	}
-	if (isdir( "RESYNC")) {
-		fprintf(f, "Resync in progress\n");
-	} else if (isdir("PENDING")) {
-		fprintf(f, "Pending patches\n");
+	unless (repository_lockers(0)) {
+		if (isdir("PENDING")) {
+			fprintf(f, "Pending patches\n");
+		}
 	}
 
 	sprintf(tmp_file, "%s/bl_tmp%d", TMP_PATH, getpid());
@@ -542,12 +544,10 @@ platformInit()
 	}
 }
 
+int
 checkLog()
 {
-	char ans[MAXLINE], buf[MAXLINE], buf2[MAXLINE];
-	char getlog_out[MAXPATH];
-	FILE *f;
-	char *getlog(char *user);
+	char ans[MAXLINE], buf[MAXLINE];
 
 	strcpy(buf, getlog(NULL));
 	if (strneq("ask_open_logging:", buf, 17)) {

@@ -75,7 +75,10 @@ private unsigned int u_mask = 0x5eadbeef;
 int
 executable(char *f)
 {
-	return (access(f, X_OK) == 0);
+	struct	stat sbuf;
+
+	if (lstat(f, &sbuf) == -1) return 0;
+	return (S_ISREG(sbuf.st_mode) && (sbuf.st_mode & 0111));
 }
 
 int
@@ -2545,7 +2548,7 @@ meta(sccs *s, delta *d, char *buf)
 		zoneArg(d, &buf[3]);
 		break;
 	    default:
-		fprintf(stderr, "Ignoring %.5s...\n", buf);
+		fprintf(stderr, "Ignoring %.5s", buf);
 		/* got unknown field, force read only mode */
 		s->state |= S_READ_ONLY;
 	}
@@ -3121,120 +3124,33 @@ err:			free(s->gfile);
 /*
  * Initialize the project struct.
  * We don't put it in the sccs in case there isn't one, the caller can do it.
+ * Callers of this (see locking.c) depend on it returning NULL if there is
+ * no BitKeeper root.
+ *
+ * XXX - this is fine for when we start, but what if the locking status
+ * changes while we are running?
+ * Seems to me that the check for locking should be at delta time.
  */
 project	*
-sccs_initProject(sccs *s)
+proj_init(sccs *s)
 {
 	char	*root;
 	project	*p;
-	char	path[MAXPATH];
 
 	assert((s == 0) || (s->proj == 0));
 
-	/* XXX - should set a flag that says NO project if this fails */
 	unless (root = sccs_root(s)) return (0);
 	p = calloc(1, sizeof(*p));
 	p->root = root;
-
-	/*
-	 * Go figure out if we are locked.
-	 */
-	sprintf(path, "%s/RESYNC", root);
-	if (exists(path)) p->flags |= PROJ_RESYNC;
-	sprintf(path, "%s/%s", root, READER_LOCK_DIR);
-	if (exists(path) && !emptyDir(path)) p->flags |= PROJ_READER;
 	return (p);
 }
 
 void
-sccs_freeProject(project *p)
+proj_free(project *p)
 {
 	unless (p) return;
 	if (p->root) free(p->root);
 	free(p);
-}
-
-private inline int
-resync_locked(project *p)
-{
-	return (p && (p->flags & PROJ_RESYNC));
-}
-
-private inline int
-reader_locked(project *p)
-{
-	return (p && (p->flags & PROJ_READER));
-}
-
-int
-sccs_locked(project *p)
-{
-	return ((resync_locked(p) || reader_locked(p)) &&
-	    (getenv("BK_IGNORELOCK") == 0));
-}
-
-/* used to tell us who is blocking the lock */
-void
-sccs_lockers(project *p)
-{
-	unless (p) return;
-	if (sccs_locked(p)) {
-		fprintf(stderr, "Entire repository is locked");
-		if (resync_locked(p)) fprintf(stderr, " by RESYNC directory");
-		if (reader_locked(p)) fprintf(stderr, " by READER lock");
-		fprintf(stderr, ".\n");
-	}
-}
-
-/*
- * Try and get a read lock for the whole repository.
- * Return true if it worked.
- */
-repository_rdlock()
-{
-	char	path[MAXPATH];
-	int	first = 1;
-
-	unless (exists("BitKeeper/etc")) return(-1);
-
-	/*
-	 * We go ahead and create the lock and then see if there is a
-	 * write lock.  If there is, we lost the race and we back off.
-	 */
-again:	unless (exists(READER_LOCK_DIR)) {
-		mkdir(READER_LOCK_DIR, 0777);
-		chmod(READER_LOCK_DIR, 0777);	/* kill their umask */
-	}
-	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
-	close(creat(path, 0666));
-	unless (exists(path)) {
-		/* try removing and recreating the lock dir.
-		 * This cleans up bad modes in some cases.
-		 */
-		if (first) {
-			rmdir(READER_LOCK_DIR);
-			first = 0;
-			goto again;
-		}
-		return (-1);
-	}
-	if (exists(ROOT2RESYNC)) {
-		unlink(path);
-		return (-1);
-	}
-	return (0);
-}
-
-int
-repository_rdunlock()
-{
-	char	path[MAXPATH];
-
-	unless (exists("BitKeeper/etc")) return(-1);
-
-	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
-	unlink(path);
-	return (0);
 }
 
 /*
@@ -3345,11 +3261,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			 * This is a little bogus - we are looking for a
 			 * a project when there may not be one.
 			 */
-			if (s->proj = proj ? proj : sccs_initProject(s)) {
-				if (sccs_locked(s->proj)) {
-					s->state |= S_READ_ONLY;
-				}
-			}
+			s->proj = proj ? proj : proj_init(s);
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3381,10 +3293,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	/*
 	 * Don't go look for BK root if not a BK file.
 	 */
-	if (s->state & S_BITKEEPER) {
-		s->proj = proj ? proj : sccs_initProject(s);
-		if (sccs_locked(s->proj)) s->state |= S_READ_ONLY;
-	}
+	if (s->state & S_BITKEEPER) s->proj = proj ? proj : proj_init(s);
 
 	/*
 	 * Let them force YEAR4
@@ -3517,7 +3426,7 @@ sccs_free(sccs *s)
 	freeLines(s->usersgroups);
 	freeLines(s->flags);
 	freeLines(s->text);
-	if (s->proj && !(s->state & S_SAVEPROJ)) sccs_freeProject(s->proj);
+	if (s->proj && !(s->state & S_SAVEPROJ)) proj_free(s->proj);
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
@@ -3670,19 +3579,25 @@ name2sccs(char *name)
  * create SCCS/<type>.foo.c
  */
 int
-sccs_lock(sccs *sccs, char type)
+sccs_lock(sccs *s, char type)
 {
-	char	*s;
+	char	*t;
 	int	lockfd;
 
-	if ((type == 'z') && (sccs->state & S_READ_ONLY)) return (0);
-	s = sccsXfile(sccs, type);
+	if (type == 'z') {
+		if (s->state & S_READ_ONLY) return (0);
+		if (repository_locked(s->proj) &&
+		    (repository_cleanLocks(s->proj, 0) != 0)) {
+		    	return (0);
+		}
+	}
+	t = sccsXfile(s, type);
 	lockfd =
-	    open(s, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
+	    open(t, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
 
 	if (lockfd >= 0) close(lockfd);
-	if ((lockfd >= 0) && (type == 'z')) sccs->state |= S_ZFILE;
-	debug((stderr, "lock(%s) = %d\n", sccs->sfile, lockfd >= 0));
+	if ((lockfd >= 0) && (type == 'z')) s->state |= S_ZFILE;
+	debug((stderr, "lock(%s) = %d\n", s->sfile, lockfd >= 0));
 	return (lockfd >= 0);
 }
 
@@ -4815,7 +4730,7 @@ write_pfile(sccs *s, int flags, delta *d,
 	}
 	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
-		sccs_lockers(s->proj);
+		repository_lockers(s->proj);
 		return (-1);
 	}
 	unless (sccs_lock(s, 'p')) {
@@ -6894,7 +6809,7 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 private void
 unlinkGfile(sccs *s)
 {
-	unlink(s->gfile);	/* Careful */
+	if (s->state & S_GFILE) unlink(s->gfile);	/* Careful */
 	/*
 	 * zero out all gfile related field
 	 */
@@ -8576,6 +8491,7 @@ xflags2state(u32 xflags)
 	return (state);
 }
 
+void
 changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 {
 	char	buf[50];
@@ -8674,6 +8590,7 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
  * If this is a BitKeeper file with changeset marks, then we have to 
  * replicate the key on the 1.1 delta.
  */
+void
 insert_1_0(sccs *s)
 {
 	delta	*d;
@@ -9984,7 +9901,7 @@ sccs_delta(sccs *s,
 	unless(locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "delta: can't get write lock on %s\n", s->sfile);
-		sccs_lockers(s->proj);
+		repository_lockers(s->proj);
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);

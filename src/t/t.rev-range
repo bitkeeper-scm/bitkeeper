@@ -96,8 +96,9 @@ echo This is the description. > D
 echo $N Creating a file with description ............................$NL
 bk admin $Q -n -tD foo
 if [ ! -f SCCS/s.foo ]; then echo Failed.; exit 1; fi
-set `wc -w SCCS/s.foo`
-if [ $1 -ne `expr $BASE + 26` ]; then echo Failed - wrong size $1.; exit 1; fi
+# If the second clock ticked over, we didn't need the fudge.
+set `grep -v '^.cF' SCCS/s.foo | wc -w`
+if [ $1 -ne `expr $BASE + 25` ]; then echo Failed - wrong size $1.; exit 1; fi
 grep -q "`cat D`" SCCS/s.foo
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi
 echo OK

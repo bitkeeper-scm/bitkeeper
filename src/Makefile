@@ -4,21 +4,16 @@
 # You can set this to anywhere you like and do a "make production" and you'll
 # have an installed BitKeeper.
 BK_BIN	= /usr/libexec/bitkeeper
-BINS 	= bk bkd sccssh
-BKOBJ	= bkmain.o \
-	  adler32.o admin.o check.o chksum.o clean.o cset.o delta.o diffs.o \
-	  fdiff.o g2sccs.o get.o gethost.o getuser.o key2rev.o lines.o lod.o \
-	  prs.o range.o rechksum.o renumber.o rmdel.o sccscat.o sccslog.o \
-	  sccsmv.o sccsrm.o sfiles.o sfio.o sids.o sinfo.o stripdel.o \
-	  smoosh.o takepatch.o undos.o what.o gca.o mtime.o zone.o \
-	  bkusers.o commit.o fix.o gethelp.o getlog.o help.o \
-	  isascii.o logaddr.o logchangeset.o parent.o r2c.o \
-	  receive.o send.o sendconfig.o setlog.o setup.o status.o unwrap.o \
-	  version.o undo.o sendbug.o export.o pending.o push.o lib_tcp.o \
-	  names.o
-SCRIPTS	= rcs2sccs testfast bk.script import resync uuwrap unuuwrap pmerge \
+BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
+	  get gethost getuser key2rev lines lod prs range rechksum renumber \
+	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
+	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
+	  bkd bkusers commit fix gethelp getlog help isascii logaddr \
+	  logchangeset names parent push r2c receive resolve \
+	  send sendconfig setlog setup status unwrap version repo pull clone
+SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset build crank pull clone resync merge \
+	  renametool mkdiffs lodset build crank resync merge \
 	  gzip_uuwrap ungzip_uuwrap
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
@@ -45,10 +40,10 @@ RANLIB	= ranlib
 SCCSOBJ	= dirname.o filecopy.o getopt.o gettemp.o glob.o libdiff.o librange.o \
 	  libsfiles.o localtm.o mkdir.o mmap.o newrev.o popen.o purify.o      \
 	  rcs.o sccs_mv.o slib.o zgets.o unique.o finddirs.o libcommit.o \
-	  libusers.o utils.o
+	  libusers.o utils.o locking.o
 PORTOBJ = port/getinput.o port/gethost.o port/fullname.o port/platforminit.o \
 	  port/sccs_root.o port/randomBits.o port/spawn.o port/samepath.o \
-	  port/disksp.o
+	  port/disksp.o port/findprog.o
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
@@ -57,18 +52,19 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 RESOBJ =  resolve.o resolve_create.o resolve_contents.o resolve_generic.o \
 	  resolve_renames.o resolve_modes.o resolve_flags.o
 BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
-	  bkd_cmdtab.o lib_tcp.o bkd.o
+	  bkd_cmdtab.o lib_tcp.o bkd.o bkd_version.o
+BKLIB	= lib_tcp.o bkd_client.o
 BINOBJ	= $(BINS:=.o)
 BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
 	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c) \
-	  $(RESOBJ:.o=.c)
+	  $(RESOBJ:.o=.c) $(BKLIB:.o=.c)
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h \
-	  comments.c host.c user.c resolve.h
-SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh pull.sh \
+	  comments.c host.c user.c resolve.h bkd.h
+SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
 	  gui/helptool.tcl gui/mkindex.tcl oldresync.perl uuwrap.sh \
@@ -140,7 +136,7 @@ production_image: rebuild p image
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-	    $(BKDOBJ) ${BKOBJ} $(RESOBJ) $(LIBS) bkhelp.txt a.out core
+	    $(BKDOBJ) $(BJOBJ) $(RESOBJ) $(LIBS) $(BKLIB) bkdsubstr bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
 
 clean-bin: FORCE
@@ -207,7 +203,7 @@ t/doit: t/doit.sh substvars
 
 FORCE:
 
-bkd: $(BKDOBJ)
+bkd: $(BKDOBJ) $(LIBS)
 	$(CC) $(CFLAGS) $(BKDOBJ) $(LINK) -o bkd
 
 gnu: FORCE
@@ -309,8 +305,12 @@ chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
-push: push.o lib_tcp.o $(LIBS)
-	$(CC) $(CFLAGS) push.o lib_tcp.o $(LINK) -o push
+push: push.o $(BKLIB) $(LIBS)
+	$(CC) $(CFLAGS) push.o $(BKLIB) $(LINK) -o push
+pull: pull.o $(BKLIB) $(LIBS)
+	$(CC) $(CFLAGS) pull.o $(BKLIB) $(LINK) -o pull
+clone: clone.o $(BKLIB) $(LIBS)
+	$(CC) $(CFLAGS) clone.o $(BKLIB) $(LINK) -o clone
 logaddr: logaddr.o $(LIBS)
 	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
 setlog: setlog.o $(LIBS)
@@ -343,6 +343,8 @@ unwrap: unwrap.o $(LIBS)
 	$(CC) $(CFLAGS) unwrap.o $(LINK) -o unwrap
 receive: receive.o $(LIBS)
 	$(CC) $(CFLAGS) receive.o $(LINK) -o receive
+repo: repo.o $(LIBS)
+	$(CC) $(CFLAGS) repo.o $(LINK) -o repo
 fix: fix.o $(LIBS)
 	$(CC) $(CFLAGS) fix.o $(LINK) -o fix
 
@@ -457,23 +459,18 @@ merge: merge.sh
 	chmod +x merge
 	chmod -w merge
 
-clone: clone.sh
-	rm -f clone
-	cp clone.sh clone
-	chmod +x clone
-	chmod -w clone
-
 resync: resync.sh
 	rm -f resync
 	cp resync.sh resync
 	chmod +x resync
 	chmod -w resync
 
-pull: pull.sh
-	rm -f pull
-	cp pull.sh pull
-	chmod +x pull
-	chmod -w pull
+bkdsubstr: bkd.h
+	grep BKD_VERSION bkd.h | sed -e 's/.*"b/b/' -e 's/".*//' > _bkdvers
+	echo "#!/bin/sh" > bkdsubstr
+	echo "sed 's/@BKD_VERSION@/`cat _bkdvers`/'" >> bkdsubstr
+	/bin/rm _bkdvers
+	chmod +x bkdsubstr
 
 bk_users: bk_users.perl aliases.perl port/unix_platform.perl substvars
 	-rm -f bk_users
@@ -598,10 +595,10 @@ crankit:
 	done; wait
 
 crankturn: build crank
-	$(MAKE) crankit CRANKCMD=./crank
+	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD=./crank crankit
 
 cranktest:
-	$(MAKE) crankit CRANKCMD="bk regression"
+	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD="bk regression" crankit
 
 build: build.sh
 	/bin/rm -f build
@@ -625,7 +622,6 @@ crank: crank.sh
 commondeps = system.h unix.h config.h mdbm/mdbm.h purify.h mmap.h
 sccsdeps   = $(commondeps) sccs.h
 
-# Installed executables
 adler32.o:	adler32.c $(sccsdeps)
 admin.o:	admin.c $(sccsdeps)
 check.o:	check.c $(sccsdeps) range.h
@@ -634,21 +630,37 @@ clean.o:	clean.c $(sccsdeps)
 cset.o:		cset.c $(sccsdeps) range.h comments.c host.c user.c
 delta.o:	delta.c $(sccsdeps) comments.c
 diffs.o:	diffs.c $(sccsdeps) range.h
+dirname.o:	dirname.c config.h
 fdiff.o:	fdiff.c $(sccsdeps)
+filecopy.o:	filecopy.c $(sccsdeps)
 g2sccs.o:	g2sccs.c $(sccsdeps)
 get.o:		get.c $(sccsdeps)
 gethost.o:	gethost.c
+getopt.o:	getopt.c $(sccsdeps)
+gettemp.o:	gettemp.c $(sccsdeps)
 getuser.o:	getuser.c
+glob.o:		glob.c $(sccsdeps)
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(sccsdeps)
+libdiff.o:	libdiff.c $(sccsdeps)
+librange.o:	librange.c $(sccsdeps) range.h
+libsfiles.o:	libsfiles.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
+localtm.o:	localtm.c $(commondeps)
+locking.o:	locking.c $(sccsdeps)
+mkdir.o:	mkdir.c $(sccsdeps)
+mmap.o:		mmap.c $(sccsdeps)
 mtime.o:	mtime.c
+newrev.o:	newrev.c $(sccsdeps)
+popen.o:	popen.c $(sccsdeps)
 prs.o:		prs.c $(sccsdeps) range.h
+purify.o:	purify.c $(commondeps)
 range.o:	range.c $(sccsdeps) range.h
+rcs.o:		rcs.c $(sccsdeps)
 rechksum.o:	rechksum.c $(sccsdeps)
 renumber.o:	renumber.c $(sccsdeps)
 rmdel.o:	rmdel.c $(sccsdeps) range.h
-stripdel.o:	stripdel.c $(sccsdeps) range.h
+sccs_mv.o:	sccs_mv.c $(sccsdeps)
 sccscat.o:	sccscat.c $(sccsdeps) range.h
 sccslog.o:	sccslog.c $(sccsdeps) range.h
 sccsmv.o:	sccsmv.c $(sccsdeps)
@@ -660,31 +672,13 @@ sids.o:		sids.c $(sccsdeps)
 sinfo.o:	sinfo.c $(sccsdeps)
 slib.o:		slib.c $(sccsdeps) zgets.h
 smoosh.o:	smoosh.c $(sccsdeps)
+stripdel.o:	stripdel.c $(sccsdeps) range.h
 takepatch.o:	takepatch.c $(sccsdeps)
 undos.o:	undos.c
-what.o:		what.c $(sccsdeps)
-zone.o:		zone.c $(commondeps)
-
-# libsccs
-dirname.o:	dirname.c config.h
-filecopy.o:	filecopy.c $(sccsdeps)
-getopt.o:	getopt.c $(sccsdeps)
-gettemp.o:	gettemp.c $(sccsdeps)
-glob.o:		glob.c $(sccsdeps)
-libdiff.o:	libdiff.c $(sccsdeps)
-librange.o:	librange.c $(sccsdeps) range.h
-libsfiles.o:	libsfiles.c $(sccsdeps)
-localtm.o:	localtm.c $(commondeps)
-mkdir.o:	mkdir.c $(sccsdeps)
-mmap.o:		mmap.c $(sccsdeps)
-newrev.o:	newrev.c $(sccsdeps)
-popen.o:	popen.c $(sccsdeps)
-purify.o:	purify.c $(commondeps)
-rcs.o:		rcs.c $(sccsdeps)
-sccs_mv.o:	sccs_mv.c $(sccsdeps)
-zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
-
 utils.o $(BKDOBJ):	$(commondeps) bkd.h lib_tcp.h
+what.o:		what.c $(sccsdeps)
+zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
+zone.o:		zone.c $(commondeps)
 
 $(RESOBJ):	resolve.h $(commondeps)
 

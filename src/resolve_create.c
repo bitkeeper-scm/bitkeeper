@@ -149,6 +149,10 @@ res_mr(resolve *rs)
 	char	*t;
 
 	unless (prompt("Move file to:", buf)) return (0);
+	if ((buf[0] == '/') || strneq("../", buf, 3)) {
+		fprintf(stderr, "Destination must be in repository.\n");
+		return (0);
+	}
 	if (sccs_filetype(buf) != 's') {
 		t = name2sccs(buf);
 		strcpy(buf, t);
@@ -325,6 +329,10 @@ gc_ml(resolve *rs)
 	char	*t;
 
 	unless (prompt("Move local file to:", buf)) return (0);
+	if ((buf[0] == '/') || strneq("../", buf, 3)) {
+		fprintf(stderr, "Destination must be in repository.\n");
+		return (0);
+	}
 	if (sccs_filetype(buf) != 's') {
 		t = name2sccs(buf);
 		strcpy(buf, t);
@@ -452,6 +460,10 @@ sc_ml(resolve *rs)
 	sccs	*s;
 
 	unless (prompt("Move local file to:", buf)) return (0);
+	if ((buf[0] == '/') || strneq("../", buf, 3)) {
+		fprintf(stderr, "Destination must be in repository.\n");
+		return (0);
+	}
 	if (rs->opts->debug) fprintf(stderr, "%s\n", buf);
 	if (sccs_filetype(buf) != 's') {
 		to = name2sccs(buf);

@@ -137,9 +137,6 @@ c_merge(resolve *rs)
 
 	sprintf(cmd, "bk %s %s %s %s %s",
 	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
-	unless (IS_LOCKED(rs->s)) {
-		if (edit(rs)) return (-1);
-	}
 	ret = system(cmd) & 0xffff;
 	if (ret == 0) {
 		unless (rs->opts->quiet) {
@@ -355,6 +352,9 @@ resolve_contents(resolve *rs)
 		rs->opts->errors = 1;
 		freenames(n, 1);
 		return (-1);
+	}
+	unless (IS_LOCKED(rs->s)) {
+		if (edit(rs)) return (-1);
 	}
 	if (sameFiles(n->local, n->remote)) {
 		automerge(rs, n);

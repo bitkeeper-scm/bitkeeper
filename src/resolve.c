@@ -127,9 +127,9 @@ passes(opts *opts)
 		/* fake one for new repositories */
 		opts->idDB = mdbm_open(0, 0, 0, 0);
 	}
-	opts->local_proj = sccs_initProject(0);
+	opts->local_proj = proj_init(0);
 	chdir(ROOT2RESYNC);
-	opts->resync_proj = sccs_initProject(0);
+	opts->resync_proj = proj_init(0);
 
 	/*
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
@@ -1305,6 +1305,10 @@ conflict(opts *opts, char *sfile)
 		resolve_modes(rs);
 		s = rs->s;
 		if (opts->errors) return;
+		/* Need to re-init these, the resolve stomped on the s-> */
+		d.local = sccs_getrev(s, rs->revs->local, 0, 0);
+		d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
+		d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
 	}
 
 	/*
@@ -1412,7 +1416,7 @@ automerge(resolve *rs, names *n)
 			fprintf(stderr,
 			    "Content merge of %s OK\n", rs->s->gfile);
 		}
-		if (edit(rs)) return;
+		if (!IS_LOCKED(rs->s) && edit(rs)) return;
 		comment = "Auto merged";
 		gotComment = 1;
 		d = getComments(0);
@@ -1616,7 +1620,7 @@ pass4_apply(opts *opts)
 	sprintf(key, "%sbk sfiles %s", bin, ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		perror("popen of bk sfiles");
-		unlink(orig);
+		fclose(save); unlink(orig);
 		exit (1);
 	}
 	while (fnext(buf, p)) {
@@ -1625,8 +1629,8 @@ pass4_apply(opts *opts)
 			fprintf(stderr,
 			    "resolve: can't init %s - abort.\n", buf);
 			restore(save);
-			fprintf(stderr, "resolve: no files were applied.\n");
 			unlink(orig);
+			fprintf(stderr, "resolve: no files were applied.\n");
 			exit(1);
 		}
 		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
@@ -1675,14 +1679,14 @@ pass4_apply(opts *opts)
 	sprintf(key, "%sbk sfiles %s", bin, ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		unbackup(save);
-		perror("popen of bk sfiles");
 		unlink(orig);
+		perror("popen of bk sfiles");
 		exit (1);
 	}
 	unless (get = popen("bk get -s -", "w")) {
 		unbackup(save);
-		perror("popen of get -");
 		unlink(orig);
+		perror("popen of get -");
 		exit (1);
 	}
 	while (fnext(buf, p)) {
@@ -1725,6 +1729,7 @@ pass4_apply(opts *opts)
 	sprintf(buf, "%sbk sfiles | %sbk check -a -", bin, bin);
 	unless (system(buf) == 0) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
+		fclose(save);
 		unlink(orig);
 		exit(1);
 	}
@@ -1813,8 +1818,8 @@ freeStuff(opts *opts)
 	/*
 	 * Clean up allocations/files/dbms
 	 */
-	if (opts->local_proj) sccs_freeProject(opts->local_proj);
-	if (opts->resync_proj) sccs_freeProject(opts->resync_proj);
+	if (opts->local_proj) proj_free(opts->local_proj);
+	if (opts->resync_proj) proj_free(opts->resync_proj);
 	if (opts->log && (opts->log != stderr)) fclose(opts->log);
 	if (opts->rootDB) mdbm_close(opts->rootDB);
 	if (opts->idDB) mdbm_close(opts->idDB);
@@ -1881,5 +1886,7 @@ resolve_cleanup(opts *opts, int what)
 		SHOUT2();
 		exit(1);
 	}
+	repository_wrunlock();
+	repository_lockers(0);
 	exit(0);
 }
