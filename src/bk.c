@@ -135,6 +135,7 @@ int users_main(int, char **);
 int version_main(int, char **);
 int what_main(int, char **);
 int zone_main(int, char **);
+int _f2csets_main(int, char **);
 
 /* do not change the next line, it's parsed in helpcheck.pl */
 struct command cmdtbl[] = {
@@ -260,6 +261,7 @@ struct command cmdtbl[] = {
 	{"version", version_main},
 	{"what", what_main},
 	{"zone", zone_main},
+	{"_f2csets", _f2csets_main},
 
 	{0, 0},
 };
