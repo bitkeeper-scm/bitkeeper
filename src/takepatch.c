@@ -56,6 +56,7 @@ void	cleanup(int what);
 void	changesetExists(void);
 void	notfirst(void);
 void	goneError(char *key);
+void	freePatchList();
 
 int	echo = 0;	/* verbose level, higher means more diagnostics */
 int	line;		/* line number in the patch file */
@@ -191,7 +192,7 @@ extractPatch(char *name, FILE *p, int flags, int fast, char *root)
 	sccs	*s = 0;
 	sccs	*perfile = 0;
 	int	newFile = 0;
-	char	*gfile;
+	char	*gfile = 0;
 	int	nfound = 0, rc;
 	static	int rebuilt = 0;	/* static - do it once only */
 	char	buf[1200];
@@ -249,9 +250,9 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 			fprintf(stderr,
 			   "takepatch: can't find key '%s' in id cache\n", buf);
 cleanup:			if (perfile) free(perfile);
-			free(gfile);
-			free(name);
+			if (gfile) free(gfile);
 			if (s) sccs_free(s);
+			free(name);
 			cleanup(CLEAN_RESYNC);
 		}
 	}
@@ -896,7 +897,8 @@ earlier(patch *a, patch *b)
 	ret = strcmp(a->me, b->me); 
 	if (ret < 0)   return 1;
 	if (ret > 0)   return 0;
-	assert("Can't figure out the order of deltas\n" == 0); 
+	assert("Can't figure out the order of deltas\n" == 0);
+	return (-1); /* shut off VC++ comipler warning */
 }
 
 /*
@@ -930,6 +932,7 @@ insertPatch(patch *p)
 	t->next = p;
 }
 
+void
 freePatchList()
 {
 	patch	*p;
