@@ -167,3 +167,21 @@ test -f new_foo.c || {
 	exit 1
 }
 echo OK
+
+echo $N Undo should not delete existing RESYNC directory ............$NL
+cd $HERE/project
+mkdir RESYNC
+bk undo $Q -sfr+ 2> ERROUT && {
+	echo should have generated an error
+	exit 1
+}
+test -s ERROUT || {
+	echo should have output explanation
+	exit 1
+}
+test -d RESYNC || {
+	echo undo deleted existing RESYNC
+	exit 1
+}
+rmdir RESYNC
+echo OK
