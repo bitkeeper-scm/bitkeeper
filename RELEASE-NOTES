@@ -1,9 +1,56 @@
+2.0beta13???? Release notes
+    This version adds a check for the cset file pointer in every SCCS
+    file to the 'check' command.  This is a pointer that indicates the 
+    ROOTKEY of the ChangeSet file where the file was created.  The
+    check can indicate when a SCCS file is copied into a repository
+    from somewhere else. 
+    Some older versions of BitKeeper didn't set the field correctly
+    and a 'bk -r check -a' will give messages like this:
+
+	Extra file: SCCS/s.ChangeSet
+	     belongs to: mason@coffee.suse.com|ChangeSet|20010419131948|47459|8349d
+	     should be:  mason@suse.com|ChangeSet|20010419131948|47459|8349d
+
+    These can be repaired by running 'bk -r check -af'
+    This fix will have to be repeated in every repository.
+
+2.0_3pardata Release notes
+    This version fixes a long standing but undetected bug that leaves
+    unmerged tags in the tree.  With this version, trees might see errors
+    that look like this:
+	Unmerged tag tips:
+		1.8.7.51         D1299
+		1.316.20.1       ?
+		1.8.25.1         <tag merge>
+	SCCS/s.ChangeSet: unmerged symleaf 1.8.7.51
+	SCCS/s.ChangeSet: unmerged symleaf 1.316.20.1
+	SCCS/s.ChangeSet: unmerged symleaf 1.8.25.1
+	Unmerged tag tips:
+		1.8.7.51         D1299
+		1.316.20.1       ?
+		1.8.25.1         <tag merge>
+
+    This is an indication that your tree was damaged by a previous
+    version of the bitkeeper. You can fix this with the following steps:
+ 
+      a) If you don't have a backup of your tree, make one, just to be
+	 extra safe.  The fix only touches SCCS/s.ChangeSet so a
+	 backup is really just saving that file.
+      b) run "bk tagmerge" which will give errors like above but then
+	 will complete without incident.
+      c) run "bk admin -hhh ChangeSet" - if that is silent, all is
+	 well.  Run a "bk -r check -ac" just to be sure if you like.
+      d) propagate this change by pulling to other clones.
+
+    'tagmerge' is a special command created to fix this one problem.
+    The problem will not reappear with binaries after this point and
+    'tagmerge' will likely disappear in the future.
+
 2.0beta12 Release notes
+    bk push -n will hang against earlier versions of the code.
 
-bk push -n will hang against earlier versions of the code.
-
-bk push -n now gets a read lock instead of write lock if the remote side is 
-also upgraded.  
+    bk push -n now gets a read lock instead of write lock if the remote side is 
+    also upgraded.  
 
 2.0beta9.1 Release notes
     Add a binary resolver, it allows you to use one or the other versions.
@@ -11,33 +58,33 @@ also upgraded.
 
 2.0beta9 Release notes
 
-Undo can no longer be interrupted leaving a half undone tree.
+    Undo can no longer be interrupted leaving a half undone tree.
 
-Don't annotate binaries.
+    Don't annotate binaries.
 
-Fixed a pathname buffer overflow problem; generically fixed many potential
-similar problems by using aprintf which allocates space as need.
+    Fixed a pathname buffer overflow problem; generically fixed many potential
+    similar problems by using aprintf which allocates space as need.
 
-Fix a problem where connection attempts to BKDs which are done did not 
-produce an error message.
+    Fix a problem where connection attempts to BKDs which are done did not 
+    produce an error message.
 
-Added repository read locking to lclone.
+    Added repository read locking to lclone.
 
-Reworked the on disk flags (xflags). 
+    Reworked the on disk flags (xflags). 
 
-!!!! Note !!!!
+    !!!! Note !!!!
 
-you will almost certainly see check complain about flags the first time you
-run it.  Just run
+    you will almost certainly see check complain about flags the first time you
+    run it.  Just run
 
-            bk -r check -acf
-	    bk -r check -acf
+		bk -r check -acf
+		bk -r check -acf
 
-and that should fix it.  If you are worried about it, clone your tree first
-and try it there.
+    and that should fix it.  If you are worried about it, clone your tree first
+    and try it there.
 
-You have to run the above command in each repository, the fix does not
-propogate.
+    You have to run the above command in each repository, the fix does not
+    propogate.
 
 ===============================================================================
 Release notes for BitKeeper version XXX.   These release notes cover
