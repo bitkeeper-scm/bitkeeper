@@ -5,8 +5,8 @@ int
 export_main(int ac,  char **av)
 {
 	int	c, count;
-	int	vflag = 0, kflag = 0, tflag = 0, wflag = 0;
-	char	*rev = NULL;
+	int	vflag = 0, hflag = 0, kflag = 0, tflag = 0, wflag = 0;
+	char	*rev = NULL, *diff_style = NULL;
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
 	char	include[MAXLINE] = "", exclude[MAXLINE] =  "";
@@ -16,13 +16,24 @@ export_main(int ac,  char **av)
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
+	char	*type = 0;
 
-	while ((c = getopt(ac, av, "Dktwvi:x:r:")) != -1) {
+	while ((c = getopt(ac, av, "d:Dhkqt:Twvi:x:r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;
+		    case 'q':	break; /* no op; for interface consistency */
+		    case 'd':	diff_style = optarg; break;
+		    case 'h':	hflag = 1; break; /* disbale patch header */
 		    case 'k':	kflag = 1; break;
 		    case 'r':	rev = optarg; break;
-		    case 't':	tflag = 1; break;
+		    case 't':	if (type) goto usage;
+				type = optarg; 
+				if (!streq(type, "patch") &&
+				    !streq(type, "plain")) {
+					goto usage;
+				}
+				break;
+		    case 'T':	tflag = 1; break;
 		    case 'w':	wflag = 1; break;
 		    case 'i':	sprintf(include, "| grep -E '%s' ",  optarg);
 				break;
@@ -30,12 +41,21 @@ export_main(int ac,  char **av)
 				break;
 		    default :
 usage:			fprintf(stderr,
-		"usage: bk export [-tDkwv] [-i<pattern>] [-x<pattern>]\n");
+		"usage: bk export [-tplain|patch] [-TDkqwv] [-i<pattern>] [-x<pattern>]\n");
 			fprintf(stderr,
-				"\t[-r<rev> | -d<date>] [source] dest\n");
+				"\t[-r<rev> | -d u|c] [source] dest\n");
 			exit(1);
 		}
 	}
+
+	unless (type) type = "plain";
+	if (streq(type, "patch")) {
+		unless (diff_style) diff_style = "u";
+		sprintf(buf, "bk rset -hr%s | bk gnupatch -d%c %s %s",
+		    rev, diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
+		return (system(buf));
+	}
+
 	count =  ac - optind;
 	switch (count) {
 	    case 1: src = "."; dst = av[optind]; break;
@@ -44,31 +64,31 @@ usage:			fprintf(stderr,
 	}
 
 	if (mkdirp(dst) != 0) {
-		fprintf(stderr, "can not mkdir %s\n", dst);
+		fprintf(stderr, "cannot mkdir %s\n", dst);
 		exit(1);
 	}
 	strcpy(dst_path, fullname(dst, 0));
 	chdir(src);
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "Can not find package root.\n");
+		fprintf(stderr, "Cannot find package root.\n");
 		exit(1);
 	}
 	strcpy(src_path, fullname(".", 0));
 
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	if (rev) {
-		sprintf(buf, "bk cset -D -t%s %s %s > %s",
+		sprintf(buf, "bk rset -hr%s %s %s > %s",
 					rev, include, exclude, file_rev);
 	} else {
-		sprintf(buf, "bk cset -D -t+  %s %s> %s",
+		sprintf(buf, "bk rset -hr+  %s %s> %s",
 						include, exclude, file_rev);
 	}
 	system(buf);
 	f = fopen(file_rev, "rt");
 	assert(f);
 	while (fgets(buf, sizeof(buf), f)) {
-		char	output[MAXPATH];
-		int	flags = PRINT;
+		char	*t, output[MAXPATH];
+		int	flags = 0;
 
 		chop(buf);
 		p = strchr(buf, '@');
@@ -76,19 +96,36 @@ usage:			fprintf(stderr,
 		*p++ = '\0';
 		if (streq(buf, "ChangeSet")) continue;
 		sprintf(buf1, "%s/%s", src_path, buf);
-		q = name2sccs(buf1);
-		s = sccs_init(q, SILENT, 0);
+		t = name2sccs(buf1);
+		s = sccs_init(t, SILENT, 0);
+		free(t);
 		assert(s && s->tree);
-		free(q);
-		d = findrev(s, p);
+		q = strchr(p, '@'); 
+		assert(q);
+		*q++ = '\0';
+		d = findrev(s, q);
 		assert(d);
-		sprintf(output, "%s/%s", dst_path, d->pathname);
+		/*
+		 * Do not export file under the BitKeeper directory
+		 */
+		if ((strlen(p) >= 10) &&
+		    strneq("BitKeeper/", p, 10)) {
+			sccs_free(s);
+			continue;
+		}
+		sprintf(output, "%s/%s", dst_path, p);
 		unless (vflag) flags |= SILENT;
 		unless (kflag) flags |= GET_EXPAND;
 		if (tflag) flags |= GET_DTIME;
 		mkdirf(output);
-		if (sccs_get(s, p, 0, 0, 0, flags, output)) {
-			fprintf(stderr, "can not export to %s\n", output);
+		/*
+		 * This is stolen from the get -G code
+		 * XXX - why do we have output then?
+		 */
+		free(s->gfile);
+		s->gfile = strdup(output);
+		if (sccs_get(s, q, 0, 0, 0, flags, "-")) {
+			fprintf(stderr, "cannot export to %s\n", output);
 		}
 		sccs_free(s);
 		if (wflag) chmod(output, 0644);

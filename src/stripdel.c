@@ -79,7 +79,6 @@ usage:		fprintf(stderr, stripdel_help);
 	rc = doit(s, opts);
 	sccs_free(s);
 	sfileDone();
-	purify_list();
 	return (rc);
 next:	return (1);
 }

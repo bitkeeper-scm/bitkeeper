@@ -67,6 +67,5 @@ done:			if (gfile) free(gfile);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
 	return (e);
 }

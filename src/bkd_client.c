@@ -2,6 +2,7 @@
 
 private	remote	*nfs_parse(char *p);
 private	remote	*url_parse(char *p);
+extern	char	cmdlog_buffer[];
 
 /*
  * Turn either
@@ -11,10 +12,11 @@ private	remote	*url_parse(char *p);
  * If nothing is passed in, use `bk parent`.
  */
 remote *
-remote_parse(char *p)
+remote_parse(char *p, int is_clone)
 {
 	char	buf[MAXPATH+256];
 	static	echo = -1;
+	int	append = 0;
 	remote	*r;
 
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
@@ -31,6 +33,7 @@ remote_parse(char *p)
 			assert(strncmp("Parent repository is ", buf, 21) == 0);
 			p = &buf[21];
 			chop(p);
+			append = 1;
 		}
 		pclose(f);
 	}
@@ -38,7 +41,20 @@ remote_parse(char *p)
 	if (strneq("bk://", p, 5)) {
 		r = url_parse(p + 5);
 	} else {
-		r = nfs_parse(p);
+		if (!is_clone && (bk_mode() == BK_BASIC)) {
+			fprintf(stderr,
+				"Non-url address detected: %s\n", upgrade_msg);
+			r = NULL;
+		} else {
+			r = nfs_parse(p);
+		}
+	}
+	if (r && append && cmdlog_buffer[0]) {
+		char	*rem = remote_unparse(r);
+
+		strcat(cmdlog_buffer, " ");
+		strcat(cmdlog_buffer, rem);
+		free(rem);
 	}
 	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
 	return (r);
@@ -213,7 +229,7 @@ bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 #ifdef WIN32
 		p = tcp_pipe(r->host, r->port, r_pipe, w_pipe);
 		if (p == ((pid_t) -1)) {
-			fprintf(stderr, "can not create socket_helper\n");
+			fprintf(stderr, "cannot create socket_helper\n");
 			return (-1);
 		}
 #else
@@ -233,7 +249,7 @@ bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 #ifdef WIN32
 			if (!(t = prog2path(remsh)) ||
 			    strstr(t, "system32/rsh")) {
-				fprintf(stderr, "Can not find %s.\n", remsh);
+				fprintf(stderr, "Cannot find %s.\n", remsh);
 				fprintf(stderr,
 "=========================================================================\n\
 The programs rsh/ssh are not bundled with the BitKeeper distribution.\n\

@@ -13,12 +13,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-echo "seats: 1" >>$HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -29,12 +24,12 @@ mkdir src
 cd $HERE/project/src
 echo foo > foo.c
 bk ci $Q -i foo.c
-bk commit $S -f -y"This is \"Change Set\" A"
+bk commit $S -a -y"This is \"Change Set\" A"
 bk clone $Q $HERE/project $HERE/copy1
 bk mv foo.c new_foo.c
 echo bar >> bar.c
 bk ci $Q -i bar.c
-bk commit $S -f -y"This is a \"Change Set\" B"
+bk commit $S -a -y"This is a \"Change Set\" B"
 bk clone $Q $HERE/project $HERE/copy2
 cd $HERE/copy2/src
 bk undo -fqr1.3

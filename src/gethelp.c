@@ -8,5 +8,5 @@ gethelp_main(int ac, char **av)
 		fprintf(stderr, "usage: gethelp help_name bkarg\n");
 		exit(1);
 	}
-	return (gethelp(av[1], av[2], stdout) == 0);
+	return (gethelp(av[1], av[2], 0, stdout) == 0);
 }

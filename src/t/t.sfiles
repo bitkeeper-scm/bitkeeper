@@ -12,10 +12,7 @@
 echo $N Setup .......................................................$NL
 set -e
 trap 'echo failed' 0
-bk cset $Q -n .
-echo "logging: none" > BitKeeper/etc/config
-bk ci -i $Q BitKeeper/etc/config
-bk sfiles -C | bk cset $Q -yInitial
+no_logging project
 mkdir bar
 mkdir bar/blech
 touch foo
@@ -40,11 +37,13 @@ cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
 echo OK
 echo $N Check explicit list with some files left out ................$NL
-sort <<EOF > .sfiles
+sort <<EOF > X
 SCCS/s.ChangeSet
 SCCS/s.s.foo
 bar/blech/s.foo
 EOF
+bk undos X > .sfiles
+rm -f X
 bk sfiles `cat .sfiles` | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
@@ -135,7 +134,7 @@ SCCS/s.foo
 bar/blech/SCCS/s.s.foo
 EOF
 cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
+if [ $? -ne 0 ]; then echo list failed; diff SFILES LIST; exit 1; fi
 bk sfiles -u - < .sfiles | sort > SFILES
 sort <<EOF > LIST
 SCCS/s.ChangeSet
@@ -227,7 +226,6 @@ bk sfiles -D | grep -v BitKeeper | sort > SFILES
 sort <<EOF > LIST
 bar/not
 bar/notquite
-.tmp
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -238,7 +236,6 @@ bk sfiles -x | sort > SFILES
 sort <<EOF > LIST
 LIST
 SFILES
-.tmp/.bk_keys
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -252,7 +249,6 @@ sort <<EOF > LIST
 LIST
 SCCS/OLD-s.foo
 SFILES
-.tmp/.bk_keys
 EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
@@ -265,35 +261,16 @@ if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
 FOO="`bk sfiles s.foo`"
 if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
 echo OK
+echo $N Test ignore lists with -x ...................................$NL
 cat <<EOF > BitKeeper/etc/ignore
 LIST
 s.*
 *ore
 config
 EOF
-echo $N Test ignore lists with -u ...................................$NL
-bk sfiles -u | sort > SFILES
-sort <<EOF > LIST
-SCCS/s.foo
-SCCS/s.ChangeSet
-EOF
-cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-echo OK
-echo $N Test ignore lists with -ug ..................................$NL
-bk sfiles -ug | sort > SFILES
-sort <<EOF > LIST
-foo
-ChangeSet
-EOF
-cmp -s SFILES LIST
-if [ $? -ne 0 ]; then echo failed; diff SFILES LIST; exit 1; fi
-echo OK
-echo $N Test ignore lists with -x ...................................$NL
 sort <<EOF > LIST
 SCCS/OLD-s.foo
 SFILES
-.tmp/.bk_keys
 EOF
 bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
@@ -318,7 +295,6 @@ BitKeeper/etc/ignore
 LIST
 SCCS/OLD-s.foo
 SFILES
-.tmp/.bk_keys
 EOF
 bk sfiles -ax | sort > SFILES
 cmp -s SFILES LIST
@@ -335,7 +311,6 @@ sort <<EOF > LIST
 SCCS/OLD-s.foo
 SFILES
 bar/lib
-.tmp/.bk_keys
 EOF
 bk sfiles -x | sort > SFILES
 cmp -s SFILES LIST
@@ -351,6 +326,10 @@ mv SCCS/s.impostor s.impostor
 mv impostor SCCS/s.impostor
 bk sfiles | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
 SCCS/s.foo
 SCCS/s.ChangeSet
 SCCS/s.impostor
@@ -361,6 +340,10 @@ echo OK
 echo $N Test mildly paranoid mode ...................................$NL
 bk sfiles -p | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
 SCCS/s.foo
 SCCS/s.ChangeSet
 SCCS/s.impostor
@@ -372,6 +355,10 @@ echo OK
 echo $N Test truly paranoid mode ....................................$NL
 bk sfiles -P | sort > SFILES
 sort <<EOF > LIST
+BitKeeper/etc/SCCS/s.config
+SCCS/s.s.foo
+bar/SCCS/s.s.foo
+bar/blech/SCCS/s.s.foo
 SCCS/s.foo
 SCCS/s.ChangeSet
 s.impostor

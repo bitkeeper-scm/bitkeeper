@@ -11,21 +11,16 @@ usage: cset [opts]\n\n\
     -c		like -m, except generate only ChangeSet diffs\n\
     -d<range>	do unified diffs for the range\n\
     -C		clear and remark all ChangeSet boundries\n\
-    -h		With -r listing, if the file name as of the cset is not the\n\
-    		same as the current file name, list as\n\
-		<old name> <current name>@rev\n\
+    -h		With -r listing, show historic path\n\
+    -H		With -r listing, hide Changeset file from file list\n\
     -i<list>	create a new cset on TOT that includes the csets in <list>\n\
     -l<range>	List each rev in range as file@rev (may be multiline per file)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
-    -n		Create a new change set history rooted at <root>\n\
     -p		print the list of deltas being added to the cset\n\
     -q		Run silently\n\
     -r<range>	List the filenames:rev..rev which are included in  <range>\n\
-    -r<A>..<B>	List the differences between cset A and B, for sccslog\n\
-    -R<A>..<B>	List the differences between cset A and B, for diffs\n\
     -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
-    -t<rev>	List the filenames:revisions of the repository as of rev\n\
     -x<list>	create a new cset on TOT that excludes the csets in <list>\n\
     -y<msg>	Sets the changeset comment to <msg>\n\
     -Y<file>	Sets the changeset comment to the contents of <file>\n\
@@ -36,21 +31,19 @@ typedef	struct cset {
 	int	mixed;		/* if set, then both long and short keys */
 	int	csetOnly;	/* if set, do logging ChangeSet */
 	int	makepatch;	/* if set, act like makepatch */
-	int	listeach;	/* if set, like -r except list revs 1/line */
+	int	listeach;	/* if set, list revs 1/line */
 	int	mark;		/* act like csetmark used to act */
 	int	doDiffs;	/* prefix with unified diffs */
 	int	force;		/* if set, then force past errors */
 	int	remark;		/* clear & redo all the ChangeSet marks */
 	int	dash;
-	int	historic;	/* list the historic name if different */
+	int	historic;	/* list the historic name */
+	int	hide_cset;	/* exclude cset from file@rev list */
 	int	include;	/* create new cset with includes */
 	int	exclude;	/* create new cset with excludes */
 
 	/* numbers */
 	int	verbose;
-	int	range;	
-#define		RANGE_INCLUSIVE	1	/* -r */
-#define		RANGE_ENDPOINTS	2	/* -R */
 	int	fromStart;	/* if we did -R1.1..1.2 */
 	int	ndeltas;
 	int	nfiles;
@@ -58,14 +51,13 @@ typedef	struct cset {
 } cset_t;
 
 private int	csetCreate(sccs *cset, int flags, char **syms);
-private	int	csetInit(sccs *cset, int flags, char *text);
 private	void	csetlist(cset_t *cs, sccs *cset);
 private	void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 private	int	marklist(char *file);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
 private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
 private	char	*file2str(char *f);
-private	void	doRange(cset_t *cs, sccs *sc);
+//private	void	doRange(cset_t *cs, sccs *sc);
 private	void	doEndpoints(cset_t *cs, sccs *sc);
 private	void	doSet(sccs *sc);
 private	void	doMarks(cset_t *cs, sccs *sc);
@@ -86,7 +78,7 @@ cset_main(int ac, char **av)
 	sccs	*cset;
 	int	flags = 0;
 	int	c, list = 0;
-	char	**syms = 0, *text = 0;
+	char	**syms = 0;
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
 	char	allRevs[6] = "1.0..";
@@ -102,28 +94,19 @@ usage:		fprintf(stderr, "%s", cset_help);
 
 	while (
 	    (c =
-	    getopt(ac, av, "c|Cd|Dfhi;l|m|M|n|pqr|R|sS;t;vx;y|Y|")) != -1) {
+	    getopt(ac, av, "c|Cd|DfHhi;m|M|pqr|sS;vx;y|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
-		    case 'n':
-			flags |= DELTA_EMPTY|NEWFILE;
-			text = optarg;
-			break;
 		    case 'f': copts.force++; break;
 		    case 'h': copts.historic++; break;
+		    case 'H': copts.hide_cset++; break;
 		    case 'i':
 			if (copts.include || copts.exclude) goto usage;
 			copts.include++;
 			r[rd++] = optarg;
 			break;
-		    case 'R':
-			copts.range++;
-			/* fall through */
 		    case 'r':
-		    	copts.range++;
-		    	/* fall through */
-		    case 'l':
-			if (c == 'l') copts.listeach++;
+			copts.listeach++;
 		    	/* fall through */
 		    case 'd':
 			if (c == 'd') copts.doDiffs++;
@@ -155,11 +138,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 			rd = 1;
 			things = tokens(notnull(optarg));
 			break;
-		    case 't':
-			list |= 2;
-			r[rd++] = optarg;
-			things += tokens(optarg);
-			break;
 		    case 'p': flags |= PRINT; break;
 		    case 'q':
 		    case 's': flags |= SILENT; break;
@@ -187,11 +165,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (copts.doDiffs && copts.csetOnly) {
 		fprintf(stderr, "Warning: ignoring -d option\n");
 		copts.doDiffs = 0;
-	}
-	if (list == 3) {
-		fprintf(stderr,
-		    "%s: -l and -t are mutually exclusive\n", av[0]);
-		goto usage;
 	}
 	if ((things > 1) && (list != 1)) {
 		fprintf(stderr, "%s: only one rev allowed with -t\n", av[0]);
@@ -222,7 +195,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: must specify package root.\n");
 		return (1);
 	} else if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "cset: can not find package root.\n");
+		fprintf(stderr, "cset: cannot find package root.\n");
 		return (1);
 	}
 
@@ -236,18 +209,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (!cset) return (101);
 	copts.mixed = !(cset->state & S_KEY2);
 
-	/*
-	 * If we are initializing, then go create the file.
-	 * XXX - descriptive text.
-	 */
-	if (flags & NEWFILE) {
-		if (syms) {
-			fprintf(stderr, "cset: no symbols allowed with -i.\n");
-			cset_exit(1);
-		}
-		return (csetInit(cset, flags, text));
-	}
-
 	if (list) {
 #ifdef  ANSIC
 		signal(SIGINT, SIG_DFL);
@@ -260,39 +221,15 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (list && (things < 1) && !copts.dash) {
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
-		purify_list();
 		cset_exit(1);
 	}
-	switch (list) {
-	    case 1:
+
+	if (list) {
 		RANGE("cset", cset, copts.dash ? 0 : 2, 1);
-		if (copts.range == RANGE_ENDPOINTS) {
-			if (cset->rstart == cset->rstop) {
-				fprintf(stderr,
-				    "\n%s: -R requires two different revs.\n",
-				    av[0]);
-				goto usage;
-			}
-			/*
-			 * This is a cute little hack.  We wanted the range
-			 * code to mark everything after rstart but we don't
-			 * have a way of saying that.  So we tell it to mark
-			 * everything and then turn off the one we don't want.
-			 * As long as noone wants rstart for anything we are
-			 * all set.
-			 */
-			cset->rstart->flags &= ~D_SET;
-		}
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
-		purify_list();
-		return (0);
-	    case 2:
-	    	csetList(cset, r[0], ignoreDeleted);
-		sccs_free(cset);
-		if (cFile) free(cFile);
-		purify_list();
+		freeLines(syms);
 		return (0);
 	}
 
@@ -304,7 +241,7 @@ next:		sccs_free(cset);
 	 */
 	c = csetCreate(cset, flags, syms);
 	if (cFile) free(cFile);
-	purify_list();
+	freeLines(syms);
 	return (c);
 }
 
@@ -342,53 +279,31 @@ spawn_checksum_child(void)
 	return pid;
 }
 
-private int
-csetInit(sccs *cset, int flags, char *text)
+/*
+ * Create the initial empty cset.
+ */
+int
+cset_setup(int flags)
 {
+	sccs	*cset;
 	delta	*d = 0;
 	char	**syms = 0;
 
-	/*
-	 * Create BitKeeper root.
-	 */
-	sccs_mkroot(".");
+	cset = sccs_init(csetFile, flags & SILENT, 0);
 
-
-	 // awc to lm:
-	 // should we make sure there are no changeset file
-	 //in the subdirectory before we proceed ?
-	unless (streq(basenm(CHANGESET), basenm(cset->sfile))) {
-		fprintf(stderr, "cset: must be -i ChangeSet\n");
-		cset_exit(1);
-	}
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
 	unless (d = host_get(d)) goto intr;
 	unless (d = user_get(d)) goto intr;
 	syms = addLine(0, strdup(KEY_FORMAT2));
 	cset->state |= S_CSET|S_KEY2;
-	if (text) {
-		FILE    *desc; 
-		char    dbuf[200];
-
-		desc = fopen(text, "rt"); /* must be text mode */
-		if (!desc) {
-			fprintf(stderr, "admin: can't open %s\n", text);
-			goto error;
-		}
-		assert(cset->text == 0);
-		while (fgets(dbuf, sizeof(dbuf), desc)) {
-			cset->text = addLine(cset->text, strnonldup(dbuf));
-		}
-		fclose(desc);
-	}
-	if (sccs_delta(cset, flags, d, 0, 0, syms) == -1) {
+	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, syms) == -1) {
 intr:		sccs_whynot("cset", cset);
-error:		sccs_free(cset);
+		sccs_free(cset);
 		sfileDone();
 		comments_done();
 		host_done();
 		user_done();
-		purify_list();
+		freeLines(syms);
 		return (1);
 	}
 	close(creat(IDCACHE, GROUP_MODE));
@@ -396,73 +311,9 @@ error:		sccs_free(cset);
 	comments_done();
 	host_done();
 	user_done();
+	freeLines(syms);
 	sfileDone();
-	purify_list();
 	return (0);
-}
-
-private void
-csetList(sccs *cset, char *rev, int ignoreDeleted)
-{
-	MDBM	*idDB;				/* db{fileId} = pathname */
-	MDBM	*goneDB;
-	kvpair	kv;
-	char	*t;
-	sccs	*sc;
-	delta	*d;
-	int  	doneFullRebuild = 0;
-
-	if (csetIds(cset, rev)) {
-		fprintf(stderr,
-		    "Can't find changeset %s in %s\n", rev, cset->sfile);
-		cset_exit(1);
-	}
-
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
-		if (sccs_reCache()) {
-			fprintf(stderr, "cset: can not build %s\n", IDCACHE);
-			cset_exit(1);
-		}
-		doneFullRebuild = 1;
-		unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
-			perror("idcache");
-			cset_exit(1);
-		}
-	}
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
-	for (kv = mdbm_first(cset->mdbm);
-	    kv.key.dsize != 0; kv = mdbm_next(cset->mdbm)) {
-		t = kv.key.dptr;
-		unless (sc = sccs_keyinit(t, INIT_NOCKSUM, 0, idDB)) {
-			if (gone(t, goneDB)) continue;
-			fprintf(stderr, "cset: init of %s failed\n", t);
-			cset_exit(1);
-		}
-		unless (d = sccs_findKey(sc, kv.val.dptr)) {
-			fprintf(stderr,
-			    "cset: can't find delta '%s' in %s\n",
-			    kv.val.dptr, sc->sfile);
-			cset_exit(1);
-		}
-		if (ignoreDeleted) {
-			char *p;
-			int len;
-			/*
-			 * filter out deleted file
-			 */
-			assert(d->pathname);
-			p = strrchr(d->pathname, '/');
-			p = p ? &p[1] : d->pathname;
-			len = strlen(p);
-			if ((len >= 6) && (strncmp(p, ".del-", 5) == 0)) {
-				sccs_free(sc);
-				continue;
-			}
-		}
-		printf("%s%c%s\n", sc->gfile, BK_FS, d->rev);
-		sccs_free(sc);
-	}
-	mdbm_close(idDB);
 }
 
 /*
@@ -484,10 +335,6 @@ doit(cset_t *cs, sccs *sc)
 		}
 	} else if (cs->mark) {
 		doMarks(cs, sc);
-	} else if ((cs->range == RANGE_INCLUSIVE) && !cs->listeach) {
-		doRange(cs, sc);
-	} else if (cs->range == RANGE_ENDPOINTS) {
-		doEndpoints(cs, sc);
 	} else {
 		doSet(sc);
 	}
@@ -525,7 +372,7 @@ header(sccs *cset, int diffs)
 private void
 markThisCset(cset_t *cs, sccs *s, delta *d)
 {
-	if (cs->mark || (cs->range == RANGE_ENDPOINTS)) {
+	if (cs->mark) {
 		d->flags |= D_SET;
 		return;
 	}
@@ -623,7 +470,7 @@ doKey(cset_t *cs, char *key, char *val)
 	/*
 	 * Set up the new file.
 	 */
-	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_NODUPS))) {
+	unless (idDB || (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS))) {
 		perror("idcache");
 	}
 	lastkey = strdup(key);
@@ -635,10 +482,11 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, 0, idDB);
 			if (cs->verbose) fputs("Rebuilding caches...\n", stderr);
 			if (sccs_reCache()) {
 				fprintf(stderr,
-				    "cset: can not build %s\n", IDCACHE);
+				    "cset: cannot build %s\n", IDCACHE);
 			}
 			doneFullRebuild = 1;
-			unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+			unless (idDB =
+			    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 				perror("idcache");
 			}
 			goto retry;
@@ -682,7 +530,7 @@ Please stand by.\n\n", stderr);
 	}
 	unless (d = sccs_findKey(sc, val)) {
 		fprintf(stderr,
-		    "cset: can not find\n\t%s in\n\t%s\n", val, sc->sfile);
+		    "cset: cannot find\n\t%s in\n\t%s\n", val, sc->sfile);
 		return (-1);
 	}
 	markThisCset(cs, sc, d);
@@ -721,7 +569,8 @@ marklist(char *file)
 	 */
 	while (fnext(buf, list)) {
 		chop(buf);
-		for (t = &buf[2]; *t != ' '; t++);
+		t = separator(&buf[2]);
+		assert(t);
 		*t++ = 0;
 		if (doKey(&cs, &buf[2], t)) {
 			fclose(list);
@@ -743,7 +592,7 @@ csetlist(cset_t *cs, sccs *cset)
 	char	*t;
 	FILE	*list = 0;
 	char	buf[MAXPATH*2];
-	char	cat[30], csort[30];
+	char	cat[MAXPATH], csort[MAXPATH];
 	char	*csetid;
 	int	status;
 	delta	*d;
@@ -777,7 +626,7 @@ csetlist(cset_t *cs, sccs *cset)
 			unlink(cat);
 			goto fail;
 		}
-		sprintf(buf, "sort < %s > %s", cat, csort);
+		sprintf(buf, "bk keysort < %s > %s", cat, csort);
 		if (system(buf)) {
 			unlink(cat);
 			goto fail;
@@ -834,8 +683,7 @@ again:	/* doDiffs can make it two pass */
 	 */
 	while (fnext(buf, list)) {
 		chop(buf);
-		for (t = buf; *t != ' '; t++);
-		*t++ = 0;
+		t = separator(buf); *t++ = 0;
 		if (sameFile(cs, csetid, buf)) continue;
 		if (gone(buf, goneDB)) continue;
 		if (doKey(cs, buf, t)) goto fail;
@@ -922,31 +770,6 @@ doDiff(sccs *sc, char kind)
 	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout, "PARENT", "NEW");
 }
 
-/*
- * Print the oldest..youngest
- * XXX - does not make sure that they are both on the trunk.
- */
-private void
-doRange(cset_t *cs, sccs *sc)
-{
-	delta	*d, *e = 0;
-
-	if (sc->state & S_CSET) return;
-	for (d = sc->table; d; d = d->next) {
-		if (d->flags & D_SET) e = d;
-	}
-	unless (e) return;
-	if (cs->historic && !streq(sc->gfile, e->pathname)) {
-		printf("%s ", e->pathname);
-	}
-	printf("%s%c%s..", sc->gfile, BK_FS, e->rev);
-	for (d = sc->table; d; d = d->next) {
-		if (d->flags & D_SET) {
-			printf("%s\n", d->rev);
-			return;
-		}
-	}
-}
 
 /*
  * Print a range suitable for diffs.
@@ -1019,8 +842,16 @@ doSet(sccs *sc)
 {
 	delta	*d;
 
+	if (copts.hide_cset  && streq(CHANGESET, sc->sfile))  return;
 	for (d = sc->table; d; d = d->next) {
-		if (d->flags & D_SET) printf("%s@%s\n", sc->gfile, d->rev);
+		if (d->flags & D_SET) {
+		    	if (copts.historic) {
+				printf("%s@%s@%s\n", sc->gfile,
+							d->pathname, d->rev);
+			} else {
+				printf("%s@%s\n", sc->gfile, d->rev);
+			}
+		}
 	}
 }
 
@@ -1048,7 +879,7 @@ csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d)
 	}
 	// XXX - fixme - removed deltas not done.
 	// Is this an issue?  I think makepatch handles them.
-	unless (cs->makepatch || cs->range) {
+	unless (cs->makepatch) {
 		if (d->type == 'D') printf("%s%c%s\n", sc->gfile, BK_FS, d->rev);
 	}
 }
@@ -1332,3 +1163,5 @@ sccs_patch(sccs *s, cset_t *cs)
 	cs->ndeltas += deltas;
 	if (list) free(list);
 }
+
+

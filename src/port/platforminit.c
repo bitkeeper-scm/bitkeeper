@@ -36,8 +36,8 @@ platformInit(char **av)
 	extern char    *editor, *pager, *bin;
 
 	if (bin) return;
-	if ((editor = getenv("EDITOR")) == NULL) editor = strdup(EDITOR);
-	if ((pager = getenv("PAGER")) == NULL) pager = strdup(PAGER);
+	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
+	unless (pager || (pager = getenv("PAGER"))) pager = PAGER;
 	m = umask(0) & 002;
 	umask(m);
 

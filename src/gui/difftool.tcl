@@ -168,8 +168,6 @@ proc sdiff {L R} \
 	global	rmList sdiffw
 
 	set rmList ""
-	# we need the extra quote arounf $R $L
-	# because win32 path may have space in it
 	set a [open "| grep {\r$} \"$L\"" r]
 	set b [open "| grep {\r$} \"$R\"" r]
 	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
@@ -476,7 +474,7 @@ proc main {} \
 	global argv0 argv argc dev_null lfile rfile tmp_dir
 
 	if {$argc < 1 || $argc > 3} {
-		puts "usage: $argv0 left [right \[done\]]"
+		puts "usage: $argv0 left \[right \[done\]\]"
 		exit
 	}
 	bk_init
@@ -489,13 +487,13 @@ proc main {} \
 	} else {
 		set rfile [lindex $argv 0]
 		set gfile ""
-		set f [open "| bk sfiles -g $rfile" r]
+		set f [open "| bk sfiles -g \"$rfile\"" r]
 		if { ([gets $f dummy] <= 0)} {
 			puts "$rfile is not under revision control."
 			exit 1
 		}
 		close $f
-		set f [open "| bk sfiles -gc $rfile" r]
+		set f [open "| bk sfiles -gc \"$rfile\"" r]
 		if { ([gets $f dummy] <= 0)} {
 			puts "$rfile is the same as the checked in version."
 			exit 1

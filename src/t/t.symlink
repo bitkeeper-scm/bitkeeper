@@ -18,10 +18,9 @@ then
 	exit 0
 fi
 
-HERE=`pwd`
 echo $N Create a symlink ............................................$NL
 umask 0
-bk cset -n -s .
+no_logging project
 echo "xx" > file
 ln -s file symlink
 mv file file.tmp
@@ -230,18 +229,25 @@ rm -rf symlink symfile newlink file file1 file2 file3 dir1 SCCS
 # Test resyncing and resolving symlink <-> file conflicts
 echo $N Create initial repository for symlink resync ................$NL
 cd $HERE
-echo "logging: none" > $HERE/config
-bk setup -f -n'BitKeeper Test repository' -c$HERE/config SL
-if [ ! -d SL ]; then echo failed to make top level directory; exit 1; fi
+no_logging SL
 touch BitKeeper/etc/SCCS/x.marked
 echo OK
 echo $N Create a regular file and a symlink .........................$NL
-cd SL
 ln -s dangling/symlink link
 echo i am a file > file
 bk ci $Q -i link file
-bk commit $S -f -y"This is a \"Change Set\""
+bk commit $S -a -y"This is a \"Change Set\""
 echo OK
+cores
+echo $N Export the repository .......................................$NL
+bk export $HERE/copy
+if test -h $HERE/copy/link; then
+    echo OK
+else
+    echo failed
+    exit 1
+fi
+
 cores
 bk -r check -a
 echo $N Save a tarball of the repository ............................$NL

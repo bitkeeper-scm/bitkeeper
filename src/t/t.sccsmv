@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-bk cset -n -s .
+no_logging project
 echo $N Test sccsmv w/ p locked file ................................$NL
 mkdir A B D E
 echo "This is file 1" > A/file1
@@ -68,15 +68,24 @@ bk mv C/file1 C/file4 B
 if [ ! -d C ]; then echo failed; exit 1; fi
 bk -r check -a || exit 1
 echo OK
-echo $N Test sccsmv to directory that does not exist ................$NL
-bk sccsmv B BBBB || { echo error; exit 1; }
-if [ ! -f BBBB/SCCS/s.file4 ]
+echo $N Test bk mvdir to directory that does not exist ..............$NL
+mkdir B/B1
+date > B/B1/fileB1
+bk new $Q B/B1/fileB1
+bk mvdir B BBBB/CCCC/DDDD
+if [ ! -f BBBB/CCCC/DDDD/SCCS/s.file4 ]
 then	echo failed to move file; exit 1
+fi
+if [ ! -f BBBB/CCCC/DDDD/B1/SCCS/s.fileB1 ]
+then	echo failed to move fileB1; exit 1
 fi
 bk -r check -a || exit 1
 echo OK
 echo $N And move it back ............................................$NL
-bk sccsmv BBBB B || { echo error; exit 1; }
+bk mvdir BBBB/CCCC/DDDD B || { echo error; exit 1; }
+if [ ! -f B/B1/SCCS/s.fileB1 ]
+then	echo failed to move fileB1; exit 1
+fi
 echo OK
 echo $N Test sccsrm w/ p locked file ................................$NL
 bk get $Q -e B/file1
@@ -141,7 +150,7 @@ DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/.del-file4~1`
 if [ ${DPATH}X != "${DDIR}/.del-file4~1"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm \& empty directory ...............................$NL
-HERE=`pwd`
+HERE=`bk pwd`
 cd D
 bk sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
@@ -169,4 +178,31 @@ cmp -s S.G SCCS/s..del-G
 if [ $? = 0 ]; then echo Failed to add rm delta; exit 1; fi
 if [ -f p.G ]; then echo Failed to rm p.G; exit 1; fi
 if [ -f p..del-G ]; then echo Failed to rm p..del-G; exit 1; fi
+echo OK
+echo $N Test bk rmdir ...............................................$NL
+date > B/B1/fileB2
+bk rmdir B | grep "unchecked" > /dev/null
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk delta $Q -i -l B/B1/fileB2
+echo new > B/B1/fileB2
+bk rmdir B | grep "edited" > /dev/null
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk delta $Q -y B/B1/fileB2
+bk rmdir B
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ -d B ]; then echo failed; exit 1; fi
+bk -r check -a
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ -f Bitkeeper/deleted/s..del-fileB1 ]; then echo failed; exit 1; fi
+if [ -f Bitkeeper/deleted/s..del-fileB2 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Test check -ag ..............................................$NL
+echo y | bk commit $Q -ycset
+rm -f CCCC/SCCS/s.file6
+bk -r check -a 2>  ck.out
+grep -q "not found"  ck.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk -r check -ag | bk gone -
+bk -r check -a
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK

@@ -13,12 +13,9 @@
 # Copyright (c) 1999 Andrew Chang?
 # %K%
 
+HERE=`bk pwd`
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -38,7 +35,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set with a symbol with spaces in it .........$NL
-bk commit $S -f -yCset -S"Hi there this is a changeset"
+bk commit $S -a -yCset -S"Hi there this is a changeset"
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 bk -R get $S -p ChangeSet > TOT
@@ -49,4 +46,31 @@ then	echo failed
 	diff TOT SYM
 	exit 1
 fi
+echo OK
+echo $N Try to commit an empty cset .................................$NL
+cd $HERE/project
+bk edit $Q ChangeSet
+bk commit $Q
+# make sure "bk commit" did not change the mode of the ChangeSet file
+writable ChangeSet || { echo failed; exit 1; }
+echo OK
+echo $N Try to commit via stdin .....................................$NL
+cd $HERE/project/src
+bk co $Q -l h.h
+date > h.h
+bk ci $Q -ytest_cmt1 h.h
+date > t.c
+bk ci $Q -ytest_cmt2 -i t.c
+bk sfiles -C | bk commit $Q -ycmt3 -
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+cat > X <<EOF
+ChangeSet@ChangeSet@1.2@ChangeSet@1.3
+src/h.h@src/h.h@1.1@src/h.h@1.2
+src/t.c@src/t.c@1.0@src/t.c@1.1
+EOF
+bk undos X > CMP1
+bk -R rset -hr1.2,1.3 > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK

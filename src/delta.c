@@ -219,8 +219,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 			sccs_free(s);
 			comments_done();
 			sfileDone();
-			//freeLines(syms);
-			purify_list();
+			freeLines(syms);
 			return (1);
 		}
 		if (checkout) {
@@ -249,9 +248,9 @@ next:		if (init) mclose(init);
 	}
 	sfileDone();
 	comments_done();
-	//freeLines(syms);
+	freeLines(syms);
 	if (proj) proj_free(proj);
-	purify_list();
 	return (0);
 }
+
 

@@ -480,7 +480,9 @@ proc save {} \
 	}
 	set o [open $outputFile w]
 	set Text [.merge.t get 1.0 "end - 1 char"]
-	if {[regexp {\n$} $Text]} {
+	set len [expr [string length $Text] - 1]
+	set last [string index $Text $len]
+	if {"$last" == "\n"} {
 		puts -nonewline $o $Text
 	} else {
 		puts $o $Text

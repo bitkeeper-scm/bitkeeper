@@ -13,12 +13,9 @@
 # Copyright (c) 1999 Andrew Chang?
 # awc@etp2.bitmover.com|src/t/t.repository|20000322041145|27344
 
+OK_LICENSE=BKL33148331000bffb7b0968001fff
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -44,6 +41,10 @@ do	P=`expr $P + 1`
 	bk bkd -d -p$P -c1 2>/dev/null
 done
 echo OK
+# Win32 note: If bkd binary is on a network drive
+# NT will refuse to start the bkd service. (permission denied)
+# Please make sure the bk binary is on a local disk
+# before you run this test.
 echo $N "push a new changeset via bkd (no compression)" ...............$NL
 cd $HERE/project/src
 echo woo > woo.c
@@ -128,4 +129,46 @@ done
 cd $HERE/copy/src
 bk pull -t $Q bk://localhost:$P
 if [ ! -f SCCS/s.coo.c ]; then echo failed; exit 1; fi
+echo OK
+# Check bk basic mode behaviour
+echo $N Make sure bk/basic limits access to master repository only ..$NL
+cd $HERE/copy/BitKeeper/etc
+bk edit $Q config
+echo "description: BitKeeper Test repository" > config
+echo "email:		nobody@nowhere.bk" >> config
+echo "license: $OK_LICENSE" >> config
+echo "logging: private@me.com" >>  config
+bk ci $Q -y"set close logging"  config
+echo y | bk commit $Q -y"set close logging" > /dev/null 2>&1
+P=50000
+cd $HERE
+bk bkd -d -p$P -c6  2> /dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -c6 2>/dev/null
+done
+cd $HERE
+bk clone bk://localhost:$P$HERE/copy $HERE/copy3 2> bk.out
+grep -q "bkd std cannot access non-master" bk.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+cd $HERE/copy2
+bk pull bk://localhost:$P$HERE/copy 2> bk.out
+grep -q "bkd std cannot access non-master" bk.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk push bk://localhost:$P$HERE/copy 2> bk.out
+grep -q "bkd std cannot access non-master" bk.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Make sure bk/basic allows clone from master repository ......$NL
+mkdir $HERE/copy/BitKeeper/etc/.master
+bk clone $Q bk://localhost:$P$HERE/copy $HERE/copy3
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Make sure bk/basic allows push/pull from master repository ..$NL
+cd $HERE/copy2
+bk push -t $Q bk://localhost:$P$HERE/copy 2> bk.out
+grep -q "2 csets only in" bk.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk pull -t $Q bk://localhost:$P$HERE/copy
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK

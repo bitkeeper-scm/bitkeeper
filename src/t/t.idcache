@@ -19,12 +19,7 @@
 # per file information (flags, etc.)
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-echo "seats: 1" >>$HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -44,11 +39,11 @@ then	echo Failed to prevent duplicate root keys
 	bk prs -r1.0 -d:KEY:  bar.c fooc.
 	exit 1
 fi
-bk commit $S -f -y"abc" 
+bk commit $S -a -y"abc" 
 if [ $? != 0 ]
 then	echo commit failed
 	exit 1
 fi
 bk sccsrm bar.c
-bk commit $S -f -y"rm"
+bk commit $S -a -y"rm"
 echo OK

@@ -38,7 +38,7 @@ prs_main(int ac, char **av)
 	char	*cset = 0;
 	int	noisy = 0;
 	int	expand = 1;
-	char	*dspec = NULL;
+	char	*dspec = NULL, *year4 = NULL;
 	project	*proj = 0;
 	RANGE_DECL;
 
@@ -47,7 +47,7 @@ prs_main(int ac, char **av)
 		fprintf(stderr, prs_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "abc;C;d:hmMor|v")) != -1) {
+	while ((c = getopt(ac, av, "abc;C;d:hmMor|vY")) != -1) {
 		switch (c) {
 		    case 'a':
 			/* think: -Ma, the -M set expand already */
@@ -62,9 +62,13 @@ prs_main(int ac, char **av)
 		    case 'M': expand = 3; break;
 		    case 'o': opposite = 1; doheader = 0; break;
 		    case 'v': noisy = 1; break;
+		    case 'Y': year4 = strdup("BK_YEAR4=1");
+			      putenv(year4);
+			      break;
 		    RANGE_OPTS('c', 'r');
 		    default:
 usage:			fprintf(stderr, "prs: usage error, try --help\n");
+			if (year4) free(year4);
 			return (1);
 		}
 	}
@@ -110,6 +114,6 @@ next:		sccs_free(s);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
+	if (year4) free(year4);
 	return (0);
 }

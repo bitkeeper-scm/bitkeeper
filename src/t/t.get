@@ -13,10 +13,7 @@
 # %K%
 
 SAVE=`bk getuser`
-BK_USER=bk
-export BK_USER
-rm -rf bar SCCS
-bk cset -n -s .
+no_logging project
 echo Hallo > date
 bk admin $Q -n -idate date; rm date
 echo $N Check for path in initial checkin ...........................$NL
@@ -89,7 +86,7 @@ grep -q '^.cP.*date$' SCCS/s.date
 if [ $? -ne 0 ]; then echo No path found.; exit 1; fi
 echo OK
 echo $N Check hosts in file .........................................$NL
-hostname=`bk gethost`
+hostname=free.bk
 grep -q "^.cH.*$hostname\$" SCCS/s.date
 if [ $? -ne 0 ]; then echo No host found.; exit 1; fi
 X=`grep -c "^.cH.*$hostname\$" SCCS/s.date`
@@ -186,7 +183,6 @@ echo OK
 echo $N Make sure get -u works ......................................$NL
 if [ "`bk get $S -pu T`" != "bk	HI" ]; then echo Failed.; exit 1; fi
 echo OK
-BK_USER=$SAVE
 echo $N Make sure get -na works .....................................$NL
 echo HI > T
 if [ "`bk get $S -pan T`" != "T     | HI" ]; then echo Failed.; exit 1; fi
@@ -197,4 +193,16 @@ echo OK
 echo $N Make sure get -u works ......................................$NL
 if [ "`bk get $S -pau T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK
-BK_USER=$SAVE
+if [ $PLATFORM = "WIN32" ]
+then #-------------------------------------------------------------
+echo $N Make sure get creat gfile in real name ......................$NL
+echo "hi" > test.c
+bk ci $Q -i test.c
+bk edit $Q TEST.C
+echo new > test.C
+bk delta $Q -ychk_path  test.C
+DPN=`bk prs -h -r+ -d:DPN: test.C`
+if [ "$DPN" != "test.c" ]; then echo failed; exit 1; fi
+echo OK
+fi #---------------------------------------------------------------
+rm -rf A garbage

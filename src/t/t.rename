@@ -18,11 +18,7 @@
 echo $N set up ......................................................$NL
 trap 'echo failed' 0
 set -e
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-echo "seats: 3" >> $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c gca
-cd gca
+no_logging gca
 mkdir src
 cd src
 echo Baseline > regression.sh

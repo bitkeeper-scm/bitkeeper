@@ -11,6 +11,8 @@
 
 /*
  * Version 1.2 - removes the @DONE@ in the push path.
+ *	We slipped the "to/from host:path" into the pull/push in this
+ *	version without bumping the version number; it caused no problems.
  */
 #define	BKD_VERSION	"BKD version 1.2"
 
@@ -82,7 +84,7 @@ extern	struct cmd cmds[];
 extern	int exists(char *);
 extern	bkdopts Opts;
 
-remote	*remote_parse(char *url);
+remote	*remote_parse(char *url, int is_clone);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r, int *r_pipe, int *w_pipe);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);

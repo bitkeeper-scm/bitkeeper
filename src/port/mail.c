@@ -42,7 +42,7 @@ mail(char *to, char *subject, char *file)
 	}
 
 	fd0  = dup(0); close(0);
-	fd = open(file, O_RDONLY);
+	fd = open(file, O_RDONLY, 0);
 	assert(fd == 0);
 	mail = exists("/usr/bin/mailx") ? "/usr/bin/mailx" : "mail";
 	/* `mail -s subject" form doesn't work on IRIX */
@@ -66,20 +66,41 @@ mail(char *to, char *subject, char *file)
 	pid_t	pid;
 	extern	char *bin;
 
-	if (findprog("blat.exe") ) {
+	/*
+	 * user have a non-standard email configuration
+	 */
+	sprintf(buf, "%s/bk_mail.bat", bin);
+	if (exists(buf)) {
+		char mail_bat[MAXPATH];
+		char *av[] = {mail_bat, subject, to, file, 0};
+
+		sprintf(mail_bat, "%s/bk_mail.bat", bin);
+		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
+		return (pid);
+	} 
+
+	/*
+	 * Try to send it via the Excahnge server
+	 */
+	sprintf(buf, "%s/mapisend.exe", bin);
+	if (exists(buf)) {
+		char *av[] = 	{"mapisend", "-u", "MS Exchange settings",
+					"-p", "not_used", "-r", to, "-s", subject,
+								"-f", file, 0};
+		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
+		if (pid != -1) return (pid);
+	}
+
+	/*
+	 * Try to send it via the SMTP
+	 */
+	sprintf(buf, "%s/blat.exe", bin);
+	if (exists(buf)) {
 		char *av[] = {"blat", file, "-t", to, "-s", subject, "-q", 0};
 
 		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
 		if (pid != -1) return (pid);
 	}
-	if (findprog("mail.bat") ) {
-		char mail_bat[MAXPATH];
-		char *av[] = {mail_bat, subject, to, file, 0};
-
-		sprintf(mail_bat, "%s/mail.bat", bin);
-		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
-		return (pid);
-	} 
 	fprintf(stderr, "\n\
 ===========================================================================\n\
 Can not find a working mailer.\n\n\
@@ -87,13 +108,13 @@ If you have access to a SMTP server, you can install the \"blat\" mailer\n\
 with the following command:\n\n\
 	blat -install <smtp_server_address> <your email address>\n\
 \n\
-If you have a non-smtp connection, (e.g. MS exchange), you can supply\n\
-a mail.bat file to connect Bitkeeper to your mail server; the mail.bat \n\
+If you have a non-standard connection, you can supply\n\
+a bk_mail.bat file to connect Bitkeeper to your mail server; the bk_mail.bat \n\
 file should accept the three auguments, as follows:\n\n\
-	mail.bat file recipient subject\n\
+	bk_mail.bat file recipient subject\n\
 \n\
-You should put the mail.bat file in the BitKeeper directory.\n\
-The mail.bat command should exit with status zero when the mail is \n\
+You should put the bk_mail.bat file in the BitKeeper directory.\n\
+The bk_mail.bat command should exit with status zero when the mail is \n\
 sent sucessfully.\n\
 ===========================================================================\n");
 	return (-1);

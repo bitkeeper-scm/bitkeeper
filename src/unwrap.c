@@ -19,7 +19,7 @@ unwrap_main(int ac,  char **av)
 			char	wrap_path[MAXLINE], wrap[MAXPATH];
 
 			unless (sscanf(&buf[16], "%s ##", wrap) == 1) {
-				fprintf(stderr,  "can not extract wrapper\n");
+				fprintf(stderr,  "cannot extract wrapper\n");
 				exit(1);
 			}
 			sprintf(wrap_path, "%s/un%swrap", bin, wrap);

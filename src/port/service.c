@@ -57,8 +57,8 @@ bkd_install_service(bkdopts *opts)
 		getcwd(here, sizeof(here));
 		start_dir = here;
 	}
-	sprintf(cmd, "\"%s\"  bkd -S -p %d -c %d \"-s%s\"",
-				path, opts->port, opts->count, start_dir);
+	sprintf(cmd, "\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
+		    path, opts->port, opts->count, start_dir, getenv("PATH"));
 	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if ( schSCManager )
 	{
@@ -74,10 +74,19 @@ bkd_install_service(bkdopts *opts)
 				DEPENDENCIES, NULL, NULL);
 
 		if ( schService ) {
+			/*
+			 * XXX If the bk binary is on a network drive
+			 * NT refused to start the bkd service
+			 * as "permission denied". The fix is
+			 * currently unknown. User must
+			 * make sure the bk binary is on a local disk
+			 */
 			fprintf(stderr, "%s installed.\n", SERVICEDISPLAYNAME);
 			if (StartService(schService, 0, NULL) == 0) {
-				fprintf(stderr, "%s can not start service.\n",
-							    SERVICEDISPLAYNAME);
+				fprintf(stderr,
+					"%s can not start service. %s\n",
+					SERVICEDISPLAYNAME,
+					getError(err, 256));
 			} else {
 				fprintf(stderr, "%s started.\n",
 							    SERVICEDISPLAYNAME);

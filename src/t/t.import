@@ -13,9 +13,8 @@
 # %K%
 
 echo $N Test import of a plain file .................................$NL
-HERE=`pwd`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+no_logging project
+cd $HERE
 mkdir -p import_dir/src
 echo foo > X
 bk undos X > import_dir/src/foo.c
@@ -38,8 +37,8 @@ then
 #----------------------------------------------------
 echo $N Test import of a symbolic link ..............................$NL
 cd $HERE
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c symlink
+no_logging symlink
+cd $HERE
 mkdir -p symlink/src
 echo foo > import_dir/src/foo.c
 touch import_dir/src/boo.c
@@ -72,7 +71,7 @@ bk get $Q foo.c
 diff -u foo.c $HERE/import_new/src/foo.c
 cmp -s foo.c $HERE/import_new/src/foo.c
 U=`bk prs -r+ -h -d:P: foo.c`
-if [ X$U != Xpatch ] 
+if [ X$U != Xpatch -a X$U != Xbk ] 
 then
 	echo "failed: bad user: $U"
 	exit 1

@@ -9,7 +9,6 @@ BINDIR	= /usr/libexec/bitkeeper
 # These default values are for unix
 SYS	=unix
 BK=	bk 
-BKMERGE=bkmerge
 CC_OUT	=-o $@
 LD_OUT	=-o $@
 LD	=cc
@@ -24,7 +23,7 @@ XTRA=
 UWTLIB	=
 UWT_H	=
 WIN_TMP	=*.idb *.pdb *.ilk *.exe *~bkp
-BINS	= $(BK) $(BKMERGE)
+BINS	= $(BK)
 
 # Override Solaris make.rules
 .SCCS_GET:
@@ -35,15 +34,15 @@ BINS	= $(BK) $(BKMERGE)
 OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  bkd_clone.o bkd_cmdtab.o bkd_misc.o bkd_pull.o \
 	  bkd_push.o bkd_pwd.o bkd_rootkey.o bkd_status.o \
-	  bkd_version.o bk.o bkusers.o check.o chksum.o \
+	  bkd_version.o bk.o bkusers.o changes.o check.o chksum.o \
 	  clean.o clone.o comments.o commit.o compress.o \
 	  cset.o cset_inex.o delta.o diffs.o dirname.o export.o fdiff.o \
 	  filecopy.o find.o fix.o g2sccs.o \
-	  gca.o get.o gethelp.o gethost.o getlog.o getopt.o \
-	  gettemp.o getuser.o glob.o graft.o help.o host.o isascii.o \
-	  key2rev.o lib_tcp.o libcommit.o libdiff.o librange.o \
+	  gca.o get.o gethelp.o gethost.o getopt.o \
+	  gettemp.o getuser.o glob.o gnupatch.o graft.o help.o host.o isascii.o \
+	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o log.o logaddr.o logchangeset.o mkdir.o mklock.o mmap.o \
+	  lod.o log.o logging.o merge.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethost.o port/getinput.o port/mail.o port/platforminit.o \
@@ -53,13 +52,13 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
 	  lock.o resolve.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o \
-	  resolve_renames.o resolve_filetypes.o rmdel.o \
+	  resolve_renames.o resolve_filetypes.o rmdel.o rset.o \
 	  sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
-	  send.o sendbug.o sendconfig.o setlog.o setup.o \
-	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
+	  send.o sendbug.o setup.o \
+	  sfiles.o sfind.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
-	  unique.o unedit.o unlock.o unwrap.o user.o utils.o \
-	  version.o what.o zgets.o zone.o license.o
+	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
+	  version.o what.o zgets.o zone.o license.o trigger.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
@@ -68,13 +67,13 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/uncompr.o zlib/zutil.o
 SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fmtool fm3tool \
-	  renametool mkdiffs gzip_uuwrap ungzip_uuwrap
+	  renametool setuptool gzip_uuwrap ungzip_uuwrap
 LOCALSCR= testfast build crank
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a $(UWTLIB)
 LINKS	= ci co edit unget
-DATA	= bitkeeper.config bkhelp.txt
+DATA	= bitkeeper.config bkhelp.txt bklogo.gif
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= bk admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -93,7 +92,7 @@ LZLIB	= -Lzlib -lz
 # Override this if you don't have it.
 RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) 
-HDRS	= bkd.h lib_tcp.h mmap.h purify.h range.h resolve.h sccs.h \
+HDRS	= bkd.h lib_tcp.h mmap.h logging.h purify.h range.h resolve.h sccs.h \
 	  system.h $(SYS).h mdbm/common.h mdbm/mdbm.h mdbm/tune.h zgets.h \
 	  zlib/deflate.h zlib/infblock.h zlib/infcodes.h zlib/inffast.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
@@ -101,11 +100,11 @@ HDRS	= bkd.h lib_tcp.h mmap.h purify.h range.h resolve.h sccs.h \
 SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
-	  gui/helptool.tcl uuwrap.sh \
+	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl bkmerge.sh \
+	  port/win32_platform.sh gui/renametool.tcl \
 	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh
 MISC	= bkhelp.doc bitkeeper.config t/doit.sh
 
@@ -118,23 +117,19 @@ default:
 
 all: $(ALL)
 
+FREQ=50
 purify-mem:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FREQ=50" all
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FREQ=$(FREQ)" all
 purify+files:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_FREQ=50" all
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_FREQ=$(FREQ)" all
 purify+mdbm:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_MDBM -DPURIFY_FREQ=50" all
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
 purify:
-	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=50" all
+	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=$(FREQ)" all
 PURIFY:
 	$(MAKE) CFLAGS="-g $O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DPURIFY_FREQ=1" all
 gprof:
-	$(MAKE) CFLAGS="-g -pg -O2" all
-# Recent gcc only profiles libc if you do it this way.
-# Note - profiling libc is incompatible with use of system zlib.
-gproflib:
-	$(MAKE) CFLAGS="-g -profile -O2" LZLIB="-Lzlib -lz" all
-
+	$(MAKE) CFLAGS="-g -pg -O2" LDFLAGS=-pg all
 # Debugging...
 d:
 	$(MAKE) CFLAGS="-g -DDEBUG" all
@@ -177,9 +172,10 @@ production_purify: rebuild purify $(INSTALL)
 production_image: rebuild p image
 
 # Cleanup targets.
-clean clean-obj: FORCE
-	-rm -f bk.o bkmerge.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
+clean clean-obj clean-cfg: FORCE
+	-rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
+	-rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-cd gnu && $(MAKE) clean-obj
 	-cd win32 && $(MAKE) clean-obj
 
@@ -188,9 +184,6 @@ clean-bin: FORCE
 	cd gnu && $(MAKE) clean
 	cd win32 && $(MAKE) clean
 	cd t && rm -f doit
-
-clean-cfg: FORCE
-	-rm -f bk.ver substvars gnu/config.cache
 
 clean-src: FORCE
 	-bk -r . clean
@@ -241,7 +234,7 @@ test tests rsh rshtest:
 	PREFER_RSH=YES $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-./bk get -q t/SCCS/s.t.* t/setup
+	-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
@@ -271,8 +264,6 @@ libsccs.a: $(OBJ) shell.o
 	-$(RANLIB) libsccs.a
 $(BK): bk.o $(LIBS)
 	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK_LIB)
-$(BKMERGE): bkmerge.o $(LIBS)
-	$(LD) $(LDFLAGS) $(LD_OUT) bkmerge.o $(LINK_LIB)
 
 testfast: testfast.perl
 	rm -f testfast
@@ -338,10 +329,6 @@ pmerge: pmerge.perl port/$(SYS)_platform.perl
 	cat pmerge.perl port/$(SYS)_platform.perl > pmerge
 	chmod +x pmerge
 
-mkdiffs: mkdiffs.perl port/$(SYS)_platform.perl
-	cat mkdiffs.perl port/$(SYS)_platform.perl > mkdiffs
-	chmod +x mkdiffs
-
 resync: resync.sh
 	rm -f resync
 	cp resync.sh resync
@@ -360,6 +347,10 @@ sccstool: gui/sccstool.tcl gui/common.tcl port/$(SYS)_platform.tcl
 
 citool: gui/citool.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/citool.tcl > citool
+
+setuptool: gui/setuptool.tcl gui/common.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/common.tcl \
+	    gui/setuptool.tcl > setuptool
 
 helptool: gui/helptool.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/helptool.tcl > helptool
@@ -397,9 +388,6 @@ install: install-nolinks
 			ln -s $(BINDIR)/$$file /usr/bin/$$file; \
 		done; \
 	fi; \
-	if [ $$LN = ln -a ! -d /var/bitkeeper ]; \
-	then	mkdir /var/bitkeeper; chmod 777 /var/bitkeeper; \
-	fi
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
@@ -408,8 +396,8 @@ install-nolinks: all
 	@if [ ! -d $(BINDIR)/t ]; \
 	then	mkdir $(BINDIR)/t; \
 	fi
-	@-./bk get -q t/SCCS/s.t.* t/setup
-	@cp -f t/doit t/t.* t/setup $(BINDIR)/t
+	@-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
+	@cp -f t/doit t/t.* t/setup t/x.chk_env $(BINDIR)/t
 	@./bk chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup \
 		| sort > $(BINDIR)/MANIFEST
 	@set `echo $(LINKTO)`; \
@@ -468,7 +456,7 @@ crank: crank.sh
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
 
-H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h mmap.h $(UWT_H)
+H=system.h $(SYS).h mdbm/mdbm.h purify.h sccs.h logging.h mmap.h $(UWT_H)
 B=bkd.h lib_tcp.h
 M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
@@ -495,6 +483,7 @@ bkd_rootkey.o:	bkd_rootkey.c $(B) $(H) $(Z)
 bkd_status.o:	bkd_status.c $(B) $(H) $(Z)
 bkd_version.o:	bkd_version.c $(B) $(H) $(Z)
 bkusers.o:	bkusers.c $(H)
+changes.o:	changes.c $(H)
 check.o:	check.c $(H) range.h
 chksum.o:	chksum.c
 clean.o:	clean.c $(H)
@@ -506,7 +495,7 @@ cset.o:		cset.c $(H) range.h $(Z)
 cset_inex.o:	cset_inex.c $(H) $(Z)
 delta.o:	delta.c $(H)
 diffs.o:	diffs.c $(H) range.h
-dirname.o:	dirname.c 
+dirname.o:	dirname.c
 export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 files.o:	files.c $(H)
@@ -520,7 +509,6 @@ gethelp.o:	gethelp.c $(H)
 gethost.o:	gethost.c
 gethost.o:	port/gethost.c $(H)
 getinput.o:	port/getinput.c $(H)
-getlog.o:	getlog.c $(H)
 getopt.o:	getopt.c $(H)
 gettemp.o:	gettemp.c $(H)
 getuser.o:	getuser.c
@@ -530,6 +518,7 @@ help.o:		help.c $(H)
 host.o:		host.c $(H)
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(H)
+keysort.o:	keysort.c $(H)
 lib_tcp.o:	lib_tcp.c lib_tcp.h
 libcommit.o:	libcommit.c $(H)
 libdiff.o:	libdiff.c $(H)
@@ -542,9 +531,10 @@ localtm.o:	localtm.c $(H)
 lock.o:		lock.c $(H)
 locking.o:	locking.c $(H)
 log.o:		log.c $(H)
+logging.o:	logging.c $(H)
 lod.o:		lod.c $(H) range.h $(Z)
 logaddr.o:	logaddr.c $(H)
-logchangeset.o:	logchangeset.c $(H)
+merge.o:	merge.c $(H)
 mkdir.o:	mkdir.c $(H)
 mmap.o:		mmap.c $(H)
 mtime.o:	mtime.c
@@ -593,8 +583,6 @@ sccsmv.o:	sccsmv.c $(H)
 sccsrm.o:	sccsrm.c $(H)
 send.o:		send.c $(H)
 sendbug.o:	sendbug.c $(H)
-sendconfig.o:	sendconfig.c $(H)
-setlog.o:	setlog.c $(H)
 setup.o:	setup.c $(H)
 sfiles.o:	sfiles.c $(H)
 sfio.o:		sfio.c $(H) $(Z)
@@ -606,10 +594,12 @@ spawn.o:	port/spawn.c $(H)
 status.o:	status.c $(H)
 stripdel.o:	stripdel.c $(H) range.h
 takepatch.o:	takepatch.c $(H) $(Z)
+trigger.o:	trigger.c $(H)
 undo.o:		undo.c $(H)
 undos.o:	undos.c
 unedit.o:	unedit.c $(H)
 unique.o:	unique.c $(H)
+unlink.o:	unlink.c $(H)
 unlock.o:	unlock.c $(H)
 unwrap.o:	unwrap.c $(H)
 user.o:		user.c $(H)
@@ -643,3 +633,4 @@ zlib/infutil.o:		zlib/infutil.c $(Z2)
 zlib/trees.o:		zlib/trees.c $(Z2)
 zlib/uncompr.o:		zlib/uncompr.c $(Z2)
 zlib/zutil.o:		zlib/zutil.c $(Z2)
+

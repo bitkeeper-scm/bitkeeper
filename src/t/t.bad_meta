@@ -15,12 +15,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-echo "seats: 1" >>$HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -51,7 +46,7 @@ cd $HERE/project
 if [ ! -f "SCCS/s.ChangeSet" ]; then echo ChangeSet file not found; exit 1; fi
 bk admin -T ChangeSet 2> admin.out
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
-grep -q "Can not create null delta in ChangeSet file" admin.out 
+grep -q "Cannot create null delta in ChangeSet file" admin.out 
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 rm admin.out

@@ -13,10 +13,8 @@
 # %K%
 
 echo $N Create two copies of a repository ...........................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-bk clone $Q project copy
+no_logging project
+bk clone $Q $HERE/project $HERE/copy
 echo OK
 echo $N Create two different logging_ok files .......................$NL
 cd $HERE/project/BitKeeper/etc
@@ -53,13 +51,14 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+cat <<EOF  > X
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
+diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
@@ -83,13 +82,14 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+cat <<EOF > X 
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
+diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
@@ -111,13 +111,14 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+cat <<EOF  > X
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 lm@bitmover.com
 lm@lm.bitmover.com
 lm@work.bitmover.com
 EOF
+diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS
@@ -147,7 +148,7 @@ if [ ! -f BitKeeper/etc/logging_ok ]
 then	echo 'Where oh where did my little file go?'
 	exit 1
 fi
-cat <<EOF | diff - BitKeeper/etc/logging_ok > DIFFS
+cat <<EOF > X
 awc@etp3.bitmover.com
 beth@work.bitmover.com
 copy@foo.com
@@ -156,6 +157,7 @@ lm@lm.bitmover.com
 lm@work.bitmover.com
 project@foo.com
 EOF
+diff X BitKeeper/etc/logging_ok > DIFFS
 if [ `wc -l < DIFFS` -ne 0 ]
 then	echo failed to union the data in the file
 	cat DIFFS

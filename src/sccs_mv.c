@@ -3,7 +3,7 @@
 #include "sccs.h"
 WHATSTR("%W%");
 
-private	char	*getRelativeName(char *);
+private	char	*getRelativeName(char *, project *proj);
 private	void	rmDir(char *);
 private	int	mv(char *, char *);
 private	int	update_idcache(sccs *s, char *old, char *new);
@@ -55,8 +55,8 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	}
 	/* close the file before we move it - win32 restriction */
 	sccs_close(s);
-	oldpath = getRelativeName(name);
-	newpath = getRelativeName(destfile);
+	oldpath = getRelativeName(name, s->proj);
+	newpath = getRelativeName(destfile, s->proj);
 	if (isDelete) {
 		sprintf(commentBuf, "Delete: %s", oldpath);
 	} else {
@@ -172,7 +172,7 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	}
 	close(fd);	/* unlink it when we are done */
 	sprintf(path, "%s/%s", p->root, IDCACHE);
-	unless (idDB = loadDB(path, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(path, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		fprintf(stderr, "No idcache?  Creating one.\n");
 		idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	}
@@ -222,13 +222,13 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 }
 
 private	char *
-getRelativeName(char *name)
+getRelativeName(char *name, project *proj)
 {
 	char	*t, *rpath;
 
 	/* TODO: we should cache the root value for faster lookup */
 	t = sccs2name(name);
-	rpath = strdup(_relativeName(t, 0, 0, 0, 0));
+	rpath = strdup(_relativeName(t, 0, 0, 0, proj, 0));
 	free(t);
 	return rpath;
 }

@@ -13,11 +13,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -37,7 +33,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
-bk commit $S -f -yCset
+bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
@@ -170,7 +166,7 @@ u
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "BITKEEPER,YEAR4,RCS,SCCS,EXPAND1,CSETMARKED" ]
+if [ "$FLAGS" != "BITKEEPER,YEAR4,RCS,SCCS,SINGLE,EXPAND1,CSETMARKED" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:' foo.c
 	exit 1

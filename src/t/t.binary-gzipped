@@ -14,15 +14,14 @@
 if [ X$PLATFORM = X"WIN32" ]
 then
 	binary_data="`bk bin`/bk.exe"
-	binary_data2="`bk bin`/bkmerge.exe"
+	binary_data2="`bk bin`/cmp.exe"
 else 
 	binary_data="/bin/ls"
 	binary_data2="/bin/rm"
 fi
 data="data"
 
-rm -rf foo SCCS A
-mkdir SCCS; bk cset -n -s .
+no_logging proj
 echo $N Trying to check in some binary data .........................$NL
 cp ${binary_data} ${data}
 chmod u+w ${data}

@@ -20,6 +20,8 @@ cmd_cd(int ac, char **av)
 		out("' is not a package root\n");
 		return (-1);
 	}
+	if (bk_proj) proj_free(bk_proj);
+	bk_proj = proj_init(0);
 	out("OK-root OK\n");
 	return (0);
 }

@@ -13,11 +13,7 @@
 # %K%
 
 echo $N Check bk fix to re-edit a file ..............................$NL
-echo "BitKeeper Test repository" > Description
-bk cset -snDescription .
-echo "logging: none" > BitKeeper/etc/config
-echo "seats: 1" >> BitKeeper/etc/config
-bk ci -i $Q BitKeeper/etc/config
+no_logging project
 date > FILE
 bk ci $Q -i FILE
 bk co $Q -l FILE

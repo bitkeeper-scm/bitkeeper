@@ -15,7 +15,7 @@ private void	unedit();
  * cset_inex.c - changeset include/exclude processing.
  *
  * Something like this:
- *	bk cset -l<revs> | while read file rev
+ *	bk cset -r<revs> | while read file rev
  *	do	bk get -e -i<rev> <file>
  *		bk delta <file>
  *	done
@@ -36,7 +36,7 @@ cset_inex(int flags, char *op, char *revs)
 
 	av[i = 0] = "bk";
 	av[++i] = "cset";
-	sprintf(buf, "-l%s", revs);
+	sprintf(buf, "-r%s", revs);
 	av[++i] = buf;
 	av[++i] = 0;
 	pid = spawnvp_rPipe(av, &fd);
@@ -57,6 +57,7 @@ cset_inex(int flags, char *op, char *revs)
 	file[0] = 0;
 	revbuf[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
+#ifdef OLD_LICENSE
 		if (checkLog(0, 1)) {
 			fprintf(stderr, "Cset aborted, no changes applied\n");
 #ifndef WIN32
@@ -66,6 +67,7 @@ cset_inex(int flags, char *op, char *revs)
 			mdbm_close(m);
 			return (1);
 		}
+#endif
 		chop(buf);
 		t = strchr(buf, '@');
 		assert(t);
@@ -253,14 +255,16 @@ commit(int quiet, delta *d)
 	sccs_freetree(d);
 	cmds[i=0] = "bk";
 	cmds[++i] = "commit";
-	cmds[++i] = "-dFf";
+	cmds[++i] = "-dFa";
 	if (quiet) cmds[++i] = "-s";
 	cmds[++i] = comment;
 	cmds[++i] = 0;
 	if (i = spawnvp_ex(_P_WAIT, "bk", cmds)) {
+		free(comment);
 		fprintf(stderr, "Commit says %d\n", i);
 		return (1);
 	}
+	free(comment);
 	return (0);
 }
 
@@ -368,6 +372,7 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 		sccs_free(s);
 		return (1);
 	}
+	if (flags & GET_SKIPGET) goto ok;
 	if (d) {
 		copy = calloc(1, sizeof(delta));
 		EACH(d->comments) {
@@ -375,7 +380,6 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 			    addLine(copy->comments, strdup(d->comments[i]));
 		}
 	}
-	if (flags & GET_SKIPGET) goto ok;
 	sccs_restart(s);
 	if (sccs_delta(s, SILENT|DELTA_FORCE, copy, 0, 0, 0)) {
 		fprintf(stderr, "Could not delta %s\n", s->gfile);

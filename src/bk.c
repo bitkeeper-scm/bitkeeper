@@ -5,99 +5,126 @@
 
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
+project	*bk_proj = 0;
+jmp_buf	exit_buf;
+char	cmdlog_buffer[MAXPATH*4];
+char 	*upgrade_msg =
+"This feature is not available in this version of BitKeeper, to upgrade\n\
+please contact sales@bitmover.com\n"; 
+
 
 char	*find_wish();
 char	*find_perl5();
-extern	void getoptReset();
-void platformInit(char **av);
+void	cmdlog_start(char **av);
+void	cmdlog_end(int ret);
+void	cmdlog_exit(void);
+int	cmdlog_repo;
+private	void	cmdlog_dump(int, char **);
 
-int unedit_main(int, char **);
-int unlock_main(int, char **);
-int find_main(int, char **);
-int bkd_main(int, char **);
-int setup_main(int, char **);
-int commit_main(int, char **);
-int status_main(int, char **);
-int version_main(int, char **);
-int help_main(int, char **);
-int users_main(int, char **);
-int parent_main(int, char **);
-int clone_main(int, char **);
-int send_main(int, char **);
-int unwrap_main(int, char **);
-int receive_main(int, char **);
-int fix_main(int, char **);
-int undo_main(int, char **);
-int sendbug_main(int, char **);
-int export_main(int, char **);
-int setlod_main(int, char **);
-int setlog_main(int, char **);
-int getlog_main(int, char **);
-int gethelp_main(int, char **);
-int logaddr_main(int, char **);
-int sendconfig_main(int, char **);
-int takepatch_main(int, char **);
-int clean_main(int, char **);
-int prs_main(int, char **);
-int mv_main(int, char **);
-int rm_main(int, char **);
-int get_main(int, char **);
-int delta_main(int, char **);
-int sinfo_main(int, char **);
-int sccscat_main(int, char **);
-int cset_main(int, char **);
-int diffs_main(int, char **);
-int sccslog_main(int, char **);
-int rmdel_main(int, char **);
-int getuser_main(int, char **);
-int gethost_main(int, char **);
+extern	void	getoptReset();
+extern	void	platformInit(char **av);
+extern	int proj_cd2root(project *p);
+int _createlod_main(int, char **);
+int abort_main(int, char **);
+int adler32_main(int, char **);
 int admin_main(int, char **);
-int g2sccs_main(int, char **);
-int key2rev_main(int, char **);
-int lines_main(int, char **);
-int sfiles_main(int, char **);
-int sfio_main(int, char **);
-int sids_main(int, char **);
+int bkd_main(int, char **);
+int changes_main(int, char **);
 int check_main(int, char **);
 int chksum_main(int, char **);
-int fdiff_main(int, char **);
-int adler32_main(int, char **);
-int lod_main(int, char **);
+int clean_main(int, char **);
+int clone_main(int, char **);
+int commit_main(int, char **);
+int config_main(int, char **);
 int createlod_main(int, char **);
-int _createlod_main(int, char **);
+int cset_main(int, char **);
+int delta_main(int, char **);
+int diffs_main(int, char **);
+int export_main(int, char **);
+int fdiff_main(int, char **);
+int find_main(int, char **);
+int fix_main(int, char **);
+int g2sccs_main(int, char **);
+int gca_main(int, char **);
+int get_main(int, char **);
+int gethelp_main(int, char **);
+int gethost_main(int, char **);
+int getuser_main(int, char **);
+int gnupatch_main(int, char **);
+int graft_main(int, char **);
+int gone_main(int, char **);
+int help_main(int, char **);
+int isascii_main(int, char **);
+int key2rev_main(int, char **);
+int keysort_main(int, char **);
+int lines_main(int, char **);
+int lock_main(int, char **);
+int lod_main(int, char **);
+int log_main(int, char **);
+int logging_main(int, char **);
+int loggingaccepted_main(int ac, char **av);
+int loggingask_main(int ac, char **av);
+int loggingto_main(int, char **);
+int merge_main(int, char **);
+int mklock_main(int, char **);
+int mtime_main(int, char **);
+int mv_main(int, char **);
+int names_main(int, char **);
+int parent_main(int, char **);
+int pending_main(int, char **);
+int prs_main(int, char **);
+int pull_main(int, char **);
+int push_main(int, char **);
+int r2c_main(int, char **);
 int range_main(int, char **);
+int rcs2sccs_main(int, char **);
+int rcsparse_main(int, char **);
+int receive_main(int, char **);
 int rechksum_main(int, char **);
 int renumber_main(int, char **);
-int stripdel_main(int, char **);
-int smoosh_main(int, char **);
-int undos_main(int, char **);
-int what_main(int, char **);
-int gca_main(int, char **);
-int mtime_main(int, char **);
-int zone_main(int, char **);
-int isascii_main(int, char **);
-int r2c_main(int, char **);
-int pending_main(int, char **);
-int resolve_main(int, char **);
-int push_main(int, char **);
-int names_main(int, char **);
-int lock_main(int, char **);
 int repo_main(int, char **);
-int pull_main(int, char **);
-int log_main(int, char **);
-int abort_main(int, char **);
-int graft_main(int, char **);
-int mklock_main(int, char **);
-int rcsparse_main(int, char **);
-int rcs2sccs_main(int, char **);
+int resolve_main(int, char **);
+int rset_main(int, char **);
+int rm_main(int, char **);
+int rmdel_main(int, char **);
+int sccscat_main(int, char **);
+int sccslog_main(int, char **);
+int send_main(int, char **);
+int sendbug_main(int, char **);
+int setlod_main(int, char **);
+int setup_main(int, char **);
+int sfiles_main(int, char **);
+int sfind_main(int, char **);
+int sfio_main(int, char **);
+int sids_main(int, char **);
+int sinfo_main(int, char **);
+int smoosh_main(int, char **);
+int status_main(int, char **);
+int stripdel_main(int, char **);
+int takepatch_main(int, char **);
+int undo_main(int, char **);
+int undos_main(int, char **);
+int unedit_main(int, char **);
+int unlink_main(int, char **);
+int unlock_main(int, char **);
+int unwrap_main(int, char **);
+int users_main(int, char **);
+int version_main(int, char **);
+int what_main(int, char **);
+int zone_main(int, char **);
 
-struct command cmdtbl[100] = {
+struct command cmdtbl[] = {
 	{"_createlod", _createlod_main},
 	{"_find", find_main }, /* internal helper function */
+	{"_logging", logging_main},
+	{"_loggingaccepted", loggingaccepted_main},
+	{"_loggingask", loggingask_main},
+	{"_loggingto", loggingto_main},
 	{"abort", abort_main},
 	{"adler32", adler32_main},
 	{"admin", admin_main},
 	{"bkd", bkd_main },
+	{"changes", changes_main},
 	{"check", check_main},
 	{"chksum", chksum_main},
 	{"ci", delta_main},
@@ -105,6 +132,7 @@ struct command cmdtbl[100] = {
 	{"clone", clone_main},
 	{"co", get_main},
 	{"commit", commit_main},
+	{"config", config_main},
 	{"createlod", createlod_main},
 	{"cset", cset_main},
 	{"delta", delta_main},
@@ -118,18 +146,20 @@ struct command cmdtbl[100] = {
 	{"get", get_main},
 	{"gethelp", gethelp_main},
 	{"gethost", gethost_main},
-	{"getlog", getlog_main},
 	{"getuser", getuser_main},
 	{"graft", graft_main},
+	{"gnupatch", gnupatch_main},
+	{"gone", gone_main},
 	{"help", help_main},
 	{"info", sinfo_main},	/* aliases */
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
+	{"keysort", keysort_main},
 	{"lines", lines_main},
 	{"lock", lock_main},
 	{"lod", lod_main},
 	{"log", log_main},
-	{"logaddr", logaddr_main},
+	{"merge", merge_main},
 	{"mklock", mklock_main}, /* for regression test only */
 	{"mtime", mtime_main},
 	{"mv", mv_main},
@@ -150,6 +180,7 @@ struct command cmdtbl[100] = {
 	{"repo", repo_main},
 	{"resolve", resolve_main},
 	{"rev2cset", r2c_main},
+	{"rset", rset_main},
 	{"rm", rm_main},
 	{"rmdel", rmdel_main},
 	{"sccscat", sccscat_main},
@@ -158,11 +189,10 @@ struct command cmdtbl[100] = {
 	{"sccsrm", rm_main},
 	{"send", send_main},
 	{"sendbug", sendbug_main},
-	{"sendconfig", sendconfig_main},
 	{"setlod", setlod_main},
-	{"setlog", setlog_main},
 	{"setup", setup_main },
 	{"sfiles", sfiles_main},
+	{"sfind", sfind_main},
 	{"sfio", sfio_main},
 	{"sids", sids_main},
 	{"sinfo", sinfo_main},
@@ -174,12 +204,14 @@ struct command cmdtbl[100] = {
 	{"undos", undos_main},
 	{"unedit", unedit_main},
 	{"unget", unedit_main},	/* aliases */
+	{"unlink", unlink_main },
 	{"unlock", unlock_main },
 	{"unwrap", unwrap_main},
 	{"users", users_main},
 	{"version", version_main},
 	{"what", what_main},
 	{"zone", zone_main},
+
 	{0, 0},
 };
 
@@ -199,12 +231,16 @@ main(int ac, char **av)
 	char	*argv[100];
 	int	c;
 	int	is_bk = 0, dashr = 0;
+	int	ret;
 	char	*prog;
 
-	/*
-	 * XXX TODO: implement "__logCommand"
-	 */
-
+	cmdlog_buffer[0] = 0;
+	if (i = setjmp(exit_buf)) {
+		i -= 1000;
+		cmdlog_end(i);
+		return (i >= 0 ? i : 1);
+	}
+	atexit(cmdlog_exit);
 	platformInit(av); 
 	assert(bin);
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
@@ -217,6 +253,10 @@ main(int ac, char **av)
 	}
 	argv[0] = "help";
 	argv[1] = 0;
+
+	if (!bk_proj || !bk_proj->root || !isdir(bk_proj->root)) {
+		bk_proj = proj_init(0);
+	}
 
 	/*
 	 * Parse our options if called as "bk".
@@ -235,17 +275,17 @@ main(int ac, char **av)
 						return (1);
 					}
 					optind++;
-				} else if (sccs_cd2root(0, 0) == -1) {
+				} else unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
-					    "bk: Can not find package root.\n");
+					    "bk: Cannot find package root.\n");
 					return(1);
 				}
 				dashr++;
 				break;
 			    case 'R':
-				if (sccs_cd2root(0, 0) == -1) {
+				unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
-					    "bk: Can not find package root.\n");
+					    "bk: Cannot find package root.\n");
 					return(1);
 				}
 				break;
@@ -266,12 +306,20 @@ main(int ac, char **av)
 	}
 	getoptReset();
 
+	if (streq(prog, "cmdlog")) {
+		cmdlog_dump(ac, av);
+		return (0);
+	}
+
 	/*
 	 * look up the internal command 
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
 		if (streq(cmdtbl[i].name, prog)){
-			return (cmdtbl[i].func(ac, av));
+			cmdlog_start(av);
+			ret = cmdtbl[i].func(ac, av);
+			cmdlog_end(ret);
+			exit(ret);
 		}
 	}
 	unless(is_bk) {
@@ -280,73 +328,70 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Is it is a perl 4 script ?
+	 * Is it a perl 4 script ?
 	 */
-	if (streq(av[0], "pmerge")) {
+	if (streq(prog, "pmerge")) {
 		argv[0] = "perl"; 
-		sprintf(cmd_path, "%s/%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
-	}
-
-	/*
-	 * Is it is a perl 5 script ?
-	 */
-	if (streq(av[0], "mkdiffs")) {
-		argv[0] = find_perl5();
-		sprintf(cmd_path, "%s/%s", bin, av[0]);
-		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
-		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
+		cmdlog_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		cmdlog_end(ret);
+		exit(ret);
 	}
 
 	/*
 	 * Handle Gui script
 	 */
-	if (streq(av[0], "fm") ||
-	    streq(av[0], "fm3") ||
-	    streq(av[0], "citool") ||
-	    streq(av[0], "sccstool") ||
-	    streq(av[0], "fmtool") ||
-	    streq(av[0], "fm3tool") ||
-	    streq(av[0], "difftool") ||
-	    streq(av[0], "helptool") ||
-	    streq(av[0], "csettool") ||
-	    streq(av[0], "renametool")) {
+	if (streq(prog, "fm") ||
+	    streq(prog, "fm3") ||
+	    streq(prog, "citool") ||
+	    streq(prog, "sccstool") ||
+	    streq(prog, "setuptool") ||
+	    streq(prog, "fmtool") ||
+	    streq(prog, "fm3tool") ||
+	    streq(prog, "difftool") ||
+	    streq(prog, "helptool") ||
+	    streq(prog, "csettool") ||
+	    streq(prog, "renametool")) {
 		argv[0] = find_wish();
-		sprintf(cmd_path, "%s/%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));
+		cmdlog_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		cmdlog_end(ret);
+		exit(ret);
 	}
 
 	/*
 	 * Handle shell script
 	 */
-	if (streq(av[0], "resync") || 
-		streq(av[0], "import")) {
+	if (streq(prog, "resync") || streq(prog, "import")) {
 		argv[0] = shell();
-		sprintf(cmd_path, "%s/%s", bin, av[0]);
+		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		for (i = 0; argv[i] != 0;  i++) {
-		}
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));
+		cmdlog_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		cmdlog_end(ret);
+		exit(ret);
 	}
 
 	/*
 	 * Is it a known C program ?
 	 */
-	if (streq(av[0], "patch") ||
-	    streq(av[0], "diff3")) {
-		return (spawnvp_ex(_P_WAIT, av[0], av));
+	if (streq(prog, "patch") || streq(prog, "diff3")) {
+		cmdlog_start(av);
+		ret = spawnvp_ex(_P_WAIT, av[0], av);
+		cmdlog_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -361,7 +406,149 @@ main(int ac, char **av)
 	argv[1] = cmd_path;
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
 	argv[i] = 0;
-	return (spawnvp_ex(_P_WAIT, argv[0], argv));
+	ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+	cmdlog_end(ret);
+	exit(ret);
+}
+
+#define	LOG_MAXSIZE	(32<<10)
+#define	LOG_BADEXIT	-100000		/* some non-valid exit */
+
+void
+cmdlog_exit(void)
+{
+	purify_list();
+	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
+}
+
+private	struct {
+	char	*name;
+	int	len;
+} repolog[] = {
+	{"pull", 4 },
+	{"push", 4 },
+	{"commit", 6 },
+	{"remote pull", 11 },
+	{"remote push", 11 },
+	{"remote clone", 12 },
+	{ 0, 0 },
+};
+
+void
+cmdlog_start(char **av)
+{
+	int	i, len = 0;
+
+	cmdlog_buffer[0] = 0;
+	unless (bk_proj && bk_proj->root) return;
+
+	cmdlog_repo = 0;
+	for (i = 0; repolog[i].name; i++) {
+		if (streq(repolog[i].name, av[0])) {
+			cmdlog_repo = 1;
+			break;
+		}
+	}
+	if (cmdlog_repo) {
+		sprintf(cmdlog_buffer,
+		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
+	}
+	for (i = 0; av[i]; i++) {
+		len += strlen(av[i]);
+		if (len >= sizeof(cmdlog_buffer)) continue;
+		if (i || cmdlog_repo) {
+			strcat(cmdlog_buffer, " ");
+			strcat(cmdlog_buffer, av[i]);
+		} else {
+			strcpy(cmdlog_buffer, av[i]);
+		}
+	}
+	if (cmdlog_repo) {
+		int ret ;
+
+		if ((bk_mode() == BK_BASIC)  && !streq("commit", av[0])) return;
+		ret = trigger(cmdlog_buffer, "pre", 0);
+
+		unless (ret == 0) exit(ret);
+	}
+
+}
+
+void
+cmdlog_end(int ret)
+{
+	FILE	*f;
+	char	*user, *file;
+	char	path[MAXPATH];
+
+	purify_list();
+	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
+	if (cmdlog_repo) {
+		file = "repo_log";
+	} else {
+		file = "cmd_log";
+	}
+	sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
+	unless (f = fopen(path, "a")) {
+		sprintf(path, "%s/%s", bk_proj->root, BKROOT);
+		unless (exists(path)) return;
+		sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
+		mkdirf(path);
+		unless (f = fopen(path, "a")) return;
+	}
+	if (cmdlog_repo) trigger(cmdlog_buffer, "post", ret);
+	user = sccs_getuser();
+	fprintf(f, "%s %lu: ", user ? user : "Phantom User", time(0));
+	if (ret == LOG_BADEXIT) {
+		fprintf(f, "%s = ?\n", cmdlog_buffer);
+	} else {
+		fprintf(f, "%s = %d\n", cmdlog_buffer, ret);
+	}
+	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {
+		char	old[MAXPATH];
+
+		sprintf(old, "%s-older", path);
+		fclose(f);
+		rename(path, old);
+	} else {
+		fclose(f);
+	}
+	cmdlog_buffer[0] = 0;
+	cmdlog_repo = 0;
+}
+
+private	void
+cmdlog_dump(int ac, char **av)
+{
+	FILE	*f;
+	time_t	t;
+	char	*p;
+	char	buf[4096];
+
+	unless (bk_proj && bk_proj->root) return;
+	if (av[1] && streq(av[1], "-a")) {
+		sprintf(buf,
+	    "sort -n +1 %s/BitKeeper/log/repo_log %s/BitKeeper/log/cmd_log", 
+		    bk_proj->root, bk_proj->root);
+		f = popen(buf, "r");
+	} else {
+		sprintf(buf, "%s/BitKeeper/log/repo_log", bk_proj->root);
+		f = fopen(buf, "r");
+	}
+	unless (f) return;
+	while (fgets(buf, sizeof(buf), f)) {
+		for (p = buf; (*p != ' ') && (*p != '@'); p++);
+		*p++ = 0;
+		t = strtoul(p, 0, 0);
+		unless (p = strchr(p, ':')) continue;
+		p++;
+		printf("%s %.19s%s", buf, ctime(&t), p);
+	}
+	if (av[1] && streq(av[1], "-a")) {
+		pclose(f);
+	} else {
+		fclose(f);
+	}
 }
 
 int
@@ -369,7 +556,6 @@ bk_sfiles(int ac, char **av)
 {
 	pid_t	pid;
 	int	i;
-
 	int	j, pfd;
 	int	status;
 	char	*sav[2] = {"sfiles", 0};
@@ -380,23 +566,34 @@ bk_sfiles(int ac, char **av)
 	cmds[i++] = "-";
 	cmds[i] = 0;
 	if ((pid = spawnvp_wPipe(cmds, &pfd)) == -1) {
-		fprintf(stderr, "can not spawn %s %s\n", cmds[0], cmds[1]);
+		fprintf(stderr, "cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	} 
+	cmdlog_start(sav);
 	close(1); dup(pfd); close(pfd);
-	status = sfiles_main(1, sav);
+	if (status = sfiles_main(1, sav)) {
+		kill(pid, SIGTERM);
+		waitpid(pid, 0, 0);
+		cmdlog_end(status);
+		exit(status);
+	}
 	fflush(stdout);
 	close(1);
 	waitpid(pid, &status, 0);
-	if (WIFEXITED(status)) return(WEXITSTATUS(status));
+	if (WIFEXITED(status)) {
+		cmdlog_end(WEXITSTATUS(status));
+		exit(WEXITSTATUS(status));
+	}
 #ifndef WIN32
 	if (WIFSIGNALED(status)) {
 		fprintf(stderr,
 		    "Child was signaled with %d\n",
 		    WTERMSIG(status));
+		cmdlog_end(WTERMSIG(status));
 		exit(WTERMSIG(status));
 	}
 #endif
+	cmdlog_end(100);
 	exit(100);
 }
 
@@ -468,45 +665,6 @@ find_wish()
 #endif
 		p = ++s;
 	}
-	fprintf(stderr, "Can not find wish to run\n");
+	fprintf(stderr, "Cannot find wish to run\n");
 	exit(1);
 }
-
-char *
-find_perl5()
-{
-	char buf[MAXLINE];
-	char *p, *s;
-	char path[MAXLINE];
-	static char perl_path[MAXPATH];
-	int more = 1;
-
-	p  = getenv("PATH");
-	if (p) {;
-		sprintf(path, "%s:/usr/local/bin", p);
-		localName2bkName(path, path);
-	} else {
-		strcpy(path, "/usr/local/bin");
-	}
-	p = path;
-	while (more) {
-		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
-		if (*s == '\0') more = 0;
-		*s = '\0';
-#ifdef WIN32
-		sprintf(perl_path, "%s/perl.exe", p);
-		unless (exists(perl_path)) goto next;
-		return(perl_path); /* win32 perl is version 5 */
-#else
-		sprintf(perl_path, "%s/perl", p);
-		unless (executable(perl_path)) goto next;
-#endif
-		sprintf(buf, "%s -v | grep 'version 5.0' > %s",
-			perl_path, DEV_NULL);
-		if (system(buf) == 0)	return(perl_path);
-next:		p = ++s;
-	}
-	fprintf(stderr, "Can not find perl5 to run\n");
-	exit(1);
-}
-

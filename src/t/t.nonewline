@@ -20,11 +20,7 @@
 #	1.2 file with newline
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -43,7 +39,7 @@ cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
 echo $N Create a change set .........................................$NL
-bk commit $S -f -ywhatever
+bk commit $S -a -ywhatever
 echo OK
 cores
 echo $N Create a copy of the project ................................$NL
@@ -92,7 +88,7 @@ bk get $Q foo.c bar.c
 cmp -s foo.c X || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
 cmp -s bar.c Y || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
-bk commit $S -f -ywhatever
+bk commit $S -a -ywhatever
 echo $N Check for no newline changes back to project ................$NL
 cd $HERE
 bk resync $Q -at copy project

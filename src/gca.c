@@ -61,6 +61,5 @@ usage:			fprintf(stderr, "usage gca -rRev -rRev file\n");
 	if (inc) free(inc);
 	if (exc) free(exc);
 	sccs_free(s);
-	purify_list();
 	return (0);
 }

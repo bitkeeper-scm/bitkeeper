@@ -139,6 +139,7 @@
 #define	S_FAKE_1_0	0x08000000	/* the 1.0 delta is a fake */
 #define	S_SAVEPROJ	0x10000000	/* do not free the project struct */
 #define	S_SCCS		0x20000000	/* expand SCCS keywords */
+#define	S_SINGLE	0x40000000	/* inherit user/host */
 
 #define	S_KEYWORDS	(S_SCCS|S_RCS)	/* any sort of keyword */
 
@@ -181,6 +182,7 @@
 #define	X_CSETMARKED	0x00000020	/* ChangeSet boundries are marked */
 #define	X_HASH		0x00000040	/* mdbm file */
 #define	X_SCCS		0x00000080	/* SCCS keywords */
+#define	X_SINGLE	0x00000100	/* single user, inherit user/host */
 
 			/* users can change these */
 #define	X_USER		(X_RCS|X_YEAR4|X_EXPAND1|X_SCCS)
@@ -253,17 +255,21 @@
 /*
  * Hash behaviour.  Bitmask.
  */
-#define DB_NODUPS       1		/* keys must be unique */
-#define DB_USEFIRST     2		/* use the first key found */
-#define DB_USELAST      4		/* use the last key found */
-#define	DB_KEYSONLY	8		/* boolean hashes */
+#define DB_NODUPS       0x01		/* keys must be unique */
+#define DB_USEFIRST     0x02		/* use the first key found */
+#define DB_USELAST      0x04		/* use the last key found */
+#define	DB_KEYSONLY	0x08		/* boolean hashes */
+#define	DB_NOBLANKS	0x10		/* keys must have values or skip */
+#define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
+#define	LASTPUSH	"BitKeeper/etc/pushed"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
+#define	TRIGGERS	"BitKeeper/triggers"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
 #define	LOGGING_OK	"BitKeeper/etc/SCCS/s.logging_ok"
@@ -274,6 +280,11 @@
 #define	GROUP_MODE	0664
 
 #define	UNKNOWN_USER	"anon"
+#define	UNKNOWN_HOST	"nowhere"
+
+#define BK_FREE		0
+#define BK_BASIC	1
+#define BK_PRO		2
 
 #define	isData(buf)	(buf[0] != '\001')
 #define	seekto(s,o)	s->where = (s->mmap + o)
@@ -411,6 +422,12 @@ typedef struct {
 	MDBM	*config;	/* config DB */
 } project;
 
+extern	project	*bk_proj;	/* bk.c sets this up */
+extern	jmp_buf	exit_buf;
+extern	char *upgrade_msg;
+
+#define	exit(e)	longjmp(exit_buf, e + 1000)
+
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
@@ -470,7 +487,8 @@ typedef	struct sccs {
 	int	version;	/* file format version */
 	int	userLen;	/* maximum length of any user name */
 	int	revLen;		/* maximum length of any rev name */
-	unsigned int cksumok:1;	/* check sum was ok */
+	u32	cksumok:1;	/* check sum was ok */
+	u32	grafted:1;	/* file has grafts */
 } sccs;
 
 typedef struct {
@@ -654,7 +672,9 @@ delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
+char	*sccs_realhost(void);
 char	*sccs_getuser(void);
+char	*sccs_realuser(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
@@ -707,7 +727,8 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
 int	sccs_setlod(char *rev, u32 flags);
-void	sccs_renumber(sccs *s, u16 nextlod, MDBM *lodDb, u32 flags);
+void	sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb,
+	    char *base, u32 flags);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
 MMAP	*purify_mopen(char *file, char *mode, char *, int);
@@ -747,13 +768,14 @@ int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
 int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
-char	*_relativeName(char *gName,
-	    int isDir, int withsccs, int mustHaveRmarker, char *root);
+char	*_relativeName(char *gName, int isDir,
+		int withsccs, int mustHaveRmarker, project *proj, char *root);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin();
-project	*proj_init(sccs *s);
+project	*chk_proj_init(sccs *s, char *file, int line);
 void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
+void	parse_url(char *url, char *host, char *path);
 char	*sccs_Xfile(sccs *s, char type);
 int	unique(char *key);
 int	uniq_lock(void);
@@ -765,31 +787,32 @@ int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
 void	cd2root();
 pid_t	mail(char *to, char *subject, char *file);
-void	logChangeSet(char *rev, int q);
+void	logChangeSet(int, char *rev, int q);
 char	*getlog(char *u, int q);
 int	setlog(char *u);
+int	connect_srv(char *srv, int port);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
-int	gethelp(char *help_name, char *bkarg, FILE *f);
+int	gethelp(char *help_name, char *bkarg, char *prefix, FILE *f);
 int	is_open_logging(char *logaddr);
 void	status(int verbose, FILE *out);
 void	notify();
 char	*logAddr();
 char	*package_name();
-int	bkusers(int countOnly, int raw, FILE *out);
+int	bkusers(int countOnly, int raw, char *prefix, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 char	*match_globs(char *string, globv globs);
 void	free_globs(globv globs);
 char	*prog2path(char *prog);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
-void	sendConfig(char *, int, int);
+void	sendConfig(char *addr, char *rev);
+void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
 char	chop(register char *s);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
 long	almostUnique(int harder);
-
 int	repository_locked(project *p);
 int	repository_lockers(project *p);
 int	repository_locker(char type, pid_t pid, char *host);
@@ -799,33 +822,46 @@ int	repository_wrlock(void);
 int	repository_rdunlock(int force);
 int	repository_wrunlock(int force);
 int	isValidLock(char, pid_t, char *);
-
 void	comments_save(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);
-
 void	host_done();
 delta	*host_get(delta *);
-
 void	user_done();
 delta	*user_get(delta *);
 char	*shell();
-
-/* lod.c */
-struct lod;
+struct	lod;
 typedef struct lod lod_t;
-
 lod_t	*lod_init(sccs *cset, char *lodname, u32 flags, char *who);
 void	lod_free(lod_t *l);
 int	lod_setlod(lod_t *l, sccs *s, u32 flags);
-
-/* names.c */
 void	names_init(void);
 int	names_rename(char *old_spath, char *new_spath, u32 flags);
 void	names_cleanup(u32 flags);
-
-/* bk.c */
 int	bk_sfiles(int ac, char **av);
+int	outc(char c);
+MDBM	*loadConfig(char *root, int convert);
+int	ascii(char *file);
+int	sccs_rm(char *name, int useCommonDir);
+int	mkconfig(FILE *out);
+int	config2logging(char *root);
+int	logging(char *user, MDBM *configDB, MDBM *okDB);
+void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
+char 	**get_http_proxy();
+int	confirm(char *msg);
+int	setlod_main(int ac, char **av);
+MDBM *	loadOK();
+void	config(char *rev, FILE *f);
+int	ok_commit(int l, int alreadyAsked);
+int	cset_setup(int flags);
+off_t	fsize(int fd);
+char	*separator(char *);
+int	trigger(char *action, char *when, int status);
+void	cmdlog_start(char **av);
+void	cmdlog_end(int ret);
+int	bk_mode();
+int	cat(char *file);
+char	*bk_model();
 
 #endif	/* _SCCS_H_ */

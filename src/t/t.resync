@@ -21,18 +21,14 @@
 if [ X$PLATFORM = X"WIN32" ]
 then
         binary_data="`bk bin`/bk.exe"
-        binary_data2="`bk bin`/bkmerge.exe"
+        binary_data2="`bk bin`/cmp.exe"
 else
         binary_data="/bin/ls"
         binary_data2="/bin/rm"
 fi
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -d BitKeeper/tmp ]; then echo failed to make BitKeeper/tmp; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
@@ -53,7 +49,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set .........................................$NL
-bk commit $S -f -y"This is a \"Change Set\""
+bk commit $S -a -y"This is a \"Change Set\""
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
@@ -80,16 +76,14 @@ cd $HERE
 bk clone $Q project copy
 echo $N Should not be able to resync unrelated repositories .........$NL
 cd $HERE
-bk setup -f -n'BitKeeper Test repo number two' -c$HERE/c project2
-if [ ! -d project2 ]; then echo failed to make top level directory; exit 1; fi
-cd project2
+no_logging project2
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo "don't stand in the doorway, don't block up the hall" > times
 bk ci $Q -i -ydylan times
-bk commit $S -f -yCset2
+bk commit $S -a -yCset2
 cd ..
 bk resync $Q -at project project2 2>resync.out
 if [ $? -eq 0 ]; then echo failed; cat resync.out; exit 1; fi
@@ -591,10 +585,7 @@ echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE
 rm -fr project copy
 echo $N Create initial repository ...................................$NL
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 mkdir src
@@ -607,7 +598,7 @@ EOF
 cp aaa.c bbb.c
 cp aaa.c ccc.c
 bk ci $Q -i aaa.c bbb.c ccc.c
-bk commit $S -f -yCset
+bk commit $S -a -yCset
 echo OK
 echo $N Create a copy of the project ................................$NL
 cd $HERE

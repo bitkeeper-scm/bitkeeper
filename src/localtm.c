@@ -22,17 +22,16 @@ localtimez(time_t tt, struct tm *tmz)
 	 */
 	*tmz = *tm;
 
-#if	defined(__linux__) || defined(__FreeBSD__)
+#ifdef HAVE_GMTOFF
 	offset	= tm->tm_gmtoff;
-
-#elif defined(__sgi__) || defined(__sun__)
-	/* Note that configure will not define HAVE_EXTERN_TIMEZONE unless
+#else
+#ifdef	HAVE_TIMEZONE
+	/* Note that configure will not define HAVE_TIMEZONE unless
 	 * both timezone and altzone exist.  This is because we will
 	 * get the offset wrong everywhere but in the USA if we try
 	 * to calculate it using only timezone.
 	 */
 	offset	= -((tm->tm_isdst > 0) ? altzone : timezone);
-
 #else
 	/* Take the difference between gmtime() and localtime() as the
 	 * time zone.  This works on all systems but has extra overhead.
@@ -42,7 +41,7 @@ localtimez(time_t tt, struct tm *tmz)
 	tm = gmtime(&tt);
 	offset -= (tm->tm_hour*60 + tm->tm_min)*60 + tm->tm_sec;
 #endif
-
+#endif
 	/* Normalize offset to (-12h, 13h].
 	 * Thanks to Chris Wedgwood for the fix.
 	 */

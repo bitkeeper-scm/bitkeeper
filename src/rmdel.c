@@ -57,7 +57,6 @@ _rmdel_main(int ac, char **av, char *out)
 		fprintf(stderr, "rmdel: can't find %s%c%s\n", s->gfile, BK_FS, name);
 err:		sccs_free(s);
 		sfileDone();
-		purify_list();
 		return (1);
 	}
 
@@ -89,7 +88,6 @@ err:		sccs_free(s);
 	}
 	sccs_free(s);
 	sfileDone();
-	purify_list();
 	return (0);
 }
 

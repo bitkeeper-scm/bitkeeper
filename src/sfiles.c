@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+
 WHATSTR("@(#)%K%");
 
 /*
@@ -24,6 +25,7 @@ usage: sfiles [-aAcCdDglkpPRrux] [directories]\n\n\
     -r		rebuild the id to pathname cache\n\
     -R		when used with -C, list files as foo.c:1.3..1.5\n\
     -u		list only unlocked files\n\
+    -v		be verbose during id rebuild\n\
     -x		list files which have no revision control files\n\
 		Note 1: files in BitKeeper/log/ are ignored\n\
     		Note 2: revision control files must look like SCCS/s.*,\n\
@@ -41,8 +43,8 @@ private	int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg;
 private	int	Dflg, Aflg, Rflg, kFlg, xFlg, uFlg;
 private	FILE	*id_cache;
 private	void	keys(char *file);
-private	MDBM	*idDB;
-private	int	dups;
+private	MDBM	*idDB;		/* used to detect duplicate keys */
+private	int	dups;		/* duplicate key count */
 private	int	mixed;		/* running in mixed long/short mode */
 private	int	hasDiffs(char *file);
 private	int	isSccs(char *s);
@@ -101,12 +103,10 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		}
 		/* perror is in sccs_root, don't do it twice */
 		unless (sccs_cd2root(0, 0) == 0) {
-			purify_list();
 			return (1);
 		}
 		rebuild();
 		if (proj) proj_free(proj);
-		purify_list();
 		return (dups ? 1 : 0);
 	}
 	if (!av[optind]) {
@@ -115,9 +115,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 	} else if (streq("-", av[optind])) {
 		char	buf[MAXPATH];
 
-#ifdef WIN32
 		setmode(0, _O_TEXT); /* read file list in text mode */
-#endif
 		while (fnext(buf, stdin)) {
 			chop(buf);
 			path = xFlg ? buf : sPath(buf, 1);
@@ -139,7 +137,6 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		}
 	}
 	if (proj) proj_free(proj);
-	purify_list();
 	return (0);
 }
 
@@ -366,7 +363,7 @@ keys(char *file)
 	unless (cutoff) cutoff = time(0) - uniq_drift();
 	unless (host) host = sccs_gethost();
 	unless (host) {
-		fprintf(stderr, "sfiles: can not figure out host name\n");
+		fprintf(stderr, "sfiles: cannot figure out host name\n");
 		exit(1);
 	}
 	for (d = s->table; d; d = d->next) {
@@ -490,30 +487,36 @@ caches(const char *filename, int mode)
 		sccs_free(sc);
 		return;
 	}
-	if (sc->defbranch && streq(sc->defbranch, "1.0")) { /* not visible */
-		sccs_free(sc);
-		return;
-	}
-	if (vFlg) printf("%s\n", sc->gfile);
 
 	if (rFlg) {
 		delta	*ino = sccs_ino(sc);
 
-		/* update the id cache only if root path != current path. */
-		assert(ino->pathname);
-		sccs_sdelta(sc, ino, buf);
-		unless (streq(ino->pathname, sc->gfile)) {
-			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
-		}
-		save(sc, idDB, buf);
-		if (mixed && (t = sccs_iskeylong(buf))) {
-			*t = 0;
-			unless (streq(ino->pathname, sc->gfile)) {
+		/*
+		 * Update the id cache if root path != current path.
+		 * Add entries for any grafted in roots as well.
+		 */
+		do {
+			assert(ino->pathname);
+			sccs_sdelta(sc, ino, buf);
+			save(sc, idDB, buf);
+			if (sc->grafted || !streq(ino->pathname, sc->gfile)) {
+				if (vFlg) printf("%s %s\n", buf, sc->gfile);
 				fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 			}
-			save(sc, idDB, buf);
-			*t = '|';
-		}
+			if (mixed && (t = sccs_iskeylong(buf))) {
+				*t = 0;
+				unless (streq(ino->pathname, sc->gfile)) {
+					fprintf(id_cache,
+					    "%s %s\n", buf, sc->gfile);
+				}
+				save(sc, idDB, buf);
+				*t = '|';
+			}
+			unless (sc->grafted) break;
+			while (ino = ino->next) {
+				if (ino->random) break;
+			}
+		} while (ino);
 	}
 
 	/* XXX - should this be (Cflg && !(sc->state & S_CSET)) ? */
@@ -526,6 +529,23 @@ caches(const char *filename, int mode)
 	 * If it's marked, we're done.
 	 */
 	if (d->flags & D_CSET) goto out;
+
+	/*
+	 * If it is out of view, we need to look at all leaves and see if
+	 * there is a problem or not.
+	 */
+	if (sc->defbranch && streq(sc->defbranch, "1.0")) {
+		for (d = sc->table; d; d = d->next) {
+			unless ((d->type == 'D') && sccs_isleaf(sc, d)) {
+				continue;
+			}
+			unless (d->flags & D_CSET) break;
+		}
+		unless (d) goto out;
+		fprintf(stderr,
+		    "Warning: not in view file %s skipped.\n", sc->gfile);
+		goto out;
+	}
 
 	/*
 	 * If we are looking for diff output and not -a style,
@@ -566,7 +586,6 @@ out:
  * function to call with the file name; depth is whether to process a
  * directory name before or after its children.
  */
-#define GFILE(s) ((isalpha((s)[0]) && (s)[1] == '.') ? (s)+2 : (s))
 
 private	void
 lftw_inner(char *path, char *base, struct stat *sb,
@@ -574,7 +593,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 {
 	DIR		*d;
 	struct dirent	*e;
-	int		mode, n;
+	int		mode, n, plus2 = strneq(path, "./", 2);
 #ifndef WIN32
 	ino_t		lastInode = 0;
 #endif
@@ -595,7 +614,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
 			continue;
 		}
-		if (match_globs(GFILE(e->d_name), ignore)) {
+		if (match_globs(e->d_name, ignore)) {
 			debug((stderr, "SKIP\t%s\n", e->d_name));
 			continue;
 		}
@@ -605,6 +624,11 @@ lftw_inner(char *path, char *base, struct stat *sb,
 			continue;
 		}
 		strcpy(base, e->d_name);
+		if (match_globs(path, ignore) ||
+		    (plus2 && match_globs(path + 2, ignore))) {
+			debug((stderr, "SKIP\t%s\n", path));
+			continue;
+		}
 
 #ifdef DT_UNKNOWN
 		if (e->d_type != DT_UNKNOWN) mode = DTTOIF(e->d_type);
@@ -661,18 +685,16 @@ lftw(const char *dir, lftw_func func)
 	char		path[MAXPATH];
 	struct stat	st;
 
-	unless (aFlg || (root = sccs_root(0)) == NULL) {
+	if (xFlg && !aFlg && (root = sccs_root(0))) {
 		sprintf(path, "%s/BitKeeper/etc/ignore", root);
-		if ((ignoref = fopen(path, "r")) != NULL) {
+		unless (exists(path)) get(path, SILENT, "-");
+		if (ignoref = fopen(path, "r")) {
 			ignore = read_globs(ignoref, 0);
 			fclose(ignoref);
 		}
 		free(root);
 		root = 0;
 	}
-if (root != 0) {
-	fprintf(stderr, "aflg=%d\n", aFlg);
-}
 
 	strcpy(path, dir);
 	/*

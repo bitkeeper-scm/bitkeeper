@@ -35,6 +35,7 @@ rechksum_main(int ac, char **av)
 	int	dont = 0;
 	int	verbose = 0;
 	int	c;
+	int	exit = 0;
 	project	*proj = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {
@@ -61,7 +62,8 @@ usage:		fprintf(stderr, "%s", sum_help);
 			continue;
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
-			if ((d->type == 'D') && (d->added || d->deleted)) {
+			if ((d->type == 'D') && 
+			    ((s->state & S_CSET) || (d->added || d->deleted))) {
 				doit += resum(s, d, verbose, flags, old, dont);
 			}
 		}
@@ -73,7 +75,8 @@ usage:		fprintf(stderr, "%s", sum_help);
 			fprintf(stderr, "Redid %d in %s\n", doit, s->sfile);
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (sccs_admin(
-				    s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			    s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			    	exit = 2;
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					    "admin -z of %s failed.\n",
@@ -85,8 +88,7 @@ usage:		fprintf(stderr, "%s", sum_help);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
-	return (0);
+	return (exit ? exit : (doit ? 1 : 0));
 }
 
 private	int

@@ -22,15 +22,11 @@ fi
 umask 077
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 # commit the config file
-bk commit $S -f -y"This is \"Change Set\" A"
+bk commit $S -a -y"This is \"Change Set\" A"
 echo OK
 
 echo $N Make sure that BitKeeper and subdirs are 0775 mode ..........$NL
@@ -41,6 +37,7 @@ cat <<EOF > WANT
 ./BitKeeper/deleted
 ./BitKeeper/deleted/SCCS
 ./BitKeeper/etc
+./BitKeeper/etc/.master
 ./BitKeeper/etc/SCCS
 ./BitKeeper/log
 ./BitKeeper/tmp
@@ -52,6 +49,8 @@ then	echo failed to set permissions properly
 	exit 1
 fi
 echo OK
+exit
+##
 
 echo $N Make sure owner/group get read/write ........................$NL
 ls > LS

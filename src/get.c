@@ -51,6 +51,8 @@ _get_main(int ac, char **av, char *out)
 	int	hasrevs = 0;
 	int	dohash = 0;
 	project	*proj = 0;
+	MDBM	*realNameCache = 0;
+	char	realname[MAXPATH];
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -165,8 +167,11 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 		return(1);
 	}
 
+	realNameCache = mdbm_open(NULL,0, 0, GOOD_PSIZE);
+	assert(realNameCache);
 	for (; name; name = sfileNext()) {
-		unless (s = sccs_init(name, iflags, proj)) continue;
+		getRealName(name, realNameCache, realname);
+		unless (s = sccs_init(realname, iflags, proj)) continue;
 		unless (proj) proj = s->proj;
 		if (Gname) {
 			if (gdir) {
@@ -226,9 +231,7 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-#ifndef	NOPURIFY
-	purify_list();
-#endif
+	if (realNameCache) mdbm_close(realNameCache);
 	return (errors);
 }
 

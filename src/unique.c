@@ -50,7 +50,7 @@ lockHome()
 
 	if (lockFile) return (lockFile);
 	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_getuser());
-	return (lockFile = strdup(path));
+	return (lockFile = (strdup)(path));
 }
 
 char *
@@ -89,20 +89,20 @@ keysHome()
 	if (keysFile) return (keysFile);
 	if ((t = getenv("BK_TMP")) && isdir(t)) {
 		sprintf(path, "%s/.bk_keys", t);
-		return (keysFile = strdup(path));
+		return (keysFile = (strdup)(path));
 	}
 	t = getHomeDir();
 	if (t) {
 		sprintf(path, "%s/.bk_keys", t);
-		return (keysFile = strdup(path));
+		return (keysFile = (strdup)(path));
 	}
 #ifndef WIN32
 	if (exists("/var/bitkeeper/keys")) {
-		return (keysFile = strdup("/var/bitkeeper/keys"));
+		return (keysFile = (strdup)("/var/bitkeeper/keys"));
 	}
 #endif
 	sprintf(path, "%s/.bk_keys", TMP_PATH);
-	return (lockFile = strdup(path));
+	return (keysFile = (strdup)(path));
 }
 
 /*
@@ -238,8 +238,9 @@ uniq_open()
 	db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (f = fopen(tmp, "r")) return (0);
 	while (fnext(buf, f)) {
-		for (pipes = 0, s = buf; *s && (*s != ' '); s++) {
+		for (pipes = 0, s = buf; *s; s++) {
 			if (*s == '|') pipes++;
+			if ((*s == ' ') && (pipes == 2)) break;
 		}
 		unless ((pipes == 2) &&
 		    s && isdigit(s[1]) && (chop(buf) == '\n')) {
@@ -328,7 +329,7 @@ uniq_close()
 
 	unless (dirty) goto close;
 	unless (tmp = keysHome()) {
-		fprintf(stderr, "uniq_close:  can not find keyHome");
+		fprintf(stderr, "uniq_close:  cannot find keyHome");
 		return (-1);
 	}
 	unlink(tmp);

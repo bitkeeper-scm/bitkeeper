@@ -6,7 +6,7 @@ WHATSTR("@(#)%K%");
  * _find - find regular files and symbolic links
  */
 private	char *files_usage = "\n\
-usage: _find [-name bk_glob_pattern] [dir...] \n\
+usage: _find [dir...] [-name bk_glob_pattern]\n\
 \n";
 private	void	walk(char *path);
 private	void	files(char *p);
@@ -15,27 +15,26 @@ private	char 	**globs = 0;
 int
 find_main(int ac, char **av)
 {
-	int	i, optind = 1;
+	int	i;
 
 	debug_main(av);
 	platformSpecificInit(NULL);
 	if ((ac > 1) && streq("--help", av[1])) {
-usage:		fprintf(stderr, "%s", files_usage);
+		fprintf(stderr, "%s", files_usage);
 		exit(0);
 	}
-	if ((ac > 2) && streq("-name", av[1])) {
-		if (av[2] == NULL) goto usage;
-		globs = addLine(0, av[2]);
-		optind = 3;
+	if ((ac > 3) && streq("-name", av[ac - 2])) {
+		globs = addLine(0, strdup(av[ac - 1]));
+		av[ac - 2] = 0;
 	}
-	unless (av[optind]) {
+	unless (av[1]) {
 		files(0);
 	} else {
-		for (i = optind; i < ac; ++i) {
+		for (i = 1; av[i]; ++i) {
 			files(av[i]);
 		}
 	}
-	purify_list();
+	if (globs) freeLines(globs);
 	exit(0);
 }
 

@@ -18,6 +18,7 @@ Usage: import [-efirv] [-j<n>] [-l<list>] [-t<type] from_dir to_dir
     -l<l>	list of files to import is in <l>
     -t<t>	type of imported files is <t> where t is plain|patch|RCS|CVS
     -r		do not do renames when doing patch imports
+    -q		be less verbose
     -v		be more verbose
 EOF
 	exit 0
@@ -41,7 +42,7 @@ import() {
 	PARALLEL=1
 	VERIFY=-h
 	CUTOFF=
-	while getopts c:efHij:l:LrS:t:v opt
+	while getopts c:efHij:l:LrS:t:vq opt
 	do	case "$opt" in
 		c) CUTOFF=-c$OPTARG;;
 		e) EX=YES;;
@@ -54,6 +55,7 @@ import() {
 		S) SYMBOL=-S$OPTARG;;
 		r) RENAMES=NO;;
 		t) TYPE=$OPTARG;;
+		q) QUIET=-q;;
 		v) QUIET=;;
 		esac
 	done
@@ -87,15 +89,15 @@ import() {
 	if [ ! -d "$2/BitKeeper" ]
 	then	echo "$2 is not a BitKeeper package"; exit 1
 	fi
-	HERE=`pwd`
+	HERE=`bk pwd`
 	if [ $TYPE != patch ]
 	then	cd $1
-		FROM=`pwd`
+		FROM=`bk pwd`
 		cd $HERE
 	else	FROM=$1
 	fi
 	cd $2
-	TO=`pwd`
+	TO=`bk pwd`
 	getIncExc
 	if [ X"$LIST" != X ]
 	then	cd $HERE
@@ -136,8 +138,8 @@ import() {
 		echo "	$TO"
 		cd $TO
 		while read x
-		do	if [ -e $x ]
-			then	echo import: $x exists, entire import aborted
+		do	if [ -e "$x" ]
+			then	echo "import: $x exists, entire import aborted"
 				rm -f ${TMP}import$$
 				exit 1
 			fi
@@ -145,7 +147,7 @@ import() {
 		if [ $TYPE != SCCS ]
 		then	bk g2sccs < ${TMP}import$$ > ${TMP}sccs$$
 			while read x
-			do	if [ -e $x ]
+			do	if [ -e "$x" ]
 				then	echo \
 				    "import: $x exists, entire import aborted"
 					rm -f ${TMP}sccs$$ ${TMP}import$$
@@ -284,6 +286,13 @@ import_patch() {
 	export USER
 	Q=$QUIET
 	cd $2
+
+	# This must be done after we cd to $2
+	case `bk version` in
+	*Basic*)	RENAMES=NO
+			;;
+	esac
+	
 	echo Locking files in `pwd` ...
 	bk -r get -eq
 	echo Patching...
@@ -291,7 +300,7 @@ import_patch() {
 	    bk patch -p1 -ZsE -z '=-PaTcH_BaCkUp!' --forcetime --lognames > \
 		${TMP}plog$$ 2>&1
 	cat ${TMP}plog$$
-	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | xargs rm -f
+	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk unlink
 	REJECTS=NO
 	find .  -name '*.rej' -print > ${TMP}rejects$$
 	while [ -s ${TMP}rejects$$ ]
@@ -369,12 +378,13 @@ import_text () {
 }
 
 import_RCS () {
+	set -x
 	cd $2
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]
 	then	bk rcs2sccs $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ || exit 1
-		xargs rm -f < ${TMP}import$$
+		bk unlink < ${TMP}import$$
 		return
 	fi
 	LINES=`wc -l < ${TMP}import$$`
@@ -568,6 +578,5 @@ init() {
 }
 
 init
-__logCommand "$@"
 import "$@"
 exit 0

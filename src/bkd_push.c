@@ -8,17 +8,19 @@ cmd_push(int ac, char **av)
 	int	n, c, verbose = 1;
 	int	gzip = 0;
 	char	buf[4096];
-	int	fd, fd2, wfd, status;
+	int	fd2, wfd, status;
 	static	char *prs[] =
 	    { "bk", "prs", "-r1.0..", "-bhad:KEY:", "ChangeSet", 0 };
 	static	char *tp[] = { "bk", "takepatch", "-act", "-vv", 0 };
 				    /* see verbose below    ^^ */
 
-#ifdef WIN32
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-#endif
 	if (!exists("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
+		exit(1);
+	}
+	if ((bk_mode() == BK_BASIC) && !exists("BitKeeper/etc/.master")) {
+		out("ERROR-bkd std cannot access non-master repository\n");
 		exit(1);
 	}
 
@@ -38,6 +40,10 @@ cmd_push(int ac, char **av)
 			break;
 	    	}
 	}
+
+#ifndef WIN32
+	signal(SIGCHLD, SIG_DFL);
+#endif
 	
 #define	OUT	{ error = 1; goto out; }
 	pid = spawnvp_ex(_P_NOWAIT, prs[0], prs);
@@ -45,9 +51,6 @@ cmd_push(int ac, char **av)
 		out("@END@\n");
 		goto out;
 	}
-#ifndef WIN32
-	signal(SIGCHLD, SIG_DFL);
-#endif
 	waitpid(pid, &status, 0);
 	out("@END@\n");
 	if (WIFEXITED(status)) {
@@ -67,9 +70,8 @@ cmd_push(int ac, char **av)
 #endif
 		unless (verbose) tp[3] = 0;
 		if (gzip) {
-			fd2 = dup(2); close(2);
 			/* Arrange to have stderr go to stdout */
-			fd = dup(1); assert(fd == 2);
+			fd2 = dup(2); dup2(1, 2);
 			pid = spawnvp_wPipe(tp, &wfd);
 			if (pid == -1) {
 				outc(BKD_EXITOK);
@@ -89,9 +91,8 @@ cmd_push(int ac, char **av)
 			gzip_done();
 			close(wfd);
 		} else {
-			fd2 = dup(2); close(2);
 			/* Arrange to have stderr go to stdout */
-			fd = dup(1); assert(fd == 2);
+			fd2 = dup(2); dup2(1, 2);
 			pid = spawnvp_ex(_P_NOWAIT, tp[0], tp);
 			if (pid == -1) {
 				close(2); dup2(fd2, 2);
@@ -116,6 +117,7 @@ out:
 	 * This could screw up if takepatch errored but left the RESYNC dir.
 	 * The write lock code respects the RESYNC dir, so that's OK.
 	 */
+	cmdlog_end(0);
 	if (error) repository_wrunlock(0);
 	exit(error);
 }

@@ -224,5 +224,20 @@ echo $N Make sure delta -i a b c d does check in ....................$NL
 bk delta $Q -i a b c d e
 if [ ! -d "SCCS" ]; then	echo failed; exit 1; fi
 echo OK
+if [ $PLATFORM = "WIN32" ]
+then #-------------------------------------------------------------
+echo $N Make sure delta uses the real name of the sfile .............$NL
+cd ../A
+bk clean data
+bk edit $Q data
+rm -f data
+echo new > DATA
+bk delta $Q -ychk_path DATA
+bk prs -h -r+ -d:DPN: DATA | grep -q "A/data\$"
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk prs -h -r+ -d:DPN: DATA | grep -q "A/DATA\$"
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+fi #---------------------------------------------------------------
 cd ..
 rm -rf A garbage

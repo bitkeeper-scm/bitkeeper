@@ -14,10 +14,10 @@
 
 cores()
 {
-        find "$REGRESSION" -name core -print > "$REGRESSION"/cores
+        find "$BK_REGRESSION" -name core -print > "$BK_REGRESSION"/cores
         if [ -s cores ]
-        then    ls -l `cat "$REGRESSION"/cores`
-                file `cat "$REGRESSION"/cores`
+        then    ls -l `cat "$BK_REGRESSION"/cores`
+                file `cat "$BK_REGRESSION"/cores`
                 exit 10
         fi
 }
@@ -25,8 +25,8 @@ cores()
 
 # [ -w file ] always succeeds when you are root.
 writable () {
-	[ -f $1 ] || return 1
-	case "`ls -l $1 | cut -c1-10`" in
+	[ -f "$1" ] || return 1
+	case "`ls -l "$1" | cut -c1-10`" in
 	    *w*) return 0;;
 	    *) return 1;;
 	esac
@@ -47,4 +47,29 @@ checkLocks () {
 	fi
 }
 
-cd "$REGRESSION" || exit 1
+no_logging() {
+	echo "logging: none" > c
+	echo "single_user: bk" >> c
+	echo "single_host: free.bk" >> c
+	echo "description: BitKeeper Test repository" >> c
+	echo "email: nobody@nowhere.bk" >> c
+	bk setup -f -cc $1
+	cd $1
+}
+
+cd "$BK_REGRESSION" || exit 1
+HERE=`bk pwd`
+for i in .. ../.. ../../.. ../../..
+do	if [ -d ${i}/BitKeeper/etc ]
+	then	cat <<EOF
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Found an enclosing BitKeeper repository at ${i}/BitKeeper - this is
+probably an error, please check it out and if so, remove it.  Some tests
+can not run with that BitKeeper directory there.
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+EOF
+		exit 1
+	fi
+done

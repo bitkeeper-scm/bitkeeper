@@ -6,7 +6,6 @@ private char	*getrev(char *);
 private MDBM	*mk_list(char *, char *);
 private int	clean_file(MDBM *);
 private int	do_rename(MDBM *, char *);
-extern	void	cat(char *);
 private void	checkRev(char *);
 
 int
@@ -37,7 +36,7 @@ undo_main(int ac,  char **av)
 		}
 	}
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "undo: can not find package root.\n");
+		fprintf(stderr, "undo: cannot find package root.\n");
 		exit(1);
 	}
 	unless (rev) {
@@ -53,7 +52,7 @@ undo_main(int ac,  char **av)
 	cmd = malloc(strlen(rev) + strlen(undo_list) + 200);
 	sprintf(cmd, "bk stripdel -Ccr%s ChangeSet 2> %s", rev, undo_list);
 	if (system(cmd) != 0) {
-		gethelp("undo_error", bin, stdout);
+		gethelp("undo_error", bin, 0, stdout);
 		cat(undo_list);
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
@@ -141,6 +140,7 @@ getrev(char *top_rev)
 	char	tmpfile[MAXPATH];
 	char	cmd[MAXKEY];
 	int	fd, len, sz;
+	char	*retptr = 0;
 
 	checkRev(top_rev);
 	sprintf(tmpfile, "%s/bk_tmp%d", TMP_PATH, getpid());
@@ -152,15 +152,18 @@ getrev(char *top_rev)
 	fd = open(tmpfile, O_RDONLY, 0);
 	if (buf) free(buf);
 	sz = size(tmpfile);
-	buf = malloc(sz + 1);
-	if ((len = read(fd, buf, sz)) < 0) {
-		perror(tmpfile);
-		exit(1);
+	if (sz) {
+		buf = (malloc)(sz + 1);
+		if ((len = read(fd, buf, sz)) < 0) {
+			perror(tmpfile);
+			exit(1);
+		}
+		close(fd);
+		buf[len] = 0;
+		retptr = buf;
 	}
-	close(fd);
 	unlink(tmpfile);
-	buf[len] = 0;
-	return (buf);
+	return (retptr);
 }
 
 MDBM *
@@ -172,9 +175,10 @@ mk_list(char *rev_list, char *rev)
 
 	assert(rev);
 	cmd = malloc(strlen(rev) + 100);
-	sprintf(cmd, "bk cset -ffl%s > %s", rev, rev_list);
+	sprintf(cmd, "bk cset -ffr%s > %s", rev, rev_list);
 	if (system(cmd) != 0) {
-		printf("undo: can not extact revision list\n");
+		printf("undo: %s\n", cmd);
+		printf("undo: cannot extact revision list\n");
 		return (NULL);
 	}
 	free(cmd);
@@ -203,6 +207,13 @@ do_rename(MDBM *fileList, char *qflag)
 	kvpair  kv;
 	FILE	*f;
 	char	rc, renum_list[MAXPATH], buf[MAXLINE];
+	int 	warned = 0;
+	char	*msg =
+"===========================================================================\n\
+file rename event detected: to reconstruct this tree correctly,\n\
+you need to upgrade to BitKeeper Profeesional, for more info\n\
+please contact sales@bitmover.com\n\
+===========================================================================\n";
 
 	sprintf(renum_list, "%s/bk_renum_list%d",  TMP_PATH, getpid());
 	f = fopen(renum_list, "wb"); assert(f);
@@ -224,6 +235,12 @@ do_rename(MDBM *fileList, char *qflag)
 		old_path = name2sccs(d->pathname);
 		sccs_free(s);
 		unless (streq(sfile, old_path)) {
+			if (!strneq(sfile, "BitKeeper/deleted/SCCS/", 23) &&
+			    !strneq(old_path, "BitKeeper/deleted/SCCS/", 23) &&
+			    bk_mode() == BK_BASIC) {
+				if (++warned == 1) fputs(msg, stderr);
+				continue;
+			}
 			if (exists(old_path)) {
 				printf("Unable to mv %s %s, %s exists\n",
 						    sfile, old_path, old_path);
@@ -272,7 +289,7 @@ clean_file(MDBM *fileList)
 		assert(s);
 		unless(proj) proj = s->proj;
 		if (sccs_clean(s, SILENT)) {
-			printf("Can not clean %s, Undo aborted\n", sfile);
+			printf("Cannot clean %s, Undo aborted\n", sfile);
 			sccs_free(s);
 			free(sfile);
 			if (proj) proj_free(proj);

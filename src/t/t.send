@@ -20,11 +20,7 @@ then
 fi
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -37,7 +33,7 @@ echo foo > foo.c
 echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
-bk commit $S -f -yCset
+bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
@@ -47,7 +43,7 @@ do
 	date >> foo.c
 	date >> bar.c
 	bk ci $Q -y$i foo.c bar.c
-	bk commit $S -f -yCset$i
+	bk commit $S -a -yCset$i
 done
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
@@ -60,12 +56,15 @@ if [ ! -f ../copy/src/SCCS/s.h.h ]; then echo failed to receive; exit 1; fi
 cd $HERE/project; bk -r clean
 cd $HERE/copy; bk -r clean
 cd $HERE
+rmdir project/BitKeeper/etc/.master
 rm -f project/BitKeeper/etc/SCCS/x.id_cache
 rm -f copy/BitKeeper/etc/SCCS/x.id_cache
 rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f copy/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd copy/BitKeeper/log/cmd
 rm -f copy/BitKeeper/etc/csets
+rm -f project/BitKeeper/log/*
+rm -f copy/BitKeeper/log/*
 diff -r project copy > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -98,6 +97,8 @@ rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f uu/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd uu/BitKeeper/log/cmd
 rm -f uu/BitKeeper/etc/csets
+rm -f project/BitKeeper/log/*
+rm -f uu/BitKeeper/log/*
 diff -r project uu > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK
@@ -117,6 +118,8 @@ rm -f project/BitKeeper/etc/SCCS/x.marked
 rm -f csets/BitKeeper/etc/SCCS/x.marked
 rm -f project/BitKeeper/log/cmd csets/BitKeeper/log/cmd
 rm -f csets/BitKeeper/etc/csets
+rm -f project/BitKeeper/log/*
+rm -f csets/BitKeeper/log/*
 diff -r project csets > diff$$
 if [ $? != 0 ]; then echo Failed because of differences; cat diff$$; exit 1; fi
 echo OK

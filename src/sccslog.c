@@ -10,6 +10,7 @@ WHATSTR("@(#)%K%");
 
 private	char	*log_help = "\n\
 usage: sccslog [-pCv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
+    -A		select all uncommited deltas in a file.\n\
     -c<dates>	Cut off dates.  See 'bk help dates' for details.\n\
     -C		produce comments for a changeset\n\
     -p		show basenames instead of full pathnames.\n\
@@ -27,13 +28,14 @@ private	int	compar(const void *a, const void *b);
 private	void	sortlog(int flags);
 private	void	printlog(void);
 private	void	sccslog(sccs *s);
-private	void	stealTree(delta *d, delta *stop);
+private	void	reallocDelta(delta *d);
 private	void	freelog(void);
 
 private	delta	*list, **sorted;
 private	int	n;
 private	int	pflag;		/* do basenames */
 private	int	Cflg;		/* comments for changesets */
+private	int	Aflg;		/* select all uncomitted deltas in a file */
 
 int
 sccslog_main(int ac, char **av)
@@ -44,16 +46,15 @@ sccslog_main(int ac, char **av)
 	project	*proj = 0;
 	RANGE_DECL;
 
-#ifdef WIN32
-	_setmode(_fileno(stdout), _O_BINARY);
-#endif
+	setmode(1, _O_BINARY);
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
 		fprintf(stderr, log_help);
 		return (0);
 	}
-	while ((c = getopt(ac, av, "Cc;pr|v")) != -1) {
+	while ((c = getopt(ac, av, "ACc;pr|v")) != -1) {
 		switch (c) {
+		    case 'A': Aflg++; break;
 		    case 'C': Cflg++; break;
 		    case 'p': pflag++; break;
 		    case 'v': flags &= ~SILENT; break;
@@ -71,7 +72,16 @@ usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 		}
 		unless (proj) proj = s->proj;
 		unless (s->tree) goto next;
-		RANGE("sccslog", s, 1, 0);
+		RANGE("sccslog", s, 2, 0);
+		if (Aflg) {
+			delta *d = sccs_top(s);
+
+			while (d) {
+				if (d->flags & D_CSET) break;
+				d->flags |= D_SET;
+				d = d->parent;
+			}
+		}
 		save = n;
 		sccslog(s);
 		verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
@@ -85,7 +95,6 @@ next:		sccs_free(s);
 		printlog();
 		freelog();
 	}
-	purify_list();
 	return (0);
 }
 
@@ -169,10 +178,16 @@ private	void
 sccslog(sccs *s)
 {
 	delta	*d, *e;
-	delta	*start = s->rstart;
-	delta	*stop = s->rstop;
+	int	partial = 0;
 
-	if (!start && !stop) {
+	for (d = s->table; d; d = d->next) {
+		/* XXX - need to screan out meta/removed? */
+		unless (d->flags & D_SET) {
+			partial = 1;
+			break;
+		}
+	}
+	unless (partial) {
 		for (d = s->table, n++; d && d->next; n++, d = d->next) {
 			if (d->zone) {
 				assert(d->zone[0]);
@@ -192,11 +207,10 @@ sccslog(sccs *s)
 		s->table = s->tree = 0;
 		return;
 	}
-	start->siblings = 0;
-	stealTree(start, stop);
 	for (d = s->table; d; ) {
 		d->kid = d->siblings = 0;
-		if (d->flags & D_VISITED) {
+		if (d->flags & D_SET) {
+			reallocDelta(d);
 			e = d->next;
 			d->next = list;
 			list = d;
@@ -216,7 +230,7 @@ sccslog(sccs *s)
  * Put them on the list (destroying the delta table list).
  */
 private	void
-stealTree(delta *d, delta *stop)
+reallocDelta(delta *d)
 {
 	if (d->zone) {
 		if (d->flags & D_DUPZONE) {
@@ -232,10 +246,6 @@ stealTree(delta *d, delta *stop)
 		d->flags &= ~D_DUPHOST;
 		d->hostname = strdup(d->hostname);
 	}
-	d->flags |= D_VISITED;
-	if (d == stop) return;
-	if (d->kid) stealTree(d->kid, stop);
-	if (d->siblings) stealTree(d->siblings, stop);
 }
 
 private	void

@@ -20,11 +20,7 @@ fi
 
 # Tests for pull, push, and clone.
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -38,7 +34,7 @@ bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
-bk commit $S -f -yCset
+bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 echo OK
@@ -228,6 +224,25 @@ mv x foo.c
 bk delta $Q -y foo.c
 bk commit $Q -ytest
 bk push $HERE/copy > push.out 2>&1
-grep -q "not to accept conflicts" push.out
-if [ $? -ne 0 ]; then echo failed; fi
+grep -q "has uncommitted changes" push.out
+if [ $? -ne 0 ]; then echo failed; cat push.out; exit 1; fi
+echo OK
+echo $N pull with a delete event ....................................$NL
+bk clone $Q $HERE/project $HERE/copy2
+cd $HERE/project/src
+bk rm foo.c
+bk commit $Q -ydelete
+cd $HERE/copy2/src
+bk get $Q foo.c
+bk pull -t $Q $HERE/project
+if [ -f foo.c ]; then echo failed to delete gfile; exit 1; fi
+echo OK
+echo $N pull with a mvdir event .....................................$NL
+cd $HERE/project
+bk mvdir src src2/src3
+bk commit $Q -ymvdir
+cd $HERE/copy2
+bk pull $Q -t $HERE/project
+if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
+if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
 echo OK

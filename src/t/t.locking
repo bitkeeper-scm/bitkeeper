@@ -14,11 +14,7 @@
 
 # Create a repository 
 echo $N Create initial repository ...................................$NL
-HERE=`pwd`
-echo "logging: none" > $HERE/config
-bk setup -f -n'BitKeeper Test repository' -c$HERE/config project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -30,7 +26,7 @@ echo 1 > A
 echo 2 > B
 bk ci $Q -i A B
 if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
-bk commit $S -f -y"This is a \"Change Set\""
+bk commit $S -a -y"This is a \"Change Set\""
 echo OK
 echo $N Make sure zero sized z.locks are respected ..................$NL
 bk edit $Q A
@@ -143,7 +139,7 @@ bk commit $Q -ywhatever
 bk lock -w &
 while bk lock; do true; done
 cd $HERE/clone
-bk pull -t $Q 2>/dev/null
+bk pull -t -c0 $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
 echo $N Make sure pull works with existing read lock in source ......$NL
@@ -168,7 +164,7 @@ cd $HERE/clone
 ls > D
 bk new $Q D
 bk commit $Q -ywhatever
-bk push $Q
+bk push -c0 $Q
 if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
 echo OK
 echo $N Make sure push fails with existing write lock in dest .......$NL
@@ -177,7 +173,7 @@ rm -rf BitKeeper/readers BitKeeper/writer
 bk lock -w &
 while bk lock; do true; done
 cd $HERE/clone
-bk push $Q
+bk push -c0 $Q
 if [ $? != 1 ]; then echo push failed to exit with an error; exit 1; fi
 echo OK
 echo $N Make sure push succeeds with no locks in destination ........$NL

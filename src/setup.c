@@ -2,19 +2,19 @@
 #include "sccs.h"
 
 extern char *editor, *pager, *bin;
+private void    usage(void);
 
 int
 setup_main(int ac, char **av)
 {
 	int	force = 0, c;
-	char	*package_name = 0, *package_path = 0, *config_path = 0;
+	char	*package_path = 0, *config_path = 0, *t;
 	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
-	char 	s_config[MAXPATH] = "SCCS/s.config";
-	FILE	*f, *f1;
+	char 	s_config[MAXPATH] = "BitKeeper/etc/SCCS/s.config";
 	sccs	*s;
-	char	*edit[] = {my_editor, "Description", 0};
+	MDBM	*m;
 
-	while ((c = getopt(ac, av, "c:fn:")) != -1) {
+	while ((c = getopt(ac, av, "c:f")) != -1) {
 		switch (c) {
 		    case 'c':	
 		    	unless(exists(optarg)) {
@@ -29,14 +29,12 @@ setup_main(int ac, char **av)
 		    case 'f':
 			force = 1;
 			break;
-		    case 'n':
-			package_name = optarg;
-			break;
+		    default:
+			usage();
 		}
 	}
 	unless (package_path = av[optind]) {
-		printf(
-	"Usage: bk setup [-c<config file>] [-n <package name>] directory\n");
+		printf("Usage: bk setup [-c<config file>] directory\n");
 		exit (0);
 	}
 	if (exists(package_path)) {
@@ -45,92 +43,77 @@ setup_main(int ac, char **av)
 	}
 	license();
 	unless(force) {
-		gethelp("setup_1", "", stdout);
+		gethelp("setup_1", 0, 0, stdout);
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
 	}
 	mkdirp(package_path);
 	if (chdir(package_path) != 0) exit(1);
-	unless(package_name) {
-		gethelp("setup_2", "", stdout);
-		while (1) {
-			/*
-			 * win32 note: notepate.exe wants text mode
-			 */
-			f = fopen("Description", "wt");
-			fprintf(f,
-				"Replace this with your package description\n");
-			fclose(f);
-			f = fopen("D.save", "wb");
-			fprintf(f,
-				"Replace this with your package description\n");
-			fclose(f);
-			printf("Editor to use [%s] ", editor);
-			unless (fgets(my_editor, sizeof(my_editor), stdin)) {
-				my_editor[0] = '\0';
-			}
-			chop(my_editor);
-			edit[0] = (my_editor[0] != 0) ? my_editor : editor;
-			if (spawnvp_ex(_P_WAIT, edit[0], edit) != 0) continue;
-			if (my_editor[0] != 0) editor = strdup(my_editor);
-			if (system("cmp -s D.save Description")) {
-				break;
-			} else {
-				printf(
-				"Sorry, you have to put something in there\n");
-			}
-		}
-	} else {
-		f = fopen("Description", "wb");
-		fputs(package_name, f);
-		fclose(f);
-	}
-	system("bk cset -snDescription .");
-
-	f = fopen("Description", "rt");
-	fgets(buf, sizeof(buf), f);
-	fclose(f);
-	unlink("Description"); unlink("D.save");
-	if (chdir("BitKeeper/etc") != 0) {
-		perror("cd BitKeeper/etc");
-		exit (1);
-	}
+	sccs_mkroot(".");
 	if (config_path == NULL) {
-		gethelp("setup_3", "", stdout);
-		sprintf(buf, "%s/bitkeeper.config", bin);
-		f = fopen(buf, "rt");
+		FILE 	*f;
+
+		gethelp("setup_3", 0, 0, stdout);
+		/* notepad.exe wants text mode */
+		f = fopen("BitKeeper/etc/config", "wt");
 		assert(f);
-		f1 = fopen("config", "wt"); /* notepad.exe wants text mode */
-		assert(f1);
-		while (fgets(buf, sizeof(buf), f)) {
-			fputs(buf, f1);
-		} 
-		fclose(f); fclose(f1);
-		chmod("config", 0664);
-		while (1) {
-			printf("Editor to use [%s] ", editor);
-			unless (fgets(my_editor, sizeof(my_editor), stdin)) {
-				my_editor[0] = '\0';
-			}
-			chop(my_editor);
-			if (my_editor[0] != 0) {
-				sprintf(buf, "%s config", my_editor);
-			} else {
-				sprintf(buf, "%s config", editor);
-			}
-			system(buf);
-			sprintf(buf, "cmp -s %s/bitkeeper.config config", bin);
-			if (system(buf)) {
-				break;
-			} else {
-				printf("Sorry, you have to fill this out.\n");
-			}
+		mkconfig(f);
+		fclose(f);
+		chmod("BitKeeper/etc/config", 0664);
+again:		printf("Editor to use [%s] ", editor);
+		unless (fgets(my_editor, sizeof(my_editor), stdin)) {
+			my_editor[0] = '\0';
 		}
+		chop(my_editor);
+		if (my_editor[0] != 0) {
+			sprintf(buf, "%s BitKeeper/etc/config", my_editor);
+		} else {
+			sprintf(buf, "%s BitKeeper/etc/config", editor);
+		}
+		system(buf);
 	} else {
-		sprintf(buf, "cp %s config", config_path);
+		unless (exists(config_path)) {
+			fprintf(stderr, "setup: can't open %s\n", config_path);
+			fprintf(stderr, "You need to use a fullpath\n");
+			exit(1);
+	    	}
+		sprintf(buf, "cp %s BitKeeper/etc/config", config_path);
 		system(buf);
 	}
+
+	unless (m = loadConfig(".", 0)) {
+		fprintf(stderr, "No config file found\n");
+		exit(1);
+	}
+	unless (mdbm_fetch_str(m, "description")) {
+		fprintf(stderr, "Setup: must provide a description.\n");
+		if (config_path) exit(1);
+		goto again;
+	}
+	unless (mdbm_fetch_str(m, "logging")) {
+		fprintf(stderr, "Setup: must define logging policy.\n");
+		if (config_path) exit(1);
+		goto again;
+	}
+	unless (t = mdbm_fetch_str(m, "email")) {
+		fprintf(stderr, "Setup: must define email contact.\n");
+		if (config_path) exit(1);
+		goto again;
+	}
+	unless (t = strchr(t, '@')) {
+		fprintf(stderr, "Setup: must define a valid email contact.\n");
+		if (config_path) exit(1);
+		goto again;
+	}
+	unless (t = strchr(t, '.')) {
+		fprintf(stderr, "Setup: must define a valid email contact.\n");
+		if (config_path) exit(1);
+		goto again;
+	}
+	mdbm_close(m);
+
+	if (cset_setup(SILENT)) return (1);
 	s = sccs_init(s_config, SILENT, NULL);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
@@ -140,16 +123,29 @@ setup_main(int ac, char **av)
 	sccs_free(s);
 
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
-	sprintf(buf, "bk sfiles -C > %s", setup_files);
+	sprintf(buf, "bk -R sfiles -C > %s", setup_files);
 	system(buf);
 	sprintf(buf,
 	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);
 	system(buf);
 	unlink(setup_files);
  	if (sccs_cd2root(0, 0) == -1) {
-                fprintf(stderr, "sendconfig: can not find package root.\n");
+                fprintf(stderr, "setup: cannot find package root.\n");
                 exit(1);
         }                           
-	sendConfig("setups@openlogging.org", 1, 0);
+	mkdir("BitKeeper/etc/.master", 0775);
+	sendConfig("setups@openlogging.org", "1.0");
 	return (0);
+}
+
+private void
+usage()
+{
+	fprintf(stderr,
+		    "\n\
+usage: setup [-f] [-c<config file>] directory\n\
+\n\
+	-f               Don't ask for confirmation.\n\
+	-c<config file>  Configuration file to use for setup.\n\n");
+	exit(1);
 }

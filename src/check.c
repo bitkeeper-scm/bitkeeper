@@ -12,6 +12,8 @@ usage: check [-acfRv]\n\n\
     -a		warn if the files listed are a subset of the repository\n\
     -c		check file checksum\n\
     -f		fix any fixable errors\n\
+    -g		list gone keys only\n\
+    -p		list deltas which are in more than one cset\n\
     -R		only do checks which make sense in the RESYNC dir\n\
     -v		list each file which is OK\n\n";
 
@@ -26,18 +28,24 @@ private	void	listFound(MDBM *db);
 private	void	listCsetRevs(char *key);
 private void	init_idcache();
 private int	checkKeys(sccs *s, char *root);
+private void	warnPoly(void);
 
 private	int	verbose;
 private	int	all;	/* if set, check every darn entry in the ChangeSet */
 private	int	resync;	/* called in resync dir */
 private	int	fix;	/* if set, fix up anything we can */
+private	int	goneKey;/* if set, list gone key only */
 private	int	names;	/* if set, we need to fix names */
 private	int	mixed;	/* mixed short/long keys */
 private	project	*proj;
 private char	csetFile[] = CHANGESET;
+private	sccs	*cset;	/* the initialized cset file */
 private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
+private	int	poly;
+private	int	polyList;
 
+#define	POLY	"BitKeeper/etc/SCCS/x.poly"
 #define	CTMP	"BitKeeper/tmp/ChangeSet-all"
 
 /*
@@ -77,11 +85,13 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "acfRv")) != -1) {
+	while ((c = getopt(ac, av, "acfgpRv")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'f': fix++; break;
+		    case 'g': goneKey++; break;
 		    case 'c': flags &= ~INIT_NOCKSUM; break;
+		    case 'p': polyList++; break;
 		    case 'R': resync++; break;
 		    case 'v': verbose++; break;
 		    default:
@@ -94,17 +104,16 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "check: can not find package root.\n");
+		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
 	}
-	unless (s = sccs_init(csetFile, flags, 0)) {
+	unless (cset = sccs_init(csetFile, flags, 0)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
-	proj = s->proj;
-	mixed = (s->state & S_KEY2) == 0;
+	proj = cset->proj;
+	mixed = (cset->state & S_KEY2) == 0;
 	db = buildKeys();
-	sccs_free(s);
 	if (all) init_idcache();
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
@@ -200,8 +209,15 @@ usage:		fprintf(stderr, "%s", check_help);
 		}
 	}
 	if (csetKeys.deltas) free(csetKeys.deltas);
-	purify_list();
+	if (poly) warnPoly();
 	return (errors);
+}
+
+private void
+warnPoly(void)
+{
+	gethelp("warn_poly", 0, 0, stdout);
+	close(open(POLY, O_CREAT|O_TRUNC, 0664));
 }
 
 /*
@@ -222,15 +238,40 @@ checkAll(MDBM *db)
 	int	found = 0;
 	char	buf[MAXPATH*3];
 
+	/*
+	 * If we are doing the resync tree, we just want the keys which
+	 * are not in the local repo.
+	 */
 	if (resync) {
+		MDBM	*local = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+		FILE	*f;
+		
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CHANGESET);
-		unless (exists(buf)) goto full;
+		unless (exists(buf)) {
+			mdbm_close(local);
+			goto full;
+		}
 		sprintf(buf,
-		    "bk sccscat -h %s/ChangeSet | sort | comm -13 - %s > %s.p",
-		    RESYNC2ROOT, CTMP, CTMP);
-		system(buf);
+		    "bk sccscat -h %s/ChangeSet | bk keysort", RESYNC2ROOT);
+		f = popen(buf, "r");
+		while (fgets(buf, sizeof(buf), f)) {
+			if (mdbm_store_str(local, buf, "", MDBM_INSERT)) {
+				fprintf(stderr,
+				    "ERROR: duplicate line in ChangeSet\n");
+			}
+		}
+		fclose(f);
+		f = fopen(CTMP, "r");
 		sprintf(buf, "%s.p", CTMP);
-		keys = fopen(buf, "rt");
+		keys = fopen(buf, "w");
+		while (fgets(buf, sizeof(buf), f)) {
+			unless (mdbm_fetch_str(local, buf)) fputs(buf, keys);
+		}
+		fclose(f);
+		fclose(keys);
+		sprintf(buf, "%s.p", CTMP);
+		keys = fopen(buf, "r");
+		mdbm_close(local);
 	} else {
 full:		keys = fopen(CTMP, "rt");
 	}
@@ -238,14 +279,14 @@ full:		keys = fopen(CTMP, "rt");
 		perror("checkAll");
 		exit(1);
 	}
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
 	/* This can legitimately return NULL */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	while (fnext(buf, keys)) {
-		t = strchr(buf, ' ');
+		t = separator(buf);
 		assert(t);
 		*t = 0;
 		if (mdbm_fetch_str(db, buf)) continue;
@@ -267,6 +308,14 @@ private void
 listFound(MDBM *db)
 {
 	kvpair	kv;
+
+	if (goneKey) { /* -g option => key only, no header */
+		for (kv = mdbm_first(db); kv.key.dsize != 0;
+							kv = mdbm_next(db)) {
+			printf("%s\n", kv.key.dptr);
+		}
+		return;
+	}
 
 	if (resync) {
 		fprintf(stderr,
@@ -319,7 +368,6 @@ buildKeys()
 	int	fd, sz;
 	char	buf[MAXPATH*3];
 	char	key[MAXPATH*2];
-	sccs	*cset;
 	delta	*d;
 	datum	k, v;
 
@@ -327,17 +375,17 @@ buildKeys()
 		perror("buildkeys");
 		exit(1);
 	}
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
-	unless (cset = sccs_init(csetFile, flags, proj)) {
+	unless (cset && cset->tree) {
 		fprintf(stderr, "check: ChangeSet file not inited\n");
 		exit (1);
 	}
 	unless (exists("BitKeeper/tmp")) mkdir("BitKeeper/tmp", 0777);
 	unlink(CTMP);
-	sprintf(buf, "bk sccscat -h ChangeSet | sort > %s", CTMP);
+	sprintf(buf, "bk sccscat -h ChangeSet | bk keysort > %s", CTMP);
 	system(buf);
 	unless (exists(CTMP)) {
 		fprintf(stderr, "Unable to create %s\n", CTMP);
@@ -368,9 +416,9 @@ buildKeys()
 	buf[0] = 0;
 	csetKeys.n = 0;
 	for (s = csetKeys.malloc; s < csetKeys.malloc + sz; ) {
-		t = strchr(s, ' ');
-		*t++ = 0;
+		t = separator(s);
 		assert(t);
+		*t++ = 0;
 		r = strchr(t, '\n');
 #ifdef WIN32
 		if (r[-1] == '\r') r[-1] = 0; /* remove DOS '\r' */
@@ -485,7 +533,7 @@ listCsetRevs(char *key)
 			goto out;
 		}
 		//fprintf(stderr, "BUF %s\n", buf);
-		t = strrchr(buf, ' '); assert(t); *t++ = 0;
+		t = separator(buf); assert(t); *t++ = 0;
 		unless (streq(t, key)) continue;
 		for (t = buf; *t && !isspace(*t); t++);
 		assert(isspace(*t));
@@ -525,6 +573,33 @@ getRev(char *root, char *key, MDBM *idDB)
 		return (strdup("[can not find key]"));
 	}
 	return (strdup(d->rev));
+}
+
+/*
+ * Tag with D_SET all deltas in a cset.
+ * Flag an error if delta already in cset.
+ */
+private void
+markCset(sccs *s, delta *d)
+{
+	do {
+		if (d->flags & D_SET) {
+			poly = 1;
+			if (polyList) {
+				fprintf(stderr,
+				    "check: %s: %s in more than one cset\n",
+				    s->gfile, d->rev);
+			}
+		}
+		d->flags |= D_SET;
+		if (d->merge) {
+			delta	*e = sfind(s, d->merge);
+
+			assert(e);
+			unless (e->flags & D_CSET) markCset(s, e);
+		}
+		d = d->parent;
+	} while (d && !(d->flags & D_CSET));
 }
 
 /*
@@ -574,6 +649,8 @@ check(sccs *s, MDBM *db, MDBM *marks)
 			fprintf(stderr,
 		    "%s: marked delta %s should be in ChangeSet but is not.\n",
 			    s->sfile, d->rev);
+			sccs_sdelta(s, d, buf);
+			fprintf(stderr, "\t%s -> %s\n", d->rev, buf);
 			errors++;
 		} else if (verbose > 1) {
 			fprintf(stderr, "%s: found %s in ChangeSet\n",
@@ -602,13 +679,23 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	/*
 	 * Rebuild the id cache if we are running in -a mode.
 	 */
-	if (all && !streq(ino->pathname, d->pathname)) {
-		fprintf(idcache, "%s %s\n", buf, s->gfile);
-		if (mixed && (t = sccs_iskeylong(buf))) {
-			*t = 0;
-			 fprintf(idcache, "%s %s\n", buf, s->gfile);
-			*t = '|';
-		} 
+	if (all) {
+		do {
+			sccs_sdelta(s, ino, buf);
+			if (s->grafted || !streq(ino->pathname, s->gfile)) {
+				fprintf(idcache, "%s %s\n", buf, s->gfile);
+				if (mixed && (t = sccs_iskeylong(buf))) {
+					*t = 0;
+					 fprintf(idcache,
+					    "%s %s\n", buf, s->gfile);
+					*t = '|';
+				} 
+			}
+			unless (s->grafted) break;
+			while (ino = ino->next) {
+				if (ino->random) break;
+			}
+		} while (ino);
 	}
 
 	/* Make sure that we think we have cset marks */
@@ -658,6 +745,18 @@ check(sccs *s, MDBM *db, MDBM *marks)
 		*t = 0;
 		errors += checkKeys(s, buf);
 		*t = '|';
+	}
+
+	/* If we are not already marked as a repository having poly
+	 * cseted deltas, then check to see if it is the case
+	 */
+	if (!exists(POLY) && (s->state & S_CSETMARKED)) {
+		for (d = s->table; d; d = d->next) {
+			d->flags &= ~D_SET;
+		}
+		for (d = s->table; d; d = d->next) {
+			if (d->flags & D_CSET) markCset(s, d);
+		}
 	}
 	return (errors);
 }

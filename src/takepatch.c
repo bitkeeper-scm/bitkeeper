@@ -42,13 +42,12 @@ usage: takepatch [-acFimStv] [-f file]\n\n\
 
 #define	CLEAN_RESYNC	1	/* blow away the RESYNC dir */
 #define	CLEAN_PENDING	2	/* blow away the PENDING dir */
-#define	SHOUT() \
-	fputs("\n==================== ERROR =======================\n", stderr);
-#define	SHOUT2() \
-	fputs("==================================================\n\n", stderr);
-#define	NOTICE() \
-	fputs("------------------------------------------------------\n",\
-	stderr);
+#define	SHOUT() fputs("\n=================================== "\
+		    "ERROR ====================================\n", stderr);
+#define	SHOUT2() fputs("======================================="\
+		    "=======================================\n\n", stderr);
+#define	NOTICE() fputs("------------------------------------"\
+		    "---------------------------------------\n", stderr);
 
 private	delta	*getRecord(MMAP *f);
 private	int	extractPatch(char *name, MMAP *p, int flags, int fast, project *proj);
@@ -66,6 +65,7 @@ private	void	goneError(char *key);
 private	void	freePatchList();
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
+private void	get_configs();
 
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
 private	int	mkpatch = 0;	/* act like makepatch verbose */
@@ -126,6 +126,7 @@ takepatch_main(int ac, char **av)
 		    default: goto usage;
 		}
 	}
+	if (getenv("TAKEPATCH_SAVEDIRS")) saveDirs++;
 	if (av[optind]) {
 usage:		fprintf(stderr, takepatch_help);
 		return (1);
@@ -175,13 +176,14 @@ usage:		fprintf(stderr, takepatch_help);
 		/* XXX: Save?  Purge? */
 		cleanup(0);
 	}
-	purify_list();
 	if (echo) {
 		fprintf(stderr,
 		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
 		    remote, remote == 1 ? "" : "s", conflicts, files);
 	}
-	unless (remote) {
+	if (remote) {
+		get_configs();
+	} else {
 		cleanup(CLEAN_RESYNC | CLEAN_PENDING);
 	}
 	if (resolve) {
@@ -196,6 +198,57 @@ usage:		fprintf(stderr, takepatch_help);
 		}
 	}
 	exit(0);
+}
+
+/*
+ * Copy any needed config files into the RESYNC tree.
+ *	logging_ok
+ *	config
+ *	gone
+ */
+private void
+get_configs()
+{
+	unless (exists("RESYNC/BitKeeper/etc/SCCS/s.config")) {
+		assert(exists("BitKeeper/etc/SCCS/s.config"));
+		mkdirp("RESYNC/BitKeeper/etc/SCCS");
+		system("cp BitKeeper/etc/SCCS/s.config "
+		    "RESYNC/BitKeeper/etc/SCCS/s.config");
+		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.config"));
+	}
+	unless (exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok")) {
+		unless (exists("BitKeeper/etc/SCCS/s.logging_ok")) return;
+		system("cp BitKeeper/etc/SCCS/s.logging_ok "
+		    "RESYNC/BitKeeper/etc/SCCS/s.logging_ok");
+		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok"));
+	}
+	/* XXX - if this is edited, we don't get those changes */
+	if (exists("BitKeeper/etc/SCCS/s.gone")) {
+		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
+			system("cp BitKeeper/etc/SCCS/s.gone "
+		    			"RESYNC/BitKeeper/etc/SCCS/s.gone");
+		} else {
+			/*
+			 * Both remote and local have the gone file
+			 * see if we need to merge them together
+			 */
+			system("bk get -qe RESYNC/BitKeeper/etc/gone"); 
+			system("bk get -qp BitKeeper/etc/gone >> \
+RESYNC/BitKeeper/etc/gone");
+			system("sort -u RESYNC/BitKeeper/etc/gone > \
+RESYNC/BitKeeper/etc/SCCS/x.gone");
+			unlink("RESYNC/BitKeeper/etc/gone");
+			system( "mv RESYNC/BitKeeper/etc/SCCS/x.gone \
+RESYNC/BitKeeper/etc/gone");
+			/*
+			 * We use ci here, because we do not want to
+			 * create a new delta if there is no diffs
+			 */
+			system("bk ci -qyauto-merge \
+RESYNC/BitKeeper/etc/gone"); 
+			
+		}
+    	}
 }
 
 private	delta *
@@ -331,12 +384,13 @@ cleanup:		if (perfile) sccs_free(perfile);
 		if (s->state & S_PFILE) {
 			SHOUT();
 			fprintf(stderr,
-			    "takepatch: %s is locked w/o gfile?\n", s->sfile);
+			    "takepatch: %s is locked w/o writeable gfile?\n",
+			    s->sfile);
 			goto cleanup;
 		}
-		tmp = sccs_getrev(s, "+", 0, 0);
-		assert(tmp);
-		unless (streq(tmp->pathname, s->gfile)) {
+		sccs_setpathname(s);
+		unless (streq(s->spathname, s->sfile)) {
+			tmp = sccs_top(s);
 			badpath(s, tmp);
 			goto cleanup;
 		}
@@ -532,7 +586,7 @@ goneError(char *buf)
 	SHOUT();
 	fprintf(stderr,
 "File %s\n\
-is marked as gone in this repository and therefor can not accept updates.\n\
+is marked as gone in this repository and therefor cannot accept updates.\n\
 The fact that you are getting updates indicates that the file is not gone\n\
 in the other repository and could be restored in this repository.\n\
 Contact BitMover for assistance, we'll have a tool to do this soon.\n", buf);
@@ -660,6 +714,7 @@ setlod(sccs *s, delta *d, int branch)
 	unless (branch) {
 		assert(d->rev);
 		s->defbranch = strdup(d->rev);
+		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		return;
 	}
 
@@ -712,6 +767,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	sccs	*s = 0;
 	delta	*d = 0;
 	int	newflags;
+	int	pending = 0;
 	char	*now();
 	int	n = 0;
 	char	lodkey[MAXPATH];
@@ -757,6 +813,13 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 			for (ptr = s->defbranch; *ptr; ptr++) {
 				unless (*ptr == '.') continue;
 				lodbranch = 1 - lodbranch;
+			}
+			free(s->defbranch);
+			s->defbranch = 0;
+			sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+			unless (sccs_restart(s)) {
+				perror("restart");
+				exit(1);
 			}
 		}
 	}
@@ -818,9 +881,8 @@ apply:
 					return -1;
 				}
 			} else {
-				newflags = (echo > 5) ?
-				    GET_SKIPGET|GET_EDIT :
-				    SILENT|GET_SKIPGET|GET_EDIT;
+				newflags = GET_FORCE|GET_SKIPGET|GET_EDIT;
+				unless (echo > 5) newflags |= SILENT;
 				/* CSTYLED */
 				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
 				    	perror("get");
@@ -924,7 +986,22 @@ apply:
 		d = sccs_findKey(s, p->me);
 		assert(d);
 		d->flags |= (p->flags & PATCH_LOCAL) ? D_LOCAL : D_REMOTE;
+		if (s->state & S_CSET) continue;
+		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) {
+			fprintf(stderr,
+			    "No cset mark on %s:%s\n", s->gfile, d->rev);
+			pending++;
+		}
 	}
+	/* Must check pending before fixing the lod, or we get the wrong
+	 * delta as TOL.
+	 */
+	if (pending) {
+		s->proj = 0; sccs_free(s);
+		uncommitted(localPath);
+		return -1;
+	}
+	/* must have restored defbranch (setlod above) before fixing */
 	if (fixLod(s)) {
 		s->proj = 0; sccs_free(s);
 		return (-1);
@@ -939,15 +1016,7 @@ apply:
 	    !streq(s->sfile + strlen(s->sfile) - 9, "ChangeSet")) {
 		conflicts += confThisFile;
 	}
-	if (confThisFile && !(s->state & S_CSET)) {
-		assert(d);
-		unless (d->flags & D_CSET) {
-			fprintf(stderr, "No csetmark on %s\n", d->rev);
-			s->proj = 0; sccs_free(s);
-			uncommitted(localPath);
-			return -1;
-		}
-	}
+
 	s->proj = 0; sccs_free(s);
 	if (noConflicts && conflicts) noconflicts();
 	freePatchList();
@@ -973,6 +1042,11 @@ getLocals(sccs *s, delta *g, char *name)
 		    s->gfile, g->rev, name);
 	}
 	for (d = s->table; d != g; d = d->next) {
+		/*
+		 * Silently discard removed deltas, we don't support them.
+		 */
+		if ((d->type == 'R') && !(d->flags & D_META)) continue;
+
 		assert(d);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++fileNum);
 		unless (t = fopen(tmpf, "wb")) {
@@ -1217,7 +1291,7 @@ init(char *inputFile, int flags, project **pp)
 	 * we're just doing the RESYNC part.
 	 */
 	if (mkdir("RESYNC", 0777)) {
-		fprintf(stderr, "takepatch: can not create RESYNC dir.\n");
+		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
 		repository_lockers(p);
 		cleanup(0);
 	}
@@ -1514,7 +1588,7 @@ missing:
 	/* OK if this returns NULL */
 	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
@@ -1547,7 +1621,7 @@ rebuild_id(char *id)
 	}
 	sccs_reCache();
 	if (idDB) mdbm_close(idDB);
-	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
@@ -1563,7 +1637,6 @@ cleanup(int what)
 	if (patchList) freePatchList();
 	if (idDB) mdbm_close(idDB);
 	if (goneDB) mdbm_close(goneDB);
-	purify_list(); /* win32 note: if we get here, all fd must be closed */
 	if (saveDirs) {
 		fprintf(stderr, "takepatch: neither directory removed.\n");
 		SHOUT2();

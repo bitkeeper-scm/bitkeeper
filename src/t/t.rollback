@@ -24,11 +24,7 @@ fi
 # Create a repository with 5 files in it.  The files contain
 # 1, 2, 3, 4, 5 and start out as A, B, C, D, E
 echo $N Create initial repository ...................................$NL
-HERE=`pwd`
-echo "logging: none" > $HERE/config
-bk setup -f -n'BitKeeper Test repository' -c$HERE/config project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -43,7 +39,7 @@ echo 4 > D
 echo 5 > E
 bk ci $Q -i A B C D E
 if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
-bk commit $S -f -y"This is a \"Change Set\""
+bk commit $S -a -y"This is a \"Change Set\""
 echo OK
 cores
 bk -r check -a

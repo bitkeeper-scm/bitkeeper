@@ -244,7 +244,7 @@ proc diffFiles {L R} \
 	array set DiffsEnd {}
 	array set Diffs {}
 	set n 1
-	set l [open "| bk get -kqp $L" r]
+	set l [open "| bk get -kqp \"$L\"" r]
 	set tail [file tail $L]
 	set tmp [file join "/tmp" $tail]
 	set t [open $tmp w]

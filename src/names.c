@@ -26,7 +26,7 @@ names_main(int ac, char **av)
 
 	/* this should be redundant, we should always be at the package root */
 	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "names: can not find package root.\n");
+		fprintf(stderr, "names: cannot find package root.\n");
 		return (1);
 	}
 
@@ -58,7 +58,6 @@ names_main(int ac, char **av)
 	}
 	sfileDone();
 	names_cleanup(flags);
-	purify_list();
 	return (error);
 }
 
@@ -68,7 +67,7 @@ names_init(void)
 	/* this should be redundant, we should always be at the project root */
 
 	if (sccs_cd2root(0, 0)) {
-		fprintf(stderr, "names: can not find project root.\n");
+		fprintf(stderr, "names: cannot find project root.\n");
 		exit(1);
 	}
 	filenum = 0;
@@ -125,6 +124,7 @@ pass2(u32 flags)
 			failed++;
 			continue;
 		}
+		sccs_close(s); /* for Win32 NTFS */
 		if (try_rename(path, s->spathname, 0, flags)) {
 			fprintf(stderr, "Can't rename %s -> %s\n",
 			    path, s->spathname);

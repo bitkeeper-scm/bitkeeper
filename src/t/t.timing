@@ -13,11 +13,7 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c P1
-if [ ! -d P1 ]; then echo failed to make top level directory; exit 1; fi
-cd P1
+no_logging P1
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -26,7 +22,7 @@ echo OK
 echo $N Create some data ............................................$NL
 echo foo > foo
 bk new $Q foo
-bk commit $S -f -ywhatever
+bk commit $S -a -ywhatever
 echo OK
 echo $N Create a copy of the project ................................$NL
 cd $HERE

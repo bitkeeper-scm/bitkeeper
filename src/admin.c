@@ -201,7 +201,7 @@ admin_main(int ac, char **av)
 	}
 	if ((flags & NEWFILE) && nextf) {
 		fprintf(stderr,
-		    "admin: can not have -f with -i and/or -n\n");
+		    "admin: cannot have -f with -i and/or -n\n");
 		goto usage;
 	}
 	if ((flags & NEWFILE) && text && !text[0]) {
@@ -234,7 +234,7 @@ admin_main(int ac, char **av)
 		}
 		sc = sccs_init(name, init_flags, proj);
 		unless (sc) { name = sfileNext(); continue; }
-		if (!proj && (flags & INIT_SAVEPROJ)) proj = sc->proj;
+		if (!proj && (init_flags & INIT_SAVEPROJ)) proj = sc->proj;
 		unless (sc->tree) {
 			fprintf(stderr,
 				"admin: can't read delta table in %s\n",
@@ -266,14 +266,17 @@ admin_main(int ac, char **av)
 			flags |= NEWCKSUM;
 		}
 		if (fastSym && sc->landingpad) {
-			int rc = sccs_addSym(sc, flags, s[0].thing);
+			int	rc = sccs_addSym(sc, flags, s[0].thing);
+
 			if (rc == -1) error = 1;
 			if (rc != EAGAIN) goto next;
 		}
 		if (dopath) {
 			delta	*top = findrev(sc, 0);
 
-			if (top->pathname && !(top->flags & D_DUPPATH)) free(top->pathname);
+			if (top->pathname && !(top->flags & D_DUPPATH)) {
+				free(top->pathname);
+			}
 			top->flags &= ~(D_NOPATH|D_DUPPATH);
 			top->pathname = strdup(path ? path : sc->gfile);
 		}
@@ -291,7 +294,7 @@ admin_main(int ac, char **av)
 				newrev(sc, &pf);
 				if (sccs_clean(sc, SILENT)) {
 					fprintf(stderr,
-					"admin: can not clean %s\n", sc->gfile);
+					"admin: cannot clean %s\n", sc->gfile);
 					goto next;
 				}
 			} else {
@@ -309,14 +312,14 @@ admin_main(int ac, char **av)
 		 * re init so sccs_get would work
 		 */
 		sccs_free(sc);
-		sc = sccs_init(name, init_flags, 0);
+		sc = sccs_init(name, init_flags, proj);
 		if (new_delta && was_edited) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;
 			char *nrev;
 
 			nrev = findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
 			if (sccs_get(sc, nrev, 0, 0, 0, gflags, "-")) {
-				fprintf(stderr, "can not adjust p file\n");	
+				fprintf(stderr, "cannot adjust p file\n");	
 			}
 		}
 next:		sccs_free(sc);
@@ -324,7 +327,6 @@ next:		sccs_free(sc);
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
-	purify_list();
 	return (error);
 usage:	fprintf(stderr, "admin: usage error, try `admin --help' for info.\n");
 	return (1);

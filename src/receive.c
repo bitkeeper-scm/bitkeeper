@@ -8,6 +8,11 @@ receive_main(int ac,  char **av)
 	char	buf[MAXLINE], opts[MAXLINE] = "";
 	char	*path;
 
+	if (bk_mode() == BK_BASIC) {
+		fprintf(stderr, upgrade_msg);
+		exit(1);
+	}
+
 	while ((c = getopt(ac, av, "acFiStv")) != -1) {
 		switch (c) { 
 		    case 'a': strcat(opts, " -a"); break;

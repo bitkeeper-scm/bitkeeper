@@ -13,7 +13,7 @@ parent_main(int ac,  char **av)
 	int	c, do_remove = 0, quiet = 0;
 
 	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "parent: can not find package root.\n");
+		fprintf(stderr, "parent: cannot find package root.\n");
 		exit(1);
 	}
 
@@ -74,7 +74,7 @@ parent_main(int ac,  char **av)
 
 	strcpy(parent,  fullname(PARENT, 0));
 	if (chdir(av[optind]) != 0) {
-		fprintf(stderr, "Can not find %s\n", av[1]);
+		fprintf(stderr, "Cannot find %s\n", av[1]);
 		exit(1);
 	}
 	getcwd(pdir, sizeof(pdir));
