@@ -985,7 +985,7 @@ int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
 void	status(int verbose, FILE *out);
 void	notify(void);
 char	*package_name(void);
-int	bkusers(int countOnly, int raw, char *prefix, FILE *out);
+int	bkusers(sccs *s, char *prefix, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 int	match_one(char *string, char *glob, int ignorecase);
 char	*match_globs(char *string, globv globs, int ignorecase);

@@ -430,7 +430,7 @@ pass3:	if (opts->pass3) pass3_resolve(opts);
 	/*
 	 * Pass 4 - apply files to repository.
 	 */
-	if (opts->pass4) pass4_apply(opts);
+	if (opts->pass4) pass4_apply(opts);  /* never returns */
 	
 	freeStuff(opts);
 
@@ -2504,10 +2504,6 @@ err:			unapply(save);
 	unlink(BACKUP_SFIO);
 	unlink(APPLIED);
 	unlink(PASS4_TODO);
-	unless (opts->quiet) {
-		fprintf(stderr,
-		    "Consistency check passed, resolve complete.\n");
-	}
 	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING;
 	resolve_cleanup(opts, flags);
 	/* NOTREACHED */
@@ -2795,6 +2791,12 @@ resolve_cleanup(opts *opts, int what)
 	 * if (opts->didMerge && !opts->logging) ...
 	 */
 	if (!opts->logging) logChangeSet(1);
+
+	/* Only get here from pass4_apply() */
+	unless (opts->quiet) {
+		fprintf(stderr,
+		    "Consistency check passed, resolve complete.\n");
+	}
 	exit(0);
 }
 
