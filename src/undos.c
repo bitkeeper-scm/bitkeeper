@@ -77,7 +77,8 @@ undos(char *file)
 	u32	sz;
 
 	unless (m) {
-		perror(file);
+		/* perror(file);  mopen already printed the error */
+		exit(1);
 	}
 	for (p = m->where, sz = m->size; sz--; p++) {
 		unless (*p == '\r') {
