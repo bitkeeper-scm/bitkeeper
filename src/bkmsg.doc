@@ -1154,3 +1154,9 @@ match this format:
    ### Comments for <file2>|<rev2>
    Other changes
 $
+#license-invalid-bkl5
+The license used by this repostory is not valid.
+	#BKARG#
+
+Please contact BitMover at sales@bitmover.com and request assistance.
+$
