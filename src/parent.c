@@ -6,7 +6,7 @@
 parent_main(int ac,  char **av)
 {
 	char buf[MAXLINE];
-	char parent[MAXPATH];
+	char parent[MAXPATH] = PARENT;
 	char pdir[MAXPATH];
 	FILE *f;
 	int c, i = 0, do_remove = 0, quiet = 0;
@@ -38,8 +38,8 @@ parent_main(int ac,  char **av)
 
 	if (av[optind] && strchr(av[optind], ':')) {
 		/* we have a host:dir format */
-		mkdirf(PARENT);
-		f = fopen(PARENT, "wb");
+		mkdirf(parent);
+		f = fopen(parent, "wb");
 		assert(f);
 		fprintf(f , "%s\n", av[optind]);
 		fclose(f);
