@@ -762,8 +762,9 @@ default		(3 way format (shows gca))\n\
     		  assert(sc->tree);\n\
     		  sccs_sdelta(sc, sc->tree, file);\n\
     >>>>>>>\n\
-\n\
--2	(2 way format (like diff3))\n\
+", stdout);
+	fputs(
+"-2	(2 way format (like diff3))\n\
     <<<<<<< local slib.c 1.645\n\
     		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
     		  assert(HASGRAPH(sc));\n\
