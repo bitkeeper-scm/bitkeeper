@@ -61,23 +61,17 @@ parent_main(int ac,  char **av)
 		return (1);
 	}
 	if (isLocalHost(r->host)) {
-		if (r->path) {
+		if (r->path && IsFullPath(r->path)) {
 			sprintf(buf, "%s/BitKeeper/etc", r->path);
 			unless (isdir(buf)) {
 				printf("%s is not a BitKeeper package root\n",
 					r->path);
 				return (1);
 			}
-			unless (IsFullPath(r->path)) {
-				fp = r->path;
-				r->path = strdup(fullname(r->path, 0));
-				free(fp);
-			}
 		}
 		if (r->host) free(r->host);
 		r->host = strdup(sccs_gethost());
 	}
-
 
 	strcpy(buf, PARENT);
 	mkdirf(buf);

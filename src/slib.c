@@ -16049,6 +16049,7 @@ smartRename(char *old, char *new)
 
 #undef	rename
 	unless (rc = rename(old, new)) return (0);
+	if (streq(old, new)) return (0);
 	save = errno;
 	if (chmod(new, 0700)) {
 		debug((stderr, "smartRename: chmod failed for %s, errno=%d\n",
@@ -16057,6 +16058,7 @@ smartRename(char *old, char *new)
 		unless (rc = rename(old, new)) return (0);
 		old = fullname(old, 0);
 		new = fullname(new, 0);
+		if (streq(old, new)) return (0);
 		fprintf(stderr,
 		    "rename: cannot rename from %s to %s, errno=%d\n",
 		    old, new, errno);
