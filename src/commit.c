@@ -93,7 +93,8 @@ main(int ac, char **av)
 do_commit()
 {
 	int hasComment =  (exists(commit_file) && (size(commit_file) > 0));
-	char buf[MAXLINE], sym_opt[MAXLINE] = "", changeset[MAXPATH] = CHANGESET;
+	char buf[MAXLINE], sym_opt[MAXLINE] = "";
+	char s_cset[MAXPATH] = CHANGESET;
 	char commit_list[MAXPATH];
 	int rc;
 	sccs *s;
@@ -122,7 +123,7 @@ do_commit()
 	unlink(commit_file);
 	unlink(commit_list);
 	notify();
-	s = sccs_init(changeset, 0, 0);
+	s = sccs_init(s_cset, 0, 0);
 	d = findrev(s, 0);
 	logChangeSet(d->rev);
 	sccs_free(s);
@@ -180,15 +181,15 @@ checkConfig()
 {
 	char buf[MAXLINE];
 	char s_config[MAXPATH];
-	char config[MAXPATH];
+	char g_config[MAXPATH];
 	
 	sprintf(s_config, "%setc/SCCS/s.config", bk_dir);
-	sprintf(config, "%setc/config", bk_dir);
+	sprintf(g_config, "%setc/config", bk_dir);
 	unless (exists(s_config)) {
 		gethelp("chkconfig_missing", bin, stdout);
 		return 1;
 	}
-	if (exists(config)) do_clean(s_config, SILENT);
+	if (exists(g_config)) do_clean(s_config, SILENT);
 	get(s_config, SILENT, 0);
 	sprintf(buf, "cmp -s %setc/config %sbitkeeper.config", bk_dir, bin);
 	if (system(buf) == 0) {

@@ -124,4 +124,5 @@ main(int ac, char **av)
 		"%scset -q -y\"Initial repository create\" -  < %s", bin, setup_files);
 	system(buf);
 	unlink(setup_files);
+	return (0);
 }
