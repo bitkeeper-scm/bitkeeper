@@ -211,7 +211,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -316,11 +316,11 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) goto err;
 		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
-		putenv("BK_STATUS=PROTOCOL ERROR");
+ err:		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;
 		goto done;
 	}

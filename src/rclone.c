@@ -118,7 +118,7 @@ rclone_part1(opts opts, remote *r, char **envVar)
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 
 	if (streq(buf, "@SERVER INFO@"))  {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) return (-1);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
 		exit(1);
@@ -179,7 +179,10 @@ rclone_part2(char **av, opts opts, remote *r, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		if (getServerInfoBlock(r)) {
+			rc = 1;
+			goto done;
+		}
 	}
 
 	/*
