@@ -4,7 +4,7 @@ BINS=patch/$(OS)/patch
 BKBIN=/usr/bitkeeper
 
 all: os
-	PATH="..:../..:$(PATH)"; \
+	@PATH="..:../..:$(PATH)"; \
 	OS=$(OS); \
 	for i in $(DIRS); \
 	do	\
@@ -15,11 +15,14 @@ all: os
 		test -f $$i/$$OS/Makefile || (cd $$i/$$OS && ../configure); \
 		(cd $$i/$$OS && make); \
 	done
+	@rm -rf bin
+	@mkdir bin
+	@cp $(BINS) bin
 
 install:
 	@make all
-	cp $(BINS) $(BKBIN)
-	for i in $(BINS); \
+	@cp $(BINS) $(BKBIN)
+	@for i in $(BINS); \
 	do	D=`dirname $$i`; \
 		F=`basename $$i`; \
 		(cd $$D && ../../../chksum $$F); \
@@ -30,4 +33,5 @@ clean clean-obj clobber: os
 	for i in $(DIRS); \
 	do	rm -rf $$i/$$OS; (cd $$i && bk clean); \
 	done
-	@bk clean
+	-@rm -rf bin
+	-@bk clean

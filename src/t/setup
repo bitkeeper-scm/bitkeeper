@@ -52,7 +52,7 @@ then
 	fi
 	binary_data="$BK_BIN/ci.exe"
 	binary_data2="$BK_BIN/co.exe"
-	PATH=$_BK_BIN:$PATH
+	PATH=$_BK_BIN:$_BK_BIN/bin/gnu:$PATH
 	BK_BIN="$BK_BIN/"
 	export PATH BK_BIN
 	# It is unlikely that ssh/rsh to localhost will work on NT.
@@ -74,7 +74,7 @@ else
 	if [ -d /usr/xpg4/bin ]
 	then  PATH=/usr/xpg4/bin:$PATH
 	fi
-	PATH=$BK_BIN:$PATH
+	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 	BK_BIN="$BK_BIN/"
 	export PATH BK_BIN
 	binary_data=/bin/ls
