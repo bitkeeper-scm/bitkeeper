@@ -111,6 +111,7 @@ _lclone() {
 	cd $HERE
 	mkdir -p $TO
 	cd $TO
+	bk sane
 	while read x
 	do
 		if [ "$x" != "." -a -d $FROM/$x/BitKeeper ]

@@ -8,7 +8,7 @@
  * -------------------------------------------------------------
  */
 private jmp_buf	jmp;
-private	void	(*handler)(int);
+private	handler	old;
 private	void	abort_ci() { longjmp(jmp, 1); }
 
 int
@@ -28,10 +28,10 @@ sccs_getComments(char *file, char *rev, delta *n)
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		signal(SIGINT, handler);
+		sig_catch(old);
 		return (-1);
 	}
-	handler = signal(SIGINT, abort_ci);
+	old = sig_catch(abort_ci);
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if ((buf2[0] == 0) || streq(buf2, "."))
 			break;
@@ -54,10 +54,10 @@ sccs_getHostName(delta *n)
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		signal(SIGINT, handler);
+		sig_catch(old);
 		return (-1);
 	}
-	handler = signal(SIGINT, abort_ci);
+	old = sig_catch(abort_ci);
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		if (isValidHost(buf2)) {
 			n->hostname = strdup(buf2);
@@ -78,10 +78,10 @@ sccs_getUserName(delta *n)
 	if (setjmp(jmp)) {
 		fprintf(stderr,
 		    "\nCheck in aborted due to interrupt.\n");
-		signal(SIGINT, handler);
+		sig_catch(old);
 		return (-1);
 	}
-	handler = signal(SIGINT, abort_ci);
+	old = sig_catch(abort_ci);
 	fprintf(stderr, "User name>>  ");
 	while (getline(0, buf2, sizeof(buf2)) > 0) {
 		char	*t;

@@ -806,10 +806,10 @@ int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);
 delta 	*mkOneZero(sccs *s);
-#ifndef ANSIC
-int     sig(int, int);
-#endif
-int	sigcaught(int sig);
+typedef	void (*handler)(int);
+handler	sig_catch(handler);
+int	sig_ignore();
+void	sig_default();
 int	csetIds(sccs *cset, char *rev);
 int	csetIds_merge(sccs *cset, char *rev, char *merge);
 int	cset_inex(int flags, char *op, char *revs);
