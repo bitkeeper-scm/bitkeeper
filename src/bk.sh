@@ -69,6 +69,8 @@ _lclone() {
 	do
 		case "$opt" in
 		q) Q="-q";;
+		*)	echo "Usage: lclone [-q] from to"
+			exit 1;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -544,6 +546,46 @@ _treediff() {
 		exit 1
 	fi
 	diff -Nur --exclude=SCCS --exclude=BitKeeper --exclude=ChangeSet $1 $2
+}
+
+_rmgone() {
+	while getopts npq opt
+	do
+		case "$opt" in
+		n) N=1;;	# dry run
+		p) P=1;;	# prompt for each file
+		q) Q="-q";;	# quiet
+		*)	echo "Usage: rmgone [-n][-p][-q]"
+			exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+
+	# Based on the options used, construct the command
+	# that will be fed to xargs
+	CMD="rm -f"
+	[ "$P" ] && CMD="-p $CMD"
+	[ ! "$Q" ] && CMD="-t $CMD"
+	[ "$N" ] && CMD="echo Would: rm -f"
+
+	# Pipe the key, sfile, and gfile for the repository
+	# through awk.  Awk will check if each key against
+	# the keys in the gone file and output the sfile
+	# and gfile.  This, in turn is fed into xargs.
+	__cd2root
+	bk -r prs -hr+ -nd':ROOTKEY: :SFILE: :GFILE:' | $AWK '
+	BEGIN {
+		while ("bk cat BitKeeper/etc/gone" | getline)
+			gone[$0] = 1;
+	}
+
+	# $1 is key
+	# $2 is sfile
+	# $3 is gfile
+	{
+		if ($1 in gone)
+			printf("%s\n%s\n", $2, $3);
+	}' | xargs -n 1 $CMD
 }
 
 # ------------- main ----------------------

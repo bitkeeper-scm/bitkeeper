@@ -15,6 +15,10 @@ __platformInit()
 	then	MAIL_CMD=mailx
 	else	MAIL_CMD=mail
 	fi
+	if [ -x /usr/bin/nawk ]
+	then	AWK=nawk
+	else	AWK=awk
+	fi
 	ext=""	# Unlike win32, Unix binary does not have .exe extension
 	tcl=""
 	if type wish8.2 >/dev/null 2>&1

@@ -1,0 +1,41 @@
+.so bk-macros
+.TH "bk rmgone" 1 20%E% "\*(BC" "\*(UM"
+.\"    Remove files that indicated by the gone file
+.SH NAME
+bk rmgone \- remove files having keys in the gone file
+.SH SYNOPSIS
+.Bc bk rmgone [
+.ARGc -n
+.Bc ] [
+.ARGc -p
+.Bc ] [
+.ARGc -q
+.B ]
+.SH DESCRIPTION
+.LP
+The rmgone command removes the s-files and any g-files associated
+with the keys listed in the gone file.
+.LP
+S-files may be removed and their keys added to the gone file with
+the gone command.  When the ChangeSet containing changes to the
+gone file is pushed/pulled from another repository \*(BK will issue
+warnings indicating that you have s-files matching things in the
+gone file.  The rmgone command may be used to remove the files
+in question and thus permanently stop the warnings.
+.SH OPTIONS
+.TP \w'\-q\ 'u
+.B -n
+Dry run.  Just print out the files that would be removed.
+.tp
+.B -p
+Prompt before removing each file.  Entering 'y' or 'Y' will
+delete the file.
+.tp
+.B -q
+Run quietly.
+.SH WARNING
+This command cannot be undone.
+.SH "SEE ALSO"
+.SA gone 1
+.SH CATEGORY
+.B Repository
