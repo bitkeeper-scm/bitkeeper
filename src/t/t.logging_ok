@@ -42,7 +42,7 @@ tar cf TAR project copy
 
 echo $N Pull, should union the data and delete one file .............$NL
 cd $HERE/copy
-bk pull $Q
+bk pull -t $Q
 if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
 then	echo failed to delete file
 	ls -R BitKeeper
@@ -72,7 +72,7 @@ cd $HERE
 rm -rf project copy
 tar xf TAR
 cd $HERE/project
-bk pull $Q ../copy
+bk pull -t $Q ../copy
 if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
 then	echo failed to delete file
 	ls -R BitKeeper
@@ -99,7 +99,7 @@ echo OK
 
 echo $N Paranoid - make sure the push works .........................$NL
 cd $HERE/project
-bk push $Q ../copy
+bk push -t $Q ../copy
 cd $HERE/copy
 if [ ! -f BitKeeper/deleted/SCCS/s..del-logging_ok ]
 then	echo failed to delete file
@@ -137,7 +137,7 @@ echo "copy@foo.com" >> logging_ok
 bk delta $Q -ycopy
 bk commit -ywhatever $Q
 cd $HERE/copy
-echo q | bk pull $Q
+echo q | bk pull -t $Q
 if [ -f RESYNC ]
 then	echo failed to complete resync
 	exit 1
