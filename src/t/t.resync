@@ -213,7 +213,27 @@ fi
 bk commit $S -y'counter clockwise'
 bk resync $Q $HERE/project $HERE/copy
 cp -rp $HERE/copy $HERE/SAVE
-cd  $HERE/copy/src
+cd  $HERE/copy
+# This is completely dependent on the ordering of file processing in resolve.
+# So what we do is run the first step of the rename processing and then
+# go move them into the order we want: File 1, File 2, File 3, File 4
+bk resolve $L $Q -234 -t
+cd RESYNC/BitKeeper/RENAMES
+bk co $Q
+for n in 1 2 3 4
+do	set `cat $n`
+	mv SCCS/s.$n SCCS/s.FILE$2
+	if [ -f SCCS/r.$n ]; then mv SCCS/r.$n SCCS/r.FILE$2; fi
+	if [ -f SCCS/m.$n ]; then mv SCCS/m.$n SCCS/m.FILE$2; fi
+	/bin/rm -f $n
+done
+for n in 1 2 3 4
+do	mv SCCS/s.FILE$n SCCS/s.$n
+	if [ -f SCCS/r.FILE$n ]; then mv SCCS/r.FILE$n SCCS/r.$n; fi
+	if [ -f SCCS/m.FILE$n ]; then mv SCCS/m.FILE$n SCCS/m.$n; fi
+	/bin/rm -f $n
+done
+cd  $HERE/copy
 # This is completely dependent on the ordering of file processing in resolve
 # If this doesn't work, check that the files are processed in this order:
 # File 1, File 2, File 3, File 4
@@ -224,6 +244,7 @@ r
 src/d.c
 u
 EOF
+cd  $HERE/copy/src
 if [ "`get -qp a.c`" != "File 3" ]
 then	echo a.c is not File 3; exit 1
 fi
@@ -268,17 +289,35 @@ fi
 bk commit $S -y'counter clockwise'
 bk resync $Q $HERE/project $HERE/copy
 cp -rp $HERE/copy $HERE/SAVE
-cd  $HERE/copy/src
-# This is completely dependent on the ordering of file processing in resolve
-# If this doesn't work, check that the files are processed in this order:
-# File 1, File 2, File 3, File 4
-bk resolve $L $Q -t -yMerge << EOF 2> resolve.out
+cd  $HERE/copy
+# This is completely dependent on the ordering of file processing in resolve.
+# So what we do is run the first step of the rename processing and then
+# go move them into the order we want: File 1, File 2, File 3, File 4
+bk resolve $L $Q -234 -t
+cd RESYNC/BitKeeper/RENAMES
+bk co $Q
+for n in 1 2 3 4
+do	set `cat $n`
+	mv SCCS/s.$n SCCS/s.FILE$2
+	if [ -f SCCS/r.$n ]; then mv SCCS/r.$n SCCS/r.FILE$2; fi
+	if [ -f SCCS/m.$n ]; then mv SCCS/m.$n SCCS/m.FILE$2; fi
+	/bin/rm -f $n
+done
+for n in 1 2 3 4
+do	mv SCCS/s.FILE$n SCCS/s.$n
+	if [ -f SCCS/r.FILE$n ]; then mv SCCS/r.FILE$n SCCS/r.$n; fi
+	if [ -f SCCS/m.FILE$n ]; then mv SCCS/m.FILE$n SCCS/m.$n; fi
+	/bin/rm -f $n
+done
+cd  $HERE/copy
+bk resolve -1 $L $Q -t -yMerge << EOF 2> resolve.out
 m
 src/junk
 l
 l
 u
 EOF
+cd  $HERE/copy/src
 if [ "`get -qp a.c`" != "File 2" ]
 then	echo a.c is not File 3; exit 1
 fi
