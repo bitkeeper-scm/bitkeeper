@@ -75,17 +75,6 @@ admin_main(int ac, char **av)
 		/* mode */
 		/* XXX should accept octal modes too */
 		    case 'm':	m = optarg;			/* doc 2.0 */
-		    		switch (m[0]) {
-				    case '-':
-				    case 'l':
-				    case 'd':
-					break;
-				    default:
-				    	fprintf(stderr,
-					    "%s: mode must be like ls -l\n",
-					    av[0]);
-					goto usage;
-				}
 		   		flags |= NEWCKSUM;
 				break;
 		/* pathname */
