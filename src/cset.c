@@ -78,6 +78,7 @@ void	doSet(sccs *sc);
 void	doMarks(cset_t *cs, sccs *sc);
 void	doDiff(sccs *sc, int kind);
 void	sccs_patch(sccs *, cset_t *);
+void	cset_exit(int n);
 
 private void	mklod(sccs *s, delta *start, delta *stop);
 
@@ -234,7 +235,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (flags & NEWFILE) {
 		if (sym) {
 			fprintf(stderr, "cset: no symbols allowed with -i.\n");
-			exit(1);
+			cset_exit(1);
 		}
 		return (csetInit(cset, flags));
 	}
@@ -252,7 +253,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: must specify a revision.\n");
 		sccs_free(cset);
 		purify_list();
-		exit(1);
+		cset_exit(1);
 	}
 	switch (list) {
 	    case 1:
@@ -283,7 +284,7 @@ next:		sccs_free(cset);
 }
 
 void
-exit(int n)
+cset_exit(int n)
 {
 	if (cs.pid) {
 		fprintf(stderr, "cset: failed to wait for adler32\n");
@@ -365,7 +366,7 @@ csetInit(sccs *cset, int flags)
 	 //in the subdirectory before we proceed ?
 	unless (streq(basenm(CHANGESET), basenm(cset->sfile))) {
 		fprintf(stderr, "cset: must be -i ChangeSet\n");
-		exit(1);
+		cset_exit(1);
 	}
 	if (flags & DELTA_DONTASK) unless (d = getComments(d)) goto intr;
 	unless(d = getHostName(d)) goto intr;
@@ -405,18 +406,18 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 	if (csetIds(cset, rev)) {
 		fprintf(stderr,
 		    "Can't find changeset %s in %s\n", rev, cset->sfile);
-		exit(1);
+		cset_exit(1);
 	}
 
 	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 		if (system("bk sfiles -r")) {
 			fprintf(stderr, "cset: can not build %s\n", IDCACHE);
-			exit(1);
+			cset_exit(1);
 		}
 		doneFullRebuild = 1;
 		unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
 			perror("idcache");
-			exit(1);
+			cset_exit(1);
 		}
 	}
 	for (kv = mdbm_first(cset->mdbm);
@@ -424,13 +425,13 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 		t = kv.key.dptr;
 		unless (sc = sccs_keyinit(t, INIT_NOCKSUM, idDB)) {
 			fprintf(stderr, "cset: init of %s failed\n", t);
-			exit(1);
+			cset_exit(1);
 		}
 		unless (d = sccs_findKey(sc, kv.val.dptr)) {
 			fprintf(stderr,
 			    "cset: can't find delta '%s' in %s\n",
 			    kv.val.dptr, sc->sfile);
-			exit(1);
+			cset_exit(1);
 		}
 		if (ignoreDeleted) {
 			char *p;
@@ -751,7 +752,7 @@ csetlist(cset_t *cs, sccs *cset)
 				fprintf(stderr,
 				    "cset: no rev like %s in %s\n",
 				    buf, cset->gfile);
-				exit(1);
+				cset_exit(1);
 			}
 			d->flags |= D_SET;
 		}
@@ -873,7 +874,7 @@ fail:
 	unlink(csort);
 	free(csetid);
 	if (goneDB) mdbm_close(goneDB);
-	exit(1);
+	cset_exit(1);
 }
 
 /*
@@ -955,7 +956,7 @@ mklod(sccs *s, delta *start, delta *stop)
 	unless(lod = sccs_nextlod(s)) {
 		/* XXX: out of LODS?? */
 		fprintf(stderr, "cset: ran out of LODs\n");
-		exit(1);
+		cset_exit(1);
 	}
 
 	level = 0;
@@ -1106,13 +1107,13 @@ add(FILE *diffs, char *buf)
 	unless ((chop(buf) == '\n') && (rev = strrchr(buf, ':'))) {
 		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
 		system("bk clean -u ChangeSet");
-		exit(1);
+		cset_exit(1);
 	}
 	*rev++ = 0;
 	unless (s = sccs_init(buf, INIT_NOCKSUM|SILENT, 0)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -u ChangeSet");
-		exit(1);
+		cset_exit(1);
 	}
 	if (s->state & S_CSET) {
 		sccs_free(s);
@@ -1121,7 +1122,7 @@ add(FILE *diffs, char *buf)
 	unless (d = sccs_getrev(s, rev, 0, 0)) {
 		fprintf(stderr, "cset: can't find %s in %s\n", rev, buf);
 		system("bk clean -u ChangeSet");
-		exit(1);
+		cset_exit(1);
 	}
 	sccs_sdelta(s, sccs_ino(s), buf);
 	fprintf(diffs, "> %s ", buf);
@@ -1153,7 +1154,7 @@ mkChangeSet(sccs *cset, FILE *diffs)
 			unless (BEEN_WARNED(cset)) {
 				fprintf(stderr,
 				    "cset: get -eg of ChangeSet failed\n");
-				exit(1);
+				cset_exit(1);
 			}
 		}
 	}
@@ -1236,7 +1237,7 @@ lock(char *lockName)
 
 	unless ((i = open(lockName, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
 		fprintf(stderr, "cset: can't lock %s\n", lockName);
-		exit(1);
+		cset_exit(1);
 	}
 	close(i);
 }
@@ -1274,7 +1275,7 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 	unless (fdiffs = fopen(filename, "w+")) {
 		perror(filename);
 		sccs_free(cset);
-		exit(1);
+		cset_exit(1);
 	}
 
 	d = mkChangeSet(cset, fdiffs); /* write change set to diffs */
@@ -1284,7 +1285,7 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 		perror(filename);
 		sccs_free(cset);
 		unlink(filename);
-		exit(1);
+		cset_exit(1);
 	}
 
 	date = d->date;
@@ -1470,7 +1471,7 @@ sccs_patch(sccs *s, cset_t *cs)
 			unless (top->pathname) {
 				fprintf(stderr, "\n%s:%s has no path\n",
 				    s->gfile, d->rev);
-				exit(1);
+				cset_exit(1);
 			}
 			printf("== %s ==\n", top->pathname);
 			if (newfile) {

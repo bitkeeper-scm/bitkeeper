@@ -35,6 +35,7 @@ int	mkdirf(char *file);
 int	isdir(char *s);
 int	readn(int from, char *buf, int size);
 int	writen(int from, char *buf, int size);
+int	usage(void);
 
 int qflag = 0;
 
@@ -64,7 +65,7 @@ main(int ac, char **av)
 }
 
 int
-usage()
+usage(void)
 {
 	fprintf(stderr, "sfiles | sfio -o\nor\nsfio -i < archive\n");
 	fprintf(stderr, "or\nsfio -p < archive\n");
@@ -185,7 +186,6 @@ in(char *file, int todo, int extract)
 	char	buf[1024];
 	int	n;
 	int	fd = -1;
-	int	mode;
 	u32	sum = 0, sum2 = 0;
 
 	unless (todo) {

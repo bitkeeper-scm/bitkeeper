@@ -8,7 +8,7 @@ char	*stripdel_help = "\n\
 usage: stripdel [-cq] -r<rev> filename\n\n\
     -c		checks if the specified rev[s] can be stripped\n\
     -C		do not respect cset boundries\n\
-    -q		run quietly
+    -q		run quietly\n\
     -r<rev>	set of revisions to be removed\n\n";
 
 delta	*checkCset(sccs *s);
