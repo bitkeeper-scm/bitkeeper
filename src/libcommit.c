@@ -17,8 +17,9 @@ logAddr()
 
 	if (logaddr) return logaddr;
 	sprintf(config, "%s/bk_configY%d", TMP_PATH, getpid());
-	sprintf(buf, "%sget -qG%s %setc/config", bin, config, bk_dir);
-	system(buf);
+	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
+	get(buf, SILENT|PRINT, config);
+	assert(exists(config));
 
 	f1 = fopen(config, "rt");
 	assert(f1);
@@ -68,8 +69,8 @@ sendConfig(char *to)
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm)); 
 	sprintf(config, "%s/bk_configX%d", TMP_PATH, getpid());
-	sprintf(buf, "%sget -qG%s %setc/config", bin, config, bk_dir);
-	system(buf);
+	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
+	get(buf, SILENT|PRINT, config);
 	f1 = fopen(config, "rt");
 	while (fgets(buf, sizeof(buf), f1)) {
 		if ((buf[0] == '#') || (buf[0] == '\n')) continue;
@@ -89,8 +90,8 @@ sendConfig(char *to)
 		f = fopen(config_log, "a");
 		fprintf(f, "Alias  List:\n");
 		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
-		sprintf(buf, "%sget -qG%s %setc/aliases", bin, aliases, bk_dir);
-		system(buf);
+		sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);
+		get(buf, SILENT|PRINT, aliases);
 		f1 = fopen(aliases, "r");
 		while (fgets(buf, sizeof(buf), f1)) {
 			if ((buf[0] == '#') || (buf[0] == '\n')) continue;

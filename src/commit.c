@@ -200,8 +200,8 @@ checkConfig()
 		sprintf(buf, "%sclean %setc/config", bin, bk_dir);
 		system(buf);
 	}
-	sprintf(buf, "%sget -q %setc/config", bin, bk_dir);
-	system(buf);
+	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
+	get(buf, SILENT, 0);
 	sprintf(buf, "cmp -s %setc/config %sbitkeeper.config", bk_dir, bin);
 	if (system(buf) == 0) {
 		gethelp("chkconfig_inaccurate", bin, stdout);
