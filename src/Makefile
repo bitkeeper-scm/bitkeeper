@@ -300,7 +300,8 @@ FRC:
 # force bk.ver (and thus the bk script) to be regenerated.
 bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	( echo \
-	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` \
+	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet |\
+	  sed 's/ approved//g';` \
 	  for \
 	  `sh ./utils/os` \
 	) >bk.v
