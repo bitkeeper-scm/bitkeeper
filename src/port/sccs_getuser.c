@@ -5,99 +5,97 @@
  * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
  */
 
-static	char	*s;
-static	uid_t	u = (uid_t)-1;
+static	char	*s, *r;
+static	uid_t	uid = (uid_t)-1;
 
-/*
- * Scan ofn, replace all ochar to nchar, result is in nfn
- * caller is responsible to ensure nfn is at least as big as ofn.
- */
-private char *
-switch_char(const char *ofn, char *nfn, char ochar, char nchar)
+private	char *
+cleanup(char *s)
 {
-        const   char *p;
-        char    *q = nfn;
+	char	 *t;
 
-        if (ofn == NULL) return NULL;
-        p = &ofn[-1];
-
-        /*
-         * Simply replace all ochar with nchar
-         */
-        while (*(++p)) *q++ = (*p == ochar) ? nchar : *p;
-        *q = '\0';
-        return (nfn);
-}
-
-char	*
-sccs_getuser(void)
-{
-#ifndef WIN32 /* win32 have no effective uid */
-	uid_t	cur = geteuid();
-
-	if (s && (cur == u)) return (s);
-	u = cur;
-#endif
-	s = getenv("BK_USER");
-	unless (s && s[0]) s = getenv("SUDO_USER");
-#ifndef WIN32
-	unless (s && s[0]) s = getenv("USER");
-#endif
-	unless (s && s[0]) s = getlogin();
-#ifndef WIN32 /* win32 have no getpwuid() */
-	unless (s && s[0]) {
-		struct	passwd	*p = getpwuid(cur);
-
-		s = p->pw_name;
-	}
-#endif
-	unless (s && s[0]) s = UNKNOWN_USER;
-	if (strchr(s, '\n') || strchr(s, '\r')) {
+	unless (s && *s) return (0);
+	for (t = s; *t; t++) {
+		if (*t == ' ') *t = '.';
+		unless ((*t == '\r') || (*t == '\n')) continue;
 		fprintf(stderr,
-		    "bad user name: user name cannot contain LR or CR "
-		    "character\n");
-		s = NULL;
+		    "Bad user name '%s'; names may not contain LR or CR\n", s);
+		*s = 0;
+		return (0);
 	}
-
-       /*
-	* Change all space in user name to dot
-	*/
-	switch_char(s, s, ' ', '.');
 	return (s);
 }
 
 void
 sccs_resetuser()
 {
-	s = 0;
+	s = r = 0;
+	uid = (uid_t)-1;
 }
 
 char	*
+sccs_getuser(void)
+{
+#ifndef WIN32
+	uid_t	id = getuid();
+
+	/* if the world is as it was last time, cache hit */
+	if ((id == uid) && s) return (s);
+	uid = id;
+	s = 0;
+#else
+	if (s) return (s);
+#endif
+	s = getenv("BK_USER");
+#ifndef WIN32
+	unless (s && s[0]) s = getenv("USER");
+#endif
+	unless (s && s[0]) return (s = sccs_realuser());
+	return (s = cleanup(s));
+}
+
+/*
+ * We want to capture the real user name, not something they set in the env.
+ * If we are root then we want the real uid and base it off of that.
+ * We want to catch the case that they have switched uid's.
+ */
+char	*
 sccs_realuser(void)
 {
-	char	*s;
+#ifndef WIN32
+	uid_t	id = getuid();
 
-	s = getenv("SUDO_USER");
-	unless (s && s[0]) s = getenv("USER");
-	unless (s && s[0]) s = getlogin();
-#ifndef WIN32 /* win32 have no getpwuid() */
-	unless (s && s[0]) {
-		struct	passwd	*p = getpwuid(geteuid());
+	/* if the world is as it was last time, cache hit */
+	if ((id == uid) && r) return (r);
+	uid = id;
+	r = 0;
 
-		s = p->pw_name;
+	/* redundant on Linux, getlogin does the same thing but just in case */
+	unless (id) r = getenv("SUDO_USER");
+	unless (r && r[0]) {
+		if (id) {
+			struct	passwd	*p = getpwuid(id);
+			r = p->pw_name;
+		}
 	}
+#else
+	if (r) return (r);
 #endif
-	unless (s && s[0]) s = UNKNOWN_USER;
-	if (strchr(s, '\n') || strchr(s, '\r')) {
-		fprintf(stderr,
-		    "bad user name: user name cannot contain LR or CR "
-		    "character\n");
-		s = NULL;
-	}
+	unless (r && r[0]) r = getlogin();
 
-       /*
-	* Change all space in user name to dot
-	*/
-	switch_char(s, s, ' ', '.');
-	return (s);
+	/* XXX - it might be nice to return basename of $HOME or something */
+	unless (r && r[0]) r = UNKNOWN_USER;
+	return (r = cleanup(r));
+}
+
+char *
+sccs_user()
+{
+	char	*r = sccs_realuser();
+	char	*e = sccs_getuser();
+	static	char *ret = 0;
+
+	if ((r == e) || streq(r, e)) return (e);
+	if (ret) free(ret);
+	ret = aprintf("%s/%s", e, r);
+	return (ret);
 }
