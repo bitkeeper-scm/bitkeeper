@@ -1002,7 +1002,7 @@ merge_common_footer(region *r)
 		b[i] = 0;
 	}
 	/* move lines from GCA that are after these lines to new region */
-	last_seq = MIN(seq(newr->left[1]), seq(newr->right[1]));
+	last_seq = min(seq(newr->left[1]), seq(newr->right[1]));
 	EACH(r->gca) {
 		if (seq(r->gca[i]) >= last_seq) {
 			newr->gca = addLine(newr->gca, r->gca[i]);
@@ -1056,7 +1056,7 @@ merge_common_deletes(region *r)
 	for (j = len; j >= 1; --j) {
 		if (right[j][0] != '-') break;
 	}
-	cnt = MIN(cnt, len - j);
+	cnt = min(cnt, len - j);
 
 	if (cnt > 0) {
 		EACH (r->gca);
