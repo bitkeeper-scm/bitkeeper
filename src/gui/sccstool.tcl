@@ -474,6 +474,7 @@ proc line {s width ht} \
 	# space for node and arrow
 	set xspace [expr {$width + 8}]
 	set l [split $s]
+	if {$s == ""} {return}
 
 	# Figure out the length of the whole list
 	# The length is determined by the first and last serial numbers.
@@ -632,6 +633,7 @@ proc listRevs {file} \
 	set screen(minx) 0
 	set screen(maxx) 0
 	set screen(maxy) 0
+	set lines ""
 
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
@@ -685,9 +687,14 @@ proc listRevs {file} \
 
 	set ht [expr {$ht * 2}]
 	set len [expr {$len + 10}]
-
-	#puts "big: ($big) len: ($len) ht: ($ht)"
 	set bad 0
+
+	# If the time interval arg to 'bk lines' is too short, bail out
+	if {$lines == ""} {
+		puts "Error: No data. showHistory variable to short or"
+		puts "improperly formatted. showHistory=($gc(sccs.showHistory))"
+		exit 1
+	}
 	foreach s $lines {
 		line $s $len $ht
 	}
@@ -1441,6 +1448,7 @@ proc arguments {} \
 	set rev2 ""
 	set gca ""
 	set srev ""
+	set fname ""
 	foreach arg $argv {
 		switch -- $state {
 		    flag {
