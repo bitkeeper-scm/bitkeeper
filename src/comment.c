@@ -75,7 +75,7 @@ comments_main(int ac, char **av)
 	 * in a changeset or a list of files on the command line.
 	 */
 	if (csetrev) {
-		if (sccs_cd2root(0, 0)) {
+ cset:		if (sccs_cd2root(0, 0)) {
 			fprintf(stderr,
 			    "comments: can't find repository root\n");
 			exit(1);
@@ -86,6 +86,10 @@ comments_main(int ac, char **av)
 		     name; name = sfileNext()) {
 			files = addLine(files, 
 			    aprintf("%s%c%s", name, BK_FS, rev));
+		}
+		unless (files) {
+			csetrev = "+";
+			goto cset;
 		}
 	}
 	gettemp(tmp, "cmt");
