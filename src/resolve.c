@@ -1533,7 +1533,7 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * do an sfiles, open up each file, check for conflicts, and
 	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
-	unless (p = popen("bk sfiles .", "r")) {
+	unless (p = popen("bk sfiles", "r")) {
 		perror("popen of sfiles");
 		resolve_cleanup(opts, 0);
 	}
@@ -1622,7 +1622,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	/*
 	 * Since we are about to commit, clean up the r.files
 	 */
-	unless (p = popen("bk sfiles .", "r")) {
+	unless (p = popen("bk sfiles", "r")) {
 		perror("popen of sfiles");
 		resolve_cleanup(opts, 0);
 	}

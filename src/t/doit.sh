@@ -49,6 +49,7 @@ unix_common_setup()
 	RM=/bin/rm
 	PLATFORM="UNIX"
 	WINDOWS=NO
+	export WINDOWS
 	DEV_NULL="/dev/null"
 	if [ -z "$TST_DIR" ]; then TST_DIR="/build"; fi
 	TST_DIR=`bk pwd $TST_DIR`       # if symlink, force to real path
@@ -108,7 +109,6 @@ unix_common_setup()
 		fi
 	done
 	export BK_LIMITPATH
-	export WINDOWS
 }
 
 bad_mount()
