@@ -7,29 +7,19 @@ bk cmdlog \- show the log of commands executed in this repository
 .B bk cmdlog [\-a]
 .SH DESCRIPTION
 .LP
-There are two command logs maintained by \*(BK, both in the
-\*(BK/log directory: repo_log and cmd_log.  The first command log saves only
-commands which operate at the repository level, specifically:
-.RS .5i
-clone
-.br
-commit
-.br
-export
-.br
-pull
-.br
-push
-.RE
-The second command log saves all other commands.
-To see the repository commands, run
-.DS
-bk cmdlog
-.DE
-To see all commands, run
-.DS
-bk cmdlog \-a
-.DE
+List the history of repository level commands run in
+repository of current directory.  Repository level commands are
+clone, commit, export, pull, and push.
+.LP
 Commands are listed in least recent to most recent order.
+.SH OPTIONS
+.TP
+.B \-a
+List history of all commands run in the repository, not just repository level
+commands.
+.SH NOTES
+The two command logs are maintained by \*(BK in the \*(BK/log directory.
+repo_log contains repository level commands run in a repository.
+cmd_log contains all commands run in a repository.
 .SH CATEGORY
 .B Repository
