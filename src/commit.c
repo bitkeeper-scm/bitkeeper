@@ -434,6 +434,7 @@ logChangeSet(int l, char *rev, int quiet)
 		fflush(stdout);
 	}
 	if (l & LOG_OPEN) {
+		for (n = 0; n < 3; n++) {make_fd_uninheritable(n);} /* win32 */
 		pid = spawnvp_ex(_P_NOWAIT, log_av[0], log_av);
 		unless (quiet) {
 			if (pid == -1) {
