@@ -3490,7 +3490,11 @@ sccs_init(char *name, u32 flags, project *proj)
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));
-		s->sfile = strdup(sPath(name, 0));
+		if (flags & INIT_ONEROOT) {
+			s->sfile = strdup(name);
+		} else {
+			s->sfile = strdup(sPath(name, 0));
+		}
 		s->gfile = sccs2name(name);
 	} else {
 		fprintf(stderr, "Not an SCCS file: %s\n", name);

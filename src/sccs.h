@@ -28,6 +28,7 @@
 #define	INIT_HASpFILE	0x08000000	/* has p.file */
 #define	INIT_HASxFILE	0x00100000	/* has x.file */
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
+#define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
