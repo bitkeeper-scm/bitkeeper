@@ -178,12 +178,11 @@ bkd(int compress, remote *r, int *sock)
 	char	*t, *freeme = 0;
 	char	*remsh = "ssh";
 	char	*remopts = compress ? "-C" : 0;
-	char	*cmd[100], bkd_path[MAXPATH];
+	char	*cmd[100];
 	int	i;
 	pid_t	p;
 	int	inout[2];
 	int	findprog(char *);
-	extern	char *bin;
 
 	if (r->port) {
 		assert(r->host);

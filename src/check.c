@@ -266,7 +266,7 @@ buildKeys()
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*r2i = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	MDBM	*idDB;
-	char	*s, *t, *r;
+	char	*s, *t = 0, *r;
 	int	n = 0;
 	int	e = 0;
 	int	fd, sz;
@@ -604,6 +604,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	return (errors);
 }
 
+void
 dump(int key)
 {
 	int	i;

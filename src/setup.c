@@ -3,6 +3,7 @@
 
 extern char *editor, *pager, *bin;
 
+int
 setup_main(int ac, char **av)
 {
 	int	force = 0, c, logsetup;

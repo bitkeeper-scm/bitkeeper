@@ -4,7 +4,9 @@
 extern char *bin;
 private char	*getrev(char *);
 private void	clean_file(char *, char *);
+extern	void	cat(char *);
 
+int
 undo_main(int ac,  char **av)
 {
 	int	c, rc;

@@ -3,13 +3,14 @@
 
 #define	PARENT "BitKeeper/log/parent"
 
+int
 parent_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
 	char	parent[MAXPATH] = PARENT;
 	char	pdir[MAXPATH];
 	FILE	*f;
-	int	c, i = 0, do_remove = 0, quiet = 0;
+	int	c, do_remove = 0, quiet = 0;
 
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "parent: can not find project root.\n");

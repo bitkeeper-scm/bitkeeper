@@ -3,6 +3,7 @@
 
 extern char *editor;
 
+int
 sendbug_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];

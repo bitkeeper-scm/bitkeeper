@@ -117,10 +117,6 @@ c_helptool(resolve *rs)
 int
 c_quit(resolve *rs)
 {
-	names	*n = rs->tnames;
-	int	ret;
-	char	cmd[MAXPATH*4];
-
 	if (IS_LOCKED(rs->s)) {
 		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
 		sccs_clean(rs->s, CLEAN_UNEDIT);
@@ -216,8 +212,6 @@ c_fmtool(resolve *rs)
 int
 c_vm(resolve *rs)
 {
-	char	cmd[MAXPATH];
-
 	unless (exists(rs->s->gfile)) {
 		fprintf(stderr, "%s hasn't been merged yet.\n", rs->s->gfile);
 		return (0);
@@ -226,6 +220,7 @@ c_vm(resolve *rs)
 	return (0);
 }
 
+int
 needs_merge(resolve *rs)
 {
 	MMAP	*m;
