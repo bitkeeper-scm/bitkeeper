@@ -6723,7 +6723,7 @@ getLinkBody(sccs *s,
 	unless (f) return 2;
 	
 	/*
-	 * What we want is to just checksum the symnlink.
+	 * What we want is to just checksum the symlink.
 	 * However due two bugs in old binary, we do not have valid check if:
 	 * a) It is a 1.1 delta
 	 * b) It is 1.1.* delta (the 1.1 delta got moved after a merge)

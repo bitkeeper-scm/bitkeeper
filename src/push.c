@@ -424,6 +424,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
 	if (opts.metaOnly) fprintf(f, " -e");
+	if (!opts.verbose) fprintf(f, " -q");
 	if (opts.nospin) {
 		char	*tt = getenv("BKD_TIME_T");
 

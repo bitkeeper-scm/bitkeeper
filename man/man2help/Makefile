@@ -15,7 +15,7 @@ pages: ../bk-macros man2help.pl
 	@perl -Ssw ./man2help.pl -debug ../bk-macros bk- `ls ../man1/*.1`
 
 helptxt2:
-	@cat -- *.fmt > helptxt2
+	@cat -- *.fmt | bk undos > helptxt2
 
 summaries: helptxt2 ../bk-macros help2sum.pl
 	@perl -Ssw ./help2sum.pl helptxt2

@@ -20,7 +20,7 @@ __nativepath()
 __platformInit()
 {
 		# WIN32 specific stuff
-		TMP=`__nativepath /tmp`
+		TMP=`__nativepath /tmp`/
 		DEV_NULL=nul
 		wish=${_TCL_BIN}/wish83.exe
 		AWK=awk

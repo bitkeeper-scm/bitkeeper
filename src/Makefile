@@ -63,13 +63,13 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	find.o findkey.o fix.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	isascii.o key2rev.o keysort.o kvfile.o level.o \
+	isascii.o key2rev.o key2path.o keysort.o kvfile.o level.o \
 	lib_tcp.o libcommit.o libdiff.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
 	mailsplit.o mmap.o mtime.o multiuser.o names.o newrev.o \
-	parent.o park.o \
+	opark.o parent.o park.o \
 	pending.o preference.o port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
 	port/filecopy.o port/fileinfo.o \
@@ -106,9 +106,10 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/gzio.o zlib/infblock.o zlib/infcodes.o zlib/inffast.o \
       zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
       zlib/uncompr.o zlib/zutil.o
+GUI	= revtool citool helptool difftool csettool fmtool fm3tool msg \
+      	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap \
-      revtool citool helptool difftool csettool fmtool fm3tool msg \
-      renametool setuptool gzip_uuwrap ungzip_uuwrap bugform
+      $(GUI) gzip_uuwrap ungzip_uuwrap bugform
 LOCALSCR= testfast build crank
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
@@ -303,7 +304,7 @@ FORCE:
 gnu: $(BK) FORCE
 	@bk get -sS gnu/Makefile
 	@if uname -s | grep _NT; \
-	then cd gnu && $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
+	then cd gnu && cmd /c $(MAKE) BINDIR=$(BINDIR) DIFF_BINS= DIRS=patch ;\
 	else cd gnu && $(MAKE) BINDIR=$(BINDIR) ;\
 	fi
 
@@ -409,6 +410,7 @@ import: import.sh port/$(SYS)_platform.sh substvars
 	mv -f import.T import
 
 applypatch: applypatch.sh 
+	rm -f applypatch
 	cp applypatch.sh applypatch
 	chmod +x applypatch
 
@@ -424,6 +426,9 @@ bkdsubstr: bkd.h
 	echo "sed 's/@BKD_VERSION@/`cat _bkdvers`/'" >> bkdsubstr
 	rm _bkdvers
 	chmod +x bkdsubstr
+
+# Quick and dirty target so we can make all the gui tools without the rest
+Gui GUI: $(GUI)
 
 revtool: gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl
@@ -478,10 +483,11 @@ fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl
 msg: gui/msg.tcl
 	cat gui/msg.tcl > msg
 
-rpm:	bk.spec production
-	rpm -bb bk.spec
+#rpm:	bk.spec production
+#	rpm -bb bk.spec
+rpm: g pkg
 
-pkg: install-nolinks epmhelper.sh
+pkg: g epmhelper.sh
 	rm -rf tmp/bitkeeper; \
 	DIR=`pwd`/tmp/bitkeeper; set -e; \
 	BINDIR=$$DIR ${MAKE} -e install-nolinks; \
@@ -518,6 +524,7 @@ binlinks:
 
 install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
+	@find $(BINDIR) -type d -print | xargs chmod +w
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t/t.*
 	@if [ ! -d $(BINDIR)/t ]; \

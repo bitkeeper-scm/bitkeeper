@@ -233,23 +233,23 @@ rcs2sccs(RCS *rcs, char *sfile)
 private int
 verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
 {
-	char    cmd[MAXPATH*3];
-	char	path[MAXPATH];
+	char	tmpfile[MAXPATH];
+	char	*rev;
 	int     ret;
-	char	*p, *t;
 	
-	path[0] = '\'';
-	for (t = g, p = path + 1; *t; ) {
-		if (*t == '\'') *p++ = '\\';
-		*p++ = *t++;
-	}
-	*p++ = '\'';
-	*p = 0;
 	if (exists(g)) unlink(g);	// DANGER
-	sprintf(cmd, "co -q %s -r%s %s && bk get -kpqr%s %s |"
-	    " diff --ignore-trailing-cr %s -",
-	    rcs->kk, d->rev, path, d->sccsrev, path, path);
-	ret = system(cmd);
+	/* our version of diff cannot handlle "-" */
+	rev = aprintf("-r%s", d->rev);
+	sys(co_prog, "-q", rcs->kk, rev, g, SYS);
+	free(rev);
+	bktemp(tmpfile);
+	rev = aprintf("-r%s", d->sccsrev);
+	sysio(0, tmpfile, 0, "bk", "get", "-kqp", rev, g, SYS);
+	free(rev);
+	
+	ret = sys("diff", "--ignore-trailing-cr", tmpfile, g, SYS);
+
+	unlink(tmpfile);
 	if (exists(g)) unlink(g);	// DANGER
 	return (ret);
 }
@@ -266,9 +266,10 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 
 	unless (buf) buf = malloc(buflen = 64<<10);
 #ifdef	WIN32
-	sprintf(buf,
-	    "co -q -p %s -r%s %s > %s", rcs->kk, d->rev, rcs->file, s->gfile);
-	if (system(buf) != 0) {
+	unlink(s->gfile); //DANGER
+	sprintf(buf, "-r%s", d->rev);
+	if (sysio(0, s->gfile, 0, co_prog, "-q",
+			"-p", rcs->kk, buf, rcs->file, SYS) != 0) {
 		fprintf(stderr, "[%s] failed\n", buf);
 		return (1);
 	}
