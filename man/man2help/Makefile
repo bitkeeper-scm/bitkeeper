@@ -1,4 +1,8 @@
 
+# Override Solaris make.rules
+.SCCS_GET:
+	bk get -q $@
+
 # Order is important, this is the order they will show up in helptool.
 SUM=All General Basics Repository GUI-tools File Admin Licensing Compat Utility 
 

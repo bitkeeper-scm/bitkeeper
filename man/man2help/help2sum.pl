@@ -6,7 +6,7 @@ sub main()
 {
 	$MAN = "-man";
 	foreach $dir ('/usr/local/share',
-	    '/usr/local/lib', '/usr/share', '/usr/lib') {
+	    '/usr/local/lib', '/opt/groff/share', '/usr/share', '/usr/lib') {
 		if (-f "${dir}/groff/tmac/tmac.gan") {
 			$MAN = "-mgan";
 		}
