@@ -34,13 +34,14 @@ do	case "$D" in
 	*) DOTS=
 	   ;;
 	esac
-	if [ X$D != X ]; then mkdir -p $D; fi
-	rm -rf SCCS ${D}foo ${D}SCCS ${D}s.foo
+	cd $HERE
+	rm -rf root 
 	echo $N Create initial changeset ....................................$NL
-	bk cset -sn .
+	no_logging root
 	if [ ! -f SCCS/s.ChangeSet ]; then echo failed; exit 1; fi
+	if [ X$D != X ]; then mkdir -p $D; fi
 	echo OK
-	cp SAVE ${D}foo
+	cp ../SAVE ${D}foo
 	echo $N checkin with ${D}SCCS/s.foo ${DOTS}.............................$NL
 	bk ci $Q -i ${D}foo
 	if [ ! -f ${D}SCCS/s.foo ]; then echo Failed to create s.foo.; exit 1; fi
@@ -53,7 +54,7 @@ do	case "$D" in
 	echo OK
 	echo $N Verifying data checksum .....................................$NL
 	A=`bk prs -r1.1 -hd:CHKSUM: ${D}foo`
-	B=`bk chksum < SAVE`
+	B=`bk chksum < ../SAVE`
 	if [ $A -ne $B ]; then echo Failed - chksums $A $B differ; exit 1; fi
 	echo OK
 	echo $N "cleaning ${D}" ${DOTS}...........................................$NL
@@ -92,7 +93,8 @@ do	case "$D" in
 	if writable ${D}foo; then echo foo is writable; exit 1; fi
 	echo OK
 done
-rm -rf foo SCCS A
+cd $HERE
+rm -rf root
 
 echo $N Check in files named s.something ............................$NL
 mkdir -p bar/blech

@@ -15,12 +15,12 @@ private	char 	**globs = 0;
 int
 find_main(int ac, char **av)
 {
-	int	i, optind = 1;
+	int	i;
 
 	debug_main(av);
 	platformSpecificInit(NULL);
 	if ((ac > 1) && streq("--help", av[1])) {
-usage:		fprintf(stderr, "%s", files_usage);
+		fprintf(stderr, "%s", files_usage);
 		exit(0);
 	}
 	if ((ac > 3) && streq("-name", av[ac - 2])) {

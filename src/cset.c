@@ -18,7 +18,6 @@ usage: cset [opts]\n\n\
     -l<range>	List each rev in range as file@rev (may be multiline per file)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
-    -n		Create a new change set history rooted at <root>\n\
     -p		print the list of deltas being added to the cset\n\
     -q		Run silently\n\
     -r<range>	List the filenames:rev..rev which are included in  <range>\n\
@@ -58,7 +57,6 @@ typedef	struct cset {
 } cset_t;
 
 private int	csetCreate(sccs *cset, int flags, char **syms);
-private	int	csetInit(sccs *cset, int flags, char *text);
 private	void	csetlist(cset_t *cs, sccs *cset);
 private	void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 private	int	marklist(char *file);
@@ -86,7 +84,7 @@ cset_main(int ac, char **av)
 	sccs	*cset;
 	int	flags = 0;
 	int	c, list = 0;
-	char	**syms = 0, *text = 0;
+	char	**syms = 0;
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
 	char	allRevs[6] = "1.0..";
@@ -102,13 +100,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 
 	while (
 	    (c =
-	    getopt(ac, av, "c|Cd|Dfhi;l|m|M|n|pqr|R|sS;t;vx;y|Y|")) != -1) {
+	    getopt(ac, av, "c|Cd|Dfhi;l|m|M|pqr|R|sS;t;vx;y|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
-		    case 'n':
-			flags |= DELTA_EMPTY|NEWFILE;
-			text = optarg;
-			break;
 		    case 'f': copts.force++; break;
 		    case 'h': copts.historic++; break;
 		    case 'i':
@@ -236,18 +230,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (!cset) return (101);
 	copts.mixed = !(cset->state & S_KEY2);
 
-	/*
-	 * If we are initializing, then go create the file.
-	 * XXX - descriptive text.
-	 */
-	if (flags & NEWFILE) {
-		if (syms) {
-			fprintf(stderr, "cset: no symbols allowed with -i.\n");
-			cset_exit(1);
-		}
-		return (csetInit(cset, flags, text));
-	}
-
 	if (list) {
 #ifdef  ANSIC
 		signal(SIGINT, SIG_DFL);
@@ -342,48 +324,26 @@ spawn_checksum_child(void)
 	return pid;
 }
 
-private int
-csetInit(sccs *cset, int flags, char *text)
+/*
+ * Create the initial empty cset.
+ */
+int
+cset_setup(int flags)
 {
+	sccs	*cset;
 	delta	*d = 0;
 	char	**syms = 0;
 
-	/*
-	 * Create BitKeeper root.
-	 */
-	sccs_mkroot(".");
+	cset = sccs_init(csetFile, flags & SILENT, 0);
 
-
-	 // awc to lm:
-	 // should we make sure there are no changeset file
-	 //in the subdirectory before we proceed ?
-	unless (streq(basenm(CHANGESET), basenm(cset->sfile))) {
-		fprintf(stderr, "cset: must be -i ChangeSet\n");
-		cset_exit(1);
-	}
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
 	unless (d = host_get(d)) goto intr;
 	unless (d = user_get(d)) goto intr;
 	syms = addLine(0, strdup(KEY_FORMAT2));
 	cset->state |= S_CSET|S_KEY2;
-	if (text) {
-		FILE    *desc; 
-		char    dbuf[200];
-
-		desc = fopen(text, "rt"); /* must be text mode */
-		if (!desc) {
-			fprintf(stderr, "admin: can't open %s\n", text);
-			goto error;
-		}
-		assert(cset->text == 0);
-		while (fgets(dbuf, sizeof(dbuf), desc)) {
-			cset->text = addLine(cset->text, strnonldup(dbuf));
-		}
-		fclose(desc);
-	}
-	if (sccs_delta(cset, flags, d, 0, 0, syms) == -1) {
+	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, syms) == -1) {
 intr:		sccs_whynot("cset", cset);
-error:		sccs_free(cset);
+		sccs_free(cset);
 		sfileDone();
 		comments_done();
 		host_done();

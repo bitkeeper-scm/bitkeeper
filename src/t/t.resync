@@ -28,12 +28,7 @@ else
 fi
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
-BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -d BitKeeper/tmp ]; then echo failed to make BitKeeper/tmp; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
@@ -81,9 +76,7 @@ cd $HERE
 bk clone $Q project copy
 echo $N Should not be able to resync unrelated repositories .........$NL
 cd $HERE
-bk setup -f -n'BitKeeper Test repo number two' -c$HERE/c project2
-if [ ! -d project2 ]; then echo failed to make top level directory; exit 1; fi
-cd project2
+no_logging project2
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -592,10 +585,7 @@ echo "----------- Andrew's anomaly (file disappears) -----------"
 cd $HERE
 rm -fr project copy
 echo $N Create initial repository ...................................$NL
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
-cd project
+no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 mkdir src

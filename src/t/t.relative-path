@@ -15,15 +15,15 @@
 echo $N checking pathname w/o cset file .............................$NL
 rm -rf BitKeeper SCCS/s.ChangeSet
 echo "1234" > path
-bk ci $Q -l -i path
+bk ci $Q -i path
 P=`bk prs -h -d':DPN:' path`
 if [ X$P != X`$CWD`/path ]; then echo Failed; exit 1; fi
 echo OK
 echo $N checking pathname w/ cset file ..............................$NL
-bk cset -n -s .
+no_logging project
 echo 5678 > path
-bk ci $Q -y path
-P=`bk prs -r1.2 -h -d':DPN:' path`
+bk ci $Q -i path
+P=`bk prs -h -d':DPN:' path`
 if [ X$P != X"path" ]; then echo Failed; exit 1; fi
 echo OK
 if [ "$PLATFORM" != "WIN32" ]

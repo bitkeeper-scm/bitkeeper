@@ -12,8 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-bk cset -n -s .
-rm -rf FILE SCCS
+no_logging project
 echo $N Check ci -i -l ..............................................$NL
 echo HHHH > FILE
 bk ci $Q -i -l FILE

@@ -4,18 +4,22 @@
 #include "../system.h"
 #include "../sccs.h"
 
-/* XXX - takes 100nusecs in a hot cache */
-private	char	*
-gethost(int real)
+/* XXX - takes 100 usecs in a hot cache */
+char	*
+sccs_gethost(void)
 {
 	static	char host[257];
+	static	int done = 0;
 	struct	hostent *hp;
 	char 	*h, *p, *q, buf[MAXLINE], domain[MAXPATH];
 	FILE	*f;
 
-	if (!real && (h = getenv("BK_HOST"))) {
+	if (done) return (host[0] ? host : UNKNOWN_HOST);
+
+	if (h = getenv("BK_HOST")) {
 		assert(strlen(h) <= 256);
 		strcpy(host, h);
+		done = 1;
 		return (host);
 	}
 	/*
@@ -128,19 +132,9 @@ out:
 	/* localhost isn't what we want.  */
 	if (streq(host, "localhost") || streq(host, "localhost.localdomain")) {
 		host[0] = 0;
+		return (0);
 	}
-	return (host[0] ? host : UNKNOWN_HOST);
-}
 
-char	*
-sccs_gethost(void)
-{
-	return (gethost(0));
+	if (host[0]) done = 1;
+	return (host);
 }
-
-char	*
-sccs_realhost(void)
-{
-	return (gethost(1));
-}
-

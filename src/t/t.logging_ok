@@ -13,11 +13,8 @@
 # %K%
 
 echo $N Create two copies of a repository ...........................$NL
-HERE=`${CWD}`
-BK_USER=bk; BK_HOST=free.bk; export BK_USER BK_HOST
-echo "logging: none" > $HERE/c
-bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
-bk clone $Q project copy
+no_logging project
+bk clone $Q $HERE/project $HERE/copy
 echo OK
 echo $N Create two different logging_ok files .......................$NL
 cd $HERE/project/BitKeeper/etc
