@@ -127,6 +127,18 @@ resolve_main(int ac, char **av)
 	return (c);
 }
 
+private void
+listPendingRenames()
+{
+	int fd1;
+
+	fprintf(stderr, "List of name conflict:\n");
+	fflush(stderr);
+	fd1 = dup(1); dup2(2, 1); /* redirect stdout to stderr */
+	system("bk _find . -name 'm.*' | xargs cat");
+	dup2(fd1, 1); close(fd1);
+}
+
 #ifdef LOGGING_CONFLICT
 private int
 isLoggingRepository(opts *opts)
@@ -355,6 +367,7 @@ that will work too, it just gets another patch.\n");
 			SHOUT();
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
+			listPendingRenames();
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
 			exit(1);
 		}
@@ -609,7 +622,7 @@ pass2_renames(opts *opts)
 	 * files (think hashed directories.
 	 */
 	unless (f =
-	    popen("bk _find BitKeeper/RENAMES/SCCS | sort", "r")) {
+	    popen("bk _find BitKeeper/RENAMES/SCCS | bk _sort", "r")) {
 	    	return (0);
 	}
 	while (fnext(path, f)) {
