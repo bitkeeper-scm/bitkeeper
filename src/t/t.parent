@@ -172,6 +172,10 @@ cmp -s GOT WANT || {
 }
 echo OK
 
+echo $N Print just the first parent .................................$NL
+test "`bk parent -1l`" = "bk://ibm.com/a/b/c" || exit 1
+echo OK
+
 echo $N Add outgoing only parent, check recording and listing .......$NL
 bk parent -aoq bk://oneway.com/outgoing || exit 1
 bk parent -l > GOT

@@ -124,6 +124,7 @@ findcset_main(int ac, char **av)
 		unless (s = sccs_init(name, INIT_NOCKSUM|flags)) {
 			continue;
 		}
+		unless (HASGRAPH(s)) continue;
 		unless (sccs_userfile(s)) {
 			sccs_free(s);
 			verbose((stderr, "Skipping non-user file %s.\n", name));

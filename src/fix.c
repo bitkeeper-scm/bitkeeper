@@ -176,7 +176,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	p = name2sccs(file);
 	s = sccs_init(p, SILENT);
 	unless (s && HASGRAPH(s)) {
-		fprintf(stderr, "%s does not exists\n", s->sfile);
+		fprintf(stderr, "%s does not exist or is not a BK file.\n", p);
 		sccs_free(s);
 		return;
 	}

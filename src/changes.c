@@ -180,7 +180,7 @@ usage:			system("bk help -s changes");
 		/* bk changes url */
 		rc = doit_remote(nav, av[optind]);
 	} else {
-		if (!av[optind]) {
+		unless (av[optind]) {
 			rc = doit(0); /* bk changes */
 		} else {
 			assert(streq(av[optind], "-"));
@@ -274,10 +274,11 @@ recurse(delta *d)
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
-#define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
-		"+:LI: -:LD:" \
-		"\n" \
-		"$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+#define	DSPEC	"$if(:DPN:!=ChangeSet){  }" \
+		":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:} " \
+		"+:LI: -:LD:\n" \
+		"$each(:C:){$if(:DPN:!=ChangeSet){  }  (:C:)\n}" \
+		"$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 #define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
 		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
 		":P:@:HT:&nbsp;&nbsp;:I:</td></tr>\n" \
@@ -325,7 +326,10 @@ doit(int dash)
 		spec = DSPEC;
 	}
 	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM);
-	assert(s && HASGRAPH(s));
+	unless (s && HASGRAPH(s)) {
+		system("bk help -s changes");
+		exit(1);
+	}
 	if (opts.rev || opts.date) {
 		if (opts.rev) {
 			r[0] = notnull(opts.rev);
@@ -450,14 +454,12 @@ dumplog(slog *list, int *n)
 	slog	*ll;
 	slog 	**sorted;	
 	int	i = *n;
-	int	indent = 2;
-	char 	*p, *q;
 
-	if (i == 0) return (NULL);
+	unless (i) return (0);
 	assert(i > 0);
 
 	/*
-	 * Stuff the list in a array so we can sort it
+	 * Stuff the list in an array so we can sort it.
 	 */
 	sorted = malloc(i * sizeof(sorted));
 	for (ll = list; ll; ll = ll->next) sorted[--i] = ll;
@@ -469,23 +471,8 @@ dumplog(slog *list, int *n)
 	 */
 	for (i = 0; i < *n; ++i) {
 		ll = sorted[i];
-		p = ll->log;
-
-		/* indent each non-empty line */
-		while (p) {
-			q = strchr(p, '\n');
-			/* do not indent empty line */
-			if (indent && (q > p)) printf("%*s", indent, "");
-			if (q) {
-				*q++ = '\0';
-				printf("%s\n", p);
-			} else {
-				printf("%s", p);
-			}
-			p = q;
-		}
+		printf("%s", ll->log);
 		if (opts.newline) fputc('\n', stdout);
-
 		free(ll->log);
 		free(ll);
 	}
@@ -495,15 +482,15 @@ dumplog(slog *list, int *n)
 	 */
 	free(sorted);
 	*n = 0;
-	return (NULL);
+	return (0);
 }
 
 /*
  * Cache the sccs struct to avoid re-initing the same sfile
  */
 private sccs *
-sccs_keyinitAndCache(char *key, int flags,
-    MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
+sccs_keyinitAndCache(char *key,
+	int	flags, MDBM **idDB, MDBM *graphDB, MDBM *goneDB)
 {
 	static	int	rebuilt = 0;
 	datum	k, v;

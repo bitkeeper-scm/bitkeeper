@@ -292,6 +292,16 @@ test X$revs != X1.5 && {
 }
 echo OK
 
+echo $N "Make sure no auto indent for -d<dspec>"  ......................$NL
+bk changes -r+ -v -d':DPN:\n' > changes.out
+bk undos <<EOF > ref
+ChangeSet
+LS
+LS
+EOF
+cmp -s ref changes.out || { echo failed; exit 1; }
+echo OK
+
 echo $N Verify changes -L works with tags ...........................$NL
 cd $HERE/clone
 bk tag $Q -r1.2 bar

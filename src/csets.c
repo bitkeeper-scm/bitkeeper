@@ -30,7 +30,7 @@ f2csets_main(int argc, char **argv)
 	unless (s = sccs_init(sfile, INIT_NOCKSUM|INIT_NOSTAT)) return(1);
 	free(sfile);
 
-	proj_cd2root();
+	has_proj("f2csets");
 	sccs_sdelta(s, sccs_ino(s), rootkey);
 	sccs_free(s);
 
