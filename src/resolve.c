@@ -75,7 +75,7 @@ resolve_main(int ac, char **av)
 		    case 'a': opts.automerge = 1; break;
 		    case 'A': opts.advance = 1; break;
 		    case 'c': opts.noconflicts = 1; break;
-		    case 'd': opts.debug = 1; break;
+		    case 'd': opts.debug = 1; putenv("BK_DEBUG_CMD=YES"); break;
 		    case 'F': opts.force = 1; break;
 		    case 'l':
 		    	if (optarg) {
@@ -171,8 +171,8 @@ passes(opts *opts)
 		fprintf(stderr,
 		    "Verifying consistency of the RESYNC tree...\n");
 	}
-	unless (sys("bk -r check -cR", opts) == 0) {
-		fprintf(stderr, "Check failed.  Resolve not even started.\n");
+	unless (sys("bk", "-r", "check", "-cR", SYS) == 0) {
+		syserr("failed.  Resolve not even started.\n");
 		/* XXX - better help message */
 		freeStuff(opts);
 		exit(1);
@@ -628,24 +628,34 @@ out:		fclose(f);
 		}
 		s = &buf[13];
 	}
-	/* rename local_name gca_name remote_name
-	 * merge deltas 1.491 1.489 1.489.1.21 lm 00/01/08 10:39:11
-	 */
+
 	t = s;
-	unless (s = strchr(s, ' ')) goto out;
-	*s++ = 0;
-	unless (names->local = strdup(t)) goto out;
-	t = s;
-	unless (s = strchr(s, ' ')) goto out;
-	*s++ = 0;
-	unless (names->gca = strdup(t)) goto out;
-	t = s;
-	if (s = strchr(t, ' ')) {	/* r.file case */
-		*s = 0;
-	} else {			/* m.file case */
-		chop(t);
+	if (type == 'm') { /* local_name gca_name remote_name */
+		s = strchr(t, '|');
+		*s++ = 0;
+		unless (names->local = strdup(t)) goto out;
+		t = s;
+		s = strchr(t, '|');
+		*s++ = 0;
+		unless (names->gca = strdup(t)) goto out;
+		chop(s);
+		unless (names->remote = strdup(s)) goto out;
+	} else { /* 1.491 1.489 1.489.1.21[ lm 00/01/08 10:39:11] */
+		unless (s = strchr(s, ' ')) goto out;
+		*s++ = 0;
+		unless (names->local = strdup(t)) goto out;
+		t = s;
+		unless (s = strchr(s, ' ')) goto out;
+		*s++ = 0;
+		unless (names->gca = strdup(t)) goto out;
+		t = s;
+		if (s = strchr(t, ' ')) {
+			*s = 0;
+		} else {
+			chop(t);
+		}
+		unless (names->remote = strdup(t)) goto out;
 	}
-	unless (names->remote = strdup(t)) goto out;
 	fclose(f);
 	return (names);
 }
@@ -981,8 +991,9 @@ rename_delta(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 	t = sccs2name(sfile);
 	sprintf(buf, "bk delta %s -Py'Merge rename: %s -> %s' %s",
 	    rs->opts->log ? "" : "-q", d->pathname, t, sfile);
+	sprintf(buf, "-PyMerge rename: %s -> %s", d->pathname, t);
 	free(t);
-	sys(buf, rs->opts);
+	sys("bk", "delta", rs->opts->log ? "" : "-q", buf, sfile, SYS);
 }
 
 /*
@@ -1020,8 +1031,9 @@ type_delta(resolve *rs,
 	}
 	edit_tip(rs, sfile, o, rfile, loser);
 	if (S_ISREG(n->mode)) {
-		sprintf(buf, "bk _get -kpq -r%s %s > %s", n->rev, sfile, g);
-		if (sys(buf, rs->opts)) {
+		/* bk _get -kpqr{n->rev} sfile > g */
+		sprintf(buf, "-kpqr%s", n->rev);
+		if (sysio(0, g, 0, "bk", "_get", buf, sfile, SYS)) {
 			fprintf(stderr, "%s failed\n", buf);
 			freeStuff(rs->opts);
 			exit(1);
@@ -1041,10 +1053,11 @@ type_delta(resolve *rs,
 		exit(1);
 	}
 	free(g);
-	sprintf(buf, "bk delta -q -Py'Merge file types: %s -> %s' %s",
-	    mode2FileType(o->mode), mode2FileType(n->mode), sfile);
-	if (sys(buf, rs->opts)) {
-		fprintf(stderr, "%s failed\n", buf);
+	/* bk delta -qPy'Merge file types: {o->mode} {n->mode} sfile */
+	sprintf(buf, "-qPyMerge file types: %s -> %s", 
+	    mode2FileType(o->mode), mode2FileType(n->mode));
+	if (sys("bk", "delta", buf, sfile, SYS)) {
+		syserr("failed\n");
 		freeStuff(rs->opts);
 		exit(1);
 	}
@@ -1070,7 +1083,7 @@ void
 mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 {
 	char	*a = mode2a(m);
-	char	buf[MAXPATH];
+	char	buf[MAXPATH], opt[100];
 	sccs	*s;
 
 	if (rs->opts->debug) {
@@ -1078,10 +1091,12 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 		    sfile, d->rev, a, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
-	sprintf(buf, "bk delta %s -Py'Change mode to %s' -M%s %s",
-	    rs->opts->log ? "" : "-q", a, a, sfile);
-	if (sys(buf, rs->opts)) {
-		fprintf(stderr, "%s failed\n", buf);
+	/* bk delta [-q] -Py'Change mode to {a}' -M{a} sfile */
+	sprintf(buf, "-PyChange mode to %s", a);
+	sprintf(opt, "-M%s", a);
+	if (sys("bk",
+	    "delta", rs->opts->log ? "" : "-q", buf, opt, sfile, SYS)) {
+		syserr("failed\n");
 		freeStuff(rs->opts);
 		exit(1);
 	}
@@ -1107,7 +1122,10 @@ void
 flags_delta(resolve *rs,
 	char *sfile, delta *d, int flags, char *rfile, int which)
 {
+	char	*av[40];
 	char	buf[MAXPATH];
+	char	fbuf[8][12];	/* Must match list below */
+	int	n, i, f;
 	sccs	*s;
 	int	bits = flags & X_XFLAGS;
 
@@ -1116,13 +1134,16 @@ flags_delta(resolve *rs,
 		    sfile, d->rev, bits, which == LOCAL ? "local" : "remote");
 	}
 	edit_tip(rs, sfile, d, rfile, which);
-	sprintf(buf, "bk clean %s", sfile);
-	sys(buf, rs->opts);
-	sprintf(buf, "bk admin -qr%s", d->rev);
-#define	add(s)		{ strcat(buf, " -f"); strcat(buf, s); }
-#define	del(s)		{ strcat(buf, " -F"); strcat(buf, s); }
-#define	doit(f,s)	if (bits&f) add(s) else del(s)
+	sys("bk", "clean", sfile, SYS);
+	av[n=0] = "bk";
+	av[++n] = "admin";
+	sprintf(buf, "-qr%s", d->rev);
+	av[++n] = buf;
 
+#define	add(s)		{ sprintf(fbuf[f], "-f%s", s); av[++n] = fbuf[f]; }
+#define	del(s)		{ sprintf(fbuf[f], "-F%s", s); av[++n] = fbuf[f]; }
+#define	doit(bit,s)	if (bits&bit) add(s) else del(s); f++ 
+	f = 0;
 	doit(X_YEAR4, "YEAR4");
 	doit(X_RCS, "RCS");
 	doit(X_SCCS, "SCCS");
@@ -1132,12 +1153,14 @@ flags_delta(resolve *rs,
 #endif
 	doit(X_HASH, "HASH");
 	doit(X_SINGLE, "SINGLE");
-	strcat(buf, " ");
-	strcat(buf, sfile);
-	if (rs->opts->debug) fprintf(stderr, "cmd: [%s]\n", buf);
+	for (i = 0; i < f; ++i) av[++n] = fbuf[i];
+	av[++n] = sfile;
+	assert(n < 38);	/* matches 40 in declaration */
+	av[++n] = 0;
 
-	if (sys(buf, rs->opts)) {
-		fprintf(stderr, "%s failed\n", buf);
+	if (spawnvp_ex(_P_WAIT, av[0], av)) {
+		for (i = 0; av[i]; ++i) fprintf(stderr, "%s ", av[i]);
+		fprintf(stderr, "failed\n");
 		freeStuff(rs->opts);
 		exit(1);
 	}
@@ -1166,6 +1189,7 @@ private	void
 edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 {
 	char	buf[MAXPATH+100];
+	char	opt[100];
 	FILE	*f;
 	char	*t;
 	char	*newrev;
@@ -1174,9 +1198,13 @@ edit_tip(resolve *rs, char *sfile, delta *d, char *rfile, int which)
 		fprintf(stderr, "edit_tip(%s %s %s)\n",
 		    sfile, d->rev, abs(which) == LOCAL ? "local" : "remote");
 	}
-	sprintf(buf, "bk _get -e%s%s -r%s %s",
-	    which < 0 ? "g" : "", rs->opts->log ? "" : "q", d->rev, sfile);
-	sys(buf, rs->opts);
+	/* bk _get -e[g][q] -r{d->rev} sfile */
+	sprintf(buf, "-e%s%s", which < 0 ? "g" : "", rs->opts->log ? "" : "q");
+	sprintf(opt, "-r%s", d->rev);
+	if (sys("bk", "_get", buf, opt, sfile, SYS)) {
+		syserr("failed\n");
+		exit(1);
+	}
 	if (which) {
 		t = strrchr(sfile, '/');
 		assert(t && (t[1] == 's'));
@@ -1646,8 +1674,8 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 	 * Unless we are in textonly mode, let citool do all the work.
 	 */
 	unless (opts->textOnly) {
-		if (sys("bk citool -R", opts)) {
-			fprintf(stderr, "citool failed, aborting.\n");
+		if (sys("bk", "citool", "-R", SYS)) {
+			syserr("failed, aborting.\n");
 			freeStuff(opts);
 			exit(1);
 		}
@@ -1909,9 +1937,8 @@ automerge(resolve *rs, names *n)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	sprintf(cmd, "bk %s %s %s %s %s",
-	    rs->opts->mergeprog, n->local, n->gca, n->remote, rs->s->gfile);
-	ret = sys(cmd, rs->opts);
+	ret = sys("bk", rs->opts->mergeprog,
+	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
 	if (do_free) {
 		unlink(tmp.local);
 		unlink(tmp.gca);
@@ -1940,6 +1967,7 @@ automerge(resolve *rs, names *n)
 		return;
 	}
 #ifdef WIN32
+#error "lm -> awc: look carefully at the return value out of sys"
 	if (ret == 0xff00) {
 	    	fprintf(stderr, "Cannot execute '%s'\n", cmd);
 		rs->opts->errors = 1;
@@ -1947,6 +1975,12 @@ automerge(resolve *rs, names *n)
 		return;
 	}
 #endif
+	unless (WIFEXITED(ret)) {
+		fprintf(stderr, "Unknown merge status: 0x%x\n", ret);
+		rs->opts->errors = 1;
+		unlink(rs->s->gfile);
+		return;
+	}
 	if (WEXITSTATUS(ret) == 1) {
 		fprintf(stderr,
 		    "Conflicts during automerge of %s\n", rs->s->gfile);
@@ -2482,7 +2516,7 @@ You must move them into place by hand before the repository is usable.\n");
 		fprintf(stderr,
 "Your repository should be back to where it was before the resolve started.\n\
 We are running a consistency check to verify this.\n");
-		if (sys("bk -r check -a", o) == 0) {
+		if (sys("bk", "-r", "check", "-a", SYS) == 0) {
 			fprintf(stderr, "Check passed.\n");
 		} else {
 			fprintf(stderr, "Check FAILED, contact BitMover.\n");
@@ -2543,10 +2577,8 @@ resolve_cleanup(opts *opts, int what)
 	}
 
 	if (what & CLEAN_RESYNC) {
-		char cmd[1024];
 		assert(exists("RESYNC"));
-		sprintf(cmd, "%s -rf RESYNC", RM);
-		sys(cmd, opts);
+		sys(RM, "-rf", "RESYNC", SYS);
 	} else {
 		fprintf(stderr, "resolve: RESYNC directory left intact.\n");
 	}
@@ -2564,15 +2596,4 @@ resolve_cleanup(opts *opts, int what)
 		exit(1);
 	}
 	exit(0);
-}
-
-int
-sys(char *cmd, opts *o)
-{
-	int	ret;
-
-	if (o->debug) fprintf(stderr, "SYS %s = ", cmd);
-	ret = system(cmd);
-	if (o->debug) fprintf(stderr, "%d\n", ret);
-	return (ret);
 }

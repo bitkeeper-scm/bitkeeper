@@ -99,25 +99,24 @@ res_diffCommon(resolve *rs, rfunc differ)
 int
 do_diff(resolve *rs, char *left, char *right, int wait)
 {
-	char	cmd[MAXPATH*3];
+	char	cmd[MAXPATH];
 
-	sprintf(cmd, "bk diff %s %s | %s", left, right, rs->pager);
-	sys(cmd, rs->opts);
+	sprintf(cmd, "|%s", rs->pager);
+	sysio(0, cmd, 0, "bk", "diff", left, right, SYS);
 	return (0);
 }
 
 int
 do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
-	char	cmd[MAXPATH*3];
+	char	cmd[MAXPATH];
+	char	cols[10];
 	FILE	*p = popen("tput cols", "r");
-	int	cols;
 
-	unless (p && fnext(cmd, p) && (cols = atoi(cmd))) cols = 80;
+	unless (p && fnext(cmd, p) && atoi(cols)) strcpy(cols, "80");
 	if (p) pclose(p);
-
-	sprintf(cmd, "bk sdiff -w %d %s %s | %s", cols, left, right, rs->pager);
-	sys(cmd, rs->opts);
+	sprintf(cmd, "|%s", rs->pager);
+	sysio(0, cmd, 0, "bk", "sdiff", "-w", cols, left, right, SYS);
 	return (0);
 }
 
@@ -192,10 +191,7 @@ res_mr(resolve *rs)
 int
 more(resolve *rs, char *file)
 {
-	char	cmd[MAXPATH];
-
-	sprintf(cmd, "%s %s", rs->pager, file);
-	sys(cmd, rs->opts);
+	sys(rs->pager, file, SYS);
 	return (0);
 }
 
@@ -234,8 +230,8 @@ res_vr(resolve *rs)
 {
 	char	cmd[MAXPATH];
 
-	sprintf(cmd, "bk get -qp %s | %s", rs->s->gfile, rs->pager);
-	sys(cmd, rs->opts);
+	sprintf(cmd, "|%s", rs->pager);
+	sysio(0, cmd, 0, "bk", "get", "-qkp", rs->s->gfile, SYS);
 	return (0);
 }
 
@@ -322,22 +318,19 @@ res_hr(resolve *rs)
 int
 prs_common(resolve *rs, sccs *s, char *a, char *b)
 {
-	char	cmd[2*MAXPATH];
-	char	*list;
+	char	cmd[MAXPATH];
+	char	*list, *l2;
 
 	list = sccs_impliedList(s, "resolve", a, b);
+	l2 = malloc(strlen(list) + 3);
 	if (rs->opts->debug) {
 		fprintf(stderr, "prs(%s, %s, %s) = %s\n", s->gfile, a, b, list);
 	}
-	if (strlen(list) > MAXPATH) {	/* too big */
-		free(list);
-		setall(s);
-		sccs_prs(s, 0, 0, 0, stdout);
-		return (0);
-	}
-	sprintf(cmd, "bk prs -r%s %s | %s", list, rs->s->gfile, rs->pager);
+	sprintf(cmd, "|%s", rs->pager);
+	sprintf(l2, "-r%s", list);
+	sysio(0, cmd, 0, "bk", "prs", l2, rs->s->gfile, SYS);
 	free(list);
-	sys(cmd, rs->opts);
+	free(l2);
 	return (0);
 }
 
@@ -709,9 +702,7 @@ res_loggingok(resolve *rs)
 			rs->opts->errors = 1;
 			return (-1);
 		}
-		sprintf(cmd,
-		    "cp %s/%s %s", RESYNC2ROOT, LOGGING_OK, LOGGING_OK);
-		if (sys(cmd, rs->opts)) {
+		if (sys("cp", RESYNC2ROOT "/" LOGGING_OK, LOGGING_OK, SYS)) {
 			perror(cmd);
 			rs->opts->errors = 1;
 			return (-1);
@@ -722,9 +713,8 @@ res_loggingok(resolve *rs)
 		 * Then move the file out of RENAMES into the right place.
 		 */
 		mkdirp("BitKeeper/tmp/SCCS");
-		sprintf(cmd, "cp %s/%s BitKeeper/tmp/SCCS/%s",
-		    RESYNC2ROOT, LOGGING_OK, basenm(LOGGING_OK));
-		if (sys(cmd, rs->opts)) {
+		sprintf(cmd, "BitKeeper/tmp/SCCS/%s", basenm(LOGGING_OK));
+		if (sys("cp", RESYNC2ROOT "/" LOGGING_OK, cmd, SYS)) {
 			perror(cmd);
 			rs->opts->errors = 1;
 			return (-1);
@@ -749,9 +739,9 @@ res_loggingok(resolve *rs)
 	 */
 	sprintf(cmd,
 	    "bk get -eg %s %s", rs->opts->quiet ? "-q" : "", GLOGGING_OK);
-	if (sys(cmd, rs->opts)) return (-1);
+	if (oldsys(cmd, rs->opts)) return (-1);
 	sprintf(cmd, "cat %s %s | sort -u > %s", left, right, GLOGGING_OK);
-	if (sys(cmd, rs->opts)) {
+	if (oldsys(cmd, rs->opts)) {
 		perror(cmd);
 		rs->opts->errors = 1;
 		return (-1);
@@ -760,7 +750,7 @@ res_loggingok(resolve *rs)
 	unlink(right);
 	sprintf(cmd, "bk delta -Py'Auto merged' %s %s",
 	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
-	if (sys(cmd, rs->opts)) {
+	if (oldsys(cmd, rs->opts)) {
 		perror(cmd);
 		rs->opts->errors = 1;
 		return (-1);
@@ -818,10 +808,8 @@ sc_ml(resolve *rs)
 	do {
 		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
 	} while (exists(path));
-	sprintf(cmd, "cp -p %s/%s BitKeeper/RENAMES/SCCS/s.%d",
-	    RESYNC2ROOT, rs->dname, filenum);
-	if (rs->opts->debug) fprintf(stderr, "%s\n", cmd);
-	if (sys(cmd, rs->opts)) {
+	sprintf(cmd, "%s/%s", RESYNC2ROOT, rs->dname);
+	if (sys("cp", "-p", cmd, path, SYS)) {
 		perror(cmd);
 		exit(1);
 	}
@@ -863,9 +851,8 @@ sc_rml(resolve *rs)
 		    "BitKeeper/deleted/SCCS/s..del-%s~%d", nm, ++filenum);
 		sprintf(repo, "%s/%s", RESYNC2ROOT, resync);
 	}
-	sprintf(repo,
-	    "cp %s/%s %s", RESYNC2ROOT, ((sccs*)rs->opaque)->sfile, resync);
-	if (sys(repo, rs->opts)) {
+	sprintf(repo, "%s/%s", RESYNC2ROOT, ((sccs*)rs->opaque)->sfile);
+	if (sys("cp", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}
@@ -873,14 +860,12 @@ sc_rml(resolve *rs)
 	/*
 	 * Force a delta to lock it down to this name.
 	 */
-	sprintf(repo, "bk edit -q %s", resync);
-	if (sys(repo, rs->opts)) {
+	if (sys("bk", "edit", "-q", resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}
-	sprintf(repo,
-	    "bk delta -Py'Delete: %s' %s", ((sccs*)rs->opaque)->gfile, resync);
-	if (sys(repo, rs->opts)) {
+	sprintf(repo, "-PyDelete: %s", ((sccs*)rs->opaque)->gfile);
+	if (sys("bk", "delta", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}
@@ -915,14 +900,12 @@ sc_rmr(resolve *rs)
 	/*
 	 * Force a delta to lock it down to this name.
 	 */
-	sprintf(repo, "bk edit -q %s", resync);
-	if (sys(repo, rs->opts)) {
+	if (sys("bk", "edit", "-q", resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}
-	sprintf(repo,
-	    "bk delta -Py'Delete: %s' %s", ((sccs*)rs->opaque)->gfile, resync);
-	if (sys(repo, rs->opts)) {
+	sprintf(repo, "-PyDelete: %s", ((sccs*)rs->opaque)->gfile);
+	if (sys("bk", "delta", repo, resync, SYS)) {
 		perror(repo);
 		exit(1);
 	}

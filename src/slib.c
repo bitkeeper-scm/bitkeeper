@@ -13657,7 +13657,7 @@ rename:		n[1] = name2sccs(g->pathname);
 			perror("m.file");
 			goto err;
 		}
-		fprintf(f, "rename %s %s %s\n", n[0], n[1], n[2]);
+		fprintf(f, "rename %s|%s|%s\n", n[0], n[1], n[2]);
 		fclose(f);
 		free(n[0]);
 		free(n[1]);
