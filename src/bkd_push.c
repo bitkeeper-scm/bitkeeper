@@ -25,6 +25,29 @@ cmd_push_part1(int ac, char **av)
 		}
 	}
 
+	if (metaOnly) {
+		struct	stat	statbuf;
+		char	lockf[MAXPATH];
+
+		unless (getcwd(lockf, sizeof(lockf))) {
+	lock:		out(LOCK_RD_BUSY "\n");
+			drain();
+			return (1);
+		}
+		strcat(lockf, ".lock");
+		if (exists(CHANGESET)) {
+			unlink(lockf);
+		} else if (!stat(lockf, &statbuf) &&
+		    time(0) - statbuf.st_ctime < 60*60) {
+			/*
+			 * When the project doesn't exist yet, only accept a
+			 * new client to create the project once an hour.
+			 */
+			goto lock;
+		} else {
+			touch(lockf, 0666);
+		}
+	}
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock(metaOnly);  /* tree might be missing */
