@@ -775,8 +775,10 @@ loadskips(void)
 	while (fnext(buf, f)) {
 		chomp(buf);
 		if (buf[0] == '#') continue;
-		dkey = separator(buf);
-		assert(dkey);
+		unless (dkey = separator(buf)) {
+			fprintf(stderr, "Garbage in skipfiles: %s\n", buf);
+			continue;
+		}
 		*dkey++ = '\0';
 		unless (s && streq(buf, s->rkey)) {
 			s = calloc(1, sizeof(*s));
