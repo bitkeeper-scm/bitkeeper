@@ -1,5 +1,5 @@
 #include <stdio.h>
-#ifdef WIN32
+#ifdef	WIN32
 #include <stdlib.h>
 #endif
 #define	private	static
@@ -35,12 +35,12 @@ undos_main(int ac, char **av)
 /* kill the newline and the \r */
 private	void
 undos(register char *s)
-{	
+{
 	static char last = '\0';
 	if (!s[0]) return;
 	/*
 	 * This code is strange because we need to
-	 * handle lines longer than the 1K buffer size 
+	 * handle lines longer than the 1K buffer size
 	 */
 	if ((last == '\r') && (s[0] == '\n')) return;
 	while (s[1]) s++;

@@ -1,21 +1,21 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 
 extern char *bin;
 
-#define BK_LOG "BitKeeper/log"
+#define	BK_LOG "BitKeeper/log"
 
 private	char *
 sendlog(char *to, char *rev)
 {
-	char x_sendlog[MAXPATH], here[MAXPATH], has[MAXPATH], revs[MAXPATH];
-	char rev2s[MAXPATH];
-	char buf[MAXLINE];
-	static char revbuf[MAXLINE] = "";
-	FILE *f;
-	int first = 1;
+	char	x_sendlog[MAXPATH], here[MAXPATH], has[MAXPATH];
+	char	revs[MAXPATH], rev2s[MAXPATH];
+	char	buf[MAXLINE];
+	static	char revbuf[MAXLINE] = "";
+	FILE	*f;
+	int	first = 1;
 
-	if (streq(to, "-")) return(rev);
+	if (streq(to, "-")) return (rev);
 
 	unless (isdir(BK_LOG)) mkdirp(BK_LOG);
 	sprintf(x_sendlog, "%s/send-%s", BK_LOG, to);
@@ -25,7 +25,8 @@ sendlog(char *to, char *rev)
 	close(open(x_sendlog, O_CREAT, 0660));
 
 	if (rev == NULL) {
-		sprintf(buf, "%sbk prs -hd:KEY: ChangeSet | sort > %s", bin, here);
+		sprintf(buf, "%sbk prs -hd:KEY: ChangeSet | sort > %s",
+								bin, here);
 	} else {
 		sprintf(buf, "%sbk prs -hd:KEY: -r%s ChangeSet | sort > %s",
 								bin, rev, here);
@@ -49,33 +50,34 @@ sendlog(char *to, char *rev)
 	}
 	fclose(f);
 	unlink(has); unlink(revs); unlink(here);
-	if (revbuf[0] == '\0') return 0; 
+	if (revbuf[0] == '\0') return 0;
 	sprintf(buf, "cp %s %s", x_sendlog, here);
 	system(buf);
-	sprintf(buf, "%sbk prs -hd:KEY: -r%s ChangeSet >> %s", bin, revbuf, here);
+	sprintf(buf, "%sbk prs -hd:KEY: -r%s ChangeSet >> %s",
+							bin, revbuf, here);
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", here, x_sendlog);
 	system(buf);
 	unlink(here);
-	return(revbuf);
+	return (revbuf);
 }
 
 send_main(int ac,  char **av)
 {
-	int c, rc, use_stdout = 0;
-	int force = 0;
-	char *dflag = "", *qflag = "-vv";
-	char *wrapper = NULL;
-	char *rev = "1.0..";
-	char *to, *p;
-	char buf[MAXLINE];
-	char patch[MAXPATH], out[MAXPATH];
-	FILE *f;
+	int	c, rc, use_stdout = 0;
+	int	force = 0;
+	char	*dflag = "", *qflag = "-vv";
+	char	*wrapper = NULL;
+	char	*rev = "1.0..";
+	char	*to, *p;
+	char	buf[MAXLINE];
+	char	patch[MAXPATH], out[MAXPATH];
+	FILE	*f;
 
-	platformInit();  
+	platformInit();
 
 	while ((c = getopt(ac, av, "dfqr:w:")) != -1) {
-		switch (c) { 
+		switch (c) {
 		    case 'd':	dflag = "-d"; break;
 		    case 'f':	force++; break;
 		    case 'q':	qflag = ""; break;
@@ -116,14 +118,14 @@ send_main(int ac,  char **av)
 		sprintf(out, " >> %s", patch);
 	}
 	fprintf(f, "This BitKeeper patch contains the following changesets:\n");
-	for (p = rev; *p ; p++) if (*p == ',') *p = ' ';
+	for (p = rev; *p; p++) if (*p == ',') *p = ' ';
 	fputs(rev, f); fputs("\n", f);
-	for (p = rev; *p ; p++) if (*p == ' ') *p = ',';
+	for (p = rev; *p; p++) if (*p == ' ') *p = ',';
 	if (wrapper) fprintf(f, "\n## Wrapped with %s ##\n\n", wrapper);
 	fflush(f);
 	unless (use_stdout) fclose(f);
 	unless (wrapper) {
-		sprintf(buf, "%sbk cset %s -m%s %s %s",	
+		sprintf(buf, "%sbk cset %s -m%s %s %s",
 					bin, dflag, rev, qflag, out);
 	} else {
 		sprintf(buf, "%sbk cset %s -m%s %s | bk %swrap%s",
@@ -133,7 +135,7 @@ send_main(int ac,  char **av)
 		unless (use_stdout) unlink(patch);
 		exit(1);
 	}
-	
+
 	unless (use_stdout) {
 		mail(to, "BitKeeper patch", patch);
 		unlink(patch);

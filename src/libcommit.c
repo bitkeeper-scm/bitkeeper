@@ -3,13 +3,14 @@
 #include <time.h>
 
 
-char	*editor = 0, *pager = 0, *bin = 0; 
+char	*editor = 0, *pager = 0, *bin = 0;
 char	*bk_dir = "BitKeeper/";
 int	resync = 0, quiet = 0;
-char	*getlog(char *user);
+
 int	get(char *path, int flags, char *output);
 int	bkusers();
 int	setlog(char *user);
+char	*getlog(char *user);
 private char	*project_name();
 
 private	void
@@ -41,8 +42,8 @@ logAddr()
 {
 	static char buf[MAXLINE];
 	static char *logaddr = NULL;
-	FILE *f1;
-	char config[MAXPATH];
+	char	config[MAXPATH];
+	FILE	*f1;
 
 	if (logaddr) return logaddr;
 	sprintf(config, "%s/bk_configY%d", TMP_PATH, getpid());
@@ -54,7 +55,7 @@ logAddr()
 	assert(f1);
 	while (fgets(buf, sizeof(buf), f1)) {
 		if (strneq("logging:", buf, 8)) {
-			char *p, *q;
+			char	*p, *q;
 			for (p = &buf[8]; (*p == ' ' || *p == '\t'); p++);
 			q = &p[1];
 			while (strchr(" \t\n", *q) == 0) q++;
@@ -64,8 +65,7 @@ logAddr()
 		}
 	}
 	logaddr = "";
-done: 	
-	fclose(f1);
+done:	fclose(f1);
 	unlink(config);
 	return logaddr;
 }
@@ -73,10 +73,10 @@ done:
 void
 sendConfig(char *to)
 {
-	char *dspec;
-	char config_log[MAXPATH], buf[MAXLINE];
-	char config[MAXPATH], aliases[MAXPATH];
-	char s_cset[MAXPATH] = CHANGESET;
+	char	*dspec;
+	char	config_log[MAXPATH], buf[MAXLINE];
+	char	config[MAXPATH], aliases[MAXPATH];
+	char	s_cset[MAXPATH] = CHANGESET;
 	FILE *f, *f1;
 	time_t tm;
 	extern int bkusers();
@@ -99,7 +99,7 @@ sendConfig(char *to)
 	fprintf(f, "Host:\t%s\n", sccs_gethost());
 	fprintf(f, "Root:\t%s\n", fullname(".", 0));
 	tm = time(0);
-	fprintf(f, "Date:\t%s", ctime(&tm)); 
+	fprintf(f, "Date:\t%s", ctime(&tm));
 	sprintf(config, "%s/bk_configX%d", TMP_PATH, getpid());
 	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
 	get(buf, SILENT|PRINT, config);
@@ -174,11 +174,11 @@ header(FILE *f)
 void
 logChangeSet(char *rev)
 {
-	char commit_log[MAXPATH], buf[MAXLINE], *p;
-	char subject[MAXLINE];
-	char start_rev[1024];
-	FILE *f;
-	int dotCount = 0, n;
+	char	commit_log[MAXPATH], buf[MAXLINE], *p;
+	char	subject[MAXLINE];
+	char	start_rev[1024];
+	FILE	*f;
+	int	dotCount = 0, n;
 
 	unless (streq("commit_and_maillog", getlog(NULL)))  return;
 
@@ -205,7 +205,8 @@ logChangeSet(char *rev)
 	fclose(f);
 	sprintf(buf, "%sbk sccslog -r%s ChangeSet >> %s", bin, rev, commit_log);
 	system(buf);
-	sprintf(buf, "%sbk cset -r+ | %sbk sccslog - >> %s", bin, bin, commit_log);
+	sprintf(buf, "%sbk cset -r+ | %sbk sccslog - >> %s",
+							bin, bin, commit_log);
 	system(buf);
 	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n");
@@ -230,7 +231,8 @@ get(char *path, int flags, char *output)
 	if (sccs_filetype(path) == 's') {
 		s = sccs_init(path, SILENT, 0);
 	} else {
-		char *p = name2sccs(path);
+		char	*p = name2sccs(path);
+
 		s = sccs_init(p, SILENT, 0);
 		free(p);
 	}
@@ -266,7 +268,8 @@ notify()
 
 	sprintf(notify_file, "%setc/notify", bk_dir);
 	unless (exists(notify_file)) {
-		char notify_sfile[MAXPATH];	
+		char	notify_sfile[MAXPATH];
+
 		sprintf(notify_sfile, "%setc/SCCS/s.notify", bk_dir);
 		if (exists(notify_sfile)) {
 			get(notify_sfile, SILENT, "-");
@@ -302,11 +305,11 @@ notify()
 void
 mail(char *to, char *subject, char *file)
 {
-	int i = -1;
-	char sendmail[MAXPATH], *mail;
-	char buf[MAXLINE];
-	struct utsname ubuf;
-	char *paths[] = {
+	int	i = -1;
+	char	sendmail[MAXPATH], *mail;
+	char	buf[MAXLINE];
+	struct	utsname ubuf;
+	char	*paths[] = {
 		"/usr/bin",
 		"/usr/sbin",
 		"/usr/lib",
@@ -326,14 +329,14 @@ mail(char *to, char *subject, char *file)
 		if (exists(sendmail)) {
 			FILE *pipe, *f;
 
-			sprintf(buf, "%s -i %s", sendmail , to);
-			pipe = popen(buf, "w"); 
+			sprintf(buf, "%s -i %s", sendmail, to);
+			pipe = popen(buf, "w");
 			fprintf(pipe, "To: %s\n", to);
 			if (subject && *subject) {
 				fprintf(pipe, "Subject: %s\n", subject);
 			}
 			f = fopen(file, "r");
-			while (fgets(buf, sizeof( buf), f)) fputs(buf, pipe);
+			while (fgets(buf, sizeof(buf), f)) fputs(buf, pipe);
 			fclose(f);
 			pclose(pipe);
 			return;
@@ -358,7 +361,7 @@ mail(char *to, char *subject, char *file)
 void
 remark(int quiet)
 {
-	char buf[MAXLINE];
+	char	buf[MAXLINE];
 
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
 	unless (quiet) gethelp("consistency_check", "", stdout);
@@ -373,18 +376,18 @@ remark(int quiet)
 void
 status(int verbose, char *status_log)
 {
-	char buf[MAXLINE], parent_file[MAXPATH];
-	char tmp_file[MAXPATH];
-	FILE *f, *f1;
+	char	buf[MAXLINE], parent_file[MAXPATH];
+	char	tmp_file[MAXPATH];
+	FILE	*f, *f1;
 
 	f = fopen(status_log, "a");
-	fprintf(f,"Status for BitKeeper repository %s\n",  fullname(".", 0));
+	fprintf(f, "Status for BitKeeper repository %s\n", fullname(".", 0));
 	gethelp("version", 0, f);
 	sprintf(parent_file, "%slog/parent", bk_dir);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
 		f1 = fopen(parent_file, "r");
-		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);	
+		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);
 		fclose(f1);
 	}
 	unless (repository_lockers(0)) {
@@ -432,28 +435,28 @@ status(int verbose, char *status_log)
 		sprintf(buf, "%sbk sfiles > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
-		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
+		for (i = 0; fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files under revision control.\n", i);
 		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
-		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
+		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files not under revision control.\n", i);
 		sprintf(buf, "%sbk sfiles -c > %s", bin, tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
-		for(i = 0;  fgets(buf, sizeof(buf), f1); i++);
+		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files modified and not checked in.\n", i);
 		sprintf(buf, "%sbk sfiles -C > %s", bin, tmp_file);
 		f1 = fopen(tmp_file, "rt");
-		for(i = 0;  fgets(buf, sizeof(buf), f); i++);
+		for (i = 0;  fgets(buf, sizeof (buf), f); i++);
 		fclose(f1);
-		fprintf( f,
-		   "%6d files with checked in, but not committed, deltas.\n",
-		   i);
+		fprintf(f,
+		    "%6d files with checked in, but not committed, deltas.\n",
+		    i);
 	}
 	unlink(tmp_file);
 	fclose(f);
@@ -479,7 +482,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 		}
 	}
 	while (fgets(buf, sizeof(buf), f)) {
-		char *p;
+		char	*p;
 
 		if (first && (buf[0] == '#')) continue;
 		first = 0;
@@ -503,7 +506,7 @@ platformInit()
 {
 	// XXX TODO:  Need a new way to handle the @bitkeeper_bin@ installed
 	// time variable.
-	char *paths[] = {
+	char	*paths[] = {
 		"/usr/libexec/bitkeeper/",
 		"/usr/lib/bitkeeper/",
 		"/usr/bitkeeper/",
@@ -514,20 +517,20 @@ platformInit()
 		0
 	};
 
-	char buf[MAXPATH];
-	int i = -1;
+	char	buf[MAXPATH];
+	int	i = -1;
 
 	if (bin) return;
-#ifdef WIN32
+#ifdef	WIN32
 	setmode(1, _O_BINARY);
 	setmode(2, _O_BINARY);
 #endif
-	if ((editor = getenv("EDITOR")) == NULL) editor="vi";
-	if ((pager = getenv("PAGER")) == NULL) pager="more";
+	if ((editor = getenv("EDITOR")) == NULL) editor = "vi";
+	if ((pager = getenv("PAGER")) == NULL) pager = "more";
 
-#define TAG_FILE "bk"
+#define	TAG_FILE "bk"
 	if ((bin = getenv("BK_BIN")) != NULL) {
-		char buf[MAXPATH];
+		char	buf[MAXPATH];
 		sprintf(buf, "%s%s", bin, TAG_FILE);
 		if (exists(buf)) return;
 	}
@@ -546,7 +549,7 @@ platformInit()
 int
 checkLog()
 {
-	char ans[MAXLINE], buf[MAXLINE];
+	char	ans[MAXLINE], buf[MAXLINE];
 
 	strcpy(buf, getlog(NULL));
 	if (strneq("ask_open_logging:", buf, 17)) {
@@ -554,7 +557,7 @@ checkLog()
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			char *cname = &buf[17];
+			char	*cname = &buf[17];
 			setlog(cname);
 			return (0);
 		} else {
@@ -566,7 +569,8 @@ checkLog()
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			char *cname = &buf[18];
+			char	*cname = &buf[18];
+
 			setlog(cname);
 			return (0);
 		} else {
@@ -585,6 +589,4 @@ checkLog()
 		fprintf(stderr, "unknown return code <%s>\n", buf);
 		return (1);
 	}
-	
 }
-

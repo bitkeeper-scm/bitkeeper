@@ -4,7 +4,7 @@
 int
 gethelp_main(int ac, char **av)
 {
-	platformInit(); 
+	platformInit();
 	unless (av[1]) {
 usage:		fprintf(stderr, "usage: gethelp help_name bkarg\n");
 		exit(1);

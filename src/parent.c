@@ -1,24 +1,24 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 
-#define PARENT "BitKeeper/log/parent"
+#define	PARENT "BitKeeper/log/parent"
 
 parent_main(int ac,  char **av)
 {
-	char buf[MAXLINE];
-	char parent[MAXPATH] = PARENT;
-	char pdir[MAXPATH];
-	FILE *f;
-	int c, i = 0, do_remove = 0, quiet = 0;
+	char	buf[MAXLINE];
+	char	parent[MAXPATH] = PARENT;
+	char	pdir[MAXPATH];
+	FILE	*f;
+	int	c, i = 0, do_remove = 0, quiet = 0;
 
-	platformInit();  
+	platformInit();
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "parent: can not find project root.\n");
 		exit(1);
 	}
-	
+
 	while ((c = getopt(ac, av, "qr")) != -1) {
-		switch(c) {
+		switch (c) {
 		    case 'q': quiet = 1; break;
 		    case 'r': do_remove = 1; break;
 		    default:
@@ -44,7 +44,7 @@ parent_main(int ac,  char **av)
 		mkdirf(parent);
 		f = fopen(parent, "wb");
 		assert(f);
-		fprintf(f , "%s\n", av[optind]);
+		fprintf(f, "%s\n", av[optind]);
 		fclose(f);
 		unless(quiet) printf("Set parent to %s\n", av[optind]);
 		exit(0);

@@ -1,17 +1,17 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 
-extern char *editor, *pager, *bin; 
+extern char *editor, *pager, *bin;
 private	int is_command(char *file);
 
 help_main(int ac,  char **av)
 {
-	char buf[MAXLINE];
-	char help_out[MAXPATH];
-	FILE *f;
-	int i = 0;
+	char	buf[MAXLINE];
+	char	help_out[MAXPATH];
+	int	i = 0;
+	FILE	*f;
 
-	platformInit();  
+	platformInit();
 	if (ac == 1) {
 		sprintf(buf, "%sbk gethelp help | %s", bin, pager);
 		system(buf);
@@ -24,7 +24,7 @@ help_main(int ac,  char **av)
 		if (system(buf) != 0) {
 			if (is_command(av[i])) {
 				f = fopen(help_out, "ab");
-				fprintf( f,
+				fprintf(f,
 	"		-------------- %s help ---------------\n\n", av[i]);
 				fclose(f);
 				sprintf(buf, "%sbk %s --help >> %s 2>&1",
@@ -47,11 +47,11 @@ help_main(int ac,  char **av)
 private	int
 is_command(char *cmd)
 {
-        int i;
+	int i;
 	extern  struct command cmdtbl[]; /* see bkmain.c */
 
-        for (i = 0; cmdtbl[i].name; i++) {
-                if (streq(cmdtbl[i].name, cmd)) return 1;
-        }
-        return 0;
-}      
+	for (i = 0; cmdtbl[i].name; i++) {
+		if (streq(cmdtbl[i].name, cmd)) return 1;
+	}
+	return 0;
+}
