@@ -724,7 +724,7 @@ time_t	uniq_drift();
 int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 void	cd2root();
-void	mail(char *to, char *subject, char *file);
+pid_t	mail(char *to, char *subject, char *file);
 void	logChangeSet(char *rev, int q);
 char	*getlog(char *u, int q);
 int	setlog(char *u);

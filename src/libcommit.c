@@ -174,7 +174,8 @@ logChangeSet(char *rev, int quiet)
 	char	start_rev[1024];
 	char	*to = logAddr();
 	FILE	*f;
-	int	dotCount = 0, n;
+	int	dotCount = 0, try = 0, n, status;
+	pid_t	pid;
 	char 	*av[] = {
 		"bk",
 		"log",
@@ -221,7 +222,8 @@ logChangeSet(char *rev, int quiet)
 	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
 	system(buf);
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
-		printf("sending ChangeSet to %s...\n", logAddr());
+		printf("Sending ChangeSet to %s...\n", logAddr());
+		fflush(stdout);
 	}
 	sprintf(subject, "BitKeeper ChangeSet log: %s", project_name());
 #ifdef WIN32
@@ -236,7 +238,28 @@ logChangeSet(char *rev, int quiet)
 		unlink(commit_log);
 	}
 #else
-	mail(to, subject, commit_log);
+	pid = mail(to, subject, commit_log);
+	if (pid == -1) {
+err:		fprintf(stdout, "can not mail ChangeSet log\n");
+		fflush(stdout); /* needed for citool */
+		unlink(commit_log);
+		return;
+	}
+	if (pid == -9) { /* -9 means skipped, only happen in regression test */
+		unlink(commit_log);
+		return;
+	}
+	while ((n = waitpid(pid, &status, WNOHANG)) == 0) {
+		fprintf(stdout, "Waiting for mailer...\n");
+		fflush(stdout); /* needed for citool */
+		sleep(2);
+		if (try++ > 60) goto err;
+	}
+	if (n == -1) {
+		perror("waitpid");
+		goto err;
+	}
+	if (WEXITSTATUS(status) != 0) goto err;
 	unlink(commit_log);
 #endif
 }
@@ -287,6 +310,8 @@ notify()
 	char	buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
 	char	subject[MAXLINE], *projectname;
 	FILE	*f;
+	int 	status;
+	pid_t 	pid;
 
 	sprintf(notify_file, "%setc/notify", BitKeeper);
 	unless (exists(notify_file)) {
@@ -317,97 +342,17 @@ notify()
 	f = fopen(notify_file, "rt");
 	while (fgets(buf, sizeof(buf), f)) {
 		chop(buf);
-		mail(buf, subject, notify_log);
+		pid = mail(buf, subject, notify_log);
+		fprintf(stdout, "Waiting for mailer...\n");
+		fflush(stdout); /* needed for citool */
+		waitpid(pid, &status, 0);
+		if (WEXITSTATUS(status) != 0) {
+			fprintf(stdout, "can not notify %s\n", buf);
+			fflush(stdout); /* needed for citool */
+		}
 	}
 	fclose(f);
 	unlink(notify_log);
-}
-
-//XXX TODO: move this function to the port directory
-void
-mail(char *to, char *subject, char *file)
-{
-	int	i = -1;
-	char	buf[MAXLINE];
-#ifndef WIN32
-	char	sendmail[MAXPATH], *mail;
-	struct	utsname ubuf;
-	char	*paths[] = {
-		"/usr/bin",
-		"/usr/sbin",
-		"/usr/lib",
-		"/usr/etc",
-		"/etc",
-		"/bin",
-		0
-	};
-#endif
-
-	if (strstr(project_name(), "BitKeeper Test repo") &&
-	    (bkusers(1, 1, 0) <= 5)) {
-		/* TODO : make sure our root dir is /tmp/.regression... */
-		return;
-	}
-
-#ifdef WIN32
-	if (findprog("blat.exe") ) {
-		char *av[] = {"blat", file, "-t", to, "-s", subject, "-q", 0};
-
-		if (spawnvp_ex(_P_WAIT, av[0], av) == 0) return;
-	}
-	if (findprog("mail.bat") ) {
-		sprintf(buf,
-		    "%s/mail.bat -s \"%s\" %s %s", bin, subject, to, file);
-		if (system(buf) == 0) return;
-	} 
-	fprintf(stderr, "\n\
-===========================================================================\n\
-Can not find a working mailer.\n\n\
-If you have access to a SMTP server, you can install the \"blat\" mailer\n\
-with the following command:\n\n\
-	blat -install <smtp_server_address> <your email address>\n\
-\n\
-If you have a non-smtp connection, (e.g. MS exchange), you can supply\n\
-a mail.bat file to connect Bitkeeper to your mail server; the mail.bat \n\
-file should accept the three auguments, as follows:\n\n\
-	mail.bat file recipient subject\n\
-\n\
-You should put the mail.bat file in the BitKeeper directory.\n\
-The mail.bat command should exit with status zero when the mail is \n\
-sent sucessfully.\n\
-===========================================================================\n");
-	return;
-#else
-	while (paths[++i]) {
-		sprintf(sendmail, "%s/sendmail", paths[i]);
-		if (exists(sendmail)) {
-			FILE *pipe, *f;
-
-			sprintf(buf, "%s -i %s", sendmail, to);
-			pipe = popen(buf, "w");
-			fprintf(pipe, "To: %s\n", to);
-			if (subject && *subject) {
-				fprintf(pipe, "Subject: %s\n", subject);
-			}
-			f = fopen(file, "r");
-			while (fgets(buf, sizeof(buf), f)) fputs(buf, pipe);
-			fclose(f);
-			pclose(pipe);
-			return;
-		}
-	}
-
-	mail = exists("/usr/bin/mailx") ? "/usr/bin/mailx" : "mail";
-	/* We know that the ``mail -s "$SUBJ"'' form doesn't work on IRIX */
-	assert(uname(&ubuf) == 0);
-	if (strstr(ubuf.sysname, "IRIX")) {
-		sprintf(buf, "%s %s < %s", mail, to, file);
-	}  else {
-		sprintf(buf, "%s -s \"%s\" %s < %s", mail, subject, to, file);
-	}
-	system(buf);
-#endif
-
 }
 
 void
