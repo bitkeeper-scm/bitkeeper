@@ -59,7 +59,7 @@ smerge_main(int ac, char **av)
 	char	buf[MAXPATH];
 	FILE	*inputs[3];
 	int	start = 0, end = 0;
-	int	ret;
+	int	ret = 0;
 	int	identical = 1;
 	int	status;
 
