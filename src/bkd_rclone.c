@@ -143,8 +143,8 @@ cmd_rclone_part2(int ac, char **av)
 
 	sccs_mkroot(".");
 	repository_wrlock();
-	if (getenv("BKD_LEVEL")) {
-		setlevel(atoi(getenv("BKD_LEVEL")));
+	if (getenv("BK_LEVEL")) {
+		setlevel(atoi(getenv("BK_LEVEL")));
 	}
 
 	/*
