@@ -10,8 +10,9 @@ the following topics:
 . Known Bugs
 
 
-We have binary releases for Linux, Irix6, and FreeBSD 2.2, HP-UX, AIX,
-Solaris, Windows98/NT/2000.
+We have binary releases for Linux on Sparc, Intel, PPC, and Alpha,
+Irix6, FreeBSD 2.2, FreeBSD 3,4, FreeBSD 4.1, OpenBSD 2.7, HP-UX,
+AIX, Sparc Solaris, Solaris X86, Windows98/NT/2000.
 
 Installation
 -----------------------------------------------------------------------------
@@ -25,7 +26,7 @@ also need to symlink admin, delta, prs, rmdel, and unget.  Do NOT
 symlink ci and co; this will interfere with RCS.  We no longer
 recommend that you place the bitkeeper directory in your PATH.
 
-For you cut and paste fans:
+For you cut-and-paste fans:
 
 	BK=/usr/bitkeeper # change this to match your installation
 	cd /usr/bin
@@ -37,10 +38,9 @@ For you cut and paste fans:
 	ln -s $BK/rmdel .
 	ln -s $BK/unget .
 
-You will need Tcl and Tk for the GUI, and Perl for resync and
-resolve.  Recommended versions are Tcl/Tk >=8.0.4, Perl >=5.004.
-If /bin/sh is not POSIX compliant, "bk" won't work.  Try changing the
-#! line to point at ksh or bash if you have problems.
+You will need Tcl and Tk for the GUI (We recommended tcl versions
+>=8.0.5).  If /bin/sh is not POSIX compliant, "bk.script" won't work.
+Try changing the #! line to point at ksh or bash if you have problems.
 
 Some vendors' versions of diff have bugs which are tickled by
 BitKeeper.  If you have problems, we recommend you install GNU diff.
@@ -75,12 +75,12 @@ Upgrade notes
       if someone inadvertently checked in a.out and then somebody had the
       bright idea of removing SCCS/s.a.out), then you can add the key for
       the file to BitKeeper/etc/gone and check in the gone file with a
-      "bk new gone".  The key should be that nasty looking string that BK
-      spits out when you run check, like
+      "bk new gone".  The key should be the string that BK spits out
+      when you run check. For example:
 
         lm@lm.bitmover.com|src/undo.c|19990818003019|59393
 
-      no leading / trailing spaces, please.
+      Make sure that there are no leading or trailing spaces.
 
       Note: the gone file doesn't make files be gone, you did that.  All
       it does is make BK not be upset that they are gone.  If the file
@@ -140,7 +140,7 @@ This mean your trigger scripts must be updated when you upgrade to
 BitKeeper 2.0.
 
 b) bk export now exports all files except the ChangeSet file.
-   (In 1.x the files under the BitKeeper directory are not exported)
+   (In 1.x, the files under the BitKeeper directory are not exported)
    User can select files for export by using the export -x/-i options.
 
 c) bk mkdiffs command has been removed in 2.x.  It is replaced by
@@ -161,10 +161,7 @@ h) In release 1.x, the ignore filter will ignore a directory even if it has
    files under SCCS control. This is bad, since citool may miss files that
    need to be checked-in/committed.  In relesae 2.0, the ignore filter
    applies _only_ to g-files not under sccs control -- it does not ignore
-   a directory wholesale.
-
-
-
+   an entire directory.
 
 
 New Features
@@ -190,12 +187,72 @@ a) For users who prefer their g-file to be visible always, even after a
    or
    	[:/home/bk/stable]heckout:get
 
+
 b) byte count transfered by each push/pull/clone command is
    logged in the repo-log
 c) bk sfiles is much faster (4X) when scanning a large tree
    (this means citool should start up much faster)
 d) The  Windows98/NT/2000 version now installs a helptool menu entry
    in the Bitkeeper menu.
+
+e) GUI Tools
+       New color scheme
+
+       Consistent keybindings across all tools
+
+       Added mousewheel support to most of the tools
+      
+       Single configuration file for all tools. The .bkgui
+       configuration file is now used to modify the colors,
+       keybindings, and widget dimensions.
+
+f) citool
+       When staring citool, a progress bar now shows the number of
+       files that are being scanned.
+
+       citool now shows files that are not under revision control and
+       give the user the option to place them under revision control
+
+       By clicking on the file-type icon, users can exclude modified
+       and pending files from the current changeset in cases where
+       they might want to push some work to another repository,
+       but might want to hold some files back that require more work.
+
+       Files not under revision control can be placed on the ignore list
+       by clicking on the file name.
+
+g) sccstool/histtool changes
+      Renamed sccstool to histtool.
+
+      Starts much quicker on large trees since we only display the
+      last month's worth of revisions, by default. There is a 
+      "Select Range" button that allow the user to view earlier 
+      revisions.
+
+      When viewing the annotated file listing, clicking on a line
+      will bring up the check-in comments for the line.
+
+      When viewing the files that make up a changeset (double-clicking
+      on a revision node), clicking on a filename will bring up
+      another sccstool for the given file.
+
+      Single-clicking the middle mouse button redisplays the entire
+      revision history for a file in the lower text window.
+
+      Double-clicking the middle mouse button display only the tagged
+      changesets in the lower text window.
+
+h) helptool
+      Added searching
+
+      Added history stack so that you can go back to the previous help 
+      topics
+
+i) difftool
+      Added ability to search the diffs
+
+      Added ability to reread the file
+	
 
 
 Noteworthy Bug Fixes
@@ -218,5 +275,3 @@ bkWeb is not working on NT yet.
 
 ----------------------------------------------------------------------------
 All trademarks are property of their respective owners.
-
-
