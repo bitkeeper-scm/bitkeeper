@@ -413,7 +413,6 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	mclose(m);
 	unlink(msgfile);
 	unlink(rev_list);
-	disconnect(r, 2);
 	unless (opts.autopull) return (0);
 	pull(opts, r); /* pull does not return */
 	return (0);
@@ -489,16 +488,16 @@ push_part2(char **av, opts opts,
 {
 
 	char	buf[4096];
-	int	n, status, rc = 0;
+	int	n, status, rc = 0, done = 0;
 
 	if (ret == 0){
 		putenv("BK_OUTGOING=NOTHING");
 		send_end_msg(opts, r, "@NOTHING TO SEND@\n", rev_list, envVar);
-		goto done;
+		done = 1;
 	} else if (ret == 1) {
 		putenv("BK_OUTGOING=CONFLICT");
 		send_end_msg(opts, r, "@CONFLICT@\n", rev_list, envVar);
-		goto done;
+		done = 1;
 	} else {
 		/*
 		 * We are about to request the patch, fire pre trigger
@@ -510,16 +509,16 @@ push_part2(char **av, opts opts,
 		if (!opts.metaOnly && trigger(av, "pre")) {
 			send_end_msg(opts, r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
-			goto done;
-		}
-		if (send_patch_msg(opts, r, rev_list, ret, envVar)) {
+			done = 1;
+		} else if (send_patch_msg(opts, r, rev_list, ret, envVar)) {
 			rc = 1;
-			goto done;
+			done = 1;
 		}
 	}
 
 	if (r->httpd) skip_http_hdr(r);
 	getServerInfoBlock(r);
+	if (done) goto done;
 
 	/*
 	 * get remote progress status
