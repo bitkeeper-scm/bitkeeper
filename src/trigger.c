@@ -3,7 +3,6 @@
  */
 
 #include "bkd.h"
-#include "bkvers.h"
 private int localTrigger(char **);
 private int remotePreTrigger(char **);
 private int remotePostTrigger(char **);

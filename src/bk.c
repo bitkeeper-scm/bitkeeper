@@ -1,6 +1,5 @@
 #include "system.h"
 #include "sccs.h" 
-#include "bkvers.h"
 
 #define BK "bk"
 

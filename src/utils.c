@@ -1,5 +1,4 @@
 #include "bkd.h"
-#include "bkvers.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
