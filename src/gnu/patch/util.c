@@ -248,8 +248,8 @@ static char const CHECKOUT_LOCKED[] = "co -l %s";
 static char const RCSDIFF1[] = "rcsdiff %s";
 
 static char const SCCSPREFIX[] = "s.";
-static char const GET[] = "get ";
-static char const GET_LOCKED[] = "get -e ";
+static char const GET[] = "bk get ";
+static char const GET_LOCKED[] = "bk get -e ";
 static char const SCCSDIFF1[] = "bk diffs ";
 
 static char const CLEARTOOL_CO[] = "cleartool co -unr -nc ";

@@ -18,11 +18,6 @@ park_main(int ac, char **av)
 	}
 
 	
-	for (try = 1; ; try++) {
-		sprintf(parkfile, "BitKeeper/tmp/parkfile-%d", try);
-		unless (exists(parkfile)) break;
-	}
-
 	bktemp(changedfile);
 	sysio(0, changedfile, 0, "bk", "sfiles", "-c", SYS);
 	if (size(changedfile) == 0) {
@@ -73,6 +68,9 @@ unpark_main(int ac, char **av)
 empty:		fprintf(stderr, "No parkfile found\n");
 		return (0);
 	}
+	/*
+	 * The parkfile list  is a LIFO, last one parked got unprak first 
+	 */
 	while ((e = readdir(dh)) != NULL) {
 		if ((strlen(e->d_name) > 9) &&
 		    strneq(e->d_name, "parkfile-", 9)) {
@@ -84,10 +82,11 @@ empty:		fprintf(stderr, "No parkfile found\n");
 	if (top == 0) goto empty;
 
 	sprintf(parkfile, "%s/parkfile-%d", BKTMP, top);
-	rc = sysio(parkfile, 0, 0, "bk", "patch", "-p1", SYS);
+	fprintf(stderr, "Unparking %s\n", parkfile);
+	rc = sysio(parkfile, 0, 0, "bk", "patch", "-p1", "-g1", "-u", SYS);
 	if (rc) {
-		fprintf(stderr, "unpark failed\n");
-		unlink(parkfile);
+		fprintf(stderr, "Cannot unpark %s\n", parkfile);
+		/* Do not unlink the parkfile,  user may want to re-try */
 		return (1);
 	} 
 	fprintf(stderr, "Unpark of %s is successful\n", parkfile);

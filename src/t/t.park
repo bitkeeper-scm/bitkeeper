@@ -1,0 +1,78 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2000 Andrew Chang
+# %K%
+
+HERE=`bk pwd`
+echo $N Create initial repository ...................................$NL
+no_logging project
+bk admin -Z
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+echo OK
+echo $N Check basic park/unpark cycle ...............................$NL
+bk edit $Q foo.c bar.c
+echo foo-new > foo.c
+echo bar-new >> bar.c
+cp foo.c foo.sav
+bk undos bar.c > bar.sav
+bk park 2> /dev/null
+NUM=`bk sfiles -c | wc -l`
+if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
+bk unpark 2> /dev/null 1>&2
+cmp -s foo.c foo.sav
+if [ $? -ne 0 ]; then echo failed 1; exit 1; fi
+# Becase patch output in text mode
+bk undos bar.c > X
+cmp -s X bar.sav 
+if [ $? -ne 0 ]; then echo failed 2; od -c bar.c; od -c bar.sav; exit 1; fi
+echo OK
+echo $N Check basic park/unpark with reject file ....................$NL
+bk unedit bar.c
+bk edit $Q foo.c
+echo foo-new2 > foo.c
+bk park 2> /dev/null
+NUM=`bk sfiles -c | wc -l`
+if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
+bk edit $Q foo.c
+echo foo-new3 > foo.c
+bk ci $Q -y foo.c
+bk unpark 2> /dev/null 1>&2
+# make sure unpark does not delete the parkfile
+if [ ! -f $HERE/project/BitKeeper/tmp/parkfile-1 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check park/unpark with offset diff ..........................$NL
+bk clean foo.c
+bk fix $Q foo.c
+echo foo-new4 > foo.c
+bk get $Q -p -r1.1 foo.c >> foo.c
+bk unpark 2>/dev/null 1>&2
+bk undos foo.c > CMP1
+bk undos > CMP2 <<EOF
+foo-new4
+foo-new2
+EOF
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
