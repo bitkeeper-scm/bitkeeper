@@ -29,7 +29,6 @@ private serlist *allocstate(serlist *old, int oldsize, int n);
 private int	end(sccs *, delta *, FILE *, int, int, int, int);
 private void	date(delta *d, time_t tt);
 private int	getflags(sccs *s, char *buf);
-private void	inherit(sccs *s, int flags, delta *d);
 private sum_t	fputmeta(sccs *s, u8 *buf, FILE *out);
 private sum_t	fputdata(sccs *s, u8 *buf, FILE *out);
 private int	fflushdata(sccs *s, FILE *out);
@@ -598,14 +597,14 @@ sccs_freetable(delta *t)
  * is already correct.	As in dinsert().
  * Make sure to keep this up for all inherited fields.
  */
-private void
-inherit(sccs *s, int flags, delta *d)
+void
+sccs_inherit(sccs *s, u32 flags, delta *d)
 {
 	delta	*p;
 
 	unless (d) return;
 	unless (p = d->parent) {
-		getDate(d);
+		DATE(d);
 		return;
 	}
 
@@ -635,7 +634,7 @@ inherit(sccs *s, int flags, delta *d)
 		d->mode = p->mode;
 		CHK_DUP(symlink, D_DUPLINK, "symlink");
 	}
-	getDate(d);
+	DATE(d);
 	if (d->merge) {
 		d = sfind(s, d->merge);
 		assert(d);
@@ -749,7 +748,7 @@ dinsert(sccs *s, int flags, delta *d, int fixDate)
 		debug((stderr, " -> %s (kid, moved sib %s)\n",
 		    p->rev, d->siblings->rev));
 	}
-	inherit(s, flags, d);
+	sccs_inherit(s, flags, d);
 	if (fixDate) uniqDelta(s);
 }
 
@@ -932,7 +931,7 @@ sccs_date2time(char *date, char *zone)
 private void
 fixDates(delta *prev, delta *d)
 {
-	unless (d->date) (void)getDate(d);
+	DATE(d);
 
 	/* recurse forwards first */
 	if (d->next) fixDates(d, d->next);
@@ -994,7 +993,7 @@ uniqRoot(sccs *s)
 
 	assert(s->tree == s->table);
 	d = s->tree;
-	unless (d->date) (void)getDate(d);
+	DATE(d);
 
 	unless (uniq_open() == 0) return;	// XXX - no error?
 	sccs_shortKey(s, sccs_ino(s), buf);
@@ -1023,7 +1022,7 @@ uniqDelta(sccs *s)
 	d = s->table;
 	next = d->next;
 	assert(d != s->tree);
-	unless (d->date) (void)getDate(d);
+	DATE(d);
 
 	/*
 	 * This is kind of a hack.  We aren't in BK mode yet we are fudging.
@@ -1968,18 +1967,6 @@ defbranch(sccs *s)
 	return ("65535");
 }
 
-private int
-lodstart(char *rev)
-{
-	char	*p;
-
-	p = strchr(rev, '.');
-	assert(p);
-	p++;
-	if (strchr(p, '.')) return (0);
-	return (streq("1", p));
-}
-
 /*
  * Find the specified delta.  The rev can be
  *	(null)	get top of the default branch
@@ -2158,15 +2145,14 @@ sccs_setpathname(sccs *s)
 {
 	delta	*d;
 
-	assert(s);
+	assert(s && !s->defbranch);
+	/* XXX: If 'not in view file' -- get a name to use
+	 * and store it in s->spathname:
+	 * For now, just store pathname in spathname
+	 */
 	if (s->spathname) free(s->spathname);
-	if (s->defbranch && streq(s->defbranch, "1.0")) {
-		s->spathname = sccs_nivPath(s);
-	}
-	else {
-		unless (d = sccs_getrev(s, "+", 0, 0)) return (0);
-		s->spathname = name2sccs(d->pathname);
-	}
+	unless (d = sccs_top(s)) return (0);
+	s->spathname = name2sccs(d->pathname);
 	return (s->spathname);
 }
 
@@ -2288,21 +2274,6 @@ morekids(delta *d, int bk_mode)
 }
 
 /*
- * See if default is a version X.X or X.X.X.X
- */
-
-private int
-defIsVer(sccs *s)
-{
-	u16	a = 0, b = 0, c = 0, d = 0;
-	int	howmany;
-
-	unless (s->defbranch) return (0);
-	howmany = scanrev(s->defbranch, &a, &b, &c, &d);
-	return ((howmany == 2 || howmany == 4) ? 1 : 0);
-}
-
-/*
  * Get the delta that is the basis for this edit.
  * Get the revision name of the new delta.
  * Sep 2000 - removed branch, we don't support it.
@@ -2336,24 +2307,11 @@ getedit(sccs *s, char **revp)
 		return (0);
 	}
 ok:
-	/* if BK, and no rev (or rev == def) and def is x.x or x.x.x.x,
-	 * then newlod
-	 */
-	if (BITKEEPER(s)
-	    && (!rev || (s->defbranch && streq(rev, s->defbranch)))
-	    && defIsVer(s)) {
-		unless (a = sccs_nextlod(s)) {
-			fprintf(stderr, "getedit: out of lods\n");
-			return (0);
-		}
-		sprintf(buf, "%d.1", a);
-		*revp = buf;
-	}
 	/*
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	else if (!morekids(e, BITKEEPER(s))) {
+	if (!morekids(e, BITKEEPER(s))) {
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -2364,14 +2322,7 @@ ok:
 			int	release = rev ? atoi(rev) : 1;
 
 			if (release > a) {
-				a = BITKEEPER(s) 
-				    ? sccs_nextlod(s)
-				    : release;
-				unless (a) {
-					fprintf(stderr,
-					    "getedit: error: out of lods\n");
-					return (0);
-				}
+				a = release;
 				b = 1;
 			} else {
 				b++;
@@ -2975,12 +2926,6 @@ metaSyms(sccs *sc)
 
 }
 
-private inline int
-samelod(delta *a, delta *b)
-{
-	return (a->r[0] == b->r[0]);
-}
-
 /* XXX - does not handle lods */
 int
 sccs_tagleaves(sccs *s, delta **l1, delta **l2)
@@ -3578,7 +3523,7 @@ comment:		switch (buf[1]) {
 		}
 done:		if (CSET(s) && (d->type == 'R') &&
 		    !d->symGraph && !(d->flags & D_SYMBOLS)) {
-			d->flags |= D_GONE;
+			MK_GONE(s, d);
 		}
 	}
 
@@ -3590,7 +3535,7 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * XXX - the above comment is incorrect, we no longer support that.
 	 */
 	s->tree = d;
-	inherit(s, flags, d);
+	sccs_inherit(s, flags, d);
 	d = d->kid;
 	s->tree->kid = 0;
 	while (d) {
@@ -3789,7 +3734,7 @@ addsym(sccs *s, delta *d, delta *metad, int graph, char *rev, char *val)
 	sym->metad = metad;
 	d->flags |= D_SYMBOLS;
 	metad->flags |= D_SYMBOLS;
-	if (!d->date) getDate(d);
+	DATE(d);
 	CHKDATE(d);
 
 	/*
@@ -4826,7 +4771,7 @@ date(delta *d, time_t tt)
 	d->sdate = strdup(time2date(tt));
 	zoneArg(d, sccs_zone(tt));
 
-	getDate(d);
+	DATE(d);
 	if (d->date != tt) {
 		fprintf(stderr, "Date=[%s%s] d->date=%lu tt=%lu\n",
 		    d->sdate, d->zone, d->date, tt);
@@ -5962,8 +5907,10 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 		if (slist) free(slist);
 		exit(1);
 	}
-	for (n = d; n; n = n->next) {
-		if (n->flags & D_GONE) slist[n->serial] = 0;
+	if (sc->hasgone) {
+		for (n = d; n; n = n->next) {
+			if (n->flags & D_GONE) slist[n->serial] = 0;
+		}
 	}
 	if (d->include) {
 		free(d->include);
@@ -6819,12 +6766,7 @@ err:		if (i2) free(i2);
 		s->state |= S_WARNED;
 		goto err;
 	}
-	/* general error checking done.  Pretend not here if defbranch 1.0 */
-	if (s->defbranch &&
-	    streq(s->defbranch, "1.0") && !(flags & GET_FORCE)) {
-		/* verbose((stderr, "get: ignoring %s\n", s->gfile)); */
-		return (0);
-	}
+	/* XXX: if 'not in view' file, then ignore: NOT IMPLEMENTED YET */
 
 	/* this has to be above the getedit() - that changes the rev */
 	if (mRev) {
@@ -7491,12 +7433,12 @@ fmttt(char *p, time_t d)
 }
 
 private void
-check_removed(delta *d, int strip_tags)
+check_removed(sccs *s, delta *d, int strip_tags)
 {
 	assert(d->type == 'R');
 	if (d->flags & D_GONE) return;
 	if (strip_tags) {
-		d->flags |= D_GONE;
+		MK_GONE(s, d);
 		return;
 	}
 
@@ -7504,7 +7446,7 @@ check_removed(delta *d, int strip_tags)
 	 * We don't need no skinkin' removed deltas.
 	 */
 	unless (d->symGraph || (d->flags & D_SYMBOLS) || d->comments) {
-		d->flags |= D_GONE;
+		MK_GONE(s, d);
 	}
 }
 
@@ -7568,7 +7510,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(streq(s->table->rev, "1.0"));
 			break;
 		}
-		if (d->type == 'R') check_removed(d, strip_tags);
+		if (d->type == 'R') check_removed(s, d, strip_tags);
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
@@ -9397,28 +9339,23 @@ checkdups(sccs *s)
 private inline int
 isleaf(register sccs *s, register delta *d)
 {
-	/* XXX: merge must be in same LOD to not count as leaf */
 	if (d->type != 'D') return (0);
+
 	if (d->flags & D_MERGED) {
 		delta	*t;
 
-		/* exit if merge on same lod or reached 'd' */
+		unless (s->hasgone) return (0);
+
 		for (t = s->table; t && t != d; t = t->next) {
-			if (t->merge == d->serial && t->r[0] == d->r[0]) {
-				break;
+			if ((t->merge == d->serial) && !(t->flags & D_GONE)) {
+				return (0);
 			}
 		}
-		assert(t);
-		/* if found a MERGE in this lod, so return not leaf  */
-		if (d != t) return (0);
 	}
+
 	for (d = d->kid; d; d = d->siblings) {
 		if (d->flags & D_GONE) continue;
 		if (d->type != 'D') continue;
-		/* ignore root of lods: X.1.0.x or X.0.Y.1 */
-		/* handle special case of 1.0 -> 1.1 is kid */
-		if (d->r[0] != 1 && ((d->r[1] == 1 && d->r[2] == 0) ||
-		    (d->r[1] == 0 && d->r[3] == 1))) continue;
 		return (0);
 	}
 	return (1);
@@ -9438,21 +9375,9 @@ checkOpenBranch(sccs *s, int flags)
 {
 	delta	*d;
 	int	ret = 0, tips = 0, symtips = 0;
-	u8	*lodmap = 0;
-	ser_t	next;
 
 	/* Allow open branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
-
-	next = sccs_nextlod(s);
-	/* next now equals one more than greatest that exists
-	 * so last entry in array is lodmap[next-1] which is 
-	 * is current max.
-	 */
-	unless (lodmap = calloc(next, sizeof(lodmap))) {
-		perror("calloc lodmap");
-		return (ret);
-	}
 
 	for (d = s->table; d; d = d->next) {
 		/*
@@ -9473,15 +9398,10 @@ checkOpenBranch(sccs *s, int flags)
 			if (d->symLeaf && !(d->flags & D_GONE)) symtips++;
 		}
 		if (d->flags & D_GONE) continue;
-		unless (isleaf(s, d)) continue;
-		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
-		tips++;
+		if (isleaf(s, d)) tips++;
 	}
 
-	unless (tips || (symtips > 1)) {
-		if (lodmap) free(lodmap);
-		return (ret);
-	}
+	unless ((tips > 1) || (symtips > 1)) return (ret);
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
@@ -9491,12 +9411,12 @@ checkOpenBranch(sccs *s, int flags)
 			    "%s: unmerged symleaf %s\n", s->sfile, d->rev));
 			ret = 1;
 		}
-		unless (isleaf(s, d)) continue;
-		unless (lodmap[d->r[0]] > 1) continue;
-		verbose((stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev));
+		if (isleaf(s, d)) {
+			verbose((stderr,
+			    "%s: unmerged leaf %s\n", s->sfile, d->rev));
+		}
 		ret = 1;
 	}
-	if (lodmap) free(lodmap);
 	return (ret);
 }
 
@@ -9902,7 +9822,7 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 		sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
 		d->zone = strdup(tmp);
 	}
-	getDate(d);
+	DATE(d);
 	return (d);
 }
 #undef	getit
@@ -10281,14 +10201,6 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->flags |= D_CKSUM;
 	}
 	dinsert(sc, 0, n, 1);
-	/* XXX: distributing LOD information.  encapusate it! */
-	/* When starting a new LOD, clear defbranch */
-	if (BITKEEPER(sc)
-	    && (sc->defbranch && streq(sc->defbranch, p->rev))
-	    && defIsVer(sc)) {
-		free(sc->defbranch);
-		sc->defbranch = 0;
-	}
 	return (n);
 }
 
@@ -10495,7 +10407,7 @@ remove_1_0(sccs *s)
 	if (streq(s->tree->rev, "1.0") && !(s->state & S_FAKE_1_0)) {
 		delta	*d;
 
-		s->tree->flags |= D_GONE;
+		MK_GONE(s, s->tree);
 		for (d = s->table; d; d = d->next) adjust_serials(d, -1);
 		return (1);
 	}
@@ -11364,6 +11276,119 @@ newcmd:
 	return (0);
 }
 
+/*
+ * Patch format is a little different, it looks like
+ * 0a0
+ * > key
+ * > key
+ * 
+ * We need to strip out all the non-key stuff: 
+ * a) "0a0"
+ * b) "> "
+ *
+ * We want the output to look like:
+ * ^AI serial
+ * key
+ * key
+ * ^AE
+ */
+private void
+patchweave(sccs *s, u8 *p, u32 len, u8 *buf, FILE *f)
+{
+	u8	*stop;
+
+	fputdata(s, "\001I ", f);
+	fputdata(s, buf, f);
+	fputdata(s, "\n", f);
+	if (p) {
+		stop = p + len;
+		assert(strneq(p, "0a0\n> ", 6));
+		p += 6; /* skip "0a0\n" */
+		while (1) {
+			fputdata(s, p, f);
+			while (*p++ != '\n') { /* null body */ }
+			if (p == stop) break;
+			assert(strneq("> ", p, 2));
+			p += 2; /* skip "> " */
+		}
+	}
+	fputdata(s, "\001E ", f);
+	fputdata(s, buf, f);
+	fputdata(s, "\n", f);
+}
+
+/*
+ * sccs_csetPatchWeave()
+ * This is similar to delta body, and makes use of many of the I/O
+ * functions, which is why it is here.  The purpose is to weave in
+ * patch items to the weave as it is copied to the output file.
+ * This is useful for fast-takepatch operation for cset file.
+ */
+
+int
+sccs_csetPatchWeave(sccs *s, FILE *f)
+{
+	u8	buf[20];
+	u8	*line;
+	u32	i;
+	u32	ser;
+	loc	*lp;
+
+	assert(s);
+	assert(s->state & S_CSET);
+	assert(s->locs);
+	lp = s->locs;
+	i = s->iloc - 1; /* set index to final element in array */
+	assert(i > 0); /* base 1 data structure */
+
+	seekto(s, s->data);
+	if (s->encoding & E_GZIP) {
+		zgets_init(s->where, s->size - s->data);
+		zputs_init();
+	}
+	while (line = nextdata(s)) {
+		assert(strneq(line, "\001I ", 3));
+		ser = atoi(&line[3]);
+
+		for ( ; i ; i--) {
+			if (ser + i > lp[i].serial) break;
+			unless (lp[i].p || lp[i].serial == 1) continue;
+			sertoa(buf, lp[i].serial);
+			patchweave(s, lp[i].p, lp[i].len, buf, f);
+		}
+		unless (i) break;
+
+		/* bump the serial number up by # of items we have left */
+		ser += i;
+		sertoa(buf, ser);
+		fputdata(s, "\001I ", f);
+		fputdata(s, buf, f);
+		fputdata(s, "\n", f);
+		while (line = nextdata(s)) {
+			if (*line == '\001') break;
+			fputdata(s, line, f);
+		}
+		assert(strneq(line, "\001E ", 3));
+		fputdata(s, "\001E ", f);
+		fputdata(s, buf, f);
+		fputdata(s, "\n", f);
+	}
+	assert(!(i && line));
+	/* Print out remaining, forcing serial 1 block at the end */
+	for ( ; i ; i--) {
+		unless (lp[i].p || lp[i].serial == 1) continue;
+		sertoa(buf, lp[i].serial);
+		patchweave(s, lp[i].p, lp[i].len, buf, f);
+	}
+	/* No translation of serial numbers needed for remainder of file */
+	for ( ; line; line = nextdata(s)) {
+		fputdata(s, line, f);
+	}
+	if (s->encoding & E_GZIP) zgets_done();
+	if (fflushdata(s, f)) return (-1);
+	return (0);
+}
+
 int
 sccs_hashcount(sccs *s)
 {
@@ -11932,69 +11957,6 @@ abort:		fclose(sfile);
 	return (0);
 }
 
-/* return the next available lod or 0 if we've exhausted all lods */
-
-ser_t
-sccs_nextlod(sccs *s)
-{
-	ser_t	lod = 0;
-	delta	*d;
-
-	/* XXX: invariant is first x.1 is greatest, yet I'm checking them all
-	 */
-	for (d = s->table; d; d = d->next) {
-		unless (d->type == 'D' && d->r[1] == 1 && !d->r[2]) continue;
-		if (d->r[0] > lod) lod = d->r[0];
-	}
-	lod = (lod == 65535) ? 0 : (lod + 1);
-	return (lod);
-}
-
-/*
- * see if the delta->rev is x.1 node.  If yes, then figure out number
- * to check in as new LOD
- */
-private int
-chknewlod(sccs *s, delta *d)
-{
-	ser_t	lod;
-	char	buf[MAXPATH];
-	delta	*p;
-
-	unless (d->rev) return (0);
-
-	/* x.1 or x.0.y.1 signify base of lod
-	 * renumber will smoosh together same lod branches
-	 * for now, just separate
-	 */
-	unless ((d->r[0] != 1 && 
-		((d->r[1] == 1 && d->r[2] == 0) ||
-		(d->r[1] == 0 && d->r[2] != 0 && d->r[3] == 1))))
-	{
-no_new:
-		free(d->rev);
-		d->rev = 0;
-		return (0);
-	}
-	/* If parent is a grafted root, then not a new lod
-	 * Graft root in the form X.0.Y.0 where Y != 0 
-	 */
-	p = d->parent;
-	if (p && p->r[1] == 0 && p->r[2] != 0 && p->r[3] == 0) {
-		goto no_new;
-	}
-
-	unless (lod = sccs_nextlod(s)) {
-		fprintf(stderr, "chknewlod: ran out of lods\n");
-		return (-1);
-	}
-	sprintf(buf, "%d.1", lod);
-	free(d->rev);
-	d->rev = strdup(buf);
-	explode_rev(d);
-	return (0);
-}
-
 /*
  * Make this delta start off as a .0.
  */
@@ -12101,14 +12063,8 @@ out:
 			unless (flags & NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
-				/* if x.1 then ensure new LOD */
-				if (chknewlod(s, prefilled)) {
-					s->state |= S_WARNED;
-					OUT;
-				}
-				/* free(prefilled->rev);
-				 * prefilled->rev = 0;
-				 */
+				free(prefilled->rev);
+				prefilled->rev = 0;
 
 				/*
 				 * If we have random bits, we are the root of
@@ -12181,8 +12137,7 @@ out:
 	rev = d->rev;
 	p = getedit(s, &rev);
 	assert(p);	/* we just found it above */
-	unless (streq(rev, pf.newrev) || 
-	    (lodstart(pf.newrev) && !findrev(s, pf.newrev))) {
+	unless (streq(rev, pf.newrev)) {
 		fprintf(stderr,
 		    "delta: invalid nextrev %s in p.file, using %s instead.\n",
 		    pf.newrev, rev);
@@ -12306,20 +12261,6 @@ out:
 
 	EACH (syms) {
 		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
-	}
-
-	/*
-	 * Start new lod if X.1
-	 * XXX: Could require the old defbranch to match exactly the
-	 * initial version in the pfile to make conditions tighter.
-	 */
-	unless (flags & DELTA_PATCH) {
-		if (BITKEEPER(s) && lodstart(n->rev)) {
-			if (s->defbranch) {
-				free(s->defbranch);
-				s->defbranch = 0;
-			}
-		}
 	}
 
 	/*
@@ -13840,7 +13781,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "UTC-FUDGE")) {
 		char	*utcTime;
 
-		getDate(d);
+		DATE(d);
 		d->date -= d->dateFudge;
 		if (utcTime = sccs_utctime(d)) {
 			fs(utcTime);
@@ -14750,7 +14691,7 @@ private inline int
 samekey(delta *d, char *user, char *host, char *path, time_t date,
 	sum_t *cksump)
 {
-	getDate(d);
+	DATE(d);
 	if (d->date != date) {
 		debug((stderr, "samekey: No date match %s: %d (%s%s) vs %d\n",
 		    d->rev, d->date, d->sdate,
@@ -14902,94 +14843,54 @@ sccs_resolveFiles(sccs *s)
 	FILE	*f = 0;
 	delta	*p, *d, *g = 0, *a = 0, *b = 0;
 	char	*n[3];
-	u8	*lodmap = 0;
-	ser_t	next;
-	ser_t	defbranch;
 	int	retcode = -1;
 
-	unless (next = sccs_nextlod(s)) {
-		fprintf(stderr, "resolveFiles: out of lods\n");
-		goto err;
-	}
-	if (next == 1) {
-		fprintf(stderr, "resolveFiles: no lods present\n");
-		goto err;
-	}
-	/* next now equals one more than greatest that exists
-	 * so last entry in array is lodmap[next-1] which is 
-	 * is current max.
-	 */
-	unless (lodmap = calloc(next, sizeof(lodmap))) {
-		perror("calloc lodmap");
-		goto err;
-	}
-
-	/*
-	 * if defbranch is 2 or 4 digit, then defbranch is really
-	 * next lod which hasn't been created yet, so assign it
-	 * to next so that this code will make sure all other
-	 * lods have only one open tip
-	 */
-
-	defbranch = next - 1;
 	if (s->defbranch) {
-		int	branch = 1;
-		char	*ptr;
-
-		for (ptr = s->defbranch; *ptr; ptr++) {
-			if (*ptr != '.') continue;
-			branch = 1 - branch;
-		}
-		if (branch) {
-			defbranch = atoi(s->defbranch);
-		} else {
-			/* defbranch doesn't exist, so preload 'a' */
-			defbranch = next;
-			a = sccs_top(s);
-		}
+		fprintf(stderr, "resolveFiles: defbranch set.  "
+			"LODs are no longer supported.\n"
+			"Please contact support@bitmover.com for "
+			"assistance.\n");
+err:
+		return (retcode);
 	}
 
 	/*
 	 * b is that branch which needs to be merged.
 	 * At any given point there should be exactly one of these.
-	 * LODXXX - can be two if there are LODs.
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue;
 		unless (isleaf(s, d)) continue;
-		if (d->r[0] == defbranch) {
-			if (!a) {
-				a = d;
-			} else {
-				assert(LOGS_ONLY(s) || !b);
-				b = d;
-				/* Could break but I like the error checking */
+		if (!a) {
+			a = d;
+		} else {
+			assert(LOGS_ONLY(s) || !b);
+			b = d;
+			if (a->r[0] != b->r[0]) {
+				fprintf(stderr, "resolveFiles: Found tips on "
+				 	"different LODs.\n"
+					"LODs are no longer supported.\n"
+					"Please contact support@bitmover.com "
+					"for assistance.\n");
+				goto err;
 			}
-			continue;
+			/* Could break but I like the error checking */
 		}
-		unless (lodmap[d->r[0]]++) continue; /* if first leaf */
-
-		fprintf(stderr, "\ntakepatch: ERROR: conflict on lod %d\n",
-			d->r[0]);
-		goto err;
+		continue;
 	}
 
 	/*
 	 * If we have no conflicts, then make sure the paths are the same.
 	 * What we want to compare is whatever the tip path is with the
-	 * whatever the path is in the most recent delta in this LOD.
-	 * XXX - Rick, I don't do the lod stuff yet.
-	 * XXX - Larry, I think I handle the lod stuff for this case.
+	 * whatever the path is in the most recent delta.
 	 */
 	unless (b) {
 		for (p = s->table; p; p = p->next) {
-			if ((p->type == 'D') && !(p->flags & D_REMOTE)
-			    && (p->r[0] == defbranch)) {
+			if ((p->type == 'D') && !(p->flags & D_REMOTE)) {
 				break;
 			}
 		}
 		if (!p || streq(p->pathname, a->pathname)) {
-			free(lodmap);
 			return (0);
 		}
 		b = a;
@@ -15040,22 +14941,7 @@ rename:		n[1] = name2sccs(g->pathname);
 		free(n[2]);
 	}
 	/* retcode set above */
-err:
-	if (lodmap) free(lodmap);
 	return (retcode);
-}
-
-int
-sccs_setlod(char *rev, u32 flags)
-{
-	int	ac;
-	char	*cmd[10];
-	extern	int setload_main(int ac, char **av);
-
-	cmd[0] = "setlod";
-	cmd[1] = 0;
-	ac = 1;
-	return (setlod_main(ac, cmd));
 }
 
 /*

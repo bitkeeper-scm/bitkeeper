@@ -43,7 +43,7 @@ private void	checkins(opts *opts, char *comment);
 private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
-private void	resolve_post(int c);
+private void	resolve_post(opts *o, int c);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj, int getFlags);
 private int	writeCheck(sccs *s, MDBM *db);
@@ -102,6 +102,14 @@ resolve_main(int ac, char **av)
 			exit(1);
 		}
     	}
+	/*
+	 * It is the responsibility of the calling code to set this env
+	 * var to indicate that we were not run standalone, we are called
+	 * from a higher level and they will run the triggers.
+	 */
+	if (getenv("FROM_PULLPUSH") && streq(getenv("FROM_PULLPUSH"), "YES")) {
+		opts.from_pullpush = 1;
+	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
@@ -124,22 +132,15 @@ resolve_main(int ac, char **av)
 	c = passes(&opts);
 	mdbm_close(localDB);
 	mdbm_close(resyncDB);
-	resolve_post(c);
+	resolve_post(&opts, c);
 	return (c);
 }
 
 private void
-resolve_post(int c)
+resolve_post(opts *opts, int c)
 {
-	/*
-	 * It is the responsibility of the calling code to set this env
-	 * var to indicate that we were not run standalone, we are called
-	 * from a higher level and they will run the triggers.
-	 */
-	if (getenv("POST_INCOMING_TRIGGER") &&
-	    streq(getenv("POST_INCOMING_TRIGGER"), "NO")) {
-	    	return;
-	}
+	if (opts->from_pullpush) return;
+
 	/* XXX - there can be other reasons */
 	if (c) {
 		putenv("BK_STATUS=CONFLICTS");
@@ -235,16 +236,17 @@ passes(opts *opts)
 		}
 	} else {
 		/* fake one for new repositories */
-		opts->idDB = mdbm_open(0, 0, 0, 0);
+		opts->idDB = mdbm_mem();
 	}
 	opts->local_proj = proj_init(0);
 	chdir(ROOT2RESYNC);
 	opts->resync_proj = proj_init(0);
-	unless (opts->quiet) {
+	unless (opts->from_pullpush || opts->quiet) {
 		fprintf(stderr,
 		    "Verifying consistency of the RESYNC tree...\n");
 	}
-	unless (sys("bk", "-r", "check", "-cR", SYS) == 0) {
+	unless (opts->from_pullpush || 
+	    (sys("bk", "-r", "check", "-cR", SYS) == 0)) {
 		syserr("failed.  Resolve not even started.\n");
 		/* XXX - better help message */
 		resolve_cleanup(opts, 0);
@@ -443,12 +445,13 @@ nameOK(opts *opts, sccs *s)
 
 	/*
 	 * Are we in the right sfile? (through LOD shuffling, might not be)
+	 * XXX: still true with single tip LOD design
 	 */
 	sccs_setpathname(s);
 	unless (streq(s->spathname, s->sfile)) {
 		if (opts->debug) {
 			fprintf(stderr, "nameOK(%s) => sfile %s is not same "
-			    "path as LOD top %s\n", s->gfile, s->sfile,
+			    "path as current top %s\n", s->gfile, s->sfile,
 			    s->spathname);
 		}
 		return (0);
@@ -2393,9 +2396,9 @@ Got:\n\
 	}
 	fflush(save); /*  important */
 	if (strieq("yes", user_preference("partial_check"))) {
-		ret = check(APPLIED);
+		ret = run_check(APPLIED);
 	} else {
-		ret = check(0);
+		ret = run_check(0);
 	}
 	if (ret) {
 		fprintf(stderr, "Check failed.  Resolve not completed.\n");
@@ -2685,7 +2688,7 @@ resolve_cleanup(opts *opts, int what)
 		exit(1);
 	}
 
-	resolve_post(0);
+	resolve_post(opts, 0);
 
 	/*
 	 * Force a logging process even if we did not create a merge node

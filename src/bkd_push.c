@@ -241,7 +241,7 @@ cmd_push_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	if (metaOnly) resolve[3] = 0; /* allow conflict in logging patch */
-	putenv("POST_INCOMING_TRIGGER=NO");
+	putenv("FROM_PULLPUSH=YES");
 	pid = spawnvp_wPipe(resolve, &pfd, 0);
 	dup2(fd2, 2); close(fd2);
 	waitpid(pid, &status, 0);
