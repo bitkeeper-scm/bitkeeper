@@ -1011,7 +1011,7 @@ int	sccs_tagleaves(sccs *, delta **, delta **);
 
 int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
-char *	user_preference(char *what, char buf[MAXPATH]);
+char *	user_preference(char *what);
 int	bktemp(char *buf);
 char	*bktmpfile();	/* return a char* to a just created temp file */
 void	updLogMarker(int ptype, int verbose);
