@@ -762,55 +762,65 @@ $
 #bitkeeper.init
 #!/bin/sh
 #
-# bitkeeper    Start/stop the bitkeeper daemon.
-#         @(#)bitkeeper.init 1.1 Copyright (c) 2000 Larry McVoy
+# chkconfig: 2345 24 84
+# description: BitKeeper server for work
 
 # Source networking configuration.
 if [ -f /etc/sysconfig/network ]
-then . /etc/sysconfig/network
+then	. /etc/sysconfig/network
 
-     # Check that networking is up.
-     [ ${NETWORKING} = "no" ] && exit 0
+	# Check that networking is up.
+	[ ${NETWORKING} = "no" ] && exit 0
 fi
 [ -x /usr/bin/bk ] || exit 0
 VAR=/var/bitkeeper
 
 case "$1" in
-    start_msg) echo "Start BitKeeper daemons"
-          ;;
-    stop_msg)  echo "Stop BitKeeper daemons"
-          ;;
-    start)     cd $VAR || exit 1
-          test -f repositories || {
-               echo Nothing advertised
-               exit 0
-          }
-          while read dir opts
-          do   (
-               cd $dir || exit 1
-               F=`basename $dir`
-               bk bkd $opts -l$VAR/log.$F -P$VAR/pid.$F
-               echo Started bkd $opts in $dir
-               )
-          done < repositories
-          ;;
+    start_msg)	echo "Start BitKeeper daemons"
+		;;
+    stop_msg)	echo "Stop BitKeeper daemons"
+		;;
+    restart)	$0 stop
+		$0 start
+		;;
+    start)	cd $VAR || exit 1
+		test -f repositories || {
+			echo Nothing advertised
+			exit 0
+		}
+		while read dir opts
+		do	(
+			cd $dir || exit 1
+			F=`basename $dir`
+			CMD="bk bkd -d $opts -l$VAR/log.$F -P$VAR/pid.$F"
+			eval $CMD 2>> $VAR/errors
+			echo Started $CMD in $dir
+			)
+		done < repositories
+	    	;;
 
-    stop)
-          cd $VAR || exit 1
-          echo Shutting down BitKeeper daemons
-          for i in pid.*
-          do   kill -HUP `cat $i`
-               rm $i
-          done
-          ;;
+    stop)	
+		cd $VAR || exit 1
+		echo Shutting down BitKeeper daemons
+		for i in pid.*
+		do	kill `cat $i`
+			rm $i
+		done
+		;;
 
-    status)    ps -axf | grep bkd
-          ;;
+    status)	cd $VAR || exit 1
+		for i in pid.*
+		do	echo This pid should be running: `cat $i`
+		done
+		ps -axf | grep bkd
+		
+		;;
 
-    *)         echo "Usage: bitkeeper {start|stop}"
-          exit 1
-          ;;
+    *)		echo "Usage: bitkeeper {start|stop}"
+    		exit 1
+		;;
 esac
+
 exit 0
 $
 #bkl_new_preamble

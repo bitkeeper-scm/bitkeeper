@@ -114,6 +114,7 @@ bkd_main(int ac, char **av)
 		/* NOTREACHED */
 	} else {
 		ids();
+		if (Opts.logfile) Opts.log = fopen(Opts.logfile, "a");
 		if (Opts.alarm) {
 			signal(SIGALRM, exit);
 			alarm(Opts.alarm);

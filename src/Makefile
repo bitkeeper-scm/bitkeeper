@@ -1,6 +1,5 @@
 # Makefile for BitKeeper.
 # @(#) %K%
-export
 HERE    := $(shell pwd)
 REPO    := $(shell basename `bk root`)
 URL     := $(shell echo bk://work/`bk root` | sed s,/home/bk/,,)
@@ -176,6 +175,8 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  b64wrap.sh gzip_b64wrap.sh unb64wrap.sh ungzip_b64wrap.sh
 
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
+
+export	GET
 
 default:
 	bk cat BUILD.txt
