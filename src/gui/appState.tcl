@@ -119,7 +119,7 @@ proc ::appState::filename {app} \
 	return $filename
 }
 
-proc ::appState::save {app statevar {version 1.0} {filename ""}} 
+proc ::appState::save {app statevar {version 1.0} {filename ""}} \
 {
 	upvar $statevar state
 
