@@ -1,7 +1,9 @@
 /* portable way to get secure random bits to feed a PRNG */
 #include "mycrypt.h"
+#ifndef WIN32
 #include <unistd.h>
 #include <sys/time.h>
+#endif
 
 /* on *NIX read /dev/random */
 static unsigned long rng_nix(unsigned char *buf, unsigned long len, 
@@ -89,6 +91,11 @@ static unsigned long rng_win32(unsigned char *buf, unsigned long len,
 
 #endif /* WIN32 */
 
+#ifdef WIN32
+#define	srandom(x)	srand(x)
+#define	random(x)	rand(x)
+#endif
+
 /*
  * A "fake" random number generator for the BK regressions.
  * This one is a lot faster than /dev/random which might wait
@@ -104,8 +111,10 @@ static unsigned long rng_fake(unsigned char *buf, unsigned long len)
 	seed ^= tv.tv_usec;
 	seed ^= getpid();
 	seed = (seed << 7) | (seed >> 25);
+#ifndef WIN32
 	seed ^= (unsigned long)sbrk(0);
 	seed = (seed << 7) | (seed >> 25);
+#endif
 	seed ^= (unsigned long)&seed;
 	srandom(seed);
 	while (x--) *buf++ = random();
