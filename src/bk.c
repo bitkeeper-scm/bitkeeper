@@ -282,7 +282,7 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Is it is a perl 4 script ?
+	 * Is it a perl 4 script ?
 	 */
 	if (streq(av[0], "pmerge")) {
 		argv[0] = "perl"; 
@@ -294,7 +294,7 @@ main(int ac, char **av)
 	}
 
 	/*
-	 * Is it is a perl 5 script ?
+	 * Is it a perl 5 script ?
 	 */
 	if (streq(av[0], "mkdiffs")) {
 		argv[0] = find_perl5();
@@ -504,7 +504,7 @@ find_perl5()
 		sprintf(perl_path, "%s/perl", p);
 		unless (executable(perl_path)) goto next;
 #endif
-		sprintf(buf, "%s -v | grep 'version 5.0' > %s",
+		sprintf(buf, "%s -v | grep -E '(version 5.0)|(perl, v5.[0-9])' > %s",
 			perl_path, DEV_NULL);
 		if (system(buf) == 0)	return(perl_path);
 next:		p = ++s;
