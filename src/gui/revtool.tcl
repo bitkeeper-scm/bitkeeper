@@ -2041,7 +2041,7 @@ select a new file to view"
 		} else {
 			set R "-n$gc(rev.showRevs)"
 		}
-	} elseif {[regexp -- {^-} $R] == 0} {
+	} elseif {[regexp -- {^-[rRn]} $R] == 0} {
 		set R "-R$R"
 	}
 	# If valid time range given, do the graph
