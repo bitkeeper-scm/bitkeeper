@@ -580,6 +580,7 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv BK_TIME_T=%s\n", bk_time);
 	user = sccs_getuser();
 	fprintf(f, "putenv BK_USER=%s\n", user);
+	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
 
