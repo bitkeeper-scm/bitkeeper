@@ -7,6 +7,7 @@ extern char *bin;
 char *find_wish();
 char *find_perl5();
 
+int files_main(int, char **);
 int bkd_main(int, char **);
 int setup_main(int, char **);
 int commit_main(int, char **);
@@ -75,6 +76,7 @@ int repo_main(int, char **);
 int pull_main(int, char **);
 
 struct command cmdtbl[100] = {
+	{"files", files_main },
 	{"bkd", bkd_main },
 	{"setup", setup_main },
 	{"commit", commit_main},
