@@ -55,6 +55,8 @@ proc getConfig {prog} \
 	set _d(ci.filesHeight) 8	;# number of files to show in top win
 	set _d(ci.commentsHeight) 6	;# height of comment window
 	set _d(ci.diffHeight) 30	;# number of lines in the diff window
+	set _d(ci.rescan) 0		;# Do a second scan to see if anything
+					;# changed. Values 0 - off 1 - on
 
 	set _d(cset.listHeight) 12
 
