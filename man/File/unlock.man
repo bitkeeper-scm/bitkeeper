@@ -75,9 +75,6 @@ operations and that is confusing.
 .B bk help lock
 .br
 .B bk help abort
-.SH ALIASES
-.BR locks (Repository)
-.br
-.BR repo (Repository)
-.br
-.BR unlocking (Repository)
+.\" help://Repository/locks
+.\" help://Repository/repo
+.\" help://Repository/unlocking

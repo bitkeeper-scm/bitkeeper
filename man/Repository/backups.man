@@ -42,7 +42,5 @@ it, not tar, cp, or some other file by file copy.
 .B bk help pending
 .br
 .B bk help status
-.SH ALIASES
-.BR copying (Repository)
-.br
-.BR copy (Repository)
+.\" help://Repository/copying
+.\" help://Repository/copy

@@ -137,3 +137,10 @@
 .	TP .2i
 \(bu 
 ..
+.de SA
+.\" SEE ALSO sections...  printed=bk man; online=bk help
+.	if t
+.	B bk man \\$1
+.	if n
+.	B bk help \\$1
+..

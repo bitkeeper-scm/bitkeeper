@@ -83,9 +83,5 @@ be verbose about non-matching ranges
 .B bk help difftool
 .br
 .B bk help export
-.SH ALIASES
-.LP
-.BR Basics (differences)
-.br
-.BR Basics (sdiffs)
-
+.\" help://Basics/differences
+.\" help://Basics/sdiffs

@@ -123,5 +123,4 @@ Prefix each line with the user who last modified it.
 .B bk help ranges
 .br
 .B bk help sccstool
-.SH ALIASES
-.BR File (sccscat)
+.\" help://File/sccscat

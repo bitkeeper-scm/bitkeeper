@@ -477,5 +477,4 @@ D 1.1 00/03/01 11:20:23 u1@master.dmn.com 2 1 00009/00000/00000
 P src/file1.c
 ------------------------------------------------
 .XA
-.SH ALIASES
-.BR HOWTO (General)
+.\" help://General/HOWTO

@@ -62,8 +62,5 @@ the window.
 .B bk help renametool
 .br
 .B bk help sccstool
-.SH ALIASES
-.BR GUI (GUI-tools)
-.br
-.BR gui (GUI-tools)
-
+.\" help://GUI-tools/GUI
+.\" help://GUI-tools/gui

@@ -44,7 +44,5 @@ will not move directories.
 .B bk help rm
 .br
 .B bk help resync
-.SH ALIASES
-.BR Basics (sccsmv)
-.br
-.BR Basics (renames)
+.\" help://Basics/sccsmv
+.\" help://Basics/renames

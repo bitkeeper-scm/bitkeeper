@@ -78,7 +78,5 @@ Set check-in comment of changeset to
 .B bk help pending
 .br
 .B bk help tag
-.SH ALIASES
-.BR changeset (Repository)
-.br
-.BR changesets (Repository)
+.\" help://Repository/changeset
+.\" help://Repository/changesets

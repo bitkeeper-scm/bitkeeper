@@ -77,6 +77,4 @@ case "$1" in
 esac
 exit 0
 .XA
-.SH ALIASES
-.BR init.d (Admin)
-
+.\" help://Admin/init.d

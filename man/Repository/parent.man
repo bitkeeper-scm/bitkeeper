@@ -63,5 +63,4 @@ Remove the parent pointer.
 .B bk help push
 .br
 .B bk help resync
-.SH ALIASES
-.BR url (Repository)
+.\" help://Repository/url

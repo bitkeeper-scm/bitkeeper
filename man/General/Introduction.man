@@ -41,6 +41,4 @@ For new users, may we suggest the following topics in order:
 .B bk help basics
 .br
 .B bk help GUI
-.SH ALIASES
-.BR General (Overview)
-
+.\" help://General/Overview
