@@ -2385,7 +2385,18 @@ copyAndGet(char *from, char *to, project *proj)
 
 	if (link(from, to)) {
 		mkdirf(to);
-		if (link(from, to)) return (-1);
+		if (link(from, to)) {
+			unless (errno == EXDEV) return (-1);
+			/*
+			 * We should rarelly get here, this mean
+			 * the enclosing tree and the RESYNC tree are on
+			 * different file system. It is reported that
+			 * in AFS file system, the link() call return EXDEV
+			 * when we try to create hard link across different
+			 * directories, because AFS's ACL is per directory.
+			 */
+			if (fileCopy(from, to)) return (-1);
+		}
 	}
 	s = sccs_init(to, INIT_SAVEPROJ, proj);
 	assert(s && s->tree);
