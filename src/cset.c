@@ -1253,15 +1253,17 @@ sccs_patch(sccs *s, cset_t *cs)
 		s->rstop = s->rstart = d;
 		/*
 		 * XXX FIXME
-		 * Do we expect the files under BitKeeper/etc to move?
-		 * If not,  we may want to jut test the top-of-trunk pathname
-		 * and move the test out side this loop. This would
+		 * TODO  move the test out side this loop. This would
 		 * be a little faster.
 		 */
 		mk_placeholder = 0;
 		if (cs->metaOnly) {
+			int len1 = strlen(s->tree->pathname);
+			int len2 = strlen(BKROOT);
 			unless ((s->state & S_CSET) ||
-				match_one(d->pathname, BKROOT "/*")) {
+				((len2 > len1) &&
+				    strneq(s->tree->pathname, BKROOT, len1))) {
+				
 				mk_placeholder = 1;
 				prs_flags |= PRS_PLACEHOLDER;
 			}

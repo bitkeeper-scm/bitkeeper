@@ -822,10 +822,15 @@ fixLod(sccs *s)
 private int
 chkEmpty(sccs *s, MMAP *dF)
 {
+	delta	*e;
+	int	len;
+
+	len = strlen(BKROOT);
+	e = s->tree; /* we want the root path */
 	if ((dF->size > 0) &&
 	    !(s->state & S_CSET) &&
-	    (strlen(s->sfile) > 17) &&
-	    !strneq(s->sfile, "RESYNC/BitKeeper/", 17)) {
+	    (strlen(e->pathname) > len) &&
+	    !strneq(e->pathname, BKROOT, len)) {
 		fprintf(stderr,
 			"Logging patch should not have source content\n");
 		return (1); /* failed */
@@ -1701,6 +1706,12 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		i = 0;
 		while (t = mnext(m)) {
 			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {
+				len = linelen(t);
+				sumC = adler32(sumC, t, len);
+				t = mnext(m);
+				if (strneq(t, PATCH_LOGGING, len)) {
+					isLogPatch = 1;
+				}
 				i++;
 				break;
 			}
