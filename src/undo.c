@@ -1,5 +1,5 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 
 extern char *bin;
 private char	*getrev(char *);
@@ -7,21 +7,21 @@ private void	clean_file(char *, char *);
 
 undo_main(int ac,  char **av)
 {
-	int c, rc;
-	int force = 0, save = 1;
-	char buf[MAXLINE], rmlist[MAXPATH], cleanlist[MAXPATH];
-	char mvlist[MAXPATH], renamelist[MAXPATH], undolist[MAXPATH];
-	char *qflag = "", *vflag = "-v";
-	char *p, *rev = 0;
-	FILE *f, *f1;
-#define LINE "---------------------------------------------------------\n"
-#define BK_TMP  "BitKeeper/tmp"
-#define BK_UNDO "BitKeeper/tmp/undo"
+	int	c, rc;
+	int	force = 0, save = 1;
+	char	buf[MAXLINE], rmlist[MAXPATH], cleanlist[MAXPATH];
+	char	mvlist[MAXPATH], renamelist[MAXPATH], undolist[MAXPATH];
+	char	*qflag = "", *vflag = "-v";
+	char	*p, *rev = 0;
+	FILE	*f, *f1;
+#define	LINE "---------------------------------------------------------\n"
+#define	BK_TMP  "BitKeeper/tmp"
+#define	BK_UNDO "BitKeeper/tmp/undo"
 
-	platformInit();  
+	platformInit();
 
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
-		switch (c) { 
+		switch (c) {
 		    case 'a':	rev = getrev(optarg);
 				break;
 		    case 'f': force  =  1; break;
@@ -46,7 +46,8 @@ undo_main(int ac,  char **av)
 	clean_file(rmlist, rev);
 
 	sprintf(undolist, "%s/bk_undolist%d",  TMP_PATH, getpid());
-	sprintf(buf, "%sbk stripdel -Ccr%s ChangeSet 2> %s", bin, rev, undolist);
+	sprintf(buf, "%sbk stripdel -Ccr%s ChangeSet 2> %s",
+							bin, rev, undolist);
 	if (system(buf) != 0) {
 		gethelp("undo_error", bin, stdout);
 		cat(undolist);
@@ -79,14 +80,13 @@ undo_main(int ac,  char **av)
 		}
 	}
 
-	
 	sprintf(mvlist, "%s/bk_mvlist%d",  TMP_PATH, getpid());
 	f1 = fopen(mvlist, "wb");
 	f = fopen(rmlist, "rt");
 	assert(f);
 	assert(f1);
 	while (fgets(buf, sizeof(buf), f)) {
-		char buf1[MAXLINE];
+		char	buf1[MAXLINE];
 
 		chop(buf);
 		p = strchr(buf, '@');
@@ -116,7 +116,7 @@ undo_main(int ac,  char **av)
 	system(buf);
 	f = fopen(renamelist, "rt");
 	while (fgets(buf, sizeof(buf), f)) {
-		char buf1[MAXLINE];
+		char	buf1[MAXLINE];
 
 		chop(buf);
 		p = strchr(buf, ' ');
@@ -143,7 +143,7 @@ undo_main(int ac,  char **av)
 	unlink(mvlist); unlink(rmlist); unlink(undolist); unlink(renamelist);
 	if (streq(qflag, "") && save) {
 		printf("Patch containing these undone deltas left in %s",
-								       BK_UNDO);
+		    BK_UNDO);
 	}
 	if (streq(qflag, "")) printf("Running consistency check...\n");
 	sprintf(buf, "%sbk sfiles -r", bin);
@@ -159,14 +159,14 @@ undo_main(int ac,  char **av)
 }
 
 private char *
-getrev( char *top_rev)
+getrev(char *top_rev)
 {
 	static char buf[MAXLINE];
-	char tmpfile[MAXPATH];
-	int fd, len;
+	char	tmpfile[MAXPATH];
+	int	fd, len;
 
 	sprintf(tmpfile, "%s/bk_tmp%d", TMP_PATH, getpid());
-	sprintf(buf,
+	sprintf(buf,					/* CSTYLED */
 		"bk -R prs -ohMa -r1.0..%s -d\":REV:,\\c\" ChangeSet > %s",
 		top_rev, tmpfile);
 	system(buf);
@@ -186,10 +186,10 @@ getrev( char *top_rev)
 private void
 clean_file(char *rmlist, char *rev)
 {
-	FILE *f, *f1;
-	char cleanlist[MAXPATH];
-	char buf[MAXLINE];
-	char *p;
+	FILE	*f, *f1;
+	char	cleanlist[MAXPATH];
+	char	buf[MAXLINE];
+	char	*p;
 
 	sprintf(cleanlist, "%s/bk_cleanlist%d",  TMP_PATH, getpid());
 	sprintf(buf, "%sbk cset -ffl%s > %s", bin, rev, rmlist);

@@ -1,5 +1,5 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 #include <time.h>
 
 extern char *editor, *pager, *bin;
@@ -17,10 +17,8 @@ private	int	checkConfig();
 
 commit_main(int ac, char **av)
 {
-	int c, doit = 0;
-	int rc;
-	char buf[MAXLINE];
-	char s_cset[MAXPATH] = CHANGESET;
+	int	rc, c, doit = 0;
+	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 
 	platformInit();
 
@@ -31,7 +29,7 @@ commit_main(int ac, char **av)
 		    case 'f':	checklog = 0; break;
 		    case 'F':	force = 1; break;
 		    case 'L':	lod = 1; break;
-		    case 'R':	resync = 1; 
+		    case 'R':	resync = 1;
 				bk_dir = "../BitKeeper/";
 				break;
 		    case 's':	/* fall thru  */
@@ -88,13 +86,12 @@ commit_main(int ac, char **av)
 			sprintf(buf, "%s %s", editor, commit_file);
 			system(buf);
 			break;
-		    case 'a':	
+		    case 'a':
 Abort:			printf("Commit aborted.\n");
 			unlink(list);
 			unlink(commit_file);
 			exit(1);
 		}
-		
 	}
 }
 
@@ -109,13 +106,13 @@ cat(char *file)
 private int
 do_commit()
 {
-	int hasComment =  (exists(commit_file) && (size(commit_file) > 0));
-	char buf[MAXLINE], sym_opt[MAXLINE] = "";
-	char s_cset[MAXPATH] = CHANGESET;
-	char commit_list[MAXPATH];
-	int rc;
-	sccs *s;
-	delta *d;
+	int	hasComment =  (exists(commit_file) && (size(commit_file) > 0));
+	int	rc;
+	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
+	char	s_cset[MAXPATH] = CHANGESET;
+	char	commit_list[MAXPATH];
+	sccs	*s;
+	delta	*d;
 
 	if (checkConfig() != 0) {
 		unlink(list);
@@ -134,7 +131,8 @@ do_commit()
 	system(buf);
 	sprintf(buf, "%sbk cset %s %s %s %s%s < %s",
 		bin, lod ? "-L": "", quiet ? "-q" : "", sym_opt,
-		hasComment? "-Y" : "", hasComment ? commit_file : "", commit_list);
+		hasComment? "-Y" : "", hasComment ? commit_file : "",
+		commit_list);
 	rc = system(buf);
 	unlink(list);
 	unlink(commit_file);
@@ -144,16 +142,14 @@ do_commit()
 	d = findrev(s, 0);
 	logChangeSet(d->rev);
 	sccs_free(s);
-	return(rc);
+	return (rc);
 }
 
 private	int
 checkConfig()
 {
-	char buf[MAXLINE];
-	char s_config[MAXPATH];
-	char g_config[MAXPATH];
-	
+	char	buf[MAXLINE], s_config[MAXPATH], g_config[MAXPATH];
+
 	sprintf(s_config, "%setc/SCCS/s.config", bk_dir);
 	sprintf(g_config, "%setc/config", bk_dir);
 	unless (exists(s_config)) {
@@ -182,4 +178,3 @@ make_comment(char *cmt)
 	write(fd, cmt, strlen(cmt));
 	close(fd);
 }
-

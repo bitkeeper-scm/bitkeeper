@@ -1,14 +1,14 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 
 extern char *editor, *pager, *bin;
 
 setup_main(int ac, char **av)
 {
-	int force = 0, c, logsetup;
-	char *project_name = NULL, *project_path = NULL, *config_path = NULL;
-	char buf[1024], my_editor[1024], setup_files[MAXPATH];
-	FILE *f;
+	int	force = 0, c, logsetup;
+	char	*project_name = NULL, *project_path = NULL, *config_path = NULL;
+	char	buf[1024], my_editor[1024], setup_files[MAXPATH];
+	FILE	*f;
 
 	platformInit();
 
@@ -65,7 +65,7 @@ setup_main(int ac, char **av)
 				break;
 			} else {
 				printf(
-				 "Sorry, you have to put something in there\n");
+				"Sorry, you have to put something in there\n");
 			}
 		}
 	} else {
@@ -76,7 +76,7 @@ setup_main(int ac, char **av)
 	sprintf(buf, "%sbk cset -siDescription .", getenv("BK_BIN"));
 	system(buf);
 
-	f = fopen("Description", "rt"); 
+	f = fopen("Description", "rt");
 	fgets(buf, sizeof(buf), f);
 	fclose(f);
 	logsetup = strneq(buf, "BitKeeper Test", 14) ? 0 : 1;
@@ -106,8 +106,7 @@ setup_main(int ac, char **av)
 			if (system(buf)) {
 				break;
 			} else {
-				printf(
-				 "Sorry, you have to really fill this out.\n");
+				printf("Sorry, you have to fill this out.\n");
 			}
 		}
 	} else {
@@ -117,17 +116,18 @@ setup_main(int ac, char **av)
 	// XXX FIXME: This should be replaced with a direct C function call
 	sprintf(buf, "%sbk ci -qi config", bin);
 	system(buf);
+	sprintf(buf, "%sbk get -q config", bin);
+	system(buf);
 
 	if (logsetup) {
-		sprintf(buf, "%sbk get -q config", bin);
-		system(buf);
 		sprintf(buf, "%sbk sendconfig setups@openlogging.org", bin);
 	}
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
 	sprintf(buf, "%sbk sfiles -C > %s", bin, setup_files);
 	system(buf);
 	sprintf(buf,
-		"%sbk cset -q -y\"Initial repository create\" -  < %s", bin, setup_files);
+		"%sbk cset -q -y\"Initial repository create\" -  < %s",
+		bin, setup_files);
 	system(buf);
 	unlink(setup_files);
 	return (0);

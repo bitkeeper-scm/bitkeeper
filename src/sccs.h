@@ -394,6 +394,7 @@ typedef struct {
 typedef struct {
 	int	flags;		/* PROJ_* */
 	char	*root;		/* to the root of the project */
+	MDBM	*config;	/* config DB */
 } project;
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"

@@ -395,8 +395,8 @@ pass1_renames(opts *opts, sccs *s)
 	}
 
 	unless (filenum) {
-		mkdir("BitKeeper/RENAMES", 0775);
-		mkdir("BitKeeper/RENAMES/SCCS", 0775);
+		mkdir("BitKeeper/RENAMES", 0777);
+		mkdir("BitKeeper/RENAMES/SCCS", 0777);
 	}
 	do {
 		sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);

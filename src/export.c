@@ -1,39 +1,38 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 
 extern char *bin;
 
 int
 export_main(int ac,  char **av)
 {
-	int c, count;
-	char *rev = NULL;
-	int  vflag = 0, kflag = 0, tflag = 0, wflag = 0;
-	char s_cset[MAXPATH] = CHANGESET;
-	char file_rev[MAXPATH];
-	char buf[MAXLINE], buf1[MAXPATH];
-	char include[MAXLINE] = "", exclude[MAXLINE] =  "";
-	char *src, *dst;
-	char *p, *q;
-	char src_path[MAXPATH], dst_path[MAXPATH];
-	sccs *s;
-	delta *d;
-	FILE *f;
-	
+	int	c, count;
+	int	vflag = 0, kflag = 0, tflag = 0, wflag = 0;
+	char	*rev = NULL;
+	char	s_cset[MAXPATH] = CHANGESET;
+	char	file_rev[MAXPATH];
+	char	buf[MAXLINE], buf1[MAXPATH];
+	char	include[MAXLINE] = "", exclude[MAXLINE] =  "";
+	char	*src, *dst;
+	char	*p, *q;
+	char	src_path[MAXPATH], dst_path[MAXPATH];
+	sccs	*s;
+	delta	*d;
+	FILE	*f;
 
-	platformInit();  
+	platformInit();
 
 	while ((c = getopt(ac, av, "Dktwvi:x:r:")) != -1) {
-		switch (c) { 
-		    case 'v': vflag = 1; break;
-		    case 'k': kflag = 1; break;
-		    case 'r': rev = optarg; break;
-		    case 't': tflag = 1; break;
-		    case 'w': wflag = 1; break;
-		    case 'i': sprintf(include, "| grep -E '%s' ",  optarg);
-			      break;
-		    case 'x': sprintf(exclude, "| grep -E -v '%s' ",  optarg);
-			      break;
+		switch (c) {
+		    case 'v':	vflag = 1; break;
+		    case 'k':	kflag = 1; break;
+		    case 'r':	rev = optarg; break;
+		    case 't':	tflag = 1; break;
+		    case 'w':	wflag = 1; break;
+		    case 'i':	sprintf(include, "| grep -E '%s' ",  optarg);
+				break;
+		    case 'x':	sprintf(exclude, "| grep -E -v '%s' ",  optarg);
+				break;
 		    default :
 usage:			fprintf(stderr,
 		"usage: bk export [-tDkwv] [-i<pattern>] [-x<pattern>]\n");
@@ -73,14 +72,14 @@ usage:			fprintf(stderr,
 	f = fopen(file_rev, "rt");
 	assert(f);
 	while (fgets(buf, sizeof(buf), f)) {
-		char output[MAXPATH];
-		int flags = PRINT;
+		char	output[MAXPATH];
+		int	flags = PRINT;
 
 		chop(buf);
 		p = strchr(buf, '@');
 		assert(p);
 		*p++ = '\0';
-		if (streq(buf, "ChangeSet")) continue; 
+		if (streq(buf, "ChangeSet")) continue;
 		sprintf(buf1, "%s/%s", src_path, buf);
 		q = name2sccs(buf1);
 		s = sccs_init(q, SILENT, 0);

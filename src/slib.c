@@ -70,7 +70,7 @@ private u32	xflags2state(u32 xflags);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
 private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 
-private unsigned int u_mask = 0x5eadbeef;
+private unsigned int u_mask;
 
 int
 executable(char *f)
@@ -3122,6 +3122,94 @@ err:			free(s->gfile);
 }
 
 /*
+ * Parse a line from the config file
+ * a) reject all line without a ':' character
+ * b) remove all whitespaces
+ * c) replace ':' with space as field seperator.
+ * d) reject the "logging_ok" field; MDBM does not like dup keys.
+ */
+private int
+parseConfig(char *buf)
+{
+	char *p, *q;
+	
+	p = strchr(buf, ':');
+	unless (p) return 0;
+	p = q =  buf;
+	while (*p) {
+		if (*p == ':') {
+			*q++ = ' ';
+			p++;
+		} else if ((*p == ' ') || (*p == '\t')) {
+			p++;
+		} else {
+			*q++ = *p++;
+		}
+	}
+	*q = 0;
+	if (strneq(buf, "logging_ok ", 11)) return 0;
+	return 1;
+}
+
+
+/*
+ * Load config file into a MDBM DB
+ * This function is called (indirectly) from sccs_init()
+ * It also call sccs_init() itself, i.e potential mutual recursion.
+ * Another form of potential recursion is:
+ * 	Doing a "bk clean" on  config file (from upper level) may
+ * 	actually trigger the config file to be checked out.
+ * Note: We currently do not test if we are called from the RESYNC directory.
+ * (If so, we should probably get the config file from the parent of RESYNC)
+ * This may be important someday if we are trying to control attribute
+ * during "resync" processing.
+ */
+private MDBM *
+loadConfig(char *root)
+{
+	MDBM	*DB = 0;
+	char 	s_config[MAXPATH];
+	char 	g_config[MAXPATH];
+	sccs 	*s1 = 0;
+	project *proj;
+
+	/*
+	 * Hand make a project struct, so sccs_init(s_config, ..) below
+	 * won'nt call us again, otherwise we end up in a loop.
+	 */
+	proj = calloc(1, sizeof(*proj));
+	proj->root = strdup(root);
+
+	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
+	sprintf(g_config, "%s/BitKeeper/etc/config", root);
+	/*
+	 * If the config is already checked out, use that.
+	 * Otherwise, check it out.
+	 */
+	if (exists(s_config) && !exists(g_config)) {
+		s1 = sccs_init(s_config, SILENT, proj);
+		unless (s1) return 0;
+		if (sccs_get(s1, 0, 0, 0, 0, SILENT, 0)) {
+			sccs_free(s1);
+			return (0);
+		}
+	}
+	unless (exists(g_config)) return (0);
+	DB = loadDB(g_config, parseConfig, DB_NODUPS);
+	if (s1) {
+		/*
+		 * If we checked out the config file,
+		 * we must clean it up. (The uppper level could be
+		 * doing a "bk -r clean") Leaving the config
+		 * checked out could give strange result.
+		 */
+		unlink(g_config);
+		sccs_free(s1);
+	}
+	return DB;
+}
+
+/*
  * Initialize the project struct.
  * We don't put it in the sccs in case there isn't one, the caller can do it.
  * Callers of this (see locking.c) depend on it returning NULL if there is
@@ -3142,6 +3230,7 @@ proj_init(sccs *s)
 	unless (root = sccs_root(s)) return (0);
 	p = calloc(1, sizeof(*p));
 	p->root = root;
+	p->config = loadConfig(root);
 	return (p);
 }
 
@@ -3150,6 +3239,7 @@ proj_free(project *p)
 {
 	unless (p) return;
 	if (p->root) free(p->root);
+	if (p->config) mdbm_close(p->config);
 	free(p);
 }
 
@@ -3164,14 +3254,11 @@ sccs_init(char *name, u32 flags, project *proj)
 {
 	sccs	*s;
 	struct	stat sbuf;
-	char	*t;
+	char	*t, *val;
 	static	int YEAR4;
+	unsigned int i;
 
 	platformSpecificInit(name);
-	if (u_mask == 0x5eadbeef) {
-		u_mask = ~umask(0);
-		umask(~u_mask);
-	}
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));
 		s->sfile = strdup(sPath(name, 0));
@@ -3180,6 +3267,18 @@ sccs_init(char *name, u32 flags, project *proj)
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
 		return (0);
 	}
+
+	s->proj = proj ? proj : proj_init(s);
+	if (s->proj && s->proj->config && 
+	    (val = mdbm_fetch_str(s->proj->config, "umask")) &&
+	    (sscanf(val, "%o", &i) == 1)) {
+		u_mask = ~i;
+		umask(i);
+	} else {
+		u_mask = ~umask(0);
+		umask(~u_mask); 
+	}
+
 	t = strrchr(s->sfile, '/');
 	if (t && streq(t, "/s.ChangeSet")) s->state |= S_HASH|S_CSET;
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
@@ -3257,11 +3356,6 @@ sccs_init(char *name, u32 flags, project *proj)
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = -1;
-			/*
-			 * This is a little bogus - we are looking for a
-			 * a project when there may not be one.
-			 */
-			s->proj = proj ? proj : proj_init(s);
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3289,11 +3383,6 @@ sccs_init(char *name, u32 flags, project *proj)
 			return (0);
 		}
 	}
-	
-	/*
-	 * Don't go look for BK root if not a BK file.
-	 */
-	if (s->state & S_BITKEEPER) s->proj = proj ? proj : proj_init(s);
 
 	/*
 	 * Let them force YEAR4
@@ -3533,7 +3622,7 @@ mksccsdir(char *sfile)
 #if defined(SPLIT_ROOT)
 		unless (exists(sfile)) mkdirp(sfile);
 #else
-		mkdir(sfile, 0775);
+		mkdir(sfile, 0777);
 #endif
 		*s = '/';
 	}

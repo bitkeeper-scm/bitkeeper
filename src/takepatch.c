@@ -1162,12 +1162,12 @@ init(char *inputFile, int flags, project **pp)
 	 * We assume that a higher level program called repository_wrlock(),
 	 * we're just doing the RESYNC part.
 	 */
-	if (mkdir("RESYNC", 0775)) {
+	if (mkdir("RESYNC", 0777)) {
 		fprintf(stderr, "takepatch: can not get write lock\n");
 		repository_lockers(p);
 		cleanup(0);
 	}
-	unless (mkdir("RESYNC/SCCS", 0775) == 0) {
+	unless (mkdir("RESYNC/SCCS", 0777) == 0) {
 		SHOUT();
 		perror("mkdir");
 		cleanup(CLEAN_RESYNC);
@@ -1186,7 +1186,7 @@ init(char *inputFile, int flags, project **pp)
 		 * Save the patch in the pending dir
 		 * and record we're working on it.
 		 */
-		if (!isdir("PENDING") && (mkdir("PENDING", 0775) == -1)) {
+		if (!isdir("PENDING") && (mkdir("PENDING", 0777) == -1)) {
 			SHOUT();
 			perror("PENDING");
 			cleanup(CLEAN_RESYNC);

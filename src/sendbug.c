@@ -1,15 +1,15 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 
 extern char *bin, *editor;
 
 sendbug_main(int ac,  char **av)
 {
-	char buf[MAXLINE];
-	char bug[MAXPATH];
-	FILE *f;
+	char	buf[MAXLINE];
+	char	bug[MAXPATH];
+	FILE	*f;
 
-	platformInit();  
+	platformInit();
 	sprintf(bug, "%s/bk_bug%d", TMP_PATH, getpid());
 	f = fopen(bug, "wb");
 	gethelp("bugtemplate", 0, f);

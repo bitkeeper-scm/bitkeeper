@@ -1,22 +1,21 @@
 #include "system.h"
-#include "sccs.h" 
+#include "sccs.h"
 
 extern char *bin;
 
 fix_main(int ac,  char **av)
 {
-	int c, i;
-	char buf[MAXLINE], opts[MAXLINE] = "";
-	char fix_file[MAXPATH];
-	char *qflag = "-q";
-	char *p;
-	sccs *s;
-	delta *d;
+	int	c, i;
+	char	buf[MAXLINE], opts[MAXLINE] = "";
+	char	fix_file[MAXPATH];
+	char	*qflag = "-q", *p;
+	sccs	*s;
+	delta	*d;
 
-	platformInit();  
+	platformInit();
 
 	while ((c = getopt(ac, av, "qv")) != -1) {
-		switch (c) { 
+		switch (c) {
 		    case 'q': break;
 		    case 'v': qflag = ""; break;
 		    default :
@@ -29,13 +28,13 @@ fix_main(int ac,  char **av)
 		if (writable(av[i])) {
 			printf("%s is already edited\n", av[i]);
 			continue;
-		}	
+		}
 		sprintf(fix_file, "%s-fix", av[i]);
 		if (exists(fix_file)) {
 			printf("%s exists, skipping that file", fix_file);
 			continue;
 		}
-		if (sccs_filetype(av[i]) == 's') {     
+		if (sccs_filetype(av[i]) == 's') {
 			p = strdup(av[i]);
 		} else {
 			p = name2sccs(av[i]);
@@ -54,9 +53,9 @@ fix_main(int ac,  char **av)
 			assert(s);
 			if (sccs_get(s, 0, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "can not lock %s\n", av[i]);
-			} 
+			}
 			unlink(av[i]);
-			if (rename( fix_file, av[i]) == -1) {
+			if (rename(fix_file, av[i]) == -1) {
 				perror(av[i]);
 				free(p);
 				exit(1);

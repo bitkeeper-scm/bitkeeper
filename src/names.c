@@ -64,8 +64,8 @@ pass1(sccs *s)
 	char	path[MAXPATH];
 
 	unless (filenum) {
-		mkdir("BitKeeper/RENAMES", 0775);
-		mkdir("BitKeeper/RENAMES/SCCS", 0775);
+		mkdir("BitKeeper/RENAMES", 0777);
+		mkdir("BitKeeper/RENAMES/SCCS", 0777);
 	}
 	sprintf(path, "BitKeeper/RENAMES/SCCS/s.%d", ++filenum);
 	if (rename(s->sfile, path)) {
