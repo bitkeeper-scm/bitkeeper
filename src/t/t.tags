@@ -1,0 +1,176 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+if [ X$PLATFORM = X"WIN32" ]
+then
+        # It is unlikely in that ssh/rsh to localhost will work on NT.
+        # We let the user tell us otherwise.
+        if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
+else
+	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
+fi
+
+# Tests for tag propogation in new/old protocols.
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir src
+cd src
+echo foo > 'F!O#O$ B%A^R&RR(R)RR'
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+bk commit $S -a -yCset
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+echo OK
+cores
+echo $N Clone repository ............................................$NL
+cd $HERE
+bk clone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
+bk clone $Q $HERE/project $HERE/copy2 || { echo failed; exit 1; }
+[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+[ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
+parent=`cat copy/BitKeeper/log/parent`
+host=`bk gethost`
+[ x$parent = x${host}:$HERE/project ] || { echo wrong parent $parent; exit 1; }
+cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+echo OK
+echo $N Pull a new changeset with a tag using opull .................$NL
+cd $HERE/project/src
+bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
+echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
+bk delta $Q -ywhatever 'F!O#O$ B%A^R&RR(R)RR'
+bk commit $Q -yopull_cset -STAG1
+cd $HERE/copy
+bk opull -t $Q || { echo failed; exit 1; }
+revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+[ $revs -eq 2 ] || { echo failed; exit 1; }
+grep -q TAG1 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
+cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+echo OK
+echo $N Pull a new changeset with a tag using pull ..................$NL
+cd $HERE/copy2
+bk pull -t $Q || { echo failed; exit 1; }
+revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
+[ $revs -eq 2 ] || { echo failed; exit 1; }
+grep -q TAG1 SCCS/s.ChangeSet || { echo did not propogate tag; exit 1; }
+cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+echo OK
+echo $N Push a new changeset created with a tag using opush .........$NL
+cd $HERE
+tar cf P.tar project
+cd $HERE/copy/src
+bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
+echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
+bk delta $Q -yopush_cset 'F!O#O$ B%A^R&RR(R)RR'
+bk commit $Q -yopush_cset -STAG2
+_BK_FORCE_COMPAT=YES bk opush -t > OUT 2>&1
+grep -q 'will not accept tags in compatibility mode' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+cd $HERE/project
+echo $N Tag the latest and then undo that rev .......................$NL
+XXX - I think this will work; the weird one is a tag merge, where do 
+we put the merge delta and what happens when we undo?
+Also, we need to create some tag conflicts and try a push and see
+the error message, does it make sense?
+
+grep -q TAG2 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
+echo OK
+test -d /usr/libexec/bitkeeper-1.2 && {
+    echo $N Create a bk 1.2.9 tree, update w/ current, pull w/ old ......$NL
+    cd $HERE
+    rm -rf project copy
+    SAVE=$PATH
+    PATH=/usr/libexec/bitkeeper-1.2:$PATH
+    no_logging project
+    PATH=$SAVE
+    P=50000
+    bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+    while [ $? -eq 2 ]
+    do      P=`expr $P + 1`
+	    bk bkd -d -p$P -P$HERE/pid 2>/dev/null
+    done
+    cd ..
+    bk clone $Q bk://localhost:$P copy
+    cd project
+    ls > LS
+    bk new $Q LS
+    bk idcache -q
+    bk commit $Q -ycset1 -STAG1
+    grep -q '^.cV4' SCCS/s.ChangeSet || {
+    	echo bad version in the Changeset, maybe we have bumped it again
+	exit 1
+    }
+    cd $HERE/copy
+    /usr/libexec/bitkeeper-1.2/bk pull -t $Q bk://localhost:$P || exit 1
+    grep -q TAG1 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
+    grep -q '^.cV4' SCCS/s.ChangeSet && { echo propogated version; exit 1; }
+    echo OK
+
+    echo $N Push a new changeset created using 1.2.9 ....................$NL
+    ls > AAA
+    /usr/libexec/bitkeeper-1.2/bk new $Q AAA
+    /usr/libexec/bitkeeper-1.2/bk commit $Q -yAAA
+    /usr/libexec/bitkeeper-1.2/bk push -t $Q || exit 1
+    cd $HERE/project
+    grep -q 'c AAA' SCCS/s.ChangeSet || { echo failed to push; exit 1; }
+    echo OK
+
+    echo $N Tag a cset and push with 1.2.9 client, should fail ..........$NL
+    cd $HERE/copy
+    ls > BBB
+    /usr/libexec/bitkeeper-1.2/bk new $Q BBB
+    /usr/libexec/bitkeeper-1.2/bk commit $Q -ycset1 -STAG2
+    /usr/libexec/bitkeeper-1.2/bk push -t bk://localhost:$P > OUT 2>&1
+    grep -q 'will not accept tags in compatibility mode' OUT || {
+	    echo bad error message
+	    cat OUT
+	    exit 1
+    }
+    cd $HERE/project
+    grep -q TAG2 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
+    echo OK
+    
+    echo $N Create a new changeset, then try old code, should fail ......$NL
+    cd $HERE/copy
+    ls > LS2
+    bk new $Q LS2
+    bk idcache -q
+    bk commit $Q -yNEW
+    /usr/libexec/bitkeeper-1.2/bk push -t > OUT 2>&1
+    grep -q 'will not accept tags in compatibility mode' OUT || {
+	    echo bad error message
+	    cat OUT
+	    exit 1
+    }
+    cd $HERE/project
+    grep -q TAG2 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
+    echo OK
+    kill -9 `cat $HERE/pid`
+}
+exit 0
+#echo $N Create the same tag in a new place ..........................$NL
+#cd $HERE/copy/src
+#bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
+#echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
+#bk delta $Q -yopush_cset 'F!O#O$ B%A^R&RR(R)RR'
+#bk commit $Q -yopush_cset -STAG2
+#echo OK

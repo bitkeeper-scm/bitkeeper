@@ -99,7 +99,10 @@ getline(int in, char *buf, int size)
 			if (echo == 2) fprintf(stderr, "[%c]\n", c);
 			if (((buf[i] = c) == '\n') || (c == '\r')) {
 				buf[i] = 0;
-				if (echo) fprintf(stderr, "[%s]\n", buf);
+				if (echo) {
+					fprintf(stderr,
+					    "%d [%s]\n", getpid(), buf);
+				}
 				return (i + 1);	/* we did read a newline */
 			}
 			if (++i == size) {
@@ -198,7 +201,10 @@ getline2(remote *r, char *buf, int size)
 			if (((buf[i] = c) == '\n')) {
 				if ((i > 0) && (buf[i-1] == '\r')) i--;
 				buf[i] = 0;
-				if (echo) fprintf(stderr, "[%s]\n", buf);
+				if (echo) {
+					fprintf(stderr,
+					    "%d [%s]\n", getpid(), buf);
+				}
 				return (i + 1);	/* we did read a newline */
 			}
 			if (++i == size) {
@@ -211,7 +217,7 @@ getline2(remote *r, char *buf, int size)
 			unless (errno == EINTR) {	/* for !SIGINT */
 err:				buf[i] = 0;
 				if (echo) {
-					perror("getline");
+					perror("getline2");
 					fprintf(stderr, "[%s]=%d\n", buf, ret);
 				}
 				return (-1);
@@ -265,6 +271,7 @@ csetKeys(MDBM *not)
 		return (0);
 	}
 	for (d = s->table; d; d = d->next) {
+		unless (d->type == 'D') continue;
 		sccs_sdelta(s, d, buf);
 		unless (not && mdbm_fetch_str(not, buf)) {
 			mdbm_store_str(db, buf, d->rev, 0);

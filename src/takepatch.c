@@ -77,6 +77,7 @@ private	char	*input;		/* input file name,
 				 * either "-" or a patch file */
 private	int	encoding;	/* encoding before we started */
 private	char	*spin = "|/-\\";
+private	int	compat;		/* we are eating a compat patch, fail on tags */
 
 int
 takepatch_main(int ac, char **av)
@@ -1494,11 +1495,12 @@ init(char *inputFile, int flags, project **pp)
 					st.preamble_nl = 1;
 				}
 				if (st.preamble_nl) {
-					if (streq(buf, PATCH_CURRENT)) {
+					if (streq(buf, PATCH_COMPAT)) {
+						compat = 1;
 						st.version = 1;
 						st.preamble = 0;
 						st.preamble_nl = 0;
-					} else if (streq(buf, PATCH_NEXT)) {
+					} else if (streq(buf, PATCH_CURRENT)) {
 						st.type = 1;
 						st.preamble = 0;
 						st.preamble_nl = 0;
@@ -1567,6 +1569,12 @@ error:					fprintf(stderr, "GOT: %s", buf);
 					st.metadata = 0;
 					st.metaline = 1;
 				}
+				if (compat && strneq("S ", buf, 2) &&
+				    !streq("S BK key2\n", buf)) { 
+				    	fprintf(stderr,
+"\ntakepatch: will not accept tags in compatibility mode, please upgrade.\n");
+					goto error;
+			    	}
 			} else if (st.metaline) {
 				if (st.newline) {
 					st.metaline = 0;

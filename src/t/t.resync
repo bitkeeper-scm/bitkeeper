@@ -570,10 +570,17 @@ date > dummy
 bk new $Q dummy
 bk commit $S -y"symbol test2"
 bk admin $Q -S'later symbol' SCCS/s.ChangeSet
-bk resync -t $Q -a $HERE/project $HERE/copy
+bk resync -t $Q $HERE/project $HERE/copy
+grep -q 'S later symbol' $HERE/copy/PENDING/* || {
+	echo symbol not part of the patch
+	cat $HERE/copy/PENDING/*
+	exit 1
+}
+cp $HERE/copy/PENDING/* $HERE
+bk resolve -t -a $Q $HERE/copy
 cd $HERE/copy
 grep -q 'Slater symbol' SCCS/s.ChangeSet
-if [ $? != 0 ]; then echo failed; exit 1; fi
+if [ $? != 0 ]; then echo failed to send symbol; exit 1; fi
 echo OK
 
 echo $N Test propagation of a symbol added later and unrelated data..$NL

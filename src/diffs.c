@@ -76,7 +76,7 @@ usage:			system("bk help -s diffs");
 	/*
 	 * If we specified both revisions then we don't need the gfile.
 	 * If we specifed one rev, then the gfile is also optional, we'll
-	 * do TOT if it isn't there.
+	 * do the parent against that rev if no gfile.
 	 * If we specified no revs then there must be a gfile.
 	 */
 	if (rev || cset) things = 2;

@@ -2692,7 +2692,7 @@ resolve_cleanup(opts *opts, int what)
 	}
 	
 	if (what & CLEAN_PENDING) {
-		if (pendingFile[0]) {
+		if (pendingFile[0] && !getenv("TAKEPATCH_SAVEDIRS")) {
 			unlink(pendingFile);
 		}
 		rmdir(ROOT2PENDING);

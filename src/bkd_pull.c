@@ -10,7 +10,7 @@ extern	MDBM	*csetKeys(MDBM *);
 
 #define	OPULL
 #ifdef	OPULL
-private	char	*cset[] = { "bk", "makepatch", "-", 0 };
+private	char	*cset[] = { "bk", "makepatch", "-C", "-", 0 };
 
 int
 cmd_pull(int ac, char **av)
@@ -399,8 +399,8 @@ cmd_pull_part2(int ac, char **av)
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	char	buf[4096], rev_list[MAXPATH], s_cset[] = CHANGESET;
 	char	envbuf[MAXPATH], gzip_str[30] = "";
-	FILE 	*f;
 	sccs	*s;
+	delta	*d;
 	remote	r;
 
 	while ((c = getopt(ac, av, "delnqz|")) != -1) {
@@ -446,14 +446,12 @@ cmd_pull_part2(int ac, char **av)
 			printf("@END@\n");
 			goto next;
 		}
-		f = fopen(rev_list, "rt");
-		assert(f);
-		while (fnext(buf, f)) {
-			printf("%c%s", BKD_DATA, buf);
+		for (d = s->table; d; d = d->next) {
+			if (d->flags & D_VISITED) continue;
+			unless (d->type == 'D') continue;
+			printf("%c%s\n", BKD_DATA, d->rev);
 		}
 		printf("@END@\n");
-		fclose(f);
-
 	}
 	if (list) listIt2(s);
 
@@ -486,7 +484,7 @@ next:	sccs_free(s);
 
 	fputs("@PATCH@\n", stdout);
 	fflush(stdout); 
-	sprintf(buf, "bk makepatch %s - < %s | bk _gzip -z%d",
+	sprintf(buf, "bk makepatch -s %s - < %s | bk _gzip -z%d",
 				metaOnly ? "-e" : "", rev_list, gzip);
 	if (system(buf)) {
 		fprintf(stderr, "cmd_pull_part2: makepatch failed\n");

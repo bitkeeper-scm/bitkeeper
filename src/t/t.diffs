@@ -95,12 +95,10 @@ echo OK
 echo $N Checking diff -r1.7 .........................................$NL
 bk diffs -r1.7 Mydiffs > D
 bk undos > W <<EOF
-===== Mydiffs 1.7 vs 1.10 =====
-7a8,10
-> 1.8
-> 1.9
-> 1.10
+===== Mydiffs 1.6 vs 1.7 =====
+6a7
+> 1.7
 EOF
 cmp -s D W
-if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; cat D; exit 1; fi
 echo OK

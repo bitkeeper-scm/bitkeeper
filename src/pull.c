@@ -146,7 +146,7 @@ pull_part1(opts opts, remote *r, char probe_list[], char **envVar)
 	while ((n = getline2(r, buf, sizeof(buf))) > 0) {
 		write(fd, buf, n);
 		write(fd, "\n", 1);
-		if (streq("@END@", buf)) break;
+		if (streq("@END PROBE@", buf)) break;
 	}
 	if (opts.gzip) gzip_done();
 	close(fd);

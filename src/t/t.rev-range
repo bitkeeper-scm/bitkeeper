@@ -13,7 +13,7 @@
 # %K%
 
 # The optional datefudge line is excluded from $BASE2
-BASE=40
+BASE=39
 BASE2=`expr $BASE + 70`
 cat > SAVE <<EOF
 Hi there, this is file foo.

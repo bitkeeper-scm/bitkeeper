@@ -241,9 +241,9 @@ private int
 push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 {
 	char	buf[MAXPATH], s_cset[] = CHANGESET, *p;
-	FILE 	*f;
 	int	fd, rc, n, local_only, remote_only;
 	sccs	*s;
+	delta	*d;
 
 	send_part1_msg(opts, r, rev_list, envVar);
 	if (r->rfd < 0) return (-1);
@@ -306,13 +306,12 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 "----------------------- Sending the following csets -----------------------\n":
 "---------------------- Would send the following csets ---------------------\n")
 			;
-			f = fopen(rev_list, "rt");
-			unless (f) perror(rev_list);
-			assert(f);
 			n = 0;
-			while (fnext(buf, f)) {
-				n += strlen(buf) + 1;
-				chop(buf);
+			for (d = s->table; d; d = d->next) {
+				if (d->flags & D_SET) continue;
+				unless (d->type == 'D') continue;
+				n += strlen(d->rev) + 1;
+				fprintf(stderr, "%s", d->rev);
 				fputs(buf, stderr);
 				if (n > 72) {
 					n = 0;
@@ -322,7 +321,6 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 				}
 			}
 			fputs("\n", stderr);
-			fclose(f);
 			if (opts.list) listIt(s);
 			fprintf(stderr,
 "---------------------------------------------------------------------------\n")
@@ -356,6 +354,7 @@ genpatch(opts opts, int level, int wfd, char *rev_list)
 	opts.in = opts.out = 0;
 	n = 2;
 	if (opts.metaOnly) makepatch[n++] = "-e";
+	makepatch[n++] = "-s";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*

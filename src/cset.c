@@ -23,6 +23,8 @@ typedef	struct cset {
 	int	hide_cset;	/* exclude cset from file@rev list */
 	int	include;	/* create new cset with includes */
 	int	exclude;	/* create new cset with excludes */
+	int	compat;		/* Do PATCH_COMPAT patches */
+	int	serial;		/* the revs passed in are serial numbers */
 
 	/* numbers */
 	int	verbose;
@@ -54,42 +56,56 @@ private char	*spin = "|/-\\";
 int
 makepatch_main(int ac, char **av)
 {
-	int	i, m = 0;
-	char	*s;
-	char	*nav[20];
+	int	dash, c, i;
+	char	*nav[15];
+	char	range[500];
 
 	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help makepatch");
+usage:		system("bk help makepatch");
 		return (0);
 	}
-	/*
-	 * bk makepatch [-v] [-c<range>] [-d<range>] [-r<range>] [-]
-	 */
-	nav[0] = "makepatch";
-	for (i = 1; av[i]; ++i) {
-		if (i > 15) {
-			fprintf(stderr, "Too many args\n");
-			exit(1);
-		}
-		nav[i] = av[i];
-		s = &nav[i][1];
-		while (*s == 'v') s++;
-		if (*s == 'r') {
-			*s = 'm';
-			m = 1;
+	dash = streq(av[ac-1], "-");
+	nav[i=0] = "makepatch";
+	range[0] = 0;
+	while ((c = getopt(ac, av, "c|e|d|r|sCv")) != -1) {
+		if (i == 14) goto usage;
+		switch (c) {
+		    case 'r':
+		    	c = 'm';
+		    case 'c':
+		    case 'e':
+		    case 'd':
+			if (optarg && (strlen(optarg) >= sizeof(range) - 10)) {
+				fprintf(stderr,
+				    "buffer overflow in makepatch\n");
+				exit(1);
+			}
+			if (range[0]) goto usage;
+			sprintf(range, "-%c%s", c, optarg ? optarg : "");
+			nav[++i] = range;
+		    	break;
+		    case 's':
+			copts.serial = 1;
+			break;
+		    case 'C':
+			copts.compat = 1;
+			break;
+		    case 'v':
+			nav[++i] = "-v";
+			break;
+		    default:
+		    	goto usage;
 		}
 	}
-	unless (m) {
-		if (streq(nav[i-1], "-")) {
-			nav[i-1] = "-m";
-			nav[i] = "-";
-		} else {
-			nav[i++] = "-m";
-		}
-		ac++;
+	unless (range[0]) {
+		nav[++i] = "-m";
+		nav[++i] = "-";
+		dash = 0;
 	}
-	nav[ac] = 0;
-	return (cset_main(ac, nav));
+	if (dash) nav[++i] = "-";
+	nav[++i] = 0;
+	getoptReset();
+	return (cset_main(i, nav));
 }
 
 /*
@@ -117,7 +133,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 		return (1);
 	}
 
-	if (streq(av[0], "makepatch")) copts.makepatch++;
+	if (streq(av[0], "makepatch")) copts.makepatch = 1;
 
 	while (
 	    (c =
@@ -133,7 +149,12 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			r[rd++] = optarg;
 			break;
 		    case 'r':
-			copts.listeach++;
+			if (streq(av[0], "makepatch")) {
+				/* pretend -r<rev> is -m<rev> */
+				c = 'm';
+			} else {
+				copts.listeach++;
+			}
 		    	/* fall through */
 		    case 'd':
 			if (c == 'd') copts.doDiffs++;
@@ -141,20 +162,20 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 		    case 'e':
 			if (c == 'e') {
 				copts.metaOnly++;
-				copts.makepatch++;
+				copts.makepatch = 1;
 			}
 			/* fall through */
 		    case 'c':
 			if (c == 'c') {
 				copts.csetOnly++;
-				copts.makepatch++;
+				copts.makepatch = 1;
 			}
 			/* fall through */
 		    case 'M':
 			if (c == 'M') copts.mark++;
 			/* fall through */
 		    case 'm':
-			if (c == 'm') copts.makepatch++;
+			if (c == 'm') copts.makepatch = 1;
 		    	list |= 1;
 			if (optarg) {
 				r[rd++] = notnull(optarg);
@@ -162,14 +183,16 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 			}
 			break;
 		    case 'C':
-			/* XXX - this stomps on everyone else */
-		    	list |= 1;
-			copts.mark++;
-			copts.remark++;
-			copts.force++;
-			r[0] = allRevs;
-			rd = 1;
-			things = tokens(notnull(optarg));
+			unless (streq(av[0], "makepatch")) {
+				/* XXX - this stomps on everyone else */
+		    		list |= 1;
+				copts.mark++;
+				copts.remark++;
+				copts.force++;
+				r[0] = allRevs;
+				rd = 1;
+				things = tokens(notnull(optarg));
+			}
 			break;
 		    case 'p': flags |= PRINT; break;
 		    case 'q':
@@ -639,7 +662,12 @@ csetlist(cset_t *cs, sccs *cset)
 	if (cs->dash) {
 		while(fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);
-			unless (d = findrev(cset, buf)) {
+			if (copts.serial) {
+				d = sfind(cset, atoi(buf));
+			} else {
+				d = findrev(cset, buf);
+			}
+			unless (d) {
 				fprintf(stderr,
 				    "cset: no rev like %s in %s\n",
 				    buf, cset->gfile);
@@ -680,8 +708,7 @@ csetlist(cset_t *cs, sccs *cset)
 
 			bktemp(tmp_gone);
 			sysio(0, tmp_gone, 0, "bk", "get", "-kpsC", GONE, SYS);
-			goneDB =
-			loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
+			goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
 			unlink(tmp_gone);
 		}
 	} else {
@@ -710,10 +737,14 @@ again:	/* doDiffs can make it two pass */
 			fputs(PATCH_PATCH, stdout);
 		}
 		if (cs->metaOnly || (cset->state & S_LOGS_ONLY)) {
-			fputs(PATCH_NEXT, stdout);
+			assert(!cs->compat);
+			fputs(PATCH_CURRENT, stdout);
 			fputs(PATCH_LOGGING, stdout);
+		} else if (cs->compat || getenv("_BK_FORCE_COMPAT")) {
+			fputs(PATCH_COMPAT, stdout);
 		} else {
 			fputs(PATCH_CURRENT, stdout);
+			fputs(PATCH_REGULAR, stdout);
 		}
 		fputs("\n", stdout);
 	}
@@ -723,7 +754,7 @@ again:	/* doDiffs can make it two pass */
 	 * Do the ChangeSet deltas first, takepatch needs it to be so.
 	 */
 	for (d = cset->table; d; d = d->next) {
-		if ((d->flags & D_SET) && (d->type == 'D')) {
+		if (d->flags & D_SET) {
 			sccs_sdelta(cset, d, buf);
 			if (doKey(cs, csetid, buf)) goto fail;
 		}
@@ -1155,15 +1186,18 @@ sccs_patch(sccs *s, cset_t *cs)
 		    "Run ``bk -r check -a'' for more information.\n");
 		cset_exit(1);
 	}
+	if (cs->compat) prs_flags |= PRS_NOTAGS;
 
 	if (cs->verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
-	n = sccs_markMeta(s);
 
 	/*
 	 * Build a list of the deltas we're sending
 	 * Clear the D_SET flag because we need to be able to do one at
 	 * a time when sending the cset diffs.
 	 */
+	for (n = 0, d = s->table; d; d = d->next) {
+		if (d->flags & D_SET) n++;
+	}
 	list = calloc(n, sizeof(delta*));
 	newfile = s->tree->flags & D_SET;
 	for (i = 0, d = s->table; d; d = d->next) {

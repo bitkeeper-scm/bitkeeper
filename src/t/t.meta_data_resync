@@ -75,9 +75,6 @@ then	echo failed with mode $MODE
 	exit 1
 fi
 echo OK
-echo $N Check propagation of symbol .................................$NL
-echo TODO
-echo 'Need to add a test case here when the new pull code is added'
 echo $N Check propagation of flags ..................................$NL
 cd $HERE
 rm -rf $HERE/copy

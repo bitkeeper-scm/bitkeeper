@@ -88,7 +88,8 @@
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
 #define	PRS_LFLF	0x04000000	/* terminate non-empty record with LF */
-#define	PRS_PLACEHOLDER	0x02000000	/* make a place holder patch */
+#define	PRS_PLACEHOLDER	0x08000000	/* make a place holder patch */
+#define	PRS_NOTAGS	0x00100000	/* for makepatch -C, send no tags */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -499,8 +500,8 @@ extern	char *upgrade_msg;
  * 3 - because random bits can now be on a per delta basis.
  * 4 - added X_LOGS_ONLY, DT_PLACEHOLDER & DT_NO_TRANSMIT flags
  */
-#define	SCCS_VERSION		3
-#define	SCCS_LOGS_VERSION	4
+#define	SCCS_VERSION_COMPAT	3	/* for opull/opush */
+#define	SCCS_VERSION		4
 
 /*
  * struct sccs - the delta tree, the data, and associated junk.
@@ -635,10 +636,10 @@ typedef struct patch {
  * 1.1 = state machine in adler32
  * 1.2 = Changed random bits to be per delta;
  *	 Add grafted file support.
- * 1.3 = add logging patch type
+ * 1.3 = add logging patch type and tag graph.
  */
-#define PATCH_CURRENT	"# Patch vers:\t1.2\n"
-#define PATCH_NEXT	"# Patch vers:\t1.3\n"
+#define	PATCH_COMPAT	"# Patch vers:\t1.2\n"
+#define PATCH_CURRENT	"# Patch vers:\t1.3\n"
 
 #define PATCH_LOGGING	"# Patch type:\tLOGGING\n"
 #define PATCH_REGULAR	"# Patch type:\tREGULAR\n"

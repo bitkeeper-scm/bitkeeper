@@ -131,12 +131,11 @@ out:	return (error);
 int
 cmd_push_part1(int ac, char **av)
 {
-	pid_t	pid;
-	char	*listkey[4] = {"bk", "_listkey", "-d", 0};
-	char	*p, key_list[MAXPATH],buf[MAXKEY];
-	int	c, fd, fd1, wfd, n, status, gzip = 0,  metaOnly = 0;
+	char	*p, buf[MAXKEY], cmd[MAXPATH];
+	int	c, n, gzip = 0,  metaOnly = 0;
 	int	debug = 0;
 	MMAP    *m;
+	FILE	*l;
 
 	while ((c = getopt(ac, av, "dez|")) != -1) {
 		switch (c) {
@@ -196,37 +195,37 @@ cmd_push_part1(int ac, char **av)
 #ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL); /* for free bsd */
 #endif
-	/*
-	 * What we want is: remote => bk _listkey = > key_list
-	 */
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
-	bktemp(key_list);
-	fd1 = dup(1); close(1);
-	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
-	assert(fd == 1);
-	out("@OK@\n"); /* send it into the file */
-	unless (debug) listkey[2] = 0;
-	pid = spawnvp_wPipe(listkey, &wfd, 0);
-	close(1); dup2(fd1, 1); close(fd1);
-	while (n = getline(0, buf, sizeof(buf))) {
-		write(wfd, buf, n);
-		write(wfd, "\n", 1);
-		if (streq("@END@", buf)) break;
+	sprintf(cmd, "bk _listkey > BitKeeper/tmp/lk%d", getpid());
+	l = popen(cmd, "w");
+	while ((n = getline(0, buf, sizeof(buf))) > 0) {
+		if (debug) fprintf(stderr, "cmd_push_part1: %s\n", buf);
+		fprintf(l, "%s\n", buf);
+		if (streq("@END PROBE@", buf)) break;
 	}
-	close(wfd);
-	waitpid(pid, &status, 0);
-	if (!WIFEXITED(status) || (WEXITSTATUS(status) > 1)) {
+	if (pclose(l)) {
+		perror(cmd);
 		out("@END@\n"); /* just in case list key did not send one */
 		out("ERROR-listkey failed\n");
-		unlink(key_list);
 		return (1);
 	}
 
-	if (debug) fprintf(stderr, "cmd_push_part1: sending key list\n");
-	m = mopen(key_list, "r");
-	write(1, m->where,  msize(m));
+	out("@OK@\n");
+	sprintf(cmd, "BitKeeper/tmp/lk%d", getpid());
+	m = mopen(cmd, "r");
+	if (debug) {
+		fprintf(stderr, "cmd_push_part1: sending key list\n");
+		write(2, m->where,  msize(m));
+	}
+	unless (writen(1, m->where,  msize(m)) == msize(m)) {
+		perror("write");
+		mclose(m);
+		unlink(cmd);
+		return (1);
+	}
 	mclose(m);
-	unlink(key_list);
+	unlink(cmd);
+	if (debug) fprintf(stderr, "cmd_push_part1: done\n");
 	return (0);
 }
 
@@ -251,7 +250,7 @@ triggerEnv(int dont, int nothing, int conflict)
 int
 cmd_push_part2(int ac, char **av)
 {
-	int	fd2, pfd, c, n, rc = 0, gzip = 0, metaOnly = 0;
+	int	fd2, pfd, c, rc = 0, gzip = 0, metaOnly = 0;
 	int	status, debug = 0, dont = 0, nothing = 0, conflict = 0;
 	pid_t	pid;
 	char	buf[4096];

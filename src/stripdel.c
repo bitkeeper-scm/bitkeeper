@@ -63,7 +63,7 @@ usage:			system("bk help -s stripdel");
 	 * XXX - might want to insist that there is only one file.
 	 */
 	unless (av[optind]) {
-		fprintf(stderr, "stripdel: must specifies one file name\n");
+		fprintf(stderr, "stripdel: must specify one file name\n");
 		return (1);
 	}
 	name = sfileFirst("stripdel", &av[optind], SF_NODIREXPAND);
@@ -88,9 +88,9 @@ next:	return (1);
 private int
 doit(sccs *s, s_opts opts)
 {
-	delta *e;
-	int left, n;
-	int flags = 0;
+	delta	*e;
+	int	left, n;
+	int	flags = 0;
 
 	if (opts.quiet) flags |= SILENT;
 	if ((s->state & S_BITKEEPER) && opts.stripBranches) {
@@ -144,7 +144,7 @@ do_check(sccs *s, int flags)
 	int	error;
 
 	error = sccs_admin(s, 0, f, 0, 0, 0, 0, 0, 0, 0, 0);
-	return(error? 1 : 0);
+	return(error ? 1 : 0);
 }
 
 private int

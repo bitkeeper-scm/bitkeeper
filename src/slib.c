@@ -2786,34 +2786,40 @@ samelod(delta *a, delta *b)
 	return (a->r[0] == b->r[0]);
 }
 
-private void
-tcolor(sccs *s, delta *d)
-{
-	unless (d) return;
-	d->flags |= D_VISITED;
-	if (d->ptag) tcolor(s, sfind(s, d->ptag));
-	if (d->mtag) tcolor(s, sfind(s, d->mtag));
-}
-
-private void
+private int
 tagleaves(sccs *s, delta **l1, delta **l2)
 {
 	delta	*d = sccs_top(s);
-	symbol	*sym;
+	symbol	*sym, *a, *b;
+	int	first = 1;
 
 	for (sym = s->symbols; sym; sym = sym->next) {
 		if (isdigit(sym->name[0])) continue;
 		unless (sym->metad->symLeaf && samelod(sym->metad, d)) continue;
 		unless (*l1) {
+			a = sym;
 			*l1 = sym->metad;
 			continue;
 		}
 		unless (*l2) {
+			b = sym;
 			*l2 = sym->metad;
 			continue;
 		}
-		assert("More than two metadata leaves" == 0);
+		if (first) {
+			fprintf(stderr,
+			    "Unmerged tag tips:\n"
+			    "\t%-16s %s\n\t%-16s %s\n\t%-16s %s\n",
+			    a->metad->rev, a->name,
+			    b->metad->rev, b->name,
+			    sym->metad->rev, sym->name);
+		    	first = 0;
+		} else {
+			fprintf(stderr,
+			    "\t%-16s %s\n", sym->metad->rev, sym->name);
+		}
 	}
+	return (!first);	/* first == 1 means no errors */
 }
 
 /*
@@ -2827,7 +2833,7 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	char	*zone = sccs_zone();
 	MMAP	*m;
 
-	tagleaves(s, &l1, &l2);
+	if (tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	assert(l1 && l2);
 	unless (d) d = sccs_top(s);
 	sprintf(buf, "M 0.0 %s%s %s@%s 0 0 0/0/0\n%s%s%sS %u %u\n%s\n",
@@ -2857,20 +2863,20 @@ sccs_tagConflicts(sccs *s)
 	char	*t;
 	symbol	*sy1, *sy2;
 
-	tagleaves(s, &l1, &l2);
+	if (tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	unless (l2) return (0);
 
 	/* We always return an MDBM even if it is just an automerge case
 	 * with nothing to merge.
 	 */
 	unless (db) db = mdbm_mem();
-	tcolor(s, l1);
+	sccs_tagcolor(s, l1);
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
 		unless (sy1->metad->flags & D_VISITED) continue;
 		sy1->metad->flags &= ~D_VISITED;
 		sy1->left = 1;
 	}
-	tcolor(s, l2);
+	sccs_tagcolor(s, l2);
 	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
 		unless (sy1->metad->flags & D_VISITED) continue;
 		sy1->metad->flags &= ~D_VISITED;
@@ -2915,7 +2921,7 @@ checkSymGraph(sccs *s, int flags)
 	delta	*l1 = 0, *l2 = 0;
 	symbol	*s1, *s2;
 
-	tagleaves(s, &l1, &l2);
+	if (tagleaves(s, &l1, &l2)) return (128);
 	unless (l1 && l2) return (0);
 	for (s1 = s->symbols; s1; s1 = s1->next) {
 		if (s1->metad == l1) break;
@@ -2987,12 +2993,7 @@ meta(sccs *s, delta *d, char *buf)
 		break;
 	    case 'V':
 		s->version = atoi(&buf[3]);
-		/*
-		 * XXX FIXME We should change this back to SCCS_VERSION
-		 * when we formally up SCCS_VERSION to 4
-		 */
-		//unless (s->version <= SCCS_VERSION) {
-		unless (s->version <= SCCS_LOGS_VERSION) {
+		unless (s->version <= SCCS_VERSION) {
 			fprintf(stderr,
 			    "Later file format version %d, forcing read only\n",
 			    s->version);
@@ -4593,7 +4594,6 @@ sccs_markMeta(sccs *s)
 	}
 	return (n);
 }
-
 
 /*
  * Save a serial in an array.  If the array is out of space, reallocate it.
@@ -6895,6 +6895,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	*p, *t;
 	int	bits = 0;
 	int	gonechkd = 0;
+	int	prune_tags = (s->state & S_CSET) && getenv("BK_PRUNE_TAGS");
 
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
@@ -7121,7 +7122,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 				fputmeta(s, buf, out);
 			}
 		}
-		if (d->mtag) {
+		if (d->mtag && !prune_tags) {
 			assert(d->ptag);
 			p = fmts(buf, "\001cS");
 			p = fmtd(p, d->ptag);
@@ -7130,7 +7131,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			*p++ = '\n';
 			*p = 0;
 			fputmeta(s, buf, out);
-		} else if (d->ptag) {
+		} else if (d->ptag && !prune_tags) {
 			p = fmts(buf, "\001cS");
 			p = fmtd(p, d->ptag);
 			*p++ = '\n';
@@ -7152,11 +7153,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			}
 		}
 		if (!d->next) {
-			if (s->state & S_LOGS_ONLY) {
-				sprintf(buf, "\001cV%u\n", SCCS_LOGS_VERSION);
-			} else {
-				sprintf(buf, "\001cV%u\n", SCCS_VERSION);
-			}
+			sprintf(buf, "\001cV%u\n", SCCS_VERSION);
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_XFLAGS) {
@@ -13415,7 +13412,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	if (s->tree->pathname) assert(start->pathname);
 	if (start->pathname) fprintf(out, "P %s\n", start->pathname);
 	if (start->random) fprintf(out, "R %s\n", start->random);
-	if (start->flags & D_SYMBOLS) {
+	if (!(flags & PRS_NOTAGS) && (start->flags & D_SYMBOLS)) {
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->metad == start) continue;
 			if (isdigit(sym->name[0])) continue;
