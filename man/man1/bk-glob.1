@@ -84,7 +84,8 @@ See all changesets which include the phrase "BUGID:" followed by a number:
 bk changes '-/BUGID:[123456789]/'
 .DE
 .SH BUGS
-Does not support ranges of characters, [A-Z].
+Sets of characters, i.e., [A-Z], have only marginal support.  
+Escaping the minus in the set is not supported.
 .SH SEE ALSO
 .SA config-etc 1
 .SA changes 1
