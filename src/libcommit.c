@@ -131,6 +131,12 @@ sendConfig(char *to, int quiet, int quota)
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending config file...\n");
 	}
+        if (strstr(package_name(), "BitKeeper Test repo") &&
+            (bkusers(1, 1, 0) <= 5)) {
+                /* TODO : make sure our root dir is /tmp/.regression... */
+		unlink(config_log);
+                return ;
+        }             
 	sprintf(subject, "BitKeeper config: %s", package_name());
 	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);
 }
@@ -225,6 +231,14 @@ logChangeSet(char *rev, int quiet)
 		printf("Sending ChangeSet to %s...\n", logAddr());
 		fflush(stdout);
 	}
+
+        if (strstr(package_name(), "BitKeeper Test repo") &&
+            (bkusers(1, 1, 0) <= 5)) {
+                /* TODO : make sure our root dir is /tmp/.regression... */
+		unlink(commit_log);
+                return ;
+        }             
+
 	sprintf(subject, "BitKeeper ChangeSet log: %s", package_name());
 #ifdef WIN32
 	/*
