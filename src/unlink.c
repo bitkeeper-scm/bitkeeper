@@ -1,6 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
+int
 unlink_main(int ac, char **av)
 {
 	char	c;

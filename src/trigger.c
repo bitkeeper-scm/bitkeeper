@@ -10,7 +10,6 @@
 int
 trigger(char *action, char *when, int status)
 {
-	int	ret = 0;
 	char	*what;
 	char	*var;
 	char	*t;
@@ -48,13 +47,8 @@ trigger(char *action, char *when, int status)
 			putenv((strdup)(cmd));
 		}
 		sprintf(file, "%s/%s-%s", TRIGGERS, when, what);
-		if (streq(when, "post")) {
-			sprintf(cmd, "cd %s; %s %s %s",
-			    bk_proj->root, file, when, action, status);
-		} else {
-			sprintf(cmd, "cd %s; %s %s %s",
-			    bk_proj->root, file, when, action);
-		}
+		sprintf(cmd,
+		    "cd %s; %s %s %s", bk_proj->root, file, when, action);
 		if (system(cmd)) return (1);
 	}
 	return (0);

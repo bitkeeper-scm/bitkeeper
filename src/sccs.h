@@ -853,5 +853,8 @@ int	cset_setup(int flags);
 off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *action, char *when, int status);
+void	cmdlog_start(char **av);
+void	cmdlog_end(int ret);
+int	cat(char *file);
 
 #endif	/* _SCCS_H_ */

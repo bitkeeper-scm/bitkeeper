@@ -128,6 +128,7 @@ Abort:			printf("Commit aborted.\n");
 	}
 }
 
+int
 cat(char *file)
 {
 	MMAP	*m = mopen(file, "r");

@@ -41,7 +41,6 @@ doit(int verbose, char *rev, int dash)
 	char	tmpfile[MAXPATH];
 	char	dashfile[MAXPATH];
 	char	buf[100];
-	char	*t;
 	pid_t	pid;
 	extern	char *pager;
 	char	*av[2] = { pager, 0 };
