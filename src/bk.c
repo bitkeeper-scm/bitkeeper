@@ -51,6 +51,7 @@ int gethelp_main(int, char **);
 int gethost_main(int, char **);
 int getuser_main(int, char **);
 int graft_main(int, char **);
+int gone_main(int, char **);
 int help_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
@@ -144,6 +145,7 @@ struct command cmdtbl[] = {
 	{"gethost", gethost_main},
 	{"getuser", getuser_main},
 	{"graft", graft_main},
+	{"gone", gone_main},
 	{"help", help_main},
 	{"info", sinfo_main},	/* aliases */
 	{"isascii", isascii_main},

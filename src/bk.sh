@@ -192,30 +192,6 @@ _tag() {
 	bk admin -S${1}$REV ChangeSet
 }
 
-# usage: gone key [key ...]
-_gone() {
-	__cd2root
-	if [ ! -d BitKeeper/etc ]
-	then	echo No BitKeeper/etc
-		exit 1
-	fi
-	cd BitKeeper/etc
-	if [ "X$1" = X ]
-	then	echo "usage: gone key [key ...]"
-		exit 1
-	fi
-	if [ -f SCCS/s.gone ]
-	then	bk get -eq gone
-	fi
-	for i
-	do	echo "$i" >> gone
-	done
-	if [ -f SCCS/s.gone ]
-	then	bk delta -yGone gone
-	else	bk delta -i gone
-	fi
-}
-
 # usage: ignore glob [glob ...]
 #    or: ignore
 # XXX Open issue: should BK/etc/ignore be revisioned?

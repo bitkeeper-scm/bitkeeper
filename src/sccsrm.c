@@ -79,3 +79,84 @@ sccs_rm(char *name, int useCommonDir)
 	free(sfile);
 	return (error);
 }
+
+private project *proj;
+private char *root;
+int
+gone_main(int ac, char **av)
+{
+	MDBM *idDB;
+	int error = 0;
+
+	if (av[1] == NULL) {
+		fprintf(stderr, "usage: bk gone [-|key...]\n");
+		exit(1);
+	}
+	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
+	assert(idDB);
+	if (streq("-", av[1])) {
+		char buf[MAXPATH];
+
+		while (fgets(buf, sizeof(buf), stdin)) {
+			chop(buf);
+			error |= sccs_gone(buf, idDB);
+		}
+	} else {
+		int i = 1;
+		while (av[i]) {
+			error |= sccs_gone(av[i], idDB);
+		}
+	}
+
+	mdbm_close(idDB);
+	if (proj) proj_free(proj);
+	if (root) free(root);
+	return (error);
+}
+
+
+int
+sccs_gone(char *key, MDBM *idDB)
+{
+
+	sccs *s, *s1;
+	char s_gone[MAXPATH], g_gone[MAXPATH];
+	FILE *f;
+
+	s = sccs_keyinit(key, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
+	if (s) {
+		fprintf(stderr, "\"%s\" is not a gone key\n", key);
+		sccs_free(s);
+		return (1);
+	}
+
+	unless (root) {
+		root = proj ? strdup(proj->root) : sccs_root(0);
+	}
+	assert(root);
+	sprintf(s_gone, "%s/BitKeeper/etc/SCCS/s.gone", root);
+	sprintf(g_gone, "%s/BitKeeper/etc/gone", root);
+	comments_save("Gone");
+	if (exists(s_gone)) {
+		s1 = sccs_init(s_gone, SILENT|INIT_SAVEPROJ, proj);
+		assert(s1);
+		unless (IS_EDITED(s1)) {
+			sccs_get(s1, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
+		}
+		f = fopen(g_gone, "ab");
+		fprintf(f, "%s\n", key);
+		fclose(f);
+		s1 = sccs_restart(s1);
+		sccs_delta(s1, SILENT|DELTA_DONTASK, 0, 0, 0, 0);
+	} else {
+		f = fopen(g_gone, "wb");
+		fprintf(f, "%s\n", key);
+		fclose(f);
+		s1 = sccs_init(s_gone, SILENT|INIT_SAVEPROJ, proj);
+		assert(s1);
+		sccs_delta(s1, SILENT|NEWFILE|DELTA_DONTASK, 0, 0, 0, 0);
+	}
+	unless (proj) proj = s1->proj;
+	sccs_free(s1);
+	return (0);
+}
