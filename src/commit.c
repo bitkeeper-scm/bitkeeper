@@ -26,8 +26,8 @@ commit_main(int ac, char **av)
 {
 	int	c, doit = 0, force = 0, getcomment = 1;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
-	char	commentFile[MAXPATH], pendingFiles[MAXPATH];
-	char	*sym = 0;
+	char	commentFile[MAXPATH], pendingFiles[MAXPATH] = "";
+	char	*sym = 0, *commit_list = 0;
 	c_opts	opts  = {0, 0, 0, 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
@@ -36,10 +36,11 @@ commit_main(int ac, char **av)
 	}
 
 	sprintf(commentFile, "%s/bk_commit%d", TMP_PATH, getpid());
-	while ((c = getopt(ac, av, "aAdFLRqsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "aAdf:FLRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;
 		    case 'd': 	doit = 1; break;
+		    case 'f':	strcpy(pendingFiles, optarg); break;
 		    case 'F':	force = 1; break;
 		    case 'L':	opts.lod = 1; break;
 		    case 'R':	BitKeeper = "../BitKeeper/";
@@ -78,23 +79,27 @@ commit_main(int ac, char **av)
 		return (1);
 	}
 	unless(opts.resync) remark(opts.quiet);
-	sprintf(pendingFiles, "%s/bk_list%d", TMP_PATH, getpid());
-	if (av[optind] && streq("-", av[optind])) {
+	if (pendingFiles[0] || (av[optind] && streq("-", av[optind]))) {
 		FILE *f;
 
-		if (getcomment) {
+		if (getcomment && !pendingFiles[0]) {
 			fprintf(stderr,
 			"You must use the -Y or -y option when using \"-\"\n");
 			return (1);
 		}
-		setmode(0, _O_TEXT);
-		f = fopen(pendingFiles, "wb");
-		assert(f);
-		while (fgets(buf, sizeof(buf), stdin)) {
-			fputs(buf, f);
+		unless (pendingFiles[0]) {
+			sprintf(pendingFiles,
+					"%s/bk_list%d", TMP_PATH, getpid());
+			setmode(0, _O_TEXT);
+			f = fopen(pendingFiles, "wb");
+			assert(f);
+			while (fgets(buf, sizeof(buf), stdin)) {
+				fputs(buf, f);
+			}
+			fclose(f);
 		}
-		fclose(f);
 	} else {
+		sprintf(pendingFiles, "%s/bk_list%d", TMP_PATH, getpid());
 		sprintf(buf, "bk sfind -s,,p -C > %s", pendingFiles);
 		if (system(buf) != 0) {
 			unlink(pendingFiles);
