@@ -1019,6 +1019,12 @@ proc widgets {} \
 	bind .p.top.c <Right>		".p.top.c xview scroll  1 units"
 	bind .p.top.c <Shift-Home>	".p.top.c xview moveto 0"
 	bind .p.top.c <Shift-End>	".p.top.c xview moveto 1.0"
+        bind . <Shift-Button-4> ".p.top.c xview scroll -1 pages"
+        bind . <Shift-Button-5> ".p.top.c xview scroll 1 pages"
+        bind . <Control-Button-4> ".p.top.c yview scroll -1 units"
+        bind . <Control-Button-5> ".p.top.c yview scroll 1 units"
+        bind . <Button-4> ".p.bottom.t yview scroll -5 units"
+        bind . <Button-5> ".p.bottom.t yview scroll 5 units"
 
 	# Command window bindings.
 	bind .p.top.c <slash> "search /"

@@ -503,9 +503,6 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	grid columnconfigure .diffs 2 -weight 1
 	grid columnconfigure . 0 -weight 1
 
-	#bind .diffs.left <Button-5> [list %W yview scroll 5 units]
-	#bind .diffs.left <Button-4> [list %W yview scroll -5 units]
-
 	# smaller than this doesn't look good.
 	wm minsize . 300 300
 
