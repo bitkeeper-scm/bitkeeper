@@ -37,15 +37,30 @@ randomBits(char *buf)
 	sprintf(buf, "%x%x", a, b);
 }
 #else
+/*
+ * The stucture of GUID looks like the following:
+ * struct GUID {
+ *	DWORD	Data1;
+ *	WORD	Data2;
+ *	WORD	Data3;
+ *	BYTE	Data4[8];
+ * };
+ */
 void
 randomBits(char *buf)
 {
 	GUID guid;
+	u32 h1, h2,l1, l2;
 
 	CoCreateGuid(&guid); /* get 128 bits unique id */
-	assert(guid.Data1 != 0);
-	/* convert to 64 bits id */
-	sprintf(buf,"%.8x", (DWORD) (guid.Data1 * getpid()));
-
+	/*
+	 * Convert 128 bit id to 64 bit id:
+	 * Xor the hi 64 bits with the low 64 bits
+	 */
+	memmove(&h1, &(guid.Data1), sizeof (u32));
+	memmove(&h2, &(guid.Data2), sizeof (u32));
+	memmove(&l1, &(guid.Data4[0]), sizeof (u32));
+	memmove(&l2, &(guid.Data4[3]), sizeof (u32));
+	sprintf(buf,"%x%x", h1 ^ l1, h2 ^ l2);
 }
 #endif
