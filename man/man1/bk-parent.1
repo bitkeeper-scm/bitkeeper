@@ -60,7 +60,7 @@ If
 is set, then use that to talk to the host (allows proxying).
 If no 
 .B ssh
-is not found, then falls back to
+is found then falls back to
 .BR rsh.
 .head
 \fBbk\fR://\c
@@ -73,7 +73,7 @@ on the default
 port.
 The 
 .B bkd
-most be at the root of the repository.
+must be at the root of the repository.
 .head
 \fBbk\fR://\c
 .ARGc host /
@@ -91,11 +91,10 @@ then runs command.
 .ARG port
 .br
 Connects to an existing 
-talks to an existing 
 .B bkd
 on the specified port.
 .B bkd
-most be at the root of the repository.
+must be at the root of the repository.
 .head
 \fBbk\fR://\c
 .ARGc host :
