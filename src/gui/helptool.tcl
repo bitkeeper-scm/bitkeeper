@@ -384,13 +384,17 @@ proc widgets {} \
 	    grid .menu.entry -row 0 -column 7 -sticky ew
 	    grid columnconfigure .menu 7 -weight 1
 	frame .ctrl -borderwidth 0 -relief flat
-	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
+	    text .ctrl.topics \
+		-spacing1 1 \
+		-spacing3 1 \
+		-wrap none \
 		-height $gc(help.height) \
 		-font $gc(help.fixedFont) -width 14 \
 		-background $gc(help.listBG) \
-		-yscrollcommand { .ctrl.yscroll set } \
-		-xscrollcommand { .ctrl.xscroll set }
-	    scrollbar .ctrl.yscroll -width $gc(help.scrollWidth) \
+		-yscrollcommand [list .ctrl.yscroll set] \
+		-xscrollcommand [list .ctrl.xscroll set]
+	    scrollbar .ctrl.yscroll \
+		-width $gc(help.scrollWidth) \
 		-command ".ctrl.topics yview" \
 		-background $gc(help.scrollColor) \
 		-troughcolor $gc(help.troughColor)
@@ -398,7 +402,8 @@ proc widgets {} \
 		-troughcolor $gc(help.troughColor) \
 		-background $gc(help.scrollColor) \
 		-orient horiz \
-		-width $gc(help.scrollWidth) -command ".ctrl.topics xview"
+		-width $gc(help.scrollWidth) \
+		-command ".ctrl.topics xview"
 
 	    grid .ctrl.topics -row 0 -column 0 -sticky nsew
 	    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
@@ -406,16 +411,23 @@ proc widgets {} \
 	    grid rowconfigure .ctrl 0 -weight 1
 
 	frame .text -borderwidth 0 -relief flat
-	    text .text.help -wrap none -font $gc(help.fixedFont) \
-		-width $gc(help.width) -height $gc(help.height) -padx 4 \
+	    text .text.help \
+		-wrap none \
+		-font $gc(help.fixedFont) \
+		-width $gc(help.width) \
+		-height $gc(help.height) \
+		-padx 4 \
 		-background $gc(help.textBG) -fg $gc(help.textFG) \
-		-xscrollcommand { .text.x2scroll set } \
-		-yscrollcommand { .text.y2scroll set }
-	    scrollbar .text.x2scroll -orient horiz \
+		-xscrollcommand [list .text.x2scroll set] \
+		-yscrollcommand [list .text.y2scroll set]
+	    scrollbar .text.x2scroll \
+		-orient horiz \
 		-troughcolor $gc(help.troughColor) \
 		-background $gc(help.scrollColor) \
-		-width $gc(help.scrollWidth) -command ".text.help xview"
-	    scrollbar .text.y2scroll -width $gc(help.scrollWidth) \
+		-width $gc(help.scrollWidth) \
+		-command ".text.help xview"
+	    scrollbar .text.y2scroll \
+		-width $gc(help.scrollWidth) \
 		-troughcolor $gc(help.troughColor) \
 		-background $gc(help.scrollColor) \
 		-command ".text.help yview"
@@ -495,8 +507,10 @@ proc widgets {} \
 	    -underline true
 	.ctrl.topics tag configure "search" -background $gc(help.topicsColor) \
 	    -relief ridge -borderwid 1
-	focus .menu.entry
+
 	. configure -background $gc(BG)
+	wm deiconify .
+	focus .menu.entry
 }
 
 proc busy {busy} \

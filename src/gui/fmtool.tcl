@@ -656,6 +656,7 @@ proc widgets {L R O} \
 	computeHeight "merge"
 	. configure -background $gc(BG)
 	wm protocol . WM_DELETE_WINDOW { cmd_done }
+	wm deiconify .
 }
 
 proc bindhelp {w msg} \
