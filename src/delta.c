@@ -20,7 +20,7 @@ usage: delta [-AcGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
     -I<file>	Take the initial rev/date/user/comments/etc from <file>\n\
     		See prs for file format information\n\
     -y<comment>	Sets the revision comment to <comment>.\n\
-    -Y		prompts for comment and then uses that for all files.\n\n
+    -Y		prompts for comment and then uses that for all files.\n\n\
     -Z, -Z<alg>		compress stored s.file with <alg>, which may be:\n\
 		gzip	like gzip(1) (default)\n\
 		none	no compression\n\
