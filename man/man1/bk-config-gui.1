@@ -413,9 +413,6 @@ Default:\ darkblue
 .B rev.revColor
 Fill color of the unselected node. Default:\ #9fb6b8
 .tp
-.B rev.tagColor
-Fill color of tagged nodes. Default:\ #9fb6b8
-.tp
 .B rev.selectColor
 Highlight color for the selected annotated line. Default:\ #adb8f6
 .tp
@@ -434,6 +431,12 @@ Height of widget that displays the file content. Default:\ 50
 .B rev.showHistory
 The time period of revisions that are shown. The value needs to be a
 valid entry for the prs -R option. Default:\ 1M
+.tp
+.B rev.tagOutline
+Color of the outline around nodes in the ChangeSet graph that have
+a tag associated with them. If this value is the empty string no
+outline will be drawn.
+Default:\ yellow
 .tp
 .B rev.dateColor
 Color of the date text at the bottom of graph.

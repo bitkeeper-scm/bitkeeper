@@ -61,11 +61,9 @@ proc ht {id} \
 proc drawAnchor {x1 y1 x2 y2} {
 	global w gc
 
+	# this gives the illusion of a sunken node
 	$w(graph) create line $x2 $y1 $x2 $y2 $x1 $y2 \
 	    -fill #f0f0f0 -tags anchor -width 1 \
-	    -capstyle projecting
-	$w(graph) create line $x1 $y2 $x1 $y1 $x2 $y1 \
-	    -fill $gc(rev.revOutline) -tags anchor -width 1 \
 	    -capstyle projecting
 
 	set y $y2
@@ -88,14 +86,26 @@ proc drawAnchor {x1 y1 x2 y2} {
 # old - do a rectangle in gc(rev.oldColor)
 # new - do a rectangle in gc(rev.newColor)
 # gca - do a black rectangle -- used for GCA
+# tagged - draw an outline in gc(rev.tagOutline)
+#
+# id may be a canvas object id (an integer) or a tag (typically a 
+# revision number or revision-user pair)
 proc highlight {id type {rev ""}} \
 {
 	global gc w
 
+	if {![string is integer $id]} {
+		# The id is a tag rather than a canvas object id.
+		# In such a case we want to find the id of the text 
+		# object associated with the tag. 
+		set id [textbox $id]
+	}
 	catch {set bb [$w(graph) bbox $id]} err
 	#puts "In highlight: id=($id) err=($err)"
-	# If node to highlight is not in view, err=""
+	# If node to highlight is not in view, err=""; if some other
+	# unexpected error, bb might not be defined so we need to bail.
 	if {$err == ""} { return "$err" }
+	if {![info exists bb]} return
 	# Added a pixel at the top and removed a pixel at the bottom to fix 
 	# lm complaint that the bbox was touching the characters at top
 	# -- lm doesn't mind that the bottoms of the letters touch, though
@@ -107,6 +117,12 @@ proc highlight {id type {rev ""}} \
 
 	set bg {}
 	switch $type {
+	    tagged {
+		    set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
+				-outline $gc(rev.tagOutline) \
+				-width 1 \
+				-tags [list $rev revision tagged]]
+	    }
 	    anchor {
 		    drawAnchor $x1 $y1 $x2 $y2
 		}
@@ -168,10 +184,22 @@ proc highlight {id type {rev ""}} \
 	    }
 	}
 
+	$w(graph) raise tagged
 	$w(graph) raise anchor
 	$w(graph) raise revtext
 
 	return $bg
+}
+
+# find the id of the textbox for the given tag, if there is one.
+proc textbox {tag} {
+	global w
+	set tagspec "revtext&&$tag"
+	set items [$w(graph) find withtag $tagspec]
+	if {[llength $items] > 0} {
+		return [lindex $items 0]
+	}
+	return $tag
 }
 
 # This is used to adjust around the text a little so that things are
@@ -642,19 +670,20 @@ proc addline {y xspace ht l} \
 
 	foreach word $l {
 		# Figure out if we have another parent.
-		# 1.460.1.3-awc-890@1.459.1.2-awc-889
+		# 1.460.1.3-awc-890|1.459.1.2-awc-889
 		set m 0
 		if {[regexp $line_rev $word dummy a b] == 1} {
-			regexp {(.*)-([^-]*)} $a dummy rev serial
-			regexp {(.*)-([^-]*)} $b dummy rev2
-			set parent($rev) $rev2
+			splitRev $a trev tuser serial tagged
+			set rev "$trev-$tuser"
+			splitRev $b revb userb serialb taggedb
+			set rev2 "$revb-$userb"
+			set parent($rev) "$revb-$userb"
 			lappend merges $rev
 			set m 1
 		} else {
-			regexp {(.*)-([^-]*)} $word dummy rev serial
+			splitRev $word trev tuser serial tagged
+			set rev "$trev-$tuser"
 		}
-		set tmp [split $rev "-"]
-		set tuser [lindex $tmp 1]; set trev [lindex $tmp 0]
 		set rev2rev_name($trev) $rev
 		# determing whether to make revision box two lines 
 		if {$stacked} {
@@ -693,6 +722,9 @@ proc addline {y xspace ht l} \
 			} else {
 				highlight $id "revision" $rev
 			}
+		}
+		if {$tagged} {
+			highlight $id tagged $rev
 		}
 		#puts "ADD $word -> $rev @ $x $y"
 		#if {$m == 1} { highlight $id "arrow" }
@@ -768,10 +800,11 @@ proc line {s width ht} \
 	# The length is determined by the first and last serial numbers.
 	set word [lindex $l 1]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
-	regexp {(.*)-([^-]*)} $word dummy head first
-	set word [lindex $l [expr {[llength $l] - 1}]]
+	splitRev $word revision programmer first dummy
+	set head "$revision-$programmer"
+	set word [lindex $l end]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
-	regexp {(.*)-([^-]*)} $word dummy rev last
+	splitRev $word dummy dummy last dummy
 	if {($last == "") || ($first == "")} {return}
 	set diff [expr {$last - $first}]
 	incr diff
@@ -780,7 +813,8 @@ proc line {s width ht} \
 	# Now figure out where we can put the list.
 	set word [lindex $l 0]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
-	regexp {(.*)-([^-]*)} $word dummy rev last
+	splitRev $word revision programmer last dummy
+	set rev "$revision-$programmer"
 
 	# If there is no parent, life is easy, just put it at 0/0.
 	if {[info exists revX($rev)] == 0} {
@@ -925,7 +959,7 @@ proc setScrollRegion {} \
 proc listRevs {r file} \
 {
 	global	bad Opts merges dev_null ht screen stacked gc w
-	global	errorCode
+	global	errorCode bk_fs
 
 	set screen(miny) 0
 	set screen(minx) 0
@@ -943,7 +977,12 @@ proc listRevs {r file} \
 	#$w(graph) create text 0 0 -anchor nw -text " "
 
 	set errorCode [list]
-	set d [open "| bk _lines $Opts(line) $r \"$file\" 2>$dev_null" "r"]
+	if {$gc(rev.tagOutline) == ""} {
+		set tagopt ""
+	} else {
+		set tagopt "-T"
+	}
+	set d [open "| bk _lines $Opts(line) $tagopt $r \"$file\" 2>$dev_null" "r"]
 
 	# puts "bk _lines $Opts(line) $r \"$file\" 2>$dev_null"
 	if  {[lindex $errorCode 2] == 1} {
@@ -956,14 +995,12 @@ proc listRevs {r file} \
 		lappend lines $s
 		foreach word [split $s] {
 			# Figure out if we have another parent.
-			set node  [split $word '@']
+			set node [split $word $bk_fs]
 			set word [lindex $node 0]
 
 			# figure out whether name or revision is the longest
 			# so we can find the largest text string in the list
-			set revision [split $word '-']
-			set rev [lindex $revision 0]
-			set programmer [lindex $revision 1]
+			splitRev $word rev programmer serial tagged
 
 			set revlen [string length $rev]
 			set namelen [string length $programmer]
@@ -1012,6 +1049,32 @@ proc listRevs {r file} \
 	}
 	return 0
 } ;# proc listRevs
+
+# this routine is used to parse the output of "bk _lines". 
+# It sets variables in the callers context for revision, username, 
+# serial number, and whether the node has a tag or not. 
+# "rev" in this context is a string in the form revision-user-serial
+# If the string ends with an asterisk, this indicates the rev has a
+# tag
+# note that all but the first argument are variable names in the
+# caller's context.
+proc splitRev {rev revVar nameVar serialVar haveTagVar} \
+{
+	upvar $revVar revision $nameVar name $serialVar serial
+	upvar $haveTagVar haveTag
+
+	if {[string index $rev end] == "*"} {
+		set haveTag 1
+		set rev [string range $rev 0 end-1]
+	} else {
+		set haveTag 0
+	}
+	set i [string first "-" $rev]
+	set j [string last "-" $rev]
+	set revision [string range $rev 0 [expr {$i-1}]]
+	set name [string range $rev [expr {$i+1}] [expr {$j-1}]]
+	set serial [string range $rev [expr {$j+1}] end]
+}
 
 # Highlight the graph edges connecting the node to its children an parents
 #
@@ -1573,7 +1636,7 @@ proc r2c {} \
 	}
 	# XXX: When called from "View Changeset", rev1 has the name appended
 	#      need to track down the reason -- this is a hack
-	set rev1 [lindex [split $rev1 "-"] 0]
+	splitRev $rev1 rev1 programmer serial tagged
 	if {[info exists rev2]} {
 		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
 		while {[gets $revs r] >= 0} {
@@ -2789,9 +2852,9 @@ proc timedEvent {args} \
 }
 proc updateShortcutMenu {} \
 {
-	global rev1 rev2 w anchor file
+	global rev1 rev2 w anchor fname
 
-	set changeset [expr {"$file" == "ChangeSet"}]
+	set changeset [expr {"$fname" == "ChangeSet"}]
 	set first 0
 	if {[$w(shortcutMenu) cget -tearoff]} {
 		set first 1

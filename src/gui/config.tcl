@@ -156,7 +156,7 @@ proc getConfig {prog} \
 	set _d(rev.localColor) $GREEN	;# local node (for resolve)
 	set _d(rev.remoteColor) $RED	;# remote node (for resolve)
 	set _d(rev.gcaColor) $WHITE		;# gca node (for resolve)
-	set _d(rev.tagColor) $RED		;# tag box fills
+	set _d(rev.tagOutline) $YELLOW	;# outline of tagged nodes
 	set _d(rev.badColor) $RED		;# color for "bad" revision numbers
 	set _d(rev.selectColor) $BKSTEELBLUE ;# highlight color for selected tag
 	set _d(rev.dateLineColor) $LIGHTBLUE ;# line that separates dates
