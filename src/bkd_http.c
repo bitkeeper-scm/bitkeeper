@@ -711,17 +711,18 @@ trailer(char *path)
 		out("<font color=black size=-2>\n"
 		    "<table border=0 bgcolor=white width=100%>\n"
 		    "<tr>\n"
-		    "<td align=left>"
+		    "<td align=left valign=bottom>"
 		    "<img src=\"logo.gif\" alt=\"\"></img></td>\n"
-		    "<td align=right><a href=http://www.bitkeeper.com>\n"
+		    "<td align=right valign=bottom>\n"
+		    "<a href=http://www.bitkeeper.com>\n"
 		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
 		    "</td></tr></table></font>\n");
 	} else {
 		out("<p align=center>\n"
-		    "<a href=http://www.bitkeeper.com>\n"
-		    "<font color=black size=-2>\n"
-		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
-		    "</font>\n"
+		    "<font color=black size=-2>"
+		    "<a href=http://www.bitkeeper.com>"
+		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\">"
+		    "</a></font>\n"
 		    "</p>");
 		out("</body></html>\n");
 	}
