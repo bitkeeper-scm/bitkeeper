@@ -121,9 +121,15 @@ uniq_lock()
 			close(fd);
 			if (n > 0) {
 				buf[n] = 0;
-				pid = atoi(buf);
+				if (sscanf(buf, "%d", &pid) != 1) {
+stale:					fprintf(stderr,
+					   "removing stale lock %s\n", path);
+					unlink(path);
+					continue;
+				}
+				assert(pid > 0);
 			}
-			unless (pid) continue;
+			unless (pid) goto stale;
 			if (kill(pid, 0) == 0) {
 				slept++;
 				sleep(slept);
