@@ -1,0 +1,115 @@
+
+Release notes for BitKeeper version beta10.
+
+We have binary releases for Linux, Irix6, and FreeBSD 2.2.  Other
+platforms will follow.  The source code is available only as a
+BitKeeper repository.
+
+* Installation
+
+The binary tarball unpacks into a directory named "bitkeeper".  This
+may be placed in /usr or /usr/local as you see fit.  Several files
+should then be symlinked from the bitkeeper directory into a public
+binary directory.  The minimum is bitkeeper/bk and bitkeeper/get.  If
+you wish to use BitKeeper in conjunction with Emacs vc-mode, you will
+also need to symlink admin, delta, prs, rmdel, and unget.  Do NOT
+symlink ci and co; this will interfere with RCS.  We no longer
+recommend that you place the bitkeeper directory in your PATH.
+
+You will need Tcl and Tk for the GUI, and Perl for resync and
+resolve.  Recommended versions are Tcl/Tk >=8.0.4, Perl >=5.004.
+If /bin/sh is not POSIX compliant, "bk" won't work.  Try changing the
+#! line to point at ksh or bash if you have problems.
+Resolve needs the "merge" utility, which is part of RCS.  We intend to
+eliminate this dependency in the near future.
+
+Some vendors' versions of diff have bugs which are tickled by
+BitKeeper.  If you have problems, we recommend you install GNU diff.
+
+* Upgrade notes
+
+The format of the ChangeSet file has changed between beta9 and
+beta10.  It will be automatically converted the first time you commit
+anything.  Once you have done this, you cannot use old tools on that
+repository anymore.
+
+The network resync protocol has also changed.  You will not be able to
+resync between a host with the old version and a host with the new
+version using "bk resync".  "bk oldresync" MAY work but we don't
+guarantee it.  The good news is, the bandwidth consumed by a resync is
+somewhat reduced, and it only sets up one ssh connection.
+
+Some obscure command line options to bk admin have changed, and the
+manpage is out of date.  The summary printed by "bk admin --help" is
+correct.
+
+* Compilation from source
+
+You may have problems with non-GNU make, particularly if you expect it
+to extract the sources from SCCS on the fly.  You should be able to
+use any ANSI C compiler, but we only test with gcc.
+
+Unpack the repository snapshot, change into the src directory, and
+type "make".  This will compile a debugging version of BitKeeper.  Do
+NOT run the configure script directly.
+
+Some platforms require you to adjust Make variables.  If you get
+complaints about ranlib, try adding "RANLIB=:" to the make command
+line.  If the linker complains about gethostbyname, try adding
+"XLIBS=-lnsl" to the command line.
+
+Once you have a debugging version built, run "make test".  This runs
+the regression suite.  It will produce a great deal of output, some of
+which may look a bit frightening.  As long as it finishes by printing
+
+------------------------------------------------
+All requested tests passed, must be my lucky day
+------------------------------------------------
+
+you are fine.  In particular, don't worry about this:
+
+Check circular rename in two work space ................check: src/SCCS/s.b.c should be src/a.c
+check: src/SCCS/s.c.c should be src/b.c
+check: src/SCCS/s.a.c should be src/c.c
+check failed, resolve was applied.
+Please contact BitMover for help.
+OK
+
+This is a known (and rather nasty) bug which will probably not bite
+you.  See below.
+
+Once you have passed the test suite, do this:
+
+$ make rebuild
+$ make p [extra options to make here]
+$ su
+# make install
+
+This sequence compiles and installs the production version -
+optimized, no debugging.  It will appear in /usr/bitkeeper.  You can
+also try running "make production_all" to compile and install both
+production and debugging versions, but this may not work properly.
+
+* Known bugs
+
+Resolve has severe problems related to renaming files.  We recommend
+that you avoid attempting to merge conflicts in a file which has been
+renamed in the same changeset(s).  In other words, if you're gonna
+rename something, make sure everyone else picks up the rename before
+editing the file again.
+
+Import and rcs2sccs still don't work nearly as well as we would like.
+You can get your CVS tree converted, but it will take quite a bit of
+handholding.  See the comments in rcs2sccs.perl.
+
+Excessive use is made of files in /tmp.  There may be security issues
+related to this.
+
+Files with extremely long (>2048 chars) lines will overflow static
+internal buffers.
+
+Metadata (symbols, permissions, etc) is not versioned and does not
+propagate in resyncs.
+
+LODs are still not implemented.
+
