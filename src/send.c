@@ -1,15 +1,13 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin;
-
 #define	BK_LOG "BitKeeper/log"
 
 private	char *
 sendlog(char *to, char *rev)
 {
 	char	x_sendlog[MAXPATH], here[MAXPATH], has[MAXPATH];
-	char	revs[MAXPATH], rev2s[MAXPATH];
+	char	revs[MAXPATH];
 	char	buf[MAXLINE];
 	static	char revbuf[MAXLINE] = "";
 	FILE	*f;
@@ -25,18 +23,17 @@ sendlog(char *to, char *rev)
 	close(open(x_sendlog, O_CREAT, 0660));
 
 	if (rev == NULL) {
-		sprintf(buf, "%sbk prs -hd:KEY: ChangeSet | sort > %s",
-								bin, here);
+		sprintf(buf, "bk prs -hd:KEY: ChangeSet | sort > %s", here);
 	} else {
-		sprintf(buf, "%sbk prs -hd:KEY: -r%s ChangeSet | sort > %s",
-								bin, rev, here);
+		sprintf(buf, "bk prs -hd:KEY: -r%s ChangeSet | sort > %s",
+								    rev, here);
 	}
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", x_sendlog, has);
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", x_sendlog, has);
-	sprintf(buf, "comm -23 %s %s | %sbk key2rev ChangeSet > %s",
-							here, has, bin, revs);
+	sprintf(buf, "comm -23 %s %s | bk key2rev ChangeSet > %s",
+							here, has, revs);
 	system(buf);
 	f = fopen(revs, "rt");
 	while (fgets(buf, sizeof(buf), f)) {
@@ -53,8 +50,7 @@ sendlog(char *to, char *rev)
 	if (revbuf[0] == '\0') return 0;
 	sprintf(buf, "cp %s %s", x_sendlog, here);
 	system(buf);
-	sprintf(buf, "%sbk prs -hd:KEY: -r%s ChangeSet >> %s",
-							bin, revbuf, here);
+	sprintf(buf, "bk prs -hd:KEY: -r%s ChangeSet >> %s", revbuf, here);
 	system(buf);
 	sprintf(buf, "sort -u < %s > %s", here, x_sendlog);
 	system(buf);
@@ -62,9 +58,10 @@ sendlog(char *to, char *rev)
 	return (revbuf);
 }
 
+int
 send_main(int ac,  char **av)
 {
-	int	c, rc, use_stdout = 0;
+	int	c, use_stdout = 0;
 	int	force = 0;
 	char	*dflag = "", *qflag = "-vv";
 	char	*wrapper = NULL;
@@ -73,8 +70,6 @@ send_main(int ac,  char **av)
 	char	buf[MAXLINE];
 	char	patch[MAXPATH], out[MAXPATH];
 	FILE	*f;
-
-	platformInit();
 
 	while ((c = getopt(ac, av, "dfqr:w:")) != -1) {
 		switch (c) {
@@ -125,11 +120,11 @@ send_main(int ac,  char **av)
 	fflush(f);
 	unless (use_stdout) fclose(f);
 	unless (wrapper) {
-		sprintf(buf, "%sbk cset %s -m%s %s %s",
-					bin, dflag, rev, qflag, out);
+		sprintf(buf, "bk cset %s -m%s %s %s",
+						dflag, rev, qflag, out);
 	} else {
-		sprintf(buf, "%sbk cset %s -m%s %s | bk %swrap%s",
-					bin, dflag, rev, qflag, wrapper, out);
+		sprintf(buf, "bk cset %s -m%s %s | bk %swrap%s",
+					    dflag, rev, qflag, wrapper, out);
 	}
 	if (system(buf) != 0)  {
 		unless (use_stdout) unlink(patch);

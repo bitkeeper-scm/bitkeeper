@@ -222,7 +222,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: can not find project root.\n");
 		return (1);
 	}
-	cset = sccs_init(csetFile, flags, 0);
+	cset = sccs_init(csetFile, flags & SILENT, 0);
 	if (!cset) return (101);
 	copts.mixed = !(cset->state & S_KEY2);
 
@@ -276,14 +276,12 @@ usage:		fprintf(stderr, "%s", cset_help);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
-		freeLines(syms);
 		purify_list();
 		return (0);
 	    case 2:
 	    	csetList(cset, r[0], ignoreDeleted);
 		sccs_free(cset);
 		if (cFile) free(cFile);
-		freeLines(syms);
 		purify_list();
 		return (0);
 	}
@@ -296,7 +294,6 @@ next:		sccs_free(cset);
 	 */
 	c = csetCreate(cset, flags, syms, newlod);
 	if (cFile) free(cFile);
-	freeLines(syms);
 	purify_list();
 	return (c);
 }
@@ -324,8 +321,7 @@ spawn_checksum_child(void)
 {
 	int	p[2], fd0, rc;
 	pid_t	pid;
-	char	bk_path[MAXPATH];
-	char	*av[3] = {bk_path, "adler32", 0};
+	char	*av[3] = {"bk", "adler32", 0};
 
 	/* the strange syntax is to hide the call from purify */
 	if ((pipe)(p)) {
@@ -341,7 +337,6 @@ spawn_checksum_child(void)
 	/* for Child.
 	 * Replace stdin with the read end of the pipe.
 	 */
-	sprintf(bk_path, "%sbk", getenv("BK_BIN"));
 	rc = (close)(0);
 	if (rc == -1) perror("close");
 	assert(rc != -1);
@@ -350,7 +345,7 @@ spawn_checksum_child(void)
 	assert(rc != -1);
 
 	/* Now go do the real work... */
-	pid = spawnvp_ex(_P_NOWAIT, bk_path, av );
+	pid = spawnvp_ex(_P_NOWAIT, av[0], av );
 	if (pid == -1) return -1;
 
 	/*
@@ -390,7 +385,7 @@ csetInit(sccs *cset, int flags, char *text)
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
 	unless (d = host_get(d)) goto intr;
 	unless (d = user_get(d)) goto intr;
-	syms = addLine(0, KEY_FORMAT2);
+	syms = addLine(0, strdup(KEY_FORMAT2));
 	cset->state |= S_CSET|S_KEY2;
 	if (text) {
 		FILE    *desc; 
@@ -414,7 +409,6 @@ error:		sccs_free(cset);
 		comments_done();
 		host_done();
 		user_done();
-		freeLines(syms);
 		purify_list();
 		return (1);
 	}
@@ -1379,7 +1373,7 @@ csetCreate(sccs *cset, int flags, char **syms, int newlod)
 
 	/* XXX: can do a re-init?  There is a new delta */
 	sccs_free(cset);
-	unless (cset = sccs_init(csetFile, flags, 0)) {
+	unless (cset = sccs_init(csetFile, flags & SILENT, 0)) {
 		perror("init");
 		error = -1;
 		goto out;

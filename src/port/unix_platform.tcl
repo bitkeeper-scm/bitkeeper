@@ -4,45 +4,16 @@
 
 proc bk_init {} \
 {
-	global	tcl_platform env dev_null tmp_dir wish auto_path unix_bin bin
-	global	bithelp difftool helptool sccstool sdiffw getDir file_rev
-	global	file_start_stop file_stop line_rev bk_fs
+	global	tcl_platform dev_null tmp_dir wish sdiffw file_rev
+	global	file_start_stop file_stop line_rev
 
-	# init for Unix env
-	if {[info exists env(BK_BIN)]} {
-		set bin $env(BK_BIN)
-	} else {
-		set bin ""
-		# This list must match the list in bk.sh and
-		# utils/extractor.c
-		foreach dir {@bitkeeper_bin@ \
-		    /usr/libexec/bitkeeper \
-		    /usr/lib/bitkeeper \
-		    /usr/bitkeeper \
-		    /opt/bitkeeper \
-		    /usr/local/bitkeeper \
-		    /usr/local/bin/bitkeeper \
-		    /usr/bin/bitkeeper \
-		} {
-		    	if {[file exists [file join $dir sccstool]]} {
-				set bin $dir
-				break
-			}
-		}
-		if {$bin == ""} {
-			puts "Can not find bitkeeper binaries."
-			exit 1
-		}
-	}
 	set sdiffw [list "sdiff" "-w1" ]
 	set dev_null "/dev/null"
 	set wish "wish"
 	set tmp_dir  "/tmp"
-	set auto_path "$bin $auto_path"                                          
 	set file_rev {(.*)@([0-9].*)}
 	set file_start_stop {(.*)@(.*)\.\.(.*)}
 	set file_stop {(.*)@([0-9.]+$)}
 	set line_rev {([^@]*)@(.*)}
-        set bk_fs @                                           
 }
 

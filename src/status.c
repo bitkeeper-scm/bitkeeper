@@ -10,7 +10,6 @@ status_main(int ac, char **av)
 	char buf[MAXLINE];
 	FILE *f;
 
-	platformInit();
 	while ((c = getopt(ac, av, "v")) != -1) { 
 		switch (c) {
 		    case 'v': verbose++; break;

@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Andrew Chang
 # %K%
 
-echo $N Test import plain file ......................................$NL
+echo $N Test import of a plain file .................................$NL
 HERE=`pwd`
 ${ECHO} "logging: none" > $HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
@@ -30,7 +30,35 @@ cmp -s foo.c $HERE/import_dir/src/foo.c
 bk get $Q boo.c
 cmp -s boo.c $HERE/import_dir/src/boo.c
 echo OK
-echo $N Test import patch file ......................................$NL
+# XXX - we do not test for links pointing outside the tree
+if [ $PLATFORM != "WIN32" ]
+then
+echo $N Test import of a symbolic link ..............................$NL
+cd $HERE
+${ECHO} "logging: none" > $HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c symlink
+mkdir -p symlink/src
+${ECHO} foo > import_dir/src/foo.c
+touch import_dir/src/boo.c
+cd import_dir/src
+ln -s foo.c link
+cd $HERE
+trap 'echo failed; cat $HERE/import.out' 0
+set -e
+( echo plain; echo no ) | bk import import_dir symlink > import.out 2>&1
+cd $HERE/symlink/src
+test -f SCCS/s.foo.c
+bk get $Q foo.c
+cmp -s foo.c $HERE/import_dir/src/foo.c
+test -f SCCS/s.boo.c
+bk get $Q boo.c
+cmp -s boo.c $HERE/import_dir/src/boo.c
+test -f SCCS/s.link
+bk get $Q link
+cmp -s link $HERE/import_dir/src/foo.c
+echo OK
+fi	# Win32
+echo $N Test import of a patch file .................................$NL
 cd $HERE
 mkdir -p import_new/src
 ${ECHO} "foo-new" > $HERE/import_new/src/foo.c
@@ -48,7 +76,7 @@ then
 fi
 echo OK
 cd $HERE
-echo $N Test import patch file which deletes a file .................$NL
+echo $N Test import of a patch file which deletes a file ............$NL
 cd $HERE/project
 bk export ../export
 cd ..
@@ -66,7 +94,7 @@ then	echo Can not find deleted file
 	exit 1
 fi
 echo OK
-echo $N Test import sccs file .......................................$NL
+echo $N Test import of an sccs file .................................$NL
 cd $HERE
 mkdir -p import_sccs/src
 cd $HERE/import_sccs/src

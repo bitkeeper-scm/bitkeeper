@@ -581,7 +581,7 @@ badpath(sccs *s, delta *tot)
 	fputs(
 "This file is not where BitKeeper thinks it should be.  If the file is in\n\
 what you consider to be the right place, update it's name with the following\n\
-command:\n\tbk path <filename>\n\n\
+command:\n\tbk names <filename>\n\n\
 and retry the patch.  The patch has been saved in the PENDING directory\n",
 stderr);
 }
@@ -1167,7 +1167,7 @@ init(char *inputFile, int flags, project **pp)
 	 * we're just doing the RESYNC part.
 	 */
 	if (mkdir("RESYNC", 0777)) {
-		fprintf(stderr, "takepatch: can not get write lock\n");
+		fprintf(stderr, "takepatch: can not create RESYNC dir.\n");
 		repository_lockers(p);
 		cleanup(0);
 	}

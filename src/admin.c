@@ -58,7 +58,6 @@ usage: admin options [- | file file file...]\n\
 private	int	do_checkin(char *nm, char *ep, char *cp, int fl,
 		   char *rev, char *newf, char *com);
 private	void	clearCset(sccs *s, int flags, int which);
-private	void	clearPath(sccs *s, int flags);
 private	void	touch(sccs *s);
 private	int	setMerge(sccs *sc, char *merge, char *rev);
 extern	int     newrev(sccs *s, pfile *pf); 
@@ -83,7 +82,7 @@ admin_main(int ac, char **av)
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	delta	*d = 0;
-	int 	was_edited, new_delta = 0;
+	int 	was_edited = 0, new_delta = 0;
 	pfile	pf;
 
 	debug_main(av);

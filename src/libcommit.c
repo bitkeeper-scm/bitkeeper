@@ -3,14 +3,9 @@
 #include <time.h>
 
 
-char	*editor = 0, *pager = 0, *bin = 0;
-char	*bk_dir = "BitKeeper/";
-int	resync = 0, quiet = 0;
+extern char	*editor, *pager, *bin;
+extern char	*BitKeeper;
 
-int	get(char *path, int flags, char *output);
-int	bkusers();
-int	setlog(char *user);
-char	*getlog(char *user);
 private char	*project_name();
 
 private	void
@@ -47,7 +42,7 @@ logAddr()
 
 	if (logaddr) return logaddr;
 	sprintf(config, "%s/bk_configY%d", TMP_PATH, getpid());
-	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
+	sprintf(buf, "%setc/SCCS/s.config", BitKeeper);
 	get(buf, SILENT|PRINT, config);
 	assert(exists(config));
 
@@ -71,7 +66,7 @@ done:	fclose(f1);
 }
 
 void
-sendConfig(char *to)
+sendConfig(char *to, int quiet, int quota)
 {
 	char	*dspec;
 	char	config_log[MAXPATH], buf[MAXLINE];
@@ -79,9 +74,8 @@ sendConfig(char *to)
 	char	s_cset[MAXPATH] = CHANGESET;
 	FILE *f, *f1;
 	time_t tm;
-	extern int bkusers();
 
-	if (bkusers(1, 1, 0) <= 1) return;
+	if (bkusers(1, 1, 0) <= quota) return;
 	sprintf(config_log, "%s/bk_config_log%d", TMP_PATH, getpid());
 	if (exists(config_log)) {
 		fprintf(stderr, "Error %s already exist", config_log);
@@ -101,7 +95,7 @@ sendConfig(char *to)
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm));
 	sprintf(config, "%s/bk_configX%d", TMP_PATH, getpid());
-	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
+	sprintf(buf, "%setc/SCCS/s.config", BitKeeper);
 	get(buf, SILENT|PRINT, config);
 	f1 = fopen(config, "rt");
 	while (fgets(buf, sizeof(buf), f1)) {
@@ -114,12 +108,12 @@ sendConfig(char *to)
 	bkusers(0, 0, f);
 	fprintf(f, "=====\n");
 	fclose(f);
-	sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);
+	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 	if (exists(buf)) {
 		f = fopen(config_log, "ab");
 		fprintf(f, "Alias  List:\n");
 		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
-		sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);
+		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 		get(buf, SILENT|PRINT, aliases);
 		f1 = fopen(aliases, "r");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -150,7 +144,7 @@ header(FILE *f)
 	gethelp("version", 0, f);
 	fprintf(f, "Repository %s:%s\n",
 	    sccs_gethost(), fullname(".", 0));
-	sprintf(parent_file, "%slog/parent", bk_dir);
+	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		FILE	*f1;
 
@@ -172,7 +166,7 @@ header(FILE *f)
 }
 
 void
-logChangeSet(char *rev)
+logChangeSet(char *rev, int quiet)
 {
 	char	commit_log[MAXPATH], buf[MAXLINE], *p;
 	char	subject[MAXLINE];
@@ -180,7 +174,7 @@ logChangeSet(char *rev)
 	FILE	*f;
 	int	dotCount = 0, n;
 
-	unless (streq("commit_and_maillog", getlog(NULL)))  return;
+	unless (streq("commit_and_maillog", getlog(NULL, quiet)))  return;
 
 	// XXX TODO  Determine if this is the first rev where logging is active.
 	// if so, send all chnage log from 1.0
@@ -203,16 +197,14 @@ logChangeSet(char *rev)
 	header(f);
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
-	sprintf(buf, "%sbk sccslog -r%s ChangeSet >> %s", bin, rev, commit_log);
+	sprintf(buf, "bk sccslog -r%s ChangeSet >> %s", rev, commit_log);
 	system(buf);
-	sprintf(buf, "%sbk cset -r+ | %sbk sccslog - >> %s",
-							bin, bin, commit_log);
+	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", commit_log);
 	system(buf);
 	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
-	sprintf(buf, "%sbk cset -c -r%s..%s >> %s",
-					bin, start_rev, rev, commit_log);
+	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
 	system(buf);
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending ChangeSet to %s...\n", logAddr());
@@ -249,6 +241,7 @@ project_name()
 	static	char pname[MAXLINE] = "";
 	char	changeset[MAXPATH] = CHANGESET;
 
+	if (pname[0]) return(pname); /* cached */
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "project name: Can not find project root\n");
 		return (pname);
@@ -266,11 +259,11 @@ notify()
 	char	subject[MAXLINE], *projectname;
 	FILE	*f;
 
-	sprintf(notify_file, "%setc/notify", bk_dir);
+	sprintf(notify_file, "%setc/notify", BitKeeper);
 	unless (exists(notify_file)) {
 		char	notify_sfile[MAXPATH];
 
-		sprintf(notify_sfile, "%setc/SCCS/s.notify", bk_dir);
+		sprintf(notify_sfile, "%setc/SCCS/s.notify", BitKeeper);
 		if (exists(notify_sfile)) {
 			get(notify_sfile, SILENT, "-");
 			assert(exists(notify_file));
@@ -281,10 +274,9 @@ notify()
 	f = fopen(notify_log, "wb");
 	header(f);
 	fclose(f);
-	sprintf(buf, "%sbk sccslog -r+ ChangeSet >> %s", bin, notify_log);
+	sprintf(buf, "bk sccslog -r+ ChangeSet >> %s", notify_log);
 	system(buf);
-	sprintf(buf,
-	    "%sbk cset -r+ | %sbk sccslog - >> %s", bin, bin, notify_log);
+	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", notify_log);
 	system(buf);
 	projectname = project_name();
 	if (projectname[0]) {
@@ -319,8 +311,9 @@ mail(char *to, char *subject, char *file)
 		0
 	};
 
-	if (streq("BitKeeper Test repository", project_name()) &&
+	if (strstr(project_name(), "BitKeeper Test repo") &&
 	    (bkusers(1, 1, 0) <= 5)) {
+		/* TODO : make sure our root dir is /tmp/.regression... */
 		return;
 	}
 
@@ -361,12 +354,9 @@ mail(char *to, char *subject, char *file)
 void
 remark(int quiet)
 {
-	char	buf[MAXLINE];
-
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
 	unless (quiet) gethelp("consistency_check", "", stdout);
-	sprintf(buf, "%sbk cset -M1.0..", bin);
-	system(buf);
+	system("bk cset -M1.0..");
 	close(open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC, 0664));
 	unless(quiet) {
 		printf("Consistency check completed, thanks for waiting.\n\n");
@@ -383,7 +373,7 @@ status(int verbose, char *status_log)
 	f = fopen(status_log, "a");
 	fprintf(f, "Status for BitKeeper repository %s\n", fullname(".", 0));
 	gethelp("version", 0, f);
-	sprintf(parent_file, "%slog/parent", bk_dir);
+	sprintf(parent_file, "%slog/parent", BitKeeper);
 	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
 		f1 = fopen(parent_file, "r");
@@ -407,21 +397,21 @@ status(int verbose, char *status_log)
 			fprintf(f, "User:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -x > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Extra:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%sbk sfiles -cg > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -cg > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Modified:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "%sbk sfiles -Cg > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -Cg > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -432,25 +422,25 @@ status(int verbose, char *status_log)
 		int i;
 
 		fprintf(f, "%6d people have made deltas.\n", bkusers(1, 0, 0));
-		sprintf(buf, "%sbk sfiles > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0; fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files under revision control.\n", i);
-		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -x > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files not under revision control.\n", i);
-		sprintf(buf, "%sbk sfiles -c > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -c > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0;  fgets(buf, sizeof (buf), f1); i++);
 		fclose(f1);
 		fprintf(f, "%6d files modified and not checked in.\n", i);
-		sprintf(buf, "%sbk sfiles -C > %s", bin, tmp_file);
+		sprintf(buf, "bk sfiles -C > %s", tmp_file);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0;  fgets(buf, sizeof (buf), f); i++);
 		fclose(f1);
@@ -471,9 +461,12 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	int	first = 1;
 
 	if (bkarg == NULL) bkarg = "";
-	sprintf(buf, "%sbkhelp.txt", bin);
+	sprintf(buf, "%s/bkhelp.txt", bin);
 	f = fopen(buf, "rt");
-	assert(f);
+	unless (f) {
+		fprintf(stderr, "Unable to locate help file %s\n", buf);
+		exit(1);
+	}
 	sprintf(pattern, "#%s\n", help_name);
 	while (fgets(buf, sizeof(buf), f)) {
 		if (streq(pattern, buf)) {
@@ -501,64 +494,18 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	return (found);
 }
 
-void
-platformInit()
-{
-	// XXX TODO:  Need a new way to handle the @bitkeeper_bin@ installed
-	// time variable.
-	char	*paths[] = {
-		"/usr/libexec/bitkeeper/",
-		"/usr/lib/bitkeeper/",
-		"/usr/bitkeeper/",
-		"/opt/bitkeeper/",
-		"/usr/local/bitkeepe/",
-		"/usr/local/bin/bitkeeper/",
-		"/usr/bin/bitkeeper/",
-		0
-	};
-
-	char	buf[MAXPATH];
-	int	i = -1;
-
-	if (bin) return;
-#ifdef	WIN32
-	setmode(1, _O_BINARY);
-	setmode(2, _O_BINARY);
-#endif
-	if ((editor = getenv("EDITOR")) == NULL) editor = "vi";
-	if ((pager = getenv("PAGER")) == NULL) pager = "more";
-
-#define	TAG_FILE "bk"
-	if ((bin = getenv("BK_BIN")) != NULL) {
-		char	buf[MAXPATH];
-		sprintf(buf, "%s%s", bin, TAG_FILE);
-		if (exists(buf)) return;
-	}
-
-	while (paths[++i]) {
-		sprintf(buf, "%s%s", paths[i], TAG_FILE);
-		if (exists(buf)) {
-			bin =  strdup(paths[i]);
-			return;
-		}
-	}
-	bin = strdup("/usr/libexec/bitkeeper/");
-	return;
-}
-
 int
-checkLog()
+checkLog(int quiet)
 {
 	char	ans[MAXLINE], buf[MAXLINE];
 
-	strcpy(buf, getlog(NULL));
+	strcpy(buf, getlog(NULL, quiet));
 	if (strneq("ask_open_logging:", buf, 17)) {
 		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			char	*cname = &buf[17];
-			setlog(cname);
+			setlog(&buf[17]);
 			return (0);
 		} else {
 			gethelp("log_abort", logAddr(), stdout);
@@ -568,20 +515,14 @@ checkLog()
 		gethelp("close_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
-		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			char	*cname = &buf[18];
-
-			setlog(cname);
-			return (0);
-		} else {
-			sendConfig("config@openlogging.org");
-			return (0);
-		}
+		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
+		sendConfig("config@openlogging.org", 1, 1);
+		return (0);
 	} else if (streq("need_seats", buf)) {
 		gethelp("seat_info", "", stdout);
 		return (1);
 	} else if (streq("commit_and_mailcfg", buf)) {
-		sendConfig("config@openlogging.org");
+		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("commit_and_maillog", buf)) {
 		return (0);

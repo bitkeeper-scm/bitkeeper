@@ -8,7 +8,6 @@ unwrap_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
 
-	platformInit();
 	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (strneq(buf, "# Patch vers:", 13)) {
 			fprintf(stdout, "%s\n", buf);
@@ -23,7 +22,7 @@ unwrap_main(int ac,  char **av)
 				fprintf(stderr,  "can not extract wrapper\n");
 				exit(1);
 			}
-			sprintf(wrap_path, "%sun%swrap", bin, wrap);
+			sprintf(wrap_path, "%s/un%swrap", bin, wrap);
 			if (executable(wrap_path)) {
 				char	*av[2] = {wrap_path, 0};
 

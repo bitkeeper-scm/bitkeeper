@@ -1,15 +1,12 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin;
-
 int
 export_main(int ac,  char **av)
 {
 	int	c, count;
 	int	vflag = 0, kflag = 0, tflag = 0, wflag = 0;
 	char	*rev = NULL;
-	char	s_cset[MAXPATH] = CHANGESET;
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
 	char	include[MAXLINE] = "", exclude[MAXLINE] =  "";
@@ -19,8 +16,6 @@ export_main(int ac,  char **av)
 	sccs	*s;
 	delta	*d;
 	FILE	*f;
-
-	platformInit();
 
 	while ((c = getopt(ac, av, "Dktwvi:x:r:")) != -1) {
 		switch (c) {
@@ -62,11 +57,11 @@ usage:			fprintf(stderr,
 
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	if (rev) {
-		sprintf(buf, "%sbk cset -D -t%s %s %s > %s",
-				bin, rev, include, exclude, file_rev);
+		sprintf(buf, "bk cset -D -t%s %s %s > %s",
+					rev, include, exclude, file_rev);
 	} else {
-		sprintf(buf, "%sbk cset -D -t+  %s %s> %s",
-					bin, include, exclude, file_rev);
+		sprintf(buf, "bk cset -D -t+  %s %s> %s",
+						include, exclude, file_rev);
 	}
 	system(buf);
 	f = fopen(file_rev, "rt");

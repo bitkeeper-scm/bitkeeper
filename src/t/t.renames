@@ -317,9 +317,9 @@ fi
 if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
 then	echo 'Failed to add changeset for remote rename'; exit 1
 fi
-if [ `prs -hr+ -d:C: copy/ChangeSet` != "YO_BABY_YO_BABY" ]
+if [ `bk prs -hr+ -d:C: copy/ChangeSet` != "YO_BABY_YO_BABY" ]
 then	echo 'Failed to add passed in comments to cset'
-	prs -r+ -d:C: copy/ChangeSet
+	bk prs -r+ -d:C: copy/ChangeSet
 	exit 1
 fi
 echo OK

@@ -772,10 +772,15 @@ utc2tm(time_t t)
 	tm.tm_year = tmp;
 	t -= yearSecs[i];
 	leap = leapYear(1900 + tmp);
+	/* Jan = 0, Feb = 1, ... */
 	for (i = 0; i < 12; ++i) {
+		/* [2] means tmp == end of january */
 		tmp = monthSecs[i+1];
 		if (leap && ((i+1) >= 2)) tmp += DSECS;
+
+		/* if seconds < end of the month */
 		if (t < tmp) {
+			/* 0 = Jan, 1 = Feb, etc */
 			tm.tm_mon = i;
 			tmp = monthSecs[i];
 			if (leap && (i >= 2)) tmp += DSECS;
@@ -961,7 +966,7 @@ correct:
 	 * Truncate down oversized fields.
 	 */
 	if (tp->tm_mon > 11) tp->tm_mon = 11;
-	mday = monthDays(tp->tm_year, tp->tm_mon + 1);
+	mday = monthDays(1900 + tp->tm_year, tp->tm_mon + 1);
 	if (mday < tp->tm_mday) tp->tm_mday = mday;
 	if (tp->tm_hour > 23) tp->tm_hour = 23;
 	if (tp->tm_min > 59) tp->tm_min = 59;
@@ -1004,7 +1009,8 @@ date2time(char *asctime, char *z, int roundup)
 	a2tm(&tm, asctime, z, roundup);
 #if	0
 {	struct  tm tm2 = tm;
-	fprintf(stderr, "%s%s %02d/%02d/%02d %02d:%02d:%02d = %u\n",
+	struct  tm *tp;
+	fprintf(stderr, "%s%s %02d/%02d/%02d %02d:%02d:%02d = %u = ",
 	asctime,
 	z ? z : "",
 	tm.tm_year,
@@ -1014,6 +1020,14 @@ date2time(char *asctime, char *z, int roundup)
 	tm.tm_min,
 	tm.tm_sec,
 	tm2utc(&tm2));
+	tp = utc2tm(tm2utc(&tm2));
+	fprintf(stderr, "%02d/%02d/%02d %02d:%02d:%02d\n",
+	tp->tm_year,
+	tp->tm_mon + 1,
+	tp->tm_mday,
+	tp->tm_hour,
+	tp->tm_min,
+	tp->tm_sec);
 }
 #endif
 	return (tm2utc(&tm));
@@ -1260,42 +1274,42 @@ sccs_mkroot(char *path)
 	char	buf[MAXPATH];
 
 	sprintf(buf, "%s/SCCS", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/etc", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/etc/SCCS", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/deleted", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/deleted/SCCS", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/tmp", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/log", path);
-	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
 		perror(buf);
 		exit(1);
 	}
@@ -1327,7 +1341,7 @@ getCSetFile(sccs *s)
 	unless (s->proj && s->proj->root) return (0);
 	sprintf(file, "%s/%s", s->proj->root, CHANGESET);
 	if (exists(file)) {
-		sc = sccs_init(file, INIT_NOCKSUM, 0);
+		sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
 		assert(sc->tree);
 		sccs_sdelta(sc, sc->tree, file);
 		sccs_free(sc);
@@ -3163,15 +3177,9 @@ loadConfig(char *root)
 	MDBM	*DB = 0;
 	char 	s_config[MAXPATH];
 	char 	g_config[MAXPATH];
-	sccs 	*s1 = 0;
-	project *proj;
-
-	/*
-	 * Hand make a project struct, so sccs_init(s_config, ..) below
-	 * won'nt call us again, otherwise we end up in a loop.
-	 */
-	proj = calloc(1, sizeof(*proj));
-	proj->root = strdup(root);
+	char 	x_config[MAXPATH];
+	sccs	*s1;
+	project *proj = 0;
 
 	sprintf(s_config, "%s/BitKeeper/etc/SCCS/s.config", root);
 	sprintf(g_config, "%s/BitKeeper/etc/config", root);
@@ -3179,26 +3187,32 @@ loadConfig(char *root)
 	 * If the config is already checked out, use that.
 	 * Otherwise, check it out.
 	 */
-	if (exists(s_config) && !exists(g_config)) {
-		s1 = sccs_init(s_config, SILENT, proj);
-		unless (s1) return 0;
-		if (sccs_get(s1, 0, 0, 0, 0, SILENT, 0)) {
-			sccs_free(s1);
-			return (0);
-		}
+	if (exists(g_config)) return (loadDB(g_config, parseConfig, DB_NODUPS));
+	unless (exists(s_config)) return 0;
+
+	/*
+	 * Hand make a project struct, so sccs_init(s_config, ..) below
+	 * won'nt call us again, otherwise we end up in a loop.
+	 */
+	proj = calloc(1, sizeof(*proj));
+	proj->root = strdup(root);
+	s1 = sccs_init(s_config, SILENT, proj);
+	unless (s1) {
+		proj_free(proj);
+		return 0;
 	}
-	unless (exists(g_config)) return (0);
-	DB = loadDB(g_config, parseConfig, DB_NODUPS);
-	if (s1) {
-		/*
-		 * If we checked out the config file,
-		 * we must clean it up. (The uppper level could be
-		 * doing a "bk -r clean") Leaving the config
-		 * checked out could give strange result.
-		 */
-		unlink(g_config);
+	if (gettemp(x_config, "bk_config")) {
+		fprintf(stderr, "Can not create temp file\n");
 		sccs_free(s1);
+		return 0;
 	}
+	if (sccs_get(s1, 0, 0, 0, 0, SILENT|PRINT, x_config)) {
+		sccs_free(s1);
+		return (0);
+	}
+	DB = loadDB(x_config, parseConfig, DB_NODUPS);
+	unlink(x_config);
+	sccs_free(s1);
 	return DB;
 }
 
@@ -3235,6 +3249,20 @@ proj_free(project *p)
 	if (p->config) mdbm_close(p->config);
 	free(p);
 }
+
+#if	defined(linux) && defined(sparc)
+flushDcache()
+{
+	u32	i, j;
+#define	SZ	(17<<8)	/* 17KB buffer of ints */
+	u32	buf[SZ];
+
+	for (i = j = 0; i < SZ; i++) {
+		j += buf[i];
+	}
+	fchmod(-1, j);	/* use the result */
+}
+#endif
 
 /*
  * Initialize an SCCS file.  Do this before anything else.
@@ -3340,6 +3368,16 @@ sccs_init(char *name, u32 flags, project *proj)
 			    mmap(0, s->size, mapmode, MAP_PRIVATE, s->fd, 0);
 			s->state |= S_MAPPRIVATE;
 		}
+#if	defined(linux) && defined(sparc)
+		/*
+		 * Sparc linux has an aliasing bug where the data gets
+		 * screwed up.  We can work around it by invalidating the
+		 * dache by stepping through it.
+		 */
+		else {
+			flushDcache();
+		}
+#endif
 	}
 
 	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
@@ -3426,6 +3464,9 @@ bad:		sccs_free(s);
 		s->size = sbuf.st_size;
 		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
 		if (s->mmap != (caddr_t)-1L) s->state |= S_SOPEN;
+#if	defined(linux) && defined(sparc)
+		flushDcache();
+#endif
 		seekto(s, 0);
 		for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); );
 		s->data = sccstell(s);
@@ -3455,6 +3496,9 @@ sccs_close(sccs *s)
 {
 	unless (s->state & S_SOPEN) return;
 	munmap(s->mmap, s->size);
+#if	defined(linux) && defined(sparc)
+	flushDcache();
+#endif
 	close(s->fd);
 	s->mmap = (caddr_t) -1;
 	s->fd = -1;
@@ -3662,7 +3706,7 @@ stale(char *file)
 {
 	char	buf[300];
 	char	*t, *h = sccs_gethost();
-	int	n, fd = open(file, 0);
+	int	n, fd = open(file, 0, 0);
 
 	if (fd == -1) return (0);
 	if ((n = read(fd, buf, sizeof(buf))) <= 0) {
@@ -3691,14 +3735,15 @@ int
 sccs_lock(sccs *s, char type)
 {
 	char	*t;
-	int	lockfd;
+	int	lockfd, verbose;
 
 	if (s->state & S_READ_ONLY) {
 		return (0);
 	}
 	
+	verbose = (s->state & SILENT) ? 0 : 1;
 	if ((type == 'z') && repository_locked(s->proj) &&
-	    (repository_cleanLocks(s->proj, 0) != 0)) {
+	    (repository_cleanLocks(s->proj, 0, verbose) != 0)) {
 		return (0);
 	}
 
@@ -5919,6 +5964,9 @@ badcksum(sccs *s)
 	register unsigned int sum = 0;
 	int	filesum;
 
+#ifdef	PURIFY
+	assert(size(s->sfile) == s->size);
+#endif
 	debug((stderr, "Checking sum from %x to %x (%d)\n",
 	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
@@ -6118,14 +6166,12 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 
 	if (fixDate) fixNewDate(s);
 	
-	/* If the 1.0 delta is a fake, skip it */
-	if (s->state & S_FAKE_1_0) {
-		assert(streq(s->table->rev, "1.0"));
-		d = s->table->next;
-	} else {
-		d = s->table;
-	}
-	for (; d; d = d->next) {
+	for (d = s->table; d; d = d->next) {
+		if ((d->next == NULL) && (s->state & S_FAKE_1_0)) {
+			/* If the 1.0 delta is a fake, skip it */
+			assert(streq(s->table->rev, "1.0"));
+			break;
+		}
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
@@ -7485,6 +7531,7 @@ checkin(sccs *s,
 		    "%s not checked in, use -i flag.\n", s->gfile));
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
+		freeLines(syms);
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -7494,6 +7541,7 @@ checkin(sccs *s,
 			perror(s->gfile);
 			sccs_unlock(s, 'z');
 			if (prefilled) sccs_freetree(prefilled);
+			freeLines(syms);
 			return (-1);
 		}
 	}
@@ -7501,6 +7549,7 @@ checkin(sccs *s,
 	if (exists(s->sfile)) {
 		fprintf(stderr, "delta: lost checkin race on %s\n", s->sfile);
 		if (prefilled) sccs_freetree(prefilled);
+		freeLines(syms);
 		if (gfile && (gfile != stdin)) {
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
@@ -7517,6 +7566,7 @@ checkin(sccs *s,
 			"delta: %s: filename must not contain \":/@\"\n" , t);
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
+		freeLines(syms);
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -7609,6 +7659,7 @@ checkin(sccs *s,
 	EACH (syms) {
 		addsym(s, n, n, n->rev, syms[i]);
 	}
+	freeLines(syms);
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
@@ -7619,7 +7670,7 @@ checkin(sccs *s,
 		unless (hasComments(d)) {
 			sprintf(buf, "BitKeeper file %s",
 			    fullname(s->gfile, 0));
-			n->comments = addLine(d->comments, strdup(buf));
+			d->comments = addLine(d->comments, strdup(buf));
 		}
 	}
 	unless (s->state & S_NOSCCSDIR) {
@@ -9509,6 +9560,7 @@ newcmd:
 	return (0);
 }
 
+
 /*
  * Initialize as much as possible from the file.
  * Don't override any information which is already set.
@@ -10078,10 +10130,10 @@ sccs_delta(sccs *s,
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);
-		if (init) freeLines(syms);
 		if (sfile) fclose(sfile);
 		if (diffs) mclose(diffs);
 		free_pfile(&pf);
+		freeLines(syms);
 		if (tmpfile  && !streq(tmpfile, DEV_NULL)) unlink(tmpfile);
 		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
@@ -13052,13 +13104,11 @@ sccs_ino(sccs *s)
 int
 sccs_reCache(void)
 {
-	char buf[MAXPATH];
 	char	*av[4];
 
 	/* sfiles -r */
-	sprintf(buf, "%sbk", getenv("BK_BIN"));
-	av[0] = buf,   av[1] = "sfiles"; av[2] = "-r"; av[3] = 0;
-	return spawnvp_ex(_P_WAIT, buf, av);
+	av[0] = "bk";  av[1] = "sfiles"; av[2] = "-r"; av[3] = 0;
+	return spawnvp_ex(_P_WAIT, av[0], av);
 }
 
 /*
@@ -13082,7 +13132,7 @@ loadDB(char *file, int (*want)(char *), int style)
 	int	first = 1;
 	int	flags;
 	char	buf[MAXLINE];
-	char	*av[4];
+	char	*av[5];
 
 	// XXX awc->lm: we should check the z lock here
 	// someone could be updating the file...
@@ -13095,9 +13145,9 @@ again:	unless (f = fopen(file, "rt")) {
 		if (first && streq(file, GONE) && exists(SGONE)) {
 			first = 0;
 			/* get -s */
-			sprintf(buf, "%s%s", getenv("BK_BIN"), GET);
-			av[0] = GET; av[1] = "-s"; av[2] = GONE; av[3] = 0;
-			spawnvp_ex(_P_WAIT, buf, av);
+			av[0] = "bk"; av[1] = "get"; av[2] = "-q";
+			av[3] = GONE; av[4] = 0;
+			spawnvp_ex(_P_WAIT, av[0], av);
 			goto again;
 		}
 out:		if (f) fclose(f);
@@ -13489,3 +13539,20 @@ smartRename(char *old, char *new)
 	errno = save;
 	return (rc);
 }
+
+#if	defined(linux) && defined(sparc)
+#undef	fclose
+
+sparc_fclose(FILE *f)
+{
+	int	ret;
+
+#ifdef	PURIFY_FILES
+	ret = purify_fclose(f, "sparc me, baby", 666);
+#else
+	ret = fclose(f);
+#endif
+	flushDcache();
+	return (ret);
+}
+#endif

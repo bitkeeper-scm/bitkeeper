@@ -191,12 +191,14 @@ sfio_in(int extract)
 	int	len;
 	int	n;
 
+	bzero(buf, sizeof(buf));
 	if (readn(0, buf, 10) != 10) {
 		perror("read");
 		return (1);
 	}
 	unless (strneq(buf, SFIO_VERS, 10)) {
-		fprintf(stderr, "Version mismatch\n");
+		fprintf(stderr,
+		    "Version mismatch [%s]<>[%s]\n", buf, SFIO_VERS);
 		return (1);
 	}
 	for (;;) {
@@ -243,18 +245,16 @@ in_link(char *file, int pathlen, int extract)
 	u32	sum = 0, sum2 = 0;
 	unsigned int imode;  /* mode_t might be a short */
 
-fprintf(stderr, "LINK(%s)\n", file);
 	unless (pathlen) {
 		fprintf(stderr, "symlink with 0 length?\n");
 		return (1);
 	}
 	if (readn(0, buf, pathlen) != pathlen) return (1);
 	buf[pathlen] = 0;
-fprintf(stderr, "LINK(%s) -> %s\n", file, buf);
 	sum = adler32(0, buf, pathlen);
 	if (extract) {
 		if (symlink(buf, file)) {
-			mkdirp(file);
+			mkdirf(file);
 			if (symlink(buf, file)) {
 				perror(file);
 				return (1);
@@ -278,7 +278,11 @@ done:	if (readn(0, buf, 10) != 10) {
 	sscanf(buf, "%03o", &imode);
 	mode = imode;
 	if (extract) {
+		/*
+		 * This is trying to chmod what is pointed to, which
+		 * is not what we want.
 		chmod(file, mode & 0777);
+		 */
 	}
 	unless (quiet) fprintf(stderr, "%s\n", file);
 	return (0);

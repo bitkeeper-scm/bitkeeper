@@ -41,7 +41,6 @@ sccslog_main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	int	save, c, flags = SILENT;
-	int	inroot = 0;
 	RANGE_DECL;
 
 #ifdef WIN32
@@ -66,7 +65,7 @@ usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 
 	for (name = sfileFirst("sccslog", &av[optind], 0);
 	    name; name = sfileNext()) {
-again:		unless (s = sccs_init(name, INIT_NOCKSUM|flags, 0)) {
+		unless (s = sccs_init(name, INIT_NOCKSUM|flags, 0)) {
 			continue;
 		}
 		unless (s->tree) goto next;

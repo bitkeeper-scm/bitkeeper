@@ -1,0 +1,87 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+${ECHO} "logging: none" > $HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+for dir in d1 d2 d3 d1/sub1 d2/sub1 d3/sub d3/sub2
+do	mkdir $dir
+	for file in a b c d 
+	do	echo I am $dir/$file > $dir/$file
+	done
+done
+bk sfiles -x | bk ci $Q -i -
+if [ ! -f d3/sub2/SCCS/s.a ]; then echo failed to create files; exit 1; fi
+echo OK
+echo $N Commit the data .............................................$NL
+bk commit $S -f -yCset
+if [ `bk sfiles -C | wc -l` -ne 0 ];
+then	echo failed to commit all files; exit 1; fi
+echo OK
+echo $N Create another changeset ....................................$NL
+bk -r edit $Q
+bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
+do	echo more data >> $x
+done
+bk -r ci $Q -ycset2
+bk commit $S -f -yCset2
+if [ `bk sfiles -C | wc -l` -ne 0 ];
+then	echo failed to commit all files; exit 1; fi
+echo OK
+echo $N Create another changeset ....................................$NL
+bk -r edit $Q
+bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
+do	echo more data >> $x
+done
+bk -r ci $Q -ycset3
+bk commit $S -f -yCset3
+if [ `bk sfiles -C | wc -l` -ne 0 ];
+then	echo failed to commit all files; exit 1; fi
+echo OK
+echo $N Create another changeset with two deltas ....................$NL
+bk -r edit $Q
+bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
+do	echo more data >> $x
+done
+bk -r ci $Q -ycset4
+bk -r edit $Q
+bk sfiles -g | grep -v ChangeSet | grep -v BitKeeper | while read x
+do	echo more data >> $x
+done
+bk -r ci $Q -ycset4
+bk commit $S -f -yCset4
+if [ `bk sfiles -C | wc -l` -ne 0 ];
+then	echo failed to commit all files; exit 1; fi
+echo OK
+echo $N Make sure that it checks clean ..............................$NL
+bk -r check -a > OUT 2>&1
+if [ $? -ne 0 ]; then echo failed to exit 0; exit 1; fi
+#if [ -s OUT ]; then echo failed; cat OUT; exit 1; fi
+echo OK
+echo $N Make sure that it complains if a file is missing ............$NL
+mv d1/sub1/SCCS/s.a d1/sub1/SCCS/S.a
+bk -r check -a > OUT 2>&1
+if [ $? -eq 0 ]; then echo failed to exit non-zero; cat OUT; exit 1; fi
+if [ ! -s OUT ]; then echo failed; cat OUT; exit 1; fi
+echo OK

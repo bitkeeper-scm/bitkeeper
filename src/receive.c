@@ -1,15 +1,12 @@
 #include "system.h"
 #include "sccs.h" 
 
-extern char *bin;
-
+int
 receive_main(int ac,  char **av)
 {
 	int	c, new = 0;
 	char	buf[MAXLINE], opts[MAXLINE] = "";
 	char	*path;
-
-	platformInit();  
 
 	while ((c = getopt(ac, av, "acFiStv")) != -1) {
 		switch (c) { 
@@ -40,6 +37,6 @@ usage:			fprintf(stderr,
 			exit(1);
 		}
 	}
-	sprintf(buf, "%sbk unwrap | %sbk takepatch %s", bin, bin, opts);
+	sprintf(buf, "bk unwrap | bk takepatch %s", opts);
 	return (system(buf));
 }

@@ -1,18 +1,15 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *bin;
-
+int
 fix_main(int ac,  char **av)
 {
 	int	c, i;
-	char	buf[MAXLINE], opts[MAXLINE] = "";
+	char	buf[MAXLINE];
 	char	fix_file[MAXPATH];
 	char	*qflag = "-q", *p;
 	sccs	*s;
 	delta	*d;
-
-	platformInit();
 
 	while ((c = getopt(ac, av, "qv")) != -1) {
 		switch (c) {
@@ -44,8 +41,7 @@ fix_main(int ac,  char **av)
 		assert(s);
 		d = findrev(s, NULL);
 		assert(d);
-		sprintf(buf, "%sbk stripdel %s -r%s %s",
-					bin, qflag, d->rev, av[i]);
+		sprintf(buf, "bk stripdel %s -r%s %s", qflag, d->rev, av[i]);
 		sccs_free(s);
 		if (system(buf) == 0) {
 			int gflags = SILENT|GET_SKIPGET|GET_EDIT;

@@ -2,7 +2,6 @@ OS=`sh os`
 DIRS=patch diffutils
 BINS=patch/$(OS)/patch diffutils/$(OS)/diff diffutils/$(OS)/diff3 \
 	diffutils/$(OS)/sdiff diffutils/$(OS)/cmp
-BK_BIN=/usr/bitkeeper
 CONFIG=--cache-file=../../../config.cache --quiet
 
 all: os
@@ -21,12 +20,13 @@ all: os
 	cp $(BINS) bin
 
 install: all
-	cp $(BINS) $(BK_BIN)
+	@if [ X$(BINDIR) = X ]; then echo Must set BINDIR; exit 1; fi
+	cp $(BINS) $(BINDIR)
 	@for i in $(BINS); \
 	do	D=`dirname $$i`; \
 		F=`basename $$i`; \
 		(cd $$D && ../../../bk chksum $$F); \
-	done >> $(BK_BIN)/MANIFEST; \
+	done >> $(BINDIR)/MANIFEST; \
 
 clobber clean clean-obj: os
 	-@OS=$(OS); \

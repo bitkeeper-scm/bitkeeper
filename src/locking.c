@@ -27,6 +27,10 @@ repository_locked(project *p)
 	unless (ret) {
 		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 		ret = exists(path) && !emptyDir(path);
+		unless (ret) {
+			sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+			ret = exists(path) && !emptyDir(path);
+		}
 	}
     	if (freeit) proj_free(p);
 	if (ret && getenv("BK_IGNORELOCK")) return (0);
@@ -52,19 +56,25 @@ repository_lockers(project *p)
 		return (0);
 	}
 	unless (repository_locked(p)) {
-		fprintf(stderr, "Entire repository is locked\n");
     		if (freeit) proj_free(p);
 		return (0);
 	}
 
+	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+	if (exists(path)) {
+		fprintf(stderr, "Entire repository is locked by:\n");
+		n++;
+		fprintf(stderr, "\tRESYNC directory.\n");
+	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	unless (D = opendir(path)) goto rd;
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
 		unless (isdigit(d->d_name[0])) continue;
+		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, d->d_name);
-		fprintf(stderr, "Write locker: %s%s\n",
-		    d->d_name, repository_stale(path, 0) ? " (stale)" : "");
+		fprintf(stderr, "\tWrite locker: %s%s\n",
+		    d->d_name, repository_stale(path, 0, 0) ? " (stale)" : "");
 		n++;
 	}
 	closedir(D);
@@ -76,9 +86,10 @@ rd:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	}
 	while (d = readdir(D)) {
 		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
+		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, d->d_name);
-		fprintf(stderr, "Read  locker: %s%s\n",
-		    d->d_name, repository_stale(path, 0) ? " (stale)" : "");
+		fprintf(stderr, "\tRead  locker: %s%s\n",
+		    d->d_name, repository_stale(path, 0, 0) ? " (stale)" : "");
 		n++;
 	}
 	closedir(D);
@@ -91,7 +102,7 @@ rd:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
  * Returns 0 if successful.
  */
 int
-repository_cleanLocks(project *p, int force)
+repository_cleanLocks(project *p, int force, int verbose)
 {
 	char	path[MAXPATH];
 	char	*host;
@@ -130,7 +141,7 @@ err:		if (freeit) proj_free(p);
 			unlink(path);
 			continue;
 		}
-		unless (repository_stale(path, 1)) {
+		unless (repository_stale(path, 1, verbose)) {
 			left++;
 		}
 	}
@@ -155,7 +166,7 @@ write:	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 			unlink(path);
 			continue;
 		}
-		unless (repository_stale(path, 1)) {
+		if (repository_stale(path, 1, verbose) == 0) {
 			left++;
 		}
 	}
@@ -299,7 +310,7 @@ repository_rdunlock(int force)
 	unlink(path);
 
 	/* clean up stale locks while we are here */
-	repository_cleanLocks(p, force);
+	repository_cleanLocks(p, force, 1);
 
 	/* blow away the directory, this makes checking for locks faster */
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
@@ -345,7 +356,7 @@ out:	proj_free(p);
 }
 
 int
-repository_stale(char *path, int discard)
+repository_stale(char *path, int discard, int verbose)
 {
 	char	*s = strrchr(path, '/');
 	char	host[256];
@@ -354,6 +365,8 @@ repository_stale(char *path, int discard)
 	u32	pid;
 
 	unless (thisHost) return (0);
+	if (!verbose) flags |= SILENT;
+	host[0] = 0;
 	if (s) s++; else s = path;
 	sscanf(s, "%d@%s", &pid, host);
 	if (streq(host, thisHost) &&
