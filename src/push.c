@@ -118,8 +118,7 @@ log_main(int ac, char **av)
 			fprintf(stderr, "Cannot find project root\n");
 			return (1);
 		}
-		printf("Number of open logs pending: %d\n",
-							logs_pending(0, 0));
+		printf("Number of open logs pending: %d\n", logs_pending(0, 0));
 		return (0);
 	}
 

@@ -7092,7 +7092,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 				fputmeta(s, buf, out);
 			}
 		}
-		if (!prune_tags && d->symGraph) {
+		/* automagically prune tag serials from non-csetfiles */
+		if (!prune_tags && d->symGraph && (s->state & S_CSET)) {
 			p = fmts(buf, "\001cS");
 			if (d->ptag) {
 				p = fmtd(p, d->ptag);

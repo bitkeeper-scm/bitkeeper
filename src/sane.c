@@ -86,10 +86,43 @@ chk_user()
 }
 
 int
-write_chk(char *path, int must)
+write_chkdir(char *path, int must)
 {
-	unless (exists(path)) {
+again:	unless (exists(path) && isdir(path)) {
 		if (must) {
+			if (mkdirp(path)) {
+				perror("sane mkdir:");
+				return (1);
+			} else {
+				goto again;
+			}
+			fprintf(stderr, "sane: %s is missing\n", path);
+			return (1);
+		}
+		return (0);
+	}
+	if (access(path, W_OK) != 0) {
+		fprintf(stderr, "sane: no write permission on %s\n", path);
+		return (1);
+	}
+	return (0);
+}
+
+int
+write_chkfile(char *path, int must)
+{
+again:	unless (exists(path)) {
+		if (must) {
+			if (mkdirf(path)) {
+				perror("sane mkdir:");
+				return (1);
+			}
+			if (close(creat(path, 0666))) {
+				perror("sane create:");
+				return (1);
+			} else {
+				goto again;
+			}
 			fprintf(stderr, "sane: %s is missing\n", path);
 			return (1);
 		}
@@ -105,15 +138,15 @@ write_chk(char *path, int must)
 int
 chk_permissions()
 {
-	return (write_chk("BitKeeper", 1) |
-	    write_chk("BitKeeper/etc", 1) |
-	    write_chk("BitKeeper/etc/SCCS", 1) |
-	    write_chk("BitKeeper/tmp", 1) |
-	    write_chk("BitKeeper/log", 1) |
-	    write_chk("BitKeeper/log/cmd_log", 0) |
-	    write_chk("BitKeeper/log/repo_log", 0) |
-	    write_chk("BitKeeper/triggers", 0) |
-	    write_chk("SCCS", 1));
+	return (write_chkdir("BitKeeper", 1) |
+	    write_chkdir("BitKeeper/etc", 1) |
+	    write_chkdir("BitKeeper/etc/SCCS", 1) |
+	    write_chkdir("BitKeeper/tmp", 1) |
+	    write_chkdir("BitKeeper/log", 1) |
+	    write_chkfile("BitKeeper/log/cmd_log", 0) |
+	    write_chkfile("BitKeeper/log/repo_log", 0) |
+	    write_chkdir("BitKeeper/triggers", 0) |
+	    write_chkdir("SCCS", 1));
 }
 
 int
