@@ -124,6 +124,7 @@ proc getConfig {prog} \
 	set _d(rev.revColor) #9fb6b8	  ;# unselected box fills
 	set _d(rev.localColor) green	  ;# local node (for resolve)
 	set _d(rev.remoteColor) red	  ;# remote node (for resolve)
+	set _d(rev.gcaColor)    white  ;# gca node (for resolve)
 	set _d(rev.tagColor) red	  ;# tag box fills
 	set _d(rev.selectColor) #adb8f6   ;# highlight color for selected tag
 	set _d(rev.dateColor) #181818	  ;# dates at the bottom of graph

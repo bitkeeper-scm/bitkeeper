@@ -3,7 +3,6 @@
 #
 # %W% %@%
 #
-
 array set month {
 	""	"bad"
 	"01"	"JAN"
@@ -43,6 +42,26 @@ proc ht {id} \
 	return [expr {$y2 - $y1}]
 }
 
+proc drawAnchor {x1 y1 x2 y2} {
+	global w gc
+
+	$w(graph) create line $x2 $y1 $x2 $y2 $x1 $y2 \
+	    -fill #f0f0f0 -tags anchor -width 1 \
+	    -capstyle projecting
+	$w(graph) create line $x1 $y2 $x1 $y1 $x2 $y1 \
+	    -fill $gc(rev.revOutline) -tags anchor -width 1 \
+	    -capstyle projecting
+
+	set y $y2
+	foreach incr {3 3 3 } {
+		incr x1 $incr
+		incr x2 -$incr
+		incr y $incr
+		$w(graph) create line $x1 $y $x2 $y \
+		    -fill $gc(rev.revOutline) -tags anchor 
+	}
+
+}
 #
 # Set highlighting on the bounding box containing the revision number
 #
@@ -66,17 +85,21 @@ proc highlight {id type {rev ""}} \
 	# -- lm doesn't mind that the bottoms of the letters touch, though
 	#puts "id=($id)"
 	set x1 [lindex $bb 0]
-	set y1 [expr [lindex $bb 1] - 1]
+	set y1 [expr {[lindex $bb 1] - 1}]
 	set x2 [lindex $bb 2]
-	set y2 [expr [lindex $bb 3] - 1]
+	set y2 [expr {[lindex $bb 3] - 1}]
 
+	set bg {}
 	switch $type {
+	    anchor {
+		    drawAnchor $x1 $y1 $x2 $y2
+		}
 	    revision {\
 		#puts "highlight: revision ($rev)"
-		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $gc(rev.revColor) \
-		    -outline $gc(rev.revOutline) \
-		    -width 1 -tags [list $rev revision]]}
+ 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
+ 		    -fill $gc(rev.revColor) \
+ 		    -outline $gc(rev.revOutline) \
+ 		    -width 1 -tags [list $rev revision]]}
 	    merge   {\
 		#puts "highlight: merge ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
@@ -91,11 +114,13 @@ proc highlight {id type {rev ""}} \
 		#puts "highlight: red ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline "red" -width 1.5 -tags "$rev"]}
-	    old  {\
+	    old  {
 		#puts "highlight: old ($rev) id($id)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(rev.revOutline) -fill $gc(rev.oldColor) \
-		    -tags old]}
+			    -outline $gc(rev.revOutline) \
+			    -fill $gc(rev.oldColor) \
+			    -tags old]
+	    }
 	    new   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.newColor) \
@@ -108,12 +133,23 @@ proc highlight {id type {rev ""}} \
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline $gc(rev.revOutline) -fill $gc(rev.remoteColor) \
 		    -width 2 -tags remote]}
-	    gca  {\
+	    gca  {
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline black -width 2 -fill lightblue]}
+			    -outline black -width 2 -fill $gc(rev.gcaColor) \
+			    -tags gca]
+	    }
 	}
 
+	# make sure merge tags have priority over old/new
+	foreach mergeTag {local remote gca} {
+		foreach tag {new old anchor} {
+			catch {$w(graph) raise $mergeTag $tag}
+		}
+	}
+
+	$w(graph) raise anchor
 	$w(graph) raise revtext
+
 	return $bg
 }
 
@@ -156,57 +192,53 @@ proc revMap {file} \
 	catch { close $fid }
 }
 
-# Diff between a rev and its parent
+proc orderSelectedNodes {reva revb} \
+{
+	global rev1 rev2 anchor rev2rev_name w
+
+ 	if {[info exists rev2rev_name($reva)]} {
+ 		set reva $rev2rev_name($reva)
+ 	}
+ 	if {[info exists rev2rev_name($revb)]} {
+ 		set revb $rev2rev_name($revb)
+ 	}
+
+	if {$reva < $revb} {
+		set rev2 [getRev new $revb]
+		set rev1 [getRev old $reva]
+	} else {
+		set rev2 [getRev new $reva]
+		set rev1 [getRev old $revb]
+	}
+
+}
+
+# Diff between a rev and its parent, or between the two highlighted
+# nodes
 proc diffParent {} \
 {
-	global w file rev1 rev2 ttype
+	global w file rev1 rev2 anchor ttype
 
 	set rev ""
 	set b ""
-	# See if node is selected and then try to get the revision number
-	set id [$w(graph) find withtag old]
-	if {$id != ""} {
-		set tags [$w(graph) gettags $id]
-		set bb [$w(graph) bbox $id]
-		set x1 [expr {[lindex $bb 0] - 1}]
-		set y1 [expr {[lindex $bb 1] - 1}]
-		set x2 [expr {[lindex $bb 2] + 1}]
-		set y2 [expr {[lindex $bb 3] + 1}]
-		if {$bb != ""} {
-			set b [$w(graph) find enclosed $x1 $y1 $x2 $y2]
-			# Tags for the different indexes
-			# t(0)=1.130-kush revsion
-			# t(1)=old/new
-			# t(2)=1.130-kush revtext current
-			set tag [lindex $b 2]
-			set tags [$w(graph) gettags $tag]
-			if {[lsearch $tags revtext] >= 0} { 
-				set rev_user [lindex $tags 0]
-				set rev [lindex [split $rev_user "-"] 0]
-				#puts "tags=($tags) rev=($rev)"
-			}
-		}
+	if {![info exists anchor] || $anchor == ""} return
+
+	if {![info exists rev2] || $rev2 == $rev1} {
+		set rev2 $anchor
+		set rev1 [exec bk prs -d:PARENT: -hr${anchor} $file]
 	}
-	#puts "id=($id) rev=($rev)"
 
-	if {$rev != ""} {
-		set rev1 [exec bk prs -d:PARENT: -hr${rev} $file]
-		set rev2 $rev
-		set base [file tail $file]
-		# not fully working -- need to reset nodes when clicking on
-		# a new node
-		#set hrev1 [lineOpts $rev1]
-		#set hrev2 [lineOpts $rev2]
-		#highlight $hrev1 "old"
-		#highlight $hrev2 "new"
+	orderSelectedNodes $rev1 $rev2
+	busy 1
 
-		if {$base == "ChangeSet"} {
-			csetdiff2
-			return
-		}
-		busy 1
+	set base [file tail $file]
+
+	if {$base == "ChangeSet"} {
+		csetdiff2
+	} else {
 		displayDiff $rev1 $rev2
 	}
+
 	return
 }
 
@@ -515,7 +547,9 @@ proc dateSeparate { } { \
 	# Adjust height of screen by adding text height
 	# so date string is not so scrunched in
 	set miny [expr {$screen(miny) - $ht}]
-	set maxy [expr {$screen(maxy) + $ht}]
+
+	# 12 is added to maxy to accomdate the little anchor glyph
+	set maxy [expr {$screen(maxy) + $ht + 12}]
 
 	# Try to compensate for date text size when canvas is small
 	if { $maxy < 50 } { set maxy [expr {$maxy + 15}] }
@@ -998,16 +1032,17 @@ proc highlightAncestry {rev1} \
 proc getLeftRev { {id {}} } \
 {
 	global	rev1 rev2 w comments_mapped gc fname dev_null file
+	global anchor
 
 	# destroy comment window if user is using mouse to click on the canvas
 	if {$id == ""} {
 		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
-	$w(graph) delete new
-	$w(graph) delete old
+	$w(graph) delete new old anchor
 	.menus.cset configure -state disabled -text "View Changeset "
 	.menus.difftool configure -state disabled
 	set rev1 [getRev "old" $id]
+	set anchor [getRev "anchor" $id]
 
 	highlightAncestry $rev1
 
@@ -1029,10 +1064,23 @@ proc getLeftRev { {id {}} } \
 
 proc getRightRev { {id {}} } \
 {
-	global	rev2 file w
+	global	anchor rev1 rev2 file w rev2rev_name
 
-	$w(graph) delete new
-	set rev2 [getRev "new" $id]
+	$w(graph) delete new old
+	set rev2 [getRev "unknown" $id]
+
+	if {$rev2 == $rev1} {
+		highlight $rev2 old
+	} else {
+		highlight $rev2 new
+	}
+
+	if {![info exists anchor]} {
+		set anchor $rev2
+	}
+
+	orderSelectedNodes $anchor $rev2
+
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
 		catch {exec bk prs -hr$rev2 -d:CSETKEY: $file} info
@@ -1051,7 +1099,7 @@ proc getRightRev { {id {}} } \
 # Returns the revision number (without the -username portion)
 proc getRev {type {id {}} } \
 {
-	global w
+	global w anchor
 
 	if {$id == ""} {
 		set id [$w(graph) gettags current]
@@ -1063,6 +1111,7 @@ proc getRev {type {id {}} } \
 	}
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
+	if {$id == "anchor"} {set id $anchor}
 	$w(graph) select clear
 	highlight $id $type 
 	regsub -- {-.*} $id "" id
@@ -1240,10 +1289,12 @@ proc csettool {} \
 proc diff2 {difftool {id {}} } \
 {
 	global file rev1 rev2 Opts dev_null bk_cset tmp_dir w
+	global anchor
 
 	if {![info exists rev1] || ($rev1 == "")} { return }
 	if {$difftool == 0} { getRightRev $id }
 	if {"$rev2" == ""} { return }
+
 	set base [file tail $file]
 	if {$base == "ChangeSet"} {
 		csetdiff2
@@ -1285,12 +1336,15 @@ proc displayDiff {rev1 rev2} \
 #
 proc gotoRev {f hrev} \
 {
-	global rev1 rev2 gc dev_null
+	global anchor rev1 rev2 gc dev_null
 
 	set rev1 $hrev
 	revtool $f $hrev
 	set hrev [lineOpts $hrev]
-	highlight $hrev "old"
+	set anchor [getRev "anchor" $hrev]
+	set rev1 [getRev "old" $hrev]
+#	highlight $anchor "anchor"
+#	highlight $hrev "old"
 	catch {exec bk prs -hr$hrev -d:I:-:P: $f 2>$dev_null} out
 	if {$out != ""} {centerRev $out}
 	if {[info exists rev2]} { unset rev2 }
@@ -1348,10 +1402,10 @@ proc currentMenu {} \
 #
 proc csetdiff2 {{rev {}}} \
 {
-	global file rev1 rev2 Opts dev_null w ttype
+	global file rev1 rev2 Opts dev_null w ttype anchor
 
 	busy 1
-	if {$rev != ""} { set rev1 $rev; set rev2 $rev }
+	if {$rev != ""} { set rev1 $rev; set rev2 $rev; set anchor $rev1 }
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
@@ -1978,7 +2032,7 @@ proc revtool {lfname {R {}}} \
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  Opts gc file rev2rev_name cdim firstnode fname
 	global  merge diffpair firstrev
-	global rev1 rev2
+	global rev1 rev2 anchor
 	global State
 
 	# Set global so that other procs know what file we should be
@@ -1989,6 +2043,7 @@ proc revtool {lfname {R {}}} \
 	$w(graph) delete all
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
+	if {[info exists anchor]} {unset anchor}
 	if {[info exists rev1]} { unset rev1 }
 	if {[info exists rev2]} { unset rev2 }
 	if {[info exists rev2date]} { unset rev2date }
@@ -2049,7 +2104,7 @@ period; please choose a longer amount of time.\n
 The file $lfname was last modified ($ago) ago."
 		revtool $lfname 1.1..
 	}
-	# Now make sure that the last/gca node is visible in the canvas
+	# Now make sure that the last/gca node is visible in the canvas "
 	if {$gca != ""} {
 		set r $gca
 	} else {
@@ -2061,16 +2116,20 @@ The file $lfname was last modified ($ago) ago."
 	}
 	# Make sure we don't lose the highlighting when we do a select Range
 	if {[info exists merge(G)] && ($merge(G) != "")} {
-		set gca [lineOpts $merge(G)]
-		highlight $gca "gca"
-		set rev2 [lineOpts $merge(r)]
-		highlight $rev2 "remote"
-		set rev1 [lineOpts $merge(l)]
-		highlight $rev1 "local"
+ 		set gca [lineOpts $merge(G)]
+ 		highlight $gca "gca"
+ 		set rev2 [lineOpts $merge(r)]
+ 		highlight $rev2 "remote"
+ 		set rev1 [lineOpts $merge(l)]
+ 		highlight $rev1 "local"
+		set anchor $gca
+		highlight $gca anchor
 	} else {
 		if {[info exists diffpair(left)] && ($diffpair(left) != "")} {
 			set rev1 [lineOpts $diffpair(left)]
+			set anchor $rev1
 			highlight $rev1 "old"
+			highlight $anchor "anchor"
 		}
 		if {[info exists diffpair(right)] && ($diffpair(right) != "")} {
 			set rev2 [lineOpts $diffpair(right)]
@@ -2099,7 +2158,7 @@ proc init {} \
 #
 proc arguments {} \
 {
-	global rev1 rev2 dfile argv argc fname gca errorCode
+	global anchor rev1 rev2 dfile argv argc fname gca errorCode
 
 	set rev1 ""
 	set rev2 ""
@@ -2122,6 +2181,7 @@ proc arguments {} \
 		    }
 		    "^-l.*" {
 			set rev1 [string range $arg 2 end]
+			set anchor $rev1
 		    }
 		    "^-d.*" {
 			set dfile [string range $arg 2 end]
@@ -2316,3 +2376,4 @@ arguments
 widgets
 loadState
 startup
+
