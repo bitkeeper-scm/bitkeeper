@@ -468,7 +468,7 @@ httphdr(char *file)
 {
 	char	*buf = aprintf(
 	    "HTTP/1.0 200 OK\r\n"
-	    "%s\r\n"
+	    "Date: %s\r\n"
 	    "Server: bkhttp/%s\r\n"
 	    "Content-Type: %s\r\n"
 	    "Last-Modified: %s\r\n"
@@ -1627,7 +1627,7 @@ http_error(int status, char *fmt, ...)
 	} else {
 		sprintf(buf,
 		    "HTTP/1.0 %d Error\r\n"
-		    "%s\r\n"
+		    "Date: %s\r\n"
 		    "Server: bkhttp/%s\r\n"
 		    "Content-Type: text/html\r\n"
 		    "\r\n",
