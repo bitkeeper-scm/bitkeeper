@@ -1,0 +1,109 @@
+BitKeeper Users Guide
+	Installation checks
+	bk - the BitKeeper command line interface
+	Creating a repository
+	Repository basics
+	Command line command overview
+	Distributed development
+	Resyncing changes
+	GUI tools
+Installation checks
+	/usr/bin/bk
+		symlinked to /usr/bitkeeper/bk
+	/usr/bin/get
+		symlinked to /usr/bitkeeper/get
+	/usr/bitkeeper
+		all commands are here but you don't need to change your path
+		just use "bk command"
+bk
+	bk help
+	bk help setup
+	bk help basics
+	etc.
+Creating a repository
+	Who should create a repository?
+	bk setup - creates a respository
+	bk import - one time import of data into a repository
+Repository basics
+	Creating files
+		bk ci
+		Regular files vs symbolic links
+	Modifying files
+		bk co -l
+	Viewing diffs
+		bk diffs
+	Checking in files
+		bk ci
+	Committing files to a changeset
+		bk pending
+		bk commit
+Command line command overview
+	Create files
+		admin -n / ci -i / delta -i
+	Modify files
+		get -e / co -l
+	View differences
+		diffs
+	Cleaning up
+		clean
+	View history
+		prs
+		sccslog
+	Recursive command interface
+		bk -r dir command
+			Same as:
+				bk sfiles dir | bk command -
+		bk -r command
+			Same as:
+				bk sfiles project_root | bk command -
+		Examples
+			lock the entire tree: bk -R co -l
+			diff the entire tree: bk -R diffs
+			diff a sub tree: bk -r gui diffs
+	Compatibility
+		SCCS compatible commands
+			Commands are file format compatible asn command line compatible
+			admin
+			get
+			delta
+		RCS compatible commands
+			Commands are partially command line compatible only
+			ci
+			co
+	More information
+		bk help command
+Distributed development
+	Describe the multi repository model here
+	Talk about copy / modify / merge
+		Copy
+			get own copy of the repository
+			complete with revision control files
+		Modify
+			co -l / edit / debug / ci
+			commit
+		Merge
+			bk resync
+			bk send
+			bk take
+			bk resolve
+Resyncing changes
+	local repositories
+	remote repositories
+Resyncing local repositories
+	bk resync from_dir to_dir
+	bk resolve to_dir
+Resyncing remote repositories
+	ssh availabile?
+		bk resync local remote:/path/to/repository
+		ssh remote bk resolve /path/to/repository
+	no ssh?
+		bk send 1.1..1.5 user@host.com
+		other user has to do this
+			cd repository
+			bk take < patchfile
+			bk resolve
+GUI tools
+	citool
+	sccstool
+	fm
+	No project gui yet
