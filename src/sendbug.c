@@ -18,14 +18,13 @@ main(int ac,  char **av)
 	system(buf);
 	while (1) {
 		printf("(s)end, (e)dit, (q)uit? ");
-		fgets(buf, sizeof(buf), stdin);
+		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'q';
 		switch (buf[0]) {
 		    case 's':
 			mail("bitkeeper-bugs@bitmover.com", "BK Bug", bug);
 			unlink(bug);
 			printf("Your bug has been sent, thank you.\n");
 			exit(0);
-			break;
 		    case 'e':
 			sprintf(buf, "%s %s", editor, bug);
 			system(buf);
@@ -34,7 +33,6 @@ main(int ac,  char **av)
 			unlink(bug);
 			printf("No bug sent.\n");
 			exit(0);
-			break;
 		}
 	}
 }

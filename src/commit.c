@@ -74,7 +74,7 @@ main(int ac, char **av)
 		system(buf);
 		printf("-------------------------------------------------\n");
 		printf("Use these comments (e)dit, (a)bort, (u)se? ");
-		fgets(buf, sizeof(buf), stdin); 
+		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'a'; 
 		switch (buf[0]) {
 		    case 'y':  /* fall thru */
 		    case 'u':	exit(do_commit()); break;
@@ -141,7 +141,7 @@ checkLog()
 	if (strneq("ask_open_logging:", buf, 17)) {
 		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
-		fgets(ans, sizeof(ans), stdin);
+		if (fgets(ans, sizeof(ans), stdin) == NULL) ans[0] = 'n';
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
 			char *cname = &buf[17];
 			setlog(cname);
@@ -153,7 +153,7 @@ checkLog()
 	} else if (strneq("ask_close_logging:", buf, 18)) {
 		gethelp("close_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
-		fgets(ans, sizeof(ans), stdin);
+		if (fgets(ans, sizeof(ans), stdin) == NULL) ans[0] = 'n';
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
 			char *cname = &buf[18];
 			setlog(cname);

@@ -58,7 +58,7 @@ main(int ac,  char **av)
 		system(buf);
 		printf(LINE);
 		printf("Remove these [y/n]? ");
-		fgets(buf, sizeof(buf), stdin);
+		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(rmlist);
 			exit(0);

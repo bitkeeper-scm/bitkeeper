@@ -34,7 +34,7 @@ main(int ac, char **av)
 	unless(force) {
 		gethelp("setup_1", "", stdout);
 		printf("Create new project? [no] ");
-		fgets(buf, sizeof(buf), stdin);
+		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
 	}
 	mkdirp(project_path);
@@ -51,7 +51,9 @@ main(int ac, char **av)
 				"Replace this with your project description");
 			fclose(f);
 			printf("Editor to use [%s] ", editor);
-			fgets(my_editor, sizeof(my_editor), stdin);
+			unless (fgets(my_editor, sizeof(my_editor), stdin)) {
+				my_editor[0] = '\0';
+			}
 			chop(my_editor);
 			if (my_editor[0] != 0) {
 				sprintf(buf, "%s Description", my_editor);
@@ -90,7 +92,9 @@ main(int ac, char **av)
 		chmod("config", 0664);
 		while (1) {
 			printf("Editor to use [%s] ", editor);
-			fgets(my_editor, sizeof(my_editor), stdin);
+			unless (fgets(my_editor, sizeof(my_editor), stdin)) {
+				my_editor[0] = '\0';
+			}
 			chop(my_editor);
 			if (my_editor[0] != 0) {
 				sprintf(buf, "%s config", my_editor);

@@ -206,7 +206,7 @@ get(char *path, int flags, char *output)
 	unless (s) return (-1);
 	ret = sccs_get(s, 0, 0, 0, 0, flags, output);
 	sccs_free(s);
-	return (ret ? -1 : -0);
+	return (ret ? -1 : 0);
 }
 
 char *
