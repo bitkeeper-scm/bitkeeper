@@ -303,10 +303,12 @@ proc edit_file {} \
 
 proc edit_save {} \
 {
-	global	edit_changed filename
+	global	edit_changed filename gc app
 
-	set backup [join [list $filename "bkp"] "~"]
-	file copy -force $filename $backup
+	if {[info exists gc($app.backup)] && ($gc($app.backup) != "")} {
+		set backup [join [list $filename "bkp"] "~"]
+		file copy -force $filename $backup
+	}
 	set d [open "$filename" "w"]
 	puts -nonewline $d [.edit.t.t get 1.0 end]
 	catch {close $d} err

@@ -31,6 +31,7 @@ proc getConfig {prog} \
 		set _d(ci.filesHeight) 8	;# num files to show in top win
 	}
 
+	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
 	set _d(balloonTime) 1000	;# XXX: NOTDOC
 	set _d(BG) #f0f0f0		;# default background
 	set _d(buttonColor) #d0d0d0	;# menu buttons
@@ -99,8 +100,8 @@ proc getConfig {prog} \
 	set _d(rev.textHeight) 30	  ;# height of lower window
 	set _d(rev.showHistory) "1M"	  ;# History to show in graph on start
 	# XXX: not documented yet
-	set _d(rev.savehistory) 5	  ;# Max number of files to save in
-					   #     file list
+	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
+	set _d(rev.hlineColor) pink	  ;# Color of highlight lines XXX:NOTDOC
 
 	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
 
