@@ -8661,8 +8661,9 @@ sccs_unedit(sccs *s, u32 flags)
 		}
 	}
 	unlink(s->pfile);
-	if (!modified && getFlags && 
-	    (getFlags == currState || !(SCCS(s) || RCS(s)))) {
+	if (!modified && getFlags &&
+	    (getFlags == currState ||
+		(currState != 0 && !(SCCS(s) || RCS(s))))) {
 		getFlags |= GET_SKIPGET;
 	} else {
 		unlinkGfile(s);

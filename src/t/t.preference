@@ -96,6 +96,15 @@ if [ -w $HERE/copy/src/foo.c ]; then echo failed; exit 1; fi
 if [ -f $HERE/copy/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
 
+echo $N checkout:GET w chmod ........................................$NL
+bk chmod +x foo.c || exit 1
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ -w foo.c ]; then echo failed; exit 1; fi
+if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+
 echo $N checkout:EDIT w clone .......................................$NL
 bk undo -sqfr+ || exit 1
 bk unedit $HERE/project/BitKeeper/etc/config
@@ -108,6 +117,16 @@ if [ ! -f $HERE/copy2/src/foo.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/copy2/src/foo.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/copy2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
+
+echo $N checkout:EDIT w chmod .......................................$NL
+bk chmod +x foo.c || exit 1
+if [ ! -f foo.c ]; then echo failed; exit 1; fi
+if [ ! -w foo.c ]; then echo failed; exit 1; fi
+if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
+find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+
 
 echo $N checkout:EDIT w resolve simple content change ...............$NL
 cd $HERE/project

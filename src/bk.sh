@@ -678,6 +678,7 @@ _chmod() {		# /* doc 2.0 */
 		chmod $MODE "$i"
 		mode=`ls -l "$i" | sed 's/[ \t].*//'`
 		rm -f "$i"
+		bk unedit "$i"	# follow checkout modes
 		if [ $omode = $mode ]
 		then	continue
 		fi
