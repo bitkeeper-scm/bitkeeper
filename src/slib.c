@@ -4719,8 +4719,10 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 				/*
 				 * We're escaping blank lines and the escape
 				 * character itself.  Takepatch wants the
-				 * diffs ended with ^\n so blan lines confuse
+				 * diffs ended with ^\n so blank lines confuse
 				 * it.
+				 * Note that these are stripped in the delta
+				 * routine.
 				 */
 				if ((buf[0] == '\\') || (buf[0] == '\n')) {
 					fputs("\\", out);
@@ -6049,7 +6051,11 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			fnext(buf, diffs);	/* skip diff header */
 			off = isdigit(buf[0]) ? 2 : 0;
 			while (fnext(buf, diffs)) {
-				s->dsum += fputdata(s, &buf[off], sfile);
+				if ((off == 0) && (buf[0] == '\\')) {
+					s->dsum += fputsum(s, &buf[1], sfile);
+				} else {
+					s->dsum += fputsum(s, &buf[off], sfile);
+				}
 				added++;
 			}
 			fclose(diffs);
@@ -7343,7 +7349,11 @@ newcmd:
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (fnext(buf2, diffs)) break;
-				s->dsum += fputsum(s, buf2, out);
+				if (buf2[0] == '\\') {
+					s->dsum += fputsum(s, &buf2[1], out);
+				} else {
+					s->dsum += fputsum(s, buf2, out);
+				}
 				debug2((stderr, "INS %s", buf2));
 				added++;
 			}
