@@ -937,17 +937,10 @@ __nusers() {
 __has_unconfirmed_openlogging()
 {
 	LOGGING_OK=`_getLog`
-	if [ "$LOGGING_OK" = "yes" ]
-	then	return 1
-	fi
-	if [ "$LOGGING_OK" = "no" ]
-	then
-		if [ `__nusers` -le 1 ]
-		then	return 1
-		fi
-	fi
-	LOGADDR=`__logAddr`
-	if [ `echo $LOGADDR | grep '@openlogging.org$' | wc -l` -eq 0 ]
+	if [ "$LOGGING_OK" = "yes" ]; then return 1; fi
+	if [ "$LOGGING_OK" = "no" -a `__nusers` -le 1 ]; then return 1; fi
+
+	if [ `__logAddr | grep '@openlogging.org$' | wc -l` -eq 0 ]
 	then 
 		# They are pointing the log to a private address
 		# so just mail out the config file
@@ -975,6 +968,7 @@ _getLog()
 	esac
 	return 0
 }
+
 _setLog()
 {
 	if [ "$1" != "yes" -a "$1" != "no" ] 
