@@ -179,6 +179,7 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 				perror(s->sfile);
 			}
 			sccs_free(s);
+			errors = 1;
 			continue;
 		}
 		if (cdate) {

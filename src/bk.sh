@@ -231,6 +231,15 @@ _keycache() {	# /* undoc? 2.0 */
 }
 
 
+_editor() {
+	if [ "X$EDITOR" = X ]
+	then	echo You need to set your EDITOR env variable
+		exit 1
+	fi
+	bk get -qe "$@" 2> /dev/null
+	exec $EDITOR "$@"
+}
+
 _jove() {
 	bk get -qe "$@" 2> /dev/null
 	exec jove "$@"
@@ -385,7 +394,10 @@ _chmod() {		# /* doc 2.0 */
 			echo Can not clean $i, skipping it
 			continue
 		}
-		bk get -qe $i
+		bk get -qe $i || {
+			echo Can not edit $i, skipping it
+			continue
+		}
 		omode=`ls -l $i | sed 's/[ \t].*//'`
 		bk clean $i
 		touch $i
