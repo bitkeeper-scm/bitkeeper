@@ -336,11 +336,10 @@ if {$test_tool eq "citool"} {
 # environment is as close as possible to production code
 set argv [lrange $argv 1 end]
 set argc [llength $argv]
-set env(BK_GUITEST) 1
 set test_err [catch {
 	if {$test_tool eq "citool"} {
 		# this seems backwards, but citool does a vwait
-		# which will trigger the call to test_evalScript
+		# which will grigger the call to test_evalScript
 		# sometime after the source command happens..
 		trace variable test_toplevel w test_evalScript
 		source $test_program

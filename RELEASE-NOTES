@@ -29,7 +29,6 @@ Noteworthy bug fixes
 - Improve the commit template support.
 - bk sane will now refuse to pass if the ChangeSet file is missing.
 - do not normalize urls when setting the parent.
-- cut and paste should work better in citool.
 - Bugs 2000-12-29-001, 2004-10-06-000, 2003-09-25-001, 2001-01-26-001,
   2001-06-05-001, 2002-11-27-002, 2002-12-31-001.
 
