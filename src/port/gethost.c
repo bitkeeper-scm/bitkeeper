@@ -37,11 +37,13 @@ sccs_gethost(void)
 	}
 	unLoadNetLib();
 	unless (hp->h_name) goto out;
-	unless (strchr(hp->h_name, '.')) {
+	unless (strchr(hp->h_name, '.') &&
+	    !streq(hp->h_name, "localhost.localdomain")) {
 		int	i;
 
 		for (i = 0; hp->h_aliases && hp->h_aliases[i]; ++i) {
-			if (strchr(hp->h_aliases[i], '.')) {
+			if (strchr(hp->h_aliases[i], '.') &&
+			    !streq(host, "localhost.localdomain")) {
 				strcpy(host, hp->h_aliases[i]);
 				break;
 			}
