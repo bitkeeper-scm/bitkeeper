@@ -9,9 +9,10 @@ GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR)
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) \
+	  bitkeeper.config bkhelp.txt install.sh
 
-CFLAGS	= -g -O2
+CFLAGS	= -g -DPURIFY -DPURIFY_FILES
 CPPFLAGS= -Izlib
 LINK	= $(LSCCS) $(LMDBM) $(LZLIB) $(XLIBS)
 LSCCS	= -L. -lsccs
@@ -65,19 +66,19 @@ install: install.sh FORCE
 	./install.sh
 
 # This would be called "clean" but that's a command name.
-cclean clobber: FORCE
-	-/bin/rm -f $(ALL)
+cclean: FORCE
 	-/bin/rm -f $(SCCSOBJ)
 	-/bin/rm -f $(MDBMOBJ)
 	-/bin/rm -f $(ZLIBOBJ)
 	-/bin/rm -f $(BINOBJ)
-	-/bin/rm -f a.out core
 	bk clean
 	bk clean gui
 	bk clean mdbm
 	bk clean zlib
 
-distclean: cclean
+clobber: cclean
+	-/bin/rm -f $(ALL)
+	-/bin/rm -f a.out core
 	-/bin/rm -f config.h stamp-h substvars install.sh config.status
 	-/bin/rm -f config.cache config.log
 	-/bin/rm -f tags TAGS
@@ -221,7 +222,7 @@ bk: bk.sh substvars prs
 	./prs -hr+ -d'$$if(:SYMBOL:){(:SYMBOL:) }:UTC:' ../ChangeSet >bk.ver
 	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=`cat bk.ver`/" >bk.T
 	chmod +x bk.T
-	rm -f bk.ver
+	/bin/rm -f bk.ver
 	mv -f bk.T bk
 
 import: import.sh substvars
@@ -274,9 +275,10 @@ gui/mkindex: gui/mkindex.tcl substvars
 # Unfortunately, there is no portable way to avoid running config.status
 # several times.
 
-prefix=/usr/local
+prefix=/usr
+libexecdir=$(prefix)
 config.status: configure
-	./configure --no-create --prefix=$(prefix)
+	./configure --no-create --prefix=$(prefix) --libexecdir=$(libexecdir)
 
 config.h: stamp-h
 stamp-h: config.h.in config.status
@@ -290,6 +292,10 @@ substvars: substvars.in config.status
 install.sh: install.in config.status
 	CONFIG_HEADERS= CONFIG_FILES=install.sh:install.in ./config.status
 	chmod +x install.sh
+
+# The default .c.o rule is broken with some Makes.
+.c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # .o: .c .h dependencies.
 # DO NOT DELETE THIS LINE -- make depend depends on it.

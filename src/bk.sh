@@ -819,13 +819,17 @@ _init() {
 	then	BIN="$BK_BIN/"
 		return
 	fi
-	BIN="@libexecdir@/bitkeeper/"
+	for i in @libexecdir@/bitkeeper /usr/bitkeeper /usr/bitsccs \
+	    /usr/local/bitkeeper /usr/local/bin/bitkeeper /usr/bin/bitkeeper \
+	    /usr/bin
+	do	if [ -x $i/sccslog ]
+		then	BIN="$i/"
+			return
+		fi
+	done
 
-	if [ ! -x ${BIN}sccslog ]
-	then
-		echo "Installation problem: ${BIN}sccslog does not exist or is not executable" >&2
-		exit 1
-	fi
+	echo "Installation problem: cannot find binary directory" >&2
+	exit 1
 }
 
 # ------------- main ----------------------
