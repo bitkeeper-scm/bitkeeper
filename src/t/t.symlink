@@ -76,7 +76,7 @@ cat > CMP1 << EOF
 1.2
 1.1
 EOF
-bk prs -h -d":I:" symlink > CMP2
+bk prs -h -d':I:\n' symlink > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 bk co $Q symlink

@@ -108,7 +108,7 @@ proc revMap {file} \
 {
         global rev2date serial2rev dev_null
 
-        set dspec "-d:Ds:-:P: :DS: :Dy:/:Dm:/:Dd: :UTC-FUDGE:"
+        set dspec "-d:Ds:-:P: :DS: :Dy:/:Dm:/:Dd: :UTC-FUDGE:\n"
         set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
         while {[gets $fid s] >= 0} {
 		set rev [lindex $s 0]
@@ -134,7 +134,7 @@ proc getTags {} \
 {
     	global tag2rev dev_null
 
-        set tags "-d\$if(:SYMBOL:){:I:-:USER: :SYMBOL:}"
+        set tags "-d\$if(:TAG:){:I:-:USER: :TAG:\n}"
 
         # Sort in reverse order so that the highest number revision gets
         # stored in the associative array for a given tag
@@ -772,7 +772,7 @@ proc history {{opt {}}} \
 	busy 1
 	if {$opt == "tags"} {
 		set tags \
-"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}\\c"
+"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
 	} else {
 		set f [open "| bk prs -h {$dspec} \"$file\" 2>$dev_null"]
@@ -871,7 +871,7 @@ proc csetdiff2 {doDiffs} \
 	$w(ap) configure -state normal; $w(ap) delete 1.0 end
 	$w(ap) insert end "ChangeSet history for $rev1..$rev2\n\n"
 
-	set revs [open "| bk -R prs -hbMr$rev1..$rev2 -d:I: ChangeSet"]
+	set revs [open "| bk -R prs -hbMr$rev1..$rev2 {-d:I:\n} ChangeSet"]
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
 		filltext $w(ap) $c 0
@@ -891,7 +891,7 @@ proc cset {} \
 	$w(ap) configure -state normal
 	$w(ap) delete 1.0 end
 	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: \"$file\""]
+		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
 		while {[gets $revs r] >= 0} {
 			set c [exec bk r2c -r$r "$file"]
 			set p [format "%s %s ==> cset %s\n" "$file" $r $c]
@@ -919,7 +919,7 @@ proc r2c {} \
 	set csets ""
 	if {[info exists rev2]} {
 		puts "rev2  file=($file)"
-		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: \"$file\""]
+		set revs [open "| bk prs -hbMr$rev1..$rev2 {-d:I:\n} \"$file\""]
 		while {[gets $revs r] >= 0} {
 			set c [exec bk r2c -r$r "$file"]
 			if {$csets == ""} {
@@ -1105,7 +1105,7 @@ proc widgets {} \
 	global	lineOpts dspec wish yspace paned file tcl_platform 
 
 	set dspec \
-"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
+"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 	set diffOpts "-u"
 	set getOpts "-aum"
 	set lineOpts "-u -t"

@@ -906,6 +906,106 @@ sccs_fixDates(sccs *s)
 	fixDates(0, s->table);
 }
 
+char	*
+age(time_t when)
+{
+	if (when <= (10*60)) {
+		return ("10 minutes");
+	} else if (when <= (15*60)) {
+		return ("15 minutes");
+	} else if (when <= (30*60)) {
+		return ("30 minutes");
+	} else if (when <= (45*60)) {
+		return ("45 minutes");
+	} else if (when <= (60*60)) {
+		return ("60 minutes");
+	} else if (when <= (2*60*60)) {
+		return ("2 hours");
+	} else if (when <= (3*60*60)) {
+		return ("3 hours");
+	} else if (when <= (4*60*60)) {
+		return ("4 hours");
+	} else if (when <= (5*60*60)) {
+		return ("5 hours");
+	} else if (when <= (6*60*60)) {
+		return ("6 hours");
+	} else if (when <= (7*60*60)) {
+		return ("7 hours");
+	} else if (when <= (8*60*60)) {
+		return ("8 hours");
+	} else if (when <= (12*60*60)) {
+		return ("12 hours");
+	} else if (when <= (24*60*60)) {
+		return ("24 hours");
+	} else if (when <= (2*24*60*60)) {
+		return ("2 days");
+	} else if (when <= (3*24*60*60)) {
+		return ("3 days");
+	} else if (when <= (4*24*60*60)) {
+		return ("4 days");
+	} else if (when <= (5*24*60*60)) {
+		return ("5 days");
+	} else if (when <= (6*24*60*60)) {
+		return ("6 days");
+	} else if (when <= (7*24*60*60)) {
+		return ("7 days");
+	} else if (when <= (14*24*60*60)) {
+		return ("2 weeks");
+	} else if (when <= (21*24*60*60)) {
+		return ("3 weeks");
+	} else if (when <= (28*24*60*60)) {
+		return ("4 weeks");
+#define	MONTH	2628000
+	} else if (when <= (2*MONTH)) {
+		return ("2 months");
+	} else if (when <= (3*MONTH)) {
+		return ("3 months");
+	} else if (when <= (4*MONTH)) {
+		return ("4 months");
+	} else if (when <= (5*MONTH)) {
+		return ("5 months");
+	} else if (when <= (6*MONTH)) {
+		return ("6 months");
+	} else if (when <= (7*MONTH)) {
+		return ("7 months");
+	} else if (when <= (8*MONTH)) {
+		return ("8 months");
+	} else if (when <= (9*MONTH)) {
+		return ("9 months");
+	} else if (when <= (10*MONTH)) {
+		return ("10 months");
+	} else if (when <= (11*MONTH)) {
+		return ("11 months");
+	} else if (when <= (12*MONTH)) {
+		return ("12 months");
+#define	YEAR	31536000
+	} else if (when <= (2*YEAR)) {
+		return ("2 years");
+	} else if (when <= (3*YEAR)) {
+		return ("3 years");
+	} else if (when <= (4*YEAR)) {
+		return ("4 years");
+	} else if (when <= (5*YEAR)) {
+		return ("5 years");
+	} else if (when <= (6*YEAR)) {
+		return ("6 years");
+	} else if (when <= (7*YEAR)) {
+		return ("7 years");
+	} else if (when <= (8*YEAR)) {
+		return ("8 years");
+	} else if (when <= (9*YEAR)) {
+		return ("9 years");
+	} else if (when <= (10*YEAR)) {
+		return ("10 years");
+	} else if (when <= (11*YEAR)) {
+		return ("11 years");
+	} else if (when <= (12*YEAR)) {
+		return ("12 years");
+	} else {
+		return ("more than twelve years");
+	}
+}
+
 private void
 uniqRoot(sccs *s)
 {
@@ -5636,7 +5736,8 @@ out:			if (slist) free(slist);
 		}
 		popened = openOutput(encoding, f, &out);
 		unless (out) {
-			fprintf(stderr, "getRegody: Can't open %s for writing\n", f);
+			fprintf(stderr,
+			    "getRegBody: Can't open %s for writing\n", f);
 			fflush(stderr);
 			goto out;
 		}
@@ -11768,7 +11869,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* to get the latest comment				*/
 		EACH(d->comments) {
 			if (d->comments[i][0] == '\001') continue;
-			if (j++ > 0) fc('\n');
+			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -11895,7 +11996,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		int i = 0, j = 0;
 		EACH(s->text) {
 			if (s->text[i][0] == '\001') continue;
-			if (j++ > 0) fc('\n');
+			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(s->text[i]);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -11924,7 +12025,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "F")) {
-		/* s file name */
+		/* s file basename */
 		if (s->sfile) {
 			/* scan backward for '/' */
 			for (p = s->sfile, q = &p[strlen(p) -1];
@@ -11945,10 +12046,84 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	/* ======== BITKEEPER SPECIFIC KEYWORDS ========== */
+	if (streq(kw, "G")) {
+		/* g file basename */
+		if (s->gfile) {
+			/* scan backward for '/' */
+			for (p = s->gfile, q = &p[strlen(p) -1];
+				(q > p) && (*q != '/'); q--);
+			if (*q == '/') q++;
+			fs(q);
+		}
+		return (strVal);
+	}
+
+	if (streq(kw, "DSUMMARY")) {
+	/* :DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu: */
+	 	KW("DT"); fc(' '); KW("I"); fc(' '); KW("D"); fc(' ');
+		KW("T"); KW("TZ"); fc(' '); KW("P");
+		if (d->hostname) { fc('@'); fs(d->hostname); } fc(' ');
+	 	KW("DS"); fc(' '); KW("DP"); fc(' '); KW("DL");
+		return (strVal);
+	}
+
+	if (streq(kw, "PATH")) {	/* $if(:DPN:){P :DPN:\n} */
+		if (d->pathname) {
+			fs("P ");
+			fs(d->pathname);
+			fc('\n');
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "SYMBOLS")) {	/* $each(:SYMBOL:){S (:SYMBOL:)\n} */
+		symbol	*sym;
+		int	j = 0;
+
+		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
+		for (sym = s->symbols; sym; sym = sym->next) {
+			unless (sym->d == d) continue;
+			j++;
+			fs("S ");
+			fs(sym->name);
+			fc('\n');
+		}
+		if (j) return (strVal);
+		return (nullVal);
+		
+	}
+
+	if (streq(kw, "COMMENTS")) {	/* $if(:C:){$each(:C:){C (:C:)}\n} */
+		int i, j = 0;
+		/* comments */
+		/* XXX TODO: we may need to the walk the comment graph	*/
+		/* to get the latest comment				*/
+		EACH(d->comments) {
+			if (d->comments[i][0] == '\001') continue;
+			fs("C ");
+			fs(d->comments[i]);
+			fc('\n');
+		}
+		if (j) return (strVal);
+		return (nullVal);
+		
+	}
+
+	if (streq(kw, "DEFAULT")) {
+		KW("DSUMMARY");
+		fc('\n');
+		KW("PATH");
+		KW("SYMBOLS");
+		KW("COMMENTS");
+		fs("------------------------------------------------\n");
+		return (strVal);
+	}
+
 	if (streq(kw, "X_FLAGS")) {
 		char	buf[20];
 
-		sprintf(buf, "0x%x\n", sccs_getxflags(d));
+		sprintf(buf, "0x%x", sccs_getxflags(d));
 		fs(buf);
 		return (strVal);
 	}
@@ -12022,7 +12197,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			}
 			if (sccs_iskeylong(kv.val.dptr)) n++;
 		}
-		fprintf(out, "%d\n", n);
+		fprintf(out, "%d", n);
 		return (strVal);
 	}
 
@@ -12053,7 +12228,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
-			j++;
+			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(sym->name);
 			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
@@ -12152,6 +12327,13 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 		sprintf(buf, "%d", (int)d->dateFudge);
 		fs(buf);
+		return (strVal);
+	}
+
+	if (streq(kw, "AGE")) {	/* how recently modified */
+		time_t	when = time(0) - (d->date - d->dateFudge);
+
+		fs(age(when));
 		return (strVal);
 	}
 
@@ -12570,7 +12752,7 @@ fprintDelta(FILE *out, char *vbuf,
 			if ((b[klen + 1] != ')') && (b[klen + 2] != '{')) {
 				/* syntax error */
 				fprintf(stderr,
-	    "must have '((:keywod:){..}{' in conditional prefix/suffix\n");
+	    "must have '((:keyword:){..}{' in conditional prefix/suffix\n");
 				return (printLF);
 			}
 			prefix = &b[klen + 3];
@@ -12596,7 +12778,7 @@ sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	if ((s->state & S_SET) && !(d->flags & D_SET)) return;
 	if (fprintDelta(out, NULL,
 	    dspec, end = &dspec[strlen(dspec) - 1], s, d)) {
-	    	fputc('\n', out);
+	    	//fputc('\n', out);
 	}
 }
 
@@ -12805,13 +12987,8 @@ int
 sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
-#define	DEFAULT_DSPEC \
-":DT: :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
-$if(:DPN:){P :DPN:\n}$each(:SYMBOL:){S (:SYMBOL:)\n}\
-$if(:C:){$each(:C:){C (:C:)}\n}\
-------------------------------------------------"
 
-	if (!dspec) dspec = DEFAULT_DSPEC;
+	if (!dspec) dspec = ":DEFAULT:";
 	GOODSCCS(s);
 	if (flags & PRS_PATCH) {
 		do_patch(s,

@@ -594,7 +594,7 @@ one.  This usually means you are trying to apply a patch intended for a\n\
 different repository.  You can find the correct repository by running the\n\
 following command at the top of each repository until you get a match with\n\
 the changeset ID at the top of the patch:\n\
-    bk prs -hr1.0 -d:KEY: ChangeSet\n\n", stderr);
+    bk prs -hr1.0 -d':KEY:\\n' ChangeSet\n\n", stderr);
     	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
 }
 

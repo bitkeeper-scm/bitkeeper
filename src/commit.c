@@ -377,7 +377,7 @@ config(char *rev, FILE *f)
 	char	buf[MAXLINE], aliases[MAXPATH];
 	char	s_cset[MAXPATH] = CHANGESET;
 
-	dspec = "$each(:FD:){Proj:      (:FD:)}\\nID:        :KEY:";
+	dspec = "$each(:FD:){Proj:      (:FD:)\\n}ID:        :KEY:\n";
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
 	fprintf(f, "%-10s %s", "User:", sccs_getuser());
 	fprintf(f, "\n%-10s %s", "Host:", sccs_gethost());
@@ -394,7 +394,7 @@ config(char *rev, FILE *f)
 	}
 	if (rev) fprintf(f, "%-10s %s\n", "Revision:", rev);
 	fprintf(f, "%-10s ", "Cset:");
-	do_prsdelta(s_cset, rev, 0, ":KEY:", f);
+	do_prsdelta(s_cset, rev, 0, ":KEY:\n", f);
 	tm = time(0);
 	fprintf(f, "%-10s %s", "Date:", ctime(&tm));
 	assert(db);

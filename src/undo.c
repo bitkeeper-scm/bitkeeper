@@ -145,9 +145,9 @@ getrev(char *top_rev)
 	checkRev(top_rev);
 	sprintf(tmpfile, "%s/bk_tmp%d", TMP_PATH, getpid());
 	/* use special prune code triggered by a revision starting with '*' */
-	sprintf(cmd,					/* CSTYLED */
-		"bk -R prs -ohMa -r'*'%s -d\":REV:,\\c\" ChangeSet > %s",
-		top_rev, tmpfile);
+	sprintf(cmd,
+	    "bk -R prs -ohMa -r'*'%s -d':REV:,' ChangeSet > %s",
+	    top_rev, tmpfile);
 	system(cmd);
 	fd = open(tmpfile, O_RDONLY, 0);
 	if (buf) free(buf);

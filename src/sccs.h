@@ -894,5 +894,7 @@ int	bk_mode();
 int	cat(char *file);
 char	*bk_model();
 char	*getHomeDir();
+char	*age(time_t secs);
+void	sortLines(char **);
 
 #endif	/* _SCCS_H_ */
