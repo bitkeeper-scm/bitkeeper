@@ -1,0 +1,243 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2003 BitMover, Inc.
+
+HERE=`bk pwd`
+echo $N Create initial repository ...................................$NL
+no_logging project
+bk admin -Z
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+
+echo $N Create some data ............................................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+mkdir baz
+echo z > baz/z.c
+bk ci $Q -i foo.c bar.c h.h baz/z.c
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+echo OK
+
+echo $N Retrieve \*.c ................................................$NL
+bk -r cat '*.c' | bk _sort > GOT
+cat <<EOF > WANT
+bar
+foo
+z
+EOF
+checkfiles WANT GOT
+echo OK
+
+test "$PLATFORM" = "WIN32" || {
+
+echo $N Create a file named \"*.c\" ...................................$NL
+echo star > '*.c'
+bk new $Q './*.c'
+test -f 'SCCS/s.*.c' || {
+	echo failed to create '*.c'
+	ls SCCS
+	exit 1
+}
+echo OK
+
+echo $N Check out \"./*.c\" ...........................................$NL
+bk cat './*.c' > GOT
+echo star | cmp -s - GOT || {
+	echo "bk -r cat '*.c' failed, output was"
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Check out \"*.c\" .............................................$NL
+bk cat '*.c' | bk _sort > GOT
+cat > WANT <<EOF
+bar
+foo
+star
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Check out '[z*].c' ............................................$NL
+bk -r cat '*[z*].c' | bk _sort > GOT
+cat <<EOF > WANT
+star
+z
+EOF
+checkfiles WANT GOT
+echo OK
+
+}
+
+
+# ============================================================================
+
+BK_GLOB_TRANSLATE_EQUAL=YES
+export BK_GLOB_TRANSLATE_EQUAL
+
+echo $N Create a file named \"=.c\" ...................................$NL
+echo equal > '=.c'
+bk new $Q './=.c'
+test -f 'SCCS/s.=.c' || {
+	echo failed to create '=.c'
+	ls SCCS
+	exit 1
+}
+echo OK
+
+echo $N Check out \"./=.c\" ...........................................$NL
+bk cat './=.c' > GOT
+echo equal | cmp -s - GOT || {
+	echo "bk -r cat '=.c' failed, output was"
+	cat GOT
+	exit 1
+}
+echo OK
+
+echo $N Check out \"=.c\" .............................................$NL
+bk cat '=.c' | bk _sort > GOT
+cat > WANT <<EOF
+bar
+equal
+foo
+star
+EOF
+test "$PLATFORM" = "WIN32" && {
+	grep -v star < WANT > WIN32
+	mv WIN32 WANT
+}
+checkfiles WANT GOT
+echo OK
+
+echo $N Check out '[z=].c' ............................................$NL
+bk -r cat '[z=].c' | bk _sort > GOT
+cat <<EOF > WANT
+equal
+z
+EOF
+test "$PLATFORM" = "WIN32" && {
+	grep -v star < WANT > WIN32
+	mv WIN32 WANT
+}
+checkfiles WANT GOT
+echo OK
+
+test "$PLATFORM" = "WIN32" || {
+echo $N Check out '[z=*].c' ...........................................$NL
+bk -r cat '[z=*].c' | bk _sort > GOT
+cat <<EOF > WANT
+equal
+star
+z
+EOF
+checkfiles WANT GOT
+echo OK
+}
+
+# ============================================================================
+BK_GLOB_TRANSLATE_EQUAL=NO
+export BK_GLOB_TRANSLATE_EQUAL
+
+echo $N Make sure we can disable = as an alias for \* ................$NL
+cd `bk root`/src
+BK_GLOB_TRANSLATE_EQUAL=NO bk gfiles =.c > GOT
+cat > WANT <<EOF
+=.c
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Check sets of characters in globs ...........................$NL
+cd `bk root`
+bk gfiles '[bf]*' | bk _sort > GOT
+cat > WANT <<EOF
+src/bar.c
+src/foo.c
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Check inverse sets of characters in globs ...................$NL
+cd `bk root`
+bk gfiles '[^bf]*' | bk _sort > GOT
+cat > WANT <<EOF
+BitKeeper/etc/config
+BitKeeper/etc/ignore
+ChangeSet
+src/*.c
+src/=.c
+src/baz/z.c
+src/h.h
+EOF
+test "$PLATFORM" = "WIN32" && {
+	grep -v 'src/\*.c' < WANT > WIN32
+	mv WIN32 WANT
+}
+checkfiles WANT GOT
+echo OK
+
+echo $N Check single character matches in globs .....................$NL
+cd `bk root`
+bk gfiles '???.c' | bk _sort > GOT
+cat > WANT <<EOF
+src/bar.c
+src/foo.c
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Check single character combined with a set match ............$NL
+cd `bk root`
+bk gfiles '[bf]??.c' | bk _sort > GOT
+cat > WANT <<EOF
+src/bar.c
+src/foo.c
+EOF
+checkfiles WANT GOT
+echo OK
+
+echo $N Make sure we can disable glob expansion .....................$NL
+cd `bk root`/src
+BK_NO_FILE_GLOB=YES bk gfiles '=.c' > GOT
+echo '=.c' > WANT
+checkfiles WANT GOT
+test "$PLATFORM" = "WIN32" || {
+	BK_NO_FILE_GLOB=YES bk gfiles '*.c' > GOT
+	echo '*.c' > WANT
+	checkfiles WANT GOT
+}
+echo OK
+
+echo $N Make sure we can enable = as an alias for \* .................$NL
+cd `bk root`/src
+BK_GLOB_TRANSLATE_EQUAL=YES bk gfiles =.c | bk _sort > GOT
+cat > WANT <<EOF
+*.c
+=.c
+bar.c
+baz/z.c
+foo.c
+EOF
+test "$PLATFORM" = "WIN32" && {
+	grep -v '\*.c' < WANT > WIN32
+	mv WIN32 WANT
+}
+checkfiles WANT GOT
+echo OK

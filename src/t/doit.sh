@@ -221,6 +221,7 @@ setup_env()
 	BKL_EX1=YgAAAo4AAAADgQAAAAFQoPDeRRdpqjJLu30dIZFxdyKx9/rKDuF5WLctEEQzXfcM
 	BKL_EX2=7C4OKLdN/zrNavYbU24iyPR362lgpT6X4A4CvZBLc3cqGtDhX0tO/PWRlb3xr1nN
 	BKL_EX3=4OfnMtUM6SsjQ/kNebbbrnJjKLgSfu/61sVkQXaQ3rmEQXvg72eGHrKjnZT1FA==
+	BK_GLOB_TRANSLATE_EQUAL=NO
 }
 
 clean_up()
@@ -293,6 +294,7 @@ init_main_loop()
 	export BKL_P1 BKL_P2 BKL_P3
 	export BKL_B1 BKL_B2 BKL_B3
 	export BKL_EX1 BKL_EX2 BKL_EX3
+	export BK_GLOB_TRANSLATE_EQUAL
 }
 
 #

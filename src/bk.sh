@@ -50,9 +50,13 @@ _renames() {
 	bk rset -h "$1" | awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
 }
 
-# shorthand
 _gfiles() {		# /* undoc? 2.0 */
 	exec bk sfiles -g "$@"
+}
+
+_filesNOTYET() {
+	# When we have -1 we can remove files.c
+	exec bk sfiles -1g "$@"
 }
 
 _inode() {		# /* undoc? 2.0 */

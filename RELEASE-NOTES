@@ -1,4 +1,26 @@
 ===============================================================================
+Interface changes in 3.1.x
+
+GLOB PROCESSING
+---------------
+
+BitKeeper now respects globs on the command line.  If you say
+
+	bk command '*.c'
+
+that means operate on all files that match *.c, not run the command on the
+single file named "*.c".  To get the old behaviour you can do either
+
+	bk command './*.c'	# This does not do glob expansion
+
+or 
+
+	export BK_NO_FILE_GLOB=TRUE
+	bk command './*.c'
+
+There is a glob man page.
+
+===============================================================================
 Release notes for BitKeeper version 3.0.4.   These release notes cover
 the following topics:
 

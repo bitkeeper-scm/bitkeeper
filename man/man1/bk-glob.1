@@ -1,0 +1,95 @@
+.so ../bk-macros
+.TH "bk glob" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk glob \- demo program to show glob pattern expansion
+.SH SYNOPSIS
+.B bk glob
+.ARG pattern
+.ARG string
+[\c
+.ARG string
+.ARG string
+.ARGc ...
+]
+.SH DESCRIPTION
+.LP
+Some \*(BK interfaces use what are called "glob patterns", sometimes known as
+wild cards.
+Examples include the configuration file, history listing (bk changes), and
+file name expansion (bk files).
+.LP
+This command may be used to match a glob against one or more strings to see
+examples of how the pattern matching works.
+.SH WILDCARD MATCHING
+A string is a glob pattern if it contains one of the characters
+"*",
+"?",
+"[",
+or sometimes
+"=".
+(The last one, "=", is an alias for "*", to avoid shell quoting in many cases.
+See \s-2CONFIGURATION\s0 below.)
+The glob pattern is used to match one or more strings (or file names), usually
+in a process that takes a glob pattern and a list of possible matches and 
+returns the subset of the list which matches the glob pattern.  Matching
+works as follows:
+.SP
+.tp 8
+?
+Matches any single character (unless "?" is between brackets).
+.SP
+.tp
+*
+Matches any string (unless "*" is between brackets).
+.SP
+.tp
+[...]
+A set of characters enclosed in brackets matches a single character if and
+only if the character is in the set.
+.SP
+.tp
+[^...]
+As above but inverts the set.  In other words "[^abc]" matches any character
+except "a", "b", or "c".
+.SH CONFIGURATION
+It is possible to disable all use of globs in file name expansion by setting
+the environment variable BK_NO_FILE_GLOB to any value.
+.LP
+Since aliasing "=" for "*" is not a standard feature and it may
+cause problems when processing files with "=" as part of their
+name, it must be explictly  enabled by setting
+\f(CWBK_GLOB_TRANSLATE_EQUAL\fP to the value of \f(CWYES\fP.
+No other value will enable this feature.
+.SH EXAMPLES
+Test a simple pattern match that matches file.c and file.h:
+.DS
+bk glob '*.[ch]' file.c file.h file.1
+.DE
+List all files ending in ".1":
+.DS
+export BK_GLOB_TRANSLATE_EQUAL=YES
+bk -r files =.1
+.DE
+See changes in all header files in the current directory:
+.DS
+bk diffs '*.h'
+.DE
+See the revision history for all C/header files with the phrase "sccs" in their
+name:
+.DS
+bk sccslog '*sccs*.[ch]'
+.DE
+See all changesets which include the phrase "BUGID:" followed by a number:
+.DS
+bk changes '-/BUGID:[123456789]/'
+.DE
+.SH BUGS
+Does not support ranges of characters, [A-Z].
+.SH SEE ALSO
+.SA config-etc 1
+.SA changes 1
+.SA files 1
+.SH CATEGORY
+.B Files
+.br
+.B Repository

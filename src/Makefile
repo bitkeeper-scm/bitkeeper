@@ -69,7 +69,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	comment.o comments.o commit.o compress.o converge.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
-	export.o fdiff.o file_gif.o \
+	export.o fdiff.o file_gif.o files.o \
 	find.o findcset.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
@@ -324,7 +324,8 @@ nonet nonet_test localtest:
 	BK_NONET=YES PREFER_RSH=YES $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
+	-./bk get -qS t/setup t/x.chk_env
+	-./bk -rt get -qS 't.*'
 	cd t && ./doit -i
 
 t/doit: t/doit.sh substvars
@@ -628,7 +629,7 @@ install-nolinks: $(BINLINKS)
 	fi
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	tar cf - $(BINS) $(SCRIPTS) | (cd $(BINDIR) && tar xf -)
-	cp $(DATA) $(BINDIR)
+	cp -f $(DATA) $(BINDIR)
 	test -x /build/.wish/tk/bin/bkgui || exit 1
 	@rm -rf $(BINDIR)/tk
 	@cp -rp /build/.wish/tk $(BINDIR)

@@ -137,6 +137,9 @@ resolve_main(int ac, char **av)
 		default_getFlags = GET_EXPAND;
 	}
 
+	/* Globbing is a user interface, not one we want in RESYNC. */
+	putenv("BK_NO_FILE_GLOB=TRUE");
+
 	c = passes(&opts);
 	mdbm_close(localDB);
 	mdbm_close(resyncDB);

@@ -1,12 +1,12 @@
 .so ../bk-macros
-.TH "bk files" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk filetypes" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
-bk files \- summary of BitKeeper file types
+bk filetypes \- summary of BitKeeper file types
 .SH DESCRIPTION
 .LP
 For each file under revision control, there are a number of files
-associated with the main file.  The following list describes the
-purpose of each file:
+associated with the main file.  
+The following list describes the purpose of each file:
 .if t .TP 1i
 .if n .TP 1.4i
 .I foo.c
@@ -62,7 +62,23 @@ a temporary copy of check in comments, currently used only by
 .IR d.file \ -
 a temporary file that indicates there is at least one pending delta in the
 s.file.
+.SH FUTURE DIRECTIONS
+Depending on these files, other than the gfile, actually existing should
+not be done.
+In the future, all of the meta-files will be virtual.  At that point, 
+there will be interfaces to read them, test for their presence, and
+write them.
 .SH CATEGORY
 .B Overview
 .br
 .B File
+.\" help://File/filetype
+.\" help://File/gfile
+.\" help://File/sfile
+.\" help://File/pfile
+.\" help://File/cfile
+.\" help://File/s.file
+.\" help://File/p.file
+.\" help://File/c.file
+.\" help://File/x.file
+.\" help://File/z.file
