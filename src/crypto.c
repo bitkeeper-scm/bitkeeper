@@ -8,8 +8,8 @@ private	int	make_keypair(int bits, char *secret, char *public);
 private	int	signdata(rsa_key *secret);
 private	int	validatedata(rsa_key *public, char *sign);
 private	int	cryptotest(void);
-private	int	encrypt(rsa_key *public, FILE *fin, FILE *fout);
-private	int	decrypt(rsa_key	*secret, FILE *fin, FILE *fout);
+private	int	encrypt_stream(rsa_key *public, FILE *fin, FILE *fout);
+private	int	decrypt_stream(rsa_key	*secret, FILE *fin, FILE *fout);
 
 private void	loadkey(char *file, rsa_key *key);
 
@@ -95,8 +95,8 @@ crypto_main(int ac, char **av)
 	    case 'e': case 'd': case 's': case 'v':
 		loadkey(av[optind], &key);
 		switch (mode) {
-		    case 'e': ret = encrypt(&key, stdin, stdout); break;
-		    case 'd': ret = decrypt(&key, stdin, stdout); break;
+		    case 'e': ret = encrypt_stream(&key, stdin, stdout); break;
+		    case 'd': ret = decrypt_stream(&key, stdin, stdout); break;
 		    case 's': ret = signdata(&key); break;
 		    case 'v': ret = validatedata(&key, av[optind+1]); break;
 		}
@@ -563,7 +563,7 @@ signed_saveFile(char *filename, char *data)
 }
 
 private int
-encrypt(rsa_key *key, FILE *fin, FILE *fout)
+encrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 {
 	int	wprng = find_prng("sprng");
 	int	cipher = register_cipher(&rijndael_desc);
@@ -604,7 +604,7 @@ err:		fprintf(stderr, "crypto encrypt: %s\n", crypt_error);
 }
 
 private int
-decrypt(rsa_key *key, FILE *fin, FILE *fout)
+decrypt_stream(rsa_key *key, FILE *fin, FILE *fout)
 {
 	int	cipher = register_cipher(&rijndael_desc);
 	long	inlen, outlen, blklen;
@@ -682,7 +682,7 @@ upgrade_decrypt(char *infile, char *outfile)
 		fprintf(stderr, "crypto rsa_import: %s\n", crypt_error);
 		exit(1);
 	}
-	decrypt(&rsakey, fin, fout);
+	decrypt_stream(&rsakey, fin, fout);
 	fclose(fin);
 	fclose(fout);
 	return (0);
