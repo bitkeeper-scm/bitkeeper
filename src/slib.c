@@ -1204,12 +1204,12 @@ date2time(char *asctime, char *z, int roundup)
 /*
  * Force sfile's mod time to be 2 seconds before gfile's mod time
  */
-void
-fix_stime(sccs *s)
+int
+sccs_setStime(sccs *s)
 {
 	struct	utimbuf	ut;
 
-	unless (s->gtime) return;
+	unless (s->gtime) return (-1);
 	/*
 	 * To prevent the "make" command from doing a "get" due to 
 	 * sfile's newer modification time, and then fail due to the
@@ -1229,7 +1229,7 @@ fix_stime(sccs *s)
 	 * so we need to set the mod time to gtime - 2 to compmensate.
 	 */
 	ut.modtime = s->gtime - 2;
-	(void)utime(s->sfile, &ut);
+	return (utime(s->sfile, &ut));
 }
 
 /*
@@ -6610,21 +6610,31 @@ out:			if (slist) free(slist);
 
 	/* Win32 restriction, must do this before we chmod to read only */
 	if (d && (flags&GET_DTIME)){
-		struct utimbuf ut;
-		char *fname = (flags&PRINT) ? printOut : s->gfile;
+		struct	utimbuf ut;
+		char	*fname = (flags&PRINT) ? printOut : s->gfile;
+		int	doit = !(flags & PRINT);
 
-		assert(d->sdate);
-		ut.actime = ut.modtime = date2time(d->sdate, d->zone, EXACT);
-		if (!streq(fname, "-") && (utime(fname, &ut) != 0)) {
-			char msg[1024];
+		/*
+		 * If we are doing a regular SCCS/s.foo -> foo get then
+		 * we set the gfile time iff we can set the sfile time.
+		 * This keeps make happy.
+		 */
+		ut.actime = ut.modtime = d->date - d->dateFudge;
+		unless (flags & PRINT) {
+			s->gtime = ut.modtime;
+			if (sccs_setStime(s)) doit = 0;
+		}
+		if (doit && !streq(fname, "-") && (utime(fname, &ut) != 0)) {
+			char	*msg;
 
-			sprintf(msg, "%s: Cannot set mod time; ", fname);
+			msg = aprintf("Cannot set mod time on %s:", fname);
 			perror(msg);
+			free(msg);
 			s->state |= S_WARNED;
 			goto out;
 		}
-		unless (flags & PRINT) s->gtime = ut.modtime;
 	}
+
 	unless (hash && (flags&GET_HASHONLY)) {
 		int 	rc = 0;
 
@@ -9337,7 +9347,7 @@ out:		sccs_unlock(s, 'z');
 	if ((flags & DELTA_SAVEGFILE) &&
 	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
-		fix_stime(s);
+		sccs_setStime(s);
 	}
 	chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
@@ -10942,7 +10952,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 
-	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) fix_stime(sc);
+	if (HAS_GFILE(sc) && (sc->initFlags&INIT_FIXSTIME)) sccs_setStime(sc);
 	chmod(sc->sfile, 0444);
 	goto out;
 #undef	OUT
@@ -12516,7 +12526,7 @@ out:
 	if ((flags & DELTA_SAVEGFILE) &&
 	    (s->initFlags & INIT_FIXSTIME) &&
 	    HAS_GFILE(s)) {
-		fix_stime(s);
+		sccs_setStime(s);
 	}
 	chmod(s->sfile, 0444);
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
