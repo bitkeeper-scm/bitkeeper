@@ -47,10 +47,7 @@
 # it will do the right thing...
 
 
-if [ X$Q = X ]
-then	L=-l
-else	L=
-fi
+L=-l
 
 # Create a repository with 5 files in it.  The files contain
 # 1, 2, 3, 4, 5 and start out as "A A", B, C, D, E
@@ -140,13 +137,14 @@ bk resync -t $Q project copy
 tar cf SAVE.copy copy
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
-bk resolve -t $Q $L copy >/dev/null 2>&1 <<EOF
+bk resolve -t $L copy >OUT 2>&1 <<EOF
 rl
 y
 EOF
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
 	bk _find copy 
+	cat OUT
 	exit 1
 fi
 if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
@@ -160,7 +158,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >XXX 2>&1 <<EOF
+bk resolve -t $L copy >XXX 2>&1 <<EOF
 ml
 LOCAL
 EOF
@@ -186,7 +184,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t -d -l $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t -d -l $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
@@ -206,13 +204,13 @@ echo $N '  try to rename local to existing gfile in repository .......'$NL
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -223,13 +221,13 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
@@ -241,13 +239,13 @@ echo OK
 echo $N '  resolve by renaming remote file but abort commit ..........'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t -y $Q $L copy >LOG 2>&1 <<EOF
+bk resolve -t -y $L copy >LOG 2>&1 <<EOF
 mr
 REMOTE
 a
 EOF
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
-then	echo Failed to leave local file; exit 1
+then	echo Failed to leave local file; cat LOG; exit 1
 fi
 if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
@@ -268,21 +266,26 @@ echo OK
 echo $N '  resolve by renaming remote file using default comments ....'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L -t copy >/dev/null 2>&1 <<EOF
+bk resolve $L -t copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 u
 EOF
 cores
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
-then	echo Failed to leave local file; exit 1
+then	echo Failed to leave local file; cat OUT; exit 1
 fi
 if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
-then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
+then	echo Bad data in local file
+	cat OUT
+	echo ====
+	cat copy/'B%A!#$%^&)(-_+=];,'
+	exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
 	bk _find copy
+	cat OUT
 	exit 1
 fi
 if [ "`cat copy/REMOTE`" != "I am the project file" ]
@@ -299,12 +302,12 @@ echo OK
 echo $N '  resolve by renaming remote file passing in comments .......'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L -t -yYO_BABY_YO_BABY copy >/dev/null 2>&1 <<EOF
+bk resolve $L -t -yYO_BABY_YO_BABY copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
-then	echo Failed to leave local file; exit 1
+then	echo Failed to leave local file; cat OUT; exit 1
 fi
 if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
@@ -333,13 +336,13 @@ echo OK
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $L copy 2>ERRORS <<EOF
 mr
 c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -350,13 +353,13 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
@@ -368,13 +371,13 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy 2>ERRORS <<EOF
+bk resolve -t $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -403,12 +406,13 @@ bk resync -t $Q project copy
 tar cf SAVE.copy copy
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
-bk resolve -t $Q $L copy >/dev/null 2>&1 <<EOF
+bk resolve -t $L copy >OUT 2>&1 <<EOF
 rl
 y
 EOF
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
+	cat OUT
 	bk _find copy
 	exit 1
 fi
@@ -425,7 +429,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >XXX 2>&1 <<EOF
+bk resolve -t $L copy >XXX 2>&1 <<EOF
 ml
 LOCAL
 EOF
@@ -453,13 +457,13 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -471,13 +475,13 @@ echo $N '  try to rename local to existing gfile in repository .......'$NL
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -488,13 +492,13 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
@@ -506,12 +510,12 @@ echo OK
 echo $N '  resolve by renaming remote file ...........................'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
-then	echo Failed to leave local file; exit 1
+then	echo Failed to leave local file; cat OUT; exit 1
 fi
 if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
@@ -535,13 +539,13 @@ echo OK
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -552,13 +556,13 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
@@ -570,13 +574,13 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -609,7 +613,7 @@ echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-bk resolve -t $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
 q
@@ -617,6 +621,7 @@ EOF
 cd copy
 if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
+	cat OUT
 	bk _find .
 	exit 1
 fi
@@ -643,7 +648,7 @@ echo $N '  resolve by removing remote file ...........................'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
 rr
 y
 EOF
@@ -651,6 +656,7 @@ cd copy
 bk get $Q 'B%A!#$%^&)(-_+=];,'
 if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
+	cat OUT
 	bk _find .
 	exit 1
 fi
@@ -661,6 +667,7 @@ then	echo Failed to leave old file in place
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
 then	echo Deleted file missing
+	cat OUT
 	bk _find .
 	exit 1
 fi
@@ -677,7 +684,7 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L -t -yMerge >XXX 2>&1 <<EOF
+bk resolve $L -t -yMerge >XXX 2>&1 <<EOF
 ml
 LOCAL
 q
@@ -708,13 +715,13 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -727,13 +734,13 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -745,13 +752,13 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
@@ -764,18 +771,19 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
-bk resolve -t $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve -t $L -t -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
-then	echo Failed to leave local file; exit 1
+then	echo Failed to leave local file; cat OUT; exit 1
 fi
 if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
+	cat OUT
 	bk _find .
 	exit 1
 fi
@@ -793,14 +801,16 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t -l copy >ERRORS 2>&1 <<EOF
 mr
 c C#
 q
 EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
+test $? -eq 0 && {
+	echo resolve failed to exit with an error
+	cat ERRORS
+	exit 1
+}
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
@@ -810,14 +820,16 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
+test $? -eq 0 && {
+	echo resolve failed to exit with an error
+	cat ERRORS
+	exit 1
+}
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
@@ -828,13 +840,13 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -863,7 +875,7 @@ echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
 q
@@ -871,6 +883,7 @@ EOF
 cd copy
 if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
+	cat OUT
 	bk _find .
 	exit 1
 fi
@@ -882,6 +895,7 @@ then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
 if [ ! -f BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,' ]
 then	echo Deleted file missing
+	cat OUT
 	bk _find .
 	exit 1
 fi
@@ -895,13 +909,13 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve -t $Q $L >ERRORS 2>&1 <<EOF
+bk resolve -t $L >ERRORS 2>&1 <<EOF
 ml
 LOCAL
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to error exit; exit 1
+then	echo resolve failed to error exit; cat ERRORS; exit 1
 fi
 grep -q 'uncommitted local file B%A' ERRORS
 if [ $? -ne 0 ]
@@ -934,7 +948,7 @@ echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 rl
 y
 q
@@ -942,6 +956,7 @@ EOF
 cd copy
 if [ ! -f 'B%A!#$%^&)(-_+=];,' ]
 then	echo Failed to get 'B%A!#$%^&)(-_+=];,' file
+	cat OUT
 	bk _find .
 	exit 1
 fi
@@ -966,7 +981,7 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L -t -yMerge >XXX 2>&1 <<EOF
+bk resolve $L -t -yMerge >XXX 2>&1 <<EOF
 ml
 LOCAL
 q
@@ -994,13 +1009,13 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -1013,13 +1028,13 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -1031,13 +1046,13 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
@@ -1050,18 +1065,19 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
-bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
-then	echo Failed to leave local file; exit 1
+then	echo Failed to leave local file; cat OUT; exit 1
 fi
 if [ "`cat copy/'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo Bad data in local file; cat copy/'B%A!#$%^&)(-_+=];,'; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
+	cat OUT
 	bk _find copy
 	exit 1
 fi
@@ -1076,13 +1092,13 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -1093,14 +1109,16 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
+test $? -eq 0 && {
+	echo resolve failed to exit with an error
+	cat ERRORS
+	exit 1
+}
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
@@ -1111,13 +1129,13 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -1170,7 +1188,7 @@ then	echo takepatch failed;
 	exit 1
 fi
 cd $HERE
-bk resolve -t $Q $L copy
+bk resolve -t $Q copy
 if [ $? != 0 ]
 then	echo resolved did not exit 0; exit 1
 fi
@@ -1217,7 +1235,7 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L -t -yMerge 2>XXX <<EOF
+bk resolve $L -t -yMerge 2>XXX <<EOF
 ml
 LOCAL
 q
@@ -1239,13 +1257,13 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -1258,13 +1276,13 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 ml
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -1276,13 +1294,13 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
@@ -1295,15 +1313,16 @@ cd $HERE
 rm -rf copy
 tar xf SAVE.copy
 bk get -q copy/'B%A!#$%^&)(-_+=];,'
-bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
+bk resolve $L -t -yMerge copy >OUT 2>&1 <<EOF
 mr
 REMOTE
 EOF
 if [ ! -f copy/'B%A!#$%^&)(-_+=];,' ]
-then	echo Failed to leave local file; exit 1
+then	echo Failed to leave local file; cat OUT; exit 1
 fi
 if [ ! -f copy/REMOTE ]
 then	echo Failed to get REMOTE file
+	cat OUT
 	bk _find copy
 	exit 1
 fi
@@ -1315,13 +1334,13 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 c C#
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'SCCS/s.c C# exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -1332,14 +1351,16 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 rm -rf copy
 tar xf SAVE.copy
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t -l copy >ERRORS 2>&1 <<EOF
 mr
 ChangeSet
 q
 EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
+test $? -eq 0 && {
+	echo resolve failed to exit with an error
+	cat ERRORS
+	exit 1
+}
 grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
 if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
@@ -1350,13 +1371,13 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve -t $Q $L copy >ERRORS 2>&1 <<EOF
+bk resolve -t $L copy >ERRORS 2>&1 <<EOF
 mr
 GFILE
 q
 EOF
 if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
+then	echo resolve failed to exit with an error; cat ERRORS; exit 1
 fi
 grep -q 'GFILE exists locally already' ERRORS
 if [ $? -ne 0 ]
@@ -1410,7 +1431,7 @@ echo OK
 echo $N Clean the edit and try the first pass of resolve ............$NL
 bk unedit "A A"
 bk takepatch $Q -f PENDING/*
-bk resolve -t $L $Q -234
+bk resolve -t $Q -234
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
@@ -1419,7 +1440,7 @@ then	echo Failed to move renamed m.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve to completion and make sure it moves A A to Z ...$NL
-bk resolve -t $Q $L
+bk resolve -t $Q
 if [ -f SCCS/s."A A" ]
 then	echo failed to move "A A"; exit 1
 fi
@@ -1457,7 +1478,7 @@ fi
 echo OK
 
 echo $N Run pass 1 of resolve and make sure m/r files move ..........$NL
-bk resolve -t $L $Q -234 
+bk resolve -t $Q -234 
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]
 then	echo Failed to move renamed s.file to RENAMES; exit 1
 fi
@@ -1469,7 +1490,7 @@ then	echo Failed to move renamed r.file to RENAMES; exit 1
 fi
 echo OK
 echo $N Run pass 2 of resolve and make sure r file moves back .......$NL
-bk resolve -t $L $Q -134 
+bk resolve -t $Q -134 
 if [ ! -f RESYNC/SCCS/s.Z ]
 then	echo Failed to move renamed s.file from RENAMES; exit 1
 fi
@@ -1478,7 +1499,7 @@ then	echo Failed to move renamed r.file from RENAMES; exit 1
 fi
 echo OK
 echo $N Run resolve in no conflict mode and make sure it fails ......$NL
-bk resolve -t $L $Q -c >ERR 2>&1  
+bk resolve -t $Q -c >ERR 2>&1  
 if [ $? = 0 ]
 then	echo Failed to return an error
 fi
@@ -1488,7 +1509,7 @@ echo OK
 
 # Start testing conflicts.
 echo $N Run resolve in automerge mode and make sure it merges .......$NL
-bk resolve -t $L $Q -a
+bk resolve -t $Q -a
 if [ $? != 0 ]
 then	echo failed; exit 1
 fi
