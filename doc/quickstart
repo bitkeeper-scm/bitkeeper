@@ -1,0 +1,99 @@
+#help_quickstart
+The quickstart guide is used as a cookbook and contains very little
+explanation.  More detailed information can be found in the help
+topics by reading topics such as 'bk help edit'.
+
+The order in which you read the topics should be as follows:
+
+	qs_setup
+	qs_admin
+	qs_developer
+
+$
+#help_qs_setup
+Here are examples on how to setup the initial repository, import from
+plain files, a CVS repository, and an RCS repository. 
+
+In order to do an import, the destination repository needs to
+exist. Setup is used when creating the first instance of a repository.
+
+    # Setup initial repository
+    cd ~/projects
+    bk setup test_package
+
+    # Import of plain files from a tar archive.  In order to do an import, 
+    # the destination repository needs to exist.  Notice that we put the 
+    # package in subdirectory, this is useful.
+    mkdir /tmp/gcc
+    cd /tmp/gcc
+    tar zxf /tmp/gcc-2.95.2.tgz
+    bk import -tplain /tmp/gcc /tmp/working
+
+    # Import of a CVS tree which resides in /tmp/mycvsproject.
+    bk import -tCVS /tmp/mycvsproject /tmp/working
+
+    # Import of a RCS tree which resides in /tmp/myrcsproject.
+    bk import -tRCS /tmp/myrcsproject /tmp/working
+$
+#help_qs_admin
+Here are examples how to configure the bk daemon for both read-only and
+read-write modes. We show how to export all repositories on a system
+in both read-write and read-only mode and we show how to export only
+a specific repository in read-write and read-only mode.
+
+    # Configure bitkeeper deamon for read-only access for all repositories
+    bk bkd -d -xpush
+
+    # Configure bitkeeper deamon for read-only access for all repositories
+    bk bkd -d
+
+    # Access a specific repository when multiple ones are being exported
+    bk clone bk://host.domain/some/dir/master ~/my_tree
+
+    # Configure a specific bk repository for read-write access
+    cd /master/repository
+    bk bkd -d -p6666 -xcd
+
+    # Configure a specific bk repository for read-only access
+    cd /master/repository
+    bk bkd -d -p4444 -xcd -xpush
+
+    # Access a repository bound to a port
+    bk clone bk://host.domain:6666 ~/my_tree
+
+SEE ALSO
+    bk help quickstart
+
+$
+#help_qs_developer
+
+Here is an example sequence of commands used to create a new package,
+import files into the package, create a clone of the package for
+modifications, do some work in the clone, pull new work from the
+master tree down, merge, and then push the work back up.
+
+    # Create a clone on your development machine.  The destination 
+    # directory should not exist.
+    bk clone bk://bitkeeper:6666/project ~/myproject
+
+    # Do some work.
+    cd ~/myproject
+    bk vi index.cgi
+
+    # Check it in and create a changeset.
+    bk citool
+
+    # Pull any new work down from the work tree.  This example assumes that
+    # someone else also changed "index.cgi" and their changes overlapped
+    # the local changes.
+    # The pull command will say that there are overlapping changes and will
+    # not apply the new work.
+    bk pull
+
+    # Resolve the conflicts.  This step is only necessary if pull said there
+    # were conflicts which could not be automerged.
+    bk resolve
+
+    # push the merge and the local changes back up.
+    bk push
+$
