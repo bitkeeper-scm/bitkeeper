@@ -36,6 +36,7 @@ Documentation topics:
     backups	- information about safeguarding your work
     debug	- information on how to debug BitKeeper
     RCS		- RCS command line interfaces in BitKeeper
+    docs	- more documentation
 
 Command topics:
     admin	- administer BitKeeper files (tags, checksums, validation)
@@ -49,18 +50,21 @@ Command topics:
     edit	- synonym for "co -l" or "get -e"
     get		- checks out files (SCCS version of co)
     import	- import a set of files into a project
+    mv		- move (also delete) files
+    pending	- list deltas which need to be in a changeset
     prs		- prints revision history (like RCS rlog)
     regression	- regression test
     renumber	- repairs files damaged by Sun's Teamware product
     resolve	- resolve a patch
     resync	- resync two BitKeeper projects in the local file system
     rmdel	- removes deltas
+    save	- save a changeset
     sccslog	- like prs except it sorts deltas by date across all files
     send	- send a patch
     sendbug	- how to report a bug
     sfiles	- generates lists of revision control files
-    take	- take a patch
-    pending	- list deltas which need to be in a changeset
+    takepatch	- take a patch
+    undo	- undo a changeset
     unedit	- synonym for "clean -u"
     what	- looks for SCCS keywords and prints them
 EOF
@@ -475,36 +479,82 @@ The latter is the reccommended way of doing things at this point.
 EOF
 }
 
+function help_undo {
+	cat <<EOF
+    ====================== BitKeeper undo ======================
+
+Usage: bk undo [-f]
+
+The undo command undoes the effect of the most recent changeset applied to
+the repository.  
+
+WARNING: the information is lost, it's gone, you can't get it back if you
+don't have another copy.  So be careful out there, OK?
+
+If you want to save the patch in case you need to get it back, do a
+
+    bk save /tmp/mypatch
+
+before the "bk undo".  The following is a null operation:
+
+    bk save /tmp/patch
+    bk undo -f
+    bk takepatch -vv < /tmp/patch
+    bk resolve
+
+OPTIONS
+    -f	force the undo to work silently.  Normally, undo will prompt you with
+    	a list of deltas which will be removed.  This option skips that step.
+
+SEE ALSO
+    bk help save
+    bk help takepatch
+
+EOF
+}
+
 function help_resync {
 	cat <<EOF
     ====================== BitKeeper resyncs ======================
 
-You can resync directories in a local file system.  To do so, after you
-have run
+Usage: bk resync [-c] [-q] [-rRevs] from to
 
-    $ bk pending
+You can resync repositories after you have run
+
     $ bk commit
 
-to make sure that all the changes are in a changeset, run 
+to make sure that all the changes are in a changeset.
+
+Then run
 
     $ bk resync source_root destination_root
 
-If that completes successfully, you still need to resolve the changes.  
+If you have ssh access to a remote machine, you can run
+
+    $ bk resync remote_host1:/path/to/root destination_root
+
+Either or both the source and the destination can be remote.  If you have
+not set up ssh to login without a password, you will be prompted multiple
+times (sorry) for a password.
+
+When the resync completes successfully, you still need to resolve the changes.  
 The resync did not change anything in the destination other than creating
 a PENDING and RESYNC directory.  The PENDING directory contains the patch
 and the RESYNC directory is a sparse copy of the destination with the patch
 applied.  The resolution of any conflicts takes place in the RESYNC directory.
 
-To resolve, run
-
-    $ bk resolve destination
-
-After the resolve is completed, all of the new work will have been moved from
-the RESYNC directory into the destination.
+OPTIONS
+    -c		fail the resync if it would create conflicts in the destination
+    -q		be quiet during the resync
+    -lrevs	specify the ChangeSet revs to resync.  This is usually 
+    		an "up to range" such as ..beta or ..1.50 since the default
+		is everything.
 
 SEE ALSO
     bk help pending
     bk help commit
+    bk help resolve
+    bk help ranges
 
 EOF
 }
@@ -522,9 +572,32 @@ function help_renames {
 	cat <<EOF
     ================== BitKeeper pathname tracking ==================
 
-Renames happen automatically when you resync or send/take.  The resolve
-command will auto apply any non conflicting renames and as for your help
-if the both projects renamed the same file.
+Renames happen automatically when you resync.  The resolve command will
+auto apply any non conflicting renames and as for your help if the both
+projects renamed the same file.
+
+EOF
+}
+
+function help_docs {
+	echo "The docs command dumps all documentation to stdout"
+	echo "It's pretty lame at the moment"
+}
+
+function help_mv {
+	cat <<EOF
+    =========== Renaming and/or deleting files in BitKeeper ===========
+
+To move a file from A to B do this:
+
+    $ bk mv A B
+
+That will move the checked out file (if any) as well as the revision control
+file.
+
+To delete a file, move it to an unused file name, such as .del-file like so:
+
+    $ bk mv garbage .del-garbage
 
 EOF
 }
@@ -639,6 +712,25 @@ or
 EOF
 }
 
+function help_save {
+	cat <<EOF
+    =============== Saving BitKeeper patches ===============
+
+If you want to save the most recent changeset, you can do that with
+the save command.  This is used mostly as a backup in case the effects
+of a "bk undo" were a mistake.
+
+    $ bk save /tmp/patch
+
+takes the more recent changeset and saves it in /tmp/patch.
+
+SEE ALSO
+    bk help undo
+    bk help takepatch
+
+EOF
+}
+
 function help_send {
 	cat <<EOF
     =============== Sending BitKeeper patches ===============
@@ -650,16 +742,26 @@ See the resync command for an easier way.
 So if you were in sync yesterday, and you made one changeset since then,
 you can do a 
 
-    $ bk changes -r+
+    $ bk send user@host.com
 
-to see the top revision number and then do a
+and BitKeeper will generate the patch and mail it to user@host.com
 
-    $ bk send 1.10 user@host.com
+The default changeset to send is the most recent one created.  If you want
+to send multiple changesets, for example from a common tagged point in the
+past, you can do
 
-and BitKeeper will generate the patch and mail it for you.
+    $ bk send beta.. user@host.com
+
+or
+
+    $ bk send 1.10.. user@host.com
+
+OPTIONS
+    -q		be quiet
 
 SEE ALSO
     bk help resync
+    bk help ranges
 
 EOF
 }
@@ -677,6 +779,16 @@ If at all possible, include a reproducible test case.
 
 Thanks.
 EOF
+}
+
+function cd2root {
+	while [ ! -d "BitKeeper/etc" ]
+	do	cd ..
+		if [ `pwd` = "/" ]
+		then	echo "bk: can not find project root."
+			exit 1
+		fi
+	done
 }
 
 function setup { 
@@ -768,19 +880,57 @@ function changes {
 }
 
 function send {
-	V=-v
+	V=-vv
 	case X$1 in
-	    X-v*)
-	    	V=$1; shift
+	    X-q*)
+	    	V=; shift
 		;;
 	esac
-	case X$2 in
-	    X-)	${BIN}cset -l$1 | csetSort | ${BIN}makepatch $V - 
+	if [ X$1 = X ]
+	then	echo "usage: bk send [-q] [cset_revs] user@host|-"
+		exit 1
+	fi
+	if [ X$2 = X ]
+	then	cd2root
+		REV=`bk prs -hr+ -d:I: ChangeSet`
+		OUTPUT=$1
+	else	REV=$1
+		OUTPUT=$2
+	fi
+	if [ X$V != X ]
+	then	echo "Sending ChangeSet $REV to $OUTPUT"
+	fi
+	case X$OUTPUT in
+	    X-)	${BIN}cset -l$REV | csetSort | ${BIN}makepatch $V - 
 	    	;;
-	    *)	${BIN}cset -l$1 | csetSort | ${BIN}makepatch $V - | \
-	    	mail -s "BitKeeper patch" $2
+	    *)	${BIN}cset -l$REV | csetSort | ${BIN}makepatch $V - | \
+	    	mail -s "BitKeeper patch $REV" $OUTPUT
 	    	;;
 	esac
+}
+
+function save {
+	V=-vv
+	case X$1 in
+	X-q)	V=; shift
+		;;
+	esac
+	if [ X$1 = X ]
+	then	echo "usage: bk save [-q] [cset_revs] pathname"
+		exit 1
+	fi
+	if [ X$2 = X ]
+	then	cd2root
+		REV=`bk prs -hr+ -d:I: ChangeSet`
+		OUTPUT=$1
+	else	REV=$1
+		OUTPUT=$2
+	fi
+	if [ X$V != X ]
+	then	echo "Saving ChangeSet $REV in $OUTPUT"
+	fi
+	${BIN}cset -l$REV | csetSort | ${BIN}makepatch $V - > $OUTPUT
+	exit $?
 }
 
 # The ChangeSet file should always be first.
@@ -793,52 +943,109 @@ function csetSort {
 
 function resync {
 	V=-vv
-	if [ "X$1" = "X-q" ]
-	then	shift
-		V=
-	fi
-	if [ ! -d "$1/BitKeeper/etc" ]
-	then	echo "resync: $1 is not a BitKeeper project root"
-	fi
+	REV=1.0..
+	C=
+	# XXX - how portable is this?  Seems like it is a ksh construct
+	while getopts qcr: opt
+	do	case "$opt" in
+		q) V=;;
+		c) C=-c;;
+		r) REV=$OPTARG
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	if [ X"$2" = X ]
 	then	echo "usage: bk resync source_dir dest_dir"
 		exit 1
 	fi
-	if [ ! -d "$2" ]
-	then	mkdir -p "$2"
-		if [ ! -d "$2" ]
-		then	exit 1
+	case $1 in
+	*:*)
+		FHOST=${1%:*}
+		FDIR=${1#*:}
+		PRS="ssh -x $FHOST 
+		    'cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet'"
+		GEN_LIST="ssh -x $FHOST 
+		    'cd $FDIR && while read x; do bk cset -l\$x; done'"
+		MKPATCH="ssh -x $FHOST 'cd $FDIR && exec bk makepatch $V -'"
+		;;
+	*)
+		FHOST=
+		FDIR=$1
+		PRS="(cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet)"
+		GEN_LIST="(cd $FDIR && while read x; do bk cset -l\$x; done)"
+		MKPATCH="(cd $FDIR && exec bk makepatch $V -)"
+		;;
+	esac
+	case $2 in
+	*:*)
+		THOST=${2%:*}
+		TDIR=${2#*:}
+		PRS2="ssh -x $THOST
+		    'cd $TDIR && exec bk prs -bhd:ID: ChangeSet'"
+		# Much magic in this next line.
+		INIT=-`ssh -x $THOST "if test -d $TDIR;
+		    then if test -d $TDIR/BitKeeper/etc;
+			then if test -d $TDIR/RESYNC; then echo inprog; fi;
+			else echo no; fi;
+		    else mkdir -p $TDIR; echo i; fi"`
+		if [ x$INIT = x-no ]
+		then	echo "resync: $2 is not a Bitkeeper project root"
+			exit 1
+		elif [ x$INIT = x-inprog ]
+		then	echo "resync: $TDIR/RESYNC exists, patch in progress"
+			exit 1
+		elif [ x$INIT = x- ]
+		then	INIT=
 		fi
-		INIT="-i"
-	else	if [ ! -d "$2/BitKeeper/etc" ]
-		then	echo "resync: $2 is not a BitKeeper project root"
+		TKPATCH="ssh -x $THOST
+		    'cd $TDIR && exec bk takepatch $C $V $INIT'"
+		;;
+	*)
+		THOST=
+		TDIR=$2
+		PRS2="(cd $TDIR && exec bk prs -bhd:ID: ChangeSet)"
+		if [ -d $TDIR ]
+		then	if [ -d $TDIR/RESYNC ]
+			then echo "resync: $TDIR/RESYNC exists, patch in progress"
+			     exit 1
+			elif [ -d $TDIR/BitKeeper/etc ]
+			then :
+			else echo "resync: $2 is not a Bitkeeper project root"
+			     exit 1
+			fi
+		else
+			INIT=-i
+			mkdir -p $TDIR
 		fi
-		INIT=
-	fi
-	HERE=`pwd`
-	cd $1
-	FROM=`pwd`
-	cd $HERE
-	cd $2
-	TO=`pwd`
-	if [ -d "$TO/RESYNC" ]
-	then	echo "resync: $TO/RESYNC exists, patch in progress"
-		exit 1
-	fi
-	cd $FROM
+			
+		TKPATCH="(cd $TDIR && bk takepatch $C $V $INIT)"
+		;;
+	esac
+
 	if [ "X$INIT" = "X-i" ]
-	then	bk cset -l1.1.. | csetSort > /tmp/list$$
-	else	bk smoosh ChangeSet $TO/ChangeSet | \
-		sed 's/ChangeSet://' | while read x
-		do	bk cset -l$x
-		done | csetSort > /tmp/list$$
+	then	echo $REV | eval $GEN_LIST | csetSort > /tmp/list$$
+	else
+		eval $PRS  > /tmp/from$$
+		eval $PRS2 > /tmp/to$$
+		REV=`bk cset_todo /tmp/from$$ /tmp/to$$`
+		if [ X"$REV" != X ]
+		then	echo --------- ChangeSets being sent -----------
+			echo "$REV"
+			echo -------------------------------------------
+		fi
+		#/bin/rm /tmp/from$$ /tmp/to$$
+		if [ X$V != X ]
+		then echo Generating list of revisions to send, please wait ...
+		fi
+		if [ "X$REV" != X ]
+		then	echo "$REV" | eval $GEN_LIST | csetSort > /tmp/list$$
+		else	touch /tmp/list$$
+		fi
 	fi
-	if [ ! -s /tmp/list$$ ]
-	then	echo "resync: Nothing to do."
-		/bin/rm /tmp/list$$
-		exit 0
+	if [ -s /tmp/list$$ ]
+	then	eval $MKPATCH < /tmp/list$$ | eval $TKPATCH
+	else	echo "resync: nothing to resync from $1 to $2"
 	fi
-	bk makepatch $V - < /tmp/list$$ | ( cd $TO && bk takepatch $V $INIT )
 	/bin/rm /tmp/list$$
 	exit 0
 }
@@ -956,7 +1163,7 @@ function sccsmv {
 				/bin/mv $G $GDEST/$GBASE
 			fi
 			bk get -se $SDEST/$SBASE
-			bk delta -syRenamed $SDEST/$SBASE
+			bk delta -yRenamed $SDEST/$SBASE
 		else	# destination is a regular file
 			echo "sccsmv $s $SDEST"
 			/bin/mv $s $SDEST
@@ -965,7 +1172,7 @@ function sccsmv {
 				/bin/mv $G $GDEST
 			fi
 			bk get -se $SDEST
-			bk delta -syRenamed $SDEST
+			bk delta -yRenamed $SDEST
 		fi
 	done
 	# XXX - this needs to update the idcache
@@ -973,8 +1180,62 @@ function sccsmv {
 	exit 0
 }
 	
-function mkpatch {
-	exec ${BIN}makepatch "$@"
+# Usage: undo [-f] [-F]
+function undo {
+	cd2root
+	ASK=yes
+	FORCE=
+	if [ X$1 = X-f ]
+	then	ASK=
+		shift
+	fi
+	if [ X$1 = X-F ]
+	then	FORCE=yes
+	fi
+	if [ X$FORCE = X ]
+	then	bk sfiles -Ca > /tmp/p$$
+		if [ -s /tmp/p$$ ]
+		then	echo Repository has uncommitted changes, undo aborted
+			rm /tmp/p$$
+			exit 1
+		fi
+	fi
+	REV=`bk prs -hr+ -d:I: ChangeSet`
+	bk cset -l$REV > /tmp/undo$$
+	sed 's/:.*//' < /tmp/undo$$ | sort -u | xargs bk sfiles -c > /tmp/p$$
+	if [ -s /tmp/p$$ ]
+	then	echo "Undo would remove the following modified files:"
+		cat /tmp/p$$
+		echo ""
+		echo "Undo aborted"
+		rm /tmp/p$$ /tmp/undo$$
+		exit 1
+	fi
+	if [ X$ASK = Xyes ]
+	then	while true
+		do	echo ""
+			echo ------- About to remove these deltas -----------
+			cat /tmp/undo$$
+			echo "-----------------------------------------------"
+			echo ""
+			echo $N "Remove these? (y)es, (n)o "$NL
+			read x
+			case X$x in
+		    	Xy*)	bk rmdel -D - < /tmp/undo$$
+				EXIT=$?
+				rm -f /tmp/undo$$
+				exit $EXIT
+				;;
+			*) 	rm -f /tmp/undo$$
+				exit 0
+				;;
+			esac
+		done
+	else	bk rmdel -D - < /tmp/undo$$
+		EXIT=$?
+		rm -f /tmp/undo$$
+		exit $EXIT
+	fi
 }
 
 function pending {
@@ -982,7 +1243,36 @@ function pending {
 }
 
 function commit {
-	exec ${BIN}sfiles -C | ${BIN}cset $@ -
+	${BIN}sfiles -Ca | ${BIN}sccslog -C - > /tmp/comments$$
+	COMMENTS=
+	L=----------------------------------------------------------------------
+	while true
+	do	
+		echo ""
+		echo "---------$L"
+		cat /tmp/comments$$
+		echo "---------$L"
+		echo ""
+		echo $N "Use these comments (e)dit, (a)bort, (u)se? "
+		read x
+		case X$x in
+		    X[uy]*) 
+			 if [ -s /tmp/comments$$ ]
+			 then	COMMENTS="-Y/tmp/comments$$"
+			 fi
+			 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $@ -
+			 ERR=$?
+			 rm -f /tmp/comment$$
+	    	 	 exit $EXIT;
+		 	 ;;
+		    Xe*) $EDITOR /tmp/comments$$
+			 ;;
+		    Xa*) rm -f /tmp/comment$$
+			 echo Commit aborted.
+			 exit 0
+			 ;;
+		esac
+	done
 }
 
 function man {
@@ -998,10 +1288,6 @@ function man {
 
 function commitmerge {
 	exec ${BIN}sfiles -C | ${BIN}cset -yMerge $@ -
-}
-
-function take {
-	exec ${BIN}takepatch "$@"
 }
 
 function sendbug {
@@ -1079,6 +1365,21 @@ EOF
 	done
 }
 
+function docs {
+	for i in admin backups basics changes changesets chksum ci clean \
+	    co commit cset cset_todo debug delta differences diffs docs \
+	    edit get gui history import makepatch man merging overview \
+	    path pending prs range ranges rechksum regression renames \
+	    renumber resolve resync rmdel save sccslog sdiffs send \
+	    sendbug setup sfiles sids sinfo smoosh tags takepatch terms \
+	    undo unedit vitool what
+	do	echo ""
+		echo -------------------------------------------------------
+		bk help $i
+		echo -------------------------------------------------------
+	done
+}
+
 function commandHelp {
 	DID=no
 	for i in $* 
@@ -1095,7 +1396,7 @@ function commandHelp {
 				    history|tags|changesets|resync|merging|\
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
-				    resync|changes)
+				    resync|changes|undo|save|docs|mv)
 					help_$i | $PAGER
 					;;
 				    *)
@@ -1147,8 +1448,8 @@ case "$1" in
 	PATH=${BIN}:$PATH regression
 	exit $?
 	;;
-    setup|changes|pending|commit|commitmerge|sendbug|send|take|\
-    sccsmv|mv|resync|edit|unedit|man)
+    setup|changes|pending|commit|commitmerge|sendbug|send|\
+    sccsmv|mv|resync|edit|unedit|man|undo|save|docs)
 	cmd=$1
     	shift
 	eval $cmd "$@"
@@ -1183,18 +1484,18 @@ then	if [ X$1 = X ]
 	if [ -d "$1" ]
 	then	dir=$1
 		shift
-	else	while [ ! -d "BitKeeper/etc" ]
-		do	cd ..
-			if [ `pwd` = "/" ]
-			then	echo "bk: can not find project root."
-				exit 1
-			fi
-		done
+	else	cd2root
 		dir=.
 	fi
-	exec bk sfiles $dir | bk "$@" -
-	exit 2
+	# Support -r as an option to tell sfiles to do it from the root
+	if [ X$1 = Xsfiles ]
+	then	shift
+		bk sfiles $dir "$@"
+	else	bk sfiles $dir | bk "$@" -
+	fi
+	exit $?
 fi
+
 # Run our stuff first if we can find it, else
 # we don't know what it is, try running it and hope it is out there somewhere.
 if [ -x ${BIN}$cmd -a ! -d ${BIN}$cmd ]

@@ -26,6 +26,7 @@ usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -a		do diffs on all sfiles\n\
     -c		do context diffs\n\
     -d<dates>	diff using date or symbol\n\
+    -h		don't print headers\n\
     -D		prefix lines with dates\n\
     -M		prefix lines with revision numbers\n\
     -p		procedural diffs, like diff -p\n\
@@ -49,6 +50,7 @@ main(int ac, char **av)
 	int	all = 0, flags = SILENT, c;
 	char	kind;
 	char	*name;
+	int	headers = 1;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -62,9 +64,10 @@ main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "acd;DMnpr|suUv")) != -1) {
+	while ((c = getopt(ac, av, "acd;DhMnpr|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
+		    case 'h': headers = 0; break;
 		    case 'c': kind = DF_CONTEXT; break;
 		    case 'D': flags |= PREFIXDATE; break;
 		    case 'M': flags |= REVNUMS; break;
@@ -117,6 +120,8 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 			}
 		}
 		if (HAS_GFILE(s) && !IS_WRITABLE(s)) ex = EXPAND;
+		if (headers) ex |= VERBOSE;
+
 		/*
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.

@@ -121,7 +121,6 @@ extern	char *strdup(char *s);
 #define	unlink(f)	smartUnlink(f)
 #define	rename(o, n)	smartRename(o, n)
 #define	seekto(s,o)	s->where = (s->mmap + o)
-#define	tell(s)		(s->where - s->mmap)
 #define	eof(s)		((s->encoding == E_GZIP) ? \
 			    zeof() : (s->where >= s->mmap + s->size))
 #define	BUF(b)		char *b
@@ -474,7 +473,7 @@ typedef struct {
  */
 typedef	struct sccs {
 	delta	*tree;		/* the delta tree after mkgraph() */
-	delta	*table;		/* the delta table list, newest..oldest */
+	delta	*table;		/* the delta table list, 1.99 .. 1.0 */
 	delta	*lastinsert;	/* pointer to the last delta inserted */
 	delta	*meta;		/* deltas in the meta data list */
 	symbol	*symbols;	/* symbolic tags sorted most recent to least */
@@ -603,7 +602,7 @@ int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, int flags, char *out);
 int	sccs_clean(sccs *s, int flags);
 int	sccs_info(sccs *s, int flags);
-int	sccs_prs(sccs *s, int flags, char *dspec, FILE *out);
+int	sccs_prs(sccs *s, int flags, int reverse, char *dspec, FILE *out);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, int flags);
@@ -622,7 +621,7 @@ void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s,
 		delta *d, FILE *f, int patch, int *errorp, int *linesp);
 delta	*sccs_ino(sccs *);
-int	sccs_rmdel(sccs *s, char *rev, int destroy, int flags);
+int	sccs_rmdel(sccs *s, delta *d, int destroy, int flags);
 int	sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut);
 void	sccs_pdelta(delta *d, FILE *out);
 char	*sccs_root(sccs *, char *optional_root);
@@ -669,6 +668,9 @@ MDBM	*loadDB(char *file, int (*want)(char *));
 MDBM	*csetIds(sccs *cset, char *rev, int all);
 void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);
+delta	*sccs_next(sccs *s, delta *d);
+int	sccs_meta(sccs *s, delta *parent, char *initFile);
+int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
 int	zgets_init(char *map, int len);
 int	zcat(char *map, int len);
 int	zeof(void);

@@ -211,7 +211,7 @@ name(char *sfile)
 int
 hasDiffs(char *file)
 {
-	sccs	*s = sccs_init(file, 0);
+	sccs	*s = sccs_init(file, NOCKSUM);
 
 	if (!s) return (0);
 	if (sccs_hasDiffs(s, 0) >= 1) {
@@ -341,7 +341,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	for (s = file; *s; s++);
 	for ( ; s > file; s--) if (s[-1] == '/') break;		/* CSTYLED */
 	if ((s[0] != 's') || (s[1] != '.')) return (0);
-	unless (sc = sccs_init(file, SHUTUP)) return (0);
+	unless (sc = sccs_init(file, NOCKSUM|SHUTUP)) return (0);
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);
 		return (0);

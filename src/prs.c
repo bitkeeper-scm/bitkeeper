@@ -23,11 +23,10 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	doheader = 1, didone = 0, flags = SILENT|SHUTUP;
+	int	reverse = 0, doheader = 1, didone = 0, flags = SILENT|SHUTUP;
 	int	c;
 	char	*name, *rev;
 	int	noisy = 0;
-	int	one = 0;
 	char	*dspec = NULL;
 	RANGE_DECL;
 
@@ -36,8 +35,9 @@ main(int ac, char **av)
 		fprintf(stderr, prs_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "c;d:hmr|v")) != -1) {
+	while ((c = getopt(ac, av, "bc;d:hmr|v")) != -1) {
 		switch (c) {
+		    case 'b': reverse++;
 		    case 'd':
 			dspec = optarg;
 			break;
@@ -76,7 +76,7 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 			}
 			printf(" ========\n");
 		}
-		sccs_prs(s, flags, dspec, stdout);
+		sccs_prs(s, flags, reverse, dspec, stdout);
 next:		sccs_free(s);
 	}
 	sfileDone();

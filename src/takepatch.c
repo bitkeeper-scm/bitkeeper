@@ -21,7 +21,12 @@ WHATSTR("%W%");
  *
  * Repeats.
  */
-char *takepatch_help = "usage: takepatch [-v] [-i]\n";
+char *takepatch_help = "\n\
+usage: takepatch [-civ] [-f file]\n\n\
+    -c		do not accept conflicts with this patch\n\
+    -f<file>	take the patch from <file> and do not save it\n\
+    -i		initial patch, create a new repository\n\
+    -v		verbose level, more is more verbose, -vv is suggested.\n\n";
 
 #define	CLEAN_RESYNC	1
 #define	CLEAN_PENDING	2
@@ -44,9 +49,11 @@ patch	*patchList = 0;
 int	files, remote, conflicts;
 int	newProject;
 MDBM	*idDB;
-delta	*gca;		/* only gets set if there are conflicts */
+delta	*gca;		/* The oldest parent found in the patch */
 int	nfound;
+int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
+FILE	*input;
 
 int
 main(int ac, char **av)
@@ -56,9 +63,12 @@ main(int ac, char **av)
 	int	c;
 	int	flags = SILENT;
 
+	input = stdin;
 	debug_main(av);
-	while ((c = getopt(ac, av, "iv")) != -1) {
+	while ((c = getopt(ac, av, "cf:iv")) != -1) {
 		switch (c) {
+		    case 'c': noConflicts++; break;
+		    case 'f': input = fopen(optarg, "rt"); break;
 		    case 'i': newProject++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
 		    default: goto usage;
@@ -69,7 +79,7 @@ usage:		fprintf(stderr, takepatch_help);
 		return (1);
 	}
 
-	p = init(stdin, flags);
+	p = init(input, flags);
 
 	/*
 	 * Find a file and go do it.
@@ -208,12 +218,31 @@ again:	v = mdbm_fetch(idDB, k);
 			exit(1);
 		}
 	} else {	/* create a new file */
-		s = sccs_init(name, NEWFILE);
-		unless (s) perror(name);
+		if (exists(name)) {
+			fprintf(stderr,
+"\n--- takepatch namespace conflict ---\n\
+\n\
+File: ``%s''\n\
+\n\
+This file exists in both repositories but is not based on the same\n\
+revision history.  This usually means that two different people created\n\
+the same file in two different repositories.  Currently, you have to\n\
+resolve this by hand, by removing or moving one of the files out of the\n\
+way and trying the patch again.  You can do this by using running\n\n\
+\tbk mv file file.duplicate\n\n\
+NOTE: if you are resyncing multiple changesets and the filename moved more\n\
+than once, it is possible that BitKeeper is getting confused.   Try the\n\
+resync with one changeset at a time and see if that works.\n\n\
+This is a temporary work around for the problem.\n", name);
+			cleanup(CLEAN_RESYNC);
+		}
+		sprintf(buf, "RESYNC/%s", name);
+		s = sccs_init(buf, NEWFILE);
+		unless (s) perror(buf);
 		assert(s);
 		if (echo > 2) {
 			fprintf(stderr,
-			    "takepatch: new file %s\n", name);
+			    "takepatch: new file %s\n", buf);
 		}
 		if (perfile) {
 			sccscopy(s, perfile);
@@ -235,7 +264,14 @@ again:	v = mdbm_fetch(idDB, k);
 		    nfound, nfound == 1 ? "" : "s", gfile);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
-	if (patchList && gca) getLocals(s, gca, name);
+	if (patchList && gca) {
+		if (getLocals(s, gca, name) && noConflicts) {
+			fprintf(stderr,
+"takepatch was instructed not to accept conflicts into this tree.\n\
+Please resync in the opposite direction and then reapply this patch.\n");
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
+	}
 	applyPatch(flags);
 	if (echo == 2) fprintf(stderr, " \n");
 	sccs_free(s);
@@ -244,9 +280,10 @@ again:	v = mdbm_fetch(idDB, k);
 	return (0);
 }
 
+int
 sccscopy(sccs *to, sccs *from)
 {
-	unless (to && from) return;
+	unless (to && from) return (-1);
 	to->state |= from->state;
 	unless (to->defbranch) {
 		to->defbranch = from->defbranch;
@@ -257,6 +294,7 @@ sccscopy(sccs *to, sccs *from)
 		to->text = from->text;
 		from->text = 0;
 	}
+	return (0);
 }
 
 /*
@@ -376,6 +414,7 @@ delta:	off = ftell(f);
 	return (0);
 }
 
+void
 ahead(char *pid, char *sfile)
 {
 	fprintf(stderr,
@@ -433,15 +472,21 @@ applyPatch(int flags)
 		exit(1);
 	}
 	unless (gca) goto apply;
+	/*
+	 * Note that gca is NOT a valid pointer into the sccs tree "s".
+	 */
 	assert(gca);
 	assert(gca->rev);
 	assert(gca->pathname);
 	if (echo > 5) fprintf(stderr, "rmdel %s from %s\n", gca->rev, s->sfile);
-	if (sccs_rmdel(s, gca->rev, 1, 0)) {
-		unless (BEEN_WARNED(s)) {
-			fprintf(stderr, "rmdel of %s failed.\n", p->resyncFile);
+	if (d = sccs_next(s, sccs_getrev(s, gca->rev, 0, 0))) {
+		if (sccs_rmdel(s, d, 1, 0)) {
+			unless (BEEN_WARNED(s)) {
+				fprintf(stderr,
+				    "rmdel of %s failed.\n", p->resyncFile);
+			}
+			exit(1);
 		}
-		exit(1);
 	}
 	sccs_free(s);
 	/* sccs_restart does not rebuild the graph and we just pruned it,
@@ -540,18 +585,21 @@ apply:
 	for (p2 = 0, p = patchList; p; p = p->next) {
 		if (p->flags & PATCH_LOCAL) p2 = p;
 	}
-	if (p2) {
+	if (p2) {	/* there is local work */
 		assert(p2->me);
 		d = sccs_findKey(s, p2->me);
+		localPath = d->pathname;
+	} else if (gca) {
+		d = gca;
+		localPath = d->pathname;
+#if 0
+	/*
+	 * Why?  I don't understand why I ever did this.
+	 */
 	} else {
-		if (gca) {
-			d = gca;
-		} else {
-			d = sccs_findKey(s, patchList->me);
-		}
+		d = sccs_findKey(s, patchList->me);
+#endif
 	}
-	assert(d);
-	localPath = d->pathname;
 	for (p2 = 0, p = patchList; p; p = p->next) {
 		if (p->flags & PATCH_REMOTE) p2 = p;
 	}
@@ -559,11 +607,19 @@ apply:
 	d = sccs_findKey(s, p2->me);
 	assert(d);
 	remotePath = d->pathname;
-	unless(streq(localPath, remotePath)) {
+	if (localPath && !streq(localPath, remotePath)) {
 		conflicts += sccs_resolveFile(s, localPath,
 			gca ? gca->pathname : localPath, remotePath);
 	} else {
-		conflicts += sccs_resolveFile(s, 0, 0, 0);
+		char	*p = sccs2name(patchList->resyncFile);
+
+		if (streq(&p[7], remotePath)) {
+			conflicts += sccs_resolveFile(s, 0, 0, 0);
+		} else {
+			conflicts +=
+			    sccs_resolveFile(s, ">none<", ">none<", remotePath);
+		}
+		free(p);
 	}
 	sccs_free(s);
 	for (p = patchList; p; ) {
@@ -597,6 +653,7 @@ getLocals(sccs *s, delta *g, char *name)
 	FILE	*t;
 	patch	*p;
 	delta	*d;
+	int	n = 0;
 	static	char tmpf[MAXPATH];	/* don't allocate on stack */
 
 	if (echo > 5) {
@@ -612,7 +669,7 @@ getLocals(sccs *s, delta *g, char *name)
 		}
 		s->rstart = s->rstop = d;
 		sccs_restart(s);
-		sccs_prs(s, PATCH|SILENT, NULL, t);
+		sccs_prs(s, PATCH|SILENT, 0, NULL, t);
 		fclose(t);
 		p = calloc(1, sizeof(patch));
 		p->flags = PATCH_LOCAL;
@@ -642,8 +699,9 @@ getLocals(sccs *s, delta *g, char *name)
 		}
 		insertPatch(p);
 		nfound++;
+		n++;
 	}
-	return (0);
+	return (n);
 }
 
 /*
@@ -688,10 +746,7 @@ initProject()
 		    "takepatch: -i can only be used in an empty directory\n");
 		exit(1);
 	}
-	if (mkdir("BitKeeper", 0775) || mkdir("BitKeeper/etc", 0775)) {
-		perror("mkdir");
-		exit(1);
-	}
+	sccs_mkroot(".");
 }
 
 /*
@@ -705,7 +760,7 @@ init(FILE *p, int flags)
 {
 	char	buf[MAXPATH];
 	char	file[MAXPATH];
-	int	i, j;
+	int	i;
 	int	started = 0;
 	FILE	*f, *g;
 
@@ -747,18 +802,7 @@ tree:
 		perror("mkdir");
 		exit(1);
 	}
-	unless (mkdir("RESYNC/BitKeeper", 0775) == 0) {
-		perror("mkdir");
-		exit(1);
-	}
-	unless (mkdir("RESYNC/BitKeeper/tmp", 0775) == 0) {
-		perror("mkdir");
-		exit(1);
-	}
-	unless (mkdir("RESYNC/BitKeeper/etc", 0775) == 0) {
-		perror("mkdir");
-		exit(1);
-	}
+	sccs_mkroot("RESYNC");
 	unless (f = fopen("RESYNC/BitKeeper/tmp/pid", "w")) {
 		perror("RESYNC/BitKeeper/tmp/pid");
 		exit(1);
@@ -766,53 +810,60 @@ tree:
 	fprintf(f, "%d\n", getpid());
 	fclose(f);
 
-	/*
-	 * Save the patch in the pending dir and record we're working on it.
-	 */
-	if (!isdir("PENDING") && (mkdir("PENDING", 0775) == -1)) {
-		perror("PENDING");
-		exit(1);
-	}
-	for (i = 1; ; i++) {				/* CSTYLED */
-		struct	tm *tm;
-		time_t	now = time(0);
-
-		tm = localtime(&now);
-		strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
-		sprintf(pendingFile, "PENDING/%s.%02d", buf, i);
-		if (exists(pendingFile)) continue;
-		if (f = fopen(pendingFile, "w+")) {
-			break;
-		}
-		if (i > 100) {
-			fprintf(stderr, "takepatch: too many patches.\n");
+	if (p == stdin) {
+		/*
+		 * Save the patch in the pending dir
+		 * and record we're working on it.
+		 */
+		if (!isdir("PENDING") && (mkdir("PENDING", 0775) == -1)) {
+			perror("PENDING");
 			exit(1);
 		}
-	}
-	unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
-		perror("RESYNC/BitKeeper/tmp/patch");
-		exit(1);
-	}
-	fprintf(g, "%s\n", pendingFile);
-	fclose(g);
+		for (i = 1; ; i++) {				/* CSTYLED */
+			struct	tm *tm;
+			time_t	now = time(0);
 
-	/*
-	 * Save patch first, making sure it is on disk.
-	 */
-	while (fnext(buf, p)) {
-		if (!started && streq(buf, PATCH_VERSION)) started = 1;
-		if (started) {
-			fputs(buf, f);
-		} else {
-			printf("Discard: %s", buf);
+			tm = localtime(&now);
+			strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
+			sprintf(pendingFile, "PENDING/%s.%02d", buf, i);
+			if (exists(pendingFile)) continue;
+			if (f = fopen(pendingFile, "w+")) {
+				break;
+			}
+			if (i > 100) {
+				fprintf(stderr,
+				    "takepatch: too many patches.\n");
+				exit(1);
+			}
 		}
+		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "w")) {
+			perror("RESYNC/BitKeeper/tmp/patch");
+			exit(1);
+		}
+		fprintf(g, "%s\n", pendingFile);
+		fclose(g);
+
+		/*
+		 * Save patch first, making sure it is on disk.
+		 */
+		while (fnext(buf, p)) {
+			if (!started && streq(buf, PATCH_VERSION)) started = 1;
+			if (started) {
+				fputs(buf, f);
+			} else {
+				verbose((stderr, "Discard: %s", buf));
+			}
+		}
+		fflush(f);
+		fsync(fileno(f));
+		unless (flags & SILENT) {
+			fprintf(stderr,
+			    "takepatch: saved patch in %s\n", pendingFile);
+		}
+		fseek(f, 0, 0);
+	} else {
+		f = p;
 	}
-	fflush(f);
-	fsync(fileno(f));
-	unless (flags & SILENT) {
-		fprintf(stderr, "takepatch: saved patch in %s\n", pendingFile);
-	}
-	fseek(f, 0, 0);
 	fnext(buf, f);		/* skip version number */
 
 	if (newProject) {
@@ -870,13 +921,14 @@ fileCopy(char *from, char *to)
 
 rebuild_id()
 {
-	fprintf(stderr, "takepatch: miss in idcache, rebuilding...\n");
+	fprintf(stderr, "takepatch: miss in idcache, rebuilding...");
 	system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 		perror("SCCS/x.id_cache");
 		exit(1);
 	}
+	fprintf(stderr, "done\n");
 }
 
 cleanup(int what)
@@ -887,6 +939,7 @@ cleanup(int what)
 	} else {
 		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
 	}
+	if (input != stdin) exit(1);
 	if (what & CLEAN_PENDING) {
 		assert(exists("PENDING"));
 		unlink(pendingFile);

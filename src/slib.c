@@ -48,7 +48,7 @@ private	void	symArg(sccs *s, delta *d, char *name);
 private void	lodArg(sccs *s, delta *d, char *name);
 private int	delta_rm(sccs *s, delta *d, FILE *sfile, int flags);
 private int	delta_rmchk(sccs *s, delta *d);
-private int	delta_destroy(sccs *s, delta *d);
+private int	delta_destroy(sccs *s, delta *d, int flags);
 private int	delta_strip(sccs *s, delta *d, FILE *sfile, int flags);
 void		explodeKey(char *key, char *parts[4]);
 private time_t	getDate(delta *d);
@@ -64,6 +64,8 @@ void		concat_path(char *buf, char *first, char *second);
 private int	fix_lf(char *gfile);
 void		free_pfile(pfile *pf);
 private int	sameFileType(sccs *s, delta *d);
+private int	deflate_gfile(sccs *s, char *tmpfile);
+private int	isRegularFile(mode_t m);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -1342,6 +1344,16 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
+	sprintf(buf, "%s/BitKeeper/tmp", path);
+	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
+	sprintf(buf, "%s/BitKeeper/log", path);
+	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
 }
 
 /*
@@ -2024,15 +2036,34 @@ lod:
 	return (e);
 }
 
-private char	*
+inline int
+peekc(sccs *s)
+{
+	if (s->encoding == E_GZIP) return (zpeekc());
+	return (*s->where);
+}
+
+off_t
+tell(sccs *s)
+{
+	return (s->where - s->mmap);
+}
+
+private inline char	*
 fastnext(sccs *s)
 {
 	register char *t = s->where;
 	register char *tmp = s->mmap + s->size;
-
+		
 	if (s->where >= tmp) return (0);
-	/* I tried unrolling this a couple of ways and it got worse */
-	while (t < tmp && *t++ != '\n');
+	/*
+	 * I tried unrolling this a couple of ways and it got worse
+	 *
+	 * An idea for improvement: read ahead and cache the pointers.
+	 * It can be done here but be careful not to screw up s->where, that
+	 * needs to stay valid, peekc and others use it.
+	 */
+	while ((t < tmp) && (*t++ != '\n'));
 	tmp = s->where;
 	s->where = t;
 	return (tmp);
@@ -2489,6 +2520,23 @@ meta(sccs *s, delta *d, char *buf)
 		/* got unknown field, force read only mode */
 		s->state |= S_READ_ONLY;
 	}
+}
+
+/*
+ * Find the next delta in linear table order.
+ * If you pass in 1.10, this should give you 1.11.
+ */
+delta	*
+sccs_next(sccs *s, delta *d)
+{
+	delta	*e;
+
+	if (!s || !d) return (0);
+	if (d == s->table) return (0);
+	unless (d->kid) return (0);
+	for (e = d->kid; e->next != d; e = e->next);
+	assert(e && (e->next == d));
+	return (e);
 }
 
 /*
@@ -4054,7 +4102,7 @@ gzip_sum(void *p, u8 *buf, int len, FILE *out)
 private sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
-	static u8	fbuf[16<<10];
+	static u8	fbuf[8<<10];
 	static sum_t	sum2;
 	static u8	*next = fbuf;
 	register u8	*t = buf;
@@ -4069,10 +4117,14 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 				zputs((void *)s, out, fbuf, len, gzip_sum);
 			} else {
 				fwrite(fbuf, 1, len, out);
-				s->cksum += sum2;
 			}
 		}
-		if (s->encoding == E_GZIP) zputs_done((void *)s, out, gzip_sum);
+		if (s->encoding == E_GZIP) {
+			zputs_done((void *)s, out, gzip_sum);
+		} else {
+			s->cksum += sum2;
+		}
+		debug((stderr, "SUM2 %u %u\n", s->cksum, sum2));
 		next = fbuf;
 		sum2 = 0;
 		return (0);
@@ -4770,7 +4822,6 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 	int	popened = 0;
 	int	encoding = (flags&FORCEASCII) ? E_ASCII : s->encoding;
 	int	error = 0;
-	char	*prefix = "";
 	int	side, nextside;
 	BUF	(buf);
 	char	tmpfile[100];
@@ -4891,7 +4942,7 @@ signed_badcksum(sccs *s)
 	int	filesum;
 
 	debug((stderr, "Checking sum from %x to %x (%d)\n",
-	    s->mmap, end, (char*)end - s->mmap));
+	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
 	seekto(s, 0);
 	filesum = atoi(&s->mmap[2]);
@@ -4908,7 +4959,8 @@ signed_badcksum(sccs *s)
 	if (sum == filesum) {
 		s->cksumok = 1;
 	} else {
-		fprintf(stderr, "Bad checksum for %s, got %d, wanted %d\n",
+		fprintf(stderr,
+		    "Bad old style checksum for %s, got %d, wanted %d\n",
 		    s->sfile, sum, filesum);
 	}
 	debug((stderr,
@@ -4928,7 +4980,7 @@ badcksum(sccs *s)
 	int	filesum;
 
 	debug((stderr, "Checking sum from %x to %x (%d)\n",
-	    s->mmap, end, (char*)end - s->mmap));
+	    s->mmap + 8, end, (char*)end - s->mmap - 8));
 	assert(s);
 	seekto(s, 0);
 	filesum = atoi(&s->mmap[2]);
@@ -4942,6 +4994,7 @@ badcksum(sccs *s)
 	}
 	end += 16;
 	while (t < end) sum += *t++;
+	debug((stderr, "Calculated sum is %d\n", sum));
 	if (sum == filesum) {
 		s->cksumok = 1;
 	} else {
@@ -5364,7 +5417,7 @@ hasComments(delta *d)
 /*
  * Apply the encoding to the gfile and leave it in tmpfile.
  */
-int
+private int
 deflate_gfile(sccs *s, char *tmpfile)
 {
 	FILE	*in, *out;
@@ -5433,7 +5486,8 @@ fix_lf(char *gfile)
 	return 0;
 }
 
-int isRegularFile(mode_t m)
+private int
+isRegularFile(mode_t m)
 {
 	return ((m == 0) || S_ISREG(m));
 }
@@ -6344,6 +6398,7 @@ dateArg(delta *d, char *arg, int defaults)
 	extern	long timezone;
 	int	year, month, day, hour, minute, second, msec, hwest, mwest;
 	int	rcs = 0;
+	int	gotZone = 0;
 
 	if (!d) {
 		d = (delta *)calloc(1, sizeof(*d));
@@ -6382,22 +6437,34 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 			getit(mwest);
 		}
 	} else if (*arg && arg[2] == '-') {
+		gotZone++;
 		getit(hwest);
 		/* I don't know if RCS ever puts in the minutes, but I'll
 		 * take 'em if they give 'em.
 		 */
 		if (*arg && arg[2] == ':') getit(mwest);
+	} else if (*arg && arg[2] == '+') {
+		gotZone++;
+		getit(hwest);
+		/* I don't know if RCS ever puts in the minutes, but I'll
+		 * take 'em if they give 'em.
+		 */
+		if (*arg && arg[2] == ':') getit(mwest);
+		hwest = -hwest;
+		mwest = -mwest;
 	} else if (rcs) {	/* then UTC */
 		/* This is a bummer because we can't figure out in which
 		 * timezone the delta was performed.
 		 * So we assume here.
 		 * XXX - maybe not the right answer?
 		 */
+		gotZone++;
 		tt = time(0);
 		tm = localtime(&tt);
 		hwest = timezone/3600;
 		mwest = timezone%3600;
 	} else if (defaults) {		/* then local time */
+		gotZone++;
 		tt = time(0);
 		tm = localtime(&tt);
 		hwest = timezone/3600;
@@ -6406,10 +6473,10 @@ out:		fprintf(stderr, "sccs: can't parse date format %s at %s\n",
 	sprintf(tmp, "%02d/%02d/%02d %02d:%02d:%02d",
 	    year, month, day, hour, minute, second);
 	d->sdate = strdup(tmp);
-	if (hwest || mwest) {
+	if (gotZone) {
 		char	sign = '-';
 
-		if (hwest < 0) {
+		if (hwest <= 0) {
 			hwest = -hwest;
 			mwest = -mwest;
 			sign = '+';
@@ -7095,6 +7162,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 	/*
 	 * b	turn on branching support (S_BRANCHOK)
+	 * e	encoding
 	 * d	default branch (sc->defbranch)
 	 * R	turn on rcs keyword expansion (S_RCS)
 	 * Y	turn on 4 digit year printouts
@@ -7117,6 +7185,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		    case 'd':	if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
 				break;
+		    case 'e':	if (*v) new_enc = atoi(v);
+				verbose((stderr, "New encoding %d\n", new_enc));
+		   		break;
 		    case 'B':	if (add)
 					sc->state |= S_BITKEEPER;
 				else
@@ -7174,6 +7245,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	delta_table(sc, sfile, 0);
 	assert(sc->state & S_SOPEN);
 	seekto(sc, sc->data);
+	debug((stderr, "seek to %d\n", sc->data));
 	if (old_enc == E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc == E_GZIP) zputs_init();
 	if (new_enc != old_enc) {
@@ -7193,6 +7265,9 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	fputdata(sc, 0, sfile);
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", sc->cksum);
+#ifdef	DEBUG
+	badcksum(sc);
+#endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
 	if (old_enc == E_GZIP) zgets_done();
 	/*
@@ -7234,13 +7309,6 @@ doctrl(sccs *s, char *pre, int val, FILE *out)
 
 #define	nextline(inc)	nxtline(s, &inc, 0, &lines, &print, out, state, slist)
 #define	beforeline(inc) nxtline(s, &inc, 1, &lines, &print, out, state, slist)
-
-inline int
-peekc(sccs *s)
-{
-	if (s->encoding == E_GZIP) return (zpeekc());
-	return (*s->where);
-}
 
 void
 nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
@@ -8463,11 +8531,24 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 		free_pfile(&pf);
 		return (-3);
 	}
-	sprintf(tmpfile, "%s/diffget%d", TMP_PATH, getpid());
-	if (sccs_get(s, left, pf.mRev, pf.iLst, pf.xLst, flags|SILENT|PRINT, tmpfile)) {
+	sprintf(tmpfile, "%s-%s", s->gfile, left);
+	if (!exists(tmpfile) && 
+	    sccs_get(s, left,
+	    pf.mRev, pf.iLst, pf.xLst, flags|SILENT|PRINT, tmpfile)) {
+		/*
+		 * Maybe that was a RO directory.
+		 * Unlink just in case some other erro, safe because we know
+		 * we just created this.
+		 */
 		unlink(tmpfile);
-		free_pfile(&pf);
-		return (-1);
+		sprintf(tmpfile,
+		    "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), left, getpid());
+		if (sccs_get(s, left,
+		    pf.mRev, pf.iLst, pf.xLst, flags|SILENT|PRINT, tmpfile)) {
+			unlink(tmpfile);
+			free_pfile(&pf);
+			return (-1);
+		}
 	}
 	if (r2 || !HAS_GFILE(s)) {
 		sprintf(tmp2, "%s-2", tmpfile);
@@ -8515,8 +8596,12 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 	}
 	while (fnext(buf, diffs)) {
 		if (first) {
-			fprintf(out, "%s %s %s vs %s %s\n",
-			    spaces, s->gfile, left, right, spaces);
+			if (flags & VERBOSE) {
+				fprintf(out, "%s %s %s vs %s %s\n",
+				    spaces, s->gfile, left, right, spaces);
+			} else {
+				fprintf(out, "\n");
+			}
 			first = 0;
 		}
 		fputs(buf, out);
@@ -9418,6 +9503,7 @@ do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
  *	T descriptive text
  *	...
  */
+void
 sccs_perfile(sccs *s, FILE *out)
 {
 	int	i = 0;
@@ -9573,8 +9659,17 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	fprintf(out, "------------------------------------------------\n");
 }
 
+private void
+prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
+{
+	if (d->next && (d != s->rstart)) {
+		prs_reverse(s, d->next, flags, dspec, out);
+	}
+	do_prs(s, d, flags, dspec, out);
+}
+
 int
-sccs_prs(sccs *s, int flags, char *dspec, FILE *out)
+sccs_prs(sccs *s, int flags, int reverse, char *dspec, FILE *out)
 {
 	delta	*d;
 #define	DEFAULT_DSPEC \
@@ -9604,7 +9699,9 @@ $if(:DPN:){P :DPN:\n}$each(C){C (C)}\n\
 		}
 	}
 
-	for (d = s->rstop; d; d = d->next) {
+	if (reverse) {
+		prs_reverse(s, s->rstop, flags, dspec, out);
+	} else for (d = s->rstop; d; d = d->next) {
 		do_prs(s, d, flags, dspec, out);
 		if (d == s->rstart) break;
 	}
@@ -10204,17 +10301,16 @@ debug_main(char **av)
 #endif
 
 /*
- * RMDEL - remove delta if the weather is right
- *
- * This code from Rick Smith.
+ * RMDEL - remove / destroy the delta.
+ * If we are removing, it is just the one delta.
+ * If we are destroying, it is from this delta forward.
  */
 int
-sccs_rmdel(sccs *s, char *rev, int destroy, int flags)
+sccs_rmdel(sccs *s, delta *d, int destroy, int flags)
 {
 	FILE	*sfile = 0;
 	int	error = 0;
 	char	*t;
-	delta	*d = 0;
 	int	locked;
 	pfile	pf;
 
@@ -10244,12 +10340,6 @@ rmdelout:
 		RMDELOUT;
 	}
 
-	unless (d = findrev(s, rev)) {
-		fprintf(stderr, "rmdel: can't find revision like %s in %s\n",
-			rev, s->sfile);
-		RMDELOUT;
-	}
-
 	if (HAS_PFILE(s)) {
 		if (read_pfile("rmdel", s, &pf)) RMDELOUT;
 		if (streq(d->rev, pf.oldrev)) {
@@ -10261,7 +10351,7 @@ rmdelout:
 		}
 	}
 
-	if (destroy ? delta_destroy(s, d) : delta_rmchk(s, d))
+	if (destroy ? delta_destroy(s, d, flags) : delta_rmchk(s, d))
 		RMDELOUT;
 
 	if (!destroy)  {
@@ -10437,7 +10527,7 @@ delta_rm(sccs *s, delta *d, FILE *sfile, int flags)
  * After means in table order, not graph order.
  */
 private int
-delta_destroy(sccs *s, delta *d)
+delta_destroy(sccs *s, delta *d, int flags)
 {
 	delta	*e;
 
@@ -10445,9 +10535,12 @@ delta_destroy(sccs *s, delta *d)
 	 * Mark all the nodes we want gone.
 	 * delta_table() respects the D_GONE flag.
 	 */
+	d = d->next;
 	for (e = s->table; e != d; e = e->next) {
 		assert(e);
 		e->flags |= D_GONE;
+		verbose((stderr,
+		    "rmdel: destroying %s:%s\n", s->gfile, e->rev));
 	}
 	s->table = d;
 	return 0;
@@ -10460,14 +10553,14 @@ delta_strip(sccs *s, delta *d, FILE *sfile, int flags)
 	ser_t		serial = d->serial;
 	ser_t		stop;
 
-	/* algo: strip every serial > base_serial
+	/* algo: strip every serial >= base_serial
 	 * 	eat *everything* between I serial and E serial
 	 *	(only serials of greater number can be contained within)
 	 *	remove all D and E serial outside of this.
 	 */
 
 	while (!eof(s) && (buf = nextdata(s))) {
-		if (buf[0] == '\001' && (stop = atoi(&buf[3])) > serial) {
+		if (buf[0] == '\001' && (stop = atoi(&buf[3])) >= serial) {
 			if (buf[1] == 'I') {
 				while (!eof(s) && (buf = nextdata(s))) {
 					if ((buf[0] == '\001') &&

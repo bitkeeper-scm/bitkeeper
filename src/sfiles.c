@@ -140,6 +140,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 				return (0);
 			}
 			flist = stdin;
+			flags |= SF_SILENT;
 			return (sfileNext());
 		}
 		if (isdir(Av[0])) {

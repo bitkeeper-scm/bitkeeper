@@ -36,7 +36,7 @@
 			if (noisy) { \
 				fprintf(stderr, \
 				    "%s: no such delta ``%s'' in %s\n", \
-				    r[1] ? r[1] : d[1], s->sfile); \
+				    me, r[1] ? r[1] : d[1], s->sfile); \
 			} \
 			goto next; \
 		} \

@@ -10,9 +10,6 @@ usage: rmdel [-qs] [-r<rev>] file\n\n\
     -r<r>	rmdel revision <r>\n\
     -s		run quietly\n\n";
 
-/* XXX: this will appear someday in sccs.h */
-extern sccs_rmdel(sccs *s, char *rev, int destroy, int flags);
-
 /*
  * The weird setup is so that I can #include this file into sccssh.c
  */
@@ -23,6 +20,9 @@ rmdel_main(int ac, char **av, char *out)
 	int	c, flags = 0, errors = 0;
 	char	*name, *rev = 0;
 	int	destroy = 0;
+	int	invalidate = 0;
+	delta	*d;
+	char	lastname[MAXPATH];
 
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
@@ -43,32 +43,73 @@ rmdel_main(int ac, char **av, char *out)
 		}
 	}
 	name = sfileFirst("rmdel", &av[optind], 0);
-	do {
-		unless (s = sccs_init(name, flags)) continue;
+	while (name) {
+		unless (s = sccs_init(name, flags)) {
+			name = sfileNext();
+			continue;
+		}
 		if (!s->tree) {
 			if (!(s->state & S_SFILE)) {
+				if (streq(lastname, s->sfile)) goto next;
 				fprintf(stderr, "rmdel: %s doesn't exist.\n",
 				    s->sfile);
 			} else {
 				perror(s->sfile);
 			}
-			sccs_free(s);
-			continue;
+			goto next;
 		}
-		if (sccs_rmdel(s, rev, destroy, flags)) {
+		name = rev ? rev : sfileRev();
+		unless (d = sccs_getrev(s, name, 0, 0)) {
+			fprintf(stderr,
+			    "rmdel: can't find %s:%s\n", s->gfile, name);
+			goto next;
+		}
+
+		/*
+		 * If they wanted to destroy the delta and it is the root
+		 * delta, then blow the entire file away.
+		 */
+		if (destroy && (d == s->tree)) {
+			if (sccs_clean(s, SILENT)) {
+				fprintf(stderr,
+				    "rmdel: can't remove edited %s\n",
+				    s->gfile);
+				errors = 1;
+				goto next;
+			}
+			/* see ya! */
+			verbose((stderr, "rmdel: remove %s\n", s->sfile));
+			unlink(s->sfile);
+			invalidate++;
+			strcpy(lastname, s->sfile);
+			goto next;
+		}
+		lastname[0] = 0;
+
+		if (sccs_rmdel(s, d, destroy, flags)) {
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,
 				    "rmdel of %s failed, skipping it.\n", name);
 			}
 			errors = 1;
 		}
-		sccs_free(s);
-	} while (0);
+next:		sccs_free(s);
+		name = sfileNext();
+	}
 	sfileDone();
 #ifndef	NOPURIFY
 	purify_list();
 #endif
+	if (invalidate) rmcaches();
 	return (errors);
+}
+
+rmcaches()
+{
+	// XXX - needs to be updated when we move the cache to BitKeeper/caches
+	if (sccs_cd2root(0, 0) == 0) {
+		unlink("SCCS/x.id_cache");
+	}
 }
 
 int

@@ -49,10 +49,7 @@ int
 rangeAdd(sccs *sc, char *rev, char *date)
 {
 	char	*s = rev ? rev : date;
-	char	*last;
-	char	save;
 	delta	*tmp;
-	char	*comma;
 
 	assert(sc);
 	debug((stderr, "rangeAdd(%s, %s, %s)\n", sc->gfile, rev, date));
@@ -83,7 +80,7 @@ rangeAdd(sccs *sc, char *rev, char *date)
 		return (0);
 	}
 	tmp = sccs_getrev(sc, rev, date, sc->rstart ? ROUNDUP: ROUNDDOWN);
-out:	unless (tmp) return (-1);
+	unless (tmp) return (-1);
 	unless (sc->rstart) {
 		sc->rstart = tmp;
 	} else {
@@ -117,8 +114,6 @@ last(register char *s)
 int
 roundType(char *s)
 {
-	char	c;
-
 	if (!s || !*s) return (EXACT);
 	switch (*s) {
 	    case '+':	return (ROUNDUP);

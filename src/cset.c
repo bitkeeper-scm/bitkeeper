@@ -30,6 +30,7 @@ void	lock(char *);
 void	unlock(char *);
 delta	*mkChangeSet(sccs *cset);
 void	explodeKey(char *key, char *parts[4]);
+char	*file2str(char *f);
 
 FILE	*id_cache;
 MDBM	*idDB = 0;
@@ -50,6 +51,7 @@ main(int ac, char **av)
 	int	c, list = 0;
 	char	*sym = 0;
 	int	plus = 0;
+	int	cFile = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -58,7 +60,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "+il;t;psS;y|")) != -1) {
+	while ((c = getopt(ac, av, "+il;t;psS;y|Y|")) != -1) {
 		switch (c) {
 		    case '+': plus++; break;
 		    case 'i':
@@ -77,9 +79,15 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'p': flags |= PRINT; break;
 		    case 's': flags |= SILENT; break;
 		    case 'y':
-			flags |= DONTASK;
 			comment = optarg;
 			gotComment = 1;
+			flags |= DONTASK;
+			break;
+		    case 'Y':
+			comment = file2str(optarg);
+			flags |= DONTASK;
+			gotComment = 1;
+			cFile++;
 			break;
 		    case 'S': sym = optarg; break;
 
@@ -169,7 +177,9 @@ next:				sccs_free(cset);
 	 * XXX - should allow them to pick and choose for multiple
 	 * changesets from one pending file.
 	 */
-	return (csetCreate(cset, flags, sym));
+	c = csetCreate(cset, flags, sym);
+	if (cFile) free(comment);
+	return (c);
 }
 
 int
@@ -191,7 +201,7 @@ csetInit(sccs *cset, int flags, char *sym)
 		fprintf(stderr, "cset: must be -i ChangeSet\n");
 		exit(1);
 	}
-	if (flags & DONTASK) unless (d = getComments()) goto intr;
+	if (flags & DONTASK) unless (d = getComments(d)) goto intr;
 	unless(d = getHostName(d)) goto intr;
 	unless(d = getUserName(d)) goto intr;
 
@@ -613,14 +623,36 @@ csetCreate(sccs *cset, int flags, char *sym)
 #undef	open
 	close(0);
 	open("/dev/tty", 0, 0);
+	if (flags & DONTASK) d = getComments(d);
 	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
 		sccs_whynot("cset", cset);
 		error = 1;
 	}
-	//close(0);
 out:	sccs_free(cset);
 	commentsDone(saved);
 	purify_list();
 	return (error);
 }
 
+char	*
+file2str(char *f)
+{
+	struct	stat sb;
+	int	fd = open(f, 0);
+	char	*s;
+
+	if ((fd == -1) || (fstat(fd, &sb) == -1) || (sb.st_size == 0)) {
+		fprintf(stderr, "Can't get comments from %s\n", f);
+		if (fd != -1) close(fd);
+		return (0);
+	}
+	s = malloc(sb.st_size);
+	if (!s) {
+		perror("malloc");
+		close(fd);
+		return (0);
+	}
+	read(fd, s, sb.st_size);
+	close(fd);
+	return (s);
+}

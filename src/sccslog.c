@@ -9,6 +9,7 @@ WHATSTR("%W%");
 char	*log_help = "\n\
 usage: sccslog [-hpv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
     -c<dates>	Cut off dates.  See range(1) for details.\n\
+    -C		produce comments for a changeset\n\
     -p		show basenames instead of full pathnames.\n\
     -r<r>	specify a revision or a part of a range.\n\
     -v		be verbose about errors and processing\n\n\
@@ -30,6 +31,7 @@ void	freelog(void);
 delta	*list, **sorted;
 int	n;
 int	pflag;		/* do basenames */
+int	Cflg;		/* comments for changesets */
 
 int
 main(int ac, char **av)
@@ -49,8 +51,9 @@ main(int ac, char **av)
 		fprintf(stderr, log_help);
 		return (0);
 	}
-	while ((c = getopt(ac, av, "c;pr|v")) != -1) {
+	while ((c = getopt(ac, av, "Cc;pr|v")) != -1) {
 		switch (c) {
+		    case 'C': Cflg++; break;
 		    case 'p': pflag++; break;
 		    case 'v': flags &= ~SILENT; break;
 		    RANGE_OPTS('c', 'r');
@@ -149,6 +152,15 @@ printlog()
 	for (j = 0; j < n; ++j) {
 		d = sorted[j];
 		unless (d->type == 'D') continue;
+		if (Cflg) {
+			EACH(d->comments) {
+				if (d->pathname) {
+					printf("%-8s\t", basenm(d->pathname));
+				}
+				printf("%s\n", d->comments[i]);
+			}
+			continue;
+		}
 		if (d->pathname) {
 			unless (pflag) {
 				printf("%s\n  ", d->pathname);

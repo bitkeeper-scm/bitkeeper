@@ -19,11 +19,11 @@ commentsDone(char **s)
 }
 
 private delta *
-getComments()
+getComments(delta *d)
 {
-	delta	*d = calloc(1, sizeof(*d));
 	int	i;
 
+	unless (d) d = calloc(1, sizeof(*d));
 	if (!comment && gotComment) return (d);
 	if (!comment) {
 		if (saved) {

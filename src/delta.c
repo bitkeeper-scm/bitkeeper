@@ -124,7 +124,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		delta	*d = 0;
 		char	*nrev;
 
-		if (flags & DONTASK) unless (d = getComments()) goto usage;
+		if (flags & DONTASK) unless (d = getComments(0)) goto usage;
 		unless (s = sccs_init(name, flags)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();
