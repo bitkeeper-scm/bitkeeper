@@ -117,7 +117,7 @@ log_main(int ac, char **av)
 			fprintf(stderr, "Cannot find project root\n");
 			return (1);
 		}
-		printf("Number of open logs pending: %d\n", logs_pending(0));
+		printf("Number of open logs pending: %d\n", logs_pending(0, 0));
 		return (0);
 	}
 
@@ -174,8 +174,8 @@ unPublish(sccs *s, delta *d)
 	d->published = 0;
 }
 
-private void
-updLogMarker()
+void
+updLogMarker(int ptype)
 {
 	FILE	*f;
 	sccs	*s;
@@ -191,6 +191,7 @@ updLogMarker()
 		assert(d);
 		unPublish(s, d);
 		d->published = 1;
+		d->ptype = ptype;
 		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		sccs_free(s);
 	}
@@ -331,7 +332,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 	/*
 	 * if local_only > 0, we update the log marker in push part 2
 	 */
-	if ((local_only == 0) && (needLogMarker)) updLogMarker();
+	if ((local_only == 0) && (needLogMarker)) updLogMarker(0);
 	if ((local_only == 0) || !opts.doit) return (0);
 	if ((remote_only > 0) && (!opts.metaOnly)) return (1);
 	return (2);
@@ -607,7 +608,7 @@ push_part2(char **av, opts opts,
 	if (opts.debug) fprintf(stderr, "Remote terminated\n");
 
 	if (opts.metaOnly) {
-		if (needLogMarker(opts, r)) updLogMarker();
+		if (needLogMarker(opts, r)) updLogMarker(0);
 	} else {
 		unlink(CSETS_OUT);
 		rename(rev_list, CSETS_OUT);

@@ -316,30 +316,6 @@ disconnect(remote *r, int how)
 	}
 }
 
-private void
-updLogMarker()
-{
-	FILE	*f;
-	sccs	*s;
-	delta	*d;
-	char	s_cset[] = CHANGESET;
-
-	/*
-	 * LOD Note:
-	 * TODO: We should log the tip of each lod
-	 */
-	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
-		f = fopen(OPENLOG_LOG, "wb");
-		assert(f);
-		d = findrev(s, 0);
-		assert(d);
-		sccs_pdelta(s, d, f);
-		fputs("\n", f);
-		fclose(f);
-		sccs_free(s);
-	}
-}
-
 
 int
 get_ok(remote *r, int verbose)

@@ -173,7 +173,7 @@ notice(char *key)
 }
 
 int
-logs_pending(int resync)
+logs_pending(int resync, int ptype)
 {
 	sccs 	*s;
 	delta	*d;
@@ -185,7 +185,7 @@ logs_pending(int resync)
 	s = sccs_init(s_cset, 0, 0);
 	assert(s && s->tree);
 	for (d = sccs_top(s); d; d = d->next) {
-		if (d->published) sccs_color(s, d);
+		if (d->published && (d->ptype == ptype)) sccs_color(s, d);
 	}
 count:	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue; 
@@ -267,14 +267,14 @@ do_commit(char **av, c_opts opts, char *sym,
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
 	int	rc;
-	int	l;
+	int	l, ptype;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
 	sccs	*s;
 	delta	*d;
 	FILE 	*f, *f2;
-#define	MAX_PENDING_LOG 10
+#define	MAX_PENDING_LOG 20
 
 	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
@@ -286,10 +286,15 @@ do_commit(char **av, c_opts opts, char *sym,
 	 * Note: We print to stdout, not stderr, because citool
 	 * 	 monitors our stdout via a pipe.
 	 */
-	if ((l&LOG_OPEN) && (logs_pending(opts.resync) >= MAX_PENDING_LOG)) {
+	ptype = (l&LOG_OPEN) ? 0 : 1;
+	if (logs_pending(opts.resync, ptype) >= MAX_PENDING_LOG) {
 		printf("Commit: forcing pending logs\n");
-		system("bk _log -qc2");
-		if ((logs_pending(opts.resync) >= MAX_PENDING_LOG)) {
+		if (l&LOG_OPEN) {
+			system("bk _log -qc2");
+		} else {
+			system("bk _lconfig");
+		}
+		if ((logs_pending(opts.resync, ptype) >= MAX_PENDING_LOG)) {
 			printf("max pending log exceeded, commit aborted\n");
 			return (1);
 		}
@@ -400,7 +405,7 @@ logChangeSet(int l, char *rev, int quiet)
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (logs_pending(0) < 20)) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(0, 0) < 20)) return;
 
 	unless (rev) {
 		s = sccs_init(s_cset, 0, 0);
@@ -457,7 +462,7 @@ logChangeSet(int l, char *rev, int quiet)
 	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n\n");
 	status(0, f);
-	config(0, f);
+	config(f);
 	fclose(f);
 	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
 	system(buf);
@@ -470,15 +475,16 @@ logChangeSet(int l, char *rev, int quiet)
 }
 
 void
-config(char *rev, FILE *f)
+config(FILE *f)
 {
-	char	*dspec;
 	kvpair	kv;
 	time_t	tm;
 	FILE	*f1;
 	MDBM	*db = loadConfig(".", 1);
-	char	buf[MAXLINE], aliases[MAXPATH];
+	char	buf[MAXLINE], aliases[MAXPATH], *dspec;
 	char	s_cset[MAXPATH] = CHANGESET;
+	sccs	*s;
+	delta	*d;
 
 	dspec = "$each(:FD:){Proj:      (:FD:)\\n}ID:        :KEY:\n";
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
@@ -495,9 +501,15 @@ config(char *rev, FILE *f)
 		}
 		fclose(f1);
 	}
-	if (rev) fprintf(f, "%-10s %s\n", "Revision:", rev);
+ 	s = sccs_init(s_cset, INIT_NOCKSUM, NULL);
+	assert(s && s->tree);
+	s->state &= ~S_SET;
+	d = sccs_top(s);
+	fprintf(f, "%-10s %s\n", "Revision:", d->rev);
 	fprintf(f, "%-10s ", "Cset:");
-	do_prsdelta(s_cset, rev, 0, ":KEY:\n", f);
+	sccs_pdelta(s, d, f);
+	fputs("\n", f);
+	sccs_free(s);
 	tm = time(0);
 	fprintf(f, "%-10s %s", "Date:", ctime(&tm));
 	assert(db);
@@ -535,8 +547,6 @@ config(char *rev, FILE *f)
 int
 config_main(int ac, char **av)
 {
-	char	*rev = av[1] && strneq("-r", av[1], 2) ? &av[1][2] : 0;
-
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help config");
 		return (1);
@@ -545,33 +555,19 @@ config_main(int ac, char **av)
 		fprintf(stderr, "Can't find package root\n");
 		return (1);
 	}
-	config(rev, stdout);
+	config(stdout);
 	return (0);
 }
 
 void
 sendConfig(char *to, char *rev)
 {
-	char	from[MAXPATH], subject[MAXLINE], config_log[MAXPATH];
-	FILE	*f;
-	int	n;
-	char 	*av[] = { "bk", "_webmail", config_log, 0 };
+	char 	*av[] = { "bk", "_lconfig", 0 };
 
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (logs_pending(0) < 20)) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(0, 1) < 20)) return;
 
-	assert(to);
-	sprintf(from, "%s@%s", sccs_getuser(), sccs_gethost());
-	sprintf(subject, "BitKeeper config: %s", package_name());
-
-	gettemp(config_log, "config");
-	unless (f = fopen(config_log, "wb")) return;
-	fprintf(f, "To: %s\nFrom: %s\nSubject: %s\n\n", to, from, subject);
-	status(0, f);
-	config(rev, f);
-	fclose(f);
-	n = spawnvp_ex(_P_NOWAIT, av[0], av);
-	if (n == -1) unlink(config_log);
+	spawnvp_ex(_P_NOWAIT, av[0], av);
 }
