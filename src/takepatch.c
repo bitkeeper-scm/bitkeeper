@@ -1223,6 +1223,7 @@ applyCsetPatch(char *localPath,
 		}
 		return -1;
 	}
+	unless (s = cset_fixLinuxKernelChecksum(s)) return (-1);
 	if (isLogPatch) {
 		unless (LOGS_ONLY(s)) {
 			fprintf(stderr,

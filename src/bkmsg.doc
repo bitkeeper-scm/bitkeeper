@@ -1111,3 +1111,9 @@ you may remove Cygwin by manually removing the following items:
 
 For more information see http://cygwin.com/faq/faq0.html#SEC19
 $
+#bad-linux-kern-tree
+This copy of the Linux Kernel tree contains a bad ChangeSet file that
+needs to be repaired manually.  If at all possible please delete this
+repository and clone a new copy.  Otherwise contact BitMover and
+request assistance.
+$

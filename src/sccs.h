@@ -1125,6 +1125,7 @@ delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s);
 int	cset_diffs(sccs *s, ser_t ser);
+sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
 int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
