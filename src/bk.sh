@@ -1413,6 +1413,31 @@ _install()
 	exit 0
 }
 
+_tclsh() {
+	PLATFORM=`uname -s | awk -F_ '{print $1}'`
+	TCLSH=`bk bin`/gui/bin/tclsh
+	if [ $PLATFORM == "MINGW32" ]; then
+		TCLSH=`win2msys $TCLSH`
+	fi
+	exec "$TCLSH" "$@"
+}
+
+_wish() {
+	PLATFORM=`uname -s | awk -F_ '{print $1}'`
+	WISH=`bk bin`/gui/bin/bkgui
+	if [ $PLATFORM == "MINGW32" ]; then
+		WISH=`win2msys $WISH`
+	fi
+	exec "$WISH" "$@"
+}
+
+_gui() {
+	_bkgui "$@"
+}
+
+_bkgui() {
+	_wish "$@"
+}
 
 # ------------- main ----------------------
 __platformInit
