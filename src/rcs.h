@@ -51,3 +51,9 @@ RCS	*rcs_init(char *file);
 rdelta	*rcs_defbranch(RCS *rcs);
 rdelta	*rcs_findit(RCS *rcs, char *rev);
 void	rcs_free(RCS *r);
+
+#ifdef	RCS_DEBUG
+#define	rcsdebug(x)	fprintf x
+#else
+#define	rcsdebug(x)
+#endif

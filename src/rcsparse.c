@@ -1,3 +1,4 @@
+//#define	RCS_DEBUG
 #include "rcs.h"
 
 private	int	eatlog(RCS *rcs, MMAP *m);
@@ -59,8 +60,11 @@ advance(MMAP *m, char what)
 {
 	char	*p = m->where;
 
+#ifdef	RCS_DEBUG
+	if (p < m->end) fprintf(stderr, "ADV at '%c', want '%c'\n", *p, what);
+#endif
 	while ((p < m->end) && (*p != what)) {
-		//fprintf(stderr, "SKIP '%c'\n", *p);
+		rcsdebug((stderr, "SKIP '%c'\n", *p));
 		++p;
 	}
 	if ((p >= m->end) || (*p != what)) return (0);
@@ -81,7 +85,7 @@ private	char	*
 mwhere(MMAP *m)
 {
 	if (m->where >= m->end) return (0);
-	//fprintf(stderr, "W=%.10s\n", m->where);
+	rcsdebug((stderr, "W=%.10s\n", m->where));
 	return (m->where);
 }
 
@@ -131,7 +135,8 @@ err:		perror(file);
 	}
 
 	/* skip access control */
-acc:	unless (p = mwhere(m)) goto err;
+acc:	skip_white(m);
+	unless (p = mwhere(m)) goto err;
 	unless (strneq("access", p, 6)) goto err;
 	unless (advance(m, ';')) goto err;
 	skip_white(m);
@@ -171,7 +176,8 @@ acc:	unless (p = mwhere(m)) goto err;
 	skip_white(m);
 	unless (p = mwhere(m)) goto err;
 
-	if (strneq(p, "expand", 7)) {
+	/* XXX - this usually means a binary */
+	if (strneq(p, "expand", 6)) {
 		unless (advance(m, '@')) goto err;
 		for ( ;; ) {
 			unless (advance(m, '@')) goto err;
@@ -185,7 +191,17 @@ acc:	unless (p = mwhere(m)) goto err;
 
 	while (eatdelta(rcs, m));
 
+	/* MKS has extended stuff */
+	unless (p = mwhere(m)) goto err;
+	if (strneq(p, "ext", 3)) {
+		unless (advance(m, '@')) goto err;
+		unless (advance(m, '@')) goto err;
+		skip_white(m);
+	}
+
 	/* desc */
+	unless (p = mwhere(m)) goto err;
+	unless (strneq(p, "desc", 4)) goto err;
 	unless (advance(m, '@')) goto err;
 	unless (p = mwhere(m)) goto err;
 	for (t = buf; p < m->end; p++) {
@@ -485,6 +501,7 @@ eatdelta(RCS *rcs, MMAP *m)
 err:		perror("EOF in delta?");
 		exit(1);
 	}
+	rcsdebug((stderr, "DELTA %.10s\n", p));
 	unless (isdigit(*p)) return (0);
 
 	new(d);
@@ -557,6 +574,8 @@ err:		perror("EOF in delta?");
 	skip_white(m);
 	advance(m, ';');
 	skip_white(m);
+
+	rcsdebug((stderr, "DELTA_END %.10s\n", mwhere(m)));
 
 	if (d->next = rcs->table) rcs->table->prev = d;
 	rcs->table = d;
