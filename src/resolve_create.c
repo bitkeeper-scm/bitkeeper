@@ -778,7 +778,7 @@ res_loggingok(resolve *rs)
 			rs->opts->errors = 1;
 			return (-1);
 		}
-		if (sccs_rm(LOGGING_OK, NULL, 1)) {
+		if (sccs_rm(LOGGING_OK, NULL, 1, 1)) {
 			rs->opts->errors = 1;
 			return (-1);
 		}
@@ -800,7 +800,7 @@ res_loggingok(resolve *rs)
 			return (-1);
 		}
 		sprintf(cmd, "BitKeeper/tmp/%s", basenm(GLOGGING_OK));
-		if (sccs_rm(cmd, NULL, 1)) {
+		if (sccs_rm(cmd, NULL, 1, 1)) {
 			rs->opts->errors = 1;
 			return (-1);
 		}
@@ -1075,6 +1075,10 @@ int
 rc_rml(resolve *rs)
 {
 	unless (rs->opts->force || confirm("Remove local file?")) return (0);
+	/*
+	 * In theory we do not have to do a rm -f here because we should
+	 * have handled all the BK metafiles in converge.
+	 */
 	sys("bk", "rm", rs->s->sfile, SYS);
 	unlink(sccs_Xfile(rs->s, 'm'));
 	if (rs->opts->resolveNames) rs->opts->renames2++;

@@ -364,6 +364,16 @@ __keysync() {
 #	put the merge on top of the edited file
 # fi
 _fixtool() {
+	ASK=YES
+	while getopts f opt
+	do
+		case "$opt" in
+		f) ASK=NO;;
+		*) echo "Usage: fixtool [-f] [file...]"
+		   exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	test $# -eq 0 && __cd2root
 	fix=${TMP}/fix$$	
 	merge=${TMP}/merge$$	
@@ -374,22 +384,26 @@ _fixtool() {
 		rm -f $fix
 		exit 0
 	}
+	test `wc -l < $fix` -eq 1 && ASK=NO
 	# XXX - this does not work if the filenames have spaces, etc.
+	# We can't do while read x because we need stdin.
 	for x in `cat $fix`
-	do	clear
-		bk diffs "$x" | ${PAGER} 
-		echo $N "Fix ${x}? y)es q)uit n)o u)nedit: [no] "$NL
-		read ans 
-		DOIT=YES
-		case "X$ans" in
-		    X[Yy]*) ;;
-		    X[q]*)	rm -f $fix $merge $previous 2>/dev/null
-		    		exit 0
-				;;
-		    X[Uu]*)	bk unedit $x; DOIT=NO;;
-		    *)		DOIT=NO;;
-		esac
-		test $DOIT = YES || continue
+	do	test $ASK = YES && {
+			clear
+			bk diffs "$x" | ${PAGER} 
+			echo $N "Fix ${x}? y)es q)uit n)o u)nedit: [no] "$NL
+			read ans 
+			DOIT=YES
+			case "X$ans" in
+			    X[Yy]*) ;;
+			    X[q]*)	rm -f $fix $merge $previous 2>/dev/null
+					exit 0
+					;;
+			    X[Uu]*)	bk unedit $x; DOIT=NO;;
+			    *)		DOIT=NO;;
+			esac
+			test $DOIT = YES || continue
+		}
 		bk get -kpr+ "$x" > $previous
 		rm -f $merge
 		bk fmtool $previous "$x" $merge
@@ -595,6 +609,16 @@ _unrm () {
 	rm -f $LIST $TMPFILE
 }
 
+__bkfiles() {
+	bk sfiles "$1" |
+	    bk prs -hr1.0 -nd:DPN: - | grep BitKeeper/ > ${TMP}/bk$$
+	test -s ${TMP}/bk$$ && {
+		echo $2 directories with BitKeeper files not allowed 1>&2
+		rm ${TMP}/bk$$
+		exit 1
+	}
+	rm ${TMP}/bk$$
+}
 
 _mvdir() {		# /* doc 2.0 */
 
@@ -608,11 +632,8 @@ _mvdir() {		# /* doc 2.0 */
 	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
 	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1" is not a directory; exit 1; fi
-	if [ X"$1" = X"BitKeeper" -a -d "BitKeeper/etc" ]
-	then	echo "Moving the BitKeeper directory is not allowed"
-		exit;
-	fi
 	if [ -e "$2" ]; then echo "$2" already exist; exit 1; fi
+	__bkfiles "$1" "Moving"
 	
 	bk -r check -a || exit 1;
 	# Win32 note: must use relative path or drive:/path
@@ -633,6 +654,7 @@ _rmdir() {		# /* doc 2.0 */
 	if [ X"$2" != X ]; then bk help -s rmdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
 	bk -r check -a || exit 1;
+	__bkfiles "$1" "Removing"
 	XNUM=`bk sfiles -x "$1" | wc -l`
 	if [ "$XNUM" -ne 0 ]
 	then

@@ -932,7 +932,7 @@ int	fileCopy(char *from, char *to);
 off_t	size(char *s);
 int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
-int	sccs_mv(char *, char *, int, int, int);
+int	sccs_mv(char *, char *, int, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName, int isDir, int withsccs,
 	    int mustHaveRmarker, int wantRealName, project *proj, char *root);
@@ -1013,7 +1013,7 @@ int	outc(char c);
 MDBM	*loadConfig(char *root);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s, int useCommonDir);
-int	sccs_rm(char *name, char *del_name, int useCommonDir);
+int	sccs_rm(char *name, char *del_name, int useCommonDir, int force);
 void	sccs_rmEmptyDirs(char *path);
 int	config2logging(char *root);
 int	logging(char *user, MDBM *configDB, MDBM *okDB);

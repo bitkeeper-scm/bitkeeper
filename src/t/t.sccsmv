@@ -283,3 +283,189 @@ cd ../..
 bk mvdir foo foo2 || exit 1
 if [ -f foo/sub1/SCCS/s.sub ]; then echo failed; exit 1; fi
 echo OK
+
+echo $N Make sure we can not remove BitKeeper files .................$NL
+cd $HERE
+tar cf TAR src
+cd $HERE/src/BitKeeper/etc
+bk rm config 2> OUT && {
+	echo failed to exit with an error
+	exit 1
+}
+grep -q 'Will not remove BitKeeper file' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test -f SCCS/s.config || {
+	echo Gave us an error message but removed it anyway
+	exit 1
+}
+cd $HERE/src
+bk rm ChangeSet 2> OUT && {
+	echo failed to exit with an error
+	exit 1
+}
+grep -q 'Will not remove BitKeeper file' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test -f SCCS/s.ChangeSet || {
+	echo Gave us an error message but removed it anyway
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can force the removal of BitKeeper files .......$NL
+cd $HERE/src/BitKeeper/etc
+bk rm -f config 2> OUT || {
+	echo failed to let us remove the file
+	exit 1
+}
+test -f SCCS/s.config && {
+	echo failed to remove file
+	exit 1
+}
+echo OK
+
+echo $N Except for the ChangeSet file ...............................$NL
+cd $HERE/src
+bk rm -f ChangeSet 2> OUT && {
+	echo let us remove the file
+	exit 1
+}
+test -f SCCS/s.ChangeSet || {
+	echo removed the ChangeSet file
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can not move BitKeeper files ...................$NL
+cd $HERE
+rm -rf src
+tar xf TAR 
+cd $HERE/src/BitKeeper/etc
+bk mv config JUNK 2> OUT && {
+	echo failed to exit with an error
+	exit 1
+}
+grep -q 'Will not move BitKeeper file' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test -f SCCS/s.config || {
+	echo Gave us an error message but moved it anyway
+	exit 1
+}
+cd $HERE/src
+bk mv ChangeSet JUNK 2> OUT && {
+	echo failed to exit with an error
+	exit 1
+}
+grep -q 'Will not move BitKeeper file' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test -f SCCS/s.ChangeSet || {
+	echo Gave us an error message but moved it anyway
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can force the moving of BitKeeper files ........$NL
+cd $HERE/src/BitKeeper/etc
+bk mv -f config JUNK 2> OUT || {
+	echo failed to let us move the file
+	exit 1
+}
+test -f SCCS/s.config && {
+	echo failed to move file
+	exit 1
+}
+echo OK
+
+echo $N Except for the ChangeSet file ...............................$NL
+cd $HERE/src
+bk mv -f ChangeSet JUNK 2> OUT && {
+	echo let us move the file
+	exit 1
+}
+test -f SCCS/s.ChangeSet || {
+	echo moved the ChangeSet file
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can not move BitKeeper directories .............$NL
+cd $HERE
+rm -rf src
+tar xf TAR 
+cd $HERE/src/BitKeeper
+bk mvdir etc no-no-no 2> OUT && {
+	echo failed to exit with an error
+	exit 1
+}
+grep -q 'Moving directories' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test -d no-no-no && {
+	echo Gave us an error message but moved it anyway
+	cat OUT
+	exit 1
+}
+cd $HERE/src
+bk mvdir BitKeeper no-no-no 2> OUT && {
+	echo failed to exit with an error
+	exit 1
+}
+grep -q 'Moving directories' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test -d no-no-no && {
+	echo Gave us an error message but moved it anyway
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can not remove BitKeeper directories ...........$NL
+cd $HERE
+rm -rf src
+tar xf TAR 
+cd $HERE/src/BitKeeper
+bk rmdir etc 2> OUT && {
+	echo failed to exit with an error
+	exit 1
+}
+grep -q 'Removing directories' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test -d etc || {
+	echo Gave us an error message but removed it anyway
+	cat OUT
+	exit 1
+}
+cd $HERE/src
+bk rmdir BitKeeper 2> OUT && {
+	echo failed to exit with an error
+	exit 1
+}
+grep -q 'Removing directories' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+test -d BitKeeper || {
+	echo Gave us an error message but removed it anyway
+	exit 1
+}
+echo OK
+

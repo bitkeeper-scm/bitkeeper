@@ -3,7 +3,7 @@
 .SH NAME 
 bk mv \- rename file[s]
 .SH SYNOPSIS
-.B bk mv
+.B bk mv [\-f]
 .ARG "source file[s]"
 .ARG "destination file or directory"
 .SH DESCRIPTION
@@ -36,6 +36,11 @@ In that case, the resolver will prompt you to choose a name.
 will not rename directories, please use
 .B bk mvdir
 for that. 
+.LP
+.B bk mv
+will refuse to move BitKeeper metafiles without the 
+.B \-f
+option (use of which is not recommended).
 .SH SEE ALSO
 .SA commit 1
 .SA mvdir 1
