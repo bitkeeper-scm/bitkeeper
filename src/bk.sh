@@ -109,7 +109,7 @@ _lclone() {
 	qecho Finding SCCS directories...
 	bk sfiles -d > /tmp/dirs$$
 	cd $HERE
-	mkdir $TO
+	mkdir -p $TO
 	cd $TO
 	while read x
 	do
