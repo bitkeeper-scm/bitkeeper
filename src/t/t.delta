@@ -327,7 +327,7 @@ bk delta -q -yfail big 2>OUT && {
 	echo failed to error
 	exit 1
 }
-grep -q 'big has nulls' OUT || {
+grep -q 'big has nulls' OUT || grep -q 'delta is binary' OUT || {
 	echo bad error message
 	cat OUT
 	exit 1

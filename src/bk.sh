@@ -55,6 +55,11 @@ _flags() {		# /* undoc? 2.0 */
 	bk prs -hr+ -nd':GFILE: :FLAGS:' "$@"
 }
 
+# shorthand
+_tags() {
+	bk changes -t
+}
+
 # This removes the tag graph.  Use with care.
 _striptags() {
 	__cd2root
