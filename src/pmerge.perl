@@ -50,7 +50,7 @@ sub mkMerge
 		chop($rm = <RM>);
 		$rd = <RD>;
 		$markers = $lm . $rm;
-		warn "MARKERS $markers\n" if $debug;
+		print "MARKERS $markers\n" if $debug;
 		if ($markers eq "uu") {
 			# no change on both side
 			&doPrint($markers, $ld);
@@ -276,9 +276,9 @@ sub doPrint
 		} elsif ($markers eq "dd") {
 			print STDOUT "-$ln";
 		} elsif ($markers eq "ud") {
-			print STDOUT "-$ln";
+			print STDOUT "}$ln";
 		} elsif ($markers eq "du") {
-			print STDOUT "-$ln";
+			print STDOUT "{$ln";
 		} else {
 			die "unexpected  markers: $markers";
 		}
@@ -308,18 +308,24 @@ sub ejectList
 {
 	local($stripmarker, $skipGca, $mrk, @mylist) = @_;
 	local($ln);
+	
+	if ($mrk eq "<") {
+		$del = "{";
+	} else {
+		$del = "}";
+	}
 
 	foreach $ln (@mylist) {
 		next if (($ln =~ /^s/));
 		next if ($skipGca  && ($ln =~ /^d/));
 		if ($stripmarker || $hideMarker) {
 			$ln =~ s/^.//;
-			print OUT "$ln\n";
+			print STDOUT "$ln\n";
 			next;
 		}
 		$mrk1 = substr($ln, 0, 1);
 		if ($mrk1 eq "d") {
-			$ln =~ s/^d/-/;
+			$ln =~ s/^d/$del/;
 		} elsif ($mrk1 eq "i") {
 			$ln =~ s/^i/$mrk/;
 		} elsif ($mrk1 eq "u") {
@@ -346,31 +352,29 @@ sub ejectMerge
 			$ln =~ s/^.//;
 			if ("$lm$rm" eq "uu") {
 				# This is a unchanged line
-				print OUT "$um$ln\n";
+				print STDOUT "$um$ln\n";
 			} elsif ("$lm$rm" eq "ii") {
 				# Both left & right added identical line
-				print OUT "% $ln\n";
+				print STDOUT "+$ln\n";
 			} elsif ("$lm$rm" eq "ui") {
 				# This line is unchanged by the left,
 				# but is inserted on by the right
 				# This happen when diff re-align the lines
-				#print OUT "$um$ln\n";
-				print OUT ">$ln\n";
+				print STDOUT "+$ln\n";
 			} elsif ("$lm$rm" eq "iu") {
 				# This line is unchanged by the right,
 				# but is inserted on by the left
 				# This happen when diff re-align the lines
-				#print OUT "$um$ln\n";
-				print OUT "<$ln\n";
+				print STDOUT "+$ln\n";
 			} elsif ("$lm$rm" eq "is") {
 				# This happen when we merge left into common
-				print OUT "<$ln\n";
+				print STDOUT "<$ln\n";
 			} elsif ("$lm$rm" eq "si") {
 				# This happen when we merge right into common
-				print OUT ">$ln\n";
+				print STDOUT ">$ln\n";
 			} elsif ("$lm$rm" eq "dd") {
 				# Both left & right delete this line
-				print OUT "-$ln\n";
+				print STDOUT "-$ln\n";
 			} else {
 				die "Unexpected markers $lm$rm: $ln";
 			}
@@ -735,7 +739,7 @@ usage: pmerge [-abegmq] [-d<N>] left gca right
     -g  	show gca text in conflict block (marked as '-")
     -m  	turn off markers
     -q  	quiet mode.
-    -d<level>	debugging. (level can be 0-4, e.g -d2)
+    -d<level>	debugging. (level can be 0-5, e.g -d2)
 
 	Pmerge performs a 3 way merge on text files.
 	The result of the merge is send to stdout.
