@@ -10,10 +10,11 @@ WHATSTR("@(#)%K%");
  *
  * File name expansion.
  *	<dir> means <dir>/SCCS/s.* if <dir>/SCCS exists
+ *		XXX - shouldn't it really mean `bk sfiles dir`???
  *	<dir> means <dir>/s.* if <dir>/SCCS doesn't exist
- *	Null means SCCS/s.* if SCCS exists
+ *	NULL means SCCS/s.* if SCCS exists
  *	NULL means ./s.* if SCCS doesn't exist
- *	<files> means <files>	XXX - should check them
+ *	<files> means <files>
  *	- means read files from stdin until EOF.
  *
  * XXX - if you have a file s.foo, "foo" doesn't work.  OK?

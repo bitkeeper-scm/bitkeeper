@@ -65,6 +65,13 @@ mkdir B
 sccsmv C/file1 C/file4 B
 if [ ! -d C ]; then echo failed; exit 1; fi
 echo OK
+echo $N Test sccsmv to directory that does not exist ................$NL
+cp -rp B BBB
+sccsmv BBB BBBB
+if [ ! -f BBBB/SCCS/s.file4 ]
+then	echo failed to move file; exit 1
+fi
+echo OK
 echo $N Test sccsrm w/ p locked file ................................$NL
 get $Q -e B/file1
 sccsrm B/file1

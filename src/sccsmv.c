@@ -12,7 +12,7 @@ WHATSTR("@(#)%K%");
 int
 main(int ac, char **av)
 {
-	char	*name, *dest;
+	char	*name, *name2 = 0, *dest;
 	int	isDir;
 	int	errors = 0;
 	int	dofree = 0;
@@ -28,12 +28,25 @@ usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
 		dest = sccs2name(dest);
 		dofree++;
 	}
+	/*
+	 * If they specified a directory as the first arg,
+	 * or if there is more than one file,
+	 * and the last arg doesn't exist, create it as a directory.
+	 */
+	if (isdir(av[1]) || (name2 = sfileNext())) {
+		unless (isdir(dest)) mkdir(dest, 0775);
+	}
 	isDir = isdir(dest);
-	unless (isDir || (ac == 3)) goto usage;
+	unless ((isDir > 0) || (ac == 3)) goto usage;
 	av[ac-1] = 0;
 	for (name =
-	    sfileFirst("sccsmv",&av[1], 0); name; name = sfileNext()) {
-		errors |= sccs_mv(name, dest, isDir, 0);
+	    sfileFirst("sccsmv" ,&av[1], 0); name; name = sfileNext()) {
+again:		errors |= sccs_mv(name, dest, isDir, 0);
+		if (name2) {
+			name = name2;
+			name2 = 0;
+			goto again;
+		}
 	}
 	if (dofree) free(dest);
 	sfileDone();
