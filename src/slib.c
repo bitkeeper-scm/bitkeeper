@@ -3768,6 +3768,7 @@ flushDcache()
 }
 #endif
 
+
 /*
  * Initialize an SCCS file.  Do this before anything else.
  * If the file doesn't exist, the graph isn't set up.
@@ -3811,7 +3812,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	} else {
 		if (check_gfile(s, flags)) return (0);
 	}
-	if (lstat(s->sfile, &sbuf) == 0) {
+	if (fast_lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
 			free(s->gfile);
