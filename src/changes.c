@@ -362,7 +362,10 @@ want(sccs *s, delta *e)
 		return (0);
 	}
 	if (opts.nomerge && e->merge) return (0);
-	if (opts.noempty && e->merge && !sfind(s, e->merge)->added) return (0);
+	if (opts.noempty && e->merge &&
+	    !sfind(s, e->merge)->added && !(e->flags & D_SYMBOLS)) {
+	    	return (0);
+	}
 	if (opts.doSearch) {
 		int	i;
 
