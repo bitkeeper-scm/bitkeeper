@@ -90,7 +90,8 @@ then	echo failed to commit all files; exit 1; fi
 echo OK
 
 echo $N Make sure that it checks clean ..............................$NL
-rm -f `bk root`/BitKeeper/log/checked
+cd `bk root`
+rm -f BitKeeper/log/checked
 bk -r check -a > OUT 2>&1 || {
 	echo failed to exit 0
 	cat OUT
@@ -99,12 +100,31 @@ bk -r check -a > OUT 2>&1 || {
 echo OK
 
 echo $N Make sure that check -a does not add a checked timestamp ....$NL
-test -f `bk root`/BitKeeper/log/checked && exit 1
+test -f BitKeeper/log/checked && exit 1
 echo OK
 
 echo $N Make sure that check -ac does add a checked timestamp .......$NL
 bk -r check -ac
-test -f `bk root`/BitKeeper/log/checked || exit 1
+test -f BitKeeper/log/checked || exit 1
+echo OK
+
+echo $N Make sure that check -a adds an NFILES ......................$NL
+rm BitKeeper/log/NFILES
+bk -r check -a
+test -f BitKeeper/log/NFILES || exit 1
+echo OK
+
+echo $N Make sure that check -a corrects bad NFILES count ...........$NL
+WANT=`cat BitKeeper/log/NFILES`
+echo 10000 > BitKeeper/log/NFILES
+bk -r check -a
+GOT=`cat BitKeeper/log/NFILES`
+test "$WANT" = "$GOT" || {
+	echo failed to update NFILES
+	echo WANT=$WANT
+	echo GOT=$GOT
+	exit 1
+}
 echo OK
 
 cp -rp $HERE/project $HERE/clean

@@ -239,7 +239,6 @@ EOF
 sort <<EOF > LIST
 SCCS/OLD-s.foo
 SFILES
-BitKeeper/tmp/ROOTKEY
 EOF
 bk sfind -sxj | sort > SFILES
 cmp -s SFILES LIST
@@ -261,7 +260,6 @@ echo OK
 echo $N Test disabling ignore lists with -ax ........................$NL
 sort <<EOF > LIST
 LIST
-BitKeeper/tmp/ROOTKEY
 SCCS/OLD-s.foo
 SFILES
 EOF
@@ -278,7 +276,6 @@ else
 ln -s /usr/lib bar/lib || { echo ln failed; exit 1; }
 sort <<EOF > LIST
 SCCS/OLD-s.foo
-BitKeeper/tmp/ROOTKEY
 SFILES
 bar/lib
 EOF

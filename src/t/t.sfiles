@@ -270,7 +270,6 @@ config
 EOF
 sort <<EOF > LIST
 SCCS/OLD-s.foo
-BitKeeper/tmp/ROOTKEY
 SFILES
 SCCS/c.gone
 SCCS/c.gone${CFS}1.1
@@ -296,7 +295,6 @@ echo OK
 echo $N Test disabling ignore lists with -ax ........................$NL
 sort <<EOF > LIST
 LIST
-BitKeeper/tmp/ROOTKEY
 SCCS/OLD-s.foo
 SFILES
 SCCS/c.gone
@@ -319,7 +317,6 @@ SCCS/OLD-s.foo
 SFILES
 bar/lib
 SCCS/c.gone
-BitKeeper/tmp/ROOTKEY
 SCCS/c.gone${CFS}1.1
 SCCS/c.gone${CFS}1.2
 EOF
@@ -398,7 +395,6 @@ jjjj SCCS/OLD-s.foo
 jjjj SCCS/c.gone
 jjjj SCCS/c.gone@1.1
 jjjj SCCS/c.gone@1.2
-xxxx BitKeeper/tmp/ROOTKEY
 xxxx SFILES
 lc   BitKeeper/etc/SCCS/s.ignore
 u  n SCCS/s.bad

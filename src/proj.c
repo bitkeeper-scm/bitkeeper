@@ -292,7 +292,7 @@ proj_rootkey(project *p)
 	if (p->rootkey) return (p->rootkey);
 	if (p->rparent && (ret = proj_rootkey(p->rparent))) return (ret);
 
-	sprintf(rkfile, "%s/BitKeeper/tmp/ROOTKEY", p->root);
+	sprintf(rkfile, "%s/BitKeeper/log/ROOTKEY", p->root);
 	if (f = fopen(rkfile, "rt")) {
 		fnext(buf, f);
 		chomp(buf);

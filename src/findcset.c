@@ -157,7 +157,7 @@ next:		sccs_free(s);
 	sysio(NULL, DEV_NULL, DEV_NULL, "bk", "-R", "sfiles", "-P", SYS);
 
 	/* update rootkey embedded in files */
-	unlink("BitKeeper/tmp/ROOTKEY");
+	unlink("BitKeeper/log/ROOTKEY");
 	cmd = aprintf("bk -r admin -C'%s'", proj_rootkey(0));
 	system(cmd);
 	free(cmd);
