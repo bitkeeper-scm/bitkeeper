@@ -2239,8 +2239,9 @@ fastnext(sccs *s)
 {
 	register char *t = s->where;
 	register char *tmp = s->mmap + s->size;
-		
-	if (s->where >= tmp) return (0);
+	register size_t n = tmp - t;
+	
+	if (n <= 0) return (0);
 	/*
 	 * I tried unrolling this a couple of ways and it got worse
 	 *
@@ -2248,7 +2249,8 @@ fastnext(sccs *s)
 	 * It can be done here but be careful not to screw up s->where, that
 	 * needs to stay valid, peekc and others use it.
 	 */
-	while ((t < tmp) && (*t++ != '\n'));
+	while (n-- && *t++ != '\n');
+
 	tmp = s->where;
 	s->where = t;
 	return (tmp);
@@ -4405,7 +4407,7 @@ private sum_t
 fputdata(sccs *s, u8 *buf, FILE *out)
 {
 	sum_t	sum = 0;
-	u8	*p;
+	u8	*p, c;
 
 	if (!buf) {	/* flush */
 		if (s->encoding & E_GZIP) {
@@ -4419,9 +4421,13 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 	/* Checksum up to and including the first newline
 	 * or the end of the string.
 	 */
-	for (p = buf; *p;) {
-		sum += *p++;
-		if (p[-1] == '\n') break;
+	p = buf;
+	for (;;) {
+	    c = *p;
+	    if (c == '\0') break;
+	    p++;
+	    sum += c;
+	    if (c == '\n') break;
 	}
 	if (s->encoding & E_GZIP) {
 		zputs((void *)s, out, buf, p - buf, gzip_sum);
