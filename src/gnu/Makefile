@@ -13,7 +13,7 @@ all: os exe
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
 		if [ $${OS} = "BIN-CYGWIN_NT-4.0-x86" ];\
-		then unset MAKEFLAGS CFLAGS LD; CC=gcc; \
+		then unset MAKEFLAGS CFLAGS LDFAGS LD; CC=gcc; \
 		fi;\
 		echo $$i; \
 		cd $$i; ../../bk get -q checkout; sh checkout; \
