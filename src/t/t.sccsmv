@@ -75,19 +75,20 @@ bk -r check -a || exit 1
 echo OK
 echo $N Test sccsmv to directory ....................................$NL
 bk mv B/file1 B/file4 C
-if [ ! -f C/SCCS/s.file1 ]; then echo failed; exit 1; fi
-if [ ! -f C/SCCS/s.file4 ]; then echo failed; exit 1; fi
+if [ ! -f C/B/SCCS/s.file1 ]; then echo failed; exit 1; fi
+if [ ! -f C/B/SCCS/s.file4 ]; then echo failed; exit 1; fi
 if [ -d B ]; then echo failed; exit 1; fi
 mkdir B
-bk mv C/file1 C/file4 B
-if [ ! -d C ]; then echo failed; exit 1; fi
+cd C/B
+bk mv file1 file4 ../../B
+cd ../..
 bk -r check -a || exit 1
 echo OK
 echo $N Test bk mvdir to directory that does not exist ..............$NL
 mkdir B/B1
 date > B/B1/fileB1
 bk new $Q B/B1/fileB1
-bk mvdir B "BB BB/CCCC/DDDD"
+bk mv B "BB BB/CCCC/DDDD"
 if [ ! -f "BB BB/CCCC/DDDD/SCCS/s.file4" ]
 then	echo failed to move file; exit 1
 fi
@@ -97,11 +98,29 @@ fi
 bk -r check -a || exit 1
 echo OK
 echo $N And move it back ............................................$NL
-bk mvdir "BB BB/CCCC/DDDD" B || { echo error; exit 1; }
+bk mv "BB BB/CCCC/DDDD" B || { echo error; exit 1; }
 if [ ! -f B/B1/SCCS/s.fileB1 ]
 then	echo failed to move fileB1; exit 1
 fi
 echo OK
+if true
+then #-----------------------------------------------------------------
+echo $N Test bk mvdir to directory that does exist ..................$NL
+#bk mvdir A B
+bk mv A B
+if [ -d A ]; then echo files; exit 1; fi
+if [ ! -f B/A/SCCS/s.file3 ]; then echo failed; exit 1; fi
+bk -r check -a || exit 1
+echo OK
+echo $N And move it back ............................................$NL
+cd B
+#bk mvdir A ..
+bk mv A ..
+cd ..
+if [ ! -f A/SCCS/s.file3 ]; then echo files; exit 1; fi
+if [ ! -f A/SCCS/s.file4 ]; then echo files; exit 1; fi
+echo OK
+fi #---------------------------------------------------------------------
 echo $N Test sccsrm w/ p locked file ................................$NL
 bk get $Q -e B/file1
 bk sccsrm B/file1
@@ -171,7 +190,7 @@ CFILE=`ls $DDIR/SCCS | grep "^c..del-file4"`
 if [ "$CFILE" != "" ];  then echo failed; exit 1; fi
 if [ ! -f $DDIR/SCCS/$SFILE ]; then echo failed; exit 1; fi
 REV=`bk prs -hr+ -d:I: ${DDIR}/SCCS/$SFILE`
-if [ ${REV}X != "1.5"X ]; then echo failed; exit 1; fi
+if [ ${REV}X != "1.7"X ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/SCCS/$SFILE`
 SFILE2=`bk _g2sccs $DPATH`
 if [ ${SFILE2}X != "${DDIR}/SCCS/$SFILE"X ]; then echo failed; exit 1; fi

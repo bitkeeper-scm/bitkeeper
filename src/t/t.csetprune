@@ -88,6 +88,23 @@ tip=`bk prs -h -rTAG1_6 -d':I:\n' ChangeSet`
 if [ "$tip" != 1.3 ]; then echo Failed; exit 1; fi
 echo OK
 
+# Used to be a bug where same name in R and D caused an assert
+echo $N Test duplicates collapsing on to already tagged delta .......$NL
+cd $HERE
+rm -rf tagdup
+bk clone $Q simple tagdup
+cd tagdup
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -STAGDUP -y1.3
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y1.4
+bk tag $Q TAGDUP
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+echo OK
+
 # have tip change 'b' and remove 'a' and check for tip reparented
 echo $N Reparent tip ................................................$NL
 cd $HERE
