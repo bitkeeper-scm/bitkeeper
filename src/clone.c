@@ -156,7 +156,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	int	gzip, rc = 1;
 
 	gzip = r->port ? opts.gzip : 0;
-	if (local && exists(local)) {
+	if (local && exists(local) && !emptyDir(local)) {
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
 	}
@@ -180,7 +180,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		if (!local && (local = getenv("BKD_ROOT"))) {
 			if (p = strrchr(local, '/')) local = ++p;
 		}
-		if (exists(local)) {
+		if (exists(local) && !emptyDir(local)) {
 			fprintf(stderr, "clone: %s exists already\n", local);
 			usage();
 		}
