@@ -86,9 +86,12 @@ host2ip(char *host, int trace)
 		 * XXX TODO: This should time out, in case we do not have
 		 * a network connection, or the DNS server is down
 		 */
+		if (trace) {
+			fprintf(stderr, "looking up IP address for %s\n", host);
+		}
 		if ((hostp = gethostbyname(host)) == NULL) {
 			if (trace) {
-				fprintf(stderr, "%s IP lookup failed\n", host);
+				fprintf(stderr, "%s IP: lookup failed\n", host);
 			}
 			errno = EINVAL;
 			return (-1);
@@ -102,6 +105,10 @@ host2ip(char *host, int trace)
 		}
 		memcpy((char *) &inaddr.sin_addr, (char *) hostp->h_addr,
 			sizeof(inaddr.sin_addr));
+		if (trace) {
+			fprintf(stderr, "%s => %s\n",
+					    host, inet_ntoa(inaddr.sin_addr));
+		}
 	}
 	return (inaddr.sin_addr.s_addr);
 }

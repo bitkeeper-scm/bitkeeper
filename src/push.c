@@ -255,9 +255,7 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 		getServerInfoBlock(r);
 		getline2(r, buf, sizeof(buf));
 	} else {
-#ifdef BKD_VERSION1_2
-		drain_bkd1_2_msg(r, buf, sizeof(buf));
-#endif
+		drainNonStandardMsg(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, opts.verbose)) return (-1);
 

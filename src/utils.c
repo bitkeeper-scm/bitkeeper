@@ -522,12 +522,19 @@ flush2remote(remote *r)
 }
 
 
-#ifdef BKD_VERSION1_2
+/*
+ * Drain non-standard message:
+ * There are two possibilities:
+ * 1) remote is running a version 1.2 (i.e. old) bkd
+ * 2) remote is not running a bkd.
+ */
 void
-drain_bkd1_2_msg(remote *r, char *buf, int bsize)
+drainNonStandardMsg(remote *r, char *buf, int bsize)
 {
+	int bkd_msg = 0;
 
 	if (strneq("ERROR-BAD CMD: putenv", buf, 21)) {
+		bkd_msg = 1;
 		while (getline2(r, buf, bsize) > 0) {
 			if (strneq("ERROR-BAD CMD: putenv", buf, 21)) continue;
 			break;
@@ -543,12 +550,13 @@ drain_bkd1_2_msg(remote *r, char *buf, int bsize)
 		if (streq("ERROR-exiting", buf)) exit(1);
 	} while (getline2(r, buf, bsize) > 0);
 
-	fprintf(stderr,
-		"Remote seems to be running a older BitKeeper release\n"
-		"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
+	if (bkd_msg) {
+		fprintf(stderr,
+			"Remote seems to be running a older BitKeeper release\n"
+			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
+	}
 	exit(1);
 }
-#endif
 
 int
 remote_lock_fail(char *buf, int verbose)
