@@ -69,11 +69,12 @@ cat > gca <<EOF
    won't change
    won't change
 EOF
+cp gca V1.1.1.1
 bk delta $Q -ylocal gca || exit 1
 echo OK
 echo $N Check default smerge output .................................$NL
-bk smerge 1.2 1.1 1.1.1.1 gca > out
-cmp -s out - <<EOF
+bk smerge 1.2 1.1 1.1.1.1 gca
+cat - > out2 <<EOF
    won't change
    won't change
 <<<<<<< gca gca 1.1
@@ -113,10 +114,28 @@ cmp -s out - <<EOF
    won't change
    won't change
 EOF
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+diff -u gca out2 > DIFF.OUT
+if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
+rm -f gca
+echo OK
+echo $N Check redirecting to stdout .................................$NL
+bk smerge -p 1.2 1.1 1.1.1.1 gca > out 
+diff -u out out2 > DIFF.OUT
+if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
+echo OK
+echo $N Check reading versions from enviroment ......................$NL
+export MERGE_REVS_LOCAL=1.2
+export MERGE_REVS_GCA=1.1
+export MERGE_REVS_REMOTE=1.1.1.1
+bk smerge -p junk1 junk2 junk3 gca > out 
+unset MERGE_REVS_LOCAL
+unset MERGE_REVS_GCA
+unset MERGE_REVS_REMOTE
+diff -u out out2 > DIFF.OUT
+if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK
 echo $N Check gca smerge output .....................................$NL
-bk smerge -g 1.2 1.1 1.1.1.1 gca > out
+bk smerge -gp 1.2 1.1 1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
 cat > out2 <<EOF
    won't change
@@ -166,7 +185,7 @@ diff -u out out2 > DIFF.OUT
 if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK
 echo $N Check 2WAY smerge output ....................................$NL
-bk smerge -2 1.2 1.1 1.1.1.1 gca > out
+bk smerge -p -2 1.2 1.1 1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
 cmp -s out - <<EOF
    won't change
@@ -200,7 +219,7 @@ EOF
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check new-only smerge output ................................$NL
-bk smerge -n 1.2 1.1 1.1.1.1 gca > out
+bk smerge -p -n 1.2 1.1 1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
 cmp -s out - <<EOF
    won't change
@@ -234,12 +253,12 @@ EOF
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check handling of bad versions ..............................$NL
-bk smerge -n 1.2 1.1 1.1.1.3 gca > out 2> err
+bk smerge -p -n 1.2 1.1 1.1.1.3 gca > out 2> err
 if [ $? -ne 2 ]; then echo failed; exit 1; fi
 grep -q 'Fetch of revision 1.1.1.3.*failed' err || exit 1
 echo OK
-echo $N Trying added the sequence numbers............................$NL
-bk smerge -gs 1.2 1.1 1.1.1.1 gca > out
+echo $N Trying adding the sequence numbers...........................$NL
+bk smerge -p -gs 1.2 1.1 1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
 cat - > new <<EOF
      1	   won't change
@@ -308,7 +327,7 @@ cat > gca <<EOF
    won't change
 EOF
 bk delta $Q -ylocal2 gca || exit 1
-bk smerge 1.1.2.1 1.1 1.1.1.1 gca > out
+bk smerge -p 1.1.2.1 1.1 1.1.1.1 gca > out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 cat > out2 <<EOF
    won't change much
@@ -331,7 +350,7 @@ diff -u out out2 > DIFF.OUT
 if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK
 echo $N Verify that content merge was needed ........................$NL
-bk smerge -gA3 1.1.2.1 1.1 1.1.1.1 gca > out
+bk smerge -p -gA3 1.1.2.1 1.1 1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
 cmp -s out - <<EOF
    won't change much
@@ -364,7 +383,7 @@ EOF
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Check range options .........................................$NL
-bk smerge -sgA3 -r2..10 1.1.2.1 1.1 1.1.1.1 gca > out
+bk smerge -p -sgA3 -r2..10 1.1.2.1 1.1 1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
 cmp -s out - <<EOF
 <<<<<<< local gca 1.1 vs 1.1.2.1
@@ -384,4 +403,8 @@ cmp -s out - <<EOF
 EOF
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
-
+echo $N "Check versions with excludes (and identical versions)........$NL"
+bk smerge -p -g  1.1.2.1-1.1.2.1 1.1 1.1.1.1 gca > out
+diff -u out V1.1.1.1 > DIFF.OUT
+if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
+echo OK
