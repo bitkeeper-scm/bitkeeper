@@ -252,7 +252,6 @@ clean-bin: FORCE
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
 	-@cd gnu && $(MAKE) clean 
 	-@cd win32 && $(MAKE) clean
-	cd t && rm -f doit
 
 clean clobber distclean: rebuild FORCE
 	-@bk -r clean
@@ -270,7 +269,6 @@ rebuild:
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
 	-@cd ../doc && $(MAKE) clean clean-obj
-	@cd t && rm -f doit
 
 srcs src: FORCE
 	-bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
@@ -589,13 +587,6 @@ install-nolinks:
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
 	@-rm -rf $(BINDIR)/t
-	@if [ ! -d $(BINDIR)/t ]; \
-	then	mkdir $(BINDIR)/t; \
-	fi
-	@-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
-	@list=`ls t/doit t/setup t/x.chk_env t/t.* \
-		| egrep -v '(.local|.swp|~)$$'`; \
-	cp -f $$list $(BINDIR)/t
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
 	do	rm -f $(BINDIR)/$$1; \
@@ -650,7 +641,7 @@ cranktry:
 	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD="./crank ./build p test" crankit
 
 cranktest:
-	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD="bk regression" crankit
+	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD="./build test" crankit
 
 # It is OK if we fail to "rm buld" on win32.
 # We can not "rm build " when we are running it.

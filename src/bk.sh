@@ -743,8 +743,14 @@ _regression() {		# /* doc 2.0 */
 	shift `expr $OPTIND - 1`
 	export DO_REMOTE PREFER_RSH
 
+	tdir=`bk bin`/t
+
+	test -x "$tdir"/doit || {
+	    echo The regression suite is not included with this release of Bitkeeper
+	    exit 1
+	}
 	# Do not use "exec" to invoke "./doit", it causes problem on cygwin
-	cd "`bk bin`/t" && time ./doit $V $X "$@"
+	cd "$tdir" && time ./doit $V $X "$@"
 }
 
 __init() {
