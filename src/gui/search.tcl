@@ -32,8 +32,8 @@ proc search {dir} \
 	global	search
 
 	set search(dir) $dir
+	searchreset
 	set search(prompt) "Search for:"
-	$search(text) delete 0 end
 	focus $search(text)
 	searchbuttons both disabled
 }
@@ -42,32 +42,86 @@ proc searchreset {} \
 {
 	global	search
 
-	if {$search(dir) == "/"} {
-		set search(start) "1.0"
-	} else {
+	set string [$search(text) get]
+	if {"$string" != ""} {
+		set search(lastsearch) $string
+		set search(lastlocation) $search(start)
+		$search(text) delete 0 end
+		if {[info exists search(clear)]} {
+			$search(clear) configure -state disabled
+		}
+		if {[info exists search(recall)] && "$string" != ""} {
+			$search(recall) configure -state normal \
+			    -text "Recall search"
+		}
+	}
+	if {$search(dir) == "?"} {
 		set search(start) "end"
+	} else {
+		set search(start) "1.0"
 	}
 	searchbuttons both disabled
+	set search(where) $search(start)
+	if {[info exists search(status)]} {
+		$search(status) configure -text ""
+	}
+}
+
+proc searchrecall {} \
+{
+	global	search
+
+	if {[info exists search(lastsearch)]} {
+		$search(text) delete 0 end
+		$search(text) insert end $search(lastsearch)
+		set search(start) $search(lastlocation)
+		searchsee $search(lastlocation)
+		if {[info exists search(recall)]} {
+			$search(recall) configure -state disabled
+		}
+		if {[info exists search(clear)]} {
+			$search(clear) configure -state normal \
+			    -text "Clear search"
+		}
+		searchbuttons both normal
+	}
+}
+
+proc searchactive {} \
+{
+	global	search
+
+	set string [$search(text) get]
+	if {"$string" != ""} { return 1 }
+	return 0
 }
 
 proc searchstring {} \
 {
 	global	search
 
+	if {[info exists search(focus)]} { focus $search(focus) }
 	set string [$search(text) get]
 	if {"$string" == ""} {
-		if {[info exists search(string)] == 0} {
-			set search(prompt) "No search string"
-			if {[info exists search(focus)]} {
-				focus $search(focus)
-			}
-			return
-		}
+		searchreset
+		return
 	} else {
 		set search(string) $string
-		searchreset
+		if {[info exists search(clear)]} {
+			$search(clear) configure -state normal \
+			    -text "Clear search"
+		}
 	}
-	searchnext
+	if {[searchnext] == 0} {
+		searchreset
+		if {[info exists search(status)]} {
+			$search(status) configure -text "$string not found"
+		}
+	} else {
+		if {[info exists search(status)]} {
+			$search(status) configure -text ""
+		}
+	}
 }
 
 proc searchnext {} \
@@ -76,13 +130,15 @@ proc searchnext {} \
 
 	if {$search(dir) == "/"} {
 		set w [$search(widget) \
-		    search -- $search(string) $search(start) "end"]
+		    search -regexp -count l -- \
+		    $search(string) $search(start) "end"]
 	} else {
 		set i ""
 		catch { set i [$search(widget) index search.first] }
 		if {"$i" != ""} { set search(start) $i }
 		set w [$search(widget) \
-		    search -backwards -- $search(string) $search(start) "1.0"]
+		    search -regexp -backwards -count l -- \
+		    $search(string) $search(start) "1.0"]
 	}
 	if {"$w" == ""} {
 		if {[info exists search(focus)]} { focus $search(focus) }
@@ -91,19 +147,19 @@ proc searchnext {} \
 		} else {
 			searchbuttons prev disabled
 		}
-		return
+		return 0
 	}
 	searchbuttons both normal
 	searchsee $w
-	set l [string length $search(string)]
 	set search(start) [$search(widget) index "$w + $l chars"]
 	$search(widget) tag remove search 1.0 end
 	$search(widget) tag add search $w "$w + $l chars"
 	$search(widget) tag raise search
 	if {[info exists search(focus)]} { focus $search(focus) }
+	return 1
 }
 
-# Default widget scroller
+# Default widget scroller, overridden by tools such as difftool
 proc searchsee {location} \
 {
 	global	search
