@@ -38,6 +38,7 @@ proc getConfig {prog} \
 		set _d(BG) $GRAY85		;# default background
 	}
 
+	set _d(tabwidth) 8		;# default width of a tab
 	set _d(backup) ""		;# Make backups in ciedit: XXX NOTDOC 
 	set _d(balloonTime) 1000	;# XXX: NOTDOC
 	set _d(buttonColor) $SYSTEMBUTTONFACE	;# menu buttons
@@ -207,6 +208,8 @@ proc getConfig {prog} \
                         set gc($app.scrollWidth) $width
                 }
         }
+
+	option add *Text.tabwidth $gc($app.tabwidth) userDefault
 }
 
 proc initFonts {app var} \
