@@ -37,9 +37,6 @@ platformInit(char **av)
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 
-	/* save original path before the toplevel bk */
-	unless (getenv("BK_OLDPATH")) safe_putenv("BK_OLDPATH=%s", p);
-
 #ifndef	WIN32
 	signal(SIGHUP, SIG_IGN);
 #endif
@@ -152,6 +149,15 @@ platformInit(char **av)
 	localName2bkName(buf, buf);
 	cleanPath(buf, buf);	/* sanitize pathname */
 	bin = buf; /* buf is static */
+
+	/* save original path before the toplevel bk */
+	unless (getenv("BK_OLDPATH")) {
+#ifdef	WIN32
+		safe_putenv("BK_OLDPATH=%s;%s/gnu/bin", p, bin);
+#else
+		safe_putenv("BK_OLDPATH=%s", p);
+#endif
+	}
 
 	/* process path, so each dir only appears once. */
 	uniq = mdbm_mem();

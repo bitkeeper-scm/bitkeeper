@@ -6,7 +6,7 @@ catch {wm withdraw .}
 
 proc main {} \
 {
-	global	argv env options installer tcl_platform runtime
+	global	argv env options installer runtime
 
 	initGlobals
 
@@ -43,8 +43,14 @@ proc initGlobals {} \
 		set runtime(enableSccDLL) 1
 		set runtime(enableShellxLocal) 1
 		set runtime(enableShellxNetwork) 0
+		set key {HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft}
+		append key {\Windows\CurrentVersion} 
+		if {[catch {set pf [registry get $key ProgramFilesDir]}]} {
+			puts "Can't read $key"
+			set pf {C:\Program Files}
+		}
 		set runtime(places) \
-		    [list [normalize {C:/Program Files/BitKeeper}]]
+		    [list [normalize [file join $pf BitKeeper]]]
 		set runtime(symlinkDir) ""
 		set id "./gnu/id"
 	} else {
@@ -65,10 +71,7 @@ proc initGlobals {} \
 
 	if {![string equal $::runtime(user) "root"]} {
 		set home [homedir]
-		if {[file exists [file join $home bin]]} {
-			lappend ::runtime(places) \
-			    [normalize [file join $home bin]]
-		} elseif {[file exists $home]} {
+		if {[file exists $home]} {
 			lappend ::runtime(places) \
 			    [normalize [file join $home bitkeeper]]
 		}
@@ -95,12 +98,28 @@ proc initGlobals {} \
 
 proc hasWinAdminPrivs {} \
 {
+	global	tcl_platform
+
+	# Win98 always has these rights.
+	# 95 == 98 in tcl.
+	if {$tcl_platform(os) eq "Windows 95"} {
+		return 1
+	}
+
 	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
 	append key "\\Control\\Session Manager\\Environment"
-	set path [registry get $key Path]
+
+	if {[catch {set type [registry type $key Path]}]} {
+		return 0
+	}
+
+	if {[catch {set path [registry get $key Path]}]} {
+		return 0
+	}
+
 	# if this fails, it's almost certainly because the
 	# user doesn't have admin privs.
-	if {[catch {registry set $key Path $path}]} {
+	if {[catch {registry set $key Path $path $type}]} {
 		return 0
 	} else {
 		return 1
@@ -287,6 +306,10 @@ proc widgets {} \
 			incr row
 		}
 
+                if {[llength $::runtime(places)] > 0} {
+                        after idle [list focus $w.rb-1]
+                }
+
 		set ::widgets(destinationEntry) $w.destinationEntry
 		set ::widgets(destinationButton) $w.destinationButton
 
@@ -308,6 +331,7 @@ proc widgets {} \
 			    set tmp [tk_chooseDirectory -initialdir $f]
 			    if {![string equal $tmp ""]} {
 				    set ::runtime(destination) $tmp
+				    set ::runtime(destinationRB) ""
 				    setDestination $tmp
 			    }
 		    }
@@ -331,7 +355,7 @@ proc widgets {} \
 		incr row
 		set ::widgets(dirStatus) $w.dirStatus
 		label $::widgets(dirStatus)  -anchor w -foreground red
-		grid $::widgets(dirStatus) -row $row -column 0 \
+		grid $::widgets(dirStatus) -pady 10 -row $row -column 0 \
 		    -columnspan 3 -sticky ew
 
 		grid columnconfigure $w 0 -weight 0 -minsize $rbwidth
@@ -383,6 +407,7 @@ proc widgets {} \
 			    pack $w.shellx-local -side top -fill x -anchor w
 			    pack $w.shellx-remote -side top -fill x -anchor w
 			    pack $w.bkscc -side top -fill x -anchor w
+			    after idle [list focus $w.shellx-local]
 		    } else {
 			    $this stepconfigure InstallDLLs \
 				-description [unwrap $::strings(InstallDLLsNoAdmin)]
@@ -425,6 +450,7 @@ proc widgets {} \
 					. configure -state pending
 				}
 			}
+                    after idle  [list focus $w.overwrite]
 
 		    if {$tcl_platform(platform) == "unix"} {
 			    # this gives the radiobuttons a nice
@@ -440,7 +466,6 @@ proc widgets {} \
 	. add step Install \
 	    -title "Install" \
 	    -body {
-		    
 		    $this configure -defaultbutton next
 		    $this buttonconfigure next -text Install
 
@@ -574,6 +599,7 @@ proc widgets {} \
 		pack $w.log -side left -fill both -expand y
 
 		. stepconfigure Summary -title "Installing.."
+                $this configure -defaultbutton none
 
 		doInstall
 
@@ -584,6 +610,7 @@ proc widgets {} \
 		}
 
 		$this buttonconfigure cancel -state disabled
+                $this configure -defaultbutton finish
 	}
 	    
 	bind . <<WizCancel>> {set ::done 1}
@@ -623,7 +650,8 @@ proc widgets {} \
 				}
 			}
 
-			if {[file exists $::runtime(destination)]} {
+			if {[file exists $::runtime(destination)] && \
+			    ![isempty $::runtime(destination)]} {
 				. configure -path existing
 			} else {
 				. configure -path new
@@ -686,7 +714,7 @@ proc busy {on} \
 # variable BK_DEBUG to get a bunch of output from the installer)
 proc doCommand {args} \
 {
-	global pipeOutput errorCode
+	global pipeOutput errorCode strings
 
 	if {[string equal [lindex $args 0] -nolog]} {
 		set args [lrange $args 1 end]
@@ -704,6 +732,15 @@ proc doCommand {args} \
 
 	# This variable is set by readPipe when we get EOF on the pipe
 	vwait ::DONE
+
+	# uninstall failed. Sucks to be the user.
+        if {$::DONE == 3} {
+		tk_messageBox \
+		    -icon error \
+		    -message $strings(uninstall.failed)
+		return -code error \
+		    "uninstallation of previous version failed"
+        }
 
 	if {$::DONE == 2} {
 		# exit immediately; system must reboot. If we don't
@@ -759,7 +796,7 @@ proc setDestination {dir} \
 	if {[string equal $dir ""]} {
 		$widgets(destinationButton) configure -state normal
 		$::widgets(dirStatus) configure -text ""
-		. configure -state normal
+		. configure -state pending
 
 	} else {
 		$widgets(destinationButton) configure -state disabled
@@ -781,21 +818,49 @@ proc setDestination {dir} \
 			    -text "Directory $dir doesn't exist" \
 			    -foreground black
 		}
+		$widgets(destinationButton) configure -state normal
 	}
+}
+
+proc isempty {dir} \
+{
+	if {[catch {set files [exec bk _find -type f $dir]} error]} {
+		# bk _find will fail if we don't have access to the
+		# directory, so assume the directory is non empty
+		# and bail
+		return 0
+	}
+	if {[string length $files] > 0} { return 0 }
+	return 1
 }
 
 proc validateDestination {} \
 {
-	set destination $::runtime(destination)
+	set dest $::runtime(destination)
 
-	if {![file isdirectory $destination]} {
-		set message "\"$destination\" is not a directory"
-		return $message
+	if {![file isdirectory $dest]} {
+		return "\"$dest\" is not a directory"
 	}
 
-	if {![file writable $destination] && ![file owned $destination]} {
-		set message "Write permission for \"$destination\" is denied"
-		return $message
+	# tcl's [file readable] can return 1 for a directory even
+	# if it belongs to another user and we don't have permission to
+	# see the contents. However, glob will fail with a specific message
+	# in this case.
+	if {[catch {glob [file join $dest *]} message] &&
+	    [regexp -nocase {.*permission denied} $message]} {
+		# must belong to another user if we can't peek
+		return "Access to \"$dest\" is denied"
+	}
+
+	set bkhelp [file join $dest bkhelp.txt]
+	if {[file exists $bkhelp]} { return "" }
+
+	if {![isempty $dest]} {
+		return "Will not overwrite non-empty directory \"$dest\""
+	}
+
+	if {![file writable $dest]} {
+		return "Write permission for \"$dest\" is denied"
 	}
 
 	return ""
@@ -986,7 +1051,16 @@ set strings(MoreInfo,symlinks) {
 	More info may be found by running "bk help links".
 }
 
-# this one is not re-wrapped, so it needs to be manually formatted
+# these are not re-wrapped, so they need to be manually formatted
+set strings(uninstall.failed) {
+The uninstallation of the previous version of BitKeeper 
+could not be completed. 
+
+You may choose to install this version in another location
+rather than in the same location as the previous install 
+by using the back button.
+}
+
 set strings(InstallComplete) {
 Installation of
 

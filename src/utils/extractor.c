@@ -20,10 +20,9 @@
 #ifdef	WIN32
 #define	mkdir(a, b)	_mkdir(a)
 #define	RMDIR		"rmdir /s /q"
-#define	BINDIR		"C:/Program Files/BitKeeper"
+#define	PFKEY		"\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
 #else
 #define	RMDIR		"/bin/rm -rf"
-#define	BINDIR		"/usr/libexec/bitkeeper"
 #endif
 #define	TMP		"bksetup"
 
@@ -36,9 +35,6 @@ void	extract(char *, char *, u32, char *);
 char	*findtmp(void);
 int	isdir(char*);
 void	rmTree(char *dir);
-#ifdef WIN32
-int	do_reboot(void);
-#endif
 
 int
 main(int ac, char **av)
@@ -52,9 +48,22 @@ main(int ac, char **av)
 	int	upgrade = 0;
 	char	tmpdir[MAXPATH];
 	char	buf[MAXPATH];
+#ifndef	WIN32
+	char	*bindir = "/usr/libexec/bitkeeper";
+#else
+	char	*bindir = 0;
+	char	regbuf[1024];
+	int	len = sizeof(regbuf);
+	HCURSOR h;
 
-#ifdef	WIN32
 	_fmode = _O_BINARY;
+	if (getReg(HKEY_LOCAL_MACHINE,
+	    PFKEY, "ProgramFilesDir", regbuf, &len)) {
+		sprintf(buf, "%s/BitKeeper", regbuf);
+		bindir = strdup(buf);
+	} else {
+		bindir = "C:/Program Files/BitKeeper";
+	}
 #endif
 
 	/* rxvt bugs */
@@ -80,7 +89,7 @@ main(int ac, char **av)
 			if (dest[-1] == '\r') dest[-1] = 0;
 			dest = strdup(buf);
 		} else {
-			dest = BINDIR;
+			dest = bindir;
 		}
 		if (f) fclose(f);
 		sprintf(buf, "bindir%u", pid);
@@ -120,7 +129,7 @@ main(int ac, char **av)
 "The -u option is for batch upgrades.  The existing BitKeeper is\n"
 "found on your PATH and then this version is installed over the top\n"
 "of it.  If no existing version of BitKeeper can be found, then a\n"
-"new installation is written to " BINDIR "\n"
+"new installation is written to %s\n"
 "\n"
 #ifdef WIN32
 "Administrator privileges are required for a full installation.  If\n"
@@ -134,13 +143,16 @@ main(int ac, char **av)
 "If DISPLAY is not set in the environment, then the destination must\n"
 "be set on the command line.\n"
 #endif
-			);
+			, bindir);
 		exit(1);
 	}
 	/* dest =~ s,\,/,g */
 	if (dest) for (p = dest; *p; p++) if (*p == '\\') *p = '/';
 
 	sprintf(tmpdir, "%s/%s%u", tmp, TMP, pid);
+#ifdef	WIN32
+	h = SetCursor(LoadCursor(0, IDC_WAIT));
+#endif
 	fprintf(stderr, "Please wait while we unpack in %s ...\n", tmpdir);
 	if (mkdir(tmpdir, 0700)) {
 		perror(tmpdir);
@@ -211,6 +223,7 @@ main(int ac, char **av)
 		av[i] = 0;
 #ifdef	WIN32
 		fprintf(stderr, "Running installer...\n");
+		SetCursor(h);
 #endif
 		/*
 		 * Use our own version of system()
@@ -233,7 +246,13 @@ main(int ac, char **av)
 	 * Bitchin'
 	 */
 #ifdef WIN32
-	if (rc == 2) do_reboot();
+	if (rc == 2) {
+		do_reboot(
+		    "Some BitKeeper files from the previous install\n"
+		    "are in active use and cannot be deleted immediately.\n"
+	       	    "They will be deleted after the next reboot.\n"
+		    "Do you want to reboot the system now?\n");
+	}
 #endif
 	exit(0);
 }
@@ -361,5 +380,28 @@ rmTree(char *dir)
 
 	sprintf(cmd, "/bin/rm -rf %s", dir);
 	system(cmd);
+}
+#endif
+
+#ifdef	WIN32
+
+/* stolen from BK source */
+int
+getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
+{
+        int	rc;
+        HKEY    hKey;
+        DWORD   valType = REG_SZ;
+	DWORD	len = *lenp;
+
+	valbuf[0] = 0;
+        rc = RegOpenKeyEx(hive, key, 0, KEY_QUERY_VALUE, &hKey);
+        if (rc != ERROR_SUCCESS) return (0);
+
+        rc = RegQueryValueEx(hKey,valname, NULL, &valType, valbuf, &len);
+	*lenp = len;
+        if (rc != ERROR_SUCCESS) return (0);
+        RegCloseKey(hKey);
+        return (1);
 }
 #endif

@@ -160,6 +160,11 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
 	}
+	if (local ? test_mkdirp(local) : access(".", W_OK)) {
+		fprintf(stderr, "clone: %s: %s\n",
+			(local ? local : "current directory"), strerror(errno));
+		usage();
+	}
 	if (opts.rev) {
 		safe_putenv("BK_CSETS=1.0..%s", opts.rev);
 	} else {
@@ -183,9 +188,16 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		if (!local && (local = getenv("BKD_ROOT"))) {
 			if (p = strrchr(local, '/')) local = ++p;
 		}
+		unless (local) {
+			fprintf(stderr,
+			    "clone: cannot determine remote pathname\n");
+			disconnect(r, 2);
+			goto done;
+		}
 		if (exists(local) && !emptyDir(local)) {
 			fprintf(stderr, "clone: %s exists already\n", local);
-			usage();
+			disconnect(r, 2);
+			goto done;
 		}
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
@@ -196,11 +208,6 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		goto done;
 	}
 
-	unless (local) {
-		fprintf(stderr, "clone: cannot determine remote pathname\n");
-		disconnect(r, 2);
-		goto done;
-	}
 	if ((lic = getenv("BKD_LICTYPE")) && !licenseAcceptOne(1, lic)) {
 		fprintf(stderr, "clone: failed to accept license '%s'\n",
 		    getenv("BKD_LICTYPE"));
@@ -245,10 +252,10 @@ done:	if (rc) {
 	/*
 	 * Don't bother to fire trigger if we have no tree.
 	 */
-	if (proj_root(0)) trigger(av[0], "post");
+	if (proj_root(0) && (rc != 2)) trigger(av[0], "post");
 
 	/*
-	 * XXX This is a workaround for a csh fd lead:
+	 * XXX This is a workaround for a csh fd leak:
 	 * Force a client side EOF before we wait for server side EOF.
 	 * Needed only if remote is running csh; csh have a fd lead
 	 * which cause it fail to send us EOF when we close stdout and stderr.

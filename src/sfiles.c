@@ -798,16 +798,9 @@ isTagFile(char *file)
 private int
 isBkFile(char *gfile)
 {
-	char    *rpath;
-
-	/*
-	 * Calling _relativeName() can be expensive, luckily
-	 * We cached PWD in fullName.c. It should be fast enough.
-	 */
-	rpath = _relativeName(gfile, 0, 0, 0, 0);
-	if (!rpath) return (0);
-	if (patheq(rpath, "ChangeSet")) return (1);
-	if ((strlen(rpath) > 10) && pathneq(rpath, "BitKeeper/", 10)) {
+	if (streq(gfile, "ChangeSet") && isdir(BKROOT)) return (1);
+	if (strneq(gfile, "BitKeeper/", 10) &&
+	    !strneq(gfile, "BitKeeper/triggers/", 19) && isdir(BKROOT)) {
 		return (1);
 	}
 	return (0);

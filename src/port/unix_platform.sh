@@ -8,6 +8,7 @@
 __platformInit()
 {
 	# Unix specific stuff
+	CLEAR=clear
 	GUI_BIN=$BIN
 	RM=/bin/rm
 	ECHO=echo

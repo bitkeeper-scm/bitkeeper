@@ -15,8 +15,6 @@ gui_useDisplay()
 		return (0);
 	}
 
-	unless (getenv("BK_GUI")) return (0);
-
 	/* FYI: Cygwin has X11 clients so there may be a display there too */
 	if (getenv("DISPLAY")) return (1);
 

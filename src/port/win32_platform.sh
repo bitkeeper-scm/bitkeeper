@@ -22,6 +22,7 @@ __nativepath()
 __platformInit()
 {
 	# WIN32 specific stuff
+	CLEAR=cls
 	TMP=`__nativepath /tmp`/
 	DEV_NULL=nul
 	WINDOWS=YES
