@@ -124,12 +124,10 @@ if [ ! -f init2 ]; then echo File not checked out.; exit 1; fi
 if [ -w init2 ]; then echo File not read only.; exit 1; fi
 echo OK
 echo $N Make sure delta -G works ....................................$NL
-# work around for cygwin bug : off by one hour
 ${ECHO} "G change data" > init3
 echo "89/01/02 03:04:00" > CMP1 
 case X`uname -s` in
-    XCYGWIN*)
-	# XXX - Andrew this looks wrong
+    XLinux*|XCYGWIN*)
 	touch -t 0102030489 init3
 	;;
     XHP-UX*|XFreeBSD*|XSunOS*|XIRIX*)
