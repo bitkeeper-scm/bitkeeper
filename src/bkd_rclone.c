@@ -202,8 +202,8 @@ done:
 	} else {
 		putenv("BK_STATUS=OK");
 	}
-	trigger(av[0],  "post");
-	repository_wrunlock(0);
+	trigger(av[0], "post");
+	repository_unlock(0);
 	putenv("BK_CSETS=");
 	return (rc);
 }

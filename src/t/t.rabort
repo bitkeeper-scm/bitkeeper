@@ -18,6 +18,13 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/post-outgoing <<EOF
+#!/bin/sh
+exit 0
+EOF
+chmod +x BitKeeper/triggers/*
+bk new $Q BitKeeper/triggers/post-outgoing
 mkdir src
 cd src
 echo foo > 'F!O#O$ B%A^R&RR(R)RR'
@@ -26,7 +33,7 @@ echo h > h.h
 bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
 if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
-if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 20 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
