@@ -5,7 +5,7 @@ cmd_chg_part1(int ac, char **av)
 {
 	int	c, keysync = 0;
 	int 	rfd, i, j;
-	char 	buf[MAXLINE], buf2[MAXLINE + 1];
+	char 	buf[MAXLINE];
 	char	*new_av[100];
 	FILE 	*f;
 	pid_t	pid;
@@ -46,8 +46,8 @@ cmd_chg_part1(int ac, char **av)
 	f = fdopen(rfd, "rt");
 	out("@CHANGES INFO@\n");
 	while (fnext(buf, f)) {
-		sprintf(buf2, "%c%s", BKD_DATA, buf);
-		if (out(buf2) <= 0) break;
+		outc(BKD_DATA);
+		if (out(buf) <= 0) break;
 	}
 	fclose(f);
 	out("@END@\n");

@@ -747,6 +747,14 @@ typedef struct {
 				 */
 
 
+/*
+ * serach interface
+ */
+typedef struct {
+	char    pattern[512];
+	u8      ignorecase:1;
+} search;
+
 
 int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
@@ -1073,4 +1081,7 @@ extern char *bk_utc;
 extern char *bk_time;
 
 int	getMsg(char *msg_name, char *bkarg, char *prefix, FILE *outf);
+
+int	searchMatch(char *s, search search);
+search	searchParse(char *str);
 #endif	/* _SCCS_H_ */

@@ -7,9 +7,10 @@ typedef struct {
 	u32     ldiff:1;	/* want the new local csets */
 	u32     rdiff:1;	/* want the new remote csets */ 
 	char	*rev;
-	char	*srch;		/* search string against comments list */
+	search	search;
 	int	indent;
 } opts;
+
 
 private int	doit(opts, int dash);
 private int	doit_remote(opts opts, char **av, int optind);
@@ -36,7 +37,7 @@ changes_main(int ac, char **av)
 	}   
 	
 	bzero(&opts, sizeof(opts));
-	while ((c = getopt(ac, av, "tLRr|s;v|")) != -1) {
+	while ((c = getopt(ac, av, "tLRr|/;v|")) != -1) {
 		switch (c) {
 		    /*
 		     * Note: do not add option 'k', it is reserved
@@ -50,7 +51,7 @@ changes_main(int ac, char **av)
 			opts.indent = optarg ? atoi(optarg) : 2;
 			break;
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
-		    case 's': opts.srch = optarg; break;
+		    case '/': opts.search = searchParse(optarg); break;
 		    case 'L': opts.ldiff = 1; break;
 		    case 'R': opts.rdiff = 1; break;
 		    default:
@@ -102,36 +103,44 @@ changes_main(int ac, char **av)
 		return (1); /* interrupted */
 	} else {
 		int	fd1;
+		pid_t	pid;
 
-		fd1 = mkpager();
+		fd1 = mkpager(&pid);
 		rc = doit_remote(opts, av, optind); 
-		if (fd1 > 0) { dup2(fd1, 1); close(fd1); }
+		if (fd1 >= 0) { dup2(fd1, 1); close(fd1); }
+		if (pid > 0) waitpid(pid, 0, 0);
 		return (rc);
 	}
 }
+
+pid_t pagerPid = -1;
 
 /*
  * Set up page and connect it to our stdout
  */
 private int
-mkpager()
+mkpager(pid_t *pid)
 {
 	/*
 	 * What we want is: this process | pager
 	 */
 	int	fd1, pfd;
-	pid_t	pid;
+	pid_t	mypid;
 	char	*pager_av[MAXARGS];
 	char	*cmd;
 	extern 	char *pager;
 
 	/* "cat" is a no-op pager used in bkd */
-	if (streq("cat", pager)) return (-1);
+	if (streq("cat", pager)) {
+		if (pid) *pid = -1;
+		return (-1);
+	}
 
 	signal(SIGPIPE, SIG_IGN);
 	cmd = strdup(pager); /* line2av stomp */
 	line2av(cmd, pager_av); /* win32 pager is "less -E" */
-	pid = spawnvp_wPipe(pager_av, &pfd, 0);
+	mypid = spawnvp_wPipe(pager_av, &pfd, 0);
+	if (pid) *pid = mypid;
 	fd1 = dup(1);
 	dup2(pfd, 1);
 	close(pfd);
@@ -203,7 +212,7 @@ doit(opts opts, int dash)
 	char	buf[100];
 	char	*spec = opts.tagOnly ? TSPEC : DSPEC;
 	char 	*end;
-	pid_t	pid;
+	pid_t	pid, pgpid;
 	extern	char *pager;
 	char	*pager_av[MAXARGS];
 	int	i, fd1, pfd;
@@ -213,7 +222,7 @@ doit(opts opts, int dash)
 	s = sccs_init(s_cset, SILENT, 0);
 	assert(s && s->tree);
 	if (opts.rev) {
-		if (opts.srch) {
+		if (opts.search.pattern) {
 			fprintf(stderr, "Warning: -s option ignored\n");
 		}
 		s->state |= S_SET;
@@ -240,12 +249,12 @@ doit(opts opts, int dash)
 			}
 			d->flags |= D_SET;
 		}
-	} else if (opts.srch) {
+	} else if (opts.search.pattern) {
 		s->state |= S_SET;
 		for (d = s->table; d; d = d->next) {
 			if (d->type != 'D')  continue;
 			EACH(d->comments) {
-				if (match_one(d->comments[i], opts.srch, 1)) {
+				if (searchMatch(d->comments[i], opts.search)) {
 					d->flags |= D_SET;
 				}
 			}
@@ -257,15 +266,16 @@ doit(opts opts, int dash)
 	/*
 	 * What we want is: this process | pager
 	 */
-	fd1= mkpager();
+	fd1= mkpager(&pgpid);
 	f = fdopen(1, "wb"); /* needed by sccs_prsdelta() below */
 
 	gettemp(tmpfile, "changes");
 	s->xflags |= X_YEAR4;
 	for (d = s->table; d; d = d->next) {
+		if (feof(f)) break; /* for early pager exit */
 		if (SET(s) && !(d->flags & D_SET)) continue;
 		sccs_prsdelta(s, d, 0, spec, f);
-		if (fflush(f) || feof(f)) break; /* for early pager exit */
+		fflush(f);
 		if (opts.verbose) {
 			sprintf(cmd,
 			    "bk cset -Hr%s | bk _sort | bk sccslog -i%d - > %s",
@@ -278,7 +288,8 @@ doit(opts opts, int dash)
 	close(1);
 	waitpid(pid, 0, 0);
 	unlink(tmpfile);
-	if (fd1 > 0) { dup2(fd1, 1); close(fd1); }
+	if (fd1 >= 0) { dup2(fd1, 1); close(fd1); }
+	if (pgpid >=0) waitpid(pgpid, 0, 0);
 	return (0);
 }
 
