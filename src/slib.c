@@ -12704,9 +12704,27 @@ fprintDelta(FILE *out, char *vbuf,
 				/* not a keyword */
 				fc(*q++);
 			}
-		} else if ((*q == '$') &&	/* conditional expansion */
-		    (q[1] == 'i') && (q[2] == 'f') &&
-		    (q[3] == '(') && (q[4] == ':')) {
+		} else if ((*q == '$') && strneq(q, "$unless(:", 9)) {
+			len = extractKeyword(&q[9], end, ":", kwbuf);
+			if (len < 0) { return (printLF); } /* error */
+			leftVal[0] = 0;
+			t = extractOp(&q[10 + len], end, rightVal, &op); 
+			unless (t) return(printLF); /* error */
+			if (t[1] != '{') {
+				/* syntax error */
+				fprintf(stderr,
+				    "must have '{' in conditional string\n");
+				return (printLF);
+			}
+			if (len && (len < KWSIZE) &&
+			    (kw2val(NULL, op ? leftVal: NULL, "",
+			    0, kwbuf, "", 0,  s, d) == strVal) &&
+			    (!op || eval(leftVal, op, rightVal))) {
+			    	goto dont;
+			} else {
+				goto doit;
+			}
+		} else if ((*q == '$') && strneq(q, "$if(:", 5)) {
 			len = extractKeyword(&q[5], end, ":", kwbuf);
 			if (len < 0) { return (printLF); } /* error */
 			leftVal[0] = 0;
@@ -12719,20 +12737,20 @@ fprintDelta(FILE *out, char *vbuf,
 				return (printLF);
 			}
 			if (len && (len < KWSIZE) &&
-			    (kw2val(NULL, op ? leftVal: NULL,
-				    "", 0, kwbuf, "", 0,  s, d) == strVal) &&
+			    (kw2val(NULL, op ? leftVal: NULL, "",
+			    0, kwbuf, "", 0,  s, d) == strVal) &&
 			    (!op || eval(leftVal, op, rightVal))) {
 				const char *cb;	/* conditional spec */
 				int clen;
 
-				cb = b = &t[2];
+doit:				cb = b = &t[2];
 				clen = extractStatement(b, end);
 				if (clen < 0) { return (printLF); } /* error */
 				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
 				q = &b[clen + 1];
 			} else {
-				int bcount  = 1; /* brace count */
-				for (t = &t[2]; bcount > 0 ; t++) {
+				int	bcount; /* brace count */
+dont:				for (bcount = 1, t = &t[2]; bcount > 0 ; t++) {
 					if (*t == '{') {
 						bcount++;
 					} else if (*t == '}') {
@@ -12744,7 +12762,7 @@ fprintDelta(FILE *out, char *vbuf,
 				if (t[0] != '}') {
 					/* syntax error */
 					fprintf(stderr,
-					    "unbalance '{' in dspec string\n");
+					    "unbalanced '{' in dspec string\n");
 					return (printLF);
 				}
 				q = &t[1];

@@ -60,14 +60,19 @@ backDate(char *spec)
 	double	mult = atof(spec);
 	int	units = 1;
 
+	if ((mult == 0) && !isdigit(*spec)) mult = 1;
 	while (*spec && (isdigit(*spec) || (*spec == '.'))) spec++;
 	switch (*spec) {
 	    case 0: case 's': break;
 	    case 'm': units = 60; break;
 	    case 'h': units = 60*60; break;
+	    case 'D':
 	    case 'd': units = 60*60*24; break;
-	    case 'M': units = 60*60*31; break;
-	    case 'Y': units = 60*60*365; break;
+	    case 'w':
+	    case 'W': units = 60*60*24*7; break;
+	    case 'M': units = 60*60*24*31; break;
+	    case 'y':
+	    case 'Y': units = 60*60*24*365; break;
 	    default:
 	    	fprintf(stderr, "bad unit '%c', assuming seconds\n", *spec);
 		break;

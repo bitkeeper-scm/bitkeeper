@@ -1,11 +1,13 @@
 #include "system.h"
 #include "sccs.h"
+#include "range.h"
 WHATSTR("@(#)%K%");
 
-private void	prevs(sccs *d);
+private void	prevs(delta *d);
 private void	branches(delta *d);
 private void	renumber(delta *d);
 private void	p(delta *d);
+delta *ancestor(sccs *s, delta *d);
 private int	flags;
 private sccs	*s;
 private int	sort;	/* append -timet */
@@ -17,39 +19,50 @@ lines_main(int ac, char **av)
 {
 	int	c;
 	char	*name;
+	delta	*e;
+	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "ur;t")) != -1) {
+	while ((c = getopt(ac, av, "ur;R;t")) != -1) {
 		switch (c) {
 		    case 'u':
 			flags |= GET_USER;
 			break;
 		    case 't': sort = 1; 
 			break;
-		    case 'r': rev = optarg; 
+		    case 'r':
+			rev = optarg; 
 			break;
+		    RANGE_OPTS(' ', 'R');
 		    default:
-usage:			fprintf(stderr, "usage lines [-u] file.\n");
+usage:			fprintf(stderr,
+			    "usage lines [-ut] [-r<r> | -R<r>] file.\n");
 			return (1);
 		}
 	}
 
+	unless (av[optind]) goto usage;
 	name = sfileFirst("lines", &av[optind], 0);
 	if (sfileNext() || !name) goto usage;
 
 	if (name && (s = sccs_init(name, INIT_NOCKSUM, 0))) {
 		ser = 0;
 		renumber(s->table);
-		if (rev) {
-			delta	*d = sccs_getrev(s, rev, 0, 0);
-
-			assert(d);
-			printf("%s", d->rev);
-			if (flags & GET_USER) printf("-%s", d->user);
+		if (things) {
+			RANGE("lines", s, 1, 1);
+			unless (s->rstart) goto next;
+			e = ancestor(s, s->rstart);
+			e->merge = 0;
+			prevs(e);
+		} else if (rev) {
+			e = sccs_getrev(s, rev, 0, 0);
+			assert(e);
+			printf("%s", e->rev);
+			if (flags & GET_USER) printf("-%s", e->user);
 			printf("\n");
 		} else {
-			prevs(s);
+			prevs(s->tree);
 		}
-		sccs_free(s);
+next:		sccs_free(s);
 	}
 	sfileDone();
 	return (0);
@@ -79,10 +92,10 @@ renumber(delta *d)
  * deal is that I want the leaf with the oldest done node.
  */
 private void
-prevs(sccs *s)
+prevs(delta *d)
 {
-	p(s->tree);
-	branches(s->tree);
+	p(d);
+	branches(d);
 }
 
 private void
@@ -131,4 +144,45 @@ p(delta *d)
 		prefix = " ";
 	}
 	printf("\n");
+}
+
+/*
+ * Find a common trunk based ancestor for everything from d onward.
+ */
+delta *
+ancestor(sccs *s, delta *d)
+{
+	delta	*a, *e;
+	int	redo = 0;
+
+	/*
+	 * First include all the branches.
+	 */
+	for (a = d; a && a->r[2]; a = a->parent);
+	for (d = s->table; d != a; d = d->next) {
+		unless (d->r[3] == 1) continue;
+		for (e = d->parent; e->r[2]; e = e->parent);
+		if (e->date < a->date) {
+			a = e;
+		}
+	}
+	return (a);
+
+#if 0
+	/*
+	 * Now see if we need to go back because of merge deltas
+	 */
+	for (d = s->table; d != a; d = d->next) {
+		unless (d->merge) continue;
+		e = sfind(s, d->merge);
+//fprintf(stderr, "CHECK %s vs %s\n", e->rev, a->rev);
+		for ( ; e->r[2]; e = e->parent);
+		if (e->date < a->date) {
+			a = e;
+			redo = 1;	/* Do I really need this? */
+		}
+	}
+//fprintf(stderr, "A=%s\n", a->rev);
+	return (redo ? ancestor(s, a) : a);
+#endif
 }
