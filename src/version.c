@@ -8,8 +8,6 @@ extern	unsigned build_timet;
 int
 version_main(int ac, char **av)
 {
-	char buf[100];
-	float	exp;
 	int	c;
 	char	*p;
 
@@ -30,20 +28,46 @@ version_main(int ac, char **av)
 		}
 	}
 	lease_checking(0);
-	if (sccs_cd2root(0, 0) == -1) {
-		getMsg("version", " ", 0, 0, stdout);
-		lease_checking(1);
-		return (0);
+	bkversion(stdout);
+	lease_checking(1);
+	return (0);
+}
+
+void
+bkversion(FILE *f)
+{
+	FILE	*f1;
+	u32	o;
+	float	exp;
+	char	buf[MAXLINE];
+
+	switch (bk_mode()) {
+	    case BK_SINGLE: strcpy(buf, "/Single"); break;
+	    case BK_FREE: strcpy(buf, "/Free"); break;
+	    case BK_PRO: strcpy(buf, "/Pro"); break;
+	    default: buf[0] = 0; break;
 	}
-	getMsg("version", bk_model(buf, sizeof(buf)), 0, 0, stdout);
+	if (buf[0]) {
+		o = bk_options();
+		if (o & BKOPT_WEB) strcat(buf, ",bkweb");
+		if (o & BKOPT_EVAL) strcat(buf, ",eval");
+	}
+
+	getMsg("version", buf, 0, 0, f);
+	if (f1 = popen("uname -s -r", "r")) {
+		if (fnext(buf, f1)) {
+			chomp(buf);
+			fprintf(f, "Running on: %s\n", buf);
+		}
+		fclose(f1);
+	}
 	if (test_release) {
 		exp = ((time_t)build_timet - time(0)) / (24*3600.0) + 14;
 		if (exp > 0) {
-			printf("Expires in: %.1f days (test release).\n", exp);
+			fprintf(f, "Expires in: %.1f days (test release).\n",
+			    exp);
 		} else {
-			printf("Expired (test release).\n");
+			fprintf(f, "Expired (test release).\n");
 		}
 	}
-	lease_checking(1);
-	return (0);
 }
