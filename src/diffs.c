@@ -23,7 +23,7 @@ WHATSTR("@(#)%K%");
  * to behave differently.
  */
 char	*diffs_help = "\n\
-usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
+usage: diffs [-acDMPsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -a		do diffs on all sfiles\n\
     -c		do context diffs\n\
     -d<dates>	diff using date or symbol\n\
@@ -33,6 +33,7 @@ usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -M		prefix lines with revision numbers\n\
     -n		do RCS style diffs\n\
     -p		procedural diffs, like diff -p\n\
+    -P		produce diffs comaptible with GNU Patch command\n\
     -r<r>	diff revision <r>\n\
     -s		do side by side\n\
     -u		do unified diffs\n\
@@ -50,9 +51,9 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	all = 0, flags = DIFF_HEADER|SILENT, c;
+	int	all = 0, flags = DIFF_HEADER|SILENT, c, rc;
 	char	kind;
-	char	*name;
+	char	*name, *lLabel, *rLabel;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -66,7 +67,7 @@ main(int ac, char **av)
 	} else {
 		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
-	while ((c = getopt(ac, av, "acd;DfhMnpr|suUv")) != -1) {
+	while ((c = getopt(ac, av, "acd;DfhMnpP|r|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'h': flags &= ~DIFF_HEADER; break;
@@ -75,9 +76,18 @@ main(int ac, char **av)
 		    case 'f': flags |= GET_MODNAME; break;
 		    case 'M': flags |= GET_REVNUMS; break;
 		    case 'p': kind = DF_PDIFF; break;
+		    case 'P': kind = DF_GNU_PATCH; 
+			      if (lLabel = optarg) {
+					unless (rLabel = strchr(lLabel, ',')) {
+						goto usage; 
+					}
+					*rLabel++ = 0;
+			      } 
+			      break;
 		    case 'n': kind = DF_RCS; break;
 		    case 's': kind = DF_SDIFF; break;
 		    case 'u': kind = DF_UNIFIED; break;
+		    case 'v': flags &= ~SILENT; break;
 		    case 'U': flags |= GET_USER; break;
 		    RANGE_OPTS('d', 'r');
 		    default:
@@ -134,7 +144,14 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
 		 */
-		switch (sccs_diffs(s, r1, r2, ex|flags, kind, stdout)) {
+		if (kind == DF_GNU_PATCH) {
+			rc = new_sccs_diffs(s, r1, r2,
+				ex|flags, kind, stdout, lLabel, rLabel);
+		} else {
+			rc = sccs_diffs(s, r1, r2,
+				ex|flags, kind, stdout, lLabel, rLabel);
+		}
+		switch (rc) { 
 		    case -2:
 		    case -3:
 		    case 0:	break;

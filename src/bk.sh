@@ -1259,15 +1259,19 @@ _export() {
 	Q=-q
 	K=
 	R=
+	T=
+	D=
 	WRITE=NO
 	INCLUDE=
 	EXCLUDE=
-	USAGE1="usage: bk export [-kwv] [-i<pattern>] [-x<pattern>]"
+	USAGE1="usage: bk export [-tDkwv] [-i<pattern>] [-x<pattern>]"
 	USAGE2="	[-r<rev> | -d<date>] [source] dest"
-	while getopts kwvi:x:r:d: OPT
+	while getopts Dktwvi:x:r:d: OPT
 	do	case $OPT in
 		v)	Q=;;
 		k)	K=-k;;
+		t)	T=-T;;
+		D)	D=-D;;
 		w)	WRITE=YES;;
 		r|d)	if [ x$R != x ]
 			then	echo "export: use only one -r or -d option"
@@ -1301,12 +1305,12 @@ _export() {
 	__cd2root
 
 	# XXX: cset -t+ should work.
-	(${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
+	(${BIN}cset $D -t`${BIN}prs $R -hd:I: ChangeSet`) \
 	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
 	| sed 's/:/ /' | while read file rev
 	do
 		PN=`bk prs -r$rev -hd:DPN: $SRC/$file`
-		if ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		if ${BIN}get $T $K $Q -r$rev -G$DST/$PN $SRC/$file
 		then :
 		else	DIR=`dirname $DST/$$PN`
 			mkdir -p $DIR || exit 1

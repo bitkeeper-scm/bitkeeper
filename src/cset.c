@@ -49,8 +49,8 @@ typedef	struct cset {
 	/* numbers */
 	int	verbose;
 	int	range;	
-#define		RANGE_INCLUSIVE	1
-#define		RANGE_ENDPOINTS	2
+#define		RANGE_INCLUSIVE	1	/* -r */
+#define		RANGE_ENDPOINTS	2	/* -R */
 	int	fromStart;	/* if we did -R1.1..1.2 */
 	int	ndeltas;
 	int	nfiles;
@@ -265,6 +265,15 @@ usage:		fprintf(stderr, "%s", cset_help);
 				    av[0]);
 				goto usage;
 			}
+			/*
+			 * This is a cute little hack.  We wanted the range
+			 * code to mark everything after rstart but we don't
+			 * have a way of saying that.  So we tell it to mark
+			 * everything and then turn off the one we don't want.
+			 * As long as noone wants rstart for anything we are
+			 * all set.
+			 */
+			cset->rstart->flags &= ~D_SET;
 		}
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
@@ -931,7 +940,7 @@ doDiff(sccs *sc, int kind)
 	}
 	e = e->parent;
 	if (e == d) return;
-	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout);
+	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout, 0, 0);
 }
 
 /*

@@ -100,6 +100,15 @@ rangeAdd(sccs *sc, char *rev, char *date)
 		return (0);
 	}
 	tmp = sccs_getrev(sc, rev, date, sc->rstart ? ROUNDUP: ROUNDDOWN);
+	if (!tmp && rev && streq(rev , "1.0")) {
+		/*
+		 * If this file does not have 1.0 delta
+		 * map it to 1.1
+		 */
+		tmp = sccs_getrev(
+			sc, "1.1", date, sc->rstart ? ROUNDUP: ROUNDDOWN);
+		sc->state |= S_ONEZERO;
+	}
 	unless (tmp) return (-1);
 	unless (sc->rstart) {
 		sc->rstart = tmp;

@@ -116,6 +116,7 @@
 #define S_CACHEROOT	0x01000000	/* don't free the root entry */
 #define	S_KEY2		0x02000000	/* all keys are version 2 format */
 #define	S_HASH		0x04000000	/* this file is an MDBM file */
+#define	S_ONEZERO	0x08000000	/* map 1.0 to 1.1 */
 
 #define	KEY_FORMAT2	"BK key2"	/* sym in csets created w/ long keys */
 
@@ -128,6 +129,7 @@
 #define	DF_UNIFIED	'u'
 #define	DF_PDIFF	'p'
 #define	DF_RCS		'n'
+#define	DF_GNU_PATCH	'g'
 
 /*
  * Date handling.
@@ -495,7 +497,10 @@ int	sccs_admin(sccs *sc, delta *d, u32 flgs, char *encoding, char *compress,
 	    admin *f, admin *l, admin *u, admin *s, char *mode, char *txt);
 int	sccs_cat(sccs *s, u32 flags, char *printOut);
 int	sccs_delta(sccs *s, u32 flags, delta *d, MMAP *init, MMAP *diffs);
-int	sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *);
+int	sccs_diffs(sccs *s, char *r1, char *r2,
+		u32 flags, char kind, FILE *, char *not_used1, char *not_used2);
+int	new_sccs_diffs(sccs *s, char *r1, char *r2,
+		u32 flags, char kind, FILE *, char *lLabel, char *rLabel);
 int	sccs_encoding(sccs *s, char *enc, char *comp);
 int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
