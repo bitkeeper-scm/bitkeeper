@@ -281,7 +281,7 @@ testfast: testfast.perl substvars
 	mv -f testfast.T testfast
 
 bk: bk.sh port/platform.sh substvars prs
-	./prs -hr+ -d'$$if(:SYMBOL:){(:SYMBOL:) }:UTC:' ../ChangeSet >bk.ver
+	./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet >bk.ver
 	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" >bk.T
 	./substvars port/platform.sh > platform.sh.T
 	cat platform.sh.T bk.T > bk.T2
