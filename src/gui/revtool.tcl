@@ -207,6 +207,25 @@ proc diffParent {} \
 	return
 }
 
+proc highlightTextRev {rev file} \
+{
+	global w dev_null
+
+	set tline 1.0
+	if {[catch {exec bk prs -hr$rev -d:I: $file 2>$dev_null} out]} {
+		displayMessage "Error: ($file) rev ($rev) is not valid"
+		return
+	}
+	set found [$w(aptext) search -regexp "$rev," 1.0]
+	# Move the found line into view
+	if {$found != ""} {
+		set l [lindex [split $found "."] 0]
+		set tline "$l.0"
+		$w(aptext) see $tline
+	}
+	$w(aptext) tag add "select" "$tline" "$tline lineend + 1 char"
+}
+
 # 
 # Center the selected bitkeeper tag in the middle of the canvas
 #
@@ -222,52 +241,31 @@ proc diffParent {} \
 #
 proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 {
-	global curLine cdim gc file dev_null dspec rev2rev_name
+	global curLine cdim gc file dev_null dspec rev2rev_name ttype
 	global w rev1 srev errorCode comments_mapped firstnode
 
 	if {[info exists fname]} {unset fname}
+	#displayMessage "type=($ttype)"
 
-	# Keep track of whether we are being called from within the 
-	# file annotation text widget
-	set annotated 0
-	set prs 0
+	# Use annotated and prs to keep track of whether we are being called from within the 
+	# file annotation text widget or prs
 
 	$win tag remove "select" 1.0 end
 	set curLine [$win index "@$x,$y linestart"]
+	set line [$win get $curLine "$curLine lineend"]
 
-	if {$srev == ""} {
-		set line [$win get $curLine "$curLine lineend"]
-	}
-
-	# highlight the specified revision in the prs output if started
-	# with the -a option 
-	# XXX: The top 'if' might not be a used codepath
-	if {$srev != ""} {
-		set line ""
-		set rev $srev
-		if {[catch {exec bk prs -hr$rev -d:I: $file 2>$dev_null} out]} {
-			puts "Error: ($file) rev ($rev) is not valid"
-			return
-		}
-		set found [$w(aptext) search -regexp "$rev," 1.0]
-		# Move the found line into view
-		if {$found != ""} {
-			set l [lindex [split $found "."] 0]
-			set curLine "$l.0"
-			$w(aptext) see $curLine
-		}
-		$win see $curLine
 	# Search for annotated file output or annotated diff output
 	# display comment window if we are in annotated file output
-	} elseif {[regexp \
-	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match fname rev]} {
-		set annotated 1
+	switch -regexp -- $ttype {
+	    "^annotated$" {
+	    	if {![regexp {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match fname rev]} {
+			return
+		}
 		# set global rev1 so that r2c and csettool know which rev
 		# to view when a line is selected. Line has precedence over
 		# a selected node
 		set rev1 $rev
 		$w(aptext) configure -height 15
-		#.p.b configure -background green
 		$w(ctext) configure -height $gc(rev.commentHeight) 
 		$w(aptext) configure -height 50
 		if {[winfo ismapped $w(ctext)]} {
@@ -275,10 +273,8 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		} else {
 			set comments_mapped 0
 		}
-		pack configure $w(cframe) -fill x -expand true \
-		    -anchor n -before $w(apframe)
-		pack configure $w(apframe) -fill both -expand true \
-		    -anchor n
+		pack configure $w(cframe) -fill x -expand true -anchor n -before $w(apframe)
+		pack configure $w(apframe) -fill both -expand true -anchor n
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
 		filltext $w(ctext) $prs 1
 		set wht [winfo height $w(cframe)]
@@ -288,11 +284,12 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		if {($curLine > $adjust) && ($comments_mapped == 0)} {
 			$w(aptext) yview scroll $adjust units
 		}
-	} else {
-		# Fall through and assume we are in prs output and walk 
-		# backwards up the screen until we find a line with a 
-		# revision number
-		set prs 1
+	    }
+	    "^.*_prs$" {
+		# Fall through and assume we are in prs output and walk backwards up 
+		# the screen until we find a line with a revision number (if in cset prs) 
+		# or filename@revision if in specific file prs output
+		catch {unset rev}
 		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match fname rev
 		regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line match rev
 		while {![info exists rev]} {
@@ -304,13 +301,14 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 				return
 			}
 			set line [$win get $curLine "$curLine lineend"]
-			#puts "line=($line)"
-			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} \
-			       $line match fname rev
-			regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} \
-				$line match rev
+			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match fname rev
+			regexp {^\ \ ([0-9]+\.[0-9.]+)\ .*} $line match rev
 		}
 		$win see $curLine
+	    }
+	    default {
+		    puts stderr "Error -- no such type as ($ttype)"
+	    }
 	}
 	$win tag add "select" "$curLine" "$curLine lineend + 1 char"
 
@@ -322,11 +320,10 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 	# filename.c
 	#   1.8 10/09/99 .....
 	#
-	if {![info exists fname] && [info exists rev] && ($prs == 1)} {
+	if {$ttype == "cset_prs"} {
 		set prevLine [expr $curLine - 1.0]
 		set fname [$win get $prevLine "$prevLine lineend"]
-		if {($bindtype == "B1") && ($fname != "") && 
-		    ($fname != "ChangeSet")} {
+		if {($bindtype == "B1") && ($fname != "") && ($fname != "ChangeSet")} {
 			catch {exec bk revtool -l$rev $fname &} err
 		}
 		return
@@ -355,12 +352,25 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		set hrev [lineOpts $rev]
 		set rc [highlight $hrev "old"]
 		set revname $rev2rev_name($rev)
-		
+		if {$revname != ""} {
+			.menus.cset configure -state normal
+			centerRev $revname
+			set id [$w(graph) gettag $revname]
+			if {$id == ""} { return }
+			if {$bindtype == "B1"} {
+				getLeftRev $id
+			} elseif {$bindtype == "B3"} {
+				diff2 0 $id
+			}
+			if {($bindtype == "D1") && ($ttype != "annotated")} {
+				get "id" $id
+			}
+		} 
 		# XXX: This can be done cleaner -- coalesce this
 		# one and the bottom if into one??
-		if {($annotated == 0) && ($bindtype == "D1")} {
+		if {($ttype != "annotated") && ($bindtype == "D1")} {
 			get "rev" $rev
-		} elseif {($annotated == 1) && ($bindtype == "D1")} {
+		} elseif {($ttype == "annotated") && ($bindtype == "D1")} {
 			set rev1 $rev
 			if {"$file" == "ChangeSet"} {
 				csettool
@@ -380,14 +390,14 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		} elseif {$bindtype == "B3"} {
 			diff2 0 $id
 		}
-		if {($bindtype == "D1") && ($annotated == 0)} {
+		if {($bindtype == "D1") && ($ttype != "annotated")} {
 			get "id" $id
 		}
 	} else {
 		#puts "Error: tag not found ($line)"
 		return
 	}
-	if {($bindtype == "D1") && ($annotated == 1)} {
+	if {($bindtype == "D1") && ($ttype == "annotated")} {
 		set rev1 $rev
 		if {"$file" == "ChangeSet"} {
 	    		csettool
@@ -925,7 +935,7 @@ proc filltext {win f clear {msg {}}} \
 #
 proc prs {} \
 {
-	global file rev1 dspec dev_null search w diffpair
+	global file rev1 dspec dev_null search w diffpair ttype
 
 	getLeftRev
 	if {"$rev1" != ""} {
@@ -933,6 +943,7 @@ proc prs {} \
 		set diffpair(right) ""
 		busy 1
 		set prs [open "| bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
+		set ttype "file_prs"
 		filltext $w(aptext) $prs 1
 	} else {
 		set search(prompt) "Click on a revision"
@@ -950,7 +961,7 @@ proc prs {} \
 #
 proc history {{opt {}}} \
 {
-	global file dspec dev_null w comments_mapped
+	global file dspec dev_null w comments_mapped ttype
 
 	catch {pack forget $w(cframe); set comments_mapped 0}
 	busy 1
@@ -958,9 +969,11 @@ proc history {{opt {}}} \
 		set tags \
 "-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
+		set ttype "file_prs"
 		filltext $w(aptext) $f 1 "There are no tags for $file"
 	} else {
 		set f [open "| bk prs -h {$dspec} $opt \"$file\" 2>$dev_null"]
+		set ttype "file_prs"
 		filltext $w(aptext) $f 1 "There is no history"
 	}
 }
@@ -970,11 +983,12 @@ proc history {{opt {}}} \
 #
 proc sfile {} \
 {
-	global file w
+	global file w ttype
 
 	busy 1
 	set sfile [exec bk sfiles $file]
 	set f [open "$sfile" "r"]
+	set ttype "sccs"
 	filltext $w(aptext) $f 1
 }
 
@@ -984,7 +998,7 @@ proc sfile {} \
 #
 proc get { type {val {}}} \
 {
-	global file dev_null rev1 rev2 Opts w srev
+	global file dev_null rev1 rev2 Opts w srev ttype
 
 	# XXX: Oy, this is yucky. Setting srev to "" since we just clicked
 	# on a node and we no longer looking at a specific rev (used to 
@@ -1005,6 +1019,7 @@ proc get { type {val {}}} \
 	if {$base != "ChangeSet"} {
 		set get \
 		    [open "| bk get $Opts(get) -Pr$rev1 \"$file\" 2>$dev_null"]
+		set ttype "annotated"
 		filltext $w(aptext) $get 1
 		return
 	}
@@ -1054,7 +1069,7 @@ proc diff2 {difftool {id {}} } \
 proc displayDiff {rev1 rev2} \
 {
 
-	global file w tmp_dir dev_null Opts
+	global file w tmp_dir dev_null Opts ttype
 
 	set r1 [file join $tmp_dir $rev1-[pid]]
 	catch { exec bk get $Opts(get) -kPr$rev1 $file >$r1}
@@ -1072,6 +1087,7 @@ proc displayDiff {rev1 rev2} \
 	searchreset
 	file delete -force $r1 $r2
 	busy 0
+	set ttype "annotated"
 }
 
 # hrev : revision to highlight
@@ -1132,7 +1148,7 @@ proc currentMenu {} \
 #
 proc csetdiff2 {{rev {}}} \
 {
-	global file rev1 rev2 Opts dev_null w
+	global file rev1 rev2 Opts dev_null w ttype
 
 	busy 1
 	cd2root
@@ -1143,6 +1159,7 @@ proc csetdiff2 {{rev {}}} \
 	set revs [open "| bk -R prs -hbMr$rev1..$rev2 {-d:I:\n} ChangeSet"]
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
+		set ttype "cset_prs"
 		filltext $w(aptext) $c 0
 		set log [open "| bk cset -Hr$r | bk _sort | bk sccslog -" r]
 		filltext $w(aptext) $log 0
@@ -1367,8 +1384,9 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	search Opts gc stacked d w dspec wish yspace paned 
-	global  tcl_platform fname app
+	global  tcl_platform fname app ttype
 
+	set ttype ""
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
 	set Opts(diff) "-u"
@@ -1986,11 +2004,12 @@ proc startup {} \
 	} elseif {$rev2 != ""} { 
 		set diffpair(right) $rev2 
 	}
-	if {$srev != ""} {  ;# If -a option
+	if {$srev != ""} {  ;# If -l option without the -r -G
 		revtool $fname "-$srev"
 		set rev1 [lineOpts $srev]
 		highlight $rev1 "old"
 		set file [exec bk sfiles -g $fname 2>$dev_null]
+		highlightTextRev $rev1 $fname
 		.menus.cset configure -state normal 
 	} elseif {$rev1 == ""} { ;# if no arguments
 		revtool $fname "-$gc(rev.showHistory)"
