@@ -49,7 +49,7 @@ int
 cmd_cd(int ac, char **av)
 {
 	char *p = av[1];
-	char *rootkey, buf[MAXPATH];
+	char *rootkey, cleanedPath[MAXPATH], buf[MAXPATH];
 	extern int errno;
 
 	unless (p) {
@@ -88,6 +88,20 @@ cmd_cd(int ac, char **av)
 			return (1);
 		}
 	} else {
+		if (Opts.safe_cd) {
+			if (IsFullPath(p)) {
+				out("ERROR-cd to absolute path disabled\n");
+				return (1);
+			}
+
+			cleanPath(p, cleanedPath);
+			p = cleanedPath;
+			if (strneq("../", p, 3) || streq("..", p)) {
+				out("ERROR-cd to parent directory disabled\n");
+				return (1);
+			}
+		}
+
 		if (chdir(p)) {
 			out("ERROR-cannot cd to ");
 			out(p);

@@ -339,7 +339,7 @@ int
 bkd_connect(remote *r, int compress, int verbose)
 {
 	assert((r->rfd == -1) && (r->wfd == -1));
-	bkd(compress, r);
+	r->pid = bkd(compress, r);
 	if (r->trace) {
 		fprintf(stderr,
 		    "bkd_connect: r->rfd = %d, r->wfd = %d\n", r->rfd, r->wfd);

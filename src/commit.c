@@ -56,6 +56,9 @@ commit_main(int ac, char **av)
 				break;
 		    case 'Y':	doit = 1; getcomment = 0;	/* doc 2.0 */
 				if (fileCopy(optarg, commentFile)) {
+					fprintf(stderr,
+					    "commit: cannot copy to comment "
+					    "file %s\n", commentFile);
 					unlink(commentFile);
 					return (1);
 				}
