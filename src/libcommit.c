@@ -66,8 +66,8 @@ package_name()
 		mdbm_close(m);
 		return ("");
 	}
-	mdbm_close(m);
 	name = (strdup)(n);	/* hide it from purify */
+	mdbm_close(m);
 	return (name);
 }
 
