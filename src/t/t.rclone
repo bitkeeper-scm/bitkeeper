@@ -101,3 +101,46 @@ bk _rclone $Q $HERE/project file:$SLASH$HERE/copy5 || { echo failed; exit 1; }
 cd $HERE/copy5
 if [ ! -f src/bar.c ]; then echo failed; exit 1; fi
 echo OK
+#BUG: 2003-03-04-002
+echo $N Clone with bad rev means no litter ..........................$NL
+cd $HERE
+bk clone -rfoo project clone > OUT 2> ERR && {
+	echo Fail
+	echo No foo -- clone should fail
+	exit 1
+}
+test -d clone && {
+	echo Fail
+	echo dir created
+	exit 1
+}
+test -d RESYNC && {
+	echo Fail
+	echo bogus RESYNC created
+	# exit 1
+}
+echo OK
+
+cd $HERE/project
+bk lock -U
+
+# This is not portable, as it depends on OS output for making a directory
+# in a read-only directory.  But has been run. Output fixed for 3.0.3
+# BugID: 2003-02-25-001
+# echo $N Clone with links and bad rev does not create dir ............$NL
+# mkdir readonly
+# chmod -w readonly
+# cd readonly
+# bk clone $HERE/project newrepo > ../OUT 2> ../ERR && {
+#	echo Fail
+#	echo Created repo in read-only directory
+# 	exit 1
+# }
+# cd $HERE
+# grep -q 'ermission denied' ERR || {
+# 	echo Fail
+# 	echo Unexpected message. Wanted 'Permission denied'. Got:
+# 	cat ERR
+# 	exit 1
+# }
+# echo OK

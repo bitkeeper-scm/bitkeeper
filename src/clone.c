@@ -507,11 +507,7 @@ rmEmptyDirs(int quiet)
 private int
 lclone(opts opts, remote *r, char *to)
 {
-	char	here[MAXPATH];
-	char	from[MAXPATH];
-	char	dest[MAXPATH];
-	char	buf[MAXPATH];
-	char	skip[MAXPATH];
+	sccs	*s;
 	FILE	*f;
 	char	*p;
 	char	*fromid;
@@ -519,6 +515,12 @@ lclone(opts opts, remote *r, char *to)
 	struct	stat sb;
 	char	**files;
 	int	i;
+	int	hasrev;
+	char	here[MAXPATH];
+	char	from[MAXPATH];
+	char	dest[MAXPATH];
+	char	buf[MAXPATH];
+	char	skip[MAXPATH];
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -543,9 +545,23 @@ out1:		remote_free(r);
 		goto out1;
 	}
 
+	/* Make sure the rev exists before we get started */
+	if (opts.rev) {
+		if (s = sccs_csetInit(SILENT, 0)) {
+			hasrev = (sccs_getrev(s, opts.rev, 0, 0) != 0);
+			sccs_free(s);
+			unless (hasrev) {
+				fprintf(stderr, "ERROR: rev %s doesn't exist\n",
+				    opts.rev);
+				goto out2;
+			}
+		}
+	}
+
+
 	/* give them a change to disallow it */
 	if (out_trigger(0, opts.rev, "pre")) {
-		repository_rdunlock(0);
+out2:		repository_rdunlock(0);
 		goto out1;
 	}
 

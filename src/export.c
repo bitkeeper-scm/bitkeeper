@@ -130,7 +130,7 @@ usage:			system("bk help -s export");
 
 	sprintf(file_rev, "%s/bk_file_rev%u", TMP_PATH, getpid());
 	if (rev) {
-		sprintf(buf, "bk rset -hl%s > %s", rev, file_rev);
+		sprintf(buf, "bk rset -hl'%s' > %s", rev, file_rev);
 	} else {
 		sprintf(buf, "bk rset -hl+ > %s", file_rev);
 	}
@@ -214,7 +214,7 @@ export_patch(char *diff_style,
 
 	unless (diff_style) diff_style = "u";
 	sprintf(file_rev, "%s/bk_file_rev%u", TMP_PATH, getpid());
-	sprintf(buf, "bk rset -hr%s > %s", rev ? rev : "+", file_rev);
+	sprintf(buf, "bk rset -hr'%s' > %s", rev ? rev : "+", file_rev);
 	status = system(buf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		unlink(file_rev);
