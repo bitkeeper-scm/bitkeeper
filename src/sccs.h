@@ -66,6 +66,7 @@
 #define	ADMIN_TIME	0x40000000	/* warn about time going backwards */
 #define	ADMIN_SHUTUP	0x80000000	/* don't be noisy about bad revs */
 #define	ADMIN_BK	0x01000000	/* check BitKeeper invariants */
+#define	ADMIN_GONE	0x02000000	/* check integrity w/o GONE deltas */
 
 #define	PRS_META	0x10000000	/* show metadata */
 #define	PRS_SYMBOLIC	0x20000000	/* show revs as beta1, etc. Not done */
@@ -511,7 +512,8 @@ void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s,
 		delta *d, MMAP *f, int patch, int *errorp, int *linesp);
 delta	*sccs_ino(sccs *);
-int	sccs_rmdel(sccs *s, delta *d, int destroy, u32 flags);
+int	sccs_rmdel(sccs *s, delta *d, u32 flags);
+int	sccs_stripdel(sccs *s, char *who);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 void	sccs_pdelta(sccs *s, delta *d, FILE *out);
 char	*sccs_root(sccs *s);
@@ -575,7 +577,7 @@ void	sccs_mkroot(char *root);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, MMAP *initFile);
-int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
+int	sccs_resolveFile(sccs *s, int, char *lpath, char *gpath, char *rpath);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);

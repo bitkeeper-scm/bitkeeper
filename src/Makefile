@@ -5,7 +5,7 @@ BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  cset g2sccs range undos chksum rechksum \
 	  sccsmv sccsrm sccscat key2rev check fdiff adler32 gethost \
-	  sfio
+	  sfio stripdel
 PRIVATE	= nextsecond mtime zone install.sh
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool vitool fm fm3 bithelp mkindex
@@ -43,7 +43,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/infutil.o zlib/inffast.o
 BINOBJ  = admin.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  delta.o lines.o renumber.o sccsrm.o takepatch.o clean.o \
-	  diffs.o rmdel.o sccssh.o what.o g2sccs.o \
+	  diffs.o rmdel.o stripdel.o sccssh.o what.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o gethost.o rcs.o sccslog.o sinfo.o \
 	  fdiff.o check.o adler32.o undos.o chksum.o nextsecond.o mtime.o \
@@ -145,6 +145,7 @@ clean-src: FORCE
 	bk clean mdbm
 	bk clean zlib
 	bk clean t
+	/bin/rm -f tags
 
 # This would be called "clean" but that's a command name.
 cclean sccsclean nice: clean-obj clean-src
@@ -162,11 +163,20 @@ get-e: FORCE
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
 
-tags: srcs
-	ctags -nm $(SRCS) $(HDRS)
+tags: FORCE
+	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
+	do	if [ ! -f $$i ]; then get -s $$i; fi; \
+	done
+	@ctags -nm $(SRCS) $(HDRS)
+	@echo ctags completed
+
 
 TAGS: srcs
-	etags $(SRCS) $(HDRS)
+	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
+	do	if [ ! -f $$i ]; then get -s $$i; fi; \
+	done
+	@etags $(SRCS) $(HDRS)
+	@echo etags completed
 
 test tests: $(ALL) t/doit
 	-get -q t/SCCS/s.t.* t/setup t/cleanup
@@ -206,6 +216,8 @@ cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
 rmdel: rmdel.o $(LIBS)
 	$(CC) $(CFLAGS) rmdel.o $(LINK) -o rmdel
+stripdel: stripdel.o $(LIBS)
+	$(CC) $(CFLAGS) stripdel.o $(LINK) -o stripdel
 gethost: gethost.o $(LIBS)
 	$(CC) $(CFLAGS) gethost.o $(LINK) -o gethost
 takepatch: takepatch.o $(LIBS)
@@ -453,6 +465,7 @@ rcs.o:		rcs.c $(sccsdeps)
 rechksum.o:	rechksum.c $(sccsdeps)
 renumber.o:	renumber.c $(sccsdeps)
 rmdel.o:	rmdel.c $(sccsdeps) range.h
+stripdel.o:	stripdel.c $(sccsdeps) range.h
 sccs_mv.o:	sccs_mv.c $(sccsdeps) comments.c
 sccscat.o:	sccscat.c $(sccsdeps) range.h
 sccslog.o:	sccslog.c $(sccsdeps) range.h
