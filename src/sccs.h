@@ -807,7 +807,6 @@ int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
 int	sccs_keyunlink(char *key, project *proj, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
-void	sccs_mergeset(sccs *s, char *who, delta *d, delta *m);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
@@ -1110,6 +1109,9 @@ int	runable(char *file);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
+int	sccs_needSwap(delta *p, delta *m);
+void	sccs_reDup(sccs *s);
+void	sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 int	chk_host(void);
 int	chk_user(void);
 
