@@ -22,7 +22,7 @@ private int	sfio(opts opts, int gz, remote *r);
 private void	usage(void);
 private int	initProject(char *root);
 private void	usage(void);
-private	void	lclone(opts, remote *, char *to);
+private	int	lclone(opts, remote *, char *to);
 private int	linkdir(char *from, char *to, char *dir);
 private int	relink(char *a, char *b);
 private int	out_trigger(char *status, char *rev, char *when);
@@ -72,10 +72,7 @@ clone_main(int ac, char **av)
 	 */
 	r = remote_parse(av[optind], 1);
 	unless (r) usage();
-	if (link) {
-		lclone(opts, r, av[optind+1]);
-		/* NOT REACHED */
-	}
+	if (link) return (lclone(opts, r, av[optind+1]));
 	if (av[optind + 1]) {
 		l = remote_parse(av[optind + 1], 1);
 		unless (l) {
@@ -428,7 +425,7 @@ rmEmptyDirs(int quiet)
 /*
  * Hard link from the source to the destination.
  */
-private void
+private int
 lclone(opts opts, remote *r, char *to)
 {
 	char	here[MAXPATH];
@@ -445,7 +442,7 @@ lclone(opts opts, remote *r, char *to)
 		fprintf(stderr, "clone: invalid parent %s\n", p);
 		free(p);
 out1:		remote_free(r);
-		exit(1);
+		return (1);
 	}
 	getRealCwd(here, MAXPATH);
 	unless (chdir(r->path) == 0) {
@@ -465,8 +462,7 @@ out1:		remote_free(r);
 	/* give them a change to disallow it */
 	if (out_trigger(0, opts.rev, "pre")) {
 		repository_rdunlock(0);
-		remote_free(r);
-		exit(1);
+		goto out1;
 	}
 
 	chdir(here);
@@ -477,7 +473,7 @@ out:		chdir(from);
 		repository_rdunlock(0);
 		remote_free(r);
 		out_trigger("BK_STATUS=FAILED", opts.rev, "post");
-		exit(1);
+		return (1);
 	}
 	if (mkdirp(to)) {
 		perror(to);
@@ -518,7 +514,9 @@ out:		chdir(from);
 	chdir(dest);
 	unlink("BitKeeper/etc/SCCS/x.dfile");
 	rmdir("RESYNC");		/* undo wants it gone */
-	system("bk sfiles | bk _clonedo -q -");
+	p = aprintf("bk sfiles | bk _clonedo %s -", opts.quiet ? "-q" : "");
+	system(p);
+	free(p);
 	if (clone2(opts, r)) {
 		mkdir("RESYNC", 0777);
 		in_trigger("BK_STATUS=FAILED", opts.rev, from);
@@ -527,7 +525,7 @@ out:		chdir(from);
 	in_trigger("BK_STATUS=OK", opts.rev, from);
 	chdir(from);
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
-	exit(0);
+	return (0);
 }
 
 private int
@@ -627,20 +625,20 @@ relink_main(int ac, char **av)
 
 	unless ((ac == 3) && isdir(av[1]) && isdir(av[2])) {
 		system("bk help -s relink");
-		exit(1);
+		return (1);
 	}
 	getRealCwd(here, MAXPATH);
 	unless (chdir(av[1]) == 0) {
 		fprintf(stderr, "relink: cannot chdir to %s\n", av[1]);
-		exit(1);
+		return (1);
 	}
 	unless (exists(BKROOT)) {
 		fprintf(stderr, "relink: %s is not a package root\n", av[1]);
-		exit(1);
+		return (1);
 	}
 	if (repository_rdlock()) {
 		fprintf(stderr, "relink: unable to readlock %s\n", av[1]);
-		exit(1);
+		return (1);
 	}
 	getRealCwd(from, MAXPATH);
 	f = popen("bk sfiles", "r");
@@ -650,7 +648,7 @@ relink_main(int ac, char **av)
 out:		chdir(from);
 		repository_rdunlock(0);
 		pclose(f);
-		exit(1);
+		return (1);
 	}
 	unless (exists(BKROOT)) {
 		fprintf(stderr, "relink: %s is not a package root\n", av[2]);
@@ -678,10 +676,11 @@ out:		chdir(from);
 	repository_wrunlock(0);
 	chdir(from);
 	repository_rdunlock(0);
-	if (quiet) exit(0);
-	fprintf(stderr,
-	    "Relinked %u/%u files, %u already linked.\n", n, total, linked);
-	exit(0);
+	unless (quiet) {
+		fprintf(stderr,
+"Relinked %u/%u files, %u already linked.\n", n, total, linked);
+	}
+	return (0);
 }
 
 /*
