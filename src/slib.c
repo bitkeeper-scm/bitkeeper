@@ -6464,6 +6464,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		    "%s not checked in, use -i flag.\n", s->gfile));
 		unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
+		s->state |= S_WARNED;
 		return (-1);
 	}
 	if (!diffs && isRegularFile(s->mode)) {
