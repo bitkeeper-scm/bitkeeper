@@ -6,6 +6,7 @@
 char *editor = 0, *pager = 0, *bin = 0; 
 char *bk_dir = "BitKeeper/";
 int resync = 0, quiet = 0;
+char *getlog(char *user);
 
 void
 do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
@@ -139,15 +140,7 @@ logChangeSet(char *rev)
 	FILE *f, *f1;
 	int dotCount = 0, n;
 
-	sprintf(getlog_out, "%s/bk_getlog%d", TMP_PATH, getpid());
-	sprintf(buf, "%sgetlog %s > %s", bin, resync ? "-R" : "", getlog_out);
-	system(buf);
-	f1 = fopen(getlog_out, "rt");
-	fgets(buf, sizeof(buf), f1);
-	chop(buf);
-	fclose(f1);
-	unlink(getlog_out);
-	unless (streq("commit_and_maillog", buf))  return;
+	unless (streq("commit_and_maillog", getlog(NULL)))  return;
 
 	// XXX TODO  Determine if this is the first rev where logging is active.
 	// if so, send all chnage log from 1.0

@@ -134,15 +134,9 @@ checkLog()
 	char buf[MAXLINE], buf2[MAXLINE];
 	char getlog_out[MAXPATH];
 	FILE *f;
+	char *getlog(char *user);
 
-	sprintf(getlog_out, "%s/bk_getlog%d", TMP_PATH, getpid());
-	sprintf(buf, "%sgetlog %s > %s", bin, resync ? "-R" : "", getlog_out);
-	system(buf);
-	f = fopen(getlog_out, "rt");
-	fgets(buf, sizeof(buf), f);
-	chop(buf);
-	fclose(f);
-	unlink(getlog_out);
+	strcpy(buf, getlog(NULL));
 	if (strneq("ask_open_logging:", buf, 17)) {
 		gethelp("open_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
