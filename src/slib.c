@@ -844,16 +844,6 @@ sccs_fixDates(sccs *s)
 	fixDates(0, s->table);
 }
 
-void
-sccs_shortKey(sccs *s, delta *d, char *buf)
-{
-	sccs_sdelta(s, d, buf);
-	buf = strchr(buf, '|');
-	buf = strchr(buf+1, '|');
-	buf = strchr(buf+1, '|');
-	*buf = 0;
-}
-
 private void
 uniqRoot(sccs *s)
 {
