@@ -1832,10 +1832,13 @@ findrev(sccs *s, char *rev)
 	    "findrev(%s in %s def=%s)\n",
 	    notnull(rev), s->sfile, defbranch(s)));
 	if (!s->tree) return (0);
-	if (!rev || !*rev) rev = defbranch(s);
-	if (streq(rev, "_BK_TOP")) {
-		for (e = s->table; e && TAG(e); e = e->next);
-		return (e);
+	if (!rev || !*rev) {
+		if (LOGS_ONLY(s)) {
+			/* XXX - works only for 1 LOD trees */
+			for (e = s->table; e && TAG(e); e = e->next);
+			return (e);
+		}
+		rev = defbranch(s);
 	}
 
 	if (name2rev(s, &rev)) return (0);
@@ -2045,11 +2048,6 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 * If it's a revision, go find it and use it.
 	 */
 	if (rev) {
-		if (streq("_BK_TOP", s)) {
-			for (d = sc->table; d && TAG(d); d = d->next);
-			assert(d && !TAG(d));
-			return (d);
-		}
 		unless (d = findrev(sc, s)) return (0);
 		return (d);
 	}

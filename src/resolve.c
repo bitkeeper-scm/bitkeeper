@@ -150,13 +150,15 @@ setRepoType(opts *opts)
 private void
 removePathConflict(opts *opts, resolve *rs)
 {
-	char	*t, path[MAXPATH];
+	char	*t, path[MAXPATH], encpath[MAXPATH];
 	int	n = 0;
 
 	sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
-	while (exists(path)) {
+	sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
+	while (exists(path) || exists(encpath)) {
 		sprintf(path,
 		    "BitKeeper/conflicts/SCCS/%s~%d", basenm(rs->dname), n++);
+		sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
 	}
 	mkdirf(path);
 	sccs_close(rs->s); /* for win32 */
