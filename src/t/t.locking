@@ -190,7 +190,7 @@ bk resolve -t $Q
 echo OK
 echo $N Make sure pull works with existing read lock in source \#2 ...$NL
 cd $HERE/clone2
-bk pull -t -R  2>XXX
+bk pull -t -R  > XXX 2>&1
 if [ ! -d RESYNC ]; then echo pull failed; cat XXX; exit 1; fi
 bk resolve -t $Q
 echo OK

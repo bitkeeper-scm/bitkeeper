@@ -220,6 +220,7 @@ cmd_push_part2(int ac, char **av)
 	 * save the patch and spawn inself in the background.  to
 	 * apply and resolve the changes.
 	 */
+	putenv("BK_REMOTE=YES");
 	if (metaOnly) takepatch[3] = "-aL";
 	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
 	dup2(fd2, 2); close(fd2);
@@ -256,7 +257,6 @@ cmd_push_part2(int ac, char **av)
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
-	putenv("BK_REMOTE=YES");
 	if (c = trigger("remote resolve",  "pre")) {
 		if (c == 2) {
 			system("bk abort -fp");

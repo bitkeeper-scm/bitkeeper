@@ -51,6 +51,32 @@ cat(char *file)
 }
 #endif
 
+char *
+loadfile(char *file, int *size)
+{
+	FILE	*f;
+	struct	stat	statbuf;
+	char	*ret;
+	int	len;
+
+	f = fopen(file, "rb");
+	unless (f) return (0);
+
+	if (fstat(fileno(f), &statbuf)) {
+ err:		fclose(f);
+		return (0);
+	}
+	len = statbuf.st_size;
+	ret = malloc(len+1);
+	unless (ret) goto err;
+	fread(ret, 1, len, f);
+	fclose(f);
+	ret[len] = 0;
+
+	if (size) *size = len;
+	return (ret);
+}
+
 /*
  * Write the data to either the gzip channel or to 1.
  */
@@ -603,6 +629,27 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	return (1); /* failed */
 }
 
+/*
+ * Return the repo_id if there is one.
+ * Assumes we are at the root of the repository.
+ * Caller frees.
+ */
+char *
+repo_id(void)
+{
+	char	*root = sccs_root(0);
+	char	*file;
+	char	*repoid;
+
+	unless (root) return (0);
+	file = aprintf("%s/" REPO_ID, root);
+	free(root);
+	repoid = loadfile(file, 0);
+	free(file);
+	unless (repoid) return (0);
+	chomp(repoid);
+	return (repoid);
+}
 
 char *
 rootkey(char *buf)
@@ -675,7 +722,7 @@ void
 sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 {
 	int	i;
-	char	*root, *user, *host;
+	char	*root, *user, *host, *repo;
 
 	if (r->host)
 		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
@@ -689,6 +736,10 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
+	if (repo = repo_id()) {
+		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
+		free(repo);
+	}
 
 	/*
 	 * We have no Package root when we clone, so skip root related variables
@@ -730,6 +781,9 @@ getServerInfoBlock(remote *r)
 			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
 			safe_putenv("BKD_%s", buf);
+			if (strneq(buf, "REPO_ID=", 8)) {
+				cmdlog_addnote("rmts", buf+8);
+			}
 		}
 	}
 	return (1); /* protocol error, never saw @END@ */
@@ -739,6 +793,7 @@ void
 sendServerInfoBlock(int is_rclone)
 {
 	char	buf[MAXPATH];
+	char	*repoid;
 
 	out("@SERVER INFO@\n");
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
@@ -766,6 +821,10 @@ sendServerInfoBlock(int is_rclone)
 	out(sccs_getuser());
 	out("\nHOST=");
 	out(sccs_gethost());
+	if (repoid = repo_id()) {
+		sprintf(buf, "\nREPO_ID=%s", repoid);
+		out(buf);
+	}
 	out("\n@END@\n");
 } 
 

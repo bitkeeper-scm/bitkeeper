@@ -2293,8 +2293,8 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			cleanup(CLEAN_RESYNC);
 		}
 		if (isLogPatch) saveEnviroment(pendingFile);
-		note = aprintf("psize=%u", size(incoming));
-		cmdlog_addnote(note);
+		note = aprintf("%u", size(incoming));
+		cmdlog_addnote("psize", note);
 		free(note);
 		rename(incoming, pendingFile);
 		unless (flags & SILENT) {

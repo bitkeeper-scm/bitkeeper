@@ -74,6 +74,7 @@ usage:			system("bk help -s push");
 	unless (r) goto usage;
 	if (opts.debug) r->trace = 1;
 	for (;;) {
+		if (opts.verbose) fromTo("Push", 0, r);
 		rc = push(av, r, envVar);
 		if (rc != -2) break; /* -2 means locked */
 		if (try == 0) break;
@@ -288,8 +289,7 @@ tags:			fprintf(opts.out,
 			}
 			if (opts.rtags && !opts.metaOnly) goto tags;
 		} else if (opts.lcsets == 0) {
-			fprintf(opts.out,
-			    "Nothing to send to %s\n", url);
+			fprintf(opts.out, "Nothing to push.\n");
 			if (opts.rcsets && !opts.metaOnly) {
 				fprintf(opts.out, "but the");
 				goto csets;

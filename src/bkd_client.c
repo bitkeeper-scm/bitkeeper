@@ -17,7 +17,6 @@ remote_parse(const char *url, int skip_checks)
 {
 	char	*freeme = 0;
 	static	int echo = -1;
-	int	append = 0;
 	remote	*r;
 	char	*p;
 
@@ -25,7 +24,7 @@ remote_parse(const char *url, int skip_checks)
 
 	unless (url && *url) {
 		unless (freeme = getParent()) return (0);
-		append = 1;
+		cmdlog_addnote("parent", freeme);
 		p = freeme;
 	} else {
 		freeme = p = strdup(url);
@@ -77,13 +76,6 @@ remote_parse(const char *url, int skip_checks)
 		} else {
 			r = nfs_parse(p);
 		}
-	}
-	if (r && append && cmdlog_buffer[0]) {
-		char	*rem = remote_unparse(r);
-
-		strcat(cmdlog_buffer, " ");
-		strcat(cmdlog_buffer, rem);
-		free(rem);
 	}
 	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
 	if (freeme) free(freeme);

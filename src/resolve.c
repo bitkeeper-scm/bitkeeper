@@ -153,6 +153,8 @@ resolve_main(int ac, char **av)
 private void
 resolve_post(opts *opts, int c)
 {
+	char	*cmd = "resolve";
+
 	if (opts->from_pullpush) return;
 
 	/* XXX - there can be other reasons */
@@ -161,7 +163,10 @@ resolve_post(opts *opts, int c)
 	} else {
 		putenv("BK_STATUS=OK");
 	}
-	trigger("resolve", "post");
+	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
+		cmd = "remote resolve";
+	}
+	trigger(cmd, "post");
 }
 
 private void

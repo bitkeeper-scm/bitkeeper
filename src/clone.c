@@ -26,7 +26,7 @@ private int	linkdir(char *from, char *dir);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
-private int	in_trigger(char *status, char *rev, char *root);
+private int	in_trigger(char *status, char *rev, char *root, char *repoid);
 extern	int	rclone_main(int ac, char **av);
 
 int
@@ -86,7 +86,7 @@ clone_main(int ac, char **av)
 		remote	*l;
 		l = remote_parse(av[optind + 1], 1);
 		unless (l) {
-err:		if (r) remote_free(r);
+err:			if (r) remote_free(r);
 			if (l) remote_free(l);
 			usage();
 		}
@@ -195,6 +195,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: cannot determine remote pathname\n");
 		disconnect(r, 2);
 		goto done;
+	}
+	unless (opts.quiet) {
+		remote	*l = remote_parse(local, 0);
+
+		fromTo("Clone", r, l);
+		remote_free(l);
 	}
 
 	getline2(r, buf, sizeof (buf));
@@ -500,6 +506,7 @@ lclone(opts opts, remote *r, char *to)
 	char	skip[MAXPATH];
 	FILE	*f;
 	char	*p;
+	char	*fromid;
 	int	level;
 	struct	stat sb;
 	char	**files;
@@ -601,20 +608,24 @@ out:		chdir(from);
 	freeLines(files, free);
 	chdir(from);
 	repository_rdunlock(0);
+	fromid = repo_id();
 	chdir(dest);
 	rmdir("RESYNC");		/* undo wants it gone */
 	if (clone2(opts, r)) {
 		mkdir("RESYNC", 0777);
-		in_trigger("BK_STATUS=FAILED", opts.rev, from);
+		in_trigger("BK_STATUS=FAILED", opts.rev, from, fromid);
+		free(fromid);
 		goto out;
 	}
-	in_trigger("BK_STATUS=OK", opts.rev, from);
+	in_trigger("BK_STATUS=OK", opts.rev, from, fromid);
+	free(fromid);
 	chdir(from);
 	/*
 	 * Invalidate the project cache, we have changed directory
 	 */
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
+	putenv("BKD_REPO_ID=");
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	remote_free(r);
 	exit(0);
@@ -640,7 +651,7 @@ out_trigger(char *status, char *rev, char *when)
 }
 
 private int
-in_trigger(char *status, char *rev, char *root)
+in_trigger(char *status, char *rev, char *root, char *repoid)
 {
 	safe_putenv("BKD_HOST=%s", sccs_gethost());
 	safe_putenv("BKD_ROOT=%s", root);
@@ -654,6 +665,7 @@ in_trigger(char *status, char *rev, char *root)
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
+	if (repoid) safe_putenv("BKD_REPO_ID=%s", repoid);
 	putenv("BK_LCLONE=YES");
 	return (trigger("clone", "post"));
 }

@@ -14,6 +14,7 @@ sub main
 	unless ($ARGV[0] =~ /\./) {
 		$prefix = shift(@ARGV);
 	}
+	$ENV{'GROFF_NO_SGR'} = 1;
 	$MAN = "-man";
 	foreach $dir ("$ENV{HOME}/groff/share", 
 	    '/usr/local/share', '/opt/groff/share',

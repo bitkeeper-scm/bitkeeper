@@ -5823,8 +5823,11 @@ uudecode1(register char *from, register uchar *to)
 	register int	length = DEC(*from++);
 	int	save = length;
 
-	assert(length <= 50);
-	if (!length) return (0);
+	unless (length) return (0);
+	if (length > 50) {
+		fprintf(stderr, "Corrupted data: %.25s\n", from);
+		return (0);
+	}
 	while (length > 0) {
 		if (length-- > 0)
 			*to++ = (uchar)((DEC(from[0])<<2) | (DEC(from[1])>>4));
@@ -6499,11 +6502,10 @@ out:			if (slist) free(slist);
 				for (e = buf; *e != '\n'; sum += *e++);
 				sum += '\n';
 			}
+			if (flags&GET_SEQ) smerge_saveseq(seq);
 			if ((flags & GET_PREFIX) && (flags & GET_ALIGN)) {
 				delta *tmp = sfind(s, (ser_t) print);
 
-				if (flags&GET_SEQ)
-					fprintf(out, "%6d ", seq);
 				if (flags&(GET_MODNAME|GET_FULLPATH))
 					fprintf(out, "%s ", base);
 				if (flags&GET_PREFIXDATE)
@@ -6520,8 +6522,6 @@ out:			if (slist) free(slist);
 			} else if (flags & GET_PREFIX) {
 				delta *tmp = sfind(s, (ser_t) print);
 
-				if (flags&GET_SEQ)
-					fprintf(out, "%6d\t", seq);
 				if (flags&(GET_MODNAME|GET_FULLPATH))
 					fprintf(out, "%s\t", base);
 				if (flags&GET_PREFIXDATE)

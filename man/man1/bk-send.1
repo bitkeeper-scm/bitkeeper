@@ -72,7 +72,7 @@ $ bk send \-wuu \-r..1.5 - | bk receive /tmp/foo
 .DE
 .SH OPTIONS
 .if t .TP .75i
-.if n .TP 1.25i
+.if n .TP 1.0i
 .B -d
 Prepend the patch with unified diffs.  This is because some
 people like looking at the diffs to decide if
@@ -92,10 +92,19 @@ Instead of consulting the send log, connect to the remote repository
 specified by the URL, figure out what needs to be sent, and send it
 to the specified email address.
 .tp
-.OPTreq -w Wrapper
+.OPTreq -w WR
 Wrap the patch with 
-.ARG Wrapper
+.ARG WR
 before sending it.
+The current set of wrappers are:
+.sp .5
+b64wrap - base 64 encoding
+.br
+gzip_b64wrap - gzip and base 64 encoding
+.br
+gzip_uuwrap - gzip and uuencode
+.br
+uuwrap - uuencode
 .SH "SEE ALSO"
 .SA ranges 1
 .SA receive 1

@@ -5,6 +5,7 @@ eval "exec perl -Ssw $0 $@"
 sub main
 {
 	$MAN = "-man";
+	$ENV{'GROFF_NO_SGR'} = 1;
 	foreach $dir ("$ENV{HOME}/groff/share", '/usr/local/share',
 	    '/usr/local/lib', '/opt/groff/share', '/usr/share', '/usr/lib') {
 		if (-f "${dir}/groff/tmac/tmac.gan") {
