@@ -125,7 +125,7 @@ stale:			if (discard) unlink((char*)file);
 			return (1);
 		}
 		if (pid == getpid()) {
-			ttyprintf("%d@%s: LOCK LOOP on %s\n",
+			ttyprintf("%u@%s: LOCK LOOP on %s\n",
 					getpid(), sccs_realhost(), file);
 		}
 		free(host);

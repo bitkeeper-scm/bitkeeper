@@ -47,7 +47,7 @@ cmd_synckeys(int ac, char **av)
 	}
 
 	signal(SIGCHLD, SIG_DFL); /* for free bsd */
-	sprintf(cmd, "bk _listkey -r > BitKeeper/tmp/lk%d", getpid());
+	sprintf(cmd, "bk _listkey -r > BitKeeper/tmp/lk%u", getpid());
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
 		fprintf(l, "%s\n", buf);
@@ -63,7 +63,7 @@ cmd_synckeys(int ac, char **av)
 	}
 
 	out("@OK@\n");
-	sprintf(cmd, "BitKeeper/tmp/lk%d", getpid());
+	sprintf(cmd, "BitKeeper/tmp/lk%u", getpid());
 	m = mopen(cmd, "r");
 	unless (writen(1, m->where,  msize(m)) == msize(m)) {
 		perror("write");

@@ -23,7 +23,7 @@ getNewRevs(char *to, char *rev, char *url)
 	unless (isdir(BK_LOG)) mkdirp(BK_LOG);
 	sprintf(x_sendlog, "%s/send-%s", BK_LOG, to);
 	unless (url) gettemp(here, "bk_here");
-	sprintf(keysFile, "%s/bk_keys%d", TMP_PATH, getpid());
+	sprintf(keysFile, "%s/bk_keys%u", TMP_PATH, getpid());
 	close(open(x_sendlog, O_CREAT, 0660));
 
 	if (url) {
@@ -177,7 +177,7 @@ send_main(int ac,  char **av)
 		f = stdout;
 		out = "";
 	} else {
-		patch = aprintf("%s/bk_patch%d", TMP_PATH, getpid());
+		patch = aprintf("%s/bk_patch%u", TMP_PATH, getpid());
 		f = fopen(patch, "wb");
 		assert(f);
 		out = aprintf(" >> %s", patch);
