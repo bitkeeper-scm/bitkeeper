@@ -103,17 +103,17 @@ _lclone() {
 	if [ "X$1" = X ]
 	then	echo Usage: $0 from to
 		exit 1
-	else	cd $1 || exit 1
+	else	cd "$1" || exit 1
 		FROM=`pwd`
-		cd $HERE
+		cd "$HERE"
 	fi
 	if [ "X$2" = X ]
-	then	TO=`basename $FROM`
+	then	TO=`basename "$FROM"`
 	else	if [ "X$3" != X ]; then	echo Usage: $0 from to; exit 1; fi
 		TO="$2"
 	fi
 	test -d "$TO" && { echo $2 exists; exit 1; }
-	cd $FROM
+	cd "$FROM"
 	while ! bk lock -s
 	do	bk lock -l
 		echo Sleeping 5 seconds and trying again...
@@ -129,22 +129,23 @@ _lclone() {
 	}
 	qecho Finding SCCS directories...
 	bk sfiles -d > /tmp/dirs$$
-	cd $HERE
-	mkdir -p $TO
-	cd $TO
+	cd "$HERE"
+	mkdir -p "$TO"
+	cd "$TO"
 	while read x
 	do
-		if [ "$x" != "." -a -d $FROM/$x/BitKeeper ]
+		if [ "$x" != "." -a -d "$FROM/$x/BitKeeper" ]
 		then
 			qecho "Skipping $x ..."
 			continue
 		fi
-		qecho Linking $x ...
-		mkdir -p $x/SCCS
-		find $FROM/$x/SCCS -type f -name 's.*' -print | bk _link $x/SCCS
+		qecho Linking "$x" ...
+		mkdir -p "$x/SCCS"
+		find "$FROM/$x/SCCS" -type f -name 's.*' -print |
+		    bk _link "$x/SCCS"
 	done < /tmp/dirs$$
 	bk sane
-	while [ -d $FROM/BitKeeper/readers ]
+	while [ -d "$FROM/BitKeeper/readers" ]
 	do	kill $LOCKPID 2>/dev/null
 		kill -0 $LOCKPID 2>/dev/null || {
 			echo Waiting for reader lock process to go away...
@@ -159,7 +160,7 @@ _lclone() {
 		echo lclone failed
 		exit 1
 	}
-	bk parent $Q $FROM
+	bk parent "$Q" "$FROM"
 	rm -f /tmp/dirs$$
 	exit 0
 }
@@ -185,19 +186,19 @@ _keysync() {
 }
 
 __keysync() {
-	cd $HERE >/dev/null
+	cd "$HERE" >/dev/null
 	cd "$1" >/dev/null
 	bk _probekey > /tmp/sync1$$
-	cd $HERE >/dev/null
+	cd "$HERE" >/dev/null
 	cd "$2" >/dev/null
 	bk _listkey < /tmp/sync1$$ > /tmp/sync2$$
-	cd $HERE >/dev/null
-	cd $1 >/dev/null
+	cd "$HERE" >/dev/null
+	cd "$1" >/dev/null
 	bk _prunekey < /tmp/sync2$$ > /tmp/sync3$$
 	if [ -s /tmp/sync3$$ ]
-	then	echo ===== Found in $1 but not in $2 =======
+	then	echo ===== Found in "$1" but not in "$2" =======
 		cat /tmp/sync3$$
-	else	echo ===== $2 is a superset of $1 =====
+	else	echo ===== "$2" is a superset of "$1" =====
 		echo ""
 	fi
 	/bin/rm -f /tmp/sync[123]$$
@@ -223,7 +224,7 @@ _fixtool() {
 	# XXX - this does not work if the filenames have spaces, etc.
 	for x in `cat $fix`
 	do	echo ""
-		bk diffs $x | ${PAGER} 
+		bk diffs "$x" | ${PAGER} 
 		echo $N "Fix ${x}? y)es q)uit n)o: [no] "$NL
 		read ans 
 		DOIT=YES
@@ -289,7 +290,7 @@ _extra() {		# /* doc 2.0 as extras */
 _extras() {		# /* doc 2.0 */
 	if [ X$1 = X"--help" ]; then bk help extras; exit 0; fi
 	if [ "X$1" != X -a -d "$1" ]	# /* -a doc 2.0 */
-	then	cd $1
+	then	cd "$1"
 		shift
 		bk sfiles -x "$@"
 	else	bk -R sfiles -x "$@"
@@ -360,8 +361,8 @@ _mvdir() {		# /* doc 2.0 */
 	if [ X"$1" = X"--help" ]; then bk help mvdir; exit 0; fi
 	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
 	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
-	if [ ! -d "$1" ]; then echo $1 is not a directory; exit 1; fi
-	if [ -e "$2" ]; then echo $2 already exist; exit 1; fi
+	if [ ! -d "$1" ]; then echo "$1" is not a directory; exit 1; fi
+	if [ -e "$2" ]; then echo "$2" already exist; exit 1; fi
 	
 	bk -r check -a || exit 1;
 	# Win32 note: must use relative path or drive:/path
@@ -377,32 +378,32 @@ _mvdir() {		# /* doc 2.0 */
 }
 
 _rmdir() {		# /* doc 2.0 */
-	if [ X$1 = X"--help" ]; then bk help rmdir; exit 0; fi
-	if [ X$1 = X ]; then bk help -s rmdir; exit 1; fi
-	if [ X$2 != X ]; then bk help -s rmdir; exit 1; fi
+	if [ X"$1" = X"--help" ]; then bk help rmdir; exit 0; fi
+	if [ X"$1" = X ]; then bk help -s rmdir; exit 1; fi
+	if [ X"$2" != X ]; then bk help -s rmdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
 	bk -r check -a || exit 1;
-	XNUM=`bk sfiles -x $1 | wc -l`
+	XNUM=`bk sfiles -x "$1" | wc -l`
 	if [ "$XNUM" -ne 0 ]
 	then
 		echo "There are extra files under $1";
 		bk sfiles -x $1
 		exit 1
 	fi
-	CNUM=`bk sfiles -c $1 | wc -l`
+	CNUM=`bk sfiles -c "$1" | wc -l`
 	if [ "$CNUM" -ne 0 ]
 	then
 		echo "There are edited files under $1";
-		bk sfiles -cg $1
+		bk sfiles -cg "$1"
 		exit 1
 	fi
-	bk sfiles $1 | bk clean -q -
-	bk sfiles $1 | sort | bk sccsrm -d -
-	SNUM=`bk sfiles $1 | wc -l`
+	bk sfiles "$1" | bk clean -q -
+	bk sfiles "$1" | sort | bk sccsrm -d -
+	SNUM=`bk sfiles "$1" | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
 		echo "Failed to remove the following files:"
-		bk sfiles -g $1
+		bk sfiles -g "$1"
 		exit 1
 	fi
 	if [ -d "$1" ]
@@ -465,24 +466,24 @@ _chmod() {		# /* doc 2.0 */
 	MODE=$1
 	shift
 	for i
-	do	bk clean $i || {
-			echo Can not clean $i, skipping it
+	do	bk clean "$i" || {
+			echo Can not clean "$i," skipping it
 			continue
 		}
-		bk get -qe $i || {
-			echo Can not edit $i, skipping it
+		bk get -qe "$i" || {
+			echo Can not edit "$i," skipping it
 			continue
 		}
-		omode=`ls -l $i | sed 's/[ \t].*//'`
-		bk clean $i
-		touch $i
-		chmod $MODE $i
-		mode=`ls -l $i | sed 's/[ \t].*//'`
-		rm -f $i
+		omode=`ls -l "$i" | sed 's/[ \t].*//'`
+		bk clean "$i"
+		touch "$i"
+		chmod $MODE "$i"
+		mode=`ls -l "$i" | sed 's/[ \t].*//'`
+		rm -f "$i"
 		if [ $omode = $mode ]
 		then	continue
 		fi
-		bk admin -m$mode $i
+		bk admin -m$mode "$i"
 	done
 }
 
@@ -518,21 +519,21 @@ _man() {		# /* undoc 2.0 - its BS anyway.  doesn't work.  */
 
 # Make links in /usr/bin (or wherever they say).
 _links() {		# /* undoc? 2.0 - what is this for? */
-	if [ X$1 = X ]
+	if [ X"$1" = X ]
 	then	echo "usage: bk links bk-bin-dir [public-dir]"
 		echo "Typical is bk links /usr/libexec/bitkeeper /usr/bin"
 		exit 1
 	fi
-	test -x $1/bk || { echo Can not find bin directory; exit 1; }
-	BK=$1
+	test -x "$1/bk" || { echo Can not find bin directory; exit 1; }
+	BK="$1"
 	if [ "X$2" != X ]
-	then	BIN=$2
+	then	BIN="$2"
 	else	BIN=/usr/bin
 	fi
 	for i in admin get delta unget rmdel prs bk
-	do	/bin/rm -f $BIN/$i
+	do	/bin/rm -f "$BIN/$i"
 		echo "ln -s $BK/$i $BIN/$i"
-		ln -s $BK/$i $BIN/$i
+		ln -s "$BK/$i" "$BIN/$i"
 	done
 }
 
@@ -582,12 +583,12 @@ _treediff() {
 		echo "treediff: need two arguments"
 		errflg=1
 	fi
-	if [ ! -d $1 ]
+	if [ ! -d "$1" ]
 	then
 		echo "$1 is not a directory"
 		errflg=1
 	fi
-	if [ ! -d $2 ]
+	if [ ! -d "$2" ]
 	then
 		echo "$2 is not a directory"
 		errflg=1
@@ -597,7 +598,8 @@ _treediff() {
 		echo "Usage: bk treediff <dir> <dir>"
 		exit 1
 	fi
-	diff -Nur --exclude=SCCS --exclude=BitKeeper --exclude=ChangeSet $1 $2
+	bk diff -Nur \
+	    --exclude=SCCS --exclude=BitKeeper --exclude=ChangeSet "$1" "$2"
 }
 
 _rmgone() {
