@@ -172,13 +172,15 @@ checkAll(MDBM *db)
 		*t++ = 0;
 		unless (s = sccs_keyinit(buf, 0, idDB)) {
 			fprintf(stderr, "keyinit(%s) failed.\n", buf);
-			exit(1);
+			errors++;
+			continue;
 		}
 		s->state |= S_RANGE2;
 		unless (d = sccs_getrev(s, 0, 0, 0)) {
 			fprintf(stderr, "check: can't get TOT in %s\n",
 			    s->sfile);
-			exit(1);
+			errors++;
+			continue;
 		}
 		/*
 		 * The location recorded and the location found should match.

@@ -619,7 +619,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 			goto retry;
 		}
 		fprintf(stderr, "cset: missing id %s, sfile removed?\n", key);
-		return (-1);
+		return (force ? 0 : -1);
 	}
 
 	/*
