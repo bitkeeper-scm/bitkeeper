@@ -2,7 +2,8 @@
 BINS	= delta get ci co admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel makepatch takepatch \
 	  smark cset g2sccs range zone gethost undos chksum rechksum \
-	  cset_todo sccsmv sccsrm sccscat csetmark key2rev edit unedit sdiffs
+	  cset_todo sccsmv sccsrm sccscat csetmark key2rev edit unedit sdiffs \
+	  check
 SCRIPTS	= rcs2sccs testfast regression bk import resolve resync
 GUIBIN	= gui/fdiff
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
@@ -37,7 +38,7 @@ BINOBJ  = admin.o csetmark.o key2rev.o rechksum.o sccsmv.o smoosh.o \
 	  diffs.o makepatch.o rmdel.o sccssh.o what.o co.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o cset_todo.o gethost.o rcs.o sccslog.o sinfo.o \
-	  gui/fdiff.o
+	  gui/fdiff.o check.o
 
 SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  sfiles.c platforminit.c purify.c zgets.c disksp.c dirname.c \
@@ -51,7 +52,8 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  renumber.c lines.c rmdel.c makepatch.c takepatch.c smark.c \
 	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
 	  rechksum.c cset_todo.c sccs_mv.c sccsmv.c sccsrm.c sccscat.c \
-	  csetmark.c key2rev.c rcs.c comments.c user.c host.c localtm.c
+	  csetmark.c key2rev.c rcs.c comments.c user.c host.c localtm.c \
+	  check.c
 HDRS	= sccs.h purify.h sccs.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
@@ -161,7 +163,7 @@ tags: srcs
 TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
-check test: regression #testfast SFILES
+test: regression #testfast SFILES
 	./regression
 #	./testfast -sccssh -sccs < SFILES
 
@@ -227,6 +229,8 @@ what: what.o $(LIBS)
 	$(CC) $(CFLAGS) what.o $(LINK) -o what
 sccssh: sccssh.o $(LIBS)
 	$(CC) $(CFLAGS) sccssh.o $(LINK) -o sccssh
+check: check.o $(LIBS)
+	$(CC) $(CFLAGS) check.o $(LINK) -o check
 sccslog: sccslog.o $(LIBS)
 	$(CC) $(CFLAGS) sccslog.o $(LINK) -o sccslog
 smoosh: smoosh.o $(LIBS)

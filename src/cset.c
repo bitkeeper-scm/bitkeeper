@@ -15,6 +15,7 @@ usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
     -d		do unified diffs for the range (used with -m)\n\
     -c		like -m, except generate only ChangeSet diffs for logging\n\
     -i		Create a new change set history rooted at <root>\n\
+    -l		List each rev as file:rev (use with -r)\n\
     -m<range>	Generate a patch of the changesets in <range>\n\
     -r<range>	List the filenames:rev..rev which match <range>\n\
     -R<range>	Like -r but start on rev farther back (for diffs)\n\
@@ -46,7 +47,6 @@ char	*file2str(char *f);
 void	doRange(sccs *sc);
 void	doList(sccs *sc);
 void	doDiff(sccs *sc, int kind);
-delta	*sfind(sccs *, ser_t);
 void	sccs_patch(sccs *);
 
 FILE	*id_cache;
@@ -59,6 +59,7 @@ int	verbose = 0;
 int	dash, ndeltas;
 int	csetOnly;	/* if set, do logging ChangeSet */
 int	makepatch;	/* if set, act like makepatch */
+int	listeach;	/* if set, be like -r except list revs 1 per line */
 int	range;		/* if set, list file:rev..rev */
 			/* if set to 2, then list parent..rev */
 int	doDiffs;	/* prefix with unified diffs */
@@ -85,12 +86,13 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (streq(av[0], "makepatch")) makepatch++;
 
-	while ((c = getopt(ac, av, "c|d|Dim|t;pqr|R|sS;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "c|d|Dilm|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
 			flags |= DELTA_EMPTY|NEWFILE;
 			break;
+		    case 'l': listeach++; break;
 		    case 'R':
 			range++;
 			/* fall through */
@@ -436,7 +438,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 }
 
 /*
- * Do whatever it is they want - for now - just print the revs.
+ * Do whatever it is they want.
  */
 void
 doit(sccs *sc)
@@ -454,7 +456,7 @@ doit(sccs *sc)
 		if (!csetOnly || (sc->state & S_CSET)) {
 			sccs_patch(sc);
 		}
-	} else if (range) {
+	} else if (range && !listeach) {
 		doRange(sc);
 	} else {
 		doList(sc);
@@ -674,7 +676,7 @@ csetlist(sccs *cset)
 	sprintf(buf, "grep '^%s' %s > %s", csetid, cat, csort);
 	if (system(buf)) goto fail;
 	sprintf(buf, "grep -v '^%s' %s >> %s", csetid, cat, csort);
-	if (system(buf)) goto fail;
+	if (system(buf) == 2) goto fail;
 
 	free(csetid);
 
@@ -1041,9 +1043,11 @@ csetCreate(sccs *cset, int flags, char *sym)
 
 	/*
 	 * Make /dev/tty where we get input.
-	 * This has to be hidden from purify.
 	 */
-	assert((freopen)("/dev/tty", "r", stdin));
+#undef	close
+#undef	open
+	close(0);
+	open("/dev/tty", 0, 0);
 	if (flags & DELTA_DONTASK) d = getComments(d);
 	assert(d->sdate); /* this make sure d->date doesn't change */
 	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
@@ -1101,8 +1105,9 @@ sccs_patch(sccs *s)
 		if (e->flags & D_SET) n++;
 		unless (e->flags & D_META) continue;
 		for (d = e->parent; d && (d->type != 'D'); d = d->parent);
-		if (d && (d->flags & D_SET)) {
-			e->flags |= D_SET;
+		unless (d && (d->flags & D_SET)) continue;
+		for (d = e->parent; d && (d->type != 'D'); d = d->parent) {
+			d->flags |= D_SET;
 			n++;
 		}
 	}

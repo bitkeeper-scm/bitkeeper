@@ -333,7 +333,6 @@ void
 csetDeltas(sccs *sc, delta *start, delta *d)
 {
 	int	i;
-	delta	*sfind(sccs *, ser_t);
 
 	unless (d) return;
 	if ((d == start) || (d->flags & D_VISITED)) return;
