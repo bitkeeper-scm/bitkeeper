@@ -1573,8 +1573,9 @@ init(char *inputFile, int flags, project **pp)
 					isLogPatch = 1;
 					assert(exists("BitKeeper/etc"));
 					close(creat(LOG_TREE, 0666));
-					close(creat(
-					    ROOT2RESYNC "/" LOG_TREE, 0666));
+					t = ROOT2RESYNC "/" LOG_TREE;
+					mkdirp(ROOT2RESYNC "/BitKeeper/etc");
+					close(creat(t, 0666));
 				} else {
 					fprintf(stderr, "Expected type\n");
 					goto error;
@@ -1749,6 +1750,12 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		}
 		fprintf(g, "%s\n", inputFile);
 		fclose(g);
+
+		if (exists(LOG_TREE)) {
+			isLogPatch = 1;
+			mkdirp(ROOT2RESYNC "/BitKeeper/etc");
+			close(creat(ROOT2RESYNC "/" LOG_TREE, 0666));
+		}
 
 		i = 0;
 		while (t = mnext(m)) {

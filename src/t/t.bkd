@@ -152,7 +152,7 @@ cd $HERE/copy
 bk mv old.c conflict.c
 bk commit $Q -ygconflict
 echo "" | bk push -c1 bk://localhost:$P$HERE/project 2> bk.out 
-grep -q "Did not resolve 2 renames, abort" bk.out
+grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 rm -f  $HERE/project/conflict.c
 echo OK

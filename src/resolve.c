@@ -150,7 +150,7 @@ setRepoType(opts *opts)
 private void
 removePathConflict(opts *opts, resolve *rs)
 {
-	char	path[MAXPATH];
+	char	*t, path[MAXPATH];
 	int	n = 0;
 
 	sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
@@ -164,7 +164,14 @@ removePathConflict(opts *opts, resolve *rs)
 		perror(path);
 		resolve_cleanup(opts, CLEAN_RESYNC);
 	}
+	if (opts->log) {
+		fprintf(opts->log, "rename(%s, %s)\n", rs->s->sfile, path);
+	}
 	unlink(sccs_Xfile(rs->s, 'm'));
+	t = strrchr(path, '/');
+	t[1] = 'r';
+	/* OK if this fails because the file isn't there */
+	rename(sccs_Xfile(rs->s, 'r'), path);
 }
 
 /*
@@ -315,7 +322,8 @@ that will work too, it just gets another patch.\n");
 		if (opts->noconflicts) {
 			SHOUT();
 			fprintf(stderr,
-			    "Did not resolve %d renames, abort\n", n);
+			    "Did not resolve %d renames, "
+			    "no conflicts causing abort.\n", n);
 			listPendingRenames();
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
 			exit(1);
@@ -342,6 +350,7 @@ that will work too, it just gets another patch.\n");
 		if (n && opts->pass4) {
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
+			listPendingRenames();
 			freeStuff(opts);
 			exit(1);
 		}
@@ -586,8 +595,6 @@ pass2_renames(opts *opts)
 		/* may have just been deleted it but be in readdir cache */
 		unless (exists(path)) continue;
 
-		/* Yes, I want this increment before the continue */
-		n++;
 		t = strrchr(path, '/');
 		unless (t[1] == 's') continue;
 
@@ -603,6 +610,7 @@ pass2_renames(opts *opts)
 				opts->resolveNames, path, opts->renames2);
 		}
 
+		n++;
 		rs = resolve_init(opts, s);
 
 		if (opts->logging) {
