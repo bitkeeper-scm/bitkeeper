@@ -869,6 +869,7 @@ fixNewDate(sccs *s)
 	delta *next, *d;
 
 	d = s->table;
+	assert(!d->dateFudge);
 	unless (d->date) (void)getDate(d);
 	next = d->next;
 	unless (next) return;
@@ -7615,6 +7616,7 @@ sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
 	char	*t;
 	char	*buf;
+	int	fixDate = 0;
 
 	assert(!z); /* XXX used to be LOD item */
 
@@ -7670,8 +7672,14 @@ out:
 	}
 	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
 
-	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
-	if (addMode("admin", sc, flags, mode, &error)) flags |= NEWCKSUM;
+	if (addSym("admin", sc, flags, s, &error)) {
+		flags |= NEWCKSUM;
+		fixDate = 1;
+	}
+	if (addMode("admin", sc, flags, mode, &error)) {
+		flags |= NEWCKSUM;
+		fixDate = 1;
+	}
 
 	if (text) {
 		FILE	*desc;
@@ -7865,7 +7873,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	}
 	old_enc = sc->encoding;
 	sc->encoding = new_enc;
-	if (delta_table(sc, sfile, 0, 1)) {
+	if (delta_table(sc, sfile, 0, fixDate)) {
 		sccs_unlock(sc, 'x');
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
@@ -8600,7 +8608,7 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF)
 		sccs_unlock(s, 'z');
 		exit(1);
 	}
-	if (delta_table(s, sfile, 0, 1)) {
+	if (delta_table(s, sfile, 0, 0)) {
 abort:		fclose(sfile);
 		sccs_unlock(s, 'x');
 		return (-1);
@@ -11546,7 +11554,7 @@ out:
 	}
 
 	/* write out upper half */
-	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so chksum works */
+	if (delta_table(s, sfile, 0, 0)) {  /* 0 means as-is, so chksum works */
 		fprintf(stderr,
 		    "%s: can't write delta table for %s\n", who, s->sfile);
 		sccs_unlock(s, 'x');
