@@ -432,7 +432,7 @@ bkd_install_service(bkdopts *opts, int ac, char **av)
 	
 	p = aprintf("\"%s\"  bkd -S -p %d -c %d \"-s%s\" -E \"PATH=%s\"",
 		path, opts->port, opts->count, start_dir, getenv("PATH"));
-	len = strlen(p);
+	len = strlen(p) + 1;
 	if (getenv("BK_REGRESSION")) len += 30;
 	nav = malloc((ac + 1) * sizeof(char *));
 	argv_save(ac, av, nav, 0);
