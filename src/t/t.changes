@@ -153,6 +153,21 @@ cmp -s WANT GOT || {
 	cat GOT
 	exit 1
 }
+# cut out the newline
+bk changes -L -d':I: :P: :C:' > GOT
+echon 1.5 jane clone > WANT
+cmp -s WANT GOT || {
+	echo local only listing failed, got 
+	cat GOT
+	exit 1
+}
+bk changes -R -d':I: :P: :C:' > GOT
+echo 1.5 joe project > WANT
+cmp -s WANT GOT || {
+	echo remote only listing failed, got 
+	cat GOT
+	exit 1
+}
 echo OK
 
 echo $N Check remote dspec listing ..................................$NL
@@ -187,6 +202,7 @@ bk changes -k $HERE/clone | sort > GOT
 cmp -s clone/WANT GOT || {
 	echo wrong keys
 	diff WANT GOT
+	diff clone/WANT GOT
 	exit 1
 }
 echo OK

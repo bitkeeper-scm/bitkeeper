@@ -3,7 +3,7 @@
 int
 cmd_chg_part1(int ac, char **av)
 {
-	int	c, keysync = 0;
+	int	c, keysync = 0, newline = 1;
 	int 	rfd, i, j;
 	char 	buf[MAXLINE];
 	char	*new_av[100];
@@ -39,10 +39,12 @@ cmd_chg_part1(int ac, char **av)
 	f = fdopen(rfd, "rt");
 	out("@CHANGES INFO@\n");
 	while (fnext(buf, f)) {
-		outc(BKD_DATA);
+		if (newline) outc(BKD_DATA);
+		newline = (strchr(buf, '\n') != 0);
 		if (out(buf) <= 0) break;
 	}
 	fclose(f);
+	unless (newline) out("\n");
 	out("@END@\n");
 	return (0);
 }
@@ -53,6 +55,7 @@ cmd_chg_part2(int ac, char **av)
 	char	*p, buf[MAXKEY], cmd[MAXPATH];
 	char	*new_av[50];
 	int	rc, status, fd, fd1, wfd, i, j;
+	int	newline = 1;
 	pid_t	pid;
 	FILE	*f;
 
@@ -132,10 +135,12 @@ cmd_chg_part2(int ac, char **av)
 	f = fopen(cmd, "rt");
 	assert(f);
 	while (fnext(buf, f)) {
-		outc(BKD_DATA);
+		if (newline) outc(BKD_DATA);
+		newline = (strchr(buf, '\n') != 0);
 		if (out(buf) <= 0) break;
 	}
 	fclose(f);
+	unless (newline) out("\n");
 	out("@END@\n");
 	unlink(cmd);
 skip:	return (0);
