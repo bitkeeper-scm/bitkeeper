@@ -61,7 +61,7 @@ date > h.h
 bk ci $Q -ytest_cmt1 h.h
 date > t.c
 bk ci $Q -ytest_cmt2 -i t.c
-bk sfiles -C | bk commit $Q -ycmt3 -
+bk -R sfiles -C | bk commit $Q -ycmt3 -
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 cat > X <<EOF

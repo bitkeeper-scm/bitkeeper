@@ -215,7 +215,7 @@ struct command cmdtbl[] = {
 	{"sendbug", sendbug_main},
 	{"setlod", setlod_main},
 	{"setup", setup_main },
-	{"sfiles", sfiles_main},
+	{"sfiles", sfind_main}, /* aliases */
 	{"sfind", sfind_main},
 	{"sfio", sfio_main},
 	{"sids", sids_main},
