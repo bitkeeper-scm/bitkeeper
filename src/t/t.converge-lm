@@ -18,7 +18,7 @@ ME=$BK_USER@$BK_HOST
 export ME BK_USER BK_HOST
 NUM=0
 FILE=test$NUM
-HERE=`bk pwd`
+HERE=`bk pwd -s`
 
 echo $N Create repository ...........................................$NL
 echo "logging: logging@openlogging.org" > $HERE/c
