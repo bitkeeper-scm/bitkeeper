@@ -1450,14 +1450,12 @@ sccs_patch(sccs *s, cset_t *cs)
 		if (cs->verbose > 2) fprintf(stderr, "%s ", d->rev);
 		if (cs->verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
 		if (i == n - 1) {
-			delta	*top = list[0];
-
-			unless (top->pathname) {
+			unless (s->gfile) {
 				fprintf(stderr, "\n%s%c%s has no path\n",
 				    s->gfile, BK_FS, d->rev);
 				cset_exit(1);
 			}
-			printf("== %s ==\n", top->pathname);
+			printf("== %s ==\n", s->gfile);
 			if (newfile) {
 				printf("New file: %s\n", d->pathname);
 				sccs_perfile(s, stdout);
