@@ -359,6 +359,14 @@
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
 
+#define	MINUTE	(60)
+#define	HOUR	(60*MINUTE)
+#define	DAY	(24*HOUR)
+#define	WEEK	(7*DAY)
+#define	YEAR	(365*DAY)	/* no leap */
+#define	MONTH	(YEAR/12)	/* average */
+#define	DECADE	(10*YEAR)
+
 #define	UNKNOWN_USER	"anon"
 #define	UNKNOWN_HOST	"nowhere"
 

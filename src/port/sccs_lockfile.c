@@ -126,7 +126,6 @@ sccs_stalelock(const char *file, int discard)
 	char	*host;
 	pid_t	pid;
 	time_t	t;
-	const	int DAY = 24*60*60;
 
 	if (sccs_readlockf(file, &pid, &host, &t) == -1) return (0);
 

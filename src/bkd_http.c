@@ -1356,22 +1356,22 @@ http_index(char *page)
 	MDBM	*m;
 
 	time(&now);
-	t1h = now - (60*60);
-	t1d = now - (24*60*60);
-	t2d = now - (2*24*60*60);
-	t3d = now - (3*24*60*60);
-	t4d = now - (4*24*60*60);
-	t1w = now - (7*24*60*60);
-	t2w = now - (2*7*24*60*60);
-	t3w = now - (3*7*24*60*60);
-	t4w = now - (4*7*24*60*60);
-	t8w = now - (8*7*24*60*60);
-	t12w = now - (12*7*24*60*60);
-	t6m = now - (6*31*24*60*60);
-	t9m = now - (9*31*24*60*60);
-	t1y = now - (365*24*60*60);
-	t2y = now - (2*365*24*60*60);
-	t3y = now - (3*365*24*60*60);
+	t1h = now - HOUR;
+	t1d = now - DAY;
+	t2d = now - 2*DAY;
+	t3d = now - 3*DAY;
+	t4d = now - 4*DAY;
+	t1w = now - WEEK;
+	t2w = now - 2*WEEK;
+	t3w = now - 3*WEEK;
+	t4w = now - 4*WEEK;
+	t8w = now - 8*WEEK;
+	t12w = now - 12*WEEK;
+	t6m = now - 6*MONTH;
+	t9m = now - 9*MONTH;
+	t1y = now - YEAR;
+	t2y = now - 2*YEAR;
+	t3y = now - 3*YEAR;
 	for (d = s->table; d; d = d->next) {
 		if (user && !streq(user, d->user)) continue;
 		if (d->type == 'R') continue;

@@ -43,7 +43,7 @@ cmd_push_part1(int ac, char **av)
 		if (exists(CHANGESET)) {
 			unlink(lockf);
 		} else if (!stat(lockf, &statbuf) &&
-		    time(0) - statbuf.st_ctime < 60*60) {
+		    time(0) - statbuf.st_ctime < HOUR) {
 			/*
 			 * When the project doesn't exist yet, only accept a
 			 * new client to create the project once an hour.

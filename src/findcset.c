@@ -6,11 +6,6 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
-#define	MINUTE	(60)
-#define	HOUR	(60*60)
-#define	DAY	(24*HOUR)
-#define	MONTH	(30*DAY)
-#define	YEAR	(365*DAY)
 #define	MIN_GAP	(2*HOUR)
 #define	MAX_GAP	(30*DAY)
 
