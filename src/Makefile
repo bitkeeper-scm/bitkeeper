@@ -104,7 +104,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	port/tty.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \
 	r2c.o range.o rcheck.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
-	receive.o redblack.o renumber.o repo.o repogca.o resolve.o \
+	receive.o redblack.o regex.o renumber.o repo.o repogca.o resolve.o \
 	resolve_binaries.o resolve_contents.o \
 	resolve_create.o resolve_filetypes.o \
 	resolve_flags.o resolve_generic.o resolve_modes.o \

@@ -1,0 +1,163 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2004 BitMover, Inc.
+
+echo $N Check basic matching ........................................$NL
+bk regex foo foobar > /dev/null || {
+	echo should have matched foo in foobar
+	exit 1
+}
+bk regex foo blech > /dev/null && {
+	echo should not have matched foo in blech
+	exit 1
+}
+echo OK
+
+echo $N Check matching using . character ............................$NL
+bk regex foo.ar foobar > /dev/null || {
+	echo should have matched foo.ar in foobar
+	exit 1
+}
+bk regex foo.bar foobar > /dev/null && {
+	echo should not have matched foo.bar in foobar
+	exit 1
+}
+echo OK
+
+echo $N Check set matching ..........................................$NL
+bk regex '[a-z]' foobar > /dev/null || {
+	echo should have matched '[a-z]' in foobar
+	exit 1
+}
+bk regex '[A-Z]' foobar > /dev/null && {
+	echo should not have matched '[A-Z]' in foobar
+	exit 1
+}
+bk regex '[0-9]' foobar1 > /dev/null || {
+	echo should have matched '[0-9]' in foobar1
+	exit 1
+}
+bk regex '[0-9]' foobar > /dev/null && {
+	echo should not have matched '[0-9]' in foobar
+	exit 1
+}
+echo OK
+
+echo $N Check closure char \* ........................................$NL
+bk regex 'fo*' foobar > /dev/null || {
+	echo should have matched 'fo*' in foobar
+	exit 1
+}
+echo OK
+
+echo $N Check closure char + ........................................$NL
+bk regex 'fo+' foobar > /dev/null || {
+	echo should have matched 'fo+' in foobar
+	exit 1
+}
+bk regex 'fo+o+' foobar > /dev/null || {
+	echo should have matched 'fo+o+' in foobar
+	exit 1
+}
+bk regex 'f[ob]+' foobar > /dev/null || {
+	echo should have matched 'f[ob]+' in foobar
+	exit 1
+}
+bk regex 'fo[ob]+' foobar > /dev/null || {
+	echo should have matched 'fo[ob]+' in foobar
+	exit 1
+}
+echo OK
+
+echo $N Check word matching .........................................$NL
+bk regex '\<foo\>' 'the foo is bar' > /dev/null || {
+	echo should have matched foo in '"the foo is bar"'
+	exit 1
+}
+bk regex '\<oo\>' 'the foo is bar' > /dev/null && {
+	echo should not have matched oo in '"the foo is bar"'
+	exit 1
+}
+bk regex '\<ba\>' 'the foo is bar' > /dev/null && {
+	echo should not have matched ba in '"the foo is bar"'
+	exit 1
+}
+echo OK
+
+echo $N Check begining of line matching .............................$NL
+bk regex '^foo' foobar > /dev/null || {
+	echo should have matched '^foo' in foobar
+	exit 1
+}
+bk regex '^oo' foobar > /dev/null && {
+	echo should not have matched '^oo' in foobar
+	exit 1
+}
+echo OK
+
+echo $N Check end of line matching ..................................$NL
+bk regex 'bar$' foobar > /dev/null || {
+	echo should have matched 'bar$' in foobar
+	exit 1
+}
+bk regex 'oo$' foobar > /dev/null && {
+	echo should not have matched 'oo$' in foobar
+	exit 1
+}
+echo OK
+
+echo $N Check whole line matching ...................................$NL
+bk regex '^foobar$' foobar > /dev/null || {
+	echo should have matched '^foobar$' in foobar
+	exit 1
+}
+bk regex '^[a-z]+$' foobar > /dev/null || {
+	echo should have matched '^[a-z]$' in foobar
+	exit 1
+}
+bk regex '^foo$' foobar > /dev/null && {
+	echo should not have matched '^foo$' in foobar
+	exit 1
+}
+bk regex '^[A-Z]+$' foobar > /dev/null && {
+	echo should not have matched '^[A-Z]$' in foobar
+	exit 1
+}
+echo OK
+
+echo $N Check multi word matching ...................................$NL
+bk regex 'bar|blech|froozle' 'the foo is bar' > /dev/null || {
+	echo should have matched bar in '"the foo is bar"'
+	exit 1
+}
+bk regex 'blech|froozle|bar' 'the foo is bar' > /dev/null || {
+	echo should have matched bar in '"the foo is bar"'
+	exit 1
+}
+bk regex '^the|blech|froozle' 'the foo is bar' > /dev/null || {
+	echo should have matched the in '"the foo is bar"'
+	exit 1
+}
+bk regex 'bar$|froozle|bar' 'the foo is bar' > /dev/null || {
+	echo should have matched bar in '"the foo is bar"'
+	exit 1
+}
+bk regex '^[a-z ]+$|froozle|bar' 'the foo is bar' > /dev/null || {
+	echo should have matched '^[a-z ]' in '"the foo is bar"'
+	exit 1
+}
+bk regex 'blech|froozle|whizzle' 'the foo is bar' > /dev/null && {
+	echo should not have matched '"the foo is bar"'
+	exit 1
+}
+echo OK

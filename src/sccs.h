@@ -775,6 +775,8 @@ typedef struct {
 typedef struct {
 	char    *pattern;	/* what we want to find */
 	u8      ignorecase:1;	/* duh */
+	u8	want_glob:1;	/* do a glob based search */
+	u8	want_re:1;	/* do a regex based search */
 } search;
 
 
@@ -992,8 +994,10 @@ int	is_glob(char *glob);
 char	**globdir(char *dir, char *glob);
 char	*match_globs(char *string, globv globs, int ignorecase);
 void	free_globs(globv globs);
-int	searchMatch(char *s, search search);
-search	searchParse(char *str);
+search	search_parse(char *str);
+int	search_glob(char *s, search search);
+int	search_regex(char *s, search search);
+int	search_either(char *s, search search);
 char	*whichp(char *prog, int internal, int external);
 int	which(char *prog, int internal, int external);
 int	readn(int from, char *buf, int size);

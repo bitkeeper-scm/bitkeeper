@@ -82,6 +82,8 @@ options.
 .OPTreq \-/ str \fB/\fP[\fBi\fP]
 List only those changesets whose comments contain the string
 .ARG str .
+.ARG str
+may be a regular expression.
 If there is a trailing "i" then ignore case in the search.
 .tp
 .B \-a
@@ -118,7 +120,7 @@ Show empty merge changesets.  By default, these are not shown.
 .tp
 .B \-f
 print the changes in forward (oldest to newest) order.  The default is
-backward.
+backwards in time, i.e., most recent to least recent order.
 .tp
 .B \-h
 Produce html as output.  May not be combined with
@@ -160,10 +162,14 @@ Only list changesets which are tagged.
 .OPTreq \-u user
 Only list changesets created by
 .ARG user .
+This option may appear multiple times in which case the changeset is listed
+if it matches any of the specified users.
 .tp
 .OPTreq \-U user
 Only list changesets created by someone other than
 .ARG user .
+This option may appear multiple times in which case the changeset is not
+listed if it matches any of the specified users.
 .tp
 .B \-v
 Shows individual file change history as well as changeset history.
@@ -188,8 +194,6 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
   Fix a diagnostic in pull.
   An aborted attempt at key compression.
 .DE
-.SH BUGS
-The -u/-U options should take lists of users.
 .SH "SEE ALSO"
 .SA commit 1
 .SA glob 1
@@ -197,6 +201,7 @@ The -u/-U options should take lists of users.
 .SA prs 1
 .SA pull 1
 .SA push 1
+.SA regex 1
 .SA revtool 1
 .SA sccslog 1
 .SA set 1

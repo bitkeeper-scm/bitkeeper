@@ -15,13 +15,13 @@
 /* Copyright 2003 BitMover, Inc. */
 #include "system.h"
 #include "sccs.h"
-#include "regex/regex.h"
+#include "regex/regex.h"	/* has to be second, conflicts w/ system .h's */
 
 private	void	doit(FILE *f);
 private char	*getfile(char *buf);
 private void	done(char *file, int count);
 
-struct	grep {
+private	struct	{
 	u32	align:1;	/* try and align the output */
 	u32	count:1;	/* count up the matches */
 	u32	invert:1;	/* show non matching lines */

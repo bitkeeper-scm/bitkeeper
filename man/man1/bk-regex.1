@@ -1,11 +1,38 @@
 .so ../bk-macros
 .TH "regex" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-regex \- regular expressions in \*(BK
+bk regex \- demo progam to show regular expressions in \*(BK
+.SH SYNOPSIS
+.B bk regex
+.ARG regex
+.ARG string
+[\c
+.ARG string
+.ARG string
+.ARGc ...
+]
 .SH DESCRIPTION
 .LP
 Some commands, most notably bk grep, can take a regular expression as an
-argument.  This man page describes the \*(BK version of regular expressions.
+argument.
+This man page describes the \*(BK version of regular expressions.
+This command may be used to match a regex against one or more strings to
+see examples of how the regular expression matching works.
+.LP
+Regular expressions are used to search text for approximate (or exact)
+matches.
+Knowing how regular expressions work can be useful, they are quite 
+powerful.
+Suppose that the words "foo", "bar", "blech" were considered inappropriate
+in your source tree, the following command would find all files which 
+contain any of those words:
+.DS
+bk -r grep 'foo|bar|blech'
+.DE
+It is our intent that the regular expression support is a subset of the
+POSIX 1003.2 regular expression specification.
+If you find this to not be true, please send us an example and we will
+correct our implementation.
 .LP
 A regular expression (``RE'') is one or more non-empty 
 .IR branches ,
@@ -71,7 +98,9 @@ a regular expression starting with a ^ character and/or ending
 with a $ character, restricts the pattern matching to the
 beginning of the line, or the end of line.
 Elsewhere in the pattern, ^ and $ are treated as ordinary characters.
-.SH EXAMPLES
+.SH DIAGNOSTICS
+Exit status is 0 if any matches are found, 1 if none, 2 for other errors.
+.SH EXAMPLE REGEX EXPRESSIONS
 .DS
 [a-z]		matches any lower case alpha.
 [^]-]		matches any char except "]" and "-".
@@ -81,6 +110,12 @@ foo|bar		either "foo" or "bar".
 \\<word\\>		any word "word" but not "theword".
 .SH "SEE ALSO"
 .SA grep 1
+.br
+\f(CWhttp://en.wikipedia.org/wiki/Regular_expression\fP
+.br
+\f(CWhttp://en.wikipedia.org/wiki/Henry_Spencer\fP
+.br
+\f(CWhttp://www.cs.yorku.ca/~oz/\fP
 .SH ACKNOWLEDGEMENTS
 The regular expression library we currently use was originally written by
 Ozan S. Yigit at Dept. of Computer Science at York University.

@@ -60,6 +60,87 @@ cmp -s XXX YYY || {
 }
 echo OK
 
+echo $N Check that -/regex/ works ...................................$NL
+bk changes -'/^S.* checkin$/' > XXX
+grep -q ChangeSet@1.3 XXX || {
+	echo failed to match the 1.3 changeset
+	cat XXX
+	exit 1
+}
+for r in 1.1 1.2 1.4
+do	
+	grep -q ChangeSet@$r XXX && {
+		echo matched the $r changeset
+		cat XXX
+		exit 1
+	}
+done
+echo OK
+
+echo $N Check that -/regex/i works ..................................$NL
+bk changes -'/^s.* CHECKIN$/i' > XXX
+grep -q ChangeSet@1.3 XXX || {
+	echo failed to match the 1.3 changeset
+	cat XXX
+	exit 1
+}
+for r in 1.1 1.2 1.4
+do	
+	grep -q ChangeSet@$r XXX && {
+		echo matched the $r changeset
+		cat XXX
+		exit 1
+	}
+done
+echo OK
+
+echo $N Check that filtering on included users works ................$NL
+bk changes -usecond > XXX
+grep -q ChangeSet@1.3 XXX || {
+	echo failed to match the 1.3 changeset
+	cat XXX
+	exit 1
+}
+for r in 1.1 1.2 1.4
+do	grep -q ChangeSet@$r XXX && {
+		echo matched the $r changeset
+		cat XXX
+		exit 1
+	}
+done
+bk changes -uadam -usecond > XXX
+for r in 1.2 1.3
+do	grep -q ChangeSet@$r XXX || {
+		echo failed to match the $r changeset
+		cat XXX
+		exit 1
+	}
+done
+for r in 1.1 1.4
+do	grep -q ChangeSet@$r XXX && {
+		echo matched the $r changeset
+		cat XXX
+		exit 1
+	}
+done
+echo OK
+
+echo $N Check that filtering on excluded users works ................$NL
+bk changes -Usecond > XXX
+grep -q ChangeSet@1.3 XXX && {
+	echo matched the 1.3 changeset
+	cat XXX
+	exit 1
+}
+for r in 1.1 1.2 1.4
+do	grep -q ChangeSet@$r XXX || {
+		echo did not match the $r changeset
+		cat XXX
+		exit 1
+	}
+done
+echo OK
+
 echo $N Check that dspecs work ......................................$NL
 cat > WANT <<EOF
 1.4

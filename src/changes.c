@@ -12,7 +12,6 @@ private struct {
 	u32	newline:1;	/* add a newline after each record, like prs */
 	u32	noempty:1;	/* do not list empty merge deltas */
 	u32	nomerge:1;	/* do not list _any_ merge deltas */
-	u32	others:1;	/* -U<user> everyone except <user> */
 	u32	remote:1;	/* want the new remote csets */
 	u32	tagOnly:1;	/* only show items which are tagged */
 	u32	timesort:1;	/* force sorting based on time, not dspec */
@@ -24,7 +23,8 @@ private struct {
 	char	*date;		/* list this range of dates */
 	char	*dspec;		/* override dspec */
 	char	*rev;		/* list this rev or range of revs */
-	char	*user;		/* only from this user */
+	char	**users;	/* lines list of users to include */
+	char	**notusers;	/* lines list of users to exclude */
 
 	/* not opts */
 	FILE	*f;		/* global for recursion */
@@ -108,15 +108,18 @@ changes_main(int ac, char **av)
 		    case 'q': opts.urls = 0; break;
 		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
 		    case 'T': opts.timesort = 1; break;
-		    case 'U': opts.others = 1;
-		    	/* fall through to u */
-		    case 'u': opts.user = optarg; break;
+		    case 'u':
+			opts.users = addLine(opts.users, strdup(optarg));
+			break;
+		    case 'U':
+			opts.notusers = addLine(opts.notusers, strdup(optarg));
+			break;
 		    case 'v':
 		    	if (opts.verbose) opts.diffs = 1;
 			opts.verbose =1 ;
 			break;
 		    case 'r': opts.rev = optarg; break;		/* doc 2.0 */
-		    case '/': opts.search = searchParse(optarg);
+		    case '/': opts.search = search_parse(optarg);
 			      opts.doSearch = 1;
 			      break;
 		    case 'L': opts.local = 1; break;
@@ -171,7 +174,7 @@ usage:			system("bk help -s changes");
 			if (opts.remote) rurls = parent_pullp();
 			unless (lurls || rurls) {
 				getMsg("missing_parent", 0, 0, stderr);
-				exit(1);
+				goto usage;
 			}
 		}
 		unless (lurls || rurls) goto usage;
@@ -896,15 +899,22 @@ private int
 want(sccs *s, delta *e)
 {
 	char	*p;
-	int	match;
+	int	i, match;
 
 	unless (opts.all || (e->type == 'D')) return (0);
 	if (opts.tagOnly && !(e->flags & D_SYMBOLS)) return (0);
-	if (opts.user) {
+	if (opts.notusers) {
 		if (p = strchr(e->user, '/')) *p = 0;
-		match = streq(opts.user, e->user);
+		match = 0;
+		EACH(opts.notusers) match |= streq(opts.notusers[i], e->user);
 		if (p) *p = '/';
-		if (opts.others) match = !match;
+		if (match) return (0);
+	}
+	if (opts.users) {
+		if (p = strchr(e->user, '/')) *p = 0;
+		match = 0;
+		EACH(opts.users) match |= streq(opts.users[i], e->user);
+		if (p) *p = '/';
 		unless (match) return (0);
 	}
 	if (opts.nomerge && e->merge) return (0);
@@ -915,7 +925,7 @@ want(sccs *s, delta *e)
 		int	i;
 
 		EACH(e->comments) {
-			if (searchMatch(e->comments[i], opts.search)) {
+			if (search_either(e->comments[i], opts.search)) {
 				return (1);
 			}
 		}
