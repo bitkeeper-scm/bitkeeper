@@ -378,10 +378,15 @@ spawn_cmd(int flag, char **av)
 	int ret;
 
 	ret = spawnvp_ex(flag, av[0], av); 
+#ifndef WIN32
+	/*
+	 * This test always failed with bash in cygwin1.1.6, why ?
+	 */
 	unless (WIFEXITED(ret)) {
 		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
 		return (127);
 	}
+#endif
 	return (WEXITSTATUS(ret));
 }
 

@@ -5463,7 +5463,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		 * We want this becuase we want diff_gfile() to
 		 * diffs file with normlized to LF.
 		 */
-		if ((encode == E_ASCII) &&
+		if (((encode == E_ASCII) || (encode == E_GZIP)) &&
 		    (s->state&S_EOLN_NATIVE)) {
 			mode = "wt";
 		}
@@ -10878,7 +10878,11 @@ int
 isValidUser(char *u)
 {
 	if (!u || !(*u)) return 0;
+#ifdef WIN32
+	if (!stricmp(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
+#else
 	if (streq(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
+#endif
 	/*
 	 * XXX TODO:
 	 * 	a) should we disallow "Guest/guest" as user name ??
@@ -12579,7 +12583,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "CSETKEY")) {
 		unless (d->flags & D_CSET) return (nullVal);
-		sccs_pdelta(s, d, out);
+		if (out) sccs_pdelta(s, d, out);
 		return (strVal);
 	}
 

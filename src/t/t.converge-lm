@@ -490,7 +490,7 @@ jane@kick.dork
 jerk@blow.dork
 joe@blow.dork
 EOF
-bk get -kp $Q BitKeeper/etc/logging_ok | sort > GOT
+bk get -kp $Q BitKeeper/etc/logging_ok | bk _sort > GOT
 cmp -s GOT DATA || {
 	echo failed to union data
 	echo GOT vs WANTED

@@ -56,7 +56,7 @@ cmd_clone(int ac, char **av)
 		exit(1);
 	}
 	putenv("BK_OUTGOING=OK");
-	if (p && trigger(av, "pre")) exit (1);
+	if (p && trigger(av, "pre")) return (1);
 	if (p) out("@SFIO@\n");
 	if (p) {
 		rc = compressed(gzip, 1);

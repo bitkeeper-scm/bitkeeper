@@ -2,6 +2,20 @@
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
 
+int
+cat(char *file)
+{
+	MMAP	*m = mopen(file, "r");
+
+	unless (m) return (-1);
+	unless (write(1, m->mmap, m->size) == m->size) {
+		mclose(m);
+		return (-1);
+	}
+	mclose(m);
+	return (0);
+}
+
 /*
  * Write the data to either the gzip channel or to 1.
  */
@@ -286,6 +300,26 @@ send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 		}
 	}
 	return 0;
+}
+
+
+int
+send_file(remote *r, char *file, int extra, int gzip)
+{
+	int	fd, rc, len = size(file);
+	char	*p = (char *) malloc(len);
+
+	assert(p);
+	fd = open(file, O_RDONLY, 0);
+	assert(fd >= 0);
+	if (read(fd, p, len) != len) {
+		perror(file);
+		return (-1);
+	}
+	close(fd);
+	rc = send_msg(r, p,  len, extra, gzip);
+	free (p);
+	return (rc);
 }
 
 int 

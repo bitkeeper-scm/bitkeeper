@@ -25,6 +25,7 @@ win32_common_setup()
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# Admin user is special, remap to a differnt user before we run the test
 	if [ X$USER = XAdministrator ]; then USER=Administrator-test; fi
+	if [ X$USER = Xadministrator ]; then USER=administrator-test; fi
 }
 
 unix_common_setup()
@@ -196,12 +197,14 @@ init_main_loop()
 # -t	set Test Directory
 # -v 	turn on verbose mode
 # -x	trace command execution
+# -r	use rsh instead of ssh
 #
 get_options()
 {
 	Q=-q; S=-s;
 	while true
 	do	case $1 in
+		    -r) export PREFER_RSH=YES;;
 		    -t) if [ X$2 = X ]
 			then	echo "-t option requires one argument";
 				exit 1;
