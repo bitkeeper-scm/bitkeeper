@@ -72,8 +72,6 @@ list, nor is there a
 .I ~/ \.bkignore list.
 .SH SEE ALSO
 .LP
-.B
-bk help sfiles
+.SA sfiles
 .br
-.B
-bk help extras
+.SA extras

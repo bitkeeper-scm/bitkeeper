@@ -54,14 +54,13 @@ Run quietly.
 .B \-r
 Remove the parent pointer.
 .SH "SEE ALSO"
-.B bk help bkd
+.SA bkd
 .br
-.B bk help clone
+.SA clone
 .br
-.B bk help pull
+.SA pull
 .br
-.B bk help push
+.SA push
 .br
-.B bk help resync
-.SH ALIASES
-.BR url (Repository)
+.SA resync
+.\" help://Repository/url

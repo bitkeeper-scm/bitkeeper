@@ -99,8 +99,8 @@ Previous file
 We plan on having a single screen diff window option where the changes
 are all shown color coded in one window.  
 .SH "SEE ALSO"
-.B bk help cset
+.SA cset
 .br
-.B bk help difftool
+.SA difftool
 .br
-.B bk help ranges
+.SA ranges

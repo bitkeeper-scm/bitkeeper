@@ -75,10 +75,10 @@ Wrap the patch with
 .I Wrapper 
 before sending it.
 .SH "SEE ALSO"
-.B bk help ranges
+.SA ranges
 .br
-.B bk help receive
+.SA receive
 .br
-.B bk help resync
+.SA resync
 .br
-.B bk help wrap
+.SA wrap

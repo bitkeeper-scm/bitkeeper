@@ -91,4 +91,4 @@ Scroll the help text up one line.
 .LP
 Unquoted phrases seem to just do the first word.
 .SH "SEE ALSO"
-.B bk help GUI
+.SA GUI

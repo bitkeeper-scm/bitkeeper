@@ -36,11 +36,9 @@ or
 to get a list of topics.
 For new users, may we suggest the following topics in order:
 .LP
-.B bk help setup
+.SA setup
 .br
-.B bk help basics
+.SA basics
 .br
-.B bk help GUI
-.SH ALIASES
-.BR General (Overview)
-
+.SA GUI
+.\" help://General/Overview

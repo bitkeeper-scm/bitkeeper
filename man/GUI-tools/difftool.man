@@ -90,6 +90,6 @@ Previous diff
 Center the current diff on the screen
 .SH SEE ALSO
 .LP
-.B bk help diffs
+.SA diffs
 .br
-.B bk help fmtool
+.SA fmtool

@@ -55,6 +55,6 @@ If you want to see everything, use the
 option. However, files
 that are not under revision control are not shown.
 .SH "SEE ALSO"
-.B bk help diffs
+.SA diffs
 .br
-.B bk help sccslog
+.SA sccslog

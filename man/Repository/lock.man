@@ -38,4 +38,4 @@ or
 lock exits 1 if unable to lock the
 repository.
 .SH "SEE ALSO"
-.B bk help unlock
+.SA unlock

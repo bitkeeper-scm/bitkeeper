@@ -114,6 +114,7 @@ cmp -s bar.c $HERE/import_sccs/src/bar.c
 echo OK
 if [ $PLATFORM != "WIN32" ]
 then #----------------------------------------------------------------
+echo $N Test import of an sccs file with meta char in file name .....$NL
 cd $HERE
 mkdir -p import_sccs2/src
 cd $HERE/import_sccs2/src

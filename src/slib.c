@@ -12331,7 +12331,7 @@ extractToken(const char *q, const char *end, char *endMarker, char *buf,
 }
 
 /*
- * ectract the prefix inside a $each{...} statement
+ * extract the prefix inside a $each{...} statement
  */
 private int
 extractPrefix(const char *b, const char *end, char *kwbuf)
@@ -12358,7 +12358,7 @@ extractPrefix(const char *b, const char *end, char *kwbuf)
 }
 
 /*
- * ectract the statement portion of a $if(<kw>){....} statement
+ * extract the statement portion of a $if(<kw>){....} statement
  * support nested statement
  */
 private int
@@ -12383,19 +12383,79 @@ extractStatement(const char *b, const char *end)
 	return (-1);
 }
 
+#define STR_EQ	1
+#define STR_NE	2
+#define NUM_EQ	3
+#define NUM_GT	4
+#define NUM_LT	5
+#define NUM_GE	6
+#define NUM_LE	7
+#define	NUM_NE	8
+#define	VSIZE 1024
+
+private char *
+extractOp(const char *q, const char *end,
+				char *rightVal, char *op)
+{
+	int vlen, oplen;
+	char *t;
+
+	while (isspace(*q) && q < end) q++; /* skip leading space */
+	if (q[0] == '=') {
+		*op = STR_EQ;
+		oplen = 1;
+	} else if (strneq(q, "!=", 2)) {
+		*op = STR_NE;
+		oplen = 2;
+	} else if (strneq(q, "-eq", 3)) {
+		*op = NUM_EQ;
+		oplen = 3;
+	} else if (strneq(q, "-gt", 3)) {
+		*op = NUM_GT;
+		oplen = 3;
+	} else if (strneq(q, "-lt", 3)) {
+		*op = NUM_LT;
+		oplen = 3;
+	} else if (strneq(q, "-ge", 3)) {
+		*op = NUM_GE;
+		oplen = 3;
+	} else if (strneq(q, "-le", 3)) {
+		*op = NUM_LE;
+		oplen = 3;
+	} else {
+		*op =  0;
+		return ((char *) q); /* no operator */
+	}
+
+
+	/*
+	 * We got the operator, now extract the right value
+	 */
+	t = (char *) q + oplen;
+	rightVal[0] = '\0';
+	vlen = extractToken(t, end, ")", rightVal, VSIZE);
+	if (vlen < 0) { return (NULL); }  /* error */
+	return (&t[vlen]);
+}
+
 /*
  * Evaluate expression, return boolean
- * currently only support one form of expression:
- * 	leftVal = rightVal
  */
 private int
-eval(char *leftVal, char *op, char *rightVal)
+eval(char *leftVal, char op, char *rightVal)
 {
-	if (streq(op , "=")) {
-		return streq(leftVal, rightVal);
-	} else {
-		assert(streq(op, "!="));
-		return (!streq(leftVal, rightVal));
+	switch (op) {
+	    case STR_EQ: return (streq(leftVal, rightVal));
+	    case STR_NE: return (!streq(leftVal, rightVal));
+	    case NUM_EQ: return(atof(leftVal) == atof(rightVal));
+	    case NUM_GT: return(atof(leftVal) > atof(rightVal));
+	    case NUM_LT: return(atof(leftVal) < atof(rightVal));
+	    case NUM_GE: return(atof(leftVal) >= atof(rightVal));
+	    case NUM_LE: return(atof(leftVal) <= atof(rightVal));
+	    case NUM_NE: return(atof(leftVal) != atof(rightVal));
+	    default:  /* we should never get here */
+		fprintf(stderr, "eval: unknown operator %d\n", op);
+		return (0);
 	}
 }
 
@@ -12409,12 +12469,11 @@ fprintDelta(FILE *out, char *vbuf,
 	    const char *dspec, const char *end, sccs *s, delta *d)
 {
 #define	KWSIZE 64
-#define	VSIZE 1024
 #define	extractSuffix(a, b) extractToken(a, b, "}", NULL, 0)
 #define	extractKeyword(a, b, c, d) extractToken(a, b, c, d, KWSIZE)
 	const char *b, *t, *q = dspec;
 	char	kwbuf[KWSIZE], rightVal[VSIZE], leftVal[VSIZE];
-	char	*v, op[3];
+	char	op;
 	int	len, printLF = 1;
 
 	while (q <= end) {
@@ -12445,56 +12504,33 @@ fprintDelta(FILE *out, char *vbuf,
 		} else if ((*q == '$') &&	/* conditional expansion */
 		    (q[1] == 'i') && (q[2] == 'f') &&
 		    (q[3] == '(') && (q[4] == ':')) {
-			v = 0;
 			b = &q[5];
 			len = extractKeyword(b, end, ":", kwbuf);
 			if (len < 0) { return (printLF); } /* error */
-			if (b[len + 1] == '=') {
-				int vlen;
-
-				op[0] = '='; op[1] = '\0';
-				t = &b[len] + 2;
-				v = rightVal; *v = '\0';
-				leftVal[0] = '\0';
-				vlen = extractToken(t, end, ")", v, VSIZE);
-				if (vlen < 0) { return (printLF); }  /* error */
-				len += vlen + 1;
-			} else if (b[len + 1] == '!') {
-				int vlen;
-				if (b[len + 2] != '=') {
-					fprintf(stderr,
-			    "Unknown operator '=%c'\n", b[len + 2]);
-					return (printLF);
-				}
-				strcpy(op, "!=");
-				t = &b[len] + 3;
-				v = rightVal; *v = '\0';
-				leftVal[0] = '\0';
-				vlen = extractToken(t, end, ")", v, VSIZE);
-				if (vlen < 0) { return (printLF); }  /* error */
-				len += vlen + 2;
-			}
-			if (b[len + 2] != '{') {
+			leftVal[0] = 0;
+			t = extractOp(&q[6 + len], end, rightVal, &op); 
+			unless (t) return(printLF); /* error */
+			if (t[1] != '{') {
 				/* syntax error */
 				fprintf(stderr,
 				    "must have '{' in conditional string\n");
 				return (printLF);
 			}
 			if (len && (len < KWSIZE) &&
-			    (kw2val(NULL, v ? leftVal: NULL, "", 0, kwbuf,
-				    "", 0,  s, d) == strVal) &&
-			    (!v || eval(leftVal, op, v))) {
+			    (kw2val(NULL, op ? leftVal: NULL,
+				    "", 0, kwbuf, "", 0,  s, d) == strVal) &&
+			    (!op || eval(leftVal, op, rightVal))) {
 				const char *cb;	/* conditional spec */
 				int clen;
 
-				cb = b = &b[len + 3];
+				cb = b = &t[2];
 				clen = extractStatement(b, end);
 				if (clen < 0) { return (printLF); } /* error */
 				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
 				q = &b[clen + 1];
 			} else {
 				int bcount  = 1; /* brace count */
-				for (t = &b[len + 3]; bcount > 0 ; t++) {
+				for (t = &t[2]; bcount > 0 ; t++) {
 					if (*t == '{') {
 						bcount++;
 					} else if (*t == '}') {

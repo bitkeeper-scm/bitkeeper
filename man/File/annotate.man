@@ -114,14 +114,13 @@ Do the set of revisions matching
 Prefix each line with the user who last modified it.
 .SH SEE ALSO
 .LP
-.B bk help dates
+.SA dates
 .br
-.B bk help get
+.SA get
 .br
-.B bk help grep
+.SA grep
 .br
-.B bk help ranges
+.SA ranges
 .br
-.B bk help sccstool
-.SH ALIASES
-.BR File (sccscat)
+.SA sccstool
+.\" help://File/sccscat

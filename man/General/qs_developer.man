@@ -38,4 +38,4 @@ bk resolve
 bk push
 .XA
 .SH "SEE ALSO"
-.B bk help quickstart
+.SA quickstart

@@ -39,5 +39,4 @@ If present, indicates that the file is modified.
 .LP
 The info command is an alias for the program sinfo. The "info" command
 name was already taken by the GNU document browser.
-.SH ALIASES
-.B sinfo (File)
+.\" help://File/sinfo

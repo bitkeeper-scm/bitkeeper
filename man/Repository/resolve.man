@@ -139,12 +139,12 @@ If
 is not present, resolve will prompt for one
 at commit time.
 .SH "SEE ALSO"
-.B bk help csets
+.SA csets
 .br
-.B bk help merge
+.SA merge
 .br
-.B bk help pull
+.SA pull
 .br
-.B bk help push
+.SA push
 .br
-.B bk help resync
+.SA resync

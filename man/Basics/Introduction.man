@@ -90,10 +90,10 @@ in detail. Try
 for a listing of help topics.
 .SH SEE ALSO
 .LP
-.B bk help ci
+.SA ci
 .br
-.B bk help edit
+.SA edit
 .br
-.B bk help get
+.SA get
 .br
-.B bk help new
+.SA new

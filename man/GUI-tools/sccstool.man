@@ -125,4 +125,4 @@ Reverse search.
 .B n
 Search for the next occurrence of the string.
 .SH "SEE ALSO"
-.B bk help GUI
+.SA GUI

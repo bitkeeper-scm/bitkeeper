@@ -82,16 +82,13 @@ from Beta forward, you could type:
 A single \-r, because it is the first revision seen, rounds down and means
 1.1.  To get the most recent delta, type "\-r+".
 .SH "SEE ALSO"
-.B bk help annotate
+.SA annotate
 .br
-.B bk help diffs
+.SA diffs
 .br
-.B bk help get
+.SA get
 .br
-.B bk help prs
-.SH ALIASES
-.BR ranges (General)
-.br
-.BR dates (General)
-.br
-.BR date (General)
+.SA prs
+.\" help://General/date
+.\" help://General/dates
+.\" help://General/ranges

@@ -27,6 +27,6 @@ If you wish to obliterate all traces of a file, use the
 .B bk gone
 facility.
 .SH SEE ALSO
-.B bk help gone
+.SA gone
 .br
-.B bk help mv
+.SA mv

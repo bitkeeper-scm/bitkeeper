@@ -25,10 +25,9 @@ need to read
 .B bk help
 .BR qs_developer .
 .SH "SEE ALSO"
-.B bk help qs_bkd
+.SA qs_bkd
 .br
-.B bk help qs_developer
+.SA qs_developer
 .br
-.B bk help qs_setup
-.SH ALIASES
-.BR Quickstart (General)
+.SA qs_setup
+.\" help://General/Quickstart

@@ -30,6 +30,6 @@ The
 .B \-a
 position is lame.
 .SH "SEE ALSO"
-.B bk help ignore
+.SA ignore
 .br
-.B bk help sfiles
+.SA sfiles

@@ -66,8 +66,8 @@ That will put the Alpha tag on top of trunk on all files.
 .LP
 Need a way of setting a tag in citool.
 .SH "SEE ALSO"
-.B bk help admin
+.SA admin
 .br
-.B bk help commit
+.SA commit
 .br
-.B bk help prs
+.SA prs

@@ -53,10 +53,10 @@ Run in text only mode, do not talk to X11.
 .B \-v
 Verbose level, more is more verbose, \-vv is suggested.
 .SH "SEE ALSO"
-.B bk help pull
+.SA pull
 .br
-.B bk help push
+.SA push
 .br
-.B bk help receive
+.SA receive
 .br
-.B bk help resync
+.SA resync

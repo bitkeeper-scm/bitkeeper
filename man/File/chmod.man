@@ -29,6 +29,6 @@ on the file and then copies the resulting
 modes into the revision history.
 .SH SEE ALSO
 .LP
-.B bk help admin
+.SA admin
 .br
 .B man chmod

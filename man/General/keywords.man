@@ -79,6 +79,6 @@ See
 .fi
 .SH SEE ALSO
 .LP
-.B bk help admin
+.SA admin
 .br
-.B bk help get
+.SA get

@@ -134,10 +134,10 @@ Prefix each line with the user who last modified it.
 Exclude revs in 
 .IR list .
 .SH "SEE ALSO"
-.B bk help co
+.SA co
 .br
-.B bk help edit
+.SA edit
 .br
-.B bk help exclude
+.SA exclude
 .br
-.B bk help include
+.SA include

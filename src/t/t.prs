@@ -412,6 +412,27 @@ bk prs -h -d'$if(:I:!=1.3){:P: :Dt:\n}\c' FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+echo $N checking expression in '$if -gt'...............................$NL
+cat > X <<EOF
+${USER} D 1.5 98/01/30 17:45:17 ${USER} 5 4
+${USER} D 1.4 97/06/23 01:33:45 ${USER} 4 3
+EOF
+bk undos X > CMP1
+bk prs -h -d'$if(:UTC: -gt 19970601224809){:P: :Dt:\n}\c' FILE > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N checking expression in '$if -lt'...............................$NL
+cat > X <<EOF
+${USER} D 1.3 97/05/30 01:34:11 ${USER} 3 2
+${USER} D 1.2 97/05/28 23:49:57 ${USER} 2 1
+${USER} D 1.1 87/05/28 23:49:57 ${USER} 1 0
+EOF
+bk undos X > CMP1
+bk prs -h -d'$if(:UTC: -lt 19970601224809){:P: :Dt:\n}\c' FILE > CMP2
+cmp -s CMP1 CMP2
+echo OK
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo $N checking descriptive text :FD: ..............................$NL
 echo dtext1 > dtext
 echo dtext2 >> dtext

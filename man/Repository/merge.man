@@ -107,6 +107,5 @@ When you are happy with your merged file, click done in filemerge,
 quit in the file browser, and type "C" at the prompt to commit to
 that file and move on to the next one.
 .SH "SEE ALSO"
-.B bk help resolve
-.SH ALIASES
-.BR merging (Repository)
+.SA resolve
+.\" help://Repository/merging

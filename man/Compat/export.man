@@ -93,4 +93,4 @@ $ bk export /tmp/proj1
 .XA
 .SH SEE ALSO
 .LP
-.B bk help mkdiffs
+.SA mkdiffs

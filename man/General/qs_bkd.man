@@ -36,6 +36,6 @@ bk bkd -d -p4444 -xcd -xpush
 bk clone bk://host.domain:6666 ~/my_tree
 .XA
 .SH "SEE ALSO"
-.B bk help bkd
+.SA bkd
 .br
-.B bk help quickstart
+.SA quickstart

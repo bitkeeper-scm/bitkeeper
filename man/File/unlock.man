@@ -68,16 +68,13 @@ edit races.
 The unlock interface is overload for both file level and repository level
 operations and that is confusing.
 .SH "SEE ALSO"
-.B bk help unedit
+.SA unedit
 .br
-.B bk help clean
+.SA clean
 .br
-.B bk help lock
+.SA lock
 .br
-.B bk help abort
-.SH ALIASES
-.BR locks (Repository)
-.br
-.BR repo (Repository)
-.br
-.BR unlocking (Repository)
+.SA abort
+.\" help://Repository/locks
+.\" help://Repository/repo
+.\" help://Repository/unlocking

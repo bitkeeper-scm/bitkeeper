@@ -15,8 +15,8 @@ as part of the
 command.   However, you may want to use this
 command to peek inside a wrapped patch.
 .SH SEE ALSO
-.B bk help receive
+.SA receive
 .br
-.B bk help send
+.SA send
 .br
-.B bk help wrap
+.SA wrap

@@ -33,4 +33,4 @@ bk import -tCVS /tmp/mycvsproject ~/projects/test_package
 bk import -tRCS /tmp/myrcsproject ~/projects/test_package
 .XA
 .SH "SEE ALSO"
-.B bk help quickstart
+.SA quickstart

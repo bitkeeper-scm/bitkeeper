@@ -40,4 +40,4 @@ Prefix each line with the filename.
 .B \-u
 Prefix each line with the user who last modified it.
 .SH "SEE ALSO"
-.B bk help sccscat
+.SA sccscat

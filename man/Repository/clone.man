@@ -57,12 +57,12 @@ is an integer value 0-9; default is \-z6.
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.
 .SH "SEE ALSO"
-.B bk help bkd
+.SA bkd
 .br
-.B bk help parent
+.SA parent
 .br
-.B bk help push
+.SA push
 .br
-.B bk help pull
+.SA pull
 .br
-.B bk help triggers
+.SA triggers
