@@ -249,16 +249,10 @@ admin_main(int ac, char **av)
 		}
 		if (dopath) {
 			delta	*top = findrev(sc, 0);
-
-			if (top->pathname && !(top->flags & D_DUPPATH)) {
-				free(top->pathname);
-			}
-			top->flags &= ~(D_NOPATH|D_DUPPATH);
-			top->pathname = strdup(path ? path : sc->gfile);
+			sccs_parseArg(top, 'P', path ? path : sc->gfile, 0); 
 		}
 		if (newCset) {
-			sc->tree->csetFile = csetFile;
-			sc->tree->flags &= ~D_DUPCSETFILE;
+			sccs_parseArg(sc->tree, 'B', csetFile, 0);
 			flags |= NEWCKSUM;
 		}
 		if (rmCsets) clearCsets(sc, flags);

@@ -9471,6 +9471,7 @@ userArg(delta *d, char *arg)
 		if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
 		d->hostname = strdup(arg);
 	}
+	assert(!d->user);
 	d->user = strdup(save);		/* has to be after we null the @ */
 	return (d);
 }
@@ -9482,7 +9483,9 @@ userArg(delta *d, char *arg)
 	} else { \
 		if (d->field && !(d->flags & dup)) free(d->field); \
 		d->field = strnonldup(arg); \
+		d->flags &= ~(flag); \
 	} \
+	d->flags &= ~(dup); \
 	return (d)
 
 /*
@@ -9654,6 +9657,7 @@ revArg(delta *d, char *arg)
 	explode_rev(d);
 	return (d);
 }
+#undef	ARG
 
 /*
  * Partially fill in a delta struct.  If the delta is null, allocate one.
@@ -9664,6 +9668,8 @@ delta *
 sccs_parseArg(delta *d, char what, char *arg, int defaults)
 {
 	switch (what) {
+	    case 'B':	/* csetFile */
+		return (csetFileArg(d, arg));
 	    case 'D':	/* any part of 1998/03/09 18:23:45.123-08:00 */
 		return (dateArg(d, arg, defaults));
 	    case 'U':	/* user or user@host */
@@ -10967,7 +10973,7 @@ skip:
 
 	/* Cset file ID */
 	if (WANT('B')) {
-		unless (d->csetFile) d = csetFileArg(d, &buf[2]);
+		unless (d->csetFile) d = sccs_parseArg(d, 'B', &buf[2], 0);
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
