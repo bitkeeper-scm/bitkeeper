@@ -925,12 +925,10 @@ apply:
 		assert(d);
 		d->flags |= (p->flags & PATCH_LOCAL) ? D_LOCAL : D_REMOTE;
 	}
-#ifdef FIXLOD
 	if (fixLod(s)) {
 		s->proj = 0; sccs_free(s);
 		return (-1);
 	}
-#endif
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		s->proj = 0; sccs_free(s);
 		return (-1);

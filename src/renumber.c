@@ -65,7 +65,7 @@ usage:		fputs(renumber_help, stderr);
 			sfileDone();
 			return (1);
 		}
-		sccs_renumber(s, 0, flags);
+		sccs_renumber(s, 0, 0, flags);
 		if (dont) {
 			unless (quiet) {
 				fprintf(stderr,
@@ -92,13 +92,14 @@ usage:		fputs(renumber_help, stderr);
  */
 
 void
-sccs_renumber(sccs *s, MDBM *lodDb, u32 flags)
+sccs_renumber(sccs *s, u16 nextlod, MDBM *lodDb, u32 flags)
 {
 	delta	*d;
 	ser_t	i;
 	u16	release = 0;
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	ser_t	*map = calloc(s->nextserial, sizeof(ser_t));
+	u16	size = (nextlod > s->nextserial) ? nextlod : s->nextserial;
+	ser_t	*map = calloc(size, sizeof(ser_t));
 	ser_t	defserial = 0;
 	int	defisbranch = 1;
 	u16	maxrel = 0;

@@ -686,7 +686,7 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
 int	sccs_setlod(char *rev, u32 flags);
-void	sccs_renumber(sccs *s, MDBM *lodDb, u32 flags);
+void	sccs_renumber(sccs *s, u16 nextlod, MDBM *lodDb, u32 flags);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
 MMAP	*purify_mopen(char *file, char *mode, char *, int);

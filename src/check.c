@@ -579,12 +579,15 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	/*
 	 * The location recorded and the location found should match.
 	 */
-	unless (d = sccs_getrev(s, "+", 0, 0)) {
+	unless (d = sccs_top(s)) {
 		fprintf(stderr, "check: can't get TOT in %s\n", s->sfile);
 		errors++;
-	} else unless (resync || streq(s->gfile, d->pathname)) {
+	} else unless (sccs_setpathname(s)) {
+		fprintf(stderr, "check: can't get spathname in %s\n", s->sfile);
+		errors++;
+	} else unless (resync || streq(s->sfile, s->spathname)) {
 		fprintf(stderr,
-		    "check: %s should be %s\n", s->gfile, d->pathname);
+		    "check: %s should be %s\n", s->sfile, s->spathname);
 		errors++;
 		names = 1;
 	}

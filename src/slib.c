@@ -2020,8 +2020,8 @@ ok:
 	/* if BK, and no rev and default is x.x or x.x.x.x, then newlod */
 	if ((s->state & S_BITKEEPER) && !rev && defIsVer(s)) {
 		unless (a = sccs_nextlod(s)) {
-			fprintf(stderr, "getedit: no next lod\n");
-			exit(1);
+			fprintf(stderr, "getedit: out of lods\n");
+			return (0);
 		}
 		sprintf(buf, "%d.1", a);
 		*revp = buf;
@@ -2044,6 +2044,11 @@ ok:
 				a = (s->state & S_BITKEEPER) 
 				    ? sccs_nextlod(s)
 				    : release;
+				unless (a) {
+					fprintf(stderr,
+					    "getedit: error: out of lods\n");
+					return (0);
+				}
 				b = 1;
 			} else {
 				b++;
@@ -8018,6 +8023,7 @@ checkInvariants(sccs *s)
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
+		if (streq(d->rev, "1.0")) continue;
 		unless (isleaf(d)) continue;
 		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
 		tips++;
@@ -8030,6 +8036,7 @@ checkInvariants(sccs *s)
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
+		if (streq(d->rev, "1.0")) continue;
 		unless (isleaf(d)) continue;
 		unless (lodmap[d->r[0]] > 1) continue;
 		fprintf(stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev);
@@ -10222,7 +10229,7 @@ abort:		fclose(sfile);
 	return (0);
 }
 
-/* return the next available release */
+/* return the next available lod or 0 if we've exhausted all lods */
 
 u16
 sccs_nextlod(sccs *s)
@@ -10230,10 +10237,13 @@ sccs_nextlod(sccs *s)
 	u16	lod = 0;
 	delta	*d;
 
+	/* XXX: invariant is first x.1 is greatest, yet I'm checking them all
+	 */
 	for (d = s->table; d; d = d->next) {
-		if (d->type == 'D' && d->r[0] > lod) lod = d->r[0];
+		unless (d->type == 'D' && d->r[1] == 1 && !d->r[2]) continue;
+		if (d->r[0] > lod) lod = d->r[0];
 	}
-	if (lod) lod++; /* leave lod 0 == 0 meaning error */
+	lod = (lod == 65535) ? 0 : (lod + 1);
 	return (lod);
 }
 
@@ -10261,7 +10271,10 @@ chknewlod(sccs *s, delta *d)
 		d->rev = 0;
 		return (0);
 	}
-	lod = sccs_nextlod(s);
+	unless (lod = sccs_nextlod(s)) {
+		fprintf(stderr, "chknewlod: ran out of lods\n");
+		return (-1);
+	}
 	sprintf(buf, "%d.1", lod);
 	free(d->rev);
 	d->rev = strdup(buf);
@@ -10379,7 +10392,10 @@ out:
 				/* except the very first delta   */
 				/* all rev are subject to rename */
 				/* if x.1 then ensure new LOD */
-				chknewlod(s, prefilled);
+				if (chknewlod(s, prefilled)) {
+					s->state |= S_WARNED;
+					OUT;
+				}
 				/* free(prefilled->rev);
 				 * prefilled->rev = 0;
 				 */
@@ -12955,7 +12971,14 @@ sccs_resolveFiles(sccs *s)
 	u16	defbranch;
 	int	retcode = -1;
 
-	next = sccs_nextlod(s);
+	unless (next = sccs_nextlod(s)) {
+		fprintf(stderr, "resolveFiles: out of lods\n");
+		goto err;
+	}
+	if (next == 1) {
+		fprintf(stderr, "resolveFiles: no lods present\n");
+		goto err;
+	}
 	/* next now equals one more than greatest that exists
 	 * so last entry in array is lodmap[next-1] which is 
 	 * is current max.
