@@ -29,4 +29,30 @@ else
 	TKKEY=`tail -1 TKKEY`
 fi
 
-echo /build/obj/tcltk-`bk crypto -h "$TCLKEY-$TKKEY-$BUILDHASH"`.tgz
+if [ -d tktable ]
+then
+	test `(bk sfiles -cp tktable | wc -l)` -gt 0 && exit 1
+	TKTABLEKEY=`bk prs -hnd:KEY: -r+ tktable/ChangeSet`
+	bk edit -q TKTABLEKEY 2>/dev/null
+	echo '# Always delta this if there are diffs' > TKTABLEKEY
+	echo $TKTABLEKEY >> TKTABLEKEY
+else
+	bk get -q TKTABLEKEY
+	test -f TKTABLEKEY || exit 1
+	TKTABLEKEY=`tail -1 TKTABLEKEY`
+fi
+
+if [ -d bwidget ]
+then
+       test `(bk sfiles -cp bwidget | wc -l)` -gt 0 && exit 1
+       BWIDGETKEY=`bk prs -hnd:KEY: -r+ bwidget/ChangeSet`
+       bk edit -q BWIDGETKEY 2>/dev/null
+       echo '# Always delta this if there are diffs' > BWIDGETKEY
+       echo $BWIDGETKEY >> BWIDGETKEY
+else
+       bk get -q BWIDGETKEY
+       test -f BWIDGETKEY || exit 1
+       BWIDGETKEY=`tail -1 BWIDGETKEY`
+fi
+
+echo /build/obj/tcltk-`bk crypto -h "$TCLKEY-$TKKEY-$TKTABLEKEY-$BWIDGETKEY-$BUILDHASH"`.tgz

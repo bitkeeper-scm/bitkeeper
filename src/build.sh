@@ -26,11 +26,10 @@ ms_env()
 	# The shell can not handle space in pathname, so
 	# we use the short name here
 	BINDIR="C:/Progra~1/BitKeeper"
-	INSTALL=installdir
 	RESOURCE=bkres.o
 	CC="gcc -pipe"
 
-	export SYS BK BINDIR INSTALL RESOURCE CC
+	export SYS BK BINDIR RESOURCE CC
 }
 
 test "X$G" = X && G=-g

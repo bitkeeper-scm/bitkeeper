@@ -4,9 +4,11 @@ ifeq "$(OSTYPE)" "msys"
 	S := win
 	EXE := .exe
 	STRIP := true
+	TKTABLELIB := Tktable29.dll
 else
 	S := unix
 	EXE := 
+	TKTABLELIB := libTktable2.9.so
 endif
 CC := gcc
 LD := gcc
@@ -18,7 +20,9 @@ all: build version.sh
 	TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
 	then	gunzip < "$$TCLVER" | tar -xf -; true; \
-	else	./build bin/tclsh bin/bkgui; \
+	else	./build bin/tclsh$(EXE) bin/bkgui$(EXE) \
+		    lib/Tktable2.9/$(TKTABLELIB) \
+		    lib/BWidget1.7/pkgIndex.tcl; \
 	fi
 	./build install
 
@@ -32,8 +36,7 @@ configure: tcl/$S/configure tk/$S/configure
 	for i in tcl/$S tk/$S; do \
 		cd $(HERE)/$$i; \
 		test -f configure || bk -Ur get -qS; \
-		CFLAGS=-O2 ./configure --enable-64bit \
-		    --disable-load --disable-shared; \
+		CFLAGS=-O2 ./configure --enable-64bit --disable-shared; \
 		sed -e s/X11R4/X11R6/ < Makefile > MK; \
 		if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
 			sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \
@@ -54,6 +57,37 @@ tk/$S/configure: TKKEY
 				bk://data.bitmover.com/tk.bk tk
 	cd tk; bk -Ur get -qS
 
+# fetch tktable subdirectory if needed
+tktable/configure: TKTABLEKEY
+	test -d tktable || bk clone -r`tail -1 TKTABLEKEY` \
+				bk://data.bitmover.com/tktable.bk tktable
+	cd tktable; bk -Ur get -qS
+
+tktable/Makefile: tktable/configure
+	cd tktable; \
+	./configure --with-tcl=../tcl/$S --with-tk=../tk/$S \
+		--with-tclinclude=../tcl/generic \
+		--with-tkinclude=../tk/generic ; \
+	cat Makefile | sed 's/user32.lib/-luser32/g' | sed 's/gdi32.lib/-lgdi32/g' > MK ; \
+	mv -f MK Makefile
+
+# Tktable libs
+lib/Tktable2.9/$(TKTABLELIB): tktable/Makefile bin/bkgui$(EXE)
+	cd tktable && \
+	$(MAKE) CFLAGS=-I../include prefix= exec_prefix= DESTDIR=../ \
+		libdir=lib bindir=bin install
+
+lib/BWidget1.7/pkgIndex.tcl: BWIDGETKEY
+	test -d bwidget || bk clone -r`tail -1 BWIDGETKEY` \
+			bk://data.bitmover.com/bwidget.bk bwidget
+	cd bwidget; bk -Ur get -qS
+	mkdir -p lib/BWidget1.7/lang
+	mkdir -p lib/BWidget1.7/images
+	cp bwidget/*.tcl lib/BWidget1.7
+	cp bwidget/lang/*.rc lib/BWidget1.7/lang
+	cp bwidget/images/*.gif lib/BWidget1.7/images
+	cp bwidget/images/*.xbm lib/BWidget1.7/images
+
 install: ./version.sh
 	find bin lib -type d -print | xargs chmod ug+w
 	rm -rf ../bin ../lib
@@ -68,8 +102,8 @@ install: ./version.sh
 		chmod 666 "$$TCLVER"; \
 	fi
 
-bin/tclsh: tcl/$S/Makefile
-	rm -rf bin/tclsh lib/tcl*
+bin/tclsh$(EXE): tcl/$S/Makefile
+	rm -rf bin/tclsh$(EXE) lib/tcl*
 	cd tcl/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    install-binaries install-libraries
@@ -77,8 +111,8 @@ bin/tclsh: tcl/$S/Makefile
 	mv bin/tclsh* bin/tclsh$(EXE)
 	$(STRIP) bin/tclsh$(EXE)
 
-bin/bkgui: tk/$S/Makefile
-	rm -rf bin/bkgui lib/tk*
+bin/bkgui$(EXE): tk/$S/Makefile bin/tclsh$(EXE)
+	rm -rf bin/bkgui$(EXE) lib/tk*
 	cd tk/$S && \
 	$(MAKE) prefix= exec_prefix= INSTALL_ROOT=../.. \
 	    install-binaries install-libraries
@@ -95,6 +129,7 @@ bin/bkgui: tk/$S/Makefile
 clean-obj: FORCE
 	-test -d tcl && cd tcl/$S && test -f Makefile && $(MAKE) distclean
 	-test -d tk && cd tk/$S && test -f Makefile && $(MAKE) distclean
+	-test -d tktable && cd tktable && test -f Makefile && $(MAKE) distclean
 	-@$(MAKE) clean-config
 
 clean-config: FORCE
@@ -105,11 +140,14 @@ clean-config: FORCE
 clean: clean-obj FORCE
 	-test -d tcl && cd tcl && bk -r clean
 	-test -d tk && cd tk && bk -r clean
+	-test -d tktable && cd tktable && bk -r clean
+	-test -d bwidget && cd bwidget && bk -r clean
 	-bk -r. clean
 
 clobber:
 	@$(MAKE) clean
-	rm -rf bin lib build
+	rm -rf bin lib build include usr
+	rm -rf tcl tk tktable bwidget
 
 test:
 	test -d tk && cd tk/$S && $(MAKE) test
