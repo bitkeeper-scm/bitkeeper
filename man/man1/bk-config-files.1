@@ -62,5 +62,331 @@ Preferences can be set per user, per host, or per repository via filters.
 [jdoe@xyz.com:/path/to/repository]:checkout:edit 
 .RE
 
-.SH GUI TOOL PREFERENCES
-.\" XXX This may be a job for Aaron
+.SH GUI CONFIGURATION
+BitKeeper uses a configuration file called 
+.B .bkgui
+for the 
+configuration of the graphical tools such as citool, sccstool,
+difftool, etc.  The configuration file is used to modify
+colors, fonts, and widget dimensions. 
+.LP
+On 
+.SM UNIX
+systems, this configuration file is searched for in
+.B $HOME/.bkgui
+where 
+.B $HOME 
+refers to the users home directory.
+.LP
+On Microsoft Windows NT and Windows 98 systems 
+.B %SystemRoot%\eProfiles\e%User%\eApplication  Data\eBitKeeper\e_bkgui 
+is the location of the config file; this path is usually
+.B c:\ewinnt\eProfiles\e%User%\eApplication\ Data\eBitKeeper\e_bkgui
+.LP
+The config file must be a valid tcl program as it is
+evaluated by the \*(BK GUI tools (which are also tcl/tk programs).
+The advantage of being a
+program is that you can add custom tcl code to the config file
+in order to customize the gui based on arbitrary values such
+as machine name, domain name, etc.
+.LP
+The 
+.B .bkgui
+file consists lines that set configuration options.
+A typical configuration line looks like this:
+.ft R
+.DS
+.if t .ta +1.0i
+set gc(BG) #f0f0f
+.DE
+The items that make up a config line are as follows:
+.DS
+set     tcl command used to assign values to variables
+gc(BG)  array value
+#f0f0f0 hexadecimal color value
+.DE
+Each variable in the config file may take one of two forms, 
+tool specific or global.  Tool specific variables, which apply only
+to the named tool, have the tool
+name as a prefix, i.e.,
+.DS
+set gc(cset.fixedFont)  {fixed 12 roman}
+set gc(buttonColor)     blue
+.DE
+whereas global variables, which apply to all tools unless there is a
+tool specific version defined as well, look like
+.DS
+set gc(fixedBoldFont) {fixed 12 roman bold}
+.DE
+As an example, if you
+want pink buttons in 
+.BR citool ,
+yellow buttons in
+.BR helptool ,
+and blue in all of the rest of the tools, add the 
+following to your config file:
+.DS
+set gc(buttonColor) blue
+set gc(ci.buttonColor) pink
+set gc(help.buttonColor) yellow
+.DE
+.LP
+It is probably obvious, but the tool names used to get to tool specific
+variables (or to have a change only apply to that tool) are just the
+GUI tool's name with the trailing \*(lqtool\*(rq dropped, i.e.,
+\*(lqdiff\*(rq for \*(lqdifftool.\*(rq
+.SS GLOBAL VARIABLES
+The following is a list of variables used by the various gui tools.
+Each of these needs to be in a statement like: 
+.DS
+set gc(\c
+.ARGc variable
+)\ \c
+.ARG value
+.DE
+.ft R
+but in the list below we just show the 
+.ARG variable
+part.
+.if n .TP 2
+.if t .TP 4
+.B fixedFont
+Font used in all of the text widgets such as file lists,
+entry boxes, and text widgets showing contents of files.
+Default:\ {fixed 12 roman}
+.tp
+.B fixedBoldFont
+Bold font used to highlight things like difference within
+lines in difftool.  Default:\ {fixed 12 roman bold}
+.tp
+.B buttonFont
+Font used in buttons.  Default:\ {times 12 roman bold}
+.tp
+.B scrollWidth
+Width of the scroll bar widget in pixels. Default:\ 12
+in everything except 
+.B helptool
+where the default is 14.
+.tp
+.B buttonColor
+Color of button when in unselected state. Default:\ #d0d0d0
+.tp
+.B listBG
+Color for the help topic widget and list backgrounds
+Default:\ #e8e8e8
+.tp
+.B newColor
+Color of the newer revision or diff.
+Default:\ lightblue
+.tp
+.B oldColor
+Color of the older revision or diff.
+Default:\ #d070ff
+.tp
+.B noticeColor
+Color for warnings and messages.  Default:\ #b0b0e0
+.tp
+.B searchColor
+Highlight color for search matches. Used in difftool
+and histtool.  Default:\ yellow
+.tp
+.B selectColor
+Color of the current file in citool and csettool. Color of
+the current topic in helptool. Default:\ yellow
+.tp
+.B statusColor
+Status windows in csettool, difftool, and renametool.
+Default:\ lightblue
+.tp
+.B warnColor
+Color of the error messages. Used in citool.
+Default:\ yellow
+.tp
+.B textBG
+Background color for text windows. Used in all of
+the tools.
+Default:\ white
+.tp
+.B textFG
+Text color.  Used in all of the tools, Default:\ black
+.tp
+.B scrollColor
+Color of the scrollbar slider and end arrows.
+Default:\ #d9d9d9
+.tp
+.B troughColor
+Color of the scrollbar troughs.  Default:\ lightblue
+.tp
+.B BG
+Background color for misc widgets not listed
+above. Default:\ #f0f0f0
+.tp
+.B diffHeight
+Height of a difference window in number of lines. Used
+in citool, csettool, difftool, fmtool,
+and renametool.  Default:\ 30 in everything except
+.B difftool 
+where it is 50 lines.
+.tp
+.B diffWidth
+Width of a difference window in number of characters.
+Used in csettool, difftool, and fmtool,
+and renametool.  Default:\ 65
+.tp
+.B geometry
+Default size/location. Follows the standard X11 notation.
+See 
+.BR X (1).
+Geometry is WIDTHxHEIGHT+XOFF+YOFF.
+.RS
+.tp
+.B +XOFF
+The left edge is to be placed XOFF
+pixels from the left edge of the screen
+.tp
+.B -XOFF
+The right edge is to be placed XOFF
+pixels from the right edge of the screen
+.tp
+.B +YOFF
+The top edge of the window is to be
+placed YOFF pixels from the top of the screen
+.tp
+.B -YOFF
+The bottom edge of the window is to be
+placed YOFF pixels from the bottom of the screen
+.RE
+.tp
+\ 
+For example, a value of "+0+0" indicates that the tool
+should be placed at the upper left of the screen.
+Default:\ none
+.tp
+.B mergeHeight
+Height of a merge window. Used in fmtool.
+Default 20
+.tp
+.B mergeHeight
+Width of a merge window. Used in fmtool.
+Default 80
+.tp
+.B quit
+Key used to exit from the gui tools. Default:\ <Control-q>
+.SS TOOL SPECIFIC VARIABLES
+.if n .TP 3
+.if t .TP 4
+.B ci.commentsHeight
+height of the comments window.
+.tp
+.B ci.diffHeight
+height of the diffs window (the lower window).
+.tp
+.B ci.display_bytes
+Number of bytes to show in new files in citool. If set to 0, the entire
+file is displayed. Default:\ 8192
+.tp
+.B ci.editHeight
+Height of the popup editor.  Default:\ 30
+.tp
+.B ci.editWidth
+Width of the popup editor.  Default:\ 80
+.tp
+.B ci.excludeColor
+Color of the exclude icon (X character). Default:\ red
+.tp
+.B ci.editor
+Editor to use when the Edit button is clicked.  Default:\ ciedit (builtin),
+other option is xterm.
+.tp
+.B ci.filesHeight
+number of files in the top window.
+.tp
+.B cset.listHeight
+Number of lines in the list windows.
+Default:\ 12
+.tp
+.B diff.diffHeight
+Number of lines in the diff windows.
+Default:\ 50
+.tp
+.B diff.searchColor
+Highlight color for search matches.
+Default:\ lightblue
+.tp
+.B help.linkColor
+Color of the hyperlinks in helptool. Default:\ blue
+.tp
+.B help.topicsColor
+Highlight color for topic search matches.
+Default:\ orange
+.tp
+.B help.height
+Number of rows to display in helptool. Default:\ 50
+.tp
+.B help.width
+Number of columns to display in helptool. Default:\ 72
+.tp
+.B rename.listHeight
+Height of the file list widget in renametool (in
+lines). Default:\ 8
+.tp 
+.B hist.canvasBG
+Color of the graph background. Default:\ #9fb6b8
+.tp 
+.B hist.commentBG
+Background color of the comment window in the annotated listing. 
+Default:\ lightblue
+.tp
+.B hist.arrowColor
+Color of the arrows connecting the revision boxes.
+Default:\ darkblue
+.tp
+.B hist.mergeOutline
+Color of the box surrounding the merge revisions.
+Default:\ darkblue
+.tp
+.B hist.revOutline
+Color of the box surrounding the regular revisions.
+Default:\ darkblue
+.tp
+.B hist.revColor
+Fill color of the unselected box. Default:\ #9fb6b8
+.tp
+.B hist.selectColor
+Highlight color for the selected annotated line. Default:\ #adb8f6
+.tp
+.B hist.commentHeight
+Height of the comment window above the annotated file listing. Default:\ #9fb6b8
+.tp
+.B hist.showHistory
+The time period of revisions that is shown. The value needs to be a
+valid entry for the prs -R option. Default:\ 1M
+.tp
+.B hist.dateColor
+Color of the date text at the bottom of graph.
+Default:\ #181818
+.SH AUTHOR
+The GUI configuration was designed and is maintained by Aaron Kushner.
+.SH "SEE ALSO"
+.B Any Tcl/Tk documentation
+.br
+.BR X (1)
+.br
+.SA citool 1
+.SA csettool 1
+.SA difftool 1
+.SA helptool 1
+.SA histtool 1
+.SA fmtool 1
+.SA renametool 1
+.\" help://GUI
+.\" help://GUI-config
+.\" help://gui-config
+.\" help://gui config
+.\" help://gui configuration
+.SH CATEGORY
+.B Overview
+.br
+.B Repository
+.br
+.B GUI-tools
