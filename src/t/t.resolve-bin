@@ -11,28 +11,20 @@
 
 # Copyright (c) 2002 Larry McVoy
 # %K%
-if [ X$PLATFORM = X"WIN32" ]
-then
-	binary_data="`bk bin`/bk.exe"
-	binary_data2="`bk bin`/diff.exe"
-else 
-	binary_data="/bin/ls"
-	binary_data2="/bin/rm"
-fi
 data="data"
 
 no_logging proj
 cp -rp $HERE/proj $HERE/ascii
 echo $N Trying to check in some binary data .........................$NL
-cp ${binary_data} ${data}
+cp ${BIN1} ${data}
 chmod u+w ${data}
 # This makes sure we aren't expanding keywords.
 echo '@A@ @B@ @D@ @E@ @F@ @G@ @H@ @I@ @L@ @M@ @P@ @R@ @S@ @T@ @U@ @W@ @Y@ @Z@ @@@' | sed s/@/%/g >> $data
 cp $data saved_bin
-binary_data=saved_bin
+BIN1=saved_bin
 bk admin $Q -i${data} -Ebinary uuencode
 bk co $Q -l uuencode
-cmp -s ${binary_data} uuencode
+cmp -s ${BIN1} uuencode
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 
@@ -42,12 +34,12 @@ cd $HERE
 bk clone $Q proj child
 cd $HERE/proj
 bk edit $Q uuencode
-cat $binary_data2 >> uuencode
+cat $BIN2 >> uuencode
 bk delta $Q -yappend uuencode
 bk commit $Q -yappend
 cd $HERE/child
 bk edit $Q uuencode
-cat $binary_data2 > uuencode
+cat $BIN2 > uuencode
 bk delta $Q -yreplace uuencode
 bk commit $Q -yreplace
 bk pull $Q -R
@@ -129,12 +121,12 @@ cd $HERE
 bk clone $Q proj automerge
 cd $HERE/proj
 bk edit $Q uuencode
-( cat $binary_data2; cat $binary_data2; cat $binary_data2) > uuencode
+( cat $BIN2; cat $BIN2; cat $BIN2) > uuencode
 bk delta $Q -yreplace uuencode
 bk commit $Q -yreplace
 cd $HERE/automerge
 bk edit $Q uuencode
-( cat $binary_data2; cat $binary_data2; cat $binary_data2) > uuencode
+( cat $BIN2; cat $BIN2; cat $BIN2) > uuencode
 cp uuencode $HERE/cmp
 bk delta $Q -yreplace uuencode
 bk commit $Q -yreplace
