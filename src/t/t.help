@@ -1,0 +1,36 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2000 Amelia Graf
+
+# This script tests if a command has useful information spewed out if
+# called with a --help
+
+# This test should not kill the regression suite of tests, i don't think.
+
+# basics:
+# for every command
+# run bk command --help and redirect all output to file
+# if file contains DESCRIPTION/SYNOPSIS we know its a help file
+# if it does not, we know that it didn't do the right thing.
+
+exit 0
+
+CMD_LIST=/home/amy/repos/regression/src/t/list_o_commands
+echo $N Make sure bk command --help yields right answer .............$NL
+for i in `cat ${CMD_LIST}` 
+do 	bk ${i} --help > ${HERE}/help
+	grep -q DESCRIPTION $HERE/help || {
+		echo no help for $i
+		exit 1
+	}
+done
+echo OK

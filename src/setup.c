@@ -13,7 +13,8 @@ setup_main(int ac, char **av)
 	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
 	char 	s_config[MAXPATH] = "BitKeeper/etc/SCCS/s.config";
 	sccs	*s;
-	MDBM	*m;
+	MDBM	*m, *cat;
+	FILE	*f;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help setup");
@@ -102,6 +103,7 @@ again:		printf("Editor to use [%s] ", editor);
 		if (config_path) exit(1);
 		goto again;
 	}
+
 	unless (mdbm_fetch_str(m, "logging")) {
 		fprintf(stderr, "Setup: must define logging policy.\n");
 		if (config_path) exit(1);
@@ -122,6 +124,34 @@ again:		printf("Editor to use [%s] ", editor);
 		if (config_path) exit(1);
 		goto again;
 	}
+#if 0	/* this makes setuptool appear to hang up when a non-approved
+         * category is given.
+	 */
+	if ( (t = mdbm_fetch_str(m, "category")) && strlen(t) > 0) {
+		gettemp(buf, "cat");
+		if (f = fopen(buf, "wt")) {
+			getmsg("setup_categories", 0, 0, f);
+			fclose(f);
+		}
+		if (f = fopen(buf, "rt")) {
+			cat = sccs_keys2mdbm(f);
+			fclose(f);
+			unlink(buf);
+
+			if (cat) {
+				unless (mdbm_fetch_str(cat, t)) {
+					fprintf(stderr, "<%s> is not a known project category; use anyway[y/N]? ", t);
+					unless (fgets(buf, sizeof buf, stdin)) buf[0] = 0;
+				}
+				else buf[0] = 'y';
+				mdbm_close(cat);
+				unless (buf[0] == 'y' || buf[0] == 'Y') goto again;
+			}
+		}
+		else unlink(buf);
+	}
+#endif
+
 	mdbm_close(m);
 
 	if (cset_setup(SILENT)) return (1);

@@ -300,6 +300,11 @@ $
 Name of the project, such as "BitKeeper" or "The GNU C compiler".
 
 $
+#config_category
+
+What (RedHat package) category this project fits into, if any.
+
+$
 #config_logging
 
 Open Logging server.  This site is where users go to see the
@@ -353,6 +358,7 @@ If this field is set, all checkins will appear to be made on this host.
 $
 #config_template
 description
+category
 logging
 single_user
 single_host
@@ -375,4 +381,61 @@ This happens if a repository with uncommitted deltas is copied
 and then committed in both copies.
 Please use only 'bk clone <from> <to>' to copy a repository.
 $
-
+#setup_categories
+amusements/games
+amusements/graphics
+amusements/multimedia
+applications/archiving
+applications/communications
+applications/databases
+applications/dos/windows connectivity
+applications/editors
+applications/emulators
+applications/graphics
+applications/mail
+applications/mail/www/news tools
+applications/math
+applications/networking
+applications/news
+applications/productivity
+applications/publishing
+base
+base/kernel
+daemons
+development/building
+development/debuggers
+development/languages
+development/languages/tcl
+development/libraries
+development/libraries/libc
+development/system
+development/tools
+documentation
+games
+libraries
+networking
+networking/admin
+networking/daemons
+networking/development
+networking/utilities
+shells
+system environment/base
+system environment/file managers
+system environment/printer support
+user interface/gnome
+user interface/kde
+utilities
+utilities/archiving
+utilities/file
+utilities/printing
+utilities/system
+utilities/text
+x11
+x11/amusements
+x11/applications
+x11/applications/graphics
+x11/libraries
+x11/utilities
+x11/xfree86
+x11/xfree86/servers
+$

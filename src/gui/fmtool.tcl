@@ -37,7 +37,7 @@ proc undo {} \
 	global rBoth rDiff rSame nextBoth nextDiff nextSame
 	global maxBoth maxDiff maxSame nextMark Marks LastDelete
 
-	if {[llength $Marks] <= 1} { return }
+	if {[llength $Marks] < 1} { return }
 	set m [pop Marks]
 	if {! [string match Skipped* $m]} {
 		set LastDelete [.merge.t get $m "end - 1 char"]
@@ -184,14 +184,10 @@ proc useDiff {which color} \
 	set b [lindex $rDiff $nextDiff]; incr nextDiff 1
 	set Text [.diffs.$which get $a $b]
 	set Here [.merge.t index end]
-	# Seems like a bug? I can't use $which instead of left/right
-	if {[string match $which left]} {
-		.merge.t insert end $Text {tmp left}
-		.merge.t tag configure left -background $color
-	} else {
-		.merge.t insert end $Text {tmp right}
-		.merge.t tag configure right -background $color
-	}
+
+	.merge.t insert end $Text [list tmp $which]
+	.merge.t tag configure $which -background $color
+
 	saveMark $which
 	resolved 1
 	next
@@ -469,7 +465,7 @@ proc save {} \
 	global	saved done diffcount outputFile
 
 	if {$done < $diffcount} {
-		puts "Haven't resolved all diffs"
+		displayMessage "Haven't resolved all diffs"
 		return
 	}
 	.merge.menu.save configure -state disabled
@@ -489,25 +485,8 @@ proc save {} \
 	} else {
 		puts $o $Text
 	}
-	close $o
+	catch {close $o} err
 	exit 0
-}
-
-proc restart {} \
-{
-	global argv0 argv argc
-
-	if {$argc != 3} {
-		puts "usage: $argv0 left right output"
-		exit
-	}
-	set a [split $argv " "]
-	set A [lindex $argv 0]
-	set B [lindex $argv 1]
-	set C [lindex $argv 2]
-	readFiles $A $B $C
-	resolved 0
-	next
 }
 
 # Open the file, look for \r and an trailing newline.
@@ -652,12 +631,12 @@ proc readFiles {L R O} \
 	}
 	if {$diffcount == 0} { exit }
 	.merge.menu.l configure -text "$done / $diffcount resolved"
-	close $r
-	close $l
-	catch { close $d }
+	catch {close $r}
+	catch {close $l}
+	catch {close $d}
 	if {"$rmList" != ""} {
 		foreach rm $rmList {
-			file delete $rm
+			catch {file delete $rm}
 		}
 	}
 	highlightDiffs
@@ -852,7 +831,7 @@ proc widgets {L R O} \
 		    -command selectFiles
 		button .merge.menu.restart -font $gc(fm.buttonFont) \
 		    -bg $gc(fm.buttonColor) \
-		    -text "Restart" -width 7 -state disabled -command restart
+		    -text "Restart" -width 7 -state disabled -command startup
 		button .merge.menu.undo -font $gc(fm.buttonFont) \
 		    -bg $gc(fm.buttonColor) \
 		    -text "Undo" -width 7 -state disabled \
@@ -1000,31 +979,46 @@ proc confirm {msg l} \
 
 
 # --------------- main ------------------
-proc main {} \
+proc startup {{buildwidgets {}}} \
 {
 	global argv0 argv argc dev_null done lfile rfile outputFile
 
 	if {(($argc != 0) && ($argc != 3))} {
-		puts "usage: $argv0 left right output\n\or\n$argv0"
+		puts "usage:\t$argv0 <left> <right> <output>\n\t$argv0"
 		exit
 	}
-	bk_init
-	set lfile ""
-	set rfile ""
-	set outputFile ""
 	set done 0
 	if {$argc == 3} {
+		set lfile ""; set rfile ""; set outputFile ""
 		set a [split $argv " "]
 		set lfile [lindex $argv 0]
 		set rfile [lindex $argv 1]
 		set outputFile [lindex $argv 2]
-		widgets $lfile $rfile $outputFile
+		if {![file exists $lfile] && ![file readable $lfile]} {
+			puts stderr \
+			    "File \"$lfile\" does not exist or is not readable"
+			exit 1
+		}
+		if {![file exists $rfile] && ![file readable $rfile]} {
+			puts stderr \
+			    "File \"$rfile\" does not exist or is not readable"
+			exit 1
+		}
+		if {$buildwidgets == 1} {widgets $lfile $rfile $outputFile}
 		readFiles $lfile $rfile $outputFile
 		resolved 0
 		next
 	} else {
-		widgets $lfile $rfile $outputFile
+		if {$buildwidgets == 1} {
+			set lfile ""; set rfile ""; set outputFile ""
+			widgets $lfile $rfile $outputFile
+		} else {
+			readFiles $lfile $rfile $outputFile
+			resolved 0
+			next
+		}
 	}
 }
 
-main
+bk_init
+startup 1

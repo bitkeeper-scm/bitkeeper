@@ -2229,6 +2229,7 @@ commit(opts *opts)
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	if (WIFEXITED(i) && !WEXITSTATUS(i)) {
 		if (cmt) free(cmt);
+		// XXX TODO update CSETS_IN here; for bk undo -l 
 		return;
 	}
 	if (cmt) free(cmt);

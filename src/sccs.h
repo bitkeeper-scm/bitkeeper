@@ -339,7 +339,9 @@
 #define BKOPT_WEB	0x0001
 #define BKOPT_ALL	0xffff
 
-#define	isData(buf)	(buf[0] != '\001')
+#define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
+#define	isData(buf)	((buf[0] != '\001') || \
+			    ((buf[0] == CNTLA_ESCAPE) && (buf[1] == '\001')))
 #define	seekto(s,o)	s->where = (s->mmap + o)
 #define	eof(s)		((s->encoding & E_GZIP) ? \
 			    zeof() : (s->where >= s->mmap + s->size))
@@ -745,6 +747,7 @@ char	*sccs_gethost(void);
 int	sccs_getComments(char *, char *, delta *);
 int	sccs_getHostName(delta *);
 int	sccs_getUserName(delta *);
+MDBM    *sccs_keys2mdbm(FILE *f);
 void	sfileUnget(void);
 char	*sfileNext(void);
 char	*sfileRev(void);

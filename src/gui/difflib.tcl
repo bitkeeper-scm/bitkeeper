@@ -238,6 +238,28 @@ proc sdiff {L R} \
 	return [open "| $sdiffw \"$dotL\" \"$dotR\""]
 }
 
+#
+# Show the selected line from the left and the right diff 
+# windows above and below one another in the bottom frame
+# so that it is easy to see how the lines differ
+#
+proc stackedDiff {win x y b} \
+{
+	set curLine [$win index "@$x,$y linestart"]
+	#displayMessage "In stackedDiff win=($win) x=($x) y=($y) c=($curLine)"
+	if {$curLine == ""} {return}
+	set lline [.diffs.left get $curLine "$curLine lineend"]
+	set rline [.diffs.right get $curLine "$curLine lineend"]
+	set lnum [lindex [split $curLine "."] 0]
+	.line.diff configure -state normal
+	.line.diff delete 1.0 end
+	.line.diff insert end "line $lnum:\n"
+	.line.diff insert end "< $lline\n"
+	.line.diff insert end "> $rline\n"
+	.line.diff configure -state disabled
+	return
+}
+
 # Displays the flags, modes, and path for files so that the
 # user can tell whether the left and right file have been 
 # modified, even when the diffs line shows 0 diffs
@@ -350,6 +372,7 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 		.diffs.status.l configure -text "$f"
 		set f [file tail $R]
 		.diffs.status.r configure -text "$f"
+		.diffs.status.middle configure -text "... Diffing ..."
 	}
 	# Moved the deletes to displayInfo proc
 	#.diffs.left delete 1.0 end
@@ -391,11 +414,6 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 	    "<"	{ incr diffCount 1; left $r $l $n }
 	    ">"	{ incr diffCount 1; right $r $l $n }
 	}
-	# XXX: Might have to be changed for csettool vs. difftool
-	if {$diffCount == 0} { 
-		#puts "No differences"
-		return
-	}
 	catch {close $r}
 	catch {close $l}
 	catch {close $d}
@@ -410,12 +428,13 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
 
-	# XXX: Stuff from csettool -- might need to integrate it better
 	if {$diffCount > 0} {
 		set lastDiff 1
 		dot
 	} else {
 		set lastDiff 0
+		# XXX: Really should check to see whether status lines
+		# are different
 		.diffs.status.middle configure -text "No differences"
 	}
 }

@@ -11,12 +11,10 @@ bk citool \- \*(BK graphical check-in tool
 .SH DESCRIPTION
 The
 .B citool
-application is a graphical interface for checking in modified files.
-When called with no arguments,
+application is a graphical interface for checking in new, modified,
+and pending files.  When called with no arguments,
 .B citool
-examines the current repository for
-modified files, pending files, and files not under revision control.
-Otherwise,
+examines the current repository for files requiring checkin. Otherwise,
 .B citool
 will look in the list of arguments for files or directories.  The
 arguments are processed by
@@ -26,15 +24,26 @@ and have to follow the restrictions imposed by
 .B bk
 .BR sfiles .
 .LP
-Citool has three main windows:  the top window contains the list of
-new files and files with modifications, the middle window is for entering 
-comments, and the bottom window displays differences for modified files and 
+Citool has three main windows.  The top window contains the list of
+files that can be checked in to a changeset.  The middle window is for entering 
+comments and the bottom window displays differences for modified files and 
 the contents for new files. 
 .LP
 Typical usage is to move to each file, add comments, and repeat
 until done. When all files are commented, the
 .B commit
-button is pressed to make the changes part of a ChangeSet.
+button is pressed to make the changes part of a ChangeSet. Citool's
+default behavior is to exit after the commit finishes. However, the
+ci.rescan configuration option forces citool to rescan the repository
+for files that still need to be added to a changeset. This feature is
+useful when modifying files that should be in separate changesets. For
+example, if you modify five files and three of those files form a
+logical unit of work, you can start citool, add the three files to a
+changeset and then commit. After commiting the files to a changeset,
+citool returns so that you can comment the remaining files and add
+them to a new changeset. Basically, this option prevents the user
+from restarting citool multiple times if all files are not added to
+a changeset.
 .LP
 You can move around within the file list by clicking on a file name or using 
 the keyboard accelerators Control-n (next file) and Control-p (previous file).

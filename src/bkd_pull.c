@@ -496,16 +496,24 @@ next:	sccs_free(s);
 	 * fd/socket here, see the call to flush2remote() in push.c
 	 */
 
+done:	if (rc) {
+		unlink(rev_list);
+		sprintf(buf, "BK_OUTGOING=ERROR %d", rc);
+		putenv(buf);
+	} else {
+		/*
+		 * Pull is ok:
+		 * a) rename rev_list to CSETS_OUT
+		 * b) update $REV_LISTFILE to point to CSETS_OUT
+		 */
+		unlink(CSETS_OUT);
+		if (rename(rev_list, CSETS_OUT)) perror(CSETS_OUT);
+		sprintf(envbuf, "BK_REVLISTFILE=%s", CSETS_OUT);
+		putenv(envbuf);
+	}
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
-done:	if (!metaOnly) {
-		if (rc) {
-			sprintf(buf, "BK_OUTGOING=ERROR %d", rc);
-			putenv(buf);
-		}
-		trigger(av, "post");
-	}
-	unlink(rev_list);
+	if (!metaOnly) trigger(av, "post");
 	return (rc);
 }

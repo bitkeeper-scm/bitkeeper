@@ -4,7 +4,7 @@
 #include "bkd.h"
 
 private	void	bkd_server(void);
-private	void	do_cmds(int);
+private	void	do_cmds();
 private	void	exclude(char *cmd);
 private	int	findcmd(int ac, char **av);
 private	int	getav(int *acp, char ***avp);
@@ -20,7 +20,6 @@ bkd_main(int ac, char **av)
 {
 	int	c;
 	char	*uid = 0;
-	int	want_http_hdr = 0; /* needed to run under cgi environment */
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help bkd");
@@ -30,14 +29,15 @@ bkd_main(int ac, char **av)
 	loadNetLib();
 
 
-	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:Rs:St:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:hHil|L:p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;
 		    case 'D': Opts.debug = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
 		    case 'i': Opts.interactive = 1; break;
-		    case 'h': want_http_hdr = 1; break;
+		    case 'h': Opts.http_hdr_out; break;
+		    case 'H': Opts.http_hdr_out = Opts.http_hdr_in = 1; break;
 		    case 'l':
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
@@ -90,7 +90,7 @@ bkd_main(int ac, char **av)
 			alarm(Opts.alarm);
 #endif
 		}
-		do_cmds(want_http_hdr);
+		do_cmds();
 		return (0);
 	}
 }
@@ -119,7 +119,12 @@ private	void
 bkd_server()
 {
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
+	remote	r;
 
+	if (Opts.http_hdr_in) {
+		bzero(&r, sizeof(r));
+		r.wfd = 1;
+	}
 	
 	unless (Opts.debug) if (fork()) exit(0);
 	unless (Opts.debug) setsid();	/* lose the controlling tty */
@@ -164,7 +169,8 @@ bkd_server()
 		close(0); dup(n);
 		close(1); dup(n);
 		close(n);
-		do_cmds(0);
+		if (Opts.http_hdr_in) skip_http_hdr(&r);
+		do_cmds();
 		exit(0);
 	}
 }
@@ -236,7 +242,7 @@ bkd_service_loop(int ac, char **av)
 			struct  sockaddr_in sin;
 			int     len = sizeof(sin);
 
-			// XXX TODO figure what to do with this
+			// XXX TODO figure out what to do with this
 			if (getpeername(n, (struct sockaddr*)&sin, &len)) {
 				strcpy(Opts.remote, "unknown");
 			} else {
@@ -343,13 +349,14 @@ save_byte_count(unsigned int byte_count)
 }
 
 private	void
-do_cmds(int want_http_hdr)
+do_cmds()
 {
 	int	ac;
 	char	**av;
-	int	i, ret;
+	int	i, ret, httpMode;
 	int	flags = 0;
 
+	httpMode = (Opts.http_hdr_in || Opts.http_hdr_out);
 	while (getav(&ac, &av)) {
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
@@ -360,8 +367,8 @@ do_cmds(int want_http_hdr)
 				bk_proj = proj_init(0);
 			}
 
-			if (want_http_hdr) http_hdr();
-			flags = cmdlog_start(av, want_http_hdr);
+			if (Opts.http_hdr_out) http_hdr();
+			flags = cmdlog_start(av, httpMode);
 
 			/*
 			 * Do the real work

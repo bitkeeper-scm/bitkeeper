@@ -35,13 +35,14 @@ proc ht {id} \
 # arrow - do a $arrow outline
 # old - do a rectangle in gc(hist.oldColor)
 # new - do a rectangle in gc(hist.newColor)
-# black - do a black rectangle
+# black - do a black rectangle -- used for GCA
 proc highlight {id type {rev ""}} \
 {
 	global gc w
 
 	catch {set bb [$w(graph) bbox $id]} err
 	#puts "In highlight: id=($id) err=($err)"
+	#displayMessage "In highlight: id=($id) err=($err)"
 	# If node to highlight is not in view, err=""
 	if {$err == ""} { return "$err" }
 	# Added a pixel at the top and removed a pixel at the bottom to fix 
@@ -85,7 +86,7 @@ proc highlight {id type {rev ""}} \
 		    -tags new]}
 	    black  {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline black -fill lightblue]}
+		    -outline black -width 2 -fill lightblue]}
 	}
 
 	$w(graph) raise revtext
@@ -366,23 +367,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	}
 	# center the selected revision in the canvas
 	if {$revname != ""} {
-		# XXX:
-		# If you go adding tags to the revisions, the index to 
-		# rev_x2 might need to be modified
-		set rev_x2 [lindex [$w(graph) coords $revname] 0]
-		set cwidth [$w(graph) cget -width]
-		set xdiff [expr $cwidth / 2]
-		set xfract [expr ($rev_x2 - $cdim(s,x1) - $xdiff) /  \
-		    ($cdim(s,x2) - $cdim(s,x1))]
-		$w(graph) xview moveto $xfract
-
-		set rev_y2 [lindex [$w(graph) coords $revname] 1]
-		set cheight [$w(graph) cget -height]
-		set ydiff [expr $cheight / 2]
-		set yfract [expr ($rev_y2 - $cdim(s,y1) - $ydiff) /  \
-		    ($cdim(s,y2) - $cdim(s,y1))]
-		$w(graph) yview moveto $yfract
-
+		centerRev $revname
 		set id [$w(graph) gettag $revname]
 		if {$id == ""} { return }
 		if {$bindtype == "B1"} {
@@ -407,6 +392,28 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	}
 	return
 } ;# proc selectTag
+
+proc centerRev {revname} \
+{
+	global cdim w
+
+	# XXX:
+	# If you go adding tags to the revisions, the index to 
+	# rev_x2 might need to be modified
+	set rev_x2 [lindex [$w(graph) coords $revname] 0]
+	set cwidth [$w(graph) cget -width]
+	set xdiff [expr $cwidth / 2]
+	set xfract [expr ($rev_x2 - $cdim(s,x1) - $xdiff) /  \
+	    ($cdim(s,x2) - $cdim(s,x1))]
+	$w(graph) xview moveto $xfract
+
+	set rev_y2 [lindex [$w(graph) coords $revname] 1]
+	set cheight [$w(graph) cget -height]
+	set ydiff [expr $cheight / 2]
+	set yfract [expr ($rev_y2 - $cdim(s,y1) - $ydiff) /  \
+	    ($cdim(s,y2) - $cdim(s,y1))]
+	$w(graph) yview moveto $yfract
+}
 
 # Separate the revisions by date with a vertical bar
 # Prints the date on the bottom of the pane
@@ -512,6 +519,7 @@ proc addline {y xspace ht l} \
 		set tmp [split $rev "-"]
 		set tuser [lindex $tmp 1]; set trev [lindex $tmp 0]
 		set rev2rev_name($trev) $rev
+		#displayMessage "rev2rev_name($rev)"
 		# determing whether to make revision box two lines 
 		if {$stacked} {
 			set txt "$tuser\n$trev"
@@ -1050,6 +1058,7 @@ proc csetdiff2 {{rev {}}} \
 	global file rev1 rev2 Opts dev_null w
 
 	busy 1
+	cd2root
 	if {$rev != ""} { set rev1 $rev; set rev2 $rev }
 	$w(aptext) configure -state normal; $w(aptext) delete 1.0 end
 	$w(aptext) insert end "ChangeSet history for $rev1..$rev2\n\n"
@@ -1062,6 +1071,9 @@ proc csetdiff2 {{rev {}}} \
 		filltext $w(aptext) $log 0
 	}
 	busy 0
+	catch {close $revs}
+	catch {close $c}
+	catch {close $log}
 }
 
 # Bring up csettool for a given set of revisions as selected by the mouse
@@ -1319,41 +1331,42 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
-		$m add command -label "Last Day" -command {histtool $fname -1D}
+		$m add command -label "Last Day" \
+		    -command {set srev ""; histtool $fname -1D}
 		$m add command -label "Last 2 Days" \
-		    -command {histtool $fname -2D}
+		    -command {set srev ""; histtool $fname -2D}
 		$m add command -label "Last 3 Days" \
-		    -command {histtool $fname -3D}
+		    -command {set srev ""; histtool $fname -3D}
 		$m add command -label "Last 4 Days" \
-		    -command {histtool $fname -4D}
+		    -command {set srev ""; histtool $fname -4D}
 		$m add command -label "Last 5 Days" \
-		    -command {histtool $fname -5D}
+		    -command {set srev ""; histtool $fname -5D}
 		$m add command -label "Last 6 Days" \
-		    -command {histtool $fname -6D}
+		    -command {set srev ""; histtool $fname -6D}
 		$m add command -label "Last Week" \
-		    -command {histtool $fname -W}
+		    -command {set srev ""; histtool $fname -W}
 		$m add command -label "Last 2 Weeks" \
-		    -command {histtool $fname -2W}
+		    -command {set srev ""; histtool $fname -2W}
 		$m add command -label "Last 3 Weeks" \
-		    -command {histtool $fname -3W}
+		    -command {set srev ""; histtool $fname -3W}
 		$m add command -label "Last 4 Weeks" \
-		    -command {histtool $fname -4W}
+		    -command {set srev ""; histtool $fname -4W}
 		$m add command -label "Last 5 Weeks" \
-		    -command {histtool $fname -5W}
+		    -command {set srev ""; histtool $fname -5W}
 		$m add command -label "Last 6 Weeks" \
-		    -command {histtool $fname -6W}
+		    -command {set srev ""; histtool $fname -6W}
 		$m add command -label "Last 2 Months" \
-		    -command {histtool $fname -2M}
+		    -command {set srev ""; histtool $fname -2M}
 		$m add command -label "Last 3 Months" \
-		    -command {histtool $fname -3M}
+		    -command {set srev ""; histtool $fname -3M}
 		$m add command -label "Last 6 Months" \
-		    -command {histtool $fname -6M}
+		    -command {set srev ""; histtool $fname -6M}
 		$m add command -label "Last 9 Months" \
-		    -command {histtool $fname -9M}
+		    -command {set srev ""; histtool $fname -9M}
 		$m add command -label "Last Year" \
-		    -command {histtool $fname -1Y}
+		    -command {set srev ""; histtool $fname -1Y}
 		$m add command -label "All Changes" \
-		    -command {histtool $fname 1.1..}
+		    -command {set srev ""; histtool $fname 1.1..}
 	    button .menus.cset -font $gc(hist.buttonFont) -relief raised \
 		-bg $gc(hist.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -1368,7 +1381,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-text "Select File" -width 12 -state normal \
 		-menu .menus.fmb.menu
 		set gc(fmenu) [menu .menus.fmb.menu]
-		$gc(fmenu) add command -label "View new file" \
+		$gc(fmenu) add command -label "Open new file" \
 		    -command { 
 		    	set fname [selectFile]
 			if {$fname != ""} {
@@ -1591,12 +1604,9 @@ proc selectFile {} \
 		#displayMessage "file=($file) err=($err)"
 		# XXX: Need to add in a function so that we can check for
 		# duplicates
-		# Do the menus.difftool checks in 'proc histtool'
 		if {$fname == "ChangeSet"} {
 			#pack forget .menus.difftool
 		} else {
-			#pack configure .menus.difftool -before .menus.mb \
-			#    -side left
 			$gc(fmenu) add command -label "$fname" \
 			    -command "histtool $fname -$gc(hist.showHistory)" 
 		}
@@ -1652,10 +1662,8 @@ proc getHistory {} \
 }
 
 # Arguments:
-#   all - boolean (optional) : If set to 1, displays all csets
-#
-# This variable is a placeholder -- I expect that we will put an
-# option/menu in that will allow the user to select last month, week, etc.
+#  lfname	filename that we want to view history
+#  R		Revision or time period that we want to view
 #
 proc histtool {lfname R} \
 {
@@ -1734,13 +1742,14 @@ proc init {} \
 }
 
 #
-# srev		- specified revision to warp to on startup
-# rev1
-# rev2
+# srev	- specified revision to warp to on startup
+# rev1	- left-side revision
+# rev2	- right-side revision
+# gca	- greatest common ancestor
 #
 proc arguments {} \
 {
-	global rev1 rev2 argv fname gca srev
+	global rev1 rev2 argv fname gca srev errorCode
 
 	set state flag
 	set rev1 ""
@@ -1777,38 +1786,7 @@ proc arguments {} \
 		    }
 		}
 	}
-}
-
-proc lineOpts {rev} \
-{
-	global	Opts file
-
-	# Call lines to get this rev in the same format as we are using.
-	set f [open "| bk _lines $Opts(line) -r$rev \"$file\""]
-	gets $f rev
-	catch {close $f} err
-	return $rev
-}
-
-wm withdraw .
-init
-arguments
-if {$fname == ""} {
-	cd2root
-	# This should match the CHANGESET path defined in sccs.h
-	set fname ChangeSet
-	catch {exec bk sane} err
-	if {[lindex $errorCode 2] == 1} {
-		displayMessage "$err" 0
-		exit 1
-	}
-} else {
-	if {[file isdirectory $fname]} {
-		catch {cd $fname} err
-		if {$err != ""} {
-			displayMessage "Unable to cd to $fname"
-			exit 1
-		}
+	if {$fname == ""} {
 		cd2root
 		# This should match the CHANGESET path defined in sccs.h
 		set fname ChangeSet
@@ -1817,35 +1795,76 @@ if {$fname == ""} {
 			displayMessage "$err" 0
 			exit 1
 		}
-	} elseif {[exec bk sfiles -g $fname] == ""} {
-		puts stderr "\"$fname\" is not a revision controlled file"
-		#displayMessage "\"$fname\" is not a revision controlled file"
-		exit
+	} else {
+		if {[file isdirectory $fname]} {
+			catch {cd $fname} err
+			if {$err != ""} {
+				displayMessage "Unable to cd to $fname"
+				exit 1
+			}
+			cd2root
+			# This should match the CHANGESET path defined in sccs.h
+			set fname ChangeSet
+			catch {exec bk sane} err
+			if {[lindex $errorCode 2] == 1} {
+				displayMessage "$err" 0
+				exit 1
+			}
+		} elseif {[exec bk sfiles -g "$fname"] == ""} {
+			puts stderr \
+			    "\"$fname\" is not a revision controlled file"
+			displayMessage "\"$fname\" not a bk controlled file"
+			exit
+		}
 	}
 }
 
-widgets
-histtool $fname "-$gc(hist.showHistory)"
+# Return the revision and user name (1.147.1.1-akushner) so that
+# we can manipulate tags
+proc lineOpts {rev} \
+{
+	global	Opts file
 
-if {$rev1 == ""} {
-	histtool $fname "-$gc(hist.showHistory)"
-} else {
-	#puts stderr "rev1=($rev1) srev=($srev)"
-	set srev $rev1
-	histtool $fname "-$rev1"
-	set rev1 [lineOpts $rev1]
-	highlight $rev1 "old"
+	set f [open "| bk _lines $Opts(line) -r$rev \"$file\""]
+	gets $f rev
+	catch {close $f} err
+	return $rev
 }
-if {[info exists rev2] && ($rev2 != "")} {
-	set rev2 [lineOpts $rev2]
-	highlight $rev2 "new"
-	diff2 2
-} 
-if {$gca != ""} {
-	set gca [lineOpts $gca]
-	highlight $gca  "black"
+
+
+proc startup {} \
+{
+	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc
+
+	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
+	if {$srev != ""} {
+		#displayMessage "rev1=($rev1) srev=($srev)"
+		histtool $fname "-$srev"
+		centerRev $rev2rev_name($srev)
+		set rev1 [lineOpts $srev]
+		highlight $rev1 "old"
+	} elseif {$rev1 == ""} {
+		histtool $fname "-$gc(hist.showHistory)"
+	} else {
+		set srev $rev1
+		histtool $fname "-$rev1"
+		set rev1 [lineOpts $rev1]
+		centerRev $rev2rev_name($srev)
+		highlight $rev1 "old"
+	}
+	if {[info exists rev2] && ($rev2 != "")} {
+		set rev2 [lineOpts $rev2]
+		highlight $rev2 "new"
+		diff2 2
+	} 
+	if {$gca != ""} {
+		set gca [lineOpts $gca]
+		highlight $gca "black"
+	}
 }
-# Warp to the correct revision if we can
-if {$srev != ""} {
-	selectTag $w(aptext) 0 0 0 B1
-}
+
+wm withdraw .
+init
+arguments
+widgets
+startup

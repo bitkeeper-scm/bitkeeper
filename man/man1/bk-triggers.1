@@ -99,11 +99,11 @@ BitKeeper/triggers/post\-incoming:
 
 shift
 REPO=`bk gethost`:`pwd`
-if [ "$BK_INCOMING" = OK \-a \-f BitKeeper/etc/csets ]
+if [ "$BK_INCOMING" = OK \-a \-f BitKeeper/etc/csets-in ]
 then    ( 
 	echo ${USER}@"$@"
 	echo ""
-	bk changes \-r`cat BitKeeper/etc/csets`
+	bk changes \-r`cat BitKeeper/etc/csets-in`
 	) | mail \-s "Incoming to $REPO" lm@bitmover.com
 fi
 .DE
@@ -114,11 +114,11 @@ BitKeeper/triggers/post\-outgoing:
 shift
 REPO=`bk gethost`:`pwd`
 TO=lm@bitmover.com
-if [ \-f BitKeeper/etc/pushed \-a "$BK_OUTGOING" = OK ]
+if [ \-f BitKeeper/etc/csets-out \-a "$BK_OUTGOING" = OK ]
 then	( 
 	echo ${USER}@"$@"
 	echo ""
-	bk changes \- < BitKeeper/etc/pushed
+	bk changes \- < BitKeeper/etc/csets-out
 	) | mail \-s "Outgoing from $REPO" $TO
 else
 	echo ${USER}@"$@"| mail \-s "Outgoing from $REPO = $BK_OUTGOING" $TO
