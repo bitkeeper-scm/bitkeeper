@@ -523,7 +523,7 @@ extern	char *upgrade_msg;
 typedef struct loc {
 	char	*p;		/* first byte of the data */
 	u32	len;		/* think 4GB is big enough? */
-	ser_t	serial;
+	u8	isPatch:1;	/* this entry came from the patch file */
 } loc;
 
 /*
@@ -576,7 +576,6 @@ typedef	struct sccs {
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
 	loc	*locs;		/* for cset data */ 
-	u32	iloc;		/* index to element in *loc */ 
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
 	u32	cksumok:1;	/* check sum was ok */
@@ -1120,6 +1119,7 @@ delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s);
 int	cset_diffs(sccs *s, ser_t ser);
+sccs	*cset_fixLinuxKernelChecksum(sccs *s);
 int	cweave_init(sccs *s, int extras);
 int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);

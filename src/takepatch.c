@@ -1118,6 +1118,7 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 		}
 		return -1;
 	}
+	unless (s = cset_fixLinuxKernelChecksum(s)) return (-1);
 	if (isLogPatch) {
 		unless (LOGS_ONLY(s)) {
 			fprintf(stderr,
@@ -1139,7 +1140,7 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 	}
 apply:
 	p = patchList;
-	if (p && p->pid) cweave_init(s, nfound);
+	if (p && p->pid) cset_map(s, nfound);
 	while (p) {
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
@@ -1171,7 +1172,9 @@ apply:
 			iF = p->initMmap;
 			dF = p->diffMmap;
 			if (isLogPatch && chkEmpty(s, dF)) return -1;
-			d = cset_insert(s, iF, dF, p->pid);
+			unless (d = cset_insert(s, iF, dF, p->pid)) {
+				return (-1);
+			}
 		} else {
 			assert(s == 0);
 			unless (s = sccs_init(p->resyncFile, NEWFILE|SILENT)) {
@@ -1202,8 +1205,10 @@ apply:
 				s->xflags |= X_LOGS_ONLY;
 				if (chkEmpty(s, dF)) return -1;
 			}
-			cweave_init(s, nfound);
-			d = cset_insert(s, iF, dF, p->pid);
+			cset_map(s, nfound);
+			unless (d = cset_insert(s, iF, dF, p->pid)) {
+				return (-1);
+			}
 			s->bitkeeper = 1;
 		}
 		/* LOD logging tree fix: All on LOD 1, renumber() will fix */

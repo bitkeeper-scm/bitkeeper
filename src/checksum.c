@@ -4,10 +4,10 @@
 
 WHATSTR("@(#)%K%");
 
-private int	do_chksum(int fd, int off, int *sump);
-private int	chksum_sccs(char **files, char *offset);
-private	int	sccs_csetchksum(sccs *s, int diags, int fix);
-private int	do_file(char *file, int off);
+private	int	do_chksum(int fd, int off, int *sump);
+private	int	chksum_sccs(char **files, char *offset);
+private	int	cset_resum(sccs *s, int diags, int fix);
+private	int	do_file(char *file, int off);
 
 /*
  * checksum - check and/or regenerate the checksums associated with a file.
@@ -24,15 +24,17 @@ checksum_main(int ac, char **av)
 	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0;
 	int	c;
 	char	*off = 0;
+	char	*rev = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {
 		system("bk help checksum");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "cfs|v")) != -1) {
+	while ((c = getopt(ac, av, "cfr;s|v")) != -1) {
 		switch (c) {
 		    case 'c': break;	/* obsolete */
 		    case 'f': fix = 1; break;			/* doc 2.0 */
+		    case 'r': rev = optarg; break;
 		    case 's': do_sccs = 1; off = optarg; break;
 		    case 'v': diags++; break;			/* doc 2.0 */
 		    default:  system("bk help -s checksum");
@@ -42,6 +44,10 @@ checksum_main(int ac, char **av)
 
 	if (do_sccs) return (chksum_sccs(&av[optind], off));
 
+	if (fix ? repository_wrlock() : repository_rdlock()) {
+		repository_lockers(0);
+		return (1);
+	}
 	for (name = sfileFirst("checksum", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, 0);
@@ -57,12 +63,24 @@ checksum_main(int ac, char **av)
 			    av[0], s->sfile);
 			continue;
 		}
-		if (CSET(s)) {
-			doit = bad = sccs_csetchksum(s, diags, fix);
+		doit = bad = 0;
+		/* should this be changed to use the range code? */
+		if (rev) {
+			unless (d = sccs_findrev(s, rev)) {
+				fprintf(stderr,
+				    "%s: unable to find rev %s in %s\n",
+				    av[0], rev, s->gfile);
+				continue;
+			}
+			c = sccs_resum(s, d, diags, fix);
+			if (c & 1) doit++;
+			if (c & 2) bad++;
 		} else {
-			doit = bad = 0;
-			for (d = s->table; d; d = d->next) {
-				if (d->type == 'D') {
+			if (CSET(s)) {
+				doit = bad = cset_resum(s, diags, fix);
+			} else {
+				for (d = s->table; d; d = d->next) {
+					unless (d->type == 'D') continue;
 					c = sccs_resum(s, d, diags, fix);
 					if (c & 1) doit++;
 					if (c & 2) bad++;
@@ -94,6 +112,7 @@ checksum_main(int ac, char **av)
 		sccs_free(s);
 	}
 	sfileDone();
+	fix ? repository_wrunlock(0) : repository_rdunlock(0);
 	return (ret ? ret : (doit ? 1 : 0));
 }
 
@@ -304,14 +323,13 @@ do_chksum(int fd, int off, int *sump)
 	return (0);
 }
 
-typedef struct serset serset;
-struct serset {
+typedef struct serset {
 	int	num, size;
 	struct _sse {
 		ser_t	ser;
 		u16	sum;
 	} data[0];
-};
+} serset;
 
 #define	SS_SIZE  sizeof(serset)
 #define	SSE_SIZE sizeof(struct _sse)
@@ -341,8 +359,9 @@ add_ins(HASH *h, char *root, int len, ser_t ser, u16 sum)
 	ss->data[ss->num].ser = 0;
 }
 
+/* same semantics as sccs_resum() except one call for all deltas */
 private int
-sccs_csetchksum(sccs *s, int diags, int fix)
+cset_resum(sccs *s, int diags, int fix)
 {
 	HASH	*root2map = hash_new();
 	ser_t	ins_ser = 0;
@@ -387,12 +406,10 @@ sccs_csetchksum(sccs *s, int diags, int fix)
 
 	/* foreach delta */
 	for (d = s->table; d; d = d->next) {
-
 		unless (d->type == 'D') continue;
 		unless (d->added || d->include || d->exclude) continue;
 
 		slist = sccs_set(s, d, 0, 0); /* slow */
-
 		sum = 0;
 		added = 0;
 		for (i = 0; i < cnt; i++) {
@@ -412,8 +429,7 @@ sccs_csetchksum(sccs *s, int diags, int fix)
 		}
 		free(slist);
 
-		if ((d->added != added) || (d->deleted != 0) ||
-		    (d->same != 1)) {
+		if ((d->added != added) || d->deleted || (d->same != 1)) {
 			/*
 			 * We dont report bad counts if we are not fixing.
 			 * We have not been consistant about this in the past.
@@ -449,6 +465,33 @@ sccs_csetchksum(sccs *s, int diags, int fix)
 	for (i = 0; i < cnt; i++) free(map[i]);
 	free(map);
 	hash_free(root2map);
-
 	return (found);
+}
+
+#define	LINUX_ROOTKEY \
+"torvalds@athlon.transmeta.com|ChangeSet|20020205173056|16047|c1d11a41ed024864"
+#define	BADKEY	"4076e392jtslXUMZRrRU0ZIm6P7uVg"
+#define	GOODKEY	"4076e392K8UBsl4E_GBNx5_z2ywdfg"
+
+sccs *
+cset_fixLinuxKernelChecksum(sccs *s)
+{
+	delta	*d;
+	char	key[MAXKEY];
+
+	sccs_sdelta(s, sccs_ino(s), key);
+	unless (streq(key, LINUX_ROOTKEY)) return (s);
+	unless (d = sccs_findMD5(s, BADKEY)) return (s);
+
+	if (sccs_findMD5(s, GOODKEY)) {
+		getMsg("bad-linux-kern-tree", 0, 0, 0, stderr);
+		return (0);
+	}
+	unless (sccs_resum(s, d, 0, 1)) {
+		fprintf(stderr, "failed to fix linux checksum error\n");
+		return (0);
+	}
+	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+	sccs_restart(s);
+	return (s);
 }

@@ -134,6 +134,7 @@ check_main(int ac, char **av)
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
+	unless (cset = cset_fixLinuxKernelChecksum(cset)) return (1);
 	mixed = LONGKEY(cset) == 0;
 	if (verbose == 1) {
 		nfiles = sccs_hashcount(cset);
