@@ -98,7 +98,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
 	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
 	slib.o smerge.o status.o stripdel.o synckeys.o sys.o \
-	tagmerge.o takepatch.o tclwrap.o testdates.o trigger.o \
+	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o \
 	user.o utils.o uu.o version.o what.o xflags.o zgets.o \
@@ -264,7 +264,7 @@ rebuild:
 		$(TOMCRYPTOBJ)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out
-	-@rm -f core bkver.c tclwrap $(WIN_TMP)
+	-@rm -f core bkver.c tclwrap tclwrap.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
