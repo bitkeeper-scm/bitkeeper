@@ -73,10 +73,17 @@ cmd_putenv(int ac, char **av)
 	len = p - av[1];
 	/*
 	 * For security, we dis-allow setting PATH and IFS
+	 * We also disallow anything not starting with one of
+	 * _BK_, BK_, or BKD_.  Not sure we need the BKD_, but hey.
 	 */
 	if ((len == 3) && strneq(av[1], "IFS", 3)) return (1);
 	if ((len == 4) && strneq(av[1], "PATH", 4)) return (1);
+	unless (strneq("BK_", av[1], 3) ||
+	    strneq("BKD_", av[1], 4) || strneq("_BK_", av[1], 4)) {
+	    	return (1);
+	}
 	putenv(strdup(av[1])); /* XXX - memory is not released until we exit */
+	if (strneq("BK_USER=", av[1], 8)) sccs_resetuser();
 
 	/*
 	 * Special processing for virtual host/root

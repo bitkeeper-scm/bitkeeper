@@ -23,7 +23,7 @@ trigger_env(char *prefix, char *event, char *what)
 	} else {
 		put_trigger_env("BK", "SIDE", "server");
 		put_trigger_env("BK", "HOST", getenv("_BK_HOST"));
-		put_trigger_env("BK", "USER", getenv("_BK_USER"));
+		put_trigger_env("BK", "USER", getenv("BK_USER"));
 	}
 	put_trigger_env(prefix, "HOST", sccs_gethost());
 	put_trigger_env(prefix, "USER", sccs_getuser());

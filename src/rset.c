@@ -305,17 +305,15 @@ sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 	return (0);
 }
 
-void
+private void
 fix_rev(sccs *s, char **rev, char rev_buf[])
 {
 	delta *d;
 
-	if ((*rev == 0) || streq("+", *rev)) {
-		d = findrev(s, 0);
-		assert(d);
-		strcpy(rev_buf, d->rev);
-		*rev = rev_buf;
-	}
+	d = sccs_getrev(s, *rev ? *rev : "+", 0, 0);
+	assert(d);
+	strcpy(rev_buf, d->rev);
+	*rev = rev_buf;
 }
 
 private int

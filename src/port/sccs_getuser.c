@@ -5,20 +5,21 @@
  * Copyright (c) 2001 Larry McVoy & Andrew Chang       All rights reserved.
  */
 
+static	char	*s;
+static	uid_t	u = (uid_t)-1;
+
 char	*
 sccs_getuser(void)
 {
-	static	char	*s;
-	static	uid_t	u = (uid_t)-1;
 #ifndef WIN32 /* win32 have no effective uid */
 	uid_t	cur = geteuid();
 
 	if (s && (cur == u)) return (s);
 	u = cur;
 #endif
-	unless ((s = getenv("BK_USER")) && !getenv("BK_EVENT")) {
-		s = getenv("USER");
-	}
+	s = getenv("BK_USER");
+	unless (s && s[0]) s = getenv("SUDO_USER");
+	unless (s && s[0]) s = getenv("USER");
 	unless (s && s[0]) s = getlogin();
 #ifndef WIN32 /* win32 have no getpwuid() */
 	unless (s && s[0]) {
@@ -35,4 +36,9 @@ sccs_getuser(void)
 		s = NULL;
 	}
 	return (s);
+}
+
+sccs_resetuser()
+{
+	s = 0;
 }

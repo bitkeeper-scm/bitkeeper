@@ -1220,7 +1220,10 @@ fix_stime(sccs *s)
 	 * so we need to set the mod time to gtime - 2 to compmensate.
 	 */
 	ut.modtime = s->gtime - 2;
-	utime(s->sfile, &ut);
+	if (utime(s->sfile, &ut)) {
+		fprintf(stderr, "fix_stime: failed\n");
+		perror(s->sfile);
+	}
 }
 
 /*
@@ -5959,7 +5962,7 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	int	errp;
 	ser_t	*slist;
 	delta	*n;
-	ser_t	*inc, *exc;
+	ser_t	*inc = 0, *exc = 0;
 
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
@@ -6393,6 +6396,7 @@ out:			if (slist) free(slist);
 		unless (out) {
 			fprintf(stderr,
 			    "getRegBody: Can't open %s for writing\n", f);
+			perror(f);
 			fflush(stderr);
 			goto out;
 		}
@@ -6859,7 +6863,7 @@ err:		if (i2) free(i2);
 			d = 0;
 		}
 	} else {
-		d = findrev(s, rev);
+		d = sccs_getrev(s, rev ? rev : "+", 0, 0);
 		unless (d) {
 			verbose((stderr,
 			    "get: can't find revision like %s in %s\n",
@@ -9501,6 +9505,7 @@ checkOpenBranch(sccs *s, int flags)
  *	. no open branches
  *	. checksums on all deltas
  *	. xflags history
+ *	. tag structure
  */
 private int
 checkInvariants(sccs *s, int flags)
@@ -9514,12 +9519,24 @@ checkInvariants(sccs *s, int flags)
 	for (d = s->table; d; d = d->next) {
 		if ((d->type == 'D') && !(d->flags & D_CKSUM)) {
 			verbose((stderr,
-			    "%s@@%s: no checksum\n", s->gfile, d->rev));
+			    "%s|%s: no checksum\n", s->gfile, d->rev));
 		}
 		if (d->xflags && checkXflags(s, d, xf)) {
 			extern	int xflags_failed;
 
 			xflags_failed = 1;
+			error |= 1;
+		}
+		if (d->mtag && !sfind(s, d->mtag)) {
+			verbose((stderr,
+			    "%s|%s: tag merge %u does not exist\n",
+			    s->gfile, d->rev, d->mtag));
+			error |= 1;
+		}
+		if (d->ptag && !sfind(s, d->ptag)) {
+			verbose((stderr,
+			    "%s|%s: tag parent %u does not exist\n",
+			    s->gfile, d->rev, d->ptag));
 			error |= 1;
 		}
 	}
