@@ -455,7 +455,7 @@ _chkConfig() {
 	if [ ! -f  ${cfgDir}SCCS/s.config ]
 	then
 		_gethelp chkconfig_missing $BIN
-		exit 1
+		return 1
 	fi
 	if [ -f ${cfgDir}config ]
 	then	${BIN}clean ${cfgDir}config
@@ -464,8 +464,9 @@ _chkConfig() {
 	cmp -s ${cfgDir}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
 	then	_gethelp chkconfig_inaccurate $BIN
-		exit 1
+		return 1
 	fi
+	return 0
 }
 
 # Send configuration information for those sites which have disabled logging.
@@ -531,20 +532,20 @@ _mail() {
 }
 
 _logAddr() {
-	_chkConfig
 	LOG=`grep "^logging:" ${cfgDir}config | tr -d '[\t, ]'`	
 	case X${LOG} in 
 	Xlogging:*)
 		;;
 	*)	echo "Bad config file, can not find logging entry"
 		${BIN}clean ${cfgDir}config
-		exit 1 
+		return 1
 		;;
 	Xlogging:.*bitkeeper.openlogging.org)
 		LOG=changesets@openlogging.org
 		;;
 	esac
 	echo ${LOG#*:} 
+	return 0
 }
 
 # The rule is: for any user@host.dom.ain, if the last component is 3 letters,
@@ -700,7 +701,7 @@ _commit() {
 	then	if [ -f ${TMP}commit$$ ]
 		then	COMMENTS="-Y${TMP}commit$$"
 		fi
-		LOGADDR=`_logAddr` ||
+		_chkConfig && LOGADDR=`_logAddr` ||
 		    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 		export LOGADDR
 		nusers=`_users | wc -l` || 
@@ -734,7 +735,7 @@ _commit() {
 			if [ -s ${TMP}commit$$ ]
 			then	COMMENTS="-Y${TMP}commit$$"
 			fi
-			LOGADDR=`_logAddr` || 
+			_chkConfig && LOGADDR=`_logAddr` || 
 			    { ${RM} -f ${TMP}list$$ ${TMP}commit$$; exit 1; }
 			export LOGADDR
 			nusers=`_users | wc -l` || 
