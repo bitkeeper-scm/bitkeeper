@@ -8,13 +8,11 @@ int	cmp(delta **a, delta **b);
 void	branches(delta *d);
 void	p(delta *d);
 int	flags;
-
-#define	DONE	0x80000000
+sccs	*s;
 
 int
 main(int ac, char **av)
 {
-	sccs	*s;
 	int	c;
 	char	*name;
 
@@ -118,27 +116,40 @@ void
 branches(delta *d)
 {
 	if (!d) return;
-	if ((d->r[3] == 1) && (d->type != 'R') && !(d->flags & DONE)) {
+	if ((d->r[3] == 1) && (d->type != 'R') && !(d->flags & D_VISITED)) {
 		p(d);
 	}
 	branches(d->kid);
 	branches(d->siblings);
 }
 
+pd(char *prefix, delta *d)
+{
+	printf("%s%s", prefix, d->rev);
+	if (flags & USER) printf("-%s", d->user);
+	if (d->flags & D_BADREV) printf("-BAD");
+	if (d->merge) {
+		extern	delta *sfind();
+		delta	*p = sfind(s, d->merge);
+
+		assert(p);
+		printf(":%s", p->rev);
+		if (flags & USER) printf("-%s", p->user);
+	}
+}
+
 void
 p(delta *d)
 {
 	char	*prefix = "";
+
 	if (d->parent) {
-		printf("%s", d->parent->rev);
-		if (flags & USER) printf("-%s", d->parent->user);
+		pd("", d->parent);
 		prefix = " ";
 	}
-	while (d && (d->type != 'R') && !(d->flags & DONE)) {
-		d->flags |= DONE;
-		printf("%s%s", prefix, d->rev);
-		if (flags & USER) printf("-%s", d->user);
-		if (d->flags & D_BADREV) printf("-BAD");
+	while (d && (d->type != 'R') && !(d->flags & D_VISITED)) {
+		d->flags |= D_VISITED;
+		pd(prefix, d);
 		//if (d->kid && (d->kid->r[2] != d->r[2])) break;
 		d = d->kid;
 		prefix = " ";

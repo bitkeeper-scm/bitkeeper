@@ -21,7 +21,7 @@ WHATSTR("%W%");
  *
  * Repeats.
  */
-char *takepatch_help = "usage: takepatch [-v]\n";
+char *takepatch_help = "usage: takepatch [-v] [-i]\n";
 
 int	echo = 0;
 int	line;
@@ -35,7 +35,7 @@ int	extractDelta(char *name, sccs *s, int nf, FILE *f, int flags);
 int	getLocals(sccs *s, delta *d, char *name);
 void	insertPatch(patch *p);
 int	fileCopy(char *from, char *to);
-int	files, local, remote;
+int	files, remote, conflicts;
 int	newProject;
 MDBM	*idDB;
 delta	*gca;
@@ -80,8 +80,8 @@ usage:		fprintf(stderr, takepatch_help);
 	purify_list();
 	if (echo) {
 		fprintf(stderr,
-		    "takepatch: %d remote, %d local revisions in %d files\n",
-		    remote, local, files);
+		    "takepatch: %d new revision%s, %d conflicts in %d files\n",
+		    remote, remote > 1 ? "s" : "", conflicts, files);
 	}
 	exit(0);
 }
@@ -90,7 +90,7 @@ delta *
 getRecord(FILE *f)
 {
 	int	e = 0;
-	delta	*d = sccs_getInit(0, f, 1, &e, 0);
+	delta	*d = sccs_getInit(0, 0, f, 1, &e, 0);
 	int	c;
 
 	if (!d || e) {
@@ -98,7 +98,9 @@ getRecord(FILE *f)
 		    "takepatch: bad delta record near line %d\n", line);
 		exit(1);
 	}
-	d->date = sccs_date2time(d->sdate, d->zone, 0);
+	unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
+		assert(d->date);
+	}
 	return (d);
 }
 
@@ -142,7 +144,8 @@ extractPatch(FILE *p, int flags)
 	unless (v.dptr) {
 		unless (newFile) {
 			fprintf(stderr,
-			    "takepatch: can't find key '%s' in id cache\n", buf);
+			    "takepatch: can't find key '%s' in id cache\n",
+			    buf);
 			exit(1);
 		}
 	}
@@ -151,6 +154,11 @@ extractPatch(FILE *p, int flags)
 		unless ((s = sccs_init(name, flags)) && HAS_SFILE(s)) {
 			fprintf(stderr,
 			    "takepatch: can't find file '%s'\n", name);
+			exit(1);
+		}
+		if (s->state & PFILE) {
+			fprintf(stderr, 
+			    "takepatch: %s is locked.\n", s->sfile);
 			exit(1);
 		}
 		unless (tmp = sccs_findKey(s, buf)) {
@@ -175,27 +183,14 @@ extractPatch(FILE *p, int flags)
 	while (extractDelta(name, s, newFile, p, flags)) {
 		if (newFile) newFile = 2;
 	}
+	remote += nfound;
 	gfile = sccs2name(name);
-	if (patchList && gca) {
-		int	rem = nfound;
-
-		remote += nfound;
-		nfound = 0;
-		getLocals(s, gca->kid, name);
-		if (echo>1) {
-			fprintf(stderr,
-			    "takepatch: %d remote, %d local revisions in %s\n",
-			    rem, nfound, gfile);
-		}
-		local += nfound;
-	} else {
-		if (echo>1) {
-			fprintf(stderr,
-			    "takepatch: %d remote revisions for %s\n",
-			    nfound, gfile);
-		}
-		remote += nfound;
+	if (echo>1) {
+		fprintf(stderr,
+		    "takepatch: %d new revision%s in %s\n",
+		    nfound, nfound > 1 ? "s" : "", gfile);
 	}
+	if (patchList && gca) getLocals(s, gca->kid, name);
 	applyPatch(flags);
 	sccs_free(s);
 	free(gfile);
@@ -225,21 +220,20 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags)
 	fnext(buf, f); chop(buf); line++;
 	if (echo>3) fprintf(stderr, "%s\n", buf);
 	pid = strdup(buf);
-	unless (gca) {
-		unless (parent = sccs_findKey(s, buf)) {
-			unless (newFile) {
-				fprintf(stderr,
-				    "takepatch: can't find parent %s in %s ",
-				    buf, s->sfile);
-				fprintf(stderr,
-				    "near line %d in patch\n", line);
-				exit(1);
+	if (parent = sccs_findKey(s, buf)) {
+		/*
+		 * This weird bit of code will handle out of order deltas
+		 * in the patch.
+		 */
+		if (gca) {
+			for (d = parent; d; d = d->parent) {
+				if (d == gca) break;
 			}
+			/* if not found, this is higher so use it */
+			if (!d) gca = parent;
+		} else {
+			gca = parent;
 		}
-		if ((echo > 5) && parent) {
-			fprintf(stderr, "GCA %s\n", parent->rev);
-		}
-		gca = parent;
 	}
 
 	/* go get the delta table entry for this delta */
@@ -288,7 +282,8 @@ delta:	off = ftell(f);
 		p->resyncFile = strdup(tmpf);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", no);
 		p->diffFile = strdup(tmpf);
-		p->order = parent == d ? 0 : d->date + d->dateFudge;
+		p->order = parent == d ? 0 : d->date;
+		if (echo>5) fprintf(stderr, "REM: %s %s %u\n", d->rev, p->me, p->order);
 		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
 			exit(0);
@@ -317,21 +312,6 @@ delta:	off = ftell(f);
 	return (0);
 }
 
-char *
-findLeaf(sccs *s, int flag)
-{
-	patch	*p, *r = 0;
-	delta	*d, *e;
-
-	for (p = patchList, r = 0; p; p = p->next) {
-		if (p->flags & flag) r = p;
-	}
-	unless (r) return ("none");
-	e = sccs_findKey(s, r->me);
-	assert(e);
-	return (e->rev);
-}
-
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
@@ -348,7 +328,7 @@ applyPatch(int flags)
 	FILE	*iF, *dF;
 	sccs	*s = 0;
 	delta	*d;
-	char	*t, *leftRev = 0, *rightRev = 0, *gcaRev = "none";
+	char	*t;
 	int	newflags;
 	char	*getuser(), *now();
 
@@ -383,7 +363,6 @@ applyPatch(int flags)
 		}
 		exit(1);
 	}
-	gcaRev = strdup(gca->rev);
 	sccs_free(s);
 	/* sccs_restart does not rebuild the graph and we just pruned it,
 	 * so do a hard restart.
@@ -399,10 +378,19 @@ apply:
 		char	cmd[2048];
 
 		if (p->pid) {
+			assert(s);
 			unless (d = sccs_findKey(s, p->pid)) {
 				fprintf(stderr,
-				    "takepatch: can't find %s in %s\n",
+				    "takepatch: can't find PID %s in %s\n",
 				    p->pid, s->sfile);
+				if (echo>6) {
+					char	buf[1024];
+
+					sprintf(buf,
+					    "echo --- %s ---; cat %s", 
+					    p->initFile, p->initFile);
+					system(buf);
+				}
 				exit(1);
 			}
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
@@ -413,9 +401,18 @@ apply:
 				}
 			} else {
 				newflags = NOCKSUM|SILENT|SKIPGET|EDIT;
-				if (sccs_get(s, d->rev, 0, 0, newflags, "-")) {
+				/* CSTYLED */
+				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
 					perror("get");
 					exit(1);
+				}
+				if (echo > 6) {
+					char	buf[1024];
+
+					sprintf(buf,
+			"echo --- %s ---; cat %s; echo --- %s ---; cat %s", 
+			p->initFile, p->initFile, p->diffFile, p->diffFile);
+					system(buf);
 				}
 				iF = fopen(p->initFile, "r");
 				dF = fopen(p->diffFile, "r");
@@ -459,32 +456,20 @@ apply:
 		p = p->next;
 	}
 
-	/*
-	 * Create resolve file.
-	 * XXX - this is also where we would handle pathnames, symbols, etc.
-	 */
 	sccs_free(s);
 	s = sccs_init(patchList->resyncFile, 0);
 	assert(s);
-	leftRev = findLeaf(s, PATCH_REMOTE);
-	rightRev = findLeaf(s, PATCH_LOCAL);
-	t = strrchr(patchList->resyncFile, '/');
-	assert(t);
-	assert(t[-1] == 'S');
-	assert(t[1] == 's');
-	t[1] = 'r';
-	f = fopen(patchList->resyncFile, "w");
-	fprintf(f, "merge deltas %s %s %s %s %s\n",
-	    leftRev, gcaRev, rightRev, getuser(), now());
-	fclose(f);
+	conflicts += sccs_resolveFile(s);
 	sccs_free(s);
 	for (p = patchList; p; ) {
 		patch	*next = p->next;
 
 		unlink(p->initFile);
 		free(p->initFile);
-		unlink(p->diffFile);
-		free(p->diffFile);
+		if (p->diffFile) {
+			unlink(p->diffFile);
+			free(p->diffFile);
+		}
 		free(p->localFile);
 		free(p->resyncFile);
 		if (p->pid) free(p->pid);
@@ -533,12 +518,15 @@ getLocals(sccs *s, delta *d, char *name)
 	} else {
 		p->flags |= PATCH_META;
 	}
-	d->date = sccs_date2time(d->sdate, d->zone, 0);
+	unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
+		assert(d->date);
+	}
 	sccs_sdelta(tmpf, d->parent);
 	p->pid = strdup(tmpf);
 	sccs_sdelta(tmpf, d);
 	p->me = strdup(tmpf);
 	p->order = d->date;
+	if (echo>5) fprintf(stderr, "LOCAL: %s %s %u\n", d->rev, p->me, p->order);
 	insertPatch(p);
 	nfound++;
 	getLocals(s, d->kid, name);
@@ -578,6 +566,17 @@ insertPatch(patch *p)
 }
 
 /*
+ * Create enough stuff that the tools can find the project root.
+ */
+initProject()
+{
+	if (mkdir("BitKeeper", 0775) || mkdir("BitKeeper/etc", 0775)) {
+		perror("mkdir");
+		exit(1);
+	}
+}
+
+/*
  * Go find the change set file and do this relative to that.
  * Create the RESYNC dir or bail out if it exists.
  * Put our pid in that dir so that we can figure out if
@@ -593,7 +592,10 @@ init(FILE *p, int flags)
 	int	i, j;
 	FILE	*f, *g;
 
-	if (newProject) goto tree;
+	if (newProject) {
+		initProject();
+		goto tree;
+	}
 
 	if (stat("/", &sb)) {
 		perror("stat of /");
@@ -625,6 +627,7 @@ init(FILE *p, int flags)
 	}
 
 	unless (flags & SILENT) {
+		if (!buf[0]) getcwd(buf, sizeof(buf));
 		fprintf(stderr, "takepatch: using %s as project root\n", buf);
 	}
 

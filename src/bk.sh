@@ -559,7 +559,7 @@ function changes {
 	then	CS=ChangeSet
 	else	CS="$1/ChangeSet"
 	fi
-	${BIN}prs "$CS"
+	exec ${BIN}prs "$CS"
 }
 
 function cset {
@@ -568,15 +568,15 @@ function cset {
 	do	DIR=$i
 	done
 	sfiles -r$DIR
-	${BIN}cset $*
+	exec ${BIN}cset $*
 }
 
 function mkpatch {
-	${BIN}makepatch "$@"
+	exec ${BIN}makepatch "$@"
 }
 
 function tkpatch {
-	${BIN}takepatch "$@"
+	exec ${BIN}takepatch "$@"
 }
 
 function gui {
@@ -584,7 +584,7 @@ function gui {
 	then	echo Using localhost as your display
 	else	echo Using $DISPLAY as your display
 	fi
-	eval "$@"
+	exec "$@"
 }
 
 function commandHelp {
@@ -652,7 +652,7 @@ case "$1" in
     smark|smoosh|takepatch|unedit|what|import)
 	cmd=$1
 	shift
-    	eval ${BIN}$cmd "$@"
+    	exec ${BIN}$cmd "$@"
 	;;
     regression)
 	PATH=${BIN}:$PATH regression
@@ -672,9 +672,9 @@ case "$1" in
 	then	cmd=$1
 		shift
 		echo Running $DBIN$cmd "$@"
-		eval $DBIN$cmd "$@"
+		exec $DBIN$cmd "$@"
 	else	echo No debugging for $1, running normally.
-		eval bk "$@"
+		exec bk "$@"
 	fi
 	;;
     -h*|help)

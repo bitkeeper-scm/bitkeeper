@@ -151,8 +151,8 @@ extern	char *strdup(char *s);
 #define	SAVEGFILE	0x00000100	/* delta -n: save edited gfile */
 #define	UNEDIT		0x00000200	/* clean -u: unedit - discard changes */
 #define	NEWFILE		0x00000400	/* delta -i: create initial file */
-#define	TIMET		0x00000800	/* prs -t */
-#define	AVAILABLE_XXX	0x00001000	/* AVAILABLE */
+#define	AVAILABLE_1	0x00000800	/* AVAILABLE */
+#define	AVAILABLE_2	0x00001000	/* AVAILABLE */
 #define	NOCKSUM		0x00002000	/* don't do the checksum */
 #define	FORCEBRANCH	0x00004000	/* force a branch when creating delta */
 #define	CHECKFILE	0x00008000	/* check file format (admin) */
@@ -171,6 +171,7 @@ extern	char *strdup(char *s);
 #define	PATCH		0x10000000	/* mk/tkpatch, delta -R */
 #define	VERBOSE		0x20000000	/* when !SILENT isn't enough */
 #define SHUTUP		0x40000000	/* when SILENT isn't enough */
+#define GTIME		0x80000000	/* use g file mod time as time stamp */
 
 /*
  * Flags (s->state) that indicate the state of a file.  Set up in init.
@@ -201,6 +202,8 @@ extern	char *strdup(char *s);
 #define	NOSCCSDIR	0x00200000	/* this is a s.foo not SCCS/s.foo */
 #define MAPPRIVATE	0x00400000	/* Some winblows hack */
 #define	ONE_ZERO	0x00800000	/* initial rev, make it be 1.0 */
+#define READ_ONLY	0x01000000	/* force read only mode */
+#define Z_LOCKED	0x02000000	/* file is locked */
 
 /*
  * Options to sccs_diffs()
@@ -268,8 +271,15 @@ extern	char *strdup(char *s);
 #define	D_STEAL		0x00000800	/* sccslog is stealing this rev */
 #define	D_META		0x00001000	/* this is a metadata removed delta */
 #define	D_SYMBOLS	0x00002000	/* delta has one or more symbols */
-#define	D_LOD		0x00004000	/* this delta has an LOD */
-#define	D_DUPCSETFILE	0x00008000	/* this changesetFile is shared */
+#define	D_DUPCSETFILE	0x00004000	/* this changesetFile is shared */
+#define	D_VISITED	0x00008000	/* and had a nice cup of tea */
+#define	D_CKSUM		0x00010000	/* delta has checksum */
+#define	D_MERGED	0x00020000	/* some delta has merged this one */
+#define	D_LODZERO	0x00040000	/* a .0 delta of an LOD */
+#define	D_LODHEAD	0x00080000	/* a .1 delta of an LOD */
+#define	D_LODCONT	0x00100000	/* LOD continuation down a branch */
+#define	D_DUPLOD	0x00200000	/* shared ->lod */
+#define	D_LODSTR	0x00400000	/* lod pointer is a string: getInit() */
 
 /*
  * Signal handling.
@@ -290,6 +300,9 @@ extern	char *strdup(char *s);
 #define	PENDING		"SCCS/x.pending_cache"	/* Ditto */
 #define	ID		"SCCS/x.id_cache"	/* Ditto */
 
+#define	ROOT_USER	"root"
+#define	UNKNOWN_USER	"anon"
+
 #define	isData(buf) (buf[0] != '\001')
 
 typedef	unsigned short	ser_t;
@@ -306,6 +319,13 @@ typedef	unsigned short	u16;
  * and our sibling is 1.1.1.1.
  *
  * Note: we don't implement MRs - should we?
+ * Fri Apr  9 1999:  his has grown to 124 bytes.  We might want to think
+ * about reducing the size.  That means a 5K delta file takes 620K in 
+ * memory just for the graph.
+ *
+ * Something else we ought to do: our own allocator/deallocator which allocates
+ * enough memory for all the data structures at init time.  That way we can
+ * fail the init if there is no memory.
  */
 typedef struct delta {
 	/* stuff in original SCCS */
@@ -331,12 +351,14 @@ typedef struct delta {
 	char	*cset;			/* id for delta in the ChangeSet file */
 	char	*csetFile;		/* id for ChangeSet file itself */
 	ser_t	merge;			/* serial number merged into here */
+	sum_t	sum;			/* checksum of gfile */
 	time_t	dateFudge;		/* make dates go forward */
 	/* In memory only stuff */
-	u16	r[4];			/* 1.2.3 -> 1, 2, 3, -1 */
+	u16	r[4];			/* 1.2.3 -> 1, 2, 3, 0 */
+	u16	lodr[3];		/* Same as above for LODs */
 	time_t	date;			/* date - conversion from sdate/zone */
-	char	*sym;			/* used only for getInit(), see below */
-	char	*lod;			/* used only for getInit(), see below */
+	char	*sym;			/* used only for getInit(), see above */
+	struct	lod *lod;		/* used for getInit() and later */
 	struct	delta *parent;		/* parent delta above me */
 	struct	delta *kid;		/* next delta on this branch */
 	struct	delta *siblings;	/* pointer to other branches */
@@ -355,7 +377,53 @@ typedef struct delta {
  *
  * The sym/lod fields in the delta are for initialization and are extracted
  * and put into the appropriate lists once the delta is entered in the graph.
+ * 
+ * Lod update:
+ * If the delta has D_LODZERO set then it is a parent LOD, i.e., it is the .0
+ * node for an LOD.  There can be multiple LOD's rooted at one parent, so
+ * we have to search the lod list if we need to find them.  The d* in the lod
+ * points at this delta if there are no deltas in the LOD yet.
+ * If the delta has D_LODHEAD set, it is the first delta in the LOD and the
+ * lod pointer is valid.  The d* in the lod points at this delta.
+ * If the delta has D_LODCONT set, it is a continuation of the LOD which has
+ * gone around a branch.  The lod pointer is valid but is a dup.
+ * If the delta has D_DUPLOD set, it is some delta in the LOD, not the head
+ * delta.  The lod pointer is valid, but it is a dup.
+ *
+ * Takepatch implications: this means that all deltas in a LOD need to print
+ * out their LOD name so that the right thing happens when we smoosh.  And
+ * in dinsert() if the lod is set, we need to make sure that it isn't a dup
+ * and if so make it be set up like a dup.
  */
+
+/*
+ * Symbolic lines of development.
+ * Like symbols only they apply to an indefinite number of revisions.
+ * The same LOD name can occur multiple times, once per each branch in the
+ * LOD.  To get to the tip of an LOD, walk this list, take the last LOD
+ * which matches, and go to the top of that.
+ * This means that the LODS are in the list oldest .. newest.
+ */
+typedef	struct lod {		
+	struct	lod	*next;		/* list of all heads of LODs, this
+					 * list is unique in the name field. */
+	char	*name;			/* the LOD name */
+	ser_t	*heads;			/* the .1 ser and each branch head */
+	delta	*d;			/* the .0 rev of the LOD */
+} lod;
+
+/*
+ * Symbolic names for revisions.
+ * Note that these are fully specified revisions only.
+ */
+typedef	struct symbol {			/* symbolic tags */
+	struct	symbol *next;		/* s->symbols sorted on date list */
+	char	*name;			/* STABLE */
+	char	*rev;			/* 1.32 */
+	delta	*d;			/* delta associated with this one */
+					/* only for absolute revs, not LOD */
+	delta	*reald;			/* where the symbol lives on disk */
+} symbol;
 
 /*
  * See slib.c:allocstate() for explanation.
@@ -377,36 +445,19 @@ typedef struct {
 } ielist;
 
 /*
- * Symbolic names for revisions.
- * Note that these are fully specified revisions only.
+ * Rap on project roots.  In BitKeeper, lots of stuff wants to know
+ * where the project root is relative to where we are.  We need to
+ * use the ->root field for this, remembering to null it whenever
+ * we change directories.  
+ *
+ * We also need to wack commands that work in loops to reuse the root
+ * pointer across sccs_init()s.  This means that loops should extract
+ * the root pointer from the sccs pointer, null the sccs pointer, and
+ * then put the root pointer into the next sccs pointer.  This means that
+ * sccs_init() should *NOT* go find that root directory, it should do it
+ * lazily in sccs_root().  That gives us a chance to pass it in.
  */
-typedef	struct symbol {			/* symbolic tags */
-	struct	symbol *next;		/* s->symbols sorted on date list */
-	char	*name;			/* STABLE */
-	char	*rev;			/* 1.32 */
-	delta	*d;			/* delta associated with this one */
-					/* only for absolute revs, not LOD */
-	delta	*reald;			/* where the symbol lives on disk */
-} symbol;
 
-/*
- * Symbolic lines of development.
- * Like symbols only they apply to an indefinite number of revisions.
- * The same LOD name can occur multiple times, once per each branch in the
- * LOD.  To get to the tip of an LOD, walk this list, take the last LOD
- * which matches, and go to the top of that.
- * This means that the LODS are in the list oldest .. newest.
- */
-typedef	struct lod {		
-	struct	lod	*next;		/* list of all heads of LODs, this
-					 * list is unique in the name field. */
-	char	*name;			/* the LOD name */
-	delta	*d;			/* the .0 rev of the LOD or branch */
-	ser_t	nextd;			/* if set, the next rev in this LOD,
-					 * either the .1 or the first in a 
-					 * branch. */
-} lod;
-			
 /*
  * struct sccs - the delta tree, the data, and associated junk.
  */
@@ -435,6 +486,7 @@ typedef	struct sccs {
 	char	*pfile;		/* SCCS/p.foo.c */
 	char	*zfile;		/* SCCS/z.foo.c */
 	char	*gfile;		/* foo.c */
+	char	*root;		/* to the root of the project; optional */
 	char	**usersgroups;	/* lm, beth, staff, etc */
 	int	encoding;	/* ascii, uuencode, gzip, etc. */
 	char	**flags;	/* flags in the middle that we didn't grok */
@@ -444,7 +496,10 @@ typedef	struct sccs {
 	int	nextserial;	/* next unused serial # */
 	delta	*rstart;	/* start of a range */
 	delta	*rstop;		/* end of range */
-	unsigned short cksum;	/* SCCS chksum */
+	sum_t	 cksum;		/* SCCS chksum */
+	sum_t	 dsum;		/* SCCS delta chksum */
+	off_t	sumOff;		/* offset of the new delta cksum */
+	time_t	gtime;		/* gfile modidification time */
 	unsigned int cksumok:1;	/* check sum was ok */
 } sccs;
 
@@ -460,12 +515,15 @@ typedef struct {
  * Passed back from read_pfile().
  */
 typedef struct {
-	char	oldrev[MAXREV];
-	char	newrev[MAXREV];
+	char	oldrev[MAXREV];		/* XXX - needs to be malloced */
+	char	newrev[MAXREV];		/* XXX - needs to be malloced */
+	char	sccsrev[MAXREV];
+	lod	*l;			/* if set, this the lod for new d */
 	char	*user;			/* malloced - caller frees */
 	char	date[20];
 	char	*iLst;			/* malloced - caller frees */
 	char	*xLst;			/* malloced - caller frees */
+	char	*mRev;			/* malloced - caller frees */
 } pfile;
 
 /*
@@ -529,7 +587,8 @@ int	sccs_admin(sccs *sc, int flgs,
 int	sccs_checkin(sccs *s, int flags, delta *d);
 int	sccs_delta(sccs *s, int flags, delta *d, FILE *init, FILE *diffs);
 int	sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *);
-int	sccs_get(sccs *s, char *rev, char *i, char *x, int flags, char *out);
+int	sccs_get(sccs *s,
+	    char *rev, char *mRev, char *i, char *x, int flags, char *out);
 int	sccs_clean(sccs *s, int flags);
 int	sccs_info(sccs *s, int flags);
 int	sccs_prs(sccs *s, int flags, char *dspec, FILE *out);
@@ -545,17 +604,19 @@ int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 int	sccs_addSym(sccs *, int, char *);
-time_t	sccs_date2time(char *date, char *zone, int roundup);
 void	sccs_ids(sccs *s, int flags, FILE *out);
 int	sccs_hasDiffs(sccs *s, int flags);
 void	sccs_print(delta *d);
-delta	*sccs_getInit(delta *d, FILE *f, int patch, int *errorp, int *linesp);
+delta	*sccs_getInit(sccs *s,
+		      delta *d, FILE *f, int patch, int *errorp, int *linesp);
 delta	*sccs_ino(sccs *);
 int	sccs_rmdel(sccs *s, char *rev, int destroy, int flags);
 int	sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut);
 void	sccs_pdelta(delta *d, FILE *out);
-int	sccs_root(char *optional_root);
+char	*sccs_root(sccs *, char *optional_root);
+int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
+char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 void	sccs_sdelta(char *, delta *);
 void	sfileUnget(void);
 char	*sfileNext(void);
@@ -567,7 +628,9 @@ int	rangeAdd(sccs *sc, char *rev, char *date);
 int	tokens(char *s);
 delta	*findrev(sccs *, char *);
 delta	*sccs_findKey(sccs *, char *);
-delta	*sccs_dInit(delta *, sccs *, int);
+delta	*sccs_dInit(delta *, char, sccs *, int);
+char	*sccs_gethost(void);
+char	*getuser(void);
 
 FILE	*fastPopen(const char*, const char*);
 int	fastPclose(FILE*);

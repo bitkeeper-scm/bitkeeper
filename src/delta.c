@@ -2,12 +2,13 @@
 #include "sccs.h"
 WHATSTR("%W%");
 char	*delta_help = "\n\
-usage: delta [-cilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
+usage: delta [-cGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
     -c		Skip the checksum generation (not advised)\n\
     -D<file>	Specify a file of diffs to be used as the change\n\
+    -G		use gfile mod time as checkin time\n\
     -i		Initial checkin, create a new revision history\n\
     -l		Follow checkin with a locked checkout like ``get -e''\n\
-    -M<merge>	Record the other parent of this merge delta\n\
+    -L<lod>	Delta is the lod.1, i.e., creates a new line of development\n\
     -n		Retain the edited g-file, which is normally deleted\n\
     -p		Print differences\n\
     -q		Run silently\n\
@@ -40,25 +41,24 @@ main(int ac, char **av)
 	char	*initFile = 0;
 	char	*diffsFile = 0;
 	char	*name;
-	char 	*merge = 0;
 	char	*sym = 0;
 	char	*lod = 0;
 	FILE	*diffs = 0;
 	FILE	*init = 0;
+	pfile	pf;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
 help:		fprintf(stderr, delta_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "cD:g;I;ilL;M;m;npqRS;sy|Y")) != -1) {
+	while ((c = getopt(ac, av, "cD:g;GI;ilL;m;npqRS;sy|Y")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'g': fprintf(stderr, "-g Not implemented.\n");
 			    goto help;
 		    case 'm': fprintf(stderr, "-m Not implemented.\n");
 			    goto help;
-		    case 'M': merge = optarg; break;
 		    case 'n': flags |= SAVEGFILE; break;
 		    case 'p': flags |= PRINT; break;
 		    case 'r': fprintf(stderr, "-r Not implemented.\n");
@@ -73,6 +73,7 @@ help:		fprintf(stderr, delta_help);
 		    /* LM flags */
 		    case 'c': flags |= NOCKSUM; break;
 		    case 'D': diffsFile = optarg; break;
+		    case 'G': flags |= GTIME; break;
 		    case 'I': initFile = optarg; break;
 		    case 'i': flags |= NEWFILE; break;
 		    case 'l': flags |= SKIPGET|SAVEGFILE|EDIT; break;
@@ -113,9 +114,14 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		    "delta: Can't open init file '%s'.\n", initFile);
 		goto usage;
 	}
+	if (lod && !(flags & NEWFILE)) {
+		fprintf(stderr, "delta: -L requires -i.\n");
+		goto usage;
+	}
 
 	while (name) {
 		delta	*d = 0;
+		char	*nrev;
 
 		if (flags & DONTASK) unless (d = getComments()) goto usage;
 		unless (s = sccs_init(name, flags)) {
@@ -123,24 +129,21 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			name = sfileNext();
 			continue;
 		}
-		if (merge) {
-			delta	*p;
-
-			unless (p = findrev(s, merge)) {
-				fprintf(stderr, "delta: can't find %s in %s\n",
-				    merge, s->sfile);
-				goto out;
-			}
-			if (!d) d = calloc(1, sizeof(*d));
-			d->merge = p->serial;
-		}
 		if (sym) {
 			if (!d) d = calloc(1, sizeof(*d));
 			d->sym = strdup(sym);
 		}
 		if (lod) {
 			if (!d) d = calloc(1, sizeof(*d));
-			d->lod = strdup(lod);
+			d->lod = (struct lod *)strdup(lod);
+			d->flags |= D_LODSTR;
+		}
+		nrev = NULL;
+		unless (flags & NEWFILE) {
+			if ((flags & EDIT) && (newrev(s, &pf) == -1)) {
+				goto next;
+			}
+			nrev = pf.newrev;
 		}
 		if (sccs_delta(s, flags, d, init, diffs) == -1) {
 			sccs_whynot("delta", s);
@@ -155,20 +158,14 @@ out:			if (init) fclose(init);
 		if (flags & EDIT) {
 			int	f = flags & (EDIT|SKIPGET|SILENT);
 
-			/*
-			 * XXX - fix when restart works.
-			 */
-			sccs_free(s);
-			s = sccs_init(name, flags);
+			s = sccs_restart(s);
 			unless (s) {
 				fprintf(stderr,
 				    "ci: can't restart %s\n", name);
 				goto next;
 			}
-			/* XXX - do the revs match?  What if I was not on
-			 * TOT and I do this deledit - where am I?
-			 */
-			if (sccs_get(s, 0, 0, 0, f, "-")) {
+
+			if (sccs_get(s, nrev, 0, 0, 0, f, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,
 					"get of %s failed, skipping it.\n",
@@ -188,4 +185,22 @@ next:		if (init) fclose(init);
 	commentsDone(saved);
 	purify_list();
 	return (0);
+}
+
+int
+newrev(sccs *s, pfile *pf)
+{
+	FILE *f;
+ 	unless (f = fopen(s->pfile, "r")) {     
+                fprintf(stderr, "delta: can't open %s\n", s->pfile);   
+		perror("get_newrev");
+		return -1;
+	}
+	if (fscanf(f, "%s %s ", pf->oldrev, pf->newrev) != 2) {
+                fprintf(stderr, "delta: can't get new rev\n");   
+		fclose(f);
+		return -1;
+	}
+	fclose(f);
+	return 0;
 }

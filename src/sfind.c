@@ -15,13 +15,14 @@ char *sfiles_usage = "\n\
 usage: sfiles [-aclpP] [-i[root]] [-r[root]] [directories]\n\n\
     -a		when used with -i, list all the ids of all the leaves\n\
     -c		list only changed files (locked and modified)\n\
+    -C		list leaves which are not in a changeset as file:1.3\n\
     -g		list the gfile name, not the sfile name\n\
     -i[root]	list the files as their identifiers\n\
     -l		list only locked files\n\
     -p		(paranoid) opens each file to make sure it is an SCCS file\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
     -P		(paranoid) opens each file to make sure it is an SCCS file\n\
-    -r[root]	rebuild the id to pathname cache, and pending changeset cache\n\
+    -r[root]	rebuild the id to pathname cache\n\
     -x		list files which have no revision control files\n\
     		Note: revision control files must look like SCCS/s.*, not\n\
 		foo/bar/blech/s.*\n\
@@ -30,11 +31,12 @@ usage: sfiles [-aclpP] [-i[root]] [-r[root]] [directories]\n\n\
     directories.\n\
 \n";
 
-int	aFlg, cFlg, gFlg, iFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg;
+int	aFlg, cFlg, Cflg, gFlg, iFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg;
 int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
 MDBM	*idDB;
+MDBM	*csetDB;	/* database of {file if, tip id} */
 int	dups;
 int	file(char *f, int (*func)(), int depth);
 int	func(const char *filename, const struct stat *sb, int flag);
@@ -55,10 +57,11 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "acgi|lpPr|vx")) != -1) {
+	while ((c = getopt(ac, av, "acCgi|lpPr|vx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'c': cFlg++; break;
+		    case 'C': Cflg++; rFlg++; break;
 		    case 'g': gFlg++; break;
 		    case 'i': iFlg++; root = optarg; break;
 		    case 'l': lFlg++; break;
@@ -70,13 +73,13 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    default: goto usage;
 		}
 	}
-	if (rFlg) {
+	if (rFlg || Cflg) {
 		if (av[optind]) {
 			fprintf(stderr, "%s: -r must be stand alone.\n", av[0]);
 			exit(1);
 		}
 		/* perror is in sccs_root, don't do it twice */
-		unless (sccs_root(0) == 0) exit(1);
+		unless (sccs_cd2root(0, 0) == 0) exit(1);
 		rebuild();
 		exit(dups ? 1 : 0);
 	}
@@ -86,7 +89,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 			exit(1);
 		}
 		/* perror is in sccs_root, don't do it twice */
-		unless (sccs_root(root) == 0) exit(1);
+		unless (sccs_cd2root(0, root) == 0) exit(1);
 		ftw(".", ids, 15);
 		exit(0);
 	}
@@ -220,6 +223,8 @@ isSccs(char *s)
 
 /*
  * Print out ids
+ *
+ * XXX - probably obsolete
  */
 int
 ids(const char *filename, const struct stat *sb, int flag)
@@ -249,15 +254,29 @@ void
 rebuild()
 {
 	int	i;
-	unless ((i = open("SCCS/z.pending_cache", O_CREAT|O_EXCL, 0600)) > 0) {
-		fprintf(stderr, "sfiles: can't lock pending cache\n");
+	sccs	*cset;
+	MDBM	*csetIds();
+
+	unless (cset = sccs_init("SCCS/s.ChangeSet", 0)) {
+		perror("sfiles: can't init ChangeSet");
 		exit(1);
 	}
-	close(i);	/* unlink it when we are done */
-	unless (pending_cache = fopen("SCCS/x.pending_cache", "w")) {
-		perror("SCCS/x.pending_cache");
+	unless (HAS_SFILE(cset) && cset->cksumok) {
+		perror("sfiles: can't init ChangeSet");
+		sccs_free(cset);
 		exit(1);
 	}
+
+	if (Cflg) {
+		unless (csetDB = csetIds(cset, 0, 1)) {
+			perror("sfiles: can't init ChangeSet DB");
+			sccs_free(cset);
+			exit(1);
+		}
+	}
+
+	unless (rFlg) goto c;
+
 	unless ((i = open("SCCS/z.id_cache", O_CREAT|O_EXCL, 0600)) > 0) {
 		fprintf(stderr, "sfiles: can't lock id cache\n");
 		exit(1);
@@ -272,32 +291,15 @@ rebuild()
 # If you suspect that the file is corrupted, simply remove it and \n\
 # and it will be rebuilt as needed.  \n\
 # The format of the file is <ID> <PATHNAME>\n\
-# The file is used for performance during mkpatch/tkpatch commands.\n");
-	fprintf(pending_cache, "\
-# This is a BitKeeper cache file.\n\
-# If you suspect that the file is corrupted, or that there are files which\n\
-# need to be here and aren't, rebuild the cache by running\n\
-# `sfiles -r' while in a directory at or below this file.\n\
-# The list of entries in this file represent files which have deltas which\n\
-# are not yet part of a changeset.\n");
+# The file is used for performance during makepatch/takepatch commands.\n");
 	idDB = mdbm_open(NULL, 0, 0, 4096);
 	assert(idDB);
 	mdbm_pre_split(idDB, 1<<10);
-	ftw(".", caches, 15);
-	fclose(pending_cache);
-	fclose(id_cache);
-	unlink("SCCS/z.id_cache");
-	unlink("SCCS/z.pending_cache");
-}
-
-inline int
-isleaf(register delta *d)
-{
-	if (d->type != 'D') return (0);
-	for (d = d->kid; d; d = d->siblings) {
-		if (d->type == 'D') return (0);
+c:	ftw(".", caches, 15);
+	if (rFlg) {
+		fclose(id_cache);
+		unlink("SCCS/z.id_cache");
 	}
-	return (1);
 }
 
 int
@@ -306,7 +308,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	register char *file = (char *)filename;
 	register char *s;
 	sccs	*sc;
-	register delta *d;
+	register delta *d, *e;
 	char	*path;
 	datum	k, v;
 	char	buf[1024];
@@ -320,34 +322,61 @@ caches(const char *filename, const struct stat *sb, int flag)
 		sccs_free(sc);
 		return (0);
 	}
-	/* If the file has any leaves needing changesets, list it */
-	for (d = sc->table; d; d = d->next) {
-		unless (isleaf(d)) continue;
-		if (d->cset) continue;
-		sccs_pdelta(sccs_ino(sc), pending_cache);
-		fprintf(pending_cache, "\n");
-		break;
+	if (vFlg) printf("%s\n", sc->gfile);
+
+	if (rFlg) {
+		/* update the id cache */
+		sccs_sdelta(buf, sccs_ino(sc));
+		if (sc->tree->pathname &&
+		    streq(sc->tree->pathname, sc->gfile)) {
+			path = sc->tree->pathname;
+		} else {
+			path = sc->gfile;
+		}
+		fprintf(id_cache, "%s %s\n", buf, path);
+		k.dptr = buf;
+		k.dsize = strlen(buf) + 1;
+		v.dptr = path;
+		v.dsize = strlen(path) + 1;
+		if (mdbm_store(idDB, k, v, MDBM_INSERT)) {
+			v = mdbm_fetch(idDB, k);
+			fprintf(stderr,
+		    	"Duplicate id '%s' for %s\n  Used by %s\n",
+		    	buf, path, v.dptr);
+				dups++;
+		}
 	}
-	/* update the id cache */
-	sccs_sdelta(buf, sc->tree);
-	if (sc->tree->pathname && streq(sc->tree->pathname, sc->gfile)) {
-		path = sc->tree->pathname;
-	} else {
-		path = sc->gfile;
+
+	unless (Cflg) {
+		sccs_free(sc);
+		return (0);
 	}
-	fprintf(id_cache, "%s %s\n", buf, path);
+
+	/* find the leaf of the current LOD and check it */
+	unless (d = sccs_getrev(sc, 0, 0, 0)) {
+		sccs_free(sc);
+		return (0);
+	}
+
+	/* This currently always fails */
+	if (d->cset) {
+		sccs_free(sc);
+		return (0);
+	}
+	
+	/* Go look for it in the cset */
+	sccs_sdelta(buf, sccs_ino(sc));
 	k.dptr = buf;
 	k.dsize = strlen(buf) + 1;
-	v.dptr = path;
-	v.dsize = strlen(path) + 1;
-	if (mdbm_store(idDB, k, v, MDBM_INSERT)) {
-		v = mdbm_fetch(idDB, k);
-		fprintf(stderr,
-		    "Duplicate id '%s' for %s\n  Used by %s\n",
-		    buf, path, v.dptr);
-			dups++;
+	v = mdbm_fetch(csetDB, k);
+	if (v.dsize) {
+		if (e = sccs_findKey(sc, v.dptr)) {
+			while (e && (e->type != 'D')) e = e->parent;
+			if (e != d) printf("%s:%s\n", sc->sfile, d->rev);
+		}
+	} else {	/* this is a new file */
+		printf("%s:%s\n", sc->sfile, d->rev);
 	}
-	if (vFlg) printf("%s\n", sc->gfile);
 	sccs_free(sc);
 	return (0);
 }

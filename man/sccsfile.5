@@ -55,6 +55,7 @@ The delta table consists of a variable number of entries of the form:
 ^A\fBc \fIcomments\fR .\|.\|.
 ^A\fBB \fIchange set file id\fR (*)
 ^A\fBC \fIchange set id\fR (*)
+^A\fBD \fIoptional checksum of the gfile\fR (*)
 ^A\fBH \fIhostname.domainname\fR (*) (+)
 ^A\fBI \fIinclude list\fR (*) 
 ^A\fBL \fIline of development tag serial\fR (*)
@@ -62,6 +63,7 @@ The delta table consists of a variable number of entries of the form:
 ^A\fBP \fIpathname\fR (*) (+)
 ^A\fBS \fIsymbolic tag\fR (*)
 ^A\fBT \fItime adjust\fR (*)
+^A\fBU \fImicrosecond time resolution\fR (*)
 ^A\fBX \fIexclude list\fR (*)
 ^A\fBZ \fItimezone (actually minutes west of GMT)\fR (*) (+)
 .RB ^A e
@@ -134,6 +136,12 @@ then the delta does not belong to a change set.  If a descendent has such a
 field, then this delta belongs to the same change set as the descendent.
 A delta may belong to only one change set, so this field does not repeat.
 .TP
+.RB ^A D
+An optional checksum, conditional on one of the BitKeeper 
+.B x
+flag values.  Typically used in the ChangeSet for greater reliability, but may
+be used in all files.
+.TP
 .RB ^A H
 The hostname and domain name of the machine on which this delta was created.
 If this field is missing, then it has an implied value from the first 
@@ -187,6 +195,10 @@ table.  Normally, this is
 the difference between the two dates.  However, if the dates go backwards,
 this time will be the previous delta's time plus one second.
 This field is used to provide a partial ordering over all deltas in a file.
+.TP
+.RB ^A U
+An optional field, typically only used in the ChangeSet file, which records
+the microsecond portion of the date.
 .TP
 .RB ^A X
 Exclude list.  This is like the upper case include list.
@@ -275,22 +287,31 @@ The
 flag encodes a number of \*[BKS] specific options.  The 
 .B n
 is a decimal number in ASCII.  Individual bits in the number and their
-meanings are:
+meanings are:  
 .RS 9
 .TP 6
-.B 1
+.B 0x01
 Expand RCS keywords
 .TP
-.B 2
+.B 0x02
 When expanding keywords, expand the year as a 4 digit field, not a two digit 
 field.
 .TP
-.B 4
+.B 0x04
 Indicates that this file is in \*[BK] mode, not \*[S] mode.  This bit is
 always set if the file is a \*[BK] file.  If the file is an \*[S] file,
 then the flag is not present,
 the file format is strictly \*[S] compatible,
 and the \*[BK] features are disabled.
+.TP
+.B 0x08
+Indicates that the file is recording time stamps in microseconds, see the
+.TP
+.B 0x10
+Indicates that the per delta checksums are 32 bit unsigned sums of the 
+gfile.
+.B U
+field above.
 .SS Description
 Arbitrary text surrounded by the bracketing lines
 .RB ^A t

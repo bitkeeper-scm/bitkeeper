@@ -1,3 +1,11 @@
+make/take patch and unique identifiers
+	Work harder on ChangeSet to make sure it is OK
+	BitKeeper flag for type of checksum per delta
+	BitKeeper flag for uSec timestamps
+	ChangeSet has usec, absolute path, and checksums on gfiles
+	Checksum is part of delta/get weave
+	No root or localhost.localdomain allowed
+	    Try effective user id
 Checksums
 	Right after the delta entry, put a one or two entry
 	checksum like:

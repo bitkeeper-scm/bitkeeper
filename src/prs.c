@@ -39,7 +39,7 @@ main(int ac, char **av)
 		return (1);
 	}
 	r[0] = r[1] = d[0] = d[1] = 0;
-	while ((c = getopt(ac, av, "1c;d:hI|mr|tv")) != -1) {
+	while ((c = getopt(ac, av, "1c;d:hI|mr|v")) != -1) {
 		switch (c) {
 		    case '1': one = 1; break;
 		    case 'c':
@@ -61,7 +61,6 @@ main(int ac, char **av)
 			r[rd++] = notnull(optarg);
 			things += tokens(notnull(optarg));
 			break;
-		    case 't': flags |= TIMET; break;
 		    case 'v': noisy = 1; break;
 		    default:
 usage:			fprintf(stderr, "prs: usage error, try --help\n");

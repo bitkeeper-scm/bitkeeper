@@ -21,16 +21,18 @@ usage: admin options [-] OR [file file file...]\n\n\
     -H			check the s.file format, insisting on 7 bit ascii.\n\
     -i<file>		initial text in <file> or stdin for -n\n\
     -l<a|r, r>		unlock releases (not implemented)\n\
-    -L<lod>:<rev>	creat a new LOD which will be inhereted from <rev>\n\
+    -L<lod>:<rev>	creat a new LOD parented at <rev>\n\
     -m<mrlist>		MR lists (not implemented)\n\
+    -M<merge>		Merge branch <merge> into TOT or <rev>\n\
     -n			create a new SCCS file\n\
     -p<path>		set the initial pathname of the file to <path>\n\
     -P			remove all pathname information (DANGEROUS)\n\
     -q			run quietly\n\
-    -r<rev>		initial release for new file\n\
+    -r<rev>		revision number of new file or effected delta\n\
     -s<sym>:<rev>	set symbol associated with rev, no rev means TOT\n\
     -t<file>		set or (if no file) delete descriptive text\n\
     -T			delete descriptive text\n\
+    -u			make sure that all dates are increasing\n\
     -y<com>		initial checkin comment\n\
     -z			recompute checksum\n\n";
 
@@ -54,11 +56,12 @@ main(int ac, char **av, char **ev)
 	admin	f[A_SZ], l[A_SZ], u[A_SZ], s[A_SZ];
 	int	nextf = 0, nextl = 0, nextu = 0, nexts = 0, nextp = 0;
 	char	*comment = 0, *text = 0, *newfile = 0;
-	char	*path = 0;
+	char	*path = 0, *merge = 0;
 	char	*name;
 	int	encoding = E_ASCII, error = 0;
 	int	bigpad = 0;
 	int	fastSymOK = 1, fastSym, dopath = 0, rmCset = 0, rmPath = 0;
+	int	doDates = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -70,7 +73,7 @@ main(int ac, char **av, char **ev)
 	bzero(s, sizeof(s));
 	bzero(l, sizeof(l));
 	while ((c =
-	    getopt(ac, av, "a;A;e;f;F;d;i|L;np|r;y|s;STt|BbCghHPqz")) != -1) {
+	    getopt(ac, av, "a;A;e;f;F;d;i|L;M;np|r;y|s;STt|BbCghHPquz")) != -1) {
 		switch (c) {
 		/* user|group */
 		    case 'a':	OP(u, optarg, A_ADD); break;
@@ -86,6 +89,7 @@ main(int ac, char **av, char **ev)
 		    case 'n':	flags |= NEWFILE; break;
 		    case 'r':	rev = optarg; break;
 		    case 'y':	comment = optarg; break;
+		    case 'M':	merge = optarg; flags |= NEWCKSUM; break;
 		/* MR lists - XXX */
 		    case 'm':	fprintf(stderr,
 				    "admin: MR's not implemented.\n");
@@ -116,6 +120,7 @@ main(int ac, char **av, char **ev)
 			break;
 		    case 'S':	fastSymOK = 0; break;
 		    case 'q':	flags |= SILENT; break;
+		    case 'u':	doDates = 1; flags |= NEWCKSUM; break;
 		    case 'z':	flags |= NOCKSUM|NEWCKSUM; break;
 		    default:	fprintf(stderr, "admin: bad option %c.\n", c);
 				goto usage;
@@ -127,14 +132,22 @@ main(int ac, char **av, char **ev)
 		fprintf(stderr, "admin: -h option must be alone.\n");
 		goto usage;
 	}
+	if ((merge) &&
+	    ((flags & ~(CHECKASCII|CHECKFILE|VERBOSE|SILENT|NEWCKSUM)) ||
+	    nextf || nextu || nexts || nextp || comment || path || 
+	    rmCset || rmPath || doDates)) {
+		fprintf(stderr, "admin: -M option must be alone or with -r\n");
+		goto usage;
+	}
 	if (comment && !(flags & NEWFILE)) {
 		fprintf(stderr,
 		    "admin: comment may only be specifed with -i and/or -n\n");
 		goto usage;
 	}
-	if (rev && !(flags & NEWFILE)) {
-		fprintf(stderr,
-		    "admin: revision may only be specifed with -i and/or -n\n");
+	if (rev && (!(flags & NEWFILE) && !merge)) {
+		fprintf(stderr, "%s %s\n",
+		    "admin: revision may only be specified with",
+		    "-i and/or -n or -M\n");
 		goto usage;
 	}
 	if ((flags & NEWFILE) && text && !text[0]) {
@@ -175,9 +188,12 @@ main(int ac, char **av, char **ev)
 		}
 		if (bigpad) sc->state |= BIGPAD;
 #ifndef	USE_STDIO
-		if (fastSym && sc->landingpad &&
-		    (sccs_addSym(sc, flags, s[0].thing) != EAGAIN)) {
-			goto next;
+		if (fastSym && sc->landingpad) {
+			int rc;
+		    	rc = sccs_addSym(sc, flags, s[0].thing);
+			if (rc == -1) error = 1;
+			if (rc != EAGAIN) goto next;
+			
 		}
 #endif
 		if (dopath) {
@@ -191,6 +207,13 @@ main(int ac, char **av, char **ev)
 		}
 		if (rmCset) clearCset(sc, flags);
 		if (rmPath) clearPath(sc, flags);
+		if (doDates) sccs_fixDates(sc);
+		if (merge) {
+			if (setMerge(sc, merge, rev) == -1) {
+				error = 1;
+				goto next;
+			}
+		}
 		if (sccs_admin(sc, flags, f, l, u, s, text)) {
 			unless (BEEN_WARNED(sc)) {
 				fprintf(stderr,
@@ -324,4 +347,23 @@ do_checkin(char *name, int encoding,
 	}
 	sccs_free(s);
 	return (error);
+}
+
+int
+setMerge(sccs *sc, char *merge, char *rev)
+{
+	delta *d, *p;
+
+	unless (d = findrev(sc, rev)) {
+		fprintf(stderr, "admin: can't find %s in %s\n",
+		    rev, sc->sfile);
+		return -1;
+	}
+	unless (p = findrev(sc, merge)) {
+		fprintf(stderr, "admin: can't find %s in %s\n",
+		    merge, sc->sfile);
+		return -1;
+	}
+	d->merge = p->serial;
+	return 0;
 }

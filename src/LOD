@@ -1,3 +1,13 @@
+Tonight's goals
+	- add LODs to a file
+	- be able to get files based on LOD.#
+
+Longer term:
+	Merge the symbol adding and LOD adding code - they should just take
+	a flag.  
+	Both need to use meta data nodes when adding something after the
+	fact.
+
 prs needs to show only the LOD revisions in the current default branch.
 This may extend up above the top of the branch since the LOD may have
 started on the trunk and twisted off on a branch.

@@ -157,7 +157,9 @@ sortlog(int flags)
 	}
 	for (d = list; d; d = d->next) {
 		assert(i > 0);
-		d->date = sccs_date2time(d->sdate, d->zone, 0);
+		unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
+			assert(d->date);
+		}
 		sorted[--i] = d;
 	}
 	assert(i == 0);
@@ -173,6 +175,7 @@ printlog()
 
 	for (j = 0; j < n; ++j) {
 		d = sorted[j];
+		unless (d->type == 'D') continue;
 		if (d->pathname) {
 			if (pflag) {
 				printf("%s\n  ", d->pathname);

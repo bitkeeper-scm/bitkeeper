@@ -22,12 +22,14 @@ usage: get [-bdeFgkmnpqsu] [-c<date>] [-G<name>] \n\
     -i<revs>	include specified revs in the get (rev, rev and/or rev-rev)\n\
     -k		don't expand keywords\n\
     -m		prefix each line with revision number\n\
+    -M<rev>	merge with revision <rev>\n
     -n		prefix each line with file name\n\
     -N		prefix each line with a line number\n\
     -p		print file to stdout\n\
     -P		print file even if there are file format errors.\n\
     -q		run quietly\n\
     -r<r>	get revision <r>\n\
+    -R		revision is part of pathname, i.e., foo.c:1.2\n
     -s		run quietly\n\
     -u		prefix each line with user id\n\
     -x<revs>	exclude specified list of revs in get (same as -i)\n\n\
@@ -44,9 +46,11 @@ get_main(int ac, char **av, char *out)
 	sccs	*s;
 	int	flags = EXPAND, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
+	char	*mRev = 0;
 	delta	*d;
 	int	gdir = 0;
 	int	getdiff = 0;
+	int	hasrevs = 0;
 
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
@@ -54,7 +58,7 @@ get_main(int ac, char **av, char *out)
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= EDIT;
-	while ((c = getopt(ac, av, "bc;dDeFgG:i;kmnNpPqr;stux;")) != -1) {
+	while ((c = getopt(ac, av, "bc;dDeFgG:i;kmM|nNpPqr;Rstux;")) != -1) {
 		switch (c) {
 		    case 'b': flags |= FORCEBRANCH; break;
 		    case 'c': cdate = optarg; break;
@@ -67,12 +71,14 @@ get_main(int ac, char **av, char *out)
 		    case 'i': iLst = optarg; break;
 		    case 'k': flags &= ~EXPAND; break;
 		    case 'm': flags |= REVNUMS; break;
+		    case 'M': mRev = optarg; break;
 		    case 'n': flags |= MODNAME; break;
 		    case 'N': flags |= LINENUM; break;
 		    case 'p': flags |= PRINT; break;
 		    case 'P': flags |= PRINT|FORCE; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': rev = optarg; break;
+		    case 'R': hasrevs = HASREVS; break;
 		    case 's': flags |= SILENT; break;
 		    case 't': break;	/* compat, noop */
 		    case 'u': flags |= USER; break;
@@ -85,7 +91,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 	}
 	if (flags & (PREFIXDATE|REVNUMS|USER|LINENUM)) flags &= ~EDIT;
 	if (flags & EDIT) flags &= ~EXPAND;
-	name = sfileFirst("get", &av[optind], 0);
+	name = sfileFirst("get", &av[optind], hasrevs);
 	gdir = Gname && isdir(Gname);
 	if (Gname && (flags & EDIT)) {
 		fprintf(stderr, "get: can't edit and rename at same time.\n");
@@ -97,6 +103,10 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			    "%s: only one file name with -G/i/x.\n", av[0]);
 			goto usage;
 		}
+	}
+	if ((rev || cdate) && hasrevs) {
+		fprintf(stderr, "get: can't specify more than one rev.\n");
+		return (1);
 	}
 	for (; name; name = sfileNext()) {
 		unless (s = sccs_init(name, flags)) continue;
@@ -135,9 +145,10 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			}
 			rev = d->rev;
 		}
+		if (hasrevs) rev = sfileRev();
 		if (getdiff
 		    ? sccs_getdiffs(s, rev, flags, out)
-		    : sccs_get(s, rev, iLst, xLst, flags, out)) {
+		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
 			unless (BEEN_WARNED(s)) {
 				fprintf(stderr,
 				    "get of %s failed, skipping it.\n", name);

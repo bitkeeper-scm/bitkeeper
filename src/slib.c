@@ -7,13 +7,10 @@
  *
  * Copyright (c) 1997-1998 Larry McVoy.	 All rights reserved.
  */
-#ifdef	WIN32
-#include <windows.h> /* for gethostname() */
-#endif
 #include "sccs.h"
 WHATSTR("%W%");
 
-private delta	*sfind(sccs *s, int serial);
+delta	*sfind(sccs *s, int serial);
 private delta	*rfind(sccs *s, char *rev);
 private void	dinsert(sccs *s, int flags, delta *d);
 private int	samebranch(delta *a, delta *b);
@@ -23,15 +20,15 @@ private int	printstate(const serlist *state, const ser_t *slist);
 private void	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int oldsize, int n);
 private void	end(sccs *, delta *, FILE *, int, int, int, int);
-private void	date(delta *d);
+private void	date(delta *d, time_t tt);
 #ifndef	ANSIC
 private int	sig(int what, int sig);
 #endif
 private int	getflags(sccs *s, char *buf);
 private int	addsym(sccs *s, delta *d, delta *reald, char *a, char *b);
-private void	inherit(int flags, delta *d);
-private void	linktree(delta *l, delta *r);
-private void	fputsum(sccs *s, char *buf, FILE *out);
+private void	inherit(sccs *s, int flags, delta *d);
+private void	linktree(sccs *s, delta *l, delta *r);
+private sum_t	fputsum(sccs *s, char *buf, FILE *out);
 private void	putserlist(sccs *sc, ser_t *s, FILE *out);
 private ser_t*	getserlist(sccs *sc, int isSer, char *s, int *ep);
 private int	read_pfile(char *who, sccs *s, pfile *pf);
@@ -44,6 +41,7 @@ private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	zoneArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
+private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
 private void	lodArg(sccs *s, delta *d, char *name);
 private int	delta_rm(sccs *s, delta *d, FILE *sfile, int flags);
@@ -53,6 +51,10 @@ private int	delta_strip(sccs *s, delta *d, FILE *sfile, int flags);
 void		explodeKey(char *key, char *parts[4]);
 private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
+private time_t	date2time(char *asctime, char *z, int roundup);
+private	char	*sccsrev(delta *d);
+private int	addLod(char *name, sccs *sc, int flags, admin *l, int *ep);
+private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -78,6 +80,15 @@ isreg(char *s)
 
 	if (stat(s, &sbuf) == -1) return 0;
 	return (S_ISREG(sbuf.st_mode));
+}
+
+int
+size(char *s)
+{
+	struct	stat sbuf;
+
+	if (stat(s, &sbuf) == -1) return 0;
+	return (sbuf.st_size);
 }
 
 int
@@ -243,7 +254,7 @@ getuser(void)
 		s = getlogin();
 	}
 	if (!s) {
-		s = "UNKNOWN";
+		s = UNKNOWN_USER;
 	}
 	return (s);
 }
@@ -324,15 +335,102 @@ sccs_freetree(delta *tree)
 }
 
 /*
+ * Generate the rev numbers for the lod.
+ * Also sets d->lod to the lod to which this delta belongs.
+ */
+lodrevs(delta *d, delta *zero)
+{
+	assert(d);
+	if (d->flags & D_DUPLOD) return;
+	d->flags |= D_DUPLOD;
+	unless (d->flags & D_LODHEAD) {
+		lodrevs(d->parent, zero);
+		memcpy(d->lodr, d->parent->lodr, sizeof(d->lodr));
+		d->lodr[0]++;
+	} else {
+		d->lodr[0] = 1;
+		d->lodr[1] = d->lodr[2] = 0;
+	}
+	/* Head lod pointers are already set, these are the kids */
+	unless (d->lod) {
+		d->lod = d->parent->lod;
+	}
+	debug((stderr, "LOD %s.%d\n", d->lod->name, d->lodr[0]));
+	free(d->rev);
+	if (d->lodr[2]) {
+		d->rev = malloc(strlen(d->lod->name) + 20);
+		sprintf(d->rev, "%s.%d.%d.%d", 
+		    d->lod->name, d->lodr[0], d->lodr[1], d->lodr[2]);
+	} else {
+		d->rev = malloc(strlen(d->lod->name) + 7);
+		sprintf(d->rev, "%s.%d", d->lod->name, d->lodr[0]);
+	}
+}
+
+/*
+ * Set up the LOD numbering.  This is a little complicated because the
+ * numbering is inherited but stops when you run into the next LOD. 
+ * So the first thing we do is tag all the heads/branches in each LOD.
+ */
+lods(sccs *s)
+{
+	lod	*l;
+	int	i;
+	delta	*h;
+	ser_t	ser;
+	int	top = 0;
+
+	for (l = s->lods; l; l = l->next) {
+		debug((stderr, "LODZERO %s %s\n", l->d->rev, l->name));
+		EACH(l->heads) {
+			h = sfind(s, l->heads[i]);
+			assert(h);
+			if (i == 1) {
+				h->flags |= D_LODHEAD;
+				debug((stderr,
+				    "HEAD %s %s\n", h->rev, l->name));
+			} else {
+				h->flags |= D_LODCONT;
+				debug((stderr,
+				    "CONT %s %s\n", h->rev, l->name));
+			}
+			h->lod = l;
+		}
+	}
+	for (l = s->lods; l; l = l->next) {
+		ser = 0;
+		EACH(l->heads) ser = l->heads[i];
+		unless (ser) continue;
+		h = sfind(s, ser);
+		debug((stderr, "HEAD %s %s\n", h->rev, l->name));
+		assert(h);
+		if (h->serial == 1) {
+			top = 1;
+		}
+
+		/*
+		 * XXX - does not handle LOD branches.
+		 * It seems like a recursive 
+		 */
+		while (h->kid && !(h->kid->flags & (D_LODHEAD|D_LODCONT)) &&
+		    samebranch(h, h->kid)) {
+		    	h = h->kid;
+		}
+		lodrevs(h, top ? 0 : l->d);
+	}
+}
+
+/*
  * Check a delta for duplicate fields which are normally inherited.
  * Also inherit any fields which are not set in the delta and are set in
  * the parent.
+ * Also mark any merged deltas.
  * This routine must be called after the delta is added to a graph which
  * is already correct.	As in dinsert().
  * Make sure to keep this up for all inherited fields.
  */
 private void
-inherit(int flags, delta *d)
+inherit(sccs *s, int flags, delta *d)
 {
 	delta	*p;
 
@@ -364,15 +462,25 @@ inherit(int flags, delta *d)
 	CHK_DUP(zone, D_DUPZONE, "zone");
 	CHK_DUP(csetFile, D_DUPCSETFILE, "csetFile");
 	getDate(d);
+	if (d->merge) {
+		d = sfind(s, d->merge);
+		assert(d);
+		d->flags |= D_MERGED;
+	}
 }
 
+/*
+ * Reinherit if we found stuff in the flags section.
+ */
 void
-reinherit(delta *d)
+reinherit(sccs *s, delta *d)
 {
 	if (!d) return;
-	inherit(0, d);
-	reinherit(d->kid);
-	reinherit(d->siblings);
+	/* XXX - do I really need this? */
+	d->date = 0;
+	inherit(s, 0, d);
+	reinherit(s, d->kid);
+	reinherit(s, d->siblings);
 }
 
 /*
@@ -422,13 +530,13 @@ dinsert(sccs *s, int flags, delta *d)
 		debug((stderr, " -> %s (kid, moved sib %s)\n",
 		    p->rev, d->siblings->rev));
 	}
-	inherit(flags, d);
+	inherit(s, flags, d);
 }
 
 /*
  * Find the delta referenced by the serial number.
  */
-private delta *
+delta *
 sfind(sccs *s, int serial)
 {
 	delta	*t;
@@ -527,7 +635,7 @@ tm2utc(struct tm *tp)
 	return (t);
 }
 
-struct tm *
+struct	tm *
 utc2tm(time_t t)
 {
 	int	leap;
@@ -564,16 +672,42 @@ private time_t
 getDate(delta *d)
 {
 	if (!d->date) {
-		d->date = sccs_date2time(d->sdate, d->zone, EXACT);
-		if (d->parent && (d->date <= d->parent->date)) {
-			time_t	fudge = d->parent->date - d->date;
-
-			d->dateFudge = fudge + 1;
-			d->date += fudge + 1;
+		d->date = date2time(d->sdate, d->zone, EXACT);
+		if (d->dateFudge) {
+			d->date += d->dateFudge;
 		}
 	}
-	assert(d->date);
+	unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
+		assert(d->date);
+	}
 	return (d->date);
+}
+
+/*
+ * The prev pointer is a more recent delta than this one,
+ * so make sure that the prev date is > that this one.
+ */
+private void
+fixDates(delta *prev, delta *d)
+{
+	unless (d->date) (void)getDate(d);
+
+	/* recurse forwards first */
+	if (d->next) fixDates(d, d->next);
+
+	/* When we get here, we're done. */
+	unless (prev) return;
+	
+	if (prev->date <= d->date) {
+		prev->dateFudge = (d->date - prev->date) + 1;
+		prev->date += prev->dateFudge;
+	}
+}
+
+void
+sccs_fixDates(sccs *s)
+{
+	fixDates(0, s->table);
 }
 
 private int
@@ -660,13 +794,13 @@ correct:
  * This is a little weird because tm_ does not translate directly from
  * yy/mm/dd hh:mm:ss - see mktime(3) for details.
  */
-time_t
-sccs_date2time(char *asctime, char *z, int roundup)
+private time_t
+date2time(char *asctime, char *z, int roundup)
 {
 	struct	tm tm;
 
 	a2tm(&tm, asctime, z, roundup);
-#if 0
+#if	0
 {	struct  tm tm2 = tm;
 	fprintf(stderr, "%s%s %02d/%02d/%02d %02d:%02d:%02d = %u\n",
 	asctime,
@@ -709,7 +843,7 @@ scandiff(char *s, int *where, char *what)
  * Convert ascii 1.2.3.4 -> 1, 2, 3, 4
  */
 private inline int
-scanrev(char *s, int *a, int *b, int *c, int *d)
+scanrev(char *s, u16 *a, u16 *b, u16 *c, u16 *d)
 {
 	if (!isdigit(*s)) return (0);
 	*a = atoi2(&s);
@@ -733,17 +867,24 @@ explode_rev(delta *d)
 {
 	register char *s = d->rev;
 	int	dots = 0;
-	int	r[4];
 
 	while (*s) { if (*s++ == '.') dots++; }
 	if (dots > 3) d->flags |= D_ERROR|D_BADFORM;
-	r[0] = r[1] = r[2] = r[3] = 0;
-	scanrev(d->rev, &r[0], &r[1], &r[2], &r[3]);
-	assert(r[0] < 0x10000);
-	assert(r[1] < 0x10000);
-	assert(r[2] < 0x10000);
-	assert(r[3] < 0x10000);
-	d->r[0] = r[0], d->r[1] = r[1], d->r[2] = r[2], d->r[3] = r[3];
+	scanrev(d->rev, &d->r[0], &d->r[1], &d->r[2], &d->r[3]);
+}
+
+private char *
+sccsrev(delta *d)
+{
+	static	char buf[MAXREV];
+
+	unless (d->lod) return (d->rev);
+	if (d->r[2]) {
+		sprintf(buf, "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
+	} else {
+		sprintf(buf, "%d.%d", d->r[0], d->r[1]);
+	}
+	return (buf);
 }
 
 /*
@@ -758,10 +899,21 @@ samebranch(delta *a, delta *b)
 		(a->r[2] == b->r[2]));
 }
 
+/*
+ * This one assumes SCCS style branch numbering, i.e., x.y.z.d
+ */
+private int
+sameLODbranch(delta *a, delta *b)
+{
+	if (a->lod != b->lod) return (0);
+	if (!a->lodr[1] && !b->lodr[1]) return (1);
+	return ((a->lodr[0] == b->lodr[0]) && (a->lodr[1] == b->lodr[1]));
+}
+
 private char *
 branchname(delta *d)
 {
-	int	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
+	u16	a1 = 0, a2 = 0, a3 = 0, a4 = 0;
 	static	char buf[6];
 
 	scanrev(d->rev, &a1, &a2, &a3, &a4);
@@ -827,6 +979,7 @@ fullname(sccs *s, int withsccs)
 		}
 		strcpy(new, gfile);
 		free(gfile);
+		debug((stderr, "fullname1: %s\n", new));
 		return (new);
 	}
 
@@ -844,6 +997,7 @@ fullname(sccs *s, int withsccs)
 			sprintf(new, "%s/%s", t, gfile);
 		}
 		free(gfile);
+		debug((stderr, "fullname2: %s\n", new));
 		return (new);
 	}
 
@@ -863,6 +1017,7 @@ fullname(sccs *s, int withsccs)
 			strcat(new, gfile);
 		}
 		free(gfile);
+		debug((stderr, "fullname3: %s\n", new));
 		return (new);
 	}
 
@@ -885,6 +1040,7 @@ fullname(sccs *s, int withsccs)
 	strcat(new, "/");
 	strcat(new, basenm(gfile));
 	free(gfile);
+	debug((stderr, "fullname4: %s\n", new));
 	return (new);
 }
 
@@ -897,52 +1053,83 @@ fullname(sccs *s, int withsccs)
  * Change directories to the project root or return -1.
  */
 int
-sccs_root(char *root)
+sccs_cd2root(sccs *s, char *root)
 {
-	char	buf[1024];
-	char	file[1024];
-	ino_t	slash = 0;
-	struct	stat sb;
-	int	i, j;
+	char	*r = sccs_root(s, root);
 
-	if (root) {
-		unless (chdir(root) == 0) {
-			perror(root);
-			return (-1);
-		}
+	if (r && (chdir(r) == 0)) {
 		unless (exists(CHANGESET)) {
 			perror(CHANGESET);
 			return (-1);
 		}
 		return (0);
 	}
+	return (-1);
+}
+
+/*
+ * Only works for SCCS/s.* layout
+ */
+char	*
+sccs_root(sccs *s, char *root)
+{
+	static	char buf[1024];
+	char	file[1024];
+	ino_t	slash = 0;
+	struct	stat sb;
+	int	i, j;
+	char	*t;
+
+	if (s && (s->state & NOSCCSDIR)) return (0);
+	if (root) return (root);
+	if (s && s->root) return (s->root);
+
 	if (stat("/", &sb)) {
 		perror("stat of /");
-		return (-1);
+		return (0);
 	}
 	slash = sb.st_ino;
 
 	/*
 	 * Now work backwards up the tree until we find a ChangeSet or /
+	 *
+	 * Note: this is a little weird because the s->sfile pathname could
+	 * be /foo/bar/blech/SCCS/s.file.c
+	 * which means we want to start our search in /foo/bar/blech,
+	 * not in ".".
+	 *
+	 * Note: can't use s->gfile, admin stomps on that.
 	 */
 	for (i = 0; ; i++) {		/* CSTYLED */
-		buf[0] = 0;
-		for (j = 0; j < i; ++j) strcat(buf, "../");
-		sprintf(file, "%s%s", buf, CHANGESET);
-		if (exists(file)) {
-			unless (buf[0]) return (0);
-			if (chdir(buf) != 0) {
-				sprintf(file, "chdir to %s", buf);
-				perror(file);
-				return (-1);
+		if (s) {
+			strcpy(buf, s->sfile);
+			t = strrchr(buf, '/');	/* SCCS/s.foo.c */
+			*t = 0;
+			debug((stderr, "sccs_root %s ", buf));
+			if (t = strrchr(buf, '/')) {
+				*t = 0;
+			} else {
+				buf[0] = 0;
 			}
+		} else {
+			buf[0] = 0;
+		}
+		unless (buf[0]) strcpy(buf, ".");
+		for (j = 0; j < i; ++j) strcat(buf, "/..");
+		sprintf(file, "%s/%s", buf, CHANGESET);
+		debug((stderr, "%s\n", file));
+		if (exists(file)) {
+			unless (buf[0]) strcpy(buf, ".");
+			unless (isdir(buf)) return (0);
+			if (s) s->root = strdup(buf);
+			debug((stderr, "sccs_root() -> %s\n", buf));
+			return (s ? s->root : buf);
+		}
+		if (stat(buf, &sb) == -1) {
+			perror(buf);
 			return (0);
 		}
-		if (stat(buf[0] ? buf : ".", &sb) == -1) {
-			perror(buf);
-			return (-1);
-		}
-		if (sb.st_ino == slash) return (-1);
+		if (sb.st_ino == slash) return (0);
 	}
 	/* NOTREACHED */
 }
@@ -951,97 +1138,36 @@ sccs_root(char *root)
  * Return the id file as a FILE *
  */
 FILE	*
-idFile(char *base)
+idFile(sccs *s)
 {
-	char	buf[1024];
 	char	file[1024];
-	ino_t	slash = 0;
-	struct	stat sb;
-	int	i, j;
-	char	*s;
-
-	if (stat("/", &sb)) {
-		perror("stat of /");
-		return (0);
-	}
-	slash = sb.st_ino;
-	assert(base);
-	base = name2sccs(base);
-	strcpy(buf, base);
-	free(base);
-	base = 0;
-	if (s = strrchr(buf, '/')) s[1] = 0;
-	else strcpy(buf, "./");
-	for (i = 0; i < 64; i++) {
-		if (i) strcat(buf, "../");
-		sprintf(file, "%s%s", buf, CHANGESET);
-		if (exists(file)) {
-			s = strrchr(file, '/');
-			assert(s[-1] == 'S');
-			assert(s[-4] == 'S');
-			s++;
-			strcpy(s, "x.id_cache");
-			// XXX - locking of this file.
-			return (fopen(file, "a"));
-		}
-	}
+	char	*root;
+	
+	unless (root = sccs_root(s, 0)) return (0);
+	sprintf(file, "%s/SCCS/x.id_cache", root);
+	// XXX - locking of this file.
+	return (fopen(file, "a"));
 	return (0);
 }
-
 
 /*
  * Return the ChangeSet file id.
  */
 char	*
-getCSetFile(char *base)
+getCSetFile(sccs *s)
 {
-	char	buf[1024];
 	char	file[1024];
-	ino_t	slash = 0;
-	struct	stat sb;
-	int	i, j;
+	char	*root;
 	sccs	*sc;
-	char	*s;
-#ifdef WIN32
-	char	pwd[1024];
-	char	*p;
-#endif
-
-#ifndef WIN32
-	if (stat("/", &sb)) {
-		perror("stat of /");
-		return (0);
-	}
-	slash = sb.st_ino;
-#else
-	getcwd(pwd, 1024); 
-	for (j = 0, p = pwd; *p ; p++) {
-		if (*p == '/') j++;
-	}
-#endif
-	assert(base);
-	base = name2sccs(base);
-	strcpy(buf, base);
-	free(base);
-	base = 0;
-	if (s = strrchr(buf, '/')) s[1] = 0;
-	else strcpy(buf, "./");
-
-	for (i = 0; i < 64; i++) {
-		if (i) strcat(buf, "../");
-#ifndef WIN32
-		if ((stat(buf, &sb) == 0) && (sb.st_ino == slash)) return (0);
-#else
-		if (i >= j) return 0;
-#endif
-		sprintf(file, "%s%s", buf, CHANGESET);
-		if (exists(file)) {
-			sc = sccs_init(file, NOCKSUM);
-			assert(sc->tree);
-			sccs_sdelta(buf, sc->tree);
-			sccs_free(sc);
-			return (strdup(buf));
-		}
+	
+	unless (root = sccs_root(s, 0)) return (0);
+	sprintf(file, "%s/%s", root, CHANGESET);
+	if (exists(file)) {
+		sc = sccs_init(file, NOCKSUM);
+		assert(sc->tree);
+		sccs_sdelta(file, sc->tree);
+		sccs_free(sc);
+		return (strdup(file));
 	}
 	return (0);
 }
@@ -1055,7 +1181,7 @@ getCSetFile(char *base)
  * I need to cache changeset lookups.
  */
 char	*
-relativeName(sccs *sc, int withsccs, int mustHaveCS)
+_relativeName(sccs *sc, int withsccs, int mustHaveCS)
 {
 	char	*t, *s, *top;
 	int	i, j;
@@ -1068,7 +1194,10 @@ relativeName(sccs *sc, int withsccs, int mustHaveCS)
 	assert(top[0] == '/');
 	s = strrchr(buf, '/');
 	strcpy(&s[1], "s.ChangeSet");
-	if (exists(buf)) return (basenm(sc->gfile));
+	if (exists(buf)) {
+		debug((stderr, "relname1: %s\n", basenm(sc->gfile)));
+		return (basenm(sc->gfile));
+	}
 	for (--s; (*s != '/') && (s > t); s--);
 
 	/*
@@ -1077,8 +1206,10 @@ relativeName(sccs *sc, int withsccs, int mustHaveCS)
 	 * XXX - I strongly suspect this needs to be rewritten.
 	 */
 	for (i = 0; s >= top; i++) {
+		debug((stderr, "rname: %s\n", buf));
 		if (--s <= top) {
 			if (mustHaveCS) return (0);
+			debug((stderr, "relname2: %s\n", t));
 			return (t);
 		}
 		/* s -> / in .../foo/SCCS/s.foo.c */
@@ -1088,6 +1219,7 @@ relativeName(sccs *sc, int withsccs, int mustHaveCS)
 		unless (exists(buf)) {
 			if (streq(top, "/SCCS/s.ChangeSet")) {
 				strcpy(buf, t);
+				debug((stderr, "relname3: %s\n", buf));
 				return (buf);
 			}
 			continue;
@@ -1101,7 +1233,10 @@ relativeName(sccs *sc, int withsccs, int mustHaveCS)
 			for (--s; (*s != '/') && (s > t); s--);
 		}
 		strcpy(buf, ++s);
-		if (withsccs) return (buf);
+		if (withsccs) {
+			debug((stderr, "relname4: %s\n", buf));
+			return (buf);
+		}
 		s = strrchr(buf, '/');
 		for (--s; *s != '/'; s--);
 		/*
@@ -1110,10 +1245,25 @@ relativeName(sccs *sc, int withsccs, int mustHaveCS)
 		 * we can trust.
 		 */
 		strcpy(++s, basenm(sc->sfile) + 2);
+		debug((stderr, "relname5: %s\n", buf));
 		return (buf);
 	}
 	assert("relativeName screwed up" == 0);
 	return (0);	/* lint */
+}
+
+/*
+ * Trim off the RESYNC/ part of the pathname, that's garbage.
+ */
+char	*
+relativeName(sccs *sc, int withsccs, int mustHaveCS)
+{
+	char	*s = _relativeName(sc, withsccs, mustHaveCS);
+
+	unless (s) return (0);
+
+	if (strncmp("RESYNC/", s, 7) == 0) s += 7;
+	return (s);
 }
 
 /*
@@ -1132,7 +1282,68 @@ relativeName(sccs *sc, int withsccs, int mustHaveCS)
  *		the release, do so.
  */
 private inline int
-samerev(u16 a[4], int b[4])
+name2rev(sccs *s, char **rp)
+{
+	char	*rev = *rp;
+	symbol	*sym;
+
+	if (!rev) return (0);
+	if (isdigit(rev[0])) return (0);
+
+again:
+	for (sym = s->symbols; sym; sym = sym->next) {
+		if (streq(rev, sym->name)) {
+			rev = sym->rev;
+			if (isdigit(rev[0])) {
+				*rp = rev;
+				return (0);
+			}
+			goto again;
+		}
+	}
+	return (-1);
+}
+
+/*
+ * Take an LOD of any form and return the lod * and the numbers.
+ */
+private inline lod *
+lod2rev(sccs *s, char *rev, u16 revs[3])
+{
+	lod	*l;
+	char	*t;
+	u16	junk;
+
+	revs[0] = revs[1] = revs[2] = 0;
+	if (!rev) return (0);
+	if (isdigit(rev[0])) return (0);
+	if (t = strchr(rev, '.')) *t++ = 0;
+
+	debug((stderr, "lod2rev(rev=%s t=%s)\n", rev, t));
+	for (l = s->lods; l; l = l->next) {
+		if (streq(rev, l->name)) break;
+	}
+	unless (l) {
+		if (t) t[-1] = '.';
+		return (0);
+	}
+	if (t && *t) {
+		scanrev(t, &revs[0], &revs[1], &revs[2], &junk);
+	}
+	debug((stderr, "lod2rev(rev=%s t=%s) = %d %d %d\n",
+	    rev, t, revs[0], revs[1], revs[2]));
+	return (l);
+}
+
+private delta *
+sym2delta(sccs *s, char *sym)
+{
+	if (name2rev(s, &sym) == -1) return (0);
+	return (rfind(s, sym));
+}
+
+private inline int
+samerev(u16 a[4], u16 b[4])
 {
 	return ((a[0] == b[0]) &&
 		(a[1] == b[1]) &&
@@ -1140,7 +1351,7 @@ samerev(u16 a[4], int b[4])
 		(a[3] == b[3]));
 }
 
-private int	R[4];
+private u16	R[4];
 /*
  * This one uses the globals set up below.  This hack makes this library
  * !MT safe.  Which it wasn't anyway.
@@ -1164,62 +1375,49 @@ _rfind(delta *d)
 	return (0);
 }
 
-private inline int
-name2rev(sccs *s, char **rp)
+private inline delta *
+nextlod(delta *d)
 {
-	char	*rev = *rp;
-	symbol	*sym;
-	lod	*l, *found = 0;
-	static	char buf[MAXREV];
+	delta	*k = d->kid;
 
-	if (!rev) return (0);
-	if (isdigit(rev[0])) return (0);
-#if 0
-	/*
-	 * XXX - this is busted because it won't handle
-	 * "LOD.3", only "LOD".
-	 */
-	/*
-	 * Handle the case where they sent us an LOD.3 or LOD.1.2.3
-	 * by stripping it down to the LOD, finding that, and calling
-	 * ourselves recursivly.
-	 */
-	for (l = s->lods; l; l = l->next) {
-		if (streq(rev, l->name)) {
-			found = l;
-		}
+	unless (k) return (0);
+	for ( ; k; k = k->siblings) {
+		if (sameLODbranch(d, k)) return (k);
 	}
-	if (found) {
-		delta	*d = found->d;
-
-		if (d->r[2]) {
-			sprintf(buf, "%d.%d.%d", d->r[0], d->r[1], d->r[2]);
-		} else {
-			sprintf(buf, "%d", d->r[0]);
-		}
-		*rp = buf;
-		return (0);
-	}
-#endif
-again:
-	for (sym = s->symbols; sym; sym = sym->next) {
-		if (streq(rev, sym->name)) {
-			rev = sym->rev;
-			if (isdigit(rev[0])) {
-				*rp = rev;
-				return (0);
-			}
-			goto again;
-		}
-	}
-	return (-1);
+	return (0);
 }
 
+/*
+ * This will work if and only if we put all heads of branches in the heads list.
+ */
 private delta *
-sym2delta(sccs *s, char *sym)
+lfind(sccs *s, char *rev)
 {
-	if (name2rev(s, &sym) == -1) return (0);
-	return (rfind(s, sym));
+	lod	*l;
+	delta	*d;
+	delta	revs;
+	int	i;
+
+	debug((stderr, "lfind(%s, %s)\n", s->gfile, rev));
+	bzero(&revs, sizeof(revs));
+	unless (l = lod2rev(s, rev, revs.lodr)) return (0);
+	revs.lod = l;
+	debug((stderr, "lfind got lod %s\n", l->name));
+	EACH(l->heads) {
+		d = sfind(s, l->heads[i]);
+		debug((stderr, "lfind search %s\n", d->rev));
+		unless (sameLODbranch(d, &revs)) continue;
+		while (d) {
+			debug((stderr, "lfind search2 %s\n", d->rev));
+			if ((d->lodr[0] == revs.lodr[0]) &&
+			    (d->lodr[1] == revs.lodr[1]) &&
+			    (d->lodr[2] == revs.lodr[2])) {
+				return (d);
+			}
+			d = nextlod(d);
+		}
+	}
+	return (0);
 }
 
 /*
@@ -1232,12 +1430,69 @@ rfind(sccs *s, char *rev)
 
 	debug((stderr, "rfind(%s) ", rev));
 	name2rev(s, &rev);
+	if (d = lfind(s, rev)) return (d);
 	R[0] = R[1] = R[2] = R[3] = 0;
 	scanrev(rev, &R[0], &R[1], &R[2], &R[3]);
 	debug((stderr, "aka %d.%d.%d.%d\n", R[0], R[1], R[2], R[3]));
 	d = _rfind(s->tree);
 	debug((stderr, "rfind(%s) got %s\n", rev, d ? d->rev : "Not found"));
 	return (d);
+}
+
+private char *
+defbranch(sccs *s)
+{
+	if (s->defbranch) return (s->defbranch);
+	if (s->tree->lod) {
+		return (s->tree->lod->name);
+	} else {
+		return ("100000");
+	}
+}
+
+/*
+ * Find the specified delta.  The rev must be
+ *	LOD		get top of trunk for that LOD
+ *	LOD.d		get that revision or error if not there
+ *	LOD.d.d		get top of branch that matches those three digits
+ *	LOD.d.d.d	get that revision or error if not there.
+ */
+delta *
+findlod(sccs *s, char *rev)
+{
+	delta	*d, *e;
+	u16	revs[3];
+	lod	*l;
+	int	n;
+
+	if (!s->tree) return (0);
+	if (!rev || !*rev) rev = defbranch(s);
+	if (isdigit(rev[0])) return (0);
+	unless (l = lod2rev(s, rev, revs)) return (0);
+	n = 0;
+	if (revs[0]) n++;
+	if (revs[1]) n++;
+	if (revs[2]) n++;
+	debug((stderr, "findlod: %s n=%d\n", l->name, n));
+	unless (l->heads) return (n == 0 ? l->d : 0);
+	if (n > 1) assert("LOD BRANCHES NOT DONE" == 0);
+	switch (n) {
+	    case 0:	/* LOD */
+		for (d = sfind(s, l->heads[1]); e = nextlod(d); d = e);
+		debug((stderr, "findlod(%s) = %s\n", rev, d->rev));
+		return (d ? d : l->d);
+	    case 1:	/* LOD.3 */
+		debug((stderr, "findlod: %s wants %d\n", l->name, revs[0]));
+		for (d = sfind(s, l->heads[1]); d; d = nextlod(d)) {
+			debug((stderr, "%s %d\n", d->rev, d->lodr[0]));
+			if (d->lodr[0] == revs[0]) {
+				debug((stderr, "findlod(%s) =  %s\n",
+				    rev, d->rev));
+				return (d);
+			}
+		}
+		return (0);
+	}
 }
 
 /*
@@ -1251,17 +1506,24 @@ rfind(sccs *s, char *rev)
 delta *
 findrev(sccs *s, char *rev)
 {
-	int	a = 0, b = 0, c = 0, d = 0;
+	u16	a = 0, b = 0, c = 0, d = 0;
 	delta	*e;
 	char	buf[20];
+	lod	*l;
 
+	debug((stderr,
+	    "findrev(%s in %s def=%s)\n", rev, s->sfile, defbranch(s)));
 	if (!s->tree) return (0);
-	if (!rev || !*rev) rev = s->defbranch ? s->defbranch : "100000";
+	if (!rev || !*rev) rev = defbranch(s);
+
+	if (e = findlod(s, rev)) return (e);
 	if (name2rev(s, &rev)) return (0);
 	switch (scanrev(rev, &a, &b, &c, &d)) {
 	    case 1:
-		for (e = s->tree;
-		    e->kid && (e->kid->type == 'D') &&
+		for (e = s->tree, l = s->tree->lod;
+		    e->kid &&
+		    (l == e->kid->lod) &&
+		    (e->kid->type == 'D') &&
 		    (e->kid->r[2] == 0) &&
 		    (e->kid->r[0] <= a);
 		    e = e->kid)
@@ -1396,7 +1658,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	 * Get a date to work with.  If it's a symbol, convert that.
 	 */
 	if (isdigit(*s)) {
-		date = sccs_date2time(s, 0, roundup);
+		date = date2time(s, 0, roundup);
 	} else {
 		delta	*d = sym2delta(sc, s);
 
@@ -1462,17 +1724,38 @@ morekids(delta *d)
  * Get the revision name of the new delta.
  */
 private delta *
-getedit(sccs *s, char **revp, int branch)
+getedit(sccs *s, char **revp, char **lrev, int branch)
 {
 	char	*rev = *revp;
-	int	n, a = 0, b = 0, c = 0, d = 0;
+	u16	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
-	static	char buf[20];
+	lod	*l = 0;
+	static	char buf[MAXREV];
+	static	char lbuf[MAXREV];
 
+	debug((stderr, "getedit(%s, %s, b=%d)\n", s->gfile, *revp, branch));
 	/*
 	 * use the findrev logic to get to the delta.
 	 */
 	unless (e = findrev(s, rev)) {
+		/*
+		 * If that didn't work, see if we are starting a new LOD.
+		 */
+		if (!rev || !*rev) rev = defbranch(s);
+		unless (isdigit(rev[0])) {
+			debug((stderr, "Look for %s\n", rev));
+			for (l = s->lods; l; l = l->next) {
+				if (streq(rev, l->name)) break;
+			}
+			if (l) {
+				debug((stderr, "Found LOD %s\n", l->name));
+				e = l->d;
+			}
+		}
+	}
+	debug((stderr, "getedit(e=%s, l=%s)\n", e?e->rev:"", l?l->name:""));
+
+	unless (e) {
 		/*
 		 * Special case: we're at 1.x and they want 2.1 or 3.1.
 		 * We allow that.
@@ -1491,7 +1774,11 @@ ok:
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
 	if (!branch && !morekids(e)) {
-		if (scanrev(e->rev, &a, &b, &c, &d) == 2) {
+		a = e->r[0];
+		b = e->r[1];
+		c = e->r[2];
+		d = e->r[3];
+		if (!c) {
 			/* Seems weird but makes -e -r2 -> 2.1 when tot is 1.x
 			 */
 			int	release = rev ? atoi(rev) : 1;
@@ -1506,9 +1793,9 @@ ok:
 		} else {
 			sprintf(buf, "%d.%d.%d.%d", a, b, c, d+1);
 		}
-		debug((stderr, "getedit(%s) -> %s\n", rev, buf));
+		debug((stderr, "getedit1(%s) -> %s\n", rev, buf));
 		*revp = buf;
-		return (e);
+		goto lod;
 	}
 
 	/*
@@ -1517,16 +1804,39 @@ ok:
 	 * Branches are all based, in their /name/, off of the closest
 	 * trunk node.	Go backwards up the tree until we hit the trunk
 	 * and then use that rev as a basis.
+	 * Because all branches are below that trunk node, we don't have
+	 * to search the whole tree.
 	 */
 	for (t = e; isbranch(t); t = t->parent);
-	n = scanrev(t->rev, &a, &b, 0, 0);
-	c = 1;
-	do {
-		sprintf(buf, "%d.%d.%d.1", a, b, c);
-		c++;
-	} while (rfind(s, buf));	/* well formed */
-	debug((stderr, "getedit(%s) -> %s\n", rev, buf));
+	R[0] = t->r[0]; R[1] = t->r[1]; R[2] = 1; R[3] = 1;
+	while (_rfind(t)) R[2]++;
+	sprintf(buf, "%d.%d.%d.%d", R[0], R[1], R[2], R[3]);
+	debug((stderr, "getedit2(%s) -> %s\n", rev, buf));
 	*revp = buf;
+
+lod:
+	/*
+	 * We use different logic for LOD's than the other stuff.
+	 */
+	if (l) {	/* this is the first node in the LOD */
+		assert(!branch);
+		/* XXXXXXXXXXX */
+		assert(sizeof(lbuf) > (strlen(l->name) + 5));
+		sprintf(lbuf, "%s.1", l->name);
+		debug((stderr, "getedit(%s) -> %s & %s\n", rev, buf, lbuf));
+		*lrev = lbuf;
+		return (l->d);
+	}
+	
+	if (e->lod) {
+		/* XXXXXXXXXXX */
+		assert(sizeof(buf) > (strlen(e->rev) + 5));
+		sprintf(lbuf, "%s.%d", e->lod->name, e->lodr[0]+1);
+		debug((stderr, "getedit(%s) -> %s & %s\n", rev, buf, lbuf));
+		*lrev = lbuf;
+		return (e);
+		//XXX - doesn't handle branches
+	}
 	return (e);
 }
 
@@ -1559,7 +1869,7 @@ expand(sccs *s, delta *d, char *l)
 	char	*tmp;
 	time_t	now = 0;
 	struct	tm *tm;
-	int	a[4];
+	u16	a[4];
 
 	while (*l != '\n') {
 		if (l[0] != '%' || l[1] == '\n' || l[2] != '%') {
@@ -1937,15 +2247,20 @@ metaSyms(sccs *sc)
 private void
 meta(sccs *s, delta *d, char *buf)
 {
-	symbol	*sym;
-
-	d->flags |= D_META;
+	if (d->type != 'D') d->flags |= D_META;
 	switch (buf[2]) {
 	    case 'B':
 		csetFileArg(d, &buf[3]);
 		break;
 	    case 'C':
 		csetArg(d, &buf[3]);
+		break;
+	    case 'K':
+		sumArg(d, &buf[3]);
+		break;
+	    case 'F':
+		/* Do not add to date here, done in inherit */
+		d->dateFudge = atoi(&buf[3]);
 		break;
 	    case 'H':
 		hostArg(d, &buf[3]);
@@ -1966,7 +2281,9 @@ meta(sccs *s, delta *d, char *buf)
 		zoneArg(d, &buf[3]);
 		break;
 	    default:
-		assert("Bad metadata" == 0);
+		fprintf(stderr, "Ignoring %.5s...\n", buf);
+		/* got unknown field, force read only mode */
+		s->state |= READ_ONLY;
 	}
 }
 
@@ -2155,7 +2472,7 @@ done:		;	/* CSTYLED */
 	 * but it isn't because we used to store the timezones in the flags.
 	 */
 	s->tree = d;
-	inherit(flags, d);
+	inherit(s, flags, d);
 	d = d->kid;
 	s->tree->kid = 0;
 	while (d) {
@@ -2173,6 +2490,11 @@ done:		;	/* CSTYLED */
 	 * the real node.
 	 */
 	metaSyms(s);
+	
+	/*
+	 * Go build the lod numbering.
+	 */
+	lods(s);
 
 	/*
 	 * The very first (1.1) delta has a landing pad in it for fast file
@@ -2264,7 +2586,7 @@ misc(sccs *s)
 		}
 	}
 
-	if (s->state & REINHERIT) reinherit(s->tree);
+	if (s->state & REINHERIT) reinherit(s, s->tree);
 
 	/* Save descriptive text. */
 	for (; next(buf, s) && !strneq(buf, "\001T\n", 3); ) {
@@ -2455,6 +2777,7 @@ check_gfile(sccs *s, int flags)
 		s->state |= GFILE;
 		if (sbuf.st_mode & 0222) s->state |= WRITABLE;
 		if (sbuf.st_mode & 0111) s->state |= GEXECUTABLE;
+		if (flags & GTIME) s->gtime = sbuf.st_mtime;
 	} else {
 		s->state &= ~(GFILE|WRITABLE|GEXECUTABLE);
 	}
@@ -2497,6 +2820,7 @@ sccs_init(char *name, int flags)
 	unless (t && (t >= s->sfile + 4) && strneq(t - 4, "SCCS/s.", 7)) {
 		s->state |= NOSCCSDIR;
 	}
+	if (t = getenv("BK_LOD")) s->defbranch = strdup(t);
 	unless (check_gfile(s, flags)) return (0);
 	if (stat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
@@ -2838,9 +3162,11 @@ lock(sccs *sccs, char type)
 	char	*s;
 	int	islock;
 
+	if ((type == 'z') && (sccs->state & READ_ONLY)) return (0);
 	s = sccsXfile(sccs, type);
 	islock = open(s, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : 0644);
 	close(islock);
+	if (islock > 0) sccs->state |= Z_LOCKED;
 	debug((stderr, "lock(%s) = %d\n", sccs->sfile, islock > 0));
 	return (islock > 0);
 }
@@ -2852,10 +3178,13 @@ private int
 unlock(sccs *sccs, char type)
 {
 	char	*s;
+	int	failed;
 
 	debug((stderr, "unlock(%s, %c)\n", sccs->sfile, type));
 	s = sccsXfile(sccs, type);
-	return (unlink(s));
+	failed  = unlink(s);
+	unless (failed) sccs->state &= ~Z_LOCKED;
+	return (failed);
 }
 
 /*
@@ -2899,12 +3228,12 @@ sccsXfile(sccs *sccs, char type)
  * and get timezone as minutes west of GMT
  */
 private void
-date(delta *d)
+date(delta *d, time_t tt)
 {
 	struct	tm *tm;
-	time_t	tt = time(0);
 	char	tmp[50];
 	extern	long timezone;
+	extern	int daylight;
 	int	hwest, mwest;
 	char	sign = '-';
 
@@ -2912,6 +3241,7 @@ date(delta *d)
 	tm = localtime(&tt);
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", tm);
 	d->sdate = strdup(tmp);
+#ifdef	ZONE_VODOO
 	/*
 	 * What I want is to have 8 hours west of GMT to be -08:00.
 	 */
@@ -2922,9 +3252,40 @@ date(delta *d)
 		hwest = -hwest;
 		mwest = -mwest;
 	}
+	/*
+	 * XXX - I have not thought this through.
+	 * This is blindly following what /bin/date does.
+	 */
+	if (daylight) hwest--;
 	sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
+#else
+	strftime(tmp, sizeof(tmp), "%z", tm);
+	assert(strlen(tmp) == 5);
+	tmp[6] = 0;
+	tmp[5] = tmp[4];
+	tmp[4] = tmp[3];
+	tmp[3] = ':';
+#endif
 	zoneArg(d, tmp);
 	getDate(d);
+}
+
+/*
+ * Return an at most 5 digit !0 integer.
+ */
+long
+almostUnique()
+{
+	struct	timeval tv;
+	int	max = 100;
+	int	val;
+
+	do {
+		gettimeofday(&tv, NULL);
+		val = tv.tv_usec % 100000;
+	} while (max-- && !val);
+	while (!val) val = time(0) % 100000;
+	return (val);
 }
 
 /* XXX - make this private once tkpatch is part of slib.c */
@@ -2949,10 +3310,16 @@ sccs_gethost(void)
 	static char host[257];
 	static	done = 0;
 	struct	hostent *hp;
+	char 	*h;
 
 	if (done) return (host[0] ? host : 0);
 	done = 1;
 
+	if (h = getenv("BK_HOST")) {
+		assert(strlen(h) <= 256);
+		strcpy(host, h);
+		return(host);
+	}	
 	/*
 	 * Some system (e.g. win32)
 	 * reuires loading a library
@@ -3148,45 +3515,25 @@ putserlist(sccs *sc, ser_t *s, FILE *out)
 	}
 }
 
-/*
- * Include/exclude processing.
- *
- * The temporary list has two elements, {ser, what}.
- * "ser" is the serial number that has caused "what" to be set.
- * "what" is 0, S_INC, or S_EXCL.
- * When adding serial numbers, if there is a conflict, the higher number
- * wins since that one was a more recent addition to the file.
- * This should work in all cases except, perhaps, after a smoosh.
- */
 private void
-inex(sccs *s, ser_t doer, ser_t ser, ielist *list, int what)
+putlodlist(sccs *sc, ser_t *s, FILE *out)
 {
-	delta	*t;
-	int	i;
+	int	first = 1, i;
+	char	buf[20];
 
-	debug((stderr, "inex(%s, %d, %d, %s)\n",
-	    s->gfile, doer, ser, what == S_INC ? "inc" : "excl"));
-	if (!list[ser].ser) {
-		list[ser].ser = doer;
-		list[ser].what = what;
-	} else if (list[ser].ser < doer) {
-		list[ser].ser = doer;
-		list[ser].what = what;
-	}
-	t = sfind(s, ser);
-	EACH(t->include) {
-		inex(s, t->serial, t->include[i], list, what);
-	}
-	what = what == S_INC ? S_EXCL : S_INC;
-	EACH(t->exclude) {
-		inex(s, t->serial, t->exclude[i], list, what);
+	if (!s) return;
+	EACH(s) {
+		sertoa(buf, s[i]);
+		if (!first) fputsum(sc, " ", out);
+		fputsum(sc, buf, out);
+		first = 0;
 	}
 }
 
 /*
  * Generate a list of serials to use to get a particular delta and
  * allocate & return space with the list in the space.
- * The 0th entry is contains the maximum used entry unless it got excluded.
+ * The 0th entry is contains the maximum used entry.
  * Note that the error pointer is to be used only by walkList, it's null if
  * the lists are null.
  * Note we don't have to worry about growing tables here, the list isn't saved
@@ -3197,51 +3544,81 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 {
 	ser_t	*slist;
 	ielist	*ie;
-	delta	*t;
+	delta	*t, *n = d;
 	int	i;
 
-	ie = calloc(s->nextserial, sizeof(ielist));
-	assert(ie);
 	assert(d);
+
+	slist = calloc(s->nextserial, sizeof(ser_t));
+	assert(slist);
+
+	/* initialize with iLst and xLst */
 	if (iLst) {
 		verbose((stderr, "Included:"));
 		for (t = walkList(s, iLst, errp);
 		    !*errp && t; t = walkList(s, 0, errp)) {
 			verbose((stderr, " %s", t->rev));
-			inex(s, s->nextserial, t->serial, ie, S_INC);
-		}
+			assert(t->serial <= s->numdeltas);
+			slist[t->serial] = S_INC;
+ 		}
 		verbose((stderr, "\n"));
 		if (*errp) goto bad;
 	}
+
 	if (xLst) {
 		verbose((stderr, "Excluded:"));
 		for (t = walkList(s, xLst, errp);
 		    !*errp && t; t = walkList(s, 0, errp)) {
+			assert(t->serial <= s->numdeltas);
 			verbose((stderr, " %s", t->rev));
-			inex(s, s->nextserial, t->serial, ie, S_EXCL);
-		}
+			if (slist[t->serial] == S_INC)
+				*errp = 3;
+			else {
+				slist[t->serial] = S_EXCL;
+			}
+ 		}
 		verbose((stderr, "\n"));
 		if (*errp) goto bad;
-	}
-	for (t = d; t; t = t->parent) {
-		assert(t->serial <= s->numdeltas);
-		inex(s, t->serial, t->serial, ie, S_INC);
-	}
-	for (i = s->nextserial; i--; ) {
-		if (ie[i].ser) break;
-	}
-	assert(i >= 0);
-	slist = calloc(s->nextserial, sizeof(ser_t));
-	debug((stderr, "map %s (max=%d): ", d->rev, i));
-	slist[0] = i;
-	for (; i > 0; i--) {
-		if (ie[i].what == S_INC) {
-			slist[i] = 1;
-			debug((stderr, "[%d] ", i));
+ 	}
+
+	/* Use linear list, newest to oldest, looking only at 'D' */
+
+	/* slist is used as temp storage for S_INC and S_EXC then
+	 * replaced with either a 0 or a 1 depending on if in view
+	 * XXX clean up use of enum values mixed with 0 and 1
+	 * XXX The slist[0] has a ser_t entry ... is it needed?
+	 * XXX slist has (besides slist[0]) only one of 3 to 4 values:
+	 *     0, 1, S_INC, S_EXCL so it doesn't need to be ser_t?
+	 */
+
+	for (t = s->table; t; t = t->next) {
+		if (t->type != 'D') continue;
+
+ 		assert(t->serial <= s->numdeltas);
+		
+		/* if an ancestor and not excluded, or if included */
+		if ( (t == n && slist[t->serial] != S_EXCL)
+		     || slist[t->serial] == S_INC) {
+
+			/* slist [0] = Max serial that is in slist */
+			unless (slist[0])  slist[0] = t->serial;
+
+			slist[t->serial] = 1;
+			/* alter only if item hasn't been set yet */
+			EACH(t->include) {
+				unless(slist[t->include[i]])
+					slist[t->include[i]] = S_INC;
+			}
+			EACH(t->exclude) {
+				unless(slist[t->exclude[i]])
+					slist[t->exclude[i]] = S_EXCL;
+			}
 		}
+		else
+			slist[t->serial] = 0;
+
+		if (t == n)  n = t->parent;
 	}
-	debug((stderr, "\n"));
-	free(ie);
 	return (slist);
 bad:	free(slist);
 	return (0);
@@ -3282,7 +3659,7 @@ changestate(register serlist *state, char type, int serial)
 	n = state[SFREE].next;
 	state[SFREE].next = n->next;
 	for (i = 0, s = state[SLIST].next; s; s = s->next, i++) {
-		if ((s->serial > serial) || !s->next) break;
+		if ((s->serial < serial) || !s->next) break;
 	}
 	/*
 	 * We're either at the head of the (empty) list,
@@ -3293,7 +3670,7 @@ changestate(register serlist *state, char type, int serial)
 		state[SLIST].next = n;
 		n->prev = 0;
 		n ->next = 0;
-	} else if (s->serial > serial) {
+	} else if (s->serial < serial) {
 		n->next = s;
 		if (s->prev) {
 			s->prev->next = n;
@@ -3346,83 +3723,34 @@ allocstate(serlist *old, int oldsize, int n)
 	return (s);
 }
 
+/* calculate printstate using where we are (state)
+ * and list of active deltas (slist)
+ * return either the serial if active, or 0 if not
+ */
+
 private int
 printstate(const serlist *state, const ser_t *slist)
 {
 	register serlist *s;
-	int	ourI = 0, theirI = 0, ourD = 0;
 
+	/* Loop until any I or active D */
 	for (s = state[SLIST].next; s; s = s->next) {
-		if (s->type == 'I') {
-			if (slist[s->serial]) {
-				ourI = s->serial;
-			} else {
-				theirI = s->serial;
-			}
-		} else if ((s->type == 'D') && slist[s->serial]) {
-			ourD = s->serial;
-		}
+		unless (s->type == 'D' && !slist[s->serial])
+			break;
 	}
-	/* we are in delete mode, it matters not what the rest are doing */
-	debug2((stderr, "{oI %d tI %d oD %d} ", ourI, theirI, ourD));
-	/*
-	 * This is actually misleading.	 This if will be taken if we didn't
-	 * find anything at all (both of our insert & delete are 0).
-	 */
-	if (ourD >= ourI) {
-		assert((ourI == 0) || (ourI != ourD));
-		debug2((stderr, " = 0\n"));
-		return 0;
-	}
-	if (ourI > theirI) {
-		debug2((stderr, " = %d\n", ourI));
-		return ourI;
-	}
-	debug2((stderr, " = 0\n"));
-	return 0;
-}
 
-/*
- * Similar to printstate except it ignores a given serial number.
- * Done as a different function because there is an extra parameter
- * which would mean altering all old printstate calls.
- */
-private int
-diffstate(ser_t ign, const serlist *state, const ser_t *slist)
-{
-	register serlist *s;
-	int	ourI = 0, theirI = 0, ourD = 0;
-	int	active; /* RBS: added var to hold computed state */
+	if (s) {
+		int ret = (s->type == 'I')
+			? (slist[s->serial] ? s->serial : 0)
+ 			: 0;
+		debug2((stderr, "printstate {t %c s %d p %d} = %d\n", \
+			s->type, s->serial, slist[s->serial], ret));
+		return (ret);
+	}
 
-	for (s = state[SLIST].next; s; s = s->next) {
-		active = (s->serial != ign && slist[s->serial]);
-		if (s->type == 'I') {
-			if (active) {
-				ourI = s->serial;
-			} else {
-				theirI = s->serial;
-			}
-		} else if ((s->type == 'D') && active) {
-			ourD = s->serial;
-		}
-	}
-	/* we are in delete mode, it matters not what the rest are doing */
-	debug2((stderr, "{oI %d tI %d oD %d} ", ourI, theirI, ourD));
-	/*
-	 * This is actually misleading.	 This if will be taken if we didn't
-	 * find anything at all (both of our insert & delete are 0).
-	 */
-	if (ourD >= ourI) {
-		assert((ourI == 0) || (ourI != ourD));
-		debug2((stderr, " = 0\n"));
-		return 0;
-	}
-	if (ourI > theirI) {
-		debug2((stderr, " = %d\n", ourI));
-		return ourI;
-	}
-	debug2((stderr, " = 0\n"));
-	return 0;
+	debug2((stderr, "printstate {} = 0\n"));
+
+	return (0);
 }
 
 private void inline
@@ -3446,11 +3774,11 @@ fnlputs(char *buf, FILE *out)
 	}
 }
 
-private void
+private sum_t
 fputsum(sccs *s, char *buf, FILE *out)
 {
 	register char	*t = buf;
-	register unsigned short sum = s->cksum;
+	register sum_t	 sum = 0;
 	char	fbuf[1024];
 	register char *p = fbuf;
 
@@ -3464,11 +3792,12 @@ fputsum(sccs *s, char *buf, FILE *out)
 		}
 		if (*t == '\n') break;
 	}
-	s->cksum = sum;
+	s->cksum += sum;
 	if (p != fbuf) {
 		*p = 0;
 		fputs(fbuf, out);
 	}
+	return (sum);
 }
 
 //typedef	unsigned char uchar;
@@ -3600,11 +3929,147 @@ openOutput(int encode, char *file, FILE **op)
 }
 
 /*
+ * Return a list of revisions from rev to the first gca of base.
+ * Null return is an error.
+ * An invariant is that no list is returned if the rev is already implied
+ * by base..root.
+ */
+char *
+sccs_impliedList(sccs *s, char *who, char *base, char *rev)
+{
+	delta	*baseRev, *d, *mRev;
+	int	len  = 0;
+	char	*tmp;
+
+	unless (baseRev = findrev(s, base)) {
+		fprintf(stderr,
+		    "%s: can not find base rev %s in %s\n",
+		    who, base, s->sfile);
+err:		s->state |= WARNED;
+		return (0);
+	}
+	for (d = baseRev; d; d = d->parent) {
+		/* we should be the only user or other users should also tidy */
+		assert(!(d->flags & D_VISITED));
+		d->flags |= D_VISITED;
+	}
+	unless (mRev = findrev(s, rev)) {
+		fprintf(stderr,
+		    "%s: can not find merge rev %s in %s\n",
+		    who, rev, s->sfile);
+		goto err;
+	}
+	if (mRev->flags & D_VISITED) {
+		fprintf(stderr, "%s: %s already part of %s in %s\n",
+		    who, mRev->rev, baseRev->rev, s->sfile);
+		goto err;
+	}
+	for (d = mRev; d && !(d->flags & D_VISITED); d = d->parent) {
+		len += strlen(d->rev) + 1;
+	}
+	assert(d);
+	tmp = malloc(len + 1);
+	tmp[0] = 0;
+	for (d = mRev; d && !(d->flags & D_VISITED); d = d->parent) {
+		if (tmp[0]) strcat(tmp, ",");
+		strcat(tmp, d->rev);
+	}
+	for (d = baseRev; d; d = d->parent) d->flags &= ~D_VISITED;
+	return (tmp);
+}
+
+/*
+ * Take two strings and concat them into a new strings.
+ * Caller frees.
+ */
+private char *
+strconcat(char *a, char *b, char *sep)
+{
+	char	*tmp;
+
+	if (!a) return (b);
+	if (!b) return (a);
+	tmp = malloc(strlen(a) + strlen(b) + 2);
+	sprintf(tmp, "%s%s%s", a, sep, b);
+	return (tmp);
+}
+
+write_pfile(sccs *s, int flags, delta *d,
+	char *rev, char *lrev, char *iLst, char *i2, char *xLst, char *mRev)
+{
+	int	fd, len;
+	char	*tmp, *tmp2;
+
+	if (IS_WRITABLE(s) && !(flags & SKIPGET)) {
+		fprintf(stderr,
+		    "Writeable %s exists, skipping it.\n", s->gfile);
+		s->state |= WARNED;
+		return (-1);
+	}
+	if (!lock(s, 'z')) {
+		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
+		return (-1);
+	}
+	if (!lock(s, 'p')) {
+		fprintf(stderr, "get: can't plock %s\n", s->gfile);
+		unlock(s, 'z');
+		return (-1);
+	}
+	fd = open(s->pfile, 2, 0);
+	tmp2 = now();
+	assert(getuser() != 0);
+	len = strlen(d->rev) 
+	    + MAXREV + 2
+	    + strlen(rev)
+	    + strlen(getuser())
+	    + strlen(tmp2) 
+	    + (xLst ? strlen(xLst) + 3 : 0)
+	    + (mRev ? strlen(mRev) + 3 : 0)
+	    + 3 + 1 + 1; /* 3 spaces \n NULL */
+	if (i2) {
+		len += strlen(i2) + 3;
+	} else {
+		assert(!mRev);
+		len += (iLst ? strlen(iLst) + 3 : 0);
+	}
+	tmp = malloc(len);
+	if (lrev) {
+		sprintf(tmp, "%s %s(%s) %s %s",
+			    d->rev, lrev, rev, getuser(), tmp2);
+	} else {
+		sprintf(tmp,
+		    "%s %s %s %s", d->rev, rev, getuser(), tmp2);
+	}
+	if (i2) {
+		strcat(tmp, " -i");
+		strcat(tmp, i2);
+	} else if (iLst) {
+		strcat(tmp, " -i");
+		strcat(tmp, iLst);
+	}
+	if (xLst) {
+		strcat(tmp, " -x");
+		strcat(tmp, xLst);
+	}
+	if (mRev) {
+		strcat(tmp, " -m");
+		strcat(tmp, mRev);
+	}
+	strcat(tmp, "\n");
+	write(fd, tmp, strlen(tmp));
+	close(fd);
+	free(tmp);
+	return (0);
+}
+
+/*
  * get the specified revision.
  * The output file is passed in so that callers can redirect it.
+ * iLst and xLst are malloced and get() frees them.
  */
 int
-sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
+sccs_get(sccs *s, char *rev,
+	char *mRev, char *iLst, char *xLst, int flags, char *printOut)
 {
 	serlist *state = 0;
 	ser_t	*slist = 0;
@@ -3615,33 +4080,44 @@ sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
 	int	popened = 0;
 	int	encoding = (flags&FORCEASCII) ? E_ASCII : s->encoding;
 	int	error = 0;
-	char	*base;
+	char	*lrev = 0, *tmp, *base, *i2 = 0;
+	sum_t	sum;
 	BUF	(buf);
 
-	debug((stderr, "get(%s, %s, %s, %s, %x, %s)\n",
-	    s->sfile, rev, iLst, xLst, flags, printOut));
+	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
+	    s->sfile, rev, mRev, iLst, xLst, flags, printOut));
 	unless (s->state & SOPEN) {
 		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
+err:		if (slist) free(slist);
+		if (state) free(state);
+		if (i2) free(i2);
 		return (-1);
 	}
 	unless (s->cksumok) {
 		fprintf(stderr, "get: bad chksum on %s\n", s->sfile);
-		return (-1);
+		goto err;
 	}
 	unless (s->tree) {
 		fprintf(stderr, "get: no/bad delta tree in %s\n", s->sfile);
-		return (-1);
+		goto err;
 	}
 	if ((s->state & BADREVS) && !(flags & FORCE)) {
 		fprintf(stderr,
 		    "get: bad revisions, run renumber on %s\n", s->sfile);
 		s->state |= WARNED;
-		return (-1);
+		goto err;
+	}
+	/* this has to be above the getedit() - that changes the rev */
+	if (mRev) {
+		tmp = sccs_impliedList(s, "get", rev, mRev);
+		unless (tmp) goto err;
+		i2 = strconcat(tmp, iLst, ",");
+		if (i2 != tmp) free(tmp);
 	}
 	if (flags & EDIT) {
 		int	f = (s->state & BRANCHOK) ? flags&FORCEBRANCH : 0;
 
-		d = getedit(s, &rev, f);
+		d = getedit(s, &rev, &lrev, f);
 		if (!d) {
 			fprintf(stderr, "get: can't find revision %s in %s\n",
 			    rev, s->sfile);
@@ -3656,17 +4132,21 @@ sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
 			s->state |= WARNED;
 		}
 	}
-	unless (d) return (-1);
+	unless (d) goto err;
 	/* moved this up above the opens so that I can bail easily */
 	unless (flags & SKIPGET) {
-		slist = serialmap(s, d, flags, iLst, xLst, &error);
+		if (i2) {
+			slist = serialmap(s, d, flags, i2, xLst, &error);
+		} else {
+			slist = serialmap(s, d, flags, iLst, xLst, &error);
+		}
 		if (error == 1) {
 			assert(!slist);
 			fprintf(stderr,
 			    "Malformed include/exclude list for %s\n",
 			    s->sfile);
 			s->state |= WARNED;
-			return (-1);
+			goto err;
 		}
 		if (error == 2) {
 			assert(!slist);
@@ -3674,46 +4154,14 @@ sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
 		"Can't find specified rev in include/exclude list for %s\n",
 			    s->sfile);
 			s->state |= WARNED;
-			return (-1);
+			goto err;
 		}
 	}
 	if (flags & EDIT) {
-		int	fd;
-		char	tmp[200];
-
-		if (IS_WRITABLE(s) && !(flags & SKIPGET)) {
-			fprintf(stderr,
-			    "Writeable %s exists, skipping it.\n", s->gfile);
-			s->state |= WARNED;
-			if (slist) free(slist);
-			return (-1);
+		if (write_pfile(s, flags, d, rev, lrev, iLst, i2, xLst, mRev)) {
+			goto err;
 		}
-		if (!lock(s, 'z')) {
-			fprintf(stderr, "get: can't zlock %s\n", s->gfile);
-			if (slist) free(slist);
-			return (-1);
-		}
-		if (!lock(s, 'p')) {
-			fprintf(stderr, "get: can't plock %s\n", s->gfile);
-			unlock(s, 'z');
-			if (slist) free(slist);
-			return (-1);
-		}
-		fd = open(s->pfile, 2, 0);
-		sprintf(tmp, "%s %s %s %s",
-		    d->rev, rev, getuser(), now());
-		if (iLst) {
-			strcat(tmp, " -i");
-			strcat(tmp, iLst);
-		}
-		if (xLst) {
-			strcat(tmp, " -x");
-			strcat(tmp, xLst);
-		}
-		strcat(tmp, "\n");
-		write(fd, tmp, strlen(tmp));
-		close(fd);
-		if (flags&SKIPGET) goto skip_get;
+		if (flags & SKIPGET) goto skip_get;
 		unlinkGfile(s);
 		popened = openOutput(encoding, s->gfile, &out);
 		if (!out) {
@@ -3721,8 +4169,7 @@ sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
 			    s->gfile);
 			unlock(s, 'p');
 			unlock(s, 'z');
-			if (slist) free(slist);
-			return (-1);
+			goto err;
 		}
 	} else if (flags&SKIPGET) {
 		goto skip_get;
@@ -3730,8 +4177,7 @@ sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
 		if (IS_WRITABLE(s)) {
 			fprintf(stderr, "Writeable %s exists\n", s->gfile);
 			s->state |= WARNED;
-			if (slist) free(slist);
-			return (-1);
+			goto err;
 		}
 		unlinkGfile(s);
 		popened = openOutput(encoding, s->gfile, &out);
@@ -3739,6 +4185,9 @@ sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
 		popened = openOutput(encoding, printOut, &out);
 	}
 	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
+	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst) {
+		flags |= NEWCKSUM;
+	}
 	/* Think carefully before changing this */
 	if (s->encoding != E_ASCII) {
 		flags &= ~(REVNUMS|PREFIXDATE|USER|EXPAND|RCSEXPAND|LINENUM);
@@ -3746,12 +4195,17 @@ sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & MODNAME) base = basenm(s->gfile);
 	seekto(s, s->data);
+	sum = 0;
 	while (next(buf, s)) {
 		register char *e;
 
 		if (isData(buf)) {
 			if (!print) continue;
 			lines++;
+			if (flags & NEWCKSUM) {
+				for (e = buf; *e != '\n'; sum += *e++);
+				sum += '\n';
+			}
 			if (flags & (LINENUM|PREFIXDATE|REVNUMS|USER|MODNAME)) {
 				delta *tmp = sfind(s, print);
 
@@ -3798,6 +4252,11 @@ sccs_get(sccs *s, char *rev, char *iLst, char *xLst, int flags, char *printOut)
 		changestate(state, buf[1], atoi(&buf[3]));
 		print = printstate((const serlist*)state, (const ser_t*)slist);
 	}
+	if ((flags & NEWCKSUM) && lines && (sum != d->sum)) {
+		fprintf(stderr,
+		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
+		    d->sum, sum, d->rev, s->sfile);
+	}
 	debug((stderr, "GET done\n"));
 	if (popened) {
 		pclose(out);
@@ -3823,13 +4282,15 @@ skip_get:
 	}
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, d->rev);
-		if (flags & EDIT)
-			fprintf(stderr, " -> %s", rev);
+		if (flags & EDIT) {
+			fprintf(stderr, " -> %s", lrev ? lrev : rev);
+		}
 		if (!(flags & SKIPGET)) fprintf(stderr, ": %d lines", lines);
 		fprintf(stderr, "\n");
 	}
 	if (slist) free(slist);
 	if (state) free(state);
+	if (i2) free(i2);
 	return (0);
 }
 
@@ -3843,6 +4304,7 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 {
 	serlist *state = 0;
 	ser_t	*slist = 0;
+	ser_t	old = 0;
 	delta	*d;
 	int	with = 0, without = 0;
 	int	count = 0, left = 0, right = 0;
@@ -3952,8 +4414,11 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 		debug2((stderr, "%.*s", linelen(buf), buf));
 		changestate(state, buf[1], atoi(&buf[3]));
 		with = printstate((const serlist*)state, (const ser_t*)slist);
-		without = diffstate(d->serial, (const serlist*)state,
+		old = slist[d->serial];
+		slist[d->serial] = 0;
+		without = printstate((const serlist*)state,
 				    (const ser_t*)slist);
+		slist[d->serial] = old;
 
 		nextside = with ? (without ? BOTH : RIGHT)
 				: (without ? LEFT : NEITHER);
@@ -4123,18 +4588,26 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	buf[1024];
 	int	bits = 0;
 
+	assert((s->state & READ_ONLY) == 0);
+	assert(s->state & Z_LOCKED);
 	fprintf(out, "\001hXXXXX\n");
 	s->cksum = 0;
 	for (d = s->table; d; d = d->next) {
+		assert(d->date);
+		if (d->next) {
+			assert(d->next->date);
+			if (d->date <= d->next->date) {
+				sccs_fixDates(s);
+			}
+		}
 		sprintf(buf, "\001s %05d/%05d/%05d\n",
 		    d->added, d->deleted, d->same);
 		if (first)
 			fputs(buf, out);
 		else
 			fputsum(s, buf, out);
-		first = 0;
 		sprintf(buf, "\001d %c %s %s %s %d %d\n",
-		    d->type, d->rev, d->sdate, d->user,
+		    d->type, sccsrev(d), d->sdate, d->user,
 		    d->serial, d->pserial);
 		fputsum(s, buf, out);
 		if (d->include) {
@@ -4176,26 +4649,43 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputsum(s, d->cset, out);
 			fputsum(s, "\n", out);
 		}
+		if (d->dateFudge) {
+			fputsum(s, "\001cF", out);
+			sprintf(buf, "%u", (unsigned int)d->dateFudge);
+			fputsum(s, buf, out);
+			fputsum(s, "\n", out);
+		}
 		if (d->hostname && !(d->flags & D_DUPHOST)) {
 			fputsum(s, "\001cH", out);
 			fputsum(s, d->hostname, out);
 			fputsum(s, "\n", out);
 		}
-		if (d->flags & D_LOD) {
+		if (s->state & BITKEEPER) {
+			if (first) {
+				fputsum(s, "\001cK", out);
+				s->sumOff = ftell(out);
+				fputs("XXXXX", out);
+				fputsum(s, "\n", out);
+			} else if (d->flags & D_CKSUM) {
+				assert(d->type == 'D');
+				sprintf(buf, "\001cK%u\n", d->sum);
+				fputsum(s, buf, out);
+			}
+		}
+		first = 0;
+		if (d->flags & D_LODZERO) {
 			lod	*l;
 
 			for (l = s->lods; l; l = l->next) {
 				unless (l->d == d) continue;
 				fputsum(s, "\001cL", out);
 				fputsum(s, l->name, out);
-				if (l->nextd) {
-					char	buf[20];
-
-					sprintf(buf, "%d\n", l->nextd);
-					fputsum(s, buf, out);
-				} else {
-					fputsum(s, "\n", out);
+				if (l->heads) {
+					fputsum(s, " ", out);
+					putlodlist(s, l->heads, out);
 				}
+				fputsum(s, "\n", out);
+				/* No break, there can be more than one */
 			}
 		}
 		if (d->merge) {
@@ -4443,7 +4933,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 		} else {
 /* XXX - I'm not sure when this would ever be used. */
 			if (sccs_get(s,
-			    0, 0, 0, FORCEASCII|SILENT|PRINT, new)) {
+			    0, 0, 0, 0, FORCEASCII|SILENT|PRINT, new)) {
 				unlink(new);
 				return (-1);
 			}
@@ -4452,7 +4942,7 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 		strcpy(new, s->gfile);
 	}
 	sprintf(old, "%s/get%d", TMP_PATH, getpid());
-	if (sccs_get(s, pf->oldrev, pf->iLst, pf->xLst,
+	if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 	    FORCEASCII|SILENT|PRINT, old)) {
 		unlink(old);
 		return (-1);
@@ -4509,6 +4999,7 @@ free_pfile(pfile *pf)
 {
 	if (pf->iLst) free(pf->iLst);
 	if (pf->xLst) free(pf->xLst);
+	if (pf->mRev) free(pf->mRev);
 	if (pf->user) free(pf->user);
 	bzero(pf, sizeof(*pf));
 }
@@ -4717,19 +5208,50 @@ openInput(sccs *s, int flags, FILE **inp)
  * Do most of the initialization on a delta.
  */
 delta *
-sccs_dInit(delta *d, sccs *s, int nodefault)
+sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 {
 	if (!d) d = calloc(1, sizeof(*d));
-	d->type = 'D';
-	if (!d->sdate) date(d);
+	d->type = type;
+	assert(s);
+	if ((s->state & BITKEEPER) && (type == 'D')) d->flags |= D_CKSUM;
+	if (!d->sdate) {
+		if (s->gtime) {
+			date(d, s->gtime);
+		} else {
+			date(d, time(0));
+		}
+	}
 	if (nodefault) {
-		if (!d->user) d->user = strdup("anon");
+		if (!d->user) d->user = strdup("Anon");
 	} else {
 		if (!d->user) d->user = strdup(getuser());
 		if (!d->hostname && sccs_gethost()) hostArg(d, sccs_gethost());
 		if (!d->pathname && s) pathArg(d, relativeName(s, 0, 0));
 	}
 	return (d);
+}
+
+updatePending(sccs *s, delta *d)
+{
+	int fd;
+	char *bk_root, buf[2048];
+	
+	assert(s);
+	assert(d);
+	if (d->pathname && streq("ChangeSet", d->pathname)) return;
+	bk_root = getenv("BK_ROOT");
+	unless (bk_root) return;
+	sprintf(buf, "%s/SCCS/x.pending", bk_root);
+	fd = open(buf, O_CREAT|O_APPEND|O_WRONLY, 0660);
+	unless (fd > 0) return;
+	sccs_sdelta(buf, sccs_ino(s));
+	strcat(buf, " ");
+	sccs_sdelta(&buf[strlen(buf)], d);
+	strcat(buf, "\n");
+	if (write(fd, buf, strlen(buf)) == -1) {
+		perror("Can'nt write to pending file");
+	}
+	close(fd);
 }
 
 /*
@@ -4745,6 +5267,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	int	popened;
 	char	*t;
 	char	buf[1024];
+	admin	l[2];
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -4766,6 +5289,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	}
 	if (exists(s->sfile)) {
 		fprintf(stderr, "delta: lost checkin race on %s\n", s->sfile);
+		if (prefilled) sccs_freetree(prefilled);
 		if (!diffs && (gfile != stdin)) {
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
@@ -4777,7 +5301,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	} else {
 		n = calloc(1, sizeof(*n));
 	}
-	n = sccs_dInit(n, s, nodefault);
+	n = sccs_dInit(n, 'D', s, nodefault);
 	if (!n->rev) n->rev = strdup("1.1");
 	explode_rev(n);
 	unless (s->state & NOSCCSDIR) {
@@ -4785,11 +5309,12 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			sccs_sdelta(buf, n);
 			n->csetFile = strdup(buf);
 			s->state |= BITKEEPER;	
+			n->flags |= D_CKSUM;
 		} else {
 			t = relativeName(s, 0, 0);
 			assert(t);
 			if (t[0] != '/') {
-				n->csetFile = getCSetFile(s->sfile);
+				n->csetFile = getCSetFile(s);
 				s->state |= BITKEEPER;	
 			}
 		}
@@ -4809,6 +5334,21 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		    s->gfile, n->sdate, n->user);
 		n->comments = addLine(n->comments, strdup(buf));
 	}
+	if (t = getenv("BK_LOD")) {
+		unless (n->flags & D_LODSTR) {
+			n->flags |= D_LODSTR;
+			n->lod = (lod *)t;
+		}
+	}
+	if (n->flags & D_LODSTR) {
+		l[1].flags = 0;
+		l[0].flags = A_ADD;
+		l[0].thing = (char *)n->lod;
+		n->lod = 0;
+		n->flags &= ~D_LODSTR;
+	} else {
+		l[0].flags = 0;
+	}
 	dinsert(s, flags, n);
 	s->numdeltas++;
 	if (n->sym) {
@@ -4816,9 +5356,10 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		free(n->sym);
 		n->sym = 0;
 	}
-	assert(!n->lod);	/* XXX - handle these one day */
+	addLod("delta", s, flags, l, 0);
 	delta_table(s, sfile, 1);
 	fputsum(s, "\001I 1\n", sfile);
+	s->dsum = 0;
 	if (s->encoding > E_ASCII) {
 		/* XXX - this is incorrect, it needs to do it depending on
 		 * what the encoding is.
@@ -4828,13 +5369,13 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		if (diffs) {
 			fnext(buf, diffs);	/* skip diff header */
 			while (fnext(buf, diffs)) {
-				fputsum(s, &buf[2], sfile);
+				s->dsum += fputsum(s, &buf[2], sfile);
 				added++;
 			}
 			fclose(diffs);
 		} else {
 			while (fnext(buf, gfile)) {
-				fputsum(s, buf, sfile);
+				s->dsum += fputsum(s, buf, sfile);
 				added++;
 			}
 		}
@@ -4842,7 +5383,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	fputsum(s, "\001E 1\n", sfile);
 	end(s, n, sfile, flags, added, 0, 0);
 	if (s->state & BITKEEPER) {
-		if (id = idFile(s->sfile)) {
+		if (id = idFile(s)) {
 			char	*path = s->tree->pathname;
 
 			sccs_pdelta(s->tree, id);
@@ -4871,6 +5412,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	Chmod(s->sfile, 0444);
 	if (IS_GEXEC(s)) mkexecutable(s->sfile);
 	fclose(sfile);
+	if (s->state & BITKEEPER) updatePending(s, n);
 	unlock(s, 'z');
 	return (0);
 }
@@ -5210,6 +5752,15 @@ private delta *
 pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
 
 private delta *
+sumArg(delta *d, char *arg)
+{
+	assert(d);
+	d->flags |= D_CKSUM;
+	d->sum = atoi(arg);
+	return (d);
+}
+
+private delta *
 mergeArg(delta *d, char *arg)
 {
 	if (!d) { 
@@ -5219,6 +5770,7 @@ mergeArg(delta *d, char *arg)
 	assert(d->merge == 0); 
 	assert(isdigit(arg[0])); 
 	d->merge = atoi(arg);
+	return (d);
 }
 
 
@@ -5245,27 +5797,50 @@ symArg(sccs *s, delta *d, char *name)
 	return;
 }
 
-/*
- * XXX - only works when reading from the file.
- */
 private void
 lodArg(sccs *s, delta *d, char *name)
 {
-	lod	*lod = calloc(1, sizeof(*lod));
+	lod	*l = calloc(1, sizeof(*l));
+	lod	*m;
 	char	*t;
 
 	assert(d);
-	lod->name = strnonldup(name);
-	for (t = lod->name; *t && (*t != ' '); t++);
-	if (*t == ' ') {
-		*t++ = 0;
-		lod->nextd = atoi(t);
-		assert(lod->nextd);
+	l->name = strnonldup(name);
+
+	/*
+	 * Extract all the serial numbers of all the heads, if any.
+	 */
+	for (t = l->name; *t; t++) {
+		if (*t == ' ') {
+			*t++ = 0;
+			l->heads = getserlist(s, 1, t, 0);
+			debug((stderr, "LOD head: %d ...\n", l->heads[1]));
+			break;
+		}
 	}
-	lod->d = d;
-	lod->next = s->lods;
-	s->lods = lod;
-	d->flags |= D_LOD;
+	l->d = d;
+	l->next = s->lods;
+	s->lods = l;
+	d->flags |= D_LODZERO;
+	/*
+	 * Special case for rev 1.1.  It can be in an LOD, the LOD points
+	 * to itself.
+	 */
+	if ((d->r[0] == 1) && (d->r[1] == 1) && !d->r[2] && 
+	    l->heads && (l->heads[1] == d->serial)) {
+	    	d->flags |= D_LODHEAD;
+		d->lod = l;
+	}
+
+	/* There should be no duplicates */
+	for (m = s->lods; m; m = m->next) {
+		if (m == l) continue;
+		if (streq(m->name, l->name)) assert("duplicate LOD" == 0);
+	}
+
+	/* We do not set the other D_* flags here, we haven't finished the
+	 * graph yet.
+	 */
 	return;
 }
 
@@ -5397,6 +5972,12 @@ sccs_addSym(sccs *sc, int flags, char *s)
 	int	len;
 	char	buf[1024];
 
+	if (!lock(sc, 'z')) {
+		fprintf(stderr, "sccs_addSym: can't zlock %s\n", sc->gfile);
+		return -1;
+	}
+	assert((sc->state & READ_ONLY) == 0);
+	assert(sc->state & Z_LOCKED);
 	assert(sc->landingpad > sc->mmap);
 	assert(sc->landingpad < sc->mmap + sc->data);
 	s = strdup(s);
@@ -5411,6 +5992,7 @@ sccs_addSym(sccs *sc, int flags, char *s)
 norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 			    rev, sc->sfile));
 			free(s);
+			unlock(sc, 'z');
 			return (-1);
 		}
 		rev = d->rev;
@@ -5419,6 +6001,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 		verbose((stderr,
 		    "admin (fast add): symbol %s exists on %s\n", s, rev));
 		free(s);
+		unlock(sc, 'z');
 		return (-1);
 	}
 	unless (d || (d = findrev(sc, rev))) goto norev;
@@ -5445,6 +6028,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 		sc->numdeltas--;
 		sc->nextserial--;
 		free(s);
+		unlock(sc, 'z');
 		return (EAGAIN);
 	}
 
@@ -5472,9 +6056,202 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	verbose((stderr, "admin: fast add symbol %s->%s in %s\n",
 	    s, rev, sc->sfile));
 	free(s);
+	unlock(sc, 'z');
 	return (0);
 }
 #endif
+
+private int
+addLod(char *me, sccs *sc, int flags, admin *l, int *ep)
+{
+	int	added = 0, i, error = 0;
+
+	/*
+	 * "lod" means TOT.
+	 * "lod:" means TOT.
+	 * "lod:1.2" means that rev.
+	 * "lod:1" or "sym:1.2.1" means TOT of that branch.
+	 *
+	 * lod= is like lod: except it also says set the default branch.
+	 *
+	 * Special case for 1.1.  If setting a symbol, also set the first
+	 * serial to 1.1.
+	 */
+	for (i = 0; l && l[i].flags; ++i) {
+		char	*rev;
+		char	*name = strdup(l[i].thing);
+		lod	*lp;
+		delta	*d;
+		int	setDefault = 0;
+
+		if ((rev = strrchr(name, ':'))) {
+			*rev++ = 0;
+		} else if ((rev = strrchr(name, '='))) {
+			*rev++ = 0;
+			setDefault = 1;
+		}
+
+		d = findrev(sc, rev);
+		/*
+		 * If we find nothing, see if we are an empty LOD, in which
+		 * case add the LOD to our parent.
+		 */
+		unless (d || (rev && isdigit(rev[0]))) {
+			debug((stderr, "addLod(rev=%s)\n", rev));
+			if (!rev &&
+			    sc->defbranch && !isdigit(sc->defbranch[0])) {
+				unless (rev = sc->defbranch) {
+					if (sc->tree && sc->tree->lod) {
+						rev = sc->tree->lod->name;
+					}
+				}
+			}
+			if (rev) {
+				lod	*lp;
+				char	*t;
+
+				if (t = strchr(rev, '.')) *t = 0;
+				debug((stderr, "addLod2(rev=%s)\n", rev));
+				for (lp = sc->lods; lp; lp = lp->next) {
+					if (streq(lp->name, rev)) break;
+				}
+				if (t) *t = '.';
+				if (lp) {
+					d = lp->d;
+					debug((stderr, "parent=%s", d->rev));
+				}
+			}
+		}
+		unless (d) {
+			fprintf(stderr,
+			    "%s: can't find %s in %s\n", me, rev, sc->sfile);
+lod_err:		error = 1; sc->state |= WARNED;
+			free(name);
+			continue;
+		}
+		if (!rev || !*rev) rev = d->rev;
+		if (isdigit(name[0])) {
+			fprintf(stderr,
+			    "%s: %s: can't start with a digit.\n", me, name);
+			goto lod_err;
+		}
+		if (strchr(name, '.') ||
+		    strchr(name, '(') ||
+		    strchr(name, ')') ||
+		    strchr(name, '{') ||
+		    strchr(name, '}')) {
+			fprintf(stderr,
+			    "%s: can't have [{}().] in ``%s''\n", me, name);
+			goto lod_err;
+		}
+		if (dupLod(sc->lods, name)) {
+			fprintf(stderr, "%s: LOD %s already exists in %s\n",
+			    me, name, sc->sfile);
+			goto lod_err;
+		}
+		if (dupSym(sc->symbols, name, 0)) {
+			fprintf(stderr,
+			    "%s: LOD %s already exists as a symbol\n",
+			    me, name);
+			goto lod_err;
+		}
+		lp = calloc(1, sizeof(lod));
+		lp->name = name;
+		lp->d = d;
+		lp->next = sc->lods;
+		sc->lods = lp;
+		d->flags |= D_LODZERO;
+		if (flags & NEWFILE) lp->heads = addSerial(0, 1);
+		if (setDefault) {
+		    	if (sc->defbranch) free(sc->defbranch);
+			sc->defbranch = strdup(name);
+			verbose((stderr,
+			    "%s: add default LOD %s.0->%s in %s\n",
+			    me, name, rev, sc->sfile));
+		} else {
+			verbose((stderr,
+			    "%s: add LOD %s.0->%s in %s\n",
+			    me, name, rev, sc->sfile));
+		}
+		added++;
+	}
+	if (ep) *ep = error;
+	return (added);
+}
+
+private int
+addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
+{
+	int	added = 0, i, error = 0;
+
+	/*
+	 * "sym" means TOT of current LOD.
+	 * "sym:" means TOT of current LOD.
+	 * "sym:1.2" means that rev.
+	 * "sym:1" or "sym:1.2.1" means TOT of that branch.
+	 * "sym;" and the other forms mean do it only if symbol not present.
+	 */
+	for (i = 0; s && s[i].flags; ++i) {
+		char	*rev;
+		char	*sym = strdup(s[i].thing);
+		delta	*d, *n;
+
+		if ((rev = strrchr(sym, ':'))) {
+			*rev++ = 0;
+		}
+
+		unless (d = findrev(sc, rev)) {
+			verbose((stderr,
+			    "%s: can't find %s in %s\n",
+			    me, rev, sc->sfile));
+sym_err:		error = 1; sc->state |= WARNED;
+			free(sym);
+			continue;
+		}
+		if (!rev || !*rev) rev = d->rev;
+		if (isdigit(s[i].thing[0])) {
+			fprintf(stderr,
+			    "%s: %s: can't start with a digit.\n",
+			    sym);
+			goto sym_err;
+		}
+		if (dupSym(sc->symbols, sym, rev)) {
+			verbose((stderr,
+			    "%s: symbol %s exists on %s\n", me, sym, rev));
+			goto sym_err;
+		}
+		if (dupLod(sc->lods, rev)) {
+			fprintf(stderr, "%s: LOD %s already exists in %s\n",
+			    me, rev, sc->sfile);
+			goto sym_err;
+		}
+		n = calloc(1, sizeof(delta));
+		n->next = sc->table;
+		sc->table = n;
+		n = sccs_dInit(n, 'R', sc, 0);
+		n->rev = strdup(d->rev);
+		explode_rev(n);
+		n->pserial = d->serial;
+		n->serial = sc->nextserial++;
+		sc->numdeltas++;
+		dinsert(sc, 0, n);
+		if (addsym(sc, n, d, rev, sym) == 0) {
+			verbose((stderr,
+			    "%s: won't add identical symbol %s to %s\n",
+			    me, sym, sc->sfile));
+			/* No error here, it's not necessary */
+			free(sym);
+			continue;
+		}
+		added++;
+		verbose((stderr,
+		    "%s: add symbol %s->%s in %s\n",
+		    me, sym, rev, sc->sfile));
+		free(sym);
+	}
+	if (ep) *ep = error;
+	return (added);
+}
 
 /*
  * admin the specified file.
@@ -5495,15 +6272,15 @@ sccs_admin(sccs *sc, int flags,
 	BUF	(buf);
 
 	GOODSCCS(sc);
-	if (flags & ~(CHECKFILE|SILENT)) {
+	unless (flags & CHECKFILE) {
 		unless (locked = lock(sc, 'z')) {
-			fprintf(stderr,
-			    "admin: can't get lock on %s\n", sc->sfile);
+			verbose((stderr,
+			    "admin: can't get lock on %s\n", sc->sfile));
 			error = -1; sc->state |= WARNED;
 out:
 			if (sfile) fclose(sfile);
 			if (locked) unlock(sc, 'z');
-			debug((stderr, "delta returns %d\n", error));
+			debug((stderr, "admin returns %d\n", error));
 			return (error);
 		}
 	}
@@ -5523,125 +6300,8 @@ out:
 		goto out;
 	}
 
-	/*
-	 * "sym" means TOT.
-	 * "sym:" means TOT.
-	 * "sym:1.2" means that rev.
-	 * "sym:1" or "sym:1.2.1" means TOT of that branch.
-	 *
-	 * We allow the same stuff for pathnames, et al.
-	 */
-	for (i = 0; l && l[i].flags; ++i) {
-		char	*rev;
-		char	*name = strdup(l[i].thing);
-		lod	*lp;
-
-		if ((rev = strrchr(name, ':'))) {
-			*rev++ = 0;
-		}
-
-		unless (d = findrev(sc, rev)) {
-			fprintf(stderr,
-			    "admin: can't find %s in %s\n", rev, sc->sfile);
-lod_err:		error = 1; sc->state |= WARNED;
-			free(name);
-			continue;
-		}
-		if (d->flags & D_LOD) {
-			fprintf(stderr,
-			    "admin: %s already has LOD marker in %s\n",
-			    d->rev, sc->sfile);
-			goto lod_err;
-		}
-		if (!rev || !*rev) rev = d->rev;
-		if (isdigit(l[i].thing[0])) {
-			fprintf(stderr,
-			    "admin: %s: can't start with a digit.\n",
-			    name);
-			goto lod_err;
-		}
-		if (dupLod(sc->lods, name)) {
-			fprintf(stderr, "admin: LOD %s already exists in %s\n",
-			    name, sc->sfile);
-			goto lod_err;
-		}
-		if (dupSym(sc->symbols, name, 0)) {
-			fprintf(stderr,
-			    "admin: LOD %s already exists as a symbol\n", name);
-			goto lod_err;
-		}
-		lp = calloc(1, sizeof(lod));
-		lp->name = name;
-		lp->d = d;
-		lp->next = sc->lods;
-		sc->lods = lp;
-		d->flags |= D_LOD;
-		flags |= NEWCKSUM;
-		verbose((stderr,
-		    "admin: add LOD %s->%s in %s\n",
-		    name, rev, sc->sfile));
-	}
-
-	/*
-	 * "sym" means TOT of current LOD.
-	 * "sym:" means TOT of current LOD.
-	 * "sym:1.2" means that rev.
-	 * "sym:1" or "sym:1.2.1" means TOT of that branch.
-	 * "sym;" and the other forms mean do it only if symbol not present.
-	 */
-	for (i = 0; s && s[i].flags; ++i) {
-		char	*rev;
-		char	*sym = strdup(s[i].thing);
-
-		if ((rev = strrchr(sym, ':'))) {
-			*rev++ = 0;
-		}
-
-		unless (d = findrev(sc, rev)) {
-			verbose((stderr,
-			    "admin: can't find %s in %s\n",
-			    rev, sc->sfile));
-sym_err:		error = 1; sc->state |= WARNED;
-			free(sym);
-			continue;
-		}
-		if (!rev || !*rev) rev = d->rev;
-		if (isdigit(s[i].thing[0])) {
-			fprintf(stderr,
-			    "admin: %s: can't start with a digit.\n",
-			    sym);
-			goto sym_err;
-		}
-		if (dupSym(sc->symbols, sym, rev)) {
-			verbose((stderr,
-			    "admin: symbol %s exists on %s\n", sym, rev));
-			goto sym_err;
-		}
-		n = calloc(1, sizeof(delta));
-		n->next = sc->table;
-		sc->table = n;
-		n = sccs_dInit(n, sc, 0);
-		n->type = 'R';
-		n->rev = strdup(d->rev);
-		explode_rev(n);
-		n->pserial = d->serial;
-		n->serial = sc->nextserial++;
-		sc->numdeltas++;
-		dinsert(sc, 0, n);
-		if (addsym(sc, n, d, rev, sym) == 0) {
-			verbose((stderr,
-			    "admin: won't add identical symbol %s to %s\n",
-			    sym, sc->sfile));
-			/* No error here, it's not necessary */
-			free(sym);
-			continue;
-		}
-		flags |= NEWCKSUM;
-		verbose((stderr,
-		    "admin: add symbol %s->%s in %s\n",
-		    sym, rev, sc->sfile));
-		free(sym);
-	}
+	if (addLod("admin", sc, flags, l, &error)) flags |= NEWCKSUM;
+	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
 
 	if (text) {
 		FILE	*desc;
@@ -5807,8 +6467,11 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 	register serlist *state, ser_t *slist)
 {
 	int	c, print = *pp, incr = *ip, lines = *lp;
+	sum_t	sum;
 	register BUF	(buf);
 
+	debug((stderr, "nxtline(@%d, before=%d print=%d, sum=%d) ",
+	    lines, before, print, s->dsum));
 	while (!eof(s)) {
 		if (before && print) { /* if move upto next printable line */
 			peekc(c, s);
@@ -5817,9 +6480,10 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 		if (!next(buf, s)) break;
 		debug2((stderr, "[%d] ", lines));
 		debug2((stderr, "G> %.*s", linelen(buf), buf));
-		fputsum(s, buf, out);
+		sum = fputsum(s, buf, out);
 		if (isData(buf)) {
 			if (print) {
+				s->dsum += sum;
 				incr++; lines++;
 				break;
 			}
@@ -5831,6 +6495,7 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 	*ip = incr;
 	*lp = lines;
 	*pp = print;
+	debug((stderr, "sum=%d\n", s->dsum));
 }
 
 int
@@ -5841,14 +6506,18 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	print = 0;
 	int	lines = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
+	sum_t	sum;
 	char	buf2[1024];
 
+	assert((s->state & READ_ONLY) == 0);
+	assert(s->state & Z_LOCKED);
 	*ap = *dp = *up = 0;
 	/*
 	 * Do the actual delta.
 	 */
 	seekto(s, s->data);
 	slist = serialmap(s, n, 0, 0, 0, 0);	/* XXX - -gLIST */
+	s->dsum = 0;
 	assert(s->state & SOPEN);
 	state = allocstate(0, 0, s->nextserial);
 	while (fnext(buf2, diffs)) {
@@ -5882,7 +6551,7 @@ newcmd:
 					ctrl("\001E ", n->serial);
 					goto newcmd;
 				}
-				fputsum(s, &buf2[2], out);
+				s->dsum += fputsum(s, &buf2[2], out);
 				debug2((stderr, "INS %s", &buf2[2]));
 				added++;
 			}
@@ -5890,22 +6559,27 @@ newcmd:
 		    case 'd':
 			beforeline(unchanged);
 			ctrl("\001D ", n->serial);
+			sum = s->dsum;
 			while (fnext(buf2, diffs)) {
 				if (isdigit(buf2[0])) {
 					ctrl("\001E ", n->serial);
+					s->dsum = sum;
 					goto newcmd;
 				}
 				nextline(deleted);
 			}
+			s->dsum = sum;
 			break;
 		    case 'c':
 			beforeline(unchanged);
 			ctrl("\001D ", n->serial);
+			sum = s->dsum;
 			/* Toss the old stuff */
 			while (fnext(buf2, diffs)) {
 				if (!strcmp(buf2, "---\n")) break;
 				nextline(deleted);
 			}
+			s->dsum = sum;
 			ctrl("\001E ", n->serial);
 			/* add the new stuff */
 			ctrl("\001I ", n->serial);
@@ -5914,7 +6588,7 @@ newcmd:
 					ctrl("\001E ", n->serial);
 					goto newcmd;
 				}
-				fputsum(s, &buf2[2], out);
+				s->dsum += fputsum(s, &buf2[2], out);
 				debug2((stderr, "INS %s", &buf2[2]));
 				added++;
 			}
@@ -5939,7 +6613,7 @@ newcmd:
  * XXX - this needs to track do_prs/do_patch closely.
  */
 delta *
-sccs_getInit(delta *d, FILE *f, int patch, int *errorp, int *linesp)
+sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
 {
 	char	*s, *t;
 	char	buf[500];
@@ -5948,9 +6622,7 @@ sccs_getInit(delta *d, FILE *f, int patch, int *errorp, int *linesp)
 	int	lines = 0;
 	char	type;
 
-	if (!f) {
-		return (d);
-	}
+	unless (f) return (d);
 
 #define	WANT(c) ((buf[0] == c) && (buf[1] == ' '))
 	unless (fnext(buf, f)) {
@@ -5974,16 +6646,17 @@ sccs_getInit(delta *d, FILE *f, int patch, int *errorp, int *linesp)
 		s[-1] = 0;
 		d = sccs_parseArg(d, 'R', &buf[2], 0);
 	}
+	assert(d);
 	t = s;
 	while (*s++ != ' ');	/* eat date */
 	while (*s++ != ' ');	/* eat time */
-	if (!d || !d->sdate) {
+	unless (d->sdate) {
 		s[-1] = 0;
 		d = sccs_parseArg(d, 'D', t, 0);
 	}
 	t = s;
 	while (*s && (*s++ != ' '));	/* eat user */
-	if (!d || !d->user) {
+	unless (d->user) {
 		if (s[-1] == ' ') s[-1] = 0;
 		d = sccs_parseArg(d, 'U', t, 0);
 		if (!d->hostname) d->flags |= D_NOHOST;
@@ -5991,30 +6664,30 @@ sccs_getInit(delta *d, FILE *f, int patch, int *errorp, int *linesp)
 	if (patch) goto comments;	/* skip the rest of this line */
 	t = s;
 	while (*s && (*s++ != ' '));	/* serial */
-	if (!d || !d->serial) {
+	unless (d->serial) {
 		if (s[-1] == ' ') s[-1] = 0;
 		d->serial = atoi(t);
 	}
 	t = s;
 	while (*s && (*s++ != ' '));	/* pserial */
-	if (!d || !d->pserial) {
+	unless (d->pserial) {
 		if (s[-1] == ' ') s[-1] = 0;
 		d->pserial = atoi(t);
 	}
 	while (*s == ' ') s++;
 	t = s;
 	while (*s && (*s++ != '/'));	/* added */
-	if (!d || !d->added) {
+	unless (d->added) {
 		if (s[-1] == '/') s[-1] = 0;
 		d->added = atoi(t);
 	}
 	t = s;
 	while (*s && (*s++ != '/'));	/* deleted */
-	if (!d || !d->deleted) {
+	unless (d->deleted) {
 		if (s[-1] == '/') s[-1] = 0;
 		d->deleted = atoi(t);
 	}
-	if (!d || !d->same) {
+	unless (d->same) {
 		d->same = atoi(s);
 	}
 
@@ -6038,9 +6711,27 @@ comments:
 	lines++;
 	chop(buf);
 
+	/* Excludes are optional and are specified as keys.
+	 * If there is no sccs* ignore them.
+	 */
+	while (WANT('E')) {
+		if (sc) {
+			delta	*e = sccs_findKey(sc, &buf[2]);
+
+			unless (e) {
+				fprintf(stderr, "Can't find ex %s in %s\n",
+				    &buf[2], sc->sfile);
+			} else {
+				d->exclude = addSerial(d->exclude, e->serial);
+			}
+		}
+		unless (fnext(buf, f)) goto out;
+		lines++;
+		chop(buf);
+	}
+
 	/* date fudges are optional */
 	if (WANT('F')) {
-		if (!d) d = calloc(1, sizeof(*d));
 		d->dateFudge = atoi(&buf[2]);
 		d->date += d->dateFudge;
 		unless (fnext(buf, f)) goto out;
@@ -6051,7 +6742,34 @@ comments:
 	/* hostnames are optional */
 	if (WANT('H')) {
 		if (d) d->flags &= ~D_NOHOST;
-		if (!d || !d->hostname) d = hostArg(d, &buf[2]);
+		unless (d->hostname) d = hostArg(d, &buf[2]);
+		unless (fnext(buf, f)) goto out;
+		lines++;
+		chop(buf);
+	}
+
+	/* Includes are optional and are specified as keys.
+	 * If there is no sccs* ignore them.
+	 */
+	while (WANT('I')) {
+		if (sc) {
+			delta	*e = sccs_findKey(sc, &buf[2]);
+
+			unless (e) {
+				fprintf(stderr, "Can't find inc %s in %s\n",
+				    &buf[2], sc->sfile);
+			} else {
+				d->include = addSerial(d->include, e->serial);
+			}
+		}
+		unless (fnext(buf, f)) goto out;
+		lines++;
+		chop(buf);
+	}
+
+	/* cksums are optional but shouldn't be */
+	if (WANT('K')) {
+		d = sumArg(d, &buf[2]);
 		unless (fnext(buf, f)) goto out;
 		lines++;
 		chop(buf);
@@ -6059,8 +6777,26 @@ comments:
 
 	/* lods are optional */
 	if (WANT('L')) {
-		assert(d);
-		d->lod = strdup(&buf[2]);
+		d->lod = (lod *)strdup(&buf[2]);
+		d->flags |= D_LODSTR;
+		unless (fnext(buf, f)) goto out;
+		lines++;
+		chop(buf);
+	}
+
+	/* merge deltas are optional */
+	if (WANT('M')) {
+		if (sc) {
+			delta	*e = sccs_findKey(sc, &buf[2]);
+
+			unless (e) {
+				fprintf(stderr, "Can't find merge %s in %s\n",
+				    &buf[2], sc->sfile);
+				assert(0);
+			} else {
+				d->merge = e->serial;
+			}
+		}
 		unless (fnext(buf, f)) goto out;
 		lines++;
 		chop(buf);
@@ -6068,7 +6804,7 @@ comments:
 
 	/* pathnames are optional */
 	if (WANT('P')) {
-		if (!d || !d->pathname) d = pathArg(d, &buf[2]);
+		unless (d->pathname) d = pathArg(d, &buf[2]);
 		unless (fnext(buf, f)) goto out;
 		lines++;
 		chop(buf);
@@ -6076,7 +6812,6 @@ comments:
 
 	/* symbols are optional */
 	if (WANT('S')) {
-		assert(d);
 		d->sym = strdup(&buf[2]);
 		unless (fnext(buf, f)) goto out;
 		lines++;
@@ -6085,7 +6820,7 @@ comments:
 
 	/* zones are optional */
 	if (WANT('Z')) {
-		if (!d || !d->zone) d = zoneArg(d, &buf[2]);
+		unless (d->zone) d = zoneArg(d, &buf[2]);
 		unless (fnext(buf, f)) goto out;
 		lines++;
 		chop(buf);
@@ -6120,33 +6855,68 @@ out:	if (d) {
 private int
 read_pfile(char *who, sccs *s, pfile *pf)
 {
-	char	*iLst = malloc(512), *xLst = malloc(512);
-	char	c1 = 0, c2 = 0;
+	int	fsize = size(s->pfile);
+	char	*iLst = malloc(fsize), *xLst = malloc(fsize);
+	char	*mRev = malloc(MAXREV+1);
+	char	c1 = 0, c2 = 0, c3 = 0;
+	char	*t;
 	int	e;
 	FILE	*tmp;
 	char	date[10], time[10], user[40];
 
+	assert(fsize);
 	bzero(pf, sizeof(*pf));
 	unless (tmp = fopen(s->pfile, "r")) {
 		fprintf(stderr, "delta: can't open %s\n", s->pfile);
-		free(iLst);
-		free(xLst);
+		if (iLst) free(iLst);
+		if (xLst) free(xLst);
+		free(mRev);
 		return (-1);
 	}
 	iLst[0] = xLst[0] = 0;
-	e = fscanf(tmp, "%s %s %s %s %s -%c%s -%c%s",
-	    pf->oldrev, pf->newrev, user, date, time, &c1, iLst, &c2, xLst);
+	e = fscanf(tmp, "%s %s %s %s %s -%c%s -%c%s -%c%s",
+	    pf->oldrev, pf->newrev, user, date, time, &c1, iLst, &c2, xLst,
+	    &c3, mRev);
 	pf->user = strdup(user);
 	strcpy(pf->date, date);
 	strcat(pf->date, " ");
 	strcat(pf->date, time);
 	fclose(tmp);
+	/*
+	 * Symbolic revs are of the form "LOD.1(1.2.34)"
+	 */
+	pf->sccsrev[0] = 0;
+	if (t = strchr(pf->newrev, '(')) {
+		lod	*l;
+
+		*t++ = 0;
+		strcpy(pf->sccsrev, t);
+		t = strchr(pf->sccsrev, ')');
+		assert(t);
+		*t = 0;
+		t = strchr(pf->newrev, '.');
+		assert(t);
+		*t = 0;
+		for (l = s->lods; l; l = l->next) {
+			if (streq(pf->newrev, l->name)) break;
+		}
+		pf->l = l;
+		assert(l);
+		*t = '.';
+	}
+
+	/*
+	 * mRev always means there is at least an include - 
+	 * we already expolded it in get and wrote it out.
+	 * There may or may not be an xLst w/ mRev.
+	 */
 	switch (e) {
-	    case 5:	/* No extras, cool. */
+	    case 5:		/* No extras, cool. */
 		free(iLst); iLst = 0;
 		free(xLst); xLst = 0;
+		free(mRev); mRev = 0;
 		break;
-	    case 7:	/* figure out if it was -i or -x */
+	    case 7:		/* figure out if it was -i or -x */
 		if (c1 == 'x') {
 			free(xLst);
 			xLst = iLst;
@@ -6156,10 +6926,25 @@ read_pfile(char *who, sccs *s, pfile *pf)
 			free(xLst);
 			xLst = 0;
 		}
+		free(mRev);
+		mRev = 0;
 		break;
-	    case 9:
+	    case 9:		/* Could be -i -x or -i -m but not -x -m */
+		assert(c1 != 'x');
+		assert(c1 == 'i');
+		free(mRev);
+		mRev = 0;
+		if (c2 == 'm') {
+			mRev = xLst;
+			xLst = 0;
+		} else {
+			assert(c2 == 'x');
+		}
+		break;
+	    case 11:		/* has to be -i -x -m */
 		assert(c1 == 'i');
 		assert(c2 == 'x');
+		assert(c3 == 'm');
 		break;
 	    default:
 		free(iLst);
@@ -6170,9 +6955,38 @@ read_pfile(char *who, sccs *s, pfile *pf)
 	}
 	pf->iLst = iLst;
 	pf->xLst = xLst;
-	debug((stderr, "pfile(%s, %s, %s, %s, %s, %s)\n",
-	    pf->oldrev, pf->newrev, user, pf->date, iLst, xLst));
+	pf->mRev= mRev;
+	debug((stderr, "pfile(%s, %s, %s, %s, %s, %s, %s)\n",
+	    pf->oldrev, pf->newrev, user, pf->date, iLst, xLst, mRev));
 	return (0);
+}
+
+int
+isValidHost(char *h)
+{
+	if (!h || !(*h)) return 0;
+	if (streq(h, "localhost") || streq(h, "localhost.localdomain")) {
+		return 0;
+	}
+	/*
+	 * XXX TODO: should we do a gethostbyname to verify host name ??
+	 * 	     disallow non-alpha numberic character ?
+	 */
+	return 1;
+}
+
+int
+isValidUser(char *u)
+{
+	if (!u || !(*u)) return 0;
+	if (streq(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
+	/*
+	 * XXX TODO: 
+	 * 	a) should we disallow "Guest/guest" as user name ??
+	 * 	b) should we check /etc/passwd to verify user name ??
+	 * 	c) disallow non-allha numberic character ?
+	 */
+	return 1;
 }
 
 #ifndef	WIN32
@@ -6233,6 +7047,99 @@ sccs_getComments(char *file, char *rev, delta *n)
 #endif
 	return (0);
 }
+
+int
+sccs_getHostName(char *file, char *rev, delta *n)
+{
+	char	buf2[1024];
+
+	assert(file);
+	if (rev) {
+		fprintf(stderr, "%s %s>>  ", file, rev);
+	} else {
+		fprintf(stderr, "%s>>  ", file);
+	}
+#ifdef	ANSIC
+	if (setjmp(jmp)) {
+		fprintf(stderr,
+		    "\nCheck in aborted due to interrupt.\n");
+		sccs_freetree(n);
+		return (-1);
+	}
+	signal(SIGINT, abort_ci);
+#else
+	sig(UNBLOCK, SIGINT);
+#endif
+	while (fnext(buf2, stdin)) {
+		char	*t;
+
+		/* Null the newline */
+		for (t = buf2; *t; t++);
+		t[-1] = 0;
+		if (isValidHost(buf2)) {
+			n->hostname = strdup(buf2);
+			break;
+		}
+		fprintf(stderr, "hostname of your machine>>  ");
+	}
+#ifndef	ANSIC
+	if (sig(CAUGHT, SIGINT)) {
+		sig(BLOCK, SIGINT);
+		fprintf(stderr,
+		    "\nCheck in aborted due to interrupt.\n");
+		sccs_freetree(n);
+		return (-1);
+	}
+#endif
+	return (0);
+}
+
+
+int
+sccs_getUserName(char *file, char *rev, delta *n)
+{
+	char	buf2[1024];
+
+	assert(file);
+	if (rev) {
+		fprintf(stderr, "%s %s>>  ", file, rev);
+	} else {
+		fprintf(stderr, "%s>>  ", file);
+	}
+#ifdef	ANSIC
+	if (setjmp(jmp)) {
+		fprintf(stderr,
+		    "\nCheck in aborted due to interrupt.\n");
+		sccs_freetree(n);
+		return (-1);
+	}
+	signal(SIGINT, abort_ci);
+#else
+	sig(UNBLOCK, SIGINT);
+#endif
+	while (fnext(buf2, stdin)) {
+		char	*t;
+
+		/* Null the newline */
+		for (t = buf2; *t; t++);
+		t[-1] = 0;
+		if (isValidUser(buf2)) {
+			n->user = strdup(buf2);
+			break;
+		}
+		fprintf(stderr, "user name>>  ");
+	}
+#ifndef	ANSIC
+	if (sig(CAUGHT, SIGINT)) {
+		sig(BLOCK, SIGINT);
+		fprintf(stderr,
+		    "\nCheck in aborted due to interrupt.\n");
+		sccs_freetree(n);
+		return (-1);
+	}
+#endif
+	return (0);
+}
 #endif	/* WIN32 */
 
 /*
@@ -6244,20 +7151,29 @@ sccs_getComments(char *file, char *rev, delta *n)
  * and probably other places.  I need to make a generic sccs_addDelta()
  * which can handle all of those cases.
  */
+int
 sccs_meta(sccs *s, delta *parent, char *initFile)
 {
 	delta	*m;
 	int	e = 0;
 	FILE	*iF;
-	FILE	*sfile;
+	FILE	*sfile = 0;
 	char	*sccsXfile();
 	char	*t;
 	BUF	(buf);
 
-	unless (iF = fopen(initFile, "r")) {
+	unless (lock(s, 'z')) {
+		fprintf(stderr,
+		    "meta: can't get lock on %s\n", s->sfile);
+		s->state |= WARNED;
+		debug((stderr, "meta returns -1\n"));
 		return (-1);
 	}
-	m = sccs_getInit(0, iF, 1, &e, 0);
+	unless (iF = fopen(initFile, "r")) {
+		unlock(s, 'z');
+		return (-1);
+	}
+	m = sccs_getInit(s, 0, iF, 1, &e, 0);
 	if (m->rev) free(m->rev);
 	m->rev = strdup(parent->rev);
 	bcopy(parent->r, m->r, sizeof(m->r));
@@ -6280,6 +7196,7 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
 		fprintf(stderr, "admin: can't create %s: ", sccsXfile(s, 'x'));
 		perror("");
+		unlock(s, 'z');
 		exit(1);
 	}
 	delta_table(s, sfile, 0);
@@ -6290,12 +7207,7 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 	}
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", s->cksum);
-	close(s->fd);
-	fclose(sfile);
-	munmap(s->mmap, s->size);
-	s->fd = -1;
-	sfile = NULL;
-	s->mmap = (caddr_t) -1;
+	sccs_close(s); fclose(sfile); sfile = NULL;
 #ifdef	PARANOID
 	t = sccsXfile(s, 'S');
 	unlink(t);
@@ -6308,10 +7220,12 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 		fprintf(stderr,
 		    "takepatch: can't rename(%s, %s) left in %s\n",
 		    t, s->sfile, t);
+		unlock(s, 'z');
 		exit(1);
 	}
 	Chmod(s->sfile, 0444);
 	if (IS_GEXEC(s) || IS_SEXEC(s)) mkexecutable(s->sfile);
+	unlock(s, 'z');
 	return (0);
 }
 
@@ -6357,7 +7271,8 @@ out:
 	if (init) {
 		int	e;
 
-		prefilled = sccs_getInit(prefilled, init, flags&PATCH, &e, 0);
+		prefilled =
+		    sccs_getInit(s, prefilled, init, flags&PATCH, &e, 0);
 		unless (prefilled && !e) {
 			fprintf(stderr, "delta: bad init file\n");
 			goto out;
@@ -6413,6 +7328,7 @@ out:
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
 		OUT;
 	}
+	if (pf.mRev) flags |= FORCE;
 	debug((stderr, "delta found rev\n"));
 	unless (diffs) {
 		switch (diff_gfile(s, &pf, tmpfile)) {
@@ -6464,10 +7380,36 @@ out:
 		assert(!n->exclude);
 		n->exclude = getserlist(s, 0, pf.xLst, &error);
 	}
+	if (pf.mRev) {
+		delta	*e = findrev(s, pf.mRev);
+
+		unless (e) {
+			fprintf(stderr,
+			    "delta: no such rev %s in %s\n", pf.mRev, s->sfile);
+		    	OUT;
+		}
+		if (n->merge && (e->serial != n->merge)) {
+			fprintf(stderr,
+			    "delta: conflicting merge revs: %s %s\n",
+			    n->rev, e->rev);
+			OUT;
+		}
+		n->merge = e->serial;
+	}
 	if (error) OUT;
-	n = sccs_dInit(n, s, init != 0);
-	if (!n->rev) n->rev = strdup(pf.newrev);
-	explode_rev(n);
+	n = sccs_dInit(n, 'D', s, init != 0);
+	if (!n->rev) {
+		if (pf.sccsrev[0]) {
+			n->rev = pf.sccsrev;
+			explode_rev(n);
+			n->rev = strdup(pf.newrev);
+		} else {
+			n->rev = strdup(pf.newrev);
+			explode_rev(n);
+		}
+	} else {
+		explode_rev(n);
+	}
 	n->serial = s->nextserial++;
 	n->next = s->table;
 	s->table = n;
@@ -6475,7 +7417,17 @@ out:
 	n->pserial = d->serial;
 	if (!hasComments(n) && !init &&
 	    !(flags & DONTASK) && !(n->flags & D_NOCOMMENTS)) {
-		if (sccs_getComments(s->gfile, n->rev, n)) OUT;
+		/*
+		 * XXX - andrew make sure host/user is correct right here.
+		 */
+		if (sccs_getComments(s->gfile, pf.newrev, n)) OUT;
+	}
+	if (pf.l) {
+		n->lod = pf.l;
+		n->flags |= D_DUPLOD;
+		if ((d->lod != pf.l) || !samebranch(d, n)) {
+			pf.l->heads = addSerial(pf.l->heads, n->serial);
+		}
 	}
 	dinsert(s, flags, n);
 	s->numdeltas++;
@@ -6492,7 +7444,6 @@ out:
 			n->sym = 0;
 		}
 	}
-	assert(!n->lod);	/* XXX - need to handle these */
 
 	/*
 	 * Do the delta table & misc.
@@ -6536,6 +7487,7 @@ out:
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
 	if (IS_GEXEC(s)) mkexecutable(s->sfile);
+	if (s->state & BITKEEPER) updatePending(s, n);
 	goto out;
 }
 
@@ -6563,6 +7515,12 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	fseek(out, 8L, SEEK_SET);
 	sprintf(buf, "\001s %05d/%05d/%05d\n", add, del, same);
 	fputsum(s, buf, out);
+	if (s->state & BITKEEPER) {
+		if (!add && !del && !same) s->dsum = almostUnique();
+		fseek(out, s->sumOff, SEEK_SET);
+		sprintf(buf, "%05u", s->dsum);
+		fputsum(s, buf, out);
+	}
 	fseek(out, 0L, SEEK_SET);
 	fprintf(out, "\001h%05u\n", s->cksum);
 }
@@ -6619,14 +7577,14 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 		return (-3);
 	}
 	sprintf(tmpfile, "%s/diffget%d", TMP_PATH, getpid());
-	if (sccs_get(s, left, pf.iLst, pf.xLst, flags|SILENT|PRINT, tmpfile)) {
+	if (sccs_get(s, left, pf.mRev, pf.iLst, pf.xLst, flags|SILENT|PRINT, tmpfile)) {
 		unlink(tmpfile);
 		free_pfile(&pf);
 		return (-1);
 	}
 	if (r2 || !HAS_GFILE(s)) {
 		sprintf(tmp2, "%s-2", tmpfile);
-		if (sccs_get(s, right, 0, 0, flags|SILENT|PRINT, tmp2)) {
+		if (sccs_get(s, right, 0, 0, 0, flags|SILENT|PRINT, tmp2)) {
 			unlink(tmpfile);
 			unlink(tmp2);
 			free_pfile(&pf);
@@ -6681,11 +7639,37 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 	return (0);
 }
 
+private void
+show_d(FILE *out, char *vbuf, char *format, int d)
+{
+	if (out) fprintf(out, format, d);
+	if (vbuf) {
+		char	dbuf[512];
+
+		sprintf(dbuf, format, d);
+		assert(strlen(dbuf) < 512);
+		strcat(vbuf, dbuf);
+		assert(strlen(vbuf) < 1024);
+	}
+}
+
+private void
+show_s(FILE *out, char *vbuf, char *s) {
+
+	if (out) fputs(s, out);
+	if (vbuf) {
+		strcat(vbuf, s);
+		assert(strlen(vbuf) < 1024);
+	}
+}
+
 #define	notKeyword -1
 #define	nullVal    0
 #define	strVal	   1
 /*
- * Given a PRS DSPEC keyword, return the associated string value
+ * Given a PRS DSPEC keyword, get the associated string value
+ * If out is non-null print to out
+ * If vbuf is non-null, append the value to vbuf (vbuf size must be >= 1K)
  * If kw is not a keyword, return notKeyword
  * If kw has null value, return nullVal
  * Otherwise return strVal
@@ -6693,18 +7677,18 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
  * This function may call itself recursively
  * kw2val() and fprintDelta() are mutually recursive
  */
-private
-kw2val(FILE *out, const char *prefix, int plen, const char *kw,
+private int
+kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	const char *suffix, int slen, sccs *s, delta *d)
 {
 	char	*p, *q;
-	private void	fprintDelta(FILE *, const char *, const char *,
+	private void	fprintDelta(FILE *, char *, const char *, const char *,
 				    sccs *, delta *);
-#define	KW(x) kw2val(out, "", 0, x, "", 0, s, d)
-#define	fc(c)	if (out) fputc(c, out)
-#define	fd(d)	if (out) fprintf(out, "%d", d)
-#define	f5d(d)	if (out) fprintf(out, "%05d", d)
-#define	fs(s)	if (out) fputs(s, out)
+#define	KW(x)	kw2val(out, vbuf, "", 0, x, "", 0, s, d)
+#define	fc(c)	show_d(out, vbuf, "%c", c)
+#define	fd(d)	show_d(out, vbuf, "%d", d)
+#define	f5d(d)	show_d(out, vbuf, "%05d", d)
+#define	fs(s)	show_s(out, vbuf, s)
 
 	if (streq(kw, "Dt")) {
 		/* :Dt: = :DT::I::D::T::P::DS::DP: */
@@ -6852,13 +7836,16 @@ kw2val(FILE *out, const char *prefix, int plen, const char *kw,
 		/* year */
 		if (d->sdate) {
 			char	val[512];
-			if (d->flags & YEAR4)
+
+			if (s->state & YEAR4) {
 				q = &val[2];
-			else	q = val;
+			} else {
+				q = val;
+			}
 			for (p = d->sdate; *p && *p != '/'; )
 				*q++ = *p++;
 			*q = '\0';
-			if (d->flags & YEAR4) {
+			if (s->state & YEAR4) {
 				if (atoi(&val[2]) <= 68) {
 					val[0] = '2';
 					val[1] = '0';
@@ -6970,9 +7957,9 @@ kw2val(FILE *out, const char *prefix, int plen, const char *kw,
 		EACH(d->comments) {
 			if (d->comments[i][0] == '\001') continue;
 			if (j++ > 0) fc('\n');
-			fprintDelta(out, prefix, &prefix[plen -1], s, d);
+			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
-			fprintDelta(out, suffix, &suffix[slen -1], s, d);
+			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -7096,9 +8083,9 @@ kw2val(FILE *out, const char *prefix, int plen, const char *kw,
 		EACH(s->text) {
 			if (s->text[i][0] == '\001') continue;
 			if (j++ > 0) fc('\n');
-			fprintDelta(out, prefix, &prefix[plen -1], s, d);
+			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(s->text[i]);
-			fprintDelta(out, suffix, &suffix[slen -1], s, d);
+			fprintDelta(out, vbuf, suffix, &suffix[slen -1], s, d);
 		}
 		if (j) return (strVal);
 		return (nullVal);
@@ -7114,7 +8101,7 @@ kw2val(FILE *out, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "GB")) {
 		/* Gotten body */
 		sccs_restart(s);
-		sccs_get(s, d->rev, 0, 0, EXPAND|SILENT|PRINT, "-");  
+		sccs_get(s, d->rev, 0, 0, 0, EXPAND|SILENT|PRINT, "-");  
 		return (strVal);
 	}
 
@@ -7145,6 +8132,37 @@ kw2val(FILE *out, const char *prefix, int plen, const char *kw,
 	}
 
 	/* ======== BITKEEPER SPECIFIC KEYWORDS ========== */
+	if (streq(kw, "REV")) {
+		char	buf[MAXREV];
+
+		if (d->r[2]) {
+			sprintf(buf,
+			    "%d.%d.%d.%d", d->r[0], d->r[1], d->r[2], d->r[3]);
+		} else {
+			sprintf(buf, "%d.%d", d->r[0], d->r[1]);
+		}
+		fs(buf);
+		return (strVal);
+	}
+
+	if (streq(kw, "LOD")) {
+		if (d->lod) {
+			fs(d->lod->name);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "KEY")) {
+		if (out) sccs_pdelta(sccs_ino(s), out);
+		return (strVal);
+	}
+
+	if (streq(kw, "ID")) {
+		if (out) sccs_pdelta(d, out);
+		return (strVal);
+	}
+
 	if (streq(kw, "HT")) {
 		/* host */
 		if (d->hostname) {
@@ -7173,6 +8191,28 @@ kw2val(FILE *out, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "UTC-FUDGE")) {
+		char	*utcTime;
+		char	*sccs_utctime();
+
+		getDate(d);
+		d->date -= d->dateFudge;
+		if (utcTime = sccs_utctime(d)) {
+			fs(utcTime);
+			return (strVal);
+		}
+		d->date += d->dateFudge;
+		return (nullVal);
+	}
+
+	if (streq(kw, "FUDGE")) {
+		char	buf[20];
+
+		sprintf(buf, "%d", (int)d->dateFudge);
+		fs(buf);
+		return (strVal);
+	}
+
 	if (streq(kw, "TYPE")) {
 		if (s->state & BITKEEPER) { 
 			fs("BitKeeper");
@@ -7188,25 +8228,34 @@ kw2val(FILE *out, const char *prefix, int plen, const char *kw,
 			fs(d->pathname);
 			return (strVal);
 		}
+		return (nullVal);
 	}
 
 	if (streq(kw, "MGP")) {
 		/* merge parent's serail number */
 		fd(d->merge);
-		return(strVal);
+		return (strVal);
+	}
+
+	if (streq(kw, "DFB")) {
+		/* default branch */
+		if (s->defbranch) {
+			fs(s->defbranch);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	return notKeyword;
 }
 
-#define	KWSIZE 64
 /*
  * given a string "<token><endMarker>..."
  * extrtact token and put it in a buffer
  * return the length of the token
  */
-private
-extractToken(const char *q, const char *end, char endMarker, char *buf,
+private int
+extractToken(const char *q, const char *end, char *endMarker, char *buf,
 	    int maxLen)
 {
 	const char *t;
@@ -7214,20 +8263,20 @@ extractToken(const char *q, const char *end, char endMarker, char *buf,
 
 	if (buf) buf[0] = '\0';
 	/* look for endMarker */
-	for (t = q; (t <= end) && (*t != endMarker); t++);
-	if (t[0] != endMarker) return -1;
+	for (t = q; (t <= end) && !strchr(endMarker, *t); t++);
+	unless (strchr(endMarker, *t)) return (-1);
 	len = t - q;
 	if ((buf) && (len < maxLen)) {
 		strncpy(buf, q, len);
 		buf[len] = '\0';
 	}
-	return len;
+	return (len);
 }
 
 /*
  * ectract the prefix inside a $each{...} statement
  */
-private
+private int
 extractPrefix(const char *b, const char *end, char *kwbuf)
 {
 	const char *t;
@@ -7243,17 +8292,17 @@ extractPrefix(const char *b, const char *end, char *kwbuf)
 		if ((t <= end) && !strncmp(&t[1], kwbuf, strlen(kwbuf)) &&
 		    t[strlen(kwbuf) + 1] == ')') {
 			len = t - b;
-			return len;
+			return (len);
 		}
 	}
-	return -1;
+	return (-1);
 }
 
 /*
  * ectract the statement portion of a $if(<kw>){....} statement
  * support nested statement
  */
-private
+private int
 extractStatement(const char *b, const char *end)
 {
 	const char *t = b;
@@ -7267,12 +8316,28 @@ extractStatement(const char *b, const char *end)
 				bCnt--;
 			} else {
 				len = t -b;
-				return len;
+				return (len);
 			}
 		}
 		t++;
 	}
-	return -1;
+	return (-1);
+}
+
+/*
+ * Evaluate expression, return boolean
+ * currently only support one form of expression:
+ * 	leftVal = rightVal
+ */
+private int
+eval(char *leftVal, char *op, char *rightVal)
+{
+	if (streq(op , "=")) {
+		return streq(leftVal, rightVal);
+	} else {
+		assert(streq(op, "!="));
+		return (!streq(leftVal, rightVal));
+	}
 }
 
 /*
@@ -7280,14 +8345,18 @@ extractStatement(const char *b, const char *end)
  * This function may call itself recursively
  * kw2val() and fprintDelta() are mutually recursive
  */
-private void
-fprintDelta(FILE *out, const char *dspec, const char *end, sccs *s, delta *d)
+private int
+fprintDelta(FILE *out, char *vbuf,
+	    const char *dspec, const char *end, sccs *s, delta *d)
 {
-#define	extractSuffix(a, b) extractToken(a, b, '}', NULL, 0)
+#define	KWSIZE 64
+#define	VSIZE 1024
+#define	extractSuffix(a, b) extractToken(a, b, "}", NULL, 0)
 #define	extractKeyword(a, b, c, d) extractToken(a, b, c, d, KWSIZE)
 	const char *b, *t, *q = dspec;
-	char	kwbuf[KWSIZE];
-	int	len, bCnt = 0;
+	char	kwbuf[KWSIZE], rightVal[VSIZE], leftVal[VSIZE];
+	char	*v, op[3];
+	int	len, printLF = 1;
 
 	while (q <= end) {
 		if (*q == '\\') {
@@ -7295,13 +8364,18 @@ fprintDelta(FILE *out, const char *dspec, const char *end, sccs *s, delta *d)
 			    case 'n': fc('\n'); q += 2; break;
 			    case 't': fc('\t'); q += 2; break;
 			    case '$': fc('$'); q += 2; break;
+			    case 'c': if (q == &end[-1]) {
+					printLF = 0; 
+					q += 2;
+					break;
+				      } /* else fall thru */
 			    default:  fc('\\'); q++; break;
 			}
 		} else if (*q == ':') {		/* keyword expansion */
 			b = &q[1];
-			len = extractKeyword(b, end, ':', kwbuf);
+			len = extractKeyword(b, end, ":", kwbuf);
 			if ((len > 0) && (len < KWSIZE) &&
-			    (kw2val(out, "", 0, kwbuf,
+			    (kw2val(out, NULL, "", 0, kwbuf,
 				    "", 0, s, d) != notKeyword)) {
 				/* got a keyword */
 				q = &b[len + 1];
@@ -7310,26 +8384,54 @@ fprintDelta(FILE *out, const char *dspec, const char *end, sccs *s, delta *d)
 				fc(*q++);
 			}
 		} else if ((*q == '$') &&	/* conditional expansion */
-		    (q[1] == 'i') && (q[2] == 'f') && (q[3] == '(')) {
-			b = &q[4];
-			len = extractKeyword(b, end, ')', kwbuf);
-			if (len < 0) { return; } /* error */
-			if (b[len + 1] != '{') {
+		    (q[1] == 'i') && (q[2] == 'f') &&
+		    (q[3] == '(') && (q[4] == ':')) {
+			v = 0;
+			b = &q[5];
+			len = extractKeyword(b, end, ":", kwbuf);
+			if (len < 0) { return (printLF); } /* error */
+			if (b[len + 1] == '=') {
+				int vlen;
+
+				op[0] = '='; op[1] = '\0';
+				t = &b[len] + 2;
+				v = rightVal; *v = '\0';
+				leftVal[0] = '\0';
+				vlen = extractToken(t, end, ")", v, VSIZE);
+				if (vlen < 0) { return (printLF); }  /* error */
+				len += vlen + 1;
+			} else if (b[len + 1] == '!') {
+				int vlen;
+				if (b[len + 2] != '=') {
+					fprintf(stderr,
+			    "Unknown operator '=%c'\n", b[len + 2]);
+					return (printLF);
+				}
+				strcpy(op, "!=");
+				t = &b[len] + 3;
+				v = rightVal; *v = '\0';
+				leftVal[0] = '\0';
+				vlen = extractToken(t, end, ")", v, VSIZE);
+				if (vlen < 0) { return (printLF); }  /* error */
+				len += vlen + 2;
+			}
+			if (b[len + 2] != '{') {
 				/* syntax error */
 				fprintf(stderr,
 				    "must have '{' in conditional string\n");
-				return;
+				return (printLF);
 			}
 			if (len && (len < KWSIZE) &&
-			    (kw2val(NULL, "", 0, kwbuf,
-				    "", 0,  s, d) == strVal)) {
+			    (kw2val(NULL, v ? leftVal: NULL, "", 0, kwbuf,
+				    "", 0,  s, d) == strVal) &&
+			    (!v || eval(leftVal, op, v))) {
 				const char *cb;	/* conditional spec */
 				int clen;
 
-				cb = b = &b[len + 2];
+				cb = b = &b[len + 3];
 				clen = extractStatement(b, end);
-				if (clen < 0) { return; } /* error */
-				fprintDelta(out, cb, &cb[clen -1], s, d);
+				if (clen < 0) { return (printLF); } /* error */
+				fprintDelta(out, vbuf, cb, &cb[clen -1], s, d);
 				q = &b[clen + 1];
 			} else {
 				for (t = b; *t && *t != '}'; t++);
@@ -7337,7 +8439,7 @@ fprintDelta(FILE *out, const char *dspec, const char *end, sccs *s, delta *d)
 					/* syntax error */
 					fprintf(stderr,
 					    "unbalance '{' in dspec string\n");
-					return;
+					return (printLF);
 				}
 				q = &t[1];
 			}
@@ -7347,24 +8449,26 @@ fprintDelta(FILE *out, const char *dspec, const char *end, sccs *s, delta *d)
 			const char *prefix, *suffix;
 			int	plen, slen;
 			b = &q[6];
-			len = extractKeyword(b, end, ')', kwbuf);
-			if (len < 0) { return; } /* error */
+			len = extractKeyword(b, end, ")", kwbuf);
+			if (len < 0) { return (printLF); } /* error */
 			if (b[len + 1] != '{') {
 				/* syntax error */
 				fprintf(stderr,
 			    "must have '{' in conditional prefix/suffix\n");
-				return;
+				return (printLF);
 			}
 			prefix = b = &b[len + 2];
 			plen = extractPrefix(b, end, kwbuf);
 			suffix = &b[plen+len+2];
 			slen = extractSuffix(&b[plen+len+2], end);
-			kw2val(out, prefix, plen, kwbuf, suffix, slen, s, d);
+			kw2val(
+			    out, NULL, prefix, plen, kwbuf, suffix, slen, s, d);
 			q = &b[plen + len + slen + 3];
 		} else {
 			fc(*q++);
 		}
 	}
+	return (printLF);
 }
 
 private void
@@ -7373,11 +8477,9 @@ do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	const char *end;
 
 	if (d->type != 'D') return;
-	/*
-	 * XXX: TODO: need to add LOD and sym support to dspec
-	 */
-	fprintDelta(out, dspec, end = &dspec[strlen(dspec) - 1], s, d);
-	fputc('\n', out);
+	if (fprintDelta(
+		    out, NULL,  dspec, end = &dspec[strlen(dspec) - 1], s, d))
+		fputc('\n', out);
 }
 
 private void
@@ -7414,20 +8516,35 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		assert(start->comments[i][0] != '\001');
 		fprintf(out, "C %s\n", start->comments[i]);
 	}
-	if (start->dateFudge) {
-		fprintf(out, "F %u\n", start->dateFudge);
+	if (start->flags & D_CKSUM) {
+		fprintf(out, "K %u\n", start->sum);
 	}
-	if (start->flags & D_LOD) {
-		for (lod = s->lods; lod; lod = lod->next) {
-			unless (lod->d == start) continue;
-			fprintf(out, "L %s\n", lod->name);
-			if (lod->nextd) {
-				d = sfind(s, lod->nextd);
-				assert(d);
-				sccs_pdelta(d, out);
-			}
-			fprintf(out, "\n");
-		}
+	EACH(start->exclude) {
+		d = sfind(s, start->exclude[i]);
+		assert(d);
+		fprintf(out, "E ");
+		sccs_pdelta(d, out);
+		fprintf(out, "\n");
+	}
+	if (start->dateFudge) {
+		fprintf(out, "F %d\n", (int)start->dateFudge);
+	}
+	EACH(start->include) {
+		d = sfind(s, start->include[i]);
+		assert(d);
+		fprintf(out, "I ");
+		sccs_pdelta(d, out);
+		fprintf(out, "\n");
+	}
+	if (start->flags & D_DUPLOD) {
+		fprintf(out, "L %s\n", start->lod->name);
+	}
+	if (start->merge) {
+		d = sfind(s, start->merge);
+		assert(d);
+		fprintf(out, "M ");
+		sccs_pdelta(d, out);
+		fprintf(out, "\n");
 	}
 	if (s->tree->pathname) assert(start->pathname);
 	if (start->pathname) fprintf(out, "P %s\n", start->pathname);
@@ -7445,31 +8562,33 @@ int
 sccs_prs(sccs *s, int flags, char *dspec, FILE *out)
 {
 	delta	*d;
-	int	i;
 #define	DEFAULT_DSPEC \
-"D :I: :D: :T::TZ: :P:$if(HT){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
-$if(DPN){P :DPN:\n}$each(C){C (C)}\n\
+"D :I: :D: :T::TZ: :P:$if(:HT:){@:HT:} :DS: :DP: :Li:/:Ld:/:Lu:\n\
+$if(:DPN:){P :DPN:\n}$each(C){C (C)}\n\
 ------------------------------------------------"
 
 	if (!dspec) dspec = DEFAULT_DSPEC;
 	GOODSCCS(s);
-	unless (flags & SILENT) {
-		EACH(s->text) {
-			fprintf(out, "T %s\n", s->text[i]);
-		}
-		if (s->defbranch) fprintf(out, "B %s\n", s->defbranch);
-		EACH(s->usersgroups) {
-			fprintf(out, "U %s\n", s->usersgroups[i]);
-		}
-		fprintf(out,
-		    "------------------------------------------------\n");
-	}
 	if (flags & PATCH) {
 		do_patch(s,
 		    s->rstart ? s->rstart : s->tree,
 		    s->rstop ? s->rstop : 0, flags, out);
 		return (0);
 	}
+	/* print metadata if they asked */
+	unless (flags & SILENT) {
+		symbol	*sym;
+		lod	*l;
+
+		for (l = s->lods; l; l = l->next) {
+			fprintf(out, "L %s, parent is %s\n",
+			    l->name, sccsrev(l->d));
+		}
+		for (sym = s->symbols; sym; sym = sym->next) {
+			fprintf(out, "S %s %s\n", sym->name, sym->rev);
+		}
+	}
+
 	/*
 	 * if we have a start and a stop then do from start up to stop.
 	 */
@@ -7506,6 +8625,7 @@ $if(DPN){P :DPN:\n}$each(C){C (C)}\n\
 			do_prs(s, d, flags, dspec, out);
 		}
 	}
+	return (0);
 }
 
 #ifndef	ANSIC
@@ -7622,7 +8742,7 @@ private sccs	*left, *right;	/* globals for graft. */
 private int
 numNodes(delta *d)
 {
-	if (!d) return (0);
+	if (!d || (d->type != 'D')) return (0);
 
 	return (1 + numNodes(d->kid) + numNodes(d->siblings));
 }
@@ -7634,12 +8754,14 @@ dcmp(const void *a, const void *b)
 }
 
 void
-addNodes(delta **list, int i, delta *d)
+addNodes(sccs *s, delta **list, int j, delta *d)
 {
-	if (!d) return;
-	list[i++] = d;
-	addNodes(list, i, d->kid);
-	addNodes(list, i, d->siblings);
+	delta	*e;
+
+	if (!d || (d->type != 'D')) return;
+	list[j++] = d;
+	addNodes(s, list, j, d->kid);
+	addNodes(s, list, j, d->siblings);
 }
 
 /*
@@ -7647,17 +8769,22 @@ addNodes(delta **list, int i, delta *d)
  * in the left file for incorporation into the right file.
  */
 private void
-mkpatch(delta *a, delta *b)
+mkpatch(sccs *s, delta *a)
 {
 	delta	**alist;
 	int	i;
 
-	printf("makepatch ");
 	alist = calloc((i = numNodes(a)) + 1, sizeof(delta *));
-	addNodes(alist, 0, a);
+	addNodes(s, alist, 0, a);
 	qsort((void*)alist, i, sizeof(delta *), dcmp);
 	i = 0;
-	while (alist[i]) printf("%s:%s ", left->gfile, alist[i++]->rev);
+	while (alist[i]) {
+		if ((alist[i+1] != 0) && (alist[i+1] == alist[i])) {
+			i++;
+			continue;
+		}
+		printf("%s:%s\n", left->gfile, alist[i++]->rev);
+	}
 	free(alist);
 }
 
@@ -7668,13 +8795,14 @@ mkpatch(delta *a, delta *b)
  * will regenerate the union from the left and right into the right.
  */
 private void
-linktree(delta *l, delta *r)
+linktree(sccs *s, delta *l, delta *r)
 {
 	delta	*a, *b;
 
 	if (l->link || r->link) return;		/* insurance */
 	l->link = r;
 	r->link = l;
+	//printf("L(%s%c, %s%c)\n", l->rev, l->type, r->rev, r->type);
 
 	/*
 	 * What I want is a loop like this:
@@ -7686,16 +8814,17 @@ linktree(delta *l, delta *r)
 	 *	}
 	 */
 	for (a = l->kid; a; a = a->siblings) {
-		if (a->link) continue;	/* XXX - happens? */
+		if (a->type != 'D') continue;
+		assert(!a->link);
 		for (b = r->kid; b; b = b->siblings) {
-			if (b->link) continue;
+			if ((b->type != 'D') || b->link) continue;
 			if (samedelta(a, b)) {
-				linktree(a, b);
-				break;
-			} else {
-				mkpatch(a, b);
+				linktree(s, a, b);
 			}
 		}
+	}
+	for (a = l->kid; a; a = a->siblings) {
+		unless (a->link || (a->type != 'D')) mkpatch(s, a);
 	}
 }
 
@@ -7715,7 +8844,7 @@ sccs_smoosh(char *lfile, char *rfile)
 		error = 101;
 		goto out;
 	}
-	linktree(left->tree, right->tree);
+	linktree(left, left->tree, right->tree);
 out:	sccs_free(left);
 	sccs_free(right);
 	left = right = 0;
@@ -7748,6 +8877,63 @@ samekey(delta *d, char *user, char *host, char *path, time_t date)
 	return (1);
 }
 
+static inline int
+isleaf(register delta *d)
+{
+	if (d->type != 'D') return (0);
+	for (d = d->kid; d; d = d->siblings) {
+		if (d->type == 'D') return (0);
+	}
+	return (1);
+}
+
+/*
+ * Create resolve file.
+ * The order of the deltas in the file is important - the "branch"
+ * should be last.
+ * This currently only works for the trunk (i.e., there is one LOD).
+ * XXX - this is also where we would handle pathnames, symbols, etc.
+ */
+int
+sccs_resolveFile(sccs *s)
+{
+	FILE	*f;
+	delta	*d, *a = 0, *b = 0;
+	
+	for (d = s->table; d; d = d->next) {
+		d->flags &= ~D_VISITED;
+		if ((d->flags & D_MERGED) || !isleaf(d)) continue;
+		if (!a) {
+			a = d;
+		} else {
+			assert(!b);
+			b = d;
+			/* Could break but I like the error checking */
+		}
+	}
+	if (b) {
+		for (d = b; d; d = d->parent) d->flags |= D_VISITED;
+		for (d = a; d; d = d->parent) {
+			if (d->flags & D_VISITED) break;
+		}
+		assert(d);
+		unless (f = fopen(sccsXfile(s, 'r'), "w")) {
+			perror("r.file");
+			return (-1);
+		}
+		if (samebranch(d, a)) {
+			fprintf(f, "merge deltas %s %s %s %s %s\n",
+				a->rev, d->rev, b->rev, getuser(), now());
+		} else {
+			fprintf(f, "merge deltas %s %s %s %s %s\n",
+				b->rev, d->rev, a->rev, getuser(), now());
+		}
+		fclose(f);
+		return (1);
+	}
+	return (0);
+}
+
 /*
  * Take a key like sccs_sdelta makes and find it in the tree.
  */
@@ -7767,7 +8953,7 @@ sccs_findKey(sccs *s, char *key)
 	user = parts[0];
 	host = parts[1];
 	path = parts[2];
-	date = sccs_date2time(&parts[3][2], 0, EXACT);
+	date = date2time(&parts[3][2], 0, EXACT);
 	if (samekey(s->tree, user, host, path, date)) return (s->tree);
 	for (e = s->table;
 	    e && !samekey(e, user, host, path, date); e = e->next);
@@ -7793,7 +8979,6 @@ sccs_print(delta *d)
 char *
 sccs_utctime(delta *d)
 {
-	int	i, j;
 	struct	tm *tp;
 	static	char sdate[30];
 
@@ -7864,7 +9049,7 @@ explodeKey(char *key, char *parts[4])
  * unique.  
  * XXX - this is a good reason to listen to Rick about putting the id elsewhere.
  */
-inline delta *
+delta *
 sccs_ino(sccs *s)
 {
 	delta	*d = s->tree;
@@ -7876,11 +9061,80 @@ sccs_ino(sccs *s)
 }
 
 /*
+ * Get all the ids associated with a changeset.
+ * The db is db{fileId} = csetId.
+ *
+ * Note: does not call sccs_restart, the caller of this sets up "s".
+ */
+MDBM	*
+csetIds(sccs *s, char *rev, int all)
+{
+	FILE	*f;
+	char	*n;
+	datum	k, v;
+	MDBM	*db;
+	char	name[1024];
+	char	buf[2048];
+
+	sprintf(name, "/tmp/cs%d", getpid());
+	if (all) {
+all:		if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
+			sccs_whynot("get", s);
+			exit(1);
+		}
+	} else {
+		delta	*d;
+
+		unless (d = findrev(s, rev)) {
+			perror(rev);
+			exit(1);
+		}
+		unless (d->parent) goto all;
+		f = fopen(name, "wt");
+		if (sccs_diffs(s, d->parent->rev, rev, SILENT, D_RCS, f)) {
+			sccs_whynot("get", s);
+			exit(1);
+		}
+		fclose(f);
+	}
+	db = mdbm_open(NULL, 0, 0, 4096);
+	assert(db);
+	mdbm_pre_split(db, 1<<10);
+	unless (f = fopen(name, "rt")) {
+		perror(name);
+		exit(1);
+	}
+	while (fnext(buf, f)) {
+		if (buf[0] == '#') continue;
+		unless (strchr(buf, '|')) continue;
+		if (chop(buf) != '\n') {
+			assert("cset: pathname overflow in ChangeSet" == 0);
+		}
+		n = strchr(buf, ' ');
+		assert(n);
+		*n++ = 0;
+//printf("db(%s) = '%s'\n", buf, n);
+		k.dptr = buf;
+		k.dsize = strlen(buf) + 1;
+		v.dptr = n;
+		v.dsize = strlen(n) + 1;
+		if (mdbm_store(db, k, v, MDBM_INSERT)) {
+			perror("mdbm_store failed in csetIds");
+			exit(1);
+		}
+	}
+	unlink(name);
+	return (db);
+}
+
+/*
  * Print a unique key for each delta.
  *
  * If we are doing this for resync, all print the list of leaves.
  * Note: if there is only one delta, i.e., 1.1 is also a leaf, I don't
  * print it twice.
+ *
+ * XXX - probably obsolete
  */
 void
 sccs_ids(sccs *s, int flags, FILE *out)
@@ -7904,12 +9158,12 @@ sccs_ids(sccs *s, int flags, FILE *out)
 #ifdef	DEBUG
 debug_main(char **av)
 {
-	fprintf(stderr, "---");
+	fprintf(stderr, "===<<<");
 	do {
 		fprintf(stderr, " %s", av[0]);
 		av++;
 	} while (av[0]);
-	fprintf(stderr, " ---\n");
+	fprintf(stderr, " >>>===\n");
 }
 #endif
 
@@ -7974,7 +9228,10 @@ rmdelout:
 	if (destroy ? delta_destroy(s, d) : delta_rmchk(s, d))
 		RMDELOUT;
 
-	if (!destroy)  d->type = 'R';	/* mark delta as Removed */
+	if (!destroy)  {
+		d->type = 'R';	/* mark delta as Removed */
+		d->flags &= ~D_CKSUM;
+	}
 
 	/*
 	 * OK, checking or destroying done.
@@ -8204,6 +9461,7 @@ delta_strip(sccs *s, delta *d, FILE *sfile, int flags)
 	return 0;
 }
 
+int
 smartUnlink(char *file)
 {
 	int rc;
@@ -8218,9 +9476,10 @@ smartUnlink(char *file)
 			"smartUnlink:can not unlink %s, errno = %d\n",
 			file, errno);
 	}
-	return rc;
+	return (rc);
 }
 
+int
 smartRename(char * old, char *new)
 {
 	int rc;
@@ -8231,7 +9490,7 @@ smartRename(char * old, char *new)
 			debug((stderr,
 				"smartRename: unlink fail for %s, errno=%d\n",
 				new, errno));
-			return rc;
+			return (rc);
 		}
 		rc = rename(old, new);
 	}
@@ -8240,5 +9499,5 @@ smartRename(char * old, char *new)
 		    "smartRename: can not rename from %s to %s, errno=%d\n",
 			old, new, errno);
 	}
-	return rc;
+	return (rc);
 }
