@@ -10,6 +10,7 @@ setup_main(int ac, char **av)
 	char	*project_name = 0, *project_path = 0, *config_path = 0;
 	char	buf[1024], my_editor[1024], setup_files[MAXPATH];
 	FILE	*f;
+	sccs	*s;
 
 	while ((c = getopt(ac, av, "c:fn:")) != -1) {
 		switch (c) {
@@ -110,9 +111,13 @@ setup_main(int ac, char **av)
 		sprintf(buf, "cp %s config", config_path);
 		system(buf);
 	}
-	// XXX FIXME: This should be replaced with a direct C function call
-	system("bk ci -qi config");
-	system("bk get -q config");
+	s = sccs_init("SCCS/s.config", SILENT, NULL);
+	assert(s);
+	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
+	s = sccs_restart(s);
+	assert(s);
+	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
+	sccs_free(s);
 
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
 	sprintf(buf, "bk sfiles -C > %s", setup_files);
