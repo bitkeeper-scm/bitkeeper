@@ -66,7 +66,7 @@ typedef struct {
 private project *proj;
 private options	opts;
 private globv	ignore; 
-private u32	 s_count, x_count; /* progress counter */
+private u32	 d_count, s_count, x_count; /* progress counter */
 private u32	 s_last, x_last; /* progress counter */
 
 private void do_print(char state[4], char *file, char *rev);
@@ -183,7 +183,7 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 		}
 	}
 	unless (opts.out) opts.out = stdout;
-	s_count = x_count = 0;
+	d_count = s_count = x_count = 0;
 
 	/*
 	 * If user did not select any option,
@@ -222,7 +222,7 @@ usage:		fprintf(stderr, "%s", sfind_usage);
                 }
 	}
 	if (opts.out) fclose(opts.out);
-	if (opts.progress) progress();
+	if (opts.progress) progress(1);
 	return (0);
 }
 
@@ -520,13 +520,13 @@ done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
 		if (proj) proj_free(proj); proj = 0;
 	}
-	if (opts.progress) progress();
+	if (opts.progress) progress(0);
 }
 
-progress()
+progress(int force)
 {
-	if (s_last == s_count && x_last == x_count) return;
-	printf("%d %d\n", s_count, x_count);
+	if (!force && (s_last == s_count) && (x_last == x_count)) return;
+	printf("%d %d %d\n", s_count, x_count, d_count);
 	fflush(stdout);
 	s_last = s_count;
 	x_last = x_count;
@@ -625,7 +625,7 @@ do_print(char state[4], char *file, char *rev)
 	}
 	if (opts.progress && 
 	    (((s_count - s_last) > 100) || ((x_count - x_last) > 100))) { 
-		progress();
+		progress(1);
 	}
 	if ((state[PSTATE] == 'p') && opts.pflg) goto print;
 
@@ -717,6 +717,8 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 		}
 	}
 	closedir(dh);
+	d_count++;
+	if (opts.progress) progress(1);
 
 	/*
 	 * Get all the SCCS/?.files
