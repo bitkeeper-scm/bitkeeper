@@ -42,14 +42,20 @@ comments_save(char *s)
 out:	gotComment = 1;
 }
 
-void
+int
 comments_savefile(char *s)
 {
-	FILE	*f = fopen(s, "r");
+	FILE	*f;
 	char	*last;
 	char	buf[MAXCMT];
 
-	unless (f) return;
+	if (!s || !exists(s) || (size(s) <= 0)) {
+		return (-1);
+	}
+	unless (f = fopen(s, "r")) {
+		perror(s);
+		return(-1);
+	}
 	gotComment = 1;
 	comment = "";
 	while (fnext(buf, f)) {
@@ -65,6 +71,7 @@ comments_savefile(char *s)
 	}
 	if (saved) comment = 0;
 	fclose(f);
+	return (0);
 }
 
 int

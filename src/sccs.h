@@ -1019,7 +1019,7 @@ int	repository_wrunlock(int all);
 int	repository_hasLocks(char *root, char *dir);
 void	repository_lockcleanup(void);
 void	comments_save(char *s);
-void	comments_savefile(char *s);
+int	comments_savefile(char *s);
 int	comments_got(void);
 void	comments_done(void);
 delta	*comments_get(delta *d);

@@ -52,14 +52,13 @@ commit_main(int ac, char **av)
 			comments_save(optarg);
 			break;
 		    case 'Y':					/* doc 2.0 */
-			unless (exists(optarg) && (size(optarg) > 0)) {
+			if (comments_savefile(optarg)) {
 				fprintf(stderr,
 				    "commit: can't read comments from %s\n",
 				    optarg);
 				exit(1);
 			}
 			dflags |= DELTA_DONTASK;
-			comments_savefile(optarg);
 			break;
 		    case 'A':	/* internal option for regression test only */
 				/* do not document */		/* undoc 2.0 */

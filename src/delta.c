@@ -220,7 +220,12 @@ comment:		comments_save(optarg);
 		    case 'P': ignorePreference = 1;  break;	/* undoc 2.0 */
 		    case 'R': dflags |= DELTA_PATCH; break;	/* undoc? 2.0 */
 		    case 'Y':
-			if (optarg) comments_savefile(optarg);
+			if (optarg && comments_savefile(optarg)) {
+				fprintf(stderr,
+					"delta: can't read comments from %s\n",
+					optarg);
+				return (1);
+			}
 			dflags |= DELTA_DONTASK;
 			break; 	/* doc 2.0 */
 		    case 'Z': 					/* doc 2.0 */
