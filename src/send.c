@@ -175,8 +175,9 @@ send_main(int ac,  char **av)
 		 */
 		keysFile = getNewRevs(to, rev, url);
 		if (keysFile == NULL) {
-			printf("Nothing to send to %s, use -f to force.\n", to);
-			exit(0);
+			fprintf(stderr,
+			    "Nothing to send to %s, use -f to force.\n", to);
+			exit(1);
 		}
 		revArgs = aprintf("-r - < %s", keysFile);
 	} else {
