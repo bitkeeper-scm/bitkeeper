@@ -1,3 +1,24 @@
+Sept 24th, 2002
+v0.66  -- Updated the /demos/test.c program to time the hashes correctly.  Also it uses the yarrow PRNG for all of the 
+          tests meaning its possible to run on RNG less platforms 
+       -- Updated the /demos/hashsum.c program to hash from the standard input
+       -- Updated the RSA code to make keys a bit quicker [update by Wayne Scott] by not making both primes at the same
+          time.
+       -- Dan Kaminsky suggested some cleanups for the code and the MPI config
+          Code ships in unix LF format by default now too... will still build in MSVC and all... but if you want
+          to read the stuff you'll have to convert it 
+       -- Changes to the manual to reflect new API [e.g. hash_memory/file have v0.65 prototypes]and some typos fixed
+
+Sept 20th, 2002
+v0.65  -- Wayne Scott (wscott@bitmover.com) made a few of suggestions to improve the library.  Most 
+          importantly he pointed out the math lib is not really required.  He's also tested the lib on 18 
+          different platforms.  According to him with only a few troubles [lack of /dev/random, etc] the 
+          library worked as it was supposed to.  You can find the list at 
+          http://www.bitkeeper.com/Products.BitKeeper.Platforms.html
+       -- Updated the hash_file and hash_memory functions to keep track of the size of the output
+       -- Wayne Scott updated the demos/test.c file to use the SPRNG less and Yarrow more
+       -- Modified the mycrypt_cfg.h to autodetect x86-32 machines
+
 Sept 19th, 2002
 v0.64  -- wrote makefile for the GBA device [and hacked the demos/test.c file to support it conditionally]
        -- Fixed error in PK (e.g. ECC, RSA, DH) import functions where I was clobbering the packet error messages

@@ -159,6 +159,22 @@ int find_prng(const char *name)
    return -1;
 }
 
+/* idea from Wayne Scott */
+int find_cipher_any(const char *name, int blocklen, int keylen)
+{
+   int x;
+
+   x = find_cipher(name);
+   if (x != -1) return x;
+
+   for (x = 0; cipher_descriptor[x].name != NULL; x++) {
+       if (blocklen <= cipher_descriptor[x].block_length && keylen <= cipher_descriptor[x].max_key_length) {
+          return x;
+       }
+   }
+   return -1;
+}
+
 int register_cipher(const struct _cipher_descriptor *cipher)
 {
    int x;

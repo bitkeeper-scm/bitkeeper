@@ -1,12 +1,18 @@
 #include "mycrypt.h"
 
-int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned char *dst)
+int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned char *dst, unsigned long *outlen)
 {
     hash_state md;
 
-    if(hash_is_valid(hash) == CRYPT_ERROR) {
+    if (hash_is_valid(hash) == CRYPT_ERROR) {
         return CRYPT_ERROR;
     }
+
+    if (*outlen < hash_descriptor[hash].hashsize) {
+       crypt_error ="Invalid output size in hash_file().";
+       return CRYPT_ERROR;
+    }
+    *outlen = hash_descriptor[hash].hashsize;
 
     hash_descriptor[hash].init(&md);
     hash_descriptor[hash].process(&md, data, len);
@@ -14,16 +20,22 @@ int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned
     return CRYPT_OK;
 }
 
-int hash_file(int hash, const char *fname, unsigned char *dst)
+int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *outlen)
 {
     hash_state md;
     FILE *in;
     unsigned char buf[512];
     int x;
 
-    if(hash_is_valid(hash) == CRYPT_ERROR) {
+    if (hash_is_valid(hash) == CRYPT_ERROR) {
         return CRYPT_ERROR;
     }
+
+    if (*outlen < hash_descriptor[hash].hashsize) {
+       crypt_error ="Invalid output size in hash_file().";
+       return CRYPT_ERROR;
+    }
+    *outlen = hash_descriptor[hash].hashsize;
 
     in = fopen(fname, "rb");
     if (in == NULL) { 

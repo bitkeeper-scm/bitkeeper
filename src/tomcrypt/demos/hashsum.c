@@ -2,7 +2,7 @@
  * Written by Daniel Richards <kyhwana@world-net.co.nz> 6/7/2002
  * hash.c: This app uses libtomcrypt to hash either stdin or a file
  * This file is Public Domain. No rights are reserved.
- * Compile with 'gcc hash.c -o hash -ltomcrypt -lm'
+ * Compile with 'gcc hashsum.c -o hashsum -ltomcrypt'
  * This example isn't really big enough to warrent splitting into
  * more functions ;)
 */
@@ -13,9 +13,10 @@ void register_algs();
 
 int main(int argc, char **argv)
 {
-   int idx, x, y, z;
-   hash_state hs;
-   unsigned char in_buffer[256], hash_buffer[MAXBLOCKSIZE];
+   int idx, x, z;
+   unsigned long w;
+   unsigned char hash_buffer[MAXBLOCKSIZE];
+   hash_state md;
 
    /* You need to register algorithms before using them */
    register_algs();
@@ -34,12 +35,26 @@ int main(int argc, char **argv)
       return -1;
    }
 
-   for (z = 2; z < argc; z++) {
-      hash_file(idx,argv[z],hash_buffer);
+   if (argc == 2) {
+      hash_descriptor[idx].init(&md);
+      do {
+         x = fread(hash_buffer, 1, sizeof(hash_buffer), stdin);
+         hash_descriptor[idx].process(&md, hash_buffer, x);
+      } while (x == sizeof(hash_buffer));
+      hash_descriptor[idx].done(&md, hash_buffer);
       for (x = 0; x < (int)hash_descriptor[idx].hashsize; x++) {
           printf("%02x",hash_buffer[x]);
       }
-      printf("  %s\n", argv[z]);
+      printf("  (stdin)\n");
+   } else {
+      for (z = 2; z < argc; z++) {
+         w = sizeof(hash_buffer);
+         hash_file(idx,argv[z],hash_buffer,&w);
+         for (x = 0; x < (int)hash_descriptor[idx].hashsize; x++) {
+             printf("%02x",hash_buffer[x]);
+         }
+         printf("  %s\n", argv[z]);
+      }
    }
    return EXIT_SUCCESS;
 }

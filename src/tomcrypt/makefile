@@ -46,10 +46,10 @@ zlib/infblock.o zlib/inffast.o zlib/infcodes.o zlib/inflate.o zlib/inftrees.o \
 zlib/infutil.o zlib/trees.o zlib/uncompr.o zlib/zutil.o
 
 test: libtomcrypt.a demos/test.o
-	$(CC) demos/test.o libtomcrypt.a -lm -o test$(EXT)
+	$(CC) demos/test.o libtomcrypt.a  -o test$(EXT)
 
 hashsum: libtomcrypt.a demos/hashsum.o
-	$(CC) demos/hashsum.o libtomcrypt.a -lm -o hashsum$(EXT) -s
+	$(CC) demos/hashsum.o libtomcrypt.a  -o hashsum$(EXT) -s
 
 install: libtomcrypt.a
 	$(CP) libtomcrypt.a $(LIBPATH)
@@ -68,7 +68,10 @@ crypt.pdf: crypt.tex
 
 zipup: clean docs
 	rm -f /crypt.zip /crypt.tar.bz2
+	dos2unix *.c *.h zlib/*.h zlib/*.c demos/*.c
 	zip -9 -r /crypt.zip *
 	tar -c * > crypt.tar
 	bzip2 -9vv crypt.tar
 	mv crypt.tar.bz2 /
+	unix2dos *.c *.h zlib/*.h zlib/*.c demos/*.c
+

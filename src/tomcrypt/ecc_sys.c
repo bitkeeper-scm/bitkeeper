@@ -19,7 +19,7 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
 {
     unsigned char pub_expt[512], ecc_shared[256], IV[MAXBLOCKSIZE], skey[MAXBLOCKSIZE];
     ecc_key pubkey;
-    unsigned long x, y, pubkeysize;
+    unsigned long x, y, z, pubkeysize;
     int keysize, blocksize, hashsize;
     symmetric_CTR ctr;
 
@@ -63,7 +63,11 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
        return CRYPT_ERROR;
     }
     ecc_free(&pubkey);
-    hash_memory(hash, ecc_shared, x, skey);
+
+    z = sizeof(skey);
+    if (hash_memory(hash, ecc_shared, x, skey, &z) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+    }
 
     /* make up IV */
     if (prng_descriptor[wprng].read(IV, cipher_descriptor[cipher].block_length, prng) != 
@@ -122,7 +126,7 @@ int ecc_decrypt(const unsigned char *in,  unsigned long len,
                       ecc_key *key)
 {
    unsigned char shared_secret[256], skey[MAXBLOCKSIZE];
-   unsigned long x, y, res, hashsize, blocksize;
+   unsigned long x, y, z, res, hashsize, blocksize;
    int cipher, hash, keysize;
    ecc_key pubkey;
    symmetric_CTR ctr;
@@ -178,8 +182,13 @@ int ecc_decrypt(const unsigned char *in,  unsigned long len,
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
-   hash_memory(hash, shared_secret, x, skey);
    ecc_free(&pubkey);
+
+   z = sizeof(skey);
+   if (hash_memory(hash, shared_secret, x, skey, &z) == CRYPT_ERROR) {
+      res = CRYPT_ERROR;
+      goto done;
+   }
 
    /* setup CTR mode */
    if (ctr_start(cipher, in+y, skey, keysize, 0, &ctr) == CRYPT_ERROR) {
@@ -256,7 +265,7 @@ int ecc_sign(const unsigned char *in,  unsigned long inlen,
    ecc_key pubkey;
    mp_int b, p;
    unsigned char epubkey[256], er[256], md[MAXBLOCKSIZE];
-   unsigned long x, y, pubkeysize, rsize;
+   unsigned long x, y, z, pubkeysize, rsize;
    int res;
 
    /* is this a private key? */
@@ -282,7 +291,8 @@ int ecc_sign(const unsigned char *in,  unsigned long inlen,
 
    /* get the hash and load it as a bignum into 'b' */
    md[0] = 0;
-   if (hash_memory(hash, in, inlen, md+1) == CRYPT_ERROR) {
+   z = sizeof(md)-1;
+   if (hash_memory(hash, in, inlen, md+1, &z) == CRYPT_ERROR) {
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
@@ -366,7 +376,7 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    ecc_point *mG;
    ecc_key   pubkey;
    mp_int b, p, m;
-   unsigned long x, y;
+   unsigned long x, y, z;
    int hash, res;
    unsigned char md[MAXBLOCKSIZE];
 
@@ -423,7 +433,8 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
 
    /* get m in binary a bignum */
    md[0] = 0;
-   if (hash_memory(hash, msg, inlen, md+1) == CRYPT_ERROR) {
+   z = sizeof(md)-1;
+   if (hash_memory(hash, msg, inlen, md+1, &z) == CRYPT_ERROR) {
       res = CRYPT_ERROR;
       goto error;
    }
@@ -468,7 +479,7 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
 {
     unsigned char pub_expt[256], ecc_shared[256], skey[MAXBLOCKSIZE];
     ecc_key pubkey;
-    unsigned long x, y, hashsize, pubkeysize;
+    unsigned long x, y, z, hashsize, pubkeysize;
 
     /* check that wprng/cipher/hash are not invalid */
     if (prng_is_valid(wprng) == CRYPT_ERROR ||
@@ -506,7 +517,10 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
        return CRYPT_ERROR;
     }
     ecc_free(&pubkey);
-    hash_memory(hash, ecc_shared, x, skey);
+    z = sizeof(skey);
+    if (hash_memory(hash, ecc_shared, x, skey, &z) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+    }
 
     /* Encrypt the key */
     for (x = 0; x < keylen; x++)
@@ -550,7 +564,7 @@ int ecc_decrypt_key(const unsigned char *in,  unsigned long len,
                           ecc_key *key)
 {
    unsigned char shared_secret[256], skey[MAXBLOCKSIZE];
-   unsigned long x, y, res, hashsize, keysize;
+   unsigned long x, y, z, res, hashsize, keysize;
    int hash;
    ecc_key pubkey;
 
@@ -592,8 +606,12 @@ int ecc_decrypt_key(const unsigned char *in,  unsigned long len,
       ecc_free(&pubkey);
       return CRYPT_ERROR;
    }
-   hash_memory(hash, shared_secret, x, skey);
    ecc_free(&pubkey);
+
+   z = sizeof(skey);
+   if (hash_memory(hash, shared_secret, x, skey, &z) == CRYPT_ERROR) {
+      return CRYPT_ERROR;
+   }
 
    LOAD32L(keysize, in+y);
    y += 4;

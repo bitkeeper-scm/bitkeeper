@@ -27,7 +27,7 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
 {
     unsigned char buf[MAXBLOCKSIZE];
     unsigned long hashsize;
-    unsigned long i;
+    unsigned long i, z;
 
     if(hash_is_valid(hash) == CRYPT_ERROR) {
         return CRYPT_ERROR;
@@ -43,7 +43,10 @@ int hmac_init(hmac_state *hmac, int hash, const unsigned char *key, unsigned lon
     // (1) make sure we have a large enough key
     hmac->hashsize = hashsize = hash_descriptor[hash].hashsize;
     if(keylen > HMAC_BLOCKSIZE) {
-        hash_memory(hash, key, keylen, hmac->key);
+        z = sizeof(hmac->key);
+        if (hash_memory(hash, key, keylen, hmac->key, &z) == CRYPT_ERROR) {
+           return CRYPT_ERROR;
+        }
         if(hashsize < HMAC_BLOCKSIZE) {
             zeromem(hmac->key+hashsize, HMAC_BLOCKSIZE - hashsize);
         }

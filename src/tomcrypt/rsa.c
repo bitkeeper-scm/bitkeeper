@@ -4,7 +4,7 @@
 
 int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
 {
-   mp_int p, q, tmp1, tmp2;
+   mp_int p, q, tmp1, tmp2, tmp3;
    int res;   
 
    if ((size < (1024/8)) || (size > (4096/8))) {
@@ -21,22 +21,33 @@ int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
       return CRYPT_ERROR;
    }
 
-   if (mp_init_multi(&p, &q, &tmp1, &tmp2, NULL) != MP_OKAY) {
+   if (mp_init_multi(&p, &q, &tmp1, &tmp2, &tmp3, NULL) != MP_OKAY) {
       crypt_error = "Out of memory in rsa_make_key()."; 
       return CRYPT_ERROR;
    }
 
-   /* make primes */
+   /* make primes p and q (optimization provided by Wayne Scott) */
+   if (mp_set_int(&tmp3, e) != MP_OKAY) { goto error; }            /* tmp3 = e */
+
+   /* make prime "p" */
    do {
        if (rand_prime(&p, size/2, prng, wprng) == CRYPT_ERROR) { res = CRYPT_ERROR; goto done; }
+       if (mp_sub_d(&p, 1, &tmp1) != MP_OKAY) { goto error; }      /* tmp1 = p-1 */
+       if (mp_gcd(&tmp1, &tmp3, &tmp2) != MP_OKAY) { goto error; } /* tmp2 = gcd(p-1, e) */
+   } while (mp_cmp_d(&tmp2, 1) != 0);
+       
+   /* make prime "q" */
+   do {
        if (rand_prime(&q, size/2, prng, wprng) == CRYPT_ERROR) { res = CRYPT_ERROR; goto done; }
-       if (mp_sub_d(&p, 1, &tmp1) != MP_OKAY) { goto error; }      /* tmp1 = q-1 */
-       if (mp_sub_d(&q, 1, &tmp2) != MP_OKAY) { goto error; }      /* tmp2 = p-1 */
-       if (mp_lcm(&tmp1, &tmp2, &tmp1) != MP_OKAY) { goto error; } /* tmp1 = lcm(tmp1, tmp2) */
-       if (mp_set_int(&tmp2, e) != MP_OKAY) { goto error; }        /* tmp2 = e */
-       if (mp_gcd(&tmp1, &tmp2, &tmp2) != MP_OKAY) { goto error; } /* tmp2 = gcd(tmp1, tmp2) */
-   } while (mp_cmp_d(&tmp2, 1) != 0);                          /* if tmp2 != 1 then e divides the order of the 
-                                                                * group and cannot be used */
+       if (mp_sub_d(&q, 1, &tmp1) != MP_OKAY) { goto error; }      /* tmp1 = q-1 */
+       if (mp_gcd(&tmp1, &tmp3, &tmp2) != MP_OKAY) { goto error; } /* tmp2 = gcd(q-1, e) */
+   } while (mp_cmp_d(&tmp2, 1) != 0);
+
+   /* tmp1 = lcm(p-1, q-1) */
+   if (mp_sub_d(&p, 1, &tmp2) != MP_OKAY) { goto error; }          /* tmp2 = p-1 */
+                                                                   /* tmp1 = q-1 (previous do/while loop) */
+   if (mp_lcm(&tmp1, &tmp2, &tmp1) != MP_OKAY) { goto error; }     /* tmp1 = lcm(p-1, q-1) */
+
    /* make key */
    if (mp_init_multi(&key->e, &key->d, &key->N, &key->dQ, &key->dP, 
                      &key->qP, &key->pQ, &key->p, &key->q, NULL) != MP_OKAY) {
@@ -49,17 +60,17 @@ int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
 
 /* optimize for CRT now */
    /* find d mod q-1 and d mod p-1 */
-   if (mp_sub_d(&p, 1, &tmp1) != MP_OKAY) goto error2;           /* tmp1 = q-1 */
-   if (mp_sub_d(&q, 1, &tmp2) != MP_OKAY) goto error2;           /* tmp2 = p-1 */
+   if (mp_sub_d(&p, 1, &tmp1) != MP_OKAY) goto error2;              /* tmp1 = q-1 */
+   if (mp_sub_d(&q, 1, &tmp2) != MP_OKAY) goto error2;              /* tmp2 = p-1 */
 
-   if (mp_mod(&key->d, &tmp1, &key->dP) != MP_OKAY) goto error2; /* dP = d mod p-1 */
-   if (mp_mod(&key->d, &tmp2, &key->dQ) != MP_OKAY) goto error2; /* dQ = d mod q-1 */
+   if (mp_mod(&key->d, &tmp1, &key->dP) != MP_OKAY) goto error2;    /* dP = d mod p-1 */
+   if (mp_mod(&key->d, &tmp2, &key->dQ) != MP_OKAY) goto error2;    /* dQ = d mod q-1 */
   
-   if (mp_invmod(&q, &p, &key->qP) != MP_OKAY) goto error2;     /* qP = 1/q mod p */
-   if (mp_mulmod(&key->qP, &q, &key->N, &key->qP)) goto error2; /* qP = q * (1/q mod p) mod N */
+   if (mp_invmod(&q, &p, &key->qP) != MP_OKAY) goto error2;         /* qP = 1/q mod p */
+   if (mp_mulmod(&key->qP, &q, &key->N, &key->qP)) goto error2;     /* qP = q * (1/q mod p) mod N */
 
-   if (mp_invmod(&p, &q, &key->pQ) != MP_OKAY) goto error2;     /* pQ = 1/p mod q */    
-   if (mp_mulmod(&key->pQ, &p, &key->N, &key->pQ)) goto error2; /* pQ = p * (1/p mod q) mod N */
+   if (mp_invmod(&p, &q, &key->pQ) != MP_OKAY) goto error2;         /* pQ = 1/p mod q */    
+   if (mp_mulmod(&key->pQ, &p, &key->N, &key->pQ)) goto error2;     /* pQ = p * (1/p mod q) mod N */
 
    if (mp_copy(&p, &key->p) != MP_OKAY) goto error2;
    if (mp_copy(&q, &key->q) != MP_OKAY) goto error2;
@@ -74,7 +85,7 @@ error:
    res = CRYPT_ERROR;
    crypt_error = "Out of memory in rsa_make_key().";
 done:
-   mp_clear_multi(&tmp2, &tmp1, &p, &q, NULL);
+   mp_clear_multi(&tmp3, &tmp2, &tmp1, &p, &q, NULL);
    return res;
 }
 

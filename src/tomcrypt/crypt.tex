@@ -44,7 +44,7 @@
 \def\gap{\vspace{0.5ex}}
 \makeindex
 \begin{document}
-\title{Tiny Crypto Library \\ ``LibTomCrypt'' \\ Version 0.64}
+\title{Tiny Crypto Library \\ ``LibTomCrypt'' \\ Version 0.66}
 \author{Tom St Denis \\
 Algonquin College \\
 \\
@@ -544,13 +544,13 @@ int main(void)
 A good safety would be to check the return value of ``find\_cipher()'' before accessing the desired function.  In order
 to use a cipher with the descriptor table you must register it first using:
 \begin{verbatim}
-int register_cipher(struct _cipher_descriptor *cipher);
+int register_cipher(const struct _cipher_descriptor *cipher);
 \end{verbatim}
 Which accepts a pointer to a descriptor and returns the index into the global descriptor table.  If an error occurs such
 as there is no more room (it can have 32 ciphers at most) it will return {\bf{-1}}.  If you try to add the same cipher more
 than once it will just return the index of the first copy.  To remove a cipher call:
 \begin{verbatim}
-int unregister_cipher(struct _cipher_descriptor *cipher);
+int unregister_cipher(const struct _cipher_descriptor *cipher);
 \end{verbatim}
 Which returns {\bf CRYPT\_OK} if it removes it otherwise it returns {\bf CRYPT\_ERROR}.  Consider:
 \begin{small}
@@ -682,7 +682,7 @@ void YYY_encrypt(const unsigned char *pt, unsigned char *ct,
 void YYY_decrypt(const unsigned char *ct, unsigned char *pt, 
                  int len, symmetric_YYY *YYY);
 \end{verbatim}
-Where ``XXX'' is one of (ECB, CBC) and ``YYY'' is one of (CTR, OFB, CFB).  In the CTR, OFB and CFB cases ``len'' is the
+Where ``XXX'' is one of (ecb, cbc) and ``YYY'' is one of (ctr, ofb, cfb).  In the CTR, OFB and CFB cases ``len'' is the
 size of the buffer (as number of chars) to encrypt or decrypt.
 
 To decrypt in either mode you simply perform the setup like before (recall you have to fetch the IV value you used)
@@ -864,14 +864,18 @@ There are two helper functions as well:
 \index{hash\_memory()} \index{hash\_file()}
 \begin{verbatim}
 int hash_memory(int hash, const unsigned char *data, 
-                unsigned long len, unsigned char *dst);
+                unsigned long len, unsigned char *dst,
+                unsigned long *outlen);
 
 int hash_file(int hash, const char *fname, 
-              unsigned char *dst);
+              unsigned char *dst,
+              unsigned long *outlen);
 \end{verbatim}
 
 Both functions return {\bf CRYPT\_OK} on success, otherwise they return {\bf CRYPT\_ERROR}.  The ``hash'' parameter is
-the location in the descriptor table of the hash.  The functions are otherwise straightforward.  To perform the above 
+the location in the descriptor table of the hash.  The ``*outlen'' variable is used to keep track of the output size.  You
+must set it to the size of your output buffer before calling the functions.  When they complete succesfully they store
+the length of the message digest back in it.  The functions are otherwise straightforward.  To perform the above 
 hash with md5 the following code could be used:
 \begin{small}
 \begin{verbatim}
@@ -879,6 +883,8 @@ hash with md5 the following code could be used:
 int main(void)
 {
    int idx;
+   unsigned long len;
+   unsigned char out[16];
 
    /* register the hash */
    if (register_hash(&md5_desc) == -1) {
@@ -890,7 +896,8 @@ int main(void)
    idx = find_hash("md5");
 
    /* call the hash */
-   if (hash_memory(idx, "hello world", 11, out) == CRYPT_ERROR) {
+   len = sizeof(out);
+   if (hash_memory(idx, "hello world", 11, out, &len) == CRYPT_ERROR) {
       printf("Error hashing data: %s\n", crypt_error);
       return -1;
    }
@@ -917,8 +924,8 @@ The following hashes are provided as of this release:
 Similar to the cipher descriptor table you must register your hash algorithms before you can use them.  These functions
 work exactly like those of the cipher registration code.  The functions are:
 \begin{verbatim}
-int register_hash(struct _hash_descriptor *hash);
-int unregister_hash(struct _hash_descriptor *hash);
+int register_hash(const struct _hash_descriptor *hash);
+int unregister_hash(const struct _hash_descriptor *hash);
 \end{verbatim}
 
 \subsection{Notice}
@@ -1108,8 +1115,8 @@ the position in the prng\_descriptor array.
 Just like the ciphers and hashes you must register your prng before you can use it.  The two functions provided work
 exactly as those for the cipher registry functions.  They are:
 \begin{verbatim}
-int register_prng(struct _prng_descriptor *prng);
-int unregister_prng(struct _prng_descriptor *prng);
+int register_prng(const struct _prng_descriptor *prng);
+int unregister_prng(const struct _prng_descriptor *prng);
 \end{verbatim}
 Currently only Yarrow (yarrow\_desc) and the secure RNG (sprng\_desc) are provided.
 
@@ -1179,8 +1186,22 @@ makes an ECC key with this PRNG:
 int main(void)
 {
    ecc_key mykey;
+   prng_state prng;
+
+   /* register yarrow */
+   if (register_prng(&yarrow_desc) == -1) {
+      printf("Error registering Yarrow: %s\n", crypt_error);
+      return -1;
+   }
+
+   /* setup the PRNG */
+   if (rng_make_prng(128, find_prng("yarrow"), &prng, NULL) == CRYPT_ERROR) {
+      printf("Error setting up PRNG, %s\n", crypt_error);
+      return -1;
+   }
+
    /* make a 192-bit ECC key */
-   if (ecc_make_key(24, NULL, find_prng("sprng"), &mykey) == CRYPT_ERROR) {
+   if (ecc_make_key(24, NULL, find_prng("yarrow"), &mykey) == CRYPT_ERROR) {
       printf("Error making key: %s\n", crypt_error);
       return -1;
    }
@@ -1465,7 +1486,7 @@ int establish_secure_socket(int sock, int mode, unsigned char *key,
                             prng_state *prng, int wprng)
 {
    unsigned char buf[4096], buf2[4096];
-   unsigned long x;
+   unsigned long x, len;
    int res;
    dh_key mykey, theirkey;
 
@@ -1474,7 +1495,7 @@ int establish_secure_socket(int sock, int mode, unsigned char *key,
       return CRYPT_ERROR;
 
    /* export our key as public */ 
-   x = 4096;
+   x = sizeof(buf);
    if (dh_export(buf, &x, PK_PUBLIC, &mykey) == CRYPT_ERROR) {
       res = CRYPT_ERROR;
       goto done2;
@@ -1489,14 +1510,14 @@ int establish_secure_socket(int sock, int mode, unsigned char *key,
       }          
 
       /* get their key */
-      if (recv(sock, buf2, 4096, 0) <= 0) {
+      if (recv(sock, buf2, sizeof(buf2), 0) <= 0) {
          crypt_error = "Error reading socket in establish_secure_socket()."
          res = CRYPT_ERROR;
          goto done2;
       }
    } else {
       /* mode >0 so we send second */
-      if (recv(sock, buf2, 4096, 0) <= 0) {
+      if (recv(sock, buf2, sizeof(buf2), 0) <= 0) {
          crypt_error = "Error reading socket in establish_secure_socket()."
          res = CRYPT_ERROR;
          goto done2;
@@ -1515,14 +1536,15 @@ int establish_secure_socket(int sock, int mode, unsigned char *key,
    }
 
    /* make shared secret */
-   x = 4096;
+   x = sizeof(buf);
    if (dh_shared_secret(&mykey, &theirkey, buf, &x) == CRYPT_ERROR) {
       res = CRYPT_ERROR;
       goto done;
    }
  
    /* hash it */
-   if (hash_memory(find_hash("md5"), buf, x, key) == CRYPT_ERROR) {
+   len = 16;        /* default is MD5 so "key" must be at least 16 bytes long */
+   if (hash_memory(find_hash("md5"), buf, x, key, &len) == CRYPT_ERROR) {
       res = CRYPT_ERROR;
       goto done;
    }

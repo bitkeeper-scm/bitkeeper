@@ -206,7 +206,7 @@ int rsa_sign(const unsigned char *in,  unsigned long inlen,
                    unsigned char *out, unsigned long *outlen, 
                    int hash, rsa_key *key)
 {
-   unsigned long hashlen, rsa_size, x, y;
+   unsigned long hashlen, rsa_size, x, y, z;
    unsigned char rsa_in[4096], rsa_out[4096];
 
    /* type of key? */
@@ -222,7 +222,8 @@ int rsa_sign(const unsigned char *in,  unsigned long inlen,
 
    /* hash it */
    hashlen = hash_descriptor[hash].hashsize;
-   if (hash_memory(hash, in, inlen, rsa_in) == CRYPT_ERROR) {
+   z = sizeof(rsa_in);
+   if (hash_memory(hash, in, inlen, rsa_in, &z) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
 
@@ -271,7 +272,7 @@ int rsa_verify(const unsigned char *sig, const unsigned char *msg,
                      unsigned long inlen, int *stat,
                      rsa_key *key)
 {
-   unsigned long hashlen, rsa_size, x, y, z;
+   unsigned long hashlen, rsa_size, x, y, z, w;
    int hash;
    unsigned char rsa_in[4096], rsa_out[4096];
 
@@ -315,7 +316,11 @@ int rsa_verify(const unsigned char *sig, const unsigned char *msg,
    }
 
    /* check? */
-   hash_memory(hash, msg, inlen, rsa_out);
+   w = sizeof(rsa_out);
+   if (hash_memory(hash, msg, inlen, rsa_out, &w) == CRYPT_ERROR) {
+      return CRYPT_ERROR;
+   }
+
    if ((z == hashlen) && (!memcmp(rsa_in, rsa_out, hashlen))) {
       *stat = 1;
    }

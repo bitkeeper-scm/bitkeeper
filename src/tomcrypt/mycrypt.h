@@ -13,8 +13,8 @@ extern "C" {
 #endif
 
 /* version */
-#define CRYPT   0x0064
-#define SCRYPT  "0.64"
+#define CRYPT   0x0066
+#define SCRYPT  "0.66"
 
 /* max size of either a cipher/hash block or symmetric key [largest of the two] */
 #define MAXBLOCKSIZE           128
@@ -148,13 +148,6 @@ extern char *crypt_error;
 
 #endif /* ENDIAN_LITTLE */
 
-
-
-
-
-
-
-
 #ifdef ENDIAN_BIG
 #define STORE32L(x, y)                                                                     \
      { (y)[0] = (unsigned char)(((x)>>24)&255); (y)[1] = (unsigned char)(((x)>>16)&255);   \
@@ -215,7 +208,6 @@ extern char *crypt_error;
 #endif /* ENDIAN_64BITWORD */
 #endif /* ENDIAN_BIG */
 
-
 #define BSWAP(x)  ( ((x>>24)&0x000000FFUL) | ((x<<24)&0xFF000000UL)  | \
                     ((x>>8)&0x0000FF00UL)  | ((x<<8)&0x00FF0000UL) )
 
@@ -230,6 +222,8 @@ extern char *crypt_error;
     ( ((((x)&CONST64(0xFFFFFFFFFFFFFFFF))>>((ulong64)(y)&CONST64(63))) | \
       ((x)<<((ulong64)(64-((y)&CONST64(63)))))) & CONST64(0xFFFFFFFFFFFFFFFF))
 
+#undef MAX
+#undef MIN
 #define MAX(x, y) ( ((x)>(y))?(x):(y) )
 #define MIN(x, y) ( ((x)<(y))?(x):(y) )
 
@@ -557,6 +551,7 @@ extern void ctr_decrypt(const unsigned char *ct, unsigned char *pt, int len, sym
 #endif
 	
 extern int find_cipher(const char *name);
+extern int find_cipher_any(const char *name, int blocklen, int keylen);
 extern int find_cipher_id(unsigned char ID);
 
 extern int register_cipher(const struct _cipher_descriptor *cipher);
@@ -707,8 +702,8 @@ extern int register_hash(const struct _hash_descriptor *hash);
 extern int unregister_hash(const struct _hash_descriptor *hash);
 extern int hash_is_valid(int idx);
 
-extern int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned char *dst);
-extern int hash_file(int hash, const char *fname, unsigned char *dst);
+extern int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned char *dst, unsigned long *outlen);
+extern int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *outlen);
 
 /* ---- PRNG Stuff ---- */
 struct yarrow_prng {
