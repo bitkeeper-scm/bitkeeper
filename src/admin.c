@@ -219,6 +219,13 @@ main(int ac, char **av, char **ev)
 			if (d = sccs_getrev(sc, rev, 0, 0)) {
 				d->flags |= D_MODE;
 				d->mode = m;
+				if ((S_ISLNK(d->mode)) && (!d->glink)){
+					verbose((stderr,
+				    "%s symlink has no target\n", sc->sfile));
+					error = 1;
+					goto next;
+						
+				}
 			}
 		}
 		if (merge) {
@@ -339,14 +346,8 @@ do_checkin(char *name, int encoding,
 		return (-1);
 	}
 
-	/* extract the modes */
-	if (newfile) {
-		struct	stat sb;
-
-		if (stat(newfile, &sb) == 0) s->mode = sb.st_mode & 0777;
-	} else {
-		s->mode = 0664;
-	}
+	/* if newfile is non null, mode is initialized in sccs_init() */
+	if (!newfile) s->mode = 0664;
 	if (rev) {
 		d = sccs_parseArg(d, 'R', rev, 0);
 		if ((d->flags & D_BADFORM) ||

@@ -336,6 +336,7 @@ sccs_freetree(delta *tree)
 	}
 	if (tree->cset) free(tree->cset);
 	if (tree->sym) free(tree->sym);
+	if (tree->glink) free(tree->glink);
 	free(tree);
 }
 
@@ -2789,17 +2790,38 @@ check_gfile(sccs *s, int flags)
 {
 	struct	stat sbuf;
 
-	if (stat(s->gfile, &sbuf) == 0) {
-		if (!S_ISREG(sbuf.st_mode)) {
-			verbose((stderr, "Not a regular file: %s\n", s->gfile));
+	if (lstat(s->gfile, &sbuf) == 0) {
+		if ((!S_ISREG(sbuf.st_mode)) && 
+		    (!S_ISLNK(sbuf.st_mode)) &&  /* sym link  */
+		    (!S_ISDIR(sbuf.st_mode)))    /* directory */
+		{
+			verbose((stderr,
+				"unsupported file type: %s\n", s->gfile));
 			free(s->gfile);
 			free(s->sfile);
 			free(s);
 			return (0);
 		}
 		s->state |= GFILE;
-		s->mode = sbuf.st_mode & 0777;
+		s->mode = sbuf.st_mode;
 		if (flags & GTIME) s->gtime = sbuf.st_mtime;
+		if (S_ISLNK(sbuf.st_mode)) {
+			char link[1024];
+			int len;
+
+			len = readlink(s->gfile, link, 1024);
+			if ((len > 0 )  && (len < 1024)){
+				link[len] = 0;
+				s->glink = strdup(link);
+			} else {
+				verbose((stderr,
+				    "can'nt read sym link: %s\n", s->gfile));
+				free(s->gfile);
+				free(s->sfile);
+				free(s);
+				return 0;
+			}
+		}
 	} else {
 		s->state &= ~GFILE;
 	}
@@ -3049,6 +3071,7 @@ sccs_free(sccs *s)
 		free(l);
 	}
 	if (s->root) free(s->root);
+	if (s->glink) free(s->glink);
 	free(s);
 #ifdef	ANSIC
 	signal(SIGINT, SIG_DFL);
@@ -4201,13 +4224,15 @@ err:		if (slist) free(slist);
 		}
 		if (flags & SKIPGET) goto skip_get;
 		unlinkGfile(s);
-		popened = openOutput(encoding, s->gfile, &out);
-		if (!out) {
-			fprintf(stderr, "Can't open %s for writing\n",
-			    s->gfile);
-			unlock(s, 'p');
-			unlock(s, 'z');
-			goto err;
+		if (!S_ISLNK(d->mode))  {
+			popened = openOutput(encoding, s->gfile, &out);
+			if (!out) {
+				fprintf(stderr, "Can't open %s for writing\n",
+				    s->gfile);
+				unlock(s, 'p');
+				unlock(s, 'z');
+				goto err;
+			}
 		}
 	} else if (flags&SKIPGET) {
 		goto skip_get;
@@ -4218,9 +4243,13 @@ err:		if (slist) free(slist);
 			goto err;
 		}
 		unlinkGfile(s);
-		popened = openOutput(encoding, s->gfile, &out);
+		if (!S_ISLNK(d->mode))  {
+			popened = openOutput(encoding, s->gfile, &out);
+		}
 	} else {
-		popened = openOutput(encoding, printOut, &out);
+		if (!S_ISLNK(d->mode))  {
+			popened = openOutput(encoding, printOut, &out);
+		}
 	}
 	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
 	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst && !i2) {
@@ -4232,6 +4261,7 @@ err:		if (slist) free(slist);
 	}
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & MODNAME) base = basenm(s->gfile);
+	if (S_ISLNK(d->mode))  goto skip_data;
 	seekto(s, s->data);
 	sum = 0;
 	while (next(buf, s)) {
@@ -4302,6 +4332,12 @@ err:		if (slist) free(slist);
 		unless (streq("-", printOut)) fclose(out);
 	} else {
 		fclose(out);
+	}
+skip_data:
+	if (S_ISLNK(d->mode)) {
+		if (symlink(d->glink, s->gfile) == -1) {
+			perror(s->gfile);
+		}
 	}
 	if (flags&EDIT) {
 		if (d->mode) {
@@ -4628,6 +4664,18 @@ badchars(sccs *s)
 }
 #endif	/* !USE_STDIO */
 
+private int
+sameMode(delta *a, delta *b)
+{
+	assert(a); assert(b);
+	if (a == b) return 1;
+	if (a->mode != b->mode) return 0;
+	if (a->glink == b->glink) return 1;
+	if ((a->glink == 0) || (b->glink == 0)) return 0; 
+	return (streq(a->glink, b->glink));
+	
+}
+
 /*
  * The table is all here in order, just print it.
  * New in Feb, '99: remove duplicates of metadata.
@@ -4755,8 +4803,14 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputsum(s, "\n", out);
 		}
 		if (d->flags & D_MODE) {
-		    	unless (d->parent && (d->parent->mode == d->mode)) {
-				sprintf(buf, "\001cO%o\n", d->mode);
+		    	unless (d->parent && sameMode(d->parent, d)) {
+				if (d->glink) {
+					assert(S_ISLNK(d->mode));
+					sprintf(buf,
+					    "\001cO%o %s\n", d->mode, d->glink);
+				} else {
+					sprintf(buf, "\001cO%o\n", d->mode);
+				}
 				fputsum(s, buf, out);
 			}
 		}
@@ -5330,6 +5384,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 		unless (d->flags & D_MODE) {
 			if (s->state & GFILE) {
 				d->mode = s->mode;
+				d->glink = s->glink;
 				d->flags |= D_MODE;
 			} else {
 				modeArg(d, "0664");
@@ -5414,7 +5469,13 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	n = sccs_dInit(n, 'D', s, nodefault);
 	unless (n->flags & D_MODE) {
 		if (s->state & GFILE) {
-			n->mode = s->mode;
+			if (S_ISLNK(s->mode)) {
+				n->mode = S_IFLNK;
+				n->glink = s->glink;
+				s->glink = 0;
+			} else	{
+				n->mode = s->mode;
+			}
 			n->flags |= D_MODE;
 		}
 	}
@@ -5477,6 +5538,9 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	buf[0] = 0;
 	fputsum(s, "\001I 1\n", sfile);
 	s->dsum = 0;
+	if ((S_ISLNK(s->mode)) || (S_ISDIR(s->mode))) {
+			goto skip_data;
+	}
 	if (!(flags & PATCH) && (s->encoding > E_ASCII)) {
 		/* XXX - this is incorrect, it needs to do it depending on
 		 * what the encoding is.
@@ -5504,6 +5568,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			s->dsum += fputsum(s, "\n", sfile);
 		}
 	}
+skip_data:
 	fputsum(s, "\001E 1\n", sfile);
 	end(s, n, sfile, flags, added, 0, 0);
 	if (s->state & BITKEEPER) {
@@ -5881,7 +5946,13 @@ modeArg(delta *d, char *arg)
 
 	assert(d);
 	for (m = 0; isdigit(*arg); m <<= 3, m |= (*arg - '0'), arg++);
-	if (d->mode = m) d->flags |= D_MODE;
+	if (d->mode = m) {
+		d->flags |= D_MODE;
+		if (S_ISLNK(d->mode)) {	
+			d->glink = strnonldup(++arg);
+			assert(d->glink[0]);
+		}
+	}
 	return (d);
 }
 
@@ -6661,6 +6732,7 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	s->dsum = 0;
 	assert(s->state & SOPEN);
 	state = allocstate(0, 0, s->nextserial);
+	if (S_ISLNK(n->mode)) goto skip_diff;
 	while (fnext(buf2, diffs)) {
 		int	where;
 		char	what;
@@ -6737,6 +6809,7 @@ newcmd:
 		}
 		ctrl("\001E ", n->serial);
 	}
+skip_diff:
 	while (!eof(s)) {
 		nextline(unchanged);
 	}
@@ -7426,7 +7499,7 @@ out:
 	if ((flags & NEWFILE) || (!HAS_SFILE(s) && HAS_GFILE(s))) {
 		return (checkin(s, flags, prefilled, init != 0, diffs));
 	}
-
+	
 	if (!HAS_PFILE(s) && HAS_SFILE(s) && HAS_GFILE(s) && IS_WRITABLE(s)) {
 		fprintf(stderr,
 		    "delta: %s writable but not checked out?\n", s->gfile);
@@ -7467,9 +7540,20 @@ out:
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
 		OUT;
 	}
+#ifdef LATER
+	if (S_ISLNK(s->mode)) {
+		fprintf(stderr,
+		    "delta: please use admin to modify symlink %s\n", s->gfile);
+		OUT;
+	}
+#endif
 	if (pf.mRev) flags |= FORCE;
 	debug((stderr, "delta found rev\n"));
-	unless (diffs) {
+	if (diffs) {
+		debug((stderr, "delta using diffs passed in\n"));
+	} else if (S_ISLNK(s->mode)) {
+		debug((stderr, "sym link, skipping diff\n"));
+	} else {
 		switch (diff_gfile(s, &pf, tmpfile)) {
 		    case 1:		/* no diffs */
 						    /* CSTYLED */
@@ -7488,8 +7572,6 @@ out:
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;
 		}
-	} else {
-		debug((stderr, "delta using diffs passed in\n"));
 	}
 	if (flags & PRINT) {
 		fprintf(stdout, "==== Changes to %s ====\n", s->gfile);
@@ -7537,6 +7619,15 @@ out:
 	}
 	if (error) OUT;
 	n = sccs_dInit(n, 'D', s, init != 0);
+	if (S_ISLNK(s->mode)) {
+		/* auto update the mode iff is a sym-link */
+		if (s->state & GFILE) {
+			n->mode = S_IFLNK;
+			n->glink = s->glink;
+			s->glink = 0;
+			n->flags |= D_MODE;
+		}
+	}
 	if (!n->rev) {
 		if (pf.sccsrev[0]) {
 			n->rev = pf.sccsrev;
