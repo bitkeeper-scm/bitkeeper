@@ -489,7 +489,7 @@ out:		if (commentFile) unlink(commentFile);
 		printf(
 "============================================================================\n"
 "Warning: Package name is Null or Blank. Please add an entry to the \n"
-"\"Description:\" field in the \"BitKeeper/config\" file\n"
+"\"Description:\" field in the \"BitKeeper/etc/config\" file\n"
 "The entry should be a short statement describing the nature of this package\n"
 "============================================================================\n"
 );
