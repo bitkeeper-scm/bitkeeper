@@ -39,8 +39,9 @@ bkd_install_service(bkdopts *opts)
 	SC_HANDLE   schService;
 	SC_HANDLE   schSCManager;
 
-	char path[1024], here[1024];
-	char *start_dir, cmd[2048];
+	char	path[1024], here[1024];
+	char	*start_dir, cmd[2048];
+	int	try = 0;
 
 	if (GetModuleFileName(NULL, path, sizeof(path)) == 0) {
 		fprintf(stderr, "Unable to install %s - %s\n",
@@ -68,7 +69,7 @@ bkd_install_service(bkdopts *opts)
 			CloseServiceHandle(schService);
 			bkd_remove_service(0);
 		}
-        	schService = CreateService(schSCManager, SERVICENAME,
+retry:        	schService = CreateService(schSCManager, SERVICENAME,
             			SERVICEDISPLAYNAME, SERVICE_ALL_ACCESS,
             			SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START,
             			SERVICE_ERROR_NORMAL, cmd, NULL, NULL,
@@ -100,8 +101,14 @@ bkd_install_service(bkdopts *opts)
 			CloseServiceHandle(schService);
 		}
 		else {
-			fprintf(stderr, "CreateService failed - %s\n",
-							getError(err, 256));
+			if (try++ < 3) {
+				usleep(0);
+				goto retry;
+			} else {
+				fprintf(stderr,
+				    "CreateService failed - %s\n",
+							    getError(err, 256));
+			}
 		}
         	CloseServiceHandle(schSCManager);
     	} else {
