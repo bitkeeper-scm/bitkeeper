@@ -847,6 +847,7 @@ char	**addLine(char **space, char *line);
 void	freeLines(char **space);
 int	removeLine(char **space, char *s);
 void	removeLineN(char **space, int rm);
+char	*joinLines(char *sep, char **space);
 int	check_gfile(sccs*, int);
 void	platformSpecificInit(char *);
 MDBM	*loadDB(char *file, int (*want)(char *), int style);

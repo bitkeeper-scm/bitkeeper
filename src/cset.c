@@ -557,10 +557,6 @@ retry:	sc = sccs_keyinit(lastkey, INIT_SAVMOD, 0, idDB);
 			}
 			goto retry;
 		}
-		if (!cs->makepatch && (cs->force < 2)) {
-			fprintf(stderr,
-			    "cset: missing id %s, sfile removed?\n", key);
-		}
 		free(lastkey);
 		lastkey = 0;
 		return (cs->force ? 0 : -1);

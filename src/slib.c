@@ -416,6 +416,43 @@ removeLineN(char **space, int rm)
 }
 
 /*
+ * Like perl's join(),
+ * use it for making arbitrary length strings.
+ */
+char	*
+joinLines(char *sep, char **space)
+{
+	int	i, slen, len = 0;
+	char	*buf, *p;
+
+	unless (space && space[1]) return (0);
+	slen = sep ? strlen(sep) : 0;
+	EACH(space) {
+		len += strlen(space[i]);
+		len += slen;
+	}
+	len++;
+	buf = malloc(len);
+	p = buf;
+	EACH(space) {
+		strcpy(p, space[i]);
+		p += strlen(space[i]);
+		if (sep) {
+			strcpy(p, sep);
+			p += slen;
+		}
+	}
+	/*
+	 * No trailing sep.
+	 */
+	if (sep) {
+		p -= slen;
+		*p = 0;
+	}
+	return (buf);
+}
+
+/*
  * Compare up to and including the newline.  Both have to be on \n to match.
  */
 private int

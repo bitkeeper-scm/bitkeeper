@@ -35,30 +35,30 @@ cset_inex(int flags, char *op, char *revs)
 	char	*revarg;
 	char	buf[MAXKEY];
 	char	file[MAXPATH];
-	char	revbuf[MAXPATH];
+	char	*revbuf, **rlist = 0;
 
 	av[i = 0] = "bk";
 	av[++i] = "cset";
-	revarg = malloc(strlen(revs) + 3);
-	sprintf(revarg, "-r%s", revs);
+	revarg = aprintf("-r%s", revs);
 	av[++i] = revarg;
 	av[++i] = 0;
 	pid = spawnvp_rPipe(av, &fd, 0);
-	free(revarg);
 	if (pid == -1) {
 		perror("spawnvp_rPipe");
+		free(revarg);
 		return (1);
 	}
 	unless (f = fdopen(fd, "r")) {
 		perror("fdopen");
 		kill(pid, SIGKILL);
+		free(revarg);
 		return (1);
 	}
 
-	d = getComments(op, revs);
+	d = getComments(op, revarg);
+	free(revarg);
 
 	file[0] = 0;
-	revbuf[0] = 0;
 	while (fgets(buf, sizeof(buf), f)) {
 #ifdef OLD_LICENSE
 		if (checkLog(0, 1)) {
@@ -75,13 +75,11 @@ cset_inex(int flags, char *op, char *revs)
 		*t = 0;
 		if (file[0]) {
 			if (streq(file, buf)) {	/* add this rev */
-				if (revbuf[0]) {
-					strcat(revbuf, ",");
-					strcat(revbuf, &t[1]);
-				} else {
-					strcpy(revbuf, &t[1]);
-				}
+				rlist = addLine(rlist, strdup(&t[1]));
 			} else {		/* flush file, start again */
+				revbuf = joinLines(",", rlist);
+				freeLines(rlist);
+				rlist = 0;
 				if (doit(flags, file, op, revbuf, d)) {
 					kill(pid, SIGKILL);
 					wait(0);
@@ -92,26 +90,33 @@ cset_inex(int flags, char *op, char *revs)
 					 * in a normal tree.
 					 */
 					unedit();
+					free(revbuf);
 					return (undoit(m));
 				}
+				free(revbuf);
 				mdbm_store_str(m, file, "", 0);
 				strcpy(file, buf);
-				strcpy(revbuf, &t[1]);
+				rlist = addLine(rlist, strdup(&t[1]));
 			}
 		} else {
 			strcpy(file, buf);
-			strcpy(revbuf, &t[1]);
+			rlist = addLine(rlist, strdup(&t[1]));
 		}
 	}
 	if (file[0]) {
+		revbuf = joinLines(",", rlist);
+		freeLines(rlist);
+		rlist = 0;
 		if (doit(flags, file, op, revbuf, d)) {
 			kill(pid, SIGKILL);
 			wait(0);
 			clean(file);
 			unedit();
+			free(revbuf);
 			return (undoit(m));
 		}
 		mdbm_store_str(m, file, "", 0);
+		free(revbuf);
 	}
 	wait(0);
 	mdbm_close(m);
@@ -152,7 +157,9 @@ getComments(char *op, char *revs)
 	FILE	*f;
 	char	*av[20];
 	delta	*d;
-	char	buf[MAXLINE];
+	char	buf[MAXKEY];
+
+	assert(strneq("-r", revs, 2));
 
 	/*
 	 * First get the Cset key.
@@ -161,8 +168,7 @@ getComments(char *op, char *revs)
 	av[++i] = "prs";
 	av[++i] = "-h";
 	av[++i] = "-d:SHORTKEY:\n";
-	sprintf(buf, "-r%s", revs);
-	av[++i] = buf;
+	av[++i] = revs;
 	av[++i] = CHANGESET;
 	av[++i] = 0;
 	pid = spawnvp_rPipe(av, &i, 0);
@@ -187,62 +193,24 @@ getComments(char *op, char *revs)
 	}
 	fclose(f);
 	wait(0);
-
-#if 0
-	/*
-	 * Now get the cset comments
-	 *
-	 * Currently commented out because the right thing to do is to have
-	 * sccstool look this stuff up.
-	 */
-	av[i = 0] = "bk";
-	av[++i] = "prs";
-	av[++i] = "-h";
-	av[++i] = "-d$each(:C:){:C:\n}";
-	sprintf(buf, "-r%s", revs);
-	av[++i] = buf;
-	av[++i] = CHANGESET;
-	av[++i] = 0;
-	pid = spawnvp_rPipe(av, &i);
-	if (pid == -1) {
-		perror("spawnvp_rPipe");
-		return (0);
-	}
-	unless (f = fdopen(i, "r")) {
-		perror("fdopen");
-		kill(pid, SIGKILL);
-		return (0);
-	}
-	while (fgets(buf, sizeof(buf), f)) {
-		chop(buf);
-		d->comments = addLine(d->comments, strdup(buf));
-	}
-	fclose(f);
-	wait(0);
-#endif
-
 	return (d);
 }
 
 private int
 commit(int quiet, delta *d)
 {
-	int	i, j;
+	int	i;
 	char	*comment = 0;
-	char	*cmds[10];
+	char	*cmds[20];
+	char	*tmp = bktmpfile();
+	FILE	*f = fopen(tmp, "w");
 
-	j = 0;
 	EACH(d->comments) {
-		j += strlen(d->comments[i]) + 1;
+		fputs(d->comments[i], f);
+		fputc('\n', f);
 	}
-	assert(j);
-	j += 5;
-	comment = malloc(j);
-	strcpy(comment, "-y");
-	EACH(d->comments) {
-		strcat(comment, d->comments[i]);
-		strcat(comment, "\n");
-	}
+	fclose(f);
+	comment = aprintf("-Y%s", tmp);
 	sccs_freetree(d);
 	cmds[i=0] = "bk";
 	cmds[++i] = "commit";
@@ -253,10 +221,12 @@ commit(int quiet, delta *d)
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	if (!WIFEXITED(i) || WEXITSTATUS(i)) {
 		free(comment);
-		fprintf(stderr, "Commit says %d\n", i);
+		unlink(tmp);
+		fprintf(stderr, "cset: commit says %d\n", i);
 		return (1);
 	}
 	free(comment);
+	unlink(tmp);
 	return (0);
 }
 
@@ -328,19 +298,19 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 	sfile = name2sccs(file);
 	assert(sfile);
 	unless (s = sccs_init(sfile, 0, 0)) {
-		fprintf(stderr, "Could not init %s\n", sfile);
+		fprintf(stderr, "cset: could not init %s\n", sfile);
 		free(sfile);
 		return (1);
 	}
 	free(sfile);
 	unless (HASGRAPH(s)) {
-		fprintf(stderr, "No graph in %s?\n", s->gfile);
+		fprintf(stderr, "cset: no graph in %s?\n", s->gfile);
 		sccs_free(s);
 		return (1);
 	}
 	unless (sccs_top(s)->flags & D_CSET) {
 		fprintf(stderr,
-		    "%s has uncommitted deltas, aborting.\n", s->gfile);
+		    "cset: %s has uncommitted deltas, aborting.\n", s->gfile);
 		sccs_free(s);
 		return (1);
 	}
@@ -357,7 +327,7 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 		ret = sccs_get(s, 0, 0, 0, revs, flags, "-");
 	}
 	if (ret) {
-		fprintf(stderr, "Get -e of %s failed\n", s->gfile);
+		fprintf(stderr, "cset: get -e of %s failed\n", s->gfile);
 		sccs_free(s);
 		return (1);
 	}
@@ -371,7 +341,7 @@ doit(int flags, char *file, char *op, char *revs, delta *d)
 	}
 	sccs_restart(s);
 	if (sccs_delta(s, SILENT|DELTA_FORCE, copy, 0, 0, 0)) {
-		fprintf(stderr, "Could not delta %s\n", s->gfile);
+		fprintf(stderr, "cset: could not delta %s\n", s->gfile);
 		sccs_free(s);
 		return (1);
 	}
