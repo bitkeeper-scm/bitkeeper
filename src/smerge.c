@@ -531,35 +531,38 @@ find_conflicts(void)
 }
 
 /*
+ * Return true if a line appears anywhere inside a conflict.
+ */
+private int
+contains_line(conflict_t *c, ld_t *line)
+{
+	int	i, j;
+
+	for (i = 0; i < 3; i++) {
+		for (j = c->start[i]; j < c->end[i]; j++) {
+			if (sameline(&body[i].lines[j], line)) return (1);
+		}
+	}
+	return (0);
+}
+
+/*
  * Walk list of conflicts and merge any that are only
- * seperated by whitespace-only lines.
- * XXX this needs to be extended to any lines that match other sections
- * of the conflicts
+ * seperated by one line that exists in one of the conflict
+ * regions.
+ * XXX should handle N
  */
 private void
 merge_conflicts(conflict_t *head)
 {
 	while (head) {
-		if (head->next) {
-			int	i, j, k;
-			int	has_nonwhite = 0;
-
-			for (i = 0; i < 3; i++) {
-				for (j = head->end[i];
-				     j < head->next->start[i];
-				     ++j) {
-					ld_t	*ld = &body[i].lines[j];
-					for (k = 0; k < ld->len; k++) {
-						if (!isspace(ld->line[k])) {
-							has_nonwhite = 1;
-							goto out;
-						}
-					}
-				}
-			}
-		out:
-			unless (has_nonwhite) {
+		if (head->next && head->next->start[0] - head->end[0] == 1) {
+			ld_t	*line = &body[0].lines[head->end[0]];
+			
+			if (contains_line(head, line) ||
+			    contains_line(head->next, line)) {
 				conflict_t	*tmp;
+				int	i;
 
 				/* merge the two regions */
 				tmp = head->next;
