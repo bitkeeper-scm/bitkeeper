@@ -1104,11 +1104,96 @@ _sendbug() {
 # not contain a hash either.  For command help texts, the second arg
 # is $BIN.  The tags must be unique and nonempty, and may not contain
 # spaces or shell or regexp metachars.
-
+#
+# We also use this file for error messages so the format is that all
+# help tags are of the form help_whatever
 _gethelp() {
 	sed -n  -e '/^#'$1'$/,/^\$$/{' \
 		-e '/^#/d; /^\$/d; s#\#\##'"$2"'#; p' \
 		-e '}' ${BIN}bkhelp.txt
+}
+
+# List all help and command topics, it's the combo of what is in bin and
+# what is in the help file.  This is used for helptool.
+_topics() {
+	# TODO
+	#	chksum key2rev
+	# Needs update:
+	#	backups sccstool fm differences sccscat
+	# delete:
+	#	path save
+	cat << EOF
+overview
+basics
+admin
+backups
+changes
+changesets
+check
+ci
+citool
+clean
+clone
+co
+commit
+cset
+debug
+delta
+diffr
+diffs
+edit
+export
+fix
+fm
+get
+gui
+history
+import
+info
+merge
+mv
+pending
+pmerge
+prs
+pull
+push
+ranges
+rcs2sccs
+receive
+rechksum
+renames
+renumber
+resolve
+resync
+rm
+rmdel
+root
+sccscat
+sccslog
+sccsmv
+sccsrm
+sccstool
+send
+sendbug
+setup
+sfiles
+sfio
+sids
+status
+stripdel
+tags
+takepatch
+terms
+undo
+unedit
+unget
+unlock
+unwrap
+users
+version
+what
+wrap
+EOF
 }
 
 _commandHelp() {
@@ -1119,33 +1204,24 @@ _commandHelp() {
 
 	for i in $*
 	do	case $i in
-		citool|sccstool|vitool|fm|fm3)
+		sccstool|vitool|fm|fm3)
 			_gethelp help_gui $BIN | $PAGER
 			;;
-		# this is the list of commands which have better help in the
-		# helptext file than --help yields.
-		unlock|unedit|check|import|sdiffs|resync|pull|push|parent|\
-		clone|fix|info)
+
+		RCS|backups|basics|changes|changesets|check|clone|commit|\
+		debug|differences|diffr|export|fix|gui|history|import|\
+		info|merge|mv|overview|parent|path|pending|pull|push|\
+		ranges|receive|regression|renames|resync|rm|root|save|\
+		sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
+		tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
+		citool)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
 			if [ -x "${BIN}$i" -a -f "${BIN}$i" ]
-			then	echo -------------- $i help ---------------
-				${BIN}$i --help
-			else	case $i in
-				    overview|setup|basics|differences|\
-				    history|tags|changesets|resync|merge|\
-				    renames|gui|path|ranges|terms|regression|\
-				    backups|debug|sendbug|commit|pending|send|\
-				    resync|changes|undo|save|RCS|status|\
-				    sccsmv|mv|sccsrm|rm|version|root|export|\
-				    users|receive|wrap|unwrap|diffr)
-					_gethelp help_$i $BIN | $PAGER
-					;;
-				    *)
-					echo No help for "$i", check spelling.
-					;;
-				esac
+			then	echo "                -------------- $i help ---------------"
+				${BIN}$i --help 2>&1
+			else	echo No help for "$i", check spelling.
 			fi
 		esac
 	done
@@ -1281,7 +1357,8 @@ case "$1" in
     setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
-    pull|push|parent|diffr|fix|info|vi|r2c|rev2cset)
+    pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
+    topics)
 	cmd=$1
     	shift
 	_$cmd "$@"

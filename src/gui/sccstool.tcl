@@ -114,7 +114,7 @@ proc addline {x y xspace ht l} \
 # All nodes use up the same amount of space, $w.
 proc line {s w ht} \
 {
-	global	bfont wid revX revY arrow where
+	global	bfont wid revX revY arrow where yspace
 
 	# space for node and arrow
 	set xspace [expr $w + 12]
@@ -154,8 +154,6 @@ proc line {s w ht} \
 	set x1 $px
 	set y 0
 	while {1 == 1} {
-		set yspace 4
-
 		# Try below.
 		if {"$prev" != "above"} {
 			set y1 [expr $py + $y + $yspace]
@@ -592,14 +590,16 @@ proc PaneStop {} \
 proc widgets {} \
 {
 	global	font bfont arrow background cmd_text swid diffOpts getOpts
-	global	lineOpts dspec dspecnonl wish bithelp
+	global	lineOpts dspec dspecnonl wish bithelp yspace
 
 	set dspec \
-"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(:C:){\t(:C:)}\n"
+"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}  :DPN:\n\$each(:C:){\t(:C:)}\n"
 	set dspecnonl \
-"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}\$if(:PN:){  :PN:}\n\$each(:C:){\t(:C:)}"
+"-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}  :DPN:\n\$each(:C:){\t(:C:)}"
 	set diffOpts "-u"
-	set getOpts "-m"
+	set getOpts "-um"
+	set lineOpts "-u"
+	set yspace 20
 	set cmd_text ""
 	set swid 12
 	set font -adobe-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*
@@ -609,7 +609,6 @@ proc widgets {} \
 	set arrow darkblue
 	set background #9fb6b8
 	set geometry ""
-	set lineOpts ""
 	if {[file readable ~/.sccstoolrc]} {
 		source ~/.sccstoolrc
 	}
@@ -789,6 +788,8 @@ proc init {} \
 	global bin bk_prs bk_cset bk_get bk_renumber bk_sfiles
 	global bk_lines
 
+	platformPath
+	platformInit
 	set bk_prs [file join $bin prs]
 	set bk_cset [file join $bin cset]
 	set bk_get [file join $bin get]
@@ -797,8 +798,6 @@ proc init {} \
 	set bk_lines [file join $bin lines]
 }
 
-platformPath
-platformInit
 init
 widgets
 if {"$argv" != ""} {
