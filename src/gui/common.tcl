@@ -22,7 +22,7 @@ proc cd2root { {startpath {}} } \
 
 proc displayMessage {msg {exit {}}} \
 {
-	global tcl_platform
+	global tcl_platform env
 
 	if {$exit != ""} {
 		set title "Error"
@@ -31,7 +31,11 @@ proc displayMessage {msg {exit {}}} \
 		set title "Info"
 		set icon "info"
 	}
-	tk_messageBox -title $title -type ok -icon $icon -message $msg
+	if {[info exists env(BK_GUITEST)]} {
+		puts $msg
+	} else {
+		tk_messageBox -title $title -type ok -icon $icon -message $msg
+	}
 	if {$exit == 1} {
 		exit 1
 	} else {
