@@ -8,7 +8,7 @@ RANLIB=ranlib
 	bk get -q $@
 
 OBJS = aes.o ampi.o base64.o bits.o crypt.o ctr.o hash.o hmac.o md5.o \
-	mem.o mpi.o packet.o prime.o rsa.o rsa_sys.o sprng.o yarrow.o \
+	mem.o mpi.o packet.o prime.o rsa.o rsa_sys.o sha1.o sprng.o yarrow.o \
 	demos/test.o
 
 libtomcrypt.a: $(OBJS)
@@ -40,5 +40,6 @@ prime.o:	prime.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 rsa.o:		rsa.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 rsa_sys.o:	rsa_sys.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h \
   		mpi-types.h
+sha1.o:		sha1.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 sprng.o:	sprng.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
 yarrow.o:	yarrow.c mycrypt.h mycrypt_cfg.h mpi.h mpi-config.h mpi-types.h
