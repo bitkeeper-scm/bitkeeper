@@ -7,7 +7,7 @@ int
 lconfig_main(int ac, char **av)
 {
 	char	from[MAXPATH], subject[MAXLINE], config_log[MAXPATH];
-	char	url[] = BK_WEBMAIL_URL;
+	char	url[] = BK_CONFIG_URL;
 	char	*to = "config@openlogging.org";
 	char	*p;
 	FILE	*f;
@@ -77,7 +77,7 @@ lconfig_main(int ac, char **av)
 	if (debug) r->trace = 1;
 	assert(r);
 	loadNetLib();
-	http_connect(r, WEB_MAIL_CGI);
+	http_connect(r, BK_CONFIG_CGI);
 	r->isSocket = 1;
 	m = mopen(config_log, "r");
 	assert(m);

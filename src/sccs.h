@@ -308,6 +308,8 @@
 #define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	WEB_MAIL_CGI	"web_mail"
+#define	BK_CONFIG_URL	"http://www.bitkeeper.com:80"
+#define	BK_CONFIG_CGI	"bk_config"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKTMP		"BitKeeper/tmp"
 #define	BKROOT		"BitKeeper/etc"
