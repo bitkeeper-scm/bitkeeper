@@ -209,7 +209,6 @@ private void
 send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 {
 	char	cmd[500], buf[MAXPATH];
-	MMAP    *m;
 	FILE 	*f;
 	int	gzip;
 
@@ -234,9 +233,7 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 	sprintf(cmd, "bk _probekey  >> %s", buf);
 	system(cmd);
 
-	m = mopen(buf, "r");
-	send_msg(r, m->where,  msize(m), 0, opts.gzip);
-	mclose(m);
+	send_file(r, buf, 0, opts.gzip);	
 	unlink(buf);
 }
 
@@ -392,7 +389,6 @@ private int
 send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 {
 	char	msgfile[MAXPATH];
-	MMAP    *m;
 	FILE	*f;
 	int	rc;
 	int	gzip;
@@ -415,9 +411,8 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 
 	fputs(msg, f);
 	fclose(f);
-	m = mopen(msgfile, "r");
-	rc = send_msg(r, m->where,  msize(m), 0, opts.gzip);
-	mclose(m);
+
+	rc = send_file(r, msgfile, 0, opts.gzip);	
 	unlink(msgfile);
 	unlink(rev_list);
 	return (0);
@@ -428,7 +423,6 @@ private int
 send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 {
 	char	msgfile[MAXPATH];
-	MMAP    *m;
 	FILE	*f;
 	int	rc;
 	u32	extra = 0;
@@ -460,12 +454,12 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	 * We have to comoute the ptach size before we sent
 	 * 6 is the size of "@END@" string
 	 */
-	if (r->httpd) extra = patch_size(opts, gzip, rev_list) + 6;
+	if (r->httpd) {
+		extra = patch_size(opts, gzip, rev_list) + 6;
+		assert(extra >= 6);
+	}
 
-	m = mopen(msgfile, "r");
-	assert(extra >= 0);
-	rc = send_msg(r, m->where,  msize(m), extra, opts.gzip);
-	mclose(m);
+	rc = send_file(r, msgfile, extra, opts.gzip);	
 
 	genpatch(opts, gzip, r->wfd, rev_list);
 	write_blk(r, "@END@\n", 6); /* important for win32 socket helper */

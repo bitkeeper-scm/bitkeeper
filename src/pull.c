@@ -92,7 +92,6 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	buf[MAXPATH];
 	FILE    *f;
-	MMAP    *m;
 	int	rc;
 
 	bktemp(buf);
@@ -110,9 +109,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	fputs("\n", f);
 	fclose(f);
 
-	m = mopen(buf, "r");
-	rc = send_msg(r, m->where,  msize(m), 0, opts.gzip);
-	mclose(m);
+	rc = send_file(r, buf, 0, opts.gzip);	
 	unlink(buf);
 	return (rc);
 }
@@ -193,9 +190,8 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	    default:	unlink(msg_file);
 			return (-1);
 	}
-	m = mopen(msg_file, "r");
-	rc |= send_msg(r, m->where,  msize(m), 0, opts.gzip);
-	mclose(m);
+
+	rc = send_file(r, msg_file, 0, opts.gzip);	
 	unlink(msg_file);
 	return (rc);
 }

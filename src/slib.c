@@ -10578,7 +10578,11 @@ int
 isValidUser(char *u)
 {
 	if (!u || !(*u)) return 0;
+#ifdef WIN32
+	if (!stricmp(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
+#else
 	if (streq(u, ROOT_USER) || streq(u, UNKNOWN_USER)) return 0;
+#endif
 	/*
 	 * XXX TODO:
 	 * 	a) should we disallow "Guest/guest" as user name ??
