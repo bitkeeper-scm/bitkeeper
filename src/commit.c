@@ -70,6 +70,15 @@ commit_main(int ac, char **av)
 				break;
 		}
 	}
+	/* XXX: stub out lod operations */
+	if (opts.lod) {
+		fprintf(stderr,
+		    "commit: commit -L currently non-operational.\n"
+		    "        To commit to a new lod, first run: bk createlod\n"
+		    "        Then commit as you normally would, without -L\n"
+		    "        See: bk createlod --help\n");
+		return(1);
+	}
 	if (sccs_cd2root(0, 0) == -1) {
 		printf("Can not find root directory\n");
 		exit(1);

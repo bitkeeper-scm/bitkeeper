@@ -150,6 +150,7 @@ int
 set_meta(sccs *s, int stripBranches, int *count)
 {
 	int	n, left;
+	int	redo_merge = 0;
 	delta	 *e;
 
 	for (n = left = 0, e = s->table; e; e = e->next) {
@@ -169,10 +170,26 @@ set_meta(sccs *s, int stripBranches, int *count)
 		if (e->flags & D_SET) {
 			n++;
 			e->flags |= D_GONE;
-			if (e->merge) sfind(s, e->merge)->flags &= ~D_MERGED;
+			if (e->merge) {
+				sfind(s, e->merge)->flags &= ~D_MERGED;
+				redo_merge = 1;
+			}
 			continue;
 		}
 		left++;
+	}
+	/* Rebuild merge image:
+	 *   The D_MERGE tag means a delta is the parent of a merge
+	 *   relationship.  A delta can be a parent of more than one
+	 *   merge relationship.  Clearing D_MERGED clears it for all
+	 *   while all may not truly be cleared.  The following puts
+	 *   back MERGE pointers that are still present.
+	 */
+	if (redo_merge) {
+		for (e = s->table; e; e = e->next) {
+			if ((e->flags & D_GONE) || !e->merge)  continue;
+			sfind(s, e->merge)->flags |= D_MERGED;
+		}
 	}
 	*count = n;
 	return left;

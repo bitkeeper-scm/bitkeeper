@@ -43,7 +43,6 @@ typedef	struct cset {
 	int	force;		/* if set, then force past errors */
 	int	remark;		/* clear & redo all the ChangeSet marks */
 	int	dash;
-	int	newlod;
 	int	historic;	/* list the historic name if different */
 
 	/* numbers */
@@ -55,16 +54,13 @@ typedef	struct cset {
 	int	ndeltas;
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
-	/* hashes */
-	MDBM	*tot;
-	MDBM	*base;
 } cset_t;
 
-private	int	csetCreate(sccs *cset, int flags, char **syms, int newlod);
+private int	csetCreate(sccs *cset, int flags, char **syms);
 private	int	csetInit(sccs *cset, int flags, char *text);
 private	void	csetlist(cset_t *cs, sccs *cset);
 private	void	csetList(sccs *cset, char *rev, int ignoreDeleted);
-private	int	marklist(char *file, int newlod, MDBM *tot, MDBM *base);
+private	int	marklist(char *file);
 private	void	csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d);
 private	delta	*mkChangeSet(sccs *cset, FILE *diffs);
 private	char	*file2str(char *f);
@@ -75,9 +71,7 @@ private	void	doMarks(cset_t *cs, sccs *sc);
 private	void	doDiff(sccs *sc, char kind);
 private	void	sccs_patch(sccs *, cset_t *);
 private	void	cset_exit(int n);
-private void	mklod(sccs *s, delta *start, delta *stop);
 extern	void	explodeKey(char *key, char *parts[4]);
-
 private	char	csetFile[] = CHANGESET; /* for win32, need writable	*/
 				/* buffer for name convertion	*/
 
@@ -97,7 +91,6 @@ cset_main(int ac, char **av)
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
 	char	allRevs[6] = "1.0..";
-	int	newlod = 0;
 	RANGE_DECL;
 
 	platformSpecificInit(NULL);
@@ -109,7 +102,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (streq(av[0], "makepatch")) copts.makepatch++;
 
 	while (
-	    (c = getopt(ac, av, "c|Cd|Dfhi|l|Lm|M|pqr|R|sS;t;vy|Y|")) != -1) {
+	    (c = getopt(ac, av, "c|Cd|Dfhi|l|m|M|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
@@ -174,7 +167,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 			comments_save(cFile = file2str(optarg));
 			flags |= DELTA_DONTASK;
 			break;
-		    case 'L': newlod++; break; /* XXX: someday with sym */
 		    case 'S': syms = addLine(syms, strdup(optarg)); break;
 
 		    default:
@@ -286,7 +278,7 @@ next:		sccs_free(cset);
 	 * XXX - should allow them to pick and choose for multiple
 	 * changesets from one pending file.
 	 */
-	c = csetCreate(cset, flags, syms, newlod);
+	c = csetCreate(cset, flags, syms);
 	if (cFile) free(cFile);
 	purify_list();
 	return (c);
@@ -678,7 +670,7 @@ Please stand by.\n\n", stderr);
  * XXX: change from 0a0 format to I0 0 format
  */
 private int
-marklist(char *file, int newlod, MDBM *tot, MDBM *base)
+marklist(char *file)
 {
 	char	*t;
 	FILE	*list;
@@ -687,9 +679,6 @@ marklist(char *file, int newlod, MDBM *tot, MDBM *base)
 
 	bzero(&cs, sizeof(cs));
 	cs.mark++;
-	cs.newlod = newlod;
-	cs.tot = tot;
-	cs.base = base;
 
 	unless (list = fopen(file, "r")) {
 		perror(file);
@@ -960,77 +949,6 @@ doEndpoints(cset_t *cs, sccs *sc)
 }
 
 private void
-promote(sccs *s, delta *d, u16 lod, u16 level)
-{
-	char	newrev[MAXPATH];
-
-	sprintf(newrev, "%u.%u", lod, level);
-	if (d->rev) free(d->rev);
-	d->rev = strdup(newrev);
-
-	d->r[0] = lod;
-	d->r[1] = level;
-	d->r[2] = 0;
-	d->r[3] = 0;
-}
-
-private void
-mklod(sccs *s, delta *start, delta *stop)
-{
-	u16	lod;
-	u16	level;
-	delta	*t;
-
-	unless(lod = sccs_nextlod(s)) {
-		/* XXX: out of LODS?? */
-		fprintf(stderr, "cset: ran out of LODs\n");
-		cset_exit(1);
-	}
-
-	level = 0;
-	for (t = start; t; t = t->kid) {
-		level++;
-		promote(s, t, lod, level);
-		if (t == stop) break;
-	}
-}
-
-private void
-mkNewlod(cset_t *cs, sccs *s, delta *d)
-{
-	delta	*t;
-
-	if (cs->tot) {	/* promote to new lod if hasn't happened yet */
-		char	key[MAXPATH];
-		char	*base, *tot;
-
-		assert(cs->base);
-
-		/* XXX: had the key, lost the key, regen the key */
-		sccs_sdelta(s, sccs_ino(s), key);
-		base = mdbm_fetch_str(cs->base, key);
-		tot = mdbm_fetch_str(cs->tot, key);
-		unless (base && base[0] && tot && tot[0] && streq(base, tot))
-			return;
-	}
-
-	/* back down to root of cset */
-	for (t = d; t; t = t->parent) {
-		if (!t->parent || t->parent->flags & D_CSET) break;
-	}
-
-	assert(t);
-
-	/* special exceptions: do not promote 1.0 or x.1 */
-	if ((t->r[0] == 1 && !t->r[1]) || (t->r[1] == 1 && !t->r[2])) {
-		return;
-	}
-	
-	/* XXX: what does it mean to have merges on these deltas?? */
-	mklod(s, t, d);
-}
-
-private void
 doMarks(cset_t *cs, sccs *s)
 {
 	delta	*d;
@@ -1051,7 +969,6 @@ doMarks(cset_t *cs, sccs *s)
 					    "Mark %s%c%s\n", s->gfile, BK_FS, d->rev);
 				}
 				d->flags |= D_CSET;
-				if (cs->newlod) mkNewlod(cs, s, d);
 				cs->ndeltas++;
 				did++;
 			}
@@ -1216,21 +1133,13 @@ mkChangeSet(sccs *cset, FILE *diffs)
 #endif
 	return (d);
 }
-
-/* There are two ways a new LOD can be created:
- * + The user asks for this changeset to be the first on a new lod
- * + The current workspace is based on a specific changeset as opposed
- *   to a LOD: make new changeset start new LOD.
- */
 private	int
-csetCreate(sccs *cset, int flags, char **syms, int newlod)
+csetCreate(sccs *cset, int flags, char **syms)
 {
 	delta	*d;
 	int	error = 0;
 	MMAP	*diffs;
 	FILE	*fdiffs;
-	MDBM	*totdb = 0;
-	MDBM	*basedb = 0;
 	char	filename[MAXPATH];
 
 	gettemp(filename, "cdif");
@@ -1252,15 +1161,6 @@ csetCreate(sccs *cset, int flags, char **syms, int newlod)
 
 	d->flags |= D_CSET;	/* XXX: longrun, don't tag cset file */
 
-	if (newlod) {
-		delta	*t;
-		unless(t = findrev(cset, 0)) {
-			fprintf(stderr, "find tot on cset before new cset\n");
-			error = -1;
-			goto out;
-		}
-		unless(streq(t->rev, "1.0")) mklod(cset, d, d);
-	}
 	/*
 	 * Make /dev/tty where we get input.
 	 */
@@ -1275,71 +1175,12 @@ csetCreate(sccs *cset, int flags, char **syms, int newlod)
 		goto out;
 	}
 
-	/* XXX: can do a re-init?  There is a new delta */
-	sccs_free(cset);
-	unless (cset = sccs_init(csetFile, flags & SILENT, 0)) {
-		perror("init");
-		error = -1;
-		goto out;
-	}
-
-	/* XXX: check 'd' for mem leak?  It should be free as part of
-	 * sccs_free(cset)
-	 */
-	unless(d = findrev(cset, 0)) {
-		perror("find tot");
-		error = -1;
-		goto out;
-	}
-
-	newlod = 0;
-	if (d->r[0] > 1) {	/* lod process only if not base lod */
-		newlod = 1;
-		if (d->r[1] != 1) {	/* not new lod, but maybe for some */
-			delta	*lodone;
-
-			for (lodone = d; lodone; lodone = lodone->parent) {
-				if (lodone->r[1] == 1) break;
-			}
-			unless (lodone) {
-				fprintf(stderr, "cset: no .1 on LOD %u",
-					d->r[0]);
-				error = -1;
-				goto out;
-			}
-			unless (lodone->parent) {
-				fprintf(stderr, "cset: no .0 on LOD %u",
-					d->r[0]);
-				error = -1;
-				goto out;
-			}
-
-			assert(d->parent->rev);
-			if (csetIds(cset, d->parent->rev)) {
-				error = -1;
-				goto out;
-			}
-			totdb = cset->mdbm;
-			cset->mdbm = 0;
-
-			assert(lodone->parent->rev);
-			if (csetIds(cset, lodone->parent->rev)) {
-				error = -1;
-				goto out;
-			}
-			basedb = cset->mdbm;
-			cset->mdbm = 0;
-		}
-	}
-
-	if (marklist(filename, newlod, totdb, basedb)) {
+	if (marklist(filename)) {
 		error = -1;
 		goto out;
 	}
 
 out:	sccs_free(cset);
-	if (totdb) mdbm_close(totdb);
-	if (basedb) mdbm_close(basedb);
 	unlink(filename);
 	comments_done();
 	return (error);

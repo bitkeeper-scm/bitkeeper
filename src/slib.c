@@ -73,6 +73,7 @@ private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
 private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
+private int	checkGone(sccs *s, int bit, char *who);
 
 
 private unsigned int u_mask;
@@ -6426,6 +6427,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	char	buf[MAXLINE];
 	char	*p;
 	int	bits = 0;
+	int	gonechkd = 0;
 
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
@@ -6450,9 +6452,9 @@ delta_table(sccs *s, FILE *out, int willfix)
 			 * This check is expensive, but D_GONE nodes should
 			 * be extremely rare.
 			 */
-			delta *k = d;
-			while(k = sccs_kid(s, k)) {
-				assert(k->flags & D_GONE);
+			unless (!gonechkd) {
+				assert(!checkGone(s, D_GONE, "delta_table"));
+				gonechkd = 1;
 			}
 
 			continue;
@@ -8067,10 +8069,23 @@ checkdups(sccs *s)
 }
 
 private inline int
-isleaf(register delta *d)
+isleaf(register sccs *s, register delta *d)
 {
-	if (d->flags & D_MERGED) return (0);
+	/* XXX: merge must be in same LOD to not count as leaf */
 	if (d->type != 'D') return (0);
+	if (d->flags & D_MERGED) {
+		delta	*t;
+
+		/* exit if merge on same lod or reached 'd' */
+		for (t = s->table; t && t != d; t = t->next) {
+			if (t->merge == d->serial && t->r[0] == d->r[0]) {
+				break;
+			}
+		}
+		assert(t);
+		/* if found a MERGE in this lod, so return not leaf  */
+		if (d != t) return (0);
+	}
 	for (d = d->kid; d; d = d->siblings) {
 		if (d->flags & D_GONE) continue;
 		if (d->type != 'D') continue;
@@ -8084,9 +8099,9 @@ isleaf(register delta *d)
 }
 
 int
-sccs_isleaf(delta *d)
+sccs_isleaf(sccs *s, delta *d)
 {
-	return (isleaf(d));
+	return (isleaf(s, d));
 }
 
 /*
@@ -8114,7 +8129,7 @@ checkInvariants(sccs *s)
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
 		if (streq(d->rev, "1.0")) continue;
-		unless (isleaf(d)) continue;
+		unless (isleaf(s, d)) continue;
 		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
 		tips++;
 	}
@@ -8127,7 +8142,7 @@ checkInvariants(sccs *s)
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
 		if (streq(d->rev, "1.0")) continue;
-		unless (isleaf(d)) continue;
+		unless (isleaf(s, d)) continue;
 		unless (lodmap[d->r[0]] > 1) continue;
 		fprintf(stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev);
 	}
@@ -8138,9 +8153,12 @@ checkInvariants(sccs *s)
 /*
  * Given a graph with some deltas marked as gone (D_SET|D_GONE),
  * make sure that things will be OK with those deltas gone.
- * Checks are:
- *	. make sure each delta has no kids
- *	. make sure each delta is not included/excluded anywhere else
+ * This means for each delta that is not gone:
+ *	. make sure its parents (d->parent and d->merge) are not gone
+ *	. make sure each delta it includes/excludes is not gone
+ *
+ * Since we are single rooted, then means that getting rid of all
+ * the gone will leave us with a consistent tree.
  */
 private int
 checkGone(sccs *s, int bit, char *who)
@@ -8150,15 +8168,20 @@ checkGone(sccs *s, int bit, char *who)
 	int	i, error = 0;
 
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & bit) {
-			if (d->kid && !(d->kid->flags & bit)) {
-				error++;
-				fprintf(stderr,
-				"%s: revision %s not at tip of branch in %s.\n",
-				    who, d->rev, s->sfile);
-				s->state |= S_WARNED;
-			}
-			continue;
+		if (d->flags & bit) continue;
+		if (d->parent && (d->parent->flags & bit)) {
+			error++;
+			fprintf(stderr,
+			"%s: revision %s not at tip of branch in %s.\n",
+			    who, d->parent->rev, s->sfile);
+			s->state |= S_WARNED;
+		}
+		if (d->merge && slist[d->merge]) {
+			error++;
+			fprintf(stderr,
+			"%s: revision %s not at tip of branch in %s.\n",
+			    who, sfind(s, d->merge)->rev, s->sfile);
+			s->state |= S_WARNED;
 		}
 		EACH(d->include) {
 			if (slist[d->include[i]]) {
@@ -12133,7 +12156,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "TIP")) {
-		unless (morekids(d, 1) || (d->flags & D_MERGED)) {
+		unless (sccs_isleaf(s, d)) {
 			fs(d->rev);
 			return (strVal);
 		}
@@ -13134,7 +13157,7 @@ sccs_resolveFiles(sccs *s)
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue;
-		unless (isleaf(d)) continue;
+		unless (isleaf(s, d)) continue;
 		if (d->r[0] == defbranch) {
 			if (!a) {
 				a = d;

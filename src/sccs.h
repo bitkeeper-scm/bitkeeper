@@ -733,7 +733,7 @@ void	free_pfile(pfile *pf);
 int	sccs_read_pfile(char *who, sccs *s, pfile *pf);
 int	sccs_rewrite_pfile(sccs *s, pfile *pf);
 delta	*sccs_kid(sccs *s, delta *d);  /* In range.c */
-int	sccs_isleaf(delta *d);
+int	sccs_isleaf(sccs *s, delta *d);
 int	exists(char *file);
 int	emptyDir(char *dir);
 char	*dirname(char *path);
