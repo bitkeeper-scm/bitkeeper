@@ -492,6 +492,10 @@ platformInit()
 	char buf[MAXPATH];
 	int i = -1;
 
+#ifdef WIN32
+	setmode(1, _O_BINARY);
+	setmode(2, _O_BINARY);
+#endif
 	if ((editor = getenv("EDITOR")) == NULL) editor="vi";
 	if ((pager = getenv("PAGER")) == NULL) pager="more";
 

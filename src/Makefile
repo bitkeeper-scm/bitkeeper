@@ -11,7 +11,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
 	  isascii resyncwrap r2c rename setlog getlog setup commit status \
 	  bkusers gethelp logaddr sendconfig logchangeset version help \
-	  parent clone
+	  parent clone send
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset build gzip_uuwrap ungzip_uuwrap
@@ -337,6 +337,8 @@ parent: parent.o $(LIBS)
 	$(CC) $(CFLAGS) parent.o $(LINK) -o parent
 clone: clone.o $(LIBS)
 	$(CC) $(CFLAGS) clone.o $(LINK) -o clone
+send: send.o $(LIBS)
+	$(CC) $(CFLAGS) send.o $(LINK) -o send
 
 # Links.
 ci: delta
