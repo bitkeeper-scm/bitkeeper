@@ -43,7 +43,7 @@ proc main {} \
 
 	bind . <<WizCancel>> {
 		# This causes the main program to exit
-		set ::done 1
+		exit 1
 	}
 
 	bind . <<WizFinish>> {
@@ -53,8 +53,7 @@ proc main {} \
 		# "Done", we only need to exit
 		set finishLabel [lindex [. buttonconfigure finish -text] end]
 		if {$finishLabel == "Done"} {
-			set ::done 1
-			break
+			exit 0
 		}
 
 		# Finish  must really mean finish...
@@ -70,7 +69,7 @@ proc main {} \
 			    "The repository was successfully created."
 
 			if {$::wizData(closeOnCreate)} {
-				set ::done 1
+				exit 0
 			} else {
 				. buttonconfigure finish -text Done
 				. configure -state normal
@@ -100,9 +99,6 @@ proc main {} \
 			}
 		}
 	}
-
-	vwait ::done
-	exit
 }
 
 proc app_init {} \
@@ -1177,7 +1173,12 @@ proc popupMessage {args} \
 
 	# hopefully someday we'll turn the msgtool code into a library
 	# so we don't have to exec. For now, though, exec works just fine.
-	eval exec bk msgtool $option \$message
+	if {[info exists ::env(BK_TEST_HOME)]} {
+		# we are running in test mode; spew to stderr
+		puts stderr $message
+	} else {
+		eval exec bk msgtool $option \$message
+	}
 }
 
 # This not only sets the focus, but attempts to put the cursor in

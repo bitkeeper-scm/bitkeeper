@@ -16,6 +16,7 @@ GUIS	= revtool citool helptool difftool csettool fmtool fm3tool \
 	  msgtool renametool setuptool bugform supportform
 TCLWRAP	= ../tclwrap
 DOIT	= ../t/doit
+GUITEST = ../t/guitest.tcl
 BK	= $(REPO)/src/bk
 T	= $(REPO)/src/t
 COMMON	= ../port/$(SYS)_platform.tcl config.tcl common.tcl 
@@ -55,13 +56,12 @@ images: $(IMAGES)
 tcltk: FORCE
 	cd tcltk && $(MAKE)
 
-test: lib images $(GUIS) $(DOIT)
-	(@cd ../t && \
-	 ../bk get SCCS/g.* && \
-	 ./doit g.*)
+test: lib $(GUIS) $(DOIT) $(GUITEST) ../t/setup ../t/x.chk_env
+	@../bk get -S ../t/SCCS/s.g.* 
+	@(cd ../t && ./doit g.*)
 
 $(DOIT):
-	@cd ../t && $(MAKE) doit
+	@cd .. && $(MAKE) t/doit
 
 clean-here clobber-here: FORCE
 	-rm -f $(GUIS) TAGS
