@@ -37,7 +37,7 @@ static	char *prog;		/* av[0], sort of */
 static	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
 
 private	int oksccs(char *s, int flags, int complain);
-private void concat_path(char *buf, char *first, char *second);
+void concat_path(char *buf, char *first, char *second);
 
 
 /*
@@ -242,7 +242,7 @@ oksccs(char *sfile, int flags, int complain)
 }
 
 /* concatenate two paths "first" and "second", and put the result in "buf" */
-private void concat_path(char *buf, char *first, char *second)
+void concat_path(char *buf, char *first, char *second)
 {
 	strcpy(buf, first);
 	/*

@@ -205,6 +205,7 @@ extern	char *strdup(char *s);
 #define Z_LOCKED	0x02000000	/* file is locked */
 #define	RANGE2		0x04000000	/* second call for date|rev range */
 #define	BAD_DSUM	0x08000000	/* patch checksum mismatch */
+#define ISSHELL		0x10000000	/* this is a shell script */
 
 /*
  * Options to sccs_diffs()
@@ -233,6 +234,7 @@ extern	char *strdup(char *s);
 #define	X_BITKEEPER	0x00000001	/* BitKeeper file, not SCCS */
 #define	X_RCSEXPAND	0x00000002	/* RCS keywords */
 #define	X_YEAR4		0x00000004	/* 4 digit years */
+#define	X_ISSHELL	0x00000008	/* this is shell script */
 
 /*
  * Encoding flags.
