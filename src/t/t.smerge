@@ -64,7 +64,7 @@ cat > gca <<EOF
    left
    left
    gca8
-   left
+   left with a very very long line, I mean a line that is much much much longer that the standard 128 byte buffer that Wayne likes to use and makes Larry want to scream!
    gca10
    won't change
    won't change
@@ -107,7 +107,7 @@ cmp -s out - <<EOF
    left
    left
    gca8
-   left
+   left with a very very long line, I mean a line that is much much much longer that the standard 128 byte buffer that Wayne likes to use and makes Larry want to scream!
    gca10
 >>>>>>>
    won't change
@@ -118,7 +118,7 @@ echo OK
 echo $N Check gca smerge output .....................................$NL
 bk smerge -g 1.2 1.1 1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
-cmp -s out - <<EOF
+cat > out2 <<EOF
    won't change
    won't change
 <<<<<<< local gca 1.1 vs 1.2
@@ -156,13 +156,14 @@ cmp -s out - <<EOF
 +   left
     gca8
 -   gca9
-+   left
++   left with a very very long line, I mean a line that is much much much longer that the standard 128 byte buffer that Wayne likes to use and makes Larry want to scream!
     gca10
 >>>>>>>
    won't change
    won't change
 EOF
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+diff -u out out2 > DIFF.OUT
+if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK
 echo $N Check 2WAY smerge output ....................................$NL
 bk smerge -2 1.2 1.1 1.1.1.1 gca > out
@@ -190,7 +191,7 @@ cmp -s out - <<EOF
    left
    left
    gca8
-   left
+   left with a very very long line, I mean a line that is much much much longer that the standard 128 byte buffer that Wayne likes to use and makes Larry want to scream!
    gca10
 >>>>>>>
    won't change
@@ -224,7 +225,7 @@ cmp -s out - <<EOF
 +   left
 +   left
     gca8
-+   left
++   left with a very very long line, I mean a line that is much much much longer that the standard 128 byte buffer that Wayne likes to use and makes Larry want to scream!
     gca10
 >>>>>>>
    won't change
@@ -278,7 +279,7 @@ cat - > new <<EOF
 +    13	   left
      14	   gca8
 -    15	   gca9
-+    16	   left
++    16	   left with a very very long line, I mean a line that is much much much longer that the standard 128 byte buffer that Wayne likes to use and makes Larry want to scream!
      17	   gca10
 >>>>>>>
     28	   won't change
@@ -309,7 +310,7 @@ EOF
 bk delta $Q -ylocal2 gca || exit 1
 bk smerge 1.1.2.1 1.1 1.1.1.1 gca > out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-cmp -s out - <<EOF
+cat > out2 <<EOF
    won't change much
    won't change
    right1
@@ -321,12 +322,13 @@ cmp -s out - <<EOF
    left
    left
    gca8
-   left
+   left with a very very long line, I mean a line that is much much much longer that the standard 128 byte buffer that Wayne likes to use and makes Larry want to scream!
    gca10
    won't change
    won't change
 EOF
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+diff -u out out2 > DIFF.OUT
+if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK
 echo $N Verify that content merge was needed ........................$NL
 bk smerge -gA3 1.1.2.1 1.1 1.1.1.1 gca > out
@@ -354,7 +356,7 @@ cmp -s out - <<EOF
    left
    left
    gca8
-   left
+   left with a very very long line, I mean a line that is much much much longer that the standard 128 byte buffer that Wayne likes to use and makes Larry want to scream!
    gca10
    won't change
    won't change
