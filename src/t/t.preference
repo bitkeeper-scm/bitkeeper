@@ -21,6 +21,7 @@ if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 mkdir src
 cd src
@@ -29,6 +30,7 @@ echo bar > bar.c
 echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 echo OK
+
 echo $N checkout:GET w admin ........................................$NL
 bk edit $Q $HERE/project/BitKeeper/etc/config
 echo "checkout:GET" >> $HERE/project/BitKeeper/etc/config
@@ -42,6 +44,7 @@ if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w admin .......................................$NL
 bk unedit $HERE/project/BitKeeper/etc/config
 bk edit $Q $HERE/project/BitKeeper/etc/config
@@ -56,6 +59,7 @@ if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w delta .......................................$NL
 echo new >> foo.c
 bk delta $Q -ynew foo.c
@@ -66,9 +70,10 @@ if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:GET w delta ........................................$NL
 bk unedit $HERE/project/BitKeeper/etc/config
-bk edit $Q $HERE/project/BitKeeper/etc/config
+if [ ! -w $HERE/project/BitKeeper/etc/config ]; then echo failed; exit 1; fi
 echo "checkout:GET" >> $HERE/project/BitKeeper/etc/config
 sleep 1
 bk admin -FSCCS foo.c
@@ -81,6 +86,7 @@ if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:GET w clone ........................................$NL
 bk delta $Q -ycheckout_GET $HERE/project/BitKeeper/etc/config
 bk commit $Q -ycheckout_GET
@@ -89,8 +95,9 @@ if [ ! -f $HERE/copy/src/foo.c ]; then echo failed; exit 1; fi
 if [ -w $HERE/copy/src/foo.c ]; then echo failed; exit 1; fi
 if [ -f $HERE/copy/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w clone .......................................$NL
-bk undo -sqfr+
+bk undo -sqfr+ || exit 1
 bk unedit $HERE/project/BitKeeper/etc/config
 bk edit $Q $HERE/project/BitKeeper/etc/config
 echo "checkout:EDIT" >> $HERE/project/BitKeeper/etc/config
@@ -101,6 +108,7 @@ if [ ! -f $HERE/copy2/src/foo.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/copy2/src/foo.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/copy2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w resolve simple content change ...............$NL
 cd $HERE/project
 bk unedit BitKeeper/etc/config
@@ -121,6 +129,7 @@ if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/edit_2/src/foo.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w resolve simple flag change ..................$NL
 cd $HERE/edit_1/src
 bk admin $Q -fEXPAND1 foo.c
@@ -131,6 +140,7 @@ if [ ! -f $HERE/edit_2/src/foo.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/edit_2/src/foo.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w resolve simple rename change ................$NL
 cd $HERE/edit_1/src
 bk mv foo.c foo1.c
@@ -141,6 +151,7 @@ if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w resolve automerge content change ............$NL
 cd $HERE/edit_1/src
 echo new3 >> foo1.c
@@ -156,6 +167,7 @@ if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w resolve automerge flag change ...............$NL
 cd $HERE/edit_1/src
 bk admin $Q -FEXPAND1 foo1.c
@@ -168,10 +180,13 @@ if [ ! -f $HERE/edit_2/src/foo1.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/edit_2/src/foo1.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo1.c ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N checkout:EDIT w resolve rename conflict .....................$NL
 # remove some csets to bring it below limit in the regression env
-(cd $HERE/edit_1 && bk undo -sqfa1.2)
-(cd $HERE/edit_2 && bk undo -sqfa1.2)
+cd $HERE/edit_1
+bk undo -sqfa1.2 || exit 1
+cd $HERE/edit_2
+bk undo -sqfa1.2 || exit 1
 cd $HERE/edit_1/src
 bk mv foo.c foo2.c
 bk commit $Q -yrename
@@ -189,4 +204,33 @@ if [ ! -f $HERE/edit_2/src/foo2.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/edit_2/src/foo2.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/edit_2/src/SCCS/p.foo2.c ]; then echo failed; exit 1; fi
 echo OK
-# TODO add support for bk undo ?
+
+echo $N checkout:EDIT w undo ........................................$NL
+cd $HERE/project
+echo hi > hi
+bk new $Q hi || exit 1
+if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+bk commit $Q -yaddhi || exit 1
+echo bye >> hi
+bk delta $Q -ybye hi || exit 1
+if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+bk commit $Q -yappendhi || exit 1
+bk undo $Q -fr+ || exit 1
+if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+echo OK
+
+echo $N checkout:EDIT w stripdel ....................................$NL
+echo bye >> hi
+bk delta $Q -ybye hi || exit 1
+if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+bk stripdel $Q -r+ hi || exit 1
+if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+echo OK
+
+echo $N checkout:EDIT w names .......................................$NL
+bk clean $Q hi
+mv SCCS/s.hi SCCS/s.junk
+bk -r names $Q
+if [ ! \( -w hi -a -f SCCS/p.hi \) ]; then echo checkout failed; exit 1; fi
+echo OK
+

@@ -207,8 +207,8 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test bk rm on non bitkeeper file ............................$NL
 echo hi > non_bk_file 
-bk rm non_nk_file 2> rm.out
-grep -q "not a BitKeeper flle, ignored" rm.out
+bk rm non_bk_file 2> rm.out
+grep -q "not a BitKeeper file, ignored" rm.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test check -ag ..............................................$NL

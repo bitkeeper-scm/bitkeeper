@@ -9,6 +9,9 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
+#Because some proxy disallow proxy to localhost
+unsetHttpProxy
+
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi

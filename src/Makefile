@@ -474,6 +474,14 @@ msg: gui/msg.tcl
 rpm:	bk.spec production
 	rpm -bb bk.spec
 
+pkg: install-nolinks epmhelper.sh
+	rm -rf tmp/bitkeeper; \
+	DIR=`pwd`/tmp/bitkeeper; set -e; \
+	BINDIR=$$DIR ${MAKE} -e install-nolinks; \
+	BINDIR=$$DIR $(MAKE) -e bklinks; \
+	./epmhelper.sh -l -d $(BINDIR) -s $$DIR; \
+	./epmhelper.sh -r -d $(BINDIR) -s $$DIR
+
 # Touch this and die.  --lm
 install: install-nolinks bklinks binlinks
 

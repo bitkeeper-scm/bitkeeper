@@ -66,12 +66,13 @@ private int	fprintDelta(FILE *,
 private delta	*gca(delta *left, delta *right);
 private delta	*gca2(sccs *s, delta *left, delta *right);
 private delta	*gca3(sccs *s, delta *left, delta *right, char **i, char **e);
-private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
+private int	compressmap(sccs *s, delta *d, ser_t *set, int useSer,
+			void **i, void **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
-private void	singleUser(sccs *s, MDBM *m);
+private void	singleUser(sccs *s);
 private	int	parseConfig(char *buf, char **k, char **v);
 
 private	delta	*delta_lmarker;	/* old-style log marker */
@@ -640,6 +641,51 @@ inherit(sccs *s, int flags, delta *d)
 		assert(d);
 		d->flags |= D_MERGED;
 	}
+}
+
+/*
+ * Reduplicate the dup information, as it might have changed
+ * because of swapping parent and merge pointers (renumber()) or
+ * because of D_GONE'ing some interior nodes (csetprune()).
+ * The code is here so that any time a new meta data is added that
+ * requires dup'ing, that code will be put here as well to unDup it.
+ */
+private void
+_reDup(sccs *s, delta *d)
+{
+	delta	*p;
+
+	unless (d) return;
+	p = d->parent;
+
+#define	REDUP(field, flag, str) \
+	if (p && p->field && d->field && streq(p->field, d->field)) { \
+		unless (d->flags & flag) free(d->field); \
+		d->field = p->field; \
+		d->flags |= flag; \
+	} \
+	else if (d->field && (d->flags & flag)) { \
+		d->field = strdup(d->field); \
+		d->flags &= ~flag; \
+	}
+
+	REDUP(pathname, D_DUPPATH, "path");
+	REDUP(hostname, D_DUPHOST, "host");
+	REDUP(zone, D_DUPZONE, "zone");
+	REDUP(csetFile, D_DUPCSETFILE, "csetFile");
+	REDUP(symlink, D_DUPLINK, "symlink");
+
+#undef	REDUP
+
+	for (p = d->kid; p; p = p->siblings) {
+		_reDup(s, p);
+	}
+}
+
+void
+sccs_reDup(sccs *s)
+{
+	_reDup(s, s->tree);
 }
 
 /*
@@ -4047,6 +4093,21 @@ chk_proj_init(sccs *s, char *file, int line)
 	return (p);
 }
 
+/*
+ * Return config MDBM for this project.
+ * Do not free this MDBM!
+ */
+MDBM *
+proj_config(project *p)
+{
+	unless (p) return (0);
+	unless (p->config) {
+		unless (p->root) return (0);
+		p->config = loadConfig(p->root);
+	}
+	return (p->config);
+}
+
 int
 proj_cd2root(project *p)
 {
@@ -4415,7 +4476,7 @@ chk_gmode(sccs *s)
 			fprintf(stderr,
 			    "ERROR: %s: writable gfile with no p.file\n",
 			    gfile);
-			assert("writable gfile wilth no p.file" == 0);
+			assert("writable gfile with no p.file" == 0);
 		};
 	}
 
@@ -5117,7 +5178,7 @@ freestr(struct liststr *list)
  */
 
 private int
-compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
+compressmap(sccs *s, delta *d, ser_t *set, int useSer, void **inc, void **exc)
 {
 	struct	liststr	*inclist = 0, *exclist = 0;
 	int	inclen = 0, exclen = 0;
@@ -5125,6 +5186,7 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 	delta	*t;
 	int	i;
 	int	active;
+	ser_t	*incser = 0, *excser = 0;
 
 	assert(d);
 	assert(set);
@@ -5155,13 +5217,21 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 
 		/* exclude if active in delta set and not in desired set */
 		if (active && !set[t->serial]) {
-			exclen += insertstr(&exclist, t->rev);
+			if (useSer) {
+				excser = addSerial(excser, t->serial);
+			} else {
+				exclen += insertstr(&exclist, t->rev);
+			}
 		}
 		unless (set[t->serial])  continue;
 
 		/* include if not active in delta set and in desired set */
 		if (!active) {
-			inclen += insertstr(&inclist, t->rev);
+			if (useSer) {
+				incser = addSerial(incser, t->serial);
+			} else {
+				inclen += insertstr(&inclist, t->rev);
+			}
 		}
 		EACH(t->include) {
 			unless(slist[t->include[i]] & (S_INC|S_EXCL))
@@ -5173,8 +5243,13 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 		}
 	}
 
-	if (inclen) *inc = buildstr(inclist, inclen);
-	if (exclen) *exc = buildstr(exclist, exclen);
+	if (useSer) {
+		if (incser) *inc = incser;
+		if (excser) *exc = excser;
+	} else {
+		if (inclen) *inc = buildstr(inclist, inclen);
+		if (exclen) *exc = buildstr(exclist, exclen);
+	}
 
 	if (slist)   free(slist);
 	if (exclist) freestr(exclist);
@@ -5865,7 +5940,7 @@ err:		s->state |= S_WARNED;
 				slist[t->exclude[i]] |= S_EXCL;
 		}
 	}
-	if (compressmap(s, baseRev, slist, &inc, &exc)) {
+	if (compressmap(s, baseRev, slist, 0, (void **)&inc, (void **)&exc)) {
 		fprintf(stderr, "%s: cannot compress merged set\n", who);
 		goto err;
 	}
@@ -5877,24 +5952,6 @@ err:		s->state |= S_WARNED;
 	}
 	if (slist) free(slist);
 	return (inc);
-}
-
-/*
- * compute the merge set given a delta and a merge node
- * stuff the merge sent in the delta
- */
-
-void
-sccs_mergeset(sccs *s, char *who, delta *d, delta *m)
-{
-	char	*inc;
-	int	err = 0;
-
-	inc = sccs_impliedList(s, who, d->parent->rev, m->rev);
-	assert(!d->include);
-	d->include = getserlist(s, 0, inc, &err);
-	assert(!err);
-	free(inc);
 }
 
 /* Make sure the serial map generated by sc and the backup scb are
@@ -5909,14 +5966,17 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 	int	errp;
 	ser_t	*slist;
 	delta	*n;
-	char	*inc, *exc;
+	ser_t	*inc, *exc;
 
 	errp = 0;
 	n = sfind(scb, d->serial);	/* get 'd' from backup */
 	assert(n);
 	slist = serialmap(scb, n, 0, 0, &errp);
 	if (errp) {
-err:		fprintf(stderr, "an errp error\n");
+		fprintf(stderr, "an errp error\n");
+		if (inc) free(inc);
+		if (exc) free(exc);
+		if (slist) free(slist);
 		exit(1);
 	}
 	for (n = d; n; n = n->next) {
@@ -5930,16 +5990,18 @@ err:		fprintf(stderr, "an errp error\n");
 		free(d->exclude);
 		d->exclude = 0;
 	}
-	if (compressmap(sc, d, slist, &inc, &exc)) {
+	if (compressmap(sc, d, slist, 1, (void **)&inc, (void **)&exc)) {
 		assert("cannot compress merged set" == 0);
 	}
 	if (inc) {
-		d->include = getserlist(sc, 0, inc, &errp);
-		if (errp) goto err;
+		d->include = inc;
 	}
 	if (exc) {
-		d->exclude = getserlist(sc, 0, exc, &errp);
-		if (errp) goto err;
+		d->exclude = exc;
+	}
+	if (slist) {
+		free(slist);
+		slist = 0;
 	}
 	return;
 }
@@ -5969,7 +6031,7 @@ write_pfile(sccs *s, int flags, delta *d,
 
 	if (WRITABLE(s) && !(flags & GET_SKIPGET)) {
 		verbose((stderr,
-		    "Writeable %s exists, skipping it.\n", s->gfile));
+		    "Writable %s exists, skipping it.\n", s->gfile));
 		s->state |= S_WARNED;
 		return (-1);
 	}
@@ -6096,7 +6158,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		/* With -G/somewhere/foo.c we need to check the gfile again */
 		if (flags & GET_NOREGET) flags |= SILENT;
 		if (WRITABLE(s) && writable(s->gfile)) {
-			verbose((stderr, "Writeable %s exists\n", s->gfile));
+			verbose((stderr, "Writable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
 			return ((flags & GET_NOREGET) ? 0 : (char*)-1);
 		} else if ((flags & GET_NOREGET) &&
@@ -7494,7 +7556,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		unless (s->tree->xflags) {
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
-			singleUser(s, 0);
+			singleUser(s);
 			s->tree->xflags |= s->xflags & X_SINGLE;
 		}
 		/* for old binaries */
@@ -8424,11 +8486,6 @@ sccs_clean(sccs *s, u32 flags)
 		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, 0, stdout);
 		return (1);
 	}
-	if (flags & CLEAN_UNEDIT) {
-		unlink(s->pfile);
-		unlinkGfile(s);
-		return (0);
-	}
 
 	unless (HAS_GFILE(s)) {
 		verbose((stderr, "%s not checked out\n", s->gfile));
@@ -8554,6 +8611,62 @@ nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
 		return (1);
 	}
 }
+
+/*
+ * unedit the specified file.
+ *
+ * Return codes are passed out to exit() so don't error on warnings.
+ */
+int
+sccs_unedit(sccs *s, u32 flags)
+{
+	int	modified = 0;
+	MDBM	*config = proj_config(s->proj);
+	int	getFlags = 0;
+	char	*co;
+	int	currState = 0;
+	
+	/* don't go removing gfiles without s.files */
+	unless (HAS_SFILE(s) && HASGRAPH(s)) {
+		verbose((stderr, "%s not under SCCS control\n", s->gfile));
+		return (0);
+	}
+
+	if (config && (co = mdbm_fetch_str(config, "checkout"))) {
+		if (strieq(co, "get")) getFlags = GET_EXPAND;
+		if (strieq(co, "edit")) getFlags = GET_EDIT;
+	}
+	
+	if (HAS_PFILE(s)) {
+		if (!getFlags || sccs_hasDiffs(s, flags, 1)) modified = 1;
+		currState = GET_EDIT;
+	} else {
+		if (WRITABLE(s)) {
+			fprintf(stderr, 
+			    "%s writable but not edited?\n", s->gfile);
+			return (1);
+		} else {
+			verbose((stderr, "Clean %s\n", s->gfile));
+			if (HAS_GFILE(s)) currState = GET_EXPAND;
+		}
+	}
+	unlink(s->pfile);
+	if (!modified && getFlags && 
+	    (getFlags == currState || !(SCCS(s) || RCS(s)))) {
+		getFlags |= GET_SKIPGET;
+	} else {
+		unlinkGfile(s);
+	}
+	if (getFlags) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
+			return (1);
+		}
+		s = sccs_restart(s);
+		fix_gmode(s, getFlags);
+	}
+	return (0);
+}
+
 
 private void
 _print_pfile(sccs *s)
@@ -8882,22 +8995,18 @@ binaryCheck(MMAP *m)
 }
 
 private void
-singleUser(sccs *s, MDBM *m)
+singleUser(sccs *s)
 {
 	delta	*d;
 	char	*user, *host;
-	int	close_m = !m;
+	MDBM	*m;
 
-	if (!m) {
-		unless (s && s->proj && s->proj->root) return;
-		unless (m = loadConfig(s->proj->root)) return;
-	}
+	unless (s && s->proj) return;
+	unless (m = proj_config(s->proj)) return;
+
 	user = mdbm_fetch_str(m, "single_user");
 	host = mdbm_fetch_str(m, "single_host");
-	unless (user && host) {
-		if (close_m) mdbm_close(m); /* skip pass from outside */
-		return;
-	}
+	unless (user && host) return;
 	d = s->tree;
 	free(d->user);
 	d->user = strdup(user);
@@ -8912,7 +9021,6 @@ singleUser(sccs *s, MDBM *m)
 		d->hostname = s->tree->hostname;
 		d->flags |= D_DUPHOST;
 	}
-	if (close_m) mdbm_close(m); /* skip pass from outside */
 	s->xflags |= X_SINGLE;
 }
 
@@ -8954,7 +9062,6 @@ out:		sccs_unlock(s, 'z');
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
 		s->state |= S_WARNED;
-		if (db) mdbm_close(db);
 		return (-1);
 	}
 	if (diffs) {
@@ -9076,7 +9183,7 @@ out:		sccs_unlock(s, 'z');
 			/* check eoln preference */
 			s->xflags |= X_DEFAULT;
 			if (s->proj) {
-				db = loadConfig(s->proj->root);
+				db = proj_config(s->proj);
 				if (db) {
 					char *p = mdbm_fetch_str(db, "eoln");
 					if (p && streq("unix", p)) {
@@ -9138,7 +9245,7 @@ out:		sccs_unlock(s, 'z');
 		unless (flags & DELTA_PATCH) {
 			first->flags |= D_XFLAGS;
 			first->xflags = s->xflags;
-			singleUser(s, db);
+			singleUser(s);
 		}
 		if (CSET(s)) {
 			unless (first->csetFile) {
@@ -9256,7 +9363,6 @@ out:		sccs_unlock(s, 'z');
 	}
 	Chmod(s->sfile, 0444);
 	if (BITKEEPER(s)) updatePending(s);
-	if (db) mdbm_close(db);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -11178,6 +11284,7 @@ newcmd:
 	return (0);
 }
 
+int
 sccs_hashcount(sccs *s)
 {
 	int	n;
@@ -14674,7 +14781,7 @@ gca3(sccs *s, delta *left, delta *right, char **inc, char **exc)
 	 * compress it to be -i and -x relative to gca2 result
 	 */
 
-	if (compressmap(s, gca, gmap, inc, exc))  goto bad;
+	if (compressmap(s, gca, gmap, 0, (void **)inc, (void **)exc))  goto bad;
 	ret = gca;
 
 bad:	if (lmap) free (lmap);

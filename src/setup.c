@@ -82,7 +82,7 @@ setup_main(int ac, char **av)
 		exit(1);
 	}
 	if (allowNonEmptyDir && exists(BKROOT)) {
-		printf("bk: %s repositoty exists already, setup fails.\n",
+		printf("bk: %s repository exists already, setup fails.\n",
 		package_path);
 	}
 	sccs_mkroot(".");
@@ -321,7 +321,7 @@ mkconfig(FILE *out, MDBM *flist)
 	int	found = 0;
 	int	first = 1;
 	char	confTemplate[MAXPATH], buf[200], pattern[200];
-	char	*val = NULL;
+	char	*val;
 	kvpair	kv;
 
 
@@ -357,10 +357,17 @@ mkconfig(FILE *out, MDBM *flist)
 		return (-1);
 	}
 
-	if (flist) val = mdbm_fetch_str(flist, "compression");
-	/* force "compression to default on */
+	val = flist ? mdbm_fetch_str(flist, "compression") : 0;
+	/* force compression to default on */
 	unless (val && *val) {
 		char fld[] =  "compression=gzip";
+		flist = addField(flist, fld);
+	}
+
+	val = flist ? mdbm_fetch_str(flist, "autofix") : 0;
+	/* force autofix to default on */
+	unless (val && *val) {
+		char fld[] =  "autofix=yes";
 		flist = addField(flist, fld);
 	}
 

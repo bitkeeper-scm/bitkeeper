@@ -95,8 +95,12 @@ doit(sccs *s, s_opts opts)
 	}
 
 	if (HAS_PFILE(s)) {
-		fprintf(stderr, "stripdel: can't strip an edited file.\n");
-		return (1);
+		if (sccs_clean(s, SILENT)) {
+			fprintf(stderr, 
+			    "stripdel: can't strip an edited file.\n");
+			return (1);
+		}
+		s = sccs_restart(s);
 	}
 
 	if (opts.respectCset && (e = checkCset(s))) {
@@ -130,6 +134,12 @@ doit(sccs *s, s_opts opts)
 		return (1); /* failed */
 	}
 	verbose((stderr, "stripdel: removed %d deltas from %s\n", n, s->gfile));
+	
+	/*
+	 * Handle checkout modes
+	 */
+	do_checkout(s);
+	
 	return 0;
 }
 

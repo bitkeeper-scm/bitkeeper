@@ -110,7 +110,7 @@ c_quit(resolve *rs)
 	if (IS_LOCKED(rs->s)) {
 		fprintf(stderr, "Unedit %s\n", rs->s->gfile);
 		rs->s = sccs_restart(rs->s);
-		sccs_clean(rs->s, CLEAN_UNEDIT);
+		sccs_unedit(rs->s, 0);
 	}
 	exit(1);
 }
@@ -396,7 +396,7 @@ rfuncs	c_funcs[] = {
     { "m", "merge", "automerge the two files", c_merge },
     { "p", "revtool", "graphical picture of the file history", c_revtool },
     { "q", "quit", "immediately exit resolve", c_quit },
-    { "s", "sccsmerge", "merge the two files using SCCS' algorthm", c_smerge },
+    { "s", "sccsmerge", "merge the two files using SCCS' algorithm", c_smerge },
     { "sd", "sdiff",
       "side-by-side diff of the local file vs. the remote file", res_sdiff },
     { "ul", "use local", "use the local version of the file", c_ul },

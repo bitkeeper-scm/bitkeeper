@@ -3,6 +3,7 @@
 
 private	char	*uniqfile(const char *file);
 private	int	linkcount(const char *file);
+private int	share_open(const char *file);
 
 /*
  * Create a file with a unique name,
@@ -123,7 +124,10 @@ stale:			if (discard) unlink((char*)file);
 			free(host);
 			return (1);
 		}
-		if (pid == getpid()) ttyprintf("LOCK LOOP on %s\n", file);
+		if (pid == getpid()) {
+			ttyprintf("%d@%s: LOCK LOOP on %s\n",
+					getpid(), sccs_realhost(), file);
+		}
 		free(host);
 		return (0);
 	}
@@ -162,13 +166,7 @@ sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp)
 	char	*host, *p;
 	int	i, n;
 
-	unless ((fd = open(file, O_RDONLY, 0)) >= 0) {
-		if (exists((char*)file)) {
-			perror(file);
-			return (-1);
-		}
-		return (-1);	/* unknown, may have lost race */
-	}
+	unless ((fd = share_open(file)) >= 0) return (-1);
 	setmode(fd, _O_BINARY);
 	bzero(buf, sizeof(buf));
 	if ((flen = fsize(fd)) < 0) {
@@ -251,9 +249,9 @@ uniqfile(const char *file)
 
 #ifdef WIN32
 /*
- * TODO Move this inteface into the uwtlib
+ * TODO Move this interface into the uwtlib
  * after we fixed all other code which uses
- * link() as a "fast copy" inteface.
+ * link() as a "fast copy" interface.
  */
 private int
 link(const char *from, const char *to)
@@ -283,3 +281,47 @@ linkcount(const char *file)
 }
 #endif
 
+
+#ifdef WIN32
+/*
+ * We need this because we need access to the native win32 error code
+ * to filter out spurious error messages. 
+ */
+private int
+share_open(const char *file)
+{
+	int fd;
+
+	unless ((fd = open(file, O_RDONLY, 0)) >= 0) {
+		int err = GetLastError();
+
+		if ((err != ERROR_SHARING_VIOLATION) &&
+		    (err != ERROR_PATH_NOT_FOUND) &&
+		    (err != ERROR_FILE_NOT_FOUND)) {
+			fprintf(stderr,
+			    "sccs_readlock: cannot open %s, win32 err %d\n",
+			    file, GetLastError());
+			return (-1);
+		}
+		return (-1);	/* unknown, may have lost race */
+	}
+	return (fd);
+}
+#else
+private int
+share_open(const char *file)
+{
+	int fd;
+
+	unless ((fd = open(file, O_RDONLY, 0)) >= 0) {
+		if (exists((char*)file)) {
+			fprintf(stderr,
+			    "sccs_readlock: cannot open %s\n", file);
+			perror(file);
+			return (-1);
+		}
+		return (-1);	/* unknown, may have lost race */
+	}
+	return (fd);
+}
+#endif

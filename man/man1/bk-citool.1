@@ -79,10 +79,10 @@ under revision control and having them visible clutters up the file
 window. When a new file is highlighted, the 
 .B Ignore
 button is
-actived on the button bar menu. If you click the ignore button,
+activated on the button bar menu. If you click the ignore button,
 the selected file will be added to the BitKeeper/etc/ignore file
 so that when citool is run again, the selected file will not be
-shown. If you accidentaly click ignore on a file that you want, click
+shown. If you accidentally click ignore on a file that you want, click
 the
 .B Unignore
 button. The \*(BK /etc/ignore file is not updated
@@ -90,12 +90,12 @@ until the changeset is committed. The ignore file is a revision
 controlled file like any other \*(BK file and can be edited with a
 text editor if you want to remove or add files to the ignore list.
 The entries that are selected to be ignored are not added to the ignore 
-file until the changeset is commited.
+file until the changeset is committed.
 .LP
 At times, you might wish to exclude files from a changeset. For
 example, if you are working on a file and have made changes to
 it (changes can be committed and in the pending state), but don't
-want these changes to propogate when you push your work to another
+want these changes to propagate when you push your work to another
 repository. To exclude files from the changeset, use the left mouse
 button to click on the file-type icon.  If the file can be excluded,
 the icon will change to a red X. If you try to exclude a pending
@@ -213,7 +213,10 @@ pastes comments saved by the previous button, overwriting any existing comments.
 displays all comments in the differences window and asks if you want to commit.
 .tp
 .B [Edit]
-pops you into a simple editor on the current file.
+pops you into bk fmtool on the checked in version and the current version
+of the file.   You may then select the changes you do not want to keep
+and "merge" the two versions to a new version, which will replace the 
+current file.
 .tp
 .B [History]
 starts up revtool on the current file
@@ -255,9 +258,10 @@ repository.   After it is unlocked, the
 should work.
 .SH SEE ALSO
 .SA ci 1
-.SA sfiles 1
-.SA ignore 1
 .SA config-gui
+.SA fmtool 1
+.SA ignore 1
+.SA sfiles 1
 .SH CATEGORY
 .B GUI-tools
 .br

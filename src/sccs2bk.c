@@ -239,6 +239,7 @@ out:	unlink(tmp);
 	unlink("SCCS/.init");
 	free(table);
 	mdbm_close(revs);
+	if (do_checkout(s)) exit(1);
 	sccs_free(s);
 }
 

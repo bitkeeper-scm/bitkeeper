@@ -65,7 +65,6 @@
     (GET_REVNUMS|GET_USER|GET_LINENUM|GET_MODNAME|\
      GET_FULLPATH|GET_PREFIXDATE|GET_SEQ)
 
-#define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
 
@@ -781,6 +780,7 @@ int	sccs_get(sccs *s,
 	    char *rev, char *mRev, char *i, char *x, u32 flags, char *out);
 int	sccs_hashcount(sccs *s);
 int	sccs_clean(sccs *s, u32 flags);
+int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
@@ -815,7 +815,6 @@ int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
 int	sccs_keyunlink(char *key, project *proj, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
-void	sccs_mergeset(sccs *s, char *who, delta *d, delta *m);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
@@ -949,6 +948,7 @@ char	*_relativeName(char *gName, int isDir, int withsccs,
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin(void);
 project	*chk_proj_init(sccs *s, char *file, int line);
+MDBM	*proj_config(project *p);
 void	proj_free(project *p);
 int 	prompt(char *msg, char *buf);
 void	parse_url(char *url, char *host, char *path);
@@ -1122,8 +1122,13 @@ int	runable(char *file);
 int	uuencode(FILE *in, FILE *out);
 int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
+int	sccs_needSwap(delta *p, delta *m);
+void	sccs_reDup(sccs *s);
+void	sccs_adjustSet(sccs *sc, sccs *scb, delta *d);
 int	chk_host(void);
 int	chk_user(void);
+int	fix_gmode(sccs *s, int gflags);
+int	do_checkout(sccs *s);
 void	set_timestamps(sccs *s);
 
 extern char *bk_vers;
