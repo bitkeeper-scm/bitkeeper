@@ -198,12 +198,12 @@ listkey_main(int ac, char **av)
  * @END@
  */
 int
-prunekey(sccs *s,
-	remote *r, int outfd, int quiet, int *local_only, int *remote_only)
+prunekey(sccs *s, remote *r, int outfd,
+	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
 	char	key[MAXKEY] = "";
 	delta	*d;
-	int	rc = 0, i = 0, j = 0;
+	int	rc = 0, rcsets = 0, rtags = 0, local = 0;
 
 	unless (getline2(r, key, sizeof(key)) > 0) {
 		unless (quiet) {
@@ -267,7 +267,11 @@ prunekey(sccs *s,
 		if (d = sccs_findKey(s, key)) {
 			d->flags |= D_VISITED;
 		} else {
-			i++;
+			if (sccs_istagkey(key)) {
+				rtags++;
+			} else {
+				rcsets++;
+			}
 		}
 	}
 
@@ -275,14 +279,12 @@ empty:	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_VISITED) continue;
 		sprintf(key, "%u\n", d->serial);
 		write(outfd, key, strlen(key));
-		j++;
+		local++;
 	}
-	/*
-	 * XXX - These numbers may be off due to tags.
-	 */
-	*remote_only = i;	/* number of cset in remote only */
-	*local_only = j;	/* number of cset in local only  */
-	rc = j; 
+	if (remote_csets) *remote_csets = rcsets;
+	if (remote_tags) *remote_tags = rtags;
+	if (local_only) *local_only = local;
+	rc = local; 
 
 done:	return (rc);
 }

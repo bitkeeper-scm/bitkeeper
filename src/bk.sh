@@ -201,13 +201,15 @@ _rmdir() {
 	exit 0
 }
 
-# usage: tag [r<rev>] symbol
+# usage: tag [-r<rev>] symbol
 _tag() {
 	if [ X$1 = X"--help" ]; then bk help tag; exit 0; fi
 	__cd2root
 	REV=
-	while getopts r: opt
+	OPTS=
+	while getopts qr: opt
 	do	case "$opt" in
+		q) OPTS="-q";;
 		r) REV=:$OPTARG;;
 		esac
 	done
@@ -216,7 +218,7 @@ _tag() {
 	then	bk help -s tag
 		exit 1
 	fi
-	bk admin -S${1}$REV ChangeSet
+	bk admin $OPTS -S${1}$REV ChangeSet
 }
 
 # usage: ignore glob [glob ...]

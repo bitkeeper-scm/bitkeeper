@@ -238,8 +238,20 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 "----------------------- Sending the following csets ------------------------");
 				}
 			}
-			fprintf(stderr, "%s\n", &buf[1]);
+			fprintf(stderr, "%s", &buf[1]);
+			if (!isdigit(buf[1]) || (strlen(&buf[1]) > MAXREV)) {
+				fprintf(stderr, "\n");
+				continue;
+			}
+			n += strlen(&buf[1]) + 1;
+			if (n >= (80 - MAXREV)) {
+				fprintf(stderr, "\n");
+				n = 0;
+			} else {
+				fprintf(stderr, " ");
+			}
 		}
+		if (n) fprintf(stderr, "\n");
 		/* load up the next line */
 		getline2(r, buf, sizeof(buf));
 		if (i) {
@@ -262,6 +274,9 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.dont) {
 		unlink(probe_list);
 		rc = 0;
+		if (!opts.quiet && streq(buf, "@NOTHING TO SEND@")) {
+			fprintf(stderr, "Nothing to pull.\n");
+		}
 		goto done;
 	}
 

@@ -351,7 +351,7 @@ triggerEnv(int dont, int local_count, char *rev_list, char *envbuf)
 int
 cmd_pull_part2(int ac, char **av)
 {
-	int	c, rc = 0, fd, local_count, remote_count, debug = 0;
+	int	c, rc = 0, fd, local, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	char	buf[4096], rev_list[MAXPATH], s_cset[] = CHANGESET;
 	char	envbuf[MAXPATH], gzip_str[30] = "";
@@ -385,7 +385,7 @@ cmd_pull_part2(int ac, char **av)
 	bzero(&r, sizeof(r));
 	s = sccs_init(s_cset, 0, 0);
 	assert(s && s->tree);
-	if (prunekey(s, &r, fd, 1, &local_count, &remote_count) < 0) {
+	if (prunekey(s, &r, fd, 1, &local, 0, 0) < 0) {
 		sccs_free(s);
 		rc = 1;
 		goto done;
@@ -395,7 +395,7 @@ cmd_pull_part2(int ac, char **av)
 	if (fputs("@OK@\n", stdout) < 0) {
 		perror("fputs ok");
 	}
-	if (local_count && (verbose || list)) {
+	if (local && (verbose || list)) {
 		printf("@REV LIST@\n");
 		if (list) {
 			listIt2(s, list);
@@ -416,9 +416,16 @@ next:	sccs_free(s);
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 * Set up the BK_REVLISTFILE env variable for the trigger script
 	 */
-	triggerEnv(dont, local_count, rev_list, envbuf);
+	triggerEnv(dont, local, rev_list, envbuf);
 	if (!metaOnly && trigger(av,  "pre")) {
 		rc = 1;
+		goto done;
+	}
+
+	unless (local) {
+		fputs("@NOTHING TO SEND@\n", stdout);
+		fflush(stdout);
+		rc = 0;
 		goto done;
 	}
 
@@ -427,14 +434,6 @@ next:	sccs_free(s);
 		rc = 0;
 		goto done;
 	}
-
-	if (local_count == 0) {
-		fputs("@NOTHING TO SEND@\n", stdout);
-		fflush(stdout);
-		rc = 0;
-		goto done;
-	}
-
 
 	fputs("@PATCH@\n", stdout);
 	fflush(stdout); 

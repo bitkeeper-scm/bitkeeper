@@ -1,0 +1,93 @@
+%!PS
+
+/inch { 72 mul } def
+
+% BitMover text
+/BitMover {
+    4 dict begin
+	/LM_font exch def
+	/LM_B exch def
+	/LM_A exch def
+	/LM_SP exch def
+	LM_font findfont LM_A scalefont setfont
+	LM_SP 0 (B) ashow
+	LM_font findfont LM_B scalefont setfont
+	LM_SP 0 (IT) ashow
+	LM_font findfont LM_A scalefont setfont
+	LM_SP 0 (M) ashow
+	LM_font findfont LM_B scalefont setfont
+	LM_SP 0 (OVER) ashow
+    end
+} bind def
+
+% Fade: x y width height grayfudge
+/Fade {
+	gsave
+	    4 dict begin
+		/LM_gray exch def
+		/LM_ht exch def
+		/LM_wid exch def
+		translate
+		LM_wid -1 mul 0 translate
+		0 .00125 .98 {
+			dup 1 exch sub LM_gray sub setgray
+			%.5 setgray
+			LM_wid mul
+			/LM_loc exch def
+			LM_loc 0 LM_wid .02 mul LM_ht rectfill
+		} for
+	    end
+	grestore
+} bind def
+
+% Fade: x y width height grayfudge
+/Bullet {
+	gsave
+	    4 dict begin
+		/LM_gray exch def
+		/LM_ht exch def
+		/LM_wid exch def
+		translate
+		LM_wid -1 mul 0 translate
+		0 .0025 .98 {
+			dup 1 exch sub LM_gray sub setgray
+			%.5 setgray
+			LM_wid mul
+			/LM_loc exch def
+			LM_loc 0 LM_wid .02 mul LM_ht rectfill
+		} for
+		newpath LM_wid LM_ht 2 div dup 0 360 arc closepath 
+		0 LM_gray sub setgray fill
+	    end
+	grestore
+} bind def
+
+% Logo: spacing fade_offset spacing fsize fsize2 font x y 
+/Logo {
+	gsave
+		translate
+		0 0 moveto
+		1 dict begin
+		    /LM_savefont exch def
+		    LM_savefont BitMover
+		    dup dup
+		    0 .5 inch 4.8 .05 Bullet
+		    10 .5 inch 4.8 .05 Bullet
+		    19.95 .5 inch 4.8 .05 Bullet
+		    78 -10 moveto
+		    LM_savefont findfont 13 scalefont setfont
+		    0 (incorporated) ashow
+		    70.5 -10 1.548 inch 6 .05 Bullet
+		end
+	grestore
+} bind def
+
+gsave
+	1.5 inch 6 inch translate
+	.9 dup scale
+	.6 setgray .96 inch 3.96 inch 3.44 inch .88 inch rectfill
+	.88 setgray 1 inch 4 inch 3.36 inch .8 inch rectfill
+	0 setgray
+	1.05 -5 -0.15 36.4 26 /Palatino-Bold 1.8 inch 4.3 inch Logo
+grestore
+showpage

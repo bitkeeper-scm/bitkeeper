@@ -85,15 +85,115 @@ grep -q 'will not accept tags in compatibility mode' OUT || {
 	cat OUT
 	exit 1
 }
-cd $HERE/project
-#echo $N Tag the latest and then undo that rev .......................$NL
-#XXX - I think this will work; the weird one is a tag merge, where do 
-#we put the merge delta and what happens when we undo?
-#Also, we need to create some tag conflicts and try a push and see
-#the error message, does it make sense?
-
-grep -q TAG2 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
 echo OK
+
+echo $N Resolve a tag conflict, pick remote, see if it sticks .......$NL
+cd $HERE
+rm -rf project copy
+no_logging project
+echo hi > foo
+bk new $Q foo
+bk commit -yDsub1 $Q
+cd $HERE
+bk clone $Q project copy
+cd $HERE/project
+echo hi > bar
+bk new $Q bar
+bk commit -yDsub2 -STAG $Q
+REMOTE=`bk prs -hrTAG -d:KEY: ChangeSet`
+cd $HERE/copy
+echo hi > snafu
+bk new $Q snafu
+bk commit -yDsub3 -STAG $Q
+LOCAL=`bk prs -hrTAG -d:KEY: ChangeSet`
+cp SCCS/s.ChangeSet CSET
+bk resync $Q
+(
+echo r
+) | bk resolve -t $Q 2>OUT
+KEY=`bk prs -hrTAG -d:KEY: ChangeSet`
+if [ "$KEY" = "$LOCAL" ]
+then	echo Whoops, used local instead of remote
+	echo "REMOTE:	$REMOTE"
+	echo "LOCAL:	$LOCAL"
+	bk prs -d':I: :KEY:\n' ChangeSet
+	exit 1
+fi
+if [ "$KEY" != "$REMOTE" ]
+then	echo Whoops, it is not remote and is not local
+	echo "REMOTE:	$REMOTE"
+	echo "LOCAL:	$LOCAL"
+	echo "KEY:	$KEY"
+	bk prs -d':I: :KEY:\n' ChangeSet
+	exit 1
+fi
+echo OK
+
+echo $N Undo after the unchoosen rev, merge should be gone ..........$NL
+bk undo $Q -fa1.2.1.1
+KEY=`bk prs -hrTAG -d:KEY: ChangeSet`
+if [ "$KEY" != "$LOCAL" ]
+then	echo Whoops, key is not restored
+	echo "LOCAL:	$LOCAL"
+	bk prs -d':I: :KEY:\n' ChangeSet
+	exit 1
+fi
+echo OK
+
+echo $N Pull again, choose local, see if it sticks ..................$NL
+bk resync $Q
+(
+echo l
+) | bk resolve -t $Q 2>OUT
+KEY=`bk prs -hrTAG -d:KEY: ChangeSet`
+if [ "$KEY" = "$REMOTE" ]
+then	echo Whoops, used remote instead of local
+	echo "REMOTE:	$REMOTE"
+	echo "LOCAL:	$LOCAL"
+	bk prs -d':I: :KEY:\n' ChangeSet
+	exit 1
+fi
+if [ "$KEY" != "$LOCAL" ]
+then	echo Whoops, it is not local and is not remote
+	echo "REMOTE:	$REMOTE"
+	echo "LOCAL:	$LOCAL"
+	echo "KEY:	$KEY"
+	bk prs -d':I: :KEY:\n' ChangeSet
+	exit 1
+fi
+echo OK
+
+# We depend on tags added after the cset is created to have a 0 cksum so
+# we can distinguish them from a cset.
+# XXX - what if the cset is legitmately == 0?  I suppose we get the count
+# wrong at that point.
+echo $N Make sure that tag chksum == 0 ..............................$NL
+cd $HERE/project
+bk tag $Q project
+CHKSUM=`bk prs -had'$if(:DT:=R){:DSUM:}' ChangeSet`
+if [ "$CHKSUM" -ne 0 ]
+then	echo failed, CHKSUM = $CHKSUM
+	bk prs -ad':I: :DT: :DSUM: :KEY:\n' ChangeSet
+	exit 1
+fi
+echo OK
+
+echo $N Create a tag only conflict, push, check error message .......$NL
+cd $HERE/copy
+bk tag $Q copy
+bk push 2>OUT
+if [ $? -eq 0 ]
+then	echo failed to exit non zero;
+	cat OUT
+	exit 1
+fi
+grep -q '1 tags only in' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
 test -d /usr/libexec/bitkeeper-1.2 && {
     echo $N Create a bk 1.2.9 tree, update w/ current, pull w/ old ......$NL
     cd $HERE

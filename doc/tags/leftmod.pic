@@ -1,0 +1,11 @@
+.PS
+[	A:	ellipse "$D sub 1$"
+		arrow down from last ellipse.s
+	B:	ellipse fill light "$D sub 2$"
+	T:	box fill light "$T sub 1$" with .w at B.e + .2,0
+		arrow from B.e to T.w
+		arrow dotted from A.se to T.nw
+]
+[	ellipse "$D sub 1$"
+] with .nw at last [].ne + .5,0
+.PE

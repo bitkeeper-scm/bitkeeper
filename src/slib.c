@@ -2830,18 +2830,24 @@ tagleaves(sccs *s, delta **l1, delta **l2)
 
 /*
  * Add a merge delta which closes the tag graph.
- * The merge delta is a meta child of whoever is at the delta tip.
  */
 sccs_tagMerge(sccs *s, delta *d, char *tag)
 {
 	delta	*l1 = 0, *l2 = 0;
+	delta	*a, *b;
 	char	buf[MAXLINE];
 	char	*zone = sccs_zone();
 	MMAP	*m;
 
 	if (tagleaves(s, &l1, &l2)) assert("too many tag leaves" == 0);
 	assert(l1 && l2);
-	unless (d) d = sccs_top(s);
+	/*
+	 * If we are automerging, then use the later of the two tag tips.
+	 */
+	unless (d) {
+		assert(tag == 0);
+		d = (l1->date > l2->date) ? l1 : l2;
+	}
 	sprintf(buf, "M 0.0 %s%s %s@%s 0 0 0/0/0\n%s%s%sS %u %u\n%s\n",
 	    now(), zone, sccs_getuser(), sccs_gethost(),
 	    tag ? "S " : "",
@@ -12790,10 +12796,12 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "DSUM")) {
 		if (d->flags & D_CKSUM) {
-			char	buf[20];
-
-			sprintf(buf, "%d", (int)d->sum);
-			fs(buf);
+			fd((int)d->sum);
+			return (strVal);
+		}
+		if (d->type == 'R') {
+			assert(d->sum == 0);
+			fs("0");
 			return (strVal);
 		}
 		return (nullVal);
@@ -14010,6 +14018,21 @@ sccs_setlod(char *rev, u32 flags)
 /*
  * Take a key like sccs_sdelta makes and find it in the tree.
  */
+int
+sccs_istagkey(char *key)
+{
+	char	*parts[6];	/* user, host, path, date as integer */
+	char	buf[MAXKEY];
+
+	strcpy(buf, key);
+	explodeKey(buf, parts);
+	unless (parts[4] && atoi(parts[4])) return (1);
+	return (0);
+}
+
+/*
+ * Take a key like sccs_sdelta makes and find it in the tree.
+ */
 delta *
 sccs_findKey(sccs *s, char *key)
 {
@@ -14019,7 +14042,7 @@ sccs_findKey(sccs *s, char *key)
 	sum_t	*cksump = 0;
 	time_t	date;
 	delta	*e;
-	char	buf[MAXPATH];
+	char	buf[MAXKEY];
 
 	unless (s && s->tree) return (0);
 	debug((stderr, "findkey(%s)\n", key));
@@ -14032,7 +14055,7 @@ sccs_findKey(sccs *s, char *key)
 	if (parts[4]) {
 		cksum = atoi(parts[4]);
 		cksump = &cksum;
-	};
+	}
 	random = parts[5];
 	if (samekey(s->tree, user, host, path, date, cksump))
 		return (s->tree);

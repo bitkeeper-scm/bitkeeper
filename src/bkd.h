@@ -123,7 +123,7 @@ void	disconnect(remote *r, int how);
 void	drain();
 char	**getClientInfoBlock();
 void	sendServerInfoBlock();
-int	prunekey(sccs *, remote *, int, int, int *, int *);
+int	prunekey(sccs *, remote *, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);
