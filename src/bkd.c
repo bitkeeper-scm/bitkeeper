@@ -324,10 +324,12 @@ getav(int *acp, char ***avp, int *httpMode)
 #define	MAX_AV	50
 	static	char buf[MAXKEY * 2];		/* room for two keys */
 	static	char *av[MAX_AV];
-	static	remote r = { 0, 0, 0, 0, 0, 0, 1, 0, 0 ,0 };
+	remote	r;
 	int	i, inspace = 1, inQuote = 0;
 	int	ac;
 
+	bzero(&r, sizeof (remote));
+	r.wfd = 1;
 	/*
 	 * XXX TODO need to handle escaped quote character in args 
 	 */

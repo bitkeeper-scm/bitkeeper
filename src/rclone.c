@@ -23,6 +23,7 @@ rclone_main(int ac, char **av)
 	opts	opts;
 	remote	*l, *r;
 
+	bzero(&opts, sizeof(opts));
 	opts.verbose = 1;
 	opts.gzip = 6;
 	while ((c = getopt(ac, av, "dqr;z|")) != -1) {
