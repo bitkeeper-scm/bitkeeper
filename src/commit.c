@@ -136,15 +136,6 @@ commit_main(int ac, char **av)
 	}
 	do_clean(s_cset, SILENT);
 	if (doit) return (do_commit(av, opts, sym, pendingFiles, commentFile));
-	unless (licenseAccept()) {
-		unless (getenv("BK_GUI")) {
-			fprintf(stderr,
-			    "Changeset not created due to license rejection\n");
-		}
-		unlink(pendingFiles);
-		unlink(commentFile);
-		return (1);
-	}
 	switch (comments_prompt(commentFile)) {
 	    case 0:
 		return (do_commit(av, opts, sym, pendingFiles, commentFile));
