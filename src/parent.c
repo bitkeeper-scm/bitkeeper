@@ -105,7 +105,7 @@ getParent()
 	free(p);
 	unless (f) return (0);
 	len = fsize(f);
-	p = calloc(1, len);
+	p = calloc(1, len+1);
 	if (read(f, p, len) != len) {
 		perror("parent");
 		close(f);
