@@ -7,6 +7,10 @@ bk relink \- recreate broken hardlinks
 .SH SYNOPSIS
 .B bk relink [\-q]
 .ARG from
+.Bc [
+.ARG from2
+.ARG from3
+\&...\fB]\fP
 .ARG to
 .SH DESCRIPTION
 .LP
@@ -25,9 +29,11 @@ The relink command looks at each \*(SC file in the
 repository and if it is the same as the same file in the
 .ARG to 
 repository, it replaces the file in the 
-.ARG to 
+.ARG from
 repository
-with a hardlink.
+with a hardlink to the file in the
+.ARG to
+repository.
 .SH OPTIONS
 .TP 
 .B \-q

@@ -158,10 +158,11 @@ test -x FILE || {
 	exit 1
 }
 echo OK
+fi #------------------------------------------------------------------
 
 echo $N Make sure we may not fix a merge changeset ..................$NL
 cd $HERE
-bk clone $Q -l save clone
+bk clone $Q save clone
 cd save
 touch BitKeeper/etc/SCCS/x.marked
 bk edit $Q FILE
@@ -183,4 +184,17 @@ grep -q 'fix merge changesets' OUT || {
 	exit 1
 }
 echo OK
-fi #------------------------------------------------------------------
+
+echo $N Make sure files with spaces are OK .........................$NL
+echo "hi" > 'new file'
+bk new $Q 'new file'
+bk commit $Q -yy
+bk edit $Q 'new file'
+echo bye >> 'new file'
+bk ci $Q -ybye 'new file'
+bk commit $Q -ybye
+bk fix -c || {
+	echo fix should not have failed
+	exit 1
+}
+echo OK

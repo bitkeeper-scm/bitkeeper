@@ -103,3 +103,35 @@ echo OK
 # XX TODO need to get diff to produce 'i' command, and check
 # the processing of this case.
 
+echo $N more cnt-A tests ............................................$NL
+echo -e "\001" > test2
+echo -e "sdf" >> test2
+echo -e "sss" >> test2
+echo -e "\001" >> test2
+bk ci -i -y1 $Q test2 || exit 1
+bk edit $Q test2 2> get.out || exit 1
+cat get.out
+grep -q "bad delta cksum" get.out && exit 1
+echo -e "\001" > test2
+echo -e "sdf" >> test2
+echo -e "sss2" >> test2
+echo -e "\001" >> test2
+bk ci -y2 $Q test2 || exit 1
+bk edit $Q test2 2> get.out || exit 1
+cat get.out
+grep -q "bad delta cksum" get.out && exit 1
+echo -e "sdf" > test2
+echo -e "sss2" >> test2
+echo -e "\001" >> test2
+bk ci -y3 $Q test2 || exit 1
+bk edit $Q test2 2> get.out || exit 1
+cat get.out
+grep -q "bad delta cksum" get.out && exit 1
+echo -e "sdf" > test2
+echo -e "sss2" >> test2
+echo -e "\001a" >> test2
+bk ci -y4 $Q test2 || exit 1
+bk edit $Q test2 2> get.out || exit 1
+cat get.out
+grep -q "bad delta cksum" get.out && exit 1
+echo OK

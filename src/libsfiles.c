@@ -127,6 +127,7 @@ norev:
 		goto again;
 #endif
 		name = name2sccs(buf);
+		unless (name) goto again;
 		strcpy(buf, name);
 		free(name);
 	}
