@@ -65,6 +65,7 @@ private	void	getGone(int isLogPatch);
 private void	metaUnion(void);
 private void	metaUnionFile(char *file, char *cmd);
 private void	metaUnionResyncFile(char *from, char *to);
+private	void	loadskips(void);
 
 private	int	isLogPatch = 0;	/* is a logging patch */
 private	int	echo = 0;	/* verbose level, more means more diagnostics */
@@ -172,6 +173,30 @@ usage:		system("bk help -s takepatch");
 			return(0);
 		}
 	}
+
+	if (newProject) {
+		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
+			perror("mdbm_open");
+			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		}
+	} else {
+		/*
+		 * before loading up special dbs, update gfile is
+		 * logging tree
+		 */
+		if (isLogPatch) metaUnion();
+
+		/* OK if this returns NULL */
+		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
+
+		loadskips();
+
+		unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
+			perror("SCCS/x.id_cache");
+			exit(1);
+		}
+	}
+
 	/*
 	 * Find a file and go do it.
 	 */
@@ -449,7 +474,7 @@ extractPatch(char *name, MMAP *p, int flags, project *proj)
 	if (strneq("New file: ", t, 10)) {
 		reallyNew = newFile = 1;
 		perfile = sccs_getperfile(p, &line);
-		if (isLogPatch && perfile->defbranch) {
+		if (isLogPatch && perfile && perfile->defbranch) {
 			free(perfile->defbranch);
 			perfile->defbranch = 0;
 		}
@@ -842,10 +867,14 @@ extractDelta(char *name, sccs *s, int newFile, MMAP *f, int flags, int *np)
 	if (strneq(b, "# Patch checksum=", 17)) return 0;
 	pid = strdup(b);
 	/*
-	 * This code assumes that the patch order is 1.1..1.100
+	 * This code assumes that the delta table order is time sorted.
 	 * We stash away the parent of the earliest delta as a "GCA".
 	 */
-	if ((parent = sccs_findKey(s, b)) && !tableGCA) tableGCA = parent;
+	if (parent = sccs_findKey(s, b)) {
+		if (!tableGCA || (tableGCA->date >= parent->date)) {
+			tableGCA = parent;
+		}
+	}
 
 	/* go get the delta table entry for this delta */
 delta1:	off = mtell(f);
@@ -1276,7 +1305,7 @@ apply:
 			s->bitkeeper = 1;
 		}
 		/* LOD logging tree fix: All on LOD 1, renumber() will fix */
-		if (isLogPatch && !streq(d->rev, "1.0")
+		if (isLogPatch && d && !streq(d->rev, "1.0")
 		    && !streq(d->rev, "1.1")) {
 			free(d->rev);
 			d->rev = strdup("1.2");
@@ -1909,6 +1938,13 @@ resync_lock(void)
  * Create the RESYNC dir or bail out if it exists.
  * Put our pid in that dir so that we can figure out if
  * we are still here.
+ *
+ * This function creates patches in the PENDING directory when the
+ * patches are read from stdin.  On a logging tree, these patches are
+ * written and then processed by a seperate applyall process.  So
+ * logging processes need to be very careful to not touch any state
+ * that might effect the other takepatch that might be running in the
+ * background from a previous patch.
  */
 private	MMAP	*
 init(char *inputFile, int flags, project **pp)
@@ -2001,7 +2037,10 @@ init(char *inputFile, int flags, project **pp)
 	if (streq(inputFile, "-")) {
 		/*
 		 * Save the patch in the pending dir
-		 * and record we're working on it.
+		 * and record we're working on it.  We use a .incoming
+		 * file and then rename it later so that a background
+		 * applyall process on the logging server doesn't try
+		 * to process a partial patch.
 		 */
 		unless (savefile("PENDING", ".incoming", pendingFile)) {
 			SHOUT();
@@ -2332,26 +2371,6 @@ missing:
 	mnext(m);		/* skip version number */
 	line = 1;
 
-	if (newProject) {
-		unless (idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
-			perror("mdbm_open");
-			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-		}
-		return (m);
-	}
-
-	/* before loading up special dbs, update gfile is logging tree */
-	if (isLogPatch) metaUnion();
-
-	/* OK if this returns NULL */
-	goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
-
-	loadskips();
-
-	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
-		perror("SCCS/x.id_cache");
-		exit(1);
-	}
 	return (m);
 }
 
@@ -2365,9 +2384,8 @@ sccs *
 sccs_unzip(sccs *s)
 {
 	s = sccs_restart(s);
-	if (sccs_admin(s,
-	    0, ADMIN_FORCE|NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
-		sccs_free(s);
+	if (sccs_admin(s, 0,
+	    SILENT|ADMIN_FORCE|NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
 		return (0);
 	}
 	s = sccs_restart(s);

@@ -67,7 +67,7 @@ changes_main(int ac, char **av)
 		     * Note: do not add option 'K', it is reserved
 		     * for internal use
 		     */
-		    case 'a': opts.all = 1; break;
+		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'c': opts.date = optarg; break;
 		    case 'd': opts.dspec = optarg; break;
 		    case 'e': opts.noempty = !opts.noempty; break;
@@ -578,12 +578,13 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	int	rc = 0;
 	int	rc_lock;
 	char	buf[MAXLINE];
-	pid_t	pid;
+	pid_t	pid = 0;
 
 	if ((r->type == ADDR_HTTP) && bkd_connect(r, 0, 0)) {
 		return (1);
 	}
 
+	pid = mkpager();
 	if (ret == 0){
 		send_end_msg(r, "@NOTHING TO SEND@\n");
 		/* No handshake?? */
@@ -605,7 +606,6 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		rc = -1; /* protocal error */
 		goto done;
 	}
-	pid = mkpager();
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq("@END@", buf)) break;
 		if (write(1, &buf[1], strlen(buf) - 1) < 0) {
@@ -613,10 +613,10 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 		}
 		write(1, "\n", 1);
 	}
-	fclose(stdout);
-	if (pid > 0) waitpid(pid, 0, 0);
 
 done:	unlink(key_list);
+	fclose(stdout);
+	if (pid > 0) waitpid(pid, 0, 0);
 	disconnect(r, 1);
 	wait_eof(r, 0);
 	return (rc);

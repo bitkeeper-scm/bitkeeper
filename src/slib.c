@@ -4179,7 +4179,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	if (rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
-			free(s->gfile);
+ err:			free(s->gfile);
 			free(s->sfile);
 			free(s);
 			return (0);
@@ -4193,6 +4193,20 @@ sccs_init(char *name, u32 flags, project *proj)
 		}
 		s->state |= S_SFILE;
 		s->size = sbuf.st_size;
+	} else if (CSET(s)) {
+		int	bad;
+		/* t still points at last slash in s->sfile */
+		assert(*t == '/');
+
+		t[1] = 'q';
+		bad = exists(s->sfile);
+		t[1] = 's';
+		if (bad) {
+			fprintf(stderr,
+"Unable to proceed.  ChangeSet file corrupted.  error=57\n"
+"Please contact support@bitmover.com for help.\n");
+			goto err;
+		}
 	}
 	s->pfile = strdup(sccsXfile(s, 'p'));
 	s->zfile = strdup(sccsXfile(s, 'z'));
@@ -9756,7 +9770,6 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 				fprintf(stderr,
 				    "%s: rev %s has incorrect parent %s\n",
 				    file, d->rev, d->parent->rev);
-abort(); //XXXXXXXXX DEBUG
 			}
 			error = 1;
 		}
@@ -9796,6 +9809,20 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 			error |= 2;
 		}
 	}
+
+	/* Make sure the table order is sorted */
+	if (BITKEEPER(s) && d->next) {
+		unless (d->next->date <= d->date) {
+			unless (flags & ADMIN_SHUTUP) {
+				fprintf(stderr,
+				    "\t%s: %s,%s dates do not "
+				    "increase in table\n",
+				    s->sfile, d->rev, d->next->rev);
+			}
+			error |= 2;
+		}
+	}
+
 	/* Make sure we have no duplicate keys, assuming table sorted by date */
 	if (BITKEEPER(s) &&
 	    d->next &&

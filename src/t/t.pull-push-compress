@@ -17,6 +17,11 @@ echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+bk edit $Q BitKeeper/etc/config
+echo 'compression:gzip' >> BitKeeper/etc/config
+bk ci $Q -yyy BitKeeper/etc/config
+bk commit $Q -yyy
+bk -r admin -Zgzip
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 mkdir src
@@ -247,4 +252,19 @@ cd $HERE/copy2
 bk pull $Q -t $HERE/project
 if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
 if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
+echo OK
+
+echo $N pull from read-only server should work fine .................$NL
+cd $HERE/project
+echo hi > test
+bk new $Q test
+bk commit $Q -ytt || exit 1
+chmod -w SCCS
+cd $HERE/copy2
+bk pull $Q || {
+	echo pull failed
+	chmod +w $HERE/project/SCCS
+	exit 1
+}
+chmod +w $HERE/project/SCCS
 echo OK

@@ -167,6 +167,8 @@ sccs_gone(int quiet, FILE *f)
 	char	key[MAXKEY];
 	FILE	*gfile;
 	char	*root;
+	char	*tmpfile;
+	int	dflags = SILENT|DELTA_DONTASK;
 
 	root = sccs_root(0);
 	assert(root);
@@ -184,15 +186,19 @@ sccs_gone(int quiet, FILE *f)
 		while (fnext(key, f)) fputs(key, gfile);
 		fclose(gfile);
 		s = sccs_restart(s);
-		sccs_delta(s, SILENT|DELTA_DONTASK, 0, 0, 0, 0);
 	} else {
 		gfile = fopen(g_gone, "wb");
 		while (fnext(key, f)) fputs(key, gfile);
 		fclose(gfile);
 		s = sccs_init(s_gone, SILENT, 0);
 		assert(s);
-		sccs_delta(s, SILENT|NEWFILE|DELTA_DONTASK, 0, 0, 0, 0);
+		dflags |= NEWFILE;
 	}
+	tmpfile = aprintf("%s.tmp", g_gone);
+	sysio(g_gone, tmpfile, 0, "bk", "_sort", "-u", SYS);
+	rename(tmpfile, g_gone);
+	free(tmpfile);
+	sccs_delta(s, dflags, 0, 0, 0, 0);
 	sccs_free(s);
 	unless (quiet) {
 		fprintf(stderr,
