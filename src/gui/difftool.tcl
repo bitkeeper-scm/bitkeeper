@@ -4,8 +4,13 @@
 
 proc next {} \
 {
-	global	diffCount lastDiff
+	global	diffCount lastDiff search
 
+	if {[searchactive]} {
+		set search(dir) "/"
+		searchnext
+		return
+	}
 	if {$lastDiff == $diffCount} { return }
 	incr lastDiff
 	dot
@@ -13,8 +18,13 @@ proc next {} \
 
 proc prev {} \
 {
-	global	Diffs DiffsEnd diffCursor diffCount lastDiff
+	global	Diffs DiffsEnd diffCursor diffCount lastDiff search
 
+	if {[searchactive]} {
+		set search(dir) "?"
+		searchnext
+		return
+	}
 	if {$lastDiff == 1} { return }
 	incr lastDiff -1
 	dot
@@ -27,7 +37,7 @@ proc dot {} \
 	scrollDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
 	highlightDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
 	.diffs.status.middle configure -text "Diff $lastDiff of $diffCount"
-	.menu.dot configure -text "Goto diff $lastDiff"
+	.menu.dot configure -text "Center on diff $lastDiff"
 	if {$lastDiff == 1} {
 		.menu.prev configure -state disabled
 	} else {
@@ -322,16 +332,30 @@ proc computeHeight {} \
 	set gc(diff,diffHeight) [expr $p / $f]
 }
 
+proc clearOrRecall {} \
+{
+	set which [.menu.searchClear cget -text]
+	if {$which == "Recall search"} {
+		searchrecall
+	} else {
+		searchreset
+	}
+}
+
 proc widgets {} \
 {
 	global	scroll wish tcl_platform search gc
 
 	set search(prompt) "Search for:"
-	set search(dir) ""
+	set search(dir) "/"
 	set search(text) .menu.search
 	set search(widget) .diffs.right
 	set search(next) .menu.searchNext
 	set search(prev) .menu.searchPrev
+	set search(focus) .
+	set search(clear) .menu.searchClear
+	set search(recall) .menu.searchClear
+	set search(status) .menu.info
 	if {$tcl_platform(platform) == "windows"} {
 		set py -2; set px 1; set bw 2
 		set gc(diff,pFont) {helvetica 9 roman}
@@ -399,13 +423,29 @@ proc widgets {} \
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
 
+image create photo prevImage \
+    -format gif -data {
+R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQPgWuhfIJ4UE6YhHb8WQ1u
+WUg65BkMZwmoq9i+l+EKw30LiEtBau8DQnSIAgA7
+}
+image create photo nextImage \
+    -format gif -data {
+R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
+XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
+}
 	frame .menu
 	    button .menu.prev -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-text "Previous" -state disabled -command prev
+		-image prevImage -state disabled -command {
+			searchreset
+			prev
+		}
 	    button .menu.next -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-text "Next" -state disabled -command next
+		-image nextImage -state disabled -command {
+			searchreset
+			next
+		}
 	    button .menu.quit -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command exit 
@@ -420,31 +460,40 @@ proc widgets {} \
 		-pady $py -padx $px -borderwid $bw \
 		-font $gc(diff,BFont) -text "Current diff" \
 		-command dot
-	    label .menu.prompt -font $gc(diff,BFont) -width 12 -relief groove \
+	    label .menu.prompt -font $gc(diff,BFont) -width 11 -relief flat \
 		-textvariable search(prompt)
 	    entry $search(text) -width 20 -font $gc(diff,BFont)
 	    button .menu.searchPrev -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-text "Previous" -state disabled -command {
+		-image prevImage \
+		-state disabled -command {
 			searchdir ?
 			searchnext
 		}
 	    button .menu.searchNext -font $gc(diff,BFont) -bg $gc(diff,BColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-text "Next" -state disabled -command {
+		-image nextImage \
+		-state disabled -command {
 			searchdir /
 			searchnext
 		}
+	    button .menu.searchClear -font $gc(diff,BFont) \
+		-bg $gc(diff,BColor) \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Clear search" -state disabled -command { clearOrRecall }
+	    label $search(status) -width 20 -font $gc(diff,BFont) -relief flat
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
 	    pack .menu.reread -side left
 	    pack .menu.prev -side left
-	    pack .menu.next -side left
 	    pack .menu.dot -side left
-	    pack $search(text) -side right
-	    pack .menu.prompt -side right
-	    pack .menu.searchNext -side right
-	    pack .menu.searchPrev -side right
+	    pack .menu.next -side left
+	    pack .menu.prompt -side left
+	    pack $search(text) -side left
+	    pack .menu.searchPrev -side left
+	    pack .menu.searchClear -side left
+	    pack .menu.searchNext -side left
+	    pack $search(status) -side left -expand 1 -fill x
 
 	grid .menu -row 0 -column 0 -sticky ew
 	grid .diffs -row 1 -column 0 -sticky nsew
@@ -466,13 +515,16 @@ proc widgets {} \
 	foreach w {.diffs.left .diffs.right} {
 		bindtags $w {all Text .}
 	}
-	set foo [bindtags .diffs.left]
+	#set foo [bindtags .diffs.left]
 	computeHeight
 
 	.diffs.left tag configure diff -background $gc(diff,oColor)
 	.diffs.right tag configure diff -background $gc(diff,nColor)
+	$search(widget) tag configure search \
+	    -background #d0d0ff -relief groove -borderwid 0
 
 	keyboard_bindings
+	searchreset
 }
 
 # Set up keyboard accelerators.
@@ -502,16 +554,21 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
-	bind all <q>		exit
-	bind all <n>		next
-	bind all <space>	next
-	bind all <p>		prev
-	bind all <period>	dot
-	bind all <slash>	"search /"
-	bind all <question>	"search ?"
-	bind $search(text) <Return>	"searchstring"
-	$search(widget) tag configure search \
-	    -background #d0d0ff -relief groove -borderwid 0
+	bind all		<q>		exit
+	bind all		<n>		next
+	bind all		<space>		next
+	bind all		<p>		prev
+	bind all		<period>	dot
+	bind all		<slash>		"search /"
+	bind all		<question>	"search ?"
+	bind all		<Control-u>	searchreset
+	bind all		<Control-r>	searchrecall
+	bind $search(text)	<Return>	searchstring
+	bind $search(text)	<Control-u>	searchreset
+
+	# In the search window, don't listen to "all" tags.
+	bindtags $search(text) { .menu.search Entry . }
+
 }
 
 proc getrev {file rev checkMods} \
