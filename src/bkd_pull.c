@@ -1,16 +1,8 @@
 #include "bkd.h"
 
-/*
- * Input:
- *	key
- *	key
- *	...
- *	@END@
- * Output:
- *	patch of anything not in the list
- *
- * Returns - this never returns, always causes the daemon to exit.
- */
+void	listIt(sccs *s, int out);
+void	listrev(delta *d, int out);
+
 int
 cmd_pull(int ac, char **av, int in, int out)
 {
@@ -85,15 +77,7 @@ cmd_pull(int ac, char **av, int in, int out)
 	}
 	pclose(f); f = 0;
 	unless (bytes) {
-		/*
-		 * Unlock because our nasty parent may kill us before we
-		 * get to it.  It kills us as soon as the Nothing is seen.
-		 */
-		repository_rdunlock(0);
-		if (doit) {
-			writen(out, "OK-Nothing to send.\n");
-			writen(out, "OK-END\n");
-		}
+		if (doit) writen(out, "OK-Nothing to send.\n");
 		goto out;
 	}
 	writen(out, "OK-something to send.\n");
@@ -171,9 +155,11 @@ out:
 	if (them) mdbm_close(them);
 	if (me) mdbm_close(me);
 	repository_rdunlock(0);
+	writen(out, "OK-Unlocked\n");
 	exit(error);
 }
 
+void
 listIt(sccs *s, int out)
 {
 	delta	*d;
@@ -183,6 +169,7 @@ listIt(sccs *s, int out)
 	}
 }
 
+void
 listrev(delta *d, int out)
 {
 	char	*t;

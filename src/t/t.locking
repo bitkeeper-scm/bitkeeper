@@ -70,7 +70,10 @@ bk repo -r
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE
 bk clone $Q project clone
+EXIT=$?
+if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
 if [ ! -d clone -o ! -f clone/SCCS/s.A ]; then echo clone failed; exit 1; fi
+if [ ! -f clone/BitKeeper/log/parent ]; then echo clone failed to set parent; exit 1; fi
 echo OK
 echo $N Make sure pull fails with existing write lock in source .....$NL
 cd $HERE/project

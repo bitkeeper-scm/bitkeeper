@@ -32,11 +32,30 @@ struct cmd {
 	func	cmd;		/* function pointer which does the work */
 };
 
+/*
+ * BK "URL" formats are:
+ *	bk://user@host:port/pathname
+ *	user@host:pathname
+ * In most cases, everything except the pathname is optional.
+ */
+typedef struct {
+	u16	port;		/* remote port if set */
+	char	*user;		/* remote user if set */
+	char	*host;		/* remote host if set */
+	char	*path;		/* pathname (must be set) */
+} remote;
+
 extern	struct cmd cmds[];
 extern	int exists(char *);
 
-extern	int writen(int fd, char *s);
-extern	int readn(int from, char *buf, int size);
-extern	int getline(int in, char *buf, int size);
+int	writen(int fd, char *s);
+int	readn(int from, char *buf, int size);
+int	getline(int in, char *buf, int size);
+remote	*remote_parse(char *url);
+void	remote_free(remote *r);
+char	*remote_unparse(remote *r);
+void	remote_print(remote *r, FILE *f);
+pid_t	bkd(int compress, remote *r, int fds[2]);
+void	bkd_reap(pid_t resync, int fds[2]);
 
 #endif

@@ -3136,7 +3136,6 @@ proj_init(sccs *s)
 {
 	char	*root;
 	project	*p;
-	char	path[MAXPATH];
 
 	assert((s == 0) || (s->proj == 0));
 

@@ -10,10 +10,10 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
 	  bkd bkusers commit fix gethelp getlog help isascii logaddr \
 	  logchangeset names parent push r2c receive resolve \
-	  send sendconfig setlog setup status unwrap version repo pull
+	  send sendconfig setlog setup status unwrap version repo pull clone
 SCRIPTS	= rcs2sccs testfast bk import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset build crank clone resync merge \
+	  renametool mkdiffs lodset build crank resync merge \
 	  gzip_uuwrap ungzip_uuwrap
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
@@ -54,16 +54,17 @@ RESOBJ =  resolve.o resolve_create.o resolve_contents.o resolve_generic.o \
 	  resolve_renames.o resolve_modes.o resolve_flags.o
 BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
 	  bkd_cmdtab.o lib_tcp.o bkd.o bkd_version.o
+BKLIB	= lib_tcp.o bkd_client.o
 BINOBJ	= $(BINS:=.o)
 BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
 	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c) \
-	  $(RESOBJ:.o=.c)
+	  $(RESOBJ:.o=.c) $(BKLIB:.o=.c)
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
 	  zlib/inftrees.h zlib/infutil.h zlib/trees.h zgets.h unix.h mmap.h \
-	  comments.c host.c user.c resolve.h
+	  comments.c host.c user.c resolve.h bkd.h
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
@@ -136,7 +137,7 @@ production_image: rebuild p image
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-	    $(BKDOBJ) $(RESOBJ) $(LIBS) bkdsubstr bkhelp.txt a.out core
+	    $(BKDOBJ) $(RESOBJ) $(LIBS) $(BKLIB) bkdsubstr bkhelp.txt a.out core
 	-cd gnu && $(MAKE) clean-obj
 
 clean-bin: FORCE
@@ -302,10 +303,12 @@ chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
-push: push.o lib_tcp.o $(LIBS)
-	$(CC) $(CFLAGS) push.o lib_tcp.o $(LINK) -o push
-pull: pull.o lib_tcp.o $(LIBS)
-	$(CC) $(CFLAGS) pull.o lib_tcp.o $(LINK) -o pull
+push: push.o $(BKLIB) $(LIBS)
+	$(CC) $(CFLAGS) push.o $(BKLIB) $(LINK) -o push
+pull: pull.o $(BKLIB) $(LIBS)
+	$(CC) $(CFLAGS) pull.o $(BKLIB) $(LINK) -o pull
+clone: clone.o $(BKLIB) $(LIBS)
+	$(CC) $(CFLAGS) clone.o $(BKLIB) $(LINK) -o clone
 logaddr: logaddr.o $(LIBS)
 	$(CC) $(CFLAGS) logaddr.o $(LINK) -o logaddr
 setlog: setlog.o $(LIBS)
@@ -453,12 +456,6 @@ merge: merge.sh
 	cp merge.sh merge
 	chmod +x merge
 	chmod -w merge
-
-clone: bkdsubstr clone.sh
-	rm -f clone
-	./bkdsubstr < clone.sh > clone
-	chmod +x clone
-	chmod -w clone
 
 resync: resync.sh
 	rm -f resync
