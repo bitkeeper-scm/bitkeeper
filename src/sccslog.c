@@ -9,8 +9,8 @@
 WHATSTR("@(#)%K%");
 
 private	char	*log_help = "\n\
-usage: sccslog [-hpv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
-    -c<dates>	Cut off dates.  See range(1) for details.\n\
+usage: sccslog [-pCv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
+    -c<dates>	Cut off dates.  See 'bk help dates' for details.\n\
     -C		produce comments for a changeset\n\
     -p		show basenames instead of full pathnames.\n\
     -r<r>	specify a revision or a part of a range.\n\
