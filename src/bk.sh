@@ -13,6 +13,14 @@
 # getopt.  Every shell I've tried except AT&T ksh gets it wrong.  Most
 # people don't have AT&T ksh.
 
+# Utility function
+# if you want to add a -q option to a function here, just set Q=-q
+# in your getopts loop and use qecho in every place that should be
+# conditional.
+qecho() {
+	[ "$Q" != "-q" ] && echo $@
+}
+
 __cd2root() {
 	while [ ! -d "BitKeeper/etc" ]
 	do	cd ..
@@ -57,6 +65,13 @@ _striptags() {
 # Usage: lclone from [to]
 _lclone() {
 	HERE=`pwd`
+	while getopts q opt
+	do
+		case "$opt" in
+		q) Q="-q";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	if [ "X$1" = X ]
 	then	echo Usage: $0 from to
 		exit 1
@@ -71,25 +86,31 @@ _lclone() {
 	fi
 	test -d "$TO" && { echo $2 exists; exit 1; }
 	cd $FROM
-	echo Finding SCCS directories...
+	qecho Finding SCCS directories...
 	bk sfiles -d > /tmp/dirs$$
 	cd $HERE
 	mkdir $TO
 	cd $TO
 	while read x
-	do	echo Linking $x ...
+	do
+		if [ "$x" != "." -a -d $FROM/$x/BitKeeper ]
+		then
+			qecho "Skipping $x ..."
+			continue
+		fi
+		qecho Linking $x ...
 		mkdir -p $x/SCCS
 		ln $FROM/$x/SCCS/s.* $x/SCCS
 	done < /tmp/dirs$$
 	bk sane
-	echo Looking for and removing any uncommitted deltas
+	qecho Looking for and removing any uncommitted deltas
 	bk sfiles -pA | bk stripdel -
-	echo Running a sanity check
+	qecho Running a sanity check
 	bk -r check -ac || {
 		echo lclone failed
 		exit 1
 	}
-	bk parent $FROM
+	bk parent $Q $FROM
 	rm -f /tmp/dir$$
 	exit 0
 }
