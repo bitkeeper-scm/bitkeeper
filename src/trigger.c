@@ -7,6 +7,34 @@ private int localTrigger(char **);
 private int remotePreTrigger(char **);
 private int remotePostTrigger(char **);
 
+int put_trigger_env(char *where, char *v, char *value);
+
+
+/*
+ * set up the trigger environment
+ */
+private void
+trigger_env(char *what)
+{
+	char buf[2*MAXPATH];
+	char *direction;
+
+	if (strneq(what, "incoming", 8))
+		direction = "_INCOMING";
+	else if (strneq(what, "outgoing", 8))
+		direction = "_OUTGOING";
+	else
+		direction = "";
+
+	putroot(direction);
+	put_trigger_env(direction, "HOST", sccs_gethost());
+	put_trigger_env(direction, "USER", sccs_getuser());
+	put_trigger_env(direction, "TIME_T", bk_time);
+	put_trigger_env(direction, "UTC", bk_utc);
+	put_trigger_env(direction, "VERSION", bk_vers);
+}
+
+
 /*
  * trigger:  Fire triggers before and/or after repository level commands.
  *
@@ -105,27 +133,7 @@ trigger(char **av, char *when)
 	/*
 	 * Stuff some more useful crud in the environment.
 	 */
-	putroot();
-	unless ((t = getenv("BK_LOCAL_HOST")) && streq(t, sccs_gethost())) {
-		sprintf(buf, "BK_LOCAL_HOST=%s", sccs_gethost());
-		putenv((strdup)(buf));
-	}
-	unless ((t = getenv("BK_LOCAL_USER")) && streq(t, sccs_getuser())) {
-		sprintf(buf, "BK_LOCAL_USER=%s", sccs_getuser());
-		putenv((strdup)(buf));
-	}
-	unless ((t = getenv("BK_LOCAL_TIME_T")) && streq(t, bk_time)) {
-		sprintf(buf, "BK_LOCAL_TIME_T=%s", bk_time);
-		putenv((strdup)(buf));
-	}
-	unless ((t = getenv("BK_LOCAL_UTC")) && streq(t, bk_utc)) {
-		sprintf(buf, "BK_LOCAL_UTC=%s", bk_utc);
-		putenv((strdup)(buf));
-	}
-	unless ((t = getenv("BK_LOCAL_VERSION")) && streq(t, bk_vers)) {
-		sprintf(buf, "BK_LOCAL_VERSION=%s", bk_vers);
-		putenv((strdup)(buf));
-	}
+	trigger_env(what);
 
 	/*
 	 * Sort it and run the triggers

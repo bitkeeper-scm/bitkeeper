@@ -94,7 +94,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	gettemp(buf, "clone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar);
+	sendEnv(f, envVar, "_INCOMING");
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (gzip) fprintf(f, " -z%d", gzip);
@@ -130,7 +130,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		putenv("BK_CSETS=1.0..");
 	}
 	if (local) {
-		sprintf(buf, "BK_REMOTE_ROOT=%s", local);
+		sprintf(buf, "BK_OUTGOING_ROOT=%s", local);
 		putenv((strdup)(buf));
 	}
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
@@ -140,10 +140,10 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		getServerInfoBlock(r, "_OUTGOING");
 		getline2(r, buf, sizeof(buf));
 		/* use the basename of the src if no dest is specified */
-		if (!local && (local = getenv("BK_REMOTE_ROOT"))) {
+		if (!local && (local = getenv("BK_OUTGOING_ROOT"))) {
 			if (p = strrchr(local, '/')) local = ++p;
 		}
 		if (exists(local)) {
@@ -261,8 +261,8 @@ initProject(char *root)
 	/* XXX - this function exits and that means the bkd is left hanging */
 	sccs_mkroot(".");
 	repository_wrlock();
-	if (getenv("BK_REMOTE_LEVEL")) {
-		setlevel(atoi(getenv("BK_REMOTE_LEVEL")));
+	if (getenv("BK_OUTGOING_LEVEL")) {
+		setlevel(atoi(getenv("BK_OUTGOING_LEVEL")));
 	}
 	return (0);
 }

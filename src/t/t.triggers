@@ -502,8 +502,8 @@ cat >good2 <<EOF
 echo "\`bk root\`/\$0: trigger fired"
 test "X$BK_RESYNC" = XFALSE || exit 0
 if [ ! -d RESYNC ]; then echo "missing RESYNC TREE"; exit 1; fi
-if [ X\$BK_REMOTE_USER != X`bk getuser` ]; then echo "Wrong user"; exit 1; fi
-echo "post-incoming trigger: user=\$BK_REMOTE_USER"
+if [ X\$BK_OUTGOING_USER != X`bk getuser` ]; then echo "Wrong user"; exit 1; fi
+echo "post-incoming trigger: user=\$BK_OUTGOING_USER"
 REV=\`cat RESYNC/BitKeeper/etc/csets-in\`
 echo "incoming rev=\$REV"
 for i in $REV

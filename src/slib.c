@@ -5513,7 +5513,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		 * diffs file with normlized to LF.
 		 */
 		if (((encode == E_ASCII) || (encode == E_GZIP)) &&
-		    EOLN_NATIVE(s)) {
+		    (s->xflags & X_EOLN_NATIVE)) {
 			mode = "wt";
 		}
 #endif

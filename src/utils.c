@@ -451,26 +451,42 @@ add_cd_command(FILE *f, remote *r)
 }
 
 void
-putroot()
+put_trigger_env(char *where, char *v, char *value)
+{
+	char env[100];
+	char buf[MAXPATH];
+	char *e;
+
+	sprintf(env, "BK%s_%s", where, v);
+	if ((e = getenv(env)) && streq(e, value)) return;
+	sprintf(buf, "%s=%s", env, value);
+	putenv(strdup(buf));
+}
+
+void
+putroot(char *where)
 {
 	char	*root = sccs_root(0);
 	char	*e;
 	char	buf[MAXPATH];
+	char	env[100];
+
+	sprintf(env, "BK%s_ROOT", where);
 
 	if (root) {
 		if (streq(root, ".")) {
 			char	pwd[MAXPATH];
 
 			getcwd(pwd, MAXPATH);
-			if ((e = getenv("BK_LOCAL_ROOT")) && streq(e, pwd)) {
+			if ((e = getenv(env)) && streq(e, pwd)) {
 				return;
 			}
-			sprintf(buf, "BK_LOCAL_ROOT=%s", pwd);
+			sprintf(buf, "%s=%s", env, pwd);
 		} else {
-			if ((e = getenv("BK_LOCAL_ROOT")) && streq(e, root)) {
+			if ((e = getenv(env)) && streq(e, root)) {
 				return;
 			}
-			sprintf(buf, "BK_LOCAL_ROOT=%s", root);
+			sprintf(buf, "%s=%s", env, root);
 		}
 		putenv((strdup)(buf));
 		free(root);
@@ -478,30 +494,28 @@ putroot()
 }
 
 void
-sendEnv(FILE *f, char **envVar)
+sendEnv(FILE *f, char **envVar, char *direction)
 {
 	int	i;
 	char	*root;
 
-	/* for compat with old 2.0 code, remove this line later*/
-	fprintf(f, "putenv BK_CLIENT_PROTOCOL=%s\n", BKD_VERSION);
-
 	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
-	fprintf(f, "putenv BK_REMOTE_VERSION=%s\n", bk_vers);
-	fprintf(f, "putenv BK_REMOTE_UTC=%s\n", bk_utc);
-	fprintf(f, "putenv BK_REMOTE_TIME_T=%s\n", bk_time);
-	fprintf(f, "putenv BK_REMOTE_USER=%s\n", sccs_getuser());
-	fprintf(f, "putenv BK_REMOTE_HOST=%s\n", sccs_gethost());
-	fprintf(f, "putenv BK_REMOTE_LEVEL=%d\n", getlevel());
+
+	fprintf(f, "putenv BK%s_VERSION=%s\n", direction, bk_vers);
+	fprintf(f, "putenv BK%s_UTC=%s\n", direction, bk_utc);
+	fprintf(f, "putenv BK%s_TIME_T=%s\n", direction, bk_time);
+	fprintf(f, "putenv BK%s_USER=%s\n", direction, sccs_getuser());
+	fprintf(f, "putenv BK%s_HOST=%s\n", direction, sccs_gethost());
+	fprintf(f, "putenv BK%s_LEVEL=%d\n", direction, getlevel());
 	root = sccs_root(0);
 	if (root) {
 		if (streq(root, ".")) {
 			char	pwd[MAXPATH];
 
 			getcwd(pwd, MAXPATH);
-			fprintf(f, "putenv BK_REMOTE_ROOT=%s\n", pwd);
+			fprintf(f, "putenv BK%s_ROOT=%s\n", direction, pwd);
 		} else {
-			fprintf(f, "putenv BK_REMOTE_ROOT=%s\n", root);
+			fprintf(f, "putenv BK%s_ROOT=%s\n", direction, root);
 		}
 		free(root);
 	}
@@ -511,7 +525,7 @@ sendEnv(FILE *f, char **envVar)
 }
 
 int
-getServerInfoBlock(remote *r)
+getServerInfoBlock(remote *r, char *direction)
 {
 	char	*p, buf[4096];
 	int	len;
@@ -521,11 +535,15 @@ getServerInfoBlock(remote *r)
 		if (r->trace) fprintf(stderr, "Server info:%s\n", buf);
 		len = strlen(buf); 
 		/*
-		 * 11 is the length of prefix + null termination byte
+		 * 11 is the length of longest prefix + null termination byte
 	 	 * Note: This memory is de-allocated at exit
 		 */
-		p = (char *) malloc(len + 11); assert(p); 
-		sprintf(p, "BK_REMOTE_%s", buf);
+		p = (char *) malloc(len + 11 + strlen(direction)); assert(p); 
+		if (strneq(buf, "PROTOCOL", 8)) {
+			sprintf(p, "BK_REMOTE_%s", buf);
+		} else {
+			sprintf(p, "BK%s_%s", direction, buf);
+		}
 		putenv(p);
 	}
 	return (1); /* protocol error */

@@ -102,7 +102,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	bktemp(buf);
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar);
+	sendEnv(f, envVar, "_INCOMING");
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "pull_part1");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
@@ -131,13 +131,13 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if ((rc = remote_lock_fail(buf, !opts.quiet))) {
 		return (rc); /* -2 means lock busy */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		getServerInfoBlock(r, "_OUTGOING");
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainNonStandardMsg(r, buf, sizeof(buf));
 	}
-	if (getenv("BK_REMOTE_LEVEL") &&
-	    (atoi(getenv("BK_REMOTE_LEVEL")) > getlevel())) {
+	if (getenv("BK_OUTGOING_LEVEL") &&
+	    (atoi(getenv("BK_OUTGOING_LEVEL")) > getlevel())) {
 	    	fprintf(stderr,
 		    "pull: cannot pull to lower level repository\n");
 		disconnect(r, 2);
@@ -173,7 +173,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	bktemp(msg_file);
 	f = fopen(msg_file, "w");
 	assert(f);
-	sendEnv(f, envVar);
+	sendEnv(f, envVar, "_INCOMING");
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
@@ -231,7 +231,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if (remote_lock_fail(buf, !opts.quiet)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		getServerInfoBlock(r, "_OUTGOING");
 		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, !opts.quiet)) {

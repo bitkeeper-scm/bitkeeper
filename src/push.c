@@ -240,7 +240,7 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 	bktemp(buf);
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar);
+	sendEnv(f, envVar, "_OUTGOING");
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "push_part1");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
@@ -272,9 +272,9 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 	if ((rc = remote_lock_fail(buf, opts.verbose))) {
 		return (rc); /* -2 means locked */
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
-		if (getenv("BK_REMOTE_LEVEL") &&
-		    (atoi(getenv("BK_REMOTE_LEVEL")) < getlevel())) {
+		getServerInfoBlock(r, "_INCOMING");
+		if (getenv("BK_INCOMING_LEVEL") &&
+		    (atoi(getenv("BK_INCOMING_LEVEL")) < getlevel())) {
 			fprintf(stderr,
 			    "push: cannot push to lower level repository\n");
 			disconnect(r, 2);
@@ -438,7 +438,7 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	bktemp(msgfile);
 	f = fopen(msgfile, "wb");
 	assert(f);
-	sendEnv(f, envVar);
+	sendEnv(f, envVar, "_OUTGOING");
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
@@ -478,7 +478,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	bktemp(msgfile);
 	f = fopen(msgfile, "wb");
 	assert(f);
-	sendEnv(f, envVar);
+	sendEnv(f, envVar, "_OUTGOING");
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
@@ -564,7 +564,7 @@ push_part2(char **av, opts opts,
 		 * Setup the BK_CSETS env variable, in case the trigger 
 		 * script wants it.
 		 */
-		sprintf(buf, "BK_CSETS=%s", rev_list);
+		sprintf(buf, "BK_CSETLIST=%s", rev_list);
 		putenv(buf); 
 		if (!opts.metaOnly && trigger(av, "pre")) {
 			send_end_msg(opts, r, "@ABORT@\n", rev_list, envVar);
@@ -581,7 +581,7 @@ push_part2(char **av, opts opts,
 	if (remote_lock_fail(buf, opts.verbose)) {
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
-		getServerInfoBlock(r);
+		getServerInfoBlock(r, "_INCOMING");
 	}
 	if (done) goto done;
 
