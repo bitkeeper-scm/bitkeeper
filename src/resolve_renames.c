@@ -71,7 +71,13 @@ Remote: %s@%s %s\n\
 int
 r_explain(resolve *rs)
 {
-	fprintf(stderr, "Don't you wish.\n");
+	fprintf(stderr,
+"\nThe file has been moved in both the local and remote repository.\n\
+You have to pick one of those two names, or pick a new name.\n\
+The original name was             \"%s\"\n\
+The local repository moved it to  \"%s\"\n\
+the remote repository moved it to \"%s\"\n\n",
+    rs->gnames->gca, rs->gnames->local, rs->gnames->remote);
 	return (0);
 }
 

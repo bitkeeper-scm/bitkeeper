@@ -886,10 +886,13 @@ rename_file(resolve *rs)
 	 */
 	unless (opts->resolveNames) return (-1);
 
+	/*
+	 * This makes the pass3 not automerge.
 	if (opts->automerge) {
 		fprintf(stderr, "resolve: can not autorename %s\n", rs->dname);
 		return (-1);
 	}
+	 */
 
 	return (resolve_renames(rs));
 }
