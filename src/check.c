@@ -950,7 +950,7 @@ buildKeys(sccs *cset, MDBM *idDB)
 private void
 listCsetRevs(char *key)
 {
-	FILE	*keys = popen("bk sccscat -hm ChangeSet", "r");
+	FILE	*keys = popen("bk sccscat -ar -h ChangeSet", "r");
 	char	*t;
 	int	first = 1;
 	char	buf[MAXPATH*3];
@@ -1389,7 +1389,7 @@ csetFind(char *key)
 
 	char *k, *r =0;
 
-	sprintf(buf, "bk sccscat -hm ChangeSet");
+	sprintf(buf, "bk sccscat -ar -h ChangeSet");
 	unless (p = popen(buf, "r")) return (strdup("[popen failed]"));
 	while (fnext(buf, p)) {
 		if (r) continue;

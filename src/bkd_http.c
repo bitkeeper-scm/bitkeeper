@@ -1009,7 +1009,7 @@ http_anno(char *pathrev)
 	*s++ = 0;
 
 	out("<pre><font size=2>");
-	sprintf(buf, "bk annotate -uma -r'%s' %s", s, pathrev);
+	sprintf(buf, "bk annotate -Aru -r'%s' %s", s, pathrev);
 
 	/*
 	 * Do not show the license key in config file
