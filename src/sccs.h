@@ -801,7 +801,7 @@ int	setlog(char *u);
 int	connect_srv(char *srv, int port);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
-int	gethelp(char *help_name, char *bkarg, char *prefix, FILE *f);
+int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
 int	is_open_logging(char *logaddr);
 void	status(int verbose, FILE *out);
 void	notify();

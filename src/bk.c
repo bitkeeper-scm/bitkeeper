@@ -57,9 +57,8 @@ int graft_main(int, char **);
 int grep_main(int, char **);
 int gone_main(int, char **);
 int help_main(int, char **);
-int helpaliases_main(int, char **);
 int helpsearch_main(int, char **);
-int helptopiclist_main(int, char **);
+int helptopics_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
 int keysort_main(int, char **);
@@ -167,9 +166,8 @@ struct command cmdtbl[] = {
 	{"gnupatch", gnupatch_main},
 	{"gone", gone_main},
 	{"help", help_main},
-	{"helpaliases", helpaliases_main},
 	{"helpsearch", helpsearch_main},
-	{"helptopiclist", helptopiclist_main},
+	{"helptopics", helptopics_main},
 	{"info", sinfo_main},	/* aliases */
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},

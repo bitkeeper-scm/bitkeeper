@@ -138,7 +138,7 @@ proc bkhelp {topic} \
 
 	set msg "BitKeeper help -- $topic"
 	wm title . $msg
-	set f [open "| bk help -p $topic"]
+	set f [open "| bk help $gc(help.helptext) -p $topic"]
 	.text.help configure -state normal
 	.text.help delete 1.0 end
 	set lineno 1
@@ -266,7 +266,7 @@ proc search {} \
 	.ctrl.topics tag remove "search" 1.0 end
 	.text.help configure -state normal
 	.text.help delete 1.0 end
-	set f [open "| bk helpsearch -l $search_word" "r"]
+	set f [open "| bk helpsearch $gc(help.helptext) -l $search_word" "r"]
 	set last ""
 	while {[gets $f line] >= 0} {
 		set tab [string first "\t" $line"]
@@ -519,10 +519,23 @@ proc getSelection {argv} \
 
 proc getHelp {} \
 {
-	global	nTopics argv line lines aliases line2full
+	global	nTopics argv line lines aliases line2full gc
 
 	set nTopics 0
-	set f [open "| bk helptopiclist"]
+	set file [lindex $argv 0]
+	if {[regexp {^-f} $file]} {
+		if {$file == "-f"} {
+			set file [lindex $argv 1]
+			set gc(help.helptext) "-f$file"
+			set keyword [lindex $argv 2]
+		} else {
+			set gc(help.helptext) $file
+			set keyword [lindex $argv 1]
+		}
+	} else {
+		set keyword [lindex $argv 0]
+	}
+	set f [open "| bk helptopics $gc(help.helptext)"]
 	.ctrl.topics configure -state normal
 	set section ""
 	while {[gets $f topic] >= 0} {
@@ -560,8 +573,8 @@ proc getHelp {} \
 	catch {close $f} dummy
 	.ctrl.topics configure -state disabled
 	.text.help configure -state disabled
-	if {$argv != ""} {
-		getSelection $argv
+	if {$keyword != ""} {
+		getSelection $keyword
 	} else {
 		set line 1.0
 	}

@@ -12,19 +12,22 @@ help_main(int ac,  char **av)
 	int	c, i = 0, use_pager = 1;
 	char	*opt = 0;
 	FILE	*f;
+	char	*file = 0;
 
 	if (ac == 1) {
 		sprintf(buf, "bk help help | %s", pager);
 		system(buf);
 		return (0);
 	}
-	while ((c = getopt(ac, av, "akp")) != -1) {
+	while ((c = getopt(ac, av, "af:kp")) != -1) {
 		switch (c) {
 		    case 'a': opt = "al"; break;
-		    case 'k': opt = "l"; break;
+		    case 'f': file = optarg; break;
+		    case 'k': opt = "l"; break;		/* like man -k */
 		    case 'p': use_pager = 0; break;
 		    defaults:
-			fprintf(stderr, "usage: bk help [-p] [topic]\n");
+			fprintf(stderr,
+			    "usage: bk help [-akp] [-f<helptxt>] [topic]\n");
 			return (1);
 		}
 	}
@@ -32,8 +35,15 @@ help_main(int ac,  char **av)
 	unlink(out);
 	if (opt) {
 		for (av[i = optind]; av[i]; i++) {
-			sprintf(buf,
-			    "bk helpsearch -%s %s >> %s", opt, av[i], out);
+			if (file) {
+				sprintf(buf,
+				    "bk helpsearch -f%s -%s %s >> %s",
+				    file, opt, av[i], out);
+			} else {
+				sprintf(buf,
+				    "bk helpsearch -%s %s >> %s",
+				    opt, av[i], out);
+			}
 			system(buf);
 		}
 		goto print;
@@ -41,6 +51,13 @@ help_main(int ac,  char **av)
 	for (av[i = optind]; av[i]; i++) {
 		sprintf(buf,
 		    "bk gethelp %s %s >> %s", av[i], bin, out);
+		if (file) {
+			sprintf(buf,
+			    "bk gethelp -f%s %s %s >> %s",
+			    file, av[i], bin, out);
+		} else {
+			sprintf(buf, "bk gethelp %s %s >> %s", av[i], bin, out);
+		}
 		if (system(buf) != 0) {
 			if (is_command(av[optind])) {
 				f = fopen(out, "ab");
