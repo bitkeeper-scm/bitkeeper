@@ -2006,6 +2006,7 @@ rfind(sccs *s, char *rev)
 private char *
 defbranch(sccs *s)
 {
+	if (BITKEEPER(s)) return ("65535");
 	if (s->defbranch) return (s->defbranch);
 	return ("65535");
 }
@@ -2188,7 +2189,7 @@ sccs_setpathname(sccs *s)
 {
 	delta	*d;
 
-	assert(s && !s->defbranch);
+	assert(s);
 	/* XXX: If 'not in view file' -- get a name to use
 	 * and store it in s->spathname:
 	 * For now, just store pathname in spathname
@@ -9417,6 +9418,12 @@ private inline int
 isleaf(register sccs *s, register delta *d)
 {
 	if (d->type != 'D') return (0);
+	/*
+	 * June 2002: ignore lod stuff, we're removing that feature.
+	 * We'll later add back the support for 2.x, 3.x, style numbering
+	 * and then we'll need to remove this.
+	 */
+	if (d->r[0] > 1) return (0);
 
 	if (d->flags & D_MERGED) {
 		delta	*t;

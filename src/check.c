@@ -379,8 +379,6 @@ chk_dfile(sccs *s)
 	* as a special case.
         */
 
-	assert(!s->defbranch);
-
 	p = basenm(s->sfile);
 	*p = 'd';
 	if  (!(d->flags & D_CSET) && !exists(s->sfile)) { 
