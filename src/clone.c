@@ -133,6 +133,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		sprintf(buf, "BK_OUTGOING_ROOT=%s", local);
 		putenv((strdup)(buf));
 	}
+	if (bkd_connect(r, opts.gzip)) goto done;
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
 
 	if (r->httpd) skip_http_hdr(r);
