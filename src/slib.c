@@ -801,7 +801,11 @@ tm2utc(struct tm *tp)
 	time_t	t;
 
 	if (tp->tm_year < 70) return (1);
-	assert(tp->tm_year < 138);
+	if (tp->tm_year >= 138) {
+		fprintf(stderr,
+		    "tm2utc: bad time structure: tm_year = %d\n", tp->tm_year);
+		return  (0);
+	}
 	t = yearSecs[tp->tm_year - 70];
 	t += monthSecs[tp->tm_mon];
 	if ((tp->tm_mon > 1) && leapYear(1900 + tp->tm_year)) {
@@ -7493,16 +7497,10 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		
-		t = "";
-		if (d->published) {
-			t = (d->ptype ? "\t" : " ");
-			assert(CSET(s));
-	    	}
 		if (first) {
 			fputmeta(s, "\001cK", out);
 			s->sumOff = ftell(out);
 			fputs("XXXXX", out);
-			if (d->published) fputmeta(s, t, out);
 			fputmeta(s, "\n", out);
 		} else if (d->flags & D_CKSUM) {
 			/*
@@ -7513,7 +7511,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			 * Leaving this fixed means we can diff the
 			 * s.files easily.
 			 */
-			sprintf(buf, "\001cK%05u%s\n", d->sum, t);
+			sprintf(buf, "\001cK%05u\n", d->sum);
 			fputmeta(s, buf, out);
 		}
 		if (d->merge) {
@@ -9716,14 +9714,9 @@ modeArg(delta *d, char *arg)
 private delta *
 sumArg(delta *d, char *arg)
 {
-	char *p;
-
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
-	for (p = arg; isdigit(*p); p++);
-	if (*p == ' ') { d->published = 1; d->ptype = 0; }
-	if (*p == '\t') { d->published = 1; d->ptype = 1; }
 	return (d);
 }
 
@@ -14188,12 +14181,7 @@ do_patch(sccs *s, delta *d, int flags, FILE *out)
 		fprintf(out, "\n");
 	}
 	if (d->flags & D_CKSUM) {
-		fprintf(out, "K %u", d->sum);
-		if ((flags & PRS_LOGMARK) && d->published) {
-			fputs(d->ptype ? "\t\n" : " \n", out);
-		} else {
-			fputs("\n", out);
-		}
+		fprintf(out, "K %u\n", d->sum);
 	}
 	if (d->merge) {
 		delta	*e = sfind(s, d->merge);
@@ -14759,6 +14747,7 @@ sccs_findKey(sccs *s, char *key)
 	host = parts[1];
 	path = parts[2];
 	date = date2time(&parts[3][2], 0, EXACT);
+	if (date == 0) return (0); /* date == 0 => bad key */
 	if (parts[4]) {
 		cksum = atoi(parts[4]);
 		cksump = &cksum;

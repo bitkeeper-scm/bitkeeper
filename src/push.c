@@ -221,56 +221,52 @@ listType(char *type)
 	return (LISTCMT); /* should never get here */
 }
 
-private void
-unPublish(sccs *s, delta *d)
-{
-	unless (d && !(d->flags & D_RED)) return;
-	d->flags |= D_RED; 
-	d->published = 0;
-	if (d->parent) unPublish(s, d->parent);
-	if (d->merge) unPublish(s, sfind(s, d->merge));
-}
 
 void
 updLogMarker(int ptype, int verbose, FILE *vf)
 {
 	sccs	*s;
-	delta	*d;
-	char	s_cset[] = CHANGESET, rev[MAXREV+1];
+	char	s_cset[] = CHANGESET;
+	char	*tmpfile;
+	char	*marker;
 	int	i;
+	FILE 	*f;
 
-	unless (exists(BKTMP "/csetlock")) {
-		fprintf(stderr, "No lock on ChangeSet, skipping log update\n");
-		assert(0);
-		return;
-	}
-	if (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
-
-		/*
-		 * Update log marker for each LOD
-		 */
-		for (i = 1; i <= 0xffff; ++i) {
-			sprintf(rev, "%d.1", i);
-			unless (d = findrev(s, rev)) break;
-			while (d->kid && (d->kid->type == 'D')) d = d->kid;
-			unPublish(s, d);
-			d->published = 1;
-			d->ptype = ptype;
-		}
-		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
-		sccs_free(s);
-		if (verbose) {
-			fprintf(vf, "Log marker updated: pending count = %d\n",
-			    logs_pending(ptype, 0, 0));
-		}
-	} else {
+	marker = ptype ? CMARK : LMARK;
+	tmpfile = aprintf("%s_%d", marker, getpid());
+	s = sccs_init(s_cset, INIT_NOCKSUM, 0);
+	f = fopen(tmpfile, "wb");
+	unless (f && s) {
 		if (verbose) {
 			char buf[MAXPATH];
 
 			getcwd(buf, sizeof (buf));
-			fprintf(vf, "updLogMarker: cannot access %s, pwd=%s\n",
-			    s_cset, buf);
+			fprintf(vf, "updLogMarker: update failed, pwd=%s\n",
+			    buf);
 		}
+		free(tmpfile);
+		return;
+	}
+
+	/*
+	 * Update log marker for each LOD
+	 */
+	for (i = 1; i <= 0xffff; ++i) {
+		char	rev[MAXREV];
+		delta	*d;
+		sprintf(rev, "%d.1", i);
+		unless (d = findrev(s, rev)) break;
+		while (d->kid && (d->kid->type == 'D')) d = d->kid;
+		sccs_pdelta(s, d, f);
+		fputc('\n', f);
+	}
+	sccs_free(s);
+	fclose(f);
+	rename(tmpfile, marker);
+	free(tmpfile);
+	if (verbose) {
+		fprintf(vf, "Log marker updated: pending count = %d\n",
+		    logs_pending(ptype, 0, 0));
 	}
 }
 
@@ -465,10 +461,7 @@ tags:			fprintf(opts.out,
 	 * if opts.lcsets > 0, we update the log marker in push part 2
 	 */
 	if ((opts.lcsets == 0) && (needLogMarker(r))) {
-		unless (cset_lock()) {
-			updLogMarker(0, opts.debug, opts.out);
-			cset_unlock();
-		}
+		updLogMarker(0, opts.debug, opts.out);
 	}
 	if ((opts.lcsets == 0) || !opts.doit) return (0);
 	if ((opts.rcsets || opts.rtags) && !opts.metaOnly) {
@@ -784,10 +777,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 
 	if (opts.metaOnly) {
 		if (needLogMarker(r)) {
-			unless (cset_lock()) {
-				updLogMarker(0, opts.debug, opts.out);
-				cset_unlock();
-			}
+			updLogMarker(0, opts.debug, opts.out);
 		}
 	} else {
 		unlink(CSETS_OUT);

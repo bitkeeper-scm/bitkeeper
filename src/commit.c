@@ -176,15 +176,27 @@ logs_pending(int ptype, int skipRecentCset, int grace)
 	sccs 	*s;
 	delta	*d;
 	char 	s_cset[] = CHANGESET;
+	char	key[MAXKEY];
+	char	*marker;
 	int	i = 0;
 	time_t	now = 0;
 	time_t	graceInSeconds;
+	FILE	*f;
 
+	marker = ptype ? CMARK : LMARK;
 	graceInSeconds = grace * DAY; 
 	s = sccs_init(s_cset, 0, 0);
 	assert(s && HASGRAPH(s));
-	for (d = sccs_top(s); d; d = d->next) {
-		if (d->published && (d->ptype == ptype)) sccs_color(s, d);
+	
+	f = fopen(marker, "rb");
+	if (f) {
+		while (fnext(key, f)) {
+			chomp(key);
+			d = sccs_findKey(s, key);
+			unless (d) continue;
+			sccs_color(s, d);
+		}
+		fclose(f);
 	}
 
 	if (skipRecentCset) {
@@ -544,7 +556,6 @@ out:		if (commentFile) unlink(commentFile);
 		rc = 1;
 		goto done;
 	}
-	cset_lock();
 	i = 2;
 	if (opts.quiet) cset[i++] = "-q";
 	if (sym) {
@@ -581,7 +592,6 @@ out:		if (commentFile) unlink(commentFile);
 	} else if (rc = WEXITSTATUS(status)) {
 		putenv("BK_STATUS=FAILED");
 	}
-	cset_unlock();
 	trigger(av, "post");
 done:	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);
@@ -790,6 +800,7 @@ config(FILE *f)
 	sccs	*s;
 	delta	*d;
 	int	i;
+	FILE 	*logf;
 
 	fprintf(f, "Time_t:\t%s\n", bk_time);
 	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
@@ -841,8 +852,17 @@ config(FILE *f)
 	/*
 	 * Mark all the cset which have been logged
 	 */
-	for (d = sccs_top(s); d; d = d->next) {
-		if (d->published && (d->ptype == 1)) sccs_color(s, d);
+	logf = fopen(CMARK, "wb");
+	if (logf) {
+		char	key[MAXKEY];
+
+		while (fnext(key, logf)) {
+			chomp(key);
+			d = sccs_findKey(s, key);
+			unless (d) continue;
+			sccs_color(s, d);
+		}
+		fclose(logf);
 	}
 
 	/*

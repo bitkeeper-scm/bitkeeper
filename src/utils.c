@@ -909,25 +909,6 @@ spawn_cmd(int flag, char **av)
 	return (WEXITSTATUS(ret));
 }
 
-int
-cset_lock()
-{
-	/*
-	 * I wanted to assert that there is a cset file here but we can't
-	 * count on that.  There are very short windows where there is not
-	 * one, when we do the unlink and rename x.ChangeSet to s.ChangeSet.
-	 */
-	assert(exists(BKTMP));
-	return (sccs_lockfile(BKTMP "/csetlock", 0));
-}
-
-void
-cset_unlock()
-{
-	assert(exists(CHANGESET));
-	assert(exists(BKTMP "/csetlock"));
-	unlink(BKTMP "/csetlock");
-}
 
 
 /*

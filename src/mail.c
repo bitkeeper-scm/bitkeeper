@@ -31,12 +31,6 @@ lconfig_main(int ac, char **av)
 		return (0);
 	}
 
-	if (cset_lock()) {
-		fprintf(stderr,
-		    "Unable to lock ChangeSet, postponing configs.\n");
-		return (1);
-	}
-
 	/*
 	 * Do not send config log for small single user tree
 	 */
@@ -46,7 +40,6 @@ lconfig_main(int ac, char **av)
 			    "skipping config log for small single user tree\n");
 		}
 		updLogMarker(1, debug, stderr);
-		cset_unlock();
 		return (1);
 	}
 
@@ -54,7 +47,6 @@ lconfig_main(int ac, char **av)
 		if (debug) {
 			fprintf(stderr, "There are no pending config logs\n");
 		}
-		cset_unlock();
 		return (0);
 	}
 
@@ -65,7 +57,6 @@ lconfig_main(int ac, char **av)
 	gettemp(config_log, "config");
 	unless (f = fopen(config_log, "wb")) {
 		perror(config_log);
-		cset_unlock();
 		return (1);
 	}
 
@@ -129,7 +120,6 @@ lconfig_main(int ac, char **av)
 done:	if (unlink(config_log)) perror(config_log);
 	unless (rc) updLogMarker(1, debug, stderr);
 	remote_free(r);
-	cset_unlock();
 	return (rc);
 }
 

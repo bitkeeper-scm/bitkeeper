@@ -2,6 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 #include "range.h"
+#include "logging.h"
 WHATSTR("@(#)%K%");
 
 typedef struct {
@@ -88,10 +89,7 @@ usage:			system("bk help -s stripdel");
 	sfileDone();
 done:   
 	if (!opts.checkOnly && logmarker_needed) {
-		unless (cset_lock()) {
-			updLogMarker(logmarker_ptype, !opts.quiet, stderr);
-			cset_unlock();
-		}
+		updLogMarker(logmarker_ptype, !opts.quiet, stderr);
 	}
 	return (rc);
 next:	return (1);
@@ -206,9 +204,26 @@ newleaf(sccs *s)
 int
 set_meta(sccs *s, int stripBranches, int *count)
 {
-	int	n, left;
+	int	l, n, left;
 	int	redo_merge = 0;
 	delta	 *e, *leaf = 0;
+	FILE 	*f;
+	
+	l = logging(0, 0, 0);
+	f = fopen((l&LOG_OPEN) ? LMARK : CMARK, "rb");
+	logmarker_ptype = (l&LOG_OPEN) ? 0 : 1;
+
+	if (f) {
+		char    key[MAXKEY];
+		
+		while (fnext(key, f)) {
+			chomp(key);
+			e = sccs_findKey(s, key);
+			unless (e) continue;
+			e->flags |= D_BLUE;
+		}
+		fclose(f);
+	}
 
 	for (n = left = 0, e = s->table; e; e = e->next) {
 		if (e->symLeaf) leaf = e;
@@ -228,16 +243,24 @@ set_meta(sccs *s, int stripBranches, int *count)
 			unless (e->flags & D_SET) continue;
 		}
 		if (e->flags & D_SET) {
+
 			n++;
 			e->flags |= D_GONE;
 			if (e->merge) {
 				sfind(s, e->merge)->flags &= ~D_MERGED;
 				redo_merge = 1;
 			}
+#ifdef OLD
 			if (CSET(s) && e->published) {
 				logmarker_needed = 1;
 				logmarker_ptype = e->ptype;
 			}
+#else
+			if (CSET(s) && e->flags & D_BLUE) {
+				logmarker_needed = 1;
+			}
+			
+#endif
 			continue;
 		}
 		left++;
