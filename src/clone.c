@@ -63,6 +63,8 @@ clone_main(int ac, char **av)
 	    	}
 	}
 	unless (av[optind]) usage();
+	localName2bkName(av[optind], av[optind]);
+	if (av[optind + 1]) localName2bkName(av[optind + 1], av[optind + 1]);
 
 	loadNetLib();
 	/*
