@@ -123,8 +123,10 @@ c_merge(resolve *rs)
 {
 	names	*n = rs->revs;
 	int	ret;
-
-	ret = sysio(0, rs->s->gfile, 0, "bk", rs->opts->mergeprog, "-a",
+	char	*args = "-a";
+	
+	if (rs->args) args = rs->args;
+	ret = sysio(0, rs->s->gfile, 0, "bk", rs->opts->mergeprog, args,
 		    n->local, n->gca, n->remote, 
 		    rs->s->gfile, SYS);
 	sccs_restart(rs->s);
@@ -143,6 +145,7 @@ c_merge(resolve *rs)
 		fprintf(stderr, "Conflicts during merge of %s\n", rs->s->gfile);
 		return (rs->opts->force);
 	}
+	syserr("\n");
 	fprintf(stderr,
 	    "Merge of %s failed for unknown reasons\n", rs->s->gfile);
 	return (0);

@@ -109,6 +109,8 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 	for (i = 0; rf[i].spec && !streq(rf[i].spec, "!"); i++);
 	if (rf[i].spec) bang = i;
 	while (1) {
+		char	*c;
+
 		fprintf(stderr, "(%s) %s>> ", name, rs->prompt);
 		getline(0, buf, sizeof(buf));
 		unless (buf[0]) strcpy(buf, "?");
@@ -119,6 +121,12 @@ resolve_loop(char *name, resolve *rs, rfuncs *rf)
 		if (streq(buf, "debug")) {
 			rs->opts->debug = !rs->opts->debug;
 			continue;
+		}
+		if (buf[0] != '!' && (c = strchr(buf, ' '))) {
+			*c++ = 0;
+			rs->args = c;
+		} else {
+			rs->args = 0;
 		}
 
 again:		/* 100 tries for the same file means we're hosed.  */

@@ -108,6 +108,7 @@ typedef	struct resolve {
 	char	*prompt;	/* whatever should be the prompt */
 	char	*pager;		/* $PAGER or more */
 	char	*editor;	/* $EDITOR or vi */
+	char	*args;		/* arguments to pass to command */
 	rfuncs	*funcs;		/* the ops vector */
 	void	*opaque;	/* a pointer on which to hang state */
 	char	*shell;		/* shell command, if ! */
