@@ -3,6 +3,7 @@
  * are not.  Exit status reflects the whining level.
  *
  * Copyright (c) 2000 Larry McVoy, Andrew Chang.
+ * %K%
  */
 
 #include "system.h"

@@ -616,7 +616,7 @@ out:		chdir(from);
 	 */
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
-	putenv("BKD_REPO_ID");
+	putenv("BKD_REPO_ID=");
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	remote_free(r);
 	exit(0);
