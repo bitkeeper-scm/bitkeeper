@@ -197,7 +197,7 @@ clean-bin: FORCE
 clean clobber distclean: rebuild FORCE
 	-@bk -r clean
 	-@rm -f tags TAGS
-	-@cd ../man/man2help && make clobber
+	-@cd ../man/man2help && $(MAKE) clobber
 
 rebuild:
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
@@ -265,7 +265,7 @@ gnu: $(BK) FORCE
 win32: FORCE
 	cd win32 && $(MAKE) BINDIR=$(BINDIR)
 win32/uwtlib/libuwt.a: FORCE
-	cd win32/uwtlib && make 
+	cd win32/uwtlib && $(MAKE) 
 zlib/libz.a: $(ZLIBOBJ)
 	$(AR) cr zlib/libz.a $(ZLIBOBJ)
 	-$(RANLIB) zlib/libz.a
