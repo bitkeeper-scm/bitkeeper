@@ -26,7 +26,7 @@ bk parent \- manage repository parent pointer[s]
 .B ...]
 .br
 .SS LISTING PARENT POINTERS
-.Bc bk parent [-iloq]
+.Bc bk parent [-1iloq]
 .SH DESCRIPTION
 .LP
 The parent command is used to set, add, adjust,
@@ -48,6 +48,14 @@ The parent is automatically set when a repository is cloned and will be
 named according to the access method (see bk help url for more information).
 .SH OPTIONS
 .TP
+.B \-1
+List only the first parent found.  
+May be combined with
+.B \-i
+or
+.B \-o 
+to list the first incoming or outgoing parent pointer[s] respectively.
+.tp
 .B \-a
 Add the specfied parent pointer to the list of parents.
 May be combined with

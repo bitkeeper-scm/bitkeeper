@@ -14,6 +14,7 @@ private	struct {
 	u32	add:1;			/* add parent[s] */
 	u32	annotate:1;		/* annotate w/ parent type */
 	u32	normalize:1;		/* normalize URL */
+	u32	one:1;			/* print the first parent only */
 	u32	print:1;		/* print the parent pointer[s] */
 	u32	pullonly:1;		/* pull parents only */
 	u32	pushonly:1;		/* push parents only */
@@ -44,10 +45,12 @@ parent_main(int ac,  char **av)
 
 	opts.normalize = 1;
 	opts.annotate = 1;
-	while ((c = getopt(ac, av, "aniloqrs")) != -1) {
+	while ((c = getopt(ac, av, "1anilopqrs")) != -1) {
 		switch (c) {
+		    case '1': opts.one = 1; break;
 		    case 'a': opts.add = 1; break;
 		    case 'i': opts.pushonly = 0; opts.pullonly = 1; break;
+		    case 'p': /* compat, fall through, don't doc */
 		    case 'l': opts.annotate = 0; break;
 		    case 'n': opts.normalize = 0; break;
 		    case 'o': opts.pushonly = 1; opts.pullonly = 0; break;
@@ -174,7 +177,10 @@ print(void)
 	if (l) {
 		unless (opts.quiet) {
 			sortLines(l, 0);
-			EACH(l) fputs(l[i], stdout);
+			EACH(l) {
+				fputs(l[i], stdout);
+				if (opts.one) break;
+			}
 		}
 		freeLines(l, free);
 	} else {

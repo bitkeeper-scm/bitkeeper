@@ -112,9 +112,9 @@ _superset() {
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
 	test "X$@" = X && {
-		test "X`bk parent -qp`" = "X" && exit 1
+		test "X`bk parent -l`" = "X" && exit 1
 	}
-	bk changes -La $CHANGES "$@" > $TMP2
+	bk changes -Laq $CHANGES "$@" > $TMP2
 	test -s $TMP2 && {
 		test $LIST = NO && {
 			rm -f $TMP $TMP2
@@ -196,11 +196,13 @@ _superset() {
 		exit 0
 	}
 	if [ $# -eq 0 ]
-	then	PARENT=`bk parent | awk '{print $NF}'`
+	then	PARENT=`bk parent -l`
 	else	PARENT="$@"
 	fi
 	echo "Child:  `bk gethost`:`pwd`"
-	echo "Parent: $PARENT"
+	for i in $PARENT
+	do	echo "Parent: $i"
+	done
 	cat $TMP
 	rm -f $TMP $TMP2
 	exit 1
@@ -846,7 +848,7 @@ _rmgone() {
 # remote tree.
 _repogca() {
 	if [ "X$1" = "X" ]; then
-	    remote=`bk parent -qp`
+	    remote=`bk parent -1il`
 	else
 	    remote=$1
 	fi
@@ -897,9 +899,9 @@ _clonemod() {
 
 	bk clone -lq $2 $3 || exit 1
 	cd $3 || exit 1
-	bk parent -q $1 || exit 1
+	bk parent -iq $1 || exit 1
 	bk undo -q -fa`bk repogca` || exit 1
-	bk pull
+	bk pull `bk parent -iil`
 }
 
 _leaseflush() {
