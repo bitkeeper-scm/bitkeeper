@@ -104,7 +104,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	user.o utils.o uu.o version.o what.o xflags.o zgets.o \
 	zone.o
 
-MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
+MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o mdbm/memhash.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/gzio.o zlib/infblock.o zlib/infcodes.o zlib/inffast.o \
       zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
@@ -132,8 +132,7 @@ BINLINKS= bk admin get delta unget rmdel prs
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA)
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
-CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
-	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
+CFLAGS	= $(CC_FAST)
 CPPFLAGS= -Izlib -Imdbm
 # For extra libraries required by the system, e.g. libnsl.
 XLIBS	=
@@ -146,7 +145,8 @@ LTOMCRYPT = -Ltomcrypt -ltomcrypt
 RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
-	  mdbm/mdbm.h mdbm/tune.h mmap.h purify.h range.h rcs.h \
+	  mdbm/mdbm.h mdbm/tune.h mdbm/memhash.h mmap.h \
+	  purify.h range.h rcs.h \
 	  liblines.h resolve.h sccs.h system.h \
 	  tomcrypt/mpi-config.h tomcrypt/mpi.h tomcrypt/mycrypt_cfg.h \
 	  tomcrypt/mpi-types.h tomcrypt/mycrypt.h \
