@@ -1130,7 +1130,7 @@ proc selectNode { type {val {}}} \
 {
 	global file dev_null rev1 rev2 Opts w srev ttype sem lock
 
-	if {$lock == "inprs"} {
+	if {[info exists lock] && ($lock == "inprs")} {
 		set sem "show_sccslog"
 		return
 	}
