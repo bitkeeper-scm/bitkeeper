@@ -330,7 +330,8 @@ doit(int dash)
 				if (want(s, e)) e->flags |= D_SET;
 				if (e == s->rstart) break;
 			}
-			s->state |= S_SET;
+		} else {
+			s->state &= ~S_SET;
 		}
 	} else if (dash) {
 		while (fgets(cmd, sizeof(cmd), stdin)) {
@@ -350,14 +351,12 @@ doit(int dash)
 			}
 			if (want(s, e)) e->flags |= D_SET;
 		}
-		s->state |= S_SET;
 	} else {
 		for (e = s->table; e; e = e->next) {
 			if (want(s, e)) e->flags |= D_SET;
 		}
-		s->state |= S_SET;
 	}
-	assert(SET(s));
+	//assert(!SET(s));
 
 	/*
 	 * What we want is: this process | pager
@@ -391,8 +390,10 @@ doit(int dash)
 		fprintf(stdout, "</td></tr></table></table></body></html>\n");
 	}
 	sccs_free(s);
-	fclose(stdout);
-	if (pid >= 0) waitpid(pid, 0, 0);
+	if (pid > 0) {
+		fclose(stdout);
+		waitpid(pid, 0, 0);
+	}
 	return (0);
 
 next:	return (1);
@@ -510,6 +511,9 @@ sccs_keyinitAndCache(char *key, int flags,
 	return (s);
 }
 
+/*
+ * Given a "top" delta "d", this function computes ChangeSet boundaries
+ */
 private slog *
 collectDelta(sccs *s, delta *d, slog *list, char *dspec, int *n, char *dbuf)
 {
@@ -553,7 +557,7 @@ saveKey(MDBM *db, char *rev, char **keylist)
 	datum	k, v;
 
 	k.dptr = rev;
-	k.dsize = strlen(rev) + 1;
+	k.dsize = strlen(rev);
 	v.dptr = (char *) &keylist;
 	v.dsize = sizeof (keylist);
 	if (mdbm_store(db, k, v, MDBM_INSERT)) perror("savekey");
@@ -562,7 +566,7 @@ saveKey(MDBM *db, char *rev, char **keylist)
 /*
  * Load a db of rev key_list pair
  * key is rev
- * val is a list of entries in "root_key deltakey" format.
+ * val is a list of entries in "root_key delta_key" format.
  */
 private MDBM *
 loadcset(sccs *cset)
@@ -626,7 +630,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 	if (opts.newline) flags |= PRS_LF; /* for sccs_prsdelta() */
 
 	/*
-	 * Init idDB, goneDB and graphDB
+	 * Init idDB, goneDB, graphDB and csetDB
 	 */
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
@@ -657,7 +661,6 @@ cset(sccs *cset, FILE *f, char *dspec)
 		ll->next = list;
 		list = ll;
 		m++;
-		e->flags &= ~D_SET; /* important */
 	}
 
 	/*
@@ -682,20 +685,19 @@ cset(sccs *cset, FILE *f, char *dspec)
 	list = NULL;
 	for (j = 0; j < m; ++j) {
 		ee = sorted[j];
+		sorted[j] = NULL;
 
 		/* print cset dspec */
 		e = ee->delta;
-		e ->flags |= D_SET;
 		sccs_prsdelta(cset, e, flags, dspec, stdout);
 
+		/* get key list */
 		k.dptr = e->rev;
-		k.dsize = strlen(e->rev) + 1;
+		k.dsize = strlen(e->rev);
 		v = mdbm_fetch(csetDB, k);
-		unless (v.dptr) {
-			/* merge cset are usually empty */
-			continue;
-		}
+		unless (v.dptr) continue; /* merge cset are usually empty */
 		memcpy(&keys, v.dptr, v.dsize);
+		mdbm_delete(csetDB, k);
 
 		EACH (keys) {
 			sccs	*s;
@@ -718,15 +720,15 @@ cset(sccs *cset, FILE *f, char *dspec)
 			assert(d);
 
 			/*
-			 * When this function returns, "list" will contain
+			 * CollectDelta() compute cset boundaries,
+			 * when this function returns, "list" will contain
 			 * all member deltas/dspec in "s" for this cset
 			 */
 			list = 	collectDelta(s, d, list, dspec, &n, dbuf);
 		}
-		e ->flags &= ~D_SET;
-		list = dumplog(list, &n); /* sort file dspec and print it */
 		freeLines(keys); /* reduce mem foot print, could be huge */
-		mdbm_delete(csetDB, k);
+		free(ee);
+		list = dumplog(list, &n); /* sort file dspec and print it */
 		if (fflush(stdout)) break;
 	}
 
@@ -737,7 +739,7 @@ cset(sccs *cset, FILE *f, char *dspec)
 	 */
 	for (i = 0; i < m; ++i) {
 		ee = sorted[i];
-		free(ee);
+		if (ee) free(ee);
 	}
 	free(sorted);
 
