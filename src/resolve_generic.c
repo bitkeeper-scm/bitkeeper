@@ -16,9 +16,10 @@ resolve_init(opts *opts, sccs *s)
 	rs->s = s;
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	rs->key = strdup(buf);
-	rs->d = sccs_getrev(s, "+", 0, 0);
-	assert(rs->d);
-	rs->dname = name2sccs(rs->d->pathname);
+	rs->d = sccs_top(s);
+	assert(rs->d);	/* XXX: not all files have a 1.0 .  What to do? */
+	rs->dname = sccs_setpathname(s);
+	s->spathname = 0;  /* storing name in dname, so free this */
 	if (rs->snames = getnames(sccs_Xfile(rs->s, 'm'), 'm')) {
 		rs->gnames         = calloc(1, sizeof(names));
 		rs->gnames->local  = sccs2name(rs->snames->local);

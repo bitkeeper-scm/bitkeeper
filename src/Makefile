@@ -30,7 +30,7 @@ OBJ	= abort.o adler32.o admin.o bkd.o bkd_cd.o bkd_client.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o \
 	  sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
-	  send.o sendbug.o sendconfig.o setlog.o setup.o \
+	  send.o sendbug.o sendconfig.o setlod.o setlog.o setup.o \
 	  sfiles.o sfio.o sids.o sinfo.o slib.o smoosh.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlock.o unwrap.o user.o utils.o \
@@ -43,7 +43,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/uncompr.o zlib/zutil.o
 SCRIPTS	= rcs2sccs bk.script import resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 \
-	  renametool mkdiffs lodset bkmerge gzip_uuwrap ungzip_uuwrap
+	  renametool mkdiffs bkmerge gzip_uuwrap ungzip_uuwrap
 LOCALSCR= testfast mkindex build crank
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
@@ -249,10 +249,6 @@ bkhelp.txt: bkhelp.doc bk.ver
 	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
 	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkhelp.txt
-
-lodset: lodset.sh
-	cp -f lodset.sh lodset
-	chmod +x lodset
 
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't
@@ -600,6 +596,7 @@ sccsrm.o:	sccsrm.c $(H)
 send.o:		send.c $(H)
 sendbug.o:	sendbug.c $(H)
 sendconfig.o:	sendconfig.c $(H)
+setlod.o:	setlod.c $(H)
 setlog.o:	setlog.c $(H)
 setup.o:	setup.c $(H)
 sfiles.o:	sfiles.c $(H)

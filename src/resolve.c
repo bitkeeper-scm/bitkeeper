@@ -327,6 +327,19 @@ nameOK(opts *opts, sccs *s)
 	sccs	*local;
 
 	/*
+	 * Are we in the right sfile? (through LOD shuffling, might not be)
+	 */
+	sccs_setpathname(s);
+	unless (streq(s->spathname, s->sfile)) {
+		if (opts->debug) {
+			fprintf(stderr, "nameOK(%s) => sfile %s is not same "
+			    "path as LOD top %s\n", s->gfile, s->sfile,
+			    s->spathname);
+		}
+		return (0);
+	}
+
+	/*
 	 * Same path slot and key?
 	 */
 	sprintf(path, "%s/%s", RESYNC2ROOT, s->sfile);
@@ -666,6 +679,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 	 * OK, looking like a real create.
 	 */
 	sccs_close(rs->s);
+	mkdirf(rs->dname);
 	ret = rename(rs->s->sfile, rs->dname);
 	if (opts->debug) {
 		fprintf(stderr,
@@ -742,6 +756,7 @@ rename_file(resolve *rs)
 		to = 0;
 	}
 	if (to) {
+		mkdirf(to);
 		if (rename(rs->s->sfile, to)) return (-1);
 		if (opts->debug) {
 			fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, to);
