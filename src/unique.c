@@ -63,7 +63,14 @@ lockHome()
 private char	*
 keysHome(void)
 {
+	char	*t;
+	char	path[MAXPATH];
+
 	if (keysFile) return (keysFile);
+	if ((t = getenv("BK_TMP")) && isdir(t)) {
+		concat_path(path, t, ".bk_keys");
+		return (keysFile = (strdup)(path));
+	}
 	keysFile = aprintf("%s/bk_keys", getBkDir());
 	return (keysFile);
 }
