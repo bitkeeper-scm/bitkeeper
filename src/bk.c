@@ -304,6 +304,7 @@ struct command cmdtbl[] = {
 	{"unpull", unpull_main},		/* doc 2.0 */
 	{"unwrap", unwrap_main},		/* doc 2.0 */
 	{"users", users_main},			/* doc 2.0 */
+	{"user", users_main},			/* aliases of "bk users" */
 	{"val", val_main},			/* doc 2.0 */
 	{"version", version_main},		/* doc 2.0 */
 	{"what", what_main},			/* doc 2.0 */
