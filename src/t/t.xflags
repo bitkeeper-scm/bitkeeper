@@ -164,3 +164,31 @@ cmp -s SCCS/s.xflags SCCS/s.bad || {
 	exit 1
 }
 echo OK
+echo $N Check that flags are remembered on branches .................$NL
+touch foo
+bk new $Q foo
+bk admin -fYEAR4 foo 2> OUT || exit 1
+if [ -s OUT ]; then
+	cat OUT
+	echo failed
+	exit 1
+fi
+bk admin -FYEAR4 foo 2> OUT || exit 1
+if [ -s OUT ]; then
+	cat OUT
+	echo failed
+	exit 1
+fi
+bk admin -fYEAR4 foo 2> OUT || exit 1
+if [ -s OUT ]; then
+	cat OUT
+	echo failed
+	exit 1
+fi
+bk admin -r1.3 -fYEAR4 foo 2>OUT || exit 1
+if [ -s OUT ]; then
+	cat OUT
+	echo failed
+	exit 1
+fi
+echo OK

@@ -9884,15 +9884,8 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	assert(flag);
 
 	mask = name2xflg(flag);
-	/*
-	 * If this is the first time we touch n->xflags,
-	 * initialize it from sc->xflags.
-	 */
-	unless (n && (n->flags & D_XFLAGS)) {
-		xflags = sc->xflags;
-	} else {
-		xflags = n->xflags;
-	}
+	xflags = sccs_xflags(n);
+	unless (xflags) xflags = sc->xflags;
 
 	if (add) {
 		if (xflags & mask) {
