@@ -53,7 +53,7 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
 	  port/mail.o port/platforminit.o \
 	  port/randomBits.o port/samepath.o port/sccs_lockfile.o \
-	  port/sccs_root.o port/socket2pipe.o port/spawn.o \
+	  port/sccs_root.o port/sig.o port/socket2pipe.o port/spawn.o \
 	  port/getnull.o port/http_proxy.o port/service.o \
 	  prs.o pull.o purify.o push.o pwd.o r2c.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
@@ -61,7 +61,7 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o resolve_tags.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o root.o rset.o \
 	  sane.o sccs.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
-	  send.o sendbug.o setup.o shrink.o sig.o \
+	  send.o sendbug.o setup.o shrink.o \
 	  sfiles.o sfind.o sfio.o sinfo.o slib.o \
 	  status.o stripdel.o synckeys.o sys.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlink.o unlock.o unpull.o unwrap.o user.o utils.o \
