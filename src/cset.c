@@ -958,6 +958,14 @@ add(FILE *diffs, char *buf)
 		cset_exit(1);
 	}
 	*rev++ = 0;
+
+	/*
+	 * XXX Optimazation note: We should probaly check for ChangeSet
+	 * file first before we waste cpu to call sccs_init()
+	 * This should be a win if we have complex graph and large 
+	 * ChangeSet file. Since we ae going to sccs_free() and
+	 * return anyway..
+	 */
 	unless (s = sccs_init(buf, SILENT, 0)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -u ChangeSet");

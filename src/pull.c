@@ -352,7 +352,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			goto done;
 		}
 		unless (opts.noresolve) {
-			putenv("POST_INCOMING_TRIGGER=NO");
+			putenv("FROM_PULLPUSH=YES");
 			if (resolve(opts, r)) {
 				rc = 1;
 				putenv("BK_STATUS=CONFLICTS");

@@ -17,7 +17,6 @@ WHATSTR("@(#)%K%");
  *	d1..	-> d1 to whatever is TOT
  *	..d2	-> 1.1 to d2
  *	d1..d2	-> d1 to d2
- *	*d1	-> transitive closure from d1 to root w/include/exlude
  *	-n{s,m,h,d,w,m,y}
  *		-> go back 1 second, minute, hour, day, week, month, year
  *
@@ -46,8 +45,6 @@ WHATSTR("@(#)%K%");
  */
 
 #define	SEP(c)	(((c) == '.') || ((c) == ','))
-
-private int	rangePrune(sccs *s, delta *d);
 
 void
 rangeReset(sccs *sc)
@@ -91,7 +88,6 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	char	*s = rev ? rev : date;
 	char	save;
 	char	*p;
-	int	prune = 0;
 	delta	*tmp;
 
 	assert(sc);
@@ -99,25 +95,6 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	    "rangeAdd(%s, %s, %s)\n", sc->gfile, notnull(rev), notnull(date)));
 
 	if (sc->rstart && sc->rstop) return (-1);
-
-	if (s && *s == '*') {
-		if (sc->state & S_RANGE2) {
-			fprintf(stderr,
-			    "range: transitive closure: "
-			    "specify one revision\n");
-			return (-1);
-		}
-		if (date && rev) {
-			fprintf(stderr,
-			    "range: transitive closure: "
-			    "date or rev, not both\n");
-			return (-1);
-		}
-		s++;
-		if (rev) rev++;
-		if (date) date++;
-		prune = 1;
-	}
 
 	if (s && (*s == '-') && !(sc->state & S_RANGE2)) {
 		time_t	cutoff = rangeCutOff(s+1);
@@ -140,11 +117,6 @@ rangeAdd(sccs *sc, char *rev, char *date)
 			    "range: can't have lists of revs and dates\n");
 			return (-1);
 		}
-		if (prune) {
-			fprintf(stderr,
-			    "range: can't have lists of pruning\n");
-			return (-1);
-		}
 		return (rangeList(sc, rev));
 	}
 
@@ -160,11 +132,6 @@ rangeAdd(sccs *sc, char *rev, char *date)
 		break;
 	}
 	if (s && *s) {
-		if (prune) {
-			fprintf(stderr,
-			    "range: can't have range of pruning\n");
-			return (-1);
-		}
 		save = *s;
 		*s = 0;
 		if (rangeAdd(sc, rev, date)) {
@@ -199,9 +166,6 @@ rangeAdd(sccs *sc, char *rev, char *date)
 		tmp = mkOneZero(sc);
 	}
 	unless (tmp) return (-1);
-	if (prune) {
-		return (rangePrune(sc, tmp));
-	}
 	unless (sc->rstart) {
 		sc->rstart = tmp;
 	} else {
@@ -385,304 +349,6 @@ rangeList(sccs *sc, char *rev)
 	}
 	sc->state |= S_SET;
 	return (0);
-}
-
-/* transGone - transitive close the gone list out towards leaves */
-private void
-transGone(sccs *s, int lod, ser_t *set, ser_t *gone)
-{
-	delta	*t;
-	int	more, incmore;
-	int	i;
-
-	do {
-		more = 0;
-  debug((stderr, "transGone: a pass on lod %d\n", lod));
-		for (t = s->table; t; t = t->next) {
-			incmore = 0;
-			if (t->type != 'D') continue;
-			if (gone[t->serial]) continue;
-
-			if (t->parent && gone[t->parent->serial])
-				incmore++;
-			if (t->merge && gone[t->merge])
-				incmore++;
-			EACH(t->include) {
-				if (gone[t->include[i]]) incmore++;
-			}
-			EACH(t->exclude) {
-				if (gone[t->exclude[i]]) incmore++;
-			}
-			unless (incmore) continue;
-			more++;
-			assert(!set[t->serial]);
-  debug((stderr, "transGone: adding gone %s to lod %d\n", t->rev, lod));
-			gone[t->serial] = lod;
-		}
-	} while (more);
-}
-
-private void
-transClose(sccs *s, delta *d, ser_t *set, ser_t *gone)
-{
-	delta	*t;
-	int	lod = d->r[0];
-	int	i;
-
-#define	ASSIGN(who, rev, lval, lod)					\
-	do {								\
-		unless(lval) {						\
-			debug((stderr,					\
-			    "transClose: setting %s %s under lod %d\n",	\
-			    (who), (rev), (lod)));			\
-			(lval) = (lod);					\
-		} else {						\
-			debug((stderr,					\
-			    "transClose: leaving %s %s under lod %d\n",	\
-			    (who), (rev), (lod)));			\
-		}							\
-	} while (0)
-
-#define	SET_SET(rev, lval, lod)		ASSIGN("set", rev, lval, lod)
-#define	SET_GONE(rev, lval, lod)	ASSIGN("gone", rev, lval, lod)
-
-	assert(s && d && set && gone);
-	debug((stderr, "transClose: on delta %s\n", d->rev));
-
-	SET_SET(d->rev, set[d->serial], lod);
-
-	for (t = s->table; t; t = t->next) {
-		if (t->type != 'D') continue;
- 		assert(t->serial < s->nextserial);
-		unless (set[t->serial]) {
-			if (t->r[0] == lod)
-				SET_GONE(t->rev, gone[t->serial], lod);
-			continue;
-		}
-		assert(!gone[t->serial]);
-		if (set[t->serial] != lod) continue;
-
-		if (t->parent)
-			SET_SET(t->parent->rev, set[t->parent->serial], lod);
-		if (t->merge)
-			SET_SET(sfind(s, t->merge)->rev, set[t->merge], lod);
-		EACH(t->include) {
-		  SET_SET(sfind(s, t->include[i])->rev, set[t->include[i]], lod);
-		}
-		EACH(t->exclude) {
-		  SET_SET(sfind(s, t->exclude[i])->rev, set[t->exclude[i]], lod);
-		}
-	}
-}
-
-private void
-pruneTip(sccs *s, delta *d, ser_t *set, ser_t *gone)
-{
-	assert(d);
-	debug((stderr, "pruneTip: pruning %s\n", d->rev));
-	transClose(s, d, set, gone);
-	transGone(s, d->r[0], set, gone);
-}
-
-typedef struct {
-	sccs	*s;
-	int	base;
-	int	max;
-	ser_t	*set;
-	ser_t	*gone;
-	ser_t	*interior;
-} prune_t;
-
-#define PCLEAR(x, y)	do { if ((x) == (y)) (x) = 0; } while (0)
-
-private void
-pruneClear(prune_t *p, int lod)
-{
-	int	i;
-
-	for (i = 1; i < p->s->nextserial; i++) {
-		PCLEAR(p->set[i], lod);
-		PCLEAR(p->gone[i], lod);
-	}
-}
-
-private void
-pruneClearInterior(prune_t *p, int lod)
-{
-	int	i;
-
-	for (i = 1; i < p->s->nextserial; i++) {
-		PCLEAR(p->interior[i], lod);
-	}
-}
-
-/*
- * pruneLod() - Look through each tip and for each one, mark it and
- * keep searching by calling pruneLod() on the next lod.
- * 
- * When we find a tip that doesn't work, we mark it gone and look again.
- * 
- * Any tip set by a transitive closure that happened before this,
- */
-private int
-pruneLod(prune_t *p, int this, int previous)
-{
-	int	tip;
-	delta	*first, *must, *conflict;
-	delta	*t;
-
-	debug((stderr, "pruneLod: current %d, previous %d\n", this, previous));
-	if (this > p->max) {
-		debug((stderr,
-		    "pruneLod: end of recursion (%d, %d)\n", this, p->max));
-		return (0);	/* recurse terminate */
-	}
-
-	if (this == p->base) { /* skip the base lod */
-		debug((stderr,
-		    "pruneLod: recursing through base %d\n", this));
-		return (pruneLod(p, this + 1, previous));
-	}
-
-	while (1) {
-		/* Color the interior tree of "this" lod */
-		/* If in this LOD and not colored, then tip */
-		tip = 0;
-		first = must = conflict = 0;
-		pruneClearInterior(p, this);
-		for (t = p->s->table; t; t = t->next) {
-			if (t->type != 'D') continue;
-			if (p->gone[t->serial]) continue;
-			if (t->r[0] != this) continue;
-			/* trim root node from getting clipped */
-			unless (t->parent) continue;
-			unless (p->interior[t->serial]) {
-				tip++;
-				unless (first) first = t;
-				if (p->set[t->serial]
-				    && p->set[t->serial] != this) {
-					unless (must) {
-						must = t;
-					} else unless (conflict) {
-						conflict = t;
-					}
-				}
-			}
-			if (t->parent->r[0] == this)
-				p->interior[t->parent->serial] = this;
-			if (t->merge && sfind(p->s, t->merge)->r[0] == this)
-				p->interior[t->merge] = this;
-		}
-
-		debug((stderr,
-		    "pruneLod: tips %d, first %s, must %s, conflict %s\n",
-		    tip, first ?  first->rev : "-", must ?  must->rev : "-",
-		    conflict ?  conflict->rev : "-"));
-
-		pruneClear(p, this);
-
-		if (tip == 0) {
-			/* Skip around this empty lod */
-			return (pruneLod(p, this + 1, previous));
-		}
-
-		assert(first);
-
-		if (conflict) {
-			fprintf(stderr,
-			    "range: prune: conflicting tips %s and %s\n",
-			    must->rev, conflict->rev);
-			return (-1);
-		}
-
-		/* If there is a must, then work it or an offspring to
-		 * be first, one by one.  This is because a not must
-		 * offspring could have been stripped back when looking
-		 * for a given tip.  When not looking for the given
-		 * tip, it is not exposed as a tip.  Let the natural
-		 * stripping process expose it.
-		 */
-		if (must && must != first) {
-			pruneClear(p, this);
-			if (p->set[first->serial]) return (-1);
-			p->gone[first->serial] = previous;
-			transGone(p->s, previous, p->set, p->gone);
-			continue;
-		}
-
-		/* if must, then must is first */
-
-		pruneTip(p->s, first, p->set, p->gone);
-		if (tip > 1) continue;
-		unless (pruneLod(p, this + 1, this)) {
-			debug((stderr,
-			    "pruneLod: worked pruning tip %s in %d\n",
-			    first->rev, this));
-			return (0);
-		}
-		pruneClear(p, this);
-		if (p->set[first->serial]) return (-1);
-
-		p->gone[first->serial] = previous;
-		transGone(p->s, previous, p->set, p->gone);
-	}
-}
-
-/*
- * Generate a list of serials to use to get a particular delta and
- * allocate & return space with the list in the space.
- * The 0th entry is contains the maximum used entry.
- * Note that the error pointer is to be used only by walkList, it's null if
- * the lists are null.
- * Note we don't have to worry about growing tables here, the list isn't saved
- * across calls.
- */
-/* slist gathers up the information.  It is easier to use
- * than D_SET because d->merge, include and exclude are
- * serial numbers.  This saves many calls to sfind()
- */
-private int
-rangePrune(sccs *s, delta *d)
-{
-	delta	*t;
-	int	rc = -1;
-	int	startlod;
-	prune_t	prune;
-
-	assert(d);
-
-	prune.set = calloc(s->nextserial, sizeof(ser_t));
-	prune.gone = calloc(s->nextserial, sizeof(ser_t));
-	prune.interior = calloc(s->nextserial, sizeof(ser_t));
-	prune.s = s;
-	prune.base = d->r[0];
-	prune.max = sccs_nextlod(s);	/* one more than biggest */
-	prune.max--;
-	assert(prune.max > 0);
-
-	pruneTip(s, d, prune.set, prune.gone);
-
-	/* Prune non active lods through recursion in numerical order */
-	startlod = (d->r[0] == 1) ? 2 : 1;
-
-	if (pruneLod(&prune, startlod, prune.base)) {
-		fprintf(stderr, "range: can't find solution\n");
-		goto out;
-	}
-	for (t = s->table; t; t = t->next) {
-		if (prune.set[t->serial]) {
-			debug((stderr,
-			    "rangePrune: setting D_SET in %s\n", t->rev));
-			t->flags |= D_SET;
-		}
-	}
-	s->state |= S_SET;
-	rc = 0;
-out:
-	free(prune.set);
-	free(prune.gone);
-	free(prune.interior);
-	return (rc);
 }
 
 /*
