@@ -33,6 +33,7 @@ setlevel(int level)
 	}
 
 	lfile = aprintf("%s/%s", root, LEVEL);
+	free(root);
 	unless (f = fopen(lfile, "wt")) {
 		perror(lfile);
 		free(lfile);
@@ -56,6 +57,7 @@ getlevel(void)
 	}
 
 	lfile = aprintf("%s/%s", root, LEVEL);
+	free(root);
 	if (exists(lfile)) {
 		char	buf[200];
 		FILE	*f;

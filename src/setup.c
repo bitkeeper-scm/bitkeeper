@@ -129,6 +129,7 @@ again:		printf("Editor to use [%s] ", editor);
 		fprintf(stderr, "Setup: must provide a description.\n");
 		if (config_path) {
 err:			unlink("BitKeeper/etc/config");
+			mdbm_close(m); 
 			sccs_unmkroot("."); /* reverse  sccs_mkroot */
 			unless (allowNonEmptyDir) {
 				chdir(here);
