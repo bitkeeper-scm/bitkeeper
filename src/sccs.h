@@ -337,6 +337,7 @@
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
+#define	REPO_ID		"BitKeeper/log/repo_id"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
 #define	GROUP_MODE	0664
@@ -1144,6 +1145,8 @@ void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
+char	*loadfile(char *file, int *size);
+char	*repo_id(void);
 
 extern char *bk_vers;
 extern char *bk_utc;

@@ -52,6 +52,11 @@ _inode() {		# /* undoc? 2.0 */
 
 # shorthand
 _identity() {		# /* undoc? 2.0 */
+	test "X$1" = X-r && {
+		bk sane 2>/dev/null
+		bk -R cat BitKeeper/log/repo_id
+		exit 0
+	}
 	bk -R prs -hr+ -nd':ROOTKEY:' ChangeSet
 }
 

@@ -7,6 +7,7 @@
 
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
+char	**bk_environ;
 project	*bk_proj = 0;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
@@ -405,7 +406,7 @@ save_gmon(void)
 }
 
 int
-main(int ac, char **av)
+main(int ac, char **av, char **env)
 {
 	int	i, c, si, is_bk = 0, dashr = 0;
 	int	ret;
@@ -430,6 +431,7 @@ main(int ac, char **av)
 	}
 	atexit(cmdlog_exit);
 	platformInit(av); 
+	bk_environ = env;
 	assert(bin);
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
 		printf("%s\n", bin ? bin : "no path found");
