@@ -128,9 +128,8 @@ out:
 	/* localhost isn't what we want.  */
 	if (streq(host, "localhost") || streq(host, "localhost.localdomain")) {
 		host[0] = 0;
-		return (0);
 	}
-	return (host);
+	return (host[0] ? host : UNKNOWN_HOST);
 }
 
 char	*

@@ -242,7 +242,6 @@ needs_merge(resolve *rs)
 	}
 	while ((t = mnext(m)) && ((m->end - t) > 7)) {
 		if (strneq(t, "<<<<<<", 6)) {
-			mclose(m);
 			ok = 0;
 			break;
 		}
