@@ -366,8 +366,10 @@ status(int verbose, char *status_log)
 
 	sprintf(tmp_file, "%s/bl_tmp%d", TMP_PATH, getpid());
 	if (verbose) {
-		sprintf(buf, "%sbkusers > %s", bin, tmp_file);
-		system(buf);
+		f1 = fopen(tmp_file, "wb");
+		assert(f1);
+		bkusers(0, 0, f1);
+		fclose(f1);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "User:\t%s", buf);
@@ -375,7 +377,7 @@ status(int verbose, char *status_log)
 		fclose(f1);
 		sprintf(buf, "%sbk sfiles -x > %s", bin, tmp_file);
 		system(buf);
-		f1 = fopen(buf, "rt");
+		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Extra:\t%s", buf);
 		}
