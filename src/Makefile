@@ -144,7 +144,10 @@ RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
 	  mdbm/mdbm.h mdbm/tune.h mmap.h purify.h range.h rcs.h \
-	  resolve.h sccs.h system.h zgets.h zlib/deflate.h \
+	  resolve.h sccs.h system.h \
+	  tomcrypt/mpi-config.h tomcrypt/mpi.h tomcrypt/mycrypt_cfg.h \
+	  tomcrypt/mpi-types.h tomcrypt/mycrypt.h \
+	  zgets.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
 	  zlib/zconf.h zlib/zlib.h zlib/zutil.h
@@ -234,7 +237,7 @@ clean-obj: FORCE
 	-@rm -f core $(WIN_TMP)
 	-@cd gnu && $(MAKE) clean-obj
 	-@cd win32 && $(MAKE) clean-obj
-	-@cd doc && $(MAKE) clean-obj
+	-@cd ../doc && $(MAKE) clean-obj
 
 clean-bin: FORCE
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
@@ -256,7 +259,7 @@ rebuild:
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
-	-@cd doc && $(MAKE) clean clean-obj
+	-@cd ../doc && $(MAKE) clean clean-obj
 	cd t && rm -f doit
 
 srcs src: FORCE
@@ -630,4 +633,4 @@ shell.o: substvars
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c shell.c $(CC_OUT)
 
 $(TOMCRYPTOBJ): tomcrypt/mpi-config.h tomcrypt/mpi-types.h tomcrypt/mpi.h \
-		tomcrypt/mycrypt.h tomcrypt/mycrypt_cfg.h
+		tomcrypt/mycrypt.h tomcrypt/mycrypt_cfg.h tomcrypt/aes_tab.c
