@@ -407,7 +407,7 @@ import_finish () {
 	# So it doesn't run consistency check.
 	touch BitKeeper/etc/SCCS/x.marked
 	echo "Creating initial changeset (should have $NFILES + 1 lines)"
-	bk commit -f $SYMBOL -y'Import changeset'
+	bk commit $SYMBOL -y'Import changeset'
 }
 
 validate_SCCS () {
