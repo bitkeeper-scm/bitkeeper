@@ -91,13 +91,13 @@ notify()
 	}
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
-	f = fopen(notify_log, "wb");
-	status(0, f);
-	fclose(f);
-	sprintf(buf, "bk sccslog -r+ ChangeSet >> %s", notify_log);
+	sprintf(buf, "bk sccslog -r+ ChangeSet > %s", notify_log);
 	system(buf);
 	sprintf(buf, "bk cset -r+ | bk sccslog - >> %s", notify_log);
 	system(buf);
+	f = fopen(notify_log, "ab");
+	status(0, f);
+	fclose(f);
 	packagename = package_name();
 	if (packagename[0]) {
 		sprintf(subject, "BitKeeper changeset in %s by %s",

@@ -288,7 +288,6 @@ logChangeSet(int l, char *rev, int quiet)
 	sprintf(p, "%d", n);
 	sprintf(commit_log, "%s/commit_log%d", TMP_PATH, getpid());
 	f = fopen(commit_log, "wb");
-	status(0, f);
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
 	sprintf(buf, "bk sccslog -r%s ChangeSet >> %s", rev, commit_log);
@@ -297,6 +296,7 @@ logChangeSet(int l, char *rev, int quiet)
 	system(buf);
 	f = fopen(commit_log, "ab");
 	fprintf(f, "---------------------------------\n\n");
+	status(0, f);
 	config(0, f);
 	fclose(f);
 	sprintf(buf, "bk cset -c -r%s..%s >> %s", start_rev, rev, commit_log);
@@ -427,6 +427,7 @@ sendConfig(char *to, char *rev)
 	unless (f = fopen(config_log, "wb")) return;
 	status(0, f);
 	config(rev, f);
+	fclose(f);
 	sprintf(subject, "BitKeeper config: %s", package_name());
 	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);
 }
