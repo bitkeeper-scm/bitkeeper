@@ -588,9 +588,11 @@ proc addline {y xspace ht l} \
 		set b [expr {$x - 2}]
 		if {$last > 0} {
 			set a [expr {$last + 2}]
+			regsub -- {-.*} $rev "" rnum
 			$w(graph) create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
-			    -fill $gc(rev.arrowColor) -arrow last
+			    -fill $gc(rev.arrowColor) -arrow last \
+			    -tag "l_$rnum pline"
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [$w(graph) create text $x $y -fill "red" \
@@ -668,6 +670,7 @@ proc line {s width ht} \
 	# px/py are the sw of the parent; x/y are the sw of the new branch.
 	set px $revX($rev)
 	set py $revY($rev)
+
 	set pmid [expr {$wid($rev) / 2}]
 
 	# Figure out if we have placed any related branches to either side.
@@ -714,10 +717,15 @@ proc line {s width ht} \
 	set y $revY($head)
 	incr y [expr {$ht / -2}]
 	incr x -4
+	regsub -- {-.*} $rev "" rnum
+	regsub -- {-.*} $head "" hnum
+	#puts "rnum=($rnum) hnum=($hnum)"
 	set id [$w(graph) create line $px $py $x $y -arrowshape {4 4 4} \
-	    -width 1 -fill $gc(rev.arrowColor) -arrow last]
+	    -width 1 -fill $gc(rev.arrowColor) -arrow last \
+	    -tags "l_$rnum-$hnum l_$hnum hline"]
+	#puts "rnum=($rnum) head=($head)"
 	$w(graph) lower $id
-}
+} ;# proc line
 
 # Create a merge arrow, which might have to go below other stuff.
 proc mergeArrow {m ht} \
@@ -747,9 +755,12 @@ proc mergeArrow {m ht} \
 		incr x 2
 		incr px 2
 	}
+	#puts "m=($m) b=($b)"
+	regsub -- {-.*} $m "" mnum
+	regsub -- {-.*} $b "" bnum
 	$w(graph) lower [$w(graph) create line $px $py $x $y \
 	    -arrowshape {4 4 4} -width 1 -fill $gc(rev.arrowColor) \
-	    -arrow last]
+	    -arrow last -tags "l_$bnum-$mnum mline" ]
 }
 
 #
@@ -879,17 +890,35 @@ proc listRevs {range file} \
 #
 proc getLeftRev { {id {}} } \
 {
-	global	rev1 rev2 w comments_mapped
+	global	rev1 rev2 w comments_mapped gc fname dev_null
 
 	# destroy comment window if user is using mouse to click on the canvas
 	if {$id == ""} {
 		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
+	# Reset the colored lines to the parent nodes
+	$w(graph) itemconfigure "pline" -fill $gc(rev.arrowColor)
+	$w(graph) itemconfigure "mline" -fill $gc(rev.arrowColor)
+	$w(graph) itemconfigure "hline" -fill $gc(rev.arrowColor)
+
 	$w(graph) delete new
 	$w(graph) delete old
 	.menus.cset configure -state disabled -text "View Changeset "
 	.menus.difftool configure -state disabled
 	set rev1 [getRev "old" $id]
+	catch {exec bk prs -hr$rev1 -d:KIDS: $fname} kids
+	foreach r $kids {
+		$w(graph) itemconfigure "l_$rev1-$r" -fill $gc(rev.hlineColor)
+	}
+	catch {exec bk prs -hr$rev1 -d:KID: $fname} kid
+	if {$kid != ""} {
+		$w(graph) itemconfigure "l_$kid" -fill $gc(rev.hlineColor)
+	}
+	set mpd [open "|bk prs -hr$rev1 {-d:MPARENT:} $fname"]
+	if {[gets $mpd mp]} {
+		$w(graph) itemconfigure "l_$mp-$rev1" -fill $gc(rev.hlineColor)
+	}
+	$w(graph) itemconfigure "l_$rev1" -fill $gc(rev.hlineColor)
 	if {[info exists rev2]} { unset rev2 }
 	if {$rev1 != ""} { .menus.cset configure -state normal }
 }
@@ -915,6 +944,7 @@ proc getRev {type {id {}} } \
 		set id [$w(graph) gettags current]
 		# Don't want to create boxes around date_text or date_line
 		if {[lsearch $id date_*] >= 0} { return }
+		if {[lsearch $id l_*] >= 0} { return }
 	}
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }

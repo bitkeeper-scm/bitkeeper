@@ -13147,6 +13147,28 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "KIDS")) {
+		int	space = 0;
+
+		if (d->flags & D_MERGED) {
+			delta	*m;
+
+			for (m = s->table;
+			    m && (m->merge != d->serial); m = m->next);
+			assert(m);
+			fs(m->rev);
+			space = 1;
+		}
+		unless (d = d->kid) return (space ? strVal : nullVal);
+		if (space) fs(" ");
+		fs(d->rev);
+		while (d = d->siblings) {
+			fs(" ");
+			fs(d->rev);
+		}
+		return (strVal);
+	}
+
 	if (streq(kw, "TIP")) {
 		if (sccs_isleaf(s, d)) {
 			fs(d->rev);
