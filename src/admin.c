@@ -56,7 +56,7 @@ usage: admin options [- | file file file...]\n\
 			exit(1); \
 		    }
 
-int	do_checkin(char *nm, char *ep, int fl,
+int	do_checkin(char *nm, char *ep, char *cp, int fl,
 		   char *rev, char *newf, char *com);
 void	clearCset(sccs *s, int flags);
 void	clearPath(sccs *s, int flags);
@@ -204,8 +204,9 @@ main(int ac, char **av, char **ev)
 	if (fastSym) init_flags |= (INIT_MAPWRITE|INIT_NOCKSUM);
 	while (name) {
 		if (flags & NEWFILE) {
-			if (do_checkin(name, encp, flags&(SILENT|NEWFILE),
-			    rev, newfile, comment)) {
+			if (do_checkin(name, encp, compp,
+				       flags&(SILENT|NEWFILE),
+				       rev, newfile, comment)) {
 				error  = 1;
 				name = sfileNext();
 				continue;
@@ -330,26 +331,16 @@ clearPath(sccs *s, int flags)
  * to stuff the initFile into the sccs* and have checkin() respect that.
  */
 int
-do_checkin(char *name, char *encp,
-	int flags, char *rev, char *newfile, char *comment)
+do_checkin(char *name, char *encp, char *compp,
+	   int flags, char *rev, char *newfile, char *comment)
 {
 	delta	*d = 0;
 	sccs	*s;
 	int	error, enc;
 
-	unless (s = sccs_init(name, flags, 0)) { return (-1); }
-	/* XXX Duplicate code with sccs_admin() */
-	if (encp) {
-		if (streq(encp, "text")) enc = E_ASCII;
-		else if (streq(encp, "ascii")) enc = E_ASCII;
-		else if (streq(encp, "binary")) enc = E_UUENCODE;
-		else if (streq(encp, "uugzip")) enc = E_UUGZIP;
-		else {
-			fprintf(stderr,	"admin: unknown encoding format %s\n",
-				encp);
-			return (-1);
-		}
-	} else	enc = E_ASCII;
+	unless (s = sccs_init(name, flags, 0)) return (-1);
+	enc = sccs_encoding(s, encp, compp);
+	if (enc == -1) return (-1);
 
 	s->encoding = enc;
 	if (HAS_SFILE(s)) {
