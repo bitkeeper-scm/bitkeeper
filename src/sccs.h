@@ -1069,7 +1069,7 @@ void	sccs_tagMerge(sccs *s, delta *d, char *tag);
 int	sccs_tagleaves(sccs *, delta **, delta **);
 ser_t	*sccs_set(sccs *, delta *, char *iLst, char *xLst);
 
-int     http_connect(remote *r, char *cgi_script);
+int     http_connect(remote *r);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
 char *	user_preference(char *what);
 char	*bktmp(char *buf, const char *template);
