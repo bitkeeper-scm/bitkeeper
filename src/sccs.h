@@ -522,6 +522,15 @@ extern	char *upgrade_msg;
 #define	SCCS_VERSION		4
 
 /*
+ * struct loc - locations
+ */
+typedef struct loc {
+	char	*p;		/* first byte of the data */
+	u32	len;		/* think 4GB is big enough? */
+	u8	isPatch:1;	/* this entry came from the patch file */
+} loc;
+
+/*
  * struct sccs - the delta tree, the data, and associated junk.
  */
 typedef	struct sccs {
@@ -567,6 +576,8 @@ typedef	struct sccs {
 	u16	version;	/* file format version */
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
+	loc	*locs;		/* for cset data */ 
+	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
 	u32	cksumok:1;	/* check sum was ok */
 	u32	cksumdone:1;	/* check sum was checked */
@@ -1042,6 +1053,8 @@ int	logs_pending(int ptype, int skipRecentCset, int grace);
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
 char	*getCSetFile(project *p);
 int	spawn_cmd(int flag, char **av);
+int	addsym(sccs *s, delta *d, delta *metad, int, char*, char*);
+int	delta_table(sccs *s, FILE *out, int willfix);
 extern char *bk_vers;
 extern char *bk_utc;
 extern char *bk_time;
