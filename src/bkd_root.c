@@ -45,7 +45,9 @@ cmd_root(int ac, char **av, int in, int out)
 			}
 			pclose(p);
 		} else {
-			if (getcwd(buf, sizeof(buf))) {
+			unless (exists("BitKeeper/etc")) {
+				writen(out, "ERROR-not at a repository root\n");
+			} else if (getcwd(buf, sizeof(buf))) {
 				writen(out, buf);
 				writen(out, "\n");
 			} else {

@@ -6,7 +6,7 @@
 int
 cmd_eof(int ac, char **av, int in, int out)
 {
-	write(out, "OK-Goodbye\n", 8);
+	writen(out, "OK-Goodbye\n");
 	exit(0);
 	return (0);	/* lint */
 }

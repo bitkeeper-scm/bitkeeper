@@ -128,7 +128,8 @@ cmd_pull(int ac, char **av, int in, int out)
 	fclose(f); f = 0;
 
 	/*
-	 * What I want is to run cset with stdin being the file.
+	 * What I want is to run cset with stdin being the file and
+	 * stdout being the socket.
 	 */
 	if (pid = fork()) {
 		int	status;
@@ -147,6 +148,7 @@ cmd_pull(int ac, char **av, int in, int out)
 	} else {
 		close(0);
 		open(tmpfile, 0, 0);
+		if (out != 1) { close(1); dup(out); close(out); }
 		execvp(cset[0], cset);
 	}
 

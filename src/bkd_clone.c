@@ -39,6 +39,7 @@ cmd_clone(int ac, char **av, int in, int out)
 		exit(0);
 	} else {
 		if (out != 1) { close(1); dup(out); close(out); }
+		if (in != 0) { close(0); dup(in); close(in); }
 		execvp(cmd[0], cmd);
 	}
 	exit(1);

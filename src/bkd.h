@@ -30,6 +30,7 @@ struct cmd {
 	char	*name;		/* command name */
 	char	*description;	/* one line description for help */
 	func	cmd;		/* function pointer which does the work */
+	u32	readonly:1;	/* if set, then this is a readonly command */
 };
 
 /*
@@ -44,6 +45,12 @@ typedef struct {
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
 } remote;
+
+/*
+ * Default BitKeeper port.
+ * This is will change when we get a reserved port number.
+ */
+#define	BK_PORT	0x3962
 
 extern	struct cmd cmds[];
 extern	int exists(char *);
