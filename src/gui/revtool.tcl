@@ -515,10 +515,15 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 #
 # revname:  revision-username (e.g. 1.832-akushner)
 #
-proc centerRev {revname} \
+proc centerRev {revname {doit 0}} \
 {
-	global cdim w
+	global cdim w afterId
 
+	if {!$doit} {
+		catch {after cancel $afterId}
+		set afterId [after idle [list centerRev $revname 1]]
+		return
+	}
 	set bbox [$w(graph) bbox $revname]
 	set b_x1 [lindex $bbox 0]
 	set b_x2 [lindex $bbox 2]
@@ -1029,22 +1034,26 @@ proc highlightAncestry {rev1} \
 	$w(graph) itemconfigure "mline" -fill $gc(rev.arrowColor)
 	$w(graph) itemconfigure "hline" -fill $gc(rev.arrowColor)
 
+	if {$rev1 == ""} return
+
+	set dspec {-dKIDS\n:KIDS:\nKID\n:KID:\nMPD\n:MPARENT:\n}
+	catch {exec bk prs -hr$rev1 $dspec $fname} tmp
+	array set attrs [split $tmp \n]
+
 	# Highlight the kids
-	catch {exec bk prs -hr$rev1 -d:KIDS: $fname} kids
-	foreach r $kids {
+	foreach r [split $attrs(KIDS)] {
 		$w(graph) itemconfigure "l_$rev1-$r" -fill $gc(rev.hlineColor)
 	}
 	# Highlight the kid (XXX: There was a reason why I did this)
-	catch {exec bk prs -hr$rev1 -d:KID: $fname} kid
-	if {$kid != ""} {
+	if {$attrs(KID) != ""} {
+		set kid $attrs(KID)
 		$w(graph) itemconfigure "l_$kid" -fill $gc(rev.hlineColor)
 	}
 	# NOTE: I am only interested in the first MPARENT
-	set mpd [open "|bk prs -hr$rev1 {-d:MPARENT:} $fname"]
-	if {[gets $mpd mp]} {
-		$w(graph) itemconfigure "l_$mp-$rev1" -fill $gc(rev.hlineColor)
+	set mpd [split $attrs(MPD)]
+	if {[llength $mpd] >= 1} {
+		$w(graph) itemconfigure "l_$mpd-$rev1" -fill $gc(rev.hlineColor)
 	}
-	catch { close $mpd }
 	$w(graph) itemconfigure "l_$rev1" -fill $gc(rev.hlineColor)
 }
 
@@ -1748,7 +1757,15 @@ proc PaneStop {} \
 
 proc busy {busy} \
 {
-	global	paned w
+	global	paned w currentBusyState
+
+	# No reason to do any work if the state isn't changing. This
+	# actually makes a subtle performance boost.
+	if {[info exists currentBusyState] &&
+	    $busy == $currentBusyState} {
+		return
+	}
+	set currentBusyState $busy
 
 	if {$busy == 1} {
 		. configure -cursor watch
@@ -1760,7 +1777,11 @@ proc busy {busy} \
 		$w(aptext) configure -cursor left_ptr
 	}
 	if {$paned == 0} { return }
-	update
+
+	# only need to call update if we are transitioning to the
+	# busy state; becoming "unbusy" will take care of itself
+	# when the GUI goes idle. Another subtle performance boost.
+	if {$busy} {update idletasks}
 }
 
 proc widgets {} \
