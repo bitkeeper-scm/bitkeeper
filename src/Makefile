@@ -124,7 +124,7 @@ PSCR	= t/doit
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
 LIBS	= $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
