@@ -112,3 +112,41 @@ cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.bar.c  $HERE/copy/src/SCCS/s.bar.c
 if [ $? -ne 0 ]; then echo failed; fi
 echo OK
+echo $N Check propagation of text field .............................$NL
+cd $HERE/project/src
+echo "this is a text entry line 1" > text
+echo "this is a text entry line 2" >> text
+admin -ttext h.h
+bk commit $Q -yabc
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
+cd $HERE/copy/src
+diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
+if [ $? -ne 0 ]; then echo failed; fi
+cd $HERE/project/src
+admin -T h.h
+bk commit $Q -yabc
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
+cd $HERE/copy/src
+diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
+if [ $? -ne 0 ]; then echo failed; fi
+echo OK
+echo $N Check propagation of text, flags \& permission ...............$NL
+cd $HERE/project/src
+admin -ttext -fYEAR4 -m-rwx-w--w- h.h
+bk commit $Q -yabc
+bk resync $Q $HERE/project $HERE/copy
+bk resolve $Q $HERE/copy
+cd $HERE/copy/src
+diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
+if [ $? -ne 0 ]; then echo failed; fi
+prs -r+ -h -d":MODE:\n:FD:" h.h > CMP1
+${CAT} > CMP2 <<EOF
+100722
+this is a text entry line 1
+this is a text entry line 2
+EOF
+cmp CMP1 CMP2
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK

@@ -202,6 +202,7 @@
 #define D_DUPLINK	0x10000000	/* this symlink pointer is shared */
 #define	D_LOCAL		0x20000000	/* for resolve; this is a local delta */
 #define D_XFLAGS	0x40000000	/* delta has updated file flags */
+#define D_TEXT		0x80000000	/* delta has updated text	*/
 
 /*
  * Signal handling.
@@ -284,6 +285,7 @@ typedef struct delta {
 	char	**mr;			/* MR's are just passed through */
 	char	**comments;		/* Comment log */
 	/* New stuff in lm's sccs */
+	char	**text;		/* descriptive text log */
 	char	*hostname;		/* hostname where revision was made */
 	char	*pathname;		/* pathname to the file */
 	char	*zone;			/* 08:00 is time relative to GMT */

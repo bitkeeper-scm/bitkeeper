@@ -61,7 +61,7 @@ typedef	struct cset {
 } cset_t;
 
 int	csetCreate(sccs *cset, int flags, char *sym, int newlod);
-int	csetInit(sccs *cset, int flags);
+int	csetInit(sccs *cset, int flags, char *text);
 void	csetlist(cset_t *cs, sccs *cset);
 void	csetList(sccs *cset, char *rev, int ignoreDeleted);
 int	marklist(char *file, int newlod, MDBM *tot, MDBM *base);
@@ -99,7 +99,7 @@ main(int ac, char **av)
 	sccs	*cset;
 	int	flags = 0;
 	int	c, list = 0;
-	char	*sym = 0;
+	char	*sym = 0, *text = 0;
 	int	cFile = 0, ignoreDeleted = 0;
 	char	allRevs[6] = "1.0..";
 	int	newlod = 0;
@@ -113,11 +113,12 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (streq(av[0], "makepatch")) cs.makepatch++;
 
-	while ((c = getopt(ac, av, "c|Cd|Dfil|Lm|M|pqr|R|sS;t;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "c|Cd|Dfi|l|Lm|M|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
 			flags |= DELTA_EMPTY|NEWFILE;
+			text = optarg;
 			break;
 		    case 'f': cs.force++; break;
 		    case 'R':
@@ -237,7 +238,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 			fprintf(stderr, "cset: no symbols allowed with -i.\n");
 			cset_exit(1);
 		}
-		return (csetInit(cset, flags));
+		return (csetInit(cset, flags, text));
 	}
 
 	if (list) {
@@ -350,8 +351,27 @@ spawn_checksum_child(void)
 	return pid;
 }
 
+/*
+ * Dup up to but not including the newline.
+ */
+private char    *
+strnonldup(char *s)
+{
+	register char *t = s;
+	int     len;
+
+	while (*t++ && (t[-1] != '\n'));
+	len = t - s;
+	len--;
+	t = malloc(len + 1);
+	assert(t);
+	strncpy(t, s, len);
+	t[len] = 0;
+	return (t);
+}          
+
 int
-csetInit(sccs *cset, int flags)
+csetInit(sccs *cset, int flags, char *text)
 {
 	delta	*d = 0;
 
@@ -373,9 +393,24 @@ csetInit(sccs *cset, int flags)
 	unless(d = getUserName(d)) goto intr;
 	d->sym = strdup(KEY_FORMAT2);
 	cset->state |= S_CSET|S_KEY2;
+	if (text) {
+		FILE    *desc; 
+		char    dbuf[200];
+
+		desc = fopen(text, "rt"); /* must be text mode */
+		if (!desc) {
+			fprintf(stderr, "admin: can't open %s\n", text);
+			goto error;
+		}
+		assert(cset->text == 0);
+		while (fgets(dbuf, sizeof(dbuf), desc)) {
+			cset->text = addLine(cset->text, strnonldup(dbuf));
+		}
+		fclose(desc);
+	}
 	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
 intr:		sccs_whynot("cset", cset);
-		sccs_free(cset);
+error:		sccs_free(cset);
 		sfileDone();
 		commentsDone(saved);
 		hostDone();

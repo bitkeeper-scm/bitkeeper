@@ -10,7 +10,7 @@ fi
 
 echo $N Create a symlink ............................................$NL
 umask 0
-cset -is .
+cset -i -s .
 echo "xx" > file
 ln -s file symlink
 mv file file.tmp

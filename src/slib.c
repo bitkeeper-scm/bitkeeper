@@ -2427,6 +2427,13 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'S':
 		symArg(s, d, &buf[3]);
 		break;
+	    case 'T':
+		assert(d);
+		d->flags |= D_TEXT;
+		if (buf[3] == ' ') {
+			d->text = addLine(d->text, strnonldup(&buf[4]));
+		}
+		break;
 	    case 'X':
 		assert(d);
 		d->flags |= D_XFLAGS;
@@ -5578,6 +5585,20 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 				fputmeta(s, buf, out);
 			}
 		}
+		if (d->flags & D_TEXT) {
+			unless (d->text) {
+				fputmeta(s, "\001cT\n", out);
+			} else {
+				EACH(d->text) {
+					p = buf;
+					p = fmts(p, "\001cT ");
+					p = fmts(p, d->text[i]);
+					*p++ = '\n';
+					*p   = '\0';
+					fputmeta(s, buf, out);
+				}
+			}
+		}
 		if (d->flags & D_XFLAGS) {
 			p = fmts(buf, "\001cX");
 			p = fmtu(p, d->xflags);
@@ -7618,6 +7639,16 @@ sccs_newDelta(sccs *sc, int isNullDelta)
 	char	*rev;
 	int 	f = 0;  /* XXX this may be affected by LOD */
 
+	/*
+ 	 * Until we fix the ChangeSet processing code
+	 * we can not allow null delta n ChangeSet file
+	 */
+	if ((sc->state & S_CSET) && isNullDelta) {
+		fprintf(stderr,
+			"Can not create null delta in ChangeSet file\n");
+		return 0;
+	}
+
 	p = findrev(sc, 0);
 	n = calloc(1, sizeof(delta));
 	n->next = sc->table;
@@ -7839,6 +7870,7 @@ out:
 	}
 	if (mode) {
 		d = addMode("admin", sc, d, mode, &fixDate);
+		unless(d) OUT;
 		flags |= NEWCKSUM;
 	}
 
@@ -7852,6 +7884,15 @@ out:
 				sc->text = 0;
 				flags |= NEWCKSUM;
 			}
+			unless (d) {
+				d = sccs_newDelta(sc, 1);
+				unless(d) OUT;
+				fixDate = 1;
+			}
+			sprintf(dbuf, "Remove Descriptive Text");
+			d->comments = addLine(d->comments, strdup(dbuf));
+			assert(d->text == 0);
+			d->flags |= D_TEXT;
 			goto user;
 		}
 		desc = fopen(text, "rt"); /* must be text mode */
@@ -7864,8 +7905,17 @@ out:
 			freeLines(sc->text);
 			sc->text = 0;
 		}
+		unless (d) {
+			d = sccs_newDelta(sc, 1);
+			unless(d) OUT;
+			fixDate = 1;
+		}
+		sprintf(dbuf, "Change Descriptive Text");
+		d->comments = addLine(d->comments, strdup(dbuf));
+		d->flags |= D_TEXT;
 		while (fgets(dbuf, sizeof(dbuf), desc)) {
 			sc->text = addLine(sc->text, strnonldup(dbuf));
+			d->text = addLine(d->text, strnonldup(dbuf));
 		}
 		fclose(desc);
 		flags |= NEWCKSUM;
@@ -7916,6 +7966,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				if (v) goto noval;
 				d = changeXFlag(
 					"admin", sc, d, add, fl, &fixDate);
+				unless(d) OUT;
 				if (add)
 					sc->state |= S_EXPAND1;
 				else
@@ -7924,6 +7975,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				if (v) goto noval;
 				d = changeXFlag(
 					"admin", sc, d, add, fl, &fixDate);
+				unless(d) OUT;
 				if (add)
 					sc->state |= S_RCS;
 				else
@@ -7932,6 +7984,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				if (v) goto noval;
 				d = changeXFlag(
 					"admin", sc, d, add, fl, &fixDate);
+				unless(d) OUT;
 				if (add)
 					sc->state |= S_YEAR4;
 				else
@@ -8563,6 +8616,16 @@ skip:
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
+	/* text are optional */
+	/* Can not be WANT('T'), buf[1] could be null */
+	while (buf[0] == 'T') {
+		if (buf[1] == ' ') {
+			d->text = addLine(d->text, strdup(&buf[2]));
+		}
+		d->flags |= D_TEXT;
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
 	/* Excludes are optional and are specified as keys.
 	 * If there is no sccs* ignore them.
 	 */
@@ -8877,7 +8940,7 @@ int
 sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs)
 {
 	FILE	*sfile = 0;	/* the new s.file */
-	int	error = 0, fixDate = 1;
+	int	i, error = 0, fixDate = 1;
 	char	*t;
 	delta	*d = 0, *n = 0;
 	char	*tmpfile = 0;
@@ -8937,6 +9000,16 @@ out:
 					s->state |= S_EXPAND1;
 				} else {
 					s->state &= ~S_EXPAND1;
+				}
+			}
+			if (prefilled->flags & D_TEXT) {
+				if (s->text) {
+					freeLines(s->text);
+					s->text = 0;
+				}
+				EACH(prefilled->text) {
+					s->text = addLine(s->text,
+						strnonldup(prefilled->text[i]));
 				}
 			}
 			unless (flags & NEWFILE) {
@@ -10701,6 +10774,15 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->metad == start) continue;
 			fprintf(out, "S %s\n", sym->name);
+		}
+	}
+	if (start->flags & D_TEXT) {
+		if (start->text) {
+			EACH(start->text) {
+				fprintf(out, "T %s\n", start->text[i]);
+			}
+		} else {
+			fprintf(out, "T\n");
 		}
 	}
 	EACH(start->exclude) {

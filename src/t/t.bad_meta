@@ -35,3 +35,12 @@ grep -q "not supported" admin.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 $RM admin.out
 echo OK
+echo $N check disabling of adding null delta to ChangeSet file ......$NL
+cd $HERE/project
+if [ ! -f "SCCS/s.ChangeSet" ]; then echo ChangeSet file not found; exit 1; fi
+admin -T ChangeSet 2> admin.out
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+grep -q "Can not create null delta in ChangeSet file" admin.out 
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+$RM admin.out

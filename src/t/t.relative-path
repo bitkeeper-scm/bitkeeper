@@ -10,7 +10,7 @@ P=`prs -h -d':DPN:' path`
 if [ $P != `$CWD`/path ]; then echo Failed; exit 1; fi
 echo OK
 echo $N checking pathname w/ cset file ..............................$NL
-cset -is .
+cset -i -s .
 echo 5678 > path
 ci $Q -y path
 P=`prs -r1.2 -h -d':DPN:' path`

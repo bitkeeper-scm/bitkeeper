@@ -76,8 +76,7 @@ _setup() {
 		done
 	else	${ECHO} "$NAME" > Description
 	fi
-	${BIN}cset -si .
-	${BIN}admin -qtDescription ChangeSet
+	${BIN}cset -siDescription .
 	# This descr is used by the regression tests.  Don't spam the
 	# setups alias.
 	case "`cat Description`" in
