@@ -44,14 +44,26 @@ mkdir $HERE/project/BitKeeper/triggers
 cat > $HERE/project/BitKeeper/triggers/pre-commit <<EOF
 #!/bin/sh
 
-if [ "X\$BK_GUI" = X ]
-then	echo "The commit trigger is going to fail, sorry"
-else	bk msg "The commit trigger is going to fail, sorry"
-fi
+echo "The repository is currently locked against updates, try later."
 exit 1
 EOF
 chmod +x $HERE/project/BitKeeper/triggers/pre-commit
 bk citool
 echo OK
-echo
 echo You should have seen a popup, if you did not this test failed
+echo
+
+echo $N Attempt citool with commit which says something but works ...$NL
+cat > $HERE/project/BitKeeper/triggers/pre-commit <<EOF
+#!/bin/sh
+
+echo "Yo momma wears army boots"
+echo "Yo poppa likes it"
+exit 0
+EOF
+chmod +x $HERE/project/BitKeeper/triggers/pre-commit
+bk citool
+echo OK
+echo You should have seen a popup, if you did not this test failed
+bk pending
+exit 0

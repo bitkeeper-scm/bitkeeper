@@ -361,7 +361,7 @@ exit 1
 EOF
 chmod +x BitKeeper/triggers/*
 bk pull $Q && {
-	echo failed to exit non zero with failed pre-incoming trigger
+	echo failed to exit non zero with failed pre-resolve trigger
 	exit 1
 }
 test -d RESYNC && {
@@ -847,6 +847,96 @@ for x in pre post;do
 done
 cd $HERE
 echo "OK"
+
+echo $N Make sure delta fails with pre-delta trigger ................$NL
+cp -rp $HERE/project $HERE/delta
+cd $HERE/delta/BitKeeper/triggers
+cat > pre-delta <<EOF
+#!/bin/sh
+
+set | grep $DASHA BK | sort > $HERE/pre-delta
+echo You bozo, you forgot to cstyle \$BK_FILE
+exit 1
+EOF
+chmod +x pre-delta
+cd $HERE/delta/src
+bk get $Q -e foo.c
+echo bad form, dude >> foo.c
+bk delta $Q -y'This is a multi
+line comment,
+to test if that works' foo.c > OUT 2>&1 && {
+	echo delta should have failed
+	exit 1
+}
+test -f SCCS/p.foo.c || {
+	echo delta should have failed
+	exit 1
+}
+grep -q 'you forgot to cstyle foo.c' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+grep -q BK_FILE= $HERE/pre-delta || {
+	echo failed to set BK_FILE
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ====== pre-delta ==========
+	cat $HERE/pre-delta
+}
+
+if [ X$BK_TESTGUI != X ]; then
+    echo $N citool w/failing pre-delta trigger...........................$NL
+    bk citool
+    echo OK
+    echo $N citool w/working pre-delta trigger...........................$NL
+    cd $HERE/delta/BitKeeper/triggers
+    cat > pre-delta <<EOF
+#!/bin/sh
+
+echo You bozo, you forgot to cstyle \$BK_FILE
+echo I am letting slide just this once.
+exit 0
+EOF
+    bk citool
+    echo OK
+fi
+
+echo $N Test that a pre-delta trigger can delta the file ............$NL
+cd $HERE/delta/BitKeeper/triggers
+cat > pre-delta <<EOF
+#!/bin/sh
+
+bk delta -y'I am the trigger' $BK_FILE
+exit 2
+EOF
+chmod +x pre-delta
+cd $HERE/delta/src
+bk get $Q -e foo.c
+echo bad form, dude >> foo.c
+echo Bad comment > SCCS/c.foo.c
+bk delta foo.c >OUT 2>&1 < /dev/null || {
+	echo should not have errored
+	cat OUT
+	exit 1
+}
+test -f SCCS/c.foo.c && {
+	should have cleaned up c.file
+	cat OUT
+	exit 1
+}
+test 'I am the trigger' = "`bk prs -hr+ -d:C: foo.c`" || {
+	echo set the wrong comment
+	bk prs foo.c
+	cat OUT
+	exit 1
+}
+echo OK
+
+cd $HERE
+rm -rf delta
 
 echo $N Commit w/trivial triggers ...................................$NL
 cd $HERE/project/src

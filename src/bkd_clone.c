@@ -92,7 +92,7 @@ cmd_clone(int ac, char **av)
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
-	if (p && trigger(av, "pre")) return (1);
+	if (p && trigger(av[0], "pre")) return (1);
 	if (p) out("@SFIO@\n");
 	if (p) {
 		rc = compressed(gzip, 1);
@@ -103,7 +103,7 @@ cmd_clone(int ac, char **av)
 	}
 	flushSocket(1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
-	if (p && trigger(av, "post")) exit (1);
+	if (p && trigger(av[0], "post")) exit (1);
 
 	/*
 	 * XXX Hack alert: workaround for a ssh bug

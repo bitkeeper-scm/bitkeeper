@@ -12256,9 +12256,19 @@ out:
 	if (!hasComments(n) && !init &&
 	    !(flags & DELTA_DONTASK) && !(n->flags & D_NOCOMMENTS)) {
 		/*
-		 * XXX - andrew make sure host/user is correct right here.
+		 * If they told us there should be a c.file, use it.
+		 * Else look for one and if found, prompt and use it.
+		 * Else ask for comments.
 		 */
-		if (sccs_getComments(s->gfile, pf.newrev, n)) OUT;
+		if (flags & DELTA_CFILE) {
+			if (comments_readcfile(s, 0, n)) OUT;
+		} else switch (comments_readcfile(s, 1, n)) {
+		    case -1: /* no c.file found */
+			if (sccs_getComments(s->gfile, pf.newrev, n)) OUT;
+			break;
+		    case -2: /* aborted in prompt */
+			OUT;
+		}
 	}
 	dinsert(s, flags, n, !(flags & DELTA_PATCH));
 	s->numdeltas++;

@@ -54,8 +54,8 @@ post-incoming.regression-test
 .SS
 TRIGGER CLASSES
 .LP
-There are three event classes which activate triggers: incoming
-events, outgoing events, and commits.  The incoming event is broken into
+There are four event classes which activate triggers: incoming
+events, outgoing events, deltas, and commits.  The incoming event is broken into
 multiple events: incoming, resolve, and apply.
 .LP
 Most events may have triggers which run before and/or after the event.
@@ -63,7 +63,8 @@ The difference between
 pre- and post- event triggers is that pre-triggers may cause events
 to fail, but post-triggers are strictly informational.   
 .LP
-The event classes are as follows:
+Not all triggers have both pre- and post- versions, the set of
+supported triggers are as follows:
 .de EV
 .	if t .TP 
 .	if n .TP 2
@@ -71,67 +72,76 @@ The event classes are as follows:
 .	LI 3
 ..
 .EV pre-commit
-called before a changeset is committed
+called before a changeset is committed.
 .LI
-non-zero exit status fails the commit
+non-zero exit status fails the commit.
 .LI
-typically used for integrity checks
+typically used for integrity checks.
 .EV post-commit
 called after a changeset is committed or attempted to be committed.
 .LI
-typically used for notification
+typically used for notification.
+.EV pre-delta
+called before a delta is created.
+.LI
+exit 0 allows the delta.
+.LI
+exit 2 indicates that the trigger called delta itself, upon which the
+calling delta command treats it as a successful delta.
+.LI
+Other than 2, all other non-zero exit values will fail the delta.
 .EV pre-incoming
-called before an incoming push/pull is started
+called before an incoming push/pull is started.
 .LI
-non-zero exit status fails the incoming event
+non-zero exit status fails the incoming event.
 .LI
-typically used for locking down a repository
+typically used for locking down a repository.
 .LI
 may be used to fail the event based on remote user, host, directory,
 and/or \*(BK version.
 .EV pre-resolve
-called after the data has been union-ed in the RESYNC directory
+called after the data has been union-ed in the RESYNC directory.
 .LI
-called in the RESYNC directory, not the enclosing repository
+called in the RESYNC directory, not the enclosing repository.
 .LI
-exit 0 allows the pull/push
+exit 0 allows the pull/push.
 .LI
-exit 1 fails the entire pull/push
+exit 1 fails the entire pull/push.
 .LI
-exit 2 fails the entire pull/push but leaves the patch in PENDING
+exit 2 fails the entire pull/push but leaves the patch in PENDING.
 .LI
-typically used to examine changes before taking them
+typically used to examine changes before taking them.
 .EV pre-apply
 called after the data has been merged in the RESYNC directory but
 before it is applied to the tree.  Last chance to say no, allows examination
 of the merge changes.
 .LI
-called in the RESYNC directory, not the enclosing repository
+called in the RESYNC directory, not the enclosing repository.
 .LI
-exit 0 allows the pull/push
+exit 0 allows the pull/push.
 .LI
-exit 1 fails the entire pull/push
+exit 1 fails the entire pull/push.
 .LI
-exit 2 fails the pull/push but leaves the patch in PENDING
+exit 2 fails the pull/push but leaves the patch in PENDING.
 .LI
 exit 3 fails the pull/push but leaves the patch in PENDING and the
 RESYNC tree in PENDING/RESYNC-<date>.
 .LI
-typically used to examine changes before taking them
+typically used to examine changes before taking them.
 .EV post-incoming
-called after the data has been applied to the tree
+called after the data has been applied to the tree.
 .LI
-typically used for notification
+typically used for notification.
 .EV pre-outgoing
-called before an outgoing pull/push/clone event
+called before an outgoing pull/push/clone event.
 .LI
-non-zero exit status fails the outgoing event
+non-zero exit status fails the outgoing event.
 .LI
-typically used for locking down a repository
+typically used for locking down a repository.
 .EV post-outgoing
-called after the outgoing event
+called after the outgoing event.
 .LI
-typically used for notification
+typically used for notification.
 .SS
 TRIGGER SECURITY ISSUES
 .LP
@@ -194,6 +204,9 @@ The event from the point of view of the trigger.  The full list of values
 for this variable is
 outgoing clone, incoming push, outgoing push, incoming pull, outgoing pull, 
 resolve, apply, and commit.
+.ip BK_FILE
+Valid only in the pre-delta trigger, and contains the filename of the file
+about to be delta-ed.
 .ip BK_HOST
 The hostname of the client side host.
 .ip BKD_HOST
