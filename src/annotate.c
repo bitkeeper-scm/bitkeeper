@@ -15,6 +15,7 @@ annotate_main(int ac, char **av)
 	sccs	*s;
 	int	flags = BASE_FLAGS;
 	int	c, errors = 0;
+	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	char	*t, *name, *rev = 0, *cdate = 0;
 	delta	*d;
 
@@ -79,6 +80,9 @@ annotate_main(int ac, char **av)
 			rev = d->rev;
 		} else unless (rev) {
 			rev = sfileRev();
+		}
+		if (pnames) {
+			printf("FILE|%s|CRC|%x\n", s->gfile, crc(s->gfile));
 		}
 		if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
 			unless (BEEN_WARNED(s)) {

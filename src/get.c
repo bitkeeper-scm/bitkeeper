@@ -22,6 +22,7 @@ _get_main(int ac, char **av, char *out)
 	int	commitedOnly = 0;
 	int	branch_ok = 0;
 	int	caseFoldingFS = 1;
+	int	pnames = getenv("BK_PRINT_EACH_NAME") != 0;
 	MDBM	*realNameCache = 0;
 	char	realname[MAXPATH];
 
@@ -184,6 +185,9 @@ onefile:	fprintf(stderr,
 			name = realname;
 		}
 		unless (s = sccs_init(name, iflags)) continue;
+		if (pnames) {
+			printf("|FILE|%s|CRC|%u\n", s->gfile, crc(s->gfile));
+		}
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];
@@ -201,8 +205,8 @@ onefile:	fprintf(stderr,
 		}
 		unless (HASGRAPH(s)) {
 			if (!(s->state & S_SFILE)) {
-				fprintf(stderr, "%s: %s doesn't exist.\n",
-				    prog, s->sfile);
+				verbose((stderr, "%s: %s doesn't exist.\n",
+				    prog, s->sfile));
 			} else {
 				perror(s->sfile);
 			}

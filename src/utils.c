@@ -1349,3 +1349,9 @@ p2str(void *p)
 	return (b);
 #undef N
 }
+
+u32
+crc(char *str)
+{
+	return (adler32(0, str, strlen(str)));
+}

@@ -1188,6 +1188,7 @@ char	**parent_pullp(void);
 char	**parent_pushp(void);
 char	**parent_allp(void);
 char	*parent_normalize(char *);
+u32	crc(char *s);
 
 extern char *bk_vers;
 extern char *bk_utc;
