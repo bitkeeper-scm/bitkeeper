@@ -62,8 +62,10 @@ newroot(int single)
 		exit(0);
 	}
 	randomBits(buf);
-	assert(!streq(buf, s->tree->random));
-	free(s->tree->random);
+	if (s->tree->random) {
+		assert(!streq(buf, s->tree->random));
+		free(s->tree->random);
+	}
 	s->tree->random = strdup(buf);
 	sccs_sdelta(s, s->tree, key);
 	sccs_newchksum(s);
