@@ -54,7 +54,10 @@ usage:			system("bk help -s unlock");
 	}
 	
 	if (flags & REPO) {
-		if (av[optind]) chdir(av[optind]);
+		if (av[optind]) {
+                        chdir(av[optind]);
+                }
+                sccs_cd2root(0, 0);
 		return (repo(flags));
 	}
 
