@@ -1,11 +1,10 @@
 #include "system.h"
 #include "sccs.h"
-#ifdef WIN32
-#include "uwtlib/ftw.h"
-#else
-#include <ftw.h>
-#endif
 WHATSTR("@(#)%K%");
+
+#define	FTW_F		1			/* regular file */
+#define	FTW_D		2			/* directory */
+#define	FTW_NS		5			/* unstatable object */
 
 /*
  * sfiles - find SCCS files
