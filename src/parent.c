@@ -9,7 +9,7 @@ parent_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
 	FILE	*f;
-	int	c, do_remove = 0, quiet = 0;
+	int	c, do_remove = 0, quiet = 0, shell = 0;
 	remote	*r;
 	char	*fp;
 
@@ -23,8 +23,9 @@ parent_main(int ac,  char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "qr")) != -1) {
+	while ((c = getopt(ac, av, "qpr")) != -1) {
 		switch (c) {
+		    case 'p': shell = 1; break;
 		    case 'q': quiet = 1; break;			/* doc 2.0 */
 		    case 'r': do_remove = 1; break;		/* doc 2.0 */
 		    default:
@@ -47,10 +48,11 @@ parent_main(int ac,  char **av)
 	
 	if (av[optind] == NULL) {
 		if (getParent(buf, sizeof buf)) {
-			printf("Parent repository is %s\n", buf);
+			unless (shell) printf("Parent repository is ");
+			printf("%s\n", buf);
 			return (0);
 		}
-		printf("This package has no parent\n");
+		fprintf(stderr, "This package has no parent\n");
 		return (1);
 	}
 
