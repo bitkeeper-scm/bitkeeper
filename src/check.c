@@ -41,6 +41,7 @@ private	int	fix;		/* if set, fix up anything we can */
 private	int	goneKey;	/* 1: list files, 2: list deltas, 3: both */
 private	int	badWritable;	/* if set, list bad writable file only */
 private	int	names;		/* if set, we need to fix names */
+private	int	gotDupKey;	/* if set, we found dup keys */
 private	int	csetpointer;	/* if set, we need to fix cset pointers */
 private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
@@ -213,6 +214,7 @@ check_main(int ac, char **av)
 			if (fix) s = fix_merges(s);
 			errors |= 0x20;
 		}
+		sccs_close(s); /* for HP */
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
@@ -221,9 +223,22 @@ check_main(int ac, char **av)
 		sccs_sdelta(s, sccs_ino(s), buf);
 		if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
 			if (errno == EEXIST) {
-				fprintf(stderr,
-				    "Same key %s used by\n\t%s\n\t%s\n",
-				    buf, s->gfile, mdbm_fetch_str(keys, buf));
+				char *gfile, *sfile;
+
+				gfile = mdbm_fetch_str(keys, buf);
+				sfile = name2sccs(gfile);
+				if (sameFiles(sfile, s->sfile)) {
+					fprintf(stderr,
+					    "%s and %s are identical. "
+					    "Are one of these files copied?\n",
+					    s->sfile, sfile);
+				} else {
+					fprintf(stderr,
+					    "Same key %s used by\n\t%s\n\t%s\n",
+					    buf, s->gfile, gfile);
+				}
+				free(sfile);
+				gotDupKey = 1;
 			} else {
 				perror("mdbm_store_str");
 			}
@@ -235,10 +250,24 @@ check_main(int ac, char **av)
 			*t = 0;
 			if (mdbm_store_str(keys, buf, s->gfile, MDBM_INSERT)) {
 				if (errno == EEXIST) {
-					fprintf(stderr,
-					    "Same key %s used by\n\t%s\n\t%s\n",
-					    buf, s->gfile,
-					    mdbm_fetch_str(keys, buf));
+					char *gfile, *sfile;
+
+					gfile = mdbm_fetch_str(keys, buf);
+					sfile = name2sccs(gfile);
+					if (sameFiles(sfile, s->sfile)) {
+						fprintf(stderr,
+						    "%s and %s are identical. "
+						    "Are one of these files copied?"						    "\n",
+						    s->sfile, sfile);
+					} else {
+						fprintf(stderr,
+						    "Same key %s used by\n"
+						    "\t%s\n\t%s\n",
+						    buf, s->gfile,
+						    gfile);
+					}
+					gotDupKey = 1;
+					free(sfile);
 				} else {
 					perror("mdbm_store_str");
 				}
@@ -277,7 +306,7 @@ check_main(int ac, char **av)
 	if (goneDB) mdbm_close(goneDB);
 	if (proj) proj_free(proj);
 	if (errors && fix) {
-		if (names) {
+		if (names && !gotDupKey) {
 			fprintf(stderr, "check: trying to fix names...\n");
 			system("bk -r names");
 			system("bk idcache");
@@ -301,7 +330,10 @@ check_main(int ac, char **av)
 			fprintf(stderr, "check: trying to remove lods...\n");
 			system("bk _fix_lod1");
 		}
-		if (names || xflags_failed || csetpointer || lod) return (2);
+		if (names || xflags_failed || csetpointer || lod) {
+			errors = 2;
+			goto out;
+		}
 	}
 	if (csetKeys.malloc) {
 		int	i;
@@ -325,6 +357,7 @@ check_main(int ac, char **av)
 	} else {
 		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
+out:
 	if (verbose == 1) progressbar(nfiles, nfiles, errors ? "FAILED":"OK");
 	if (all && !errors && !(flags & INIT_NOCKSUM)) {
 		unlink(CHECKED);
