@@ -105,6 +105,55 @@ bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 echo OK
 
+echo $N Tag graph rewiring test: fork, merge, collapse, leaf ........$NL
+cd $HERE
+rm -rf tag_a, tag_b, tag_c
+bk clone $Q simple tag_a
+bk clone $Q simple tag_b
+cd $HERE/tag_b
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -STAG_B1 -y"Tagged node on trunk"
+cd $HERE/tag_a
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -STAG_A1 -y"Tagged node before fork on branch"
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y"nothing node"
+cd $HERE
+bk clone $Q tag_a tag_c
+cd $HERE/tag_a
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -y"node on trunk of branch with no label"
+cd $HERE/tag_c
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -STAG_C1 -y"Tagged node on branch of branch"
+cd $HERE/tag_b
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -STAG_B2 -y"Tagged node on trunk"
+cd $HERE/tag_c
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -STAG_C2 -y"Tagged node on branch of branch (again)"
+bk pull $Q -t $HERE/tag_a
+bk edit $Q b
+bk delta $Q -y1.2 b
+bk commit $Q -STAG_C3 -y"Tagged node on branch after merge"
+bk pull $Q -t $HERE/tag_b
+bk edit $Q a
+bk delta $Q -y1.2 a
+bk commit $Q -y"tip to be deleted"
+bk csetprune < ../KEYS 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+cd $HERE
+bk clone $Q -rTAG_B2 tag_c tag_clone 2> ERROR
+if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
+echo OK
+
 # have tip change 'b' and remove 'a' and check for tip reparented
 echo $N Reparent tip ................................................$NL
 cd $HERE

@@ -2165,6 +2165,80 @@ rm_sfile(char *sfile, int leavedirs)
 }
 
 /*
+ * Return true if we detected a case folding File system
+ */
+private int
+isCaseFoldingFS()
+{
+	char	s_cset[] = CHANGESET;
+	char	*p;
+
+	p = strrchr(s_cset, '/');
+	assert(p && (p[1] == 's'));
+	p[1] = 'S';  /* change to upper case */
+	return (exists(s_cset));
+}
+
+/*
+ * Make sure the file name did not change case orientation after we copied it
+ */
+private int
+chkCaseChg(FILE *f)
+{
+	char	buf[MAXPATH], realname[MAXPATH];
+
+	fflush(f);
+	rewind(f);
+	while (fnext(buf, f)) {
+		chomp(buf);
+		getRealName(buf, localDB, realname);
+		unless (streq(buf, realname)) {
+			char	*case_folding_err =
+"\n\
+============================================================================\n\
+BitKeeper has detected a \"Case-Folding file system\". e.g. FAT and NTFS.\n\
+What this means is that your file system ignores case differences when it looks\n\
+for directories and files. This also means that it is not possible to rename\n\
+a path correctly if there exists a similar path with only upper/lower case\n\
+differences.\n\
+BitKeeper wants to rename:\n\
+    %s -> %s\n\
+Your file system is changing it to:\n\
+    %s -> %s\n\
+BitKeeper considers this an error, since this may not be what you have\n\
+intended.  The recommended work around for this problem is as follows:\n\
+a) Exit from this resolve session.\n\
+b) Run \"bk mv\" to move the directory or file with upper/lower case\n\
+   changes to a temporary location.\n\
+c) Run \"bk mv\" again to move from the temporary location to\n\
+   %s\n\
+d) Run \"bk commit\" to record the new location in a changeset.\n\
+e) Run \"bk resolve\" or \"bk pull\" again.\n\
+f) You should also inform owners of other repositories to avoid using path\n\
+   of similar names.\n\
+============================================================================\n";
+			char	*unknown_err =
+"\n\
+============================================================================\n\
+Unknown rename error, wanted:\n\
+    %s -> %s\n\
+Got:\n\
+    %s -> %s\n\
+============================================================================\n";
+			if (strcasecmp(buf, realname) == 0) {
+				fprintf(stderr, case_folding_err, buf,
+				    		buf, buf, realname, buf);
+			} else {
+				fprintf(stderr, unknown_err,
+						buf, buf, buf, realname);
+			}
+			return (-1);
+		}
+	}
+	return (0);
+}
+
+/*
  * Make sure there are no edited files, no RENAMES, and {r,m}.files and
  * apply all files.
  */
@@ -2176,10 +2250,9 @@ pass4_apply(opts *opts)
 	int	eperm = 0, first = 1, flags, ret;
 	int	getFlags = GET_EXPAND;
 	FILE	*f = 0;
-	FILE	*save;
+	FILE	*save = 0;
 	char	buf[MAXPATH];
 	char	key[MAXKEY];
-	char 	realname[MAXPATH];
 	MDBM	*permDB = mdbm_mem();
 	char	*cmd = "apply";
 
@@ -2331,61 +2404,22 @@ pass4_apply(opts *opts)
 			perror("copy");
 			fprintf(stderr,
 			    "copy(%s, %s) failed\n", buf, &buf[offset]);
-			unapply(save);
+err:			unapply(save);
 			restore(opts);
 			resolve_cleanup(opts, 0);
 		} else {
 			opts->applied++;
 		}
 		fprintf(save, "%s\n", &buf[offset]);
-		getRealName(&buf[offset], localDB, realname);
-		unless (streq(&buf[offset], realname)) {
-			char	*case_folding_err =
-"\n\
-============================================================================\n\
-BitKeeper has detected a \"Case-Folding file system\". e.g. FAT and NTFS.\n\
-What this means is that your file system ignores case differences when it looks\n\
-for directories and files. This also means that it is not possible to rename\n\
-a path correctly if there exists a similar path with only upper/lower case\n\
-differences.\n\
-BitKeeper wants to rename:\n\
-    %s -> %s\n\
-Your file system is changing it to:\n\
-    %s -> %s\n\
-BitKeeper considers this an error, since this may not be what you have\n\
-intended.  The recommended work around for this problem is as follows:\n\
-a) Exit from this resolve session.\n\
-b) Run \"bk mv\" to move the directory or file with upper/lower case\n\
-   changes to a temporary location.\n\
-c) Run \"bk mv\" again to move from the temporary location to\n\
-   %s\n\
-d) Run \"bk commit\" to record the new location in a changeset.\n\
-e) Run \"bk resolve\" or \"bk pull\" again.\n\
-f) You should also inform owners of other repositories to avoid using path\n\
-   of similar names.\n\
-============================================================================\n";
-			char	*unknown_err =
-"\n\
-============================================================================\n\
-Unknown rename error, wanted:\n\
-    %s -> %s\n\
-Got:\n\
-    %s -> %s\n\
-============================================================================\n";
-			opts->applied--;
-			if (strcasecmp(&buf[offset], realname) == 0) {
-				fprintf(stderr, case_folding_err, buf,
-				    &buf[offset], buf, realname, &buf[offset]);
-			} else {
-				fprintf(stderr, unknown_err, buf,
-						&buf[offset], buf, realname);
-			}
-			unapply(save);
-			restore(opts);
-			resolve_cleanup(opts, 0);
-		}
 	}
 	fclose(f);
+
+ 	/*
+	 * If case folding file system , make sure file name
+	 * did not change case after we copied it
+	 */
+	if (isCaseFoldingFS() && chkCaseChg(save)) goto err;
+
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "resolve: applied %d files in pass 4\n", opts->applied);
@@ -2394,8 +2428,9 @@ Got:\n\
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
-	fflush(save); /*  important */
+
 	if (strieq("yes", user_preference("partial_check"))) {
+		fflush(save); /*  important */
 		ret = run_check(APPLIED);
 	} else {
 		ret = run_check(0);
@@ -2406,9 +2441,7 @@ Got:\n\
 		 * Clean up any gfiles we may have pulled out to run check.
 		 */
 		system("bk clean BitKeeper/etc");
-		unapply(save);
-		restore(opts);
-		resolve_cleanup(opts, 0);
+		goto err;
 	}
 	fclose(save);
 	unlink(BACKUP_LIST);

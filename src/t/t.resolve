@@ -1,0 +1,50 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2002 Wayne Scott
+# %K%
+
+echo $N Test resolving file missing a newline .......................$NL
+no_logging proj
+echo line 1 > file
+bk new $Q file || exit 1
+bk commit $Q -ystart || exit 1
+cd $HERE
+bk clone $Q proj copy
+cd proj
+bk edit $Q file
+echo $NX new line without NL $NXL >> file
+cp file ../file.bak
+bk delta $Q -ynonl file || exit 1
+bk commit $Q -ynew_remote || exit 1
+cd $HERE/copy
+bk edit $Q file
+echo new line with NL >> file
+bk delta $Q -ynl file || exit 1
+bk commit $Q -ynew_local || exit 1
+bk pull $Q 2> OUT && {
+	echo should not pass
+	exit 1
+}
+grep -q 'Conflicts during automerge of file' OUT || {
+	echo pull should have had conflict
+	exit 1
+}
+echo ur | bk resolve $Q -t 2>OUT || {
+	echo resolve should work
+	exit 1
+}
+bk get $Q file || exit 1
+cmp -s file ../file.bak || {
+	echo file did not match remote
+	exit 1
+}
+echo OK

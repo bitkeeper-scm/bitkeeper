@@ -862,7 +862,7 @@ _repogca() {
 	    remote=$1
 	fi
 	bk -R changes -e -L -nd:REV: $remote > /tmp/LOCAL.$$
-	bk -R prs -hnd:REV: | fgrep -v -f/tmp/LOCAL.$$ | head -1
+	bk -R prs -hnd:REV: ChangeSet | fgrep -v -f/tmp/LOCAL.$$ | head -1
 	rm -f /tmp/LOCAL.$$
 }
 
