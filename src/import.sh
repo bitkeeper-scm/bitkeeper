@@ -90,7 +90,7 @@ import() {
 			exit 1
 		fi
 		cd $HERE
-		cp $LIST /tmp/import$$
+		cp $LIST ${TMP}import$$
 	else	if [ $TYPE != patch ]
 		then	echo Finding files in $FROM
 			cd $FROM
@@ -101,9 +101,9 @@ import() {
 			if [ X"$EXCLUDE" != X ]
 			then	cmd="$cmd | egrep -v '$EXCLUDE'"
 			fi
-			eval "$cmd" | sed 's/^..//' > /tmp/import$$
+			eval "$cmd" | sed 's/^..//' > ${TMP}import$$
 			echo OK
-		else	echo "" > /tmp/import$$
+		else	echo "" > ${TMP}import$$
 		fi
 	fi
 	if [ $TYPE != patch ]
@@ -113,20 +113,21 @@ import() {
 		while read x
 		do	if [ -e $x ]
 			then	echo import: $x exists, entire import aborted
-				rm -f /tmp/import$$
+				rm -f ${TMP}import$$
 				exit 1
 			fi
-		done < /tmp/import$$
-		g2sccs < /tmp/import$$ > /tmp/sccs$$
+		done < ${TMP}import$$
+		g2sccs < ${TMP}import$$ > ${TMP}sccs$$
 		while read x
 		do	if [ -e $x ]
 			then	echo import: $x exists, entire import aborted
-				rm -f /tmp/sccs$$ /tmp/import$$
+				rm -f ${TMP}sccs$$ ${TMP}import$$
 				exit 1
 			fi
-		done < /tmp/sccs$$
+		done < ${TMP}sccs$$
 		echo OK
 	fi
+	rm -f ${TMP}sccs$$
 	cd $TO
 	eval validate_$type $FROM $TO
 	transfer_$type $FROM $TO
@@ -212,16 +213,27 @@ EOF
 }
 
 
-transfer_RCS() { transfer "$@" }
-transfer_SCCS() { transfer "$@" }
-transfer_text() { transfer "$@" }
-transfer_patch() { return }
+transfer_RCS() {
+	transfer "$@"
+}
+
+transfer_SCCS() {
+	transfer "$@"
+}
+
+transfer_text() {
+	transfer "$@"
+}
+
+transfer_patch() {
+	returns
+}
 
 transfer() {
 	FROM=$1
 	TO=$2
 	TYPE=$3
-	NFILES=`wc -l < /tmp/import$$ | sed 's/ //g'`
+	NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 	echo
 	echo $N "Would you like to edit the list of $NFILES files to be imported? " $NL
 	read x
@@ -232,19 +244,20 @@ transfer() {
 		read editor
 		echo
 		if [ X$editor != X ]
-		then	eval $editor /tmp/import$$
-		else	eval $EDITOR /tmp/import$$
+		then	eval $editor ${TMP}import$$
+		else	eval $EDITOR ${TMP}import$$
 		fi
-		NFILES=`wc -l < /tmp/import$$ | sed 's/ //g'`
+		NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 	esac
 	echo Importing files
 	echo "	from $FROM"
 	echo "	to   $TO"
 	cd $FROM
-	sfio -omq < /tmp/import$$ | (cd $TO && sfio -imq) || exit 1
+	sfio -omq < ${TMP}import$$ | (cd $TO && sfio -imq) || exit 1
 }
 
 import_patch() {
+
 	Q=-q
 	cd $2
 	echo Locking files in `pwd` ...
@@ -253,50 +266,50 @@ import_patch() {
 	# XXX - I want to use -Z here and -G on the ci to pick up the timestamps
 	# but it screws up the printouts for some reason.
 	(cd $HERE && cat $1) |
-	    bk patch -p1 -E -z '=-PaTcH_BaCkUp!' -s --lognames > /tmp/plog$$ 2>&1
+	    bk patch -p1 -E -z '=-PaTcH_BaCkUp!' -s --lognames > ${TMP}plog$$ 2>&1
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | xargs rm -f
 	REJECTS=NO
-	find .  -name '*.rej' -print > /tmp/rejects$$
-	if [ -s /tmp/rejects$$ ]
+	find .  -name '*.rej' -print > ${TMP}rejects$$
+	if [ -s ${TMP}rejects$$ ]
 	then 	echo Patch rejects:
-		cat /tmp/rejects$$
+		cat ${TMP}rejects$$
 		echo
 		echo "Patch aborted, you need to clean up by hand, XXX"
 		Done 1
 	fi
-	grep '^Creating file ' /tmp/plog$$ |
-	    sed 's/Creating file //' > /tmp/creates$$
-	grep '^Removing file ' /tmp/plog$$ |
-	    sed 's/Removing file //' > /tmp/deletes$$
+	grep '^Creating file ' ${TMP}plog$$ |
+	    sed 's/Creating file //' > ${TMP}creates$$
+	grep '^Removing file ' ${TMP}plog$$ |
+	    sed 's/Removing file //' > ${TMP}deletes$$
 	if [ $RENAMES = YES ]
 	then	echo Checking for potential renames in `pwd` ...
 		SAVE=$USER
 		USER=anon
 		# Go look for renames
-		if [ -s /tmp/deletes$$ -a -s /tmp/creates$$ ]
+		if [ -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
 		then	(
-			if [ -s /tmp/deletes$$ ]
-			then	cat /tmp/deletes$$
+			if [ -s ${TMP}deletes$$ ]
+			then	cat ${TMP}deletes$$
 			fi
 			echo ""
-			if [ -s /tmp/creates$$ ]
-			then	cat /tmp/creates$$
+			if [ -s ${TMP}creates$$ ]
+			then	cat ${TMP}creates$$
 	    		fi ) | bk renametool
 		fi
 
 		# Do the deletes automatically
-		if [ -s /tmp/deletes$$ -a ! -s /tmp/creates$$ ]
-		then	bk rm -d - < /tmp/deletes$$
+		if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
+		then	bk rm -d - < ${TMP}deletes$$
 		fi
 		# Do the creates automatically
-		if [ ! -s /tmp/deletes$$ -a -s /tmp/creates$$ ]
-		then	bk new $Q - < /tmp/creates$$
+		if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
+		then	bk new $Q - < ${TMP}creates$$
 		fi
 	else	# Just delete and create
-		bk rm -d - < /tmp/deletes$$
-		bk new $Q - < /tmp/creates$$
+		bk rm -d - < ${TMP}deletes$$
+		bk new $Q - < ${TMP}creates$$
 	fi
-	rm -f /tmp/creates$$ /tmp/deletes$$
+	rm -f ${TMP}creates$$ ${TMP}deletes$$
 
 	echo Checking in modified files in `pwd` ...
 	bk -r ci $Q -y"Patch"
@@ -304,10 +317,10 @@ import_patch() {
 	echo Cleaning all other files `pwd` ...
 	bk -r clean
 
-	bk sfiles -x | grep -v '^BitKeeper/' > /tmp/extras$$
-	if [ -s /tmp/extras$$ ]
+	bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
+	if [ -s ${TMP}extras$$ ]
 	then	echo There were extra files, patch aborted, here is the list
-		cat /tmp/extras$$
+		cat ${TMP}extras$$
 		echo
 		echo "Patch aborted, you must clean up by hand, XXX"
 		Done 1
@@ -323,7 +336,7 @@ import_patch() {
 import_text () {
 	cd $2
 	echo Checking in plain text files...
-	ci -is - < /tmp/import$$ || exit 1
+	ci -is - < ${TMP}import$$ || exit 1
 }
 
 import_RCS () {
@@ -338,30 +351,30 @@ import_RCS () {
 			t=.del-${f#Attic/}
 			if [ ! -e $t ]
 			then	mv $f $t
-				echo $dir/$t >> /tmp/attic$$
+				echo $dir/$t >> ${TMP}attic$$
 			else	echo WARNING: skipping $f
 			fi
 		done
 		rmdir Attic
 	)
 	done
-	grep -v Attic /tmp/import$$ >/tmp/notattic$$
-	sort /tmp/attic$$ /tmp/notattic$$ >/tmp/import$$
-	rm /tmp/attic$$ /tmp/notattic$$
+	grep -v Attic ${TMP}import$$ >${TMP}notattic$$
+	sort ${TMP}attic$$ ${TMP}notattic$$ >${TMP}import$$
+	rm ${TMP}attic$$ ${TMP}notattic$$
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	echo Ignore errors relating to missing newlines at EOF.
-	rcs2sccs -hst - < /tmp/import$$ || exit 1
-	xargs rm -f < /tmp/import$$
+	rcs2sccs -hst - < ${TMP}import$$ || exit 1
+	xargs rm -f < ${TMP}import$$
 }
 
 import_SCCS () {
 	cd $2
 	echo Checking for and fixing Teamware corruption...
 	sfiles | renumber -q -
-	if [ -s /tmp/reparent$$ ]
+	if [ -s ${TMP}reparent$$ ]
 	then	echo Reparenting files from some other BitKeeper project...
-		sed 's/ BitKeeper$//' < /tmp/reparent$$ | \
+		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | \
 		while read x
 		do	if [ -f $x ]
 			then	echo $x
@@ -369,7 +382,7 @@ import_SCCS () {
 		done | admin -C -
 		echo OK
 	fi
-	rm -f /tmp/reparent$$
+	rm -f ${TMP}reparent$$
 	echo Making sure all files have pathnames, proper dates, and checksums
 	sfiles -g | while read x
 	do	admin -q -u -p$x $x
@@ -381,15 +394,15 @@ import_finish () {
 	cd $1
 	echo ""
 	echo Validating all SCCS files
-	sfiles | admin -qhh > /tmp/admin$$
-	if [ -s /tmp/admin$$ ]
+	sfiles | admin -qhh > ${TMP}admin$$
+	if [ -s ${TMP}admin$$ ]
 	then	echo Import failed because
-		cat /tmp/admin$$
+		cat ${TMP}admin$$
 		exit 1
 	fi
 	echo OK
 	
-	rm -f /tmp/import$$ /tmp/admin$$
+	rm -f ${TMP}import$$ ${TMP}admin$$
 	sfiles -r
 	echo "Creating initial changeset (should have $NFILES + 1 lines)"
 	bk commit -f -y'Import changeset'
@@ -399,31 +412,31 @@ validate_SCCS () {
 	FROM=$1
 	TO=$2
 	cd $FROM
-	grep 'SCCS/s\.' /tmp/import$$ > /tmp/sccs$$
-	grep -v 'SCCS/s\.' /tmp/import$$ > /tmp/notsccs$$
-	if [ -s /tmp/sccs$$ -a -s /tmp/notsccs$$ ]
-	then	NOT=`wc -l < /tmp/notsccs$$ | sed 's/ //g'`
+	grep 'SCCS/s\.' ${TMP}import$$ > ${TMP}sccs$$
+	grep -v 'SCCS/s\.' ${TMP}import$$ > ${TMP}notsccs$$
+	if [ -s ${TMP}sccs$$ -a -s ${TMP}notsccs$$ ]
+	then	NOT=`wc -l < ${TMP}notsccs$$ | sed 's/ //g'`
 		echo
 		echo Skipping $NOT non-SCCS files
 		echo $N "Do you want to see this list of files? [No] " $NL
 		read x
 		case "$x" in
-		y*)	sed 's/^/	/' < /tmp/notsccs$$ | more ;;
+		y*)	sed 's/^/	/' < ${TMP}notsccs$$ | more ;;
 		esac
-		mv /tmp/sccs$$ /tmp/import$$
-		rm -f /tmp/notsccs$$
+		mv ${TMP}sccs$$ ${TMP}import$$
 	fi
-	sfiles -cg $FROM > /tmp/changed$$
-	if [ -s /tmp/changed$$ ]
+	rm -f ${TMP}notsccs$$ ${TMP}sccs$$
+	sfiles -cg $FROM > ${TMP}changed$$
+	if [ -s ${TMP}changed$$ ]
 	then	echo The following files are locked and modified in $FROM
-		cat /tmp/changed$$
+		cat ${TMP}changed$$
 		echo
 		echo Can not import unchecked in SCCS files
 		exit 1
 	fi
-	rm -f /tmp/changed$$
-	grep 'SCCS/s\.' /tmp/import$$ | prs -hr -d':PN: :TYPE:' - | grep ' BitKeeper' > /tmp/reparent$$
-	if [ -s /tmp/reparent$$ ]
+	rm -f ${TMP}changed$$
+	grep 'SCCS/s\.' ${TMP}import$$ | prs -hr -d':PN: :TYPE:' - | grep ' BitKeeper' > ${TMP}reparent$$
+	if [ -s ${TMP}reparent$$ ]
 	then	cat <<EOF
 
 You are trying to import BitKeeper files into a BitKeeper project.
@@ -434,20 +447,20 @@ We can do it, but don't do it unless you know what you are doing.
 
 The following files are marked as BitKeeper files:
 EOF
-		sed 's/ BitKeeper$//' < /tmp/reparent$$ | sed 's/^/	/'
+		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | sed 's/^/	/'
 		echo ""
 		echo $N "Reparent the BitKeeper files? [No] " $NL
 		read x
 		case "$x" in
 		y*)	;;
-		*)	rm -f /tmp/sccs$$ /tmp/import$$ /tmp/reparent$$
+		*)	rm -f ${TMP}sccs$$ ${TMP}import$$ ${TMP}reparent$$
 			exit 1
 		esac
 		echo $N "Are you sure? [No] " $NL
 		read x
 		case "$x" in
 		y*)	;;
-		*)	rm -f /tmp/sccs$$ /tmp/import$$
+		*)	rm -f ${TMP}sccs$$ ${TMP}import$$
 			exit 1
 		esac
 		echo OK
@@ -455,71 +468,73 @@ EOF
 }
 
 validate_RCS () {
-	grep ',v$' /tmp/import$$ >/tmp/rcs$$
+	grep ',v$' ${TMP}import$$ >${TMP}rcs$$
 	# Filter out CVS repository metadata here.
-	grep -v ',v$' /tmp/import$$ | egrep -v 'CVS|#cvs' >/tmp/notrcs$$
-	if [ -s /tmp/rcs$$ -a -s /tmp/notrcs$$ ]
-	then	NOT=`wc -l < /tmp/notrcs$$ | sed 's/ //g'`
+	grep -v ',v$' ${TMP}import$$ | egrep -v 'CVS|#cvs' >${TMP}notrcs$$
+	if [ -s ${TMP}rcs$$ -a -s ${TMP}notrcs$$ ]
+	then	NOT=`wc -l < ${TMP}notrcs$$ | sed 's/ //g'`
 		echo
 		echo Skipping $NOT non-RCS files
 		echo $N "Do you want to see this list of files? [No] " $NL
 		read x
 		case "$x" in
-		y*)	sed 's/^/	/' < /tmp/notrcs$$ | more ;;
+		y*)	sed 's/^/	/' < ${TMP}notrcs$$ | more ;;
 		esac
 	fi
-	mv /tmp/rcs$$ /tmp/import$$
-	rm -f /tmp/notrcs$$
+	mv ${TMP}rcs$$ ${TMP}import$$
+	rm -f ${TMP}notrcs$$
 }
 
 validate_text () {
 	FROM=$1
 	TO=$2
 	cd $FROM
-	egrep 'SCCS/s\.|,v$' /tmp/import$$ > /tmp/nottext$$
-	egrep -v 'SCCS/s\.|,v$' /tmp/import$$ > /tmp/text$$
-	if [ -s /tmp/text$$ -a -s /tmp/nottext$$ ]
-	then	NOT=`wc -l < /tmp/nottext$$ | sed 's/ //g'`
+	egrep 'SCCS/s\.|,v$' ${TMP}import$$ > ${TMP}nottext$$
+	egrep -v 'SCCS/s\.|,v$' ${TMP}import$$ > ${TMP}text$$
+	if [ -s ${TMP}text$$ -a -s ${TMP}nottext$$ ]
+	then	NOT=`wc -l < ${TMP}nottext$$ | sed 's/ //g'`
 		echo
 		echo Skipping $NOT non-RCS files
 		echo $N "Do you want to see this list of files? [No] " $NL
 		read x
 		case "$x" in
-		y*)	sed 's/^/	/' < /tmp/nottext$$ | more ;;
+		y*)	sed 's/^/	/' < ${TMP}nottext$$ | more ;;
 		esac
-		mv /tmp/text$$ /tmp/import$$
-		rm -f /tmp/nottext$$
+		mv ${TMP}text$$ ${TMP}import$$
+		rm -f ${TMP}nottext$$
 	fi
+	rm -f ${TMP}nottext$$ ${TMP}text$$
 }
 
 # Make sure there are no locked/extra files
 validate_patch() {
 	cd $2
 	echo Make sure there are no locked files in `pwd` ...
-	bk sfiles -l | grep -v BitKeeper/ > /tmp/locked$$
-	if [ -s /tmp/locked$$ ]
+	bk sfiles -l | grep -v BitKeeper/ > ${TMP}locked$$
+	if [ -s ${TMP}locked$$ ]
 	then	echo Not patching because of locked files:
-		cat /tmp/locked$$
+		cat ${TMP}locked$$
 		Done 1
     	fi
 	echo Make sure there are no extra files in `pwd` ...
-	bk sfiles -x | grep -v BitKeeper/ > /tmp/extras$$
-	if [ -s /tmp/extras$$ ]
+	bk sfiles -x | grep -v BitKeeper/ > ${TMP}extras$$
+	if [ -s ${TMP}extras$$ ]
 	then	echo Not patching because of extra files:
-		cat /tmp/extras$$
+		cat ${TMP}extras$$
 		Done 1
     	fi
-	rm -f /tmp/locked$$ /tmp/extras$$
+	rm -f ${TMP}locked$$ ${TMP}extras$$
 }
 
 Done() {
 	for i in rejects plog extras locked import sccs
-	do	rm -f /tmp/${i}$$
+	do	rm -f ${TMP}${i}$$
 	done
 	exit $1
 }
 
 init () {
+	__platformInit;
 	if [ '-n foo' = "`echo -n foo`" ]
 	then    NL='\c'
 	        N=

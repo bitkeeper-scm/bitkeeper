@@ -148,6 +148,8 @@ get_input_file (char const *filename, char const *outname)
     if (inerrno == -1)
       inerrno = stat (inname, &instat) == 0 ? 0 : errno;
 
+    /* st_uid does not seems to work on cygwin/win32 */
+#ifndef __CYGWIN__
     /* Perhaps look for RCS or SCCS versions.  */
     if (patch_get
 	&& invc != 0
@@ -200,6 +202,7 @@ get_input_file (char const *filename, char const *outname)
 	errno = inerrno;
 	pfatal ("Can't find file %s", quotearg (filename));
       }
+#endif
 
     if (inerrno)
       {

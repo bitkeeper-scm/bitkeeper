@@ -348,8 +348,8 @@ unuuwrap: unuuwrap.sh substvars
 	chmod +x unuuwrap.T
 	mv -f unuuwrap.T unuuwrap
 
-import: import.sh substvars
-	./substvars import.sh > import.T
+import: import.sh port/unix_platform.sh substvars
+	cat port/unix_platform.sh import.sh | ./substvars > import.T
 	chmod +x import.T
 	mv -f import.T import
 
