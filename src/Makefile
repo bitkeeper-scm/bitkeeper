@@ -8,13 +8,13 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 PRIVATE	= nextsecond mtime zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex
-PSCR	= install.sh t/doit
+PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
 DATA	= bitkeeper.config bkhelp.txt
 
-LINKTO	= ci:delta co:get edit:get unedit:clean unget:clean fmtool:fm \
-	  fm3tool:fm3
+LINKTO	= ci delta co get edit get unedit clean unget clean fmtool fm \
+	  fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
 
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PRIVATE) $(PSCR) $(DATA)
@@ -113,13 +113,12 @@ production_all:
 	$(MAKE) production_debug prefix=$(prefix)/debug
 	$(MAKE) production_purify prefix=$(prefix)/purify
 	$(MAKE) production
-	$(MAKE) install-links
 
-production: rebuild p install-bin
-production_g: rebuild gO install-bin
-production_debug: rebuild debug install-bin
-production_ndebug: rebuild ndebug install-bin
-production_purify: rebuild purify install-bin
+production: rebuild p install
+production_g: rebuild gO install
+production_debug: rebuild debug install
+production_ndebug: rebuild ndebug install
+production_purify: rebuild purify install
 
 # Cleanup targets.
 clean-obj: FORCE
@@ -130,16 +129,16 @@ clean-bin: FORCE
 	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(PSCR) $(LINKS) MANIFEST
 
 clean-cfg: FORCE
-	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
+	-/bin/rm -f config.h stamp-h substvars config.status \
 	    config.cache config.log bk.ver stamp-ver
 
 clean-src: FORCE
-	bk clean
-	bk clean port
-	bk clean gui
-	bk clean mdbm
-	bk clean zlib
-	bk clean t
+	-bk clean
+	-bk clean port
+	-bk clean gui
+	-bk clean mdbm
+	-bk clean zlib
+	-bk clean t
 	-/bin/rm -f tags TAGS
 
 # This would be called "clean" but that's a command name.
@@ -423,27 +422,23 @@ substvars: substvars.in config.status
 	CONFIG_HEADERS= CONFIG_FILES=substvars ./config.status
 	chmod +x substvars
 
-install.sh: install.in substvars
-	./substvars install.in > install.T
-	chmod +x install.T
-	mv install.T install.sh
-
-install: all install-bin install-links
-
-install-bin: install.sh MANIFEST
-	./install.sh MANIFEST $(prefix)
-
-MANIFEST: Makefile
-	for file in $(BINS) $(SCRIPTS); do echo "$$file 0755"; done >M
-	for file in $(DATA); do echo "$$file 0644"; done >>M
-	for pair in $(LINKTO); do echo $$pair; done | sed 's/:/ - /' >>M
-	mv -f M MANIFEST
-
-install-links: install-bin
-	cd /usr/bin; set -ex; \
-	for file in $(BINLINKS); do \
-	rm -f $$file; \
-	ln -s /usr/bitkeeper/$$file $$file; \
+# Touch this and die.  --lm
+install: all 
+	cp -f $(BINS) $(SCRIPTS) $(DATA) $(prefix)
+	./chksum $(BINS) $(SCRIPTS) $(DATA) | sort > $(prefix)/MANIFEST
+	@set `echo $(LINKTO)`; \
+	while [ "X$$1" != X ]; \
+	do	rm -f $(prefix)/$$1; \
+		ln $(prefix)/$$2 $(prefix)/$$1; \
+		shift; shift; \
+	done
+	@if [ ! -d $(prefix)/tmp ]; \
+	then	mkdir $(prefix)/tmp; chmod 777 $(prefix)/tmp; \
+	fi
+	-@cd /usr/bin; set -e; \
+	for file in $(BINLINKS); \
+	do	rm -f $$file; \
+		ln -s /usr/bitkeeper/$$file $$file; \
 	done
 
 # The default .c.o rule is broken with some Makes.

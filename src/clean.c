@@ -25,6 +25,7 @@ main(int ac, char **av)
 	int	flags = SILENT;
 	int	sflags = SF_GFILE;
 	int	c;
+	int	ret = 0;
 	char	*name;
 
 	debug_main(av);
@@ -59,19 +60,19 @@ usage:		fputs(clean_help, stderr);
 			fprintf(stderr,
 			    "clean: must have explicit list "
 			    "when discarding changes.\n");
-			exit(1);
+			return(1);
 		}
 	} else {
 		name = sfileFirst("clean", &av[optind], SF_DELETES|sflags);
 	}
 	while (name) {
 		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM, 0))) {
-			(void)sccs_clean(s, flags);
+			if (sccs_clean(s, flags)) ret = 1;
 			sccs_free(s);
 		}
 		name = sfileNext();
 	}
 	sfileDone();
 	purify_list();
-	return (0);
+	return (ret);
 }

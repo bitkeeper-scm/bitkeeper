@@ -731,6 +731,11 @@ _undo() {
 	then	echo undo: nothing to undo in "$1"
 		exit 0
 	fi
+	sed 's/[:@].*$//' < ${TMP}rmlist$$ | bk clean - || {
+		echo Undo aborted.
+		$RM -f ${TMP}rmlist$$
+		exit 1
+	}
 
 	${BIN}stripdel -Ccr$1 ChangeSet 2> ${TMP}undo$$
 	if [ $? != 0 ]
@@ -794,8 +799,8 @@ _undo() {
 	done 
 	$RM -f ${TMP}mv$$ ${TMP}rmlist$$ ${TMP}undo$$
 	if [ X$Q = X ]
-	then	echo Patch containing these undone deltas left in $UNDO,
-		echo running consistency check...
+	then	echo Patch containing these undone deltas left in $UNDO
+		echo Running consistency check...
 	fi
 	${BIN}sfiles -r
 	bk -r check -a
