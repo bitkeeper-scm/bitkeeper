@@ -116,6 +116,7 @@ logChangeSet(char *rev)
 {
 	char commit_log[MAXPATH], buf[MAXLINE], *p;
 	char getlog_out[MAXPATH];
+	char subject[MAXLINE];
 	char start_rev[1024];
 	FILE *f, *f1;
 	int dotCount = 0, n;
@@ -163,7 +164,8 @@ logChangeSet(char *rev)
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending ChangeSet to %s...\n", logAddr());
 	}
-	mail(logAddr(), project_name(), commit_log);
+	sprintf(subject, "BitKeeper ChangeSet log: %s", project_name());
+	mail(logAddr(), subject, commit_log);
 	unlink(commit_log);
 }
 
@@ -182,7 +184,7 @@ char *
 project_name()
 {
 	sccs *s;
-	static char pname[MAXLINE] = "";
+	static char pname[MAXLINE] = "    ";
 	char changeset[MAXPATH] = CHANGESET;
 	cd2root();
 	s = sccs_init(changeset, 0, 0);
@@ -209,14 +211,14 @@ notify()
 	}
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
-	f = fopen(notify_log, "w");
+	f = fopen(notify_log, "wb");
 	gethelp("version", 0, f);
 	fprintf(f, "BitKeeper repository %s : %s\n",
 					sccs_gethost(), fullname(".", 0));
 	sprintf(parent_file, "%slog/parent", bk_dir);
-	if (exists(buf)) {
+	if (exists(parent_file)) {
 		FILE *f1;
-		f1 = fopen(parent_file, "r");
+		f1 = fopen(parent_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);
 		fclose(f1);
 	}
@@ -233,7 +235,7 @@ notify()
 	} else {
 		sprintf(subject, "BitKeeper changeset by %s", sccs_getuser());
 	}
-	f = fopen(notify_file, "r");
+	f = fopen(notify_file, "rt");
 	while (fgets(buf, sizeof(buf), f)) {
 		chop(buf);
 		mail(buf, subject, notify_log);
