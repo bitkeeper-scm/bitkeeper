@@ -115,26 +115,6 @@ sccs_d2tag(sccs *s, delta *d)
 }
 
 /*
- * Record a rev that is shared with the client.  This is used in the
- * openlogging tree to recover from a failed resolve.  If a patch
- * fails we 'bk undo' the tree back to a point where we know one of
- * our recent clients was at.  Since there is no locking here we use
- * a rename() to change the file cleanly.
- * XXX: problem for Windows?
- */
-private void
-addLogKey(delta *d)
-{
-	char	*file = aprintf(LOG_KEYS ".%d", getpid());
-	FILE	*f = fopen(file, "w");
-
-	fprintf(f, "%s\n", d->rev);
-	fclose(f);
-	rename(file, LOG_KEYS);
-	free(file);
-}
-
-/*
  * Called on the server side of a keysync operation.  It read the log2
  * probe on stdin and returns the closest match and a list of other
  * keys on stdout.
@@ -250,7 +230,6 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 			continue;
 		}
 		if (!d && (d = sccs_findKey(s, lines[i]))) {
-			if (nomatch && exists(LOG_TREE)) addLogKey(d);
 			if (i == 1) matched_tot = 1;
 			sccs_color(s, d);
 			if (debug) {
