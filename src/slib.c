@@ -2522,6 +2522,15 @@ meta(sccs *s, delta *d, char *buf)
 			d->text = addLine(d->text, strnonldup(&buf[4]));
 		}
 		break;
+	    case 'V':
+		s->version = atoi(&buf[3]);
+		unless (s->version == SCCS_VERSION) {
+			fprintf(stderr,
+			    "Different version %d, forcing read only\n",
+			    s->version);
+			s->state |= S_READ_ONLY;
+		}
+		break;
 	    case 'X':
 		assert(d);
 		d->flags |= D_XFLAGS;
@@ -2644,6 +2653,7 @@ bad:
 		p = &buf[5];
 		for (i = 0, p = &buf[5]; *p != ' '; rev[i++] = *p++);
 		rev[i] = 0;
+		if (s->revLen < i) s->revLen = i;
 		if (*p != ' ') { expected = "^AD 1.1 "; goto bad; }
 	    /* 98/03/17 */
 		for (i = 0, p++; *p != ' '; date[i++] = *p++);
@@ -2659,6 +2669,7 @@ bad:
 	    /* user */
 		for (i = 0, p++; *p != ' '; user[i++] = *p++);
 		user[i] = 0;
+		if (s->userLen < i) s->userLen = i;
 		if (*p != ' ') {
 			expected = "^AD 1.1 98/03/17 18:32:39 user ";
 			goto bad;
@@ -3181,6 +3192,7 @@ sccs_lockers(project *p)
 repository_rdlock()
 {
 	char	path[MAXPATH];
+	int	first = 1;
 
 	unless (exists("BitKeeper/etc")) return(-1);
 
@@ -3188,10 +3200,23 @@ repository_rdlock()
 	 * We go ahead and create the lock and then see if there is a
 	 * write lock.  If there is, we lost the race and we back off.
 	 */
-	unless (exists(READER_LOCK_DIR)) mkdir(READER_LOCK_DIR, 0777);
+again:	unless (exists(READER_LOCK_DIR)) {
+		mkdir(READER_LOCK_DIR, 0777);
+		chmod(READER_LOCK_DIR, 0777);	/* kill their umask */
+	}
 	sprintf(path, "%s/%d@%s", READER_LOCK_DIR, getpid(), sccs_gethost());
 	close(creat(path, 0666));
-	unless (exists(path)) return (-1);
+	unless (exists(path)) {
+		/* try removing and recreating the lock dir.
+		 * This cleans up bad modes in some cases.
+		 */
+		if (first) {
+			rmdir(READER_LOCK_DIR);
+			first = 0;
+			goto again;
+		}
+		return (-1);
+	}
 	if (exists(ROOT2RESYNC)) {
 		unlink(path);
 		return (-1);
@@ -4955,6 +4980,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	int sccs_expanded, rcs_expanded;
 	int	lf_pend = 0;
 	ser_t	serial;
+	char	align[16];
 
 	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -5003,6 +5029,24 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
 	}
 	unless (s->state & S_KEYWORDS) flags &= ~(GET_EXPAND|GET_RCSEXPAND);
+
+	/*
+	 * We want the data to start on a tab alingned boundry
+	 */
+	if (flags & GET_PREFIX) {
+		int	len = 0;
+
+
+		if (flags&GET_MODNAME) len += 15;
+		if (flags&GET_PREFIXDATE) len += 9;
+		if (flags&GET_USER) len += s->userLen + 1;
+		if (flags&GET_REVNUMS) len += s->revLen + 1;
+		if (flags&GET_LINENUM) len += 7;
+		len += 2;
+		align[0] = 0;
+		while (len++ % 8) strcat(align, " ");
+		strcat(align, "| ");
+	}
 
 	state = allocstate(0, 0, s->nextserial);
 	if (flags & GET_MODNAME) base = basenm(s->gfile);
@@ -5071,15 +5115,18 @@ out:			if (slist) free(slist);
 				delta *tmp = sfind(s, (ser_t) print);
 
 				if (flags&GET_MODNAME)
-					fprintf(out, "%s\t", base);
+					fprintf(out, "%-14s ", base);
 				if (flags&GET_PREFIXDATE)
-					fprintf(out, "%.8s\t", tmp->sdate);
+					fprintf(out, "%8.8s ", tmp->sdate);
 				if (flags&GET_USER)
-					fprintf(out, "%s\t", tmp->user);
+					fprintf(out,
+					    "%-*s ", s->userLen, tmp->user);
 				if (flags&GET_REVNUMS)
-					fprintf(out, "%s\t", tmp->rev);
+					fprintf(out,
+					    "%-*s ", s->revLen, tmp->rev);
 				if (flags&GET_LINENUM)
-					fprintf(out, "%6d\t", lines);
+					fprintf(out, "%6d ", lines);
+				fprintf(out, align);
 			}
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;
@@ -6197,6 +6244,10 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 					fputmeta(s, buf, out);
 				}
 			}
+		}
+		if (!d->next) {
+			sprintf(buf, "\001cV%u\n", SCCS_VERSION);
+			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_XFLAGS) {
 			sprintf(buf, "\001cX0x%x\n", d->xflags);
@@ -7459,7 +7510,8 @@ checkin(sccs *s,
 			}
 		}
 	}
-	s->state |= S_SCCS;	/* default to SCCS keywords */
+	s->state |= S_SCCS;		/* default to SCCS keywords */
+	s->version = SCCS_VERSION;
 	n->serial = s->nextserial++;
 	s->table = n;
 	if (n->flags & D_BADFORM) {
@@ -7720,6 +7772,16 @@ checkGone(sccs *s, int bit, char *who)
 	}
 	free(slist);
 	return (error);
+}
+
+private int
+checkMisc(sccs *s, int flags)
+{
+	unless (s->version == SCCS_VERSION) {
+	    verbose((stderr, "warning: %s version=%u, current version=%u\n",
+		s->gfile, s->version, SCCS_VERSION));
+	}
+	return (0);
 }
 
 private int
@@ -8698,7 +8760,8 @@ out:
 	if ((flags & ADMIN_GONE) && checkGone(sc, D_GONE, "admin")) OUT;
 	if (flags & ADMIN_FORMAT) {
 		if (checkrevs(sc, flags) || checkdups(sc) ||
-		    ((flags & ADMIN_ASCII) && badchars(sc))) {
+		    ((flags & ADMIN_ASCII) && badchars(sc)) ||
+		    checkMisc(sc, flags)) {
 			OUT;
 		}
 #if 0
@@ -9544,6 +9607,11 @@ skip:
 		}
 		d->flags |= D_TEXT;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
+	if (WANT('V')) {
+		assert(sc);
+		sc->version = atoi(&buf[3]);
 	}
 
 	/* Excludes are optional and are specified as keys.
@@ -11849,6 +11917,7 @@ sccs_perfile(sccs *s, FILE *out)
 	if (i) fprintf(out, "f x %u\n", i);
 	if (s->random) fprintf(out, "R %s\n", s->random);
 	EACH(s->text) fprintf(out, "T %s\n", s->text[i]);
+	if (s->version) fprintf(out, "V %u\n", s->version);
 	fprintf(out, "\n");
 }
 
@@ -11909,6 +11978,11 @@ err:			fprintf(stderr,
 	while (strneq(buf, "T ", 2)) {
 		unused = 0;
 		s->text = addLine(s->text, strnonldup(&buf[2]));
+		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
+	}
+	if (strneq(buf, "V ", 2)) {
+		unused = 0;
+		s->version = atoi(&buf[2]);
 		unless (buf = mkline(mnext(in))) goto err; (*lp)++;
 	}
 	if (buf[0]) goto err;		/* should be empty */

@@ -396,6 +396,8 @@ typedef struct {
 
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 
+#define	SCCS_VERSION	1	/* bumped whenever we change any file format */
+
 /*
  * struct sccs - the delta tree, the data, and associated junk.
  */
@@ -438,6 +440,9 @@ typedef	struct sccs {
 	time_t	gtime;		/* gfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
 	project	*proj;		/* If in BK mode, pointer to project */
+	int	version;	/* file format version */
+	int	userLen;	/* maximum length of any user name */
+	int	revLen;		/* maximum length of any rev name */
 	unsigned int cksumok:1;	/* check sum was ok */
 } sccs;
 
@@ -517,8 +522,10 @@ typedef struct patch {
 
 /*
  * Patch file format strings.
+ *
+ * 0.8 = 0x flags and V version.
  */
-#define PATCH_CURRENT	"# Patch vers:\t0.7\n"
+#define PATCH_CURRENT	"# Patch vers:\t0.8\n"
 #define PATCH_NOSUM	"# Patch vers:\t0.5\n"
 
 /*

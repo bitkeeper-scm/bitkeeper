@@ -110,7 +110,8 @@ newRev(sccs *s, int flags, MDBM *db, delta *d)
 		sprintf(buf, "%d.%d", d->r[0], d->r[1]);
 	}
 	unless (streq(buf, d->rev)) {
-		verbose((stderr, "%s:%s -> %s\n", s->gfile, d->rev, buf));
+		verbose((stderr,
+		    "renumber %s@%s -> %s\n", s->gfile, d->rev, buf));
 		free(d->rev);
 		d->rev = strdup(buf);
 	}

@@ -48,7 +48,11 @@ main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "abc;C;d:hmMor|v")) != -1) {
 		switch (c) {
-		    case 'a': expand = 2; flags |= PRS_ALL; break;
+		    case 'a':
+			/* think: -Ma, the -M set expand already */
+			if (expand < 2) expand = 2;
+			flags |= PRS_ALL;
+			break;
 		    case 'b': reverse++; break;
 		    case 'C': cset = optarg; break;
 		    case 'd': dspec = optarg; break;
