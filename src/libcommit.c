@@ -228,7 +228,7 @@ logChangeSet(char *rev, int quiet)
 	sprintf(subject, "BitKeeper ChangeSet log: %s", package_name());
 #ifdef WIN32
 	/*
-	 * On win32, there is not portable email interface,
+	 * On win32, there is no portable email interface,
 	 * so we use HTTP to do open logging.
 	 */
 	if (is_open_logging(to)) {
