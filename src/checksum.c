@@ -63,9 +63,15 @@ checksum_main(int ac, char **av)
 				if (c & 2) bad++;
 			}
 		}
-		if (diags) {
+		if (diags && fix) {
 			fprintf(stderr,
-			    "%s: %d bad delta checksums\n", s->gfile, bad);
+			    "%s: fixed bad metadata in %d deltas\n",
+			    s->gfile, doit);
+		}
+		if (diags && !fix) {
+			fprintf(stderr,
+			    "%s: bad metadata in %d deltas\n",
+			    s->gfile, bad);
 		}
 		if ((doit || !s->cksumok) && fix) {
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
@@ -90,6 +96,9 @@ int
 sccs_resum(sccs *s, delta *d, int diags, int fix)
 {
 	int	i;
+	int	err = 0;
+	char	before[25];	/* ^As 00000/00000/00000\n == 21 chars */
+	char	after[25];	/* ^As 00000/00000/00000\n == 21 chars */
 
 	if (LOGS_ONLY(s)) return (0);
 
@@ -122,13 +131,68 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 	}
 
 	/*
+	 * This can rewrite added / deleted / same , so do it first
+	 * then check to see if they are none zero, then check checksum
+	 */
+
+	if (sccs_get(s,
+	    d->rev, 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
+		unless (BEEN_WARNED(s)) {
+			fprintf(stderr,
+			    "get of %s:%s failed, skipping it.\n",
+			    s->gfile, d->rev);
+		}
+		return (4);
+	}
+
+	sccs_fitCounters(before, d->added, d->deleted, d->same);
+	sccs_fitCounters(after, s->added, s->deleted, s->same);
+	unless (streq(before, after)) {
+		size_t	n;
+
+		n = strlen(before);
+		assert(n > 4 && before[n-1] == '\n');
+		before[n-1] = 0;
+
+		n = strlen(after);
+		assert(n  > 4 && after[n-1] == '\n');
+		after[n-1] = 0;
+
+		unless (fix) {
+#if	0
+			/* XXX: t.long_line has one line counted as 4
+			 * which means repositories out in the world which
+			 * are working, would all of a sudden start gakking
+			 */
+			fprintf(stderr,
+		    		"Bad a/d/s %s:%s in %s|%s\n",
+		    		&before[3], &after[3], s->gfile, d->rev);
+			err = 2;
+#endif
+		}
+		else {
+			if (diags > 1) {
+				fprintf(stderr, "Corrected a/d/s "
+					"%s:%s %s->%s\n",
+		    			s->sfile, d->rev,
+					&before[3], &after[3]);
+			}
+			d->added = s->added;
+			d->deleted = s->deleted;
+			d->same = s->same;
+			err = 1;
+		}
+	}
+
+	/*
 	 * If there is no content change, then if no checksum, cons one up
 	 * from the data in the delta table.
+	 * NOTE: check using newly computed added and deleted (in *s)
 	 */
-	unless (d->added || d->deleted || d->include || d->exclude) {
+	unless (s->added || s->deleted || d->include || d->exclude) {
 		int	new = 0;
 
-		if (d->flags & D_CKSUM) return (0);
+		if (d->flags & D_CKSUM) return (err);
 		new = adler32(new, d->sdate, strlen(d->sdate));
 		new = adler32(new, d->user, strlen(d->user));
 		if (d->pathname) {
@@ -155,16 +219,7 @@ sccs_resum(sccs *s, delta *d, int diags, int fix)
 		return (1);
 	}
 
-	if (sccs_get(s,
-	    d->rev, 0, 0, 0, GET_SUM|GET_SHUTUP|SILENT|PRINT, "-")) {
-		unless (BEEN_WARNED(s)) {
-			fprintf(stderr,
-			    "get of %s:%s failed, skipping it.\n",
-			    s->gfile, d->rev);
-		}
-		return (4);
-	}
-	if ((d->flags & D_CKSUM) && (d->sum == s->dsum)) return (0);
+	if ((d->flags & D_CKSUM) && (d->sum == s->dsum)) return (err);
 	unless (fix) {
 		fprintf(stderr,
 		    "Bad checksum %d:%d in %s|%s\n",
