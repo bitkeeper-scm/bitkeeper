@@ -243,6 +243,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	int	l;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
 	char	s_cset[MAXPATH] = CHANGESET;
+	char    s_logging_ok[] = LOGGING_OK;
 	sccs	*s;
 	delta	*d;
 	FILE 	*f;
@@ -253,8 +254,8 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
-	if (pending(LOGGING_OK)) {
-		int	len = strlen(LOGGING_OK);
+	if (pending(s_logging_ok)) {
+		char    tmp[100];
 
 		/*
 		 * Redhat 5.2 cannot handle opening a file
@@ -263,16 +264,18 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		 * So we open the file in read mode close it and re-open
 		 * it in write mode
 		 */
+		s = sccs_init(s_logging_ok, 0, 0);
+		d = sccs_top(s);
+		sprintf(tmp, "%s@%s\n", s_logging_ok, d->rev);
+		sccs_free(s);
 		f = fopen(pendingFiles, "rb");
 		assert(f);
 		while (fnext(buf, f)) {
-			if (strneq(LOGGING_OK, buf, len) && buf[len] == '@') {
-				goto out;
-			}
+			if (streq(tmp, buf)) goto out;
 		}
 		fclose (f);
 		f = fopen(pendingFiles, "ab");
-		fprintf(f, "%s@+\n", LOGGING_OK);
+		fprintf(f, "%s", tmp);
 out:		fclose(f);
 	}
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
