@@ -53,6 +53,10 @@ L=-l
 # 1, 2, 3, 4, 5 and start out as "A A", B, C, D, E
 echo $N Create initial repository ...................................$NL
 no_logging project
+bk edit $Q BitKeeper/etc/config
+echo checkout:get >> BitKeeper/etc/config
+bk ci $Q -yy BitKeeper/etc/config
+bk commit $Q -yy
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -107,6 +111,7 @@ cd $HERE
 bk resync -t $Q -at project copy
 # Rename the case orientation only, this test correctness on win32
 cd project
+bk clean $Q no_conflicts
 mv SCCS/s.no_conflicts SCCS/s.tmp
 bk mv tmp no_Conflicts
 bk commit $Q -ywhatever2
@@ -294,7 +299,7 @@ fi
 if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.5" ]
 then	echo 'Failed to add changeset for remote rename'; exit 1
 fi
 echo OK
@@ -323,7 +328,7 @@ fi
 if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.5" ]
 then	echo 'Failed to add changeset for remote rename'; exit 1
 fi
 if [ `bk prs -hr+ -d:C: copy/ChangeSet` != "YO_BABY_YO_BABY" ]
@@ -531,7 +536,7 @@ fi
 if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.3" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.5" ]
 then	echo 'Failed to add rename cset to ChangeSet'; exit 1
 fi
 echo OK
@@ -639,7 +644,7 @@ fi
 if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
-if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
 fi
 echo OK
@@ -674,7 +679,7 @@ fi
 if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-'B%A!#$%^&)(-_+=];,'`" != "I am the project file" ]
 then	echo bad data in deleted file, should be project; exit 1
 fi
-if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
 fi
 echo OK
@@ -706,7 +711,7 @@ fi
 if [ `bk prs -hr+ -d:I: 'B%A!#$%^&)(-_+=];,'` != "1.1" ]
 then	echo 'Added new rev to B%A!#$%^&)(-_+=];,?'; exit 1
 fi
-if [ `bk prs -hr+ -d:I: ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: ChangeSet` != "1.5" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
 fi
 echo OK
@@ -793,7 +798,7 @@ fi
 if [ `bk prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
-if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+if [ `bk prs -hr+ -d:I: copy/ChangeSet` != "1.5" ]
 then	echo 'Failed to add rm cset to ChangeSet'; exit 1
 fi
 echo OK

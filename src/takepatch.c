@@ -471,7 +471,7 @@ error:			if (perfile) sccs_free(perfile);
 			s->sfile);
 		}
 		if (IS_EDITED(s)) {
-			int cleanflags = SILENT|CLEAN_SHUTUP;
+			int cleanflags = SILENT|CLEAN_SHUTUP|CLEAN_CHECKONLY;
 
 			if (isLogPatch) cleanflags |= CLEAN_SKIPPATH;
 			if (sccs_clean(s, cleanflags)) {
@@ -484,8 +484,7 @@ error:			if (perfile) sccs_free(perfile);
 			} else {
 				sccs_restart(s);
 			}
-		}
-		if (s->state & S_PFILE) {
+		} else if (s->state & S_PFILE) {
 			shout();
 			fprintf(stderr,
 			    "takepatch: %s is locked w/o writeable gfile?\n",

@@ -67,6 +67,7 @@
 
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 #define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
+#define	CLEAN_CHECKONLY	0x80000000	/* don't delete gfile, just check */
 
 #define	DELTA_AUTO	0x10000000	/* delta -a: auto check-in mode */
 #define	DELTA_SAVEGFILE	0x20000000	/* delta -n: save edited gfile */

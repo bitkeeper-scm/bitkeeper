@@ -5990,8 +5990,10 @@ write_pfile(sccs *s, int flags, delta *d,
 {
 	int	fd, len;
 	char	*tmp, *tmp2;
-
-	if (WRITABLE(s) && !(flags & GET_SKIPGET)) {
+	
+	if ((WRITABLE(s) || 
+		S_ISLNK(s->mode) && HAS_GFILE(s) && HAS_PFILE(s)) && 
+	    !(flags & GET_SKIPGET)) {
 		verbose((stderr,
 		    "Writable %s exists, skipping it.\n", s->gfile));
 		s->state |= S_WARNED;
@@ -8451,7 +8453,7 @@ sccs_clean(sccs *s, u32 flags)
 	unless (HAS_PFILE(s)) {
 		unless (WRITABLE(s)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
-			unlinkGfile(s);
+			unless (flags & CLEAN_CHECKONLY) unlinkGfile(s);
 			return (0);
 		}
 		fprintf(stderr, "%s writable but not edited?\n", s->gfile);
@@ -8523,8 +8525,10 @@ sccs_clean(sccs *s, u32 flags)
 	if (S_ISLNK(s->mode)) {
 		if (streq(s->symlink, d->symlink)) {
 			verbose((stderr, "Clean %s\n", s->gfile));
-			unlink(s->pfile);
-			unlinkGfile(s);
+			unless (flags & CLEAN_CHECKONLY) {
+				unlink(s->pfile);
+				unlinkGfile(s);
+			}
 			free_pfile(&pf);
 			return (0);
 		}
@@ -8558,8 +8562,10 @@ sccs_clean(sccs *s, u32 flags)
 	switch (diff_gfile(s, &pf, 0, tmpfile)) {
 	    case 1:		/* no diffs */
 nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
-		unlink(s->pfile);
-		unlinkGfile(s);
+		unless (flags & CLEAN_CHECKONLY) {
+			unlink(s->pfile);
+			unlinkGfile(s);
+		}
 		free_pfile(&pf);
 		unlink(tmpfile);
 		return (0);

@@ -201,3 +201,44 @@ cmp -s clone/WANT GOT || {
 bk lock -U
 bk lock -U $HERE/clone
 echo OK
+
+echo $N Demonstrate out of order changesets .........................$NL
+no_logging p
+touch foo
+bk new $Q foo
+# The long string needed to overcome fudges.
+# 1 more than need for that case where the seconds wrap during the test
+bk mv foo bar
+bk mv bar b
+bk mv b foo
+bk mv foo fee
+bk commit $Q -yy
+files=`bk changes -r+ -v -d:DPN:`
+if [ $files != "ChangeSetfeefoobbarfoofoo" ]
+then	echo 'failed (bug 2002-04-19-001)'
+else	echo 'bug 2002-04-19-001 passing! fix test.'
+	exit 1
+fi
+cd $HERE
+rm -rf p
+
+echo $N Demonstrate the other way they can be out of order ..........$NL
+no_logging p
+touch foo
+bk new $Q foo
+cd $HERE
+bk clone $Q p c2
+cd c2
+touch bar
+bk new $Q bar
+bk commit $Q -yq
+cd $HERE/p
+bk commit $Q -ya
+cd $HERE/c2
+bk pull $Q
+files=`bk changes -r1.1.1.1,1.2 -v -d:DPN:`
+if [ $files != "ChangeSetfoofooChangeSetbarbar" ]
+then	echo 'failed (bug 2002-04-19-001)'
+else	echo 'bug 2002-04-19-001 passing! fix test.'
+	exit 1
+fi
