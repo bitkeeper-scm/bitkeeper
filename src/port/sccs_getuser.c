@@ -9,15 +9,18 @@ char	*
 sccs_getuser(void)
 {
 	static	char	*s;
+	static	uid_t	u = (uid_t)-1;
+	uid_t	cur = geteuid();
 
-	if (s) return (s);
+	if (s && (cur == u)) return (s);
+	u = cur;
 	unless ((s = getenv("BK_USER")) && !getenv("BK_EVENT")) {
 		s = getenv("USER");
 	}
 	unless (s && s[0]) s = getlogin();
 #ifndef WIN32 /* win32 have no getpwuid() */
 	unless (s && s[0]) {
-		struct	passwd	*p = getpwuid(getuid());
+		struct	passwd	*p = getpwuid(cur);
 
 		s = p->pw_name;
 	}

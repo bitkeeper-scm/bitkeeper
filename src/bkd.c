@@ -23,6 +23,7 @@ bkd_main(int ac, char **av)
 {
 	int	c;
 	char	*uid = 0;
+	char	*gid = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help bkd");
@@ -38,13 +39,14 @@ bkd_main(int ac, char **av)
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
 	 */
-	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:g:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
 		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
 		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
+		    case 'g': gid = optarg; break;		/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
 		    case 'l':					/* doc 2.0 */
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
@@ -93,7 +95,7 @@ bkd_main(int ac, char **av)
 		    	Opts.interactive = 0;
 		}
 	}
-	if (uid) ids(uid);
+	if (uid || gid) ids(uid);
 	core();
 	putenv("PAGER=cat");
 	if (Opts.daemon) {

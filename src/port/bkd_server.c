@@ -15,11 +15,19 @@ extern	time_t	requestEnd;
  * XXX - need to do groups.
  */
 void
-ids(char *uid)
+ids(char *uid, char *gid)
 {
 	uid_t	u;
+	gid_t	g;
 
-	u = getuid();
+	if (gid && isdigit(gid[0])) {
+		g = atoi(gid);
+#ifdef	__hpux__
+		setresgid((gid_t)-1, g, (gid_t)-1);
+#else
+		setegid(g);
+#endif
+	}
 	if (uid && isdigit(uid[0])) {
 		u = atoi(uid);
 #ifdef	__hpux__
@@ -31,7 +39,7 @@ ids(char *uid)
 }
 #else
 void
-ids(char *uid) {} /* no-op */
+ids(char *uid, char *gid) {} /* no-op */
 #endif
 
 

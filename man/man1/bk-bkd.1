@@ -16,6 +16,8 @@ bk bkd \- the \*(BK daemon
 .Bc ] [
 .OPTreq \-t num
 .Bc ] [
+.OPTreq \-g gid
+.Bc ] [
 .OPTreq \-u uid
 .Bc ] [
 .OPTreq \-x cmd
@@ -257,9 +259,13 @@ Exit after
 .ARG num
 seconds. (used when debugging)
 .tp
+.OPTreq \-g uid
+Run with effective group id
+.ARG gid (POSIX compatible systems only).
+.tp
 .OPTreq \-u uid
-Run as UID
-.ARG uid .
+Run with effective user id
+.ARG uid (POSIX compatible systems only).
 .tp
 .OPTreq \-x cmd
 Exclude 
