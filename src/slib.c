@@ -8323,11 +8323,11 @@ sccs_clean(sccs *s, u32 flags)
 			free_pfile(&pf);
 			return (1);
 		}
-		if (!streq(t, d->pathname)) {
+		if (!(flags & CLEAN_SKIPPATH) && (!streq(t, d->pathname))) {
 			unless (flags & PRINT) {
 				verbose((stderr,
-				   "%s has different pathnames, needs delta.\n",
-				    s->gfile));
+				   "%s has different pathnames: %s, needs delta.\n",
+				    s->gfile, t));
 			} else {
 				printf(
 				    "===== %s (pathnames) %s vs edited =====\n",
@@ -10990,11 +10990,11 @@ newcmd:
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
-				/* Need a test case for the following line */
-				fix_cntl_a(s, &b[2], out);
 				if (what != 'i' && b[0] == '\\') {
+					fix_cntl_a(s, &b[1], out);
 					s->dsum += fputdata(s, &b[1], out);
 				} else {
+					fix_cntl_a(s, b, out);
 					s->dsum += fputdata(s, b, out);
 				}
 				debug2((stderr, "INS %.*s", linelen(b), b));

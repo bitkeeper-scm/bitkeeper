@@ -67,6 +67,7 @@
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
 #define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
+#define	CLEAN_SKIPPATH	0x40000000	/* ignore path change; for log tree */
 
 #define	DELTA_AUTO	0x10000000	/* delta -a: auto check-in mode */
 #define	DELTA_SAVEGFILE	0x20000000	/* delta -n: save edited gfile */

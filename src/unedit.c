@@ -14,8 +14,9 @@ unedit_main(int ac, char **av)
 	sccs	*s = 0;
 	int	flags = SILENT|CLEAN_UNEDIT;
 	int	sflags = SF_NODIREXPAND;
+	int	gflags = SILENT;
 	int	ret = 0;
-	char	*name;
+	char	*name, *ckopts;
 	project	*proj = 0;
 
 	debug_main(av);
@@ -34,11 +35,26 @@ unedit_main(int ac, char **av)
 		  "unedit: must have explicit list when discarding changes.\n");
 			return(1);
 	}
+	ckopts  = user_preference("checkout"); 
+	if (strieq("edit", ckopts)) {
+		gflags |= GET_EDIT;
+	} else if (strieq("get", ckopts)) {
+		gflags |= GET_EXPAND;
+	}
+		
 	while (name) {
 		s = sccs_init(name, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj);
 		if (s) {
 			unless (proj) proj = s->proj;
-			if (sccs_clean(s, flags)) ret = 1;
+			if (sccs_clean(s, flags)) {
+				ret = 1;
+			} else {
+				s = sccs_restart(s);
+				assert(s);
+				if (gflags & (GET_EDIT|GET_EXPAND)) {
+					sccs_get(s, 0, 0, 0, 0, gflags, "-");
+				}
+			}
 			sccs_free(s);
 		}
 		name = sfileNext();
