@@ -227,6 +227,7 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 		if ((flags & (GET_DIFFS|GET_BKDIFFS|GET_HASHDIFFS))
 		    ? sccs_getdiffs(s, rev, flags, out)
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
+			if (s->io_error) return (1);
 			unless (BEEN_WARNED(s)) {
 				verbose((stderr,
 				    "%s of %s failed, skipping it.\n",

@@ -506,7 +506,10 @@ cleanup:		if (perfile) sccs_free(perfile);
 		s->proj = 0;
 		sccs_free(s);
 	}
-	if (rc < 0) return (rc);
+	if (rc < 0) {
+		cleanup(CLEAN_RESYNC);
+		return (rc);
+	}
 	return (nfound);
 }
 
@@ -899,6 +902,8 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	}
 	/* convert to uncompressed, it's faster, we saved the mode above */
 	if (s->encoding & E_GZIP) s = expand(s, proj);
+	unless (s) return (-1);
+
 	/* save current LOD setting, as it might change */
 	if (d = findrev(s, "")) {
 		sccs_sdelta(s, d, lodkey);
@@ -968,13 +973,20 @@ apply:
 				ahead(p->pid, s->sfile);
 			}
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
-			if (echo>8) fprintf(stderr, "Child of %s\n", d->rev);
+			if (echo>8) {
+				fprintf(stderr, "Child of %s", d->rev);
+				if (p->flags & PATCH_META) {
+					fprintf(stderr, " meta\n");
+				} else {
+					fprintf(stderr, " data\n");
+				}
+			}
 			if (p->flags & PATCH_META) {
 				MMAP	*m = p->initMmap;
 
 				unless (m) m = mopen(p->initFile, "b");
 				if (sccs_meta(s, d, m, 0)) {
-					perror("meta");
+					unless (s->io_error) perror("meta");
 					return -1;
 				}
 			} else {
@@ -1003,12 +1015,10 @@ apply:
 				    DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
 				if (echo <= 2) newflags |= SILENT;
 				if (sccs_delta(s, newflags, 0, iF, dF, 0)) {
-					perror("delta");
+					unless (s->io_error) perror("delta");
 					return -1;
 				}
-				if (s->state & S_BAD_DSUM) {
-					return -1;
-				}
+				if (s->bad_dsum || s->io_error) return -1;
 				mclose(iF);
 				if ((s->state & S_CSET) && 
 				    !(p->flags & PATCH_LOCAL))  {
@@ -1075,10 +1085,10 @@ apply:
 			    NEWFILE|DELTA_FORCE|DELTA_PATCH|DELTA_NOPENDING;
 			if (echo <= 2) newflags |= SILENT;
 			if (sccs_delta(s, newflags, d, iF, dF, 0)) {
-				perror("delta");
+				unless (s->io_error) perror("delta");
 				return -1;
 			}
-			if (s->state & S_BAD_DSUM) cleanup(CLEAN_RESYNC);
+			if (s->bad_dsum || s->io_error) return (-1);
 			mclose(iF);	/* dF done by delta() */
 			s->proj = 0; sccs_free(s);
 			s = sccs_init(p->resyncFile, INIT_NOCKSUM, proj);
@@ -1753,7 +1763,10 @@ private	sccs *
 expand(sccs *s, project *proj)
 {
 	s = sccs_restart(s);
-	sccs_admin(s, 0, NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0);
+	if (sccs_admin(s, 0, NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
+		sccs_free(s);
+		return (0);
+	}
 	s = sccs_restart(s);
 	return (s);
 }
