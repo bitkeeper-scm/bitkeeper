@@ -9229,7 +9229,7 @@ checkrevs(sccs *s, int flags)
 private int
 checkRev(sccs *s, char *file, delta *d, int flags)
 {
-	int	error = 0;
+	int	i, error = 0;
 	delta	*e;
 
 	if ((d->type == 'R') || (d->flags & D_GONE)) return (0);
@@ -9256,6 +9256,26 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	 * XXX - this should check for BitKeeper files.  If it is not
 	 * BitKeeper and the form is 1.0, that is an error.
 	 */
+
+	/*
+	 * Make sure there is no garbage in the serial list[s].
+	 */
+	EACH (d->include) {
+		if (d->include[i] < d->serial) continue;
+		unless (flags & ADMIN_SHUTUP) {
+			fprintf(stderr, "%s: %s has bad include serial %d\n",
+			    file, d->rev, d->include[i]);
+		}
+		error = 1;
+	}
+	EACH (d->exclude) {
+		if (d->exclude[i] < d->serial) continue;
+		unless (flags & ADMIN_SHUTUP) {
+			fprintf(stderr, "%s: %s has bad exclude serial %d\n",
+			    file, d->rev, d->exclude[i]);
+		}
+		error = 1;
+	}
 
 	/*
 	 * make sure that the parent points at us.
