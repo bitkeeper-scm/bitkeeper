@@ -5153,6 +5153,12 @@ bad:	free(slist);
 	return (0);
 }
 
+int
+sccs_graph(sccs *s, delta *d, ser_t *map, char **inc, char **exc)
+{
+	return (compressmap(s, d, map, 0, (void **)inc, (void **)exc));
+}
+
 ser_t *
 sccs_set(sccs *s, delta *d, char *iLst, char *xLst)
 {
