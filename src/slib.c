@@ -6866,7 +6866,7 @@ err:		if (i2) free(i2);
 			d = 0;
 		}
 	} else {
-		d = findrev(s, rev);
+		d = sccs_getrev(s, rev ? rev : "+", 0, 0);
 		unless (d) {
 			verbose((stderr,
 			    "get: can't find revision like %s in %s\n",
