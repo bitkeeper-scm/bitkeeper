@@ -50,7 +50,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	localtm.o lock.o locking.o lod.o logflags.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
 	mmap.o mtime.o multiuser.o names.o newrev.o \
-	oclone.o opull.o opush.o parent.o park.o \
+	opull.o opush.o parent.o park.o \
 	pending.o preference.o port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
 	port/filecopy.o port/fileinfo.o \

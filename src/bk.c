@@ -105,7 +105,6 @@ int	mv_main(int, char **);
 int	mydiff_main(int, char **);
 int	names_main(int, char **);
 int	newroot_main(int, char **);
-int	oclone_main(int, char **);
 int	opull_main(int, char **);
 int	opush_main(int, char **);
 int	parent_main(int, char **);
@@ -273,7 +272,6 @@ struct	command cmdtbl[] = {
 	{"names", names_main},			/* doc 2.0 */
 	{"newroot", newroot_main},		/* doc 2.0 */
 	{"new", delta_main},	/* aliases */	/* doc 2.0 */
-	{"oclone", oclone_main},		/* undoc 2.0 */
 	{"opull", opull_main},	/* old pull */ 	/* undoc 2.0 */
 	{"opush", opush_main},	/* old push */ 	/* undoc 2.0 */
 	{"parent", parent_main},		/* doc 2.0 */
