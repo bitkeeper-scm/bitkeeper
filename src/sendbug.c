@@ -46,7 +46,7 @@ sendbug_main(int ac,  char **av)
 	display = getenv("DISPLAY");
 	if (!textmode && ((display && !streq(display, "")) || mswin)) {
 		argv[0] = find_wish();
-		sprintf(cmd_path, "%s/bugform", bin);
+		sprintf(cmd_path, "%s/gui/bugform", bin);
 		argv[1] = cmd_path;
 		if (av[optind]) {
 			argv[2] = av[optind];

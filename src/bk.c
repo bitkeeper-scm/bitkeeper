@@ -628,7 +628,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		prog = guis[i].prog;
 		sig_catch(SIG_IGN);
 		argv[0] = find_wish();
-		sprintf(cmd_path, "%s/%s", bin, prog);
+		sprintf(cmd_path, "%s/gui/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
 			if (i >= (MAXARGS-10)) {

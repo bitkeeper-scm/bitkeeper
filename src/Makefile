@@ -125,9 +125,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/md5.o tomcrypt/ctr.o tomcrypt/aes.o tomcrypt/hash.o \
 	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o tomcrypt/hmac.o
-GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
-	  renametool setuptool 
-SCRIPTS	= applypatch bk.script import resync $(GUI) bugform \
+SCRIPTS	= applypatch bk.script import resync \
 	uuwrap unuuwrap gzip_uuwrap ungzip_uuwrap \
 	b64wrap unb64wrap gzip_b64wrap ungzip_b64wrap \
 	$(BINLINKS)
@@ -141,8 +139,8 @@ DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= admin$(EXE) get$(EXE) delta$(EXE) unget$(EXE) rmdel$(EXE) prs$(EXE)
 # Note: $(XTRA) must be listed after "gnu"
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) gnu $(XTRA) \
-	  tcltk
+ALL	= $(LIBS) $(BINS) GUI $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) \
+	  gnu $(XTRA) tcltk
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free
 CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
@@ -169,16 +167,11 @@ HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
 	  zlib/zconf.h zlib/zlib.h zlib/zutil.h
 
 SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
-	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
-	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
-	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/progress.tcl gui/search.tcl gui/msgtool.tcl gui/bugform.tcl\
-	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
-	  port/unix_platform.perl gui/csettool.tcl \
-	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl \
-	  gzip_uuwrap.sh ungzip_uuwrap.sh resync.sh substvars.sh \
-	  b64wrap.sh gzip_b64wrap.sh unb64wrap.sh ungzip_b64wrap.sh
+	  uuwrap.sh unuuwrap.sh port/unix_platform.sh \
+	  port/unix_platform.perl port/win32_platform.perl \
+	  port/win32_platform.sh gzip_uuwrap.sh ungzip_uuwrap.sh \
+	  resync.sh substvars.sh b64wrap.sh gzip_b64wrap.sh \
+	  unb64wrap.sh ungzip_b64wrap.sh
 
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
@@ -289,6 +282,7 @@ rebuild:
 	-@cd tcltk && $(MAKE) clean clean-obj
 	-@cd ../doc && $(MAKE) clean clean-obj
 	-@cd ../man && $(MAKE) clean clean-obj
+	-@cd gui && $(MAKE) clean
 	-@cd utils && $(MAKE) clean clean-obj
 
 srcs src: FORCE
@@ -521,93 +515,11 @@ bkdsubstr: bkd.h
 	chmod +x bkdsubstr
 
 # Quick and dirty target so we can make all the gui tools without the rest
-Gui GUI: $(GUI)
+GUI: FORCE
+	@cd gui && make gui
 
 gui-nowrap GUI-nowrap:
-	rm -f $(GUI)
-	$(MAKE) TCLWRAP=cat GUI
-
-revtool: tclwrap gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/search.tcl gui/appState.tcl gui/revtool.tcl) \
-	| $(TCLWRAP) > revtool
-
-citool: tclwrap gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
-	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl \
-	gui/appState.tcl
-	(echo 'wm withdraw .' ; \
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/progress.tcl gui/search.tcl gui/ciedit.tcl \
-	     gui/appState.tcl gui/citool.tcl) \
-	| $(TCLWRAP) > citool
-
-setuptool: tclwrap gui/setuptool.tcl gui/lib/tkwizard.tcl \
-	   port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl
-	   (echo 'wm withdraw .' ;\
-	    cat port/$(SYS)_platform.tcl gui/config.tcl \
-	        gui/common.tcl gui/lib/tkwizard.tcl gui/setuptool.tcl) \
-	   | $(TCLWRAP) > setuptool
-
-helptool: tclwrap gui/helptool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl gui/appState.tcl
-	(echo "wm withdraw ." ; \
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl \
-	     gui/helptool.tcl)\
-	 | $(TCLWRAP) > helptool
-
-difftool: tclwrap gui/search.tcl gui/config.tcl gui/difftool.tcl \
-	port/$(SYS)_platform.tcl gui/common.tcl gui/difflib.tcl \
-	gui/appState.tcl
-	(echo "wm withdraw .";\
-	 cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	     gui/common.tcl gui/difflib.tcl gui/appState.tcl  \
-	     gui/difftool.tcl) \
-	 | $(TCLWRAP) > difftool
-
-bugform: tclwrap gui/search.tcl gui/config.tcl gui/bugform.tcl \
-	port/$(SYS)_platform.tcl gui/common.tcl gui/buglib.tcl \
-	gui/appState.tcl 
-	cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	    gui/common.tcl gui/buglib.tcl gui/appState.tcl \
-	    gui/bugform.tcl | $(TCLWRAP) > bugform
-
-csettool: tclwrap gui/csettool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/search.tcl gui/difflib.tcl \
-	gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat gui/search.tcl port/$(SYS)_platform.tcl gui/config.tcl \
-	     gui/common.tcl gui/difflib.tcl gui/appState.tcl \
-	     gui/csettool.tcl)\
-	| $(TCLWRAP) > csettool
-
-renametool: tclwrap \
-	gui/renametool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl gui/renametool.tcl) \
-	| $(TCLWRAP) > renametool
-
-fmtool: tclwrap gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
-	gui/common.tcl gui/difflib.tcl gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl gui/difflib.tcl gui/fmtool.tcl) \
-	| $(TCLWRAP) > fmtool
-
-fm3tool: tclwrap gui/fm3tool.tcl gui/config.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl gui/appState.tcl
-	(echo 'wm withdraw .';\
-	 cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	     gui/appState.tcl gui/fm3tool.tcl) \
-	| $(TCLWRAP) > fm3tool
-
-msgtool: gui/msgtool.tcl
-	(echo "wm withdraw ."; cat gui/msgtool.tcl) \
-	| $(TCLWRAP) > msgtool
+	@cd gui && make nowrap
 
 install: install-nolinks binlinks
 
