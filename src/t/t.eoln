@@ -13,6 +13,12 @@
 # Copyright (c) 2000 Andrew Chang
 # %K%
 
+if [ "$PLATFORM" != "WIN32" ]
+then
+	echo "For win32 only: This test is not applicable to this platform"
+	exit 0
+fi
+
 # Note: This test assumes the shell "echo" comamnd output in text mode
 echo $N Create initial repository ...................................$NL
 no_logging project
