@@ -39,7 +39,7 @@ Print info on all deltas, not just data deltas.
 Reverse the order of the printed deltas.
 .tp
 .OPTreq \-c date
-Cut-off dates.  See 
+Cut-off dates.  See Range Specifications (below) or 
 ._SA range 1
 for details.
 .tp
@@ -386,8 +386,6 @@ MGP	D	D's merge parent's serial number
 .xx
 MODE	D	D's file modes as an octal (777)
 .xx
-MODE	D	D's file modes as an octal (777)
-.xx
 MPARENT	D	D's merge parent's revision
 .xx
 NEXT	D	next entry after D in delta table 
@@ -410,7 +408,7 @@ REV	D	same as I, D's revision
 .xx
 RI	D	revision numbers of D's includes/excludes 
 .xx
-ROOTKEY	F	key of the 1.0 delta, files internal name
+ROOTKEY	F	key of the 1.0 delta, file's internal name
 .xx
 RWXMODE	D	D's file modes as ascii (-rwxrwxrwx)
 .xx
