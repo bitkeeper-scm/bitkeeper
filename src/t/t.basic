@@ -233,3 +233,9 @@ if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
 X=`sfiles -x SCCS/OLD-s.foo`
 if [ "X$X" != "XSCCS/OLD-s.foo" ]; then echo failed $X; exit 1; fi
 echo OK
+echo $N Make sure sfiles GFILE lists SCCS/s.GFILE ...................$NL
+if [ -f s.foo ]; then exit 1; fi
+if [ ! -f SCCS/s.s.foo ]; then exit 1; fi
+FOO="`sfiles s.foo`"
+if [ "$FOO" != "SCCS/s.s.foo" ]; then echo Failed - got $FOO.; exit 1; fi
+echo OK
