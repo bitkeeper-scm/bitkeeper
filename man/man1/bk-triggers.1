@@ -1,154 +1,201 @@
 .so bk-macros
-.TH "bk triggers" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk triggers" 1 2000/11/30 "\*(BC" "\*(UM"
 .SH NAME
 bk triggers \- using \*(BK event triggers
 .SH DESCRIPTION
 .LP
 \*(BK supports a variety of trigger types. Triggers are 
-arbitrary commands which run before or after a repository 
-level command.  These triggers can be used for event notification 
+arbitrary commands, usually a shellscript, which run before or after
+a repository level command.  These triggers can be used for event notification 
 and/or to implement control over the events.
-.LP
-There are three event classes which activate triggers: incoming
-events, outgoing events, and commits.
-.LP
-Incoming events are triggered by a pull into a repository or
-another repository doing a push into a repository.
-.LP
-Outgoing events are triggered by a push from a repository, another 
-repository doing a pull from a repository, or when a repository 
-is cloned.
 .LP
 Triggers can be structured to run in all copies of a project 
 and/or in a specific instance of a project.
+There are three event classes which activate triggers: incoming
+events, outgoing events, and commits, and they can be set up to
+trigger before, or after, those events.   The difference between
+pre- and post- event triggers is that pre-triggers may cause events
+to fail, but post-triggers are strictly informational.   The event
+classes are as follows:
+.if t .TP
+.if n .TP 4
+.B pre-commit
+\(bu called before a changeset is committed
+.br
+\(bu exit !0 fails the commit
+.br
+\(bu typically used for integrity checks
+.tp
+.B post-commit
+\(bu called after a changeset is committed
+.br
+\(bu typically used for notification
+.tp
+.B pre-incoming
+\(bu called before an incoming push/pull is started
+.br
+\(bu exit !0 fails the incoming event
+.br
+\(bu typically used for locking down a repository
+.tp
+.B pre-resolve
+\(bu called after the data has been union-ed in the RESYNC directory
+.br
+\(bu called in the RESYNC directory, not the enclosing repository
+.br
+\(bu exit 0 allows the pull/push
+.br
+\(bu exit 1 fails the entire pull/push
+.br
+\(bu exit 2 fails the entire pull/push but leaves the patch in PENDING
+.br
+\(bu typically used to examine changes before taking them
+.tp
+.B pre-apply
+\(bu note that pre-apply is
+.B not yet implemented
+.br
+\(bu called in the RESYNC directory, not the enclosing repository
+.br
+\(bu called after the data has been merged in the RESYNC directory but
+before it is applied to the tree.  Last chance to say no, allows examination
+of the merge changes.
+.br
+\(bu exit 0 allows the pull/push
+.br
+\(bu exit 1 fails the entire pull/push
+.br
+\(bu exit 2 fails the pull/push but leaves the patch in PENDING
+.br
+\(bu exit 3 fails the pull/push but leaves the patch in PENDING and the
+RESYNC tree in PENDING/RESYNC-<date>.
+.br
+\(bu typically used to examine changes before taking them
+.tp
+.B post-incoming
+\(bu called after the data has been applied to the tree
+.br
+\(bu typically used for notification
+.tp
+.B pre-outgoing
+\(bu called before an outgoing pull/push/clone event
+.br
+\(bu exit !0 fails the outgoing event
+.br
+\(bu typically used for locking down a repository
+.tp
+.B post-outgoing
+\(bu called after the outgoing event
+.br
+\(bu typically used for notification
 .LP
-A trigger is a program, usually a shell script but it can be
-any sort of executable program, placed in the BitKeeper/triggers
-subdirectory.  There are three triggers, corresponding to the
-event class, each of which can be called before or after the
-event:
-.DS
-BitKeeper/triggers/pre\-commit
-BitKeeper/triggers/post\-commit
-BitKeeper/triggers/pre\-incoming
-BitKeeper/triggers/post\-incoming
-BitKeeper/triggers/pre\-outgoing
-BitKeeper/triggers/post\-outgoing
-.DE
-.sp .1i
+.\" Commented out because pre-apply doesn't yet exist....
+.\" Because triggers can propogate and because they can do bad things like
+.\" .B rm -rf .
+.\" it is a wise idea to put a non-propogating paranoid trigger like so in
+.\" your tree:
+.\" .DS
+.\"     cat > BitKeeper/triggers/pre-apply-paranoid <<EOF
+.\"     #!/bin/sh
+.\" 
+.\"     # This is running in the RESYNC tree, we're looking for any new
+.\"     # triggers and/or changes to triggers.
+.\"     # Done after the resolve stage because they could be sneaky and create
+.\"     # the file in an earlier changeset and then move it and we'd miss it
+.\"     # because it hasn't been moved yet.
+.\"     test `bk sfiles BitKeeper/triggers | wc -l` -gt 0 && {
+.\"         echo Changes delayed until they are reviewed
+.\"         exit 3
+.\"     }
+.\"     exit 0
+.\"     EOF
+.\" .DE
+.LP
 When a trigger is called, it is called at the root of the
 repository.  Triggers are easily customized on a per repository
 basis, for example:
 .DS
 #!/bin/sh
 
-if [ `pwd` = /home/bk/stable ]
+if [ $BK_LOCAL_ROOT = /home/bk/stable ]
 then	echo whatever | mail \-s 'event in stable' lm
 fi
 .DE
-Both pre and post triggers are called with the command line which
-started the trigger, somewhat like this:
-.DS
-pre|post this:/repository command args
-.DE
-The pre\-triggers can be used to control events within a repository.
-If the pre\-trigger exits with a non\-zero exit status, the event will
-not be executed.  Ideally, this could be used to implement some sort
-of process control, such as insisting on a bug id before a commit.
+Trigger status is stored environment variables, which are available
+as follows:
 .LP
-The post\-triggers are typically used for event status.  They are
-called with command\-line arguments and with the status stored in 
-the appropriate environment variable:
-.RS .5i
-.nf
-.ps -1
-.B BK_INCOMING
-.ps -1
-.B BK_OUTGOING
-.ps -1
-.B BK_COMMIT
-.fi
-.RE
-Possible values for the variables:
-.TP 1.2i
-.B OK
-Changesets were moved into this repository
+All events:
+.if t .TP
+.if n .TP 4
+.B BK_LOCAL_HOST
+BK's idea of the local host name.
 .tp
-.B NOTHING
-There was nothing to do, i.e., a pull was
-executed, but the from repository had no new work.
+.B BK_LOCAL_ROOT
+The root of the local repository.
 .tp
-.B DRYRUN
-There was something to do but it was not
-actually done.
+.B BK_LOCAL_TIME_T
+The Unix style timestamp of the local version of BK. 
 .tp
-.B CONFLICTS
-A push was attempted but there were changesets in the
-destination which were not in the source.
+.B BK_LOCAL_USER
+BK's idea of the local user name.
 .tp
-.B SIGNALED	
-A helper process died with a signal.
-.SH EXAMPLES
+.B BK_LOCAL_UTC
+The timestamp of the local version of BK expressed as YYYYMMDDHHMMSS.
+.tp
+.B BK_LOCAL_VERSION
+The version of the local BK either as the symbolic name or the UTC.
 .LP
-These are real examples from the \*(BK project right after triggers
-were first implemented:
+All events other than 
+.BR commit ,
+which is a local operation:
+.tp
+.B BK_REMOTE_HOST
+Same as the local version only for the remote repository or BK.
+.tp
+.B BK_REMOTE_ROOT
+Same as the local version only for the remote repository or BK.
+.tp
+.B BK_REMOTE_TIME_T
+Same as the local version only for the remote repository or BK.
+.tp
+.B BK_REMOTE_USER
+Same as the local version only for the remote repository or BK.
+.tp
+.B BK_REMOTE_UTC
+Same as the local version only for the remote repository or BK.
+.tp
+.B BK_REMOTE_VERSION
+Same as the local version only for the remote repository or BK.
 .LP
-BitKeeper/triggers/post\-incoming:
-.DS
-#!/bin/sh
-
-shift
-REPO=`bk gethost`:`pwd`
-if [ "$BK_INCOMING" = OK \-a \-f BitKeeper/etc/csets-in ]
-then    ( 
-	echo ${USER}@"$@"
-	echo ""
-	bk changes \-r`cat BitKeeper/etc/csets-in`
-	) | mail \-s "Incoming to $REPO" lm@bitmover.com
-fi
-.DE
-BitKeeper/triggers/post\-outgoing:
-.DS
-#!/bin/sh
-
-shift
-REPO=`bk gethost`:`pwd`
-TO=lm@bitmover.com
-if [ \-f BitKeeper/etc/csets-out \-a "$BK_OUTGOING" = OK ]
-then	( 
-	echo ${USER}@"$@"
-	echo ""
-	bk changes \- < BitKeeper/etc/csets-out
-	) | mail \-s "Outgoing from $REPO" $TO
-else
-	echo ${USER}@"$@"| mail \-s "Outgoing from $REPO = $BK_OUTGOING" $TO
-fi
-.DE
-Example output from a pull:
-.DS
-From: Larry McVoy <lm@bitmover.com>                                             
-Date: Sun, 28 May 2000 16:48:57 -0700
-To: lm@bitmover.com
-Subject: Incoming to work.bitmover.com:/tmp/TRIGGERS                                
-
-lm@work.bitmover.com:/tmp/TRIGGERS pull work.bitmover.com:/home/bk/exit
-
-ChangeSet@1.735, 2000-05-28 01:41:31-07:00, orc@india.pell.portland.or.us
-  More work on triggers.  Now triggers are fired from within the
-  cmdlog_start() and cmdlog_end() functions, and they now support
-  path\-specific triggers as well as triggers that everyone else
-  will use.
-	 
-ChangeSet@1.734, 2000-05-27 23:49:25-07:00, orc@india.pell.portland.or.us
-  bk-aout.diff
-
-ChangeSet@1.733, 2000-05-27 14:24:48-07:00, lm@work.bitmover.com
-  Merge work.bitmover.com:/home/bk/stable
-	into work.bitmover.com:/home/bk/exit
-
-ChangeSet@1.731.1.1, 2000-05-27 14:16:42-07:00, lm@work.bitmover.com
-  Forgot to wait for child process in changes.c.
-.DE
+Operation-specific variables that are only available for that operation:
+.tp
+.B BK_CSETLIST
+If set, contains the name of a file which contains the list of changesets
+being received.
+.tp
+.B BK_CSETS
+If set, contains the list of changesets being sent.
+.tp
+.B BK_EVENT
+Set to the event type (pull/push/etc)
+.tp
+.B BK_LOCALCSETS
+If set, the number of local changesets (and/or tags) which are not
+present in the remote repository.
+.tp
+.B BK_PENDING
+Set in the commit triggers; contains the name of a file which contains
+the list of files with pending deltas.
+.tp
+.B BK_REMOTECSETS
+If set, the number of remote changesets (and/or tags) which are not
+present in the local repository.
+.tp
+.B BK_STATUS
+If set, contains status about the command associated with the trigger.
+.tp
+.B BK_TRIGGER
+Set the the trigger class (but not instance).  I.e., pre-incoming.
 .\" help://Repository/notification
 .\" help://Repository/notify
 .SH AVAILABILITY
