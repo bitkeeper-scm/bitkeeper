@@ -4,12 +4,11 @@
  * Copyright (c) 1997 L.W.McVoy
  */
 #include "sccs.h"
+#include "range.h"
 WHATSTR("%W%");
 char	*log_help = "\n\
-usage: sccslog [-1hpv] [-d<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
-    -1		Print exactly one record, as specified by -r/-c\n\
-    -c<dates>	Cut off dates.  See range(1) for deltails.\n\
-    -d<dates>	Same as -c (-d is compat with diffs).\n\
+usage: sccslog [-hpv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
+    -c<dates>	Cut off dates.  See range(1) for details.\n\
     -h		show hostnames, i.e., user@host in log.\n\
     -p		show full pathnames instead of basenames.\n\
     -r<r>	specify a revision or a part of a range.\n\
@@ -17,10 +16,10 @@ usage: sccslog [-1hpv] [-d<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
     Note that <date> may be a symbol, which implies the date of the\n\
     delta which matches the symbol.\n\n\
     Range specifications:\n\
-	-cAlpha,Beta    Everything after Alpha up to and including Beta.\n\
-	-c'[97,98]'	Everything in 1997 and 1998.\n\
-	-c97..98	Same thing, alternative notation.\n\
-	-c'[97' -r1.19	Everything from the start of '97 up to rev 1.19.\n\n";
+    -r+		    prints the most recent delta\n\
+    -r1.3..1.6	    prints all deltas 1.3 through 1.6\n\
+    -d9207..92	    prints all deltas from July 1 '92 to Dec 31 '92\n\
+    -d92..92	    prints all deltas from Jan 1 '92 to Dec 31 '92\n\n";
 
 int	compar(const void *a, const void *b);
 void	sortlog(int flags);
@@ -40,9 +39,9 @@ main(int ac, char **av)
 	sccs	*s;
 	char	*name;
 	int	save, c, flags = SILENT;
-	char	*r[2], *d[2];
-	int	things = 0, rd = 0;
-	int	one = 0;
+	char	*rev;
+	int	inroot = 0;
+	RANGE_DECL;
 
 #ifdef WIN32
 	_setmode(_fileno(stdout), _O_BINARY);
@@ -52,73 +51,40 @@ main(int ac, char **av)
 		fprintf(stderr, log_help);
 		return (0);
 	}
-	r[0] = r[1] = d[0] = d[1] = 0;
-	while ((c = getopt(ac, av, "1c;d;hpr|v")) != -1) {
+	while ((c = getopt(ac, av, "c;hpr|v")) != -1) {
 		switch (c) {
-		    case '1': one++; break;
-		    case 'c': case 'd':
-			if (things == 2) goto usage;
-			d[rd++] = optarg;
-			things += tokens(optarg);
-			break;
 		    case 'h': hflag++; break;
 		    case 'p': pflag++; break;
-		    case 'r':
-			if (things == 2) goto usage;
-			r[rd++] = notnull(optarg);
-			things += tokens(notnull(optarg));
-			break;
 		    case 'v': flags &= ~SILENT; break;
+		    RANGE_OPTS('c', 'r');
 		    default:
 usage:			fprintf(stderr, "sccslog: usage error, try --help.\n");
 			return (1);
 		}
 	}
-	if ((things == 1) && r[0] && (roundType(r[0]) == EXACT)) one = 1;
-	if (one && (things != 1)) {
-		fprintf(stderr, "sccslog: -1 needs a date or a revision.\n");
-		goto usage;
-	}
 
 	for (name = sfileFirst("sccslog", &av[optind], SFILE);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, NOCKSUM|flags)) {
+again:		unless (s = sccs_init(name, NOCKSUM|flags)) {
 			continue;
 		}
-		if (!s->tree) goto next;
-		rangeReset(s);
-		if (things == 2) {
-			if (rangeAdd(s, r[0], d[0])) {
-not0:				verbose((stderr,
-				    "sccslog: no delta ``%s'' in %s\n",
-				    r[0] ? r[0] : d[0], s->sfile));
-				goto next;
+		if (!s->tree) {
+			if (sfileRev() && !inroot) {
+				inroot = 1;
+				if (sccs_cd2root(0, 0) == 0) goto again;
 			}
-			if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1]) == -1)) {
-				verbose((stderr,
-				    "sccslog: no delta ``%s'' in %s\n",
-				    r[1] ? r[1] : d[1], s->sfile));
-				goto next;
+			goto next;
+		}
+		if (rev = sfileRev()) {
+			if (things) {
+				fprintf(stderr, "%s %s\n",
+				    "sccslog: can't mix command line ",
+				    "and file:rev specifications");
+				exit(1);
 			}
-			if (!s->rstart) goto next;
-		} else if (things == 1) {
-			delta	*tmp = sccs_getrev(s, r[0], d[0], ROUNDUP);
-
-			if (!tmp) {
-				unless (flags & SILENT) {
-					goto not0;
-				} else {
-					goto next;
-				}
-			}
-			if (one) {
-				s->rstop = s->rstart = tmp;
-			} else if (roundType(r[0] ? r[0] : d[0]) == ROUNDUP) {
-				s->rstart = s->tree;
-				s->rstop = tmp;
-			} else {
-				s->rstart = tmp;
-			}
+			s->rstart = s->rstop = sccs_getrev(s, rev, 0, 0);
+		} else {
+			RANGE("sccslog", s, 1, 0);
 		}
 		save = n;
 		sccslog(s);

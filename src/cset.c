@@ -170,6 +170,11 @@ csetInit(sccs *cset, int flags, char *sym)
 	delta	*d = 0;
 
 	/*
+	 * Create BitKeeper root.
+	 */
+	sccs_mkroot(".");
+
+	/*
 	 * awc to lm:
 	 * should we make sure there are no changeset file
 	 * in the subdirectory before we proceed ?

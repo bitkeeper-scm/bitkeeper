@@ -13,11 +13,10 @@ WHATSTR("%W% %@%");
  */
 char *sfiles_usage = "\n\
 usage: sfiles [-aclpP] [-i[root]] [-r[root]] [directories]\n\n\
-    -a		when used with -i, list all the ids of all the leaves\n\
+    -a		when used with -C, list all revs, not just the tip\n\
     -c		list only changed files (locked and modified)\n\
     -C		list leaves which are not in a changeset as file:1.3\n\
     -g		list the gfile name, not the sfile name\n\
-    -i[root]	list the files as their identifiers\n\
     -l		list only locked files\n\
     -p		(paranoid) opens each file to make sure it is an SCCS file\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
@@ -31,7 +30,7 @@ usage: sfiles [-aclpP] [-i[root]] [-r[root]] [directories]\n\n\
     directories.\n\
 \n";
 
-int	aFlg, cFlg, Cflg, gFlg, iFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg;
+int	aFlg, cFlg, Cflg, gFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg;
 int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
@@ -57,13 +56,12 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "acCgi|lpPr|vx")) != -1) {
+	while ((c = getopt(ac, av, "acCglpPr|vx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'c': cFlg++; break;
 		    case 'C': Cflg++; rFlg++; break;
 		    case 'g': gFlg++; break;
-		    case 'i': iFlg++; root = optarg; break;
 		    case 'l': lFlg++; break;
 		    case 'p': pFlg++; break;
 		    case 'P': PFlg++; break;
@@ -82,16 +80,6 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		unless (sccs_cd2root(0, 0) == 0) exit(1);
 		rebuild();
 		exit(dups ? 1 : 0);
-	}
-	if (iFlg) {
-		if (av[optind]) {
-			fprintf(stderr, "%s: -i must be stand alone.\n", av[0]);
-			exit(1);
-		}
-		/* perror is in sccs_root, don't do it twice */
-		unless (sccs_cd2root(0, root) == 0) exit(1);
-		ftw(".", ids, 15);
-		exit(0);
 	}
 	if (!av[optind]) {
 		ftw(".", func, 15);
@@ -221,32 +209,6 @@ isSccs(char *s)
 }
 
 /*
- * Print out ids
- *
- * XXX - probably obsolete
- */
-int
-ids(const char *filename, const struct stat *sb, int flag)
-{
-	register char *file = (char *)filename;
-	register char *s;
-	sccs	*sc;
-
-	if ((file[0] == '.') && (file[1] == '/')) file += 2;
-	for (s = file; *s; s++);
-	for ( ; s > file; s--) if (s[-1] == '/') break;		/* CSTYLED */
-	if ((s[0] != 's') || (s[1] != '.')) return (0);
-	unless (sc = sccs_init(file, 0)) return (0);
-	unless (HAS_SFILE(sc) && sc->cksumok) {
-		sccs_free(sc);
-		return (0);
-	}
-	sccs_ids(sc, aFlg ? 0 : TOP, stdout);
-	sccs_free(sc);
-	return (0);
-}
-
-/*
  * rebuild the caches.
  */
 void
@@ -301,6 +263,34 @@ c:	ftw(".", caches, 15);
 	}
 }
 
+/*
+ * Print out everything leading from start to d, not including start.
+ * XXX - stolen from cset.c - both copies need to go in slib.c.
+ */
+void
+csetDeltas(sccs *sc, delta *start, delta *d)
+{
+	int	i;
+	delta	*sfind(sccs *, ser_t);
+
+	unless (d) return;
+	if ((d == start) || (d->flags & D_VISITED)) return;
+	d->flags |= D_VISITED;
+	csetDeltas(sc, start, d->parent);
+	/*
+	 * We don't need the merge pointer, it is part of the include list.
+	 * if (d->merge) csetDeltas(sc, start, sfind(sc, d->merge));
+	 */
+	EACH(d->include) {
+		delta	*e = sfind(sc, d->include[i]);
+
+		csetDeltas(sc, e->parent, e);
+	}
+	// XXX - fixme - removed deltas not done.
+	// Is this an issue?  I think makepatch handles them.
+	if (d->type == 'D') printf("%s:%s\n", sc->sfile, d->rev);
+}
+
 int
 caches(const char *filename, const struct stat *sb, int flag)
 {
@@ -352,6 +342,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	}
 
 	/* find the leaf of the current LOD and check it */
+	sc->state |= RANGE2;
 	unless (d = sccs_getrev(sc, 0, 0, 0)) {
 		sccs_free(sc);
 		return (0);
@@ -371,10 +362,20 @@ caches(const char *filename, const struct stat *sb, int flag)
 	if (v.dsize) {
 		if (e = sccs_findKey(sc, v.dptr)) {
 			while (e && (e->type != 'D')) e = e->parent;
-			if (e != d) printf("%s:%s\n", sc->sfile, d->rev);
+			if (e != d) {
+				if (aFlg) {
+					csetDeltas(sc, e, d);
+				} else {
+					printf("%s:%s\n", sc->sfile, d->rev);
+				}
+			}
 		}
 	} else {	/* this is a new file */
-		printf("%s:%s\n", sc->sfile, d->rev);
+		if (aFlg) {
+			csetDeltas(sc, 0, d);
+		} else {
+			printf("%s:%s\n", sc->sfile, d->rev);
+		}
 	}
 	sccs_free(sc);
 	return (0);

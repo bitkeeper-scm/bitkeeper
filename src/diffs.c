@@ -1,5 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "sccs.h"
+#include "range.h"
 WHATSTR("%W%");
 
 /*
@@ -10,7 +11,7 @@ WHATSTR("%W%");
  * diffs -r<rev> file
  *	diff the checked out (or TOT) against rev like so
  *	diff rev TOT
- * diffs -r<r1> -r<r2> file
+ * diffs -r<r1>..<r2> file
  *	diff the two revisions like so
  *	diff r1 r2
  *
@@ -34,9 +35,9 @@ usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
     -U		prefix lines with user names\n\
     -v		be verbose about non matching ranges\n\n\
     Ranges of dates, symbols, and/or revisions may be specified.\n\n\
-    -r1.3 -r1.6	    diffs those revisions\n\
-    -d9207 -d92	    diffs changes from July 1 '92 to Dec 31 '92\n\
-    -dAlpha,Beta    diffs changes after Alpha up to and including Beta\n\n\
+    -r1.3..1.6	    diffs 1.3 vs 1.6\n\
+    -d9207..92	    diffs changes from July 1 '92 to Dec 31 '92\n\
+    -d92..92	    diffs changes from Jan 1 '92 to Dec 31 '92\n\
     The date can be a symbol instead of a date.  Dates and revisions may\n\
     be mixed and matched, see range(1) for a full description.\n\n\
 ";
@@ -48,8 +49,7 @@ main(int ac, char **av)
 	int	all = 0, flags = SILENT, c;
 	char	kind = streq(av[0], "sdiffs") ? D_SDIFF : D_DIFF;
 	char	*name;
-	char	*r[2], *d[2];
-	int	things = 0, rd = 0;
+	RANGE_DECL;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -57,28 +57,18 @@ main(int ac, char **av)
 		return (1);
 	}
 
-	r[0] = r[1] = d[0] = d[1] = 0;
 	while ((c = getopt(ac, av, "acd;DMnpr|suUv")) != -1) {
 		switch (c) {
 		    case 'a': all = 1; break;
 		    case 'c': kind = D_CONTEXT; break;
-		    case 'd':
-			if (things == 2) goto usage;
-			d[rd++] = optarg;
-			things += tokens(optarg);
-			break;
 		    case 'D': flags |= PREFIXDATE; break;
 		    case 'M': flags |= REVNUMS; break;
 		    case 'p': kind = D_PDIFF; break;
-		    case 'r':
-			if (things == 2) goto usage;
-			r[rd++] = notnull(optarg);
-			things += tokens(notnull(optarg));
-			break;
 		    case 'n': kind = D_RCS; break;
 		    case 's': kind = D_SDIFF; break;
 		    case 'u': kind = D_UNIFIED; break;
 		    case 'U': flags |= USER; break;
+		    RANGE_OPTS('d', 'r');
 		    default:
 usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 			return (1);
@@ -107,20 +97,8 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		char	*r1 = 0, *r2 = 0;
 
 		unless ((s = sccs_init(name, flags))) goto next;
-		rangeReset(s);
+		RANGE("diffs", s, 0, (flags & SILENT) == 0);
 		if (things) {
-			if (rangeAdd(s, r[0], d[0])) {
-				verbose((stderr,
-				    "diffs: no delta ``%s'' in %s\n",
-				    r[0] ? r[0] : d[0], s->sfile));
-				goto next;
-			}
-			if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1]) == -1)) {
-				verbose((stderr,
-				    "diffs: no delta ``%s'' in %s\n",
-				    r[1] ? r[1] : d[1], s->sfile));
-				goto next;
-			}
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
 			if (s->rstop) r2 = s->rstop->rev;
 			/*

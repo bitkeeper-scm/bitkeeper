@@ -1063,8 +1063,8 @@ sccs_cd2root(sccs *s, char *root)
 	char	*r = sccs_root(s, root);
 
 	if (r && (chdir(r) == 0)) {
-		unless (exists(CHANGESET)) {
-			perror(CHANGESET);
+		unless (exists(BKROOT)) {
+			perror(BKROOT);
 			return (-1);
 		}
 		return (0);
@@ -1096,7 +1096,7 @@ sccs_root(sccs *s, char *root)
 	slash = sb.st_ino;
 
 	/*
-	 * Now work backwards up the tree until we find a ChangeSet or /
+	 * Now work backwards up the tree until we find a BKROOT or /
 	 *
 	 * Note: this is a little weird because the s->sfile pathname could
 	 * be /foo/bar/blech/SCCS/s.file.c
@@ -1121,7 +1121,7 @@ sccs_root(sccs *s, char *root)
 		}
 		unless (buf[0]) strcpy(buf, ".");
 		for (j = 0; j < i; ++j) strcat(buf, "/..");
-		sprintf(file, "%s/%s", buf, CHANGESET);
+		sprintf(file, "%s/%s", buf, BKROOT);
 		debug((stderr, "%s\n", file));
 		if (exists(file)) {
 			unless (buf[0]) strcpy(buf, ".");
@@ -1137,6 +1137,23 @@ sccs_root(sccs *s, char *root)
 		if (sb.st_ino == slash) return (0);
 	}
 	/* NOTREACHED */
+}
+
+void
+sccs_mkroot(char *path)
+{
+	char	buf[1024];
+
+	sprintf(buf, "%s/BitKeeper", path);
+	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
+	sprintf(buf, "%s/BitKeeper/etc", path);
+	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
 }
 
 /*
@@ -1206,7 +1223,7 @@ _relativeName(sccs *sc, int withsccs, int mustHaveCS)
 	for (--s; (*s != '/') && (s > t); s--);
 
 	/*
-	 * Now work backwards up the tree until we find a ChangeSet
+	 * Now work backwards up the tree until we find a BKROOT
 	 * or root (i.e. / or  <driver_letter>: )
 	 * XXX - I strongly suspect this needs to be rewritten.
 	 */
@@ -1220,9 +1237,9 @@ _relativeName(sccs *sc, int withsccs, int mustHaveCS)
 		/* s -> / in .../foo/SCCS/s.foo.c */
 		for (--s; (*s != '/') && (s > top); s--);
 		assert(s >= top);
-		strcpy(++s, CHANGESET);
+		strcpy(++s, BKROOT);
 		unless (exists(buf)) {
-			if (streq(top, "/SCCS/s.ChangeSet")) {
+			if (streq(top, "/BitKeeper/etc")) {
 				strcpy(buf, t);
 				debug((stderr, "relname3: %s\n", buf));
 				return (buf);
@@ -1588,12 +1605,8 @@ findDate(delta *d, time_t date)
 /*
  * Take either a revision or date/symbol and return the delta.
  *
- * All tokens may have a prefix or a postfix of "," or ".".
- * Dots are inclusive, commas are exclusive.
- * A, means first thing after A but
- * .B means up to and including "B".
- * Dates are rounded down if postfixed and up if prefixed.  If there is
- * neither a postfix or a prefix, then the roundup variable is used.
+ * Date tokens may have a prefix of "+" or "-" to imply rounding direction.
+ * If there is no prefix, then the roundup variable is used.
  */
 delta *
 sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
@@ -1601,116 +1614,91 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	delta	*tmp, *d = 0;
 	time_t	date, d2;
 	char	*s = rev ? rev : dateSym;
-	char	*last;
-	int	inclusive = 1;
-	char	pre = 0, post = 0;
+	char	ru = 0;
+
+	unless (sc && sc->table) return (0);
 
 	/*
-	 * Allow null revisions to mean TOT.
+	 * Strip off prefix.
 	 */
+	if (s && *s) {
+		switch (*s) {
+		    case '+':
+			ru = *s;
+			roundup = ROUNDUP;
+			s++;
+			break;
+		    case '-':
+			ru = *s;
+			roundup = ROUNDDOWN;
+			s++;
+			break;
+		}
+	}
+
+	/* Allow null revisions to mean TOT or first delta */
 	if (!s || !*s) {
+		unless (sc->state & RANGE2) {	/* this is first call */
+			unless (ru == '+') return (sc->tree);
+		}
 		return (findrev(sc, 0));
 	}
 
 	/*
-	 * Strip off any prefix/postfix.
-	 * XXX - I don't error check for ".foo."
-	 */
-	for (last = s; last[1]; last++);
-	if ((s[0] == ',') || (s[0] == '.')) {
-		roundup = ROUNDUP;
-		inclusive = s[0] == '.';
-		pre = s[0];
-		s++;
-	} else if ((last[0] == ',') || (last[0] == '.')) {
-		roundup = ROUNDDOWN;
-		inclusive = last[0] == '.';
-		post = last[0];
-		last[0] = 0;
-	} else if ((s[0] == '(') || (s[0] == '[')) {
-		roundup = ROUNDDOWN;
-		inclusive = s[0] == '[';
-		pre = s[0];
-		s++;
-	} else if ((last[0] == ')') || (last[0] == ']')) {
-		roundup = ROUNDUP;
-		inclusive = last[0] == ']';
-		post = last[0];
-		last[0] = 0;
-	}
-
-	/*
-	 * If it's a revision, go find it and use it, being careful to
-	 * go down the same branch if we need to go forward.
-	 * XXX - if 1.5 is TOT and we ask for ,1.6 this fails.
+	 * If it's a revision, go find it and use it.
 	 */
 	if (rev) {
-		unless (d = rfind(sc, s)) {
-			if (post) last[0] = post;
-			return (0);
-		}
-		if (post) last[0] = post;
-		if (inclusive) return (d);
-		if (roundup == ROUNDUP) {
-			d = d->parent;
-			return (d);
-		}
-		for (tmp = d->kid;
-		    tmp && !samebranch(tmp, d); tmp = tmp->siblings);
-		return (tmp);
+		unless (d = findrev(sc, s)) return (0);
+		return (d);
 	}
 
 	/*
-	 * Get a date to work with.  If it's a symbol, convert that.
+	 * If it is a symbol, then just go get that delta and return it.
 	 */
-	if (isdigit(*s)) {
-		date = date2time(s, 0, roundup);
-	} else {
-		delta	*d = sym2delta(sc, s);
+	unless (isdigit(*s)) return (sym2delta(sc, s));
+	
+	/*
+	 * It's a plain date.  Convert it to a number and then go
+	 * find the closest delta.  If there is an exact match,
+	 * return that.  
+	 * Depending on which call this, we think a little differently about
+	 * endpoints.
+	 * The order returned is rstart == 1.1 and rstop == 1.5, i.e.,
+	 * oldest delta .. newest.
+	 */
+	date = date2time(s, 0, roundup);
 
-		if (post) last[0] = post;
-		if (!d) return (0);
-		date = DATE(d);
+	unless (sc->state & RANGE2) {	/* first call */
+		if (date < sc->tree->date) return (sc->tree);
+		if (date > sc->table->date) return (0);
+	} else {			/* second call */
+		if (date > sc->table->date) return (sc->table);
+		if (date < sc->tree->date) {
+			sc->rstart = 0;
+			return (0);
+		}
+		if (sc->rstart && (date < sc->rstart->date)) {
+			sc->rstart = 0;
+			return (0);
+		}
 	}
-	if (post) last[0] = post;
-
-	if (roundup == ROUNDUP) {
+	/* Walking the table newest .. oldest order */
+	for (tmp = 0, d = sc->table; d; tmp = d, d = d->next) {
+		if (d->date == date) return (d);
 		/*
-		 * Go get TOT (XXX - needs to respect LOD markers)
+		 *                v date
+		 * big date   1.4   1.3   1.2    little date
+		 *             ^tmp  ^d
 		 */
-		d = findrev(sc, 0);
-		if (!inclusive) date--;
-
-		/*
-		 * We are working backwards from dates that are larger than
-		 * what we have.
-		 */
-		for (;;) {
-			if (!d) return (0);
-			d2 = DATE(d);
-			if (d2 <= date) {
+		if (d->date < date) {
+			unless (sc->state & RANGE2) {	/* first call */
+				return (tmp);
+			} else {
 				return (d);
 			}
-			d = d->parent;
-		}
-	} else if (roundup == ROUNDDOWN) {
-		/*
-		 * We are looking for the first delta after date.
-		 */
-		if (!inclusive) date++;
-		return (findDate(sc->tree, date));
-	} else /* EXACT */ {
-		/*
-		 * Go get TOT (XXX - needs to respect LOD markers)
-		 */
-		d = findrev(sc, 0);
-		for (;;) {
-			if (!d) return (0);
-			d2 = DATE(d);
-			if (d2 == date) return (d);
-			d = d->parent;
 		}
 	}
+	return (tmp);
 }
 
 private inline int
@@ -7524,6 +7512,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 		if (!add && !del && !same) s->dsum = almostUnique();
 		fseek(out, s->sumOff, SEEK_SET);
 		sprintf(buf, "%05u", s->dsum);
+		n->sum = s->dsum;
 		fputsum(s, buf, out);
 	}
 	fseek(out, 0L, SEEK_SET);
@@ -8533,9 +8522,6 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		assert(start->comments[i][0] != '\001');
 		fprintf(out, "C %s\n", start->comments[i]);
 	}
-	if (start->flags & D_CKSUM) {
-		fprintf(out, "K %u\n", start->sum);
-	}
 	EACH(start->exclude) {
 		d = sfind(s, start->exclude[i]);
 		assert(d);
@@ -8552,6 +8538,9 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		fprintf(out, "I ");
 		sccs_pdelta(d, out);
 		fprintf(out, "\n");
+	}
+	if (start->flags & D_CKSUM) {
+		fprintf(out, "K %u\n", start->sum);
 	}
 	if (start->flags & D_DUPLOD) {
 		fprintf(out, "L %s\n", start->lod->name);
@@ -8606,41 +8595,9 @@ $if(:DPN:){P :DPN:\n}$each(C){C (C)}\n\
 		}
 	}
 
-	/*
-	 * if we have a start and a stop then do from start up to stop.
-	 */
-	if (s->rstart && s->rstop) {
-		for (d = s->rstop; d; d = d->parent) {
-			do_prs(s, d, flags, dspec, out);
-			if (d == s->rstart) break;
-		}
-	}
-	/*
-	 * if we have a start, work through the table til there.
-	 */
-	else if (s->rstart) {
-		for (d = s->table; d; d = d->next) {
-			do_prs(s, d, flags, dspec, out);
-			if (d == s->rstart) break;
-		}
-	}
-	/*
-	 * if we have a stop, go there and print from there to the begining.
-	 */
-	else if (s->rstop) {
-		for (d = s->table; d && (d != s->rstop); d = d->next);
-		while (d) {
-			do_prs(s, d, flags, dspec, out);
-			d = d->next;
-		}
-	}
-	/*
-	 * print the whole thing.
-	 */
-	else {
-		for (d = s->table; d; d = d->next) {
-			do_prs(s, d, flags, dspec, out);
-		}
+	for (d = s->rstop; d; d = d->next) {
+		do_prs(s, d, flags, dspec, out);
+		if (d == s->rstart) break;
 	}
 	return (0);
 }

@@ -1,17 +1,65 @@
-Tonight's goals
-	- add LODs to a file
-	- be able to get files based on LOD.#
+The LOD stuff needs to get symbol semantics
+	- each LOD is either (a) part of a checkin, or (b) a meta data node
+	  like a symbol.
 
-Longer term:
-	Merge the symbol adding and LOD adding code - they should just take
-	a flag.  
-	Both need to use meta data nodes when adding something after the
-	fact.
+	  Don't add metadata nodes:
+	  . delta -i -Lfoo - delta is foo.1, creates new LOD
+	  . get -e -Lfoo - creates new LOD foo
+
+	  Do add metadata nodes:
+	  . admin -i -Lfoo - same as delta -i -Lfoo
+	  . admin -Lfoo creates new LOD without any deltas in it yet
+	
+	- The symbols list should be moved to the lod struct so that the name
+	  nesting works
+
+	- Merge the symbol adding and LOD adding code - they should just take
+	  a flag.  
+
+LOD defaults
+	Issues are:
+	- how do we specify the LOD?
+	  get -L / delta -L
+	- when do we set it?
+	  Only admin -L sets it.
+	- How do we override default LOD?
+	  BitKeeper/etc/LOD
+	- which has precedence?  
+	  a) command line
+	  b) LOD file
+	  c) default branch
+
+	admin -i / ci -i / delta -i
+		Create the delta as $BK_LOD.1 
+		This means that the pfile looks like 
+		    1.3 NEW_LOD.1 lm ....
+		and delta now needs to view a p.file like that as both
+		an admin -LNEW_LOD.1:1.3 as well as the delta itself.
+	get / co / diffs / etc
+		Use it as an implied default branch
+	get -e
+		If the LOD doesn't exist, then create the LOD
+		Use $BK_LOD as an implied default
+	delta
+		ignores the BK_LOD, gets it from the p.file except in the
+		delta -i case.
+
+	Real question: can we return $BK_LOD in defbranch()?  And can we 
+	use defbranch() in all places we currently use s->defbranch?
+
+	How does the changeset file LOD relate to the delta's LODs?
+	Certainly it should be an error to try and add deltas from one
+	LOD as a changeset which is in another LOD.  The right answer is
+	that the cset command can take a -Llod arg which says "do only the
+	deltas created in lod".  And if the cset file is set to a particular
+	LOD, or the LOD file is present, it's the same as the arg.
+
 
 prs needs to show only the LOD revisions in the current default branch.
 This may extend up above the top of the branch since the LOD may have
 started on the trunk and twisted off on a branch.
 
+-------------------- old stuff below this ----------------------------
 BitSCCS 
 	- tags == LOD's
 	- a tag is the .0 revision of a LOD

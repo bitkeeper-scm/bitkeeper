@@ -5,7 +5,7 @@ WHATSTR("%W%");
 private	char	*help = "\n\
 usage: admin options [-] OR [file file file...]\n\n\
     A very useful thing to note is that\n\
-	    sfiles | admin -what -ever -\n\
+	    bk sfiles | bk admin -what -ever -\n\
     works.  Note the trailing \"-\" which says to read files from stdin.\n\n\
     -a<u>|<g>		add user/group\n\
     -A<u>|<g>		delete user/group\n\n\

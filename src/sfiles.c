@@ -88,18 +88,15 @@ again:
 		}
 		strcpy(buf, name);
 	}
-	if (flags & HASREVS) {
+	if (flags & HASREVS)  {
 		char	*r = strrchr(buf, ':');
 
 		rev[0] = 0;	/* paranoia is your friend */
-		if (!r) {
-			fprintf(stderr, "sfiles: no rev in %s\n", buf);
-			return (0);
-		}
+		if (!r) goto norev;
 		*r++ = 0;
 		strcpy(rev, r);
 	}
-	if (!is_sccs(buf)) {
+norev:	if (!is_sccs(buf)) {
 #ifdef	ATT_SCCS
 		fprintf(stderr, "Not an SCCS file: %s\n", buf);
 		goto again;
@@ -117,7 +114,7 @@ again:
 char *
 sfileRev()
 {
-	return (rev);
+	return (rev[0] ? rev : 0);
 }
 
 /*
@@ -131,7 +128,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	sfileDone();
 	rev[0] = 0;
 	prog = cmd;
-	flags = Flags;
+	flags = Flags|HASREVS;
 	if (Av[0]) {
 #ifdef WIN32
 		nt2bmfname(Av[0], Av[0]);

@@ -188,11 +188,13 @@ extractPatch(FILE *p, int flags)
 	gfile = sccs2name(name);
 	if (echo>1) {
 		fprintf(stderr,
-		    "takepatch: %d new revision%s in %s\n",
+		    "takepatch: %d new revision%s in %s ",
 		    nfound, nfound > 1 ? "s" : "", gfile);
+		if (echo != 2) fprintf(stderr, "\n");
 	}
 	if (patchList && gca) getLocals(s, gca->kid, name);
 	applyPatch(flags);
+	if (echo == 2) fprintf(stderr, " \n");
 	sccs_free(s);
 	free(gfile);
 	free(name);
@@ -332,8 +334,11 @@ applyPatch(int flags)
 	int	newflags;
 	char	*getuser(), *now();
 	char	*localPath = 0, *remotePath = 0;
+	static	char *spin = "|/-\\";
+	int	n = 0;
 
 	unless (p) return (0);
+	if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	unless (gca) {
 		mkdirp(p->resyncFile);
 		goto apply;
@@ -377,6 +382,7 @@ applyPatch(int flags)
 apply:
 	p = patchList;
 	while (p) {
+		if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
 		if (p->pid) {
 			assert(s);
 			unless (d = sccs_findKey(s, p->pid)) {

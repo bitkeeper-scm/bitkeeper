@@ -204,6 +204,7 @@ extern	char *strdup(char *s);
 #define	ONE_ZERO	0x00800000	/* initial rev, make it be 1.0 */
 #define READ_ONLY	0x01000000	/* force read only mode */
 #define Z_LOCKED	0x02000000	/* file is locked */
+#define	RANGE2		0x04000000	/* second call for date|rev range */
 
 /*
  * Options to sccs_diffs()
@@ -296,6 +297,7 @@ extern	char *strdup(char *s);
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
 #define	SCCSTMP		"SCCS/T.SCCSTMP"	/* XXX - .SCCS for Linus? */
+#define	BKROOT		"BitKeeper/etc"
 #define	CHANGESET	"SCCS/s.ChangeSet"	/* Ditto */
 #define	PENDING		"SCCS/x.pending_cache"	/* Ditto */
 #define	ID		"SCCS/x.id_cache"	/* Ditto */
@@ -494,8 +496,8 @@ typedef	struct sccs {
 	int	state;		/* GFILE/SFILE etc */
 	off_t	data;		/* offset to data in file */
 	int	nextserial;	/* next unused serial # */
-	delta	*rstart;	/* start of a range */
-	delta	*rstop;		/* end of range */
+	delta	*rstart;	/* start of a range (1.1 - oldest) */
+	delta	*rstop;		/* end of range (1.5 - youngest) */
 	sum_t	 cksum;		/* SCCS chksum */
 	sum_t	 dsum;		/* SCCS delta chksum */
 	off_t	sumOff;		/* offset of the new delta cksum */
@@ -654,6 +656,7 @@ void	platformSpecificInit(char *, int);
 MDBM	*loadDB(char *file, int (*want)(char *));
 MDBM	*csetIds(sccs *cset, char *rev, int all);
 void	sccs_fixDates(sccs *);
+void	sccs_mkroot(char *root);
 #ifdef	WIN32
 /*
  * Most of the WIN32 stuff is defined in re_def.h

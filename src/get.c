@@ -5,12 +5,13 @@ char	*get_help = "\n\
 usage: get [-bdeFgkmnpqsu] [-c<date>] [-G<name>] \n\
            [-i<revs>] [-r<revs>] [-x<revs>] [files...] OR [-]\n\n\
     A useful thing to note is that\n\
-	sfiles src | get -e\n\
+	bk sfiles src | bk get -e -\n\
     will check out all SCCS files for editing.\n\n\
     -b		force a new branch\n\
-    -c<date>	specify a cutoff date for the get.  The date format is\n\
-		yy[mm[dd[hh[mm[ss]]]]] and may be prefixed or postfixed\n\
-		with either \".\" or \",\".  See range(1) for date formats.\n\
+    -c<date>	specify a date for the get.  The date format is\n\
+		yy[mm[dd[hh[mm[ss]]]]] and may be prefixed with either a\n\
+		\"+\" or \"-\" to round up/down, respectively.\n\
+		The latest delta found before the date is used.\n\
 		Symbols may be specified instead of dates, in which case\n\
 		the date of the associated revision is used.\n\
     -d		prefix each line with date (not time)\n\
@@ -135,6 +136,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			continue;
 		}
 		if (cdate) {
+			s->state |= RANGE2;
 			d = sccs_getrev(s, 0, cdate, ROUNDUP);
 			if (!d) {
 				fprintf(stderr,

@@ -1,17 +1,16 @@
-How about "." for inclusive and "," for exclusive, so
+Date/revision notation
 
-	d1..d2 gets you everything from d1 to d2, inclusive
-	d1,,d2 gets you everything between the two,
-	d1,.d2 gets you after d1 but including d2
-	.d2 gets you everything up to and including d2
-	,d2 gets you everything before d2
-	d1. everything from d1 on including d1
-	d1, everything after d1
+	d1..d2	gets you everything from d1 to d2, inclusive
+	..d2	is the same as 1.1..d2
+	d1..	is the same as d1..TOT where TOT is the most recent delta
 
-	d1,d2 is an alias for d1,.d2 since that is such a common thing to do
-		i.e., Alpha3,.Alpha4
+For dates, the start rounds down, the end rounds up.  To override the
+rounding, the dates can be prefixed with "-" or "+" to round down or up,
+respectively.
 
-	For dates, the start rounds down, the end rounds up.
+So the full syntax is
+
+	[-|+]date..[-|+]date
 
 Dates can also be represented as symbols; if the symbol exists in the
 file, then the date from the delta associated with the symbol is used.
@@ -27,27 +26,7 @@ This does not allow me to specify
 
 We do that like so
 
-	cmd -r1.3. -d.98
-	cmd -r1.3 -d98		# dots are implied
-	cmd -r1.3, -d98		# after 1.3 to and including 98
-	cmd -r1.3, -d,98	# after 1.3 and before the end of '98
-
-also allow forms like
-
-	cmd -r1.3..1.5
-	cmd -d97..98
-	cmd -dAlpha,Beta
-
-Might also allow more formal (requires quoting):
-
-	( == ,
-	) == ,
-	[ == .
-	] == .
-
-i.e.,
-
-	cmd -r(1.3 -d98]	# same as -r1.3, -d98
+	cmd -r1.3 -dsym
 
 Date format
 -----------
