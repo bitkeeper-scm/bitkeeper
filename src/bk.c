@@ -1147,13 +1147,13 @@ find_wish(void)
 		if (executable(wish_path)) return (wish_path);
 	}
 
-	sprintf(wish_path, "%s/tk/bin/wish", bin);
+	sprintf(wish_path, "%s/tk/bin/bkgui", bin);
 	if (executable(wish_path)) {
 		safe_putenv("TCL_LIBRARY=%s/tk/lib/tcl8.3", bin);
 		safe_putenv("TK_LIBRARY=%s/tk/lib/tk8.3", bin);
 		return (wish_path);
 	}
-	strcpy(wish_path, "/build/.wish/tk/bin/wish");
+	strcpy(wish_path, "/build/.wish/tk/bin/bkgui");
 	if (executable(wish_path)) {
 		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
 		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
