@@ -113,15 +113,13 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 private int
 clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
-	char	*p, buf[MAXPATH];
+	char	*p, *freeme = 0 , buf[MAXPATH];
 	int	gzip, rc = 1, ret = 0;
 
 	gzip = r->port ? opts.gzip : 0;
-	if (local && (local = fullname(local, 0))) {
-		if (exists(local)) {
-			fprintf(stderr, "clone: %s exists already\n", local);
-			usage();
-		}
+	if (local && exists(local)) {
+		fprintf(stderr, "clone: %s exists already\n", local);
+		usage();
 	}
 	if (opts.rev) {
 		sprintf(buf, "BK_CSETS=1.0..%s", opts.rev);
