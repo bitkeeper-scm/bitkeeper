@@ -126,6 +126,9 @@ cmd_httpget(int ac, char **av)
 	 * If they pass in //pathname/to/root/whatever, we'll do a cd first.
 	 */
 	if (*name == '/') {
+		if (Opts.nocd) {
+			http_error(403, "Absolute paths are not allowed");
+		}
 		unless (name = findRoot(name)) {
 			http_error(503, "Can't find project root");
 		}
