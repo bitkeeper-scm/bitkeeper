@@ -49,33 +49,28 @@ private int chk_diffs(sccs *s);
 private void
 enqueue(fifo *q, char *path)
 {
-	q_item *t = (q_item *) malloc(sizeof(q_item));
+	q_item	*t = (q_item *) malloc(sizeof(q_item));
 	
 	assert(t);
 	t->path = strdup(path);
 	t->next = 0;
 	if (q->first == NULL) {
 		q->first = t;
-		q->last = t;
 	} else {
 		q->last->next = t;
-		q->last = t;
 	}
+	q->last = t;
 }
 
 private char *
 dequeue(fifo *q)
 {
-	char *t;
-	q_item *i;
+	char	*t;
+	q_item	*i;
 
 	if (q->first == NULL) return NULL;
 	i = q->first;
-	if (q->first == q->last) {
-		q->first = NULL;
-	} else {
-		q->first = q->first->next;
-	}
+	q->first = (q->first == q->last) ? NULL : q->first->next; 
 	t = i->path;
 	free(i);
 	return (t);
@@ -158,8 +153,6 @@ sfind_main(int ac, char **av)
 		path = ".";
 		walk(path, 0);
 	} else if (streq("-", av[optind])) {
-                char    buf[MAXPATH];
-
 		setmode(0, _O_TEXT); /* read file list in text mode */
 		while (fnext(buf, stdin)) {
 			chop(buf);
@@ -184,11 +177,12 @@ sfind_main(int ac, char **av)
 	}
 
 	if (ignore) free_globs(ignore);  
+	if (proj) proj_free(proj);
 	return (0);
 }
 
-void 
-chk_sfile(char *name, char *lState, char *cState)
+private sccs *
+chk_sfile(char *name, char state[4])
 {
 	char	*s;
 	sccs	*sc = 0;
@@ -198,37 +192,83 @@ chk_sfile(char *name, char *lState, char *cState)
 	if (s[1] == 's') {
 		s[1] = 'p';
 		if (exists(name)) {
-			*lState = 'l';
+			state[LSTATE] = 'l';
 			s[1] = 's';
 			if (opts.cflg && 
 			    (sc = init(name, INIT_NOCKSUM)) &&
 			    chk_diffs(sc)) { 
-				*cState = 'c';
+				state[CSTATE] = 'c';
 			} else {
-				*cState = 'n';
+				state[CSTATE] = 'n';
 			}
 		} else {
 			s[1] = 'z';
 			if (exists(name)) {
-				*lState = 'l';
-				*cState = 'n';
+				state[LSTATE] = 'l';
+				state[CSTATE] = 'n';
 			} else {
-				*lState = 'u';
-				*cState = 'n';
+				state[LSTATE] = 'u';
+				state[CSTATE] = 'n';
 			}
 			s[1] = 's';
 		}
 	}
-	if (sc) sccs_close(sc);
+	return (sc);
+}
+
+private void
+chk_pending(sccs *s, char *gfile, char state[4])
+{
+	delta	*d;
+	char	*rev;
+	int	local_s = 0;
+
+	unless (s) {
+		char *sfile = name2sccs(gfile);
+		s = init(sfile, INIT_NOCKSUM);
+		free(sfile);
+		assert(s);
+		local_s = 1;
+	}
+	
+	/*
+	 * check for pending deltas
+	 * TODO: need to handle LOD
+	 */                                    
+	d = sccs_top(s);
+	assert(d);
+	state[PSTATE] = (d->flags & D_CSET) ? ' ' : 'p';
+	if (opts.Aflg) {
+		if (d->flags & D_CSET) {
+			do_print(state, gfile, 0);
+		} else {
+			while (d) {
+				if (d->flags & D_CSET) break;
+				do_print(state, gfile, d->rev);
+				d = d->parent;
+			}
+		}
+	} else {
+		if (opts.Cflg) {
+			rev = (state[PSTATE] == 'p') ? d->rev : NULL;
+			do_print(state, gfile, rev);
+		} else {
+			do_print(state, gfile, 0);
+		}
+	}
+
+	/*
+	 * Do not sccs_close() if it is passed in from outside 
+	 */
+	if (local_s) sccs_close(s);
 }
 
 private void
 file(char *f)
 {
 	char	name[MAXPATH], buf[MAXPATH];
-	char    *s, *sfile = 0;
-	char	state[4] = "???";
-	sccs	*sc;
+	char    *s, *sfile, state[4] = "???";
+	sccs	*sc = 0;
 
 	strcpy(name, f);
 	s = rindex(name, '/');
@@ -244,15 +284,14 @@ file(char *f)
 			state[CSTATE] = 'j';
 			strcpy(buf, f);
 		} else {
-			chk_sfile(f, &state[LSTATE], &state[CSTATE]);
+			sc = chk_sfile(f, state);
 			s = sccs2name(f);
 			strcpy(buf, s);
-			sfile = name2sccs(s);
 			free(s);
 		}
 	} else {
 		/*
-		 * TODO: we need to check for the caes where
+		 * TODO: we need to check for the case where
 		 * the pwd is a SCCS dir
 		 * This can fool the current code into wronly treating them
 		 * as xtras.
@@ -262,8 +301,9 @@ file(char *f)
 		unless (exists(sfile)) {
 			state[CSTATE] = 'x';
 		} else {
-			chk_sfile(sfile, &state[LSTATE], &state[CSTATE]);
+			sc = chk_sfile(sfile, state);
 		}
+		free(sfile);
 		strcpy(buf, f);
 	}
 
@@ -272,34 +312,7 @@ file(char *f)
 	 * Now we check for pending deltas
 	 */
 	if (opts.pflg && state[CSTATE] != 'x' &&  state[CSTATE] != 'j') {
-		delta *d;
-
-		/*
-		 * check for pending deltas
-		 * TODO: need to handle LOD
-		 */                                    
-		sc = init(sfile, INIT_NOCKSUM);
-		
-		d = sccs_top(sc);
-		assert(d);
-		state[PSTATE] = (d->flags & D_CSET) ? ' ' : 'p';
-		if (opts.Aflg) {
-			if (d->flags & D_CSET) {
-				do_print(state, buf, d->rev);
-			} else {
-				while (d) {
-					if (d->flags & D_CSET) break;
-					do_print(state, buf, d->rev);
-					d = d->parent;
-				}
-			}
-		} else {
-			if (opts.Cflg) {
-				do_print(state, buf, d->rev);
-			} else {
-				do_print(state, buf, 0);
-			}
-		}
+		chk_pending(sc, buf, state);
 	} else  {
 		if (state[CSTATE] == 'x' || state[CSTATE] == 'j') {
 			if (exists(buf)) {
@@ -311,7 +324,7 @@ file(char *f)
 			do_print(state, buf, 0);
 		}
 	}
-	if (sfile) free(sfile);
+	if (sc) sccs_close(sc);
 }
 
 
@@ -321,13 +334,14 @@ walk(char *dir, int level)
 {
 	struct dirent   *e;
 	DIR	*dh;
-	char	*p, buf[MAXPATH];
+	char	*p, *buf;
 	fifo	dlist = {0, 0};
 #ifndef WIN32
         ino_t	lastInode = 0;
 #endif                                 
 
-	assert(isdir(dir));
+	buf = malloc(MAXPATH);
+	assert(buf);
 	concat_path(buf, dir, "SCCS");
 	unless (exists(buf)) {
 		/*
@@ -363,11 +377,13 @@ walk(char *dir, int level)
 			}
 		}
 		closedir(dh);
+		free(buf);
 		while (p = dequeue(&dlist)) {
 			walk(p, level + 1);
 			free(p);
 		}
 	} else {
+		free(buf);
 		sccsdir(dir, level);
 	}
 }
@@ -407,22 +423,21 @@ print_it(char state[4], char *file, char *rev)
 private void
 do_print(char state[4], char *file, char *rev)
 {
-	int show_it = 0;
-
 	switch (state[LSTATE]) {
-	    case 'l':	if (opts.lflg) show_it++; break;
-	    case 'u':	if (opts.uflg) show_it++; break;
+	    case 'l':	if (opts.lflg) goto print; break;
+	    case 'u':	if (opts.uflg) goto print; break;
 	}
 
 	switch (state[CSTATE]) {
-	    case 'c':	if (opts.cflg) show_it++; break;
-	    case 'n':	if (opts.nflg) show_it++; break;
-	    case 'j':	if (opts.jflg) show_it++; break;
-	    case 'x':	if (opts.xflg) show_it++; break;
+	    case 'c':	if (opts.cflg) goto print; break;
+	    case 'n':	if (opts.nflg) goto print; break;
+	    case 'j':	if (opts.jflg) goto print; break;
+	    case 'x':	if (opts.xflg) goto print; break;
 	}
-	if ((state[PSTATE] == 'p') && opts.pflg) show_it++;
+	if ((state[PSTATE] == 'p') && opts.pflg) goto print;
+	return;
 
-	if (show_it) print_it(state, file, rev);
+print:	print_it(state, file, rev);
 }
 
 /*
@@ -438,16 +453,19 @@ sccsdir(char *dir, int level)
 	struct dirent   *e;
 	DIR	*dh; /* dir handle */
 	int 	dir_len = strlen(dir);
-	char	*p, *gfile, buf[MAXPATH];
-	datum   k, v;
+	char	*p, *gfile, *buf;
+	datum	k;
 	kvpair  kv;
 	struct 	stat sb;
 	sccs	*s = 0;
+	q_item	*i;
 #ifndef WIN32
         ino_t	lastInode = 0;
 #endif                                 
 
-	 mdbm_set_alignment(gDB, sizeof(sb.st_mode));
+	buf = malloc(MAXPATH);
+	assert(buf);
+
 	/*
 	 * Get all the gfiles
 	 */
@@ -464,7 +482,7 @@ sccsdir(char *dir, int level)
 		if (patheq(e->d_name, "SCCS")) continue;
 
 		/*
-		 * do not decent in to another project root. e.g RESYNC
+		 * Do not decent into another project root. e.g RESYNC
 		 */
 		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
 			fprintf(stderr, "Warning: sub-root %s ignored\n", dir);
@@ -482,20 +500,16 @@ sccsdir(char *dir, int level)
 		 */
 		if ((dir_len + 8 + strlen(e->d_name)) >= MAXPATH) {
 			fprintf(stderr,
-			    "Warning: %s name too long, skiped\n", dir);
+			    "Warning: %s/%s name too long, skiped\n",
+							    dir, e->d_name);
 			continue;
 		}
 
 		concat_path(buf, dir, e->d_name);
-		lstat(buf, &sb);
-		if (S_ISDIR(sb.st_mode)) {
+		if (isdir(buf)) {
 			enqueue(&dlist, buf);
 		} else {
-			k.dptr = e->d_name;
-			k.dsize = strlen(e->d_name) + 1;
-			v.dptr = (char *) &(sb.st_mode);
-			v.dsize = sizeof(sb.st_mode);
-			mdbm_store(gDB, k, v, MDBM_INSERT);
+			mdbm_store_str(gDB, e->d_name, "", MDBM_INSERT);
 		}
 	}
 	closedir(dh);
@@ -525,44 +539,27 @@ sccsdir(char *dir, int level)
 			continue;
 		}
 
-		if (strneq("s.", e->d_name, 2)) {
-			enqueue(&slist, e->d_name);
-		} else {
-			mdbm_store_str(sDB, e->d_name, "", MDBM_INSERT);
-		}
+		if (strneq("s.", e->d_name, 2)) enqueue(&slist, e->d_name);
+		mdbm_store_str(sDB, e->d_name, "", MDBM_INSERT);
 	}
 	closedir(dh);
 
 	/*
-	 * First eliminate as much we can from SCCS dir;
-	 * the leftovers should be extras or directories in the g MDBM,
-	 * and there should be NOTHING leftover in the s MDBM.
+	 * First eliminate as much as we can from SCCS dir;
+	 * the leftovers in the gDB should be extras,
+	 * and there should be NOTHING leftover in the sDB.
 	 */
 	while (p = dequeue(&slist)) {
 
 		char	*file;
 		char	state[4] = "???";
-		delta	*d;
 
 		s = 0;
 		file = p;
 		unless (strneq("s.", file, 2)) continue;
 		gfile = &file[2];
-		k.dptr = gfile;
-		k.dsize = strlen(gfile) + 1;
-		v = mdbm_fetch(gDB, k);
-		if (v.dptr) {
-			/* check that it is not a DIR, if it is that is an
-			 * error because it is and s.file with a dir where a
-			 * gfile wants to be.
-			 */
-			if (S_ISDIR(*((mode_t *)v.dptr))) {
-				concat_path(buf, dir, gfile);
-				fprintf(stderr,
-				    "%s should not be a directory\n", buf);
-			}
-			mdbm_delete(gDB, k);
-		} 
+		mdbm_delete_str(gDB, gfile);
+
 		/*
 		 * look for p.file,
 		 */
@@ -601,36 +598,7 @@ sccsdir(char *dir, int level)
 		 */
 		concat_path(buf, dir, gfile);
 		if (opts.pflg) {
-			file[0] = 's';
-			unless (s) {
-				char tmp[MAXPATH];
-
-				concat_path(tmp, dir, "SCCS");
-				concat_path(tmp, tmp, file);
-				s = init(tmp, INIT_NOCKSUM);
-				assert(s);
-			}
-			assert(s && s->tree);
-			d = sccs_top(s);
-			assert(d);
-			state[PSTATE] = (d->flags & D_CSET) ? ' ' : 'p';
-			if (opts.Aflg) {
-				if (d->flags & D_CSET) {
-					do_print(state, buf, d->rev);
-				} else {
-					while (d) {
-						if (d->flags & D_CSET) break;
-						do_print(state, buf, d->rev);
-						d = d->parent;
-					}
-				}
-			} else {
-				if (opts.Cflg) {
-					do_print(state, buf, d->rev);
-				} else {
-					do_print(state, buf, 0);
-				}
-			}
+			chk_pending(s, buf, state);
 		} else {
 			state[PSTATE] = ' ';
 			do_print(state, buf, 0);
@@ -641,9 +609,9 @@ sccsdir(char *dir, int level)
 	}
 
 	/*
-	 * Check that s MDBM is empty at this point
+	 * Check that sDB is empty at this point
 	 * Anything in the array should be listed as a "junk" file
-	 * XXX TODO: Do we consider the r.file and m.file "junk" file ?
+	 * XXX TODO: Do we consider the r.file and m.file "junk" file?
 	 */
 	if (opts.jflg) {
 		concat_path(buf, dir, "SCCS");
@@ -652,14 +620,14 @@ sccsdir(char *dir, int level)
 			char buf1[MAXPATH];
 
 			if (strneq("x.", k.dptr, 2)) continue;
+			if (strneq("s.", k.dptr, 2)) continue;
 			concat_path(buf1, buf, k.dptr);
 			do_print(" j ", buf1, 0);
 		}
 	}
-	mdbm_close(sDB);
 
 	/*
-	 * everything left in the g array is extra
+	 * Everything left in the gDB is extra
 	 */
 	if (opts.xflg) {
 		for (kv = mdbm_first(gDB); kv.key.dsize != 0;
@@ -669,6 +637,20 @@ sccsdir(char *dir, int level)
 		}
 	}
 	mdbm_close(gDB);
+
+	/*
+	 * Make sure the directory in the gdir does not have a s.file
+	 */
+	for (i = dlist.first; i; i = i->next) {
+		sprintf(buf, "s.%s", i->path);
+		if (mdbm_fetch_str(sDB, buf)) {
+			fprintf(stderr,
+			"Warning: %s should not be a directory\n", i->path);
+		}
+	}
+	mdbm_close(sDB);
+	free(buf);
+	
 
 	/*
 	 * Process the directories
