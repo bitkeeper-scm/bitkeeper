@@ -52,7 +52,7 @@ private int	delta_rm(sccs *s, delta *d, FILE *sfile, int flags);
 private int	delta_rmchk(sccs *s, delta *d);
 private int	delta_destroy(sccs *s, delta *d, int flags);
 private int	delta_strip(sccs *s, delta *d, FILE *sfile, int flags);
-void		explodeKey(char *key, char *parts[4]);
+void		explodeKey(char *key, char *parts[6]);
 private time_t	getDate(delta *d);
 private	void	unlinkGfile(sccs *s);
 private time_t	date2time(char *asctime, char *z, int roundup);
@@ -70,6 +70,7 @@ private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
 private void	sccs_freetable(delta *d);
 delta *		sccs_kid(sccs *s, delta *d);  /* In range.c */
+private	sum_t	getCksumDelta(sccs *s, delta *d);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -1475,7 +1476,7 @@ getCSetFile(sccs *s)
 	if (exists(file)) {
 		sc = sccs_init(file, INIT_NOCKSUM, 0);
 		assert(sc->tree);
-		sccs_sdelta(file, sc->tree);
+		sccs_sdelta(sc, sc->tree, file);
 		sccs_free(sc);
 		return (strdup(file));
 	}
@@ -2390,7 +2391,7 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 			break;
 
 		    case 'K':	/* BitKeeper Key */
-		    	t += sccs_sdelta(t, d);
+		    	t += sccs_sdelta(s, d, t);
 			expn = 1;
 			break;
 
@@ -4789,6 +4790,22 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	return f;
 } 
 
+/* Get the checksum of the last non null delta */
+/* XXX include and exclude may be benign.  Want a way to
+ * know if check sum is different from parent
+ */
+
+private	sum_t
+getCksumDelta(sccs *s, delta *d)
+{
+	delta	*t;
+	for (t = d; t; t = t->parent) {
+		if (t->include || t->exclude || t->added || t->deleted)
+			return (t->sum);
+	}
+	return (0);
+}
+
 private int
 getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
@@ -4920,11 +4937,14 @@ out:		if (slist) free(slist);
 		    ? printstate((const serlist*)state, (const ser_t*)slist)
 		    : visitedstate((const serlist*)state, (const ser_t*)slist);
 	}
-	if (d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && \
-	    lines && (sum != d->sum)) {
-		fprintf(stderr,
+	if (d && (flags & NEWCKSUM) && !(flags&GET_SHUTUP) && lines) {
+		sum_t	z = getCksumDelta(s, d);
+
+		unless (z == sum) {
+		    fprintf(stderr,
 		    "get: bad delta cksum %u:%u for %s in %s, gotten anyway.\n",
-		    d->sum, sum, d->rev, s->sfile);
+		    z, sum, d->rev, s->sfile);
+		}
 	}
 
 	if (s->encoding & E_GZIP) zgets_done();
@@ -6689,9 +6709,9 @@ updatePending(sccs *s, delta *d)
 	concat_path(buf, buf, "x.pending");
 	fd = open(buf, O_CREAT|O_APPEND|O_WRONLY, 0660);
 	unless (fd > 0) return;
-	sccs_sdelta(buf, sccs_ino(s));
+	sccs_sdelta(s, sccs_ino(s), buf);
 	strcat(buf, " ");
-	sccs_sdelta(&buf[strlen(buf)], d);
+	sccs_sdelta(s, d, &buf[strlen(buf)]);
 	strcat(buf, "\n");
 	if (write(fd, buf, strlen(buf)) == -1) {
 		perror("Can't write to pending file");
@@ -6785,12 +6805,18 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	updMode(s, n, 0);
 	if (!n->rev) n->rev = n0 ? strdup("1.1") : strdup("1.0");
 	explode_rev(n);
+	/*
+	 * determine state to set BITKEEPER flag before dinsert
+	 * XXX: don't understand why, cloned old logic because
+	 * I needed to move part of the logic after dinsert
+	 */
 	unless (s->state & S_NOSCCSDIR) {
-		if (s->state & S_CSET) {
-			unless (first->csetFile) {
-				sccs_sdelta(buf, first);
-				first->csetFile = strdup(buf);
-			}
+		t = 0;
+		unless (s->state & S_CSET) {
+			t = relativeName(s, 0, 0);
+			assert(t);
+		}
+		if (s->state & S_CSET || (t && t[0] != '/')) {
 			s->state |= S_BITKEEPER|S_CSETMARKED;	
 			first->flags |= D_CKSUM;
 		} else {
@@ -6801,7 +6827,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 				s->state |= S_BITKEEPER|S_CSETMARKED;	
 			}
 		}
-	} 
+	}
 	n->serial = s->nextserial++;
 	s->table = n;
 	if (n->flags & D_BADFORM) {
@@ -6833,6 +6859,8 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		free(n->sym);
 		n->sym = 0;
 	}
+	/* need random set before the call to sccs_sdelta */
+	/* XXX: changes n, so must be after n->sym stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
 		randomBits(buf);
 		if (buf[0]) s->random = strdup(buf);
@@ -6843,6 +6871,25 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			n->comments = addLine(n->comments, strdup(buf));
 		}
 	}
+	unless (s->state & S_NOSCCSDIR) {
+		if (s->state & S_CSET) {
+			unless (first->csetFile) {
+				first->sum = almostUnique(1);
+				first->flags |= D_ICKSUM;
+				sccs_sdelta(s, first, buf);
+				first->csetFile = strdup(buf);
+			}
+			first->flags |= D_CKSUM;
+		} else {
+			t = relativeName(s, 0, 0);
+			assert(t);
+			if (t[0] != '/') {
+				unless (first->csetFile) {
+					first->csetFile = getCSetFile(s);
+				}
+			}
+		}
+	} 
 	if (delta_table(s, sfile, 1, 1)) {
 		error++;
 		goto abort;
@@ -9255,15 +9302,17 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	fputmeta(s, buf, out);
 	if (s->state & S_BITKEEPER) {
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
-			if (s->dsum != n->sum) {
+			sum_t 	sum = getCksumDelta(s, n);
+			if (s->dsum != sum) {
 				fprintf(stderr,
 				    "%s: bad delta checksum: %u:%u for %s\n",
-				    s->sfile, s->dsum, n->sum, n->rev);
+				    s->sfile, s->dsum, sum, n->rev);
 				s->state |= S_BAD_DSUM;
 			}
 		}
 		unless (n->flags & D_ICKSUM) {
-			if (!add && !del && !same) {
+			/* XXX: would like "if cksum is same as parent" */
+			if (!add && !del && !n->include && !n->exclude) {
 				n->sum = almostUnique(0);
 			} else {
 				n->sum = s->dsum;
@@ -9960,7 +10009,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "KEY")) {
-		if (out) sccs_pdelta(d, out);
+		if (out) sccs_pdelta(s, d, out);
 		return (strVal);
 	}
 
@@ -9979,7 +10028,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "LONGKEY")) {
 		if (out && d) {
 
-			sccs_pdelta(d, out);
+			sccs_pdelta(s, d, out);
 			if (d->flags & D_CKSUM) {
 				fprintf(out, "-%05d", (int)d->sum);
 			}
@@ -10512,7 +10561,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		delta	*d = sfind(s, start->include[i]);
 		assert(d);
 		fprintf(out, "i ");
-		sccs_pdelta(d, out);
+		sccs_pdelta(s, d, out);
 		fprintf(out, "\n");
 	}
 	if (start->flags & D_CKSUM) fprintf(out, "K %u\n", start->sum);
@@ -10522,7 +10571,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		delta	*d = sfind(s, start->merge);
 		assert(d);
 		fprintf(out, "M ");
-		sccs_pdelta(d, out);
+		sccs_pdelta(s, d, out);
 		fprintf(out, "\n");
 	}
 	if (start->flags & D_MODE) {
@@ -10546,7 +10595,7 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		delta	*d = sfind(s, start->exclude[i]);
 		assert(d);
 		fprintf(out, "x ");
-		sccs_pdelta(d, out);
+		sccs_pdelta(s, d, out);
 		fprintf(out, "\n");
 	}
 	if (s->tree->zone) assert(start->zone);
@@ -10825,7 +10874,58 @@ out:	sccs_free(left);
 }
 
 private inline int
-samekey(delta *d, char *user, char *host, char *path, time_t date)
+samekeystr(char *a, char *b)
+{
+	char	*parts_a[6], *parts_b[6];
+
+	debug((stderr, "samekeystr(%s, %s)\n", a, b));
+	/* tight compare */
+	if (streq(a, b)) return (1);
+
+	/* loose compare */
+	explodeKey(a, parts_a);
+	explodeKey(b, parts_b);
+	debug((stderr, "samekeystr: parts_a:%s, %s, %s, %s, %s, %s\n",
+		parts_a[0],
+		parts_a[1] ? parts_a[1] : "NULL",
+		parts_a[2],
+		parts_a[3],
+		parts_a[4] ? parts_a[4] : "NULL",
+		parts_a[5] ? parts_a[5] : "NULL"));
+	debug((stderr, "samekeystr: parts_b:%s, %s, %s, %s, %s, %s\n",
+		parts_b[0],
+		parts_b[1] ? parts_b[1] : "NULL",
+		parts_b[2],
+		parts_b[3],
+		parts_b[4] ? parts_b[4] : "NULL",
+		parts_b[5] ? parts_b[5] : "NULL"));
+
+	/* user */
+	assert(parts_a[0] && parts_b[0]);
+	unless (streq(parts_a[0], parts_b[0])) return(0);
+	/* host (may not be there; if not, then not in both) */
+	unless ((!parts_a[1] && !parts_b[1]) ||
+		(parts_a[1] && parts_b[1]))    return(0);
+	unless (!parts_a[1] || streq(parts_a[1], parts_b[1]))
+		return (0);
+	/* pathname (might be zero length, but will be there */
+	assert(parts_a[2] && parts_b[2]);
+	unless (streq(parts_a[2], parts_b[2])) return(0);
+	/* utc + fudge timestamp */
+	assert(parts_a[3] && parts_b[3]);
+	unless (streq(parts_a[3], parts_b[3])) return(0);
+	/* chksum (or almostUnique if null delta) */
+	if (parts_a[4] && parts_b[4])
+		unless (streq(parts_a[4], parts_b[4])) return (0);
+	/* if 1.0 node, then random number */
+	if (parts_a[5] && parts_b[5])
+		unless (streq(parts_a[5], parts_b[5])) return (0);
+	return (1);
+}
+
+private inline int
+samekey(delta *d, char *user, char *host, char *path, time_t date,
+	sum_t *cksump)
 {
 	getDate(d);
 	if (d->date != date) {
@@ -10845,6 +10945,10 @@ samekey(delta *d, char *user, char *host, char *path, time_t date)
 		unless (path && streq(d->pathname, path)) return (0);
 	} else if (path) {
 		return (0);
+	}
+	/* XXX: all d->cksum are valid: we'll assume always there */
+	if (cksump) {
+		unless (d->sum == *cksump) return (0);
 	}
 //printf("MATCH\n");
 	return (1);
@@ -10942,23 +11046,35 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 delta *
 sccs_findKey(sccs *s, char *key)
 {
-	char	*parts[4];	/* user, host, path, date as integer */
-	char	*user, *host, *path;
+	char	*parts[6];	/* user, host, path, date as integer */
+	char	*user, *host, *path, *random;
+	sum_t	cksum;
+	sum_t	*cksump = 0;
 	time_t	date;
 	delta	*e;
 	char	buf[MAXPATH];
 
 	unless (s && s->tree) return (0);
-//printf("findkey(%s)\n", key);
+	debug((stderr, "findkey(%s)\n", key));
 	strcpy(buf, key);
 	explodeKey(buf, parts);
 	user = parts[0];
 	host = parts[1];
 	path = parts[2];
 	date = date2time(&parts[3][2], 0, EXACT);
-	if (samekey(s->tree, user, host, path, date)) return (s->tree);
+	if (parts[4]) {
+		cksum = atoi(parts[4]);
+		cksump = &cksum;
+	};
+	random = parts[5];
+	if (random) { /* then sfile must have random and it must match */
+		unless (s->random && streq(s->random, random)) return (0);
+	}
+	if (samekey(s->tree, user, host, path, date, cksump))
+		return (s->tree);
 	for (e = s->table;
-	    e && !samekey(e, user, host, path, date); e = e->next);
+	    e && !samekey(e, user, host, path, date, cksump);
+	    e = e->next);
 	return (e);
 }
 
@@ -10996,27 +11112,41 @@ sccs_utctime(delta *d)
 }
 
 void
-sccs_pdelta(delta *d, FILE *out)
+sccs_pdelta(sccs *s, delta *d, FILE *out)
 {
 	assert(d);
-	fprintf(out, "%s%s%s|%s|%s",
+	fprintf(out, "%s%s%s|%s|%s|%05u",
 	    d->user,
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->pathname ? d->pathname : "",
-	    sccs_utctime(d));
+	    sccs_utctime(d),
+	    d->sum);
+	unless (s && s->tree && sccs_ino(s) == d && s->random) return;
+	fprintf(out, "|%s", s->random);
 }
 
+/* Get the checksum of the 5 digit checksum */
+
 int
-sccs_sdelta(char *buf, delta *d)
+sccs_sdelta(sccs *s, delta *d, char *buf)
 {
+	char	*tail;
+	int	len;
+
 	assert(d);
-	return (sprintf(buf, "%s%s%s|%s|%s",
+	len = sprintf(buf, "%s%s%s|%s|%s|%05u",
 	    d->user,
 	    d->hostname ? "@" : "",
 	    d->hostname ? d->hostname : "",
 	    d->pathname ? d->pathname : "",
-	    sccs_utctime(d)));
+	    sccs_utctime(d),
+	    d->sum);
+	assert(len);
+	unless (s && s->tree && sccs_ino(s) == d && s->random) return (len);
+	for (tail = buf; *tail; tail++);
+	len += sprintf(tail, "|%s", s->random);
+	return (len);
 }
 
 /*
@@ -11024,18 +11154,51 @@ sccs_sdelta(char *buf, delta *d)
  * parts.
  */
 void
-explodeKey(char *key, char *parts[4])
+explodeKey(char *key, char *parts[6])
 {
 	char	*s;
 
-	/* user@host|sccs/slib.c|19970518232929 */
+	/* user[@host]|sccs/slib.c|19970518232929[|23330|[233de234]] */
+	/* user[@host]|path|date[|cksum|[random]] */
+
+	/* parts[0] = user[@host] */
 	for (s = key; *key && (*key != '|'); key++);
 	parts[0] = s;
+	assert(key);
 	*key++ = 0;
+
+	/* parts[2] = path or NULL if no path listed, but || */
 	for (s = key; *key && (*key != '|'); key++);
 	parts[2] = s == key ? 0 : s;
+	assert(key);
 	*key++ = 0;
-	parts[3] = key;
+
+	/* parts[3] = utc fudged time */
+	for (s = key; *key && (*key != '|'); key++);
+	parts[3] = s;
+
+	/* if more data .... it's a cksum or maybe null field? */
+	if (*key) {
+		*key++ = 0;
+		for (s = key; *key && (*key != '|'); key++);
+		parts[4] = s == key ? 0 : s;
+	}
+	else {
+		parts[4] = 0;
+	}
+	/* if more data .... random string */
+	if (*key) {
+		*key++ = 0;
+		for (s = key; *key && (*key != '|'); key++);
+		parts[5] = s == key ? 0 : s;
+	}
+	else {
+		parts[5] = 0;
+	}
+
+	assert(!*key);
+
+	/* go back and split user@host to user and host */
 	for (key = parts[0]; *key && (*key != '@'); key++);
 	if (*key == '@') {
 		*key++ = 0;
@@ -11105,6 +11268,69 @@ out:		if (f) fclose(f);
 	return (DB);
 }
 
+MDBM	*
+loadIdDB(void)
+{
+	MDBM	*idDB = 0;
+	MDBM	*DB = 0;
+	kvpair	kv;
+	char	k[MAXLINE];
+	char	*v;
+	char	*t;
+	int	first = 1;
+	int	rc;
+
+again:
+	unless (first) {	/* dump and recompute long key cache */
+		if (DB) mdbm_close(DB);
+		if (idDB) mdbm_close(idDB);
+		unlink(ID);	/* XXX: careful throwing away files */
+	}
+
+	DB = loadDB(ID, 0);	/* slurp the id_cache file */
+	assert(DB);
+
+	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	assert(idDB);
+
+	/* Scan through DB, and copy keys + short keys - short key dups */
+
+	for (kv = mdbm_first(DB); kv.key.dsize; kv = mdbm_next(DB)) {
+		v = strcpy(k, kv.key.dptr);
+		assert(v);
+		v = kv.val.dptr;
+		/* copy across allowing no failure */
+		if (mdbm_store_str(idDB, k, v, MDBM_INSERT)) {
+			assert("loadIdDB: copy failed" == 0);
+		}
+		/* compute short key and put in unless dup */
+		unless (t = sccs_iskeylong(k)) {
+			if (first) {
+				first = 0;
+				goto again;
+			}
+			assert("loadIdDB: is bk sfiles running old bits?" == 0);
+		}
+		*t = 0;	/* k is now short key */
+		if (rc = mdbm_store_str(idDB, k, v, MDBM_INSERT)) {
+			if (rc == 1) {
+				char *old = mdbm_fetch_str(idDB, k);
+				assert(old);
+				fprintf(stderr,
+				  "Duplicate short keys: %s for %s and %s\n",
+				  k, v, old);
+				mdbm_delete_str(idDB, k); 
+			}
+			else {
+				assert("loadIdDB: fail in store idDB" == 0);
+			}
+		}
+
+	}
+	mdbm_close(DB);
+	return (idDB);
+}
+
 int
 findpipe(register char *s)
 {
@@ -11124,31 +11350,54 @@ csetIds(sccs *s, char *rev, int all)
 	FILE	*f;
 	MDBM	*db;
 	char	name[MAXPATH];
+	char	key[MAXPATH];
+	delta	*d;
 
 	sprintf(name, "/tmp/cs%d", getpid());
-	if (all) {
-all:		if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
-			sccs_whynot("get", s);
-			exit(1);
-		}
-	} else {
-		delta	*d;
+	assert(all);
 
-		unless (d = findrev(s, rev)) {
-			perror(rev);
-			exit(1);
-		}
-		unless (d->parent) goto all;
-		f = fopen(name, "wt");
-		if (sccs_diffs(s, d->parent->rev, rev, SILENT, DF_RCS, f)) {
-			sccs_whynot("get", s);
-			exit(1);
-		}
-		fclose(f);
+	unless (d = findrev(s, rev)) {
+		perror(rev);
+		exit(1);
+	}
+
+	if (sccs_get(s, rev, 0, 0, 0, SILENT|PRINT, name)) {
+		sccs_whynot("get", s);
+		exit(1);
 	}
 	db = loadDB(name, findpipe);
 	unlink(name);
+	/* add cset key , val */
+	sccs_sdelta(s, sccs_ino(s), key);
+	sccs_sdelta(s, d, name);
+	if (mdbm_store_str(db, key, name, MDBM_REPLACE) == -1) {
+		perror("mdbm_store_str");
+		exit(1);
+	}
 	return (db);
+}
+
+/*
+ * Scan key and return:
+ * Location of '|' which starts long key part
+ * or the NULL pointer (0) if it was already short
+ * Does not modify string (though caller can do a *t=0 upon return
+ * to make a short key).
+ */
+char *
+sccs_iskeylong(char *key)
+{
+	char	*t;
+
+	assert(key);
+	for (t = key; *t && *t != '|'; t++);
+	assert(t);
+	for (t++; *t && *t != '|'; t++);
+	assert(t);
+	for (t++; *t && *t != '|'; t++);
+	unless (*t) return (0);
+	assert(*t == '|');
+	return (t);
 }
 
 /*
@@ -11164,7 +11413,9 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	char	*p;
 	sccs	*s;
 	char	buf[MAXPATH];
+	char	*localkey = 0;
 
+	/* Id cache contains long and short keys */
 	k.dptr = key;
 	k.dsize = strlen(key) + 1;
 	v = mdbm_fetch(idDB, k);
@@ -11183,11 +11434,16 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 	s = sccs_init(p, flags, 0);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
-	sccs_sdelta(buf, sccs_ino(s));
-	unless (streq(buf, key))  goto out;
+	sccs_sdelta(s, sccs_ino(s), buf);
+	/* modifies buf and key, so copy key to local key */
+	localkey = strdup(key);
+	assert(localkey);
+	unless (samekeystr(buf, localkey))  goto out;
+	free(localkey);
 	return (s);
 
 out:	if (s) sccs_free(s);
+	if (localkey) free(localkey);
 	return (0);
 }
 
@@ -11205,11 +11461,11 @@ sccs_ids(sccs *s, u32 flags, FILE *out)
 {
 	delta	*d = s->tree;
 
-	sccs_pdelta(sccs_ino(s), out);
+	sccs_pdelta(s, sccs_ino(s), out);
 	for (d = s->table; d; d = d->next) {
 		if (!d->kid && (d->type == 'D')) {
 			fprintf(out, " ");
-			sccs_pdelta(d, out);
+			sccs_pdelta(s, d, out);
 		}
 	}
 	fprintf(out, "\n");

@@ -518,12 +518,11 @@ delta	*sccs_getInit(sccs *s,
 delta	*sccs_ino(sccs *);
 int	sccs_rmdel(sccs *s, delta *d, int destroy, u32 flags);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
-void	sccs_pdelta(delta *d, FILE *out);
+void	sccs_pdelta(sccs *s, delta *d, FILE *out);
 char	*sccs_root(sccs *, char *optional_root);
 int	sccs_cd2root(sccs *, char *optional_root);
-delta	*sccs_key2delta(sccs *sc, char *key);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
-int	sccs_sdelta(char *, delta *);
+int	sccs_sdelta(sccs *s, delta *, char *);
 sccs	*sccs_getperfile(FILE *, int *);
 void	sfileUnget(void);
 char	*sfileNext(void);
@@ -558,6 +557,7 @@ int	roundType(char *r);
 sccs	*check_gfile(sccs*, int);
 void	platformSpecificInit(char *, int);
 MDBM	*loadDB(char *file, int (*want)(char *));
+MDBM	*loadIdDB(void);
 MDBM	*csetIds(sccs *cset, char *rev, int all);
 void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);
@@ -569,6 +569,7 @@ sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, int ser);
 int	sccs_lock(sccs *, char);
 int	sccs_unlock(sccs *, char);
+char 	*sccs_iskeylong(char *key);
 
 /* Utility functions also in slib.c.  */
 int	exists(char *file);

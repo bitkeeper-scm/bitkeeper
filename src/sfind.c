@@ -374,7 +374,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	if (rFlg) {
 		delta	*ino = sccs_ino(sc);
 
-		sccs_sdelta(buf, sccs_ino(sc));
+		sccs_sdelta(sc, sccs_ino(sc), buf);
 		/* update the id cache if 
 		 * a) there is no path for the root - BAD, or
 		 * b) if the root path != current path.
@@ -382,6 +382,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 		if (!ino->pathname || !streq(ino->pathname, sc->gfile)) {
 			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 		}
+		/* XXX: could use mdbm_store_str and mdbm_fetch_str */
 		k.dptr = buf;
 		k.dsize = strlen(buf) + 1;
 		v.dptr = sc->gfile;
@@ -408,7 +409,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	}
 
 	/* Go look for it in the cset */
-	sccs_sdelta(buf, sccs_ino(sc));
+	sccs_sdelta(sc, sccs_ino(sc), buf);
 	k.dptr = buf;
 	k.dsize = strlen(buf) + 1;
 	v = mdbm_fetch(csetDB, k);
