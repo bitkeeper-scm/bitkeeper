@@ -8,16 +8,29 @@ proc msg {msg OK} \
 	if {[file exists $image]} {
 		set bklogo [image create photo -file $image]
 		label $w.logo -image $bklogo -background white \
-		    -bd 0 -relief ridge
+		    -bd 3 -relief raised
 		pack $w.ok -side bottom -fill x
 		pack $w.logo -side top -fill x 
 	} else {
 		pack $w.ok -side bottom -fill x 
 	}
-	message $w.m -text $msg -aspect 400 -width 800 -bd 15 -relief flat
+	message $w.m -background #f8f8f8 \
+	    -text $msg -aspect 400 -width 800 -bd 6 -relief flat
 	pack $w.m -side top -fill both
 	pack $w -fill both
 }
 
-set arg [lindex $argv 0 ]
-msg $arg OK
+set msg ""
+set arg [lindex $argv 0]
+if {$arg == "-"} {
+	while {[gets stdin buf] >= 0} {
+		if {$msg == ""} {
+			set msg $buf
+		} else {
+			set msg "$msg\n$buf"
+		}
+	}
+} else {
+	set msg $arg
+}
+msg $msg OK

@@ -4,13 +4,13 @@
 .SH NAME
 bk commit \- commit deltas to a changeset
 .SH SYNOPSIS
-.Bc bk commit [\-adFRq] [
+.Bc bk commit [\-adRq] [
 .OPTreq \-S  tag
 .Bc ] [
 .OPTreq \-y x
 .B ]
 .br
-.Bc bk commit [\-adFRq] [
+.Bc bk commit [\-adRq] [
 .OPTreq \-S tag
 .Bc ] [
 .OPTreq \-Y file 
@@ -66,9 +66,6 @@ Do not ask the user about logging, fail the commit unless OK.
 .tp
 .B \-d
 Don't run interactively; do the commit with the default comments.
-.tp
-.B \-F
-Force a commit even if no pending deltas.
 .tp
 .B \-R
 Tell commit that it is processing the resync directory.

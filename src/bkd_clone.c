@@ -26,9 +26,11 @@ cmd_clone(int ac, char **av)
 		out("ERROR-Clone is not supported in compatibility mode.\n");
 	}
 
-	if (!exists("BitKeeper/etc")) {
+	unless (isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
-		exit(1);
+		out("@END@\n");
+		drain();
+		return (1);
 	}
 	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) {
 		out("ERROR-bkd std cannot access non-master repository\n");
@@ -92,7 +94,7 @@ cmd_clone(int ac, char **av)
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
-	if (p && trigger(av, "pre")) return (1);
+	if (p && trigger(av[0], "pre")) return (1);
 	if (p) out("@SFIO@\n");
 	if (p) {
 		rc = compressed(gzip, 1);
@@ -103,7 +105,7 @@ cmd_clone(int ac, char **av)
 	}
 	flushSocket(1); /* This has no effect for pipe, should be OK */
 	putenv(rc ? "BK_STATUS=FAILED" : "BK_STATUS=OK");
-	if (p && trigger(av, "post")) exit (1);
+	if (p && trigger(av[0], "post")) exit (1);
 
 	/*
 	 * XXX Hack alert: workaround for a ssh bug

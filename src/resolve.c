@@ -131,8 +131,11 @@ resolve_main(int ac, char **av)
 private void
 resolve_post(int c)
 {
-	char	*av[] = { "resolve", 0 };
-
+	/*
+	 * It is the responsibility of the calling code to set this env
+	 * var to indicate that we were not run standalone, we are called
+	 * from a higher level and they will run the triggers.
+	 */
 	if (getenv("POST_INCOMING_TRIGGER") &&
 	    streq(getenv("POST_INCOMING_TRIGGER"), "NO")) {
 	    	return;
@@ -143,7 +146,7 @@ resolve_post(int c)
 	} else {
 		putenv("BK_STATUS=OK");
 	}
-	trigger(av, "post");
+	trigger("resolve", "post");
 }
 
 private void
@@ -2173,7 +2176,7 @@ pass4_apply(opts *opts)
 	char	key[MAXKEY];
 	char 	realname[MAXPATH];
 	MDBM	*permDB = mdbm_mem();
-	char	*fake_av[2] = { "apply", 0 };
+	char	*cmd = "apply";
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2186,9 +2189,9 @@ pass4_apply(opts *opts)
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
 	if (getenv("BK_REMOTE") && streq(getenv("BK_REMOTE"), "YES")) {
-		fake_av[0] = "remote apply";
+		cmd = "remote apply";
 	}
-	if (!opts->logging && (ret = trigger(fake_av,  "pre"))) {
+	if (!opts->logging && (ret = trigger(cmd,  "pre"))) {
 		switch (ret) {
 		    case 3: flags = CLEAN_MVRESYNC; break;
 		    case 2: flags = CLEAN_RESYNC; break;
@@ -2386,8 +2389,9 @@ Got:\n\
 		fprintf(stderr,
 		    "resolve: running consistency check, please wait...\n");
 	}
+	fflush(save); /*  important */
 	if (strieq("yes", user_preference("partial_check"))) {
-		ret = check(BACKUP_LIST);
+		ret = check(APPLIED);
 	} else {
 		ret = check(0);
 	}

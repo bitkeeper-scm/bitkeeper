@@ -546,7 +546,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		 * script wants it.
 		 */
 		safe_putenv("BK_CSETLIST=%s", rev_list);
-		if (!opts.metaOnly && trigger(av, "pre")) {
+		if (!opts.metaOnly && trigger(av[0], "pre")) {
 			send_end_msg(r, "@ABORT@\n", rev_list, envVar);
 			rc = 1;
 			done = 1;
@@ -631,7 +631,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 
 done:	if (!opts.metaOnly) {
 		if (rc) putenv("BK_STATUS=CONFLICTS");
-		trigger(av, "post");
+		trigger(av[0], "post");
 	}
 	if (rev_list[0]) unlink(rev_list);
 

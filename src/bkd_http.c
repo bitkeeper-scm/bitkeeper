@@ -134,7 +134,7 @@ cmd_httpget(int ac, char **av)
 	 * Don't give seperate error messages as that is an information leak.
 	 */
 	getcwd(a, MAXPATH);
-	name = findRoot(name);
+	unless (strneq(name, "license", 7)) name = findRoot(name);
 	getcwd(b, MAXPATH);
 	unless (name && 
 	    (strlen(b) >= strlen(a)) && strneq(a, b, strlen(a))) {
@@ -145,8 +145,8 @@ cmd_httpget(int ac, char **av)
 	if (user) sprintf(root+strlen(root), "user=%s/", user);
 	unless (*name) name = "index.html";
 
-	unless (bk_options()&BKOPT_WEB) {
-		unless (streq(name, "license") || has_temp_license()) {
+	unless (streq(name, "license") || bk_options()&BKOPT_WEB) {
+		unless (has_temp_license()) {
 			http_error(503,
 			    "bkWeb option is disabled: %s",
 			    upgrade_msg);
@@ -440,7 +440,6 @@ findRoot(char *name)
 	char	path[MAXPATH];
 	int	tries = 256;
 	
-	unless (*name) name = ".";
 	sprintf(path, "%s/BitKeeper/etc", name);
 	if (isdir(path)) {
 		chdir(name);
@@ -463,6 +462,10 @@ findRoot(char *name)
 		t = strrchr(name, '/');
 		*s = '/';
 		s = t;
+	}
+	if (!s && isdir("BitKeeper/etc")) {
+		strcpy(root, url(0));
+		return(name);
 	}
 	return (0);
 }
@@ -1556,8 +1559,8 @@ http_index(char *page)
 }
 
 /*
- * "Tue, 28 Jan 97 01:20:30 GMT";
- *  012345678901234567890123456
+ * "Tue, 28 Jan 1997 01:20:30 GMT";
+ *  01234567890123456789012345678
  */
 private char	*
 http_time()
@@ -1573,8 +1576,8 @@ http_time()
 	save_tt = tt;
 	t = gmtime(&tt);
 	if (buf[0] && (tt - save_tt < 3600)) {
-		buf[22] = t->tm_sec / 10 + '0';
-		buf[21] = t->tm_sec % 10 + '0';
+		buf[23] = t->tm_sec / 10 + '0';
+		buf[24] = t->tm_sec % 10 + '0';
 		save_tm.tm_sec = t->tm_sec;
 		if (save_tm.tm_min == t->tm_min) return (buf);
 	}
@@ -1584,8 +1587,8 @@ http_time()
 }
 
 /*
- * "Tue, 28 Jan 97 01:20:30 GMT";
- *  012345678901234567890123456
+ * "Tue, 28 Jan 1997 01:20:30 GMT";
+ *  01234567890123456789012345678
  */
 private char	*
 http_expires()
@@ -1751,10 +1754,13 @@ has_temp_license()
 
 	if (time(0) < licenseEnd) return 1;
 
-
+	/*
+	 * Only try to obtain a temp license if both pull
+	 * and clone have not been disabled.
+	 */
 	for (i=0; cmds[i].name; i++) {
-		if (streq(cmds[i].name, "pull")) need &= ~PULL;
-		if (streq(cmds[i].name, "clone")) need &= ~CLONE;
+		if (strneq(cmds[i].name, "pull", 4)) need &= ~PULL;
+		if (strneq(cmds[i].name, "clone", 5)) need &= ~CLONE;
 	}
 	if (need) return 0;
 

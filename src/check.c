@@ -155,6 +155,7 @@ check_main(int ac, char **av)
 	    name; n++, name = sfileNext()) {
 		unless (s = sccs_init(name, flags, proj)) {
 			if (all) fprintf(stderr, "%s init failed.\n", name);
+			errors |= 1;
 			continue;
 		}
 		if (all && (verbose == 1))  progress(n, 0);
@@ -163,6 +164,7 @@ check_main(int ac, char **av)
 			    "%s: bad file checksum, corrupted file?\n",
 			    s->sfile);
 			sccs_free(s);
+			errors |= 1;
 			continue;
 		}
 		unless (HASGRAPH(s)) {
@@ -173,11 +175,12 @@ check_main(int ac, char **av)
 				perror(s->sfile);
 			}
 			sccs_free(s);
+			errors |= 1;
 			continue;
 		}
 		/*
 		 * exit code 2 means try again, all other errors should be
-		 * distint.
+		 * distinct.
 		 */
 		if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
 		if (chk_gfile(s)) errors |= 0x08;

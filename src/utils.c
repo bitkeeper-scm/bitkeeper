@@ -292,8 +292,8 @@ confirm(char *msg)
 		return (0);
 	}
 	fflush(stdout);
-	write(1, msg, strlen(msg));
-	write(1, " (y/n) ", 7);
+	write(2, msg, strlen(msg));
+	write(2, " (y/n) ", 7);
 	if (getline(0, buf, sizeof(buf)) <= 1) {
 		(void)sig_catch(old);
 		return (0);
@@ -781,43 +781,41 @@ smallTree(int threshold)
  * malloc'ed buffer which caller should free when done
  */
 char *
-vaprintf(const char *fmt, va_list ptr)
-{
-	int	rc, size = strlen(fmt) + 64;
-	char	*buf = malloc(size);
-
-	rc = vsnprintf(buf, size, fmt, ptr);
-	/*
-	 * On IRIX, it truncates and returns size-1.
-	 * We can't assume that that is OK, even though that might be
-	 * a perfect fit.  We always bump up the size and try again.
-	 * This can rarely lead to an extra alloc that we didn't need,
-	 * but that's tough.
-	 */
-	while ((rc < 0) || (rc >= (size-1))) {
-		size *= 2;
-		free(buf);
-		buf = malloc(size);
-		rc = vsnprintf(buf, size, fmt, ptr);
-	}
-	return (buf); /* caller should free */
-}
-
-/*
- * This function works like sprintf(), except it return a
- * malloc'ed buffer which caller should free when done
- */
-char *
 aprintf(char *fmt, ...)
 {
 	va_list	ptr;
-	char	*ret;
-	
-	va_start(ptr, fmt);
-	ret = vaprintf(fmt, ptr);
-	va_end(ptr);
-	
-	return (ret);
+	int	rc;
+	char	*buf;
+	int	size = strlen(fmt) + 64;
+		
+	while (1) {
+		buf = malloc(size);
+		va_start(ptr, fmt);
+		rc = vsnprintf(buf, size, fmt, ptr);
+		va_end(ptr);
+		if (rc >= 0 && rc < size - 1) break;
+		free(buf);
+		if (rc < 0 || rc == size - 1) {
+			/*
+			 * Older C libraries return -1 to indicate
+			 * the buffer was too small.
+			 *
+			 * On IRIX, it truncates and returns size-1.
+			 * We can't assume that that is OK, even
+			 * though that might be a perfect fit.  We
+			 * always bump up the size and try again.
+			 * This can rarely lead to an extra alloc that
+			 * we didn't need, but that's tough.
+			 */
+			size *= 2;
+		} else {
+			/* In C99 the number of characters needed 
+			 * is always returned. 
+			 */
+			size = rc + 2;	/* extra byte for IRIX */
+		}
+	}
+	return (buf); /* caller should free */
 }
 
 /*

@@ -95,9 +95,15 @@ test -f `bk root`/BitKeeper/log/checked || exit 1
 echo OK
 
 cp -rp $HERE/project $HERE/clean
-echo $N Make sure that it complains if a file is missing ............$NL
+echo $N Make sure that it complains if a file is missing, -a case ...$NL
 mv d1/sub1/SCCS/s.a d1/sub1/SCCS/junk.a
 bk -r check -a > OUT 2>&1
+if [ $? -eq 0 ]; then echo failed to exit non-zero; cat OUT; exit 1; fi
+if [ ! -s OUT ]; then echo failed; cat OUT; exit 1; fi
+echo OK
+
+echo $N Make sure that it complains if a file is missing, - case ....$NL
+echo d1/sub1/SCCS/s.a | bk check - > OUT 2>&1
 if [ $? -eq 0 ]; then echo failed to exit non-zero; cat OUT; exit 1; fi
 if [ ! -s OUT ]; then echo failed; cat OUT; exit 1; fi
 echo OK

@@ -422,3 +422,77 @@ test 1.2 = `bk prs -hr+ -nd:I: init3` || {
 	exit 1
 }
 echo OK
+
+echo $N Check that delta picks up comments from c.files, -C case ....$NL
+cd $HERE/project
+bk edit $Q init3
+( echo "Auto comment from c.file"
+  echo "And a second line" 
+ ) > SCCS/c.init3
+cp SCCS/c.init3 C
+bk delta -qC init3 > OUT 2>&1 < /dev/null || exit 1
+test -f SCCS/p.init3 && {
+	echo failed to delta
+	exit 1
+}
+bk prs -hr+ -d'$each(:C:){(:C:)\n}' init3 > C2
+cmp -s C C2 || {
+	echo failed to set comment
+	bk prs init3
+	diff C C2
+	exit 1
+}
+test -f SCCS/c.init3 && {
+	echo failed to clean up the c.file
+	exit 1
+}
+test -s OUT && {
+	echo should not have produced output
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Make sure delta prompts and allows aborts from c.files ......$NL
+cd $HERE/project
+bk edit $Q init3
+( echo "Auto comment from c.file"
+  echo "And a second line" 
+ ) > SCCS/c.init3
+cp SCCS/c.init3 C
+echo a | bk delta $Q init3 > OUT 2>&1
+test -f SCCS/c.init3 || {
+	echo deleted c.file
+	exit 1
+}
+grep -q 'And a second line' SCCS/c.init3 || {
+	echo screwed up contents
+	cat SCCS/c.init3
+	exit 1
+}
+echo OK
+
+echo $N Make sure delta prompts and works 2nd time around ...........$NL
+cd $HERE/project
+bk edit $Q init3
+( echo "Auto comment from c.file"
+  echo "And a second line" 
+ ) > SCCS/c.init3
+cp SCCS/c.init3 C
+echo u | bk delta $Q init3 > OUT 2>&1 || exit 1
+test -f SCCS/p.init3 && {
+	echo failed to delta
+	exit 1
+}
+bk prs -hr+ -d'$each(:C:){(:C:)\n}' init3 > C2
+cmp -s C C2 || {
+	echo failed to set comment
+	bk prs init3
+	diff C C2
+	exit 1
+}
+test -f SCCS/c.init3 && {
+	echo failed to clean up the c.file
+	exit 1
+}
+echo OK

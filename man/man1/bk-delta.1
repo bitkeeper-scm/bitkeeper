@@ -11,7 +11,7 @@ bk delta \- check in modified files
 .	ds Sz alg
 .	ds Sy comment
 .\}
-.Bc bk delta [\-achilpquY] [
+.Bc bk delta [\-acChilpquY] [
 .OPTopt \-y msg
 .if n .B ] [more]
 .if t .B ] [more options]
@@ -50,6 +50,12 @@ an edited, but unmodified file.
 .tp
 .B \-c
 Do not verify file checksum (slight performance win).
+.tp
+.B \-C
+Take checkin comments from 
+.if t .IR SCCS/c.filename .
+.if n SCCS/c.<filename>.
+It is an error if the c.file does not exist.
 .tp
 .OPTreq \-D file
 Take diffs from

@@ -1,0 +1,67 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2000 Larry McVoy
+# awc@etp2.bitmover.com|src/t/t.locking|20020304175957|28702
+
+# Create a repository 
+echo $N Create initial repository, force it to send configs .........$NL
+cat > c <<EOF
+logging: lm@bitmover.com
+description: locking bug
+email: lm@bitmover.com
+eoln: unix
+keyword: sccs
+logging_ask: no
+license: $BK_LIC_P
+EOF
+BK_USER=joe bk setup -cc -f project
+cd project
+touch BitKeeper/etc/SCCS/x.marked
+echo 1 > A
+echo 2 > B
+bk ci $Q -i A B
+if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
+BK_USER=jane bk commit $S -a -y"This is a \"Change Set\""
+echo OK
+
+echo $N Create a merge conflict, resolve it, look for stale locks ...$NL
+bk clone $Q $HERE/project $HERE/clone
+bk edit $Q A
+echo conflict >> A
+bk delta $Q -ywhatever A
+BK_USER=billy bk commit $Q -ywhatever
+cd $HERE/clone
+bk edit $Q A
+echo CONFLICT >> A
+bk delta $Q -ywhatever A
+BK_USER=bob bk commit $Q -ywhatever
+cd $HERE/project
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/post-incoming <<EOF
+test -f $HERE/project/BitKeeper/readers && {
+	echo Failed to remove reader lock > /dev/tty
+}
+exit 0
+EOF
+chmod +x BitKeeper/triggers/post-incoming
+bk pull $Q ../clone >OUT 2>&1 
+(echo ur
+echo C) | bk resolve -t >OUT 2>&1 || {
+	echo failed to finish resolve
+	cat OUT
+	exit 1
+}
+test -d  BitKeeper/readers && {
+	echo failed to remove read lock
+	exit 1
+}
+echo OK

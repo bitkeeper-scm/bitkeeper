@@ -22,11 +22,11 @@ cmd_chg_part1(int ac, char **av)
 	setmode(0, _O_BINARY);
 	sendServerInfoBlock(0);
 
-	unless(isdir("BitKeeper")) { /* not a packageg root */
+	unless(isdir("BitKeeper/etc")) {
 		out("ERROR-Not at package root\n");
 		out("@END@\n");
 		drain();
-		 return (1);
+		return (1);
 	}
 
 	if ((bk_mode() == BK_BASIC) && !exists(BKMASTER)) {

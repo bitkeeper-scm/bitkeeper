@@ -344,6 +344,11 @@ repository_downgrade()
 	unless (p = getproj()) return (0);
 	ldebug(("repository_downgrade(%s)\n", p->root));
 
+	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
+	unless (sccs_mylock(path)) {
+		proj_free(p);
+		return (-1);
+	}
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	unless (exists(path)) {
 		mkdir(path, 0777);

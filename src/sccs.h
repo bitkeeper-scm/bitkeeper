@@ -76,6 +76,7 @@
 #define	DELTA_FORCE	0x02000000	/* delta -f: force a delta */
 #define	DELTA_HASH	0x04000000	/* treat as hash (MDBM) file */
 #define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
+#define	DELTA_CFILE	0x00100000	/* read cfile and do not prompt */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 #define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
@@ -1025,7 +1026,7 @@ int	confirm(char *msg);
 int	cset_setup(int flags, int ask);
 off_t	fsize(int fd);
 char	*separator(char *);
-int	trigger(char **av, char *when);
+int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
 int	cmdlog_end(int ret);
 off_t	get_byte_count(void);
@@ -1134,6 +1135,10 @@ int	chk_user(void);
 int	fix_gmode(sccs *s, int gflags);
 int	do_checkout(sccs *s);
 int	unsafe_path(char *s);
+char	**getTriggers(char *dir, char *prefix);
+void	comments_cleancfile(char *file);
+int	comments_readcfile(sccs *s, int prompt, delta *d);
+int	comments_prompt(char *file);
 void	set_timestamps(sccs *s);
 
 extern char *bk_vers;
