@@ -111,18 +111,19 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Checking sccslog with -r option..............................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 a/b/c/Data
   1.2 20/03/11 00:00:02 butthead${HOST} +1 -0
   Rev 2
 
 EOF
+bk undos X > CMP1
 bk sccslog -r1.2 a/b/c/Data > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Checking sccslog with -c option..............................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 a/b/c/Data
   1.10 20/03/11 00:00:10 butthead${HOST} +1 -0
   Rev 10
@@ -160,12 +161,13 @@ a/b/c/Data
   Rev 2
 
 EOF
-bk sccslog -c20/03..20/04 a/b/c/Data | ${CAT} > CMP2
+bk undos X > CMP1
+bk sccslog -c20/03..20/04 a/b/c/Data > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Checking sccslog with -c/-r option...........................$NL
-${CAT} > CMP1 <<EOF
+cat > X <<EOF
 a/b/c/Data
   1.4 20/03/11 00:00:04 butthead${HOST} +1 -0
   Rev 4
@@ -179,7 +181,8 @@ a/b/c/Data
   Rev 2
 
 EOF
-bk sccslog -c20/03 -r1.4 a/b/c/Data | ${CAT} > CMP2
+bk undos X > CMP1
+bk sccslog -c20/03 -r1.4 a/b/c/Data > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK

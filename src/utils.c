@@ -130,13 +130,13 @@ confirm(char *msg)
 MDBM	*
 csetKeys(MDBM *not)
 {
-	char	buf[MAXKEY];
+	char	buf[MAXKEY], s_cset[MAXPATH] = CHANGESET;
 	sccs	*s;
 	delta	*d;
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	int	n = 0;
 		
-	unless (s = sccs_init("SCCS/s.ChangeSet", INIT_NOCKSUM, 0)) {
+	unless (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
 		mdbm_close(db);
 		return (0);
 	}

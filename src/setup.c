@@ -9,6 +9,7 @@ setup_main(int ac, char **av)
 	int	force = 0, c;
 	char	*project_name = 0, *project_path = 0, *config_path = 0;
 	char	buf[1024], my_editor[1024], setup_files[MAXPATH];
+	char 	s_config[MAXPATH] = "SCCS/s.config";
 	FILE	*f;
 	sccs	*s;
 
@@ -111,7 +112,7 @@ setup_main(int ac, char **av)
 		sprintf(buf, "cp %s config", config_path);
 		system(buf);
 	}
-	s = sccs_init("SCCS/s.config", SILENT, NULL);
+	s = sccs_init(s_config, SILENT, NULL);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
 	s = sccs_restart(s);

@@ -8,6 +8,7 @@ private	int	getav(int *acp, char ***avp);
 private	void	log_cmd(int i, int ac, char **av);
 private	void	reap(int sig);
 private	void	usage();
+private	void	ids();
 
 int
 bkd_main(int ac, char **av)
@@ -15,6 +16,7 @@ bkd_main(int ac, char **av)
 	int	c;
 	char	*uid = 0;
 
+	loadNetLib();
 	while ((c = getopt(ac, av, "deil|p:P:t:u:x:")) != -1) {
 		switch (c) {
 		    case 'd': Opts.daemon = 1; break;
@@ -39,7 +41,9 @@ bkd_main(int ac, char **av)
 		    	Opts.interactive = 0;
 		}
 	}
+#ifndef WIN32
 	if (uid) ids(uid);
+#endif
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
 		bkd_server();
@@ -47,8 +51,13 @@ bkd_main(int ac, char **av)
 		/* NOTREACHED */
 	} else {
 		if (Opts.alarm) {
+#ifdef WIN32
+			fprintf(stderr,
+				"-t option is not supported on WIN32\n");
+#else
 			signal(SIGALRM, exit);
 			alarm(Opts.alarm);
+#endif
 		}
 		do_cmds();
 		return (0);
@@ -65,13 +74,21 @@ usage()
 private	void
 reap(int sig)
 {
+	/*
+	 * There is no need to reap process on NT
+	 */
+#ifndef WIN32
 	while (waitpid((pid_t)-1, 0, WNOHANG) > 0);
 	signal(SIGCHLD, reap);
+#endif
 }
 
 private	void
 bkd_server()
 {
+#ifdef WIN32
+	assert("not_implemented" == 0);
+#else
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
 
 	
@@ -117,6 +134,7 @@ bkd_server()
 		do_cmds();
 		exit(0);
 	}
+#endif
 }
 
 private void
@@ -240,10 +258,12 @@ getav(int *acp, char ***avp)
 	return (0);
 }
 
+#ifndef WIN32
 /*
  * For now, accept only numeric ids.
  * XXX - need to do groups.
  */
+private void
 ids(char *uid)
 {
 	uid_t	u;
@@ -259,3 +279,4 @@ ids(char *uid)
 #endif
 	}
 }
+#endif /* WIN32 */

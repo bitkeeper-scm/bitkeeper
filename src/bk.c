@@ -84,6 +84,7 @@ int repo_main(int, char **);
 int pull_main(int, char **);
 int log_main(int, char **);
 int abort_main(int, char **);
+int mklock_main(int, char **);
 
 struct command cmdtbl[100] = {
 	{"unlock", unlock_main },
@@ -167,6 +168,7 @@ struct command cmdtbl[100] = {
 	{"pull", pull_main},
 	{"log", log_main},
 	{"abort", abort_main},
+	{"mklock", mklock_main}, /* for regression test only */
 	{0, 0},
 };
 
@@ -193,6 +195,7 @@ main(int ac, char **av)
 	 */
 
 	platformInit(av); 
+	assert(bin);
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
 		printf("%s\n", bin ? bin : "no path found");
 		exit(0);
@@ -308,9 +311,10 @@ main(int ac, char **av)
 	/*
 	 * Handle shell script
 	 */
-	if (streq(av[0], "resync")) {
+	if (streq(av[0], "resync") || 
+		streq(av[0], "import")) {
 #ifdef WIN32
-		argv[0] = "bash";
+		argv[0] = "bash"; /* because the script uses getopt */
 #else
 		argv[0] = "/bin/sh";
 #endif
@@ -340,7 +344,7 @@ main(int ac, char **av)
 	 * XXX This is slow because we are going thru the shell
 	 */
 #ifdef WIN32
-	argv[0] = "bash";
+	argv[0] = "sh";
 #else
 	argv[0] = "/bin/sh";
 #endif
@@ -358,64 +362,34 @@ sfiles(int ac, char **av)
 	int	p[2];
 	int	i;
 
-	if (pipe(p)) {
-		perror("pipe");
-		exit(1);
-	}
-	pid = fork();
-	if (pid == -1) {
-		perror("fork");
-		exit(1);
-	} else if (pid) {	/* parent runs sfiles into pipe */
-		int	status;
-		char	*sav[2];
+	int	j, pfd;
+	int	status;
+	char	*sav[2] = {"sfiles", 0};
+	char	*cmds[100] = {"bk"};
 
-		signal(SIGCHLD, SIG_DFL);
-		/* dup stdout to the pipe and close stdout */
-		close(1);
-		dup(p[1]);
-		close(p[1]);
-		close(p[0]);
-		sav[0] = "sfiles";
-		sav[1] = 0;
-		status = sfiles_main(1, sav);
-		if (status) {
-			kill(pid, SIGTERM);
-			wait(0);
-			exit(status);
-		}
-		fflush(stdout);
-		close(1);
-		waitpid(pid, &status, 0);
-		if (WIFEXITED(status)) return(WEXITSTATUS(status));
-		if (WIFSIGNALED(status)) {
-			fprintf(stderr,
-			    "Child was signaled with %d\n",
-			    WTERMSIG(status));
-			exit(WTERMSIG(status));
-		}
-		exit(100);
-	} else {		/* child runs command - */
-		char	*cmds[100];
-
-		assert(ac < 95);
-		close(p[1]);
-		close(0);
-		dup(p[0]);
-		close(p[0]);
-		for (i = 0; cmds[i] = av[i]; i++);
-		cmds[i++] = "-";
-		cmds[i] = 0;
-		/*
-		 * look up the internal command 
-		 */
-		for (i = 0; cmdtbl[i].name; i++) {
-			if (streq(cmdtbl[i].name, av[0])){
-				exit(cmdtbl[i].func(ac+1, cmds));
-			}
-		}
-		exit(101);
+	assert(ac < 95);
+	for (i = 1, j = 0; cmds[i] = av[j]; i++, j++);
+	cmds[i++] = "-";
+	cmds[i] = 0;
+	if ((pid = spawnvp_wPipe(cmds, &pfd)) == -1) {
+		fprintf(stderr, "can not spawn %s %s\n", cmds[0], cmds[1]);
+		return(1);
+	} 
+	close(1); dup(pfd); close(pfd);
+	status = sfiles_main(1, sav);
+	fflush(stdout);
+	close(1);
+	waitpid(pid, &status, 0);
+	if (WIFEXITED(status)) return(WEXITSTATUS(status));
+#ifndef WIN32
+	if (WIFSIGNALED(status)) {
+		fprintf(stderr,
+		    "Child was signaled with %d\n",
+		    WTERMSIG(status));
+		exit(WTERMSIG(status));
 	}
+#endif
+	exit(100);
 }
 
 char *
@@ -470,6 +444,10 @@ find_wish()
 		if (*s == '\0') more = 0;
 		*s = '\0';
 #ifdef WIN32
+		sprintf(wish_path, "%s/wish83.exe", p);
+		if (exists(wish_path)) return (wish_path);
+		sprintf(wish_path, "%s/wish82.exe", p);
+		if (exists(wish_path)) return (wish_path);
 		sprintf(wish_path, "%s/wish81.exe", p);
 		if (exists(wish_path)) return (wish_path);
 #else
@@ -524,11 +502,13 @@ next:		p = ++s;
 	exit(1);
 }
 
+
+// XXX TODO move this function to the port directory
 private void
 platformInit(char **av)
 {
 	char	*p, *t, *s;
-	static	char buf[MAXPATH];
+	static	char buf[MAXPATH], buf1[MAXPATH];
 	char	link[MAXPATH];
 	int	add2path = 1;
 	int	n;
@@ -538,9 +518,11 @@ platformInit(char **av)
 #ifdef	WIN32
 	setmode(1, _O_BINARY);
 	setmode(2, _O_BINARY);
+	localName2bkName(av[0], buf1);
+	av[0] = buf1;
 #endif
 	if ((editor = getenv("EDITOR")) == NULL) editor = "vi";
-	if ((pager = getenv("PAGER")) == NULL) pager = "more";
+	if ((pager = getenv("PAGER")) == NULL) pager = PAGER;
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 
@@ -561,6 +543,7 @@ gotit:
 		}
 		t = strrchr(buf, '/');
 		*t = 0;
+		localName2bkName(buf, buf);
 		bin = buf; /* buf is static */
 
 		if (add2path) {
@@ -568,10 +551,15 @@ gotit:
 			 * Hide the malloc from purify,
 			 * We can not free it until we exit anyway.
 			 */
-			s = (malloc)(strlen(buf) + strlen(p) + 10);
-			sprintf(s, "PATH=%s:%s", buf, p);
+			s = (malloc)(2* strlen(buf) + strlen(p) + 30);
+			sprintf(s, "PATH=%s%c%s/gnu/bin%c%s",
+			    		buf, PATH_DELIM, buf, PATH_DELIM, p);
 			putenv(s);
 		}
+#ifdef WIN32
+		p = strrchr(av[0], '.');
+		if (p && streq(".exe", p)) *p = 0; /* remove .exe */
+#endif
 		return;
 	}
 
@@ -584,7 +572,7 @@ gotit:
 		goto gotit;
 	}
 	
-	for (t = s = p; t = strchr(s, ':'); s = t + 1) {
+	for (t = s = p; t = strchr(s, PATH_DELIM); s = t + 1) {
 		*t = 0;
 		sprintf(buf, "%s/%s", s, av[0]);
 		if (executable(buf)) {
@@ -598,7 +586,7 @@ gotit:
 			} else {
 				add2path = 0;
 			}
-			*t = ':';
+			*t = PATH_DELIM;
 			goto gotit;
 			
 		}

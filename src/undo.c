@@ -119,7 +119,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 private void
 checkRev(char *rev)
 {
-	char	*file = CHANGESET;
+	char	file[MAXPATH] = CHANGESET;
 	sccs	*s = sccs_init(file, 0, 0);
 	delta	*d;
 

@@ -13,13 +13,14 @@
 # %K%
 
 bk admin $Q -n include
-touch big_i
+touch X
 for i in 1 2 3 4 5 6 7 8 9 10
 do	bk co $Q -l include
-	${ECHO} $i >> include
-	${ECHO} $i >> big_i
+	echo $i >> include
+	echo $i >> X
 	bk ci $Q -y"Rev $i" include
 done
+bk undos X > big_i
 bk co $Q include
 echo $N Making sure of contents .....................................$NL
 cmp -s big_i include
@@ -32,22 +33,25 @@ if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Including a rev in the middle ...............................$NL
 bk get $S -r1.1 -i1.3 include
-${ECHO} 1 > big_i
-${ECHO} 3 >> big_i
+echo 1 > X
+echo 3 >> X
+bk undos X > big_i
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; sdiff -w80 big_i include; exit 1; fi
 echo OK
 echo $N Including two revs in the middle ............................$NL
 bk get $S -r1.1 -i1.3,1.5 include
-${ECHO} 1 > big_i
-${ECHO} 3 >> big_i
-${ECHO} 5 >> big_i
+echo 1 > X
+echo 3 >> X
+echo 5 >> X
+bk undos X > big_i
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Including all revs -i1.1-1.10 ...............................$NL
 bk get $S -r1.0 -i1.1-1.10 include
-${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9 10; do ${ECHO} $i >> big_i; done
+rm -f X; for i in 1 2 3 4 5 6 7 8 9 10; do echo $i >> X; done
+bk undos X > big_i
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
@@ -65,19 +69,22 @@ cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Excluding one rev in the middle .............................$NL
-${RM} -f big_i; for i in 1 2 3 4 6 7 8 9 10; do ${ECHO} $i >> big_i; done
+${RM} -f X; for i in 1 2 3 4 6 7 8 9 10; do ${ECHO} $i >> X; done
+bk undos X > big_i
 bk get $S -x1.5 include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Excluding last rev -xTOT ....................................$NL
-${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9; do ${ECHO} $i >> big_i; done
+${RM} -f X; for i in 1 2 3 4 5 6 7 8 9; do ${ECHO} $i >> X; done
+bk undos X > big_i
 bk get $S -xTOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Checking exclude lists in s.file ............................$NL
-${RM} -f big_i; for i in 1 2 3 4 5 6 7 8 9; do ${ECHO} $i >> big_i; done
+${RM} -f X; for i in 1 2 3 4 5 6 7 8 9; do ${ECHO} $i >> X; done
+bk undos X > big_i
 bk get $S -exTOT include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
@@ -86,7 +93,8 @@ X=`sed -n 4p < SCCS/s.include`
 if [ "$X" != "x 11" ]; then echo Failed - bad exclude list $X; exit 1; fi
 echo OK
 echo $N Checking include lists in s.file ............................$NL
-${RM} -f big_i; for i in 1 2 3 4; do ${ECHO} $i >> big_i; done
+${RM} -f X; for i in 1 2 3 4; do ${ECHO} $i >> X; done
+bk undos X > big_i
 bk get $S -r1.0 -ei1.1-1.4 include
 cmp -s big_i include
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
@@ -122,12 +130,13 @@ bk get -s -e -r1.2 -i1.2.1.1 i
 ${ECHO} 1.2.2.1 >> i
 bk delta -s -y'' i
 bk get -s -r1.2.2.1 i
-${CAT} >big_i <<EOF
+${CAT} >X <<EOF
 1.1
 1.2
 1.2.1.1
 1.2.2.1
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg0 failure 1; exit 1; fi
 # Make a child that includes the second branch
@@ -139,12 +148,13 @@ bk get -s -e -r1.2 -i1.2.2.1 -x1.2.1.1 i
 ${ECHO} 1.2.3.1 >> i
 bk delta -s -y'' i
 bk get -s -r1.2.3.1 i
-${CAT} >big_i <<EOF
+${CAT} >X <<EOF
 1.1
 1.2
 1.2.2.1
 1.2.3.1
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg0 failure 2; exit 1; fi
 # Make a child that includes that last branch and see what we get.
@@ -197,12 +207,13 @@ bk delta -s -y'' i
 # In SUN SCCS, this gets just C.
 # echo Should have at least C, and maybe C/B/A
 bk get -s i
-${CAT} >big_i <<EOF
+${CAT} >X <<EOF
 1.1
 C
 1.2
 1.3
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg1 failure 1; exit 1; fi
 # Force the whole branch onto the trunk
@@ -211,7 +222,7 @@ ${ECHO} 1.4 >> i
 bk delta -s -y'' i
 # echo Should have C/B/A
 bk get -s i
-${CAT} >big_i <<EOF
+${CAT} >X <<EOF
 1.1
 A
 B
@@ -220,6 +231,7 @@ C
 1.3
 1.4
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg1 failure 2; exit 1; fi
 echo OK
@@ -261,24 +273,27 @@ bk get -s -e -i1.1.2.1,1.1.3.2 i
 ${ECHO} 1.3 >> i
 bk delta -s -y'' i
 bk get -s -r1.1.2.1 i
-${CAT} >big_i <<EOF
+${CAT} >X <<EOF
 1.1
 A
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg2 failure 1; exit 1; fi
 bk get -s -r1.1.3.2 i
-${CAT} >big_i <<EOF
+${CAT} > X <<EOF
 1.1
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg2 failure 2; exit 1; fi
 bk get -s i
-${CAT} >big_i <<EOF
+${CAT} > X <<EOF
 1.1
 1.2
 1.3
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg2 failure 3; exit 1; fi
 echo OK
@@ -322,25 +337,28 @@ bk get -s -e -i1.1.2.2,1.1.3.1 i
 ${ECHO} 1.3 >> i
 bk delta -s -y'' i
 bk get -s -r1.1.3.1 i
-${CAT} >big_i <<EOF
+${CAT} >X  <<EOF
 1.1
 A
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg3 failure 1; exit 1; fi
 bk get -s -r1.1.2.2 i
-${CAT} >big_i <<EOF
+${CAT} > X <<EOF
 1.1
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg3 failure 2; exit 1; fi
 bk get -s i
-${CAT} >big_i <<EOF
+${CAT} > X <<EOF
 1.1
 A
 1.2
 1.3
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg3 failure 3; exit 1; fi
 echo OK
@@ -383,31 +401,37 @@ bk delta -s -y'' i
 # Make a child that includes both branches.
 bk get -s -e -i1.1.3.1,1.1.4.1 i
 ${ECHO} 1.3 >> i
-${CAT} >big_i <<EOF
+bk undos i > ii
+mv ii i
+${CAT} > X <<EOF
 1.1
 1.2
 1.3
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 0; exit 1; fi
 bk delta -s -y'' i
 bk get -s -r1.1.3.1 i
-${CAT} >big_i <<EOF
+${CAT} > X <<EOF
 1.1
 A
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 1; exit 1; fi
 bk get -s -r1.1.4.1 i
-${ECHO} 1.1 > big_i
+echo 1.1 > X 
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 2; exit 1; fi
 bk get -s i
-${CAT} >big_i <<EOF
+${CAT} > X <<EOF
 1.1
 1.2
 1.3
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg4 failure 2; exit 1; fi
 echo OK
@@ -445,24 +469,27 @@ bk get -s -e -r1.1 -i1.1.1.1 i
 bk delta -s -y'' i
 # Make a child that includes both branches.
 bk get -s -e -i1.1.2.1,1.1.3.1 i
-${ECHO} 1.3 >> i
+echo 1.3 >> i
 bk delta -s -y'' i
 bk get -s -r1.1.3.1 i
-${ECHO} 1.1 > big_i
-${ECHO} A >> big_i
+echo 1.1 > X
+echo A >> X
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg5 failure 1; exit 1; fi
 bk get -s -r1.1.2.1 i
-${ECHO} 1.1 > big_i
+echo 1.1 > X
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg5 failure 2; exit 1; fi
 bk get -s i
-${CAT} >big_i <<EOF
+cat >X <<EOF
 1.1
 A
 1.2
 1.3
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo ixg5 failure 3; exit 1; fi
 echo OK
@@ -494,14 +521,16 @@ bk get -s -e -i1.1.1.1 -x1.2 i
 ${ECHO} 1.3 >> i
 bk delta -s -y'' i
 bk get -s i
-${ECHO} 1.1 > big_i
-${ECHO} A >> big_i
-${ECHO} 1.3 >> big_i
+echo 1.1 > X
+echo A >> X
+echo 1.3 >> X
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo xxg1 failure 1; exit 1; fi
 bk get -s -x1.3 i
-${ECHO} 1.1 > big_i
-${ECHO} 1.2 >> big_i
+echo 1.1 > X
+echo 1.2 >> X
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo xxg1 failure 2; exit 1; fi
 echo OK
@@ -522,7 +551,7 @@ echo $N Delta section diamond test dtg0 .............................$NL
 # Clean up
 ${RM} -rf SCCS i
 # Build up a file with 1 .. 4
-${CAT} >i <<EOF
+cat >i <<EOF
 1
 2
 3
@@ -532,7 +561,7 @@ bk admin -n -ii i 2>${DEV_NULL}
 ${RM} i
 # Make a 1.2
 bk get -s -e i
-${CAT} >i <<EOF
+cat >i <<EOF
 1
 1.2A
 2
@@ -546,7 +575,7 @@ bk delta -s -y'' i
 # Make a branch on 1.1 which deletes 2 3 leaving 1 4
 # Append a 1.1.1.1 to end of that
 bk get -s -e -r1.1 i
-${CAT} >i <<EOF
+cat >i <<EOF
 1
 4
 1.1.1.1
@@ -554,7 +583,7 @@ EOF
 bk delta -s -y'' i
 # Make 1.3 Adding entry after 1.2B
 bk get -s -e i
-${CAT} >i <<EOF
+cat >i <<EOF
 1
 1.2A
 2
@@ -568,7 +597,7 @@ EOF
 bk delta -s -y'' i
 # Finally, compute the test file
 bk get -s -i1.1.1.1 i
-${CAT} >big_i <<EOF
+cat >X <<EOF
 1
 1.2A
 1.3
@@ -577,6 +606,7 @@ ${CAT} >big_i <<EOF
 1.1.1.1
 1.2D
 EOF
+bk undos X > big_i
 cmp -s i big_i
 if [ $? -ne 0 ]; then echo dtg0 failed; exit 1; fi
 echo OK

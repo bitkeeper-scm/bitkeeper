@@ -88,14 +88,11 @@ sendConfig(char *to, int quiet, int quota)
 		fprintf(stderr, "Error %s already exist", config_log);
 		exit(1);
 	}
-	status(0, config_log);
+	f = fopen(config_log, "wb");
+	status(0, f);
 
 	dspec = "$each(:FD:){Proj:\\t(:FD:)}\\nID:\\t:KEY:";
-	f = fopen(config_log, "ab");
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
-	fclose(f);
-
-	f = fopen(config_log, "ab");
 	fprintf(f, "User:\t%s\n", sccs_getuser());
 	fprintf(f, "Host:\t%s\n", sccs_gethost());
 	fprintf(f, "Root:\t%s\n", fullname(".", 0));
@@ -114,10 +111,8 @@ sendConfig(char *to, int quiet, int quota)
 	fprintf(f, "User List:\n");
 	bkusers(0, 0, f);
 	fprintf(f, "=====\n");
-	fclose(f);
 	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 	if (exists(buf)) {
-		f = fopen(config_log, "ab");
 		fprintf(f, "Alias  List:\n");
 		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
 		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
@@ -130,14 +125,14 @@ sendConfig(char *to, int quiet, int quota)
 		fclose(f1);
 		unlink(aliases);
 		fprintf(f, "=====\n");
-		fclose(f);
 	}
+	fclose(f);
 
 	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
 		printf("sending config file...\n");
 	}
 	sprintf(subject, "BitKeeper config: %s", project_name());
-	spawnvp_ex(_P_NOWAIT, av[0], av);
+	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);
 }
 
 private void
@@ -177,6 +172,7 @@ logChangeSet(char *rev, int quiet)
 	char	commit_log[MAXPATH], buf[MAXLINE], *p;
 	char	subject[MAXLINE];
 	char	start_rev[1024];
+	char	*to;
 	FILE	*f;
 	int	dotCount = 0, n;
 
@@ -374,13 +370,12 @@ remark(int quiet)
 }
 
 void
-status(int verbose, char *status_log)
+status(int verbose, FILE *f)
 {
 	char	buf[MAXLINE], parent_file[MAXPATH];
 	char	tmp_file[MAXPATH];
-	FILE	*f, *f1;
+	FILE	*f1;
 
-	f = fopen(status_log, "a");
 	fprintf(f, "Status for BitKeeper repository %s\n", fullname(".", 0));
 	gethelp("version", 0, f);
 	sprintf(parent_file, "%slog/parent", BitKeeper);
@@ -451,6 +446,7 @@ status(int verbose, char *status_log)
 		fclose(f1);
 		fprintf(f, "%6d files modified and not checked in.\n", i);
 		sprintf(buf, "bk sfiles -C > %s", tmp_file);
+		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		for (i = 0;  fgets(buf, sizeof (buf), f); i++);
 		fclose(f1);
@@ -459,7 +455,6 @@ status(int verbose, char *status_log)
 		    i);
 	}
 	unlink(tmp_file);
-	fclose(f);
 }
 
 int
@@ -507,7 +502,7 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 int
 checkLog(int quiet, int resync)
 {
-	char	ans[MAXLINE], buf[MAXLINE], *r_opt;
+	char	ans[MAXLINE], buf[MAXLINE];
 
 	strcpy(buf, getlog(NULL, quiet));
 	if (strneq("ask_open_logging:", buf, 17)) {

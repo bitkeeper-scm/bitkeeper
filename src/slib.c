@@ -80,8 +80,14 @@ executable(char *f)
 {
 	struct	stat sbuf;
 
+#ifdef WIN32
+	// XXX FIXME: should call GetBinaryType() here
+	// alos need add .exe extension 
+	return (1);
+#else
 	if (stat(f, &sbuf) == -1) return 0;
 	return (S_ISREG(sbuf.st_mode) && (sbuf.st_mode & 0111));
+#endif
 }
 
 int
@@ -3392,6 +3398,12 @@ sccs_init(char *name, u32 flags, project *proj)
 		int mapmode = (flags & INIT_MAPWRITE)
 			? PROT_READ|PROT_WRITE
 			: PROT_READ;
+#define T_FILE "s.ChangeSet"
+#ifdef FD_DEBUG
+	if (strstr(s->sfile, T_FILE)) {
+		fprintf(stderr, ">>%d: sccs_init(%s), fd=%d\n", getpid(), T_FILE, s->fd); 
+	}
+#endif
 
 		debug((stderr, "Attempting map: %d for %u, %s\n",
 		       s->fd, s->size, (mapmode & PROT_WRITE) ? "rw" : "ro"));
@@ -3499,17 +3511,32 @@ bad:		sccs_free(s);
 
 		if (s->fd == -1) {
 			s->fd = open(s->sfile, 0, 0);
+#ifdef FD_DEBUG
+			if (strstr(s->sfile, T_FILE)) {
+				fprintf(stderr,
+				 ">>%d: sccs_restart(%s)\n", getpid(), T_FILE); 
+			}
+#endif
 		}
 		if (s->mmap != (caddr_t)-1L) munmap(s->mmap, s->size);
 		s->size = sbuf.st_size;
-		s->mmap = mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
-		if (s->mmap != (caddr_t)-1L) s->state |= S_SOPEN;
+		s->mmap = (s->fd == -1) ? (caddr_t)-1L :
+			    mmap(0, s->size, PROT_READ, MAP_SHARED, s->fd, 0);
+		if (s->fd != -1) {
+			assert(s->mmap != (caddr_t)-1L);
+			assert((s->state & S_SOPEN) == 0);
+		}
+		if (s->mmap != (caddr_t)-1L) {
+			s->state |= S_SOPEN;
 #if	defined(linux) && defined(sparc)
 		flushDcache();
 #endif
-		seekto(s, 0);
-		for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); );
-		s->data = sccstell(s);
+			seekto(s, 0);
+			while(buf = fastnext(s)) {
+				if (strneq(buf, "\001T\n", 3)) break;
+			}
+			s->data = sccstell(s);
+		}
 	}
 	if (isreg(s->pfile)) {
 		s->state |= S_PFILE;
@@ -3534,6 +3561,24 @@ bad:		sccs_free(s);
 void
 sccs_close(sccs *s)
 {
+	if (s->state & S_SOPEN) {
+		assert(s->fd != -1);
+		assert(s->mmap != (caddr_t)-1L);
+	} else {
+		assert(s->fd == -1);
+		assert(s->mmap == (caddr_t)-1L);
+	}
+#ifdef FD_DEBUG
+	if (strstr(s->sfile, T_FILE)) {
+		if (s->state & S_SOPEN) { 
+			fprintf(stderr,
+		 "<<%d: sccs_close(%s), fd =%d\n", getpid(), T_FILE, s->fd); 
+		} else {
+			fprintf(stderr,
+			"<<%d: sccs_close(%s), skipped\n", getpid(), T_FILE);
+		}
+	}
+#endif
 	unless (s->state & S_SOPEN) return;
 	munmap(s->mmap, s->size);
 #if	defined(linux) && defined(sparc)
@@ -3570,6 +3615,7 @@ sccs_free(sccs *s)
 		if (sym->rev) free(sym->rev);
 		free(sym);
 	}
+	if (s->state & S_SOPEN) sccs_close(s); /* move this up for trace */
 	if (s->sfile) free(s->sfile);
 	if (s->gfile) free(s->gfile);
 	if (s->zfile) free(s->zfile);
@@ -3586,7 +3632,6 @@ sccs_free(sccs *s)
 #endif
 		}
 	}
-	if (s->state & S_SOPEN) sccs_close(s);
 	if (s->defbranch) free(s->defbranch);
 	if (s->ser2delta) free(s->ser2delta);
 	freeLines(s->usersgroups);

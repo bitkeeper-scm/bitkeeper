@@ -20,12 +20,7 @@ status_main(int ac, char **av)
 		fprintf(stderr, "status: can not find root directory\n");
 		return(1);  /* error exit */
 	}
-	sprintf(status_log, "%s/bk_status%d", TMP_PATH, getpid());
-	status(verbose, status_log);
-	f = fopen(status_log, "r");
-	while (fgets(buf, sizeof(buf), f)) fputs(buf, stdout);
-	fclose(f);
-	unlink(status_log);
+	status(verbose, stdout);
 	return (0);
 }
 

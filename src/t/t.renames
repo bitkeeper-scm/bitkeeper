@@ -55,7 +55,7 @@ fi
 # Create a repository with 5 files in it.  The files contain
 # 1, 2, 3, 4, 5 and start out as A, B, C, D, E
 echo $N Create initial repository ...................................$NL
-HERE=`pwd`
+HERE=`${CWD}`
 echo "logging: none" > $HERE/config
 bk setup -f -n'BitKeeper Test repository' -c$HERE/config project
 if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
@@ -155,7 +155,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>XXX <<EOF
 ml
@@ -181,7 +181,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
@@ -198,7 +198,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -216,7 +216,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -234,7 +234,7 @@ echo OK
 
 
 echo $N '  resolve by renaming remote file but abort commit ..........'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t -y $Q $L copy >LOG 2>&1 <<EOF
 mr
@@ -261,7 +261,7 @@ echo OK
 
 
 echo $N '  resolve by renaming remote file using default comments ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve $Q $L -t copy >/dev/null 2>&1 <<EOF
 mr
@@ -291,7 +291,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming remote file passing in comments .......'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve $Q $L -t -yYO_BABY_YO_BABY copy >/dev/null 2>&1 <<EOF
 mr
@@ -325,7 +325,7 @@ fi
 echo OK
 
 echo $N '  try to rename remote to existing local sfile ..............'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -342,7 +342,7 @@ fi
 echo OK
 
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -359,7 +359,7 @@ fi
 echo OK
 
 echo $N '  try to rename remote to existing local gfile ..............'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -417,7 +417,7 @@ fi
 echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>XXX <<EOF
 ml
@@ -445,7 +445,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
@@ -462,7 +462,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -480,7 +480,7 @@ fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -498,7 +498,7 @@ echo OK
 
 
 echo $N '  resolve by renaming remote file ...........................'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
@@ -527,7 +527,7 @@ fi
 echo OK
 
 echo $N '  try to rename remote to existing local sfile ..............'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -544,7 +544,7 @@ fi
 echo OK
 
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -561,7 +561,7 @@ fi
 echo OK
 
 echo $N '  try to rename remote to existing local gfile ..............'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -668,7 +668,7 @@ echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 cd copy
 bk resolve $Q $L -t -yMerge 2>XXX <<EOF
@@ -700,7 +700,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
@@ -718,7 +718,7 @@ echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -737,7 +737,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -755,7 +755,7 @@ echo OK
 
 echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk get -q copy/CONFLICT
 bk resolve -t $Q $L -t -yMerge copy 2>/dev/null <<EOF
@@ -785,7 +785,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -802,7 +802,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -819,7 +819,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing gfile in local repository ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -886,7 +886,7 @@ echo OK
 
 echo $N '  resolve by renaming local file (should error) .............'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 cd copy
 bk resolve -t $Q $L 2>ERRORS <<EOF
@@ -955,7 +955,7 @@ echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 cd copy
 bk resolve $Q $L -t -yMerge 2>XXX <<EOF
@@ -984,7 +984,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
@@ -1002,7 +1002,7 @@ echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -1021,7 +1021,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -1039,7 +1039,7 @@ echo OK
 
 echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk get -q copy/CONFLICT
 bk resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
@@ -1066,7 +1066,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -1083,7 +1083,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -1100,7 +1100,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing gfile in local repository ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -1206,7 +1206,7 @@ echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 cd copy
 bk resolve $Q $L -t -yMerge 2>XXX <<EOF
@@ -1229,7 +1229,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 ml
@@ -1247,7 +1247,7 @@ echo OK
 
 echo $N '  try to rename local to existing gfile in repository .......'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
@@ -1266,7 +1266,7 @@ echo OK
 
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -1284,7 +1284,7 @@ echo OK
 
 echo $N '  resolve by renaming remote file ...........................'$NL
 cd $HERE
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk get -q copy/CONFLICT
 bk resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
@@ -1305,7 +1305,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -1322,7 +1322,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 bk resolve -t $Q $L copy 2>ERRORS <<EOF
 mr
@@ -1339,7 +1339,7 @@ fi
 echo OK
 
 echo $N '  try to rename to an existing gfile in local repository ....'$NL
-/bin/rm -rf copy
+rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
 bk resolve -t $Q $L copy 2>ERRORS <<EOF

@@ -66,7 +66,8 @@ KEY=`bk prs -hr+ -d:KEY: LS`
 MONTH=`bk prs -hr+ -d:Dm: LS`
 BADKEY=`echo "$KEY" | sed s/$MONTH/99/`
 mv SCCS/s.ChangeSet SCCS/s-ChangeSet
-sed "s/$KEY/$BADKEY/" < SCCS/s-ChangeSet > SCCS/s.ChangeSet
+sed "s/$KEY/$BADKEY/" < SCCS/s-ChangeSet > X
+bk undos X > SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk rechksum -f ChangeSet 2>/dev/null
 cd $HERE/copy
@@ -85,7 +86,7 @@ bk commit $Q -ywhatever
 cd ../copy
 bk resync $Q $HERE/project
 cd $HERE
-tar cf COPY copy
+tar cf copy.tar copy
 cd copy
 rm RESYNC/SCCS/s.LS
 bk resolve -t $Q 2>ERRORS
@@ -102,7 +103,7 @@ echo OK
 echo $N Check for corrupted file in RESYNC dir ......................$NL
 cd $HERE
 rm -rf copy
-tar xf COPY
+tar xf copy.tar
 cd copy
 chmod +w RESYNC/SCCS/s.LS
 echo foo >> RESYNC/SCCS/s.LS

@@ -12,6 +12,12 @@
 # Copyright (c) 1999 Andrew Chang
 # %K%
 
+if [ "$PLATFORM" = "WIN32" ]
+then
+	echo "feature is not supported, skipped"
+	exit 0
+fi
+
 echo $N Create initial repository ...................................$NL
 HERE=`${CWD}`
 ${ECHO} "logging: none" > $HERE/c

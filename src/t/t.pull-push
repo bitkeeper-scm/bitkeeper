@@ -109,11 +109,12 @@ bk commit $Q -y0
 cd $HERE/copy
 bk pull -t $Q || { echo failed; exit 1; }
 cd src
-${CAT} >ref-bar.c <<EOF
+cat > X <<EOF
 line zero
 bar
 line three
 EOF
+bk undos X > ref-bar.c
 bk get $Q bar.c
 cmp -s ref-bar.c bar.c
 [ $? -eq 0 ] || { echo failed; diff ref-bar.c bar.c; exit 1; }
