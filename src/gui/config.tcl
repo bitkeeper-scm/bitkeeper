@@ -211,7 +211,11 @@ proc initFonts-unix {app var} \
 		set _d(noticeFont) {Helvetica 12 bold}
 	}
 
-	if {$width == 800} { 
+	# many of these are the same font, so the logic seems largely
+	# wasted. It may be that over time we find better fonts for
+	# some combinations, so the logic gives us a handy place to
+	# do just that.
+	if {$width <= 800} { 
 		if {$singleWide} {
 			set _d(fixedFont) 6x13
 			set _d(fixedBoldFont) 6x13bold
@@ -219,8 +223,7 @@ proc initFonts-unix {app var} \
 			set _d(fixedFont) {lucidatypewriter 10}
 			set _d(fixedBoldFont) {lucidatypewriter 10 bold}
 		}
-	}   
-	if {$width == 1024} { 
+	} elseif {$width <= 1024} { 
 		if {$singleWide} {
 			set _d(fixedFont) 6x13
 			set _d(fixedBoldFont) 6x13bold
@@ -228,16 +231,13 @@ proc initFonts-unix {app var} \
 			set _d(fixedFont) {courier 12}
 			set _d(fixedBoldFont) {courier 12 bold}
 		}
-	}   
-	if {$width == 1152} { 
+	} elseif {$width <= 1152} { 
 		set _d(fixedFont) {lucidatypewriter 12}
 		set _d(fixedBoldFont) {lucidatypewriter 12 bold}
-	}   
-	if {$width == 1280} { 
+	} elseif {$width <= 1280} { 
 		set _d(fixedFont) 7x13
 		set _d(fixedBoldFont) 7x13bold
-	}   
-	if {$width == 1400} { 
+	} elseif {$width <= 1400} {
 		if {$singleWide} {
 			set _d(fixedFont) {clean 13}
 			set _d(fixedBoldFont) {clean 13 bold}
@@ -245,14 +245,11 @@ proc initFonts-unix {app var} \
 			set _d(fixedFont) 7x13
 			set _d(fixedBoldFont) 7x13bold
 		}
-	}   
-	if {$width >= 1600} { 
-		if {$singleWide} {
-			set _d(fixedFont) {clean 13}
-			set _d(fixedBoldFont) {clean 13 bold}
-		} else {
-			set _d(fixedFont) 7x13
-			set _d(fixedBoldFont) 7x13bold
-		}
-	}   
+	} elseif {$width <= 1600} { 
+		set _d(fixedFont) 8x13
+		set _d(fixedBoldFont) 8x13bold
+	} else {
+		set _d(fixedFont) 9x15
+		set _d(fixedBoldFont) 9x15bold
+	}
 }
