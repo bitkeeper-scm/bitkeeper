@@ -2074,7 +2074,7 @@ proc arguments {} \
 		cd2root
 		# This should match the CHANGESET path defined in sccs.h
 		set fname ChangeSet
-		catch {exec bk sane} err
+		catch {exec bk sane -r} err
 		if {[lindex $errorCode 2] == 1} {
 			displayMessage "$err" 0
 			exit 1

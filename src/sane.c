@@ -10,17 +10,28 @@
 
 sane_main(int ac, char **av)
 {
-	int	errors = 0;
+	int	c, readonly = 0, errors = 0;
 	
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help sane");
 		return (0);
 	}
 
+	while ((c = getopt(ac, av, "r")) != -1) {
+		switch (c) {
+		    case 'r':
+			readonly = 1; /* Do not check write access */
+			break;
+		    default: 
+			system("bk help -s sane");
+			return (1);
+		}
+	}
+
 	if (chk_host()) errors++;
 	if (chk_user()) errors++;
 	if (sccs_cd2root(0, 0) == 0) {
-		if (chk_permissions()) errors++;
+		if (!readonly && chk_permissions()) errors++;
 		else if (chk_idcache()) errors++;
 	} else {
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");
