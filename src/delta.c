@@ -245,6 +245,7 @@ next:		if (init) mclose(init);
 	sfileDone();
 	commentsDone(saved);
 	freeLines(syms);
+	if (proj) sccs_freeProject(proj);
 	purify_list();
 	return (0);
 }

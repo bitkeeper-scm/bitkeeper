@@ -136,6 +136,7 @@ usage:		fprintf(stderr, "%s", check_help);
 	mdbm_close(db);
 	mdbm_close(keys);
 	mdbm_close(marks);
+	if (proj) sccs_freeProject(proj);
 	purify_list();
 	return (errors ? 1 : 0);
 }
