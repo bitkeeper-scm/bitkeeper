@@ -459,6 +459,8 @@ proc create_config {widget} \
 		check_config
 	}
 	$w(main).t config -background black
+	bind Text <Tab> { continue }
+	bind Text <Shift-Tab> { continue }
 	bind $w(label) <Tab> {tk_focusNext %W}
 	bind $w(label) <Shift-Tab> {tk_focusPrev %W}
 	bind $w(label) <Control-n> {tk_focusNext %W}
