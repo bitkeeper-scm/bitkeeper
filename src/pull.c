@@ -103,7 +103,7 @@ err:		freeLines(envVar, free);
 	 * pull from each parent
 	 */
 	EACH (urls) {
-		r = remote_parse(urls[i], 0);
+		r = remote_parse(urls[i]);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		unless (opts.quiet) {

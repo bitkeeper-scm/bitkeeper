@@ -5,9 +5,6 @@
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
-private char	**_get_http_autoproxy(char **proxies, char *host);
-private char	**_get_http_autoproxyurl(char **, char *host, char *url);
-
 private char **
 _get_http_proxy_env(char **proxies)
 {
@@ -77,6 +74,10 @@ _get_socks_proxy(char **proxies)
 }
 
 #ifdef WIN32
+private char	**_get_http_autoproxy(char **proxies, char *host);
+private char	**_get_http_autoproxyurl(char **, char *host, char *url);
+
+
 int
 getReg(HKEY hive, char *key, char *valname, char *valbuf, int *lenp)
 {

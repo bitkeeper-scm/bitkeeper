@@ -385,7 +385,7 @@ doit_remote(options *opts, char *url)
 
 	loadNetLib();
 	has_proj("pending");
-	r = remote_parse(url, 1);
+	r = remote_parse(url);
 	unless (r) {
 		fprintf(stderr, "invalid url: %s\n", url);
 		return (-1);

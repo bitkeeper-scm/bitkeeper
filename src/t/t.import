@@ -265,9 +265,11 @@ echo "licsign2: $BKL_P2" >> config
 echo "licsign3: $BKL_P3" >> config
 echo "logging: none" >> config
 echo "logging_ask: no" >> config
+bk lease flush
 bk delta $Q -yprivate
 bk commit $Q -yprivate 2> OUT && {
 	echo should have failed
+	cat OUT
 	exit 1
 }
 grep -q "Please read 'bk help multiuser'" OUT || {
