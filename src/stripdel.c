@@ -175,8 +175,14 @@ marktags(sccs *s, delta *d)
 	if (d->flags & D_RED) return (d->flags & D_GONE);
 	d->flags |= D_RED;
 
-	if (d->ptag && marktags(s, sfind(s, d->ptag))) d->flags |= D_SET|D_GONE;
-	if (d->mtag && marktags(s, sfind(s, d->mtag))) d->flags |= D_SET|D_GONE;
+	if (d->ptag && marktags(s, sfind(s, d->ptag))) {
+		d->flags |= D_SET|D_GONE;
+		s->hasgone = 1;
+	}
+	if (d->mtag && marktags(s, sfind(s, d->mtag))) {
+		d->flags |= D_SET|D_GONE;
+		s->hasgone = 1;
+	}
 	return (d->flags & D_GONE);
 }
 
@@ -223,7 +229,7 @@ set_meta(sccs *s, int stripBranches, int *count)
 		if (e->flags & D_SET) {
 
 			n++;
-			e->flags |= D_GONE;
+			MK_GONE(s, e);
 			if (e->merge) {
 				sfind(s, e->merge)->flags &= ~D_MERGED;
 				redo_merge = 1;

@@ -316,8 +316,8 @@ fix_merges(sccs *s)
 {
 	sccs	*tmp;
 
-	/* sccs_renumber(s, 0, 0, 0, 0, (verbose) ? 0 : SILENT); */
-	sccs_renumber(s, 0, 0, 0, 0, 0);
+	/* sccs_renumber(s, (verbose) ? 0 : SILENT); */
+	sccs_renumber(s, 0);
 	sccs_newchksum(s);
 	tmp = sccs_init(s->sfile, 0, 0);
 	assert(tmp);
@@ -370,27 +370,14 @@ chk_dfile(sccs *s)
 	unless (d) return (0);
 
        /*
-	* XXX This code is blindly copied from sfind.c which in turn
-	*     was copied from the lod code.
-	*     (We need this to pass the lod test case )
-	* 
-        * If it is out of view, we need to look at all leaves and see if
-        * there is a problem or not.
+	* XXX There used to be code here to handle the old style
+	* lod "not in view" file (s->defbranch == 1.0).  Pulled
+	* that and am leaving this marker as a reminder to see
+	* if new single tip LOD design needs to handle 'not in view'
+	* as a special case.
         */
-       if (s->defbranch && streq(s->defbranch, "1.0")) {
-               for (d = s->table; d; d = d->next) {
-                       unless ((d->type == 'D') && sccs_isleaf(s, d)) {
-                               continue;
-                       }
-                       unless (d->flags & D_CSET) break;
-               }
-               unless (d) return (0);
-               fprintf(stderr,
-                   "Warning: not in view file %s skipped.\n", s->gfile);
-               return (0);
-       }
 
-
+	assert(!s->defbranch);
 
 	p = basenm(s->sfile);
 	*p = 'd';

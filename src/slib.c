@@ -1967,18 +1967,6 @@ defbranch(sccs *s)
 	return ("65535");
 }
 
-private int
-lodstart(char *rev)
-{
-	char	*p;
-
-	p = strchr(rev, '.');
-	assert(p);
-	p++;
-	if (strchr(p, '.')) return (0);
-	return (streq("1", p));
-}
-
 /*
  * Find the specified delta.  The rev can be
  *	(null)	get top of the default branch
@@ -2157,15 +2145,14 @@ sccs_setpathname(sccs *s)
 {
 	delta	*d;
 
-	assert(s);
+	assert(s && !s->defbranch);
+	/* XXX: If 'not in view file' -- get a name to use
+	 * and store it in s->spathname:
+	 * For now, just store pathname in spathname
+	 */
 	if (s->spathname) free(s->spathname);
-	if (s->defbranch && streq(s->defbranch, "1.0")) {
-		s->spathname = sccs_nivPath(s);
-	}
-	else {
-		unless (d = sccs_getrev(s, "+", 0, 0)) return (0);
-		s->spathname = name2sccs(d->pathname);
-	}
+	unless (d = sccs_top(s)) return (0);
+	s->spathname = name2sccs(d->pathname);
 	return (s->spathname);
 }
 
@@ -2287,21 +2274,6 @@ morekids(delta *d, int bk_mode)
 }
 
 /*
- * See if default is a version X.X or X.X.X.X
- */
-
-private int
-defIsVer(sccs *s)
-{
-	u16	a = 0, b = 0, c = 0, d = 0;
-	int	howmany;
-
-	unless (s->defbranch) return (0);
-	howmany = scanrev(s->defbranch, &a, &b, &c, &d);
-	return ((howmany == 2 || howmany == 4) ? 1 : 0);
-}
-
-/*
  * Get the delta that is the basis for this edit.
  * Get the revision name of the new delta.
  * Sep 2000 - removed branch, we don't support it.
@@ -2335,24 +2307,11 @@ getedit(sccs *s, char **revp)
 		return (0);
 	}
 ok:
-	/* if BK, and no rev (or rev == def) and def is x.x or x.x.x.x,
-	 * then newlod
-	 */
-	if (BITKEEPER(s)
-	    && (!rev || (s->defbranch && streq(rev, s->defbranch)))
-	    && defIsVer(s)) {
-		unless (a = sccs_nextlod(s)) {
-			fprintf(stderr, "getedit: out of lods\n");
-			return (0);
-		}
-		sprintf(buf, "%d.1", a);
-		*revp = buf;
-	}
 	/*
 	 * Just continue trunk/branch
 	 * Because the kid may be a branch, we have to be extra careful here.
 	 */
-	else if (!morekids(e, BITKEEPER(s))) {
+	if (!morekids(e, BITKEEPER(s))) {
 		a = e->r[0];
 		b = e->r[1];
 		c = e->r[2];
@@ -2363,14 +2322,7 @@ ok:
 			int	release = rev ? atoi(rev) : 1;
 
 			if (release > a) {
-				a = BITKEEPER(s) 
-				    ? sccs_nextlod(s)
-				    : release;
-				unless (a) {
-					fprintf(stderr,
-					    "getedit: error: out of lods\n");
-					return (0);
-				}
+				a = release;
 				b = 1;
 			} else {
 				b++;
@@ -2972,12 +2924,6 @@ metaSyms(sccs *sc)
 		d->flags |= D_SYMBOLS;
 	}
 
-}
-
-private inline int
-samelod(delta *a, delta *b)
-{
-	return (a->r[0] == b->r[0]);
 }
 
 /* XXX - does not handle lods */
@@ -3582,7 +3528,7 @@ comment:		switch (buf[1]) {
 		}
 done:		if (CSET(s) && (d->type == 'R') &&
 		    !d->symGraph && !(d->flags & D_SYMBOLS)) {
-			d->flags |= D_GONE;
+			MK_GONE(s, d);
 		}
 	}
 
@@ -5983,8 +5929,10 @@ sccs_adjustSet(sccs *sc, sccs *scb, delta *d)
 		if (slist) free(slist);
 		exit(1);
 	}
-	for (n = d; n; n = n->next) {
-		if (n->flags & D_GONE) slist[n->serial] = 0;
+	if (sc->hasgone) {
+		for (n = d; n; n = n->next) {
+			if (n->flags & D_GONE) slist[n->serial] = 0;
+		}
 	}
 	if (d->include) {
 		free(d->include);
@@ -6835,12 +6783,7 @@ err:		if (i2) free(i2);
 		s->state |= S_WARNED;
 		goto err;
 	}
-	/* general error checking done.  Pretend not here if defbranch 1.0 */
-	if (s->defbranch &&
-	    streq(s->defbranch, "1.0") && !(flags & GET_FORCE)) {
-		/* verbose((stderr, "get: ignoring %s\n", s->gfile)); */
-		return (0);
-	}
+	/* XXX: if 'not in view' file, then ignore: NOT IMPLEMENTED YET */
 
 	/* this has to be above the getedit() - that changes the rev */
 	if (mRev) {
@@ -7501,12 +7444,12 @@ fmttt(char *p, time_t d)
 }
 
 private void
-check_removed(delta *d, int strip_tags)
+check_removed(sccs *s, delta *d, int strip_tags)
 {
 	assert(d->type == 'R');
 	if (d->flags & D_GONE) return;
 	if (strip_tags) {
-		d->flags |= D_GONE;
+		MK_GONE(s, d);
 		return;
 	}
 
@@ -7514,7 +7457,7 @@ check_removed(delta *d, int strip_tags)
 	 * We don't need no skinkin' removed deltas.
 	 */
 	unless (d->symGraph || (d->flags & D_SYMBOLS) || d->comments) {
-		d->flags |= D_GONE;
+		MK_GONE(s, d);
 	}
 }
 
@@ -7578,7 +7521,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			assert(streq(s->table->rev, "1.0"));
 			break;
 		}
-		if (d->type == 'R') check_removed(d, strip_tags);
+		if (d->type == 'R') check_removed(s, d, strip_tags);
 		if (d->flags & D_GONE) {
 			/* This delta has been deleted - it is not to be
 			 * written out at all.
@@ -9422,28 +9365,23 @@ checkdups(sccs *s)
 private inline int
 isleaf(register sccs *s, register delta *d)
 {
-	/* XXX: merge must be in same LOD to not count as leaf */
 	if (d->type != 'D') return (0);
+
 	if (d->flags & D_MERGED) {
 		delta	*t;
 
-		/* exit if merge on same lod or reached 'd' */
+		unless (s->hasgone) return (0);
+
 		for (t = s->table; t && t != d; t = t->next) {
-			if (t->merge == d->serial && t->r[0] == d->r[0]) {
-				break;
+			if ((t->merge == d->serial) && !(t->flags & D_GONE)) {
+				return (0);
 			}
 		}
-		assert(t);
-		/* if found a MERGE in this lod, so return not leaf  */
-		if (d != t) return (0);
 	}
+
 	for (d = d->kid; d; d = d->siblings) {
 		if (d->flags & D_GONE) continue;
 		if (d->type != 'D') continue;
-		/* ignore root of lods: X.1.0.x or X.0.Y.1 */
-		/* handle special case of 1.0 -> 1.1 is kid */
-		if (d->r[0] != 1 && ((d->r[1] == 1 && d->r[2] == 0) ||
-		    (d->r[1] == 0 && d->r[3] == 1))) continue;
 		return (0);
 	}
 	return (1);
@@ -9463,21 +9401,9 @@ checkOpenBranch(sccs *s, int flags)
 {
 	delta	*d;
 	int	ret = 0, tips = 0, symtips = 0;
-	u8	*lodmap = 0;
-	ser_t	next;
 
 	/* Allow open branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
-
-	next = sccs_nextlod(s);
-	/* next now equals one more than greatest that exists
-	 * so last entry in array is lodmap[next-1] which is 
-	 * is current max.
-	 */
-	unless (lodmap = calloc(next, sizeof(lodmap))) {
-		perror("calloc lodmap");
-		return (ret);
-	}
 
 	for (d = s->table; d; d = d->next) {
 		/*
@@ -9498,15 +9424,10 @@ checkOpenBranch(sccs *s, int flags)
 			if (d->symLeaf && !(d->flags & D_GONE)) symtips++;
 		}
 		if (d->flags & D_GONE) continue;
-		unless (isleaf(s, d)) continue;
-		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
-		tips++;
+		if (isleaf(s, d)) tips++;
 	}
 
-	unless (tips || (symtips > 1)) {
-		if (lodmap) free(lodmap);
-		return (ret);
-	}
+	unless ((tips > 1) || (symtips > 1)) return (ret);
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
@@ -9516,12 +9437,12 @@ checkOpenBranch(sccs *s, int flags)
 			    "%s: unmerged symleaf %s\n", s->sfile, d->rev));
 			ret = 1;
 		}
-		unless (isleaf(s, d)) continue;
-		unless (lodmap[d->r[0]] > 1) continue;
-		verbose((stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev));
+		if (isleaf(s, d)) {
+			verbose((stderr,
+			    "%s: unmerged leaf %s\n", s->sfile, d->rev));
+		}
 		ret = 1;
 	}
-	if (lodmap) free(lodmap);
 	return (ret);
 }
 
@@ -10308,14 +10229,6 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 		n->flags |= D_CKSUM;
 	}
 	dinsert(sc, 0, n, 1);
-	/* XXX: distributing LOD information.  encapusate it! */
-	/* When starting a new LOD, clear defbranch */
-	if (BITKEEPER(sc)
-	    && (sc->defbranch && streq(sc->defbranch, p->rev))
-	    && defIsVer(sc)) {
-		free(sc->defbranch);
-		sc->defbranch = 0;
-	}
 	return (n);
 }
 
@@ -10522,7 +10435,7 @@ remove_1_0(sccs *s)
 	if (streq(s->tree->rev, "1.0") && !(s->state & S_FAKE_1_0)) {
 		delta	*d;
 
-		s->tree->flags |= D_GONE;
+		MK_GONE(s, s->tree);
 		for (d = s->table; d; d = d->next) adjust_serials(d, -1);
 		return (1);
 	}
@@ -12013,69 +11926,6 @@ abort:		fclose(sfile);
 	return (0);
 }
 
-/* return the next available lod or 0 if we've exhausted all lods */
-
-ser_t
-sccs_nextlod(sccs *s)
-{
-	ser_t	lod = 0;
-	delta	*d;
-
-	/* XXX: invariant is first x.1 is greatest, yet I'm checking them all
-	 */
-	for (d = s->table; d; d = d->next) {
-		unless (d->type == 'D' && d->r[1] == 1 && !d->r[2]) continue;
-		if (d->r[0] > lod) lod = d->r[0];
-	}
-	lod = (lod == 65535) ? 0 : (lod + 1);
-	return (lod);
-}
-
-/*
- * see if the delta->rev is x.1 node.  If yes, then figure out number
- * to check in as new LOD
- */
-private int
-chknewlod(sccs *s, delta *d)
-{
-	ser_t	lod;
-	char	buf[MAXPATH];
-	delta	*p;
-
-	unless (d->rev) return (0);
-
-	/* x.1 or x.0.y.1 signify base of lod
-	 * renumber will smoosh together same lod branches
-	 * for now, just separate
-	 */
-	unless ((d->r[0] != 1 && 
-		((d->r[1] == 1 && d->r[2] == 0) ||
-		(d->r[1] == 0 && d->r[2] != 0 && d->r[3] == 1))))
-	{
-no_new:
-		free(d->rev);
-		d->rev = 0;
-		return (0);
-	}
-	/* If parent is a grafted root, then not a new lod
-	 * Graft root in the form X.0.Y.0 where Y != 0 
-	 */
-	p = d->parent;
-	if (p && p->r[1] == 0 && p->r[2] != 0 && p->r[3] == 0) {
-		goto no_new;
-	}
-
-	unless (lod = sccs_nextlod(s)) {
-		fprintf(stderr, "chknewlod: ran out of lods\n");
-		return (-1);
-	}
-	sprintf(buf, "%d.1", lod);
-	free(d->rev);
-	d->rev = strdup(buf);
-	explode_rev(d);
-	return (0);
-}
-
 /*
  * Make this delta start off as a .0.
  */
@@ -12182,11 +12032,6 @@ out:
 			unless (flags & NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
-				/* if x.1 then ensure new LOD */
-				if (chknewlod(s, prefilled)) {
-					s->state |= S_WARNED;
-					OUT;
-				}
 				/* free(prefilled->rev);
 				 * prefilled->rev = 0;
 				 */
@@ -12262,8 +12107,7 @@ out:
 	rev = d->rev;
 	p = getedit(s, &rev);
 	assert(p);	/* we just found it above */
-	unless (streq(rev, pf.newrev) || 
-	    (lodstart(pf.newrev) && !findrev(s, pf.newrev))) {
+	unless (streq(rev, pf.newrev)) {
 		fprintf(stderr,
 		    "delta: invalid nextrev %s in p.file, using %s instead.\n",
 		    pf.newrev, rev);
@@ -12387,20 +12231,6 @@ out:
 
 	EACH (syms) {
 		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
-	}
-
-	/*
-	 * Start new lod if X.1
-	 * XXX: Could require the old defbranch to match exactly the
-	 * initial version in the pfile to make conditions tighter.
-	 */
-	unless (flags & DELTA_PATCH) {
-		if (BITKEEPER(s) && lodstart(n->rev)) {
-			if (s->defbranch) {
-				free(s->defbranch);
-				s->defbranch = 0;
-			}
-		}
 	}
 
 	/*
@@ -15082,19 +14912,6 @@ rename:		n[1] = name2sccs(g->pathname);
 	}
 	/* retcode set above */
 	return (retcode);
-}
-
-int
-sccs_setlod(char *rev, u32 flags)
-{
-	int	ac;
-	char	*cmd[10];
-	extern	int setload_main(int ac, char **av);
-
-	cmd[0] = "setlod";
-	cmd[1] = 0;
-	ac = 1;
-	return (setlod_main(ac, cmd));
 }
 
 /*
