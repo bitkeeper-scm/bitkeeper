@@ -1,0 +1,33 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+#
+# Copyright (c) 2004 BitMover, Inc.
+
+echo $N Make sure we do not have duplicates in a bk edit ............$NL
+no_logging project
+for i in ChangeLog FAQ INDEX Make_vms.com Makefile Makefile.in \
+	Makefile.riscos README adler32.c algorithm.txt compress.c \
+	configure crc32.c deflate.c deflate.h descrip.mms example.c \
+	gzio.c infblock.c infblock.h infcodes.c infcodes.h inffast.c \
+	inffast.h inffixed.h inflate.c inftrees.c inftrees.h \
+	infutil.c infutil.h maketree.c minigzip.c trees.c trees.h \
+	uncompr.c zconf.h zlib.3 zlib.h zlib.html zutil.c zutil.h
+do	echo $i > $i
+done
+bk extras | bk new $Q -
+bk clean
+bk edit 2>ERR
+grep -q 'exists, skipping it.' ERR && {
+	echo Failed to surpress duplicates in the directory listing
+	cat ERR
+	exit 1
+}
+echo OK

@@ -364,7 +364,9 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 
 	if (streq(buf, "@PATCH@")) {
-		if (takepatch(opts, opts.gzip, r)) {
+		if (i = takepatch(opts, opts.gzip, r)) {
+			fprintf(stderr,
+			    "Pull failed: takepatch exited %d.\n", i);
 			putenv("BK_STATUS=TAKEPATCH FAILED");
 			rc = 1;
 			goto done;

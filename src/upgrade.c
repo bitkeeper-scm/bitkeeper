@@ -7,7 +7,6 @@
  * TODO
  *  - update crypto manpage?
  *  - test http proxy password (changed base64 code)
- *  - replace streq() cases marked ltrace
  *  - need real INDEX hmac key
  *
  *  - There should be a check for upgrades item in the Windows startup
@@ -61,6 +60,8 @@ usage:			system("bk help -s upgrade");
 	if (av[optind]) {
 		if (av[optind+1]) goto usage;
 		urlbase = av[optind];
+	} else if ((p = user_preference("upgrade-url")) && *p) {
+		urlbase = p;
 	} else {
 		urlbase = UPGRADEBASE;
 	}
@@ -75,6 +76,10 @@ usage:			system("bk help -s upgrade");
 	want_commercial = lease_anycommercial();
 	if (bk_commercial && !want_commercial) {
 		notice("upgrade-require-lease", 0, "-e");
+		goto out;
+	}
+	if (want_commercial && !av[optind] && !bk_proj) {
+		notice("upgrade-commercial-needrepo", 0, "-e");
 		goto out;
 	}
 	indexfn = bktmp(0, "upgrade-idx");
@@ -93,7 +98,7 @@ usage:			system("bk help -s upgrade");
 	strcpy(buf, p);	/* hmac */
 	*p = 0;
 	p = secure_hashstr(index, "need key here");
-	unless (streq(p, buf)) {	/* XXX ltrace */
+	unless (streq(p, buf)) {
 		fprintf(stderr, "upgrade: INDEX corrupted\n");
 		free(index);
 		goto out;

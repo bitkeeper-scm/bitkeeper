@@ -15,7 +15,7 @@ extern	char    *editor, *bin;
  */
 #undef getcwd
 #define getcwd(a, b)	nt_getcwd(a, b)
-#endif
+#endif	/* WIN32 */
 
 void
 platformInit(char **av)
@@ -44,6 +44,16 @@ platformInit(char **av)
 #ifndef	WIN32
 	signal(SIGHUP, SIG_IGN);
 #endif
+	/*
+	 * Allow overrides for the lease/config stuff.
+	 */
+#define	putKV(K, V) unless (getenv(K)) putenv(K "=" V);
+	putKV("BK_CONFIG_URL", "http://config.bitkeeper.com:80");
+	putKV("BK_CONFIG_URL2", "http://config2.bitkeeper.com:80");
+	putKV("OPENLOG_LEASE", "http://lease.openlogging.org:80");
+	putKV("OPENLOG_LEASE2", "http://lease2.openlogging.org:80");
+	putKV("BK_WEBMAIL_URL", "http://webmail.bitkeeper.com:80");
+
 #ifdef WIN32
 	/*
 	 * Force mkstemp() in uwtlib to use dir argument
@@ -83,7 +93,7 @@ platformInit(char **av)
 			break;
 		}
 	}
-#endif
+#endif	/* WIN32 */
 
 	/*
 	 * Find the program and if it is a symlink, then add where it

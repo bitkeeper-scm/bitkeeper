@@ -10,21 +10,18 @@
 private int
 scanDir(char *dir, char *name, MDBM *db, char *realname)
 {
-	DIR *d;
-	struct dirent *e;
-	char path[MAXPATH];
+	int	i;
+	char	**d;
+	char	path[MAXPATH];
 
 	realname[0] = 0;
-	d = opendir(dir);
-	unless (d) goto done;
-
-	while (e = readdir(d)) {
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
-		sprintf(path, "%s/%s", dir, e->d_name);
-		if (db) mdbm_store_str(db, path, e->d_name, MDBM_INSERT);
-		if (strcasecmp(e->d_name, name) == 0) {
+	unless (isdir(dir) && (d = getdir(dir))) goto done;
+	EACH (d) {
+		sprintf(path, "%s/%s", dir, d[i]);
+		if (db) mdbm_store_str(db, path, d[i], MDBM_INSERT);
+		if (strcasecmp(d[i], name) == 0) {
 			if (realname[0] == 0) {
-				strcpy(realname, e->d_name);
+				strcpy(realname, d[i]);
 			} else {
 				/*
 				 * if this dir have 2 entries differ
@@ -36,7 +33,7 @@ scanDir(char *dir, char *name, MDBM *db, char *realname)
 			}
 		}
 	}
-	closedir(d);
+	freeLines(d, free);
 	/*
 	 * If the entry does not exist (directory/file not created yet)
 	 * then the given name is the real name.

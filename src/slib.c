@@ -77,48 +77,17 @@ private	int	parseConfig(char *buf, char **k, char **v);
 private	delta	*cset2rev(sccs *s, char *rev);
 private	void	taguncolor(sccs *s, delta *d);
 
-#ifndef WIN32
 int
 emptyDir(char *dir)
 {
-	DIR *d;
-	struct dirent *e;
+	char	**d;
+	int	i, n = 0;
 
-	d = opendir(dir);
-	unless (d) return (0);
-
-	while (e = readdir(d)) {
-		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
-		closedir(d);
-		return (0);
-	}
-	closedir(d);
-	return (1);
+	unless (d = getdir(dir)) return (0);
+	EACH (d) n++;
+	freeLines(d, free);
+	return (n == 0);
 }
-#else
-int
-emptyDir(char *dir)
-{
-
-	struct  _finddata_t found_file;
-	char	*file = found_file.name;
-	char	buf[MAXPATH];
-	long	dh;
-
-	bm2ntfname(dir, buf);
-	strcat(buf, "\\*.*");
-	if ((dh =  _findfirst(buf, &found_file)) == -1L) return (0);
-
-	do {
-		if (streq(file, ".") || streq(file, "..")) continue;
-		_findclose(dh);
-		return (0);
-	} while (_findnext(dh, &found_file) == 0);
-	_findclose(dh);
-	return (1);
-
-}
-#endif
 
 /*
  * Convert lrwxrwxrwx -> 0120777, etc.
@@ -5937,14 +5906,14 @@ uuencode(FILE *in, FILE *out)
 inline int
 uudecode1(register char *from, register uchar *to)
 {
-	register int	length = DEC(*from++);
-	int	save = length;
+	int	length, save;
 
-	unless (length) return (0);
+	unless (from[0] && from[1] && (length = DEC(*from++))) return (0);
 	if (length > 50) {
 		fprintf(stderr, "Corrupted data: %.25s\n", from);
 		return (0);
 	}
+	save = length;
 	while (length > 0) {
 		if (length-- > 0)
 			*to++ = (uchar)((DEC(from[0])<<2) | (DEC(from[1])>>4));
@@ -10468,9 +10437,7 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 	 */
 	for (i = 0; s && s[i].flags; ++i) {
 		sym = strdup(s[i].thing);
-		if ((rev = strrchr(sym, '|')) || (rev = strrchr(sym, ':'))) {
-			*rev++ = 0;
-		}
+		if (rev = strrchr(sym, '|')) *rev++ = 0;
 		/* Note: rev is set or null from above test */
 		unless (d = findrev(sc, rev)) {
 			verbose((stderr,

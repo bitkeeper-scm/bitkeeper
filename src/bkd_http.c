@@ -96,7 +96,6 @@ cmd_httpget(int ac, char **av)
 {
 	char	buf[MAXPATH];
 	char	*name = &av[1][1];
-	int	state = 0;
 	int 	ret, i;
 	char	*s;
 	char	a[MAXPATH];
@@ -106,22 +105,14 @@ cmd_httpget(int ac, char **av)
 	 * Ignore the rest of the http header (if any), we don't care.
 	 */
 	if (ac > 2) {
-		while (read(0, buf, 1) == 1) {
-			if (buf[0] == '\r') {
-				switch (state) {
-				    case 0: case 2: state++; break;
-				    default: state = 0;
-				}
-			} else if (buf[0] == '\n') {
-				if (state == 1) state++;
-				else if (state == 3) break;
-				else state = 0;
-			} else {
-				state = 0;
+		while (fnext(buf, stdin)) {
+			// fputs(buf, stderr);
+			if (buf[0] == '\r' || buf[0] == '\n') {
+				break;
 			}
+			/* ignore everything else */
 		}
 	}
-
 	unless (av[1]) http_error(404, "get what?\n");
 
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) {
@@ -870,10 +861,9 @@ http_src(char *path)
 	char	html[MAXPATH];
 	char	**names = 0;
 	int	i;
-	DIR	*d;
+	char	**d;
 	FILE	*f;
 	struct	stat sbuf;
-	struct	dirent *e;
 	time_t	now;
 	char 	dspec[MAXPATH*2];
 
@@ -907,7 +897,7 @@ http_src(char *path)
 	}
 
 	if (!path || !*path) path = ".";
-	unless (d = opendir(path)) {
+	unless (d = getdir(path)) {
 		http_error(500, "%s: %s", path, strerror(errno));
 	}
 
@@ -928,18 +918,18 @@ http_src(char *path)
 	    "</tr>\n");
 
 	now = time(0);
-	while (e = readdir(d)) {
-		if (streq(".", e->d_name) || streq("SCCS", e->d_name) || streq("..", e->d_name)) continue;
+	EACH (d) {
+		if (streq("SCCS", d[i])) continue;
 		if (path[1]) {
-			sprintf(buf, "%s/%s", path, e->d_name);
+			sprintf(buf, "%s/%s", path, d[i]);
 		} else {
-			strcpy(buf, e->d_name);
+			strcpy(buf, d[i]);
 		}
 		if (lstat(buf, &sbuf) == -1) continue;
 		if (path[1]) {
-			sprintf(buf, "<a href=src/%s/%s%s>", path, e->d_name, navbar);
+			sprintf(buf, "<a href=src/%s/%s%s>", path, d[i], navbar);
 		} else {
-			sprintf(buf, "<a href=src/%s%s>", e->d_name, navbar);
+			sprintf(buf, "<a href=src/%s%s>", d[i], navbar);
 		}
 		//s = age(now - sbuf.st_mtime, "&nbsp;");
 		if (S_ISDIR(sbuf.st_mode)) {
@@ -953,11 +943,11 @@ http_src(char *path)
 			  "<td>&nbsp;</td></tr>\n",		/* comments */
 			  "dir.gif",
 			  buf,
-			  e->d_name);
+			  d[i]);
 			names = addLine(names, strdup(html));
 		}
 	}
-	closedir(d);
+	freeLines(d, free);
 
 	sprintf(buf,
 	    "env BK_YEAR4=1 bk prs -hr+ -d'%s' %s", dspec, path[1] ? path : "");

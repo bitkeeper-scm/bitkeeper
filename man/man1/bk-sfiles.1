@@ -150,6 +150,10 @@ List files which have no revision control files.
 will not descend into directories containing a
 .B .bk_skip
 file.  This allows you to prune entire subtrees from processing.
+If the directory containing
+.B .bk_skip
+also contains an SCCS subdirectory then the SCCS subdirectory also
+needs a .bk_skip if you really want to prune that tree.
 .LP
 Files under BitKeeper/{log,readers,writers}/ are always ignored.
 .LP

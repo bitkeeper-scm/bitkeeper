@@ -587,7 +587,7 @@ send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
 			cgi = r->path + 8;
 		}
-		if (http_send(r, msg, mlen, extra, "BitKeeper", cgi)) {
+		if (http_send(r, msg, mlen, extra, "send", cgi)) {
 			fprintf(stderr, "http_send failed\n");
 			return (-1);
 		}
@@ -640,24 +640,33 @@ disconnect(remote *r, int how)
 	assert((how >= 0) && (how <= 2));
 
 	switch (how) {
-	    case 0:	if (r->rfd == -1) return;
+	    case 0:	if (r->rfd == -1) break;
 			if (r->isSocket) {
+				assert(!r->rf);
 				shutdown(r->rfd, 0);
+			} else if (r->rf) {
+				fclose(r->rf);
+				r->rf = 0;
 			} else {
 				close(r->rfd);
-				r->rfd = -1;
 			}
+			r->rfd = -1;
 			break;
-	    case 1: 	if (r->wfd == -1) return;
+	    case 1: 	if (r->wfd == -1) break;
 			if (r->isSocket) {
 				shutdown(r->wfd, 1);
 			} else {
 				close(r->wfd);
-				r->wfd = -1;
 			}
+			r->wfd = -1;
 			break;
-	    case 2:	if (r->rfd >= 0) close(r->rfd);
-			if (r->wfd >= 0) close(r->wfd);
+	    case 2:	if (r->rf) {
+				fclose(r->rf);
+				r->rf = 0;
+			} else if (r->rfd >= 0) {
+				close(r->rfd);
+			}
+			if ((r->wfd >= 0) && (r->wfd != r->rfd)) close(r->wfd);
 			r->rfd = r->wfd = -1;
 			break;
 	}
@@ -1377,6 +1386,8 @@ progressbar(int n, int max, char *msg)
 	float	elapsed;
 	int	percent = max ? (n * 100) / max : 100;
 	int	i, want;
+	int	barlen = 65;
+	char	*p;
 	struct	timeval tv;
 
 	if (percent > 100) percent = 100;
@@ -1385,29 +1396,34 @@ progressbar(int n, int max, char *msg)
 		start.tv_sec = 0;
 		lastup = 0.0;
 	}
-	unless (percent > last) return;
+	unless ((percent > last) || msg) return;
 	gettimeofday(&tv, 0);
 	unless (start.tv_sec) start = tv;
-	elapsed = (tv.tv_sec - start.tv_sec) +
-		(tv.tv_usec - start.tv_usec) / 1.0e6;
-	if (!msg && (elapsed - lastup < 0.25)) return; /* 4 updates/sec max */
+	elapsed =
+	    (tv.tv_sec - start.tv_sec) + (tv.tv_usec - start.tv_usec) / 1.0e6;
+	/* This wacky expression is to try and smooth the drawing */
+	if (!msg && ((elapsed - lastup) < 0.25) && ((percent - last) <= 2)) {
+		return;
+	}
 	last = percent;
 	lastup = elapsed;
 
-	want = (percent * 65) / 100;
-	fprintf(stderr, "%3u%% |", percent);
-	for (i = 1; i <= want; ++i) fputc('=', stderr);
-	for (; i <= 65; ++i) fputc(' ', stderr);
-	fputc('|', stderr);
-	if (msg) {
-		fprintf(stderr, " %-20s\n", msg);
-	} else {
-		if ((elapsed > 10.0) && (n < max)) {
-			int	remain = elapsed * (((float)max/n) - 1.0);
+	fprintf(stderr, "%3u%% ", percent);
+	if ((elapsed > 10.0) && (n < max)) {
+		int	remain = elapsed * (((float)max/n) - 1.0);
 
-			fprintf(stderr, " %dm%ds remaining",
-			    remain / 60, remain % 60);
-		}
-		fputc('\r', stderr);
+		p = aprintf("%dm%02ds ", remain/60, remain%60);
+		barlen -= strlen(p);
+		fputs(p, stderr);
+		free(p);
+	}
+	fputc('|', stderr);
+	want = (percent * barlen) / 100;
+	for (i = 1; i <= want; ++i) fputc('=', stderr);
+	if (i <= barlen) fprintf(stderr, "%*s", barlen - i + 1, "");
+	if (msg) {
+		fprintf(stderr, "| %s\n", msg);
+	} else {
+		fprintf(stderr, "|\r");
 	}
 }
