@@ -331,8 +331,30 @@ _push() {
 }
 
 _diffr() {
+	D=NO
+	DOPTS=
+	CMD=${BIN}sccslog
+	LEFTONLY=NO
+	RIGHTONLY=NO
+	while getopts cdDflMprsuU opt
+	do	case "$opt" in
+		c) D=YES; DOPTS="-c $DOPTS";;
+		d) D=YES;;
+		D) D=YES; DOPTS="-D $DOPTS";;
+		f) D=YES; DOPTS="-f $DOPTS";;
+		l) LEFTONLY=YES;;
+		M) D=YES; DOPTS="-M $DOPTS";;
+		p) D=YES; DOPTS="-p $DOPTS";;
+		r) RIGHTONLY=YES;;
+		s) D=YES; DOPTS="-s $DOPTS";;
+		u) D=YES; DOPTS="-u $DOPTS";;
+		U) D=YES; DOPTS="-U $DOPTS";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ $D = YES ]; then CMD="${BIN}diffs $DOPTS"; fi
 	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
-	then	echo Usage: diffr repository different_repository
+	then	echo "Usage: diffr [diffs opts] repository different_repository"
 		exit 1
 	fi
 	HERE=`pwd`
@@ -341,25 +363,41 @@ _diffr() {
 	cd $HERE
 	cd $2
 	RIGHT=`pwd`
-	LREVS=`${BIN}resync -n $LEFT $RIGHT 2>&1 | grep '[0-9]' | sed 's/ /,/g'`
-	RREVS=`${BIN}resync -n $RIGHT $LEFT 2>&1 | grep '[0-9]' | sed 's/ /,/g'`
+	if [ $LEFTONLY = YES ]
+	then	RREVS=
+	else	RREVS=`${BIN}resync -n $RIGHT $LEFT 2>&1 | grep '[0-9]'`
+	fi
+	if [ $RIGHTONLY = YES ]
+	then	LREVS=
+	else	LREVS=`${BIN}resync -n $LEFT $RIGHT 2>&1 | grep '[0-9]'`
+	fi
 	if [ "X$LREVS" = X -a "X$RREVS" = X ]
 	then	echo $1 and $2 have the same changesets.
 		exit 0
 	fi
-	export LREVS RREVS  LEFT RIGHT
+	export LREVS RREVS LEFT RIGHT
 	(
 	if [ "X$LREVS" != X ]
 	then
-		echo "ChangeSets only in $LEFT"
+		echo "Changes only in $LEFT"
 		echo ----------------------------------------------------------
-		echo "$LEFT/ChangeSet:$LREVS" | ${BIN}sccslog -
+		for i in $LREVS
+		do	if [ $D = YES ]
+			then	(cd $LEFT && ${BIN}cset -R${i}..$i)
+			else	echo "$LEFT/ChangeSet:$i"
+			fi
+		done | $CMD -
 	fi
 	if [ "X$RREVS" != X ]
 	then
-		echo "ChangeSets only in $RIGHT"
+		echo "Changes only in $RIGHT"
 		echo ----------------------------------------------------------
-		echo "$RIGHT/ChangeSet:$RREVS" | ${BIN}sccslog -
+		for i in $RREVS
+		do	if [ $D = YES ]
+			then	(cd $RIGHT && ${BIN}cset -R${i}..$i)
+			else	echo "$RIGHT/ChangeSet:$i"
+			fi
+		done | $CMD -
 	fi
 	) | $PAGER
 }
