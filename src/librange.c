@@ -324,12 +324,16 @@ roundType(char *s)
  */
 int
 rangeProcess(char *me, sccs *s, int expand, int noisy,
-	     int things, int rd, char **r, char **d)
+	     int *tp, int rd, char **r, char **d)
 {
+	int	things = *tp;
+
 	debug((stderr,
 	    "RANGE(%s, %s, %d, %d)\n", me, s->gfile, expand, noisy));
 	rangeReset(s);
-	if (!things && (r[0] = sfileRev())) things = tokens(notnull(r[0]));
+	if (!things && (r[0] = sfileRev())) {
+		things = *tp = tokens(notnull(r[0]));
+	}
 	if (things) {
 		if (rangeAdd(s, r[0], d[0])) {
 			if (noisy) {

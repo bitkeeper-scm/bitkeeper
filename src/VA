@@ -1,0 +1,83 @@
+%W% %K%
+
+VA's use of BK is falling apart because BK doesn't support bringing in
+patches from the outside.  The fact of life is that not everyone will
+use BK so we need to be able to deal with that.
+
+What VA would like, I believe, is this:
+
+Linux LOD - this contains nothing but the tarballs from Linus.  This means
+	we need to support repeated imports.
+
+The ability to start new LODs at any point on the Linux LOD (this is
+for external patches which come in from the outside).  They'd probably
+love it to death if you could take a patch and give it a range of revs
+and say "find the place where this patch applies the ``best''" but that
+maybe going too far.
+
+The ability to slurp the end of an LOD into another LOD and merge.
+
+
+PATCH ISSUES
+------------
+
+a) deletes & renames.  Need a modifed version of patch which does not delete
+   files, it tells BK to delete them.  Also needs to tell BK when it creates
+   new files.  We need a post processor which goes over the set of deletes
+   and creates and detects renames.
+
+b) big chunks which fail - postpone this for now.
+
+WORKING PRACTICE
+----------------
+
+a) Setup the pristine LOD for just releases from the maintainer (Linux LOD).
+   Call this repository /proj/linux, lod name is "linux".  If we have a mode
+   on the repository, this repository is marked "No patch rejects".
+
+b) Get a private repository for local stuff, setup a new lod, linux-va.
+       bk clone linux walt
+       bk newlod linux-va	# starts a new LOD from whatever is TOT
+
+c) New release comes from Linus.  
+       bk clone /proj/linux /proj/import	# safety first, kids
+       cd /proj/import
+       bk import tarball --norejects -Slinux-2.3.134 linux-2.3.134.tgz
+   This says "take this tarball, apply to top of trunk of the Linux LOD,
+   tagging it with linux-2.3.134".
+   .rej not allowed in this case.
+
+d) Make sure it worked:
+       bk export /proj/import /tmp/export
+       mkdir /tmp/compare
+       cd /tmp/compare
+       untar linux-2.3.134.tgz
+       cd /tmp
+       diff -r export compare
+       # Flame dev@bitmover.com when there is output from the diff command
+
+f) Update the linux tree
+       cd /proj/import
+       bk push			# it knows that /proj/linux is the parent
+
+d) Bring new stuff into walt's tree
+       cd /proj/walt
+       bk pull
+   All this does, however, is add it the linux LOD stuff to Walt's graph, it
+   doesn't merge.
+
+e) Bring the linux changes into Walt's LOD
+       bk include -LLinux	
+   What this does is pretty much what a resync would do:
+       1) for each file which is unmodified in Walt's LOD, just add the changes
+       2) for each file which is modified in Walt's LOD, treat it like a
+          conflict, and run the resolve process.
+       3) for each file which has moved in the linux LOD, move it in Walt's
+          LOD unless Walt's LOD also moved, in which case prompt w/ conflict.
+       4) Create a changeset recording the merge.
+
+BK ISSUES
+---------
+
+bk diffs -u needs to generate exactly what diff would generate, we apparently
+get the headers wrong.
