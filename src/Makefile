@@ -9,7 +9,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii resyncwrap r2c rename
+	  isascii resyncwrap r2c rename setlog
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset count_user getlog build
@@ -305,6 +305,9 @@ chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
+setlog: setlog.o
+	$(CC) $(CFLAGS) setlog.o -o setlog
+	
 
 # Links.
 ci: delta
