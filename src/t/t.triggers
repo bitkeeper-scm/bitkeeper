@@ -247,6 +247,7 @@ set | grep $DASHA BK |
     grep -v BK_IGNORELOCK |
     grep -v BKD_LEVEL |
     grep -v BK_REPO_ID |
+    grep -v BKD_LICTYPE |
     sort > $HERE/post-incoming-clone
 exit 0
 EOF
