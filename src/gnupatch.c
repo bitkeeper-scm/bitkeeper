@@ -264,8 +264,8 @@ gnupatch_main(int ac, char **av)
 			continue;
 		}
 	
-		if (strneq("diff -Nru", buf, 9) ||
-		    strneq("diff -Nrc", buf, 9)) { 
+               if (strneq("diff --minimal -Nru", buf, 19) ||
+                   strneq("diff --minimal -Nrc", buf, 19)) { 
 			got_start_header = 2;
 		} else {
 			got_start_header = 0;
