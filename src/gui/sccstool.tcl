@@ -212,10 +212,13 @@ proc showTags {} \
 # When called from the mouse <B2> binding, the doubleclick var is set to 1
 # When called from the next/previous buttons, only the line variable is set
 #
-proc selectTag { w {x {}} {y {}} {line {}} {doubleclick {}}} \
+proc selectTag { w {x {}} {y {}} {line {}} {bindtype {}}} \
 {
 	global tag2rev curLine dimension gc file dev_null dspec rev2rev_name
 	global rev1
+
+	# Keep track of whether we are in the annotated output
+	set annotated 0
 
 	if {($line == -1) || ($line == 1)} {
 		set top [expr {$curLine - 3}]
@@ -235,7 +238,7 @@ proc selectTag { w {x {}} {y {}} {line {}} {doubleclick {}}} \
 	set line [$w get $curLine "$curLine lineend"]
 
 	if {[regexp {^(.*)\s+([0-9]+\.[0-9.]+).*\|} $line match filename rev]} {
-		# Larry says this is cute...
+		set annotated 1
 	} else {
 		regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line match filename rev
 		while {![info exists rev]} {
@@ -271,13 +274,22 @@ proc selectTag { w {x {}} {y {}} {line {}} {doubleclick {}}} \
 		set xfract [expr ($x2 - $xdiff) / $dimension(right)]
 		.p.top.c xview moveto $xfract
 		set id [.p.top.c gettag $revname]
-		getLeftRev $id
+			if {$bindtype == "B1"} {
+				getLeftRev $id
+			} elseif {$bindtype == "B3"} {
+				#getRightRev $id
+				diff2 0 $id
+			}
 		#puts "($curLine) line=($line) revname=($tag2rev($line))"
 	} else {
 		#puts "Error: tag not found ($line)"
 		return
 	}
-	if {$doubleclick == 1} {
+	if {($bindtype == "D1") && ($annotated == 0)} {
+		#puts "in prs"
+		get $id
+	} elseif {($bindtype == "D1") && ($annotated == 1)} {
+		#puts "in else"
 		if {"$file" == "ChangeSet"} {
 	    		csettool
 		} else {
@@ -660,6 +672,8 @@ proc listRevs {file} \
 	.p.top.c yview moveto .3
 }
 
+# If called from the bottom selection mechanism, we give getLeftRev a
+# handle to the revision box
 proc getLeftRev { {id {}} } \
 {
 	global	rev1 rev2
@@ -673,12 +687,12 @@ proc getLeftRev { {id {}} } \
 	if {$rev1 != ""} { .menus.cset configure -state normal }
 }
 
-proc getRightRev {} \
+proc getRightRev { {id {}} } \
 {
 	global	rev2 file
 
 	.p.top.c delete new
-	set rev2 [getRev "new"]
+	set rev2 [getRev "new" $id]
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
 		.menus.cset configure -text "View changesets"
@@ -756,11 +770,14 @@ proc sfile {} \
 	filltext $f 1
 }
 
-proc get {} \
+#
+# Displays annotated file listing in the bottom text widget
+#
+proc get { {id {} }} \
 {
 	global file dev_null rev1 rev2 getOpts
 
-	getLeftRev
+	getLeftRev $id
 	if {"$rev1" == ""} { return }
 	busy 1
 	set base [file tail $file]
@@ -775,7 +792,7 @@ proc get {} \
 
 proc difftool {file r1 r2} \
 {
-	exec bk difftool -r$r1 -r$r2 $file &
+	catch {exec bk difftool -r$r1 -r$r2 $file &} err
 	busy 0
 }
 
@@ -785,16 +802,16 @@ proc csettool {} \
 
 	if {[info exists rev1] != 1} { return }
 	if {[info exists rev2] != 1} { set rev2 $rev1 }
-	exec bk csettool -r$rev1..$rev2 &
+	catch {exec bk csettool -r$rev1..$rev2 &} err
 }
 
-proc diff2 {difftool} \
+proc diff2 {difftool {id {}} } \
 {
 	global file rev1 rev2 diffOpts getOpts dev_null
 	global bk_cset tmp_dir
 
 	if {![info exists rev1] || ($rev1 == "")} { return }
-	if {$difftool == 0} { getRightRev }
+	if {$difftool == 0} { getRightRev $id }
 	if {"$rev2" == ""} { return }
 	set base [file tail $file]
 	if {$base == "ChangeSet"} {
@@ -895,7 +912,7 @@ proc r2c {} \
 	} else {
 		set csets [exec bk r2c -r$rev1 "$file"]
 	}
-	exec bk csettool -r$csets &
+	catch {exec bk csettool -r$csets &}
 	busy 0
 }
 
@@ -1173,16 +1190,14 @@ proc widgets {} \
 	grid columnconfigure .cmd 1 -weight 2
 
 	# I don't want highlighting in that text widget.
-	bind .p.bottom.t <1> "break"
-	bind .p.bottom.t <2> "break"
-	bind .p.bottom.t <3> "break"
-	bind .p.bottom.t <Motion> "break"
 
 	bind .p.top.c <1>		{ prs; break }
 	bind .p.top.c <3>		"diff2 0; break"
 	bind .p.top.c <Double-1>	"get; break"
 	bind .p.top.c <h>		"history"
+	bind . <Button-2>		{history}
 	bind .p.top.c <t>		"history tags"
+	bind . <Double-2>		{history tags}
 	bind .p.top.c $gc(quit)		"exit"
 	bind .p.top.c <s>		"sfile"
 
@@ -1215,8 +1230,9 @@ proc widgets {} \
         bind . <Button-4> ".p.bottom.t yview scroll -5 units"
         bind . <Button-5> ".p.bottom.t yview scroll 5 units"
 	#bind .p.top.c <Control-T>	"showTags"
-	bind .p.bottom.t <Button-1> { selectTag %W %x %y "" 0 }
-	bind .p.bottom.t <Double-1> { selectTag %W %x %y "" 1 }
+	bind .p.bottom.t <Button-1> { selectTag %W %x %y "" "B1" }
+	bind .p.bottom.t <Button-3> { selectTag %W %x %y "" "B3" }
+	bind .p.bottom.t <Double-1> { selectTag %W %x %y "" "D1" }
 
 	# Command window bindings.
 	bind .p.top.c <slash> "search /"
