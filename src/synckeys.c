@@ -319,6 +319,14 @@ get_key(char *buf, int flags)
 	return (++p);
 }
 
+private int
+skipit(MDBM *skip, char *key)
+{
+	if (skip == NULL) return (0);
+	if (mdbm_fetch_str(skip, key)) return (1);
+	return (0);
+}
+
 /*
  * If there are multiple lods and a tag "lod" then we expect this:
  * @LOD MATCH@
@@ -334,7 +342,7 @@ get_key(char *buf, int flags)
  * @END@
  */
 int
-prunekey(sccs *s, remote *r, int outfd, int flags,
+prunekey(sccs *s, remote *r, MDBM *skip, int outfd, int flags,
 	int quiet, int *local_only, int *remote_csets, int *remote_tags)
 {
 	char	key[MAXKEY + 512] = ""; /* rev + tag + key */
@@ -418,7 +426,7 @@ prunekey(sccs *s, remote *r, int outfd, int flags,
 		k = get_key(key, flags);
 		if (d = sccs_findKey(s, k)) {
 			d->flags |= D_RED;
-		} else {
+		} else if (!skipit(skip, k)) { 
 			if (sccs_istagkey(k)) {
 				rtags++;
 			} else {
@@ -527,7 +535,7 @@ prunekey_main(int ac, char **av)
 	r.wfd = -1;
 	sccs_cd2root(0, 0);
 	s = sccs_init(path, 0, 0);
-	prunekey(s, &r, -1, 0, 0, 0, 0, 0);
+	prunekey(s, &r, NULL, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_RED) continue;
@@ -583,6 +591,7 @@ synckeys(remote *r, int flags)
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		exit(1);
 	}
 	if (get_ok(r, buf, 1)) return (-1);
 
@@ -591,7 +600,7 @@ synckeys(remote *r, int flags)
 	 */
 	s = sccs_init(s_cset, 0, 0);
 	flags |= PK_REVPREFIX;
-	rc = prunekey(s, r, 1, flags, 0, NULL, NULL, NULL);
+	rc = prunekey(s, r, NULL, 1, flags, 0, NULL, NULL, NULL);
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:

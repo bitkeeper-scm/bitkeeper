@@ -60,6 +60,8 @@ int	cmd_pull_part2(int ac, char **av);
 int	cmd_synckeys(int ac, char **av);
 int	cmd_chg_part1(int ac, char **av);
 int	cmd_chg_part2(int ac, char **av);
+int	cmd_pending_part1(int ac, char **av);
+int	cmd_pending_part2(int ac, char **av);
 
 int	cmd_rclone_part1(int ac, char **av);
 int	cmd_rclone_part2(int ac, char **av);
@@ -136,7 +138,7 @@ void	disconnect(remote *r, int how);
 void	drain(void);
 char	**getClientInfoBlock(void);
 void	sendServerInfoBlock(int);
-int	prunekey(sccs *, remote *, int, int, int, int *, int *, int *);
+int	prunekey(sccs *, remote *, MDBM *, int, int, int, int *, int *, int *);
 int	buf2fd(int gzip, char *buf, int len, int fd);
 void	add_cd_command(FILE *f, remote *r);
 int	skip_http_hdr(remote *r);

@@ -678,6 +678,8 @@ private	struct {
 	{"remote rclone part1", CMD_BYTES},
 	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
 	{"synckeys", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"pending_part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"pending_part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	/*
 	 * This is a hack because we short circuit part2 in changes.c.
 	 * It opens a tiny race.

@@ -185,6 +185,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		}
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		exit(1);
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
 		disconnect(r, 2);

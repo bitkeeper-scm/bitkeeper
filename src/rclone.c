@@ -121,6 +121,7 @@ rclone_part1(opts opts, remote *r, char **envVar)
 		getServerInfoBlock(r);
 	} else {
 		drainErrorMsg(r, buf, sizeof(buf));
+		exit(1);
 	}
 
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
