@@ -187,7 +187,7 @@ main(int ac, char **av)
 	char	cmd_path[MAXPATH];
 	char	*argv[100];
 	int	c;
-	int	dashr = 0;
+	int	is_bk = 0, dashr = 0;
 	char	*prog;
 
 	/*
@@ -212,6 +212,7 @@ main(int ac, char **av)
 	 */
 	prog = basenm(av[0]);
 	if (streq(prog, "bk")) {
+		is_bk = 1;
 		while ((c = getopt(ac, av, "rR")) != -1) {
 			switch (c) {
 			    case 'h':
@@ -250,6 +251,7 @@ main(int ac, char **av)
 				return (sfiles(ac, av));
 			}
 		}
+		prog = av[0];
 	}
 	getoptReset();
 
@@ -257,9 +259,13 @@ main(int ac, char **av)
 	 * look up the internal command 
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
-		if (streq(cmdtbl[i].name, av[0])){
+		if (streq(cmdtbl[i].name, prog)){
 			return (cmdtbl[i].func(ac, av));
 		}
+	}
+	unless(is_bk) {
+		fprintf(stderr, "%s is not a linkable command\n",  prog);
+		exit(1);
 	}
 
 	/*
