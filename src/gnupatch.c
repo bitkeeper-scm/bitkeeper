@@ -223,16 +223,23 @@ gnupatch_main(int ac, char **av)
 		chop(buf);
 		path0 = buf;
 		path1 = strchr(buf, BK_FS);
+		unless (path1) {
+		err:
+			fprintf(stderr, 
+"gnupatch ERROR: bad input format expected: <cur>%c<start>%c<rev>%c<end>%c<rev>\n",
+			    BK_FS, BK_FS, BK_FS, BK_FS);
+			exit(1);
+		}
 		assert(path1);
 		*path1++ = 0;
 		rev1 = strchr(path1, BK_FS);
-		assert(rev1);
+		unless (rev1) goto err;
 		*rev1++ = 0;
 		path2 = strchr(rev1, BK_FS);
-		assert(path2);
+		unless (path2) goto err;
 		*path2++ = 0;
 		rev2 = strchr(path2, BK_FS);
-		assert(rev2);
+		unless (rev2) goto err;
 		*rev2++ = 0;
 		if (header) print_entry(path1, rev1, path2, rev2);
 		if (streq(path0, "ChangeSet")) {
