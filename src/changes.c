@@ -258,8 +258,14 @@ doit(int dash)
 			things += tokens(d[0]);
 		}
 		rd = 1;
-		RANGE("changes", s, opts.all ? 2 : 1, noisy)
-		unless (SET(s)) {
+		RANGE("changes", s, opts.all ? 2 : 1, noisy);
+		if (SET(s)) {
+			for (e = s->rstop; e; e = e->next) {
+				if ((e->flags & D_SET) && !want(s, e)) {
+					e->flags &= ~D_SET;
+				}
+			}
+		} else {
 			for (e = s->rstop; e; e = e->next) {
 				if (want(s, e)) e->flags |= D_SET;
 				if (e == s->rstart) break;

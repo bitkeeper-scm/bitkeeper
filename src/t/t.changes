@@ -245,3 +245,14 @@ then	echo 'failed (bug 2002-04-19-001)'
 else	echo 'bug 2002-04-19-001 passing! fix test.'
 	exit 1
 fi
+cd $HERE
+rm -rf p
+
+echo $N Does combining restrictions work ............................$NL
+cd project
+revs=`bk changes -c-1Y -ujoe -d:REV:`
+test X$revs != X1.5 && {
+	echo failed
+	exit 1
+}
+echo OK
