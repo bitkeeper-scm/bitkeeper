@@ -28,12 +28,11 @@ done
 echo $N Checking diffs against readonly file ........................$NL
 bk co $Q -r1.9 Mydiffs
 bk diffs Mydiffs > D
-cat > X << EOF
+bk undos > W << EOF
 ===== Mydiffs 1.10 vs ? =====
 10d9
 < 1.10
 EOF
-bk undos X > W
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
@@ -41,75 +40,66 @@ echo $N Checking diff against edited file ...........................$NL
 bk co $Q -l Mydiffs
 echo foo >> Mydiffs
 bk diffs Mydiffs > D
-cat > X <<EOF
+bk undos > W <<EOF
 ===== Mydiffs 1.10 vs edited =====
 10a11
 > foo
 EOF
-bk undos X > W
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff -r1.8 against edited file .....................$NL
 bk diffs -r1.8 Mydiffs > D
-cat > X <<EOF
+bk undos > W <<EOF
 ===== Mydiffs 1.8 vs edited =====
 8a9,11
 > 1.9
 > 1.10
 > foo
 EOF
-bk undos X > W
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff -r1.8 w/ no file ..............................$NL
 bk unedit Mydiffs
 bk diffs -r1.8 Mydiffs > D
-cat > X <<EOF
-===== Mydiffs 1.8 vs 1.10 =====
-8a9,10
-> 1.9
-> 1.10
+bk undos > W <<EOF
+===== Mydiffs 1.7 vs 1.8 =====
+7a8
+> 1.8
 EOF
-bk undos X > W
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff -r1.8 -r1.9 ...................................$NL
 bk diffs -r1.8 -r1.9 Mydiffs > D
-cat > X <<EOF
+bk undos > W <<EOF
 ===== Mydiffs 1.8 vs 1.9 =====
 8a9
 > 1.9
 EOF
-bk undos X > W
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff -dSSS -r1.9 ...................................$NL
 bk admin $Q -SSSS:1.7 Mydiffs
 bk diffs -dSSS -r1.9 Mydiffs > D
-cat > X <<EOF
+bk undos > W <<EOF
 ===== Mydiffs 1.7 vs 1.9 =====
 7a8,9
 > 1.8
 > 1.9
 EOF
-bk undos X > W
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
 echo OK
 echo $N Checking diff -dSSS .........................................$NL
 bk diffs -dSSS Mydiffs > D
-cat > X <<EOF
-===== Mydiffs 1.7 vs 1.10 =====
-7a8,10
-> 1.8
-> 1.9
-> 1.10
+bk undos > W <<EOF
+===== Mydiffs 1.6 vs 1.7 =====
+6a7
+> 1.7
 EOF
-bk undos X > W
 cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK

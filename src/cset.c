@@ -819,7 +819,7 @@ doDiff(sccs *sc, char kind)
 	}
 	e = e->parent;
 	if (e == d) return;
-	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout, "PARENT", "NEW");
+	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout);
 }
 
 

@@ -11358,7 +11358,7 @@ Fucks up citool
 }
 
 private void
-mkTag(char kind, char *label, char *rev, char *path, char tag[])
+mkTag(char kind, char *rev, char *revM, pfile *pf, char *path, char tag[])
 {
 	/*
 	 * 1.0 => create (or reverse create in a reverse pacth )
@@ -11367,7 +11367,23 @@ mkTag(char kind, char *label, char *rev, char *path, char tag[])
 	if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
 		sprintf(tag, "%s", "/dev/null");
 	} else {
-		sprintf(tag, "%s/%s", label? label : rev, path);
+		strcpy(tag, rev);
+		if (revM) { 
+			strcat(tag, "+");
+			strcat(tag, revM);
+		}
+		if (pf) {
+			if (pf->iLst) {
+				strcat(tag, "+");
+				strcat(tag, pf->iLst);
+			}
+			if (pf->xLst) {
+				strcat(tag, "-");
+				strcat(tag, pf->xLst);
+			}
+		}
+		strcat(tag, "/");
+		strcat(tag, path);
 	}
 }
 
@@ -11450,25 +11466,32 @@ doDiff(sccs *s, u32 flags, char kind, char *leftf, char *rightf,
 	return (0);
 }
 
+
 /*
  * Given r1, r2, compute rev1, rev2
  * r1 & r2 are user specified rev; can be incomplete 
  */
 private int
 mapRev(sccs *s, u32 flags,
-		char *r1, char *r2, char **rev1, char **rev2, pfile *pf)
+		char *r1, char *r2, char **rev1, char **rev1M, char **rev2, pfile *pf)
 {
-	char *lrev, *rrev;
+	char *lrev, *lrevM = 0, *rrev;
 
 	if (r1 && r2) {
 		lrev = r1;
 		rrev = r2;
 	} else if (r1) {
-		lrev = r1;
-		rrev = HAS_PFILE(s) ? "edited" : 0;
+		if (HAS_PFILE(s)) {
+			lrev = r1;
+			rrev = "edited";
+		} else {
+			rrev = r1;
+			sccs_parent_revs(s, r1, &lrev, &lrevM);
+		}
 	} else if (HAS_PFILE(s)) {
 		if (sccs_read_pfile("diffs", s, pf)) return (-1);
 		lrev = pf->oldrev;
+		lrevM = pf->mRev;
 		rrev = "edited";
 	} else {
 		unless (HAS_GFILE(s)) {
@@ -11488,7 +11511,7 @@ mapRev(sccs *s, u32 flags,
 	}
 	if (!rrev) rrev = findrev(s, 0)->rev;
 	if (!lrev) lrev = findrev(s, 0)->rev;
-	*rev1 = lrev; *rev2 = rrev;
+	*rev1 = lrev; *rev1M = lrevM, *rev2 = rrev; 
 	return 0;
 }
 
@@ -11515,7 +11538,7 @@ isTextDelta(sccs *s, char *rev)
 }
 
 private int
-mkDiffTarget(sccs *s, char *rev, char kind,
+mkDiffTarget(sccs *s, char *rev, char *revM, char kind,
 			u32 flags, int here, char *target , pfile *pf)
 {
 	if (streq(rev, "1.0")) {
@@ -11536,7 +11559,7 @@ mkDiffTarget(sccs *s, char *rev, char kind,
 		(streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)){
 		assert(HAS_GFILE(s));
 		strcpy(target, s->gfile);
-	} else if (sccs_get(s, rev, pf ? pf->mRev : 0, pf ? pf->iLst : 0,
+	} else if (sccs_get(s, rev, revM, pf ? pf->iLst : 0,
 		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
 		return (-1);
 	}
@@ -11544,8 +11567,8 @@ mkDiffTarget(sccs *s, char *rev, char kind,
 }
 
 private int
-normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
-	FILE *out, char *lLabel, char *rLabel, pfile *pf)
+normal_diff(sccs *s, char *lrev, char *lrevM,
+		char *rrev, u32 flags, char kind, FILE *out, pfile *pf)
 {
 	char	lfile[MAXPATH], rfile[MAXPATH];
 	char	ltag[MAXPATH],	rtag[MAXPATH], 	tmp[MAXPATH];
@@ -11559,8 +11582,12 @@ normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	/*
 	 * Create the lfile & rfile for diff
 	 */
-	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf)) goto done;
-	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0 )) goto done;
+	if (mkDiffTarget(s, lrev, lrevM, kind, flags, here, lfile, pf)) {
+		goto done;
+	}
+	if (mkDiffTarget(s, rrev, NULL,  kind, flags, here, rfile, 0 )) {
+		goto done;
+	}
 
 	lpath = getHistoricPath(s, lrev); assert(lpath);
 	rpath = getHistoricPath(s, rrev); assert(rpath);
@@ -11570,8 +11597,8 @@ normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	 * 
 	 * +++ bk.sh 1.34  Thu Jun 10 21:22:08 1999
 	 */
-	mkTag(kind, lLabel, lrev, lpath, ltag);
-	mkTag(kind, rLabel, rrev, rpath, rtag);
+	mkTag(kind, lrev, lrevM, pf, lpath, ltag);
+	mkTag(kind, rrev, NULL, NULL, rpath, rtag);
 
 	/*
 	 * Now diff the lfile & rfile
@@ -11586,10 +11613,9 @@ done:	unless (streq(lfile, NULL_FILE)) unlink(lfile);
  * diffs - diff the gfile or the specified (or implied) rev
  */
 int
-sccs_diffs(sccs *s, char *r1,
-	char *r2, u32 flags, char kind, FILE *out, char *lLabel, char *rLabel)
+sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 {
-	char	*lrev, *rrev;
+	char	*lrev, *lrevM, *rrev;
 	pfile	pf;
 	int	rc = 0;
 	
@@ -11597,12 +11623,14 @@ sccs_diffs(sccs *s, char *r1,
 	GOODSCCS(s);
 
 	/*
-	 * Figure out what revision the user what.
+	 * Figure out which revision the user want.
 	 * Translate r1 => lrev, r2 => rrev.
 	 */
-	if (rc = mapRev(s, flags, r1, r2, &lrev, &rrev, &pf)) goto done;
+	if (rc = mapRev(s, flags, r1, r2, &lrev, &lrevM, &rrev, &pf)) {
+		goto done;
+	}
 
-	rc = normal_diff(s, lrev, rrev, flags, kind, out, lLabel, rLabel, &pf);
+	rc = normal_diff(s, lrev, lrevM, rrev, flags, kind, out, &pf);
 
 done:	free_pfile(&pf);
 	return (rc);

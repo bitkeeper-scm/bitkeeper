@@ -160,7 +160,7 @@ usage:			system("bk help -s diffs");
 		 * Errors come back as -1/-2/-3/0
 		 * -2/-3 means it couldn't find the rev; ignore.
 		 */
-		switch (sccs_diffs(s, r1, r2, ex|flags, kind, stdout, 0, 0)) {
+		switch (sccs_diffs(s, r1, r2, ex|flags, kind, stdout)) {
 		    case -1:
 			fprintf(stderr,
 			    "diffs -s of %s failed.\n", s->gfile);

@@ -277,8 +277,11 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 	if (goneDB) mdbm_close(goneDB);
 }
 
-private void
-parent_delta(sccs *s, char **revP, char **revM, char *rev)
+/*
+ * For a given rev, compute the parent (revP) and the merge parent (RevM)
+ */
+void
+sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM)
 {
 	delta *d, *p, *m;
 
@@ -328,7 +331,7 @@ parse_rev(sccs *s, char *args,
 	} else {
 		*rev2 = args;
 		fix_rev(s, rev2, rev_buf);
-		parent_delta(s, rev1, revM, *rev2);
+		sccs_parent_revs(s, *rev2, rev1, revM);
 		unless (*rev1) {
 			fprintf(stderr, "rev %s has no parent delta\n", rev2);
 			return (1); /* failed */
