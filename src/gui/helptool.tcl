@@ -9,8 +9,8 @@ proc doNext {x} \
 {
 	global	line nTopics
 
-	if {$x == -1 && $line == 2.0} { return }
-	if {$x == 1 && $line == 0.0} {
+	if {($x == -1) && ($line == 2.0)} { return }
+	if {($x == 1) && ($line == 0.0)} {
 		set l 1.0
 	} else {
 		set l [.ctrl.topics index "$line + $x lines"]
@@ -24,8 +24,8 @@ proc doNextSection {x} \
 {
 	global	line nTopics
 
-	if {$x == -1 && $line == 2.0} { return }
-	if {$x == 1 && $line == 0.0} {
+	if {($x == -1) && ($line == 2.0)} { return }
+	if {($x == 1) && ($line == 0.0)} {
 		set line 1.0
 		doSelect $x
 		return
