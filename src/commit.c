@@ -4,7 +4,7 @@
 #include <time.h>
 
 extern char *editor, *pager, *bin;
-extern char *bk_etc;
+extern char *bk_dir;
 extern int resync, quiet;
 
 char commit_file[MAXPATH], list[MAXPATH];
@@ -32,7 +32,7 @@ main(int ac, char **av)
 		    case 'F':	force = 1; break;
 		    case 'L':	lod = 1; break;
 		    case 'R':	resync = 1; 
-				bk_etc = "../BitKeeper/etc/";
+				bk_dir = "../BitKeeper/";
 				break;
 		    case 's':	/* fall thru  */
 		    case 'q':	quiet = 1; break;
@@ -186,19 +186,19 @@ checkConfig()
 {
 	char buf[MAXLINE];
 	
-	sprintf(buf, "%sSCCS/s.config", bk_etc);
+	sprintf(buf, "%setc/SCCS/s.config", bk_dir);
 	unless (exists(buf)) {
 		gethelp("chkconfig_missing", bin);
 		return 1;
 	}
-	sprintf(buf, "%sconfig", bk_etc);
+	sprintf(buf, "%setc/config", bk_dir);
 	if (exists(buf)) {
-		sprintf(buf, "%sclean %sconfig", bin, bk_etc);
+		sprintf(buf, "%sclean %setc/config", bin, bk_dir);
 		system(buf);
 	}
-	sprintf(buf, "%sget -q %sconfig", bin, bk_etc);
+	sprintf(buf, "%sget -q %setc/config", bin, bk_dir);
 	system(buf);
-	sprintf(buf, "cmp -s %sconfig %sbitkeeper.config", bk_etc, bin);
+	sprintf(buf, "cmp -s %setc/config %sbitkeeper.config", bk_dir, bin);
 	if (system(buf) == 0) {
 		gethelp("chkconfig_inaccurate", bin);
 		return 1;

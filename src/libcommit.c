@@ -4,7 +4,7 @@
 #include <time.h>
 
 char *editor = 0, *pager = 0, *bin = 0; 
-char *bk_etc = "BitKeeper/etc/";
+char *bk_dir = "BitKeeper/";
 int resync = 0, quiet = 0;
 
 void cd2root();
@@ -25,7 +25,7 @@ logAddr()
 	FILE *pipe;
 
 	if (logaddr) return logaddr;
-	sprintf(buf, "%sget -qp %sconfig", bin, bk_etc);
+	sprintf(buf, "%sget -qp %setc/config", bin, bk_dir);
 	pipe = popen(buf, "r");
 	assert(pipe);
 	while (fgets(buf, sizeof(buf), pipe)) {
@@ -77,8 +77,8 @@ sendConfig(char *to)
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm)); 
 	fclose(f);
-	sprintf(buf, "%sget -pq %sconfig | grep -v '^#' | grep '^$' >> %s",
-						       bin, bk_etc, config_log);
+	sprintf(buf, "%sget -pq %setc/config | grep -v '^#' | grep '^$' >> %s",
+						       bin, bk_dir, config_log);
 	system(buf);
 	f = fopen(config_log, "a");
 	fprintf(f, "User List:\n");
@@ -88,14 +88,14 @@ sendConfig(char *to)
 	f = fopen(config_log, "a");
 	fprintf(f, "=====\n");
 	fclose(f);
-	sprintf(buf, "%sSCCS/s.aliases", bk_etc);
+	sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);
 	if (exists(buf)) {
 		f = fopen(config_log, "a");
 		fprintf(f, "Alias  List:\n");
 		fclose(f);
 		sprintf(buf,
-		    "%sget -pq %saliases | grep -v '^#' | grep -v '^$' >> %s",
-						       bin, bk_etc, config_log);
+		    "%sget -pq %setc/aliases | grep -v '^#' | grep -v '^$' >> %s",
+						       bin, bk_dir, config_log);
 		system(buf);
 		f = fopen(config_log, "a");
 		fprintf(f, "=====\n");
@@ -157,6 +157,17 @@ logChangeSet(char *rev)
 	unlink(commit_log);
 }
 
+get(char *path, int flags, char *output)
+{
+	sccs *s = sccs_init(path, SILENT, 0);
+	int ret;
+
+	unless (s) return (-1);
+	ret = sccs_get(s, 0, 0, 0, 0, flags, output);
+	sccs_free(s);
+	return (ret ? -1 : -0);
+}
+
 char *
 project_name()
 {
@@ -173,17 +184,16 @@ void
 notify()
 {
 	char buf[MAXPATH], notify_file[MAXPATH], notify_log[MAXPATH];
-	char subject[MAXLINE], *projectname;
+	char parent_file[MAXPATH], subject[MAXLINE], *projectname;
 	FILE *f;
 
-	sprintf(notify_file, "%snotify", bk_etc);
+	sprintf(notify_file, "%setc/notify", bk_dir);
 	unless (exists(notify_file)) {
 		char notify_sfile[MAXPATH];	
-		sprintf(notify_sfile, "%sSCCS/s.notify", bk_etc);
+		sprintf(notify_sfile, "%setc/SCCS/s.notify", bk_dir);
 		if (exists(buf)) {
-			char cmd[MAXLINE];
-			sprintf(cmd, "%sget -q %snotify", bin, bk_etc);
-			system(cmd);
+			get(notify_file, 0, "-");
+			assert(exists(notify_file));
 		}
 	}
 	if (size(notify_file) <= 0) return;
@@ -193,10 +203,10 @@ notify()
 	f = fopen(notify_log, "w");
 	fprintf(f, "BitKeeper repository %s : %s\n",
 					sccs_gethost(), fullname(".", 0));
-	//XXX FIXME: this wo'nt work in the RESYNC directory
-	if (exists("BitKeeper/log/parent")) {
+	sprintf(parent_file, "%slog/parent", bk_dir);
+	if (exists(buf)) {
 		FILE *f1;
-		f1 = fopen("BitKeeper/log/parent", "r");
+		f1 = fopen(parent_file, "r");
 		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);
 		fclose(f1);
 	}
@@ -293,7 +303,7 @@ remark(int quiet)
 void
 status(int verbose, char *status_log)
 {
-	char buf[MAXLINE];
+	char buf[MAXLINE], parent_file[MAXPATH];
 	FILE *f, *f1;
 	extern int bkusers();
 
@@ -304,10 +314,10 @@ status(int verbose, char *status_log)
 	sprintf(buf, "%sbk version >> %s", bin, status_log);
 	system(buf);
 	f = fopen(status_log, "a");
-	//XXX FIXME: this wo'nt work in RESYNC
-	if (exists("BitKeeper/log/parent")) {
+	sprintf(parent_file, "%slog/parent", bk_dir);
+	if (exists(parent_file)) {
 		fprintf(f, "Parent repository is ");
-		f1 = fopen("BitKeeper/log/parent", "r");
+		f1 = fopen(parent_file, "r");
 		while (fgets(buf, sizeof(buf), f1)) fputs(buf, f);	
 		fclose(f1);
 	}
@@ -376,7 +386,6 @@ gethelp(char *help_name, char *bkarg)
 		}
 	}
 	fclose(f);
-
 }
 
 
