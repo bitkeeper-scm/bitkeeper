@@ -9121,7 +9121,8 @@ out:
 			break;
 		    default: OUT;
 		}
-		unless (diffs = mopen(tmpfile)) {
+		/* We prefer binary mode, but win32 GNU diff used text mode */ 
+		unless (diffs = mopen(tmpfile, "t")) {
 			fprintf(stderr,
 			    "delta: can't open diff file %s\n", tmpfile);
 			OUT;
@@ -11348,7 +11349,10 @@ sccs_resolveFiles(sccs *s)
 	 */
 	unless (b) {
 		for (p = a->parent; p && (p->flags & D_REMOTE); p = p->parent);
-		if (!p || streq(p->pathname, a->pathname)) return (0);
+		if (!p || streq(p->pathname, a->pathname)) {
+			if (lodmap) free(lodmap);
+			return (0);
+		}
 		b = a;
 		a = g = p;
 		retcode = 0;

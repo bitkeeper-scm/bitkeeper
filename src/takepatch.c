@@ -449,7 +449,7 @@ delta1:	off = mtell(f);
 		p->pid = pid;
 		sccs_sdelta(s, d, buf);
 		p->me = strdup(buf);
-		p->initMmap = mrange(start, stop);
+		p->initMmap = mrange(start, stop, "b");
 		p->localFile = s ? strdup(s->sfile) : 0;
 		sprintf(buf, "RESYNC/%s", name);
 		p->resyncFile = strdup(buf);
@@ -467,7 +467,7 @@ delta1:	off = mtell(f);
 			p->flags |= PATCH_META;
 			assert(c == line);
 		} else {
-			p->diffMmap = mrange(start, stop);
+			p->diffMmap = mrange(start, stop, "b");
 		}
 		line++;
 		if (echo>4) fprintf(stderr, "\n");
@@ -759,7 +759,7 @@ apply:
 			if (p->flags & PATCH_META) {
 				MMAP	*m = p->initMmap;
 
-				unless (m) m = mopen(p->initFile);
+				unless (m) m = mopen(p->initFile, "b");
 				if (sccs_meta(s, d, m)) {
 					perror("meta");
 					return -1;
@@ -775,13 +775,13 @@ apply:
 				}
 				sccs_restart(s);
 				if (p->initFile) {
-					iF = mopen(p->initFile);
+					iF = mopen(p->initFile, "b");
 				} else {
 					iF = p->initMmap;
 					p->initMmap = 0;
 				}
 				if (p->diffFile) {
-					dF = mopen(p->diffFile);
+					dF = mopen(p->diffFile, "b");
 				} else {
 					dF = p->diffMmap;
 					p->diffMmap = 0;
@@ -823,13 +823,13 @@ apply:
 			}
 			if (perfile) sccscopy(s, perfile);
 			if (p->initFile) {
-				iF = mopen(p->initFile);
+				iF = mopen(p->initFile, "b");
 			} else {
 				iF = p->initMmap;
 				p->initMmap = 0;
 			}
 			if (p->diffFile) {
-				dF = mopen(p->diffFile);
+				dF = mopen(p->diffFile, "b");
 			} else {
 				dF = p->diffMmap;
 				p->diffMmap = 0;
@@ -1239,12 +1239,12 @@ init(char *inputFile, int flags, char **resyncRootp)
 			fprintf(stderr,
 			    "takepatch: saved patch in %s\n", pendingFile);
 		}
-		unless (m = mopen(pendingFile)) {
+		unless (m = mopen(pendingFile, "b")) {
 			perror(pendingFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
 	} else {
-		unless (m = mopen(inputFile)) {
+		unless (m = mopen(inputFile, "b")) {
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
