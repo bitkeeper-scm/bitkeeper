@@ -5,6 +5,8 @@
  * Copyright (c) 2001 Andrew Chang       All rights reserved.
  */
 
+
+#ifndef WIN32
 private int
 scanDir(char *dir, char *name, MDBM *db, char *realname)
 {
@@ -40,6 +42,49 @@ done:	if (realname[0] == 0) strcpy(realname, name);
 	return (0); /* ok */
 
 }
+#else
+private int
+scanDir(char *dir, char *name, MDBM *db, char *realname)
+{
+        struct  _finddata_t found_file;
+        char    *file = found_file.name;
+        char    buf[MAXPATH];
+	char	path[MAXPATH];
+        long    dh;
+
+	realname[0] = 0;
+        bm2ntfname(dir, buf);
+        strcat(buf, "\\*.*");
+        if ((dh =  _findfirst(buf, &found_file)) == -1L) goto done;
+
+        do {
+		if (streq(file, ".") || streq(file, "..")) continue;
+		sprintf(path, "%s/%s", dir, file);
+		if (db) mdbm_store_str(db, path, file, MDBM_INSERT);
+		if (strcasecmp(file, name) == 0) {
+			if (realname[0] == 0) {
+				strcpy(realname, file);
+			} else {
+				strcpy(realname, name);
+				break;
+			}
+		}
+        } while (_findnext(dh, &found_file) == 0);
+        _findclose(dh);
+
+	/*
+	 * If the entry does not exist (directory/file not created yet)
+	 * then the given name is the real name.
+	 */
+done:	if (realname[0] == 0) {
+		strcpy(realname, name);
+		sprintf(path, "%s/%s", dir, name);
+		if (db) mdbm_store_str(db, path, name, MDBM_INSERT);
+	}
+	return (0); /* ok */
+	
+}
+#endif
 
 /*
  * Given a path, find the real name of the base part

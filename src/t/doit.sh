@@ -69,10 +69,7 @@ check_path()
 {
 	# Note this test must be done this way to be portable
 	# between NT and WIN98
-	find . -maxdepth 0 > $TMP/cmp1$$
-	echo "." > $TMP/cmp2$$
-	cmp -s $TMP/cmp1$$ $TMP/cmp2$$
-	if [ $? != 0 ]
+	if [ "." != `find . -maxdepth 0` ]
 	then
 		echo "======================================================="
 		echo "Your \"find\" command failed to produce the expected"
@@ -82,10 +79,8 @@ check_path()
 		echo "\"find\" command; please fix your path variable to"
 		echo "support this."
 		echo "======================================================="
-		rm -f $TMP/cmp1$$ $TMP/cmp2$$
 		exit 1
 	fi
-	rm -f $TMP/cmp1$$ $TMP/cmp2$$
 }
 
 check_tar()
@@ -241,11 +236,6 @@ init_main_loop()
 
 	if [ -d $BK_REGRESSION ];
 	then echo "failed to rm $BK_REGRESSION"; exit 1;
-	fi
-
-	# XXX: Do we really need this ?
-	if [ -d $BK_REGRESSION/SCCS ]
-	then echo "There should be no SCCS directory here."; exit 1;
 	fi
 
 	# Save the list of file currently in $TMP

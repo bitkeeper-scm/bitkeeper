@@ -911,6 +911,7 @@ spawn_cmd(int flag, char **av)
 
 
 
+#ifndef WIN32
 /*
  * The semantics of this interface is that it must return a NON-NULL list
  * even if the list is empty.  The NULL return value is reserved for errors.
@@ -965,6 +966,48 @@ again:	if (lstat(dir, &sb1)) {
 	}
 	return (lines);
 }
+#else
+char	**
+getdir(char *dir)
+{
+	struct  _finddata_t found_file;
+	char	*file = found_file.name;
+	char	**lines = 0;
+	char	buf[MAXPATH];
+	long	dh;
+
+	bm2ntfname(dir, buf);
+	strcat(buf, "\\*.*");
+	if ((dh =  _findfirst(buf, &found_file)) == -1L) {
+		if (errno == ENOENT) return (NULL);
+		perror(dir);
+		return (NULL);
+	}
+	lines = addLine(lines, strdup("f"));
+	assert(streq("f", lines[1]));
+	removeLineN(lines, 1);
+
+	do {
+		unless (streq(file, ".") || streq(file, "..")) {
+			localName2bkName(file, file);
+			lines = addLine(lines, strdup(file));
+		}
+	} while (_findnext(dh, &found_file) == 0);
+	_findclose(dh);
+
+#if	0
+	sortLines(lines);
+
+	/* Remove duplicate files that can result on some filesystems.  */
+	EACH(lines) {
+		while ((i > 1) && streq(lines[i-1], lines[i])) {
+			removeLineN(lines, i);
+	}
+#endif
+	return (lines);
+	
+}
+#endif
 
 #define	MAXARGS	100
 /*

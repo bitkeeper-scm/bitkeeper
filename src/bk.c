@@ -554,23 +554,6 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		return (1);
 	}
 
-	/*
-	 * Is it a perl 4 script ?
-	 */
-	if (streq(prog, "pmerge")) {
-		argv[0] = "perl"; 
-		sprintf(cmd_path, "%s/%s", bin, prog);
-		argv[1] = cmd_path;
-		for (i = 2, j = 1; av[j]; i++, j++) {
-			if (i >= (MAXARGS-10)) {
-				fprintf(stderr, "bk: too many args\n");
-				exit(1);
-			}
-			argv[i] = av[j];
-		}
-		argv[i] = 0;
-		return (spawn_cmd(_P_WAIT, argv));
-	}
 
 	/*
 	 * Handle Gui script
