@@ -361,8 +361,8 @@ cset_setup(int flags)
 	cset->state |= S_CSET;
 	cset->xflags |= X_LONGKEY;
 	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, 0) == -1) {
-intr:		sccs_whynot("cset", cset);
-		sccs_free(cset);
+		sccs_whynot("cset", cset);
+intr:		sccs_free(cset);
 		sfileDone();
 		comments_done();
 		host_done();

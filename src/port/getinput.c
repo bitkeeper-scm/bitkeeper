@@ -126,6 +126,8 @@ sccs_getComments(char *file, char *rev, delta *n)
 #define	BACKSPACE 0x08
 	int do_echo;
 
+	unless (hasConsole()) return (-1);
+
 	/*
 	 * XXX isatty() return ture if the the input a pipe
 	 */
@@ -133,6 +135,7 @@ sccs_getComments(char *file, char *rev, delta *n)
 
 	fflush(stdin);
 	fh = (HANDLE) _get_osfhandle(fileno(stdin));
+	if (fh == INVALID_HANDLE_VALUE) return (-1);
 	GetConsoleMode(fh, &consoleMode); /* save old mode */
 	SetConsoleMode(fh, 0); /* drop into raw mode */
 
@@ -148,7 +151,9 @@ sccs_getComments(char *file, char *rev, delta *n)
 
 	for (p = buf2, more = 1; more; ) {
 		if (p < &buf2[BUF_SIZE-1]) {
-			ReadFile(fh, p, 1, (LPDWORD) &len, 0);
+			if (ReadFile(fh, p, 1, (LPDWORD) &len, 0) == 0) {
+				len = 0; /* i/o error or eof */
+			}
 		} else {
 			*p = 0; /* buffer full */
 			len = 1;
@@ -214,6 +219,8 @@ sccs_getHostName(delta *n)
 #define	BACKSPACE 0x08
 	int do_echo;
 
+	unless (hasConsole()) return (-1);
+
 	/*
 	 * XXX isatty() return ture if the the input a pipe
 	 */
@@ -221,6 +228,7 @@ sccs_getHostName(delta *n)
 
 	fflush(stdin);
 	fh = (HANDLE) _get_osfhandle(fileno(stdin));
+	if (fh == INVALID_HANDLE_VALUE) return (-1);
 	GetConsoleMode(fh, &consoleMode); /* save old mode */
 	SetConsoleMode(fh, 0); /* drop into raw mode */
 
@@ -228,7 +236,9 @@ sccs_getHostName(delta *n)
 
 	for (p = buf2, more = 1; more; ) {
 		if (p < &buf2[BUF_SIZE-1]) {
-			ReadFile(fh, p, 1, (LPDWORD) &len, 0);
+			if (ReadFile(fh, p, 1, (LPDWORD) &len, 0) == 0) {
+				len = 0; /* i/o error or eof */
+			}
 		} else {
 			*p = 0; /* buffer full */
 			len = 1;
@@ -258,14 +268,19 @@ sccs_getHostName(delta *n)
 		if (*p) {p++; continue; }
 		if (isValidHost(buf2)) {
 			n->hostname = strdup(buf2);
-			break;
+			SetConsoleMode(fh, consoleMode); /* restore old mode */
+			fflush(stdin);
+			return (0);
 		}
 		fprintf(stderr, "Hostname of your machine>>  ");
 	}
 
+	/*
+	 * If we get here, we got eof but no valid host
+	 */
 	SetConsoleMode(fh, consoleMode); /* restore old mode */
 	fflush(stdin);
-	return (0);
+	return (-1);
 
 gotInterrupt:
 	fprintf(stderr, "\nCheck in aborted due to interrupt.\n");
@@ -275,6 +290,7 @@ gotInterrupt:
 
 }
 
+int
 sccs_getUserName(delta *n)
 {
 #define	BUF_SIZE 1024
@@ -288,6 +304,8 @@ sccs_getUserName(delta *n)
 #define	BACKSPACE 0x08
 	int do_echo;
 
+	unless (hasConsole()) return (-1);
+
 	/*
 	 * XXX isatty() return ture if the the input a pipe
 	 */
@@ -295,13 +313,16 @@ sccs_getUserName(delta *n)
 
 	fflush(stdin);
 	fh = (HANDLE) _get_osfhandle(fileno(stdin));
+	if (fh == INVALID_HANDLE_VALUE) return (-1);
 	GetConsoleMode(fh, &consoleMode); /* save old mode */
 	SetConsoleMode(fh, 0); /* drop into raw mode */
 
 	fprintf(stderr, "User name>>   ");
 	for (p = buf2, more = 1; more; ) {
 		if (p < &buf2[BUF_SIZE-1]) {
-			ReadFile(fh, p, 1, (LPDWORD) &len, 0);
+			if (ReadFile(fh, p, 1, (LPDWORD) &len, 0) == 0) {
+				len = 0; /* i/o error or eof */
+			}
 		} else {
 			*p = 0; /* buffer full */
 			len = 1;
@@ -334,15 +355,20 @@ sccs_getUserName(delta *n)
 		if (*p) {p++; continue; }
 		if (isValidUser(buf2)) {
 			n->user = strdup(buf2);
-			break;
+			SetConsoleMode(fh, consoleMode); /* restore old mode */
+			fflush(stdin);
+			return (0);
 		}
-		fprintf(stderr, "%s is not a valid user name\n", buf2);
+		fprintf(stderr, "\"%s\" is not a valid user name\n", buf2);
 		fprintf(stderr, "User name>>   ");
 	}
 
+	/*
+	 * If we get here, we got eof but no valid user
+	 */
 	SetConsoleMode(fh, consoleMode); /* restore old mode */
 	fflush(stdin);
-	return (0);
+	return (-1);
 
 gotInterrupt:
 	fprintf(stderr, "\nCheck in aborted due to interrupt.\n");
