@@ -28,6 +28,7 @@ P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 touch BitKeeper/etc/SCCS/x.marked
 echo OK
+
 echo $N Create some data, clone, create more data, pull .............$NL
 echo 1 > A
 bk new $Q A
@@ -62,6 +63,7 @@ grep -q 'check: SCCS/s.WRONG_PLACE should be SCCS/s.A' OUT || {
 }
 echo OK
 cores
+
 echo $N Create data in subdir, pull, make sure it removes dir .......$NL
 cd $HERE/project
 mkdir subdir
@@ -71,7 +73,7 @@ bk new $Q personality
 bk commit $Q -ynasty
 cd $HERE/clone
 bk abort -f
-bk pull $Q > OUT 2>&1
+bk pull > OUT 2>&1
 if [ $? -eq 0 ]
 then	echo failed to exit non-zero
 	exit 1
@@ -84,11 +86,41 @@ do	if [ -f $i ]
 done
 if [ -d subdir ]
 then	echo failed to remove subdir
+	cat OUT
 	exit 1
 fi
 grep -q 'check: SCCS/s.WRONG_PLACE should be SCCS/s.A' OUT || {
 	echo bad error message from pull:
 	cat OUT
+	exit 1
+}
+echo OK
+cores
+
+echo $N Create a new subdir, pull it, dir inode should not change ...$NL
+cd $HERE/project
+mkdir directory
+cd directory
+echo Cindy > TheBest
+bk new $Q TheBest
+bk commit $Q -ywhoohooo
+cd $HERE
+bk clone $Q project test2
+cd project/directory
+bk edit $Q TheBest
+echo Beth > TheBest
+bk delta $Q -y"Larry gets a clue" TheBest
+bk commit $Q -ywhatever
+cd $HERE/test2
+ls -lid directory > START
+bk pull $Q || {
+	echo pull failed
+	exit 1
+}
+ls -lid directory > FINISH
+cmp -s START FINISH || {
+	echo Directory was changed
+	diff START FINISH
 	exit 1
 }
 echo OK
