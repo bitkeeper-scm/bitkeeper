@@ -2,10 +2,10 @@
 # @(#) %K%
 
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
-	  get gethost getuser key2rev lines prs range rechksum renumber	 \
+	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii resyncwrap
+	  isascii resyncwrap lodset
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex \
 	  renametool mkdiffs
@@ -228,6 +228,8 @@ rechksum: rechksum.o $(LIBS)
 	$(CC) $(CFLAGS) rechksum.o $(LINK) -o rechksum
 cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
+lod: lod.o $(LIBS)
+	$(CC) $(CFLAGS) lod.o $(LINK) -o lod
 rmdel: rmdel.o $(LIBS)
 	$(CC) $(CFLAGS) rmdel.o $(LINK) -o rmdel
 stripdel: stripdel.o $(LIBS)
@@ -322,6 +324,10 @@ bk: bk.sh bk.ver port/unix_platform.sh substvars
 		sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" > bk.T
 	chmod +x bk.T
 	mv -f bk.T bk
+
+lodset: lodset.sh
+	cp lodset.sh lodset
+	chmod +x lodset
 
 # XXX Must be changed when ChangeSet moves to BitKeeper/etc.
 # It is structured like this so that rebuilding prs doesn't
@@ -500,6 +506,7 @@ getuser.o:	getuser.c
 isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
+lod.o:		lod.c $(sccsdeps) range.h comments.c host.c user.c
 mtime.o:	mtime.c
 prs.o:		prs.c $(sccsdeps) range.h
 range.o:	range.c $(sccsdeps) range.h
