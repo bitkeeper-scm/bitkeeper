@@ -14,7 +14,6 @@ proc widgets {} \
 	set g [wm geometry .]
 	wm title . "Diff Tool"
 
-	wm iconify .
 	if {$tcl_platform(platform) == "windows"} {
 		set gc(py) -2; set gc(px) 1; set gc(bw) 2
 		if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {

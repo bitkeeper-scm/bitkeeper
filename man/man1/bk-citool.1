@@ -137,21 +137,35 @@ Scroll the differences 1 screen
 Scroll the file list window 1 screen
 .if t .TP 1.2i
 .if n .TP 1.7i
-.B Control-l
-Rerun the diffs in case an external program has changed the file.
+.B Control-c
+Copy the contents of the comments window to the cut buffer.
 .tp
+.B Control-x
+Delete the contents of the comments window, saving in the cut buffer.
+.tp
+.B Control-v
+Paste the contents of the cut buffer into the comments window and
+advance to the next file.
+.tp
+.B Middle-Button
+On Unix, this will paste the X11 selection buffer into the comments window.
+.if t .TP 1.2i
+.if n .TP 1.7i
 .B Control-n
 Go to the next file
 .tp
 .B Control-p
 Go to the previous file
 .tp
+.B Control-l
+Rerun the diffs in case an external program has changed the file.
+.tp
 .B Control-t
 Toggle include/exclude state and/or add/don't add state.  See the text
 about include/exclude and new files.
 .tp
 .B Control-T
-Toggle all new file into or out off the changeset. 
+Toggle all new files into or out off the changeset. 
 .tp
 .B Control-Enter
 Do the commit. Same as clicking on the Commit button.

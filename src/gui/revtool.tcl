@@ -905,6 +905,10 @@ proc listRevs {r file {N {}}} \
 	# worth it until we do LOD names.
 	if {$N != ""} { set n "-n$N" }
 	set errorCode [list]
+	set d [open "| bk prs -hr+ -nd:DS: \"$file\" 2>$dev_null" "r"]
+	gets $d s
+	close $d
+	if {$s < 300} { set r "" }
 	set d [open "| bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null" "r"]
 
 	#puts "bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null"
