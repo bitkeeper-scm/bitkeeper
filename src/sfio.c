@@ -208,15 +208,13 @@ in(char *file, int todo, int extract)
 	mode_t	mode = 0;
 	u32	sum = 0, sum2 = 0;
 
-	unless (todo) {
-		close(fd = mkfile(file));
-		goto done;
-	}
 	if (extract) {
 		fd = mkfile(file);
 		/* do NOT jump to err, it unlinks and the file may exist */
 		if (fd == -1) return (1);
 	}
+	/* Don't try to read zero bytes.  */
+	unless (todo) goto done;
 	while ((n = readn(0, buf, min(todo, sizeof(buf)))) > 0) {
 		todo -= n;
 		sum += adler32(sum, buf, n);

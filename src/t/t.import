@@ -11,25 +11,26 @@ bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 mkdir -p import_dir/src
 ${ECHO} foo > import_dir/src/foo.c
 touch import_dir/src/boo.c
+trap 'echo failed; cat $HERE/import.out' 0
+set -e
 ( echo plain; echo no ) | bk import import_dir project > import.out 2>&1
 cd $HERE/project/src
+[ -f SCCS/s.foo.c ]
 get $Q foo.c
 cmp -s foo.c $HERE/import_dir/src/foo.c
-if [ $? -ne 0 ]; then echo failed; cat import.out; exit 1; fi
+[ -f SCCS/s.boo.c ]
 get $Q boo.c
 cmp -s boo.c $HERE/import_dir/src/boo.c
-if [ $? -ne 0 ]; then echo failed; cat import.out; exit 1; fi
 echo OK
 echo $N Test import patch file ......................................$NL
 cd $HERE
 mkdir -p import_new/src
 ${ECHO} "foo-new" > $HERE/import_new/src/foo.c
-diff -Nru import_dir import_new > test_patch
+diff -Nru import_dir import_new > test_patch || : # legitimately exits 1
 ( echo patch; echo no ) | bk import test_patch project > import.out 2>&1
 cd $HERE/project/src
 get $Q foo.c
 cmp -s foo.c $HERE/import_new/src/foo.c
-if [ $? -ne 0 ]; then echo failed; cat import.out; exit 1; fi
 echo OK
 echo $N Test import sccs file .......................................$NL
 cd $HERE
@@ -44,5 +45,5 @@ cd $HERE
 cd $HERE/project/src
 get $Q bar.c $HERE/import_sccs/src/bar.c
 cmp -s bar.c $HERE/import_sccs/src/bar.c
-if [ $? -ne 0 ]; then echo failed; cat import.out; exit 1; fi
 echo OK
+trap '' 0
