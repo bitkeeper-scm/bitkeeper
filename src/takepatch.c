@@ -1903,8 +1903,8 @@ rebuild_id(char *id)
 		assert(s);
 		*s = 0;
 		fprintf(stderr,
-"takepatch: miss in idcache while looking for\n\t     \"%s\",\n\
-\t     rebuilding (this can take a while)...", id);
+"Rebuilding idcache - looking for the following key (may take a moment):\n"
+"    \"%s\"\n", id);
 	}
 	if (sccs_reCache(1)) return (1);
 	if (idDB) mdbm_close(idDB);
