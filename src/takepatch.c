@@ -1026,8 +1026,10 @@ freePatchList()
 	for (p = patchList; p; ) {
 		patch	*next = p->next;
 
-		unlink(p->initFile);
-		free(p->initFile);
+		if (p->initFile) {
+			unlink(p->initFile);
+			free(p->initFile);
+		}
 		if (p->diffFile) {
 			unlink(p->diffFile);
 			free(p->diffFile);
@@ -1351,6 +1353,7 @@ cleanup(int what)
 	}
 	if (what & CLEAN_PENDING) {
 		assert(exists("PENDING"));
+		assert(pendingFile);
 		unlink(pendingFile);
 		if (rmdir("PENDING")) {
 			fprintf(stderr,
