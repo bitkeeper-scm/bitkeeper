@@ -45,11 +45,11 @@ pull_main(int ac, char **av)
 	bzero(&opts, sizeof(opts));
 	opts.gzip = 6;
 	opts.automerge = 1;
-	while ((c = getopt(ac, av, "c:deE:Gil|nqRtw|z|")) != -1) {
+	while ((c = getopt(ac, av, "c:deE:GilnqRtw|z|")) != -1) {
 		switch (c) {
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
-		    case 'l': opts.list = listType(optarg);	/* doc 2.0 */
+		    case 'l': opts.list++; break;		/* doc 2.0 */
 			break;
 		    case 'n': opts.dont = 1; break;		/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
@@ -69,14 +69,6 @@ pull_main(int ac, char **av)
 			usage();
 			return(1);
 		}
-	}
-
-	if (opts.list == LISTKEY) {
-		unless (av[optind]) return (sys("bk", "synckeys", "-rk", SYS));
-		return (sys("bk", "synckeys", "-rk", av[optind], SYS));
-	} else  if (opts.list == LISTREV) {
-		unless (av[optind]) return (sys("bk", "synckeys", "-rr", SYS));
-		return (sys("bk", "synckeys", "-rr", av[optind], SYS));
 	}
 
 	loadNetLib();
@@ -430,10 +422,6 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	    !isLocalHost(r->host) && exists(BKMASTER)) {
 		fprintf(stderr, "Cannot pull from master repository: %s",
 			upgrade_msg);
-		exit(1);
-	}
-	if (repository_lockers(0)) {
-		fprintf(stderr, "Cannot do pull into locked repository.\n");
 		exit(1);
 	}
 	cset = sccs_init(csetFile, 0, 0);

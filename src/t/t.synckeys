@@ -27,34 +27,27 @@ bk commit $Q -yfoo
 bk tag $Q copy1
 echo OK
 
-echo $N "check push -lk" ..............................................$NL
-bk push -lk $HERE/project | bk -R key2rev ChangeSet > push.out
-bk undos > ref1 <<EOF
-1.2
-1.2
-EOF
-cmp -s push.out ref1 || { echo failed; exit 1; }
+echo $N List keys which are local only, changes -Lk .................$NL
+bk changes -Lk $HERE/project | bk keysort > GOT
+bk -R prs -and:KEY: ChangeSet | head -2 | bk keysort > WANT
+cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
-echo $N "check push -lr" ..............................................$NL
-bk push -lr $HERE/project > push.out
-bk undos > ref2 <<EOF
-1.2
-copy1
-EOF
-cmp -s push.out ref2 || { echo failed; exit 1; }
+echo $N List local changes as rev and type ..........................$NL
+bk changes -afLnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project > WANT
+bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 > GOT
+cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
-echo $N "check pull -lk" ..............................................$NL
-bk pull -lk $HERE/project | \
-		( cd $HERE/project && bk key2rev ChangeSet ) > push.out
-cmp -s push.out ref1 || { echo failed; exit 1; }
+echo $N List keys which are remote only, changes -Rk ................$NL
+bk changes -Rk $HERE/project | bk keysort > GOT
+( cd $HERE/project && 
+  bk -R prs -and:KEY: ChangeSet | head -2 | bk keysort ) > WANT
+cmp -s WANT GOT || { echo failed; diff WANT GOT; exit 1; }
 echo OK
-echo $N "check pull -lr" ..............................................$NL
-bk pull -lr $HERE/project > push.out
-bk undos > ref3 <<EOF
-1.2
-proj1
-EOF
-cmp -s push.out ref3 || { echo failed; exit 1; }
+echo $N List remote changes as rev and type .........................$NL
+bk changes -afRnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' $HERE/project |
+    bk keysort > GOT
+( cd $HERE/project && 
+  bk -R prs -hafnd'$if(:DT:=T){:TAG:}$if(:DT:=D){:I:}' | tail -2 ) > GOT
 echo OK
 
 echo $N make sure bk send xfer tag correctly ........................$NL
