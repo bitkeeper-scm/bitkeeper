@@ -53,7 +53,7 @@ usage:		fprintf(stderr, stripdel_help);
 			return (1);
 		}
 	}
-	if (streq(av[optind], "-")) return (strip_list(opts));
+	if (av[optind] && streq(av[optind], "-")) return (strip_list(opts));
 
 	unless (opts.stripBranches || (things && r[0])) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
@@ -64,6 +64,10 @@ usage:		fprintf(stderr, stripdel_help);
 	 * Too dangerous to do autoexpand.
 	 * XXX - might want to insist that there is only one file.
 	 */
+	unless (av[optind]) {
+		fprintf(stderr, "stripdel: must specifies one file name\n");
+		return (1);
+	}
 	name = sfileFirst("stripdel", &av[optind], SF_NODIREXPAND);
 	if (sfileNext()) {
 		fprintf(stderr, "stripdel: only one file at a time\n");
