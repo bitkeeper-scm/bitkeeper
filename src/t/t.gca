@@ -1,0 +1,81 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+# Test the operation of various gca operations
+# These are not BK specific, per se
+
+echo $N Create graph with some merge, -i, and -x stuff ..............$NL
+${ECHO} foo > foo.c
+ci $Q -i foo.c
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+get $Q -e foo.c
+delta $Q -y1.2 foo.c
+get $Q -e foo.c
+delta $Q -y1.3 foo.c
+get $Q -e -r1.2 foo.c
+delta $Q -y1.2.1.1 foo.c
+get $Q -e foo.c
+delta $Q -y1.4 foo.c
+get $Q -e -r1.2.1 foo.c
+delta $Q -y1.2.1.2 foo.c
+get $Q -e foo.c
+delta $Q -y1.5 foo.c
+get $Q -e -r1.2.1 foo.c
+delta $Q -y1.2.1.3 foo.c
+get $Q -e -x1.2 foo.c
+delta $Q -y1.6 foo.c
+get $Q -e -x1.2 -r1.2.1 foo.c
+delta $Q -y1.2.1.4 foo.c
+get $Q -e -M1.2.1.2 foo.c
+delta $Q -y1.7 foo.c
+get $Q -e -M1.4 -r1.2.1 foo.c
+delta $Q -y1.2.1.5 foo.c
+gca=`gca -r1.2.1.5 -r1.7 foo.c`
+expect="1.2.1.2 -i1.3,1.4 -x1.2"
+if [ "$gca" != "$expect" ]; then
+	echo failed gca
+	echo "gca gave ==> '$gca'"
+	echo "expected ==> '$expect'"
+	exit 1
+fi
+echo OK
+# Do a weird graph, in the sense that it is knocking out things
+# it doesn't even have.  This isn't as much a test of the set gca
+# as when we get to the merge stuff.  Need to handle this case.
+echo $N Create graph with some weird pathalogical -i and -x .........$NL
+${ECHO} bar > bar.c
+ci $Q -i bar.c
+if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
+get $Q -e bar.c
+delta $Q -y1.2 bar.c
+# make 2 new branches and include trunk 1.2 into each
+get $Q -e -i1.2 -r1.1 bar.c
+delta $Q -y1.1.1.1 bar.c
+get $Q -e -i1.2 -r1.1 bar.c
+delta $Q -y1.1.2.1 bar.c
+# add to branch, excluding something from the other side
+get $Q -e -x1.1.2.1 -r1.1.1 bar.c
+delta $Q -y1.1.1.2 bar.c
+get $Q -e -x1.1.1.1 -r1.1.2 bar.c
+delta $Q -y1.1.2.2 bar.c
+# do set gca to see what it says.  Should include 1.2 (should be 1.2)
+gca=`gca -r1.1.1.2 -r1.1.2.2 bar.c`
+expect="1.1 -i1.2"
+if [ "$gca" != "$expect" ]; then
+	echo failed gca
+	echo "gca gave ==> '$gca'"
+	echo "expected ==> '$expect'"
+	exit 1
+fi
+echo OK
