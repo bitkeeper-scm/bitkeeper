@@ -2,47 +2,44 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
-char	*get_help = "\n\
-usage: get [-bdeFgHkmnpqsu] [-c<date>] [-G<name>] \n\
-           [-i<revs>] [-r<revs>] [-x<revs>] [files...] OR [-]\n\n\
-    A useful thing to note is that\n\
-	bk sfiles src | bk get -e -\n\
-    will check out all SCCS files for editing.\n\n\
-    -b		force a new branch\n\
-    -c<date>	specify a date for the get.  The date format is\n\
-		yy[mm[dd[hh[mm[ss]]]]] and may be prefixed with either a\n\
-		\"+\" or \"-\" to round up/down, respectively.\n\
-		The latest delta found before the date is used.\n\
-		Symbols may be specified instead of dates, in which case\n\
-		the date of the associated revision is used.\n\
-    -d		prefix each line with date (not time)\n\
-    -D		output a delta as diff(1) style diffs instead of a file\n\
-    -DD		output a delta as BK style diffs instead of a file\n\
-    -DDD	output a delta as hash (MDBM) style diffs instead of a file\n\
-    -e		get file for editing (locked)\n\
-    -F		don't check the checksum\n\
-    -g		just do locking, don't get the file\n\
-    -G<name>	place the output file in <name>\n\
-    -i<revs>	include specified revs in the get (rev, rev and/or rev-rev)\n\
-    -h		reverse the files sense of hash (turn on if off)\n\
-    -k		don't expand keywords\n\
-    -m		prefix each line with revision number\n\
-    -M<rev>	merge with revision <rev>\n\
-    -n		prefix each line with file name\n\
-    -N		prefix each line with a line number\n\
-    -p		print file to stdout\n\
-    -P		print file even if there are file format errors.\n\
-    -q		run quietly\n\
-    -r<r>	get revision <r>\n\
-    -R		revision is part of pathname, i.e., foo.c:1.2\n\
-    -s		run quietly\n\
-    -T		make output file modification same as\n\
-		its corresponding delta\n\
-    -u		prefix each line with user id\n\
-    -x<revs>	exclude specified list of revs in get (same as -i)\n\n\
-    Not implemented:\n\
-	    -a, -l (use ``sccslog file.c'' instead)\n\
-	    floor/ceiling/locked/user permission checking\n\n";
+const char get_help[] = "\
+usage: get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]\n\
+Only the most useful options are documented.\n\
+   -q		run quietly\n\
+   -k		don't expand keywords\n\
+   -e		get file for editing\n\
+   -p		write file to standard output\n\
+   -d		prefix each line with the date it was last modified\n\
+   -m		prefix each line with the rev it was last modified in\n\
+   -u		prefix each line with the user who last modified it\n\
+   -n		prefix each line with the filename\n\
+   -N		prefix each line with its line number\n\
+\n\
+   -r<rev>	get this revision\n\
+   -c<date>	get the latest revision before the date\n";
+
+/* Undocumented options:
+ * -b	force branch
+ * -D	output a diff
+ * -DD	output cset diffs
+ * -DDD output hash diffs
+ * -l   get for editing
+ * -F	INIT_NOCKSUM
+ * -g	just do locking, don't get the file
+ * -G	put the gfile here
+ * -h	file is a hash
+ * -H	GET_PATH (?)
+ * -i	include list
+ * -M	merge with <rev>
+ * -P	write to stdout, force get
+ * -R	rev is part of pathname
+ * -s	quiet
+ * -t	ignored SCCS compat
+ * -T	set gfile modtime to delta create time
+ * -x	exclude list
+ */
+
+extern void rcs(char *cmd, int ac, char **av) NORETURN;
 
 /*
  * The weird setup is so that I can #include this file into sccssh.c
@@ -61,17 +58,27 @@ get_main(int ac, char **av, char *out)
 	int	dohash = 0;
 
 	debug_main(av);
+	if (streq(av[0], "co")) {
+		if (!isdir("SCCS") && isdir("RCS")) {
+			rcs("co", ac, av);
+			/* NOTREACHED */
+		}
+	} else if (streq(av[0], "edit")) {
+		flags |= GET_EDIT;
+	}
+
 	if (ac == 2 && streq("--help", av[1])) {
 		fprintf(stderr, get_help);
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
-	while ((c = getopt(ac, av, "bc;dDeFgG:hHi;kmM|nNpPqr;RstTux;")) != -1) {
+	while ((c = getopt(ac, av, "bc;dDeFgG:hHi;klmM|nNpPqr;RstTux;")) != -1) {
 		switch (c) {
 		    case 'b': flags |= GET_BRANCH; break;
 		    case 'c': cdate = optarg; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;
 		    case 'D': getdiff++; break;
+		    case 'l':
 		    case 'e': flags |= GET_EDIT; break;
 		    case 'F': iflags |= INIT_NOCKSUM; break;
 		    case 'g': flags |= GET_SKIPGET; break;
@@ -96,13 +103,15 @@ get_main(int ac, char **av, char *out)
 		    case 'x': xLst = optarg; break;
 
 		    default:
-usage:			fprintf(stderr, "get: usage error, try get --help\n");
+usage:			fprintf(stderr, "%s: usage error, try get --help\n",
+				av[0]);
 			return (1);
 		}
 	}
 	if (flags & GET_PREFIX) {
 		if (flags & GET_EDIT) {
-			fprintf(stderr, "get: can't mix -e with -dNum\n");
+			fprintf(stderr, "%s: can't use -e with -dNum\n",
+				av[0]);
 			return(1);
 		}
 	}
@@ -110,31 +119,34 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 	name = sfileFirst("get", &av[optind], hasrevs);
 	gdir = Gname && isdir(Gname);
 	if (Gname && (flags & GET_EDIT)) {
-		fprintf(stderr, "get: can't edit and rename at same time.\n");
+		fprintf(stderr, "%s: can't use -G and -e/-l together.\n",
+			av[0]);
+		goto usage;
+	}
+	if (Gname && (flags & GET_PATH)) {
+		fprintf(stderr, "%s: can't use -G and -H together.\n",
+			av[0]);
+		goto usage;
+	}
+	if (Gname && (flags & PRINT)) {
+		fprintf(stderr, "%s: can't use -G and -p together,\n",
+			av[0]);
+		goto usage;
+	}
+	if (((Gname && !isdir(Gname)) || iLst || xLst) && sfileNext()) {
+		fprintf(stderr,
+			"%s: only one file name with -G/i/x.\n", av[0]);
+		goto usage;
+	}
+	if ((flags & GET_PATH) && (flags & (GET_EDIT|PRINT))) {
+		fprintf(stderr, "%s: can't use -e/-l/-p and -H together.\n",
+			av[0]);
 		return (1);
+		goto usage;
 	}
-	if ((Gname && !isdir(Gname)) || iLst || xLst) {
-		if (sfileNext()) {
-			fprintf(stderr,
-			    "%s: only one file name with -G/i/x.\n", av[0]);
-			goto usage;
-		}
-	}
-	if (flags & GET_PATH) {
-		if (Gname) {
-			fprintf(stderr,
-			    "get: can't use -G and -H at the same time.\n");
-			return (1);
-		}
-		if (flags & (GET_EDIT|PRINT)) {
-			fprintf(stderr,
-			    "get: can't use -e|p and -H at the same time.\n");
-			return (1);
-		}
-	}
-	// 	 make sure -G -p is not used at the same time
 	if ((rev || cdate) && hasrevs) {
-		fprintf(stderr, "get: can't specify more than one rev.\n");
+		fprintf(stderr, "%s: can't specify more than one rev.\n",
+			av[0]);
 		return (1);
 	}
 	switch (getdiff) {
@@ -143,11 +155,12 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 	    case 2: flags |= GET_BKDIFFS; break;
 	    case 3: flags |= GET_HASHDIFFS; break;
 	    default:
-		fprintf(stderr, "get: invalid D flag value %d\n", getdiff);
+		fprintf(stderr, "%s: invalid D flag value %d\n",
+			av[0], getdiff);
 		return(1);
 	}
 	if (getdiff && (flags & GET_PREFIX)) {
-		fprintf(stderr, "get: -D and prefixes not supported\n");
+		fprintf(stderr, "%s: -D and prefixes not supported\n", av[0]);
 		return(1);
 	}
 		

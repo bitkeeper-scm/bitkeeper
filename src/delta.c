@@ -3,55 +3,53 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 char	*delta_help = "\n\
-usage: delta [-AcGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
-    -a		Auto mode, check in new or changed file automatically\n\
-    -c		Skip the checksum generation (not advised)\n\
-    -D<file>	Specify a file of diffs to be used as the change\n\
-    -G		use gfile mod time as checkin time\n\
-    -h		treat the file as a hash (MDBM) file\n\
+usage: delta [-iluYpq] [-S<sym>] [-L<lod>] [-Z<alg>] [-y<c>] [files...]\n\n\
+Only the most useful options are mentioned:\n\
     -i		Initial checkin, create a new revision history\n\
     -l		Follow checkin with a locked checkout like ``get -e''\n\
-    -L<lod>	Delta is the lod.1, i.e., creates a new line of development\n\
-    -n		Retain the edited g-file, which is normally deleted\n\
-    -p		Print differences\n\
-    -q		Run silently\n\
-    -s		Run silently\n\
-    -S<sym>	Set the symbol <sym> to be the revision created\n\
-    -I<file>	Take the initial rev/date/user/comments/etc from <file>\n\
-    		See prs for file format information\n\
+    -u		Follow checkin with an unlocked checkout like ``get''\n\
     -y<comment>	Sets the revision comment to <comment>.\n\
-    -Y		prompts for comment and then uses that for all files.\n\n\
-    -Z, -Z<alg>		compress stored s.file with <alg>, which may be:\n\
+    -Y		prompt for one comment, then use it for all the files.\n\n\
+    -p		Print differences before prompting for comments.\n\
+    -q		Run silently.\n\
+    -S<sym>	Set the symbol <sym> to be the revision created\n\
+    -L<lod>	Delta is the lod.1, i.e., creates a new line of development\n\
+    -Z, -Z<alg>	compress stored s.file with <alg>, which may be:\n\
 		gzip	like gzip(1) (default)\n\
-		none	no compression\n\
-    -E<enc>		treat file as encoded with <enc>, which may be:\n\
-		text	plain text\n\
-		ascii	same\n\
-		binary	binary file (must uuencode before diffing)\n\
-		uugzip	same, but compress before uuencode\n";
-
+		none	no compression\n";
 /*
- * Not implemented:
- *  -g<revs>	Specify  a  list of deltas to omit.
- *  -m<mrList>	If the 'v' flag is set, then you must specify an MR number
- *  		with the checkin (MR == modification request number).
- *  -r<rev>
- *
- * TODO -
- *	support ~e escape for dropping into the editor on the comments so far.
+ * Undocumented options:
+ * acDEfgGhImnRr
+ * -a	auto mode (DELTA_AUTO & ~DELTA_FORCE; precise semantics?)
+ * -c	INIT_NOCKSUM
+ * -D	take diffs from file
+ * -E	set file encoding (like admin)
+ * -f	force ci of null delta - default on unless invoked as ci
+ * -g	obsolete, SCCS compat
+ * -h	DELTA_HASH
+ * -I	use init file (implies -i?)
+ * -m	(delta) obsolete, SCCS compat;  (ci) as -y
+ * -n	preserve gfile, kill pfile; SCCS compat
+ * -R	DELTA_PATCH (?)
+ * -r	obsolete, SCCS compat
+ * -s	same as -q
  */
 
 #include "comments.c"
 int	newrev(sccs *s, pfile *pf);
+
+extern void rcs(char *cmd, int ac, char **av) NORETURN;
 
 int
 main(int ac, char **av)
 {
 	sccs	*s;
 	int	iflags = 0;
-	int	dflags = DELTA_FORCE;
+	int	dflags = 0;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
+	int	isci = 0;
+	int	checkout = 0;
 	int	c, rc, enc;
 	char	*initFile = 0;
 	char	*diffsFile = 0;
@@ -64,27 +62,58 @@ main(int ac, char **av)
 	pfile	pf;
 
 	debug_main(av);
+	if (streq(av[0], "ci")) {
+		if (!isdir("SCCS") && isdir("RCS")) {
+			rcs("ci", ac, av);
+			/* NOTREACHED */
+		}
+		isci = 1;
+	} else if (streq(av[0], "delta")) {
+		dflags = DELTA_FORCE;
+	}
+	
 	if (ac > 1 && streq("--help", av[1])) {
-help:		fprintf(stderr, delta_help);
+help:		fputs(delta_help, stderr);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "acD:E|g;GhI;ilL;m;npqRS;sy|YZ|")) != -1) {
+	while ((c = getopt(ac, av,
+			   "acD:E|fg;GhI;ilL;m|npqRrS;suy|YZ|")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
-		    case 'g': fprintf(stderr, "-g Not implemented.\n");
-			    goto help;
-		    case 'm': fprintf(stderr, "-m Not implemented.\n");
-			    goto help;
 		    case 'n': dflags |= DELTA_SAVEGFILE; break;
 		    case 'p': dflags |= PRINT; break;
-		    case 'r': fprintf(stderr, "-r Not implemented.\n");
-			    goto help;
-		    case 's': dflags |= SILENT; gflags |= SILENT; break;
 		    case 'y':
+		    comment:
 			comment = optarg;
 			gotComment = 1;
 			dflags |= DELTA_DONTASK;
 			break;
+		    case 's': /* fall through */
+			
+		    /* RCS flags */
+		    case 'q': dflags |= SILENT; gflags |= SILENT; break;
+		    case 'f': dflags |= DELTA_FORCE; break;
+		    case 'i': dflags |= NEWFILE;
+			      sflags |= SF_NODIREXPAND;
+			      break;
+		    case 'l': gflags |= GET_SKIPGET|GET_EDIT;
+		    	      dflags |= DELTA_SAVEGFILE;
+			      checkout = 1;
+			      break;
+		    case 'u': gflags |= GET_EXPAND;
+			      checkout = 1;
+			      break;
+			    
+		    /* flags with different meaning in RCS and SCCS */
+		    case 'm':
+			    if (isci) goto comment;
+			    /* else fall through */
+
+		    /* obsolete SCCS flags */
+		    case 'g':
+		    case 'r':
+			    fprintf(stderr, "-%c not implemented.\n", c);
+			    goto help;
 
 		    /* LM flags */
 		    case 'a':
@@ -98,12 +127,7 @@ help:		fprintf(stderr, delta_help);
 		    case 'G': iflags |= INIT_GTIME; break;
 		    case 'h': dflags |= DELTA_HASH; break;
 		    case 'I': initFile = optarg; break;
-		    case 'i': dflags |= NEWFILE; sflags |= SF_NODIREXPAND; break;
-		    case 'l': gflags |= GET_SKIPGET|GET_EDIT;
-		    	      dflags |= DELTA_SAVEGFILE;
-			      break;
 		    case 'L': lod = optarg; break;
-		    case 'q': dflags |= SILENT; gflags |= SILENT; break;
 		    case 'R': dflags |= DELTA_PATCH; break;
 		    case 'S': sym = optarg; break;
 		    case 'Y': dflags |= DELTA_DONTASK; break;
@@ -111,41 +135,47 @@ help:		fprintf(stderr, delta_help);
 		    case 'E': encp = optarg; break;
 
 		    default:
-usage:			fprintf(stderr, "delta: usage error, try --help.\n");
+usage:			fprintf(stderr, "%s: usage error, try --help.\n",
+				av[0]);
 			return (1);
 		}
 	}
 	enc = sccs_encoding(0, encp, compp);
 	if (enc == -1) goto usage;
 
-	name = sfileFirst("delta", &av[optind], sflags);
+	name = sfileFirst(av[0], &av[optind], sflags);
 	/* They can only have an initFile for one file...
 	 * So we go get the next file and error if there
 	 * is one.
 	 */
 	if ((initFile || diffsFile) && name && sfileNext()) {
-		fprintf(stderr, "delta: only one file "
-		    "may be specified with init or diffs file.\n");
+		fprintf(stderr,
+"%s: only one file may be specified with init or diffs file.\n", av[0]);
 		goto usage;
 	}
 	if (initFile && (dflags & DELTA_DONTASK)) {
 		fprintf(stderr,
-		    "delta: only init file or comment, not both.\n");
-		goto usage;
-	}
-	if (diffsFile && !(diffs = fopen(diffsFile, "r"))) {
-		fprintf(stderr,
-		    "delta: Can't open diffs file '%s'.\n", diffsFile);
-		goto usage;
-	}
-	if (initFile && !(init = fopen(initFile, "r"))) {
-		fprintf(stderr,
-		    "delta: Can't open init file '%s'.\n", initFile);
+		    "%s: only init file or comment, not both.\n", av[0]);
 		goto usage;
 	}
 	if (lod && !(dflags & NEWFILE)) {
-		fprintf(stderr, "delta: -L requires -i.\n");
+		fprintf(stderr, "%s: -L requires -i.\n", av[0]);
 		goto usage;
+	}
+	if ((gflags & GET_EXPAND) && (gflags & GET_EDIT)) {
+		fprintf(stderr, "%s: -l and -u are mutually exclusive.\n",
+			av[0]);
+		goto usage;
+	}
+	if (diffsFile && !(diffs = fopen(diffsFile, "r"))) {
+		fprintf(stderr, "%s: diffs file '%s': %s.\n",
+			av[0], diffsFile, strerror(errno));
+	       return (1);
+	}
+	if (initFile && !(init = fopen(initFile, "r"))) {
+		fprintf(stderr,"%s: init file '%s': %s.\n",
+			av[0], initFile, strerror(errno));
+		return (1);
 	}
 
 	while (name) {
@@ -179,7 +209,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		}
 		nrev = NULL;
 		unless (dflags & NEWFILE) {
-			if ((gflags & GET_EDIT) && (newrev(s, &pf) == -1)) {
+			if (checkout && (newrev(s, &pf) == -1)) {
 				goto next;
 			}
 			nrev = pf.newrev;
@@ -197,14 +227,14 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			purify_list();
 			return (1);
 		}
-		if (gflags & GET_EDIT) {
+		if (checkout) {
 			s = sccs_restart(s);
 			unless (s) {
 				fprintf(stderr,
-				    "ci: can't restart %s\n", name);
+				    "%s: can't restart %s\n", av[0], name);
 				goto next;
 			}
-
+			if (rc == -3) nrev = pf.oldrev;
 			if (sccs_get(s, nrev, 0, 0, 0, gflags, "-")) {
 				unless (BEEN_WARNED(s)) {
 					fprintf(stderr,

@@ -1,5 +1,5 @@
 
-BINS	= delta get ci co admin diffs clean prs what sinfo sccssh sids \
+BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  smoosh sccslog sfiles renumber lines rmdel takepatch \
 	  cset g2sccs range zone gethost undos chksum rechksum \
 	  sccsmv sccsrm sccscat key2rev check fdiff adler32
@@ -7,8 +7,9 @@ SCRIPTS	= rcs2sccs testfast bk import resolve resync
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
+LINKS	= ci co edit unedit unget
 
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) \
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) $(LINKS) \
 	  bitkeeper.config bkhelp.txt install.sh
 
 CFLAGS	= -g -O -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
@@ -35,11 +36,11 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/inflate.o zlib/infblock.o zlib/inftrees.o zlib/infcodes.o \
 	  zlib/infutil.o zlib/inffast.o
 BINOBJ  = admin.o csetmark.o key2rev.o rechksum.o sccsmv.o smoosh.o \
-	  ci.o delta.o lines.o renumber.o sccsrm.o takepatch.o clean.o \
-	  diffs.o rmdel.o sccssh.o what.o co.o g2sccs.o \
+	  delta.o lines.o renumber.o sccsrm.o takepatch.o clean.o \
+	  diffs.o rmdel.o sccssh.o what.o g2sccs.o \
 	  prs.o sccs_mv.o sfind.o zone.o cset.o get.o rangemain.o \
 	  sccscat.o sids.o gethost.o rcs.o sccslog.o sinfo.o \
-	  fdiff.o check.o adler32
+	  fdiff.o check.o adler32.o
 
 SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  sfiles.c purify.c zgets.c dirname.c maketmp.c mkdir.c \
@@ -51,7 +52,7 @@ SRCS	= slib.c range.c newrev.c getopt.c popen.c libdiff.c \
 	  zlib/uncompr.c zlib/deflate.c zlib/trees.c zlib/zutil.c \
 	  zlib/inflate.c zlib/infblock.c zlib/inftrees.c zlib/infcodes.c \
 	  zlib/infutil.c zlib/inffast.c \
-	  delta.c get.c ci.c co.c adler32.c admin.c diffs.c clean.c prs.c \
+	  delta.c get.c adler32.c admin.c diffs.c clean.c prs.c \
 	  what.c sinfo.c sccssh.c sids.c smoosh.c sccslog.c sfind.c \
 	  renumber.c lines.c rmdel.c takepatch.c \
 	  cset.c g2sccs.c rangemain.c zone.c gethost.c undos.c chksum.c \
@@ -133,7 +134,7 @@ clean-obj: FORCE
 		$(LIBS) a.out core
 
 clean-bin: FORCE
-	-/bin/rm -f $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR)
+	-/bin/rm -f $(BINS) $(SCRIPTS) $(GUIBIN) $(GUISCR) $(LINKS)
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
@@ -169,7 +170,7 @@ tags: srcs
 TAGS: srcs
 	etags $(SRCS) $(HDRS)
 
-test: 
+test tests: 
 	-get -q t
 	cd t && ./doit
 
@@ -229,42 +230,55 @@ lines: lines.o $(LIBS)
 	$(CC) $(CFLAGS) lines.o $(LINK) -o lines
 what: what.o $(LIBS)
 	$(CC) $(CFLAGS) what.o $(LINK) -o what
-sccssh: sccssh.o $(LIBS)
-	$(CC) $(CFLAGS) sccssh.o $(LINK) -o sccssh
+sccssh: sccssh.o rcs.o $(LIBS)
+	$(CC) $(CFLAGS) sccssh.o rcs.o $(LINK) -o sccssh
 check: check.o $(LIBS)
 	$(CC) $(CFLAGS) check.o $(LINK) -o check
 sccslog: sccslog.o $(LIBS)
 	$(CC) $(CFLAGS) sccslog.o $(LINK) -o sccslog
 smoosh: smoosh.o $(LIBS)
 	$(CC) $(CFLAGS) smoosh.o $(LINK) -o smoosh
-g2sccs: g2sccs.o purify.o
-	$(CC) $(CFLAGS) g2sccs.o purify.o -o g2sccs
+g2sccs: g2sccs.o purify.o $(LIBS)
+	$(CC) $(CFLAGS) g2sccs.o purify.o $(LINK) -o g2sccs
 key2rev: key2rev.o $(LIBS)
 	$(CC) $(CFLAGS) key2rev.o $(LINK) -o key2rev
 admin: admin.o $(LIBS)
 	$(CC) $(CFLAGS) admin.o $(LINK) -o admin
 sids: sids.o $(LIBS)
 	$(CC) $(CFLAGS) sids.o $(LINK) -o sids
-co: co.o rcs.o $(LIBS)
-	$(CC) $(CFLAGS) co.o rcs.o $(LINK) -o co
-ci: ci.o rcs.o $(LIBS)
-	$(CC) $(CFLAGS) ci.o rcs.o $(LINK) -o ci
 prs: prs.o $(LIBS)
 	$(CC) $(CFLAGS) prs.o $(LINK) -o prs
-get: get.o $(LIBS)
-	$(CC) $(CFLAGS) get.o $(LINK) -o get
+get: get.o rcs.o $(LIBS)
+	$(CC) $(CFLAGS) get.o rcs.o $(LINK) -o get
 sccscat: sccscat.o $(LIBS)
 	$(CC) $(CFLAGS) sccscat.o $(LINK) -o sccscat
 clean: clean.o $(LIBS)
 	$(CC) $(CFLAGS) clean.o $(LINK) -o clean
 sinfo: sinfo.o $(LIBS)
 	$(CC) $(CFLAGS) sinfo.o $(LINK) -o sinfo
-delta: delta.o $(LIBS)
-	$(CC) $(CFLAGS) delta.o $(LINK) -o delta
+delta: delta.o rcs.o $(LIBS)
+	$(CC) $(CFLAGS) delta.o rcs.o $(LINK) -o delta
 diffs: diffs.o $(LIBS)
 	$(CC) $(CFLAGS) diffs.o $(LINK) -o diffs
 adler32: adler32.o $(LIBS)
 	$(CC) $(CFLAGS) adler32.o $(LINK) -o adler32
+
+# Links.
+ci: delta
+	-rm -f ci
+	ln delta ci
+co: get
+	-rm -f co
+	ln get co
+edit: get
+	-rm -f edit
+	ln get edit
+unedit: clean
+	-rm -f unedit
+	ln clean unedit
+unget: clean
+	-rm -f unget
+	ln clean unget
 
 # Scripts.
 rcs2sccs: rcs2sccs.perl substvars
@@ -423,8 +437,6 @@ zlib/inffast.o: zlib/zutil.h zlib/zlib.h zlib/zconf.h zlib/inftrees.h
 zlib/inffast.o: zlib/infblock.h zlib/infcodes.h zlib/infutil.h zlib/inffast.h
 delta.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
 get.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
-ci.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h comments.c
-co.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 admin.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h
 diffs.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h range.h
 clean.o: system.h unix.h purify.h mdbm/mdbm.h config.h sccs.h

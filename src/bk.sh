@@ -250,124 +250,9 @@ _status() {
 	fi
 }
 
-_oldresync() {
-	V=-vv
-	v=
-	REV=1.0..
-	C=
-	FAST=
-	SSH=
-	A=
-	# XXX - how portable is this?  Seems like it is a ksh construct
-	while getopts acCFqr:Sv opt
-	do	case "$opt" in
-		a) A=-a;;
-		q) V=;;
-		c) C=-c;;
-		C) SSH="-C $SSH";;
-		r) REV=$OPTARG;;
-		F) FAST=-F;;
-		S) SSH="-v $SSH";;
-		v) V=; v=v$v;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	if [ X$v != X ]; then V=-$v; fi
-	if [ X"$2" = X ]
-	then	echo "usage: bk resync [options] source_dir dest_dir"
-		exit 1
-	fi
-	case $1 in
-	*:*)
-		FHOST=${1%:*}
-		FDIR=${1#*:}
-		PRS="ssh $SSH -x $FHOST 
-		    'cd $FDIR && exec bk prs -Cr$REV -bhd:KEY:%:I: ChangeSet'"
-		GEN_LIST="ssh $SSH -x $FHOST 'cd $FDIR && bk cset -m $V -'"
-		;;
-	*)
-		FHOST=
-		FDIR=$1
-		PRS="(cd $FDIR && exec ${BIN}prs -Cr$REV -bhd:KEY:%:I: ChangeSet)"
-		GEN_LIST="(cd $FDIR && ${BIN}cset -m $V -)"
-		;;
-	esac
-	case $2 in
-	*:*)
-		THOST=${2%:*}
-		TDIR=${2#*:}
-		PRS2="ssh $SSH -x $THOST
-		    'cd $TDIR && exec bk prs -r1.0.. -bhd:KEY: ChangeSet'"
-		# Much magic in this next line.
-		INIT=-`ssh $SSH -x $THOST sh -c "'if test -d $TDIR; \
-		    then if test -d $TDIR/BitKeeper/etc; \
-			then if test -d $TDIR/RESYNC; then echo inprog; fi; \
-			else echo no; fi; \
-		    else mkdir -p $TDIR; echo i; fi'"`
-		if [ x$INIT = x-no ]
-		then	echo "resync: $2 is not a Bitkeeper project root"
-			exit 1
-		elif [ x$INIT = x-inprog ]
-		then	echo "resync: $TDIR/RESYNC exists, patch in progress"
-			exit 1
-		elif [ x$INIT = x- ]
-		then	INIT=
-		fi
-		TKPATCH="ssh $SSH -x $THOST
-		    'cd $TDIR && exec bk takepatch $A $FAST $C $V $INIT'"
-		;;
-	*)
-		THOST=
-		TDIR=$2
-		PRS2="(cd $TDIR && exec ${BIN}prs -r1.0.. -bhd:KEY: ChangeSet)"
-		if [ -d $TDIR ]
-		then	if [ -d $TDIR/RESYNC ]
-			then echo "resync: $TDIR/RESYNC exists, patch in progress"
-			     exit 1
-			elif [ -d $TDIR/BitKeeper/etc ]
-			then :
-			else echo "resync: $2 is not a Bitkeeper project root"
-			     exit 1
-			fi
-		else
-			INIT=-i
-			mkdir -p $TDIR
-		fi
-			
-		TKPATCH="(cd $TDIR && ${BIN}takepatch $A $FAST $C $V $INIT)"
-		;;
-	esac
-
-	if [ "X$INIT" = "X-i" ]
-	then	touch ${TMP}to$$
-	else	eval $PRS2 > ${TMP}to$$
-	fi
-	eval $PRS  > ${TMP}from$$
-	REV=`${BIN}cset_todo ${TMP}from$$ ${TMP}to$$`
-	${RM} ${TMP}from$$ ${TMP}to$$
-	if [ "X$REV" != X ]
-	then	if [ X$V != X ]
-		then	echo --------- ChangeSets being sent -----------
-			${ECHO} "$REV" | fmt -42
-			echo -------------------------------------------
-		fi
-		echo "$REV" | eval $GEN_LIST | eval $TKPATCH
-	else	echo "resync: nothing to resync from \"$1\" to \"$2\""
-	fi
-	exit 0
-}
-
 # XXX - not documented
 _new() {
 	${BIN}ci -i "$@"
-}
-
-_edit() {
-	${BIN}get -e "$@"
-}
-
-_unedit() {
-	${BIN}clean -u "$@"
 }
 
 _unlock() {
@@ -867,7 +752,6 @@ _init() {
 }
 
 _platformPath() {
-	# XXXX Must be last.
 	# We find the internal binaries like this:  If BK_BIN is set
 	# and points at a directory containing an `sccslog' executable,
 	# use it.  Otherwise, look through a list of places where the
@@ -916,8 +800,7 @@ case "$1" in
 	exit 1
 	;;
     setup|changes|pending|commit|sendbug|send|\
-    mv|oldresync|edit|unedit|man|undo|save|docs|rm|new|version|\
-    sdiffs|\
+    mv|man|undo|save|docs|rm|new|version|sdiffs|\
     root|status|export|import)
 	cmd=$1
     	shift

@@ -64,7 +64,7 @@ void	touch(sccs *s);
 int	setMerge(sccs *sc, char *merge, char *rev);
 
 int
-main(int ac, char **av, char **ev)
+main(int ac, char **av)
 {
 	sccs	*sc;
 	int	flags = 0;
