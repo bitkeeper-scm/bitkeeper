@@ -151,14 +151,14 @@ Scroll the file list window 1 screen
 .if t .TP 1.2i
 .if n .TP 1.7i
 .B Control-c
-Copy the contents of the comments window to the cut buffer.
+Copy the contents of the selection to the clipboard.
 .tp
 .B Control-x
-Delete the contents of the comments window, saving in the cut buffer.
+Delete the contents of the selection, saving them in the clipboard.
 .tp
 .B Control-v
-Paste the contents of the cut buffer into the comments window and
-advance to the next file.
+Paste the contents of the clipboard into the selection, replacing
+the selection.
 .tp
 .B Middle-Button
 On Unix, this will paste the X11 selection buffer into the comments window.
@@ -216,11 +216,12 @@ There are a series of buttons on the right.  They perform the following
 functions:
 .if t .TP 1.2i
 .if n .TP 1.7i
-.B [Cut comments]
-takes the contents of the current comment window and saves them in a buffer.
+.B [Cut all comments]
+takes the contents of the current comment window and saves them in the
+clipboard.
 .tp
-.B [Paste comments]
-pastes comments saved by the previous button, overwriting any existing comments.
+.B [Paste over comments]
+pastes comments from the clipboard, overwriting any existing comments.
 .tp
 .B [Commit]
 displays all comments in the differences window and asks if you want to commit.
