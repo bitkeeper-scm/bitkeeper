@@ -8974,7 +8974,7 @@ checkOpenBranch(sccs *s, int flags)
 				    s->sfile, d->rev));
 				ret = 1;
 			}
-			if (d->symLeaf) symtips++;
+			if (d->symLeaf && !(d->flags & D_GONE)) symtips++;
 		}
 		if (d->flags & D_GONE) continue;
 		unless (isleaf(s, d)) continue;

@@ -450,6 +450,7 @@ if [ "${KEY1}"X = "${KEY2}"X ]; then echo failed: duplicate key; exit 1; fi
 echo OK
 cores
 rm -f $HERE/project/src/SCCS/s.dup.c $HERE/copy/src/SCCS/s.dup.c
+
 echo $N Check resync with binary file ...............................$NL
 cd  $HERE
 rm -rf $HERE/copy
@@ -475,7 +476,11 @@ test -d RESYNC && {
 bk get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; fi
-bk clone $Q -rbinary1 $HERE/copy $HERE/copy2
+bk clone $Q -rbinary1 $HERE/copy $HERE/copy2 || {
+	cd $HERE/copy2
+	bk lock -l
+	exit 1
+}
 cd $HERE/copy2/src
 bk get $Q bdata
 cmp -s bdata $binary_data

@@ -27,6 +27,8 @@ repository_locked(project *p)
 		if (freeit) proj_free(p);
 		return (ret);
 	}
+	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
+	if (exists(path)) return (1);
 again:	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	ret = exists(path) && !emptyDir(path);
 	unless (ret) {

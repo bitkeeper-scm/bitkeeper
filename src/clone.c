@@ -132,7 +132,7 @@ private int
 clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
 	char	*p, *freeme = 0 , buf[MAXPATH];
-	int	gzip, rc = 1, ret = 0;
+	int	gzip, rc = 1;
 
 	gzip = r->port ? opts.gzip : 0;
 	if (local && exists(local)) {
@@ -195,7 +195,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	/* remove any uncommited stuff */
-	ret = rmUncommitted(opts.quiet);
+	sccs_rmUncommitted(opts.quiet);
 
 	/* set up correct lod while the revision number is accurate */
 	if (opts.rev) {
@@ -210,16 +210,17 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	}
 
 	/* remove any later stuff */
-	if (opts.rev) ret |= after(opts.quiet, opts.rev);
+	if (opts.rev && after(opts.quiet, opts.rev)) {
+		fprintf(stderr, "Undo failed, repository left locked.\n");
+		goto done;
+	}
 
 	/* clean up empty directories */
 	rmEmptyDirs(opts.quiet);
 
 	parent(opts, r);
 
-	if (ret) ret = consistency(opts.quiet);
-		
-	if (ret) {
+	if (consistency(opts.quiet)) {
 		fprintf(stderr,
 			"Consistency check failed, repository left locked.\n");
 		goto done;
@@ -244,6 +245,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	rc  = 0;
 done:	if (rc) {
 		putenv("BK_STATUS=FAILED");
+		mkdir("RESYNC", 0777);
 	} else {
 		putenv("BK_STATUS=OK");
 	}
@@ -262,7 +264,7 @@ done:	if (rc) {
 	disconnect(r, 1);
 
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
-	repository_wrunlock(0);
+	unless (rc) repository_wrunlock(0);
 	unless (rc || opts.quiet) {
 		fprintf(stderr, "Clone completed successfully.\n");
 	}
@@ -320,8 +322,8 @@ sfio(opts opts, int gzip, remote *r)
 	return (100);
 }
 
-int
-rmUncommitted(int quiet)
+void
+sccs_rmUncommitted(int quiet)
 {
 	FILE	*in;
 	char	buf[MAXPATH+MAXREV];
@@ -329,7 +331,6 @@ rmUncommitted(int quiet)
 	char	*cmds[10];
 	char	*s;
 	int	i;
-	int	did = 0;
 
 	unless (quiet) {
 		fprintf(stderr,
@@ -363,7 +364,6 @@ rmUncommitted(int quiet)
 			}
 			fprintf(stderr, "\n");
 		}
-		did++;
 	}
 	pclose(in);
 
@@ -371,7 +371,6 @@ rmUncommitted(int quiet)
 	 * We have a clean tree, enable the "fast scan" mode for pending file
 	 */
 	enableFastPendingScan();
-	return (did);
 }
 
 int

@@ -169,7 +169,7 @@ cmd_rclone_part2(int ac, char **av)
 		goto done;
 	}
 	/* remove any uncommited stuff */
-	rmUncommitted(!opts.verbose);
+	sccs_rmUncommitted(!opts.verbose);
 
 
 	/* set up correct lod while the revision number is accurate */
