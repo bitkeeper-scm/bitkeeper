@@ -139,9 +139,11 @@ usage:			      system("bk help -s gone");
 	fclose(f);
 	f = fopen(tmpfile, "r");
 	if (sccs_gone(quiet, f)) {
+		fclose(f);
 		unlink(tmpfile);
 		exit(1);
 	}
+	fclose(f);
 	unlink(tmpfile);
 	exit(0);
 }
