@@ -4,10 +4,10 @@
 
 WHATSTR("@(#)%K%");
 
-private int	do_chksum(int fd, int off, int *sump);
-private int	chksum_sccs(char **files, char *offset);
-private	int	sccs_csetchksum(sccs *s, int diags, int fix);
-private int	do_file(char *file, int off);
+private	int	do_chksum(int fd, int off, int *sump);
+private	int	chksum_sccs(char **files, char *offset);
+private	int	cset_resum(sccs *s, int diags, int fix);
+private	int	do_file(char *file, int off);
 
 /*
  * checksum - check and/or regenerate the checksums associated with a file.
@@ -43,6 +43,10 @@ checksum_main(int ac, char **av)
 
 	if (do_sccs) return (chksum_sccs(&av[optind], off));
 
+	if (fix ? repository_wrlock() : repository_rdlock()) {
+		repository_lockers(0);
+		return (1);
+	}
 	for (name = sfileFirst("checksum", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, INIT_SAVEPROJ, proj);
@@ -60,7 +64,7 @@ checksum_main(int ac, char **av)
 			continue;
 		}
 		if (CSET(s)) {
-			doit = bad = sccs_csetchksum(s, diags, fix);
+			doit = bad = cset_resum(s, diags, fix);
 		} else {
 			doit = bad = 0;
 			for (d = s->table; d; d = d->next) {
@@ -97,6 +101,7 @@ checksum_main(int ac, char **av)
 	}
 	sfileDone();
 	if (proj) proj_free(proj);
+	fix ? repository_wrunlock(0) : repository_rdunlock(0);
 	return (ret ? ret : (doit ? 1 : 0));
 }
 
@@ -307,14 +312,13 @@ do_chksum(int fd, int off, int *sump)
 	return (0);
 }
 
-typedef struct serset serset;
-struct serset {
+typedef struct serset {
 	int	num, size;
 	struct _sse {
 		ser_t	ser;
 		u16	sum;
 	} data[0];
-};
+} serset;
 
 #define	SS_SIZE  sizeof(serset)
 #define	SSE_SIZE sizeof(struct _sse)
@@ -344,8 +348,9 @@ add_ins(HASH *h, char *root, int len, ser_t ser, u16 sum)
 	ss->data[ss->num].ser = 0;
 }
 
+/* same semantics as sccs_resum() except one call for all deltas */
 private int
-sccs_csetchksum(sccs *s, int diags, int fix)
+cset_resum(sccs *s, int diags, int fix)
 {
 	HASH	*root2map = hash_new();
 	ser_t	ins_ser = 0;
@@ -390,12 +395,10 @@ sccs_csetchksum(sccs *s, int diags, int fix)
 
 	/* foreach delta */
 	for (d = s->table; d; d = d->next) {
-
 		unless (d->type == 'D') continue;
 		unless (d->added || d->include || d->exclude) continue;
 
 		slist = sccs_set(s, d, 0, 0); /* slow */
-
 		sum = 0;
 		added = 0;
 		for (i = 0; i < cnt; i++) {
@@ -415,8 +418,7 @@ sccs_csetchksum(sccs *s, int diags, int fix)
 		}
 		free(slist);
 
-		if ((d->added != added) || (d->deleted != 0) ||
-		    (d->same != 1)) {
+		if ((d->added != added) || d->deleted || (d->same != 1)) {
 			/*
 			 * We dont report bad counts if we are not fixing.
 			 * We have not been consistant about this in the past.
@@ -452,6 +454,5 @@ sccs_csetchksum(sccs *s, int diags, int fix)
 	for (i = 0; i < cnt; i++) free(map[i]);
 	free(map);
 	hash_free(root2map);
-
 	return (found);
 }
