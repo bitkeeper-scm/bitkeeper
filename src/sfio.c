@@ -111,6 +111,7 @@ sfio_out()
 	writen(1, SFIO_VERS, 10);
 	byte_count = 10;
 	while (fnext(buf, stdin)) {
+		unless (quiet) fputs(buf, stderr);
 		chop(buf);
 		n = strlen(buf);
 		sprintf(len, "%04d", n);

@@ -633,7 +633,7 @@ private	struct {
 	{"remote push part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
 	{"remote clone", CMD_BYTES|CMD_FAST_EXIT|CMD_RDLOCK|CMD_RDUNLOCK},
 	{"remote rclone part1", CMD_BYTES},
-	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT|CMD_WRUNLOCK},
+	{"remote rclone part2", CMD_BYTES|CMD_FAST_EXIT},
 	{ 0, 0 },
 };
 

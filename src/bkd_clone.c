@@ -1,6 +1,6 @@
 #include "bkd.h"
 
-private	char *cmd[] = { "bk", "-r", "sfio", "-o", 0, 0 };
+private	char *cmd[] = { "bk", "-r", "sfio", "-o", "-q", 0 };
 private int uncompressed();
 private int compressed(int, int);
 
@@ -35,7 +35,6 @@ cmd_clone(int ac, char **av)
 		exit(1);
 	}
 
-	cmd[4] = 0;
 	while ((c = getopt(ac, av, "qr|w|z|")) != -1) {
 		switch (c) {
 		    case 'w':
@@ -46,7 +45,7 @@ cmd_clone(int ac, char **av)
 			if (gzip < 0 || gzip > 9) gzip = 6;
 			break;
 		    case 'q':
-			cmd[4] = "-q";
+			/* no op */
 			break;
 		    case 'r':
 			rev = optarg;

@@ -13,16 +13,17 @@ private int rclone_part1(opts opts, remote *r);
 private int rclone_part2(char **av, opts opts, remote *r);
 private int send_part1_msg(opts opts, remote *r);
 private int send_sfio_msg(opts opts, remote *r);
-private u32 gensfio(opts opts, int level, int wfd);
+private u32 gensfio(opts opts, int verbose, int level, int wfd);
 
 int
 rclone_main(int ac, char **av)
 {
-	int	c, rc;
+	int	c, rc, isLocal;
 	opts	opts;
-	remote	*r;
+	remote	*l, *r;
 
 	opts.verbose = 1;
+	opts.gzip = 6;
 	while ((c = getopt(ac, av, "dqz|")) != -1) {
 		switch (c) {
 		    case 'd': opts.debug = 1; break;
@@ -36,11 +37,18 @@ rclone_main(int ac, char **av)
 		}
 	}
 
-	/*
-	 * TODO av[optind] must be local,  av[optind + 1] must be remote
-	 */
 	//license();
+
+	/*
+	  * Validate argument
+	 */
 	unless (av[optind] && av[optind + 1]) usage();
+	l = remote_parse(av[optind], 1);
+	unless (l) usage();
+	isLocal = (l->host == NULL);
+	free(l);
+	unless (isLocal) usage();
+	
 	if (chdir(av[optind])) {
 		perror(av[optind]);
 		exit(1);
@@ -51,11 +59,6 @@ rclone_main(int ac, char **av)
 	}
 	r = remote_parse(av[optind + 1], 0);
 	unless (r) usage();
-
-	/*
-	 * for now, we only support bk:// address
-	 */
-	unless (r->type == ADDR_BK) usage();
 
 	rc = rclone(av, opts, r);
 	remote_free(r);
@@ -84,6 +87,7 @@ rclone_part1(opts opts, remote *r)
 	if (bkd_connect(r, opts.gzip, opts.verbose)) return (-1);
 	send_part1_msg(opts, r);
 
+	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	if (getline2(r, buf, sizeof(buf)) <= 0) return (-1);
 
 	if (streq(buf, "@SERVER INFO@"))  {
@@ -97,6 +101,7 @@ rclone_part1(opts opts, remote *r)
 		if (getTriggerInfoBlock(r, opts.verbose)) return (-1);
 	}
 	if (get_ok(r, buf, opts.verbose)) return (-1);
+	if (r->type == ADDR_HTTP) disconnect(r, 2);
 	return (0);
 }
 
@@ -183,13 +188,26 @@ done:	//trigger(av, "post");
 	return (rc);
 }
 
+private u32
+sfio_size(opts opts, int gzip)
+{
+	int     fd;
+	u32     n;
+
+	fd = open(DEV_NULL, O_WRONLY, 0644);
+	assert(fd > 0);
+	n = gensfio(opts, 0, gzip, fd);
+	close(fd);
+	return (n);
+}           
+
 private  int
 send_sfio_msg(opts opts, remote *r)
 {
 	char	buf[MAXPATH];
 	FILE	*f;
-	int	n, gzip, rc;
-	u32	extra = 0;
+	int	gzip, rc;
+	u32	m, n, extra = 0;
 
 	/*
 	 * If we are using ssh/rsh do not do gzip ourself
@@ -210,12 +228,26 @@ send_sfio_msg(opts opts, remote *r)
 	fclose(f);
 
 	/*
-	 * TODO compute "extra" for http connection
-	 */
+	 * Httpd wants the message length in the header
+	 * We have to comoute the ptach size before we sent
+	 * 6 is the size of "@END@" string
+	 */ 
+	if (r->type == ADDR_HTTP) {
+		m = sfio_size(opts, gzip);
+		assert(m > 0);
+		extra = m + 6;
+	}
 	rc = send_file(r, buf, extra, opts.gzip);
 	unlink(buf);
 
-	n = gensfio(opts, gzip, r->wfd);
+	n = gensfio(opts, opts.verbose, gzip, r->wfd);
+	if ((r->type == ADDR_HTTP) && (m != n)) {
+		fprintf(stderr,
+			"Error: sfio file have change size from %d to %d\n",
+			m, n);
+		disconnect(r, 2);
+		return (-1);
+	}
 	write_blk(r, "@END@\n", 6);
 	return (rc);
 }
@@ -223,12 +255,13 @@ send_sfio_msg(opts opts, remote *r)
 
 
 private u32
-gensfio(opts opts, int level, int wfd)
+gensfio(opts opts, int verbose, int level, int wfd)
 {
-	char	*makesfio[10] = {"bk", "-r", "sfio", "-o", 0};
+	char	*makesfio[10] = {"bk", "-r", "sfio", "-o", 0, 0};
 	int	rfd, status;
 	pid_t	pid;
 
+	unless (verbose) makesfio[4] = "-q";
 	opts.in = opts.out = 0;
 	/*
 	 * What we want is: bk -r sfio -o  => gzip => remote
