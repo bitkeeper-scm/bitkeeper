@@ -371,6 +371,7 @@ $(BK): bk.o $(LIBS) $(RESOURCE)
 		do	rm -f $$file; \
 			cp link.exe $$file.exe; \
 		done; \
+		rm -f link.exe; \
 	else \
 		for file in $(BINLINKS); \
 		do	rm -f $$file; \

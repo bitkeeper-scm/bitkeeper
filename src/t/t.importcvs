@@ -11,11 +11,13 @@
 
 # Copyright (c) 2002 Wayne Scott
 
-if [ ! -x "/usr/bin/cvs" ]
-then
-	echo "/usr/bin/cvs not installed on this client: test skipped"
+for i in /usr/bin /usr/gnu/bin
+do	test -x $i/cvs && touch CVS
+done
+test -f CVS || {
+	echo "cvs not installed on this client: test skipped"
 	exit 0
-fi
+}
 
 # build a sample CVS repository with branches and branches of
 # branches.
@@ -45,27 +47,31 @@ fi
 echo $N Create test CVS repository ..................................$NL
 mkdir cvsroot
 export CVSROOT=$HERE/cvsroot
+test $WINDOWS = YES && CVSROOT=`pwd`/cvsroot
 cvs init || exit 1
 mkdir $CVSROOT/test
 cvs $Q co test || exit 1
 cd test
 # include yucky filename
-echo hi > "\\"
-cvs -Q new "\\" || exit 1
-cvs -Q commit -m"funny file" > /dev/null || exit 1
-rm "\\"
-cvs remove "\\" 2> /dev/null || exit 1
+if [ $WINDOWS = NO ]
+then
+	echo hi > "\\"
+	cvs -Q new "\\" >/dev/null 2>&1 || exit 1
+	cvs -Q commit -m"funny file" > /dev/null || exit 1
+	rm "\\"
+	cvs remove "\\" 2> /dev/null || exit 1
+fi
 
 cvsbuild()
 {
 	f="new_$1"
 	echo $NUM > $f
-	cvs -Q new $f || exit 1
+	cvs -Q new $f >/dev/null 2>&1 || exit 1
 	for p in $*
 	do	f="sub_$p"
 		if [ \! -f $f ]
 		then	echo $NUM > $f
- 			cvs -Q new $f || exit 1
+ 			cvs -Q new $f >/dev/null 2>&1 || exit 1
 		else
 			echo $NUM >> $f
 		fi
@@ -178,7 +184,7 @@ echo new >> sub_start
 echo other >> new_start
 cvs -Q commit -mjunk > /dev/null || exit 1
 cvs -Q tag -b fakebranch || exit 1
-cvs -Q admin -Nfakebranch:1.2.0.2 sub_start || exit 1
+cvs -Q admin -Nfakebranch:1.2.0.2 sub_start >/dev/null 2>&1 || exit 1
 cd $HERE
 bk clone $Q -r1.1 $HERE/import_trunk $HERE/import_fake
 cd $HERE/import_fake

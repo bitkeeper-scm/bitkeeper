@@ -599,8 +599,8 @@ import_patch() {
 	msg Done.
 	unset BK_CONFIG
 	o=`bk _preference checkout`
-	test X$o == Xedit && bk -Ur edit -q
-	test X$o == Xget && bk -Ur get -qS
+	test X$o = Xedit && bk -Ur edit -q
+	test X$o = Xget && bk -Ur get -qS
 	Done 0
 }
 
@@ -612,6 +612,24 @@ import_text () {
 	bk ci -i $VERBOSE - < ${TMP}import$$ || Done 1
 }
 
+mvup() {
+	find . -type f | perl -w -e '
+		while (<STDIN>) {
+			next unless m|,v$|;
+			chop;
+			if (-f "../$_") {
+				if ($ARGV[0] eq "unlink") {
+					unlink($_);
+				} else {
+					die "Name conflict on $_";
+				}
+			} else {
+				rename("$_", "../$_") || warn "rename of $_";
+			}
+		}
+		' $1
+}
+
 import_RCS () {
 	mycd "$TO"
 	if [ $FIX_ATTIC = YES ]
@@ -620,15 +638,7 @@ import_RCS () {
 		do	d=`dirname "$x"`
 			test -d "$d" || continue	# done already
 			mycd "$d" || Done 1
-			# If there is a name conflict, do NOT use the Attic file
-			find . \( -name '*,v' -o -name '.*,v' \) -print | 
-			sed 's/\\/\\\\/g' |    # handle files with \'s
-			while read i
-			do	if [ -e "../$i" ] 
-				then	/bin/rm -f "$i"
-				else	mv "$i" ..
-				fi
-			done
+			mvup unlink
 			mycd ..
 			rmdir Attic || { touch ${TMP}failed$$; Done 1; }
 			mycd "$TO"
@@ -646,7 +656,7 @@ import_RCS () {
 		HERE=`pwd`
 		find . -type d | grep 'RCS$' | while read x
 		do	mycd $x
-			mv *,v ..
+			mvup error_if_conflict
 			mycd ..
 			rmdir RCS
 			mycd $HERE
@@ -770,8 +780,8 @@ import_finish () {
 	bk -r check -ac
 	unset BK_CONFIG
 	o=`bk _preference checkout`
-	test X$o == Xedit && bk -Ur edit -q
-	test X$o == Xget && bk -Ur get -qS
+	test X$o = Xedit && bk -Ur edit -q
+	test X$o = Xget && bk -Ur get -qS
 }
 
 validate_SCCS () {
