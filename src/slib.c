@@ -1164,10 +1164,10 @@ date2time(char *asctime, char *z, int roundup)
 #if	0
 {	struct  tm tm2 = tm;
 	struct  tm *tp;
-	fprintf(stderr, "%s%s %02d/%02d/%02d %02d:%02d:%02d = %u = ",
+	fprintf(stderr, "%s%s %04d/%02d/%02d %02d:%02d:%02d = %u = ",
 	asctime,
 	z ? z : "",
-	tm.tm_year,
+	tm.tm_year + 1900,
 	tm.tm_mon + 1,
 	tm.tm_mday,
 	tm.tm_hour,
@@ -1175,8 +1175,8 @@ date2time(char *asctime, char *z, int roundup)
 	tm.tm_sec,
 	tm2utc(&tm2));
 	tp = utc2tm(tm2utc(&tm2));
-	fprintf(stderr, "%02d/%02d/%02d %02d:%02d:%02d\n",
-	tp->tm_year,
+	fprintf(stderr, "%04d/%02d/%02d %02d:%02d:%02d\n",
+	tp->tm_year + 1900,
 	tp->tm_mon + 1,
 	tp->tm_mday,
 	tp->tm_hour,
