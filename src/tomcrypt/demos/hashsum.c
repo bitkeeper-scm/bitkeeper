@@ -49,11 +49,14 @@ int main(int argc, char **argv)
    } else {
       for (z = 2; z < argc; z++) {
          w = sizeof(hash_buffer);
-         hash_file(idx,argv[z],hash_buffer,&w);
-         for (x = 0; x < (int)hash_descriptor[idx].hashsize; x++) {
-             printf("%02x",hash_buffer[x]);
+         if (hash_file(idx,argv[z],hash_buffer,&w) == CRYPT_ERROR) {
+            printf("File hash error: %s\n", crypt_error);
+         } else {
+             for (x = 0; x < (int)hash_descriptor[idx].hashsize; x++) {
+                 printf("%02x",hash_buffer[x]);
+             }
+             printf("  %s\n", argv[z]);
          }
-         printf("  %s\n", argv[z]);
       }
    }
    return EXIT_SUCCESS;

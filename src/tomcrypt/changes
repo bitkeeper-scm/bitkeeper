@@ -1,3 +1,12 @@
+Nov 8th, 2002
+v0.68  -- Fixed flaw in kr_import/kr_export that wasted 4 bytes.  Source but not binary compatible with v0.67
+       -- Fixed bug in kr_find_name that used memcmp to match strings.  Uses strncmp now.
+       -- kr_clear now sets the pointer to NULL to facilate debugging [e.g. using the keyring after clearing]
+       -- static functions in _write/_read in keyring.c now check the return of ctr_encrypt/ctr_decrypt.
+       -- Updated blowfish/rc2/rc5/rc6 keysize() function to not reject keys larger than the biggest key the
+          respective ciphers can use.  
+       -- Fixed a bug in hashsum demo that would report the hash for files that don't exist!
+
 Oct 16th, 2002
 v0.67  -- Moved the function prototypes into files mycrypt_*.h.  To "install" the lib just copy all the 
           header files "*.h" from the base of this project into your global include path.

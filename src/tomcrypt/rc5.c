@@ -207,8 +207,11 @@ int rc5_test(void)
 
 int rc5_keysize(int *desired_keysize)
 {
-   if (*desired_keysize < 8 || *desired_keysize > 128)
+   if (*desired_keysize < 8) {
       return CRYPT_ERROR;
+   } else if (*desired_keysize > 128) {
+      *desired_keysize = 128;
+   }
    return CRYPT_OK;
 }
 

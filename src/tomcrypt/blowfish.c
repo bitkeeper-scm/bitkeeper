@@ -662,8 +662,11 @@ int blowfish_test(void)
 
 int blowfish_keysize(int *desired_keysize)
 {
-   if (*desired_keysize < 8 || *desired_keysize > 56)
+   if (*desired_keysize < 8) {
       return CRYPT_ERROR;
+   } else if (*desired_keysize > 56) {
+      *desired_keysize = 56;
+   }
    return CRYPT_OK;
 }
 

@@ -44,7 +44,7 @@
 \def\gap{\vspace{0.5ex}}
 \makeindex
 \begin{document}
-\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.67}
+\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.68}
 \author{Tom St Denis \\
 Algonquin College \\
 \\
@@ -60,19 +60,6 @@ Canada
 \newpage
 \tableofcontents
 \chapter{Introduction}
-\section*{Foreword}
-This is a special foreword for the v0.67 release only.  V0.67 is one of the few major milestone transitions for the 
-libtomcrypt project.  This release features an updated API, new functions and the beginings of an entirely new manual
-using the Docer system by Tom St Denis.  Time is fairly pressed to get this documentation done and while its agreed that
-good documentation is a requisit for a good library it is possible that the manual is out of sync with the API.  For the most
-part the API [non public key related] is the same with subtle changes.  It makes little sense to revise this manual when
-a new one [from scratch] is planned for the v0.68 release.
-
-For this reason the developers are suggested to read the header files for the correct up-to-date prototypes.  Fortunately
-one of the updates in v0.67 is the new organization for the header files.  They have been split into logical categories 
-beginning with ``mycrypt\_''.  For example, all of the base public-key crypto prototypes are in ``mycrypt\_pk.h''.
-\newpage
-
 \section{What is the libtomcrypt?}
 libtomcrypt is a portable ANSI C cryptographic library that supports
 symmetric ciphers, one-way hashes, pseudo-random number generators, public key cryptography (via RSA,DH or ECC/DH) and 
@@ -1926,7 +1913,14 @@ int kr_encrypt_key(pk_key *pk, unsigned long ID,
 
 int kr_decrypt_key(pk_key *pk, const unsigned char *in,
                    unsigned char *out, unsigned long *outlen);
+\end{verbatim}
 
+The kr\_encrypt\_key() routine is designed to encrypt a symmetric key with a specified users public key.  The symmetric
+key is then used with a block cipher to encode the message.  The recipient can call kr\_decrypt\_key() to get the original
+symmetric key back and decode the message.  The hash specified must produce a message digest longer than symmetric key 
+provided.  Both functions return {\bf CRYPT\_ERROR} on error.
+
+\begin{verbatim}
 int kr_sign_hash(pk_key *pk, unsigned long ID, 
                  const unsigned char *in, unsigned long inlen,
                  unsigned char *out, unsigned long *outlen,
@@ -1936,7 +1930,9 @@ int kr_verify_hash(pk_key *pk, const unsigned char *in,
                    const unsigned char *hash, unsigned long hashlen,
                    int *stat);
 \end{verbatim}
-These all will be explained in the v0.68 manual.  
+
+Similar to the two previous these are used to sign a message digest or verify one.  This requires hashing the message
+first then passing the output in.  Both functions return {\bf CRYPT\_ERROR} on error.
 
 To delete keys and clear rings there are:
 \begin{verbatim}
@@ -1952,7 +1948,7 @@ the memory associated with it.  Both return {\bf CRYPT\_ERROR} on error.  Below 
 int main(void)
 {
    pk_key *kr;
-   unsigned char buf[4096];
+   unsigned char buf[4096], buf2[4096];
    unsigned long len;
 
    /* make a new list */

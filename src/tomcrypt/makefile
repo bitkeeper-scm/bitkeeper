@@ -30,6 +30,7 @@ CFLAGS += -funroll-loops -fomit-frame-pointer
 LIBNAME=libtomcrypt.a
 TEST=test
 HASH=hashsum
+CRYPT=encrypt
 
 #LIBPATH-The directory for libtomcrypt to be installed to.
 #INCPATH-The directory to install the header files for libtomcrypt.
@@ -49,6 +50,7 @@ zlib/zutil.o
 
 TESTOBJECTS=demos/test.o
 HASHOBJECTS=demos/hashsum.o
+CRYPTOBJECTS=demos/encrypt.o
 
 #Files left over from making the crypt.pdf.
 LEFTOVERS=*.dvi *.log *.aux *.toc *.idx *.ilg *.ind
@@ -81,7 +83,11 @@ test: library $(TESTOBJECTS)
 
 #This rule makes the hash program included with libtomcrypt
 hashsum: library $(HASHOBJECTS)
-	$(CC) $(HASHOBJECTS) $(LIBNAME) -o $(HASH) -s $(WARN)
+	$(CC) $(HASHOBJECTS) $(LIBNAME) -o $(HASH) $(WARN)
+
+#makes the crypt program
+crypt: library $(CRYPTOBJECTS)
+	$(CC) $(CRYPTOBJECTS) $(LIBNAME) -o $(CRYPT) $(WARN)
 
 #This rule installs the library and the header files. This must be run
 #as root in order to have a high enough permission to write to the correct

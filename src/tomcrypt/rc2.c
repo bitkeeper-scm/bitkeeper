@@ -293,11 +293,12 @@ int rc2_test(void)
 
 int rc2_keysize(int *keysize)
 {
-   if (*keysize < 8 || *keysize > 128) {
+   if (*keysize < 8) {
        return CRYPT_ERROR;
-   } else {
-       return CRYPT_OK;
+   } else if (*keysize > 128) {
+       *keysize = 128;
    }
+   return CRYPT_OK;
 }
 
 #endif
