@@ -704,7 +704,17 @@ cat > overlap.c << EOF
 EOF
 bk ci $Q -i overlap.c
 bk commit $S -y"abc"
-bk resync $Q $HERE/project $HERE/copy
+# let's verify that you can have URL's for the first
+# argument
+cd $HERE/copy
+bk parent $Q junk
+cd $HERE
+bk resync $Q file://$HERE/project $HERE/copy || {
+	echo failed resync with url
+	exit 1
+}
+cd copy
+bk parent $Q $HERE/project
 cd $HERE; tar cf copy.tar copy; cd $HERE/project/src
 bk resolve -t $L $Q $HERE/copy
 bk co $Q -l overlap.c
