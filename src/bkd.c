@@ -241,6 +241,15 @@ do_cmds()
 				}
 				if (Opts.errors_exit) {
 					out("ERROR-exiting\n");
+
+					/*
+					 * On some system such as redhat 5.2
+					 * we need the shutdown call to flush
+					 * the error in the buffer
+					 */
+					shutdown(1, 1); /* For daemon mode */
+					close(1);	/* For non-daemon mode*/
+					close(2);	/* For non-daemon mode*/
 					exit(ret);
 				}
 			}
