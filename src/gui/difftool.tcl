@@ -58,8 +58,8 @@ proc highlightDiffs {start stop} \
 	.diffs.right tag delete d
 	.diffs.left tag add d $start $stop
 	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -font $gc(diff,bFont)
-	.diffs.right tag configure d -font $gc(diff,bFont)
+	.diffs.left tag configure d -font $gc(diff,fixedboldFont)
+	.diffs.right tag configure d -font $gc(diff,fixedboldFont)
 }
 
 proc topLine {} \
@@ -358,31 +358,12 @@ proc widgets {} \
 	set search(status) .menu.info
 	if {$tcl_platform(platform) == "windows"} {
 		set py -2; set px 1; set bw 2
-		set d(diff,pFont) {helvetica 9 roman}
-		set d(diff,bFont) {helvetica 9 roman bold}
-		set d(diff,BFont) {helvetica 9 roman bold}
-		set d(diff,lFont) {hevlvetica 9 roman }
 		set swid 20
 	} else {
 		set py 1; set px 4; set bw 2
-		set d(diff,bFont) {fixed 12 roman bold}
-		set d(diff,pFont) {fixed 12 roman}
-		set d(diff,BFont) {times 12 roman bold}
-		set d(diff,lFont) {fixed 12 roman bold}
 		set swid 14
 	}
-	set d(diff,leftWidth) 65
-	set d(diff,rightWidth) 65
-	set d(diff,diffHeight) 50
-	set d(diff,tColor) lightseagreen
-	set d(diff,bColor) white
-	set d(diff,BColor) #d0d0d0
-	set d(diff,oColor) orange
-	set d(diff,nColor) yellow
-	set d(diff,statusColor) lightblue
-	set d(diff,geometry) ""
-
-	getDefaults "diff" ".difftoolrc"
+	getConfig "diff" ".difftoolrc"
 
 	set g [wm geometry .]
 	if {("$g" == "1x1+0+0") && ("$gc(diff,geometry)" != "")} {
@@ -392,29 +373,32 @@ proc widgets {} \
 
 	frame .diffs
 	    frame .diffs.status
-		label .diffs.status.l -background $gc(diff,oColor) \
-		    -font $gc(diff,lFont) -relief sunken -borderwid 2
-		label .diffs.status.r -background $gc(diff,nColor) \
-		    -font $gc(diff,lFont) -relief sunken -borderwid 2
+		label .diffs.status.l -background $gc(diff,oldColor) \
+		    -font $gc(diff,labelFont) -relief sunken -borderwid 2
+		label .diffs.status.r -background $gc(diff,newColor) \
+		    -font $gc(diff,labelFont) -relief sunken -borderwid 2
 		label .diffs.status.middle \
 		    -foreground black -background $gc(diff,statusColor) \
-		    -font $gc(diff,lFont) -wid 20 -relief sunken -borderwid 2
+		    -font $gc(diff,labelFont) -wid 20 \
+		    -relief sunken -borderwid 2
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
 	    text .diffs.left -width $gc(diff,leftWidth) \
 		-height $gc(diff,diffHeight) \
-		-bg $gc(diff,bColor) -state disabled \
-		-wrap none -font $gc(diff,pFont) \
+		-bg $gc(diff,backgroundColor) -state disabled \
+		-wrap none -font $gc(diff,fixedFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
-	    text .diffs.right -bg $gc(diff,bColor) \
+	    text .diffs.right -bg $gc(diff,backgroundColor) \
 		-height $gc(diff,diffHeight) \
 		-width $gc(diff,rightWidth) \
-		-state disabled -wrap none -font $gc(diff,pFont)
-	    scrollbar .diffs.xscroll -wid $swid -troughcolor $gc(diff,tColor) \
+		-state disabled -wrap none -font $gc(diff,fixedFont)
+	    scrollbar .diffs.xscroll -wid $swid \
+		-troughcolor $gc(diff,troughColor) \
 		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $swid -troughcolor $gc(diff,tColor) \
+	    scrollbar .diffs.yscroll -wid $swid \
+		-troughcolor $gc(diff,troughColor) \
 		-orient vertical -command { yscroll }
 
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
@@ -435,54 +419,61 @@ R0lGODdhDQAQAPEAAL+/v5rc82OkzwBUeSwAAAAADQAQAAACLYQdpxu5LNxDIqqGQ7V0e659
 XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 }
 	frame .menu
-	    button .menu.prev -font $gc(diff,BFont) -bg $gc(diff,BColor) \
+	    button .menu.prev -font $gc(diff,buttonFont) \
+		-bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-image prevImage -state disabled -command {
 			searchreset
 			prev
 		}
-	    button .menu.next -font $gc(diff,BFont) -bg $gc(diff,BColor) \
+	    button .menu.next -font $gc(diff,buttonFont) \
+		-bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-image nextImage -state disabled -command {
 			searchreset
 			next
 		}
-	    button .menu.quit -font $gc(diff,BFont) -bg $gc(diff,BColor) \
+	    button .menu.quit -font $gc(diff,buttonFont) \
+		-bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command exit 
-	    button .menu.reread -font $gc(diff,BFont) -bg $gc(diff,BColor) \
+	    button .menu.reread -font $gc(diff,buttonFont) \
+		-bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Reread" -command getFiles 
-	    button .menu.help -bg $gc(diff,BColor) \
+	    button .menu.help -bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-font $gc(diff,BFont) -text "Help" \
+		-font $gc(diff,buttonFont) -text "Help" \
 		-command { exec bk helptool difftool & }
-	    button .menu.dot -bg $gc(diff,BColor) \
+	    button .menu.dot -bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-font $gc(diff,BFont) -text "Current diff" \
+		-font $gc(diff,buttonFont) -text "Current diff" \
 		-command dot
-	    label .menu.prompt -font $gc(diff,BFont) -width 11 -relief flat \
+	    label .menu.prompt -font $gc(diff,buttonFont) -width 11 \
+		-relief flat \
 		-textvariable search(prompt)
-	    entry $search(text) -width 20 -font $gc(diff,BFont)
-	    button .menu.searchPrev -font $gc(diff,BFont) -bg $gc(diff,BColor) \
+	    entry $search(text) -width 20 -font $gc(diff,buttonFont)
+	    button .menu.searchPrev -font $gc(diff,buttonFont) \
+		-bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-image prevImage \
 		-state disabled -command {
 			searchdir ?
 			searchnext
 		}
-	    button .menu.searchNext -font $gc(diff,BFont) -bg $gc(diff,BColor) \
+	    button .menu.searchNext -font $gc(diff,buttonFont) \
+		-bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-image nextImage \
 		-state disabled -command {
 			searchdir /
 			searchnext
 		}
-	    button .menu.searchClear -font $gc(diff,BFont) \
-		-bg $gc(diff,BColor) \
+	    button .menu.searchClear -font $gc(diff,buttonFont) \
+		-bg $gc(diff,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Clear search" -state disabled -command { clearOrRecall }
-	    label $search(status) -width 20 -font $gc(diff,BFont) -relief flat
+	    label $search(status) -width 20 -font $gc(diff,buttonFont) -relief flat
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
 	    pack .menu.reread -side left
@@ -522,8 +513,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	#set foo [bindtags .diffs.left]
 	computeHeight
 
-	.diffs.left tag configure diff -background $gc(diff,oColor)
-	.diffs.right tag configure diff -background $gc(diff,nColor)
+	.diffs.left tag configure diff -background $gc(diff,oldColor)
+	.diffs.right tag configure diff -background $gc(diff,newColor)
 	$search(widget) tag configure search \
 	    -background #d0d0ff -relief groove -borderwid 0
 

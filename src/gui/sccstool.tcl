@@ -49,17 +49,19 @@ proc highlight {id type {rev ""}} \
 	    revision {\
 		#puts "highlight: revision ($rev)"
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $gc(sccs,bColor) -outline $gc(sccs,rev) \
+		    -fill $gc(sccs,backgroundColor) \
+		    -outline $gc(sccs,revColor) \
 		    -width 1 -tags "$rev" ]}
 	    merge   {\
 		#puts "highlight: merge ($rev)"
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $gc(sccs,bColor) -outline $gc(sccs,merge) \
+		    -fill $gc(sccs,backgroundColor) \
+		    -outline $gc(sccs,mergeBoxColor) \
 		    -width 1 -tags "$rev"]}
 	    arrow   {\
 		#puts "highlight: arrow ($rev)"
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(sccs,arrow) -width 1]}
+		    -outline $gc(sccs,arrowColor) -width 1]}
 	    red     {\
 		#puts "highlight: red ($rev)"
 	        set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
@@ -67,11 +69,11 @@ proc highlight {id type {rev ""}} \
 	    old  {\
 		#puts "highlight: old ($rev) id($id)"
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(sccs,rev) -fill $gc(sccs,oColor) \
+		    -outline $gc(sccs,revColor) -fill $gc(sccs,oldColor) \
 		    -tags old]}
 	    new   {\
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(sccs,rev) -fill $gc(sccs,nColor) \
+		    -outline $gc(sccs,revColor) -fill $gc(sccs,newColor) \
 		    -tags new]}
 	    black  {\
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
@@ -166,9 +168,9 @@ proc dateSeparate { } { \
 
                        # Attempt to center datestring between verticals
                         set tx [expr {$x - (($x - $lastx)/2) - 13}]
-                        .p.top.c create text $tx $ty -fill $gc(sccs,date) \
+                        .p.top.c create text $tx $ty -fill $gc(sccs,dateColor) \
 			    -justify center \
-			    -anchor n -text "$date" -font $gc(sccs,dFont)
+			    -anchor n -text "$date" -font $gc(sccs,dateFont)
 
                         set prevday $curday
                         set lastx $x
@@ -182,8 +184,8 @@ proc dateSeparate { } { \
 	set date "$day/$mon\n$yr"
 
 	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
-	.p.top.c create text $tx $ty -fill $gc(sccs,date) -anchor n \
-		-text "$date" -font $gc(sccs,dFont)
+	.p.top.c create text $tx $ty -fill $gc(sccs,dateColor) -anchor n \
+		-text "$date" -font $gc(sccs,dateFont)
 }
 
 
@@ -229,18 +231,18 @@ proc addline {y xspace ht l} \
 			set a [expr {$last + 2}]
 			.p.top.c create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
-			    -fill $gc(sccs,arrow) -arrow last
+			    -fill $gc(sccs,arrowColor) -arrow last
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [.p.top.c create text $x $y -fill "red" \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(sccs,bFont) -tags "$rev revtext"]
+			    -font $gc(sccs,fixedboldFont) -tags "$rev revtext"]
 			highlight $id "red" $rev
 			incr bad
 		} else {
 			set id [.p.top.c create text $x $y -fill #241e56 \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(sccs,bFont) -tags "$rev revtext"]
+			    -font $gc(sccs,fixedboldFont) -tags "$rev revtext"]
 			if {$m == 1} { 
 				highlight $id "merge" $rev
 			} else {
@@ -355,7 +357,7 @@ proc line {s w ht} \
 	incr y [expr {$ht / -2}]
 	incr x -4
 	set id [.p.top.c create line $px $py $x $y -arrowshape {4 4 4} \
-	    -width 1 -fill $gc(sccs,branchArrow) -arrow last]
+	    -width 1 -fill $gc(sccs,branchArrowColor) -arrow last]
 	.p.top.c lower $id
 }
 
@@ -387,7 +389,7 @@ proc mergeArrow {m ht} \
 		incr px 2
 	}
 	.p.top.c lower [.p.top.c create line $px $py $x $y -arrowshape {4 4 4} \
-	    -width 1 -fill $gc(sccs,mergeArrow) \-arrow last]
+	    -width 1 -fill $gc(sccs,mergeArrowColor) \-arrow last]
 }
 
 proc listRevs {file} \
@@ -445,9 +447,9 @@ proc listRevs {file} \
 		}
 	}
 	close $d
-	set len [font measure $gc(sccs,bFont) "$big"]
-	set ht [font metrics $gc(sccs,bFont) -ascent]
-	incr ht [font metrics $gc(sccs,bFont) -descent]
+	set len [font measure $gc(sccs,fixedboldFont) "$big"]
+	set ht [font metrics $gc(sccs,fixedboldFont) -ascent]
+	incr ht [font metrics $gc(sccs,fixedboldFont) -descent]
 
 	set ht [expr {$ht * 2}]
 	set len [expr {$len + 10}]
@@ -891,57 +893,30 @@ proc widgets {} \
 	set stacked 1
 
 	if {$tcl_platform(platform) == "windows"} {
-		set d(sccs,pFont) {helvetica 9 roman}
-		set d(sccs,dFont) {helvetica 9 roman}
-		set d(sccs,bFont) {helvetica 9 roman bold}
-		set d(sccs,lFont) {helvetica 9 roman bold}
-		set d(sccs,BFont) {helvetica 9 roman bold}
 		set py 0; set px 1; set bw 2
 		set swid 18
 	} else {
-		set d(sccs,pFont) {6x13}
-		set d(sccs,dFont) {6x13}
-		set d(sccs,bFont) {6x13bold}
-		set d(sccs,lFont) {6x13bold}
-		set d(sccs,BFont) {6x13bold}
 		set py 1; set px 4; set bw 2
 		set swid 12
 	}
-
-	# maybe try: -misc-fixed-medium-*-*-*-13-*-*-*-*-*-*-*
-	# if 6x13 doesn't work
-
-	set d(sccs,oColor) orange     ;# color of old revision
-	set d(sccs,nColor) yellow     ;# color of new revision
-	set d(sccs,sColor) yellow
-	set d(sccs,bColor) #9fb6b8
-	set d(sccs,BColor) #d0d0d0
-	set d(sccs,arrow) darkblue
-	set d(sccs,merge) darkblue
-	set d(sccs,rev) darkblue
-	set d(sccs,date) slategrey
-	set d(sccs,branchArrow) $d(sccs,arrow)
-	set d(sccs,mergeArrow) $d(sccs,arrow)
-	set d(sccs,geometry) ""
-
-	getDefaults "sccs" ".sccstooltrc"
+	getConfig "sccs" ".sccstooltrc"
 
 	if {"$gc(sccs,geometry)" != ""} {
 		wm geometry . $gc(sccs,geometry)
 	}
 	wm title . "sccstool"
 	frame .menus
-	    button .menus.quit -font $gc(sccs,BFont) -relief raised \
-		-bg $gc(sccs,BColor) -pady $py -padx $px -borderwid $bw \
+	    button .menus.quit -font $gc(sccs,buttonFont) -relief raised \
+		-bg $gc(sccs,buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command done
-	    button .menus.help -font $gc(sccs,BFont) -relief raised \
-		-bg $gc(sccs,BColor) -pady $py -padx $px -borderwid $bw \
+	    button .menus.help -font $gc(sccs,buttonFont) -relief raised \
+		-bg $gc(sccs,buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Help" -command { exec bk helptool sccstool & }
-	    button .menus.cset -font $gc(sccs,BFont) -relief raised \
-		-bg $gc(sccs,BColor) -pady $py -padx $px -borderwid $bw \
+	    button .menus.cset -font $gc(sccs,buttonFont) -relief raised \
+		-bg $gc(sccs,buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
-	    button .menus.difftool -font $gc(sccs,BFont) -relief raised \
-		-bg $gc(sccs,BColor) -pady $py -padx $px -borderwid $bw \
+	    button .menus.difftool -font $gc(sccs,buttonFont) -relief raised \
+		-bg $gc(sccs,buttonColor) -pady $py -padx $px -borderwid $bw \
 		-text "Diff tool" -command "diff2 1" -state disabled
 	    if {"$file" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
@@ -954,9 +929,12 @@ proc widgets {} \
 	frame .p
 	    frame .p.top -borderwidth 2 -relief sunken
 		scrollbar .p.top.xscroll -wid $swid -orient horiz \
-		    -command ".p.top.c xview"
-		scrollbar .p.top.yscroll -wid $swid  -command ".p.top.c yview"
-		canvas .p.top.c -width 500 -background $gc(sccs,bColor) \
+		    -command ".p.top.c xview" \
+		    -troughcolor $gc(sccs,troughColor)
+		scrollbar .p.top.yscroll -wid $swid  -command ".p.top.c yview" \
+		    -troughcolor $gc(sccs,troughColor)
+		canvas .p.top.c -width 500 \
+		    -background $gc(sccs,backgroundColor) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
 		pack .p.top.yscroll -side right -fill y
@@ -964,14 +942,17 @@ proc widgets {} \
 		pack .p.top.c -expand true -fill both
 
 	    frame .p.bottom -borderwidth 2 -relief sunken
-		text .p.bottom.t -width 80 -height 30 -font $gc(sccs,pFont) \
+		text .p.bottom.t -width 80 -height 30 \
+		    -font $gc(sccs,fixedFont) \
 		    -xscrollcommand { .p.bottom.xscroll set } \
 		    -yscrollcommand { .p.bottom.yscroll set } \
 		    -bg white -wrap none 
 		scrollbar .p.bottom.xscroll -orient horizontal \
-		    -wid $swid -command { .p.bottom.t xview }
+		    -wid $swid -command { .p.bottom.t xview } \
+		    -troughcolor $gc(sccs,troughColor)
 		scrollbar .p.bottom.yscroll -orient vertical -wid $swid \
-		    -command { .p.bottom.t yview }
+		    -command { .p.bottom.t yview } \
+		    -troughcolor $gc(sccs,troughColor)
 		pack .p.bottom.yscroll -side right -fill y
 		pack .p.bottom.xscroll -side bottom -fill x
 		pack .p.bottom.t -expand true -fill both
@@ -982,8 +963,9 @@ proc widgets {} \
 	}
 
 	frame .cmd -borderwidth 2 -relief ridge
-		entry $search(text) -width 30 -font $gc(sccs,bFont)
-		label .cmd.l -font $gc(sccs,bFont) -width 30 -relief groove \
+		entry $search(text) -width 30 -font $gc(sccs,fixedboldFont)
+		label .cmd.l -font $gc(sccs,fixedboldFont) -width 30 \
+		    -relief groove \
 		    -textvariable search(prompt)
 		grid .cmd.l -row 0 -column 0 -sticky ew
 		grid .cmd.t -row 0 -column 1 -sticky ew
@@ -1038,11 +1020,11 @@ proc widgets {} \
 	bind .p.top.c <n> "searchnext"
 	bind $search(text) <Return> "searchstring"
 	$search(widget) tag configure search \
-	    -background $gc(sccs,sColor) -relief groove -borderwid 0
+	    -background $gc(sccs,highlightColor) -relief groove -borderwid 0
 
 	# highlighting.
-	.p.bottom.t tag configure "newTag" -background $gc(sccs,nColor)
-	.p.bottom.t tag configure "oldTag" -background $gc(sccs,oColor)
+	.p.bottom.t tag configure "newTag" -background $gc(sccs,newColor)
+	.p.bottom.t tag configure "oldTag" -background $gc(sccs,oldColor)
 
 	focus .p.top.c
 }

@@ -220,8 +220,8 @@ proc skip {} \
 	.merge.t see $Here
 }
 
-proc useLeft {} { global gc(fm,oColor); useDiff "left" $gc(fm,oColor) }
-proc useRight {} { global gc(fm,nColor); useDiff "right" $gc(fm,nColor) }
+proc useLeft {} { global gc; useDiff "left" $gc(fm,oldColor) }
+proc useRight {} { global gc; useDiff "right" $gc(fm,newColor) }
 
 proc saveMark {which} \
 {
@@ -283,8 +283,10 @@ proc highlightDiffs {} \
 		.diffs.left tag add d $Diff $End
 		.diffs.right tag add d $Diff $End
 	}
-	.diffs.left tag configure d -foreground black -font $gc(fm,bFont)
-	.diffs.right tag configure d -foreground black -font $gc(fm,bFont)
+	.diffs.left tag configure d -foreground black \
+	    -font $gc(fm,fixedboldFont)
+	.diffs.right tag configure d -foreground black \
+	    -font $gc(fm,fixedboldFont)
 }
 
 proc topLine {} \
@@ -330,9 +332,9 @@ proc scrollDiffs {where} \
 	.diffs.right tag delete highLight
 	.diffs.left tag add highLight $Diff $End
 	.diffs.right tag add highLight $Diff $End
-	.diffs.left tag configure highLight -font $gc(fm,bFont) \
+	.diffs.left tag configure highLight -font $gc(fm,fixedboldFont) \
 	    -foreground black -background #e0e0e0
-	.diffs.right tag configure highLight -font $gc(fm,bFont) \
+	.diffs.right tag configure highLight -font $gc(fm,fixedboldFont) \
 	    -foreground black -background #e0e0e0
 }
 
@@ -735,7 +737,7 @@ proc page {w xy dir one} \
 
 proc height {w} \
 {
-	global	scroll
+	global	scroll gc
 
 	set jump 2
 	if {$w == ".diffs"} {
@@ -783,28 +785,11 @@ proc widgets {L R O} \
 	global	scroll wish tcl_platform gc d
 
 	if {$tcl_platform(platform) == "windows"} {
-		set d(fm,pFont) {terminal 9 roman}
-		set d(fm,bFont) {helvetica 9 roman bold}
-		set d(fm,BFont) {helvetica 9 roman bold}
 		set swid 18
 	} else {
-		set d(fm,pFont) {fixed 12 roman}
-		set d(fm,bFont) {fixed 12 roman bold}
-		set d(fm,BFont) {times 12 roman bold}
 		set swid 12
 	}
-	set d(fm,diffWidth) 65
-	set d(fm,diffHeight) 30
-	set d(fm,mergeWidth) 80
-	set d(fm,mergeHeight) 20
-	set d(fm,tColor) #d0d0d0
-	set d(fm,oColor) orange
-	set d(fm,nColor) yellow
-	set d(fm,bColor) ghostwhite
-	set d(fm,BColor) #d0d0d0
-	set d(fm,geometry) ""
-
-	getDefaults "fm" ".fmrc"
+	getConfig "fm" ".fmrc"
 
 	set g [wm geometry .]
 	if {("$g" == "1x1+0+0") && ("$gc(fm,geometry)" != "")} {
@@ -819,23 +804,25 @@ proc widgets {L R O} \
 	wm title . "File Merge"
 
 	frame .diffs
-	    label .diffs.l -background $gc(fm,oColor) \
-		-font $gc(fm,BFont)
-	    label .diffs.r -background $gc(fm,nColor) \
-		-font $gc(fm,BFont)
+	    label .diffs.l -background $gc(fm,oldColor) \
+		-font $gc(fm,buttonFont)
+	    label .diffs.r -background $gc(fm,newColor) \
+		-font $gc(fm,buttonFont)
 	    text .diffs.left -width $gc(fm,diffWidth) \
 		-height $gc(fm,diffHeight) \
-		-background $gc(fm,bColor) \
-		-state disabled -wrap none -font $gc(fm,pFont) \
+		-background $gc(fm,backgroundColor) \
+		-state disabled -wrap none -font $gc(fm,fixedFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -width $gc(fm,diffWidth) \
 		-height $gc(fm,diffHeight) \
-		-background $gc(fm,bColor) \
-		-state disabled -wrap none -font $gc(fm,pFont)
-	    scrollbar .diffs.xscroll -wid $swid -troughcolor $gc(fm,tColor) \
+		-background $gc(fm,backgroundColor) \
+		-state disabled -wrap none -font $gc(fm,fixedFont)
+	    scrollbar .diffs.xscroll -wid $swid \
+		-troughcolor $gc(fm,troughColor) \
 		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $swid -troughcolor $gc(fm,tColor) \
+	    scrollbar .diffs.yscroll -wid $swid \
+		-troughcolor $gc(fm,troughColor) \
 		-orient vertical -command { yscroll }
 	    grid .diffs.l -row 0 -column 0 -sticky nsew
 	    grid .diffs.r -row 0 -column 2 -sticky nsew
@@ -846,41 +833,58 @@ proc widgets {L R O} \
 	    grid .diffs.xscroll -columnspan 3
 
 	frame .merge
-	    label .merge.l -background $gc(fm,bColor) \
-		-font $gc(fm,bFont)
-	    text .merge.t -width $gc(fm,mergeWidth) -height $gc(fm,mergeHeight) \
-		-background $gc(fm,bColor) \
-		-wrap none -font $gc(fm,pFont) \
+	    label .merge.l -background $gc(fm,backgroundColor) \
+		-font $gc(fm,fixedboldFont)
+	    text .merge.t -width $gc(fm,mergeWidth) \
+		-height $gc(fm,mergeHeight) \
+		-background $gc(fm,backgroundColor) \
+		-wrap none -font $gc(fm,fixedFont) \
 		-xscrollcommand { .merge.xscroll set } \
 		-yscrollcommand { .merge.yscroll set }
-	    scrollbar .merge.xscroll -wid $swid -troughcolor $gc(fm,tColor) \
+	    scrollbar .merge.xscroll -wid $swid \
+		-troughcolor $gc(fm,troughColor) \
 		-orient horizontal -command { .merge.t xview }
-	    scrollbar .merge.yscroll -wid $swid -troughcolor $gc(fm,tColor) \
+	    scrollbar .merge.yscroll -wid $swid \
+		-troughcolor $gc(fm,troughColor) \
 		-orient vertical -command { .merge.t yview }
 	    frame .merge.menu
-		button .merge.menu.open -width 7 -bg $gc(fm,BColor) \
-		    -font $gc(fm,BFont) -text "Open" \
+		button .merge.menu.open -width 7 -bg $gc(fm,buttonColor) \
+		    -font $gc(fm,buttonFont) -text "Open" \
 		    -command selectFiles
-		button .merge.menu.restart -font $gc(fm,BFont) -bg $gc(fm,BColor) \
+		button .merge.menu.restart -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
 		    -text "Restart" -width 7 -state disabled -command restart
-		button .merge.menu.undo -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Undo" -width 7 -state disabled -command undo
-		button .merge.menu.redo -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Redo" -width 7 -state disabled -command redo
-		button .merge.menu.skip -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Skip" -width 7 -state disabled -command skip
-		button .merge.menu.left -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Use\nLeft" -width 7 -state disabled -command useLeft
-		button .merge.menu.right -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Use\nright" -width 7 -state disabled -command useRight
-		label .merge.menu.l -font $gc(fm,BFont) -bg $gc(fm,BColor) \
+		button .merge.menu.undo -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Undo" -width 7 -state disabled \
+		    -command undo
+		button .merge.menu.redo -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Redo" -width 7 -state disabled \
+		    -command redo
+		button .merge.menu.skip -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Skip" -width 7 -state disabled \
+		    -command skip
+		button .merge.menu.left -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Use\nLeft" -width 7 -state disabled \
+		    -command useLeft
+		button .merge.menu.right -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Use\nright" -width 7 -state disabled \
+		    -command useRight
+		label .merge.menu.l -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
 		    -width 20 -relief groove -pady 2
-		button .merge.menu.save -font $gc(fm,BFont) -bg $gc(fm,BColor) \
+		button .merge.menu.save -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
 		    -text "Done" -width 7 -command save -state disabled
-		button .merge.menu.help -width 7 -bg $gc(fm,BColor) \
-		    -font $gc(fm,BFont) -text "Help" \
+		button .merge.menu.help -width 7 -bg $gc(fm,buttonColor) \
+		    -font $gc(fm,buttonFont) -text "Help" \
 		    -command { exec bk helptool fmtool & }
-		button .merge.menu.quit -font $gc(fm,BFont) -bg $gc(fm,BColor) \
+		button .merge.menu.quit -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
 		    -text "Quit" -width 7 -command cmd_done
 		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
 		grid .merge.menu.open -row 1 -sticky ew
@@ -897,7 +901,8 @@ proc widgets {L R O} \
 	    grid .merge.t -row 1 -column 0 -sticky nsew
 	    grid .merge.yscroll -row 1 -column 1 -sticky ns
 	    grid .merge.menu -row 0 -rowspan 3 -column 2 -sticky n
-	    grid .merge.xscroll -row 2 -rowspan 2 -column 0 -columnspan 2 -sticky ew
+	    grid .merge.xscroll -row 2 -rowspan 2 -column 0 \
+		-columnspan 2 -sticky ew
 
 	label .status -relief sunken \
 	    -borderwidth 2 -anchor w -font {clean 12 roman}
