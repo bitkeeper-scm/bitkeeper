@@ -51,7 +51,7 @@ r_help(resolve *rs)
 
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
-The file has a name conflict of some type.
+The file has a name conflict of some type.\n\
 GCA:    %s@%s (greatest common ancestor)\n\
 Local:  %s@%s %s\n\
 Remote: %s@%s %s\n\

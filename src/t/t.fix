@@ -15,13 +15,14 @@
 echo $N Check bk fix to re-edit a file ..............................$NL
 echo "BitKeeper Test repository" > Description
 bk cset -siDescription .
-${ECHO} "logging: none" > BitKeeper/etc/config
-${ECHO} "seats: 1" >> BitKeeper/etc/config
+echo "logging: none" > BitKeeper/etc/config
+echo "seats: 1" >> BitKeeper/etc/config
 bk ci -i $Q BitKeeper/etc/config
 date > FILE
 bk ci $Q -i FILE
 bk co $Q -l FILE
-${ECHO} "New changes that I want to modify" >> FILE
+echo "New changes that I want to modify" >> X
+bk undos X > FILE
 cp FILE SAVE
 bk ci $Q -y'Oops' FILE
 bk fix $Q FILE
@@ -35,7 +36,8 @@ echo OK
 echo $N Make sure that we can not fix a committed delta .............$NL
 bk ci $Q -y'OK' FILE
 bk commit $Q -y'commit'
-${ECHO} "stripdel: can't remove committed delta FILE@1.2" > CMP1
+echo "stripdel: can't remove committed delta FILE@1.2" > X
+bk undos X > CMP1
 bk fix $Q FILE 2> CMP2
 cmp -s CMP1 CMP2
 if [ $? != 0 ]; then echo failed to fail stripdel; diff CMP1 CMP2; exit 1; fi

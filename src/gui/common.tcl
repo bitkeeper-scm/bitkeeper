@@ -19,8 +19,10 @@ proc cd2root {} \
 
 proc check_keytmp {} \
 {
-	if {[file writable "/var/bitkeeper"] == 1} { return }
-	puts "Unable to write in directory /var/bitkeeper"
+	global keytmp
+
+	if {[file writable $keytmp] == 1} { return }
+	puts "Unable to write in directory $keytmp"
 	puts "BitKeeper needs this directory to be world writable,"
 	puts "please fix this and try again."
 	exit 1

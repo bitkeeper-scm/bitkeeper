@@ -115,13 +115,16 @@ cd $HERE/copy
 bk pull -t $Q $HERE/project
 cd $HERE/copy/src
 bk get $Q a.c b.c c.c
-${ECHO} "File 3" > ref.c
+echo "File 3" > X
+bk undos X > ref.c
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed a"; exit 1; fi
-${ECHO} "File 1" > ref.c
+echo "File 1" > X
+bk undos X > ref.c
 cmp -s ref.c b.c
 if [ $? -ne 0 ]; then echo "failed b"; exit 1; fi
-${ECHO} "File 2" > ref.c
+echo "File 2" > X
+bk undos X > ref.c
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c"; exit 1; fi
 echo OK
@@ -138,16 +141,20 @@ cd  $HERE/copy/src
 bk pull -t $Q $HERE/project
 if [ $? -ne 0 ]; then	echo pull failed; exit 1; fi
 bk get $Q a.c b.c c.c d.c
-${ECHO} "File 3" > ref.c
+echo "File 3" > X
+bk undos X > ref.c
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed a.c"; cat a.c; exit 1; fi
-${ECHO} "File 1" > ref.c
+echo "File 1" > X
+bk undos X > ref.c
 cmp -s ref.c b.c
 if [ $? -ne 0 ]; then echo "failed b.c"; cat b.c; exit 1; fi
-${ECHO} "File 4" > ref.c
+echo "File 4" > X
+bk undos X > ref.c
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c.c"; cat c.c; exit 1; fi
-${ECHO} "File 2" > ref.c
+echo "File 2" > X
+bk undos X > ref.c
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed d.c"; cat d.c; exit 1; fi
 echo OK
@@ -160,16 +167,20 @@ bk resync $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
 bk resolve -t $L $Q
 bk get $Q a.c b.c c.c d.c
-$ECHO "File 3" > ref.c
+echo "File 3" > X
+bk undos X > ref.c
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed a.c"; cat a.c; exit 1; fi
-${ECHO} "File 1" > ref.c
+echo "File 1" > X
+bk undos X > ref.c
 cmp -s ref.c b.c
 if [ $? -ne 0 ]; then echo "failed b.c"; cat b.c; exit 1; fi
-${ECHO} "File 4" > ref.c
+echo "File 4" > X
+bk undos X > ref.c
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c.c"; cat c.c; exit 1; fi
-${ECHO} "File 2" > ref.c
+echo "File 2" > X
+bk undos X > ref.c
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed d.c"; cat d.c; exit 1; fi
 echo OK
@@ -229,13 +240,13 @@ do	set `cat $n`
 	mv SCCS/s.$n SCCS/s.FILE$2
 	if [ -f SCCS/r.$n ]; then mv SCCS/r.$n SCCS/r.FILE$2; fi
 	if [ -f SCCS/m.$n ]; then mv SCCS/m.$n SCCS/m.FILE$2; fi
-	/bin/rm -f $n
+	rm -f $n
 done
 for n in 1 2 3 4
 do	mv SCCS/s.FILE$n SCCS/s.$n
 	if [ -f SCCS/r.FILE$n ]; then mv SCCS/r.FILE$n SCCS/r.$n; fi
 	if [ -f SCCS/m.FILE$n ]; then mv SCCS/m.FILE$n SCCS/m.$n; fi
-	/bin/rm -f $n
+	rm -f $n
 done
 cd  $HERE/copy
 # This is completely dependent on the ordering of file processing in resolve
@@ -306,13 +317,13 @@ do	set `cat $n`
 	mv SCCS/s.$n SCCS/s.FILE$2
 	if [ -f SCCS/r.$n ]; then mv SCCS/r.$n SCCS/r.FILE$2; fi
 	if [ -f SCCS/m.$n ]; then mv SCCS/m.$n SCCS/m.FILE$2; fi
-	/bin/rm -f $n
+	rm -f $n
 done
 for n in 1 2 3 4
 do	mv SCCS/s.FILE$n SCCS/s.$n
 	if [ -f SCCS/r.FILE$n ]; then mv SCCS/r.FILE$n SCCS/r.$n; fi
 	if [ -f SCCS/m.FILE$n ]; then mv SCCS/m.FILE$n SCCS/m.$n; fi
-	/bin/rm -f $n
+	rm -f $n
 done
 
 cd  $HERE/copy
@@ -497,11 +508,12 @@ then	echo failed to delete delete.c;
 	exit 1
 fi
 bk co $Q merge.c
-${CAT} > merge.ref <<EOF
+cat > X <<EOF
 111-new
 222
 333-newer
 EOF
+bk undos X > merge.ref
 cmp -s merge.c merge.ref
 if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
@@ -650,7 +662,7 @@ if [ $? -ne 0 ]
 then	echo Failed to update aaa.c
 	exit 1
 fi
-${RM} aaa.p aaa.c
+rm aaa.p aaa.c
 echo OK
 echo $N Check resolve w/ auto merge and overlap change ..............$NL
 cd $HERE/project/src
@@ -662,7 +674,7 @@ EOF
 bk ci $Q -i overlap.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
-cd $HERE; tar cf COPY copy; cd $HERE/project/src
+cd $HERE; tar cf copy.tar copy; cd $HERE/project/src
 bk resolve -t $L $Q $HERE/copy
 bk co $Q -l overlap.c
 sed -e"s/222/222-left/" overlap.c > overlap.tmp
@@ -677,7 +689,7 @@ mv overlap.tmp overlap.c
 bk ci $Q -y overlap.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
-cd $HERE; tar cf COPY copy; cd $HERE/project/src
+cd $HERE; tar cf copy.tar copy; cd $HERE/project/src
 bk resolve -t $L $Q -a $HERE/copy 2> resolve.out
 grep -q "unresolved conflicts, nothing is applied" resolve.out
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi

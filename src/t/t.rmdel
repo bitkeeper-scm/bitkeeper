@@ -44,29 +44,32 @@ bk co $Q -l -r1.3.1 FILE
 echo "added in 1.3.1.2" >> FILE
 bk ci $Q -y FILE
 echo $N Check rmdel !TOT ............................................$NL
-${CAT} > CMP1 << EOF
+cat > X << EOF
 rmdel: revision 1.4 not at tip of branch in SCCS/s.FILE.
 EOF
+bk undos X > CMP1
 bk rmdel -q -r1.4 FILE 2> CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Check rmdel !TOB ............................................$NL
-${CAT} > CMP1 << EOF
+cat > X << EOF
 rmdel: revision 1.3.1.1 not at tip of branch in SCCS/s.FILE.
 EOF
+bk undos X > CMP1
 bk rmdel -r1.3.1.1 FILE  2> CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 echo $N Check rmdel TOT .............................................$NL
-${CAT} > CMP1 << EOF
+cat > X << EOF
 ======== FILE 1.1..1.5 ========
 1.4
 1.3
 1.2
 1.1
 EOF
+bk undos X > CMP1
 bk rmdel -r1.5 FILE
 grep "^.d R 1.5" SCCS/s.FILE > ${DEV_NULL}
 if [ $? -ne 0 ]; then echo "No removed delta"; exit 1; fi
@@ -75,7 +78,7 @@ cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
 echo $N Check rmdel TOB .............................................$NL
-${CAT} > CMP1 << EOF
+cat > X << EOF
 ======== FILE 1.1..1.3.1.2 ========
 1.3.1.1
 1.4
@@ -83,6 +86,7 @@ ${CAT} > CMP1 << EOF
 1.2
 1.1
 EOF
+bk undos X > CMP1
 bk rmdel -r1.3.1.2 FILE
 grep "^.d R 1.3.1.2" SCCS/s.FILE > ${DEV_NULL}
 if [ $? -ne 0 ]; then echo "No removed delta"; exit 1; fi

@@ -293,11 +293,13 @@ fail:		proj_free(p);
 	 * See the linux open(2) man page.
 	 * We do the lock, then make sure no readers slipped in.
 	 */
+#ifndef WIN32
 	if ((link(path, lock) != 0) || (stat(path, &sbuf) != 0) ||
 	    (sbuf.st_nlink != 2)) {
 	    	unlink(path);
 	    	goto fail;
 	}
+#endif
 
 	/*
 	 * Make sure no readers sneaked in
@@ -341,6 +343,19 @@ repository_rdunlock(int force)
 
 	proj_free(p);
 	return (exists(path) && !emptyDir(path));
+}
+
+
+/* This function assumes we are at the project root */
+int
+isValidLock(char type, pid_t pid, char *host)
+{
+	char path[MAXPATH];
+
+	sprintf(path, "%s/%d@%s", 
+		(type == 'r') ? READER_LOCK_DIR : WRITER_LOCK_DIR,
+		pid, host);
+	return(exists(path));
 }
 
 /*

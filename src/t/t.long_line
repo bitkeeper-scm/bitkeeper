@@ -36,8 +36,9 @@ do
 	COUNT=`expr $COUNT + 1`
 	if [ $COUNT -ge 40 ]; then break; fi
 done
-${ECHO} 12345678901234567890123456789012345678901234567890 >> long
-cp long long.sav
+echo 12345678901234567890123456789012345678901234567890 >> long
+bk undos long > long.sav
+cp long.sav long
 bk ci $Q -i long
 if [ ! -f SCCS/s.long ]; then echo failed to create history; exit 1; fi
 bk co $Q long

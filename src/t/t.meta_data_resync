@@ -145,11 +145,12 @@ cd $HERE/copy/src
 diff $HERE/project/src/SCCS/s.h.h  $HERE/copy/src/SCCS/s.h.h
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 bk prs -r+ -h -d":MODE:\n:FD:" h.h > CMP1
-${CAT} > CMP2 <<EOF
+cat > X <<EOF
 100722
 this is a text entry line 1
 this is a text entry line 2
 EOF
+bk undos X > CMP2
 cmp CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK

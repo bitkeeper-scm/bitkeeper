@@ -167,9 +167,12 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 	unlink(commit_list);
 	notify();
 	s = sccs_init(s_cset, 0, 0);
+	assert(s);
 	d = findrev(s, 0);
-	logChangeSet(d->rev, opts.quiet);
+	assert(d);
+	strcpy(buf, d->rev);
 	sccs_free(s);
+	logChangeSet(buf, opts.quiet);
 	return (rc);
 }
 

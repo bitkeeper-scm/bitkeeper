@@ -265,10 +265,10 @@ file like so\n\
 \n\
 	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
 	changes made by user lm in revision 1.191 of bk.sh\n\
-	some more changes by lm
+	some more changes by lm\n\
 	=======\n\
 	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
-	more changes by awc
+	more changes by awc\n\
 	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
 \n\
 Use 'e' to edit the file and resolve these conflicts.\n\

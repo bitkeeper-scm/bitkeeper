@@ -30,7 +30,6 @@ do_checksum(void)
 	int	doXsum = 0;
 	uLong	sum = 0;
 	int	type = 0;
-#define EOT 0x04
 
 	while (fnext(buf, stdin)) {
 		if (streq(buf, PATCH_ABORT)) {

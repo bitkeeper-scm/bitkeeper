@@ -1,17 +1,23 @@
-OS=`sh os`
+_OS=`sh os`
 DIRS=patch diffutils
-BINS=patch/$(OS)/patch diffutils/$(OS)/diff diffutils/$(OS)/diff3 \
-	diffutils/$(OS)/sdiff diffutils/$(OS)/cmp
+EXE=`sh exe`
+BINS=patch/$(_OS)/patch$(EXE) diffutils/$(_OS)/diff$(EXE) \
+	diffutils/$(_OS)/diff3$(EXE) diffutils/$(_OS)/sdiff$(EXE) \
+	diffutils/$(_OS)/cmp$(EXE)
 CONFIG=--cache-file=../../../config.cache --quiet
 
-all: os
+all: os exe
 	@PATH="..:../..:$(PATH)"; export PATH; \
-	OS=$(OS); \
+	OS=$(_OS); \
 	for i in $(DIRS); \
 	do	test -d $$i/$$OS || mkdir $$i/$$OS; \
 		( \
+		if [ $${OS} = "BIN-CYGWIN_NT-4.0-x86" ];\
+		then unset MAKEFLAGS CFLAGS LD; CC=gcc; \
+		fi;\
+		echo $$i; \
 		cd $$i; ../../bk get -q checkout; sh checkout; \
-		cd $$OS; test -f Makefile || ../configure $(CONFIG); \
+		cd $$OS; test -f Makefile || sh ../configure $(CONFIG); \
 		$(MAKE) \
 		); \
 	done
@@ -28,10 +34,16 @@ install: all
 		(cd $$D && ../../../bk chksum $$F); \
 	done >> $(BINDIR)/MANIFEST; \
 
-clobber clean clean-obj: os
-	-@OS=$(OS); \
+# win32, can not clean the current Makefile when we are
+# running this make file
+clean clean-obj: os
+	-@OS=$(_OS); \
 	for i in $(DIRS); \
-	do	(cd $$i && rm -rf BIN-*); \
+	do	(cd $$i && rm -rf BIN-* ); \
 	done
-	-bk -r . clean
 	-rm -rf bin
+	-bk sfiles | grep -v "^SCCS/s.Makefile" | bk clean -
+clobber: clean clean-obj
+	for i in $(DIRS); \
+	do	(cd $$i && rm -rf config.cache); \
+	done

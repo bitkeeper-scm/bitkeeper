@@ -731,7 +731,7 @@ int	setlog(char *u);
 int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *help_name, char *bkarg, FILE *f);
-void	status(int verbose, char *status_log);
+void	status(int verbose, FILE *out);
 void	notify();
 char	*logAddr();
 char	*project_name();
@@ -754,6 +754,7 @@ int	repository_rdlock(void);
 int	repository_wrlock(void);
 int	repository_rdunlock(int force);
 int	repository_wrunlock(int force);
+int	isVlaidLock(char, pid_t, char *);
 
 void	comments_save(char *s);
 int	comments_got(void);
