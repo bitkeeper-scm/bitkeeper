@@ -97,7 +97,7 @@ emptyDir(char *dir)
 /*
  * Convert lrwxrwxrwx -> 0120777, etc.
  */
-mode_t
+private mode_t
 a2mode(char *mode)
 {
 	mode_t	m;
@@ -130,7 +130,7 @@ a2mode(char *mode)
 	return (m);
 }
 
-mode_t
+private mode_t
 getMode(char *arg)
 {
 	mode_t	m;
@@ -207,7 +207,7 @@ fileType(mode_t m)
  * These are the file types we currently suppprt
  * TODO: we may support empty directory & special file someday
  */
-inline int
+int
 fileTypeOk(mode_t m)
 {
 	return ((S_ISREG(m)) || (S_ISLNK(m)));
@@ -8013,7 +8013,7 @@ isRegularFile(mode_t m)
  * 	3 if path changed
  *
  */
-int
+private int
 diff_gmode(sccs *s, pfile *pf)
 {
 	delta *d = findrev(s, pf->oldrev);
@@ -8202,7 +8202,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
  *	1 if no differences
  *
  */
-int
+private int
 diff_g(sccs *s, pfile *pf, char **tmpfile)
 {
 	*tmpfile = DEV_NULL;
@@ -8665,7 +8665,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
  * This poorly named function is trying to decide if the files are the
  * same type, and if they are symlinks, are they the same value.
  */
-int
+private int
 needsMode(sccs *s, delta *p)
 {
 	unless (p) return (1);
@@ -12385,7 +12385,21 @@ mkDiffTarget(sccs *s,
 	} else if (
 		(streq(rev, "edited") || streq(rev, "?")) && !findrev(s, rev)){
 		assert(HAS_GFILE(s));
-		strcpy(target, s->gfile);
+		if (S_ISLNK(s->mode)) {
+			char	buf[MAXPATH];
+			FILE	*f;
+			int	len;
+			
+			len = readlink(s->gfile, buf, sizeof(buf));
+			if (len <= 0) return (-1);
+			buf[len] = 0; /* stupid readlink... */
+			f = fopen(target, "w");
+			unless (f) return (-1);
+			fprintf(f, "SYMLINK -> %s\n", buf);
+			fclose(f);
+		} else {
+			strcpy(target, s->gfile);
+		}
 	} else if (sccs_get(s, rev, revM, pf ? pf->iLst : 0,
 		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
 		return (-1);

@@ -273,7 +273,7 @@ grep -q '1 tags only in' OUT || {
 }
 echo OK
 
-test -d /usr/libexec/bitkeeper-1.2 || exit 0
+if [ -d /usr/libexec/bitkeeper-1.2 ]; then
 
 echo $N Create a 1.x style tree and copies of it ....................$NL
 cd $HERE
@@ -577,7 +577,7 @@ grep -q 'd R 1.2 ' SCCS/s.ChangeSet && {
 	exit 1
 }
 echo OK
-
+fi
 echo $N Test propogation of the first tag ...........................$NL
 cd $HERE
 rm -rf tagpush tagchild
