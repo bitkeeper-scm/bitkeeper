@@ -6410,6 +6410,7 @@ out:			if (slist) free(slist);
 					    "%-*s ", s->revLen, tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d ", lines);
+				/* GET_LINENAME must be last for mdiff */
 				if (flags&GET_LINENAME) {
 					char	*p;
 
@@ -12808,7 +12809,9 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 		}
 	}
 	/* XXX - gross but useful hack to get spacers */
-	if ((flags & DIFF_COMMENTS) && !first) fprintf(out, "\n");
+	if ((flags & DIFF_COMMENTS) && (kind != DF_IFDEF) && !first) {
+		fprintf(out, "\n");
+	}
 	if (kind == DF_SDIFF) {
 		pclose(diffs);
 	} else {

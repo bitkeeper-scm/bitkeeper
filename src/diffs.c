@@ -78,7 +78,7 @@ diffs_main(int ac, char **av)
 	opts = optbuf;
 	*opts++ = '-';
 	*opts = 0;
-	while ((c = getopt(ac, av, "AbBcC|d;DefhHIl|Mmnpr|R|suUvw")) != -1) {
+	while ((c = getopt(ac, av, "AbBcC|d;DefhHIl|Mm|npr|R|suUvw")) != -1) {
 		switch (c) {
 		    case 'A': flags |= GET_ALIGN; break;
 		    case 'b': /* fall through */		/* doc 2.0 */
@@ -96,7 +96,11 @@ diffs_main(int ac, char **av)
 		    case 'I': kind = DF_IFDEF; break;
 		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
 		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
-		    case 'm': kind = DF_IFDEF; mdiff = 1; break;
+		    case 'm':
+			kind = DF_IFDEF;
+			mdiff = 1;
+			if (optarg && (*optarg == 'r')) flags |= GET_LINENAME;
+			break;
 		    case 'n': kind = DF_RCS; break;		/* doc 2.0 */
 		    case 'p': kind = DF_PDIFF; break;		/* doc 2.0 */
 		    case 'R': Rev = optarg; break;		/* doc 2.0 */
@@ -137,12 +141,13 @@ usage:			system("bk help -s diffs");
 		
 		mav[i=0] = "bk";
 		mav[++i] = "mdiff";
-		if (flags & (GET_PREFIXDATE|GET_MODNAME|GET_REVNUMS|GET_USER)) {
+		if (flags & GET_PREFIX) {
 			flags |= GET_ALIGN;
 			mav[++i] = "-A";
 		} else {
 			assert(!(flags & GET_ALIGN));
 		}
+		if (flags & GET_LINENAME) mav[++i] = "-r";
 		mav[++i] = 0;
 		if ((pid = spawnvp_wPipe(mav, &fd, BIG_PIPE)) == -1) {
 			perror("mdiff");
