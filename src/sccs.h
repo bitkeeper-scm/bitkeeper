@@ -1134,6 +1134,7 @@ void	restoreEnviroment(char *patch);
 int	run_check(char *partial);
 char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign);
+void	delete_cset_cache(char *rootpath, int save);
 
 extern char *bk_vers;
 extern char *bk_utc;
