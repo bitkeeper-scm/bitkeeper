@@ -871,13 +871,13 @@ cd $HERE/copy
 bk pull -t >pull.out 2>&1 || { echo failed; exit 1; }
 grep -q "1.3" pull.out
 if [ $? -ne 0 ]; then echo failed 2; cat pull.out; exit 1; fi
-grep -q "$HERE/project/BitKeeper/triggers/pre-outgoing: trigger fired" pull.out
+grep -q "$HERE/project/.*BitKeeper/triggers/pre-outgoing: trigger fired" pull.out
 if [ $? -ne 0 ]; then echo failed 3; cat pull.out; exit 1; fi
-grep -q "$HERE/project/BitKeeper/triggers/post-outgoing: trigger fired" pull.out
+grep -q "$HERE/project/.*BitKeeper/triggers/post-outgoing: trigger fired" pull.out
 if [ $? -ne 0 ]; then echo failed 4; cat pull.out; exit 1; fi
-grep -q "$HERE/copy/BitKeeper/triggers/pre-incoming: trigger fired" pull.out
+grep -q "$HERE/copy/.*BitKeeper/triggers/pre-incoming: trigger fired" pull.out
 if [ $? -ne 0 ]; then echo failed 5; cat pull.out; exit 1; fi
-grep -q "$HERE/copy/BitKeeper/triggers/post-incoming: trigger fired" pull.out
+grep -q "$HERE/copy/.*BitKeeper/triggers/post-incoming: trigger fired" pull.out
 if [ $? -ne 0 ]; then echo failed 6; cat pull.out; exit 1; fi
 echo OK
 
