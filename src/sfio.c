@@ -178,6 +178,7 @@ sfio_in(int extract)
 		buf[5] = 0;
 		len = 0;
 		sscanf(buf, "%04d", &len);
+		if(len == 0) return (0); /* we got a EOF */
 		if (len <= 0 || len > 1023) {
 			fprintf(stderr, "Bad length in sfio\n");
 			return (1);
