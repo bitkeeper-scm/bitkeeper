@@ -38,6 +38,9 @@ case "X`uname -s`" in
 		CC_WALL="-W3"
 		CC_OUT='-Fo$@'
 		LD_OUT='-out:$@'
+		INCLUDE="C:\\Program Files\\Microsoft Visual Studio\\VC98\\Include"
+		LIB="C:\\Program Files\\Microsoft Visual Studio\\VC98\\Lib"
+		
 		# make ranlib a no-op
 		RANLIB="true"
 		U=win32/uwtlib
@@ -68,7 +71,7 @@ case "X`uname -s`" in
 		XTRA=win32
 		INSTALL=install-nolinks
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
-		export CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
+		export INCLUDE LIB CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
 		export BK UWT_H WIN_UTIL BINDIR XTRA INSTALL
 		;;
 	*)

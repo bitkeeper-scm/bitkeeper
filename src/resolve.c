@@ -21,6 +21,9 @@
  * opts->rootDB{key} = <path>.  If the key is there then the inode is in the
  * 	RESYNC directory or the RENAMES directory under <path>.
  */
+#ifdef WIN32
+#include <windows.h>
+#endif
 #include "resolve.h"
 
 extern	char	*bin;
@@ -48,6 +51,10 @@ private	int	rename_file(resolve *rs);
 private	void	restore(FILE *f, opts *o);
 private	void	unbackup(FILE *f);
 private void	merge_loggingok(resolve *rs);
+#ifdef WIN32_FILE_SYSTEM
+private MDBM	*localDB;		/* real name cache for local tree */
+private MDBM	*resyncDB;	/* real name cache for resyn tree */
+#endif
 
 int
 resolve_main(int ac, char **av)
@@ -61,6 +68,8 @@ resolve_main(int ac, char **av)
 #ifdef WIN32
 	setmode(0, _O_TEXT);
 #endif
+	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;
@@ -114,6 +123,8 @@ resolve_main(int ac, char **av)
 	}
 
 	c = passes(&opts);
+	mdbm_close(localDB);
+	mdbm_close(resyncDB);
 	return (c);
 }
 
@@ -334,9 +345,9 @@ saveKey(opts *opts, char *key, char *file)
 private	int
 nameOK(opts *opts, sccs *s)
 {
-	char	path[MAXPATH];
+	char	path[MAXPATH], realname[MAXPATH];
 	char	buf[MAXPATH];
-	sccs	*local;
+	sccs	*local = 0;
 
 	/*
 	 * Are we in the right sfile? (through LOD shuffling, might not be)
@@ -355,7 +366,11 @@ nameOK(opts *opts, sccs *s)
 	 * Same path slot and key?
 	 */
 	sprintf(path, "%s/%s", RESYNC2ROOT, s->sfile);
-	if ((local = sccs_init(path, INIT, opts->local_proj)) &&
+	getRealName(path, resyncDB, realname);
+	assert(realname);
+	assert(strcasecmp(path, realname) == 0);
+	if (streq(path, realname) &&
+	    (local = sccs_init(path, INIT, opts->local_proj)) &&
 	    HAS_SFILE(local)) {
 		if (IS_EDITED(local) && sccs_clean(local, SILENT)) {
 			fprintf(stderr,
@@ -758,6 +773,7 @@ rename_file(resolve *rs)
 {
 	opts	*opts = rs->opts;
 	char	*to;
+	char 	realname[MAXPATH];
 
 	if (opts->debug) {
 		fprintf(stderr, ">> rename_file(%s)\n", rs->d->pathname);
@@ -1190,6 +1206,149 @@ pathConflict(opts *opts, char *gfile)
 	return (0);
 }
 
+
+#ifdef WIN32_FILE_SYSTEM
+private int
+scanDir(char *dir, char *name, MDBM *db, char *realname)
+{
+	DIR *d;
+	struct dirent *e;
+	char path[MAXPATH], *p;
+
+	realname[0] = 0;
+	d = opendir(dir);
+	unless (d) goto done;
+
+	while (e = readdir(d)) {
+		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
+		sprintf(path, "%s/%s", dir, e->d_name);
+		if (db) mdbm_store_str(db, path, e->d_name, MDBM_INSERT);
+		if (strcasecmp(e->d_name, name) == 0) {
+			if (realname[0] == 0) {
+				strcpy(realname, e->d_name);
+			} else {
+				strcpy(realname, name);
+				break;
+			}
+		}
+	}
+	closedir(d);
+	/*
+	 * If the entry does not exist (directory/file not created yet)
+	 * then the given name is the real name.
+	 */
+done:	if (realname[0] == 0) strcpy(realname, name);
+	sprintf(path, "%s/%s", dir, name);
+	if (db) mdbm_store_str(db, path, name, MDBM_INSERT);
+	return (0); /* ok */
+
+}
+
+/*
+ * Given a path, find the real name of the base part
+ */
+private int
+getRealBaseName(char *path, char *realParentName, MDBM *db, char *realBaseName)
+{
+	char *p, *parent, *base, *dir;
+	int rc;
+
+	if (db) {
+		p = mdbm_fetch_str(db, path);
+		if (p) { /* cache hit */
+			//fprintf(stderr, "@@@ cache hit: path=%s\n", path);
+			strcpy(realBaseName, p);
+			return (0); /* ok */
+		}
+	}
+	p = strrchr(path, '/');
+	if (p) {
+		*p = 0; 
+		parent = path; base = &p[1];
+	} else {
+		parent = "."; base = path;
+	}
+	/*
+	 * To increase the cache hit rate
+	 * we use the realParentName if it is known
+	 */
+	dir = realParentName[0] ? realParentName: parent;
+	if ((realParentName[0]) &&  !streq(parent, ".")) {
+		if (strcasecmp(parent, realParentName)) {
+			fprintf(stderr, "warning: name=%s, realname=%s\n",
+							parent, realParentName);
+		}
+		assert(strcasecmp(parent, realParentName) == 0);
+	}
+	rc = scanDir(dir, base, db, realBaseName);
+	if (p) *p = '/';
+	return (rc);
+}
+
+
+int
+getRealName(char *path, MDBM *db, char *realname)
+{
+	char mypath[MAXPATH], name[MAXPATH], *p, *q, *r;
+	char *parent, *base, *dir;
+	int first = 1;
+
+	assert(path != realname); /* must be different buffer */
+	cleanPath(path, mypath);
+
+	realname[0] = 0;
+	q = mypath;
+	r = realname;
+	
+#ifdef WIN32
+	if (q[1] == ':') {
+		q = &q[3];
+#else
+	if (q[0] == '/') {
+		q = &q[1];
+#endif
+	} else {
+		q = mypath;
+		while (strneq(q, "../", 3)) {
+			q += 3;
+		}
+	}
+	while (p  = strchr(q, '/')) {
+		*p = 0;
+		if (getRealBaseName(mypath, realname, db, name))  goto err;
+		if (first) {
+			char *t;
+			t = strrchr(mypath, '/');
+			if (t) {
+				*t = 0;
+				sprintf(r, "%s/%s", mypath, name);
+				*t = '/';
+			} else {
+				sprintf(r, "%s", name);
+			}
+			r += strlen(r);
+			first = 0;
+		} else {
+			sprintf(r, "/%s", name);
+			r += strlen(name) + 1;
+		}
+		*p = '/';
+		q = ++p;
+	}
+	if (getRealBaseName(mypath, realname, db, name))  goto err;
+	sprintf(r, "/%s", name);
+	return (1);
+err:	fprintf(stderr, "getRealName failed: mypath=%s\n", mypath);
+	return (0);
+}
+#else
+getRealName(char *path, MDBM *db, char *realname)
+{
+	strcpy(realname, path);
+}
+#endif /* WIN32_FILE_SYSTEM */
+
+
 /*
  * Return 1 if the pathname in question is in use in the repository by
  * an SCCS file that is not already in the RESYNC/RENAMES dirs.
@@ -1200,6 +1359,8 @@ pathConflict(opts *opts, char *gfile)
 int
 slotTaken(opts *opts, char *slot)
 {
+	char realname[MAXPATH];
+
 	if (opts->debug) fprintf(stderr, "slotTaken(%s) = ", slot);
 
 	if (exists(slot)) {
@@ -1952,6 +2113,7 @@ pass4_apply(opts *opts)
 	char 	*av_r[4] = {"bk", "sfiles", ROOT2RESYNC, 0};
 	int	rfd, status;
 	pid_t	pid;
+	char 	realname[MAXPATH];
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -2125,8 +2287,63 @@ pass4_apply(opts *opts)
 			opts->applied++;
 			fprintf(get, "%s\n", &buf[offset]);
 		}
+#ifdef	WIN32_FILE_SYSTEM
+		getRealName(&buf[offset], localDB, realname);
+		unless (streq(&buf[offset], realname)) {
+			char	*case_folding_err =
+"\n\
+============================================================================\n\
+BitKeeper have detected a \"Case-Folding file system\". e.g. FAT and NTFS.\n\
+What this mean is that your file system ignore case differences when it looks\n\
+for directories and files. This also means that it is not possible to rename\n\
+a path correctly if there exist a similar path with only upper/lower case\n\
+differences.\n\
+BitKeeper wants to rename:\n\
+    %s -> %s\n\
+Your file system is changing it to:\n\
+    %s -> %s\n\
+BitKeeper consider this an error, since this may not be what you have\n\
+intended. The recommended work around for this problem is as follows:\n\
+a) Exit from this resolve session.\n\
+b) Run \"bk mv\" to move the directory or file with upper/lower case\n\
+   changes to a temporary location.\n\
+c) Run \"bk mv\" again to move from the temporary location to\n\
+   %s\n\
+d) Run \"bk commit\" to record the new location in a changeset.\n\
+e) Run \"bk resolve\" or \"bk pull\" again.\n\
+f) You should also inform owner of other repositories to aviod using path\n\
+   of similar names.\n\
+============================================================================\n";
+			char	*unknown_err =
+"\n\
+============================================================================\n\
+Unknown rename error, wanted:\n\
+    %s -> %s\n\
+Got:\n\
+    %s -> %s\n\
+============================================================================\n";
+			opts->applied--;
+			if (strcasecmp(&buf[offset], realname) == 0) {
+				fprintf(stderr, case_folding_err, buf,
+				    &buf[offset], buf, realname, &buf[offset]);
+			} else {
+				fprintf(stderr, unknown_err, buf,
+						&buf[offset], buf, realname);
+			}
+			fclose(p);
+			waitpid(pid, &status, 0);
+			pclose(get);
+#ifdef WIN32
+			sleep(1); /* for win98; wait for "bk get" to exit */
+#endif
+			restore(save, opts);
+			unlink(orig);
+			exit(1);
+		}
+#endif /* WIN32_FILE_SYSTEM */
 	}
 	waitpid(pid, &status, 0);
+	fclose(p);
 	pclose(get);
 	unless (opts->quiet) {
 		fprintf(stderr,
