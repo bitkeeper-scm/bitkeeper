@@ -175,7 +175,7 @@ if [ "`bk get $S -pau T`" != "bk    | HI" ]; then echo Failed.; exit 1; fi
 echo OK
 if [ $PLATFORM = "WIN32" ]
 then #-------------------------------------------------------------
-echo $N Make sure get creat gfile in real name ......................$NL
+echo $N Make sure get creats gfile with real name ...................$NL
 echo "hi" > test.c
 bk ci $Q -i test.c
 bk edit $Q TEST.C
@@ -185,4 +185,105 @@ DPN=`bk prs -h -r+ -d:DPN: test.C`
 if [ "$DPN" != "test.c" ]; then echo failed; exit 1; fi
 echo OK
 fi #---------------------------------------------------------------
-rm -rf A garbage
+echo $N Test get with foo.c -Gbar.c .................................$NL
+echo foo.c > foo.c
+bk new $Q foo.c
+bk get $Q foo.c -Gbar.c || {
+	echo failed to exit cleanly
+	exit 1
+}
+test -f bar.c || {
+	echo failed get bar.c
+	exit 1
+}
+test `cat bar.c` = foo.c || {
+	echo incorrect contents
+	cat bar.c
+	exit 1
+}
+echo OK
+echo $N Test get with -Gsubdir foo.c ................................$NL
+mkdir subdir
+rm bar.c
+bk get $Q -Gsubdir foo.c || {
+	echo failed to exit cleanly
+	exit 1
+}
+test -f bar.c && {
+	echo got bar.c in . not in subdir
+	exit 1
+}
+test -f subdir/foo.c || {
+	echo failed get foo.c
+	exit 1
+}
+test `cat subdir/foo.c` = foo.c || {
+	echo incorrect contents
+	cat subdir/bar.c
+	exit 1
+}
+echo OK
+echo $N Test get with -Gsubdir ......................................$NL
+bk get $Q -Gsubdir || {
+	echo failed to exit cleanly
+	exit 1
+}
+for i in `bk sfiles -g SCCS/s.*`
+do	test -f subdir/$i || {
+		echo failed get foo.c
+		exit 1
+	}
+done
+echo OK
+
+echo $N Test sccs get with foo.c -Gbar.c ............................$NL
+cp `bk bin`/bk sccs
+rm -rf subdir T
+./sccs clean
+./sccs get $Q foo.c -Gbar.c || {
+	echo failed to exit cleanly
+	exit 1
+}
+test -f bar.c || {
+	echo failed get bar.c
+	exit 1
+}
+test `cat bar.c` = foo.c || {
+	echo incorrect contents
+	cat bar.c
+	exit 1
+}
+echo OK
+echo $N Test sccs get with -Gsubdir foo.c ...........................$NL
+mkdir subdir
+rm bar.c
+./sccs get $Q -Gsubdir foo.c || {
+	echo failed to exit cleanly
+	exit 1
+}
+test -f bar.c && {
+	echo got bar.c in . not in subdir
+	exit 1
+}
+test -f subdir/foo.c || {
+	echo failed get foo.c
+	exit 1
+}
+test `cat subdir/foo.c` = foo.c || {
+	echo incorrect contents
+	cat subdir/bar.c
+	exit 1
+}
+echo OK
+echo $N Test sccs get with -Gsubdir .................................$NL
+./sccs get $Q -Gsubdir || {
+	echo failed to exit cleanly
+	exit 1
+}
+for i in `./sccs sfiles -g SCCS/s.*`
+do	test -f subdir/$i || {
+		echo failed get foo.c
+		exit 1
+	}
+done
+echo OK

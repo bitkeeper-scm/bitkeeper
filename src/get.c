@@ -12,7 +12,7 @@ _get_main(int ac, char **av, char *out)
 	sccs	*s;
 	int	iflags = INIT_SAVEPROJ, flags = GET_EXPAND, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
-	char	*prog;
+	char	*t, *prog;
 	char	*mRev = 0;
 	delta	*d;
 	int	gdir = 0;
@@ -96,6 +96,14 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 	if (flags & GET_EDIT) flags &= ~GET_EXPAND;
 	name = sfileFirst("get", &av[optind], hasrevs);
 	gdir = Gname && isdir(Gname);
+	if (((Gname && !gdir) || iLst || xLst) && sfileNext()) {
+onefile:	fprintf(stderr,
+			"%s: only one file name with -G/i/x.\n", av[0]);
+		goto usage;
+	}
+	if (av[optind] && av[optind+1] && strneq(av[optind+1], "-G", 2)) {
+		Gname = &av[optind+1][2];
+	}
 	if (Gname && (flags & GET_EDIT)) {
 		fprintf(stderr, "%s: can't use -G and -e/-l together.\n",
 			av[0]);
@@ -109,11 +117,6 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 	if (Gname && (flags & PRINT)) {
 		fprintf(stderr, "%s: can't use -G and -p together,\n",
 			av[0]);
-		goto usage;
-	}
-	if (((Gname && !isdir(Gname)) || iLst || xLst) && sfileNext()) {
-		fprintf(stderr,
-			"%s: only one file name with -G/i/x.\n", av[0]);
 		goto usage;
 	}
 	if ((flags & GET_PATH) && (flags & (GET_EDIT|PRINT))) {
@@ -237,6 +240,13 @@ usage:			sprintf(realname, "bk help -s %s", prog);
 			errors = 1;
 		}
 		sccs_free(s);
+		/* sfileNext() will try and check out -G<whatever> */
+		if (Gname && !gdir) {
+			while ((name = sfileNext()) &&
+			    strneq("SCCS/s.-G", name, 9));
+			if (name) goto onefile;
+			break;
+		}
 	}
 	sfileDone();
 	if (proj) proj_free(proj);

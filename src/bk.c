@@ -362,6 +362,7 @@ main(int ac, char **av)
 	 */
 	sopts[si = 0] = '-';
 	prog = basenm(av[0]);
+	if (streq(prog, "sccs")) prog = "bk";
 	if (streq(prog, "bk")) {
 		is_bk = 1;
 		while ((c = getopt(ac, av, "acdDeEgijlnpr|RSuUvx")) != -1) {
