@@ -13,6 +13,10 @@ private	 void	pass1(char *spath);
 private	 void	pass2(u32 flags);
 private	 int	try_rename(char *old, char *new, int dopass1, u32 flags);
 
+private const char names_help[] = "\
+usage: names [file... | -]\n\
+	move file back to the location indicated by the latest delta\n";
+
 private	int filenum;
 
 int
@@ -24,6 +28,10 @@ names_main(int ac, char **av)
 	int	error = 0;
 	u32	flags = 0;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		fputs(names_help, stderr);
+		return (1);
+	}
 	/* this should be redundant, we should always be at the package root */
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "names: cannot find package root.\n");
