@@ -1,65 +1,36 @@
-.de DS
-.br
-.ne 2
-.if t .ft CW
-.if n .sp
-.if t .sp .5
-.nf
-.RS
-..
-.de DE
-.if n .sp
-.if t .sp .5
-.RE
-.fi
-.if t .ft P
-..
-.de SP
-.if n .sp
-.if t .sp .5
-..
-.ds BM \s-1B\s0\s-2IT\s0\s-1M\s0\s-2OVER\s0
-.ds BS \s-1B\s0\s-2IT\s0\s-1SCCS\s0
-.ds ATT \s-1ATT\ SCCS\s0
-.ds SCCS \s-1SCCS\s0
-.ds RCS \s-1RCS\s0
-.fam H
-.TH \*[BS] 1 "April, 1998" "BitMover, Inc."
+.so .bitmacros
+.TH \*(BS 1 "April, 1998" "BitMover, Inc."
 .SH NAME
-\*[BS] \- introduction to the \*[BM] version of \*[SCCS]
+\*(BS \- introduction to the \*(BM version of \*S
 .SH DESCRIPTION
-\*[BS] is a low level interface to revision control.  For a higher level
+\*(BS is a low level interface to revision control.  For a higher level
 interface, please see the 
 .BR bitkeeper (1)
 man page.
 .PP
-The \*[BS] source control system manages multiple revisions of files.
-It is modeled after the \*[ATT] system,
-with features added from \*[RCS], 
-as well as extensions found in neither predecessor.
-\*[BS] automates the storing,
-retrieval, logging, identification, and merging
-of revisions.  
-\*[BS] is useful for text that is revised frequently, for example
-programs, documentation, \s-2HTML\s0 files,
-graphics, papers, and form letters.
+The \*(BS source control system manages multiple revisions of files.
+It is modeled after the \*(AT system, with features added from \*R, as
+well as extensions found in neither predecessor.  \*(BS automates the
+storing, retrieval, logging, identification, and merging of revisions.
+\*(BS is useful for text that is revised frequently, for example
+programs, documentation, \s-2HTML\s0 files, graphics, papers, and form
+letters.
 .PP
-The basic user interface is extremely simple, and is identical that of
-\*[RCS] (\*[SCCS] commands are supported as well).  
-Only two commands are needed:
+The basic user interface is extremely simple, and is identical to that
+of \*R (\*S commands are supported as well).  Only two commands are
+needed:
 .BR ci (1)
 and
 .BR co (1).
 .BR ci ,
-short for \*(lqcheck in\*(rq, deposits the contents of a
-file into an archival file called an \*[SCCS] file, or \*(lqs. file\*(rq.
-An \*[SCCS] file
-contains all revisions of a particular file.
+short for \*(lqcheck in\*(rq, deposits the contents of a file into an
+archival file called an \*S file, or \*(lqs. file\*(rq.  An
+\*S file contains all revisions of a particular file.
 .BR co ,
-short for \*(lqcheck out\*(rq, retrieves revisions from an \*[SCCS] file.
-.SS "Functions of \*[BS]"
+short for \*(lqcheck out\*(rq, retrieves revisions from an \*S file.
+.SS "Functions of \*(BS"
 .IP \(rh 4
-Store and retrieve multiple revisions of text.  \*[BS] saves all old
+Store and retrieve multiple revisions of text.  \*(BS saves all old
 revisions in a space efficient way.
 Changes no longer destroy the original, because the
 previous revisions remain accessible.  Revisions can be retrieved according to
@@ -67,9 +38,9 @@ ranges of revision numbers, symbolic names, dates, authors, and
 states.
 .IP \(rh
 Maintain a complete history of changes.
-\*[BS] logs all changes automatically.
+\*(BS logs all changes automatically.
 Besides the text of each revision, 
-\*[BS] stores the author,
+\*(BS stores the author,
 the date and time (including timezone) of check-in,
 the pathname of the file,
 the hostname (and domain name) on which the change was made,
@@ -78,15 +49,15 @@ The logging makes it easy to find out
 what happened to a module, without having to compare
 source listings or having to track down colleagues.
 .IP \(rh
-Maintain a tree of revisions.  \*[BS] can maintain separate lines of development
+Maintain a tree of revisions.  \*(BS can maintain separate lines of development
 for each module.  It stores a tree structure that represents the
 ancestral relationships among revisions.  
-Release 2 of \*[BS] will have expanded support for this feature.
+Release 2 of \*(BS will have expanded support for this feature.
 .IP \(rh
 Merge revisions and resolve conflicts.
 Two separate lines of development of a module can be coalesced by merging.
 If the revisions to be merged affect the same sections of code,
-\*[BS] alerts the user about the overlapping changes.
+\*(BS alerts the user about the overlapping changes.
 The 
 .BR smoosh (1)
 command is useful for merging.
@@ -106,46 +77,46 @@ revisions of which modules make up a given configuration.
 With the addition of hostnames and pathnames, each revision is globally unique,
 a useful feature for distributed source management.
 .IP \(rh
-Minimize disk space.  \*[BS] needs little extra space for
+Minimize disk space.  \*(BS needs little extra space for
 the revisions (only the differences).  If intermediate revisions are
 deleted, the corresponding deltas are compressed accordingly.
-Release 2 of \*[BS] will support 
+Release 2 of \*(BS will support 
 .B gzip-ed
-\*[SCCS] files
+\*S files
 for even less disk usage.
-.SS "Comparison to \*[RCS] and \*[SCCS]"
+.SS "Comparison to \*R and \*S"
 .IP \(rh 4
 .B Features.
-\*[BS] is a superset of \*[RCS] and \*[SCCS].  \*[BS] added the \*[RCS]
-features not found in \*[SCCS].  Conversion of \*[RCS] files to \*[BS] \*[SCCS]
+\*(BS is a superset of \*R and \*S.  \*(BS added the \*R
+features not found in \*S.  Conversion of \*R files to \*(BS \*S
 files loses no information (this includes tags and arbitrarily complex
 revision histories).
 .IP \(rh
 .B Compatibility
-\*[BS] is 100% file format compatible with \*[ATT].  New features
-have been added as new flags; the old \*[SCCS] programs quietly ignore, but
-preserve, new flags.  \*[BS] is not file format compatible with \*[RCS],
+\*(BS is 100% file format compatible with \*(AT.  New features
+have been added as new flags; the old \*S programs quietly ignore, but
+preserve, new flags.  \*(BS is not file format compatible with \*R,
 but it is feature compatible.  Features such as symbolic tags, file state,
-etc., have been added to \*[BS].  Re-implementations of the most commonly
-used \*[RCS] commands are also provided.
+etc., have been added to \*(BS.  Re-implementations of the most commonly
+used \*R commands are also provided.
 .IP \(rh
 .B Performance.
 One frequently voiced
-concern is that \*[SCCS] is slower than \*[RCS].  That was true in \*[ATT] but
-is not true in \*[BS].  \*[BS] can get any delta in constant time, most
-recent deltas are extracted in the same time as \*[RCS], and all other
-deltas are extracted in less time than \*[RCS].
+concern is that \*S is slower than \*R.  That was true in \*(AT but
+is not true in \*(BS.  \*(BS can get any delta in constant time, most
+recent deltas are extracted in the same time as \*R, and all other
+deltas are extracted in less time than \*R.
 However, both tools can
 perform all operations in less time than it takes to read the file from disk,
 making the performance differences somewhat meaningless.
-It is true that \*[RCS] can get top of trunk without reading the entire file,
+It is true that \*R can get top of trunk without reading the entire file,
 resulting in less disk traffic.
-\*[SCCS] reads the entire file because it checksums the entire file before
+\*S reads the entire file because it checksums the entire file before
 completing any operations.  The checksum is used to insure file integrity;
-\*[RCS] has no similar facility.  
-.SS "Getting Started with \*[BS]"
+\*R has no similar facility.  
+.SS "Getting Started with \*(BS"
 Before trying these examples, you will need to reset your path.  This is
-because both the \*[BS] system and the \*[RCS] system have commands with 
+because both the \*(BS system and the \*R system have commands with 
 the same name.  If you are running in Bourne compatible shell, such as
 .BR bash ,
 then do this
@@ -162,16 +133,16 @@ rehash
 .DE
 Suppose you have a file
 .B foo.c
-that you wish to put under control of \*[BS].
+that you wish to put under control of \*(BS.
 Invoke the check-in command
 .DS
 ci -i foo.c
 .DE
-This command creates an \*[SCCS] directory,
-creates an \*[SCCS] file 
-.B \*[SCCS]/s.foo.c
+This command creates an \*S directory,
+creates an \*S file 
+.B \*S/s.foo.c
 in the
-.B \*[SCCS]
+.B \*S
 directory,
 stores
 .B foo.c
@@ -179,7 +150,7 @@ into it as revision 1.1, and
 deletes
 .BR foo.c .
 .PP
-Files in the \*[SCCS] directory are called \*[SCCS] files or .
+Files in the \*S directory are called \*S files or .
 .I "s. files"
 (pronounced ``S dot files'';
 the others are called working files, or .
@@ -193,7 +164,7 @@ complains with the message
 foo.c not checked in, use -i flag.
 .DE
 then you forgot to tell the system that you wanted to create a new
-\*[SCCS] file; retry with the -\fBi\fP flag (i for initialize).
+\*S file; retry with the -\fBi\fP flag (i for initialize).
 .LP
 To get back the working file
 .B foo.c
@@ -202,7 +173,7 @@ command
 .DS
 co  foo.c
 .DE
-This command extracts the latest revision from the \*[SCCS] file
+This command extracts the latest revision from the \*S file
 and writes
 it into
 .BR foo.c .
@@ -263,7 +234,7 @@ file (and associated lock) for all unchanged files.
 Note that 
 .B clean
 automatically came up with a list of files to clean, there was no
-explicit list.  All commands in \*[BS] have this feature, see the
+explicit list.  All commands in \*(BS have this feature, see the
 section below on file name expansion for more details.
 .LP
 To view the revision history of a file, try
@@ -281,7 +252,7 @@ admin -sAlpha:
 .DE
 That says put the tag 
 .B Alpha
-on the highest numbered revision of each file in the \*[SCCS] directory.
+on the highest numbered revision of each file in the \*S directory.
 Note that the highest 
 .B existing
 revision is used; you almost certainly want to run 
@@ -297,7 +268,7 @@ say
 diffs -rAlpha
 .DE
 .LP
-For the \*[SCCS] fans out there, the standard \*[SCCS] command interfaces
+For the \*S fans out there, the standard \*S command interfaces
 are also available.  To check in a file, you can use
 .B ci
 but you can also use
@@ -314,18 +285,18 @@ want to look closely at
 .BR delta (1)
 which has extensive support for such problems.
 .LP
-To check out a file using the \*[SCCS] command, try
+To check out a file using the \*S command, try
 .DS
 get foo.c		# same as co foo.c
 get -e foo.c	# same as co -l foo.c
 .DE
 .LP
-It may seem redundant to have both versions, but the \*[RCS] commands are
-well known, quicker to type, etc.  The \*[SCCS] commands are frequently
+It may seem redundant to have both versions, but the \*R commands are
+well known, quicker to type, etc.  The \*S commands are frequently
 built into Makefile rules (and sometimes into the fingers of old time
 Unix hackers).
 .SS "Key word expansion"
-\*[BS] support both \*[SCCS] style and \*[RCS] style keywords.  A keyword
+\*(BS support both \*S style and \*R style keywords.  A keyword
 is a well known string that is replaced, in an unlocked & checked out file,
 with some information about the file.  Examples include the file name, the
 date, the author of the revision, the revision number, etc.  
@@ -343,11 +314,11 @@ To do this, lock the file, edit it, and make the comment look like:
  */
 .DE
 .LP
-Since \*[RCS]
-is in widespread use, \*[BS] supports \*[RCS] keywords.  However, to get
-\*[RCS] keywords, the 
+Since \*R
+is in widespread use, \*(BS supports \*R keywords.  However, to get
+\*R keywords, the 
 .B R
-flag must be set in the \*[SCCS] file.  You can use
+flag must be set in the \*S file.  You can use
 .B admin
 to set the flag; the conversion tool,
 .BR rcs2sccs ,
@@ -371,39 +342,39 @@ be useful to get revision information in the field.
 .LP
 To learn more about keywords, consult the
 .BR get (1)
-man page for \*[SCCS] keywords, and the
+man page for \*S keywords, and the
 .BR sccs-co (1)
-man page for \*[RCS] keywords.
+man page for \*R keywords.
 .SS "File name expansion"
-All commands in \*[BS] expand file names identically.  The complex expansion 
-is the result of trying to support both the \*[ATT] command interface
-and the more user friendly \*[BS] command interface.  
-\*[ATT] commands insisted that files
+All commands in \*(BS expand file names identically.  The complex expansion 
+is the result of trying to support both the \*(AT command interface
+and the more user friendly \*(BS command interface.  
+\*(AT commands insisted that files
 were specified as \f(CWs.foo\fP or \f(CWSCCS/s.foo\fP but never just
-\f(CWfoo\fP.  \*[BS] allows either specification, with \f(CWfoo\fP 
+\f(CWfoo\fP.  \*(BS allows either specification, with \f(CWfoo\fP 
 implying a corresponding \f(CWSCCS/s.foo\fP.  
 .LP
 In the following list of expansion methods, the first one that
 works is the one that is used, so order is important.
 .IP "\fIdir\fP" 10
-If a directory is specified, and \fIdir/\*[SCCS]\fP exists,
-then the implied list is \fIdir/\*[SCCS]/s.*\fP.
+If a directory is specified, and \fIdir/\*S\fP exists,
+then the implied list is \fIdir/\*S/s.*\fP.
 .IP ""
-If a directory is specified, and \fIdir/\*[SCCS]\fP does not exist,
+If a directory is specified, and \fIdir/\*S\fP does not exist,
 then the implied list is \fIdir/s.*\fP.
 .IP "\fI<Null>\fP" 
-If no directory and no files are specified, and \fI./\*[SCCS]\fP exists,
-then the implied list is \fI\*[SCCS]/s.*\fP.
+If no directory and no files are specified, and \fI./\*S\fP exists,
+then the implied list is \fI\*S/s.*\fP.
 .IP ""
-If no directory and no files are specified, and \fI./\*[SCCS]\fP does not exist,
+If no directory and no files are specified, and \fI./\*S\fP does not exist,
 then the implied list is \fIs.*\fP.
 .IP "\fIs.file ...\fP
-A list of \*[SCCS] files is passed through unchanged.
+A list of \*S files is passed through unchanged.
 .IP "\fIfile ...\fP
-A list of regular files, which have corresponding \*[SCCS]/s.files,
+A list of regular files, which have corresponding \*S/s.files,
 just converts the file names to s.files.
 .LP
-Note one major difference from \*[ATT].  The original \*[SCCS] 
+Note one major difference from \*(AT.  The original \*S 
 .B get
 command would place the g.file in the current working directory, regardless of
 the path to the s.file.  For example,
@@ -411,8 +382,8 @@ the path to the s.file.  For example,
 $ get /foo/bar/blech/s.foo
 .DE
 would place the file in \f(CW./foo\fP, not \f(CW/foo/bar/foo\fP.
-\*[BS] does not follow this convention, the g.files are placed next
-to the s.files, with one exception: if the s.file is in a \*[SCCS] 
+\*(BS does not follow this convention, the g.files are placed next
+to the s.files, with one exception: if the s.file is in a \*S 
 directory, the g.file is placed in the parent directory.  That one 
 exception makes most old scripts work.  However, the -G option to 
 .B get
@@ -426,12 +397,12 @@ command, when used with the
 .B -u 
 option which unedits files, even those files with modifications.  This is
 a safety mechanism which can be overridden by explicitly listing the files
-rather than counting on automatic expansion of \fIs.*\fP o \fI\*[SCCS]/s.*\fP, etc.
+rather than counting on automatic expansion of \fIs.*\fP o \fI\*S/s.*\fP, etc.
 .SH ACKNOWLEDGEMENTS
-Marc Rochkind, for writing the original \*[SCCS].
-Walter Tichy, Paul Eggert, and all the other authors of \*[RCS].  Symbolic tags,
+Marc Rochkind, for writing the original \*S.
+Walter Tichy, Paul Eggert, and all the other authors of \*R.  Symbolic tags,
 the user interface, and even portions of this man page owe their existance
-to \*[RCS].
+to \*R.
 .SH AUTHOR
 Larry McVoy, lm@bitmover.com.
 .SH BUGS

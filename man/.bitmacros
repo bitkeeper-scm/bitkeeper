@@ -25,22 +25,18 @@
 .	ds BM BitMover
 .	ds BS BitSCCS
 .	ds BK BitKeeper
-.	ds ATT ATT SCCS
-.	ds SCCS SCCS
+.	ds AT ATT SCCS
 .	ds S SCCS
-.	ds RCS RCS
-.	ds BKS BitKeeper SCCS
+.	ds R RCS
 .	ds UN UNIX
 .\}
 .if t \{\
 .	ds BM \s-1B\s0\s-2IT\s0\s-1M\s0\s-2OVER\s0
 .	ds BS \s-1B\s0\s-2IT\s0\s-1SCCS\s0
 .	ds BK \s-1B\s0\s-2IT\s0\s-1K\s0\s-2EEPER\s0
-.	ds ATT \s-1ATT SCCS\s0
-.	ds SCCS \s-1SCCS\s0
+.	ds AT \s-1ATT SCCS\s0
 .	ds S \s-1SCCS\s0
-.	ds RCS \s-1RCS\s0
-.	ds BKS \s-1B\s0\s-2IT\s0\s-1K\s0\s-2EEPER\s0 \s-1SCCS\s0
+.	ds R \s-1RCS\s0
 .	ds UN \s-1UNIX\s0
-.	fam H
+.	if \n(.g .fam H
 .\}

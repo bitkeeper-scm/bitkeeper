@@ -30,9 +30,9 @@ localtimez(time_t tt, struct tm *tmz)
 	 * Note that configure will define HAVE_EXTERN_TIMEZONE only if
 	 * all three of daylight, timezone, and altzone exist.  This is
 	 * because we will get the offset wrong everywhere but in the USA
-	 * if we try to calculate it using only daylight and timezone.
+	 * if we try to calculate it using only timezone.
 	 */
-	offset	= -((daylight > 0) ? altzone : timezone);
+	offset	= -((tm->tm_isdst > 0) ? altzone : timezone);
 
 #else
 	/* Take the difference between gmtime() and localtime() as the

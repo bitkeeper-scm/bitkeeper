@@ -10,17 +10,17 @@ delta \- make a delta to an SCCS file
 [\fB-y\fIc\fR]
 [\fIfile\fP \|.\|.\|.]
 .SH DESCRIPTION
-This command is part of \*[BS], the \*[BM] version of \*[SCCS].  For an 
+This command is part of \*(BS, the \*(BM version of \*S.  For an 
 introduction, please see
 .BR bitsccs (1).
 .LP
 .B delta
 checks in changes (aka deltas) in the working file to the
-\*[SCCS] revision control file.
+\*S revision control file.
 The working file[s] must have been previously edited by the
 .BR get ,
 .BR co ,
-or some other \*[SCCS] enabled program.
+or some other \*S enabled program.
 .B delta
 may prompt you on the standard output depending upon
 the options specified and the flags that are set in the
@@ -34,13 +34,13 @@ option below, for details).
 .SH OPTIONS
 .TP
 .B -c
-Do not regenerate the \*[SCCS] checksum after writing the file.
+Do not regenerate the \*S checksum after writing the file.
 Use of this option is not advised, it is usually used  in conversion
 scripts for a little extra performance.
 .TP
 .B -i
 Initialize the file.  Used when checking in an initial file.  The traditional
-\*[SCCS] command for this function is
+\*S command for this function is
 .BR admin .
 .TP
 .TP
@@ -134,7 +134,7 @@ bar.c 1.4>> .
 lock file for a checked-out version
 .TP
 .BI s. file
-\*[SCCS] history file
+\*S history file
 .TP
 .BI x. file
 temporary copy of the
