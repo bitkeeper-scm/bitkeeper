@@ -792,7 +792,7 @@ realloc:
  *
  * Do NOT NOT NOT change this after shipping, even if it is wrong.
  */
-time_t  yearSecs[] = {
+static const time_t  yearSecs[] = {
              0,   31536000,   63072000,   94694400,  126230400,  157766400,
      189302400,  220924800,  252460800,  283996800,  315532800,  347155200,
      378691200,  410227200,  441763200,  473385600,  504921600,  536457600,
@@ -813,11 +813,14 @@ time_t  yearSecs[] = {
  * This is not adjusted for leap years.
  */
 #define	DSECS	(24*60*60)
-int monthSecs[] = { 0, 31*DSECS, 59*DSECS, 90*DSECS, 120*DSECS, 151*DSECS,
-		    181*DSECS, 212*DSECS, 243*DSECS, 273*DSECS, 304*DSECS,
-		    334*DSECS, 365*DSECS };
+static const int monthSecs[13] = {
+    0,		31*DSECS,  59*DSECS,  90*DSECS,
+    120*DSECS,	151*DSECS, 181*DSECS, 212*DSECS,
+    243*DSECS,	273*DSECS, 304*DSECS, 334*DSECS,
+    365*DSECS };
 
-char days[13] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+static const char days[13] =
+{ 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 int
 leapYear(int year)
