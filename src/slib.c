@@ -384,12 +384,12 @@ addLine(char **space, char *line)
 void
 sortLines(char **space)
 {
-	int	n;
+	int	i;
 	int	string_sort(const void *a, const void *b);
 
 	if (!space) return;
-	for (n = 1; space[n]; n++);
-	qsort((void*)&space[1], n-1, sizeof(char*), string_sort);
+	EACH(space);
+	qsort((void*)&space[1], i-1, sizeof(char*), string_sort);
 }
 
 void
