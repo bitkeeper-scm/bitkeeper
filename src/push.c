@@ -460,14 +460,14 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->httpd) {
-		m = patch_size(opts, gzip, rev_list) + 6;
+		m = patch_size(opts, gzip, rev_list);
 		assert(m > 0);
 		extra = m + 6;
 	}
 
 	rc = send_file(r, msgfile, extra, opts.gzip);	
 
-	n = genpatch(opts, gzip, r->wfd, rev_list) + 6;
+	n = genpatch(opts, gzip, r->wfd, rev_list);
 	if ((r->httpd) && (m != n)) {
 		fprintf(stderr,
 			"Error: patch have change size from %d to %d\n",
