@@ -548,6 +548,7 @@ config(FILE *f)
 	sccs	*s;
 	delta	*d;
 
+	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
 	fprintf(f,
 	   "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
 	f1 = popen("bk sfind -S -sx,c,p,n", "r");
