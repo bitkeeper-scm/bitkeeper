@@ -29,7 +29,7 @@ EOF
 	R=`expr $R + 1`
 	bk co $Q -l FILE
 done
-bk clean -u FILE	# clean it
+bk unedit FILE
 echo $N checking file name :F: ......................................$NL
 ${CAT} > CMP1 <<EOF
 ======== FILE 1.5 ========

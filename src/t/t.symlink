@@ -220,7 +220,7 @@ CNT=`bk sfiles -x newlink | wc -l`
 if [ $CNT != 1 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test clean on symlink .......................................$NL
-bk clean -u symlink
+bk unedit symlink
 bk co $Q -l symlink
 bk clean
 if [ -f SCCS/p.symlink ]; then echo failed; exit 1; fi;

@@ -57,8 +57,7 @@
 #define GET_DIFFTOT	0x00000800	/* hasDiffs() false if !TOT */
 
 #define	CLEAN_UNEDIT	0x10000000	/* clean -u: discard changes */
-#define CLEAN_UNLOCK	0x20000000	/* clean -n: just unlock */
-#define CLEAN_SHUTUP	0x40000000	/* clean -Q: quite mode */
+#define CLEAN_SHUTUP	0x20000000	/* clean -Q: quiet mode */
 
 #define	DELTA_AUTO	0x10000000	/* delta -a: auto check-in mode */
 #define	DELTA_SAVEGFILE	0x20000000	/* delta -n: save edited gfile */

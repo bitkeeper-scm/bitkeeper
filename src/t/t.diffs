@@ -61,7 +61,7 @@ cmp -s D W
 if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
 echo OK
 echo $N Checking diff -r1.8 w/ no file ..............................$NL
-bk clean -u Mydiffs
+bk unedit Mydiffs
 bk diffs -r1.8 Mydiffs > D
 ${CAT} > W <<EOF
 ===== Mydiffs 1.8 vs 1.10 =====

@@ -7,10 +7,7 @@ private char *clean_help =
 "usage: clean [-punv] [files...]\n\
     -p	print, i.e., show diffs of modified files\n\
     -q	quiet operation, do not complain about nonexistant files\n\
-    -u	clean even modified files, discarding changes (DANGEROUS)\n\
-    -n  remove lock files, but leave the working copy of the file in place\n\
-    -v	list files being cleaned\n\n\
-\n\
+    -v	list files being cleaned\n\
 The default behaviour is to clean up all checked out files,\n\
 locked or unlocked.  Files are cleaned if they are unmodified,\n\
 so \"bk get -e; bk clean\" is a null operation.\n";
@@ -23,7 +20,7 @@ clean_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	int	flags = SILENT;
-	int	sflags = SF_GFILE;
+	int	sflags = 0;
 	int	c;
 	int	ret = 0;
 	char	*name;
@@ -33,18 +30,10 @@ clean_main(int ac, char **av)
 usage:		fputs(clean_help, stderr);
 		return (1);
 	}
-	if (streq("unedit", av[0]) || streq("unget", av[0])) {
-		flags |= CLEAN_UNEDIT;
-	} else if (streq("unlock", av[0])) {
-		flags |= CLEAN_UNLOCK; sflags &= ~SF_GFILE;
-	}
-	while ((c = getopt(ac, av, "npqsuv")) != -1) {
+	while ((c = getopt(ac, av, "pqv")) != -1) {
 		switch (c) {
 		    case 'p': flags |= PRINT; break;
-		    case 's':
 		    case 'q': flags |= CLEAN_SHUTUP; sflags |= SF_SILENT; break;
-		    case 'u': flags |= CLEAN_UNEDIT; sflags &= ~SF_GFILE; break;
-		    case 'n': flags |= CLEAN_UNLOCK; sflags &= ~SF_GFILE; break;
 		    case 'v': flags &= ~SILENT; break;
 			break;
 		    default:
@@ -52,21 +41,7 @@ usage:		fputs(clean_help, stderr);
 		}
 	}
 
-	/*
-	 * Too dangerous to unedit everything automagically,
-	 * make 'em spell it out.
-	 */
-	if (flags & (CLEAN_UNEDIT|CLEAN_UNLOCK)) {
-		unless (name =
-		    sfileFirst("clean", &av[optind], sflags|SF_NODIREXPAND)) {
-			fprintf(stderr,
-			    "clean: must have explicit list "
-			    "when discarding changes.\n");
-			return(1);
-		}
-	} else {
-		name = sfileFirst("clean", &av[optind], SF_DELETES|sflags);
-	}
+	name = sfileFirst("clean", &av[optind], SF_DELETES|sflags);
 	while (name) {
 		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM, 0))) {
 			if (sccs_clean(s, flags)) ret = 1;
