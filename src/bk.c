@@ -6,6 +6,7 @@
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 project	*bk_proj = 0;
+jmp_buf	exit_buf;
 
 private	char log_buffer[MAXPATH*4];
 
@@ -55,6 +56,7 @@ int logging_main(int, char **);
 int loggingaccepted_main(int ac, char **av);
 int loggingask_main(int ac, char **av);
 int loggingto_main(int, char **);
+int merge_main(int, char **);
 int mklock_main(int, char **);
 int mtime_main(int, char **);
 int mv_main(int, char **);
@@ -142,6 +144,7 @@ struct command cmdtbl[100] = {
 	{"lock", lock_main},
 	{"lod", lod_main},
 	{"log", log_main},
+	{"merge", merge_main},
 	{"mklock", mklock_main}, /* for regression test only */
 	{"mtime", mtime_main},
 	{"mv", mv_main},
@@ -213,6 +216,13 @@ main(int ac, char **av)
 	int	ret;
 	char	*prog;
 
+	log_buffer[0] = 0;
+	if (i = setjmp(exit_buf)) {
+		i -= 1000;
+		log_end(i);
+		return (i >= 0 ? i : 1);
+	}
+	atexit(log_exit);
 	platformInit(av); 
 	assert(bin);
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
@@ -229,7 +239,6 @@ main(int ac, char **av)
 	if (!bk_proj || !bk_proj->root || !isdir(bk_proj->root)) {
 		bk_proj = proj_init(0);
 	}
-	log_buffer[0] = 0;
 
 	/*
 	 * Parse our options if called as "bk".
