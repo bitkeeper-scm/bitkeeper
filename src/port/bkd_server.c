@@ -191,14 +191,9 @@ bkd_server(char **not_used)
 		}
 
 		if (Opts.log) {
-			struct	sockaddr_in sin;
-			int	len = sizeof(sin);
+			char	*name;
 
-			if (getpeername(n, (struct sockaddr*)&sin, &len)) {
-				strcpy(Opts.remote, "unknown");
-			} else {
-				strcpy(Opts.remote, inet_ntoa(sin.sin_addr));
-			}
+			strcpy(Opts.remote, (name = peeraddr(n)) ? name : "unknown");
 		}
 		/*
 		 * Make sure all the I/O goes to/from the socket
@@ -307,15 +302,9 @@ bkd_service_loop(int ac, char **av)
 		 */
 		sprintf(socket_handle, "%d", n);
 		if (Opts.log) {
-			struct  sockaddr_in sin;
-			int     len = sizeof(sin);
+			char	*name;
 
-			// XXX TODO figure out what to do with this
-			if (getpeername(n, (struct sockaddr*)&sin, &len)) {
-				strcpy(Opts.remote, "unknown");
-			} else {
-				strcpy(Opts.remote, inet_ntoa(sin.sin_addr));
-			}
+			strcpy(Opts.remote, (name = peeraddr(n)) ? name : "unknown");
 		}
 		/*
 		 * Spawn a socket helper which will spawn a new bkd process

@@ -70,12 +70,18 @@ findDotFile(char *old, char *new, char *buf)
 	char	oldpath[MAXPATH];
 
 	concat_path(buf, getBkDir(), new);
-	unless (exists(buf)) {
+	if (!exists(buf) && (home = getHomeDir())) {
 		/* need to upgrade? */
-		home = getHomeDir();
 		concat_path(oldpath, home, old);
+		if (exists(oldpath)) {
+			rename(oldpath,  buf);
+			if (strrchr(old, '/')) {
+				*strrchr(oldpath, '/') = 0;
+				/* oldpath now points to parent dir */
+				if (emptyDir(oldpath)) rmdir(oldpath);
+			}
+		}
 		free(home);
-		if (exists(oldpath)) rename(oldpath,  buf);
 	}
 	mkdirf(buf);
 	return (buf);
