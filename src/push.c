@@ -208,7 +208,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	s = sccs_init(s_cset, 0, 0);
-	rc = prunekey(s, r, fd, PK_LSER,
+	rc = prunekey(s, r, NULL, fd, PK_LSER,
 		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
