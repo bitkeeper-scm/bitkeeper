@@ -102,7 +102,27 @@ _lclone() {
 		fi
 		qecho Linking $x ...
 		mkdir -p $x/SCCS
-		ln $FROM/$x/SCCS/s.* $x/SCCS
+		# This loop is to prevent arg list too long errors
+		# and avoid running ln for every individual file.
+		# Instead we group them up five at a time.
+		# The if block after the loop is to pick up any
+		# remaing sfiles.
+		# All this replaces: ln $FROM/$x/SCCS/s.* $x/SCCS
+		for sfile in $FROM/$x/SCCS/s.*
+		do
+			sfiles="$sfiles $sfile"
+			count=${count}X
+			if [ "$count" = "XXXXX" ]
+			then
+				ln $sfiles $x/SCCS
+				unset sfiles count
+			fi
+		done
+		if [ "$sfiles" ]
+		then
+			ln $sfiles $x/SCCS
+			unset sfiles count
+		fi
 	done < /tmp/dirs$$
 	bk sane
 	qecho Looking for and removing any uncommitted deltas
@@ -113,7 +133,7 @@ _lclone() {
 		exit 1
 	}
 	bk parent $Q $FROM
-	rm -f /tmp/dir$$
+	rm -f /tmp/dirs$$
 	exit 0
 }
 
