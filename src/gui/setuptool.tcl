@@ -26,7 +26,6 @@ if {[file exists $image]} {
 
 proc dialog_position { dlg width len } \
 {
-
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
 	#puts $swidth; puts $sheight
@@ -178,9 +177,15 @@ proc save_config_info {} \
 	return
 }
 
+# update the entry widgets
+proc update_info {field value} \
+{
+	global w
+}
+
 proc read_bkrc {} \
 {
-	global env st_cinfo debug st_g
+	global env st_cinfo debug st_g w
 
 	set fid [open $st_g(bkrc) "r"]
 	#while { [ gets $fid line ] != -1 } {
@@ -194,6 +199,7 @@ proc read_bkrc {} \
 	        set var [string trimleft $var]
 	        set var [string trimright $var]
 		set st_cinfo($key) $var
+		update_info $key $var
 	}
 	if {$debug} {
 		foreach el [lsort [array names st_cinfo]] {
@@ -250,32 +256,42 @@ proc get_config_info {} \
 #       Get rid of sequence of if/then and make into loop so we can
 #          easily handle many entry boxes
 #
-proc check_config { widget } \
+proc check_config {} \
 {
-        global st_cinfo
+        global st_cinfo w
 
-        if {"$st_cinfo(repository)" != ""} {
+	set repo 0; set log 0; set cat 0; set desc 0
+
+        if {[info exists st_cinfo(repository)] && 
+	    ($st_cinfo(repository) != "")} {
                 #puts "repository: $st_cinfo(repository)"
                 set repo 1
         } else {
                 set repo 0
         }
-        if {"$st_cinfo(logging)" != ""} {
+        if {[info exists st_cinfo(logging)] && ($st_cinfo(logging) != "")} {
                 #puts "logging: $st_cinfo(logging)"
                 set log 1
         } else {
                 set log 0
         }
-        if {"$st_cinfo(description)" != ""} {
+        if {[info exists st_cinfo(description)] && 
+	    ($st_cinfo(description) != "")} {
                 #puts "descripton: $st_cinfo(description)"
                 set desc 1
         } else {
                 set desc 0
         }
-        if {($repo == 1) && ($log == 1) && ($desc == 1)} {
-                $widget.t.bb.b1 configure -state normal
+        if {[info exists st_cinfo(category)] && ($st_cinfo(category) != "")} {
+                #puts "descripton: $st_cinfo(description)"
+                set cat 1
         } else {
-                $widget.t.bb.b1 configure -state disabled
+                set cat 0
+        }
+        if {($repo == 1) && ($log == 1) && ($desc == 1) && ($cat == 1)} {
+                $w(create) configure -state normal
+        } else {
+                $w(create) configure -state disabled
         }
 }
 
@@ -312,117 +328,128 @@ proc createCatMenu {w} \
 	while {[gets $fid c] != -1} {
 		$cmenu add command -label $c \
 		    -command "setCat [list $c]"
-		puts stderr "c=$c"
+		#puts stderr "c=$c"
 	}
 	catch {close $fid} err
 }
 
-proc create_config {w} \
+proc create_config {} \
 {
-	global st_cinfo st_g rootDir st_dlg_button logo widget
+	global st_cinfo st_g rootDir st_dlg_button logo w
 	global gc tcl_platform
 
         getConfig "setup"
 
 	# Need to have global for w inorder to bind the keyRelease events
-	set widget $w
 	set st_cinfo(logging) "logging@openlogging.org"
-	set swidth [winfo screenwidth .]
-	set sheight [winfo screenheight .]
-	set x [expr {($swidth/2) - 100}]
-	set y [expr {($sheight/2) - 100}]
-	wm geometry . +$x+$y
 
-	frame $w -bg $gc(setup.BG)
-	    frame $w.t -bd 2 -relief raised -bg $gc(setup.BG)
-		label $w.t.label -text "Configuration Info" -bg $gc(setup.BG)
-		#XXX: Have a left side and a right side to put the info in
-		frame $w.t.l -bg $gc(setup.BG)
-		frame $w.t.e -bg $gc(setup.BG)
-		frame $w.t.info -bg $gc(setup.BG)
-		message $w.t.info.msg -width 200 -bg $gc(setup.mandatoryColor) \
-		    -text "The highlighted items on the right that are \
-		           mandatory fields"
-		pack $w.t.info.msg -side bottom  -pady 10
+	set w(main)      .c
+	set w(buttonbar) $w(main).t.bb
+	set w(create)    $w(main).t.bb.b1
+	set w(quit)      $w(main).t.bb.b2
+	set w(logo)      $w(main).t.bb.l
+	set w(label)     $w(main).t.l
+	set w(info)      $w(main).t.info
+	set w(msg)       $w(main).t.info.msg
+	set w(entry)     $w(main).t.e
+
+	frame $w(main) -bg $gc(setup.BG)
+	    frame $w(main).t -bd 2 -relief raised -bg $gc(setup.BG)
+		label $w(main).t.label \
+		    -text "Configuration Info" \
+		    -bg $gc(setup.BG)
+		frame $w(main).t.l -bg $gc(setup.BG)
+		frame $w(main).t.e -bg $gc(setup.BG)
+		frame $w(main).t.info -bg $gc(setup.BG)
+		    message $w(msg) \
+			-width 200 \
+			-bg $gc(setup.mandatoryColor) \
+			-text "The highlighted items on the right are \
+			    mandatory  fields"
+		    pack $w(msg) -side bottom  -pady 10
 		# create button bar on bottom
-		frame $w.t.bb -bg $gc(setup.BG)
-		    button $w.t.bb.b1 -text "Create Repository" \
-			-bg $gc(setup.BG) -state disabled \
+		frame $w(buttonbar) -bg $gc(setup.BG)
+		    button $w(create) \
+			-text "Create Repository" \
+			-bg $gc(setup.BG) \
+			-state disabled \
 			-command "global st_dlg_button; set st_dlg_button 0"
-		    pack $w.t.bb.b1 -side left -expand 1 -padx 20 -pady 10
-		    label $w.t.bb.l -image bklogo
-		    pack $w.t.bb.l -side left -expand 1 -padx 20 -pady 10
-		    button $w.t.bb.b2 -text "Quit" -bg $gc(setup.BG) \
+		    pack $w(create) -side left -expand 1 -padx 20 -pady 10
+		    label $w(logo) -image bklogo
+		    pack $w(logo) -side left -expand 1 -padx 20 -pady 10
+		    button $w(quit) \
+			-text "Quit" \
+			-bg $gc(setup.BG) \
 			-command "global st_dlg_button; set st_dlg_button 1"
-		    pack $w.t.bb.b2 -side left -expand 1 -padx 20 -pady 10
+		    pack $w(quit) -side left -expand 1 -padx 20 -pady 10
 	# text widget to contain info about config options
-	frame $w.t.t -bg $gc(setup.BG)
-	    text $w.t.t.t -width 80 -height 10 -wrap word \
+	frame $w(main).t.t -bg $gc(setup.BG)
+	    text $w(main).t.t.t -width 80 -height 10 -wrap word \
 		-background $gc(setup.mandatoryColor) \
-		-yscrollcommand " $w.t.t.scrl set " 
-	    scrollbar $w.t.t.scrl -bg $gc(setup.BG) \
-	    -command "$w.t.t.t yview"
-	pack $w.t.t.t -fill both -side left -expand 1
-        pack $w.t.t.scrl -side left -fill both
-	pack $w.t.bb -side bottom  -fill x -expand 1
-	pack $w.t.t -side bottom -fill both -expand 1
-	pack $w.t.e -side right -ipady 10 -ipadx 10
-	pack $w.t.l -side right -fill both  -ipadx 5
-	pack $w.t.info -side right -fill both -expand yes -ipady 10 -ipadx 10
+		-yscrollcommand " $w(main).t.t.scrl set " 
+	    scrollbar $w(main).t.t.scrl -bg $gc(setup.BG) \
+	    -command "$w(main).t.t.t yview"
+	pack $w(main).t.t.t -fill both -side left -expand 1
+        pack $w(main).t.t.scrl -side left -fill both
+	pack $w(buttonbar) -side bottom  -fill x -expand 1
+	pack $w(main).t.t -side bottom -fill both -expand 1
+	pack $w(entry) -side right -ipady 10 -ipadx 10
+	pack $w(label) -side right -fill both -ipadx 5
+	pack $w(info) -side right -fill both -expand yes -ipady 10 -ipadx 10
 
 	foreach desc $st_g(topics) {
 		    #puts "desc: ($desc) desc: ($desc)"
-		    label $w.t.l.$desc -text "$desc" -justify right \
+		    label $w(label).$desc -text "$desc" -justify right \
 			-bg $gc(setup.BG) -font $gc(setup.fixedFont)
 		    if {$desc == "category"} {
-		    	createCatMenu $w.t.e.$desc
+		    	createCatMenu $w(main).t.e.$desc
 		    } else {
-			    entry $w.t.e.$desc -width 30 -relief sunken \
+			    entry $w(entry).$desc -width 30 -relief sunken \
 				-bd 2 -bg $gc(setup.BG) \
 				-textvariable st_cinfo($desc) \
 				-font $gc(fixedFont)
 		    }
 		    if {$tcl_platform(platform) == "windows"} {
-			    grid $w.t.e.$desc  -pady 1
+			    grid $w(entry).$desc  -pady 1
 		    } else {
-			    grid $w.t.e.$desc
+			    grid $w(entry).$desc
 		    }
-		    grid $w.t.l.$desc  -pady 1 -sticky e -ipadx 3
-		    bind $w.t.e.$desc <FocusIn> "
-			$w.t.t.t configure -state normal;\
-			$w.t.t.t delete 1.0 end;\
-			$w.t.t.t insert insert \$st_g($desc);\
-			$w.t.t.t configure -state disabled"
+		    grid $w(label).$desc  -pady 1 -sticky e -ipadx 3
+		    bind $w(entry).$desc <FocusIn> "
+			$w(main).t.t.t configure -state normal;\
+			$w(main).t.t.t delete 1.0 end;\
+			$w(main).t.t.t insert insert \$st_g($desc);\
+			$w(main).t.t.t configure -state disabled"
 	}
 	# Highlight mandatory fields
-	$w.t.e.repository config -bg $gc(setup.mandatoryColor)
-	$w.t.e.description config -bg $gc(setup.mandatoryColor)
-	$w.t.e.logging config -bg $gc(setup.mandatoryColor)
-	$w.t.e.email config -bg $gc(setup.mandatoryColor)
+	$w(entry).repository config -bg $gc(setup.mandatoryColor)
+	$w(entry).description config -bg $gc(setup.mandatoryColor)
+	$w(entry).logging config -bg $gc(setup.mandatoryColor)
+	$w(entry).email config -bg $gc(setup.mandatoryColor)
 
-	bind $w.t.e.repository <KeyRelease> {
+	bind $w(entry).repository <KeyRelease> {
 		#check_config $widget
 	}
-	bind $w.t.e.description <KeyRelease> {
-		check_config $widget
+	bind $w(entry).description <KeyRelease> {
+		check_config
 	}
-	bind $w.t.e.email <KeyRelease> {
-		check_config $widget
+	bind $w(entry).email <KeyRelease> {
+		check_config
 	}
-	bind $w.t.e.logging <KeyRelease> {
-		check_config $widget
+	bind $w(entry).logging <KeyRelease> {
+		check_config
 	}
-	bind $w.t.e.repository <FocusIn> {
-		check_config $widget
+	bind $w(entry).repository <FocusIn> {
+		check_config
 	}
-	$w.t config -background black
-	bind $w.t.e <Tab> {tk_focusNext %W}
-	bind $w.t.e <Shift-Tab> {tk_focusPrev %W}
-	bind $w.t.e <Control-n> {tk_focusNext %W}
-	bind $w.t.e <Control-p> {tk_focusPrev %W}
-	focus $w.t.e.repository
-	pack $w.t
-	pack $w
+	$w(main).t config -background black
+	bind $w(entry) <Tab> {tk_focusNext %W}
+	bind $w(entry) <Shift-Tab> {tk_focusPrev %W}
+	bind $w(entry) <Control-n> {tk_focusNext %W}
+	bind $w(entry) <Control-p> {tk_focusPrev %W}
+	focus $w(entry).repository
+	pack $w(main).t
+	pack $w(main)
 	wm protocol . WM_DELETE_WINDOW "handle_close ."
 	#if {[$w.t.e.repository selection present] == 1} {
 	#	puts "Repository selected"
@@ -432,7 +459,7 @@ proc create_config {w} \
 		puts stderr "Cancelling creation of repository"
 		exit
 	}
-	destroy $w
+	destroy $w(main)
 	return 0
 }
 
@@ -493,7 +520,7 @@ proc getMessages {} \
 
 proc main {} \
 {
-	global env argc argv st_repo_name st_dlg_button st_cinfo st_g
+	global env argc argv st_repo_name st_dlg_button st_cinfo st_g w
 
 	setbkdir
 	license_check
@@ -505,7 +532,6 @@ proc main {} \
 	set y [expr {($sheight/2) - 100}]
 
 	wm geometry . +$x+$y
-	get_config_info
 
 	# Override the repo name found in the .bkrc file if argc is set
 	if {$argc == 1} {
@@ -513,7 +539,8 @@ proc main {} \
 	} else {
 		set st_cinfo(repository) ""
 	}
-	create_config .cconfig
+	create_config
+	get_config_info
 	if {[create_repo] == 0} {
 		tk_messageBox -title "Repository Created" \
 		    -type ok -icon info \
