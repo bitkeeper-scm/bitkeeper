@@ -1,0 +1,68 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+test "X$BK_TMP" = X && {
+	echo skipping this test, \$BK_TMP is not set
+	exit 0
+}
+
+echo $N Create initial repository ...................................$NL
+rm -f $BK_TMP/.bk_keys
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+test -f $BK_TMP/.bk_keys -a ! -z $BK_TMP/.bk_keys || {
+	echo failed to add keys to .bk_keys
+	exit 1
+}
+echo OK
+
+echo $N Add a delta to be sure there are keys .......................$NL
+bk edit $Q BitKeeper/etc/config
+bk delta $Q -ywhatever BitKeeper/etc/config
+bk commit $Q -ywhatever
+test -f $BK_TMP/.bk_keys -a ! -z $BK_TMP/.bk_keys || {
+	echo failed to add keys to .bk_keys
+	exit 1
+}
+echo OK
+
+echo $N Make sure we generated the right keys in single user mode ...$NL
+bk sort < $BK_TMP/.bk_keys | while read k junk
+do echo "$k"
+done > GOT
+bk -r prs -r1.0.. -hnd:SHORTKEY: | sort > WANT
+cmp -s WANT GOT || {
+	echo failed to regenerate the same keycache
+	diff WANT GOT
+	bk prs -r1.0.. -nd:KEY: BitKeeper/etc/config
+    	exit 1
+}
+echo OK
+
+echo $N Make sure we can regenerate the keycache ....................$NL
+bk sort < $BK_TMP/.bk_keys > WANT
+rm -f $BK_TMP/.bk_keys
+bk keycache > $BK_TMP/.bk_keys
+test -z $BK_TMP/.bk_keys && {
+	echo failed to add keys to .bk_keys
+	exit 1
+}
+bk sort < $BK_TMP/.bk_keys > GOT
+cmp -s WANT GOT || {
+	echo failed to regenerate the same keycache
+	diff WANT GOT
+	bk prs -r1.0.. -nd:KEY: BitKeeper/etc/config
+    	exit 1
+}
+echo OK

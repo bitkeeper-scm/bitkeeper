@@ -9241,6 +9241,23 @@ singleUser(sccs *s)
 }
 
 /*
+ * If we are a single user config, make sure we use the right user/host.
+ */
+void
+checkSingle(void)
+{
+	char	*t;
+
+	t = user_preference("single_user");
+	if (streq(t, "")) return;
+	safe_putenv("BK_USER=%s", t);
+	t = user_preference("single_host");
+	safe_putenv("BK_HOST=%s", t);
+	sccs_resetuser();
+	sccs_resethost();
+}
+
+/*
  * Check in initial sfile.
  *
  * XXX - need to make sure that they do not check in binary files in
@@ -9347,6 +9364,10 @@ out:		sccs_unlock(s, 'z');
 		perror(sccsXfile(s, 'x'));
 		goto out;
 	}
+	if ((flags & DELTA_PATCH) || s->proj) {
+		s->bitkeeper = 1;
+		s->xflags |= X_BITKEEPER;
+	}
 	/*
 	 * Do a 1.0 delta unless
 	 * a) there is a init file (nodefault), or
@@ -9450,10 +9471,6 @@ out:		sccs_unlock(s, 'z');
 			    fullname(s->gfile, 0));
 			d->comments = addLine(d->comments, strdup(buf));
 		}
-	}
-	if ((flags & DELTA_PATCH) || s->proj) {
-		s->bitkeeper = 1;
-		s->xflags |= X_BITKEEPER;
 	}
 	if (BITKEEPER(s)) {
 		s->version = SCCS_VERSION;
@@ -12403,6 +12420,8 @@ out:
 	}
 #define	OUT	{ error = -1; s->state |= S_WARNED; goto out; }
 #define	WARN	{ error = -1; goto out; }
+
+	unless (flags & DELTA_PATCH) checkSingle();
 
 	if (init) {
 		int	e;

@@ -2,16 +2,22 @@
 #include "../sccs.h"
 
 private void	gethost(char *host, int hlen, int envOK);
+private u32	cached;
+
+void
+sccs_resethost(void)
+{
+	cached = 0;
+}
 
 char	*
 sccs_gethost(void)
 {
 	static	char host[257];
-	static	int done = 0;
 
-	unless (done) {
+	unless (cached & 1) {
 		gethost(host, 256, 1);
-		done = 1;
+		cached |= 1;
 	}
 	return (host[0] ? host : UNKNOWN_HOST);
 }
@@ -20,11 +26,10 @@ char	*
 sccs_realhost(void)
 {
 	static	char host[257];
-	static	int done = 0;
 
-	unless (done) {
+	unless (cached & 2) {
 		gethost(host, 256, 0);
-		done = 1;
+		cached |= 2;
 	}
 	return (host[0] ? host : "127.0.0.1");
 }
