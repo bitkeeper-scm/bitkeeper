@@ -12449,7 +12449,6 @@ out:
 		n->xflags |= X_MONOTONIC;
 		n->flags |= D_XFLAGS;
 	}
-	if (BITKEEPER(s)) singleUser(s);
 
 	EACH (syms) {
 		addsym(s, n, n, !(flags&DELTA_PATCH), n->rev, syms[i]);
