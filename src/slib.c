@@ -9065,17 +9065,19 @@ updatePending(sccs *s)
 	touch(sccsXfile(s, 'd'),  GROUP_MODE);
 }
 
-/* s/\r\n$/\n/ */
+/* s/\r+\n$/\n/ */
 private void
 fix_crnl(register char *s)
 {
 	char	*p = s;
 	while (*p) p++;
 	unless (p - s >= 2) return;
-	if (p[-2] == '\r' && p[-1] == '\n') {
-		p[-2] = '\n';
-		p[-1] = 0;
+	unless (p[-2] == '\r' && p[-1] == '\n') return;
+	for (p -= 2; p != s; p--) {
+		unless (p[-1] == '\r') break;
 	}
+	p[0] = '\n';
+	p[1] = 0;
 }
 
 /*
