@@ -790,7 +790,7 @@ int	sccs_unedit(sccs *s, u32 flags);
 int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
-int	sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec, char *buf);
+char	*sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
 sccs	*sccs_init(char *filename, u32 flags, project *proj);
