@@ -885,6 +885,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 		if ((level > 0)  && patheq(e->d_name, "BitKeeper")) {
 skip:			mdbm_close(gDB);
 			mdbm_close(sDB);
+			closedir(dh);
 			return;
 		}
 
