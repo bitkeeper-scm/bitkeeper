@@ -717,7 +717,7 @@ csetlist(sccs *cset)
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	csetid = strdup(buf);
 
-	gettemp(cat, "/tmp/cat1XXXXXX");
+	gettemp(cat, "/tmp/catZXXXXXX");
 	gettemp(csort, "/tmp/csortXXXXXX");
 	unless (csetOnly) {
 		/*
@@ -725,10 +725,14 @@ csetlist(sccs *cset)
 		 */
 		if (sccs_cat(cset, GET_NOHASH|PRINT, cat)) {
 			sccs_whynot("cset", cset);
+			unlink(cat);
 			goto fail;
 		}
 		sprintf(buf, "sort < %s > %s", cat, csort);
-		if (system(buf)) goto fail;
+		if (system(buf)) {
+			unlink(cat);
+			goto fail;
+		}
 		chmod(csort, TMP_MODE);		/* in case we don't unlink */
 		unlink(cat);
 		if (verbose > 5) {
@@ -739,6 +743,7 @@ csetlist(sccs *cset)
 	} else {
 		close(creat(csort, TMP_MODE));
 	}
+	unlink(cat);
 	unless (list = fopen(csort, "r")) {
 		perror(buf);
 		goto fail;

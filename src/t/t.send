@@ -55,14 +55,14 @@ if [ $? != 0 ]; then echo Failed because of differences; exit 1; fi
 echo OK
 echo $N Make sure we can wrap and unwrap patches ....................$NL
 cd $HERE/project
-bk send $Q -wuu -  | bk unwrap | while read x
+bk send $Q -wuu -  | bk unwrap | ( while read x
 do	case "$x" in
 	    "# Patch vers:"*)
 		echo "$x";
 		exec cat;
 		;;
 	esac
-done > p1
+done ) > p1
 bk send $Q -  | bk unwrap > p2
 diff p1 p2
 if [ $? != 0 ]; then echo Failed because of diffs; exit 1; fi

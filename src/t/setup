@@ -76,6 +76,7 @@ else
 	data="data"
 	uuencode="uuencode"
 	TST_DIR=/tmp
+	CDPATH=""
 fi
 
 if [ X$1 = X-t ]

@@ -397,6 +397,11 @@ getuser(void)
 		s = getlogin();
 	}
 	if (!s || !s[0] ) {
+		struct	passwd	*p = getpwuid(getuid());
+
+		s = p->pw_name;
+	}
+	if (!s || !s[0] ) {
 		s = UNKNOWN_USER;
 	}
 	return (s);
@@ -3381,6 +3386,7 @@ bad:		sccs_free(s);
 void
 sccs_close(sccs *s)
 {
+	unless (s->state & S_SOPEN) return;
 	munmap(s->mmap, s->size);
 	close(s->fd);
 	s->mmap = (caddr_t) -1;
