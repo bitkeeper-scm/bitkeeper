@@ -92,12 +92,12 @@ bk delta $Q -i -Z data
 ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: data`
 if [ X$ENC != X"gzip,binary" ]; then echo Wrong encoding.; exit 1; fi
 echo OK
-echo $N Uncompress and modify in one operation.......................$NL
+echo $N Make sure -Z allowed only with -i ...........................$NL
 bk get $Q -e data
 echo '! @ # $ % ^ & * ( )' >>data
-bk delta $Q -Znone -y data
-ENC=`bk prs -hnr+ -d:COMPRESSION:,:ENC: data`
-if [ X$ENC != X"none,binary" ]; then echo Wrong encoding.; exit 1; fi
+bk delta $Q -Znone -y data 2>  d.out
+grep -q 'Z is allowed with -i option only' d.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Trying to change some gzipped data ..........................$NL
 echo "here is some data" > X

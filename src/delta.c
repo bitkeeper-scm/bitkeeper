@@ -146,6 +146,11 @@ usage:			sprintf(buf, "bk help -s %s", name);
 		}
 	}
 
+	if ((encp || compp) && !(dflags & NEWFILE)) {
+		fprintf(stderr, "-Z is allowed with -i option only\n");
+		goto usage;
+	}
+
 	enc = sccs_encoding(0, encp, compp);
 	if (enc == -1) goto usage;
 
