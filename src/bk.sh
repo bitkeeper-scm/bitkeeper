@@ -1329,8 +1329,10 @@ _install()
 		else
 			(
 				cd "$DEST"
-				find . -type d | xargs chmod ug+w
-			) 2> /dev/null || exit 3
+				find . -type d | while read x
+				do	test -w "$x" || chmod ug+w "$x"
+				done
+			) || exit 3
 			rm -rf "$DEST"/* || {
 			    echo "bk install: failed to remove $DEST"
 			    exit 3
