@@ -1,0 +1,61 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+if [ "$PLATFORM" = "WIN32" ]
+then
+	echo "bk lcone is not supportted on win32: skipped"
+	exit 0
+fi
+
+# Tests for pull, push, and clone.
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+mkdir src
+cd src
+echo foo > 'F!O#O$ B%A^R&RR(R)RR'
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i 'F!O#O$ B%A^R&RR(R)RR' bar.c h.h
+if [ ! -f SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ]; then echo failed to create history; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+bk commit $S -a -yCset
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
+echo OK
+cores
+echo $N Clone repository ............................................$NL
+mkdir -p $HERE/tst
+cd $HERE/tst
+bk lclone $Q $HERE/project || { echo failed; exit 1; }
+[ -f $HERE/tst/project/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || \
+							{ echo failed; exit 1; }
+cd $HERE
+bk lclone $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
+[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
+[ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
+parent=`cat copy/BitKeeper/log/parent`
+host=`bk gethost`
+[ x$parent = xfile:/$HERE/project ] || \
+					{ echo wrong parent $parent; exit 1; }
+cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
+echo OK
+echo $N Clone a nested repository ...................................$NL
+cd $HERE/project/src
+bk lclone $Q $HERE/project sub_proj
+if [ ! -d $HERE/project/src/sub_proj ]; then echo failed; exit 1; fi
+cd $HERE/project; checkLocks; cd $HERE/project/src/sub_proj; checkLocks
+rm -rf $HERE/project/src/sub_proj
+echo OK

@@ -259,7 +259,7 @@ _lclone() {
 	done
 	bk lock -r &
 	LOCKPID="$!"
-	LOCK="${LOCKPID}@`bk gethost`"
+	LOCK="${LOCKPID}@`bk gethost`.lock"
 	sleep 1
 	test -f BitKeeper/readers/$LOCK || {
 		echo Lost read lock race, please retry again later.
