@@ -92,7 +92,12 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			return (1);
 		}
 	}
-	if (flags & (PREFIXDATE|REVNUMS|USER|LINENUM)) flags &= ~EDIT;
+	if (flags & (MODNAME|PREFIXDATE|REVNUMS|USER|LINENUM)) {
+		if (flags & EDIT) {
+			fprintf(stderr, "get: can't mix -e with -dNum\n");
+			exit(1);
+		}
+	}
 	if (flags & EDIT) flags &= ~EXPAND;
 	name = sfileFirst("get", &av[optind], hasrevs);
 	gdir = Gname && isdir(Gname);
@@ -107,12 +112,18 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 			goto usage;
 		}
 	}
-	if ((flags & DELTA_PATH) && Gname) {
-		fprintf(stderr, "get: can't use -G and -H at the same time.\n");
-		return (1);
+	if (flags & DELTA_PATH) {
+		if (Gname) {
+			fprintf(stderr,
+			    "get: can't use -G and -H at the same time.\n");
+			return (1);
+		}
+		if (flags & (EDIT|PRINT)) {
+			fprintf(stderr,
+			    "get: can't use -e|p and -H at the same time.\n");
+			return (1);
+		}
 	}
-	// TODO: make sure -H -p is not used at the same time
-	// 	 make sure -H -e is not used at the same time
 	// 	 make sure -G -p is not used at the same time
 	if ((rev || cdate) && hasrevs) {
 		fprintf(stderr, "get: can't specify more than one rev.\n");

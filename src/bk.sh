@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # bk.sh - front end to BitKeeper commands
-# %W%
+# %W% %K%
 
 function usage {
 	echo usage $0 command '[options]' '[args]'
@@ -518,15 +518,9 @@ function help_resync {
 	cat <<EOF
     ====================== BitKeeper resyncs ======================
 
-Usage: bk resync [-c] [-q] [-rRevs] from to
+Usage: bk resync [-cCqSv] [-rRevs] from to
 
-You can resync repositories after you have run
-
-    $ bk commit
-
-to make sure that all the changes are in a changeset.
-
-Then run
+You specify the paths to the tops of the repositories like so:
 
     $ bk resync source_root destination_root
 
@@ -538,6 +532,13 @@ Either or both the source and the destination can be remote.  If you have
 not set up ssh to login without a password, you will be prompted multiple
 times (sorry) for a password.
 
+You can resync repositories after you have run
+
+    $ bk commit
+
+in the "from" repository as well as the "to" repository.  You should also
+make sure that there are no checked out files in the "to" repository.
+
 When the resync completes successfully, you still need to resolve the changes.  
 The resync did not change anything in the destination other than creating
 a PENDING and RESYNC directory.  The PENDING directory contains the patch
@@ -546,10 +547,14 @@ applied.  The resolution of any conflicts takes place in the RESYNC directory.
 
 OPTIONS
     -c		fail the resync if it would create conflicts in the destination
+    -C		turn on ssh compression (for remote resyncs)
     -q		be quiet during the resync
-    -lrevs	specify the ChangeSet revs to resync.  This is usually 
+    -rRange	specify the ChangeSet range to resync.  This is usually 
     		an "up to range" such as ..beta or ..1.50 since the default
 		is everything.
+    -S		turn on ssh debugging
+    -v		be verbose (each of these adds more, with neither -q or -v,
+    		resync runs as if you had said -vv).
 
 SEE ALSO
     bk help pending
@@ -780,6 +785,10 @@ or
     $ bk send 1.10.. user@host.com
 
 OPTIONS
+    -d		prepend the patch with unified diffs.  This is because some
+    		people (Hi Linus!) like looking at the diffs to decide if 
+		they want the patch or not.
+
     -q		be quiet
 
 SEE ALSO
@@ -904,13 +913,16 @@ function changes {
 
 function send {
 	V=-vv
-	case X$1 in
-	    X-q*)
-	    	V=; shift
-		;;
-	esac
+	D=
+	while getopts dq opt
+	do	case "$opt" in
+		    q) V=;;
+		    d) D=-d;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	if [ X$1 = X ]
-	then	echo "usage: bk send [-q] [cset_revs] user@host|-"
+	then	echo "usage: bk send [-dq] [cset_revs] user@host|-"
 		exit 1
 	fi
 	if [ X$2 = X ]
@@ -924,9 +936,9 @@ function send {
 	then	echo "Sending ChangeSet $REV to $OUTPUT"
 	fi
 	case X$OUTPUT in
-	    X-)	${BIN}cset -m$REV $V
+	    X-)	${BIN}cset $D -m$REV $V
 	    	;;
-	    *)	${BIN}cset -m$REV $V | mail -s "BitKeeper patch $REV" $OUTPUT
+	    *)	${BIN}cset $D -m$REV $V | mail -s "BitKeeper patch $REV" $OUTPUT
 	    	;;
 	esac
 }
@@ -957,19 +969,25 @@ function save {
 
 function resync {
 	V=-vv
+	v=
 	REV=1.0..
 	C=
-	QUIET=no
+	FAST=
+	SSH=
 	# XXX - how portable is this?  Seems like it is a ksh construct
-	while getopts qQcr: opt
+	while getopts cCFqr:Sv opt
 	do	case "$opt" in
 		q) V=;;
-		Q) QUIET=yes;;
 		c) C=-c;;
-		r) REV=$OPTARG
+		C) SSH="-C $SSH";;
+		r) REV=$OPTARG;;
+		F) FAST=-F;;
+		S) SSH="-v $SSH";;
+		v) V=; v=v$v;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
+	if [ X$v != X ]; then V=-$v; fi
 	if [ X"$2" = X ]
 	then	echo "usage: bk resync source_dir dest_dir"
 		exit 1
@@ -978,9 +996,9 @@ function resync {
 	*:*)
 		FHOST=${1%:*}
 		FDIR=${1#*:}
-		PRS="ssh -x $FHOST 
+		PRS="ssh $SSH -x $FHOST 
 		    'cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet'"
-		GEN_LIST="ssh -x $FHOST 'cd $FDIR && bk cset -m $V -'"
+		GEN_LIST="ssh $SSH -x $FHOST 'cd $FDIR && bk cset -m $V -'"
 		;;
 	*)
 		FHOST=
@@ -993,10 +1011,10 @@ function resync {
 	*:*)
 		THOST=${2%:*}
 		TDIR=${2#*:}
-		PRS2="ssh -x $THOST
+		PRS2="ssh $SSH -x $THOST
 		    'cd $TDIR && exec bk prs -bhd:ID: ChangeSet'"
 		# Much magic in this next line.
-		INIT=-`ssh -x $THOST "if test -d $TDIR;
+		INIT=-`ssh $SSH -x $THOST "if test -d $TDIR;
 		    then if test -d $TDIR/BitKeeper/etc;
 			then if test -d $TDIR/RESYNC; then echo inprog; fi;
 			else echo no; fi;
@@ -1010,8 +1028,8 @@ function resync {
 		elif [ x$INIT = x- ]
 		then	INIT=
 		fi
-		TKPATCH="ssh -x $THOST
-		    'cd $TDIR && exec bk takepatch $C $V $INIT'"
+		TKPATCH="ssh $SSH -x $THOST
+		    'cd $TDIR && exec bk takepatch $FAST $C $V $INIT'"
 		;;
 	*)
 		THOST=
@@ -1031,7 +1049,7 @@ function resync {
 			mkdir -p $TDIR
 		fi
 			
-		TKPATCH="(cd $TDIR && bk takepatch $C $V $INIT)"
+		TKPATCH="(cd $TDIR && bk takepatch $FAST $C $V $INIT)"
 		;;
 	esac
 
@@ -1048,14 +1066,9 @@ function resync {
 			echo "$REV" | fmt -42
 			echo -------------------------------------------
 		fi
-		echo "$REV" | eval $GEN_LIST > /tmp/list$$
-	else	touch /tmp/list$$
-	fi
-	if [ -s /tmp/list$$ ]
-	then	eval $TKPATCH < /tmp/list$$
+		echo "$REV" | eval $GEN_LIST | eval $TKPATCH
 	else	echo "resync: nothing to resync from \"$1\" to \"$2\""
 	fi
-	/bin/rm /tmp/list$$
 	exit 0
 }
 

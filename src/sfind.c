@@ -26,7 +26,7 @@ usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
     -P		(paranoid) opens each file to make sure it is an SCCS file\n\
     -r[root]	rebuild the id to pathname cache\n\
     -u		list only unlocked files\n\
-    -X		list empty directory which have no revision control files\n\
+    -X		list empty directories which have no revision control files\n\
     -x		list files which have no revision control files\n\
     		Note: revision control files must look like SCCS/s.*, not\n\
 		foo/bar/blech/s.*\n\
@@ -92,9 +92,9 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		 * a) If there is a x.pending file, do not rebuild the cache
 		 *    use the pending file instead (for performance)
 	 	 * b) Add a option to unlink x.pending after we consume it
-		 *    (so we do'nt commit the same delta twice)
-		 * c) When we a have multiple LOD, we need to filter
-		 *    out the deltas that not part the active LOD.
+		 *    (so we don't commit the same delta twice)
+		 * c) When we have multiple LODs, we need to filter
+		 *    out the deltas that are not part the active LOD.
 		 */
 		rebuild();
 		purify_list();
@@ -162,20 +162,18 @@ func(const char *filename, const struct stat *sb, int flag)
 		}
 		return (0);
 	}
-#ifdef	EMPTY_DIRECTOTY_SUPPORT
+#ifdef	EMPTY_DIRECTORY_SUPPORT
 	/*
-	 * This option only works on the G tree of
-	 * a split root configuration.
+	 * This option only works on the G tree of a split root configuration.
 	 * On a single root tree, the SCCS directory of other
-	 * release will make a normally "empty" directory look non-empty
+	 * release will make a normally "empty" directory look non-empty.
 	 */
-	//if (XFlg && xFlg && S_ISDIR(sb->st_mode) && (sb->st_nlink == 2)) {
 	if (XFlg && S_ISDIR(sb->st_mode) && (sb->st_nlink == 2)) {
 		int len = strlen(file);
 
 		/*
-		 * ignore SCCS directory
-		 * we should never get this on the G tree anyway
+		 * Ignore SCCS directory,
+		 * we should never get this on the G tree anyway.
 		 */
 		if ((len < 4) || !streq("SCCS", &file[len - 4])) {
 			sfile = name2sccs(file);
@@ -199,7 +197,7 @@ func(const char *filename, const struct stat *sb, int flag)
 		}
 		free(sfile);
 		free(gfile);
-		/* fall thru, in case user also want -l or -c */
+		/* fall thru, in case they also want -l or -c */
 	}
 #ifdef SPLIT_ROOT
 	if (S_ISDIR(sb->st_mode)) return (0);

@@ -146,7 +146,7 @@ extern	char *strdup(char *s);
 #define	SAVEGFILE	0x00000100	/* delta -n: save edited gfile */
 #define	UNEDIT		0x00000200	/* clean -u: unedit - discard changes */
 #define	NEWFILE		0x00000400	/* delta -i: create initial file */
-#define	AUTOCHKIN	0x00000800	/* auto check-in mode */
+#define	AUTO_CHECKIN	0x00000800	/* delta -a: auto check-in mode */
 #define	PATCH		0x00001000	/* mk/tkpatch, delta -R */
 #define	NOCKSUM		0x00002000	/* don't do the checksum */
 #define	FORCEBRANCH	0x00004000	/* force a branch when creating delta */
@@ -577,11 +577,10 @@ typedef struct patch {
 	char	*diffFile;	/* RESYNC/BitKeeper/diff-1 */
 	time_t	order;		/* ordering over the whole list, oldest first */
 	int	flags;		/* local/remote /etc */
-	sccs	*init;		/* if new file, then init from here */
 	struct	patch *next;	/* guess */
 } patch;
 
-#define	PATCH_VERSION	"# BitKeeper Patch version 0.2\n"
+#define	PATCH_VERSION	"# BitKeeper Patch version 0.3\n"
 
 #define	PATCH_LOCAL	0x0001	/* patch is from local file */
 #define	PATCH_REMOTE	0x0002	/* patch is from remote file */

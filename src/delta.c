@@ -3,7 +3,7 @@
 WHATSTR("%W%");
 char	*delta_help = "\n\
 usage: delta [-AcGilnpqs] [-I<f>] [-S<sym>] [-y<c>] [files...]\n\n\
-    -A		Auto mode, check in new or changed file automatically\n\
+    -a		Auto mode, check in new or changed file automatically\n\
     -c		Skip the checksum generation (not advised)\n\
     -D<file>	Specify a file of diffs to be used as the change\n\
     -G		use gfile mod time as checkin time\n\
@@ -37,7 +37,6 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
-	//int	flags = FORCE|BRANCHOK;
 	int	flags = FORCE;
 	int	c, rc;
 	char	*initFile = 0;
@@ -54,7 +53,7 @@ main(int ac, char **av)
 help:		fprintf(stderr, delta_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "AcD:g;GI;ilL;m;npqRS;sy|Y")) != -1) {
+	while ((c = getopt(ac, av, "acD:g;GI;ilL;m;npqRS;sy|Y")) != -1) {
 		switch (c) {
 		    /* SCCS flags */
 		    case 'g': fprintf(stderr, "-g Not implemented.\n");
@@ -73,7 +72,7 @@ help:		fprintf(stderr, delta_help);
 			break;
 
 		    /* LM flags */
-		    case 'A': flags |= AUTOCHKIN; flags &= ~FORCE; break;
+		    case 'a': flags |= AUTO_CHECKIN; flags &= ~FORCE; break;
 		    case 'c': flags |= NOCKSUM; break;
 		    case 'D': diffsFile = optarg; break;
 		    case 'G': flags |= GTIME; break;
@@ -132,7 +131,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 			name = sfileNext();
 			continue;
 		}
-		if (flags & AUTOCHKIN) {
+		if (flags & AUTO_CHECKIN) {
 			if (HAS_SFILE(s)) {
 				flags &= ~NEWFILE;
 			} else {

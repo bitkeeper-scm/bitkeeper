@@ -8,6 +8,7 @@ WHATSTR("%W%");
 
 char	*cset_help = "\n\
 usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\
+    -d		do unified diffs for the range (used with -m)\n\
     -i		Create a new change set history rooted at <root>\n\
     -l<range>	List the filenames:revisions of the csets in <range>\n\
     -m		Generate a patch (use with -l)\n\
@@ -49,10 +50,11 @@ int	dash, ndeltas;
 int	makepatch;	/* if set, act like makepatch */
 int	range;		/* if set, list file:rev..rev */
 			/* if set to 2, then list parent..rev */
+int	doDiffs;	/* prefix with unified diffs */
 char	*spin = "|/-\\";
 
 /*
- * cset.c - changeset comand
+ * cset.c - changeset command
  */
 int
 main(int ac, char **av)
@@ -71,8 +73,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "+il|m|t;pr|R|sS;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "dil|m|t;pr|R|sS;vy|Y|")) != -1) {
 		switch (c) {
+		    case 'd': doDiffs++; break;
 		    case 'i':
 			flags |= EMPTY|NEWFILE;
 			break;
@@ -403,14 +406,15 @@ csetlist(sccs *cset)
 		fprintf(sort, "%s %s\n", kv.key.dptr, kv.val.dptr);
 	}
 	pclose(sort);
+again:	/* doDiffs makes it two pass */
 	sprintf(buf, "/tmp/csort%d", getpid());
 	sort = fopen(buf, "r");
+
 	kv.key.dptr = csetid;
 	kv.key.dsize = strlen(csetid) + 1;
 	kv.val = mdbm_fetch(db, kv.key);
 	assert(kv.val.dsize);
 	sprintf(buf, "%s %s\n", csetid, kv.val.dptr);
-	mdbm_close(db);
 
 	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
 		perror("idcache");
@@ -467,6 +471,26 @@ retry:		sc = sccs_keyinit(buf, NOCKSUM, idDB);
 		} else {
 			csetDeltas(sc, 0, d);
 		}
+		if (doDiffs) {
+			if (first) {
+				time_t	t = time(0);
+
+				printf("\
+# This is a BitKeeper patch.  What follows are the unified diffs for the\n\
+# set of deltas contained in the patch.  The rest of the patch, the part\n\
+# that BitKeeper cares about, are below these diffs.  These diffs are\n\
+# mostly here so Linus can edit them :-)\n");
+				printf("#\n# Patch created by %s@%s on %s\n", 
+				    getuser(),
+				    sccs_gethost() ? sccs_gethost() : "?",
+				    ctime(&t));
+				first = 0;
+			}
+			doDiff(sc, DF_UNIFIED);
+			sccs_free(sc);
+			continue;
+		}
+
 		if (makepatch) {
 			if (first) {
 				printf("%s", PATCH_VERSION);
@@ -478,13 +502,52 @@ retry:		sc = sccs_keyinit(buf, NOCKSUM, idDB);
 		sccs_free(sc);
 next:
 	} while (fgets(buf, sizeof(buf), sort));
+	if (doDiffs) {
+		doDiffs = 0;
+		first = 1;
+		mdbm_close(idDB);
+		goto again;
+	}
 	mdbm_close(idDB);
 	mdbm_close(pdb);
+	mdbm_close(db);
 	sprintf(buf, "/tmp/csort%d", getpid()); unlink(buf);
-	if (verbose) {
+	if (verbose && makepatch) {
 		fprintf(stderr,
 		    "makepatch: patch contains %d revisions\n", ndeltas);
 	}
+}
+
+/*
+ * Spit out the diffs.
+ * XXX - TODO - generate a checksum of this data.
+ */
+doDiff(sccs *sc, int kind)
+{
+	delta	*d, *e = 0;
+	int	ex = 0;
+
+	if (sc->state & S_CSET) return;	/* no changeset diffs */
+	for (d = sc->table; d; d = d->next) {
+		if (d->flags & D_VISITED) {
+			e = d;
+		} else if (e) {
+			break;
+		}
+	}
+	for (d = sc->table; d && !(d->flags & D_VISITED); d = d->next);
+	if (!d) return;
+	unless (e->parent) {
+		printf("--- New file ---\n+++ %s\t%s\n",
+		    sc->gfile, sc->tree->sdate);
+		sccs_get(sc, 0, 0, 0, 0, PRINT|SILENT, "-");
+		printf("\n");
+		return;
+	}
+	e = e->parent;
+	if (e == d) return;
+	if (HAS_GFILE(sc) && !IS_WRITABLE(sc)) ex = EXPAND;
+	sccs_diffs(sc, e->rev, d->rev, ex, kind, stdout);
 }
 
 doRange(sccs *sc)
@@ -600,7 +663,7 @@ mkChangeSet(sccs *cset)
 {
 	MDBM	*csDB;
 	FILE	*sort;
-	delta	*d, *r, *e;
+	delta	*d;
 	char	buf[MAXPATH];
 	char	key[MAXPATH];
 
@@ -642,27 +705,16 @@ mkChangeSet(sccs *cset)
 
 	sort = popen("sort > ChangeSet", M_WRITE_T);
 	assert(sort);
-	r = sccs_ino(cset);
-	/* adjust the date of the new rev, scripts make this be in the
-	 * same second.
-	 */
-	if (d->date == r->date) {
-		d->dateFudge++;
-		d->date++;
-	}
-	// awc -> lm : I suspect we do'nt need the code bove
 	/*
-	 * make sure the key is unique, 
-	 * This handle the case when multiple changeset is created
-	 * in the same second
+	 * Adjust the date of the new rev, scripts can make this be in the
+	 * same second.  It's OK that we adjust it here, we are going to use
+	 * this delta * as part of the checkin on this changeset.
 	 */
-	for (e = cset->table; e; e = e->next) {
-		if (e->date >=d->date) {
-			d->dateFudge = e->date - d->date + 1;
-			d->date = e->date + 1;
-		}
+	if (d->date <= cset->table->date) {
+		d->dateFudge = (cset->table->date - d->date) + 1;
+		d->date += d->dateFudge;
 	}
-	sccs_sdelta(key, r);
+	sccs_sdelta(key, sccs_ino(cset));
 	sccs_sdelta(buf, d);
 	if (mdbm_store_str(csDB, key, buf, MDBM_REPLACE)) {
 		perror("cset MDBM store in csDB");
@@ -758,12 +810,12 @@ csetCreate(sccs *cset, int flags, char *sym)
 	close(0);
 	open("/dev/tty", 0, 0);
 	if (flags & DONTASK) d = getComments(d);
-	assert(d->sdate); /* this make sure d->date do'nt change */
+	assert(d->sdate); /* this make sure d->date doesn't change */
 	if (sccs_delta(cset, flags, d, 0, 0) == -1) {
 		sccs_whynot("cset", cset);
 		error = 1;
 	}
-	assert(d->date == date); /* make sure time stamp did not changed */
+	assert(d->date == date); /* make sure time stamp did not change */
 out:	sccs_free(cset);
 	commentsDone(saved);
 	purify_list();
@@ -805,7 +857,7 @@ sccs_patch(sccs *s)
 	int	i, n;
 	delta	**list;
 
-	if (verbose) fprintf(stderr, "makepatch: %s ", s->gfile);
+	if (verbose>1) fprintf(stderr, "makepatch: %s ", s->gfile);
 	/*
 	 * This is a hack which picks up metadata deltas.
 	 * This is sorta OK because we know the graph parent is
@@ -842,12 +894,14 @@ sccs_patch(sccs *s)
 		if (verbose > 2) fprintf(stderr, "%s ", d->rev);
 		if (verbose == 2) fprintf(stderr, "%c\b", spin[deltas % 4]);
 		if (i == n - 1) {
-			unless (d->pathname) {
+			delta	*top = list[0];
+
+			unless (top->pathname) {
 				fprintf(stderr, "\n%s:%s has no path\n",
 				    s->gfile, d->rev);
 				exit(1);
 			}
-			printf("== %s ==\n", d->pathname);
+			printf("== %s ==\n", top->pathname);
 			if (s->tree->flags & D_VISITED) {
 				printf("New file: %s\n", d->pathname);
 				sccs_perfile(s, stdout);
@@ -873,7 +927,7 @@ sccs_patch(sccs *s)
 	}
 	if (verbose == 2) {
 		fprintf(stderr, "%d revisions\n", deltas);
-	} else if (verbose) {
+	} else if (verbose > 1) {
 		fprintf(stderr, "\n");
 	}
 	ndeltas += deltas;

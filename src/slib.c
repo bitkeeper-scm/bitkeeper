@@ -6368,16 +6368,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	}
 	fputdata(s, "\001E 1\n", sfile);
 	end(s, n, sfile, flags, added, 0, 0);
-	if (s->state & S_BITKEEPER) {
-		if (id = idFile(s)) {
-			char	*path = s->tree->pathname;
-
-			sccs_pdelta(s->tree, id);
-			unless (path) path = relativeName(s, 0, 0);
-			fprintf(id, " %s\n", path);
-			fclose(id);
-		}
-	} 
 	if (gfile && (gfile != stdin)) {
 		if (popened) pclose(gfile); else fclose(gfile);
 	}
@@ -8447,7 +8437,7 @@ out:
 			if (!(flags & SILENT))
 				fprintf(stderr,
 				    "Clean %s (no diffs)\n", s->gfile);
-			if (flags & AUTOCHKIN) {
+			if (flags & AUTO_CHECKIN) {
 				error = -2;
 				goto out;
 			}
@@ -8766,7 +8756,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 		}
 	}
 	if (r2 || !HAS_GFILE(s)) {
-		sprintf(tmp2, "%s-2", tmpfile);
+		sprintf(tmp2, "%s-%s", s->gfile, r2 ? r2 : "-2");
 		if (sccs_get(s, right, 0, 0, 0, flags|SILENT|PRINT, tmp2)) {
 			unlink(tmpfile);
 			unlink(tmp2);
@@ -9350,6 +9340,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "KEY")) {
 		if (out) sccs_pdelta(sccs_ino(s), out);
+		return (strVal);
+	}
+
+	if (streq(kw, "GFILE")) {
+		if (s->gfile) {
+			fs(s->gfile);
+			return (strVal);
+		}
 		return (strVal);
 	}
 
@@ -10270,7 +10268,7 @@ sccs_findKey(sccs *s, char *key)
 	delta	*e;
 	char	buf[MAXPATH];
 
-	unless (s->tree) return (0);
+	unless (s && s->tree) return (0);
 //printf("findkey(%s)\n", key);
 	strcpy(buf, key);
 	explodeKey(buf, parts);

@@ -23,7 +23,8 @@ int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	reverse = 0, doheader = 1, didone = 0, flags = SILENT|SHUTUP;
+	int	reverse = 0, doheader = 1, didone = 0;
+	int	flags = NOCKSUM|SILENT|SHUTUP;
 	int	c;
 	char	*name, *rev;
 	int	noisy = 0;

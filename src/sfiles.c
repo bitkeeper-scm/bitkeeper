@@ -67,9 +67,9 @@ again:
 	} else if (d) {
 		while ((e = readdir(d))) {
 			/* 
-			 * readdir return the base name only, must re-construct
+			 * readdir returns the base name only, must re-construct
 			 * the relative path. Otherwise oksccs will be checking
-			 * the wrong file .
+			 * the wrong file.
 			 * See test case "A/" in "basic test" of regression test
 			 */
 			concat_path(buf, prefix, e->d_name);
@@ -161,7 +161,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 					perror(sPath(prefix, 1));
 				}
 			}
-				return (sfileNext());
+			return (sfileNext());
 		}
 		av = Av;
 		ac = 0;

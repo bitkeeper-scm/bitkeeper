@@ -22,8 +22,9 @@ WHATSTR("%W%");
  * Repeats.
  */
 char *takepatch_help = "\n\
-usage: takepatch [-civ] [-f file]\n\n\
+usage: takepatch [-cFiv] [-f file]\n\n\
     -c		do not accept conflicts with this patch\n\
+    -F		(fast) do rebuild id cache when creating files\n\
     -f<file>	take the patch from <file> and do not save it\n\
     -i		initial patch, create a new repository\n\
     -v		verbose level, more is more verbose, -vv is suggested.\n\n";
@@ -32,9 +33,9 @@ usage: takepatch [-civ] [-f file]\n\n\
 #define	CLEAN_PENDING	2
 
 delta	*getRecord(FILE *f);
-int	extractPatch(FILE *p, int flags);
+int	extractPatch(char *name, FILE *p, int flags);
 int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags);
-int	applyPatch(int flags);
+int	applyPatch(char *local, char *remote, int flags, sccs *perfile);
 int	getLocals(sccs *s, delta *d, char *name);
 void	insertPatch(patch *p);
 void	initProject(void);
@@ -54,6 +55,7 @@ int	nfound;
 int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
 FILE	*input;
+int	fast;		/* skip idcache rebuilds for new files */
 
 int
 main(int ac, char **av)
@@ -62,12 +64,14 @@ main(int ac, char **av)
 	FILE	*p;
 	int	c;
 	int	flags = SILENT;
+	char	*t;
 
 	input = stdin;
 	debug_main(av);
-	while ((c = getopt(ac, av, "cf:iv")) != -1) {
+	while ((c = getopt(ac, av, "cFf:iv")) != -1) {
 		switch (c) {
 		    case 'c': noConflicts++; break;
+		    case 'F': fast++; break;
 		    case 'f': input = fopen(optarg, "rt"); break;
 		    case 'i': newProject++; break;
 		    case 'v': echo++; flags &= ~SILENT; break;
@@ -88,10 +92,15 @@ usage:		fprintf(stderr, takepatch_help);
 		++line;
 		if (echo>3) fprintf(stderr, "%s", buf);
 		unless (strncmp(buf, "== ", 3) == 0) {
-			fprintf(stderr, "skipping: %s", buf);
+			if (echo > 6) fprintf(stderr, "skipping: %s", buf);
 			continue;
 		}
-		extractPatch(p, flags);
+		unless ((t = strrchr(buf, ' ')) && streq(t, " ==\n")) {
+			fprintf(stderr, "Bad patch: %s", buf);
+			cleanup(CLEAN_RESYNC);
+		}
+		*t = 0;
+		extractPatch(&buf[3], p, flags);
 	}
 	fclose(p);
 	purify_list();
@@ -125,15 +134,16 @@ getRecord(FILE *f)
 
 /*
  * Extract a contiguous set of deltas for a single file from the patch file.
+ * "name" is the cset name, i.e., the most recent name in the csets being
+ * sent; it might be different than the local name.
  */
 int
-extractPatch(FILE *p, int flags)
+extractPatch(char *name, FILE *p, int flags)
 {
 	delta	*tmp;
 	sccs	*s = 0;
 	sccs	*perfile = 0;
 	datum	k, v;
-	char	*name = 0;
 	int	newFile = 0;
 	char	*gfile;
 	static	int rebuilt = 0;	/* static - do it once only */
@@ -160,23 +170,30 @@ extractPatch(FILE *p, int flags)
 	files++;
 	fnext(buf, p); chop(buf);
 	line++;
+	name = name2sccs(name);
 	if (strneq("New file: ", buf, 10)) {
 		newFile = 1;
-		name = name2sccs(&buf[10]);
 		perfile = sccs_getperfile(p, &line);
 		fnext(buf, p);
 		chop(buf);
 		line++;
 	}
+	if (newProject && !newFile) notfirst();
+
 	if (echo>3) fprintf(stderr, "%s\n", buf);
 again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
 	/*
-	 * Unless it is a brand new workspace, rebuild the id cache if
-	 * look up failed. Even if the file is supposed to be "new".
+	 * Unless it is a brand new workspace, or a new file,
+	 * rebuild the id cache if look up failed.
+	 *
+	 * XXX - we need some test cases in the regression scripts for this.
+	 * a) move the file and make sure it finds it
+	 * b) move the file and send a new file over and make sure it finds
+	 *    it.
 	 */
-	unless (s || newProject) {
+	unless (s || newProject || (newFile && fast)) {
 		unless (rebuilt++) {
-			rebuild_id();
+			rebuild_id(buf);
 			goto again;
 		}
 		unless (newFile) {
@@ -191,12 +208,14 @@ again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
 	 * new file.  But if we have a match, we want to use it.
 	 */
 	if (s) {
-		if (name) free(name);
-		name = strdup(s->sfile);
 		if (newFile && (echo > 3)) {
 			fprintf(stderr,
 			    "takepatch: new file %s already exists.\n", name);
 			newFile = 0;
+		}
+		if (echo > 6) {
+			fprintf(stderr, "takepatch: file %s found.\n",
+			s->sfile);
 		}
 		if (IS_EDITED(s)) {
 			fprintf(stderr,
@@ -228,29 +247,7 @@ again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
 		 * it is safe to assume there is no
 		 * name conflict for the ChangeSet file.
 		 */
-		if (!streq(name, "SCCS/s.ChangeSet")) {
-			char	*p, tmp[1024];
-			/*
-			 * Put new file in BitKeeper/.new to avoid
-			 * conflict with existing file in target tree. 
-			 * The name is constructed to avoid disk
-			 * look up traffic; i.e. no stat()
-			 * We will move the file to its "real" name later.
-			 *
-			 * Use base name only, in case the file
-			 * has "BitKeeper/etc" in its name, which
-			 * will create a false root.
-			 *
-			 * TODO: we may want to split the .new directory
-			 * if it gets too big.
-			 */
-			p = strrchr(name, '/');
-			p = p ? &p[1] : name;
-			sprintf(tmp,
-				"BitKeeper/.new/SCCS/%s~%u", p, uniqueId++);
-			free(name);
-			name = strdup(tmp);
-		}  else {
+		if (streq(name, "SCCS/s.ChangeSet")) {
 			/*
 			 * If we are about to create a new ChangeSet file,
 			 * this better be the very first and only
@@ -258,19 +255,9 @@ again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
 			 */
 			assert(!exists("SCCS/s.ChangeSet"));
 		}
-		sprintf(buf, "RESYNC/%s", name);
-		s = sccs_init(buf, NEWFILE);
-		unless (s) perror(buf);
-		assert(s);
 		if (echo > 2) {
 			fprintf(stderr,
 			    "takepatch: new file %s\n", buf);
-		}
-		if (perfile) {
-			sccscopy(s, perfile);
-			if (perfile->defbranch) free(perfile->defbranch);
-			if (perfile->text) freeLines(perfile->text);
-			free(perfile);
 		}
 	}
 	gca = 0;
@@ -281,22 +268,16 @@ again:	s = sccs_keyinit(buf, NOCKSUM, idDB);
 	remote += nfound;
 	gfile = sccs2name(name);
 	if (echo>1) {
-		fprintf(stderr,
-		    "takepatch: %d new revision%s in %s ",
-		    nfound, nfound == 1 ? "" : "s", gfile);
+		fprintf(stderr, "takepatch: %3d new in %s ", nfound, gfile);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
 	if (patchList && gca) {
-		if (getLocals(s, gca, name) && noConflicts) {
-			fprintf(stderr,
-"takepatch was instructed not to accept conflicts into this tree.\n\
-Please resync in the opposite direction and then reapply this patch.\n");
-			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
-		}
+		if (getLocals(s, gca, name) && noConflicts) noconflicts();
 	}
-	applyPatch(flags);
+	applyPatch(s ? s->sfile : 0, name, flags, perfile);
 	if (echo == 2) fprintf(stderr, " \n");
-	sccs_free(s);
+	if (perfile) free(perfile);
+	if (s) sccs_free(s);
 	free(gfile);
 	free(name);
 	return (0);
@@ -341,21 +322,10 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags)
 	fnext(buf, f); chop(buf); line++;
 	if (echo>3) fprintf(stderr, "%s\n", buf);
 	pid = strdup(buf);
-	if (parent = sccs_findKey(s, buf)) {
-		/*
-		 * This weird bit of code will handle out of order deltas
-		 * in the patch.
-		 */
-		if (gca) {
-			for (d = parent; d; d = d->parent) {
-				if (d == gca) break;
-			}
-			/* if not found, this is higher so use it */
-			if (!d) gca = parent;
-		} else {
-			gca = parent;
-		}
-	}
+	/*
+	 * This code assumes that the patch order is 1.1..1.100
+	 */
+	if (parent = sccs_findKey(s, buf)) unless (gca) gca = parent;
 
 	/* go get the delta table entry for this delta */
 delta:	off = ftell(f);
@@ -400,13 +370,12 @@ delta:	off = ftell(f);
 		sccs_sdelta(buf, d);
 		p->me = strdup(buf);
 		p->initFile = strdup(tmpf);
-		p->localFile = strdup(name);
+		p->localFile = s ? strdup(s->sfile) : 0;
 		sprintf(tmpf, "RESYNC/%s", name);
 		p->resyncFile = strdup(tmpf);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", no);
 		p->diffFile = strdup(tmpf);
 		p->order = parent == d ? 0 : d->date;
-		if (newFile) p->init = s;
 		if (echo>5) fprintf(stderr, "REM: %s %s %u\n", d->rev, p->me, p->order);
 		unless (t = fopen(tmpf, "w")) {
 			perror(tmpf);
@@ -436,6 +405,28 @@ delta:	off = ftell(f);
 	return (0);
 }
 
+noconflicts()
+{
+	fprintf(stderr,
+"takepatch was instructed not to accept conflicts into this tree.\n\
+Please resync in the opposite direction and then reapply this patch.\n");
+	cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+}
+
+notfirst()
+{
+	fprintf(stderr,
+"takepatch: when creating a project, as you are currently doing, you have\n\
+to resync from version 1.0 forward.  Please try again, with a command like\n\
+\n\
+\tbk resync -r1.0.. from to\n\
+or\n\
+\tbk send 1.0.. user@host.com\n\
+\n\
+takepatch has not cleaned up your destination, you need to do that.\n");
+	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+}
+
 void
 ahead(char *pid, char *sfile)
 {
@@ -451,13 +442,11 @@ and get a patch that is based on a common ancestor.\n");
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
- * XXX - the new file stuff doesn't work yet and when it does, it needs to
- * set the bitkeeper flag.
  * If the file does exist, copy it, rip out the old stuff, and then apply
  * the list.
  */
 int
-applyPatch(int flags)
+applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 {
 	patch	*p = patchList;
 	patch	*p2;
@@ -466,17 +455,21 @@ applyPatch(int flags)
 	delta	*d;
 	int	newflags;
 	char	*getuser(), *now();
-	char	*localPath = 0, *remotePath = 0;
 	static	char *spin = "|/-\\";
+	char	*gcaPath = 0;
 	int	n = 0;
 
 	unless (p) return (0);
 	if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
-	unless (p->localFile && exists(p->localFile)) {
+	if (echo > 6) {
+		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
+		    p->localFile, p->resyncFile, p->pid, p->me);
+	}
+	unless (localPath) {
 		mkdirp(p->resyncFile);
 		goto apply;
 	}
-	if (fileCopy(p->localFile, p->resyncFile)) {
+	if (fileCopy(localPath, p->resyncFile)) {
 		perror("cp");
 		exit(1);
 	}
@@ -569,14 +562,13 @@ apply:
 			}
 		} else {
 			assert(s == 0);
-			assert(p->init);
 			unless (s = sccs_init(p->resyncFile, NEWFILE)) {
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
 				    p->resyncFile);
 				exit(1);
 			}
-			sccscopy(s, p->init);
+			if (perfile) sccscopy(s, perfile);
 			iF = fopen(p->initFile, "r");
 			dF = fopen(p->diffFile, "r");
 			d = 0;
@@ -598,46 +590,20 @@ apply:
 	sccs_free(s);
 	s = sccs_init(patchList->resyncFile, 0);
 	assert(s);
-	for (p2 = 0, p = patchList; p; p = p->next) {
-		if (p->flags & PATCH_LOCAL) p2 = p;
-	}
-	if (p2) {	/* there is local work */
-		assert(p2->me);
-		d = sccs_findKey(s, p2->me);
-		localPath = d->pathname;
-	} else if (gca) {
-		d = gca;
-		localPath = d->pathname;
-#if 0
-	/*
-	 * Why?  I don't understand why I ever did this.
-	 */
-	} else {
-		d = sccs_findKey(s, patchList->me);
-#endif
-	}
-	for (p2 = 0, p = patchList; p; p = p->next) {
-		if (p->flags & PATCH_REMOTE) p2 = p;
-	}
-	assert(p2 && p2->me);
-	d = sccs_findKey(s, p2->me);
-	assert(d);
-	remotePath = d->pathname;
-	if (!localPath) {
-		/* new file */
-		conflicts +=
-			sccs_resolveFile(s, ">none<", ">none<", remotePath);
-	} else if (streq(localPath, remotePath)) {
-		/* existing file, no path change */
+	gcaPath = gca ? name2sccs(gca->pathname) : 0;
+	unless (localPath) {
+		/* must be new file */
 		conflicts += sccs_resolveFile(s, 0, 0, 0);
-	} else {/* existing file, path changed   */
-		if (streq(localPath, "ChangeSet")) {
-			fprintf(stderr, 
-			    "takepatch: renaming the ChangeSet file is not supported.\n");
-			exit(1);
-		}
-		conflicts += sccs_resolveFile(s, localPath,
-			gca ? gca->pathname : localPath, remotePath);
+	} else if (streq(localPath, remotePath)) {
+		/* no name changes, life is good */
+		conflicts += sccs_resolveFile(s, 0, 0, 0);
+	} else {
+		debug((stderr, "L=%s\nR=%s\nG=%s (%s)\n",
+		    localPath, remotePath, gcaPath, gca ? gca->rev : ""));
+		/* local != remote */
+		assert(gcaPath);
+		conflicts +=
+		    sccs_resolveFile(s, localPath, gcaPath, remotePath);
 	}
 	sccs_free(s);
 	for (p = patchList; p; ) {
@@ -649,7 +615,7 @@ apply:
 			unlink(p->diffFile);
 			free(p->diffFile);
 		}
-		free(p->localFile);
+		if (p->localFile) free(p->localFile);
 		free(p->resyncFile);
 		if (p->pid) free(p->pid);
 		if (p->me) free(p->me);
@@ -872,6 +838,13 @@ tree:
 				verbose((stderr, "Discard: %s", buf));
 			}
 		}
+		unless (started) {
+			fprintf(stderr,
+"takepatch: nothing to do in patch, which probably means a patch version\n\
+mismatch.  You need to make sure that the software generating the patch is\n
+the same as the software accepting the patch.  We were looking for\n\
+%s", PATCH_VERSION);
+		}
 		fflush(f);
 		fsync(fileno(f));
 		unless (flags & SILENT) {
@@ -906,13 +879,19 @@ int
 mkdirp(char *file)
 {
 	char	*s = strrchr(file, '/');
+	char	*t;
 	char	buf[MAXPATH];
 
-	if (!s) return (0);
+	strcpy(buf, file);	/* for !writable string constants */
+	unless (s = strrchr(buf, '/')) return (0);
 	*s = 0;
-	unless (isdir(file)) {
-		sprintf(buf, "mkdir -p %s\n", file);
-		system(buf);
+	for (t = buf; t < s; ) {
+		if (t > buf) *t++ = '/';
+		if (t < s) {
+			while ((*t != '/') && (t < s)) t++;
+			*t = 0;
+		}
+		mkdir(buf, 0775);
 	}
 	*s = '/';
 	return (0);
@@ -921,24 +900,37 @@ mkdirp(char *file)
 int
 fileCopy(char *from, char *to)
 {
-	char	*s = malloc(strlen(from) + strlen(to) + 20);
-	char	*t;
+	char	buf[8192];
+	int	n, from_fd, to_fd;
+	struct	stat sb;
 
-	t = rindex(to, '/');
-	assert(t);
-	*t = 0;
-	sprintf(s, "mkdir -p %s", to);
-	system(s);
-	*t = '/';
-	sprintf(s, "cp -p %s %s", from, to);
-	system(s);
-	free(s);
+	mkdirp(to);
+	if ((from_fd = open(from, 0)) == -1) {
+		perror(from);
+		cleanup(CLEAN_RESYNC);
+	}
+	if (fstat(from_fd, &sb) == -1) {
+		perror(from);
+		cleanup(CLEAN_RESYNC);
+	}
+	if ((to_fd = creat(to, sb.st_mode & 0777)) == -1) {
+		perror(to);
+		cleanup(CLEAN_RESYNC);
+	}
+	while ((n = read(from_fd, buf, sizeof(buf))) > 0) {
+		if (write(to_fd, buf, n) != n) {
+			perror(to);
+			cleanup(CLEAN_RESYNC);
+		}
+	}
+	close(from_fd);
+	close(to_fd);
 	return (0);
 }
 
-rebuild_id()
+rebuild_id(char *id)
 {
-	fprintf(stderr, "takepatch: miss in idcache, rebuilding...");
+	fprintf(stderr, "takepatch: miss in idcache for %s, rebuilding...", id);
 	system("bk sfiles -r");
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
