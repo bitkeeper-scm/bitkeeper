@@ -44,7 +44,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  help.o host.o isascii.o \
 	  key2rev.o keysort.o lib_tcp.o libcommit.o libdiff.o librange.o \
 	  libsfiles.o libusers.o lines.o localtm.o locking.o \
-	  lod.o log.o logging.o merge.o mkdir.o mklock.o mmap.o \
+	  lod.o log.o logging.o merge.o converge.o mkdir.o mklock.o mmap.o \
 	  mtime.o names.o newrev.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
@@ -300,7 +300,8 @@ FRC:
 # force bk.ver (and thus the bk script) to be regenerated.
 bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	( echo \
-	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet;` \
+	  `./bk prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:\n' ../ChangeSet |\
+	  sed 's/ approved//g';` \
 	  for \
 	  `sh ./utils/os` \
 	) >bk.v

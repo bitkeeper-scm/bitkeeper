@@ -12,6 +12,7 @@ _get_main(int ac, char **av, char *out)
 	sccs	*s;
 	int	iflags = INIT_SAVEPROJ, flags = GET_EXPAND, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
+	char	*prog;
 	char	*mRev = 0;
 	delta	*d;
 	int	gdir = 0;
@@ -25,22 +26,22 @@ _get_main(int ac, char **av, char *out)
 	char	realname[MAXPATH];
 
 	debug_main(av);
-	name = strrchr(av[0], '/');
-	if (name) name++;
-	else name = av[0];
-	if (streq(name, "co")) {
+	prog = strrchr(av[0], '/');
+	if (prog) name++;
+	else prog = av[0];
+	if (streq(prog, "co")) {
 		if (!isdir("SCCS") && isdir("RCS")) {
 			rcs("co", ac, av);
 			/* NOTREACHED */
 		}
-	} else if (streq(name, "edit")) {
+	} else if (streq(prog, "edit")) {
 		flags |= GET_EDIT;
-	} else if (streq(name, "_get")) {
+	} else if (streq(prog, "_get")) {
 		branch_ok = 1;
 	}
 
 	if (ac == 2 && streq("--help", av[1])) {
-		sprintf(realname, "bk help %s", name);
+		sprintf(realname, "bk help %s", prog);
 		system(realname);
 		return (1);
 	}
@@ -79,7 +80,7 @@ _get_main(int ac, char **av, char *out)
 		    case 'x': xLst = optarg; break;
 
 		    default:
-usage:			sprintf(realname, "bk help -s %s", name);
+usage:			sprintf(realname, "bk help -s %s", prog);
 			system(realname);
 			return (1);
 		}
@@ -172,8 +173,8 @@ usage:			sprintf(realname, "bk help -s %s", name);
 		}
 		if (!s->tree) {
 			if (!(s->state & S_SFILE)) {
-				fprintf(stderr, "co: %s doesn't exist.\n",
-				    s->sfile);
+				fprintf(stderr, "%s: %s doesn't exist.\n",
+				    prog, s->sfile);
 			} else {
 				perror(s->sfile);
 			}
@@ -228,7 +229,8 @@ usage:			sprintf(realname, "bk help -s %s", name);
 		    : sccs_get(s, rev, mRev, iLst, xLst, flags, out)) {
 			unless (BEEN_WARNED(s)) {
 				verbose((stderr,
-				    "get of %s failed, skipping it.\n", name));
+				    "%s of %s failed, skipping it.\n",
+				    prog, name));
 			}
 			errors = 1;
 		}

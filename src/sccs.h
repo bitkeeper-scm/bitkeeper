@@ -787,6 +787,7 @@ delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_lockfile(char *lockfile, int tries);	/* works in NFS */
 int	sccs_unlock(sccs *, char);
+char	*sccs_utctime(delta *d);
 int	sccs_setlod(char *rev, u32 flags);
 void	sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb,
 	    char *base, u32 flags);
@@ -905,6 +906,7 @@ int	bk_sfiles(int ac, char **av);
 int	outc(char c);
 MDBM	*loadConfig(char *root, int convert);
 int	ascii(char *file);
+char	*sccs_rmName(sccs *s, int useCommonDir);
 int	sccs_rm(char *name, char *del_name, int useCommonDir);
 int	mkconfig(FILE *out);
 int	config2logging(char *root);

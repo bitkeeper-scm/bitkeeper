@@ -105,12 +105,14 @@ _prevs(delta *d)
 	}
 
 	pd(" ", d);
-	if (d->kid) {
+	if (d->kid && (d->kid->type == 'D')) {
 		_prevs(d->kid);
 	} else {
 		printf("\n");
 	}
-	_prevs(d->siblings);
+	for (d = d->siblings; d; d = d->siblings) {
+		unless (d->flags & D_VISITED) _prevs(d);
+	}
 }
 
 private void
@@ -130,6 +132,7 @@ pd(char *prefix, delta *d)
 			if (sort) printf("-%u", p->pserial);
 		}
 	}
+	d->flags |= D_VISITED;
 }
 
 /*

@@ -151,30 +151,6 @@ echo OK
 #bk takepatch $Q < $HERE/patch
 #bk resolve -d -t -c
 #echo SKIPPED
-echo $N Make sure root key of files in BitKeeper/etc is same ........$NL
-cd $HERE/copy1/BitKeeper/etc
-echo 1111 > logged
-bk new $Q logged
-KEY1=`bk prs -r1.0 -hd':ROOTKEY:\n' logged`
-cd $HERE/copy2/BitKeeper/etc
-echo 2222222222 > logged
-bk new $Q logged
-KEY2=`bk prs -r1.0 -hd':ROOTKEY:\n' logged`
-KEY3=`bk -R prs -r1.0 -hd':ROOTKEY:\n' ChangeSet | 
-				sed -e's?ChangeSet?BitKeeper/etc/logged?'`
-if [ X$KEY1 != X$KEY2 ]; then echo failed 1; exit 1; fi
-if [ X$KEY1 != X$KEY3 ]; then echo failed 2; exit 1; fi
-echo OK
-echo $N Make sure we detect duplicate create in Bitkeeper/etc........$NL
-cd $HERE/copy1/BitKeeper/etc
-bk commit $Q -y"cset for old logged file"
-rm -f SCCS/s.logged
-echo 3333 > logged
-bk new $Q logged 2> new.out
-if [ $? -eq 0 ]; then echo failed; exit 1; fi
-grep -q "key allready used in ChangeSet file" new.out
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-echo OK
 echo $N Try to resolve into a tree with no write permission .........$NL
 cd $HERE
 rm -rf copy

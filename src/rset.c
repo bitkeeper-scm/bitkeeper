@@ -187,11 +187,11 @@ done:	sccs_close(s);
  * Compute diffs of  rev1 and rev2
  */
 private void
-rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB, char *rev1, char *rev2,
-								options opts)
+rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB,
+			char *rev1, char *revM, char *rev2, options opts)
 {
 	MDBM	*goneDB = 0, *short2long = 0;
-	char	*root_key, *start_key, *end_key;
+	char	*root_key, *start_key, *end_key, parents[100];
 	kvpair	kv;
 
 	/*
@@ -204,11 +204,16 @@ rel_diffs(MDBM *db1, MDBM *db2, MDBM *idDB, char *rev1, char *rev2,
 	 * XXX this need to be updated
 	 */
 	unless (opts.hide_cset) {
+		if (revM) {
+			sprintf(parents, "%s+%s", rev1, revM);
+		} else {
+			strcpy(parents, rev1);
+		}
 		unless (opts.show_path) {
-			printf("ChangeSet@%s..%s\n", rev1, rev2);
+			printf("ChangeSet@%s..%s\n", parents, rev2);
 		} else {
 			printf("ChangeSet@ChangeSet@%s@ChangeSet@%s\n",
-								rev1, rev2);
+								parents, rev2);
 		}
 	}
 	for (kv = mdbm_first(db1); kv.key.dsize != 0; kv = mdbm_next(db1)) {
@@ -272,22 +277,26 @@ rel_list(MDBM *db, MDBM *idDB, char *rev, options opts)
 	if (goneDB) mdbm_close(goneDB);
 }
 
-private char *
-parent_delta(sccs *s, char *rev)
+private void
+parent_delta(sccs *s, char **revP, char **revM, char *rev)
 {
-	delta *d, *p;
+	delta *d, *p, *m;
 
 	d = findrev(s, rev);
 	unless (d) {
 		fprintf(stderr, "Cannot find rev %s\n", rev);
-		return (NULL);
+		return;
 	}
 	/*
 	 * XXX TODO: Could we get meta delta in cset?, should we skip them?
 	 */
 	p = d->parent;
 	assert(p->type != 'R'); /* parent should not be a meta delta */
-	return (p ? strdup(p->rev) : NULL);
+	*revP = (p ? strdup(p->rev) : NULL);
+	if (d->merge) {
+		m = sfind(s, d->merge);
+		*revM = (m ? strdup(m->rev) : NULL);
+	}
 }
 
 void
@@ -304,7 +313,8 @@ fix_rev(sccs *s, char **rev, char rev_buf[])
 }
 
 private int
-parse_rev(sccs *s, char *args, char **rev1, char **rev2, char rev_buf[])
+parse_rev(sccs *s, char *args,
+			char **rev1, char **revM, char **rev2, char rev_buf[])
 {
 	char *p;
 
@@ -318,9 +328,9 @@ parse_rev(sccs *s, char *args, char **rev1, char **rev2, char rev_buf[])
 	} else {
 		*rev2 = args;
 		fix_rev(s, rev2, rev_buf);
-		*rev1 = parent_delta(s, *rev2);
-		unless (rev1) {
-			fprintf(stderr, "rev %s has no parent delta\n");
+		parent_delta(s, rev1, revM, *rev2);
+		unless (*rev1) {
+			fprintf(stderr, "rev %s has no parent delta\n", rev2);
 			return (1); /* failed */
 		}
 	}
@@ -332,7 +342,8 @@ int
 rset_main(int ac, char **av)
 {
 	int	c, show_all = 0;
-	char	*rev1 = 0, *rev2 = 0 , tmpf1[MAXPATH], tmpf2[MAXPATH];
+	char	*rev1 = 0, *rev2 = 0, *revM = 0;
+	char	tmpf1[MAXPATH], tmpf2[MAXPATH];
 	char	*root_key, *start_key, *end_key, s_cset[] = CHANGESET;
 	char	rbuf[20];
 	sccs	*s = 0;
@@ -365,7 +376,8 @@ rset_main(int ac, char **av)
 				rev1 = optarg;
 				break;
 		case 'r':	opts.rflg = 1;
-				if (parse_rev(s, optarg, &rev1, &rev2, rbuf)) {
+				if (parse_rev(s, optarg,
+						&rev1, &revM, &rev2, rbuf)) {
 					return (1); /* parse failed */
 				}
 				break;
@@ -383,7 +395,7 @@ usage:				system("bk help -s rset");
 	/*
 	 * load the two ChangeSet 
 	 */
-	if (csetIds(s, rev1)) {
+	if (csetIds_merge(s, rev1, revM)) {
 		fprintf(stderr,
 			"Cannot get ChangeSet for revision %s\n", rev1);
 		return (1);
@@ -407,7 +419,7 @@ usage:				system("bk help -s rset");
 	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
 	assert(idDB);
 	if (rev2) {
-		rel_diffs(db1, db2, idDB, rev1, rev2, opts);
+		rel_diffs(db1, db2, idDB, rev1, revM, rev2, opts);
 	} else {
 		rel_list(db1, idDB, rev1, opts);
 	}

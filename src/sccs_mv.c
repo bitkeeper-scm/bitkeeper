@@ -104,17 +104,6 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	sccs_close(s);
 	oldpath = getRelativeName(name, s->proj);
 	newpath = getRelativeName(destfile, s->proj);
-	if ((strlen(oldpath) > 14) && strneq(oldpath, "BitKeeper/etc/", 14) ||
-	    (strlen(newpath) > 14) && strneq(newpath, "BitKeeper/etc/", 14)) {
-			if (sccs_hasCsetDerivedKey(s)) {
-				fprintf(stderr,
-					"sccsmv: %s -> %s:\n"
-					"moving/removing file in "
-					"BitKeeper/etc is ileggal\n",
-					oldpath, newpath);
-				return (1);
-			}
-	}
 	if (isDelete) {
 		sprintf(commentBuf, "Delete: %s", oldpath);
 	} else {
