@@ -11605,7 +11605,7 @@ sccs_reCache(void)
 	/* sfiles -r */
 	sprintf(buf, "%s%s", getenv("BK_BIN"), SFILES);
 	av[0] = SFILES; av[1] = "-r"; av[2] = 0;
-	return spawnvp_ex(P_WAIT, buf, av);
+	return spawnvp_ex(_P_WAIT, buf, av);
 }
 
 /*
@@ -11644,7 +11644,7 @@ again:	unless (f = fopen(file, "rt")) {
 			/* get -s */
 			sprintf(buf, "%s%s", getenv("BK_BIN"), GET);
 			av[0] = GET; av[1] = "-s"; av[2] = GONE; av[3] = 0;
-			spawnvp_ex(P_WAIT, buf, av);
+			spawnvp_ex(_P_WAIT, buf, av);
 			goto again;
 		}
 out:		if (f) fclose(f);
