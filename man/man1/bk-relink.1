@@ -1,0 +1,53 @@
+.so bk-macros
+.\" help://hardlink
+.TH "bk relink" 1 20%E% "\*(BC" "\*(UM"
+.\"    ====================== BitKeeper relink ======================
+.SH NAME
+bk relink \- recreate broken hardlinks
+.SH SYNOPSIS
+.B bk relink [\-q]
+.ARG from
+.ARG to
+.SH DESCRIPTION
+.LP
+The relink command is used to conserve disk space.  It is typical for
+a single user to have many repositories, each one representing a different
+work in progress.  It is also typical to use the
+.B \-l
+option to bk clone to create hard linked repositories.  A hardlinked 
+repository uses much less space than a copied repository.  As files
+are modified, the links are broken.  As the same set of changes come
+into a set of repositories, the links could be restored.  That is what
+the relink command does.
+.LP
+The relink command looks at each \*(SC file in the
+.ARG from
+repository and if it is the same as the same file in the
+.ARG to 
+repository, it replaces the file in the 
+.ARG to 
+repository
+with a hardlink.
+.SH OPTIONS
+.TP 
+.B \-q
+Run quietly.
+.SH WARNINGS
+While hardlinked repositories are less disk intensive than replicated
+repositories, they are also more vulnerable to disk or file system
+corruption.  It is advisable to always have at least one recent copy
+of a repository, rather than 100% hardlinked repositories.
+.LP
+It is possible to break all the links by recomputing the per file
+checksums:
+.DS
+bk -r check -ac		# stop if this has errors
+bk -r admin -z
+.DE
+.SH AVAILABILITY
+This command works only on Unix filesystems and only if both repositories
+are in the same file system.
+.SH "SEE ALSO"
+.SA clone 1
+.SH CATEGORY
+.B Repository

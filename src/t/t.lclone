@@ -41,16 +41,20 @@ echo $N Clone repository ............................................$NL
 mkdir -p $HERE/tst
 cd $HERE/tst
 bk clone -l $Q $HERE/project || { echo failed; exit 1; }
-[ -f $HERE/tst/project/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || \
-							{ echo failed; exit 1; }
+test -f $HERE/tst/project/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || {
+	echo failed
+	exit 1
+}
 cd $HERE
 bk clone -l $Q $HERE/project $HERE/copy || { echo failed; exit 1; }
-[ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
-[ -f copy/BitKeeper/log/parent ] || { echo no parent; exit 1; }
+test -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' || { echo failed; exit 1; }
+test -f copy/BitKeeper/log/parent || { echo no parent; exit 1; }
 parent=`cat copy/BitKeeper/log/parent`
 host=`bk gethost`
-[ x$parent = xfile:/$HERE/project ] || \
-					{ echo wrong parent $parent; exit 1; }
+test x$parent = xfile:/$HERE/project || {
+	echo wrong parent $parent
+	exit 1
+}
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
 

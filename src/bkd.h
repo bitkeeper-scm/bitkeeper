@@ -33,15 +33,6 @@
 #define	PK_RREV		0x00020	/* want remote cset in rev/tag format */
 #define	PK_RKEY		0x00040	/* want remote cset in key format */
 
-
-/*
- * push/pull -l option output format
- */
-#define	LISTCMT 	1	/* list cset comment */
-#define	LISTDETAIL	2	/* list detail comment */
-#define	LISTKEY		3	/* list key only */
-#define	LISTREV		4	/* list rev only */
-
 /*
  * Functions take (int ac, char **av)
  * do whatever, and return 0 or -1.

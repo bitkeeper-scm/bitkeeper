@@ -43,7 +43,7 @@ push_main(int ac, char **av)
 	opts.doit = opts.verbose = 1;
 	opts.out = stderr;
 
-	while ((c = getopt(ac, av, "ac:deE:Gil|no;qtz|")) != -1) {
+	while ((c = getopt(ac, av, "ac:deE:Gilno;qtz|")) != -1) {
 		switch (c) {
 		    case 'a': opts.autopull = 1; break;		/* doc 2.0 */
 		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
@@ -53,8 +53,7 @@ push_main(int ac, char **av)
 				envVar = addLine(envVar, strdup(optarg)); break;
 		    case 'G': opts.nospin = 1; break;
 		    case 'i': opts.forceInit = 1; break;	/* undoc? 2.0 */
-		    case 'l': opts.list = listType(optarg);	/* doc 2.0 */ 
-			      break;
+		    case 'l': opts.list++; break;		/* doc 2.0 */
 		    case 'n': opts.doit = 0; break;		/* doc 2.0 */
 		    case 'q': opts.verbose = 0; break;		/* doc 2.0 */
 		    case 'o': opts.out = fopen(optarg, "w"); break;
@@ -67,14 +66,6 @@ push_main(int ac, char **av)
 usage:			system("bk help -s push");
 			return (1);
 		}
-	}
-
-	if (opts.list == LISTKEY) {
-		unless (av[optind]) return (sys("bk", "synckeys", "-lk", SYS));
-		return (sys("bk", "synckeys", "-lk", av[optind], SYS));
-	} else  if (opts.list == LISTREV) {
-		unless (av[optind]) return (sys("bk", "synckeys", "-lr", SYS));
-		return (sys("bk", "synckeys", "-lr", av[optind], SYS));
 	}
 
 	loadNetLib();
@@ -118,23 +109,6 @@ usage:			system("bk help -s push");
 	if (!opts.metaOnly && (opts.rcsets || opts.rtags)) return (1);
 	unless (opts.out == stderr) fclose(opts.out);
 	return (rc);
-}
-
-
-int
-listType(char *type)
-{
-	unless (type) return (LISTCMT);
-	switch (*type) {
-	    case 'l': return (LISTDETAIL);
-	    case 'k': return (LISTKEY);
-	    case 'r': return (LISTREV);
-	    default:  fprintf(stderr,
-			"push: bad list type %c, must be "
-			"\'l\', \'k \'or \'r\'\n", *type);
-		      exit(1);
-	}
-	return (LISTCMT); /* should never get here */
 }
 
 private int
@@ -235,7 +209,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	assert(fd >= 0);
 	s = sccs_init(s_cset, 0, 0);
 	rc = prunekey(s, r, fd, PK_LSER,
-			!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
+		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
 		    case -2:	fprintf(opts.out,
