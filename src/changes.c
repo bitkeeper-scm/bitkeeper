@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
-private int	doit(int verbose, char *rev, int indent, int dash);
+private int	doit(int verbose, char *rev, int indent, int tagOnly, int dash);
 
 private void
 usage()
@@ -9,6 +9,7 @@ usage()
 	fprintf(stderr,
 "usage: changes [-v<d>] [-r<rev>]\n\
     -r<rev>	list changes for ChangeSet revision <rev>\n\
+    -t		only list changesets which are tagged\n\
     -v		long listing, showing per file comments\n\
     -v<d>	as above, but indent per file <d> spaces\n");
     	exit(1);
@@ -17,12 +18,13 @@ usage()
 int
 changes_main(int ac, char **av)
 {
-	int	c, indent = 0, verbose = 0;
+	int	c, indent = 0, verbose = 0, tagOnly = 0;
 	char	*rev = 0;
 
-	while ((c = getopt(ac, av, "r|v|")) != -1) {
+	while ((c = getopt(ac, av, "tr|v|")) != -1) {
 		switch (c) {
 		    case 'i': indent = atoi(optarg); break;
+		    case 't': tagOnly = 1; break;
 		    case 'v':
 			verbose = 1;
 			indent = optarg ? atoi(optarg) : 2;
@@ -36,19 +38,22 @@ changes_main(int ac, char **av)
 		fprintf(stderr, "Can't find package root\n");
 		exit(1);
 	}
-	exit(doit(verbose, rev, indent, av[optind] && streq("-", av[optind])));
+	exit(doit(verbose,
+	    rev, indent, tagOnly, av[optind] && streq("-", av[optind])));
 }
 
 #define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
+#define	TSPEC	"$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n}\\c"
 
 private int
-doit(int verbose, char *rev, int indent, int dash)
+doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 {
 	FILE	*f;
 	char	cmd[MAXKEY];
 	char	tmpfile[MAXPATH];
 	char	dashfile[MAXPATH];
 	char	buf[100];
+	char	*spec = tagOnly ? TSPEC : DSPEC;
 	pid_t	pid;
 	extern	char *pager;
 	char	*av[2] = { pager, 0 };
@@ -56,8 +61,7 @@ doit(int verbose, char *rev, int indent, int dash)
 
 	dashfile[0] = 0;
 	if (rev) {
-		sprintf(cmd,
-		    "bk prs -Yhd'%s' -r%s ChangeSet", DSPEC, rev);
+		sprintf(cmd, "bk prs -Yhd'%s' -r%s ChangeSet", spec, rev);
 	} else if (dash) {
 		gettemp(dashfile, "dash");
 		f = fopen(dashfile, "w");
@@ -65,10 +69,9 @@ doit(int verbose, char *rev, int indent, int dash)
 			fprintf(f, "ChangeSet@%s", cmd);
 		}
 		fclose(f);
-		sprintf(cmd,
-		    "bk prs -Yhd'%s' - < %s", DSPEC, dashfile);
+		sprintf(cmd, "bk prs -Yhd'%s' - < %s", spec, dashfile);
 	} else {
-		sprintf(cmd, "bk prs -Yhd'%s' ChangeSet", DSPEC);
+		sprintf(cmd, "bk prs -Yhd'%s' ChangeSet", spec);
 	}
 	unless (verbose) {
 		strcat(cmd, " | ");

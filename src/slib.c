@@ -12126,7 +12126,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "SYMBOL")) {
+	if (streq(kw, "SYMBOL") || streq(kw, "TAG")) {
 		symbol	*sym;
 		int	j = 0;
 

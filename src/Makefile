@@ -286,7 +286,7 @@ bkhelp.txt: bkhelp.doc bk.ver helpcheck.pl Makefile
 	sed "s/@version@/`cat bk.ver`/" bkhelp.doc | \
 	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
 	sed "s/@built_date@/`date`/" > bkhelp.txt
-	perl helpcheck.pl
+	-perl helpcheck.pl
 
 bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
