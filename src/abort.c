@@ -114,7 +114,7 @@ send_abort_msg(remote *r)
 	FILE	*f;
 	int	rc;
 
-	gettemp(buf, "abort");
+	bktmp(buf, "abort");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, 1);

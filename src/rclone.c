@@ -145,7 +145,7 @@ send_part1_msg(opts opts, remote *r, char **envVar)
 	 */
 	gzip = r->port ? opts.gzip : 0;
 
-	gettemp(buf, "rclone");
+	bktmp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -242,7 +242,7 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 	 */
 	gzip = r->port ? opts.gzip : 0;
 
-	gettemp(buf, "rclone");
+	bktmp(buf, "rclone");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -291,7 +291,7 @@ gensfio(opts opts, int verbose, int level, int wfd)
 	char	*sfiocmd;
 	char	*cmd;
 
-	tmpf = bktmpfile();
+	tmpf = bktmp(0, "rclone_sfiles");
 	fh = fopen(tmpf, "w");
 	if (exists(LMARK)) fprintf(fh, LMARK "\n");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");

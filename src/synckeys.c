@@ -553,7 +553,7 @@ send_sync_msg(remote *r)
 	char	*cmd, buf[MAXPATH];
 	FILE 	*f;
 
-	bktemp(buf);
+	bktmp(buf, "synccmds");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, 0);

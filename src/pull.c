@@ -122,7 +122,7 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	FILE    *f;
 	int	rc;
 
-	bktemp(buf);
+	bktmp(buf, "pull1");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -173,7 +173,7 @@ pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	}
 	if (opts.dont) putenv("BK_STATUS=DRYRUN");
 	if (!opts.metaOnly && trigger(av[0], "pre")) return (1);
-	bktemp(probe_list);
+	bktmp(probe_list, "pullprobe");
 	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	if (opts.gzip) gzip_init(opts.gzip);
@@ -195,7 +195,7 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	FILE	*f;
 	int	status, rc;
 
-	bktemp(msg_file);
+	bktmp(msg_file, "pullmsg");
 	f = fopen(msg_file, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);

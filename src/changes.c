@@ -401,7 +401,7 @@ send_part1_msg(remote *r, char **av)
 	int	rc, i;
 	FILE 	*f;
 
-	gettemp(buf, "changes");
+	bktmp(buf, "changes");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
@@ -438,7 +438,7 @@ send_end_msg(remote *r, char *msg)
 	FILE	*f;
 	int	rc;
 
-	bktemp(msgfile);
+	bktmp(msgfile, "changes_end");
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
@@ -466,7 +466,7 @@ send_part2_msg(remote *r, char **av, char *key_list)
 	char	msgfile[MAXPATH], buf[MAXLINE];
 	FILE	*f;
 
-	bktemp(msgfile);
+	bktmp(msgfile, "changes_msg");
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, NULL, r, !opts.remote);
@@ -541,7 +541,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	/*
 	 * What we want is: "remote => bk _prunekey => keylist"
 	 */
-	bktemp(key_list);
+	bktmp(key_list, "keylist");
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
 	s = sccs_init(s_cset, 0, 0);
 	flags = PK_REVPREFIX|PK_RKEY;

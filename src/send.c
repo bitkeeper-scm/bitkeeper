@@ -22,7 +22,7 @@ getNewRevs(char *to, char *rev, char *url)
 
 	unless (isdir(BK_LOG)) mkdirp(BK_LOG);
 	sprintf(x_sendlog, "%s/send-%s", BK_LOG, to);
-	unless (url) gettemp(here, "bk_here");
+	unless (url) bktmp(here, "bk_here");
 	sprintf(keysFile, "%s/bk_keys%u", TMP_PATH, getpid());
 	close(open(x_sendlog, O_CREAT, 0660));
 

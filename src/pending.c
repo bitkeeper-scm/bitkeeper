@@ -25,7 +25,7 @@ $each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\n";
 		fprintf(stderr, "pending: cannot find project root\n");
 		exit(1);
 	}
-	tmp = bktmpfile();
+	tmp = bktmp(0, "pending");
 	sysio(0, tmp, 0, "bk", "sfiles", "-pCA", SYS);
 	unless (size(tmp) > 0) {
 		unlink(tmp);

@@ -41,7 +41,7 @@ opark_main(int ac, char **av)
 	if (lflag) return (listParkFile());
 	if (purge) return (purgeParkFile(purge));
 
-	bktemp(changedfile);
+	bktmp(changedfile, 0);
 	sysio(0, changedfile, 0, "bk", "sfiles", "-c", SYS);
 	if (size(changedfile) <= 0) {
 empty:		unless (qflag) printf("Nothing to park\n");

@@ -241,7 +241,7 @@ remotePreTrigger(char *event, char *what, char **triggers)
 
 	trigger_env("BKD", event, what);
 
-	gettemp(output, "trigger");
+	bktmp(output, "trigger");
 	unless (lclone) fputs("@TRIGGER INFO@\n", stdout);
 	EACH(triggers) {
 		unless (runable(triggers[i])) continue;

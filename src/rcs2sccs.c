@@ -242,7 +242,7 @@ verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g)
 	rev = aprintf("-r%s", d->rev);
 	sys(co_prog, "-q", rcs->kk, rev, g, SYS);
 	free(rev);
-	bktemp(tmpfile);
+	bktmp(tmpfile, "rcs");
 	rev = aprintf("-r%s", d->sccsrev);
 	sysio(0, tmpfile, 0, "bk", "get", "-kqp", rev, g, SYS);
 	free(rev);

@@ -177,7 +177,7 @@ err:			unlink("BitKeeper/etc/config");
          * category is given.
 	 */
 	if ( (t = mdbm_fetch_str(m, "category")) && strlen(t) > 0) {
-		gettemp(buf, "cat");
+		bktmp(buf, "cat");
 		if (f = fopen(buf, "wt")) {
 			getMsg("setup_categories", 0, 0, 0, f);
 			fclose(f);

@@ -150,8 +150,8 @@ compressed(int level, int hflag)
 	 * sorted order so that the other end knows when the entire
 	 * BitKeeper directory is finished unpacking.
 	 */
-	tmpf1 = bktmpfile();
-	tmpf2 = bktmpfile();
+	tmpf1 = bktmp(0, "clone1");
+	tmpf2 = bktmp(0, "clone2");
 	fh = fopen(tmpf1, "w");
 	if (exists(LMARK)) fprintf(fh, LMARK "\n");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");

@@ -662,8 +662,8 @@ csetlist(cset_t *cs, sccs *cset)
 	sccs_sdelta(cset, sccs_ino(cset), buf);
 	csetid = strdup(buf);
 
-	gettemp(cat, "catZ");
-	gettemp(csort, "csort");
+	bktmp(cat, "catZ");
+	bktmp(csort, "csort");
 	unless (cs->csetOnly) {
 		/*
 		 * Get the list of key tuples in a sorted file.
@@ -685,7 +685,7 @@ csetlist(cset_t *cs, sccs *cset)
 		if (exists(SGONE)) {
 			char tmp_gone[MAXPATH];
 
-			bktemp(tmp_gone);
+			bktmp(tmp_gone, "gone");
 			sysio(0, tmp_gone, 0, "bk", "get", "-kpsC", GONE, SYS);
 			goneDB = loadDB(tmp_gone, 0, DB_KEYSONLY|DB_NODUPS);
 			unlink(tmp_gone);
@@ -1077,7 +1077,7 @@ csetCreate(sccs *cset, int flags, char **syms)
 	FILE	*fdiffs;
 	char	filename[MAXPATH];
 
-	gettemp(filename, "cdif");
+	bktmp(filename, "cdif");
 	unless (fdiffs = fopen(filename, "w+")) {
 		perror(filename);
 		sccs_free(cset);

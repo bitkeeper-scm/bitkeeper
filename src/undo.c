@@ -33,7 +33,6 @@ undo_main(int ac,  char **av)
 	char	**fileList = 0;
 	char	*checkfiles;	/* filename of list of files to check */
 #define	LINE "---------------------------------------------------------\n"
-#define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo_backup"
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -72,11 +71,11 @@ usage:			system("bk help -s undo");
 		return (0);
 	}
 	rev = 0;  /* don't use wrong value */
-	gettemp(rev_list, "bk_rev_list");
+	bktmp(rev_list, "bk_rev_list");
 	fileList = mk_list(rev_list, csetrev_list);
 	unless (fileList) goto err;
 
-	gettemp(undo_list, "bk_undo_list");
+	bktmp(undo_list, "bk_undo_list");
 	cmd = aprintf("bk stripdel -Cc - 2> %s", undo_list);
 	f = popen(cmd, "w");
 	free(cmd);
@@ -137,7 +136,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		if (streq(qflag, "")) {
 			fprintf(stderr, "Saving a backup patch...\n");
 		}
-		unless (isdir(BK_TMP)) mkdirp(BK_TMP);
+		unless (isdir(BKTMP)) mkdirp(BKTMP);
 		cmd = aprintf("bk cset %s -ffm - > %s", vflag, BK_UNDO);
 		f = popen(cmd, "w");
 		free(cmd);
@@ -159,11 +158,12 @@ err:		if (undo_list[0]) unlink(undo_list);
 	 */
 	if (moveAndSave(fileList)) goto err;
 
-	gettemp(buf, "undo_ck");
-	checkfiles = strdup(buf); /* fix in 4.0 */
+	checkfiles = bktmp(0, "undo_ck");
 	chdir(ROOT2RESYNC);
 	if (doit(fileList, rev_list, qflag, checkfiles)) {
 		chdir(RESYNC2ROOT);
+		unlink(checkfiles);
+		free(checkfiles);
 		goto err;
 	}
 	chdir(RESYNC2ROOT);
@@ -352,7 +352,7 @@ do_rename(char **fileList, char *qflag)
 	char	*flist;
 	char	*quiet;
 
-	flist = bktmpfile();
+	flist = bktmp(0, "undorename");
 	assert(flist);
 	f = fopen(flist, "w");
 	assert(f);

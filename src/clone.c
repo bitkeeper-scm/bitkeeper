@@ -130,7 +130,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	FILE    *f;
 	int	rc;
 
-	gettemp(buf, "clone");
+	bktmp(buf, "clone");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 1);
@@ -253,7 +253,7 @@ private	int
 clone2(opts opts, remote *r)
 {
 	char	*p;
-	char	*checkfiles = bktmpfile();
+	char	*checkfiles = bktmp(0, "clone2");
 	FILE	*f;
 	int	rc;
 

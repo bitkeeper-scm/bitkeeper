@@ -55,7 +55,7 @@ send_check_msg(remote *r)
 	FILE	*f;
 	int	rc;
 
-	gettemp(buf, "check");
+	bktmp(buf, "check");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, NULL, r, 1);

@@ -92,7 +92,7 @@ comments_main(int ac, char **av)
 			goto cset;
 		}
 	}
-	gettemp(tmp, "cmt");
+	bktmp(tmp, "cmt");
 	unless (tf = fopen(tmp, "w")) {
 		perror(tmp);
 		return (1);
