@@ -101,7 +101,7 @@ proc getConfig {prog} \
 	set _d(rev.showHistory) "1M"	  ;# History to show in graph on start
 	# XXX: not documented yet
 	set _d(rev.savehistory) 5	  ;# Max # of files to save in file list
-	set _d(rev.hlineColor) pink	  ;# Color of highlight lines XXX:NOTDOC
+	set _d(rev.hlineColor) white	  ;# Color of highlight lines XXX:NOTDOC
 
 	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
 
