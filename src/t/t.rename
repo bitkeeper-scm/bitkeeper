@@ -87,7 +87,7 @@ bk -r check -a || exit 1
 
 # Now resync them.
 cd $HERE
-resync $Q a b
+bk resync $Q a b
 cd b
 cat > R <<EOF
 m
