@@ -203,6 +203,8 @@ do_cmds()
 				close(1);	/* For non-daemon mode */
 				close(2);	/* For non-daemon mode */
 
+				signal(SIGALRM, exit);
+				alarm(10);
 				read(0, &i, 1); /* wait for client side eof */
 				exit(ret);
 			}
