@@ -81,6 +81,14 @@ mv_main(int ac, char **av)
 	}
 	av[ac-1] = 0;
 
+	/*
+	 * Five cases
+	 * 1) File -> File
+	 * 2) File -> Existing Dir
+	 * 3) File -> Non-Existing Dir (error case)
+	 * 4) Dir -> non-Existing Dir
+	 * 5) Dir -> Existing Dir
+	 */
 	for (i = optind; i < (ac - 1); i++) {
 		if (isdir(av[i])) {
 			/*
