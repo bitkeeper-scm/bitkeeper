@@ -10760,7 +10760,11 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 private void
 prs_reverse(sccs *s, delta *d, int flags, char *dspec, FILE *out)
 {
+#ifdef	CRAZY_WOW
 	if (d->next && (d != s->rstart)) {
+#else
+	if (d->next && ((s->state & S_SET) || (d != s->rstart))) {
+#endif
 		prs_reverse(s, d->next, flags, dspec, out);
 	}
 	do_prs(s, d, flags, dspec, out);
@@ -10801,7 +10805,11 @@ $if(:DPN:){P :DPN:\n}$each(:C:){C (:C:)}\n\
 		prs_reverse(s, s->rstop, flags, dspec, out);
 	} else for (d = s->rstop; d; d = d->next) {
 		do_prs(s, d, flags, dspec, out);
+#ifdef	CRAZY_WOW
 		if (d == s->rstart) break;
+#else
+		if (!(s->state & S_SET) && (d == s->rstart)) break;
+#endif
 	}
 	return (0);
 }

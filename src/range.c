@@ -142,28 +142,37 @@ sccs_kid(sccs *s, delta *d)
 	return (e);
 }
 
-void
-walkMerge(sccs *s, delta *d)
+private void
+walkClr(sccs *s, delta *d)
 {
-	for (d = sfind(s, d->merge); d; d = d->parent) {
-		if (!d->r[2] || (d->flags & D_SET)) return;
+	for ( ; d; d = d->parent) {
+		unless (d->flags & D_SET) break;
+		d->flags &= ~D_SET;
+		if (d->merge)
+			walkClr(s, sfind(s, d->merge));
+		// printf("REM %s\n", d->rev);
+	}
+}
+
+private void
+walkSet(sccs *s, delta *d)
+{
+	for ( ; d; d = d->parent) {
+		if (d->flags & D_SET) break;
 		d->flags |= D_SET;
-		if (d->merge) walkMerge(s, d);
+		if (d->merge)
+			walkSet(s, sfind(s, d->merge));
 		// printf("ADD %s\n", d->rev);
 	}
 }
 
 /*
- * Connect the dots.  This picks the shortest path, tending towards
- * the trunk, between the two nodes.  The alg is to take the starting
- * node and walk down, following the kid pointer except in the case
- * that this node is merged somewhere else; in that case, follow the
- * merge.  This doesn't always do the most obviously correct thing,
- * but it works.
+ * Connect the dots.  First set all between stop and root.
+ * Check to make sure start has been touched.
+ * Then clear all between start and root.
+ * What is left is the set on the graph between start and stop.
  *
- * This also picks up anything merged into any of the deltas in the
- * range.  That means we go backwards up the merge list until we
- * hit another delta in the set or the trunk.
+ * This also picks up anything merged into any of the deltas in the range.
  * XXX - needs to treat LODs like trunk.
  */
 int
@@ -171,35 +180,18 @@ rangeConnect(sccs *s)
 {
 	delta	*d;
 
-	/*
-	 * Work the starting point (1.2.1.4) back onto the trunk.
-	 */
-	d = s->rstart;
-	d->flags |= D_SET;
-	if (d->merge) walkMerge(s, d);
-	while (d && d->r[2]) {
-		// printf("DO %s\n", d->rev);
-		if ((d = sccs_kid(s, d))) {
-			d->flags |= D_SET;
-			if (d->merge) walkMerge(s, d);
-		}
-	}
+	walkSet(s, s->rstop);
 
-	/*
-	 * Work backwards until they meet.
-	 */
-	for (d = s->rstop; d && !(d->flags & D_SET); d = d->parent) {
-		// printf("DO %s\n", d->rev);
-		d->flags |= D_SET;
-		if (d->merge) walkMerge(s, d);
-	}
-
-	unless (d) {
+	unless (s->rstart->flags & D_SET) {
 		fprintf(stderr, "Unable to connect %s to %s\n",
 		    s->rstart->rev, s->rstop->rev);
 		for (d= s->table; d; d = d->next) d->flags &= ~D_SET;
 		return (-1);
 	}
+
+	walkClr(s, s->rstart);
+
+	s->rstart->flags |= D_SET;
 	s->state |= S_SET;
 	return (0);
 }
