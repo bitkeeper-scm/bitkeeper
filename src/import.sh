@@ -278,6 +278,7 @@ import_patch() {
 	(cd $HERE && cat $PATCH) |
 	    bk patch -p1 -ZsE -z '=-PaTcH_BaCkUp!' --forcetime --lognames > \
 		${TMP}plog$$ 2>&1
+	cat ${TMP}plog$$
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | xargs rm -f
 	REJECTS=NO
 	find .  -name '*.rej' -print > ${TMP}rejects$$
@@ -527,7 +528,7 @@ Done() {
 	exit $1
 }
 
-init () {
+init() {
 	__platformInit;
 	if [ '-n foo' = "`echo -n foo`" ]
 	then    NL='\c'
@@ -541,5 +542,6 @@ init () {
 }
 
 init
+__logCommand "$@"
 import "$@"
 exit 0

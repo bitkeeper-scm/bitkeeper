@@ -9,11 +9,11 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii r2c rename renames names bkd setlog
-SCRIPTS	= rcs2sccs testfast bk import resolve oldresync uuwrap unuuwrap pmerge \
+	  isascii r2c rename names bkd setlog push resolve
+SCRIPTS	= rcs2sccs testfast bk import oldresync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
 	  renametool mkdiffs lodset count_user getlog build \
-	  pull push clone resync
+	  pull clone resync oldresolve
 PSCR	= t/doit
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
 LINKS	= ci co edit unedit unget
@@ -25,8 +25,9 @@ BINLINKS= bk admin get delta unget rmdel prs
 
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) gnu
 
+	  # FASTPURIFY does not do overrun/underrun checking at each alloc/free
 CFLAGS	= -g -O -Wall -Wno-parentheses -Wno-char-subscripts \
-	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
+	  -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM -DFASTPURIFY
 CPPFLAGS= -Izlib
 LINK	= $(LSCCS) $(LMDBM) $(LZLIB) $(XLIBS)
 LSCCS	= -L. -lsccs
@@ -170,13 +171,13 @@ clobber distclean: clean-obj clean-bin clean-cfg clean-src
 rebuild: clean-obj clean-bin
 
 srcs src: FORCE
-	-get -s $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+	-get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 
-wc: $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
-	-@get -se $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
+	-@get -es $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 
 log: FORCE
 	bk sccslog $(SRCS) $(HDRS) | more
@@ -246,8 +247,8 @@ cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
 names: names.o $(LIBS)
 	$(CC) $(CFLAGS) names.o $(LINK) -o names
-renames: renames.o $(LIBS)
-	$(CC) $(CFLAGS) renames.o $(LINK) -o renames
+resolve: resolve.o $(LIBS)
+	$(CC) $(CFLAGS) resolve.o $(LINK) -o resolve
 rename: rename.o $(LIBS)
 	$(CC) $(CFLAGS) rename.o $(LINK) -o rename
 lod: lod.o $(LIBS)
@@ -390,10 +391,10 @@ pmerge: pmerge.perl port/unix_platform.perl substvars
 	chmod +x pmerge.T
 	mv -f pmerge.T pmerge
 
-resolve: resolve.perl port/unix_platform.perl substvars
-	./substvars resolve.perl port/unix_platform.perl > resolve.T
-	chmod +x resolve.T
-	mv -f resolve.T resolve
+oldresolve: resolve.perl port/unix_platform.perl substvars
+	./substvars resolve.perl port/unix_platform.perl > oldresolve.T
+	chmod +x oldresolve.T
+	mv -f oldresolve.T oldresolve
 
 oldresync: oldresync.perl port/unix_platform.perl substvars
 	./substvars oldresync.perl port/unix_platform.perl > oldresync.T
@@ -633,7 +634,7 @@ rcs.o:		rcs.c $(sccsdeps)
 sccs_mv.o:	sccs_mv.c $(sccsdeps)
 zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
 
-$(BKDSRCS):	bkd.h lib_tcp.h
+$(BKDOBJ):	bkd.h lib_tcp.h
 
 # libsccs, port/ directory
 port/disksp.o:		port/disksp.c $(commondeps)

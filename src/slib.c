@@ -922,9 +922,26 @@ a2tm(struct tm *tp, char *asctime, char *z, int roundup)
 		tp->tm_hour = 23;
 		tp->tm_min = tp->tm_sec = 59;
 	}
-	/* Adjust for year 2000 problems */
-	gettime(tm_year); if (tp->tm_year < 69) tp->tm_year += 100;
-	unless (*asctime) goto correct;
+
+	/*
+	 * At the request of Matthias Urlichs, we are allowing 4 digit years
+	 * if the format is \d\d\d\d[^\d]\d ....
+	 */
+	if ((strlen(asctime) >= 6) &&
+	    isdigit(asctime[0]) && 	/* 1 */
+	    isdigit(asctime[1]) && 	/* 9 */
+	    isdigit(asctime[2]) && 	/* 9 */
+	    isdigit(asctime[3]) && 	/* 9 */
+	    !isdigit(asctime[4]) && 	/* - */
+	    isdigit(asctime[5])) { 	/* 1 */
+		tp->tm_year = atoi(asctime) - 1900;
+		asctime = &asctime[5];
+	} else {
+		gettime(tm_year); 
+	 	/* Adjust for year 2000 problems */
+		if (tp->tm_year < 69) tp->tm_year += 100;
+		unless (*asctime) goto correct;
+	}
 
 	/* tm_mon counts 0..11; ASCII is 1..12 */
 	gettime(tm_mon); tp->tm_mon--; unless (*asctime) goto correct;
@@ -3074,7 +3091,7 @@ sccs_initProject(sccs *s)
 	project	*p;
 	char	path[MAXPATH];
 
-	assert(s->proj == 0);
+	assert((s == 0) || (s->proj == 0));
 
 	/* XXX - should set a flag that says NO project if this fails */
 	unless (root = sccs_root(s)) return (0);
@@ -3217,6 +3234,8 @@ sccs_init(char *name, u32 flags, project *proj)
 		}
 	}
 
+	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
+
 	if (s->mmap == (caddr_t)-1) {
 		if (errno == ENOENT) {
 			/* Not an error if the file doesn't exist yet.  */
@@ -3254,7 +3273,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (s->tree) {
 		if (misc(s)) {
-			if (flags & INIT_SAVEPROJ) s->proj = 0;
 			sccs_free(s);
 			return (0);
 		}
@@ -3393,10 +3411,11 @@ sccs_free(sccs *s)
 	freeLines(s->usersgroups);
 	freeLines(s->flags);
 	freeLines(s->text);
-	if (s->proj) sccs_freeProject(s->proj);
+	if (s->proj && !(s->state & S_SAVEPROJ)) sccs_freeProject(s->proj);
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
+	bzero(s, sizeof(*s));
 	free(s);
 #ifdef	ANSIC
 	signal(SIGINT, SIG_DFL);
@@ -3611,6 +3630,12 @@ sccsXfile(sccs *sccs, char type)
 	t = rindex(s, '/') + 1;
 	*t = type;
 	return (s);
+}
+
+char	*
+sccs_Xfile(sccs *s, char type)
+{
+	return (sccsXfile(s, type));
 }
 
 /*

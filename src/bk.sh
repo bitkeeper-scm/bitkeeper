@@ -962,7 +962,16 @@ _undo() {
 	then	echo Running consistency check...
 	fi
 	${BIN}sfiles -r
-	bk -r check -a
+	bk -r check -a -f 
+	EXIT=$?
+	if [ $EXIT = 2 ]	# means try again.
+	then	if [ X$Q = X ]
+		then	echo Running consistency check again ...
+		fi
+		bk -r check -a
+		EXIT=$?
+	fi
+	exit $EXIT
 }
 
 _rev2cset() {
@@ -1643,7 +1652,7 @@ __platformPath() {
 	# use it.  Otherwise, look through a list of places where the
 	# executables might be found, and use the first one that exists.
 	# In both cases we export BK_BIN so that subcommands don't have to
-	# go through all this rigmarole.  (See e.g. resolve.perl.)
+	# go through all this rigmarole.  (See e.g. oldresolve.perl.)
 
 	# XXX TODO bk_tagfile should be a config varibale
 	#     On NT, bk_tagfile should be "sccslog.exe"
@@ -1743,9 +1752,9 @@ cmd=$1
 shift
 
 case $cmd in
-    oldresync|resolve|pmerge|rcs2sccs)
+    oldresync|oldresolve|pmerge|rcs2sccs)
 	exec perl ${BIN}$cmd "$@";;
-    rcs2sccs|mkdiffs|resync)	# needs perl 5 - for now.
+    rcs2sccs|mkdiffs)	# needs perl 5 - for now.
 	exec `__perl` ${BIN}$cmd "$@";;
     fm|fm3|citool|sccstool|fmtool|fm3tool|difftool|helptool|csettool|renametool)
 	exec $wish -f ${BIN}${cmd}${tcl} "$@";;

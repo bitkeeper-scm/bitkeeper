@@ -1315,6 +1315,13 @@ init(char *inputFile, int flags, project **pp)
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
+		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+			perror("RESYNC/BitKeeper/tmp/patch");
+			exit(1);
+		}
+		fprintf(g, "%s\n", inputFile);
+		fclose(g);
+
 		i = 0;
 		while (t = mnext(m)) {
 			if (strneq(t, PATCH_CURRENT, strsz(PATCH_CURRENT))) {

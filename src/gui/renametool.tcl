@@ -602,13 +602,13 @@ proc Guess {} \
 # go on.
 proc Apply {} \
 {
-	global	undoLine leftCount rightCount
+	global	undoLine leftCount rightCount QUIET
 
 	busy 1
 	.files.sh configure -state normal
 	set l 1
 	set buf [.files.sh get "$l.0" "$l.0 lineend"]
-	set NEW [open "|bk new -q -" w]
+	set NEW [open "|bk new $QUIET -" w]
 	while {$buf != ""} {
 		if {[regexp {^bk mv (.*) (.*)$} $buf dummy from to]} {
 			# want to move the [sp].file by hand, the caller
@@ -1078,8 +1078,14 @@ proc keyboard_bindings {} \
 
 proc main {} \
 {
-	global argv0 argv argc
+	global argv0 argv argc QUIET
 
+	set x [lindex $argv 0]
+	if {"$x" == "-q"} {
+		set QUIET "-q"
+	} else {
+		set QUIET ""
+	}
 	bk_init
 	widgets
 	getFiles
