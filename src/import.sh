@@ -10,14 +10,15 @@ usage() {
 	cat <<EOF
 Usage: import [-efirv] [-j<n>] [-l<list>] [-t<type] from_dir to_dir
 
-	-e	prompts for regular expression to exclude from file list
-	-f	force the import to not ask questions
-	-i	prompts for regular expression to include from file list
-	-j<n>	do <n>-way parallelism if possible
-	-l<l>	list of files to import is in <l>
-	-t<t>	type of imported files is <t> where t is plain|patch|RCS|CVS
-	-r	do not do renames when doing patch imports
-	-v	be more verbose
+    -c<TAG>	do not import anything after <TAG> (RCS/CVS only)
+    -e		prompts for regular expression to exclude from file list
+    -f		force the import to not ask questions
+    -i		prompts for regular expression to include from file list
+    -j<n>	do <n>-way parallelism if possible (RCS/CVS only)
+    -l<l>	list of files to import is in <l>
+    -t<t>	type of imported files is <t> where t is plain|patch|RCS|CVS
+    -r		do not do renames when doing patch imports
+    -v		be more verbose
 EOF
 	exit 0
 }
@@ -39,8 +40,10 @@ import() {
 	FORCE=NO
 	PARALLEL=1
 	VERIFY=-h
-	while getopts efHij:l:LrS:t:v opt
+	CUTOFF=
+	while getopts c:efHij:l:LrS:t:v opt
 	do	case "$opt" in
+		c) CUTOFF=-c$OPTARG;;
 		e) EX=YES;;
 		f) FORCE=YES;;
 		H) VERIFY=;;
@@ -367,7 +370,7 @@ import_RCS () {
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]
-	then	bk rcs2sccs $VERIFY - < ${TMP}import$$ || exit 1
+	then	bk rcs2sccs $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ || exit 1
 		xargs rm -f < ${TMP}import$$
 		return
 	fi
@@ -375,7 +378,7 @@ import_RCS () {
 	LINES=`expr $LINES / $PARALLEL`
 	split -$LINES ${TMP}import$$ ${TMP}split$$
 	for i in ${TMP}split$$*
-	do	bk rcs2sccs $VERIFY -q - < $i &
+	do	bk rcs2sccs $CUTOFF $VERIFY $QUIET -q - < $i &
 	done
 	wait
 }

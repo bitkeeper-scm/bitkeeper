@@ -5,10 +5,10 @@ private	int	eatdelta(RCS *rcs, MMAP *m);
 private	int	eatsym(RCS *rcs, MMAP *m);
 private	void	mkgraph(RCS *rcs);
 private	void	dates(RCS *rcs);
-private	rdelta	*rcs_findit(RCS *rcs, char *rev);
 private	void	doit(char *f);
 private	void	rcs_prs(RCS *rcs);
 private	void	rcs_table(RCS *rcs);
+private	void	rcs_meta(RCS *rcs);
 
 int
 rcsparse_main(int ac, char **av)
@@ -46,6 +46,8 @@ doit(char *f)
 		len = strlen(f);
 	}
 	if (r = rcs_init(f)) {
+		printf("== %s ==\n", r->file);
+		rcs_meta(r);
 		//rcs_branch(r);
 		//rcs_prs(r);
 		rcs_table(r);
@@ -89,7 +91,7 @@ rcs_init(char *file)
 {
 	MMAP	*m;
 	char	*p, *t;
-	char	buf[8192];
+	char	buf[32<<10];
 	RCS	*rcs;
 
 	unless ((t = strrchr(file, ',')) && (t[1] == 'v') && !t[2]) {
@@ -185,13 +187,18 @@ acc:	unless (p = mwhere(m)) goto err;
 	while (eatdelta(rcs, m));
 
 	/* desc */
-	skip_white(m);
-	unless (p = mwhere(m)) goto err;
 	unless (advance(m, '@')) goto err;
-	for ( ;; ) {
-		unless (advance(m, '@')) goto err;
-		if (*m->where != '@') break;
-		m->where++;
+	unless (p = mwhere(m)) goto err;
+	for (t = buf; p < m->end; p++) {
+		if ((*p == '@') && (p[1] != '@')) {
+			*t = 0;
+			rcs->text = strdup(buf);
+			m->where = p + 1;
+			break;
+		} else {
+			*t++ = *p;
+			if (*p == '@') p++;	/* unquote it */
+		}
 	}
 
 	while (eatlog(rcs, m));
@@ -305,7 +312,6 @@ rcs_branch(RCS *rcs)
 {
 	rdelta	*d;
 
-	printf("== %s ==\n", rcs->file);
 	for (d = rcs_defbranch(rcs); d; d = d->kid) {
 		printf("%s ", d->rev);
 	}
@@ -319,7 +325,6 @@ rcs_prs(RCS *rcs)
 	rdelta	*d;
 	int	n = rcs->n;
 
-	printf("== %s ==\n", rcs->file);
 	for (d = rcs->tree; d; d = d->kid) {
 		printf("%s ", d->rev);
 		n--;
@@ -381,7 +386,6 @@ rcs_table(RCS *rcs)
 	rdelta	*d;
 	char	*p;
 
-	printf("== %s ==\n", rcs->file);
 	for (d = rcs->table; d; d = d->next) {
 		assert(d->rev);
 		assert(d->author);
@@ -398,6 +402,17 @@ rcs_table(RCS *rcs)
 			}
 		}
 	}
+}
+
+private	void
+rcs_meta(RCS *r)
+{
+	rdelta	*d;
+	char	*p;
+
+	fprintf(stderr, "%d deltas\n", r->n);
+	if (r->defbranch) fprintf(stderr, "default branch: %s\n", r->defbranch);
+	if (r->text) fprintf(stderr, "Text: %s\n", r->text);
 }
 
 /*

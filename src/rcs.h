@@ -43,11 +43,11 @@ typedef	struct {
 	int	n;		/* number of deltas */
 	sym	*symbols;	/* symbolic tags */
 	char	*defbranch;	/* defbranch, if set */
-	char	**text;		/* descriptive text */
+	char	*text;		/* descriptive text */
 	char	*file;		/* file name */
-	mode_t	mode;		/* mode of the gfile */
 } RCS;
 
 RCS	*rcs_init(char *file);
 rdelta	*rcs_defbranch(RCS *rcs);
+rdelta	*rcs_findit(RCS *rcs, char *rev);
 void	rcs_free(RCS *r);

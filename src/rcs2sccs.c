@@ -4,32 +4,40 @@ extern	int	isascii_main(int, char**);
 
 private	char	*sccsname(char *path);
 private	int	rcs2sccs(RCS *rcs, char *sfile);
-private	int	create(char *sfile, int flags, int enc);
+private	int	create(char *sfile, int flags, RCS *rcs);
 private	int	encoding(char *file);
+private	mode_t	mode(char *file);
 private	int	newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags);
 private int	verifyFiles(sccs *s, RCS *rcs, rdelta *d, char *g);
 private	void	doit(char *file);
 
-private	int	verify = 0;
-private	int	quiet = 0;
-private	int	Flags = SILENT;
-private	project	*proj = 0;
-private	char	*co_prog = 0;
+private	int	verify;
+private	int	verbose;
+private	int	Flags;
+private	project	*proj;
+private	char	*co_prog;
+private	char	*cutoff;
 
 int
 rcs2sccs_main(int ac, char **av)
 {
 	int	c, i;
 	char	buf[MAXPATH];
-	extern	char	*prog2path(char *);
 
-	while ((c = getopt(ac, av, "dhq")) != -1) {
+	Flags = SILENT;
+	verify = 0;
+	verbose = 2;
+	proj = 0;
+	co_prog = cutoff = 0;
+	while ((c = getopt(ac, av, "c;dhq")) != -1) {
 		switch (c) {
+		    case 'c': cutoff = optarg; break;
 		    case 'd': Flags = 0; break;
-		    case 'q': quiet++; break;
+		    case 'q': if (verbose) verbose--; break;
 		    case 'h': verify++; break;
 		    default:
-		    	fprintf(stderr, "Usage: %s [-v] files\n", av[0]);
+		    	fprintf(stderr,
+			    "Usage: %s [-hq] [-c<TAG>] files\n", av[0]);
 			exit(1);
 		}
 	}
@@ -97,20 +105,50 @@ sccsname(char *path)
 private	int
 rcs2sccs(RCS *rcs, char *sfile)
 {
-	rdelta	*d;
+	rdelta	*d, *stop = 0;
 	sccs	*s;
-	int	len;
-	int	rev = 1;
+	int	len, rev = 1;
 	char	*g = sccs2name(sfile);
 
+	/*
+	 * If we are only doing a partial, make sure the tag is here,
+	 * otherwise this file shouldn't be done at all.
+	 */
+	if (cutoff) {
+		sym	*s;
+
+		for (s = rcs->symbols; s; s = s->next) {
+			if (streq(s->name, cutoff)) break;
+		}
+		unless (s && (stop = rcs_findit(rcs, s->rev))) {
+			unless (Flags & SILENT) {
+				fprintf(stderr,
+				    "%s not found in %s, skipping this file\n",
+				    cutoff, rcs->file);
+			}
+			free(g);
+		    	return (0);
+		}
+		for (d = rcs_defbranch(rcs); d && (d != stop); d = d->kid);
+		unless (d == stop) {
+			fprintf(stderr,
+			"%s is not on the trunk in %s, skipping this file.\n",
+			    cutoff, rcs->file);
+			free(g);
+		    	return (0);
+		}
+		stop = stop->kid;	/* we want stop, so go one more */
+	}
+
 	if (exists(g)) unlink(g);	// DANGER
-	if (create(sfile, Flags, encoding(rcs->file))) return (1);
-	unless (quiet) {
+	if (create(sfile, Flags, rcs)) return (1);
+	if (verbose > 1) {
 		printf("%s 1.0", g);
 		fflush(stdout);
 		len = 3;
 	}
-	for (d = rcs_defbranch(rcs); d; d = d->kid, rev++) {
+
+	for (d = rcs_defbranch(rcs); d && (d != stop); d = d->kid, rev++) {
 		unless (s = sccs_init(sfile, INIT_SAVEPROJ, proj)) return (1);
 		unless (proj) proj = s->proj;
 		if (newDelta(rcs, d, s, rev, Flags)) {
@@ -119,7 +157,7 @@ rcs2sccs(RCS *rcs, char *sfile)
 			return (1);
 		}
 		d->sccsrev = strdup(s->table->rev);
-		unless (quiet) {
+		if (verbose > 1) {
 			while (len--) putchar('\b');
 			printf("%s", s->table->rev);
 			fflush(stdout);
@@ -128,18 +166,22 @@ rcs2sccs(RCS *rcs, char *sfile)
 		sccs_free(s);
 	}
 	unless (verify) {
-		unless (quiet) printf(" converted\n");
+		if (verbose > 1) {
+			printf(" converted\n");
+		} else if (verbose) {
+			printf("%s %d converted\n", g, rev-1);
+		}
 		free(g);
 		return (0);
 	}
 
-	unless (quiet) {
+	if (verbose > 1) {
 		printf(" converted;  ");
 		len = 0;
 	}
 	unless (s = sccs_init(sfile, INIT_SAVEPROJ, proj)) return (1);
-	for (d = rcs_defbranch(rcs); d; d = d->kid, rev++) {
-		unless (quiet) {
+	for (d = rcs_defbranch(rcs); d && (d != stop); d = d->kid) {
+		if (verbose > 1) {
 			while (len--) putchar('\b');
 			printf("%s<->%s", d->rev, d->sccsrev);
 			fflush(stdout);
@@ -151,7 +193,11 @@ rcs2sccs(RCS *rcs, char *sfile)
 			return (1);
 		}
 	}
-	unless (quiet) printf(" verified.\n");
+	if (verbose > 1) {
+		printf(" verified.\n");
+	} else if (verbose) {
+		printf("%s %d converted and verified\n", g, rev-1);
+	}
 	free(g);
 	sccs_free(s);
 	return (0);
@@ -363,29 +409,46 @@ newDelta(RCS *rcs, rdelta *d, sccs *s, int rev, int flags)
 }
 
 private	int
-create(char *sfile, int flags, int enc)
+create(char *sfile, int flags, RCS *rcs)
 {
 	static	u16 seq;
 	sccs	*s = sccs_init(sfile, INIT_SAVEPROJ, proj);
 	char	*g = sccs2name(sfile);
+	int	enc = encoding(rcs->file);
+	mode_t	m = mode(rcs->file);
 	char	r[20];
 	MMAP	*init;
-	char	buf[8192];
+	char	*f, *t;
+	char	buf[32<<10];
 
 	unless (proj) proj = s->proj;
 	if (exists(g)) unlink(g);	// DANGER
-	// XXX permissions
-	close(creat(g, 0664));
+	close(creat(g, m));
 	randomBits(r);
 	sprintf(buf,
 "D 1.0 70/01/01 03:09:62 BK \n\
 c RCS to BitKeeper\n\
 K %u\n\
+O 0%o\n\
 P %s\n\
-R %s\n\
-X 0x3\n\
-------------------------------------------------\n",
-	    ++seq, g, r);
+R %s\n", ++seq, m, g, r);
+	t = &buf[strlen(buf)];
+	if (rcs->text) {
+		*t++ = 'T';
+		*t++ = ' ';
+		for (f = rcs->text; f && *f; f++) {
+			if (*f == '\n') {
+				*t++ = '\n';
+				*t++ = 'T';
+				*t++ = ' ';
+			} else {
+				*t++ = *f;
+			}
+		}
+		unless (t[-1] == '\n') *t++ = '\n';
+		*t = 0;
+	}
+	sprintf(t, "X 0x3\n------------------------------------------------\n");
 //fprintf(stderr, "%s", buf);
 	init = mrange(buf, &buf[strlen(buf)], "b");
 
@@ -401,6 +464,18 @@ X 0x3\n\
 	free(g);
 	mclose(init);
 	return (0);
+}
+
+/*
+ * Look at the file and get the execute bits.
+ */
+private	mode_t
+mode(char *file)
+{
+	mode_t	m = 0664;
+	
+	if (executable(file)) m |= 0111;
+	return (m);
 }
 
 private	int
