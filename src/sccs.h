@@ -139,7 +139,11 @@
 #define	ROUNDUP	1
 #define	EXACT	0
 #define	ROUNDDOWN -1
-#define	DATE(d)	(d->date ? d->date : getDate(d))
+#define	DATE(d)		(d->date ? d->date : getDate(d))
+#define	CHKDATE(d)	unless (d->date || \
+			    streq("70/01/01 00:00:00", d->sdate)) { \
+				assert(d->date); \
+			}
 
 /*
  * Bits for the x flag in the s.file.

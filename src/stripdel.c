@@ -5,7 +5,8 @@
 WHATSTR("@(#)%K%");
 
 char	*stripdel_help = "\n\
-usage: stripdel [-cq] -r<rev> filename\n\n\
+usage: stripdel [-bcq] -r<rev> filename\n\n\
+    -b		strip all branch deltas\n\
     -c		checks if the specified rev[s] can be stripped\n\
     -C		do not respect cset boundries\n\
     -q		run quietly\n\
@@ -23,6 +24,7 @@ main(int ac, char **av)
 	int	flags = 0;
 	int	checkOnly = 0;
 	int	respectCset = 1;
+	int	stripBranches = 0;
 	RANGE_DECL;
 
 	debug_main(av);
@@ -30,8 +32,9 @@ main(int ac, char **av)
 usage:		fprintf(stderr, stripdel_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "cCqr;")) != -1) {
+	while ((c = getopt(ac, av, "bcCqr;")) != -1) {
 		switch (c) {
+		    case 'b': stripBranches++; break;
 		    case 'c': checkOnly++; break;
 		    case 'C': respectCset = 0; break;
 		    case 'q': flags |= SILENT; break;
@@ -42,7 +45,7 @@ usage:		fprintf(stderr, stripdel_help);
 			return (1);
 		}
 	}
-	unless (things && r[0]) {
+	unless (stripBranches || (things && r[0])) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
 		return (1);
 	}
@@ -61,7 +64,19 @@ usage:		fprintf(stderr, stripdel_help);
 		fprintf(stderr, "stripdel: can't init %s\n", name);
 		return (1);
 	}
-	RANGE("stripdel", s, 2, 1);
+
+	if ((s->state & S_BITKEEPER) && stripBranches) {
+		fprintf(stderr,
+		    "stripdel: can't strip branches from a BitKeeper file.\n");
+		return (1);
+	}
+
+	if (HAS_PFILE(s)) {
+		fprintf(stderr, "stripdel: can't strip an edited file.\n");
+		return (1);
+	}
+
+	unless (stripBranches) RANGE("stripdel", s, 2, 1);
 
 	if (respectCset && (e = checkCset(s))) {
 		fprintf(stderr,
@@ -72,6 +87,8 @@ usage:		fprintf(stderr, stripdel_help);
 	}
 
 	for (n = left = 0, e = s->table; e; e = e->next) {
+		if (stripBranches && e->r[2]) e->flags |= D_SET;
+
 		if (e->type != 'D') {
 			/* Mark metas if their true parent is marked. */
 			delta	*f;

@@ -795,9 +795,7 @@ getDate(delta *d)
 			d->date += d->dateFudge;
 		}
 	}
-	unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
-		assert(d->date);
-	}
+	CHKDATE(d);
 	return (d->date);
 }
 
@@ -874,7 +872,7 @@ fixNewDate(sccs *s)
 		uniq_close();
 		return;
 	}
-	assert(next->date);
+	CHKDATE(next);
 	if (d->date <= next->date) {
 		d->dateFudge = (next->date - d->date) + 1;
 		d->date += d->dateFudge;
@@ -2989,7 +2987,7 @@ addsym(sccs *s, delta *d, delta *metad, char *rev, char *val)
 	d->flags |= D_SYMBOLS;
 	metad->flags |= D_SYMBOLS;
 	if (!d->date) getDate(d);
-	assert(d->date);
+	CHKDATE(d);
 
 	/*
 	 * Insert in sorted order, most recent first.
@@ -3177,7 +3175,6 @@ sccs_init(char *name, u32 flags, project *proj)
 	s->zfile = strdup(sccsXfile(s, 'z'));
 	if (isreg(s->pfile)) s->state |= S_PFILE;
 	if (isreg(s->zfile)) s->state |= S_ZFILE;
-	s->proj = proj ? proj : sccs_initProject(s);
 	if (locked(s->proj)) s->state |= S_READ_ONLY;
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
@@ -3226,6 +3223,7 @@ sccs_init(char *name, u32 flags, project *proj)
 			/* Not an error if the file doesn't exist yet.  */
 			debug((stderr, "%s doesn't exist\n", s->sfile));
 			s->cksumok = -1;
+			s->proj = proj ? proj : sccs_initProject(s);
 			return (s);
 		} else {
 			fputs("sccs_init: ", stderr);
@@ -3254,6 +3252,12 @@ sccs_init(char *name, u32 flags, project *proj)
 			return (0);
 		}
 	}
+	
+	/*
+	 * Don't go look for BK root if not a BK file.
+	 */
+	if (s->state & S_BITKEEPER) s->proj = proj ? proj : sccs_initProject(s);
+
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 #endif
@@ -5602,7 +5606,8 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 			continue;
 		}
 
-		assert(d->date);
+		CHKDATE(d);
+
 		/*
 		 * XXX Whoa, nelly.  This is wrong, we must allow these if
 		 * we are doing a takepatch.
