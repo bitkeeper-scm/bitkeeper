@@ -1,12 +1,13 @@
 /* Copyright (c) 1999 Andrew Chang */  
 #include "system.h"
 #include "sccs.h"
-#include "dirent.h"
 WHATSTR("%W%");   
 
 #include "comments.c"
 
-char *getRelativeName(char *name);
+char *getRelativeName(char *);
+void rmDir(char *);
+int mv(char *, char *);
 			
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
@@ -46,6 +47,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		fprintf(stderr, "sccsmv: destination %s exists\n", gfile);
 		return (1);
 	}
+	sccs_close(s); /* close the file before we move it - win32 restriction */
 	oldpath = getRelativeName(name);
 	if (isDelete) {
 		sprintf(commentBuf, "Delete: %s", oldpath); 
@@ -146,35 +148,28 @@ mv(char *src, char *dest)
 		if (p) {
 			*p = 0;
 			if (!exists(dest)) {
-				sprintf(cmd, "/bin/mkdir -p %s", dest);
-				if (system(cmd)) return (1);
+				if (mkDir(dest)) return (1);
 			}
 			*p = '/';
 		}
-		sprintf(cmd, "/bin/mv %s %s", src, dest);
-		if (system(cmd)) return (1);
+#ifdef WIN32
+		/* win32 rename works across devices */
+		if (rename(src, dest)) return (1);
+#else
+		if (rename(src, dest)) { 	/* try mv(1) */
+			sprintf(cmd, "/bin/mv %s %s", src, dest);
+			if (system(cmd)) return (1);
+		}
 	}
+#endif
 	return (0);
 }
 
-private inline int
-sameDir(char *a, char *b)
+void
+rmDir(char *dir)
 {
-        struct  stat sa, sb;
-
-        if (lstat(a, &sa) == -1) return 0;
-        if (lstat(b, &sb) == -1) return 0;
-        return ((sa.st_dev == sb.st_dev) && (sa.st_ino == sb.st_ino));
-}  
-
-int rmDir(char *dir)
-{
-	if (streq(".", dir) || sameDir(".", dir)) {
-		char cmd[1024];
-		sprintf(cmd, "cd .. && /bin/rmdir %s", fullname(dir, 0));
-		system(cmd);
-	} else {
-		rmdir(dir);
-	}
+	if (streq(".", dir) || samepath(".", dir)) return;
+	//fprintf(stderr, "removing %s\n", dir);
+	rmdir(dir);
 }
 
