@@ -99,24 +99,32 @@ res_diffCommon(resolve *rs, rfunc differ)
 int
 do_diff(resolve *rs, char *left, char *right, int wait)
 {
-	char	cmd[MAXPATH];
+	char	tmp[MAXPATH];
 
-	sprintf(cmd, "|%s", rs->pager);
-	sysio(0, cmd, 0, "bk", "diff", left, right, SYS);
+	bktemp(tmp);
+	sysio(0, tmp, 0, "bk", "diff", left, right, SYS);
+	sysio(tmp, 0, 0, rs->pager, SYS);
+	unlink(tmp);
 	return (0);
 }
 
 int
 do_sdiff(resolve *rs, char *left, char *right, int wait)
 {
-	char	cmd[MAXPATH];
+	char	tmp[MAXPATH];
 	char	cols[10];
 	FILE	*p = popen("tput cols", "r");
 
-	unless (p && fnext(cmd, p) && atoi(cols)) strcpy(cols, "80");
+	unless (p && fnext(cols, p) && (atoi(cols) > 0)) {
+		strcpy(cols, "80");
+	} else {
+		chop(cols);
+	}
 	if (p) pclose(p);
-	sprintf(cmd, "|%s", rs->pager);
-	sysio(0, cmd, 0, "bk", "sdiff", "-w", cols, left, right, SYS);
+	bktemp(tmp);
+	sysio(0, tmp, 0, "bk", "sdiff", "-w", cols, left, right, SYS);
+	sysio(tmp, 0, 0, rs->pager, SYS);
+	unlink(tmp);
 	return (0);
 }
 
@@ -228,10 +236,12 @@ res_vl(resolve *rs)
 int
 res_vr(resolve *rs)
 {
-	char	cmd[MAXPATH];
+	char	tmp[MAXPATH];
 
-	sprintf(cmd, "|%s", rs->pager);
-	sysio(0, cmd, 0, "bk", "get", "-qkp", rs->s->gfile, SYS);
+	bktemp(tmp);
+	sysio(0, tmp, 0, "bk", "get", "-qkp", rs->s->gfile, SYS);
+	sysio(tmp, 0, 0, rs->pager, SYS);
+	unlink(tmp);
 	return (0);
 }
 
@@ -270,13 +280,26 @@ res_pr(resolve *rs)
 	return (0);
 }
 
-private	void
-setall(sccs *s)
+int
+res_h(resolve *rs)
 {
-	delta	*d;
+	char	tmp[MAXPATH];
+	sccs	*s;
 
-	for (d = s->table; d; d = d->next) d->flags |= D_SET;
-	if (streq(s->tree->rev, "1.0")) s->tree->flags &= ~D_SET;
+	if (rs->res_gcreate) {
+		fprintf(stderr, "No history file available\n");
+		return (0);
+	}
+	if (rs->res_screate) {
+		s = (sccs*)rs->opaque;
+	} else {
+		s = rs->s;
+	}
+	bktemp(tmp);
+	sysio(0, tmp, 0, "bk", "prs", s->gfile, SYS);
+	sysio(tmp, 0, 0, rs->pager, SYS);
+	unlink(tmp);
+	return (0);
 }
 
 int
@@ -286,18 +309,8 @@ res_hl(resolve *rs)
 		fprintf(stderr, "No history file available\n");
 		return (0);
 	}
-	if (rs->res_screate) {
-		sccs	*s = (sccs*)rs->opaque;
-
-		setall(s);
-		sccs_prs(s, 0, 0, 0, stdout);
-		return (0);
-	}
-	unless (rs->revs) {
-		setall(rs->s);
-		sccs_prs(rs->s, 0, 0, 0, stdout);
-		return (0);
-	}
+	if (rs->res_screate) return (res_h(rs));
+	unless (rs->revs) return (res_h(rs));
 	prs_common(rs, rs->s, rs->revs->remote, rs->revs->local);
 	return (0);
 }
@@ -305,20 +318,15 @@ res_hl(resolve *rs)
 int
 res_hr(resolve *rs)
 {
-	unless (rs->revs) {
-		setall(rs->s);
-		sccs_prs(rs->s, 0, 0, 0, stdout);
-		return (0);
-	}
+	unless (rs->revs) return (res_h(rs));
 	prs_common(rs, rs->s, rs->revs->local, rs->revs->remote);
 	return (0);
 }
 
-/* XXX - this is so lame, it should mark the list and call sccs_prs */
 int
 prs_common(resolve *rs, sccs *s, char *a, char *b)
 {
-	char	cmd[MAXPATH];
+	char	tmp[MAXPATH];
 	char	*list, *l2;
 
 	list = sccs_impliedList(s, "resolve", a, b);
@@ -326,9 +334,11 @@ prs_common(resolve *rs, sccs *s, char *a, char *b)
 	if (rs->opts->debug) {
 		fprintf(stderr, "prs(%s, %s, %s) = %s\n", s->gfile, a, b, list);
 	}
-	sprintf(cmd, "|%s", rs->pager);
 	sprintf(l2, "-r%s", list);
-	sysio(0, cmd, 0, "bk", "prs", l2, rs->s->gfile, SYS);
+	bktemp(tmp);
+	sysio(0, tmp, 0, "bk", "prs", l2, rs->s->gfile, SYS);
+	sysio(tmp, 0, 0, rs->pager, SYS);
+	unlink(tmp);
 	free(list);
 	free(l2);
 	return (0);

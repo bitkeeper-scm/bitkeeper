@@ -139,6 +139,7 @@ int	res_abort(resolve *rs);
 int	res_clear(resolve *rs);
 int	res_diff(resolve *rs);
 int	res_difftool(resolve *rs);
+int	res_h(resolve *rs);
 int	res_hl(resolve *rs);
 int	res_hr(resolve *rs);
 int	res_mr(resolve *rs);

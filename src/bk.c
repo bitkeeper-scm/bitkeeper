@@ -321,6 +321,7 @@ main(int ac, char **av)
 		if (dashr) {
 			unless (streq(prog, "sfiles") || streq(prog, "sfind")) {
 				getoptReset();
+				signal(SIGPIPE, SIG_IGN);
 				return (bk_sfiles(ac, av));
 			}
 		}

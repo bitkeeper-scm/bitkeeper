@@ -49,10 +49,8 @@ int
 c_dgl(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH];
 
-	sprintf(cmd, "|%s", rs->pager);
-	sysio(0, cmd, 0, "bk", "diff", n->gca, n->local, SYS);
+	do_diff(rs, n->gca, n->local, 1);
 	return (0);
 }
 
@@ -60,10 +58,8 @@ int
 c_dgr(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH];
 
-	sprintf(cmd, "|%s", rs->pager);
-	sysio(0, cmd, 0, "bk", "diff", n->gca, n->remote, SYS);
+	do_diff(rs, n->gca, n->remote, 1);
 	return (0);
 }
 
@@ -71,10 +67,8 @@ int
 c_dlm(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH];
 
-	sprintf(cmd, "|%s", rs->pager);
-	sysio(0, cmd, 0, "bk", "diff", n->gca, rs->s->gfile, SYS);
+	do_diff(rs, n->gca, rs->s->gfile, 1);
 	return (0);
 }
 
@@ -82,10 +76,8 @@ int
 c_drm(resolve *rs)
 {
 	names	*n = rs->tnames;
-	char	cmd[MAXPATH];
 
-	sprintf(cmd, "|%s", rs->pager);
-	sysio(0, cmd, 0, "bk", "diff", n->remote, rs->s->gfile, SYS);
+	do_diff(rs, n->remote, rs->s->gfile, 1);
 	return (0);
 }
 
@@ -161,7 +153,6 @@ c_merge(resolve *rs)
 int
 c_smerge(resolve *rs)
 {
-	names	*n = rs->tnames;
 	int	ret;
 	char	*branch;
 	char	opt[200];
@@ -376,8 +367,9 @@ rfuncs	c_funcs[] = {
     { "f", "fmtool", "merge with graphical filemerge", c_fmtool },
     { "F", "fm3tool",
       "merge with graphical experimental 3 way filemerge", c_fm3tool },
-    { "hl", "hist local", "revision history of the local file", res_hl },
-    { "hr", "hist remote", "revision history of the remote file", res_hr },
+    { "h", "history", "revision history of all changes", res_h },
+    { "hl", "hist local", "revision history of the local changes", res_hl },
+    { "hr", "hist remote", "revision history of the remote changes", res_hr },
     { "H", "helptool", "show merge help in helptool", c_helptool },
     { "m", "merge", "automerge the two files", c_merge },
     { "p", "sccstool", "graphical picture of the file history", c_sccstool },

@@ -2178,7 +2178,7 @@ bk_check()
 private void
 rm_sfile(char *sfile)
 {
-	char *p, *q;
+	char *p;
 
 	assert(!IsFullPath(sfile));
 	if (unlink(sfile)) {
@@ -2434,7 +2434,6 @@ private int
 writeCheck(sccs *s, MDBM *db)
 {
 	char	*t;
-	struct	stat sb;
 	char	path[MAXPATH];
 
 	strcpy(path, s->sfile + 7);	/* RESYNC/SCCS want SCCS */
