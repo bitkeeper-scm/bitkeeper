@@ -17,22 +17,31 @@ ${RM} -rf BitKeeper SCCS/s.ChangeSet
 echo "1234" > path
 ci $Q -l -i path
 P=`prs -h -d':DPN:' path`
-if [ $P != `$CWD`/path ]; then echo Failed; exit 1; fi
+if [ X$P != X`$CWD`/path ]; then echo Failed; exit 1; fi
 echo OK
 echo $N checking pathname w/ cset file ..............................$NL
 cset -i -s .
 echo 5678 > path
 ci $Q -y path
 P=`prs -r1.2 -h -d':DPN:' path`
-if [ $P != "path" ]; then echo Failed; exit 1; fi
+if [ X$P != X"path" ]; then echo Failed; exit 1; fi
 echo OK
 echo $N checking pathname w/ symlink directory ......................$NL
 mkdir src
 touch src/foo
-ci $Q -i src/foo
 ln -s src symlink
+ci $Q -i symlink/foo
+P=`prs -r1.1 -h -d':DPN:' symlink/foo`
+if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
 co $Q -l src/foo
 delta $Q -ysym-path symlink/foo
-P=`prs -r1.2 -h -d':DPN:' src/foo`
-if [ $P != "src/foo" ]; then echo Failed; exit 1; fi
+P=`prs -r1.2 -h -d':DPN:' symlink/foo`
+if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
+co $Q -l symlink/foo
+echo "new-stuff" > symlink/foo
+HERE=`${CWD}`
+delta $Q -ysym-path $HERE/symlink/foo
+P=`prs -r1.3 -h -d':DPN:' symlink/foo`
+if [ X$P != X"src/foo" ]; then echo Failed; exit 1; fi
 echo OK
+
