@@ -42,6 +42,11 @@ private int	embedded = 0;
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
 
+#define	FANCY_TABLE_BEGIN out("<table width=100% bgcolor=darkgray cellspacing=0 border=0 cellpadding=0><tr><td>\n")
+#define FANCY_TABLE_END	out("</td></tr></table>\n")
+#define TABLE_FORMAT	"cellpadding=2 cellspacing=1 bgcolor=white"
+
+
 #define BKWEB_SERVER_VERSION	"0.2"
 
 private char arguments[MAXPATH];
@@ -291,6 +296,9 @@ navbutton(int active, int tag, char *start, char *end)
 	} else if (strneq(start, "stats", 5)) {
 		out("Statistics");
 		start = 0;
+	} else if (strneq(start, "related/", 8)) {
+		out("ChangeSets for ");
+		start += 8;
 	} else if (strneq(start, "src", 3)) {
 		start += 3;
 		if (sep-start == 2 && strneq(start, "/.", 2)) {
@@ -320,9 +328,11 @@ printnavbar()
 	char *start, *end;
 	int first = 1;
 
+	/*
 	out("<!-- [");out(navbar);out("] -->\n");
+	*/
 	/* put in a navigation bar */
-	out("<table width=100% cellpadding=4>\n"
+	out("<table width=100% cellpadding=1>\n"
 	    "<tr bgcolor=black><td align=left>\n");
 	if (strneq(navbar, "?nav=", 5)) {
 		for (start = arguments+5; *start; ++start) {
@@ -375,6 +385,9 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 		out(root);
 		out(">\n");
 	}
+	out("<table width=100% bgcolor=black"
+	    " cellspacing=0 border=0 cellpadding=1>\n"
+	    "<tr><td>\n");
 
 	printnavbar();
 
@@ -387,6 +400,7 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 		}
 		if (m) mdbm_close(m);
 	}
+	out("</td></tr></table>\n");
 }
 
 
@@ -491,7 +505,9 @@ http_changes(char *rev)
 		header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
 	}
 
-	out("<table width=100% border=1 cellpadding=2 cellspacing=0 bgcolor=white>\n"
+	FANCY_TABLE_BEGIN;
+	//out("<table width=100% border=1 cellpadding=2 cellspacing=0 bgcolor=white>\n"
+	out("<table width=100% " TABLE_FORMAT ">"
 	    "<tr bgcolor=#d0d0d0>\n"
     	    "<th>Age</th><th>Author</th><th>Rev</th>"
 	    "<th align=left>&nbsp;Comments</th></tr>\n");
@@ -509,6 +525,7 @@ http_changes(char *rev)
 	putenv("BK_YEAR4=1");
 	spawnvp_ex(_P_WAIT, "bk", av);
 	out("</table>\n");
+	FANCY_TABLE_END;
 	if (!embedded) trailer("ChangeSet");
 }
 
@@ -595,15 +612,23 @@ http_cset(char *rev)
 		header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
 	}
 
-	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
-	out("bgcolor=white>\n");
+	FANCY_TABLE_BEGIN;
+	out("<table width=100% " TABLE_FORMAT ">\n");
 
 	if (lines) {
-		while (fnext(buf, f)) out(buf);
+		while (fnext(buf, f)) {
+			out("<tr><td>\n"
+			    "<table border=0 cellpadding=0"
+			    " cellspacing=0 width=100%"
+			    " bgcolor=white>\n");
+			out(buf);
+			out("</table></td></tr>\n");
+		}
 		pclose(f);
 		unlink(path);
 	}
 	out("</table>\n");
+	FANCY_TABLE_END;
 	if (!embedded) trailer("cset");
 }
 
@@ -652,16 +677,16 @@ title(char *title, char *desc, char *color)
 {
 	unless (title) return;
 
-	out("<table bgcolor=lightyellow width=100% cellpadding=0 cellspacing=0>\n");
-	out("<tr><td align=middle bgcolor=");
+	out("<tr><td><table width=100% cellpadding=5 cellspacing=0 border=0>\n"
+	    "<tr><td align=middle bgcolor=");
 	out(color);
-	out("><font color=black><hr>");
+	out("><font color=black>");
 	if (desc) {
 		out(desc);
-		out("\n<hr>\n");
+		out("\n<hr size=1 noshade>\n");
 	}
 	out(title);
-	out("<hr></td></tr></table>\n");
+	out("</font></td></tr></table>\n");
 }
 
 private void
@@ -680,8 +705,7 @@ trailer(char *path)
 	include(path, "trailer.txt");
 
 	if (isreg("BitKeeper/html/logo.gif")) {
-		out("<hr>\n"
-		    "<font color=black size=-2>\n"
+		out("<font color=black size=-2>\n"
 		    "<table border=0 bgcolor=white width=100%>\n"
 		    "<tr>\n"
 		    "<td align=left>"
@@ -690,8 +714,7 @@ trailer(char *path)
 		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
 		    "</td></tr></table></font>\n");
 	} else {
-		out("<hr>\n"
-		    "<p align=center>\n"
+		out("<p align=center>\n"
 		    "<a href=http://www.bitkeeper.com>\n"
 		    "<font color=black size=-2>\n"
 		    "<img src=trailer.gif alt=\"Learn more about BitKeeper\"></a>\n"
@@ -765,8 +788,10 @@ http_hist(char *pathrev)
 	} else {
 		sprintf(buf, "bk prs -hd'%s' %s", dspec, pathrev);
 	}
-	out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
-	out("bgcolor=white>\n");
+	FANCY_TABLE_BEGIN;
+	out("<table width=100% " TABLE_FORMAT ">\n");
+	//out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
+	//out("bgcolor=white>\n");
 	out("<tr bgcolor=lightblue>\n");
 	out(" <th>Age</th>\n");
 	out(" <th>Author</th>\n");
@@ -778,6 +803,7 @@ http_hist(char *pathrev)
 	while (fnext(buf, f)) out(buf);
 	pclose(f);
 	out("</table>\n");
+	FANCY_TABLE_END;
 	if (!embedded) trailer("hist");
 }
 
@@ -814,12 +840,15 @@ http_src(char *path)
 	    " </td>"
 	    " <td align=center>"
 	      "$if(:GFILE:=ChangeSet){&nbsp;}"
-	      "$if(:GFILE:!=ChangeSet){<a href=related/:GFILE:>CSets</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=related/:GFILE:%s>CSets</a>}"
 	    " </td>"
 	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
 	    " <td align=center>:USER:</td>"
 	    " <td>:HTML_C:&nbsp;</td>"
-	    "</tr>\n%s", prefix, navbar, navbar, navbar, navbar, suffix);
+	    "</tr>\n%s",
+	    prefix,
+	    navbar, navbar, navbar, navbar, navbar,
+	    suffix);
 
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_src");
@@ -836,8 +865,10 @@ http_src(char *path)
 		    path[1] ? path : "project root");
 	}
 
-	out("<table border=1 cellpadding=2 cellspacing=0 width=100% "
-	    "bgcolor=white>\n"
+	FANCY_TABLE_BEGIN;
+	//out("<table border=1 cellpadding=2 cellspacing=0 width=100% "
+	//    "bgcolor=white>\n"
+	out("<table width=100% " TABLE_FORMAT ">\n"
 	    "<tr><th>&nbsp;</th><th align=left>File&nbsp;name</th>\n"
 	    "<th>Rev</th>\n"
 	    "<th>&nbsp;</th>\n"
@@ -895,6 +926,7 @@ http_src(char *path)
 	}
 	freeLines(names);
 	out("</table><br>\n");
+	FANCY_TABLE_END;
 	if (!embedded) trailer("src");
 }
 
@@ -1187,8 +1219,10 @@ http_stats(char *page)
 	}
 
 
-	out("<table width=100% border=1 cellpadding=2"
-	    " cellspacing=0 bgcolor=white>\n"
+	FANCY_TABLE_BEGIN;
+	//out("<table width=100% border=1 cellpadding=2"
+	//    " cellspacing=0 bgcolor=white>\n"
+	out("<table width=100% " TABLE_FORMAT ">\n"
 	    "<tr bgcolor=#d0d0d0>\n"
 	    "<th>Author</th>\n"
 	    "<th>Recent ChangeSets</th>\n"
@@ -1241,6 +1275,7 @@ http_stats(char *page)
 		out(buf);
 	}
 	out("</table>\n");
+	FANCY_TABLE_END;
 	if (!embedded) trailer("patch");
 }
 
@@ -1326,6 +1361,10 @@ http_index(char *page)
 			out(root);
 			out(">\n");
 		}
+		out("<table width=100% bgcolor=black"
+		    " border=0 cellspacing=0 cellpadding=1>\n"
+		    "<tr><td>\n");
+
 		printnavbar();
 
 		unless (include(0, "homepage.txt")) {
@@ -1346,6 +1385,7 @@ http_index(char *page)
 
 			title("ChangeSet activity", buf, COLOR_TOP);
 		}
+		out("</td></tr></table>\n");
 		if (m) mdbm_close(m);
 	}
 
@@ -1596,4 +1636,87 @@ parseurl(char *url)
 		return (s == url) ? "" : s;
 	}
 	return url;
+}
+
+
+private void
+http_related(char *file)
+{
+	char	*av[100];
+	int	i;
+	char	buf[2048];
+	char    dspec[MAXPATH];
+	char	revisions[MAXPATH];
+	char	*d;
+	char	*c;
+	FILE	*f;
+
+	whoami("related/%s", file);
+
+	i = snprintf(dspec, sizeof dspec, "-d%s<tr>\n"
+			" <td align=right>:HTML_AGE:</td>\n"
+			" <td align=center>:USER:</td>\n"
+			" <td align=center"
+			"$if(:TAG:){ bgcolor=yellow}>"
+			"<a href=cset@:I:%s>:I:</a>"
+			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
+			"</td>\n"
+			" <td>:HTML_C:</td>\n"
+			"</tr>\n%s", prefix, navbar, suffix);
+
+	if (i == -1) {
+		http_error(500, "buffer overflow in http_related");
+	}
+
+
+	sprintf(buf, "bk prs -hd':REV:\n' %s | bk _sort -u", file);
+
+	unless (f = popen(buf, "r"))
+		http_error(500, "%s: %s", buf, strerror(errno));
+
+	if (!embedded) {
+		httphdr(".html");
+		header(0, COLOR_CHANGES, "ChangeSets that modify %s", 0, file);
+	}
+
+	revisions[0] = 0;
+	while (fnext(buf, f)) {
+		for (c=buf; *c; ++c) ;
+		while (c[-1] == '\r' || c[-1] == '\n') --c;
+		if (c < buf) continue;
+		*c = 0;
+		if (revisions[0]) {
+			strcat(revisions, ",");
+		} else {
+			strcpy(revisions, "-r");
+		}
+		strcat(revisions, buf);
+	}
+	pclose(f);
+
+	if (revisions[0]) {
+		FANCY_TABLE_BEGIN;
+		//out("<table width=100% border=1 cellpadding=2"
+		//    " cellspacing=0 bgcolor=white>\n"
+		out("<table width=100% " TABLE_FORMAT ">\n"
+		    "<tr bgcolor=#d0d0d0>\n"
+		    "<th>Age</th><th>Author</th><th>Rev</th>"
+		    "<th align=left>&nbsp;Comments</th></tr>\n");
+
+		av[i=0] = "bk";
+		av[++i] = "prs";
+		av[++i] = "-h";
+		av[++i] = dspec;
+		av[++i] = revisions;
+		av[++i] = file /*"ChangeSet"*/;
+		av[++i] = 0;
+		putenv("BK_YEAR4=1");
+		close(0);
+		dup2(fileno(f), 0);
+		spawnvp_ex(_P_WAIT, "bk", av);
+		out("</table>\n");
+		FANCY_TABLE_END;
+	}
+
+	if (!embedded) trailer("related");
 }
