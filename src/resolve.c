@@ -128,6 +128,83 @@ resolve_main(int ac, char **av)
 	return (c);
 }
 
+#ifdef LOGGING_CONFLICT
+private int
+isLoggingRepository(opts *opts)
+{
+	sccs	*s;
+	char	s_cset[] = CHANGESET;
+	int	rc = 0;
+
+	s = sccs_init(s_cset, INIT_SAVEPROJ, opts->resync_proj);
+	assert(s);
+	if (s->state & S_LOGS_ONLY) rc = 1;
+	sccs_free(s);
+	return (rc);
+}
+
+/*
+ * For logging repository, we defer resolving path conflict
+ * by moving  the conflicting remote file to the BitKeeper/conflicts
+ * directory.
+ *
+ * XXXX awc->lm: this code not fully tested
+ * open issues:
+ * a) when do we move the conflict files back to its regular path.
+ * b) In BkWeb, when a user is browseing the logging tree,
+ *    looking for a file,  how do we detect/show the path conflict status
+ */
+private int
+deferr_path_conflict(opts *opts)
+{
+	DIR	*dh;
+	struct	dirent   *e;
+	char	buf[MAXPATH], buf1[MAXPATH];
+	char	tmp[MAXPATH];
+	char	*renames_dir = "BitKeeper/RENAMES/SCCS";
+	sccs	*s;
+	delta	*d;
+	int	n = 0;
+
+	if ((dh = opendir(renames_dir)) == NULL) {
+		perror(renames_dir);
+	}
+	while ((e = readdir(dh)) != NULL) {
+		char *p;
+
+		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
+			continue;
+		}
+		concat_path(buf, renames_dir, e->d_name);
+		s = sccs_init(buf, INIT_SAVEPROJ, opts->resync_proj);
+		assert(s && s->tree);
+		d = findrev(s, "1.0");
+		assert(d);
+		strcpy(tmp, d->pathname); /* because dirname stomp */
+		/*
+		 * park the conflict files in the BitKeeper/conflicts
+		 * directory using a path based on the root key
+		 */
+		sprintf(buf1,
+			"BitKeeper/conflicts/%s-%s-%s-%05u-%s/%s/SCCS/s.%s",
+			d->user,
+			d->hostname,
+			sccs_utctime(d),
+			d->sum,
+			d->random,
+			dirname(tmp),
+			basename(d->pathname));
+		cleanPath(buf1, buf1);
+		mkdirf(buf1);
+		if (rename(buf, buf1)) {
+			perror(buf1);
+			n++;
+		}
+	}
+	return (n);
+}
+#endif /* LOGGING_CONFLICT */
+
 /*
  * Do the setup and then work through the passes.
  */
@@ -263,6 +340,10 @@ that will work too, it just gets another patch.\n");
 			old = n;
 			n = pass2_renames(opts);
 		} while (n && ((old == -1) || (n < old)));
+		
+#ifdef LOGGING_CONFLICT
+		if (isLoggingRepository(opts)) n = deferr_path_conflict(opts);
+#endif
 
 		unless (n) {
 			unless (opts->quiet || !opts->renames2) {
