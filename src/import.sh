@@ -261,6 +261,10 @@ transfer() {
 			then	eval $editor ${TMP}import$$
 			else	eval $EDITOR ${TMP}import$$
 			fi
+			if [ $? -ne 0 ]; then
+			    echo ERROR: aborting...
+			    exit 1
+			fi
 			NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 		esac
 	fi
