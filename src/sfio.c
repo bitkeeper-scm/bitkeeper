@@ -130,6 +130,7 @@ out_link(char *file, struct stat *sp)
 		perror(file);
 		return (1);
 	}
+	buf[n] = 0;	/* paranoid */
 	/*
 	 * We have 10 chars into which we can encode a type.
 	 * We know the pathname is <= 4 chars, so we encode the

@@ -41,6 +41,7 @@ typedef struct {
 	u32	errors_exit:1;		/* exit on any error */
 	u32	daemon:1;		/* listen for TCP connections */
 	FILE	*log;			/* if set, log commands to here */
+	int	alarm;			/* exit after this many seconds */
 	u16	port;			/* listen on this port */
 	char	remote[16];		/* a.b.c.d of client */
 } bkdopts;

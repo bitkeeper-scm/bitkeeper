@@ -14,7 +14,7 @@ bkd_main(int ac, char **av)
 {
 	int	c;
 
-	while ((c = getopt(ac, av, "deil|p;x;")) != -1) {
+	while ((c = getopt(ac, av, "deil|p:t:x:")) != -1) {
 		switch (c) {
 		    case 'd': Opts.daemon = 1; break;
 		    case 'e': Opts.errors_exit = 1; break;
@@ -23,6 +23,7 @@ bkd_main(int ac, char **av)
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
 		    case 'p': Opts.port = atoi(optarg); break;
+		    case 't': Opts.alarm = atoi(optarg); break;
 		    case 'x': exclude(optarg); break;
 		    default: usage();
 	    	}
@@ -41,6 +42,10 @@ bkd_main(int ac, char **av)
 		exit(1);
 		/* NOTREACHED */
 	} else {
+		if (Opts.alarm) {
+			signal(SIGALRM, exit);
+			alarm(Opts.alarm);
+		}
 		do_cmds();
 		return (0);
 	}
@@ -65,9 +70,14 @@ bkd_server()
 {
 	int	sock = tcp_server(Opts.port ? Opts.port : BK_PORT);
 
+	
 	if (fork()) exit(0);
 	setsid();	/* lose the controlling tty */
 	signal(SIGCHLD, reap);
+	if (Opts.alarm) {
+		signal(SIGALRM, exit);
+		alarm(Opts.alarm);
+	}
 	while (1) {
 		int	n = tcp_accept(sock);
 

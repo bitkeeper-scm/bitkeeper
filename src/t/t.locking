@@ -60,7 +60,19 @@ if [ ! -w A ]; then echo failed to fail delta; exit 1; fi
 echo OK
 echo $N Make sure clone fails with existing write lock in source ....$NL
 cd $HERE
-bk clone $Q project clone
+bk clone $Q project clone 2>/dev/null
+if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
+echo OK
+echo $N Make sure clone fails with existing write lock in source \#2 .$NL
+cd $HERE/project
+P=50000
+bk bkd -d -p$P -t60 2>/dev/null
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -d -p$P -t60 2>/dev/null
+done
+cd $HERE
+bk clone $Q bk://localhost:$P clone 2>/dev/null
 if [ -d clone ]; then echo clone failed to clean up; exit 1; fi
 echo OK
 echo $N Make sure clone works with existing read lock in source .....$NL
@@ -69,11 +81,19 @@ bk repo -W
 bk repo -r
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE
-bk clone $Q project clone
+bk clone $Q project clone 2>/dev/null
 EXIT=$?
 if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
 if [ ! -d clone -o ! -f clone/SCCS/s.A ]; then echo clone failed; exit 1; fi
 if [ ! -f clone/BitKeeper/log/parent ]; then echo clone failed to set parent; exit 1; fi
+echo OK
+echo $N Make sure clone works with existing read lock in source \#2 ..$NL
+cd $HERE
+bk clone $Q bk://localhost:$P clone2 2>/dev/null
+EXIT=$?
+if [ $EXIT != 0 ]; then echo failed with exit $EXIT; exit 1; fi
+if [ ! -d clone2 -o ! -f clone2/SCCS/s.A ]; then echo clone2 failed; exit 1; fi
+if [ ! -f clone2/BitKeeper/log/parent ]; then echo clone2 failed to set parent; exit 1; fi
 echo OK
 echo $N Make sure pull fails with existing write lock in source .....$NL
 cd $HERE/project
@@ -83,7 +103,7 @@ bk new $Q C
 bk commit $Q -ywhatever
 bk repo -w
 cd $HERE/clone
-bk pull $Q
+bk pull $Q 2>/dev/null
 if [ $? != 1 ]; then echo pull failed to exit with error; exit 1; fi
 echo OK
 echo $N Make sure pull works with existing read lock in source ......$NL
@@ -92,7 +112,13 @@ bk repo -W
 bk repo -r
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
 cd $HERE/clone
-bk pull $Q -r
+bk pull $Q -r 2>/dev/null
+if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
+bk resolve -t $Q
+echo OK
+echo $N Make sure pull works with existing read lock in source \#2 ...$NL
+cd $HERE/clone2
+bk pull $Q -r  2>/dev/null
 if [ ! -d RESYNC ]; then echo pull failed; exit 1; fi
 bk resolve -t $Q
 echo OK

@@ -6977,17 +6977,17 @@ sccs_clean(sccs *s, u32 flags)
 	char	tmpfile[50];
 	delta	*d;
 
-	unless (HAS_SFILE(s)) {
-		verbose((stderr, "%s not under SCCS control\n", s->gfile));
-		return (0);
-	}
-	unless (s->tree) return (-1);
-
 	/* clean up lock files but not gfile */
 	if (flags & CLEAN_UNLOCK) {
 		unlink(s->pfile);
 		sccs_unlock(s, 'z');
 		sccs_unlock(s, 'x');
+		return (0);
+	}
+
+	/* don't go removing gfiles without s.files */
+	unless (HAS_SFILE(s) && s->tree) {
+		verbose((stderr, "%s not under SCCS control\n", s->gfile));
 		return (0);
 	}
 
@@ -7653,10 +7653,8 @@ checkin(sccs *s,
 			}
 		} else if (S_ISLNK(s->mode)) {
 			u8	*t;
-			/*
-			 * if symlink, checksum the the symlink
-			 */
-			for (t = s->symlink; *t; t++) s->dsum += *t;
+
+			for (t = s->symlink; t && *t; s->dsum += *t++);
 		}
 	}
 	if (n0) {

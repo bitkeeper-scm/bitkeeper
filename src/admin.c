@@ -368,6 +368,7 @@ do_checkin(char *name, char *encp, char *compp,
 	delta	*d = 0;
 	sccs	*s;
 	int	error, enc;
+	struct	stat sb;
 
 	unless (s = sccs_init(name, flags, 0)) return (-1);
 	enc = sccs_encoding(s, encp, compp);
@@ -393,17 +394,25 @@ do_checkin(char *name, char *encp, char *compp,
 		return (-1);
 	}
 
-	if (newfile) {
-		struct	stat sb;
+	if (newfile && (lstat(newfile, &sb) == 0)) {
+		if (S_ISLNK(sb.st_mode) || S_ISREG(sb.st_mode)) {
+			s->mode = sb.st_mode;
+		} else {
+			verbose((stderr,
+			    "admin: ignoring modes on %s\n", newfile));
+		}
+		if (S_ISLNK(sb.st_mode)) {
+			char	p[MAXPATH];
+			int	n;
 
-		if (lstat(newfile, &sb) == 0) {
-			if (S_ISLNK(sb.st_mode) ||
-			    S_ISREG(sb.st_mode) ||
-			    S_ISDIR(sb.st_mode)) {
-				s->mode = sb.st_mode;
+			n = readlink(newfile, p, sizeof(p));
+			if (n > 0) {
+				p[n] = 0;
+				s->symlink = strdup(p);
 			} else {
-				verbose((stderr,
-				    "admin: ignoring modes on %s\n", newfile));
+				perror(newfile);
+				sccs_free(s);
+				return (-1);
 			}
 		}
 	}
