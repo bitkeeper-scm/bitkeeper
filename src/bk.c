@@ -547,14 +547,17 @@ gotit:
 		if (readlink(buf, link, sizeof(link)) != -1) strcpy(buf, link);
 		t = strrchr(buf, '/');
 		*t = 0;
-		/*
-		 * Hide the malloc from purify,
-		 * We can not free it until we exit anyway.
-		 */
-		s = (malloc)(strlen(buf) + strlen(p) + 10);
-		sprintf(s, "PATH=%s:%s", buf, p);
-		putenv(s);
 		bin = buf; /* buf is static */
+
+		if (add2path) {
+			/*
+			 * Hide the malloc from purify,
+			 * We can not free it until we exit anyway.
+			 */
+			s = (malloc)(strlen(buf) + strlen(p) + 10);
+			sprintf(s, "PATH=%s:%s", buf, p);
+			putenv(s);
+		}
 		return;
 	}
 
@@ -562,9 +565,7 @@ gotit:
 	if (t = strchr(av[0], '/')) {
 		getcwd(buf, sizeof(buf));
 		strcat(buf, "/");
-		*t++ = 0;
-		strcat(buf, t);
-		t[-1] = '/';
+		strcat(buf, av[0]);
 		goto gotit;
 	}
 	
