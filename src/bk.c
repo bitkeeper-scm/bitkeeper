@@ -665,10 +665,27 @@ private	struct {
 	{ 0, 0 },
 };
 
+/*
+ * Return true if it is Logging patch
+ * i.e we want push part2 of meta patch
+ */
+private int
+isMeta(char **av)
+{
+	int i = 1;
+
+	unless (streq(av[0], "remote push part2")) return (0);
+	while (av[i]) {
+		if (streq("-e", av[i++])) return (1);
+	}
+	return (0);
+}
+
 void
 cmdlog_start(char **av, int httpMode)
 {
 	int	i, len;
+	int	try = 1, how_long = 1;
 
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
@@ -693,6 +710,7 @@ cmdlog_start(char **av, int httpMode)
 		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
 		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
+		if (isMeta(av)) cmdlog_flags |= CMD_RETRYLOCK;
 	}            
 
 	unless (bk_proj && bk_proj->root) return;
@@ -714,12 +732,27 @@ cmdlog_start(char **av, int httpMode)
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
 	if (cmdlog_flags & CMD_WRLOCK) {
-		if (i = repository_wrlock()) {
+retry:		if (i = repository_wrlock()) {
 			unless (strneq("remote ", av[0], 7) || !bk_proj) {
 				repository_lockers(bk_proj);
 			}
 			switch (i) {
 			    case LOCKERR_LOST_RACE:
+				if ((cmdlog_flags & CMD_RETRYLOCK) &&
+				    (try++ < 10)) {
+					fprintf(stderr,
+					    "%s(%d): lock busy, retry %d.\n",
+					    av[0], getpid(), try);
+					how_long <<= 2;
+					sleep(how_long);
+					goto retry;
+				}
+				if (cmdlog_flags & CMD_RETRYLOCK) {
+					fprintf(stderr,
+				           "%s(%d): failed to get lock, "
+					   "try %d.\n",
+					   av[0], getpid(), try);
+				}
 				out(LOCK_WR_BUSY);
 				break;
 			    case LOCKERR_PERM:
@@ -737,6 +770,10 @@ cmdlog_start(char **av, int httpMode)
 			 */
 			if (strneq("remote ", av[0], 7)) drain();
 			exit(1);
+		}
+		if (try > 1) {
+			fprintf(stderr, "%s(%d): got lock on try %d.\n",
+			    av[0], getpid(), try);
 		}
 	}
 	if (cmdlog_flags & CMD_RDLOCK) {
