@@ -4,6 +4,8 @@
 #define BK "bk"
 
 extern char *bin;
+char *find_wish();
+char *find_perl5();
 
 int setup_main(int, char **);
 int commit_main(int, char **);
@@ -92,6 +94,7 @@ struct command cmdtbl[100] = {
 	{"takepatch", takepatch_main},
 	{"clean", clean_main},
 	{"unedit", clean_main},	/* aliases */
+	{"unget", clean_main},	/* aliases */
 	{"unlock", clean_main},	/* aliases */
 	{"prs", prs_main},
 	{"mv", mv_main},
@@ -239,7 +242,6 @@ main(int ac, char **av)
 	    streq(av[0], "rcs2sccs")) {
 		char cmd_path[MAXPATH];
 		char *argv[100];
-		extern char *find_perl5();
 
 		argv[0] = find_perl5();
 		sprintf(cmd_path, "%s%s", bin, av[0]);
@@ -285,14 +287,13 @@ main(int ac, char **av)
 		char cmd_path[MAXPATH];
 		char *argv[100];
 
-		argv[0] = "wish"; //XXX TODO need a find_wish() finction 
+		argv[0] = find_wish();
 		sprintf(cmd_path, "%s%s", bin, av[0]);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
 	}
 	
-
 	/*
 	 * Try external command
 	 */
@@ -302,3 +303,80 @@ main(int ac, char **av)
 	}
 	return (rc);
 }
+
+char *
+find_wish()
+{
+	char buf[MAXLINE];
+	char *p, *s;
+	char path[MAXLINE];
+	static char wish_path[MAXPATH];
+	int more = 1;
+
+	p  = getenv("PATH");
+	if (p) {;
+		sprintf(path, "%s:/usr/local/bin", p);
+		localName2bkName(path, path);
+	} else {
+		strcpy(path, "/usr/local/bin");
+	}
+	p = path;
+	while (more) {
+		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
+		if (*s == '\0') more = 0;
+		*s = '\0';
+#ifdef WIN32
+		sprintf(wish_path, "%s/wish81.exe", p);
+		if (exists(wish_path)) return (wish_path);
+#else
+		sprintf(wish_path, "%s/wish8.2", p);
+		if (exists(wish_path)) return (wish_path);
+		sprintf(wish_path, "%s/wish8.0", p);
+		if (exists(wish_path)) return (wish_path);
+		sprintf(wish_path, "%s/wish", p);
+		if (exists(wish_path)) return (wish_path);
+#endif
+		p = ++s;
+	}
+	fprintf(stderr, "Can not find wish to run\n");
+	exit(1);
+}
+
+char *
+find_perl5()
+{
+	char buf[MAXLINE];
+	char *p, *s;
+	char path[MAXLINE];
+	static char perl_path[MAXPATH];
+	int more = 1;
+
+	p  = getenv("PATH");
+	if (p) {;
+		sprintf(path, "%s:/usr/local/bin", p);
+		localName2bkName(path, path);
+	} else {
+		strcpy(path, "/usr/local/bin");
+	}
+	p = path;
+	while (more) {
+		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
+		if (*s == '\0') more = 0;
+		*s = '\0';
+#ifdef WIN32
+		sprintf(perl_path, "%s/perl.exe", p);
+		unless (exists(perl_path)) goto next;
+		return(perl_path); /* win32 perl is version 5 */
+#else
+		sprintf(perl_path, "%s/perl", p);
+		unless (executable(perl_path)) goto next;
+#endif
+		sprintf(buf, "%s -v | grep 'version 5.0' > %s",
+			perl_path, DEV_NULL);
+		if (system(buf) == 0)	return(perl_path);
+next:		p = ++s;
+	}
+	fprintf(stderr, "Can not find perl5 to run\n");
+	exit(1);
+}
+
