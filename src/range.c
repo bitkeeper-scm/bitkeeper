@@ -162,7 +162,7 @@ usage:			fprintf(stderr,
 			exit(1);
 		}
 	}
-	for (name = sfileFirst("range", &av[optind], SFILE);
+	for (name = sfileFirst("range", &av[optind], 0);
 	    name; name = sfileNext()) {
 	    	unless (s = sccs_init(name, NOCKSUM)) {
 			continue;

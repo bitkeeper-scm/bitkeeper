@@ -79,7 +79,7 @@ get_main(int ac, char **av, char *out)
 		    case 'P': flags |= PRINT|FORCE; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': rev = optarg; break;
-		    case 'R': hasrevs = HASREVS; break;
+		    case 'R': hasrevs = SF_HASREVS; break;
 		    case 's': flags |= SILENT; break;
 		    case 't': break;	/* compat, noop */
 		    case 'u': flags |= USER; break;

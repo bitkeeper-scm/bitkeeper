@@ -88,9 +88,9 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 	}
 
 	if (all || things) {
-		name = sfileFirst("diffs", &av[optind], SFILE);
+		name = sfileFirst("diffs", &av[optind], 0);
 	} else {
-		name = sfileFirst("diffs", &av[optind], GFILE|SFILE);
+		name = sfileFirst("diffs", &av[optind], SF_GFILE);
 	}
 	while (name) {
 		int	ex = 0;

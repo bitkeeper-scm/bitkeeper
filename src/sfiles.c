@@ -87,7 +87,7 @@ again:
 		}
 		strcpy(buf, name);
 	}
-	if (flags & HASREVS)  {
+	if (flags & SF_HASREVS)  {
 		char	*r = strrchr(buf, ':');
 
 		rev[0] = 0;	/* paranoia is your friend */
@@ -127,7 +127,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	sfileDone();
 	rev[0] = 0;
 	prog = cmd;
-	flags = Flags|HASREVS;
+	flags = Flags|SF_HASREVS;
 	if (Av[0]) {
 #ifdef WIN32
 		nt2bmfname(Av[0], Av[0]);
@@ -143,7 +143,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			return (sfileNext());
 		}
 		if (isdir(Av[0])) {
-			if (flags & NOEXPAND) return (0);
+			if (flags & SF_NOEXPAND) return (0);
 			if (Av[1]) {
 				fprintf(stderr,
 				    "%s: directory must be alone.\n", prog);
@@ -163,7 +163,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 		ac = 0;
 		return (sfileNext());
 	}
-	if (flags & NOEXPAND) return (0);
+	if (flags & SF_NOEXPAND) return (0);
 	if (!d) {
 		strcpy(prefix, "SCCS/");
 		d = opendir("SCCS");
@@ -215,7 +215,7 @@ oksccs(char *sfile, int flags, int complain)
 		return (0);
 	}
 	g = sccs2name(sfile);
-	if ((flags&GFILE) && !readable(g)) {
+	if ((flags&SF_GFILE) && !readable(g)) {
 		if (complain) {
 			if (!readable(sfile)) {
 				verbose((stderr,
@@ -229,7 +229,7 @@ oksccs(char *sfile, int flags, int complain)
 		free(g);
 		return (0);
 	}
-	if ((flags&WRITE_OK) && !writable(g)) {
+	if ((flags&SF_WRITE_OK) && !writable(g)) {
 		if (complain)
 			verbose((stderr,
 			    "%s: %s: no write permission\n", prog, g));

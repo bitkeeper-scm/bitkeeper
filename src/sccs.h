@@ -173,6 +173,15 @@ extern	char *strdup(char *s);
 #define GTIME		0x40000000	/* use g file mod time as time stamp */
 
 /*
+ * flags passd to sfileFirst
+ */
+#define	SF_GFILE	0x00000001	/* gfile should be readable */
+#define	SF_WRITE_OK	0x00000002	/* gfile should be writable */
+#define	SF_NOEXPAND	0x00000004	/* don't auto expand path name */
+#define	SF_HASREVS	0x00000008	/* sfiles - filename:rev */
+
+
+/*
  * Flags (s->state) that indicate the state of a file.  Set up in init.
  * Also used for sccs_files() flags.
  */
@@ -180,7 +189,7 @@ extern	char *strdup(char *s);
 #define	GFILE		0x00000002	/* s->gfile exists as a regular file */
 #define	PFILE		0x00000004	/* SCCS/p.file exists */
 #define	ZFILE		0x00000008	/* SCCS/z.file exists */
-#define	WRITE_OK	0x00000010	/* s->gfile is writable */
+/*			0x00000010	AVAILABLE */
 #define	SOPEN		0x00000020	/* s->sfile is open */
 /*			0x00000040	AVAILABLE */
 /*			0x00000080	AVAILABLE */
@@ -194,7 +203,7 @@ extern	char *strdup(char *s);
 #define	YEAR4		0x00004000	/* print out the year as 4 digits */
 #define	BADREVS		0x00008000	/* has corrupted revisions */
 #define	BIGPAD		0x00010000	/* admin -B: make the landing pad big */
-#define	HASREVS		0x00020000	/* sfiles - filename:rev */
+/*			0x00020000	AVAILABLE */
 #define	REINHERIT	0x00040000	/* found stuff in flags, reinherit */
 #define	BITKEEPER	0x00080000	/* X_BITKEEPER flag */
 #define	CSET		0x00100000	/* this is a changeset file */
