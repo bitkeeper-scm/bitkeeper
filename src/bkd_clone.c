@@ -1,9 +1,10 @@
 #include "bkd.h"
 #include "logging.h"
 
-private	char *cmd[] = { "bk", "-r", "sfio", "-o", "-q", 0 };
-private int uncompressed(void);
-private int compressed(int, int);
+private	char	*sfiocmd[] = { "bk", "-r", "sfio", "-o", "-q", 0 };
+private int	uncompressed(void);
+private int	compressed(int, int);
+private	int	spawn_copy(int level);
 
 /*
  * Send the sfio file to stdout
@@ -97,7 +98,11 @@ cmd_clone(int ac, char **av)
 	if (p && trigger(av[0], "pre")) return (1);
 	if (p) out("@SFIO@\n");
 	if (p) {
-		rc = compressed(gzip, 1);
+		if (Opts.buffer_clone) {
+			rc = spawn_copy(gzip);
+		} else {
+			rc = compressed(gzip, 1);
+		}
 	} else if (gzip) {
 		rc = compressed(gzip, 0);
 	} else {
@@ -117,21 +122,14 @@ cmd_clone(int ac, char **av)
 	putenv("BK_CSETS=");
 	return (rc);
 }
-	    
+
 private int
-uncompressed()
+uncompressed(void)
 {
-	pid_t	pid;
+	int	status;
 
-	pid = spawnvp_ex(_P_WAIT, cmd[0], cmd);
-	if (pid == -1) {
-		return (1);
-	} else {
-		int	status;
-
-		waitpid(pid, &status, 0);
-		return (0);
-	}
+	status = spawnvp_ex(_P_WAIT, sfiocmd[0], sfiocmd);
+	return (!(WIFEXITED(status) && WEXITSTATUS(status) == 0));
 }
 
 private int
@@ -144,7 +142,7 @@ compressed(int level, int hflag)
 	char	*cmd;
 	int	rc = 1;
 
-	/* 
+	/*
 	 * Generate list of sfiles and log markers to transfer to
 	 * remote site.  It is important that the markers appear in
 	 * sorted order so that the other end knows when the entire
@@ -160,7 +158,7 @@ compressed(int level, int hflag)
 	status = system(cmd);
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) goto out;
-	
+
 	sfiocmd = aprintf("cat %s %s | bk _sort | bk sfio -oq", tmpf1, tmpf2);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
@@ -176,3 +174,107 @@ compressed(int level, int hflag)
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
 	return (rc);
 }
+
+#ifndef	WIN32
+#define	CLONESFIO	"BitKeeper/tmp/clone.sfio"
+
+private int
+spawn_copy(int level)
+{
+	pid_t	pid;
+	int	newout;
+	int	regen = 0;
+	char	mykey[MAXKEY];
+	sccs	*s;
+	FILE	*f;
+
+	/* get lock, prevent two clones from trying to create the same file */
+	if (sccs_lockfile(CLONESFIO ".lock", 0, 0)) {
+		fprintf(stderr, "Failed to get clone sfio lock\n");
+		return (-1);
+	}
+	/* find my top csetkey */
+	unless (s = sccs_csetInit(0, 0)) {
+		fprintf(stderr, "Can't open ChangeSet\n");
+		return (-1);
+	}
+	sccs_sdelta(s, sccs_top(s), mykey);
+	sccs_free(s);
+
+	/* does it match saved archive? */
+	if (exists(CLONESFIO ".cset") && exists(CLONESFIO)) {
+		char	filekey[MAXKEY];
+
+		f = fopen(CLONESFIO ".cset", "r");
+		fgets(filekey, sizeof(filekey), f);
+		chop(filekey);
+		fclose(f);
+
+		unless (streq(mykey, filekey)) regen = 1;
+	} else {
+		regen = 1;
+	}
+	if (regen) {
+		int	rfd, sfd, status, ret;
+
+		/* MUST unlink, so we don't corrupt other processes */
+		unlink(CLONESFIO);
+		sfd = open(CLONESFIO, O_CREAT|O_WRONLY, 0600);
+		assert(sfd > 0);
+		signal(SIGCHLD, SIG_DFL);
+		pid = spawnvp_rPipe(sfiocmd, &rfd, BIG_PIPE);
+		if (pid == -1) return (1);
+		ret = gzipAll2fd(rfd, sfd, level, 0, 0, 1, 0);
+		assert(ret == 0);
+		unless ((ret = waitpid(pid, &status, 0)) > 0) {
+			perror("waitpid");
+			fprintf(stderr, "waitpid returned %d\n", ret);
+			return (-1);
+		}
+		assert(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+		close(sfd);
+		close(rfd);
+
+		if (f = fopen(CLONESFIO ".cset", "w")) {
+			fprintf(f, "%s\n", mykey);
+			fclose(f);
+		}
+	}
+	/*
+	 * OK to release lock now, filehandle will save file.
+	 * The repo has a read lock while this process is running so the
+	 * top cset key won't change so my sfio won't get replaced.
+	 */
+	sccs_unlockfile(CLONESFIO ".lock");
+
+	newout = dup(1);
+	dup2(2, 1);
+	unless (pid = fork()) {
+		int	sfd, len;
+		char	buf[4096];
+
+		sfd = open(CLONESFIO, O_RDONLY);
+		assert(sfd > 0);
+		/* blast to client and exit */
+		while ((len = read(sfd, buf, sizeof(buf))) > 0) {
+			write(newout, buf, len);
+		}
+		close(sfd);
+		close(newout);
+		exit(0);
+	}
+	assert(pid > 0);
+	/* in the meanwhile return and unlock repo */
+	return (0);
+}
+
+#else
+
+private int
+spawn_copy(int level)
+{
+	fprintf(stderr, "spawn_copy() should never be called on Windows.\n");
+	exit(1);
+}
+
+#endif

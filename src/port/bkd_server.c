@@ -232,8 +232,9 @@ argv_save(int ac, char **av, char **nav, int j)
 	 */
 	getoptReset();
 	while ((c =
-	    getopt(ac, av, "c:CdDeE:g:hi:l|L:p:P:qRs:St:u:V:x:z")) != -1) {
+	    getopt(ac, av, "Bc:CdDeE:g:hi:l|L:p:P:qRs:St:u:V:x:z")) != -1) {
 		switch (c) {
+		    case 'B':	nav[j++] = strdup("-B"); break;
 		    case 'C':	nav[j++] = strdup("-C"); break;
 		    case 'D':	nav[j++] = strdup("-D"); break;
 		    case 'i':

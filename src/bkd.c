@@ -18,6 +18,7 @@ int
 bkd_main(int ac, char **av)
 {
 	int	c;
+	char	*p;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help bkd");
@@ -40,8 +41,9 @@ bkd_main(int ac, char **av)
 	 * XXX architechture!! (The above functions are in port/bkd_server.c)
 	 */
 	while ((c = getopt(ac, av,
-			"c:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:z")) != -1) {
+			"Bc:CdDeE:g:hil|L:p:P:qRs:St:u:V:x:z")) != -1) {
 		switch (c) {
+		    case 'B': Opts.buffer_clone = 1; break;
 		    case 'C': Opts.safe_cd = 1; break;		/* doc */
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
 		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
@@ -75,7 +77,18 @@ bkd_main(int ac, char **av)
 		    default: usage();
 	    	}
 	}
-
+#ifdef WIN32
+	if (Opts.buffer_clone) {
+		fprintf(stderr,
+"bkd: The option -b to buffer clone data is not available on Windows.\n");
+		return (1);
+	}
+#else
+	if ((p = user_preference("bufferclone")) &&
+	    (strieq(p, "yes") || streq(p, "1"))) {
+		Opts.buffer_clone = 1;
+	}
+#endif
 	if (logRoot && !IsFullPath(logRoot)) {
 		fprintf(stderr,
 		    "bad log root: %s: must be a full path name\n", logRoot);
