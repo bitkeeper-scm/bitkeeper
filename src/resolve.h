@@ -25,10 +25,11 @@ typedef struct {
 	u32	edited:1;	/* set if edited files found */
 	u32	resolveNames:1;	/* resolve (or don't resolve) conflicts */
 	u32	noconflicts:1;	/* do not handle conflicts */
-	u32	hadconflicts:1;	/* set if conflicts are found */
 	u32	errors:1;	/* set if there are errors, don't apply */
 	u32	quiet:1;	/* no output except for errors */
+	u32	textOnly:1;	/* no GUI tools allowed */
 	int	pass;		/* which pass are we in now */
+	char	*comment;	/* checkin comment for commit */
 	char	*mergeprog;	/* program to merge with */
 	int	renames;	/* count of renames processed in pass 1 */
 	int	renames2;	/* count of renames processed in pass 2 */
@@ -74,6 +75,7 @@ typedef	struct resolve {
 	names	*rnames;	/* tmpfile names for revisions being resolved */
 	names	*gnames;	/* gfile names being resolved */
 	names	*snames;	/* sfile names being resolved */
+	names	*tnames;	/* if present, the checked out L/G/R */
 	int	n;		/* number of tries on this file */
 	char	*prompt;	/* whatever should be the prompt */
 	char	*pager;		/* $PAGER or more */
@@ -115,7 +117,7 @@ int	prompt(char *msg, char *buf);
 int	confirm(char *msg);
 int	move_remote(resolve *rs, char *sfile);
 int	res_abort(resolve *rs);
-int	res_getlocal(char *gfile);
+char	*res_getlocal(char *gfile);
 int	res_diff(resolve *rs);
 int	res_difftool(resolve *rs);
 int	res_mr(resolve *rs);

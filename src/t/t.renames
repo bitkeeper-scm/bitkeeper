@@ -27,15 +27,20 @@
 # . sfile, no pending deltas	create			interactive resolve
 # . sfile, pending deltas	create			interactive resolve
 # . sfile, no pending deltas	rename			interactive resolve
-#   sfile, pending deltas	rename			interactive resolve
+# - sfile, pending deltas	rename			interactive resolve
+# . sfile renamed later		create			autorename in 2 passses
+# ? sfile renamed later		rename			autorename in 2 passses
 # . create			create			interactive resolve
-#   rename			sfile contents		interactive resolve
-#   rename			no file in new slot	copy to RESYNC?
 #   create			rename			interactive resolve
 #   rename			create			interactive resolve
 #   rename			rename			interactive resolve
-#   sfile renamed later		create			autorename in 2 passses
-#   sfile renamed later		rename			autorename in 2 passses
+#   rename			content change		interactive resolve
+#   rename			no file in new slot	copy to RESYNC?
+#
+# Legend:
+# .	done
+# ?	not done and not sure if it should be
+# -	low priority
 
 # XXX - some day try a case where the source repo has a file which is gone,
 # key is in the gone file, and a new file in place, and resync that.  I think
@@ -59,6 +64,7 @@ if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+touch BitKeeper/etc/SCCS/x.marked
 echo OK
 echo $N Create 5 files with 1,2,3,4,5 as contents ...................$NL
 echo 1 > A
@@ -68,24 +74,27 @@ echo 4 > D
 echo 5 > E
 ci $Q -i A B C D E
 if [ ! -f SCCS/s.A ]; then echo failed to create history; exit 1; fi
-bk commit $S -f -y"This is a \"Change Set\""
+commit $S -f -y"This is a \"Change Set\""
 echo OK
 cores
-echo $N Clone a copy of it and save a tarball of it .................$NL
+bk -r check -a
+echo $N Save a tarball of the repository ............................$NL
 cd $HERE
 tar cf SAVE project
 echo OK
 
+
 echo $N Create a file w/ no conflict for completeness ...............$NL
+cd $HERE
 rm -rf project copy
 tar xf SAVE
 cp -rp project copy
 cd project
 echo "No conflicts" > no_conflicts
 bk new $Q no_conflicts
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE
-bk resync $Q -a project copy
+resync $Q -a project copy
 cd copy
 if [ ! -f SCCS/s.no_conflicts ]
 then	echo failed to propogate no_conflicts; exit 1
@@ -101,9 +110,9 @@ cd project
 echo foo > no_conflicts
 bk new $Q no_conflicts
 bk mv no_conflicts renamed
-bk commit $Q -ywhatever2
+commit $Q -ywhatever2
 cd $HERE
-bk resync $Q -a project copy
+resync $Q -a project copy
 cd copy
 if [ ! -f SCCS/s.renamed ]
 then	echo failed to propogate renamed; exit 1
@@ -120,15 +129,15 @@ cp -rp project copy
 cd project
 echo "I am the project file" > CONFLICT
 bk new $Q CONFLICT
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 cd $HERE
-bk resync $Q project copy
+resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L copy 2>/dev/null <<EOF
 r
 y
 EOF
@@ -148,7 +157,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L copy 2>/dev/null <<EOF
 ml
 LOCAL
 EOF
@@ -174,7 +183,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -192,7 +201,7 @@ echo $N '  try to rename local to existing gfile in repository .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -209,7 +218,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -224,10 +233,66 @@ fi
 echo OK
 
 
-echo $N '  resolve by renaming remote file ...........................'$NL
+echo $N '  resolve by renaming remote file but abort commit ..........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L -t copy >/dev/null 2>&1 <<EOF
+mr
+REMOTE
+a
+EOF
+if [ ! -f copy/CONFLICT ]
+then	echo Failed to leave local file; exit 1
+fi
+if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+fi
+if [ -f copy/SCCS/s.REMOTE -o -f copy/REMOTE ]
+then	echo Should not have applied REMOTE
+	exit 1
+fi
+if [ ! -d copy/PENDING -o ! -d copy/RESYNC ]
+then	echo should not have cleaned up PENDING/RESYNC
+	exit 1
+fi
+echo OK
+
+
+echo $N '  resolve by renaming remote file using default comments ....'$NL
+/bin/rm -rf copy
+tar xf SAVE.copy
+resolve $Q $L -t copy >/dev/null 2>&1 <<EOF
+mr
+REMOTE
+u
+EOF
+if [ ! -f copy/CONFLICT ]
+then	echo Failed to leave local file; exit 1
+fi
+if [ "`cat copy/CONFLICT`" != "I am the copy file" ]
+then	echo Bad data in local file; cat copy/CONFLICT; exit 1
+fi
+if [ ! -f copy/REMOTE ]
+then	echo Failed to get REMOTE file
+	find copy -type f -print
+	exit 1
+fi
+if [ "`cat copy/REMOTE`" != "I am the project file" ]
+then	echo Failed to put new file in place; exit 1
+fi
+if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
+then	echo 'Failed to add rename rev to REMOTE?'; exit 1
+fi
+if [ `prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+then	echo 'Failed to add changeset for remote rename'; exit 1
+fi
+echo OK
+
+
+echo $N '  resolve by renaming remote file passing in comments .......'$NL
+/bin/rm -rf copy
+tar xf SAVE.copy
+resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -248,12 +313,15 @@ fi
 if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
+if [ `prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+then	echo 'Failed to add changeset for remote rename'; exit 1
+fi
 echo OK
 
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -270,7 +338,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -288,7 +356,7 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -315,15 +383,15 @@ cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
 bk mv OLDNAME CONFLICT
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 cd $HERE
-bk resync $Q project copy
+resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 echo $N '  resolve by removing local file ............................'$NL
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L copy 2>/dev/null <<EOF
 r
 y
 EOF
@@ -345,7 +413,7 @@ echo OK
 echo $N '  resolve by renaming local file ............................'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L copy 2>/dev/null <<EOF
 ml
 LOCAL
 EOF
@@ -373,7 +441,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -391,7 +459,7 @@ echo $N '  try to rename local to existing gfile in repository .......'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -408,7 +476,7 @@ echo OK
 echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -426,7 +494,7 @@ echo OK
 echo $N '  resolve by renaming remote file ...........................'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L -t -yMerge copy >/dev/null 2>&1 <<EOF
 mr
 REMOTE
 EOF
@@ -447,12 +515,15 @@ fi
 if [ `prs -hr+ -d:I: copy/REMOTE` != "1.3" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
+if [ `prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+then	echo 'Failed to add rename cset to ChangeSet'; exit 1
+fi
 echo OK
 
 echo $N '  try to rename remote to existing local sfile ..............'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -469,7 +540,7 @@ echo OK
 echo $N '  try to rename remote to existing local sfile in RESYNC ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -487,7 +558,7 @@ echo $N '  try to rename remote to existing local gfile ..............'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -513,20 +584,20 @@ cp -rp project copy
 cd project
 echo "I am the project file" > CONFLICT
 bk new $Q CONFLICT
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
 # Remote this to make it the pending deltas case
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE
-bk resync $Q project copy
+resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 r
 y
 q
@@ -551,6 +622,9 @@ fi
 if [ "`bk get -qp BitKeeper/deleted/SCCS/s..del-2`" != "I am the copy file" ]
 then	echo bad data in deleted file; exit 1
 fi
+if [ `prs -hr+ -d:I: ChangeSet` != "1.4" ]
+then	echo 'Failed to add rm cset to ChangeSet'; exit 1
+fi
 echo OK
 
 echo $N '  resolve by renaming local file ............................'$NL
@@ -558,7 +632,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L 2>/dev/null <<EOF
+resolve $Q $L -t -yMerge 2>/dev/null <<EOF
 ml
 LOCAL
 q
@@ -580,13 +654,16 @@ fi
 if [ `prs -hr+ -d:I: CONFLICT` != "1.1" ]
 then	echo 'Added new rev to CONFLICT?'; exit 1
 fi
+if [ `prs -hr+ -d:I: ChangeSet` != "1.4" ]
+then	echo 'Failed to add rm cset to ChangeSet'; exit 1
+fi
 echo OK
 
 echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -605,7 +682,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -623,7 +700,7 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -642,7 +719,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 get -q copy/CONFLICT
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 mr
 REMOTE
 EOF
@@ -663,12 +740,15 @@ fi
 if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
 then	echo 'Failed to add rename rev to REMOTE?'; exit 1
 fi
+if [ `prs -hr+ -d:I: copy/ChangeSet` != "1.4" ]
+then	echo 'Failed to add rm cset to ChangeSet'; exit 1
+fi
 echo OK
 
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -685,7 +765,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -703,7 +783,7 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -727,18 +807,18 @@ cp -rp project copy
 cd project
 echo "I am the project file" > CONFLICT
 bk new $Q CONFLICT
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
 cd $HERE
-bk resync $Q project copy
+resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 r
 y
 q
@@ -770,7 +850,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L 2>ERRORS <<EOF
+resolve $Q $L 2>ERRORS <<EOF
 ml
 LOCAL
 q
@@ -795,19 +875,19 @@ cd project
 echo "I am the project file" > OLDNAME
 bk new $Q OLDNAME
 bk mv OLDNAME CONFLICT
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE/copy
 echo "I am the copy file" > CONFLICT
 bk new $Q CONFLICT
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE
-bk resync $Q project copy
+resync $Q project copy
 tar cf SAVE.copy copy
 echo OK
 
 echo $N '  resolve by removing local file ............................'$NL
 cd $HERE
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 r
 y
 q
@@ -839,7 +919,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 cd copy
-bk resolve $Q $L 2>/dev/null <<EOF
+resolve $Q $L -t -yMerge 2>/dev/null <<EOF
 ml
 LOCAL
 q
@@ -867,7 +947,7 @@ echo $N '  try to rename local to existing sfile in repository .......'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 ml
 C
 q
@@ -886,7 +966,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 ml
 GFILE
 q
@@ -904,7 +984,7 @@ echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
 cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -923,7 +1003,7 @@ cd $HERE
 /bin/rm -rf copy
 tar xf SAVE.copy
 get -q copy/CONFLICT
-bk resolve $Q $L copy 2>/dev/null <<EOF
+resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
 mr
 REMOTE
 EOF
@@ -949,7 +1029,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 C
 q
@@ -966,7 +1046,7 @@ echo OK
 echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 ChangeSet
 q
@@ -984,7 +1064,7 @@ echo $N '  try to rename to an existing gfile in local repository ....'$NL
 /bin/rm -rf copy
 tar xf SAVE.copy
 touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
+resolve $Q $L copy 2>ERRORS <<EOF
 mr
 GFILE
 q
@@ -997,217 +1077,40 @@ if [ $? -ne 0 ]
 then	echo bad or no error message from resolve; cat ERRORS; exit 1
 fi
 echo OK
-# ---------------------------------------------------------------------------
 
-
-echo $N Create a file in same pathname slot in both .................$NL
-cd $HERE
-rm -rf project copy
-tar xf SAVE
-cp -rp project copy
-# project:
-#	create CONFLICT
-# copy:
-#	create CONFLICT
-# resync
-cd project
-echo Hi there, I am a conflict file > CONFLICT
-bk new $Q CONFLICT
-bk commit $Q -ywhatever
-cd $HERE/copy
-echo Hi there, I am a conflict file > CONFLICT
-bk new $Q CONFLICT
-bk commit $Q -ywhatever
-cd $HERE
-bk resync $Q project copy
-tar cf SAVE.copy copy
-echo OK
-
-echo $N '  resolve by renaming local file ............................'$NL
-cd $HERE
-/bin/rm -rf copy
-tar xf SAVE.copy
-cd copy
-bk resolve $Q $L 2>/dev/null <<EOF
-ml
-LOCAL
-q
-EOF
-if [ ! -f LOCAL ]
-then	echo Failed to rename local file; exit 1
-fi
-if [ ! -f CONFLICT ]
-then	echo Failed to get CONFLICT file
-	find . -type f -print
-	exit 1
-fi
-if [ `prs -hr+ -d:I: CONFLICT` != "1.1" ]
-then	echo 'Added new rev to CONFLICT?'; exit 1
-fi
-echo OK
-
-echo $N '  try to rename local to existing sfile in repository .......'$NL
-cd $HERE
-/bin/rm -rf copy
-tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
-ml
-C
-q
-EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
-if [ $? -ne 0 ]
-then	echo bad or no error message from resolve; cat ERRORS; exit 1
-fi
-echo OK
-
-echo $N '  try to rename local to existing gfile in repository .......'$NL
-cd $HERE
-/bin/rm -rf copy
-tar xf SAVE.copy
-touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
-ml
-GFILE
-q
-EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
-grep -q 'GFILE exists locally already' ERRORS
-if [ $? -ne 0 ]
-then	echo bad or no error message from resolve; cat ERRORS; exit 1
-fi
-echo OK
-
-echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
-cd $HERE
-/bin/rm -rf copy
-tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
-mr
-ChangeSet
-q
-EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
-grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
-if [ $? -ne 0 ]
-then	echo bad or no error message from resolve; cat ERRORS; exit 1
-fi
-echo OK
-
-echo $N '  resolve by renaming remote file ...........................'$NL
-cd $HERE
-/bin/rm -rf copy
-tar xf SAVE.copy
-get -q copy/CONFLICT
-bk resolve $Q $L copy 2>/dev/null <<EOF
-mr
-REMOTE
-EOF
-if [ ! -f copy/CONFLICT ]
-then	echo Failed to leave local file; exit 1
-fi
-if [ ! -f copy/REMOTE ]
-then	echo Failed to get REMOTE file
-	find copy -type f -print
-	exit 1
-fi
-if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
-then	echo 'Failed to add rename rev to REMOTE?'; exit 1
-fi
-echo OK
-
-echo $N '  try to rename to an existing sfile in local repository ....'$NL
-/bin/rm -rf copy
-tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
-mr
-C
-q
-EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
-grep -q 'SCCS/s.C exists locally already' ERRORS
-if [ $? -ne 0 ]
-then	echo bad or no error message from resolve; cat ERRORS; exit 1
-fi
-echo OK
-
-echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
-/bin/rm -rf copy
-tar xf SAVE.copy
-bk resolve $Q $L copy 2>ERRORS <<EOF
-mr
-ChangeSet
-q
-EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
-grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
-if [ $? -ne 0 ]
-then	echo bad or no error message from resolve; cat ERRORS; exit 1
-fi
-echo OK
-
-echo $N '  try to rename to an existing gfile in local repository ....'$NL
-/bin/rm -rf copy
-tar xf SAVE.copy
-touch copy/GFILE
-bk resolve $Q $L copy 2>ERRORS <<EOF
-mr
-GFILE
-q
-EOF
-if [ $? -eq 0 ]
-then	echo resolve failed to exit with an error; exit 1
-fi
-grep -q 'GFILE exists locally already' ERRORS
-if [ $? -ne 0 ]
-then	echo bad or no error message from resolve; cat ERRORS; exit 1
-fi
-echo OK
+# ------- Remote create with local conflict which gets renamed --------------
 
 echo $N Create a file w/ tmp conflict which gets renamed away .......$NL
 cd $HERE
 rm -rf project copy
 tar xf SAVE
 cp -rp project copy
+cd project
 bk mv A MOVED
 touch A
 bk new $Q A
-bk commit $Q -ywhatever
+commit $Q -ywhatever
 cd $HERE
-bk resync $Q project copy
+resync $Q project copy
 # Rework the patch to be in the order we want.  We want A first and MOVED 2nd.
 cd copy/PENDING
 FILE=`echo *`
-# Sometimes there is a fudge in the patch so we have to adjust the line numbers
-# Seems like there can be two or three fudges, so this doesn't work
-LINES=`wc -l < $FILE`
-if [ $LINES -eq 55 ]
-then	sed -e 1,29d -e 55d < $FILE > A
-	sed -e 1,16d -e 30,55d < $FILE > MOVED
-	sed -e 17,55d < $FILE | cat - A MOVED | adler32 > PATCH
-fi
-if [ $LINES -eq 56 ]
-then    sed -e 1,30d -e 56d < $FILE > A
-	sed -e 1,17d -e 31,56d < $FILE > MOVED
-	sed -e 18,56d < $FILE | cat - A MOVED | adler32 > PATCH
-fi
-if [ $LINES -ne 55 -a $LINES -ne 56 ]
-then	echo Do not understand this patch
-    	echo "LINES = '$LINES'"
-    	cat -n $FILE
-	exit 1
-fi
+# All this is because in different runs there may or may not be fudge lines, 
+# so we can't just use line numbers.
+(
+	exec > TOP
+	grep -v '# Patch checksum=' $FILE |
+	while read x 
+	do	if [ "$x" = "== MOVED ==" ]
+		then	exec > MOVED
+		fi
+		if [ "$x" = "== A ==" ]
+		then	exec > A
+		fi
+		echo "$x"
+	done
+)
+cat TOP A MOVED | adler32 > PATCH
 cd ..
 rm -rf RESYNC
 VV=
@@ -1233,22 +1136,204 @@ then	echo A does not match; exit 1
 fi
 echo OK
 
-echo $N Rename a file and takepatch, forcing an edit ................$NL
+# --------- Remote and local create in same location ------------------------
+
+echo $N Create a file in same pathname slot in both .................$NL
+cd $HERE
+rm -rf project copy
+tar xf SAVE
+cp -rp project copy
+# project:
+#	create CONFLICT
+# copy:
+#	create CONFLICT
+# resync
+cd project
+echo Hi there, I am a conflict file > CONFLICT
+bk new $Q CONFLICT
+commit $Q -ywhatever
+cd $HERE/copy
+echo Hi there, I am a conflict file > CONFLICT
+bk new $Q CONFLICT
+commit $Q -ywhatever
+cd $HERE
+resync $Q project copy
+tar cf SAVE.copy copy
+echo OK
+
+echo $N '  resolve by renaming local file ............................'$NL
+cd $HERE
+/bin/rm -rf copy
+tar xf SAVE.copy
+cd copy
+resolve $Q $L -t -yMerge 2>/dev/null <<EOF
+ml
+LOCAL
+q
+EOF
+if [ ! -f LOCAL ]
+then	echo Failed to rename local file; exit 1
+fi
+if [ ! -f CONFLICT ]
+then	echo Failed to get CONFLICT file
+	find . -type f -print
+	exit 1
+fi
+if [ `prs -hr+ -d:I: CONFLICT` != "1.1" ]
+then	echo 'Added new rev to CONFLICT?'; exit 1
+fi
+echo OK
+
+echo $N '  try to rename local to existing sfile in repository .......'$NL
+cd $HERE
+/bin/rm -rf copy
+tar xf SAVE.copy
+resolve $Q $L copy 2>ERRORS <<EOF
+ml
+C
+q
+EOF
+if [ $? -eq 0 ]
+then	echo resolve failed to exit with an error; exit 1
+fi
+grep -q 'SCCS/s.C exists locally already' ERRORS
+if [ $? -ne 0 ]
+then	echo bad or no error message from resolve; cat ERRORS; exit 1
+fi
+echo OK
+
+echo $N '  try to rename local to existing gfile in repository .......'$NL
+cd $HERE
+/bin/rm -rf copy
+tar xf SAVE.copy
+touch copy/GFILE
+resolve $Q $L copy 2>ERRORS <<EOF
+ml
+GFILE
+q
+EOF
+if [ $? -eq 0 ]
+then	echo resolve failed to exit with an error; exit 1
+fi
+grep -q 'GFILE exists locally already' ERRORS
+if [ $? -ne 0 ]
+then	echo bad or no error message from resolve; cat ERRORS; exit 1
+fi
+echo OK
+
+echo $N '  try to rename local to existing sfile in RESYNC ...........'$NL
+cd $HERE
+/bin/rm -rf copy
+tar xf SAVE.copy
+resolve $Q $L copy 2>ERRORS <<EOF
+mr
+ChangeSet
+q
+EOF
+if [ $? -eq 0 ]
+then	echo resolve failed to exit with an error; exit 1
+fi
+grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
+if [ $? -ne 0 ]
+then	echo bad or no error message from resolve; cat ERRORS; exit 1
+fi
+echo OK
+
+echo $N '  resolve by renaming remote file ...........................'$NL
+cd $HERE
+/bin/rm -rf copy
+tar xf SAVE.copy
+get -q copy/CONFLICT
+resolve $Q $L -t -yMerge copy 2>/dev/null <<EOF
+mr
+REMOTE
+EOF
+if [ ! -f copy/CONFLICT ]
+then	echo Failed to leave local file; exit 1
+fi
+if [ ! -f copy/REMOTE ]
+then	echo Failed to get REMOTE file
+	find copy -type f -print
+	exit 1
+fi
+if [ `prs -hr+ -d:I: copy/REMOTE` != "1.2" ]
+then	echo 'Failed to add rename rev to REMOTE?'; exit 1
+fi
+echo OK
+
+echo $N '  try to rename to an existing sfile in local repository ....'$NL
+/bin/rm -rf copy
+tar xf SAVE.copy
+resolve $Q $L copy 2>ERRORS <<EOF
+mr
+C
+q
+EOF
+if [ $? -eq 0 ]
+then	echo resolve failed to exit with an error; exit 1
+fi
+grep -q 'SCCS/s.C exists locally already' ERRORS
+if [ $? -ne 0 ]
+then	echo bad or no error message from resolve; cat ERRORS; exit 1
+fi
+echo OK
+
+echo $N '  try to rename to an existing sfile in RESYNC tree .........'$NL
+/bin/rm -rf copy
+tar xf SAVE.copy
+resolve $Q $L copy 2>ERRORS <<EOF
+mr
+ChangeSet
+q
+EOF
+if [ $? -eq 0 ]
+then	echo resolve failed to exit with an error; exit 1
+fi
+grep -q 'SCCS/s.ChangeSet exists in RESYNC already' ERRORS
+if [ $? -ne 0 ]
+then	echo bad or no error message from resolve; cat ERRORS; exit 1
+fi
+echo OK
+
+echo $N '  try to rename to an existing gfile in local repository ....'$NL
+/bin/rm -rf copy
+tar xf SAVE.copy
+touch copy/GFILE
+resolve $Q $L copy 2>ERRORS <<EOF
+mr
+GFILE
+q
+EOF
+if [ $? -eq 0 ]
+then	echo resolve failed to exit with an error; exit 1
+fi
+grep -q 'GFILE exists locally already' ERRORS
+if [ $? -ne 0 ]
+then	echo bad or no error message from resolve; cat ERRORS; exit 1
+fi
+echo OK
+
+# -----------------------------------------------------------------------------
+
+echo $N Resolve with an edited file created after RESYNC is created..$NL
+cd $HERE
+rm -rf project copy
+tar xf SAVE
+cp -rp project copy
 cd project
 sccsmv A Z
-bk commit $S -f -y'A->Z'
+commit $S -f -y'A->Z'
 cd ..
 resync $Q project copy
 cd copy
 BK_IGNORELOCK=YES get -e $Q A
-date >> A
-resolve 2>../ERR
+echo modified >> A
+resolve -q 2>../ERR
 if [ $? != 1 ]
 then	echo Resolve did not exit 1; exit 1
 fi
 cat<<EOF | cmp -s - ../ERR
 Warning: A is modified, will not overwrite it.
-resolve: found 1 renames in pass 1
 ===================== ERROR ========================
 There are modified files in the repository which are also in the patch.
 BitKeeper is aborting this patch until you check in those files.
@@ -1305,17 +1390,18 @@ cd $HERE/project
 get $Q -e Z
 echo same data >> Z
 ci $Q -y'change as Z'
-bk commit $S -f -y'change as Z'
+commit $S -f -y'change as Z'
 cd $HERE/copy
 get $Q -e A
 echo same data >> A
 ci $Q -y'change as A'
-bk commit $S -f -y'change as A'
+commit $S -f -y'change as A'
 resync $Q $HERE/project $HERE/copy
 if [ ! -f RESYNC/SCCS/r.Z ]
 then	echo failed to create conflict for Z; exit 1
 fi
 echo OK
+
 echo $N Run pass 1 of resolve and make sure m/r files move ..........$NL
 resolve $L $Q -234 
 if [ -f RESYNC/SCCS/s.Z -o ! -f RESYNC/BitKeeper/RENAMES/SCCS/s.1 ]

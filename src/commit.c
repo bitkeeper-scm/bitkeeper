@@ -84,7 +84,7 @@ main(int ac, char **av)
 		    case 'a':	printf("Commit aborted.\n");
 				unlink(list);
 				unlink(commit_file);
-				exit (0);
+				exit (1);
 		}
 		
 	}

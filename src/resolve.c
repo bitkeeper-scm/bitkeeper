@@ -33,8 +33,11 @@ main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
-	while ((c = getopt(ac, av, "l|m;acdq1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y;m;acdqt1234")) != -1) {
 		switch (c) {
+		    case 'a': opts.automerge = 1; break;
+		    case 'd': opts.debug = 1; break;
+		    case 'c': opts.noconflicts = 1; break;
 		    case 'l':
 		    	if (optarg) {
 				opts.log = fopen(optarg, "a");
@@ -42,11 +45,10 @@ main(int ac, char **av)
 				opts.log = stderr;
 			}
 			break;
-		    case 'a': opts.automerge = 1; break;
-		    case 'd': opts.debug = 1; break;
-		    case 'c': opts.noconflicts = 1; break;
 		    case 'm': opts.mergeprog = optarg; break;
 		    case 'q': opts.quiet = 1; break;
+		    case 't': opts.textOnly = 1; break;
+		    case 'y': opts.comment = optarg; break;
 		    case '1': opts.pass1 = 0; break;
 		    case '2': opts.pass2 = 0; break;
 		    case '3': opts.pass3 = 0; break;
@@ -55,6 +57,24 @@ main(int ac, char **av)
     	}
 	unless (opts.mergeprog) opts.mergeprog = "merge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
+
+	/* XXX - needs to be ifdefed for !Unix */
+	if (opts.pass3 && !opts.textOnly && !getenv("DISPLAY")) {
+		fprintf(stderr, "%s %s\n",
+		    "resolve: no DISPLAY variable found, ",
+		    "either set one or use -t");
+		exit(1);
+	}
+	if (opts.pass3 && !opts.textOnly && !opts.quiet) {
+		fprintf(stderr,
+		    "Using %s as graphical display\n", getenv("DISPLAY"));
+	}
+
+	if (opts.automerge) {
+		unless (opts.comment) opts.comment = "Automerge";
+		opts.textOnly = 1;	/* Good idea??? */
+	}
+
 	c = passes(&opts);
 	return (c);
 }
@@ -531,7 +551,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 			    rs->d->pathname);
 	    		fprintf(stderr,
 			    "\tpathname is used by %s\n", cnames[how]);
-			opts->errors = opts->hadconflicts = 1;
+			opts->errors = 1;
 			return (-1);
 		}
 
@@ -622,7 +642,7 @@ rename_file(resolve *rs)
 		    "%s ->\n\tLOCAL:  %s\n\tGCA:    %s\n\tREMOTE: %s\n",
 		    rs->s->gfile,
 		    rs->gnames->local, rs->gnames->gca, rs->gnames->remote);
-		opts->hadconflicts = 1;
+		opts->errors = 1;
 		return (-1);
 	}
 
@@ -847,6 +867,20 @@ slotTaken(opts *opts, char *slot)
 /*
  * Handle all the non-rename conflicts.
  * Handle committing anything which needs a commit.
+ *
+ * Idempotency is handled as follows:
+ * a) if there is an r.file, we know that we need to do a merge.
+ * b) if there is not an r.file, we should validate that there are no
+ *    open branches in this LOD - if there are, reconstruct the r.file.
+ *    XXX - not currently implemented.
+ *
+ * Text vs graphics:  if resolve is run in text only mode, then each commit
+ * of a merge will cause resolve to run "ci" and prompt the user for comments.
+ * If we are not run in text mode, then a commit of a merge just leaves the
+ * file there and we run citool at the end.
+ * In either case, the last step is to find out if we need a commit by looking
+ * for the r.ChangeSet, or for any modified files, or for any files with
+ * pending deltas.
  */
 int
 pass3_resolve(opts *opts)
@@ -854,6 +888,7 @@ pass3_resolve(opts *opts)
 	char	buf[MAXPATH];
 	FILE	*p;
 	int	n = 0;
+	int	mustCommit;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -882,6 +917,9 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	 * Process any conflicts.
 	 * Note: this counts on the rename resolution having bumped these
 	 * revs if need be.
+	 * XXX Note: if we are going to be really paranoid, we should just
+	 * do an sfiles, open up each file, check for conflicts, and
+	 * reconstruct the r.file if necessary.  XXX - not done.
 	 */
 	unless (p = popen("find . -type f -name 'r.*' -print", "r")) {
 		perror("popen of find");
@@ -891,6 +929,10 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 		chop(buf);
 		if (streq("SCCS/r.ChangeSet", &buf[2])) continue;
 		conflict(opts, &buf[2]);
+		if (opts->errors) {
+			pclose(p);
+			goto err;
+		}
 	}
 	pclose(p);
 	unless (opts->quiet) {
@@ -900,32 +942,89 @@ can be resolved.  Please rerun resolve and fix these first.\n", n);
 	}
 
 	if (opts->errors) {
-		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
+err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		exit(1);
 	}
 
 	/*
-	 * We need to do a commit if the ChangeSet file needs one and/or
-	 * if there are any pending changes in the RESYNC dir.  We have
-	 * go check for the pendings because we might have made them in
-	 * an earlier run of this program.  Then this run wouldn't know
-	 * that work has been done.
+	 * Get -M the ChangeSet file if we need to, before calling citool
+	 * or commit.
 	 */
-	if (exists("SCCS/r.ChangeSet") || pending()) {
+	if (mustCommit = exists("SCCS/r.ChangeSet")) {
 		sccs	*s;
 		resolve	*rs;
 		
-		if (exists("SCCS/r.ChangeSet")) {
-			s = sccs_init("SCCS/s.ChangeSet",
-			    INIT, opts->resync_proj);
-			rs = resolve_init(opts, s);
-			edit(rs);
-			unlink(sccs_Xfile(s, 'r'));
-			resolve_free(rs);
-		}
-		commit(opts);
+		s = sccs_init("SCCS/s.ChangeSet", INIT, opts->resync_proj);
+		rs = resolve_init(opts, s);
+		edit(rs);
+		unlink(sccs_Xfile(s, 'r'));
+		resolve_free(rs);
 	}
+
+	/*
+	 * Always do autocommit if there are no pending changes.
+	 */
+	unless (!mustCommit || pending() || pendingCheckins()) {
+		commit(opts);
+		return (0);
+	}
+	
+	/*
+	 * Unless we are in textonly mode, let citool do all the work.
+	 * XXX - need an option to citool which FORCES the creation of
+	 * a cset.  That same option should make sure that if you quit
+	 * out of citool, it exits !0.
+	 */
+	unless (opts->textOnly) {
+		int	ret = system("bk citool");
+
+		if (ret) {
+			fprintf(stderr, "citool failed, aborting.\n");
+			exit(1);
+		}
+		if (pending() || pendingCheckins()) {
+			fprintf(stderr,
+			    "Failed to check in/commit all files, aborting.\n");
+			exit(1);
+		}
+		return (0);
+	}
+		
+	/*
+	 * We always go look for pending and/or locked files even when
+	 * in textonly mode, because an earlier partial run could have
+	 * been in a different mode.  So be safe.
+	 */
+	unless (p = popen("bk sfiles -c", "r")) {
+		perror("popen of find");
+		exit (1);
+	}
+	while (fnext(buf, p)) {
+		chop(buf);
+		do_delta(opts, buf);
+	}
+	pclose(p);
+	if (opts->errors) {
+		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
+		exit(1);
+	}
+
+	commit(opts);
+
 	return (0);
+}
+
+do_delta(opts *opts, char *sfile)
+{
+	sccs	*s = sccs_init(sfile, INIT, opts->resync_proj);
+	int	flags = DELTA_FORCE;
+
+	gotComment = 0;
+	if (opts->quiet) flags |= SILENT;
+	if (sccs_delta(s, flags, 0, 0, 0, 0)) {
+		fprintf(stderr, "Delta of %s failed\n", s->gfile);
+		exit(1);
+	}
 }
 
 /*
@@ -954,16 +1053,10 @@ conflict(opts *opts, char *rfile)
 	    	fprintf(stderr,
 		    "resolve: can't process conflict in %s\n", s->gfile);
 		resolve_free(rs);
-		opts->hadconflicts = 1;
+		opts->errors = 1;
 		return;
 	}
 
-	/*
-	 * If we are automerging, try that.  The interface to the merge
-	 * program is "merge left_vers gca_vers right_vers merge_vers"
-	 * and the program must return as follows:
-	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
-	 */
 	gotComment = 0; comment = 0;
 	if (opts->automerge) {
 		automerge(rs);
@@ -1000,26 +1093,15 @@ automerge(resolve *rs)
 {
 	char	cmd[MAXPATH*4];
 	int	ret;
+	char	*name = basenm(rs->d->pathname);
 	names	tmp;
 	int	flags;
 	
-	/*
-	 * If it is the ChangeSet file, just edit it, we'll finish later.
-	 */
-	if (streq("ChangeSet", rs->s->gfile)) {
-		(void)edit(rs);
-		unlink(sccs_Xfile(rs->s, 'r'));
-		return;
-	}
-
-	sprintf(cmd, "BitKeeper/tmp/%s@%s",
-	    basenm(rs->gnames->local), rs->revs->local);
+	sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
 	tmp.local = strdup(cmd);
-	sprintf(cmd, "BitKeeper/tmp/%s@%s", 
-	    basenm(rs->gnames->gca), rs->revs->gca);
+	sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->gca);
 	tmp.gca = strdup(cmd);
-	sprintf(cmd, "BitKeeper/tmp/%s@%s", 
-	    basenm(rs->gnames->remote), rs->revs->remote);
+	sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->remote);
 	tmp.remote = strdup(cmd);
 	if (get_revs(rs, &tmp)) {
 		rs->opts->errors = 1;
@@ -1027,6 +1109,12 @@ automerge(resolve *rs)
 		return;
 	}
 
+	/*
+	 * The interface to the merge program is
+	 * "merge left_vers gca_vers right_vers merge_vers"
+	 * and the program must return as follows:
+	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
+	 */
 	sprintf(cmd, "bk %s %s %s %s %s",
 	    rs->opts->mergeprog, tmp.local, tmp.gca, tmp.remote, rs->s->gfile);
 	ret = system(cmd) & 0xffff;
@@ -1061,7 +1149,7 @@ automerge(resolve *rs)
 	}
 	if ((ret >> 8) == 1) {
 		fprintf(stderr, "Conflicts during merge of %s\n", rs->s->gfile);
-		rs->opts->hadconflicts = 1;
+		rs->opts->errors = 1;
 		return;
 	}
 	fprintf(stderr,
@@ -1076,8 +1164,8 @@ automerge(resolve *rs)
 int
 edit(resolve *rs)
 {
-	char	*branch;
 	int	flags = GET_EDIT|GET_SKIPGET;
+	char	*branch;
 
 	branch = strchr(rs->revs->local, '.');
 	assert(branch);
@@ -1130,6 +1218,25 @@ pending()
 }
 
 /*
+ * Return true if there are pending checkins other than the cset file
+ */
+int
+pendingCheckins()
+{
+	FILE	*f = popen("bk sfiles -c", "r");
+	char	buf[MAXPATH];
+
+	while (fnext(buf, f)) {
+		chop(buf);
+		if (streq("SCCS/s.ChangeSet", buf)) continue;
+		pclose(f);
+		return (1);
+	}
+	pclose(f);
+	return (0);
+}
+
+/*
  * Commit the changeset.
  *
  * XXX - need to check logging.
@@ -1138,17 +1245,23 @@ void
 commit(opts *opts)
 {
 	int	ret;
+	char	*s = malloc(100 + (opts->comment ? strlen(opts->comment) : 0));
 
-	if (opts->debug) fprintf(stderr, "commit\n");
-	if (opts->quiet) {
-		ret = system("bk commit -sRFf -yMerge");
-	} else {
-		ret = system("bk commit -RFf -yMerge");
-	}
-	if (ret) {
-		fprintf(stderr, "commit failed: 0x%x\n", ret);
+	sprintf(s, "bk commit -RFf%s %s%s",
+	    opts->quiet ? "s" : "",
+	    opts->comment ? "-y" : "",
+	    opts->comment ? opts->comment : "");
+	if (opts->debug) fprintf(stderr, "%s\n", s);
+	ret = system(s) & 0xffff;
+	free(s);
+	unless (ret) return;
+	if (ret == 0xff00) {
+	    	fprintf(stderr, "Can not execute '%s'\n", s);
 		exit(1);
 	}
+	ret >>= 8;
+	fprintf(stderr, "Commit exited %u\n", ret);
+	exit(1);
 }
 
 /*
@@ -1201,6 +1314,9 @@ pass4_apply(opts *opts)
 			fprintf(stderr, "resolve: no files were applied.\n");
 			exit(1);
 		}
+		if (sccs_admin(r, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
+			    exit(1);	/* ??? */
+		}
 		sccs_sdelta(r, sccs_ino(r), key);
 		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
 			/*
@@ -1212,6 +1328,14 @@ pass4_apply(opts *opts)
 				exit(1);
 			}
 			sccs_close(l);
+			/*
+			 * Right here we do something dangerous - we remove
+			 * the repository file and don't replace until down
+			 * below.  This is maybe not the right answer.
+			 * A better answer may be to move it to the x.file
+			 * and then move the other file in place, and then
+			 * remove the x.file.
+			 */
 			unlink(l->sfile);
 			if (opts->log) {
 				fprintf(stdlog, "unlink(%s)\n", l->sfile);

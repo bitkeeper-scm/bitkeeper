@@ -44,9 +44,13 @@ res_clear(resolve *rs)
 int
 c_dgl(resolve *rs)
 {
-	names	*n = (names*)rs->opaque;
+	names	*n = rs->tnames;
 	char	cmd[MAXPATH*2];
 
+	unless (n) {
+		fprintf(stderr, "temp files not set up, can not diff\n");
+		return (0);
+	}
 	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->local, rs->pager);
 	system(cmd);
 	return (0);
@@ -55,9 +59,13 @@ c_dgl(resolve *rs)
 int
 c_dgr(resolve *rs)
 {
-	names	*n = (names*)rs->opaque;
+	names	*n = rs->tnames;
 	char	cmd[MAXPATH*2];
 
+	unless (n) {
+		fprintf(stderr, "temp files not set up, can not diff\n");
+		return (0);
+	}
 	sprintf(cmd, "bk diff %s %s | %s", n->gca, n->remote, rs->pager);
 	system(cmd);
 	return (0);
@@ -66,9 +74,13 @@ c_dgr(resolve *rs)
 int
 c_dlm(resolve *rs)
 {
-	names	*n = (names*)rs->opaque;
+	names	*n = rs->tnames;
 	char	cmd[MAXPATH*2];
 
+	unless (n) {
+		fprintf(stderr, "temp files not set up, can not diff\n");
+		return (0);
+	}
 	sprintf(cmd, "bk diff %s %s | %s", n->local, rs->s->gfile, rs->pager);
 	system(cmd);
 	return (0);
@@ -77,10 +89,24 @@ c_dlm(resolve *rs)
 int
 c_drm(resolve *rs)
 {
-	names	*n = (names*)rs->opaque;
+	names	*n = rs->tnames;
 	char	cmd[MAXPATH*2];
 
+	unless (n) {
+		fprintf(stderr, "temp files not set up, can not diff\n");
+		return (0);
+	}
 	sprintf(cmd, "bk diff %s %s | %s", n->remote, rs->s->gfile, rs->pager);
+	system(cmd);
+	return (0);
+}
+
+int
+c_em(resolve *rs)
+{
+	char	cmd[MAXPATH*2];
+
+	sprintf(cmd, "%s %s", rs->editor, rs->s->gfile);
 	system(cmd);
 	return (0);
 }
@@ -126,7 +152,6 @@ c_merge(resolve *rs)
 	}
 	if ((ret >> 8) == 1) {
 		fprintf(stderr, "Conflicts during merge of %s\n", rs->s->gfile);
-		rs->opts->hadconflicts = 1;
 		return (0);
 	}
 	fprintf(stderr,
@@ -182,6 +207,7 @@ c_vm(resolve *rs)
 rfuncs	c_funcs[] = {
     { "?", "help", "print this help", c_help },
     { "a", "abort", "abort the patch", res_abort },
+    { "C", "commit", "commit to the merged file" },
     { "cl", "clear", "clear the screen", res_clear },
     { "d", "diff", "diff the local file against the remote file", res_diff },
     { "D", "difftool",
@@ -190,9 +216,7 @@ rfuncs	c_funcs[] = {
     { "dr", "diff remote", "diff the GCA vs remote file", c_dgr },
     { "dlm", "diff local merge", "diff the local file vs merge file", c_dlm },
     { "dlm", "diff remote merge", "diff the remote file vs merge file", c_drm },
-    { "e", "edit merge", "edit the merge file", res_vl },
-    { "el", "edit local", "edit the local file", res_vl },
-    { "er", "edit remote", "edit the remote file", res_vr },
+    { "e", "edit merge", "edit the merge file", c_em },
     { "f", "fmtool", "merge with graphical filemerge", c_fmtool },
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
@@ -217,7 +241,7 @@ rfuncs	c_funcs[] = {
 int
 resolve_contents(resolve *rs)
 {
-	names	names;
+	names	*n = calloc(1, sizeof(*n));
 	delta	*d;
 	char	*nm = basenm(rs->s->gfile);
 	int	ret;
@@ -226,23 +250,23 @@ resolve_contents(resolve *rs)
 	d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 	assert(d);
 	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
-	names.local = strdup(buf);
+	n->local = strdup(buf);
 	d = sccs_getrev(rs->s, rs->revs->gca, 0, 0);
 	assert(d);
 	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
-	names.gca = strdup(buf);
+	n->gca = strdup(buf);
 	d = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
 	assert(d);
 	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
-	names.remote = strdup(buf);
-	rs->opaque = (void*)&names;
+	n->remote = strdup(buf);
+	rs->tnames = n;
 	rs->prompt = rs->s->gfile;
-	if (get_revs(rs, &names)) {
+	if (get_revs(rs, n)) {
 		rs->opts->errors = 1;
-		freenames(&names, 0);
+		freenames(n, 1);
 		return (-1);
 	}
 	ret = resolve_loop("resolve_contents", rs, c_funcs);
-	freenames(&names, 0);
+	freenames(n, 1);
 	return (ret);
 }

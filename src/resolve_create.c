@@ -11,39 +11,59 @@ res_abort(resolve *rs)
 }
 
 /*
- * Return true if the gfile is there or if we could get it.
+ * Return the pathname of a _COPY_ of the gfile or checked out gfile.
+ * The caller frees the path and unlinks the temp file.
  */
-int
+char	*
 res_getlocal(char *gfile)
 {
 	char	buf[MAXPATH];
+	char	cmd[MAXPATH*2];
+	char	*sfile;
 
 	sprintf(buf, "%s/%s", RESYNC2ROOT, gfile);
-	unless (exists(buf)) {
-		sprintf(buf, "bk get -s %s/%s", RESYNC2ROOT, gfile);
-		system(buf);
+	sfile = name2sccs(buf);
+	unless (exists(sfile) || exists(buf)) {
+		free(sfile);
+		return (0);
 	}
-	sprintf(buf, "%s/%s", RESYNC2ROOT, gfile);
-	return (exists(buf));
+
+	unless (exists(sfile)) {
+		free(sfile);
+		gettemp(buf, "local");
+		sprintf(cmd, "cp %s/%s %s", RESYNC2ROOT, gfile, buf);
+		system(cmd);
+		unless (exists(buf)) return (0);
+		return (strdup(buf));
+	}
+	free(sfile);
+
+	sprintf(cmd, "bk get -ksp %s/%s > %s", RESYNC2ROOT, gfile, buf);
+	system(cmd);
+	unless (exists(buf)) return (0);
+	return (strdup(buf));
 }
 
 /*
  * Diff the local against the remote;
- * get the local file if it isn't gotten already.
- * XXX - this is wrong, the keywords are in an unknown state.
+ * The local may be just a gfile, if it is, use it,
+ * otherwise get the local file into a temp file without keywords.
  */
 int
 res_diff(resolve *rs)
 {
 	char	cmd[MAXPATH*3];
+	char	*left;
 
-	unless (res_getlocal(rs->d->pathname)) {
+	unless (left = res_getlocal(rs->d->pathname)) {
 		fprintf(stderr, "diff: can't find %s\n", rs->d->pathname);
 		return (0);
 	}
-	sprintf(cmd, "bk get -ksp %s | bk diff %s/%s - | %s",
-	    rs->s->gfile, RESYNC2ROOT, rs->d->pathname, rs->pager);
+	sprintf(cmd, "bk get -ksp %s | bk diff %s - | %s",
+	    left, RESYNC2ROOT, rs->d->pathname, rs->pager);
 	system(cmd);
+	unlink(left);
+	free(left);
 	return (0);
 }
 
@@ -51,12 +71,15 @@ int
 res_difftool(resolve *rs)
 {
 	char	*av[10];
-	names	*n = (names*)rs->opaque;
 
+	unless (rs->tnames) {
+		fprintf(stderr, "No temp names setup, can not run difftool\n");
+		return (0);
+	}
 	av[0] = "bk";
 	av[1] = "difftool";
-	av[2] = n->local;
-	av[3] = n->remote;
+	av[2] = rs->tnames->local;
+	av[3] = rs->tnames->remote;
 	av[4] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
 	return (0);
@@ -98,14 +121,17 @@ int
 res_vl(resolve *rs)
 {
 	char	cmd[MAXPATH];
+	char	*left;
 
-	unless (res_getlocal(rs->d->pathname)) {
+	unless (left = res_getlocal(rs->d->pathname)) {
 		fprintf(stderr, "diff: can't find %s\n", rs->d->pathname);
 		return (0);
 	}
 	fprintf(stderr, "--- Viewing %s ---\n", rs->d->pathname);
-	sprintf(cmd, "%s %s/%s", rs->pager, RESYNC2ROOT, rs->d->pathname);
+	sprintf(cmd, "%s %s", rs->pager, left);
 	system(cmd);
+	unlink(left);
+	free(left);
 	return (0);
 }
 
@@ -123,20 +149,38 @@ res_vr(resolve *rs)
 int
 res_hl(resolve *rs)
 {
-	char	cmd[MAXPATH];
-
-	sprintf(cmd,
-	    "bk prs %s/%s | %s", RESYNC2ROOT, rs->d->pathname, rs->pager);
-	system(cmd);
+	unless (rs->revs) {
+		sccs_prs(rs->s, 0, 0, 0, stdout);
+		return (0);
+	}
+	prs_common(rs, rs->s, rs->revs->remote, rs->revs->local);
 	return (0);
 }
 
 int
 res_hr(resolve *rs)
 {
-	char	cmd[MAXPATH];
+	unless (rs->revs) {
+		sccs_prs(rs->s, 0, 0, 0, stdout);
+		return (0);
+	}
+	prs_common(rs, rs->s, rs->revs->local, rs->revs->remote);
+	return (0);
+}
 
-	sprintf(cmd, "bk prs %s | %s", rs->s->gfile, rs->pager);
+/* XXX - this is so lame, it should mark the list and call sccs_prs */
+prs_common(resolve *rs, sccs *s, char *a, char *b)
+{
+	char	cmd[2*MAXPATH];
+	char	*list;
+
+	list = sccs_impliedList(s, "resolve", a, b);
+	if (strlen(list) > MAXPATH) {	/* too big */
+		free(list);
+		sccs_prs(s, 0, 0, 0, stdout);
+		return;
+	}
+	sprintf(cmd, "bk prs -r%s %s | %s", list, rs->s->gfile, rs->pager);
 	system(cmd);
 	return (0);
 }

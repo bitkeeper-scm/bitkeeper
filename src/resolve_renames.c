@@ -130,7 +130,6 @@ rfuncs	r_funcs[] = {
 
 /*
  * Given an SCCS file, resolve the renames.
- * Set up the list of temp files in the opaque pointer,
  * get the various versions into the temp files,
  * do the resolve,
  * and then clean them up.
@@ -138,7 +137,7 @@ rfuncs	r_funcs[] = {
 int
 resolve_renames(resolve *rs)
 {
-	names	names;
+	names	*n = calloc(1, sizeof(*n));
 	delta	*d;
 	char	*nm = basenm(rs->s->gfile);
 	int	ret;
@@ -147,23 +146,23 @@ resolve_renames(resolve *rs)
 	d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
 	assert(d);
 	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
-	names.local = strdup(buf);
+	n->local = strdup(buf);
 	d = sccs_getrev(rs->s, rs->revs->gca, 0, 0);
 	assert(d);
 	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
-	names.gca = strdup(buf);
+	n->gca = strdup(buf);
 	d = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
 	assert(d);
 	sprintf(buf, "BitKeeper/tmp/%s_%s@%s", nm, d->user, d->rev);
-	names.remote = strdup(buf);
-	rs->opaque = (void*)&names;
+	n->remote = strdup(buf);
+	rs->tnames = n;
 	rs->prompt = rs->gnames->local;
-	if (get_revs(rs, &names)) {
+	if (get_revs(rs, n)) {
 		rs->opts->errors = 1;
-		freenames(&names, 0);
+		freenames(n, 1);
 		return (-1);
 	}
 	ret = resolve_loop("resolve_renames", rs, r_funcs);
-	freenames(&names, 0);
+	freenames(n, 1);
 	return (ret);
 }
