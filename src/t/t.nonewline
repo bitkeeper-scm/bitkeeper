@@ -37,8 +37,8 @@ ci $Q -i foo.c bar.c
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
 get $Q foo.c bar.c
-cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1 }
-cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1 }
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
 echo $N Create a change set .........................................$NL
 bk commit $S -f -ywhatever
@@ -58,8 +58,8 @@ echo $N bar$NL > SAVEbar.c
 if [ ! -f SCCS/s.foo.c ]; then echo failed to resync history; exit 1; fi
 if [ ! -f SCCS/s.bar.c ]; then echo failed to resync history; exit 1; fi
 get $Q foo.c bar.c
-cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1 }
-cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1 }
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
 echo $N Check including no newline deltas ...........................$NL
 get $Q -e foo.c bar.c
@@ -80,12 +80,12 @@ echo bar >> SAVEbar.c
 echo $N trunk$NL >> SAVEbar.c
 get $Q -e -M1.1.1.1 foo.c
 get $Q -e -M1.1.1.1 bar.c
-cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1 }
-cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1 }
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 delta $Q -ymerge foo.c bar.c
 get $Q foo.c bar.c
-cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1 }
-cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1 }
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
 bk commit $S -f -ywhatever
 echo $N Check for no newline changes back to project ................$NL
@@ -94,6 +94,6 @@ bk resync $Q -a copy project
 cp copy/SAVEfoo.c project/SAVEfoo.c
 cp copy/SAVEbar.c project/SAVEbar.c
 cd project
-cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1 }
-cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1 }
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
 echo OK
