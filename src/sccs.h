@@ -1070,6 +1070,10 @@ delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
+void	sccs_color(sccs *s, delta *d);
+int	cset_lock(void);
+void	cset_unlock(void);
+int	bk_options(void);
 
 extern char *bk_vers;
 extern char *bk_utc;

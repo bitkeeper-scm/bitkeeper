@@ -198,8 +198,8 @@ logs_pending(int ptype, int skipRecentCset, int grace)
 	return (i);
 }
 
-private
-csetCount()
+private int
+csetCount(void)
 {
 	sccs 	*s;
 	delta	*d;
@@ -368,7 +368,7 @@ private int
 enforceCsetLog()
 {
 #define	MAX_PENDING_LOG 40
-	int l, ptype;
+	int	ptype;
 	int	max_pending = MAX_PENDING_LOG, log_quota;
 
 	if (getenv("BK_NEEDMORECSETS")) max_pending += 10;
@@ -468,7 +468,7 @@ do_commit(char **av,
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
 	int	status, rc, i;
-	int	l, ptype, fd, fd0;
+	int	l, fd, fd0;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "", cmt_opt[MAXPATH + 3], *p;
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
@@ -725,7 +725,7 @@ cset_user(FILE *f, sccs *s, delta *d1, char *keylist)
 {
 	kvpair	kv;
 	MDBM	*uDB;
-	char	*cmd, *p, *q;
+	char	*p, *q;
 	char	buf[MAXLINE];
 	FILE 	*f1;
 	int	i = 0;
@@ -780,17 +780,25 @@ config(FILE *f)
 	MDBM	*db;
 	char	buf[MAXLINE], tmpfile[MAXPATH];
 	char	s_cset[] = CHANGESET;
-	char	*p, *dspec, *license;
+	char	*p, *license;
 	sccs	*s;
 	delta	*d;
+	int	i;
 
 	fprintf(f, "Time_t:\t%s\n", bk_time);
 	getMsg("version", bk_model(buf, sizeof(buf)), 0, f);
 	fprintf(f,
 	   "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
-	f1 = popen("bk sfind -S -sx,c,p,n", "r");
-	while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
-	pclose(f1);
+
+ 	s = sccs_init(s_cset, INIT_NOCKSUM, NULL);
+	assert(s && HASGRAPH(s));
+	fprintf(f, "ChangeSet_size: %lu %s\n", s->size, 
+	    (s->encoding & E_GZIP) ? "gzipped" : "");
+	sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASHONLY, 0);
+	i = 0;
+	EACH_KV(s->mdbm) ++i;
+	fprintf(f, "ChangeSet_lines: %d\n", i);
+	fprintf(f, "ChangeSet_nextserial: %d\n", s->nextserial);
 
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm));
@@ -819,8 +827,6 @@ config(FILE *f)
 		}
 	}
 
- 	s = sccs_init(s_cset, INIT_NOCKSUM, NULL);
-	assert(s && HASGRAPH(s));
 	fprintf(f, "ID:\t");
 	sccs_pdelta(s, sccs_ino(s), f);
 	fputs("\n", f);
@@ -842,8 +848,8 @@ config(FILE *f)
 		if (d->flags & D_RED) continue; 
 		fprintf(f, "Cset:\t");
 		sccs_pdelta(s, d, f);
-		fprintf(f," %u", d->dateFudge);
-		fputs("\n", f);
+		fprintf(f," %lu +%d%s\n", 
+		    d->dateFudge, d->added, d->merge ? "M" : "");
 		cset_user(f, s, d, tmpfile);
 		fclose(fopen(tmpfile,  "w")); /* truncate it */
 	}
