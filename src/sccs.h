@@ -193,7 +193,7 @@
 #define	D_REMOTE	0x00000100	/* for resolve; from remote repos. */
 #define	D_BADFORM	0x00000200	/* poorly formed rev */
 #define	D_BADREV	0x00000400	/* bad parent/child relationship */
-#define	D_STEAL		0x00000800	/* sccslog is stealing this rev */
+#define	D_NONEWLINE	0x00000800	/* this delta has no trailing newline */
 #define	D_META		0x00001000	/* this is a metadata removed delta */
 #define	D_SYMBOLS	0x00002000	/* delta has one or more symbols */
 #define	D_DUPCSETFILE	0x00004000	/* this changesetFile is shared */

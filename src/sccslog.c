@@ -192,7 +192,7 @@ sccslog(sccs *s)
 	stealTree(start, stop);
 	for (d = s->table; d; ) {
 		d->kid = d->siblings = 0;
-		if (d->flags & D_STEAL) {
+		if (d->flags & D_VISITED) {
 			e = d->next;
 			d->next = list;
 			list = d;
@@ -228,7 +228,7 @@ stealTree(delta *d, delta *stop)
 		d->flags &= ~D_DUPHOST;
 		d->hostname = strdup(d->hostname);
 	}
-	d->flags |= D_STEAL;
+	d->flags |= D_VISITED;
 	if (d == stop) return;
 	if (d->kid) stealTree(d->kid, stop);
 	if (d->siblings) stealTree(d->siblings, stop);
