@@ -270,9 +270,10 @@ that will work too, it just gets another patch.\n");
 		}
 
 		if (opts->noconflicts) {
+			SHOUT();
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
-			freeStuff(opts);
+			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
 			exit(1);
 		}
 
