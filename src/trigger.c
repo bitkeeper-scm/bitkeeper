@@ -193,7 +193,6 @@ runit(char *file, char *output)
 	int	status, rc;
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
-	signal(SIGCHLD, SIG_DFL); /* for solaris */
 	status = sysio(0, output, 0, file, SYS);
 	if (WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);

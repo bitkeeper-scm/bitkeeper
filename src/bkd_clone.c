@@ -144,7 +144,6 @@ compressed(int level, int hflag)
 	char	*cmd;
 	int	rc = 1;
 
-	signal(SIGCHLD, SIG_DFL);
 	/* 
 	 * Generate list of sfiles and log markers to transfer to
 	 * remote site.  It is important that the markers appear in

@@ -105,7 +105,6 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-	signal(SIGCHLD, SIG_DFL); /* for free bsd */
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
 	sprintf(cmd, "bk _listkey %s > BitKeeper/tmp/lk%u", 
 	    metaOnly ? "-e": "", getpid());
@@ -154,7 +153,6 @@ cmd_push_part2(int ac, char **av)
 	static	char *takepatch[] = { "bk", "takepatch", "-vvv", "-c", 0};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
-	signal(SIGCHLD, SIG_DFL);
 	while ((c = getopt(ac, av, "deGnz|")) != -1) {
 		switch (c) {
 		    case 'z':

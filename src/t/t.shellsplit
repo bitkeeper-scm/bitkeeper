@@ -13,8 +13,8 @@ shellsplit()
 {
 	i=1
 	for f do
-		echo $NX "$i: (" $NXL
-		echo $NX "$f" $NXL
+		echo $NX "$i: ("$NXL
+		echo $NX "$f"$NXL
 		echo ")"
 		i=`expr $i + 1`
 	done
@@ -25,7 +25,7 @@ dotest()
 	line="Test shellSplit '$1' "
 	len=`echo "$line" | wc -c`
 	len=`expr 62 - $len`
-	fill=`printf "%${len}s" "" | sed -e 's/ /./g'`
+	fill=`printf "%${len}s" "" | sed -e 's/ /./g' 2> /dev/null`
 	echo $N "$line$fill" $NL
 	bk _shellSplit_test "$1" > BK
 	eval shellsplit "$1" > SH

@@ -303,7 +303,6 @@ gensfio(opts opts, int verbose, int level, int wfd)
 	
 	sfiocmd = aprintf("bk sfio -o%s < %s", 
 	    (verbose ? "" : "q"), tmpf);
-	signal(SIGCHLD, SIG_DFL);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
 	opts.in = opts.out = 0;

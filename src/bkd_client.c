@@ -403,8 +403,6 @@ bkd(int compress, remote *r)
 			fprintf(stderr, "CMD[%d]=%s\n", i, cmd[i]);
 		}
 	}
-
-	signal(SIGCHLD, SIG_DFL);
 	p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd), BIG_PIPE);
 	if (freeme) free(freeme);
 	return (p);

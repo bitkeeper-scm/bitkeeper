@@ -52,8 +52,6 @@ cmd_synckeys(int ac, char **av)
 		drain();
 		return (1);
 	}
-		
-	signal(SIGCHLD, SIG_DFL); /* for free bsd */
 	sprintf(cmd, "bk _listkey -r > BitKeeper/tmp/lk%u", getpid());
 	l = popen(cmd, "w");
 	while ((n = getline(0, buf, sizeof(buf))) > 0) {
