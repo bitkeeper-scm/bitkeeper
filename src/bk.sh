@@ -1002,35 +1002,73 @@ function sendbug {
 BitKeeper Bug Report
 --------------------
 
-Please fill in the fields below as much as possible.  Replace the [whatever]
-with your information.
+Please fill in the fields below as much as possible.  We parse this 
+automatically, so please follow the format guidelines.
+
+Fields marked with [whatever] are single line fields.
+
+The Description, Suggestions, and Contact sections can be multi line.
 
 ------------------------------------------------------------------------------
 
-Bug/RFE:	[bug is obvious, RFE is request for enhancement]
+Bug/RFE:
+	[bug is obvious, RFE is request for enhancement]
 
-Severity:	[5 - no big deal, 1 - can't use BitKeeper until this is fixed]
+Severity:
+	[5 - no big deal, 1 - can't use BitKeeper until this is fixed]
 
-Program:	[cset, co, delta, etc.  If you know which caused the problem]
+Program:
+	[cset, co, delta, etc.  If you know which caused the problem]
 
-Synopsis:	[one line: i.e., sfiles dumps core when running on CP/M]
+Synopsis:
+	[one line: i.e., sfiles dumps core when running on CP/M]
 
-Description:	[take as much space as you need here.  Tell us:
-		- what you were doing
-		- what happened
-		- can you make it happen again
-		- what you think went wrong
-		- machine / OS / etc on which the bug occurred
-		- anything else that might be useful
-		]
+Description:
+	Please tell us:
+	- what you were doing
+	- what happened
+	- can you make it happen again, if so, how?
+	- what you think went wrong
+	- machine / OS / etc on which the bug occurred
+	- anything else that you think might be useful
+	Take as much space as you need, but leave a blank line
+	between this and the next field.
 
-Suggestions:	[Any suggested fix would be most welcome]
+Suggestions:
+	Any suggested fix is most welcome.  
+	Take as much space as you need, but leave a blank line
+	between this and the next field.
+
+Contact info:
+	Your contact information here. 
+	A phone number and a time to call is useful if we need more
+	information. 
+	You can also specify a preferred email address.
+	Take as much space as you need, but leave a blank line between
+	this and the ----- below.
 
 ------------------------------------------------------------------------------
 
 EOF
 	$EDITOR /tmp/bug$$
-	mail -s "BitKeeper BUG" bitkeeper@bitmover.com < /tmp/bug$$
+	while true
+	do	echo $N "(s)end, (e)dit, (q)uit? "
+		read x
+		case X$x in
+		    Xs*) mail -s "BitKeeper BUG" bitkeeper@bitmover.com \
+			    < /tmp/bug$$
+		 	 rm -f /tmp/bug$$
+			 echo Your bug has been sent, thank you.
+	    	 	 exit 0;
+		 	 ;;
+		    Xe*) $EDITOR /tmp/bug$$
+			 ;;
+		    Xq*) rm -f /tmp/bug$$
+			 echo No bug sent.
+			 exit 0
+			 ;;
+		esac
+	done
 }
 
 function gui {

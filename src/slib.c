@@ -8551,7 +8551,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "M")) {
 		/* XXX TODO: get the value from the	*/
 		/* 'm' flag if/when implemented		*/
-		fs(s->gfile);
+		fs(basenm(s->gfile));
 		return (strVal);
 	}
 
