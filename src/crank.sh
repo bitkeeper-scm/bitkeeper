@@ -18,7 +18,9 @@ cd $REPO/src
 bk get build.sh || exit 1
 cp build.sh build
 chmod +x build
-./build production
 TST_DIR=/build
-export TST_DIR
+TMPDIR=/build
+TMP_DIR=/build
+export TST_DIR TMPDIR TMP_DIR
+./build production
 ./bk regression 
