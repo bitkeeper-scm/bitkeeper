@@ -50,8 +50,8 @@ then
 	binary_data2="$BK_BIN/co.exe"
 	PATH=$_BK_BIN:$PATH
 	BK_BIN="$BK_BIN/"
-	export PATH BK_BIN
-	USER=`getuser`
+	USER="bk_test_user"
+	export PATH BK_BIN USER
 else
 	# we are on a unix box
 	PLATFORM="UNIX"

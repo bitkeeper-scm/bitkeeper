@@ -5,7 +5,7 @@ WHATSTR("@(#)%K%");
 char	*delta_help = "\n\
 usage: delta [-iluYpq] [-S<sym>] [-L<lod>] [-Z<alg>] [-y<c>] [files...]\n\n\
    -a		check in new work automatically\n\
-   -c		don't verify file checksum
+   -c		don't verify file checksum\n\
    -D<file>	take diffs from <file>\n\
    -E		set file encoding (like admin)\n\
    -f		force ci of null delta - default when invoked as delta\n\
