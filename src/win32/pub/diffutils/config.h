@@ -13,22 +13,10 @@
 #define HAVE_DIRENT_H 1
 #define HAVE_SYS_WAIT_H 1
 #define CLOSEDIR_VOID 1
+#define HAVE_TMPNAM 1
+#define RETSIGTYPE void
 #define same_file(a, b) (-1)
 #define popen(a,b)	nt_popen(a, b)
 #define pclose(a)	nt_pclose(a)
 #define system(a)	nt_system(a)
-#define RETSIGTYPE void
-#define HAVE_TMPNAM 1
 
-#define SYSTEM_QUOTE_ARG(q, a) \
-  { \
-    *(q)++ = '\"'; \
-    for (;  *(a);  *(q)++ = *(a)++) \
-      if (*(a) == '\"') \
-        { \
-          *(q)++ = '\"'; \
-          *(q)++ = '\\'; \
-          *(q)++ = '\"'; \
-        } \
-    *(q)++ = '\"'; \
-  }
