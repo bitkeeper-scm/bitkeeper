@@ -151,13 +151,13 @@ earlier(sccs *s, delta *a, delta *b)
  * We do not bother with the parent/sibling pointers, just the table
  * pointer. If we need the others, we need to call dinsert.
  *
- * XXX Do we need any special processing for mete delta?
+ * XXX Do we need any special processing for meta delta?
  */
 cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 {
 	int	i, error, added = 0;
 	delta	*d, *e, *p;
-	ser_t	serial; 
+	ser_t	serial; /* serial number for 'd' */ 
 	char	*t, *r;
 	char	**syms = 0;
 
@@ -195,13 +195,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 		p = s->table;
 		while (p) {
 			e = p->next;
-			assert(e); /*
-				    * If this pop, we are inserting the
-				    * first delta (rev 1.0 ?) to a
-				    * non-empty file, should never happen.
-				    */
-			assert(p->next == e);
-			if (earlier(s, e, d)) { /* found insertion point */
+			if (!e || earlier(s, e, d)) { /* got insertion point */
 				serial = p->serial;
 				d->next = e;
 				p->next = d;
@@ -254,7 +248,7 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 	}
 
 	/*
-	 * Fix up d->serial;
+	 * Fix up d->serial
 	 */
 	d->serial = serial;
 	assert((d->serial == 0) || (d->serial > d->pserial));
@@ -284,9 +278,14 @@ cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey)
 
 	/*
 	 * Fix up tag/symbols
-	 * We pass in a NULL rev to force the symbol to be always
-	 * added, addsym() will skip the symbol if it think it is
-	 * already added.
+	 * We have not run "bk renumber" yet, remote delta 'd' may have
+	 * the same rev as a local delta, i.e. We may have two rev 1.3.
+	 * We pass in a NULL rev to addsym(), this force the symbol to be
+	 * always added. Otherwise, addsym() will skip the symbol if it finds
+	 * a local rev 1.3 tagged with the same symbol.
+	 * Passing a NULL rev means s->symbols will be in a incomplete state. 
+	 * This is ok, because delta_table() uses the s->symbols->metad pointer
+	 * to dump the sysmbol information. It does not use rev in that process.
 	 */
 	EACH (syms) addsym(s, d, d, 0, NULL, syms[i]);
 	if (syms) freeLines(syms);
