@@ -229,7 +229,16 @@ addProxy(char *type, char *line, char **proxies)
 
 	unless (line) return proxies;
 	q = strchr(line, ':');
-	assert(q);
+	unless (q) {
+		fprintf(stderr,
+"===========================================================================\n"
+"Unknown proxy entry: \"%s\"\n"
+"If you believe this entry is legal, please file a bug report and\n"
+"ask Bitmover to add support for it.\n"
+"===========================================================================\n",
+		 line);
+		return (proxies);
+	}
 	*q = 0;
 	strcpy(proxy_host, line);
 	proxy_port = atoi(++q);
