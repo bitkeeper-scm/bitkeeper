@@ -75,9 +75,9 @@ private	sccs *sc;
 private	void
 sccs_patch(sccs *winner, sccs *loser)
 {
-	delta	*d = sccs_getrev(winner, "+", 0, 0);
+	delta	*d = sccs_top(winner);
 	char	*wfile = d->pathname;
-	char	*lfile = sccs_getrev(loser, "+", 0, 0)->pathname;
+	char	*lfile = sccs_top(loser)->pathname;
 
 	printf(PATCH_CURRENT);
 	printf("== %s ==\n", wfile);

@@ -71,13 +71,11 @@ cmd_pull_part2(int ac, char **av)
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	int	delay = -1;
 	char	s_cset[] = CHANGESET;
-	char	*revs = bktmp(0, "pullrevs");
-	char	*serials = bktmp(0, "pullser");
+	char	*keys = bktmp(0, "pullkey");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	sccs	*s;
 	delta	*d;
 	remote	r;
-	FILE	*f;
 	pid_t	pid;
 
 	while ((c = getopt(ac, av, "delnqw|z|")) != -1) {
@@ -99,13 +97,13 @@ cmd_pull_part2(int ac, char **av)
 	sendServerInfoBlock(0);
 
 	/*
-	 * What we want is: remote => bk _prunekey => serials
+	 * What we want is: remote => bk _prunekey => keys
 	 */
-	fd = open(serials, O_WRONLY, 0);
+	fd = open(keys, O_WRONLY, 0);
 	bzero(&r, sizeof(r));
 	s = sccs_init(s_cset, 0);
 	assert(s && HASGRAPH(s));
-	if (prunekey(s, &r, NULL, fd, PK_LSER, 1, &local, &rem, 0) < 0) {
+	if (prunekey(s, &r, NULL, fd, PK_LKEY, 1, &local, &rem, 0) < 0) {
 		local = 0;	/* not set on error */
 		sccs_free(s);
 		close(fd);
@@ -131,19 +129,12 @@ cmd_pull_part2(int ac, char **av)
 		printf("@END@\n");
 	}
 	fflush(stdout);
-	f = fopen(revs, "w");
-	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_RED) continue;
-		unless (d->type == 'D') continue;
-		fprintf(f, "%s\n", d->rev);
-	}
-	fclose(f);
 	sccs_free(s);
 
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 */
-	safe_putenv("BK_CSETLIST=%s", revs);
+	safe_putenv("BK_CSETLIST=%s", keys);
 	if (dont) {
 		putenv("BK_STATUS=DRYRUN");
 	} else unless (local) {
@@ -173,15 +164,13 @@ cmd_pull_part2(int ac, char **av)
 
 	n = 2;
 	if (metaOnly) makepatch[n++] = "-e";
-	makepatch[n++] = "-s";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
 	 * What we want is: serails =>  bk makepatch => gzip => remote
 	 */
 	fd0 = dup(0); close(0);
-	fd = open(serials, O_RDONLY, 0);
-	if (fd < 0) perror(serials);
+	if ((fd = open(keys, O_RDONLY, 0)) == -1) perror(keys);
 	assert(fd == 0);
 	pid = spawnvp_rPipe(makepatch, &rfd, 0);
 	dup2(fd0, 0); close(fd0);
@@ -204,25 +193,26 @@ cmd_pull_part2(int ac, char **av)
 	}
 	flushSocket(1); /* This has no effect for pipe, should be OK */
 
-done:	unlink(serials); free(serials);
-	if (dont) {
+done:	if (dont) {
+		unlink(keys);
 		putenv("BK_STATUS=DRYRUN");
 	} else if (local == 0) {
+		unlink(keys);
 		putenv("BK_STATUS=NOTHING");
 	} else {
 		putenv("BK_STATUS=OK");
 	}
 	if (rc) {
-		unlink(revs);
+		unlink(keys);
 		safe_putenv("BK_STATUS=%d", rc);
-	} else {
+	} else unless (dont || (local == 0)) {
 		/*
 		 * Pull is ok:
 		 * a) rename revs to CSETS_OUT
 		 * b) update $CSETS to point to CSETS_OUT
 		 */
 		unlink(CSETS_OUT);
-		unless (rename(revs, CSETS_OUT) && fileCopy(revs, CSETS_OUT)) {
+		unless (rename(keys, CSETS_OUT) && fileCopy(keys, CSETS_OUT)) {
 			chmod(CSETS_OUT, 0666);
 			putenv("BK_CSETLIST=" CSETS_OUT);
 		}
@@ -232,7 +222,6 @@ done:	unlink(serials); free(serials);
 	 */
 	if (!metaOnly) trigger(av[0], "post");
 	if (delay > 0) sleep(delay);
-	unlink(revs);
-	free(revs);
+	free(keys);
 	return (rc);
 }

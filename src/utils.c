@@ -373,7 +373,7 @@ confirm(char *msg)
 int
 prompt_main(int ac, char **av)
 {
-	int	i, c, ret, ask = 1, nogui = 0;
+	int	i, c, ret, ask = 1, nogui = 0, gui = 0;
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
 	char	*cmd;
@@ -383,11 +383,12 @@ prompt_main(int ac, char **av)
 	extern	char *pager;
 	char	**lines = 0;
 
-	while ((c = getopt(ac, av, "cegiowxf:n:p:t:y:")) != -1) {
+	while ((c = getopt(ac, av, "cegGiowxf:n:p:t:y:")) != -1) {
 		switch (c) {
 		    case 'c': ask = 0; break;
 		    case 'e': type = "-E"; break;
 		    case 'g': nogui = 1; break;
+		    case 'G': gui = 1; break;
 		    case 'i': type = "-I"; break;
 		    case 'w': type = "-W"; break;
 		    case 'x': /* ignored, see notice() for why */ break;
@@ -416,7 +417,7 @@ err:		system("bk help -s prompt");
 		if (system(cmd)) goto err;
 		free(cmd);
 	}
-	if (getenv("BK_GUI") && !nogui) {
+	if ((gui || getenv("BK_GUI")) && !nogui) {
 		char	*nav[19];
 
 		nav[i=0] = "bk";

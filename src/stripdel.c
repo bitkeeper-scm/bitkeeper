@@ -314,7 +314,7 @@ strip_list(s_opts opts)
 			}
 		}
 		rev = sfileRev(); assert(rev);
-		d = findrev(s, rev); 
+		d = sccs_findrev(s, rev); 
 		unless (d) {
 			fprintf(stderr,
 			    "stripdel: can't find rev %s in %s\n", rev, name);

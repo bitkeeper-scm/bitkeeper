@@ -22,7 +22,7 @@ private	void	findcset(void);
 private	void	mkList(sccs *s, int fileIdx);
 private	void	freeList(void);
 private void	dumpCsetMark(void);
-private delta	*findFistDelta(sccs *s, delta *first);
+private delta	*findFirstDelta(sccs *s, delta *first);
 private void	mkDeterministicKeys(void);
 private	int	openTags(char *tagfile);
 private	char *	readTag(time_t *tagDate);
@@ -138,7 +138,7 @@ findcset_main(int ac, char **av)
 		sccs_sdelta(s, sccs_ino(s), key);
 		keylist = addLine(keylist, strdup(key));
 		flist = addLine(flist, strdup(s->sfile));
-		oldest = findFistDelta(s, oldest);
+		oldest = findFirstDelta(s, oldest);
 		mkList(s, ++fileIdx);
 		//verbose((stderr, "%s: %d deltas\n", s->sfile, n - save));
 next:		sccs_free(s);
@@ -261,7 +261,7 @@ dumpCsetMark(void)
 		 * Set new cset mark
 		 */
 		EACH(revlist) {
-			d = findrev(s, revlist[i]);
+			d = sccs_findrev(s, revlist[i]);
 			assert(d);
 			d->flags |= D_CSET;
 			if (opts.verbose > 1) fprintf(stderr, "\t%s\n", d->rev);
@@ -867,14 +867,15 @@ done:	freeComment(csetComment);
  * Find the oldest user delta
  */
 private delta *
-findFistDelta(sccs *s, delta *first)
+findFirstDelta(sccs *s, delta *first)
 {
-	delta	*d;
-	d = findrev(s, "1.1");
+	delta	*d = sccs_findrev(s, "1.1");
+
 	unless (d) return (first);
 
 	/*
 	 * Skip teamware dummy user
+	 * XXX - there can be more than one.
 	 */
 	if (streq(d->sdate, "70/01/01 00:00:00") && streq(d->user, "Fake")) {
 		d = d->kid;

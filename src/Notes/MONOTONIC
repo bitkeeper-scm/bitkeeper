@@ -71,3 +71,63 @@ in the table (XXX - make sure it is a 'D' type)
 XXX - what if we have a file that was always roll forwards and 100% of the
 deltas are dangling?  And we want to edit it?  That should fail.  [Later]
 No, it should succeed, the delta should fail.  Think checkout:edit.
+
+Fri Jul 11 07:53:41 PDT 2003
+----------------------------
+
+Suppose I start with a file like so
+
+        1.5 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC *DANGLING*
+        1.4 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC *DANGLING*
+        1.3 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC *DANGLING*
+        1.2 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC *DANGLING*
+        1.1 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        
+What's that mean?  Delta 1.2 turned on the monotonic flag and then a pile
+of deltas were added, then in the repo where this file lives *all* of the
+deltas marked as monotonic are dangling, i.e., we've cloned back to a 
+point before they existed.  Fair enough.
+
+Now I delta the file.  The monotonic work is split between slib and delta.c,
+slib just does the normal delta and I get:
+
+        1.6 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        1.5 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+        1.4 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+        1.3 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+        1.2 BITKEEPER,CSETMARKED,SCCS,SINGLE,MONOTONIC
+        1.1 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        
+Two things to note: (a) 1.6's parent is 1.1, not 1.5, this hasn't been 
+stripped or renumbered yet; (b) 1.6 does not have the MONOTONIC flag
+(and therein lies the bug).
+
+1.6 points at 1.1 because all the others are danglers, that's the work that
+slib does.  Now delta is going to clean up the mess and remove the danglers
+and renumber and we get
+
+        1.2 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        1.1 BITKEEPER,CSETMARKED,SCCS,SINGLE
+        
+I had to change code to get this to work - I was using prs to figure out 
+which deltas are dangling and the code for the :DANGLING: flag was like
+
+        if (MONOTONIC(s) && d->dangling) {
+                print it
+        }
+        
+and that code failed to print anything because the file was no longer 
+monotonic, the flag disappeared when we added that delta below 1.1, 
+1.1 didn't have the monotonic flag.  Arg.
+
+In addition delta.c had a logic bug, it was looking at
+
+        if (MONOTONIC(s) && sccs_top(s)->dangling) {
+
+*after* the new delta had been added and now neither were true.  Ooops.
+So I cached that info before the delta.
+
+All of this boils down to one question, if I'm adding a delta to what is
+a monotonic file but as in this case the flag disappears, should I add
+it to the file?
+

@@ -977,14 +977,14 @@ again:
 			}
 			rs->s = sccs_restart(rs->s); 
 			assert(rs->s);
-			d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
+			d = sccs_findrev(rs->s, rs->revs->local);
 			assert(d);
 			t = name2sccs(d->pathname);
 			unless (streq(t, to)) {
 				rename_delta(rs, to, d, rfile, LOCAL);
 			}
 			free(t);
-			d = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+			d = sccs_findrev(rs->s, rs->revs->remote);
 			assert(d);
 			t = name2sccs(d->pathname);
 			unless (streq(t, to)) {
@@ -1065,14 +1065,14 @@ move_remote(resolve *rs, char *sfile)
 			fprintf(rs->opts->log,
 			    "rename(%s, %s)\n", sccs_Xfile(rs->s, 'r'), rfile);
 		}
-		d = sccs_getrev(rs->s, rs->revs->local, 0, 0);
+		d = sccs_findrev(rs->s, rs->revs->local);
 		assert(d);
 		t = name2sccs(d->pathname);
 		unless (streq(t, sfile)) {
 			rename_delta(rs, sfile, d, rfile, LOCAL);
 		}
 		free(t);
-		d = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+		d = sccs_findrev(rs->s, rs->revs->remote);
 		assert(d);
 		t = name2sccs(d->pathname);
 		unless (streq(t, sfile)) {
@@ -1180,7 +1180,7 @@ type_delta(resolve *rs,
 		fprintf(stderr, "type reopens %s (%s)\n", sfile, s->gfile);
 	}
 	rs->s = s;
-	rs->d = sccs_getrev(s, "+", 0, 0);
+	rs->d = sccs_top(s);
 	assert(rs->d);
 	free(rs->dname);
 	rs->dname = name2sccs(rs->d->pathname);
@@ -1218,7 +1218,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 		fprintf(stderr, "mode reopens %s (%s)\n", sfile, s->gfile);
 	}
 	rs->s = s;
-	rs->d = sccs_getrev(s, "+", 0, 0);
+	rs->d = sccs_top(s);
 	assert(rs->d);
 	free(rs->dname);
 	rs->dname = name2sccs(rs->d->pathname);
@@ -1283,7 +1283,7 @@ flags_delta(resolve *rs,
 		fprintf(stderr, "flags reopens %s (%s)\n", sfile, s->gfile);
 	}
 	rs->s = s;
-	rs->d = sccs_getrev(s, "+", 0, 0);
+	rs->d = sccs_top(s);
 	assert(rs->d);
 	free(rs->dname);
 	rs->dname = name2sccs(rs->d->pathname);
@@ -1759,9 +1759,9 @@ conflict(opts *opts, char *sfile)
 	rs = resolve_init(opts, s);
 	assert(streq(rs->dname, s->sfile));
 
-	d.local = sccs_getrev(s, rs->revs->local, 0, 0);
-	d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
-	d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
+	d.local = sccs_findrev(s, rs->revs->local);
+	d.gca = sccs_findrev(s, rs->revs->gca);
+	d.remote = sccs_findrev(s, rs->revs->remote);
 	/*
 	 * The smart programmer will notice that the case where both sides
 	 * changed the mode to same thing is just silently merged below.
@@ -1775,9 +1775,9 @@ conflict(opts *opts, char *sfile)
 		s = rs->s;
 		if (opts->errors) return;
 		/* Need to re-init these, the resolve stomped on the s-> */
-		d.local = sccs_getrev(s, rs->revs->local, 0, 0);
-		d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
-		d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
+		d.local = sccs_findrev(s, rs->revs->local);
+		d.gca = sccs_findrev(s, rs->revs->gca);
+		d.remote = sccs_findrev(s, rs->revs->remote);
 	}
 
 	unless (d.local->mode == d.remote->mode) {
@@ -1786,9 +1786,9 @@ conflict(opts *opts, char *sfile)
 		s = rs->s;
 		if (opts->errors) return;
 		/* Need to re-init these, the resolve stomped on the s-> */
-		d.local = sccs_getrev(s, rs->revs->local, 0, 0);
-		d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
-		d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
+		d.local = sccs_findrev(s, rs->revs->local);
+		d.gca = sccs_findrev(s, rs->revs->gca);
+		d.remote = sccs_findrev(s, rs->revs->remote);
 	}
 
 	/*
@@ -1800,9 +1800,9 @@ conflict(opts *opts, char *sfile)
 		s = rs->s;
 		if (opts->errors) return;
 		/* Need to re-init these, the resolve stomped on the s-> */
-		d.local = sccs_getrev(s, rs->revs->local, 0, 0);
-		d.gca = sccs_getrev(s, rs->revs->gca, 0, 0);
-		d.remote = sccs_getrev(s, rs->revs->remote, 0, 0);
+		d.local = sccs_findrev(s, rs->revs->local);
+		d.gca = sccs_findrev(s, rs->revs->gca);
+		d.remote = sccs_findrev(s, rs->revs->remote);
 	}
 
 	if (opts->debug) {

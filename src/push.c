@@ -253,7 +253,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	s = sccs_init(s_cset, 0);
-	rc = prunekey(s, r, NULL, fd, PK_LSER,
+	rc = prunekey(s, r, NULL, fd, PK_LKEY,
 		!opts.verbose, &opts.lcsets, &opts.rcsets, &opts.rtags);
 	if (rc < 0) {
 		switch (rc) {
@@ -366,7 +366,6 @@ genpatch(int level, int wfd, char *rev_list)
 	opts.inBytes = opts.outBytes = 0;
 	n = opts.verbose ? 3 : 2;
 	if (opts.metaOnly) makepatch[n++] = "-e";
-	makepatch[n++] = "-s";
 	makepatch[n++] = "-";
 	makepatch[n] = 0;
 	/*
@@ -554,7 +553,6 @@ maybe_trigger(remote *r)
 private int
 push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 {
-
 	char	buf[4096];
 	int	n, rc = 0, done = 0, do_pull = 0;
 

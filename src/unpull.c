@@ -38,7 +38,7 @@ private int
 unpull(int force, int quiet)
 {
 	sccs	*s;
-	delta	*d;
+	delta	*d, *e;
 	char	cset[] = CHANGESET;
 	MMAP	*m;
 	char	*t, *r;
@@ -71,7 +71,8 @@ unpull(int force, int quiet)
 	s = sccs_init(cset, 0);
 	assert(s && HASGRAPH(s));
 	d = sccs_top(s);
-	unless (streq(d->rev, r)) {
+	e = sccs_findrev(s, r);
+	unless (d == e) {
 		fprintf(stderr,
 		    "unpull: will not unpull local changeset %s\n", d->rev);
 		sccs_free(s);

@@ -70,7 +70,7 @@ probekey_main(int ac, char **av)
 	}
 	for (i = 1; i <= 0xffff; ++i) {
 		sprintf(rev, "%d.1", i);
-		unless (d = findrev(s, rev)) break;
+		unless (d = sccs_findrev(s, rev)) break;
 		while (d->kid && (d->kid->type == 'D')) d = d->kid;
 		fputs("@LOD PROBE@\n", stdout);
 		lod_probekey(s, d, stdout);

@@ -108,6 +108,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(rev_list);
+			unlink(undo_list);
 			freeLines(fileList, free);
 			exit(0);
 		}

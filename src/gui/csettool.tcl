@@ -122,18 +122,6 @@ proc dotFile {{line {}}} \
 		set annotate ""
 	}
 
-	if {$annotate == ""} {
-		catch { exec bk get -qkpr$parent "$file" > $l}
-		catch { exec bk get -qkpr$stop "$file" > $r}
-	} else {
-		catch { exec bk get -qkpr$parent $annotate "$file" > $l}
-		catch { exec bk get -qkpr$stop $annotate "$file" > $r}
-	}
-
-	displayInfo $file $file $parent $stop 
-	readFiles $l $r
-	catch {file delete $l $r}
-
 	set buf ""
 	set line [lindex [split $line "."] 0]
 	while {[regexp {^ChangeSet (.*)$} $buf dummy crev] == 0} {
@@ -179,6 +167,19 @@ proc dotFile {{line {}}} \
 	.l.sccslog.t configure -state disabled
 	.l.sccslog.t see end
 	.l.sccslog.t xview moveto 0
+	update idletasks
+
+	if {$annotate == ""} {
+		catch { exec bk get -qkpr$parent "$file" > $l}
+		catch { exec bk get -qkpr$stop "$file" > $r}
+	} else {
+		catch { exec bk get -qkpr$parent $annotate "$file" > $l}
+		catch { exec bk get -qkpr$stop $annotate "$file" > $r}
+	}
+	displayInfo $file $file $parent $stop 
+	readFiles $l $r
+	catch {file delete $l $r}
+
 	busy 0
 }
 
@@ -208,44 +209,62 @@ proc getFiles {revs {file_rev {}}} \
 	set found ""
 	set match ""
 	if {$revs == "-"} {
-		set r "stdin"
+		set r [open "| bk changes -faevnd:GFILE:|\$if(:DT:!=D)\{TAGS:\$each(:TAG:)\{(:TAG:),\}\}\$if(:DT:=D)\{:DPN:\}|:I: -" r]
 	} else {
-		set r [open "| bk prs -bhr$revs {-d:I:\n} ChangeSet" r]
+		set r [open "| bk changes -fvnd:GFILE:|:DPN:|:REV: -r$revs" r]
 	}
-	while {[gets $r cset] > 0} {
-		.diffs.status.middle configure -text "Getting cset $cset"
-		update
-		incr line
-		.l.filelist.t insert end "ChangeSet $cset\n" cset
-		set c [open "| bk cset -Hhr$cset | bk _sort" r]
-		while { [gets $c buf] >= 0 } {
-			regexp  $file_old_new $buf dummy name oname rev
-			if {[string match "1.0" $rev]} continue
-
-			incr fileCount
-			incr line
-			set line2File($line) $fileCount
-			set Files($fileCount) $line
-
-			set RealFiles($fileCount) "  $name@$rev"
-			set buf "$oname@$rev"
-			if {[string first $file_rev $buf] >= 0} {
-				set found $fileCount
+	set csets 0
+	set tags 0
+	set t [clock clicks -milliseconds]
+	while {[gets $r buf] > 0} {
+		regexp  $file_old_new $buf dummy name oname rev
+		if {[string match "1.0" $rev]} continue
+		if {$name == "ChangeSet"} {
+			if {[string match TAGS:* $oname]} {
+				incr tags
+				continue
+		    	}
+			.diffs.status.middle \
+			    configure -text "Getting cset $csets"
+			set now [clock clicks -milliseconds]
+			if {$now - $t > 200} {
+				update
+				set t $now
 			}
-			.l.filelist.t insert end "  $buf\n"
-			$fmenu(widget) add command -label "$buf" \
-			    -command  "dotFile $fileCount"
+			.l.filelist.t insert end "ChangeSet $rev\n" cset
+			incr csets
+			incr line
+			continue
 		}
-		catch { close $c }
+		incr line
+		incr fileCount
+		set line2File($line) $fileCount
+		set Files($fileCount) $line
+
+		set RealFiles($fileCount) "  $name@$rev"
+		set buf "$oname@$rev"
+		if {[string first $file_rev $buf] >= 0} {
+			set found $fileCount
+		}
+		.l.filelist.t insert end "  $buf\n"
+		$fmenu(widget) add command -label "$buf" \
+		    -command  "dotFile $fileCount"
 	}
 	catch { close $r }
+	if {($tags > 0) && ($csets == 0)} {
+		global	env
+
+		set x [expr [winfo rootx .diffs.status.middle] - 50]
+		set y [expr [winfo rooty .diffs.status.middle] + 10]
+		set env(BK_MSG_GEOM) "+$x+$y"
+		exec bk prompt -i -o -G "No changesets found, only tags"
+	}
 	if {$fileCount == 0} {
-		#displayMessage \ 
-		#"ChangeSet doesn't contain files since it is a merge ChangeSet."
 		exit
 	}
 	.l.filelist.t configure -state disabled
 	set lastFile 1
+	wm title . "Cset Tool - viewing $csets changesets"
 	if {$found != ""} {
 		dotFile $found
 	} else {
@@ -323,6 +342,27 @@ proc adjustHeight {diff list} \
 	incr gc(cset.diffHeight) $diff
 	.diffs.left configure -height $gc(cset.diffHeight)
 	.diffs.right configure -height $gc(cset.diffHeight)
+}
+
+proc fontSize {dir} \
+{
+	global	gc app
+
+	foreach t {.l.filelist.t .l.sccslog.t \
+	    .diffs.right .diffs.left .diffs.status.l .diffs.status.l_lnum \
+	    .diffs.status.r .diffs.status.r_lnum .diffs.status.middle} {
+		set junk [split [$t cget -font]]
+		set font [lindex $junk 0]
+		set size [lindex $junk 1]
+		incr size $dir
+		$t configure -font [list $font $size]
+	}
+	set junk [split $gc($app.fixedBoldFont)]
+	set font [lindex $junk 0]
+	set size [lindex $junk 1]
+	incr size $dir
+	set gc($app.fixedBoldFont) [list $font $size bold]
+	dot
 }
 
 proc widgets {} \
@@ -593,9 +633,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    -relief groove -borderwid 1
 	.l.filelist.t tag configure cset \
 	    -background $gc(cset.listBG) -foreground $gc(cset.textFG)
-	.l.sccslog.t tag configure cset \
-	    -background $gc(cset.listBG) -foreground $gc(cset.textFG)
-	.l.sccslog.t tag configure file_tag -underline true
+	.l.sccslog.t tag configure cset -background $gc(cset.selectColor) 
+	.l.sccslog.t tag configure file_tag -background $gc(cset.selectColor) 
 	. configure -cursor left_ptr
 	.l.sccslog.t configure -cursor left_ptr
 	.l.filelist.t configure -cursor left_ptr
@@ -669,6 +708,9 @@ proc keyboard_bindings {} \
 	bind all <period>		dot
 	bind all <Control-n>		nextFile
 	bind all <Control-p>		prevFile
+	bind all <Control-plus>		{ fontSize 1 }
+	bind all <Control-equal>	{ fontSize 1 }
+	bind all <Control-minus>	{ fontSize -1 }
 
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {

@@ -1245,11 +1245,7 @@ apply:
 	csets = fopen(csets_in, "w");
 	assert(csets);
 	while (p) {
-		delta	*d;
-
-		d = sccs_findKey(s, p->me);
-		assert(d);
-		unless (p->meta) fprintf(csets, "%s\n", d->rev);
+		fprintf(csets, "%s\n", p->me);
 		/*
 		 * XXX: mclose take a null arg?
 		 * meta doesn't have a diff block
@@ -1402,7 +1398,7 @@ applyPatch(char *localPath, int flags, sccs *perfile)
 		fprintf(stderr,
 		    "stripdel %s from %s\n", tableGCA->rev, s->sfile);
 	}
-	if (d = sccs_next(s, sccs_getrev(s, tableGCA->rev, 0, 0))) {
+	if (d = sccs_next(s, sccs_findrev(s, tableGCA->rev))) {
 		delta	*e;
 
 		for (e = s->table; e; e = e->next) {
