@@ -5,6 +5,7 @@ WHATSTR("@(#)%K%");
 
 private void	prevs(delta *d);
 private void	_prevs(delta *d);
+private void	puser(char *u);
 private void	pd(char *prefix, delta *d);
 private void	renumber(delta *d);
 private	delta	*ancestor(sccs *s, delta *d);
@@ -58,7 +59,10 @@ usage:			fprintf(stderr,
 			e = sccs_getrev(s, rev, 0, 0);
 			assert(e);
 			printf("%s", e->rev);
-			if (flags & GET_USER) printf("-%s", e->user);
+			if (flags & GET_USER) {
+				putchar('-');
+				puser(e->user);
+			}
 			printf("\n");
 		} else {
 			prevs(s->tree);
@@ -79,6 +83,14 @@ renumber(delta *d)
 {
 	if (d->next) renumber(d->next);
 	if (d->type == 'D') d->pserial = ser++;
+}
+
+private void
+puser(char *u)
+{
+	do {
+		unless (*u == '@') putchar(*u);
+	} while (*++u);
 }
 
 private void
@@ -119,7 +131,10 @@ private void
 pd(char *prefix, delta *d)
 {
 	printf("%s%s", prefix, d->rev);
-	if (flags & GET_USER) printf("-%s", d->user);
+	if (flags & GET_USER) {
+		putchar('-');
+		puser(d->user);
+	}
 	if (sort) printf("-%u", d->pserial);
 	if (d->flags & D_BADREV) printf("-BAD");
 	if (d->merge) {
@@ -128,7 +143,10 @@ pd(char *prefix, delta *d)
 		assert(p);
 		if (p->date > tree->date) {
 			printf("%c%s", BK_FS, p->rev);
-			if (flags & GET_USER) printf("-%s", p->user);
+			if (flags & GET_USER) {
+				putchar('-');
+				puser(p->user);
+			}
 			if (sort) printf("-%u", p->pserial);
 		}
 	}

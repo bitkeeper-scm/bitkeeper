@@ -121,9 +121,7 @@ resum(sccs *s, delta *d, int verbose, int flags, int old7bit, int dont)
 	if (verbose>1) fprintf(stderr, "%s:%s\n", s->sfile, d->rev);
 
 	/* expand the file in the form that we checksum it */
-	if ((s->encoding == E_UUENCODE) || (s->encoding == E_UUGZIP)) {
-		s->encoding = E_ASCII;
-	}
+	if (s->encoding == E_UUENCODE) s->encoding = E_ASCII;
 
 	/* flags can't have EXPAND in them */
 	if (sccs_get(s, d->rev, 0, 0, 0, GET_SHUTUP|SILENT, "-")) {

@@ -201,11 +201,14 @@
 
 /*
  * Encoding flags.
+ * Bit 0 and 1 are data encoding (bit 1 is reserved for future use)
+ * Bit 2 is compression mode (gzip or none)
  */
+#define E_DATAENC	0x3
+#define E_COMP		0x4
+
 #define	E_ASCII		0		/* no encoding */
 #define	E_UUENCODE	1		/* uuenecode it (traditional) */
-#define	E_UUGZIP	2		/* gzip and uuencode */
-#define E_DATAENC	(E_UUENCODE | E_UUGZIP)
 #define	E_GZIP		4		/* gzip the data */
 
 #define	HAS_GFILE(s)	((s)->state & S_GFILE)
@@ -930,7 +933,7 @@ int	bk_mode();
 int	cat(char *file);
 char	*bk_model(char *buf, int len);
 char	*getHomeDir();
-char	*age(time_t secs);
+char	*age(time_t secs, char *space);
 void	sortLines(char **);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef

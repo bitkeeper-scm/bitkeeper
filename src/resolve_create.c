@@ -389,7 +389,7 @@ gc_help(resolve *rs)
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
 Local file: ``%s''\n\
-has a name conflict with a new file with the same name in the patch.\n\
+has a name conflict with a file with the same name in the patch.\n\
 The local file is not under revision control.\n\
 ---------------------------------------------------------------------------\n",
 	    rs->d->pathname);
@@ -403,12 +403,12 @@ The local file is not under revision control.\n\
 }
 
 private int
-common_ml(resolve *rs, char *buf)
+common_ml(resolve *rs, char *p, char *buf)
 {
 	char	path[MAXPATH];
 	char	*t;
 
-	unless (prompt("Move local file to:", buf)) return (1);
+	unless (prompt(p, buf)) return (1);
 	if ((buf[0] == '/') || strneq("../", buf, 3)) {
 		fprintf(stderr, "Destination must be in repository.\n");
 		return (1);
@@ -444,7 +444,7 @@ gc_ml(resolve *rs)
 	char	buf[MAXPATH];
 	char	*t;
 
-	if (common_ml(rs, buf)) return (0);
+	if (common_ml(rs, "Move local file to:", buf)) return (0);
 	chdir(RESYNC2ROOT);
 	t = sccs2name(buf);
 	if (rs->opts->debug) {
@@ -464,18 +464,21 @@ dc_ml(resolve *rs)
 {
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
+	char	*t;
 
-	if (common_ml(rs, buf)) return (0);
+	if (common_ml(rs, "Move local directory to:", buf)) return (0);
+	t = sccs2name(buf);
 	getFileConflict(rs->d->pathname, path);
 	chdir(RESYNC2ROOT);
 	if (rs->opts->debug) {
-		fprintf(stderr, "rename(%s, %s)\n", path, buf);
+		fprintf(stderr, "rename(%s, %s)\n", path, t);
 	}
-	if (rename(path, buf)) {
+	if (rename(path, t)) {
 		perror("rename");
 		exit(1);
 	}
 	chdir(ROOT2RESYNC);
+	free(t);
 	return (EAGAIN);
 }
 
@@ -485,8 +488,9 @@ gc_remove(resolve *rs)
 	char	buf[MAXPATH];
 	opts	*opts = rs->opts;
 
-	unless (rs->opts->force || confirm("Remove local file?")) return (0);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, rs->d->pathname);
+	assert(!isdir(buf));
+	unless (rs->opts->force || confirm("Remove local file?")) return (0);
 	unlink(buf);
 	if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
 	return (EAGAIN);
@@ -498,6 +502,11 @@ getFileConflict(char *gfile, char *path)
 	char	*t, *s;
 	
 	chdir(RESYNC2ROOT);
+	if (exists(gfile)) {
+		strcpy(path, gfile);
+		chdir(ROOT2RESYNC);
+		return;
+	}
 	for (t = strrchr(gfile, '/'); t; ) {
 		*t = 0;
 		if (exists(gfile) && !isdir(gfile)) {
@@ -521,12 +530,15 @@ dc_remove(resolve *rs)
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
 	opts	*opts = rs->opts;
+	int	ret;
 
-	unless (rs->opts->force || confirm("Remove local file?")) return (0);
+	unless (rs->opts->force || confirm("Remove local directory?")) {
+		return (0);
+	}
 	getFileConflict(rs->d->pathname, path);
 	sprintf(buf, "%s/%s", RESYNC2ROOT, path);
-	unlink(buf);
-	if (opts->log) fprintf(stdlog, "unlink(%s)\n", buf);
+	ret = rmdir(buf);
+	if (opts->log) fprintf(stdlog, "rmdir(%s) = %d\n", buf, ret);
 	return (EAGAIN);
 }
 
@@ -538,7 +550,7 @@ dc_explain(resolve *rs)
 	getFileConflict(rs->d->pathname, path);
 	fprintf(stderr,
 "The path of the remote file: ``%s''\n\
-conflicts with a local file: ``%s''\n\
+conflicts with a local directory: ``%s''\n\
 Your choices are:\n\
 a) do not move the local file, which means that the entire patch will\n\
    be aborted, discarding any other merges you may have done.  You can\n\
@@ -582,7 +594,7 @@ Remote file:\n\t``%s''\n", rs->d->pathname);
 		sccs_free(local);
 	}
 	fprintf(stderr,
-"wants to be in same place as local file\n\t``%s''\n\
+"wants to be in same place as local directory\n\t``%s''\n\
 ---------------------------------------------------------------------------\n",
 	    path);
 	fprintf(stderr, "Commands are:\n\n");
@@ -946,10 +958,10 @@ rfuncs	gc_funcs[] = {
 rfuncs	dc_funcs[] = {
     { "?", "help", "print this help", dc_help },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
-    { "ml", "move local", "move the local file to someplace else", dc_ml },
+    { "ml", "move local", "move the local directory to someplace else", dc_ml },
     { "mr", "move remote", "move the remote file to someplace else", res_mr },
     { "q", "quit", "immediately exit resolve", res_quit },
-    { "rl", "remove local", "remove the local file", dc_remove },
+    { "rl", "remove local", "remove the local directory", dc_remove },
     { "rr", "remove remote", "remove the remote file", sc_rmr },
     { "vr", "view remote", "view the remote file", res_vr },
     { "x", "explain", "explain the choices", dc_explain },

@@ -26,8 +26,8 @@ commit_main(int ac, char **av)
 {
 	int	c, doit = 0, force = 0, getcomment = 1;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
-	char	commentFile[MAXPATH], pendingFiles[MAXPATH];
-	char	*sym = 0;
+	char	commentFile[MAXPATH], pendingFiles[MAXPATH] = "";
+	char	*sym = 0, *commit_list = 0;
 	c_opts	opts  = {0, 0, 0, 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
@@ -36,10 +36,11 @@ commit_main(int ac, char **av)
 	}
 
 	sprintf(commentFile, "%s/bk_commit%d", TMP_PATH, getpid());
-	while ((c = getopt(ac, av, "aAdFLRqsS:y:Y:")) != -1) {
+	while ((c = getopt(ac, av, "aAdf:FLRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;
 		    case 'd': 	doit = 1; break;
+		    case 'f':	strcpy(pendingFiles, optarg); break;
 		    case 'F':	force = 1; break;
 		    case 'L':	opts.lod = 1; break;
 		    case 'R':	BitKeeper = "../BitKeeper/";
@@ -78,23 +79,27 @@ commit_main(int ac, char **av)
 		return (1);
 	}
 	unless(opts.resync) remark(opts.quiet);
-	sprintf(pendingFiles, "%s/bk_list%d", TMP_PATH, getpid());
-	if (av[optind] && streq("-", av[optind])) {
+	if (pendingFiles[0] || (av[optind] && streq("-", av[optind]))) {
 		FILE *f;
 
-		if (getcomment) {
+		if (getcomment && !pendingFiles[0]) {
 			fprintf(stderr,
 			"You must use the -Y or -y option when using \"-\"\n");
 			return (1);
 		}
-		setmode(0, _O_TEXT);
-		f = fopen(pendingFiles, "wb");
-		assert(f);
-		while (fgets(buf, sizeof(buf), stdin)) {
-			fputs(buf, f);
+		unless (pendingFiles[0]) {
+			sprintf(pendingFiles,
+					"%s/bk_list%d", TMP_PATH, getpid());
+			setmode(0, _O_TEXT);
+			f = fopen(pendingFiles, "wb");
+			assert(f);
+			while (fgets(buf, sizeof(buf), stdin)) {
+				fputs(buf, f);
+			}
+			fclose(f);
 		}
-		fclose(f);
 	} else {
+		gettemp(pendingFiles, "bk_pending");
 		sprintf(buf, "bk sfind -s,,p -C > %s", pendingFiles);
 		if (system(buf) != 0) {
 			unlink(pendingFiles);
@@ -237,10 +242,12 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	int	rc;
 	int	l;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
+	char	pendingFiles2[MAXPATH] = "";
 	char	s_cset[MAXPATH] = CHANGESET;
+	char    s_logging_ok[] = LOGGING_OK;
 	sccs	*s;
 	delta	*d;
-	FILE 	*f;
+	FILE 	*f, *f2;
 
 	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
@@ -248,8 +255,9 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
-	if (pending(LOGGING_OK)) {
-		int	len = strlen(LOGGING_OK);
+	if (pending(s_logging_ok)) {
+		int     len = strlen(s_logging_ok); 
+		char    tmp[100];
 
 		/*
 		 * Redhat 5.2 cannot handle opening a file
@@ -258,23 +266,29 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		 * So we open the file in read mode close it and re-open
 		 * it in write mode
 		 */
+		gettemp(pendingFiles2, "bk_pending2");
 		f = fopen(pendingFiles, "rb");
-		assert(f);
+		f2 = fopen(pendingFiles2, "wb");
+		assert(f); assert(f2);
 		while (fnext(buf, f)) {
-			if (strneq(LOGGING_OK, buf, len) && buf[len] == '@') {
-				goto out;
+			/*
+			 * Skip the logging_ok files
+			 * We'll add it back when we exit this loop
+			 */
+			if (strneq(s_logging_ok, buf, len) && buf[len] == '@') {
+				continue;
 			}
+			fputs(buf, f2);
 		}
-		fclose (f);
-		f = fopen(pendingFiles, "ab");
-		fprintf(f, "%s@+\n", LOGGING_OK);
-out:		fclose(f);
+		fprintf(f2, "%s@+\n", s_logging_ok); 
+		fclose(f);
+		fclose(f2);
 	}
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
 	sprintf(buf, "bk cset %s %s %s %s%s < %s",
 		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,
 		hasComment? "-Y" : "", hasComment ? commentFile : "",
-		pendingFiles);
+		pendingFiles2[0]? pendingFiles2 : pendingFiles);
 	rc = system(buf);
 /*
  * Do not enable this until
@@ -288,6 +302,9 @@ out:		fclose(f);
 #endif
 	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);
+	if (pendingFiles2[0]) {
+		if (unlink(pendingFiles2)) perror(pendingFiles2);
+	}
 	if (rc) return (rc); /* if commit failed do not send log */
 	notify();
 	s = sccs_init(s_cset, 0, 0);
@@ -511,5 +528,5 @@ sendConfig(char *to, char *rev)
 	fclose(f);
 	sprintf(subject, "BitKeeper config: %s", package_name());
 	n = spawnvp_ex(_P_NOWAIT, av[0], av);
-	unless (WIFEXITED(n)) unlink(config_log);
+	if (n == -1) unlink(config_log);
 }

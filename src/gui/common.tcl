@@ -16,3 +16,17 @@ proc cd2root {} \
 	puts "Can not find project root"
 	exit 1
 }
+
+proc fatalMessage {msg} \
+{
+
+    global tcl_platform
+
+    if {$tcl_platform(platform) == "windows"} {
+        tk_messageBox -title "Error" -type ok -icon error -message $msg
+        error "Fatal"
+    } else {
+        puts stderr $msg
+	exit 1
+    }
+}

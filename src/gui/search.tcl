@@ -128,6 +128,8 @@ proc searchnext {} \
 {
 	global	search
 
+	if {![info exists search(string)]} {return}
+
 	if {$search(dir) == "/"} {
 		set w [$search(widget) \
 		    search -regexp -count l -- \
