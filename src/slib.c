@@ -5325,8 +5325,28 @@ getLinkBody(sccs *s,
 	char *printOut, int flags, delta *d, int *ln)
 {
 	char *f = setupOutput(s, printOut, flags, d);
+	u8 *t;
+	u16 dsum = 0;
 
 	unless (f) return 1;
+	
+	/*
+	 * What we want is to just checksum the symnlink.
+	 * However due two bugs in old binary, we do not have valid check if:
+	 * a) It is a 1.1 delta
+	 * b) It is 1.1.* delta (the 1.1 delta got moved after a merge)
+	 * c) The recorded checsum is zero.
+	 */
+	if ((d->flags & D_CKSUM) && (d->sum != 0) &&
+	     !streq(d->rev, "1.1") && !strneq(d->rev, "1.1.", 4)) {
+		for (t = d->symlink; *t; t++) dsum += *t;
+		if (d->sum != dsum) {
+			fprintf(stderr,
+				"get: bad delta cksum %u:%d for %s in %s, %s\n",
+				dsum, d->sum, d->rev, s->sfile,
+				"gotten anyway.");
+		}
+	}
 	if (flags & PRINT) {
 		int	popened;
 		FILE 	*out;
@@ -7560,13 +7580,14 @@ checkin(sccs *s,
 	/* need random set before the call to sccs_sdelta */
 	/* XXX: changes n, so must be after syms stuff */
 	unless (nodefault || (flags & DELTA_PATCH)) {
+		delta *d = n0 ? n0 : n;
+
 		randomBits(buf);
 		if (buf[0]) s->random = strdup(buf);
-		if (n0) n = n0;
-		unless (hasComments(n)) {
+		unless (hasComments(d)) {
 			sprintf(buf, "BitKeeper file %s",
 			    fullname(s->gfile, 0));
-			n->comments = addLine(n->comments, strdup(buf));
+			n->comments = addLine(d->comments, strdup(buf));
 		}
 	}
 	unless (s->state & S_NOSCCSDIR) {
@@ -7637,6 +7658,12 @@ checkin(sccs *s,
 				fputdata(s, "\n", sfile);
 				no_lf = 1;
 			}
+		} else if (S_ISLNK(s->mode)) {
+			u8	*t;
+			/*
+			 * if symlink, checksum the the symlink
+			 */
+			for (t = s->symlink; *t; t++) s->dsum += *t;
 		}
 	}
 	if (n0) {
@@ -10302,6 +10329,13 @@ out:
 	if (delta_body(s, n, diffs, sfile, &added, &deleted, &unchanged)) {
 		OUT;
 	}
+	if (S_ISLNK(n->mode)) {
+		u8 *t;
+		/*
+		 * if symlink, check sum the symlink path
+		 */
+		for (t = n->symlink; *t; t++) s->dsum += *t;
+	}
 	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
 		fclose(sfile); sfile = NULL;
 		sccs_unlock(s, 'x');
@@ -10415,7 +10449,9 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 			 * but we can't do that because we use the inc/ex
 			 * in getCksumDelta().
 			 */
-			if (add || del || n->include || n->exclude) {
+			if (add || del || 
+			    n->include || n->exclude ||
+			    S_ISLNK(n->mode)) {
 				n->sum = s->dsum;
 			} else {
 				n->sum = (unsigned short) almostUnique(0);
@@ -10608,6 +10644,15 @@ getHistoricPath(sccs *s, char *rev)
 }
 
 private int
+isTextDelta(sccs *s, char *rev)
+{
+	delta *d = findrev(s, rev);
+
+	unless(d) return (0);
+	return (isRegularFile(d->mode));
+}
+
+private int
 mkDiffTarget(sccs *s, char *rev, char kind,
 			u32 flags, int here, char *target , pfile *pf)
 {
@@ -10630,6 +10675,23 @@ mkDiffTarget(sccs *s, char *rev, char kind,
 		assert(kind != DF_GNU_PATCH);
 		assert(HAS_GFILE(s));
 		strcpy(target, s->gfile);
+	} else  if (kind == DF_GNU_PATCH) {
+		/*
+		 * If we are making a GNU patch file,
+		 * ignore symlink and other non-text file.
+		 * GNU patch does not handle it anyway.
+		 */
+		if (!isTextDelta(s, rev)) {
+			printf("##\n");
+			printf("## %s: is not a text file, ignored.\n",
+			    			    getHistoricPath(s, rev));
+			printf("##\n");
+			return (-1);
+		}
+		if (sccs_get(s, rev, pf ? pf->mRev : 0, pf ? pf->iLst : 0,
+		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
+			return (-1);
+		}
 	} else if (sccs_get(s, rev, pf ? pf->mRev : 0, pf ? pf->iLst : 0,
 		    pf ? pf->xLst : 0, flags|SILENT|PRINT|GET_DTIME, target)) {
 		return (-1);
