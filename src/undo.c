@@ -57,7 +57,7 @@ undo_main(int ac,  char **av)
 		cat(undo_list);
 err:		if (undo_list[0]) unlink(undo_list);
 		unlink(rev_list);
-		mdbm_close(fileList);
+		if (fileList) mdbm_close(fileList);
 		if (cmd) free(cmd);
 		exit(1);
 	}
@@ -274,7 +274,6 @@ clean_file(MDBM *fileList)
 			printf("Can not clean %s, Undo aborted\n", sfile);
 			sccs_free(s);
 			free(sfile);
-			mdbm_close(fileList);
 			if (proj) proj_free(proj);
 			return (-1);
 		}

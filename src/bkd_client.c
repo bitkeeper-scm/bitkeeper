@@ -226,6 +226,23 @@ bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 #else
 			remsh = "rsh";
 #endif
+#ifdef WIN32
+			if (!(t = prog2path(remsh)) ||
+			    strstr(t, "system32/rsh")) {
+				fprintf(stderr, "Can not find %s.\n", remsh);
+				fprintf(stderr,
+"=========================================================================\n\
+The programs rsh/ssh are not bundled with the BitKeeper distribution.\n\
+The recommended way for transfering BitKeeper files on Windows is via\n\
+the bkd daemon. (If you have a bkd daemon configured on the remote host,\n\
+try \"bk push/pull bk://HOST:PORT\".), If you prefer to transfer BitKeeper\n\
+files via a rsh/ssh connection, you can install the rsh/ssh programs\n\
+seperately. Please Note that the rsh command bundled with Windows NT is\n\
+not compatible with Unix rshd.\n\
+=========================================================================\n");
+				return (-1);
+			}
+#endif
 			remopts = 0;
 		}
 		if (t = getenv("BK_RSH")) {

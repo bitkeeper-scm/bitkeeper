@@ -160,9 +160,9 @@ ndebug:
 stats:
 	$(MAKE) CFLAGS="$(CC_FAST) -DPURIFY_STATS $(CC_NOFRAME)" all
 g:
-	$(MAKE) CFLAGS=$(CC_DEBUG) all
+	$(MAKE) CFLAGS="$(CC_DEBUG)" all
 gO:
-	$(MAKE) CFLAGS=$(CC_FAST_DEBUG) all
+	$(MAKE) CFLAGS="$(CC_FAST_DEBUG)" all
 
 production_all:
 	$(MAKE) production_g prefix=$(BINDIR)/g
