@@ -56,3 +56,17 @@ bk changes -R $HERE/project > c2 || [ -s c2 ] || {
        exit 1
 } >&2
 echo OK
+
+echo $N Do another takepatch, verify no output ......................$NL
+cd $HERE/clone1
+bk takepatch -a < $HERE/patch > e1 2>&1 || {
+	echo "takepatch exited with $?" >&2
+	exit 1;
+}
+[ -s e1 ] && {
+	echo
+	echo "Unexpected output from takepatch:"
+	cat e1
+	exit 1
+} >&2
+echo OK
