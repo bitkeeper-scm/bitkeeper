@@ -131,7 +131,7 @@ sub chkOverlap
 
 	$lm1 = $rm1 = $cml = $cmr = "";
 	($ltmp, $rtmp) = mkdfile(); # make temp files so we can run diff on it
-	open(DIFF, "diff -u -U $len  ${tmp}pmerge_l$$ ${tmp}pmerge_r$$|")
+	open(DIFF, "${BIN}diff -u -U $len  ${tmp}pmerge_l$$ ${tmp}pmerge_r$$|")
 	    || die "can not popen diff\n";
 	# This is the main loop, all the interesting work is done here !!
 	# We proccess all the unified diffs in this loop.

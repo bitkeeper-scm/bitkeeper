@@ -1305,9 +1305,10 @@ _export() {
 	__cd2root
 
 	# XXX: cset -t+ should work.
+	# fix BK_FS
 	(${BIN}cset $D -t`${BIN}prs $R -hd:I: ChangeSet`) \
 	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
-	| sed 's/:/ /' | while read file rev
+	| sed 's/[@:]/ /' | while read file rev
 	do
 		PN=`bk prs -r$rev -hd:DPN: $SRC/$file`
 		if ${BIN}get $T $K $Q -r$rev -G$DST/$PN $SRC/$file

@@ -49,7 +49,10 @@ sub bg_system
 # Get Process exit status
 sub exitStatus
 {
-	0x00ff & $_[0];
+	# XXX for some reason the exit status processing
+	# is different if we use a binary wrapper.
+	#0x00ff & $_[0]; # for perl binary warpper
+	$_[0] >> 8;
 }
 
 # Simulate a unix exec, new program must run in foreground,

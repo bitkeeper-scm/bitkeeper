@@ -23,7 +23,7 @@ __win2cygPath()
 __winExec()
 {
 	cmd=$1; shift
-	win2cygPath $cmd; _cmd=$cygPath;
+	__win2cygPath $cmd; _cmd=$cygPath;
 	exec "$_cmd" "$@"
 }
 
@@ -39,9 +39,7 @@ __platformInit()
 		# used by resolve & GUI(tcl) scripts
 		PATH=$_BK_BIN:$_UNIX_BIN:$_TCL_BIN:$PATH
 		export PATH BK_BIN UNIX_BIN
-		# reset BIN to cynwin style path
-		BIN=$_BK_BIN
-		GUI_BIN=$BK_BIN
+		BIN=$BK_BIN
 		RM=rm.exe
 		TMP="${TEMP}/"
 		ECHO=${BIN}/bin_mode_echo.exe
