@@ -3294,6 +3294,66 @@ checktags(sccs *s, delta *leaf, int flags)
 	return (1);
 }
 
+private int
+badTag(char *me, char *tag, int flags)
+{
+	char	*p;
+
+	if (isdigit(*tag)) {
+		verbose((stderr,
+		    "%s: %s: tags can't start with a digit.\n", me, tag));
+		return (1);
+	}
+	switch (*tag) {
+	    case '=':
+	    case '-':
+	    case '.':
+		verbose((stderr,
+		    "%s: %s: tags can't start with a '%c'.\n", me, tag, *tag));
+		return (1);
+	}
+	if (streq(tag, "+")) {
+		verbose((stderr,
+		    "%s: tag cannot be '+', that means most recent rev.\n",
+		    me));
+		return (1);
+	}
+	if (strstr(tag, "..")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain '..'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ".,")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain '.,'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ",.")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain ',.'\n", me, tag));
+		return (1);
+	}			
+	if (strstr(tag, ",,")) {
+		verbose((stderr,
+		    "%s: tag %s cannot contain ',,'\n", me, tag));
+		return (1);
+	}			
+	p = tag;
+	while (*p) {
+		switch (*p++) {
+		    case '\001':
+		    case '|':
+		    case '\n':
+		    case '\r':
+			verbose((stderr,
+			    "%s: tag %s cannot contain \"^A,|\\n\\r\"\n",
+			    me, tag));
+			return (1);
+		}
+	}
+	return (0);
+}
+
 /*
  * Check tag graph integrity.
  */
@@ -3301,9 +3361,22 @@ private int
 checkTags(sccs *s, int flags)
 {
 	delta	*l1 = 0, *l2 = 0;
+	symbol	*sym;
+	int	bad = 0;
+
+	/* Nobody else has tags */
+	unless (CSET(s)) return (0);
 
 	/* Allow open tag branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
+
+	/* Make sure that tags don't contain weird characters */
+	for (sym = s->symbols; sym; sym = sym->next) {
+		unless (sym->symname) continue;
+		/* XXX - not really "check" all the time */
+		if (badTag("check", sym->symname, flags)) bad = 1;
+	}
+	if (bad) return (128);
 
 	if (sccs_tagleaves(s, &l1, &l2)) return (128);
 	if (checktags(s, l1, flags) || checktags(s, l2, flags)) return (128);
@@ -10349,24 +10422,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			continue;
 		}
 		if (!rev || !*rev) rev = d->rev;
-		if (isdigit(s[i].thing[0])) {
-			fprintf(stderr,
-			    "%s: %s: can't start with a digit.\n",
-			    me, sym);
-			goto sym_err;
-		}
-		if (strchr(sym, ',')) {
-			verbose((stderr,
-				    "%s: symbol %s cannot contain ','\n",
-				    me, sym));
-			goto sym_err;
-		}
-		if (strstr(sym, "..")) {
-			verbose((stderr,
-				    "%s: symbol %s cannot contain '..'\n",
-				    me, sym));
-			goto sym_err;
-		}			
+		if (badTag(me, s[i].thing, flags)) goto sym_err;
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
