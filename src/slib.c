@@ -3450,7 +3450,7 @@ bad:		sccs_free(s);
 		s->state |= S_SFILE;
 	}
 	if ((s->size != sbuf.st_size) || (s->fd == -1)) {
-		BUF(	buf);	/* CSTYLED */
+		char	*buf;
 
 		if (s->fd == -1) {
 			s->fd = open(s->sfile, 0, 0);
@@ -3463,8 +3463,16 @@ bad:		sccs_free(s);
 		for (; (buf = fastnext(s)) && !strneq(buf, "\001T\n", 3); );
 		s->data = sccstell(s);
 	}
-	if (isreg(s->pfile)) s->state |= S_PFILE;
-	if (isreg(s->zfile)) s->state |= S_ZFILE;
+	if (isreg(s->pfile)) {
+		s->state |= S_PFILE;
+	} else {
+		s->state &= ~S_PFILE;
+	}
+	if (isreg(s->zfile)) {
+		s->state |= S_ZFILE;
+	} else {
+		s->state &= ~S_ZFILE;
+	}
 	return (s);
 }
 
@@ -5529,6 +5537,7 @@ private inline char *
 fmts(register char *p, register char *s)
 {
 	while (*p++ = *s++);
+	return (p - 1);
 }
 
 private char *

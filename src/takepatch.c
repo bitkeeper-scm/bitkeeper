@@ -241,13 +241,18 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 			s->sfile);
 		}
 		if (IS_EDITED(s)) {
-			fprintf(stderr,
-			    "takepatch: %s is edited\n", name);
-			cleanup(CLEAN_RESYNC);
+			if (sccs_clean(s, SILENT)) {
+				fprintf(stderr,
+				    "takepatch: %s is edited and modified\n",
+				    name);
+				cleanup(CLEAN_RESYNC);
+			} else {
+				sccs_restart(s);
+			}
 		}
 		if (s->state & S_PFILE) {
 			fprintf(stderr, 
-			    "takepatch: %s is locked.\n", s->sfile);
+			    "takepatch: %s is locked w/o gfile?\n", s->sfile);
 			cleanup(CLEAN_RESYNC);
 		}
 		unless (tmp = sccs_findKey(s, buf)) {
