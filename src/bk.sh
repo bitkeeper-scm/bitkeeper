@@ -362,6 +362,10 @@ _mvdir() {		# /* doc 2.0 */
 	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
 	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1" is not a directory; exit 1; fi
+	if [ X"$1" = X"BitKeeper" -a -d "BitKeeper/etc" ]
+	then	echo "Moving the BitKeeper directory is not allowed"
+		exit;
+	fi
 	if [ -e "$2" ]; then echo "$2" already exist; exit 1; fi
 	
 	bk -r check -a || exit 1;
