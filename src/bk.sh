@@ -19,6 +19,18 @@ _cd2root() {
 	done
 }
 
+# Log whatever they wanted to run in the logfile if we can find the root
+_logCommand() {
+	DIR="BitKeeper/etc"
+	for i in 1 2 3 4 5 6 7 8 9 0
+	do	if [ -d $DIR ]
+		then	echo "${USER}: $@" >> $DIR/cmdlog 2>/dev/null
+			return
+		fi
+		DIR="../$DIR"
+	done
+}
+
 _setup() { 
 	CONFIG=
 	NAME=
@@ -834,6 +846,7 @@ _platformPath() {
 _platformPath
 _platformInit
 _init
+_logCommand "$@"
 
 if [ X"$1" = X ]
 then	_usage
