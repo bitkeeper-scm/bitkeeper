@@ -39,33 +39,7 @@ rootkey2path(char *rootkey, char *log_root, char *buf)
 	return (buf);
 }
 
-private char *
-getLogRoot(char log_root[])
-{
-	FILE *f;
-	char buf[MAXPATH + 9];
 
-	if (logRoot) {
-		strcpy(log_root, logRoot);
-		return(log_root);
-	}
-
-	/*
-	 * We assume we are at the cgi-bin directory
-	 */
-	f = fopen("web_bkd.conf", "rt");
-	unless (f) return (0);
-	while (fnext(buf, f)) {
-		chop(buf);
-		if (strneq(buf, "LOG_ROOT=", 9)) {
-			strcpy(log_root, &buf[9]);
-			fclose(f);
-			return (log_root);
-		}
-	}
-	fclose(f);
-	return(0);
-}
 
 int
 cmd_cd(int ac, char **av)
@@ -79,18 +53,18 @@ cmd_cd(int ac, char **av)
 #endif
 	if ((strlen(av[1]) >= 14) && strneq("///LOG_ROOT///", av[1], 14)) {
 
-		unless (getLogRoot(log_root)) {
+		unless (logRoot) {
 			out("ERROR-cannot get log_root\n");
 			return (1);
 		}
-		unless (isdir(log_root)) {
+		unless (isdir(logRoot)) {
 			out("ERROR-log_root: ");
-			out(log_root);
+			out(logRoot);
 			out(" does not exist\n");
 			return (1);
 		}
 		rootkey=&(av[1][14]);
-		unless (rootkey2path(rootkey, log_root, buf)) {
+		unless (rootkey2path(rootkey, logRoot, buf)) {
 			out("ERROR-cannot convert key to path\n");
 			return (1);
 		}

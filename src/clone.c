@@ -108,9 +108,8 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 private int
 clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
-	int	ret = 0;
 	char	*p, buf[MAXPATH];
-	int	n, gzip, rc = 0;
+	int	n, gzip, rc = 1, ret = 0;
 
 	gzip = r->port ? opts.gzip : 0;
 	local = fullname(local, 0);
@@ -118,7 +117,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
 	}
-	if (send_clone_msg(opts, gzip, r, envVar)) return (-1);
+	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
 
 	if (r->httpd) skip_http_hdr(r);
 	getline2(r, buf, sizeof (buf));
@@ -131,40 +130,32 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr,
 			"Remote seems to be running a older BitKeeper release\n"
 			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
-		while (read_blk(r, buf, sizeof(buf))); /* drain remote outout */
+		while (read_blk(r, buf, sizeof(buf))); /* drain remote output */
 		disconnect(r, 2);
-		return (1);
+		goto done;
 		
 	}
 	if (get_ok(r, !opts.quiet)) {
 		disconnect(r, 2);
-		return (1);
+		goto done;
 	}
 
 	getline2(r, buf, sizeof (buf));
 	if (streq(buf, "@TRIGGER INFO@")) { 
-		if (getTriggerInfoBlock(r, !opts.quiet)) {
-			rc = 1;
-			goto done;
-		}
+		if (getTriggerInfoBlock(r, !opts.quiet)) goto done;
 		getline2(r, buf, sizeof (buf));
 	}
 
-	if (!streq(buf, "@SFIO@")) { 
-err:		rc = 1;
-		goto done;
-	}
+	if (!streq(buf, "@SFIO@"))  goto done;
 
 	/* create the new package */
-	if (initProject(local) != 0) goto err;
+	if (initProject(local) != 0) goto done;
 
 	/* eat the data */
 	if (sfio(opts, gzip, r) != 0) {
 		fprintf(stderr, "sfio errored\n");
-		goto err;
+		goto done;
 	}
-
-	putenv("BK_IGNORELOCK=YES");
 
 	/* remove any uncommited stuff */
 	ret = uncommitted(opts);
@@ -177,7 +168,7 @@ err:		rc = 1;
 			fprintf(stderr, "clone: removing %s ...\n", local);
 			sprintf(buf, "rm -rf %s", local);
 			system(buf); /* clean up local tree */
-			exit(1);
+			goto done;
 		}
 	}
 
@@ -189,14 +180,12 @@ err:		rc = 1;
 
 	parent(opts, r);
 
-	if (ret) {
-		ret = consistency(opts);
-    	}
+	if (ret) ret = consistency(opts);
 		
 	if (ret) {
 		fprintf(stderr,
 			"Consistency check failed, repository left locked.\n");
-		exit(1);
+		goto done;
 	}
 
 	unless (bk_proj) bk_proj = proj_init(0);
@@ -208,9 +197,12 @@ err:		rc = 1;
 	}
 	
 	trigger(av, "post", ret);
+	rc  = 0;
 done:	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	repository_wrunlock(0);
-	unless (opts.quiet) fprintf(stderr, "Clone completed successfully.\n");
+	unless (rc || opts.quiet) {
+		fprintf(stderr, "Clone completed successfully.\n");
+	}
 	return (rc);
 }
 

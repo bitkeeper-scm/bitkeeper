@@ -20,21 +20,28 @@ names_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*n;
-	int	todo = 0;
-	int	error = 0;
+	int	c, todo = 0, error = 0;
 	u32	flags = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help names");
 		return (1);
 	}
+
+	while ((c = getopt(ac, av, "q")) != -1) {
+		switch (c) {
+		    case 'q':	flags |= SILENT; break;
+		    default:	system("bk help -s names");
+				return (1);
+		}
+	}
+	
 	/* this should be redundant, we should always be at the package root */
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "names: cannot find package root.\n");
 		return (1);
 	}
 
-	optind = 1;
 	names_init();
 	for (n = sfileFirst("names", &av[optind], 0); n; n = sfileNext()) {
 		unless (s = sccs_init(n, 0, 0)) continue;
