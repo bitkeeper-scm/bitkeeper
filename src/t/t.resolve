@@ -136,3 +136,17 @@ grep 'No write permission: dir2' OUT > /dev/null || {
 	exit 1
 }
 echo OK
+
+echo $N Do a \'rr\' when given a create/gfile conflict ................$NL
+cd $HERE
+rm -rf copy2
+bk clone $Q proj copy2 || exit 1
+cd proj
+bk abort -f
+echo hh > hh
+bk new $Q hh
+bk commit $Q -ynewhh || exit 1
+cd $HERE/copy2
+echo hj > hh
+(echo rr; echo y) | bk pull $Q 2> ERRS || exit 1
+echo OK
