@@ -85,6 +85,14 @@ echo OK
 
 echo $N Push w/trivial triggers .....................................$NL
 bk push $Q || { echo failed; exit 1; }
+# Wait for the remote push process to exit before we remove the trigger
+cd $HERE/project/BitKeeper/triggers
+while true
+do
+	bk lock || { continue; }
+	break
+done
+rm -f *
 echo OK
 
 echo $N Create failure triggers .....................................$NL
@@ -93,7 +101,6 @@ cd project/BitKeeper/triggers
 echo "#! /bin/sh"                > bad
 echo "exit 1"                   >> bad
 chmod +x bad
-rm -f post-*
 for y in commit incoming outgoing;do
 	cp -f bad pre-$y
 done
