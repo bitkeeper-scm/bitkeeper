@@ -104,12 +104,15 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 	char	cmd[MAXKEY];
 	char	tmpfile[MAXPATH];
 	char	dashfile[MAXPATH];
+	char	s_cset[] = CHANGESET;
 	char	buf[100];
 	char	*spec = tagOnly ? TSPEC : DSPEC;
 	pid_t	pid;
 	extern	char *pager;
 	char	*pager_av[MAXARGS];
 	int	pfd;
+	sccs	*s;
+	delta	*d;
 
 	dashfile[0] = 0;
 	if (rev) {
@@ -117,22 +120,29 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 	} else if (dash) {
 		gettemp(dashfile, "dash");
 		f = fopen(dashfile, "w");
+		s = sccs_init(s_cset, SILENT, 0);
+		assert(s && s->tree);
 		while (fgets(cmd, sizeof(cmd), stdin)) {
-			switch (*cmd) {
-			    case '#': case '\n': 
-				/* ignore blank lines and comments */
-				break;
-			    case '0': case '1': case '2': case '3': case '4':
-			    case '5': case '6': case '7': case '8': case '9':
-				fprintf(f, "ChangeSet%c%s", BK_FS, cmd);
-				break;
-			    default:
+			/* ignore blank lines and comments */
+			if ((*cmd == '#') || (*cmd == '\n')) continue;
+			chomp(cmd);
+			d = sccs_getrev(s, cmd, NULL, 0);
+			unless (d) {
 				fprintf(stderr, "Illegal line: %s", cmd);
+				sccs_free(s);
 				fclose(f);
 				unlink(dashfile);
 				return (1);
 			}
+			while (d->type == 'R') {
+				d = d->parent;
+				assert(d);
+			}
+			if (d->flags & D_SET) continue;
+			d->flags |= D_SET;
+			fprintf(f, "ChangeSet%c%s\n", BK_FS, d->rev);
 		}
+		sccs_free(s);
 		fclose(f);
 		sprintf(cmd, "bk prs -Yhd'%s' - < %s", spec, dashfile);
 	} else {

@@ -117,7 +117,7 @@ send_main(int ac,  char **av)
 {
 	int	c, rc = 0, force = 0;
 	char	*to, *p, *out, *cmd, *dflag = "", *qflag = "-vv";
-	char	*wrapper = 0,*patch = 0, *revsFile = 0, *revArgs = 0;
+	char	*wrapper = 0,*patch = 0, *keysFile = 0, *revArgs = 0;
 	char	*wrapperArgs = "", *rev = "1.0..";
 	char	*url = NULL;
 	FILE	*f;
@@ -165,12 +165,12 @@ send_main(int ac,  char **av)
 	 	 * We are sending a patch to some host,
 		 * subtract the cset(s) we already sent eailer
 		 */
-		revsFile = getNewRevs(to, rev, url);
-		if (revsFile == NULL) {
+		keysFile = getNewRevs(to, rev, url);
+		if (keysFile == NULL) {
 			printf("Nothing to send to %s, use -f to force.\n", to);
 			exit(0);
 		}
-		revArgs = aprintf("-r - < %s", revsFile);
+		revArgs = aprintf("-r - < %s", keysFile);
 	} else {
 		revArgs = aprintf("-r%s", rev);
 	}
@@ -198,7 +198,7 @@ send_main(int ac,  char **av)
 	/*
 	 * Print patch header
 	 */
-	printHdr(f, revsFile, rev, wrapper);
+	printHdr(f, keysFile, rev, wrapper);
 	unless (f == stdout) fclose(f);
 
 	/*
@@ -218,7 +218,7 @@ out:	if (patch) {
 		unlink(patch);
 		free(patch);
 	}
-	if (revsFile) unlink(revsFile);
+	if (keysFile) unlink(keysFile);
 	if (revArgs) free(revArgs);
 	if (cmd) free(cmd);
 	if (*out) free(out);

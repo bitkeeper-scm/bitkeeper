@@ -70,8 +70,10 @@ usage:			system("bk help -s push");
 	}
 
 	if (opts.list == LISTKEY) {
+		unless (av[optind]) return (sys("bk", "synckeys", "-lk", SYS));
 		return (sys("bk", "synckeys", "-lk", av[optind], SYS));
 	} else  if (opts.list == LISTREV) {
+		unless (av[optind]) return (sys("bk", "synckeys", "-lr", SYS));
 		return (sys("bk", "synckeys", "-lr", av[optind], SYS));
 	}
 
