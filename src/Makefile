@@ -106,9 +106,10 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/gzio.o zlib/infblock.o zlib/infcodes.o zlib/inffast.o \
       zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
       zlib/uncompr.o zlib/zutil.o
+GUI	= revtool citool helptool difftool csettool fmtool fm3tool msg \
+      	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap \
-      revtool citool helptool difftool csettool fmtool fm3tool msg \
-      renametool setuptool gzip_uuwrap ungzip_uuwrap bugform
+      $(GUI) gzip_uuwrap ungzip_uuwrap bugform
 LOCALSCR= testfast build crank
 PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
@@ -425,6 +426,9 @@ bkdsubstr: bkd.h
 	echo "sed 's/@BKD_VERSION@/`cat _bkdvers`/'" >> bkdsubstr
 	rm _bkdvers
 	chmod +x bkdsubstr
+
+# Quick and dirty target so we can make all the gui tools without the rest
+Gui GUI: $(GUI)
 
 revtool: gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
 	port/$(SYS)_platform.tcl
