@@ -422,6 +422,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 				r2c
 			}
 		}
+		currentMenu
 		busy 0
 		return
 	}
@@ -438,6 +439,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		if {($bindtype == "D1") && ($ttype != "annotated")} {
 			selectNode "id" $id
 		}
+		currentMenu
 	} else {
 		#puts "Error: tag not found ($line)"
 		busy 0
@@ -1298,8 +1300,14 @@ proc currentMenu {} \
 {
 	global file gc rev1 rev2 bk_fs dev_null 
 
+	$gc(fmenu) entryconfigure "Current ChangeSet" \
+	    -state disabled
 	if {$file != "ChangeSet"} {return}
-	if {$rev1 == ""} {return}
+
+	if {![info exists rev1] || $rev1 == ""} {return}
+	$gc(fmenu) entryconfigure "Current ChangeSet" \
+	    -state normal
+
 	if {![info exists rev2] || ($rev2 == "")} { 
 		set end $rev1 
 	} else {
@@ -1315,8 +1323,10 @@ proc currentMenu {} \
 		while {[gets $log file_rev] >= 0} {
 			set f [lindex [split $file_rev $bk_fs] 0]
 			set rev [lindex [split $file_rev $bk_fs] 1]
-			$gc(current) add command -label "${f}@${rev}" \
-			    -command "gotoRev $f $rev"
+			if {![string match "1.0" $rev]} {
+				$gc(current) add command -label "${f}@${rev}" \
+				    -command "gotoRev $f $rev"
+			}
 		}
 		catch {close $log}
 	}
@@ -1710,7 +1720,7 @@ proc widgets {} \
 				revtool $fname
 			}
 		    }
-		$gc(fmenu) add command -label "Project History" \
+		$gc(fmenu) add command -label "Changeset History" \
 		    -command {
 			cd2root
 			set fname ChangeSet
@@ -2030,6 +2040,7 @@ proc revtool {lfname {R {}}} \
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  Opts gc file rev2rev_name cdim firstnode fname
 	global  merge diffpair firstrev
+	global rev1 rev2
 
 	# Set global so that other procs know what file we should be
 	# working on. Need this when menubutton is selected
@@ -2046,6 +2057,7 @@ proc revtool {lfname {R {}}} \
 	if {[info exists rev2rev_name]} { unset rev2rev_name }
 	if {[info exists firstnode]} { unset firstnode }
 	if {[info exists firstrev]} { unset firstrev}
+	if {[info exists diffpair]} {unset diffpair}
 
 	set bad 0
 	set file [exec bk sfiles -g $lfname 2>$dev_null]
@@ -2128,6 +2140,7 @@ The file $lfname was last modified ($ago) ago."
 	}
 	set search(prompt) "Welcome"
 	focus $w(graph)
+	currentMenu
 	busy 0
 	return
 } ;#revtool
