@@ -112,7 +112,7 @@ TOMCRYPTOBJ = tomcrypt/rsa.o tomcrypt/rsa_sys.o tomcrypt/mpi.o \
 	tomcrypt/md5.o tomcrypt/ctr.o tomcrypt/aes.o tomcrypt/hash.o \
 	tomcrypt/sprng.o tomcrypt/bits.o tomcrypt/crypt.o tomcrypt/base64.o \
 	tomcrypt/yarrow.o tomcrypt/demos/test.o
-GUI	= revtool citool helptool difftool csettool fmtool fm3tool msg \
+GUI	= revtool citool helptool difftool csettool fmtool fm3tool msgtool \
 	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap \
       $(GUI) gzip_uuwrap ungzip_uuwrap bugform
@@ -156,7 +156,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/progress.tcl gui/search.tcl gui/msg.tcl gui/bugform.tcl\
+	  gui/progress.tcl gui/search.tcl gui/msgtool.tcl gui/bugform.tcl\
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -165,11 +165,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 default:
-	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
-	then PAGER="less -E"; \
-	else PAGER=more; \
-	fi; \
-	(bk cat HEADER; bk help bksrc; bk cat BUILD.txt) | $${PAGER}
+	bk cat BUILD.txt
 
 all: $(ALL)
 
@@ -498,8 +494,8 @@ fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
 	    gui/fm3tool.tcl > fm3tool
 
-msg: gui/msg.tcl
-	cat gui/msg.tcl > msg
+msgtool: gui/msgtool.tcl
+	cat gui/msgtool.tcl > msgtool
 
 #rpm:	bk.spec production
 #	rpm -bb bk.spec
