@@ -1569,7 +1569,8 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			s = sccs_init(s_cset, INIT, opts->resync_proj);
 			rs = resolve_init(opts, s);
 			edit(rs);
-			unlink(sccs_Xfile(s, 'r'));
+			/* We may restore it if we bail early */
+			rename(sccs_Xfile(s, 'r'), "BitKeeper/tmp/r.ChangeSet");
 			resolve_free(rs);
 			opts->willMerge = 1;
 		}
@@ -2117,6 +2118,7 @@ unfinished(opts *opts)
 		resolve_cleanup(opts, 0);
 	}
 	while (fnext(buf, p)) {
+		if (strneq(buf, "BitKeeper/tmp/", 14)) continue;
 		fprintf(stderr, "Pending: %s", buf);
 		n++;
 	}
@@ -2659,8 +2661,12 @@ resolve_cleanup(opts *opts, int what)
 		if (exists(LOG_TREE)) {
 			log_cleanup();
 		} else {
-			assert(!exists("RESYNC/ChangeSet"));
-			sys("bk", "unlock", "-p", "RESYNC/" CHANGESET, SYS);
+			if (exists(ROOT2RESYNC "/SCCS/p.ChangeSet")) {
+				assert(!exists("RESYNC/ChangeSet"));
+				unlink(ROOT2RESYNC "/SCCS/p.ChangeSet");
+				rename(ROOT2RESYNC "/BitKeeper/tmp/r.ChangeSet",
+				    ROOT2RESYNC "/SCCS/r.ChangeSet");
+			}
 			fprintf(stderr,
 			    "resolve: RESYNC directory left intact.\n");
 		}
