@@ -172,7 +172,12 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	f = fopen(msg_file, "w");
 	assert(f);
 	sendEnv(f, envVar);
-	if (r->path) add_cd_command(f, r);
+
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in pull part 1
+	 */
+	if (r->path && r->httpd) add_cd_command(f, r);
 	fprintf(f, "pull_part2");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.metaOnly) fprintf(f, " -e");

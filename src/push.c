@@ -418,7 +418,12 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, envVar);
-	if (r->path) add_cd_command(f, r);
+
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in pull part 1
+	 */
+	if (r->path && r->httpd) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.metaOnly) fprintf(f, " -e");
@@ -453,7 +458,12 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, envVar);
-	if (r->path) add_cd_command(f, r);
+
+	/*
+	 * No need to do "cd" again if we have a non-http connection
+	 * becuase we already did a "cd" in pull part 1
+	 */
+	if (r->path && r->httpd) add_cd_command(f, r);
 	fprintf(f, "push_part2");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
 	if (opts.debug) fprintf(f, " -d");
