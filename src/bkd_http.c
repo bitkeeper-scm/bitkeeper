@@ -191,8 +191,13 @@ navbutton(int active, int tag, char *start, char *end)
 	int ct;
 	static int shiftroot=0;
 
+#if 0
 	for (sep = start; sep < end && *sep != '#'; ++sep)
 	    ;
+	if (sep < end && *sep == '#') ++sep;
+#else
+	sep = end;
+#endif
 
 	/* control field; not an actual button */
 	if (start[0] == '!') {
@@ -237,7 +242,7 @@ navbutton(int active, int tag, char *start, char *end)
 	out(active ? "<font size=2 color=lightblue>"
 		   : "<font size=2 color=yellow>");
 
-	if (++sep < end) {
+	if (sep < end) {
 		sprintf(buf, "%.*s", end-sep, sep);
 		out(buf);
 		start = 0;
@@ -260,7 +265,7 @@ navbutton(int active, int tag, char *start, char *end)
 		start = 0;
 	} else if (strneq(start, "index.html", 10)) {
 		if (user[0] && !shiftroot) {
-			out("All ChangeSets by ");
+			out("Statistics for ");
 			out(user);
 		} else {
 			out("Home");
@@ -1144,7 +1149,7 @@ units(char *t)
 private void
 http_stats(char *page)
 {
-	int	recent_cs, old_cs;
+	int	recent_cs, all_cs;
 	char	c_user[80];
 	char	user[80];
 	int	ct;
@@ -1156,7 +1161,7 @@ http_stats(char *page)
 		http_error(500, "bk prs failed: %s", strerror(errno));
 
 	c_user[0] = 0;
-	recent_cs = old_cs = 0;
+	recent_cs = all_cs = 0;
 
 	/* don't use whoami, because I need to have absolute urls for
 	 * the parent pages in the navbar
@@ -1176,44 +1181,55 @@ http_stats(char *page)
 	    " cellspacing=0 bgcolor=white>\n"
 	    "<tr bgcolor=#d0d0d0>\n"
 	    "<th>Author</th>\n"
-	    "<th>New ChangeSets</th>\n"
-	    "<th>Old ChangeSets</th></tr>\n");
+	    "<th>Recent ChangeSets</th>\n"
+	    "<th>All ChangeSets</th></tr>\n");
 
 	while (fnext(buf,p)) {
-		unless (sscanf(buf, "%s %d %s", user, &ct, units) == 3)
+		unless (sscanf(buf, " %s %d %s", user, &ct, units) == 3) {
+			strtok(buf, "\n");
+			out("<!-- reject ["); out(buf); out("] -->\n");
 			continue;
+		}
 
-		if (streq(user, c_user)) {
-			if (strneq(units, "year", 4)) {
-				ct *= 365*24;
-			} else if (strneq(units, "month", 5)) {
-				ct *= 30*24;
-			} else if (strneq(units, "week", 4)) {
-				ct *= 7*24;
-			} else if (strneq(units, "day", 3)) {
-				ct *= 24;
-			}
-			if (ct > 30*24)
-				old_cs ++;
-			else
-				recent_cs ++;
-		} else {
+		if (!streq(user, c_user)) {
 			if (c_user[0]) {
 				sprintf(buf,
 				    "<tr>\n"
-				    "<td>"
+				    "<td align=center>"
 				    "<a href=\"user=%s%s\">%s</a></td>\n"
-				    "<td>%d</td>\n"
-				    "<td>%d</td></tr>\n",
+				    "<td align=center>%d</td>\n"
+				    "<td align=center>%d</td></tr>\n",
 				    c_user, navbar, c_user,
-				    recent_cs, old_cs);
+				    recent_cs, all_cs);
 				out(buf);
 			}
 			strcpy(c_user, user);
-			recent_cs = old_cs = 0;
+			recent_cs = all_cs = 0;
 		}
+		if (strneq(units, "year", 4)) {
+			ct *= 365*24;
+		} else if (strneq(units, "month", 5)) {
+			ct *= 30*24;
+		} else if (strneq(units, "week", 4)) {
+			ct *= 7*24;
+		} else if (strneq(units, "day", 3)) {
+			ct *= 24;
+		}
+		all_cs ++;
+		if (ct <= 30*24) recent_cs ++;
 	}
 	pclose(p);
+	if (all_cs > 0) {
+		sprintf(buf,
+		    "<tr>\n"
+		    "<td align=center>"
+		    "<a href=\"user=%s%s\">%s</a></td>\n"
+		    "<td align=center>%d</td>\n"
+		    "<td align=center>%d</td></tr>\n",
+		    c_user, navbar, c_user,
+		    recent_cs, all_cs);
+		out(buf);
+	}
 	out("</table>\n");
 	if (!embedded) trailer("patch");
 }
