@@ -1,0 +1,35 @@
+.so bk-macros
+.TH "bk editor" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk editor \- automatically check out \*(BK files when using $EDITOR
+.SH SYNOPSIS
+.B bk editor
+.ARG file
+.SH DESCRIPTION
+.LP
+.B bk editor
+is used as a shortcut to edit a file whether or not it is a \*(BK file.
+If the file is under revision control, bk editor will
+bk edit the file then exec the editor of choice on that file.  If the
+file is not under revision control, it will exec the editor on that file.
+.LP
+The EDITOR environment variable must be set appropriately.
+.LP
+bk editor can be used as follows:
+.DS
+bk editor foo.c
+.DE
+.LP
+A preferred method is to set the EDITOR environment variable and alias
+the editor name to 'bk editor'.  
+Using xemacs as an example, set EDITOR and then alias:
+.DS
+EDITOR=xemacs
+alias xemacs='bk editor'
+.DE
+To open the file for editting:
+.DS
+xemacs foo.c
+.DE
+.SH CATEGORY
+.B Compatibility

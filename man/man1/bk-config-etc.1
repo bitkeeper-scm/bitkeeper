@@ -3,6 +3,48 @@
 .SH NAME 
 bk config-etc \- configuring \*(BK per repository
 .SH DESCRIPTION
+Repository configuration information is contained in the BitKeeper/etc/config
+file.  License information, logging information, user preferences 
+and BKWeb preferences can be defined in this file.
+.SS LICENSE KEY
+.LP
+The use of \*(BK without Open Logging enabled requires a commercial
+license key.  You can get a temporary license by sending a mail request
+to bk_license@bitmover.com.  
+.LP
+Once a license key is obtained, add a line to BitKeeper/etc/config
+that looks like:
+.DS
+license: <license key>
+.DE
+.SS OPEN LOGGING
+.LP
+To set up Open Logging for the repository add a line to BitKeeper/etc/config:
+.DS
+logging: logging@openlogging.org
+.DE
+.SS DISABLE LOGGING
+.LP
+To disable logging add a line to BitKeeper/etc/config:
+.DS
+logging:none
+.DE
+Please be aware this option is only available to customers with commercial
+licenses and single users.
+.SS SINGLE USERS
+.LP
+To set the package for a single user add the following lines to the
+BitKeeper/etc/config file:
+.DS
+single_user:\c
+.ARG user_name
+single_host:\c
+.ARG host_name
+.DE
+Please note, single user repositories can be changed to multi-user 
+repositories, but they can not be changed back to single_user repositories.
+See bk multiuser.
+.SS USER PREFERENCES
 .LP
 Repository preferences can be defined in the BitKeeper/etc/config file.
 The general format for the repository preference config file is 
@@ -55,9 +97,29 @@ The optional filter can be any of the following:
 [@xyz.com:/path/to/repo]checkout:get
 .br
 [jdoe@xyz.com:/path/to/repo]checkout:edit 
+.SS BKWEB PREFERENCES
+.LP
+BKWeb preferences can be specified in the BitKeeper/etc/config file.
+If these preferences are specified, information given will appear on the
+BKWeb site for the project.
+.TP 1i
+.B bkweb
+specify the BKWeb address for a project
+.tp
+.B homepage
+the home page for your project or company
+.tp
+.B master
+the location from which source can be cloned
+.LP
+For example,
+.DS
+bkweb:    http://www.bitkeeper.com:8888//home/bk/stable
+master:   bk://www.bitkeeper.com:7000
+homepage: http://www.bitkeeper.com
+.DE
 .SH "SEE ALSO"
 .SA config-gui 1
-.SA config-logging 1
 .\" help://configuration
 .\" help://user preferences
 .\" help://repository preferences
