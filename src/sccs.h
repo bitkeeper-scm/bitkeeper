@@ -613,6 +613,7 @@ int	gone(char *key, MDBM *db);
 int	sccs_mv(char *name, char *dest, int isDir, int isDelete);
 char	*_relativeName(char *gName,
 	    int isDir, int withsccs, int mustHaveRmarker, char *root);
+void	rcs(char *cmd, int argc, char **argv);
 
 typedef	char **globv;
 globv	read_globs(FILE *f, globv oldglobs);

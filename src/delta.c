@@ -32,8 +32,6 @@ usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
 #include "comments.c"
 int	newrev(sccs *s, pfile *pf);
 
-extern void rcs(char *cmd, int ac, char **av) NORETURN;
-
 int
 main(int ac, char **av)
 {
