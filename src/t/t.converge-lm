@@ -24,6 +24,7 @@ echo $N Create repository ...........................................$NL
 echo "logging: logging@openlogging.org" > $HERE/c
 echo "description: BitKeeper Test repository" >> $HERE/c
 echo "email:		nobody@nowhere.bk" >> $HERE/c
+echo "eoln: unix" >> $HERE/c
 bk setup -f -c$HERE/c project
 touch project/BitKeeper/etc/SCCS/x.marked
 echo OK

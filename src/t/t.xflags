@@ -18,7 +18,14 @@
 MAYCHANGE="RCS YEAR4 SHELL EXPAND1 SCCS EOLN_NATIVE"
 MAYNOT="BITKEEPER CSETMARKED HASH SINGLE LONGKEY"
 
-no_logging project
+echo "logging: none" > $HERE/c
+echo "single_user: bk" >> $HERE/c
+echo "single_host: free.bk" >> $HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c
+echo "email:		nobody@nowhere.bk" >> $HERE/c
+bk setup -f -c$HERE/c project
+touch project/BitKeeper/etc/SCCS/x.marked
+cd project
 echo $N Creat initial file ..........................................$NL
 echo Yo yo yo yo > xflags
 bk new $Q xflags

@@ -298,14 +298,6 @@ if [ ! -f mid.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.mid.c ]; then echo failed; exit 1; fi
 if writable mid.c; then echo failed; exit 1; fi
 echo OK
-echo $N Make sure "bk new" works with eoln:native preference ..........$NL
-cp config.sav BitKeeper/etc/config
-echo "eoln:native" >> BitKeeper/etc/config
-echo foo1 > foo1.c
-bk new $Q foo1.c
-bk prs -hr+ -d:FLAGS: foo1.c | grep -q EOLN_NATIVE
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
-echo OK
 echo $N Make sure "bk new -b" forces binary encoding for text file ....$NL
 echo "this is text" > text
 bk new $Q -b text

@@ -75,6 +75,7 @@ no_logging() {
 	echo "single_host: free.bk" >> c
 	echo "description: BitKeeper Test repository" >> c
 	echo "email: nobody@nowhere.bk" >> c
+	echo "eoln: unix" >> c
 	bk setup -f -cc $1
 	cd $1
 }

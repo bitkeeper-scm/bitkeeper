@@ -13,7 +13,14 @@
 # %K%
 
 echo $N Create initial repository ...................................$NL
-no_logging project
+echo "logging: none" > $HERE/c
+echo "single_user: bk" >> $HERE/c
+echo "single_host: free.bk" >> $HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c
+echo "email:		nobody@nowhere.bk" >> $HERE/c
+bk setup -f -c$HERE/c project
+touch project/BitKeeper/etc/SCCS/x.marked
+cd project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -177,7 +184,7 @@ u
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "BITKEEPER,RCS,YEAR4,EXPAND1,CSETMARKED,SCCS,SINGLE" ]
+if [ "$FLAGS" != "BITKEEPER,RCS,YEAR4,EXPAND1,CSETMARKED,SCCS,SINGLE,EOLN_NATIVE" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1
@@ -204,7 +211,7 @@ C
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,SINGLE" ]
+if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,SINGLE,EOLN_NATIVE" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1
@@ -234,7 +241,7 @@ This is a checkin comment
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,SINGLE" ]
+if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,SINGLE,EOLN_NATIVE" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1
