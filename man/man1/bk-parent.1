@@ -4,7 +4,7 @@
 bk parent \- show or set the parent repository
 .SH SYNOPSIS
 .Bc bk parent [
-.Bc -qr] [
+.Bc -qpr] [
 .ARGc repository
 .B ]
 .SH DESCRIPTION
@@ -21,6 +21,9 @@ named according to the access method (see bk help url for more information).
 .TP
 .B \-q
 Run quietly.
+.tp
+.B \-p
+Just print parent with other text. (for scripts)
 .tp
 .B \-r
 Remove the parent pointer.

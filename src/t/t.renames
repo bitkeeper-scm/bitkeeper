@@ -111,6 +111,7 @@ cd $HERE
 bk resync -t $Q -at project copy
 # Rename the case orientation only, this test correctness on win32
 cd project
+bk clean $Q no_conflicts
 mv SCCS/s.no_conflicts SCCS/s.tmp
 bk mv tmp no_Conflicts
 bk commit $Q -ywhatever2
