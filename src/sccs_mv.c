@@ -133,7 +133,7 @@ err:		if (sname) free(sname);
 	}
 	t = destfile = name2sccs(buf);
 
-	sfile = strdup(sPath(t, 0));
+	sfile = strdup(t);
 	gfile = sccs2name(t);
 	t = 0;
 
