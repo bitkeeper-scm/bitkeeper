@@ -2312,7 +2312,7 @@ pass4_apply(opts *opts)
 {
 	sccs	*r, *l;
 	int	offset = strlen(ROOT2RESYNC) + 1;	/* RESYNC/ */
-	int	eperm = 0, first = 1, isLoggingRepository = 0;
+	int	eperm = 0, first = 1, isLoggingRepository = 0, flags;
 	FILE	*f;
 	FILE	*save;
 	char	buf[MAXPATH];
@@ -2537,8 +2537,9 @@ Got:\n\
 		fprintf(stderr,
 		    "Consistency check passed, resolve complete.\n");
 	}
-	unless (isLoggingRepository) logChangeSet(logging(0, 0, 0) , 0, 1);
-	resolve_cleanup(opts, CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING);
+	flags = CLEAN_OK|CLEAN_RESYNC|CLEAN_PENDING|DO_LOG;
+	unless (isLoggingRepository) flags |= DO_LOG;
+	resolve_cleanup(opts, flags);
 	/* NOTREACHED */
 	return (0);
 }
@@ -2707,5 +2708,6 @@ resolve_cleanup(opts *opts, int what)
 		SHOUT2();
 		exit(1);
 	}
+	if (what & DO_LOG) logChangeSet(logging(0, 0, 0) , 0, 1);
 	exit(0);
 }
