@@ -4427,7 +4427,7 @@ compressmap(sccs *s, delta *d, ser_t *set, char **inc, char **exc)
 		if ((slist[t->serial] & S_PAR) && t->parent) {
 			slist[t->parent->serial] |= S_PAR;
 #ifdef MULTIPARENT
-			if (d->merge) slist[d->merge] |= S_PAR;
+			if (t->merge) slist[t->merge] |= S_PAR;
 #endif
 		}
 
@@ -4536,7 +4536,7 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 		if ((slist[t->serial] & S_PAR) && t->parent) {
 			slist[t->parent->serial] |= S_PAR;
 #ifdef MULTIPARENT
-			if (d->merge) slist[d->merge] |= S_PAR;
+			if (t->merge) slist[t->merge] |= S_PAR;
 #endif
 		}
 
@@ -5069,7 +5069,7 @@ err:		s->state |= S_WARNED;
 		if ((slist[t->serial] & S_PAR) && t->parent) {
 			slist[t->parent->serial] |= S_PAR;
 #ifdef MULTIPARENT
-			if (d->merge) slist[d->merge] |= S_PAR;
+			if (t->merge) slist[t->merge] |= S_PAR;
 #endif
 		}
 

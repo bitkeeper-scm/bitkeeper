@@ -12,7 +12,7 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-HERE=`pwd`
+HERE=`${CWD}`
 mkdir stripdel || exit 1
 cd stripdel || exit 1
 bk cset -i -s .
