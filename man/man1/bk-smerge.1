@@ -4,19 +4,147 @@
 bk smerge \- smart text-based 3-way file merge
 .SH SYNOPSIS
 .\"
-.Bc bk smerge [\-2efghns] [
+.\".Bc bk smerge [\-2efghns] [
+.Bc bk smerge [\-2efghn] [
 .OPTreq \-A n
 .Bc ] [
 .OPTreq \-a n
-.Bc ] [
-.OPTreq \-r r
-.B ] 
+.B ]
+.\".Bc ] [
+.\".OPTreq \-r r
+.\".B ] 
 .ARG local
 .ARG gca
-.ARG rem
+.ARG remote
 .ARG file
 .SH DESCRIPTION
-This command does a smart 3-way file merge.
+.LP
+The bk smerge command compares the three versions of the file and 
+identifies all changes by either the local or the remote version of the 
+file compared to the greatest common ancestor (gca).  These
+groups of changes are known as conflict regions and are bounded by a
+line that is identical in all three versions at the beginning of
+the conflict region and at the end of the conflict region.  For each
+region, one or more of the automerge algorithms (see below) are run
+to see if the changes may be merged automatically.
+.LP
+The bk smerge command is typically run automatically from bk resolve.  
+When doing a manual merge in the resolver, the user can pass extra 
+options to smerge by adding them to the 'm' or 'e' resolve commands.
+.LP
+The bk smerge command does not use the traditional diff3 merge.
+There are a number of heuristics in the default enabled merge
+algorithms which help determine regions which are safe to automerge.
+These can simplify and resolve many conflict regions that can not
+be resolved in the traditional diff3 merge.  Please note, smerge can
+only be run on SCCS files.
+.LP
+In some scripts users may want to call smerge directly.  If so, an example
+for usage is:
+.DS
+bk smerge -g 1.661 1.660 1.660.1.4 slib.c > slib.c.merged
+.DE
+where 1.661 is the local revision, 1.660 is the rivision of the
+greatest common ancestor, 1.660.1.4 is the remote revision, slib.c is the
+file name and slib.c.merged is the file to which merge output is redirected.
+.SH "MERGE ALGORITHMS"
+.LP
+Each of the automerge algorithms is described below.  Currently,
+all of these are run by default, but that may change in the future.
+Any mix of these may be selectively enabled or disabled.
+.TP
+.B 1. Merge identical changes made by both sides
+If both the local and the remote files have made an identical change
+to the GCA, then this function will resolve the region and replace it
+with the new text.
+.tp
+.B 2. Merge when only one side changes
+This code finds conflict regions where only the local or the remote
+version has made any changes.  In this case the conflict is resolved
+and the side that made changes is kept.  This is the traditional
+diff3 type automerge algorithm.
+.tp
+.B 3. Merge adjacent, non-overlapping modifications on both sides
+This code attempts to find a conflict consisting of a text
+substitution in both the local and remote versions of the file.  A
+substitution is a line or group of lines that is deleted and then
+replaced with zero or more lines.  If there is a conflict region that
+contains lines substituted in the local file that are unmodified in the
+remote and there are lines substituted in the remote file that are
+unmodified in the local file, then a merge of the two substitutions is
+performed.
+.RS 1i
+.sp
+Here is an example of a conflict region (in the -g output format)
+where this algorithm will sucessfully resolve the conflict.
+.DS
+<<<<<<< local slib.c 1.642.1.6 vs 1.645
+	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+-	assert(sc->tree);
+- 	sccs_sdelta(sc, sc->tree, file);
++	assert(HASGRAPH(sc));
++	sccs_sdelta(sc, sccs_ino(sc), file);
+<<<<<<< remote slib.c 1.642.1.6 vs 1.642.2.1
+-	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
++	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
+	assert(sc->tree);
+	sccs_sdelta(sc, sc->tree, file);
+>>>>>>>
+.DE
+The block after the resolve will be:
+.DS
+	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
+	sccs_sdelta(sc, sc->tree, file);
+	sccs_sdelta(sc, sccs_ino(sc), file);
+.DE
+Multiple substitutions are not yet handled.
+.RE
+.tp
+.B 4. Merge identical changes at the start of a conflict
+This code recognizes one or more lines at the beginning the local and
+remote versions of a conflict region that are identical.  If there
+is a block of lines that are identical then the region is split into
+two regions with the identical lines in a region by themselves.  This
+block will later be resolved by algorithm #1.
+.tp
+.B 5. Merge identical changes at the end of a conflict
+This is similar to algorithm #4, except it looks for identical lines on both
+sides at the end of the conflict region.
+.tp
+.B 6. Merge identical deletions made by both sides
+If both the local and remote version of a region have deleted the
+same non-zero block of lines at the end of the region, then split the
+region into two with the deletions in a seperate region.  The
+deletions will then get autoresolved.
+.LP
+When a conflict regions is identified, then the enabled algorithms are run
+on the block repeatedly until the block is resolved or no futher
+progress is made.
+.LP
+Default merge output format is as follows:
+.DS
+<<<<<<< gca slib.c 1.642.1.6
+	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+	assert(sc->tree);
+	sccs_sdelta(sc, sc->tree, file);
+<<<<<<< local slib.c 1.645
+	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
+	assert(HASGRAPH(sc));
+	sccs_sdelta(sc, sccs_ino(sc), file);
+<<<<<<< remote slib.c 1.642.2.1
+	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
+	assert(sc->tree);
+	sccs_sdelta(sc, sc->tree, file);
+>>>>>>>
+.DE
+Lines with "<<<<<<<" indicate the file the conflict region is from in
+the form: <<<<<<< 
+.ARG label
+.ARG file
+.ARG revision
+follwed by the conflict lines from that file.  The end of the conflict region
+is indicated by ">>>>>>>".
+Examples of merge output can be viewed by using the -e option.
 .SH OPTIONS
 .if t .TP .6i
 .if n .TP 1i
@@ -24,9 +152,9 @@ This command does a smart 3-way file merge.
 Enable the 2 way output format (like diff3)
 .tp
 .B \-g
-Enable 'gca' output format that show the local and
+Enable 'gca' output format that shows the local and
 remote files like a unified diff between the GCA and that file.
-This is the recommended output format, but not the default becauses
+This is the recommended output format, but not the default because
 it confuses people the first time they see it.
 .tp
 .B \-n
@@ -39,27 +167,41 @@ Print examples of all 4 output formats from
 .B smerge
 .tp
 .OPTreq \-a n
-Enable a list of merge functions seperated by commas.  'all' will enable
-all automerge algorthms.   Use 'bk smerge -h' to find the algorthms enabled by
+Enable merge functions
+.ARG n ,
+where 
+.ARG n
+is a comma seperated list of automerge algorithms specified by number.
+.OPTreq \-a all
+\ will enable all automerge algorithms.   
+Use 'bk smerge -h' to find the algorithms enabled by
 default.
 .tp
 .OPTreq \-A n
-Display a list of merge functions seperated by commas.  See \-a.
-\-Aall will turn off all automerging.
+Disable merge functions
+.ARG n ,
+where
+.ARG n
+is a comma seperated list of automerge algorithms specified by number.
+.OPTreq \-A all
+\ will turn off all automerging.
 .tp
 .B \-f
 Enable fdiff output.  (Used internally by 
 .Bc fm3tool
 )
+.\".tp
+.\".B \-s
+.\"Show sequence numbers in output
 .tp
-.B \-s
-Show sequence numbers in output
-.tp
-.tp
-.OPTreq \-r range
-When given a range of the format 'start..end' it limits the output to
-just the sequence numbers after (not including) 'start' and before (not 
-including) 'end'.  start or end can be omitted to go to the end of the file.
+.B \-h
+Display automerge algorithms by number that are enabled by default.
+If used in conjunction with \-a or \-A, asterisks denote enabled algorithms.
+.\".tp
+.\".OPTreq \-r range
+.\"When given a range of the format 'start..end' it limits the output to
+.\"just the sequence numbers after (not including) 'start' and before (not 
+.\"including) 'end'.  start or end can be omitted to go to the end of the file.
 .SH EXIT STATUS
 0 for no conflicts, 1 for conflicts, 2 for errors.
 .SH "SEE ALSO"
