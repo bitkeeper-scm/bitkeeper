@@ -313,7 +313,7 @@ prompt(char *msg, char *buf)
 int
 confirm(char *msg)
 {
-	char	buf[100];
+	char	*p, buf[100];
 	int	gotsome;
 
 	caught = 0;
@@ -328,7 +328,9 @@ confirm(char *msg)
 		assert(!gotsome);
 	}
 	sig_restore();
-	return (gotsome && ((buf[0] == 'y') || (buf[0] == 'Y')));
+	unless (gotsome) return (0);
+	for (p = buf; *p && isspace(*p); p++);
+	return ((*p == 'y') || (*p == 'Y'));
 }
 
 /*
