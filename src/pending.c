@@ -96,6 +96,7 @@ pending_main(int ac, char **av)
 		while (av[optind]) {
 			if (!opts.skip_allheader && (opts.verbose > V_QUIET)) {
 				printf("%s\n", av[optind]);
+				fflush(stdout); /* for error path */
 			}
 			pending |= doit(&opts, av[optind]);
 			optind++;
