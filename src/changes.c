@@ -42,6 +42,55 @@ changes_main(int ac, char **av)
 	    rev, indent, tagOnly, av[optind] && streq("-", av[optind])));
 }
 
+
+/*
+ * Convert a command line to a av[] vector 
+ *
+ * This function is copied from win32/uwtlib/wapi_intf.c
+ * XXX TODO we should propably move this to util.c if used by
+ * other code.
+ */
+private void
+line2av(char *cmd, char **av)
+{
+	char	*p, *q, *s;
+	int	i = 0;
+#define isQuote(q) (strchr("\"\'", *q) && q[-1] != '\\')
+#define isDelim(c) isspace(c)
+#define	MAXARGS 100
+
+	p = cmd;
+	while (isspace(*p)) p++; 
+	while (*p) {
+		av[i++] = p;
+		s = q = p;
+		while (*q && !isDelim(*q)) {
+			if (*q == '\\') {
+				q++;
+				*s++ = *q++;
+			} else if (isQuote(q)) {
+				q++; /* strip begin quote */
+				while (!isQuote(q)) {
+					*s++ = *q++;
+				}
+				q++; /* strip end quote */
+			} else {
+				*s++ = *q++;
+			}
+		}
+		if (*q == 0) {
+			*s = 0;
+			break;
+		}
+		*s = 0;
+		p = ++q;
+		while (isspace(*p)) p++; 
+	}
+	av[i] = 0;
+	assert(i < MAXARGS);
+	return;
+}
+
 /*
  * XXX May need to change the @ to BK_FS in the following dspec
  */
@@ -59,7 +108,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 	char	*spec = tagOnly ? TSPEC : DSPEC;
 	pid_t	pid;
 	extern	char *pager;
-	char	*av[2] = { pager, 0 };
+	char	*pager_av[MAXARGS];
 	int	pfd;
 
 	dashfile[0] = 0;
@@ -84,7 +133,9 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 		return (0);
 	}
 	signal(SIGPIPE, SIG_IGN);
-	pid = spawnvp_wPipe(av, &pfd, 0);
+	strcpy(tmpfile, pager); /* line2av stomp */
+	line2av(tmpfile, pager_av); /* because pager is "less -E" on win32 */
+	pid = spawnvp_wPipe(pager_av, &pfd, 0);
 	close(1);
 	dup2(pfd, 1);
 	close(pfd);
