@@ -306,7 +306,7 @@
 //#define	OPENLOG_IP	"http://207.181.251.164:80////LOG_ROOT///" 
 //#define	OPENLOG_IPHOST	"207.181.251.164"
 #define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
-#define	BK_HOSTME_URL	"http://hostme.bitkeeper.com:80"
+#define	BK_HOSTME_SERVER "hostme.bitkeeper.com"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	HOSTME_CGI	"hostme_cgi"
 #define	WEB_MAIL_CGI	"web_mail"

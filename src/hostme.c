@@ -27,9 +27,9 @@ hostme_main(int ac, char **av)
 {
 	int	c, rc;
 	opts	opts;
-	char	default_url[] = BK_HOSTME_URL;
-	char	*url = default_url;
+	char	*url;
 	char	*hostme_info;
+	char	*host = BK_HOSTME_SERVER;
 	char	*public_key;
 	int	fd;
 	FILE	*f;
@@ -85,9 +85,10 @@ hostme_main(int ac, char **av)
 	fclose(f);
 
 	if (opts.host) {
-		sprintf(buf, "http://%s:80", opts.host);
-		url = buf;
+		host = opts.host;
 	}
+	sprintf(buf, "http://%s:80", host);
+	url = buf;
 	r = remote_parse(url, 0);
 	if (opts.debug) r->trace = 1;
 	assert(r);
@@ -100,9 +101,17 @@ hostme_main(int ac, char **av)
 	    m->where, msize(m), 0, "BitKeeper/hostme", HOSTME_CGI);
 	mclose(m);
 	skip_http_hdr(r);
-	unless (rc) rc = get_ok(r, 0, opts.debug);
+	unless (rc) rc = get_ok(r, 0, opts.verbose);
 	disconnect(r, 2);
 	if (!opts.debug) unlink(hostme_info);
+	if (!rc && opts.verbose) {
+		printf("\nOK, give us a minute while we create the account. "
+		"Try logging\ninto the admininstrative shell using the "
+		"following:\n\n"
+		"\tssh %s.admin@%s\n\n"
+		"If that does not work, please contact support@bitmover.com. "
+		"Enjoy!\n\n", opts.project, host);
+	}
 	return (rc);
 }
 
@@ -111,6 +120,6 @@ usage()
 {
 	fprintf(stderr,
 	    "Usage: bk hostme "
-	    "[-h<host>] -p<project> -r<repo> -s<identity.pub>>\n");
+	    "[-h<host>] -d -q -p<project> -r<repo> -s<identity.pub>>\n");
 	exit(1);
 }
