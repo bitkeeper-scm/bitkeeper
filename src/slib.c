@@ -8212,7 +8212,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
 		fprintf(stderr,
-		    "delta: can't rename(%s, %s) left in %s\n",
+		    "admin: can't rename(%s, %s) left in %s\n",
 		    t, sc->sfile, t);
 		OUT;
 	}

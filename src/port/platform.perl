@@ -32,5 +32,14 @@ sub bg_system
 	system("$cmd $args &");
 }
 
+# Convert path to "standard" format
+# On unix, this is a no-op
+# This should match the localName2bkName()
+# function defined in unix.h
+sub localName2bkName
+{
+        return $_[0];
+}        
+
 return 1;
 
