@@ -245,7 +245,7 @@ private void
 warnPoly(void)
 {
 	getmsg("warn_poly", 0, 0, stdout);
-	close(open(POLY, O_CREAT|O_TRUNC, 0664));
+	close(open(POLY, O_CREAT|O_TRUNC|O_WRONLY, 0664));
 }
 
 /*
