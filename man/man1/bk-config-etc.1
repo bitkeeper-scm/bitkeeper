@@ -178,6 +178,15 @@ after doing a bk delta
 .ARG file .
 (Checkout in edit mode.)
 .tp
+.B EDIT
+Automatically do a bk edit
+.ARG file
+after doing a bk delta
+.ARG file ,
+but adjust mod time of the s.file to be one second before the mod time
+of the gfile.  This prevents recompilation after a check-in operation.
+(Checkout in edit mode.)
+.tp
 .B none
 Clear the gfile after doing a bk delta
 .ARG file .
