@@ -102,7 +102,8 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	bktemp(buf);
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, "_INCOMING");
+	sendEnv(f, envVar, INCOMING);
+	setLocalEnv(INCOMING);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "pull_part1");
 	if (opts.gzip) fprintf(f, " -z%d", opts.gzip);
@@ -174,7 +175,8 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	bktemp(msg_file);
 	f = fopen(msg_file, "w");
 	assert(f);
-	sendEnv(f, envVar, "_INCOMING");
+	sendEnv(f, envVar, INCOMING);
+	setLocalEnv(INCOMING);
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection

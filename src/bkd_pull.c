@@ -293,6 +293,7 @@ cmd_pull_part1(int ac, char **av)
 	FILE	*f;
 
 	sendServerInfoBlock();
+	setLocalEnv(OUTGOING);
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");
@@ -357,6 +358,7 @@ cmd_pull_part2(int ac, char **av)
 	}
 
 	sendServerInfoBlock();
+	setLocalEnv(OUTGOING); /* TODO skip this if not httpd */
 
 	/*
 	 * What we want is: remote => bk _prunekey => serials

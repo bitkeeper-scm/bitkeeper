@@ -524,20 +524,38 @@ putroot(char *where)
 	free(env);
 }
 
+/*
+ * Send env varibale to remote bkd.
+ * This also have the side effect of setting up local env
+ */
 void
-sendEnv(FILE *f, char **envVar, char *direction)
+sendEnv(FILE *f, char **envVar, int in_out)
 {
 	int	i;
-	char	*root;
+	char	*p, *root, *user, *host, *direction;
 
 	fprintf(f, "putenv BK_REMOTE_PROTOCOL=%s\n", BKD_VERSION);
+
+	direction =  in_out ? "_INCOMING" : "_OUTGOING";  
 
 	fprintf(f, "putenv BK%s_VERSION=%s\n", direction, bk_vers);
 	fprintf(f, "putenv BK%s_UTC=%s\n", direction, bk_utc);
 	fprintf(f, "putenv BK%s_TIME_T=%s\n", direction, bk_time);
-	fprintf(f, "putenv BK%s_USER=%s\n", direction, sccs_getuser());
-	fprintf(f, "putenv BK%s_HOST=%s\n", direction, sccs_gethost());
+	user = sccs_getuser();
+	fprintf(f, "putenv BK%s_USER=%s\n", direction, user);
+	fprintf(f, "putenv BK_USER=%s\n", user);
+
+	host = sccs_gethost();
+	fprintf(f, "putenv BK%s_HOST=%s\n", direction, host);
+	fprintf(f, "putenv BK_HOST=%s\n", host);
+
+	unless (getenv("BK_HOST")) {
+		p = aprintf("BK_HOST=%s", host);
+		putenv(p);
+	}
+
 	fprintf(f, "putenv BK%s_LEVEL=%d\n", direction, getlevel());
+
 	root = sccs_root(0);
 	if (root) {
 		if (streq(root, ".")) {
@@ -554,6 +572,48 @@ sendEnv(FILE *f, char **envVar, char *direction)
 		fprintf(f, "putenv %s\n", envVar[i]);
 	}
 }
+
+void
+setLocalEnv(int in_out)
+{
+	char *p, *root, *user, *host, *ldirection;
+
+	ldirection =  in_out ? "_INCOMING" : "_OUTGOING"; 
+
+	p = aprintf("BK%s_VERSION=%s", ldirection, bk_vers); putenv(p);
+	p = aprintf("BK%s_UTC=%s", ldirection, bk_utc); putenv(p);
+	p = aprintf("BK%s_TIME_T=%s", ldirection, bk_time); putenv(p);
+	user = sccs_getuser();
+	p = aprintf("BK%s_USER=%s", ldirection, user); putenv(p);
+	unless (getenv("BK_USER")) {
+		p = aprintf("BK_USER=%s", user);
+		putenv(p);
+	}
+
+	host = sccs_gethost();
+	p = aprintf("BK%s_HOST=%s", ldirection, host); putenv(p);
+	unless (getenv("BK_HOST")) {
+		p = aprintf("BK_HOST=%s", host);
+		putenv(p);
+	}
+
+	p = aprintf("BK%s_LEVEL=%d", ldirection, getlevel()); putenv(p);
+	root = sccs_root(0);
+	if (root) {
+		if (streq(root, ".")) {
+			char	pwd[MAXPATH];
+
+			getcwd(pwd, MAXPATH);
+			p = aprintf("BK%s_ROOT=%s", ldirection, pwd);
+			putenv(p);
+		} else {
+			p = aprintf("BK%s_ROOT=%s", ldirection, root);
+			putenv(p);
+		}
+		free(root);
+	}
+}
+
 
 int
 getServerInfoBlock(remote *r, char *direction)
@@ -588,6 +648,7 @@ sendServerInfoBlock()
 	out("@SERVER INFO@\n");
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
 	out(buf);
+
         sprintf(buf, "VERSION=%s\n", bk_vers);		/* binary version   */
 	out(buf);
         sprintf(buf, "UTC=%s\n", bk_utc);

@@ -94,7 +94,8 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	gettemp(buf, "clone");
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, "_INCOMING");
+	sendEnv(f, envVar, INCOMING);
+	setLocalEnv(INCOMING);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (gzip) fprintf(f, " -z%d", gzip);
@@ -130,8 +131,8 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		putenv("BK_CSETS=1.0..");
 	}
 	if (local) {
-		sprintf(buf, "BK_OUTGOING_ROOT=%s", local);
-		putenv((strdup)(buf));
+		p = aprintf("BK_INCOMING_ROOT=%s", local);
+		putenv(p);
 	}
 	if (bkd_connect(r, opts.gzip, !opts.quiet)) goto done;
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;

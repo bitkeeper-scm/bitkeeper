@@ -240,7 +240,8 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 	bktemp(buf);
 	f = fopen(buf, "w");
 	assert(f);
-	sendEnv(f, envVar, "_OUTGOING");
+	sendEnv(f, envVar, OUTGOING);
+	setLocalEnv(OUTGOING);
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "push_part1");
 	if (gzip) fprintf(f, " -z%d", opts.gzip);
@@ -441,7 +442,8 @@ send_end_msg(opts opts, remote *r, char *msg, char *rev_list, char **envVar)
 	bktemp(msgfile);
 	f = fopen(msgfile, "wb");
 	assert(f);
-	sendEnv(f, envVar, "_OUTGOING");
+	sendEnv(f, envVar, OUTGOING);
+	setLocalEnv(OUTGOING);
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection
@@ -481,7 +483,8 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	bktemp(msgfile);
 	f = fopen(msgfile, "wb");
 	assert(f);
-	sendEnv(f, envVar, "_OUTGOING");
+	sendEnv(f, envVar, OUTGOING);
+	setLocalEnv(OUTGOING);
 
 	/*
 	 * No need to do "cd" again if we have a non-http connection

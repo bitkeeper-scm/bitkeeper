@@ -148,6 +148,7 @@ cmd_push_part1(int ac, char **av)
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock();
+	setLocalEnv(INCOMING);
 
 	if (getenv("BK_OUTGOING_LEVEL") && 
 	    (atoi(getenv("BK_OUTGOING_LEVEL")) > getlevel())) {
@@ -269,6 +270,7 @@ cmd_push_part2(int ac, char **av)
 	}
 
 	sendServerInfoBlock();
+	setLocalEnv(INCOMING);
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {
