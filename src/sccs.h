@@ -1196,6 +1196,8 @@ void	bkversion(FILE *f);
 int	sane(int, int);
 int	global_locked(void);
 void	progressbar(int n, int max, char *msg);
+char	*signed_loadFile(char *filename);
+int	signed_saveFile(char *filename, char *data);
 
 void	align_diffs(u8 *vec, int n, int (*compare)(int a, int b),
     int (*is_whitespace)(int i));

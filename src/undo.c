@@ -511,20 +511,15 @@ void
 save_log_markers(void)
 {
 	int	i;
+	char	*mark;
 	sccs	*s = sccs_csetInit(0, 0);
 	unless (s) return;
-	
+
 	for (i = 0; i < 2; i++) {
-		FILE	*f;
-		char	key[MAXKEY];
 		valid_marker[i] = 0;
-		f = fopen(markfile[i], "r");
-		if (f) {
-			if (fnext(key, f)) {
-				chomp(key);
-				if (sccs_findKey(s, key)) valid_marker[i] = 1;
-			}
-			fclose(f);
+		if (mark = signed_loadFile(markfile[i])) {
+			if (sccs_findKey(s, mark)) valid_marker[i] = 1;
+			free(mark);
 		}
 	}
 	sccs_free(s);
@@ -535,21 +530,16 @@ update_log_markers(int verbose)
 {
 	int	i;
 	sccs	*s = sccs_csetInit(0, 0);
+	char	*mark;
+
 	unless (s) return;
-	
+
 	/* Clear marks that are still valid */
 	for (i = 0; i < 2; i++) {
-		FILE	*f;
-		char	key[MAXKEY];
-		
 		unless (valid_marker[i]) continue;
-		f = fopen(markfile[i], "r");
-		if (f) {
-			if (fnext(key, f)) {
-				chomp(key);
-				if (sccs_findKey(s, key)) valid_marker[i] = 0;
-			}
-			fclose(f);
+		if (mark = signed_loadFile(markfile[i])) {
+			if (sccs_findKey(s, mark)) valid_marker[i] = 0;
+			free(mark);
 		}
 	}
 	sccs_free(s);
