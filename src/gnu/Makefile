@@ -6,6 +6,10 @@ BINS=patch/$(_OS)/patch$(EXE) diffutils/$(_OS)/diff$(EXE) \
 	diffutils/$(_OS)/cmp$(EXE)
 CONFIG=--cache-file=../../../config.cache --quiet
 
+# Override Solaris make.rules
+.SCCS_GET:
+	bk get -q $@
+
 all: os exe
 	@PATH="..:../..:$(PATH)"; export PATH; \
 	OS=$(_OS); \

@@ -602,9 +602,9 @@ create(resolve *rs)
 	int	how;
 	static	char *cnames[4] = {
 			"Huh?",
-			"SCCS file",
-			"regular file",
-			"another SCCS file in patch"
+			"an SCCS file",
+			"a regular file without an SCCS file",
+			"another SCCS file in the patch"
 		};
 
 	if (opts->debug) {
@@ -623,15 +623,14 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 
 		if (opts->noconflicts) {
 	    		fprintf(stderr,
-			    "resolve: can't process name conflict on %s,\n",
+			    "resolve: name conflict for ``%s'',\n",
 			    rs->d->pathname);
 	    		fprintf(stderr,
-			    "\tpathname is used by %s\n", cnames[how]);
+			    "\tpathname is used by %s.\n", cnames[how]);
 			opts->errors = 1;
 			return (-1);
 		}
 
-		sccs_close(rs->s); /* for win32 */
 		ret = resolve_create(rs, how);
 		if (opts->debug) {
 			fprintf(stderr, "resolve_create = %d %s\n",
@@ -1905,15 +1904,6 @@ pass4_apply(opts *opts)
 	/*
 	 * Pass 4c - apply the files.
 	 */
-#ifdef OLD
-	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
-	unless (p = popen(key, "r")) {
-		unbackup(save);
-		unlink(orig);
-		perror("popen of bk sfiles");
-		exit (1);
-	}
-#else
 	pid = spawnvp_rPipe(av_r, &rfd);
 	unless (pid > (pid_t)-1) {
 		unbackup(save);
@@ -1922,7 +1912,6 @@ pass4_apply(opts *opts)
 		exit (1);
 	}
 	p = fdopen(rfd, "rt");
-#endif
 	unless (get = popen("bk get -s -", "w")) {
 		unbackup(save);
 		unlink(orig);
@@ -1955,7 +1944,6 @@ pass4_apply(opts *opts)
 			fprintf(get, "%s\n", &buf[offset]);
 		}
 	}
-	//pclose(p);
 	waitpid(pid, &status, 0);
 	pclose(get);
 	unless (opts->quiet) {

@@ -46,7 +46,7 @@ usage:		fprintf(stderr,
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(1000000);
-		} while (isValidLock('r', pid, thisHost));
+		} while (repository_locker('r', pid, thisHost));
 		exit(0);
 	    
 	    case 'w':
@@ -58,7 +58,7 @@ usage:		fprintf(stderr,
 		/* make ourselves go away after the lock is gone */
 		do {
 			usleep(1000000);
-		} while (isValidLock('w', pid, thisHost));
+		} while (repository_locker('w', pid, thisHost));
 		exit(0);
 
 	    case 'l':

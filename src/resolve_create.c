@@ -601,6 +601,7 @@ sc_rmr(resolve *rs)
 	char	cmd[MAXPATH*2];
 
 	unless (confirm("Remove remote file?")) return (0);
+	sccs_close(rs->s);
 	sprintf(cmd, "bk rm %s", rs->s->sfile);
 	if (sys(cmd, rs->opts)) {
 		perror(cmd);

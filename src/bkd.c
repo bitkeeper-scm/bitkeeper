@@ -267,7 +267,6 @@ private void
 ids(char *uid)
 {
 	uid_t	u;
-	gid_t	g;
 
 	u = getuid();
 	if (uid && isdigit(uid[0])) {

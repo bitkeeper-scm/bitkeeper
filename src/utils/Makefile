@@ -1,6 +1,10 @@
 # %K%
 # Copyright (c) 1999 Larry McVoy
 
+# Override Solaris make.rules
+.SCCS_GET:
+	bk get -q $@
+
 all: 
 	@echo Try make image
 

@@ -350,14 +350,14 @@ repository_rdunlock(int force)
 
 /* This function assumes we are at the project root */
 int
-isValidLock(char type, pid_t pid, char *host)
+repository_locker(char type, pid_t pid, char *host)
 {
 	char path[MAXPATH];
 
 	sprintf(path, "%s/%d@%s", 
 		(type == 'r') ? READER_LOCK_DIR : WRITER_LOCK_DIR,
 		pid, host);
-	return(exists(path));
+	return (exists(path));
 }
 
 /*
