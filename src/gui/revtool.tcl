@@ -153,6 +153,7 @@ proc revMap {file} \
 		set rev2date($rev) $date
 		set serial2rev($serial) $rev
 	}
+	catch { close $fid }
 }
 
 # If in annotated diff output, find parent and diff between parent 
@@ -1333,9 +1334,9 @@ proc currentMenu {} \
 			$gc(current) add command -label "${f}@${rev}" \
 			    -command "gotoRev $f $rev"
 		}
+		catch {close $log}
 	}
 	catch {close $revs}
-	catch {close $log}
 	busy 0
 	return
 }
@@ -1370,8 +1371,6 @@ proc csetdiff2 {{rev {}}} \
 	}
 	busy 0
 	catch {close $revs}
-	catch {close $c}
-	catch {close $log}
 }
 
 # Bring up csettool for a given set of revisions as selected by the mouse
