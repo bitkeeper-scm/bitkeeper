@@ -625,6 +625,7 @@ int	smartRename(char *old, char *new);
 void	concat_path(char *buf, char *first, char *second);
 void	free_pfile(pfile *pf);
 delta	*sccs_kid(sccs *s, delta *d);  /* In range.c */
+int	sccs_morekids(delta *d, int bk_mode);
 int	exists(char *file);
 int	emptyDir(char *dir);
 char	*dirname(char *path);
