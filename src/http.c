@@ -308,12 +308,32 @@ http_connect_srv(char *type, char *host, int port, char *cgi_script, int trace)
 	return (fd);
 }
 
+private int
+in_no_proxy(char *host)
+{
+	char	*list;
+	char	*p;
+	int	hlen = strlen(host);
+
+	p = list = getenv("no_proxy");
+	while (list && *list) {
+		while (*p && *p != ',') ++p;
+		if (p-list == hlen && strneq(list, host, hlen)) return (1);
+		if (*p) ++p;
+
+		list = p;
+	}
+	return (0);
+}
+
 int
 http_connect(remote *r, char *cgi_script)
 {
 	int	i, port;
 	char	proxy_host[MAXPATH], type[50], *p, **proxies;
 	char	cred[MAXLINE];
+
+	if (streq(r->host, "localhost") || in_no_proxy(r->host)) goto no_proxy;
 
 	/*
 	 * Try proxy connection if available
@@ -348,6 +368,7 @@ http_connect(remote *r, char *cgi_script)
 	}
 	freeLines(proxies);
 
+ no_proxy:
 	/*
 	 * Try direct connection
 	 */
