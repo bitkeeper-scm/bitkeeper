@@ -478,13 +478,21 @@ proc dot {} \
 	set help .merge.menu.t
 	$help configure -state normal
 	$help delete 1.0 end
+	set msg \
+"\"$gc($app.nextdiff)\" for the next diff,
+\"$gc($app.prevdiff)\" for the previous diff,
+\"$gc($app.nextconflict)\" for the next conflict,
+\"$gc($app.prevconflict)\" for the previous conflict,
+\"$gc($app.firstdiff)\" for the first diff,
+\"$gc($app.lastdiff)\" for the last diff,
+\"space\" is an alias for \"$gc($app.nextdiff)\"."
 	catch { .diffs.left index "c$lastDiff" } ret
 	if {[string first "bad text" $ret] == -1 } {
 		set buf [.merge.t get $d $e]
 		if {$buf == $UNMERGED} {
 			.merge.menu.l configure -bg red
 			$help insert end \
-{This is an unmerged conflict.
+"This is an unmerged conflict.
 Merge it by clicking on the lines
 that you want.
 Left-mouse selects a block,
@@ -492,7 +500,8 @@ Right-mouse selects a line,
 adding a shift with the click will
 replace whatever has been done so far,
 no shift means add at the bottom.
-To hand edit, click the merge window.}
+\"$gc($app.undo)\" will undo the last click.
+To hand edit, click the merge window."
 		} else {
 			.merge.menu.l configure -bg lightyellow
 			$help insert end \
@@ -510,14 +519,9 @@ To hand edit, click the merge window.}
 		.merge.menu.l configure -bg white
 		$help insert end \
 {This conflict has been automerged.
-To hand edit, click the merge window.
-
-Hit "n" to see the next diff,
-Hit "p" to see the previous diff,
-Hit "N" to see the next conflict,
-Hit "P" to see the previous conflict,
-<space> is an alias for "N".}
+To hand edit, click the merge window.}
 	}
+	$help insert end "\n\n$msg"
 	$help configure -state disabled
 }
 
@@ -608,12 +612,10 @@ proc both {both} {
 	foreach l $both {
 		.diffs.left insert end " $l\n"
 		.diffs.right insert end " $l\n"
-		set bar [string first "|" $l]
-		if {$annotate == 0 || $bar == -1} {
+		if {$annotate == 0} {
 			set l [string range $l 1 end]
 		} else {
-			incr bar 2
-			set l [string range $l $bar end]
+			set l [string range $l $annotate end]
 		}
 		.merge.t insert end "$l\n"
 		.merge.hi insert end "  \n"
@@ -628,6 +630,18 @@ proc readSmerge {} \
 	set merged 0
 	set state B
 	set both [list]
+	if {$annotate} {
+		# This assumes that the annotation width is the same
+		while { [gets $fd line] >= 0 } {
+			set what [string index $line 0]
+			if {$what == "+" || $what == "-"} {
+				set annotate [string first "|" $line]
+				incr annotate 3
+				break
+			}
+		}
+		seek $fd 0
+	}
 	while { [gets $fd line] >= 0 } {
 		set what [string index $line 0]
 		if {$what == "L"} {
@@ -662,12 +676,10 @@ proc readSmerge {} \
 			continue
 		}
 		if {$state == "M"} {
-			set bar [string first "|" $line]
-			if {$annotate == 0 || $bar == -1} {
+			if {$annotate == 0} {
 				set l [string range $line 1 end]
 			} else {
-				incr bar 2
-				set l [string range $line $bar end]
+				set l [string range $line $annotate end]
 			}
 			.merge.t insert end "$l\n"
 			.merge.hi insert end "  \n" auto
@@ -675,32 +687,30 @@ proc readSmerge {} \
 		} 
 
 
-		set hilite 0
-		if {$what == "-"} {
-			set hilite 1
-			set tags gca
-		} elseif {$what == "+"} {
-			set hilite 1
-			set tags diff
-		} elseif {$what == "s"} {
-			set hilite 1
-			set tags space
-		} else {
-			set tags [list]
-		}
 		if {$state == "L"} {
 			set text .diffs.left
 		} elseif {$state == "R"} {
 			set text .diffs.right
 		}
-
-		if {$hilite} {
-			set c [string index $line 0]
-			set l [string range $line 1 end]
-			$text insert end " $c" $tags
+		if {$what == " "} {
+			$text insert end " $line\n"
+			continue
+		}
+		if {$what == "h"} {
+			smerge_highlight $text $line
+			continue
+		}
+		set c [string index $line 0]
+		set l [string range $line 1 end]
+		if {$what == "-"} {
+			$text insert end " $c" gca
 			$text insert end "$l\n" 
-		} else {
-			$text insert end " $line\n" $tags
+		} elseif {$what == "+"} {
+			$text insert end " $c" diff
+			$text insert end "$l\n" 
+		} elseif {$what == "s"} {
+			$text insert end " $c" space
+			$text insert end "$l\n" 
 		}
 	}
 	if {[llength $both]} { both $both }
@@ -708,6 +718,30 @@ proc readSmerge {} \
 	.merge.hi configure -state disabled
 	.menu.conflict configure -text "$conflicts conflicts"
 	wm deiconify .
+}
+
+# Take a like
+# h 3-7 10-15 ...
+# and apply the char tag to all of the range
+proc smerge_highlight {t line} \
+{
+	global	annotate
+
+	if {$annotate} {
+		set bar $annotate
+	} else {
+		set bar 2
+	}
+	set i [lindex [split [$t index "end -2 chars"] "."] 0]
+	$t tag add char "$i.0" "$i.2"
+	foreach r [split $line] {
+		if {$r == "h"} { continue }
+		set l [split $r "-"]
+		set start [expr [lindex $l 0] + $bar]
+		set stop [expr [lindex $l 1] + $bar]
+		$t tag add char "$i.$start" "$i.$stop"
+# puts "Highlight tag on $t bar=$bar $i.$start $i.$stop"
+	}
 }
 
 proc smerge {} \
@@ -742,9 +776,10 @@ proc smerge {} \
 	set g [lindex $argv 1]
 	set r [lindex $argv 2]
 	set f [lindex $argv 3]
-	if {[catch {exec bk smerge -Im -pf $l $g $r $f > $smerge}] == 0} {
-		# puts "No conflicts"
-		set junk 1
+	if {$annotate} {
+		set ret [catch {exec bk smerge -Im -f $l $g $r $f > $smerge}]
+	} else {
+		set ret [catch {exec bk smerge -f $l $g $r $f > $smerge}]
 	}
 	set filename $f
 }
@@ -994,23 +1029,30 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Goto" -menu $m
 	    menu $m
-		$m add command -label "Prev diff" -accelerator "p" \
+		$m add command -label "Prev diff" \
+		    -accelerator $gc($app.prevdiff) \
 		    -state disabled -command { prevDiff 0 }
-		$m add command -label "Next diff" -accelerator "n" \
+		$m add command -label "Next diff" \
+		    -accelerator $gc($app.nextdiff) \
 		    -state disabled -command { nextDiff 0 }
-		$m add command -label "Goto current diff" -accelerator "." \
+		$m add command -label "Center on current diff" \
+		    -accelerator "." \
 		    -command dot
-		$m add command -label "Prev conflict" -accelerator "P" \
+		$m add command -label "Prev conflict" \
+		    -accelerator $gc($app.prevconflict) \
 		    -command { prevDiff 1 }
-		$m add command -label "Next conflict" -accelerator "N" \
+		$m add command -label "Next conflict" \
+		    -accelerator $gc($app.nextconflict) \
 		    -command { nextDiff 1 }
-		$m add command -label "First diff" -accelerator "-" \
+		$m add command -label "First diff" \
+		    -accelerator $gc($app.firstdiff) \
 		    -command {
 			global	lastDiff
 			set lastDiff 0
 			nextDiff 0
 		    }
-		$m add command -label "Last diff" -accelerator "+" \
+		$m add command -label "Last diff" \
+		    -accelerator $gc($app.lastdiff) \
 		    -command {
 			global	lastDiff diffCount
 			set lastDiff [expr $diffCount - 1]
@@ -1080,7 +1122,8 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		$m add command \
 		    -label "Edit merge window" -command { edit_merge 1 1 }
 		$m add command -state disabled \
-		    -label "Undo" -command undo -accelerator <u>
+		    -label "Undo" -command undo \
+		    -accelerator $gc($app.undo)
 		$m add command \
 		    -label "Clear" -command edit_clear -accelerator <c>
 		$m add command \
@@ -1233,7 +1276,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 # Set up keyboard accelerators.
 proc keyboard_bindings {} \
 {
-	global	search gc tcl_platform
+	global	search app gc tcl_platform
 
 	bind all <Prior> { if {[Page "yview" -1 0] == 1} { break } }
 	bind all <Next> { if {[Page "yview" 1 0] == 1} { break } }
@@ -1259,17 +1302,27 @@ proc keyboard_bindings {} \
 		.diffs.right yview -pickplace end
 		break
 	}
-	bind all	$gc(fm3.quit)	{ cleanup }
-	bind all	<n>		{ next 0; break }
-	bind all	<space>		{ next 1; break }
-	bind all	<N>		{ next 1; break }
-	bind all	<Shift-space>	{ next 1; break }
-	bind all	<p>		{ prev 0; break }
-	bind all	<P>		{ prev 1; break }
-	bind all	<c>		{ edit_clear }
-	bind all	<a>		{ edit_restore a }
-	bind all	<m>		{ edit_restore m }
-	bind all	<s>		{
+	bind all	<$gc($app.quit)>		{ cleanup }
+	bind all	<$gc($app.nextdiff)>		{ next 0; break }
+	bind all	<$gc($app.prevdiff)>		{ prev 0; break }
+	bind all	<$gc($app.nextconflict)>	{ next 1; break }
+	bind all	<$gc($app.prevconflict)>	{ prev 1; break }
+	foreach f {nextdiff prevdiff nextconflict prevconflict} {
+		foreach {k n} {
+		    "{" "braceleft"
+		    "}" "braceright"
+		    "[" "bracketleft"
+		    "]" "bracketright"} {
+		    	if {$gc($app.$f) == $n} {
+				set gc($app.$f) $k
+			}
+		}
+	}
+	bind all	<space>				{ next 1; break }
+	bind all	<c>				{ edit_clear }
+	bind all	<a>				{ edit_restore a }
+	bind all	<m>				{ edit_restore m }
+	bind all	<s>				{
 	    global conflicts
 
 	    if {$conflicts} {
@@ -1279,14 +1332,14 @@ proc keyboard_bindings {} \
 	    	save
 	    }
 	}
-	bind all	<u>		{ undo }
-	bind all	<period>	{ dot; break }
-	bind all	<minus>		{
+	bind all	<u>				{ undo }
+	bind all	<period>			{ dot; break }
+	bind all	<minus>				{
 	    global lastDiff
 	    set lastDiff 0
 	    nextDiff 0
 	}
-	bind all	<plus>		{
+	bind all	<plus>				{
 	    global lastDiff diffCount
 	    set lastDiff [expr $diffCount - 1]
 	    nextDiff 0
@@ -1296,8 +1349,8 @@ proc keyboard_bindings {} \
 		    if {%D < 0} { next 0 } else { prev 0 }
 		}
 	} else {
-		bind all <Button-4>	{ prev 0 }
-		bind all <Button-5>	{ next 0 }
+		bind all <Button-4>			{ prev 0 }
+		bind all <Button-5>			{ next 0 }
 	}
 	# In the search window, don't listen to "all" tags.
 	bindtags $search(text) { .menu.search Entry . }
@@ -1490,15 +1543,11 @@ proc nextCommon {} \
 
 proc difflight {t d e} \
 {
-	global	annotate
+	global	annotate gc app
 
 	$t tag remove gcaline 1.0 end
 	$t tag remove diffline 1.0 end
 	$t tag remove reverse 1.0 end
-	set old 0
-	set new 0
-	set oldstart -1
-	set newstart -1
 	set l 0
 	while {[$t compare "$d + $l lines" <= $e]} {
 		foreach {tag tagline} {gca gcaline diff diffline} {
@@ -1507,90 +1556,16 @@ proc difflight {t d e} \
 			if {$range != ""} {
 				$t tag add $tagline "$d + $l lines" \
 				    "$d + $l lines lineend + 1 char"
-				if {$tag == "gca"} {
-					incr old
-					if {$oldstart == -1} { set oldstart $l }
-				}
-				if {$tag == "diff"} {
-					incr new
-					if {$newstart == -1} { set newstart $l }
-				}
 			}
 		}
 		incr l
 	}
-
-	if {$old == 0 || $new == 0} { return }
-
-	# Go look for matching stuff
-# puts "difflight t=$t old=$old new=$new"
-	set o $oldstart
-	set n $newstart
-	while {$old && $new} {
-		set oc [$t get "$d + $o lines + 1 char"]
-		set nc [$t get "$d + $n lines + 1 char"]
-# puts "new=$new n=$n nc=$nc old=$old o=$o oc=$oc"
-		if {$oc == "s"} {
-			incr o
-			continue
-		}
-		if {$nc == "s"} {
-			incr n
-			continue
-		}
-		set N [$t get "$d + $n lines" "$d + $n lines lineend"]
-		set O [$t get "$d + $o lines" "$d + $o lines lineend"]
-		if {$annotate} {
-			set na [expr [string first "|" $N] + 2]
-			set oa [expr [string first "|" $O] + 2]
-		} else {
-			set na 1
-			set oa 1
-		}
-		set N [string range $N $na end]
-		set O [string range $O $oa end]
-		set ol [string length $O]
-		set nl [string length $N]
-# puts "ol=$ol o='$O'\nnl=$nl n='$N'"
-		if {$N == $O} {
-			incr old -1
-			incr new -1
-			incr o
-			incr n
-			continue
-		}
-		for {set lead 0} \
-		    {[string index $O $lead] == [string index $N $lead]} \
-		    {incr lead} { }
-		for {set tail 0; set j [expr $ol - 1]; set k [expr $nl - 1]} \
-		    {$j >= $lead && $k >= $lead && \
-		    [string index $O $j] == [string index $N $k]} \
-		    {incr tail; incr j -1; incr k -1} { }
-		if {[expr $lead + $tail] < [expr $nl / 3] || \
-		    [expr $lead + $tail] < [expr $ol / 3]} {
-			incr old -1
-			incr new -1
-			incr o
-			incr n
-			continue
-		}
-# puts "lead=$lead tail=$tail len=$ol/$nl"
-		set om [expr $ol - [expr $lead + $tail]]
-		incr oa $lead
-		set om [expr $oa + $om]
-		$t tag add reverse "$d + $o lines + $oa chars" \
-		    "$d + $o lines + $om chars"
-		$t see "$d + $o lines + $om chars"
-		set nm [expr $nl - [expr $lead + $tail]]
-		incr na $lead
-		set nm [expr $na + $nm]
-		$t tag add reverse "$d + $n lines + $na chars" \
-		    "$d + $n lines + $nm chars"
-		$t see "$d + $n lines + $nm chars"
-		incr old -1
-		incr new -1
-		incr o
-		incr n
+	# A little slow but it works
+	foreach {start stop} [$t tag ranges char] {
+		if {[$t compare $start < $d]} { continue }
+		if {[$t compare $start > $e]} { break }
+		$t tag add reverse $start $stop
+		# $t see $stop
 	}
 }
 
@@ -1736,7 +1711,7 @@ proc undo {} \
 
 proc change {lines replace orig pipe} \
 {
-	global	lastDiff diffCount UNMERGED conflicts restore undo
+	global	lastDiff diffCount UNMERGED conflicts restore undo annotate
 
 	edit_save
 	set next [expr $lastDiff + 1]
@@ -1763,12 +1738,10 @@ proc change {lines replace orig pipe} \
         	$t mark gravity "u$undo" left
 	}
 	foreach line $lines {
-		set bar [string first "|" $line]
-		if {$pipe == 0 || $bar == -1} {
+		if {$pipe == 0 || $annotate == 0} {
 			set l [string range $line 1 end]
 		} else {
-			incr bar 2
-			set l [string range $line $bar end]
+			set l [string range $line $annotate end]
 		}
 		if {$orig} {
 			.merge.t insert $e "$l\n" next

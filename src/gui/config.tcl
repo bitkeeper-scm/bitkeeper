@@ -89,6 +89,13 @@ proc getConfig {prog} \
 	set _d(fm.activeLeftColor) orange  ;# Color of active left region
 	set _d(fm.activeRightColor) yellow ;# Color of active right region
 	set _d(fm3.comments) 1		;# show comments window
+	set _d(fm3.firstdiff) -
+	set _d(fm3.lastdiff) +
+	set _d(fm3.nextdiff) bracketright
+	set _d(fm3.prevdiff) bracketleft
+	set _d(fm3.nextconflict) braceright
+	set _d(fm3.prevconflict) braceleft
+	set _d(fm3.undo) u
 
 	set _d(help.linkColor) blue	;# hyperlinks
 	set _d(help.topicsColor) orange	;# highlight for topic search matches
