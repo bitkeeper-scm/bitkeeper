@@ -35,7 +35,7 @@ proc ht {id} \
 # black - do a black rectangle
 proc highlight {id type {rev ""}} \
 {
-	global	color
+	global gc
 
 	set bb [.p.top.c bbox $id]
 	set x1 [lindex $bb 0]
@@ -49,17 +49,17 @@ proc highlight {id type {rev ""}} \
 	    revision {\
 		#puts "highlight: revision ($rev)"
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $color(background) -outline $color(rev) \
+		    -fill $gc(sccstool,background) -outline $gc(sccstool,rev) \
 		    -width 1 -tags "$rev" ]}
 	    merge   {\
 		#puts "highlight: merge ($rev)"
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $color(background) -outline $color(merge) \
+		    -fill $gc(sccstool,background) -outline $gc(sccstool,merge) \
 		    -width 1 -tags "$rev"]}
 	    arrow   {\
 		#puts "highlight: arrow ($rev)"
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $color(arrow) -width 1]}
+		    -outline $gc(sccstool,arrow) -width 1]}
 	    red     {\
 		#puts "highlight: red ($rev)"
 	        set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
@@ -67,10 +67,12 @@ proc highlight {id type {rev ""}} \
 	    old  {\
 		#puts "highlight: old ($rev) id($id)"
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $color(rev) -fill $color(old) -tags old]}
+		    -outline $gc(sccstool,rev) -fill $gc(sccstool,old) \
+		    -tags old]}
 	    new   {\
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $color(rev) -fill $color(new) -tags new]}
+		    -outline $gc(sccstool,rev) -fill $gc(sccstool,new) \
+		    -tags new]}
 	    black  {\
 		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
 		    -outline black -fill lightblue]}
@@ -121,8 +123,7 @@ proc revMap {file} \
 #
 proc dateSeparate { } { \
 
-        global serial2rev rev2date revX revY font ht screen
-	global color
+        global serial2rev rev2date revX revY font ht screen gc
 
         set curday ""
         set prevday ""
@@ -165,7 +166,7 @@ proc dateSeparate { } { \
 
                        # Attempt to center datestring between verticals
                         set tx [expr $x - (($x - $lastx)/2) - 13]
-                        .p.top.c create text $tx $ty -fill $color(date) \
+                        .p.top.c create text $tx $ty -fill $gc(sccstool,date) \
 			    -justify center \
 			    -anchor n -text "$date" -font $font(date)
 
@@ -181,7 +182,7 @@ proc dateSeparate { } { \
 	set date "$day/$mon\n$yr"
 
 	set tx [expr $screen(maxx) - (($screen(maxx) - $x)/2) + 20]
-	.p.top.c create text $tx $ty -fill $color(date) -anchor n \
+	.p.top.c create text $tx $ty -fill $gc(sccstool,date) -anchor n \
 		-text "$date" -font $font(date)
 }
 
@@ -189,7 +190,7 @@ proc dateSeparate { } { \
 # Add the revs starting at location x/y.
 proc addline {y xspace ht l} \
 {
-	global	bad font wid revX revY color merges parent line_rev screen
+	global	bad font wid revX revY gc merges parent line_rev screen
 	global  stacked
 
 	set last -1
@@ -228,7 +229,7 @@ proc addline {y xspace ht l} \
 			set a [expr $last + 2]
 			.p.top.c create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
-			    -fill $color(arrow) -arrow last
+			    -fill $gc(sccstool,arrow) -arrow last
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [.p.top.c create text $x $y -fill "red" \
@@ -271,7 +272,7 @@ proc addline {y xspace ht l} \
 # All nodes use up the same amount of space, $w.
 proc line {s w ht} \
 {
-	global	font wid revX revY color where yspace line_rev screen
+	global	font wid revX revY gc where yspace line_rev screen
 
 	# space for node and arrow
 	set xspace [expr $w + 8]
@@ -354,15 +355,14 @@ proc line {s w ht} \
 	incr y [expr $ht / -2]
 	incr x -4
 	set id [.p.top.c create line $px $py $x $y -arrowshape {4 4 4} \
-	    -width 1 -fill $color(branchArrow) -arrow last]
+	    -width 1 -fill $gc(sccstool,branchArrow) -arrow last]
 	.p.top.c lower $id
 }
 
 # Create a merge arrow, which might have to go below other stuff.
 proc mergeArrow {m ht} \
 {
-	global	bad font lineOpts merges parent
-	global	wid revX revY color
+	global	bad font lineOpts merges parent wid revX revY gc
 
 	set b $parent($m)
 	set px $revX($b)
@@ -386,8 +386,8 @@ proc mergeArrow {m ht} \
 		incr x 2
 		incr px 2
 	}
-	.p.top.c lower [.p.top.c create line $px $py $x $y \
-	    -arrowshape {4 4 4} -width 1 -fill $color(mergeArrow) -arrow last]
+	.p.top.c lower [.p.top.c create line $px $py $x $y -arrowshape {4 4 4} \
+	    -width 1 -fill $gc(sccstool,mergeArrow) \-arrow last]
 }
 
 proc listRevs {file} \
@@ -519,7 +519,7 @@ proc getRev {type} \
 
 proc filltext {f clear} \
 {
-	global	search
+	global search
 
 	.p.bottom.t configure -state normal
 	if {$clear == 1} { .p.bottom.t delete 1.0 end }
@@ -549,7 +549,7 @@ proc prs {} \
 
 proc history {} \
 {
-	global	file dspec dev_null
+	global file dspec dev_null
 
 	busy 1
 	set f [open "| bk prs -h {$dspec} \"$file\" 2>$dev_null"]
@@ -558,7 +558,7 @@ proc history {} \
 
 proc sfile {} \
 {
-	global	file
+	global file
 
 	busy 1
 	set sfile [exec bk sfiles $file]
@@ -593,7 +593,7 @@ proc difftool {file r1 r2} \
 
 proc csettool {} \
 {
-	global	rev1 rev2 file
+	global rev1 rev2 file
 
 	if {[info exists rev1] != 1} { return }
 	if {[info exists rev2] != 1} { set rev2 $rev1 }
@@ -872,7 +872,7 @@ proc busy {busy} \
 
 proc widgets {} \
 {
-	global	font search swid diffOpts getOpts color stacked
+	global	font search swid diffOpts getOpts gc stacked
 	global	lineOpts dspec wish yspace paned file tcl_platform 
 
 	set dspec \
@@ -909,20 +909,22 @@ proc widgets {} \
 	# maybe try: -misc-fixed-medium-*-*-*-13-*-*-*-*-*-*-*
 	# if 6x13 doesn't work
 
-	set color(old) orange     ;# color of old revision
-	set color(new) yellow     ;# color of new revision
-	set color(arrow) darkblue
-	set color(merge) darkblue
-	set color(rev) darkblue
-	set color(date) slategrey
-	set color(branchArrow) $color(arrow)
-	set color(mergeArrow) $color(arrow)
-	set color(background) #9fb6b8
-	set color(bg) #d0d0d0
+	set gc(sccstool,old) orange     ;# color of old revision
+	set gc(sccstool,new) yellow     ;# color of new revision
+	set gc(sccstool,arrow) darkblue
+	set gc(sccstool,merge) darkblue
+	set gc(sccstool,rev) darkblue
+	set gc(sccstool,date) slategrey
+	set gc(sccstool,branchArrow) $gc(sccstool,arrow)
+	set gc(sccstool,mergeArrow) $gc(sccstool,arrow)
+	set gc(sccstool,background) #9fb6b8
+	set gc(sccstool,bg) #d0d0d0
 
 	set geometry ""
 	if {[file readable ~/.sccstoolrc]} {
 		source ~/.sccstoolrc
+	} elseif {[file readable ~/.bkgui]} {
+		source ~/.bkgui
 	}
 	if {"$geometry" != ""} {
 		wm geometry . $geometry
@@ -930,16 +932,16 @@ proc widgets {} \
 	wm title . "sccstool"
 	frame .menus
 	    button .menus.quit -font $font(button) -relief raised \
-		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(sccstool,bg) -pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command done
 	    button .menus.help -font $font(button) -relief raised \
-		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(sccstool,bg) -pady $py -padx $px -borderwid $bw \
 		-text "Help" -command { exec bk helptool sccstool & }
 	    button .menus.cset -font $font(button) -relief raised \
-		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(sccstool,bg) -pady $py -padx $px -borderwid $bw \
 		-text "View changeset " -width 15 -command r2c -state disabled
 	    button .menus.difftool -font $font(button) -relief raised \
-		-bg $color(bg) -pady $py -padx $px -borderwid $bw \
+		-bg $gc(sccstool,bg) -pady $py -padx $px -borderwid $bw \
 		-text "Diff tool" -command "diff2 1" -state disabled
 	    if {"$file" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
@@ -954,7 +956,7 @@ proc widgets {} \
 		scrollbar .p.top.xscroll -wid $swid -orient horiz \
 		    -command ".p.top.c xview"
 		scrollbar .p.top.yscroll -wid $swid  -command ".p.top.c yview"
-		canvas .p.top.c -width 500 -background $color(background) \
+		canvas .p.top.c -width 500 -background $gc(sccstool,background) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
 		pack .p.top.yscroll -side right -fill y
@@ -1039,8 +1041,8 @@ proc widgets {} \
 	    -background yellow -relief groove -borderwid 0
 
 	# highlighting.
-	.p.bottom.t tag configure "newTag" -background $color(new)
-	.p.bottom.t tag configure "oldTag" -background $color(old)
+	.p.bottom.t tag configure "newTag" -background $gc(sccstool,new)
+	.p.bottom.t tag configure "oldTag" -background $gc(sccstool,old)
 
 	focus .p.top.c
 }

@@ -268,7 +268,7 @@ proc clearSearch {} \
 
 proc scroll {what dir} \
 {
-	global	help_height line
+	global	gc line
 
 	set a [lindex [.text.help yview] 0]
 	set b [lindex [.text.help yview] 1]
@@ -277,7 +277,7 @@ proc scroll {what dir} \
 	} elseif {$dir == -1 && $a == 0 && $line > 1.0} {
 		doNext -1
 	} elseif {$what == "page"} {
-		set x [expr $help_height - 1]
+		set x [expr $gc(helptool,height) - 1]
 		set x [expr $x * $dir]
 		.text.help yview scroll $x units
 	} else {
@@ -287,7 +287,7 @@ proc scroll {what dir} \
 
 proc widgets {} \
 {
-	global	line help_height firstConfig pixelsPerLine tcl_platform
+	global	line gc firstConfig pixelsPerLine tcl_platform
 	global	search_word stackMax stackPos
 
 	set stackMax 0
@@ -305,27 +305,29 @@ proc widgets {} \
 		set buttonFont {Times 13 roman bold}
 		set py 1
 	}
-	set bcolor #d0d0d0
+	set gc(helptool,bcolor) #d0d0d0
 	set firstConfig 1
 
 	# Display specific junk
 	set rootX [winfo screenwidth .]
 	set rootY [winfo screenheight .]
-	set geometry ""
-	set help_height 40
+	set gc(helptool,geometry) ""
+	set gc(helptool,height) 40
 	if {[file readable ~/.helptoolrc]} {
 		source ~/.helptoolrc
+	} elseif {[file readable ~/.bkgui]} {
+		source ~/.bkgui
 	}
-	if {"$geometry" != ""} {
-		wm geometry . $geometry
+	if {"$gc(helptool,geometry)" != ""} {
+		wm geometry . $gc(helptool,geometry)
 	}
 	wm title . "BitKeeper Help"
 
 	frame .menu -borderwidth 0 -relief flat
 	    button .menu.done -text "Quit" -font $buttonFont -borderwid 1 \
-		-pady $py -background $bcolor -command { exit }
+		-pady $py -background $gc(helptool,bcolor) -command { exit }
 	    button .menu.help -text "Help" -font $buttonFont -borderwid 1 \
-		-pady $py -background $bcolor -command {
+		-pady $py -background $gc(helptool,bcolor) -command {
 			global	line
 
 			clearSearch
@@ -333,16 +335,18 @@ proc widgets {} \
 			doSelect 1
 		}
 	    button .menu.back -text "Back" -font $buttonFont -borderwid 1 \
-		-pady $py -background $bcolor -state disabled -command { back }
+		-pady $py -background $gc(helptool,bcolor) \
+		-state disabled -command { back }
 	    button .menu.forw -text "Forw" -font $buttonFont -borderwid 1 \
-		-pady $py -background $bcolor -state disabled -command { forw }
+		-pady $py -background $gc(helptool,bcolor) \
+		-state disabled -command { forw }
 	    button .menu.clear -text "Clear search" -font $buttonFont \
-		-borderwid 1 -pady $py -background $bcolor \
+		-borderwid 1 -pady $py -background $gc(helptool,bcolor) \
 		-command { clearSearch }
 	    button .menu.search -text "Search:" -font $buttonFont -borderwid 1 \
-		-pady $py -background $bcolor -command { search }
+		-pady $py -background $gc(helptool,bcolor) -command { search }
 	    entry .menu.entry -font $buttonFont -borderwid 1 \
-		-background $bcolor -relief sunken \
+		-background $gc(helptool,bcolor) -relief sunken \
 		-textvariable search_word
 	    grid .menu.done -row 0 -column 0 -sticky ew
 	    grid .menu.help -row 0 -column 1 -sticky ew
@@ -369,7 +373,7 @@ proc widgets {} \
 
 	frame .text -borderwidth 0 -relief flat
 	    text .text.help -wrap none -font $font \
-		-width 78 -height $help_height -padx 4 \
+		-width 78 -height $gc(helptool,height) -padx 4 \
 		-xscrollcommand { .text.x2scroll set } \
 		-yscrollcommand { .text.y2scroll set }
 	    scrollbar .text.x2scroll -orient horiz \
@@ -409,17 +413,17 @@ proc widgets {} \
 	bind . <Escape>		{ exit }
 	bind .menu.entry <Return> { search }
 	bind .text.help <Configure> {
-		global	help_height pixelsPerLine firstConfig
+		global	gc pixelsPerLine firstConfig
 
 		set x [winfo height .text.help]
 		# This gets executed once, when we know how big the text is
 		if {$firstConfig == 1} {
 			set h [winfo height .text.help]
-			set pixelsPerLine [expr $h / $help_height]
+			set pixelsPerLine [expr $h / $gc(helptool,height)]
 			set firstConfig 0
 		}
 		set x [expr $x / $pixelsPerLine]
-		set help_height $x
+		set gc(helptool,height) $x
 	}
 	.ctrl.topics tag configure "select" -background yellow \
 	    -relief ridge -borderwid 1
