@@ -8805,6 +8805,7 @@ addNodes(sccs *s, delta **list, int j, delta *d)
 	if (!d || (d->type != 'D')) return;
 	list[j++] = d;
 	addNodes(s, list, j, d->kid);
+	while (list[j]) j++;
 	addNodes(s, list, j, d->siblings);
 }
 
