@@ -6449,8 +6449,8 @@ out:	if (n) mdbm_close(n);
 private int
 diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 {
-	char	old[100];	/* the version from the s.file */
-	char	new[100];	/* the new file, usually s->gfile */
+	char	old[MAXPATH];	/* the version from the s.file */
+	char	new[MAXPATH];	/* the new file, usually s->gfile */
 	int	ret;
 	delta *d;
 

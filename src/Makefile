@@ -13,7 +13,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  bkusers gethelp logaddr sendconfig logchangeset version
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset build
+	  renametool mkdiffs lodset build gzip_uuwrap ungzip_uuwrap
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
@@ -66,7 +66,8 @@ SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
-	  port/win32_platform.sh gui/renametool.tcl
+	  port/win32_platform.sh gui/renametool.tcl gzip_uuwrap.sh \
+	  ungzip_uuwrap.sh
 MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
 
@@ -395,6 +396,16 @@ unuuwrap: unuuwrap.sh substvars
 	./substvars unuuwrap.sh > unuuwrap.T
 	chmod +x unuuwrap.T
 	mv -f unuuwrap.T unuuwrap
+
+gzip_uuwrap: gzip_uuwrap.sh substvars
+	./substvars gzip_uuwrap.sh > gzip_uuwrap.T
+	chmod +x gzip_uuwrap.T
+	mv -f gzip_uuwrap.T gzip_uuwrap
+
+ungzip_uuwrap: ungzip_uuwrap.sh substvars
+	./substvars ungzip_uuwrap.sh > ungzip_uuwrap.T
+	chmod +x ungzip_uuwrap.T
+	mv -f ungzip_uuwrap.T ungzip_uuwrap
 
 import: import.sh port/unix_platform.sh substvars
 	./substvars port/unix_platform.sh import.sh > import.T
