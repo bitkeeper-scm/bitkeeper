@@ -7,6 +7,7 @@ proc getConfig {prog} \
 	option add *Scrollbar.borderWidth 1 100
 	option add *Label.borderWidth 1 100
 	option add *Button.borderWidth 1 100
+	option add *Menubutton.borderWidth 1 100
 
 	if {$tcl_platform(platform) == "windows"} {
 		set f {Courier New}
