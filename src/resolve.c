@@ -756,6 +756,7 @@ rename_file(resolve *rs)
 		to = 0;
 	}
 	if (to) {
+		mkdirf(to);
 		if (rename(rs->s->sfile, to)) return (-1);
 		if (opts->debug) {
 			fprintf(stderr, "rename(%s, %s)\n", rs->s->sfile, to);
