@@ -950,8 +950,10 @@ changes_part1(remote *r, char **av, char *key_list)
 			 * Check for write error, in case
 			 * our pager terminate early
 			 */
-			if (write(1, &buf[1], strlen(buf) - 1) < 0) break;
-			if (write(1, "\n", 1) < 0) break;
+			if (buf[0] == BKD_DATA) {
+				if (write(1, &buf[1], strlen(buf) - 1) < 0) break;
+				if (write(1, "\n", 1) < 0) break;
+			}
 		}
 		fclose(stdout);
 		if (pid > 0) waitpid(pid, 0, 0);
@@ -1026,10 +1028,10 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	}
 	while (getline2(r, buf, sizeof(buf)) > 0) {
 		if (streq("@END@", buf)) break;
-		if (write(1, &buf[1], strlen(buf) - 1) < 0) {
-			break;
+		if (buf[0] == BKD_DATA) {
+			if (write(1, &buf[1], strlen(buf) - 1) < 0) break;
+			write(1, "\n", 1);
 		}
-		write(1, "\n", 1);
 	}
 
 done:	unlink(key_list);
