@@ -19,15 +19,16 @@ private void	header(char *path, char *color, char *title, char *header, ...);
 private void	printnavbar();
 private void	learn();
 private void	trailer(char *path);
+private char	*units(char *t);
 private char	*findRoot(char *name);
 private	char	*root;
 
-#define	COLOR_TOP	"#e0e0e0"	/* index.html */
-#define	COLOR_CHANGES	"#c0c0c0"	/* ChangeSet */
-#define	COLOR_CSETS	"#b0b0b0"	/* cset */
-#define	COLOR_HIST	"#5aceb4"	/* hist */
-#define	COLOR_ANNO	"lightgreen"	/* anno */
-#define	COLOR_SRC	"lightyellow"	/* src */
+#define	COLOR_TOP	"lightblue"	/* index.html */
+#define	COLOR_CHANGES	"lightblue"	/* ChangeSet */
+#define	COLOR_CSETS	"lightblue"	/* cset */
+#define	COLOR_HIST	"lightblue"	/* hist */
+#define	COLOR_ANNO	"lightblue"	/* anno */
+#define	COLOR_SRC	"lightblue"	/* src */
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
 
@@ -159,70 +160,73 @@ whoami(char *fmt, ...)
 
 
 private void
-navbutton(int bold, int tag, char *start, char *end)
+navbutton(int active, int tag, char *start, char *end)
 {
-	char *sep;
-	char buf[MAXPATH];
-	int ct;
+    char *sep;
+    char buf[MAXPATH];
+    int ct;
 
-	for (sep = start; sep < end && *sep != '|'; ++sep)
-		;
-	if (*sep == '|') {
-		out(bold ? "<th>" : "<td>" );
-		if (tag) {
-			sprintf(buf, "<a href=\"%.*s?%.*s\">",
-			    sep-start, start, start-arguments, arguments);
-		} else {
-			sprintf(buf, "<a href=\"%.*s\">", sep-start,start);
-		}
-		out(buf);
-		sep++;
-		if (*sep == '@') {
-			switch (sep[1]) {
-			    case 'C':	/* range of changesets */
-				if (sep[2] == '*') {
-					out("All ChangeSets");
-				} else {
-					ct = atoi(sep+3);
-					sprintf(buf,
-					    "Changesets in the last %d day%s",
-					    ct, (ct!=1) ? "s" : "");
-					out(buf);
-				}
-				out("</a>");
-				goto fin;
-			    case 'H':
-				out("Home</a>");
-				goto fin;
-			    case 'h':	/* history of a file */
-				out("History of ");
-				break;
-			    case 'a':	/* annotated versions for a file */
-				out("Annotations for ");
-				break;
-			    case 'd':	/* diffs */
-				out("Diffs for ");
-				break;
-			    case 'c':	/* a particular changeset */
-				out("ChangeSet ");
-				break;
-			    case 'p':	/* patch */
-				out("Patch for ");
-				break;
-			    default:
-				goto regular;
-			}
-			sep += 2;
-			sprintf(buf, "%.*s</a>", end-sep, sep);
-			out(buf);
-			goto fin;
-		}
-	regular:
-		sprintf(buf, "%.*s</a>", end-sep, sep);
-		out(buf);
+    for (sep = start; sep < end && *sep != '|'; ++sep)
+	;
+    if (*sep == '|') {
+	out("<a style=\"text-decoration: none\" ");
+	if (tag) {
+	    sprintf(buf, "href=\"%.*s?%.*s\">",
+		    sep-start, start, start-arguments, arguments);
+	} else {
+	    sprintf(buf, "href=\"%.*s\">", sep-start,start);
 	}
-    fin:
-	out(bold ? "</th>\n" : "</td>\n");
+	out(buf);
+	out(active ? "<font size=2 color=lightblue>" : "<font size=2 color=yellow>");
+	sep++;
+	if (*sep == '@') {
+	    switch (sep[1]) {
+		case 'C':	/* range of changesets */
+		    if (sep[2] == '*') {
+			out("All ChangeSets");
+		    } else {
+			ct = atoi(sep+3);
+			sprintf(buf,
+			    "Changesets in the last %d %s", ct, units(sep+3));
+			out(buf);
+		    }
+		    out(active ? "</a>" : " &gt;&gt; </a>");
+		    goto fin;
+		case 'H':
+		    out("Home");
+		    out(active ? "</a>" : " &gt;&gt; </a>");
+		    goto fin;
+		case 'h':	/* history of a file */
+		    out("History of ");
+		    break;
+		case 'a':	/* annotated versions for a file */
+		    out("Annotations for ");
+		    break;
+		case 'd':	/* diffs */
+		    out("Diffs for ");
+		    break;
+		case 'c':	/* a particular changeset */
+		    out("ChangeSet ");
+		    break;
+		case 'p':	/* patch */
+		    out("Patch for ");
+		    break;
+		default:
+		    goto regular;
+	    }
+	    sep += 2;
+	    sprintf(buf, "%.*s", end-sep, sep);
+	    out(buf);
+	    out(active ? "</a>" : " &gt;&gt; </a>");
+	    goto fin;
+	}
+regular:
+	sprintf(buf, "%.*s", end-sep, sep);
+	out(buf);
+	out(active ? "</a>" : " &gt;&gt; </a>");
+fin:
+        out("</font>\n");
+    }
 }
 
 
@@ -234,10 +238,8 @@ printnavbar()
 
 	out("<!-- [");out(navbar);out("] -->\n");
 	/* put in a navigation bar */
-	out("<font >\n"
-	    "<table bgcolor=yellow border=1>\n"
-	    "<tr>\n");
-
+	out("<table width=100% cellpadding=4>\n"
+	    "<tr bgcolor=black><td align=left>\n");
 	if (strneq(navbar, "nav=", 4)) {
 		for (start = arguments+4; *start; ++start) {
 			for (end = start; *end && *end != ':'; ++end)
@@ -249,10 +251,7 @@ printnavbar()
 	}
 	navbutton(1, !first, thisPage, thisPage+strlen(thisPage));
 
-	out("</tr>\n"
-	    "</table>\n"
-	    "</font>\n"
-	    "<hr>\n");
+	out("</td></tr></table>\n");
 }
 
 
@@ -988,14 +987,33 @@ http_gif(char *name)
 	}
 }
 
+private char*
+units(char *t)
+{
+	int	n = atoi(t);
+
+	while (isdigit(*t)) t++;
+	switch (*t) {
+	    case 'm': return (n > 1 ? "minutes" : "minute");
+	    case 'h': case 'H': return (n > 1 ? "hours" : "hour");
+	    case 'd': case 'D': return (n > 1 ? "days" : "day");
+	    case 'w': case 'W': return (n > 1 ? "weeks" : "week");
+	    case 'M': return (n > 1 ? "months" : "month");
+	    case 'y': case 'Y': return (n > 1 ? "years" : "year");
+	    default: return ("unknown units");
+    	}
+}
+
 private void
 http_index()
 {
 	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT, 0);
 	delta	*d;
-	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w, t1m, t2m;
+	time_t	now, t1h, t1d, t2d, t3d, t4d, t1w, t2w, t3w;
+	time_t	t4w, t8w, t12w, t6m, t9m, t1y, t2y, t3y;
 	int	c1h=0, c1d=0, c2d=0, c3d=0, c4d=0;
-	int	c1w=0, c2w=0, c3w=0, c1m=0, c2m=0, c=0;
+	int	c1w=0, c2w=0, c3w=0, c4w=0, c8w=0, c12w=0, c6m=0, c9m=0;
+	int	c1y=0, c2y=0, c3y=0, c=0;
 	char	buf[MAXPATH*2];
 	char	*t;
 	MDBM	*m;
@@ -1009,8 +1027,14 @@ http_index()
 	t1w = now - (7*24*60*60);
 	t2w = now - (14*24*60*60);
 	t3w = now - (21*24*60*60);
-	t1m = now - (31*24*60*60);
-	t2m = now - (62*24*60*60);
+	t4w = now - (31*24*60*60);
+	t8w = now - (2*31*24*60*60);
+	t12w = now - (3*31*24*60*60);
+	t6m = now - (6*31*24*60*60);
+	t9m = now - (9*31*24*60*60);
+	t1y = now - (365*24*60*60);
+	t2y = now - (2*365*24*60*60);
+	t3y = now - (3*365*24*60*60);
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		if (d->date >= t1h) c1h++;
@@ -1021,8 +1045,14 @@ http_index()
 		if (d->date >= t1w) c1w++;
 		if (d->date >= t2w) c2w++;
 		if (d->date >= t3w) c3w++;
-		if (d->date >= t1m) c1m++;
-		if (d->date >= t2m) c2m++;
+		if (d->date >= t4w) c4w++;
+		if (d->date >= t8w) c8w++;
+		if (d->date >= t12w) c12w++;
+		if (d->date >= t6m) c6m++;
+		if (d->date >= t9m) c9m++;
+		if (d->date >= t1y) c1y++;
+		if (d->date >= t2y) c2y++;
+		if (d->date >= t3y) c3y++;
 		c++;
 	}
 	sccs_free(s);
@@ -1073,10 +1103,16 @@ http_index()
 	DOIT(c3d, c2d, "3d", "three&nbsp;days");
 	DOIT(c4d, c3d, "4d", "four&nbsp;days");
 	DOIT(c1w, c4d, "7d", "week");
-	DOIT(c2w, c1w, "14d", "two&nbsp;weeks");
-	DOIT(c3w, c2w, "21d", "three&nbsp;weeks");
-	DOIT(c1m, c3w, "31d", "month");
-	DOIT(c2m, c1m, "62d", "two&nbsp;months");
+	DOIT(c2w, c1w, "2w", "two&nbsp;weeks");
+	DOIT(c3w, c2w, "3w", "three&nbsp;weeks");
+	DOIT(c4w, c3w, "4w", "four&nbsp;weeks");
+	DOIT(c8w, c4w, "8w", "eight&nbsp;weeks");
+	DOIT(c12w, c8w, "12w", "twelve&nbsp;weeks");
+	DOIT(c6m, c12w, "6M", "six&nbsp;months");
+	DOIT(c9m, c6m, "9M", "nine&nbsp;months");
+	DOIT(c1y, c9m, "1y", "year");
+	DOIT(c2y, c1y, "2y", "two&nbsp;years");
+	DOIT(c3y, c2y, "3y", "three&nbsp;years");
 	out("<tr><td>&nbsp;</td><td>");
 	sprintf(buf,"<a href=ChangeSet?%s>", navbar);
 	out(buf);
