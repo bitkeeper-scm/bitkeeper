@@ -228,7 +228,7 @@ t/doit: t/doit.sh substvars
 FORCE:
 
 bkd: $(BKDOBJ)
-	$(CC) $(CFLAGS) $(BKDOBJ) $(LIBS) -o bkd
+	$(CC) $(CFLAGS) $(BKDOBJ) $(LINK) -o bkd
 
 gnu: FORCE
 	cd gnu && $(MAKE) BK_BIN=$(BK_BIN)
