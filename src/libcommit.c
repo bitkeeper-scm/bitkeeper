@@ -544,7 +544,7 @@ checkLog(int quiet, int resync)
 			return (1);
 		}
 	} else if (strneq("ask_close_logging:", buf, 18)) {
-		gethelp("close_log_query", logAddr(), stdout);
+		gethelp("close_log_query", logAddr(), 0, stdout);
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
