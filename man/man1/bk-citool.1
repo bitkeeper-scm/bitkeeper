@@ -213,7 +213,10 @@ pastes comments saved by the previous button, overwriting any existing comments.
 displays all comments in the differences window and asks if you want to commit.
 .tp
 .B [Edit]
-pops you into a simple editor on the current file.
+pops you into bk fmtool on the checked in version and the current version
+of the file.   You may then select the changes you do not want to keep
+and "merge" the two versions to a new version, which will replace the 
+current file.
 .tp
 .B [History]
 starts up revtool on the current file
@@ -255,9 +258,10 @@ repository.   After it is unlocked, the
 should work.
 .SH SEE ALSO
 .SA ci 1
-.SA sfiles 1
-.SA ignore 1
 .SA config-gui
+.SA fmtool 1
+.SA ignore 1
+.SA sfiles 1
 .SH CATEGORY
 .B GUI-tools
 .br
