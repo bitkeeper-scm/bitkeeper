@@ -78,7 +78,7 @@ cmd_pull_part2(int ac, char **av)
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	int	delay = -1;
 	char	s_cset[] = CHANGESET;
-	char	*revs = bktmp_local(0, "pullrevs");
+	char	*revs = bktmp(0, "pullrevs");
 	char	*serials = bktmp(0, "pullser");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	sccs	*s;
@@ -229,18 +229,17 @@ done:	unlink(serials); free(serials);
 		 * b) update $CSETS to point to CSETS_OUT
 		 */
 		unlink(CSETS_OUT);
-		if (rename(revs, CSETS_OUT)) {
-			unless (errno == EROFS) perror(CSETS_OUT);
-		} else {
+		unless (rename(revs, CSETS_OUT) && fileCopy(revs, CSETS_OUT)) {
 			chmod(CSETS_OUT, 0666);
 			putenv("BK_CSETLIST=" CSETS_OUT);
 		}
 	}
-	free(revs);
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
 	if (!metaOnly) trigger(av[0], "post");
 	if (delay > 0) sleep(delay);
+	unlink(revs);
+	free(revs);
 	return (rc);
 }
