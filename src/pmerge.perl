@@ -147,6 +147,8 @@ sub chkOverlap
 	#		become part of a conflict block). This is done
 	#		so we can combine two near by conflict blocks together.
 	#	Both "a" & "b" can happen in the same cycle.
+	# 	They can also happen in multiple consecutive cycle before
+	#	a block can be printed.
 	#
 	($mode, $ln) = &getUdiff();
 	print  OUT "##getcommon 1\n" if ($debug > 4);
@@ -155,12 +157,12 @@ sub chkOverlap
 	@lrc = &getLeft(); 
 	@rrc = &getRight();
 	while (1) {
-		# If left/right streams have no hard conflict, resolve it, 
+		# If left/right block have no hard conflict, resolve it, 
 		# push winning block back into the comman block and re-start 
 		# from top-of-loop.
 		# resolve into common1
 		@args = (@lrc , @rrc, \@cdata1l, \@cdata1r);
-		if (_resolveConflict_2(@args) && ($mode ne "EOF")) {
+		if (_resolveConflict(@args) && ($mode ne "EOF")) {
 			&getCommon(\@cdata1l, \@cdata1r);
 			@lrc = &getLeft(); 
 			@rrc = &getRight();
@@ -183,14 +185,15 @@ sub chkOverlap
 			if (!empty(\@cdata2l) &&
 			    (empty(\@ldata1) && empty(\@rdata1))); 
 		# If trailing common block is too "trivial", split & *append*
-		# into the left right block, re-start from top-of-loop. 
+		# into the left right block, repeat until we get a real conflict
 chkCommon:	if (splitCommon_a() && ($mode ne "EOF")) {
+			print  OUT "##get left right\n" if ($debug > 4);
 			@lrc = &getLeft(); 
 			@rrc = &getRight();
 			unless (hasConflict(@lrc, @rrc)) {
 				# resolve into common2
 				@args = (@lrc , @rrc, \@cdata2l, \@cdata2r);
-				_resolveConflict_2(@args);
+				_resolveConflict(@args);
 				&getCommon(\@cdata2l, \@cdata2r);
 				goto chkCommon;
 			}
@@ -463,7 +466,7 @@ sub hasConflict
 
 # If the conflict is resolvable, do it, then return 1 
 # else return 0;
-sub _resolveConflict_2
+sub _resolveConflict
 {
 	local($l_all_i, $l_no_chg) = ($_[0], $_[1]);	
 	local($r_all_i, $r_no_chg) = ($_[2], $_[3]);	
@@ -573,7 +576,6 @@ sub getLeft
 		$lm1 = shift(@lmarker);
 		$all_i = 0 if ($lm1 ne "i");
 		$no_chg = 0 if ($lm1 ne "u");
-		##push(@ldata1, "$lm1$ln");
 		push(@ldata1_t, "$lm1$ln");
 		($mode, $ln) = &getUdiff();
 	}
@@ -588,7 +590,6 @@ sub getRight
 		$rm1 = shift(@rmarker);
 		$all_i = 0 if ($rm1 ne "i");
 		$no_chg = 0 if ($rm1 ne "u");
-		#push(@rdata1, "$rm1$ln");
 		push(@rdata1_t, "$rm1$ln");
 		($mode, $ln) = &getUdiff();
 	}
@@ -755,7 +756,7 @@ sub usage
         print <<EOF;
 USAGE
 
-    pmerge [-b ] [-g] [-m ] [-q] [-d] left gca right
+    pmerge [-a] [-b] [-e] [-g] [-m] [-q] [-d] left gca right
 
 DESCRIPTION
 
@@ -764,15 +765,21 @@ DESCRIPTION
 
 OPTIONS
 
-    -b	show conflict in bigger block
+    -a		show all markers
 
-    -g  show gca text in conflict block (marked as '-")
+    -b		show conflict in bigger block
 
-    -m  turn off markers
+    -e		hide equal ("=") markers
 
-    -q  quiet mode.
+    -g  	show gca text in conflict block (marked as '-")
 
-    -d  debugging.
+    -m  	turn off markers
+
+    -q  	quiet mode.
+
+    -d<level>	debugging. (level can be 0-4, e.g -d2)
+
+    --help	show this help  message.
 
 EOF
         exit 0;
@@ -784,18 +791,21 @@ sub init
 	&platformInit;
 	$OK = 1; $debug = $quiet = $hideMarker = $wantGca = 0;
 	$wantAllMarker = $wantBigBlock = 0;
+	$um = "=";
 
 	while (defined($ARGV[0]) && ($ARGV[0] =~ /^-/)) {
  		($x = $ARGV[0]) =~ s/^-//; 
                 if ($x eq "-help") {
 			&usage;
                 } 
-		if ($x eq "d") { $debug++; }
+		if ($x =~ "^d[0-9]") { $debug = substr($x, 1, 2); }
 		elsif ($x eq "q") { $quiet = 1; }
 		elsif ($x eq "m") { $hideMarker = 1; }
+		elsif ($x eq "e") { $um = ""; }
 		elsif ($x eq "b") { $wantBigBlock = 1; }
 		elsif ($x eq "g") { $wantGca = 1; }
 		elsif ($x eq "a") { $wantAllMarker = 1; }
+		else { die "unknown option: -$x\n"; }
 		shift(@ARGV); 
 	}
 	&usage if ($#ARGV != 2);
@@ -807,8 +817,6 @@ sub init
 		# this maks it easier to run diffs
 		# again diff3 output.
 		$um= "";
-	} else {
-		$um = "=";
 	}
 }
 
