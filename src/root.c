@@ -15,7 +15,7 @@ root_main(int ac, char **av)
 	}
 	p = sccs_root(0);
 	unless (p) {
-		fprintf(stderr, "cannnot find package root\n");
+		fprintf(stderr, "cannot find package root\n");
 		exit(1);
 	}
 	printf("%s\n", fullname(p, 0));
