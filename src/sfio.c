@@ -22,6 +22,18 @@
 
 char	*vers = "%K%";
 
+int	sfio_out(void);
+int	out(char *file);
+char	chop(register char *s);
+int	sfio_in(int extract);
+int	in(char *file, int todo, int extract);
+int	mkfile(char *file);
+int	mkdirp(char *dir);
+int	mkdirf(char *file);
+int	isdir(char *s);
+int	readn(int from, char *buf, int size);
+int	writen(int from, char *buf, int size);
+
 int
 main(int ac, char **av)
 {
@@ -42,12 +54,12 @@ sfio_out()
 	char	buf[1024];
 	char	len[5];
 
-	write(1, SFIO_VERS, 10);
+	writen(1, SFIO_VERS, 10);
 	while (fnext(buf, stdin)) {
 		chop(buf);
 		sprintf(len, "%04d", strlen(buf));
-		write(1, len, 4);
-		write(1, buf, strlen(buf));
+		writen(1, len, 4);
+		writen(1, buf, strlen(buf));
 		if (out(buf)) return (1);
 	}
 	return (0);
@@ -66,30 +78,20 @@ out(char *file)
 		perror(file);
 		return (1);
 	}
-	sprintf(len, "%010u", sb.st_size);
-	write(1, len, 10);
-	while ((n = read(fd, buf, sizeof(buf))) > 0) {
+	sprintf(len, "%010u", (unsigned int)sb.st_size);
+	writen(1, len, 10);
+	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
 		nread += n;
 		if (writen(1, buf, n) != n) return (1);
 	}
 	if (nread != sb.st_size) {
 		fprintf(stderr, "Size mismatch on %s %u:%u\n",
-		    file, nread, sb.st_size);
+		    file, nread, (unsigned int)sb.st_size);
 		return (1);
 	}
 	sprintf(buf, "%03o", sb.st_mode & 0777);
-	write(1, buf, 3);
+	writen(1, buf, 3);
 	return (0);
-}
-
-/*
- * Hack - steal the real code from bds
- */
-int
-writen(int fd, char *buf, int n)
-{
-	if (write(fd, buf, n) != n) return (0);
-	return (n);
 }
 
 char
@@ -112,7 +114,7 @@ sfio_in(int extract)
 	int	len;
 	int	n;
 
-	if (read(0, buf, 10) != 10) {
+	if (readn(0, buf, 10) != 10) {
 		perror("read");
 		return (1);
 	}
@@ -121,7 +123,7 @@ sfio_in(int extract)
 		return (1);
 	}
 	for (;;) {
-		n = read(0, buf, 4);
+		n = readn(0, buf, 4);
 		if (n == 0) return (0);
 		if (n != 4) {
 			perror("read");
@@ -134,12 +136,12 @@ sfio_in(int extract)
 			fprintf(stderr, "Bad length in sfio\n");
 			return (1);
 		}
-		if (read(0, buf, len) != len) {
+		if (readn(0, buf, len) != len) {
 			perror("read");
 			return (1);
 		}
 		buf[len] = 0;
-		if (read(0, datalen, 10) != 10) {
+		if (readn(0, datalen, 10) != 10) {
 			perror("read");
 			return (1);
 		}
@@ -166,7 +168,7 @@ in(char *file, int todo, int extract)
 		fd = mkfile(file);
 		if (fd == -1) return (1);
 	}
-	while ((n = read(0, buf, min(todo, sizeof(buf)))) > 0) {
+	while ((n = readn(0, buf, min(todo, sizeof(buf)))) > 0) {
 		todo -= n;
 		unless (extract) continue;
 		if (writen(fd, buf, n) != n) return (1);
@@ -175,7 +177,7 @@ in(char *file, int todo, int extract)
 		fprintf(stderr, "Premature EOF on %s\n", file);
 		return (1);
 	}
-	if (read(0, buf, 3) != 3) {
+	if (readn(0, buf, 3) != 3) {
 		perror("mode read");
 		return (1);
 	}
@@ -259,3 +261,34 @@ isdir(char *s)
 	return (S_ISDIR(sbuf.st_mode));
 }
 
+int
+readn(int from, char *buf, int size)
+{
+	int	done;
+	int	n;
+
+	for (done = 0; done < size; ) {
+		n = read(from, buf + done, size - done);
+		if (n <= 0) {
+			break;
+		}
+		done += n;
+	}
+	return (done);
+}
+
+int
+writen(int from, char *buf, int size)
+{
+	int	done;
+	int	n;
+
+	for (done = 0; done < size; ) {
+		n = write(from, buf + done, size - done);
+		if (n <= 0) {
+			break;
+		}
+		done += n;
+	}
+	return (done);
+}
