@@ -6999,7 +6999,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	}
 	assert(!READ_ONLY(s));
 	assert(s->state & S_ZFILE);
-	fputs("\001hXXXXX\n", out);
+	fputs("\001HXXXXX\n", out);
 	s->cksum = 0;
 	assert(sizeof(buf) >= 1024);	/* see comment code */
 
@@ -9588,7 +9588,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	memmove(t, r, sc->landingpad - r);
 #define	ADD(c)	{ sum -= '_'; *t++ = c; sum += c; }
 	for (r = buf, t = &sc->mmap[8]; *r; r++) ADD(*r);
-	sprintf(sc->mmap, "\001h%05u", sum);
+	sprintf(sc->mmap, "\001H%05u", sum);
 	sc->mmap[7] = '\n';	/* overwrite null */
 
 	/*
@@ -10249,7 +10249,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		goto out;
 	}
 	fseek(sfile, 0L, SEEK_SET);
-	fprintf(sfile, "\001h%05u\n", sc->cksum);
+	fprintf(sfile, "\001H%05u\n", sc->cksum);
 #ifdef	DEBUG
 	badcksum(sc, flags);
 #endif
@@ -10361,7 +10361,7 @@ out:
 		goto out;
 	}
 	fseek(sfile, 0L, SEEK_SET);
-	fprintf(sfile, "\001h%05u\n", s->cksum);
+	fprintf(sfile, "\001H%05u\n", s->cksum);
 	sccs_close(s), fclose(sfile), sfile = NULL;
 	if (s->encoding & E_GZIP) zgets_done();
 	unlink(s->sfile);		/* Careful. */
@@ -11277,7 +11277,7 @@ abort:		fclose(sfile);
 	if (fflushdata(s, sfile)) goto abort;
 	if (s->encoding & E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
-	fprintf(sfile, "\001h%05u\n", s->cksum);
+	fprintf(sfile, "\001H%05u\n", s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
 	unlink(s->sfile);		/* Careful. */
 	t = sccsXfile(s, 'x');
@@ -11844,7 +11844,7 @@ Breaks up citool
 		fputmeta(s, buf, out);
 	}
 	fseek(out, 0L, SEEK_SET);
-	fprintf(out, "\001h%05u\n", s->cksum);
+	fprintf(out, "\001H%05u\n", s->cksum);
 	if (flushFILE(out)) {
 		perror(s->sfile);
 		s->io_warned = 1;
@@ -14946,7 +14946,7 @@ stripDeltas(sccs *s, FILE *out)
 	if (fflushdata(s, out)) return (1);
 	if (s->encoding & E_GZIP) zgets_done();
 	fseek(out, 0L, SEEK_SET);
-	fprintf(out, "\001h%05u\n", s->cksum);
+	fprintf(out, "\001H%05u\n", s->cksum);
 	sccs_close(s);
 	fclose(out);
 	unlink(s->sfile);		/* Careful. */
