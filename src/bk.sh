@@ -1,4 +1,5 @@
-#! @FEATURE_SH@
+
+# No #!, it's done with shell() in bk.c
 
 # bk.sh - BitKeeper scripts
 # @(#)%K%

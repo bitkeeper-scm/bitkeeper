@@ -1,4 +1,5 @@
-#! @FEATURE_SH@
+
+# No #!, it's done with shell() in bk.c
 
 # import.sh - import various sorts of files into BitKeeper
 # TODO

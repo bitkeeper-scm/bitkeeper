@@ -1183,3 +1183,16 @@ find_wish(void)
 	fprintf(stderr, "Cannot find the graphical interpreter\n");
 	exit(1);
 }
+
+char *
+shell(void)
+{
+	char	*sh;
+
+	if (sh = getenv("BK_SHELL")) return (sh);
+	if (sh = find_prog("bash")) return (sh);
+	if (sh = find_prog("ksh")) return (sh);
+	if (sh = find_prog("sh")) return (sh);
+	assert("No shell" == 0);
+	return (0);	/* Windows warns otherwise */
+}
