@@ -71,7 +71,7 @@ tcp_pipe(remote *r)
 	sprintf(port, "%d", r->port);
 	sprintf(pipe_size, "%d", BIG_PIPE);
 	if (r->trace) av[i++] = "-d";
-	if (r->httpd) av[i++] = "-h";
+	if (r->type == ADDR_HTTP) av[i++] = "-h";
 	av[i++] = "-p";
 	av[i++] = pipe_size;
 	av[i++] = r->host;
