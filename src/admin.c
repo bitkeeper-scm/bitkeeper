@@ -19,8 +19,11 @@ usage: admin options [- | file file file...]\n\
     -H			same as -h, plus check file contents are ASCII\n\
     -z			recalculate file checksum\n\
 \n\
-    -f<f><val>		set flag (value is optional)\n\
-    -F<f>		delete flag\n\
+    -f<f><val>		set flag\n\
+	EXPAND1		expand keywords in first keyword containing line only\n\
+	RCS		expand RCS keywords\n\
+	YEAR4		store dates as 4 digit years (breaks SCCS compat)\n\
+    -F<f>		delete flag <f>\n\
 \n\
     -m<mode>		set the mode of the file\n\
     -M<merge>		Merge branch <merge> into TOT or <rev>\n\
