@@ -160,14 +160,18 @@ _rmdir() {
 		bk sfiles -cg $1
 		exit 1
 	fi
+	bk sfiles $1 | bk clean -q -
 	bk sfiles $1 | sort | bk sccsrm -d -
 	SNUM=`bk sfiles $1 | wc -l`
 	if [ "$SNUM" -ne 0 ]; 
 	then
-		echo "Failed to rm the following files:"
+		echo "Failed to remove the following files:"
 		bk sfiles -g $1
+		exit 1
 	fi
-	rm -f "$1"	# careful
+	if [ -d "$1" ]
+	then rm -rf "$1"	# careful
+	fi
 	exit 0
 }
 
