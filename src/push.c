@@ -37,7 +37,7 @@ push_main(int ac, char **av)
 {
 	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
-	int	rc = 0;
+	int	rc = 0, print_title = 0;
 	char	**envVar = 0;
 	char	**pList = NULL;
 	remote 	*r;
@@ -91,6 +91,7 @@ push_main(int ac, char **av)
 	} else {
 		pList = getParentList(PARENT, pList);
 		pList = getParentList(PUSH_PARENT, pList);
+		if (opts.verbose) print_title = 1;
 	}
 
 	unless (pList) {
@@ -106,6 +107,10 @@ err:		freeLines(envVar);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
 		opts.lcsets = opts.rcsets = opts.rtags = 0;
+		if (print_title) {
+			if (i > 1)  printf("\n");
+			printf("%s:\n", pList[i]);
+		}
 		for (;;) {
 			rc = push(av, r, envVar);
 			if (rc != -2) break; /* -2 means locked */

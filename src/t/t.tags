@@ -238,7 +238,7 @@ echo OK
 echo $N Create a tag only conflict, push, check error message .......$NL
 cd $HERE/copy
 bk tag $Q copy
-bk push 2>OUT
+bk push 2>OUT 1>&2
 if [ $? -eq 0 ]
 then	echo failed to exit non zero;
 	cat OUT

@@ -39,7 +39,7 @@ cd $HERE/copy/src
 bk edit $Q bar.c h.h
 echo new2 > bar.c
 echo new2 > h.h
-bk pull  2> pull.out
+bk pull  2> pull.out 1>&2
 grep -q "bar.c is edited" pull.out || { echo failed; exit 1; }
 grep -q "h.h is edited" pull.out || { echo failed; exit 1; }
 echo OK

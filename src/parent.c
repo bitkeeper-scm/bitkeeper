@@ -13,7 +13,7 @@ parent_main(int ac,  char **av)
 	int	i;
 	remote	*r;
 	char	*fp;
-	char	*parentFile;
+	char	*parentFile, *which;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help parent");
@@ -74,10 +74,13 @@ parent_main(int ac,  char **av)
 
 	if (tflag) {
 		parentFile = PUSH_PARENT;
+		which = "push prent";
 	} else if (fflag) {
 		parentFile = PULL_PARENT;
+		which = "pull parent";
 	} else {
 		parentFile = PARENT;
+		which = "parent";
 	}
 
 	/*
@@ -108,7 +111,7 @@ parent_main(int ac,  char **av)
 			free(fp);
 			return (0);
 		}
-empty:		fprintf(stderr, "This package has no parent\n");
+empty:		fprintf(stderr, "This package has no %s\n", which);
 		return (1);
 	}
 
@@ -149,7 +152,7 @@ empty:		fprintf(stderr, "This package has no parent\n");
 	assert(f);
 	fprintf(f, "%s\n", remote_unparse(r));
 	fclose(f);
-	unless (quiet) printf("Set parent to %s\n", remote_unparse(r));
+	unless (quiet) printf("Set %s to %s\n", which, remote_unparse(r));
 	remote_free(r);
 	return (0);
 }

@@ -35,7 +35,7 @@ pull_main(int ac, char **av)
 {
 	int	c, i, j = 1;
 	int	try = -1; /* retry forever */
-	int	rc = 0;
+	int	rc = 0, print_title = 0;
 	opts	opts;
 	remote	*r;
 	char	**envVar = 0, **pList = 0;
@@ -87,6 +87,7 @@ pull_main(int ac, char **av)
 	} else {
 		pList = getParentList(PARENT, pList);
 		pList = getParentList(PULL_PARENT, pList);
+		unless (opts.quiet) print_title = 1;
 	}
 
 	unless (pList) {
@@ -102,7 +103,10 @@ err:		freeLines(envVar);
 		r = remote_parse(pList[i], 0);
 		unless (r) goto err;
 		if (opts.debug) r->trace = 1;
-
+		if (print_title) {
+			if (i > 1)  printf("\n");
+			printf("%s:\n", pList[i]);
+		}
 		/*
 		 * retry if parent is locked
 		 */
