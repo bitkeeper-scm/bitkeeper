@@ -97,14 +97,43 @@ must be at the root of the repository.
 .head
 \fBbk\fR://\c
 .ARGc host /
-.ARG pathname
+.ARGc rel /
+.ARG path
+OR\ \fBbk\fR//\c
+.ARGc host /
+.ARGc rel /
+.ARG path
 .br
 Connects to an existing 
 .B bkd
 on the default bkd port,
 changes to 
-.ARG <pathname> ,
-then runs command.
+.ARGc rel /
+.ARG path ,
+then runs command.  Where
+.ARGc rel /
+.ARG path
+is the path relative to the root of the repository.
+.head
+\fBbk\fR://\c
+.ARGc host //
+.ARGc full /
+.ARG path
+OR\ \fBbk\fR//\c
+.ARGc host //
+.ARGc full /
+.ARG path
+.br
+Connects to an existing 
+.B bkd
+on the default bkd port,
+changes to 
+.ARGc full /
+.ARG path ,
+then runs command.  Where
+.ARGc full /
+.ARG path
+is the absolute path.
 .head
 \fBbk\fR://\c
 .ARGc host :
@@ -133,10 +162,26 @@ then runs command.
 \fBhttp\fR://\c
 .ARGc host :
 .ARGc port /
-.ARG pathname
+.ARGc relative /
+.ARG path
 .br
 Connects to the specified port via the hypertext transfer protocol, changes
-to pathname, then runs the command.
+to pathname, then runs the command.  Where
+.ARGc relative /
+.ARG path
+is the relative path from the root of the repository.
+.head
+\fBhttp\fR://\c
+.ARGc host :
+.ARGc port //
+.ARGc full /
+.ARG path
+.br
+Connects to the specified port via the hypertext transfer protocol, changes
+to pathname, then runs the command.  Where
+.ARGc full /
+.ARG path
+is the absolute path.
 .head
 \fBhttp\fR://\c
 .ARGc host :
