@@ -15,7 +15,17 @@ rm -rf $REPO
 set -e
 BK_LICENSE=ACCEPTED PREFER_RSH=YES bk clone $TREE_HOST:/home/bk/$TREE $REPO
 cd $REPO/src
-bk get build.sh || exit 1
+cat <<EOF | bk -R get -qS -
+src/build.sh
+src/Makefile
+src/zlib/Makefile
+src/gnu/Makefile
+src/utils/Makefile
+man/Makefile
+man/man2help/Makefile
+man/man2html/Makefile
+EOF
+test -f build.sh || exit 1
 cp build.sh build
 chmod +x build
 TST_DIR=/build
