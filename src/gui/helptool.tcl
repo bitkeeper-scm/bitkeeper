@@ -252,7 +252,7 @@ proc search {} \
 	}
 	catch {close $f} dummy
 	.text.help configure -state disabled
-	.text.help tag configure seealso -foreground $gc(help,tagColor) \
+	.text.help tag configure seealso -foreground $gc(help,linkColor) \
 	    -underline true
 }
 

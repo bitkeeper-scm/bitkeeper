@@ -13,11 +13,11 @@ The
 command is a graphical interface for checking in modified files.
 Without any arguments,
 .B citool
-finds examines the current repository for
+examines the current repository for
 modified files, pending files, and files not under revision control.
 Otherwise,
 .B citool
-will look in the list of arguments for files.  The
+will look in the list of arguments for files or directories.  The
 arguments are processed by
 .B bk
 .BR sfind ,
@@ -25,17 +25,17 @@ and have to follow the restrictions imposed by
 .B bk
 .BR sfind .
 .LP
-The tool has three main windows:  the top window containing the list of
+Citool three main windows:  the top window containing the list of
 files with modifications, the middle window for entering comments,
 and the bottom window for displaying differences and the contents of
 new files. 
 .LP
-The typical process is to move to each file, type in comments, and repeat
+The typical process is to move to each file, add comments, and repeat
 until done. When all files are commented, the
 .B commit
 button is pressed to make the changes part of a ChangeSet.
 .LP
-You can move around in the file list by clicking on a file or using the
+You can move around within the file list by clicking on a file or using the
 keyboard accelerators Control-N (next file) and Control-P (previous file).
 You may add comments, move around, come back, and update the comments.
 Nothing is applied until you click
@@ -44,10 +44,47 @@ Nothing is applied until you click
 The files with the question mark icon are files that are not under 
 revision control. The new files can be added by using the mouse to 
 click on the question mark icon or by using the Control-t key to 
-tag the file.
+tag the file. When one clicks on the question mark, it becomes a 
+check mark, indicating that the file will be part of the cset.
+.LP
+Some of the new files might be files that you do not wish to put
+under revision control and having them visible clutters up the file
+window. When a new file is highlighted, the Ignore button becomes
+active on the right-hand button menu. If you click the ignore button,
+the selected file will be added to the BitKeeper/etc/ignore file
+so that when citool is run again, the selected file will not be
+shown. If you accidentaly click ignore on a file that you want, click
+the Unignore button. The BitKeeper/etc/ignore file is not updated
+until the changeset is committed. The ignore file is a revision
+controled file like any other BitKeeper file and can be edited with a
+text editor if you want to remove or add files to the ignore list.
+.LP
+Some of the new files might be files that you do not wish to put
+under revision control and having them visible clutters up the file
+window. When a new file is highlighted, the Ignore button becomes
+active on the right-hand button menu. If you click the ignore button,
+the selected file will be added to the BitKeeper/etc/ignore file
+so that when citool is run again, the selected file will not be
+shown. If you accidentaly click ignore on a file that you want, click
+the Unignore button. The BitKeeper/etc/ignore file is not updated
+until the changeset is committed. The ignore file is a revision
+controled file like any other BitKeeper file and can be edited with a
+text editor if you want to remove or add files to the ignore list.
+.LP
+At times, one might wish to exclude files from a changeset. For
+example, if you are working on a file and have made changes to it
+(changes can be committed and in the pending state), but don't
+want these changes to propogate when you push your work to another
+repository. To exclude files from the changeset, use the mouse to click
+on the file-type icon.  If the file can be excluded, the icon will
+change to a circle with a slash through it. If you try to exclude
+a pending file while a modified version of the file exists, both
+the pending and the modified file will be excluded. It is possible
+to exclude the modified file, while keeping the pending file in an
+included state.
 .LP
 When you move to a file, the differences for this file are shown in the
-bottom window.  As you are typing comments, it is normal to want to scroll
+bottom window.  When entering comments, it is normal to want to scroll
 the differences window (assuming that the differences are larger than
 the window).  While this can be done using the mouse and the scrollbar,
 the following keyboard accelerators will work at all times, even when
@@ -153,3 +190,5 @@ repository.   After it is unlocked, the
 should work.
 .SH SEE ALSO
 .B bk help ci
+.TP
+.B bk help ignore
