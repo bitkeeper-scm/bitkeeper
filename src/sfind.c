@@ -429,16 +429,19 @@ file(char *f)
 private void
 print_summary()
 {
-	fprintf(output, "%6d files under revision control.\n", s_count);
+	fprintf(opts.out, "%6d files under revision control.\n", s_count);
 	if (opts.xflg) {
-		fprintf(output, "%6d files not under revision control.\n", x_count);
+		fprintf(opts.out,
+		    "%6d files not under revision control.\n", x_count);
 	}
 	if (opts.cflg) {
-		fprintf(output, "%6d files modified and not checked in.\n", c_count);
+		fprintf(opts.out,
+		    "%6d files modified and not checked in.\n", c_count);
 	}
 	if (opts.pflg) {
-		fprintf(output,
-			"%6d files with checked in, but not committed, deltas.\n", p_count);
+		fprintf(opts.out,
+		    "%6d files with checked in, but not committed, deltas.\n",
+		    p_count);
 	}
 }
 
@@ -570,6 +573,7 @@ progress(int force)
 	fflush(stdout);
 	s_last = s_count;
 	x_last = x_count;
+	if (force == 2) usleep(300000);		/* let TK update */
 }
 
 private int
@@ -661,10 +665,10 @@ do_print(char state[4], char *file, char *rev)
 	if (state[PSTATE] == 'p') p_count++;
 	switch (state[CSTATE]) {
 	    case 'j': break;
-	    case 'x': unless (isIgnored(file)) x_count++;
+	    case 'x': unless (isIgnored(file)) x_count++; break;
 	    case 'c': c_count++;
 	    	/* fall through */
-	    default: s_count++;
+	    default: s_count++; break;
 	}
 	if (opts.progress && 
 	    (((s_count - s_last) > 100) || ((x_count - x_last) > 100))) { 
