@@ -292,7 +292,7 @@ wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 
 get-e: FORCE
-	-@bk get -es `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1 | sort -u`
+	-@bk edit -qT `echo $(HDRS) $(SRCS) $(SCRSRCS) $(MISC) | fmt -1|sort -u`
 	$(MAKE) tags
 
 tags: FORCE

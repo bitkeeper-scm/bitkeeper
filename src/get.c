@@ -248,7 +248,6 @@ onefile:	fprintf(stderr,
 			errors = 1;
 			sccs_free(s);
 			continue;
-			
 		}
 		if (BITKEEPER(s) && rev && !branch_ok && !streq(rev, "+")) {
 			unless ((flags & PRINT) || Gname) {
@@ -269,6 +268,7 @@ onefile:	fprintf(stderr,
 			}
 			errors = 1;
 		}
+		if (flags & GET_DTIME) fix_stime(s);
 		sccs_free(s);
 		/* sfileNext() will try and check out -G<whatever> */
 		if (Gname && !gdir) {
