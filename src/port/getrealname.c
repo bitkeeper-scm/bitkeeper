@@ -26,6 +26,11 @@ scanDir(char *dir, char *name, MDBM *db, char *realname)
 			if (realname[0] == 0) {
 				strcpy(realname, e->d_name);
 			} else {
+				/*
+				 * if this dir have 2 entries differ
+				 * only by case, it cannot be a case folding
+				 * FS; so "name" must be the realname
+				 */
 				strcpy(realname, name);
 				break;
 			}
@@ -62,12 +67,8 @@ scanDir(char *dir, char *name, MDBM *db, char *realname)
 		sprintf(path, "%s/%s", dir, file);
 		if (db) mdbm_store_str(db, path, file, MDBM_INSERT);
 		if (strcasecmp(file, name) == 0) {
-			if (realname[0] == 0) {
-				strcpy(realname, file);
-			} else {
-				strcpy(realname, name);
-				break;
-			}
+			strcpy(realname, file);
+			break;
 		}
         } while (_findnext(dh, &found_file) == 0);
         _findclose(dh);

@@ -94,14 +94,17 @@ mk_prelock(char *linkpath, int me)
 private int
 atomic_create(char *noused, char *lock, int me)
 {
-	int	fd;
+	int	fd, flags = O_EXCL|O_CREAT|O_WRONLY;
 	FILE 	*f;
+	char	buf[100];
 
-	fd = open(lock, O_EXCL|O_CREAT|O_WRONLY, 0666);
+	if (getenv("BK_REGRESSION")) flags &= ~O_EXCL; /* for faster test */
+	fd = open(lock, flags, 0666);
 	if (fd < 0) return (-1);
-	f = fdopen(fd, "wb");
-	fprintf(f, "#%d\n", me);
-	fclose(f);
+	
+	sprintf(buf, "#%d\n", me);
+	write(fd, buf, strlen(buf));
+	close(fd);
 	return (0);
 }
 #else

@@ -630,7 +630,7 @@ sendServerInfoBlock(int is_rclone)
 
 	/*
 	 * When we are doing a rclone, there is no tree in the bkd sode yet
-	 * Do not get to get the level of the server tree.
+	 * Do not try to get the level of the server tree.
 	 */
 	unless (is_rclone) {
         	sprintf(buf, "LEVEL=%d\n", getlevel());
@@ -827,7 +827,7 @@ aprintf(char *fmt, ...)
 void
 ttyprintf(char *fmt, ...)
 {
-	FILE	*f = fopen("/dev/tty", "w");
+	FILE	*f = fopen(DEV_TTY, "w");
 	va_list	ptr;
 
 	unless (f) f = stderr;
@@ -1099,7 +1099,7 @@ unsafe_path(char *s)
 		if (streq(s, "/..")) return (1);
 		*s = 0;
 		/* we've chopped the last component, it must be a dir */
-		unless (isdir(buf)) return (1);
+		unless (isdir(buf)) return (1); /* this call lstat() */
 		unless (s = strrchr(buf, '/')) {
 			/* might have started with ../someplace */
 			return (streq(buf, ".."));
