@@ -322,13 +322,16 @@ bk resync $Q -r1.9 $Q $HERE/copy $HERE/copy2
 bk resolve $Q $HERE/copy2 
 bk get $Q bdata
 cmp -s bdata $binary_data2
-if [ $? -ne 0 ]; then echo failed; else echo OK; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
 echo $N Check resync with skiped ChangeSet delta to new tree ........$NL
 cd $HERE
 rm -rf  $HERE/copy2 
 bk resync $Q -r1.5 $HERE/copy $HERE/copy2  > resync.out 2>&1
 grep -q "resync from version 1.0 forward" resync.out
-if [ $? -ne 0 ]; then echo failed; else echo OK; fi
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+rm -f resync.out
 echo $N Check resolve w/ merge and delete event .....................$NL
 cd $HERE/project/src
 cat > merge.c << EOF

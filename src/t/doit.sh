@@ -1,4 +1,4 @@
-#!/bin/sh
+#! @SH@
 
 # Copright (c) 1999 Larry McVoy
 # %K%
@@ -16,7 +16,7 @@ fi
 for i in $list
 do	n=${i#t.}
 	echo ------------ $n tests
-	cat setup $i cleanup | sh $dashx
+	cat setup $i cleanup | @SH@ $dashx
 	EXIT=$?
 	if [ $EXIT != 0 ]
 	then	echo Test exited with error $EXIT

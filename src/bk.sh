@@ -263,20 +263,27 @@ _receive() {
 
 # Clone a repository, usage "clone from to"
 _clone() {
+	FROM=
+	TO=
 	for arg in "$@"
 	do	case "$arg" in
 		-*)	;;
-		*)	if [ -z "$from" ]
-			then from="$arg"
-			elif [ -z "$to" ]
-			then to="$arg"
-			else echo 'usage: clone [opts] from to' >&2; exit 1
+		*)	if [ -z "$FROM" ]
+			then	FROM="$arg"
+			elif [ -z "$TO" ]
+			then	TO="$arg"
+			else	echo 'usage: clone [opts] from to' >&2; exit 1
 			fi
 			;;
 		esac
 	done
-	if [ -d $to ]
-	then echo "clone: warning: $to exists" >&2
+	if [ X$TO = X ]
+	then	echo  'usage: clone [opts] from to' >&2
+		exit 1
+	fi
+	if [ -d $TO ]
+	then	echo "clone: $to exists" >&2
+		exit 1
 	fi
 	exec ${BIN}resync -ap "$@"
 }
@@ -420,7 +427,7 @@ __status() {
 		echo "`${BIN}sfiles | wc -l` files under revision control."
 		echo "`${BIN}sfiles -x | wc -l` files not under revision control."
 		echo "`${BIN}sfiles -c | wc -l` files modified and not checked in."
-		echo "`${BIN}sfiles -C | wc -l` files with uncommitted deltas."
+		echo "`${BIN}sfiles -C | wc -l` files with checked in, but not committed, deltas."
 	fi
 }
 
@@ -450,8 +457,40 @@ _rm() {
 	${BIN}sccsrm "$@"
 }
 
+_info() {
+	${BIN}sinfo "$@"
+}
+
 _sdiffs() {
 	${BIN}diffs -s "$@"
+}
+
+# Usage: fix file
+_fix() {
+	Q=-q
+	while getopts qv opt
+	do	case "$opt" in
+		q) ;;
+		v) Q=;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	for f in $*
+	do	# XXX - need to make sure they are not in a cset already
+		if [ -w $f ]
+		then	echo $f is already edited
+			continue
+		fi
+		if [ -f "${f}-.fix" ]
+		then	echo ${f}-.fix exists, skipping that file
+			continue
+		fi
+		${BIN}get $Q -kp $f > "${f}-.fix"
+		REV=`${BIN}prs -hr+ -d:REV: $f`
+		${BIN}rmdel $Q -D$REV $f
+		${BIN}get $Q -eg $f
+		mv "${f}-.fix" $f
+	done
 }
 
 # Usage: undo cset,cset,cset
@@ -501,17 +540,16 @@ _pending() {
 }
 
 _chkConfig() {
-	_cd2root
-	if [ ! -f  ${cfgDir}SCCS/s.config ]
+	if [ ! -f  ${BK_ETC}SCCS/s.config ]
 	then
 		_gethelp chkconfig_missing $BIN
 		return 1
 	fi
-	if [ -f ${cfgDir}config ]
-	then	${BIN}clean ${cfgDir}config
+	if [ -f ${BK_ETC}config ]
+	then	${BIN}clean ${BK_ETC}config
 	fi
-	${BIN}get -q ${cfgDir}config 
-	cmp -s ${cfgDir}config ${BIN}bitkeeper.config
+	${BIN}get -q ${BK_ETC}config 
+	cmp -s ${BK_ETC}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
 	then	_gethelp chkconfig_inaccurate $BIN
 		return 1
@@ -535,8 +573,8 @@ _sendConfig() {
 	  echo "Host:		`hostname`"
 	  echo "Root:		`pwd`"
 	  echo "Date:		`date`"
-	  ${BIN}get -ps ${cfgDir}config | \
-	    grep -v '^#' ${cfgDir}config | grep -v '^$'
+	  ${BIN}get -ps ${BK_ETC}config | \
+	    grep -v '^#' ${BK_ETC}config | grep -v '^$'
 	) | _mail $1 "BitKeeper config: $P"
 }
 
@@ -582,12 +620,12 @@ _mail() {
 }
 
 _logAddr() {
-	LOG=`grep "^logging:" ${cfgDir}config | tr -d '[\t, ]'`	
+	LOG=`grep "^logging:" ${BK_ETC}config | tr -d '[\t, ]'`	
 	case X${LOG} in 
 	Xlogging:*)
 		;;
 	*)	echo "Bad config file, can not find logging entry"
-		${BIN}clean ${cfgDir}config
+		${BIN}clean ${BK_ETC}config
 		return 1
 		;;
 	Xlogging:.*bitkeeper.openlogging.org)
@@ -626,8 +664,8 @@ s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\
 # XXX - should probably ask once for each user.
 _checkLog() {
 	# If we have a logging_ok message, then we are done.
-	if [ `grep "^logging_ok:" ${cfgDir}config | wc -l` -gt 0 ]
-	then	${BIN}clean ${cfgDir}config
+	if [ `grep "^logging_ok:" ${BK_ETC}config | wc -l` -gt 0 ]
+	then	${BIN}clean ${BK_ETC}config
 		return
 	fi
 
@@ -639,24 +677,24 @@ _checkLog() {
 		read x
 		case X$x in
 	    	    X[Yy]*) 
-			${BIN}clean ${cfgDir}config
-			${BIN}get -seg {cfgDir}config
-			${BIN}get -kps {cfgDir}config |
+			${BIN}clean ${BK_ETC}config
+			${BIN}get -seg {BK_ETC}config
+			${BIN}get -kps {BK_ETC}config |
 			sed -e '/^logging:/a\
-logging_ok:	to '$LOGADDR > ${cfgDir}config
-			${BIN}delta -y'Logging OK' ${cfgDir}config
+logging_ok:	to '$LOGADDR > ${BK_ETC}config
+			${BIN}delta -y'Logging OK' ${BK_ETC}config
 			return
 			;;
 		esac
 		_gethelp log_abort
-		${BIN}clean ${cfgDir}config
+		${BIN}clean ${BK_ETC}config
 		exit 1
 	else
 		_sendConfig config@openlogging.org
 	fi
 }
 
-_sendLog() {
+_logChangeSet() {
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
 	if [ x$key != x ]
@@ -682,6 +720,7 @@ _sendLog() {
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( echo ---------------------------------
 	  ${BIN}sccslog -r$REV ChangeSet
+	  ${BIN}cset -r+ | ${BIN}sccslog -
 	  echo ---------------------------------
 	  ${BIN}cset -c -r$R ) | _mail $LOGADDR "BitKeeper log: $P" 
 }
@@ -713,10 +752,11 @@ _commit() {
 		d) DOIT=YES;;
 		f) CHECKLOG=:;;
 		F) FORCE=YES;;
-		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
+		R) RESYNC=YES; BK_ETC="../BitKeeper/etc/";; # called from RESYNC
 		s|q) QUIET=YES; COPTS="-s $COPTS";;
 		S) SYM="-S$OPTARG";;
-		y) DOIT=YES; GETCOMMENTS=NO; ${ECHO} "$OPTARG" > ${TMP}commit$$;;
+		y) DOIT=YES; GETCOMMENTS=NO
+		   ${ECHO} "$OPTARG" > ${TMP}commit$$;;
 		Y) DOIT=YES; GETCOMMENTS=NO; cp "$OPTARG" ${TMP}commit$$;;
 		esac
 	done
@@ -770,7 +810,7 @@ _commit() {
 		# XXX TODO: Needs to account for LOD when it is implemented
 		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 		if [ $nusers -gt 1 ]
-		then _sendLog $REV
+		then _logChangeSet $REV
 		fi
 		exit $EXIT;
 	fi
@@ -804,7 +844,7 @@ _commit() {
 			# XXX TODO: Needs to account for LOD 
 			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			if [ $nusers -gt 1 ]
-			then _sendLog $REV
+			then _logChangeSet $REV
 			fi
 	    	 	exit $EXIT;
 		 	;;
@@ -905,7 +945,7 @@ _commandHelp() {
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
 		unlock|unedit|check|import|sdiffs|resync|pull|push|parent|\
-		clone)
+		clone|fix|info)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
@@ -971,16 +1011,24 @@ _export() {
 	if [ x$R = x ]; then R=-r+; fi
 
 	mkdir -p $DST || exit 1
+	HERE=`pwd`
+	cd $DST
+	DST=`pwd`
+	cd $HERE
+	cd $SRC
+	_cd2root
 
 	# XXX: cset -t+ should work.
-	(cd $SRC; ${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
+	(${BIN}cset -t`${BIN}prs $R -hd:I: ChangeSet`) \
 	| eval egrep -v "'^(BitKeeper|ChangeSet)'" $INCLUDE $EXCLUDE \
 	| sed 's/:/ /' | while read file rev
 	do
-		dir=./$file
-		dir=$DST/${dir%/*}
-		[ -d $dir ] || mkdir -p $dir
-		${BIN}get $K $Q -r$rev -G$DST/$file $SRC/$file
+		PN=`bk prs -r$rev -hd:DPN: $SRC/$file`
+		if ${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		then	DIR=`dirname $DST/$$PN`
+			mkdir -p $DIR || exit 1
+			${BIN}get $K $Q -r$rev -G$DST/$PN $SRC/$file
+		fi
 	done
 
 	if [ x$WRITE != x ]
@@ -989,7 +1037,7 @@ _export() {
 }
 
 _init() {
-	cfgDir="BitKeeper/etc/"
+	BK_ETC="BitKeeper/etc/"
 
 	if [ '-n foo' = "`echo -n foo`" ] 
 	then    NL='\c'
@@ -1053,7 +1101,7 @@ case "$1" in
     setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
-    pull|push|parent|diffr)
+    pull|push|parent|diffr|fix|info)
 	cmd=$1
     	shift
 	_$cmd "$@"
@@ -1086,7 +1134,10 @@ then	if [ X$2 != X -a -d $2 ]
 	else	_cd2root
 	fi
 	shift
-	SFILES=YES
+	# Allow "bk -r sfiles -c" strangeness.
+	if [ "X$1" != Xsfiles ]
+	then	SFILES=YES
+	fi
 fi
 if [ X$1 = X-R ]
 then	_cd2root
@@ -1099,13 +1150,12 @@ fi
 cmd=$1
 shift
 
-# Run our stuff first if we can find it, else
-# we don't know what it is, try running it and hope it is out there somewhere.
+# Run our stuff first if we can find it.
 # win32 note: we test for the tcl script first, because it has .tcl suffix
 for w in citool sccstool vitool fm fm3
 do	if [ $cmd = $w ]
 	then	
-		# pick up our own wish shell if it exist
+		# pick up our own wish shell if it exists
 		PATH=$BIN:$PATH exec $wish -f ${GUI_BIN}${cmd}${tcl} "$@"
 	fi
 done

@@ -317,7 +317,7 @@ EOF
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
-rmdel $Q -D -r1.6 FILE
+rmdel $Q -D1.6 FILE
 echo $N checking escape of control symbol............................$NL
 ${CAT} > CMP1 <<EOF
 ======== FILE 1.1 ========

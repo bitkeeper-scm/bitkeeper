@@ -53,12 +53,15 @@ get_main(int ac, char **av, char *out)
 	int	dohash = 0;
 
 	debug_main(av);
-	if (streq(av[0], "co")) {
+	name = strrchr(av[0], '/');
+	if (name) name++;
+	else name = av[0];
+	if (streq(name, "co")) {
 		if (!isdir("SCCS") && isdir("RCS")) {
 			rcs("co", ac, av);
 			/* NOTREACHED */
 		}
-	} else if (streq(av[0], "edit")) {
+	} else if (streq(name, "edit")) {
 		flags |= GET_EDIT;
 	}
 

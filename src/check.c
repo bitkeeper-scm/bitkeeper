@@ -405,7 +405,7 @@ getRev(char *root, char *key, MDBM *idDB)
 
 /*
 	1) for each key in the changeset file, we need to make sure the
-	   key is in the source file.
+	   key is in the source file and is marked.
 	
 	2) for each delta marked as recorded in the ChangeSet file, we
 	   need to make sure it actually is in the ChangeSet file.
@@ -431,7 +431,7 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	 */
 	for (d = s->table; d; d = d->next) {
 		if (verbose > 2) {
-			fprintf(stderr, "Check %s;%s\n", s->sfile, d->rev);
+			fprintf(stderr, "Check %s:%s\n", s->sfile, d->rev);
 		}
 		unless (d->flags & D_CSET) continue;
 		marked++;
@@ -479,6 +479,11 @@ check(sccs *s, MDBM *db, MDBM *marks)
 			    "key %s is in\n\tChangeSet:%s\n\tbut not in %s\n",
 			    kv.key.dptr, a, s->sfile);
 			free(a);
+		    	errors++;
+		} else unless (d->flags & D_CSET) {
+			fprintf(stderr,
+			    "%s:%s is in ChangeSet but not marked\n",
+			   s->gfile, d->rev);
 		    	errors++;
 		} else if (verbose > 1) {
 			fprintf(stderr, "%s: found %s from ChangeSet\n",

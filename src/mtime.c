@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+int
 main(int ac, char **av)
 {
 	struct	stat st;
@@ -13,11 +14,11 @@ main(int ac, char **av)
 
 	if (ac != 2) {
 		fprintf(stderr, "usage: %s file\n", av[0]);
-		exit(1);
+		return (1);
 	}
 	if (stat(av[1], &st)) {
 		perror(av[1]);
-		exit(2);
+		return (2);
 	}
 
 	/*
@@ -32,5 +33,6 @@ main(int ac, char **av)
 	    t->tm_hour,
 	    t->tm_min,
 	    t->tm_sec);
-	exit(0);
+
+	return (0);
 }

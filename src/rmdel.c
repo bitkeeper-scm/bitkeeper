@@ -4,14 +4,14 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 char	*rmdel_help = "\n\
-usage: rmdel [-DqsS] [-r<rev>] file\n\n\
-    -D		destroy all information newer than this revision\n\
+usage: rmdel [-CqsS] [-r<rev>] [-D<rev>] file\n\n\
+    -C		ignore changeset boundries\n\
+    -D<r>	destroy all information from this revision forward\n\
+    -n		do not do it, just tell what would be done\n\
     -q		run quietly\n\
-    -n		when used with -S, do not do it, just tell what would be done\n\
     -r<r>	rmdel revision <r>\n\
     -S		remove the set of specified deltas\n\
-    -s		run quietly\n\
-    -v		run more noisily (use with -S)\n\n";
+    -v		run more noisily\n\n";
 
 void	rmcaches(void);
 int	undo_main(int dont, int verbose);
@@ -28,6 +28,7 @@ rmdel_main(int ac, char **av, char *out)
 	char	*name, *rev = 0;
 	int	destroy = 0;
 	int	invalidate = 0;
+	int	respectCset = 1;
 	delta	*d;
 	char	lastname[MAXPATH];
 
@@ -36,9 +37,10 @@ rmdel_main(int ac, char **av, char *out)
 		fprintf(stderr, rmdel_help);
 		return (1);
 	}
-	while ((c = getopt(ac, av, "Dqr;sSv")) != -1) {
+	while ((c = getopt(ac, av, "CD;nqr;sSv")) != -1) {
 		switch (c) {
-		    case 'D': destroy = 1; break;
+		    case 'C': respectCset = 0; break;
+		    case 'D': rev = optarg; destroy = 1; break;
 		    case 'q': flags |= SILENT; break;
 		    case 'r': rev = optarg; break;
 		    case 'n': dont++; break;
@@ -69,7 +71,12 @@ rmdel_main(int ac, char **av, char *out)
 		}
 		return (undo_main(dont, verbose));
 	}
-	name = sfileFirst("rmdel", &av[optind], 0);
+
+	/*
+	 * Too dangerous to do autoexpand.
+	 * XXX - might want to insist that there is only one file.
+	 */
+	name = sfileFirst("rmdel", &av[optind], SF_NODIREXPAND);
 	while (name) {
 		unless (s = sccs_init(name, flags, 0)) {
 			name = sfileNext();
@@ -105,13 +112,43 @@ rmdel_main(int ac, char **av, char *out)
 				goto next;
 			}
 			/* see ya! */
-			verbose((stderr, "rmdel: remove %s\n", s->sfile));
+			if (dont) {
+				fprintf(stderr,
+				    "rmdel: destroy %s\n", s->sfile);
+				goto next;
+			}
+			verbose((stderr, "rmdel: destroy %s\n", s->sfile));
 			unlink(s->sfile);
 			invalidate++;
 			strcpy(lastname, s->sfile);
 			goto next;
 		}
 		lastname[0] = 0;
+
+		if (respectCset && (d->flags & D_CSET)) {
+			fprintf(stderr,
+			    "rmdel: can't remove committed delta %s:%s\n",
+			    s->gfile, d->rev);
+			errors = 1;
+			goto next;
+		}
+
+		if (dont && destroy) {
+			delta	*e;
+
+			for (e = s->table; e; e = e->next) {
+				unless (e->type == 'D') continue;
+				fprintf(stderr,
+				    "rmdel: destroy %s:%s\n", s->gfile, e->rev);
+				if (e == d) break;
+			}
+			goto next;
+		}
+		if (dont && !destroy) {
+			fprintf(stderr,
+			    "rmdel: remove %s:%s\n", s->gfile, d->rev);
+			goto next;
+		}
 
 		if (sccs_rmdel(s, d, destroy, flags)) {
 			unless (BEEN_WARNED(s)) {

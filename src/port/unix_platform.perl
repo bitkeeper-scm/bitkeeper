@@ -64,29 +64,3 @@ sub localName2bkName
 {
         return $_[0];
 }        
-
-# PORTABILITY NOTE: cpio -Hcrc is a SVR4ism.  We have
-# to use it because only that format can handle huge
-# filesystems.  We attempt to fall back to -c, then to
-# the *really* obsolete default format.  The nonsense
-# with /dev/null is because there is no portable way
-# to stop cpio from printing "42 blocks" at the end of
-# its run.  Thankfully, the destination end doesn't need
-# any of this junk except the /dev/null bit.
-sub cpio_out
-{
-	local($q, $list) = ($_[0], $_[1]);
-
-	$cpioq = $q ? ' 2>/dev/null' : ' -v';
-	system("cpio -o -Hcrc $cpioq < $list")
-	and system("cpio -o -c $cpioq < $list")
-	and system("cpio -o $cpioq < $list")
-	and die "cpio unsuccessful exit $?\n";
-}
-
-sub cpio_in
-{
-	system("cpio -idm 2>/dev/null") 
-		and die "cpio exited unsuccessfully\n";
-}
-

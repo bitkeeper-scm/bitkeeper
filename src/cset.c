@@ -14,11 +14,11 @@ char	*cset_help = "\n\
 usage: cset [opts]\n\n\
     -d<range>	do unified diffs for the range\n\
     -c		like -m, except generate only ChangeSet diffs\n\
+    -C		clear and remark all ChangeSet boundries\n\
     -i		Create a new change set history rooted at <root>\n\
     -l<range>	List each rev in range as file:rev,rev,rev (set format)\n\
     -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
-    		If no range, then mark all files in all changesets\n\
     -r<range>	List the filenames:rev..rev which match <range>\n\
     		ChangeSet is not included in the listing\n\
     -R<range>	Like -r but start on rev farther back (for diffs)\n\
@@ -44,6 +44,7 @@ typedef	struct cset {
 	int	mark;		/* act like csetmark used to act */
 	int	doDiffs;	/* prefix with unified diffs */
 	int	force;		/* if set, then force marks when used w/ -M */
+	int	remark;		/* clear & redo all the ChangeSet marks */
 	int	dash;
 
 	/* numbers */
@@ -92,6 +93,7 @@ main(int ac, char **av)
 	int	c, list = 0;
 	char	*sym = 0;
 	int	cFile = 0, ignoreDeleted = 0;
+	char	allRevs[6] = "1.0..";
 	RANGE_DECL;
 
 	platformSpecificInit(NULL);
@@ -102,7 +104,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	}
 	if (streq(av[0], "makepatch")) cs.makepatch++;
 
-	while ((c = getopt(ac, av, "c|d|Dfil|m|M|pqr|R|sS;t;vy|Y|")) != -1) {
+	while ((c = getopt(ac, av, "c|Cd|Dfil|m|M|pqr|R|sS;t;vy|Y|")) != -1) {
 		switch (c) {
 		    case 'D': ignoreDeleted++; break;
 		    case 'i':
@@ -137,6 +139,16 @@ usage:		fprintf(stderr, "%s", cset_help);
 				r[rd++] = notnull(optarg);
 				things += tokens(notnull(optarg));
 			}
+			break;
+		    case 'C':
+			/* XXX - this stomps on everyone else */
+		    	list |= 1;
+			cs.mark++;
+			cs.remark++;
+			cs.force++;
+			r[0] = allRevs;
+			rd = 1;
+			things = tokens(notnull(optarg));
 			break;
 		    case 't':
 			list |= 2;
@@ -601,7 +613,9 @@ doKey(cset_t *cs, char *key, char *val)
 	 * With long/short keys mixed, we have to be a little careful here.
 	 */
 	if (lastkey && sameFile(cs, lastkey, key)) {
-		unless (d = sccs_findKey(sc, val)) return (-1);
+		unless (d = sccs_findKey(sc, val)) {
+			return (cs->force ? 0 : -1);
+		}
 		markThisCset(cs, sc, d);
 		return (0);
 	}
@@ -925,6 +939,13 @@ doMarks(cset_t *cs, sccs *s)
 	delta	*d;
 	int	did = 0;
 
+	/*
+	 * Throw away the existing marks if we are rebuilding.
+	 */
+	if (cs->remark) {
+		for (d = s->table; d; d = d->next) d->flags &= ~D_CSET;
+	}
+	
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			if (cs->force || !(d->flags & D_CSET)) {

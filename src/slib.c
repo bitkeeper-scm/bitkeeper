@@ -4350,7 +4350,8 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		f = path;
 		unlink(f);
 	} else {
-		if (WRITABLE(s)) {
+		/* With -G/somewhere/foo.c we need to check the gfile again */
+		if (WRITABLE(s) && writable(s->gfile)) {
 			fprintf(stderr, "Writeable %s exists\n", s->gfile);
 			s->state |= S_WARNED;
 			return 0;
@@ -6222,15 +6223,18 @@ private void
 _print_pfile(sccs *s)
 {
 	FILE	*f;
-	char	buf[200];
+	char	buf[MAXPATH];
 
-	printf("%-16s", s->gfile);
+	sprintf(buf, "%s:", s->gfile);
+	printf("%-23s ", buf);
 	f = fopen(s->pfile, "r");
 	if (fgets(buf, sizeof(buf), f)) {
 		char	*s;
 		for (s = buf; *s && *s != '\n'; ++s);
 		*s = 0;
 		printf(buf);
+	} else {
+		printf("(can't read pfile)\n");
 	}
 	fclose(f);
 }
@@ -9715,6 +9719,20 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/* print the first rev at/below this which is in a cset */
+	if (streq(kw, "CSETREV")) {
+		while (d && !(d->flags & D_CSET)) d = d->kid;
+		unless (d) return (nullVal);
+		fs(d->rev);
+		return (strVal);
+	}
+
+	if (streq(kw, "CSETKEY")) {
+		unless (d->flags & D_CSET) return (nullVal);
+		sccs_pdelta(s, d, out);
+		return (strVal);
+	}
+
 	if (streq(kw, "KEY")) {
 		if (out) sccs_pdelta(s, d, out);
 		return (strVal);
@@ -9911,6 +9929,38 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "GCA2")) {	/* print gca rev if a merge node */
 		if (d->merge && (d = gca2(s, sfind(s, d->merge), d->parent))) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "PREV")) {
+		if (d->next) {
+			fs(d->next->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "NEXT")) {
+		if (d = sccs_next(s, d)) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "KID")) {
+		if (d = d->kid) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "SIBLINGS")) {
+		if (d = d->siblings) {
 			fs(d->rev);
 			return (strVal);
 		}
@@ -11142,13 +11192,16 @@ out:		if (f) fclose(f);
 
 /*
  * Get all the ids associated with a changeset.
- * The db is db{fileId} = csetId.
+ * The db is db{root rev Id} = cset rev Id.
  *
  * Note: does not call sccs_restart, the caller of this sets up "s".
  */
 int
 csetIds(sccs *s, char *rev)
 {
+	kvpair	kv;
+	char	*t;
+
 	assert(s->state & S_HASH);
 	if (sccs_get(s, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 		sccs_whynot("get", s);
@@ -11157,6 +11210,22 @@ csetIds(sccs *s, char *rev)
 	unless (s->mdbm) {
 		fprintf(stderr, "get: no mdbm found\n");
 		return (-1);
+	}
+	
+	/* If we are the new key format, then we shouldn't have mixed keys */
+	if (s->state & S_KEY2) return (0);
+
+	/*
+	 * If there are both long and short keys, then use the long form
+	 * and delete the short form (the long form is later).
+	 */
+	for (kv = mdbm_first(s->mdbm); kv.key.dsize; kv = mdbm_next(s->mdbm)) {
+		unless (t = sccs_iskeylong(kv.key.dptr)) continue;
+		*t = 0;
+		if (mdbm_fetch_str(s->mdbm, kv.key.dptr)) {
+			mdbm_delete_str(s->mdbm, kv.key.dptr);
+		}
+		*t = '|';
 	}
 	return (0);
 }
@@ -11335,7 +11404,7 @@ rmdelout:
 	}
 
 	/* write out upper half */
-	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so checksum works */
+	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so chksum works */
 		sccs_unlock(s, 'x');
 		goto rmdelout;
 	}

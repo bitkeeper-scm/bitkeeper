@@ -28,7 +28,8 @@ usage: admin options [- | file file file...]\n\
     -P<rev>		revert to default path for <rev>\n\
 \n\
     -B			make the landing pad bigger\n\
-    -C			remove the changeset information\n\
+    -C			remove the changeset marks\n\
+    -CC			remove the changeset marks and pointer\n\
     -Z[alg]		compress stored s.file with <alg>, which may be:\n\
 		gzip	like gzip(1) (default)\n\
 		none	no compression\n\
@@ -54,7 +55,7 @@ usage: admin options [- | file file file...]\n\
 
 int	do_checkin(char *nm, char *ep, char *cp, int fl,
 		   char *rev, char *newf, char *com);
-void	clearCset(sccs *s, int flags);
+void	clearCset(sccs *s, int flags, int which);
 void	clearPath(sccs *s, int flags);
 void	touch(sccs *s);
 int	setMerge(sccs *sc, char *merge, char *rev);
@@ -140,7 +141,7 @@ main(int ac, char **av)
 		    case 'T':	text = ""; break;
 		/* singletons */
 		    case 'B':	bigpad++; break;
-		    case 'C':	rmCset = 1; flags |= NEWCKSUM; break;
+		    case 'C':	rmCset++; flags |= NEWCKSUM; break;
 		    case 'h':	flags |= ADMIN_FORMAT; break;
 		    case 'H':	flags |= ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME;
 				break;
@@ -237,7 +238,7 @@ main(int ac, char **av)
 				    strdup(path ? path : sc->gfile);
 			}
 		}
-		if (rmCset) clearCset(sc, flags);
+		if (rmCset) clearCset(sc, flags, rmCset);
 		if (rmPath) clearPath(sc, flags);
 		if (doDates) sccs_fixDates(sc);
 		if (m) {
@@ -267,16 +268,15 @@ usage:	fprintf(stderr, "admin: usage error, try `admin --help' for info.\n");
 	return (1);
 }
 
-/*
- * XXX - obsolete?
- */
 void
-clearCset(sccs *s, int flags)
+clearCset(sccs *s, int flags, int which)
 {
 	delta	*d;
 	int	name = 0;
 
 	for (d = s->table; d; d = d->next) {
+		d->flags &= ~D_CSET;
+		unless (which == 2) continue;
 		if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
 			if (!name) {
 				verbose((stderr,
