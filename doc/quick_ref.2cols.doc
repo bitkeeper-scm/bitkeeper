@@ -11,7 +11,7 @@ Synchronizing Repositories		Reporting
 
 bk push					bk prs
 bk pull					bk sccslog
-bk merge				bk changes
+bk clone				bk changes
 bk resolve				bk pending
 
 Moving Files				Viewing Changes
