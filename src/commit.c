@@ -99,7 +99,7 @@ commit_main(int ac, char **av)
 		}
 		fclose(f);
 	} else {
-		sprintf(buf, "bk sfiles -C > %s", pendingFiles);
+		sprintf(buf, "bk sfind -C > %s", pendingFiles);
 		if (system(buf) != 0) {
 			unlink(pendingFiles);
 			unlink(commentFile);
@@ -226,6 +226,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	char	s_cset[MAXPATH] = CHANGESET;
 	sccs	*s;
 	delta	*d;
+	FILE 	*f;
 
 	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
@@ -239,8 +240,37 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		hasComment? "-Y" : "", hasComment ? commentFile : "",
 		pendingFiles);
 	rc = system(buf);
-	unlink(commentFile);
-	unlink(pendingFiles);
+	if (rc == 0) {
+		/*
+		 * remove the d.file
+		 */
+		f = fopen(pendingFiles, "rt");
+		assert(f);
+		while (fgets(buf, sizeof(buf), f)) {
+			char *p, *q;
+
+			p = strchr(buf, '@');
+			*p = 0;
+			q = name2sccs(buf);
+			p = strrchr(q, '/');
+			p[1] = 'd';
+			unlink(q);
+			free(q);
+		}
+		fclose(f);
+/*
+ * Do not enable this until
+ * new BK binary is fully deployed
+ */
+#ifdef NEXT_RELEASE
+		unless (opts.resync) {
+			sprintf(buf, "%setc/SCCS/x.dfile", BitKeeper);
+			close(open(buf, O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
+		}
+#endif
+	}
+	if (unlink(commentFile)) perror(commentFile);
+	if (unlink(pendingFiles)) perror(pendingFiles);
 	notify();
 	s = sccs_init(s_cset, 0, 0);
 	assert(s);

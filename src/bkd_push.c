@@ -5,7 +5,7 @@ cmd_push(int ac, char **av)
 {
 	int	error = 0;
 	pid_t	pid;
-	int	n, c, verbose = 1;
+	int	got = 0, n, c, verbose = 1;
 	int	gzip = 0;
 	char	buf[4096];
 	int	fd2, wfd, status;
@@ -64,7 +64,7 @@ cmd_push(int ac, char **av)
 	 * @PATCH@ followed by a patch or some error.
 	 */
 	bzero(buf, sizeof(buf));
-	if ((in(buf, 8) == 8) && streq(buf, "@PATCH@\n")) {
+	if (((got = in(buf, 8)) == 8) && streq(buf, "@PATCH@\n")) {
 #ifndef WIN32
 		signal(SIGCHLD, SIG_DFL);
 #endif
@@ -106,9 +106,19 @@ cmd_push(int ac, char **av)
 			if (error = WEXITSTATUS(status)) goto out;
 		} else {
 			/* must have been signaled or something else */
+			putenv("BK_INCOMING=SIGNALED");
 			OUT;
 		}
 	} else {
+		if (got == 8) {
+			if (streq(buf, "@NADA!@\n")) {
+				putenv("BK_INCOMING=NOTHING");
+				goto out;
+			} else if (streq(buf, "@LATER@\n")) {
+				putenv("BK_INCOMING=CONFLICTS");
+				goto out;
+			}
+		}
 		OUT;
 	}
 
@@ -117,7 +127,7 @@ out:
 	 * This could screw up if takepatch errored but left the RESYNC dir.
 	 * The write lock code respects the RESYNC dir, so that's OK.
 	 */
-	cmdlog_end(0);
+	cmdlog_end(error);
 	if (error) repository_wrunlock(0);
 	exit(error);
 }
