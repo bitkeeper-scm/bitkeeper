@@ -8149,7 +8149,7 @@ checkin(sccs *s,
 	admin	l[2];
 	int	no_lf = 0;
 	int	error = 0;
-	int	user_file = 1;
+	int	bk_etc = 0;
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -8184,14 +8184,29 @@ checkin(sccs *s,
 	 * Disallow '@' character in file name.
 	 */
 	t = basenm(s->sfile);
-	if (strchr(t, ':') || strchr(t, '@')) {
+	if (strchr(t, BK_FS)) {
 		fprintf(stderr,
-			"delta: %s: filename must not contain \":/@\"\n" , t);
+			"delta: %s: filename must not contain \"%c\"\n",
+			t, BK_FS);
 		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
 		s->state |= S_WARNED;
 		return (-1);
 	}
+
+	buf[0] = 0;
+	unless (s->state & S_NOSCCSDIR) {
+		t = relativeName(s, 0, 0);
+		if ((s->state & S_CSET) || (t && !IsFullPath(t))) {
+			s->state |= S_BITKEEPER|S_CSETMARKED;
+			if ((strlen(t) > 14) &&
+			    strneq("BitKeeper/etc/", t, 14)) {
+				bk_etc = 1;
+			}
+		}
+		if (t) strcpy(buf, t); /* pathname, we need this below */
+	}
+
 	/*
 	 * XXX - this is bad we should use the x.file
 	 */
@@ -8207,7 +8222,6 @@ checkin(sccs *s,
 		first = n = prefilled ? prefilled : calloc(1, sizeof(*n));
 	} else {
 		first = n0 = calloc(1, sizeof(*n0));
-		n0 = sccs_dInit(n0, 'D', s, nodefault);
 		/*
 		 * We don't do modes here.  The modes should be part of the
 		 * per LOD state, so each new LOD starting from 1.0 should
@@ -8221,9 +8235,53 @@ checkin(sccs *s,
 		n0->serial = s->nextserial++;
 		n0->next = 0;
 		s->table = n0;
-		n0->flags |= D_CKSUM;
-		n0->sum = (unsigned short) almostUnique(1);
-		dinsert(s, flags, n0, !(flags & DELTA_PATCH));
+		if (buf[0]) pathArg(n0, buf); /* pathname */
+
+		if (bk_etc && !(flags&DELTA_PATCH)) {
+			sccs *sc;
+			delta *cset_root, *d_tmp;
+			char s_cset[MAXPATH];
+			char *root = sccs_root(s);
+
+			/*
+			 * File under BitKeeper/etc are special
+			 * It's root key is computed relative to
+			 * Changeset root key;
+			 * If a file of the same name is created
+			 * indendently in two related repositories, they
+			 * will have the same root key.
+			 */
+			sprintf(s_cset, "%s/%s", root, CHANGESET);
+			free(root);
+			sc = sccs_init(s_cset, INIT_SAVEPROJ, s->proj);
+			assert(sc);
+			cset_root = findrev(sc, "1.0");
+			assert(cset_root);
+			n0->user = strdup(cset_root->user);
+			n0->hostname = strdup(cset_root->hostname);
+			n0->sdate = strdup(cset_root->sdate);
+			n0->zone = strdup(cset_root->zone);
+			n0->random = strdup(cset_root->random);
+			n0->flags |= D_CKSUM;
+			n0->sum = cset_root->sum;
+			n0->date = cset_root->date;
+			n0->dateFudge = cset_root->dateFudge;
+			n0 = sccs_dInit(n0, 'D', s, 0);
+			sccs_free(sc);
+
+			//XXX FIXME: Need to check the key/gone/cset database
+			//XXX to make sure the file is not already created
+			//XXX and moved/deleted . We should just failed the
+			//XXX operation if the above condition is detected 
+
+			dinsert(s, flags, n0, 0);
+		} else {
+			n0 = sccs_dInit(n0, 'D', s, nodefault);
+			n0->flags |= D_CKSUM;
+			n0->sum = (unsigned short) almostUnique(1);
+			dinsert(s, flags, n0, !(flags & DELTA_PATCH));
+		}
+
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
 		n->next = n0;
@@ -8236,29 +8294,6 @@ checkin(sccs *s,
 	updMode(s, n, 0);
 	if (!n->rev) n->rev = n0 ? strdup("1.1") : strdup("1.0");
 	explode_rev(n);
-	/*
-	 * determine state to set BITKEEPER flag before dinsert
-	 * XXX: don't understand why, cloned old logic because
-	 * I needed to move part of the logic after dinsert
-	 */
-	unless (s->state & S_NOSCCSDIR) {
-		t = 0;
-		unless (s->state & S_CSET) {
-			t = relativeName(s, 0, 0);
-			assert(t);
-		}
-		if (s->state & S_CSET || (t && !IsFullPath(t))) {
-			s->state |= S_BITKEEPER|S_CSETMARKED;
-			first->flags |= D_CKSUM;
-		} else {
-			if (s->proj && s->proj->root) {
-				unless (first->csetFile) {
-					first->csetFile = getCSetFile(s);
-				}
-				s->state |= S_BITKEEPER|S_CSETMARKED;
-			}
-		}
-	}
 	if (nodefault) {
 		if (prefilled) s->state |= xflags2state(prefilled->xflags);
 	} else {
@@ -8290,15 +8325,22 @@ checkin(sccs *s,
 	unless (nodefault || (flags & DELTA_PATCH)) {
 		delta	*d = n0 ? n0 : n;
 
-		randomBits(buf);
-		if (buf[0]) d->random = strdup(buf);
+		unless (d->random) {
+			randomBits(buf);
+			if (buf[0]) d->random = strdup(buf);
+		}
+
 		unless (hasComments(d)) {
 			sprintf(buf, "BitKeeper file %s",
 			    fullname(s->gfile, 0));
 			d->comments = addLine(d->comments, strdup(buf));
 		}
 	}
-	unless (s->state & S_NOSCCSDIR) {
+	if (s->state & S_BITKEEPER) {
+		MDBM	*m;
+		delta	*d;
+		char	*user, *host, *always_edit;
+
 		if (s->state & S_CSET) {
 			unless (first->csetFile) {
 				first->sum = (unsigned short) almostUnique(1);
@@ -8307,31 +8349,17 @@ checkin(sccs *s,
 				first->csetFile = strdup(buf);
 			}
 			first->flags |= D_CKSUM;
-			user_file = 0;
 		} else {
-			t = relativeName(s, 0, 0);
-			assert(t);
-			if (t[0] != '/') {
-				unless (first->csetFile) {
-					first->csetFile = getCSetFile(s);
-				}
-				if ((strlen(t) > 10) &&
-				    strneq("BitKeeper/", t, 10)) {
-					user_file = 0;
-				}
+			unless (first->csetFile) {
+				first->csetFile = getCSetFile(s);
 			}
 		}
-	}
-	if (s->state & S_BITKEEPER) {
-		MDBM	*m;
-		delta	*d;
-		char	*user, *host, *always_edit;
 
 		unless (s->proj && s->proj->root) goto no_config;
 		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
 		user = mdbm_fetch_str(m, "single_user");
 		host = mdbm_fetch_str(m, "single_host");
-		unless (user && host) goto multi_user;
+		unless (user && host) goto no_config;
 		d = s->tree;
 		free(d->user);
 		d->user = strdup(user);
@@ -8351,7 +8379,7 @@ checkin(sccs *s,
 		s->state |= S_SINGLE;
 		first->xflags |= X_SINGLE;
 
-multi_user:	mdbm_close(m);
+		mdbm_close(m);
 	}
 
 no_config:

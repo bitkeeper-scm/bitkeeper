@@ -106,6 +106,7 @@ int sfind_main(int, char **);
 int sfio_main(int, char **);
 int sinfo_main(int, char **);
 int status_main(int, char **);
+int sortmerge_main(int, char **);
 int stripdel_main(int, char **);
 int takepatch_main(int, char **);
 int undo_main(int, char **);
@@ -132,6 +133,7 @@ struct command cmdtbl[] = {
 	{"_loggingto", loggingto_main},
 	{"_mail", mail_main},
 	{"_get", get_main},
+	{"_sortmerge", sortmerge_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},
 	{"admin", admin_main},

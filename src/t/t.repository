@@ -133,3 +133,41 @@ bk takepatch  $Q -a < $HERE/patch
 cd $HERE/proj_log
 bk -r check -a
 echo OK
+#echo $N Test for path conflict ......................................$NL
+#cd $HERE/proj_log
+#bk undo $Q -f -r1.2.1.1,1.3
+#cd $HERE/copy1/src
+#date >  new.c
+#bk new $Q -ycopy1-new new.c
+#bk commit $Q -ycopy1-new
+#bk push $Q -e $HERE/proj_log
+#cd $HERE/copy2/src
+#date >  new.c
+#bk new $Q -ycopy2-new new.c
+#bk commit $Q -ycopy2-new
+#bk makepatch $Q -e -r1.0.. > $HERE/patch
+#cd $HERE/proj_log
+#bk takepatch $Q < $HERE/patch
+#bk resolve -d -t -c
+#echo SKIPPED
+echo $N Make sure root key of files in BitKeeper/etc is same ........$NL
+cd $HERE/copy1/BitKeeper/etc
+echo 1111 > logged
+bk new $Q logged
+KEY1=`bk prs -r1.0 -hd':ROOTKEY:\n' logged`
+cd $HERE/copy2/BitKeeper/etc
+echo 2222222222 > logged
+bk new $Q logged
+KEY2=`bk prs -r1.0 -hd':ROOTKEY:\n' logged`
+KEY3=`bk -R prs -r1.0 -hd':ROOTKEY:\n' ChangeSet | 
+				sed -e's?ChangeSet?BitKeeper/etc/logged?'`
+if [ X$KEY1 != X$KEY2 ]; then echo failed 1; exit 1; fi
+if [ X$KEY1 != X$KEY3 ]; then echo failed 2; exit 1; fi
+echo OK
+echo $N Make sure we detect duplicate create ub Bitkeeper/etc........$NL
+cd $HERE/copy1/BitKeeper/etc
+bk commit $Q -y"cset for old logged file"
+bk mv logged ../logged.old
+echo 3333 > logged
+bk new $Q logged
+if [ $? -eq 0 ]; then echo "failed (known bug)"; else echo OK; fi
