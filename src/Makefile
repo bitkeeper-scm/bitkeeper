@@ -236,7 +236,7 @@ clean-obj: FORCE
 	-@cd ../doc && $(MAKE) clean-obj
 
 clean-bin: FORCE
-	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
+	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
 	-@cd gnu && $(MAKE) clean 
 	-@cd win32 && $(MAKE) clean
 	cd t && rm -f doit
