@@ -812,7 +812,7 @@ aprintf(char *fmt, ...)
 			/* In C99 the number of characters needed 
 			 * is always returned. 
 			 */
-			size = rc + 1;
+			size = rc + 2;	/* extra byte for IRIX */
 		}
 	}
 	return (buf); /* caller should free */
