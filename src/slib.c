@@ -1422,12 +1422,6 @@ getCSetFile(sccs *s)
 	return (0);
 }
 
-private int
-do_chdir(char *pwd, char *dir)
-{
-	if (streq(pwd, dir)) return (0);
-	return (chdir(dir));
-}
 
 /*
  * Return the pathname relative to the first ChangeSet file found.
@@ -1519,11 +1513,23 @@ got_root:
 	/*
 	 * Must cd to project root before we call getRealName()
 	 */
-	t[s-t] = 0;
-	if (wantRealName && (do_chdir(pwd, t) == 0)) {
-		strcpy(buf, ++s);
-		getRealName(buf, NULL, buf2);
-		do_chdir(t, pwd);	/* restore pwd */
+	t[s-t] = 0; /* t now points to project root */
+	if (wantRealName) {
+		char here[MAXPATH];
+
+		fast_getcwd(here, MAXPATH);
+		if (streq(here, t)) {
+			getRealName(++s, NULL, buf2);
+		} else if (chdir(t) == 0) {
+			getRealName(++s, NULL, buf2);
+			chdir(here);	/* restore pwd */
+		} else {
+			/*
+			 * If chdir() filed
+			 * skip getRealName()
+			 */
+			strcpy(buf2, ++s);
+		}
 	} else {
 		strcpy(buf2, ++s);
 	}
@@ -8410,6 +8416,10 @@ out:		sccs_unlock(s, 'z');
 	if (t) strcpy(buf, t); /* pathname, we need this below */
 
 	sfile = fopen(sccsXfile(s, 'x'), "wb");
+	unless (s) {
+		perror(sccsXfile(s, 'x'));
+		goto out;
+	}
 	/*
 	 * Do a 1.0 delta unless
 	 * a) there is a init file (nodefault), or

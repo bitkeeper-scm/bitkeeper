@@ -22,6 +22,7 @@ private void	init_idcache();
 private int	checkKeys(sccs *s, char *root);
 private void	warnPoly(void);
 private int	chk_gfile(sccs *s);
+private int	chk_dfile(sccs *s);
 private int	writable_gfile(sccs *s);
 private int	readonly_gfile(sccs *s);
 private int	no_gfile(sccs *s);
