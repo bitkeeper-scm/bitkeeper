@@ -372,7 +372,7 @@ err:		system("bk help -s prompt");
 	}
 	if (prog) {
 		assert(!file);
-		gettemp(msgtmp, "prompt");
+		bktmp(msgtmp, "prompt");
 		file = msgtmp;
 		cmd = aprintf("%s > %s", prog, file);
 		putenv("PAGER=cat");
