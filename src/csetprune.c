@@ -117,7 +117,7 @@ k_err:			fprintf(stderr,
 		exit(1);	/* leave it locked! */
 	}
 	verbose((stderr, "Renumbering ChangeSet file...\n"));
-	sccs_renumber(s, SILENT);
+	sccs_renumber(s, SILENT, 0);
 	sccs_newchksum(s);
 	sccs_free(s);
 	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {

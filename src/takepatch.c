@@ -612,7 +612,10 @@ error:			if (perfile) sccs_free(perfile);
 		}
 	}
 	tableGCA = 0;
-	encoding = s ? s->encoding : 0;
+	if (s) {
+		encoding = s->encoding;
+		sccs_findKeyDB(s, 0);
+	}
 	while (extractDelta(name, s, newFile, p, flags, &nfound)) {
 		if (newFile) newFile = 2;
 	}
@@ -623,9 +626,12 @@ error:			if (perfile) sccs_free(perfile);
 		if ((echo != 2) && (echo != 3)) fprintf(stderr, "\n");
 	}
 	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
-		rc = applyCsetPatch(s ? s->sfile : 0 ,
-						nfound, flags, perfile, proj);
+		rc = applyCsetPatch(s?s->sfile:0, nfound, flags, perfile, proj);
 	} else {
+		if (s && s->findkeydb) {
+			mdbm_close(s->findkeydb);
+			s->findkeydb = 0;
+		}
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
 		rc = applyPatch(s ? s->sfile : 0, flags, perfile, proj);
 	}
@@ -1310,6 +1316,7 @@ apply:
 				if (chkEmpty(s, dF)) return -1;
 			}
 			cweave_init(s, nfound);
+			sccs_findKeyDB(s, 0);
 			d = cset_insert(s, iF, dF, p->pid);
 			s->bitkeeper = 1;
 		}
@@ -1338,7 +1345,12 @@ apply:
 	 * items brought in from patch.  Could call inherit.
 	 * For now, leave at this and watch performance.
 	 */
-	sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
+	if (echo == 3) {
+		fprintf(stderr, "\b, ");
+		sys("bk", "renumber", "-q", "-/", patchList->resyncFile, SYS);
+	} else {
+		sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
+	}
 
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s && s->tree);
@@ -1384,7 +1396,8 @@ apply:
 		d->flags |= p->local ? D_LOCAL : (D_REMOTE|D_SET);
 	}
 	s->state |= S_SET;
-	if (cset_resum(s, 0, 0)) {
+	if (echo == 3) fprintf(stderr, "\b, ");
+	if (cset_resum(s, 0, 0, echo == 3)) {
 		getMsg("takepatch-chksum", 0, 0, '=', stderr);
 		return (-1);
 	}

@@ -35,6 +35,7 @@ renumber_main(int ac, char **av)
 	sccs	*s = 0;
 	char	*name;
 	int	c, dont = 0, quiet = 0, flags = INIT_SAVEPROJ|INIT_WACKGRAPH;
+	int	spinners = 0;
 	delta	*leaf(delta *tree);
 	project	*proj = 0;
 
@@ -43,11 +44,12 @@ renumber_main(int ac, char **av)
 		system("bk help renumber");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "nqs")) != -1) {
+	while ((c = getopt(ac, av, "nqs/")) != -1) {
 		switch (c) {
 		    case 'n': dont = 1; break;			/* doc 2.0 */
 		    case 's':					/* undoc? 2.0 */
 		    case 'q': quiet++; flags |= SILENT; break;	/* doc 2.0 */
+		    case '/': spinners = 1; break;
 		    default:
 			system("bk help -s renumber");
 			return (1);
@@ -64,7 +66,7 @@ renumber_main(int ac, char **av)
 			sfileDone();
 			return (1);
 		}
-		sccs_renumber(s, flags);
+		sccs_renumber(s, flags, spinners);
 		if (dont) {
 			unless (quiet) {
 				fprintf(stderr,
@@ -88,7 +90,7 @@ renumber_main(int ac, char **av)
  */
 
 void
-sccs_renumber(sccs *s, u32 flags)
+sccs_renumber(sccs *s, u32 flags, int spinners)
 {
 	delta	*d;
 	ser_t	i;
@@ -99,9 +101,11 @@ sccs_renumber(sccs *s, u32 flags)
 	int	defisbranch = 1;
 	ser_t	maxrel = 0;
 	char	def[20];	/* X.Y.Z each 5 digit plus term = 18 */
+	char	*spin = "|/-\\";
 
 	Fix_inex = 0;
 
+	if (spinners) fprintf(stderr, "renumbering ");
 	if (BITKEEPER(s)) {
 		assert(!s->defbranch);
 	} else {
@@ -129,6 +133,7 @@ sccs_renumber(sccs *s, u32 flags)
 			 */
 			continue;
 		}
+		if (spinners) fprintf(stderr, "%c\b", spin[i % 4]);
 		release = redo(s, d, db, flags, release, map);
 		if (maxrel < release) maxrel = release;
 		if (!defserial || defserial != i) continue;

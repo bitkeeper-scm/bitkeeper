@@ -73,7 +73,7 @@ unpull(int force, int quiet, char *patch)
 	assert(r && *r);
 	s = sccs_init(cset, 0, 0);
 	assert(s && HASGRAPH(s));
-	d = sccs_top(s);
+	d = s->table;	/* I want the latest delta entry, tag or delta */
 	unless (e = sccs_findrev(s, r)) {
 		fprintf(stderr, "unpull: stale csets-in file removed.\n");
 		sccs_free(s);

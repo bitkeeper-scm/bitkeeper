@@ -21,7 +21,7 @@ checksum_main(int ac, char **av)
 	delta	*d;
 	int	doit = 0;
 	char	*name;
-	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0;
+	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0, spin = 0;
 	int	c;
 	char	*off = 0;
 	char	*rev = 0;
@@ -31,12 +31,13 @@ checksum_main(int ac, char **av)
 		system("bk help checksum");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "cfr;s|v")) != -1) {
+	while ((c = getopt(ac, av, "cfr;s|v/")) != -1) {
 		switch (c) {
 		    case 'c': break;	/* obsolete */
 		    case 'f': fix = 1; break;			/* doc 2.0 */
 		    case 'r': rev = optarg; break;
 		    case 's': do_sccs = 1; off = optarg; break;
+		    case '/': spin = 1; break;
 		    case 'v': diags++; break;			/* doc 2.0 */
 		    default:  system("bk help -s checksum");
 			      return (1);
@@ -79,7 +80,7 @@ checksum_main(int ac, char **av)
 			if (c & 2) bad++;
 		} else {
 			if (CSET(s)) {
-				doit = bad = cset_resum(s, diags, fix);
+				doit = bad = cset_resum(s, diags, fix, spin);
 			} else {
 				for (d = s->table; d; d = d->next) {
 					unless (d->type == 'D') continue;
@@ -364,20 +365,23 @@ add_ins(HASH *h, char *root, int len, ser_t ser, u16 sum)
 
 /* same semantics as sccs_resum() except one call for all deltas */
 int
-cset_resum(sccs *s, int diags, int fix)
+cset_resum(sccs *s, int diags, int fix, int spinners)
 {
 	HASH	*root2map = hash_new();
 	ser_t	ins_ser = 0;
 	char	*p, *q, *e;
 	char	*end = s->mmap + s->size;
 	u16	sum;
-	int	cnt, i, added;
+	int	cnt, i, added, n = 0;
 	serset	**map;
 	ser_t	*slist;
 	struct	_sse *sse;
 	delta	*d;
 	int	found = 0;
 	kvpair	kv;
+	char	*spin = "|/-\\";
+
+	if (spinners) fprintf(stderr, "checking checksums ");
 
 	/* build up weave data structure */
 	p = s->mmap + s->data;
@@ -417,6 +421,14 @@ cset_resum(sccs *s, int diags, int fix)
 		}
 
 		slist = sccs_set(s, d, 0, 0); /* slow */
+		if (spinners) {
+			static	int sometimes;
+
+			if (++sometimes == 10) {
+				fprintf(stderr, "%c\b", spin[n++ % 4]);
+				sometimes = 0;
+			}
+		}
 		sum = 0;
 		added = 0;
 		for (i = 0; i < cnt; i++) {
@@ -502,5 +514,6 @@ cset_fixLinuxKernelChecksum(sccs *s)
 	}
 	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 	sccs_restart(s);
+	sccs_findKeyDB(s, 0);
 	return (s);
 }

@@ -834,7 +834,7 @@ int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
-int	cset_resum(sccs *s, int diags, int fix);
+int	cset_resum(sccs *s, int diags, int fix, int spinners);
 int	sccs_newchksum(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
@@ -927,7 +927,7 @@ int	sccs_mylock(const char *lockf);
 sccs	*sccs_unzip(sccs *s);
 sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
-void	sccs_renumber(sccs *s, u32 flags);
+void	sccs_renumber(sccs *s, u32 flags, int spinners);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
 MMAP	*purify_mopen(char *file, char *mode, char *, int);
