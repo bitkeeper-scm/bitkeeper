@@ -7693,6 +7693,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	while (fbuf = nextdata(s)) {
 		if (isData(fbuf)) {
+			if (fbuf[0] == CNTLA_ESCAPE) fbuf++;
 			if (!print) {
 				/* if we are skipping data from pending block */
 				if (lf_pend &&

@@ -74,6 +74,12 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 bk get -DD data | grep -q `cat pattern`
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
+echo $N check cnt-A when checking diff ..............................$NL
+bk edit $Q data
+bk sfiles -c data | grep -q SCCS/s.data
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+echo OK
+
 # XX TODO need to get diff to produce 'i' command, and check
 # the processing of this case.
 
