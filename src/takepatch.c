@@ -332,8 +332,8 @@ getConfig(void)
 	chdir(ROOT2RESYNC);
 	unless (exists("BitKeeper/etc/SCCS/s.config")) {
 		assert(exists(RESYNC2ROOT "/BitKeeper/etc/SCCS/s.config"));
-		system("bk get -kqp " RESYNC2ROOT
-		    "/BitKeeper/etc/SCCS/s.config > BitKeeper/etc/config");
+		system("bk cat " RESYNC2ROOT
+		    "/BitKeeper/etc/config > BitKeeper/etc/config");
 	}
 	chdir(RESYNC2ROOT);
 }
@@ -347,12 +347,11 @@ getGone(int isLogPatch)
 		chdir(RESYNC2ROOT);
 		metaUnionResyncFile(GONE, "RESYNC/" GONE);
 	}
-	/* XXX - if this is edited, we don't get those changes */
 	if (exists("BitKeeper/etc/SCCS/s.gone")) {
 		unless (exists("RESYNC/BitKeeper/etc/SCCS/s.gone")) {
-			system("cp BitKeeper/etc/SCCS/s.gone "
-			    "RESYNC/BitKeeper/etc/SCCS/s.gone");
-		} 
+			system("bk cat BitKeeper/etc/gone "
+			    "> RESYNC/BitKeeper/etc/gone");
+		}
     	}
 }
 
