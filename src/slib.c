@@ -7040,7 +7040,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			break;
 		    default:
 			fprintf(stderr,
-			    "Bad version %s, defaulting to current\n", version);
+			    "Bad version %d, defaulting to current\n", version);
 		}
 	}
 	assert(!READ_ONLY(s));

@@ -74,7 +74,7 @@ usage:			system("bk help -s findkey");
 		look.key = av[optind++];
 	}
 	if (look.email && !strchr(look.email, '@')) {
-		fprintf(stderr, "%s: email address must have @ sign.\n");
+		fprintf(stderr, "%s: email address must have @ sign.\n", look.email);
 		return (1);
 	}
 	name = sfileFirst("findkey", &av[optind], 0);

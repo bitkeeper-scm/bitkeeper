@@ -58,4 +58,5 @@ f2csets_main(int argc, char **argv)
 		}
 	}
 	pclose(f);
+	return(0);
 }

@@ -36,7 +36,7 @@ private	int	pass2_renames(opts *opts);
 private	int	pass3_resolve(opts *opts);
 private	int	pass4_apply(opts *opts);
 private	int	passes(opts *opts);
-private	int	pending();
+private	int	pending(int checkComments);
 private	int	pendingEdits(void);
 private	int	pendingRenames();
 private void	checkins(opts *opts, char *comment);
@@ -1594,7 +1594,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			syserr("failed, aborting.\n");
 			resolve_cleanup(opts, 0);
 		}
-		if (pending() || pendingEdits()) {
+		if (pending(0) || pendingEdits()) {
 			fprintf(stderr,
 			    "Failed to check in/commit all files, aborting.\n");
 			resolve_cleanup(opts, 0);
