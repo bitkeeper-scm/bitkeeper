@@ -206,6 +206,7 @@ smerge_main(int ac, char **av)
 			file_free(&body[i]);
 			unlink(bodytmp[i]);
 		}
+		free(revs[i]);
 	}
 	return (ret);
 }
@@ -440,7 +441,14 @@ do_weave_merge(u32 start, u32 end)
 			    body[RIGHT].lines[mk[RIGHT]+i].seq);
 
 			if (gcaline->seq <= start) continue;
-			if (gcaline->seq >= end) return (ret);
+			if (gcaline->seq >= end) {
+				while (curr) {
+					tmp = curr;
+					curr = curr->next;
+					free(tmp);
+				}
+				return (ret);
+			}
 			printline(gcaline, 0);
 		}
 		if (curr->start_seq >= start) {
