@@ -11,7 +11,8 @@ sccs_gethost(void)
 	static	char host[257];
 	static	int done = 0;
 	struct	hostent *hp;
-	char 	*h;
+	char 	*h, *p, *q, buf[MAXLINE], domain[MAXPATH];
+	FILE	*f;
 
 	if (done) return (host[0] ? host : 0);
 	done = 1; host[0] = 0;
@@ -56,6 +57,75 @@ out:
 		int len = sizeof(host);
 		GetComputerName(host, &len);
 	}
+#else
+	/*
+	 * XXX - if we don't have a domain name but there is a line
+	 * in resolv.conf like "search foo.com", we could assume that
+	 * is the domain.
+	 */
+	if (host[0] && !strchr(host, '.')) {
+		f = fopen("/etc/resolv.conf", "rt");
+		if (f) {
+			while (fgets(buf, sizeof(buf), f)) {
+				if (strneq("search", buf, 6)) {
+					sscanf(&buf[7], "%s", domain); 
+					strcat(host, ".");
+					strcat(host, domain);
+					break;
+				}
+			}
+			fclose(f);
+		}
+	}
+	
+	/*
+	 * Still no fully qualified hostname ?
+	 * Try extracting it from sendmail.cf
+	 * XXX FIXME: the location of sendmail.cf is different
+	 * 	different Unix platform, need to handle that.
+	 */
+	if (!host[0] || !strchr(host, '.')) {
+		f = fopen("/etc/sendmail.cf", "r") ;
+		if (f) {
+			while (fgets(buf, sizeof(buf), f)) {
+				if (strneq("DM", buf, 2)) {
+					sscanf(&buf[2], "%s", host); 
+					break;
+				}
+			}
+			fclose(f);
+		}
+	}
+	
+	/*
+	 * Still no fully qualified hostname ?
+	 * Try extracting it from netscape config file
+	 * XXX FIXME: the location of sendmail.cf is different
+	 * 	different Unix platform, need to handle that.
+	 */
+	if (!host[0] || !strchr(host, '.')) {
+		extern char *getHomeDir();
+
+ 		p = getHomeDir();
+        	assert(p);
+        	sprintf(buf, "%s/.netscape/preferences.js", p);
+        	f = fopen(buf, "r"); 
+		if (f) {
+			while (fgets(buf, sizeof(buf), f)) {
+				if (strneq(
+				    "user_pref(\"network.hosts.smtp_server\",",
+				    buf, 38)) {
+					p = &buf[40];
+					q = host;
+					while (*p && *p != '\"') *q++ = *p++;
+					assert(*p == '\"');
+					*q = 0;
+					break;
+				}
+			}
+			fclose(f);
+		}
+	}
 #endif
 	/* Fold case. */
 	for (h = host; *h; h++) *h = tolower(*h);
@@ -65,11 +135,6 @@ out:
 		return (0);
 	}
 
-	/*
-	 * XXX - if we don't have a domain name but there is a line
-	 * in resolve.conf like "search foo.com", we could assume that
-	 * is the domain.
-	 */
-
+done:
 	return (host);
 }
