@@ -107,7 +107,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
       zlib/uncompr.o zlib/zutil.o
 GUI	= revtool citool helptool difftool csettool fmtool fm3tool msg \
-      	  renametool setuptool 
+	  renametool setuptool 
 SCRIPTS	= applypatch bk.script import resync uuwrap unuuwrap \
       $(GUI) gzip_uuwrap ungzip_uuwrap bugform
 LOCALSCR= testfast build crank
@@ -526,14 +526,16 @@ install-nolinks: all
 	@test -d $(BINDIR) || mkdir -p $(BINDIR)
 	-@find $(BINDIR) -type d -print | xargs chmod +w
 	cp -f $(BINS) $(SCRIPTS) $(DATA) $(BINDIR)
-	@-rm -rf $(BINDIR)/t/t.*
+	@-rm -rf $(BINDIR)/t
 	@if [ ! -d $(BINDIR)/t ]; \
 	then	mkdir $(BINDIR)/t; \
 	fi
 	@-./bk get -q t/SCCS/s.t.* t/setup t/x.chk_env
-	@cp -f t/doit t/t.* t/setup t/x.chk_env $(BINDIR)/t
 	@rm -f $(BINDIR)/MANIFEST
-	@./bk checksum -s $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup \
+	@list=`ls t/doit t/setup t/x.chk_env t/t.* \
+		| egrep -v '(.local|.swp|~)$$'`; \
+	cp -f $$list $(BINDIR)/t; \
+	./bk checksum -s $(BINS) $(SCRIPTS) $(DATA) $$list \
 		| sort > $(BINDIR)/MANIFEST
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \

@@ -4178,7 +4178,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	if (rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
-			free(s->gfile);
+ err:			free(s->gfile);
 			free(s->sfile);
 			free(s);
 			return (0);
@@ -4192,6 +4192,20 @@ sccs_init(char *name, u32 flags, project *proj)
 		}
 		s->state |= S_SFILE;
 		s->size = sbuf.st_size;
+	} else if (CSET(s)) {
+		int	bad;
+		/* t still points at last slash in s->sfile */
+		assert(*t == '/');
+
+		t[1] = 'q';
+		bad = exists(s->sfile);
+		t[1] = 's';
+		if (bad) {
+			fprintf(stderr,
+"Unable to proceed.  ChangeSet file corrupted.  error=57\n"
+"Please contact support@bitmover.com for help.\n");
+			goto err;
+		}
 	}
 	s->pfile = strdup(sccsXfile(s, 'p'));
 	s->zfile = strdup(sccsXfile(s, 'z'));
