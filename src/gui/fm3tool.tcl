@@ -1573,7 +1573,7 @@ proc difflight {t d e} \
 	$t tag remove diffline 1.0 end
 	$t tag remove reverse 1.0 end
 	set l 0
-	while {[$t compare "$d + $l lines" <= $e]} {
+	while {[$t compare "$d + $l lines" < $e]} {
 		foreach {tag tagline} {gca gcaline diff diffline} {
 			set range [$t tag nextrange $tag \
 			    "$d + $l lines"  "$d + $l lines lineend"]
@@ -1730,13 +1730,12 @@ proc undo {} \
 		$click("w$undo") \
 		    tag remove hand $click("u$undo") $click("U$undo")
 		incr undo -1
-		if {$undo == 0} {
-			puts "Whoops, undo shouldn't have gotten here"
-		}
-		foreach t {.merge.hi .merge.t} {
-			set i [$t index "U$undo"]
-			set i [$t index "$i - 1 lines"]
-			$t see $i
+		if {$undo > 0} {
+			foreach t {.merge.hi .merge.t} {
+				set i [$t index "U$undo"]
+				set i [$t index "$i - 1 lines"]
+				$t see $i
+			}
 		}
 	}
 }
