@@ -7,7 +7,7 @@
 proc platformInit {} \
 {
 	global tcl_platform env dev_null tmp_dir wish auto_path unix_bin bin
-	global bithelp sccstool sdiffw getDir bk_prs
+	global bithelp sccstool sdiffw getDir bk_prs file_rev
 
 	# init for Unix env
 	set sdiffw [list "sdiff" "-w1" ]
@@ -18,6 +18,7 @@ proc platformInit {} \
 	set sccstool [file join $bin "sccstool"]
 	set tmp_dir  "/tmp"
 	set auto_path "$bin $auto_path"
+	set file_rev {(.*):([0-9].*)}
 
 	# I need to source in tkfbox.tcl to make it work
 	# may be there is a better way...

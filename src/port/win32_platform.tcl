@@ -7,7 +7,7 @@
 proc platformInit {} \
 {
 	global tcl_platform env dev_null tmp_dir wish auto_path unix_bin bin
-	global bithelp sccstool sdiffw getDir bk_prs
+	global bithelp sccstool sdiffw getDir bk_prs file_rev
 	
 	# init for WIN32 env
 	set sdiffw [list "diff" "-W" "1" "-y" "--" ]
@@ -17,6 +17,7 @@ proc platformInit {} \
 	set sccstool [file join $bin "sccstool.tcl"]
 	set tmp_dir $env(TEMP)
 	set auto_path "$bin $auto_path"
+	set file_rev {(.*)@([0-9].*)}
 
 	# This does not work in wrap mode
 	# On win95 this hang the system
