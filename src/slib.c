@@ -13841,7 +13841,9 @@ loadDB(char *file, int (*want)(char *), int style)
 	// someone could be updating the file...
 again:	unless (f = fopen(file, "rt")) {
 		if (first && streq(file, IDCACHE)) {
-			first = 0;
+recache:		first = 0;
+			if (f) fclose(f);
+			if (DB) mdbm_close(DB);
 			if (sccs_reCache()) goto out;
 			goto again;
 		}
@@ -13857,7 +13859,7 @@ out:		if (f) fclose(f);
 		if (DB) mdbm_close(DB);
 		return (0);
 	}
-	DB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	DB = mdbm_mem();
 	assert(DB);
 	switch (style & (DB_NODUPS|DB_USEFIRST|DB_USELAST)) {
 	    case DB_NODUPS:	flags = MDBM_INSERT; break;
@@ -13871,7 +13873,9 @@ out:		if (f) fclose(f);
 		if (buf[0] == '#') continue;
 		if (want && !want(buf)) continue;
 		if (chop(buf) != '\n') {
+			if (first && streq(file, IDCACHE)) goto recache;
 			fprintf(stderr, "bad path: <%s> in %s\n", buf, file);
+			mdbm_close(DB);
 			return (0);
 		}
 		if (style & DB_KEYSONLY) {
@@ -13883,7 +13887,12 @@ out:		if (f) fclose(f);
 				v = strchr(buf, ' ');
 			}
 			if (!v && (style & DB_NOBLANKS)) continue;
-			assert(v);
+			unless (v) {
+				if (first && streq(file, IDCACHE)) goto recache;
+				fprintf(stderr, "Corrupted DB %s\n", file);
+				mdbm_close(DB);
+				return (0);
+			}
 			*v++ = 0;
 		}
 		switch (mdbm_store_str(DB, buf, v, flags)) {

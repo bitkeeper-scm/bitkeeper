@@ -410,13 +410,7 @@ buildKeys()
 		perror("buildkeys");
 		exit(1);
 	}
-again:	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
-		if (first) {
-			fprintf(stderr, "Rebuilding idcache...\n");
-			first = 0;
-			system("bk idcache");
-			goto again;
-		}
+	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("idcache");
 		exit(1);
 	}
