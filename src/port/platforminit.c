@@ -104,7 +104,7 @@ platformInit(char **av)
 				if (t = strchr(s, PATH_DELIM)) *t = 0;
 				sprintf(buf, "%s/%s", s, av[0]);
 				if (t) *t = PATH_DELIM;
-				if (executable(buf)) break;
+				if (executable(buf) && !isdir(buf)) break;
 				unless (t) {
 					verbose((stderr,
 						    "Can't find bk on PATH, "

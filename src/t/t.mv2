@@ -1,0 +1,88 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 BitMover, Inc.
+# %K%
+
+no_logging project
+echo $N Make sure we do not move SCCS top directories ...............$NL
+mkdir foo
+bk mv SCCS foo > OUT 2>&1
+test -d SCCS || {
+	echo should not have moved the SCCS directory
+	find .
+	exit 1
+}
+grep -q 'SCCS is not a movable directory' OUT || {
+	echo bad error message
+	cat OUT
+}
+echo OK
+
+echo $N Make sure we do not move SCCS sub directories ...............$NL
+mkdir bar
+cd bar
+date > xyz
+bk new $Q xyz
+bk mv SCCS foo > OUT 2>&1
+test -d SCCS || {
+	echo should not have moved the SCCS directory
+	find .
+	exit 1
+}
+grep -q 'SCCS is not a movable directory' OUT || {
+	echo bad error message
+	cat OUT
+}
+echo OK
+
+echo $N Make sure that SCCS is not a valid destination ..............$NL
+cd ..
+bk mv bar/xyz SCCS > OUT 2>&1
+test -f SCCS/s.xyz && {
+	echo should not have moved the file
+	find .
+	exit 1
+}
+grep -q 'SCCS is not a legal destination' OUT || {
+	echo bad error message
+	cat OUT
+}
+echo OK
+
+echo $N Make sure that bar/SCCS is not a valid destination ..........$NL
+date > abc
+bk new $Q abc
+bk mv abc bar/SCCS > OUT 2>&1
+test -f bar/SCCS/s.abc && {
+	echo should not have moved the file
+	find .
+	exit 1
+}
+grep -q 'SCCS is not a legal destination' OUT || {
+	echo bad error message
+	cat OUT
+}
+echo OK
+
+echo $N Make sure that BitKeeper cannot be moved ....................$NL
+bk mv BitKeeper junk > OUT 2>&1
+test -d BitKeeper || {
+	echo should not have moved BitKeeper
+	find .
+	exit 1
+}
+test -d junk && {
+	echo should not have created junk
+	find .
+	exit 1
+}
+echo OK

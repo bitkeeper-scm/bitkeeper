@@ -54,7 +54,11 @@ mv_main(int ac, char **av)
 		return (1);
 	}
 
-	isDir = isdir(dest);
+	if ((isDir = isdir(dest)) && streq(basenm(dest), "SCCS")) {
+		fprintf(stderr, "bk mv: %s is not a legal destination\n", dest);
+		if (dofree) free(dest);
+		exit(1);
+	}
 	if (ac - (optind - 1) > 3 && !isDir) {
 		fprintf(stderr,
 		    "Multiple files must be moved to a directory!\n");
@@ -80,8 +84,8 @@ mv_main(int ac, char **av)
 		if (isdir(av[i])) {
 			errors |= sys("bk", "mvdir", "-l", av[i], dest, SYS);
 		} else {
-			errors |= sccs_mv(av[i], dest,
-						isDir, 0, isUnDelete, force);
+			errors |=
+			    sccs_mv(av[i], dest, isDir, 0, isUnDelete, force);
 		}
 	}
 	if (dofree) free(dest);

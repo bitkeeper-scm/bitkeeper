@@ -15,9 +15,9 @@ export CC LD
 
 all: build version.sh
 	-rm -rf bin lib
-	-TCLVER=`./version.sh`; \
+	TCLVER=`./version.sh`; \
 	if [ -n "$$TCLVER" -a -f "$$TCLVER" ]; \
-	then	gunzip < "$$TCLVER" | tar -xf -; \
+	then	gunzip < "$$TCLVER" | tar -xf -; true; \
 	else	./build bin/tclsh bin/bkgui; \
 	fi
 	./build install
@@ -32,7 +32,8 @@ configure: tcl/$S/configure tk/$S/configure
 	for i in tcl/$S tk/$S; do \
 		cd $(HERE)/$$i; \
 		test -f configure || bk -Ur get -qS; \
-		CFLAGS=-O2 ./configure --disable-load --disable-shared; \
+		CFLAGS=-O2 ./configure --enable-64bit \
+		    --disable-load --disable-shared; \
 		sed -e s/X11R4/X11R6/ < Makefile > MK; \
 		if [ "X$(OSTYPE)" = Xhpux11.00 ]; then \
 			sed -e 's|^X11_LIB_SWITCHES.*|X11_LIB_SWITCHES        = -L/usr/lib/X11R6 -l:libX11.3|' < MK > MK2; \

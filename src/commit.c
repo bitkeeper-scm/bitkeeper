@@ -257,6 +257,8 @@ out:		if (pendingFiles) unlink(pendingFiles);
 	safe_putenv("BK_COMMENTFILE=%s", commentFile);
 
 	if (rc = trigger(opts.resync ? "merge" : av[0], "pre")) goto done;
+	comments_done();
+	comments_savefile(commentFile);
 	i = 2;
 	if (opts.quiet) dflags |= SILENT;
 	if (sym) syms = addLine(syms, strdup(sym));
