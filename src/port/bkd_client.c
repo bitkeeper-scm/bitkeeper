@@ -35,19 +35,18 @@ bkd_reap(pid_t resync, int r_pipe, int w_pipe)
 #endif
 }
 
-
-
-
-
-
-
 #ifndef WIN32
 pid_t
 bkd_tcp_connect(remote *r)
 {
-	int i;
+	int	i;
+	char	*cgi = WEB_BKD_CGI;
+
 	if (r->type == ADDR_HTTP) {
-		http_connect(r, WEB_BKD_CGI);
+		if (r->path && strneq(r->path, "cgi-bin/", 8)) {
+			cgi = r->path + 8;
+		}
+		http_connect(r, cgi);
 	} else {
 		i = tcp_connect(r->host, r->port);
 		if (i < 0) {
