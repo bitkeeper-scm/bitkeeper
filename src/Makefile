@@ -73,7 +73,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o approve.o \
 	opark.o parent.o park.o \
 	pending.o preference.o port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
-	port/filecopy.o port/fileinfo.o \
+	port/filecopy.o port/fileinfo.o port/findpid.o \
 	port/findprog.o port/flushsocket.o \
 	port/fullname.o port/gethomedir.o \
 	port/gethost.o port/getinput.o port/getnull.o \
