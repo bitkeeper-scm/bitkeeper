@@ -1211,16 +1211,18 @@ _sendbug() {
 	done
 }
 
-# Make links in /usr/bin
+# Make links in /usr/bin (or wherever they say).
 _links() {
 	test -x ${BK_BIN}sccslog || { echo Can not find bin directory; exit 1; }
-	echo Creating links from /usr/bin/ to $BK_BIN ...
+	if [ "X$1" != X ]
+	then	DIR=$1
+	else	DIR=/usr/bin
+	fi
 	for i in admin get delta unget rmdel prs bk
-	do	/bin/rm -f /usr/bin/$i
-		ln -s ${BK_BIN}$i /usr/bin/$i
-		echo "    $i"
+	do	/bin/rm -f ${DIR}/$i
+		echo "ln -s ${BK_BIN}$i ${DIR}/$i"
+		ln -s ${BK_BIN}$i ${DIR}/$i
 	done
-	echo Done.
 }
 
 # usage: regression [-s]
