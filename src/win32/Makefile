@@ -47,6 +47,7 @@ msys: ./msysver.sh MSYSKEY FORCE
 		}; \
 		true; \
 	fi
+	rm -f $(MSYSBIN)/bin/rxvt.exe
 
 bkshellx: getdatarepo BKSHELLXKEY FORCE
 	[ -d dll ] || mkdir dll
