@@ -51,6 +51,7 @@ bk clean A
 echo OK
 echo $N Check edit with existing stale write lock ...................$NL
 bk unlock -r
+bk lock -U
 if [ -d BitKeeper/readers ]
 then	echo failed to clean up read lock; ls -l BitKeeper/readers; exit 1
 fi
@@ -62,6 +63,7 @@ echo OK
 echo $N Check edit with existing valid read lock ....................$NL
 bk clean A
 bk unlock -w
+bk lock -U
 bk lock -r &
 bk lock -L
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
@@ -83,6 +85,7 @@ if [ -w A ]; then echo failed to clean; exit 1; fi
 echo OK
 echo $N Check edit with existing valid write lock ...................$NL
 bk unlock -r
+bk lock -U
 bk lock -w &
 bk lock -L
 rm -f BitKeeper/writer/lock
@@ -133,6 +136,7 @@ fi #------------------------------------------------------------------------
 echo $N Make sure clone works with existing read lock in source .....$NL
 cd $HERE/project
 bk unlock -w
+bk lock -U
 bk lock -r &
 bk lock -L
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
@@ -155,6 +159,7 @@ echo OK
 echo $N Make sure pull fails with existing write lock in source .....$NL
 cd $HERE/project
 bk unlock -rw
+bk lock -U
 ls > C
 bk new $Q C
 bk commit $Q -ywhatever
@@ -167,6 +172,7 @@ echo OK
 echo $N Make sure pull works with existing read lock in source ......$NL
 cd $HERE/project
 bk unlock -w
+bk lock -U
 bk lock -r &
 bk lock -L
 mv BitKeeper/readers/* BitKeeper/readers/1234@nowhere.nowhere
@@ -193,6 +199,7 @@ echo OK
 echo $N Make sure push fails with existing write lock in dest .......$NL
 cd $HERE/project
 bk unlock -rw
+bk lock -U
 bk lock -w &
 PID=$!
 bk lock -L
@@ -210,11 +217,13 @@ grep -q 'ERROR-Unable to lock repository for update.' OUT || {
 }
 cd $HERE/project
 bk unlock -w
+bk lock -U
 echo OK
 
 echo $N Make sure push succeeds with no locks in destination ........$NL
 cd $HERE/project
 bk unlock -rw
+bk lock -U
 cd $HERE/clone
 bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi

@@ -268,6 +268,7 @@ grep -q 'Unable to lock repository for update' OUT || {
 	exit 1
 }
 bk unlock -r $HERE/project
+bk lock -U $HERE/project
 echo OK
 
 echo $N push to unrelated project should error ......................$NL
