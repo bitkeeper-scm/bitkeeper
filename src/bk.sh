@@ -282,7 +282,7 @@ _clone() {
 		exit 1
 	fi
 	if [ -d $TO ]
-	then	echo "clone: $to exists" >&2
+	then	echo "clone: $TO exists" >&2
 		exit 1
 	fi
 	exec ${BIN}resync -ap "$@"
