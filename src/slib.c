@@ -309,6 +309,7 @@ linelen(char *s)
 /*
  * Save a line in an array.  If the array is out of space, reallocate it.
  * The size of the array is in array[0].
+ * This is OK on 64 bit platforms.
  */
 char	**
 addLine(char **space, char *line)
@@ -5548,22 +5549,6 @@ fmtd(char *p, int d)
 	return fmtu(p, d);
 }
 
-fmt05u(char *p, unsigned int u)
-{
-	char tmp[10];
-	char *x = &tmp[10];
-
-	do {
-		*--x = u%10 + '0';
-		u /= 10;
-	} while (u);
-
-	while (x - tmp > 5) *--x = '0';
-
-	memcpy(p, x, 10 - (x - tmp));
-	return p + 10 - (x - tmp);
-}
-
 private char *
 fmttt(char *p, time_t d)
 {
@@ -5742,10 +5727,7 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 				 * Leaving this fixed means we can diff the
 				 * s.files easily.
 				 */
-				p = fmts(buf, "\001cK");
-				p = fmt05u(p, d->sum);
-				*p++ = '\n';
-				*p   = '\0';
+				sprintf(buf, "\001cK%05u\n", d->sum);
 				fputmeta(s, buf, out);
 			}
 		}
