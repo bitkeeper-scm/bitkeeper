@@ -741,7 +741,7 @@ int	mkdirf(char *file);
 
 int	repository_locked(project *p);
 int	repository_lockers(project *p);
-int	repository_cleanLocks(project *p, int force);
+int	repository_cleanLocks(project *p, int force, int verbose);
 int	repository_rdlock(void);
 int	repository_wrlock(void);
 int	repository_rdunlock(int force);
