@@ -396,11 +396,18 @@ L	D	the second field in D's rev (R.L.B.S)
 .xx
 LODKEY	D	the key of the start of D's LOD
 .xx
-Ld	D	lines deleted in D
+LD	D	lines deleted in D (%u)
 .xx
-Li	D	lines inserted in D
+LI	D	lines inserted in D (%u)
 .xx
-Lu	D	lines unchanged in D
+LU	D	lines unchanged in D (%u)
+.xx
+.xx
+Ld	D	lines deleted in D (%05u)
+.xx
+Li	D	lines inserted in D (%05u)
+.xx
+Lu	D	lines unchanged in D (%05u)
 .xx
 MERGE	D	D's rev if & only if D has a merge parent
 .xx
@@ -410,7 +417,7 @@ MODE	D	D's file modes as an octal (777)
 .xx
 MPARENT	D	D's merge parent's revision
 .xx
-N	D	Number of deltas. DS doesn't account for holes that can occur when doing stripdels
+N	D	Number of deltas, use instead of DS, DS may have gaps.
 .xx
 NEXT	D	next entry after D in delta table 
 .xx

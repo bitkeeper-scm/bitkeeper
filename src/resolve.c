@@ -174,7 +174,6 @@ setRepoType(opts *opts)
  * For logging repository, we defer resolving path conflict
  * by moving  the conflicting remote file to the BitKeeper/conflicts
  * directory.
- * XXX - the older file should win, I suspect.
  */
 private void
 removePathConflict(opts *opts, resolve *rs)
@@ -182,12 +181,16 @@ removePathConflict(opts *opts, resolve *rs)
 	char	*t, path[MAXPATH], encpath[MAXPATH];
 	int	n = 0;
 
-	sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
-	sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
-	while (exists(path) || exists(encpath)) {
-		sprintf(path,
-		    "BitKeeper/conflicts/SCCS/%s~%d", basenm(rs->dname), n++);
+	if (slotTaken(opts, rs->dname)) {
+		sprintf(path, "BitKeeper/conflicts/SCCS/%s", basenm(rs->dname));
 		sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
+		while (exists(path) || exists(encpath)) {
+			sprintf(path, "BitKeeper/conflicts/SCCS/%s~%d",
+			    basenm(rs->dname), n++);
+			sprintf(encpath, "%s/%s", RESYNC2ROOT, path);
+		}
+	} else {
+		strcpy(path, rs->dname);
 	}
 	mkdirf(path);
 	sccs_close(rs->s); /* for win32 */
@@ -640,7 +643,7 @@ pass2_renames(opts *opts)
 		n++;
 		rs = resolve_init(opts, s);
 
-		if (opts->resolveNames && opts->logging) {
+		if (opts->logging) {
 			removePathConflict(opts, rs);
 			goto out;
 		}

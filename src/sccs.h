@@ -87,6 +87,7 @@
 #define	ADMIN_ADD1_0	0x04000000	/* insert a 1.0 delta */
 #define	ADMIN_RM1_0	0x08000000	/* remove a 1.0 delta */
 #define	ADMIN_OBSCURE	0x00100000	/* remove comments, obscure data */
+#define	ADMIN_FORCE	0x00200000	/* use Z lock; for pull/cweave */
 
 #define	ADMIN_CHECKS	(ADMIN_FORMAT|ADMIN_ASCII|ADMIN_TIME|ADMIN_BK)
 
@@ -898,6 +899,8 @@ int	sccs_unlockfile(const char *file);
 int	sccs_mylock(const char *lockf);
 int	sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp);
 
+sccs	*sccs_unzip(sccs *s);
+sccs	*sccs_gzip(sccs *s);
 char	*sccs_utctime(delta *d);
 int	sccs_setlod(char *rev, u32 flags);
 void	sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb,
@@ -1095,6 +1098,7 @@ int	isSymlnk(char *s);
 void	cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s);
+int	cset_diffs(sccs *s, ser_t ser);
 int	isNullFile(char *rev, char *file);
 unsigned long	ns_sock_host2ip(char *host, int trace);
 unsigned long	host2ip(char *host, int trace);

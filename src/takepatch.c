@@ -58,8 +58,6 @@ private	void	freePatchList(void);
 private	void	fileCopy2(char *from, char *to);
 private	void	badpath(sccs *s, delta *tot);
 private void	merge(char *gfile);
-private	sccs	*expand(sccs *s, project *proj);
-private	sccs	*unexpand(sccs *s);
 private	int	skipPatch(MMAP *p);
 private	void	getConfig(void);
 private	void	getGone(void);
@@ -1009,7 +1007,7 @@ applyCsetPatch(char *localPath,
 		}
 	}
 	/* convert to uncompressed, it's faster, we saved the mode above */
-	if (s->encoding & E_GZIP) s = expand(s, proj);
+	if (s->encoding & E_GZIP) s = sccs_unzip(s);
 	unless (s) return (-1);
 
 	/* save current LOD setting, as it might change */
@@ -1143,7 +1141,7 @@ apply:
 	}
 	fclose(csets);
 
-	if (encoding & E_GZIP) s = unexpand(s);
+	if (encoding & E_GZIP) s = sccs_gzip(s);
 	if (lodkey[0]) { /* restore LOD setting */
 		unless (d = sccs_findKey(s, lodkey)) {
 			fprintf(stderr, "takepatch: can't find lod key %s\n",
@@ -1290,7 +1288,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		}
 	}
 	/* convert to uncompressed, it's faster, we saved the mode above */
-	if (s->encoding & E_GZIP) s = expand(s, proj);
+	if (s->encoding & E_GZIP) s = sccs_unzip(s);
 	unless (s) return (-1);
 
 	/* save current LOD setting, as it might change */
@@ -1507,7 +1505,7 @@ apply:
 	s->proj = 0; sccs_free(s);
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s);
-	if (encoding & E_GZIP) s = unexpand(s);
+	if (encoding & E_GZIP) s = sccs_gzip(s);
 	if (lodkey[0]) { /* restore LOD setting */
 		unless (d = sccs_findKey(s, lodkey)) {
 			fprintf(stderr, "takepatch: can't find lod key %s\n",
@@ -2227,11 +2225,12 @@ fileCopy2(char *from, char *to)
 	if (fileCopy(from, to)) cleanup(CLEAN_RESYNC);
 }
 
-private	sccs *
-expand(sccs *s, project *proj)
+sccs *
+sccs_unzip(sccs *s)
 {
 	s = sccs_restart(s);
-	if (sccs_admin(s, 0, NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
+	if (sccs_admin(s,
+	    0, ADMIN_FORCE|NEWCKSUM, 0, "none", 0, 0, 0, 0, 0, 0)) {
 		sccs_free(s);
 		return (0);
 	}
@@ -2239,11 +2238,12 @@ expand(sccs *s, project *proj)
 	return (s);
 }
 
-private	sccs *
-unexpand(sccs *s)
+sccs *
+sccs_gzip(sccs *s)
 {
 	s = sccs_restart(s);
-	if (sccs_admin(s, 0, NEWCKSUM, 0, "gzip", 0, 0, 0, 0, 0, 0)) {
+	if (sccs_admin(s,
+	    0, ADMIN_FORCE|NEWCKSUM, 0, "gzip", 0, 0, 0, 0, 0, 0)) {
 		sccs_whynot("admin", s);
 	}
 	s = sccs_restart(s);

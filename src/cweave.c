@@ -110,6 +110,36 @@ cset_map(sccs *s, int extras)
 }
 
 /*
+ * Spit out the diffs for makepatch.
+ * Using this drops generating the Linux kernel tree logging patch
+ * from 19 minutes to 8 seconds.
+ */
+int
+cset_diffs(sccs *s, ser_t ser)
+{
+	int	len, line;
+	char	*p, *start;
+
+	assert(s);
+	assert(s->state & S_CSET);
+	unless (s->locs) cset_map(s, 0);
+	printf("0a0\n");
+	p = s->locs[ser].p;
+	len = s->locs[ser].len;
+	assert(len);
+	do {
+		fputs("> ", stdout);
+		start = p;
+		line = 0;
+		do {
+			line++;
+		} while (--len && (*p++ != '\n'));
+		fwrite(start, line, 1, stdout);
+	} while (len);
+	return (0);
+}
+
+/*
  * Return true if 'a' is earlier than 'b'
  */
 private int

@@ -10622,7 +10622,9 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	debug((stderr, "new_enc is %d\n", new_enc));
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
-		unless (locked = sccs_lock(sc, 'z')) {
+		char	z = (flags & ADMIN_FORCE) ? 'Z' : 'z';
+
+		unless (locked = sccs_lock(sc, z)) {
 			verbose((stderr,
 			    "admin: can't get lock on %s\n", sc->sfile));
 			error = -1; sc->state |= S_WARNED;
@@ -12964,8 +12966,8 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 	if (streq(kw, "DL")) {
-		/* :DL: = :Li:/:Ld:/:Lu: */
-		KW("Li"); fc('/'); KW("Ld"); fc('/'); KW("Lu");
+		/* :DL: = :LI:/:LD:/:LU: */
+		KW("LI"); fc('/'); KW("LD"); fc('/'); KW("LU");
 		return (strVal);
 	}
 
@@ -13089,6 +13091,24 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* :A: = :Z::Y: :M:I:Z: */
 		KW("Z"); KW("Y"); fc(' ');
 		KW("M"); KW("I"); KW("Z");
+		return (strVal);
+	}
+
+	if (streq(kw, "LI")) {
+		/* lines inserted */
+		fd(d->added);
+		return (strVal);
+	}
+
+	if (streq(kw, "LD")) {
+		/* lines deleted */
+		fd(d->deleted);
+		return (strVal);
+	}
+
+	if (streq(kw, "LU")) {
+		/* lines unchanged */
+		fd(d->same);
 		return (strVal);
 	}
 
@@ -13920,12 +13940,12 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 
 	if (streq(kw, "DSUM")) {
 		if (d->flags & D_CKSUM) {
-			f5d((int)d->sum);
+			fd((int)d->sum);
 			return (strVal);
 		}
 		if (d->type == 'R') {
 			assert(d->sum == 0);
-			fs("00000");
+			fs("0");
 			return (strVal);
 		}
 		return (nullVal);
