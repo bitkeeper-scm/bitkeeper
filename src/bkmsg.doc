@@ -634,7 +634,8 @@ $
 You are about to create a new repository. Creating a new repository is
 something which is done if the data which you wish to manage is not
 already under BitKeeper control in a different repository. If there
-already is a BitKeeper repository for this package, you should do
+already is a BitKeeper repository for this package, you should do the 
+following:
 
 bk clone package_dir my_package_dir
 
@@ -675,13 +676,13 @@ $
 #setuptool_step_UserHostInfo
 For single user / single host configurations you must enter a 
 username and hostname. The username and hostname you supply will 
-be recorded with every check-in in this repository.
+be recorded with every checkin in this repository.
 $
 #setuptool_step_RepoInfo
 The following information uniquely identifies this repository. All fields 
 are required to be non-empty in order for you to continue.
 
-If the categories in the drop-down list don't meet your needs you may enter 
+If the categories in the drop-down list do not meet your needs you may enter 
 any category you like.
 $
 #setuptool_step_ContactInfo
@@ -691,16 +692,23 @@ $
 There is now enough information to create the repository. Please review the 
 following information. If it is correct, press the Finish button to create 
 the repository.
+
+The config file that is created will be saved as a standard revision controlled
+file at BitKeeper/etc/config; it can be edited later to make changes. See the
+config-etc manpage for detailed information on the format and options that
+are supported. 
 $
 #setuptool_step_KeywordExpansion
 BitKeeper can automatically expand SCCS or RCS keywords in files when they are 
 checked out in read-only mode. This feature is off by default, but you can
-change this behavior by selecting the mode that best suits your needs.
+change this behavior by selecting the expansion options that best meet your 
+needs.
 
-You may choose either "sccs" or "rcs" expansion. In addition, you can specify 
-"expand1" to mean you only want keywords to be expanded in the first line
-that contains keywords. This helps avoid conflicts with printf statements or 
-other code that may contain strings that look like keywords. 
+Select the "sccs" and/or "rcs" options to have the appropriate
+keywords expanded. In addition, you can select "expand1" to mean you
+only want keywords to be expanded in the first line that contains
+keywords. This helps avoid conflicts with printf statements or other
+code that may contain strings that look like keywords.
 $
 #setuptool_step_CheckoutMode
 By default, gfiles will be visible in a repository unless they are checked
@@ -710,23 +718,17 @@ A value of "get" will cause a "bk get <file>" command to be executed
 automatically after a "bk delta", causing the file to be checked out 
 in read-only mode. 
 
-A value of "edit" will cause a "bk edit <file>" command to be executed
-automatically after a "bk delta", causing the file to be checked out in 
-edit mode.  This will also adjust the modification time of the s.file 
-to be one second before the modification time of the gfile, which is 
-needed in order to prevent make(1) from attempting to reget the file.
+A value of "edit" will prevent a checkin from removing the editable 
+version of the file so that there is always an editable version of the 
+file. 
 
 A value of "none" will clear the gfile from the repository after a 
 "bk delta". This is the default behavior.
 $
 #setuptool_step_Compression
-By default, when you set up a repository the compression algorithm will be 
-set to "gzip". This will cause all s.files to be compressed in the 
-repository. Setting this value causes the option "-Zgzip" to automatically be 
-applied when running the "bk new" command. 
-
-If you do not wish for the s.files in your repository to be compressed you
-may turn this feature off by selecting "none".
+By default, when you set up a repository the files in the repository are
+compressed. If you do not wish for the s.files in your repository to be 
+compressed you may turn this feature off by selecting "none".
 $
 #setuptool_step_Autofix
 The bk check command can automatically fix a number of problems found
@@ -734,6 +736,13 @@ in a repository. By default this feature is turned on when a repository
 is created. To turn this feature off select the value "no", in which case
 the bk check command will not attempt to automatically fix problems it
 detects.
+$
+#setuptool_invalid_license
+The license key or license signatures are invalid. 
+Please check the values that you entered. If you 
+continue to have problems please contact BitKeeper 
+support at support@bitkeeper.com.
+
 $
 #bitkeeper.init
 #!/bin/sh

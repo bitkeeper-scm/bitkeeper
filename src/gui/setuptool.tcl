@@ -3,15 +3,14 @@
 # usage: bk setuptool ?-e? -F reponame
 #        bk setuptool ?-e? ?reponame?
 #
-# if -F is specified, a reponame must be specified, and the user may not
-# change the repo from within the wizard. This is how the old setuptool
-# worked, so it's in for compatibility.
+# if -F (force) is specified, a reponame must be specified, and the user 
+# may not change the repo from within the wizard. This is how the old 
+# setuptool worked, so it's in for compatibility.
 #
 # -e is passed on to bk setup, though -e isn't documented in setup...
 
 proc main {} \
 {
-
 	bk_init
 	app_init
 	widgets
@@ -27,15 +26,15 @@ proc main {} \
 	bind . <<WizFinish>> {
 		. configure -state busy
 
-		if {![createRepo error]} {
-			popupMessage $error
+		if {![createRepo errorMessage]} {
+			popupMessage -E $errorMessage
 			# the break is necessary, because tkwidget's
 			# default binding for <<WizFinish>> is to
 			# withdraw the window. That would be bad.
 			. configure -state normal
 			break
 		} else {
-			popupMessage "The repository was successfully created."
+			popupMessage -I "The repository was successfully created."
 
 			if {$::wizData(closeOnCreate)} {
 				set ::done 1
@@ -46,6 +45,17 @@ proc main {} \
 		}
 	}
 
+	bind . <<WizNextStep>> {
+		switch -exact -- [. cget -step] {
+			LicenseType	{recomputePath}
+			EndUserLicense	{acceptLicense}
+			LicenseKey      {
+				if {![checkLicense]} {
+					break
+				}
+			}
+		}
+	}
 
 	vwait ::done
 	exit
@@ -57,6 +67,8 @@ proc app_init {} \
 	global argv
 	global wizData
 	global option
+
+	getLicenseData
 
 	getConfig "setup"
 
@@ -104,7 +116,7 @@ proc app_init {} \
 		keyword,expand1 0
 		keyword       "none"
 		license       ""
-		licenseType   "Commercial"
+		licenseType   "commercial"
 		licsign1      ""
 		licsign2      ""
 		licsign3      ""
@@ -140,7 +152,7 @@ proc app_init {} \
 	set argc [llength $argv]
 	if {$argc == 0} {
 		if {$option(-F)} {
-			popupMessage "you must supply a name with -F"
+			popupMessage -I "You must supply a name with -F"
 			exit 1
 		}
 		set wizData(repository) ""
@@ -151,7 +163,7 @@ proc app_init {} \
 	} else {
 		# This is lame; what should we do here? We need to
 		# standardize this type of stuff
-		popupMessage "unknown option [lindex $argv 0]"
+		popupMessage -W "Unknown option [lindex $argv 0]"
 		exit 1
 	}
 
@@ -183,23 +195,32 @@ proc widgets {} \
 	} 
 
 
-	set pre {Begin LicenseType}
-	set post {
+	set common {
 		RepoInfo ContactInfo 
 		KeywordExpansion CheckoutMode 
 		Compression Autofix Finish
 	}
-	if {[info exists ::env(BK_LICENSE)] &&
-	    [string match "ACCEPTED" $::env(BK_LICENSE)]} {
-		set wizData(licenseAccept) 1
-	} else {
-		lappend pre EndUserLicense
-	}
-	. add path commercial  -steps [concat $pre LicenseKey $post]
-	. add path openlogging -steps [concat $pre $post]
-	. add path singleuser  -steps [concat $pre UserHostInfo $post]
 
-	. configure -path commercial
+	# each type of license (commercial, openlogging, singleuser) has
+	# two paths: one where the license is presented and one not. We'll
+	# pick the appropriate path at runtime
+	. add path commercial-lic  \
+	    -steps [concat Begin LicenseType EndUserLicense LicenseKey $common]
+	. add path commercial \
+	    -steps [concat Begin LicenseType LicenseKey $common]
+
+	. add path openlogging-lic \
+	    -steps [concat Begin LicenseType EndUserLicense $common]
+	. add path openlogging \
+	    -steps [concat Begin LicenseType $common]
+
+	. add path singleuser-lic  \
+	    -steps [concat Begin LicenseType EndUserLicense UserHostInfo $common]
+	. add path singleuser  \
+	    -steps [concat Begin LicenseType UserHostInfo $common]
+
+	# We'll assume this for the moment; it may change later
+	. configure -path commercial-lic
 
 	#-----------------------------------------------------------------------
 	. add step Begin \
@@ -216,7 +237,9 @@ proc widgets {} \
 	. stepconfigure EndUserLicense -body {
 
 		global wizData
+		global licenseInfo
 
+		set wizData(licenseAccept) ""
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
@@ -250,8 +273,12 @@ proc widgets {} \
 		pack $w.vsb -side right -fill y -expand n
 		pack $w.text -side left -fill both -expand y
 
-		set license [exec bk help bkl]
-		$w.text insert end "$license\n"
+		if {$wizData(licenseType) == "commercial"} {
+			set license $licenseInfo(text,bkcl)
+		} else {
+			set license $licenseInfo(text,bkl)
+		}
+		$w.text insert end $license
 		$w.text configure -state disabled
 
 		if {$wizData(licenseAccept) == 1} {
@@ -277,38 +304,39 @@ proc widgets {} \
 
 		radiobutton $w.commercialRadiobutton \
 		    -text "Commercial" \
-		    -value "Commercial" \
+		    -value "commercial" \
 		    -variable wizData(licenseType) \
-		    -command {. configure -path commercial}
+		    -command {. configure -path commercial-lic}
 
-		button $w.commercialHelp -text "More info" -bd 1 \
-		    -command {popupMessage [getmsg commercial_license_info]}
+		button $w.moreInfoCommercial -text "More info" \
+		    -bd 1 \
+		    -command [list moreInfo commercial]
 
 		radiobutton $w.singleRadiobutton \
 		    -text "Single User / Single Host" \
-		    -value "Single User / Single Host" \
+		    -value "singleuser" \
 		    -variable wizData(licenseType) \
-		    -command {. configure -path singleuser}
+		    -command {. configure -path singleuser-lic}
 
-		button $w.singleHelp -text "More info" -bd 1 \
-		    -command {popupMessage [getmsg single_user_license_info]}
+		button $w.moreInfoSingle -text "More info" -bd 1 \
+		    -command [list moreInfo singleuser]
 
 		radiobutton $w.openloggingRadiobutton \
 		    -text "Open Logging" \
-		    -value "Open Logging" \
+		    -value "openlogging" \
 		    -variable wizData(licenseType) \
-		    -command {. configure -path openlogging}
+		    -command {. configure -path openlogging-lic}
 
-		button $w.openloggingHelp -text "More info" -bd 1 \
-		    -command {popupMessage [getmsg open_logging_license_info]}
+		button $w.moreInfoOpenlogging -text "More info" -bd 1 \
+		    -command [list moreInfo openlogging]
 		
 		grid $w.commercialRadiobutton -row 0 -column 0 -sticky w
 		grid $w.singleRadiobutton     -row 1 -column 0 -sticky w
 		grid $w.openloggingRadiobutton -row 2 -column 0 -sticky w
 
-		grid $w.commercialHelp -row 0 -column 1 -padx 8
-		grid $w.singleHelp -row 1 -column 1 -padx 8
-		grid $w.openloggingHelp -row 2 -column 1 -padx 8
+		grid $w.moreInfoCommercial  -row 0 -column 1 -padx 8
+		grid $w.moreInfoSingle      -row 1 -column 1 -padx 8
+		grid $w.moreInfoOpenlogging -row 2 -column 1 -padx 8
 
 		# this adds invisible rows and columns to take up the slack
 		grid columnconfigure $w 2 -weight 1
@@ -477,6 +505,9 @@ proc widgets {} \
 		    -indicatoron 1 \
 		    -menu $w.categoryMenuButton.menu
 		menu $w.categoryMenuButton.menu -tearoff 0
+		button $w.moreInfoRepoInfo -bd 1 \
+		    -text "More info" \
+		    -command [list moreInfo repoinfo]
 
 		set categories [split [getmsg setup_categories] \n]
 		set menu $w.categoryMenuButton.menu
@@ -518,6 +549,7 @@ proc widgets {} \
 		grid $w.categoryLabel -row 3 -column 0 -sticky e
 		grid $w.categoryEntry -row 3 -column 1 -sticky ew
 		grid $w.categoryMenuButton -row 3 -column 2 -sticky ew
+		grid $w.moreInfoRepoInfo -row 4 -column 0 -sticky e -pady 8
 
 		grid columnconfigure $w 0 -weight 0
 		grid columnconfigure $w 1 -weight 1
@@ -530,7 +562,8 @@ proc widgets {} \
 		grid rowconfigure    $w 1 -weight 0
 		grid rowconfigure    $w 2 -weight 0
 		grid rowconfigure    $w 3 -weight 0
-		grid rowconfigure    $w 4 -weight 1
+		grid rowconfigure    $w 4 -weight 0
+		grid rowconfigure    $w 5 -weight 1
 
 		if {$option(-F)} {
 			$w.repoPathEntry configure -state disabled
@@ -811,9 +844,10 @@ proc validate {which args} \
 
 	switch $which {
 		"license" {
-			# it would be nice if we could truly verify
-			# the license and signatures, but there's no
-			# cheap way to do that yet.
+			# This doesn't validate the license per se,
+			# only whether the user has entered one. Validation
+			# is expensive, so we'll only do it when the user
+			# presses "Next"
 			if {([string length $wizData(license)] == 0) ||
 			    ([string length $wizData(licsign1)] == 0) ||
 			    ([string length $wizData(licsign2)] == 0) ||
@@ -887,23 +921,43 @@ proc parseLicenseData {type} \
 	}
 }
 
-# Set the color and text for the pulldown when it is selected
-#
-proc setCat {cat} \
+proc readConfig {type {filename {}}} \
 {
-	global gc st_cinfo
 
-	$gc(catmenu) configure \
-	    -text $cat \
-	    -bg $gc(setup.BG)
-	set st_cinfo(category) "$cat"
-	check_config
-	return
-	
-}
+	global errorCode
+	global tcl_platform
 
-# Create the hierarchical menus that are from the redhat rpm list
-proc createCatMenu {w} \
+	array set result {}
+
+	if {$type == "template"} {
+		if {$tcl_platform(platform) == "windows"} {
+			package require registry
+			set key {HKEY_LOCAL_MACHINE\Software\Microsoft\Windows}
+			append key {\CurrentVersion\Explorer\Shell Folders}
+			catch {set appdir \
+				   [registry get "$HKLM\\$l" {Common AppData}]
+			}
+
+			if {$errorCode ==  {} } {
+				set filename [file join $appdir \
+						  BitKeeper etc config.template]
+			}
+		} else {
+			set filename "/etc/BitKeeper/etc/config.template"
+		}
+	}
+
+	if {[file exists $filename] && [file readable $filename]} {
+		set f [open $filename r]
+		while {[gets $f line] != -1} {
+			if {[regexp {^ *#} $line]} continue
+			if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
+				set result($key) [string trim $value]
+			}
+		}
+	}
+
+	return [array get result]
 }
 
 # this removes hardcoded newlines from paragraphs so that the paragraphs
@@ -942,17 +996,17 @@ proc createConfigData {} \
 	set configData ""
 
 	switch $wizData(licenseType) {
-		Commercial {
+		commercial {
 			set wizData(logging) "none"
 			set licenseOptions {
 				license licsign1 licsign2 licsign3
 			}
 		}
-		"Single User / Single Host" {
+		singleuser {
 			set wizData(logging) "none"
 			set licenseOptions {single_user single_host}
 		}
-		default {
+		openlogging {
 			set wizData(logging) "logging@openlogging.org"
 			set licenseOptions {}
 		}
@@ -1029,8 +1083,16 @@ proc updateKeyword {} \
 	}
 }
 
-proc popupMessage {message} \
+proc popupMessage {args} \
 {
+	if {[llength $args] == 1} {
+		set option ""
+		set message [lindex $args 0]
+	} else {
+		set option [lindex $args 0]
+		set message [lindex $args 1]
+	}
+
 	# export BK_MSG_GEOM so the popup will show in the right
 	# place...
 	if {[winfo viewable .]} {
@@ -1041,7 +1103,7 @@ proc popupMessage {message} \
 
 	# hopefully someday we'll turn the msgtool code into a library
 	# so we don't have to exec. For now, though, exec works just fine.
-	exec bk msgtool $message
+	eval exec bk msgtool $option \$message
 }
 
 # This not only sets the focus, but attempts to put the cursor in
@@ -1053,6 +1115,107 @@ proc focusEntry {w} \
 		$w icursor end
 		focus $w
 	}
+}
+
+proc checkLicense {} \
+{
+	
+	global wizData dev_null
+
+	set f [open "|bk license -v > $dev_null" w]
+	puts $f "
+	    license: $wizData(license)
+	    licsign1: $wizData(licsign1)
+	    licsign2: $wizData(licsign2)
+	    licsign3: $wizData(licsign3)
+	"
+
+	set ::errorCode NONE
+	catch {close $f}
+		      
+	if {($::errorCode == "NONE") || 
+	    ([lindex $::errorCode 0] == "CHILDSTATUS" &&
+	     [lindex $::errorCode 2] == 0)} {
+		return 1
+	}
+		      
+		      
+	popupMessage -W [getmsg "setuptool_invalid_license"]
+
+	return 0
+}
+
+
+# this proc assumes that the only way it can be called is if the user
+# has seen and accepted a license.
+proc acceptLicense {} \
+{
+	global wizData
+
+	switch -exact -- $wizData(licenseType) {
+		commercial {
+			exec bk license -a bkcl
+		}
+		default {
+			exec bk license -a bkl
+		}
+	}
+}
+
+# recompute wizard path, based on the license type the user selected and
+# whether or not they've accepted the license before
+proc recomputePath {} \
+{
+	global wizData
+	global licenseInfo
+
+	switch -exact -- $wizData(licenseType) {
+		commercial {
+			set path "commercial"
+			if {!$licenseInfo(accepted,bkcl)} {append path "-lic"}
+		}
+
+		singleuser {
+			set path "singleuser"
+			if {!$licenseInfo(accepted,bkl)} {append path "-lic"}
+		}
+
+		openlogging {
+			set path "openlogging"
+			if {!$licenseInfo(accepted,bkl)} {append path "-lic"}
+		}
+	}
+	. configure -path $path
+}
+
+proc getLicenseData {} \
+{
+	global licenseInfo
+
+	# The rule seems to be, if "bk license -s <lic>" returns an
+	# empty string, that license has been accepted. 
+	set licenseInfo(text,bkl)  [exec bk license -s bkl]
+	set licenseInfo(text,bkcl) [exec bk license -s bkcl]
+
+	foreach type {bkl bkcl} {
+		if {[string length $licenseInfo(text,$type)] == 0} {
+			set licenseInfo(accepted,$type) 1
+		} else {
+			set licenseInfo(accepted,$type) 0
+		}
+	}
+}
+
+proc moreInfo {which} {
+
+	switch -exact -- $which {
+		openlogging	{set topic licensing}
+		commercial	{set topic licensing}
+		singleuser	{set topic licensing}
+		repoinfo	{set topic config-etc}
+	}
+
+	exec bk helptool $topic &
 }
 
 main
