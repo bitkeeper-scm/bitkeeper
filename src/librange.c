@@ -718,12 +718,14 @@ rangeProcess(char *me, sccs *s, int expand, int noisy,
 	     int *tp, int rd, char **r, char **d)
 {
 	int	things = *tp;
+	int	used = 0;
 
 	debug((stderr,
 	    "RANGE(%s, %s, %d, %d)\n", me, s->gfile, expand, noisy));
 	rangeReset(s);
 	if (!things && (r[0] = sfileRev())) {
 		things = *tp = tokens(notnull(r[0]));
+		used = 1;
 	}
 	if (things) {
 		if (rangeAdd(s, r[0], d[0])) {
@@ -734,6 +736,10 @@ rangeProcess(char *me, sccs *s, int expand, int noisy,
 			}
 			return 1;
 		}
+	}
+	if (!used && (things == 1) && sfileRev()) {
+		s->rstop = s->rstart;
+		s->rstart = sccs_getrev(s, sfileRev(), 0, 0);
 	}
 	if (things == 2) {
 		if ((r[1] || d[1]) && (rangeAdd(s, r[1], d[1]) == -1)) {

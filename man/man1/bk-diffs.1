@@ -8,6 +8,8 @@ bk diffs \- show differences in revision controlled files
 .Bc ] [
 .OPTreq \-d date
 .Bc ] [
+.OPTreq \-l rev
+.Bc ] [
 .OPTreq \-r r
 .Bc ] [
 .OPTreq \-R r
@@ -40,9 +42,13 @@ compared to the working file or the top of trunk if the file is not
 edited.
 .LP
 You can use this to diff your entire tree, including edits against an
-existing tag in your repository.
+existing changeset revision or tag in your repository.
+The following are equivalent,
+the two forms are shown because it is sometimes useful to diff a subset,
+which may be accomplished by filtering the output of bk rset.
 .DS
-$ bk rset -l<tag> | bk -R diffs -u -
+$ bk rset -l<rev> | bk -R diffs -u -
+$ bk diffs -C<rev> -u
 .DE
 .SH OPTIONS
 .if t .TP
@@ -57,8 +63,10 @@ Ignore  changes  that  just  insert or delete blank lines.
 Do context diffs.
 .tp
 .OPTreq \-C rev
-Show all changes made by changeset containing rev 
+diff the repository against the specified changeset version
 .ARG rev .
+Useful if you want to capture the checked changes as well the
+work in progress (modified files).
 .tp
 .B \-D
 Prefix lines with dates.
@@ -71,6 +79,10 @@ Prefix lines with file names.
 .tp
 .B \-h
 Don't print headers.
+.tp
+.OPTreq \-l rev
+Show all changes made by the changeset containing rev 
+.ARG rev .
 .tp
 .B \-M
 Prefix lines with revision numbers.

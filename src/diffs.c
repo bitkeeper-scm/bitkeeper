@@ -32,8 +32,9 @@ diffs_main(int ac, char **av)
 	char	kind;
 	char	*name;
 	project	*proj = 0;
-	char	*Rev = 0, *cset = 0;
+	char	*Rev = 0, *cset = 0, *boundaries = 0;
 	char	*opts, optbuf[20];
+	char	rset[MAXPATH];
 	RANGE_DECL;
 
 	debug_main(av);
@@ -50,15 +51,16 @@ diffs_main(int ac, char **av)
 	opts = optbuf;
 	*opts++ = '-';
 	*opts = 0;
-	while ((c = getopt(ac, av, "bBcC|d;DfhMnpr|R|suUvw")) != -1) {
+	while ((c = getopt(ac, av, "bBcC|d;Dfhl|Mnpr|R|suUvw")) != -1) {
 		switch (c) {
 		    case 'b': /* fall through */		/* doc 2.0 */
 		    case 'B': *opts++ = c; *opts = 0; break;	/* doc 2.0 */
 		    case 'h': flags &= ~DIFF_HEADER; break;	/* doc 2.0 */
 		    case 'c': kind = DF_CONTEXT; break;		/* doc 2.0 */
-		    case 'C': cset = optarg; break;		/* doc 2.0 */
+		    case 'C': cset = optarg; break;		/* doc */
 		    case 'D': flags |= GET_PREFIXDATE; break;	/* doc 2.0 */
 		    case 'f': flags |= GET_MODNAME; break;	/* doc 2.0 */
+		    case 'l': boundaries = optarg; break;	/* doc 2.0 */
 		    case 'M': flags |= GET_REVNUMS; break;	/* doc 2.0 */
 		    case 'p': kind = DF_PDIFF; break;		/* doc 2.0 */
 		    case 'n': kind = DF_RCS; break;		/* doc 2.0 */
@@ -76,7 +78,7 @@ usage:			system("bk help -s diffs");
 	}
 	if (opts[-1] == '-') opts = 0; else opts = optbuf;
 
-	if ((things && (cset || Rev)) || (cset && Rev)) {
+	if ((things && (boundaries || Rev)) || (boundaries && Rev)) {
 		fprintf(stderr, "%s: -C/-R must be alone\n", av[0]);
 		return (1);
 	}
@@ -87,39 +89,82 @@ usage:			system("bk help -s diffs");
 	 * do the parent against that rev if no gfile.
 	 * If we specified no revs then there must be a gfile.
 	 */
-	if (cset) things = 2;
+	if (boundaries) things = 2;
 	if ((flags & GET_PREFIX) && (things != 2) && !streq("-", av[ac-1])) {
 		fprintf(stderr,
 		    "%s: must have both revisions with -d|u|m|s\n", av[0]);
 		return (1);
 	}
 
-	/* XXX - if we are doing cset | diffs then we don't need the GFILE.
+	if (cset) {
+		char	*cmd = aprintf("bk rset -l%s", cset);
+
+		if (av[optind]) {
+			fprintf(stderr, "%s: No files with -C\n", av[0]);
+			free(cmd);
+			return(1);
+		}
+		if (sccs_cd2root(0, 0) == -1) {
+			fprintf(stderr, "Cannot find repository root.\n");
+			return (1);
+		}
+		gettemp(rset, "rset");
+		cmd = aprintf("bk rset -l%s > %s", cset, rset);
+		system(cmd);
+		free(cmd);
+		freopen(rset, "r", stdin);
+	}
+		
+	/* XXX - if we are doing boundaries | diffs
+	 * then we don't need the GFILE.
 	 * Currently turned off in sfiles.
 	 */
-	if (things || cset || Rev) {
+	if (things || boundaries || Rev) {
 		name = sfileFirst("diffs", &av[optind], 0);
+	} else if (cset) {
+		static	char *nav[] = { "-", 0 };
+
+		name = sfileFirst("diffs", nav, SF_GFILE);
 	} else {
 		name = sfileFirst("diffs", &av[optind], SF_GFILE);
 	}
 	while (name) {
 		int	ex = 0;
 		char	*r1 = 0, *r2 = 0;
+		int	save = things;
 
+		if (cset && streq(name, CHANGESET)) goto next;
 		s = sccs_init(name, INIT_SAVEPROJ|flags, proj);
 		unless (s && HASGRAPH(s)) {
 			errors |= 2;
 			goto next;
 		}
 		unless (proj) proj = s->proj;
-		if (cset) {
-			if (cset_boundries(s, cset)) goto next;
+		if (boundaries) {
+			if (cset_boundries(s, boundaries)) goto next;
 		} else if (Rev) {
 			/* r1 == r2  means diff against the parent(s)(s)  */
 			/* XXX TODO: probably needs to support -R+	  */
 			r1 = r2 = Rev;
 		} else {
+			int	restore = 0;
+
+			/*
+			 * XXX - if there are other commands which want the
+			 * edited file as an arg, we should make this code
+			 * be a function.
+			 */
+			if (r[0] && (things == 1) && streq(r[0], "=")) {
+				restore = 1;
+				if (HAS_GFILE(s) && IS_WRITABLE(s)) {
+					things = 0;
+					r[0] = 0;
+				} else {
+					r[0] = "+";
+				}
+			}
 			RANGE("diffs", s, 0, (flags & SILENT) == 0);
+			if (restore) r[0] = "=";
 		}
 		if (things) {
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;
@@ -180,9 +225,11 @@ usage:			system("bk help -s diffs");
 		}
 next:		if (s) sccs_free(s);
 		name = sfileNext();
+		things = save;
 	}
 	if (proj) proj_free(proj);
 	sfileDone();
+	if (cset) unlink(rset);
 	return (errors);
 }
 
