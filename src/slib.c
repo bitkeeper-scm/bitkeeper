@@ -11,6 +11,7 @@
 #include "sccs.h"
 #include "zgets.h"
 #include "bkd.h"
+#include "logging.h"
 WHATSTR("@(#)%K%");
 
 private delta	*rfind(sccs *s, char *rev);
@@ -73,6 +74,9 @@ private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s, MDBM *m);
 private	int	parseConfig(char *buf, char **k, char **v);
+
+private	delta	*delta_lmarker;	/* old-style log marker */
+private	delta	*delta_cmarker;	/* old-style config marker */
 
 int
 emptyDir(char *dir)
@@ -4220,7 +4224,30 @@ sccs_init(char *name, u32 flags, project *proj)
 	} else {
 		s->cksumok = 1;
 	}
+	delta_lmarker = 0;
+	delta_cmarker = 0;
 	mkgraph(s, flags);
+	/*
+	 * The follow two blocks handler moving logging marker from
+	 * and old ChangeSet file to the seperate maker files.
+	 * This should be removed after 2.1.4b is no longer in use.
+	 */
+	if (CSET(s) && delta_lmarker && !exists(LMARK)) {
+		FILE	*f = fopen(LMARK, "wb");
+		if (f) {
+			sccs_pdelta(s, delta_lmarker, f);
+			fputc('\n', f);
+			fclose(f);
+		}
+	}		
+	if (CSET(s) && delta_cmarker && !exists(CMARK)) {
+		FILE	*f = fopen(CMARK, "wb");
+		if (f) {
+			sccs_pdelta(s, delta_cmarker, f);
+			fputc('\n', f);
+			fclose(f);
+		}
+	}		
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (HASGRAPH(s)) {
 		if (misc(s)) {
@@ -7571,10 +7598,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 		EACH(d->comments) {
 			/* metadata */
-			p = buf;
-			if (d->comments[i][0] != '\001') {
-				p = fmts(p, "\001c ");
-			}
+			p = fmts(buf, "\001c ");
 			if (strlen(d->comments[i]) >= 1020) {
 				fprintf(stderr,
 				   "%s@@%s: Truncating comment to 1020 chars\n",
@@ -8062,7 +8086,8 @@ hasComments(delta *d)
 	int	i;
 
 	EACH(d->comments) {
-		if (d->comments[i][0] != '\001') return (1);
+		assert(d->comments[i][0] != '\001');
+		return (1);
 	}
 	return (0);
 }
@@ -9827,9 +9852,13 @@ modeArg(delta *d, char *arg)
 private delta *
 sumArg(delta *d, char *arg)
 {
+	char	*p;
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
+	for (p = arg; isdigit(*p); p++);
+	if (*p == ' ' && !delta_lmarker) delta_lmarker = d;
+	if (*p == '\t' && !delta_cmarker) delta_cmarker = d;
 	return (d);
 }
 
@@ -10653,7 +10682,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
 	if (old_enc & E_GZIP) zgets_done();
-	unlink(sc->sfile);		/* Careful. */
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
 		fprintf(stderr,
@@ -10771,7 +10799,6 @@ out:
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s), fclose(sfile), sfile = NULL;
 	if (s->encoding & E_GZIP) zgets_done();
-	unlink(s->sfile);		/* Careful. */
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -11676,7 +11703,6 @@ abort:		fclose(sfile);
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
-	unlink(s->sfile);		/* Careful. */
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -12103,7 +12129,6 @@ out:
 			OUT;
 		}
 	}
-	unlink(s->sfile);					/* Careful. */
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
@@ -12998,7 +13023,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* XXX TODO: we may need to the walk the comment graph	*/
 		/* to get the latest comment				*/
 		EACH(d->comments) {
-			if (d->comments[i][0] == '\001') continue;
 			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(d->comments[i]);
@@ -13017,7 +13041,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			fs("&nbsp;");
 		} else {
 			EACH(d->comments) {
-				if (d->comments[i][0] == '\001') continue;
 				if (i > 1) fs("<br>");
 				if (d->comments[i][0] == '\t') {
 					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
@@ -13282,7 +13305,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		/* XXX TODO: we may need to the walk the comment graph	*/
 		/* to get the latest comment				*/
 		EACH(d->comments) {
-			if (d->comments[i][0] == '\001') continue;
 			fs("C ");
 			fs(d->comments[i]);
 			fc('\n');
@@ -14906,6 +14928,9 @@ sccs_utctime(delta *d)
 	return (sdate);
 }
 
+/*
+ * XXX why does this get an 'sccs *' ??
+ */
 void
 sccs_pdelta(sccs *s, delta *d, FILE *out)
 {
@@ -14921,7 +14946,9 @@ sccs_pdelta(sccs *s, delta *d, FILE *out)
 }
 
 /* Get the checksum of the 5 digit checksum */
-
+/*
+ * XXX why does this get an 'sccs *' ??
+ */
 int
 sccs_sdelta(sccs *s, delta *d, char *buf)
 {
@@ -15388,7 +15415,6 @@ stripDeltas(sccs *s, FILE *out)
 	fprintf(out, "\001%c%05u\n", BITKEEPER(s) ? 'H' : 'h', s->cksum);
 	sccs_close(s);
 	fclose(out);
-	unlink(s->sfile);		/* Careful. */
 	buf = sccsXfile(s, 'x');
 	if (rename(buf, s->sfile)) {
 		fprintf(stderr,

@@ -26,13 +26,13 @@ bk setup -f -cc project
 cd project
 echo foo > f
 BK_USER=adam bk delta $Q -i -y'Initial checkin' f
-BK_USER=adam bk commit $Q -y'Initial checkin'
+BK_USER=adam bk commit $Q -y'Initial checkin' || exit 1
 bk edit $Q f
 BK_USER=second bk delta $Q -y'Second checkin' f
-BK_USER=second bk commit $Q -Ssecond -y'Second checkin'
+BK_USER=second bk commit $Q -Ssecond -y'Second checkin' || exit 1
 bk edit $Q f
 BK_USER=third bk delta $Q -y'Third checkin' f
-BK_USER=third bk commit $Q -Sthird -y'Third checkin'
+BK_USER=third bk commit $Q -Sthird -y'Third checkin' || exit 1
 echo OK
 
 echo $N Check that -/search/ works ..................................$NL

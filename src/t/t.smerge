@@ -398,3 +398,18 @@ bk smerge gca 1.1.2.1 2> err && exit 1
 bk smerge gca 1.1.2.1 1.1.b 2> err
 grep -q 'ERROR: Unable to parse version' err || exit 1
 echo OK
+echo $N "Check files that don't end with a newline ...................$NL"
+echo $NX line without NL $NXL > bar
+bk new $Q bar || exit 1
+bk edit $Q bar || exit 1
+echo a > bar
+echo $NX line without NL $NXL >> bar
+bk delta $Q -yremote bar || exit 1
+bk edit $Q -r1.1 bar || exit 1
+echo b > bar
+echo $NX line without NL $NXL >> bar
+cp bar bar.want
+bk delta $Q -ylocal bar || exit 1
+bk smerge bar 1.1 1.1.1.1 > bar.out
+cmp -s bar.out bar.want || { echo Failed to get correct merge; exit 1; }
+echo OK

@@ -196,7 +196,7 @@ wait_eof(remote *r, int verbose)
 		return;
 	}
 	fprintf(stderr,
-		"wait_eof: Got %d unexpectied byte(s) from remote\n", i);
+		"wait_eof: Got %d unexpected byte(s) from remote\n", i);
 	buf[i] = 0;
 	fprintf(stderr, "buf=\"%s\"\n", buf);
 }
@@ -664,14 +664,21 @@ sendServerInfoBlock(int is_rclone)
 } 
 
 void
-http_hdr()
+http_hdr(int full)
 {
 	static	int done = 0;
 	
 	if (done) return; /* do not send it twice */
-	out("Cache-Control: no-cache\n");	/* for http 1.1 */
-	out("Pragma: no-cache\n");		/* for http 1.0 */
-	out("Content-type: text/plain\n\n"); 
+	if (full) {
+		out("HTTP/1.0 200 OK\r\n");
+		out("Server: BitKeeper daemon ");
+		out(bk_vers);
+		out("\r\n");
+	}
+	out("Cache-Control: no-cache\r\n");	/* for http 1.1 */
+	out("Pragma: no-cache\r\n");		/* for http 1.0 */
+	out("Content-type: text/plain\r\n");
+	out("\r\n");				/* end of header */
 	done = 1;
 }
 

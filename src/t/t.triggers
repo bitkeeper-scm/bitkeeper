@@ -146,14 +146,142 @@ grep -q BK_CSETS=1.0..1.1 $HERE/post-outgoing || {
 }
 echo OK
 test -z "$DUMP_VARS" || {
-	echo ========== pre-outgoing ==========
+	echo ========== pre-outgoing clone ==========
 	cat $HERE/pre-outgoing
-	echo ========== post-outgoing ==========
+	echo ========== post-outgoing clone ==========
 	cat $HERE/post-outgoing
 }
 
+echo $N Make sure clone -l is passed the right variables ............$NL
+cd $HERE/project
+cat > BitKeeper/triggers/pre-outgoing <<EOF
+#!/bin/sh
+set | grep $DASHA BK | grep -v BK_LCLONE | sort > $HERE/pre-outgoing-l
+exit 1
+EOF
+cat > BitKeeper/triggers/post-outgoing <<EOF
+#!/bin/sh
+set | grep $DASHA BK | grep -v BK_LCLONE | sort > $HERE/post-outgoing-l
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE
+bk clone -l $Q project lclone && {
+	echo failed to exit with an error status
+	exit 1
+}
+test -d lclone && {
+	echo should not have created repository
+	exit 1
+}
+bk clone $Q -l -r1.1 project lclone 
+grep -q BK_CSETS=1.0..1.1 $HERE/pre-outgoing || {
+	echo failed to put cset list in the env
+	exit 1
+}
+rm project/BitKeeper/triggers/pre-outgoing
+bk clone $Q -l -r1.1 project lclone || {
+	echo should have succeeded and did not
+	exit 1
+}
+test -d lclone || {
+	echo should have created repository
+	exit 1
+}
+grep -q BK_CSETS=1.0..1.1 $HERE/post-outgoing || {
+	echo failed to put cset list in the env
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-outgoing clone -l ==========
+	cat $HERE/pre-outgoing-l
+	echo ========== post-outgoing clone -l ==========
+	cat $HERE/post-outgoing-l
+}
+
+echo $N Make sure clone and clone -l have same pre-outgoing .........$NL
+cmp -s $HERE/pre-outgoing $HERE/pre-outgoing-l || {
+	echo failed
+	diff $HERE/pre-outgoing $HERE/pre-outgoing-l
+	exit 1
+}
+echo OK
+
+echo $N Make sure clone and clone -l have same post-outgoing ........$NL
+cmp -s $HERE/post-outgoing $HERE/post-outgoing-l || {
+	echo failed
+	diff $HERE/post-outgoing $HERE/post-outgoing-l
+	exit 1
+}
+echo OK
+
+# Make a post-incoming trigger be checked in, see if clone runs it.
+echo $N Test post-incoming in a clone ...............................$NL
+cd $HERE
+cp -rp project parent
+cd parent
+rm -f BitKeeper/triggers/*
+cat > BitKeeper/triggers/post-incoming <<EOF
+#!/bin/sh
+set | grep $DASHA BK |
+    grep -v BK_IGNORELOCK |
+    grep -v BKD_LEVEL |
+    sort > $HERE/post-incoming-clone
+exit 0
+EOF
+chmod +x BitKeeper/triggers/post-incoming
+bk new $Q BitKeeper/triggers/post-incoming
+bk commit $Q -ypost-incoming
+cd $HERE
+bk clone $Q parent clone2
+test -f $HERE/post-incoming-clone || {
+	echo failed to run post-incoming trigger
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== post-incoming clone ==========
+	cat $HERE/post-incoming-clone
+}
+
+# Make a post-incoming trigger be checked in, see if clone -l runs it.
+echo $N Test post-incoming in a clone -l ............................$NL
+cd $HERE/parent
+bk edit $Q BitKeeper/triggers
+cat > BitKeeper/triggers/post-incoming <<EOF
+#!/bin/sh
+set | grep $DASHA BK |
+    grep -v BK_LCLONE | grep -v _BK_ | sort > $HERE/post-incoming-clone-l
+exit 0
+EOF
+chmod +x BitKeeper/triggers/post-incoming
+bk delta -y-l $Q BitKeeper/triggers/post-incoming
+bk commit $Q -ypost-incoming-l
+cd $HERE
+rm -rf clone2
+bk clone -l $Q parent clone2
+test -f $HERE/post-incoming-clone-l || {
+	echo failed to run post-incoming trigger
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== post-incoming clone -l ==========
+	cat $HERE/post-incoming-clone-l
+}
+
+echo $N Make sure clone and clone -l have same post-incoming ........$NL
+cmp -s $HERE/post-incoming-clone $HERE/post-incoming-clone-l || {
+	echo failed
+	diff $HERE/post-incoming-clone $HERE/post-incoming-clone-l
+	exit 1
+}
+echo OK
+cd $HERE
+rm -rf parent clone2
+
 echo $N Make sure pull is passed the right variables ................$NL
-cd project
+cd $HERE/project
 cat > BitKeeper/triggers/pre-outgoing <<EOF
 #!/bin/sh
 set | grep $DASHA BK | sort > $HERE/pre-outgoing

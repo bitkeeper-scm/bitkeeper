@@ -1,4 +1,5 @@
 #include "bkd.h"
+#include "logging.h"
 
 typedef	struct {
 	u32	debug:1;		/* -d debug mode */
@@ -287,18 +288,32 @@ send_sfio_msg(opts opts, remote *r, char **envVar)
 private u32
 gensfio(opts opts, int verbose, int level, int wfd)
 {
-	char	*makesfio[10] = {"bk", "-r", "sfio", "-o", 0, 0};
-	int	rfd, status;
-	pid_t	pid;
+	int	status;
+	char	*tmpf;
+	FILE	*fh;
+	char	*sfiocmd;
+	char	*cmd;
 
-	unless (verbose) makesfio[4] = "-q";
+	tmpf = bktmpfile();
+	fh = fopen(tmpf, "w");
+	if (exists(LMARK)) fprintf(fh, LMARK "\n");
+	if (exists(CMARK)) fprintf(fh, CMARK "\n");
+	fclose(fh);
+	cmd = aprintf("bk sfiles >> %s", tmpf);
+	status = system(cmd);
+	free(cmd);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
+	
+	sfiocmd = aprintf("bk sfio -o%s < %s", 
+	    (verbose ? "" : "q"), tmpf);
+	signal(SIGCHLD, SIG_DFL);
+	fh = popen(sfiocmd, "r");
+	free(sfiocmd);
 	opts.in = opts.out = 0;
-	/*
-	 * What we want is: bk -r sfio -o  => gzip => remote
-	 */
-	pid = spawnvp_rPipe(makesfio, &rfd, 0);
-	gzipAll2fd(rfd, wfd, level, &(opts.in), &(opts.out), 1, 0);
-	close(rfd);
-	waitpid(pid, &status, 0);
+	gzipAll2fd(fileno(fh), wfd, level, &opts.in, &opts.out, 1, 0);
+	status = pclose(fh);
+	unlink(tmpf);
+	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (0);
 	return (opts.out);
+
 }

@@ -357,7 +357,7 @@ import_patch() {
 	# Do the deletes automatically
 	if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
 	then	msg Removing `wc -l < ${TMP}deletes$$` files
-		bk rm - < ${TMP}deletes$$
+		bk rm -f - < ${TMP}deletes$$
 	fi
 	# Do the creates automatically
 	if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]

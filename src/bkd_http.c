@@ -36,6 +36,7 @@ private char	*units(char *t);
 private char	*findRoot(char *name);
 private int	has_temp_license();
 private int	include(char *path, char *file);
+private void	expand(char *s);
 
 private	char	root[MAXPATH];
 private int	embedded = 0;
@@ -1568,7 +1569,7 @@ http_time()
 		if (save_tm.tm_min == t->tm_min) return (buf);
 	}
 	save_tm = *t;
-	strftime(buf, sizeof(buf), "%a, %d %b %y %H:%M:%S %Z", t);
+	strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S %Z", t);
 	return(buf);
 }
 
@@ -1586,7 +1587,7 @@ http_expires()
 	time(&expires);
 	expires += 60;
 	t = gmtime(&expires);
-	strftime(buf, sizeof(buf), "%a, %d %b %y %H:%M:%S %Z", t);
+	strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S %Z", t);
 	return(buf);
 }
 
@@ -1791,6 +1792,8 @@ parseurl(char *url)
 
 	thisPage[0] = arguments[0] = navbar[0] = user[0] = 0;
 	prefix[0] = suffix[0] = 0;
+	
+	expand(url);
 
 	while (s = strrchr(url, '?')) {
 		if (strneq(s, "?nav=", 5)) {
@@ -1949,21 +1952,21 @@ http_tags(char *page)
 private void
 expand(char *s)
 {
-	char	*buf = malloc(strlen(s) + 1);
-	char	*t = buf;
+	char	*t = s;
 
+	unless (strchr(s, '%')) return;
 	while (*s) {
 		unless (*s == '%') {
 			*t++ = *s++;
-			continue;
+		} else {
+			int	save = s[3];
+			s[3] = 0;
+			*t++ = strtoul(&s[1], 0, 16);
+			s += 3;
+			*s = save;
 		}
-		s++;
-		*t++ = strtoul(s, 0, 16);
-		while (isdigit(*s)) s++;
 	}
 	*t = 0;
-	strcpy(expr, buf);
-	free(buf);
 }
 
 private void

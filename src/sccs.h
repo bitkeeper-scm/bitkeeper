@@ -305,18 +305,17 @@
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
-#define	OPENLOG_HOME	"bitmover.com"
-#define	OPENLOG_URL	"http://www.openlogging.org:80////LOG_ROOT///"
-#define	OPENLOG_BACKUP	"http://backup1.openlogging.org:80////LOG_ROOT///"
-#define	OPENLOG_HOST	"www.openlogging.org"
-#define	OPENLOG_HOST1   "backup1.openlogging.org"
-#define	BK_WEBMAIL_URL	"http://www.bitkeeper.com:80"
-#define	BK_HOSTME_SERVER "hostme.bitkeeper.com"
+#define	OPENLOG_URL	"http://config.openlogging.org:80////LOG_ROOT///"
+#define	OPENLOG_BACKUP	"http://config2.openlogging.org:80////LOG_ROOT///"
+#define	OPENLOG_HOST	"config.openlogging.org"
+#define	OPENLOG_HOST1   "config2.openlogging.org"
+#define	BK_WEBMAIL_URL	"http://webmail.bitkeeper.com:80"
+#define	BK_HOSTME_SERVER "hostme.bkbits.net"
 #define	WEB_BKD_CGI	"web_bkd"
 #define	HOSTME_CGI	"hostme_cgi"
 #define	WEB_MAIL_CGI	"web_mail"
-#define	BK_CONFIG_URL	"http://www.bitkeeper.com:80"
-#define	BK_CONFIG_BCKUP	"http://backup1.bitkeeper.com:80"
+#define	BK_CONFIG_URL	"http://config.bitkeeper.com:80"
+#define	BK_CONFIG_BCKUP	"http://config2.bitkeeper.com:80"
 #define	BK_CONFIG_CGI	"bk_config"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKTMP		"BitKeeper/tmp"
@@ -333,8 +332,6 @@
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
-#define	LMARK		"BitKeeper/etc/SCCS/x.lmark"
-#define	CMARK		"BitKeeper/etc/SCCS/x.cmark"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	BKSKIP		".bk_skip"
 #define	TMP_MODE	0666
@@ -346,13 +343,7 @@
 #define BK_FREE		0
 #define BK_BASIC	1
 #define BK_PRO		2
-
-#define	BK_CONFIG_THRESHOLD 100	 /* single user tree config log threshold */
-#define	BK_SINGLE_THRESHOLD 1000 /* single user tree close logging threshold */
-
-#define BKOPT_WEB	0x0001	/* Enable bk web */
-#define BKOPT_MONTHLY	0x0002	/* This is a monthly license */ 
-#define BKOPT_ALL	0xffff
+int	bk_mode(void);
 
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
 #define	isData(buf)	((buf[0] != '\001') || \
@@ -744,6 +735,7 @@ typedef struct {
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */
+	char 	*cred;		/* user:passwd for proxy authentication */
 	int	contentlen;	/* len from http header (recieve only) */
 	pid_t	pid;		/* if pipe, pid of the child */
 } remote;
@@ -823,6 +815,7 @@ int	sccs_newchksum(sccs *s);
 void	sccs_perfile(sccs *, FILE *);
 sccs	*sccs_getperfile(MMAP *, int *);
 char	*sccs_gethost(void);
+char	*sccs_realhost(void);
 int	sccs_getComments(char *, char *, delta *);
 int	sccs_getHostName(delta *);
 int	sccs_getUserName(delta *);
@@ -897,7 +890,8 @@ int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
-int	sccs_lockfile(char *lockfile, int tries);	/* works in NFS */
+int	sccs_lockfile(const char *lockfile, int wait, int rm, int quiet);
+int	sccs_stalefile(const char *lockfile, int discard);
 int	sccs_unlock(sccs *, char);
 char	*sccs_utctime(delta *d);
 int	sccs_setlod(char *rev, u32 flags);
@@ -940,7 +934,7 @@ int	fileCopy(char *from, char *to);
 off_t	size(char *s);
 int	sameFiles(char *file1, char *file2);
 int	gone(char *key, MDBM *db);
-int	sccs_mv(char *, char *, int, int, int);
+int	sccs_mv(char *, char *, int, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName, int isDir, int withsccs,
 	    int mustHaveRmarker, int wantRealName, project *proj, char *root);
@@ -961,17 +955,11 @@ int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
 void	cd2root();
 pid_t	mail(char *to, char *subject, char *file);
-void	logChangeSet(int, char *rev, int quiet);
-char	*getlog(char *u, int q);
-int	setlog(char *u);
 int	connect_srv(char *srv, int port, int trace);
-int	checkLog(int quiet, int resync);
 int	get(char *path, int flags, char *output);
 int	gethelp(char *helptxt, char *help_name, char *bkarg, char *prefix, FILE *f);
-int	is_open_logging(char *logaddr);
 void	status(int verbose, FILE *out);
 void	notify();
-char	*logAddr();
 char	*package_name();
 int	bkusers(int countOnly, int raw, char *prefix, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
@@ -983,7 +971,6 @@ search	searchParse(char *str);
 char	*prog2path(char *prog);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
-void	sendConfig();
 void	send_request(int fd, char * request, int len);
 int	writen(int to, char *buf, int size);
 char	chop(register char *s);
@@ -1021,17 +1008,12 @@ int	outc(char c);
 MDBM	*loadConfig(char *root);
 int	ascii(char *file);
 char	*sccs_rmName(sccs *s, int useCommonDir);
-int	sccs_rm(char *name, char *del_name, int useCommonDir);
+int	sccs_rm(char *name, char *del_name, int useCommonDir, int force);
 void	sccs_rmEmptyDirs(char *path);
-int	config2logging(char *root);
-int	logging(char *user, MDBM *configDB, MDBM *okDB);
 void	do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out);
 char 	**get_http_proxy();
 int	confirm(char *msg);
 int	setlod_main(int ac, char **av);
-MDBM *	loadOK();
-void	config(FILE *f);
-int	ok_commit(int l, int alreadyAsked);
 int	cset_setup(int flags, int ask);
 off_t	fsize(int fd);
 char	*separator(char *);
@@ -1040,10 +1022,7 @@ int	cmdlog_start(char **av, int want_http_hdr);
 int	cmdlog_end(int ret, int flags);
 off_t	get_byte_count();
 void	save_byte_count(unsigned int byte_count);
-int	bk_mode();
 int	cat(char *file);
-char	*bk_model(char *buf, int len);
-char	*bk_license();
 char	*getHomeDir();
 char	*age(time_t secs, char *space);
 void	sortLines(char **);
@@ -1063,7 +1042,6 @@ int     http_send(remote *, char *, size_t, size_t, char *, char *);
 char *	user_preference(char *what);
 int	bktemp(char *buf);
 char	*bktmpfile();	/* return a char* to a just created temp file */
-void	updLogMarker(int ptype, int verbose, FILE *vf);
 char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
@@ -1078,7 +1056,6 @@ char	*savefile(char *dir, char *prefix, char *pathname);
 void	has_proj(char *who);
 int	mv(char*, char *);
 char	*rootkey(char *buf);
-int	isEvalLicense();
 char	*globalroot();
 void	sccs_touch(sccs *s);
 int	setlevel(int);
@@ -1087,7 +1064,6 @@ void	rmEmptyDirs(int quiet);
 int	after(int quiet, char *rev);
 int	consistency(int quiet);
 int	lod(int quiet, char *rev);
-int	logs_pending(int ptype, int skipRecentCset, int grace); 
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
 char	*getCSetFile(project *p);
 int	spawn_cmd(int flag, char **av);
@@ -1110,12 +1086,11 @@ void	do_cmds();
 void	core();
 void	ids();
 void	requestWebLicense();
-void	http_hdr();
+void	http_hdr(int full);
 pid_t	bkd_tcp_connect(remote *r);
 int	check_rsh(char *remsh);
 int	smartMkdir(char *pathname, mode_t mode);
 void	sccs_color(sccs *s, delta *d);
-int	bk_options(void);
 int	out(char *buf);
 int	getlevel(void);
 int	isSymlnk(char *s);

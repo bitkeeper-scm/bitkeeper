@@ -92,6 +92,13 @@ bk commit $Q -ynew
 bk push $Q $HERE/copy || { echo failed; exit 1; }
 echo OK
 
+echo $N check cnt-A on delta command line ...........................$NL
+bk edit $Q foo || exit 1
+A=`cat foo`
+bk delta $Q -y"$A odd comment" foo || exit 1
+bk get $Q foo || exit 1
+bk -r check -acf || exit 1
+echo OK
 
 # XX TODO need to get diff to produce 'i' command, and check
 # the processing of this case.

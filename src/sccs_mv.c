@@ -75,7 +75,8 @@ sccs_rmEmptyDirs(char *path)
 }
 
 int
-sccs_mv(char *name, char *dest, int isDir, int isDelete, int isUnDelete)
+sccs_mv(char *name,
+	char *dest, int isDir, int isDelete, int isUnDelete, int force)
 {
 	char 	*p, *q, *t, *destfile, *oldpath, *newpath;
 	char	*gfile, *sfile;
@@ -88,7 +89,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete, int isUnDelete)
 	MMAP	*nulldiff;
 	time_t	gtime;
 
-//fprintf(stderr, "sccs_mv(%s, %s, %d, %d)\n", name, dest, isDir, isDelete);
+//ttyprintf("sccs_mv(%s, %s, %d, %d, %d)\n", name, dest, isDir, isDelete,force);
 	unless (s = sccs_init(name, INIT_NOCKSUM|INIT_FIXSTIME, 0)) return (1);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
@@ -100,6 +101,12 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete, int isUnDelete)
 		fprintf(stderr,
 		    "sccsmv: %s is writable but not edited\n",
 		    s->gfile);
+		return (1);
+	}
+	if (CSET(s) ||
+	    (strneq("BitKeeper/", s->tree->pathname, 10) && !force)) {
+		fprintf(stderr, "Will not move BitKeeper file %s\n", name);
+		sccs_free(s);
 		return (1);
 	}
 
@@ -299,7 +306,7 @@ again:
 	fprintf(f, "#$sum$ %u\n", id_sum);
 	fclose(f);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
-	if (sccs_lockfile(path, 16)) {
+	if (sccs_lockfile(path, 16, 1, 0)) {
 		fprintf(stderr, "Not updating idcache due to locking.\n");
 		fprintf(stderr, "Run \"bk idcache\" to rebuild it.\n");
 		return (1);

@@ -1,4 +1,5 @@
 .so bk-macros
+.\" help://lclone
 .TH "bk clone" 1 20%E% "\*(BC" "\*(UM"
 .\"    ====================== BitKeeper clone ======================
 .SH NAME
@@ -73,14 +74,12 @@ Do compression at level
 if possible; default is \-z6.
 Compression is possible when using ssh or the \*(BK daemon,
 but not with rsh.
-.SH BUGS
-bk clone -l does not fire outgoing triggers since it bypasses the normal
-data paths.
 .SH "SEE ALSO"
 .SA bkd 1
 .SA parent 1
 .SA pull 1
 .SA push 1
+.SA relink 1
 .SA triggers 1
 .SA url 1
 .SH CATEGORY

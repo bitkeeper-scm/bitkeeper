@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include "logging.h"
 
 extern char *editor, *pager, *bin;
 private int	mkconfig(FILE *out, MDBM *flist);

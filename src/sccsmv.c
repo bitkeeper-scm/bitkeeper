@@ -30,6 +30,7 @@ mv_main(int ac, char **av)
 	int	isUnDelete = 0;
 	int	errors = 0;
 	int	dofree = 0;
+	int	force = 0;
 	int	i;
 	int	c;
 
@@ -43,8 +44,9 @@ mv_main(int ac, char **av)
 		return (0);
 	}
 
-	while ((c = getopt(ac, av, "u")) != -1) {
+	while ((c = getopt(ac, av, "fu")) != -1) {
 		switch (c) {
+		    case 'f':	force = 1; break;
 		    case 'u':	isUnDelete = 1; break;
 		    default:	system("bk help -s mv");
 				return (1);
@@ -85,7 +87,7 @@ mv_main(int ac, char **av)
 	for (name =
 	    sfileFirst("sccsmv", &av[optind], sflags);
 						name; name = sfileNext()) {
-again:		errors |= sccs_mv(name, dest, isDir, 0, isUnDelete);
+again:		errors |= sccs_mv(name, dest, isDir, 0, isUnDelete, force);
 		if (name2) {
 			name = name2;
 			name2 = 0;

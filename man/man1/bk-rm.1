@@ -3,7 +3,7 @@
 .SH NAME 
 bk rm \- remove \*(BK file[s]
 .SH SYNOPSIS
-.B bk rm
+.B bk rm [\-f]
 .ARG file1
 .FILES
 .SH DESCRIPTION
@@ -29,11 +29,16 @@ To resurrect the file, use bk unrm.
 .DS
 bk unrm foo.c
 .DE
-.SH NOTE
+.SH NOTES
 .B bk rm
 will not remove directories, use
 .B bk rmdir
 for that.
+.LP
+.B bk rm
+will refuse to remove BitKeeper metafiles without the 
+.B \-f
+option (use of which is not recommended).
 .SH SEE ALSO
 .SA gone 1
 .SA rmdir 1

@@ -461,7 +461,7 @@ c:	lftw(".", caches);
 			unlink(id_tmp);
 			goto out;
 		}
-		if (sccs_lockfile(IDCACHE_LOCK, 16)) {
+		if (sccs_lockfile(IDCACHE_LOCK, 16, 1, 0)) {
 			fprintf(stderr, "Not updating cache due to locking.\n");
 			unlink(id_tmp);
 		} else {

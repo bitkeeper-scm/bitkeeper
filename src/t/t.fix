@@ -95,6 +95,9 @@ cmp -s WANT REVS || {
 }
 echo OK
 
+# We'll need this later
+bk clone $Q $HERE/project $HERE/save
+
 echo $N Make sure ChangeSet is not left edited by fix -c ............$NL
 bk fix $Q -c
 test -f SCCS/p.ChangeSet && {
@@ -156,3 +159,28 @@ test -x FILE || {
 }
 echo OK
 fi #------------------------------------------------------------------
+
+echo $N Make sure we may not fix a merge changeset ..................$NL
+cd $HERE
+bk clone $Q -l save clone
+cd save
+touch BitKeeper/etc/SCCS/x.marked
+bk edit $Q FILE
+bk delta -ysave $Q FILE
+bk commit -ysave $Q
+cd ../clone
+touch BitKeeper/etc/SCCS/x.marked
+bk edit $Q FILE
+bk delta -yclone $Q FILE
+bk commit -yclone $Q
+bk pull $Q
+bk fix -c 2>OUT && {
+	echo fix failed to exit with an error
+	exit 1
+}
+grep -q 'fix merge changesets' OUT || {
+	echo bad error message
+	cat OUT
+	exit 1
+}
+echo OK

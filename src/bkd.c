@@ -209,7 +209,7 @@ do_cmds()
 				bk_proj = proj_init(0);
 			}
 
-			if (Opts.http_hdr_out) http_hdr();
+			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
 			flags = cmdlog_start(av, httpMode);
 
 			/*
@@ -386,7 +386,7 @@ getav(int *acp, char ***avp, int *httpMode)
 			if ((ac >= 1) && streq("POST", av[0])) {
 				skip_http_hdr(&r);
 				len = r.contentlen;
-				http_hdr();
+				http_hdr(Opts.daemon);
 				*httpMode = 1;
 				ac = i = 0;
 				inspace = 1;

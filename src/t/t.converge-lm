@@ -244,9 +244,14 @@ test -d RESYNC && {
 	echo failed to use existing logging_ok, left RESYNC
 	exit 1
 }
+test -f BitKeeper/etc/SCCS/s.logging_ok || {
+	echo failed to restore logging_ok
+	exit 1
+}
 KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/etc/logging_ok`
 if [ "$KEY" != AAA ]
-then	echo failed to use older key
+then	echo failed to use older key, got $KEY
+	bk -R prs -r1.0.. -nd:USER: BitKeeper/etc/logging_ok
 	exit 1
 fi
 LINES=`bk get -kpq BitKeeper/etc/logging_ok | wc -l`
@@ -448,7 +453,7 @@ if [ $CNT != 1 ]
 then	echo wrong number of logging OK files in COPY
 	exit 1
 fi
-bk rm BitKeeper/etc/logging_ok
+bk rm -f BitKeeper/etc/logging_ok
 echo y | bk commit $Q -yrm-logging_ok > /dev/null 2>&1
 NEW=`bk -R prs -hr1.0 '-d:KEY:\n' BitKeeper/etc/logging_ok`
 if [ "$NEW" = "$OLD" ]

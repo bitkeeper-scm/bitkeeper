@@ -1,23 +1,46 @@
 #include "../system.h"
 #include "../sccs.h"
 
-/* XXX - takes 100 usecs in a hot cache */
+private void	gethost(char *host, int hlen, int envOK);
+
 char	*
 sccs_gethost(void)
 {
 	static	char host[257];
 	static	int done = 0;
+
+	unless (done) {
+		gethost(host, 256, 1);
+		done = 1;
+	}
+	return (host[0] ? host : UNKNOWN_HOST);
+}
+
+char	*
+sccs_realhost(void)
+{
+	static	char host[257];
+	static	int done = 0;
+
+	unless (done) {
+		gethost(host, 256, 0);
+		done = 1;
+	}
+	return (host[0] ? host : "127.0.0.1");
+}
+
+private void
+gethost(char *host, int hlen, int envOK)
+{
 	struct	hostent *hp;
 	char 	*h, *p, *q, buf[MAXLINE], domain[MAXPATH];
 	FILE	*f;
 
-	if (done) return (host[0] ? host : UNKNOWN_HOST);
-
-	if ((h = getenv("BK_HOST")) && !getenv("BK_EVENT")) {
+	host[0] = 0;
+	if (envOK && (h = getenv("BK_HOST")) && !getenv("BK_EVENT")) {
 		assert(strlen(h) <= 256);
 		strcpy(host, h);
-		done = 1;
-		return (host);
+		return;
 	}
 	/*
 	 * Some system (e.g. win32)
@@ -25,7 +48,7 @@ sccs_gethost(void)
 	 * before we call gethostbyname()
 	 */
 	loadNetLib();
-	if (gethostname(host, sizeof(host)) == -1) goto out;
+	if (gethostname(host, hlen) == -1) goto out;
 
 	/*
 	 * XXX FIXME: We should have a short timeout here
@@ -67,7 +90,7 @@ sccs_gethost(void)
 out:
 #ifdef WIN32
 	unless (host[0]) {
-		int len = sizeof(host);
+		int len = hlen;
 		GetComputerName(host, &len);
 	}
 #else
@@ -144,9 +167,9 @@ out:
 	/* Fold case. */
 	for (h = host; *h; h++) *h = tolower(*h);
 	/* localhost isn't what we want.  */
-	if (streq(host, "localhost") || streq(host, "localhost.localdomain")) {
+	if (isLocalHost(host)) {
 		host[0] = 0;
-		return (0);
+		return;
 	}
 
 	if (host[0]) {
@@ -155,9 +178,6 @@ out:
 			    "bad host name: host name must not contain LF or "
 			    "CR  character\n");
 			host[0] = 0; /* erase bad host name */
-		} else {
-		 	done = 1;
 		}
 	}
-	return (host);
 }

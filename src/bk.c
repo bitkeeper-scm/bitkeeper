@@ -109,8 +109,6 @@ int	mv_main(int, char **);
 int	mydiff_main(int, char **);
 int	names_main(int, char **);
 int	newroot_main(int, char **);
-int	opull_main(int, char **);
-int	opush_main(int, char **);
 int	parent_main(int, char **);
 int	park_main(int, char **);
 int	pending_main(int, char **);
@@ -129,6 +127,7 @@ int	rcs2sccs_main(int, char **);
 int	rcsparse_main(int, char **);
 int	receive_main(int, char **);
 int	renumber_main(int, char **);
+int	relink_main(int, char **);
 int	repo_main(int, char **);
 int	resolve_main(int, char **);
 int	rm_main(int, char **);
@@ -282,8 +281,6 @@ struct	command cmdtbl[] = {
 	{"names", names_main},			/* doc 2.0 */
 	{"newroot", newroot_main},		/* doc 2.0 */
 	{"new", delta_main},	/* aliases */	/* doc 2.0 */
-	{"opull", opull_main},	/* old pull */ 	/* undoc 2.0 */
-	{"opush", opush_main},	/* old push */ 	/* undoc 2.0 */
 	{"parent", parent_main},		/* doc 2.0 */
 	{"park", park_main},			/* doc 2.0 */
 	{"pending", pending_main},		/* doc 2.0 */
@@ -298,6 +295,7 @@ struct	command cmdtbl[] = {
 	{"rcsparse", rcsparse_main},		/* doc 2.0 */
 	{"receive", receive_main},		/* doc 2.0 */
 	{"rechksum", checksum_main},		/* obsolete - alias */
+	{"relink", relink_main},
 	{"renumber", renumber_main},		/* doc 2.0 */
 	{"repo", repo_main},	/* obsolete */ 	/* undoc 2.0 */
 	{"resolve", resolve_main},		/* doc 2.0 */

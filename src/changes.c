@@ -7,6 +7,7 @@ private struct {
 	u32	forwards:1;	/* like prs -f */
 	char	*date;		/* list this range of dates */
 	char	*dspec;		/* override dspec */
+	u32	all:1;		/* list all, including tags etc */
 	u32	noempty:1;	/* do not list empty merge deltas */
 	u32	html:1;		/* do html style output */
 	u32	keys:1;		/* just list the keys */
@@ -53,7 +54,7 @@ changes_main(int ac, char **av)
 	opts.noempty = 1;
 	nav[nac++] = "bk";
 	nav[nac++] = "changes";
-	while ((c = getopt(ac, av, "c;d;efhkLmnRr|tu;U;v/;")) != -1) {
+	while ((c = getopt(ac, av, "ac;d;efhkLmnRr|tu;U;v/;")) != -1) {
 		unless (c == 'L' || c == 'R') {
 			if (optarg) {
 				nav[nac++] = aprintf("-%c%s", c, optarg);
@@ -66,12 +67,13 @@ changes_main(int ac, char **av)
 		     * Note: do not add option 'K', it is reserved
 		     * for internal use
 		     */
+		    case 'a': opts.all = 1; break;
 		    case 'c': opts.date = optarg; break;
 		    case 'd': opts.dspec = optarg; break;
 		    case 'e': opts.noempty = !opts.noempty; break;
 		    case 'f': opts.forwards = 1; break;
 		    case 'h': opts.html = 1; break;
-		    case 'k': opts.keys = 1; opts.noempty = 0; break;
+		    case 'k': opts.keys = opts.all = 1; opts.noempty = 0; break;
 		    case 'm': opts.nomerge = 1; break;
 		    case 'n': opts.newline = 1; break;
 		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
@@ -159,14 +161,17 @@ private int
 pdelta(delta *e)
 {
 	if (feof(opts.f)) return (1); /* for early pager exit */
-	if (e->type != 'D') return(0);
 	unless (e->flags & D_SET) return(0);
 	if (opts.keys) {
 		sccs_pdelta(opts.s, e, opts.f);
 		fputc('\n', opts.f);
 	} else {
-		sccs_prsdelta(opts.s, e, 0, opts.spec, opts.f);
-		if (opts.newline) fputc('\n', opts.f);
+		if (opts.all || (e->type == 'D')) {
+			int	flags = opts.all ? PRS_ALL : 0;
+
+			sccs_prsdelta(opts.s, e, flags, opts.spec, opts.f);
+			if (opts.newline) fputc('\n', opts.f);
+		}
 	}
 	fflush(opts.f);
 	return (0);
@@ -222,7 +227,6 @@ doit(int dash)
 	sccs	*s;
 	delta	*e;
 	int	noisy = 0;
-	int	expand = 1;
 	RANGE_DECL;
 
 	if (opts.dspec && !opts.html) {
@@ -238,12 +242,13 @@ doit(int dash)
 		if (opts.rev) {
 			r[0] = notnull(opts.rev);
 			things += tokens(r[0]);
+			if (things == 1) opts.noempty = 0;
 		} else {
 			d[0] = notnull(opts.date);
 			things += tokens(d[0]);
 		}
 		rd = 1;
-		RANGE("changes", s, expand, noisy)
+		RANGE("changes", s, opts.all ? 2 : 1, noisy)
 		unless (SET(s)) {
 			for (e = s->rstop; e; e = e->next) {
 				if (want(s, e)) e->flags |= D_SET;
@@ -263,7 +268,7 @@ doit(int dash)
 				sccs_free(s);
 				return (1);
 			}
-			while (e->type == 'R') {
+			while (!opts.all && (e->type == 'R')) {
 				e = e->parent;
 				assert(e);
 			}
@@ -272,7 +277,6 @@ doit(int dash)
 		s->state |= S_SET;
 	} else {
 		for (e = s->table; e; e = e->next) {
-			if (e->type != 'D') continue;
 			if (want(s, e)) e->flags |= D_SET;
 		}
 		s->state |= S_SET;
@@ -355,6 +359,7 @@ cset(sccs *s, FILE *f, char *dspec)
 private int
 want(sccs *s, delta *e)
 {
+	unless (opts.all || (e->type == 'D')) return (0);
 	if (opts.tagOnly && !(e->flags & D_SYMBOLS)) return (0);
 	if (opts.others) {
 		if (streq(opts.user, e->user)) return (0);
@@ -362,7 +367,9 @@ want(sccs *s, delta *e)
 		return (0);
 	}
 	if (opts.nomerge && e->merge) return (0);
-	if (opts.noempty && e->merge && !sfind(s, e->merge)->added) return (0);
+	if (opts.noempty && e->merge && !e->added && !(e->flags & D_SYMBOLS)) {
+	    	return (0);
+	}
 	if (opts.doSearch) {
 		int	i;
 

@@ -33,15 +33,6 @@
 #define	PK_RREV		0x00020	/* want remote cset in rev/tag format */
 #define	PK_RKEY		0x00040	/* want remote cset in key format */
 
-
-/*
- * push/pull -l option output format
- */
-#define	LISTCMT 	1	/* list cset comment */
-#define	LISTDETAIL	2	/* list detail comment */
-#define	LISTKEY		3	/* list key only */
-#define	LISTREV		4	/* list rev only */
-
 /*
  * Functions take (int ac, char **av)
  * do whatever, and return 0 or -1.
@@ -55,8 +46,6 @@ int	cmd_check(int ac, char **av);
 int	cmd_eof(int ac, char **av);
 int	cmd_help(int ac, char **av);
 int	cmd_httpget(int ac, char **av);
-int	cmd_pull(int ac, char **av);
-int	cmd_push(int ac, char **av);
 int	cmd_pwd(int ac, char **av);
 int	cmd_rootkey(int ac, char **av);
 int	cmd_status(int ac, char **av);
@@ -120,7 +109,7 @@ extern	char cmdlog_buffer[];
 extern	char *logRoot;
 
 void	bkd_server(char **);
-remote	*remote_parse(char *url, int is_clone);
+remote	*remote_parse(const char *url, int is_clone);
 char	*remote_unparse(remote *r);
 pid_t	bkd(int compress, remote *r);
 void	bkd_reap(pid_t resync, int r_pipe, int w_pipe);
@@ -141,7 +130,6 @@ int	outfd(int fd, char*buf);
 
 int	read_blk(remote *r, char *c, int len);
 int	write_blk(remote *r, char *c, int len);
-remote	*remote_parse(char *p, int is_clone);
 sccs *	mk_probekey(FILE *f);
 void	sccs_color(sccs *s, delta *d);
 int	getline2(remote *r, char *buf, int size); 

@@ -211,111 +211,9 @@ _copying() {
     	_repo_license
 }
 
-# Hard link based clone.
-# Usage: lclone from [to]
+# Alias
 _lclone() {
-	HERE=`pwd`
-	REV=
-	while getopts lqr: opt
-	do
-		case "$opt" in
-		l) ;;	#ignore
-		q) Q="-q";;
-		r) REV=$OPTARG;;	# /* undoc? 2.0 */
-		*)	echo "Usage: lclone [-q] [-rrev] from to"
-			exit 1;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	if [ "X$1" = X ]
-	then	echo Usage: $0 from to
-		exit 1
-	else	cd "$1" || exit 1
-		FROM=`bk root`
-		if [ $FROM != `bk pwd` ]
-		then
-		    echo ERROR-$FROM is not a package root
-		    exit 1
-		fi
-		cd "$HERE"
-	fi
-	if [ "X$2" = X ]
-	then	TO=`basename "$FROM"`
-	else	if [ "X$3" != X ]; then	echo Usage: $0 from to; exit 1; fi
-		TO="$2"
-	fi
-	test -d "$TO" && { echo $2 exists; exit 1; }
-	cd "$FROM"
-	bk prs -hr$REV ChangeSet > BitKeeper/tmp/rev$$
-	test -s BitKeeper/tmp/rev$$ || {
-		echo Rev $REV does not exist, aborting...
-		/bin/rm -f BitKeeper/tmp/rev$$
-		exit 1
-	}	
-	while ! bk lock -s
-	do	bk lock -l
-		echo Sleeping 5 seconds and trying again...
-		sleep 5
-	done
-	bk lock -r &
-	LOCKPID="$!"
-	LOCK="${LOCKPID}@`bk gethost`"
-	sleep 1
-	test -f BitKeeper/readers/$LOCK || {
-		echo Lost read lock race, please retry again later.
-		/bin/rm -f BitKeeper/tmp/rev$$
-		exit 1
-	}
-	qecho Finding SCCS directories...
-	bk sfiles -d > /tmp/dirs$$
-	cd "$HERE"
-	mkdir -p "$TO/BitKeeper/tmp"
-	cd "$TO"
-	ln "$FROM/BitKeeper/tmp/rev$$" BitKeeper/tmp/link || {
-		cd $FROM
-		rm BitKeeper/tmp/rev$$
-		cp /dev/null /tmp/dirs$$
-	}
-	while read x
-	do
-		if [ "$x" != "." -a -d "$FROM/$x/BitKeeper" ]
-		then
-			qecho "Skipping $x ..."
-			continue
-		fi
-		qecho Linking "$x" ...
-		mkdir -p "$x/SCCS"
-		find "$FROM/$x/SCCS" -type f -name 's.*' -print |
-		    bk _link "$x/SCCS"
-	done < /tmp/dirs$$
-	while [ -d "$FROM/BitKeeper/readers" ]
-	do	kill $LOCKPID 2>/dev/null
-		kill -0 $LOCKPID 2>/dev/null || {
-			echo Waiting for reader lock process to go away...
-			sleep 1
-		}
-	done
-	(cd "$FROM" && /bin/rm -f BitKeeper/tmp/rev$$)
-	test -s /tmp/dirs$$ || {
-		echo ""
-		echo Please try bk clone without the -l option.
-		exit 1
-	}
-	bk sane
-	qecho Looking for and removing any uncommitted deltas
-	bk sfiles -pA | bk stripdel -
-	if [ "X$REV" != "X" ]; then
-		qecho Removing revisions after $REV ...
-		bk undo -fs $Q -a$REV
-	fi
-	qecho Running a sanity check
-	bk -r check -ac || {
-		echo lclone failed
-		exit 1
-	}
-	bk parent $Q "$FROM"
-	rm -f /tmp/dirs$$
-	exit 0
+	exec bk clone -l "$@"
 }
 
 # Show what would be sent
@@ -364,6 +262,16 @@ __keysync() {
 #	put the merge on top of the edited file
 # fi
 _fixtool() {
+	ASK=YES
+	while getopts f opt
+	do
+		case "$opt" in
+		f) ASK=NO;;
+		*) echo "Usage: fixtool [-f] [file...]"
+		   exit 1;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	test $# -eq 0 && __cd2root
 	fix=${TMP}/fix$$	
 	merge=${TMP}/merge$$	
@@ -374,22 +282,26 @@ _fixtool() {
 		rm -f $fix
 		exit 0
 	}
+	test `wc -l < $fix` -eq 1 && ASK=NO
 	# XXX - this does not work if the filenames have spaces, etc.
+	# We can't do while read x because we need stdin.
 	for x in `cat $fix`
-	do	clear
-		bk diffs "$x" | ${PAGER} 
-		echo $N "Fix ${x}? y)es q)uit n)o u)nedit: [no] "$NL
-		read ans 
-		DOIT=YES
-		case "X$ans" in
-		    X[Yy]*) ;;
-		    X[q]*)	rm -f $fix $merge $previous 2>/dev/null
-		    		exit 0
-				;;
-		    X[Uu]*)	bk unedit $x; DOIT=NO;;
-		    *)		DOIT=NO;;
-		esac
-		test $DOIT = YES || continue
+	do	test $ASK = YES && {
+			clear
+			bk diffs "$x" | ${PAGER} 
+			echo $N "Fix ${x}? y)es q)uit n)o u)nedit: [no] "$NL
+			read ans 
+			DOIT=YES
+			case "X$ans" in
+			    X[Yy]*) ;;
+			    X[q]*)	rm -f $fix $merge $previous 2>/dev/null
+					exit 0
+					;;
+			    X[Uu]*)	bk unedit $x; DOIT=NO;;
+			    *)		DOIT=NO;;
+			esac
+			test $DOIT = YES || continue
+		}
 		bk get -kpr+ "$x" > $previous
 		rm -f $merge
 		bk fmtool $previous "$x" $merge
@@ -595,6 +507,16 @@ _unrm () {
 	rm -f $LIST $TMPFILE
 }
 
+__bkfiles() {
+	bk sfiles "$1" |
+	    bk prs -hr1.0 -nd:DPN: - | grep BitKeeper/ > ${TMP}/bk$$
+	test -s ${TMP}/bk$$ && {
+		echo $2 directories with BitKeeper files not allowed 1>&2
+		rm ${TMP}/bk$$
+		exit 1
+	}
+	rm ${TMP}/bk$$
+}
 
 _mvdir() {		# /* doc 2.0 */
 
@@ -608,11 +530,8 @@ _mvdir() {		# /* doc 2.0 */
 	if [ X"$2" = X ]; then bk help -s mvdir; exit 1; fi
 	if [ X"$3" != X ]; then bk help -s mvdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1" is not a directory; exit 1; fi
-	if [ X"$1" = X"BitKeeper" -a -d "BitKeeper/etc" ]
-	then	echo "Moving the BitKeeper directory is not allowed"
-		exit;
-	fi
 	if [ -e "$2" ]; then echo "$2" already exist; exit 1; fi
+	__bkfiles "$1" "Moving"
 	
 	bk -r check -a || exit 1;
 	# Win32 note: must use relative path or drive:/path
@@ -633,6 +552,7 @@ _rmdir() {		# /* doc 2.0 */
 	if [ X"$2" != X ]; then bk help -s rmdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
 	bk -r check -a || exit 1;
+	__bkfiles "$1" "Removing"
 	XNUM=`bk sfiles -x "$1" | wc -l`
 	if [ "$XNUM" -ne 0 ]
 	then

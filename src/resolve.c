@@ -1606,7 +1606,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
 		}
 		unless (opts->comment || pending(1)) opts->comment = "Merge";
-		unless (opts->noconflicts) ok_commit(logging(0, 0, 0), 0);
+		unless (opts->noconflicts) ok_commit(logging(0), 0);
 		commit(opts);
 		return (0);
 	}
@@ -1641,7 +1641,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 
 	if (pending(0)) {
 		assert(!opts->noconflicts);
-		ok_commit(logging(0, 0, 0), 0);
+		ok_commit(logging(0), 0);
 		commit(opts);
 	}
 
@@ -2042,7 +2042,7 @@ commit(opts *opts)
 	int	i;
 	char	*cmds[10], *cmt = 0;
 
-	unless (ok_commit(logging(0, 0, 0), 1)) {
+	unless (ok_commit(logging(0), 1)) {
 		fprintf(stderr,
 		   "Commit aborted because of licensing, no changes applied\n");
 		resolve_cleanup(opts, 0);
@@ -2660,6 +2660,6 @@ resolve_cleanup(opts *opts, int what)
 	 *
 	 * if (opts->didMerge && !opts->logging) ...
 	 */
-	if (!opts->logging) logChangeSet(logging(0, 0, 0) , 0, 1);
+	if (!opts->logging) logChangeSet(logging(0), 1);
 	exit(0);
 }

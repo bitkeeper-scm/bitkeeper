@@ -14,19 +14,22 @@ extern	char	cmdlog_buffer[];
  * If nothing is passed in, use `bk parent`.
  */
 remote *
-remote_parse(char *p, int skip_checks)
+remote_parse(const char *url, int skip_checks)
 {
 	char	*freeme = 0;
 	static	int echo = -1;
 	int	append = 0;
 	remote	*r;
+	char	*p;
 
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 
-	unless (p && *p) {
+	unless (url && *url) {
 		unless (freeme = getParent()) return (0);
 		append = 1;
 		p = freeme;
+	} else {
+		freeme = p = strdup(url);
 	}
 	unless (p) {
 		if (freeme) free(freeme);
@@ -74,7 +77,6 @@ remote_parse(char *p, int skip_checks)
 			r = NULL;
 		} else {
 			r = nfs_parse(p);
-			if (r) r->type = ADDR_NFS;;
 		}
 	}
 	if (r && append && cmdlog_buffer[0]) {
@@ -130,8 +132,10 @@ nfs_parse(char *p)
 			return (0);
 		}
 		r->path = strdup(fullname(p, 0));
+		r->type = ADDR_FILE;
 		return (r);
 	}
+	r->type = ADDR_NFS;
 	*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 	unless (*p) p = ".";	/* we like having a path */
 
@@ -298,6 +302,7 @@ remote_free(remote *r)
 	if (r->user) free(r->user);
 	if (r->host) free(r->host);
 	if (r->path) free(r->path);
+	if (r->cred) free(r->cred);
 	free(r);
 }
 

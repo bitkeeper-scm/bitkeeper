@@ -254,9 +254,9 @@ done:		mdbm_close(vals);
 	 * slide this one into place.
 	 */
 	if (winner && exists(sfile) && !streq(sfile, winner->sfile)) {
-		sys("bk", "rm", gfile, SYS);
+		sys("bk", "rm", "-f", gfile, SYS);
 		sccs_close(winner); /* for win32 */
-		sys("bk", "mv", winner->gfile, gfile, SYS);
+		sys("bk", "mv", "-f", winner->gfile, gfile, SYS);
 	}
 
 	if (exists(CTMP)) {
@@ -275,7 +275,7 @@ done:		mdbm_close(vals);
 			 * The file may be there because it is cset derived
 			 * and there was no winner.  So we remove it.
 			 */
-			if (exists(sfile)) sys("bk", "rm", gfile, SYS);
+			if (exists(sfile)) sys("bk", "rm", "-f", gfile, SYS);
 
 			sysio(CTMP, gfile, 0, "bk", "_sort", "-u", SYS);
 			sys("bk", "delta",

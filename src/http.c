@@ -36,6 +36,67 @@ struct	socks_reply {
 	unsigned char dstip[4];
 };
 
+
+
+/*
+ * Convert "s" to base64m
+ * Caller should free memory when done
+ */
+private char *
+str2base64(const char *s)
+{
+	int	i, len, len2;
+	char	*buf;
+	unsigned char *p;
+	static char tbl[64] = {
+		'A','B','C','D','E','F','G','H',
+		'I','J','K','L','M','N','O','P',
+		'Q','R','S','T','U','V','W','X',
+		'Y','Z','a','b','c','d','e','f',
+		'g','h','i','j','k','l','m','n',
+		'o','p','q','r','s','t','u','v',
+		'w','x','y','z','0','1','2','3',
+		'4','5','6','7','8','9','+','/'
+	};
+
+	len = strlen(s);
+	len2 = (4 * ((len + 2) / 3));
+	buf = p = malloc(1 + len2);
+
+	for (i = 0; i < len; i += 3)
+	{
+		*p++ = tbl[s[0] >> 2];
+		*p++ = tbl[((s[0] & 3) << 4) + (s[1] >> 4)];
+		*p++ = tbl[((s[1] & 0xf) << 2) + (s[2] >> 6)];
+		*p++ = tbl[s[2] & 0x3f];
+		s += 3;
+	}
+
+	/* Pad it if necessary...  */
+	if (i == len + 1) {
+		*(p - 1) = '=';
+	} else if (i == len + 2) {
+    		*(p - 1) = *(p - 2) = '=';
+	}
+  	*p = '\0';
+	return (buf);
+}
+
+/*
+ * Make a Proxy-Authorzation header
+ * Caller should free memory when done
+ */
+private char *
+proxyAuthHdr(const char *cred)
+{
+	char	*t1, *t2;
+
+	t1 = str2base64(cred);
+	t2 = aprintf("Proxy-Authorization: BASIC %s\n", t1);
+	free(t1);
+	return (t2);
+}
+
 /*
  * Parse url to host and path
  */
@@ -262,6 +323,7 @@ http_connect(remote *r, char *cgi_script)
 {
 	int	i, port;
 	char	proxy_host[MAXPATH], type[50], *p, **proxies;
+	char	cred[MAXLINE];
 
 	/*
 	 * Try proxy connection if available
@@ -275,13 +337,21 @@ http_connect(remote *r, char *cgi_script)
 		p = strchr(proxies[i], ':');
 		assert(p);
 		*p = ' ';
-		sscanf(proxies[i], "%s %s %d\n", type, proxy_host, &port);
+		cred[0] = 0;
+		sscanf(proxies[i], "%s %s %d %s\n",
+			type, proxy_host, &port, cred);
 		*p = ':';
 		r->rfd = http_connect_srv(type, proxy_host,
 						port, cgi_script, r->trace);
 		r->wfd = r->rfd;
 		if (r->rfd >= 0) {
 			if (r->trace) fprintf(stderr, "connected\n");
+			if (r->cred) {
+				free(r->cred);
+				r->cred = 0;
+			}
+			/* Save the credential, needed in http_send() */
+			if (cred[0]) r->cred = strdup(cred);
 			freeLines(proxies);
 			return (0);
 		}
@@ -316,6 +386,7 @@ http_send(remote *r, char *msg,
 	int	n = 0;
 	char	bk_url[MAXPATH], *header = 0;
 	char	*spin = "|/-\\";
+	char	*proxy_auth = "";
 
 
 	/*
@@ -324,17 +395,26 @@ http_send(remote *r, char *msg,
 	assert(r);
 	assert(r->host);
 	sprintf(bk_url, "http://%s:%d/cgi-bin/%s", r->host, r->port, cgi_script);
+	if (r->cred) {
+		if (r->trace){
+			fprintf(stderr, "Proxy Authorization => (%s)\n",
+			    r->cred);
+		}
+		proxy_auth = proxyAuthHdr(r->cred);
+	}
 	header = aprintf(
 	    "POST %s HTTP/1.0\n"
+	    "%s"			/* optional proxy authentication */
 	    "User-Agent: %s\n"
 	    "Accept: text/html\n"
 	    "Host: %s:%d\n"
 	    "Content-type: %s\n"
 	    "Content-length: %u\n\n",
-	    bk_url, user_agent, 
+	    bk_url, proxy_auth, user_agent, 
 	    r->host, r->port,
 	    BINARY, mlen + extra);
 
+	if (*proxy_auth) free(proxy_auth);
 	if (r->trace) fprintf(stderr, "Sending http header:\n%s", header);
 
 	len = strlen(header);

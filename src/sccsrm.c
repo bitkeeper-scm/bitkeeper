@@ -16,6 +16,7 @@ rm_main(int ac, char **av)
 	char	*name;
 	int	c, errors = 0;
 	int 	useCommonDir = 0;
+	int	force = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help rm");
@@ -24,9 +25,10 @@ rm_main(int ac, char **av)
 
 	debug_main(av);
 	if (streq(basenm(av[0]), "rm")) useCommonDir = 1;
-        while ((c = getopt(ac, av, "d")) != -1) {
+        while ((c = getopt(ac, av, "df")) != -1) {
                 switch (c) {
                     case 'd': useCommonDir++; break;		/* undoc? 2.0 */
+		    case 'f': force = 1; break;
                     default:
 usage:			system("bk help -s rm");
                         return (1);
@@ -36,7 +38,7 @@ usage:			system("bk help -s rm");
 
 	for (name = sfileFirst("sccsrm",&av[optind], 0);
 	    name; name = sfileNext()) {
-		errors |= sccs_rm(name, NULL, useCommonDir);
+		errors |= sccs_rm(name, NULL, useCommonDir, force);
 	}
 	sfileDone();
 	return (errors);
@@ -87,7 +89,7 @@ sccs_rmName(sccs *s, int useCommonDir)
 }
 
 int
-sccs_rm(char *name, char *del_name, int useCommonDir)
+sccs_rm(char *name, char *del_name, int useCommonDir, int force)
 {
 	char	*rmName;
 	char	*sfile;
@@ -98,13 +100,20 @@ sccs_rm(char *name, char *del_name, int useCommonDir)
 	s = sccs_init(sfile, 0, 0);
 	unless (s && HASGRAPH(s) && BITKEEPER(s)) {
 		fprintf(stderr,
-			"Warning: %s is not a BitKeeper flle, ignored\n", name);
+		    "Warning: %s is not a BitKeeper flle, ignored\n", name);
+		sccs_free(s);
+		return (1);
+	}
+	if (CSET(s) ||
+	    (strneq("BitKeeper/", s->tree->pathname, 10) && !force)) {
+		fprintf(stderr, "Will not remove BitKeeper file %s\n", name);
+		sccs_free(s);
 		return (1);
 	}
 	sccs_close(s);
 	rmName = sccs_rmName(s, useCommonDir);
 	if (del_name) strcpy(del_name, rmName);
-	error |= sccs_mv(sfile, rmName, 0, 1, 0);
+	error |= sccs_mv(sfile, rmName, 0, 1, 0, force);
 	sccs_free(s);
 	free(rmName);
 	free(sfile);
