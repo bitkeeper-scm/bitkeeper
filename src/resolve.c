@@ -1657,7 +1657,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 			fprintf(opts->log, "==== Pass 3 autocommits ====\n");
 		}
 		unless (opts->comment || pending(1)) opts->comment = "Merge";
-		unless (opts->noconflicts) ok_commit(logging(0), 0);
+		unless (opts->noconflicts) ok_commit(0);
 		commit(opts);
 		return (0);
 	}
@@ -1692,7 +1692,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 
 	if (pending(0)) {
 		assert(!opts->noconflicts);
-		ok_commit(logging(0), 0);
+		ok_commit(0);
 		commit(opts);
 	}
 
@@ -2100,7 +2100,7 @@ commit(opts *opts)
 	int	i;
 	char	*cmds[10], *cmt = 0;
 
-	unless (ok_commit(logging(0), 1)) {
+	unless (ok_commit(1)) {
 		fprintf(stderr,
 		   "Commit aborted because of licensing, no changes applied\n");
 		resolve_cleanup(opts, 0);
@@ -2531,18 +2531,17 @@ copyAndGet(opts *opts, char *from, char *to)
 			    to, strerror(errno));
 			return (-1);
 		}
-		if (link(from, to)) {
-			unless (errno == EXDEV) return (-1);
-			/*
-			 * We should rarelly get here, this mean
-			 * the enclosing tree and the RESYNC tree are on
-			 * different file system. It is reported that
-			 * in AFS file system, the link() call return EXDEV
-			 * when we try to create hard link across different
-			 * directories, because AFS's ACL is per directory.
-			 */
-			if (fileCopy(from, to)) return (-1);
-		}
+		/*
+		 * We need to fall back to fileCopy() if:
+		 * a) The enclosing tree and the RESYNC tree are on
+		 *    different file system. 
+		 * b) it is Samba, which does not support hard link.
+		 * Note: It is alos reported that in AFS file system,
+		 *    the link() call return EXDEV when we try to
+		 *    create hard link across different
+		 *    directories, because AFS's ACL is per directory.
+		 */
+		if (link(from, to) && fileCopy(from, to)) return (-1);
 	}
 
 	s = sccs_init(to, INIT_SAVEPROJ, opts->local_proj);
@@ -2750,7 +2749,7 @@ resolve_cleanup(opts *opts, int what)
 	 *
 	 * if (opts->didMerge && !opts->logging) ...
 	 */
-	if (!opts->logging) logChangeSet(logging(0), 1);
+	if (!opts->logging) logChangeSet(1);
 	exit(0);
 }
 

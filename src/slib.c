@@ -12512,10 +12512,14 @@ out:
 			if (comments_readcfile(s, 0, n)) OUT;
 		} else switch (comments_readcfile(s, 1, n)) {
 		    case -1: /* no c.file found */
-			if (sccs_getComments(s->gfile, pf.newrev, n)) OUT;
+			if (sccs_getComments(s->gfile, pf.newrev, n)) {
+				error = -4;
+				goto out;
+			}
 			break;
 		    case -2: /* aborted in prompt */
-			OUT;
+			error = -4;
+			goto out;
 		}
 	}
 	dinsert(s, flags, n, !(flags & DELTA_PATCH));

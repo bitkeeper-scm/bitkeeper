@@ -19,18 +19,14 @@ __nativepath()
 
 __platformInit()
 {
-		# WIN32 specific stuff
-		TMP=`__nativepath /tmp`/
-		DEV_NULL=nul
-		wish=${_TCL_BIN}/wish83.exe
-		AWK=awk
-		ext=".exe"
-		tcl=".tcl"
-
-		if [ X$EDITOR = X ]
-		then EDITOR=notepad.exe
-		fi
-		if [ X$PAGER = X ]
-		then PAGER="less -E"
-		fi
+	# WIN32 specific stuff
+	TMP=`__nativepath /tmp`/
+	DEV_NULL=nul
+	wish=${_TCL_BIN}/wish83.exe
+	AWK=awk
+	ext=".exe"
+	tcl=".tcl"
+	test "X$EDITOR" = X && EDITOR=notepad.exe
+	test "X$PAGER" = X && PAGER=more
+	export PAGER EDITOR TMP DEV_NULL AWK wish
 }

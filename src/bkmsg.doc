@@ -148,6 +148,15 @@ BitMover can be reached in the United States at 415-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
+#license_almost
+Your evaluation license for BitKeeper is less than one week away from
+expiring.  This changeset will be created as normal, but you need to
+contact BitMover and purchase a commercial license.
+
+BitMover can be reached in the United States at 415-401-8808
+during business hours (PST) or via email at sales@bitmover.com.
+Thanks!
+$
 #license_expired
 Your license for BitKeeper has expired.  You are beyond the
 grace period and you may not create any changesets until you
@@ -161,6 +170,7 @@ Thanks!
 $
 #config_license
 #license_none
+
 You do not have a license for BitKeeper and the logging field in the
 BitKeeper/etc/config file is not set to "logging@openlogging.org".
 You either need a commercial license (to run without open logging),
@@ -176,7 +186,7 @@ during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
 #open_log_query
-This repository is configured to send ChangeSet summaries to
+This repository is configured to send changeset summaries to
 	#BKARG#
 so others can follow your work.  This is called Open Logging.
 
@@ -218,15 +228,104 @@ $
 #log_abort
 Bitkeeper is aborting this commit.
 
-This version of Bitkeeper is licensed for projects which wish to publish
-their progress via Open Logging.  To purchase a copy of Bitkeeper without
-the Open Logging feature, please contact sales@bitmover.com.  Thank you.
+This repository is for projects which wish to publish their progress via
+Open Logging.  To purchase a copy of Bitkeeper without the Open Logging
+feature, please contact sales@bitmover.com.  Thank you.
+$
+#close_log_abort
+Bitkeeper is aborting this commit.
+
+This repository has been configured to send log messages and unless you
+agree to do so BitKeeper will not commit changes.  This is the policy of
+the owner of this repository, not a BitMover policy.  Please consult the
+repository owner/maintainer to resolve the issue.  Thank you.
 $
 #seat_info
 Your user count have exceeded the number of purchased licenses.
 To purchase more seats, please email sales@bitmover.com.  Thank you.
 
 $
+#logging+commercial
+Open logging is not allowed on a commercial repository.
+$
+#testing-lic
+The 'testing' license requires openlogging as well.
+$
+#no-accept-no-cset
+Changeset not created due to license rejection.
+$
+#config-pending
+Warning:  You have unsent config logs which are more than 2 weeks old.
+
+bk commit will try to send the pending logs automatically before it exits.
+Please verify the pending count is zero after bk commit is done.  To get
+a count of the pending logs: use the following command:
+
+	bk _lconfig -p
+
+If pending count is still non-zero after bk commit is done, please run
+the following command and email its output to support@bitmover.com:
+
+	bk _lconfig -d
+$
+#config-max
+Error: Max pending config messages exceeded, commit aborted.
+
+This error indicates that the BitKeeper program was unable to contact
+www.bitkeeper.com to send the configuration log.
+
+There are two possible causes for this error:
+
+a) Network connectivity problems
+b) Problems with the server at www.bitkeeper.com
+
+Please run the following command and email its output to support@bitmover.com:
+
+	bk _lconfig -d
+$
+#unlogged-max
+Error: Max pending log exceeded, commit aborted.
+
+This error indicates that the BitKeeper program is unable to contact
+www.openlogging.org to send the ChangeSet log[s]. The number of unlogged
+changesets have exceeded the allowed threshold of #BKARG# changesets.
+
+There are two possible causes for this error:
+a) Network connectivity problems
+b) Problems in the logging tree at www.openlogging.org
+
+Please run the logging command in debug mode to see what the problem is:
+	bk log -d
+If you have ruled out a network connectivity problem at your local network,
+please email the following information to support@bitmover.com:
+a) Output of the above logging command
+b) Root key of your project using the following command:
+	bk identity
+$
+#unlogged
+Warning: BitKeeper allows a limited number of offline commits.  Your quota
+is currently #BKARG# changesets and you will not be able to commit once
+your quota is down to zero. Please check your network configuration
+and make sure logs are being transmitted properly. You can test your log
+transmission with the command "bk log -d".
+$
+#single-file-max
+Error: Single user repositories are limited to #BKARG# files. If you need more
+files than that in one repository, you need to buy a commercial license or
+turn on open logging.
+$
+#eval-max
+Error: Evaluation license are limited to #BKARG# changesets.  You are over 
+that limit and you will need to purchase a commercial license to make any
+more changesets.
+$
+#eval-warn
+Warning: Evaluation licenses have a limited number changesets. Your
+changeset quota is now down to #BKARG# which is less than 50 changesets
+away from the limit.  You will not be able to commit any more changesets
+when the quota reaches zero.  Please upgrade to a commercial license.
+$
+
 #bugtemplate
 BitKeeper Bug Report
 --------------------
@@ -437,6 +536,9 @@ description
 category
 logging
 license
+licsign1
+licsign2
+licsign3
 single_user
 single_host
 compression
@@ -581,4 +683,50 @@ case "$1" in
           ;;
 esac
 exit 0
+$
+#bkl_new_preamble
+In order to use BitKeeper in this repository, you need to accept the 
+BitKeeper license.  The BitKeeper license is what grants you the right
+to use BitKeeper on this repository.  Please read the license carefully,
+it is a contract and you must abide by the terms.  Your acceptance will be
+recorded on this machine and you will not be asked again.
+$
+#bkcl_new_preamble
+In order to use BitKeeper in this repository, you need to accept the
+BitKeeper Commercial license.  This license is what grants you the right
+to use BitKeeper on this repository.  Please read the license carefully,
+it is a contract and you must abide by the terms.  Your acceptance will
+be recorded on this machine and you will not be asked again.
+$
+#bkl_upgrade_preamble
+#bkcl_upgrade_preamble
+The BitKeeper license required for the use of this repository has changed
+and you need to accept the new version in order to make changes in this
+repository.  Your acceptance will be recorded on this machine and you will
+not be asked again.
+$
+#repo_new_preamble
+In order to use BitKeeper in this repository, you need to accept the
+associated Repository license.  The Repository license is part of the
+the repository and it is a condition of the BitKeeper license that you
+agree with the Repository license.  Please read the license carefully,
+it is a contract and you must abide by the terms.  Your acceptance will
+be recorded on this machine and you will not be asked again.
+
+This license was associated with this repository by the party who
+initially created the repository.  Unless BitMover, Inc. created this
+repository, this license was not written by BitMover and BitMover is
+not responsible for the content of the license.
+$
+#repo_upgrade_preamble
+The Repository license associated with the use of this repository has
+changed and you need to accept the new version in order to make changes in
+this repository.  Your acceptance will be recorded on this machine and you
+will not be asked again.
+$
+#lic_alwaysOK
+If you do not want to be prompted about license questions in the future,
+set the environment variable BK_LICENSE to the value ACCEPTED.  Doing so
+means that you are agreeing to any future versions of any license associated
+with this repository.
 $

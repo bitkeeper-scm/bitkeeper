@@ -185,7 +185,7 @@ grep -q 'fix merge changesets' OUT || {
 }
 echo OK
 
-echo $N Make sure files with spaces are OK .........................$NL
+echo $N Make sure files with spaces are OK ..........................$NL
 echo "hi" > 'new file'
 bk new $Q 'new file'
 bk commit $Q -yy

@@ -27,6 +27,12 @@ the upper left corner of citool.
 .SH OPTIONS
 .if t .TP
 .if n .TP 1.2i
+.B \-c
+Only for command line prompts, print the message and exit 0.
+.tp
+.B \-e
+Indicates that the prompt is an error message.
+.tp
 .OPTreq \-f file
 Specifies the file contain the message to be displayed.  Unless this option
 or the 
@@ -34,10 +40,20 @@ or the
 option is present,
 the last command line argument is must be present and is used as the message.
 .tp
+.B \-g
+Override the BK_GUI variable and force a command line prompt if called in 
+a graphical context.
+.tp
+.B \-i
+Indicates that the prompt is an informational message.
+.tp
 .OPTreq \-n no
 If set, specifies the message for the label in the graphical tool which
 is to be used if the user does not agree.  Default is "NO".  Not used
-for the command line version.
+in command line context.
+.tp
+.B \-o
+OK only, clears the default "no" value.  Not used in command line context.
 .tp
 .OPTreq \-p prog
 If set, specifies a program which, when run, will produce the message contents.
@@ -45,12 +61,15 @@ If set, specifies a program which, when run, will produce the message contents.
 .OPTreq \-t title
 If set, specifies the title of the graphical tool.
 Default is "BitKeeper Message".
-Not used for the command line version.
+Not used in command line context.
 .tp
 .OPTreq \-y yes
 If set, specifies the message for the label in the graphical tool, or 
 the prompt in the command line tool,
 which is to be used if the user does agree.  Default is "OK".  
+.tp
+.B \-w
+Indicates that the prompt is a warning message.
 .SH "EXIT STATUS"
 Exits 0 if the user agreed, 1 if the user did not agree.
 .SH "SEE ALSO"

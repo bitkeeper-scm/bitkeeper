@@ -62,7 +62,6 @@ clone_main(int ac, char **av)
 			usage();
 	    	}
 	}
-	license();
 	unless (av[optind]) usage();
 
 	loadNetLib();
@@ -627,7 +626,7 @@ relink_main(int ac, char **av)
 	if (av[1] && streq("-q", av[1])) quiet++, av++, ac--;
 
 	unless (ac >= 3) {
-err:		system("bk help -s relink");
+		system("bk help -s relink");
 		exit(1);
 	}
 	getRealCwd(here, MAXPATH);

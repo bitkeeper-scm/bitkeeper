@@ -16,6 +16,7 @@ proc init {} \
 	set options(-no) ""
 	set options(-title) "BitKeeper message"
 	set options(-textWidth) 80
+	set options(-type) ""
 	set message "-"
 	set f stdin
 
@@ -23,6 +24,9 @@ proc init {} \
 	while {[llength $argv] > 1} {
 		set key [pop argv]
 		switch -exact -- $key {
+			-E {	set options(-type) "ERROR: " }
+			-I {	set options(-type) "INFO: " }
+			-W {	set options(-type) "WARNING: " }
 			-F {
 				set f [open [pop argv]]
 			}
@@ -58,6 +62,8 @@ proc init {} \
 	}
 	if {[llength $argv] > 0} { set message [pop argv] }
 
+	# XXX - Bryan FIXME
+	set options(-title) "$options(-type)$options(-title)"
 	if {!$error} {
 		if {[string match "-" $message]} {
 			set options(-message) ""
@@ -66,7 +72,7 @@ proc init {} \
 				append options(-message) $buf
 				if {[eof $f]} { break }
 			}
-			close $f
+			catch { close $f }
 		} else {
 			set options(-message) $message
 		}
@@ -164,97 +170,90 @@ proc widgets {} \
 	# The display of the message depends on it's relative size.
 	# The number 10 is picked out of a hat. Most messages will
 	# either be one line, or many.
-	set lines [split $options(-message) \n]
-	if {[llength $lines] < 10} {
-		message $widgets(message) \
-		    -bd 1 \
-		    -relief sunken \
-		    -aspect 400 \
-		    -background #f8f8f8 \
-		    -text "\n$options(-message)\n"
+	if {$tcl_platform(platform) == "windows"} {
+		set font {{Courier New} 8 normal}
 	} else {
-		if {[llength $lines] > 24} {
-			set height 24
+		set width [winfo screenwidth .]
+		if {$width <= 1024} {
+			set font 6x12
 		} else {
-			set height [llength $lines]
+			set font 7x13
 		}
-		frame $widgets(message) \
-		    -borderwidth 1 \
-		    -relief sunken \
-		    -background #f8f8f8 
-		if {$tcl_platform(platform) == "windows"} {
-			set font {{Courier New} 8 normal}
-		} else {
-			set width [winfo screenwidth .]
-			if {$width <= 1024} {
-				set font 6x12
-			} else {
-				set font 7x13
-			}
-		}
-		text $widgets(text) \
-		    -highlightthickness 0 \
-		    -borderwidth 0 \
-		    -width $options(-textWidth) \
-		    -height $height \
-		    -wrap none \
-		    -font $font \
-		    -borderwidth 0 \
-		    -background #f8f8f8 
-
-		scrollbar $widgets(sby) \
-		    -command [list $widgets(text) yview] \
-		    -borderwidth 1 \
-		    -orient vertical \
-		    -highlightthickness 0 \
-		    -takefocus 0 
-
-		scrollbar $widgets(sbx) \
-		    -command [list $widgets(text) xview] \
-		    -borderwidth 1 \
-		    -orient horizontal \
-		    -highlightthickness 0 \
-		    -takefocus 0
-
-		$w.message.text configure \
-		    -xscrollcommand [list scroll x] \
-		    -yscrollcommand [list scroll y] 
-
-		# The newline is added to give the illusion of a top
-		# margin.
-		$widgets(text) insert end "\n$options(-message)"
-		$widgets(text) configure -state disabled
-
-		grid $widgets(text) \
-		    -in $widgets(message) -row 0 -column 1 \
-		    -sticky nsew
-		# note that we purposefully do not add the
-		# scrollbars; they are added by the scroll proc
-		# only if needed
-
-		grid rowconfigure $widgets(message) 0 -weight 1
-		grid rowconfigure $widgets(message) 1 -weight 0
-
-		# note that the window has two invisible columns that
-		# have a defined -minsize. These add a little margin
-		# to the text widget, so text isn't scrunched up to 
-		# the edges of the widget
-		grid columnconfigure $widgets(message) 0 -weight 0 -minsize 4
-		grid columnconfigure $widgets(message) 1 -weight 1
-		grid columnconfigure $widgets(message) 2 -weight 0 -minsize 4
-		grid columnconfigure $widgets(message) 3 -weight 0
-
-		# The text widget won't have focus since it's disabled,
-		# but we want some common and expected bindings for 
-		# scrolling around.
-		bind . <space> [list doCommand scroll pagedown ]
-		bind . <Down> [list doCommand scroll down]
-		bind . <Up> [list doCommand scroll up]
-		bind . <Prior> [list doCommand scroll pageup]
-		bind . <Next> [list doCommand scroll pagedown]
-		bind . <Home> [list doCommand scroll home]
-		bind . <End> [list doCommand scroll end]
 	}
+	set lines [split $options(-message) \n]
+	if {[llength $lines] > 24} {
+		set height 24
+	} else {
+		set height [expr [llength $lines] + 1]
+	}
+	frame $widgets(message) \
+	    -borderwidth 1 \
+	    -relief sunken \
+	    -background #f8f8f8 
+	text $widgets(text) \
+	    -highlightthickness 0 \
+	    -borderwidth 0 \
+	    -width $options(-textWidth) \
+	    -height $height \
+	    -wrap none \
+	    -font $font \
+	    -borderwidth 0 \
+	    -background #f8f8f8 
+
+	scrollbar $widgets(sby) \
+	    -command [list $widgets(text) yview] \
+	    -borderwidth 1 \
+	    -orient vertical \
+	    -highlightthickness 0 \
+	    -width 12 \
+	    -takefocus 0 
+
+	scrollbar $widgets(sbx) \
+	    -command [list $widgets(text) xview] \
+	    -borderwidth 1 \
+	    -orient horizontal \
+	    -highlightthickness 0 \
+	    -width 12 \
+	    -takefocus 0
+
+	$w.message.text configure \
+	    -xscrollcommand [list scroll x] \
+	    -yscrollcommand [list scroll y] 
+
+	# The newline is added to give the illusion of a top
+	# margin.
+	$widgets(text) insert end "\n$options(-message)"
+	$widgets(text) configure -state disabled
+
+	grid $widgets(text) \
+	    -in $widgets(message) -row 0 -column 1 \
+	    -sticky nsew
+	# note that we purposefully do not add the
+	# scrollbars; they are added by the scroll proc
+	# only if needed
+
+	grid rowconfigure $widgets(message) 0 -weight 1
+	grid rowconfigure $widgets(message) 1 -weight 0
+
+	# note that the window has two invisible columns that
+	# have a defined -minsize. These add a little margin
+	# to the text widget, so text isn't scrunched up to 
+	# the edges of the widget
+	grid columnconfigure $widgets(message) 0 -weight 0 -minsize 4
+	grid columnconfigure $widgets(message) 1 -weight 1
+	grid columnconfigure $widgets(message) 2 -weight 0 -minsize 4
+	grid columnconfigure $widgets(message) 3 -weight 0
+
+	# The text widget won't have focus since it's disabled,
+	# but we want some common and expected bindings for 
+	# scrolling around.
+	bind . <space> [list doCommand scroll pagedown ]
+	bind . <Down> [list doCommand scroll down]
+	bind . <Up> [list doCommand scroll up]
+	bind . <Prior> [list doCommand scroll pageup]
+	bind . <Next> [list doCommand scroll pagedown]
+	bind . <Home> [list doCommand scroll home]
+	bind . <End> [list doCommand scroll end]
 
 	## Buttons
 	frame $widgets(buttonFrame) -borderwidth 0
@@ -294,7 +293,12 @@ proc widgets {} \
 	pack $widgets(buttonFrame) -side bottom -fill x
 	pack $w.spacer2 -side bottom -fill x -padx 1 -pady 1
 	pack $widgets(message) -side top -fill both -expand y
-
+	update
+	if {![info exists env(BK_FORCE_TOPMOST)]} { return }
+	if {$env(BK_FORCE_TOPMOST) != "YES"} { return }
+	set widgets(xid) [scan [wm frame .] %x]
+	if {$widgets(xid) == 0} { set widgets(xid) [scan [wm frame .] 0x%x] }
+	after idle { exec winctlw -id $widgets(xid) topmost & }
 }
 
 proc doCommand {command args} {

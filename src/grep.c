@@ -34,10 +34,12 @@ usage:		system("bk help -s grep");
 		    case 'd':					/* doc 2.0 */
 		    case 'f':					/* undoc? 2.0 */
 		    case 'm':					/* doc 2.0 */
-		    case 'n':					/* doc 2.0 */
 		    case 'N':					/* doc 2.0 */
 		    case 'u':					/* doc 2.0 */
 			*s++ = c;
+			break;
+		    case 'n':					/* doc 2.0 */
+			*s++ = 'f';	/* -f undoc in get, may change */
 			break;
 		    case 'e':					/* doc 2.0 */
 		    	grep = "egrep";
@@ -96,7 +98,7 @@ usage:		system("bk help -s grep");
 	if (s) {
 		sav[++i] = sccscat_opts;
 	} else {
-		unless (none) sav[++i] = "-nm";
+		unless (none) sav[++i] = "-fm";
 	}
 	while (sav[++i] = av[optind++]);
 

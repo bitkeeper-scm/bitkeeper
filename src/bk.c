@@ -93,6 +93,7 @@ int	keysort_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
 int	level_main(int, char **);
+int	license_main(int, char **);
 int	lines_main(int, char **);
 int	link_main(int, char **);
 int	listkey_main(int, char **);
@@ -279,6 +280,7 @@ struct	command cmdtbl[] = {
 	{"isascii", isascii_main},		/* doc 2.0 */
 	{"key2rev", key2rev_main},		/* doc 2.0 */
 	{"level", level_main},			/* doc 2.0 */
+	{"license", license_main},		/* undoc */
 	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"log", log_main},
@@ -415,7 +417,7 @@ main(int ac, char **av)
 	char	sopts[30];
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen("/dev/tty", "w");
+		FILE	*f = fopen(DEV_TTY, "w");
 
 		fprintf(f, "BK (%u t: %5s)", getpid(), milli());
 		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
@@ -909,7 +911,7 @@ cmdlog_end(int ret)
 	}
 
 	if (getenv("BK_SHOWPROC")) {
-		FILE	*f = fopen("/dev/tty", "w");
+		FILE	*f = fopen(DEV_TTY, "w");
 
 		fprintf(f, "END(%u t: %5s)", getpid(), milli());
 		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);

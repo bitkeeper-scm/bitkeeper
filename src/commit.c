@@ -165,53 +165,26 @@ pending(char *sfile)
 	return (ret);
 }
 
-/*
- * Return true if pname is NULL or all blank
- */
-private int
-goodPackageName(char *pname)
-{
-	unless (pname) return (0);
-	while (*pname) unless (isspace(*pname++)) return (1);
-	return (0);
-}
-
 private int
 do_commit(char **av,
 	c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 {
 	int	hasComment = (exists(commentFile) && (size(commentFile) > 0));
 	int	status, rc, i;
-	int	l, fd, fd0;
+	int	fd, fd0;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "", cmt_opt[MAXPATH + 3], *p;
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
 	char	*cset[100] = {"bk", "cset", 0};
 	FILE 	*f, *f2;
 
-	l = logging(0);
-	unless (ok_commit(l, opts.alreadyAsked)) {
+	unless (ok_commit(opts.alreadyAsked)) {
 out:		if (commentFile) unlink(commentFile);
 		if (pendingFiles) unlink(pendingFiles);
 		return (1);
 	}
 
-	/*
-	 * If no package_name, nag user to update config file
-	 */
-	if (is_openlogging(l) && !goodPackageName(package_name())) {
-		fprintf(stderr,
-"============================================================================\n"
-"Warning: Package name is Null or Blank. Please add an entry to the \n"
-"\"Description:\" field in the \"BitKeeper/etc/config\" file\n"
-"The entry should be a short statement describing the nature of this package\n"
-"============================================================================\n"
-);
-		sleep(1);
-		
-	}
-
-	if (!opts.resync && (enforceLicense(l, opts.quiet) == -1)) goto out;
+	if (!opts.resync && enforceLicense(opts.quiet)) goto out;
 
 	if (pending(s_logging_ok)) {
 		int     len = strlen(s_logging_ok); 
@@ -233,7 +206,7 @@ out:		if (commentFile) unlink(commentFile);
 			 * We'll add it back when we exit this loop
 			 */
 			if (strneq(s_logging_ok, buf, len) &&
-							buf[len] == BK_FS) {
+			    buf[len] == BK_FS) {
 				continue;
 			}
 			fputs(buf, f2);
@@ -300,7 +273,7 @@ done:	if (unlink(commentFile)) perror(commentFile);
 	 * do it after it moves the stuff in RESYNC to
 	 * the real tree. 
 	 */
-	unless (opts.resync) logChangeSet(l, opts.quiet);
+	unless (opts.resync) logChangeSet(opts.quiet);
 	return (rc ? 1 : 0);
 }
 

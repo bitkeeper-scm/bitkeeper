@@ -62,7 +62,6 @@ setup_main(int ac, char **av)
 		printf("bk: %s exists already, setup fails.\n", package_path);
 		exit (1);
 	}
-	license();
 	unless(force) {
 		getMsg("setup_1", 0, 0, '-', stdout);
 		printf("Create new package? [no] ");
@@ -125,6 +124,7 @@ again:		printf("Editor to use [%s] ", editor);
 		fprintf(stderr, "No config file found\n");
 		exit(1);
 	}
+	unless (licenseAccept(1)) exit(1);
 	unless (mdbm_fetch_str(m, "description")) {
 		fprintf(stderr, "Setup: must provide a description.\n");
 		if (config_path) {

@@ -180,6 +180,8 @@ gzipAll2fd(int rfd, int wfd, int level, int *in, int *out,
 
 	bsize = 4096;
 	gzip_init(level);
+	setmode(rfd, _O_BINARY);
+	setmode(wfd, _O_BINARY);
 	while ((n = readn(rfd, buf, bsize)) > 0) { /* must use readn() here */
 		if (in) *in += n;
 		i = gzip2fd(buf, n, wfd, hflag);
@@ -204,6 +206,8 @@ gunzipAll2fd(int rfd, int wfd, int level, int *in, int *out)
 	int	j = 0, k = 0;
 
 	gzip_init(level);
+	setmode(rfd, _O_BINARY);
+	setmode(wfd, _O_BINARY);
 	while (1) {
 		hlen = gzip_hdr(rfd); 
 		unless (hlen)  break;

@@ -257,11 +257,10 @@ bk pull $Q -t $HERE/project
 if [ ! -f src2/src3/SCCS/s.bar.c ]; then echo failed; exit 1; fi
 if [ ! -f src2/src3/SCCS/s.h.h ]; then echo failed; exit 1; fi
 echo OK
-if [ $PLATFORM != "WIN32" ]
-then # -----------------------------------------------------------------
+
 echo $N push to a read locked repository should fail ................$NL
 bk lock -r $HERE/project &
-KILLME=$!
+LOCKPID=$!
 bk lock -L $HERE/project
 bk push -c0 $HERE/project > OUT 2>&1
 grep -q 'Unable to lock repository for update' OUT || {
@@ -269,9 +268,10 @@ grep -q 'Unable to lock repository for update' OUT || {
 	cat OUT
 	exit 1
 }
-kill $KILLME
+bk unlock -r $HERE/project
+waitForUnlock $HERE/project
 echo OK
-fi #-------------------------------------------------------------------
+
 echo $N push to unrelated project should error ......................$NL
 cd $HERE
 no_logging unrelated

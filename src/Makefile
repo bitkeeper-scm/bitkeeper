@@ -208,6 +208,8 @@ g:
 	$(MAKE) CFLAGS="$(CC_DEBUG)" all
 gO:
 	$(MAKE) CFLAGS="$(CC_FAST_DEBUG)" all
+gcov:
+	$(MAKE) CFLAGS="$(CC_DEBUG) -fprofile-arcs -ftest-coverage" all
 
 production_all:
 	$(MAKE) production_g prefix=$(BINDIR)/g
@@ -234,6 +236,10 @@ clean-obj: FORCE
 	-@cd gnu && $(MAKE) clean-obj
 	-@cd win32 && $(MAKE) clean-obj
 	-@cd ../doc && $(MAKE) clean-obj
+	-@$(MAKE) clean-gcov
+
+clean-gcov: FORCE
+	-@rm -f *.bb *.bbg *.da *.gcov
 
 clean-bin: FORCE
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
@@ -247,6 +253,7 @@ clean clobber distclean: rebuild FORCE
 	-@cd ../man/man2help && $(MAKE) clobber
 
 rebuild:
+	-@rm -f *.bb *.bbg *.da *.gcov
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) \
 		$(TOMCRYPTOBJ)
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
@@ -256,7 +263,7 @@ rebuild:
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
 	-@cd ../doc && $(MAKE) clean clean-obj
-	cd t && rm -f doit
+	@cd t && rm -f doit
 
 srcs src: FORCE
 	-bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)

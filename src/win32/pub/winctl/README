@@ -1,0 +1,58 @@
+WinCtl.exe is a free small command line utility which provides simple
+control of windows. From the command line, you can minimize, maximize,
+restore, raise, lower, hide, show, resize and reposition windows.  You
+can specify which window by its windowid, name (title) or class.
+
+Usage: WinCtl  [-focus | -id windowid | -title title | -name name | -class class] [command...]
+       WinCtlW [-focus | -id windowid | -title title | -name name | -class class] [command...]
+
+WinCtl performs a window control operation on a top level window.
+Each command (alii in parentheses) is one of:
+    show (unhide)
+    restore (deiconify)
+    hide
+    maximize
+    minimize (iconify)
+    normal
+    top (raise)
+    topmost
+    notopmost
+    bottom (lower)
+    pos x-pos y-pos (move x-pos y-pos)
+    size width heigh
+
+command defaults to "restore". Commands are case insensitive.
+
+Specify a window by either a numeric decimal window id (-id windowid)
+or its case insensitive title/name (-title title or -name name) or its
+case insensitive class (-class class) or the current foreground window (-focus).
+When a class is specified, commands apply only to the first window of that class.
+Switches may be abbreviated.
+
+For example:
+        WinCtl -class Emacs restore raise pos 0 0 size 1000 700
+
+WinCtl is free - you may use and distribute WinCtl without charge
+but this README file and notice must be distributed with WinCtl.
+
+WinCtl is released under the GNU GPL (General Public License)
+See the file LICENSE.
+
+WinCtlW.exe behaves like WinCtl.exe except that it is
+not a console app. Thus, WinCtlW is suitable for use
+in Windows shortcuts; it will run without opening
+a console window.
+
+If you use and like WinCtl, please send me mail.
+If there's something you don't like, please send me mail.
+
+Change History:
+
+Version  Date       What
+1.1      1999Dec30  Francis Litterio (franl@world.std.com) provided -focus switch
+		    and properly quoted VERSION
+
+Copyright 1998 David J. Biesack
+biesack@mindspring.com
+http://biesack.home.mindspring.com
+

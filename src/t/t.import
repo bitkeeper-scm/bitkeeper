@@ -233,10 +233,10 @@ rm -rf EDIT
 tar xf TAR
 cd EDIT/BitKeeper/etc
 bk edit $Q config
-echo "license: $BK_LIC_P" > config
-echo "licsign1: $BK_LIC_P1" >> config
-echo "licsign2: $BK_LIC_P2" >> config
-echo "licsign3: $BK_LIC_P3" >> config
+echo "license: $BKL_P" > config
+echo "licsign1: $BKL_P1" >> config
+echo "licsign2: $BKL_P2" >> config
+echo "licsign3: $BKL_P3" >> config
 echo "logging: none" >> config
 echo "logging_ask: no" >> config
 bk delta $Q -yprivate
@@ -285,10 +285,10 @@ grep -q G foo || {
 	echo failed to apply patch
 	exit 1
 }
-U=`bk getuser`
-test "`bk prs -hr+ -nd:P:@:HOST::IMPORTER: foo`" = akushner@bitmover.com$U || {
-	echo did not pick up email address
-	bk prs -nd':P:@:HOST::IMPORTER:' foo
+U=akushner@bitmover.com+`bk getuser -r`
+test "`bk prs -hr+ -nd:P:@:HOST:+:IMPORTER: foo`" = "$U" || {
+	echo did not pick up email address, wanted $U
+	bk prs -r+ -nd':P:@:HOST:+:IMPORTER:' foo
 	exit 1
 }
 bk changes -r+ > C
@@ -473,6 +473,7 @@ rm B/BitKeeper/etc/logging_ok
 diff -Nur A B > P
 rm -rf SAVE
 cp -rp project SAVE
+unset BK_GUI
 echo no | bk import $Q -tpatch P project > OUT 2>&1
 grep -q 'Bitkeeper is aborting this commit' OUT || {
 	echo failed to produce error message

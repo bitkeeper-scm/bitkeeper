@@ -333,6 +333,10 @@ usage:			sprintf(buf, "bk help -s %s", name);
 
 		s->encoding = sccs_encoding(s, encp, compp);
 		rc = sccs_delta(s, df, d, init, diffs, 0);
+		if (rc == -4) {	/* interrupt in comment prompt */
+			errors |= 4;
+			break;
+		}
 		if (rc == -2) goto next; /* no diff in file */
 		if (rc == -1) {
 			sccs_whynot("delta", s);
