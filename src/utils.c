@@ -219,8 +219,8 @@ getline2(remote *r, char *buf, int size)
 }
 
 private jmp_buf	jmp;
-private	void	(*handler)(int);
-private	void	abort_prompt() { longjmp(jmp, 1); }
+private	handler	old;
+private	void	abort_prompt(int dummy) { longjmp(jmp, 1); }
 
 /*
  * Prompt the user and get an answer.
@@ -231,17 +231,17 @@ prompt(char *msg, char *buf)
 {
 	if (setjmp(jmp)) {
 		fprintf(stderr, "\n(interrupted)\n");
-		signal(SIGINT, handler);
+		(void)sig_catch(old);
 		return (0);
 	}
-	handler = signal(SIGINT, abort_prompt);
+	old = sig_catch(abort_prompt);
 	write(2, msg, strlen(msg));
 	write(2, " ", 1);
 	if (getline(0, buf, MAXPATH) > 1) {
-		signal(SIGINT, handler);
+		(void)sig_catch(old);
 		return (1);
 	}
-	signal(SIGINT, handler);
+	(void)sig_catch(old);
 	return (0);
 }
 
@@ -252,17 +252,17 @@ confirm(char *msg)
 
 	if (setjmp(jmp)) {
 		fprintf(stderr, "\n(interrupted)\n");
-		signal(SIGINT, handler);
+		(void)sig_catch(old);
 		return (0);
 	}
 	fflush(stdout);
 	write(1, msg, strlen(msg));
 	write(1, " (y/n) ", 7);
 	if (getline(0, buf, sizeof(buf)) <= 1) {
-		signal(SIGINT, handler);
+		(void)sig_catch(old);
 		return (0);
 	}
-	signal(SIGINT, handler);
+	old = sig_catch(abort_prompt);
 	return ((buf[0] == 'y') || (buf[0] == 'Y'));
 }
 

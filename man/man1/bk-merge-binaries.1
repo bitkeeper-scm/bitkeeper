@@ -1,0 +1,73 @@
+.so bk-macros
+.TH "bk merge-binaries" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk merge-binaries \- help on merging binary conflicts
+.SH DESCRIPTION
+.LP
+This section documents the binary merge process started by the resolve command.
+See 
+.B bk resolve
+for details on using resolve.
+.LP
+While in resolve, you can hit the return key to see a summary of
+the commands.
+.LP
+\*[BK]
+has no built in mechanism to merge binaries, since it does not know what is
+in the binaries.  The built in choices you have are outlined in the resolver,
+and amount to choosing either the local or the remote version of the file.
+.LP
+The built in choices do not include a file viewer since \*[BK] does not
+know what to use.  You can call your own file viewer.
+Suppose you knew that the file was a gif and you wanted to look at each
+of them to choose which one to use.  You could do a
+.DS
+logo.gif>>\ \c
+.B !xv $BK_LOCAL
+logo.gif>>\ \c
+.B !xv $BK_REMOTE
+logo.gif>>\ \c
+.B ul
+.DE
+to view each and then choose the local version.
+.LP
+You may also call an external tool to merge changes. 
+.DS
+logo.gif>>\ \c
+.Bc !
+.ARG command
+.DE
+.ft R
+then
+.ARG command
+will be run with the appropriate environment variables set.
+This technique may be used to use any external merge tool.
+.SH ENVIRONMENT VARIABLES
+.TP 1i
+BK_LOCAL
+pathname of a temp file containing the local version
+.tp
+BK_GCA
+pathname of a temp file containing the common ancestor
+.tp
+BK_REMOTE
+pathname of a temp file containing the remote version
+.tp
+BK_MERGE
+pathname where the merged content should be placed
+.LP
+.SH NON-BINARY FILES
+Sometimes a file may be marked as binary incorrectly, where incorrectly
+means that normal text based tools would work on this file.  You may force
+the file to be treated as a text file with the "t" command.  This drops
+into the normal text file resolver.
+.SH "SEE ALSO"
+.SA merge 1
+.SA merging 1
+.SA fmtool 1
+.SA revtool 1
+.SA resolve 1
+.SH CATEGORY
+.B Overview
+.br
+.B Repository

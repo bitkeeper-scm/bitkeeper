@@ -4,7 +4,7 @@
 WHATSTR("@(#)%K%");
 
 private jmp_buf	jmp;
-private	void	abort_lock(int notused) { longjmp(jmp, 1); }
+private	void abort_lock(int dummy) { longjmp(jmp, 1); }
 
 /*
  * lock - repository level locking
@@ -48,7 +48,7 @@ usage:			system("bk help -s lock");
 		if (what == 'w') repository_wrunlock(0);
 		exit(0);
 	}
-	(void)signal(SIGINT, abort_lock);
+	(void)sig_catch(abort_lock);
 	switch (what) {
 	    case 'r':	/* read lock the repository */
 		if (repository_rdlock()) {
