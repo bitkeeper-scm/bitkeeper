@@ -38,6 +38,7 @@ usage: admin options [- | file file file...]\n\
     -Z			compress stored s.file\n\
     -U			uncompres stored s.file (undoes -Z)\n\
     -u			make sure that all dates are increasing\n\
+			(dangerous, this changes the keys)\n\
 \n\
     -a<u>|<g>		add user/group (ATT compat)\n\
     -e<u>|<g>		delete user/group (ATT compat)\n\

@@ -62,7 +62,7 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		unless (s = sccs_init(name, init_flags)) continue;
 		if (!s->tree) goto next;
 		RANGE("prs", s, expand, noisy);
-		assert(s->rstart);
+		unless(s->rstart) goto next; /* happen when we have only 1.0 delta */
 		assert(s->rstop);
 		if (didone++) printf("\n");
 		if (doheader) {
