@@ -226,6 +226,8 @@ setup_env()
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
 	HERE=`echo $BK_REGRESSION | sed -e 's,\\\\,/,g'`
 	BK_TMP=$BK_REGRESSION/.tmp
+	BK_DOTBK=$BK_REGRESSION/.bk
+	export BK_DOTBK
 	TMPDIR=/build/.tmp-$USER
 	BKL_P=BKL5413557503d719ed00001200ffffe
 	BKL_P1=YgAAAo0AAAADgAAAADsCeUepwSCv8vdzC+zfqSI/LcdNEi6Oqas5Wj01Fa7w/0rY
@@ -391,6 +393,7 @@ echo ''
 	printf "%.${LEN}s\n" "================================================"
 
 	mkdir -p $BK_TMP || exit 1
+	mkdir -p $BK_DOTBK || exit 1
 
 	# Let's be safe out there boys and girls
 	case $TMPDIR in

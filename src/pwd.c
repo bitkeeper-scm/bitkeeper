@@ -62,7 +62,7 @@ findDotFile(char *old, char *new, char *buf)
 	char	*home;
 	char	oldpath[MAXPATH];
 
-	concat_path(buf, getBkDir(), new);
+	concat_path(buf, getDotBk(), new);
 	if (!exists(buf) && (home = getHomeDir())) {
 		/* need to upgrade? */
 		concat_path(oldpath, home, old);
@@ -88,7 +88,7 @@ dotbk_main(int ac, char **av)
 	if (ac == 3) {
 		puts(findDotFile(av[1], av[2], buf));
 	} else if (ac == 1) {
-		puts(getBkDir());
+		puts(getDotBk());
 	} else {
 		fprintf(stderr, "usage: bk dotbk [old new]\n");
 		return (1);
