@@ -17,7 +17,8 @@ blat: FORCE
 diffutils: FORCE
 	cd pub/diffutils && unset MAKEFLAGS && make
 
-install: all blat
+install: all blat data/bk.ico
+	cp -f data/bk.ico $(BINDIR)/bk.ico
 	cd pub/blat && make BINDIR=$(BINDIR) install
 	cd pub/diffutils && make BINDIR=$(BINDIR) install
 	
