@@ -5508,7 +5508,8 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	if ((s->encoding != E_ASCII) || hash) {
 		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
 	}
-	unless (s->state & S_KEYWORDS) flags &= ~(GET_EXPAND|GET_RCSEXPAND);
+	unless (s->state & S_SCCS) flags &= ~(GET_EXPAND);
+	unless (s->state & S_RCS) flags &= ~(GET_RCSEXPAND);
 
 	if (flags & GET_MODNAME) base = basenm(s->gfile);
 	/*
