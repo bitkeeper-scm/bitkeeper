@@ -71,7 +71,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	find.o findkey.o fix.o fixlod.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
-	isascii.o key2rev.o key2path.o keysort.o kvfile.o \
+	idcache.o isascii.o key2rev.o key2path.o keysort.o kvfile.o \
 	lease.o level.o \
 	lib_tcp.o libcommit.o libdiff.o liblines.o librange.o \
 	libsfiles.o libusers.o license.o lines.o \
@@ -104,7 +104,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	resolve_renames.o resolve_tags.o rmdel.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
-	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
+	set.o setup.o sfiles.o sfio.o shrink.o sinfo.o \
 	slib.o smerge.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \

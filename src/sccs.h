@@ -1067,6 +1067,7 @@ int	delta_table(sccs *s, FILE *out, int willfix);
 char	**getdir(char *);
 typedef	int	(*walkfn)(char *file, struct stat *statbuf, void *data);
 int	walkdir(char *dir, walkfn fn, void *data);
+int	walksfiles(char *dir, walkfn fn, void *data);
 char	*getParent(void);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
 struct tm
@@ -1098,7 +1099,6 @@ int	isEffectiveDir(char *s);
 int	fileTypeOk(mode_t m);
 void	sccs_tagLeaf(sccs *s, delta *d, delta *md, char *tag);
 int	sccs_scompress(sccs *s, int flags);
-int	hasRootFile(char *gRoot, char *sRoot);
 int	mkBkRootIcon(char *path);
 int	unmkBkRootIcon(char *path);
 char	*fast_getcwd(char *buf, int len);

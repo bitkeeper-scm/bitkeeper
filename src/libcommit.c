@@ -125,21 +125,21 @@ status(int verbose, FILE *f)
 			fprintf(f, "User:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfind -sx > %s", tmp_file);
+		sprintf(buf, "bk sfiles -sx > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Extra:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfind -g -s,c > %s", tmp_file);
+		sprintf(buf, "bk sfiles -g -s,c > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
 			fprintf(f, "Modified:\t%s", buf);
 		}
 		fclose(f1);
-		sprintf(buf, "bk sfind -g -s,,p -C > %s", tmp_file);
+		sprintf(buf, "bk sfiles -g -s,,p -C > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -150,7 +150,7 @@ status(int verbose, FILE *f)
 	} else {
 		fprintf(f,
 		    "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
-		f1 = popen("bk sfind -S -sx,c,p,n", "r");
+		f1 = popen("bk sfiles -S -sx,c,p,n", "r");
 		while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
 		pclose(f1);
 	}

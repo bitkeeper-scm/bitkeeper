@@ -4407,11 +4407,7 @@ mksccsdir(char *sfile)
 	if ((s >= sfile + 4) &&
 	    s[-1] == 'S' && s[-2] == 'C' && s[-3] == 'C' && s[-4] == 'S') {
 		*s = 0;
-#if defined(SPLIT_ROOT)
-		unless (exists(sfile)) mkdirp(sfile);
-#else
 		mkdir(sfile, 0777);
-#endif
 		*s = '/';
 	}
 }
@@ -5587,16 +5583,6 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 	    case E_UUENCODE:
 	    case E_GZIP:
 	    case (E_GZIP|E_UUENCODE):
-#ifdef SPLIT_ROOT
-		unless (toStdout) {
-			char *s = rindex(file, '/');
-			if (s) {
-				*s = 0; /* split off the file part */
-				unless (exists(file)) mkdirp(file);
-				*s = '/';
-			}
-		}
-#endif
 		/*
 		 * Note: This has no effect when we print to stdout
 		 * We want this becuase we want diff_gfile() to
@@ -5930,17 +5916,6 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		f = s->gfile;
 		unlinkGfile(s);
 	}
-#ifdef SPLIT_ROOT
-	unless (flags & PRINT) {
-		char *p = rindex(f, '/');
-		//unlinkGfile(s);
-		if (p) { /* if parent dir does not exist, creat it */
-			*p = 0; /* split off the file part */
-			unless (exists(f)) mkdirp(f);
-			*p = '/';
-		}
-	}
-#endif
 	return f;
 }
 
