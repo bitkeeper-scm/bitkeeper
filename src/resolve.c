@@ -1207,7 +1207,7 @@ scanDir(char *dir, char *name, MDBM *db, char *realname)
 	while (e = readdir(d)) {
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
 		sprintf(path, "%s/%s", dir, e->d_name);
-		mdbm_store_str(db, path, e->d_name, MDBM_INSERT);
+		if (db) mdbm_store_str(db, path, e->d_name, MDBM_INSERT);
 		if (strcasecmp(e->d_name, name) == 0) {
 			if (realname[0] == 0) {
 				strcpy(realname, e->d_name);
@@ -1224,7 +1224,7 @@ scanDir(char *dir, char *name, MDBM *db, char *realname)
 	 */
 done:	if (realname[0] == 0) strcpy(realname, name);
 	sprintf(path, "%s/%s", dir, name);
-	mdbm_store_str(db, path, name, MDBM_INSERT);
+	if (db) mdbm_store_str(db, path, name, MDBM_INSERT);
 	return (0); /* ok */
 
 }
@@ -1238,11 +1238,13 @@ getRealBaseName(char *path, char *realParentName, MDBM *db, char *realBaseName)
 	char *p, *parent, *base, *dir;
 	int rc;
 
-	p = mdbm_fetch_str(db, path);
-	if (p) { /* cache hit */
-		//fprintf(stderr, "@@@ cache hit: path=%s\n", path);
-		strcpy(realBaseName, p);
-		return (0); /* ok */
+	if (db) {
+		p = mdbm_fetch_str(db, path);
+		if (p) { /* cache hit */
+			//fprintf(stderr, "@@@ cache hit: path=%s\n", path);
+			strcpy(realBaseName, p);
+			return (0); /* ok */
+		}
 	}
 	p = strrchr(path, '/');
 	if (p) {
@@ -1322,7 +1324,6 @@ getRealName(char *path, MDBM *db, char *realname)
 	sprintf(r, "/%s", name);
 	return (1);
 err:	fprintf(stderr, "getRealName failed: mypath=%s\n", mypath);
-exit(1); //XXXX
 	return (0);
 }
 #else
@@ -2246,7 +2247,8 @@ pass4_apply(opts *opts)
 		opts->applied--;
 		if (strcasecmp(&buf[offset], realname) == 0) {
 			fprintf(stderr,
-"==========================================================================\n\
+"\n\
+============================================================================\n\
 BitKeeper have detected a \"case folding file system\". What this mean\n\
 is that your file system ignore case differences when it looks for\n\
 directories and files. This also means that it is not possible to rename\n\
@@ -2257,20 +2259,23 @@ Your file system is changing it to:\n\
 BitKeeper consider this an error, since this may not be what you have\n\
 intended. The recommended work around for this problem is as follows:\n\
 a) exit from this resolve session\n\
-b) move the directory or file with upper/lower case changes to a\n\
-   temporary location\n\
-c) run \"bk commit\" to record the new location in a changeset.\n\
-d) run \"bk resolve\" or \"bk pull\" again.\n\
-===========================================================================\n",
-			buf, &buf[offset], buf, realname);
+b) run \"bk mv\" to move the directory or file with upper/lower case\n\
+   changes to a temporary location\n\
+c) run \"bk mv\" again to move from the temporary location to\n\
+   %s\n\
+d) run \"bk commit\" to record the new location in a changeset.\n\
+e) run \"bk resolve\" or \"bk pull\" again.\n\
+============================================================================\n",
+			buf, &buf[offset], buf, realname, &buf[offset]);
 		} else {
 			fprintf(stderr,
-"==========================================================================\n\
+"\n\
+============================================================================\n\
 Unknow rename error, wanted:\n\
     %s -> %s\n\
 Got:\n\
     %s -> %s\n\
-===========================================================================\n",
+============================================================================\n",
 			buf, &buf[offset], buf, realname);
 		}
 		fclose(p);
