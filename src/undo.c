@@ -252,9 +252,8 @@ getrev(char *top_rev)
 
 	checkRev(top_rev);
 	sprintf(tmpfile, "%s/bk_tmp%d", TMP_PATH, getpid());
-	/* use special prune code triggered by a revision starting with '*' */
 	sprintf(cmd,
-	    "bk -R prs -ohMa -r'*%s' -d':REV:,' ChangeSet > %s",
+	    "bk -R prs -ohMa -r'1.0..%s' -d':REV:,' ChangeSet > %s",
 	    top_rev, tmpfile);
 	status = system(cmd);
 	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {

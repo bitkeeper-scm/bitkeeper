@@ -31,7 +31,6 @@ extern	void	platformInit(char **av);
 extern	int	proj_cd2root(project *p);
 
 /* KEEP THIS SORTED! */
-int	_createlod_main(int, char **);
 int	_g2sccs_main(int, char **);
 int	abort_main(int, char **);
 int	adler32_main(int, char **);
@@ -53,7 +52,6 @@ int	config_main(int, char **);
 int	converge_main(int, char **);
 int	cp_main(int, char **);
 int	create_main(int, char **);
-int	createlod_main(int, char **);
 int	cset_main(int, char **);
 int	csetprune_main(int, char **);
 int	deledit_main(int, char **);
@@ -143,7 +141,6 @@ int	scompress_main(int, char **);
 int	send_main(int, char **);
 int	sendbug_main(int, char **);
 int	set_main(int, char **);
-int	setlod_main(int, char **);
 int	setup_main(int, char **);
 int	sfiles_main(int, char **);
 int	sfind_main(int, char **);
@@ -185,7 +182,6 @@ struct	command cmdtbl[] = {
 	{"_converge", converge_main},
 	{"_cleanpath", cleanpath_main},
 	{"_clonedo", clonedo_main},
-	{"_createlod", _createlod_main},
 	{"_exists", exists_main},
 	{"_find", find_main },
 	{"_g2sccs", _g2sccs_main},
@@ -234,7 +230,6 @@ struct	command cmdtbl[] = {
 	{"commit", commit_main},		/* doc 2.0 */
 	{"config", config_main},		/* doc 2.0 */
 	{"cp", cp_main},
-	{"createlod", createlod_main},		/* undoc? 2.0 */
 	{"create", create_main},		/* doc 2.0 */
 	{"cset", cset_main},			/* doc 2.0 */
 	{"csetprune", csetprune_main},
@@ -314,7 +309,6 @@ struct	command cmdtbl[] = {
 	{"send", send_main},			/* doc 2.0 */
 	{"sendbug", sendbug_main},		/* doc 2.0 */
 	{"set", set_main},
-	{"setlod", setlod_main},		/* doc 2.0 as lod */
 	{"setup", setup_main },			/* doc 2.0 */
 	{"shrink", shrink_main}, 		/* undoc? 2.0 */
 	{"sfiles", sfind_main}, /* aliases */ 	/* doc 2.0 */
@@ -359,6 +353,39 @@ usage()
 
 #define	MAXARGS	1024
 
+char *
+milli(void)
+{
+	struct	timeval	tv;
+	u64	now, start;
+	static	char time[20];
+
+	gettimeofday(&tv, 0);
+	unless (getenv("BK_SEC")) {
+		safe_putenv("BK_SEC=%u", tv.tv_sec);
+		safe_putenv("BK_MSEC=%u", tv.tv_usec / 1000);
+		return ("0");
+	}
+	start = (u64)atoi(getenv("BK_SEC")) * (u64)1000;
+	start += (u64)atoi(getenv("BK_MSEC"));
+	now = (u64)tv.tv_sec * (u64)1000;
+	now += (u64)(tv.tv_usec / 1000);
+	sprintf(time, "%u", (u32)(now - start));
+	return (time);
+}
+
+private void
+save_gmon()
+{
+	char	buf[200];
+	int	i = 0;
+
+	do {
+		sprintf(buf, "gmon.%d", i++);
+	} while (exists(buf));
+	rename("gmon.out", buf);
+}
+
 int
 main(int ac, char **av)
 {
@@ -370,7 +397,7 @@ main(int ac, char **av)
 	if (getenv("BK_SHOWPROC")) {
 		FILE	*f = fopen("/dev/tty", "w");
 
-		fprintf(f, "BK(%d)", getpid());
+		fprintf(f, "BK (%u t: %5s)", getpid(), milli());
 		for (i = 0; av[i]; ++i) fprintf(f, " %s", av[i]);
 		fprintf(f, "\n");
 		fclose(f);
@@ -493,6 +520,7 @@ main(int ac, char **av)
 	}
 
 run:	getoptReset();
+	if (exists("gmon.out")) save_gmon();
 
 	if (streq(prog, "cmdlog")) {
 		cmdlog_dump(ac, av);
@@ -802,6 +830,13 @@ cmdlog_end(int ret)
 		}
 	}
 
+	if (getenv("BK_SHOWPROC")) {
+		FILE	*f = fopen("/dev/tty", "w");
+
+		fprintf(f, "END(%u t: %5s)", getpid(), milli());
+		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
+		fclose(f);
+	}
 	user = sccs_getuser();
 	fprintf(f, "%c%s %lu %s: ",
 	    log_versions[LOGVER],

@@ -8,6 +8,7 @@ left||right->path == s->gfile.
 #include "sccs.h"
 #include "logging.h"
 #include "zlib/zlib.h"
+#include <time.h>
 WHATSTR("@(#)%K%");
 
 /*
@@ -78,7 +79,6 @@ private	delta	*tableGCA;	/* predecessor to the oldest delta found
 				 * in the patch */
 private	int	noConflicts;	/* if set, abort on conflicts */
 private	char	pendingFile[MAXPATH];
-private lod_t	*lodstruct = 0;	/* used for fixing lod after smooshing */
 private	char	*input;		/* input file name,
 				 * either "-" or a patch file */
 private	int	encoding;	/* encoding before we started */
@@ -174,7 +174,6 @@ usage:		system("bk help -s takepatch");
 	proj_free(proj);
 	if (idDB) { mdbm_close(idDB); idDB = 0; }
 	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
-	if (lodstruct) lod_free(lodstruct);
 	if (error < 0) {
 		/* XXX: Save?  Purge? */
 		cleanup(CLEAN_RESYNC);
@@ -838,57 +837,6 @@ Please commit pending changes with `bk commit' and reapply the patch.\n",
 		file);
 }
 
-private	void
-setlod(sccs *s, delta *d, int branch)
-{
-	ser_t	maxlod;
-	u8	def[MAXPATH];
-
-	if (s->defbranch) free(s->defbranch);
-	s->defbranch=0;
-
-	/* if revision, set it and leave */
-	unless (branch) {
-		assert(d->rev);
-		s->defbranch = strdup(d->rev);
-		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
-		return;
-	}
-
-	/* if branch, not needed if latest */
-	maxlod = sccs_nextlod(s);
-	maxlod--;
-	if (maxlod == d->r[0]) return;
-
-	sprintf(def, "%d", d->r[0]);
-	s->defbranch = strdup(def);
-	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
-}
-
-/* two kind of fix ups to do: rejoin separated lods, and get
- * all files pointed to the same lod
- */
-
-private int
-fixLod(sccs *s)
-{
-	u32	flags = SILENT;
-	u32	lodflags = LOD_NORENAME|LOD_CHECK|LOD_RENUMBER;
-
-	if (s->state & S_CSET) {
-		assert(!lodstruct);
-		lodstruct = lod_init(s, 0, flags|lodflags, "takepatch");
-		return (lodstruct ? 0 : -1);
-	}
-
-	unless (lodstruct) {
-		fprintf(stderr, "takepatch: fixLod with no lodstruct\n");
-		return (-1);
-	}
-
-	return (lod_setlod(lodstruct, s, flags));
-}
-
 /*
  * Make sure user files have no content
  * This function is called we process a logging patch
@@ -931,25 +879,37 @@ chkEmpty(sccs *s, MMAP *dF)
 /*
  * Most of the code in this function is copied from applyPatch
  * We may want to merge the two function later.
+ * 
+ * This tries within a reasonable amount of effort to write the
+ * SCCS file only once.  This can be done because the sccs struct
+ * is in memory and can be fiddled with carefully.  The weaving
+ * of new information is done when we are done fiddling with the sccs
+ * file and write out the table, then weave the new deltas into the
+ * body.  While this is doable for the general weave case, it is
+ * very doable for the ChangeSet file (or any hash file) because
+ * the weave is an ordered set of blocks, youngest to oldest.
+ * So by building a table of blocks to weave, as well as a way to
+ * know how to increment the serial number of existing blocks, it
+ * is possible to only write the file once.
+ *
+ * What we do in this files: 
  */
 private	int
 applyCsetPatch(char *localPath,
 			int nfound, int flags, sccs *perfile, project *proj)
 {
-	patch	*p = patchList;
+	patch	*p;
 	MMAP	*iF;
 	MMAP	*dF;
 	sccs	*s = 0;
 	delta	*d = 0;
 	int	n = 0;
-	char	lodkey[MAXKEY];
-	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
 	int	confThisFile;
 	FILE	*csets = 0;
 	char	csets_in[MAXPATH];
 
-	unless (p) return (0);
-	lodkey[0] = 0;
+	unless (p = patchList) return (0);
+
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
@@ -961,7 +921,10 @@ applyCsetPatch(char *localPath,
 		}
 		goto apply;
 	}
+	/* NOTE: the "goto" above .. skip the next block if no ChangeSet */
+
 	fileCopy2(localPath, p->resyncFile);
+	/* Open up the cset file */
 	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
@@ -996,40 +959,6 @@ applyCsetPatch(char *localPath,
 			return -1;
 		}
 	}
-	/* convert to uncompressed, it's faster, we saved the mode above */
-	if (s->encoding & E_GZIP) s = expand(s, proj);
-	unless (s) return (-1);
-
-	/* save current LOD setting, as it might change */
-	if (d = sccs_top(s)) {
-		sccs_sdelta(s, d, lodkey);
-		if (s->defbranch) {
-			u8	*ptr;
-			/* XXX: handle symbols? */
-			lodbranch = 1;
-			for (ptr = s->defbranch; *ptr; ptr++) {
-				unless (*ptr == '.') continue;
-				lodbranch = 1 - lodbranch;
-			}
-			free(s->defbranch);
-			s->defbranch = 0;
-			sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
-			unless (sccs_restart(s)) {
-				perror("restart");
-				exit(1);
-			}
-		}
-	}
-	s->proj = 0; sccs_free(s);
-	/* sccs_restart does not rebuild the graph and we just pruned it,
-	 * so do a hard restart.
-	 */
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
-		SHOUT();
-		fprintf(stderr,
-		    "takepatch: can't open %s\n", p->resyncFile);
-		return -1;
-	}
 apply:
 	p = patchList;
 	if (p && p->pid) cset_map(s, nfound);
@@ -1047,8 +976,8 @@ apply:
 					fprintf(stderr, " \n");
 				}
 				ahead(p->pid, s->sfile);
+				/* Can not reach */
 			}
-			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (isLogPatch) {
 				s->state |= S_FORCELOGGING;
 				s->xflags |= X_LOGS_ONLY;
@@ -1088,8 +1017,6 @@ apply:
 				 * and use that as the new local file when
 				 * when takepatch is done.
 				 */
-				encoding = s->encoding; /* save for later */
-				s->encoding &= ~E_GZIP;
 			}
 			iF = p->initMmap;
 			dF = p->diffMmap;
@@ -1104,12 +1031,18 @@ apply:
 		}
 		p = p->next;
 	}
-	cset_write(s);
+	if (cset_write(s)) {
+		SHOUT();
+		fprintf(stderr, "takepatch: can't write %s\n", p->resyncFile);
+		return -1;
+	}
 
 	s->proj = 0; sccs_free(s);
-
 	/*
 	 * Fix up d->rev, there is probaply a better way to do this.
+	 * XXX: not only renumbers, but collapses inheritance on
+	 * items brought in from patch.  Could call inherit.
+	 * For now, leave at this and watch performance.
 	 */
 	sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
 
@@ -1126,21 +1059,14 @@ apply:
 		d = sccs_findKey(s, p->me);
 		assert(d);
 		unless (p->meta) fprintf(csets, "%s\n", d->rev);
+		/*
+		 * XXX: mclose take a null arg?
+		 * meta doesn't have a diff block
+		 */
 		mclose(p->diffMmap); /* win32: must mclose after cset_write */
 		p = p->next;
 	}
 	fclose(csets);
-
-	if (encoding & E_GZIP) s = unexpand(s);
-	if (lodkey[0]) { /* restore LOD setting */
-		unless (d = sccs_findKey(s, lodkey)) {
-			fprintf(stderr, "takepatch: can't find lod key %s\n",
-				lodkey);
-			return (-1);
-		}
-		setlod(s, d, lodbranch);
-		unless (sccs_restart(s)) { perror("restart"); exit(1); }
-	}
 
 	/*
 	 * XXX What does this code do ??
@@ -1164,11 +1090,6 @@ apply:
 		d->flags |= p->local ? D_LOCAL : D_REMOTE;
 	}
 
-	/* must have restored defbranch (setlod above) before fixing */
-	if (fixLod(s)) {
-		s->proj = 0; sccs_free(s);
-		return (-1);
-	}
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		s->proj = 0; sccs_free(s);
 		return (-1);
@@ -1204,8 +1125,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	int	newflags;
 	int	pending = 0;
 	int	n = 0;
-	char	lodkey[MAXKEY];
-	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
 	int	confThisFile;
 	FILE	*csets = 0;
 
@@ -1226,7 +1145,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		free(resync);
 		return (0);
 	}
-	lodkey[0] = 0;
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
@@ -1280,27 +1198,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	/* convert to uncompressed, it's faster, we saved the mode above */
 	if (s->encoding & E_GZIP) s = expand(s, proj);
 	unless (s) return (-1);
-
-	/* save current LOD setting, as it might change */
-	if (d = sccs_top(s)) {
-		sccs_sdelta(s, d, lodkey);
-		if (s->defbranch) {
-			u8	*ptr;
-			/* XXX: handle symbols? */
-			lodbranch = 1;
-			for (ptr = s->defbranch; *ptr; ptr++) {
-				unless (*ptr == '.') continue;
-				lodbranch = 1 - lodbranch;
-			}
-			free(s->defbranch);
-			s->defbranch = 0;
-			sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
-			unless (sccs_restart(s)) {
-				perror("restart");
-				exit(1);
-			}
-		}
-	}
 	unless (tableGCA) goto apply;
 	/*
 	 * Note that tableGCA is NOT a valid pointer into the sccs tree "s".
@@ -1496,15 +1393,6 @@ apply:
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s);
 	if (encoding & E_GZIP) s = unexpand(s);
-	if (lodkey[0]) { /* restore LOD setting */
-		unless (d = sccs_findKey(s, lodkey)) {
-			fprintf(stderr, "takepatch: can't find lod key %s\n",
-				lodkey);
-			return (-1);
-		}
-		setlod(s, d, lodbranch);
-		unless (sccs_restart(s)) { perror("restart"); exit(1); }
-	}
 	for (d = 0, p = patchList; p; p = p->next) {
 		assert(p->me);
 		d = sccs_findKey(s, p->me);
@@ -1522,18 +1410,10 @@ apply:
 		if (s->state & S_CSET) continue;
 		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) pending++;
 	}
-	/* Must check pending before fixing the lod, or we get the wrong
-	 * delta as TOL.
-	 */
 	if (pending) {
 		s->proj = 0; sccs_free(s);
 		uncommitted(localPath);
 		return -1;
-	}
-	/* must have restored defbranch (setlod above) before fixing */
-	if (fixLod(s)) {
-		s->proj = 0; sccs_free(s);
-		return (-1);
 	}
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		s->proj = 0; sccs_free(s);

@@ -182,7 +182,9 @@ check_main(int ac, char **av)
 		 * exit code 2 means try again, all other errors should be
 		 * distinct.
 		 */
-		if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
+		unless (flags & INIT_NOCKSUM) {
+			if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
+		}
 		if (chk_gfile(s)) errors |= 0x08;
 		if (no_gfile(s)) errors |= 0x08;
 		if (readonly_gfile(s)) errors |= 0x08;
@@ -316,8 +318,8 @@ fix_merges(sccs *s)
 {
 	sccs	*tmp;
 
-	/* sccs_renumber(s, 0, 0, 0, 0, (verbose) ? 0 : SILENT); */
-	sccs_renumber(s, 0, 0, 0, 0, 0);
+	/* sccs_renumber(s, (verbose) ? 0 : SILENT); */
+	sccs_renumber(s, 0);
 	sccs_newchksum(s);
 	tmp = sccs_init(s->sfile, 0, 0);
 	assert(tmp);
@@ -370,27 +372,14 @@ chk_dfile(sccs *s)
 	unless (d) return (0);
 
        /*
-	* XXX This code is blindly copied from sfind.c which in turn
-	*     was copied from the lod code.
-	*     (We need this to pass the lod test case )
-	* 
-        * If it is out of view, we need to look at all leaves and see if
-        * there is a problem or not.
+	* XXX There used to be code here to handle the old style
+	* lod "not in view" file (s->defbranch == 1.0).  Pulled
+	* that and am leaving this marker as a reminder to see
+	* if new single tip LOD design needs to handle 'not in view'
+	* as a special case.
         */
-       if (s->defbranch && streq(s->defbranch, "1.0")) {
-               for (d = s->table; d; d = d->next) {
-                       unless ((d->type == 'D') && sccs_isleaf(s, d)) {
-                               continue;
-                       }
-                       unless (d->flags & D_CSET) break;
-               }
-               unless (d) return (0);
-               fprintf(stderr,
-                   "Warning: not in view file %s skipped.\n", s->gfile);
-               return (0);
-       }
 
-
+	assert(!s->defbranch);
 
 	p = basenm(s->sfile);
 	*p = 'd';
@@ -1260,6 +1249,8 @@ checkKeys(sccs *s, char *root)
 	char	*a;
 	delta	*d;
 	datum	k, v;
+	MDBM	*findkey;
+	char	key[MAXKEY];
 
 	k.dptr = root;
 	k.dsize = strlen(root) + 1;
@@ -1267,10 +1258,38 @@ checkKeys(sccs *s, char *root)
 	unless (v.dsize) return (0);
 	bcopy(v.dptr, &i, sizeof(i));
 	assert(i < csetKeys.n);
+	findkey = mdbm_mem();
+	for (d = s->table; d; d = d->next) {
+		unless (d->flags & D_CSET) continue;
+		sccs_sdelta(s, d, key);
+		k.dptr = key;
+		k.dsize = strlen(key) + 1;
+		v.dptr = (void*)&d;
+		v.dsize = sizeof(d);
+		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
+			fprintf(stderr, "check: insert error for %s\n", key);
+			perror("insert");
+			mdbm_close(findkey);
+			return (1);
+		}
+		unless (mixed) continue;
+		*strrchr(key, '|') = 0;
+		k.dsize = strlen(key) + 1;
+		if (mdbm_store(findkey, k, v, MDBM_INSERT)) {
+			fprintf(stderr, "check: insert error for %s\n", key);
+			perror("insert");
+			mdbm_close(findkey);
+			return (1);
+		}
+	}
 	do {
 		assert(csetKeys.deltas[i]);
 		assert(csetKeys.deltas[i] != (char*)1);
-		unless (d = sccs_findKey(s, csetKeys.deltas[i])) {
+		k.dptr = csetKeys.deltas[i];
+		k.dsize = strlen(csetKeys.deltas[i]) + 1;
+		v = mdbm_fetch(findkey, k);
+		if (v.dsize) bcopy(v.dptr, &d, sizeof(d));
+		unless (v.dsize) {
 			a = csetFind(csetKeys.deltas[i]);
 			if (isGone(s)) fprintf(stderr, "Warning: ");
 			fprintf(stderr,
@@ -1298,6 +1317,7 @@ You may want to delete the file as well to be consistent with your parent.\n",
 		}
 	} while (csetKeys.deltas[++i] != (char*)1);
 
+	mdbm_close(findkey);
 	return (errors);
 }
 

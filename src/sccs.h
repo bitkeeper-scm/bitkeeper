@@ -103,15 +103,6 @@
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
 /*
- * flags passed to sccs_lod()
- */
-#define LOD_NEW		0x10000000	/* Setup a new LOD on any ChangeSet */
-#define LOD_CHECK	0x20000000	/* Check and fix all LOD settings */
-#define LOD_NORENAME	0x40000000	/* Skip the renaming part */
-#define LOD_RENUMBER	0x80000000	/* Fix possible lod renumber errors */
-#define LOD_CREATE	0x01000000	/* Create a new lod on existing */
-
-/*
  * flags passed to sfileFirst
  */
 #define	SF_GFILE	0x00000001	/* gfile should be readable */
@@ -230,6 +221,7 @@
 #define	CONFIG(s)	((s)->state & S_CONFIG)
 #define	READ_ONLY(s)	((s)->state & S_READ_ONLY)
 #define	SET(s)		((s)->state & S_SET)
+#define	MK_GONE(s, d)	(s)->hasgone = 1; (d)->flags |= D_GONE
 
 #define	GOODSCCS(s)	assert(s); unless (s->tree && s->cksumok) return (-1)
 #define	HASGRAPH(s)	((s)->tree)
@@ -532,7 +524,7 @@ extern	char *upgrade_msg;
 typedef struct loc {
 	char	*p;		/* first byte of the data */
 	u32	len;		/* think 4GB is big enough? */
-	u8	isPatch:1;	/* this entry came from the patch file */
+	ser_t	serial;
 } loc;
 
 /*
@@ -584,6 +576,7 @@ typedef	struct sccs {
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
 	loc	*locs;		/* for cset data */ 
+	u32	iloc;		/* index to element in *loc */ 
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
 	u32	cksumok:1;	/* check sum was ok */
@@ -596,6 +589,7 @@ typedef	struct sccs {
 	u32	bitkeeper:1;	/* bitkeeper file */
 	u32	prs_odd:1;	/* for :ODD: :EVEN: in dspecs */
 	u32	unblock:1;	/* sccs_free: only if set */
+	u32	hasgone:1;	/* this graph has D_GONE deltas */
 } sccs;
 
 typedef struct {
@@ -801,11 +795,11 @@ void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
 sccs	*sccs_csetInit(u32 flags, project *proj);
 char	**sccs_files(char **, int);
-ser_t	sccs_nextlod(sccs *s);
 int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
 void	sccs_whynot(char *who, sccs *s);
 void	sccs_ids(sccs *s, u32 flags, FILE *out);
+void	sccs_inherit(sccs *s, u32 flags, delta *d);
 int	sccs_hasDiffs(sccs *s, u32 flags, int inex);
 void	sccs_print(delta *d);
 delta	*sccs_getInit(sccs *s, delta *d, MMAP *f, int patch,
@@ -909,9 +903,7 @@ int	sccs_mylock(const char *lockf);
 int	sccs_readlockf(const char *file, pid_t *pidp, char **hostp, time_t *tp);
 
 char	*sccs_utctime(delta *d);
-int	sccs_setlod(char *rev, u32 flags);
-void	sccs_renumber(sccs *s, ser_t nextlod, ser_t thislod, MDBM *lodDb,
-	    char *base, u32 flags);
+void	sccs_renumber(sccs *s, u32 flags);
 char 	*sccs_iskeylong(char *key);
 #ifdef	PURIFY_FILES
 MMAP	*purify_mopen(char *file, char *mode, char *, int);
@@ -1008,11 +1000,6 @@ delta	*host_get(delta *, int);
 void	user_done(void);
 delta	*user_get(delta *, int);
 char	*shell(void);
-struct	lod;
-typedef struct lod lod_t;
-lod_t	*lod_init(sccs *cset, char *lodname, u32 flags, char *who);
-void	lod_free(lod_t *l);
-int	lod_setlod(lod_t *l, sccs *s, u32 flags);
 void	names_init(void);
 int	names_rename(char *old_spath, char *new_spath, u32 flags);
 void	names_cleanup(u32 flags);
@@ -1075,7 +1062,6 @@ void	sccs_rmUncommitted(int quiet);
 void	rmEmptyDirs(int quiet);    
 int	after(int quiet, char *rev);
 int	consistency(int quiet);
-int	lod(int quiet, char *rev);
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
 char	*getCSetFile(project *p);
 int	spawn_cmd(int flag, char **av);
@@ -1142,6 +1128,7 @@ char	**getTriggers(char *dir, char *prefix);
 void	comments_cleancfile(char *file);
 int	comments_readcfile(sccs *s, int prompt, delta *d);
 int	comments_prompt(char *file);
+int	run_check(char *partial);
 void	set_timestamps(sccs *s);
 
 extern char *bk_vers;

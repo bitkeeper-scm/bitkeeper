@@ -82,7 +82,7 @@ csetprune_main(int ac, char **av)
 		exit(1);	/* leave it locked! */
 	}
 	verbose((stderr, "Renumbering ChangeSet file...\n"));
-	sccs_renumber(s, 0, 0, 0, 0, SILENT);
+	sccs_renumber(s, SILENT);
 	sccs_newchksum(s);
 	sccs_free(s);
 	unless ((s = sccs_init(csetFile, INIT_NOCKSUM, 0)) && s->tree) {
@@ -294,7 +294,7 @@ rebuildTags(sccs *s)
 		}
 		/* Move all tags directly onto delta, delete all "R" deltas */
 		if (md != d) {
-			md->flags |= D_GONE;
+			MK_GONE(s, md);
 			md = sym->metad = d;
 		}
 		md->flags |= D_SYMBOLS;
@@ -392,7 +392,7 @@ _pruneEmpty(delta *d)
 
 	/* Not a keeper, so re-wire around it */
 	debug((stderr, "RMDELTA(%s)\n", d->rev));
-	d->flags |= D_GONE;
+	MK_GONE(sc, d);
 	assert(d->parent);	/* never get rid of root node */
 	if (d->flags & D_MERGED) {
 		for (m = sc->table; m && m->serial > d->serial; m = m->next) {
@@ -432,7 +432,13 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 			}
 		}
 		else unless (n->flags & D_SYMBOLS) {
-			n->flags &= D_GONE;
+			/*
+			 * Mark nodes in the tag graph GONE
+			 * if they don't have a symbol (meaning
+			 * they are a merge node with type R
+			 * Do this here, because about to turn off D_SYMBOL
+			 */
+			MK_GONE(s, n);
 		}
 		n->ptag = n->mtag = 0;
 		n->symGraph = 0;
