@@ -619,13 +619,18 @@ getRev(char *root, char *key, MDBM *idDB)
 private void
 markCset(sccs *s, delta *d)
 {
+	time_t	now = time(0);
+
 	do {
 		if (d->flags & D_SET) {
-			poly = 1;
+			/* warn if in the last 1.5 months */
+			if ((now - d->date) < (45 * 24 * 60 * 60)) poly = 1;
 			if (polyList) {
 				fprintf(stderr,
-				    "check: %s: %s in more than one cset\n",
-				    s->gfile, d->rev);
+				    "check: %s@%s "
+				    "(%s@%s %.8s) in multiple csets\n",
+				    s->gfile, d->rev,
+				    d->user, d->hostname, d->sdate);
 			}
 		}
 		d->flags |= D_SET;

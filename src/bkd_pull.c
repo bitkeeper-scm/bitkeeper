@@ -6,7 +6,7 @@ private int	uncompressed(char *tmpfile);
 private int	compressed(int gzip, char *tmpfile);
 extern	MDBM	*csetKeys(MDBM *);
 
-private	char	*cset[] = { "bk", "cset", "-m", "-", 0 };
+private	char	*cset[] = { "bk", "makepatch", "-", 0 };
 
 int
 cmd_pull(int ac, char **av)
@@ -142,7 +142,6 @@ uncompressed(char *csets_out)
 	/*
 	 * What I want is to run cset with stdin being the file.
 	 */
-
 	fd0 = dup(0); close(0);
 	fd = open(csets_out, 0,  0);
 	assert(fd == 0);

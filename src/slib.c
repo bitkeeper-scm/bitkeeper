@@ -7733,9 +7733,9 @@ sccs_clean(sccs *s, u32 flags)
 		}
 		if (!streq(t, d->pathname)) {
 			unless (flags & PRINT) {
-				fprintf(stderr,
+				verbose((stderr,
 				   "%s has different pathnames, needs delta.\n",
-				    s->gfile);
+				    s->gfile));
 			} else {
 				printf(
 				    "===== %s (pathnames) %s vs edited =====\n",

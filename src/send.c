@@ -126,11 +126,12 @@ send_main(int ac,  char **av)
 	fflush(f);
 	unless (use_stdout) fclose(f);
 	unless (wrapper) {
-		sprintf(buf, "bk cset %s -m%s %s %s",
-						dflag, rev, qflag, out);
+		sprintf(buf,
+		    "bk makepatch %s -r%s %s %s", dflag, rev, qflag, out);
 	} else {
-		sprintf(buf, "bk cset %s -m%s %s | bk %swrap%s",
-					    dflag, rev, qflag, wrapper, out);
+		sprintf(buf,
+		    "bk makepatch %s -r%s %s | bk %swrap%s",
+		    dflag, rev, qflag, wrapper, out);
 	}
 	if (system(buf) != 0)  {
 		unless (use_stdout) unlink(patch);

@@ -8,13 +8,10 @@ WHATSTR("@(#)%K%");
 
 private	char	*cset_help = "\n\
 usage: cset [opts]\n\n\
-    -c		like -m, except generate only ChangeSet diffs\n\
-    -d<range>	do unified diffs for the range\n\
     -C		clear and remark all ChangeSet boundries\n\
     -h		With -r listing, show historic path\n\
     -H		With -r listing, hide Changeset file from file list\n\
     -i<list>	create a new cset on TOT that includes the csets in <list>\n\
-    -m<range>	Generate a patch of the changes in <range>\n\
     -M<range>	Mark the files included in the range of csets\n\
     -p		print the list of deltas being added to the cset\n\
     -q		Run silently\n\
@@ -68,6 +65,43 @@ private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
 private char	*spin = "|/-\\";
 
+int
+makepatch_main(int ac, char **av)
+{
+	int	i, m = 0;
+	char	*s;
+	char	*nav[20];
+
+	/*
+	 * bk makepatch [-v] [-c<range>] [-d<range>] [-r<range>] [-]
+	 */
+	nav[0] = "makepatch";
+	for (i = 1; av[i]; ++i) {
+		if (i > 15) {
+			fprintf(stderr, "Too many args\n");
+			exit(1);
+		}
+		nav[i] = av[i];
+		s = &nav[i][1];
+		while (*s == 'v') s++;
+		if (*s == 'r') {
+			*s = 'm';
+			m = 1;
+		}
+	}
+	unless (m) {
+		if (streq(nav[i-1], "-")) {
+			nav[i-1] = "-m";
+			nav[i] = "-";
+		} else {
+			nav[i++] = "-m";
+		}
+		ac++;
+	}
+	nav[ac] = 0;
+	return (cset_main(ac, nav));
+}
+
 /*
  * cset.c - changeset command
  */
@@ -89,6 +123,7 @@ cset_main(int ac, char **av)
 usage:		fprintf(stderr, "%s", cset_help);
 		return (1);
 	}
+
 	if (streq(av[0], "makepatch")) copts.makepatch++;
 
 	while (
