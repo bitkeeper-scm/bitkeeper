@@ -166,7 +166,7 @@ usage:		system("bk help -s takepatch");
 		free(b);
 		if (rc < 0) {
 			error = rc;
-			break;
+			continue;
 		}
 		remote += rc;
 	}
@@ -177,7 +177,7 @@ usage:		system("bk help -s takepatch");
 	if (lodstruct) lod_free(lodstruct);
 	if (error < 0) {
 		/* XXX: Save?  Purge? */
-		cleanup(0);
+		cleanup(CLEAN_RESYNC);
 	}
 	if (echo) {
 		fprintf(stderr,
@@ -344,6 +344,16 @@ getRecord(MMAP *f)
 	return (d);
 }
 
+private void
+shout(void)
+{
+	static shouted = 0;
+
+	if (shouted) return; /* already done shouting */
+	SHOUT();
+	shouted = 1;
+}
+
 /*
  * Extract a contiguous set of deltas for a single file from the patch file.
  * "name" is the cset name, i.e., the most recent name in the csets being
@@ -418,7 +428,11 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			if (rebuild_id(t)) {
 				fprintf(stderr,
 				    "ID cache problem causes abort.\n");
-				goto cleanup;
+cleanup:			if (perfile) sccs_free(perfile);
+				if (gfile) free(gfile);
+				if (s) sccs_free(s);
+				free(name);
+				cleanup(CLEAN_RESYNC);
 			}
 			goto again;
 		}
@@ -430,11 +444,11 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 			SHOUT();
 			fprintf(stderr,
 			   "takepatch: can't find key '%s' in id cache\n", t);
-cleanup:		if (perfile) sccs_free(perfile);
+error:			if (perfile) sccs_free(perfile);
 			if (gfile) free(gfile);
 			if (s) sccs_free(s);
 			free(name);
-			cleanup(CLEAN_RESYNC);
+			return (-1);
 		}
 	}
 
@@ -453,44 +467,43 @@ cleanup:		if (perfile) sccs_free(perfile);
 			s->sfile);
 		}
 		if (IS_EDITED(s)) {
-			if (sccs_clean(s, SILENT)) {
-				SHOUT();
+			if (sccs_clean(s, CLEAN_SHUTUP)) {
+				shout();
 				fprintf(stderr,
-				    "takepatch: %s is edited and modified.\n",
+				    "takepatch: %s is edited and modified; "
+				    "unsafe to overwrite.\n",
 				    name);
-				fprintf(stderr,
-			    "takepatch: will not overwrite modified files.\n");
-				goto cleanup;
+				goto error;
 			} else {
 				sccs_restart(s);
 			}
 		}
 		if (s->state & S_PFILE) {
-			SHOUT();
+			shout();
 			fprintf(stderr,
 			    "takepatch: %s is locked w/o writeable gfile?\n",
 			    s->sfile);
-			goto cleanup;
+			goto error;
 		}
 		sccs_setpathname(s);
 		unless (isLogPatch || streq(s->spathname, s->sfile)) {
 			tmp = sccs_top(s);
 			badpath(s, tmp);
-			goto cleanup;
+			goto error;
 		}
 		unless (tmp = sccs_findKey(s, t)) {
-			SHOUT();
+			shout();
 			fprintf(stderr,
 			    "takepatch: can't find root delta '%s' in %s\n",
 			    t, name);
-			goto cleanup;
+			goto error;
 		}
 		unless (sccs_ino(s) == tmp) {
-			SHOUT();
+			shout();
 			fprintf(stderr,
 			    "takepatch: root deltas do not match in %s\n",
 			    name);
-			goto cleanup;
+			goto error;
 		}
 	} else {	/* create a new file */
 		/*
