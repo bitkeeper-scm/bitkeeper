@@ -40,7 +40,7 @@ unix_common_setup()
 	BK_FS="|"
 	BK_BIN="`cd .. && pwd`"
 	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH:/usr/local/bin:/usr/freeware/bin
-	unset CDPATH
+	unset CDPATH PAGER
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test
 	if [ X$USER = Xroot ]; then USER=root-test; fi
