@@ -388,9 +388,9 @@ chk_pending(sccs *s, char *gfile, char state[5], MDBM *sDB, MDBM *gDB)
 
 out:	unless (printed) do_print(state, gfile, 0);
 	/*
-	 * Do not sccs_close() if it is passed in from outside 
+	 * Do not sccs_free() if it is passed in from outside 
 	 */
-	if (local_s) sccs_close(s);
+	if (local_s) sccs_free(s);
 	if (opts.dfile) {
 		/* No pending delta, remove redundant d.file */
 		unless (state[PSTATE] == 'p') {
@@ -469,7 +469,7 @@ file(char *f)
 			do_print(state, buf, 0);
 		}
 	}
-	if (sc) sccs_close(sc);
+	if (sc) sccs_free(sc);
 }
 
 private void
@@ -979,7 +979,7 @@ skip:			mdbm_close(gDB);
 		file[0] = 'z';
 		mdbm_delete_str(sDB, file); /* remove z.file entry */
 		mdbm_delete_str(gDB, gfile);
-		if (s) sccs_close(s);
+		if (s) sccs_free(s);
 		free(p);
 	}
 
