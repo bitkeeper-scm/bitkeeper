@@ -185,6 +185,9 @@ main (int argc, char **argv)
 
       if (!skip_rest_of_patch)
 	get_input_file (inname, outname);
+    
+      if (!instat.st_size && log_names) 
+	say ("Creating file %s\n", quotearg (outname));
 
       if (diff_type == ED_DIFF) {
 	outstate.zero_output = 0;
@@ -357,6 +360,8 @@ main (int argc, char **argv)
 		  || (pch_says_nonexistent (reverse ^ 1) == 2
 		      && ! posixly_correct)))
 	    {
+	      if (log_names)
+		say ("Removing file %s\n", quotearg (outname));
 	      if (verbosity == VERBOSE)
 		say ("Removing file %s%s\n", quotearg (outname),
 		     dry_run ? " and any empty ancestor directories" : "");
@@ -525,6 +530,7 @@ static struct option const longopts[] =
   {"no-backup-if-mismatch", no_argument, NULL, CHAR_MAX + 6},
   {"posix", no_argument, NULL, CHAR_MAX + 7},
   {"quoting-style", required_argument, NULL, CHAR_MAX + 8},
+  {"lognames", no_argument, NULL, CHAR_MAX + 9},
   {NULL, no_argument, NULL, 0}
 };
 
@@ -781,6 +787,9 @@ get_some_switches (void)
 		  set_quoting_style ((struct quoting_options *) 0,
 				     (enum quoting_style) i);
 		}
+		break;
+	    case CHAR_MAX + 9:
+		log_names = 1;
 		break;
 	    default:
 		usage (stderr, 2);

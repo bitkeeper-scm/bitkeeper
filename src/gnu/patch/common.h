@@ -187,6 +187,7 @@ XTERN int debug;
 #else
 # define debug 0
 #endif
+XTERN bool log_names;
 XTERN bool force;
 XTERN bool batch;
 XTERN bool noreverse;

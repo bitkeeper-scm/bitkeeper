@@ -12,13 +12,14 @@ SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 PSCR	= t/doit
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
 LINKS	= ci co edit unedit unget
+GNU	= gnu
 DATA	= bitkeeper.config bkhelp.txt
 
 LINKTO	= ci delta co get edit get unedit clean unget clean fmtool fm \
 	  fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
 
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA)
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) $(GNU)
 
 CFLAGS	= -g -O -Wall -Wno-parentheses -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
 CPPFLAGS= -Izlib
@@ -129,21 +130,18 @@ production_purify: rebuild purify install
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
 		$(LIBS) a.out core
+	-cd gnu && make clean-obj
 
 clean-bin: FORCE
 	-/bin/rm -f $(BINS) $(SCRIPTS) $(PSCR) $(LINKS) MANIFEST
+	-cd gnu && make clean
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars config.status \
 	    config.cache config.log bk.ver stamp-ver
 
 clean-src: FORCE
-	-bk clean
-	-bk clean port
-	-bk clean gui
-	-bk clean mdbm
-	-bk clean zlib
-	-bk clean t
+	-bk -r . clean
 	-/bin/rm -f tags TAGS
 
 # This would be called "clean" but that's a command name.
@@ -198,6 +196,9 @@ t/doit: t/doit.sh substvars
 	mv t/doit.T t/doit
 
 FORCE:
+
+gnu: FORCE
+	cd gnu && $(MAKE)
 
 zlib/libz.a: $(ZLIBOBJ)
 	$(AR) cr zlib/libz.a $(ZLIBOBJ)
@@ -462,11 +463,12 @@ install: all
 	@if [ ! -d $(prefix)/tmp ]; \
 	then	mkdir $(prefix)/tmp; chmod 777 $(prefix)/tmp; \
 	fi
-	-@cd /usr/bin; set -e; \
+	-@set -e; \
 	for file in $(BINLINKS); \
-	do	rm -f $$file; \
-		ln -s /usr/bitkeeper/$$file $$file; \
+	do	rm -f /usr/bin/$$file; \
+		ln -s /usr/bitkeeper/$$file /usr/bin/$$file; \
 	done
+	cd gnu && $(MAKE) install
 
 # The default .c.o rule is broken with some Makes.
 .c.o:

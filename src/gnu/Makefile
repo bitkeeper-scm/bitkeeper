@@ -1,34 +1,32 @@
-
-DIRS=patch
 OS=`os`
+DIRS=patch
+BINS=patch/$(OS)/patch
+BKBIN=/usr/bitkeeper
 
-all:
-	@OS=$(OS); \
+all: os
+	PATH="..:../..:$(PATH)"; \
+	OS=$(OS); \
 	for i in $(DIRS); \
 	do	\
 		test -d $$i/$$OS || mkdir $$i/$$OS; \
-		test -f $$i/configure || bk sfiles $$i | bk co -; \
+		bk sfiles -g $$i | while read x; \
+		do	test -f $$x || echo $$x; \
+		done | bk co -; \
 		test -f $$i/$$OS/Makefile || (cd $$i/$$OS && ../configure); \
 		(cd $$i/$$OS && make); \
 	done
 
-clean:
-	@OS=$(OS); \
-	for i in $(DIRS); \
-	do	test -d $$i/$$OS && (cd $$i/$$OS && make clean); \
-		(cd $$i && bk clean); \
-	done
-	@bk clean
+install:
+	@make all
+	cp $(BINS) $(BKBIN)
+	for i in $(BINS); \
+	do	D=`dirname $$i`; \
+		F=`basename $$i`; \
+		(cd $$D && ../../../chksum $$F); \
+	done >> $(BKBIN)/MANIFEST; \
 
-clean-obj:
-	@OS=$(OS); \
-	for i in $(DIRS); \
-	do	test -d $$i/$$OS && (cd $$i/$$OS && make clean); \
-	done
-	@bk clean
-
-clobber:
-	@OS=$(OS); \
+clean clean-obj clobber: os
+	-@OS=$(OS); \
 	for i in $(DIRS); \
 	do	rm -rf $$i/$$OS; (cd $$i && bk clean); \
 	done
