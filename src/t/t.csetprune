@@ -18,7 +18,7 @@
 
 echo $N Setting up cset split testing respositories .................$NL
 rm -rf simple
-TZ=GMT no_logging simple
+TZ=UTC+0 no_logging simple
 touch a b c d
 bk new $Q a b c d
 TZ=EST bk commit $Q -SBASETAG -y1.2
@@ -49,10 +49,10 @@ bk clone $Q simple host_inh
 cd host_inh
 bk edit $Q a
 bk delta $Q -y1.2 a
-TZ=GMT bk commit $Q -y1.3
+TZ=UTC+0 bk commit $Q -y1.3
 bk edit $Q b
 bk delta $Q -y1.2 b
-TZ=GMT bk commit $Q -y1.4
+TZ=UTC+0 bk commit $Q -y1.4
 bk csetprune < ../KEYS 2> ERROR
 if [ $? -ne 0 ]; then echo Failed; cat ERROR; exit 1; fi
 zone=`bk prs -h -r+ -d':TZ:\n' ChangeSet`
