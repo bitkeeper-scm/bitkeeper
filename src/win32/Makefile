@@ -64,6 +64,7 @@ install: all blat data/bk.ico
 	cp -f data/bk.ico $(BINDIR)/bk.ico
 	cp -f dll/scc/lib/bkscc.dll $(BINDIR)
 	cp -f dll/shellx/bin/shellx $(BINDIR)
+	cp -f dll/shellx/bin/bkshellx_cmd.sh $(BINDIR)
 	cp -f dll/shellx/lib/Bk*.ico $(BINDIR)
 	cp -f dll/shellx/lib/BkShellX.dll $(BINDIR)
 	cd pub/blat && make BINDIR=$(BINDIR) install
