@@ -156,7 +156,7 @@ void
 remark(int quiet)
 {
 	if (exists("BitKeeper/etc/SCCS/x.marked")) return;
-	unless (quiet) gethelp("consistency_check", "", 0, stdout);
+	unless (quiet) gethelp("consistency_check", 0, 0, stdout);
 	system("bk cset -M1.0..");
 	close(open("BitKeeper/etc/SCCS/x.marked", O_CREAT|O_TRUNC, 0664));
 	unless(quiet) {
