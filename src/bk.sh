@@ -544,9 +544,9 @@ _sendLog() {
 	else	case $REV in
 		*.*.*.*)	n=${REV%.*.*}
 				n=${r#*.}
-				n=`expr $r - 5`;;
+				n=`expr $n - 5`;;
 		*.*)		n=${REV#*.}
-				n=`expr $r - 10`;;
+				n=`expr $n - 10`;;
 		esac
 		R=${REV%%.*}.$n..$REV
 	fi
