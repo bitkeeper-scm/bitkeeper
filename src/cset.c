@@ -4,7 +4,7 @@
 #include "comments.c"
 #include "host.c"
 #include "user.c"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 char	*cset_help = "\n\
 usage: cset [-ps] [-i [-y<msg>] root] [-l<rev> OR -t<rev>] [-S<sym>] [-]\n\n\

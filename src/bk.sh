@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # bk.sh - front end to BitKeeper commands
-# %W% %K%
+# @(#)%K%
 
 function usage {
 	echo usage $0 command '[options]' '[args]'
@@ -1182,7 +1182,7 @@ function commit {
 	do	case "$opt" in
 		d) DOIT=yes;;
 		s) COPTS="-s $COPTS";;
-		S) COPTS="-S'$OPTARG' $COPTS";;
+		S) COPTS="-S$OPTARG $COPTS";;
 		y) DOIT=yes; GETIT=no; echo "$OPTARG" > /tmp/comments$$;;
 		Y) DOIT=yes; GETIT=no; cp "$OPTARG" /tmp/comments$$;;
 		esac
@@ -1418,8 +1418,8 @@ then	usage
 fi
 case "$1" in
     regression)
-	PATH=${BIN}:$PATH regression
-	exit $?
+	echo Running regression is currently broken
+	exit 1
 	;;
     setup|changes|pending|commit|commitmerge|sendbug|send|\
     mv|resync|edit|unedit|man|undo|save|docs)

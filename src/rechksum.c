@@ -1,5 +1,5 @@
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 /*
  * rechksum - regenerate the checksums associated with a file.
  *

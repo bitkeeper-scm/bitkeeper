@@ -8,7 +8,7 @@
  * Copyright (c) 1997-1998 Larry McVoy.	 All rights reserved.
  */
 #include "sccs.h"
-WHATSTR("%W% %K%");
+WHATSTR("@(#)%K%");
 
 delta	*sfind(sccs *s, int serial);
 private delta	*rfind(sccs *s, char *rev);

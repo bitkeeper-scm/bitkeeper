@@ -5,8 +5,7 @@
  *
  */
 #include "sccs.h"
-
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 int
 main(int ac, char **av)

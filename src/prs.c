@@ -1,7 +1,7 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "sccs.h"
 #include "range.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 char	*prs_help = "\n\
 usage: prs [-mv] [-c<d>] [-I<rev>] [-r<r>] [files...]\n\n\
     -1		Print exactly one record, as specified by -r/-c\n\

@@ -2,7 +2,7 @@
 #ifndef WIN32
 #include <dirent.h>
 #endif
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 /*
  * sfiles.c - s.file file name processing.

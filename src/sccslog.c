@@ -5,7 +5,7 @@
  */
 #include "sccs.h"
 #include "range.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 char	*log_help = "\n\
 usage: sccslog [-hpv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
     -c<dates>	Cut off dates.  See range(1) for details.\n\

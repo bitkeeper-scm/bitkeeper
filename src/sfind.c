@@ -4,7 +4,7 @@
 #else
 #include <ftw.h>
 #endif
-WHATSTR("%W% %@%");
+WHATSTR("@(#)%K%");
 
 /*
  * sfiles - find SCCS files

@@ -1,6 +1,6 @@
 /* Copyright (c) 1997 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 char	*rmdel_help = "\n\
 usage: rmdel [-qs] [-r<rev>] file\n\n\
     This command is not extended to minimize the removing\n\

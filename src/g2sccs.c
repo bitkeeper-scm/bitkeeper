@@ -1,5 +1,5 @@
 #include "sccs.h"
-WHATSTR("%W% %@%");
+WHATSTR("@(#)%K%");
 
 /*
  * g2sccs - convert gfile names to sfile names

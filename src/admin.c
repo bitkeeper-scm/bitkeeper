@@ -1,6 +1,6 @@
 /* Copyright (c) 1998 L.W.McVoy */
 #include "sccs.h"
-WHATSTR("%W%");
+WHATSTR("@(#)%K%");
 
 private	char	*help = "\n\
 usage: admin options [-] OR [file file file...]\n\n\
