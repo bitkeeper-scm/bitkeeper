@@ -88,7 +88,7 @@ unix_common_setup()
 	BK_LIMITPATH=/build/.bktools-$USER
 	rm -rf $BK_LIMITPATH
 	mkdir $BK_LIMITPATH
-	for f in awk expr sh grep egrep sed env test [ sleep getopts \
+	for f in awk expr sh ksh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip remsh rcmd uname
 	do	p=`bk which -e $f`
