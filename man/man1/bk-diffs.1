@@ -1,0 +1,90 @@
+.so ../macros
+.TH "bk diffs" 1 08/18/00 "\*(BC" "\*(UM"
+.SH NAME
+bk diffs \- shows differences in modified files
+.SH SYNOPSIS
+.B bk diffs
+.BI [ options
+.B ]
+.BI [ files
+.B ]
+.SH DESCRIPTION
+.LP
+To view changes you have made to all of the files in a directory
+since checking the files out, type:
+.AX
+$ bk diffs | more
+.XA
+To see the changes for all files in your tree, go to the top level
+of your repository and do the following:
+.AX
+$ bk -r diffs | more
+.XA
+The 
+.B bk diffs
+command supports context, unified, procedural, and side-by-side diffs.
+.LP
+You can also diff specific revisions. For example:
+.AX
+$ bk diffs -r1.2..1.4 foo.c
+$ bk diffs -dAlpha..Beta foo.c
+.XA
+.SH OPTIONS
+.if t .TP
+.if n .TP 1i
+.B -a
+do diffs for all sfiles
+.tp
+.B -c
+do context diffs
+.tp
+.B -D
+prefix lines with dates
+.tp
+.AN -d dates
+diff using date or symbol
+.tp
+.B -f
+prefix lines with file names
+.tp
+.B -h
+don't print headers
+.tp
+.B -M
+prefix lines with revision numbers
+.tp
+.B -n
+do RCS style diffs
+.tp
+.B -P
+produce patch diffs, similar to
+.B diff -Nur
+.tp
+.B -p
+procedural diffs, like
+.B diff -p
+.tp
+.AN -r r
+diff revision 
+.IR  r .
+.tp
+.B -s
+display side-by-side
+.tp
+.B -U
+prefix lines with user names
+.tp
+.B -u
+do unified diffs
+.tp
+.B -v
+be verbose about non-matching ranges
+.SH SEE ALSO
+.LP
+.SA difftool 1
+.br
+.SA export 1
+.\" help://Basics/differences
+.\" help://Basics/sdiffs
+.SH CATEGORY
+.B Basics

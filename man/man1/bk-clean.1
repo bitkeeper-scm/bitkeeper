@@ -1,0 +1,36 @@
+.so ../macros
+.TH "bk clean" 1 08/18/00 "\*(BC" "\*(UM"
+.SH NAME
+bk clean \- removes unmodified files
+.SH SYNOPSIS
+.B bk clean [-pqv]
+.BI [ files...
+.B ]
+.SH DESCRIPTION
+The
+.B clean
+command is used to remove (clean) all unmodified files from
+the current directory, regardless of whether they are checked-out in
+a locked or unlocked state.
+.LP
+If there are files which are both locked and modified,
+.B clean
+will refuse to delete them and will instead list them as needing a check-in.
+.SH OPTIONS
+.TP
+.B -p
+Prints diffs for all modified files. The diffs are printed
+in the least readable diff format; you may prefer to use
+.B bk diffs -u
+.tp
+.B -q
+Run quietly.
+.tp
+.B -v
+Run verbosely.  List files deleted as well as modified files.
+.SH SEE ALSO
+.SA unedit 1
+.br
+.SA unlock 1
+.SH CATEGORY
+.B Basics

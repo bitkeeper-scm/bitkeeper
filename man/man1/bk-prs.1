@@ -1,0 +1,83 @@
+.\"  this needs more documentation -- email from lm & slib.c
+.so ../macros
+.TH "bk prs" 1 08/18/00 "\*(BC" "\*(UM"
+.SH NAME
+bk prs \- prints revision history (similar to RCS rlog)
+.SH SYNOPSIS
+.if t \{\
+.B bk prs [-abdhmMov]
+.OA c date
+.OA C rev
+.OA r rev
+.BI [ files... ]
+\}
+.if n
+bk prs [-abdhmMov] [-c<date>] [-C<rev>] [-r<rev>] [files...]
+.SH OPTIONS
+.if t .TP .7i
+.if n .TP 1i
+.B -a
+Print info on all deltas, not just data deltas.
+.tp
+.B -b
+Reverse the order of the printed deltas.
+.tp
+.AN -c date
+Cut-off dates.  See bk help range for details.
+.tp
+.AN -C rev
+Make the range be all revs that are the same cset as
+.IR rev .
+.tp
+.AN -d spec
+Specify output data specification.
+.tp
+.B -h
+Suppress range header.
+.tp
+.B -m
+Print metadata, such as users and symbols.
+.tp
+.B -M
+Do not include branch deltas which are not merged.
+.tp
+.B -o
+Print the set of deltas that were not specified.
+.tp
+.AN -r rev
+Specify a revision, or part of a range.
+.tp
+.AN -x rev
+Exclude rev from the selection in 
+.BR -r .
+.tp
+.B -v
+Complain about SCCS files that do not match the range.
+.LP
+Note that
+.I date
+may be a symbol, which implies the date of the delta which matches the symbol.
+.LP
+Range specifications:
+.if t .TP .7i
+.if n .TP 1.25i
+.I -r+
+prints the most recent delta
+.tp
+.I -r1.3..1.6
+prints all deltas 1.3 through 1.6
+.tp
+.I -c9207..92
+prints all deltas from July 1 '92 to Dec 31 '92
+.tp
+-c92..92
+prints all deltas from Jan 1 '92 to Dec 31 '92
+.tp
+-c-1d
+prints all deltas made in the last 24 hours; similarly for
+.I s/m/h/d/M/Y
+for seconds/minutes, hours, days, months, and years.
+.\" .SH BUGS
+.\" not 100% compatibile with AT&T despecs
+.SH CATEGORY
+.B Basics

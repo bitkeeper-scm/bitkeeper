@@ -1,0 +1,86 @@
+.so ../macros
+.TH "bk push" 1 08/18/00 "\*(BC" "\*(UM"
+.\"    ============== Pushing changes from your repository ==============
+.SH NAME
+bk push \- send local changes to the parent repository
+.SH SYNOPSIS
+.if t \{\
+.B bk push [\-aglntq] [\-z
+.I d
+.B ] [
+.IB parent ]
+.\}
+.if n
+bk push [\-aglntq] [\-z<d>] [<parent>]
+.SH DESCRIPTION
+Push sends changes in the current repository back to its parent if
+and only if the current repository is a superset of the parent.
+When the parent has changes not found in the current repository,
+push will fail and you will need to do a bk pull, merge those changes,
+and retry the push.  The idea is that the parent is typically a shared
+resource and should not be locked for merging.
+.LP
+If there is no new work in the parent, then all changes in the child
+will be sent to the parent and auto\-applied.
+.LP
+You can override the default parent by specifying a different one.
+Doing so changes the parent for the duration of this command only.
+.LP
+You can override the no\-merge policy by going to the parent and doing
+a 
+.B bk pull
+and specify the child as the 
+.BR bk\ parent .
+.SH OPTIONS
+.TP
+.B \-a
+If the parent is a superset of the current repository,
+then automatically pull that work into the current repository.
+.tp
+.B -c
+Do not use compression when using ssh.
+.tp
+.B -g
+Allow the use of GUI tools during the resolve (unlike resolve -t).
+.tp
+.B \-l
+Do a long listing of changesets to be sent (like bk changes
+does).  May be combined with 
+.B \-n 
+to get a repository difference summary.
+.tp
+.B \-n
+Don't actually push, just show what would be pushed.
+.tp
+.B \-q
+Run quietly.
+.tp
+.B \-t
+Pass 
+.B \-t
+to resolve (
+.B \-t
+means do not use the GUI tools) during
+the pull operation (requires 
+.B \-a
+and that the parent is a superset).
+.tp
+.AN \-z d
+Do compression at level 
+.IB d ,
+if possible, where
+.I d
+is an integer value 0-9; default is 
+.BR \-z6 .
+Compression is possible when using ssh or the BK daemon,
+but not with rsh.
+.SH "SEE ALSO"
+.SA pull 1
+.br
+.SA parent 1
+.br
+.SA resolve 1
+.br
+.SA triggers 1
+.SH CATEGORY
+.B Repository

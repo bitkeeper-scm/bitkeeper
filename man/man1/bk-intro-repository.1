@@ -1,0 +1,97 @@
+.so ../macros
+.TH "bk intro-repository" 1 08/18/00 "\*(BC" "\*(UM"
+.\"    ====================== BitKeeper repository commands ======================
+.SH NAME
+Introduction
+.SH DESCRIPTION
+.LP
+This section contains some of the most heavily used commands in BitKeeper.
+They are sorted, but the most heavily used ones are:
+.RS .5i
+.br
+bk clone
+.br
+bk pull
+.br
+bk push
+.RE
+.LP
+Those commands, plus a bk edit and a bk citool are all that you
+need to get a repository, lock it, make changes, check them in and commit
+them, and push your changes back up to your parent.
+.SH SUMMARY
+.if t .TP 1.2i
+.if n .TP 1.7i
+.B bk abort 
+abort a patch which is not yet applied (dangerous)
+.tp
+.B bk backups 
+how to save and copy repositories
+.tp
+.B bk bkd 
+the BitKeeper daemon, for TCP based access
+.tp
+.B bk changes 
+show changeset comments
+.tp
+.B bk check 
+BitKeeper integrity checking
+.tp
+.B bk clone 
+copy a repository
+.tp
+.B bk cmdlog 
+see commands which have happened in this repository
+.tp
+.B bk commit 
+group a set of files together into a local changeset
+.tp
+.B bk cset 
+low level command
+.tp
+.B bk import 
+import regular, RCS, CVS, SCCS, or traditional patches 
+.tp
+.B bk lock 
+lock a repository or list lockers
+.tp
+.B bk parent 
+set or query this repostories' parent
+.tp
+.B bk pending 
+show which files need to be committed to a changeset
+.tp
+.B bk pull 
+pull changes into your repository and merge them
+.tp
+.B bk push 
+push changes into your parent (no merges allowed)
+.tp
+.B bk resolve 
+resolve conflicting files which could not be automerged
+.tp
+.B bk resync 
+resync two repositories without calling resolve
+.tp
+.B bk status
+show status for the repository
+.tp
+.B bk tag 
+add a symbolic tag to a changeset
+.tp
+.B bk takepatch 
+low level command to import BitKeeper patches
+.tp
+.B bk undo 
+undo one or more changesets
+.tp
+.B bk unlock
+unlock the repository or a file (should not be needed)
+.tp
+.B bk help merge 
+information on how to merge
+.tp 
+.B bk help triggers 
+information on event triggers
+.SH CATEGORY
+.B Repository

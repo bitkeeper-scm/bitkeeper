@@ -1,0 +1,31 @@
+.so ../macros
+.TH "bk version" 1 08/18/00 "\*(BC" "\*(UM"
+.SH NAME 
+bk version \- print BitKeeper version
+.SH SYNOPSIS
+.B bk version
+.SH DESCRIPTION
+The 
+.B version
+command shows what version of BitKeeper you are running.
+If the version is symbolically named (most are), the version will look
+like:
+.AX
+BitKeeper version is BETA-1 for x86-linux
+Built by: lm@work.bitmover.com
+Built on: Wed Feb 23 20:20:03 PST 2000
+.XA
+The version output for a development snapshot looks like:
+.AX
+BitKeeper version is 20000224020659 for x86-linux
+Built by: lm@work.bitmover.com
+Built on: Wed Feb 23 20:20:03 PST 2000
+.XA
+The timestamp value in the snapshot release is the time of the most
+recent file modification within the BitKeeper source code.
+.SH NOTE
+.LP
+BitMover, Inc provides support for symbolically-tagged version only.
+The snapshot versions are completely unsupported.
+.SH CATEGORY
+.B Admin

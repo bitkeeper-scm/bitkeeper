@@ -1,0 +1,87 @@
+.so ../macros
+.TH "bk send" 1 08/18/00 "\*(BC" "\*(UM"
+.\"    =============== Sending BitKeeper patches ===============
+.SH NAME
+bk send \- send a BitKeeper patch
+.SH SYNOPSIS
+.B bk send [\-dq]
+.BI [\-w Wrapper ] 
+.BI [\-r Revs ]
+.B user@host.com
+.SH DESCRIPTION
+.LP
+Resync is the easiest way to keep two repositories synchronized,
+but it requires an ssh connection to the remote host.  Use "send" when
+the only connection to the remote machine is through email.
+.LP
+To send the whole repository, do:
+.AX
+$ bk send user@host.com
+.XA
+.LP
+BitKeeper will generate the (huge) patch and mail it to user@host.com.
+.LP
+If you happen to know that you want to send a specific change (and
+you know that the other repository has the changes leading up to the
+change you want to send), you can do this:
+.AX
+$ bk send \-rbeta.. user@host.com
+.XA
+.LP
+or
+.sp
+.AX
+$ bk send \-r1.10.. user@host.com
+.XA
+.LP
+Send remembers the changesets it has sent in BitKeeper/log/sendlog\-\<address\>
+where \<address\> is like user@host.com.  When you don't specify a list
+of changesets to send, "send" will look in the log file and send only the
+new changesets.  So the easiest thing to do is to always use the same
+email address and just say:
+.AX
+$ bk send user@host.com
+.XA
+.LP
+If you lose the log file and you want to seed it with the changes you
+know have been sent, the command to do that is:
+.AX
+$ cd to package root
+$ bk prs \-h \-r\<revs\> \-d:KEY: ChangeSet \> BitKeeper/log/send\-user@host.com
+.XA
+.LP
+You can wrap patches so that they do not get corrupted by mailers.
+We currently support wrapping with uuencode.  The following (contrived)
+command sends a wrapped patch and applies it in /tmp/foo (which must
+exist):
+.AX
+$ bk send \-wuu \-r..1.5 | bk receive /tmp/foo
+.XA
+.SH OPTIONS
+.if t .TP .75i
+.if n .TP 1.25i
+.B \-d
+Prepend the patch with unified diffs.  This is because some
+people (Hi Linus!) like looking at the diffs to decide if
+they want the patch or not.
+.tp
+.B \-q
+Be quiet.
+.tp
+.AN \-r revs
+Specify the list of changesets to send.
+.tp
+.AN \-w Wrapper
+Wrap the patch with 
+.I Wrapper 
+before sending it.
+.SH "SEE ALSO"
+.SA ranges 1
+.br
+.SA receive 1
+.br
+.SA resync 1
+.br
+.SA wrap 1
+.SH CATEGORY
+.B File

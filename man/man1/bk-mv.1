@@ -1,0 +1,50 @@
+.so ../macros
+.TH "bk mv" 1 08/18/00 "\*(BC" "\*(UM"
+.SH NAME 
+bk mv \- move file[s]
+.SH SYNOPSIS
+.if t \{\
+.B bk mv
+.I source destination
+\}
+.if n
+bk mv <source> <destination>
+.SH DESCRIPTION
+.LP
+To move a file from
+.I A
+to
+.I B
+do this:
+.AX
+$ bk mv A B
+.XA
+The
+.B mv
+command will move the checked out file (if any) as well as the
+revision control file.  Edited files (i.e. ones that are read-write and
+locked) can not be moved; you must check them in first.  The rename
+will appear as a separate change to the file when you commit the
+next changeset.
+.LP
+Renames happen automatically when you
+.B bk resync.
+The 
+.B bk resolve
+command
+will ask for help if both repositories renamed the same file
+differently.
+.SH NOTES
+.LP
+.B bk mv
+will not move directories. 
+.SH SEE ALSO
+.SA commit 1
+.br
+.SA rm 1
+.br
+.SA resync 1
+.\" help://Basics/sccsmv
+.\" help://Basics/renames
+.SH CATEGORY
+.B Basics

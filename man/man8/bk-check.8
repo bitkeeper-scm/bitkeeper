@@ -1,0 +1,66 @@
+.so ../macros
+.TH "bk check" 8 08/18/00 "\*(BC" \*(BK
+.\"    =================== BitKeeper consistency check ===================
+.SH NAME
+bk -r check \- check repository for consistency
+.SH SYNOPSIS
+.B bk \-r check [\-acfRv]
+.SH DESCRIPTION
+.LP
+Check is used to make sure that a repository is in a consistent state.
+A repository contains files, each of which may have multiple versions.
+Groups of versions are called changesets (csets).  Each cset is recorded
+in the ChangeSet file.  The ChangeSet file points at the set of deltas in
+the set of files.  There are no back pointers but the files do record the
+point at which each cset occurs (there can be multiple deltas in a file
+all of which belong to one cset; the marker records the cset boundary).
+.LP
+Since csets are what are propagated between repositories, it is important
+that the ChangeSet file be correct.  "Check" is used to make sure that
+nothing has gone wrong (and if it has it gives you a rough idea of how
+to fix it).
+.LP
+It currently checks for the following:
+.BU 
+for each file specified, make sure that deltas marked as recorded in
+the ChangeSet file are recorded in the ChangeSet file.
+.BU 
+each file specified, for each delta of that file which is recorded
+in the ChangeSet file, make sure that the delta exists in the file.
+.BU 
+each file specified, make sure that the file has no unresolved
+branches.
+.BU 
+sure that every delta recorded in ChangeSet file is in the
+repository (only with \-a).
+.LP
+.RE
+While you can specify a list of files instead of using 
+.B bk \-r
+to get all of them, this is not recommended.
+.SH OPTIONS
+.TP
+.B -a
+Ensures that the ChangeSet file and the repository
+agree on what files are in the repository.
+.tp
+.B -c
+Check file checksum.
+.tp
+.B -f
+Fix any fixable errors.
+.tp
+.B -g
+List gone keys only.
+.tp
+.B -p
+List deltas which are in more than one cset.
+.tp
+.B -R
+Only do checks which make sense in the RESYNC dir.
+.tp
+.B -v
+Be verbose about files which are OK.  Normally, there is no output
+if the repository is OK; only output if things are broken.
+.SH CATEGORY
+.B Repository

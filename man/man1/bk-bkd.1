@@ -1,0 +1,237 @@
+.so ../macros
+.TH "bk bkd" 1 08/18/00 "\*(BC" "\*(UM"
+.\"	============== The BitKeeper daemon ==============
+.SH NAME
+bk bkd \- the BitKeeper daemon
+.SH SYNOPSIS
+.if t \{\
+.B bk bkd [\-eid] [\-l
+.IB log ]
+.B [\-P
+.IB file ] 
+.B [\-p
+.IB port ] 
+.B [\-t
+.IB num ] 
+.B [\-u
+.IB uid ] 
+.B [\-x
+.IB cmd ]
+.\}
+.if n
+bk bkd [-eid] [-l<log>] [-P<file>] [-p<port>] [-t<num>] [-u<uid>] [-x<cmd>]
+.SH DESCRIPTION
+.LP
+The BitKeeper daemon, bkd, is used to get information about a
+repository from a remote machine.  It is run in one of two ways,
+.sp
+.RS .5i
+a) via rsh/ssh, i.e., "rsh remote host bkd",
+.br
+b) as a stand\-alone daemon, i.e., "bkd \-d".
+.RE
+.LP
+The method used depends on how the remote repository is named.
+See bk help parent for details on the naming syntax.
+.LP
+The preferred method is via ssh, since ssh provides a secure channel.
+.LP
+The stand\-alone daemon method currently has no security, other than the
+ability to run in read\-only mode.  The daemon does support compression.
+.SH COMMANDS
+.LP
+The commands are not intended for user access; BitKeeper client programs
+interact with the daemon directly.  However, it may be useful to access
+the commands directly for debugging.  It is possible to telnet to the
+BitKeeper port, in the same way it is possible to telnet to the SMTP port.
+.LP
+The command summary is below.  The options tend to track the client
+commands fairly closely.
+.sp
+.RS .5i
+cd pathname
+.br
+clone [\-q] [\-z[0\-9]]
+.br
+help
+.br
+pull [\-lnq] [\-z[0\-9]]
+.br
+push [\-q] [\-z[0\-9]]
+.br
+pwd
+.br
+rootkey
+.br
+status [\-v]
+.br
+version
+.RE
+.LP
+The client commands parse their options, connect to the server, and
+send the appropriate commands to complete the action.  When started
+with the \-l option, all sent commands are logged.
+.SH "ANONYMOUS ACCESS"
+.LP
+The most common use of the stand\-alone daemon is for anonymous access
+to a repository.  To provide read\-only, anonymous access, you can run:
+.AX
+bk bkd \-d \-xpush
+.XA
+.LP
+This will allow anyone to read (but not write) all repositories on the
+system running the daemon.
+.LP
+If you want to export a single repository, pick a port number, and 
+do this:
+.AX
+cd /u/linux
+bk bkd \-d \-p5555 \-xcd \-xpush
+.XA
+.LP
+This says to run in daemon mode, bind to port 5555, and disallow the
+"cd" and "push" commands.  By disallowing the "cd" command, the daemon
+at port 5555 is tied to the repository in the current working directory
+(bkd needs to be run at the root of the repository).  By disallowing the
+"push" command, the repository is protected from updates.
+.LP
+Clients can get to this repository by using the BK URL of
+.AX    
+bk://host.domain:5555
+.XA
+.br
+i.e.,
+.AX
+$ bk clone bk://host.domain:5555 my_tree
+.XA
+.LP
+.SH OPTIONS
+.TP 1i
+.B \-d
+Run as a daemon.
+.tp
+.B \-e
+Exit on any error.
+.tp
+.B \-i
+Interactive, provide prompts.
+.tp
+.AN \-l log
+Log accesses in 
+.IR log ;
+if log is not specified, then to stderr.
+.tp
+.AN \-P pfile
+Write the pid of daemon process into this file at startup.
+.tp
+.AN \-p port
+Specify an alternative port.  The default port is currently
+0x3962 (aka 14690) but that will change once we get a
+reserved port. 
+.tp
+.AN \-t num
+Exit after 
+.I num 
+seconds. (used when debugging)
+.tp
+.AN \-u uid
+Run as UID
+.IR uid .
+.tp
+.AN \-x cmd
+Exclude 
+.I cmd 
+from the allowed command list.
+.SH EXAMPLES
+.LP
+We use the following in /var/bitkeeper/repositories to provide anonymous 
+read only access to some BitKeeper repositories.  This works with the
+init script shown below:
+.AX
+#----------------------\ cut\ here\ --------------------------
+/home/bk/LMbench \-p5000 \-xcd \-xpush \-u99
+/home/bk/bitcluster \-p6000 \-xcd \-xpush \-u99
+/home/bk/one \-p7000 \-xcd \-xpush \-u99
+#----------------------\ cut\ here\ --------------------------
+.XA
+.LP
+We use the following as /etc/rc.d/init.d/bitkeeper to start up BitKeeper
+on bitkeeper.com:
+.AX
+#----------------------\ cut\ here\ --------------------------
+#!/bin/sh
+#
+# bitkeeper	Start/stop the bitkeeper daemon.
+# 		@(#)bitkeeper.init 1.1 Copyright (c) 2000 Larry McVoy
+
+# Source networking configuration.
+if [ \-f /etc/sysconfig/network ]
+then	. /etc/sysconfig/network
+
+	# Check that networking is up.
+	[ ${NETWORKING} = "no" ] && exit 0
+fi
+[ \-x /usr/bin/bk ] || exit 0
+VAR=/var/bitkeeper
+
+case "$1" in
+    start_msg)	echo "Start BitKeeper daemons"
+		;;
+    stop_msg)	echo "Stop BitKeeper daemons"
+		;;
+    start)	cd $VAR || exit 1
+		test \-f repositories || {
+			echo Nothing advertised
+			exit 0
+		}
+		while read dir opts
+		do	(
+			cd $dir || exit 1
+			F=`basename $dir`
+			bk bkd $opts \-l$VAR/log.$F \-P$VAR/pid.$F
+			echo Started bkd $opts in $dir
+			)
+		done < repositories
+		;;
+
+    stop)	
+		cd $VAR || exit 1
+		echo Shutting down BitKeeper daemons
+		for i in pid.*
+		do	kill \-HUP `cat $i`
+			rm $i
+		done
+		;;
+
+    status)	ps \-axf | grep bkd
+		;;
+
+    *)		echo "Usage: bitkeeper {start|stop}"
+		exit 1
+		;;
+esac
+exit 0
+#----------------------\ cut\ here\ --------------------------
+.XA
+.SH BUGS
+.LP
+The log files are currently single user because they don't append.
+.br
+Uses one log file per daemon.
+.br
+Needs password support.
+.br
+Needs access control based on authenticated users.
+.SH "SEE ALSO"
+.SA qs_bkd 1
+.br
+.SA parent
+.br
+.SA initscripts
+.\" help://Repository/anonymous
+.\" help://Repository/deamon
+.\" help://Repository/daemon
+.\" help://Repository/demon
+.\" help://Repository/security
+.SH CATEGORY
+.B Repository

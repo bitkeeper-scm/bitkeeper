@@ -1,0 +1,78 @@
+.so ../macros
+.TH "bk clone" 1 08/18/00 "\*(BC" "\*(UM"
+.\"    ====================== BitKeeper clone ======================
+.SH NAME
+bk clone \- create a new copy of a package
+.SH SYNOPSIS
+.if t \{\
+.B bk clone [\-q] [\-r
+.I rev 
+.B ] [\-z
+.I d
+.B ]
+.I source destination
+.\}
+.if n
+bk clone [-q] [-r<rev>] [-z<d>] <source> <destination>
+.SH DESCRIPTION
+.LP
+The clone command copies from the source repository and creates a
+copy at the destination.  See 
+.B bk help parent
+for information on
+the syntax of
+.if t .I source
+.if n <source>
+and
+.if t .IR destination .
+.if n <destination>.
+.LP
+If 
+.if t .I rev 
+.if n <rev>
+is specified, the cloned repository will include only
+changesets up to and including 
+.if t .IR rev .
+.if n <rev>.
+.LP
+The cloned repository remembers from which repository it was cloned.
+The source repository is known as the "parent", while the newly cloned
+repository is known as the "child".
+.LP
+Subsequent updates to the child can be done by running 
+.BR bk\ pull .
+Changes made in the child can be pushed back into the parent by running
+.BR bk\ push .
+.LP
+Only completed changesets are cloned.  Any pending deltas are removed
+from the child before the clone completes.
+.SH OPTIONS
+.if t .TP
+.if n .TP 1i
+.B \-q
+Run quietly.
+.tp
+.AN \-r rev
+Clone the repository up to and including cset 
+.IR rev .
+.tp
+.AN \-z d
+Do compression at level 
+.IR d ,
+if possible, where
+.I d
+is an integer value 0-9; default is \-z6.
+Compression is possible when using ssh or the BK daemon,
+but not with rsh.
+.SH "SEE ALSO"
+.SA bkd 1
+.br
+.SA parent 1
+.br
+.SA pull 1
+.br
+.SA push 1
+.br
+.SA triggers 1
+.SH CATEGORY
+.B Repository

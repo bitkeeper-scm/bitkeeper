@@ -1,0 +1,45 @@
+.so ../macros
+.TH "bk" 1 08/18/00 "\*(BC" "\*(UM"
+.SH NAME
+bk \- BitKeeper shell
+.SH SYNOPSIS
+.B bk
+.AS -r Dir
+.RI [ -R ]
+.BI command \ [options]
+.SH OPTIONS
+.if t TP
+.if n .TP 1i
+.AS -R
+Change directories to the root of the repository before running the command.
+.tp
+.AS -r dir
+Starting at 
+.IR dir ,
+or the repository root if 
+.I dir
+was not specified, generate a list of sfiles and pass them to the command.  
+.LP
+All BitKeeper commands are prefixed with 
+.B bk
+in order to avoid ambiguity with
+non-BitKeeper commands that might be on the system such as 
+.B get
+and
+.BR ci .
+.SH NOTE
+.LP
+The following commands are equivalent:
+.AX
+bk -r get
+bk -R sfiles | bk -R get -
+cd `bk root`; bk sfiles | bk get -
+.XA
+.SH SEE ALSO
+.SA check 8
+.br
+.SA diffs 1
+.br
+.SA tag 1
+.SH CATEGORY
+.B Basics

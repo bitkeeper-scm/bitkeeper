@@ -1,0 +1,169 @@
+.so ../macros
+.TH "bk admin" 1 08/18/00 "\*(BC" "\*(UM"
+.SH NAME
+bk admin \- administer BitKeeper files (tags, checksums, validation)
+.SH SYNOPSIS
+.B bk admin options [\- | file file file...]
+.SH DESCRIPTION
+.LP
+The 
+.B admin
+command is used to administer individual files.
+.SH OPTIONS
+.if t .TP .75i
+.if n .TP 1.3i
+.B \-0
+add a 1.0 delta if there is not one already
+.tp
+.B \-q
+run quietly
+.tp
+.AN \-r rev
+revision to add or modify
+.tp
+.AN \-y comment
+comment for change
+.tp
+.B \-n
+create new SCCS history file
+.tp
+.AB \-i file
+read initial text from
+.I file
+(default stdin)
+.tp
+.AB \-t file
+read description from 
+.I file
+.tp
+.B \-T
+clear description
+.tp
+.B \-h
+check s.file structure
+.tp
+.B \-hh
+check s.file structure for BitKeeper structure
+.tp
+.B \-hhh
+check s.file structure for BitKeeper & time structure
+.tp
+.B \-H
+same as -h, plus check file contents are ASCII
+.tp
+.B \-z
+recalculate file checksum
+.tp
+.if t
+.AN \-f Flag\ Val
+.if n
+.AN \-f Flag><Val
+set 
+.I Flag
+to value
+.IR Val .
+.I Val 
+can be any of:
+.if t .RS .9i
+.if n .RS 1.25i
+.if t .TP 
+.if n .TP .8i
+.B EXPAND1
+expand keywords in first keyword containing line only
+.tp
+.B RCS
+expand RCS keywords
+.tp
+.B SCCS
+expand SCCS keywords
+.tp
+.B YEAR4
+store dates as 4 digit years (breaks SCCS compat)
+.RE
+.tp
+.AN \-F f
+delete flag 
+.I f
+.tp
+.AN \-m mode
+set the mode of the file
+.tp
+.AN \-M merge
+Merge branch 
+.I merge
+into TOT or 
+.I rev
+.tp
+.AL -S sym rev
+associate 
+.if t .I sym
+.if n <sym>
+with 
+.if t .I rev
+.if n <rev>
+.tp
+.AN \-p path
+set path of the most recent delta to 
+.if t .I path
+.if n <path>
+.tp
+.B \-B
+make the landing pad bigger
+.tp
+.B \-C
+remove the changeset marks
+.tp
+.B \-CC
+remove the changeset marks and pointer
+.tp
+.AB \-Z alg
+compress stored s.file with 
+.I alg ,
+which may be:
+.if t .RS .9i
+.if n .RS 1.25i
+.if t .TP
+.if n .TP 1.5i
+.B  gzip
+like gzip(1) (default)
+.tp
+.B none
+no compression
+.RE
+.tp
+.AB \-E enc
+treat file as encoded with 
+.I enc ,
+which may be:
+.if t .RS .9i
+.if n .RS 1.25i
+.if t .TP
+.if n .TP 1.5i
+.B text
+plain text
+.tp
+.B ascii
+same
+.tp
+.B binary
+binary file (must uuencode before diffing)
+.tp
+.B uugzip
+same, but compress before uuencode
+.RE
+.tp
+.B \-u
+make sure that all dates are increasing (dangerous, this changes the keys)
+.SH BUGS
+.LP
+This command does way too much and should be split apart.  Other than the
+traditional ATT options, do not depend on these options for scripts.
+.SH SEE ALSO
+.LP
+.SA tag 1
+.br
+.SA chmod 1
+.br
+.SA keywords
+.SH CATEGORY
+.B Admin

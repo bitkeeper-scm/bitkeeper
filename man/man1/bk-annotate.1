@@ -1,0 +1,130 @@
+.so ../macros
+.TH "bk annotate" 1 08/18/00 "\*(BC" "\*(UM"
+.SH NAME
+bk annotate \- provide annotated listing of source files
+.SH SYNOPSIS
+.if t \{\
+.B bk annotate [-adkmNnu]
+.OA c date
+.OA r rev
+.BI [ files...
+.BI |\ -
+.B ]
+.br
+.B bk sccscat [-dmnu]
+.BI [ files...
+.BI |\ -
+.B ]
+\}
+.if n \{\
+bk annotate [-adkmNnu] [-c<date>] [-r<rev>] [files... | -]
+.br
+bk sccscat [-dmnu] [files... | -]
+\}
+.SH DESCRIPTION
+.LP
+Annotated listings are useful for deeper understanding of your source
+base, i.e., when you are tracking down bugs.  The annotations add an
+extra level of information which can be useful.
+.LP
+BitKeeper has two kinds of annotations:  annotations of a specific version,
+and annotations of all versions (the second form is unique to BitKeeper).
+.SH "SPECIFIC VERSIONS"
+.LP
+The 
+.B annotate
+command will display a specific version of a file with annotations. 
+The default annotations are the revision in which the change was
+made and the user who made that change.  Specifying any options
+overrides all of the default options.
+.SH "ANNOTATE OPTIONS"
+.if t .TP
+.if n .TP 1i
+.B -a
+Align prefix output in a human readable form.  Used with one of
+the following options
+.BI [ mNnud ]
+.tp
+.AN -c date
+Get the latest revision before the date.
+.tp
+.B -d
+Prefix each line with the date of last modification
+.tp
+.B -k
+Don't expand RCS or SCCS keywords.
+.B -k
+is implied by
+.B -e
+.tp
+.B -m
+Prefix each line with the revision of last modification
+.tp
+.B -N
+Prefix each line with its line number.
+.tp
+.B -n
+Prefix each line with the filename.
+.tp
+.AN -r rev
+Get this revision.
+.tp
+.B -u
+Prefix each line with the user who last modified it.
+.SH "DISPLAY ALL VERSIONS"
+.LP
+The
+.B bk sccscat
+command will display 
+.B all
+lines in in 
+.B all
+versions of a file, with each version of a line grouped closely with
+other versions of that line.  This is useful for determining when a
+particular feature was added.
+.\"   It can also ???
+.SH "SCCSCAT OPTIONS"
+.if t .TP
+.if n .TP 1i
+.AN -c date
+Do the set of revisions matching 
+.I date
+.tp
+.B -d
+Prefix each line with the date of last modification
+.tp
+.B -k
+Don't expand RCS or SCCS keywords.
+.B -k
+is implied by
+.B -e
+.tp
+.B -m
+Prefix each line with the revision of last modification
+.tp
+.B -N
+Prefix each line with its line number.
+.tp
+.B -n
+Prefix each line with the filename.
+.tp
+.AN -r rev
+Do the set of revisions matching 
+.I rev
+.tp
+.B -u
+Prefix each line with the user who last modified it.
+.SH SEE ALSO
+.LP
+.SA dates XXX
+.br
+.SA get 1
+.br
+.SA grep 1
+.br
+.SA ranges XXX
+.br
+.SA sccstool 1
+.\" help://File/sccscat
+.SH CATEGORY
+.B File
