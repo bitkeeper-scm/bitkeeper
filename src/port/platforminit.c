@@ -269,3 +269,66 @@ gotit:
 	}
 	return;
 }
+
+#ifdef WIN32
+private char *
+winplatform(void)
+{
+        OSVERSIONINFO osinfo;
+	int	major, minor;
+	char	*p;
+
+        osinfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+        if (GetVersionEx(&osinfo) == 0) {
+                fprintf(stderr,
+		    "winplatform: Warning: cannot get os version\n");
+                return ("unavailable");
+        }
+
+	major = osinfo.dwMajorVersion;
+	minor = osinfo.dwMinorVersion;
+	if (osinfo.dwPlatformId == VER_PLATFORM_WIN32_NT) {
+		/* Win/XP, Win/2K, Win/NT */
+		if ((major == 4) && (minor == 0)) {
+			p = strdup("Windows/NT");
+		} else if ((major == 5) && (minor == 0)) {
+			p = strdup("Windows/2000");
+		} else if ((major == 5) && (minor == 1)) {
+			p = strdup("Windows/XP");
+		}  else {
+			p = aprintf("NT %d.%d", major, minor);
+		}
+	} else if (osinfo.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
+		/* Win/95, Win/98, Win/Me */
+		if ((major == 4) && (minor == 10)) {
+			p = strdup("Windows/98");
+		} else if ((major == 4) && (minor == 90)) {
+			p = strdup("Windows/Me");
+		} else {
+			p = aprintf("Windows %d.%d", major, minor);
+		}
+	} else if (osinfo.dwPlatformId == VER_PLATFORM_WIN32s) {
+		/* Windows 3.1 */
+		p = aprintf("Win32s %d.%d", major, minor);
+	}  else {
+		p = aprintf("unknown: %d.%d", major, minor);
+	}
+	return (p);
+}
+#endif
+
+
+char *
+platform(void)
+{
+	static char *p;
+
+	if (p) return (p);
+
+#ifdef WIN32
+	p = aprintf("%s,%s",  bk_platform, winplatform());
+#else
+	p = bk_platform;
+#endif
+	return(p);
+}
