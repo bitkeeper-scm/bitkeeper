@@ -51,7 +51,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  port/mail.o port/platforminit.o \
 	  port/randomBits.o port/samepath.o port/sccs_root.o \
 	  port/spawn.o port/getnull.o port/http_proxy.o port/service.o \
-	  prs.o pull.o purify.o push.o r2c.o \
+	  prs.o pull.o purify.o push.o pwd.o r2c.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
 	  lock.o rdiffs.o rget.o \
 	  resolve.o resolve_contents.o resolve_create.o \

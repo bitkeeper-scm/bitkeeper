@@ -1450,7 +1450,7 @@ noDiffs()
 private	int
 pass3_resolve(opts *opts)
 {
-	char	buf[MAXPATH];
+	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	FILE	*p;
 	int	n = 0;
 	int	mustCommit, pc, pe;
@@ -1551,7 +1551,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		sccs	*s;
 		resolve	*rs;
 		
-		s = sccs_init(CHANGESET, INIT, opts->resync_proj);
+		s = sccs_init(s_cset, INIT, opts->resync_proj);
 		rs = resolve_init(opts, s);
 		edit(rs);
 		unlink(sccs_Xfile(s, 'r'));

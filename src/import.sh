@@ -378,7 +378,6 @@ import_text () {
 }
 
 import_RCS () {
-	set -x
 	cd $2
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.

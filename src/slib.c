@@ -8080,7 +8080,6 @@ checkin(sccs *s,
 		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
 		user = mdbm_fetch_str(m, "single_user");
 		host = mdbm_fetch_str(m, "single_host");
-		mdbm_close(m);
 		unless (user && host) goto no_config;
 		d = s->tree;
 		free(d->user);
@@ -8100,6 +8099,7 @@ checkin(sccs *s,
 		}
 		s->state |= S_SINGLE;
 		first->xflags |= X_SINGLE;
+		mdbm_close(m);
 	}
 
 no_config:
