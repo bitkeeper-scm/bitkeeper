@@ -534,7 +534,8 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	    streq(prog, "difftool") ||
 	    streq(prog, "helptool") ||
 	    streq(prog, "csettool") ||
-	    streq(prog, "renametool")) {
+	    streq(prog, "renametool") ||
+	    streq(prog, "msg")) {
 		sig_catch(SIG_IGN);
 		argv[0] = find_wish();
 		if (streq(prog, "sccstool")) prog = "revtool";

@@ -86,7 +86,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
       zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
       zlib/uncompr.o zlib/zutil.o
 SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
-      revtool citool _citool helptool difftool csettool fmtool fm3tool \
+      revtool citool _citool helptool difftool csettool fmtool fm3tool msg \
       renametool setuptool gzip_uuwrap ungzip_uuwrap
 LOCALSCR= testfast build crank
 PSCR	= t/doit
@@ -121,7 +121,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/revtool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
-	  gui/_citool.tcl gui/progress.tcl gui/search.tcl \
+	  gui/_citool.tcl gui/progress.tcl gui/search.tcl gui/msg.tcl \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -427,6 +427,9 @@ fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 
 fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl
 	cat gui/config.tcl gui/common.tcl gui/fm3tool.tcl > fm3tool
+
+msg: gui/msg.tcl
+	cat gui/msg.tcl > msg
 
 rpm:	bk.spec production
 	rpm -bb bk.spec
