@@ -79,3 +79,21 @@ sub localName2bkName
 	$path =~ s|\\|/|g;
 	return $path;
 }
+
+
+# compute absolute path name
+sub getAbspath
+{
+	my $abspath = `getfullpath $_[0]`;
+
+	chomp ($abspath);
+	if ($abspath ne "") {
+		return ($abspath);
+	} else {
+		# If we get here,$_[0] is not a existing directory
+		# We construct the full path by hand
+		my $pwd = `pwd`;
+		chomp $pwd;
+		return ($pwd . '/' . $1);
+	}
+}
