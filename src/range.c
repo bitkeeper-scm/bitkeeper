@@ -3,7 +3,7 @@
 WHATSTR("@(#)%K%");
 
 /*
- * range.c - get endpoints of a range of deltas
+ * range.c - get endpoints of a range of deltas or a list of deltas
  *
  * The point of this routine is to handle the various ways that people
  * can specify a range of deltas.  Ranges consist of either one or two
@@ -14,6 +14,10 @@ WHATSTR("@(#)%K%");
  *	d1..	-> d1 to whatever is TOT
  *	..d2	-> 1.1 to d2
  *	d1..d2	-> d1 to d2
+ *
+ * These can be specified in a list of revisions (but not dates) as well:
+ *	d1,d2,d3
+ *	d1..d2,d3,d4..
  *
  * All these forms can be used with revisions or symbols, and they
  * may be mixed and matched.  Dates may be specified as a tag; revisions
@@ -39,7 +43,7 @@ void
 rangeReset(sccs *sc)
 {
 	sc->rstart = sc->rstop = 0;
-	sc->state &= ~S_RANGE2;
+	sc->state &= ~(S_RANGE2|S_SET);
 }
 
 /*
@@ -55,6 +59,18 @@ rangeAdd(sccs *sc, char *rev, char *date)
 	debug((stderr, "rangeAdd(%s, %s, %s)\n", sc->gfile, rev, date));
 
 	if (sc->rstart && sc->rstop) return (-1);
+
+	/*
+	 * If we are doing a list, handle that in the list code.
+	 */
+	if (rev && strchr(rev, ',')) {
+		if (date) {
+			fprintf(stderr,
+			    "range: can't have lists of revs and dates\n");
+			return (-1);
+		}
+		return (rangeList(sc, rev));
+	}
 
 	/*
 	 * Figure out if we have both endpoints; if so, split them up
@@ -93,8 +109,62 @@ rangeAdd(sccs *sc, char *rev, char *date)
 }
 
 /*
+ * Take a list, split it up in the list items, and mark the tree.
+ * If there are any ranges, clear the rstart/rstop and call the
+ * range code, then walk the range and mark the tree.
+ */
+rangeList(sccs *sc, char *rev)
+{
+	char	*s;
+	char	*t;
+	char	*r;
+	delta	*d;
+
+	/*
+	 * We can have a list like so:
+	 *	rev,rev,rev..rev,..rev,rev..,rev
+	 */
+	rangeReset(sc);
+	for (t = rev, s = strchr(rev, ','); t; ) {
+		if (t > rev) *t++ = ',';
+		if (s) *s = 0;
+
+		/*
+		 * If we have a range, use the range code to find it.
+		 */
+		for (r = t; r && *r; r++) {
+			if (strneq(r, "..", 2)) break;
+		}
+		if (r && *r) {
+			if (rangeAdd(sc, t, 0)) {
+				if (s) *s = ',';
+				return (-1);
+			}
+			for (d = sc->rstop; d; d = d->next) {
+				d->flags |= D_SET;
+				if (d == sc->rstart) break;
+			}
+			rangeReset(sc);
+		} else {
+			unless (d = findrev(sc, t)) {
+				if (s) *s = ',';
+				return (-1);
+			}
+			d->flags |= D_SET;
+		}
+
+		/*
+		 * advance
+		 */
+		t = s;
+		if (s) s = strchr(++s, ',');
+	}
+	sc->state |= S_SET;
+	return (0);
+}
+
+/*
  * Figure out if we have 1 or 2 tokens.
- * Note this works for A..B and [A,B] forms.  Got lucky on that one.
  */
 int
 tokens(char *s)
@@ -140,98 +210,17 @@ new2old(delta *d, delta *stop)
 	unless (d == stop) old2new(d->next, stop);
 }
 
-char **
-rsave(char **revs, char *rev)
-{
-	int	i;
-
-	if (!revs) {
-		revs = calloc(16, sizeof(char **));
-		(int)revs[0] = 16;
-	}
-	if (revs[(int)revs[0] - 1]) {
-		int	len = (int)revs[0];
-		char	**tmp = calloc(len * 2, sizeof(char **));
-
-		for (i = 0; ++i < len; tmp[i] = revs[i]);
-		(int)tmp[0] = len * 2;
-	}
-	for (i = (int)revs[0]; revs[--i] == 0; );
-	revs[++i] = strdup(rev);
-	return (revs);
-}
-
-int	marked;
-
-range_print(delta *d)
-{
-	unless (d) return (0);
-	if (d->flags & D_VISITED) {
-		marked--;
-		unless (d->parent) {
-			printf("..");
-		} else unless (d->parent->flags & D_VISITED) {
-			printf("%s..", d->rev);
-		}
-		unless (d->flags & D_MERGED) {
-			unless (d->kid) {
-				printf("%s\n", d->rev);
-				d->flags &= ~D_VISITED;
-				return (1);
-			} else unless (d->kid->flags & D_VISITED) {
-				printf("%s\n", d->rev);
-				d->flags &= ~D_VISITED;
-				return (1);
-			}
-		}
-	}
-	if (range_print(d->kid)) {
-		d->flags &= ~D_VISITED;
-		return (1);
-	}
-	if (range_print(d->siblings)) {
-		d->flags &= ~D_VISITED;
-		return (1);
-	}
-	return (0);
-}
-
-/* XXX - this is busted */
-dorevs(sccs *s, char **revs)
-{
-	delta	*d;
-	int	i;
-
-	for (i = 1; revs[i]; i++) {
-		unless (d = findrev(s, revs[i])) {
-			fprintf(stderr, "No rev like %s in %s\n",
-			    revs[i], s->gfile);
-			exit(1);
-		}
-		d->flags |= D_VISITED;
-		marked++;
-	}
-	/*
-	 * Now print out all contig regions
-	 */
-	while (marked) range_print(s->tree);
-}
-
 main(int ac, char **av)
 {
 	sccs	*s;
 	delta	*e;
 	char	*name;
 	int	c;
-	char	**revs = 0;
 	RANGE_DECL;
 
-	while ((c = getopt(ac, av, "s;c;r;")) != -1) {
+	while ((c = getopt(ac, av, "c;r;")) != -1) {
 		switch (c) {
 		    RANGE_OPTS('c', 'r');
-		    case 's':
-			revs = rsave(revs, optarg);
-			break;
 		    default:
 usage:			fprintf(stderr,
 			    "usage: %s [-r<rev>] [-c<date>]\n", av[0]);
@@ -244,20 +233,25 @@ usage:			fprintf(stderr,
 			continue;
 		}
 		if (!s->tree) goto next;
-		if (revs) {
-			dorevs(s, revs);
-			continue;
-		}
 		RANGE("range", s, 1, 1);
-		fprintf(stderr, "%s %s..%s:",
-		    s->gfile, s->rstart->rev, s->rstop->rev);
-		old2new(s->rstop, s->rstart);
-		fprintf(stderr, "\n");
-		fprintf(stderr, "%s %s..%s:",
-		    s->gfile, s->rstop->rev, s->rstart->rev);
-		for (e = s->rstop; e; e = e->next) {
-			fprintf(stderr, " %s", e->rev);
-			if (e == s->rstart) break;
+		if (s->state & S_SET) {
+			fprintf(stderr, "%s set:", s->gfile);
+			for (e = s->table; e; e = e->next) {
+				if (e->flags & D_SET) {
+					fprintf(stderr, " %s", e->rev);
+				}
+			}
+		} else {
+			fprintf(stderr, "%s %s..%s:",
+			    s->gfile, s->rstart->rev, s->rstop->rev);
+			old2new(s->rstop, s->rstart);
+			fprintf(stderr, "\n");
+			fprintf(stderr, "%s %s..%s:",
+			    s->gfile, s->rstop->rev, s->rstart->rev);
+			for (e = s->rstop; e; e = e->next) {
+				fprintf(stderr, " %s", e->rev);
+				if (e == s->rstart) break;
+			}
 		}
 		fprintf(stderr, "\n");
 next:		sccs_free(s);

@@ -309,6 +309,7 @@ extern	char *strdup(char *s);
 #define	D_GONE		0x00800000	/* this delta is gone, don't print */
 #define D_ICKSUM	0x01000000	/* use checksum from init file */
 #define	D_MODE		0x02000000	/* permissions in d->mode are valid */
+#define	D_SET		0x04000000	/* range.c: marked as part of a set */
 
 /*
  * Signal handling.

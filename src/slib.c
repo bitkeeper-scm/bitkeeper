@@ -3992,7 +3992,7 @@ putlodlist(sccs *sc, ser_t *s, FILE *out)
 }
 
 /*
- * Generate a list of serials marked with D_VISITED tag
+ * Generate a list of serials marked with D_SET tag
  */
 
 private ser_t *
@@ -4007,8 +4007,9 @@ visitedmap(sccs *s)
 	for (t = s->table; t; t = t->next) {
 		if (t->type != 'D') continue;
  		assert(t->serial <= s->numdeltas);
-		if (t->flags & D_VISITED) 
+		if (t->flags & D_SET) {
 			slist[t->serial] = 1;
+		}
 	}
 	return (slist);
 }
@@ -5041,7 +5042,7 @@ err:		return (-1);
 	}
 	if ((s->state & S_BADREVS) && !(flags & GET_FORCE)) {
 		fprintf(stderr,
-		    "get: bad revisions, run renumber on %s\n", s->sfile);
+		    "sccscat: bad revisions, run renumber on %s\n", s->sfile);
 		s->state |= S_WARNED;
 		goto err;
 	}
@@ -5812,8 +5813,7 @@ fix_lf(char *gfile)
 	unless (sb.st_mode & 0200) return (0);
 	if (sb.st_size > 0) {
 		if ((fd = open(gfile, 2, 0660)) == -1) {
-			perror(gfile);
-			return (-1);
+			return (0);
 		}
 		if (lseek(fd, sb.st_size - 1, 0) != sb.st_size - 1) {
 			perror(gfile);
