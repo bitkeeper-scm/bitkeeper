@@ -11,6 +11,8 @@ private void regen(sccs *s, char *key);
 private int verify = 1;
 private	int mkinit(sccs *s, delta *d, char *file, char *key);
 
+private	int	getFlags;
+
 /*
  * Convert an SCCS (including Sun Teamware) file
  */
@@ -37,6 +39,9 @@ usage:		system("bk help sccs2bk");
 	}
 
 	unless (csetkey) goto usage;
+
+	if (strieq("edit", user_preference("checkout"))) getFlags = GET_EDIT;
+	if (strieq("get",  user_preference("checkout"))) getFlags = GET_EXPAND;
 
 	for (name = sfileFirst("sccs2bk", &av[optind], 0);
 	    name; name = sfileNext()) {
@@ -239,6 +244,13 @@ out:	unlink(tmp);
 	unlink("SCCS/.init");
 	free(table);
 	mdbm_close(revs);
+	if (getFlags) {
+		s = sccs_reopen(s);
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-")) {
+			sccs_free(s);
+			exit(1);
+		}
+	}
 	sccs_free(s);
 }
 
