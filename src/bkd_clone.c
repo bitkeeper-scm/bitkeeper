@@ -185,7 +185,7 @@ spawn_copy(int level)
 		return (-1);
 	}
 	/* find my top csetkey */
-	unless (s = sccs_csetInit(0, 0)) {
+	unless (s = sccs_csetInit(0)) {
 		fprintf(stderr, "Can't open ChangeSet\n");
 		return (-1);
 	}
