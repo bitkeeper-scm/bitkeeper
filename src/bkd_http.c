@@ -1343,8 +1343,8 @@ http_index(char *page)
 	t1h = now - (60*60);
 	t1d = now - (24*60*60);
 	t2d = now - (2*24*60*60);
-	t3d = now - (2*24*60*60);
-	t4d = now - (2*24*60*60);
+	t3d = now - (3*24*60*60);
+	t4d = now - (4*24*60*60);
 	t1w = now - (7*24*60*60);
 	t2w = now - (14*24*60*60);
 	t3w = now - (21*24*60*60);
@@ -1986,7 +1986,7 @@ http_tags(char *page)
 private void
 http_search(char *junk)
 {
-	char	*file, *rev, *text;
+	char	*base, *file, *rev, *text;
 	int	i, first = 1;
 	FILE	*f;
 	char	buf[8<<10];
@@ -2009,41 +2009,41 @@ http_search(char *junk)
 	
 	while (fnext(buf, f)) {
 		if (first) {
-			out(OUTER_TABLE INNER_TABLE
-			    "<tr bgcolor=#d0d0d0>\n"
-			    "  <th>File</th>\n"
-			    "  <th>Rev</th>\n"
-			    "  <th>Match</th>\n"
-			    "</tr>\n");
+			out("<pre><strong>");
+			out("Filename         Rev        Match</strong>\n");
+			out("<hr size=1 noshade><br>");
 			first = 0;
 		}
 		file = buf;
 		unless (rev = strchr(buf, '\t')) continue;
 		*rev++ = 0;
+		unless (base = strrchr(file, '/')) base = file; else base++;
 		unless (text = strchr(rev, '\t')) continue;
 		*text++ = 0;
-		out("<tr bgcolor=white><td><a href=anno/");
+		out("<a href=anno/");
 		out(file);
 		out("@");
 		out(rev);
 		out(">");
-		out(file);
-		out("</a></td>\n<td><a href=diffs/");
+		out(base);
+		out("</a>");
+		for (i = strlen(base); i <= 16; ++i) out(" ");
+		out("<a href=diffs/");
 		out(file);
 		out("@");
 		out(rev);
 		out(">");
 		out(rev);
-		out("</a></td>\n<td>");
+		out("</a>");
+		for (i = strlen(rev); i <= 10; ++i) out(" ");
 		htmlify(text, strlen(text));
-		out("</td></tr>");
 	}
 	pclose(f);
 	if (first) {
 		out("<p><table align=middle><tr><td>"
 		    "No matches found.</td></tr></table><p>\n");
 	} else {
-		out(INNER_END OUTER_END);
+		out("</pre>");
 	}
 
 	if (!embedded) trailer("search");
