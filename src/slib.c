@@ -7773,7 +7773,19 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 		unless (d->hostname && sccs_gethost()) {
 			hostArg(d, sccs_gethost());
 		}
-		unless (d->pathname && s) pathArg(d, relativeName(s, 0, 0));
+		unless (d->pathname && s) {
+			char *p, *q;;
+
+			/*
+			 * Get the relativename of the sfile, _not_ the gfile,
+			 * because we cannot trust the gfile name on
+			 * win32 case-folding file system.
+			 */
+			p = _relativeName(s->sfile, 0, 0, 0, s->proj, NULL);
+			q = sccs2name(p);		
+			pathArg(d, q);
+			free(q);
+		}
 #ifdef	AUTO_MODE
 		assert("no" == 0);
 		unless (d->flags & D_MODE) {
