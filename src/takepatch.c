@@ -1173,7 +1173,6 @@ apply:
 	}
 
 	if (csets) {
-		fprintf(csets, "\n");
 		fclose(csets);
 	}
 	s->proj = 0; sccs_free(s);

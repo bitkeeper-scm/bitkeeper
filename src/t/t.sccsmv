@@ -72,17 +72,17 @@ echo $N Test bk mvdir to directory that does not exist ..............$NL
 mkdir B/B1
 date > B/B1/fileB1
 bk new $Q B/B1/fileB1
-bk mvdir B BBBB/CCCC/DDDD
-if [ ! -f BBBB/CCCC/DDDD/SCCS/s.file4 ]
+bk mvdir B "BB BB/CCCC/DDDD"
+if [ ! -f "BB BB/CCCC/DDDD/SCCS/s.file4" ]
 then	echo failed to move file; exit 1
 fi
-if [ ! -f BBBB/CCCC/DDDD/B1/SCCS/s.fileB1 ]
+if [ ! -f "BB BB/CCCC/DDDD/B1/SCCS/s.fileB1" ]
 then	echo failed to move fileB1; exit 1
 fi
 bk -r check -a || exit 1
 echo OK
 echo $N And move it back ............................................$NL
-bk mvdir BBBB/CCCC/DDDD B || { echo error; exit 1; }
+bk mvdir "BB BB/CCCC/DDDD" B || { echo error; exit 1; }
 if [ ! -f B/B1/SCCS/s.fileB1 ]
 then	echo failed to move fileB1; exit 1
 fi

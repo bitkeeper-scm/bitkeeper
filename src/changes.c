@@ -38,8 +38,8 @@ changes_main(int ac, char **av)
 		fprintf(stderr, "Can't find package root\n");
 		exit(1);
 	}
-	exit(doit(verbose,
-	    rev, indent, tagOnly, av[optind] && streq("-", av[optind])));
+	return(doit(verbose,
+		    rev, indent, tagOnly, av[optind] && streq("-", av[optind])));
 }
 
 
@@ -118,7 +118,18 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 		gettemp(dashfile, "dash");
 		f = fopen(dashfile, "w");
 		while (fgets(cmd, sizeof(cmd), stdin)) {
-			fprintf(f, "ChangeSet%c%s", BK_FS, cmd);
+			switch (*cmd) {
+			    case '#': case '\n': 
+				/* ignore blank lines and comments */
+				break;
+			    case '0': case '1': case '2': case '3': case '4':
+			    case '5': case '6': case '7': case '8': case '9':
+				fprintf(f, "ChangeSet%c%s", BK_FS, cmd);
+				break;
+			    default:
+				fprintf(stderr, "Illegal line: %s", cmd);
+				return (1);
+			}
 		}
 		fclose(f);
 		sprintf(cmd, "bk prs -Yhd'%s' - < %s", spec, dashfile);
