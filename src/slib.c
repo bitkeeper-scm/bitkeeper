@@ -11596,6 +11596,18 @@ sccs_ino(sccs *s)
 	return (d);
 }
 
+int
+sccs_reCache(void)
+{
+	char buf[MAXPATH];
+	char	*av[4];
+
+	/* sfiles -r */
+	sprintf(buf, "%s%s", getenv("BK_BIN"), SFILES);
+	av[0] = SFILES; av[1] = "-r"; av[2] = 0;
+	return spawnvp_ex(P_WAIT, buf, av);
+}
+
 /*
  * Figure out if the file is gone from the DB.
  * XXX - currently only works with keys, not filenames.
@@ -11617,19 +11629,22 @@ loadDB(char *file, int (*want)(char *), int style)
 	int	first = 1;
 	int	flags;
 	char	buf[MAXLINE];
+	char	*av[4];
 
 	// XXX awc->lm: we should check the z lock here
 	// someone could be updating the file...
 again:	unless (f = fopen(file, "rt")) {
 		if (first && streq(file, IDCACHE)) {
 			first = 0;
-			if (system("bk sfiles -r")) goto out;
+			if (sccs_reCache()) goto out;
 			goto again;
 		}
 		if (first && streq(file, GONE) && exists(SGONE)) {
 			first = 0;
-			sprintf(buf, "bk get -s %s", GONE);
-			system(buf);
+			/* get -s */
+			sprintf(buf, "%s%s", getenv("BK_BIN"), GET);
+			av[0] = GET; av[1] = "-s"; av[2] = GONE; av[3] = 0;
+			spawnvp_ex(P_WAIT, buf, av);
 			goto again;
 		}
 out:		if (f) fclose(f);

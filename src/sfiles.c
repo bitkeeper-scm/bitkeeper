@@ -597,7 +597,14 @@ lftw_inner(char *path, char *base, struct stat *sb,
 		else
 #endif
 		if (lstat(path, sb)) {
-			perror(path);
+			/*
+			 * Do not print an error, A file entry may be deleted
+			 * right by someone else after we read the directory block. 
+			 * or the directory cache is slightly out of date.
+			 * It is not an error.
+			 * This seems to happen more often on multi-process system. 
+			 */
+			/* perror(path); */
 			continue;
 		} else mode = (sb->st_mode & S_IFMT);
 

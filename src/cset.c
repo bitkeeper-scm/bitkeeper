@@ -209,9 +209,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		unless (isdir(av[optind])) {
 			if (flags & NEWFILE) {
 				char	path[MAXPATH];
-
-				sprintf(path, "mkdir -p %s", av[optind]);
-				system(path);
+				mkdirp(av[optind]);
 			}
 		}
 		if (chdir(av[optind])) {
@@ -427,7 +425,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 	}
 
 	unless (idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
-		if (system("bk sfiles -r")) {
+		if (sccs_reCache()) {
 			fprintf(stderr, "cset: can not build %s\n", IDCACHE);
 			cset_exit(1);
 		}
@@ -642,7 +640,7 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, idDB);
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
 			if (cs->verbose) fputs("Rebuilding caches...\n", stderr);
-			if (system("bk sfiles -r")) {
+			if (sccs_reCache()) {
 				fprintf(stderr,
 				    "cset: can not build %s\n", IDCACHE);
 			}
@@ -1317,7 +1315,6 @@ csetCreate(sccs *cset, int flags, char *sym, int newlod)
 		}
 		unless(streq(t->rev, "1.0")) mklod(cset, d, d);
 	}
-
 	/*
 	 * Make /dev/tty where we get input.
 	 */

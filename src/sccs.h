@@ -587,6 +587,7 @@ void	sccs_fixDates(sccs *);
 void	sccs_mkroot(char *root);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
+int	sccs_reCache(void);
 int	sccs_meta(sccs *s, delta *parent, MMAP *initFile);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
