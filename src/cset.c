@@ -254,7 +254,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	} else if (flags & NEWFILE) {
 		fprintf(stderr, "cset: must specify package root.\n");
 		return (1);
-	} else if (sccs_cd2root(0, 0)) {
+	} else if (proj_cd2root()) {
 		fprintf(stderr, "cset: cannot find package root.\n");
 		return (1);
 	}
@@ -265,7 +265,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	if (copts.include) return (cset_inex(flags, "-i", r[0]));
 	if (copts.exclude) return (cset_inex(flags, "-x", r[0]));
 
-	cset = sccs_init(csetFile, flags & SILENT, 0);
+	cset = sccs_init(csetFile, flags & SILENT);
 	if (!cset) return (101);
 	copts.mixed = !LONGKEY(cset);
 
@@ -352,7 +352,7 @@ cset_setup(int flags, int ask)
 	delta	*d = 0;
 	int	fd;
 
-	cset = sccs_init(csetFile, flags & SILENT, 0);
+	cset = sccs_init(csetFile, flags & SILENT);
 	assert(cset->proj);
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
@@ -539,7 +539,7 @@ doKey(cset_t *cs, char *key, char *val, MDBM *goneDB)
 		perror("idcache");
 	}
 	lastkey = strdup(key);
-retry:	sc = sccs_keyinit(lastkey, INIT_FIXSTIME, 0, idDB);
+retry:	sc = sccs_keyinit(lastkey, INIT_FIXSTIME, idDB);
 	unless (sc) {
 		if (gone(lastkey, goneDB)) {
 			free(lastkey);
@@ -977,7 +977,7 @@ add(FILE *diffs, char *buf)
 	 * ChangeSet file. Since we ae going to sccs_free() and
 	 * return anyway..
 	 */
-	unless (s = sccs_init(buf, SILENT, 0)) {
+	unless (s = sccs_init(buf, SILENT)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -u ChangeSet");
 		cset_exit(1);

@@ -14,8 +14,8 @@ isMasterTree()
 {
 	char root[MAXPATH];
 	
-	unless (bk_proj->root) return (0);
-	concat_path(root, bk_proj->root, BKMASTER);
+	unless (proj_root(0)) return (0);
+	concat_path(root, proj_root(0), BKMASTER);
 	return (exists(root));
 }
 
@@ -28,7 +28,7 @@ isMasterTree()
 int
 mv_main(int ac, char **av)
 {
-	char	*name, *dest;
+	char	*dest;
 	int	isDir;
 	int	isUnDelete = 0;
 	int	errors = 0;
@@ -64,8 +64,7 @@ mv_main(int ac, char **av)
 	dest = av[ac-1];
 	localName2bkName(dest, dest);
 	cleanPath(dest, dest);
-	if ((name = strrchr(dest, '/')) &&
-	    (name >= dest + 4) && strneq(name - 4, "SCCS/s.", 7)) {
+	if (sccs_filetype(dest) == 's') {
 		dest = sccs2name(dest);
 		dofree++;
 	}

@@ -16,7 +16,7 @@ version_main(int ac, char **av)
 		return (0);
 	}
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		getMsg("version", " ", 0, 0, stdout);
 		return (0);
 	}

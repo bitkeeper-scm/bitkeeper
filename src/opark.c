@@ -33,7 +33,7 @@ opark_main(int ac, char **av)
 		}
 	}
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "Can't find package root\n");
 		return (0);
 	}
@@ -176,7 +176,7 @@ ounpark_main(int ac, char **av)
 	}
 
 
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "Can't find package root\n");
 		return (0);
 	}

@@ -60,9 +60,7 @@ trigger(char *cmd, char *when)
 	 */
 	if (getenv("BK_TRIGGER_PATH")) {
 		t = strdup("/etc");
-	} else if (bk_proj && bk_proj->root) {
-		t = strdup(bk_proj->root);
-	} else unless (t = sccs_root(0)) {
+	} else unless (t = proj_root(0)) {
 		ttyprintf("No root for triggers!\n");
 		return (0);
 	}
@@ -71,7 +69,6 @@ trigger(char *cmd, char *when)
 	} else {
 		strcpy(triggerDir, "BitKeeper/triggers");
 	}
-	free(t);
 
 	if (strneq(cmd, "remote pull", 11)) {
 		what = "outgoing";

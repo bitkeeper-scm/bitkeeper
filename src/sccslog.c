@@ -48,8 +48,7 @@ sccslog_main(int ac, char **av)
 {
 	sccs	*s;
 	char	*name;
-	int	save, c, flags = INIT_SAVEPROJ|SILENT;
-	project	*proj = 0;
+	int	save, c, flags = SILENT;
 	RANGE_DECL;
 
 	setmode(1, _O_TEXT);
@@ -81,11 +80,10 @@ usage:			system("bk help -s sccslog");
 	}
 
 	for (name = sfileFirst("sccslog", &av[optind], 0); name; ) {
-		unless (s = sccs_init(name, INIT_NOCKSUM|flags, proj)) {
+		unless (s = sccs_init(name, INIT_NOCKSUM|flags)) {
 			name = sfileNext();
 			continue;
 		}
-		unless (proj) proj = s->proj;
 		unless (HASGRAPH(s)) goto next;
 		do {
 			if (opts.uncommitted) {
@@ -108,7 +106,6 @@ usage:			system("bk help -s sccslog");
 next:		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	if (opts.dbuf) {
 		free(opts.dbuf);
 		opts.dbuf = 0;

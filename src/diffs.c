@@ -6,6 +6,8 @@ WHATSTR("@(#)%K%");
 
 private	int	cset_boundries(sccs *s, char *rev);
 
+private int	cset_boundries(sccs *s, char *rev);
+
 /*
  * diffs - show differences of SCCS revisions.
  *
@@ -55,7 +57,6 @@ diffs_main(int ac, char **av)
 	int	errors = 0;
 	char	kind;
 	char	*name;
-	project	*proj = 0;
 	char	*Rev = 0, *cset = 0, *boundaries = 0;
 	char	*opts, optbuf[20];
 	char	rset[MAXPATH];
@@ -128,7 +129,7 @@ usage:			system("bk help -s diffs");
 			free(cmd);
 			return(1);
 		}
-		if (sccs_cd2root(0, 0) == -1) {
+		if (proj_cd2root()) {
 			fprintf(stderr, "Cannot find repository root.\n");
 			return (1);
 		}
@@ -159,12 +160,11 @@ usage:			system("bk help -s diffs");
 		int	save = things;
 
 		if (cset && streq(name, CHANGESET)) goto next;
-		s = sccs_init(name, INIT_SAVEPROJ|flags, proj);
+		s = sccs_init(name, flags);
 		unless (s && HASGRAPH(s)) {
 			errors |= 2;
 			goto next;
 		}
-		unless (proj) proj = s->proj;
 		if (boundaries) {
 			if (cset_boundries(s, boundaries)) goto next;
 		} else if (Rev) {
@@ -264,7 +264,6 @@ next:		if (s) sccs_free(s);
 		name = sfileNext();
 		things = save;
 	}
-	if (proj) proj_free(proj);
 	sfileDone();
 	if (cset) unlink(rset);
 	return (errors);

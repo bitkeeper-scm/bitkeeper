@@ -205,7 +205,7 @@ err:			unlink("BitKeeper/etc/config");
 	mdbm_close(m);
 
 	if (cset_setup(SILENT, ask)) goto err;
-	s = sccs_init(s_config, SILENT, NULL);
+	s = sccs_init(s_config, SILENT);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
 	s = sccs_restart(s);
@@ -221,10 +221,10 @@ err:			unlink("BitKeeper/etc/config");
 	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);
 	system(buf);
 	unlink(setup_files);
- 	if (sccs_cd2root(0, 0) == -1) {
+ 	if (proj_cd2root()) {
                 fprintf(stderr, "setup: cannot find package root.\n");
                 exit(1);
-        }                           
+        }
 	mkdir(BKMASTER, 0775);
 	enableFastPendingScan();
 	sendConfig();

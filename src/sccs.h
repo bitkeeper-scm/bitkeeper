@@ -21,14 +21,13 @@
 #define	INIT_avail	0x10000000	/* OLD: map the file read/write */
 #define	INIT_NOCKSUM	0x20000000	/* don't do the checksum */
 #define	INIT_FIXDTIME	0x40000000	/* use g file mod time as delat time */
-#define	INIT_SAVEPROJ	0x80000000	/* project is loaned, do not free it */
+#define	INIT_SHUTUP	0x80000000	/* pass ADMIN_SHUTUP to checkrevs() */
 #define	INIT_NOSTAT	0x01000000	/* do not look for {p,x,z,c} files */
 #define	INIT_HAScFILE	0x02000000	/* has c.file */
 #define	INIT_HASgFILE	0x04000000	/* has g.file */
 #define	INIT_HASpFILE	0x08000000	/* has p.file */
 #define	INIT_HASxFILE	0x00100000	/* has x.file */
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
-#define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
 #define	INIT_FIXSTIME	0x00010000	/* force sfile mtime < gfile mtime */
 
@@ -136,7 +135,6 @@
 #define	S_SET		0x00002000	/* the tree is marked with a set */
 #define S_CACHEROOT	0x00004000	/* don't free the root entry */
 #define	S_FAKE_1_0	0x00008000	/* the 1.0 delta is a fake */
-#define	S_SAVEPROJ	0x00010000	/* do not free the project struct */
 #define	S_FORCELOGGING	0x00020000	/* Yuck - force it to logging */
 #define S_CONFIG	0x00040000	/* this is a config file */
 
@@ -488,27 +486,8 @@ typedef struct serial {
 #define	S_EXCL	2
 #define	S_PAR	4
 
-/*
- * Rap on project roots.  In BitKeeper, lots of stuff wants to know
- * where the project root is relative to where we are.  We need to
- * use the ->root field for this, remembering to null it whenever
- * we change directories.
- *
- * We also need to wack commands that work in loops to reuse the root
- * pointer across sccs_init()s.  This means that loops should extract
- * the root pointer from the sccs pointer, null the sccs pointer, and
- * then put the root pointer into the next sccs pointer.  This means that
- * sccs_init() should *NOT* go find that root directory, it should do it
- * lazily in sccs_root().  That gives us a chance to pass it in.
- */
-typedef struct {
-	int	flags;		/* PROJ_* */
-	char	*root;		/* to the root of the project */
-	char	*csetFile;	/* Root key of ChangeSet file */
-	MDBM	*config;	/* config DB */
-} project;
+#include "proj.h"
 
-extern	project	*bk_proj;	/* bk.c sets this up */
 extern	jmp_buf	exit_buf;
 extern	char *upgrade_msg;
 
@@ -793,7 +772,7 @@ int	sccs_prsdelta(sccs *s, delta *d, int flags, const char *dspec, FILE *out);
 int	sccs_prsbuf(sccs *s, delta *d, int flags, const char *dspec, char *buf);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
-sccs	*sccs_init(char *filename, u32 flags, project *proj);
+sccs	*sccs_init(char *filename, u32 flags);
 sccs	*sccs_restart(sccs *s);
 sccs	*sccs_reopen(sccs *s);
 int	sccs_open(sccs *s);
@@ -801,7 +780,7 @@ void	sccs_fitCounters(char *buf, int a, int d, int s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);
 void	sccs_close(sccs *);
-sccs	*sccs_csetInit(u32 flags, project *proj);
+sccs	*sccs_csetInit(u32 flags);
 char	**sccs_files(char **, int);
 int	sccs_smoosh(char *left, char *right);
 delta	*sccs_parseArg(delta *d, char what, char *arg, int defaults);
@@ -818,10 +797,8 @@ int	sccs_rmdel(sccs *s, delta *d, u32 flags);
 int	sccs_stripdel(sccs *s, char *who);
 int	sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut);
 void	sccs_pdelta(sccs *s, delta *d, FILE *out);
-char	*sccs_root(sccs *s);
-int	sccs_cd2root(sccs *, char *optional_root);
 delta	*sccs_key2delta(sccs *sc, char *key);
-int	sccs_keyunlink(char *key, project *proj, MDBM *idDB, MDBM *dirs);
+int	sccs_keyunlink(char *key, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
 void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
@@ -896,12 +873,11 @@ void	sccs_mkroot(char *root);
 char	*sccs_nivPath(sccs *s);
 int	sccs_parent_revs(sccs *s, char *rev, char **revP, char **revM);
 char	*sccs_setpathname(sccs *s);
-char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
 int	sccs_reCache(int quiet);
 int	sccs_meta(sccs *s, delta *parent, MMAP *initFile, int fixDates);
 int	sccs_resolveFiles(sccs *s);
-sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);
+sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
 delta	*sfind(sccs *s, ser_t ser);
 int	sccs_lock(sccs *, char);	/* respects repo locks */
 int	sccs_unlock(sccs *, char);
@@ -954,7 +930,7 @@ int	gone(char *key, MDBM *db);
 int	sccs_mv(char *, char *, int, int, int, int);
 delta	*sccs_gca(sccs *, delta *l, delta *r, char **i, char **x, int best);
 char	*_relativeName(char *gName, int isDir, int withsccs,
-	    int mustHaveRmarker, int wantRealName, project *proj, char *root);
+	    int mustHaveRmarker, int wantRealName, project *proj);
 void	rcs(char *cmd, int argc, char **argv);
 char	*findBin(void);
 project	*chk_proj_init(sccs *s, char *file, int line);
@@ -971,7 +947,6 @@ time_t	uniq_drift(void);
 int	uniq_update(char *key, time_t t);
 int	uniq_close(void);
 time_t	sccs_date2time(char *date, char *zone);
-void	cd2root(void);
 pid_t	mail(char *to, char *subject, char *file);
 int	connect_srv(char *srv, int port, int trace);
 int	get(char *path, int flags, char *output);

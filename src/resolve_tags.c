@@ -157,7 +157,7 @@ int
 resolve_tags(opts *opts)
 {
 	char 	s_cset[] = CHANGESET;
-	sccs	*s = sccs_init(s_cset, 0, 0);
+	sccs	*s = sccs_init(s_cset, 0);
 	MDBM	*m = sccs_tagConflicts(s);
 	sccs	*local;
 	delta	*d;
@@ -182,7 +182,7 @@ resolve_tags(opts *opts)
 		return (1);
 	}
 	chdir(RESYNC2ROOT);
-	local = sccs_init(s_cset, 0, 0);
+	local = sccs_init(s_cset, 0);
 	chdir(ROOT2RESYNC);
 	rs = resolve_init(opts, s);
 	rs->opaque = (void*)&t;
@@ -240,7 +240,7 @@ resolve_tags(opts *opts)
 		}
 		while (!resolve_loop("tag conflict", rs, t_funcs));
 		sccs_free(s);
-		s = sccs_init(s_cset, 0, 0);
+		s = sccs_init(s_cset, 0);
 		rs->s = s;
 		free(rs->prompt);
 		n--;

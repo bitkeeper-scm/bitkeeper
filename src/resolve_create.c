@@ -643,7 +643,7 @@ dc_help(resolve *rs)
 	getFileConflict(rs->d->pathname, path);
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	chdir(RESYNC2ROOT);
-	local = sccs_keyinit(buf, INIT, rs->opts->local_proj, rs->opts->idDB);
+	local = sccs_keyinit(buf, INIT_NOCKSUM, rs->opts->idDB);
 	chdir(ROOT2RESYNC);
 	fprintf(stderr,
 "---------------------------------------------------------------------------\n\
@@ -743,7 +743,7 @@ ok_local(sccs *s, int check_pending)
  * true but not fatal, all it means is that some poor schmuck will be
  * asked multiple times about the logging.
  */
-int
+private int
 res_loggingok(resolve *rs)
 {
 	sccs	*here = (sccs*)rs->opaque;
@@ -894,7 +894,7 @@ sc_ml(resolve *rs)
 		perror(cmd);
 		exit(1);
 	}
-	s = sccs_init(path, INIT, rs->opts->resync_proj);
+	s = sccs_init(path, INIT_NOCKSUM);
 	sccs_sdelta(s, sccs_ino(s), path);
 	saveKey(rs->opts, path, to);
 	rs2 = resolve_init(rs->opts, s);
@@ -1196,7 +1196,7 @@ resolve_create(resolve *rs, int type)
 		rs->prompt = rs->d->pathname;
 		rs->res_screate = 1;
 		chdir(RESYNC2ROOT);
-		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);
+		rs->opaque = (void*)sccs_init(rs->dname, 0);
 		chdir(ROOT2RESYNC);
 		ret = resolve_loop("create/sfile conflict", rs, sc_funcs);
 		if (rs->opaque) sccs_free((sccs*)rs->opaque);
@@ -1206,7 +1206,7 @@ resolve_create(resolve *rs, int type)
 		rs->prompt = rs->d->pathname;
 		rs->res_screate = 1;
 		chdir(RESYNC2ROOT);
-		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);
+		rs->opaque = (void*)sccs_init(rs->dname, 0);
 		chdir(ROOT2RESYNC);
 		ret = res_loggingok(rs);
 		if (rs->opaque) sccs_free((sccs*)rs->opaque);
@@ -1215,7 +1215,7 @@ resolve_create(resolve *rs, int type)
 		if (rs->opts->debug) fprintf(stderr, "RESYNC\n");
 		rs->prompt = rs->d->pathname;
 		rs->res_resync = 1;
-		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);
+		rs->opaque = (void*)sccs_init(rs->dname, 0);
 		ret = resolve_loop("create/resync conflict", rs, rc_funcs);
 		if (rs->opaque) sccs_free((sccs*)rs->opaque);
 		return (ret);

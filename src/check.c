@@ -46,9 +46,8 @@ private	int	csetpointer;	/* if set, we need to fix cset pointers */
 private	int	lod;		/* if set, we need to fix lod data */
 private	int	mixed;		/* mixed short/long keys */
 private	int	check_eoln;
-private	project	*proj;
 private	sccs	*cset;		/* the initialized cset file */
-private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOGCHK|INIT_NOCKSUM;
+private int	flags = SILENT|INIT_NOGCHK|INIT_NOCKSUM;
 private	FILE	*idcache;
 private	u32	id_sum;
 private char	id_tmp[MAXPATH]; /* BitKeeper/tmp/bkXXXXXX */
@@ -125,16 +124,15 @@ check_main(int ac, char **av)
 		fprintf(stderr, "check: -a syntax is ``bk -r check -a''\n");
 		return (1);
 	}
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
 	}
 	if (sane_main(0, 0)) return (1);
-	unless (cset = sccs_init(s_cset, flags, 0)) {
+	unless (cset = sccs_init(s_cset, flags)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
-	proj = cset->proj;
 	mixed = LONGKEY(cset) == 0;
 	if (verbose == 1) {
 		nfiles = sccs_hashcount(cset);
@@ -168,7 +166,7 @@ check_main(int ac, char **av)
 	want_dfile = exists(DFILE);
 	for (n = 0, name = sfileFirst("check", &av[optind], 0);
 	    name; n++, name = sfileNext()) {
-		unless (s = sccs_init(name, flags, proj)) {
+		unless (s = sccs_init(name, flags)) {
 			if (all) fprintf(stderr, "%s init failed.\n", name);
 			errors |= 1;
 			continue;
@@ -273,7 +271,6 @@ check_main(int ac, char **av)
 	mdbm_close(db);
 	mdbm_close(keys);
 	if (goneDB) mdbm_close(goneDB);
-	if (proj) proj_free(proj);
 	if (errors && fix) {
 		if (names) {
 			fprintf(stderr, "check: trying to fix names...\n");
@@ -286,7 +283,7 @@ check_main(int ac, char **av)
 		}
 		if (csetpointer) {
 			char	buf[MAXKEY + 20];
-			char	*csetkey = getCSetFile(bk_proj);
+			char	*csetkey = proj_csetrootkey(s->proj);
 
 			fprintf(stderr,
 			    "check: "
@@ -338,7 +335,7 @@ fix_merges(sccs *s)
 
 	sccs_renumber(s, 0);
 	sccs_newchksum(s);
-	tmp = sccs_init(s->sfile, 0, 0);
+	tmp = sccs_init(s->sfile, 0);
 	assert(tmp);
 	sccs_free(s);
 	return (tmp);
@@ -982,7 +979,7 @@ out:	pclose(keys);
 private char	*
 getFile(char *root, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(root, flags, proj, idDB);
+	sccs	*s = sccs_keyinit(root, flags, idDB);
 	char	*t;
 
 	unless (s) return (strdup("[can not init]"));
@@ -994,7 +991,7 @@ getFile(char *root, MDBM *idDB)
 private char	*
 getRev(char *root, char *key, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(root, flags, proj, idDB);
+	sccs	*s = sccs_keyinit(root, flags, idDB);
 	delta	*d;
 
 	unless (s) return (strdup("[can not init]"));
@@ -1428,7 +1425,7 @@ csetFind(char *key)
 private int
 chk_csetpointer(sccs *s)
 {
-	char	*csetkey = getCSetFile(s->proj);
+	char	*csetkey = proj_csetrootkey(s->proj);
 
 	if (s->tree->csetFile == NULL ||
 	    !(streq(csetkey, s->tree->csetFile))) {
@@ -1440,10 +1437,8 @@ chk_csetpointer(sccs *s)
 			s->tree->csetFile == NULL ? "NULL" : s->tree->csetFile,
 			csetkey);
 		csetpointer++;
-		free(csetkey);
 		return (1);
 	}
-	free(csetkey);
 	return (0);
 }
 

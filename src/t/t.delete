@@ -71,13 +71,13 @@ cd $HERE/project/src
 bk rm -d foo.c
 bk edit $Q h.h
 echo i > h.h
-bk ci -yi $Q h.h
-bk commit $Q -ycset1
+bk ci -yi $Q h.h || exit 1
+bk commit $Q -ycset1 || exit 1
 cd $HERE/clone/src
 bk edit $Q h.h
 echo j > h.h
-bk ci -yj $Q h.h
-bk commit $Q -ycset2
+bk ci -yj $Q h.h || exit 1
+bk commit $Q -ycset2 || exit 1
 cd $HERE/clone
 bk pull $Q >resync.log 2>&1
 if [ $? -ne 1 ]; then echo failed; cat resync.log; exit 1; fi

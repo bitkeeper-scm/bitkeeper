@@ -235,7 +235,7 @@ file_init(char *file, char *rev, char *anno, file_t *f)
 
 	bktmp(tmp, "smerge");
 	f->tmpfile = strdup(tmp);
-	s = sccs_init(sfile, 0, 0);
+	s = sccs_init(sfile, 0);
 	unless (s && s->tree) return (-1);
 	free(sfile);
 	if (sccs_get(s, rev, 0, 0, 0, flags, f->tmpfile)) {
@@ -364,7 +364,7 @@ find_gca(char *file, char *left, char *right)
 	char	*inc = 0, *exc = 0;
 	char	buf[MAXLINE];
 
-	s = sccs_init(sfile, INIT_NOCKSUM, 0);
+	s = sccs_init(sfile, INIT_NOCKSUM);
 	free(sfile);
 	unless (s) {
 		perror(file);

@@ -64,7 +64,7 @@ probekey_main(int ac, char **av)
 	char	s_cset[] = CHANGESET;
 	char	rev[MAXREV+1];
 
-	unless ((s = sccs_init(s_cset, 0, 0)) && HASGRAPH(s)) {
+	unless ((s = sccs_init(s_cset, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "Can't init changeset\n");
 		exit(1);
 	}
@@ -155,7 +155,7 @@ listkey_main(int ac, char **av)
 				return (5);
 		}
 	}
-	unless ((s = sccs_init(s_cset, 0, 0)) && HASGRAPH(s)) {
+	unless ((s = sccs_init(s_cset, 0)) && HASGRAPH(s)) {
 		fprintf(stderr, "Can't init changeset\n");
 		return(3); /* cset error */
 	}
@@ -532,8 +532,8 @@ prunekey_main(int ac, char **av)
 	bzero(&r, sizeof(r));
 	r.rfd = 0;
 	r.wfd = -1;
-	sccs_cd2root(0, 0);
-	s = sccs_init(path, 0, 0);
+	proj_cd2root();
+	s = sccs_init(path, 0);
 	prunekey(s, &r, -1, 0, 0, 0, 0, 0);
 	s->state &= ~S_SET;
 	for (d = s->table; d; d = d->next) {
@@ -596,7 +596,7 @@ synckeys(remote *r, int flags)
 	/*
 	 * What we want is: "remote => bk _prunekey => stdout"
 	 */
-	s = sccs_init(s_cset, 0, 0);
+	s = sccs_init(s_cset, 0);
 	flags |= PK_REVPREFIX;
 	rc = prunekey(s, r, 1, flags, 0, NULL, NULL, NULL);
 	if (rc < 0) {
@@ -656,7 +656,7 @@ synckeys_main(int ac, char **av)
 	r = remote_parse(av[optind], 0);
 	assert(r);
 
-	if (sccs_cd2root(0, 0)) { 
+	if (proj_cd2root()) { 
 		fprintf(stderr, "synckeys: cannot find package root.\n"); 
 		exit(1);
 	}
