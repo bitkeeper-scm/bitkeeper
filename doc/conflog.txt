@@ -39,10 +39,11 @@ enforce config logging.
  -----------------------------
 
  When doing a "clone" the config marker in the parent tree is
- preserved and copied to the child. When doing a "push" or a "pull"
- the config marker in NOT transfered.  The next time a commit is
- performed in the tree that got the new csets they will need to be
- logged.
+ preserved and copied to the child. 
+
+ When doing a "push" or a "pull" the config marker in NOT transfered.
+ The resolve code will start a background "bk _lconfig" regardless of
+ its outcome.
 
  Notes about "bk _lconfig"
  -------------------------
@@ -56,23 +57,22 @@ enforce config logging.
  is also tried.
  (Not the normal proxies are used to make the connection.)
  The script (/home/httpd/cgi-bin/bk_config) is a simple program that
- puts the message in an email and pipes it into sendmail.  _lconfig added
- mail headers with "To: config@openlogging.org" at the top.
+ puts the message in an email and pipes it into sendmail.  _lconfig 
+ added mail headers with "To: config@openlogging.org" at the top.
  If the sendmail process returns with no errors then "@OK@" is
  returned to the _lconfig process which indicates that everything
- worked OK.  Otherwise "ERROR-bad license key" is returned.  Not that
- currently no license validation is proformed by the server before
+ worked OK.  Otherwise "ERROR-bad license key" is returned.  Note that
+ currently no license validation is performed by the server before
  "@OK" is returned.
 
 Questions:
 
- * What happens when another bk command wants to change the ChangeSet
-   file when "bk _lconfig" is updating it in the backgroud.  Can we
-   still get a deadlock here???
-
  * What if I pull >10 csets from a repository I haven't touched in
    more than 2 months into my tree.  Will I freeze in the next time I
    make a commit if the net happens to be down?
+
+  [ yes. pretty much, but the net has to be done when I do the pull 
+    as well. ]
 
  * We might want a return value from /home/httpd/cgi-bin/bk_config
    that tells "bk _lconfig" that the license in question has been
