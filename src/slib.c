@@ -9827,19 +9827,15 @@ sccs_diffs(sccs *s, char *r1, char *r2,
 private void
 mkTag(char kind, char *label, char *rev, char *path, char tag[])
 {
-	if ((kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
-		sprintf(tag, "%s %s", path, rev);
-	} else  if (kind == DF_GNU_PATCH) {
-		/*
-		 * 1.0 => create (or reverse create in a reverse pacth )
-		 * DEV_NULL => delete (i.e. sccsrm)
-		 */
-		if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
-			sprintf(tag, "%s", "/dev/null");
-		} else {
-			sprintf(tag, "%s/%s", label? label : rev, path);
-		}
-	} else tag[0]= 0;
+	/*
+	 * 1.0 => create (or reverse create in a reverse pacth )
+	 * DEV_NULL => delete (i.e. sccsrm)
+	 */
+	if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
+		sprintf(tag, "%s", "/dev/null");
+	} else {
+		sprintf(tag, "%s/%s", label? label : rev, path);
+	}
 }
 
 
@@ -10109,12 +10105,8 @@ normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf)) goto done;
 	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0 )) goto done;
 
-	if (kind == DF_GNU_PATCH) {
-		lpath = getHistoricPath(s, lrev); assert(lpath);
-		rpath = getHistoricPath(s, rrev); assert(rpath);
-	} else {
-		lpath = rpath = s->gfile;
-	}
+	lpath = getHistoricPath(s, lrev); assert(lpath);
+	rpath = getHistoricPath(s, rrev); assert(rpath);
 
 	/*
 	 * make the tag string to label the diff output, e.g.

@@ -952,7 +952,7 @@ doDiff(sccs *sc, int kind)
 	}
 	e = e->parent;
 	if (e == d) return;
-	sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout, 0, 0);
+	new_sccs_diffs(sc, e->rev, d->rev, 0, kind, stdout, "PARENT", "NEW");
 }
 
 /*
