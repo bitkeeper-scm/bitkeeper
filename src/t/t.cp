@@ -27,19 +27,33 @@ bk get $Q file1 file2
 diff file1 file2
 if [ $? -ne 0 ]; then echo Failed to copy content correctly; exit 1; fi 
 echo OK
+
 echo $N Test revision history is preserved after bk cp ..............$NL
 REV=`bk prs -hr+ -d':REV:' file2`
 # test with 1.4 because we have an extra rev with the new file for the cp
 if [ ${REV}X != "1.4"X ]; then echo Failed; exit 1; fi
 echo OK
+
 echo $N Test ROOTKEY is different between original file and copy ....$NL
 # Question, should I test ROOTKEY or RANDOM?
 RK1=`bk prs -h -d':ROOTKEY:' file1`
 RK2=`bk prs -h -d':ROOTKEY:' file2`
 if [ ${RK1}X = ${RK2}X ]; then echo Failed; exit 1; fi
 echo OK
+
 echo $N Test PATH is different between original file and copy .......$NL
 P1=`bk prs -hr+ -d':PATH:' file1`
 P2=`bk prs -hr+ -d':PATH:' file2`
 if [ "${P1}"X = "${P2}"X ]; then echo Failed; exit 1; fi
+echo OK
+
+echo $N Test copy to directory with SCCS dir ........................$NL
+mkdir A
+bk cp file1 A/file3 2>/dev/null || {
+	echo failed
+	exit 1
+}
+REV=`bk prs -hr+ -d':REV:' A/file3`
+# test with 1.4 because we have an extra rev with the new file for the cp
+if [ ${REV}X != "1.4"X ]; then echo Failed; exit 1; fi
 echo OK
