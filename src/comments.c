@@ -77,7 +77,7 @@ comments_prompt(char *file)
 	char	*cmd, buf[10];
 	extern	char *editor;
 
-	unless (editor || (editor = getenv("EDITOR"))) editor = "vi";
+	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
 	while (1) {
 		printf("\n-------------------------------------------------\n");
 		fflush(stdout);
