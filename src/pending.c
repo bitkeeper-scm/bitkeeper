@@ -1,8 +1,6 @@
 #include "system.h"
 #include "sccs.h"
 
-extern char *pager;
-
 int
 pending_main(int ac, char **av)
 {
@@ -33,7 +31,8 @@ $each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\n";
 		return (1);
 	}
 	unless (quiet) {
-		sprintf(buf, "bk prs -Yh '-d%s' - < %s | %s", dspec, tmp, pager);
+		sprintf(buf,
+		    "bk prs -Yh '-d%s' - < %s | %s", dspec, tmp, pager());
 		system(buf);
 	}
 	unlink(tmp);

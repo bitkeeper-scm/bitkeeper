@@ -30,6 +30,5 @@ __platformInit()
 	else wish=wish
 	fi
 	test "X$EDITOR" = X && EDITOR=vi
-	test "X$PAGER" = X && PAGER=more
 	export PAGER EDITOR GUI_BIN RM ECHO TMP DEV_NULL MAIL_CMD AWK wish
 }
