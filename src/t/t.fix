@@ -128,19 +128,23 @@ cmp -s C SCCS/c.ChangeSet || {
 }
 echo OK
 
-echo $N Make sure multiple comments are left for multiple deltas ....$NL
+echo $N Make sure multiple deltas in same cset undoes top only ......$NL
+test `bk prs -hnd:REV: -r+ ORDER` = 1.4 || {
+	echo Should have left rev 1.4
+	bk prs ORDER
+	exit 1
+}
+echo OK
+
+echo $N Make sure multiple deltas in same cset leaves top c.file ....$NL
 test -f SCCS/c.ORDER || {
 	echo No comment file found
 	exit 1
 }
 cat > WANT <<EOF
 whatever5
-whatever4
-whatever3
-whatever2
 EOF
-grep -v 'BitKeeper file' SCCS/c.ORDER > GOT
-cmp -s GOT WANT || {
+cmp -s SCCS/c.ORDER WANT || {
 	echo Incorrect comments
 	cat GOT
 	exit 1
@@ -160,7 +164,7 @@ test -x FILE || {
 	exit 1
 }
 bk clean FILE
-bk fix -c
+bk fix -c $Q
 test -x FILE || {
 	echo Did not preserve execute
 	exit 1
@@ -193,6 +197,89 @@ grep -q 'fix merge changesets' OUT || {
 }
 echo OK
 
+echo $N Make sure renames are not stripped but are left pending .....$NL
+cd $HERE
+cp -rp clone pending
+cd pending
+bk mv FILE RENAME
+bk commit $Q -yrename
+bk fix -c $Q || {
+	echo fix should not have failed
+	exit 1
+}
+test "`bk sfiles -gp`" = RENAME || {
+	echo bad pending list from sfiles -p
+	bk sfiles -p
+	exit 1
+}
+test "`bk sfiles -gP`" = RENAME || {
+	echo bad pending list from sfiles -P
+	bk sfiles -P
+	exit 1
+}
+echo OK
+
+echo $N Make sure bk new-ed files are left but s.file is removed ....$NL
+cd $HERE
+cp -rp clone new
+cd new
+ls > NEW
+cp NEW SAVE
+bk new $Q NEW
+bk commit $Q -ynew
+bk fix -c $Q || exit 1
+test -f NEW || {
+	echo failed to leave NEW
+	exit 1
+}
+test -w NEW || {
+	echo failed to leave NEW with write permission
+	exit 1
+}
+cmp -s NEW SAVE || {
+	echo different contents
+	exit 1
+}
+test -f SCCS/s.NEW && {
+	echo should have removed s.NEW
+	exit 1
+}
+test -f SCCS/c.NEW || {
+	echo should have left a c.NEW
+	exit 1
+}
+test -s SCCS/c.NEW || {
+	echo should have left a non-empty c.NEW
+	exit 1
+}
+test -z "$BK_TESTGUI" || {
+	echo ""
+	cat SCCS/c.NEW
+	echo click commit, it should have NEW marked new
+	bk citool
+}
+echo OK
+
+echo $N Make sure bk new-ed files are left without keywords expanded.$NL
+cd $HERE
+cp -rp clone keywords
+cd keywords
+bk edit $Q BitKeeper/etc/config
+echo "keywords: sccs" >> BitKeeper/etc/config
+bk delta $Q -y'sccs keywords' BitKeeper/etc/config
+echo '%A%' > foo
+cp foo bar
+bk new $Q foo
+bk commit $Q -ybasefoo
+bk get $Q foo
+bk fix -c $Q
+cmp -s foo bar || {
+	echo should not have expanded keywords
+	sdiff -w40 foo bar
+	exit 1
+}
+echo OK
+
 echo $N Make sure files with spaces are OK ..........................$NL
 echo "hi" > 'new file'
 bk new $Q 'new file'
@@ -201,8 +288,105 @@ bk edit $Q 'new file'
 echo bye >> 'new file'
 bk ci $Q -ybye 'new file'
 bk commit $Q -ybye
-bk fix -c || {
+bk fix -c $Q || {
 	echo fix should not have failed
+	exit 1
+}
+echo OK
+
+# Create a cset that has an inc/exc in a file 
+# bk fix -c it
+# bk pull the cset and make sure we get a reasonable error message
+
+cd $HERE
+rm -rf project clone
+echo $N Create initial repository and file with exclude .............$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo foo > foo
+echo bar > bar.c
+bk new $Q foo bar.c
+bk commit $S -a -yCset
+bk get -e -x1.1 $Q foo
+bk delta -yexclude $Q foo
+bk commit $S -a -yCset2
+echo OK
+cores
+
+echo $N Clone repository ............................................$NL
+bk clone $Q $HERE/project $HERE/clone
+echo OK
+
+echo $N Fix the cset, pull, should fill in and allow update .........$NL
+cd $HERE/clone
+bk stripdel $Q -C -r+ ChangeSet
+bk admin -D foo
+bk cset -M1.1..
+bk -R sfiles -P >/dev/null
+bk -r check -ac || exit 1
+
+# What is happening is that we are pulling in the data which fills in the
+# changeset around this delta.  The data is already in the local file and
+# the keys match so we don't have to fill it in.  But we also don't mark
+# the file as having D_CSET on the tip so it looks like it is pending and
+# we try and commit it at the end and find that we already have this key
+# in the ChangeSet file.
+#
+# We could either fail the update completely because of the pending delta
+# or notice in applypatch that it isn't marked and fix the marks.
+#
+# If we are going to get clever we need to try and force a test with both
+# local deltas should be pending and local deltas which should not be
+# pending after the pull.
+bk pull $Q > OUT 2>&1 || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+# Create a cset that has an inc/exc in a file 
+# bk fix -c it and add another genuinely local change
+# bk pull the cset and make sure we get a reasonable error message
+
+cd $HERE
+rm -rf project clone
+echo $N Create initial repository and file with exclude .............$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo foo > foo
+echo bar > bar.c
+bk new $Q foo bar.c
+bk commit $S -a -yCset
+bk get -e -x1.1 $Q foo
+bk delta -yexclude $Q foo
+bk commit $S -a -yCset2
+echo OK
+cores
+
+echo $N Clone repository ............................................$NL
+bk clone $Q $HERE/project $HERE/clone
+echo OK
+
+echo $N Fix the cset, pull, should fail update due to pending .......$NL
+cd $HERE/clone
+bk stripdel $Q -C -r+ ChangeSet
+bk admin -D foo
+bk cset -M1.1..
+bk edit $Q foo
+bk delta $Q -ywhatever foo
+bk -R sfiles -P >/dev/null
+bk -r check -ac || exit 1
+
+bk pull $Q > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "has uncommitted changes" OUT || {
+	echo Bad error message
+	cat OUT
 	exit 1
 }
 echo OK

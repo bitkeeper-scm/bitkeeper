@@ -310,18 +310,21 @@ private int
 in_no_proxy(char *host)
 {
 	char	*list;
-	char	*p;
-	int	hlen = strlen(host);
+	char	*p, *e;
+	int	found = 0;
 
-	p = list = getenv("no_proxy");
-	while (list && *list) {
-		while (*p && *p != ',') ++p;
-		if (p-list == hlen && strneq(list, host, hlen)) return (1);
-		if (*p) ++p;
-
-		list = p;
+	unless (list = getenv("no_proxy")) return (0);
+	p = list = strdup(list);
+	while (p) {
+		if (e = strchr(list, ',')) *e++ = 0;
+		if (*p && match_one(host, p, 1)) {
+			found = 1;
+			break;
+		}
+		p = e;
 	}
-	return (0);
+	free(list);
+	return (found);
 }
 
 int
@@ -338,7 +341,7 @@ http_connect(remote *r, char *cgi_script)
 	/*
 	 * Try proxy connection if available
 	 */
-	proxies = get_http_proxy();
+	proxies = get_http_proxy(r->host);
 	EACH(proxies) {
 		if (r->trace) {
 			fprintf(stderr, "trying %s\n", proxies[i]);

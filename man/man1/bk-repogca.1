@@ -1,0 +1,23 @@
+.so ../bk-macros
+.TH "bk repogca" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk repogca \- show greatest common ancestor of two repositories
+.SH SYNOPSIS
+.B bk repogca
+.B [<url>]
+.SH DESCRIPTION
+.LP
+This command will print the latest revision in the current repository that
+exists in the remote repository.  By default, `bk parent` is the remote 
+repository.  You can override that by specifying another bk url.
+.SH EXAMPLE
+.LP
+To generate a GNU patch for the data that exists in the local repository 
+that doesn't exist in the parent you can do
+.DS
+bk export -tpatch -r`bk repogca`,+ > patch
+.DE
+.SH "SEE ALSO"
+.SA gca 1
+.SH CATEGORY
+.B Utility

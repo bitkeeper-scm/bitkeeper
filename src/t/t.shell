@@ -26,7 +26,7 @@ then
 	exit 0;
 fi
 
-HERE=`bk pwd`
+HERE=`bk pwd -s`
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -139,7 +139,11 @@ cd copy
 # First one is for the binary and the second one is for the file.
 ( echo ''
   echo ul
+  echo Use local binary
+  echo .
   echo ul
+  echo Use local file
+  echo .
   echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
@@ -155,6 +159,8 @@ bk cat file | grep -q copy || {
 	bk cat file
 	exit 1
 }
+test "`bk prs -r+ -hnd:C: binary`" != "Use local binary" && exit 1
+test "`bk prs -r+ -hnd:C: file`" != "Use local file" && exit 1
 echo OK
 
 echo $N Make sure ur works ..........................................$NL
@@ -165,7 +171,11 @@ cd copy
 # First one is for the binary and the second one is for the file.
 ( echo ''
   echo ur
+  echo Use remote binary
+  echo .
   echo ur
+  echo Use remote file
+  echo .
   echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
@@ -181,6 +191,8 @@ bk cat file | grep -q project || {
 	bk cat file
 	exit 1
 }
+test "`bk prs -r+ -hnd:C: binary`" != "Use remote binary" && exit 1
+test "`bk prs -r+ -hnd:C: file`" != "Use remote file" && exit 1
 echo OK
 
 echo $N Make sure shell escapes to use local works ..................$NL
@@ -190,8 +202,12 @@ tar xmf TAR
 cd copy
 ( echo '!cp $BK_LOCAL $BK_MERGE'
   echo C
+  echo Use local binary
+  echo .
   echo '!cp $BK_LOCAL $BK_MERGE'
   echo C
+  echo Use local file
+  echo .
   echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
@@ -206,6 +222,8 @@ bk cat file | grep -q copy || {
 	bk cat file
 	exit 1
 }
+test "`bk prs -r+ -hnd:C: binary`" != "Use local binary" && exit 1
+test "`bk prs -r+ -hnd:C: file`" != "Use local file" && exit 1
 echo OK
 
 echo $N Make sure shell escapes to use remote works .................$NL
@@ -215,8 +233,12 @@ tar xmf TAR
 cd copy
 ( echo '!cp $BK_REMOTE $BK_MERGE'
   echo C
+  echo Use remote binary
+  echo .
   echo '!cp $BK_REMOTE $BK_MERGE'
   echo C
+  echo Use remote file
+  echo .
   echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve
@@ -231,6 +253,8 @@ bk cat file | grep -q project || {
 	bk cat file
 	exit 1
 }
+test "`bk prs -r+ -hnd:C: binary`" != "Use remote binary" && exit 1
+test "`bk prs -r+ -hnd:C: file`" != "Use remote file" && exit 1
 echo OK
 
 echo $N Make sure we can force text resolution ......................$NL
@@ -241,7 +265,11 @@ cd copy
 # First one is for the binary and the second one is for the file.
 ( echo t
   echo ur
+  echo use remote
+  echo .
   echo ur
+  echo use remote
+  echo .
   echo q ) | bk resolve $Q -t -ywhatever > OUT 2>&1
 test -d RESYNC && {
 	echo failed to complete resolve

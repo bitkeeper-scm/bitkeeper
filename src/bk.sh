@@ -49,6 +49,19 @@ _renames() {
 	bk rset -h "$1" | awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
 }
 
+_repatch() {
+	__cd2root
+	PATCH=BitKeeper/tmp/undo.patch
+	test "X$1" = X || PATCH="$1"
+	test -f $PATCH || {
+		echo $PATCH not found, nothing to repatch
+		exit 0
+	}
+	# Note: this removed the patch if it works.
+	bk takepatch -vvvaf $PATCH
+}
+
+# shorthand
 _gfiles() {		# /* undoc? 2.0 */
 	exec bk sfiles -g "$@"
 }
@@ -314,8 +327,8 @@ _fixtool() {
 	# We can't do while read x because we need stdin.
 	for x in `cat $fix`
 	do	test $ASK = YES && {
-			clear
-			bk diffs "$x" | ${PAGER} 
+			eval $CLEAR
+			bk diffs "$x" | bk more
 			echo $N "Fix ${x}? y)es q)uit n)o u)nedit: [no] "$NL
 			read ans 
 			DOIT=YES
@@ -333,9 +346,8 @@ _fixtool() {
 		rm -f $merge
 		bk fmtool $previous "$x" $merge
 		test -s $merge || continue
-		mv -f "$x" "${x}~"
-		# Cross file system probably
-		cp $merge "$x"
+		cp -fp "$x" "${x}~"
+		cat $merge > "$x"
 	done
 	rm -f $fix $merge $previous 2>/dev/null
 }
@@ -1179,7 +1191,7 @@ __do_win32_uninstall()
 
 	case "$UNINSTALL_CMD" in
 	    *UNWISE.EXE*)	# Uninstall bk3.0.x
-		mv "$DEST" "$OBK"
+		mv "$DEST" "$OBK" || exit 3
 
 		mkdir "$DEST"
 		for i in UNWISE.EXE UNWISE.INI INSTALL.LOG
@@ -1216,7 +1228,7 @@ __do_win32_uninstall()
 		if [ $cnt -gt 60 ]; then exit 2; fi; # force installtool to exit
 		;;
 	    *bkuninstall*)	# Uninstall bk3.2.x
-		mv "$DEST" "$OBK"
+		mv "$DEST" "$OBK" || exit 3
 
 		# replace $DEST with $OBK
 		X1=`__quoteSpace "$DEST"`
@@ -1228,7 +1240,7 @@ __do_win32_uninstall()
 		rm -f "$TEMP/bkuninstall_tmp$$" "$TEMP/bk_cmd$$"
 		;;
 	    *)	
-		mv "$DEST" "$OBK"
+		mv "$DEST" "$OBK" || exit 3
 		rm -rf "$OBK" 2> /dev/null
 		if [ -f "$ODLL" ]
 		then "$SRC/gui/bin/tclsh" "$SRC/runonce.tcl" \
@@ -1277,25 +1289,36 @@ _install()
 	SRC=`bk bin`
 
 	OBK="$DEST.old$$"
-	test -d "$DEST" && {
+	NFILE=0
+	test -d "$DEST" && NFILE=`bk _find -type f "$DEST" | wc -l`
+	test $NFILE -gt 0 && {
 		DEST=`bk pwd "$DEST"`
 		test "$DEST" = "$SRC" && {
 			echo "bk install: destination == source"
 			exit 1
 		}
 		test $FORCE -eq 0 && {
-			echo "bk install: destination exists, failed (add -f to force)"
+			echo "bk install: destination exists, failed"
+			exit 1
+		}
+		test -f "$DEST"/bkhelp.txt || {
+			echo "bk install: destination is not an existing bk tree, failed"
 			exit 1
 		}
 		test $VERBOSE = YES && echo Uninstalling $DEST
-		(cd "$DEST"; find . -type d | xargs chmod ug+w)
 		if [ "X$OSTYPE" = "Xmsys" ]
 		then
 			__do_win32_uninstall "$SRC" "$DEST" "$OBK"
 		else
+			(
+				cd "$DEST"
+				find . -type d | while read x
+				do	test -w "$x" || chmod ug+w "$x"
+				done
+			) || exit 3
 			rm -rf "$DEST"/* || {
 			    echo "bk install: failed to remove $DEST"
-			    exit 1
+			    exit 3
 			}
 		fi
 	}
@@ -1316,8 +1339,7 @@ _install()
 		echo Installing data in "$DEST" ...
 	}
 	if [ "X$OSTYPE" = "Xmsys" ]
-	then 	echo "fixing up permissions, please wait..."
-		find "$SRC" | xargs chmod +w	# for Win/Me
+	then 	find "$SRC" | xargs chmod +w	# for Win/Me
 	fi
 	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar x${V}f -)
 	
@@ -1336,8 +1358,10 @@ _install()
 	# symlinks to /usr/bin
 	if [ "$DOSYMLINKS" = "YES" ]
 	then
-	        test $VERBOSE = YES && echo "$DEST"/bk links /usr/bin
-		"$DEST"/bk links /usr/bin
+	        LINKDIR=/usr/bin
+		test ! -w $LINKDIR && LINKDIR="$HOME/bin"
+	        test $VERBOSE = YES && echo "$DEST"/bk links "$LINKDIR"
+		"$DEST"/bk links "$LINKDIR"
 	fi
 
 	if [ "X$OSTYPE" = "Xmsys" ]
@@ -1370,12 +1394,23 @@ _install()
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
-		test $VERBOSE = YES && echo "updating registry..."
+		test $VERBOSE = YES && echo "Updating registry and path ..."
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 		# This tells extract.c to reboot if it is needed
 		test $CRANKTURN = NO -a -f "$OBK/BkShellX.dll" && exit 2
 	fi
+
+	# Log the fact that the installation occurred
+	PATH="${DEST}:$PATH"
+	(
+	bk version
+	echo USER=`bk getuser`/`bk getuser -r`
+	echo HOST=`bk gethost`/`bk gethost -r`
+	echo UNAME=`uname -a` 2>/dev/null
+	) | bk mail -u http://bitmover.com/cgi-bin/bkdmail \
+	    -s 'bk install' install@bitmover.com >/dev/null 2>&1 &
+
 	exit 0
 }
 

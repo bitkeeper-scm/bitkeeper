@@ -14,7 +14,7 @@ ifeq "$(OSTYPE)" "msys"
 	UWTLIB=$(UWT)/libuwt.a
 	UWT_H=$(patsubst %,win32/uwtlib/%.h, \
 		dirent misc re_map sys/wait stat utsname ftw \
-	 	mman re_map_decl times)
+	 	mman re_map_decl times NewAPIs)
 else
 	SYS=unix
 	EXE=
@@ -319,13 +319,13 @@ win32: FORCE
 $(UWT)/libuwt.a: $(HDRS) FORCE
 	cd $(UWT) && $(MAKE) 
 
-zlib/libz.a: 
+zlib/libz.a: FORCE
 	cd zlib && $(MAKE) "CC=$(CC)" "CFLAGS=$(CFLAGS)"
 
-mdbm/libmdbm.a:
+mdbm/libmdbm.a: FORCE
 	cd mdbm && $(MAKE) "CC=$(CC)" "CFLAGS=$(CFLAGS)"
 
-tomcrypt/libtomcrypt.a:
+tomcrypt/libtomcrypt.a: FORCE
 	cd tomcrypt && $(MAKE) "CC=$(CC)" "CFLAGS=$(CFLAGS)"
 
 bkres.o: win32/data/bk.rc bk.ico

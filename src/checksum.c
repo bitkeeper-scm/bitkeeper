@@ -1,11 +1,13 @@
 #include "system.h"
 #include "sccs.h"
 #include "zlib/zlib.h"
+#include "logging.h"
+
 WHATSTR("@(#)%K%");
 
-private int	do_chksum(int fd, int off, int *sump);
-private int	chksum_sccs(char **files, char *offset);
-private int	do_file(char *file, int off);
+private	int	do_chksum(int fd, int off, int *sump);
+private	int	chksum_sccs(char **files, char *offset);
+private	int	do_file(char *file, int off);
 
 /*
  * checksum - check and/or regenerate the checksums associated with a file.
@@ -19,27 +21,34 @@ checksum_main(int ac, char **av)
 	delta	*d;
 	int	doit = 0;
 	char	*name;
-	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0;
+	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0, spin = 0;
 	int	c;
 	char	*off = 0;
+	char	*rev = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {
 		system("bk help checksum");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "cfs|v")) != -1) {
+	while ((c = getopt(ac, av, "cfr;s|v/")) != -1) {
 		switch (c) {
 		    case 'c': break;	/* obsolete */
 		    case 'f': fix = 1; break;			/* doc 2.0 */
+		    case 'r': rev = optarg; break;
 		    case 's': do_sccs = 1; off = optarg; break;
+		    case '/': spin = 1; break;
 		    case 'v': diags++; break;			/* doc 2.0 */
 		    default:  system("bk help -s checksum");
 			      return (1);
 		}
 	}
-	
+
 	if (do_sccs) return (chksum_sccs(&av[optind], off));
-	
+
+	if (fix ? repository_wrlock() : repository_rdlock()) {
+		repository_lockers(0);
+		return (1);
+	}
 	for (name = sfileFirst("checksum", &av[optind], 0);
 	    name; name = sfileNext()) {
 		s = sccs_init(name, 0);
@@ -55,11 +64,28 @@ checksum_main(int ac, char **av)
 			    av[0], s->sfile);
 			continue;
 		}
-		for (doit = 0, d = s->table; d; d = d->next) {
-			if (d->type == 'D') {
-				c = sccs_resum(s, d, diags, fix);
-				if (c & 1) doit++;
-				if (c & 2) bad++;
+		doit = bad = 0;
+		/* should this be changed to use the range code? */
+		if (rev) {
+			unless (d = sccs_findrev(s, rev)) {
+				fprintf(stderr,
+				    "%s: unable to find rev %s in %s\n",
+				    av[0], rev, s->gfile);
+				continue;
+			}
+			c = sccs_resum(s, d, diags, fix);
+			if (c & 1) doit++;
+			if (c & 2) bad++;
+		} else {
+			if (CSET(s)) {
+				doit = bad = cset_resum(s, diags, fix, spin);
+			} else {
+				for (d = s->table; d; d = d->next) {
+					unless (d->type == 'D') continue;
+					c = sccs_resum(s, d, diags, fix);
+					if (c & 1) doit++;
+					if (c & 2) bad++;
+				}
 			}
 		}
 		if (diags && fix) {
@@ -87,6 +113,7 @@ checksum_main(int ac, char **av)
 		sccs_free(s);
 	}
 	sfileDone();
+	fix ? repository_wrunlock(0) : repository_rdunlock(0);
 	return (ret ? ret : (doit ? 1 : 0));
 }
 
@@ -295,4 +322,204 @@ do_chksum(int fd, int off, int *sump)
 	}
 	*sump = (int)sum;
 	return (0);
+}
+
+typedef struct serset {
+	int	num, size;
+	struct _sse {
+		ser_t	ser;
+		u16	sum;
+	} data[0];
+} serset;
+
+#define	SS_SIZE  sizeof(serset)
+#define	SSE_SIZE sizeof(struct _sse)
+
+private void
+add_ins(HASH *h, char *root, int len, ser_t ser, u16 sum)
+{
+	serset	**ssp, *ss;
+
+	ssp = (serset **)hash_fetchAlloc(h, root, len, sizeof(serset *));
+	unless (*ssp) {
+		*ssp = malloc(SS_SIZE + 4*SSE_SIZE);
+		(*ssp)->num = 0;
+		(*ssp)->size = 4;
+	} else if ((*ssp)->num == (*ssp)->size - 1) {
+		/* realloc 2X */
+		ss = malloc(SS_SIZE + (2 * (*ssp)->size)*SSE_SIZE);
+		memcpy(ss, *ssp, SS_SIZE + (*ssp)->size*SSE_SIZE);
+		ss->size = 2 * (*ssp)->size;
+		free(*ssp);
+		*ssp = ss;
+	}
+	ss = *ssp;
+	ss->data[ss->num].ser = ser;
+	ss->data[ss->num].sum = sum;
+	++ss->num;
+	ss->data[ss->num].ser = 0;
+}
+
+/* same semantics as sccs_resum() except one call for all deltas */
+int
+cset_resum(sccs *s, int diags, int fix, int spinners)
+{
+	HASH	*root2map = hash_new();
+	ser_t	ins_ser = 0;
+	char	*p, *q, *e;
+	char	*end = s->mmap + s->size;
+	u16	sum;
+	int	cnt, i, added, n = 0;
+	serset	**map;
+	ser_t	*slist;
+	struct	_sse *sse;
+	delta	*d;
+	int	found = 0;
+	kvpair	kv;
+	char	*spin = "|/-\\";
+
+	if (spinners) fprintf(stderr, "checking checksums ");
+
+	/* build up weave data structure */
+	p = s->mmap + s->data;
+	while (p < end) {
+		if (p[0] == '\001') {
+			if (p[1] == 'I') ins_ser = atoi(p + 3);
+			e = p;
+			while (*e++ != '\n');
+		} else {
+			q = separator(p);
+			sum = 0;
+			e = p;
+			do {
+				sum += *(unsigned char *)e;
+			} while (*e++ != '\n');
+			add_ins(root2map, p, q-p, ins_ser, sum);
+		}
+		p = e;
+	}
+	cnt = 0;
+	EACH_HASH(root2map) ++cnt;
+	map = malloc(cnt * sizeof(serset *));
+	cnt = 0;
+	EACH_HASH(root2map) {
+		map[cnt] = *(serset **)kv.val.dptr;
+		++cnt;
+	}
+	/* the above is very fast, no need to optimize further */
+
+	/* foreach delta */
+	slist = 0;
+	for (d = s->table; d; d = d->next) {
+		unless (d->type == 'D') continue;
+		unless (d->added || d->include || d->exclude) continue;
+		if (SET(s) && !(d->flags & D_SET)) {
+			d->flags &= ~D_SET;	/* clean up as we go */
+			continue;
+		}
+
+		/* Is this serialmap a simple extension of the last one? */
+		if (slist && (slist[0] == d->serial+1)) {
+			slist[0] = d->serial;
+			slist[d->serial+1] = 0;
+		} else {
+			if (slist) free(slist);
+			slist = sccs_set(s, d, 0, 0); /* slow */
+		}
+		if (spinners && (((++n) & 0xf) == 0)) {
+			fprintf(stderr, "%c\b", spin[(n>>4) & 0x3]);
+		}
+		sum = 0;
+		added = 0;
+		for (i = 0; i < cnt; i++) {
+			ser_t	ser;
+
+			sse = map[i]->data;
+			ser = sse->ser;
+			while (ser) {
+				if ((ser <= d->serial) && slist[ser]) {
+					sum += sse->sum;
+					if (ser == d->serial) ++added;
+					break;
+				}
+				++sse;
+				ser = sse->ser;
+			}
+		}
+		/* save serialmap if parent is easy to compute from it */
+		if (d->merge || d->include || d->exclude ||
+		    (d->pserial+1 != d->serial)) {
+			free(slist);
+			slist = 0;
+		}
+
+		if ((d->added != added) || d->deleted || (d->same != 1)) {
+			/*
+			 * We dont report bad counts if we are not fixing.
+			 * We have not been consistant about this in the past.
+			 */
+			if (diags > 1) {
+				fprintf(stderr, "%s a/d/s "
+					"%s:%s %d/%d/%d->%d/0/1\n",
+				    (fix ? "Corrected" : "Bad"),
+				    s->sfile, d->rev,
+				    d->added, d->deleted, d->same, added);
+			}
+			if (fix) {
+				d->added = added;
+				d->deleted = 0;
+				d->same = 1;
+				++found;
+			}
+		}
+
+		if (d->sum != sum) {
+			if (!fix || (diags > 1)) {
+				fprintf(stderr, "%s checksum %d:%d in %s|%s\n",
+				    (fix ? "Corrected" : "Bad"),
+				    d->sum, sum, s->gfile, d->rev);
+			}
+			if (fix) {
+				d->sum = sum;
+				d->flags |= D_CKSUM;
+			}
+			++found;
+		}
+	}
+	if (slist) free(slist);
+	s->state &= ~S_SET;	/* if set, then done with it: clean up */
+	for (i = 0; i < cnt; i++) free(map[i]);
+	free(map);
+	hash_free(root2map);
+	return (found);
+}
+
+#define	LINUX_ROOTKEY \
+"torvalds@athlon.transmeta.com|ChangeSet|20020205173056|16047|c1d11a41ed024864"
+#define	BADKEY	"4076e392jtslXUMZRrRU0ZIm6P7uVg"
+#define	GOODKEY	"4076e392K8UBsl4E_GBNx5_z2ywdfg"
+
+sccs *
+cset_fixLinuxKernelChecksum(sccs *s)
+{
+	delta	*d;
+	char	key[MAXKEY];
+
+	sccs_sdelta(s, sccs_ino(s), key);
+	unless (streq(key, LINUX_ROOTKEY)) return (s); /* linux only */
+	if (exists(LOG_TREE)) return (s); /* don't fix openlogging */
+	unless (d = sccs_findMD5(s, BADKEY)) return (s);
+
+	if (sccs_findMD5(s, GOODKEY)) {
+		getMsg("bad-linux-kern-tree", 0, 0, stderr);
+		return (0);
+	}
+	unless (sccs_resum(s, d, 0, 1)) {
+		fprintf(stderr, "failed to fix linux checksum error\n");
+		return (0);
+	}
+	sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+	sccs_restart(s);
+	sccs_findKeyDB(s, 0);
+	return (s);
 }

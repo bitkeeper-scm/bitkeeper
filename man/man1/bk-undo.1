@@ -4,25 +4,41 @@
 .SH NAME
 bk undo \- Undo a changeset or set of changesets
 .SH SYNOPSIS
-.\" XXX - lm, what to do with these [] around -a and -r arguments?
-.Bc bk undo [\-fqs] \-a[
-.ARGc rev 
-.Bc ] | \-r[
-.ARGc revs
+.B "bk undo [\-fqsv]"
+.Bc [
+.OPTreq \-p patch
+.B ]
+.Bc [
+.OPTreq \-a rev
+.Bc "] or ["
+.OPTreq \-r rev
 .B ]
 .SH DESCRIPTION
-.LP
 The undo command can be used to remove any changeset or set of
 changesets.   There are options to select specific changesets or all
 changesets after some point (which is what
-.B bk clone \-r
+.B "bk clone \-r"
 uses.)
 .LP
 To undo a bk pull use bk unpull.
 .SH WARNING
-.LP
-You can not undo an undo.  If the data was only present in your
+With one exception, the changes removed by an undo cannot be restored.
+Use undo with care, if the data was only present in your
 repository, when you undo it, it is gone for good.
+.LP
+If the 
+.B \-s
+option is not present then undo saves a normal \*[BK] patch in
+.IR BitKeeper/tmp/undo.patch .
+Only the most recent undo is saved there, i.e., the patch is overwritten
+each time undo is run.
+To restore the patch try this:
+.DS
+bk takepatch -vvvaf BitKeeper/tmp/undo.patch
+.DE
+There is a a shorthand, bk repatch, which is an alias for the above command.
+The repatch command can take an optional argument which species an alternate
+patch to reapply.
 .SH OPTIONS
 .if t .TP 
 .if n .TP 1i
@@ -38,11 +54,12 @@ use this option.
 Force the undo to complete if it can.  Normally, undo will
 prompt with a list of deltas which will be removed.
 .tp
+.OPTreq \-p patch
+Specify the location of the backup patch.  Overrides 
+.BR \-s .
+.tp
 .B \-q
 Run quietly; do not list files.
-.tp
-.B \-s
-Do not save undone changes as a patch.
 .tp
 .OPTreq \-r revs
 Remove the list of changesets specified by 
@@ -51,12 +68,21 @@ Remove the list of changesets specified by
 must be of the form r1,r2,r3, etc. and can be either the
 changeset number or the changeset key.  See bk help terms
 for more information.
+.tp
+.B \-s
+Do not save undone changes as a patch.
+.tp
+.B \-v
+When prompting with the list of changes to be undone be verbose and list
+not only the changes but the deltas in each file in each changeset.
 .SH "SEE ALSO"
-.LP
 .SA makepatch 1
+.SA pull 1
 .SA stripdel 1
 .SA takepatch 1
 .SA terms 1
 .SA unpull 1
+.\" stuff
+
 .SH CATEGORY
 .B Repository

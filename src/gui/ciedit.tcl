@@ -15,7 +15,7 @@ proc eat {fd} \
 
 proc cmd_edit {which} \
 {
-	global	curLine edit_busy gc filename w tmp_dir env
+	global	curLine edit_busy gc filename w tmp_dir env tcl_platform
 
 	saveComments
 	if {$edit_busy == 1} { return }
@@ -38,7 +38,15 @@ proc cmd_edit {which} \
 			fileevent $fd readable "eat $fd"
 			vwait edit_busy
 			if {[file readable $merge]} {
+				if {$tcl_platform(platform) != "windows"} {
+					set rwx \
+					[file attributes $filename -permissions]
+				}
 				catch {file rename -force $merge $filename}
+				if {$tcl_platform(platform) != "windows"} {
+					file attributes \
+					    $filename -permissions $rwx
+				}
 			} 
 			catch {file delete $old $merge}
 		} else {

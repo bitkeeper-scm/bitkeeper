@@ -48,6 +48,7 @@ b_commit(resolve *rs)
 		return (0);
 	}
 
+	rs->s = sccs_restart(rs->s);
 	/*
 	 * If in text only mode, then check in the file now.
 	 * Otherwise, leave it for citool.

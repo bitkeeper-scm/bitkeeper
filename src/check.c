@@ -114,7 +114,7 @@ check_main(int ac, char **av)
 			return (1);
 		}
 	}
-	if (!isatty(1) && (verbose == 1)) verbose = 0;
+	if (getenv("BK_NOTTY") && (verbose == 1)) verbose = 0;
 
 	if (goneKey && badWritable) {
 		fprintf(stderr, "check: cannot have both -g and -w\n");
@@ -134,6 +134,7 @@ check_main(int ac, char **av)
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
+	unless (cset = cset_fixLinuxKernelChecksum(cset)) return (1);
 	mixed = LONGKEY(cset) == 0;
 	if (verbose == 1) {
 		nfiles = sccs_hashcount(cset);
@@ -326,7 +327,7 @@ fix_merges(sccs *s)
 {
 	sccs	*tmp;
 
-	sccs_renumber(s, 0);
+	sccs_renumber(s, 0, 0);
 	sccs_newchksum(s);
 	tmp = sccs_init(s->sfile, 0);
 	assert(tmp);

@@ -236,8 +236,10 @@ passes(opts *opts)
 	sccs	*s = 0;
 	char	buf[MAXPATH];
 	char	path[MAXPATH];
-	FILE	*p;
+	char	flist[MAXPATH];
+	FILE	*p = 0;
 
+	flist[0] = 0;
 	/*
 	 * Make sure we are where we think we are.  
 	 */
@@ -281,19 +283,24 @@ passes(opts *opts)
 	 * Pass 1 - move files to RENAMES and/or build up rootDB
 	 */
 	opts->pass = 1;
-	unless (p = popen("bk sfiles .", "r")) {
-		perror("popen of bk sfiles");
+	bktmp(flist, "respass1");
+	if (sysio(0, flist, 0, "bk", "sfiles", SYS)) {
+		perror("sfiles list");
+err:		if (p) fclose(p);
+		if (flist[0]) unlink(flist);
 		return (1);
+	}
+	unless (p = fopen(flist, "r")) {
+		perror("fopen sfiles list");
+		goto err;
 	}
 	unless (opts->rootDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
-		pclose(p);
-		return (1);
+		goto err;
 	}
 	unless (opts->checkoutDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) {
 		perror("mdbm_open");
-		pclose(p);
-		return (1);
+		goto err;
 	}
 	if (opts->log) {
 		fprintf(opts->log,
@@ -323,7 +330,10 @@ passes(opts *opts)
 		sccs_close(s);
 		pass1_renames(opts, s);
 	}
-	pclose(p);
+	fclose(p);
+	p = 0;
+	unlink(flist);
+	flist[0] = 0;
 	if (opts->pass1 && !opts->quiet && opts->renames) {
 		fprintf(stdlog,
 		    "resolve: found %d renames in pass 1\n", opts->renames);

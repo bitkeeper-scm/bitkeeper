@@ -25,6 +25,7 @@ import() {
 	INCLUDE=""
 	LIST=""
 	PARALLEL=1
+	PATCHARG="-p1"
 	QUIET=
 	REJECTS=YES
 	RENAMES=YES
@@ -37,7 +38,7 @@ import() {
 	GAP=10
 	TAGS=YES
 	SKIP_OPT=""
-	while getopts Ab:c:CefFg:hH:ij:kl:qRrS:t:Tuvxy: opt
+	while getopts Ab:c:CefFg:hH:ij:kl:p:qRrS:t:Tuvxy: opt
 	do	case "$opt" in
 		A) ;;				# undoc 2.0 - old
 		b) BRANCH=-b$OPTARG;;		# undoc 3.0
@@ -60,6 +61,7 @@ import() {
 		R) REJECTS=NO;;
 		t) TYPE=$OPTARG;;		# doc 2.0
 		T) TAGS=NO;;			# doc 2.1
+		p) PATCHARG="-p$OPTARG";;
 		q) QUIET=-qq; export _BK_SHUT_UP=YES;;	# doc 2.0
 		u) UNDOS=-u;;			# doc 2.0
 		v) VERBOSE=;;			# doc 2.0
@@ -442,8 +444,8 @@ import_patch() {
 	(mycd "$HERE"; cat "$PATCH") > ${TMP}patch$$
 
 	# Make sure the target files are not in modified state
-	bk patch --dry-run --lognames -g1 -f -p1 -ZsE < ${TMP}patch$$ \
-								> ${TMP}plog$$
+	bk patch --dry-run \
+	    --lognames -g1 -f $PATCHARG -ZsE < ${TMP}patch$$ > ${TMP}plog$$
 	egrep 'Creating|Removing file|Patching file' ${TMP}plog$$ | \
 	    sed -e 's/Removing file //' \
 		-e 's/Creating file //' \
@@ -475,7 +477,7 @@ import_patch() {
 	if [ $CONFLICT = YES ]; then Done 1; fi
 	
 
-	bk patch -g1 -f -p1 -ZsE -z '=-PaTcH_BaCkUp!' \
+	bk patch -g1 -f $PATCHARG -ZsE -z '=-PaTcH_BaCkUp!' \
 	    --forcetime --lognames < ${TMP}patch$$ > ${TMP}plog$$ 2>&1 || {
 		echo 'Patch failed.  **** patch log follows ****'
 		cat ${TMP}plog$$

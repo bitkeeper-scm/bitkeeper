@@ -112,6 +112,14 @@ You can restart the resolve with a
 
 after fixing the permissions.
 $
+#bk_skip_and_sccs
+The directory #BKARG# contains both .bk_skip and SCCS.
+BitKeeper ignores the .bk_skip file in this case.  To get rid of this
+warning, remove the file #BKARG#/.bk_skip.
+
+If you want to skip #BKARG#,
+either rename the SCCS directory, or move it into a subdirectory.
+$
 #saw_blanknonl
 The file #BKARG# is corrupted because of a bug in
 BitKeeper version 3.0.1 and earlier.  It was caused by a 
@@ -355,6 +363,19 @@ BitMover can be reached in the United States at 888-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
+#takepatch-chksum
+Error: A checksum in the patch for the ChangeSet file does not match
+the checksum of the data in the patch.
+Please verify the integrity of the source and destination repositories
+by running "bk -r check -acv" in each.  If that passes, and a pull still
+fails, run in the source repository "bk -R checksum ChangeSet".  If the
+source repository has a problem that cannot be fixed, please run
+"bk support" and fill out the form.  If the source repository has no
+problems, and you were doing a push or pull, try the operation again. 
+If you were running takepatch, then generate a new patch file from the
+source repository using the same method as you have.  If the problem
+occurs again, please run "bk support" and fill in the details. 
+$
 #bugtemplate
 BitKeeper Bug Report
 --------------------
@@ -493,7 +514,7 @@ tree.
 The error caused by this undo is:
 $
 #version
-BitKeeper#BKARG#version is @version@
+BitKeeper#BKARG# version is @version@
 Built by: @builder@
 Built on: @built_date@
 $
@@ -1352,6 +1373,12 @@ you may remove Cygwin by manually removing the following items:
 * Anything created by setup in its temporary working directory.
 
 For more information see http://cygwin.com/faq/faq0.html#SEC19
+$
+#bad-linux-kern-tree
+This copy of the Linux Kernel tree contains a bad ChangeSet file that
+needs to be repaired manually.  If at all possible please delete this
+repository and clone a new copy.  Otherwise contact BitMover and
+request assistance.
 $
 #changes_no_parent
 This repository has no parent.  You must set a parent with "bk parent" or

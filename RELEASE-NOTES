@@ -20,6 +20,95 @@ or
 
 There is a glob man page.
 ===============================================================================
+Release notes for BitKeeper version 3.2.2.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+
+The linux kernel repository of the 2.5/2.6 branch may contain a bad checksum
+in the ChangeSet file;  special case code has been added to correct this.
+The code runs automatically and will be silent if everything is repaired.
+
+New Features
+----------------------------------------------------------------------------
+
+- bk checksum runs about 40x faster on the ChangeSet file.
+- bk checksum has a new -r option to repair the checksum on a single delta
+- bk version now prints the operating system name and release
+- bk sfiles -U now lists BitKeeper/triggers files
+
+Noteworthy Bug Fixes
+----------------------------------------------------------------------------
+
+2002-02-08-002	pull will now silently fix a locked sfile with missing gfile
+2002-03-06-002 	bk fix -c collapses multiple revisions of a single file for a
+		ChangeSet
+2002-03-22-004 	fixtool does not preserve permissions
+2002-04-17-001 	changing per file flags seems to have turned a symlink into a
+		reg file
+2002-08-20-001 	bk fix -c corrupts symlinks
+2003-12-15-002 	bk fixtool looses execute permissions
+2004-01-16-001 	if .bk_skip exists, check saying missing file could give a
+		hint as to what's wrong
+2004-03-31-001 	After bk fix -c check fails
+2004-05-19-004 	fix -c should save a backup patch, like undo
+2004-05-31-001	in bkweb "all diffs for ChangeSet" works again
+
+bk fixtool now works on Windows.
+
+Takepatch will again refuse to accept incoming csets that have
+checksum problems.
+
+The installer code has been extensively reworked for the Windows platform.
+Most of the changes are behind the scenes, but the installer should
+preserve the registry properly, should uninstall properly, etc.  The
+path is maintained in the registry or autoexec.bat on Windows 98 & ME.
+We respect the registry entries for the Program Files directory, we
+don't stomp on the registry type for the Path variable, in general
+we're better Windows citizens.
+
+Bug reports on Windows installations are most welcome.
+
+============================================================================
+Release notes for BitKeeper version 3.2.1.   These release notes cover
+the following topics:
+
+. Upgrade Notes
+. New Features
+. Noteworthy bug fixes
+
+Upgrade notes
+----------------------------------------------------------------------------
+
+None.  This version is fully compatible with older versions.
+
+New Features
+----------------------------------------------------------------------------
+
+none
+
+Noteworthy Bug Fixes
+----------------------------------------------------------------------------
+
+2003-03-27-001: receive shouldn't complain on duplicate patches
+2003-11-26-005: bk help, bk helptool fails silently when /tmp full
+
+Fix a minor race condition where a bk command could exit before all repository
+locks have been released.
+
+Fix performance problem where files under $HOME/.bk are accessed too often.
+
+Under Windows: when reading proxy information from Internet Explorer BitKeeper
+now also obeys the list of hosts not to send to the proxy.
+
+The bk installer will no longer happily delete whole directories.
+
+===============================================================================
 Release notes for BitKeeper version 3.2.0.   These release notes cover
 the following topics:
 

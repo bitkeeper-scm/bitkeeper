@@ -65,7 +65,6 @@ private char	*
 keysHome(void)
 {
 	static	char	*keysFile = 0;
-	char	*t;
 	char	path[MAXPATH];
 
 	if (keysFile) return (keysFile);

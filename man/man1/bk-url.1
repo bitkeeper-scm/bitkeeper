@@ -243,12 +243,6 @@ via the registry on win32 systems.
 The following are the Unix environment variable options available for use.  
 .LP
 .RS .4i
-.Bc HTTP_PROXY_HOST=
-.ARG host_name
-.br
-.Bc HTTP_PROXY_PORT=
-.ARG port_number
-.LP
 .Bc http_proxy= 
 .Bc http://
 .ARGc host :
@@ -275,8 +269,7 @@ The following are the Unix environment variable options available for use.
 .ARG port
 .RE
 .LP
-Note: if HTTP_PROXY_HOST is set, HTTP_PROXY_PORT must also be set.  Likewise
-for SOCKS_HOST and SOCKS_PORT.
+Note: if SOCKS_HOST is set, SOCK_PORT must also be set.
 If you are not sure if you should set environment variables, please consult
 your system administrator.
 .\" help://remote

@@ -218,6 +218,13 @@ proc test_invokeMenu {menu} \
 	}
 }
 
+proc bgerror {string} {
+	global errorInfo
+	puts "unexpected error"
+	puts stderr $errorInfo
+	exit 1
+}
+
 # Citool has a rather annoying design in that it calls
 # vwait for its main loop. By overriding that command we can catch
 # when that happens so the test script can be run

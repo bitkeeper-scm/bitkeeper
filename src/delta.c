@@ -108,7 +108,7 @@ strip_danglers(char *name, u32 flags)
 	free(p);
 	s = sccs_init(name, INIT_WACKGRAPH);
 	assert(s);
-	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH);
+	sccs_renumber(s, (flags&SILENT)|INIT_WACKGRAPH, 0);
 	sccs_admin(s, 0, NEWCKSUM|ADMIN_FORCE, 0, 0, 0, 0, 0, 0, 0, 0);
 	sccs_free(s);
 	return (0);
