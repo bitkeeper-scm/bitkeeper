@@ -4,7 +4,7 @@
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost key2rev lines prs range rechksum renumber rmdel	 \
 	  sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids sinfo	 \
-	  stripdel smoosh takepatch undos what
+	  stripdel smoosh takepatch undos what gca
 PRIVATE	= nextsecond mtime zone
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex
@@ -236,6 +236,8 @@ check: check.o $(LIBS)
 	$(CC) $(CFLAGS) check.o $(LINK) -o check
 sccslog: sccslog.o $(LIBS)
 	$(CC) $(CFLAGS) sccslog.o $(LINK) -o sccslog
+gca: gca.o $(LIBS)
+	$(CC) $(CFLAGS) gca.o $(LINK) -o gca
 smoosh: smoosh.o $(LIBS)
 	$(CC) $(CFLAGS) smoosh.o $(LINK) -o smoosh
 g2sccs: g2sccs.o $(LIBS)

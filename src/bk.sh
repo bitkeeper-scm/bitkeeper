@@ -121,6 +121,23 @@ _changes() {
 	echo ChangeSet | ${BIN}sccslog $@ - | $PAGER
 }
 
+# Run csettool on the list of csets, if any
+_csets() {
+	_cd2root
+	if [ -f RESYNC/BitKeeper/etc/csets ]
+	then	echo Viewing RESYNC/BitKeeper/etc/csets
+		cd RESYNC
+		exec ${BIN}csettool -r`cat BitKeeper/etc/csets`
+	fi
+	if [ -f BitKeeper/etc/csets ]
+	then	echo Viewing BitKeeper/etc/csets
+		exec ${BIN}csettool -r`cat BitKeeper/etc/csets`
+	fi
+	echo "Can not find csets to view."
+	exit 1
+}
+
+
 # Figure out what we have sent and only send the new stuff.  If we are
 # sending to stdout, we don't log anything, and we send exactly what they
 # asked for.
@@ -1209,7 +1226,8 @@ _commandHelp() {
 		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
 		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
 		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
-		    csettool|difftool|merging|tag|gone|chmod|keys)
+		    csettool|difftool|merging|tag|gone|chmod|keys|resolve|\
+		    csets)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		    *)
@@ -1353,7 +1371,7 @@ case "$1" in
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
     pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
-    topics|chmod|gone|tag|keys)
+    topics|chmod|gone|tag|keys|csets)
 	cmd=$1
     	shift
 	_$cmd "$@"
