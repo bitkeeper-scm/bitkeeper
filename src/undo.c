@@ -211,12 +211,6 @@ do_rename(MDBM *fileList, char *qflag)
 	FILE	*f, *f1;
 	char	renum_list[MAXPATH], rename_list[MAXPATH], buf[MAXLINE];
 	int 	rc, status, warned = 0;
-	char	*msg =
-"===========================================================================\n\
-file rename event detected: to reconstruct this tree correctly,\n\
-you need to upgrade to BitKeeper Profeesional, for more info\n\
-please contact sales@bitmover.com\n\
-===========================================================================\n";
 
 	bktemp(renum_list);
 	bktemp(rename_list);
@@ -239,15 +233,7 @@ please contact sales@bitmover.com\n\
 		assert(d);
 		old_path = name2sccs(d->pathname);
 		sccs_free(s);
-		unless (streq(sfile, old_path)) {
-			if (!strneq(sfile, "BitKeeper/deleted/SCCS/", 23) &&
-			    !strneq(old_path, "BitKeeper/deleted/SCCS/", 23) &&
-			    bk_mode() == BK_BASIC) {
-				if (++warned == 1) fputs(msg, stderr);
-				continue;
-			}
-			fprintf(f1, "%s\n", sfile);
-		}
+		unless (streq(sfile, old_path)) fprintf(f1, "%s\n", sfile);
 		fprintf(f, "%s\n", old_path);
 		free(sfile);
 		free(old_path);
