@@ -14,6 +14,7 @@ setup_main(int ac, char **av)
 	int	force = 0, allowNonEmptyDir = 0, ask = 1, c;
 	char	*package_path = 0, *config_path = 0, *t;
 	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
+	char	here[MAXPATH];
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
 	char 	config[] = "BitKeeper/etc/config";
 	sccs	*s;
@@ -66,6 +67,10 @@ setup_main(int ac, char **av)
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
+	}
+	if (!getcwd(here, sizeof here)) {
+		perror("getcwd");
+		exit(1);
 	}
 	if (mkdirp(package_path)) {
 		perror(package_path);
@@ -121,28 +126,36 @@ again:		printf("Editor to use [%s] ", editor);
 	}
 	unless (mdbm_fetch_str(m, "description")) {
 		fprintf(stderr, "Setup: must provide a description.\n");
-		if (config_path) exit(1);
+		if (config_path) {
+err:			unlink("BitKeeper/etc/config");
+			sccs_unmkroot("."); /* reverse  sccs_mkroot */
+			unless (allowNonEmptyDir) {
+				chdir(here);
+				rmdir(package_path);
+			}
+			exit(1);
+		}
 		goto again;
 	}
 
 	unless (mdbm_fetch_str(m, "logging")) {
 		fprintf(stderr, "Setup: must define logging policy.\n");
-		if (config_path) exit(1);
+		if (config_path) goto err;
 		goto again;
 	}
 	unless (t = mdbm_fetch_str(m, "email")) {
 		fprintf(stderr, "Setup: must define email contact.\n");
-		if (config_path) exit(1);
+		if (config_path) goto err;
 		goto again;
 	}
 	unless (t = strchr(t, '@')) {
 		fprintf(stderr, "Setup: must define a valid email contact.\n");
-		if (config_path) exit(1);
+		if (config_path) goto err;
 		goto again;
 	}
 	unless (t = strchr(t, '.')) {
 		fprintf(stderr, "Setup: must define a valid email contact.\n");
-		if (config_path) exit(1);
+		if (config_path) goto err;
 		goto again;
 	}
 #if 0	/* this makes setuptool appear to hang up when a non-approved
@@ -175,11 +188,7 @@ again:		printf("Editor to use [%s] ", editor);
 
 	mdbm_close(m);
 
-	if (cset_setup(SILENT, ask)) {
-		unlink("BitKeeper/etc/config");
-		sccs_unmkroot("."); /* reverse  sccs_mkroot */
-		return (1);
-	}
+	if (cset_setup(SILENT, ask)) goto err;
 	s = sccs_init(s_config, SILENT, NULL);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);
