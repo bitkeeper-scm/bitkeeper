@@ -142,15 +142,21 @@ usage:			system("bk help -s diffs");
 		/*
 		 * Optimize out the case where we we are readonly and diffing
 		 * TOT.
+		 * IS_EDITED() doesn't work because they could have chmod +w
+		 * the file.
 		 */
-		if (!things && !Rev && !IS_EDITED(s)) goto next;
+		if (!things && !Rev && !IS_WRITABLE(s)) goto next;
 
 		/*
 		 * Optimize out the case where we have a locked file with
 		 * no changes at TOT.
+		 * IS_EDITED() doesn't work because they could have chmod +w
+		 * the file.
 		 */
-		if (!things && !Rev && IS_EDITED(s) && 
-		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) goto next;
+		if (!things && !Rev && IS_WRITABLE(s) && HAS_PFILE(s) &&
+		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) {
+			goto next;
+		}
 		
 		/*
 		 * Errors come back as -1/-2/-3/0

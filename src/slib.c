@@ -8047,6 +8047,8 @@ sccs_clean(sccs *s, u32 flags)
 			return (0);
 		}
 		fprintf(stderr, "%s writable but not edited?\n", s->gfile);
+		unless (flags & PRINT) return (1);
+		sccs_diffs(s, 0, 0, DIFF_HEADER|SILENT, DF_DIFF, 0, stdout);
 		return (1);
 	}
 	if (flags & CLEAN_UNEDIT) {
@@ -11904,6 +11906,7 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 	char	buf[MAXLINE];
 	char	spaces[80];
 	int	first = 1;
+	char	*error = "";
 
 	if (kind == DF_SDIFF) {
 		int	i, c;
@@ -11923,11 +11926,14 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 		diff(leftf, rightf, kind, opts, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
+	if (IS_WRITABLE(s) && !IS_EDITED(s)) {
+		error = " (writable without lock!) ";
+	}
 	while (fnext(buf, diffs)) {
 		if (first) {
 			if (flags & DIFF_HEADER) {
-				fprintf(out, "%s %s %s vs %s %s\n",
-					spaces, s->gfile, lrev, rrev, spaces);
+				fprintf(out, "%s %s %s vs %s%s %s\n",
+				    spaces, s->gfile, lrev, rrev, error, spaces);
 			} else {
 				fprintf(out, "\n");
 			}
