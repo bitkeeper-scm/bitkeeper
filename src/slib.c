@@ -3774,9 +3774,6 @@ flushDcache()
  * If the file doesn't exist, the graph isn't set up.
  * It should be OK to have multiple files open at once.
  * If the project is passed in, use it, else init one if we are in BK mode.
- * 
- * XXX TODO for win32 performance: Need to add a quick_lstat() interface.
- * XXX This interface only return mode and size, but not st_*time 
  */
 sccs*
 sccs_init(char *name, u32 flags, project *proj)
@@ -3812,7 +3809,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	} else {
 		if (check_gfile(s, flags)) return (0);
 	}
-	if (fast_lstat(s->sfile, &sbuf) == 0) {
+	if (fast_lstat(s->sfile, &sbuf, 1) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
 			free(s->gfile);
@@ -3961,7 +3958,7 @@ sccs_restart(sccs *s)
 bad:		sccs_free(s);
 		return (0);
 	}
-	if (lstat(s->sfile, &sbuf) == 0) {
+	if (fast_lstat(s->sfile, &sbuf, 1) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= S_SFILE;

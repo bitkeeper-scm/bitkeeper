@@ -372,7 +372,7 @@ do_checkin(char *name, char *encp, char *compp,
 		return (-1);
 	}
 
-	if (newfile && (lstat(newfile, &sb) == 0)) {
+	if (newfile && (fast_lstat(newfile, &sb, 0) == 0)) {
 		if (S_ISLNK(sb.st_mode) || S_ISREG(sb.st_mode)) {
 			s->mode = sb.st_mode;
 		} else {

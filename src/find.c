@@ -119,7 +119,7 @@ walk(char *path)
 		} else {
 			strcpy(path, e->d_name);
 		}
-		if (lstat(path, &sb)) {
+		if (fast_lstat(path, &sb, 0)) {
 			/* Just ignore it, someone deleted it */
 			continue;
 		} else if (S_ISDIR(sb.st_mode)) {

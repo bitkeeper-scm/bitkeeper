@@ -195,14 +195,14 @@ file(char *f, lftw_func func)
 		g = name2sccs(f);
 	}
 
-	if (lstat(f, &sb)) {
+	if (fast_lstat(f, &sb, 0)) {
 		if (errno != ENOENT) perror(f);
 	} else {
 		func(f, (sb.st_mode & S_IFMT));
 	}
 	unless (g) return;
 
-	if (lstat(g, &sb)) {
+	if (fast_lstat(g, &sb, 0)) {
 		if (errno != ENOENT) perror(g);
 	} else {
 		func(g, (sb.st_mode & S_IFMT));
@@ -688,7 +688,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 		if (e->d_type != DT_UNKNOWN) mode = DTTOIF(e->d_type);
 		else
 #endif
-		if (lstat(path, sb)) {
+		if (fast_lstat(path, sb, 0)) {
 			/*
 			 * Do not print an error, A file entry may be deleted
 			 * right by someone else after we read the directory block. 
@@ -762,7 +762,7 @@ lftw(const char *dir, lftw_func func)
 	 * Special case: process the starting path directly,
 	 * even if it's dot.
 	 */
-	if (lstat(path, &st)) {
+	if (fast_lstat(path, &st, 0)) {
 		perror(path);
 		return;
 	} else if (! S_ISDIR(st.st_mode)) {

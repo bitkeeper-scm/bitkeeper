@@ -117,7 +117,7 @@ sfio_out()
 		writen(1, len, 4);
 		writen(1, buf, n);
 		byte_count += (n + 4);
-		if (lstat(buf, &sb)) return (1);
+		if (fast_lstat(buf, &sb, 1)) return (1);
 		if (S_ISLNK(sb.st_mode)) {
 			unless (doModes) {
 				fprintf(stderr,
