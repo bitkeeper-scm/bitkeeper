@@ -82,6 +82,15 @@ keysHome()
 	return (keysFile = (strdup)(path));
 }
 
+time_t
+ageInSeconds(char *path)
+{
+	struct	stat sbuf;
+
+	if (lstat(path, &sbuf) == 0) return (sbuf.st_mtime);
+	return (0);
+}
+
 /* -1 means error, 0 means OK */
 int
 uniq_lock()
@@ -91,6 +100,7 @@ uniq_lock()
 	char	linkpath[MAXPATH];
 	char	*lock = lockHome();
 	int	me = getpid();
+	time_t	age;
 	static	int flags = -1;
 
 	if (flags == -1) {
@@ -102,7 +112,13 @@ uniq_lock()
 	}
 
 	sprintf(linkpath, "%s.%d", lock, me);
-	assert(!exists(linkpath));
+	if (age = ageInSeconds(linkpath)) {
+		if (age < 30) {
+			fprintf(stderr, "Stale lock? %s\n", linkpath);
+		}
+		unlink(linkpath);
+	}
+		
 	f = fopen(linkpath, "w");
 	fprintf(f, "%d\n", me);
 	fclose(f);
