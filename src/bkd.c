@@ -83,7 +83,7 @@ bkd_main(int ac, char **av)
 #endif
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
-		if (socketpair(AF_UNIX, SOCK_STREAM, 0, licenseServer) == 0) {
+		if (tcp_pair(licenseServer) == 0) {
 			bkd_server();
 		} else {
 			fprintf(stderr,
