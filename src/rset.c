@@ -310,7 +310,7 @@ fix_rev(sccs *s, char **rev, char rev_buf[])
 {
 	delta *d;
 
-	d = sccs_getrev(s, *rev ? *rev : "+", 0, 0);
+	d = sccs_getrev(s, (*rev && **rev) ? *rev : "+", 0, 0);
 	assert(d);
 	strcpy(rev_buf, d->rev);
 	*rev = rev_buf;
