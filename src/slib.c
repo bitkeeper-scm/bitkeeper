@@ -6799,6 +6799,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		    case 'd':	if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
 				break;
+		    case 'B':	if (add)
+					sc->state |= BITKEEPER;
+				else
+					sc->state &= ~BITKEEPER;
+				break;
 		    case 'R':	if (add)
 					sc->state |= RCS;
 				else

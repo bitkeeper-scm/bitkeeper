@@ -14,8 +14,9 @@ usage: admin options [-] OR [file file file...]\n\n\
     -C			remove the changeset information\n\
     -d<f>		delete flag (ATT compat)\n\
     -e<u>|<g>		delete user/group (ATT compat)\n\
-    -f<f><val>		add flag (value is optional)\n\
+    -f<f><val>		set flag (value is optional)\n\
     -F<f>		delete flag\n\n\
+    			Flags can be symbolic, i.e., RCS, YEAR4, BITKEEPER\n\
     -g			force gzipped binary encoding (gzip | uuencode)\n\
     -h			check s.file format for correctness\n\
     -H			check the s.file format, insisting on 7 bit ascii.\n\
