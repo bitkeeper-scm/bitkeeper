@@ -629,6 +629,7 @@ struct command
  */
 typedef struct {
 	u16	port;		/* remote port if set */
+	u16	loginshell:1;	/* if set, login shell is the bkd */
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
 	char	*path;		/* pathname (must be set) */

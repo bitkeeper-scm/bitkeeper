@@ -72,14 +72,18 @@ getline(int in, char *buf, int size)
 	int	sigs = sigcaught(SIGINT);
 	static	int echo = -1;
 
-	if (echo == -1) echo = getenv("BK_GETLINE") != 0;
+	if (echo == -1) {
+		echo = getenv("BK_GETLINE") != 0;
+		if (getenv("BK_GETCHAR")) echo = 2;
+	}
 	buf[0] = 0;
 	size--;
 	unless (size) return (-3);
 	for (;;) {
 		switch (ret = read(in, &c, 1)) {
 		    case 1:
-			if ((buf[i] = c) == '\n') {
+			if (echo == 2) fprintf(stderr, "[%c]\n", c);
+			if (((buf[i] = c) == '\n') || (c == '\r')) {
 				buf[i] = 0;
 				if (echo) fprintf(stderr, "[%s]\n", buf);
 				return (i + 1);	/* we did read a newline */

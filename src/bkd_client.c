@@ -6,8 +6,9 @@ extern	char	cmdlog_buffer[];
 
 /*
  * Turn either
- *	bk://user@host:port/pathname
- * or	user@host:pathname
+ *	bk://host:port/pathname		<- running bkd form
+ *	bk://user@host:port/pathname	<- rsh host -l user
+ * or	user@host:pathname		<- rsh host bkd -e
  * into a struct remote.
  * If nothing is passed in, use `bk parent`.
  */
@@ -99,7 +100,11 @@ nfs_parse(char *p)
 	return (r);
 }
 
-/* host[:port]/path or host:port */
+/*
+ * host[:port]/path or
+ * user@host[:path] or
+ * host:port
+ */
 private	remote *
 url_parse(char *p)
 {
@@ -108,7 +113,16 @@ url_parse(char *p)
 
 	unless (*p) return (0);
 	new(r);
-	if (s = strchr(p, ':')) {		/* host:port[/path] */
+	if (s = strchr(p, '@')) {		/* user@host[:path] */
+		r->loginshell = 1;
+		*s = 0; r->user = strdup(p); p = s + 1; *s = '@';
+		if (s = strchr(p, ':')) {
+			*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
+			r->path = strdup(p);
+		} else {
+			r->host = strdup(p);
+		}
+	} else if (s = strchr(p, ':')) {	/* host:port[/path] */
 		*s = 0; r->host = strdup(p); p = s + 1; *s = ':';
 		r->port = atoi(p);
 		p = strchr(p, '/');
@@ -136,7 +150,7 @@ remote_unparse(remote *r)
 	char	buf[MAXPATH*2];
 	char	port[10];
 
-	if (r->port) {
+	if (r->port || r->loginshell) {
 		strcpy(buf, "bk://");
 		if (r->user) {
 			strcat(buf, r->user);
@@ -144,10 +158,14 @@ remote_unparse(remote *r)
 		}
 		assert(r->host);
 		strcat(buf, r->host);
-		if (r->port != BK_PORT) {
+		if (r->port) {
+			if (r->port != BK_PORT) {
+				strcat(buf, ":");
+				sprintf(port, "%u", r->port);
+				strcat(buf, port);
+		    	}
+		} else {
 			strcat(buf, ":");
-			sprintf(port, "%u", r->port);
-			strcat(buf, port);
 		}
 		if (r->path) strcat(buf, r->path);
 		return (strdup(buf));
@@ -296,13 +314,19 @@ not compatible with Unix rshd.\n\
 		 * It doesn't do this except in the localhost case because
 		 * the paths may not be the same on both hosts.
 		 */
-		if (streq(r->host, "localhost") && (t = getenv("PATH"))) {
-			freeme = malloc(strlen(t) + 20);
-			sprintf(freeme, "PATH=%s", t);
-			cmd[++i] = "env";
-			cmd[++i] = freeme;
+		unless (r->loginshell) {
+			if (streq(r->host, "localhost")
+			    && (t = getenv("PATH"))) {
+				freeme = malloc(strlen(t) + 20);
+				sprintf(freeme, "PATH=%s", t);
+				cmd[++i] = "env";
+				cmd[++i] = freeme;
+			}
+			cmd[++i] = "bk bkd -e";
+		} else if (streq(cmd[0], "rsh") || streq(cmd[0], "remsh")) {
+			fprintf(stderr,
+			    "Warning: rsh doesn't work with bkd loginshell\n");
 		}
-		cmd[++i] = "bk bkd -e";
 		cmd[++i] = 0;
 	} else {
 		cmd[0] = "bk";
@@ -310,6 +334,11 @@ not compatible with Unix rshd.\n\
 		cmd[2] = "-e";
 		cmd[3] = 0;
     	}
+	if (getenv("BK_DEBUG")) {
+		for (i = 0; cmd[i]; i++) {
+			fprintf(stderr, "CMD[%d]=%s\n", i, cmd[i]);
+		}
+	}
 	if (pipe(wpipe) == -1) return ((pid_t)-1);
 	if (pipe(rpipe) == -1) return ((pid_t)-1);
 	fd0 = dup(0); close(0);
