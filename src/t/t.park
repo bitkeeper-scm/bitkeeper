@@ -47,13 +47,16 @@ bk edit $Q foo.c bar.c
 echo foo-new > foo.c
 echo bar-new >> bar.c
 echo "This a comment for bar.c" > SCCS/c.bar.c
+echo "This a cset comment" > $HERE/project/SCCS/c.ChangeSet
 cp SCCS/c.bar.c $HERE/c.ref
+cp $HERE/project/SCCS/c.ChangeSet $HERE/cc.ref
 cp foo.c $HERE/foo.sav
 cp bar.c $HERE/bar.sav
 bk park -y 2> /dev/null || exit 1
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 if [ -f SCCS/c.bar.c ]; then echo failed; exit 1; fi
+if [ -f $HERE/project/SCCS/c.ChangeSet ]; then echo failed; exit 1; fi
 bk edit $Q bar.c
 bk unpark 2> /dev/null 1>&2 || exit 1
 cmp -s foo.c $HERE/foo.sav
@@ -62,6 +65,9 @@ cmp -s bar.c $HERE/bar.sav
 if [ $? -ne 0 ]; then echo failed 2; od -c bar.c; od -c bar.sav; exit 1; fi
 if [ ! -f SCCS/c.bar.c ]; then echo failed; exit 1; fi
 cmp -s SCCS/c.bar.c $HERE/c.ref
+if [ $? -ne 0 ]; then echo failed 3; exit 1; fi
+if [ ! -f $HERE/project/SCCS/c.ChangeSet ]; then echo failed; exit 1; fi
+cmp -s $HERE/project/SCCS/c.ChangeSet $HERE/cc.ref
 if [ $? -ne 0 ]; then echo failed 3; exit 1; fi
 echo OK
 echo $N Check basic park/unpark via stdin ...........................$NL
@@ -81,6 +87,7 @@ hi mom
 hi dad
 .
 EOF
+cp $HERE/project/BitKeeper/tmp/parkfile_1.sfio $HERE/parkfile$$
 NUM=`bk sfiles -c | wc -l`
 if [ $NUM -ne 0 ]; then echo failed; exit 1; fi;
 bk edit $Q foo.c
@@ -90,6 +97,15 @@ bk unpark 2> /dev/null 1>&2
 # make sure unpark does not delete the parkfile
 if [ ! -f $HERE/project/BitKeeper/tmp/parkfile_1.sfio ]; then echo failed; exit 1; fi
 echo OK
+echo $N Check unpark -f with reject file ............................$NL
+bk park -c  2>/dev/null 1>&2
+bk unpark -f  2>/dev/null 1>&2
+if [ ! -f foo.c.rej ]; then echo failed; exit 1; fi
+if [ -f SCCS/t.foo.c.rej ]; then echo failedXXX; exit 1; fi
+echo OK
+bk unedit foo.c
+cp $HERE/parkfile$$ $HERE/project/BitKeeper/tmp/parkfile_1.sfio
+
 echo $N Check park/unpark with offset diff ..........................$NL
 bk clean foo.c
 bk fix $Q foo.c

@@ -329,6 +329,7 @@
 #define	CSETS_OUT	"BitKeeper/etc/csets-out"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	CHANGESET	"SCCS/s.ChangeSet"
+#define	CCHANGESET	"SCCS/c.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
 #define	LOGGING_OK	"BitKeeper/etc/SCCS/s.logging_ok"
 #define	GLOGGING_OK	"BitKeeper/etc/logging_ok"

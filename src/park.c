@@ -4,7 +4,7 @@
 #include "system.h"
 #include "sccs.h"
 
-#define PARKFILE_VERSION "# BITKEEPER PARKFILE VERSION: 2"
+#define PARKFILE_VERSION "# BITKEEPER PARKFILE VERSION: 2.1"
 #define PARKDIR "BitKeeper/tmp/park_dir"
 #define PARK2ROOT "../../.."
 #define ROOT2PARK PARKDIR
@@ -48,7 +48,7 @@ park_main(int ac, char **av)
 	char	changedfile[MAXPATH], parkedfile[MAXPATH];
 	char	*tname = 0, *sname = 0;
 	char	*p;
-	char 	**comments = NULL;
+	char 	**comments = NULL, **ccomments = NULL;
 	int 	lflag = 0, qflag = 0, purge = 0, try = 0, force = 0;
 	int	rc = 0, clean = 0, aflag = 0, unedit = 1, ask = 1;
 	int	err = 0;
@@ -94,6 +94,8 @@ err:		if (s) sccs_free(s);
 		if (sfio_list[0]) unlink(sfio_list);
 		if (changedfile[0]) unlink(changedfile);
 		if (parkedfile[0]) unlink(parkedfile);
+		freeLines(comments);
+		freeLines(ccomments);
 		return (1);
 	}
 	if (chdir(buf)) {
@@ -243,6 +245,21 @@ err:		if (s) sccs_free(s);
 		goto err;
 	}
 
+	/*
+	 * Get cset comments
+	 */
+	f = fopen(CCHANGESET, "rt");
+	if (f) {
+		while (fnext(buf, f)) {
+			chomp(buf);
+			ccomments = addLine(ccomments, strdup(buf));
+		}
+		fclose(f);
+	}
+
+	/*
+	 * Get park comments
+	 */
 	if (ask && !comments)  comments = getParkComment(&err);
 	if (err) {
 		sys(RM, "-rf", PARKDIR, SYS);
@@ -276,8 +293,9 @@ err:		if (s) sccs_free(s);
 	 * # PARK_ID: 5b7a1c91f5a
 	 * # PARK_BY: awc@etp1.bitmover.com
 	 * # PRKDATE: 2002/04/21 13:06:11
-	 * # COMMENT: This is a optional parkfile comment, line 1
-	 * # COMMENT: This is a optional parkfile comment, line 2
+	 * # COMMENT: This is a cset comment, line 1
+	 * # COMMENT: This is a cset comment, line 2
+	 * # PARKCMT: This is a optional parkfile comment, line 1
 	 * #
 	 */
 	f = fopen("ChangeSet", "wb");
@@ -290,13 +308,14 @@ err:		if (s) sccs_free(s);
 	sccs_pdelta(s, sccs_top(s), f);
 	fputs("\n", f);
 	sccs_free(s);
+	EACH (ccomments) fprintf(f, "# COMMENT: %s\n", ccomments[i]);
 	randomBits(buf);
 	fprintf(f, "# PARK_ID: %s\n", buf);
 	fprintf(f, "# PARK_BY: %s@%s\n", sccs_getuser(), sccs_gethost());
 	time(&tt);
 	strftime(buf, sizeof(buf), "%Y/%m/%d %H:%M:%S", localtimez(&tt, 0));
 	fprintf(f, "# PRKDATE: %s\n", buf);
-	EACH (comments) fprintf(f, "# COMMENT: %s\n", comments[i]);
+	EACH (comments) fprintf(f, "# PARKCMT: %s\n", comments[i]);
 	fputs("#\n", f);
 	if (fclose(f)) {
 		perror("ChangeSet");
@@ -349,6 +368,7 @@ err:		if (s) sccs_free(s);
 		free(sname);
 	}
 	fclose(f);
+	unlink(CCHANGESET);
 
 	unless (qflag) {
 		fprintf(stderr, "Parked changes in %s.\n", parkfile);
@@ -357,7 +377,21 @@ err:		if (s) sccs_free(s);
 done:	unlink(sfio_list);
 	unlink(changedfile);
 	unlink(parkedfile);
+	freeLines(comments);
+	freeLines(ccomments);
 	return (0);
+}
+
+
+private int
+check_compat(char *header)
+{
+	if (strlen(header) < 30) return (-1);
+	if (!strneq(header,"# BITKEEPER PARKFILE VERSION: ", 30)) return (-1);
+	if (!streq(&header[30], "2") && !streq(&header[30], "2.1")) return (-1);
+
+	if (streq(&header[30], "2")) return (1);
+	return (0); /* version 2.1 */
 }
 
 private void
@@ -365,15 +399,31 @@ printComments(char *parkfile)
 {
 	FILE	*f;
 	char	buf[MAXLINE];
+	char	*commentHdr;
+	int	compat_mode = 0;
 
 	f = fopen(parkfile, "rb");
 	assert(f);
+	fnext(buf, f);
+
+	switch (check_compat(buf)) {
+	    case -1:
+		fprintf(stderr, "Bad park file , version mismatch ?\n");
+		return;
+	    case 1: compat_mode = 1;
+		break;
+	    case 0: /* version 2.1 */
+		break;
+	    default:
+		assert("check_compat() failed" == 0);
+	}
+
+	commentHdr = compat_mode ? "# COMMENT: " : "# PARKCMT: ";
+	
 	while (fnext(buf, f)) {
 		chomp(buf);
 		if (streq("#", buf)) break; /* end of header */
-		if (strneq("# COMMENT: ", buf, 11)) {
-			printf("  %s\n", &buf[11]);
-		}
+		if (strneq(commentHdr, buf, 11)) printf("  %s\n", &buf[11]);
 	}
 	fclose(f);
 }
@@ -488,6 +538,7 @@ name2tname(char *name)
 	char *tname, *p;
 
 	tname = name2sccs(name);
+	assert(tname);
 	p = strrchr(tname, '/');
 	assert(p);
 	assert(p[1] == 's');
@@ -734,7 +785,7 @@ do_text_diffs_unpark(MMAP *m, char *path, MDBM **idDB, FILE *unpark_list)
 	 * skip header
 	 */
 	while (buf = mkline(mnext(m))) {
-		if (strneq(buf, "# COMMENT: ", 11)) {
+		if (strneq(buf, "# PARKCMT: ", 11)) {
 			if (!cname) cname = tname2cname(path);
 			if (!cf) cf = fopen(cname, "wb");
 			fprintf(cf, "%s\n", &buf[11]);
@@ -1043,12 +1094,14 @@ done:	free(gname);
 private int
 do_unpark(int id, int clean, int force)
 {
-	int	rc = 0, error = 0;
+	int	rc = 0, error = 0, compat_mode = 0;
 	char	parkfile[MAXPATH], sfio_list[MAXPATH], unpark_list[MAXPATH];
 	char	path[MAXPATH];
 	char	*cset_key = "";
+	char	*to;
 	MDBM    *idDB;
 	FILE	*f, *f3;
+	FILE	*f2 = NULL;
 
 	sfio_list[0] = unpark_list[0] = 0;
 	if (clean && exists(PARKDIR)) sys(RM, "-rf", PARKDIR, SYS);
@@ -1105,11 +1158,30 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 	if (!f) goto err;
 	fnext(path, f); /* get parkfile header */
 	chomp(path);
-	fclose(f);
-	if (!streq(path, PARKFILE_VERSION)) {
-		fprintf(stderr, "Bad park file, version mismatch ?\n");
+
+	switch (check_compat(path)) {
+	    case -1:
+		fprintf(stderr, "Bad park file , version mismatch ?\n");
+		fclose(f);
 		goto err;
+	    case 1: compat_mode = 1;
+		break;
+	    case 0: /* version 2.1 */
+		break;
+	    default:
+		assert("check_compat() failed" == 0);
 	}
+
+	if (!compat_mode) {
+		while (fnext(path, f)) {
+			if (strneq("# COMMENT: ", path, 11)) {
+				unless (f2) f2 = fopen(CCHANGESET, "wb");
+				fprintf(f2, "%s", &path[11]);
+			}
+		}
+		if (f2) fclose(f2);
+	}
+	fclose(f);
 
 	/*
 	 * TODO check the repo root id and make sure they match
@@ -1164,7 +1236,7 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 	fclose(f);
 	fclose(f3);
 	if (error && !force) {
-		f = fopen ("ChangeSet", "rt");
+		f = fopen (GCHANGESET, "rt");
 		assert(f);
 		fnext(path, f); /* version */
 		fnext(path, f); /* rootkey */
@@ -1211,12 +1283,45 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 		free(to);
 	}
 	fclose(f);
+	
+	/*
+	 * copy c.Changeset
+	 */
+	if (exists(CCHANGESET)) {
+		to = aprintf("%s/%s", PARK2ROOT, CCHANGESET);
+		fileCopy(CCHANGESET, to);
+		free(to);
+	}
+
+	if (force) {
+		f = popen("bk _find . -name '*.rej'", "r");
+		while (fnext(path, f)) {
+			chomp(path);
+			to = aprintf("%s/%s", PARK2ROOT, path);
+			/*
+			 * We do not want the *.rej file under the SCCS 
+			 * directory, those are handled above already.
+			 * This only happen when we have a extra or a checked-in
+			 * file with * "rej" suffix.
+			 */
+			if (strstr(to, "/SCCS/")) {
+				free(to);
+				continue;
+			}
+			fileCopy(path, to); 	/* copy *.rej file */
+			free(to);
+		}
+		pclose(f);
+	}
 
 	if  (streq(parkfile, "-")) {
-		fprintf(stderr, "Unpark is successful\n");
+		if (!error) fprintf(stderr, "Unpark is successful\n");
 	} else {
 		unlink(parkfile); /* careful */
-		fprintf(stderr, "Unpark of parkfile_%d is successful\n", id);
+		if (!error) {
+			fprintf(stderr,
+			    "Unpark of parkfile_%d is successful\n", id);
+		}
 	}
 
 skip_apply:
@@ -1225,7 +1330,7 @@ skip_apply:
 		goto err;
 	}
 	mdbm_close(idDB);
-	if (error) {
+	if (error && !force) {
 		char	s_cset[] = CHANGESET;
 		sccs	*s;
 		delta 	*d;
@@ -1348,7 +1453,7 @@ parkfile_header(sccs *s, delta *top, char *type, FILE *out)
 	if (f) {
 		while (fnext(buf, f)) {
 			chomp(buf);
-			fprintf(out, "# COMMENT: %s\n", buf);
+			fprintf(out, "# PARKCMT: %s\n", buf);
 		}
 		fclose(f);
 	}
