@@ -159,6 +159,12 @@ admin_main(int ac, char **av)
 		    "admin: comment may only be specified with -i and/or -n\n");
 		goto usage;
 	}
+	if (encp && !(flags & NEWFILE)) {
+		fprintf(stderr,
+		    "admin: encoding may only be specified with -i\n");
+		goto usage;
+	}
+
 	/* All of these need to be here: m/nextf are for resolve,
 	 * newfile is for !BK mode.
 	 */
