@@ -996,6 +996,7 @@ void	enableFastPendingScan();
 char	*isHostColonPath(char *);
 int	hasGUIsupport();
 char	*GUI_display();
+int	cat(char *file);
 
 extern char *bk_vers;
 extern char *bk_utc;

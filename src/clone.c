@@ -153,10 +153,7 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 			usage();
 		}
 	} else {
-		fprintf(stderr, "It looks like the remote is an older BK.\n");
-		fprintf(stderr,
-		    "Try \"bk oclone\" and please upgrade the server.\n");
-		return (-1);
+		drainErrorMsg(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
 		disconnect(r, 2);

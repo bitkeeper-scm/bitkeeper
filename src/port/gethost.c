@@ -25,10 +25,7 @@ sccs_gethost(void)
 	 * before we call gethostbyname()
 	 */
 	loadNetLib();
-	if (gethostname(host, sizeof(host)) == -1) {
-		unLoadNetLib();
-		goto out;
-	}
+	if (gethostname(host, sizeof(host)) == -1) goto out;
 
 	/*
 	 * XXX FIXME: We should have a short timeout here
@@ -38,11 +35,7 @@ sccs_gethost(void)
 	 * IP address. Thus they cannot put their IP address
 	 * in /etc/hosts.
 	 */
-	unless (hp = gethostbyname(host)) {
-		unLoadNetLib();
-		goto out;
-	}
-	unLoadNetLib();
+	unless (hp = gethostbyname(host)) goto out;
 	unless (hp->h_name) goto out;
 	unless (strchr(hp->h_name, '.') &&
 	    !streq(hp->h_name, "localhost.localdomain")) {

@@ -32,13 +32,3 @@ cat_main(int ac, char **av)
 	sfileDone();
 	return (errors);
 }
-
-private int
-cat(char *file)
-{
-	char	cmd[MAXPATH + 20];
-
-	sprintf(cmd, "cat %s", file);
-	system(cmd);
-	return (0);
-}
