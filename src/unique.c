@@ -83,7 +83,6 @@ keysHome()
  * is NFS mounted, and two processes are running on different hosts.
  */
 /* -1 means error, 0 means OK */
-#ifndef WIN32
 int
 uniq_lock()
 {
@@ -139,62 +138,6 @@ stale:					fprintf(stderr,
 	return (0);
 }
 
-#else
-
-/* -1 means error, 0 means OK */
-int
-uniq_lock()
-{
-	char	*tmp;
-	pid_t	pid = 0;
-	int	fd;
-	int	first = 1;
-	int	slept = 0;
-	char	buf[200];
-	int	retry = 0;
-
-	unless (tmp = lockHome()) return (-1);
-	while ((fd = _sopen(tmp, _O_CREAT|_O_EXCL|_O_WRONLY|_O_SHORT_LIVED,
-	    _SH_DENYRW, _S_IREAD | _S_IWRITE)) == -1) {
-		if (first && (errno == ENOENT)) {
-			first = 0;
-			mkdirf(tmp);
-			continue;
-		}
-		if (errno != EEXIST) {
-			perror(tmp);
-			return (-1);
-		}
-
-		if ((fd = open(tmp, O_RDONLY, 0)) >= 0) {
-			char	buf[20];
-			int	n;
-
-			n = read(fd, buf, sizeof(buf));
-			close(fd);
-			if (n > 0) {
-				buf[n] = 0;
-				pid = atoi(buf);
-			}
-			if (pid == getpid()) {
-				fprintf(stderr, "recursive lock ??");
-				break;
-			}
-		}
-		if (retry++ > 10) {
-			close(fd);
-			unlink(tmp);
-			fprintf(stderr, "stale_lock: removed\n");
-		} else {
-			sleep(1);
-		}
-	}
-	sprintf(buf, "%u", getpid());
-	write(fd, buf, strlen(buf));
-	close(fd);
-	return 0;
-}
-#endif
 
 int
 uniq_unlock()
