@@ -70,6 +70,7 @@ delta_trigger(sccs *s)
 	int	i;
 
 	putenv(e);
+	putenv("BK_EVENT=delta");
 	i = trigger("delta", "pre");
 	putenv("BK_FILE=");
 	free(e);
