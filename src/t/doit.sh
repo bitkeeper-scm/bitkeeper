@@ -31,6 +31,10 @@ win32_common_setup()
 	# don't run remote regressions on NT
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
 	export DO_REMOTE
+
+	# turn off pager - needed in win98
+	PAGER=cat
+	export PAGER
 }
 
 unix_common_setup()
