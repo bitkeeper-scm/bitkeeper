@@ -16,7 +16,8 @@ park_main(int ac, char **av)
 	FILE	*f;
 
 	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help park");
+		fprintf(stderr,
+		    "Park is deprecated interface, please do not use it\n");
 		return (0);
 	}
 
@@ -26,7 +27,8 @@ park_main(int ac, char **av)
 		    case 'p':	purge = atoi(optarg); break;	/* doc 2.0 */
 		    case 'q':	qflag = 1; break;		/* doc 2.0 */
 		    case 'y':	comment = optarg; break;	/* doc 2.0 */
-		    default: 	system("bk help -s park");
+		    default: 	fprintf(stderr,
+			   "Usage: bk park [-l] [-q] [-p num] [ -y comment]\n");
 				return (1);
 		}
 	}
@@ -168,7 +170,8 @@ unpark_main(int ac, char **av)
 	char	parkfile[MAXPATH], parkCommentFile[MAXPATH];
 
 	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help unpark");
+		fprintf(stderr,
+		    "Unpark is deprecated interface, please do not use it\n");
 		return (0);
 	}
 
