@@ -26,7 +26,7 @@ Documentation topics:
     basics	- information about basic revision control, check in, check out
     differences	- information about viewing differences
     history	- information about browsing history
-    ranges	- information about sepcifying ranges of revisions
+    ranges	- information about specifying ranges of revisions
     tags	- information about symbolic tags
     changesets	- information about grouping of deltas into a feature
     merging	- information about merging changes from another repository
@@ -78,7 +78,7 @@ function help_overview {
 
 BitKeeper is a distributed revision control system.  It is similar to
 RCS and SCCS (it uses an SCCS compatible file format) with added features
-for configuration management and distibuted revision control.  Both SCCS
+for configuration management and distributed revision control.  Both SCCS
 and RCS compatible command line interfaces are provided.
 
 There are graphical interfaces for browsing, merging, and checking in
@@ -113,7 +113,7 @@ Under that top level directory, will be the following
 	    etc/	- config files, in the future, policy files
 	    caches/	- caches which BitKeeper uses, rebuilt as needed
 
-Your files go under myproject however they are now, i.e.,
+Your files go under myproject however they are now, e.g...,
 
     myproject/
 	src/		- source code
@@ -184,7 +184,7 @@ or you can use the graphical checkin tool (highly recommended):
     $ bk citool
 
 Note that citool currently only works for existing revision control files.
-Use "bk ci -i" or "bk import" to create new revision controled files.
+Use "bk ci -i" or "bk import" to create new revision controlled files.
 
 More information
 ----------------
@@ -218,7 +218,7 @@ to list all of them here, but send a bug if you find one we missed.
     cset,
     changeset	- one or more changes to one or more files, grouped together
     		  into one logical change.  A changeset is the smallest thing
-		  which may be propogated between repositories.
+		  which may be propagated between repositories.
     patch	- similar to what you may be used thinking of as a patch,
     		  i.e., one or more sets of differences, with some extras.
 		  A BitKeeper patch is a superset of a normal patch, it is
@@ -474,7 +474,7 @@ A changeset is a higher level concept than a simple delta.  A changeset
 is one or more deltas in one or more files, typically corresponding to
 a logical unit of work, such as a bug fix or a feature.
 
-Changesets are the only thing which may be propogated between repositories.
+Changesets are the only thing which may be propagated between repositories.
 This means that the minimal set of steps to send out a change is
 
     $ bk co -l foo.c
@@ -487,7 +487,7 @@ the changes by running
 
     $ bk resync source_root destination_root
 
-The latter is the reccommended way of doing things at this point.
+The latter is the recommended way of doing things at this point.
 
 EOF
 }
@@ -631,8 +631,8 @@ To remove a file from A to B do this:
     $ bk rm foo.c
 
 This will move the file to a new name, such as .del-foo.c .  There is
-no way to actually remove a file hich has been propogated out of your
-respository other than finding every single instance of it in the world
+no way to actually remove a file which has been propagated out of your
+repository other than finding every single instance of it in the world
 and removing each of them.  So be careful about creating files.
 
 Edited files can not currently be removed, check them in first.
@@ -1190,6 +1190,15 @@ function commit {
 	shift `expr $OPTIND - 1`
 	if [ $GETIT = yes ]
 	then	${BIN}sfiles -Ca | ${BIN}sccslog -C - > /tmp/comments$$
+		if [ ! -s /tmp/comments$$ ]
+		then	echo Nothing to commit
+			exit 0
+		fi
+	else	N=`${BIN}sfiles -C | wc -l`
+		if [ $N -eq 0 ]
+		then	echo Nothing to commit
+			exit 0
+		fi
 	fi
 	COMMENTS=
 	L=----------------------------------------------------------------------

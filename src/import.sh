@@ -26,11 +26,23 @@ BitKeeper currently does not support symbolic links directly.
 File specification
 ------------------
 
-Suppose that you have a tree which has other stuff in it, such as .o's
-or core files, whatever.  You happen to know that the files you want are
-all of the form *.c *.h or Makefile and you want to pick up just them.
-To do that, try the -include and/or -exclude options and enter the
-patterns one per line:
+You can generate the list of files externally, and pass that list to
+import.  In that case, the usage is
+
+    $ bk import -l/tmp/list ~/src/files ~/project
+
+and the list of files must be relative paths, relative to the root of
+the from directory.  One way to generate the list might be:
+
+    $ cd ~/src/files
+    $ find . -type f -name '*.[ch]' -print > /tmp/list
+    $ bk import -l/tmp/list ~/src/files ~/project
+
+If you want to filter the lists, you can do that as well.  Suppose that
+you have a tree which has other stuff in it, such as .o's or core files,
+whatever.  You happen to know that the files you want are all of the form
+*.c *.h or Makefile and you want to pick up just them.  To do that, try
+the -include and/or -exclude options and enter the patterns one per line:
 
     $ bk import -include ~/src_files ~/project
     End patterns with "." by itself or EOF
@@ -51,16 +63,17 @@ EOF
 function import {
 	INCLUDE=""
 	EXCLUDE=""
+	LIST=""
 	INC=NO
 	EX=NO
-	case "$1" in
-	    -i*) INC=YES; shift;;
-	    -e*) EX=YES; shift;;
-	esac
-	case "$1" in
-	    -i*) INC=YES; shift;;
-	    -e*) EX=YES; shift;;
-	esac
+	while getopts eil: opt
+	do	case "$opt" in
+		e) EX=YES;;
+		i) INC=YES;;
+		l) LIST=$OPTARG;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	if [ X"$1" = "X--help" -o X"$1" = X -o X"$2" = X -o X"$3" != X ]
 	then	help_import
 		exit 0
@@ -76,10 +89,10 @@ function import {
 	if [ ! -d "$2/BitKeeper" ]
 	then	echo "$2 is not a BitKeeper project"; exit 0
 	fi
-	BACK=`pwd`
+	HERE=`pwd`
 	cd $1
 	FROM=`pwd`
-	cd $BACK
+	cd $HERE
 	cd $2
 	TO=`pwd`
 	cat <<EOF
@@ -136,17 +149,36 @@ EOF
 		done
 	fi
 	echo
-	echo Finding files in $FROM
-	cd $FROM
-	cmd="find . -follow -type f -print"
-	if [ X"$INCLUDE" != X ]
-	then	cmd="$cmd | egrep '$INCLUDE'"
+	if [ X"$LIST" != X ]
+	then	cd $HERE
+		if [ ! -s "$LIST" ]
+		then	echo Empty file $LIST
+			exit 1
+		fi
+		read path < $LIST
+		case "$path" in
+		/*) echo "The list of imported files has to match $FROM"
+		    exit 1;;
+		esac
+		cd $FROM
+		if [ ! -f $path ]
+		then	echo No such file: $FROM/$path
+			exit 1
+		fi
+		cd $HERE
+		cp $LIST /tmp/import$$
+	else	echo Finding files in $FROM
+		cd $FROM
+		cmd="find . -follow -type f -print"
+		if [ X"$INCLUDE" != X ]
+		then	cmd="$cmd | egrep '$INCLUDE'"
+		fi
+		if [ X"$EXCLUDE" != X ]
+		then	cmd="$cmd | egrep -v '$EXCLUDE'"
+		fi
+		eval "$cmd" | sed 's/^..//' > /tmp/import$$
+		echo OK
 	fi
-	if [ X"$EXCLUDE" != X ]
-	then	cmd="$cmd | egrep -v '$EXCLUDE'"
-	fi
-	eval "$cmd" | sed 's/^..//' > /tmp/import$$
-	echo OK
 	echo Checking to make sure there are no files 
 	echo already in $TO
 	cd $TO
