@@ -385,7 +385,7 @@ sccs_getuser(void)
 	static	char	*s;
 
 	if (s) return (s);
-	s = getenv("USER");
+	unless (s = getenv("BK_USER")) s = getenv("USER");
 	if (!s || !s[0] ) {
 		s = getlogin();
 	}
@@ -7510,7 +7510,12 @@ checkin(sccs *s,
 			}
 		}
 	}
-	unless (nodefault) s->state |= S_SCCS;	/* default to SCCS keywords */
+	if (nodefault) {
+		if (prefilled) s->state |= xflags2state(prefilled->xflags);
+	} else {
+		/* XXX - EXPAND1 too? */
+		s->state |= S_SCCS;		/* default to SCCS keywords */
+	}
 	s->version = SCCS_VERSION;		/* auto upgrades in patch */
 	n->serial = s->nextserial++;
 	s->table = n;
@@ -8538,6 +8543,7 @@ private u32
 state2xflags(u32 state)
 {
 	u32	xflags = 0;
+
 	if (state & S_BITKEEPER) xflags |= X_BITKEEPER;
 	if (state & S_RCS) xflags |= X_RCS;
 	if (state & S_SCCS) xflags |= X_SCCS;
@@ -8549,6 +8555,24 @@ state2xflags(u32 state)
 	if (state & S_CSETMARKED) xflags |= X_CSETMARKED;
 	if (state & S_HASH) xflags |= X_HASH;
 	return (xflags);
+}
+
+private u32
+xflags2state(u32 xflags)
+{
+	u32	state = 0;
+
+	if (xflags & X_BITKEEPER) state |= S_BITKEEPER;
+	if (xflags & X_RCS) state |= S_RCS;
+	if (xflags & X_SCCS) state |= S_SCCS;
+	if (xflags & X_YEAR4) state |= S_YEAR4;
+#ifdef	S_ISSHELL
+	if (xflags & X_ISSHELL) state |= S_ISSHELL;
+#endif
+	if (xflags & X_EXPAND1) state |= S_EXPAND1;
+	if (xflags & X_CSETMARKED) state |= S_CSETMARKED;
+	if (xflags & X_HASH) state |= S_HASH;
+	return (state);
 }
 
 changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)

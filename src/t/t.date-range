@@ -419,6 +419,7 @@ for D in '97/06/23 01:33:45' '00/01/30 17:45:17' '01/01/10 10:10:10'
 do	${CAT} > INITX <<EOF
 D 1.$R $D $USER 0 0 0/0/0
 c This is revision 1.$R of $D
+X 0x81
 ------------------------------------------------
 EOF
 	echo '%''G%' > YEAR4
@@ -453,6 +454,6 @@ echo $N Checking Y2K date expansion on old delta ....................$NL
 # We should get 2 digit year.
 get $S -r1.3 YEAR4
 if [ '01/10/01' != "`cat YEAR4`" ]
-then echo "Failed (Known bug)"; #The soultion now is resync -rold_rev
+then echo "Failed (Known bug)"; #The soultion now is clone -rold_rev
 else ecoh OK
 fi
