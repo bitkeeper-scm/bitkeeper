@@ -21,6 +21,10 @@ undo_main(int ac,  char **av)
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo"
 
+	if (sccs_cd2root(0, 0) == -1) {
+		fprintf(stderr, "undo: cannot find package root.\n");
+		exit(1);
+	}
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {
 		    case 'a':
@@ -34,10 +38,6 @@ undo_main(int ac,  char **av)
 			fprintf(stderr, "unknown option <%c>\n", c);
 			exit(1);
 		}
-	}
-	if (sccs_cd2root(0, 0) == -1) {
-		fprintf(stderr, "undo: cannot find package root.\n");
-		exit(1);
 	}
 	unless (rev) {
 		fprintf(stderr, "usage bk undo [-afqs] -rcset-revision\n");
