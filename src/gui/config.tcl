@@ -9,41 +9,25 @@ proc getConfig {prog} \
 	option add *Button.borderWidth 1 100
 	option add *Menubutton.borderWidth 1 100
 
+	initFonts $app _d
+
 	if {$tcl_platform(platform) == "windows"} {
-		set f {Courier New}
-		set ps 8
-		set _d(fixedFont) [list $f $ps normal]
-		set _d(fixedBoldFont) [list $f $ps bold]
-		set _d(fm.activeOldFont) [list $f $ps normal]
-		set _d(fm.activeNewFont) [list $f $ps normal]
-		set _d(buttonFont) {Arial 8 normal}
-		set _d(noticeFont) {Arial 8 normal bold}
 		set _d(cset.leftWidth) 40
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
 		set _d(help.scrollWidth) 14	;# helptool scrollbar width
 		set _d(ci.filesHeight) 8
 		set _d(ci.commentsHeight) 7	;# height of comment window
+		set _d(buttonColor) #d4d0c8	;# menu buttons
+		set _d(BG) #d4d0c8		;# default background
 	} else {
-		set _d(fixedFont) {6x13}
-		set _d(fixedBoldFont) {6x13bold}
-		set _d(buttonFont) {helvetica 11 roman}
-		set _d(noticeFont) {helvetica 12 roman bold}
 		set _d(cset.leftWidth) 55
 		set _d(cset.rightWidth) 80
 		set _d(scrollWidth) 12		;# scrollbar width
 		set _d(help.scrollWidth) 14	;# helptool scrollbar width
-		set _d(fm.activeOldFont) {6x13bold}
-		set _d(fm.activeNewFont) {6x13bold}
 		set _d(ci.filesHeight) 9	;# num files to show in top win
 		set _d(ci.commentsHeight) 8	;# height of comment window
 		set _d(fm.editor) "fm2tool"
-	}
-
-	if {$tcl_platform(platform) == "windows"} {
-		set _d(buttonColor) #d4d0c8	;# menu buttons
-		set _d(BG) #d4d0c8		;# default background
-	} else {
 		set _d(buttonColor) #d0d0d0	;# menu buttons
 		set _d(BG) #d9d9d9		;# default background
 	}
@@ -89,7 +73,8 @@ proc getConfig {prog} \
 	set _d(diff.diffHeight) 50
 	set _d(diff.searchColor) lightblue ;# highlight for search matches
 
-	# fmtool fonts: See operating specific section above
+	set _d(fm.activeOldFont) $_d(fixedBoldFont)
+	set _d(fm.activeNewFont) $_d(fixedBoldFont)
 	set _d(fm.activeLeftColor) orange  ;# Color of active left region
 	set _d(fm.activeRightColor) yellow ;# Color of active right region
 	set _d(fm3.annotate) 1		;# show annotations
@@ -174,4 +159,97 @@ proc getConfig {prog} \
 			}
 		}
     	}
+}
+
+proc initFonts {app var} \
+{
+	global tcl_platform
+
+	if {$tcl_platform(platform) == "windows"} {
+		initFonts-windows $app $var
+	} else {
+		initFonts-unix $app $var
+	}
+}
+
+proc initFonts-windows {app var} \
+{
+	upvar 2 $var _d
+
+	set width [winfo screenwidth .]
+
+	if {$width <= 1024} {
+		set _d(buttonFont)		{Arial 8 normal}
+		set _d(noticeFont)		{Arial 8 normal bold}
+		set _d(fixedFont)  		{{Courier New} 8 normal}
+		set _d(fixedBoldFont)	{{Courier New} 8 normal bold}
+	}  else {
+		set _d(buttonFont)		{Arial 10 normal}
+		set _d(noticeFont)		{Arial 10 normal bold}
+		set _d(fixedFont)  		{{Courier New} 10 normal}
+		set _d(fixedBoldFont)	{{Courier New} 10 normal bold}
+	}
+}
+
+proc initFonts-unix {app var} \
+{
+
+	upvar 2 $var _d
+
+	set width [winfo screenwidth .]
+
+	set singleWide 1
+	if {[lsearch -exact {cset diff fm fm3} $app] >= 0} {
+		set singleWide 0
+	}
+
+	if {$width <= 1024} {
+		set _d(buttonFont) {Helvetica 10}
+		set _d(noticeFont) {Helvetica 10 bold}
+	} else {
+		set _d(buttonFont) {Helvetica 12}
+		set _d(noticeFont) {Helvetica 12 bold}
+	}
+
+	# many of these are the same font, so the logic seems largely
+	# wasted. It may be that over time we find better fonts for
+	# some combinations, so the logic gives us a handy place to
+	# do just that.
+	if {$width <= 800} { 
+		if {$singleWide} {
+			set _d(fixedFont) 6x13
+			set _d(fixedBoldFont) 6x13bold
+		} else {
+			set _d(fixedFont) {lucidatypewriter 10}
+			set _d(fixedBoldFont) {lucidatypewriter 10 bold}
+		}
+	} elseif {$width <= 1024} { 
+		if {$singleWide} {
+			set _d(fixedFont) 6x13
+			set _d(fixedBoldFont) 6x13bold
+		} else {
+			set _d(fixedFont) {courier 12}
+			set _d(fixedBoldFont) {courier 12 bold}
+		}
+	} elseif {$width <= 1152} { 
+		set _d(fixedFont) {lucidatypewriter 12}
+		set _d(fixedBoldFont) {lucidatypewriter 12 bold}
+	} elseif {$width <= 1280} { 
+		set _d(fixedFont) 7x13
+		set _d(fixedBoldFont) 7x13bold
+	} elseif {$width <= 1400} {
+		if {$singleWide} {
+			set _d(fixedFont) {clean 13}
+			set _d(fixedBoldFont) {clean 13 bold}
+		} else {
+			set _d(fixedFont) 7x13
+			set _d(fixedBoldFont) 7x13bold
+		}
+	} elseif {$width <= 1600} { 
+		set _d(fixedFont) 8x13
+		set _d(fixedBoldFont) 8x13bold
+	} else {
+		set _d(fixedFont) 9x15
+		set _d(fixedBoldFont) 9x15bold
+	}
 }

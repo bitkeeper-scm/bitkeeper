@@ -285,6 +285,8 @@ prompt(char *msg, char *buf)
 	caught = 0;
 	sig_catch(abort_prompt);
 	fflush(stdout);
+
+	flush_fd0(); /* for Win/98 and Win/ME */
 	write(1, msg, strlen(msg));
 	write(1, " ", 1);
 	ret = getline(0, buf, MAXPATH) > 1;
@@ -305,6 +307,8 @@ confirm(char *msg)
 	caught = 0;
 	sig_catch(abort_prompt);
 	fflush(stdout);
+
+	flush_fd0(); /* for Win/98 and Win/Me */
 	write(1, msg, strlen(msg));
 	write(1, " (y/n) ", 7);
 	gotsome = getline(0, buf, sizeof(buf)) > 1;

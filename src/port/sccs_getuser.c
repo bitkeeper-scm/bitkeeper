@@ -20,7 +20,9 @@ sccs_getuser(void)
 	s = getenv("BK_USER");
 	unless (s && s[0]) s = getenv("SUDO_USER");
 	unless (s && s[0]) s = getenv("LOGNAME");
+#ifndef WIN32
 	unless (s && s[0]) s = getenv("USER");
+#endif
 	unless (s && s[0]) s = getlogin();
 #ifndef WIN32 /* win32 have no getpwuid() */
 	unless (s && s[0]) {
@@ -59,7 +61,9 @@ sccs_realuser(void)
 
 	s = getenv("SUDO_USER");
 	unless (s && s[0]) s = getenv("LOGNAME");
+#ifndef	WIN32
 	unless (s && s[0]) s = getenv("USER");
+#endif
 	unless (s && s[0]) s = getlogin();
 #ifndef WIN32 /* win32 have no getpwuid() */
 	unless (s && s[0]) {
