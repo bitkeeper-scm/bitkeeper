@@ -9653,7 +9653,7 @@ mkTag(char kind, char *label, char *rev, char *path, char tag[])
 		 * 1.0 => create (or reverse create in a reverse pacth )
 		 * DEV_NULL => delete (i.e. sccsrm)
 		 */
-		if (streq(rev, "1.0") || streq(path, DEV_NULL)) {
+		if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
 			sprintf(tag, "%s", "/dev/null");
 		} else {
 			sprintf(tag, "%s/%s", label? label : rev, path);
@@ -9813,7 +9813,7 @@ mkDiffTarget(sccs *s, char *rev, char kind,
 			u32 flags, int here, char *target , pfile *pf)
 {
 	if (streq(rev, "1.0")) {
-		strcpy(target, DEV_NULL);
+		strcpy(target, NULL_FILE);
 		return (0);
 	}
 
@@ -9842,17 +9842,17 @@ private int
 rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	FILE *out, char *lLabel, char *rLabel, pfile *pf)
 {
-	char	lfile[MAXPATH],	rfile[MAXPATH];
+	char	lfile[MAXPATH] = {0},	rfile[MAXPATH] = {0};
 	char	ltag[MAXPATH], rtag[MAXPATH], tmp[MAXPATH];
 	char	*lpath, *rpath, *b;
-	int	rc, here;
+	int	here, rc = -1;
 
 	strcpy(tmp, s->gfile);		/* because dirname stomps */
 	sprintf(tmp, "%s", dirname(tmp));
 	here = writable(tmp);
 
 	lpath = getHistoricPath(s, lrev); assert(lpath);
-	rpath = DEV_NULL;
+	rpath = NULL_FILE;
 	b =  basenm(lpath);
 	if (strlen(b) > 5 &&  strneq(".del-", b, 5)) {
 		/*
@@ -9865,10 +9865,9 @@ rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 
 	/*
 	 * Create the lfile for diff,
-	 * rfile is DEV_NULL
+	 * rfile is NULL_FILE
 	 */
 	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf)) goto done;
-
 	/*
 	 * Make the tag string used for labeling the diff output
 	 */
@@ -9879,34 +9878,34 @@ rename_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	 * Now diff the lfile & DEV_NULL
 	 */
 	rc = doDiff( s,
-		flags, kind, lfile, DEV_NULL, out, lrev, rrev, ltag, rtag);
+		flags, kind, lfile, NULL_FILE, out, lrev, rrev, ltag, rtag);
 	if (rc == -1) goto done;
 
 create:	rpath = getHistoricPath(s, rrev); assert(rpath);
-	lpath = DEV_NULL;
+	lpath = NULL_FILE;
 	b =  basenm(rpath);
 	if (strlen(b) > 5 &&  strneq(".del-", b, 5)) {
 		rc = 0; goto done; 
 	}
 	/*
 	 * Create the rfile for diff,
-	 * lfile is DEV_NULL
+	 * lfile is NULL_FILE
 	 */
 	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0)) goto done;
-
 	/*
 	 * Make the tag string used for labeling the diff output
 	 */
 	mkTag(kind, lLabel, lrev, lpath, ltag);
 	mkTag(kind, rLabel, rrev, rpath, rtag);
-
 	/*
-	 * Now diff DEV_NILL & rfile
+	 * Now diff DEV_NILL_R & rfile
 	 */
 	rc = doDiff(s,
-		flags, kind, DEV_NULL, rfile, out, lrev, rrev, ltag, rtag);
-done:	unless (streq(lfile, DEV_NULL)) unlink(lfile);
-	unless (streq(rfile, s->gfile) || streq(rfile, DEV_NULL)) unlink(rfile);
+		flags, kind, NULL_FILE, rfile, out, lrev, rrev, ltag, rtag);
+done:	
+	unless (streq(lfile, "") || streq(lfile, NULL_FILE)) unlink(lfile);
+	unless (streq(rfile, "") || streq(rfile, s->gfile) ||
+					streq(rfile, NULL_FILE)) unlink(rfile);
 	return (rc);
 }
 
@@ -9948,8 +9947,8 @@ normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	 * Now diff the lfile & rfile
 	 */
 	rc = doDiff(s, flags, kind, lfile, rfile, out, lrev, rrev, ltag, rtag);
-done:	unless (streq(lfile, DEV_NULL)) unlink(lfile);
-	unless (streq(rfile, s->gfile) || streq(rfile, DEV_NULL)) unlink(rfile);
+done:	unless (streq(lfile, NULL_FILE)) unlink(lfile);
+	unless (streq(rfile, s->gfile) || streq(rfile, NULL_FILE)) unlink(rfile);
 	return (rc);
 }
 
