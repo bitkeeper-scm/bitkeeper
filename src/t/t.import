@@ -183,6 +183,16 @@ test -f etc/SCCS/s.logging_ok || {
 echo OK
 
 TESTDATA=/home/bk/test_data
+
+test -d $TESTDATA/lmbench && {
+echo $N Make sure that traditional RCS imports works ................$NL
+cd $HERE
+no_logging import-lmbench
+bk import $Q -ftRCS $TESTDATA/lmbench . || exit 1
+test -f results/SCCS/s.Makefile || exit 1
+echo OK
+}
+
 test -d $TESTDATA/import-RCS+x && {
 echo $N Make import w/ undos does not lose execute bits .............$NL
 cd $HERE
@@ -258,4 +268,3 @@ do	cd import$i
 done
 echo OK
 }
-exit 0
