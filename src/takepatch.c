@@ -44,7 +44,7 @@ patch	*patchList = 0;
 int	files, remote, conflicts;
 int	newProject;
 MDBM	*idDB;
-delta	*gca;
+delta	*gca;		/* only gets set if there are conflicts */
 int	nfound;
 char	pendingFile[1024];
 
@@ -171,7 +171,6 @@ sccs	*sccs_getperfile(FILE *, int *);
 	/*
 	 * They may have sent us a patch from 1.1, so the patch looks like a
 	 * new file.  But if we have a match, we want to use it.
-	 * This only works if we are not in compat mode.
 	 */
 	if (v.dptr) {
 		name = name2sccs(v.dptr);
@@ -374,6 +373,17 @@ delta:	off = ftell(f);
 	return (0);
 }
 
+ahead(char *pid, char *sfile)
+{
+	fprintf(stderr,
+	    "takepatch: can't find parent ID\n\t%s\n\tin %s\n", pid, sfile);
+	fprintf(stderr,
+"This patch is ahead of your tree, you need to get an earlier patch first.\n\
+Look at your tree with a ``bk changes'' and do the same on the other tree,\n\
+and get a patch that is based on a common ancestor.\n");
+	cleanup(CLEAN_RESYNC|CLEAN_PENDING);
+}
+
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
@@ -398,7 +408,7 @@ applyPatch(int flags)
 
 	unless (p) return (0);
 	if (echo == 2) fprintf(stderr, "%c\b", spin[n++ % 4]);
-	unless (gca) {
+	unless (p->localFile && exists(p->localFile)) {
 		mkdirp(p->resyncFile);
 		goto apply;
 	}
@@ -419,6 +429,7 @@ applyPatch(int flags)
 		}
 		exit(1);
 	}
+	unless (gca) goto apply;
 	assert(gca);
 	assert(gca->rev);
 	assert(gca->pathname);
@@ -445,18 +456,8 @@ apply:
 		if (p->pid) {
 			assert(s);
 			unless (d = sccs_findKey(s, p->pid)) {
-				fprintf(stderr,
-				    "takepatch: can't find PID %s in %s\n",
-				    p->pid, s->sfile);
-				if (echo>6) {
-					char	buf[1024];
-
-					sprintf(buf,
-					    "echo --- %s ---; cat %s", 
-					    p->initFile, p->initFile);
-					system(buf);
-				}
-				exit(1);
+				if (echo == 2) fprintf(stderr, " \n");
+				ahead(p->pid, s->sfile);
 			}
 			unless (sccs_restart(s)) { perror("restart"); exit(1); }
 			if (p->flags & PATCH_META) {
@@ -590,6 +591,10 @@ getLocals(sccs *s, delta *g, char *name)
 	delta	*d;
 	static	char tmpf[1024];	/* don't allocate on stack */
 
+	if (echo > 5) {
+		fprintf(stderr, "getlocals(%s, %s, %s)\n",
+		    s->gfile, g->rev, name);
+	}
 	for (d = s->table; d != g; d = d->next) {
 		assert(d);
 		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++no);
@@ -670,6 +675,11 @@ insertPatch(patch *p)
 void
 initProject()
 {
+	unless (emptyDir(".")) {
+		fprintf(stderr,
+		    "takepatch: -i can only be used in an empty directory\n");
+		exit(1);
+	}
 	if (mkdir("BitKeeper", 0775) || mkdir("BitKeeper/etc", 0775)) {
 		perror("mkdir");
 		exit(1);
@@ -687,8 +697,6 @@ init(FILE *p, int flags)
 {
 	char	buf[1024];
 	char	file[1024];
-	ino_t	slash = 0;
-	struct	stat sb;
 	int	i, j;
 	int	started = 0;
 	FILE	*f, *g;
@@ -698,33 +706,9 @@ init(FILE *p, int flags)
 		goto tree;
 	}
 
-	if (stat("/", &sb)) {
-		perror("stat of /");
-		exit(-1);
-	}
-	slash = sb.st_ino;
-
-	/*
-	 * Now work backwards up the tree until we find a ChangeSet or /
-	 */
-	for (i = 0; ; i++) {				/* CSTYLED */
-		buf[0] = 0;
-		for (j = 0; j < i; ++j) strcat(buf, "../");
-		sprintf(file, "%s%s", buf, CHANGESET);
-		if (access(file, R_OK) == 0) {
-			chdir(buf);
-			break;
-		}
-		if (stat(buf[0] ? buf : ".", &sb) == -1) {
-			perror(buf);
-			exit(1);
-		}
-		if (sb.st_ino == slash) {
-			fprintf(stderr,
-			    "takepatch: No %s found, can't apply patch.\n",
-			    CHANGESET);
-			exit(1);
-		}
+	if (sccs_cd2root(0, 0)) {
+		fprintf(stderr, "takepatch: can't find project root.\n");
+		exit(1);
 	}
 
 tree:

@@ -65,7 +65,7 @@ main(int ac, char **av, char **ev)
 	int	bigpad = 0;
 	int	fastSymOK = 1, fastSym, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0;
-	mode_t	m = 0;
+	char	*m = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -95,7 +95,18 @@ main(int ac, char **av, char **ev)
 		    case 'y':	comment = optarg; break;
 		    case 'M':	merge = optarg; flags |= NEWCKSUM; break;
 		/* mode */
-		    case 'm':	sscanf(optarg, "%o", &m);
+		    case 'm':	m = optarg;
+		    		switch (m[0]) {
+				    case '-':
+				    case 'l':
+				    case 'd':
+					break;
+				    default:
+				    	fprintf(stderr,
+					    "%s: mode must be like ls -l\n",
+					    av[0]);
+					goto usage;
+				}
 		   		flags |= NEWCKSUM;
 				break;
 		/* pathname */
@@ -216,10 +227,7 @@ main(int ac, char **av, char **ev)
 			delta	*d;
 			
 			sc->state |= RANGE2;
-			if (d = sccs_getrev(sc, rev, 0, 0)) {
-				d->flags |= D_MODE;
-				d->mode = m;
-			}
+			if (d = sccs_getrev(sc, rev, 0, 0)) d = modeArg(d, m);
 		}
 		if (merge) {
 			if (setMerge(sc, merge, rev) == -1) {
@@ -339,13 +347,25 @@ do_checkin(char *name, int encoding,
 		return (-1);
 	}
 
-	/* extract the modes */
 	if (newfile) {
 		struct	stat sb;
 
-		if (stat(newfile, &sb) == 0) s->mode = sb.st_mode & 0777;
-	} else {
-		s->mode = 0664;
+		if (stat(newfile, &sb) == 0) {
+			if (S_ISLNK(sb.st_mode) ||
+			    S_ISREG(sb.st_mode) ||
+			    S_ISDIR(sb.st_mode)) {
+				s->mode = sb.st_mode;
+			} else {
+				verbose((stderr,
+				    "admin: ignoring modes on %s\n", newfile));
+			}
+		}
+	}
+	unless (s->mode) {
+		mode_t	mask = ~umask(0);
+
+		umask(~mask);
+		s->mode = S_IFREG | (0777 & mask);
 	}
 	if (rev) {
 		d = sccs_parseArg(d, 'R', rev, 0);

@@ -640,6 +640,7 @@ delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_gethost(void);
 char	*getuser(void);
 
+delta	*modeArg(delta *d, char *arg);
 FILE	*fastPopen(const char*, const char*);
 int	fastPclose(FILE*);
 char	chop(register char *s);

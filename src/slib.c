@@ -40,7 +40,7 @@ private delta*	csetFileArg(delta *d, char *name);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	zoneArg(delta *d, char *arg);
-private delta*	modeArg(delta *d, char *arg);
+delta*	modeArg(delta *d, char *arg);
 private delta*	mergeArg(delta *d, char *arg);
 private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
@@ -93,6 +93,15 @@ size(char *s)
 
 	if (stat(s, &sbuf) == -1) return 0;
 	return (sbuf.st_size);
+}
+
+int
+emptyDir(char *dir)
+{
+	struct	stat sbuf;
+
+	if (stat(dir, &sbuf) == -1) return 0;
+	return (sbuf.st_nlink == 2);	/* . and .. */
 }
 
 /*
@@ -2851,7 +2860,7 @@ check_gfile(sccs *s, int flags)
 			return (0);
 		}
 		s->state |= GFILE;
-		s->mode = sbuf.st_mode & 0777;
+		s->mode = sbuf.st_mode;
 		if (flags & GTIME) s->gtime = sbuf.st_mtime;
 	} else {
 		s->state &= ~GFILE;
@@ -3007,7 +3016,7 @@ bad:			sccs_free(s);
 			return (0);
 		}
 		s->state |= GFILE;
-		s->mode = sbuf.st_mode & 0777;
+		s->mode = sbuf.st_mode;
 	}
 	if (stat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
@@ -5895,7 +5904,7 @@ pathArg(delta *d, char *arg) { ARG(pathname, D_NOPATH, D_DUPPATH); }
 /*
  * Handle either 0664 style or -rw-rw-r-- style.
  */
-private delta *
+delta *
 modeArg(delta *d, char *arg)
 {
 	mode_t	m;
