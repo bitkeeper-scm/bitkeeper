@@ -219,3 +219,17 @@ EOF
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
 echo OK
+echo $N Make sure garbage in SCCS dir behaves .......................$NL
+touch SCCS/OLD-s.foo
+sfiles -x | sort > SFILES
+sort <<EOF > LIST
+LIST
+SAVE
+SCCS/OLD-s.foo
+SFILES
+EOF
+cmp -s SFILES LIST
+if [ $? -ne 0 ]; then echo Failed.; diff SFILES LIST; exit 1; fi
+X=`sfiles -x SCCS/OLD-s.foo`
+if [ "X$X" != "XSCCS/OLD-s.foo" ]; then echo failed $X; exit 1; fi
+echo OK

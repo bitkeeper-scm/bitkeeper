@@ -274,6 +274,106 @@ _receive() {
 	exit $?
 }
 
+# Clone a repository, usage "clone from to"
+_clone() {
+	V=-vv
+	while getopts qv opt
+	do	case "$opt" in
+		    v)	V=${V}v;;
+		    q)	V=;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+
+	USAGE="usage: bk clone [opts] from to"
+	if [ "X$1" = X -o "X$2" = X ]; then echo "$USAGE"; exit 1; fi
+
+	# Really half assed remote support.  We should have a mode in
+	# resync which shleps over the data as a cpio archive and unpacks
+	# it if possible.
+	case X"$1" in
+	    *:*) exec ${BIN}resync $V -ap $1 $2;;
+	esac
+	case X"$2" in
+	    *:*) exec ${BIN}resync $V -ap $1 $2;;
+	esac
+
+	if [ "X$1" = X -o ! -d "$1" ]
+	then	echo "Not a directory: $1"
+		echo "$USAGE"
+		exit 1
+	fi
+	if [ "X$2" = X ]; then echo "$USAGE"; exit 1; fi
+	if [ -d "$2" ]
+	then	echo "$1 exists already."
+		echo "$USAGE"
+		exit 1
+	fi
+	mkdir -p $2 || exit 1
+	# Handle all those relative paths nicely
+	HERE=`pwd`
+	cd $2
+	THERE=`pwd`
+	cd $HERE
+	cd $1
+	PARENT="`${BIN}gethost`:`pwd`"
+
+	# If we got lucky, punk, then do it.
+	if [ `_dirty` = NO ]
+	then	if [ X$V != X ]
+		then	echo $N Fast clone in progress...$NL
+		fi
+		find . -name 's.*' -print | grep 'SCCS/s\.' | cpio -pdm $THERE
+		cd $THERE
+		if [ X$V != X ]
+		then	echo $N Running consistency check...$NL
+		fi
+		bk -r check -a > ${TMP}check$$
+		if [ -s ${TMP}check$$ ]
+		then	echo ""
+			echo "bk clone failed, the new repository is corrupted:"
+			cat ${TMP}check$$
+			echo ""
+			echo "Please remove the repository and try again"
+			exit 1
+		fi
+		if [ X$V != X ]; then echo OK, clone completed.; fi
+		echo "$PARENT" > "$THERE/BitKeeper/log/parent"
+		exit 0
+	fi
+
+	# Gotta do it the hard way
+	if [ X$V != X ]
+	then	echo Slow clone because of pending changes...
+	fi
+	${BIN}resync -a $V . $THERE
+	X=$?
+	echo "$PARENT" > "$THERE/BitKeeper/log/parent"
+	exit $X
+}
+
+_parent() {
+	_cd2root
+	if [ ! -d BitKeeper/log ]
+	then	echo No BitKeeper/log directory, failed to set parent.
+		exit 1
+	fi
+	if [ "X$1" = X ]
+	then	echo "usage: bk parent path/to/parent"
+		exit 1
+	fi
+	if [ -f BitKeeper/log/parent ]
+	then	OLD=`cat BitKeeper/log/parent`
+		if [ "$OLD" = "$1" ]
+		then	echo Parent is already $OLD
+			exit 0
+		fi
+		echo Changing parent from $OLD to $1
+	else	echo Setting parent to $1
+	fi
+	echo "$1" > BitKeeper/log/parent
+}
+
 _save() {
 	V=-vv
 	case X$1 in
@@ -298,6 +398,21 @@ _save() {
 	exit $?
 }
 
+# Counts on being in the root, only cares about uncommited changes.
+_dirty() {
+	if [ -d RESYNC/BitKeeper -o -d RESOLVE/BitKeeper ]
+	then	echo YES
+		return
+	fi
+	${BIN}sfiles -C > ${TMP}dirty$$
+	if [ -s ${TMP}dirty$$ ]
+	then	echo YES
+		${RM} -f ${TMP}dirty$$
+		return
+	fi
+	echo NO
+}
+
 # Show repository status
 _status() {
 	V=NO
@@ -311,26 +426,29 @@ _status() {
 	_cd2root
 	echo Status for BitKeeper repository `pwd`
 	_version
+	if [ -f BitKeeper/log/parent ]
+	then	echo "Parent repository is `cat BitKeeper/log/parent`"
+	fi
 	if [ -d RESYNC ]
 	then	echo Resync in progress
 	else	if [ -d PENDING ]
-		then	echo Pending patches awaiting resync
+		then	echo Pending patches
 		fi
 	fi
 	# List counts or file states
 	if [ $V = YES ]
 	then	
 		_users | sed 's/^/User:		/'
-		( bk sfiles -x | sed 's/^/Extra:		/'
-		  bk sfiles -cg | sed 's/^/Modified:	/'
-		  bk sfiles -Cg | sed 's/^/Uncommitted:	/'
+		( ${BIN}sfiles -x | sed 's/^/Extra:		/'
+		  ${BIN}sfiles -cg | sed 's/^/Modified:	/'
+		  ${BIN}sfiles -Cg | sed 's/^/Uncommitted:	/'
 		) | sort
 	else	
 		echo "`_users | wc -l` people have made deltas."
-		echo "`bk sfiles | wc -l` files under revision control."
-		echo "`bk sfiles -x | wc -l` files not under revision control."
-		echo "`bk sfiles -c | wc -l` files modified and not checked in."
-		echo "`bk sfiles -C | wc -l` files with uncommitted deltas."
+		echo "`${BIN}sfiles | wc -l` files under revision control."
+		echo "`${BIN}sfiles -x | wc -l` files not under revision control."
+		echo "`${BIN}sfiles -c | wc -l` files modified and not checked in."
+		echo "`${BIN}sfiles -C | wc -l` files with uncommitted deltas."
 	fi
 }
 
@@ -381,7 +499,7 @@ _undo() {
 	then	echo usage bk undo cset-revision
 		exit 1
 	fi
-	bk cset -lr"$@" > ${TMP}rmdel$$
+	${BIN}cset -lr"$@" > ${TMP}rmdel$$
 	if [ ! -s ${TMP}rmdel$$ ]
 	then	echo undo: nothing to undo in "$@"
 		exit 0
@@ -398,7 +516,7 @@ _undo() {
 		    		exit 0;;
 		esac
 	fi
-	bk rmdel -S $V - < ${TMP}rmdel$$
+	${BIN}rmdel -S $V - < ${TMP}rmdel$$
 	if [ $? != 0 ]
 	then	echo Undo of "$@" failed
 	else	echo Undo of "$@" succeeded
@@ -436,7 +554,7 @@ _sendConfig() {
 	fi
 	_cd2root
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	( ${BIN}bk status
+	( _status
 	  ${BIN}prs -hr1.0 \
 	-d'$each(:FD:){Project:\t(:FD:)}\nChangeSet ID:\t:LONGKEY:' ChangeSet;
 	  echo "User:		$USER"
@@ -560,7 +678,7 @@ roughly a minute per 1000 files in the repository.
 Please stand by and do not kill this process until it gets done.
 EOF
 	fi
-	bk cset -M1.0..
+	${BIN}cset -M1.0..
 	touch "BitKeeper/etc/SCCS/x.marked"
 	if [ "X$1" != XYES ]
 	then	echo "Consistency check completed, thanks for waiting."
@@ -729,21 +847,6 @@ _sendbug() {
 	done
 }
 
-_docs() {
-	for i in admin backups basics changes changesets chksum ci clean \
-	    co commit cset cset_todo debug delta differences diffs docs \
-	    edit get gui history import makepatch man merge overview \
-	    path pending prs range ranges rechksum regression renames \
-	    renumber resolve resync rmdel save sccslog sdiffs send \
-	    sendbug setup sfiles sids sinfo smoosh tags takepatch terms \
-	    undo unedit vitool what
-	do	echo ""
-		echo -------------------------------------------------------
-		_commandHelp $i
-		echo -------------------------------------------------------
-	done
-}
-
 # bkhelp.txt is a series of blocks formatted like this:
 # #tag1
 # text...
@@ -779,7 +882,8 @@ _commandHelp() {
 			;;
 		# this is the list of commands which have better help in the
 		# helptext file than --help yields.
-		unlock|unedit|check|import|sdiffs)
+		unlock|unedit|check|import|sdiffs|resync|pull|push|parent|\
+		clone)
 			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
@@ -791,7 +895,7 @@ _commandHelp() {
 				    history|tags|changesets|resync|merge|\
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
-				    resync|changes|undo|save|docs|RCS|status|\
+				    resync|changes|undo|save|RCS|status|\
 				    sccsmv|mv|sccsrm|rm|version|root|export|\
 				    users|receive|wrap|unwrap)
 					_gethelp help_$i $BIN | $PAGER
@@ -925,8 +1029,9 @@ case "$1" in
 	exit 1
 	;;
     setup|changes|pending|commit|sendbug|send|receive|\
-    mv|edit|unedit|unlock|man|undo|save|docs|rm|new|version|\
-    root|status|export|users|sdiffs|unwrap)
+    mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
+    root|status|export|users|sdiffs|unwrap|clone|\
+    pull|push|parent)
 	cmd=$1
     	shift
 	_$cmd "$@"

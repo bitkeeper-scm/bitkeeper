@@ -1004,7 +1004,7 @@ init(FILE *p, int flags, char **resyncRootp)
 			 * assume they meant -i.
 			 */
 			if (echo > 0) {
-				fputs("takepatch: creating new project.\n",
+				fputs("takepatch: creating new repository.\n",
 				      stderr);
 			}
 			initProject();
