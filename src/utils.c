@@ -995,10 +995,6 @@ mkpager()
 
 /*
  * Convert a command line to a av[] vector
- *
- * This function is copied from win32/uwtlib/wapi_intf.c
- * XXX TODO we should propably move this to util.c if used by
- * other code.
  */
 private void
 line2av(char *cmd, char **av)
@@ -1052,7 +1048,6 @@ int
 unsafe_path(char *s)
 {
 	char	buf[MAXPATH];
-	struct	stat sb;
 
 	strcpy(buf, s);
 	unless (s = strrchr(buf, '/')) return (0);
@@ -1060,9 +1055,8 @@ unsafe_path(char *s)
 		/* no .. components */
 		if (streq(s, "/..")) return (1);
 		*s = 0;
-		if (lstat(buf, &sb)) return (1);
 		/* we've chopped the last component, it must be a dir */
-		unless (S_ISDIR(sb.st_mode)) return (1);
+		unless (isdir(buf)) return (1);
 		unless (s = strrchr(buf, '/')) {
 			/* might have started with ../someplace */
 			return (streq(buf, ".."));
