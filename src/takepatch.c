@@ -61,8 +61,7 @@ private	int	mkpatch = 0;	/* act like makepatch verbose */
 private	int	line;		/* line number in the patch file */
 private	int	fileNum;	/* counter for the Nth init/diff file */
 private	patch	*patchList = 0;	/* patches for a file, list len == fileNum */
-private	int	conflicts;	/* number of conflicts over all user files */
-private	int	csetConflict;	/* true if ChangeSet has conflict */
+private	int	conflicts;	/* number of conflicts over all files */
 private	int	newProject;	/* command line opt to create a new repo */
 private	int	saveDirs;	/* save directories even if errors */
 private	MDBM	*idDB;		/* key to pathname db, set by init or rebuilt */
@@ -201,7 +200,7 @@ usage:		system("bk help -s takepatch");
 	 * 
 	 * Note: BK_NO_CONVERGE is for used in regression test only
 	 */
-	if (csetConflict && !getenv("BK_NO_CONVERGE")) {
+	if (conflicts && !getenv("BK_NO_CONVERGE")) {
 		char key[MAXKEY], gfile[MAXPATH];
 		chdir(ROOT2RESYNC);
 		f = popen("bk sfiles BitKeeper/etc BitKeeper/deleted | "
@@ -1107,16 +1106,7 @@ apply:
 		s->proj = 0; sccs_free(s);
 		return (-1);
 	}
-
-	/* Conflicts in ChangeSet don't count in conflicts */
-	if (confThisFile) {
-		if (streq(s->sfile + strlen(s->sfile) - 9, "ChangeSet")) {
-			csetConflict = 1;
-		} else {
-			conflicts += confThisFile;
-		}
-	}
-
+	conflicts += confThisFile;
 	s->proj = 0; sccs_free(s);
 	if (noConflicts && conflicts) noconflicts();
 	freePatchList();

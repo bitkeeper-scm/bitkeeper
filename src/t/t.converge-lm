@@ -61,9 +61,6 @@ cd ..
 bk abort -f
 echo OK
 
-#XXX - need a no conflict test case which updates the config, resync,
-#make sure it didn't copy the g.file config file.
-
 echo $N Create cset only conflict, check copies .....................$NL
 date > date
 bk new $Q date
@@ -75,11 +72,48 @@ test -f BitKeeper/etc/SCCS/s.gone || { echo No gone; exit 1; }
 test -f BitKeeper/etc/SCCS/s.ignore || { echo No ignore; exit 1; }
 test -f BitKeeper/etc/SCCS/s.logging_ok || { echo No logging_ok; exit 1; }
 test -f BitKeeper/etc/config || { echo No config; exit 1; }
+cd ..
+bk abort -f
 echo OK
 
-# XXX - need three tests, which add an entry to each of logging_ok, ignore,
+# add an entry to each of logging_ok, ignore, config,
 # and gone, resync and make sure that we get the remote's version, not the
 # parent's version.
+for file in config ignore gone logging_ok
+do
+    case $file in
+	logging_ok)	FILE=logging_ok;;
+	ignore)		FILE="  $file  ";;
+	config)		FILE="  $file  ";;
+	gone)		FILE="   $file   ";;
+    esac
+    echo $N "Change $FILE file, resync, make sure no gfile ..........$NL"
+    cd $HERE
+    rm -rf copy
+    bk clone $Q project copy
+    cd copy
+    touch BitKeeper/etc/SCCS/x.marked
+    bk edit $Q BitKeeper/etc/$file
+    echo "# XYXYXYXYXYXYXYXYXYXYXYXYXYXY" >> BitKeeper/etc/$file
+    bk delta $Q -y'fake update' BitKeeper/etc/$file
+    bk commit $Q -y'config test'
+    cd $HERE/project
+    bk resync -t $Q ../copy
+    test -f RESYNC/BitKeeper/etc/$file && {
+	    # Could be OK, maybe BK checked it out
+	    bk get -qkp ../copy/BitKeeper/etc/$file > C
+	    cmp -s C RESYNC/BitKeeper/etc/$file || {
+		    echo should not have used parent $file file
+		    exit 1
+	    }
+    }
+    test -f RESYNC/BitKeeper/etc/SCCS/s.$file || {
+	    echo failed to update $file file
+	    exit 1
+    }
+    bk abort -f
+    echo OK
+done
 
 echo $N Create repository, clone, make csets as same users ..........$NL
 cd $HERE
@@ -127,10 +161,97 @@ then	echo Error, should have exactly one user in the OK file
 fi
 echo OK
 
-# XXX - what about the case where it is different users but the same
-# timestamp?  converge.c handles this, we need to test it with a test
+# the case where it is different users but the same timestamp.
+# converge.c handles this, we need to test it with a test
 # case which dummies up two inodes with different users but the same
 # timestamp.
+
+echo $N Create repository, clone, csets as diff users, same time_t ..$NL
+cd $HERE
+rm -rf project copy
+bk setup -f -c$HERE/c project
+touch project/BitKeeper/etc/SCCS/x.marked
+bk clone $Q project copy
+cd project
+BK_USER=AAA
+BK_HOST=blow.dork
+export BK_USER BK_HOST
+ls > LS
+bk new $Q LS
+echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
+DATE=`bk -R prs -hr1.0 '-d:D: :T:\n' BitKeeper/etc/logging_ok`
+cd ../copy
+BK_USER=BBB
+date > date
+bk new $Q date
+echo y | bk commit $Q -ywhatever2 >/dev/null 2>&1
+JUNK=`bk -R prs -hr1.0 '-d:D: :T:\n' BitKeeper/etc/logging_ok`
+mv BitKeeper/etc/SCCS/s.logging_ok OLD
+sed "s|$JUNK BBB |$DATE BBB |" < OLD > BitKeeper/etc/SCCS/s.logging_ok
+bk admin -z BitKeeper/etc/logging_ok
+NEW=`bk -R prs -hr1.0 '-d:D: :T:\n' BitKeeper/etc/logging_ok`
+if [ "$NEW" != "$DATE" ]
+then	echo failed to fix the dates
+	echo "NEW: $NEW"
+	echo "OLD: $DATE"
+	exit 1
+fi
+echo OK
+
+echo $N Pull them, should not ask, should union, oldest in slot .....$NL
+cd $HERE
+tar cf SAVE project copy
+cd copy
+echo n | bk pull $Q -t ../project >/dev/null 2>&1
+test -d RESYNC && {
+	echo failed to use existing logging_ok, left RESYNC
+	exit 1
+}
+KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/etc/logging_ok`
+if [ "$KEY" != AAA ]
+then	echo failed to use older key
+	exit 1
+fi
+LINES=`bk get -kpq BitKeeper/etc/logging_ok | wc -l`
+if [ $LINES -ne 2 ]
+then	echo Error, should have exactly two users in the OK file
+	bk get -kpq BitKeeper/etc/logging_ok
+	exit 1
+fi
+KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/deleted/SCCS/s.*`
+if [ "$KEY" != BBB ]
+then	echo failed to delete younger key
+	exit 1
+fi
+echo OK
+
+echo $N Pull opposite direction, want same result ...................$NL
+cd $HERE
+rm -rf project copy
+tar xf SAVE 
+cd project
+echo n | bk pull $Q -t ../copy >/dev/null 2>&1
+test -d RESYNC && {
+	echo failed to use existing logging_ok, left RESYNC
+	exit 1
+}
+KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/etc/logging_ok`
+if [ "$KEY" != AAA ]
+then	echo failed to use older key
+	exit 1
+fi
+LINES=`bk get -kpq BitKeeper/etc/logging_ok | wc -l`
+if [ $LINES -ne 2 ]
+then	echo Error, should have exactly two users in the OK file
+	bk get -kpq BitKeeper/etc/logging_ok
+	exit 1
+fi
+KEY=`bk -R prs -hr1.0 '-d:USER:\n' BitKeeper/deleted/SCCS/s.*`
+if [ "$KEY" != BBB ]
+then	echo failed to delete younger key
+	exit 1
+fi
+echo OK
 
 echo $N Create repository ...........................................$NL
 cd $HERE
@@ -204,7 +325,6 @@ cmp -s BitKeeper/etc/logging_ok DATA || {
 	sdiff -w80 BitKeeper/etc/logging_ok DATA
 	exit 1
 }
-# XXX - leaves ./BitKeeper/etc/SCCS/d.logging_ok
 echo OK
 
 # Create a logging repository, clone, commit in both, 
@@ -366,8 +486,3 @@ cmp -s GOT DATA || {
 	exit 1
 }
 echo OK
-
-# XXX
-# Need to test push cases that want to merge but shouldn't
-# Need to check cases where the logging_ok file is checked in but not committed
-# and they are pushing.
