@@ -259,12 +259,11 @@ if [ $? -ne 0 ]; then echo failed; sdiff -w80 SFILES LIST; exit 1; fi
 echo OK
 echo $N Test disabling ignore lists with -ax ........................$NL
 sort <<EOF > LIST
-Desktop.ini
 LIST
 SCCS/OLD-s.foo
 SFILES
 EOF
-bk sfind -a -sjx | sort > SFILES
+bk sfind -a -sjx | grep -v Desktop.ini | sort > SFILES
 cmp -s SFILES LIST
 if [ $? -ne 0 ]; then echo failed; sdiff -w80 SFILES LIST; exit 1; fi
 echo OK
