@@ -16,14 +16,7 @@ sub main
 	}
 	$ENV{'GROFF_NO_SGR'} = 1;
 	$MAN = "-man";
-	foreach $dir ("$ENV{HOME}/groff/share", 
-	    '/usr/local/share', '/opt/groff/share',
-	    '/usr/local/lib', '/usr/share', '/usr/lib') {
-		if (-f "${dir}/groff/tmac/tmac.gan") {
-			$MAN = "-mgan";
-		}
-	}
-	if (-d "/opt/groff/share/groff/1.17.1/tmac") {
+	unless (system("echo | groff -mgan >/dev/null 2>/dev/null")) {
 		$MAN = "-mgan";
 	}
 
