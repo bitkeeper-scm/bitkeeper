@@ -94,7 +94,11 @@ sccs_rm(char *name, char *del_name, int useCommonDir)
 
 	sfile = name2sccs(name);
 	s = sccs_init(sfile, 0, 0);
-	assert(s && s->tree);
+	unless (s && s->tree && (s->state & S_BITKEEPER)) {
+		fprintf(stderr,
+			"Warning: %s is not a BitKeeper flle, ignored\n", name);
+		return (1);
+	}
 	sccs_close(s);
 	rmName = sccs_rmName(s, useCommonDir);
 	if (del_name) strcpy(del_name, rmName);
