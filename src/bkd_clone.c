@@ -135,22 +135,23 @@ private int
 compressed(int level, int hflag)
 {
 	int	status, fd;
-	char	*tmpf;
+	char	*tmpf1, *tmpf2;
 	FILE	*fh;
 	char	*sfiocmd;
 	char	*cmd;
 
-	tmpf = bktmpfile();
-	fh = fopen(tmpf, "w");
+	tmpf1 = bktmpfile();
+	tmpf2 = bktmpfile();
+	fh = fopen(tmpf1, "w");
 	if (exists(LMARK)) fprintf(fh, LMARK "\n");
 	if (exists(CMARK)) fprintf(fh, CMARK "\n");
 	fclose(fh);
-	cmd = aprintf("bk sfiles >> %s", tmpf);
+	cmd = aprintf("bk sfiles > %s", tmpf2);
 	status = system(cmd);
 	free(cmd);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
 	
-	sfiocmd = aprintf("bk sfio -oq < %s", tmpf);
+	sfiocmd = aprintf("cat %s %s | bk sfio -oq", tmpf1, tmpf2);
 	signal(SIGCHLD, SIG_DFL);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
@@ -158,7 +159,8 @@ compressed(int level, int hflag)
 	setmode(fd, _O_BINARY); /* for win32 */
 	gzipAll2fd(fd, 1, level, 0, 0, hflag, 0);
 	status = pclose(fh);
-	unlink(tmpf);
+	unlink(tmpf1);
+	unlink(tmpf2);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
 	return (0);
 }
