@@ -5906,14 +5906,14 @@ uuencode(FILE *in, FILE *out)
 inline int
 uudecode1(register char *from, register uchar *to)
 {
-	register int	length = DEC(*from++);
-	int	save = length;
+	int	length, save;
 
-	unless (length) return (0);
+	unless (from[0] && from[1] && (length = DEC(*from++))) return (0);
 	if (length > 50) {
 		fprintf(stderr, "Corrupted data: %.25s\n", from);
 		return (0);
 	}
+	save = length;
 	while (length > 0) {
 		if (length-- > 0)
 			*to++ = (uchar)((DEC(from[0])<<2) | (DEC(from[1])>>4));
