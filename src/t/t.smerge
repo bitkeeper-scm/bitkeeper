@@ -118,7 +118,7 @@ echo OK
 echo $N Check gca smerge output .....................................$NL
 bk smerge -g 1.2 1.1 1.1.1.1 gca > out
 if [ $? -ne 1 ]; then echo failed; exit 1; fi
-diff -u out - > OUT <<EOF
+cat > out2 <<EOF
    won't change
    won't change
 <<<<<<< local gca 1.1 vs 1.2
@@ -162,7 +162,8 @@ diff -u out - > OUT <<EOF
    won't change
    won't change
 EOF
-if [ $? -ne 0 ]; then echo failed; cat OUT; exit 1; fi
+diff -u out out2 > DIFF.OUT
+if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK
 echo $N Check 2WAY smerge output ....................................$NL
 bk smerge -2 1.2 1.1 1.1.1.1 gca > out
@@ -309,7 +310,7 @@ EOF
 bk delta $Q -ylocal2 gca || exit 1
 bk smerge 1.1.2.1 1.1 1.1.1.1 gca > out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-diff -u out - > OUT <<EOF
+cat > out2 <<EOF
    won't change much
    won't change
    right1
@@ -326,7 +327,8 @@ diff -u out - > OUT <<EOF
    won't change
    won't change
 EOF
-if [ $? -ne 0 ]; then echo failed; cat OUT; exit 1; fi
+diff -u out out2 > DIFF.OUT
+if [ $? -ne 0 ]; then echo failed; cat DIFF.OUT; exit 1; fi
 echo OK
 echo $N Verify that content merge was needed ........................$NL
 bk smerge -gA3 1.1.2.1 1.1 1.1.1.1 gca > out
