@@ -83,7 +83,7 @@ send_main(int ac,  char **av)
 		    case 'r': 	rev = optarg; break;
 		    case 'w': 	wrapper = optarg; break;
 		    default :
-			fprintf(stderr, "unknow option <%c>\n", c);
+			fprintf(stderr, "unknown option <%c>\n", c);
 			exit(1);
 		}
 	}

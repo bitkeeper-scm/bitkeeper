@@ -31,7 +31,7 @@ undo_main(int ac,  char **av)
 		    case 'r': rev = optarg; ckRev++; break;
 		    case 's': save = 0; break;
 		    default :
-			fprintf(stderr, "unknow option <%c>\n", c);
+			fprintf(stderr, "unknown option <%c>\n", c);
 			exit(1);
 		}
 	}

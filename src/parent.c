@@ -22,7 +22,7 @@ parent_main(int ac,  char **av)
 		    case 'q': quiet = 1; break;
 		    case 'r': do_remove = 1; break;
 		    default:
-			fprintf(stderr, "unknow option <%c>\n", c);
+			fprintf(stderr, "unknown option <%c>\n", c);
 			exit(1);
 		}
 	}
