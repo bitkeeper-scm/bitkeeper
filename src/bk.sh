@@ -96,27 +96,27 @@ _extras() {
 
 _jove() {
 	bk get -qe "$@" 2> /dev/null
-	jove $@
+	exec jove $@
 }
 
 _joe() {
 	bk get -qe "$@" 2> /dev/null
-	joe $@
+	exec joe $@
 }
 
 _jed() {
 	bk get -qe "$@" 2> /dev/null
-	jed $@
+	exec jed $@
 }
 
 _vim() {
 	bk get -qe "$@" 2> /dev/null
-	vim $@
+	exec vim $@
 }
 
 _vi() {
 	bk get -qe "$@" 2> /dev/null
-	vi $@
+	exec vi $@
 }
 
 _sdiffs() {
