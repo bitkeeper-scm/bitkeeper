@@ -10211,6 +10211,8 @@ name2xflg(char *fl)
 		return X_EOLN_NATIVE;
 	} else if (streq(fl, "KV")) {
 		return X_KV;
+	} else if (streq(fl, "NOMERGE")) {
+		return X_NOMERGE;
 	}
 	return (0);			/* lint */
 }
@@ -10246,16 +10248,16 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	if (add) {
 		if (xflags & mask) {
 			verbose((stderr,
-				"admin: warning: %s %s flag is already on\n",
-				sc->sfile, flag));
+			    "admin: warning: %s %s flag is already on\n",
+			    sc->sfile, flag));
 			return (0);
 		} 
 		xflags |= mask;
 	} else {
 		unless (xflags & mask) {
 			verbose((stderr,
-				"admin: warning: %s %s flag is already off\n",
-				sc->sfile, flag));
+			    "admin: warning: %s %s flag is already off\n",
+			    sc->sfile, flag));
 			return (0);
 		}
 		xflags &= ~mask;
@@ -10563,7 +10565,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
 		char	*v = &f[i].thing[1];
 
-		//flags |= NEWCKSUM;
 		if (isupper(f[i].thing[0])) {
 			char *fl = f[i].thing;
 
@@ -10574,40 +10575,34 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				ALLOC_D();
-				flagsChanged += changeXFlag(sc, d, flags, add, fl);
+				flagsChanged +=
+				    changeXFlag(sc, d, flags, add, fl);
 			}
-#if 0
-			else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_BITKEEPER;
-				else
-					sc->state &= ~S_BITKEEPER;
-			}
-#endif
 			else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
 				flagsChanged++;
 			} else {
-				if (v) fprintf(stderr,
-					       "admin: unknown flag %s=%s\n",
-					       fl, v);
-				else fprintf(stderr,
+				if (v) {
+					fprintf(stderr,
+					  "admin: unknown flag %s=%s\n", fl, v);
+				} else {
+					fprintf(stderr,
 					     "admin: unknown flag %s\n", fl);
-
+				}
 				error = 1;
 				sc->state |= S_WARNED;
 			}
 			continue;
 
 		noval:	fprintf(stderr,
-				"admin: flag %s can't have a value\n", fl);
+			    "admin: flag %s can't have a value\n", fl);
 			error = 1;
 			sc->state = S_WARNED;
 		} else {
+			char	*buf;
+
 			switch (f[i].thing[0]) {
-				char	*buf;
 			    case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
@@ -13492,6 +13487,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		}
 		if (flags & X_KV) {
 			if (comma) fs(","); fs("KV"); comma = 1;
+		}
+		if (flags & X_NOMERGE) {
+			if (comma) fs(","); fs("NOMERGE"); comma = 1;
 		}
 		return (strVal);
 	}

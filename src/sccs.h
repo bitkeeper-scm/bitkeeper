@@ -190,9 +190,11 @@
 #define	X_EOLN_NATIVE	0x00000800	/* use eoln native to this OS */
 #define	X_LONGKEY	0x00001000	/* all keys are long format */
 #define	X_KV		0x00002000	/* key value file */
+#define	X_NOMERGE	0x00004000	/* treat as binary even if ascii */
 					/* flags which can be changed */
-#define	X_MAYCHANGE	(X_RCS|X_YEAR4|X_SHELL|X_EXPAND1|X_SCCS|X_EOLN_NATIVE|X_KV)
-					/* default set of flags */
+#define	X_MAYCHANGE	(X_RCS | X_YEAR4 | X_SHELL | X_EXPAND1 | \
+			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE)
+/* default set of flags when we create a file */
 #define	X_DEFAULT	(X_BITKEEPER|X_CSETMARKED|X_EOLN_NATIVE)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
 
@@ -244,6 +246,7 @@
 #define	EOLN_NATIVE(s)	(s->xflags & X_EOLN_NATIVE)
 #define	LONGKEY(s)	(s->xflags & X_LONGKEY)
 #define	KV(s)		(s->xflags & X_KV)
+#define	NOMERGE(s)	(s->xflags & X_NOMERGE)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
