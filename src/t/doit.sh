@@ -124,7 +124,7 @@ setup_env()
 	esac
 	check_w
 
-	unset BK_BIN
+	unset BK_BIN _BK_GMODE_DEBUG
 	BK_LICENSE=ACCEPTED
 	BK_REGRESSION=$TST_DIR/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp
