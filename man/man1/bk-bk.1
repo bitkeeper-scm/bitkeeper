@@ -53,13 +53,103 @@ The command is run in
 or the root of the repository if no directory was specified.
 .tp
 .B \-sfiles_opts
-Used as a shortcut for sfiles; any sfiles options may be passed.  For example,
-the following commands are equivalent:
-.br
-bk -cr 
-.br
-bk -r sfiles -c
-.br
+Used as a shortcut for sfiles.  The following sfiles options may be passed:
+.RS 1i
+.TP
+.B \-a
+examine all files, even if listed in BitKeeper/etc/ignore.
+.tp
+.B \-c
+List changed files (locked and modified).
+.tp
+.B \-d
+List directories under \*(BK control (SCCS subdir exists).
+.tp
+.B \-D
+List directories with no (or empty) SCCS subdirs.
+.tp
+.B \-e
+shorthand for
+.B \-jluvx
+.tp
+.B \-E
+shorthand for
+.B \-cjluvxp
+.tp
+.B \-g
+List the gfile name, not the sfile name.
+.tp
+.B \-i
+shorthand for
+.B \-cjlvxp
+aka the interesting state.
+.tp
+.B \-j
+List junk files, i.e., files in \*(SC subdirectories which are not
+metadata.
+.tp
+.B \-l
+List locked files (p.file and/or z.file).
+.tp
+.B \-n
+list s.files that are not in the correct location.  (Must be run from
+repository root, bk -r sfiles -n.)
+.tp
+.OPTopt \-p A|C
+list files with pending deltas.  If
+.B \-pC
+then list
+leaves which are not in a changeset as file@1.3
+If
+.BR \-pA ,
+that implies
+.BR \-pC ,
+and
+lists all revisions, not just the tip.
+.tp
+.B \-S
+produce a summary listing only, typically combined with
+.BR \-E .
+.tp
+.B \-u
+List unlocked files.
+.tp
+.B \-U
+list user files only, skipping all files in the
+.B BitKeeper/
+subdirectory as well as the
+.B ChangeSet
+file.
+.tp
+.B \-v
+Prefix the output with information about the state of the s.file.
+The information is in a 4 character field, followed by a space,
+then followed by the filename.  Each of the columns are described
+below:
+.RS
+.tp
+\f(CBl???\fR
+the file is locked
+.tp
+\f(CBu???\fR
+the file is unlocked
+.tp
+\f(CBjjjj\fR
+the file is junk
+.tp
+\f(CBxxxx\fR
+the file is an extra
+.tp
+\f(CB?c??\fR
+the file is modified (changed)
+.tp
+\f(CB??p?\fR
+the file has pending deltas
+.RE
+.tp
+.B \-x
+List files which have no revision control files.
+.RE
 .SH NOTE
 .LP
 The following commands are equivalent:

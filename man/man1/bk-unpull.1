@@ -1,0 +1,26 @@
+.so bk-macros
+.TH "bk unpull" 1 20%E% "\*(BC" "\*(UM"
+.SH NAME
+bk unpull \- remove changesets added by bk pull
+.br
+or
+.br
+bk unpull \- undo a bk pull
+.SH SYNOPSIS
+.B bk unpull [-fq]
+.SH DESCRIPTION
+.LP
+bk unpull will remove changesets added by the most recent bk pull command.
+If you have commited a local changeset, you will not be able to unpull
+until you bk undo that changeset.  
+.SH OPTIONS
+.TP
+.B \-f
+Force unpull.
+.tp
+.B \-q
+Quiet mode.
+.SH "SEE ALSO"
+.SA undo 1
+.SH CATEGORY
+.B Repository

@@ -1,95 +1,30 @@
-.\" %A% %G% %@%
-.so .bitmacros
-.TH ADMIN 1 "April 1998" "BitMover, Inc."
+.so bk-macros
+.TH "bk <command>" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-admin, admin \- create and administer SCCS history files
+bk <command> \- breif description of the command
 .SH SYNOPSIS
-admin [
-.B -bhnz
-] [
-.B -a
-.I username
-|
-.I groupid
-]...
-[
-.B -d
-.I flag
-]...
-[
-.B -e
-.I username
-|
-.I groupid
-]...
-[
-.B -f
-.I flag
-[
-.I value
-]]...[
-.B -i
-[
-.I filename
-]][
-.B -l a
-|
-.I release
-[,
-.I release
-\...]][
-.B -m
-.I mr-list
-][
-.B -r
-.I release
-][
-.B -t
-[
-.I description-file
-]][
-.B -y
-[
-.I comment 
-]] 
-.I s.filename
-\...
-
+.Bc bk <command> [\-<some list of options] [
+.OPTreq \-X <req argument to X>
 
 .SH DESCRIPTION
 .LP
-.B admin
-creates or modifies the flags and other parameters of SCCS history
-files.   Filenames of SCCS history files begin with the `
-.B s.
-\' prefix, and are referred to as 
-.B s.
-files, or ``history'' files.
-.LP
-The named 
-.B s.
-file is created if it does not exist already.   Its parameters
-are initialized or modified according to the options you specify.
-Parameters not specified are given default values when the file is
-initialized, otherwise they remain unchanged.
-.LP
-File name expansion paragraph goes here.
-
-.SH "OPTIONS"
-.IP \fB-b\fP 8
-Force
-
-If a directory is named, then the command behaves as though each file in
-the directory were specified as a named file, except that non-SCCS files
-(files whose basename does not begin with \f(CWs.\fP) and unreadable files
-are silently ignored.
-.LP
-.LP
-List of files
+Some more explanations go here.
+.SH OPTIONS
+.TP
+.B \-Opt1
+Description of option 1
+.tp
+.B \-Opt2
+Description of option 2.  Notice the .tp is not capitalized.
 .SH BUGS
 .LP
 Bug reports to BitBugs@BitMover.com.
 .DE
 .SH "SEE ALSO"
-admin(1), sccs-ci(1), clean(1), sccs-co(1), delta(1), diffs(1), get(1), 
-prs(1), rcs2sccs(1), sccssh(1), smoosh(1).
+.SA <some other command>
+.SH CATEGORY
+.B <What Category?>
+.br
+.B Repository
+.br
+.B Admin
