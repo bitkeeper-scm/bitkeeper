@@ -3972,6 +3972,7 @@ pref_parse(char *buf)
 	int 	want_path = 0, want_host = 0;
 	
 	new(r);
+	r->rfd = r->wfd = -1;
 	unless (*buf) return (r);
 	/* user */
 	if (p = strchr(buf, '@')) {

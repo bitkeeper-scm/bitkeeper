@@ -1189,7 +1189,6 @@ echo $N Clone w/failure triggers ....................................$NL
 cd $HERE
 bk clone $Q $HERE/project $HERE/dontcopy && { echo failed; exit 1; }
 cd $HERE/project
-bk lock -U
 echo OK
 
 echo $N Commit w/failure triggers ...................................$NL
