@@ -7911,6 +7911,7 @@ checkin(sccs *s,
 	admin	l[2];
 	int	no_lf = 0;
 	int	error = 0;
+	int	user_file = 1;
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -8068,12 +8069,17 @@ checkin(sccs *s,
 				first->csetFile = strdup(buf);
 			}
 			first->flags |= D_CKSUM;
+			user_file = 0;
 		} else {
 			t = relativeName(s, 0, 0);
 			assert(t);
 			if (t[0] != '/') {
 				unless (first->csetFile) {
 					first->csetFile = getCSetFile(s);
+				}
+				if ((strlen(t) > 10) &&
+				    strneq("BitKeeper/", t, 10)) {
+					user_file = 0;
 				}
 			}
 		}
@@ -8110,8 +8116,10 @@ checkin(sccs *s,
 multi_user:	always_edit = mdbm_fetch_str(m, "always_edit");
 		if (always_edit) {
 			if (streq(always_edit, "true")) {
-				s->state |= S_ALWAYS_EDIT;
-				first->xflags |= X_ALWAYS_EDIT;
+				if (user_file) {
+					s->state |= S_ALWAYS_EDIT;
+					first->xflags |= X_ALWAYS_EDIT;
+				}
 			} else unless (streq(always_edit, "false")) {
 				fprintf(stderr,
 "Warning: config file: unknown setting \"%s\" for always_edit entry, ignored\n",

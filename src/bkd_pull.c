@@ -76,7 +76,10 @@ cmd_pull(int ac, char **av)
 		if (verbose || list) out(
 "OK--------------------- Sending the following csets ---------------------\n");
 		f = fopen(CSETS_OUT, "w");
-		unless (f) perror(CSETS_OUT);
+		unless (f) {
+			perror(CSETS_OUT);
+			OUT;
+		}
 	} else {
 		putenv("BK_OUTGOING=DRYRUN");
 		if (verbose || list) out(

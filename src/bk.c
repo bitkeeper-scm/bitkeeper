@@ -418,9 +418,6 @@ main(int ac, char **av)
 	 * Is it a known C program ?
 	 */
 	if (streq(prog, "patch") ||
-#ifdef WIN32
-	    streq(prog, "pwd") ||
-#endif
 	    streq(prog, "diff3")) {
 		cmdlog_start(av);
 		ret = spawnvp_ex(_P_WAIT, av[0], av);
@@ -549,6 +546,7 @@ cmdlog_end(int ret)
 		rename(path, old);
 	} else {
 		fclose(f);
+		chmod(path, 0666);
 	}
 	cmdlog_buffer[0] = 0;
 	cmdlog_repo = 0;
