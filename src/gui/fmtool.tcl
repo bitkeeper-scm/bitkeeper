@@ -684,7 +684,7 @@ proc keyboard_bindings {} \
 	bind all <Control-Right> {useRight}
 	bind all <Control-Down> {skip}
 	bind all <Control-Up> {undo}
-	bind all $gc(fm.quit) cmd_done 
+	bind all <$gc(fm.quit)> cmd_done 
 }
 
 proc confirm_done {msg l} \

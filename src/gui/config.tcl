@@ -153,14 +153,6 @@ proc getConfig {prog} \
 			#puts "gc\($index) = $_d($index) (default)"
 		}
 	}
-	
-	# For each key binding, if it does not have <>, add them
-	foreach b [list quit] {
-		if {![info exists gc($b)]} { continue }
-		if {[string index gc($b) 0] != "<"} { 
-			set gc($b) "<$gc($b)>"
-		}
-	}
 
 	# Pass to converts from global field to prog.field
 	foreach index [array names gc] {

@@ -1821,7 +1821,7 @@ proc widgets {} \
 	bind $w(graph) <d>		"diffParent"
 	bind $w(graph) <Button-2>	{ history; break }
 	bind $w(graph) <Double-2>	{ history tags; break }
-	bind $w(graph) $gc(rev.quit)	"done"
+	bind $w(graph) <$gc(rev.quit)>	"done"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <c>		"sccscat"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"

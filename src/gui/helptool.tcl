@@ -453,32 +453,32 @@ proc widgets {} \
 	grid columnconfigure . 0 -weight 0
 	grid columnconfigure . 1 -weight 1
 
-	bind .ctrl.topics <Button-1> { doPixSelect %x %y; break }
-	bind .ctrl.topics <Button-2> { doPixSelect %x %y; break }
-	bind .ctrl.topics <Button-3> { doPixSelect %x %y; break }
-	bind .ctrl.topics <Motion> "break"
-	bind .text.help <ButtonPress> "focus .text.help"
-	bind all <Control-e>	{ scroll "line" 1 }
-	bind all <Control-y>	{ scroll "line" -1 }
-	bind all <Down>		{ scroll "line" 1; break }
-	bind all <Up>		{ scroll "line" -1; break }
-	bind .text.help <Down>	{ scroll "line" 1; break }
-	bind .text.help <Up>	{ scroll "line" -1; break }
-	bind all <Left>		".text.help xview scroll -1 units; break"
-	bind all <Right>	".text.help xview scroll 1 units; break"
-	bind all <Prior>	{ scroll "page" -1; break }
-	bind all <Next>		{ scroll "page" 1; break }
-	bind Text <Prior>	{ scroll "page" -1; break }
-	bind Text <Next>	{ scroll "page" 1; break }
-	bind all <Home>		 ".text.help yview -pickplace 1.0; break"
-	bind all <End>		 ".text.help yview -pickplace end; break"
-	bind all <Control-Up>	{ doNext -1 }
-	bind all <Control-Down>	{ doNext 1 }
-	bind all <Control-Left>	 "doNextSection -1"
-	bind all <Control-Right> "doNextSection 1"
-	bind all <Alt-Left>	{ upStack }
-	bind all <Alt-Right>	{ downStack }
-	bind all $gc(help.quit)	{ exit }
+	bind .ctrl.topics <Button-1>	{ doPixSelect %x %y; break }
+	bind .ctrl.topics <Button-2>	{ doPixSelect %x %y; break }
+	bind .ctrl.topics <Button-3>	{ doPixSelect %x %y; break }
+	bind .ctrl.topics <Motion>	"break"
+	bind .text.help <ButtonPress>	"focus .text.help"
+	bind all <Control-e>		{ scroll "line" 1 }
+	bind all <Control-y>		{ scroll "line" -1 }
+	bind all <Down>			{ scroll "line" 1; break }
+	bind all <Up>			{ scroll "line" -1; break }
+	bind .text.help <Down>		{ scroll "line" 1; break }
+	bind .text.help <Up>		{ scroll "line" -1; break }
+	bind all <Left>			".text.help xview scroll -1 units;break"
+	bind all <Right>		".text.help xview scroll 1 units; break"
+	bind all <Prior>		{ scroll "page" -1; break }
+	bind all <Next>			{ scroll "page" 1; break }
+	bind Text <Prior>		{ scroll "page" -1; break }
+	bind Text <Next>		{ scroll "page" 1; break }
+	bind all <Home>		 	".text.help yview -pickplace 1.0; break"
+	bind all <End>		 	".text.help yview -pickplace end; break"
+	bind all <Control-Up>		{ doNext -1 }
+	bind all <Control-Down>		{ doNext 1 }
+	bind all <Control-Left>	 	"doNextSection -1"
+	bind all <Control-Right> 	"doNextSection 1"
+	bind all <Alt-Left>		{ upStack }
+	bind all <Alt-Right>		{ downStack }
+	bind all <$gc(help.quit)>	{ exit }
 	if {$tcl_platform(platform) == "windows"} {
 		bind all <MouseWheel> {
 		    if {%D < 0} {
