@@ -491,6 +491,7 @@ lclone(opts opts, remote *r, char *to)
 	char	skip[MAXPATH];
 	FILE	*f;
 	char	*p;
+	int	level;
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -542,7 +543,9 @@ out:		chdir(from);
 	mkdir("RESYNC", 0777);		/* lock it */
 	chdir(from);
 	unless (f = popen("bk sfiles -d", "r")) goto out;
+	level = getlevel();
 	chdir(dest);
+	setlevel(level);
 	while (fnext(buf, f)) {
 		chomp(buf);
 		unless (streq(buf, ".")) {
