@@ -113,13 +113,16 @@ proc revMap {file} \
 {
         global rev2date serial2rev dev_null revX
 
-        set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd: :UTC-FUDGE:\n"
+        #set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd:/:TZ: :UTC-FUDGE:\n"
+        set dspec "-d:I:-:P: :DS: :UTC: :UTC-FUDGE:\n"
         set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
         while {[gets $fid s] >= 0} {
 		set rev [lindex $s 0]
 		if {![info exists revX($rev)]} {continue}
 		set serial [lindex $s 1]
 		set date [lindex $s 2]
+		scan $date {%4s%2s%2s} yr month day
+		set date "$yr/$month/$day"
 		set utc [lindex $s 3]
 		#puts "rev: ($rev) utc: $utc ser: ($serial) date: ($date)"
                 set rev2date($rev) $date
@@ -447,7 +450,8 @@ proc dateSeparate { } { \
 			set day [lindex $date_array 1]
 			set mon [lindex $date_array 2]
 			set yr [lindex $date_array 0]
-			set date "$day/$mon\n$yr"
+			set tz [lindex $date_array 3]
+			set date "$day/$mon\n$yr\n$tz"
 
                         # place vertical line short dx behind revision bbox
                         set lx [ expr {$x - 15}]
@@ -471,7 +475,8 @@ proc dateSeparate { } { \
 	set day [lindex $date_array 1]
 	set mon [lindex $date_array 2]
 	set yr [lindex $date_array 0]
-	set date "$day/$mon\n$yr"
+	set tz [lindex $date_array 3]
+	set date "$day/$mon\n$yr\n$tz"
 
 	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
 	$w(graph) create text $tx $ty -anchor n \
