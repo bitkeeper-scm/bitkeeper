@@ -1113,7 +1113,7 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
-		return -1;
+		goto err;
 	}
 	unless (HASGRAPH(s)) {
 		SHOUT();
@@ -1123,17 +1123,16 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 		} else {
 			perror(s->sfile);
 		}
-		return -1;
+		goto err;
 	}
-	unless (s = cset_fixLinuxKernelChecksum(s)) return (-1);
+	unless (s = cset_fixLinuxKernelChecksum(s)) goto err;
 	if (isLogPatch) {
 		unless (LOGS_ONLY(s)) {
 			fprintf(stderr,
 	        		"takepatch: can't apply a logging "
 				"patch to a regular file %s\n",
 				p->resyncFile);
-			sccs_free(s);
-			return -1;
+			goto err;
 		}
 	} else {
 		if (LOGS_ONLY(s)) {
@@ -1141,8 +1140,7 @@ applyCsetPatch(char *localPath, int nfound, int flags, sccs *perfile)
 	        		"takepatch: can't apply a regular "
 				"patch to a logging file %s\n",
 				p->resyncFile);
-			sccs_free(s);
-			return -1;
+			goto err;
 		}
 	}
 apply:
@@ -1178,7 +1176,7 @@ apply:
 			}
 			iF = p->initMmap;
 			dF = p->diffMmap;
-			if (isLogPatch && chkEmpty(s, dF)) return -1;
+			if (isLogPatch && chkEmpty(s, dF)) goto err;
 			d = cset_insert(s, iF, dF, p->pid);
 		} else {
 			assert(s == 0);
@@ -1187,7 +1185,7 @@ apply:
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
 				    p->resyncFile);
-				return -1;
+				goto err;
 			}
 			if (perfile) {
 				sccscopy(s, perfile);
@@ -1208,7 +1206,7 @@ apply:
 			if (isLogPatch) {
 				s->state |= S_FORCELOGGING;
 				s->xflags |= X_LOGS_ONLY;
-				if (chkEmpty(s, dF)) return -1;
+				if (chkEmpty(s, dF)) goto err;
 			}
 			cweave_init(s, nfound);
 			sccs_findKeyDB(s, 0);
@@ -1230,10 +1228,11 @@ apply:
 	if (cset_write(s)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't write %s\n", p->resyncFile);
-		return -1;
+		goto err;
 	}
 
 	sccs_free(s);
+	s = 0;
 	/*
 	 * Fix up d->rev, there is probaply a better way to do this.
 	 * XXX: not only renumbers, but collapses inheritance on
@@ -1294,13 +1293,10 @@ apply:
 	if (echo == 3) fprintf(stderr, "\b, ");
 	if (cset_resum(s, 0, 0, echo == 3)) {
 		getMsg("takepatch-chksum", 0, '=', stderr);
-		return (-1);
+		goto err;
 	}
 
-	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
-		sccs_free(s);
-		return (-1);
-	}
+	if ((confThisFile = sccs_resolveFiles(s)) < 0) goto err;
 	if (!confThisFile && (s->state & S_CSET) && 
 	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
@@ -1308,11 +1304,15 @@ apply:
 	}
 	conflicts += confThisFile;
 	sccs_free(s);
+	s = 0;
 	if (noConflicts && conflicts) errorMsg("tp_noconflicts", 0, 0);
 	freePatchList();
 	patchList = 0;
 	fileNum = 0;
 	return (0);
+ err:
+	if (s) sccs_free(s);
+	return (-1);
 }
 
 /* 

@@ -12,7 +12,6 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
-HERE=`bk pwd -s`
 cd "$HERE"	# For Windows
 HOST=@free.bk
 echo "logging: none" > c
@@ -195,10 +194,9 @@ if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 echo OK
 
 echo $N Checking sccslog with -f option .............................$NL
-ROOT=`cd ..;bk pwd -s`
 bk undos > CMP1 <<EOF
 ChangeSet
-  BitKeeper file ${ROOT}/project/ChangeSet
+  BitKeeper file ${HERE}/project/ChangeSet
 
 ChangeSet
   Initial repository create
@@ -210,7 +208,7 @@ if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
 
 bk undos > CMP1 <<EOF
 a/b/c/Data
-  BitKeeper file ${ROOT}/project/a/b/c/Data
+  BitKeeper file ${HERE}/project/a/b/c/Data
 
 a/b/c/Data
 

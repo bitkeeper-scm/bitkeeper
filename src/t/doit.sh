@@ -232,7 +232,7 @@ setup_env()
 
 	unset BK_BIN _BK_GMODE_DEBUG
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
-	HERE=`cd $TST_DIR; bk pwd`/.regression-$USER
+	HERE=`cd $TST_DIR; bk pwd -s`/.regression-$USER
 	BK_TMP=$BK_REGRESSION/.tmp
 	BK_DOTBK=$BK_REGRESSION/.bk
 	export BK_DOTBK

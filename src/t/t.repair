@@ -14,7 +14,6 @@
 # Copyright (c) 1999 Andrew Chang?
 # wscott@wscott1.homeip.net|src/t/t.repository|20020204233553|06580
 
-HERE=`bk pwd -s`
 echo $N Create initial repository ...................................$NL
 no_logging project
 bk admin -Z
