@@ -1369,6 +1369,7 @@ do_delta(opts *opts, sccs *s)
 
 	comments_done();	/* force them to provide them */
 	if (opts->quiet) flags |= SILENT;
+	sccs_restart(s);
 	if (sccs_delta(s, flags, 0, 0, 0, 0)) {
 		fprintf(stderr, "Delta of %s failed\n", s->gfile);
 		exit(1);
