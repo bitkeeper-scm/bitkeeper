@@ -1,21 +1,32 @@
 # setuptool.tcl
 #
-# usage: bk setuptool ?-e? -F reponame
-#        bk setuptool ?-e? ?reponame?
+# usage: bk setuptool ?options? ?reponame?
 #
-# if -F (force) is specified, a reponame must be specified, and the user 
-# may not change the repo from within the wizard. This is how the old 
-# setuptool worked, so it's in for compatibility.
-#
-# -e is passed on to bk setup, though -e isn't documented in setup...
+# options:
+# -e 			Undocumented; passed through to "bk setup"
+# -F name:value		Forces config option 'name' to 'value'; user will
+# 			not be able to modify this value interactively.
+#			Only some config options are supported.
+# -S name:value		Sets config option 'name' to 'value'; user will
+#			be able to modify the value interactively
 
 proc main {} \
 {
+	global wizData bkuser eflag
+
+	set bkuser [exec bk getuser]
+
 	bk_init
 	app_init
 	widgets
 
-	. configure -step Begin
+	if {$bkuser == "Administrator" || 
+	    $bkuser == "root"} {
+		. configure -step BadUser
+		. configure -path BadUser
+	} else {
+		. configure -step Begin
+	}
 	. show
 
 	bind . <<WizCancel>> {
@@ -43,7 +54,8 @@ proc main {} \
 			. configure -state normal
 			break
 		} else {
-			popupMessage -I "The repository was successfully created."
+			popupMessage -I \
+			    "The repository was successfully created."
 
 			if {$::wizData(closeOnCreate)} {
 				set ::done 1
@@ -83,10 +95,13 @@ proc main {} \
 
 proc app_init {} \
 {
-	global gc
 	global argv
-	global wizData
+	global bkuser
+	global eflag
+	global gc
 	global option
+	global readonly
+	global wizData
 
 	getLicenseData
 
@@ -101,11 +116,6 @@ proc app_init {} \
 	# Presently we don't support setup.BG, because the wizard widget
 	# isn't graceful about accepting anything other than default colors.
 	# Bummer, huh?
-#	option add *Frame.background      $gc(setup.BG)          startupFile
-#	option add *Button.background     $gc(setup.BG)          startupFile
-#	option add *Menu.background       $gc(setup.BG)          startupFile
-#	option add *Label.background      $gc(setup.BG)          startupFile
-#	option add *Menubutton.background $gc(setup.buttonColor) startupFile
 	option add *Checkbutton.font      $gc(setup.noticeFont)  startupFile
 	option add *Radiobutton.font      $gc(setup.noticeFont)  startupFile
 	option add *Menubutton.font       $gc(setup.noticeFont)  startupFile
@@ -144,9 +154,10 @@ proc app_init {} \
 		pager         ""
 		phone         ""
 		postal        ""
+		repository    ""
 		state         ""
 	}
-	set wizData(single_user) [exec bk getuser]
+	set wizData(single_user) $bkuser
 	set wizData(single_host) [exec bk gethost]
 	set wizData(email) ${wizData(single_user)}@$wizData(single_host)
 
@@ -156,35 +167,61 @@ proc app_init {} \
 	# in the config file of an existing repo
 	array set wizData [readConfig template]
 
+	# this list contains the names of the config variables which
+	# may be defined on the command line with -F.  The reason only
+	# some are allowed is simply that I haven't found the time to
+	# disable the particular widgets or steps for the other
+	# options.
+	set allowedRO {checkout repository autofix compression}
+
 	# process command line args, which may also override some of
-	# the defaults.
-	set option(-additionalSetupArgs) {}
-	set option(-F) 0
-	set option(-e) 0
-	if {[set i [lsearch -exact $argv -e]] >= 0} {
-		set option(-e) 1
-		set argv [lreplace $argv $i $i]
-	}
-	if {[set i [lsearch -exact $argv -F]] >= 0} {
-		set option(-F) 1
-		set argv [lreplace $argv $i $i]
+	# the defaults. Note that -F and -S aren't presently
+	# documented. They are mainly for us, when calling setuptool
+	# from some other process (such as an IDE).
+	array set readonly {}
+	set eflag 0
+	while {[string match {-*} [lindex $argv 0]]} {
+		set arg [lindex $argv 0]
+		set argv [lrange $argv 1 end]
+
+		switch -- $arg {
+			-- { break }
+			-e {set eflag 1}
+			-F {
+				set tmp [lindex $argv 0]
+				set argv [lrange $argv 1 end]
+				regexp {^([^:]+):(.*)} $tmp -> name value
+				if {[lsearch -exact $allowedRO $name] == -1} {
+					popupMessage -I \
+					    "Only the following variables may\
+					     be specified\nwith the $arg\
+					     option:\n\n[join $allowedRO ,\ ]\n"
+					exit 1
+				}
+				set wizData($name) $value
+				set readonly($name) 1
+			}
+			-S {
+				set tmp [lindex $argv 0]
+				set argv [lrange $argv 1 end]
+				regexp {^([^:]+):(.*)} $tmp -> name value
+				set wizData($name) $value
+			}
+			default {
+				popupMessage -W "Unknown option \"$arg\"\n"
+				exit 1
+			}
+		}
 	}
 
 	set argc [llength $argv]
-	if {$argc == 0} {
-		if {$option(-F)} {
-			popupMessage -I "You must supply a name with -F"
-			exit 1
-		}
-		set wizData(repository) ""
-
-	} elseif {$argc == 1} {
+	if {$argc == 1} {
 		set wizData(repository) [lindex $argv 0]
 
-	} else {
+	} elseif {$argc > 1} {
 		# This is lame; what should we do here? We need to
 		# standardize this type of stuff
-		popupMessage -W "Unknown option [lindex $argv 0]"
+		popupMessage -W "Unknown option \"[lindex $argv 0]\""
 		exit 1
 	}
 
@@ -224,6 +261,8 @@ proc computeSize {wvar hvar} \
 
 proc widgets {} \
 {
+	global bkuser
+	global readonly
 
 	::tkwizard::tkwizard . -title "BK Setup Assistant" -sequential 1 
 
@@ -239,6 +278,20 @@ proc widgets {} \
 		RepoInfo ContactInfo 
 		KeywordExpansion CheckoutMode 
 		Compression Autofix Finish
+	}
+	
+	# remove readonly steps
+	if {[info exists readonly(checkout)]} {
+		set i [lsearch -exact $common "CheckoutMode"]
+		set common [lreplace $common $i $i]
+	}
+	if {[info exists readonly(compression)]} {
+		set i [lsearch -exact $common "Compression"]
+		set common [lreplace $common $i $i]
+	}
+	if {[info exists readonly(autofix)]} {
+		set i [lsearch -exact $common "Autofix"]
+		set common [lreplace $common $i $i]
 	}
 
 	# each type of license (commercial, openlogging, singleuser) has
@@ -259,8 +312,19 @@ proc widgets {} \
 	. add path singleuser  \
 	    -steps [concat Begin LicenseType UserHostInfo $common]
 
+	. add path BadUser -steps BadUser
+
 	# We'll assume this for the moment; it may change later
 	. configure -path commercial-lic
+
+	#-----------------------------------------------------------------------
+	. add step BadUser \
+	    -title "BK Setup Wizard" \
+	    -description [wrap [getmsg setuptool_step_BadUser $bkuser]] \
+	    -body {
+		    $this configure -state pending
+		    $this configure -defaultbutton cancel
+	    }
 
 	#-----------------------------------------------------------------------
 	. add step Begin \
@@ -501,6 +565,7 @@ proc widgets {} \
 
 		global wizData
 		global options
+		global readonly
 
 		$this configure -defaultbutton next
 
@@ -597,7 +662,7 @@ proc widgets {} \
 		grid rowconfigure    $w 4 -weight 0
 		grid rowconfigure    $w 5 -weight 1
 
-		if {$option(-F)} {
+		if {[info exists readonly(repository)]} {
 			$w.repoPathEntry configure -state disabled
 			after idle [list focusEntry $w.descEntry]
 		} else {
@@ -1024,14 +1089,18 @@ proc wrap {text} \
 	return $text
 }
 
-proc getmsg {key} \
+proc getmsg {key args} \
 {
 	# do we want to return something like "lookup failed for xxx"
 	# if the lookup fails? What we really need is something more
 	# like real message catalogs, where I can supply messages that
 	# have defaults.
 	set data ""
-	set err [catch {set data [exec bk getmsg $key]}]
+	set cmd [list bk getmsg $key]
+	if {[llength $args] > 0} {
+		lappend cmd [lindex $args 0]
+	}
+	set err [catch {set data [eval exec $cmd]}]
 	return $data
 }
 
@@ -1081,6 +1150,7 @@ proc createRepo {errorVar} \
 {
 	global wizData
 	global option
+	global eflag
 	upvar $errorVar message
 
 	set pid [pid]
@@ -1090,15 +1160,8 @@ proc createRepo {errorVar} \
 	close $f
 
 	set command [list bk setup -a]
-	if {$option(-e)} {lappend command -e}
+	if {$eflag}  {lappend command -e}
 	lappend command -f -c$filename $wizData(repository)
-
-	# Danger Will Robinson! bk setup will prompt the user to accept
-	# the license unless we do something to prevent that. The easiest
-	# thing is to set the BK_LICENSE environment variable, though this
-	# only solves this tool's problem and is not a persistent solution
-	# for the user. 
-	set ::env(BK_LICENSE) "ACCEPTED"
 	set err [catch { eval exec $command} message]
 
 	catch {file delete $filename}
@@ -1255,6 +1318,7 @@ proc getLicenseData {} \
 }
 
 proc moreInfo {which} {
+	global dev_null
 
 	switch -exact -- $which {
 		openlogging	{set topic licensing}
@@ -1265,7 +1329,7 @@ proc moreInfo {which} {
 		autofix		{set topic check}
 	}
 
-	exec bk helptool $topic &
+	exec bk helptool $topic 2> $dev_null &
 }
 
 main
