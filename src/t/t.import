@@ -352,3 +352,4 @@ do	cd import$i
 done
 echo OK
 }
+exit 0
