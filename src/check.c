@@ -1,0 +1,349 @@
+/*
+ * ChangeSet fsck - make sure that the key pointers work in both directions.
+ */
+/* Copyright (c) 1999 Larry McVoy */
+#include "system.h"
+#include "sccs.h"
+#include "range.h"
+WHATSTR("@(#)%K%");
+
+char	*check_help = "\n\
+usage: check [-av]\n\n\
+    -a		warn if the files listed are a subset of the repository\n\
+    -v		list each file which is OK\n\n";
+
+MDBM	*buildKeys(void);
+char	*csetFind(char *key);
+int	check(sccs *s, MDBM *db);
+char	*getRev(char *root, char *key, MDBM *idDB);
+char	*getFile(char *root, MDBM *idDB);
+int	verbose;
+int	all;		/* if set, check every darn entry in the ChangeSet */
+
+int
+main(int ac, char **av)
+{
+	int	c;
+	MDBM	*db;
+	MDBM	*checked = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	sccs	*s;
+	int	errors = 0;
+	int	e;
+	char	*name;
+	char	buf[MAXPATH];
+
+	debug_main(av);
+	if (ac > 1 && streq("--help", av[1])) {
+usage:		fprintf(stderr, "%s", check_help);
+		return (1);
+	}
+
+	while ((c = getopt(ac, av, "av")) != -1) {
+		switch (c) {
+		    case 'a': all++; break;
+		    case 'v': verbose++; break;
+		    default:
+			goto usage;
+		}
+	}
+
+	if (sccs_cd2root(0, 0)) {
+		fprintf(stderr, "check: can not find project root.\n");
+		return (1);
+	}
+	db = buildKeys();
+	for (name = sfileFirst("check", &av[optind], 0);
+	    name; name = sfileNext()) {
+		s = sccs_init(name, 0, 0);
+		if (!s) continue;
+		if (!s->tree) {
+			if (!(s->state & S_SFILE)) {
+				fprintf(stderr, "check: %s doesn't exist.\n",
+				    s->sfile);
+			} else {
+				perror(s->sfile);
+			}
+			sccs_free(s);
+			continue;
+		}
+		sccs_sdelta(buf, sccs_ino(s));
+		mdbm_store_str(checked, buf, "Y", 0);
+		if (e = check(s, db)) {
+			errors += e;
+		} else {
+			if (verbose) fprintf(stderr, "%s is OK\n", s->sfile);
+		}
+		sccs_free(s);
+	}
+	sfileDone();
+	if (all) errors += checkAll(checked);
+	purify_list();
+	return (errors ? 1 : 0);
+}
+
+/*
+ * Look at the list handed in and make sure that we checked everything that
+ * is in the ChangeSet file.  This will always fail if you are doing a partial
+ * check.
+ */
+checkAll(MDBM *db)
+{
+	FILE	*keys = popen("bk sccscat ChangeSet", "r");
+	char	*t;
+	int	errors = 0;
+	char	buf[MAXPATH*3];
+
+	unless (keys) {
+		perror("checkAll");
+		exit(1);
+	}
+	while (fnext(buf, keys)) {
+		t = strchr(buf, ' ');
+		assert(t);
+		*t++ = 0;
+		if (mdbm_fetch_str(db, buf)) continue;
+		fprintf(stderr,
+		    "check: %s\n", buf);
+		fprintf(stderr,
+		    "\tfound in ChangeSet but not found in repository\n");
+		errors++;
+	}
+	pclose(keys);
+	return (errors);
+}
+
+/*
+ * Open up the ChangeSet file and get every key ever added.
+ * Build an mdbm which is indexed by key (value is root key).
+ * We'll use this later for making sure that all the keys in a file
+ * are there.
+ */
+MDBM	*
+buildKeys()
+{
+	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	MDBM	*idDB;
+	FILE	*keys = popen("bk sccscat ChangeSet", "r");
+	char	*t;
+	int	n = 0;
+	int	e = 0;
+	char	buf[MAXPATH*3];
+
+	unless (db && keys) {
+		perror("buildkeys");
+		exit(1);
+	}
+	unless (idDB = loadDB("SCCS/x.id_cache", 0)) {
+		perror("idcache");
+		exit(1);
+	}
+
+	/* XXX - pre split based on cset size */
+	while (fnext(buf, keys)) {
+		if (chop(buf) != '\n') {
+			fprintf(stderr, "bad data: <%s>\n", buf);
+			return (0);
+		}
+		t = strchr(buf, ' ');
+		assert(t);
+		*t++ = 0;
+		if (mdbm_store_str(db, t, buf, MDBM_INSERT)) {
+			char	*a, *b;
+
+			if (errno == EEXIST) {
+				char	*root = mdbm_fetch_str(db, t);
+
+				fprintf(stderr,
+				    "Duplicate delta found in ChangeSet\n");
+				a = getRev(buf, t, idDB);
+				fprintf(stderr, "\tRev: %s  Key: %s\n", a, t);
+				free(a);
+				if (streq(root, buf)) {
+					a = getFile(root, idDB);
+					fprintf(stderr,
+					    "\tBoth keys in file %s\n", a);
+					free(a);
+				} else {
+					a = getFile(root, idDB);
+					b = getFile(buf, idDB);
+					fprintf(stderr, 
+					    "\tIn different files %s and %s\n",
+					    a, b);
+					free(a);
+					free(b);
+				}
+				listCsetRevs(t);
+			} else {
+				fprintf(stderr, "KEY='%s' VAL='%s'\n", t, buf);
+				perror("mdbm_store_str");
+			}
+			e++;
+		}
+		n++;
+	}
+	pclose(keys);
+	if (verbose > 1) {
+		fprintf(stderr, "check: found %d keys in ChangeSet\n", n);
+	}
+	if (e) exit(1);
+	return (db);
+}
+
+/*
+ * List all revisions which have the specified key.
+ */
+listCsetRevs(char *key)
+{
+	FILE	*keys = popen("bk sccscat -m ChangeSet", "r");
+	char	*t;
+	int	first = 1;
+	char	buf[MAXPATH*3];
+
+	unless (keys) {
+		perror("listCsetRevs");
+		exit(1);
+	}
+
+	fprintf(stderr, "\tSame key found in ChangeSet:");
+	while (fnext(buf, keys)) {
+		if (chop(buf) != '\n') {
+			fprintf(stderr, "bad data: <%s>\n", buf);
+			return (0);
+		}
+		//fprintf(stderr, "BUF %s\n", buf);
+		t = strrchr(buf, ' '); assert(t); *t++ = 0;
+		unless (streq(t, key)) continue;
+		for (t = buf; *t && !isspace(*t); t++);
+		assert(isspace(*t));
+		*t = 0;
+		if (first) {
+			first = 0;
+		} else {
+			fprintf(stderr, ",");
+		}
+		fprintf(stderr, "%s", buf);
+	}
+	fprintf(stderr, "\n");
+	pclose(keys);
+}
+
+char	*
+getFile(char *root, MDBM *idDB)
+{
+	sccs	*s = sccs_keyinit(root, 0, idDB);
+	char	*t;
+
+	unless (s) return (strdup("[can not init]"));
+	t = strdup(s->sfile);
+	sccs_free(s);
+	return (t);
+}
+
+char	*
+getRev(char *root, char *key, MDBM *idDB)
+{
+	sccs	*s = sccs_keyinit(root, 0, idDB);
+	delta	*d;
+
+	unless (s) return("[can not init]");
+	unless (d = sccs_findKey(s, key)) {
+		sccs_free(s);
+		return (strdup("[can not find key]"));
+	}
+	return (strdup(d->rev));
+}
+
+/*
+	1) for each key in the changeset file, we need to make sure the
+	   key is in the source file.
+	
+	2) for each delta marked as recorded in the ChangeSet file, we
+	   need to make sure it actually is in the ChangeSet file.
+	
+	3) for each tip, all but one need to be marked as in the ChangeSet
+	   file and that one - if it exists - must be top of trunk.
+*/
+int	
+check(sccs *s, MDBM *db)
+{
+	delta	*d;
+	int	errors = 0;
+	kvpair	kv;
+	int	ksize;
+	char	*a;
+	char	buf[MAXPATH];
+
+	/*
+	 * Make sure that all marked deltas are found in the ChangeSet
+	 */
+	for (d = s->table; d; d = d->next) {
+		if (verbose > 2) {
+			fprintf(stderr, "Check %s;%s\n", s->sfile, d->rev);
+		}
+		unless (d->flags & D_CSET) continue;
+		sccs_sdelta(buf, d);
+		unless (mdbm_fetch_str(db, buf)) {
+			fprintf(stderr,
+		    "%s: marked delta %s should be in ChangeSet but is not\n",
+			    s->sfile, d->rev);
+			errors++;
+		} else if (verbose > 1) {
+			fprintf(stderr, "%s: found %s in ChangeSet\n",
+			    s->sfile, buf);
+		}
+	}
+	
+	/*
+	 * Foreach value in ChangeSet DB, skip if not this file.
+	 * Otherwise, make sure we can find that delta in this file.
+	 */
+	sccs_sdelta(buf, sccs_ino(s));
+	ksize = strlen(buf) + 1;	/* strings include null in DB */
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		/* key is delta key, val is root key */
+		unless ((kv.val.dsize == ksize) && streq(buf, kv.val.dptr)) {
+		    	continue;
+		}
+		unless (d = sccs_findKey(s, kv.key.dptr)) {
+			a = csetFind(kv.key.dptr);
+			fprintf(stderr,
+			    "key %s is in\n\tChangeSet:%s\n\tbut not in %s\n",
+			    kv.key.dptr, a, s->sfile);
+			free(a);
+		    	errors++;
+		} else if (verbose > 1) {
+			fprintf(stderr, "%s: found %s from ChangeSet\n",
+			    s->sfile, d->rev);
+		}
+	}
+
+	/*
+	 * Make sure we have no open branches
+	 */
+	if (sccs_admin(s,
+	    SILENT|ADMIN_BK|ADMIN_FORMAT|ADMIN_TIME, 0, 0, 0, 0, 0, 0, 0)) {
+	    	errors++;
+	}
+
+	return (errors);
+}
+
+char	*
+csetFind(char *key)
+{
+	char	buf[MAXPATH*2];
+	FILE	*p;
+	char	*s;
+
+	sprintf(buf, "bk sccscat -m ChangeSet | grep '%s'", key);
+	unless (p = popen(buf, "r")) return (strdup("[popen failed]"));
+	unless (fnext(buf, p)) {
+		pclose(p);
+		return ("[not found]");
+	}
+	pclose(p);
+	for (s = buf; *s && !isspace(*s); s++);
+	unless (s) return (strdup("[bad data]"));
+	*s = 0;
+	return (strdup(buf));
+}

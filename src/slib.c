@@ -2773,8 +2773,7 @@ sccs_next(sccs *s, delta *d)
 
 	if (!s || !d) return (0);
 	if (d == s->table) return (0);
-	unless (d->kid) return (0);
-	for (e = d->kid; e->next != d; e = e->next);
+	for (e = d->kid ? d->kid : s->table; e->next != d; e = e->next);
 	assert(e && (e->next == d));
 	return (e);
 }
@@ -3690,8 +3689,8 @@ name2sccs(char *name)
 /*
  * create SCCS/<type>.foo.c
  */
-private int
-lock(sccs *sccs, char type)
+int
+sccs_lock(sccs *sccs, char type)
 {
 	char	*s;
 	int	islock;
@@ -3708,8 +3707,8 @@ lock(sccs *sccs, char type)
 /*
  * Take SCCS/s.foo.c and unlink SCCS/<type>.foo.c
  */
-private int
-unlock(sccs *sccs, char type)
+int
+sccs_unlock(sccs *sccs, char type)
 {
 	char	*s;
 	int	failed;
@@ -4696,13 +4695,13 @@ write_pfile(sccs *s, int flags, delta *d,
 		s->state |= S_WARNED;
 		return (-1);
 	}
-	if (!lock(s, 'z')) {
+	if (!sccs_lock(s, 'z')) {
 		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
 		return (-1);
 	}
-	if (!lock(s, 'p')) {
+	if (!sccs_lock(s, 'p')) {
 		fprintf(stderr, "get: can't plock %s\n", s->gfile);
-		unlock(s, 'z');
+		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	fd = open(s->pfile, 2, 0);
@@ -5037,7 +5036,7 @@ sccs_get(sccs *s, char *rev,
 	unless (s->state & S_SOPEN) {
 		fprintf(stderr, "get: couldn't open %s\n", s->sfile);
 err:		if (i2) free(i2);
-		if (locked) { unlock(s, 'p'); unlock(s, 'z'); }
+		if (locked) { sccs_unlock(s, 'p'); sccs_unlock(s, 'z'); }
 		return (-1);
 	}
 	unless (s->cksumok) {
@@ -5111,7 +5110,7 @@ err:		if (i2) free(i2);
 	debug((stderr, "GET done\n"));
 
 skip_get:
-	if (flags&GET_EDIT) unlock(s, 'z');
+	if (flags&GET_EDIT) sccs_unlock(s, 'z');
 	if (!(flags&SILENT)) {
 		fprintf(stderr, "%s %s", s->gfile, d->rev);
 		if (flags & GET_EDIT) {
@@ -6725,7 +6724,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	unless (flags & NEWFILE) {
 		verbose((stderr,
 		    "%s not checked in, use -i flag.\n", s->gfile));
-		unlock(s, 'z');
+		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
 		s->state |= S_WARNED;
 		return (-1);
@@ -6734,7 +6733,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		popened = openInput(s, flags, &gfile);
 		unless (gfile) {
 			perror(s->gfile);
-			unlock(s, 'z');
+			sccs_unlock(s, 'z');
 			if (prefilled) sccs_freetree(prefilled);
 			return (-1);
 		}
@@ -6746,7 +6745,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		if (gfile && (gfile != stdin)) {
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
-		unlock(s, 'z');
+		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	/*
@@ -6806,7 +6805,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	n->serial = s->nextserial++;
 	s->table = n;
 	if (n->flags & D_BADFORM) {
-		unlock(s, 'z');
+		sccs_unlock(s, 'z');
 		if (prefilled) sccs_freetree(prefilled);
 		fprintf(stderr, "checkin: bad revision: %s for %s\n",
 		    n->rev, s->sfile);
@@ -6906,14 +6905,14 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	if (error) {
 abort:		fclose(sfile);
 		unlink(s->sfile);
-		unlock(s, 'z');
+		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	unless (flags & DELTA_SAVEGFILE) unlinkGfile(s);	/* Careful */
 	Chmod(s->sfile, 0444);
 	fclose(sfile);
 	if (s->state & S_BITKEEPER) updatePending(s, n);
-	unlock(s, 'z');
+	sccs_unlock(s, 'z');
 	return (0);
 }
 
@@ -6944,6 +6943,41 @@ checkdups(sccs *s)
 	}
 	mdbm_close(db);
 	return (c);
+}
+
+static inline int
+isleaf(register delta *d)
+{
+	if (d->type != 'D') return (0);
+	for (d = d->kid; d; d = d->siblings) {
+		if (d->type == 'D') return (0);
+	}
+	return (1);
+}
+
+/*
+ * Check all the BitKeeper specific stuff such as
+ *	. no open branches
+ */
+private int
+checkInvariants(sccs *sc)
+{
+	delta	*d;
+	int	tips = 0;
+
+	for (d = sc->table; d; d = d->next) {
+		unless (d->r[2]) continue;	/* we only want branches */
+		if (!(d->flags & D_MERGED) && isleaf(d)) tips++;
+	}
+	unless (tips) return (0);
+	for (d = sc->table; d; d = d->next) {
+		unless (d->r[2]) continue;	
+		if (!(d->flags & D_MERGED) && isleaf(d)) {
+			fprintf(stderr,
+			    "%s: unmerged branch %s\n", sc->sfile, d->rev);
+		}
+	}
+	return (1);
 }
 
 private int
@@ -7079,8 +7113,6 @@ checkRev(char *file, delta *d, int flags)
 		}
 	}
 	/* If there is a parent, make sure the dates increase. */
-	/* XXX - this now needs to look at fudge. */
-	// FIXME
 time:	if (d->parent && (d->date < d->parent->date)) {
 		if (flags & ADMIN_TIME) {
 			fprintf(stderr,
@@ -7091,6 +7123,18 @@ time:	if (d->parent && (d->date < d->parent->date)) {
 			    (int)(d->date - d->parent->date));
 		}
 		error |= 2;
+	}
+	/* If the dates are identical, check that the keys are sorted */
+	if (d->parent && (d->date == d->parent->date)) {
+		char	me[MAXPATH], parent[MAXPATH];
+
+		sccs_sdelta(me, d);
+		sccs_sdelta(parent, d->parent);
+		unless (strcmp(parent, me) < 0) {
+			fprintf(stderr,
+			    "\t%s: %s,%s have same date and bad key order\n",
+			    d->rev, d->parent->rev);
+		}
 	}
 
 done:	if (error & 1) d->flags |= D_BADREV;
@@ -7504,7 +7548,7 @@ sccs_addSym(sccs *sc, u32 flags, char *s)
 	int	len;
 	char	buf[1024];
 
-	if (!lock(sc, 'z')) {
+	if (!sccs_lock(sc, 'z')) {
 		fprintf(stderr, "sccs_addSym: can't zlock %s\n", sc->gfile);
 		return -1;
 	}
@@ -7524,7 +7568,7 @@ sccs_addSym(sccs *sc, u32 flags, char *s)
 norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 			    rev, sc->sfile));
 			free(s);
-			unlock(sc, 'z');
+			sccs_unlock(sc, 'z');
 			return (-1);
 		}
 		rev = d->rev;
@@ -7533,7 +7577,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 		verbose((stderr,
 		    "admin (fast add): symbol %s exists on %s\n", s, rev));
 		free(s);
-		unlock(sc, 'z');
+		sccs_unlock(sc, 'z');
 		return (-1);
 	}
 	unless (d || (d = findrev(sc, rev))) goto norev;
@@ -7560,7 +7604,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 		sc->numdeltas--;
 		sc->nextserial--;
 		free(s);
-		unlock(sc, 'z');
+		sccs_unlock(sc, 'z');
 		return (EAGAIN);
 	}
 
@@ -7588,7 +7632,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	verbose((stderr, "admin: fast add symbol %s->%s in %s\n",
 	    s, rev, sc->sfile));
 	free(s);
-	unlock(sc, 'z');
+	sccs_unlock(sc, 'z');
 	return (0);
 }
 #endif
@@ -7815,25 +7859,26 @@ sccs_admin(sccs *sc, u32 flags, int *new_encp, int *new_compp,
 		return (error);
 	} 
 	GOODSCCS(sc);
-	unless (flags & ADMIN_FORMAT) {
-		unless (locked = lock(sc, 'z')) {
+	unless (flags & (ADMIN_BK|ADMIN_FORMAT)) {
+		unless (locked = sccs_lock(sc, 'z')) {
 			verbose((stderr,
 			    "admin: can't get lock on %s\n", sc->sfile));
 			error = -1; sc->state |= S_WARNED;
 out:
 			if (sfile) fclose(sfile);
-			if (locked) unlock(sc, 'z');
+			if (locked) sccs_unlock(sc, 'z');
 			debug((stderr, "admin returns %d\n", error));
 			return (error);
 		}
 	}
-#define	OUT	error = -1; sc->state |= S_WARNED; goto out;
+#define	OUT	{ error = -1; sc->state |= S_WARNED; goto out; }
 
 	unless (HAS_SFILE(sc)) {
 		verbose((stderr, "admin: no SCCS file: %s\n", sc->sfile));
 		OUT;
 	}
 
+	if ((flags & ADMIN_BK) && checkInvariants(sc)) OUT;
 	if (flags & ADMIN_FORMAT) {
 		if (checkrevs(sc, flags) || checkdups(sc) ||
 		    ((flags & ADMIN_ASCII) && badchars(sc))) {
@@ -7845,8 +7890,8 @@ out:
 			    sc->sfile);
 		}
 		verbose((stderr, "admin: %s checks out OK\n", sc->sfile));
-		goto out;
 	}
+	if (flags & (ADMIN_BK|ADMIN_FORMAT)) goto out;
 
 	if (addLod("admin", sc, flags, l, &error)) flags |= NEWCKSUM;
 	if (addSym("admin", sc, flags, s, &error)) flags |= NEWCKSUM;
@@ -7983,7 +8028,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	old_enc = sc->encoding;
 	sc->encoding = new_enc;
 	if (delta_table(sc, sfile, 0, 1)) {
-		unlock(sc, 'x');
+		sccs_unlock(sc, 'x');
 		goto out;	/* we don't know why so let sccs_why do it */
 	}
 	assert(sc->state & S_SOPEN);
@@ -8355,6 +8400,8 @@ skip:
 			unless (e) {
 				fprintf(stderr, "Can't find inc %s in %s\n",
 				    &buf[2], sc->sfile);
+				sc->state |= S_WARNED;
+				error++;
 			} else {
 				d->include = addSerial(d->include, e->serial);
 			}
@@ -8390,7 +8437,8 @@ skip:
 			unless (e) {
 				fprintf(stderr, "Can't find merge %s in %s\n",
 				    &buf[2], sc->sfile);
-				assert(0);
+				sc->state |= S_WARNED;
+				error++;
 			} else {
 				d->merge = e->serial;
 			}
@@ -8434,6 +8482,8 @@ skip:
 			unless (e) {
 				fprintf(stderr, "Can't find ex %s in %s\n",
 				    &buf[2], sc->sfile);
+				sc->state |= S_WARNED;
+				error++;
 			} else {
 				d->exclude = addSerial(d->exclude, e->serial);
 			}
@@ -8783,7 +8833,7 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 	char	*t;
 	BUF	(buf);
 
-	unless (lock(s, 'z')) {
+	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "meta: can't get lock on %s\n", s->sfile);
 		s->state |= S_WARNED;
@@ -8791,7 +8841,7 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 		return (-1);
 	}
 	unless (iF = fopen(initFile, "r")) {
-		unlock(s, 'z');
+		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	m = sccs_getInit(s, 0, iF, 1, &e, 0);
@@ -8818,12 +8868,12 @@ sccs_meta(sccs *s, delta *parent, char *initFile)
 	unless (sfile = fopen(sccsXfile(s, 'x'), "w")) {
 		fprintf(stderr, "admin: can't create %s: ", sccsXfile(s, 'x'));
 		perror("");
-		unlock(s, 'z');
+		sccs_unlock(s, 'z');
 		exit(1);
 	}
 	if (delta_table(s, sfile, 0, 1)) {
 abort:		fclose(sfile);
-		unlock(s, 'x');
+		sccs_unlock(s, 'x');
 		return (-1);
 	}
 	seekto(s, s->data);
@@ -8846,11 +8896,11 @@ abort:		fclose(sfile);
 		fprintf(stderr,
 		    "takepatch: can't rename(%s, %s) left in %s\n",
 		    t, s->sfile, t);
-		unlock(s, 'z');
+		sccs_unlock(s, 'z');
 		exit(1);
 	}
 	Chmod(s->sfile, 0444);
-	unlock(s, 'z');
+	sccs_unlock(s, 'z');
 	return (0);
 }
 
@@ -8882,7 +8932,7 @@ sccs_delta(sccs *s, u32 flags, delta *prefilled, FILE *init, FILE *diffs)
 	debug((stderr, "delta %s %x\n", s->gfile, flags));
 	if (flags & NEWFILE) mksccsdir(s->sfile);
 	bzero(&pf, sizeof(pf));
-	unless(locked = lock(s, 'z')) {
+	unless(locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "delta: can't get lock on %s\n", s->sfile);
 		error = -1; s->state |= S_WARNED;
 out:
@@ -8891,7 +8941,7 @@ out:
 		if (diffs) fclose(diffs);
 		free_pfile(&pf);
 		if (tmpfile  && !streq(tmpfile, DEV_NULL)) unlink(tmpfile);
-		if (locked) unlock(s, 'z');
+		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "delta returns %d\n", error));
 		return (error);
 	}
@@ -9102,7 +9152,7 @@ out:
 	}
 
 	if (delta_table(s, sfile, 1, fixDate)) {
-		unlock(s, 'x');
+		sccs_unlock(s, 'x');
 		goto out;	/* not OUT - we want the warning */
 	}
 
@@ -9111,7 +9161,7 @@ out:
 		OUT;
 	}
 	if (end(s, n, sfile, flags, added, deleted, unchanged)) {
-		unlock(s, 'x');
+		sccs_unlock(s, 'x');
 		goto out;	/* not OUT - we want the warning */
 	}
 
@@ -10071,6 +10121,15 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	if (streq(kw, "MERGE")) {	/* print the merge rev if present */
+		if (d->merge && (d = sfind(s, d->merge))) {
+			fs(d->rev);
+		} else {
+			fs("none");
+		}
+		return (strVal);
+	}
+
 	if (streq(kw, "DFB")) {
 		/* default branch */
 		if (s->defbranch) {
@@ -10314,9 +10373,10 @@ do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 
 	if (d->type != 'D') return;
 	if ((s->state & S_SET) && !(d->flags & D_SET)) return;
-	if (fprintDelta(
-		    out, NULL,  dspec, end = &dspec[strlen(dspec) - 1], s, d))
-		fputc('\n', out);
+	if (fprintDelta(out, NULL,
+	    dspec, end = &dspec[strlen(dspec) - 1], s, d)) {
+	    	fputc('\n', out);
+	}
 }
 
 /*
@@ -10790,16 +10850,6 @@ samekey(delta *d, char *user, char *host, char *path, time_t date)
 	return (1);
 }
 
-static inline int
-isleaf(register delta *d)
-{
-	if (d->type != 'D') return (0);
-	for (d = d->kid; d; d = d->siblings) {
-		if (d->type == 'D') return (0);
-	}
-	return (1);
-}
-
 /*
  * Create resolve file.
  * The order of the deltas in the file is important - the "branch"
@@ -11194,13 +11244,13 @@ sccs_rmdel(sccs *s, delta *d, int destroy, u32 flags)
 	assert(s);
 	debug((stderr, "rmdel %s %x\n", s->gfile, flags));
 	bzero(&pf, sizeof (pf));
-	unless(locked = lock(s, 'z')) {
+	unless(locked = sccs_lock(s, 'z')) {
 		fprintf(stderr, "rmdel: can't get lock on %s\n", s->sfile);
 		error = -1; s->state |= S_WARNED;
 rmdelout:
 		if (sfile) fclose(sfile);
 		free_pfile(&pf);
-		if (locked) unlock(s, 'z');
+		if (locked) sccs_unlock(s, 'z');
 		debug((stderr, "rmdel returns %d\n", error));
 		return (error);
 	}
@@ -11248,7 +11298,7 @@ rmdelout:
 
 	/* write out upper half */
 	if (delta_table(s, sfile, 0, 1)) {  /* 0 means as-is, so checksum works */
-		unlock(s, 'x');
+		sccs_unlock(s, 'x');
 		goto rmdelout;
 	}
 
@@ -11263,7 +11313,7 @@ rmdelout:
 		RMDELOUT;
 	}
 	if (fputdata(s, 0, sfile)) {
-		unlock(s, 'x');
+		sccs_unlock(s, 'x');
 		goto rmdelout;
 	}
 	if (s->encoding & E_GZIP) zgets_done();

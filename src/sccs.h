@@ -59,6 +59,7 @@
 #define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
 #define	ADMIN_TIME	0x40000000	/* warn about time going backwards */
 #define	ADMIN_SHUTUP	0x80000000	/* don't be noisy about bad revs */
+#define	ADMIN_BK	0x01000000	/* check BitKeeper invariants */
 
 
 #define	PRS_META	0x10000000	/* show metadata */
@@ -565,6 +566,9 @@ delta	*sccs_next(sccs *s, delta *d);
 int	sccs_meta(sccs *s, delta *parent, char *initFile);
 int	sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath);
 sccs	*sccs_keyinit(char *key, u32 flags, MDBM *idDB);
+delta	*sfind(sccs *s, int ser);
+int	sccs_lock(sccs *, char);
+int	sccs_unlock(sccs *, char);
 
 /* Utility functions also in slib.c.  */
 int	exists(char *file);
