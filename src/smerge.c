@@ -937,6 +937,13 @@ do_diff_merge(void)
 		memset(&conf, 0, sizeof(conf));
 		conf.start[GCA] = start - 1;
 		conf.end[GCA] = end - 1;
+#if SHOW_SEQ
+		if (start - 1 > 0) {
+			conf.start_seq = body[GCA].lines[start - 2].seq;
+		}
+		conf.end_seq = body[GCA].lines[end - 1].seq;
+#endif
+
 		diffwalk_range(ldiff, LEFT, &conf);
 		diffwalk_range(rdiff, RIGHT, &conf);
 
@@ -1079,7 +1086,13 @@ resolve_conflict(conflct *curr)
 	if (curr->merged) {
 		ld_t	*p;
 		/* This region was automerged */
-		if (fdiff) printf("M %d\n", curr->start_seq);
+		if (fdiff) {
+			putchar('M');
+#ifdef SHOW_SEQ
+			printf(" %d", curr->start_seq);
+#endif
+			putchar('\n');
+		}
 		for (p = curr->merged; p->line; p++) {
 			printline(p, 0);
 		}
@@ -1098,8 +1111,10 @@ resolve_conflict(conflct *curr)
 	}
 	if (fdiff) {
 		putchar('E');
+#ifdef SHOW_SEQ
 		assert(curr->end_seq);
 		printf(" %d", curr->end_seq);
+#endif
 		putchar('\n');
 	}
 	return (ret);
@@ -1328,7 +1343,9 @@ user_conflict_fdiff(conflct *c)
 	blankline.anno = 0;
 
 	putchar('L');
+#ifdef SHOW_SEQ
 	unless (c->merged) printf(" %d", c->start_seq);
+#endif
 	putchar('\n');
 	lp = left;
 	rp = right;

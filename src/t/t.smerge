@@ -492,3 +492,63 @@ last line of block matches
 EOF
 if [ $? -ne 0 ]; then echo failed; cat OUT;exit 1; fi
 echo OK
+
+# Test a fmtool fdiff output with :-Im -f
+echo $N verify an fdiff output format ...............................$NL
+cat <<EOF > fdiffm
+a
+b
+c
+EOF
+bk new $Q fdiffm
+bk edit $Q fdiffm
+cat <<EOF > fdiffm
+main
+b
+c
+main end
+EOF
+bk delta $Q -ynone fdiffm
+bk _get $Q -e -r1.1
+cat <<EOF > fdiffm
+branch
+b
+c
+branch end
+EOF
+bk delta $Q -ynone fdiffm
+bk smerge -Im -f fdiffm 1.1 1.1.1.1 > fdiffm_R
+bk smerge $D3 -Im -f fdiffm 1.1 1.1.1.1 > fdiffm_RD3
+cat <<EOF > fdiffm_D
+M
+ 1.1.1.1       | branch
+L
+ 1.1           | a
+s
+R
+-1.1           | a
++1.1.1.1       | branch
+E
+ 1.1           | b
+ 1.1           | c
+M
+ 1.1.1.1       | branch end
+L
+s
+R
++1.1.1.1       | branch end
+E
+EOF
+cmp -s fdiffm_R fdiffm_D || {
+	echo failed
+	echo difference between actual and desired:
+	diff fdiffm_R fdiffm_D
+	exit 1
+}
+cmp -s fdiffm_RD3 fdiffm_D || {
+	echo failed
+	echo difference between actual and desired in diff3:
+	diff fdiffm_RD3 fdiffm_D
+	exit 1
+}
+echo OK
