@@ -965,15 +965,23 @@ find_wish()
 		for (s = p; (*s != PATH_DELIM) && (*s != '\0');  s++);
 		if (*s == '\0') more = 0;
 		*s = '\0';
-		sprintf(wish_path, "%s/wish%s", p, EXE);
-		if (exists(wish_path)) return (wish_path);
 		sprintf(wish_path, "%s/wish83%s", p, EXE);
+		if (exists(wish_path)) return (wish_path);
+		sprintf(wish_path, "%s/wish8.3%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
 		sprintf(wish_path, "%s/wish82%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
+		sprintf(wish_path, "%s/wish8.2%s", p, EXE);
+		if (exists(wish_path)) return (wish_path);
 		sprintf(wish_path, "%s/wish81%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
+		sprintf(wish_path, "%s/wish8.1%s", p, EXE);
+		if (exists(wish_path)) return (wish_path);
 		sprintf(wish_path, "%s/wish80%s", p, EXE);
+		if (exists(wish_path)) return (wish_path);
+		sprintf(wish_path, "%s/wish8.0%s", p, EXE);
+		if (exists(wish_path)) return (wish_path);
+		sprintf(wish_path, "%s/wish%s", p, EXE);
 		if (exists(wish_path)) return (wish_path);
 		p = ++s;
 	}
