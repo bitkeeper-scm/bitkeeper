@@ -10,10 +10,10 @@ private char	**getrev(char *rev, int aflg);
 private char	**mk_list(char *, char **);
 private int	clean_file(char **);
 private	int	moveAndSave(char **fileList);
-private int	move_file(void);
+private int	move_file(char *checkfiles);
 private int	do_rename(char **, char *);
 private int	check_patch(void);
-private int	doit(char **fileList, char *rev_list, char *qflag);
+private int	doit(char **fileList, char *rev_list, char *qflag, char *);
 
 private	int	checkout;
 
@@ -31,6 +31,7 @@ undo_main(int ac,  char **av)
 	char	*cmd = 0, *rev = 0;
 	int	aflg = 0;
 	char	**fileList = 0;
+	char	*checkfiles;	/* filename of list of files to check */
 #define	LINE "---------------------------------------------------------\n"
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo_backup"
@@ -157,8 +158,10 @@ err:		if (undo_list[0]) unlink(undo_list);
 	 */
 	if (moveAndSave(fileList)) goto err;
 
+	gettemp(buf, "undo_ck");
+	checkfiles = strdup(buf); /* fix in 4.0 */
 	chdir(ROOT2RESYNC);
-	if (doit(fileList, rev_list, qflag)) {
+	if (doit(fileList, rev_list, qflag, checkfiles)) {
 		chdir(RESYNC2ROOT);
 		goto err;
 	}
@@ -170,13 +173,14 @@ err:		if (undo_list[0]) unlink(undo_list);
 		    BK_UNDO);
 	}
 	if (streq(qflag, "")) printf("Running consistency check...\n");
-	if ((rc = system("bk -r check -af")) == 2) { /* 2 means try again */
-		if (streq(qflag, "")) {
-			printf("Running consistency check again ...\n");
-		}
-		rc = system("bk -r check -a ");
+	if (strieq("yes", user_preference("partial_check"))) {
+		rc = run_check(checkfiles, 1);
+	} else {
+		rc = run_check(0, 1);
 	}
-	rc = WIFEXITED(rc) ? WEXITSTATUS(rc) : 0;
+	unlink(checkfiles);
+	free(checkfiles);
+
 	sig_default();
 
 	freeLines(fileList);
@@ -189,7 +193,7 @@ err:		if (undo_list[0]) unlink(undo_list);
 }
 
 private int
-doit(char **fileList, char *rev_list, char *qflag)
+doit(char **fileList, char *rev_list, char *qflag, char *checkfiles)
 {
 	char	buf[MAXLINE];
 
@@ -216,7 +220,8 @@ doit(char **fileList, char *rev_list, char *qflag)
 		return (-1);
 	}
 	putenv("BK_IGNORELOCK=NO");
-	if (move_file()) return (-1); /* mv from RESYNC to user tree */
+	/* mv from RESYNC to user tree */
+	if (move_file(checkfiles)) return (-1);
 	return (0);
 }
 
@@ -341,50 +346,32 @@ mk_list(char *rev_list, char **csetrev_list)
 private int
 do_rename(char **fileList, char *qflag)
 {
-	project *proj = 0;
 	FILE	*f;
 	int 	i, rc, status;
-	char	*cmd;
-	
-	cmd = aprintf("bk renumber %s -", qflag);
-	f = popen(cmd, "w"); 
+	char	*flist;
+	char	*quiet;
+
+	flist = bktmpfile();
+	assert(flist);
+	f = fopen(flist, "w");
 	assert(f);
-	free(cmd);
 	EACH (fileList) {
 		char	*sfile = fileList[i];
 		unless (exists(sfile)) continue;
 		fprintf(f, "%s\n", sfile);
 	}
-	status = pclose(f);
-	rc = WEXITSTATUS(status);
-	if (rc) return(rc);
+	fclose(f);
 
-	cmd = aprintf("bk names %s -", qflag);
-	f = popen(cmd, "w"); 
-	assert(f);
-	free(cmd);
-	EACH (fileList) {
-		char	*sfile = fileList[i];
-		char	*old_path;
-		delta	*d;
-		sccs	*s;
-
-		unless (exists(sfile)) continue;
-		s = sccs_init(sfile, INIT_NOCKSUM|INIT_SAVEPROJ, proj);
-		assert(s);
-		unless(proj) proj = s->proj;
-		d = findrev(s, 0);
-		assert(d);
-		old_path = name2sccs(d->pathname);
-		sccs_free(s);
-		unless (streq(sfile, old_path)) fprintf(f, "%s\n", sfile);
-		free(old_path);
+	quiet = streq(qflag, "") ? "--" : qflag;
+	status = sysio(flist, 0, 0, "bk", "renumber", quiet, "-", SYS);
+	rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+	unless (rc) {
+		status = sysio(flist, 0, 0, "bk", "names", quiet, "-", SYS);
+		rc = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 	}
-	if (proj) proj_free(proj);
-	status = pclose(f);
-	rc = WEXITSTATUS(status);
-
-	return rc;
+	unlink(flist);
+	free(flist);
+	return (rc);
 }
 
 private int
@@ -470,10 +457,11 @@ moveAndSave(char **fileList)
  * Move file from RESYNC tree to the user tree
  */
 private int
-move_file()
+move_file(char *checkfiles)
 {
 	char	from[MAXPATH], to[MAXPATH];
 	FILE	*f;
+	FILE	*chk;
 	int	rc = 0;
 
 	/*
@@ -500,8 +488,10 @@ move_file()
 	/*
 	 * Throw the file "over the wall"
 	 */
+	chk = fopen(checkfiles, "w");
 	f = popen("bk sfiles", "r");
 	while (fnext(from, f)) {
+		fputs(from, chk);
 		chop(from);
 		sprintf(to, "../%s", from);
 		if (mv(from, to)) {
@@ -523,6 +513,7 @@ move_file()
 		};
 	}
 	pclose(f);
+	fclose(chk);
 	return (rc);
 }
 

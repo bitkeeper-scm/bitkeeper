@@ -22,7 +22,7 @@ private int	sfio(opts opts, int gz, remote *r);
 private void	usage(void);
 private int	initProject(char *root);
 private	void	lclone(opts, remote *, char *to);
-private int	linkdir(char *from, char *to, char *dir);
+private int	linkdir(char *from, char *dir);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
@@ -253,32 +253,49 @@ private	int
 clone2(opts opts, remote *r)
 {
 	char	*p;
-
-	/* remove any uncommited stuff */
-	sccs_rmUncommitted(opts.quiet);
-
-	/* remove any later stuff */
-	if (opts.rev && after(opts.quiet, opts.rev)) {
-		fprintf(stderr, "Undo failed, repository left locked.\n");
-		return (-1);
-	}
-
-	/* clean up empty directories */
-	rmEmptyDirs(opts.quiet);
-
-	parent(opts, r);
-
-	if (consistency(opts.quiet)) {
-		fprintf(stderr,
-			"Consistency check failed, repository left locked.\n");
-		return (-1);
-	}
+	char	*checkfiles = bktmpfile();
+	FILE	*f;
+	int	rc;
 
 	/*
 	 * Invalidate the project cache, we have changed directory
 	 */
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
+
+	f = fopen(checkfiles, "w");
+	assert(f);
+	sccs_rmUncommitted(opts.quiet, f);
+	fclose(f);
+
+	parent(opts, r);
+
+	/* remove any later stuff */
+	if (opts.rev) {
+		if (after(opts.quiet, opts.rev)) {
+			fprintf(stderr,
+			    "Undo failed, repository left locked.\n");
+			return (-1);
+		}
+	} else {
+		/* undo already runs check so we only need this case */
+		unless (opts.quiet) {
+			fprintf(stderr, "Running consistency check ...\n");
+		}
+		if (strieq("yes", user_preference("partial_check"))) {
+			rc = run_check(checkfiles, 1);
+		} else {
+			rc = run_check(0, 1);
+		}
+		if (rc) {
+			fprintf(stderr, "Consistency check failed, "
+			    "repository left locked.\n");
+			return (-1);
+		}
+	}
+	unlink(checkfiles);
+	free(checkfiles);
+
 	p = user_preference("checkout");
 	if (strieq(p, "edit")) {
 		sys("bk", "-Ur", "edit", "-q", SYS);
@@ -340,14 +357,15 @@ sfio(opts opts, int gzip, remote *r)
 }
 
 void
-sccs_rmUncommitted(int quiet)
+sccs_rmUncommitted(int quiet, FILE *f)
 {
 	FILE	*in;
+	FILE	*out;
 	char	buf[MAXPATH+MAXREV];
-	char	rev[MAXREV];
-	char	*cmds[10];
+	char	lastfile[MAXPATH];
 	char	*s;
 	int	i;
+	char	**files = 0;	/* uniq list of s.files */
 
 	unless (quiet) {
 		fprintf(stderr,
@@ -356,33 +374,43 @@ sccs_rmUncommitted(int quiet)
 	/*
 	 * "sfile -p" should run in "slow scan" mode because sfio did not
 	 * copy over the d.file and x.dfile
+	 * But they do exist after an lclone.
 	 */
 	unless (in = popen("bk sfiles -pAC", "r")) {
 		perror("popen of bk sfiles -pAC");
 		exit(1);
 	}
+	sprintf(buf, "bk stripdel %s -", (quiet ? "-q" : ""));
+	unless (out = popen(buf, "w")) {
+		perror("popen(bk stripdel -, w)");
+		exit(1);
+	}
+	lastfile[0] = 0;
 	while (fnext(buf, in)) {
+		fputs(buf, out);
 		chop(buf);
 		s = strrchr(buf, BK_FS);
 		assert(s);
-		*s++ = 0;
-		cmds[i = 0] = "bk";
-		cmds[++i] = "stripdel";
-		if (quiet) cmds[++i] = "-q";
-		sprintf(rev, "-r%s", s);
-		cmds[++i] = rev;
-		cmds[++i] = buf;
-		cmds[++i] = 0;
-		i = spawnvp_ex(_P_WAIT, "bk", cmds);
-		if (!WIFEXITED(i) || WEXITSTATUS(i)) {
-			fprintf(stderr, "Failed:");
-			for (i = 0; cmds[i]; i++) {
-				fprintf(stderr, " %s", cmds[i]);
-			}
-			fprintf(stderr, "\n");
+		*s = 0;
+		unless (streq(buf, lastfile)) {
+			files = addLine(files, strdup(buf));
+			strcpy(lastfile, buf);
 		}
 	}
 	pclose(in);
+	if (pclose(out)) {
+		fprintf(stderr, "clone: stripdel failed, continuing...\n");
+	}
+	EACH (files) {
+		if (f && exists(files[i])) fprintf(f, "%s\n", files[i]);
+
+		/* remove d.file.  If is there is an lclone */
+		s = strrchr(files[i], '/');
+		assert(s[1] == 's');
+		s[1] = 'd';
+		unlink(files[i]);
+	}
+	freeLines(files);
 
 	/*
 	 * We have a clean tree, enable the "fast scan" mode for pending file
@@ -409,33 +437,6 @@ after(int quiet, char *rev)
 	cmds[++i] = 0;
 	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	free(p);
-	unless (WIFEXITED(i))  return (-1);
-	return (WEXITSTATUS(i));
-}
-
-int
-consistency(int quiet)
-{
-	char	*cmds[10];
-	int	ret, i;
-
-	unless (quiet) {
-		fprintf(stderr, "Running consistency check ...\n");
-	}
-	cmds[i = 0] = "bk";
-	cmds[++i] = "-r";
-	cmds[++i] = "check";
-	cmds[++i] = "-acf";
-	cmds[++i] = 0;
-	ret = spawnvp_ex(_P_WAIT, "bk", cmds);
-	unless (WIFEXITED(ret)) return (-1);
-	ret = WEXITSTATUS(ret);
-	unless (ret == 2) return (ret);
-	unless (quiet) {
-		fprintf(stderr, "Running consistency check again ...\n");
-	}
-	cmds[i-1] = 0;
-	i = spawnvp_ex(_P_WAIT, "bk", cmds);
 	unless (WIFEXITED(i))  return (-1);
 	return (WEXITSTATUS(i));
 }
@@ -500,6 +501,7 @@ lclone(opts opts, remote *r, char *to)
 	FILE	*f;
 	char	*p;
 	int	level;
+	struct	stat sb;
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -565,13 +567,24 @@ out:		chdir(from);
 		unless (opts.quiet || streq(".", buf)) {
 			fprintf(stderr, "Linking %s\n", buf);
 		}
-		if (linkdir(from, dest, buf)) {
+		if (linkdir(from, buf)) {
 			pclose(f);
 			goto out;	/* don't unlock RESYNC */
 		}
 	}
 	pclose(f);
 	chdir(from);
+	/* copy timestamp on CHECKED file */
+	unless (stat(CHECKED, &sb)) {
+		struct	utimbuf tb;
+		sprintf(buf, "%s/%s", dest, CHECKED);
+		touch(buf, GROUP_MODE);
+		tb.actime = sb.st_atime;
+		tb.modtime = sb.st_mtime;
+		utime(buf, &tb);
+	}
+	sprintf(buf, "%s/%s", dest, IDCACHE);
+	link(IDCACHE, buf);	/* linking IDCACHE is safe */
 	chdir("BitKeeper/etc/SCCS");
 	/* the 2 redirect works, we're on Unix */
 	p = aprintf("cp x.* %s/BitKeeper/etc/SCCS 2>/dev/null", dest);
@@ -580,7 +593,6 @@ out:		chdir(from);
 	chdir(from);
 	repository_rdunlock(0);
 	chdir(dest);
-	unlink("BitKeeper/etc/SCCS/x.dfile");
 	rmdir("RESYNC");		/* undo wants it gone */
 	if (clone2(opts, r)) {
 		mkdir("RESYNC", 0777);
@@ -638,7 +650,7 @@ in_trigger(char *status, char *rev, char *root)
 }
 
 private int
-linkdir(char *from, char *to, char *dir)
+linkdir(char *from, char *dir)
 {
 	char	buf[MAXPATH];
 	char	dest[MAXPATH];
@@ -657,7 +669,7 @@ linkdir(char *from, char *to, char *dir)
 	}
 	unless (d) return (0);
 	while (e = readdir(d)) {
-		unless (e->d_name[0] == 's') continue;
+		unless (e->d_name[0] == 's' || e->d_name[0] == 'd') continue;
 		sprintf(buf, "%s/%s/SCCS/%s", from, dir, e->d_name);
 		if (access(buf, R_OK)) {
 			perror(buf);

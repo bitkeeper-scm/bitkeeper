@@ -133,6 +133,12 @@ process(char *root, char *start, char *end,
 	}
 	if (start && *start) {
 		d1 = sccs_findKey(s, start);
+		unless (d1) {
+			fprintf(stderr,
+"ERROR: rset: Can't find key '%s'\n\tin %s, run 'bk -r check -a'\n",
+			    start, s->sfile);
+			exit (1);
+		}
 		rev1 = d1->rev;
 		path1 = d1->pathname;
 	} else {
@@ -141,6 +147,12 @@ process(char *root, char *start, char *end,
 	}
 	if (end && *end) {
 		d2 = sccs_findKey(s, end);
+		unless (d2) {
+			fprintf(stderr,
+"ERROR: rset: Can't find key '%s'\n\tin %s, run 'bk -r check -a'\n",
+			    end, s->sfile);
+			exit (1);
+		}
 		rev2 = d2->rev;
 		path2 = d2->pathname;
 	} else {
