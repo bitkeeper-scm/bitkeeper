@@ -65,27 +65,33 @@ mail(char *to, char *subject, char *file)
 	
 }
 #else
-pid
+pid_t
 mail(char *to, char *subject, char *file)
 {
 	int	i = -1;
 	char	buf[MAXLINE];
+	pid_t	pid;
+	extern	char *bin;
 
 	if (strstr(project_name(), "BitKeeper Test repo") &&
 	    (bkusers(1, 1, 0) <= 5)) {
 		/* TODO : make sure our root dir is /tmp/.regression... */
-		return;
+		return (-9);
 	}
 
 	if (findprog("blat.exe") ) {
 		char *av[] = {"blat", file, "-t", to, "-s", subject, "-q", 0};
 
-		if (spawnvp_ex(_P_WAIT, av[0], av) == 0) return;
+		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
+		if (pid != -1) return (pid);
 	}
 	if (findprog("mail.bat") ) {
-		sprintf(buf,
-		    "%s/mail.bat -s \"%s\" %s %s", bin, subject, to, file);
-		if (system(buf) == 0) return;
+		char mail_bat[MAXPATH];
+		char *av[] = {mail_bat, subject, to, file, 0};
+
+		sprintf(mail_bat, "%s/mail.bat", bin);
+		pid = spawnvp_ex(_P_NOWAIT, av[0], av);
+		return (pid);
 	} 
 	fprintf(stderr, "\n\
 ===========================================================================\n\
@@ -103,6 +109,6 @@ You should put the mail.bat file in the BitKeeper directory.\n\
 The mail.bat command should exit with status zero when the mail is \n\
 sent sucessfully.\n\
 ===========================================================================\n");
-	return;
+	return (-1);
 }
 #endif

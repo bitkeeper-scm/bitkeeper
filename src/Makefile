@@ -229,7 +229,7 @@ test tests rsh rshtest:
 	PREFER_RSH=YES $(MAKE) realtest
 
 realtest: $(ALL) t/doit
-	-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
+	-./bk get -q t/SCCS/s.t.* t/setup
 	cd t && ./doit
 
 t/doit: t/doit.sh substvars
@@ -458,9 +458,9 @@ install-nolinks: all
 	@if [ ! -d $(BINDIR)/t ]; \
 	then	mkdir $(BINDIR)/t; \
 	fi
-	@-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
-	@cp -f t/doit t/t.* t/setup t/cleanup $(BINDIR)/t
-	@./bk chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup t/cleanup \
+	@-./bk get -q t/SCCS/s.t.* t/setup
+	@cp -f t/doit t/t.* t/setup $(BINDIR)/t
+	@./bk chksum $(BINS) $(SCRIPTS) $(DATA) t/doit t/t.* t/setup \
 		| sort > $(BINDIR)/MANIFEST
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \
