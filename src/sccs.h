@@ -128,7 +128,7 @@
 #define	S_BADREVS	0x00000080	/* has corrupted revisions */
 #define	S_available	0x00000100	/* OLD: make the landing pad big */
 #define	S_CSET		0x00000200	/* this is a changeset file */
-#define S_MAPPRIVATE	0x00000400	/* hack for Samba */
+#define S_MAPPRIVATE	0x00000400	/* hack for hpux */
 #define S_READ_ONLY	0x00000800	/* force read only mode */
 #define	S_RANGE2	0x00001000	/* second call for date|rev range */
 #define	S_SET		0x00002000	/* the tree is marked with a set */
