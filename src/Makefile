@@ -406,6 +406,9 @@ fmtool: gui/fmtool.tcl gui/config.tcl port/$(SYS)_platform.tcl \
 fm3tool: gui/fm3tool.tcl gui/config.tcl gui/common.tcl
 	cat gui/config.tcl gui/common.tcl gui/fm3tool.tcl > fm3tool
 
+rpm:	bk.spec production
+	rpm -bb bk.spec
+
 # Touch this and die.  --lm
 install: install-nolinks
 	@if uname -s | grep _NT; \

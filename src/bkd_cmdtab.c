@@ -7,6 +7,7 @@ struct cmd cmds[] = {
   { "clone", "clone the current repository", cmd_clone },
   { "help", "print this help", cmd_help },
   { "httpget", "http get command", cmd_httpget },
+  { "get", "http get command", cmd_httpget },
   { "pull",
     "pull remote changes from current repository into client repository",
     cmd_pull },
