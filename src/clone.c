@@ -152,10 +152,10 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 			usage();
 		}
 	} else {
-#ifdef BKD_VERSION1_2
-		/* try bkd 1.2 protocol */
-		try_clone1_2(opts.quiet, gzip, opts.rev, r, local, buf);
-#endif
+		fprintf(stderr, "It looks like the remote is an older BK.\n");
+		fprintf(stderr,
+		    "Try \"bk oclone\" and please upgrade the server.\n");
+		return (-1);
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
 		disconnect(r, 2);

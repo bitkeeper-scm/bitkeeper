@@ -212,6 +212,45 @@ test -f ChangeSet || {
 bk clean
 echo OK
 
+echo $N Make sure get -S does not reget a read only file ............$NL
+bk get $Q moved
+sed s/Hi/Bye/ < moved > M
+rm -f moved
+mv M moved
+chmod 0444 moved
+bk get -S moved || {
+	echo get should not have errored
+	exit 1
+}
+bk get -qkp moved | cmp -s - moved && {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Make sure get -S does not reget an edited file ..............$NL
+bk get $Q -e moved
+sed s/Hi/Bye/ < moved > M
+mv M moved
+bk get -S moved || {
+	echo get should not have errored
+	exit 1
+}
+bk get -qkp moved | cmp -s - moved && {
+	echo failed
+	exit 1
+}
+bk unedit moved
+echo OK
+
+echo $N Make sure get -S does get an ungotten file ..................$NL
+bk get $Q -S moved
+test -f moved || {
+	echo failed
+	exit 1
+}
+echo OK
+
 if [ $PLATFORM = "WIN32" ]
 then #-------------------------------------------------------------
 echo $N Make sure get creats gfile with real name ...................$NL

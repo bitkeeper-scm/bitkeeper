@@ -37,31 +37,31 @@ bkd_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:qRs:St:u:x:")) != -1) {
 		switch (c) {
-		    case 'c': Opts.count = atoi(optarg); break;	/* doc 2.0 */
-		    case 'd': Opts.daemon = 1; break;	/* doc 2.0 */
-		    case 'D': Opts.debug = 1; break;	/* doc 2.0 */
+		    case 'c': Opts.count = atoi(optarg); break;
+		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
+		    case 'D': Opts.debug = 1; break;		/* doc 2.0 */
 		    case 'e': Opts.errors_exit = 1; break;	/* doc 2.0 */
 		    case 'i': Opts.interactive = 1; break;	/* doc 2.0 */
 		    case 'h': Opts.http_hdr_out = 1; break;	/* doc 2.0 */
-		    case 'l':	/* doc 2.0 */
+		    case 'l':					/* doc 2.0 */
 			Opts.log = optarg ? fopen(optarg, "a") : stderr;
 			break;
-		    case 'L':	/* doc 2.0 */
+		    case 'L':					/* doc 2.0 */
 			logRoot = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
-		    case 'q': Opts.quiet = 1; break; /* undoc? 2.0 */
+		    case 'q': Opts.quiet = 1; break; 		/* undoc? 2.0 */
 #ifdef WIN32
 		    case 'E': putenv((strdup)(optarg)); break;	/* undoc 2.0 */
 		    case 's': Opts.startDir = optarg; break;	/* doc 2.0 */
-		    case 'S': 	/* undoc 2.0 */
+		    case 'S': 					/* undoc 2.0 */
 			Opts.start = 1; Opts.daemon = 1; break;
-		    case 'R': 	/* doc 2.0 */
+		    case 'R': 					/* doc 2.0 */
 			Opts.remove = 1; Opts.daemon = 1; break;
 #endif
 		    case 't': Opts.alarm = atoi(optarg); break;	/* doc 2.0 */
-		    case 'u': uid = optarg; break;	/* doc 2.0 */
-		    case 'x': exclude(optarg); break;	/* doc 2.0 */
+		    case 'u': uid = optarg; break;		/* doc 2.0 */
+		    case 'x': exclude(optarg); break;		/* doc 2.0 */
 		    default: usage();
 	    	}
 	}

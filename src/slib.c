@@ -5772,14 +5772,12 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 		unlink(f);
 	} else {
 		/* With -G/somewhere/foo.c we need to check the gfile again */
+		if (flags & GET_NOREGET) flags |= SILENT;
 		if (WRITABLE(s) && writable(s->gfile)) {
 			verbose((stderr, "Writeable %s exists\n", s->gfile));
 			s->state |= S_WARNED;
-			return ((flags & GET_NOREGET) ? 0 : (char *)-1);
+			return ((flags & GET_NOREGET) ? 0 : (char*)-1);
 		} else if ((flags & GET_NOREGET) && exists(s->gfile)) {
-			verbose((stderr,
-			    "%s is already checked out\n", s->gfile));
-			s->state |= S_WARNED;
 			return (0);
 		}
 		f = s->gfile;
@@ -5948,9 +5946,12 @@ out:			if (slist) free(slist);
 			if (state) free(state);
 			if (DB) mdbm_close(DB);
 			/*
-			 * -1 means it was an error, 0 means it's OK.
+			 * 0 == OK
+			 * 1 == error
+			 * 2 == No reget
 			 */
-			return (f == (char*)-1);
+			unless (f) return (2);
+			return (1);
 		}
 		popened = openOutput(s, encoding, f, &out);
 		unless (out) {
@@ -6281,7 +6282,7 @@ sccs_get(sccs *s, char *rev,
 	char *mRev, char *iLst, char *xLst, u32 flags, char *printOut)
 {
 	delta	*d;
-	int	lines = 0, locked = 0, error;
+	int	lines = -1, locked = 0, error;
 	char	*i2 = 0;
 
 	debug((stderr, "get(%s, %s, %s, %s, %s, %x, %s)\n",
@@ -6405,7 +6406,13 @@ err:		if (i2) free(i2);
 			fileType(d->mode));
 		error = 1;
 	}
-	if (error) goto err;
+	switch (error) {
+	    case 0: break;
+	    case 1: goto err;
+	    case 2: flags |= SILENT; error = 0; break;	/* reget; no get */
+	    default:
+		assert("bad error return in get" == 0);
+	}
 	debug((stderr, "GET done\n"));
 
 skip_get:
@@ -6427,7 +6434,7 @@ skip_get:
 			fprintf(stderr, " -> %s", rev);
 		}
 		unless (flags & GET_SKIPGET) {
-			fprintf(stderr, ": %d lines", lines);
+			if (lines >= 0) fprintf(stderr, ": %d lines", lines);
 		}
 		fprintf(stderr, "\n");
 	}
