@@ -64,7 +64,7 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  sfiles.o sfind.o sfio.o sinfo.o slib.o \
 	  status.o stripdel.o synckeys.o sys.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
-	  version.o what.o zgets.o zone.o license.o trigger.o
+	  version.o what.o zgets.o zone.o license.o trigger.o bkver.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o
 ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
@@ -309,6 +309,10 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	  `sh ./utils/os` \
 	) >bk.v
 	mv -f bk.v bk.ver
+
+bkver.c: ../SCCS/s.ChangeSet
+	bk prs -hr+ -d'char bk_vers[] = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\n' ../ChangeSet > bk.v
+	mv -f bk.v bkver.c
 
 # Because we need the execute bit on
 utils/os utils/gnu-os: $(BK)
