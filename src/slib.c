@@ -1668,7 +1668,7 @@ findSym(symbol *s, char *name)
  *		trunk or a branch if it is specified as -r1 or -r1.2.1.
  *		Note that -r1 will not find tot if tot is 2.1; use a null
  *		rev to get that.
- *	getedit() finds the revision and gets the new revision number for a
+ *	sccs_getedit() finds the revision and gets the new revision number for a
  *		new delta.  The find logic is findrev().  The new revision
  *		will be the next available on that line, unless there is
  *		a conflict or the forcebranch flag is set.  In either of
@@ -2220,19 +2220,19 @@ morekids(delta *d, int bk_mode)
  * Sep 2000 - removed branch, we don't support it.
  */
 delta *
-getedit(sccs *s, char **revp)
+sccs_getedit(sccs *s, char **revp)
 {
 	char	*rev = *revp;
 	ser_t	a = 0, b = 0, c = 0, d = 0;
 	delta	*e, *t;
 	static	char buf[MAXREV];
 
-	debug((stderr, "getedit(%s, %s)\n", s->gfile, notnull(*revp)));
+	debug((stderr, "sccs_getedit(%s, %s)\n", s->gfile, notnull(*revp)));
 	/*
 	 * use the findrev logic to get to the delta.
 	 */
 	e = findrev(s, rev);
-	debug((stderr, "getedit(e=%s)\n", e?e->rev:""));
+	debug((stderr, "sccs_getedit(e=%s)\n", e?e->rev:""));
 
 	unless (e) {
 		/*
@@ -2272,7 +2272,7 @@ ok:
 		} else {
 			sprintf(buf, "%d.%d.%d.%d", a, b, c, d+1);
 		}
-		debug((stderr, "getedit1(%s) -> %s\n", notnull(rev), buf));
+		debug((stderr, "sccs_getedit1(%s) -> %s\n", notnull(rev), buf));
 		*revp = buf;
 	}
 	else {
@@ -2290,7 +2290,7 @@ ok:
 		R[0] = t->r[0]; R[1] = t->r[1]; R[2] = 1; R[3] = 1;
 		while (_rfind(t)) R[2]++;
 		sprintf(buf, "%d.%d.%d.%d", R[0], R[1], R[2], R[3]);
-		debug((stderr, "getedit2(%s) -> %s\n", notnull(rev), buf));
+		debug((stderr, "sccs_getedit2(%s) -> %s\n", notnull(rev), buf));
 		*revp = buf;
 	}
 
@@ -6790,7 +6790,7 @@ err:		if (i2) free(i2);
 	}
 	/* XXX: if 'not in view' file, then ignore: NOT IMPLEMENTED YET */
 
-	/* this has to be above the getedit() - that changes the rev */
+	/* this has to be above the sccs_getedit() - that changes the rev */
 	if (mRev) {
 		char *tmp;
 
@@ -6808,7 +6808,7 @@ err:		if (i2) free(i2);
 	}
 	if (rev && streq(rev, "+")) rev = 0;
 	if (flags & GET_EDIT) {
-		d = getedit(s, &rev);
+		d = sccs_getedit(s, &rev);
 		if (!d) {
 			fprintf(stderr, "get: can't find revision %s in %s\n",
 			    notnull(rev), s->sfile);
@@ -10299,7 +10299,7 @@ sccs_newDelta(sccs *sc, delta *p, int isNullDelta)
 	n = sccs_dInit(n, 'D', sc, 0);
 	unless (p) p = findrev(sc, 0);
 	rev = p->rev;
-	getedit(sc, &rev);
+	sccs_getedit(sc, &rev);
 	n->rev = strdup(rev);
 	explode_rev(n);
 	n->pserial = p->serial;
@@ -12335,7 +12335,7 @@ out:
 	 * Catch p.files with bogus revs.
 	 */
 	rev = d->rev;
-	p = getedit(s, &rev);
+	p = sccs_getedit(s, &rev);
 	assert(p);	/* we just found it above */
 	unless (streq(rev, pf.newrev)) {
 		fprintf(stderr,

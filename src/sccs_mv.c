@@ -233,7 +233,7 @@ err:		if (sname) free(sname);
 		 */
 		strcpy(pf.oldrev, pf.newrev);
 		rev = NULL; /* Next rev will be relative to TOT */
-		getedit(s, &rev);
+		sccs_getedit(s, &rev);
 		strcpy(pf.newrev, rev);
 		sccs_rewrite_pfile(s, &pf);
 		free_pfile(&pf);

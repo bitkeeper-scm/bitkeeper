@@ -1174,7 +1174,7 @@ void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
-delta	*getedit(sccs *s, char **revp);
+delta	*sccs_getedit(sccs *s, char **revp);
 int	isCaseFoldingFS(char *root);
 void	line2av(char *cmd, char **av);
 void	smerge_saveseq(u32 seq);
