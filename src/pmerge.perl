@@ -18,7 +18,7 @@ eval 'exec perl -S $0 "$@"'
 sub doMerge
 {
 	local($lfile, $gca, $rfile) = @_;
-	local($out, $opt) = ("", "");
+	local($opt) = ("");
 
 	$opt = "-d" if $debug;
 	open(PIPE_FD, "bk fdiff -s $opt $lfile $gca $rfile |")
@@ -26,8 +26,7 @@ sub doMerge
 
 	@flist = &getdiff();
 	close(PIPE_FD);
-	die "tmp file conflict, $out already exist\n" if (-e $out);
-	&mkMerge(@flist, $out);
+	&mkMerge(@flist);
 	foreach $f (@flist) { &force_unlink($f); };
 	return 1;
 }
@@ -35,11 +34,10 @@ sub doMerge
 
 sub mkMerge
 {
-	local($lmarker, $ldata, $rmarker, $rdata, $out) = @_;
+	local($lmarker, $ldata, $rmarker, $rdata) = @_;
 	local($conflicts, $OverlapCount) = (0, "");
 	local($markers);
 
-	warn "MERGE into $out\n" if $debug;
 	open (LM, "<$lmarker") || die "cannot open $lmarker\n";
 	open (LD, "<$ldata") || die "cannot open $ldata\n";
 	open (RM, "<$rmarker") || die "cannot open $rmarker\n";
@@ -157,7 +155,7 @@ sub chkOverlap
 	@rrc = &getRight();
 	while (1) {
 		# If left/right block have no hard conflict, resolve it,
-		# push winning block back into the comman block and re-start
+		# push winning block back into the common block and re-start
 		# from top-of-loop.
 		# resolve into common1
 		if (&resolveConflict(@lrc, @rrc, *cdata1l, *cdata1r)
@@ -740,7 +738,7 @@ usage: pmerge [-abegmq] [-d<N>] left gca right
     -d<level>	debugging. (level can be 0-4, e.g -d2)
 
 	Pmerge performs a 3 way merge on text files.
-	The result of the merge is stored in "left".
+	The result of the merge is send to stdout.
 EOF
         exit 0;
 }

@@ -99,7 +99,7 @@ commit_main(int ac, char **av)
 			fclose(f);
 		}
 	} else {
-		sprintf(pendingFiles, "%s/bk_list%d", TMP_PATH, getpid());
+		gettemp(pendingFiles, "bk_pending");
 		sprintf(buf, "bk sfind -s,,p -C > %s", pendingFiles);
 		if (system(buf) != 0) {
 			unlink(pendingFiles);
@@ -242,11 +242,12 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	int	rc;
 	int	l;
 	char	buf[MAXLINE], sym_opt[MAXLINE] = "";
+	char	pendingFiles2[MAXPATH] = "";
 	char	s_cset[MAXPATH] = CHANGESET;
 	char    s_logging_ok[] = LOGGING_OK;
 	sccs	*s;
 	delta	*d;
-	FILE 	*f;
+	FILE 	*f, *f2;
 
 	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
@@ -255,6 +256,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		return (1);
 	}
 	if (pending(s_logging_ok)) {
+		int     len = strlen(s_logging_ok); 
 		char    tmp[100];
 
 		/*
@@ -264,25 +266,29 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		 * So we open the file in read mode close it and re-open
 		 * it in write mode
 		 */
-		s = sccs_init(s_logging_ok, 0, 0);
-		d = sccs_top(s);
-		sprintf(tmp, "%s@%s\n", s_logging_ok, d->rev);
-		sccs_free(s);
+		gettemp(pendingFiles2, "bk_pending2");
 		f = fopen(pendingFiles, "rb");
-		assert(f);
+		f2 = fopen(pendingFiles2, "wb");
+		assert(f); assert(f2);
 		while (fnext(buf, f)) {
-			if (streq(tmp, buf)) goto out;
+			/*
+			 * Skip the logging_ok files
+			 * We'll add it back when we exit this loop
+			 */
+			if (strneq(s_logging_ok, buf, len) && buf[len] == '@') {
+				continue;
+			}
+			fputs(buf, f2);
 		}
-		fclose (f);
-		f = fopen(pendingFiles, "ab");
-		fprintf(f, "%s", tmp);
-out:		fclose(f);
+		fprintf(f2, "%s@+\n", s_logging_ok); 
+		fclose(f);
+		fclose(f2);
 	}
 	if (sym) sprintf(sym_opt, "-S\"%s\"", sym);
 	sprintf(buf, "bk cset %s %s %s %s%s < %s",
 		opts.lod ? "-L": "", opts.quiet ? "-q" : "", sym_opt,
 		hasComment? "-Y" : "", hasComment ? commentFile : "",
-		pendingFiles);
+		pendingFiles2[0]? pendingFiles2 : pendingFiles);
 	rc = system(buf);
 /*
  * Do not enable this until
@@ -296,6 +302,9 @@ out:		fclose(f);
 #endif
 	if (unlink(commentFile)) perror(commentFile);
 	if (unlink(pendingFiles)) perror(pendingFiles);
+	if (pendingFiles2[0]) {
+		if (unlink(pendingFiles2)) perror(pendingFiles2);
+	}
 	if (rc) return (rc); /* if commit failed do not send log */
 	notify();
 	s = sccs_init(s_cset, 0, 0);
