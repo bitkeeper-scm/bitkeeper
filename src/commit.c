@@ -125,10 +125,22 @@ commit_main(int ac, char **av)
 		char	*cmd, *p;
 		FILE	*f, *f1;
 		char	commentFile[MAXPATH];
+		char	buf[512];
 
 		bktmp(commentFile, "commit");
+		f = popen("bk cat BitKeeper/templates/commit", "r");
+		assert(f);
+		if (fnext(buf, f)) {
+			f1 = fopen(commentFile, "w");
+			fputs(buf, f1);
+			while (fnext(buf, f)) {
+				fputs(buf, f1);
+			}
+			fclose(f1);
+		}
+		pclose(f);
 		cmd = aprintf("bk _sort -u | "
-			"bk sccslog -DA - > %s", commentFile);
+			"bk sccslog -DA - >> %s", commentFile);
 		f = popen(cmd, "w");
 		f1 = fopen(pendingFiles, "rt");
 		assert(f); assert (f1);
@@ -142,6 +154,7 @@ commit_main(int ac, char **av)
 		fclose(f1);
 		pclose(f);
 		free(cmd);
+
 		if (!doit && comments_prompt(commentFile)) {
 			printf("Commit aborted.\n");
 			unlink(pendingFiles);

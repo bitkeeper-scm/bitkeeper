@@ -52,6 +52,11 @@ It's useful to have the output of
 .B bk pending
 in another window to see what you did.
 .LP
+If no comments are provided and there is a 
+.I BitKeeper/templates/commit
+file present in the repository,
+then the default comments are the contents of that file.
+.LP
 .B Note:
 using the default comments on an import is not advisable.  The default
 comments contain information about each file and can create very large
@@ -66,6 +71,7 @@ Do not ask the user about logging, fail the commit unless OK.
 .tp
 .B \-d
 Don't run interactively; do the commit with the default comments.
+Ignores the commit template, if any.
 .tp
 .B \-R
 Tell commit that it is processing the resync directory.
@@ -90,6 +96,7 @@ Set check-in comment of changeset to
 .SA citool 1
 .SA import 1
 .SA pending 1
+.SA templates 1
 .SA tag 1
 .\" help://changeset
 .\" help://changesets
