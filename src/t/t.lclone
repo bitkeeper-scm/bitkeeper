@@ -57,5 +57,4 @@ cd $HERE/project/src
 bk lclone $Q $HERE/project sub_proj
 if [ ! -d $HERE/project/src/sub_proj ]; then echo failed; exit 1; fi
 cd $HERE/project; checkLocks; cd $HERE/project/src/sub_proj; checkLocks
-rm -rf $HERE/project/src/sub_proj
 echo OK
