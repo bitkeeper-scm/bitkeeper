@@ -124,6 +124,64 @@ proc revMap {file} \
         }
 }
 
+# If in annotated diff output, find parent and diff between parent 
+# and selected rev.
+#
+# If only a node in the graph is selected, then do the diff between it 
+# and its parent
+#
+proc diffParent {} \
+{
+	global w file rev1 rev2
+
+	set rev ""
+	set b ""
+	# See if node is selected and then try to get the revision number
+	set id [$w(graph) find withtag old]
+	if {$id != ""} {
+		set tags [$w(graph) gettags $id]
+		set bb [$w(graph) bbox $id]
+		set x1 [expr {[lindex $bb 0] - 1}]
+		set y1 [expr {[lindex $bb 1] - 1}]
+		set x2 [expr {[lindex $bb 2] + 1}]
+		set y2 [expr {[lindex $bb 3] + 1}]
+		if {$bb != ""} {
+			set b [$w(graph) find enclosed $x1 $y1 $x2 $y2]
+			set tag [lindex $b 2]
+			set tags [$w(graph) gettags $tag]
+			if {[lsearch $tags revtext] >= 0} { 
+				set rev_user [lindex $tags 0]
+				set rev [lindex [split $rev_user "-"] 0]
+				#puts "tags=($tags) rev=($rev)"
+			}
+		}
+	}
+	#puts "id=($id) rev=($rev)"
+	set selectedLine [$w(aptext) tag ranges select]
+	if {$selectedLine != ""} {
+		set l [lindex $selectedLine 0]
+		set line [$w(aptext) get $l "$l lineend - 1 char"]
+		if {[regexp \
+		    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line m user rev]} {
+			set parent [exec prs -d:PARENT:  -hr${rev} $file]
+			#puts "if: line=($line)"
+			#puts "rev=($rev) parent=($parent) f=($file)"
+			displayDiff $parent $rev
+		}
+	} elseif {$rev != ""} {
+		set rev1 [exec prs -d:PARENT: -hr${rev} $file]
+		set rev2 $rev
+		set base [file tail $file]
+		if {$base == "ChangeSet"} {
+			csetdiff2
+			return
+		}
+		busy 1
+		displayDiff $rev1 $rev2
+	}
+	return
+}
+
 # 
 # Center the selected bitkeeper tag in the middle of the canvas
 #
@@ -140,7 +198,7 @@ proc revMap {file} \
 proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 {
 	global curLine cdim gc file dev_null dspec rev2rev_name
-	global w rev1 srev errorCode comments_mapped
+	global w rev1 srev errorCode comments_mapped firstnode
 
 	if {[info exists fname]} {unset fname}
 
@@ -183,6 +241,7 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 		}
 		$win see $curLine
 	# Search for annotated file output or annotated diff output
+	# display comment window if we are in annotated file output
 	} elseif {[regexp \
 	    {^(.*)[ \t]+([0-9]+\.[0-9.]+).*\|} $line match fname rev]} {
 		set annotated 1
@@ -257,13 +316,24 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	if {[info exists rev2rev_name($rev)]} {
 		set revname $rev2rev_name($rev)
 	} else {
-		# menubuttons don't have the flash option
-		for {set x 0} {$x < 50} {incr x} {
-			.menus.mb configure -background green
-			update
-			.menus.mb configure -background $gc(hist.buttonColor)
+		# node is not in the view, get and display it, but
+		# don't mess with the lower windows.
+
+		set parent [exec prs -d:PARENT:  -hr${rev} $file]
+		if {$parent != 0} { 
+			set prev $parent
+		} else {
+			set prev $rev
 		}
+		#puts "prev=($prev)"
+		listRevs "-R${prev}.." "$file"
+		revMap "$file"
+		dateSeparate
+		setScrollRegion
+		set first [$w(graph) gettags $firstnode]
 		$w(graph) xview moveto 0 
+		set revname $rev2rev_name($rev)
+		
 		# XXX: This can be done cleaner -- coalesce this
 		# one and the bottom if into one??
 		if {($annotated == 0) && ($bindtype == "D1")} {
@@ -494,6 +564,7 @@ proc line {s width ht} \
 	set word [lindex $l [expr {[llength $l] - 1}]]
 	if {[regexp $line_rev $word dummy a] == 1} { set word $a }
 	regexp {(.*)-([^-]*)} $word dummy rev last
+	if {($last == "") || ($first == "")} {return}
 	set diff [expr {$last - $first}]
 	incr diff
 	set len [expr {$xspace * $diff}]
@@ -634,7 +705,7 @@ proc setScrollRegion {} \
 	#puts "bb_all=>($bb_all)"
 }
 
-proc listRevs {file} \
+proc listRevs {range file} \
 {
 	global	bad Opts merges dev_null ht screen stacked gc w
 
@@ -644,6 +715,10 @@ proc listRevs {file} \
 	set screen(maxy) 0
 	set lines ""
 
+	$w(graph) delete all
+	$w(graph) configure -scrollregion {0 0 0 0}
+
+	#puts "in listRevs range=($range) file=($file)"
 	# Put something in the corner so we get our padding.
 	# XXX - should do it in all corners.
 	#$w(graph) create text 0 0 -anchor nw -text " "
@@ -651,7 +726,7 @@ proc listRevs {file} \
 	# Figure out the biggest node and its length.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| bk _lines $Opts(line) $Opts(line_time) \"$file\" 2>$dev_null" "r"]
+	set d [open "| bk _lines $Opts(line) $range \"$file\" 2>$dev_null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -713,14 +788,14 @@ proc listRevs {file} \
 	return 0
 } ;# proc listRevs
 
-# If called from the bottom selection mechanism, we give getLeftRev a
-# handle to the revision box
+# If called from the button selection mechanism, we give getLeftRev a
+# handle to the graph revision node
+#
 proc getLeftRev { {id {}} } \
 {
 	global	rev1 rev2 w comments_mapped
 
-	# tear down comment window if user is using mouse to click on
-	# the canvas
+	# destroy comment window if user is using mouse to click on the canvas
 	if {$id == ""} {
 		catch {pack forget $w(cframe); set comments_mapped 0}
 	}
@@ -796,6 +871,9 @@ proc filltext {win f clear {msg {}}} \
 	if {$clear == 1 } { busy 0 }
 }
 
+#
+# Called from B1 binding -- selects a node and prints out the cset info
+#
 proc prs {} \
 {
 	global file rev1 dspec dev_null search w
@@ -910,6 +988,15 @@ proc diff2 {difftool {id {}} } \
 		difftool $file $rev1 $rev2
 		return
 	}
+	displayDiff $rev1 $rev2
+}
+
+# Display the difference text between two revisions. 
+proc displayDiff {rev1 rev2} \
+{
+
+	global file w tmp_dir dev_null Opts
+
 	set r1 [file join $tmp_dir $rev1-[pid]]
 	catch { exec bk get $Opts(get) -kPr$rev1 $file >$r1}
 	set r2 [file join $tmp_dir $rev2-[pid]]
@@ -952,12 +1039,13 @@ proc csetdiff2 {{rev {}}} \
 	while {[gets $revs r] >= 0} {
 		set c [open "| bk sccslog -r$r ChangeSet" r]
 		filltext $w(aptext) $c 0
-		set log [open "| bk cset -Hr$r | sort | bk sccslog -" r]
+		set log [open "| bk cset -Hr$r | bk _sort | bk sccslog -" r]
 		filltext $w(aptext) $log 0
 	}
 	busy 0
 }
 
+# Bring up csettool for a given set of revisions as selected by the mouse
 proc r2c {} \
 {
 	global file rev1 rev2
@@ -1341,6 +1429,7 @@ proc widgets {fname} \
 	bind $w(graph) <Double-1>	{get "id"; break}
 	bind $w(graph) <h>		"history"
 	bind $w(graph) <t>		"history tags"
+	bind . <d>			"diffParent"
 	bind . <Button-2>		{history; break}
 	bind . <Double-2>		{history tags; break}
 	bind $w(graph) $gc(hist.quit)	"exit"
@@ -1421,8 +1510,8 @@ proc histtool {fname R} \
 	set bad 0
 	set file [exec bk sfiles -g $fname 2>$dev_null]
 	if {"$file" == ""} {
-		puts "No such file $fname"
-		exit 0
+		puts stderr "No such file \"$fname\" rev=($R)"
+		exit 1
 	}
 	if {[catch {exec bk root $file} proot]} {
 		wm title . "histtool: $file $R"
@@ -1435,7 +1524,7 @@ proc histtool {fname R} \
 		set Opts(line_time) "-R$R"
 	}
 	# If valid time range given, do the graph
-	if {[listRevs "$file"] == 0} {
+	if {[listRevs $Opts(line_time) "$file"] == 0} {
 		revMap "$file"
 		dateSeparate
 		setScrollRegion

@@ -910,103 +910,36 @@ sccs_fixDates(sccs *s)
 }
 
 char	*
-age(time_t when)
+age(time_t when, char *space)
 {
-	if (when <= (10*60)) {
-		return ("10 minutes");
-	} else if (when <= (15*60)) {
-		return ("15 minutes");
-	} else if (when <= (30*60)) {
-		return ("30 minutes");
-	} else if (when <= (45*60)) {
-		return ("45 minutes");
-	} else if (when <= (60*60)) {
-		return ("60 minutes");
-	} else if (when <= (2*60*60)) {
-		return ("2 hours");
-	} else if (when <= (3*60*60)) {
-		return ("3 hours");
-	} else if (when <= (4*60*60)) {
-		return ("4 hours");
-	} else if (when <= (5*60*60)) {
-		return ("5 hours");
-	} else if (when <= (6*60*60)) {
-		return ("6 hours");
-	} else if (when <= (7*60*60)) {
-		return ("7 hours");
-	} else if (when <= (8*60*60)) {
-		return ("8 hours");
-	} else if (when <= (12*60*60)) {
-		return ("12 hours");
-	} else if (when <= (24*60*60)) {
-		return ("24 hours");
-	} else if (when <= (2*24*60*60)) {
-		return ("2 days");
-	} else if (when <= (3*24*60*60)) {
-		return ("3 days");
-	} else if (when <= (4*24*60*60)) {
-		return ("4 days");
-	} else if (when <= (5*24*60*60)) {
-		return ("5 days");
-	} else if (when <= (6*24*60*60)) {
-		return ("6 days");
-	} else if (when <= (7*24*60*60)) {
-		return ("7 days");
-	} else if (when <= (14*24*60*60)) {
-		return ("2 weeks");
-	} else if (when <= (21*24*60*60)) {
-		return ("3 weeks");
-	} else if (when <= (28*24*60*60)) {
-		return ("4 weeks");
-#define	MONTH	2628000
-	} else if (when <= (2*MONTH)) {
-		return ("2 months");
-	} else if (when <= (3*MONTH)) {
-		return ("3 months");
-	} else if (when <= (4*MONTH)) {
-		return ("4 months");
-	} else if (when <= (5*MONTH)) {
-		return ("5 months");
-	} else if (when <= (6*MONTH)) {
-		return ("6 months");
-	} else if (when <= (7*MONTH)) {
-		return ("7 months");
-	} else if (when <= (8*MONTH)) {
-		return ("8 months");
-	} else if (when <= (9*MONTH)) {
-		return ("9 months");
-	} else if (when <= (10*MONTH)) {
-		return ("10 months");
-	} else if (when <= (11*MONTH)) {
-		return ("11 months");
-	} else if (when <= (12*MONTH)) {
-		return ("12 months");
+	int	i;
+	static	char buf[100];
+
+#define	MINUTE	60
+#define	HOUR	(60*MINUTE)
+#define	DAY	(24*HOUR)
+#define	WEEK	(7*DAY)
+#define	MONTH	2628000		/* average */
 #define	YEAR	31536000
-	} else if (when <= (2*YEAR)) {
-		return ("2 years");
-	} else if (when <= (3*YEAR)) {
-		return ("3 years");
-	} else if (when <= (4*YEAR)) {
-		return ("4 years");
-	} else if (when <= (5*YEAR)) {
-		return ("5 years");
-	} else if (when <= (6*YEAR)) {
-		return ("6 years");
-	} else if (when <= (7*YEAR)) {
-		return ("7 years");
-	} else if (when <= (8*YEAR)) {
-		return ("8 years");
-	} else if (when <= (9*YEAR)) {
-		return ("9 years");
-	} else if (when <= (10*YEAR)) {
-		return ("10 years");
-	} else if (when <= (11*YEAR)) {
-		return ("11 years");
-	} else if (when <= (12*YEAR)) {
-		return ("12 years");
-	} else {
-		return ("more than twelve years");
+#define	DECADE	315360000
+#define	DOIT(SMALL, BIG, UNITS) \
+	if (when <= 3*BIG) {		/* first 3 BIG as SMALL */	\
+		for (i = 0; i <= 3*BIG; i += SMALL) {			\
+			if (when <= i) {				\
+				sprintf(buf, 				\
+				    "%d%s%s", i/SMALL, space, UNITS);	\
+				if (i/SMALL == 1) chop(buf);		\
+				return (buf);				\
+			}						\
+		}							\
 	}
+
+	DOIT(HOUR, DAY, "hours");		/* first 3 days as hours */
+	DOIT(DAY, WEEK, "days");		/* first 3 weeks as days */
+	DOIT(WEEK, MONTH, "weeks");		/* first 3 months as days */
+	DOIT(MONTH, YEAR, "months");		/* first 3 years as months */
+	DOIT(YEAR, DECADE, "years");		/* first 3 decades as years */
+	return ("more than 30 years");
 }
 
 private void
@@ -3191,7 +3124,6 @@ misc(sccs *s)
 			switch (atoi(&buf[5])) {
 			    case E_ASCII:
 			    case E_UUENCODE:
-			    case E_UUGZIP:
 			    case E_GZIP:
 			    case E_GZIP|E_UUENCODE:
 				s->encoding = atoi(&buf[5]);
@@ -5301,21 +5233,13 @@ openOutput(int encode, char *file, FILE **op)
 #endif
 		*op = toStdout ? stdout : fopen(file, "w");
 		break;
-	    case E_UUGZIP:
-		if (toStdout) {
-			*op = popen("gzip -d", M_WRITE_B);
-		} else {
-			sprintf(buf, "gzip -d > %s", file);
-			*op = popen(buf, M_WRITE_B);
-		}
-		break;
 	    default:
 		*op = NULL;
 		debug((stderr, "openOutput = %x\n", *op));
 		return (-1);
 	}
 	debug((stderr, "openOutput = %x\n", *op));
-	return (encode == E_UUGZIP);
+	return (0);
 }
 
 /*
@@ -5694,7 +5618,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	if ((s->state & S_RCS) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
 	/* Think carefully before changing this */
-	if ((s->encoding != E_ASCII) || hash) {
+	if (((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) || hash) {
 		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
 	}
 	unless (s->state & S_SCCS) flags &= ~(GET_EXPAND);
@@ -5844,8 +5768,7 @@ out:			if (slist) free(slist);
 
 			switch (encoding) {
 			    case E_GZIP|E_UUENCODE:
-			    case E_UUENCODE:
-			    case E_UUGZIP: {
+			    case E_UUENCODE: {
 				uchar	obuf[50];
 				int	n = uudecode1(e, obuf);
 
@@ -7059,7 +6982,9 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
-	if (s->encoding != E_ASCII) return (MCMP_DIFF);
+	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
+		return (MCMP_DIFF);
+	}
 	if (!(*flags & (GET_EXPAND|GET_RCSEXPAND))) return (MCMP_DIFF);
 	if (*flags & GET_EXPAND) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
@@ -7338,13 +7263,6 @@ deflate_gfile(sccs *s, char *tmpfile)
 		in = fopen(s->gfile, "r");
 		n = uuencode(in, out);
 		fclose(in);
-		fclose(out);
-		break;
-	    case E_UUGZIP:
-		sprintf(cmd, "gzip -nq4 < %s", s->gfile);
-		in = popen(cmd, M_READ_B);
-		uuencode(in, out);
-		pclose(in);
 		fclose(out);
 		break;
 	    default:
@@ -7770,7 +7688,7 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	unless (IS_EDITED(s)) { 
-		if (s->encoding == E_ASCII) {
+		if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 			flags |= GET_EXPAND;
 			if (s->state & S_RCS) flags |= GET_RCSEXPAND;
 		}
@@ -7984,20 +7902,6 @@ openInput(sccs *s, int flags, FILE **inp)
 		}
 		s->encoding = compress | E_UUENCODE;
 		return (0);
-	    case E_UUGZIP:
-		/* we do'nt support compressed E_UUGZIP yet */
-		assert((compress & E_GZIP) == 0);
-		/*
-		 * Some very seat of the pants testing showed that -4 was
-		 * the best time/space tradeoff.
-		 */
-		if (streq("-", file)) {
-			*inp = popen("gzip -nq4", M_READ_B);
-		} else {
-			sprintf(buf, "gzip -nq4 < %s", file);
-			*inp = popen(buf, M_READ_B);
-		}
-		return (1);
 	}
 }
 
@@ -9548,7 +9452,6 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 		if (streq(encp, "text")) enc = E_ASCII;
 		else if (streq(encp, "ascii")) enc = E_ASCII;
 		else if (streq(encp, "binary")) enc = E_UUENCODE;
-		else if (streq(encp, "uugzip")) enc = E_UUGZIP;
 		else {
 			fprintf(stderr,	"admin: unknown encoding format %s\n",
 				encp);
@@ -9561,9 +9464,11 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 	}
 
 	if (compp) {
-		if (streq(compp, "gzip")) comp = E_GZIP;
-		else if (streq(compp, "none")) comp = 0;
-		else {
+		if (streq(compp, "gzip")) {
+			comp = E_GZIP;
+		} else if (streq(compp, "none")) {
+			comp = 0;
+		} else {
 			fprintf(stderr, "admin: unknown compression format %s\n",
 				compp);
 			return (-1);
@@ -9658,12 +9563,6 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 	if (new_enc == -1) return -1;
 
 	debug((stderr, "new_enc is %d\n", new_enc));
-	if (new_enc == (E_GZIP|E_UUGZIP)) {
-		fprintf(stderr,
-			"can't compress a file with E_UUGZIP encoding\n");
-		error = -1; sc->state |= S_WARNED;
-		return (error);
-	}
 	GOODSCCS(sc);
 	unless (flags & (ADMIN_BK|ADMIN_FORMAT|ADMIN_GONE)) {
 		unless (locked = sccs_lock(sc, 'z')) {
@@ -11023,7 +10922,7 @@ out:
 #ifdef WIN32
 	/*
 	 * Win32 note: If gfile is in use, we cannot delete
-	 * it when we are done.It is better to bail now
+	 * it when we are done. It is better to bail now
 	 */
 	if (HAS_GFILE(s) &&
 	    !(flags & DELTA_SAVEGFILE) && fileBusy(s->gfile)) {
@@ -11991,6 +11890,27 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "HTML_C")) {
+		int	i;
+
+		unless (d->comments && (int)(long)(d->comments[0])) {
+			fs("&nbsp;");
+		} else {
+			EACH(d->comments) {
+				if (d->comments[i][0] == '\001') continue;
+				if (i > 1) fs("<br>");
+				if (d->comments[i][0] == '\t') {
+					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
+					fs("&nbsp;&nbsp;&nbsp;&nbsp;");
+					fs(&d->comments[i][1]);
+				} else {
+					fs(d->comments[i]);
+				}
+			}
+		}
+		return (strVal);
+	}
+
 	if (streq(kw, "UN")) {
 		/* users name(s) */
 		/* XXX this is a multi-line text field, definition unknown */
@@ -12264,13 +12184,21 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "ENC")) {
-		switch (s->encoding) {
+		switch (s->encoding & E_DATAENC) {
 		    case E_ASCII:
 			fs("ascii"); return (strVal);
 		    case E_UUENCODE:
 			fs("binary"); return (strVal);
-		    case E_UUGZIP:
-			fs("uugzip"); return (strVal);
+		}
+		return nullVal;
+	}
+
+	if (streq(kw, "COMPRESSION")) {
+		switch (s->encoding & E_COMP) {
+		    case 0: 
+			fs("none"); return (strVal);
+		    case E_GZIP:
+			fs("gzip"); return (strVal);
 		}
 		return nullVal;
 	}
@@ -12485,7 +12413,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	if (streq(kw, "AGE")) {	/* how recently modified */
 		time_t	when = time(0) - (d->date - d->dateFudge);
 
-		fs(age(when));
+		fs(age(when, " "));
+		return (strVal);
+	}
+
+	if (streq(kw, "HTML_AGE")) {	/* how recently modified */
+		time_t	when = time(0) - (d->date - d->dateFudge);
+
+		fs(age(when, "&nbsp;"));
 		return (strVal);
 	}
 
@@ -12543,6 +12478,15 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			fs("SCCS");
 		}
 		return (strVal);
+	}
+
+	if (streq(kw, "RENAME")) {
+		/* per delta path name if the pathname is a rename */
+		if (d->pathname && !(d->flags & D_DUPPATH)) {
+			fs(d->pathname);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	if (streq(kw, "DPN")) {
