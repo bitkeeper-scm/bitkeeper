@@ -4752,21 +4752,16 @@ addSerial(ser_t *space, ser_t s)
 	}
 
 	size = (int) space[0];
-	if (space[size -1]) {	/* full up, dude */
+	if (space[size -2]) {	/* full up, dude */
 		tmp = calloc(size*2, sizeof(ser_t));
 		assert(tmp);
-		if (space[size - 1] < s)  {
-			/* s is the largest, stick it at the end */
-			memcpy(tmp, space, size * sizeof(ser_t));
-			tmp[size] = s;
-		} else {
-			/* s is not the largest, insert it while we copy */
-			for (i = j = 1; i < size;) {
-				if (space[i] > s)  { tmp[j++] = s; break; }
-				tmp[j++] = space[i++];
-			}
-			memcpy(&tmp[j], &space[i], (size - i) * sizeof(ser_t));
+		/* insert s while we copy */
+		j = 1;
+		EACH(space) {
+			if (space[i] > s) tmp[j++] = s;
+			tmp[j++] = space[i];
 		}
+		if (i == j) tmp[j++] = s;
 		tmp[0] = (ser_t)(size * 2);
 		free(space);
 		return (tmp);
