@@ -130,16 +130,20 @@ listkey_main(int ac, char **av)
 	delta	*d = 0;
 	int	i, c, debug = 0, quiet = 0, nomatch = 1, fastkey;
 	int	sndRev = 0;
+	int	ForceFullPatch = 0; /* force a "makepatch -r1.0.." */
 	char	key[MAXKEY], rootkey[MAXKEY];
 	char	s_cset[] = CHANGESET;
 	char	**lines = 0;
 	char	*tag;
 
-	while ((c = getopt(ac, av, "dqr")) != -1) {
+#define OUT(s)  unless(ForceFullPatch) out(s)
+
+	while ((c = getopt(ac, av, "dqrF")) != -1) {
 		switch (c) {
 		    case 'd':	debug = 1; break;
 		    case 'q':	quiet = 1; break;
 		    case 'r':	sndRev = 1; break;
+		    case 'F':   ForceFullPatch = 1; break;
 		    default:	fprintf(stderr,
 					"usage: bk _listkey [-d] [-q]\n");
 				return (5);
@@ -229,13 +233,13 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 			if (nomatch) out("@LOD MATCH@\n");	/* aka first */
 			if (sndRev) {
 				assert(d->rev);
-				out(d->rev);
-				out("|");
+				OUT(d->rev);
+				OUT("|");
 				if (tag = sccs_d2tag(s, d)) out(tag);
-				out("|");
+				OUT("|");
 			}
-			out(lines[i]);
-			out("\n");
+			OUT(lines[i]);
+			OUT("\n");
 			nomatch = 0;
 		}
 	}
@@ -249,14 +253,14 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 				out("@TAG MATCH@\n");
 				if (sndRev) {
 					assert(d->rev);
-					out(d->rev);
-					out("|");
+					OUT(d->rev);
+					OUT("|");
 					if (tag = sccs_d2tag(s, d)) out(tag);
 					out("|");
 				}
 				sccs_sdelta(s, d, key);
-				out(key);
-				out("\n");
+				OUT(key);
+				OUT("\n");
 			}
 		}
 	}
@@ -270,14 +274,16 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 		if (d->flags & D_RED) continue;
 		if (sndRev) {
 			assert(d->rev);
-			out(d->rev);
-			out("|");
-			if (tag = sccs_d2tag(s, d)) out(tag);
-			out("|");
+			OUT(d->rev);
+			OUT("|");
+			if (tag = sccs_d2tag(s, d)) {
+				OUT(tag);
+			}
+			OUT("|");
 		}
 		sccs_sdelta(s, d, key);
-		out(key);
-		out("\n");
+		OUT(key);
+		OUT("\n");
 	}
 	out("@END@\n");
 	sccs_free(s);

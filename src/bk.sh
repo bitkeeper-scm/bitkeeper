@@ -507,6 +507,22 @@ _unrm () {
 	rm -f $LIST $TMPFILE
 }
 
+# For fixing delete/gone files that re-appear in the patch when we pull
+_repair()
+{
+	_MASTER=$1  # MASTER should have the supper set of the local tree
+	echo "Fixing up renames..."
+	bk -r names
+	bk idcache 	# Must be up-to-date
+		 	# Otherwise we get false resolve conflict
+	echo "Parking edited files"
+	bk park		# otherwise edited file will failed the pull
+	echo "pulling a jumbo patch.."
+	bk pull -F ${_MASTER} || exit 1
+	echo "You may want to do a \"bk rmgone\" to fix up the gone files"
+	
+}
+
 __bkfiles() {
 	bk sfiles "$1" |
 	    bk prs -hr1.0 -nd:DPN: - | grep BitKeeper/ > ${TMP}/bk$$
