@@ -6434,8 +6434,12 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	unless (SCCS(s)) flags &= ~(GET_EXPAND);
 	unless (RCS(s)) flags &= ~(GET_RCSEXPAND);
 
-	if (flags & GET_MODNAME) base = basenm(s->gfile);
-	else if (flags & GET_FULLPATH) base = s->gfile;
+	if (flags & GET_MODNAME) {
+		base = basenm(s->gfile);
+	} else if (flags & GET_FULLPATH) {
+		base = d ? d->pathname : sccs_top(s)->pathname;
+	}
+
 	/*
 	 * We want the data to start on a tab aligned boundry
 	 */

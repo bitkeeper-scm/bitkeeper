@@ -48,7 +48,7 @@ _get_main(int ac, char **av, char *out)
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	if (streq("GET", user_preference("checkout"))) flags |= GET_NOREGET;
 	while ((c =
-	    getopt(ac, av, "ac;CdDefFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
+	    getopt(ac, av, "ac;CdDeFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
 		switch (c) {
 		    case 'a': flags |= GET_ALIGN; break;	/* doc 2.0 */
 		    case 'c': cdate = optarg; break;		/* doc 2.0 */
@@ -57,7 +57,6 @@ _get_main(int ac, char **av, char *out)
 		    case 'D': getdiff++; break;			/* doc 2.0 */
 		    case 'l':					/* doc 2.0 co */
 		    case 'e': flags |= GET_EDIT; break;		/* doc 2.0 */
-		    case 'f': flags |= GET_FULLPATH; break;	/* undoc? 2.0 */
 		    case 'F': iflags |= INIT_NOCKSUM; break;	/* doc 2.0 */
 		    case 'g': flags |= GET_SKIPGET; break;	/* doc 2.0 */
 		    case 'G': Gname = optarg; break;		/* doc 2.0 */
@@ -67,7 +66,14 @@ _get_main(int ac, char **av, char *out)
 		    case 'k': flags &= ~GET_EXPAND; break;	/* doc 2.0 */
 		    case 'm': flags |= GET_REVNUMS; break;	/* doc 2.0 */
 		    case 'M': mRev = optarg; break;		/* doc 2.0 */
-		    case 'n': flags |= GET_MODNAME; break;	/* doc 2.0 */
+		    case 'n': 					/* doc 2.1 */
+			unless (flags & GET_MODNAME) {
+				flags |= GET_MODNAME;
+				break;
+			}
+			flags &= ~GET_MODNAME;
+			flags |= GET_FULLPATH;
+			break;
 		    case 'N': flags |= GET_LINENUM; break;	/* doc 2.0 */
 		    case 'p': flags |= PRINT; break;		/* doc 2.0 */
 		    case 'P': flags |= PRINT|GET_FORCE; break;	/* doc 2.0 */

@@ -2054,7 +2054,7 @@ http_search(char *junk)
 		    "-d'$each(:C:){:GFILE:\t:I:\t(:C:)\n}' ChangeSet");
 		break;
 	    case SEARCH_CONTENTS:
-		sprintf(buf, "bk -Ur grep -r+ -fm '%s'", expr);
+		sprintf(buf, "bk -Ur grep -r+ -nnm '%s'", expr);
 		break;
 	    case SEARCH_COMMENTS:
 		sprintf(buf, "bk -Ur prs -h "
