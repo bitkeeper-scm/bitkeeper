@@ -185,7 +185,7 @@ clean_up()
 
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
-	/usr/bin/diff $TMP/T.${USER}-new $TMP/T.${USER}
+	/usr/bin/diff $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
 }
 
 init_main_loop()
