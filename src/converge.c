@@ -282,7 +282,7 @@ done:		mdbm_close(vals);
 			sys(key);
 			sprintf(key, "sort -u < %s > %s", CTMP, gfile);
 			sys(key);
-			sprintf(key, "bk delta -qy'Auto converge' %s", gfile);
+			sprintf(key, "bk ci -qy'Auto converge' %s", gfile);
 			sys(key);
 		} else {
 			/*

@@ -1,0 +1,49 @@
+This is the new key sync algorthm which should minimize the keys exchanged
+as part of a resync|pull|push.  It is a protocol rev to the BKD protocol
+so we want to get it right.  While I'm there, I need to remember to pass
+the remote BK version as well, cort wants that in triggers so he can force
+upgrades.
+
+Notation:
+    Keys(X) are the keys in the X repository | X = r for receiver, s for sender
+
+Current way:
+------------------------------------------------------------------------------
+Receiver of data		Sender of data
+------------------------------------------------------------------------------
+sends all keys as Keys(r)
+				Keys(d) = set Keys(s) - Keys(r)
+				makepatch based on Keys(d)
+
+
+New way:
+------------------------------------------------------------------------------
+Receiver of data		Sender of data
+------------------------------------------------------------------------------
+				send log(n) keys of the trunk, i.e.,
+				most recent, 2 back, 4 back, 8 back, 16 back...
+read all keys, searching for
+each key in the cset file.
+After finding a match, discard
+all keys from the sender.
+
+Color the graph upwards from the
+match.
+
+Keys(r) = all non colored keys
+
+Send match key or @No match@
+Send Keys(r)
+
+				Receive match
+				Receive Keys(r)
+
+				if (match) {
+					color the graph upwards from match
+					Keys(s) = all non colored keys
+				} else {
+					Keys(s) = all keys
+				}
+				Keys(d) = Keys(s) - Keys(r)
+
+				makepatch based on Keys(d)
