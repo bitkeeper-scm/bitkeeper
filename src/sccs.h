@@ -415,6 +415,8 @@ typedef struct {
 	MDBM	*config;	/* config DB */
 } project;
 
+extern	project	*bk_proj;	/* bk.c sets this up */
+
 #define	READER_LOCK_DIR	"BitKeeper/readers"
 #define	WRITER_LOCK_DIR	"BitKeeper/writer"
 #define	WRITER_LOCK	"BitKeeper/writer/lock"
@@ -474,7 +476,8 @@ typedef	struct sccs {
 	int	version;	/* file format version */
 	int	userLen;	/* maximum length of any user name */
 	int	revLen;		/* maximum length of any rev name */
-	unsigned int cksumok:1;	/* check sum was ok */
+	u32	cksumok:1;	/* check sum was ok */
+	u32	grafted:1;	/* file has grafts */
 } sccs;
 
 typedef struct {

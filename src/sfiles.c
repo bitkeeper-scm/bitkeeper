@@ -1,5 +1,8 @@
 #include "system.h"
 #include "sccs.h"
+#include <setjmp.h>
+#define	exit(e)		longjmp(exit_buf, e)
+
 WHATSTR("@(#)%K%");
 
 /*
@@ -41,8 +44,8 @@ private	int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg;
 private	int	Dflg, Aflg, Rflg, kFlg, xFlg, uFlg;
 private	FILE	*id_cache;
 private	void	keys(char *file);
-private	MDBM	*idDB;
-private	int	dups;
+private	MDBM	*idDB;		/* used to detect duplicate keys */
+private	int	dups;		/* duplicate key count */
 private	int	mixed;		/* running in mixed long/short mode */
 private	int	hasDiffs(char *file);
 private	int	isSccs(char *s);
@@ -55,6 +58,7 @@ private	void	lftw(const char *dir, lftw_func func);
 private	void	process(const char *filename, int mode);
 private	void	caches(const char *filename, int mode);
 private	project	*proj = 0;
+private	jmp_buf	exit_buf;
 
 int
 sfiles_main(int ac, char **av)
@@ -89,6 +93,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    default: goto usage;
 		}
 	}
+	if (i = setjmp(exit_buf)) return (i);
 	if (xFlg && (Aflg|cFlg|Cflg|dFlg|Dflg|lFlg|pFlg|Pflg|uFlg)) {
 		fprintf(stderr, "sfiles: -x must be standalone.\n");
 		return (1);
@@ -490,34 +495,46 @@ caches(const char *filename, int mode)
 		sccs_free(sc);
 		return;
 	}
-	if (sc->defbranch && streq(sc->defbranch, "1.0")) { /* not visible */
-		sccs_free(sc);
-		return;
-	}
 	if (vFlg) printf("%s\n", sc->gfile);
 
 	if (rFlg) {
 		delta	*ino = sccs_ino(sc);
 
-		/* update the id cache only if root path != current path. */
-		assert(ino->pathname);
-		sccs_sdelta(sc, ino, buf);
-		unless (streq(ino->pathname, sc->gfile)) {
-			fprintf(id_cache, "%s %s\n", buf, sc->gfile);
-		}
-		save(sc, idDB, buf);
-		if (mixed && (t = sccs_iskeylong(buf))) {
-			*t = 0;
-			unless (streq(ino->pathname, sc->gfile)) {
+		/*
+		 * Update the id cache if root path != current path.
+		 * Add entries for any grafted in roots as well.
+		 */
+		do {
+			assert(ino->pathname);
+			sccs_sdelta(sc, ino, buf);
+			save(sc, idDB, buf);
+			if (sc->grafted || !streq(ino->pathname, sc->gfile)) {
 				fprintf(id_cache, "%s %s\n", buf, sc->gfile);
 			}
-			save(sc, idDB, buf);
-			*t = '|';
-		}
+			if (mixed && (t = sccs_iskeylong(buf))) {
+				*t = 0;
+				unless (streq(ino->pathname, sc->gfile)) {
+					fprintf(id_cache,
+					    "%s %s\n", buf, sc->gfile);
+				}
+				save(sc, idDB, buf);
+				*t = '|';
+			}
+			unless (sc->grafted) break;
+			while (ino = ino->next) {
+				if (ino->random) break;
+			}
+		} while (ino);
 	}
 
 	/* XXX - should this be (Cflg && !(sc->state & S_CSET)) ? */
 	unless (Cflg) goto out;
+
+	/*
+	 * If we are doing sfiles -C, hide these.
+	 * XXX - seems redundant, I'd rather have an assert.
+	 */
+	if (sc->defbranch && streq(sc->defbranch, "1.0")) goto out;
 
 	/* find the leaf of the current LOD and check it */
 	unless (d = sccs_getrev(sc, "+", 0, 0)) goto out;

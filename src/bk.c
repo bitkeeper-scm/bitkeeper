@@ -5,11 +5,19 @@
 
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
+project	*bk_proj = 0;
+
+private	char log_buffer[MAXPATH*4];
 
 char	*find_wish();
 char	*find_perl5();
-extern	void getoptReset();
-void platformInit(char **av);
+extern	void	getoptReset();
+private void	platformInit(char **av);
+private int	bk_sfiles(int ac, char **av);
+private	void	log_start(char **av);
+private	void	log_end(int ret);
+private	void	log_dump();
+private	void	log_exit(void);
 
 int _createlod_main(int, char **);
 int abort_main(int, char **);
@@ -40,6 +48,7 @@ int graft_main(int, char **);
 int help_main(int, char **);
 int isascii_main(int, char **);
 int key2rev_main(int, char **);
+int keysort_main(int, char **);
 int lines_main(int, char **);
 int lock_main(int, char **);
 int lod_main(int, char **);
@@ -96,8 +105,8 @@ struct command cmdtbl[100] = {
 	{"_createlod", _createlod_main},
 	{"_find", find_main }, /* internal helper function */
 	{"_logging", logging_main},
-	{"_loggingask", loggingask_main},
 	{"_loggingaccepted", loggingaccepted_main},
+	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
 	{"abort", abort_main},
 	{"adler32", adler32_main},
@@ -130,6 +139,7 @@ struct command cmdtbl[100] = {
 	{"info", sinfo_main},	/* aliases */
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
+	{"keysort", keysort_main},
 	{"lines", lines_main},
 	{"lock", lock_main},
 	{"lod", lod_main},
@@ -182,6 +192,7 @@ struct command cmdtbl[100] = {
 	{"version", version_main},
 	{"what", what_main},
 	{"zone", zone_main},
+
 	{0, 0},
 };
 
@@ -201,6 +212,7 @@ main(int ac, char **av)
 	char	*argv[100];
 	int	c;
 	int	is_bk = 0, dashr = 0;
+	int	ret;
 	char	*prog;
 
 	/*
@@ -220,6 +232,12 @@ main(int ac, char **av)
 	argv[0] = "help";
 	argv[1] = 0;
 
+	if (!bk_proj || !bk_proj->root || !isdir(bk_proj->root)) {
+		bk_proj = proj_init(0);
+	}
+	log_buffer[0] = 0;
+	atexit(log_exit);
+
 	/*
 	 * Parse our options if called as "bk".
 	 */
@@ -237,7 +255,7 @@ main(int ac, char **av)
 						return (1);
 					}
 					optind++;
-				} else if (sccs_cd2root(0, 0) == -1) {
+				} else unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
 					    "bk: Can not find package root.\n");
 					return(1);
@@ -245,7 +263,7 @@ main(int ac, char **av)
 				dashr++;
 				break;
 			    case 'R':
-				if (sccs_cd2root(0, 0) == -1) {
+				unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 
 					    "bk: Can not find package root.\n");
 					return(1);
@@ -268,12 +286,20 @@ main(int ac, char **av)
 	}
 	getoptReset();
 
+	if (streq(av[0], "cmdlog")) {
+		log_dump();
+		return (0);
+	}
+
 	/*
 	 * look up the internal command 
 	 */
 	for (i = 0; cmdtbl[i].name; i++) {
 		if (streq(cmdtbl[i].name, prog)){
-			return (cmdtbl[i].func(ac, av));
+			log_start(av);
+			ret = cmdtbl[i].func(ac, av);
+			log_end(ret);
+			exit(ret);
 		}
 	}
 	unless(is_bk) {
@@ -290,7 +316,10 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -302,7 +331,10 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));;
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -324,7 +356,10 @@ main(int ac, char **av)
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) argv[i] = av[j];
 		argv[i] = 0;
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -339,9 +374,10 @@ main(int ac, char **av)
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		for (i = 0; argv[i] != 0;  i++) {
-		}
-		return (spawnvp_ex(_P_WAIT, argv[0], argv));
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -349,7 +385,10 @@ main(int ac, char **av)
 	 */
 	if (streq(av[0], "patch") ||
 	    streq(av[0], "diff3")) {
-		return (spawnvp_ex(_P_WAIT, av[0], av));
+		log_start(argv);
+		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+		log_end(ret);
+		exit(ret);
 	}
 
 	/*
@@ -364,15 +403,88 @@ main(int ac, char **av)
 	argv[1] = cmd_path;
 	for (i = 2, j = 0; av[j]; i++, j++) argv[i] = av[j];
 	argv[i] = 0;
-	return (spawnvp_ex(_P_WAIT, argv[0], argv));
+	ret = spawnvp_ex(_P_WAIT, argv[0], argv);
+	log_end(ret);
+	exit(ret);
 }
 
-int
+#define	LOG_MAXSIZE	(32<<10)
+#define	LOG_BADEXIT	-100000		/* some non-valid exit */
+
+void
+log_exit(void)
+{
+	if (log_buffer[0]) log_end(LOG_BADEXIT);
+}
+
+private	void
+log_start(char **av)
+{
+	int	i, len = 0;
+
+	unless (bk_proj && bk_proj->root) return;
+	for (i = 0; av[i]; i++) {
+		len += strlen(av[i]);
+		if (len >= sizeof(log_buffer)) continue;
+		if (i) {
+			strcat(log_buffer, " ");
+			strcat(log_buffer, av[i]);
+		} else {
+			strcpy(log_buffer, av[i]);
+		}
+	}
+}
+
+private	void
+log_end(int ret)
+{
+	FILE	*f;
+	char	*user;
+	char	path[MAXPATH];
+
+	unless (log_buffer[0] && bk_proj && bk_proj->root) return;
+	sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+	unless (f = fopen(path, "a")) {
+		sprintf(path, "%s/%s", bk_proj->root, BKROOT);
+		unless (exists(path)) return;
+		sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+		mkdirf(path);
+		unless (f = fopen(path, "a")) return;
+	}
+	user = sccs_getuser();
+	fprintf(f, "%s@%u: ", user ? user : "Phantom User", time(0));
+	if (ret == LOG_BADEXIT) {
+		fprintf(f, "%s = ?\n", log_buffer);
+	} else {
+		fprintf(f, "%s = %d\n", log_buffer, ret);
+	}
+	if (fsize(fileno(f)) > LOG_MAXSIZE) {
+		char	old[MAXPATH];
+
+		sprintf(old, "%s-older", path);
+		fclose(f);
+		rename(path, old);
+	} else {
+		fclose(f);
+	}
+	log_buffer[0] = 0;
+}
+
+private	void
+log_dump()
+{
+	char	path[MAXPATH];
+
+	unless (bk_proj && bk_proj->root) return;
+	sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+	cat(path);
+}
+
+private int
 bk_sfiles(int ac, char **av)
 {
 	pid_t	pid;
 	int	i;
-
 	int	j, pfd;
 	int	status;
 	char	*sav[2] = {"sfiles", 0};
@@ -386,20 +498,31 @@ bk_sfiles(int ac, char **av)
 		fprintf(stderr, "can not spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	} 
+	log_start(sav);
 	close(1); dup(pfd); close(pfd);
-	status = sfiles_main(1, sav);
+	if (status = sfiles_main(1, sav)) {
+		kill(pid, SIGTERM);
+		wait(0);
+		log_end(status);
+		exit(status);
+	}
 	fflush(stdout);
 	close(1);
 	waitpid(pid, &status, 0);
-	if (WIFEXITED(status)) return(WEXITSTATUS(status));
+	if (WIFEXITED(status)) {
+		log_end(WEXITSTATUS(status));
+		exit(WEXITSTATUS(status));
+	}
 #ifndef WIN32
 	if (WIFSIGNALED(status)) {
 		fprintf(stderr,
 		    "Child was signaled with %d\n",
 		    WTERMSIG(status));
+		log_end(WTERMSIG(status));
 		exit(WTERMSIG(status));
 	}
 #endif
+	log_end(100);
 	exit(100);
 }
 
