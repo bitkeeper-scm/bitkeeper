@@ -1207,7 +1207,23 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	int	confThisFile;
 	FILE	*csets = 0;
 
-	unless (p) return (0);
+	if (!p && localPath) {
+		/* 
+		 * an existing file that was in the patch but didn't
+		 * get any deltas.  Usually an error, but we should
+		 * handle this better.
+		 */
+		char    *resync = aprintf("RESYNC/%s", localPath);
+		int	i = 0;
+		
+		while (exists(resync)) {
+                  	free(resync);
+			resync = aprintf("RESYNC/BitKeeper/RENAMES/s.%d", i++);
+		}
+		fileCopy2(localPath, resync);
+		free(resync);
+		return (0);
+	}
 	lodkey[0] = 0;
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
