@@ -5708,17 +5708,19 @@ out:			if (slist) free(slist);
 			goto out;
 		}
 	}
-	if (flags&GET_EDIT) {
-		if (d->mode) {
-			chmod(s->gfile, d->mode);
-		} else {
-			chmod(s->gfile, 0666);
-		}
-	} else if (!(flags&PRINT)) {
-		if (d->mode) {
-			chmod(s->gfile, d->mode & ~0222);
-		} else {
-			chmod(s->gfile, 0444);
+	unless (hash && (flags&GET_HASHONLY)) {
+		if (flags&GET_EDIT) {
+			if (d->mode) {
+				chmod(s->gfile, d->mode);
+			} else {
+				chmod(s->gfile, 0666);
+			}
+		} else if (!(flags&PRINT)) {
+			if (d->mode) {
+				chmod(s->gfile, d->mode & ~0222);
+			} else {
+				chmod(s->gfile, 0444);
+			}
 		}
 	}
 

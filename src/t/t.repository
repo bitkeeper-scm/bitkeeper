@@ -13,6 +13,7 @@
 # Copyright (c) 1999 Andrew Chang?
 # %K%
 
+HERE=`bk pwd`
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -45,4 +46,11 @@ then	echo failed
 	diff TOT SYM
 	exit 1
 fi
+echo OK
+echo $N Try to commit an empty cset .................................$NL
+cd $HERE/project
+bk edit $Q ChangeSet
+bk commit $Q
+# make sure "bk commit" did not change the mode of the ChangeSet file
+writable ChangeSet || { echo failed; exit 1; }
 echo OK
