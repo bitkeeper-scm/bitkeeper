@@ -30,7 +30,7 @@ enum {
 	REMOTE
 };
 
-#define VALID(lines, i) ((lines) && (i) < (int)(lines)[0] && (lines)[i])
+#define VALID(lines, i) ((lines) && (lines)[i])
 
 private	char	*revs[3];
 private	char	*file;
@@ -116,14 +116,16 @@ smerge_main(int ac, char **av)
 		assert(inputs[i]);
 	}
 	if (fdiff) {
-		char *left = "/tmp/left";
-		char *right = "/tmp/right";
+		char *left = aprintf("/tmp/left.%d", getpid());
+		char *right = aprintf("/tmp/right.%d", getpid());
 
 		puts(left);
 		puts(right);
 		fl = fopen(left, "w");
 		fr = fopen(right, "w");
 		assert(fl && fr);
+		free(left);
+		free(right);
 	}
 	ret = do_merge(start, end, inputs);
 	for (i = 0; i < 3; i++) {
@@ -167,7 +169,7 @@ skipseq(char *p)
 }
 
 private void
-printline(char *line, int preserve_char)
+printline(char *line, int preserve_char, int automerged)
 {
 	if (preserve_char) {
 		assert(!fdiff);
@@ -176,9 +178,9 @@ printline(char *line, int preserve_char)
 	}
 	unless (show_seq) line = skipseq(line);
 	if (fdiff) {
-		fputc(' ', fl);
+		fputc(automerged ? 'a' : ' ', fl);
 		fputs(line, fl);
-		fputc(' ', fr);
+		fputc(automerged ? 'a' : ' ', fr);
 		fputs(line, fr);
 	} else {
 		fputs(line, stdout);
@@ -194,9 +196,7 @@ do_merge(int start, int end, FILE *inputs[3])
 	char	*curr[3];
 	int	ret = 0;
 	
-#define NEWLINE(fh) curr[i] = fagets(fh); \
-		seq[i] = curr[i] ? atoi(curr[i]) : ~0;
-
+#define NEWLINE(fh) (seq[i] = (curr[i] = fagets(fh)) ? atoi(curr[i]) : ~0)
 	for (i = 0; i < 3; i++) {
 		NEWLINE(inputs[i]);
 		lines[i] = 0;
@@ -223,7 +223,7 @@ do_merge(int start, int end, FILE *inputs[3])
 				}
 				if (end && max >= end) break;
 				if (max == ~0) break;
-				printline(curr[0], 0);
+				printline(curr[0], 0, 0);
 			}
 			for (i = 0; i < 3; i++) {
 				if (lines[i]) freeLines(lines[i]);
@@ -372,6 +372,7 @@ resolve_conflict(char **lines[3])
 			do {
 				changed = 0;
 				for (i = 0; i < N_MERGEFCNS; i++) {
+					unless (*mergefcns[i].flag) continue;
 					changed |= mergefcns[i].fcn(r->lines);
 					if (changed >= 2) goto resolved;
 				}
@@ -400,7 +401,7 @@ merge_same_changes(char **lines[3])
 	int	i;
 
 	if (sameLines(lines[LOCAL], lines[REMOTE])) {
-		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
+		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0, 1);
 		return (2);
 	}
 	return (0);
@@ -414,11 +415,11 @@ merge_only_one(char **lines[3])
 {
 	int	i;
 	if (sameLines(lines[LOCAL], lines[GCA])) {
-		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0);
+		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0, 1);
 		return (2);
 	}
 	if (sameLines(lines[REMOTE], lines[GCA])) {
-		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
+		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0, 1);
 		return (2);
 	}
 	return (0);
@@ -436,32 +437,32 @@ user_conflict(char **lines[3])
 			printf("<<< local %s %s vs %s\n", 
 			       file, revs[GCA], revs[LOCAL]);
 			diffs = unidiff(lines[GCA], lines[LOCAL]);
-			EACH(diffs) printline(diffs[i], 1);
+			EACH(diffs) printline(diffs[i], 1, 0);
 			freeLines(diffs);
 		}
 		unless (sameLines(lines[REMOTE], lines[GCA])) {
 			printf("<<< remote %s %s vs %s\n", 
 			       file, revs[GCA], revs[REMOTE]);
 			diffs = unidiff(lines[GCA], lines[REMOTE]);
-			EACH(diffs) printline(diffs[i], 1);
+			EACH(diffs) printline(diffs[i], 1, 0);
 			freeLines(diffs);
 		}
 		printf(">>>\n");
 		break;
 	    case MODE_2WAY:
 		printf("<<< local %s %s\n", file, revs[LOCAL]);
-		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
+		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0, 0);
 		printf("<<< remote %s %s\n", file, revs[REMOTE]);
-		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0);
+		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0, 0);
 		printf(">>>\n");
 		break;
 	    case MODE_3WAY:
 		printf("<<< gca %s %s\n", file, revs[GCA]);
-		EACH(lines[GCA]) printline(lines[GCA][i], 0);
+		EACH(lines[GCA]) printline(lines[GCA][i], 0, 0);
 		printf("<<< local %s %s\n", file, revs[LOCAL]);
-		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0);
+		EACH(lines[LOCAL]) printline(lines[LOCAL][i], 0, 0);
 		printf("<<< remote %s %s\n", file, revs[REMOTE]);
-		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0);
+		EACH(lines[REMOTE]) printline(lines[REMOTE][i], 0, 0);
 		printf(">>>\n");
 		break;
 	    case MODE_NEWONLY:
@@ -470,7 +471,9 @@ user_conflict(char **lines[3])
 			       file, revs[GCA], revs[LOCAL]);
 			diffs = unidiff(lines[GCA], lines[LOCAL]);
 			EACH(diffs) {
-				if (diffs[i][0] != '-') printline(diffs[i], 1);
+				if (diffs[i][0] != '-') {
+					printline(diffs[i], 1, 0);
+				}
 			}
 			freeLines(diffs);
 		}
@@ -479,7 +482,9 @@ user_conflict(char **lines[3])
 			       file, revs[GCA], revs[REMOTE]);
 			diffs = unidiff(lines[GCA], lines[REMOTE]);
 			EACH(diffs) {
-				if (diffs[i][0] != '-') printline(diffs[i], 1);
+				if (diffs[i][0] != '-') {
+					printline(diffs[i], 1, 0);
+				}
 			}
 			freeLines(diffs);
 		}
@@ -810,7 +815,7 @@ merge_content(char **lines[3])
 	char	**modified;
 	int	i;
 	int	ret = 0;
-	int	r = 1;
+	int	r;
 	int	ok;
 
 	left = unidiff(lines[GCA], lines[LOCAL]);
@@ -829,9 +834,10 @@ merge_content(char **lines[3])
 	unless (ok) goto bad;
 	
 	/* we are good to go, do merge */
+	r = 1;
 	EACH(left) {
 		while (VALID(right, r) && seq(right[r]) < seq(left[i])) {
-			if (right[i][0] == '+') printline(right[r] + 1, 0);
+			if (right[i][0] == '+') printline(right[r] + 1, 0, 1);
 			++r;
 		}
 		if (VALID(right, r) && seq(right[r]) == seq(left[i])) {
@@ -844,11 +850,11 @@ merge_content(char **lines[3])
 			r++;
 		} else {
 			assert(left[i][0] == '+');
-			printline(left[i] + 1, 0);
+			printline(left[i] + 1, 0, 1);
 		}
 	}
 	while (VALID(right, r)) {
-		if (right[r][0] == '+') printline(right[r] + 1, 0);
+		if (right[r][0] == '+') printline(right[r] + 1, 0, 1);
 		++r;
 	}
 	ret = 2;
@@ -864,6 +870,7 @@ merge_common_header(char **lines[3])
 	char	**a = lines[LOCAL];
 	char	**b = lines[REMOTE];
 	int	i, j;
+	int	last_seq;
 
 	EACH(a) {
 		char	*al, *bl;
@@ -874,8 +881,10 @@ merge_common_header(char **lines[3])
 		unless (streq(al, bl)) break;
 	}
 	if (i == 1) return (0);
-	for (j = 1; j < i; j++) printline(a[j], 0);
+	for (j = 1; j < i; j++) printline(a[j], 0, 1);
 	
+	last_seq = seq(a[j-1]);
+
 	/* shift a and b down by i-1 */
 	j = 1;
 	while (VALID(a, j+i-1)) {
@@ -890,6 +899,19 @@ merge_common_header(char **lines[3])
 		++j;
 	}
 	b[j] = 0;
+
+	/* remove lines from GCA that were replace by these lines */
+	i = 1;
+	while (VALID(lines[GCA], i) && seq(lines[GCA][i]) < last_seq) i++;
+	if (i > 1) {
+		j = 1;
+		while (VALID(lines[GCA], j+i-1)) {
+			lines[GCA][j] = lines[GCA][j+i-1];
+			++j;
+		}
+		lines[GCA][j] = 0;
+	}
+
 	return (1);
 }
 
@@ -902,6 +924,7 @@ merge_common_footer(char **lines[3])
 	int	end_a, end_b;
 	int	ca, cb;
 	region	*r;
+	u32	last_seq;
 
 	EACH (a);
 	ca = end_a = i - 1;
@@ -921,6 +944,7 @@ merge_common_footer(char **lines[3])
 	}
 	unless (ca < end_a && cb < end_b) return (0);
 
+	/* push common lines to new region */
 	new(r);
 	i = ca + 1;
 	while (VALID(a, i)) {
@@ -935,6 +959,16 @@ merge_common_footer(char **lines[3])
 	a[ca + 1] = 0;
 	b[cb + 1] = 0;
 	push_region(r);
+
+	/* remove lines from GCA that are after these lines */
+	last_seq = MIN(seq(r->lines[LOCAL][1]), seq(r->lines[REMOTE][1]));
+	EACH(lines[GCA]) {
+		if (seq(lines[GCA][i]) >= last_seq) {
+			lines[GCA][i] = 0;
+			break;
+		}
+	}
+
 	return (1);
 }
 	

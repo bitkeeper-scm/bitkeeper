@@ -326,12 +326,12 @@ addLine(char **space, char *line)
 		space = calloc(32, sizeof(char *));
 		assert(space);
 		space[0] = (char *)32;
-	} else if (space[(int)(long)space[0]-1]) {	/* full up, dude */
+	} else if (space[(int)(long)space[0]-2]) {	/* full up, dude */
 		int	size = (int)(long)space[0];
 		char	**tmp = calloc(size*4, sizeof(char*));
 
 		assert(tmp);
-		bcopy(space, tmp, size*sizeof(char*));
+		memcpy(tmp, space, size*sizeof(char*));
 		tmp[0] = (char *)(long)(size * 4);
 		free(space);
 		space = tmp;
@@ -384,7 +384,7 @@ removeLine(char **space, char *s)
 		EACH(space) {
 			if (streq(space[i], s)) {
 				free(space[i]);
-				while ((++i< (int)(long)space[0]) && space[i]) {
+				while (space[++i]) {
 					space[i-1] = space[i];
 					space[i] = 0;
 				}
