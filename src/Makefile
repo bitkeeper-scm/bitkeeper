@@ -105,10 +105,6 @@ WWall:
 fullwarn:
 	$(MAKE) CFLAGS="-g -fullwarn -DLINT -DPURIFY" all
 
-# Platform specific builds
-solaris:
-	$(MAKE) -e CC=gcc XLIBS=-lnsl p install
-
 # production builds
 p:
 	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer $(CF)" all
@@ -132,6 +128,13 @@ production_g: rebuild gO install
 production_debug: rebuild debug install
 production_ndebug: rebuild ndebug install
 production_purify: rebuild purify install
+
+# Platform specific production builds
+irix sgi hpux hp-ux hp:
+	gmake CC=gcc p install
+
+solaris:
+	$(MAKE) -e CC=gcc XLIBS=-lnsl p install
 
 # Cleanup targets.
 clean-obj: FORCE
