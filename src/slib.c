@@ -2245,11 +2245,12 @@ ok:
 	return (e);
 }
 
-inline int
-peekc(sccs *s)
+
+inline char *
+peek(sccs *s)
 {
-	if (s->encoding & E_GZIP) return (zpeekc());
-	return (*s->where);
+	if (s->encoding & E_GZIP) return (zpeek()); 
+	return (s->where);
 }
 
 off_t
@@ -5746,6 +5747,11 @@ out:			if (slist) free(slist);
 
 		e1= e2 = 0;
 		if (isData(buf)) {
+			if (buf[0] == CNTLA_ESCAPE) {
+				assert((encoding == E_ASCII) ||
+							(encoding == E_GZIP));
+				buf++; /* skip the escape character */
+			}
 			if (!print) {
 				/* if we are skipping data from pending block */
 				if (lf_pend &&
@@ -7163,7 +7169,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	while (fbuf = nextdata(s)) {
-		if (fbuf[0] != '\001') {
+		if (isData(fbuf)) {
 			if (!print) {
 				/* if we are skipping data from pending block */
 				if (lf_pend &&
@@ -9983,7 +9989,7 @@ nxtline(sccs *s, int *ip, int before, int *lp, int *pp, FILE *out,
 	    lines, before, print, s->dsum));
 	while (!eof(s)) {
 		if (before && print) { /* if move upto next printable line */
-			unless (peekc(s) == '\001') break;
+			if (isData(peek(s))) break;
 		}
 		unless (buf = nextdata(s)) break;
 		debug2((stderr, "[%d] ", lines));
@@ -10116,7 +10122,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	lines = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
 	sum_t	sum;
-	char	*b;
+	char	*b, cntlA_escape[2] = { CNTLA_ESCAPE, 0 };
 	int	no_lf = 0;
 
 	assert((s->state & S_READ_ONLY) == 0);
@@ -10195,6 +10201,9 @@ newcmd:
 					ctrl("\001E ", n->serial, "");
 					goto newcmd;
 				}
+				if (b[2] == '\001') {
+					fputdata(s, cntlA_escape, out);
+				}
 				s->dsum += fputdata(s, &b[2], out);
 				debug2((stderr,
 				    "INS %.*s", linelen(&b[2]), &b[2]));
@@ -10208,6 +10217,10 @@ newcmd:
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
+				/* Need a test case for the following line */
+				if (b[2] == '\001') {
+					fputdata(s, cntlA_escape, out);
+				}
 				if (what != 'i' && b[0] == '\\') {
 					s->dsum += fputdata(s, &b[1], out);
 				} else {

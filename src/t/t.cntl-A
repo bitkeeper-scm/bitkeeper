@@ -1,0 +1,60 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 1999 Andrew Chang
+# %K%
+
+echo $N check text file /w leading and trailing cntl-A \(append\)......$NL
+echo "hi mom" > data
+echo "hi dad" >> data
+bk ci $Q -il data
+echo -e "\001this is a line with one leading cntl-A" >> data
+echo -e "\001\001this is a line with two leading cntl-A" >> data
+echo -e "this is a line with trailing cntl-A\001" >> data
+echo -e "\001\001\001this is another line with three leading cntl-A" >> data
+cp data data.ref_inst
+bk ci $Q -ycntl-A data
+bk get $Q -e data
+cmp -s data data.ref_inst
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk clean data
+bk get data 2> get.out 1>&2
+grep -q "bad delta cksum"  get.out
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+cmp -s data data.ref_inst
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N check text file /w leading and trailing cntl-A \(change\)......$NL
+bk edit $Q -g data
+#echo "hi mom" > data
+echo -e "\001this is new changed line with one leading cntl-A" >> data
+echo "hi dad" >> data
+cp data data.ref_chg
+bk delta $Q -yinsert data
+bk edit $Q data
+cmp -s data data.ref_chg
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N check cnt-A in compress mode ................................$NL
+bk admin -Zgzip data
+bk edit $Q data
+echo "hi mom" > data
+echo -e "\001this is new cntl-A line" >> data
+echo -e "more new stuff for comoress mode" >> data
+cp data data.ref_chg
+bk delta $Q -yinsert data
+bk edit $Q data
+cmp -s data data.ref_chg
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+# XX TODO need to get diff to produce 'i' command, and check
+# the processing of this case.
+
