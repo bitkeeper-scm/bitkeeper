@@ -85,7 +85,7 @@ takepatch_main(int ac, char **av)
 	int	c;
 	int	flags = SILENT;
 	int	files = 0;
-	char	*t;
+	char	*t, *q;
 	int	error = 0;
 	int	remote = 0;
 	int	resolve = 0;
@@ -194,12 +194,32 @@ usage:		system("bk help -s takepatch");
 	 * we maintain, and (b) converge on the oldest inode for a
 	 * particular file.  The converge code will make sure all of the
 	 * inodes are present.
+	 *
+	 * Converge iff we are going to commit 
 	 */
-	if (csetConflict) {	/* converge iff we are going to commit */
+	if (csetConflict && !getenv("BK_NO_CONVERGE")) {
+		char key[MAXKEY], gfile[MAXPATH];
 		chdir(ROOT2RESYNC);
 		merge("BitKeeper/etc/gone");
 		merge("BitKeeper/etc/ignore");
 		merge("BitKeeper/etc/logging_ok");
+		f = popen("bk sfiles BitKeeper/deleted | "
+			  "bk prs -r+ -hd':ROOTKEY:\n:GFILE:\n' -",
+			  "r");
+		assert(f);
+		while (fnext(key, f))  {
+			q = strchr(key, '|') + 1;
+			t = strchr(q, '|'); *t = 0;
+			fnext(gfile, f);
+			unless (streq(q, "BitKeeper/etc/gone") ||
+				streq(q, "BitKeeper/etc/ignore") ||
+				streq(q, "BitKeeper/etc/logging_ok")) {
+				continue;
+			}
+			chop(gfile);
+			merge(gfile);
+		}
+		pclose(f);
 		system("bk _converge -R");
 		chdir(RESYNC2ROOT);
 	}
@@ -273,6 +293,8 @@ merge(char *gfile)
 		sprintf(buf, "bk ci -qPyauto-union %s", gfile);
 		system(buf);
 		unlink(rfile);
+		t[1] = 'm';
+		unlink(rfile); /* unlink m.file */
 	} /* else remote update only */
 	free(sfile);
 	free(rfile);
