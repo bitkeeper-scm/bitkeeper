@@ -8,6 +8,7 @@
  * The extra hour is for daylight savings time.
  */
 #include "system.h"
+#include "config.h"
 
 long
 localtimez(time_t tt, struct tm *tmz)
@@ -22,11 +23,11 @@ localtimez(time_t tt, struct tm *tmz)
 	 */
 	*tmz = *tm;
 
-#if	defined(__linux__) || defined(__FreeBSD__)
+#if HAVE_GMTOFF
 	offset	= tm->tm_gmtoff;
 
-#elif defined(__sgi__) || defined(__sun__)
-	/* Note that configure will not define HAVE_EXTERN_TIMEZONE unless
+#elsie HAVE_TIMEZONE
+	/* Note that configure will not define HAVE_TIMEZONE unless
 	 * both timezone and altzone exist.  This is because we will
 	 * get the offset wrong everywhere but in the USA if we try
 	 * to calculate it using only timezone.

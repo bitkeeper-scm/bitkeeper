@@ -1,8 +1,9 @@
 #!/bin/sh
 
-CC=gcc
-LD=gcc
-MAKE=gmake
+test "$CC" || CC=gcc
+test "$LD" || LD=$CC
+test "$MAKE" || MAKE=gmake
+
 case "X`uname -s`" in
     *_NT*)
     	;;
