@@ -429,6 +429,7 @@ c:	lftw(".", caches);
 	if (id_cache) {
 		fclose(id_cache);
 		unlink(IDCACHE_LOCK);
+		chmod(IDCACHE, 0666);
 	}
 	sccs_free(cset);
 	mdbm_close(idDB);
