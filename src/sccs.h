@@ -78,6 +78,7 @@
 #define	DELTA_HASH	0x04000000	/* treat as hash (MDBM) file */
 #define	DELTA_NOPENDING	0x08000000	/* don't create pending marker */
 #define	DELTA_CFILE	0x00100000	/* read cfile and do not prompt */
+#define	DELTA_MONOTONIC	0x00200000	/* preserve MONOTONIC flag */
 
 #define	ADMIN_FORMAT	0x10000000	/* check file format (admin) */
 #define	ADMIN_ASCII	0x20000000	/* check file format (admin) */
@@ -186,8 +187,9 @@
 #define	X_KV		0x00002000	/* key value file */
 #define	X_NOMERGE	0x00004000	/* treat as binary even if ascii */
 					/* flags which can be changed */
+#define	X_MONOTONIC	0x00008000	/* file rolls forward only */
 #define	X_MAYCHANGE	(X_RCS | X_YEAR4 | X_SHELL | X_EXPAND1 | \
-			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE)
+			X_SCCS | X_EOLN_NATIVE | X_KV | X_NOMERGE | X_MONOTONIC)
 /* default set of flags when we create a file */
 #define	X_DEFAULT	(X_BITKEEPER|X_CSETMARKED|X_EOLN_NATIVE)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
@@ -244,6 +246,7 @@
 #define	LONGKEY(s)	((s)->xflags & X_LONGKEY)
 #define	KV(s)		((s)->xflags & X_KV)
 #define	NOMERGE(s)	((s)->xflags & X_NOMERGE)
+#define	MONOTONIC(s)	((s)->xflags & X_MONOTONIC)
 
 /*
  * Flags (d->flags) that indicate some state on the delta.
@@ -424,6 +427,7 @@ typedef struct delta {
 	struct	delta *siblings;	/* pointer to other branches */
 	struct	delta *next;		/* all deltas in table order */
 	u32	flags;			/* per delta flags */
+	u32	dangling:1;		/* in MONOTONIC file, ahead of chgset */
 	u32	symGraph:1;		/* if set, I'm a symbol in the graph */
 	u32	symLeaf:1;		/* if set, I'm a symbol with no kids */
 					/* Needed for tag conflicts with 2 */

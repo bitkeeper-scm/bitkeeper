@@ -82,6 +82,11 @@ EOLN_NATIVE is set to "on" by default.  To make the
 default have EOLN_NATIVE be set to "off" put eoln:unix in the
 BitKeeper/etc/config file (see bk help config-etc).
 .tp
+.B MONOTONIC
+mark the file as a monotonically increasing file.  Monotonic files do not 
+roll backwards with the rest of the repository as a result of a bk undo
+or bk clone -r.  Suggested for the BitKeeper/etc/* files.
+.tp
 .B NOMERGE
 do not attempt to automerge this file, treat it as if it were a
 binary file and force a choose local or choose remote style merge.
