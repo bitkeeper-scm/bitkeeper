@@ -211,19 +211,7 @@ usage:		fprintf(stderr, "%s", check_help);
 private void
 warnPoly(void)
 {
-	fprintf(stderr,
-	"check: Warning -- this repository has been found to have\n"
-	"deltas which belong to multiple csets.  This can happen\n"
-	"by copying a respository that has pending deltas then having\n"
-	"those deltas commited into csets in different repositories.\n"
-	"This should not cause any problems in the operation of\n"
-	"Bitkeeper, but does make understanding difficult for what\n"
-	"it does for some operations.  Please make sure to use\n"
-	"'bk clone {from} {to}' when copying a repository, or when\n"
-	"using tools like tar or cpio, to make sure there are no\n"
-	"pending deltas by running 'bk pending'.\n"
-	"You will only see this warning one per repository.\n");
-
+	gethelp("warn_poly", 0, 0, stdout);
 	close(open(POLY, O_CREAT|O_TRUNC, 0664));
 }
 
