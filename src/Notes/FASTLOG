@@ -1,0 +1,46 @@
+Logging Performance
+
+Requirements:
+
+1. Don't slow the user down
+	a. logging operations like commit and pull need to run
+	as though logging wasn't there (or very close).
+
+2. Avoid saturation of the server by minimizing times locks are held.
+
+3. ?
+
+== 
+
+From 7/19/02 meeting of Andrew, Wayne and Rick
+Andrew summarizes (Rick's edits):
+
+a) We need Wanye's null sync fix on bitmover.com
+     -- can we upgrade bitmover.com to the bk-2.1.x TOT ?
+        This pending rick/lm fix the MYSQL issues...
+
+Note:  I tried a more aggressive version of wanye's fix, takepatch/resolve 
+cannot handle it.  (so only turested one is the orginal null sync fix)
+
+b) revisit making push/pull propogate log maker
+ 	When pulling in a change that has already been logged,
+	and it becomes the tip, there is no need to log.
+	This could happen often if people use BK to grab latest
+	code, but never do changes.
+        It can reduce log connection traffic for null sync.
+
+c) push part2 lock retry - do we want it on server side or client side ?
+	Currently client.
+        client side fix has transitional issues: we do not want the server
+	and client to both do the retry.
+
+d) keysync protocol change..
+	Reduce the amount of data that gets sent back from logging tree.
+	First, quantify problem to make sure when this is worth fixing.
+
+e) x.lmarker 
+	a way to make the log 2 probe data more meaningful in the case
+	of the trunk already being probed after a merge.  Then can send
+	the probe along the branch instead.
+	Advantage: no protocol or server change, only client.
+	Disadvantage: Not quantified how much this will help.
