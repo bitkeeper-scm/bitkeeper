@@ -1,24 +1,17 @@
 #include "system.h"
 #include "sccs.h"
 
-int
-zone_main(int ac, char **av)
+char	*
+sccs_zone()
 {
 	time_t	tt = time(0);
 	struct	tm tm;
-	char	tmp[50];
+	char	tmp[10];
 	long	offset;
 	int	hwest, mwest;
 	char	sign = '+';
 
-	if (ac == 2 && streq("--help", av[1])) {
-		system("bk help zone");
-		return (0);
-	}
-
-	platformSpecificInit(NULL);
 	offset = localtimez(tt, &tm);
-
 	strftime(tmp, sizeof(tmp), "%y/%m/%d %H:%M:%S", &tm);
 
 	/*
@@ -32,6 +25,21 @@ zone_main(int ac, char **av)
 		mwest = -mwest;
 	}
 	sprintf(tmp, "%c%02d:%02d", sign, hwest, mwest);
-	printf("%s\n", tmp);
+	return (strdup(tmp));
+}
+
+int
+zone_main(int ac, char **av)
+{
+	char	*zone;
+
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help zone");
+		return (0);
+	}
+	platformSpecificInit(NULL);
+	zone = sccs_zone();
+	printf("%s\n", zone);
+	free(zone);
 	return (0);
 }

@@ -76,6 +76,8 @@ private int	compressmap(sccs *s, delta *d, ser_t *set, char **i, char **e);
 private	void	uniqDelta(sccs *s);
 private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
+private void	symGraph(sccs *s, delta *d, char *buf);
+char		*now();
 
 int
 exists(char *s)
@@ -1234,6 +1236,29 @@ private char *
 sccsrev(delta *d)
 {
 	return (d->rev);
+}
+
+/*
+ * Return true if you can get to p by work upwards from d
+ */
+private int
+ancestor(sccs *s, delta *d, delta *p)
+{
+	delta	*e, *m;
+
+	unless (d) return (0);
+	unless (d->serial >= p->serial) return (0);
+
+	/* try the easy path first */
+	for (e = d; e; e = e->parent) {
+		if (e == p) return (1);
+	}
+
+	/* walk the merge parents */
+	for (e = d; e; e = e->parent) {
+		if (e->merge && ancestor(s, sfind(s, e->merge), p)) return (1);
+	}
+	return (0);
 }
 
 /*
@@ -2689,6 +2714,45 @@ sccs_whynot(char *who, sccs *s)
 }
 
 /*
+ * Add this meta delta into the symbol graph.
+ * Set this symbol's leaf flag and clear the parent's.
+ */
+symDinsert(sccs *s, delta *d)
+{
+	delta	*p;
+	int	lod;
+
+//fprintf(stderr, "SD(%s %d %d %d)\n", d->rev, d->serial, d->ptag, d->mtag);
+	if (d->ptag) {
+		sfind(s, d->ptag)->symLeaf = 0;
+		if (d->mtag) sfind(s, d->mtag)->symLeaf = 0;
+		return;
+	}
+//unless (d->serial == 1) fprintf(stderr, "==============\n");
+	for (lod = d->r[0]; lod; lod--) {
+		for (p = d->next; p; p = p->next) {
+		if (p->flags & D_SYMBOLS) {
+			symbol	*sym;
+
+			/* We want p to be the meta delta but we can't just
+			 * look at the type, some deltas are both.
+			 */
+			for (sym = s->symbols; sym; sym = sym->next) {
+				if (sym->metad == p) break;
+			}
+			unless (sym) continue;
+			unless (p->r[0] == lod) continue;
+
+//fprintf(stderr, "Insert %d/%s->%d/%s\n", d->serial, d->rev, p->serial, p->rev);
+			d->ptag = p->serial;
+			p->symLeaf = 0;
+			return;
+		}
+	}
+	}
+}
+
+/*
  * For each symbol, go find the real delta and point to it instead of the
  * meta delta.
  */
@@ -2699,7 +2763,11 @@ metaSyms(sccs *sc)
 	symbol	*sym;
 
 	for (sym = sc->symbols; sym; sym = sym->next) {
+		unless (isdigit(sym->name[0])) sym->metad->symLeaf = 1;
+	}
+	for (sym = sc->symbols; sym; sym = sym->next) {
 		assert(sym->d);
+		symDinsert(sc, sym->metad);
 		if (sym->d->type == 'D') continue;
 		assert(sym->d->parent);
 		for (d = sym->d->parent; d->type != 'D'; d = d->parent) {
@@ -2708,6 +2776,156 @@ metaSyms(sccs *sc)
 		sym->d = d;
 		d->flags |= D_SYMBOLS;
 	}
+
+}
+
+private inline int
+samelod(delta *a, delta *b)
+{
+	return (a->r[0] == b->r[0]);
+}
+
+private void
+tcolor(sccs *s, delta *d)
+{
+	unless (d) return;
+	d->flags |= D_VISITED;
+	if (d->ptag) tcolor(s, sfind(s, d->ptag));
+	if (d->mtag) tcolor(s, sfind(s, d->mtag));
+}
+
+private void
+tagleaves(sccs *s, delta **l1, delta **l2)
+{
+	delta	*d = sccs_top(s);
+	symbol	*sym;
+
+	for (sym = s->symbols; sym; sym = sym->next) {
+		if (isdigit(sym->name[0])) continue;
+		unless (sym->metad->symLeaf && samelod(sym->metad, d)) continue;
+		unless (*l1) {
+			*l1 = sym->metad;
+			continue;
+		}
+		unless (*l2) {
+			*l2 = sym->metad;
+			continue;
+		}
+		assert("More than two metadata leaves" == 0);
+	}
+}
+
+/*
+ * Add a merge delta which closes the tag graph.
+ * The merge delta is a meta child of whoever is at the delta tip.
+ */
+sccs_tagMerge(sccs *s, delta *d, char *tag)
+{
+	delta	*l1 = 0, *l2 = 0;
+	char	buf[MAXLINE];
+	char	*zone = sccs_zone();
+	MMAP	*m;
+
+	tagleaves(s, &l1, &l2);
+	assert(l1 && l2);
+	unless (d) d = sccs_top(s);
+	sprintf(buf, "M 0.0 %s%s %s@%s 0 0 0/0/0\n%s%s%sS %u %u\n%s\n",
+	    now(), zone, sccs_getuser(), sccs_gethost(),
+	    tag ? "S " : "",
+	    tag ? tag : "",
+	    tag ? "\n" : "",
+	    l1->serial, l2->serial,
+	    "------------------------------------------------");
+	free(zone);
+	m = mrange(buf, buf + strlen(buf), "");
+	sccs_meta(s, d, m, 1);
+	l1->symLeaf = l2->symLeaf = 0;
+}
+
+/*
+ * Return an MDBM ${value} = rev,rev
+ * for each value that was added by both the left and the right.
+ */
+MDBM	*
+sccs_tagConflicts(sccs *s)
+{
+	MDBM	*db = 0;
+	delta	*d = sccs_top(s);
+	delta	*l1 = 0, *l2 = 0;
+	char	buf[MAXREV*3];
+	char	*t;
+	symbol	*sy1, *sy2;
+
+	tagleaves(s, &l1, &l2);
+	unless (l2) return (0);
+
+	/* We always return an MDBM even if it is just an automerge case
+	 * with nothing to merge.
+	 */
+	unless (db) db = mdbm_mem();
+	tcolor(s, l1);
+	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
+		unless (sy1->metad->flags & D_VISITED) continue;
+		sy1->metad->flags &= ~D_VISITED;
+		sy1->left = 1;
+	}
+	tcolor(s, l2);
+	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
+		unless (sy1->metad->flags & D_VISITED) continue;
+		sy1->metad->flags &= ~D_VISITED;
+		sy1->right = 1;
+	}
+
+	/*
+	 * OK, for each symbol only in the left, see if there is one of the
+	 * same name only in the right.
+	 */
+	for (sy1 = s->symbols; sy1; sy1 = sy1->next) {
+		unless (sy1->left && !sy1->right) continue;
+		for (sy2 = s->symbols; sy2; sy2 = sy2->next) {
+			unless (sy2->right && !sy2->left &&
+			    streq(sy1->name, sy2->name)) {
+			    	continue;
+			}
+			/*
+			 * Quick check to see if they added the same symbol
+			 * twice to the same rev.
+			 */
+			if (streq(sy1->rev, sy2->rev)) continue;
+			/*
+			 * OK, we really have a conflict, save it.
+			 */
+			sprintf(buf,
+			    "%d %d", sy1->metad->serial, sy2->metad->serial);
+			if (mdbm_store_str(db, sy1->name, buf, MDBM_INSERT)) {
+				assert("duplicate tag conflict" == 0);
+		    	}
+		}
+	}
+	return (db);
+}
+
+/*
+ * Make sure that the tag graph has one open tip per lod.
+ */
+private int
+checkSymGraph(sccs *s, int flags)
+{
+	delta	*l1 = 0, *l2 = 0;
+	symbol	*s1, *s2;
+
+	tagleaves(s, &l1, &l2);
+	unless (l1 && l2) return (0);
+	for (s1 = s->symbols; s1; s1 = s1->next) {
+		if (s1->metad == l1) break;
+	}
+	for (s2 = s->symbols; s2; s2 = s2->next) {
+		if (s2->metad == l2) break;
+	}
+	assert(s1 && s2);
+	verbose((stderr, "%s: unmerged tags %s/%s and %s/%s\n",
+	    s->gfile, s1->rev, s1->name, s2->rev, s2->name));
+	return (128);
 }
 
 /*
@@ -3315,6 +3533,7 @@ addsym(sccs *s, delta *d, delta *metad, char *rev, char *val)
 	}
 	debug((stderr, "Added symbol %s->%s (%d,%d) in %s\n",
 	    val, rev, d->serial, metad->serial, s->sfile));
+	symDinsert(s, metad);
 	return (1);
 }
 
@@ -4022,9 +4241,9 @@ sccs_filetype(char *name)
 	switch (s[1]) {
 	    case 'c':	/* comments files */
 	    case 'd':	/* delta pending */
-	    case 'm':	/* merge files */
+	    case 'm':	/* name resolve files */
 	    case 'p':	/* lock files */
-	    case 'r':	/* resolve files */
+	    case 'r':	/* content resolve files */
 	    case 's':	/* sccs file */
 	    case 'x':	/* temp file, about to be s.file */
 	    case 'z':	/* lock file */
@@ -4460,8 +4679,12 @@ walkList(sccs *s, char *list, int *errp)
 		*t++ = 0;
 		rev = next;
 		next = save ? t : 0;
-		name2rev(s, &rev);
-		tmp = rfind(s, rev);
+		if (streq(rev, "+")) {
+			tmp = findrev(s, 0);
+		} else {
+			name2rev(s, &rev);
+			tmp = rfind(s, rev);
+		}
 		t[-1] = save;
 		return (tmp);
 	}
@@ -4491,8 +4714,12 @@ walkList(sccs *s, char *list, int *errp)
 	*t++ = 0;
 	rev = next;
 	next = save ? t : 0;
-	name2rev(s, &rev);
-	d = rfind(s, rev);
+	if (streq(rev, "+")) {
+		d = findrev(s, 0);
+	} else {
+		name2rev(s, &rev);
+		d = rfind(s, rev);
+	}
 	t[-1] = save;
 
 	if (!stop || !d) {
@@ -6874,12 +7101,29 @@ delta_table(sccs *s, FILE *out, int willfix)
 
 			for (sym = s->symbols; sym; sym = sym->next) {
 				unless (sym->metad == d) continue;
+				if (isdigit(sym->name[0])) continue;
 				p = fmts(buf, "\001cS");
 				p = fmts(p, sym->name);
 				*p++ = '\n';
 				*p   = '\0';
 				fputmeta(s, buf, out);
 			}
+		}
+		if (d->mtag) {
+			assert(d->ptag);
+			p = fmts(buf, "\001cS");
+			p = fmtd(p, d->ptag);
+			*p++ = ' ';
+			p = fmtd(p, d->mtag);
+			*p++ = '\n';
+			*p = 0;
+			fputmeta(s, buf, out);
+		} else if (d->ptag) {
+			p = fmts(buf, "\001cS");
+			p = fmtd(p, d->ptag);
+			*p++ = '\n';
+			*p = 0;
+			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_TEXT) {
 			unless (d->text) {
@@ -8355,7 +8599,7 @@ sccs_isleaf(sccs *s, delta *d)
  * the xflags implied by the top-of-trunk delta.
  */
 private int
-check_xflags(sccs *s)
+check_xflags(sccs *s, int flags)
 {
 	delta	*d;
 	int x1, x2;
@@ -8365,10 +8609,10 @@ check_xflags(sccs *s)
 		x1 = state2xflags(s->state) & X_XFLAGS;
 		x2 = sccs_getxflags(d) & X_XFLAGS;
 		if (x2 && (x1 != x2)) {
-			fprintf(stderr,
+			verbose((stderr,
 				"sccs_int: %s: inconsistent xflags: "
 				"s->state => %x, d->xflags => %x\n",
-				s->sfile, x1, x2);
+				s->sfile, x1, x2));
 			return (1); /* failed */
 		}
 	}
@@ -8379,7 +8623,7 @@ check_xflags(sccs *s)
  * Check open branch
  */
 private int
-checkOpenBranch(sccs *s)
+checkOpenBranch(sccs *s, int flags)
 {
 	delta	*d;
 	int	error =0, tips = 0;
@@ -8419,7 +8663,7 @@ checkOpenBranch(sccs *s)
 		if (streq(d->rev, "1.0")) continue;
 		unless (isleaf(s, d)) continue;
 		unless (lodmap[d->r[0]] > 1) continue;
-		fprintf(stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev);
+		verbose((stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev));
 	}
 	if (lodmap) free(lodmap);
 	return (1);
@@ -8432,16 +8676,13 @@ checkOpenBranch(sccs *s)
  *	. no open branches
  */
 private int
-checkInvariants(sccs *s)
+checkInvariants(sccs *s, int flags)
 {
-	delta	*d;
-	int	error =0, tips = 0;
-	u8	*lodmap = 0;
-	ser_t	next;
+	int	error = 0;
 
-	error |= check_xflags(s);
-	error |= checkOpenBranch(s);
-
+	error |= check_xflags(s, flags);
+	error |= checkOpenBranch(s, flags);
+	error |= checkSymGraph(s, flags);
 	return (error);
 }
 
@@ -8896,10 +9137,16 @@ private void
 symArg(sccs *s, delta *d, char *name)
 {
 	symbol	*sym = calloc(1, sizeof(*sym));
+	char	*t;
 
-	if (!d) d = (delta *)calloc(1, sizeof(*d));
+	assert(d);
 	sym->rev = strdup(d->rev);
 	sym->name = strnonldup(name);
+	/* stash away the merge serial numbers */
+	if (isdigit(*sym->name)) {
+		d->ptag = atoi(sym->name);
+		if (t = strchr(sym->name, ' ')) d->mtag = atoi(++t);
+	}
 	if (!s->symbols) {
 		s->symbols = s->symTail = sym;
 	} else {
@@ -8920,7 +9167,6 @@ symArg(sccs *s, delta *d, char *name)
 	    streq(d->rev, "1.0") && streq(sym->name, KEY_FORMAT2)) {
 	    	s->state |= S_KEY2;
 	}
-	return;
 }
 
 private delta *
@@ -9026,6 +9272,12 @@ dupSym(symbol *symbols, char *s, char *rev)
 int
 sccs_addSym(sccs *sc, u32 flags, char *s)
 {
+#if 1
+	/*
+	 * Until we make this participate in the tag graph, we can't use it.
+	 */
+	return (EAGAIN);
+#else
 	char	*rev;
 	delta	*n = 0, *d = 0;
 	char	*t, *r;
@@ -9140,6 +9392,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	free(s);
 	sccs_unlock(sc, 'z');
 	return (0);
+#endif
 }
 
 private int
@@ -9149,6 +9402,14 @@ addSym(char *me, sccs *sc, int flags, admin *s, int *ep)
 	char	*rev;
 	char	*sym;
 	delta	*d, *n = 0;
+
+	unless (s && s[0].flags) return (0);
+
+	unless (sc->state & S_CSET) {
+		fprintf(stderr,
+		    "Tagging files is not supported, use bk tag instead\n");
+		return (0);
+	}
 
 	/*
 	 * "sym" means TOT of current LOD.
@@ -9183,24 +9444,19 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			    "%s: symbol %s exists on %s\n", me, sym, rev));
 			goto sym_err;
 		}
-		/* If we already have a meta delta and it's for the same
-		 * rev as the current one, don't make another.  This
-		 * optimizes admin -Sa:1.2 -Sc:1.2 -Sb:1.3 but not
-		 * admin -Sa:1.2 -Sb:1.3 -Sc:1.2.
-		 */
-		unless (n && streq(n->rev, d->rev)) {
-			n = calloc(1, sizeof(delta));
-			n->next = sc->table;
-			sc->table = n;
-			n = sccs_dInit(n, 'R', sc, 0);
-			n->sum = (unsigned short) almostUnique(1);
-			n->rev = strdup(d->rev);
-			explode_rev(n);
-			n->pserial = d->serial;
-			n->serial = sc->nextserial++;
-			sc->numdeltas++;
-			dinsert(sc, 0, n, 1);
-		}
+		n = calloc(1, sizeof(delta));
+		n->next = sc->table;
+		sc->table = n;
+		n = sccs_dInit(n, 'R', sc, 0);
+		n->sum = (unsigned short) almostUnique(1);
+		n->rev = strdup(d->rev);
+		explode_rev(n);
+		n->pserial = d->serial;
+		n->serial = sc->nextserial++;
+		n->flags |= D_SYMBOLS;
+		d->flags |= D_SYMBOLS;
+		sc->numdeltas++;
+		dinsert(sc, 0, n, 1);
 		if (addsym(sc, d, n, rev, sym) == 0) {
 			verbose((stderr,
 			    "%s: won't add identical symbol %s to %s\n",
@@ -9476,6 +9732,8 @@ insert_1_0(sccs *s)
 		if (d->flags & D_CSET) csets++;
 		d->serial++;
 		d->pserial++;
+		if (d->ptag) d->ptag++;
+		if (d->mtag) d->mtag++;
 		if (d->merge) d->merge++;
 		EACH(d->include) d->include[i]++;
 		EACH(d->exclude) d->exclude[i]++;
@@ -9562,7 +9820,7 @@ out:
 		OUT;
 	}
 
-	if ((flags & ADMIN_BK) && checkInvariants(sc)) OUT;
+	if ((flags & ADMIN_BK) && checkInvariants(sc, flags)) OUT;
 	if ((flags & ADMIN_GONE) && checkGone(sc, D_GONE, "admin")) OUT;
 	if (flags & ADMIN_FORMAT) {
 		if (checkrevs(sc, flags) || checkdups(sc) ||
@@ -10160,6 +10418,24 @@ newcmd:
  * Initialize as much as possible from the file.
  * Don't override any information which is already set.
  * XXX - this needs to track sccs_prsdelta/do_patch closely.
+ *
+ * R/D/M - delta type
+ * B - cset file key
+ * C - cset boundry marker
+ * c - comments
+ * E - ???
+ * F - date fudge
+ * i - include keys
+ * K - delta checksum
+ * M - merge delta key
+ * O - modes (file permissions)
+ * P - pathname
+ * R - random bits
+ * S - symbols
+ * T - text
+ * V - file format version
+ * x - exclude keys
+ * X - X_flags
  */
 delta *
 sccs_getInit(sccs *sc, delta *d, MMAP *f, int patch, int *errorp, int *linesp,
@@ -10355,7 +10631,32 @@ skip:
 
 	/* symbols are optional */
 	while (WANT('S')) {
-		if (symsp) syms = addLine(syms, strdup(&buf[2]));
+		if (d && isdigit(buf[2])) {
+			d->ptag = atoi(&buf[2]);
+			if (s = strchr(&buf[2], ' ')) d->mtag = atoi(++s);
+		} else if (symsp) {
+			syms = addLine(syms, strdup(&buf[2]));
+		}
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
+	/* symbols as keys are optional, first is ptag, second is mtag */
+	if (WANT('s')) {
+		if (d && sc) {
+			delta	*e = sccs_findKey(sc, &buf[2]);
+
+			assert(e);
+			d->ptag = e->serial;
+		}
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+	if (WANT('s')) {
+		if (d && sc) {
+			delta	*e = sccs_findKey(sc, &buf[2]);
+
+			assert(e);
+			d->mtag = e->serial;
+		}
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -10369,7 +10670,6 @@ skip:
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
-	/* Random bits are used only for 1.0 deltas in conversion scripts */
 	if (WANT('V')) {
 		unless (streq("1.0", d->rev)) {
 			fprintf(stderr, "sccs_getInit: version only on 1.0\n");
@@ -10582,7 +10882,7 @@ isValidUser(char *u)
  * which can handle all of those cases.
  */
 int
-sccs_meta(sccs *s, delta *parent, MMAP *iF)
+sccs_meta(sccs *s, delta *parent, MMAP *iF, int fixDate)
 {
 	delta	*m;
 	int	i, e = 0;
@@ -10610,10 +10910,12 @@ sccs_meta(sccs *s, delta *parent, MMAP *iF)
 	bcopy(parent->r, m->r, sizeof(m->r));
 	m->serial = s->nextserial++;
 	m->pserial = parent->serial;
+	/* XXX - what if we do this twice?  We'll have two leaves */
+	if (m->ptag && m->mtag) m->symLeaf = 1;
 	m->next = s->table;
 	s->table = m;
 	s->numdeltas++;
-	dinsert(s, 0, m, 0);
+	dinsert(s, 0, m, fixDate);
 	EACH (syms) {
 		addsym(s, m, m, m->rev, syms[i]);
 	}
@@ -11020,7 +11322,7 @@ out:
 	s->numdeltas++;
 
 	EACH (syms) {
-		if (dupSym(s->symbols, syms[i], 0)) {
+		if (!(flags & DELTA_PATCH) && dupSym(s->symbols, syms[i], 0)) {
 			fprintf(stderr,
 			    "delta: symbol %s exists in %s\n",
 			    syms[i], s->sfile);
@@ -12097,6 +12399,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
+			if (isdigit(sym->name[0])) continue;
 			j++;
 			fs("S ");
 			fs(sym->name);
@@ -12282,6 +12585,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		unless (d && (d->flags & D_SYMBOLS)) return (nullVal);
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->d == d) continue;
+			if (isdigit(sym->name[0])) continue;
 			if (!plen && !slen && j++) fc(' ');
 			fprintDelta(out, vbuf, prefix, &prefix[plen -1], s, d);
 			fs(sym->name);
@@ -13056,7 +13360,20 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 	if (start->flags & D_SYMBOLS) {
 		for (sym = s->symbols; sym; sym = sym->next) {
 			unless (sym->metad == start) continue;
+			if (isdigit(sym->name[0])) continue;
 			fprintf(out, "S %s\n", sym->name);
+		}
+		for (sym = s->symbols; sym; sym = sym->next) {
+			unless (sym->metad == start) continue;
+			unless (isdigit(sym->name[0])) continue;
+			{
+			delta	*d = sfind(s, atoi(sym->name));
+			char	buf[MAXKEY];
+
+			assert(d);
+			sccs_sdelta(s, d, buf);
+			fprintf(out, "s %s\n", buf);
+			}
 		}
 	}
 	if (start->flags & D_TEXT) {
@@ -13127,6 +13444,7 @@ sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out)
 	if (flags & PRS_META) {
 		symbol	*sym;
 		for (sym = s->symbols; sym; sym = sym->next) {
+			if (isdigit(sym->name[0])) continue;
 			fprintf(out, "S %s %s\n", sym->name, sym->rev);
 		}
 	}

@@ -161,6 +161,7 @@ bk undos X > ref.c
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed d.c"; cat d.c; exit 1; fi
 echo OK
+cores
 echo $N Check conflict within a patch + circular rename..............$NL
 # XXX - what conflict?
 cd  $HERE
@@ -187,6 +188,7 @@ bk undos X > ref.c
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed d.c"; cat d.c; exit 1; fi
 echo OK
+cores
 echo $N Check circular rename in two work spaces ....................$NL
 cd  $HERE
 rm -rf $HERE/copy
@@ -277,6 +279,7 @@ if [ "`bk get -qp d.c`" != "File 2" ]
 then	echo d.c is not File 2; exit 1
 fi
 echo OK
+cores
 echo $N Check circular rename in two work spaces - alternate ........$NL
 cd  $HERE
 rm -rf $HERE/copy
@@ -355,6 +358,7 @@ if [ "`bk get -qp c.c`" != "File 4" ]
 then	echo d.c is not File 4; exit 1
 fi
 echo OK
+cores
 
 echo $N Check name conflict caused by rename ........................$NL
 cd $HERE/project/src
@@ -419,6 +423,7 @@ bk admin -z $HERE/project/src/SCCS/s.c.c $HERE/copy/src/SCCS/s.c.c
 diff $HERE/project/src/SCCS/s.c.c $HERE/copy/src/SCCS/s.c.c
 if [ $? -ne 0 ]; then echo failed on c.c; exit 1; fi;
 echo OK
+cores
 
 echo $N Key conflict in a single workspace ..........................$NL
 # this test is time dependent
@@ -443,6 +448,7 @@ KEY1=`bk prs -hr1.0 -d:KEY: $HERE/project/src/dup.c`
 KEY2=`bk prs -hr1.0 -d:KEY: $HERE/copy/src/dup.c`
 if [ "${KEY1}"X = "${KEY2}"X ]; then echo failed: duplicate key; exit 1; fi
 echo OK
+cores
 rm -f $HERE/project/src/SCCS/s.dup.c $HERE/copy/src/SCCS/s.dup.c
 echo $N Check resync with binary file ...............................$NL
 cd  $HERE
@@ -462,6 +468,10 @@ bk commit $S -Sbinary2 -ybinary2
 bk resync $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
 bk resolve -t $L $Q
+test -d RESYNC && {
+	echo failed to finish resolve
+	exit 1
+}
 bk get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; fi
@@ -476,6 +486,7 @@ bk get $Q bdata
 cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed test 4; cmp bdata $binary_data2; exit 1; fi
 echo OK
+cores
 echo $N Check resolve w/ merge and delete event .....................$NL
 cd $HERE/project/src
 cat > merge.c << EOF
@@ -526,6 +537,7 @@ bk undos X > merge.ref
 cmp -s merge.c merge.ref
 if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
+cores
 echo $N Merge back up should have no conflicts ......................$NL
 cd $HERE
 bk ci $Q -yrename project/src/f.c
@@ -536,6 +548,7 @@ then echo failed
      cat resolve.out
 fi
 echo OK
+cores
 rm -f resolve.out
 
 echo $N Test propagation of a symbol on new changeset ...............$NL
@@ -549,6 +562,7 @@ if [ ! -f src/SCCS/s.symbol_test ]; then echo failed to send file; exit 1; fi
 grep -q 'Ssymbol test' SCCS/s.ChangeSet
 if [ $? != 0 ]; then echo failed; exit 1; fi
 echo OK
+cores
 
 echo $N Test propagation of a stand alone symbol "(meta delta)" .......$NL
 cd $HERE/project
