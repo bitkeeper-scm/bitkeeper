@@ -4,8 +4,8 @@
 extern char *bin;
 private char	*getrev(char *);
 private MDBM	*mk_list(char *, char *);
-private void	clean_file(MDBM *);
-private void	do_rename(MDBM *, char *);
+private int	clean_file(MDBM *);
+private int	do_rename(MDBM *, char *);
 extern	void	cat(char *);
 private void	checkRev(char *);
 
@@ -14,9 +14,9 @@ undo_main(int ac,  char **av)
 {
 	int	c, rc, 	force = 0, save = 1;
 	char	buf[MAXLINE];
-	char	rev_list[MAXPATH], undo_list[MAXPATH];
+	char	rev_list[MAXPATH], undo_list[MAXPATH] = { 0 };
 	char	*qflag = "", *vflag = "-v";
-	char	*cmd, *rev = 0;
+	char	*cmd = 0, *rev = 0;
 	MDBM	*fileList;
 #define	LINE "---------------------------------------------------------\n"
 #define	BK_TMP  "BitKeeper/tmp"
@@ -47,7 +47,7 @@ undo_main(int ac,  char **av)
 
 	sprintf(rev_list, "%s/bk_rev_list%d",  TMP_PATH, getpid());
 	fileList = mk_list(rev_list, rev);
-	clean_file(fileList);
+	if (!fileList || clean_file(fileList)) goto err;
 
 	sprintf(undo_list, "%s/bk_undo_list%d",  TMP_PATH, getpid());
 	cmd = malloc(strlen(rev) + strlen(undo_list) + 200);
@@ -55,8 +55,10 @@ undo_main(int ac,  char **av)
 	if (system(cmd) != 0) {
 		gethelp("undo_error", bin, stdout);
 		cat(undo_list);
-		unlink(undo_list);
-		free(cmd);
+err:		if (undo_list[0]) unlink(undo_list);
+		unlink(rev_list);
+		mdbm_close(fileList);
+		if (cmd) free(cmd);
 		exit(1);
 	}
 
@@ -68,6 +70,7 @@ undo_main(int ac,  char **av)
 		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) {
 			unlink(rev_list);
+			mdbm_close(fileList);
 			exit(0);
 		}
 	}
@@ -78,7 +81,7 @@ undo_main(int ac,  char **av)
 		system(cmd);
 		if (size(BK_UNDO) <= 0) {
 			printf("Failed to create undo backup %s\n", BK_UNDO);
-			exit(1);
+			goto err;
 		}
 	}
 	free(cmd); cmd = 0;
@@ -86,8 +89,7 @@ undo_main(int ac,  char **av)
 	sprintf(buf, "bk stripdel %s -C - < %s", qflag, rev_list);
 	if (system(buf) != 0) {
 		fprintf(stderr, "Undo failed\n");
-		unlink(rev_list);
-		exit(1);
+		goto err;
 	}
 
 	/*
@@ -95,7 +97,7 @@ undo_main(int ac,  char **av)
 	 * make sense at cset boundries.
 	 * Also, run all files through renumber.
 	 */
-	do_rename(fileList, qflag);
+	if (do_rename(fileList, qflag)) goto err;
 	mdbm_close(fileList);
 	unlink(rev_list); unlink(undo_list);
 
@@ -171,7 +173,10 @@ mk_list(char *rev_list, char *rev)
 	assert(rev);
 	cmd = malloc(strlen(rev) + 100);
 	sprintf(cmd, "bk cset -ffl%s > %s", rev, rev_list);
-	system(cmd);
+	if (system(cmd) != 0) {
+		printf("undo: can not extact revision list\n");
+		return (NULL);
+	}
 	free(cmd);
 	if (size(rev_list) == 0) {
 		printf("undo: nothing to undo in \"%s\"\n", rev);
@@ -190,7 +195,7 @@ mk_list(char *rev_list, char *rev)
 	return DB;
 }
 
-private void
+private int
 do_rename(MDBM *fileList, char *qflag)
 {
 	sccs	*s;
@@ -239,15 +244,15 @@ do_rename(MDBM *fileList, char *qflag)
 			}
 		}
 		/* must be AFTER the move */
+		fprintf(f, "%s\n", old_path);
 		free(sfile);
 		free(old_path);
-		fprintf(f, "%s\n", old_path);
 	}
 	if (proj) proj_free(proj);
-	pclose(f);
+	return (pclose(f));
 }
 
-private void
+private int
 clean_file(MDBM *fileList)
 {
 	sccs	*s;
@@ -268,10 +273,11 @@ clean_file(MDBM *fileList)
 			free(sfile);
 			mdbm_close(fileList);
 			if (proj) proj_free(proj);
-			exit(1);
+			return (-1);
 		}
 		sccs_free(s);
 		free(sfile);
 	}
 	if (proj) proj_free(proj);
+	return (0);
 }
