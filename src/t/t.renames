@@ -105,14 +105,21 @@ cp -rp project copy
 cd project
 echo foo > no_conflicts
 bk new $Q no_conflicts
-bk mv no_conflicts renamed
+bk commit $Q -ywhatever2
+cd $HERE
+bk resync -t $Q -at project copy
+# Rename the case orientation only, this test correctness on win32
+cd project
+mv SCCS/s.no_conflicts SCCS/s.tmp
+bk mv tmp no_Conflicts
 bk commit $Q -ywhatever2
 cd $HERE
 bk resync -t $Q -at project copy
 cd copy
-if [ ! -f SCCS/s.renamed ]
-then	echo failed to propogate renamed; exit 1
-fi
+bk sfiles -g | grep -q "no_Conflicts"
+if [ $? -ne 0 ]; then echo failed; exit1; fi
+DPATH=`bk prs -hnr+ -d':DPN:' no_Conflicts`
+if [ "$DPATH" != "no_Conflicts" ]; then echo failed; exit 1; fi
 echo OK
 
 # -------------------- create with gfile conflict -------------------
