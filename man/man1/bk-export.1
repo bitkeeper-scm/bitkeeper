@@ -37,7 +37,7 @@ directory. You want to make sure the out-of-view file looks
 like deleted file. This is done by replacing the @rev part of 
 the out-of-view file to @1.0. You can do this using the following command:
 .DS
-bk rset -rA,B | your_script | bk gnupatch 
+bk rset -hrA,B | your_script | bk gnupatch 
 .DE
 .SH OPTIONS
 .if t .TP
