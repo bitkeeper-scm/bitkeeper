@@ -1299,11 +1299,6 @@ sccs_mkroot(char *path)
 		perror(buf);
 		exit(1);
 	}
-	sprintf(buf, "%s/BitKeeper/tmp", path);
-	if ((mkdir(buf, 0777) == -1) && (errno != EEXIST)) {
-		perror(buf);
-		exit(1);
-	}
 }
 
 /*
