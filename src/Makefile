@@ -93,7 +93,8 @@ PSCR	= t/doit
 UWTOBJ	= win32/uwtlib/wapi_intf.o win32/uwtlib/wcrt_intf.o
 LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a $(UWTLIB)
 LINKS	= ci co edit unget
-DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif
+DATA	= bitkeeper.config bkmsg.txt bkhelp.txt bklogo.gif \
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
 LINKTO	= fm fmtool fm3 fm3tool
 BINLINKS= bk admin get delta unget rmdel prs
 # Note: $(XTRA) must be listed after "gnu"
@@ -198,9 +199,11 @@ production_image: rebuild p image
 clean-obj: FORCE
 	-@rm -f bk bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
-	-@rm -f $(LIBS) shell.c bkdsubstr bkmsg.txt bkhelp.txt a.out core $(WIN_TMP)
+	-@rm -f $(LIBS) shell.c bkdsubstr bkmsg.txt bkhelp.txt a.out
+	-@rm -f core $(WIN_TMP)
 	-@cd gnu && $(MAKE) clean-obj
 	-@cd win32 && $(MAKE) clean-obj
+	-@cd doc && $(MAKE) clean-obj
 
 clean-bin: FORCE
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
@@ -216,10 +219,12 @@ clean clobber distclean: rebuild FORCE
 rebuild:
 	-@rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-@rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
-	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out core $(WIN_TMP)
+	-@rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt bkmsg.txt a.out
+	-@rm -f core $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
+	-@cd doc && $(MAKE) clean clean-obj
 	cd t && rm -f doit
 
 srcs src: FORCE
@@ -309,6 +314,12 @@ bkmsg.txt: bkmsg.doc bk.ver Makefile
 bkhelp.txt: build FRC
 	@cd ../man/man2help && ../../src/build -u helptxt
 	@cp ../man/man2help/helptxt bkhelp.txt
+
+../doc/bk_refcard.pdf: build FRC
+	@cd ../doc/ && make pdf
+
+../doc/bk_refcard.ps: build FRC
+	@cd ../doc/ && make ps
 
 FRC:
 
