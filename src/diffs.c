@@ -251,7 +251,7 @@ usage:			system("bk help -s diffs");
 		 */
 		if (!things && IS_WRITABLE(s) && HAS_PFILE(s) &&
 		    !MONOTONIC(s) && !Rev &&
-		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) {
+		    !sccs_hasDiffs(s, flags|ex, 1)) {
 			goto next;
 		}
 		

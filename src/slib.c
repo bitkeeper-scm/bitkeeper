@@ -7832,8 +7832,6 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 #define	RET(x)	{ different = x; goto out; }
 
 	if (inex && (pf->mRev || pf->iLst || pf->xLst)) RET(2);
-	/* A questionable feature for diffs */
-	if ((flags & GET_DIFFTOT) && (d != findrev(s, 0))) RET(1);
 
 	/* If the file type changed, it is a diff */
 	if (d->flags & D_MODE) {

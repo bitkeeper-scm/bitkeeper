@@ -58,7 +58,7 @@
 #define	GET_HASHDIFFS	0x00000100	/* get -DDD, 0a0 hash style diffs */
 #define	GET_SUM		0x00000200	/* used to force dsum in getRegBody */
 #define GET_NOREGET	0x00000400	/* get -S: skip gfiles that exist */
-#define GET_DIFFTOT	0x00000800	/* hasDiffs() false if !TOT */
+/* available       	0x00000800	*/
 #define	GET_FULLPATH	0x00000010	/* like GET_MODNAME but full relative */
 #define	GET_HASH	0x00000020	/* force hash file, ignore ~S_HASH */
 #define	GET_SEQ		0x00000040	/* get -O: prefix with sequence no */
