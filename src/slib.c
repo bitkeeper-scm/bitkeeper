@@ -4115,6 +4115,27 @@ printstate(const serlist *state, const ser_t *slist)
 }
 
 private void inline
+fnnlputs(char *buf, FILE *out)
+{
+	register char	*t = buf;
+	char		fbuf[MAXLINE];
+	register char	*p = fbuf;
+
+	while (*t && (*t != '\n')) {
+		*p++ = *t++;
+		if (p == &fbuf[MAXLINE-1]) {
+			*p = 0;
+			p = fbuf;
+			fputs(fbuf, out);
+		}
+	}
+	if (p != fbuf) {
+		*p = 0;
+		fputs(fbuf, out);
+	}
+}
+
+private void inline
 fnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
@@ -4624,6 +4645,8 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	MDBM	*DB = 0;
 	int	hash = 0;
 	int sccs_expanded, rcs_expanded;
+	int	lf_pend = 0;
+	ser_t	serial;
 
 	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -4770,7 +4793,13 @@ out:			if (slist) free(slist);
 			    }
 			    case E_ASCII:
 			    case E_GZIP:
-				fnlputs(e, out);
+				if (lf_pend) {
+					fputc('\n', out);
+					if (flags & NEWCKSUM) sum += '\n';
+				}
+				fnnlputs(e, out);
+				if (flags & NEWCKSUM) sum -= '\n';
+				lf_pend = print;
 				if (sccs_expanded) free(e1);
 				if (rcs_expanded) free(e2);
 				break;
@@ -4779,7 +4808,20 @@ out:			if (slist) free(slist);
 		}
 
 		debug2((stderr, "%.*s", linelen(buf), buf));
-		changestate(state, buf[1], atoi(&buf[3]));
+		serial = atoi(&buf[3]);
+		/* need to not generate newline when seeing:
+		 *   ^AI 2; text; ^AE 2N; ^AI 1; ^AE 1
+		 */
+		if (buf[1] == 'E' && print == serial && lf_pend == serial) {
+			char	*n = &buf[3];
+			while (isdigit(*n)) n++;
+			unless (*n == 'N') {
+				fputc('\n', out);
+				lf_pend = 0;
+				if (flags & NEWCKSUM) sum += '\n';
+			}
+		}
+		changestate(state, buf[1], serial);
 		print = (d)
 		    ? printstate((const serlist*)state, (const ser_t*)slist)
 		    : visitedstate((const serlist*)state, (const ser_t*)slist);
@@ -5091,7 +5133,7 @@ err:		return (-1);
 
 private int
 outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
-	FILE *in, FILE *out)
+	int no_lf, FILE *in, FILE *out)
 {
 	char	*prefix;
 
@@ -5099,7 +5141,8 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 
 	if (side == RIGHT) {
 		if (type == GET_BKDIFFS) {
-			fprintf(out, "I%d %d\n", *left, count);
+			fprintf(out, "%c%d %d\n", no_lf ? 'N' : 'I',
+				*left, count);
 			*right += count; /* not used, but easy to inc */
 			prefix = "";
 		} else {
@@ -5197,6 +5240,8 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	char	*buf;
 	char	tmpfile[100];
 	FILE	*lbuf = 0;
+	int	no_lf = 0;
+	ser_t	serial;
 	int	ret = -1;
 
 	unless (s->state & S_SOPEN) {
@@ -5274,7 +5319,15 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	while (buf = nextdata(s)) {
 		unless (isData(buf)) {
 			debug2((stderr, "%.*s", linelen(buf), buf));
-			changestate(state, buf[1], atoi(&buf[3]));
+			serial = atoi(&buf[3]);
+			if (buf[1] == 'E' && serial == with &&
+			    serial == d->serial)
+			{
+				char	*n = &buf[3];
+				while (isdigit(*n)) n++;
+				if (*n == 'N') no_lf = 1;
+			}
+			changestate(state, buf[1], serial);
 			with = printstate((const serlist*)state,
 					(const ser_t*)slist);
 			old = slist[d->serial];
@@ -5291,10 +5344,11 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		if (count &&
 		    nextside != side && (side == LEFT || side == RIGHT)) {
 			if (outdiffs(s, type,
-			    side, &left, &right, count, lbuf, out)) {
+			    side, &left, &right, count, no_lf, lbuf, out)) {
 				goto done;
 			}
 			count = 0;
+			no_lf = 0;
 		}
 		side = nextside;
 		switch (side) {
@@ -5310,9 +5364,13 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		}
 	}
 	if (count) { /* there is something left in the buffer */
-		if (outdiffs(s, type, side, &left, &right, count, lbuf, out))
+		if (outdiffs(s, type, side, &left, &right, count, no_lf,
+		    lbuf, out))
+		{
 			goto done;
+		}
 		count = 0;
+		no_lf = 0;
 	}
 	ret = 0;
 done:	if (s->encoding & E_GZIP) zgets_done();
@@ -6067,6 +6125,8 @@ fix_lf(char *gfile)
 	struct	stat sb;
 	char	c;
 
+	return (0);
+
 	if (lstat(gfile, &sb)) {
 		fprintf(stderr, "lstat: ");
 		perror(gfile);
@@ -6815,6 +6875,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs, char *
 	char	*t;
 	char	buf[MAXLINE];
 	admin	l[2];
+	int	no_lf = 0;
 	int	error = 0;
 
 	assert(s);
@@ -7012,16 +7073,22 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs, char *
 			 */
 			len = strlen(buf);
 			if (len && (buf[len - 1] != '\n')) {
-				s->dsum += fputdata(s, "\n", sfile);
+				/* put lf in sfile, but not in dsum */
+				fputdata(s, "\n", sfile);
+				no_lf = 1;
 			}
 		}
 	}
 	if (n0) {
-		fputdata(s, "\001E 2\n", sfile);
+		fputdata(s, "\001E 2", sfile);
+		if (no_lf) fputdata(s, "N", sfile);
+		fputdata(s, "\n", sfile);
 		fputdata(s, "\001I 1\n", sfile);
 		fputdata(s, "\001E 1\n", sfile);
 	} else {
-		fputdata(s, "\001E 1\n", sfile);
+		fputdata(s, "\001E 1", sfile);
+		if (no_lf) fputdata(s, "N", sfile);
+		fputdata(s, "\n", sfile);
 	}
 	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
@@ -8398,13 +8465,14 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 
 private void
-doctrl(sccs *s, char *pre, int val, FILE *out)
+doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 {
 	char	tmp[10];
 
 	sertoa(tmp, (unsigned short) val);
 	fputdata(s, pre, out);
 	fputdata(s, tmp, out);
+	fputdata(s, post, out);
 	fputdata(s, "\n", out);
 }
 
@@ -8545,6 +8613,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	added = 0, deleted = 0, unchanged = 0;
 	sum_t	sum;
 	char	*b;
+	int	no_lf = 0;
 
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
@@ -8577,9 +8646,12 @@ newcmd:
 		}
 		debug2((stderr, "where=%d what=%c\n", where, what));
 
-#define	ctrl(pre, val)	doctrl(s, pre, val, out)
+#define	ctrl(pre, val, post)	doctrl(s, pre, val, post, out)
 
-		if (what != 'a' && what != 'b' && what != 'I') where--;
+		if (what == 'c' || what == 'd' && what == 'D' || what == 'x')
+		{
+			where--;
+		}
 		while (lines < where) {
 			/*
 			 * XXX - this loops when I don't use the fudge as part
@@ -8588,49 +8660,35 @@ newcmd:
 			nextline(unchanged);
 		}
 		switch (what) {
-		    case 'a':
-			ctrl("\001I ", n->serial);
-			while (b = mnext(diffs)) {
-				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
-					goto newcmd;
-				}
-				s->dsum += fputdata(s, &b[2], out);
-				debug2((stderr,
-				    "INS %.*s", linelen(&b[2]), &b[2]));
-				added++;
-			}
-			break;
+		    case 'c':
 		    case 'd':
 			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
+			ctrl("\001D ", n->serial, "");
 			sum = s->dsum;
 			while (b = mnext(diffs)) {
+				if (strneq(b, "---\n", 4)) break;
+				if (strneq(b, "\\ No", 4)) continue;
 				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
+					ctrl("\001E ", n->serial, "");
 					s->dsum = sum;
 					goto newcmd;
 				}
 				nextline(deleted);
 			}
 			s->dsum = sum;
-			break;
-		    case 'c':
-			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
-			sum = s->dsum;
-			/* Toss the old stuff */
+			if (what != 'c') break;
+			ctrl("\001E ", n->serial, "");
+			/* fall through to */
+		    case 'a':
+			ctrl("\001I ", n->serial, "");
 			while (b = mnext(diffs)) {
-				if (strneq(b, "---\n", 4)) break;
-				nextline(deleted);
-			}
-			s->dsum = sum;
-			ctrl("\001E ", n->serial);
-			/* add the new stuff */
-			ctrl("\001I ", n->serial);
-			while (b = mnext(diffs)) {
+				if (strneq(b, "\\ No", 4)) {
+					s->dsum -= '\n';
+					no_lf = 1;
+					break;
+				}
 				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
+					ctrl("\001E ", n->serial, "");
 					goto newcmd;
 				}
 				s->dsum += fputdata(s, &b[2], out);
@@ -8639,9 +8697,10 @@ newcmd:
 				added++;
 			}
 			break;
+		    case 'N':
 		    case 'I':
 		    case 'i':
-			ctrl("\001I ", n->serial);
+			ctrl("\001I ", n->serial, "");
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
@@ -8653,23 +8712,23 @@ newcmd:
 				debug2((stderr, "INS %.*s", linelen(b), b));
 				added++;
 			}
+			if (what == 'N') {
+				s->dsum -= '\n';
+				no_lf = 1;
+			}
 			break;
 		    case 'D':
 		    case 'x':
 			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
+			ctrl("\001D ", n->serial, "");
 			sum = s->dsum;
 			while (howmany--) {
-				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
-					goto newcmd;
-				}
 				nextline(deleted);
 			}
 			s->dsum = sum;
 			break;
 		}
-		ctrl("\001E ", n->serial);
+		ctrl("\001E ", n->serial, no_lf ? "N" : "");
 	}
 	while (!eof(s)) {
 		nextline(unchanged);
