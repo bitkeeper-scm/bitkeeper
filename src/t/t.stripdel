@@ -13,15 +13,19 @@ c This the second comment of 1.$R
 P this/is/the/pathname.$R
 ------------------------------------------------
 EOF
+	# We must be careful not to leave a locked file behind at the
+	# end of the loop.  clean will complain because the recorded
+	# and actual pathnames don't match.
+	if [ $R -ne 1 ]
+	then	co $Q -l FILE
+	fi
 	echo 1.$R >> FILE
 	if [ $R -eq 1 ]
 	then	delta $Q -i -IINITX FILE
 	else	delta $Q -IINITX FILE
 	fi
 	R=`expr $R + 1`
-	co $Q -l FILE
 done
-clean FILE
 co  $Q -l -r1.3 FILE
 echo "added in 1.3.1.1" >> FILE
 ci $Q -y FILE

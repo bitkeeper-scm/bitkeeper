@@ -86,7 +86,7 @@ rm -f symlink
 ${ECHO} "this is file3" > file3
 ln -s file3 symlink
 ${CAT} > CMP1 << EOF
-symlink has different file type, needs delta.
+symlink has different file types, needs delta.
 EOF
 clean 2> CMP2
 cmp -s CMP1 CMP2

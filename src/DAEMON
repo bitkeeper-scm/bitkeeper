@@ -1,0 +1,29 @@
+Commands
+--------
+
+LIST - show all repositories as path and key
+	/full/path
+	key
+	[master]
+ROOT path | key - set the remote repository to this; if key then succeeds
+	only if repository has BitKeeper/etc/master file
+VERBOSE - return a port number to connect to for verbose messages
+CLONE - get an sfio file of the tree
+PUSH - pushes up a patch and applies it
+PATCH - pushes up a patch and puts it in PENDING and sends mail to
+	`cat BitKeeper/etc/incoming`
+PULL - 
+MYKEYS - sends all keys in the tree
+MYKEYS LOD.1 LOD.TOT - says how far you are in that LOD
+KEYS - reports root,tot key pairs for each LOD
+KEYS [LOD.1 key] - reports the TOT of that LOD
+EOF - coversation over
+
+EMAIL
+-----
+All email queries must be of the form
+
+cmd
+cmd
+cmd..
+EOF

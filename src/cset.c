@@ -209,7 +209,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (av[optind]) {
 		unless (isdir(av[optind])) {
 			if (flags & NEWFILE) {
-				char	path[MAXPATH];
 				mkdirp(av[optind]);
 			}
 		}

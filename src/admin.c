@@ -15,6 +15,7 @@ usage: admin options [- | file file file...]\n\
     -T			clear description\n\
     -h			check s.file structure\n\
     -hh			check s.file structure for BitKeeper structure\n\
+    -hhh		check s.file structure for BitKeeper & time structure\n\
     -H			same as -h, plus check file contents are ASCII\n\
     -z			recalculate file checksum\n\
 \n\
@@ -146,6 +147,8 @@ main(int ac, char **av)
 		    case 'C':	rmCset++; flags |= NEWCKSUM; break;
 		    case 'h':	if (flags & ADMIN_FORMAT) {
 		    			flags |= ADMIN_BK;
+				} else if (flags & ADMIN_BK) {
+					flags |= ADMIN_TIME;
 				} else {
 		    			flags |= ADMIN_FORMAT;
 				}
@@ -201,11 +204,9 @@ main(int ac, char **av)
 	/*
 	 * If we are adding exactly one symbol, do it quickly.
 	 */
-#if 0 /* Broken because of permission checking in init */
-	fastSym = !(flags & ~SILENT) && !nextf && !nextu && !nextp &&
+	fastSym = !(flags & ~(SILENT|NEWCKSUM)) && !nextf && !nextu && !nextp &&
 	    !rev && nexts && (s[0].flags == A_ADD) && !s[1].flags;
 	if (fastSym) init_flags |= (INIT_MAPWRITE|INIT_NOCKSUM);
-#endif
 	while (name) {
 		if (flags & NEWFILE) {
 			if (do_checkin(name, encp, compp,
@@ -227,13 +228,14 @@ main(int ac, char **av)
 			error = 1;
 			continue;
 		}
-		if (bigpad) sc->state |= S_BIGPAD;
+		if (bigpad) {
+			sc->state |= S_BIGPAD;
+			flags |= NEWCKSUM;
+		}
 		if (fastSym && sc->landingpad) {
-			int rc;
-		    	rc = sccs_addSym(sc, flags, s[0].thing);
+			int rc = sccs_addSym(sc, flags, s[0].thing);
 			if (rc == -1) error = 1;
 			if (rc != EAGAIN) goto next;
-
 		}
 		if (dopath) {
 			if (sc->tree->pathname) {
