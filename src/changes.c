@@ -313,7 +313,7 @@ doit(int dash)
 		spec = DSPEC;
 	}
 	s = sccs_init(s_cset, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, bk_proj);
-	assert(s && s->tree);
+	assert(s && HASGRAPH(s));
 	if (opts.rev || opts.date) {
 		if (opts.rev) {
 			r[0] = notnull(opts.rev);

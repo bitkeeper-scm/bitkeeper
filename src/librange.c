@@ -421,7 +421,7 @@ rangeProcess(char *me, sccs *s, int expand, int noisy,
 	if (expand) {
 		unless (things) {
 			delta *e = 0;
-			if (s->tree && streq(s->tree->rev, "1.0")) {
+			if (HASGRAPH(s) && streq(s->tree->rev, "1.0")) {
 				if ((s->rstart = s->tree->kid)) {
 					e = s->table;
 				}
