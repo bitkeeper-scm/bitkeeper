@@ -249,6 +249,15 @@ onefile:	fprintf(stderr,
 			sccs_free(s);
 			continue;
 		}
+		if (BITKEEPER(s) &&
+		    (iLst || xLst) && !branch_ok && !(flags & GET_EDIT)) {
+			unless ((flags & PRINT) || Gname) {
+				fprintf(stderr,
+				    "%s: can't specify include/exclude "
+				    "without -p, -e or -l\n", av[0]);
+				goto usage;
+			}
+		}
 		if (BITKEEPER(s) && rev && !branch_ok && !streq(rev, "+")) {
 			unless ((flags & PRINT) || Gname) {
 				fprintf(stderr,

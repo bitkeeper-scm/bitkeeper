@@ -1272,7 +1272,7 @@ proc history {{opt {}}} \
 	busy 1
 	if {$opt == "tags"} {
 		set tags \
-"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}\n\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
+"-d\$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:TAG:){  TAG: (:TAG:)\n}\n}"
 		set f [open "| bk prs -h {$tags} \"$file\" 2>$dev_null"]
 		set ttype "file_prs"
 		filltext $w(aptext) $f 1 "There are no tags for $file"

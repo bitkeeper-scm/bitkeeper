@@ -823,12 +823,17 @@ cset(sccs *cset, FILE *f, char *dspec)
 private int
 want(sccs *s, delta *e)
 {
+	char	*p;
+	int	match;
+
 	unless (opts.all || (e->type == 'D')) return (0);
 	if (opts.tagOnly && !(e->flags & D_SYMBOLS)) return (0);
-	if (opts.others) {
-		if (streq(opts.user, e->user)) return (0);
-	} else if (opts.user && !streq(opts.user, e->user)) {
-		return (0);
+	if (opts.user) {
+		if (p = strchr(e->user, '/')) *p = 0;
+		match = streq(opts.user, e->user);
+		if (p) *p = '/';
+		if (opts.others) match = !match;
+		unless (match) return (0);
 	}
 	if (opts.nomerge && e->merge) return (0);
 	if (opts.noempty && e->merge && !e->added && !(e->flags & D_SYMBOLS)) {
