@@ -375,8 +375,8 @@ proc dotFile {} \
 	close $p
 	if {$parent == ""} { set parent "1.0" }
 	set tmp [file tail $file]
-	set l [file join $tmp_dir $tmp-$parent]
-	set r [file join $tmp_dir $tmp-$stop]
+	set l [file join $tmp_dir $tmp-$parent[pid]]
+	set r [file join $tmp_dir $tmp-$stop[pid]]
 	exec $bk_get -qkpr$parent $file > $l
 	exec $bk_get -qkpr$stop $file > $r
 	readFiles $l $r
