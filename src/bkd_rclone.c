@@ -50,6 +50,29 @@ err:			drain();
 	return (strdup(av[optind]));
 }
 
+
+private int
+isEmptyDir(char *dir)
+{
+	DIR *d;
+	struct dirent *e;
+
+	d = opendir(dir);
+	unless (d) return (0);
+
+	while (e = readdir(d)) {
+		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
+		/*
+		 * Ignore .ssh directory, for the "hostme" environment
+		 */
+		if (streq(e->d_name, ".ssh")) continue;
+		closedir(d);
+		return (0);
+	}
+	closedir(d);
+	return (1);
+}
+
 int
 cmd_rclone_part1(int ac, char **av)
 {
@@ -60,7 +83,7 @@ cmd_rclone_part1(int ac, char **av)
 	unless (path = rclone_common(ac, av, &opts)) return (1);
 	if (exists(path)) {
 		if (isdir(path)) {
-			if  (!emptyDir(path)) {
+			if  (!isEmptyDir(path)) {
 				p = aprintf("ERROR-path \"%s\" is not empty\n",
 					path);
 err:				out(p);
