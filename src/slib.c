@@ -71,6 +71,7 @@ private	delta*	getCksumDelta(sccs *s, delta *d);
 private int	fprintDelta(FILE *,
 			char *, const char *, const char *, sccs *, delta *);
 private	void	fitCounters(char *buf, int a, int d, int s);
+private delta	*gca(delta *left, delta *right);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -10120,13 +10121,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "PARENT")) {
-		unless (d && d->parent) return (nullVal);
-		d = d->parent;
-		fs(d->rev);
-		return (strVal);
-	}
-
 	if (streq(kw, "LOD")) {
 		if (d->lod) {
 			fs(d->lod->name);
@@ -10297,13 +10291,36 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "MERGE")) {	/* print the merge rev if present */
+	if (streq(kw, "PARENT")) {
+		if (d->parent) {
+			fs(d->parent->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "MPARENT")) {	/* print the merge parent if present */
 		if (d->merge && (d = sfind(s, d->merge))) {
 			fs(d->rev);
-		} else {
-			fs("none");
+			return (strVal);
 		}
-		return (strVal);
+		return (nullVal);
+	}
+
+	if (streq(kw, "MERGE")) {	/* print this rev if a merge node */
+		if (d->merge) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "GCA")) {		/* print gca rev if a merge node */
+		if (d->merge && (d = gca(sfind(s, d->merge), d->parent))) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
 	}
 
 	if (streq(kw, "DFB")) {
@@ -11101,6 +11118,24 @@ samekey(delta *d, char *user, char *host, char *path, time_t date,
 	return (1);
 }
 
+private delta *
+gca(delta *left, delta *right)
+{
+	delta	*d;
+
+	unless (left && right) return (0);
+	/*
+	 * Clear the visited flag up to the root via one path,
+	 * set it via the other path, then go look for it.
+	 */
+	for (d = left; d; d = d->parent) d->flags &= ~D_VISITED;
+	for (d = right; d; d = d->parent) d->flags |= D_VISITED;
+	for (d = left; d; d = d->parent) {
+		if (d->flags & D_VISITED) return (d);
+	}
+	return (0);
+}
+
 /*
  * Create resolve file.
  * The order of the deltas in the file is important - the "branch"
@@ -11121,7 +11156,6 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 	 * LODXXX - can be two if there are LODs.
 	 */
 	for (d = s->table; d; d = d->next) {
-		d->flags &= ~D_VISITED;
 		if ((d->flags & D_MERGED) || !isleaf(d)) continue;
 		if (!a) {
 			a = d;
@@ -11132,11 +11166,7 @@ sccs_resolveFile(sccs *s, char *lpath, char *gpath, char *rpath)
 		}
 	}
 	if (b) {
-		/* find the GCA and put it in d */
-		for (d = b; d; d = d->parent) d->flags |= D_VISITED;
-		for (d = a; d; d = d->parent) {
-			if (d->flags & D_VISITED) break;
-		}
+		d = gca(a, b);
 		assert(d);
 		unless (f = fopen(sccsXfile(s, 'r'), "w")) {
 			perror("r.file");
