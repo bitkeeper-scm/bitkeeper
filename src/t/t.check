@@ -265,3 +265,17 @@ bk commit $Q -y'out of sync' > OUT 2>&1 && {
 	exit 1
 }
 echo OK
+
+echo $N Make sure check detects checksum problems ...................$NL
+cd $HERE/project
+echo "foobar" > ff
+bk new $Q ff
+mv SCCS/s.ff ff.tmp
+sed 's/foobar/foobaz/' < ff.tmp > SCCS/s.ff
+rm -f ff.tmp
+bk check -c ff 2> /dev/null && {
+	echo check should have failed
+	exit 1
+}
+rm -f SCCS/s.ff
+echo OK

@@ -478,6 +478,7 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	}
 
 	if (streq(p, "@OK@")) return (0); /* ok */
+	if (streq(p, "ERROR-bogus license key")) return (100);
 	if (verbose) {
 		i = 0;
 		if (p && *p) fprintf(stderr, "remote: %s\n", p);

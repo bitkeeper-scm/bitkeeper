@@ -377,7 +377,7 @@ _editor() {
 	then	echo You need to set your EDITOR env variable
 		exit 1
 	fi
-	bk get -qe "$@" 2> /dev/null
+	bk get -Sqe "$@" 2> /dev/null
 	exec $EDITOR "$@"
 }
 
@@ -679,6 +679,7 @@ _chmod() {		# /* doc 2.0 */
 		chmod $MODE "$i"
 		mode=`ls -l "$i" | sed 's/[ \t].*//'`
 		rm -f "$i"
+		bk unedit "$i"	# follow checkout modes
 		if [ $omode = $mode ]
 		then	continue
 		fi
@@ -713,6 +714,7 @@ _man() {
 		B=`pwd`
 		cd $HERE
 	}
+	test "X$BK_MANPAGER" != X && export PAGER="$BK_MANPAGER"
 	export MANPATH=$B:$MANPATH
 	exec man "$@"
 }

@@ -1172,7 +1172,10 @@ sccs_patch(sccs *s, cset_t *cs)
 	}
 	if (s->state & S_CSET) {
 		encoding = s->encoding;
-		if (encoding & E_GZIP) sccs_unzip(s);
+		if (encoding & E_GZIP) {
+			/* if unable to unzip then remember that */
+			unless (sccs_unzip(s) == s) encoding = 0;
+		}
 	}
 	if (cs->compat) prs_flags |= PRS_COMPAT;
 
@@ -1256,7 +1259,15 @@ sccs_patch(sccs *s, cset_t *cs)
 			int	rc = 0;
 
 			if (s->state & S_CSET) {
-				if (d->added) rc = cset_diffs(s, d->serial);
+				if (d->added) {
+					if (s->encoding & E_GZIP) {
+						rc = sccs_getdiffs(s,
+						    d->rev, GET_HASHDIFFS, "-");
+					} else {
+						rc = cset_diffs(s, d->serial);
+					}
+				}
+
 			} else unless (empty) {
 				rc = sccs_getdiffs(s, d->rev, GET_BKDIFFS, "-");
 			}
@@ -1280,5 +1291,3 @@ sccs_patch(sccs *s, cset_t *cs)
 	if (list) free(list);
 	if ((s->state & S_CSET) && (encoding & E_GZIP)) sccs_gzip(s);
 }
-
-

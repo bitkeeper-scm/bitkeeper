@@ -295,7 +295,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 csets:			fprintf(opts.out,
 " repository that you are pushing to is %d changesets\n\
 ahead of your repository. Please do a \"bk pull\" to get \n\
-these changes or do a \"bk pull -nl\" to see what they are.\n", opts.rcsets);
+these changes or do a \"bk changes -R\" to see what they are.\n", opts.rcsets);
 		} else if (opts.rtags && !opts.metaOnly && opts.doit) {
 tags:			fprintf(opts.out,
 			    "Not pushing because of %d tags only in %s\n",

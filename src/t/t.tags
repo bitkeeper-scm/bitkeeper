@@ -155,7 +155,7 @@ bk new $Q snafu
 bk commit -yDsub3 -STAG $Q
 LOCAL=`bk prs -hrTAG -d:KEY: ChangeSet`
 cp SCCS/s.ChangeSet CSET
-bk resync $Q
+bk pull $Q -R
 (
 echo ""
 echo "x"
@@ -198,10 +198,10 @@ fi
 echo OK
 
 echo $N Pull again, choose local, see if it sticks ..................$NL
-bk resync $Q
-(
-echo l
-) | bk resolve -t $Q 2>OUT
+bk pull $Q -R
+bk resolve -t $Q 2>OUT 1>&2 <<EOF
+l
+EOF
 KEY=`bk prs -hrTAG -d:KEY: ChangeSet`
 if [ "$KEY" = "$REMOTE" ]
 then	echo Whoops, used remote instead of local

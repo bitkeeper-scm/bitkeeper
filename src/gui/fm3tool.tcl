@@ -263,7 +263,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    -bg $gc($app.buttonColor) -pady $gc(py) -padx $gc(px) \
 	    -borderwid $gc(bw) \
 	    -text "Search" -width 8 -state normal \
-	    -menu $m
+	    -menu $m -indicatoron 1 
 	menu $m
 	    $m add command -label "Prev match" -state disabled -command {
 		searchdir ?
@@ -317,6 +317,10 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		    searchnext
 	    }
 	label $search(status) -width 20 -font $gc($app.buttonFont) -relief flat 
+
+	set separator [frame [winfo parent $search(menu)].separator1]
+	$separator configure -borderwidth 2 -relief groove -width 2
+	pack $separator -side left -fill y -pady 2 -padx 4
 
 	pack $search(menu) -side left -fill y
 	pack $search(text) -side left

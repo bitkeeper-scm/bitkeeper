@@ -84,7 +84,7 @@ changes_main(int ac, char **av)
 		     * Note: do not add option 'K', it is reserved
 		     * for internal use
 		     */
-		    case 'a': opts.all = 1; break;
+		    case 'a': opts.all = 1; opts.noempty = 0; break;
 		    case 'c': opts.date = optarg; break;
 		    case 'd': opts.dspec = optarg; break;
 		    case 'e': opts.noempty = !opts.noempty; break;

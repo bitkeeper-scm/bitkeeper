@@ -302,6 +302,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 
 	# XXX: Make into a pulldown-menu! like is sccstool
 	menubutton $search(menu) -font $gc($app.buttonFont) -relief raised \
+	    -indicatoron 1 \
 	    -bg $gc($app.buttonColor) -pady $gc(py) -padx $gc(px) \
 	    -borderwid $gc(bw) \
 	    -text "Search" -width 15 -state normal \

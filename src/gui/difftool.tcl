@@ -82,7 +82,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
             menubutton .menu.fmb -font $gc(diff.buttonFont) -relief raised \
                 -bg $gc(diff.buttonColor) -pady $gc(py) -padx $gc(px) \
                 -borderwid $gc(bw) -text "Files" -width 6 -state normal \
-                -menu .menu.fmb.menu
+                -menu .menu.fmb.menu -indicatoron 1
 
 	    pack .menu.quit -side left -fill y
 	    pack .menu.help -side left -fill y
