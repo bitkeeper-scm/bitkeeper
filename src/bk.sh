@@ -1359,6 +1359,7 @@ __platformPath() {
 		then	BIN="$i/"
 			BK_BIN=$BIN
 			export BK_BIN
+			PATH=$BIN:/usr/xpg4/bin:$PATH
 			return
 		fi
 	done
