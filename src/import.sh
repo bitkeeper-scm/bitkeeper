@@ -16,7 +16,6 @@ import() {
 	INC=NO
 	EX=NO
 	TYPE=
-	NEWLOD=
 	RENAMES=YES
 	QUIET=-q
 	SYMBOL=
@@ -24,7 +23,7 @@ import() {
 	PARALLEL=1
 	VERIFY=-h
 	CUTOFF=
-	while getopts c:efHij:l:LrS:t:vq opt
+	while getopts c:efHij:l:rS:t:vq opt
 	do	case "$opt" in
 		c) CUTOFF=-c$OPTARG;;
 		e) EX=YES;;
@@ -33,7 +32,6 @@ import() {
 		i) INC=YES;;
 		j) PARALLEL=$OPTARG;;
 		l) LIST=$OPTARG;;
-		L) NEWLOD=-L;;
 		S) SYMBOL=-S$OPTARG;;
 		r) RENAMES=NO;;
 		t) TYPE=$OPTARG;;
@@ -345,8 +343,13 @@ import_patch() {
     	fi
 
 	USER=$SAVE
+	# Ask about logging before commit, commit reads stdin.
+	bk _loggingask
+	if [ $? -eq 1 ]
+	then 	Done 1
+	fi
 	echo Creating changeset for $PNAME in `pwd` ...
-	bk sfiles -C | bk cset $SYMBOL $NEWLOD -y"`basename $PNAME`" -
+	bk sfiles -C | bk commit $SYMBOL -a -y"`basename $PNAME`" -
 	echo Done.
 	Done 0
 }

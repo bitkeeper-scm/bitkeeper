@@ -1,3 +1,15 @@
+#write_perms
+=========================================================================
+One or more directories which need updating do not have write permission.
+Please examine the list and fix the permissions.
+
+You can restart the resolve with a 
+
+    bk resolve
+
+after fixing the permissions.
+=========================================================================
+$
 #setup_1
 ----------------------------------------------------------------------
 
@@ -119,11 +131,11 @@ private, you can contact BitMover for a closed use license.
 BitMover can be reached in the United States at 415-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 
-Saying yes will send the changeset comments.  It will NOT send your
-source code.  Saying yes also means that you are accepting the
-terms of the BKL, the license under which you obtained this
-software.  You can read that license by saying "bk help license"
-in another window.
+Saying yes will send the changeset comments and per file comments.
+It will NOT send your source code.
+Saying yes also means that you are accepting the terms of the BKL,
+the license under which you obtained this software.  You can read
+that license by saying "bk help license" in another window.
 
 If you have been asked before it is because we ask once per host.
 $
