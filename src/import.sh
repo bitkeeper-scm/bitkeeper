@@ -17,11 +17,12 @@ import() {
 	EX=NO
 	TYPE=
 	RENAMES=YES
-	QUIET=-q
+	QUIET=
 	SYMBOL=
 	FORCE=NO
 	PARALLEL=1
 	VERIFY=-h
+	VERBOSE=-q
 	CUTOFF=
 	UNDOS=
 	while getopts c:efHij:l:rS:t:uvq opt
@@ -36,9 +37,9 @@ import() {
 		S) SYMBOL=-S$OPTARG;;
 		r) RENAMES=NO;;
 		t) TYPE=$OPTARG;;
-		q) QUIET=-q;;
+		q) QUIET=-q; export _BK_SHUT_UP=YES;;
 		u) UNDOS=-u;;
-		v) QUIET=;;
+		v) VERBOSE=;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -101,7 +102,9 @@ import() {
 		cd "$HERE"
 		sed 's|^\./||'< $LIST > ${TMP}import$$
 	else	if [ $TYPE != patch ]
-		then	echo Finding files in $FROM
+		then	if [ X$QUIET = X ]
+			then	echo Finding files in $FROM
+			fi
 			cd "$FROM"
 			cmd="bk _find"
 			if [ X"$INCLUDE" != X ]
@@ -111,13 +114,15 @@ import() {
 			then	cmd="$cmd | egrep -v '$EXCLUDE'"
 			fi
 			eval "$cmd" > ${TMP}import$$
-			echo OK
+			if [ X$QUIET = X ]; then echo OK; fi
 		else	echo "" > ${TMP}import$$
 		fi
 	fi
 	if [ $TYPE != patch ]
-	then	echo Checking to make sure there are no files already in
-		echo "	$TO"
+	then	if [ X$QUIET = X ]
+		then	echo Checking to make sure there are no files already in
+			echo "	$TO"
+		fi
 		cd "$TO"
 		while read x
 		do	if [ -e "$x" ]
@@ -127,7 +132,7 @@ import() {
 			fi
 		done < ${TMP}import$$
 		if [ $TYPE != SCCS ]
-		then	bk g2sccs < ${TMP}import$$ > ${TMP}sccs$$
+		then	bk _g2sccs < ${TMP}import$$ > ${TMP}sccs$$
 			while read x
 			do	if [ -e "$x" ]
 				then	echo \
@@ -136,7 +141,7 @@ import() {
 					exit 1
 				fi
 			done < ${TMP}sccs$$
-			echo OK
+			if [ X$QUIET = X ]; then echo OK; fi
 		fi
 	fi
 	rm -f ${TMP}sccs$$
@@ -252,11 +257,13 @@ transfer() {
 			NFILES=`wc -l < ${TMP}import$$ | sed 's/ //g'`
 		esac
 	fi
-	echo Transfering files
-	echo "	from $FROM"
-	echo "	to   $TO"
+	if [ X$QUIET = X ]
+	then	echo Transfering files
+		echo "	from $FROM"
+		echo "	to   $TO"
+	fi
 	cd "$FROM"
-	bk sfio -omq < ${TMP}import$$ | (cd "$TO" && bk sfio -im $QUIET ) || exit 1
+	bk sfio -omq < ${TMP}import$$ | (cd "$TO" && bk sfio -im $VERBOSE ) || exit 1
 }
 
 import_patch() {
@@ -333,7 +340,7 @@ import_patch() {
 	then	bk -r clean -q
 	fi
 
-	bk -r ci $Q -G -y"Import patch $PNAME"
+	bk -r ci $VERBOSE -G -y"Import patch $PNAME"
 
 	bk sfiles -x | grep -v '^BitKeeper/' > ${TMP}extras$$
 	if [ -s ${TMP}extras$$ ]
@@ -360,8 +367,8 @@ import_text () {
 	Q=$QUIET
 
 	cd "$2"
-	echo Checking in plain text files...
-	CLOCK_DRIFT=1 bk ci -1i $Q - < ${TMP}import$$ || exit 1
+	if [ X$QUIET = X ]; then echo Checking in plain text files...; fi
+	CLOCK_DRIFT=1 bk ci -1i $VERBOSE - < ${TMP}import$$ || exit 1
 }
 
 import_RCS () {
@@ -409,22 +416,24 @@ import_SCCS () {
 
 import_finish () {
 	cd "$1"
-	echo ""
-	echo Validating all SCCS files
+	if [ X$QUIET = X ]; then echo ""; fi
+	if [ X$QUIET = X ]; then echo Validating all SCCS files; fi
 	bk sfiles | bk admin -hhhq - > ${TMP}admin$$
 	if [ -s ${TMP}admin$$ ]
 	then	echo Import failed because
 		cat ${TMP}admin$$
 		exit 1
 	fi
-	echo OK
+	if [ X$QUIET = X ]; then echo OK; fi
 	
 	rm -f ${TMP}import$$ ${TMP}admin$$
 	bk sfiles -r
 	# So it doesn't run consistency check.
 	touch BitKeeper/etc/SCCS/x.marked
-	echo "Creating initial changeset (should have $NFILES + 1 lines)"
-	bk commit $SYMBOL -y'Import changeset'
+	if [ X$QUIET = X ]
+	then echo "Creating initial changeset (should be +$NFILES)"
+	fi
+	bk commit $QUIET $SYMBOL -y'Import changeset'
 }
 
 validate_SCCS () {

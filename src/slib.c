@@ -7033,6 +7033,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_CSET) {
+			assert(d->type == 'D');
 			fputmeta(s, "\001cC\n", out);
 		}
 		/*
@@ -12590,6 +12591,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			if (comma) fs(","); fs("ISSHELL"); comma = 1;
 		}
 #endif
+		if (flags & X_EOLN_NATIVE) {
+			if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
+		}
 		return (strVal);
 	}
 

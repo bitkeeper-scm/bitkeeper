@@ -135,7 +135,7 @@ if [ ! -f $DDIR/SCCS/$SFILE ]; then echo failed; exit 1; fi
 ls ${DDIR}/SCCS | grep -q "^p..del-file3"
 if [ $? -eq 0 ]; then  echo failed; exit 1; fi
 DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/SCCS/$SFILE`
-SFILE2=`bk g2sccs $DPATH`
+SFILE2=`bk _g2sccs $DPATH`
 if [ ${SFILE2}X != "${DDIR}/SCCS/$SFILE"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm w/ -d \& p locked file ...........................$NL
@@ -149,7 +149,7 @@ if [ $? -eq 0 ]; then  echo failed; exit 1; fi
 REV=`bk prs -hr+ -d:I: ${DDIR}/SCCS/$SFILE`
 if [ ${REV}X != "1.5"X ]; then echo failed; exit 1; fi
 DPATH=`bk prs -hr+ -d:DPN: ${DDIR}/SCCS/$SFILE`
-SFILE2=`bk g2sccs $DPATH`
+SFILE2=`bk _g2sccs $DPATH`
 if [ ${SFILE2}X != "${DDIR}/SCCS/$SFILE"X ]; then echo failed; exit 1; fi
 echo OK
 echo $N Test sccsrm \& empty directory ...............................$NL

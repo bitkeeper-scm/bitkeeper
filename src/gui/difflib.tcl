@@ -115,6 +115,7 @@ proc chunks {n} \
 {
 	global	Diffs DiffsEnd nextDiff
 
+	if {![info exists nextDiff]} {return}
 	set l [.diffs.left index "end - 1 char linestart"]
 	set Diffs($nextDiff) $l
 	set e [expr {$n + [lindex [split $l .] 0]}]
@@ -343,11 +344,14 @@ proc displayInfo {lfile rfile {parent {}} {stop {}}} \
 # L and R: Names of the left and right files. Might be a temporary
 #          file name with the form like: '/tmp/difftool.tcl@1.30-1284'
 #
-# Ln and Rn: File name with the revision appended
+# lname and rname: File name with the revision appended
 #
-proc readFiles {L R {Ln {}} {Rn {}}} \
+proc readFiles {L R {O {}}} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
+	global  lname rname
+	global  rBoth rDiff rSame nextBoth nextSame maxBoth maxDiff maxSame
+	global  types saved done Marks nextMark outputFile
 
 	if {![file exists $L]} {
 		displayMessage "Left file ($L) does not exist"
@@ -359,13 +363,14 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 	}
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
+
 	# append time to filename when called by csettool
-	# XXX: Probably OK to use same code for both difftool and csettool???
-	if {$Ln != ""} {
+	# XXX: Probably OK to use same code for difftool, fmtool and csettool???
+	if {[info exists lname] && ($lname != "")} {
 		set t [clock format [file mtime $L] -format "%r %D"]
 		set t [clock format [file mtime $R] -format "%r %D"]
-		.diffs.status.l configure -text "$Ln ($t)"
-		.diffs.status.r configure -text "$Rn ($t)"
+		.diffs.status.l configure -text "$lname ($t)"
+		.diffs.status.r configure -text "$rname ($t)"
 		.diffs.status.middle configure -text "... Diffing ..."
 	} else {
 		set f [file tail $L]
@@ -374,21 +379,31 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 		.diffs.status.r configure -text "$f"
 		.diffs.status.middle configure -text "... Diffing ..."
 	}
-	# Moved the deletes to displayInfo proc
-	#.diffs.left delete 1.0 end
-	#.diffs.right delete 1.0 end
+	# fmtool stuff
+	if {![catch {.merge.t delete 1.0 end} err]} {
+		    .merge.menu.restart config -state normal
+		    .merge.menu.skip config -state normal
+		    .merge.menu.left config -state normal
+		    .merge.menu.right config -state normal
+		    # difflib does the delete in displayInfo
+		    .diffs.left delete 1.0 end
+		    .diffs.right delete 1.0 end
+	}; #end fmtool stuff
 
 	. configure -cursor watch
 	update
-	set lineNo 1
-	set diffCount 0
-	set nextDiff 1
+	set lineNo 1; set diffCount 0; set nextDiff 1; set saved 0
 	array set DiffsEnd {}
 	array set Diffs {}
+	set Marks {}; set nextMark 0
+	set rBoth {}; set rDiff {}; set rSame {}
+	set types {}
 	set n 1
+	set done 0
 	set l [open $L r]
 	set r [open $R r]
 	set d [sdiff $L $R]
+	if {$O != ""} {set outputFile $O}
 
 	gets $d last
 	if {$last == "" || $last == " "} { set last "S" }
@@ -404,6 +419,17 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 			    "<"	{ incr diffCount 1; left $r $l $n }
 			    ">"	{ incr diffCount 1; right $r $l $n }
 			}
+			lappend types $last
+			# rBoth is built up this way because the tags stuff
+			# collapses adjacent tags together.
+			set start [expr {$lineNo - $n}]
+			lappend rBoth "$start.0" "$lineNo.0"
+			# Ditto for diffs
+			if {$last != "S"} {
+				lappend rDiff "$start.0" "$lineNo.0"
+			} else {
+				lappend rSame "$start.0" "$lineNo.0"
+			}
 			set n 1
 			set last $diff
 		}
@@ -414,6 +440,19 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 	    "<"	{ incr diffCount 1; left $r $l $n }
 	    ">"	{ incr diffCount 1; right $r $l $n }
 	}
+	lappend types $last
+	incr lineNo 1
+	# rBoth is built up this way because the tags stuff
+	# collapses adjacent tags together.
+	set start [expr {$lineNo - $n}]
+	lappend rBoth "$start.0" "$lineNo.0"
+	# Ditto for diffs
+	if {$last != "S"} {
+		lappend rDiff "$start.0" "$lineNo.0"
+	} else {
+		lappend rSame "$start.0" "$lineNo.0"
+	}
+	catch {.merge.menu.l configure -text "$done / $diffCount resolved"}
 	catch {close $r}
 	catch {close $l}
 	catch {close $d}
@@ -422,6 +461,13 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 			catch {file delete $rm}
 		}
 	}
+	set nextSame 0
+	set nextDiff 0
+	set nextBoth 0
+	set maxSame [expr {[llength $rSame] - 2}]
+	set maxDiff [expr {[llength $rDiff] - 2}]
+	set maxBoth [expr {[llength $rBoth] - 2}]
+
 	.diffs.left configure -state disabled
 	.diffs.right configure -state disabled
 	. configure -cursor left_ptr
@@ -433,6 +479,8 @@ proc readFiles {L R {Ln {}} {Rn {}}} \
 		dot
 	} else {
 		set lastDiff 0
+		set done 0
+		#displayMessage "done=($done) diffCount=($diffCount)"
 		# XXX: Really should check to see whether status lines
 		# are different
 		.diffs.status.middle configure -text "No differences"
@@ -455,37 +503,59 @@ proc xscroll { a args } \
 #
 # Scrolls page up or down
 #
-# w     window to scroll (seems not to be used....)
+# w     window to scroll 
 # xy    yview or xview
 # dir   1 or 0
 # one   1 or 0
 #
+
 proc Page {view dir one} \
 {
 	set p [winfo pointerxy .]
 	set x [lindex $p 0]
 	set y [lindex $p 1]
-	page ".diffs" $view $dir $one
-	return 1
+	set w [winfo containing $x $y]
+	if {[regexp {^.diffs} $w]} {
+		page ".diffs" $view $dir $one
+		return 1
+	}
+	if {[regexp {^.merge} $w]} {
+		page ".merge" $view $dir $one
+		return 1
+	}
+	return 0
 }
 
 proc page {w xy dir one} \
 {
 	global	gc app
 
-	if {$xy == "yview"} {
-		set lines [expr {$dir * $gc($app.diffHeight)}]
+	if {$w == ".diffs"} {
+		if {$xy == "yview"} {
+			set lines [expr {$dir * $gc($app.diffHeight)}]
+		} else {
+			# XXX - should be width.
+			set lines 16
+		}
 	} else {
-		# XXX - should be width.
-		set lines 16
+		if {$xy == "yview"} {
+			set lines [expr {$dir * $gc($app.mergeHeight)}]
+		} else {
+			# XXX - should be width.
+			set lines 16
+		}
 	}
 	if {$one == 1} {
 		set lines [expr {$dir * 1}]
 	} else {
 		incr lines -1
 	}
-	.diffs.left $xy scroll $lines units
-	.diffs.right $xy scroll $lines units
+	if {$w == ".diffs"} {
+		.diffs.left $xy scroll $lines units
+		.diffs.right $xy scroll $lines units
+	} else {
+		.merge.t $xy scroll $lines units
+	}
 }
 
 proc fontHeight {f} \
@@ -493,12 +563,18 @@ proc fontHeight {f} \
 	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
-proc computeHeight {} \
+proc computeHeight {w} \
 {
-	global	gc app
+	global gc app
 
 	update
-	set f [fontHeight [.diffs.left cget -font]]
-	set p [winfo height .diffs.left]
-	set gc($app.diffHeight) [expr {$p / $f}]
+	if {$w == "diffs"} {
+		set f [fontHeight [.diffs.left cget -font]]
+		set p [winfo height .diffs.left]
+		set gc($app.diffHeight) [expr {$p / $f}]
+	} else {
+		set f [fontHeight [.merge.t cget -font]]
+		set p [winfo height .merge.t]
+		set gc($app.mergeHeight) [expr {$p / $f}]
+	}
 }

@@ -179,3 +179,33 @@ test -f etc/SCCS/s.logging_ok || {
 	exit 1
 }
 echo OK
+
+test -d /home/bk/tmp/import_data && {
+echo $N Multiple parallel imports ...................................$NL
+cd $HERE
+no_logging import
+cd ..
+LIST="1 2 3 4 5 6"
+for i in $LIST
+do	cp -rp import import$i
+done
+mv import import0
+for i in 0 $LIST
+do	( cd import$i && bk import -tplain -f $Q /home/bk/tmp/import_data . ) &
+done; wait
+cd import0
+bk sfiles | sort > ../LIST
+cd ..
+for i in $LIST
+do	cd import$i
+	bk sfiles | sort > ../MINE
+	cmp -s ../LIST ../MINE || {
+		echo different lists of files in import$i
+		diff ../LIST ../MINE
+		exit 1
+	}
+	cd ..
+done
+echo OK
+}
+exit 0

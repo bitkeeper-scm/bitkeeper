@@ -131,7 +131,10 @@ listkey_main(int ac, char **av)
 	while (getline(0, key, sizeof(key)) > 0) {
 		if (streq("@END PROBE@", key)) break;
 		if (streq("@TAG PROBE@", key)) break;
-		if (streq("@LOD PROBE@", key)) d = 0;
+		if (streq("@LOD PROBE@", key)) {
+			d = 0;
+			continue;
+		}
 		if (!d && (d = sccs_findKey(s, key))) {
 			sccs_color(s, d);
 			if (debug) {

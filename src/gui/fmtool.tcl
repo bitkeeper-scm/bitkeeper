@@ -238,7 +238,7 @@ proc selectFiles {} \
 	set lfile [tk_getOpenFile -title "Select Left File"] ;
 	if {("$lfile" == "")} return;
  	set t [clock format [file mtime $lfile] -format "%r %D"]
-	.diffs.l configure -text "$lfile ($t)"
+	.diffs.status.l configure -text "$lfile ($t)"
 	.diffs.left configure -state normal
 	set fd [open $lfile r]
 	.diffs.left insert end  [read $fd]
@@ -269,6 +269,7 @@ proc currentLine {array index} \
 	return $tmp
 }
 
+# overrides proc from difflib.tcl
 proc highlightDiffs {} \
 {
 	global	rDiff gc
@@ -285,12 +286,16 @@ proc highlightDiffs {} \
 	    -font $gc(fm.fixedBoldFont)
 }
 
-proc topLine {} \
+# overrides 'dot' from difflib.tcl
+proc dot {} \
 {
-	return [lindex [split [.diffs.left index @1,1] "."] 0]
+	highlightDiffs
+	#.diffs.status.middle configure -text "Diff $lastDiff of $diffCount"
+	.diffs.status.middle configure -text ""
 }
 
 # This works much better than that 0..1 shit.
+# overrides 'dot' from difflib.tcl, but I think it can be merged in later
 proc scrollDiffs {where} \
 {
 	global	rDiff nextDiff gc
@@ -336,18 +341,24 @@ proc scrollDiffs {where} \
 
 proc resolved {n} \
 {
-	global done diffcount
+	global done diffCount
 	incr done $n
-	.merge.menu.l configure -text "$done / $diffcount resolved"
-	if {$done == 0} {
-		.merge.menu.undo configure -state disabled
-		.merge.menu.redo configure -state disabled
-	} elseif {$done == $diffcount} {
+	.merge.menu.l configure -text "$done / $diffCount resolved"
+	# prettier as a 'case' stmt? -ask
+	if {($done == 0) && ($diffCount) == 0} { ;# case with no differences
 		.merge.menu.save configure -state normal
 		.merge.menu.left configure -state disabled
 		.merge.menu.right configure -state disabled
 		.merge.menu.skip configure -state disabled
-	} else {
+	} elseif {$done == 0} { ;# not stated yet
+		.merge.menu.undo configure -state disabled
+		.merge.menu.redo configure -state disabled
+	} elseif {$done == $diffCount} { ;# we are done
+		.merge.menu.save configure -state normal
+		.merge.menu.left configure -state disabled
+		.merge.menu.right configure -state disabled
+		.merge.menu.skip configure -state disabled
+	} else { ;# we still have some to go...
 		.merge.menu.save configure -state disabled
 		.merge.menu.left configure -state normal
 		.merge.menu.right configure -state normal
@@ -360,11 +371,11 @@ proc resolved {n} \
 
 proc cmd_done {} \
 {
-	global done diffcount saved
+	global done diffCount saved
 
 	if {$done == 0} { exit }
-	if {$done < $diffcount} {
-		confirm "Only $done out of $diffcount merged" "Keep merging"
+	if {$done < $diffCount} {
+		confirm "Only $done out of $diffCount merged" "Keep merging"
 	} elseif {$saved == 0} {
 		confirm "Discard all $done merges?" "Cancel"
 	} else {
@@ -399,72 +410,12 @@ proc last {array} \
 }
 
 # --------------- diffs ------------------
-proc same {r l n} \
-{
-	set lines {}
-	while {$n > 0} {
-		gets $l line
-		lappend lines $line
-		gets $r line
-		incr n -1
-	}
-	set l [join $lines "\n"]
-	.diffs.left insert end "$l\n"
-	.diffs.right insert end "$l\n";
-}
-
-proc changed {r l n} \
-{
-	set llines {}
-	set rlines {}
-	while {$n > 0} {
-		gets $l line
-		lappend llines $line
-		gets $r line
-		lappend rlines $line
-		incr n -1
-	}
-	set lc [join $llines "\n"]
-	set rc [join $rlines "\n"]
-	.diffs.left insert end "$lc\n"
-	.diffs.right insert end "$rc\n"
-}
-
-proc left {r l n} \
-{
-	set lines {}
-	set newlines ""
-	while {$n > 0} {
-		gets $l line
-		lappend lines $line
-		set newlines "$newlines\n"
-		incr n -1
-	}
-	set lc [join $lines "\n"]
-	.diffs.left insert end "$lc\n" diffs
-	.diffs.right insert end "$newlines" diffs
-}
-
-proc right {r l n} \
-{
-	set lines {}
-	set newlines ""
-	while {$n > 0} {
-		gets $r line
-		lappend lines $line
-		set newlines "$newlines\n"
-		incr n -1
-	}
-	set rc [join $lines "\n"]
-	.diffs.left insert end "$newlines" diffs
-	.diffs.right insert end "$rc\n" diffs
-}
 
 proc save {} \
 {
-	global	saved done diffcount outputFile
+	global	saved done diffCount outputFile
 
-	if {$done < $diffcount} {
+	if {$done < $diffCount} {
 		displayMessage "Haven't resolved all diffs"
 		return
 	}
@@ -487,231 +438,6 @@ proc save {} \
 	}
 	catch {close $o} err
 	exit 0
-}
-
-# Open the file, look for \r and an trailing newline.
-proc ok_file {f} \
-{
-	set fd [open "$f" "r"]
-	fconfigure $fd -translation binary
-	set c [read $fd 1]
-	while {"$c" != ""} {
-		if {$c == "\r" || $c == "\n"} { break; }
-		set c [read $fd 1]
-	}
-	if {$c == "\r"} {
-		close $fd
-		return 0
-	}
-	seek $fd -1 end
-	set c [read $fd 1]
-	close $fd
-	if {$c != "\n"} {
-		return 0
-	}
-	return 1
-}
-
-# Get the sdiff, making sure it has no \r's from donkey dos in it.
-# Check to make sure it is newline terminated.
-proc sdiff {L R} \
-{
-	global	rmList sdiffw
-
-	set rmList ""
-	# we need the extra quote arounf $R $L
-	# because win32 path may have space in it
-	set a_ok [ok_file $L]
-	set b_ok [ok_file $R]
-	if {($a_ok == 1) && ($b_ok == 1)} {
-		return [open "| $sdiffw \"$L\" \"$R\"" r]
-	}
-	set dir [file dirname $L]
-	if {"$dir" == ""} {
-		set dotL .$L
-	} else {
-		set tail [file tail $L]
-		set dotL [file join $dir .$tail]
-	}
-	exec bk undos $L > $dotL
-	set dir [file dirname $R]
-	if {"$dir" == ""} {
-		set dotR .$R
-	} else {
-		set tail [file tail $R]
-		set dotR [file join $dir .$tail]
-	}
-	exec bk undos $R > $dotR
-	set rmList [list $dotL $dotR]
-	return [open "| $sdiffw $dotL $dotR"]
-}
-
-proc readFiles {L R O} \
-{
-	global rBoth rDiff rSame nextBoth nextDiff nextSame
-	global maxBoth maxDiff maxSame types rmList
-	global saved done diffcount Marks nextMark outputFile
-	global dev_null
-
-	.diffs.left configure -state normal
-	.diffs.right configure -state normal
- 	set t [clock format [file mtime $L] -format "%r %D"]
-	.diffs.l configure -text "$L ($t)"
- 	set t [clock format [file mtime $R] -format "%r %D"]
-	.diffs.r configure -text "$R ($t)"
-	.merge.l configure -text "$O"
-	.diffs.left delete 1.0 end
-	.diffs.right delete 1.0 end
-	.merge.t delete 1.0 end
-	.merge.menu.restart config -state normal
-	.merge.menu.skip config -state normal
-	.merge.menu.left config -state normal
-	.merge.menu.right config -state normal
-
-	. configure -cursor watch
-	update
-	set lineNo 1; set diffcount 0; set saved 0
-	set Marks {}; set nextMark 0
-	set rBoth {}; set rDiff {}; set rSame {}
-	set types {}
-	set l [open $L r]
-	set r [open $R r]
-	set d [sdiff $L $R]
-	set outputFile $O
-
-	gets $d last
-	if {$last == "" || $last == " "} { set last "S" }
-	set diffcount 0
-	set n 1
-	set done 0
-	while { [gets $d diff] >= 0 } {
-		incr lineNo 1
-		if {$diff == "" || $diff == " "} { set diff "S" }
-		if {$diff == $last} {
-			incr n 1
-		} else {
-			switch $last {
-			    "S"	{ same $r $l $n }
-			    "|"	{ incr diffcount 1; changed $r $l $n }
-			    "<"	{ incr diffcount 1; left $r $l $n }
-			    ">"	{ incr diffcount 1; right $r $l $n }
-			}
-			lappend types $last
-			# rBoth is built up this way because the tags stuff
-			# collapses adjacent tags together.
-			set start [expr {$lineNo - $n}]
-			lappend rBoth "$start.0" "$lineNo.0"
-			# Ditto for diffs
-			if {$last != "S"} {
-				lappend rDiff "$start.0" "$lineNo.0"
-			} else {
-				lappend rSame "$start.0" "$lineNo.0"
-			}
-			set n 1
-			set last $diff
-		}
-	}
-	switch $last {
-	    "S"	{ same $r $l $n }
-	    "|"	{ incr diffcount 1; changed $r $l $n }
-	    "<"	{ incr diffcount 1; left $r $l $n }
-	    ">"	{ incr diffcount 1; right $r $l $n }
-	}
-	lappend types $last
-	incr lineNo 1
-	# rBoth is built up this way because the tags stuff
-	# collapses adjacent tags together.
-	set start [expr {$lineNo - $n}]
-	lappend rBoth "$start.0" "$lineNo.0"
-	# Ditto for diffs
-	if {$last != "S"} {
-		lappend rDiff "$start.0" "$lineNo.0"
-	} else {
-		lappend rSame "$start.0" "$lineNo.0"
-	}
-	if {$diffcount == 0} { exit }
-	.merge.menu.l configure -text "$done / $diffcount resolved"
-	catch {close $r}
-	catch {close $l}
-	catch {close $d}
-	if {"$rmList" != ""} {
-		foreach rm $rmList {
-			catch {file delete $rm}
-		}
-	}
-	highlightDiffs
-
-	set nextSame 0
-	set nextDiff 0
-	set nextBoth 0
-	set maxSame [expr {[llength $rSame] - 2}]
-	set maxDiff [expr {[llength $rDiff] - 2}]
-	set maxBoth [expr {[llength $rBoth] - 2}]
-	.diffs.left configure -state disabled
-	.diffs.right configure -state disabled
-	. configure -cursor left_ptr
-}
-
-# --------------- Window stuff ------------------
-proc yscroll { a args } \
-{
-	eval { .diffs.left yview $a } $args
-	eval { .diffs.right yview $a } $args
-}
-
-proc xscroll { a args } \
-{
-	eval { .diffs.left xview $a } $args
-	eval { .diffs.right xview $a } $args
-}
-
-proc Page {view dir one} \
-{
-	set p [winfo pointerxy .]
-	set x [lindex $p 0]
-	set y [lindex $p 1]
-	set w [winfo containing $x $y]
-	if {[regexp {^.diffs} $w]} {
-		page ".diffs" $view $dir $one
-		return 1
-	}
-	if {[regexp {^.merge} $w]} {
-		page ".merge" $view $dir $one
-		return 1
-	}
-	return 0
-}
-
-proc page {w xy dir one} \
-{
-	global	gc
-
-	if {$w == ".diffs"} {
-		if {$xy == "yview"} {
-			set lines [expr {$dir * $gc(fm.diffHeight)}]
-		} else {
-			# XXX - should be width.
-			set lines 16
-		}
-	} else {
-		if {$xy == "yview"} {
-			set lines [expr {$dir * $gc(fm.mergeHeight)}]
-		} else {
-			# XXX - should be width.
-			set lines 16
-		}
-	}
-	if {$one == 1} {
-		set lines [expr {$dir * 1}]
-	} else {
-		incr lines -1
-	}
-	if {$w == ".diffs"} {
-		.diffs.left $xy scroll $lines units
-		.diffs.right $xy scroll $lines units
-	} else {
-		.merge.t $xy scroll $lines units
-	}
 }
 
 proc height {w} \
@@ -738,30 +464,9 @@ proc height {w} \
 	}
 }
 
-proc fontHeight {f} \
-{
-	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
-}
-
-proc computeHeight {w} \
-{
-	global gc	
-
-	update
-	if {$w == "diffs"} {
-		set f [fontHeight [.diffs.left cget -font]]
-		set p [winfo height .diffs.left]
-		set gc(fm.diffHeight) [expr {$p / $f}]
-	} else {
-		set f [fontHeight [.merge.t cget -font]]
-		set p [winfo height .merge.t]
-		set gc(fm.mergeHeight) [expr {$p / $f}]
-	}
-}
-
 proc widgets {L R O} \
 {
-	global	scroll wish tcl_platform gc d
+	global	scroll wish tcl_platform gc d app
 
 	getConfig "fm"
 	option add *background $gc(BG)
@@ -778,10 +483,18 @@ proc widgets {L R O} \
 	wm title . "File Merge"
 
 	frame .diffs
-	    label .diffs.l -background $gc(fm.oldColor) \
-		-font $gc(fm.buttonFont)
-	    label .diffs.r -background $gc(fm.newColor) \
-		-font $gc(fm.buttonFont)
+	    frame .diffs.status
+		label .diffs.status.l -background $gc(fm.oldColor) \
+		    -font $gc(fm.buttonFont) -relief sunken -borderwid 2
+		label .diffs.status.r -background $gc(fm.newColor) \
+		    -font $gc(fm.buttonFont) -relief sunken -borderwid 2
+		label .diffs.status.middle -background $gc(fm.oldColor) \
+		    -foreground black -background $gc(fm.statusColor) \
+		    -font  $gc(fm.fixedFont) -wid 20 \
+		    -font $gc(fm.buttonFont) -relief sunken -borderwid 2
+		    grid .diffs.status.l -row 0 -column 0 -sticky ew
+		    grid .diffs.status.middle -row 0 -column 1
+		    grid .diffs.status.r -row 0 -column 2 -sticky ew
 	    text .diffs.left -width $gc(fm.diffWidth) \
 		-height $gc(fm.diffHeight) \
 		-background $gc(fm.textBG) -fg $gc(fm.textFG) \
@@ -800,8 +513,7 @@ proc widgets {L R O} \
 		-troughcolor $gc(fm.troughColor) \
 		-background $gc(fm.scrollColor) \
 		-orient vertical -command { yscroll }
-	    grid .diffs.l -row 0 -column 0 -sticky nsew
-	    grid .diffs.r -row 0 -column 2 -sticky nsew
+	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
 	    grid .diffs.right -row 1 -column 2 -sticky nsew
@@ -892,6 +604,8 @@ proc widgets {L R O} \
 	grid rowconfigure .merge 1 -weight 1
 	grid rowconfigure . 0 -weight 1
 	grid rowconfigure . 1 -weight 1
+	grid columnconfigure .diffs.status 0 -weight 1
+	grid columnconfigure .diffs.status 2 -weight 1
 	grid columnconfigure .diffs 0 -weight 1
 	grid columnconfigure .diffs 2 -weight 1
 	grid columnconfigure .merge 0 -weight 1

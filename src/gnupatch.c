@@ -58,6 +58,8 @@ process(char *path0, char *path1, char *rev1,
 /*
  * If the file is listed in the "null file db"
  * fix the "diff -Nur" header line to show "/dev/null ..."
+ * Note: This really only needed for SGI IRIX, other system seems to
+ * handle the original diff header just fine.
  */
 private void
 fix_header(char *buf, MDBM *db)
@@ -282,7 +284,7 @@ gnupatch_main(int ac, char **av)
 	if (proj) proj_free(proj);
 	if (cset1) free(cset1);
 	if (cset2) free(cset2);
-	chdir(TMP_PATH);
+	chdir((char *) TMP_PATH);
 	spawnvp_ex(_P_NOWAIT, "rm", clean_av);
 	return(0);
 }

@@ -28,6 +28,7 @@ int adler32_main(int, char **);
 int admin_main(int, char **);
 int annotate_main(int, char **);
 int bkd_main(int, char **);
+int cat_main(int, char **);
 int changes_main(int, char **);
 int check_main(int, char **);
 int chksum_main(int, char **);
@@ -44,7 +45,7 @@ int export_main(int, char **);
 int fdiff_main(int, char **);
 int find_main(int, char **);
 int fix_main(int, char **);
-int g2sccs_main(int, char **);
+int _g2sccs_main(int, char **);
 int gca_main(int, char **);
 int get_main(int, char **);
 int gethelp_main(int, char **);
@@ -140,8 +141,12 @@ int _f2csets_main(int, char **);
 /* do not change the next line, it's parsed in helpcheck.pl */
 struct command cmdtbl[] = {
 	{"_adler32", adler32_main},
+	{"_converge", converge_main},
 	{"_createlod", _createlod_main},
+	{"_f2csets", _f2csets_main},
 	{"_find", find_main },
+	{"_g2sccs", _g2sccs_main},
+	{"_get", get_main},
 	{"_gzip", gzip_main }, 
 	{"_keysort", keysort_main},
 	{"_lconfig", lconfig_main},	
@@ -152,14 +157,12 @@ struct command cmdtbl[] = {
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
+	{"_mail", mail_main},
+	{"_probekey", probekey_main},
 #ifdef WIN32
 	{"_socket2pipe", socket2pipe_main},
 #endif
-	{"_converge", converge_main},
-	{"_mail", mail_main},
-	{"_get", get_main},
 	{"_sort", sort_main},
-	{"_probekey", probekey_main},
 	{"_sortmerge", sortmerge_main},
 	{"_unlink", unlink_main },
 	{"abort", abort_main},
@@ -183,22 +186,21 @@ struct command cmdtbl[] = {
 	{"export", export_main},
 	{"fdiff", fdiff_main},		/* undocumented */
 	{"fix", fix_main},
-	{"g2sccs", g2sccs_main},
 	{"gca", gca_main},
 	{"get", get_main},
 	{"gethelp", gethelp_main},	/* undocumented */
 	{"gethost", gethost_main},
 	{"getmsg", getmsg_main},
 	{"getuser", getuser_main},
-	{"graft", graft_main},		/* undocumented */
-	{"grep", grep_main},
 	{"gnupatch", gnupatch_main},
 	{"gone", gone_main},
+	{"graft", graft_main},		/* undocumented */
+	{"grep", grep_main},
 	{"help", help_main},
 	{"helpsearch", helpsearch_main},
 	{"helptopics", helptopics_main},
-	{"info", sinfo_main},
 	{"idcache", idcache_main},
+	{"info", sinfo_main},
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
 	{"lock", lock_main},
@@ -230,10 +232,10 @@ struct command cmdtbl[] = {
 	{"repo", repo_main},		/* obsolete, undocumented */
 	{"resolve", resolve_main},
 	{"rev2cset", r2c_main},		/* alias, documented as r2c */
-	{"root", root_main},
-	{"rset", rset_main},
 	{"rm", rm_main},
 	{"rmdel", rmdel_main},
+	{"root", root_main},
+	{"rset", rset_main},
 	{"sane", sane_main},
 	{"sccscat", sccscat_main},
 	{"sccslog", sccslog_main},
@@ -261,7 +263,6 @@ struct command cmdtbl[] = {
 	{"version", version_main},
 	{"what", what_main},
 	{"zone", zone_main},
-	{"_f2csets", _f2csets_main},
 
 	{0, 0},
 };
@@ -328,6 +329,8 @@ main(int ac, char **av)
 						perror(av[optind]);
 						return (1);
 					}
+					proj_free(bk_proj);
+					bk_proj = proj_init(0);
 					optind++;
 				} else unless (proj_cd2root(bk_proj)) {
 					fprintf(stderr, 

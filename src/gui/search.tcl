@@ -249,15 +249,17 @@ proc search_keyboard_bindings {{nc {}}} \
 	global search
 
 	if {$nc == ""} {
-		bind all                <g>             "search g"
-		bind all                <colon>         "search :"
-		bind all                <slash>         "search /"
-		bind all                <question>      "search ?"
+		bind .                <g>             "search g"
+		bind .                <colon>         "search :"
+		bind .                <slash>         "search /"
+		bind .                <question>      "search ?"
 	}
-	bind all                <Control-u>     searchreset
-	bind all                <Control-r>     searchrecall
+	bind .                <Control-u>     searchreset
+	bind .                <Control-r>     searchrecall
 	bind $search(text)      <Return>        searchstring
 	bind $search(text)      <Control-u>     searchreset
+	# In the search window, don't listen to "all" tags.
+        bindtags $search(text) [list $search(text) Entry]
 }
 
 proc search_init {w s} \

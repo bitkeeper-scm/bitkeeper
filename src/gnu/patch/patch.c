@@ -121,6 +121,10 @@ main (int argc, char **argv)
     struct outstate outstate;
     char numbuf[LINENUM_LENGTH_BOUND + 1];
 
+#ifdef __CYGWIN__
+    setmode(1, _O_BINARY);
+#endif
+
     init_time ();
 
     setbuf(stderr, serrbuf);

@@ -574,6 +574,10 @@ main (argc, argv)
       prev = c;
     }
 
+#ifdef WIN32
+    setmode (STDOUT_FILENO, O_BINARY);
+#endif
+
   if (argc - optind != 2)
     try_help (argc - optind < 2 ? "missing operand" : "extra operand");
 

@@ -47,6 +47,10 @@ park_main(int ac, char **av)
 		return (0);
 	}
 
+	/*
+	 * XXX TODO What do we do when user tries to park a binary file?
+	 */
+
 	do {
 		sprintf(parkfile, "%s/parkfile-%d", BKTMP, ++try);
 	} while (exists(parkfile));
