@@ -4,7 +4,7 @@ same effect as
 
 	bk diffs -C1.123
 try
-	bk -r diffs -r@1.123 -r=
+	bk -r diffs -r@1.123 -r.
 $
 #monotonic
 If a file is marked as monotonically increasing, and that file has "dangling
