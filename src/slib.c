@@ -69,16 +69,15 @@ executable(char *f)
 }
 
 int
-isdir(char *s)
+exists(char *s)
 {
 	struct	stat sbuf;
 
-	if (stat(s, &sbuf) == -1) return 0;
-	return (S_ISDIR(sbuf.st_mode));
+	return (lstat(s, &sbuf) == 0);
 }
 
 int
-isRealDir(char *s)
+isdir(char *s)
 {
 	struct	stat sbuf;
 
@@ -91,7 +90,7 @@ isreg(char *s)
 {
 	struct	stat sbuf;
 
-	if (stat(s, &sbuf) == -1) return 0;
+	if (lstat(s, &sbuf) == -1) return 0;
 	return (S_ISREG(sbuf.st_mode));
 }
 
@@ -100,7 +99,8 @@ size(char *s)
 {
 	struct	stat sbuf;
 
-	if (stat(s, &sbuf) == -1) return 0;
+	if (lstat(s, &sbuf) == -1) return 0;
+	unless (S_ISREG(sbuf.st_mode)) return (0);
 	return (sbuf.st_size);
 }
 
@@ -109,7 +109,7 @@ emptyDir(char *dir)
 {
 	struct	stat sbuf;
 
-	if (stat(dir, &sbuf) == -1) return 0;
+	if (lstat(dir, &sbuf) == -1) return 0;
 	return (sbuf.st_nlink == 2);	/* . and .. */
 }
 
@@ -187,19 +187,6 @@ fileType (mode_t m)
 {
 	// XXX this code may not be portable
 	return (m & 0170000);
-}
-
-int
-mkexecutable(char *fname)
-{
-	struct	stat sbuf;
-
-	if (stat(fname, &sbuf)) {
-		perror("stat");
-		return (-1);
-	}
-	sbuf.st_mode |= S_IXUSR|S_IXGRP|S_IXOTH;
-	return (chmod(fname, UMASK(sbuf.st_mode & 0777)));
 }
 
 int
@@ -1066,8 +1053,8 @@ samefile(char *a, char *b)
 {
 	struct	stat sa, sb;
 
-	if (stat(a, &sa) == -1) return 0;
-	if (stat(b, &sb) == -1) return 0;
+	if (lstat(a, &sa) == -1) return 0;
+	if (lstat(b, &sb) == -1) return 0;
 	return ((sa.st_dev == sb.st_dev) && (sa.st_ino == sb.st_ino));
 }
 
@@ -1253,7 +1240,7 @@ sccs_root(sccs *s, char *root)
 			debug((stderr, "sccs_root() -> %s\n", buf));
 			return (s ? s->root : buf);
 		}
-		if (stat(buf, &sb) == -1) {
+		if (lstat(buf, &sb) == -1) {
 			perror(buf);
 			return (0);
 		}
@@ -2930,7 +2917,7 @@ err:			free(s->gfile);
 				s->glink = strdup(link);
 			} else {
 				verbose((stderr,
-				    "can'nt read sym link: %s\n", s->gfile));
+				    "can not read sym link: %s\n", s->gfile));
 				goto err;
 			}
 		}
@@ -2978,7 +2965,7 @@ sccs_init(char *name, int flags)
 	}
 	if (t = getenv("BK_LOD")) s->defbranch = strdup(t);
 	unless (check_gfile(s, flags)) return (0);
-	if (stat(s->sfile, &sbuf) == 0) {
+	if (lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
 			free(s->gfile);
@@ -3090,7 +3077,7 @@ bad:			sccs_free(s);
 		s->state |= GFILE;
 		s->mode = sbuf.st_mode;
 	}
-	if (stat(s->sfile, &sbuf) == 0) {
+	if (lstat(s->sfile, &sbuf) == 0) {
 		if (!S_ISREG(sbuf.st_mode)) goto bad;
 		if (sbuf.st_size == 0) goto bad;
 		s->state |= SFILE;
@@ -5189,8 +5176,8 @@ fix_lf(char *gfile)
 	struct	stat sb;
 	char	c;
 	
-	if (stat(gfile, &sb)) {
-		fprintf(stderr, "stat: ");
+	if (lstat(gfile, &sb)) {
+		fprintf(stderr, "lstat: ");
 		perror(gfile);
 		return (-1);
 	}               
@@ -5249,8 +5236,12 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 			}
 		}
 	} else if (S_ISLNK(s->mode)) {
+		FILE	*f;
+
 		sprintf(new, "%s/new%d", TMP_PATH, getpid());
-		close(open(new, O_CREAT, 0600)); /* make a empty file */
+		f = fopen(new, "w");
+		fprintf(f, "SYMLINK -> %s\n", s->glink);
+		fclose(f);
 	} else {
 		if (fix_lf(s->gfile) == -1) return (-1); 
 		strcpy(new, s->gfile);
@@ -5376,9 +5367,10 @@ sccs_clean(sccs *s, int flags)
 			fprintf(stderr,
 			    "%s has been modified, needs delta.\n", s->gfile);
 		} else {
-			printf("===== %s (link) %s vs %s =====\n", 
+			printf("===== %s %s vs %s =====\n", 
 			    s->gfile, pf.oldrev, "edited");
-			printf("< %s\n-\n> %s\n", d->glink, s->glink);
+			printf("< SYMLINK -> %s\n-\n", d->glink);
+			printf("> SYMLINK -> %s\n", s->glink);
 			free_pfile(&pf);
 		}
 		return (2);
@@ -5662,6 +5654,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	char	*t;
 	char	buf[1024];
 	admin	l[2];
+	int	isLink = s->glink != 0;		/* XXX - what about patches? */
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -5672,7 +5665,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		if (prefilled) sccs_freetree(prefilled);
 		return (1);
 	}
-	unless (diffs) {
+	unless (diffs || isLink) {
 		popened = openInput(s, flags, &gfile);
 		unless (gfile) {
 			perror(s->gfile);
@@ -5681,10 +5674,11 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			return (1);
 		}
 	}
+	/* This should never happen - the zlock should protect */
 	if (exists(s->sfile)) {
 		fprintf(stderr, "delta: lost checkin race on %s\n", s->sfile);
 		if (prefilled) sccs_freetree(prefilled);
-		if (!diffs && (gfile != stdin)) {
+		if (!diffs && (gfile != stdin) && !isLink) {
 			if (popened) pclose(gfile); else fclose(gfile);
 		}
 		return (1);
@@ -5801,7 +5795,7 @@ skip_data:
 			fclose(id);
 		}
 	} 
-	if (!diffs && (gfile != stdin)) {
+	if (!diffs && (gfile != stdin) && !isLink) {
 		if (popened) pclose(gfile); else fclose(gfile);
 	}
 #ifdef	PARANOID
@@ -7061,7 +7055,10 @@ sccs_getInit(sccs *sc, delta *d, FILE *f, int patch, int *errorp, int *linesp)
 	int	lines = 0;
 	char	type;
 
-	unless (f) return (d);
+	unless (f) {
+		if (errorp) *errorp = 0;
+		return (d);
+	}
 
 #define	WANT(c) ((buf[0] == c) && (buf[1] == ' '))
 	unless (fnext(buf, f)) {
@@ -8085,6 +8082,13 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 			free_pfile(&pf);
 			return (-1);
 		}
+		leftf = tmpfile;
+		rightf = tmp2;
+	} else if (s->glink) {
+		sprintf(tmp2, "%s-2", tmpfile);
+		diffs = fopen(tmp2, "w");
+		fprintf(diffs, "SYMLINK -> %s\n", s->glink);
+		fclose(diffs);
 		leftf = tmpfile;
 		rightf = tmp2;
 	} else {
@@ -9134,7 +9138,15 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		sccs_pdelta(d, out);
 		fprintf(out, "\n");
 	}
-	if (start->flags & D_MODE) fprintf(out, "O %s\n", mode2a(start->mode));
+	if (start->flags & D_MODE) {
+		fprintf(out, "O %s", mode2a(start->mode));
+		if (S_ISLNK(start->mode)) {
+			assert(start->glink);
+			fprintf(out, " %s\n", start->glink);
+		} else {
+			fprintf(out, "\n");
+		}
+	}
 	if (s->tree->pathname) assert(start->pathname);
 	if (start->pathname) fprintf(out, "P %s\n", start->pathname);
 	if (start->flags & D_SYMBOLS) {

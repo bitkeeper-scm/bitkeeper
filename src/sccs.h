@@ -112,7 +112,6 @@ extern	char *strdup(char *s);
 #define	strneq(a,b,n)	!strncmp(a,b,n)
 #define	index(s, c)	strchr(s, c)
 #define	rindex(s, c)	strrchr(s, c)
-#define	exists(f)	(access(f, F_OK) == 0)
 #define	notnull(s)	(s ? s : "")
 #define	unless(e)	if (!(e))
 #define	verbose(x)	unless (flags&SILENT) fprintf x

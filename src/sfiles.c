@@ -142,7 +142,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 			flist = stdin;
 			return (sfileNext());
 		}
-		if (isRealDir(Av[0])) {
+		if (isdir(Av[0])) {
 			if (flags & NOEXPAND) return (0);
 			if (Av[1]) {
 				fprintf(stderr,
@@ -202,6 +202,8 @@ oksccs(char *sfile, int flags, int complain)
 {
 	char	*g;
 	char	*s;
+	int	ok;
+	struct	stat sbuf;
 
 	if ((s = rindex(sfile, '/'))) {
 		s++;
@@ -215,9 +217,10 @@ oksccs(char *sfile, int flags, int complain)
 		return (0);
 	}
 	g = sccs2name(sfile);
-	if ((flags&GFILE) && access(g, R_OK) != 0) {
+	ok = lstat(g, &sbuf) == 0;
+	if ((flags&GFILE) && !ok) {
 		if (complain) {
-			if (access(sfile, R_OK) != 0) {
+			unless (exists(sfile)) {
 				verbose((stderr,
 				    "%s: neither '%s' nor '%s' exists.\n",
 				    prog, g, sfile));
@@ -229,7 +232,7 @@ oksccs(char *sfile, int flags, int complain)
 		free(g);
 		return (0);
 	}
-	if ((flags&WRITE_OK) && access(g, W_OK) != 0) {
+	if ((flags&WRITE_OK) && !(sbuf.st_mode & 0600)) {
 		if (complain)
 			verbose((stderr,
 			    "%s: %s: no write permission\n", prog, g));

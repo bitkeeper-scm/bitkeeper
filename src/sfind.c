@@ -91,7 +91,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		lftw(".", func, 15);
 	} else {
 		for (i = optind; i < ac; ++i) {
-			if (isRealDir(av[i])) {
+			if (isdir(av[i])) {
 				lftw(av[i], func, 15);
 			} else {
 				file(av[i], func);
@@ -103,7 +103,8 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 }
 
 /*
- * Handle a single file or a directory.
+ * Handle a single file.
+ * Convert to s.file first, if possible.
  */
 int
 file(char *f, int (*func)())
@@ -113,8 +114,8 @@ file(char *f, int (*func)())
 
 	sfile = name2sccs(f);
 	gfile = sccs2name(sfile);
-	if (stat(sfile, &sb) == -1) {
-		if ((stat(gfile, &sb) == 0) && xFlg) {
+	if (lstat(sfile, &sb) == -1) {
+		if ((lstat(gfile, &sb) == 0) && xFlg) {
 			printf("%s\n", f);
 		}
 		goto out;
@@ -147,7 +148,9 @@ func(const char *filename, const struct stat *sb, int flag)
 	if (xFlg) {
 		sfile = name2sccs(file);
 		gfile = sccs2name(sfile);
-		if (exists(gfile) && !exists(sfile)) printf("%s\n", gfile);
+		if (streq(gfile, file) && !exists(sfile)) {
+			printf("%s\n", gfile);
+		}
 		free(sfile);
 		free(gfile);
 		return (0);
@@ -434,9 +437,8 @@ lftw(const char *dir,
 	struct	dirent *e;
 	struct	stat sbuf;
 	char	tmp_buf[NBUF_SIZE];
-	char	*slash ="/";
-
-	int flag, rc = 0, first_time = 1;
+	char	*slash = "/";
+	int	flag, rc = 0, first_time = 1;
 
 	flag = _ftw_get_flag(dir, &sbuf);
 
@@ -467,10 +469,10 @@ lftw(const char *dir,
 
 		/* now we do the real work */
 		sprintf(tmp_buf, "%s%s%s", dir, slash, e->d_name);
-		if (isRealDir(tmp_buf)) {
+		flag = _ftw_get_flag(tmp_buf, &sbuf);
+		if (S_ISDIR(sbuf.st_mode)) {
 			lftw(tmp_buf, func, 0);
 		} else {
-			flag = _ftw_get_flag(tmp_buf, &sbuf);
 			if ((rc = (*func)(tmp_buf, &sbuf, flag)) != 0) {
 				goto done;
 			}

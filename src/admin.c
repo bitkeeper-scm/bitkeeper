@@ -351,7 +351,7 @@ do_checkin(char *name, int encoding,
 	if (newfile) {
 		struct	stat sb;
 
-		if (stat(newfile, &sb) == 0) {
+		if (lstat(newfile, &sb) == 0) {
 			if (S_ISLNK(sb.st_mode) ||
 			    S_ISREG(sb.st_mode) ||
 			    S_ISDIR(sb.st_mode)) {
