@@ -144,7 +144,7 @@ usage:			      system("bk help -s gone");
 	unless (av[optind]) goto usage;
 
 	if (streq("-", av[optind])) exit(sccs_gone(quiet, stdin));
-	if (bktemp(tmpfile)) exit(1);
+	unless (bktmp(tmpfile, "sccsrm")) exit(1);
 	f = fopen(tmpfile, "w");
 	while (av[optind]) fprintf(f, "%s\n", av[optind++]);
 	fclose(f);

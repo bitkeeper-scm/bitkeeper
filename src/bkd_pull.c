@@ -8,7 +8,7 @@ listIt(sccs *s, int list)
 	FILE	*f;
 	delta	*d;
 
-	gettemp(buf, "cs");
+	bktmp(buf, "cs");
 	sprintf(cmd, "bk changes %s - > %s", list > 1 ? "-v" : "", buf);
 	f = popen(cmd, "w");
 	for (d = s->table; d; d = d->next) {
@@ -72,8 +72,8 @@ cmd_pull_part2(int ac, char **av)
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
 	int	delay = -1;
 	char	s_cset[] = CHANGESET;
-	char	*revs = bktmpfile();
-	char	*serials = bktmpfile();
+	char	*revs = bktmp_local(0, "pullrevs");
+	char	*serials = bktmp(0, "pullser");
 	char	*makepatch[10] = { "bk", "makepatch", 0 };
 	sccs	*s;
 	delta	*d;
@@ -214,7 +214,7 @@ done:	unlink(serials); free(serials);
 		putenv("BK_STATUS=OK");
 	}
 	if (rc) {
-		unlink(revs); free(revs);
+		unlink(revs);
 		safe_putenv("BK_STATUS=%d", rc);
 	} else {
 		/*
@@ -223,11 +223,14 @@ done:	unlink(serials); free(serials);
 		 * b) update $CSETS to point to CSETS_OUT
 		 */
 		unlink(CSETS_OUT);
-		if (rename(revs, CSETS_OUT)) perror(CSETS_OUT);
-		free(revs);
-		chmod(CSETS_OUT, 0666);
-		safe_putenv("BK_CSETLIST=%s", CSETS_OUT);
+		if (rename(revs, CSETS_OUT)) {
+			unless (errno == EROFS) perror(CSETS_OUT);
+		} else {
+			chmod(CSETS_OUT, 0666);
+			putenv("BK_CSETLIST=" CSETS_OUT);
+		}
 	}
+	free(revs);
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */

@@ -150,7 +150,7 @@ smerge_main(int ac, char **av)
 	
 	for (i = 0; i < 3; i++) {
 		char	*cmd;
-		gettemp(bodytmp[i], "smerge");
+		bktmp(bodytmp[i], "smerge");
 		cmd = aprintf("bk get %s%s -qkpO -r%s '%s' > '%s'",
 		    anno ? "-a" : "",
 		    anno ? anno : "",
@@ -885,7 +885,7 @@ do_diff_merge(int start, int end)
 
 	for (i = 0; i < 3; i++) {
 		int	status;
-		gettemp(files[i], "smerge");
+		bktmp(files[i], "smerge");
 		cmd = aprintf("bk get %s%s -qkpO -r%s '%s' > '%s'",
 		    anno ? "-a" : "",
 		    anno ? anno : "",

@@ -204,9 +204,9 @@ echo OK
 echo $N checkout:EDIT w resolve rename conflict .....................$NL
 # remove some csets to bring it below limit in the regression env
 cd $HERE/edit_1
-bk undo -sqfa1.2 || exit 1
+bk undo $Q -sfa1.2 || exit 1
 cd $HERE/edit_2
-bk undo -sqfa1.2 || exit 1
+bk undo $Q -sfa1.2 || exit 1
 cd $HERE/edit_1/src
 bk mv foo.c foo2.c
 bk commit $Q -yrename

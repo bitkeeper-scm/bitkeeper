@@ -12,16 +12,6 @@ typedef	struct {
 
 private void usage(void);
 
-/* For bugfixes tree only */
-char	*
-bktmp(char *dummy, char *tmp)
-{
-	char	buf[] = "/tmp/bk_XXXXXX";
-
-	close(mkstemp(buf));
-	return (strdup(buf));
-}
-
 int
 hostme_main(int ac, char **av)
 {

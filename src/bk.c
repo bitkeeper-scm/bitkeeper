@@ -678,6 +678,7 @@ cmdlog_exit(void)
 	 *  
 	 */
 	purify_list();
+	bktmpcleanup();
 	if (cmdlog_buffer[0]) cmdlog_end(LOG_BADEXIT);
 
 	/*

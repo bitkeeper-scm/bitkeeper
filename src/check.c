@@ -51,11 +51,11 @@ private	sccs	*cset;		/* the initialized cset file */
 private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOGCHK|INIT_NOCKSUM;
 private	FILE	*idcache;
 private	u32	id_sum;
-private char	id_tmp[100]; 	/* BitKeeper/tmp/bkXXXXXX */
+private char	id_tmp[MAXPATH]; /* BitKeeper/tmp/bkXXXXXX */
 private	int	poly;
 private	int	polyList;
 private	MDBM	*goneDB;
-private	char	ctmp[100];  	/* BitKeeper/tmp/bkXXXXXX */
+private	char	ctmp[MAXPATH]; 	/* BitKeeper/tmp/bkXXXXXX */
 int		xflags_failed;	/* notification */
 
 #define	POLY	"BitKeeper/etc/SCCS/x.poly"
@@ -269,7 +269,6 @@ check_main(int ac, char **av)
 		}
 	}
 	if ((all || resync) && checkAll(keys)) errors |= 0x40;
-	assert(strneq(ctmp, "BitKeeper/tmp/bk", 16));
 	unlink(ctmp);
 	mdbm_close(db);
 	mdbm_close(keys);
@@ -448,8 +447,8 @@ is where the file wants to be.  To correct this:\n\
 private int
 keywords(sccs *s)
 {
-	char	*a = bktmpfile();
-	char	*b = bktmpfile();
+	char	*a = bktmp(0, "check_wk");
+	char	*b = bktmp(0, "check_wok");
 	int	same;
 
 	assert(a && b);
@@ -760,8 +759,8 @@ listFound(MDBM *db)
 private void
 init_idcache()
 {
-	if (bktemp(id_tmp)) {
-		perror("gettemp");
+	unless (bktmp_local(id_tmp, "check")) {
+		perror("bktmp_local");
 		exit(1);
 	}
 	unless (idcache = fopen(id_tmp, "wb")) {
@@ -817,9 +816,8 @@ buildKeys(MDBM *idDB)
 		fprintf(stderr, "check: ChangeSet file not inited\n");
 		exit (1);
 	}
-	unless (exists("BitKeeper/tmp")) mkdir("BitKeeper/tmp", 0777);
-	if (bktemp(ctmp)) {
-		fprintf(stderr, "bktemp failed to get temp file\n");
+	unless (bktmp(ctmp, "check")) {
+		fprintf(stderr, "bktmp failed to get temp file\n");
 		exit(1);
 	}
 	sprintf(buf, "bk sccscat -h ChangeSet | bk _keysort > %s", ctmp);

@@ -435,8 +435,8 @@ rebuild()
 
 	unless (rFlg) goto c;
 
-	if (bktemp(id_tmp)) {
-		perror("gettemp");
+	unless (bktmp_local(id_tmp, "id_tmp")) {
+		perror("bktmp_local");
 		exit(1);
 	}
 	unless (id_cache = fopen(id_tmp, "wb")) {

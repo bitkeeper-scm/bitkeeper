@@ -1354,11 +1354,11 @@ cleanPath(char *path, char cleanPath[])
 	if (top != path) { *r-- = path[1]; *r-- = path[0]; }
 	if (*++r) {
 		strcpy(cleanPath, r);
+		/* for win32 path */
+		if ((r[1] == ':') && (r[2] == '\0')) strcat(cleanPath, "/");
 	} else {
 		strcpy(cleanPath, ".");
 	}
-	/* for win32 path */
-	if ((r[1] == ':') && (r[2] == '\0')) strcat(cleanPath, "/");
 #undef	isEmpty
 }
 
@@ -8057,7 +8057,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	 */
 	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
 		tmpfile = 1;
-		if (gettemp(sbuf, "getU")) RET(-1);
+		unless (bktmp(sbuf, "getU")) RET(-1);
 		name = strdup(sbuf);
 		if (deflate_gfile(s, name)) {
 			unlink(name);
@@ -8400,7 +8400,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	 */
 	if (isRegularFile(s->mode)) {
 		if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
-			if (gettemp(new, "getU")) return (-1);
+			unless (bktmp(new, "getU")) return (-1);
 			if (IS_WRITABLE(s)) {
 				if (deflate_gfile(s, new)) {
 					unlink(new);
@@ -8434,7 +8434,7 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 	flags =  GET_ASCII|SILENT|PRINT;
 	if (expandKeyWord) flags |= GET_EXPAND;
 	if (isRegularFile(d->mode)) {
-		if (gettemp(old, "get")) return (-1);
+		unless (bktmp(old, "get")) return (-1);
 		if (sccs_get(s, pf->oldrev, pf->mRev, pf->iLst, pf->xLst,
 		    flags, old)) {
 			unlink(old);
@@ -8483,17 +8483,20 @@ diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile)
 private int
 diff_g(sccs *s, pfile *pf, char **tmpfile)
 {
+	static char	tmpname[MAXPATH];
+
 	*tmpfile = DEV_NULL;
 	switch (diff_gmode(s, pf)) {
 	    case 0: 		/* no mode change */
 		if (!isRegularFile(s->mode)) return 1;
-		*tmpfile  = tmpnam(0);
+		*tmpfile  = bktmp(tmpname, "diffg1");
+		assert(*tmpfile);
 		return (diff_gfile(s, pf, 0, *tmpfile));
 	    case 2:		/* meta mode field changed */
 		return 0;
 	    case 3:		/* path changed */
 	    case 1:		/* file type changed */
-		*tmpfile  = tmpnam(0);
+		*tmpfile  = bktmp(tmpname, "diffg2");
 		assert(*tmpfile);
 		if (diff_gfile(s, pf, 0, *tmpfile) == -1) return (-1);
 		return 0;
@@ -8554,7 +8557,7 @@ int
 sccs_clean(sccs *s, u32 flags)
 {
 	pfile	pf;
-	char	tmpfile[50];
+	char	tmpfile[MAXPATH];
 	delta	*d;
 
 	/* don't go removing gfiles without s.files */
@@ -8666,7 +8669,7 @@ sccs_clean(sccs *s, u32 flags)
 			if (RCS(s)) flags |= GET_RCSEXPAND;
 		}
 	}
-	if (gettemp(tmpfile, "diffg")) return (1);
+	unless (bktmp(tmpfile, "diffg")) return (1);
 	/*
 	 * hasDiffs() ignores keyword expansion differences.
 	 * And it's faster.
@@ -12752,7 +12755,7 @@ doDiff(sccs *s, u32 flags, char kind, char *opts, char *leftf, char *rightf,
 		diffFile[0] = 0;
 	} else {
 		strcpy(spaces, "=====");
-		if (gettemp(diffFile, "diffs")) return (-1);
+		unless (bktmp(diffFile, "diffs")) return (-1);
 		diff(leftf, rightf, kind, opts, diffFile);
 		diffs = fopen(diffFile, "rt");
 	}
@@ -12998,7 +13001,7 @@ sccs_loadkv(sccs *s)
 	char x_kv[MAXPATH];
 	extern MDBM *loadkv(char *file);
 
-	gettemp(x_kv, "bk_kv");
+	bktmp(x_kv, "bk_kv");
 	sccs_get(s, 0, 0, 0, 0, SILENT|PRINT, x_kv);
 	s->mdbm = loadkv(x_kv);
 	unlink(x_kv);

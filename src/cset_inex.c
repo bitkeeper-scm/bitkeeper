@@ -203,7 +203,7 @@ commit(int quiet, delta *d)
 	int	i;
 	char	*comment = 0;
 	char	*cmds[20];
-	char	*tmp = bktmpfile();
+	char	*tmp = bktmp(0, "commit");
 	FILE	*f = fopen(tmp, "w");
 
 	EACH(d->comments) {

@@ -34,7 +34,7 @@ commit_main(int ac, char **av)
 		return (1);
 	}
 
-	gettemp(commentFile, "bk_commit");
+	bktmp(commentFile, "commit");
 	while ((c = getopt(ac, av, "aAdf:FRqsS:y:Y:")) != -1) {
 		switch (c) {
 		    case 'a':	opts.alreadyAsked = 1; break;	/* doc 2.0 */
@@ -84,7 +84,7 @@ commit_main(int ac, char **av)
 			return (1);
 		}
 		unless (pendingFiles[0]) {
-			gettemp(pendingFiles, "bk_list");
+			bktmp(pendingFiles, "list");
 			setmode(0, _O_TEXT);
 			f = fopen(pendingFiles, "wb");
 			assert(f);
@@ -94,7 +94,7 @@ commit_main(int ac, char **av)
 			fclose(f);
 		}
 	} else {
-		gettemp(pendingFiles, "bk_pending");
+		bktmp(pendingFiles, "bk_pending");
 		if (sysio(0,
 		    pendingFiles, 0, "bk", "sfind", "-s,,p", "-C", SYS)) {
 			unlink(pendingFiles);
@@ -196,7 +196,7 @@ out:		if (commentFile) unlink(commentFile);
 		 * So we open the file in read mode close it and re-open
 		 * it in write mode
 		 */
-		gettemp(pendingFiles2, "bk_pending2");
+		bktmp(pendingFiles2, "bk_pending2");
 		f = fopen(pendingFiles, "rb");
 		f2 = fopen(pendingFiles2, "wb");
 		assert(f); assert(f2);

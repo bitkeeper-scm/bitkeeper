@@ -178,7 +178,7 @@ send_part1_msg(remote *r, char rev_list[], char **envVar)
 	 */
 	gzip = r->port ? opts.gzip : 0;
 
-	bktemp(buf);
+	bktmp(buf, "push1");
 	f = fopen(buf, "w");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -240,7 +240,7 @@ err:		if (r->type == ADDR_HTTP) disconnect(r, 2);
 	/*
 	 * What we want is: "remote => bk _prunekey => rev_list"
 	 */
-	bktemp(rev_list);
+	bktmp_local(rev_list, "pushrev");
 	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
 	s = sccs_init(s_cset, 0, 0);
@@ -404,7 +404,7 @@ send_end_msg(remote *r, char *msg, char *rev_list, char **envVar)
 	 */
 	gzip = r->port ? opts.gzip : 0;
 
-	bktemp(msgfile);
+	bktmp(msgfile, "push_send_end");
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -445,7 +445,7 @@ send_patch_msg(remote *r, char rev_list[], int ret, char **envVar)
 	 */
 	gzip = r->port ? opts.gzip : 0;
 
-	bktemp(msgfile);
+	bktmp(msgfile, "pullmsg2");
 	f = fopen(msgfile, "wb");
 	assert(f);
 	sendEnv(f, envVar, r, 0);
@@ -595,6 +595,7 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
 	getline2(r, buf, sizeof(buf));
 	if (remote_lock_fail(buf, opts.verbose)) {
+		unlink(rev_list);
 		return (-1);
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
@@ -659,7 +660,14 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		}
 	} else {
 		unlink(CSETS_OUT);
-		rename(rev_list, CSETS_OUT);
+		if (rename(rev_list, CSETS_OUT)) {
+			unlink(rev_list);
+			unless (errno == EROFS) {
+				fprintf(stderr, "Failed to move %s to " 
+					CSETS_OUT, rev_list);
+				return (-1);
+			}
+		}
 		putenv("BK_CSETLIST=" CSETS_OUT);
 		rev_list[0] = 0;
 	}
@@ -745,7 +753,7 @@ private	void
 listIt(sccs *s, int list)
 {
 	delta	*d;
-	char	*tmp = bktmpfile();
+	char	*tmp = bktmp(0, "push_list");
 	char	*cmd;
 	char	buf[BUFSIZ];
 	FILE	*f;

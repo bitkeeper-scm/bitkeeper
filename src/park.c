@@ -112,7 +112,7 @@ err:		if (s) sccs_free(s);
 		goto err;
 	}
 
-	bktemp(changedfile);
+	bktmp(changedfile, "cfile");
 	if (av[optind] && streq(av[optind], "-")) {
 		f = fopen(changedfile, "wb");
 		while (fnext(buf, stdin)) {
@@ -153,7 +153,7 @@ err:		if (s) sccs_free(s);
 	 * Here is where we make the t.file, we will make a sfio file
 	 * from these t.files later.
 	 */
-	bktemp(parkedfile);
+	bktmp(parkedfile, "parkf");
 	f = fopen(changedfile, "rt");
 	f2 = fopen(parkedfile, "wb");
 	assert(f); assert(f2);
@@ -253,7 +253,7 @@ err:		if (s) sccs_free(s);
 	 * Make a list of file we want to feed to sfio
 	 * Note: the (fake) Changeset file must be first in the list
 	 */
-	bktemp(sfio_list);
+	bktmp_local(sfio_list, "sfio_list");
 	f = fopen(sfio_list, "w");
 	assert(f);
 	fprintf(f, "%s\n", "ChangeSet");
@@ -290,6 +290,7 @@ err:		if (s) sccs_free(s);
 	sccs_pdelta(s, sccs_top(s), f);
 	fputs("\n", f);
 	sccs_free(s);
+	s = 0;
 	randomBits(buf);
 	fprintf(f, "# PARK_ID: %s\n", buf);
 	fprintf(f, "# PARK_BY: %s@%s\n", sccs_getuser(), sccs_gethost());
@@ -697,7 +698,7 @@ same3(sccs *s, MMAP *m)
 	char	unpark_tmp[MAXPATH];
 	int	rc;
 
-	gettemp(unpark_tmp, "unpark");
+	bktmp(unpark_tmp, "unpark");
 	sccs_get(s, 0, 0, 0, 0, SILENT, unpark_tmp); 
 	rc = same2(unpark_tmp, m);
 	unlink(unpark_tmp);
@@ -1076,8 +1077,8 @@ err:		if (sfio_list[0]) unlink(sfio_list);
 		}
 	}
 	fprintf(stderr, "Unparking %s\n", parkfile);
-	bktemp(sfio_list);
-	bktemp(unpark_list);
+	bktmp(sfio_list, "sfio_list");
+	bktmp(unpark_list, "unpark_list");
 
 	/*
 	 * Get full path, because we chdir() below

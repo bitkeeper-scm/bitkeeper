@@ -66,8 +66,8 @@ r2c_main(int ac, char **av)
 		fprintf(stderr, "r2c: cannot init ChangeSet\n");
 		exit(1);
 	}
-	if (gettemp(tmpfile, "r2c")) {
-		perror("gettemp");
+	unless (bktmp(tmpfile, "r2c")) {
+		perror("bktmp");
 		exit(1);
 	}
 	RANGE("r2c", cset, 2, 1);
