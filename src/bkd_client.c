@@ -19,8 +19,7 @@ remote_parse(const char *url, int skip_checks)
 	remote	*r;
 	char	*p;
 
-	unless (url) return (0);
-	assert(*url);
+	unless (url && *url) return (0);
 
 	if (echo == -1) echo = getenv("BK_REMOTE_PARSE") != 0;
 

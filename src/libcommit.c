@@ -194,7 +194,7 @@ getMsgP(char *msg_name, char *bkarg, char *prefix, char b, FILE *outf)
 int
 getMsg2(char *msg_name, char *arg1, char *arg2, char b, FILE *outf)
 {
-	char	*args[3] = { 3, arg1, arg2 };
+	char	*args[3] = { int2p(3), arg1, arg2 };
 	
 	return (getMsgv(msg_name, args, 0, b, outf));
 }

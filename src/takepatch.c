@@ -2385,10 +2385,8 @@ cleanup(int what)
 	}
 	unless (streq(input, "-")) goto done;
 	if (what & CLEAN_PENDING) {
-		assert(exists("PENDING"));
-		assert(pendingFile);
 		unlink(pendingFile);
-		if (rmdir("PENDING")) {
+		if (rmdir("PENDING") && (errno == ENOTEMPTY)) {
 			fprintf(stderr,
 			    "takepatch: other patches left in PENDING\n");
 		}

@@ -174,6 +174,7 @@ repo
 repo_license
 repogca
 resolve
+restore
 rev2cset
 rm
 rmdel
@@ -239,6 +240,7 @@ dotest()
 	bk "$@" > OUT 2>&1 < /dev/null
 	bk "$@" -r+ > OUT 2>&1 < /dev/null
 	bk "$@" XYZ > OUT 2>&1 < /dev/null
+	bk "$@" "" > OUT 2>&1 < /dev/null
 	echo XYZ  | bk "$@" - > OUT 2>&1 < /dev/null
 	find . -type f -name 'core*' > XXX
 	test -s XXX && {
