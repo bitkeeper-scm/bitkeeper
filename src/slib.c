@@ -9525,7 +9525,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				else
 					sc->state &= ~S_SINGLE;
 			/* Flags below are non propagated */
-			} else if (streq(fl, "BK")) {
+			} else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
 				if (v) goto noval;
 				if (add)
 					sc->state |= S_BITKEEPER;
@@ -12032,7 +12032,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "PN")) {
+	if (streq(kw, "PN") || streq(kw, "SFILE")) {
 		/* s file path */
 		if (s->sfile) {
 			fs(s->sfile);
