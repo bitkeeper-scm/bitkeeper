@@ -11536,7 +11536,11 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
 			delta	*z = getCksumDelta(s, n);
 
-			if (!z || (s->dsum != z->sum)) {
+			/* we allow bad symlink chksums if they are zero;
+			 * it's a bug in old binaries.
+			 */
+			if ((S_ISLNK(n->mode) && n->sum) &&
+			    (!z || (s->dsum != z->sum))) {
 				fprintf(stderr,
 				    "%s: bad delta checksum: %u:%d for %s\n",
 				    s->sfile, s->dsum,

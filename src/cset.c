@@ -292,7 +292,7 @@ usage:		sprintf(buf, "bk help %s", av[0]);
 	}
 
 	if (list) {
-		RANGE("cset", cset, copts.dash ? 0 : 2, 1);
+		RANGE("cset", cset, copts.dash ? 0 : 3, 1);
 		csetlist(&copts, cset);
 next:		sccs_free(cset);
 		if (cFile) free(cFile);
