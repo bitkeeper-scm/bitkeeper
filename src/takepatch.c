@@ -215,7 +215,7 @@ get_configs()
 		    "RESYNC/BitKeeper/etc/SCCS/s.config");
 		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.config"));
 	}
-	unless (exists("RESYNC/BitKeeper/etc/SCCS/s.config")) {
+	unless (exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok")) {
 		unless (exists("BitKeeper/etc/SCCS/s.logging_ok")) return;
 		system("cp BitKeeper/etc/SCCS/s.logging_ok "
 		    "RESYNC/BitKeeper/etc/SCCS/s.logging_ok");
