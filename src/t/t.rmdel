@@ -2,6 +2,7 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
+HERE=`pwd`
 cset -i -s .
 ${RM} -rf FILE SCCS
 R=1
@@ -75,3 +76,62 @@ prs -r1.1..1.3.1.2 -d":I:" FILE > CMP2
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 echo OK
+
+echo $N Setup two repositories ......................................$NL
+cd $HERE
+mkdir resync
+cd resync
+HERE=$HERE/resync
+echo "logging: /dev/null" > $HERE/c
+echo "logging_ok: t" >>$HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+cd project
+echo foo > foo.c
+bk ci $Q -i foo.c
+bk commit $Q -ywhatever
+echo OK
+echo $N Create a copy of the project with clone .....................$NL
+cd $HERE
+bk clone $Q project clone
+if [ ! -d clone ]; then echo failed to make top level directory; exit 1; fi
+cd clone
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+if [ ! -f BitKeeper/log/parent ]; then echo failed to record parent; exit 1; fi
+echo OK
+echo $N Make sure committed deltas can not be rmdel-ed ..............$NL
+bk rmdel $Q -r+ foo.c 2>ERROR
+grep -q 'remove committed delta' ERROR
+if [ $? != 0 ]; then	echo it must have removed it; cat ERROR; exit 1; fi
+echo OK
+echo $N Make sure an rmdel removed the data .........................$NL
+cd $HERE/project
+bk edit $Q foo.c
+echo RMDEL >> foo.c
+echo RMDEL >> foo.c
+echo RMDEL >> foo.c
+echo RMDEL >> foo.c
+ci $Q -ywhatever foo.c
+co $Q -p foo.c > save
+rmdel $Q -r+ foo.c
+co $Q -p foo.c > check
+if cmp -s save check
+then	echo failed to propogate remove data
+	exit 1
+fi
+if grep -q RMDEL SCCS/s.foo.c
+then	echo Failed to remove data from the body of the s.file
+	cat SCCS/s.foo.c
+	exit 1
+fi
+echo OK
+#echo $N Check propogation of rmdel in resync ........................$NL
+#cd $HERE
+#bk resync -a $Q project clone
+#if cmp -s project/SCCS/s.foo.c clone/SCCS/s.foo.c
+#then	:
+#else	echo failed to propogate removed delta
+#	diff project/SCCS/s.foo.c clone/SCCS/s.foo.c
+#	exit 1
+#fi
+#echo OK

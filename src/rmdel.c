@@ -65,7 +65,7 @@ err:		sccs_free(s);
 	for (e = d; e; e = e->kid) {
 		if (e->flags & D_CSET) {
 			fprintf(stderr,
-			    "rmdel: can't remove commited delta %s:%s\n",
+			    "rmdel: can't remove committed delta %s:%s\n",
 			    s->gfile, e->rev);
 			goto err;
 		}
@@ -77,6 +77,11 @@ err:		sccs_free(s);
 		goto err;
 	}
 
+	/*
+	 * XXX - BitKeeper doesn't really support removed deltas.
+	 * It does not propogate them.  What we should do is detect
+	 * if we are in BK mode and switch to stripdel.
+	 */
 	if (sccs_rmdel(s, d, flags)) {
 		unless (BEEN_WARNED(s)) {
 			fprintf(stderr, "rmdel of %s failed.\n", name);

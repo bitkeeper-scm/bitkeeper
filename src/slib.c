@@ -1771,6 +1771,7 @@ sccs_getrev(sccs *sc, char *rev, char *dateSym, int roundup)
 	}
 	/* Walking the table newest .. oldest order */
 	for (tmp = 0, d = sc->table; d; tmp = d, d = d->next) {
+		unless (d->type == 'D') continue;
 		if (d->date == date) return (d);
 		/*
 		 *                v date
@@ -3754,7 +3755,7 @@ putserlist(sccs *sc, ser_t *s, FILE *out)
  * Generate a list of serials marked with D_SET tag
  */
 private ser_t *
-setmap(sccs *s, int bit)
+setmap(sccs *s, int bit, int all)
 {
 	ser_t	*slist;
 	delta	*t;
@@ -3763,7 +3764,7 @@ setmap(sccs *s, int bit)
 	assert(slist);
 
 	for (t = s->table; t; t = t->next) {
-		if (t->type != 'D') continue;
+		unless (all || (t->type == 'D')) continue;
  		assert(t->serial <= s->nextserial);
 		if (t->flags & bit) {
 			slist[t->serial] = 1;
@@ -4487,7 +4488,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	int	hash = 0;
 
 	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
-		  : setmap(s, D_SET);
+		  : setmap(s, D_SET, 0);
 	if (error == 1) {
 		assert(!slist);
 		fprintf(stderr,
@@ -6930,7 +6931,7 @@ checkInvariants(sccs *s)
 private int
 checkGone(sccs *s, int bit, char *who)
 {
-	ser_t	*slist = setmap(s, bit);
+	ser_t	*slist = setmap(s, bit, 0);
 	delta	*d;
 	int	i, error = 0;
 
@@ -11301,7 +11302,7 @@ sccs_resolveFiles(sccs *s)
 	FILE	*f = 0;
 	delta	*p, *d, *g = 0, *a = 0, *b = 0;
 	char	*n[3];
-	u8	*lodmap = 0;
+	u8	*lodmap;
 	u16	next;
 	u16	defbranch;
 	int	retcode = -1;
@@ -11348,7 +11349,10 @@ sccs_resolveFiles(sccs *s)
 	 */
 	unless (b) {
 		for (p = a->parent; p && (p->flags & D_REMOTE); p = p->parent);
-		if (!p || streq(p->pathname, a->pathname)) return (0);
+		if (!p || streq(p->pathname, a->pathname)) {
+			free(lodmap);
+			return (0);
+		}
 		b = a;
 		a = g = p;
 		retcode = 0;
@@ -11871,7 +11875,8 @@ stripDeltas(sccs *s, FILE *out)
 	char	*buf;
 	int	ser;
 
-	slist = setmap(s, D_SET);
+	slist = setmap(s, D_SET, 1);
+
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) {
