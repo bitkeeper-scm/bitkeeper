@@ -8229,7 +8229,7 @@ checkin(sccs *s,
 	explode_rev(n);
 	if (nodefault) {
 		if (prefilled) s->state |= xflags2state(prefilled->xflags);
-	} else {
+	} else if (s->encoding == E_ASCII) {
 		/* XXX - EXPAND1 too? */
 		s->state |= S_SCCS;		/* default to SCCS keywords */
 	}
