@@ -172,9 +172,10 @@ production_purify: rebuild purify $(INSTALL)
 production_image: rebuild p image
 
 # Cleanup targets.
-clean clean-obj: FORCE
+clean clean-obj clean-cfg: FORCE
 	-rm -f bk.o shell.o cscope.out $(OBJ) $(MDBMOBJ) $(ZLIBOBJ) 
 	-rm -f $(LIBS) shell.c bkdsubstr bkhelp.txt a.out core $(WIN_TMP)
+	-rm -f bk.ver substvars gnu/config.cache config.h config.log config.sub
 	-cd gnu && $(MAKE) clean-obj
 	-cd win32 && $(MAKE) clean-obj
 
@@ -183,9 +184,6 @@ clean-bin: FORCE
 	cd gnu && $(MAKE) clean
 	cd win32 && $(MAKE) clean
 	cd t && rm -f doit
-
-clean-cfg: FORCE
-	-rm -f bk.ver substvars gnu/config.cache
 
 clean-src: FORCE
 	-bk -r . clean
@@ -468,7 +466,7 @@ M=mdbm/common.h mdbm/tune.h mdbm/mdbm.h
 Z=zlib/zlib.h zlib/zconf.h
 
 # check for library-specific things
-configure: configure.sh configure.inc
+config.h: configure.sh configure.inc
 	./configure.sh
 
 shell.o: substvars
@@ -505,7 +503,7 @@ cset.o:		cset.c $(H) range.h $(Z)
 cset_inex.o:	cset_inex.c $(H) $(Z)
 delta.o:	delta.c $(H)
 diffs.o:	diffs.c $(H) range.h
-dirname.o:	dirname.c configure
+dirname.o:	dirname.c config.h
 export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 files.o:	files.c $(H)
@@ -537,7 +535,7 @@ libsfiles.o:	libsfiles.c $(H)
 libusers.o:	libusers.c $(H) range.h
 license.o:	license.c $(H)
 lines.o:	lines.c $(H)
-localtm.o:	localtm.c $(H) configure
+localtm.o:	localtm.c $(H) config.h
 lock.o:		lock.c $(H)
 locking.o:	locking.c $(H)
 log.o:		log.c $(H)

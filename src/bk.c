@@ -7,14 +7,14 @@ char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
 project	*bk_proj = 0;
 jmp_buf	exit_buf;
-
-private	char cmdlog_buffer[MAXPATH*4];
+char	cmdlog_buffer[MAXPATH*4];
 
 char	*find_wish();
 char	*find_perl5();
 void	cmdlog_start(char **av);
 void	cmdlog_end(int ret);
 void	cmdlog_exit(void);
+int	cmdlog_repo;
 private	void	cmdlog_dump(int, char **);
 
 extern	void	getoptReset();
@@ -425,39 +425,47 @@ private	struct {
 	char	*name;
 	int	len;
 } repolog[] = {
-	{"clone", 5 },
 	{"pull", 4 },
 	{"push", 4 },
-	{"remote", 6 },
+	{"commit", 6 },
+	{"remote pull", 11 },
+	{"remote push", 11 },
+	{"remote clone", 12 },
 	{ 0, 0 },
 };
 
 void
 cmdlog_start(char **av)
 {
-	int	i, repo = 0, len = 0;
+	int	i, len = 0;
 
 	cmdlog_buffer[0] = 0;
 	unless (bk_proj && bk_proj->root) return;
 
+	cmdlog_repo = 0;
+	for (i = 0; repolog[i].name; i++) {
+		if (streq(repolog[i].name, av[0])) {
+			cmdlog_repo = 1;
+			break;
+		}
+	}
+	if (cmdlog_repo) {
+		sprintf(cmdlog_buffer,
+		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
+	}
 	for (i = 0; av[i]; i++) {
 		len += strlen(av[i]);
 		if (len >= sizeof(cmdlog_buffer)) continue;
-		if (i) {
+		if (i || cmdlog_repo) {
 			strcat(cmdlog_buffer, " ");
 			strcat(cmdlog_buffer, av[i]);
 		} else {
 			strcpy(cmdlog_buffer, av[i]);
 		}
 	}
-	for (i = 0; repolog[i].name; i++)
-		if (strneq(repolog[i].name, av[0], strlen(repolog[i].name))) {
-			repo = 1;
-			break;
-		    }
+	if (cmdlog_repo) {
+		int	ret = trigger(cmdlog_buffer, "pre", 0);
 
-	if ( repo || strneq(cmdlog_buffer, "commit", 6) ) {
-		int ret = trigger(cmdlog_buffer, "pre", 0);
 		unless (ret == 0) exit(ret);
 	}
 
@@ -472,15 +480,7 @@ cmdlog_end(int ret)
 	char	path[MAXPATH];
 
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
-	for (i = 0; repolog[i].name; i++) {
-		if (strneq(cmdlog_buffer, repolog[i].name, repolog[i].len)) {
-			repo = 1;
-			break;
-		}
-	}
-	if (repo || strneq(cmdlog_buffer, "commit", 6))
-		trigger(cmdlog_buffer, "post", ret);
-	if (repo) {
+	if (cmdlog_repo) {
 		file = "repo_log";
 	} else {
 		file = "cmd_log";
@@ -493,6 +493,7 @@ cmdlog_end(int ret)
 		mkdirf(path);
 		unless (f = fopen(path, "a")) return;
 	}
+	if (cmdlog_repo) trigger(cmdlog_buffer, "post", ret);
 	user = sccs_getuser();
 	fprintf(f, "%s %u: ", user ? user : "Phantom User", time(0));
 	if (ret == LOG_BADEXIT) {
@@ -500,7 +501,7 @@ cmdlog_end(int ret)
 	} else {
 		fprintf(f, "%s = %d\n", cmdlog_buffer, ret);
 	}
-	if (!repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {
+	if (!cmdlog_repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {
 		char	old[MAXPATH];
 
 		sprintf(old, "%s-older", path);
@@ -510,6 +511,7 @@ cmdlog_end(int ret)
 		fclose(f);
 	}
 	cmdlog_buffer[0] = 0;
+	cmdlog_repo = 0;
 }
 
 private	void

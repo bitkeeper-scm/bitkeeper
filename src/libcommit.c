@@ -44,7 +44,7 @@ get(char *path, int flags, char *output)
 		s = sccs_init(p, SILENT, 0);
 		free(p);
 	}
-	unless (s) return (-1);
+	unless (s && s->tree) return (-1);
 	ret = sccs_get(s, 0, 0, 0, 0, flags, output);
 	sccs_free(s);
 	return (ret ? -1 : 0);

@@ -1,57 +1,61 @@
 /*
- * Copyright (c) 2000, BitMover, Inc.  All rights reserved.
+ * trigger:  fire triggers before and/or after repository level commands.
+ *
+ * Copyright (c) 2000, David Parsons & Larry McVoy.
  */
 
-/*
- * trigger:  fire triggers
- */
-
-#include <stdio.h>
-#include <unistd.h>
 #include "system.h"
 #include "sccs.h"
 
 int
 trigger(char *action, char *when, int status)
 {
-	int ret;
-	char *what;
-	char cmd[MAXPATH];
+	int	ret = 0;
+	char	*what;
+	char	*var;
+	char	*t;
+	char	file[MAXPATH];
 
-	unless (bk_proj && bk_proj->root) return 1;
+	unless (bk_proj && bk_proj->root) return (1);
+	unless (t = strchr(action, ' ')) return (1);
+	t++;
 
-	if (strneq(action, "remote pull", 11)
-	                    || strneq(action, "push", 4)
-			    || strneq(action, "clone", 5)
-			    || strneq(action, "remote clone", 12))
+	if (strneq(t, "remote pull", 11) || strneq(t, "push", 4) ||
+	    strneq(t, "clone", 5) || strneq(t, "remote clone", 12)) {
 		what = "outgoing";
-	else if (strneq(action, "remote push", 11)
-			    || strneq(action, "pull", 4))
+		var = "BK_OUTGOING";
+    	} else if (
+	    strneq(t, "remote push", 11) || strneq(t, "pull", 4)) {
 		what = "incoming";
-	else if (strneq(action, "commit", 6))
+		var = "BK_INCOMING";
+	} else if (strneq(t, "commit", 6)) {
 		what = "commit";
-	else
-		return 1;
-
-	sprintf(cmd, "%s/" TRIGGERS "/%s%s/%s-%s",
-			    bk_proj->root,
-			    sccs_gethost(),
-			    fullname(bk_proj->root, 0),
-			    when, what);
-
-	unless (access(cmd, X_OK) == 0)
-		sprintf(cmd, "%s/" TRIGGERS "/%s-%s",
-			    bk_proj->root, when, what);
-
-	if (access(cmd, X_OK) == 0) {
-		char statusenv[40];
-
-		sprintf(statusenv, "BK_STATUS=%d", status);
-		putenv(statusenv);
-
-		ret = system(cmd);
-		status = ret ? ret : status;
+		var = "BK_COMMIT";
+	} else {
+		return (1);
 	}
 
-	return status;
+	sprintf(file, "%s/%s/%s-%s", bk_proj->root, TRIGGERS, when, what);
+	get(file, SILENT, "-");
+	if (access(file, X_OK) == 0) {
+		char	env[200];
+		char	cmd[MAXPATH*4];
+
+		if (status) {
+			sprintf(env, "%s='ERROR %d'", var, status);
+		} else if (t = getenv(var)) {
+			sprintf(env, "%s=%s", var, t);
+		} else {
+			sprintf(env, "%s=OK", var);
+		}
+		if (streq(when, "post")) {
+			sprintf(cmd, "cd %s; env %s %s %s %s",
+			    bk_proj->root, env, file, when, action, status);
+		} else {
+			sprintf(cmd, "cd %s; env %s %s %s %s",
+			    bk_proj->root, env, file, when, action);
+		}
+		if (system(cmd)) return (1);
+	}
+	return (0);
 }

@@ -267,6 +267,7 @@
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"
+#define	LASTPUSH	"BitKeeper/etc/pushed"
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	TRIGGERS	"BitKeeper/triggers"
 #define	CHANGESET	"SCCS/s.ChangeSet"

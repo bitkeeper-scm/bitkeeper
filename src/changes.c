@@ -1,7 +1,7 @@
 #include "system.h"
 #include "sccs.h"
 
-private int	doit(int verbose, char *rev);
+private int	doit(int verbose, char *rev, int dash);
 
 private void
 usage()
@@ -28,17 +28,18 @@ changes_main(int ac, char **av)
 		fprintf(stderr, "Can't find package root\n");
 		exit(1);
 	}
-	exit(doit(verbose, rev));
+	exit(doit(verbose, rev, av[optind] && streq("-", av[optind])));
 }
 
 #define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
 
 private int
-doit(int verbose, char *rev)
+doit(int verbose, char *rev, int dash)
 {
 	FILE	*f;
 	char	cmd[MAXKEY];
 	char	tmpfile[MAXPATH];
+	char	dashfile[MAXPATH];
 	char	buf[100];
 	char	*t;
 	pid_t	pid;
@@ -46,11 +47,21 @@ doit(int verbose, char *rev)
 	char	*av[2] = { pager, 0 };
 	int	pfd;
 
+	dashfile[0] = 0;
 	if (rev) {
 		sprintf(cmd,
-		    "BK_YEAR4=1 bk prs -h -d'%s' -r%s ChangeSet", DSPEC, rev);
+		    "BK_YEAR4=1 bk prs -hd'%s' -r%s ChangeSet", DSPEC, rev);
+	} else if (dash) {
+		gettemp(dashfile, "dash");
+		f = fopen(dashfile, "w");
+		while (fgets(cmd, sizeof(cmd), stdin)) {
+			fprintf(f, "ChangeSet@%s", cmd);
+		}
+		fclose(f);
+		sprintf(cmd,
+		    "BK_YEAR4=1 bk prs -hd'%s' - < %s", DSPEC, dashfile);
 	} else {
-		sprintf(cmd, "BK_YEAR4=1 bk prs -h -d'%s' ChangeSet", DSPEC);
+		sprintf(cmd, "BK_YEAR4=1 bk prs -hd'%s' ChangeSet", DSPEC);
 	}
 	unless (verbose) {
 		strcat(cmd, " | ");
@@ -90,5 +101,6 @@ doit(int verbose, char *rev)
 	pclose(f);
 	waitpid(pid, 0, 0);
 	unlink(tmpfile);
+	if (dashfile[0]) unlink(dashfile);
 	return (0);
 }
