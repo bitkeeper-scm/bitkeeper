@@ -118,7 +118,7 @@ status(int verbose, FILE *f)
 		bktmp(tmp_file, "status");
 		f1 = fopen(tmp_file, "wb");
 		assert(f1);
-		bkusers(0, 0, 0, f1);
+		bkusers(0, 0, f1);
 		fclose(f1);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -149,7 +149,7 @@ status(int verbose, FILE *f)
 		unlink(tmp_file);
 	} else {
 		fprintf(f,
-		    "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
+		    "%6d people have made deltas.\n", bkusers(0, 0, 0));
 		f1 = popen("bk sfind -S -sx,c,p,n", "r");
 		while (fgets(buf, sizeof (buf), f1)) fputs(buf, f);
 		pclose(f1);
