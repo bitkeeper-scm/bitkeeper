@@ -3833,6 +3833,7 @@ ret:
  * gfile named s.file .
  *
  * This returns the following:
+ *	'c'	this is an SCCS pathname (whatever/SCCS/c.whatever)
  *	'm'	this is an SCCS pathname (whatever/SCCS/m.whatever)
  *	'p'	this is an SCCS pathname (whatever/SCCS/p.whatever)
  *	'r'	this is an SCCS pathname (whatever/SCCS/r.whatever)
@@ -3854,6 +3855,7 @@ sccs_filetype(char *name)
 	}
 	unless (s[1] && (s[2] == '.')) return (0);
 	switch (s[1]) {
+	    case 'c':	/* comments files */
 	    case 'm':	/* merge files */
 	    case 'p':	/* lock files */
 	    case 'r':	/* resolve files */
