@@ -8,7 +8,7 @@ bk csettool \- \*(BK graphical changeset browser
 .OPTreq \-r revs
 .Bc ] [
 .OPTreq \-f file@rev
-.B ]
+.B ] [-]
 .SH DESCRIPTION
 .LP
 csettool is used to view detailed information about the specified
@@ -28,7 +28,7 @@ same time that the file of interest was modified.
 .LP
 To see the changes for a particular file, click on the file name
 in the top left window and you will see:
-.TP 2
+.TP 3
 \*(BU
 the number of diffs in the middle status window
 .tp
@@ -54,6 +54,9 @@ button in the menu bar can be used to start the graphical history
 browser, revtool, on either the entire project (ChangeSet file)
 or on the file highlighted in the upper-left window.
 .SH OPTIONS
+.LP
+All options are mutually exclusive, i.e., pick one (or none) of the
+following.
 .TP
 .OPTreq \-r revs
 ChangeSet revision to examine. Can be a single revision or a range of 
@@ -65,6 +68,9 @@ defaults to -r+, i.e. the most recent changeset.
 Given a filename and revision,
 .B csettool
 starts up with the specified file and revision selected.
+.TP
+.B \-
+expects a list of revisions on stdin.
 .SH BINDINGS
 .TP 16
 .B Home

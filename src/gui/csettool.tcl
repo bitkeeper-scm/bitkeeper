@@ -146,7 +146,7 @@ proc dotFile {{line {}}} \
 	busy 0
 }
 
-proc getFiles {revs file_rev} \
+proc getFiles {revs {file_rev {}}} \
 {
 	global	fileCount lastFile Files line2File file_start_stop
 	global  RealFiles fmenu file_old_new bk_fs
@@ -171,7 +171,11 @@ proc getFiles {revs file_rev} \
 	set line 0
 	set found ""
 	set match ""
-	set r [open "| bk prs -bhr$revs {-d:I:\n} ChangeSet" r]
+	if {$revs == "-"} {
+		set r "stdin"
+	} else {
+		set r [open "| bk prs -bhr$revs {-d:I:\n} ChangeSet" r]
+	}
 	while {[gets $r cset] > 0} {
 		.diffs.status.middle configure -text "Getting cset $cset"
 		update
@@ -519,6 +523,7 @@ proc main {} \
 	set revs ""
 	set argindex 0
 	set file_rev ""
+	set stdin 0
 
 	while {$argindex < $argc} {
 		set arg [lindex $argv $argindex]
@@ -531,8 +536,16 @@ proc main {} \
 			set rev [lindex $argv $argindex]
 		   	regexp {^[ \t]*-r(.*)} $rev dummy revs
 		    }
+		    "^-$" {
+			set stdin 1
+		    }
 		}
 		incr argindex
+	}
+	if {(($revs != "") || ($file_rev != "")) && $stdin} {
+		wm withdraw .
+		displayMessage "Can't use '-' option with any other options"
+		exit
 	}
 	if {$revs == ""} {
 		set revs "+"
@@ -540,18 +553,26 @@ proc main {} \
 	#displayMessage "csetttool: revs=($revs) file=($file_rev)"
 	bk_init
 	cd2root [file dirname $file_rev]
-	set dspec "-d\$if(:Li: -gt 0){(:I:)\n}"
-	set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]
-	# Only need to read first line to know whether there is content
-	gets $fd prs
-	if {$prs == ""} {
-		catch {wm withdraw .}
-		displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
-		exit
+	if {$stdin == 0} {
+		set dspec "-d\$if(:Li: -gt 0){(:I:)\n}"
+		set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]
+		# Only need to read first line to know whether there is content
+		gets $fd prs
+		if {$prs == ""} {
+			catch {wm withdraw .}
+			displayMessage "This ChangeSet is a merge ChangeSet and does not contain any files."
+			exit
+		}
+		catch {close $fd}
 	}
-	catch {close $fd}
+
 	widgets
-	getFiles $revs $file_rev
+
+	if {$stdin == 1} {
+		getFiles "-"
+	} else {
+		getFiles $revs $file_rev
+	}
 }
 
 main

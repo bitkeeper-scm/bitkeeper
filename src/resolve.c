@@ -2486,12 +2486,8 @@ csets_in(opts *opts)
 		in = fopen(CSETS_IN, "r");
 		assert(in);
 		sprintf(buf, "%s/%s", RESYNC2ROOT, CSETS_IN);
-		out = fopen(buf, "w");
-		while ((c = fgetc(in)) != EOF) {
-			if ((c == '\r') || (c == '\n')) break;
-			fputc(c, out);
-		}
-		fprintf(out, ",%s\n", d->rev);
+		out = fopen(buf, "a");
+		fprintf(out, "%s\n", d->rev);
 		fclose(out);
 		fclose(in);
 		sccs_free(s);

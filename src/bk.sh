@@ -232,11 +232,11 @@ _csets() {		# /* doc 2.0 */
 	if [ -f RESYNC/BitKeeper/etc/csets-in ]
 	then	echo Viewing RESYNC/BitKeeper/etc/csets-in
 		cd RESYNC
-		exec bk csettool "$@" -r`cat BitKeeper/etc/csets-in`
+		exec bk csettool "$@" - < BitKeeper/etc/csets-in
 	fi
 	if [ -f BitKeeper/etc/csets-in ]
 	then	echo Viewing BitKeeper/etc/csets-in
-		exec bk csettool "$@" -r`cat BitKeeper/etc/csets-in`
+		exec bk csettool "$@" - < BitKeeper/etc/csets-in
 	fi
 	echo "Can not find csets to view."
 	exit 1

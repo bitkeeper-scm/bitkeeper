@@ -41,7 +41,7 @@ unpull(int force, int quiet)
 	delta	*d;
 	char	cset[] = CHANGESET;
 	MMAP	*m;
-	char	*t, *end;
+	char	*t, *r;
 	char	*av[6];
 	int	i;
 	int	status;
@@ -58,14 +58,14 @@ unpull(int force, int quiet)
 	*t++ = '-';
 	*t++ = 'r';
 	bcopy(m->where, t, m->size);
-	end = &t[m->size - 1];
-	assert((*end == '\r') || (*end == '\n'));
-	*end = 0;
-	while ((end > t) && (end[-1] != ',')) end--;
+	for (r = t; *r; r++) if ((*r == '\r') || (*r == '\n')) *r = ',';
+	while ((--r > t) && (*r == ',')) *r = 0;	/* chop */
+	while (--r > t) if (r[-1] == ',') break;
+	assert(r && *r);
 	s = sccs_init(cset, 0, 0);
 	assert(s && s->tree);
 	d = sccs_top(s);
-	unless (streq(d->rev, end)) {
+	unless (streq(d->rev, r)) {
 		fprintf(stderr,
 		    "unpull: will not unpull local changeset %s\n", d->rev);
 		sccs_free(s);

@@ -1095,7 +1095,6 @@ apply:
 				if (s->bad_dsum || s->io_error) return -1;
 				mclose(iF);
 				if ((s->state & S_CSET) && !p->local) {
-					static	int first = 1;
 					delta	*d = sccs_findKey(s, p->me);
 
 					assert(d);
@@ -1107,9 +1106,7 @@ apply:
 						csets = fopen(csets_in, "w");
 						assert(csets);
 					}
-					unless (first) fprintf(csets, ",");
-					first = 0;
-					fprintf(csets, "%s", d->rev);
+					fprintf(csets, "%s\n", d->rev);
 				}
 			}
 		} else {
