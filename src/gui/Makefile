@@ -60,7 +60,8 @@ clean-here clobber-here: FORCE
 clean clobber: FORCE
 	-rm -f $(GUIS) TAGS
 	-rm -rf bin lib
-	-cd tcltk && $(MAKE) $@
+	-bk -r. clean
+	-cd tcltk && $(MAKE) clobber
 
 install: $(GUIS)
 	echo "no installation required."

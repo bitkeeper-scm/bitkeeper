@@ -20,8 +20,15 @@ else
 endif
 export CC LD PATH INCLUDE LIB
 
-all: build tcl/$S/Makefile tk/$S/Makefile
-	./build image
+all: build version.sh
+	TCLVER=`./version.sh`; \
+	if [ $$? -eq 0 -a -f $$TCLVER ]; \
+	then	rm -rf bin lib; \
+		gunzip < $$TCLVER | tar xf -; \
+	else \
+		./build bin/tclsh bin/bkgui; \
+	fi
+	./build install
 
 tcl/$S/Makefile: build
 	./build configure
@@ -33,8 +40,8 @@ configure: tcl/$S/configure tk/$S/configure
 	for i in tcl/$S tk/$S; do \
 		cd $(HERE)/$$i; \
 		test -f configure || bk -Ur get -qS; \
-		./configure --disable-load --disable-shared; \
-		sed -e s/-g// -e s/X11R4/X11R6/ < Makefile > MK; \
+		CFLAGS=-O2 ./configure --disable-load --disable-shared; \
+		sed -e s/X11R4/X11R6/ < Makefile > MK; \
 		mv -f MK Makefile; \
 	done
 
@@ -48,10 +55,18 @@ tk/$S/configure:
 	test -d tk || bk clone bk://data.bitmover.com/tk.bk tk
 	cd tk; bk -Ur get -qS
 
-image: bin/tclsh bin/bkgui
+install: ./version.sh
 	find . -type d -print | xargs chmod ug+w
 	rm -rf ../bin ../lib
 	cp -rp bin lib ..
+	-TCLVER=`./version.sh` && test -f $$TCLVER || { \
+		test -d /build/obj || { \
+			mkdir /build/obj; \
+			chmod 777 /build/obj; \
+		}; \
+		tar cf - bin lib | gzip > $$TCLVER; \
+		chmod 666 $$TCLVER; \
+	}
 
 bin/tclsh: tcl/$S/Makefile
 	rm -rf bin/tclsh lib/tcl*
@@ -101,4 +116,4 @@ test:
 
 FORCE:
 
-.PHONY: all configure image
+.PHONY: all configure

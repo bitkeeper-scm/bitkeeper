@@ -486,7 +486,11 @@ hashstr(char *str)
 	char	md5[32];
 	char	b64[32];
 
-	if (hash_memory(hash, str, strlen(str), md5)) return (0);
+	if (streq(str, "-")) {
+		if (hash_filehandle(hash, stdin, md5)) return (0);
+	} else {
+		if (hash_memory(hash, str, strlen(str), md5)) return (0);
+	}
 	b64len = sizeof(b64);
 	md5len = hash_descriptor[hash].hashsize;
 	if (base64_encode(md5, md5len, b64, &b64len)) return (0);
