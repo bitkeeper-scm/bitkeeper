@@ -81,14 +81,14 @@ check_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "acfgpRvw")) != -1) {
 		switch (c) {
-		    case 'a': all++; break;
-		    case 'f': fix++; break;
-		    case 'g': goneKey++; break;
-		    case 'c': flags &= ~INIT_NOCKSUM; break;
-		    case 'p': polyList++; break;
-		    case 'R': resync++; break;
-		    case 'v': verbose++; break;
-		    case 'w': badWritable++; break;
+		    case 'a': all++; break;	/* doc 2.0 */
+		    case 'f': fix++; break;	/* doc 2.0 */
+		    case 'g': goneKey++; break;	/* doc 2.0 */
+		    case 'c': flags &= ~INIT_NOCKSUM; break;	/* doc 2.0 */
+		    case 'p': polyList++; break;	/* doc 2.0 */
+		    case 'R': resync++; break;	/* doc 2.0 */
+		    case 'v': verbose++; break;	/* doc 2.0 */
+		    case 'w': badWritable++; break;	/* doc 2.0 */
 		    default:
 			system("bk help -s check");
 			return (1);

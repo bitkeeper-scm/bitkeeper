@@ -37,14 +37,14 @@ unlock_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "bfprswxz")) != -1) {
 		switch (c) {
-		    case 'b': flags |= BLOCK; break;
-		    case 'f': force = 1; break;
-		    case 'p': flags |= PLOCK; break;
-		    case 'r': flags |= RLOCK; break;
-		    case 's': flags |= STALE; break;
-		    case 'w': flags |= WLOCK; break;
-		    case 'x': flags |= XLOCK; break;
-		    case 'z': flags |= ZLOCK; break;
+		    case 'b': flags |= BLOCK; break;	/* doc 2.0 */
+		    case 'f': force = 1; break;	/* doc 2.0 */
+		    case 'p': flags |= PLOCK; break;	/* doc 2.0 */
+		    case 'r': flags |= RLOCK; break;	/* doc 2.0 */
+		    case 's': flags |= STALE; break;	/* doc 2.0 */
+		    case 'w': flags |= WLOCK; break;	/* doc 2.0 */
+		    case 'x': flags |= XLOCK; break;	/* doc 2.0 */
+		    case 'z': flags |= ZLOCK; break;	/* doc 2.0 */
 			break;
 		    default:
 usage:			system("bk help -s unlock");

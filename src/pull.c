@@ -38,17 +38,18 @@ pull_main(int ac, char **av)
 	opts.automerge = 1;
 	while ((c = getopt(ac, av, "c:deE:ilnqrtz|")) != -1) {
 		switch (c) {
-		    case 'i': opts.automerge = 0; break;
-		    case 'l': opts.list++; break;
-		    case 'n': opts.dont = 1; break;
-		    case 'q': opts.quiet = 1; break;
-		    case 'r': opts.noresolve = 1; break;
-		    case 't': opts.textOnly = 1; break;
-		    case 'd': opts.debug = 1; break;
-		    case 'e': opts.metaOnly = 1; break;
-		    case 'E': envVar = addLine(envVar, strdup(optarg)); break;
-		    case 'c': try = atoi(optarg); break;
-		    case 'z':
+		    case 'i': opts.automerge = 0; break;	/* doc 2.0 */
+		    case 'l': opts.list++; break;	/* doc 2.0 */
+		    case 'n': opts.dont = 1; break;	/* doc 2.0 */
+		    case 'q': opts.quiet = 1; break;	/* doc 2.0 */
+		    case 'r': opts.noresolve = 1; break;	/* doc 2.0 */
+		    case 't': opts.textOnly = 1; break;	/* doc 2.0 */
+		    case 'd': opts.debug = 1; break;	/* undoc? 2.0 */
+		    case 'e': opts.metaOnly = 1; break;	/* undoc? 2.0 */
+		    case 'E': 	/* undoc? 2.0 */
+				envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'c': try = atoi(optarg); break;	/* doc 2.0 */
+		    case 'z':	/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;

@@ -22,8 +22,8 @@ gca_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "r|t")) != -1) {
 		switch (c) {
-		    case 't': trunk++; break;
-		    case 'r':
+		    case 't': trunk++; break;	/* undoc? 2.0 */
+		    case 'r':	/* doc 2.0 */
 			unless (r1) {
 				r1 = optarg;
 			} else unless (r2) {

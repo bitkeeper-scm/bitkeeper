@@ -41,11 +41,11 @@ stripdel_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "bcCqr;")) != -1) {
 		switch (c) {
-		    case 'b': opts.stripBranches = 1; break;
-		    case 'c': opts.checkOnly = 1; break;
-		    case 'C': opts.respectCset = 0; break;
-		    case 'q': opts.quiet = 1; break;
-		    RANGE_OPTS('!', 'r');
+		    case 'b': opts.stripBranches = 1; break;	/* doc 2.0 */
+		    case 'c': opts.checkOnly = 1; break;	/* doc 2.0 */
+		    case 'C': opts.respectCset = 0; break;	/* doc 2.0 */
+		    case 'q': opts.quiet = 1; break;	/* doc 2.0 */
+		    RANGE_OPTS('!', 'r');	/* doc 2.0 */
 		    default:
 usage:			system("bk help -s stripdel");
 			return (1);

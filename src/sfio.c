@@ -55,11 +55,11 @@ sfio_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "imopq")) != -1) {
 		switch (c) {
-		    case 'i': if (mode) goto usage; mode = M_IN;   break;
-		    case 'o': if (mode) goto usage; mode = M_OUT;  break;
-		    case 'p': if (mode) goto usage; mode = M_LIST; break;
-		    case 'm': doModes = 1; break;
-		    case 'q': quiet = 1; break;
+		    case 'i': if (mode) goto usage; mode = M_IN;   break; /* doc 2.0 */
+		    case 'o': if (mode) goto usage; mode = M_OUT;  break; /* doc 2.0 */
+		    case 'p': if (mode) goto usage; mode = M_LIST; break; /* doc 2.0 */
+		    case 'm': doModes = 1; break; 	/* doc 2.0 */
+		    case 'q': quiet = 1; break; 	/* doc 2.0 */
 		    default:
 			goto usage;
 		}

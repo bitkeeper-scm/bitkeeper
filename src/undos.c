@@ -21,7 +21,7 @@ undos_main(int ac, char **av)
 	platformSpecificInit(NULL);
  	while ((c = getopt(ac, av, "n")) != -1) { 
 		switch (c) {
-		    case 'n': auto_new_line = 0; break;
+		    case 'n': auto_new_line = 0; break;	/* doc 2.0 */
 		    default:
 			system("bk help -s undos");
 			return (1);

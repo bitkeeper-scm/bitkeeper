@@ -30,7 +30,7 @@ names_main(int ac, char **av)
 
 	while ((c = getopt(ac, av, "q")) != -1) {
 		switch (c) {
-		    case 'q':	flags |= SILENT; break;
+		    case 'q':	flags |= SILENT; break;	/* undoc? 2.0 */
 		    default:	system("bk help -s names");
 				return (1);
 		}

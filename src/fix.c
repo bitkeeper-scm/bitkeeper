@@ -17,8 +17,8 @@ fix_main(int ac,  char **av)
 	}
 	while ((c = getopt(ac, av, "qv")) != -1) {
 		switch (c) {
-		    case 'q': break;
-		    case 'v': qflag = ""; break;
+		    case 'q': break;	/* undoc? 2.0 */
+		    case 'v': qflag = ""; break;	/* doc 2.0 */
 		    default :
 			system("bk help -s fix");
 			return (1);

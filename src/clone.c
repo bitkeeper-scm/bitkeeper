@@ -46,11 +46,12 @@ clone_main(int ac, char **av)
 	opts.gzip = 6;
 	while ((c = getopt(ac, av, "dE:qr;z|")) != -1) {
 		switch (c) {
-		    case 'd': opts.debug = 1; break;
-		    case 'E': envVar = addLine(envVar, strdup(optarg)); break;
-		    case 'q': opts.quiet = 1; break;
-		    case 'r': opts.rev = optarg; break;
-		    case 'z':
+		    case 'd': opts.debug = 1; break;	/* undoc? 2.0 */
+		    case 'E': 	/* undoc? 2.0 */
+				envVar = addLine(envVar, strdup(optarg)); break;
+		    case 'q': opts.quiet = 1; break;	/* doc 2.0 */
+		    case 'r': opts.rev = optarg; break;	/* doc 2.0 */
+		    case 'z':	/* doc 2.0 */
 			opts.gzip = optarg ? atoi(optarg) : 6;
 			if (opts.gzip < 0 || opts.gzip > 9) opts.gzip = 6;
 			break;

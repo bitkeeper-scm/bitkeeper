@@ -27,19 +27,19 @@ import() {
 	UNDOS=
 	while getopts c:efHij:l:rS:t:uvq opt
 	do	case "$opt" in
-		c) CUTOFF=-c$OPTARG;;
-		e) EX=YES;;
-		f) FORCE=YES;;
-		H) VERIFY=;;
-		i) INC=YES;;
-		j) PARALLEL=$OPTARG;;
-		l) LIST=$OPTARG;;
-		S) SYMBOL=-S$OPTARG;;
-		r) RENAMES=NO;;
-		t) TYPE=$OPTARG;;
-		q) QUIET=-q; export _BK_SHUT_UP=YES;;
-		u) UNDOS=-u;;
-		v) VERBOSE=;;
+		c) CUTOFF=-c$OPTARG;;	# /* doc 2.0 */
+		e) EX=YES;;				# /* doc 2.0 */
+		f) FORCE=YES;;			# /* doc 2.0 */
+		H) VERIFY=;;			# /* doc 2.0 */
+		i) INC=YES;;			# /* doc 2.0 */
+		j) PARALLEL=$OPTARG;;	# /* doc 2.0 */
+		l) LIST=$OPTARG;;		# /* doc 2.0 */
+		S) SYMBOL=-S$OPTARG;;	# /* doc 2.0 */
+		r) RENAMES=NO;;			# /* doc 2.0 */
+		t) TYPE=$OPTARG;;		# /* doc 2.0 */
+		q) QUIET=-q; export _BK_SHUT_UP=YES;;	# /* doc 2.0 */
+		u) UNDOS=-u;;			# /* undoc? 2.0 */
+		v) VERBOSE=;;			# /* doc 2.0 */
 		esac
 	done
 	shift `expr $OPTIND - 1`
