@@ -4,7 +4,7 @@
 .SH NAME
 bk sfiles \- generates lists of revision control files
 .SH SYNOPSIS
-.Bc sfiles [\-acdDeEgijlrSuUvx] [\-sn] [
+.Bc sfiles [\-acdDeEgijlnrSuUvx] [
 .OPTreq \-o file
 .Bc ] [
 .OPTopt \-p A|C
@@ -75,6 +75,10 @@ metadata.
 .B \-l
 List locked files (p.file and/or z.file).
 .tp
+.B \-n
+list s.files that are not in the correct location.  (Must be run from
+repository root, bk -r sfiles -n.)
+.tp
 .OPTreq \-o file
 send output to
 .ARG file
@@ -91,9 +95,6 @@ that implies
 .BR \-pC ,
 and 
 lists all revisions, not just the tip.
-.tp
-.B \-sn
-list unchanged files.  
 .tp
 .B \-S
 produce a summary listing only, typically combined with 
