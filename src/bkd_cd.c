@@ -105,7 +105,12 @@ cmd_cd(int ac, char **av)
 			return (1);
 		}
 	} else {
-		if (unsafe_cd(p)) return (1);
+		if (unsafe_cd(p)) {
+			out("ERROR-cannot cd to ");
+			out(p);
+			out("\n");
+			return (1);
+		}
 
 		/*
 		 * XXX TODO need to check for permission error here
