@@ -24,6 +24,7 @@ usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
 		but only if the pathname to the file is not ../SCCS/s.*\n\
     -P		(paranoid) opens each file to make sure it is an SCCS file\n\
     -r[root]	rebuild the id to pathname cache\n\
+    -u		list only unlocked files\n\
     -x		list files which have no revision control files\n\
     		Note: revision control files must look like SCCS/s.*, not\n\
 		foo/bar/blech/s.*\n\
@@ -32,7 +33,7 @@ usage: sfiles [-acCdglpPx] [-r[root]] [directories]\n\n\
     directories.\n\
 \n";
 
-int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg;
+int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, PFlg, rFlg, vFlg, xFlg, uFlg;
 int	error;
 FILE	*pending_cache;
 FILE	*id_cache;
@@ -57,7 +58,7 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "%s", sfiles_usage);
 		exit(0);
 	}
-	while ((c = getopt(ac, av, "acCdglpPr|vx")) != -1) {
+	while ((c = getopt(ac, av, "acCdglpPr|uvx")) != -1) {
 		switch (c) {
 		    case 'a': aFlg++; break;
 		    case 'c': cFlg++; break;
@@ -69,6 +70,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		    case 'P': PFlg++; break;
 		    case 'r': rFlg++; root = optarg; break;
 		    case 'v': vFlg++; break;
+		    case 'u': uFlg++; break;
 		    case 'x': xFlg++; break;
 		    default: goto usage;
 		}
@@ -105,6 +107,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 /*
  * Handle a single file.
  * Convert to s.file first, if possible.
+ * XXX - this is incomplete.
  */
 int
 file(char *f, int (*func)())
@@ -118,11 +121,10 @@ file(char *f, int (*func)())
 		if ((lstat(gfile, &sb) == 0) && xFlg) {
 			printf("%s\n", f);
 		}
-		goto out;
 	} else if (!xFlg) {
 		func(sfile, &sb);
 	}
-out:	free(sfile);
+	free(sfile);
 	free(gfile);
 	return (0);
 }
@@ -159,17 +161,22 @@ func(const char *filename, const struct stat *sb, int flag)
 	for (s = file; *s; s++);
 	for ( ; s > file; s--) if (s[-1] == '/') break;		/* CSTYLED */
 	if (!s || (s[0] != 's') || (s[1] != '.')) return (0);
-	if (lFlg || cFlg) {
+	if (lFlg || cFlg || uFlg) {
 		*s = 'p';
 		if (exists(file)) {
 			*s = 's';
-			if ((cFlg && hasDiffs(file)) || lFlg) {
+			if (uFlg) return(0);
+			if (lFlg || (cFlg && hasDiffs(file))) {
 				printf("%s\n", name(file));
 			}
+		} else if (uFlg) {
+			*s = 's';
+			printf("%s\n", name(file));
 		}
 		*s = 's';
 		return (0);
 	}
+	/* XXX - this should be first. */
 	if (PFlg) {
 		if (!isSccs(file)) return (0);
 	} else if (pFlg) {

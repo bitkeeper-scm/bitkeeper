@@ -14,7 +14,7 @@ int
 main(int ac, char **av)
 {
 	sccs	*s = 0;
-	int	flags = SILENT;
+	int	flags = SILENT|NOCKSUM;
 	int	c;
 	char	*name;
 

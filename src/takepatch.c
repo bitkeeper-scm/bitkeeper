@@ -452,7 +452,6 @@ applyPatch(int flags)
 		    "takepatch: can't open %s\n", p->resyncFile);
 		exit(1);
 	}
-	s->state |= S_BRANCHOK;
 apply:
 	p = patchList;
 	while (p) {
@@ -489,7 +488,6 @@ apply:
 				newflags = (echo > 2) ?
 				    NOCKSUM|FORCE|PATCH :
 				    NOCKSUM|FORCE|PATCH|SILENT;
-				assert(s->state & S_BRANCHOK);
 				if (sccs_delta(s, newflags, 0, iF, dF)) {
 					perror("delta");
 					exit(1);
@@ -509,7 +507,6 @@ apply:
 				exit(1);
 			}
 			sccscopy(s, p->init);
-			s->state |= S_BRANCHOK;
 			iF = fopen(p->initFile, "r");
 			dF = fopen(p->diffFile, "r");
 			d = 0;

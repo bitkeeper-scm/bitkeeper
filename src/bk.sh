@@ -688,18 +688,18 @@ function setup {
 	fi
 	cat <<EOF
 
---------------------------------------------------------
-You are about create a new Linux repository.  You may do
-this exactly once for each project stored in BitKeeper.
-If there already is a BitKeeper repository for this project,
-you should do
+----------------------------------------------------------------------
+
+You are about create a new repository.  You may do this exactly once
+for each project stored in BitKeeper.  If there already is a BitKeeper
+repository for this project, you should do
 
     bk resync project_dir my_project_dir
 
-If you create a new project rather than resyncing a copy,
-you will not be able to exchange work between the two projects.
+If you create a new project rather than resyncing a copy, you will not
+be able to exchange work between the two projects.
 
---------------------------------------------------------------
+----------------------------------------------------------------------
 EOF
 	echo $N "Create new project? [no] " $NL
 	read ans
