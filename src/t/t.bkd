@@ -13,7 +13,6 @@
 # Copyright (c) 1999 Andrew Chang?
 # awc@etp2.bitmover.com|src/t/t.repository|20000322041145|27344
 
-OK_LICENSE=BKL43148331000b0ffb7b09680010ffe
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -181,7 +180,7 @@ cd $HERE/copy/BitKeeper/etc
 bk edit $Q config
 echo "description: BitKeeper Test repository" > config
 echo "email:		nobody@nowhere.bk" >> config
-echo "license: $OK_LICENSE" >> config
+echo "license: $BK_LIC_B" >> config
 echo "logging: private@me.com" >>  config
 bk ci $Q -y"set close logging"  config
 echo y | bk commit $Q -y"set close logging" > /dev/null 2>&1
