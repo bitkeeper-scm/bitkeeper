@@ -1,3 +1,4 @@
+#! bash
 #
 # %W% Copyright (c) 1999 Andrew Chang
 # platform specific stuff for bk.sh
@@ -27,7 +28,7 @@ winExec()
 }
 
 
-platformInit()
+_platformInit()
 {
 		# WIN32 specific stuff
 		win2cygPath $BK_BIN; _BK_BIN=$cygPath;
@@ -60,4 +61,3 @@ platformInit()
 }
 
 
-platformInit

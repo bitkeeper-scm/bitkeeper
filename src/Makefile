@@ -298,9 +298,11 @@ testfast: testfast.perl substvars
 bk: bk.sh port/platform.sh substvars prs
 	./prs -hr+ -d'$$if(:SYMBOL:){(:SYMBOL:) }:UTC:' ../ChangeSet >bk.ver
 	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=`cat bk.ver`/" >bk.T
-	chmod +x bk.T
-	/bin/rm -f bk.ver
-	mv -f bk.T bk
+	./substvars port/platform.sh > platform.sh.T
+	cat platform.sh.T bk.T > bk.T2
+	chmod +x bk.T2
+	/bin/rm -f bk.ver platfrom.sh.T bk.T
+	mv -f bk.T2 bk
 
 import: import.sh substvars
 	./substvars import.sh >import.T

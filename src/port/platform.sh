@@ -1,8 +1,9 @@
+#! @SH@
 #
 # %W%  Copyright (c) Andrew Chang
 # platform specific stuff for bk.sh
 #
-platformInit()
+_platformInit()
 {
 	# Unix specific stuff
 	GUI_BIN=$BIN
@@ -21,4 +22,3 @@ platformInit()
 	fi
 }
 
-platformInit

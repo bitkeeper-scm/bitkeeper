@@ -901,10 +901,7 @@ _platformPath() {
 
 # ------------- main ----------------------
 _platformPath
-if [ -f ${BIN}platform.sh ]
-then . ${BIN}platform.sh
-else . ${BIN}/port/platform.sh		# for regression env
-fi
+_platformInit
 _init
 
 if [ X"$1" = X ]
