@@ -765,7 +765,7 @@ retry:		if (i = repository_wrlock()) {
 					fprintf(stderr,
 					    "%s(%d): lock busy, retry %d.\n",
 					    av[0], getpid(), try);
-					how_long <<= 2;
+					how_long <<= 1;
 					sleep(how_long);
 					goto retry;
 				}
