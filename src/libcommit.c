@@ -215,6 +215,7 @@ notify()
 	}
 	f = fopen(notify_file, "r");
 	while (fgets(buf, sizeof(buf), f)) {
+		chop(buf);
 		mail(buf, subject, notify_log);
 	}
 	fclose(f);
