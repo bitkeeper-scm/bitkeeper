@@ -89,8 +89,7 @@ else
 	fi
 	unset CDPATH
 fi
-REGRESSION=$TST_DIR/.regression-$USER
-export TST_DIR CORES BK_BIN REGRESSION
+export TST_DIR CORES BK_BIN
 
 cores()
 {
@@ -139,7 +138,8 @@ if [ X$USER = X ]; then USER=`getuser`; fi
 # root user is special, remap to a differnt user before we run the test
 if [ X$USER = X${ROOT} ]; then USER=${ROOT}-test; fi
 if [ X$HOSTNAME = X ]; then HOSTNAME=`gethost`; fi
-export USER HOSTNAME
+REGRESSION=$TST_DIR/.regression-$USER
+export USER HOSTNAME REGRESSION
 if [ -d $REGRESSION ]; then ${RM} -rf $REGRESSION; fi
 mkdir $REGRESSION || exit 1
 cd $REGRESSION || exit 1
