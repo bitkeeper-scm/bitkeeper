@@ -40,50 +40,66 @@ usage:			system("bk help -s rm");
 	return (errors);
 }
 
-int
-sccs_rm(char *name, char *del_name, int useCommonDir)
+char *
+sccs_rmName(sccs *s, int useCommonDir)
 {
-	char	path[MAXPATH], root[MAXPATH];
-	char	*sfile;
+	char	path[MAXPATH];
 	char	*p, *r, *t, *b;
 	int	try = 0;
 	int	error = 0;
-	sccs	*s;
 	delta	*d;
 
-	sfile = name2sccs(name);
-	b = basenm(sfile);
+	b = basenm(s->sfile);
 	if (useCommonDir) {
-		_relativeName(&b[2], 0, 0, 1, 0, root);
-		unless(root[0]) {
+		unless (s && s->proj && s->proj->root) {
 			fprintf(stderr, "sccsrm: cannot find root?\n");
-			return (1);
+			return (NULL);
 		}
-		sprintf(path, "%s/BitKeeper/deleted/SCCS", sPath(root, 1));
+		sprintf(path, "%s/BitKeeper/deleted/SCCS",
+				fullname(sPath(s->proj->root, 1), 0));
 		t = &path[strlen(path)];
 		*t++ = '/';
 	} else {
-		strcpy(path, sfile);
+		strcpy(path, s->sfile);
 		t = strrchr(path, '/');
 		assert(t);
 		t++;
 	}
-	s = sccs_init(sfile, 0, 0);
-	assert(s);
 	d = sccs_ino(s);
-	p = sccs_utctime(d);
-	r = d->random ?  d->random : ""; 
+	if (d->random) {
+		r = d->random;
+	} else {
+		char	buf[50];
+
+		sprintf(buf, "%05u", d->sum);
+		r = buf;
+	}
 	for (try = 0; ; try++) {
 		if (try) {
-			sprintf(t, "s..del-%s~%s~%s~%d", &b[2], r, p, try);
+			sprintf(t, "s..del-%s~%s~%d", &b[2], r, try);
 		} else {
-			sprintf(t, "s..del-%s~%s~%s", &b[2], r, p);
+			sprintf(t, "s..del-%s~%s", &b[2], r);
 		}
 		unless (exists(path)) break;
 	}
+	return(strdup(path));
+}
+
+sccs_rm(char *name, char *del_name, int useCommonDir)
+{
+	char	*rmName;
+	char	*sfile;
+	int	error = 0;
+	sccs	*s;
+
+	sfile = name2sccs(name);
+	s = sccs_init(sfile, 0, 0);
+	assert(s && s->tree);
+	rmName = sccs_rmName(s, useCommonDir);
+	if (del_name) strcpy(del_name, rmName);
+	error |= sccs_mv(sfile, rmName, 0, 1);
 	sccs_free(s);
-	if (del_name) strcpy(del_name, path);
-	error |= sccs_mv(sfile, path, 0, 1);
+	free(rmName);
 	free(sfile);
 	return (error);
 }
