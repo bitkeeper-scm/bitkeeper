@@ -25,7 +25,6 @@ int rsa_encrypt(const unsigned char *in,  unsigned long len,
    _ARGCHK(in != NULL);
    _ARGCHK(out != NULL);
    _ARGCHK(outlen != NULL);
-   _ARGCHK(prng != NULL);
    _ARGCHK(key != NULL);
 
    /* are the parameters valid? */
@@ -370,7 +369,6 @@ int rsa_encrypt_key(const unsigned char *inkey, unsigned long inlen,
    _ARGCHK(inkey != NULL);
    _ARGCHK(outkey != NULL);
    _ARGCHK(outlen != NULL);
-   _ARGCHK(prng != NULL);
    _ARGCHK(key != NULL);
 
    /* are the parameters valid? */

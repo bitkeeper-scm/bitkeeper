@@ -20,10 +20,12 @@ int yarrow_start(prng_state *prng)
    /* these are the default hash/cipher combo used */
 #ifdef RIJNDAEL
    prng->yarrow.cipher = register_cipher(&rijndael_desc);
-#elif defined(TWOFISH)
-   prng->yarrow.cipher = register_cipher(&twofish_desc);
 #elif defined(BLOWFISH)
    prng->yarrow.cipher = register_cipher(&blowfish_desc);
+#elif defined(TWOFISH)
+   prng->yarrow.cipher = register_cipher(&twofish_desc);
+#elif defined(CAST5)
+   prng->yarrow.cipher = register_cipher(&cast5_desc);
 #elif defined(SERPENT)
    prng->yarrow.cipher = register_cipher(&serpent_desc);
 #elif defined(SAFER)
@@ -59,6 +61,8 @@ int yarrow_start(prng_state *prng)
    prng->yarrow.hash   = register_hash(&md5_desc);
 #elif defined(MD4)
    prng->yarrow.hash   = register_hash(&md4_desc);
+#elif defined(MD2)
+   prng->yarrow.hash   = register_hash(&md2_desc);
 #else
    #error YARROW needs at least one HASH
 #endif
@@ -96,7 +100,6 @@ int yarrow_add_entropy(const unsigned char *buf, unsigned long len, prng_state *
    /* store result */
    hash_descriptor[prng->yarrow.hash].done(&md, prng->yarrow.pool);
 
-   /* clear mem */
    return CRYPT_OK;
 }
 

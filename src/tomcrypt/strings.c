@@ -31,7 +31,7 @@ const static char *err_2_str[] =
    "Invalid PK system.",
    "Duplicate PK key found on keyring.",
    "Key not found in keyring.",
-   "Invalid size parameter.",
+   "Invalid sized parameter.",
 
    "Invalid size for prime."
 };

@@ -1,3 +1,14 @@
+Nov 22nd, 2002
+v0.73  -- Fixed bug in RC4 code where it could only use 255 byte keys.
+       -- Fixed bug in yarrow code where it would allow cast5 or md2 to be used with it...
+       -- Removed the ecc compress/expand points from the global scope.  Reduces namespace polution
+       -- Fixed bug where if you used the SPRNG you couldn't pass NULL as your prng_state which you should be
+          able todo since the SPRNG has no state...
+       -- Corrected some oversights in the manual and the examples...
+       -- By default the GF(2^W) math library is excluded from the build.  The source is maintained because I wrote it
+          and like it :-).  This way the built library is a tad smaller
+       -- the MSVC makefile will now build for a SPACE optimized library rather than TIME optimized.
+
 Nov 21th, 2002
 v0.72  -- Fixed bug in the prime testing.  In the Miller-Rabin test I was raising the base to "N-1" not "r".
           The math still worked out fine because in effect it was performing a Fermat test.  Tested the new code and it 
@@ -6,7 +17,7 @@ v0.72  -- Fixed bug in the prime testing.  In the Miller-Rabin test I was raisin
        -- Sped up the RSA decrypt/sign routines
        -- Optimized the ecc_shared_secret routine to not use so much stack
        -- Fixed up the makefile to make releases where the version # is in the file name and directory it will unzip
-          too
+          to
 
 Nov 19th, 2002
 v0.71  -- HELP TOM.  I need tuition for the January semester.  Now I don't want to force donations [nor will I ever]

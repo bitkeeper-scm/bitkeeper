@@ -7,7 +7,6 @@ int rsa_make_key(prng_state *prng, int wprng, int size, long e, rsa_key *key)
    mp_int p, q, tmp1, tmp2, tmp3;
    int res, errno;   
 
-   _ARGCHK(prng != NULL);
    _ARGCHK(key != NULL);
 
    if ((size < (1024/8)) || (size > (4096/8))) {
@@ -172,6 +171,12 @@ int rsa_signpad(const unsigned char *in,  unsigned long inlen,
    if (*outlen < (3 * inlen)) {
       return CRYPT_BUFFER_OVERFLOW;
    }
+
+   /* check inlen */
+   if ((inlen <= 0) || inlen > 512) {
+      return CRYPT_PK_INVALID_SIZE;
+   }
+   
    for (y = x = 0; x < inlen; x++)
        out[y++] = 0xFF;
    for (x = 0; x < inlen; x++)
@@ -193,7 +198,6 @@ int rsa_pad(const unsigned char *in,  unsigned long inlen,
    _ARGCHK(in != NULL);
    _ARGCHK(out != NULL);
    _ARGCHK(outlen != NULL);
-   _ARGCHK(prng != NULL);
 
    /* is output big enough? */
    if (*outlen < (3 * inlen)) { 

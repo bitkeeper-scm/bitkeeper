@@ -26,14 +26,16 @@ int rc4_add_entropy(const unsigned char *buf, unsigned long len, prng_state *prn
     _ARGCHK(buf != NULL);
     _ARGCHK(prng != NULL);
 
-    if (prng->rc4.x + len >= 256) {
+    if (prng->rc4.x + len > 256) {
        return CRYPT_INVALID_KEYSIZE;
     }
 
     while (len--) {
        prng->rc4.buf[prng->rc4.x++] = *buf++;
     }
+
     return CRYPT_OK;
+    
 }
 
 int rc4_ready(prng_state *prng)

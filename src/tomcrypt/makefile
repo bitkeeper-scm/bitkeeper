@@ -9,7 +9,7 @@
 # a build. This is easy to remedy though, for those that have problems.
 
 # The version
-VERSION=0.72
+VERSION=0.73
 
 #Compiler and Linker Names
 CC=gcc
@@ -33,11 +33,14 @@ CFLAGS += -c -I./ -Wall -Wsign-compare -DXMALLOC=$(XMALLOC) -DXCALLOC=$(XCALLOC)
           -DXFREE=$(XFREE) -DXCLOCK=$(XCLOCK) -DXCLOCKS_PER_SEC=$(XCLOCKS_PER_SEC)
 
 
-#optimize for SPEED (comment out SIZE line as well)
+#optimize for SPEED (comment out SIZE/DEBUG line as well)
 #CFLAGS += -O3 -fomit-frame-pointer -funroll-loops
 
-#optimize for SIZE (comment out SPEED line as well)
+#optimize for SIZE (comment out SPEED/DEBUG line as well)
 CFLAGS += -O2
+
+#compile for DEBUGGING 
+#CFLAGS += -g3
 
 #These flags control how the library gets built.
 
@@ -57,6 +60,14 @@ CFLAGS += -DDEVRANDOM
 # required if you simply lock your stack and wipe it when your program is done.
 #
 #CFLAGS += -DCLEAN_STACK
+
+#Use fast PK routines.  Basically this limits the size of the private key in the
+#DH system to 256 bits.  The group order remains unchanged so the best
+#attacks are still GNFS (for DH upto 2560-bits)
+#
+#This will only speed up the key generation and encryption routines.  It lowers the
+#security so its by default not turned on.  USE AT YOUR RISK!
+#CFLAGS += -DFAST_PK
 
 # What algorithms to include? comment out and rebuild to remove em
 CFLAGS += -DBLOWFISH
@@ -127,7 +138,7 @@ CFLAGS += -DMECC
 CFLAGS += -DKR
 
 # include GF math routines?  (not currently used by anything internally)
-CFLAGS += -DGF
+#CFLAGS += -DGF
 
 # include large integer math routines? (required by the PK code)
 CFLAGS += -DMPI
@@ -196,15 +207,15 @@ test: library $(TESTOBJECTS)
 
 #This rule makes the hash program included with libtomcrypt
 hashsum: library $(HASHOBJECTS)
-	$(CC) $(HASHOBJECTS) $(LIBNAME) -o $(HASH) $(WARN) -s
+	$(CC) $(HASHOBJECTS) $(LIBNAME) -o $(HASH) $(WARN)
 
 #makes the crypt program
 crypt: library $(CRYPTOBJECTS)
-	$(CC) $(CRYPTOBJECTS) $(LIBNAME) -o $(CRYPT) $(WARN) -s
+	$(CC) $(CRYPTOBJECTS) $(LIBNAME) -o $(CRYPT) $(WARN)
 
 #makes the small program
 small: library $(SMALLOBJECTS)
-	$(CC) $(SMALLOBJECTS) $(LIBNAME) -o $(SMALL) $(WARN) -s 
+	$(CC) $(SMALLOBJECTS) $(LIBNAME) -o $(SMALL) $(WARN)
 
 #This rule installs the library and the header files. This must be run
 #as root in order to have a high enough permission to write to the correct

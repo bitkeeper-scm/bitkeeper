@@ -26,7 +26,6 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
     _ARGCHK(in != NULL);
     _ARGCHK(out != NULL);
     _ARGCHK(outlen != NULL);
-    _ARGCHK(prng != NULL);
     _ARGCHK(key != NULL);
 
     /* check that wprng/cipher/hash are not invalid */
@@ -291,7 +290,6 @@ int ecc_sign(const unsigned char *in,  unsigned long inlen,
    _ARGCHK(in != NULL);
    _ARGCHK(out != NULL);
    _ARGCHK(outlen != NULL);
-   _ARGCHK(prng != NULL);
    _ARGCHK(key != NULL);
 
    /* is this a private key? */
@@ -515,7 +513,6 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
     _ARGCHK(inkey != NULL);
     _ARGCHK(out != NULL);
     _ARGCHK(len != NULL);
-    _ARGCHK(prng != NULL);
     _ARGCHK(key != NULL);
 
     /* check that wprng/cipher/hash are not invalid */
@@ -692,7 +689,6 @@ int ecc_sign_hash(const unsigned char *in,  unsigned long inlen,
    _ARGCHK(in != NULL);
    _ARGCHK(out != NULL);
    _ARGCHK(outlen != NULL);
-   _ARGCHK(prng != NULL);
    _ARGCHK(key != NULL);
 
    /* is this a private key? */

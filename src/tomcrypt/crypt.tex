@@ -44,7 +44,7 @@
 \def\gap{\vspace{0.5ex}}
 \makeindex
 \begin{document}
-\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.72}
+\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.73}
 \author{Tom St Denis \\
 Algonquin College \\
 \\
@@ -165,6 +165,17 @@ your library path.
 
 With MSVC you can build the library with ``make -f makefile.vc''.  You must use GNU make to build it even with MSVC
 due to the limitations of the MS MAKE.
+
+\section{Building against the library}
+
+To build an application against the library you obviously must first compile the library.  However, an important 
+step is that the build options you use to build the library must be present when you build your application.  For 
+instance if ``RC5'' is defined in the makefile when you built the library then you must ensure ``RC5'' is defined when
+you build your application.
+
+The simplest way to work with this library is to take the makefile provided and simply add on your project to it as a 
+target (dependent on the library).  That way you can be assured that the library and your application are in sync with
+the build options you provide.
 
 \section{Thanks}
 I would like to give thanks to the following people (in no particular order) for helping me develop this project:
@@ -1198,7 +1209,6 @@ int main(void)
 }   
 \end{verbatim}
 \end{small}
-
 To decrypt you have to do the exact same steps.  
 
 \section{The Secure RNG}
@@ -1262,13 +1272,35 @@ int main(void)
 \end{verbatim}
 \end{small}
 
-\section{PRNGs Included}
-The library currently includes two different PRNG systems, the first is ``yarrow'' which is a derivative of the ``yarrow''
-PRNG\footnote{It uses a cipher in CTR mode like Yarrow but has a different reseed mechanism that is simpler.}.  The second 
-is ``sprng'' which uses the ``rng\_get\_bytes()'' function as a source.
+\subsection{The Secure PRNG Interface}
+It is possible to access the secure RNG through the PRNG interface and in turn use it within dependent functions such
+as the PK API.  This simplifies the cryptosystem on platforms where the secure RNG is fast.  The secure PRNG never 
+requires to be started, that is you need not call the start, add\_entropy or ready functions.  For example, consider
+the previous example using this PRNG.
 
-You never need to start, seed or ready the ``sprng'' PRNG, you can use it right away.  If you call a function that needs a 
-PRNG  you can pass ``prng\_find(`sprng')'' as the index and NULL as the prng state.  
+\begin{small}
+\begin{verbatim}
+#include <mycrypt.h>
+int main(void)
+{
+   ecc_key mykey;
+   int errno;
+
+   /* register SPRNG */
+   if (register_prng(&sprng_desc) == -1) {
+      printf("Error registering SPRNG\n");
+      return -1;
+   }
+
+   /* make a 192-bit ECC key */
+   if ((errno = ecc_make_key(NULL, find_prng("sprng"), 24, &mykey)) != CRYPT_OK) {
+      printf("Error making key: %s\n", error_to_string(errno));
+      return -1;
+   }
+   return 0;
+}
+\end{verbatim}
+\end{small}
 
 \chapter{RSA Routines}
 
@@ -2183,7 +2215,7 @@ length of the binary string.
 \subsection{Primality Testing}
 \index{Primality Testing}
 The library includes primality testing and random prime functions as well.  The primality tester will perform the test in
-two phases.  First it will perform trial division by the first 6542 primes.  Second it will perform sixteen rounds of the 
+two phases.  First it will perform trial division by the first few primes.  Second it will perform sixteen rounds of the 
 Rabin-Miller primality testing algorithm.  If the candidate passes both phases it is declared prime otherwise it is declared
 composite.  No prime number will fail the two phases but composites can.  Each round of the Rabin-Miller algorithm reduces
 the probability of a pseudo-prime by $1 \over 4$ therefore after sixteen rounds the probability is no more than 
@@ -2229,8 +2261,8 @@ Two simple ways to prevent trivial errors is to prevent overflows and to check t
 which output variable length strings will require you to pass the length of the destination.  If the size of your output
 buffer is smaller than the output it will report an error.  Therefore, make sure the size you pass is correct!
 
-Also virtually all of the functions return an integer which is either {\bf CRYPT\_OK} or {\bf CRYPT\_ERROR}.  You should
-detect errors whenever possible.
+Also virtually all of the functions return an error code or {\bf CRYPT\_OK}.  You should detect all errors as simple 
+typos or such can cause algorithms to fail to work as desired.
 
 \section{Registering Your Algorithms}
 To avoid linking and other runtime errors it is important to register the ciphers, hashes and PRNGs you intend to use 
@@ -2276,7 +2308,9 @@ $n$ it requires $\sqrt n$ work.  The following table sumarizes the work required
 \begin{center}
 \begin{tabular}{|c|c|}
     \hline ECC Key Size (bits) & Work Factor ($log_2$) \\
+    \hline 160 & 80  \\
     \hline 192 & 96  \\
+    \hline 224 & 112 \\
     \hline 256 & 128 \\
     \hline 384 & 192 \\
     \hline 521 & 260.5 \\
@@ -2288,8 +2322,8 @@ Using the above tables the following suggestions for key sizes seems appropriate
 \begin{center}
 \begin{tabular}{|c|c|c|}
     \hline Security Goal & RSA/DH Key Size (bits) & ECC Key Size (bits) \\
-    \hline Short term (less than a year) & 768 & 192 \\
-    \hline Short term (less than five years) & 1024 & 192 \\
+    \hline Short term (less than a year) & 1024 & 160 \\
+    \hline Short term (less than five years) & 1536 & 192 \\
     \hline Long Term (less than ten years) & 2560 & 256 \\
     \hline 
 \end{tabular}

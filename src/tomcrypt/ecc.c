@@ -478,10 +478,8 @@ int ecc_make_key(prng_state *prng, int wprng, int keysize, ecc_key *key)
    int x, res, errno;
    ecc_point *base;
    mp_int prime;
-
    unsigned char buf[4096];
 
-   _ARGCHK(prng != NULL);
    _ARGCHK(key != NULL);
 
    /* good prng? */
@@ -544,7 +542,7 @@ void ecc_free(ecc_key *key)
    mp_clear_multi(&key->pubkey.x, &key->pubkey.y, &key->k, NULL);
 }
 
-int compress_y_point(ecc_point *pt, int idx, int *result)
+static int compress_y_point(ecc_point *pt, int idx, int *result)
 {
    mp_int tmp, tmp2, p;
    int res;
@@ -586,7 +584,7 @@ done:
    return res;
 }
 
-int expand_y_point(ecc_point *pt, int idx, int result)
+static int expand_y_point(ecc_point *pt, int idx, int result)
 {
    mp_int tmp, tmp2, p;
    int res;
