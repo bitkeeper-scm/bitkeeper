@@ -316,13 +316,12 @@ tags:			fprintf(opts.out,
 private u32
 genpatch(int level, int wfd, char *rev_list)
 {
-	char	*makepatch[10] = {"bk", "makepatch", 0};
+	char	*makepatch[10] = {"bk", "makepatch", "-vv", 0};
 	int	fd0, fd, rfd, n, status;
 	pid_t	pid;
-	int	verbose = opts.verbose && !opts.nospin;
 
 	opts.inBytes = opts.outBytes = 0;
-	n = 2;
+	n = opts.verbose ? 3 : 2;
 	if (opts.metaOnly) makepatch[n++] = "-e";
 	makepatch[n++] = "-s";
 	makepatch[n++] = "-";
@@ -336,7 +335,7 @@ genpatch(int level, int wfd, char *rev_list)
 	assert(fd == 0);
 	pid = spawnvp_rPipe(makepatch, &rfd, 0);
 	dup2(fd0, 0); close(fd0);
-	gzipAll2fd(rfd, wfd, level, &(opts.inBytes), &(opts.outBytes), 1, verbose);
+	gzipAll2fd(rfd, wfd, level, &(opts.inBytes), &(opts.outBytes), 1, 0);
 	close(rfd);
 	waitpid(pid, &status, 0);
 	return (opts.outBytes);

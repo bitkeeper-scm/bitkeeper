@@ -109,7 +109,7 @@ takepatch_main(int ac, char **av)
 	setmode(0, O_BINARY); /* for win32 */
 	input = "-";
 	debug_main(av);
-	while ((c = getopt(ac, av, "acFf:imqsStv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:iLmqsStv")) != -1) {
 		switch (c) {
 		    case 'q':					/* undoc 2.0 */
 		    case 's':					/* undoc 2.0 */
@@ -122,6 +122,7 @@ takepatch_main(int ac, char **av)
 			    input = optarg;
 			    break;
 		    case 'i': newProject++; break;		/* doc 2.0 */
+		    case 'L': isLogPatch = 1; break;
 		    case 'm': mkpatch++; break;			/* doc 2.0 */
 		    case 'S': saveDirs++; break;		/* doc 2.0 */
 		    case 't': textOnly++; break;		/* doc 2.0 */
@@ -1725,6 +1726,48 @@ initProject()
 	sccs_mkroot(".");
 }
 
+private void
+resync_lock(void)
+{
+	FILE	*f;
+	int	slept = 0, s = 1;
+
+	/*
+	 * See if we can lock the tree.
+	 * We assume that a higher level program called repository_wrlock(),
+	 * we're just doing the RESYNC part.
+	 *
+	 * Note: we need the real mkdir, not the so called smart one, we need
+	 * to fail if it exists.
+	 */
+	errno = 0;
+	while ((mkdir)("RESYNC", 0777)) {
+		unless (errno == EEXIST) break;
+		if (slept > (20*60)) break;
+		sleep(s);
+		s += 15;
+		errno = 0;
+	}
+	if (errno) {
+		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
+		repository_lockers(0);
+		cleanup(0);
+	}
+	unless (mkdir("RESYNC/SCCS", 0777) == 0) {
+		SHOUT();
+		perror("mkdir");
+		cleanup(CLEAN_RESYNC);
+	}
+	sccs_mkroot("RESYNC");
+	unless (f = fopen("RESYNC/BitKeeper/tmp/pid", "w")) {
+		SHOUT();
+		perror("RESYNC/BitKeeper/tmp/pid");
+		cleanup(CLEAN_RESYNC);
+	}
+	fprintf(f, "%d\n", getpid());
+	fclose(f);
+}
+
 /*
  * Go find the change set file and do this relative to that.
  * Create the RESYNC dir or bail out if it exists.
@@ -1815,30 +1858,7 @@ init(char *inputFile, int flags, project **pp)
 			free(tmp);
 		}
 	}
-
-	/*
-	 * See if we can lock the tree.
-	 * We assume that a higher level program called repository_wrlock(),
-	 * we're just doing the RESYNC part.
-	 */
-	if (mkdir("RESYNC", 0777)) {
-		fprintf(stderr, "takepatch: cannot create RESYNC dir.\n");
-		repository_lockers(p);
-		cleanup(0);
-	}
-	unless (mkdir("RESYNC/SCCS", 0777) == 0) {
-		SHOUT();
-		perror("mkdir");
-		cleanup(CLEAN_RESYNC);
-	}
-	sccs_mkroot("RESYNC");
-	unless (f = fopen("RESYNC/BitKeeper/tmp/pid", "w")) {
-		SHOUT();
-		perror("RESYNC/BitKeeper/tmp/pid");
-		cleanup(CLEAN_RESYNC);
-	}
-	fprintf(f, "%d\n", getpid());
-	fclose(f);
+	if (exists(LOG_TREE)) isLogPatch = 1;
 
 	if (streq(inputFile, "-")) {
 		/*
@@ -1852,13 +1872,14 @@ init(char *inputFile, int flags, project **pp)
 		}
 		f = fopen(pendingFile, "wb+");
 		assert(f);
-		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
-			perror("RESYNC/BitKeeper/tmp/patch");
-			exit(1);
-		}
-		fprintf(g, "%s\n", pendingFile);
-		fclose(g);
-
+		/*
+		 * If we are in in the openlogging tree, bkd_push has dropped
+		 * the write lock to allow multiple incoming patches at the
+		 * same time.  We don't care about multiple tips so it's OK,
+		 * but it only works for logging trees.
+		 * So we don't take the RESYNC lock here, we do it later.
+		 */
+		unless (isLogPatch) resync_lock();
 		for (;;) {
 			st.newline = streq("\n", buf);
 			if (echo > 10) {
@@ -1905,11 +1926,6 @@ init(char *inputFile, int flags, project **pp)
 					st.type = 0;
 					st.version = 1;
 					isLogPatch = 1;
-					assert(exists("BitKeeper/etc"));
-					close(creat(LOG_TREE, 0666));
-					t = ROOT2RESYNC "/" LOG_TREE;
-					mkdirp(ROOT2RESYNC "/BitKeeper/etc");
-					close(creat(t, 0666));
 				} else {
 					fprintf(stderr, "Expected type\n");
 					goto error;
@@ -2044,16 +2060,16 @@ error:					fprintf(stderr, "GOT: %s", buf);
 				*t = 0;
 				unless (st.first) {
 					if (echo == 3) fprintf(stderr, "\b");
-					fprintf(stderr, ": %d deltas\n", j);
+					verbose((stderr, ": %d deltas\n", j));
 					j = 0;
 				} else {
 					st.first = 0;
 				}
-				fprintf(stderr, "%s", &buf[3]);
+				verbose((stderr, "%s", &buf[3]));
 				if (echo == 3) fprintf(stderr, " ");
 			}
 
-			if (st.metablank && (echo == 3)) {
+			if (st.metablank && (echo == 3) && mkpatch) {
 				fprintf(stderr, "%c\b", spin[j % 4]);
 				j++;
 			}
@@ -2070,7 +2086,7 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		if (st.preamble) nothingtodo();
 		if (mkpatch) {
 			if (echo == 3) fprintf(stderr, "\b");
-			fprintf(stderr, ": %d deltas\n", j);
+			verbose((stderr, ": %d deltas\n", j));
 		}
 		if (fclose(f)) {
 			perror("fclose on patch");
@@ -2087,7 +2103,22 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			perror(pendingFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 		}
+		if (isLogPatch) {
+			resync_lock();
+			assert(exists("BitKeeper/etc"));
+			close(creat(LOG_TREE, 0666));
+			t = ROOT2RESYNC "/" LOG_TREE;
+			mkdirp(ROOT2RESYNC "/BitKeeper/etc");
+			close(creat(t, 0666));
+		}
+		unless (g = fopen("RESYNC/BitKeeper/tmp/patch", "wb")) {
+			perror("RESYNC/BitKeeper/tmp/patch");
+			exit(1);
+		}
+		fprintf(g, "%s\n", pendingFile);
+		fclose(g);
 	} else {
+		resync_lock();
 		unless (m = mopen(inputFile, "b")) {
 			perror(inputFile);
 			cleanup(CLEAN_PENDING|CLEAN_RESYNC);
