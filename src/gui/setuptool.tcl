@@ -227,9 +227,9 @@ proc create_repo {} \
 	catch { close $cfid }
 	set repo $st_cinfo(repository)
 	if {$opts(dir_override) == 1} {
-		catch { exec bk setup -e -f -c$cfile $repo } msg
+		catch { exec bk setup -a -e -f -c$cfile $repo } msg
 	} else {
-		catch { exec bk setup -f -c$cfile $repo } msg
+		catch { exec bk setup -a -f -c$cfile $repo } msg
 	}
 	if {$msg != ""} {
 		displayMessage "Repository creation failed: $msg"

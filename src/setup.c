@@ -8,7 +8,7 @@ private void	defaultIgnore();
 int
 setup_main(int ac, char **av)
 {
-	int	force = 0, allowNonEmptyDir = 0, c;
+	int	force = 0, allowNonEmptyDir = 0, ask = 1, c;
 	char	*package_path = 0, *config_path = 0, *t;
 	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
 	char 	s_config[] = "BitKeeper/etc/SCCS/s.config";
@@ -21,7 +21,7 @@ setup_main(int ac, char **av)
 		system("bk help setup");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "c:ef")) != -1) {
+	while ((c = getopt(ac, av, "ac:ef")) != -1) {
 		switch (c) {
 		    case 'c':					/* doc 2.0 */
 		    	unless(exists(optarg)) {
@@ -38,6 +38,9 @@ setup_main(int ac, char **av)
 			break;
 		    case 'f':					/* doc 2.0 */
 			force = 1;
+			break;
+		    case 'a':
+			ask = 0;	/* don't ask */
 			break;
 		    default:
 			usage();
@@ -161,7 +164,7 @@ again:		printf("Editor to use [%s] ", editor);
 
 	mdbm_close(m);
 
-	if (cset_setup(SILENT)) {
+	if (cset_setup(SILENT, ask)) {
 		unlink("BitKeeper/etc/config");
 		sccs_unmkroot("."); /* reverse  sccs_mkroot */
 		return (1);

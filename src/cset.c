@@ -346,7 +346,7 @@ spawn_checksum_child(void)
  * Create the initial empty cset.
  */
 int
-cset_setup(int flags)
+cset_setup(int flags, int ask)
 {
 	sccs	*cset;
 	delta	*d = 0;
@@ -356,8 +356,8 @@ cset_setup(int flags)
 	assert(cset->proj);
 
 	if (flags & DELTA_DONTASK) unless (d = comments_get(d)) goto intr;
-	unless (d = host_get(d)) goto intr;
-	unless (d = user_get(d)) goto intr;
+	unless (d = host_get(d, ask)) goto intr;
+	unless (d = user_get(d, ask)) goto intr;
 	cset->state |= S_CSET;
 	cset->xflags |= X_LONGKEY;
 	if (sccs_delta(cset, flags|DELTA_EMPTY|NEWFILE, d, 0, 0, 0) == -1) {
