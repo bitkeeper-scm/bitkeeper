@@ -17,6 +17,8 @@ sendbug_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
 	char	bug[MAXPATH];
+	int	status;
+	pid_t	pid;
 	FILE	*f;
 
 	if (ac > 1 && streq("--help", av[1]))  {
@@ -24,7 +26,7 @@ sendbug_main(int ac,  char **av)
 		exit(1);
 	}
 	sprintf(bug, "%s/bk_bug%d", TMP_PATH, getpid());
-	f = fopen(bug, "wb");
+	f = fopen(bug, "wt");
 	gethelp("bugtemplate", 0, 0, f);
 	fclose(f);
 	sprintf(buf, "%s %s", editor, bug);
@@ -34,7 +36,14 @@ sendbug_main(int ac,  char **av)
 		unless (fgets(buf, sizeof(buf), stdin)) buf[0] = 'q';
 		switch (buf[0]) {
 		    case 's':
-			mail("bitkeeper-bugs@bitmover.com", "BK Bug", bug);
+			pid = 
+			    mail("bitkeeper-bugs@bitmover.com", "BK Bug", bug);
+			if (pid == (pid_t) -1) {
+				fprintf(stderr, "can not start mailer\n");
+				unlink(bug);
+				exit(1);
+			}
+			waitpid(pid, &status, 0);
 			unlink(bug);
 			printf("Your bug has been sent, thank you.\n");
 			exit(0);
