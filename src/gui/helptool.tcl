@@ -290,32 +290,32 @@ proc scroll {what dir} \
 proc widgets {} \
 {
 	global	line gc firstConfig pixelsPerLine tcl_platform
-	global	search_word stackMax stackPos
+	global	search_word stackMax stackPos d
 
 	set stackMax 0
 	set stackPos 0
 
 	if {$tcl_platform(platform) == "windows"} {
 		set swid 20
-		set gc(help,pFont) {helvetica 10 roman}
-		set gc(help,bFont) {helvetica 10 roman bold}
-		set gc(help,BFont) {helvetica 10 roman bold}
+		set d(help,pFont) {helvetica 10 roman}
+		set d(help,bFont) {helvetica 10 roman bold}
+		set d(help,BFont) {helvetica 10 roman bold}
 		set py 0
 	} else {
 		set swid 14
-		set gc(help,pFont) {fixed 13 roman}
-		set gc(help,bFont) {Times 13 roman bold}
-		set gc(help,BFont) {Times 13 roman bold}
+		set d(help,pFont) {fixed 13 roman}
+		set d(help,bFont) {Times 13 roman bold}
+		set d(help,BFont) {Times 13 roman bold}
 		set py 1
 	}
-	set gc(help,bColor) #d0d0d0
-	set gc(help,BColor) #d0d0d0
-	set gc(help,sColor) yellow
-	set gc(help,tColor) grey
-	set gc(help,tagColor) blue
-	set gc(help,searchColor) orange
-	set gc(help,geometry) ""
-	set gc(help,height) 40
+	set d(help,bColor) #d0d0d0
+	set d(help,BColor) #d0d0d0
+	set d(help,sColor) yellow
+	set d(help,tColor) grey
+	set d(help,tagColor) blue
+	set d(help,searchColor) orange
+	set d(help,geometry) ""
+	set d(help,height) 40
 
 	getDefaults "help" ".helptoolrc"
 

@@ -37,7 +37,7 @@ proc cd2root {} \
 #
 proc getDefaults {prog rcfile} \
 {
-	global gc
+	global gc d
 
 	if {[file readable ~/$rcfile]} {
 		source ~/$rcfile
@@ -45,18 +45,23 @@ proc getDefaults {prog rcfile} \
 		source ~/.bkgui
 	}
 	set overrides [list]
-	foreach index [array names gc] {
+	# Read the sourced file variables into the current context
+	foreach index [lsort [array names gc]] {
 		set p [lindex [split $index ","] 0]
 		set v [lindex [split $index ","] 1]
-		#puts "0=($p) V=($v) value=($gc($index))"
-		if {$p == "*"} {
-			set overrides [concat $overrides [list "$index"]]
+		if {($p == "*") && ! [info exists gc($prog,$v)]} {
+			set gc($prog,$v) $gc(*,$v)
 		}
+		#puts "0=($p) V=($v) value=($gc($index))"
 	}
-	foreach o $overrides {
-		set p [lindex [split $o ","] 0]
-		set v [lindex [split $o ","] 1]
-		#puts "overriding with gc($prog,$v) $gc(*,$v)"
-		set gc($prog,$v) $gc(*,$v)
-	}
+	# Now read the defaults that were not overriden in .bkgui into
+	# the current program
+	foreach index [array names d] {
+		set p [lindex [split $index ","] 0]
+		set v [lindex [split $index ","] 1]
+		if {! [info exists gc($index)]} {
+			set gc($index) $d($index)
+			#puts "bringing $d($index) into current"
+		}
+    	}
 }

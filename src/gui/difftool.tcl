@@ -324,7 +324,7 @@ proc computeHeight {} \
 
 proc widgets {} \
 {
-	global	scroll wish tcl_platform search gc
+	global	scroll wish tcl_platform search gc d
 
 	set search(prompt) "Search for:"
 	set search(dir) ""
@@ -334,29 +334,29 @@ proc widgets {} \
 	set search(prev) .menu.searchPrev
 	if {$tcl_platform(platform) == "windows"} {
 		set py -2; set px 1; set bw 2
-		set gc(diff,pFont) {helvetica 9 roman}
-		set gc(diff,bFont) {helvetica 9 roman bold}
-		set gc(diff,BFont) {helvetica 9 roman bold}
-		set gc(diff,lFont) {hevlvetica 9 roman }
+		set d(diff,pFont) {helvetica 9 roman}
+		set d(diff,bFont) {helvetica 9 roman bold}
+		set d(diff,BFont) {helvetica 9 roman bold}
+		set d(diff,lFont) {hevlvetica 9 roman }
 		set swid 20
 	} else {
 		set py 1; set px 4; set bw 2
-		set gc(diff,bFont) {fixed 12 roman bold}
-		set gc(diff,pFont) {fixed 12 roman}
-		set gc(diff,BFont) {times 12 roman bold}
-		set gc(diff,lFont) {fixed 12 roman bold}
+		set d(diff,bFont) {fixed 12 roman bold}
+		set d(diff,pFont) {fixed 12 roman}
+		set d(diff,BFont) {times 12 roman bold}
+		set d(diff,lFont) {fixed 12 roman bold}
 		set swid 14
 	}
-	set gc(diff,leftWidth) 65
-	set gc(diff,rightWidth) 65
-	set gc(diff,diffHeight) 50
-	set gc(diff,tColor) lightseagreen
-	set gc(diff,bColor) white
-	set gc(diff,BColor) #d0d0d0
-	set gc(diff,oColor) orange
-	set gc(diff,nColor) yellow
-	set gc(diff,statusColor) lightblue
-	set gc(diff,geometry) ""
+	set d(diff,leftWidth) 65
+	set d(diff,rightWidth) 65
+	set d(diff,diffHeight) 50
+	set d(diff,tColor) lightseagreen
+	set d(diff,bColor) white
+	set d(diff,BColor) #d0d0d0
+	set d(diff,oColor) orange
+	set d(diff,nColor) yellow
+	set d(diff,statusColor) lightblue
+	set d(diff,geometry) ""
 
 	getDefaults "diff" ".difftoolrc"
 
@@ -392,6 +392,7 @@ proc widgets {} \
 		-orient horizontal -command { xscroll }
 	    scrollbar .diffs.yscroll -wid $swid -troughcolor $gc(diff,tColor) \
 		-orient vertical -command { yscroll }
+
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
@@ -457,6 +458,9 @@ proc widgets {} \
 	grid columnconfigure .diffs 2 -weight 1
 	grid columnconfigure . 0 -weight 1
 
+	#bind .diffs.left <Button-5> [list %W yview scroll 5 units]
+	#bind .diffs.left <Button-4> [list %W yview scroll -5 units]
+
 	# smaller than this doesn't look good.
 	wm minsize . 300 300
 
@@ -512,6 +516,8 @@ proc keyboard_bindings {} \
 	bind $search(text) <Return>	"searchstring"
 	$search(widget) tag configure search \
 	    -background #d0d0ff -relief groove -borderwid 0
+	bind all <Button-4> prev
+	bind all <Button-5> next
 }
 
 proc getrev {file rev checkMods} \

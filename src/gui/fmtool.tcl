@@ -780,29 +780,29 @@ proc computeHeight {w} \
 
 proc widgets {L R O} \
 {
-	global	scroll wish tcl_platform gc
+	global	scroll wish tcl_platform gc d
 
 	if {$tcl_platform(platform) == "windows"} {
-		set gc(fm,pFont) {terminal 9 roman}
-		set gc(fm,bFont) {helvetica 9 roman bold}
-		set gc(fm,BFont) {helvetica 9 roman bold}
+		set d(fm,pFont) {terminal 9 roman}
+		set d(fm,bFont) {helvetica 9 roman bold}
+		set d(fm,BFont) {helvetica 9 roman bold}
 		set swid 18
 	} else {
-		set gc(fm,pFont) {fixed 12 roman}
-		set gc(fm,bFont) {fixed 12 roman bold}
-		set gc(fm,BFont) {times 12 roman bold}
+		set d(fm,pFont) {fixed 12 roman}
+		set d(fm,bFont) {fixed 12 roman bold}
+		set d(fm,BFont) {times 12 roman bold}
 		set swid 12
 	}
-	set gc(fm,diffWidth) 65
-	set gc(fm,diffHeight) 30
-	set gc(fm,mergeWidth) 80
-	set gc(fm,mergeHeight) 20
-	set gc(fm,tColor) #d0d0d0
-	set gc(fm,oColor) orange
-	set gc(fm,nColor) yellow
-	set gc(fm,bColor) ghostwhite
-	set gc(fm,BColor) #d0d0d0
-	set gc(fm,geometry) ""
+	set d(fm,diffWidth) 65
+	set d(fm,diffHeight) 30
+	set d(fm,mergeWidth) 80
+	set d(fm,mergeHeight) 20
+	set d(fm,tColor) #d0d0d0
+	set d(fm,oColor) orange
+	set d(fm,nColor) yellow
+	set d(fm,bColor) ghostwhite
+	set d(fm,BColor) #d0d0d0
+	set d(fm,geometry) ""
 
 	getDefaults "fm" ".fmrc"
 
