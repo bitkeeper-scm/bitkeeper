@@ -4,7 +4,7 @@ BINS	= delta get admin diffs clean prs what sinfo sccssh sids \
 	  cset g2sccs range zone gethost undos chksum rechksum \
 	  sccsmv sccsrm sccscat key2rev check fdiff adler32 \
 	  nextsecond
-SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap
+SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge
 GUISCR	= gui/sccstool gui/citool gui/vitool gui/fm gui/fm3 \
 	  gui/bithelp gui/mkindex
 LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
@@ -304,6 +304,13 @@ import: import.sh substvars
 	./substvars import.sh >import.T
 	chmod +x import.T
 	mv -f import.T import
+
+pmerge: pmerge.perl port/unix_platform.perl substvars
+	./substvars pmerge.perl >pmerge.T
+	cat pmerge.T port/unix_platform.perl > pmerge.T2
+	/bin/rm -f pmerge.T
+	chmod +x pmerge.T2
+	mv -f pmerge.T2 pmerge
 
 resolve: resolve.perl port/unix_platform.perl substvars
 	./substvars resolve.perl >resolve.T
