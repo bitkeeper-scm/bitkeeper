@@ -403,8 +403,8 @@ import_SCCS () {
 	then	echo Reparenting files from some other BitKeeper package...
 		sed 's/ BitKeeper$//' < ${TMP}reparent$$ | \
 		while read x
-		do	if [ -f $x ]
-			then	echo $x
+		do	if [ -f "$x" ]
+			then	echo "$x"
 			fi
 		done | bk admin -CC -
 		echo OK
@@ -412,9 +412,9 @@ import_SCCS () {
 	rm -f ${TMP}reparent$$
 	echo Making sure all files have pathnames, proper dates, and checksums
 	bk sfiles -g | while read x
-	do	bk admin -0q $x
-		bk admin -q -u -p$x $x
-		bk rechksum -f $x
+	do	bk admin -0q "$x"
+		bk admin -q -u -p"$x" "$x"
+		bk rechksum -f "$x"
 	done
 }
 
