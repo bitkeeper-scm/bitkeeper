@@ -8323,11 +8323,11 @@ sccs_clean(sccs *s, u32 flags)
 			free_pfile(&pf);
 			return (1);
 		}
-		if (!streq(t, d->pathname)) {
+		if (!(flags & CLEAN_SKIPPATH) && (!streq(t, d->pathname))) {
 			unless (flags & PRINT) {
 				verbose((stderr,
-				   "%s has different pathnames, needs delta.\n",
-				    s->gfile));
+				   "%s has different pathnames: %s, needs delta.\n",
+				    s->gfile, t));
 			} else {
 				printf(
 				    "===== %s (pathnames) %s vs edited =====\n",

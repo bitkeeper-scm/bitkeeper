@@ -89,7 +89,7 @@ bk edit $Q foo
 echo -e "\001" >> foo
 bk delta $Q -ynew foo
 bk commit $Q -ynew
-bk push $Q $HERE/copy || { echo failed; exit 1 }
+bk push $Q $HERE/copy || { echo failed; exit 1; }
 echo OK
 
 
