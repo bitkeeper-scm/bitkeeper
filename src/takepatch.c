@@ -541,7 +541,7 @@ noversline(char *name)
 {
 	SHOUT();
 	fprintf(stderr,
-"takepatch: the version line on %s is missing or does not match the
+"takepatch: the version line on %s is missing or does not match the\n\
 format understood by this program.\n\
 You need to make sure that the software generating the patch is\n\
 the same as the software accepting the patch.  We were looking for\n\

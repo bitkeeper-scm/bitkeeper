@@ -3610,7 +3610,7 @@ sccsXfile(sccs *sccs, char type)
 		len = strlen(sccs->sfile) + 50;
 		s = malloc(len + 50);
 		assert(s);
-	} else if (len < strlen(sccs->sfile) + 3) {
+	} else if (len < (int) strlen(sccs->sfile) + 3) {
 		free(s);
 		len = strlen(sccs->sfile) + 50;
 		s = malloc(len);
@@ -3842,7 +3842,7 @@ getserlist(sccs *sc, int isSer, char *s, int *ep)
 	debug((stderr, "getserlist(%.*s)\n", linelen(s), s));
 	if (isSer) {
 		while (*s && *s != '\n') {
-			l = addSerial(l, atoi(s));
+			l = addSerial(l, (ser_t) atoi(s));
 			while (*s && *s != '\n' && isdigit(*s)) s++;
 			while (*s && *s != '\n' && !isdigit(*s)) s++;
 		}
@@ -4741,7 +4741,7 @@ out:			if (slist) free(slist);
 				sum += '\n';
 			}
 			if (flags & GET_PREFIX) {
-				delta *tmp = sfind(s, print);
+				delta *tmp = sfind(s, (ser_t) print);
 
 				if (flags&GET_MODNAME)
 					fprintf(out, "%s\t", base);
@@ -6806,7 +6806,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		n0->next = 0;
 		s->table = n0;
 		n0->flags |= D_CKSUM;
-		n0->sum = almostUnique(1);
+		n0->sum = (unsigned short) almostUnique(1);
 		dinsert(s, flags, n0);
 		n = prefilled ? prefilled : calloc(1, sizeof(*n));
 		n->pserial = n0->serial;
@@ -6886,7 +6886,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	unless (s->state & S_NOSCCSDIR) {
 		if (s->state & S_CSET) {
 			unless (first->csetFile) {
-				first->sum = almostUnique(1);
+				first->sum = (unsigned short) almostUnique(1);
 				first->flags |= D_ICKSUM;
 				sccs_sdelta(s, first, buf);
 				first->csetFile = strdup(buf);
@@ -9345,7 +9345,7 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 			if (add || del || n->include || n->exclude) {
 				n->sum = s->dsum;
 			} else {
-				n->sum = almostUnique(0);
+				n->sum = (unsigned short) almostUnique(0);
 			}
 #if 0
 

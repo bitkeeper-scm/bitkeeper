@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <fcntl.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif
 /*
  * Calculate the same as is used in BitKeeper.
  *

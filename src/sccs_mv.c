@@ -160,8 +160,8 @@ mv(char *src, char *dest)
 			sprintf(cmd, "/bin/mv %s %s", src, dest);
 			if (system(cmd)) return (1);
 		}
-	}
 #endif
+	}
 	return (0);
 }
 
