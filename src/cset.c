@@ -315,7 +315,7 @@ csetlist(sccs *s, char *rev)
 	d = findrev(s, rev);	/* csetIds would have failed if this would */
 	if (d->parent) {
 		unless (sccs_restart(s)) { perror("restart"); exit(1); }
-		pdb = csetIds(s, d->parent->rev, 0);
+		pdb = csetIds(s, d->parent->rev, 1);
 	} else {
 		pdb = 0;
 	}
