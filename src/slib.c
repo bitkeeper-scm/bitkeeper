@@ -8626,13 +8626,26 @@ fix_cntl_a(sccs *s, char *buf, FILE *out)
 	if (buf[0] == '\001') fputdata(s, cntlA_escape, out);
 }
 
+/*
+ * Read the output of diff and determine if the files 
+ * are binary.
+ */
 private int
-nullCheck(MMAP *m)
+binaryCheck(MMAP *m)
 {
-	register u8 *p, *end;
+	u8	*p, *end;
+	int	cnt = 0;
 
 	for (p = m->mmap, end = m->end; p < end; p++) {
-		unless (*p) return (1);
+		cnt++;
+		if (*p == 0) return (1);  /* no nulls */
+		if (cnt == 1) {
+			/* GNU diff reports binary files */
+			if (strneq("Binary files ", p, 13)) return (1);
+		}
+		if (*p == '\n') {
+			cnt = 0;
+		}
 	}
 	return (0);
 }
@@ -8714,7 +8727,7 @@ out:		sccs_unlock(s, 'z');
 		return (-1);
 	}
 	if (diffs) {
-		if (nullCheck(diffs)) {
+		if (binaryCheck(diffs)) {
 			fprintf(stderr,
 			    "%s has nulls (\\0) in diffs, checkin aborted.\n",
 			    s->gfile);
@@ -10814,18 +10827,6 @@ bad:		fprintf(stderr, "bad diffs: '%.*s'\n", linelen(buf), buf);
 	return (0);
 }
 
-/*
- * The s.file should be an ascii file and the gfile should be binary.
- */
-private void
-binaryMismatch(sccs *s)
-{
-	assert(!(s->encoding & E_BINARY));
-	fprintf(stderr,
-	    "%s: file format is ascii, delta is binary.", s->sfile);
-	fprintf(stderr, "  Unsupported operation.\n");
-}
-
 int
 delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 {
@@ -10838,9 +10839,11 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	char	*b;
 	int	no_lf = 0;
 
-	if (nullCheck(diffs)) {
+	if (binaryCheck(diffs)) {
+		assert(!(s->encoding & E_BINARY));
 		fprintf(stderr,
-		    "%s has nulls (\\0) in diffs, delta aborted.\n", s->gfile);
+		    "%s: file format is ascii, delta is binary.", s->sfile);
+		fprintf(stderr, "  Unsupported operation.\n");
 		return (-1);
 	}
 	assert(!READ_ONLY(s));
@@ -10867,12 +10870,8 @@ newcmd:
 		if (scandiff(b, &where, &what, &howmany) != 0) {
 			int	len = linelen(b);
 
-			if ((len > 13) && strneq("Binary files ", b, 13)) {
-				binaryMismatch(s);
-			} else {
-				fprintf(stderr,
-				    "delta: can't figure out '%.*s'\n", len, b);
-			}
+			fprintf(stderr,
+			    "delta: can't figure out '%.*s'\n", len, b);
 			if (state) free(state);
 			if (slist) free(slist);
 			return (-1);
