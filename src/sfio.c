@@ -27,10 +27,10 @@ WHATSTR("@(#)%K%");
 #define	u32		unsigned int
 
 int	sfio_out(void);
-int	out(char *file);
+private int	out(char *file);
 char	chop(register char *s);
 int	sfio_in(int extract);
-int	in(char *file, int todo, int extract);
+private int	in(char *file, int todo, int extract);
 int	mkfile(char *file);
 int	mkdirp(char *dir);
 int	mkdirf(char *file);
@@ -106,7 +106,7 @@ sfio_out()
 	return (0);
 }
 
-int
+private int
 out(char *file)
 {
 	char	buf[1024];
@@ -141,20 +141,6 @@ out(char *file)
 	close(fd);
 	return (0);
 }
-
-#ifdef OLD
-char
-chop(register char *s)
-{
-	char	c;
-
-	unless (s && *s) return (0);
-	while (*s++);
-	c = s[-2];
-	s[-2] = 0;
-	return (c);
-}
-#endif
 
 int
 sfio_in(int extract)
@@ -203,7 +189,7 @@ sfio_in(int extract)
 	}
 }
 
-int
+private int
 in(char *file, int todo, int extract)
 {
 	char	buf[1024];

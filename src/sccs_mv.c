@@ -194,7 +194,7 @@ update_idcache(sccs *s)
 	chmod(path, 0666);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	unlink(path);
-	return (0);
+	return;
 }
 
 char *

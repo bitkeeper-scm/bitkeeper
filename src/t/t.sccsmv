@@ -65,13 +65,6 @@ mkdir B
 bk mv C/file1 C/file4 B
 if [ ! -d C ]; then echo failed; exit 1; fi
 echo OK
-echo $N Test sccsmv to directory that does not exist ................$NL
-cp -rp B BBB
-bk mv BBB BBBB
-if [ ! -f BBBB/SCCS/s.file4 ]
-then	echo failed to move file; exit 1
-fi
-echo OK
 echo $N Test sccsrm w/ p locked file ................................$NL
 bk get $Q -e B/file1
 bk sccsrm B/file1
@@ -139,6 +132,18 @@ HERE=`pwd`
 cd D
 bk sccsrm -d file5 || { echo failed.; exit 1; }
 if [ -d SCCS ]; then echo fail to remove empty SCCS; exit 1; fi
+echo OK
+cd ..
+echo $N Test sccsmv to directory that does not exist ................$NL
+date > C/file6
+bk new $Q C/file6
+bk mv C CCCC
+if [ ! -f CCCC/SCCS/s.file6 ]
+then	echo failed to move file; exit 1
+fi
+if [ ! -f CCCC/SCCS/s..del-file3 ]
+then	echo failed to move deleted file; exit 1
+fi
 echo OK
 echo $N Edit G, rm G, bk mv G, should create rm delta ...............$NL
 date > G

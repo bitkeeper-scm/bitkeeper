@@ -89,11 +89,11 @@ sendConfig(char *to)
 	status(0, config_log);
 
 	dspec = "$each(:FD:){Proj:\\t(:FD:)}\\nID:\\t:KEY:";
-	f = fopen(config_log, "wb");
+	f = fopen(config_log, "ab");
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
 	fclose(f);
 
-	f = fopen(config_log, "a");
+	f = fopen(config_log, "ab");
 	fprintf(f, "User:\t%s\n", sccs_getuser());
 	fprintf(f, "Host:\t%s\n", sccs_gethost());
 	fprintf(f, "Root:\t%s\n", fullname(".", 0));
@@ -115,7 +115,7 @@ sendConfig(char *to)
 	fclose(f);
 	sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);
 	if (exists(buf)) {
-		f = fopen(config_log, "a");
+		f = fopen(config_log, "ab");
 		fprintf(f, "Alias  List:\n");
 		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
 		sprintf(buf, "%setc/SCCS/s.aliases", bk_dir);

@@ -13,7 +13,7 @@ int
 mv_main(int ac, char **av)
 {
 	char	*name, *name2 = 0, *dest;
-	int	isDir;
+	int	isDir, sflags = 0;
 	int	errors = 0;
 	int	dofree = 0;
 
@@ -35,12 +35,14 @@ usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
 	 */
 	if (isdir(av[1]) || (name2 = sfileNext())) {
 		unless (isdir(dest)) mkdir(dest, 0775);
+		/* mvdir includes deleted files */
+		if (isdir(av[1])) sflags |= SF_DELETES; 
 	}
 	isDir = isdir(dest);
 	unless ((isDir > 0) || (ac == 3)) goto usage;
 	av[ac-1] = 0;
 	for (name =
-	    sfileFirst("sccsmv" ,&av[1], 0); name; name = sfileNext()) {
+	    sfileFirst("sccsmv" ,&av[1], sflags); name; name = sfileNext()) {
 again:		errors |= sccs_mv(name, dest, isDir, 0);
 		if (name2) {
 			name = name2;
