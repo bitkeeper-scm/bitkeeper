@@ -457,7 +457,6 @@ _sendConfig() {
 	then	return		# error, should never happen
 	fi
 	_cd2root
-	${BIN}get -s BitKeeper/etc/config
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( ${BIN}prs -hr1.0 \
 	-d'$each(:FD:){Project:\t(:FD:)}\nChangeSet ID:\t:LONGKEY:' ChangeSet;
@@ -465,9 +464,9 @@ _sendConfig() {
 	  echo "Host:		`hostname`"
 	  echo "Root:		`pwd`"
 	  echo "Date:		`date`"
-	  grep -v '^#' BitKeeper/etc/config | grep -v '^$'
+	  ${BIN}get -ps BitKeeper/etc/config | \
+	    grep -v '^#' BitKeeper/etc/config | grep -v '^$'
 	) | mail -s "BitKeeper config: $P" $1
-	${BIN}clean BitKeeper/etc/config
 }
 
 _logAddr() {
@@ -489,9 +488,7 @@ _logAddr() {
 # If they agree to the logging, record that fact in the config file.
 # If they have agreed, then don't keep asking the question.
 # XXX - should probably ask once for each user.
-_doLog() {
-	_logAddr
-
+_checkLog() {
 	grep -q "^logging_ok:" BitKeeper/etc/config
 	if [ $? -eq 0 ]
 	then	${BIN}clean BitKeeper/etc/config
@@ -521,6 +518,7 @@ logging_ok:	to '$LOGADDR > BitKeeper/etc/config
 	else
 		_sendConfig config@openlogging.org
 	fi
+	echo $LOGADDR
 }
 
 _sendLog() {
@@ -532,11 +530,11 @@ _commit() {
 	DOIT=no
 	GETCOMMENTS=yes
 	COPTS=
-	GETLOGADDR=_doLog
+	CHECKLOG=_checkLog
 	while getopts dfsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=yes;;
-		f) GETLOGADDR=_logAddr;;
+		f) CHECKLOG=:;;
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
 		y) DOIT=yes; GETCOMMENTS=no; echo "$OPTARG" > /tmp/comments$$;;
@@ -573,8 +571,9 @@ _commit() {
 	then	if [ -f /tmp/comments$$ ]
 		then	COMMENTS="-Y/tmp/comments$$"
 		fi
-		LOGADDR=`$GETLOGADDR` || exit 1
+		LOGADDR=`_logAddr` || exit 1
 		export LOGADDR
+		$CHECKLOG
 		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
 		EXIT=$?
 		/bin/rm -f /tmp/comments$$
@@ -599,8 +598,9 @@ _commit() {
 			if [ -s /tmp/comments$$ ]
 			then	COMMENTS="-Y/tmp/comments$$"
 			fi
-			LOGADDR=`$GETLOGADDR` || exit 1
+			LOGADDR=`_logAddr` || exit 1
 			export LOGADDR
+			$CHECKLOG
 			${BIN}sfiles -C |
 			    eval ${BIN}cset "$COMMENTS" $COPTS $@ -
 			EXIT=$?
