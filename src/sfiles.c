@@ -589,17 +589,17 @@ sfiles_walk(char *file, struct stat *sb, void *data)
 	int	n;
 
 	if (S_ISDIR(sb->st_mode)) {
-		n = strlen(file);
 		/*
 		 * Special processing for .bk_skip file
 		 */
-		file[n] = 0;
 		if (sfiles_skipdir(file)) return (-1);
 
 		/* Skip new repo */
 		if (wi->sccsdir) {
+			n = strlen(file);
 			strcpy(&file[n], "/" BKROOT);
 			if (exists(file)) return (-1);
+			file[n] = 0;
 		}
 
 		/* if SCCS dir start new processing */
@@ -1126,8 +1126,8 @@ sfiles_skipdir(char *dir)
 	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
 	unless (exists(buf)) return (0);
 	snprintf(buf, sizeof(buf), "%s/%s", dir, "SCCS");
-	if (isdir(buf)) {
-		getMsg("bk_skip_and_sccs", dir, 0, 0, stderr);
+	if (isdir(buf) && !exists(strcat(buf, "/" BKSKIP))) {
+		getMsg("bk_skip_and_sccs", dir, 0, stderr);
 		return (0);
 	}
 	return (1);
