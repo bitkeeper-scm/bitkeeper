@@ -558,7 +558,7 @@ error:			if (perfile) sccs_free(perfile);
 				fprintf(stderr,
 				    "takepatch: %s is edited and modified; "
 				    "unsafe to overwrite.\n",
-				    name);
+				    s->sfile);
 				goto error;
 			} else {
 				sccs_restart(s);

@@ -8,6 +8,27 @@
 static	char	*s;
 static	uid_t	u = (uid_t)-1;
 
+/*
+ * Scan ofn, replace all ochar to nchar, result is in nfn
+ * caller is responsible to ensure nfn is at least as big as ofn.
+ */
+private char *
+switch_char(const char *ofn, char *nfn, char ochar, char nchar)
+{
+        const   char *p;
+        char    *q = nfn;
+
+        if (ofn == NULL) return NULL;
+        p = &ofn[-1];
+
+        /*
+         * Simply replace all ochar with nchar
+         */
+        while (*(++p)) *q++ = (*p == ochar) ? nchar : *p;
+        *q = '\0';
+        return (nfn);
+}
+
 char	*
 sccs_getuser(void)
 {
@@ -39,12 +60,10 @@ sccs_getuser(void)
 		s = NULL;
 	}
 
-#ifdef WIN32 /* win32 have no effective uid */
        /*
 	* Change all space in user name to dot
 	*/
-	_switch_char(s, s, ' ', '.');
-#endif
+	switch_char(s, s, ' ', '.');
 	return (s);
 }
 
@@ -80,11 +99,9 @@ sccs_realuser(void)
 		s = NULL;
 	}
 
-#ifdef WIN32 /* win32 have no effective uid */
        /*
 	* Change all space in user name to dot
 	*/
-	_switch_char(s, s, ' ', '.');
-#endif
+	switch_char(s, s, ' ', '.');
 	return (s);
 }

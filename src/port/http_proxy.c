@@ -264,16 +264,16 @@ _get_http_proxy_reg(char **proxies)
 	int	proxy_port, len = sizeof(buf);
 	int	proxyEnable = 0;
 
+	if (getRegDWord(HKEY_CURRENT_USER,
+			KEY, "ProxyEnable", &proxyEnable) == 0) {
+		goto done;
+	}
+	if (proxyEnable == 0) goto done;
+
 	getReg(HKEY_CURRENT_USER, KEY, "AutoConfigURL", buf, &len);
 	if (buf[0]) {
 		proxies = get_config(buf, proxies);
 	} else {
-		if (getRegDWord(HKEY_CURRENT_USER,
-				KEY, "ProxyEnable", &proxyEnable) == 0) {
-			goto done;
-		}
-		if (proxyEnable == 0) goto done;
-	
 		len = sizeof(buf);  /* important */
 		if (getReg(HKEY_CURRENT_USER,
 					KEY, "ProxyServer", buf, &len) == 0) {

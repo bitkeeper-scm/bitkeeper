@@ -1,0 +1,76 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# Copyright (c) 2000 Andrew Chang
+# Copyright (c) 2002 Rick Smith
+# %K%
+
+if [ "$PLATFORM" = "WIN32" ]
+then
+	echo "For non win32 only: This test is not applicable to this platform"
+	exit 0
+fi
+
+
+# Note: This test assumes the shell "echo" comamnd output in binary mode
+echo $N Create initial repository ...................................$NL
+#no_logging project
+echo "logging: none" > $HERE/c
+echo "single_user: bk" >> $HERE/c
+echo "single_host: free.bk" >> $HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c
+echo "email:		nobody@nowhere.bk" >> $HERE/c
+bk setup -f -c$HERE/c project
+touch project/BitKeeper/etc/SCCS/x.marked
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Check new and co with files having termination CRLF .........$NL
+# create a file with line terminated with CRLF 
+# reference file with only LF
+echo -e 'data\r' > data
+echo 'data' > data.ref
+bk ci $Q -i data
+bk co $Q data
+cmp -s data data.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk edit $Q data
+cmp -s data data.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check edit and co with files having termination CRLF ........$NL
+# File is checked out edit already
+echo -e 'last line\r' >> data
+echo 'last line' >> data.ref
+bk ci $Q -m'newlastline' data
+bk co $Q data
+cmp -s data data.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk edit $Q data
+cmp -s data data.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check edit and co with files having midline CF ..............$NL
+# File is checked out edit already
+echo -e 'last line\ranother last line' >> data
+cp data data.ref
+bk ci $Q -m'anothernewlastline' data
+bk co $Q data
+cmp -s data data.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk edit $Q data
+cmp -s data data.ref
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+echo OK
