@@ -9,7 +9,7 @@ all image: sfio munge mkbk extractor.c bitkeeper.sh gnu-os os installer.tcl
 	./mkbk
 SFIO_SRC=../sfio.c sfio_utils.c
 
-sfio: $(SFIO_SRC)
+sfio: $(SFIO_SRC) sfio.h
 	$(CC) -DSFIO_STANDALONE=YES -O $(SFIO_SRC) ../zlib/libz.a -o sfio
 
 installer.tcl: install.tcl ../gui/lib/tkwizard.tcl ../gui/common.tcl \
@@ -24,5 +24,5 @@ munge: munge.c ../unix.h
 
 clobber clean:
 	/bin/rm -f _data _data.c _data.o a.out munge testdata testdata.tar \
-	    core testdata.bin bk-*.bin
+	    core testdata.bin bk-*.bin bk-*.tgz sfio tcl.sfio installer.tcl
 	bk -r. clean

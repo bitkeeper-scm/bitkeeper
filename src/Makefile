@@ -619,9 +619,9 @@ install-nolinks: $(BINLINKS)
 	tar cf - $(BINS) $(SCRIPTS) | (cd $(BINDIR) && tar xf -)
 	cp $(DATA) $(BINDIR)
 	test -x tcltk/bin/bkgui || exit 1
-	@rm -rf $(BINDIR)/tcltk
-	mkdir $(BINDIR)/tcltk
-	@cp -rp tcltk/bin tcltk/lib $(BINDIR)/tcltk
+	@rm -rf $(BINDIR)/gui
+	mkdir $(BINDIR)/gui
+	@cp -rp tcltk/bin tcltk/lib $(BINDIR)/gui
 	@-rm -rf $(BINDIR)/t
 	@set `echo $(LINKTO)`; \
 	while [ "X$$1" != X ]; \

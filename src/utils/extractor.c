@@ -57,20 +57,22 @@ main(int ac, char **av)
 	system(cmd);
 	fprintf(stderr, "done.\n");
 
-	sprintf(cmd, "TCL_LIBRARY=%s/lib/tcl8.3", install_tmp);
+	sprintf(cmd, "TCL_LIBRARY=%s/lib/tcl8.4", install_tmp);
 	putenv(strdup(cmd));
-	sprintf(cmd, "%s/bin/bktcl %s", install_tmp, installer_name);
+	sprintf(cmd, "%s/gui/bin/tclsh %s", install_tmp, installer_name);
 	for (fd = 1; av[fd]; fd++) {
 		strcat(cmd, " ");
 		strcat(cmd, av[fd]);
 	}
 	strcat(cmd, " ");
-	strcat(cmd, installer_name);
+	strcat(cmd, installer_name);	// XXX - this is not needed
 	strcat(cmd, " ");
 	strcat(cmd, data_name);
 	system(cmd);
 	chdir("..");
-	sprintf(cmd, "rm -rf %s", install_tmp); 
+	// XXX - we can't depend on /bin/rm, that's going to have be a bk
+	// command.
+	sprintf(cmd, "/bin/rm -rf %s", install_tmp); 
 	system(cmd);	/* careful */
 	exit(0);
 }
