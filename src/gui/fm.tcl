@@ -771,6 +771,7 @@ proc widgets {L R O} \
 		set buttonFont {times 12 roman bold}
 		set swid 12
 	}
+	set textBG #c0c0d0
 	set diffWidth 65
 	set diffHeight 30
 	set mergeWidth 80
@@ -801,10 +802,12 @@ proc widgets {L R O} \
 	    label .diffs.r -background $rightColor \
 		-font $buttonFont
 	    text .diffs.left -width $diffWidth -height $diffHeight \
+		-background $textBG \
 		-state disabled -wrap none -font $diffFont \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -width $diffWidth -height $diffHeight \
+		-background $textBG \
 		-state disabled -wrap none -font $diffFont
 	    scrollbar .diffs.xscroll -wid $swid -troughcolor $tcolor \
 		-orient horizontal -command { xscroll }
@@ -822,6 +825,7 @@ proc widgets {L R O} \
 	    label .merge.l -background slategrey \
 		-font $buttonFont
 	    text .merge.t -width $mergeWidth -height $mergeHeight \
+		-background $textBG \
 		-wrap none -font $mergeFont \
 		-xscrollcommand { .merge.xscroll set } \
 		-yscrollcommand { .merge.yscroll set }
@@ -855,16 +859,16 @@ proc widgets {L R O} \
 		button .merge.menu.quit -font $buttonFont -bg $bcolor \
 		    -text "Quit" -width 7 -command cmd_done
 		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
-		grid .merge.menu.open -row 1
-		grid .merge.menu.restart -row 1 -column 1
-		grid .merge.menu.undo -row 2 -column 0
-		grid .merge.menu.redo -row 2 -column 1
-		grid .merge.menu.skip -row 3 -column 0
-		grid .merge.menu.save -row 3 -column 1
-		grid .merge.menu.left -row 4 -column 0
-		grid .merge.menu.right -row 4 -column 1
-		grid .merge.menu.help -row 5 -column 0
-		grid .merge.menu.quit -row 5 -column 1
+		grid .merge.menu.open -row 1 -sticky ew
+		grid .merge.menu.restart -row 1 -column 1 -sticky ew
+		grid .merge.menu.undo -row 2 -column 0 -sticky ew
+		grid .merge.menu.redo -row 2 -column 1 -sticky ew
+		grid .merge.menu.skip -row 3 -column 0 -sticky ew
+		grid .merge.menu.save -row 3 -column 1 -sticky ew
+		grid .merge.menu.left -row 4 -column 0 -sticky ew
+		grid .merge.menu.right -row 4 -column 1 -sticky ew
+		grid .merge.menu.help -row 5 -column 0 -sticky ew
+		grid .merge.menu.quit -row 5 -column 1 -sticky ew
 	    grid .merge.l -row 0 -column 0 -columnspan 2 -sticky ew
 	    grid .merge.t -row 1 -column 0 -sticky nsew
 	    grid .merge.yscroll -row 1 -column 1 -sticky ns

@@ -1459,7 +1459,7 @@ shift
 case $cmd in
     resync|resolve|pmerge|rcs2sccs)
 	exec perl ${BIN}$cmd "$@";;
-    citool|sccstool|fmtool|fm3tool|difftool|helptool|csettool|renametool)
+    fm|fm3|citool|sccstool|fmtool|fm3tool|difftool|helptool|csettool|renametool)
 	exec $wish -f ${BIN}${cmd}${tcl} "$@";;
     *)	exec $cmd "$@";;	# will be found in $BIN by path search.
 esac
