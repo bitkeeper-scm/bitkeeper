@@ -48,25 +48,42 @@ done:	if (realname[0] == 0) strcpy(realname, name);
 
 }
 #else
+private char *
+shortName(char *path, char *buf)
+{
+        if (GetShortPathName(path, buf, MAXPATH) == 0) {
+                /* cannot convert, assume "path" is real name */
+                strcpy(buf, path);
+        }
+        return (buf);
+}
+
+private int
+samePath(char *a, char *b)
+{
+        char    buf1[MAXPATH], buf2[MAXPATH];
+
+        return (strcasecmp(shortName(a, buf1), shortName(b, buf2)) == 0);
+}
 private int
 scanDir(char *dir, char *name, MDBM *db, char *realname)
 {
         struct  _finddata_t found_file;
-        char    *file = found_file.name;
-        char    buf[MAXPATH];
-	char	path[MAXPATH];
         long    dh;
+        char    *file = found_file.name;
+        char    buf1[MAXPATH], buf2[MAXPATH];
 
 	realname[0] = 0;
-        bm2ntfname(dir, buf);
-        strcat(buf, "\\*.*");
-        if ((dh =  _findfirst(buf, &found_file)) == -1L) goto done;
+        bm2ntfname(dir, buf1);
+        strcat(buf1, "\\*.*");
+        if ((dh =  _findfirst(buf1, &found_file)) == -1L) goto done;
 
         do {
 		if (streq(file, ".") || streq(file, "..")) continue;
-		sprintf(path, "%s/%s", dir, file);
-		if (db) mdbm_store_str(db, path, file, MDBM_INSERT);
-		if (strcasecmp(file, name) == 0) {
+		sprintf(buf1, "%s/%s", dir, file);
+		sprintf(buf2, "%s/%s", dir, name);
+		if (db) mdbm_store_str(db, buf1, file, MDBM_INSERT);
+		if (samePath(buf1, buf2)) {
 			strcpy(realname, file);
 			break;
 		}
@@ -79,8 +96,8 @@ scanDir(char *dir, char *name, MDBM *db, char *realname)
 	 */
 done:	if (realname[0] == 0) {
 		strcpy(realname, name);
-		sprintf(path, "%s/%s", dir, name);
-		if (db) mdbm_store_str(db, path, name, MDBM_INSERT);
+		sprintf(buf1, "%s/%s", dir, name);
+		if (db) mdbm_store_str(db, buf1, name, MDBM_INSERT);
 	}
 	return (0); /* ok */
 	
@@ -117,17 +134,9 @@ getRealBaseName(char *path, char *realParentName, MDBM *db, char *realBaseName)
 		parent = "."; base = path;
 	}
 	/*
-	 * To increase the cache hit rate
-	 * we use the realParentName if it is known
+	 * Increase the cache hit, use the realParentName if known
 	 */
 	dir = realParentName[0] ? realParentName: parent;
-	if ((realParentName[0]) &&  !streq(parent, ".")) {
-		if (strcasecmp(parent, realParentName)) {
-			fprintf(stderr, "warning: name=%s, realname=%s\n",
-							parent, realParentName);
-		}
-		assert(strcasecmp(parent, realParentName) == 0);
-	}
 	rc = scanDir(dir, base, db, realBaseName);
 	if (p) *p = '/';
 	return (rc);
@@ -137,8 +146,9 @@ getRealBaseName(char *path, char *realParentName, MDBM *db, char *realBaseName)
 int
 getRealName(char *path, MDBM *db, char *realname)
 {
-	char	mypath[MAXPATH], name[MAXPATH], *p, *q, *r;
 	int	first = 1;
+	char	*p, *q, *r;
+	char	mypath[MAXPATH], name[MAXPATH];
 
 	assert(path != realname); /* must be different buffer */
 	if (!path[0]) {

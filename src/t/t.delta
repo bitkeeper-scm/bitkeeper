@@ -207,7 +207,7 @@ fi #---------------------------------------------------------------
 cd ..
 rm -rf A garbage
 echo $N Make sure delta works with checkout:edit preference .........$NL
-HERE=`bk pwd`
+HERE=`bk pwd -s`
 echo "logging: none" > c
 echo "description: BitKeeper Test repository" >> c
 echo "email: nobody@nowhere.bk" >> c

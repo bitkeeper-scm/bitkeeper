@@ -13,7 +13,7 @@
 # Copyright (c) 1999 Andrew Chang?
 # %K%
 
-HERE=`bk pwd`
+HERE=`bk pwd -s`
 echo $N Create a file ...............................................$NL
 no_logging project
 echo data > foo.c
