@@ -24,6 +24,7 @@ else
 	STRIP=strip
 endif
 SFIO_OBJS=sfio.o sfio_utils.o
+SYSTEM_OBJS=../port/system.o ../port/spawn.o ../liblines.o ../purify.o
 SFIO=sfio$(EXE)
 VERS	:= $(shell test -x vers || bk get vers; ./vers)
 IMAGE:= $(shell bk get -qS gnu-os os; echo $(VERS)-`./os`.$(EXT) )
@@ -44,8 +45,9 @@ _data.o: sfio$(EXE) munge$(EXE) zz$(EXE) sfioball
 	@./zz sfioball.zz < sfioball
 	@./munge sfio.zz sfioball.zz
 
-$(IMAGE): extractor.o _data.o
-	$(LD) $(LDFLAGS) extractor.o _data.o $(LIBS) ../zlib/libz.a -o $@
+$(IMAGE): extractor.o $(SYSTEM_OBJS) _data.o 
+	$(LD) $(LDFLAGS) extractor.o $(SYSTEM_OBJS) _data.o $(LIBS) \
+	    ../zlib/libz.a -o $@
 
 extractor.o: extractor.c
 	$(CC) $(CFLAGS) -c extractor.c
