@@ -11,23 +11,23 @@ Check is used to make sure that a repository is in a consistent state.
 A repository contains files, each of which may have multiple versions.
 Groups of versions are called changesets (csets).  Each cset is recorded
 in the ChangeSet file.  The ChangeSet file points at the set of deltas in
-the set of files.  There are no back pointers but the files do record the
+the set of files.  There are no back pointers, but the files do record the
 point at which each cset occurs (there can be multiple deltas in a file
 all of which belong to one cset; the marker records the cset boundary).
 .LP
-Since csets are what are propagated between repositories, it is important
-that the ChangeSet file be correct.  "Check" is used to make sure that
-nothing has gone wrong (and if it has it gives you a rough idea of how
-to fix it).
+Since csets propagate between repositories, it is important that
+the ChangeSet file is correct.  "Check" is used to make sure that
+nothing has gone wrong (and if it has, it gives you a rough idea of
+how to fix it).
 .LP
-It currently checks for the following:
+Currently, the following are checked:
 .TP 2
 \*(BU 
 for each file specified, make sure that deltas marked as recorded in
 the ChangeSet file are recorded in the ChangeSet file.
 .tp
 \*(BU 
-for each file specified, for each delta of that file which is recorded
+for each file specified and for each delta of that file which is recorded
 in the ChangeSet file, make sure that the delta exists in the file.
 .tp
 \*(BU 
