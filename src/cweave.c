@@ -370,7 +370,6 @@ cset_write(sccs *s)
 	if (fclose(f)) perror(sccs_Xfile(s, 'x'));
 
 	sccs_close(s);
-	unlink(s->sfile);
 	if (rename(sccs_Xfile(s, 'x'), s->sfile)) {
 		perror(s->sfile);
 		return (-1);

@@ -665,22 +665,6 @@ private	struct {
 	{ 0, 0 },
 };
 
-/*
- * Return true if it is Logging patch
- * i.e we want push part2 of meta patch
- */
-private int
-isMeta(char **av)
-{
-	int i = 1;
-
-	unless (streq(av[0], "remote push part2")) return (0);
-	while (av[i]) {
-		if (streq("-e", av[i++])) return (1);
-	}
-	return (0);
-}
-
 void
 cmdlog_start(char **av, int httpMode)
 {
@@ -706,12 +690,25 @@ cmdlog_start(char **av, int httpMode)
 	 * we enter part 2, with the up-to-date pid.
 	 */
 	if (httpMode) {
+		if (strneq(av[0], "remote push part", 16)) {
+			int	meta = 0;
+			for (i = 1; av[i]; i++) {
+				if (streq("-e", av[i])) meta = 1;
+			}
+			if (meta) {
+				if (av[0][16] == '1') {
+					cmdlog_flags &= ~CMD_WRLOCK;
+				} else {
+					cmdlog_flags |=
+						CMD_WRLOCK | CMD_RETRYLOCK;
+				}
+			}
+		}
 		if (cmdlog_flags & CMD_WRLOCK) cmdlog_flags |= CMD_WRUNLOCK;
 		if (cmdlog_flags & CMD_WRUNLOCK) cmdlog_flags |= CMD_WRLOCK;
 		if (cmdlog_flags & CMD_RDLOCK) cmdlog_flags |= CMD_RDUNLOCK;
 		if (cmdlog_flags & CMD_RDUNLOCK) cmdlog_flags |= CMD_RDLOCK;
-		if (isMeta(av)) cmdlog_flags |= CMD_RETRYLOCK;
-	}            
+	}
 
 	unless (bk_proj && bk_proj->root) return;
 
@@ -743,7 +740,7 @@ retry:		if (i = repository_wrlock()) {
 					fprintf(stderr,
 					    "%s(%d): lock busy, retry %d.\n",
 					    av[0], getpid(), try);
-					how_long <<= 2;
+					how_long <<= 1;
 					sleep(how_long);
 					goto retry;
 				}
