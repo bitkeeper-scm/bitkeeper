@@ -75,6 +75,11 @@ comments_main(int ac, char **av)
 	 * in a changeset or a list of files on the command line.
 	 */
 	if (csetrev) {
+		if (sccs_cd2root(0, 0)) {
+			fprintf(stderr,
+			    "comments: can't find repository root\n");
+			exit(1);
+		}
 		files = getfiles(csetrev);
 	} else {
 		for (name = sfileFirst("comment", &av[optind], SF_NODIREXPAND);
@@ -101,13 +106,14 @@ comments_main(int ac, char **av)
 			*rev++ = 0;
 			gfile = sccs2name(sfile);
 			
-			fprintf(tf, "# Change the comments to %s%c%s below\n",
+			fprintf(tf, "### Change the comments to %s%c%s below\n",
 			    gfile, BK_FS, rev);
 			free(gfile);
 			free(sfile);
 			EACH_INDEX(lines, j) {
 				fprintf(tf, "%s\n", lines[j]);
 			}
+			fprintf(tf, "\n");
 		}
 	} else {
 		write_editfile(tf, files);
@@ -232,22 +238,28 @@ write_editfile(FILE *f, char **files)
 			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
 			goto next;
 		}
-		fprintf(f, "# Change the comments to %s%c%s below\n",
+		fprintf(f, "### Change the comments to %s%c%s below\n",
 		    s->gfile, BK_FS, d->rev);
 		EACH_INDEX(d->comments, j) {
 			fprintf(f, "%s\n", d->comments[j]);
 		}
+		fprintf(f, "\n");
 next:		sccs_free(s);
 		free(name);
 	}
 }
 
+/*
+ * Change the comments, automatically trimming trailing blank lines.
+ * This will not let them remove comments.
+ */
 private void
 change_comments(char *file, char *rev, char **comments)
 {
 	sccs	*s = 0;
 	delta	*d;
 	char	*sfile = 0;
+	int	i;
 	
 	sfile = name2sccs(file);
 	unless (s = sccs_init(sfile, 0, 0)) goto err;
@@ -256,6 +268,13 @@ change_comments(char *file, char *rev, char **comments)
 		fprintf(stderr, "%s|%s not found\n", s->gfile, rev);
 		goto err;
 	}
+	EACH(comments);
+	for (i--; i > 0; i--) {
+		unless (streq(comments[i], "")) break;
+		free(comments[i]);
+		comments[i] = 0;
+	}
+	unless (comments[1]) goto err;
 	freeLines(d->comments);
 	d->comments = comments;
 	if (d->comments) sccs_newchksum(s);
@@ -276,8 +295,8 @@ read_editfile(FILE *f)
 		char	*rev;
 
 		chomp(buf);
-		if (sscanf(buf, "# Change the comments to %s below",
-			file) == 1) {
+		if (sscanf(buf,
+		    "### Change the comments to %s below", file) == 1) {
 			rev = strchr(file, BK_FS);
 			if (rev) {
 				*rev++ = 0;

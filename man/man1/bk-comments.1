@@ -1,9 +1,10 @@
+.\" help://comment
 .so bk-macros
-.TH "bk comment" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk comments" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
-bk comment \- change the checkin comment of a file
+bk comments \- change checkin comments
 .SH SYNOPSIS
-.Bc bk comment [
+.Bc bk comments [
 .OPTreq \-r rev
 .Bc ] [
 .OPTreq \-y cmt
@@ -14,7 +15,7 @@ file [file ...]
 .SH DESCRIPTION
 .LP
 The
-.B comment
+.B comments
 command changes the stored comments for a revision controlled file.
 The comments may be specified on the command line, or if they are
 not, you will be placed in your editor to type in the comments.
