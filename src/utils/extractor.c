@@ -17,6 +17,7 @@ main()
 	char	cmd[2048];
 	int	fd;
 
+	fprintf(stderr, "Please wait while we unpack the installer...");
 	sprintf(installer_name, "/tmp/installer%d", getpid());
 	fd = creat(installer_name, 0777);
 	if (fd == -1) {
@@ -35,12 +36,14 @@ main()
 		perror(data_name);
 		exit(1);
 	}
+	sprintf(installer_name, "/tmp/installer%d", getpid());
 	if (write(fd, data_data, data_size) != data_size) {
 		perror("write on data");
 		unlink(data_name);
 		exit(1);
 	}
 	close(fd);
+	fprintf(stderr, "done.\n");
 	sprintf(cmd, "%s %s %s", installer_name, installer_name, data_name);
 	system(cmd);
 	exit(0);
