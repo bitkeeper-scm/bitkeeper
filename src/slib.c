@@ -3744,13 +3744,14 @@ moreUnique(char *buf)
 	int	fd;
 
 	buf[0] = 0;
-	if (((fd = open("/dev/urandom", 0)) >= 0) ||
-	    ((fd = open("/dev/random", 0)) >= 0)) {
+	if (((fd = open("/dev/urandom", 0, 0)) >= 0) ||
+	    ((fd = open("/dev/random", 0, 0)) >= 0)) {
 	    	u32	a, b;
 
 		read(fd, &a, 4);
 		read(fd, &b, 4);
 		sprintf(buf, "R %x%x", a, b);
+		close(fd);
 	}
 }
 

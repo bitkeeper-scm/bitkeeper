@@ -8,7 +8,7 @@ WHATSTR("%W%");
 int
 sccs_mv(char *name, char *dest, int isDir, int isDelete)
 {
-	char 	buf[1024], *p, *q, *t, *destfile[MAXPATH];
+	char 	buf[1024], *p, *q, *t, destfile[MAXPATH];
 	char	*gfile, *sfile, *nrev = 0;
 	sccs	*s;
 	delta	*d;
