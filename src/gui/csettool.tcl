@@ -367,7 +367,7 @@ proc dotFile {} \
 		set start $stop
 		set file "$f"
 	}
-	set p [open "| bk prs -hr$start -d:PARENT: \"$file\""]
+	set p [open "| bk prs -hr$start {-d:PARENT:\n} \"$file\""]
 	gets $p parent
 	close $p
 	if {$parent == ""} { set parent "1.0" }
@@ -389,7 +389,7 @@ proc dotFile {} \
 	.sccslog.t delete 1.0 end
 
 	set dspec \
-	    "-d:GFILE: :I: :D: :T: :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)}"
+	    "-d:GFILE: :I: :D: :T: :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}"
 	set prs [open "| bk prs {$dspec} -hr$crev ChangeSet" r]
 	set first 1
 	while { [gets $prs buf] >= 0 } {
@@ -438,7 +438,7 @@ proc getFiles {revs} \
 	.filelist.t delete 1.0 end
 	set fileCount 0
 	set line 0
-	set r [open "| bk prs -bhr$revs -d:I: ChangeSet" r]
+	set r [open "| bk prs -bhr$revs {-d:I:\n} ChangeSet" r]
 	while {[gets $r cset] > 0} {
 		.diffs.status.middle configure -text "Getting cset $cset"
 		update

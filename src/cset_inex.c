@@ -165,7 +165,7 @@ getComments(char *op, char *revs)
 	av[i = 0] = "bk";
 	av[++i] = "prs";
 	av[++i] = "-h";
-	av[++i] = "-d:SHORTKEY:";
+	av[++i] = "-d:SHORTKEY:\n";
 	sprintf(buf, "-r%s", revs);
 	av[++i] = buf;
 	av[++i] = CHANGESET;
@@ -207,7 +207,7 @@ getComments(char *op, char *revs)
 	av[i = 0] = "bk";
 	av[++i] = "prs";
 	av[++i] = "-h";
-	av[++i] = "-d:C:";
+	av[++i] = "-d$each(:C:){:C:\n}";
 	sprintf(buf, "-r%s", revs);
 	av[++i] = buf;
 	av[++i] = CHANGESET;

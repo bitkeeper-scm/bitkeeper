@@ -343,7 +343,7 @@ private void
 header(sccs *cset, int diffs)
 {
 	char	*dspec =
-		"$each(:FD:){# Proj:\t(:FD:)}\n# ID:\t:KEY:";
+		"$each(:FD:){# Proj:\t(:FD:)\n}# ID:\t:KEY:\n";
 	int	save = cset->state;
 	time_t	t = time(0);
 	char	pwd[MAXPATH];

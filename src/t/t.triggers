@@ -33,7 +33,7 @@ echo h > h.h
 bk ci $Q -i foo.c bar.c h.h
 if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 P=`bk pending | wc -l`
-if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 bk commit $S -a -yCset
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi

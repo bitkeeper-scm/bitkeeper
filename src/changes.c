@@ -42,8 +42,8 @@ changes_main(int ac, char **av)
 	    rev, indent, tagOnly, av[optind] && streq("-", av[optind])));
 }
 
-#define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}"
-#define	TSPEC	"$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)}\n$each(:SYMBOL:){  TAG: (:SYMBOL:)\\n}\\n}\\c"
+#define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
+#define	TSPEC	"$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n}"
 
 private int
 doit(int verbose, char *rev, int indent, int tagOnly, int dash)
@@ -105,7 +105,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 			 * the logging cache.
 			 */
 			sprintf(cmd,
-			    "bk cset -r%s | sort | bk sccslog -i%d - > %s",
+			    "bk cset -r%s | sort | grep -v '^ChangeSet' | bk sccslog -i%d - > %s",
 			    buf, indent, tmpfile);
 			system(cmd);
 			if (cat(tmpfile)) break;

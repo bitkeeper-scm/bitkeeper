@@ -32,7 +32,7 @@ if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
 echo OK
 echo $N Check pending ...............................................$NL
 P=`bk pending | wc -l`
-if [ $P -ne 18 ]; then echo wrong pending result $P; bk pending; exit 1; fi
+if [ $P -ne 15 ]; then echo wrong pending result $P; bk pending; exit 1; fi
 echo OK
 echo $N Create a change set with a symbol with spaces in it .........$NL
 bk commit $S -a -yCset -S"Hi there this is a changeset"

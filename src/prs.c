@@ -99,7 +99,11 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		assert(s->rstop);
 		if (flags & PRS_ALL) sccs_markMeta(s);
 		if (doheader) {
-			printf("======== %s %s", s->gfile, s->rstart->rev);
+			printf("======== %s %s%s%s",
+			    s->gfile,
+			    opposite ? "!" : "",
+			    s->rstart->rev,
+			    (xrev && streq(xrev, "1st")) ? "+" : "");
 			if (s->rstop != s->rstart) {
 				printf("..%s", s->rstop->rev);
 			}
@@ -116,16 +120,23 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		}
 		if (xrev) {
 			unless (s->state & S_SET) { 
+				int	check = strcmp(xrev, "1st");
+
 				for (e = s->rstop; e; e = e->next) {
-					unless (streq(xrev, e->rev)) {
+					unless (check && streq(xrev, e->rev)) {
 						e->flags |= D_SET;
 					}
 					if (e == s->rstart) break;
 				}
 				s->state |= S_SET;
+				unless (check) s->rstart->flags &= ~D_SET;
 			} else {
-				e = findrev(s, xrev);
-				if (e) e->flags &= ~D_SET;
+				if (streq(xrev, "1st")) {
+					s->rstart->flags &= ~D_SET;
+				} else {
+					e = findrev(s, xrev);
+					if (e) e->flags &= ~D_SET;
+				}
 			}
 		}
 		sccs_prs(s, flags, reverse, dspec, stdout);

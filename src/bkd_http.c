@@ -1,5 +1,4 @@
 #include "bkd.h"
-private	int	do_httpd(void);
 char		*http_time(void);
 private	char	*type(char *name);
 private void	httphdr(char *file);
@@ -10,17 +9,16 @@ private void	http_cset(char *rev);
 private void	http_anno(char *pathrev);
 private void	http_both(char *pathrev);
 private void	http_diffs(char *pathrev);
+private void	http_src(char *pathrev);
 private void	http_hist(char *pathrev);
 private void	http_patch(char *rev);
 private void	http_bkpowered();
 private void	title(char *title);
 private void	pwd_title(char *t);
 private void	learn();
+private void	logo();
 
 /*
- * Accepted pathnames and their meanings are:
- * ChangeSet - more or less bk changes in html
- * ChangeSet@rev, ChangeSet@-5d, etc are also accepted.
  */
 int
 cmd_httpget(int ac, char **av)
@@ -65,6 +63,10 @@ cmd_httpget(int ac, char **av)
 		http_bkpowered();
 	} else if (strneq(name, "ChangeSet", 9)) {
 		http_changes(name[9] == '@' ? &name[10] : 0);
+	} else if (streq(name, "src")) {
+		http_src(".");
+	} else if (strneq(name, "src/", 4)) {
+		http_src(&name[4]);
 	} else if (strneq(name, "hist/", 5)) {
 		http_hist(&name[5]);
 	} else if (strneq(name, "cset@", 5)) {
@@ -116,13 +118,13 @@ http_changes(char *rev)
 	char	*d;
 	char	*dspec = "\
 -d<tr bgcolor=#d8d8f0><td><font size=2>\
-&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
+&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:DOMAIN:){@:DOMAIN:}\
 &nbsp;&nbsp;\
 <a href=/cset@:REV:><font color=red> [details]</font></a>\
 &nbsp;&nbsp;<a href=/patch@:REV:><font color=red>[all diffs]</font></a>\
 </td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;\
 tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}\
-$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
+$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>\n}\
 <tr><td>&nbsp;&nbsp;</td></tr>\n";
 
 	httphdr(".html");
@@ -130,13 +132,13 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	learn();
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 2000)) {
-		sprintf(buf, "%s<br>ChangeSet Summaries", d);
+		sprintf(buf, "%s<hr>ChangeSet Summaries", d);
 		title(buf);
 	} else {
 		pwd_title("ChangeSet summaries");
 	}
 	if (m) mdbm_close(m);
-	out("<p><table border=0 cellpadding=0 cellspacing=0 width=100% ");
+	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
 	av[i=0] = "bk";
 	av[++i] = "prs";
@@ -151,25 +153,19 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	putenv("BK_YEAR4=1");
 	spawnvp_ex(_P_WAIT, "bk", av);
 	out("</table>\n");
-	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td><font size=1>&nbsp;</td></tr></table>\n");
-	out("<p align=center><a href=http://www.bitkeeper.com>");
-	out("<img src=/bkpowered.gif></a></p>\n");
+	logo();
 }
 
 private void
 http_cset(char *rev)
 {
-	char	*av[100];
-	int	i;
 	char	buf[2048];
 	FILE	*f;
 	MDBM	*m;
 	char	*d;
 	char	*dspec = "\
 <tr bgcolor=#d8d8f0><td><font size=-1>\
-&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
+&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:DOMAIN:){@:DOMAIN:}\
 $if(:GFILE:=ChangeSet){\
 &nbsp;&nbsp;<a href=/patch@:REV:><font color=red>[all diffs]</font></a>}\
 $if(:GFILE:!=ChangeSet){\
@@ -187,7 +183,7 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	learn();
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
-		sprintf(buf, "%s<br>ChangeSet details for %s", d, rev);
+		sprintf(buf, "%s<hr>ChangeSet details for %s", d, rev);
 		title(buf);
 	} else {
 		sprintf(buf, "ChangeSet details for changeset %s", rev);
@@ -205,11 +201,7 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	}
 	pclose(f);
 	out("</table>\n");
-	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td><font size=1>&nbsp;</td></tr></table>\n");
-	out("<p align=center><a href=http://www.bitkeeper.com>");
-	out("<img src=/bkpowered.gif></a></p>\n");
+	logo();
 }
 
 private void
@@ -223,10 +215,10 @@ private void
 title(char *title)
 {
 	unless (title) return;
-	out("<table bgcolor=#d0d0d0 width=100% cellpadding=4 cellspacing=0>\n");
-	out("<tr><td align=middle><font color=black>");
+	out("<table bgcolor=lightyellow width=100% cellpadding=4 cellspacing=0>\n");
+	out("<tr><td align=middle><font color=black><hr>");
 	out(title);
-	out("</td></tr></table><hr>\n");
+	out("<hr></td></tr></table><br>\n");
 }
 
 private void
@@ -237,7 +229,7 @@ pwd_title(char *t)
 
 	pwd[0] = 0;
 	getcwd(pwd, sizeof(pwd));
-	sprintf(buf, "%s<br>%s", pwd, t);
+	sprintf(buf, "%s<hr>%s", pwd, t);
 	title(buf);
 }
 
@@ -248,13 +240,13 @@ learn()
 	out("<tr bgcolor=black>\n");
 	out("<td align=middle><a href=http://www.bitkeeper.com>\n");
 	out("<font color=white>Learn more about BitKeeper</a></td></tr>");
-	out("</table><p>\n");
+	out("</table>\n");
 }
+
 private void
-trailer()
+logo()
 {
-	out("</pre>\n");
-	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
+	out("<table width=100% cellpadding=0 cellspacing=0>\n");
 	out("<tr bgcolor=black>\n");
 	out("<td><font size=1>&nbsp;</td></tr></table>\n");
 	out("<p align=center><a href=http://www.bitkeeper.com>");
@@ -289,15 +281,13 @@ htmlify(char *from, char *html, int n)
 private void
 http_hist(char *pathrev)
 {
-	FILE	*f;
 	char	buf[4096];
 	char	html[8192];
-	int	n;
 	char	*s, *d;
 	MDBM	*m;
 	char	*dspec =
 "<tr bgcolor=#d8d8f0><td><font size=2>\
-&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
+&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:DOMAIN:){@:DOMAIN:}\
 &nbsp;&nbsp;\
 <a href=/anno/:GFILE:@:REV:><font color=red> [annotate]</font></a>\
 &nbsp;&nbsp;<a href=/diffs/:GFILE:@:REV:><font color=red>[diffs]</font></a>\
@@ -311,7 +301,7 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	learn();
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
-		sprintf(html, "%s<br>Revision history for %s", d, pathrev);
+		sprintf(html, "%s<hr>Revision history for %s", d, pathrev);
 		title(html);
 	} else {
 		sprintf(html, "Revision history for %s", pathrev);
@@ -329,11 +319,122 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	putenv("BK_YEAR4=1");
 	system(buf);
 	out("</table>\n");
-	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td><font size=1>&nbsp;</td></tr></table>\n");
-	out("<p align=center><a href=http://www.bitkeeper.com>");
-	out("<img src=/bkpowered.gif></a></p>\n");
+	logo();
+}
+
+/* pathname */
+private void
+http_src(char *path)
+{
+	char	buf[MAXPATH], abuf[30];
+	char	html[MAXPATH*2];
+	char	**names = 0;
+	int	i;
+	MDBM	*m;
+	DIR	*d;
+	FILE	*f;
+	char	*s, *t;
+	struct	stat sbuf;
+	struct	dirent *e;
+	time_t	now;
+	char	*dspec =
+	    "<tr bgcolor=lightyellow>"
+	    "<td>"
+	      "$if(:GFILE:=ChangeSet){<a href=/ChangeSet@+>:G:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=/hist/:GFILE:>:G:</a>}"
+	    "</td>"
+	    "<td align=right>"
+	      "$if(:GFILE:=ChangeSet){<a href=/cset@:REV:>:REV:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=/anno/:GFILE:@:REV:>:REV:</a>}"
+	    "</td>"
+	    "<td align=right><font size=2>:AGE:</font></td>"
+	    "<td align=center>:USER:</td>"
+	    "<td>:C:&nbsp;</td>"
+	    "</tr>\n";
+
+	if (!path || !*path) path = ".";
+	unless (d = opendir(path)) {
+		perror(path);
+		exit(1);
+	}
+	httphdr(".html");
+	out("<html><body alink=black link=black vlink=black bgcolor=white>\n");
+	learn();
+	m = loadConfig(".", 0);
+	if (m && (s = mdbm_fetch_str(m, "description")) && (strlen(s) < 1900)) {
+		sprintf(html, "%s<hr>Source directory &lt;%s&gt;",
+		    s, path[1] ? path : "project root");
+		title(html);
+	} else {
+		sprintf(html,
+		    "Source directory &lt;%s&gt;",
+		    path[1] ? path : "project root");
+		pwd_title(html);
+	}
+	if (m) mdbm_close(m);
+	out("<table border=1 cellpadding=2 cellspacing=0 width=100% ");
+	out("bgcolor=white>\n");
+	out("<tr><th align=left>File&nbsp;name</th>");
+	out("<th>Rev</th>");
+	out("<th>Age</th>");
+	out("<th>Author</th>");
+	out("<th align=left>&nbsp;Comments</th>");
+	out("</tr>\n");
+
+	now = time(0);
+	while (e = readdir(d)) {
+		if (streq(".", e->d_name) || streq("SCCS", e->d_name)) continue;
+		if (path[1]) {
+			sprintf(buf, "%s/%s", path, e->d_name);
+		} else {
+			strcpy(buf, e->d_name);
+		}
+		if (lstat(buf, &sbuf) == -1) continue;
+		if (path[1]) {
+			sprintf(buf, "<a href=/src/%s/%s>", path, e->d_name);
+		} else {
+			sprintf(buf, "<a href=/src/%s>", e->d_name);
+		}
+		for (s = age(now - sbuf.st_mtime), t = abuf; *s; s++) {
+			if (*s == ' ') {
+				*t++ = '&'; *t++ = 'n'; *t++ = 'b';
+				*t++ = 's'; *t++ = 'p'; *t++ = ';';
+			} else {
+				*t++ = *s;
+			}
+		}
+		*t = 0;
+		if (S_ISDIR(sbuf.st_mode)) {
+			sprintf(html, "%s%s&nbsp;%s/%s%s%s\n",
+			  "<tr bgcolor=lightblue><td>",
+			  buf,
+			  e->d_name,			/* file */
+			  "</td>"
+			  "<td>&nbsp;</td>"		/* rev */
+			  "<td align=right><font size=2>",
+			  abuf,
+			  "</font></td>"
+			  "<td>&nbsp;</td>"		/* user */
+			  "<td>&nbsp;</td></tr>\n");	/* comments */
+			names = addLine(names, strdup(html));
+		}
+	}
+	closedir(d);
+
+	sprintf(buf,
+	    "env BK_YEAR4=1 bk prs -hr+ -d'%s' %s", dspec, path[1] ? path : "");
+	f = popen(buf, "r");
+	while (fgets(buf, sizeof(buf), f)) {
+		names = addLine(names, strdup(buf));
+	}
+	pclose(f);
+	sortLines(names);
+	EACH(names) {
+		out(names[i]);
+	}
+	freeLines(names);
+	out("</table><br>\n");
+	logo();
 }
 
 private void
@@ -349,7 +450,7 @@ http_anno(char *pathrev)
 	header();
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
-		sprintf(html, "%s<br>Annotated listing of %s", d, pathrev);
+		sprintf(html, "%s<hr>Annotated listing of %s", d, pathrev);
 		title(html);
 	} else {
 		sprintf(html, "Annotated listing of %s", pathrev);
@@ -366,7 +467,8 @@ http_anno(char *pathrev)
 		writen(1, html, n);
 	}
 	pclose(f);
-	trailer();
+	out("</pre>\n");
+	logo();
 }
 
 private void
@@ -375,7 +477,8 @@ http_both(char *pathrev)
 	header();
 	title("Not implemented yet, check back soon");
 	out("<pre><font size=2>\n");
-	trailer();
+	out("</pre>\n");
+	logo();
 }
 
 #define BLACK 1
@@ -441,7 +544,8 @@ http_diffs(char *pathrev)
 		writen(1, html, n);
 	}
 	pclose(f);
-	trailer();
+	out("</pre>\n");
+	logo();
 }
 
 private void
@@ -451,7 +555,6 @@ http_patch(char *rev)
 	char	buf[16<<10];
 	char	html[18<<10];
 	int	n;
-	char	*s;
 
 	header();
 	out("<pre><font size=2>\n");
@@ -464,7 +567,8 @@ http_patch(char *rev)
 		writen(1, html, n);
 	}
 	pclose(f);
-	trailer();
+	out("</pre>\n");
+	logo();
 }
 
 private void
@@ -528,34 +632,36 @@ http_index()
 	out("<table width=100%>\n");
 #define	DOIT(c, l, u, t) \
 	if (c && (c != l)) { \
-		out("<tr><td width=30%>&nbsp;</td><td>"); \
-		sprintf(buf, "<a href=/ChangeSet@-%s>", u); \
+		out("<tr><td width=45%>&nbsp;</td>"); \
+		sprintf(buf, "<td><a href=/ChangeSet@-%s>", u); \
 		out(buf); \
 		sprintf(buf, \
-		    "%d ChangeSets in the last %s", c, t); \
+		    "%d&nbsp;ChangeSets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
 		out(buf); \
-		out("</a></td></tr>\n"); \
+		out("</td>\n"); \
+		out("<td width=45%>&nbsp;</td>"); \
+		out("</tr>\n"); \
 	}
 	DOIT(c1h, 0, "1h", "hour");
 	DOIT(c1d, c1h, "1d", "day");
-	DOIT(c2d, c1d, "2d", "two days");
-	DOIT(c3d, c2d, "3d", "three days");
-	DOIT(c4d, c3d, "4d", "four days");
+	DOIT(c2d, c1d, "2d", "two&nbsp;days");
+	DOIT(c3d, c2d, "3d", "three&nbsp;days");
+	DOIT(c4d, c3d, "4d", "four&nbsp;days");
 	DOIT(c1w, c4d, "7d", "week");
-	DOIT(c2w, c1w, "14d", "two weeks");
-	DOIT(c3w, c2w, "21d", "three weeks");
+	DOIT(c2w, c1w, "14d", "two&nbsp;weeks");
+	DOIT(c3w, c2w, "21d", "three&nbsp;weeks");
 	DOIT(c1m, c3w, "31d", "month");
-	DOIT(c2m, c1m, "62d", "two months");
-	out("<tr><td width=30%>&nbsp;</td><td>");
+	DOIT(c2m, c1m, "62d", "two&nbsp;months");
+	out("<tr><td>&nbsp;</td><td>");
 	out("<a href=/ChangeSet>");
 	sprintf(buf, "All %d ChangeSets", c);
 	out(buf);
-	out("</a></td></tr></table>\n");
-	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td><font size=1>&nbsp;</td></tr></table>\n");
-	out("<p align=center><a href=http://www.bitkeeper.com>");
-	out("<img src=/bkpowered.gif></a></p>\n");
+	out("</a></td><td>&nbsp;</td></tr>");
+	out("<tr><td>&nbsp;</td>");
+	out("<td><a href=/src>Browse the source tree</a></td>");
+	out("<td>&nbsp;</td></tr>");
+	out("</table>\n");
+	logo();
 }
 
 
