@@ -2167,12 +2167,13 @@ error:					fprintf(stderr, "GOT: %s", buf);
 		assert(sumR != 0);
 	}
 
-	if (!sumR) {
+	unless (sumR) {
 missing:	
 		SHOUT();
 		fputs("takepatch: missing checksum line in patch, aborting.\n",
 		      stderr);
-		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
+		/* truncated log patches may not create RESYNC */
+		cleanup(CLEAN_PENDING|(isdir(ROOT2RESYNC) ? CLEAN_RESYNC : 0));
 	}
 	if (sumR != sumC) badXsum(sumR, sumC);
 
