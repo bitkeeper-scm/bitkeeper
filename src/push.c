@@ -410,11 +410,11 @@ tags:			fprintf(opts.out,
 		} else if (opts.lcsets == 0) {
 			fprintf(opts.out,
 			    "Nothing to send to %s\n", remote_unparse(r));
-			if (opts.rcsets) {
+			if (opts.rcsets && !opts.metaOnly) {
 				fprintf(opts.out, "but the");
 				goto csets;
 			}
-			if (opts.rtags) goto tags;
+			if (opts.rtags && !opts.metaOnly) goto tags;
 		}
 	}
 	sccs_free(s);
