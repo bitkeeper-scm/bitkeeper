@@ -16,7 +16,7 @@ main(int ac, char **av)
 
 	debug_main(av);
 	if ((ac == 2) && streq(av[1], "-")) {
-		char	buf[1024];
+		char	buf[MAXPATH];
 
 		while (fnext(buf, stdin)) {
 			chop(buf);

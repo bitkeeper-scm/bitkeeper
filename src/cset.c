@@ -102,7 +102,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 	if (av[optind]) {
 		unless (isdir(av[optind])) {
 			if (flags & NEWFILE) {
-				char	path[1024];
+				char	path[MAXPATH];
 
 				sprintf(path, "mkdir -p %s", av[optind]);
 				system(path);
@@ -297,7 +297,7 @@ csetlist(sccs *cset)
 	int  	doneFullRebuild = 0;
 	int	first = 1;
 	char	*rev;
-	char	buf[1024];
+	char	buf[MAXPATH];
 
 	assert(cset->rstart);
 	unless (cset->rstop) cset->rstop = cset->rstart;
@@ -437,7 +437,7 @@ add(MDBM *csDB, char *buf)
 	sccs	*s;
 	char	*rev;
 	delta	*d;
-	char	key[1024];
+	char	key[MAXPATH];
 
 	unless ((chop(buf) == '\n') && (rev = strrchr(buf, ':'))) {
 		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
@@ -477,8 +477,8 @@ mkChangeSet(sccs *cset)
 	MDBM	*csDB;
 	FILE	*sort;
 	delta	*d, *r;
-	char	buf[1024];
-	char	key[1024];
+	char	buf[MAXPATH];
+	char	key[MAXPATH];
 
 	/*
 	 * Edit the ChangeSet file - we need it edited to modify it as well
@@ -550,7 +550,7 @@ void
 updateIdCacheEntry(sccs *sc, const char *filename)
 {
 	char	*path;
-	char	buf[1024];
+	char	buf[MAXPATH*2];
 
 	/* update the id cache */
 	sccs_sdelta(buf, sccs_ino(sc));

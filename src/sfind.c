@@ -137,7 +137,7 @@ func(const char *filename, const struct stat *sb, int flag)
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	if (dFlg) {
 		if (S_ISDIR(sb->st_mode)) {
-			char	buf[1024];
+			char	buf[MAXPATH];
 
 			sprintf(buf, "%s/SCCS", file);
 			if (exists(buf)) printf("%s\n", file);
@@ -184,7 +184,7 @@ func(const char *filename, const struct stat *sb, int flag)
 char	*
 name(char *sfile)
 {
-	static	char	buf[1024];
+	static	char	buf[MAXPATH];
 
 	if (!gFlg) return (sfile);
 	strcpy(buf, sfile);
@@ -326,7 +326,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	register delta *d, *e;
 	char	*path;
 	datum	k, v;
-	char	buf[1024];
+	char	buf[MAXPATH*2];
 
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	for (s = file; *s; s++);
@@ -432,11 +432,10 @@ lftw(const char *dir,
 	int(*func)(const char *file, struct stat *sb, int flag),
 	int depth)
 {
-#define NBUF_SIZE 1024
 	DIR	*d;
 	struct	dirent *e;
 	struct	stat sbuf;
-	char	tmp_buf[NBUF_SIZE];
+	char	tmp_buf[MAXPATH];
 	char	*slash = "/";
 	int	flag, rc = 0, first_time = 1;
 

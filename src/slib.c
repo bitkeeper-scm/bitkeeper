@@ -1077,7 +1077,7 @@ samefile(char *a, char *b)
 void
 cleanPath(char *path, char cleanPath[])
 {
-	char	buf[1024], *p, *r, *top;
+	char	buf[MAXPATH], *p, *r, *top;
 	int	dotCnt = 0;	/* number of "/.." */
 #define isEmpty(buf, r) 	(r ==  &buf[sizeof (buf) - 2])
 
@@ -1137,7 +1137,7 @@ cleanPath(char *path, char cleanPath[])
 char	*
 fullname(char *gfile, int withsccs)
 {
-	static	char new[1024];
+	static	char new[MAXPATH];
 	char	*t;
 
 	if (IsFullPath(gfile)) {
@@ -1201,8 +1201,8 @@ sccs_cd2root(sccs *s, char *root)
 char	*
 sccs_root(sccs *s, char *root)
 {
-	static	char buf[1024];
-	char	file[1024];
+	static	char buf[MAXPATH];
+	char	file[MAXPATH];
 	ino_t	slash = 0;
 	struct	stat sb;
 	int	i, j;
@@ -1265,7 +1265,7 @@ sccs_root(sccs *s, char *root)
 void
 sccs_mkroot(char *path)
 {
-	char	buf[1024];
+	char	buf[MAXPATH];
 
 	sprintf(buf, "%s/SCCS", path);
 	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
@@ -1290,7 +1290,7 @@ sccs_mkroot(char *path)
 FILE	*
 idFile(sccs *s)
 {
-	char	file[1024];
+	char	file[MAXPATH];
 	char	*root;
 	
 	unless (root = sccs_root(s, 0)) return (0);
@@ -1306,7 +1306,7 @@ idFile(sccs *s)
 char	*
 getCSetFile(sccs *s)
 {
-	char	file[1024];
+	char	file[MAXPATH];
 	char	*root;
 	sccs	*sc;
 	
@@ -1334,7 +1334,7 @@ _relativeName(char *gName,
 {
 	char	*t, *s, *top;
 	int	i, j;
-	static	char buf[1024];
+	static	char buf[MAXPATH];
 
 	t = fullname(gName, 0);
 	strcpy(buf, t); top = buf;
@@ -1988,7 +1988,7 @@ fastnext(sccs *s)
 private char *
 expand(sccs *s, delta *d, char *l)
 {
-	static	char buf[1024];
+	static	char buf[MAXLINE];
 	char	*t = buf;
 	char	*tmp, *g;
 	time_t	now = 0;
@@ -2183,7 +2183,7 @@ expand(sccs *s, delta *d, char *l)
 private char *
 rcsexpand(sccs *s, delta *d, char *l)
 {
-	static	char buf[1024];
+	static	char buf[MAXLINE];
 	char	*t = buf;
 	char	*tmp, *g;
 	delta	*h;
@@ -2737,9 +2737,9 @@ misc(sccs *s)
 private char *
 gettok(char **sp)
 {
-	static char	copy[1024];
 	char	*t;
 	char	*s = *sp;
+	static char	copy[MAXLINE];
 
 	t = copy;
 	*t = 0;
@@ -2921,11 +2921,11 @@ err:			free(s->gfile);
 		s->mode = sbuf.st_mode;
 		if (flags & GTIME) s->gtime = sbuf.st_mtime;
 		if (S_ISLNK(sbuf.st_mode)) {
-			char link[1024];
+			char link[MAXPATH];
 			int len;
 
-			len = readlink(s->gfile, link, 1024);
-			if ((len > 0 )  && (len < 1024)){
+			len = readlink(s->gfile, link, sizeof(link));
+			if ((len > 0 )  && (len < sizeof(link))){
 				link[len] = 0;
 				s->glink = strdup(link);
 			} else {
@@ -3929,12 +3929,12 @@ private void inline
 fnlputs(char *buf, FILE *out)
 {
 	register char	*t = buf;
-	char	fbuf[1024];
+	char	fbuf[MAXLINE];
 	register char *p = fbuf;
 
 	do {
 		*p++ = *t;
-		if (p == &fbuf[1023]) {
+		if (p == &fbuf[MAXLINE-1]) {
 			*p = 0;
 			p = fbuf;
 			fputs(fbuf, out);
@@ -3951,7 +3951,7 @@ fputsum(sccs *s, char *buf, FILE *out)
 {
 	register char	*t = buf;
 	register sum_t	 sum = 0;
-	char	fbuf[1024];
+	char	fbuf[MAXLINE];
 	register char *p = fbuf;
 
 	for (; *t; t++) {
@@ -4476,7 +4476,7 @@ get_done:
 
 #ifdef ISSHELL
 	if ((s->state & ISSHELL) && ((flags & PRINT) == 0)) {
-		char cmd[1024], *t;
+		char cmd[MAXPATH], *t;
 
 		t = strrchr(s->gfile, '/');
 		if (t) {
@@ -4692,7 +4692,7 @@ sccs_getdiffs(sccs *s, char *rev, int flags, char *printOut)
 private int
 badcksum(sccs *s)
 {
-	char	buf[1024];
+	char	buf[MAXLINE];
 	register sum_t sum = 0;
 	int	filesum;
 
@@ -4746,7 +4746,7 @@ badcksum(sccs *s)
 private int
 badchars(sccs *s)
 {
-	char	buf[1024];
+	char	buf[MAXLINE];
 
 	assert(s);
 	seekto(s, 0);
@@ -4816,7 +4816,7 @@ delta_table(sccs *s, FILE *out, int willfix)
 	delta	*d;
 	int	i;	/* used by EACH */
 	int	first = willfix;
-	char	buf[1024];
+	char	buf[MAXLINE];
 	int	bits = 0;
 
 	assert((s->state & READ_ONLY) == 0);
@@ -5050,7 +5050,7 @@ sccs_hasDiffs(sccs *s, int flags)
 	ser_t	*slist = 0;
 	int	print = 0, different;
 	delta	*d;
-	char	sbuf[1024];
+	char	sbuf[MAXLINE];
 	char	*name = 0;
 	int	tmpfile = 0;
 	BUF	(fbuf);
@@ -5150,7 +5150,7 @@ int
 deflate(sccs *s, char *tmpfile)
 {
 	FILE	*in, *out;
-	char	cmd[1024];
+	char	cmd[MAXPATH];
 	int	n;
 
 	unless (out = fopen(tmpfile, "w")) return (-1);
@@ -5302,7 +5302,7 @@ private void
 pdiffs(char *gfile, char *left, char *right, FILE *diffs)
 {
 	int	first = 1;
-	char	buf[1024];
+	char	buf[MAXLINE];
 
 	while (fnext(buf, diffs)) {
 		if (first) {
@@ -5518,7 +5518,7 @@ private int
 openInput(sccs *s, int flags, FILE **inp)
 {
 	char	*file = (flags&EMPTY) ? DEV_NULL : s->gfile;
-	char	buf[1024+80];
+	char	buf[MAXPATH];
 	char	*mode = "rb";	/* default mode is binary mode */
 
 	unless (flags & EMPTY) {
@@ -5666,7 +5666,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 	int	added = 0;
 	int	popened, len;
 	char	*t;
-	char	buf[1024];
+	char	buf[MAXLINE];
 	admin	l[2];
 	int	isLink = s->glink != 0;		/* XXX - what about patches? */
 
@@ -6954,7 +6954,7 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	lines = 0;
 	int	added = 0, deleted = 0, unchanged = 0;
 	sum_t	sum;
-	char	buf2[1024];
+	char	buf2[MAXLINE];
 
 	assert((s->state & READ_ONLY) == 0);
 	assert(s->state & Z_LOCKED);
@@ -7695,7 +7695,7 @@ sccs_delta(sccs *s, int flags, delta *prefilled, FILE *init, FILE *diffs)
 	char	*tmpfile = tmpnam(0);
 	int	added, deleted, unchanged;
 	int	locked;
-	char	buf2[1024];
+	char	buf2[MAXLINE];
 	pfile	pf;
 
 	assert(s);
@@ -8045,7 +8045,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, int flags, char kind, FILE *out)
 	char	diffFile[30];
 	char	*columns;
 	char	tmp2[32];
-	char	buf[1024];
+	char	buf[MAXLINE];
 	pfile	pf;
 	int	first = 1;
 	char	spaces[80];
@@ -9564,7 +9564,7 @@ sccs_findKey(sccs *s, char *key)
 	char	*user, *host, *path;
 	time_t	date;
 	delta	*e;
-	char	buf[1024];
+	char	buf[MAXPATH];
 
 	unless (s->tree) return (0);
 //printf("findkey(%s)\n", key);
@@ -9686,8 +9686,8 @@ loadDB(char *file, int (*want)(char *))
 	MDBM	*DB = 0;
 	FILE	*f = 0;
 	char	*v;
-	char	buf[1024];
 	int	first = 1;
+	char	buf[MAXLINE];
 
 again:	unless (f = fopen(file, "rt")) {
 		if (first) {
@@ -9707,7 +9707,7 @@ out:		if (f) fclose(f);
 		if (buf[0] == '#') continue;
 		if (want && !want(buf)) continue;
 		if (chop(buf) != '\n') {
-			fprintf(stderr, "bad path: <%s>\n", buf);
+			fprintf(stderr, "bad path: <%s> in %s\n", buf, file);
 			assert("pathname overflow in cache" == 0);
 		}
 		v = strchr(buf, ' ');
@@ -9741,7 +9741,7 @@ csetIds(sccs *s, char *rev, int all)
 {
 	FILE	*f;
 	MDBM	*db;
-	char	name[1024];
+	char	name[MAXPATH];
 
 	sprintf(name, "/tmp/cs%d", getpid());
 	if (all) {

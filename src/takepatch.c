@@ -46,12 +46,12 @@ int	newProject;
 MDBM	*idDB;
 delta	*gca;		/* only gets set if there are conflicts */
 int	nfound;
-char	pendingFile[1024];
+char	pendingFile[MAXPATH];
 
 int
 main(int ac, char **av)
 {
-	char	buf[1024];
+	char	buf[MAXLINE];
 	FILE	*p;
 	int	c;
 	int	flags = SILENT;
@@ -265,8 +265,8 @@ extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags)
 {
 	FILE	*t;
 	delta	*d, *parent = 0, *tmp;
-	char	tmpf[1024];
-	char	buf[1024];
+	char	tmpf[MAXPATH];
+	char	buf[MAXLINE];
 	char	*pid = 0;
 	long	off;
 	int	c;
@@ -473,7 +473,7 @@ apply:
 					exit(1);
 				}
 				if (echo > 6) {
-					char	buf[1024];
+					char	buf[MAXPATH];
 
 					sprintf(buf,
 			"echo --- %s ---; cat %s; echo --- %s ---; cat %s", 
@@ -589,7 +589,7 @@ getLocals(sccs *s, delta *g, char *name)
 	FILE	*t;
 	patch	*p;
 	delta	*d;
-	static	char tmpf[1024];	/* don't allocate on stack */
+	static	char tmpf[MAXPATH];	/* don't allocate on stack */
 
 	if (echo > 5) {
 		fprintf(stderr, "getlocals(%s, %s, %s)\n",
@@ -695,8 +695,8 @@ initProject()
 FILE *
 init(FILE *p, int flags)
 {
-	char	buf[1024];
-	char	file[1024];
+	char	buf[MAXPATH];
+	char	file[MAXPATH];
 	int	i, j;
 	int	started = 0;
 	FILE	*f, *g;
@@ -830,7 +830,7 @@ int
 mkdirp(char *file)
 {
 	char	*s = strrchr(file, '/');
-	char	buf[1024];
+	char	buf[MAXPATH];
 
 	if (!s) return (0);
 	*s = 0;
@@ -862,6 +862,7 @@ fileCopy(char *from, char *to)
 
 cleanup(int what)
 {
+exit(9);
 	if (what & CLEAN_RESYNC) {
 		assert(exists("RESYNC"));
 		system("/bin/rm -rf RESYNC");

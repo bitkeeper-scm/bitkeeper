@@ -45,6 +45,8 @@
 #undef	HAVE_GETDOMAINNAME
 extern	char *strdup(char *s);
 #endif
+#define	MAXLINE	2048
+#define	MAXPATH	1024
 
 /*
  * Local config starts here.

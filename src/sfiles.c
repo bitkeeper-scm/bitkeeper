@@ -30,8 +30,8 @@ static	char **av;		/* saved copy of argv */
 static	int ac;			/* where we are - starts at 0 */
 static	FILE *flist;		/* set if getting files from stdin */
 static	DIR *d;			/* directory we are reading */
-static	char prefix[1024];	/* path/to/dir/SCCS/ */
-static	char buf[1024];		/* pathname we actually pass back */
+static	char prefix[MAXPATH];	/* path/to/dir/SCCS/ */
+static	char buf[MAXPATH];	/* pathname we actually pass back */
 static	int unget;		/* if set, return path again */
 static	char *prog;		/* av[0], sort of */
 static	char rev[MAXREV+1];	/* 1.1.1.1 - see HASREVS */
