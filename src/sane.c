@@ -247,6 +247,7 @@ chk_id(void)
 		fprintf(stderr, "chk_id: failed to get random date\n");
 		exit(1);
 	}
+	outlen = sizeof(rand);
 	if (base64_encode(buf, 3, rand, &outlen)) {
 		fprintf(stderr, "chk_id: %s\n", crypt_error);
 		exit(1);

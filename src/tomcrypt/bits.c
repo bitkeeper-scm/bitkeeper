@@ -108,7 +108,7 @@ static unsigned long rng_fake(unsigned char *buf, unsigned long len)
 	struct timeval tv;
 
 	gettimeofday(&tv, 0);
-	seed ^= tv.tv_usec;
+	seed = tv.tv_usec;
 	seed ^= getpid();
 	seed = (seed << 7) | (seed >> 25);
 #ifndef WIN32

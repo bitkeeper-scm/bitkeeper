@@ -854,6 +854,7 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 	FILE	*f;
 	char	*user;
 	char	path[MAXPATH];
+	off_t	logsize;
 	va_list	ap;
 
 	sprintf(path, "%s/BitKeeper/log/%s", root, file);
@@ -875,10 +876,11 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 	vfprintf(f, format, ap);
 	va_end(ap);
 	fputc('\n', f);
+	logsize = fsize(fileno(f));
 	fclose(f);
 
 #define	LOG_MAXSIZE	(1<<20)
-	if (rotate && fsize(fileno(f)) > LOG_MAXSIZE) {
+	if (rotate && logsize > LOG_MAXSIZE) {
 		char	old[MAXPATH];
 
 		sprintf(old, "%s-older", path);
