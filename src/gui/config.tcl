@@ -120,7 +120,7 @@ proc getConfig {prog} \
 	set _d(setup.mandatoryColor) #deeaf4 ;# Color of mandatory fields
 
 	set _d(bug.mandatoryColor) #deeaf4 ;# Color of mandatory fields
-	#set _d(bug.BG) white 		   ;# Color of mandatory fields
+	set _d(entryColor) white	   ;# Color of mandatory fields
 
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry
