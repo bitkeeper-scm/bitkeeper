@@ -381,6 +381,23 @@ atoi2(char **sp)
 	return (val);
 }
 
+private inline int
+atoiMult(char *s)
+{
+	register int val = 0;
+
+	if (!s) return (0);
+	while (*s && isdigit(*s)) {
+		val = val * 10 + *s++ - '0';
+	}
+	switch (*s) {
+	    case 'K': val *= 1000; break;
+	    case 'M': val *= 1000000; break;
+	    case 'G': val *= 1000000000; break;
+	}
+	return (val);
+}
+
 /*
  * Free the delta tree.
  */
@@ -2430,9 +2447,9 @@ bad:
 			expected = "^As ";
 			goto bad;
 		}
-		d->added = atoi(&buf[3]);
-		d->deleted = atoi(&buf[9]);
-		d->same = atoi(&buf[15]);
+		d->added = atoiMult(&buf[3]);
+		d->deleted = atoiMult(&buf[9]);
+		d->same = atoiMult(&buf[15]);
 		/* ^Ad D 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		/* ^Ad R 1.2.1.1 97/05/15 23:11:46 lm 4 2 */
 		next(buf, s);
@@ -3967,19 +3984,25 @@ uuencode_sum(sccs *s, FILE *in, FILE *out)
 {
 	uchar	ibuf[450];
 	char	obuf[80];
-	register uchar *p;
+	register uchar *inp;
 	register int n;
 	register int length;
 	int	added = 0;
 
 	while ((length = fread(ibuf, 1, 450, in)) > 0) {
-		p = ibuf;
+		inp = ibuf;
 		while (length > 0) {
 			n = (length > 45) ? 45 : length;
+			if (n < 45) {
+				uchar	*e = &inp[n];
+				int	left = 45 - n;
+
+				while (left--) *e++ = 0;
+			}
 			length -= n;
-			uuencode1(p, obuf, n);
+			uuencode1(inp, obuf, n);
 			s->dsum += fputsum(s, obuf, out);
-			p += n;
+			inp += n;
 			added++;
 		}
 	}
@@ -3992,23 +4015,29 @@ uuencode(FILE *in, FILE *out)
 {
 	uchar	ibuf[450];
 	char	obuf[650];
-	register uchar *buf;
-	register char *p = obuf;
+	register uchar *inp;
+	register char *outp;
 	register int n;
 	register int length;
 	int	added = 0;
 
 	while ((length = fread(ibuf, 1, 450, in)) > 0) {
-		p = obuf;
-		buf = ibuf;
+		outp = obuf;
+		inp = ibuf;
 		while (length > 0) {
 			n = (length > 45) ? 45 : length;
+			if (n < 45) {
+				uchar	*e = &inp[n];
+				int	left = 45 - n;
+
+				while (left--) *e++ = 0;
+			}
 			length -= n;
-			p += uuencode1(buf, p, n);
+			outp += uuencode1(inp, outp, n);
 			added++;
-			buf += n;
+			inp += n;
 		}
-		*p = 0;
+		*outp = 0;
 		fputs((char *)obuf, out);
 	}
 	fputs(" \n", out);
@@ -4977,6 +5006,7 @@ expandnleq(sccs *s, delta *d, char *fbuf, char *sbuf, int flags)
 {
 	char	*e = fbuf;
 
+	if (s->encoding != E_ASCII) return (0);
 	if (!(flags & (EXPAND|RCSEXPAND))) return 0;
 	if (flags & EXPAND) {
 		e = expand(s, d, e);
@@ -4999,8 +5029,10 @@ sccs_hasDiffs(sccs *s, int flags)
 	int	print = 0, different;
 	delta	*d;
 	char	rev[40];
-	BUF	(fbuf);
 	char	sbuf[1024];
+	char	*name = 0;
+	int	tmpfile = 0;
+	BUF	(fbuf);
 
 #define	RET(x)	different = x; goto out;
 
@@ -5015,8 +5047,22 @@ sccs_hasDiffs(sccs *s, int flags)
 		verbose((stderr, "can't find %s in %s\n", rev, s->gfile));
 		RET(-1);
 	}
-	unless (tmp = fopen(s->gfile, "r")) {
-		verbose((stderr, "can't open %s\n", s->gfile));
+	assert(IS_WRITABLE(s));
+	if (s->encoding > E_ASCII) {
+		tmpfile = 1;
+		sprintf(sbuf, "%s/getU%d", TMP_PATH, getpid());
+		name = strdup(sbuf);
+		if (deflate(s, name)) {
+			unlink(name);
+			free(name);
+			return (-1);
+		}
+	} else {
+		if (fix_lf(s->gfile) == -1) return (-1); 
+		name = strdup(s->gfile);
+	}
+	unless (tmp = fopen(name, "r")) {
+		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
 	assert(s->state & SOPEN);
@@ -5051,6 +5097,10 @@ sccs_hasDiffs(sccs *s, int flags)
 	    feof(tmp) ? "gfile done" : "gfile not done"));
 	RET(1);
 out:
+	if (name) {
+		if (tmpfile) unlink(name);
+		free(name);
+	}
 	if (tmp) fclose(tmp);
 	if (slist) free(slist);
 	if (state) free(state);
@@ -7815,6 +7865,43 @@ out:
 }
 
 /*
+ * works for 32 bit unsigned only
+ */
+fit(char *buf, unsigned int i)
+{
+	int	j;
+	float	f;
+	static	char *s[] = { "K", "M", "G", 0 };
+	if (i < 100000) {
+		sprintf(buf, "%05d\n", i);
+		return;
+	}
+	for (j = 0, f = 1000.; s[j]; j++, f *= 1000.) {
+		sprintf(buf, "%4.3g%s", i/f, s[j]);
+		if (strlen(buf) == 5) return;
+	}
+	sprintf(buf, "E2BIG");
+	return;
+}
+
+fitCounters(char *buf, int a, int d, int s)
+{
+	char	tmp[6];
+
+	/* ^As 12345/12345/12345\n
+	 *  012345678901234567890
+	 */
+	strcpy(buf, "\001s ");
+	fit(&buf[3], a);
+	buf[8] = '/';
+	fit(&buf[9], d);
+	buf[14] = '/';
+	fit(&buf[15], s);
+	buf[20] = '\n';
+	buf[21] = 0;
+}
+
+/*
  * Print the summary and go and fix up the top.
  */
 private void
@@ -7837,6 +7924,13 @@ end(sccs *s, delta *n, FILE *out, int flags, int add, int del, int same)
 	 */
 	fseek(out, 8L, SEEK_SET);
 	sprintf(buf, "\001s %05d/%05d/%05d\n", add, del, same);
+	if (strlen(buf) > 21) {
+		unless (s->state & BITKEEPER) {
+			fprintf(stderr, "%s: file too large\n", s->gfile);
+			exit(1);
+		}
+		fitCounters(buf, add, del, same);
+	}
 	fputsum(s, buf, out);
 	if (s->state & BITKEEPER) {
 		if ((add || del || same) && (n->flags & D_ICKSUM)) {
