@@ -43,6 +43,31 @@ unix_common_setup()
 	if [ X$USER = Xroot ]; then USER=root-test; fi
 }
 
+# Make sure we don't pick up the DOS "find" command in the PATH
+# We want the unix "find" command.
+check_path()
+{
+	# Note this test must be done this way to be portable
+	# between NT and WIN98
+	find . -maxdepth 0 > $TMP/cmp1$$
+	echo "." > $TMP/cmp2$$
+	cmp -s $TMP/cmp1$$ $TMP/cmp2$$
+	if [ $? != 0 ]
+	then
+		echo "======================================================="
+		echo "Your \"find\" command failed to produce the expected"
+		echo "output. Most likely this is a path error, and we are"
+		echo "picking up the DOS version of \"find\" command instead"
+		echo "of the Unix version. BitKeeper wants access to the unix"
+		echo "\"find\" command; please fix your path variable to"
+		echo "support this."
+		echo "======================================================="
+		rm -f $TMP/cmp1$$ $TMP/cmp2$$
+		exit 1
+	fi
+	rm -f $TMP/cmp1$$ $TMP/cmp2$$
+}
+
 # setup env variables for regression test
 setup_env()
 {
@@ -51,12 +76,14 @@ setup_env()
 		win32_common_setup
 		BK_BIN=`cd .. && ./pwd.exe -scf`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
+		check_path;
 		;;
 	    Xmks)
 		win32_common_setup
 		BK_BIN=`cd .. && ./pwd.exe -sf`
 		# MKS uses semi colon as path delimiter
 		PATH="$BK_BIN;$BK_BIN/gnu/bin;$PATH"
+		check_path;
 		;;
 	    Xuwin)
 		# /dev/null in uwin does not always work
@@ -65,6 +92,7 @@ setup_env()
 		win32_common_setup
 		BK_BIN=`cd .. && ./pwd.exe -sf`
 		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
+		check_path;
 		;;
 	    *)	# assumes everything else is unix
 		unix_common_setup

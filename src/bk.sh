@@ -311,4 +311,9 @@ fi
 cmd=$1
 shift
 
-exec $cmd "$@"
+if type "$cmd" > /dev/null 2>&1
+then
+	exec $cmd "$@"
+else
+	echo "$cmd: command not found"
+fi

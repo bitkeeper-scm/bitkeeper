@@ -8,10 +8,11 @@ setup_main(int ac, char **av)
 {
 	int	force = 0, c;
 	char	*project_name = 0, *project_path = 0, *config_path = 0;
-	char	buf[1024], my_editor[1024], setup_files[MAXPATH];
+	char	buf[MAXLINE], my_editor[1024], setup_files[MAXPATH];
 	char 	s_config[MAXPATH] = "SCCS/s.config";
-	FILE	*f;
+	FILE	*f, *f1;
 	sccs	*s;
+	char	*edit[] = {my_editor, "Description", 0};
 
 	while ((c = getopt(ac, av, "c:fn:")) != -1) {
 		switch (c) {
@@ -43,25 +44,25 @@ setup_main(int ac, char **av)
 	unless(project_name) {
 		gethelp("setup_2", "", stdout);
 		while (1) {
-			f = fopen("Description", "wb");
+			/*
+			 * win32 note: notepate.exe wants text mode
+			 */
+			f = fopen("Description", "wt");
 			fprintf(f,
-				"Replace this with your project description");
+				"Replace this with your project description\n");
 			fclose(f);
 			f = fopen("D.save", "wb");
 			fprintf(f,
-				"Replace this with your project description");
+				"Replace this with your project description\n");
 			fclose(f);
 			printf("Editor to use [%s] ", editor);
 			unless (fgets(my_editor, sizeof(my_editor), stdin)) {
 				my_editor[0] = '\0';
 			}
 			chop(my_editor);
-			if (my_editor[0] != 0) {
-				sprintf(buf, "%s Description", my_editor);
-			} else {
-				sprintf(buf, "%s Description", editor);
-			}
-			system(buf);
+			edit[0] = (my_editor[0] != 0) ? my_editor : editor;
+			if (spawnvp_ex(_P_WAIT, edit[0], edit) != 0) continue;
+			if (my_editor[0] != 0) editor = strdup(my_editor);
 			if (system("cmp -s D.save Description")) {
 				break;
 			} else {
@@ -86,8 +87,15 @@ setup_main(int ac, char **av)
 	}
 	if (config_path == NULL) {
 		gethelp("setup_3", "", stdout);
-		sprintf(buf, "cp %s/bitkeeper.config config", bin);
-		system(buf);
+		sprintf(buf, "%s/bitkeeper.config", bin);
+		f = fopen(buf, "rt");
+		assert(f);
+		f1 = fopen("config", "wt"); /* notepad.exe wants text mode */
+		assert(f1);
+		while (fgets(buf, sizeof(buf), f)) {
+			fputs(buf, f1);
+		} 
+		fclose(f); fclose(f1);
 		chmod("config", 0664);
 		while (1) {
 			printf("Editor to use [%s] ", editor);

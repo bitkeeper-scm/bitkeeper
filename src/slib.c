@@ -3968,24 +3968,6 @@ testdate(time_t t)
 	return (date);
 }
 
-/*
- * Return an at most 5 digit !0 integer.
- */
-long
-almostUnique(int harder)
-{
-	struct	timeval tv;
-	int	max = 100;
-	int	val;
-
-	if (harder) max = 1000000;
-	do {
-		gettimeofday(&tv, 0);
-		val = tv.tv_usec / 10;
-	} while (max-- && !val);
-	while (!val) val = time(0) / 10;
-	return (val);
-}
 
 /* XXX - make this private once tkpatch is part of slib.c */
 char *

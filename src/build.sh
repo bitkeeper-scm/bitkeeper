@@ -22,13 +22,13 @@ case `uname -s` in
 		LD=link
 		MKLIB=./win32/util/mklib
 		if [ ! -f ${MKLIB} ]; then get ${MKLIB}; fi
-		CFLAGS="-nologo -O2 -DWIN32 -D_MT -D_DLL -MD"
+		CC_NOFRAME="-Oy"
 		CC_COMMON="-nologo -DWIN32 -D_MT -D_DLL -MD"
-		CC_FAST="-O2 $CC_COMMON"
-		CC_DEBUG="-ZI -Od $CC_COMMON"
+		CC_FAST="-O2 -G3 -Og -Oi $CC_NOFRAME $CC_COMMON"
+		CFLAGS="$CC_FAST"
+		CC_DEBUG="-ZI $CC_COMMON"
 		CC_FAST_DEBUG=$CC_FAST
 		CC_WALL="-W3"
-		CC_NOFRAME=
 		CC_OUT='-Fo$@'
 		LD_OUT='-out:$@'
 		# make ranlib a no-op

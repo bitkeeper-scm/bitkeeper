@@ -181,6 +181,7 @@ clean-bin: FORCE
 	-rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
 	cd gnu && $(MAKE) clean
 	cd win32 && $(MAKE) clean
+	cd t && rm -f doit
 
 clean-cfg: FORCE
 	-rm -f config.h stamp-h substvars config.status \

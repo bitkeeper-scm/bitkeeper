@@ -341,7 +341,8 @@ main(int ac, char **av)
 	/*
 	 * Is it a known C program ?
 	 */
-	if (streq(av[0], "patch")) {
+	if (streq(av[0], "patch") ||
+	    streq(av[0], "diff3")) {
 		return (spawnvp_ex(_P_WAIT, av[0], av));
 	}
 
@@ -410,7 +411,7 @@ find_prog(char *prog)
 
 	p  = getenv("PATH");
 	if (p) {;
-		sprintf(path, "%s:/usr/local/bin", p);
+		sprintf(path, "%s%c/usr/local/bin", p, PATH_DELIM);
 		localName2bkName(path, path);
 	} else {
 		strcpy(path, "/usr/local/bin");
@@ -441,7 +442,7 @@ find_wish()
 
 	p  = getenv("PATH");
 	if (p) {;
-		sprintf(path, "%s:/usr/local/bin", p);
+		sprintf(path, "%s%c/usr/local/bin", p, PATH_DELIM);
 		localName2bkName(path, path);
 	} else {
 		strcpy(path, "/usr/local/bin");
@@ -524,8 +525,8 @@ platformInit(char **av)
 	int	flags = SILENT;	/* for debugging */
 
 	if (bin) return;
-	if ((editor = getenv("EDITOR")) == NULL) editor = "vi";
-	if ((pager = getenv("PAGER")) == NULL) pager = PAGER;
+	if ((editor = getenv("EDITOR")) == NULL) editor = strdup("vi");
+	if ((pager = getenv("PAGER")) == NULL) pager = strdup(PAGER);
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 #ifdef WIN32
@@ -591,8 +592,9 @@ gotit:
 		goto gotit;
 	}
 	
-	for (t = s = p; t = strchr(s, PATH_DELIM); s = t + 1) {
-		*t = 0;
+	for (t = s = p; *s;) {
+		t = strchr(s, PATH_DELIM);
+		if (t) *t = 0;
 		sprintf(buf, "%s/%s", s, av[0]);
 		if (executable(buf)) {
 		verbose((stderr, "USING PATH %s\n", buf));
@@ -605,11 +607,17 @@ gotit:
 			} else {
 				add2path = 0;
 			}
-			*t = PATH_DELIM;
+			if (t) *t = PATH_DELIM;
 			goto gotit;
 			
 		}
-		*t = ':';
+		if (t) {
+			*t = ':';
+			s = t + 1;
+		} else {
+			break;
+		}
+		
 	}
 	return;
 }
