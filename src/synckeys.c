@@ -48,7 +48,6 @@ tag_probekey(sccs *s, FILE *f)
 		for (j = i; d->ptag && --j; d = sfind(s, d->ptag));
 		sccs_sdelta(s, d, key);
 		fprintf(f, "%s\n", key);
-//fprintf(f, "%s (%s)\n", key, d->rev);
 		unless (d->ptag) return;
 	}
 }
@@ -79,10 +78,14 @@ probekey_main(int ac, char **av)
 	return (0);
 }
 
+/*
+ * This one must be called after we have done sccs_color and must
+ * not stop at an already colored node because a node can be both
+ * a regular and/or a tag node.
+ */
 void
 sccs_tagcolor(sccs *s, delta *d)
 {
-//fprintf(stderr, "TC(%s, %d)\n", d->rev, d->serial);
         if (d->ptag) sccs_tagcolor(s, sfind(s, d->ptag));
         if (d->mtag) sccs_tagcolor(s, sfind(s, d->mtag));
         d->flags |= D_VISITED;
@@ -150,7 +153,6 @@ listkey_main(int ac, char **av)
 			if (nomatch) out("@LOD MATCH@\n");	/* aka first */
 			sccs_sdelta(s, d, key);
 			out(key);
-//out(" ("); out(d->rev); out(" "); out(d->type == 'D' ? "D":"R"); out(")");
 			out("\n");
 			nomatch = 0;
 
@@ -172,7 +174,6 @@ listkey_main(int ac, char **av)
 				out("@TAG MATCH@\n");
 				sccs_sdelta(s, d, key);
 				out(key);
-//out(" ("); out(d->rev); out(" "); out(d->type == 'D' ? "D":"R"); out(")");
 				out("\n");
 			}
 		}
@@ -186,7 +187,6 @@ listkey_main(int ac, char **av)
 		if (d->flags & D_VISITED) continue;
 		sccs_sdelta(s, d, key);
 		out(key);
-//out(" ("); out(d->rev); out(" "); out(d->type == 'D' ? "D":"R"); out(")");
 		out("\n");
 	}
 	out("@END@\n");
@@ -297,4 +297,39 @@ empty:	for (d = s->table; d; d = d->next) {
 	rc = local; 
 
 done:	return (rc);
+}
+
+/*
+ * For debugging, set things up to get the key list.
+ */
+prunekey_main(int ac, char **av)
+{
+	remote	r;
+	sccs	*s;
+	delta	*d;
+	char	path[] = CHANGESET;
+	char	*dspec =
+		    "$if(:DT:=D){C}$unless(:DT:=D){:DT:} "
+		    ":I: :D: :T::TZ: :P:@:HOST:"
+		    // " :DS: :DP: :TAG_PSERIAL: :TAG_MSERIAL:"
+		    "\n"
+		    "$each(:TAG:){T (:TAG:)\n}"
+		    "$each(:C:){  (:C:)\n}"
+		    "\n";
+
+	bzero(&r, sizeof(r));
+	r.rfd = 0;
+	r.wfd = -1;
+	sccs_cd2root(0, 0);
+	s = sccs_init(path, 0, 0);
+	prunekey(s, &r, -1, 0, 0, 0, 0);
+	s->state &= ~S_SET;
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_VISITED) continue;
+		s->rstart = s->rstop = d;
+		sccs_prs(s, PRS_ALL, 0, dspec, stdout);
+		d->flags &= ~D_SET;
+	}
+	sccs_free(s);
+	exit(0);
 }

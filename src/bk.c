@@ -94,6 +94,7 @@ int parent_main(int, char **);
 int park_main(int, char **);
 int pending_main(int, char **);
 int probekey_main(int, char **);
+int prunekey_main(int, char **);
 int prs_main(int, char **);
 int pull_main(int, char **);
 int push_main(int, char **);
@@ -166,6 +167,7 @@ struct command cmdtbl[] = {
 	{"_loggingto", loggingto_main},
 	{"_mail", mail_main},
 	{"_probekey", probekey_main},
+	{"_prunekey", prunekey_main},
 #ifdef WIN32
 	{"_socket2pipe", socket2pipe_main},
 #endif

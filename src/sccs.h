@@ -88,9 +88,8 @@
 #define PRS_ALL		0x80000000	/* scan all revs, not just type D */
 #define	PRS_GRAFT	0x01000000	/* put the perfile in the patch */
 #define	PRS_LF		0x02000000	/* terminate non-empty output with LF */
-#define	PRS_LFLF	0x04000000	/* terminate non-empty record with LF */
-#define	PRS_PLACEHOLDER	0x08000000	/* make a place holder patch */
-#define	PRS_COMPAT	0x00100000	/* for makepatch -C, send old tags */
+#define	PRS_PLACEHOLDER	0x04000000	/* make a place holder patch */
+#define	PRS_COMPAT	0x08000000	/* for makepatch -C, send old tags */
 
 #define SINFO_TERSE	0x10000000	/* print in terse format: sinfo -t */
 
@@ -507,12 +506,9 @@ extern	char *upgrade_msg;
 
 /*
  * Bumped whenever we change any file format.
- * XXX - this isn't timesafe.  It's not clear it wants to be, it's a file
- * format thing, not a repository thing.  It makes for BK itself, that's all.
- *
  * 2 - bumped to invalidate old binaries with bad date code.
  * 3 - because random bits can now be on a per delta basis.
- * 4 - added X_LOGS_ONLY, DT_PLACEHOLDER & DT_NO_TRANSMIT flags
+ * 4 - added tag graph, X_LOGS_ONLY, DT_PLACEHOLDER & DT_NO_TRANSMIT
  */
 #define	SCCS_VERSION_COMPAT	3	/* for opull/opush */
 #define	SCCS_VERSION		4
@@ -568,6 +564,7 @@ typedef	struct sccs {
 	u32	bad_dsum:1;	/* patch checksum mismatch */
 	u32	io_error:1;	/* had an output error, abort */
 	u32	io_warned:1;	/* we told them about the error */
+	u32	prs_output:1;	/* prs printed something */
 } sccs;
 
 typedef struct {
