@@ -42,10 +42,8 @@ for f in $MAYCHANGE
 do	echo $N Set flag $f and make sure it is there .$NL
 	LEN=`echo $f | wc -c`
 	LEN=`expr 25 - $LEN`
-	while [ $LEN -gt 0 ]
-	do	echo $N .$NL
-		LEN=`expr $LEN - 1`
-	done
+	FILL=`printf "%${LEN}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
+	echo $N $FILL$NL
 	bk admin -f$f xflags || exit 1
 	bk flags xflags > FLAGS
 	grep -q $f FLAGS || {
@@ -57,10 +55,8 @@ do	echo $N Set flag $f and make sure it is there .$NL
 	echo $N Clear flag $f and make sure it is gone .$NL
 	LEN=`echo $f | wc -c`
 	LEN=`expr 24 - $LEN`
-	while [ $LEN -gt 0 ]
-	do	echo $N .$NL
-		LEN=`expr $LEN - 1`
-	done
+	FILL=`printf "%${LEN}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
+	echo $N $FILL$NL
 	bk admin -F$f xflags || exit 1
 	bk flags xflags > FLAGS
 	grep -q $f FLAGS && {
@@ -75,10 +71,8 @@ for f in $MAYNOT
 do	echo $N Make sure we can not change flag $f .$NL
 	LEN=`echo $f | wc -c`
 	LEN=`expr 27 - $LEN`
-	while [ $LEN -gt 0 ]
-	do	echo $N .$NL
-		LEN=`expr $LEN - 1`
-	done
+	FILL=`printf "%${LEN}s\n" "" | sed -e 's/ /./g' 2> /dev/null`
+	echo $N $FILL$NL
 	bk admin -f$f xflags 2>/dev/null && exit 1
 	bk flags xflags > FLAGS
 	cmp -s FLAGS START || {

@@ -15,6 +15,7 @@
 
 win32_common_setup()
 {
+	DIFF=/usr/bin/diff
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
 	TMP=`../bk _nativepath $TEMP`
@@ -33,10 +34,16 @@ win32_common_setup()
 	# don't run remote regressions on NT
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=NO; fi
 	export DO_REMOTE
+
+	BIN1="`bk bin`/bk.exe"
+	BIN2="`bk bin`/diff.exe"
+	BIN3="`bk bin`/diff3.exe"
+	export BIN1 BIN2 BIN3
 }
 
 unix_common_setup()
 {
+	DIFF=diff
 	PLATFORM="UNIX"
 	DEV_NULL="/dev/null"
 	TMP="/tmp"
@@ -59,6 +66,17 @@ unix_common_setup()
 	# do run remote regressions on UNIX
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
 	export DO_REMOTE
+
+	BIN1=/bin/ls
+	test -r $BIN1 || BIN1=/usr/gnu/bin/od
+	test -r $BIN1 || exit 1
+	BIN2=/bin/rm
+	test -r $BIN2 || BIN2=/usr/gnu/bin/m4
+	test -r $BIN2 || exit 1
+	BIN3=/bin/cat
+	test -r $BIN3 || BIN3=/usr/gnu/bin/wc
+	test -r $BIN3 || exit 1
+	export BIN1 BIN2 BIN3
 }
 
 bad_mount()
@@ -265,7 +283,7 @@ clean_up()
 
 	# Make sure there are no stale files in $TMP
 	ls -a $TMP  > $TMP/T.${USER}-new
-	/usr/bin/diff $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
+	$DIFF $TMP/T.${USER}-new $TMP/T.${USER} | grep -v mutt-work
 
 }
 
