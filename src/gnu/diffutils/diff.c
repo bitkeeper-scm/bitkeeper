@@ -221,6 +221,7 @@ static struct option const longopts[] =
   {"horizon-lines", 1, 0, 140},
   {"help", 0, 0, 141},
   {"binary", 0, 0, 142},
+  {"ignore-trailing-cr", 0, 0, 143},
   {0, 0, 0, 0}
 };
 
@@ -244,8 +245,8 @@ main (argc, argv)
   /* Decode the options.  */
 
   while ((c = getopt_long (argc, argv,
-			   "0123456789abBcC:dD:efF:hHiI:lL:nNpPqrsS:tTuU:vwW:x:X:y",
-			   longopts, 0)) != EOF)
+	"0123456789abBcC:dD:eEfF:hHiI:lL:nNpPqrsS:tTuU:vwW:x:X:y",
+	longopts, 0)) != EOF)
     {
       switch (c)
 	{
@@ -558,6 +559,13 @@ main (argc, argv)
 	  binary_I_O = 1;
 	  setmode (STDOUT_FILENO, O_BINARY);
 #endif
+	  break;
+
+	case 143:
+	  /* Ignore \r\n vs \n differences.  */
+	  ignore_trailing_cr_flag = 1;
+	  ignore_some_changes = 1;
+	  ignore_some_line_changes = 1;
 	  break;
 
 	default:

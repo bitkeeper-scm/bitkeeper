@@ -57,7 +57,6 @@ private time_t	date2time(char *asctime, char *z, int roundup);
 private	char	*sccsrev(delta *d);
 private int	addSym(char *name, sccs *sc, int flags, admin *l, int *ep);
 private void	updatePending(sccs *s);
-private int	fix_lf(char *gfile);
 private int	sameFileType(sccs *s, delta *d);
 private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
@@ -5117,7 +5116,6 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 	/* Checksum up to and including the first newline
 	 * or the end of the string.
 	 */
-
 	p = buf;
 	q = data_next;
 	for (;;) {
@@ -7086,7 +7084,7 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 int
 sccs_hasDiffs(sccs *s, u32 flags, int inex)
 {
-	MMAP	*tmp = 0;
+	MMAP	*gfile = 0;
 	MDBM	*ghash = 0;
 	MDBM	*shash = 0;
 	pfile	pf;
@@ -7145,7 +7143,6 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 			RET(-1);
 		}
 	} else {
-		if (fix_lf(s->gfile) == -1) return (-1);
 		mode = "rt";
 		name = strdup(s->gfile);
 	}
@@ -7155,7 +7152,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 		ghash = loadDB(name, 0, flags|DB_USEFIRST);
 		shash = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	}
-	else unless (tmp = mopen(name, mode)) {
+	else unless (gfile = mopen(name, mode)) {
 		verbose((stderr, "can't open %s\n", name));
 		RET(-1);
 	}
@@ -7218,9 +7215,9 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 				mdbm_delete_str(ghash, sbuf);
 				continue;
 			}
-			mcmprc = mcmp(tmp, fbuf);
+			mcmprc = mcmp(gfile, fbuf);
 			if (mcmprc == MCMP_DIFF) {
-				mcmprc = expandnleq(s, d, tmp, fbuf, &eflags);
+				mcmprc = expandnleq(s, d, gfile, fbuf, &eflags);
 			}
 			no_lf = 0;
 			lf_pend = print;
@@ -7288,7 +7285,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 		debug((stderr, "diff because EOF on sfile\n"));
 		RET(1);
 	}
-	mcmprc = mcmp(tmp, 0);
+	mcmprc = mcmp(gfile, 0);
 	if (mcmprc == MCMP_BOTH_EOF) {
 		debug((stderr, "same\n"));
 		RET(0);
@@ -7298,7 +7295,7 @@ sccs_hasDiffs(sccs *s, u32 flags, int inex)
 	RET(1);
 out:
 	if (s->encoding & E_GZIP) zgets_done();
-	if (tmp) mclose(tmp); /* must close before we unlink */
+	if (gfile) mclose(gfile); /* must close before we unlink */
 	if (ghash) mdbm_close(ghash);
 	if (shash) mdbm_close(shash);
 	if (name) {
@@ -7353,48 +7350,6 @@ deflate_gfile(sccs *s, char *tmpfile)
 	return (0);
 }
 
-
-/*
- * if the file is non-empty & not LF terminated
- * force a LF
- */
-private int
-fix_lf(char *gfile)
-{
-	int	fd;
-	struct	stat sb;
-	char	c;
-
-	return (0);
-
-	if (lstat(gfile, &sb)) {
-		fprintf(stderr, "lstat: ");
-		perror(gfile);
-		return (-1);
-	}
-	unless (sb.st_mode & 0200) return (0);
-	if (sb.st_size > 0) {
-		if ((fd = open(gfile, 2, GROUP_MODE)) == -1) {
-			return (0);
-		}
-		if (lseek(fd, sb.st_size - 1, 0) != sb.st_size - 1) {
-			perror(gfile);
-			close(fd); return (-1);
-		} else {
-			if (read(fd, &c, 1) != 1) {
-				perror(gfile);
-				close(fd); return (-1);
-			} else if (c != '\n') {
-				if (write(fd, "\n", 1) != 1) {
-					perror(gfile);
-					close(fd); return (-1);
-				}
-			}
-		}
-		close(fd);
-	}
-	return 0;
-}
 
 private int
 isRegularFile(mode_t m)
@@ -7533,7 +7488,6 @@ diff_gfile(sccs *s, pfile *pf, char *tmpfile)
 				}
 			}
 		} else {
-			if (fix_lf(s->gfile) == -1) return (-1);
 			strcpy(new, s->gfile);
 		}
 	} else { /* non regular file, e.g symlink */
@@ -8104,6 +8058,16 @@ updatePending(sccs *s)
 	close(open(sccsXfile(s, 'd'),  O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE));
 }
 
+private void
+fix_crnl(register char *s)
+{
+	while (s[1]) s++;
+	if (s[-1] == '\r') {
+		s[-1] = '\n';
+		s[0] = 0;
+	}
+}
+
 /*
  * Check in initial sfile.
  *
@@ -8352,6 +8316,7 @@ no_config:
 			mclose(diffs);
 		} else if (gfile) {
 			while (fnext(buf, gfile)) {
+				fix_crnl(buf);
 				s->dsum += fputdata(s, buf, sfile);
 				added++;
 			}

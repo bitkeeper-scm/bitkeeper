@@ -373,6 +373,14 @@ line_cmp (s1, s2)
 		    }
 		}
 	    }
+	  else if (ignore_trailing_cr_flag)
+	    {
+	      /* For -E, \r\n == \n */
+	      if ((c1 == '\r') && (*t1 == '\n')) c1 = *t1++;
+
+	      /* Likewise for line 2.  */
+	      if ((c2 == '\r') && (*t2 == '\n')) c2 = *t2++;
+	    }
 
 	  /* Lowercase all letters if -i is specified.  */
 
@@ -484,17 +492,28 @@ print_1_line (line_flag, line)
 }
 
 /* Output a line from TEXT up to LIMIT.  Without -t, output verbatim.
+   Not quite.  If ignore_trailing_cr_flag is set, we s/\r\n/\n/ first.
    With -t, expand white space characters to spaces, and if FLAG_FORMAT
    is nonzero, output it with argument LINE_FLAG after every
    internal carriage return, so that tab stops continue to line up.  */
 
 void
 output_1_line (text, limit, flag_format, line_flag)
-     char const *text, *limit, *flag_format, *line_flag;
+     const char *text, *limit, *flag_format, *line_flag;
 {
-  if (!tab_expand_flag)
+
+  if (!tab_expand_flag && !ignore_trailing_cr_flag)
     fwrite (text, sizeof (char), limit - text, outfile);
-  else
+  else if (ignore_trailing_cr_flag) {
+    int len = limit - text;
+
+    if ((len >= 2) && (text[len - 2] == '\r') && (text[len - 1] == '\n')) {
+      fwrite (text, sizeof (char), len - 2, outfile);
+      putc('\n', outfile);
+    }
+    else
+      fwrite (text, sizeof (char), limit - text, outfile);
+  } else
     {
       register FILE *out = outfile;
       register unsigned char c;
@@ -515,10 +534,12 @@ output_1_line (text, limit, flag_format, line_flag)
 	    break;
 
 	  case '\r':
-	    putc (c, out);
-	    if (flag_format && t < limit && *t != '\n')
-	      fprintf (out, flag_format, line_flag);
-	    column = 0;
+	    if ((*t != '\n') || !ignore_trailing_cr_flag) {
+	      putc (c, out);
+	      if (flag_format && t < limit && *t != '\n')
+	        fprintf (out, flag_format, line_flag);
+	      column = 0;
+	    }
 	    break;
 
 	  case '\b':

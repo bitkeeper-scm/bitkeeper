@@ -487,15 +487,16 @@ err:		perror("EOF in log?");
 	unless (*p++ == '@') goto err;
 	for (t = buf; p < m->end; p++) {
 		if ((*p == '@') && (p[1] != '@')) {
+			unless (t[-1] == '\n') *t++ = '\n';
 			*t = 0;
 			d->comments = strdup(buf);
 			m->where = p + 1;
 			break;
 		} 
-		if (++l < 1024) *t++ = *p;
+		if ((++l < 1023) && (*p != '\r')) *t++ = *p;
 		if (*p == '@') p++;	/* unquote it */
 	}
-	if (l >= 1024) {
+	if (l >= 1023) {
 		fprintf(stderr,
 		    "%s: Truncated log message line to 1024 bytes\n",
 		    rcs->file);
