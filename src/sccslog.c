@@ -229,13 +229,6 @@ void
 stealTree(delta *d, delta *stop)
 {
 	if (d->zone) {
-		assert(d->zone[0]);
-		assert(d->zone[1]);
-		assert(d->zone[2]);
-		assert(d->zone[3]);
-		assert(d->zone[4]);
-		assert(d->zone[5]);
-		assert(!d->zone[6]);
 		if (d->flags & D_DUPZONE) {
 			d->flags &= ~D_DUPZONE;
 			d->zone = strdup(d->zone);
