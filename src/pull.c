@@ -269,10 +269,10 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			unless (i++) {
 				if (opts.dont) {
 					fprintf(stderr, "%s\n",
-"---------------------- Would send the following csets ----------------------");
+"-------------------- Would receive the following csets ---------------------");
 				} else {
 					fprintf(stderr, "%s\n",
-"----------------------- Sending the following csets ------------------------");
+"---------------------- Receiving the following csets -----------------------");
 				}
 			}
 			fprintf(stderr, "%s", &buf[1]);
