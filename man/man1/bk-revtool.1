@@ -72,9 +72,14 @@ the line. The file text is generated with the
 .B bk get \-ump
 command.
 .LP
-Once the annotated file listing is shown, you can then click on
-the text to view the checkin comments associated with the chosen
-line. Double clicking on an annotated line brings up csettool and
+Once the annotated file listing is shown, you can then click on a line
+of text to select the node in the graph where that line was
+changed. If you click and hold for half a second, a window will appear
+with the checkin comments associated with the selected line. This
+comment window will only appear when viewing a regular 
+file; it will not show up when viewing the ChangeSet file.
+.LP
+Double clicking on an annotated line brings up csettool and
 shows all of the other files that were modified in the same changeset
 as the selected line.
 .LP
