@@ -67,7 +67,7 @@ usage:		system("bk help makepatch");
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
 	range[0] = 0;
-	while ((c = getopt(ac, av, "c|e|d|r|sCv")) != -1) {
+	while ((c = getopt(ac, av, "c|e|d|r|sCqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
 		    case 'r':
@@ -81,7 +81,13 @@ usage:		system("bk help makepatch");
 				exit(1);
 			}
 			if (range[0]) goto usage;
-			sprintf(range, "-%c%s", c, optarg ? optarg : "");
+			c = snprintf(range,
+			    sizeof(range),  "-%c%s", c, optarg ? optarg : "");
+			if (c >= sizeof(range)) {
+				fprintf(stderr,
+				    "makepatch: arg size overflow\n");
+				goto usage;
+			}
 			nav[++i] = range;
 		    	break;
 		    case 's':
@@ -89,6 +95,9 @@ usage:		system("bk help makepatch");
 			break;
 		    case 'C':
 			copts.compat = 1;
+			break;
+		    case 'q':
+			nav[++i] = "-q";
 			break;
 		    case 'v':
 			nav[++i] = "-v";

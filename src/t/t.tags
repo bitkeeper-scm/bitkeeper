@@ -86,11 +86,11 @@ grep -q 'will not accept tags in compatibility mode' OUT || {
 	exit 1
 }
 cd $HERE/project
-echo $N Tag the latest and then undo that rev .......................$NL
-XXX - I think this will work; the weird one is a tag merge, where do 
-we put the merge delta and what happens when we undo?
-Also, we need to create some tag conflicts and try a push and see
-the error message, does it make sense?
+#echo $N Tag the latest and then undo that rev .......................$NL
+#XXX - I think this will work; the weird one is a tag merge, where do 
+#we put the merge delta and what happens when we undo?
+#Also, we need to create some tag conflicts and try a push and see
+#the error message, does it make sense?
 
 grep -q TAG2 SCCS/s.ChangeSet && { echo propogated tag; exit 1; }
 echo OK

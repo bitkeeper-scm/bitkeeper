@@ -101,7 +101,7 @@ echo OK
 
 echo $N Try to send a logging patch .................................$NL
 cd $HERE/project
-bk makepatch $Q -e -r1.0..1.2 > $HERE/patch
+bk makepatch $Q -e1.0..1.2 > $HERE/patch
 mkdir -p $HERE/proj_log
 cd $HERE/proj_log
 bk takepatch  -a < $HERE/patch
@@ -137,7 +137,7 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 grep -q "can't apply a regular patch to a logging file" tk.out
 if [ $? -ne 0 ]; then echo faile; exit 1; fi
 echo OK
-echo $N Make sure do not auto merge logging patch ...................$NL
+echo $N Make sure we do not auto merge logging patch ................$NL
 cd $HERE/proj_log; bk undo $Q -f -r1.2..
 bk clone $Q -r1.2 $HERE/project $HERE/copy1
 bk clone $Q -r1.2 $HERE/project $HERE/copy2
@@ -151,7 +151,7 @@ cd $HERE/copy1; bk commit $Q -ycopy1-cset
 cd $HERE/copy2; bk commit $Q -ycopy2-cset
 cd $HERE/copy1; bk push $Q -e $HERE/proj_log
 cd $HERE/copy2
-bk makepatch $Q -e -r1.3 > $HERE/patch
+bk makepatch $Q -e1.3 > $HERE/patch
 cd $HERE/proj_log
 bk takepatch  $Q -a < $HERE/patch
 cd $HERE/proj_log
@@ -169,7 +169,7 @@ echo OK
 #date >  new.c
 #bk new $Q -ycopy2-new new.c
 #bk commit $Q -ycopy2-new
-#bk makepatch $Q -e -r1.0.. > $HERE/patch
+#bk makepatch $Q -e1.0.. > $HERE/patch
 #cd $HERE/proj_log
 #bk takepatch $Q < $HERE/patch
 #bk resolve -d -t -c
