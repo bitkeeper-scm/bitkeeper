@@ -18,6 +18,11 @@ export_main(int ac,  char **av)
 	FILE	*f;
 	char	*type = 0;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help export");
+		return (1);
+	}
+
 	while ((c = getopt(ac, av, "d:hkt:Twvi:x:r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;
@@ -40,10 +45,7 @@ export_main(int ac,  char **av)
 		    case 'x':	sprintf(exclude, "| grep -E -v '%s' ",  optarg);
 				break;
 		    default :
-usage:			fprintf(stderr,
-		"usage: bk export [-tplain|patch] [-TDkqwv] [-i<pattern>] [-x<pattern>]\n");
-			fprintf(stderr,
-				"\t[-r<rev> | -d u|c] [source] dest\n");
+usage:			system("bk help -s export");
 			exit(1);
 		}
 	}

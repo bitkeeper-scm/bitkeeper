@@ -9,9 +9,6 @@
 WHATSTR("@(#)%K%");
 
 
-private	char *sfind_usage = "\
-usage: sfind [-acdDeEgijlSuUvx] [-p[C|A]] [-o<file>] [directories]\n";
-
 typedef struct {
 	u32     show_markers:1;		/* -v: show markers */
 	u32     all:1;			/* -a: disable ignore list */
@@ -168,7 +165,7 @@ sfind_main(int ac, char **av)
 	char	*path, *s, buf[MAXPATH];
 
 	if ((ac > 1) && streq("--help", av[1])) {
-usage:		fprintf(stderr, "%s", sfind_usage);
+		system("bk help sfiles");
 		return (0);
 	}                
 
@@ -218,7 +215,9 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 		    case 'U':	opts.useronly = 1; break;
 		    case 'v':	opts.show_markers = 1; break;
 		    case 'x':	opts.extras = opts.junk = 1; break;
-		    default: 	goto usage;
+		    default: 	
+usage:				system("bk help -s sfiles");
+				return (1);
 		}
 	}
 	

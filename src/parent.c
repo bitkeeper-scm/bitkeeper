@@ -12,6 +12,11 @@ parent_main(int ac,  char **av)
 	FILE	*f;
 	int	c, do_remove = 0, quiet = 0;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help parent");
+		return (0);
+	}
+
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "parent: cannot find package root.\n");
 		exit(1);
@@ -22,7 +27,7 @@ parent_main(int ac,  char **av)
 		    case 'q': quiet = 1; break;
 		    case 'r': do_remove = 1; break;
 		    default:
-			fprintf(stderr, "unknown option <%c>\n", c);
+			system("bk help -s parent");
 			exit(1);
 		}
 	}

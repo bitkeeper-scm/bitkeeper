@@ -3,11 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private	char	*rmdel_help = "\n\
-usage: rmdel [-q] [-r<rev>] file\n\n\
-    -q		run quietly\n\
-    -r<r>	rmdel revision <r>\n\n";
-
 /*
  * The weird setup is so that I can #include this file into sccssh.c
  */
@@ -21,16 +16,15 @@ _rmdel_main(int ac, char **av, char *out)
 
 	debug_main(av);
 	if (ac == 2 && streq("--help", av[1])) {
-		fprintf(stderr, rmdel_help);
-		return (1);
+		system("bk help rmdel");
+		return (0);
 	}
 	while ((c = getopt(ac, av, "qr;")) != -1) {
 		switch (c) {
 		    case 'q': flags |= SILENT; break;
 		    case 'r': rev = optarg; break;
 		    default:
-			fprintf(stderr,
-			    "rmdel: usage error, try rmdel --help\n");
+			system("bk help -s rmdel");
 			return (1);
 		}
 	}

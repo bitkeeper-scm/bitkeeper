@@ -31,8 +31,8 @@ unlock_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fputs(unlock_help, stderr);
-		return (1);
+		system("bk help unlock");
+		return (0);
 	}
 	while ((c = getopt(ac, av, "bfprswxz")) != -1) {
 		switch (c) {
@@ -46,7 +46,8 @@ usage:		fputs(unlock_help, stderr);
 		    case 'z': flags |= ZLOCK; break;
 			break;
 		    default:
-			goto usage;
+usage:			system("bk help -s unlock");
+			return (1);
 		}
 	}
 

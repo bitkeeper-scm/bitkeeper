@@ -11,13 +11,17 @@ fix_main(int ac,  char **av)
 	sccs	*s;
 	delta	*d;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help fix");
+		return (1);
+	}
 	while ((c = getopt(ac, av, "qv")) != -1) {
 		switch (c) {
 		    case 'q': break;
 		    case 'v': qflag = ""; break;
 		    default :
-			fprintf(stderr, "unknown option <%c>\n", c);
-			exit(1);
+			system("bk help -s fix");
+			return (1);
 		}
 	}
 	i =  optind - 1;

@@ -3,7 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private char	*abort_help = "usage: abort [-f] [repository root]\n";
 void	abort_patch();
 
 /*
@@ -18,14 +17,15 @@ abort_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fputs(abort_help, stderr);
+		system("bk help abort");
 		return (1);
 	}
 	while ((c = getopt(ac, av, "f")) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break;
 		    default:
-			goto usage;
+usage:			system("bk help -s abort");
+			return (1);
 		}
 	}
 	if (av[optind]) chdir(av[optind]);

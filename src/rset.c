@@ -340,6 +340,11 @@ rset_main(int ac, char **av)
 	kvpair	kv;
 	datum	k;
 	options	opts = { 0, 0, 0, 0};
+
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help rset");
+		return (0);
+	}
 	
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "mkrev: cannot find package root.\n");
@@ -365,8 +370,7 @@ rset_main(int ac, char **av)
 				}
 				break;
 		default:
-usage:				fprintf(stderr,
-		    "Usage: rset [-a] [-h] [-H] [-l<rev>|-r[<rev1>,]<rev2>]\n");
+usage:				system("bk help -s rset");
 				if (s) sccs_close(s);
 				return (1);
 		}

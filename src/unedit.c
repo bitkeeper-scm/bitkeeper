@@ -20,7 +20,7 @@ unedit_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-		fputs(unedit_help, stderr);
+		system("bk help unedit");
 		return (1);
 	}
 

@@ -6,21 +6,6 @@
 
 WHATSTR("@(#)%K%");
 
-private	char	*cset_help = "\n\
-usage: cset [opts]\n\n\
-    -C		clear and remark all ChangeSet boundries\n\
-    -h		With -r listing, show historic path\n\
-    -H		With -r listing, hide Changeset file from file list\n\
-    -i<list>	create a new cset on TOT that includes the csets in <list>\n\
-    -M<range>	Mark the files included in the range of csets\n\
-    -p		print the list of deltas being added to the cset\n\
-    -q		Run silently\n\
-    -r<range>	List each rev in range as file@rev (may be multiline per file)\n\
-    -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
-    -x<list>	create a new cset on TOT that excludes the csets in <list>\n\
-    -y<msg>	Sets the changeset comment to <msg>\n\
-    -Y<file>	Sets the changeset comment to the contents of <file>\n\
-";
 
 typedef	struct cset {
 	/* bits */
@@ -72,6 +57,10 @@ makepatch_main(int ac, char **av)
 	char	*s;
 	char	*nav[20];
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help makepatch");
+		return (0);
+	}
 	/*
 	 * bk makepatch [-v] [-c<range>] [-d<range>] [-r<range>] [-]
 	 */
@@ -115,12 +104,15 @@ cset_main(int ac, char **av)
 	int	ignoreDeleted = 0;
 	char	*cFile = 0;
 	char	allRevs[6] = "1.0..";
+	char	buf[100];
 	RANGE_DECL;
 
 	platformSpecificInit(NULL);
 	debug_main(av);
+
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "%s", cset_help);
+usage:		sprintf(buf, "bk help %s", av[0]);
+		system(buf);
 		return (1);
 	}
 
@@ -192,7 +184,9 @@ usage:		fprintf(stderr, "%s", cset_help);
 		    case 'S': syms = addLine(syms, strdup(optarg)); break;
 
 		    default:
-			goto usage;
+			sprintf(buf, "bk help -s %s", av[0]);
+			system(buf);
+			return (1);
 		}
 	}
 

@@ -25,6 +25,7 @@ __cd2root() {
 
 # Run csettool on the list of csets, if any
 _csets() {
+	if [ X$1 = X"--help" ]; then bk help csets; exit 0; fi
 	__cd2root
 	if [ -f RESYNC/BitKeeper/etc/csets-in ]
 	then	echo Viewing RESYNC/BitKeeper/etc/csets-in
@@ -86,6 +87,7 @@ _extra() {
 }
 
 _extras() {
+	if [ X$1 = X"--help" ]; then bk help extras; exit 0; fi
 	if [ "X$1" != X -a -d "$1" ]
 	then	cd $1
 		shift
@@ -146,7 +148,9 @@ _mvdir() {
 		exit 1;
 		;;
 	esac
-	if [ X$3 != X ]; then echo "usage bk mvdir from_dir to_dir"; exit 1; fi
+	if [ X$1 = X"--help" ]; then bk help mvdir; exit 0; fi
+	if [ X$2 = X ]; then bk help -s mvdir; exit 1; fi
+	if [ X$3 != X ]; then bk help -s mvdir; exit 1; fi
 	if [ ! -d $1 ]; then echo $1 is not a directory; exit 1; fi
 	if [ -e $2 ]; then echo $2 already exist; exit 1; fi
 	
@@ -163,7 +167,9 @@ _mvdir() {
 }
 
 _rmdir() {
-	if [ X$2 != X ]; then echo "usage bk rmdir dir"; exit 1; fi
+	if [ X$1 = X"--help" ]; then bk help rmdir; exit 0; fi
+	if [ X$1 = X ]; then bk help -s rmdir; exit 1; fi
+	if [ X$2 != X ]; then bk help -s rmdir; exit 1; fi
 	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
 	bk -r check -a || exit 1;
 	XNUM=`bk sfiles -x $1 | wc -l`
@@ -197,6 +203,7 @@ _rmdir() {
 
 # usage: tag [r<rev>] symbol
 _tag() {
+	if [ X$1 = X"--help" ]; then bk help tag; exit 0; fi
 	__cd2root
 	REV=
 	while getopts r: opt
@@ -206,7 +213,7 @@ _tag() {
 	done
 	shift `expr $OPTIND - 1`
 	if [ "X$1" = X ]
-	then	echo "Usage: tag [-r<rev>] tag_name"
+	then	bk help -s tag
 		exit 1
 	fi
 	bk admin -S${1}$REV ChangeSet
@@ -215,6 +222,7 @@ _tag() {
 # usage: ignore glob [glob ...]
 #    or: ignore
 _ignore() {
+	if [ X$1 = X"--help" ]; then bk help ignore; exit 1; fi
 	__cd2root
 	if [ "x$1" = x ]
 	then	if [ -f BitKeeper/etc/ignore ]
@@ -239,7 +247,7 @@ _ignore() {
 # usage: chmod mode file [file ...]
 _chmod() {
 	if [ "X$1" = X -o "X$2" = X ]
-	then	echo "usage: chmod mode file [file ...]"
+	then	bk help chmod
 		exit 1
 	fi
 	MODE=$1
@@ -295,7 +303,7 @@ _man() {
 
 _root() {
 	if [ X$1 = X--help ]
-	then	echo "usage: root [pathname]"
+	then	bk help root
 		exit 1
 	fi
 	if [ X$1 != X ]

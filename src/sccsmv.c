@@ -21,11 +21,15 @@ mv_main(int ac, char **av)
 		fprintf(stderr, upgrade_msg);
 		return(1);
 	}
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help mv");
+		return (0);
+	}
 
 	debug_main(av);
 	if (ac < 3) {
-usage:		fprintf(stderr, "usage: %s from to\n", av[0]);
-		exit(1);
+usage:		system("bk help -s mv");
+		return (1);
 	}
 	dest = av[ac-1];
 	cleanPath(dest, dest);

@@ -2,13 +2,6 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
-private	const char grep_help[] = "\
-usage: grep [-dimnu]  [files... | -]\n\
-   -d	prefix each line with the date it was last modified\n\
-   -i	ignore the case of letters in making comparisons\n\
-   -m	prefix each line with the rev it was last modified in\n\
-   -n	prefix each line with the filename\n\
-   -u	prefix each line with the user who last modified it\n";
 
 int
 grep_main(int ac, char **av)
@@ -20,6 +13,11 @@ grep_main(int ac, char **av)
 	int	c, i, fd, status;
 	char	buf[200];
 	pid_t	pid;
+
+	if (ac == 2 && streq("--help", av[1])) {	
+		system("bk help grep");
+		return (1);
+	}
 
 	*s++ = '-';
 	*g++ = '-';
@@ -39,7 +37,7 @@ grep_main(int ac, char **av)
 			*g++ = c;
 			break;
 		    default:
-			fprintf(stderr, "%s", grep_help);
+			system("bk help -s grep");
 			exit(0);
 		}
 	}

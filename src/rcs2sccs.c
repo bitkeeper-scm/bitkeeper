@@ -29,6 +29,10 @@ rcs2sccs_main(int ac, char **av)
 	verbose = 2;
 	proj = 0;
 	co_prog = cutoff = 0;
+
+	// XXX FIXME: We don't call "bk help" now
+	// because the "bk help page is out-of-date
+
 	while ((c = getopt(ac, av, "c;dhq")) != -1) {
 		switch (c) {
 		    case 'c': cutoff = optarg; break;

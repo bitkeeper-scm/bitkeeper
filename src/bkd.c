@@ -19,6 +19,11 @@ bkd_main(int ac, char **av)
 	int	c;
 	char	*uid = 0;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help bkd");
+		return (1);
+	}
+
 	loadNetLib();
 	while ((c = getopt(ac, av, "c:dDeE:il|p:P:Rs:St:u:x:")) != -1) {
 		switch (c) {
@@ -78,7 +83,7 @@ bkd_main(int ac, char **av)
 private	void
 usage()
 {
-	system("bk help bkd");
+	system("bk help -s bkd");
 	exit(1);
 }
 

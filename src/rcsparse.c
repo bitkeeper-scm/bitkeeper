@@ -16,6 +16,11 @@ rcsparse_main(int ac, char **av)
 	int	i;
 	char	buf[MAXPATH];
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help rcsparse");
+		return (0);
+	}
+
 	if (av[1] && streq("-", av[1]) && !av[2]) {
 		while (fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);

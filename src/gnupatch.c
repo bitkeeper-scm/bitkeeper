@@ -172,13 +172,17 @@ gnupatch_main(int ac, char **av)
 	FILE *pipe;
 	MDBM *db;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help gnupatch");
+		return (1);
+	}
+
 	while ((c = getopt(ac, av, "hTd|")) != -1) { 
 		switch (c) {
 		    case 'h':	header = 0; break; /* disable header */
 		    case 'T':	fix_mod_time = 1; break; 
 		    case 'd':	diff_style = optarg ? optarg : ""; break;
-		    default:	fprintf(stderr,
-				    "Usage: gnupatch [-hT] [-d[u|c|n]]\n");
+		    default:	system("bk help -s gnupatch");
 				return (1);
 		}
 	}

@@ -79,8 +79,8 @@ _get_main(int ac, char **av, char *out)
 		    case 'x': xLst = optarg; break;
 
 		    default:
-usage:			fprintf(stderr, "%s: usage error, try get --help\n",
-				av[0]);
+usage:			sprintf(realname, "bk help -s %s", name);
+			system(realname);
 			return (1);
 		}
 	}
