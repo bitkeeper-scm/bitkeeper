@@ -163,6 +163,37 @@ c_merge(resolve *rs)
 }
 
 int
+c_smerge(resolve *rs)
+{
+	names	*n = rs->tnames;
+	int	ret;
+	char	*branch;
+	char	cmd[MAXPATH*4];
+
+	branch = strchr(rs->revs->local, '.');
+	assert(branch);
+	if (strchr(++branch, '.')) {
+		branch = rs->revs->local;
+	} else {
+		branch = rs->revs->remote;
+	}
+	sprintf(cmd, "bk get -pM%s %s >%s", branch, rs->s->gfile, rs->s->gfile);
+	ret = sys(cmd, rs->opts) & 0xffff;
+	/*
+	 * We need to restart even if there are errors, otherwise we think
+	 * the file is not writable.
+	 */
+	sccs_restart(rs->s);
+	if (ret) {
+		fprintf(stderr,
+		    "Merge of %s failed for unknown reasons\n", rs->s->gfile);
+		rs->opts->errors = 1;
+		return (0);
+	}
+	return (0);
+}
+
+int
 c_sccstool(resolve *rs)
 {
 	char	*av[10];
@@ -284,13 +315,46 @@ c_commit(resolve *rs)
 	 * If in text only mode, then check in the file now.
 	 * Otherwise, leave it for citool.
 	 */
-doit:	if (rs->opts->textOnly) do_delta(rs->opts, rs->s);
+doit:	if (rs->opts->textOnly) {
+		unless (sccs_hasDiffs(rs->s, 0, 0)) {
+			do_delta(rs->opts, rs->s, SCCS_MERGE);
+		} else {
+			do_delta(rs->opts, rs->s, 0);
+		}
+	}
 	rs->opts->resolved++;
 	return (1);
 }
 
+/*
+ * Run a shell with the following in the envronment
+ * BK_GCA=gca-filename
+ * BK_LOCAL=local-filename
+ * BK_REMOTE=remote-filename
+ * BK_MERGE=filename
+ * XXX - need to add the revs
+ */
+int
+c_shell(resolve *rs)
+{
+	names	*n = rs->tnames;
+	char	buf[MAXPATH];
+
+	sprintf(buf, "BK_GCA=%s", n->gca); putenv(strdup(buf));
+	sprintf(buf, "BK_LOCAL=%s", n->local); putenv(strdup(buf));
+	sprintf(buf, "BK_REMOTE=%s", n->remote); putenv(strdup(buf));
+	sprintf(buf, "BK_MERGE=%s", rs->s->gfile); putenv(strdup(buf));
+	unless (rs->shell && rs->shell[0]) {
+		system("sh -i");
+		return (0);
+	}
+	system(rs->shell);
+	return (0);
+}
+
 rfuncs	c_funcs[] = {
     { "?", "help", "print this help", c_help },
+    { "!", "shell", "escape to an interactive shell", c_shell },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "cl", "clear", "clear the screen", res_clear },
     { "C", "commit", "commit to the merged file", c_commit },
@@ -312,6 +376,7 @@ rfuncs	c_funcs[] = {
     { "m", "merge", "automerge the two files", c_merge },
     { "p", "sccstool", "graphical picture of the file history", c_sccstool },
     { "q", "quit", "immediately exit resolve", c_quit },
+    { "s", "sccsmerge", "merge the two files using SCCS' algorthm", c_smerge },
     { "sd", "sdiff",
       "side by side diff of the local file vs. the remote file", res_sdiff },
     { "v", "view merge", "view the merged file", c_vm },

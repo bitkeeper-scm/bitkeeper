@@ -202,7 +202,7 @@ rm -f CCCC/SCCS/s.file6
 bk -r check -a 2>  ck.out
 grep -q "not found"  ck.out
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
-bk -r check -ag | bk gone -
+bk -r check -ag | bk gone -q -
 bk -r check -a
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK

@@ -6875,7 +6875,7 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
  * flags is same as get flags.
  */
 int
-sccs_hasDiffs(sccs *s, u32 flags)
+sccs_hasDiffs(sccs *s, u32 flags, int inex)
 {
 	MMAP	*tmp = 0;
 	MDBM	*ghash = 0;
@@ -6893,7 +6893,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	int	no_lf = 0;
 	int	lf_pend = 0;
 	u32	eflags = flags; /* copy because expandnleq destroys bits */
-	int	serial;
+	int	error = 0, serial;
 
 #define	RET(x)	{ different = x; goto out; }
 
@@ -6901,7 +6901,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 
 	bzero(&pf, sizeof(pf));
 	if (sccs_read_pfile("hasDiffs", s, &pf)) return (-1);
-	if (pf.mRev) RET(2);
+	if (inex && (pf.mRev || pf.iLst || pf.xLst)) RET(2);
 	unless (d = findrev(s, pf.oldrev)) {
 		verbose((stderr, "can't find %s in %s\n", pf.oldrev, s->gfile));
 		RET(-1);
@@ -6951,7 +6951,8 @@ sccs_hasDiffs(sccs *s, u32 flags)
 		RET(-1);
 	}
 	assert(s->state & S_SOPEN);
-	slist = serialmap(s, d, 0, 0, 0, 0);
+	slist = serialmap(s, d, 0, pf.iLst, pf.xLst, &error);
+	assert(!error);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
 	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
@@ -7482,11 +7483,11 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	if (sccs_read_pfile("clean", s, &pf)) return (1);
-	if (pf.mRev) {
+	if (pf.mRev || pf.iLst || pf.xLst) {
 		fprintf(stderr,
-		    "%s has merge pointer, not cleaned.\n", s->gfile);
+		    "%s has merge|include|exclude, not cleaned.\n", s->gfile);
 		free_pfile(&pf);
-		return (0);
+		return (1);
 	}
 		
 	unless (d = findrev(s, pf.oldrev)) {
@@ -7559,7 +7560,7 @@ sccs_clean(sccs *s, u32 flags)
 	 * hasDiffs() ignores keyword expansion differences.
 	 * And it's faster.
 	 */
-	unless (sccs_hasDiffs(s, flags)) goto nodiffs;
+	unless (sccs_hasDiffs(s, flags, 1)) goto nodiffs;
 	switch (diff_gfile(s, &pf, tmpfile)) {
 	    case 1:		/* no diffs */
 nodiffs:	verbose((stderr, "Clean %s\n", s->gfile));
@@ -7665,7 +7666,7 @@ sccs_info(sccs *s, u32 flags)
 		return (0);
 	}
 
-	switch (sccs_hasDiffs(s, flags)) {
+	switch (sccs_hasDiffs(s, flags, 1)) {
 	    case 2:
 		sccs_infoMsg(s, 'm', flags);
 		return (1);
@@ -9525,7 +9526,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 				else
 					sc->state &= ~S_SINGLE;
 			/* Flags below are non propagated */
-			} else if (streq(fl, "BK")) {
+			} else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
 				if (v) goto noval;
 				if (add)
 					sc->state |= S_BITKEEPER;
@@ -10821,7 +10822,7 @@ out:
 		    "delta: can't find %s in %s\n", pf.oldrev, s->gfile);
 		OUT;
 	}
-	if (pf.mRev) flags |= DELTA_FORCE;
+	if (pf.mRev || pf.xLst || pf.iLst) flags |= DELTA_FORCE;
 	debug((stderr, "delta found rev\n"));
 	if (diffs) {
 		debug((stderr, "delta using diffs passed in\n"));
@@ -12034,7 +12035,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
-	if (streq(kw, "PN")) {
+	if (streq(kw, "PN") || streq(kw, "SFILE")) {
 		/* s file path */
 		if (s->sfile) {
 			fs(s->sfile);

@@ -3,6 +3,7 @@
 
 extern char *editor, *pager, *bin;
 private void    usage(void);
+private void	defaultIgnore();
 
 int
 setup_main(int ac, char **av)
@@ -121,6 +122,7 @@ again:		printf("Editor to use [%s] ", editor);
 	assert(s);
 	sccs_get(s, 0, 0, 0, 0, SILENT|GET_EXPAND, 0);
 	sccs_free(s);
+	defaultIgnore();
 
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
 	sprintf(buf, "bk -R sfiles -C > %s", setup_files);
@@ -136,6 +138,20 @@ again:		printf("Editor to use [%s] ", editor);
 	mkdir("BitKeeper/etc/.master", 0775);
 	sendConfig("setups@openlogging.org", "1.0");
 	return (0);
+}
+
+private void
+defaultIgnore()
+{
+	int	fd = open("BitKeeper/etc/ignore", O_CREAT|O_RDWR, 0664);
+
+	if (write(fd, "BitKeeper/*/*\n", 14) != 14) {
+		perror("write");
+		close(fd);
+		return;
+	}
+	close(fd);
+	system("bk new -q BitKeeper/etc/ignore");
 }
 
 private void

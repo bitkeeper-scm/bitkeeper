@@ -50,6 +50,7 @@ _get_main(int ac, char **av, char *out)
 	int	getdiff = 0;
 	int	hasrevs = 0;
 	int	dohash = 0;
+	int	commitedOnly = 0;
 	int	branch_ok = 0;
 	project	*proj = 0;
 	MDBM	*realNameCache = 0;
@@ -76,11 +77,12 @@ _get_main(int ac, char **av, char *out)
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
 	while ((c =
-	    getopt(ac, av, "ac;dDeFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
+	    getopt(ac, av, "ac;CdDeFgG:hHi;klmM|nNpPqr;RSstTux;")) != -1) {
 		switch (c) {
 		    case 'a': flags |= GET_ALIGN; break;
 		    //case 'b': flags |= GET_BRANCH; break;
 		    case 'c': cdate = optarg; break;
+		    case 'C': commitedOnly = 1; break;
 		    case 'd': flags |= GET_PREFIXDATE; break;
 		    case 'D': getdiff++; break;
 		    case 'l':
@@ -147,13 +149,22 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 	if ((flags & GET_PATH) && (flags & (GET_EDIT|PRINT))) {
 		fprintf(stderr, "%s: can't use -e/-l/-p and -H together.\n",
 			av[0]);
-		return (1);
+		goto usage;
+	}
+	if (commitedOnly && (flags & GET_EDIT)) {
+		fprintf(stderr,
+		    "%s: -C can not be combined with edit.\n", av[0]);
+		goto usage;
+	}
+	if (commitedOnly && (rev || cdate)) {
+		fprintf(stderr,
+		    "%s: -C can not be combined with rev/date.\n", av[0]);
 		goto usage;
 	}
 	if ((rev || cdate) && hasrevs) {
 		fprintf(stderr, "%s: can't specify more than one rev.\n",
 			av[0]);
-		return (1);
+		goto usage;
 	}
 	switch (getdiff) {
 	    case 0: break;
@@ -221,11 +232,24 @@ usage:			fprintf(stderr, "%s: usage error, try get --help\n",
 			}
 		}
 		if (hasrevs) rev = sfileRev();
+		if (commitedOnly) {
+			delta	*d = sccs_top(s);
+
+			while (d && !(d->flags & D_CSET)) d = d->parent;
+			if (!d) {
+				verbose((stderr,
+				    "No committed deltas in %s\n", s->gfile));
+				errors = 1;
+				sccs_free(s);
+				continue;
+			}
+			rev = d->rev;
+		}
 		if ((s->state & S_BITKEEPER) &&
-		    (flags & GET_EDIT)
-		    && rev && !branch_ok) {
+		    (flags & GET_EDIT) && rev && !branch_ok) {
 			fprintf(stderr,
-			   "Do not use -r to create branch, use \"bk setlod\"\n");
+			    "Do not use -r to create branch, "
+			    "use \"bk setlod\"\n");
 			errors = 1;
 			sccs_free(s);
 			continue;

@@ -140,7 +140,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		 * no changes at TOT.
 		 */
 		if (!things && IS_EDITED(s) && 
-		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex)) goto next;
+		    !sccs_hasDiffs(s, GET_DIFFTOT|flags|ex, 1)) goto next;
 		
 		/*
 		 * Optimize out the case where we we are readonly and diffing

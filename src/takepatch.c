@@ -205,6 +205,7 @@ usage:		fprintf(stderr, takepatch_help);
  *	logging_ok
  *	config
  *	gone
+ *	ignore
  */
 private void
 get_configs()
@@ -221,6 +222,12 @@ get_configs()
 		system("cp BitKeeper/etc/SCCS/s.logging_ok "
 		    "RESYNC/BitKeeper/etc/SCCS/s.logging_ok");
 		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.logging_ok"));
+	}
+	if (exists("BitKeeper/etc/SCCS/s.ignore") &&
+	    !exists("RESYNC/BitKeeper/etc/SCCS/s.ignore")) {
+		system("cp BitKeeper/etc/SCCS/s.ignore "
+		    "RESYNC/BitKeeper/etc/SCCS/s.ignore");
+		assert(exists("RESYNC/BitKeeper/etc/SCCS/s.ignore"));
 	}
 	/* XXX - if this is edited, we don't get those changes */
 	if (exists("BitKeeper/etc/SCCS/s.gone")) {

@@ -84,11 +84,13 @@ private char *root;
 int
 gone_main(int ac, char **av)
 {
-	MDBM *idDB;
-	int error = 0;
+	MDBM	*idDB;
+	int	error = 0;
+	int	quiet = 0;
 
-	if (av[1] == NULL) {
-		fprintf(stderr, "usage: bk gone [-|key...]\n");
+	if (av[1] && streq(av[1], "-q")) quiet++, av++;
+	unless (av[1]) {
+		fprintf(stderr, "usage: bk gone [-q] [-|key...]\n");
 		exit(1);
 	}
 	idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS);
@@ -98,12 +100,27 @@ gone_main(int ac, char **av)
 
 		while (fgets(buf, sizeof(buf), stdin)) {
 			chop(buf);
-			error |= sccs_gone(buf, idDB);
+			if (sccs_gone(buf, idDB)) {
+				error = 1;
+			} else unless (quiet) {
+				fprintf(stderr,
+				    "Do not forget to commit the gone file "
+				    "before attempting a pull\n");
+				quiet = 1;
+			}
 		}
 	} else {
-		int i = 1;
+		int	i = 1;
+
 		while (av[i]) {
-			error |= sccs_gone(av[i], idDB);
+			if (sccs_gone(av[i++], idDB)) {
+				error = 1;
+			} else unless (quiet) {
+				fprintf(stderr,
+				    "Do not forget to commit the gone file "
+				    "before attempting a pull\n");
+				quiet = 1;
+			}
 		}
 	}
 
@@ -118,20 +135,11 @@ int
 sccs_gone(char *key, MDBM *idDB)
 {
 
-	sccs *s, *s1;
-	char s_gone[MAXPATH], g_gone[MAXPATH];
-	FILE *f;
+	sccs	*s1;
+	char	s_gone[MAXPATH], g_gone[MAXPATH];
+	FILE	*f;
 
-	s = sccs_keyinit(key, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
-	if (s) {
-		fprintf(stderr, "\"%s\" is not a gone key\n", key);
-		sccs_free(s);
-		return (1);
-	}
-
-	unless (root) {
-		root = proj ? strdup(proj->root) : sccs_root(0);
-	}
+	unless (root) root = proj ? strdup(proj->root) : sccs_root(0);
 	assert(root);
 	sprintf(s_gone, "%s/BitKeeper/etc/SCCS/s.gone", root);
 	sprintf(g_gone, "%s/BitKeeper/etc/gone", root);
