@@ -121,7 +121,7 @@ proc getConfig {prog} \
 	set _d(help.linkColor) $BLUE	;# hyperlinks
 	set _d(help.topicsColor) $ORANGE	;# highlight for topic search matches
 	set _d(help.height) 50		;# number of rows to display
-	set _d(help.width) 72		;# number of columns to display
+	set _d(help.width) 79		;# number of columns to display
 	set _d(help.helptext) ""	;# -f<helptextfile> - undocumented
 	set _d(help.exact) 0		;# helpsearch, allows partial matches
 

@@ -274,8 +274,15 @@ proc restoreGeometry {app {w .} {force 0}} \
 		set width [expr {$width > $rwidth ? $rwidth : $width}]
 		set height [expr {$height > $rheight ? $rheight : $height}]
 	} message]} {
-		# punt! 
-		return
+		# See if we have just the +x+y form
+		if {[catch {
+			regexp {^\+([0-9]+)\+([0-9]+)$} $geometry -> x y
+			wm geometry $w +$x+$y
+			return
+		} message]} {
+			# OK, now we can punt
+			return
+		}
 	}
 
 	# Since we are setting the size of the window we must turn
