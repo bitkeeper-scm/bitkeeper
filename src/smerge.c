@@ -1021,6 +1021,7 @@ merge_common_deletes(region *r)
 	int	i, j;
 	int	ret = 0;
 	int	cnt;
+	int	len;
 	region	*newr;
 
 	left = unidiff(r->gca, r->left);
@@ -1045,33 +1046,33 @@ merge_common_deletes(region *r)
 	 * move matching deletes at end to new region
 	 */
 	EACH (left);
-	j = i - 1;
-	while (j >= 1) {
+	len = i - 1;
+	for (j = len; j >= 1; --j) {
 		if (left[j][0] != '-') break;
-		--j;
 	}
-	cnt = i - j - 1;
+	cnt = len - j;
 	EACH (right);
-	j = i - 1;
-	while (j >= 1) {
+	len = i - 1;
+	for (j = len; j >= 1; --j) {
 		if (right[j][0] != '-') break;
-		--j;
 	}
-	cnt = MIN(cnt, i - j - 1);
+	cnt = MIN(cnt, len - j);
 
 	if (cnt > 0) {
-		new(newr);
 		EACH (r->gca);
-		assert(cnt < i - 1);
-		ret = 1;
-		while (cnt > 0) {
-			--i;
-			--cnt;
-			newr->gca = addLine(newr->gca,
-					    r->gca[i]);
-			r->gca[i] = 0;
+		len = i - 1;
+		if (cnt < len) {
+			new(newr);
+			while (cnt > 0) {
+				--i;
+				--cnt;
+				newr->gca = addLine(newr->gca,
+						    r->gca[i]);
+				r->gca[i] = 0;
+			}
+			push_region(newr);
+			ret = 1;
 		}
-		push_region(newr);
 	}
 
 	freeLines(left);
