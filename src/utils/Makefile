@@ -16,24 +16,23 @@ endif
 .SCCS_GET:
 	bk get -q $@
 
-all image: sfio munge mkbk extractor.c bitkeeper.sh gnu-os os installer.tcl \
-	   bootstrap.tcl
+all image: munge mkbk extractor.c bitkeeper.sh gnu-os os setup.tcl \
 	./mkbk
 SFIO_SRC=../sfio.c sfio_utils.c
 
 sfio: $(SFIO_SRC) sfio.h
 	$(CC) -DSFIO_STANDALONE=YES -O $(SFIO_SRC) ../zlib/libz.a -o sfio
 
-installer.tcl: install.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
+setup.tcl: setupmain.tcl ../gui/tkwizard.tcl ../gui/common.tcl \
 	../bklogo.gif
-	(cat install.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
+	(cat setupmain.tcl ../gui/common.tcl ../gui/tkwizard.tcl; \
 	 echo "image create photo bklogo -data {`bk base64 < ../bklogo.gif`}";\
 	 echo "main"\
-	) > installer.tcl
+	) > setup.tcl
 $(MUNGE): munge.c $H
 	$(CC) -O munge.c -o munge
 
 clobber clean clean-obj:
 	/bin/rm -f _data _data.c _data.o a.out munge testdata testdata.tar \
-	    core testdata.bin bk-*.bin bk-*.tgz sfio tcl.sfio installer.tcl
+	    core testdata.bin bk-*.bin bk-*.tgz setup.tcl
 	bk -r. clean
