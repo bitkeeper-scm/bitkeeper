@@ -1,0 +1,73 @@
+.so ../macros
+.TH "bk receive" 1 08/18/00 "*(BC" *(BK
+.\"    =============== Receiving BitKeeper patches ===============
+.SH NAME
+bk receive \- receive a BitKeeper patch
+.SH SYNOPSIS
+.B bk receive [
+.IB takepatch\ options ] 
+.B [
+.IB repository ]
+.SH DESCRIPTION
+.LP
+Use when applying a BitKeeper patch you received via email.  You can
+take a BitKeeper patch and pipe the whole email message through
+bk receive. Headers and footers are stripped automatically.
+.LP
+When someone sends you a patch with the following command:
+.AX
+    $ bk send -rbeta.. you@your.host.com
+.XA
+.LP
+You will receive an email message which needs to be saved so you can
+feed it to the receive command:
+.AX
+    $ bk receive ~/mypackage < patch
+.XA
+.LP
+Many Unix email programs (pine, elm, etc) will allow you to pipe a
+message directly to a program. For example, when you are reading a
+message in pine, you can hit the '|' key, and you will be prompted
+with a message asking you for a program name where the message should
+be piped.
+.LP
+Remember that if you are getting the very first patch, you need to create
+a new repository by adding the "-i" option.  BitKeeper does not create
+repositories by default.
+.LP
+Specifying the repository is optional; if it is unspecified, receive tries
+to use the current working directory.
+.LP
+Patches may be wrapped. If they are you will see something like
+.AX
+    ## Wrapped with uu ##
+.XA
+near the top of the patch.  BitKeeper knows how to unwrap patches which
+it wrapped.  We currently support only uuencoded wrappers, but it is
+trivial to create different ones, see bk help wrap for more information.
+.SH OPTIONS
+.TP
+.B \-a
+Apply the changes (call 
+.BR bk\ resolve .)
+.TP
+.B \-c
+Do not accept conflicts with this patch.
+.TP
+.B \-i
+Initial patch, create a new repository.
+.TP
+.B \-v
+Verbose level, more is more verbose, \-vv is suggested.
+.LP
+All options are sent to takepatch.  With no options, takepatch is
+completely silent.  If you want to see the progress reports you
+see with resync, add -vv to the options.
+.SH "SEE ALSO"
+.SA send
+.br
+.SA takepatch
+.br
+.SA wrap
+.SH CATEGORY
+.B File

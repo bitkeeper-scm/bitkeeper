@@ -1,0 +1,34 @@
+.so ../macros
+.TH "bk rm" 1 08/18/00 "*(BC" *(BK
+.SH NAME 
+bk rm \- remove file[s]
+.SH SYNOPSIS
+.B bk rm
+.I file1 file2
+.SH DESCRIPTION
+.LP
+To delete a file, do this:
+.AX
+$ bk rm foo.c
+.XA
+Removing the file actually moves it to
+.IR BitKeeper/deleted/del-foo.c .
+All future operations will ignore the file unless you name it
+explicitly, but it will still exist in the repository and will still be
+propagated by
+.BR  resync .
+To resurrect the file, simply rename it again:
+.AX
+$ bk -R mv BitKeeper/deleted/.del-foo.c `pwd`/foo.c
+.XA
+Edited files can not be deleted, you must check them in first.
+.LP
+If you wish to obliterate all traces of a file, use the 
+.B bk gone
+facility.
+.SH SEE ALSO
+.SA gone
+.br
+.SA mv
+.SH CATEGORY
+.B Basics

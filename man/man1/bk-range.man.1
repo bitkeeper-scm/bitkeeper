@@ -1,0 +1,96 @@
+.so ../macros
+.TH "bk range" 1 08/18/00 "*(BC" *(BK
+.\"    ================= Specifying Dates and Ranges =================
+.SH NAME
+Ranges
+.SH DESCRIPTION
+.LP
+Many commands can take ranges of deltas as an argument.  A range
+is a continuous sequence of deltas, such as 1.1, 1.2, 1.3, and 1.4.
+Deltas may be specified by their revision number (1.2), or a symbol
+(alpha1), or a date (99/07/25).
+.LP
+You can specify both end\-points at once like so:
+.sp
+.AX
+	prs \-r1.1..1.5
+.XA
+.LP
+You can specify dates instead of revisions like so
+.sp
+.AX
+	prs \-c98..98
+.XA
+.LP
+If there are two dates, or there is a date and a revision, then the
+date format is [+\-]YYMMDDHHMMSS with missing fields either rounded up
+or rounded down.  Rounding is explicit if there is a "+" (rounds up)
+or a "\-" (rounds down) prefix on the date.  If there is no prefix, then
+the rounding is context sensitive.  If the date is the first date i.e.,
+the starting point, then the date is rounded down.  If it is the second
+date in the range, then it is rounded up.  So 98..98 is the same as
+980101000000 ..  981231235959.
+.LP
+If there is only one date specified, without a revision, then a very
+very useful form of the date is to specify a recent period of time, 
+such as 
+.sp
+.AX
+	prs \-c\-1d
+.XA
+.LP
+which will display the last 24 hours worth of changes.  This works
+the same way for Years/Months/days/hours/minutes/seconds, i.e.,
+.sp
+.AX
+	In the last year:	prs \-c\-1Y
+	In the last month:	prs \-c\-1M
+	In the last day:	prs \-c\-1d
+	In the last hour:	prs \-c\-1h
+	In the last minute:	prs \-c\-1m
+	In the last second:	prs \-c\-1s
+.XA
+.LP
+While you may not build up specific dates as \-1Y2m3d, you can specify 
+fractions, i.e., to get the last 6 months worth, try
+.sp
+.AX
+	prs \-c\-.5Y
+.XA
+.LP
+You can mix and match revisions and date.  If you want everything in
+98, but not past revision 1.5, you would type:
+.sp
+.AX
+	prs \-c98 \-r1.5
+.XA
+.LP
+Dates can also be symbolic tags.  If you tagged a file with Alpha and Beta,
+you can type:
+.sp
+.AX
+	prs \-cAlpha..Beta
+.XA
+.LP
+Ranges need not include both endpoints.  If you wanted to see everything
+from Beta forward, you could type:
+.sp
+.AX
+	prs \-cBeta..
+.XA
+.LP
+A single \-r, because it is the first revision seen, rounds down and means
+1.1.  To get the most recent delta, type "\-r+".
+.SH "SEE ALSO"
+.SA annotate
+.br
+.SA diffs
+.br
+.SA get
+.br
+.SA prs
+.\" help://General/date
+.\" help://General/dates
+.\" help://General/ranges
+.SH CATEGORY
+.B General

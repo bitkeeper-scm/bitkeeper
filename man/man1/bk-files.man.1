@@ -1,0 +1,70 @@
+.so ../macros
+.TH "bk files" 1 08/18/00 "*(BC" *(BK
+.SH NAME 
+files \- summary of
+.IR s.file ,
+.IR p.file ,
+.I z.file
+and what they mean
+.SH DESCRIPTION
+.LP
+For each file under revision control, there are a number of files
+associated with the main file.  The following list describes the
+purpose of each file:
+.TP 1i
+.I foo.c
+.I gfile
+(aka "gotten" file), this is your source file
+.TP
+.I SCCS/s.foo.c
+.IR s.file \ -
+the revision history of all versions of the gfile
+.TP
+.I SCCS/p.foo.c
+.IR p.file \ -
+the lock file, created when the file is edited.  The pfile
+contains the following columns:
+.nf
+.if n .ta 0i +1.1i +1i +.8i
+.if n .sp
+.if t .ta 0i +.75i +.75i +.75i
+.if t .in +2
+.if t .ft CW
+parent	new	
+revision	revision	user	date/time
+1.5	1.6	lm	01/01/2000 12:43:54
+.fi
+.if n .sp
+.if t .in
+.if t .ft
+This file is an exclusive lock whose existence indicates 
+that the gfile has been checked out for editing.  Unlike 
+ATT SCCS, BitKeeper allows only one locker at a time.
+.TP
+.I SCCS/z.foo.c
+.IR z.file \ -
+a lock file created when locking or checking 
+in a new version. This is an exclusive lock used when
+updating or locking the s.file.  
+.TP
+.I SCCS/x.foo.c
+.IR x.file \ -
+a temporary file which contains the new version
+of the s.file under construction.  When the check-in is
+finished, the s.file is removed and the x.file is moved
+into its place.
+.TP
+.I SCCS/b.foo.c   
+.IR b.file \ -
+a temporary backup of local s.files while 
+resolve is applying new files. If the application fails,
+the b.files are moved back in place, otherwise if the
+application succeeds, the b.files are removed.
+.TP
+.I SCCS/c.foo.c
+.IR c.file \ -
+a temporary copy of check in comments, currently used only by
+.B bk
+.BR citool .
+.SH CATEGORY
+.B General

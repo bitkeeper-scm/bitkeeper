@@ -1,0 +1,84 @@
+.so ../macros
+.TH "bk commit" 1 08/18/00 "*(BC" *(BK
+.\"    ========== Committing changes to a BitKeeper changeset =========
+.SH NAME
+bk commit \- commit deltas to a changeset
+.SH SYNOPSIS
+.if t \{\
+.B bk commit [\-dFRqS
+.I tag
+.B :y
+.Ix
+.B :Y
+.I file
+.B ]
+.\}
+.if n
+bk commit [\-adFRqS<tag>:y<x>:Y<file>]
+.SH DESCRIPTION
+.LP
+Takes all of your current revisions and adds them to a changeset.
+.LP
+You can see what will be added to a changeset when you commit by
+running:
+.AX
+$ bk pending
+.XA
+Pending lists only files which have checked in deltas; files that
+are not yet checked in are not shown.  Use 
+.B bk status
+if you want to see both.
+.LP
+Using citool is the best way to commit. Not only will citool help
+with checking in files, it will also create a changeset if you enter
+ChangeSet comments.  If you must do a command line commit, use:
+.AX
+$ bk commit
+.XA
+All revisions which you have checked in will become part of a
+changeset.  As part of the commit step, you will be prompted for
+comments. The comments should describe the changes that you have made.
+It's useful to have the output of 
+.B bk pending
+in another window to see what you did.
+.SH OPTIONS
+.TP
+.B -a
+Do not ask the user about logging, fail the commit unless OK.
+.TP
+.B \-d
+Don't run interactively; do the commit with the default comments.
+.TP
+.B -F
+Force a commit even if no pending deltas.
+.TP
+.B -R
+Tell commit that it is processing the resync directory.
+.TP
+.B \-q
+Run quietly.
+.TP
+.AN \-S tag
+Tag the tree with
+.I tag
+at the same time as the commit.
+.TP
+.AN \-Y file
+Get check-in comment for changeset from
+.IR file .
+.TP
+.AN \-y x
+Set check-in comment of changeset to
+.IR x .
+.SH "SEE ALSO"
+.SA changes
+.br
+.SA citool
+.br
+.SA pending
+.br
+.SA tag
+.\" help://Repository/changeset
+.\" help://Repository/changesets
+.SH CATEGORY
+.B Repository

@@ -1,0 +1,106 @@
+.so ../macros
+.TH "bk unlock" 1 08/18/00 "*(BC" *(BK
+.\"    =============== Discarding lock files ===============
+.SH NAME
+bk unlock \- remove BitKeeper file locks
+.SH SYNOPSIS
+.B bk unlock [-rsw]
+.br
+.B bk unlock [\-bfpxz] 
+.I file\-list
+.SH DESCRIPTION
+.LP
+The unlock command can be used to remove locks which have been left behind
+for some reason.  In general, you shouldn't need this command, if you do
+it indicates that either you are removing files without unediting them
+or it indicates that BitKeeper is leaving lock files that it should not.
+If it is the second case, please tell support@bitmover.com so we can fix
+that problem.
+.LP
+There are two sorts of locks in BitKeeper, file locks and repository
+locks.  The unlock command can unlock both kinds.
+.SH "REPOSITORY UNLOCKING"
+.LP
+The unlock command can be used to remove repository level locks.  This can
+be necessary if a remote process has left behind a lock (local stale locks
+are detected and cleaned automatically).  A stale lock is one which has been
+created locally but the process is no longer present.
+.LP
+Note: a repository can have two write locks: the regular lock file and
+the existence of the RESYNC directory.  Removing the write lock does not
+imply removing the RESYNC directory, see "bk help abort" for that.
+.SH "REPOSITORY UNLOCK OPTIONS"
+.TP
+.B \-r
+Remove all read locks, stale or not.
+.TP
+.B \-s
+Remove both read and write locks, but only if they are stale.
+.TP
+.B \-w
+Remove the write lock, stale or not.  Does not remove the RESYNC directory.
+.SH "FILE UNLOCKING"
+.LP
+Sometimes you need to explicitly unlock files.  The most common reason for
+wanting to do this comes from doing the following:
+.AX
+    $ bk edit user.c
+    $ rm user.c
+    $ bk edit user.c
+    get: can't plock user.c
+    get of SCCS/s.user.c failed, skipping it.
+.XA
+.LP
+In other words, the checked out file has been removed but the lock file
+still exists.  See the clean and unedit commands for ways to avoid this
+in the future.
+.LP
+The unlock command will fix the problem described above by removing what
+is called the ``p.file'', in this case SCCS/p.user.c.
+.LP
+The options listed above explain how to use the unlock command to remove
+other kinds of locks as well.
+.LP
+By default, unlock removes the p.file lock.  The z.file will normally
+time out and be discarded unless it was created on a different host
+(via NFS or SMB).
+.LP
+The default behavior of unlock is to remove the p.file only if the checked
+out file does not exist, i.e., like the scenario described above.
+.SH "FILE UNLOCK OPTIONS"
+.TP
+.B \-b
+Removes the b.file lock which is created as part of the resolve
+process.
+.TP
+.B \-f
+Force the unlink of the p.file even if the checked out file exists.
+.TP
+.B \-p
+Removes the p.file lock which is created by bk edit.
+.TP
+.B \-x
+Removes the x.file lock which is created during a check-in. x.file
+contains the new s.file.
+.TP
+.B \-z
+Removes the z.file lock which is created to prevent check-in and
+edit races.
+.SH BUGS
+.LP
+The unlock interface is overload for both file level and repository level
+operations and that is confusing.
+.SH "SEE ALSO"
+.SA unedit
+.br
+.SA clean
+.br
+.SA lock
+.br
+.SA abort
+.\" help://Repository/locks
+.\" help://Repository/repo
+.\" help://Repository/unlocking
+.SH CATEGORY
+.B File
+.B Repository
