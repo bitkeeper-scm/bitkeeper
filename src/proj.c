@@ -378,7 +378,7 @@ proj_license(project *p)
 	 */
 	unless (p || (p = curr_proj())) p = proj_fakenew();
 
-	unless (p->license) p->license = lease_fetchLicense(p);
+	unless (p->license) p->license = lease_licenseKey(p);
 	return (p->license);
 }
 
