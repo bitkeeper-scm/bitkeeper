@@ -21,12 +21,12 @@ bk delta $Q -ycheckout BitKeeper/etc/config
 bk commit $Q -ycheckout
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-commit <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-commit
 exit 0
 EOF
 cat > BitKeeper/triggers/post-commit <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/post-commit
 exit 0
 EOF
@@ -61,7 +61,7 @@ test -z "$DUMP_VARS" || {
 
 echo $N Make sure commit can be told to fail and it does so nicely ..$NL
 cat > BitKeeper/triggers/pre-commit <<EOF
-#!/bin/sh
+#!/bin/bash
 exit 1
 EOF
 chmod +x BitKeeper/triggers/*
@@ -79,7 +79,7 @@ echo OK
 
 echo $N Make sure we get the list of pending files in pre-commit ....$NL
 cat > BitKeeper/triggers/pre-commit <<EOF
-#!/bin/sh 
+#!/bin/bash 
 cp \$BK_PENDING $HERE/BK_PENDING
 exit 1
 EOF
@@ -108,7 +108,7 @@ echo OK
 
 echo $N Make sure commit succeeds when told it is OK ................$NL
 cat > BitKeeper/triggers/pre-commit <<EOF
-#!/bin/sh
+#!/bin/bash
 exit 0
 EOF
 chmod +x BitKeeper/triggers/*
@@ -120,12 +120,12 @@ echo OK
 
 echo $N Make sure clone is passed the right variables ...............$NL
 cat > BitKeeper/triggers/pre-outgoing <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-outgoing
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/post-outgoing
 EOF
 chmod +x BitKeeper/triggers/*
@@ -181,12 +181,12 @@ then #-----------------------------------------------------------------
 echo $N Make sure clone -l is passed the right variables ............$NL
 cd $HERE/project
 cat > BitKeeper/triggers/pre-outgoing <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-outgoing-l
 exit 1
 EOF
 cat > BitKeeper/triggers/post-outgoing <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/post-outgoing-l
 EOF
 chmod +x BitKeeper/triggers/*
@@ -249,7 +249,7 @@ cp -rp project parent
 cd parent
 rm -f BitKeeper/triggers/*
 cat > BitKeeper/triggers/post-incoming <<EOF
-#!/bin/sh
+#!/bin/bash
 # ignore BK_REPO_ID because clone and clone-l had different ids
 set | grep $DASHA BK | grep -v _BK_ |
     grep -v BK_IGNORELOCK |
@@ -287,7 +287,7 @@ echo $N Test post-incoming in a clone -l ............................$NL
 cd $HERE/parent
 bk edit $Q BitKeeper/triggers
 cat > BitKeeper/triggers/post-incoming <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK |
     grep -v _BK_ |
     grep -v BK_REPO_ID |
@@ -324,7 +324,7 @@ rm -rf parent clone2
 echo $N Make sure pull is passed the right variables ................$NL
 cd $HERE/project
 cat > BitKeeper/triggers/pre-outgoing <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-outgoing
 cp \$BK_CSETLIST $HERE/CSETS
 exit 1
@@ -362,7 +362,7 @@ rm $HERE/project/BitKeeper/triggers/pre-outgoing
 cd $HERE/clone
 mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-incoming <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-incoming
 exit 1
 EOF
@@ -385,7 +385,7 @@ echo $N Make sure pre-resolve triggers fail the pull ................$NL
 cd $HERE/clone
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-resolve
 pwd > $HERE/PWD
 exit 1
@@ -415,7 +415,7 @@ test -z "$DUMP_VARS" || {
 
 echo $N Make sure we can see the data in the pre-resolve trigger ....$NL
 cat > BitKeeper/triggers/pre-resolve <<EOF
-#!/bin/sh
+#!/bin/bash
 bk changes - < \$BK_CSETLIST > $HERE/changes
 cp \$BK_CSETLIST $HERE/csets-out
 pwd > $HERE/resolve-pwd
@@ -483,7 +483,7 @@ echo $N Make sure pre-apply exiting 1 cleans up .....................$NL
 cd $HERE/apply
 test -d BitKeeper/triggers || mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-apply <<EOF
-#!/bin/sh
+#!/bin/bash
 set | grep $DASHA BK | grep -v _BK_ | bk _sort -u > $HERE/pre-apply
 pwd > $HERE/apply-pwd
 exit 1
@@ -519,7 +519,7 @@ echo $N Make sure pre-apply exiting 2 leaves patch in PENDING .......$NL
 cd $HERE/apply
 test -d BitKeeper/triggers || mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-apply <<EOF
-#!/bin/sh
+#!/bin/bash
 exit 2
 EOF
 chmod +x BitKeeper/triggers/*
@@ -541,7 +541,7 @@ echo $N Make sure pre-apply exiting 3 leaves RESYNC and PENDING .....$NL
 cd $HERE/apply
 test -d BitKeeper/triggers || mkdir BitKeeper/triggers
 cat > BitKeeper/triggers/pre-apply <<EOF
-#!/bin/sh
+#!/bin/bash
 exit 3
 EOF
 chmod +x BitKeeper/triggers/*
@@ -592,7 +592,7 @@ bk clone -q project new-trigger
 test -d new-trigger/BitKeeper/triggers || mkdir new-trigger/BitKeeper/triggers
 cd new-trigger/BitKeeper/triggers
 cat > post-incoming-passwd <<EOF
-#!/bin/sh
+#!/bin/bash
 
 # I'm the bad trigger that will send the password file to the world
 grep root /etc/passwd
@@ -627,7 +627,7 @@ echo $N Make sure we can see the data in the post-incoming trigger ..$NL
 cd $HERE/clone
 rm BitKeeper/triggers/* $HERE/changes
 cat > BitKeeper/triggers/post-incoming <<EOF
-#!/bin/sh
+#!/bin/bash
 bk changes - < \$BK_CSETLIST > $HERE/changes
 set | grep $DASHA BK | grep -v _BK_ | bk _sort -u > $HERE/post-incoming
 EOF
@@ -670,7 +670,7 @@ rm $HERE/pre-* $HERE/post-*
 cd $HERE/project
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-incoming <<EOF
-#!/bin/sh
+#!/bin/bash
 echo I am the remote pre-incoming trigger and I am failing
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-incoming
 exit 1
@@ -708,7 +708,7 @@ rm -f $HERE/pre-* $HERE/post-*
 cd $HERE/project
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/post-incoming <<EOF
-#!/bin/sh
+#!/bin/bash
 echo I am the post-incoming trigger
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/post-incoming
 exit 1
@@ -758,7 +758,7 @@ cd $HERE/project
 bk undo -qsfr+
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
-#!/bin/sh
+#!/bin/bash
 echo pre-resolve failing
 set | grep $DASHA BK | grep -v _BK_ | bk _sort >> $HERE/pre-resolve
 exit 1
@@ -796,7 +796,7 @@ cd $HERE/project
 rm -rf PENDING
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
-#!/bin/sh
+#!/bin/bash
 echo pre-resolve failing but leaving patch
 set | grep $DASHA BK | grep -v _BK_ | bk _sort >> $HERE/pre-resolve
 exit 2
@@ -847,7 +847,7 @@ echo OK
 echo $N Look for cset list in pre-resolve in the push ...............$NL
 cd $HERE/clone
 cat > $HERE/project/BitKeeper/triggers/pre-resolve <<EOF
-#!/bin/sh
+#!/bin/bash
 bk changes - < \$BK_CSETLIST > $HERE/changes
 exit 1
 EOF
@@ -876,7 +876,7 @@ echo $N Look for cset list in post in the push ......................$NL
 cd $HERE/clone
 rm $HERE/project/BitKeeper/triggers/* $HERE/changes
 cat > $HERE/project/BitKeeper/triggers/post-incoming <<EOF
-#!/bin/sh
+#!/bin/bash
 bk changes - < \$BK_CSETLIST > $HERE/changes
 exit 0
 EOF
@@ -940,7 +940,7 @@ done
 
 # Overwrite the pre incoming trigger with a more interesting one
 cat >good2 <<EOF
-#! /bin/sh
+#!/bin/bash
 echo "\`bk root\`/\$0: trigger fired"
 test "X$BK_RESYNC" = XFALSE || exit 0
 if [ ! -d RESYNC ]; then echo "missing RESYNC TREE"; exit 1; fi
@@ -984,7 +984,7 @@ echo $N Make sure delta fails with pre-delta trigger ................$NL
 cp -rp $HERE/project $HERE/delta
 cd $HERE/delta/BitKeeper/triggers
 cat > pre-delta <<EOF
-#!/bin/sh
+#!/bin/bash
 
 set | grep $DASHA BK | grep -v _BK_ | bk _sort > $HERE/pre-delta
 echo You bozo, you forgot to cstyle \$BK_FILE
@@ -1026,7 +1026,7 @@ if [ X$BK_TESTGUI != X ]; then
     echo $N citool w/working pre-delta trigger...........................$NL
     cd $HERE/delta/BitKeeper/triggers
     cat > pre-delta <<EOF
-#!/bin/sh
+#!/bin/bash
 
 echo You bozo, you forgot to cstyle \$BK_FILE
 echo I am letting slide just this once.
@@ -1041,7 +1041,7 @@ cd $HERE
 cp -rp delta aaron
 cd $HERE/aaron/BitKeeper/triggers
 cat > pre-delta <<EOF
-#!/bin/sh
+#!/bin/bash
 
 echo You bozo, you forgot to cstyle \$BK_FILE
 echo I am letting slide just this once.
@@ -1066,7 +1066,7 @@ echo OK
 echo $N Test that a pre-delta trigger can delta the file ............$NL
 cd $HERE/delta/BitKeeper/triggers
 cat > pre-delta <<EOF
-#!/bin/sh
+#!/bin/bash
 
 bk delta -y'I am the trigger' $BK_FILE
 exit 2
@@ -1143,7 +1143,7 @@ echo $N Check BK_STATUS in push and push -n and pull -n .............$NL
 cd $HERE/project/BitKeeper/triggers
 rm -f *
 bk undos > pre-incoming <<EOF
-#! /bin/sh
+#!/bin/bash
 set | grep $DASHA BK_STATUS
 EOF
 cp pre-incoming pre-outgoing
@@ -1249,7 +1249,7 @@ done
 bk clone $Q $HERE/project $HERE/backup || exit 1
 cd $HERE/project/BitKeeper/triggers
 cat > post-incoming <<EOF
-#! /bin/sh
+#!/bin/bash
 bk push $Q $HERE/backup || echo Failed to mirror the repository
 EOF
 chmod +x post-incoming

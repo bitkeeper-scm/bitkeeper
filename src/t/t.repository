@@ -97,7 +97,7 @@ src/q.c${BK_FS}src/q.c${BK_FS}1.0${BK_FS}src/q.c${BK_FS}1.1
 EOF
 bk undos X > CMP1
 bk -R rset -hr1.3,1.4 > CMP2
-diff -u CMP1 CMP2 
+bk diff -u CMP1 CMP2 
 cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo failed; cat CMP2; exit 1; fi
 echo OK

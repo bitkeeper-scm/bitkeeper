@@ -15,7 +15,6 @@
 
 win32_common_setup()
 {
-	DIFF="bk diff"
 	RM=rm
 	PLATFORM="WIN32"
 	DEV_NULL="nul"
@@ -44,7 +43,6 @@ win32_common_setup()
 
 unix_common_setup()
 {
-	DIFF=diff
 	RM=/bin/rm
 	PLATFORM="UNIX"
 	DEV_NULL="/dev/null"
@@ -283,7 +281,7 @@ clean_up()
 
 	# Make sure there are no stale files in $TMPDIR
 	ls -a $TMPDIR > $TMPDIR/T.${USER}-new
-	( cd $TMPDIR && $DIFF T.${USER}-new T.${USER} )
+	( cd $TMPDIR && bk diff T.${USER}-new T.${USER} )
 
 	for i in 1 2 3 4 5 6 7 8 9 0
 	do	

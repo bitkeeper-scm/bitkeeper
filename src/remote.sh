@@ -75,14 +75,14 @@ case $CMD in
 	;;
 
     status)
-	# grep -q is not portable so we use this
-	test "X`grep '!!!! Failed! !!!!' $LOG`" = 'X!!!! Failed! !!!!' && {
-		echo failed to build.
-		exit 1
-	}
 	MSG="Not your lucky day, the following tests failed:"
 	test "X`grep "$MSG" $LOG`" = "X$MSG" && {
 		echo regressions failed.
+		exit 1
+	}
+	# grep -q is not portable so we use this
+	test "X`grep '!!!! Failed! !!!!' $LOG`" = 'X!!!! Failed! !!!!' && {
+		echo failed to build.
 		exit 1
 	}
 	MSG="All requested tests passed, must be my lucky day"
