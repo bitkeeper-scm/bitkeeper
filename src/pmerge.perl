@@ -26,10 +26,8 @@ sub doMerge
 
 	@flist = &getdiff();
 	close(PIPE_FD);
-	$out = "${lfile}_new$$";
 	die "tmp file conflict, $out already exist\n" if (-e $out);
 	&mkMerge(@flist, $out);
-	&mv($out, $lfile);
 	foreach $f (@flist) { &force_unlink($f); };
 	return 1;
 }
@@ -46,9 +44,8 @@ sub mkMerge
 	open (LD, "<$ldata") || die "cannot open $ldata\n";
 	open (RM, "<$rmarker") || die "cannot open $rmarker\n";
 	open (RD, "<$rdata") || die "cannot open $rdata\n";
-	open (OUT, ">$out") || die "cannot open $out\n";
 
-	binmode OUT;
+	binmode STDOUT;
 	while (defined($lm = <LM>)) {
 		chop $lm;
 		$ld = <LD>;
@@ -92,8 +89,6 @@ sub mkMerge
 	close(LD);
 	close(RM);
 	close(RD);
-	close(OUT);
-	system("cat $out") if $debug;
 	$OverlapCount = ", $conflicts conflicting" if ($conflicts);
 	warn "Diff blocks: $chgCount$OverlapCount\n" unless $quiet;
 }
@@ -155,9 +150,9 @@ sub chkOverlap
 	#	a block can be printed.
 	#
 	($mode, $ln) = &getUdiff();
-	print  OUT "##getcommon 1\n" if ($debug > 4);
+	print  STDOUT "##getcommon 1\n" if ($debug > 4);
 	&getCommon(*cdata1l, *cdata1r);
-	print  OUT "##get left right\n" if ($debug > 4);
+	print  STDOUT "##get left right\n" if ($debug > 4);
 	@lrc = &getLeft();
 	@rrc = &getRight();
 	while (1) {
@@ -173,7 +168,7 @@ sub chkOverlap
 			next;
 		}
 
-		print  OUT "##getcommon2\n" if ($debug > 4);
+		print  STDOUT "##getcommon2\n" if ($debug > 4);
 		&getCommon(*cdata2l, *cdata2r); 	# trailing common block
 
 		# If leading common block is too "trivial", split & *insert*
@@ -191,7 +186,7 @@ sub chkOverlap
 		# If trailing common block is too "trivial", split & *append*
 		# into the left right block, repeat until we get a real conflict
 chkCommon:	if (&splitCommon_a() && ($mode ne "EOF")) {
-			print  OUT "##get left right\n" if ($debug > 4);
+			print  STDOUT "##get left right\n" if ($debug > 4);
 			@lrc = &getLeft();
 			@rrc = &getRight();
 			unless (&hasConflict(@lrc, @rrc)) {
@@ -215,11 +210,11 @@ chkCommon:	if (&splitCommon_a() && ($mode ne "EOF")) {
 			# It is a hard conflict, print the arrow block
 			$conflicts++;
 			&ejectMerge();
-			print OUT "<<<<<<< $lfile\n";
+			print STDOUT "!<<<<<<< $lfile\n";
 			&ejectList(0, !$wantGca, "<", @ldata1);
-			print OUT "=======\n";
+			print STDOUT "!=======\n";
 			&ejectList(0, !$wantGca, ">", @rdata1);
-			print OUT ">>>>>>> $rfile\n";
+			print STDOUT "!>>>>>>> $rfile\n";
 			@ldata1 = @rdata1 = (); # empty the list after print
 		}
 
@@ -227,10 +222,10 @@ chkCommon:	if (&splitCommon_a() && ($mode ne "EOF")) {
 		# turn the trailing common block
 		# into leading common block.
 		if (&empty(@ldata1_t) && &empty(@rdata1_t)) {
-			print  OUT "##common2->common1\n" if ($debug > 4);
+			print  STDOUT "##common2->common1\n" if ($debug > 4);
 			@cdata1l = @cdata2l; @cdata1r = @cdata2r;
 			@cdata2l = @cdata2r = ();
-			print  OUT "##get left right\n" if ($debug > 4);
+			print  STDOUT "##get left right\n" if ($debug > 4);
 			@lrc = &getLeft();
 			@rrc = &getRight();
 		} else {
@@ -275,22 +270,22 @@ sub doPrint
 
 	if ($wantAllMarker) {
 		if ($markers eq "uu") {
-			print OUT "$um$ln";
+			print STDOUT "$um$ln";
 		} elsif ($markers eq "is") {
-			print OUT "<$ln";
+			print STDOUT "<$ln";
 		} elsif ($markers eq "si") {
-			print OUT ">$ln";
+			print STDOUT ">$ln";
 		} elsif ($markers eq "dd") {
-			print OUT "-$ln";
+			print STDOUT "-$ln";
 		} elsif ($markers eq "ud") {
-			print OUT "-$ln";
+			print STDOUT "-$ln";
 		} elsif ($markers eq "du") {
-			print OUT "-$ln";
+			print STDOUT "-$ln";
 		} else {
 			die "unexpected  markers: $markers";
 		}
 	} else {
-		print OUT "$ln";
+		print STDOUT "$ln";
 	}
 }
 
@@ -299,7 +294,7 @@ sub doPrint
 sub getUdiff
 {
 	while (<DIFF>) {
-		print OUT "##Udiff# $_" if ($debug > 2);
+		print STDOUT "##Udiff# $_" if ($debug > 2);
 		next if (/^--- /);
 		next if (/^\+\+\+ /);
 		next if (/^@@ /);
@@ -334,7 +329,7 @@ sub ejectList
 		} else {
 			die "unexpect marker: $ln";
 		}
-		print OUT "$ln\n";
+		print STDOUT "$ln\n";
 	}
 }
 
@@ -346,7 +341,7 @@ sub ejectMerge
 		next if (($ln =~ /^d/) && (!$wantGca || !$wantAllMarker));
 		unless ($wantAllMarker) {
 			$ln =~ s/^.//;
-			print OUT "$ln\n";
+			print STDOUT "$ln\n";
 		} else {
 			$lm = substr($ln, 0, 1);
 			$rm = substr($rn, 0, 1);
@@ -454,7 +449,7 @@ sub resolveConflict
 	# on the winning side.
 	if ($l_all_i && $r_no_chg) {
 		foreach (@ldata1_t) {
-			print OUT "##resolveConflict_i-L: $_\n"
+			print STDOUT "##resolveConflict_i-L: $_\n"
 							if ($debug > 3);
 			push(@cdatal, $_);
 			push(@cdatar, "s");
@@ -466,7 +461,7 @@ sub resolveConflict
 		foreach (@rdata1_t) {
 			# text data is always stored on cdata1l
 			# see ejectMerge();
-			print OUT "##resolveConflict_i-R-C1: $_\n"
+			print STDOUT "##resolveConflict_i-R-C1: $_\n"
 							if ($debug > 3);
 			push(@cdatar, substr($_, 0, 1));
 			s/^./s/; push(@cdatal, $_);
@@ -513,8 +508,8 @@ sub mkdfile
 	}
 	close(TMPL); close(TMPR);
 	if ($debug > 1 ) {
-		foreach (@ldata) { print OUT "#L# $_\n"; }
-		foreach (@rdata) { print OUT "#R# $_\n"; }
+		foreach (@ldata) { print STDOUT "#L# $_\n"; }
+		foreach (@rdata) { print STDOUT "#R# $_\n"; }
 	}
 	return ($ltmp, $rtmp);
 }
@@ -564,11 +559,11 @@ sub splitCommon_i
 {
 	unless (&needCommon(@cdata1l)) {
 		foreach (reverse @cdata1l) {
-			print OUT "##splitCommom_i-L: $_\n" if ($debug > 3);
+			print STDOUT "##splitCommom_i-L: $_\n" if ($debug > 3);
 			unshift(@ldata1, $_);
 		}
 		foreach (reverse @cdata1r) {
-			print OUT "##splitCommom_i-R: $_\n" if ($debug > 3);
+			print STDOUT "##splitCommom_i-R: $_\n" if ($debug > 3);
 			unshift(@rdata1, $_);
 		}
 		@cdata1l = @cdata1r = ();
@@ -579,11 +574,11 @@ sub splitCommon_a
 {
 	unless (&needCommon(@cdata2l)) {
 		foreach (@cdata2l) {
-			print OUT "##splitCommom_a-L: $_\n" if ($debug > 3);
+			print STDOUT "##splitCommom_a-L: $_\n" if ($debug > 3);
 			push(@ldata1, $_);
 		}
 		foreach (@cdata2r) {
-			print OUT "##splitCommom_a-R: $_\n" if ($debug > 3);
+			print STDOUT "##splitCommom_a-R: $_\n" if ($debug > 3);
 			push(@rdata1, $_);
 		}
 		@cdata2l = @cdata2r = ();
