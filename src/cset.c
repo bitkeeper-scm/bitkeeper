@@ -21,7 +21,7 @@ usage: cset [opts]\n\n\
     -M<range>	Mark the files included in the range of csets\n\
     -p		print the list of deltas being added to the cset\n\
     -r<range>	List the filenames:rev..rev which are included in  <range>\n\
-    -R<A>,<B>	List the differences between cset A and B, for diffs\n\
+    -R<A>..<B>	List the differences between cset A and B, for diffs\n\
     -s		Run silently\n\
     -S<sym>	Set <sym> to be a symbolic tag for this revision\n\
     -t<rev>	List the filenames:revisions of the repository as of rev\n\
@@ -51,6 +51,7 @@ typedef	struct cset {
 	int	range;	
 #define		RANGE_INCLUSIVE	1
 #define		RANGE_ENDPOINTS	2
+	int	fromStart;	/* if we did -R1.1..1.2 */
 	int	ndeltas;
 	int	nfiles;
 	pid_t	pid;		/* adler32 process id */
@@ -258,11 +259,6 @@ usage:		fprintf(stderr, "%s", cset_help);
 	    case 1:
 		RANGE("cset", cset, copts.dash ? 0 : 2, 1);
 		if (copts.range == RANGE_ENDPOINTS) {
-			if (things != 2) {
-				fprintf(stderr,
-				    "\n%s: -R requires two revs.\n", av[0]);
-				goto usage;
-			}
 			if (cset->rstart == cset->rstop) {
 				fprintf(stderr,
 				    "\n%s: -R requires two different revs.\n",
@@ -968,26 +964,21 @@ doRange(cset_t *cs, sccs *sc)
 void
 doEndpoints(cset_t *cs, sccs *sc)
 {
-	delta	*d, *e = 0, *f = 0;
+	delta	*d, *earlier = 0, *later = 0;
 
 	if (sc->state & S_CSET) return;
 	for (d = sc->table; d; d = d->next) {
 		unless (d->flags & D_SET) continue;
-		unless (e) {
-			e = d;
+		unless (later) {
+			later = d;
 		} else {
-			f = d;
+			earlier = d;
 		}
 	}
-	assert(e);
-	if (!f) {
-		f = e;
-		/*
-		 * XXX - FIXME - need to deal with 1.0 issues.
-		 */
-		if (e->parent) e = e->parent;
-	}
-	printf("%s%c%s..%s\n", sc->gfile, BK_FS, e->rev, f->rev);
+	assert(later);
+	if (!earlier) earlier = later->parent;
+	printf("%s%c%s..%s\n",
+	    sc->gfile, BK_FS, earlier ? earlier->rev : "1.0", later->rev);
 }
 
 private void
