@@ -145,7 +145,7 @@ print_cset_log(char *cset1, char *cset2)
 	char buf[MAXLINE];
 	char revs[50], xrev[50];
 	char *dspec =
-"-d# :D:\t:P:@:HT:\t:I:\n$each(:C:){# (:C:)\n}# --------------------------------------------";
+"-d# :D:\t:P:@:HT:\t:I:\n$each(:C:){# (:C:)\n}# --------------------------------------------\n";
 	char *prs_av[] = {"bk", "prs", "-hb", revs, xrev, dspec, "ChangeSet", 0};
 
 	printf("#\n# The following is the BitKeeper ChangeSet Log\n");
