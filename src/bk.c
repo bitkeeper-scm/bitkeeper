@@ -1143,17 +1143,24 @@ find_wish(void)
 {
 	static char wish_path[MAXPATH];
 
+	/* If they set this, they can set TCL_LIB/TK_LIB as well */
+	if (getenv("BK_WISH")) {
+		strcpy(wish_path, getenv("BK_WISH"));
+		if (executable(wish_path)) return (wish_path);
+	}
+
 	sprintf(wish_path, "%s/tk/bin/wish", bin);
-	if (exists(wish_path)) {
-		safe_putenv("TCL_LIBRAY=%s/tk/lib/tcl8.3", bin);
-		safe_putenv("TK_LIBRAY=%s/tk/lib/tk8.3", bin);
+	if (executable(wish_path)) {
+		safe_putenv("TCL_LIBRARY=%s/tk/lib/tcl8.3", bin);
+		safe_putenv("TK_LIBRARY=%s/tk/lib/tk8.3", bin);
 		return (wish_path);
 	}
-	strcpy(wish_path, "/build/.wish/bin/wish");
-	if (exists(wish_path)) {
-		putenv("TCL_LIBRAY=/build/.wish/lib/tcl8.3");
-		putenv("TK_LIBRAY=/build/.wish/lib/tk8.3");
+	strcpy(wish_path, "/build/.wish/tk/bin/wish");
+	if (executable(wish_path)) {
+		putenv("TCL_LIBRARY=/build/.wish/tk/lib/tcl8.3");
+		putenv("TK_LIBRARY=/build/.wish/tk/lib/tk8.3");
 		return (wish_path);
 	}
 	fprintf(stderr, "Cannot find the \"wish\" interpreter\n");
+	exit(1);
 }
