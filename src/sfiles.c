@@ -349,7 +349,7 @@ keys(char *file)
 		sccs_free(s);
 		return;
 	}
-	unless (cutoff) cutoff = time(0) - CLOCK_DRIFT;
+	unless (cutoff) cutoff = time(0) - uniq_drift();
 	unless (host) host = sccs_gethost();
 	unless (host) {
 		fprintf(stderr, "sfiles: can not figure out host name\n");

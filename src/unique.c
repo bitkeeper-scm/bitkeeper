@@ -166,12 +166,35 @@ uniq_unlock()
 #	define		CLOCK_DRIFT 1
 #endif
 
+/*
+ * When do import scripts, we slam the drift to a narrow window, it makes
+ * for much better performance.
+ *
+ * Do NOT do this in any shipped scripts.
+ * XXX - the real fix is to have the keys db be saved across calls in the
+ * project struct.
+ */
+time_t
+uniq_drift()
+{
+	static	time_t t = (time_t)-1;
+	char	*drift;
+
+	if (t != (time_t)-1) return (t);
+	if (drift = getenv("CLOCK_DRIFT")) {
+		t = atoi(drift);
+	} else {
+		t = CLOCK_DRIFT;
+	}
+	return (t);
+}
+
 int
 uniq_open()
 {
 	char	*s, *tmp;
 	FILE	*f;
-	time_t	t, cutoff = time(0) - CLOCK_DRIFT;
+	time_t	t, cutoff = time(0) - uniq_drift();
 	datum	k, v;
 	char	path[MAXPATH*2];
 

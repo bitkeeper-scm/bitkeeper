@@ -298,7 +298,7 @@ proc getRightRev {} \
 
 	.p.top.c delete yellow
 	set rev2 [getRev 3]
-	if {$rev2 != "" && $file != "ChangeSet"} {
+	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
 		.menus.cset configure -text "View changesets"
 	}
