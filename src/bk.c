@@ -365,6 +365,7 @@ main(int ac, char **av)
 	if (streq(prog, "fm") ||
 	    streq(prog, "fm3") ||
 	    streq(prog, "citool") ||
+	    streq(prog, "_citool") ||
 	    streq(prog, "sccstool") ||
 	    streq(prog, "setuptool") ||
 	    streq(prog, "fmtool") ||

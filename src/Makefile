@@ -69,7 +69,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/deflate.o \
 	  zlib/inflate.o zlib/inftrees.o zlib/infutil.o zlib/trees.o \
 	  zlib/uncompr.o zlib/zutil.o
 SCRIPTS	= bk.script import resync uuwrap unuuwrap pmerge \
-	  sccstool citool helptool difftool csettool fmtool fm3tool \
+	  sccstool citool _citool helptool difftool csettool fmtool fm3tool \
 	  renametool setuptool gzip_uuwrap ungzip_uuwrap
 LOCALSCR= testfast build crank
 PSCR	= t/doit
@@ -104,6 +104,7 @@ SCRSRCS	= testfast.perl bk.sh import.sh clone.sh \
 	  gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fmtool.tcl gui/fm3tool.tcl \
 	  gui/helptool.tcl uuwrap.sh gui/setuptool.tcl \
+	  gui/_citool.tcl gui/progress.tcl \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -359,8 +360,12 @@ bkdsubstr: bkd.h
 sccstool: gui/sccstool.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl gui/sccstool.tcl > sccstool
 
-citool: gui/citool.tcl gui/common.tcl port/$(SYS)_platform.tcl
-	cat port/$(SYS)_platform.tcl gui/common.tcl gui/citool.tcl > citool
+citool: gui/citool.tcl gui/common.tcl gui/progress.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/common.tcl gui/progress.tcl \
+	    gui/citool.tcl > citool
+
+_citool: gui/_citool.tcl gui/common.tcl port/$(SYS)_platform.tcl
+	cat port/$(SYS)_platform.tcl gui/common.tcl gui/_citool.tcl > _citool
 
 setuptool: gui/setuptool.tcl gui/common.tcl port/$(SYS)_platform.tcl
 	cat port/$(SYS)_platform.tcl gui/common.tcl \

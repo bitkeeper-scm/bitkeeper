@@ -559,7 +559,11 @@ progress(int force)
 	static	struct timeval tv;
 	struct	timeval now;
 	int	msec;
+	char	buf[100];
 
+/*
+ * This is a good idea if you are displaying to a DSL line or a modem,
+ * but sucks otherwise.  Sorry, DSL.
 	if (force <= 1) {
 		gettimeofday(&now, 0);
 		msec = (now.tv_sec - tv.tv_sec) * 1000;
@@ -568,9 +572,11 @@ progress(int force)
 		if (tv.tv_sec && (msec < 11)) return;
 		tv = now;
 	}
+*/
 	if (!force && (s_last == s_count) && (x_last == x_count)) return;
-	printf("%d %d %d\n", s_count, x_count, d_count);
-	fflush(stdout);
+	sprintf(buf, "%d %d %d\n", s_count, x_count, d_count);
+	/* If we get an error, it usually means that we are to die */
+	if (write(1, buf, strlen(buf)) != strlen(buf)) exit(1);
 	s_last = s_count;
 	x_last = x_count;
 	if (force == 2) usleep(300000);		/* let TK update */
