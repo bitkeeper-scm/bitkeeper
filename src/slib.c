@@ -10983,11 +10983,11 @@ newcmd:
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
-				/* Need a test case for the following line */
-				fix_cntl_a(s, &b[2], out);
 				if (what != 'i' && b[0] == '\\') {
+					fix_cntl_a(s, &b[1], out);
 					s->dsum += fputdata(s, &b[1], out);
 				} else {
+					fix_cntl_a(s, b, out);
 					s->dsum += fputdata(s, b, out);
 				}
 				debug2((stderr, "INS %.*s", linelen(b), b));
