@@ -154,7 +154,7 @@ if [ ! -f clone2/BitKeeper/log/parent ]; then echo clone2 failed to set parent; 
 echo OK
 echo $N Make sure pull fails with existing write lock in source .....$NL
 cd $HERE/project
-rm -rf BitKeeper/readers BitKeeper/writer
+bk unlock -rw
 ls > C
 bk new $Q C
 bk commit $Q -ywhatever
@@ -192,7 +192,7 @@ echo OK
 
 echo $N Make sure push fails with existing write lock in dest .......$NL
 cd $HERE/project
-rm -rf BitKeeper/readers BitKeeper/writer
+bk unlock -rw
 bk lock -w &
 PID=$!
 bk lock -L
@@ -209,13 +209,12 @@ grep -q 'ERROR-Unable to lock repository for update.' OUT || {
 	exit 1
 }
 cd $HERE/project
-rm -rf BitKeeper/writer
-bk lock -U	# removing lock makes it exit
+bk unlock -w
 echo OK
 
 echo $N Make sure push succeeds with no locks in destination ........$NL
 cd $HERE/project
-rm -rf BitKeeper/readers BitKeeper/writer
+bk unlock -rw
 cd $HERE/clone
 bk push $Q
 if [ $? != 0 ]; then echo push exited with an error; exit 1; fi

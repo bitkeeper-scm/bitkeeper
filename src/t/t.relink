@@ -83,7 +83,7 @@ bk relink clone project 2>OUT && {
 	cat OUT
 	exit 1
 }
-kill $PID
+bk unlock -r clone
 grep -q "relink: unable to write lock clone" OUT || {
 	echo Bad status message
 	cat OUT
@@ -103,7 +103,7 @@ bk relink clone project 2>OUT && {
 	cat OUT
 	exit 1
 }
-kill $PID
+bk unlock -w clone
 grep -q "relink: unable to write lock clone" OUT || {
 	echo Bad status message
 	cat OUT
@@ -122,7 +122,7 @@ bk relink clone project 2>OUT || {
 	cat OUT
 	exit 1
 }
-kill $PID
+bk unlock -r project
 grep -q "relinked 0/$NFILE files, 0 different, $NFILE already linked." OUT || {
 	echo Bad status message
 	cat OUT
