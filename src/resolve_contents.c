@@ -3,9 +3,6 @@
  */
 #include "resolve.h"
 
-private int	c_merge(resolve *rs);
-
-
 int
 c_help(resolve *rs)
 {
@@ -27,9 +24,6 @@ Remote: %s\n\
 	}
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Typical command sequence: 'e' 'C';\n");
-	fprintf(stderr, 
-"Options to the 'e' and 'm' commands are passed to smerge.\n\
-	 (-g is very useful!)\n");
 	fprintf(stderr, "Difficult merges may be helped by 'p'.\n");
 	fprintf(stderr, "\n");
 	return (0);
@@ -121,20 +115,17 @@ c_quit(resolve *rs)
 	exit(1);
 }
 
-private int
+int
 c_merge(resolve *rs)
 {
-	names	*n = rs->revs;
+	names	*n = rs->tnames;
 	int	ret;
-	char	*args = "--";
-	
-	if (rs->args) args = rs->args;
-	ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", args,
-		    n->local, n->gca, n->remote, 
-		    rs->s->gfile, SYS);
+
+	ret = sys("bk", rs->opts->mergeprog,
+	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
 	sccs_restart(rs->s);
 	unless (WIFEXITED(ret)) {
-	    	fprintf(stderr, "Cannot execute 'bk smerge'\n");
+	    	fprintf(stderr, "Cannot execute '%s'\n", rs->opts->mergeprog);
 		rs->opts->errors = 1;
 		return (0);
 	}
@@ -148,7 +139,6 @@ c_merge(resolve *rs)
 		fprintf(stderr, "Conflicts during merge of %s\n", rs->s->gfile);
 		return (rs->opts->force);
 	}
-	syserr("\n");
 	fprintf(stderr,
 	    "Merge of %s failed for unknown reasons\n", rs->s->gfile);
 	return (0);
@@ -255,7 +245,7 @@ c_vm(resolve *rs)
 	return (0);
 }
 
-private int
+int
 needs_merge(resolve *rs)
 {
 	MMAP	*m;
@@ -270,8 +260,7 @@ needs_merge(resolve *rs)
 		return (0);
 	}
 	while ((t = mnext(m)) && ((m->end - t) > 7)) {
-		if (strneq(t, "<<<<<<", 6) ||
-		    strneq(t, ">>>>>>", 6)) {
+		if (strneq(t, "<<<<<<", 6)) {
 			ok = 0;
 			break;
 		}
@@ -283,13 +272,13 @@ needs_merge(resolve *rs)
 "\nThe file has unresolved conflicts.  These conflicts are marked in the\n\
 file like so\n\
 \n\
-	<<<<<<< gca src/bk.sh 1.189.1.1\n\
-	lines from ancestor of both local and remote files\n\
-	<<<<<<< local src/bk.sh 1.191\n\
-	changes made in revision 1.191 of src/bk.sh\n\
-	<<<<<<< remote src/bk.sh 1.189.1.5 \n\
-	changes made in revision 1.189.1.5 of src/bk.sh\n\
-	>>>>>>>\n\
+	<<<<<<< BitKeeper/tmp/bk.sh_lm@1.191\n\
+	changes made by user lm in revision 1.191 of bk.sh\n\
+	some more changes by lm\n\
+	=======\n\
+	changes made by user awc in revision 1.189.1.5 of bk.sh\n\
+	more changes by awc\n\
+	>>>>>>> BitKeeper/tmp/bk.sh_awc@1.189.1.5\n\
 \n\
 Use 'e' to edit the file and resolve these conflicts.\n\
 Alternatively, you use 'f' to try the graphical filemerge.\n\n");
@@ -460,7 +449,7 @@ resolve_contents(resolve *rs)
 		if (edit(rs)) return (-1);
 	}
 	if (sameFiles(n->local, n->remote)) {
-		automerge(rs);
+		automerge(rs, n);
 		ret = 1;
 	} else {
 		ret = resolve_loop("content conflict", rs, c_funcs);

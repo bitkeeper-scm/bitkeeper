@@ -67,7 +67,7 @@ resolve_main(int ac, char **av)
 	setmode(0, _O_TEXT);
 	unless (localDB) localDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	unless (resyncDB) resyncDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
-	while ((c = getopt(ac, av, "l|y|aAcdFqrtv1234")) != -1) {
+	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;	/* doc 2.0 */
 		    case 'A': opts.advance = 1; break;		/* doc 2.0 */
@@ -82,6 +82,7 @@ resolve_main(int ac, char **av)
 				opts.log = stderr;
 			}
 			break;
+		    case 'm': opts.mergeprog = optarg; break;	/* doc 2.0 */
 		    case 'q': opts.quiet = 1; break;		/* doc 2.0 */
 		    case 'r': opts.remerge = 1; break;		/* doc 2.0 */
 		    case 't': opts.textOnly = 1; break;		/* doc 2.0 */
@@ -97,6 +98,7 @@ resolve_main(int ac, char **av)
 			exit(1);
 		}
     	}
+	unless (opts.mergeprog) opts.mergeprog = "merge";
 	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
 	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
@@ -1783,7 +1785,7 @@ err:		resolve_free(rs);
 	}
 
 	if (opts->automerge) {
-		automerge(rs);
+		automerge(rs, 0);
 		resolve_free(rs);
 		return;
 	}
@@ -1817,13 +1819,32 @@ get_revs(resolve *rs, names *n)
  * Try to automerge.
  */
 void
-automerge(resolve *rs)
+automerge(resolve *rs, names *n)
 {
+	char	cmd[MAXPATH*4];
 	int	ret;
 	char	*name = basenm(rs->d->pathname);
+	names	tmp;
+	int	do_free = 0;
 	int	flags;
 	
 	if (rs->opts->debug) fprintf(stderr, "automerge %s\n", name);
+
+	unless (n) {
+		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->local);
+		tmp.local = strdup(cmd);
+		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->gca);
+		tmp.gca = strdup(cmd);
+		sprintf(cmd, "BitKeeper/tmp/%s@%s", name, rs->revs->remote);
+		tmp.remote = strdup(cmd);
+		if (get_revs(rs, &tmp)) {
+			rs->opts->errors = 1;
+			freenames(&tmp, 0);
+			return;
+		}
+		n = &tmp;
+		do_free = 1;
+	}
 
 	/*
 	 * The interface to the merge program is
@@ -1831,9 +1852,14 @@ automerge(resolve *rs)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	ret = sysio(0, rs->s->gfile, 0, "bk", "smerge",
-		    rs->revs->local, rs->revs->gca, rs->revs->remote, 
-		    rs->s->gfile, SYS);
+	ret = sys("bk", rs->opts->mergeprog,
+	    n->local, n->gca, n->remote, rs->s->gfile, SYS);
+	if (do_free) {
+		unlink(tmp.local);
+		unlink(tmp.gca);
+		unlink(tmp.remote);
+		freenames(&tmp, 0);
+	}
 	if (ret == 0) {
 		delta	*d;
 
@@ -2460,6 +2486,7 @@ csets_in(opts *opts)
 	sccs	*s;
 	delta	*d;
 	FILE	*in, *out;
+	int	c;
 	char	s_cset[] = CHANGESET;
 	char	buf[MAXPATH];
 
@@ -2498,7 +2525,7 @@ log_cleanup()
 	FILE	*f;
 	char	buf[MAXPATH];
 	char	subject[MAXPATH*2];
-	char    save[MAXPATH];
+	char	save[MAXPATH];
 
 	savefile(".", "RESYNC-", save);
 	if (rename("RESYNC", save)) return;
