@@ -42,7 +42,7 @@ rclone_main(int ac, char **av)
 	//license();
 
 	/*
-	  * Validate argument
+	 * Validate argument
 	 */
 	unless (av[optind] && av[optind + 1]) usage();
 	l = remote_parse(av[optind], 1);
@@ -77,8 +77,29 @@ usage()
 private int
 rclone(char **av, opts opts, remote *r)
 {
-	if (rclone_part1(opts, r)) return (1);
-	return (rclone_part2(av, opts, r));
+	char	*ebuf = 0;
+	int	rc;
+
+	if (opts.rev) {
+		ebuf = aprintf("BK_CSETS=1.0..%s", opts.rev);
+		putenv(ebuf);
+	} else {
+		putenv("BK_CSETS=1.0..");
+	}
+	if (rc = trigger(av, "pre"))  goto done;
+	if (rc = rclone_part1(opts, r))  goto done;
+	rc = rclone_part2(av, opts, r);
+
+	if (rc) {
+		putenv("BK_STATUS=FAILED");
+	} else {
+		putenv("BK_STATUS=OK");
+	}
+	trigger(av, "post");
+
+done:	putenv("BK_CSETS=");
+	if (ebuf) free(ebuf);
+	return (rc);
 }
 
 private int
@@ -184,8 +205,7 @@ rclone_part2(char **av, opts opts, remote *r)
 		getline2(r, buf, sizeof(buf));
 	}
 
-done:	trigger(av, "post");
-	disconnect(r, 1);
+done:	disconnect(r, 1);
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
 	disconnect(r, 2);
 	return (rc);
@@ -233,7 +253,7 @@ send_sfio_msg(opts opts, remote *r)
 
 	/*
 	 * Httpd wants the message length in the header
-	 * We have to comoute the ptach size before we sent
+	 * We have to compute the file size before we sent
 	 * 6 is the size of "@END@" string
 	 */ 
 	if (r->type == ADDR_HTTP) {

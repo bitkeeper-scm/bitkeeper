@@ -78,6 +78,9 @@ trigger(char **av, char *when)
 		/* XXX - can this happen?  Where's the trigger? */
 		what = "incoming";
 		event = "incoming clone";
+	} else if (strneq(t, "_rclone", 6)) {
+		what = "outgoing";
+		event = "outgoing clone";
 	} else if (strneq(t, "pull", 4)) {
 		what = "incoming";
 		event = "incoming pull";

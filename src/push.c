@@ -552,7 +552,7 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 
 	/*
 	 * Httpd wants the message length in the header
-	 * We have to comoute the ptach size before we sent
+	 * We have to compute the patch size before we sent
 	 * 6 is the size of "@END@" string
 	 */
 	if (r->type == ADDR_HTTP) {

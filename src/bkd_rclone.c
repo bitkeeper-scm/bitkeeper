@@ -62,7 +62,7 @@ cmd_rclone_part1(int ac, char **av)
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
 	if (exists(path)) {
-		p = aprintf("ERROR-path \"\%s\" already exists\n", path);
+		p = aprintf("ERROR-path \"%s\" already exists\n", path);
 err:		out(p);
 		free(p);
 		free(path);
@@ -85,12 +85,12 @@ cmd_rclone_part2(int ac, char **av)
 {
 	opts	opts;
 	char	buf[MAXPATH];
-	char	*path, *p;
+	char	*path, *p, *ebuf = NULL;
 	int	fd2, rc = 0;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
 	if (chdir(path)) {
-		p = aprintf("ERROR-cannot chdir to \"\%s\"\n", path);
+		p = aprintf("ERROR-cannot chdir to \"%s\"\n", path);
 		out(p);
 		free(p);
 		free(path);
@@ -98,6 +98,13 @@ cmd_rclone_part2(int ac, char **av)
 		return (1);
 	}
 	free(path);
+
+	if (opts.rev) {
+		ebuf = aprintf("BK_CSETS=1.0..%s", opts.rev);
+		putenv(ebuf);
+	} else {
+		putenv("BK_CSETS=1.0..");
+	}
 
 	getline(0, buf, sizeof(buf));
 	if (!streq(buf, "@SFIO@")) {
@@ -143,6 +150,7 @@ cmd_rclone_part2(int ac, char **av)
 			fprintf(stderr,
 				    "clone: cannot set lod, aborting ...\n");
 			fputc(BKD_NUL, stdout);
+			rc = 1;
 			goto done;
 		}
 	}
@@ -164,8 +172,15 @@ cmd_rclone_part2(int ac, char **av)
 done:
 	fputs("@END@\n", stdout); /* end SFIO INFO block */
 	fflush(stdout);
+	if (rc) {
+		putenv("BK_STATUS=FAILED");
+	} else {
+		putenv("BK_STATUS=OK");
+	}
 	trigger(av,  "post");
 	repository_wrunlock(0);
+	putenv("BK_CSETS=");
+	if (ebuf) free(ebuf);
 	return (rc);
 }
 
