@@ -559,8 +559,6 @@ proc addline {y xspace ht l} \
 	set last -1
 	set ly [expr {$y - [expr {$ht / 2}]}]
 
-	#puts "y: $y  xspace: $xspace ht: $ht l: $l"
-
 	foreach word $l {
 		# Figure out if we have another parent.
 		# 1.460.1.3-awc-890@1.459.1.2-awc-889
@@ -603,6 +601,7 @@ proc addline {y xspace ht l} \
 			set id [$w(graph) create text $x $y -fill #241e56 \
 			    -anchor sw -text "$txt" -justify center \
 			    -font $gc(rev.fixedBoldFont) -tags "$rev revtext"]
+			#ballon_setup $trev
 			if {![info exists firstnode]} { set firstnode $id }
 			if {$m == 1} { 
 				highlight $id "merge" $rev
@@ -627,6 +626,45 @@ proc addline {y xspace ht l} \
 	if {[info exists merges] != 1} {
 		set merges {}
 	}
+}
+
+proc balloon_setup {rev} \
+{
+	global gc app
+
+	$w(graph) bind $rev <Enter> \
+	    "after 500 \"balloon_aux_s %W [list $msg]\""
+	$w(graph) bind $rev <Leave> \
+	    "after cancel \"balloon_aux_s %W [list $msg]\"
+	    after 100 {catch {destroy .balloon_help}}"
+}
+
+proc balloon_aux_s {w rev1} \
+{
+	global gc dspec dev_null file
+
+	set t .balloon_help
+	catch {destroy $t}
+	toplevel $t
+	wm overrideredirect $t 1
+	set dspec \
+"-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n" 
+
+	catch { exec bk prs $dspec -r$rev1 "$file" 2>$dev_null } msg
+
+	label $t.l \
+	    -text $msg \
+	    -relief solid \
+	    -padx 5 -pady 2 \
+	    -borderwidth 1 \
+	    -justify left \
+	    -background lightyellow
+	pack $t.l -fill both
+	set x [expr [winfo rootx $w]+6+[winfo width $w]/2]
+	set y [expr [winfo rooty $w]+6+[winfo height $w]/2]
+	wm geometry $t +$x\+$y
+	bind $t <Enter> {after cancel {catch {destroy .balloon_help}}}
+	bind $t <Leave> "catch {destroy .balloon_help}"
 }
 
 # print the line of revisions in the graph.
@@ -719,7 +757,6 @@ proc line {s width ht} \
 	incr x -4
 	regsub -- {-.*} $rev "" rnum
 	regsub -- {-.*} $head "" hnum
-	#puts "rnum=($rnum) hnum=($hnum)"
 	set id [$w(graph) create line $px $py $x $y -arrowshape {4 4 4} \
 	    -width 1 -fill $gc(rev.arrowColor) -arrow last \
 	    -tags "l_$rnum-$hnum l_$hnum hline"]
@@ -1000,6 +1037,7 @@ proc prs {} \
 	global file rev1 dspec dev_null search w diffpair ttype sem lock
 
 	set lock "inprs"
+
 	getLeftRev
 	if {"$rev1" != ""} {
 		set diffpair(left) $rev1
@@ -1011,10 +1049,14 @@ proc prs {} \
 	} else {
 		set search(prompt) "Click on a revision"
 	}
+	# Set up locking state machine so that prs and selectNode aren't
+	# running at the same time.
 	if {$sem == "show_sccslog"} {
 		set lock "outprs"
-		get "id"
-		set sem ""
+		selectNode "id"
+		set sem "start"
+	} elseif {$sem == "start"} {
+		set lock "outprs"
 	}
 }
 
@@ -1023,7 +1065,7 @@ proc prs {} \
 #
 # Arguments 
 #   opt     'tag' only print the history items that have tags. 
-#           '-rrev' Print history from this rev onwards
+#	    '-rrev' Print history from this rev onwards
 #
 # XXX: Larry overloaded 'opt' with a revision. Probably not the best...
 #
@@ -1140,7 +1182,6 @@ proc diff2 {difftool {id {}} } \
 # Display the difference text between two revisions. 
 proc displayDiff {rev1 rev2} \
 {
-
 	global file w tmp_dir dev_null Opts ttype
 
 	set r1 [file join $tmp_dir $rev1-[pid]]
@@ -1169,7 +1210,6 @@ proc gotoRev {f hrev} \
 	global srev rev1 rev2 gc dev_null
 
 	set rev1 $hrev
-	#displayMessage "gotoRev hrev=($hrev) f=($f) rev1=($rev1)"
 	revtool $f $hrev $gc(rev.showRevs)
 	set hrev [lineOpts $hrev]
 	highlight $hrev "old"
@@ -1457,7 +1497,7 @@ proc widgets {} \
 	global	search Opts gc stacked d w dspec wish yspace paned 
 	global  tcl_platform fname app ttype sem
 
-	set sem ""
+	set sem "start"
 	set ttype ""
 	set dspec \
 "-d:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:\$if(:HT:){@:HT:}\n\$each(:C:){  (:C:)\n}\$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
@@ -2011,10 +2051,6 @@ proc arguments {} \
 	if {($rev1 != "") && (($rev2 == "") && ($gca == ""))} {
 		set srev $rev1
 	}
-
-	#puts stderr "gca=($gca) rev1=($rev1) rev2=($rev2)"
-	#puts stderr "fnum=($fnum) arg=($arg) argi=($argindex) argv=($argv) f=($opts(file,$fnum))"
-
 	if {$fnum > 1} {
 		puts stderr "error: Too many args"
 		exit 1
@@ -2066,7 +2102,7 @@ proc lineOpts {rev} \
 
 
 # merge: if we were started by resolve, make sure we don't lose track of
-#        the gca, local, and remote when we do a select range
+#	 the gca, local, and remote when we do a select range
 proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
@@ -2074,7 +2110,6 @@ proc startup {} \
 
 	set ids 0
 
-	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
 	if {$gca != ""} {
 		set merge(G) $gca
 		set merge(l) $rev1
@@ -2106,6 +2141,10 @@ proc startup {} \
 	}
 }
 
+#
+# Requires the ImageMagick convert program to be on the system.
+# XXX: Have option to save as postscript if convert not available
+#
 proc printCanvas {} \
 {
 	global w dfile
