@@ -15906,7 +15906,11 @@ updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int different)
 
 	if (!trust_window) {
 		char *p = user_preference("trust_window");
-		trust_window = strtoul(p, 0, 0);
+		if (streq(p, "off")) {
+			trust_window = 2147483647;  /* 2^31 */
+		} else {
+			trust_window = strtoul(p, 0, 0);
+		}
 		if (!trust_window) trust_window = one_week;
 	}
 

@@ -46,6 +46,13 @@ examine all files, even if listed in BitKeeper/etc/ignore.
 .B \-c
 List changed files (locked and modified).
 .tp
+.B \-ct
+The same as
+.B \-c
+but use file timestamps to speed scanning for modified files.
+The acceptible clock skew can be configured. 
+(See 'trust_window' in bk help config-etc)
+.tp
 .B \-d
 List directories under \*(BK control (SCCS subdir exists).
 .tp

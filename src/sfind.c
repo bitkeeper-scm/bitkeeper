@@ -236,7 +236,7 @@ sfind_main(int ac, char **av)
 		    case 'R':	sfiles_compat = 1; break;	/* undoc? 2.0 */
 		    case 's':	parse_select(optarg); break;	/* undoc? 2.0 */
 		    case 'S':	opts.summarize = 1; break;	/* doc 2.0 */
-		    case 't':	opts.timestamps = 1; break;	/* undoc? 2.0 */
+		    case 't':	opts.timestamps = 1; break;	/* doc 2.3 */
 		    case 'u':	opts.unlocked = 1; break;	/* doc 2.0 */
 		    case 'U':	opts.useronly = 1; break;	/* doc 2.0 */
 		    case 'v':	opts.show_markers = 1; break;	/* doc 2.0 */
@@ -655,8 +655,9 @@ walk(char *dir, int level)
 
 done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
-		if (opts.timestamps && timestamps && proj)
+		if (opts.timestamps && timestamps && proj) {
 			dumpTimestampDB(proj, timestamps);
+		}
 		if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
 		if (proj) proj_free(proj); proj = 0;
 		if (opts.summarize) print_summary();
@@ -1000,6 +1001,7 @@ skip:			mdbm_close(gDB);
 		if (mdbm_fetch_str(sDB, file)) {
 			char *gfile;	/* a little bit of scope hiding ... */
 			char *sfile;
+
 			state[LSTATE] = 'l';
 			file[0] = 's';
 			concat_path(buf, dir, "SCCS");

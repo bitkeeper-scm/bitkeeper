@@ -283,6 +283,22 @@ file:
 autofix:yes
 autofix:no
 .DE
+.SS TRUST_WINDOW
+.br
+When using the 
+.B \-ct
+option to 
+.B bk sfiles
+, file timestamps are compared to a cached list to determine when
+files are unmodified and don't need to be diff'ed again.  The 'trust_window' 
+parameter controls how old a file must be before this
+optimization is used.  Without this restriction clock skew between
+machines using a shared filesystem can cause incorrect results.
+The time is in seconds and defaults to 604800 (one week).
+.DS
+trust_window: 86400	# one day
+trust_window: off	# disable use of timestamps
+.DE
 .SS BKWEB PREFERENCES
 .LP
 BKWeb preferences can be specified in the BitKeeper/etc/config file.

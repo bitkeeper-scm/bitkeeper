@@ -54,5 +54,12 @@ List contents of an archive.
 .B \-q
 Quiet mode, when combined with the create or extract, does not list files
 as they are added or extracted.
+.tp
+.B \-e
+Echo mode. After each file is archived or extracted print the file to stdout.
+This is seperate from the print to stderr controlled by
+.B \-q.
+It is indended to be used by programs that want to perform actions after
+each file is unpacked when reading over a slow pipe.
 .SH CATEGORY
 .B Repository

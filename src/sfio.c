@@ -55,7 +55,7 @@ sfio_main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "eimopq")) != -1) {
 		switch (c) {
-		    case 'e': echo = 1; break;			/* undoc 2.1 */
+		    case 'e': echo = 1; break;			/* doc 2.3 */
 		    case 'i': 					/* doc 2.0 */
 			if (mode) goto usage; mode = M_IN;   break;
 		    case 'o': 					/* doc 2.0 */
