@@ -383,7 +383,6 @@ doit_remote(options *opts, char *url)
 	int     rcsets = 0, pending = -1;
 	remote  *r;
 
-	loadNetLib();
 	has_proj("pending");
 	r = remote_parse(url);
 	unless (r) {

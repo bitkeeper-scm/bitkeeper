@@ -95,7 +95,7 @@ bkd_main(int ac, char **av)
 
 	unless (Opts.vhost_dirpath) Opts.vhost_dirpath = strdup(".");
 
-	if (Opts.port) daemon = 1;
+	if (port) daemon = 1;
 	core();
 	putenv("PAGER=cat");
 	putenv("_BK_IN_BKD=1");
