@@ -29,8 +29,8 @@ case `uname -s` in
 		CC_DEBUG="-ZI -Od $CC_COMMON"
 		CC_FAST_DEBUG=$CC_DEBUG
 		CC_NOFRAME=
-		CC_OUT="-Fo"
-		LD_OUT="-out:"
+		CC_OUT='-Fo$@'
+		LD_OUT='-out:$@'
 		# make ranlib a no-op
 		RANLIB="true"
 		U=win32/uwtlib

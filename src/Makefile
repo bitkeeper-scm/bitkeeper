@@ -11,8 +11,8 @@ SYS	=unix
 BK=	bk 
 BKMERGE=bkmerge
 BINS	= $(BK) $(BKMERGE)
-CC_OUT	=-o 
-LD_OUT	=-o
+CC_OUT	=-o $@
+LD_OUT	=-o $@
 LD	=cc
 MORE	=more
 CC_FAST	=-O2
@@ -248,9 +248,9 @@ libsccs.a: $(OBJ)
 	$(AR) cr libsccs.a $(OBJ)
 	-$(RANLIB) libsccs.a
 $(BK): bk.o $(LIBS)
-	$(LD) $(LDFLAGS) $(LD_OUT)$@ bk.o $(LINK)
+	$(LD) $(LDFLAGS) $(LD_OUT) bk.o $(LINK)
 $(BKMERGE): bkmerge.o $(LIBS)
-	$(LD) $(LDFLAGS) $(LD_OUT)$@ bkmerge.o $(LINK)
+	$(LD) $(LDFLAGS) $(LD_OUT) bkmerge.o $(LINK)
 
 
 # Scripts.
@@ -498,7 +498,7 @@ crank: crank.sh
 
 # The default .c.o rule is broken with some Makes.
 .c.o:
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< $(CC_OUT)$@
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< $(CC_OUT)
 
 depend: $(SRCS)
 	$(CC) -MM -MG -D_DEPEND $(SRCS) > depends
