@@ -163,16 +163,17 @@ notice(char *key)
 }
 
 int
-logs_pending(int ptype, int skipRecentCset)
+logs_pending(int ptype, int skipRecentCset, int grace)
 {
-#define MAX_LOG_DELAY (60 * 60 * 24 * 7) /* 7 days */
+#define DAY (60 * 60 * 24)
 	sccs 	*s;
 	delta	*d;
 	char 	s_cset[] = CHANGESET;
 	int	i = 0;
 	time_t	now;
-	time_t	max_delay = MAX_LOG_DELAY;
+	time_t	graceInSeconds;
 
+	graceInSeconds = grace * DAY; 
 	s = sccs_init(s_cset, 0, 0);
 	assert(s && s->tree);
 	for (d = sccs_top(s); d; d = d->next) {
@@ -187,7 +188,9 @@ logs_pending(int ptype, int skipRecentCset)
 	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue; 
 		if (d->flags & D_RED) continue; 
-		if (skipRecentCset && ((now - d->date) < max_delay)) continue;
+		if (skipRecentCset && ((now - d->date) < graceInSeconds)) {
+			continue;
+		}
 		i++;
 	}
 	sccs_free(s);
@@ -287,6 +290,168 @@ goodPackageName(char *pname)
 }
 
 private int
+enforceConfigLog(int l)
+{
+	int	ptype;
+
+	if (logs_pending(ptype, 1, 7) == 0)  return (0);
+
+	/*
+	 * Try to force and the log and re-check pending log
+	 */
+	system("bk _lconfig");
+	if (logs_pending(ptype, 1, 60) > 10)  {
+			printf(
+"============================================================================\n"
+"Error: Max pending config log exceeded, commit aborted\n\n"
+"This error indicates that the BitKeeper program is unable to contact \n"
+"www.bitkeeper.com to send the configuration log.\n"
+"\n"
+"There are two possible causes for this error:\n"
+"a) Network connectivity problem\n"
+"b) Problems in the logging server at www.bitkeeper.com\n"
+"\n"
+"Please run the following command and email its output to \n"
+"support@bitmover.com:\n"
+"\t\"bk _lconfig -d\"\n\n"
+"============================================================================\n"
+);
+		return (-1);
+	}
+	if (logs_pending(ptype, 1, 7) > 0)  {
+		if ((l&LOG_LIC_OK) &&
+		    !(l&LOG_LIC_SINGLE) &&
+		    !(l&LOG_LIC_GRACE) &&
+		    !(l&LOG_LIC_EXPIRED) &&
+		    !isEvalLicense()) {
+			/*
+			 * Massage for paying customer
+			 */
+			printf(
+"============================================================================\n"
+"Warning: BitKeeper was unable to transmit config log for 7 days. Please\n"
+"check Your network configuration and make sure logs are transmitted properly\n"
+"You can test your log transmission with the command \"bk _lconfig -d\".\n"
+"*IMPORTANT*: Do not ignore this message, if this problem is not fixed\n" 
+"Bitkeeper will stop working eventually!!\n"
+"If you need help with this problem, please contact support@bitmover.com\n"
+"============================================================================\n"
+			);
+		} else {
+			/*
+			 * Massage for non-paying customer
+			 */
+			printf(
+"============================================================================\n"
+"Warning: BitKeeper was unable to transmit config log for 7 days. Please\n"
+"check Your network configuration and make sure logs are transmitted properly\n"
+"You can test your log transmission with the command \"bk _lconfig -d\".\n"
+"============================================================================\n"
+			);
+		}
+	}
+	return (0);
+}
+
+private int
+enforceCsetLog()
+{
+#define	MAX_PENDING_LOG 40
+	int l, ptype;
+	int	max_pending = MAX_PENDING_LOG, log_quota;
+
+	if (getenv("BK_NEEDMORECSETS")) max_pending += 10;
+	ptype = 0;
+	log_quota = max_pending - logs_pending(ptype, 1, 7);
+	if (log_quota <= 0) {
+		printf("Commit: forcing pending logs\n");
+		system("bk log -qc2");
+		if ((logs_pending(ptype, 1, 7) >= max_pending)) {
+			printf(
+"============================================================================\n"
+"Error: Max pending log exceeded, commit aborted\n\n"
+"This error indicates that the BitKeeper program is unable to contact \n"
+"www.openlogging.org to send the ChangeSet log. The number of unlogged \n"
+"changesets have exceeded the allowed threshold of %d changesets. \n"
+"\n"
+"There are two possible causes for this error:\n"
+"a) Network connectivity problem\n"
+"b) Problems in the logging tree at www.openlogging.org\n"
+"\n"
+"Please run the logging command in debug mode to see what the problem is:\n"
+"\t\"bk log  -d\"\n\n"
+"If you have ruled out a network connectivity problem at your local network,\n"
+"please email the following information to support@bitmover.com:\n"
+"a) Output of the above logging command\n"
+"b) Root key of your project using the following command:\n"
+"\t\"bk -R inode ChangeSet\" command.\n"
+"============================================================================\n"
+, MAX_PENDING_LOG);
+			return (-1);
+		}
+	} else if (log_quota <= 10) {
+		printf(
+"============================================================================\n"
+"Warning: BitKeeper was unable to transmit log for the previous commit.\n"
+"Your log quota is now down to %d. You will not be able to commit ChangeSet\n"
+"if yor log quota is down to zero. Please check your network configuration\n"
+"and make sure logs are transmitted properly. You can test your log\n"
+"transmission with the command \"bk log -d\".\n"
+"============================================================================\n"
+, log_quota);
+	}
+
+	/* log quote is greater then 10, we are OK */
+	return (0);
+}
+
+private int
+enforceLicense(int l)
+{
+#define	MAX_EVAL_CSET  150
+	if (l & LOG_OPEN) {
+		return (enforceCsetLog());
+	} else {
+		if ((l&LOG_LIC_SINGLE) && !smallTree(BK_SINGLE_THRESHOLD)) {
+			printf(
+"============================================================================\n"
+"Error: Single user repositories are limited to %d files. If you need more\n"
+"files than that in one repository, you need to buy a commercial license or\n"
+"turn on open logging.\n"
+"============================================================================\n"
+, BK_SINGLE_THRESHOLD);
+			return (-1);
+		}
+		if (isEvalLicense()) {
+			int	cset_quota = MAX_EVAL_CSET - csetCount(); 
+
+			if (getenv("BK_REGRESSION")) {
+				cset_quota -= (MAX_EVAL_CSET - 3);
+			}
+
+			if (cset_quota <= 0) {
+				printf(
+"============================================================================\n"
+"Error: Evaluation license are limited to %d ChangeSets. If you need to make\n"
+"ChangeSet, you need to buy a commercial license or turn on open logging.\n"
+"============================================================================\n"
+, MAX_EVAL_CSET);
+				return (-1);
+			} else if (cset_quota <= 50) {
+				printf(
+"============================================================================\n"
+"Warning: Evaluation license are limited to %d ChangeSets. Your ChangeSet\n"
+"quota is now down to %d. You will not be able to commit ChangeSet if your\n"
+"ChangeSet quota is down to zero. Please purchase a commercial license.\n"
+"============================================================================\n"
+, MAX_EVAL_CSET, cset_quota);
+			}
+		}
+		return (enforceConfigLog(l));
+	}
+}
+
+private int
 do_commit(char **av,
 	c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 {
@@ -298,11 +463,6 @@ do_commit(char **av,
 	char    s_logging_ok[] = LOGGING_OK;
 	char	*cset[100] = {"bk", "cset", 0};
 	FILE 	*f, *f2;
-#define	MAX_PENDING_LOG 40
-#define	MAX_EVAL_CSET  150
-	int	max_pending = MAX_PENDING_LOG, log_quota;
-
-	if (getenv("BK_NEEDMORECSETS")) max_pending += 10;
 
 	l = logging(0, 0, 0);
 	unless (ok_commit(l, opts.alreadyAsked)) {
@@ -326,128 +486,8 @@ out:		if (commentFile) unlink(commentFile);
 		
 	}
 
-	/*
-	 * Note: We print to stdout, not stderr, because citool
-	 * 	 monitors our stdout via a pipe.
-	 */
-	ptype = (l&LOG_OPEN) ? 0 : 1;
-	unless (opts.resync) {
-		log_quota = max_pending - logs_pending(ptype, 1);
-		if (log_quota <= 0) {
-			printf("Commit: forcing pending logs\n");
-			if (l&LOG_OPEN) {
-				system("bk log -qc2");
-			} else {
-				system("bk _lconfig");
-			}
-			if ((logs_pending(ptype, 1) >= max_pending)) {
-				if (l&LOG_OPEN) {
-					printf(
-"============================================================================\n"
-"Error: Max pending log exceeded, commit aborted\n\n"
-"This error indicates that the BitKeeper program is unable to contact \n"
-"www.openlogging.org to send the ChangeSet log. The number of unlogged \n"
-"changesets have exceeded the allowed threshold of %d changesets. \n"
-"\n"
-"There are two possible causes for this error:\n"
-"a) Network connectivity problem\n"
-"b) Problems in the logging tree at www.openlogging.org\n"
-"\n"
-"Please run the logging command in debug mode to see what the problem is:\n"
-"\t\"bk log  -d\"\n\n"
-"If you have ruled out a network connectivity problem at your local network,\n"
-"please email the following information to support@bitmover.com:\n"
-"a) Output of the above logging command\n"
-"b) Root key of your project using the following command:\n"
-"\t\"bk -R inode ChangeSet\" command.\n"
-"============================================================================\n"
-, MAX_PENDING_LOG);
-				} else {
-					printf(
-"============================================================================\n"
-"Error: Max pending config log exceeded, commit aborted\n\n"
-"This error indicates that the BitKeeper program is unable to contact \n"
-"www.bitkeeper.com to send the config log. The number of unlogged \n"
-"config log have exceeded the allowed threshold of %d. \n"
-"There are three possible causes for this error:\n"
-"a) Network connectivity problem.\n"
-"b) Problems in the config interface at www.bitkeeper.com.\n"
-"c) You BitKeeper liecence is due for renewal and we have not receive\n"
-"   your payment.\n"
-"Please run the logging command in debug mode to see what the problem is:\n"
-"\t\"bk _lconfig  -d\"\n\n"
-"If you have ruled out a network connectivity problem at your local network,\n"
-"please email the following information to support@bitmover.com:\n"
-"a) Output of the above logging command\n"
-"b) Your license key in the BitKeeper/etc/config file\n"
-"c) Root key of your project using the following command:\n"
-"\t\"bk -R inode ChangeSet\" command.\n"
-"============================================================================\n"
-, MAX_PENDING_LOG);
-				}
-				goto out;
-			}
-		} else if (log_quota <= 10) {
-			if (l&LOG_OPEN) {
-				printf(
-"============================================================================\n"
-"Warning: BitKeeper was unable to transmit log for the previous commit.\n"
-"Your log quota is now down to %d. You will not be able to commit ChangeSet\n"
-"if yor log quota is down to zero. Please check your network configuration\n"
-"and make sure logs are transmitted properly. You can test your log\n"
-"transmission with the command \"bk log -d\".\n"
-"============================================================================\n"
-, log_quota);
-			} else {
-				printf(
-"============================================================================\n"
-"Warning: BitKeeper was unable to transmit config log for the previous\n"
-"commit. Your log quota is now down to %d. You will not be able to commit\n"
-"ChangeSet if yor log quota is down to zero. Please check:\n"
-"a) Your network configuration and make sure logs are transmitted properly.\n"
-"   You can test your log transmission with the command \"bk _lconfig -d\".\n"
-"b) Your license key is not due for renewal.\n"
-"============================================================================\n"
-, log_quota);
-			}
-		}
-		if (!(l&LOG_OPEN) && (l&LOG_LIC_SINGLE) &&
-					!smallTree(BK_SINGLE_THRESHOLD)) {
-			printf(
-"============================================================================\n"
-"Error: Single user repositories are limited to %d files. If you need more\n"
-"files than that in one repository, you need to buy a commercial license or\n"
-"turn on open logging.\n"
-"============================================================================\n"
-, BK_SINGLE_THRESHOLD);
-			goto out;
-		}
-		if (!(l&LOG_OPEN) && isEvalLicense()) {
-			int	cset_quota = MAX_EVAL_CSET - csetCount(); 
+	if (!opts.resync && (enforceLicense(l) == -1)) goto out;
 
-			if (getenv("BK_REGRESSION")) {
-				cset_quota -= (MAX_EVAL_CSET - 3);
-			}
-
-			if (cset_quota <= 0) {
-				printf(
-"============================================================================\n"
-"Error: Evaluation license are limited to %d ChangeSets. If you need to make\n"
-"ChangeSet, you need to buy a commercial license or turn on open logging.\n"
-"============================================================================\n"
-, MAX_EVAL_CSET);
-				goto out;
-			} else if (cset_quota <= 50) {
-				printf(
-"============================================================================\n"
-"Warning: Evaluation license are limited to %d ChangeSets. Your ChangeSet\n"
-"quota is now down to %d. You will not be able to commit ChangeSet if your\n"
-"ChangeSet quota is down to zero. Please purchase a commercial license.\n"
-"============================================================================\n"
-, MAX_EVAL_CSET, cset_quota);
-			}
-		} 
-	}
 	if (pending(s_logging_ok)) {
 		int     len = strlen(s_logging_ok); 
 
@@ -574,7 +614,7 @@ logChangeSet(int l, char *rev, int quiet)
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (logs_pending(0, 0) < 20)) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(0, 0, 0) < 20)) return;
 
 	unless (rev) {
 		s = sccs_init(s_cset, 0, 0);
@@ -850,7 +890,7 @@ sendConfig(char *to)
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (logs_pending(1, 0) < 20)) return;
+	if (getenv("BK_REGRESSION") && (logs_pending(1, 0, 0) < 20)) return;
 
 	spawnvp_ex(_P_NOWAIT, av[0], av);
 }

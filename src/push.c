@@ -122,7 +122,8 @@ log_main(int ac, char **av)
 	}
 
 	if (pflag) {
-		printf("Number of open logs pending: %d\n", logs_pending(0, 0));
+		printf("Number of open logs pending: %d\n",
+							logs_pending(0, 0, 0));
 		return (0);
 	}
 
@@ -214,7 +215,7 @@ updLogMarker(int ptype, int verbose)
 		if (verbose) {
 			fprintf(stderr,
 				"Log marker updated: pending count = %d\n",
-				logs_pending(ptype, 0));
+				logs_pending(ptype, 0, 0));
 		}
 	} else {
 		if (verbose) {

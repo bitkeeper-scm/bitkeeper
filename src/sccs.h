@@ -1035,6 +1035,7 @@ int	rmUncommitted(int quiet);
 void	rmEmptyDirs(int quiet);    
 int	after(int quiet, char *rev);
 int	lod(int quiet, char *rev);
+int	logs_pending(int ptype, int skipRecentCset, int grace); 
 
 extern char *bk_vers;
 extern char *bk_utc;
