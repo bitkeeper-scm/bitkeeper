@@ -928,7 +928,7 @@ if type "$cmd" > /dev/null 2>&1
 then
 	exec $cmd "$@"
 else
-	echo "$cmd: command not found"
+	echo "$cmd: command not found" 1>&2
 	exit 1
 fi
 				
