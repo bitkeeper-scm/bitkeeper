@@ -1,6 +1,10 @@
 #include "system.h"
 #include "redblack.h"
 
+#ifdef PROTO
+typedef struct RBtree RBtree;
+#endif
+
 /* --- Red/Black tree support routines --- */
 
 #define	RED	1
@@ -21,6 +25,11 @@ struct RBnode {
 	char	data[0];
 };
 
+/*
+ * Create a new red/black tree structure.  It stores an arbitrary block
+ * of data of a fixed size (size).  The tree is balanced with a generic
+ * comparison function that is passed.
+ */
 RBtree *
 RBtree_new(int size, int (*compare)(void *a, void *b))
 {
@@ -41,6 +50,9 @@ freenode(RBnode *n)
 	free(n);
 }
 
+/*
+ * Free a balanced redblack tree.
+ */
 void
 RBtree_free(RBtree *t)
 {
@@ -48,6 +60,9 @@ RBtree_free(RBtree *t)
 	free(t);
 }
 
+/*
+ * Return data block of first node in tree.  NULL if tree is empty.
+ */
 void *
 RBtree_first(RBtree *t)
 {
@@ -59,6 +74,9 @@ RBtree_first(RBtree *t)
 	return (x->data);
 }
 
+/*
+ * Return data block on last node in tree, or NULL if empty.
+ */
 void *
 RBtree_last(RBtree *t)
 {
@@ -70,6 +88,10 @@ RBtree_last(RBtree *t)
 	return (x->data);
 }
 
+/*
+ * Find a data block in the tree that compares equal to the
+ * data block on the command line, or NULL if none match.
+ */
 void *
 RBtree_find(RBtree *t, void *data)
 {
@@ -88,6 +110,10 @@ RBtree_find(RBtree *t, void *data)
 	return (0);
 }
 
+/*
+ * Give a data block that exists in the tree, return the next data
+ * block in the tree in insertion order. Or NULL at end.
+ */
 void *
 RBtree_next(RBtree *t, void *data)
 {
@@ -108,6 +134,10 @@ RBtree_next(RBtree *t, void *data)
 	return (p->data);
 }
 
+/*
+ * Give a data block that exists in the tree, return the previous data
+ * block in the tree in insertion order. Or NULL at end.
+ */
 void *
 RBtree_prev(RBtree *t, void *data)
 {
@@ -182,6 +212,9 @@ right_rotate(RBtree *t, RBnode *x)
 	x->parent = y;
 }
 
+/*
+ * insert a new data block in tree
+ */
 void
 RBtree_insert(RBtree *t, void *data)
 {
@@ -189,8 +222,8 @@ RBtree_insert(RBtree *t, void *data)
 	RBnode	*x, *n = 0;
 
 	x = malloc(sizeof(RBnode) + t->datasize);
-	memcpy(x->data, data, t->datasize);
 	memset(x, 0, sizeof(RBnode));
+	memcpy(x->data, data, t->datasize);
 
 	y = t->root;
 	while (y) {
@@ -269,6 +302,9 @@ RBtree_insert(RBtree *t, void *data)
 	t->root->color = BLACK;
 }
 
+/*
+ * delete an existing data block in tree
+ */
 void
 RBtree_delete(RBtree *t, void *data)
 {

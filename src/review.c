@@ -10,6 +10,7 @@ struct intvl {
 private RBtree	*intvl_new(void);
 private	void	intvl_add(RBtree *range, int start, int end);
 private	void	load_existing(char *file);
+private	int	mark_annotations(void);
 
 /*
  * data structure with the reviews that are being merged.
@@ -29,14 +30,16 @@ reviewmerge_main(int ac, char **av)
 	kvpair	kv1, kv2;
 	intvl	*d;
 	int	c;
+	int	anno = 0;
 	char	*tag;
 	char	*exist = 0;
 	char	buf[MAXLINE];
 
 	reviews = hash_new();
 
-	while ((c = getopt(ac, av, "e:")) != -1) {
+	while ((c = getopt(ac, av, "ae:")) != -1) {
 		switch (c) {
+		    case 'a': anno = 1; break;
 		    case 'e': exist = optarg; break;
 		    default:
 			fprintf(stderr, "bad args\n");
@@ -44,6 +47,9 @@ reviewmerge_main(int ac, char **av)
 		}
 	}
 	if (exist) load_existing(exist);
+
+	if (anno) return (mark_annotations());
+
 	tag = av[optind];
 	unless (tag) {
 		fprintf(stderr, "much supply review tag\n");
@@ -183,6 +189,23 @@ intvl_new(void)
 }
 
 /*
+ * return true if a value is inside the defined range
+ */
+private int
+intvl_in(RBtree *range, int val)
+{
+	intvl	new;
+	intvl	*d;
+
+	new.start = new.end = val;
+
+	if (d = RBtree_find(range, &new)) {
+		if (val >= d->start && val <= d->end) return (1);
+	}
+	return (0);
+}
+
+/*
  * Add a range to the interval tree
  */
 private void
@@ -236,4 +259,36 @@ intvl_add(RBtree *range, int start, int end)
 			}
 		}
 	}
+}
+
+/*-------------------------------------------------------------------------- */
+
+private int
+mark_annotations(void)
+{
+	HASH	**taghash;
+	RBtree	*range;
+	char	*p;
+	int	line;
+	int	found;
+	kvpair	kv;
+	char	buf[MAXLINE];
+
+	while (fnext(buf, stdin)) {
+		p = strchr(buf, '.');
+		*p++ = 0;
+		line = atoi(p);
+
+		found = 0;
+		taghash = hash_fetch(reviews, buf, 0, 0);
+		if (taghash) for (kv = hash_first(*taghash);
+				  kv.key.dptr;
+				  kv = hash_next(*taghash)) {
+			range = *(RBtree **)kv.val.dptr;
+			if (found = intvl_in(range, line)) break;
+		}
+		p = strchr(p, '\t');
+		printf("%d%s", found, p);
+	}
+	return (0);
 }
