@@ -12591,6 +12591,9 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 			if (comma) fs(","); fs("ISSHELL"); comma = 1;
 		}
 #endif
+		if (flags & X_EOLN_NATIVE) {
+			if (comma) fs(","); fs("EOLN_NATIVE"); comma = 1;
+		}
 		return (strVal);
 	}
 
