@@ -280,13 +280,13 @@ testfast: testfast.perl substvars
 	chmod +x testfast.T
 	mv -f testfast.T testfast
 
-bk: bk.sh port/platform.sh substvars prs
+bk: bk.sh port/unix_platform.sh substvars prs
 	./prs -hr+ -d'$$if(:SYMBOL:){:SYMBOL: }:UTC:' ../ChangeSet >bk.ver
 	./substvars bk.sh | sed "s/VERSION=unknown/VERSION=\"`cat bk.ver`\"/" >bk.T
-	./substvars port/platform.sh > platform.sh.T
-	cat platform.sh.T bk.T > bk.T2
+	./substvars port/unix_platform.sh > unix_platform.sh.T
+	cat unix_platform.sh.T bk.T > bk.T2
 	chmod +x bk.T2
-	/bin/rm -f bk.ver platform.sh.T bk.T
+	/bin/rm -f bk.ver unix_platform.sh.T bk.T
 	mv -f bk.T2 bk
 
 uuwrap: uuwrap.sh substvars
@@ -304,34 +304,34 @@ import: import.sh substvars
 	chmod +x import.T
 	mv -f import.T import
 
-resolve: resolve.perl port/platform.perl substvars
+resolve: resolve.perl port/unix_platform.perl substvars
 	./substvars resolve.perl >resolve.T
-	cat resolve.T port/platform.perl > resolve.T2
+	cat resolve.T port/unix_platform.perl > resolve.T2
 	/bin/rm -f resolve.T
 	chmod +x resolve.T2
 	mv -f resolve.T2 resolve
 
-resync: resync.perl port/platform.perl substvars
+resync: resync.perl port/unix_platform.perl substvars
 	./substvars resync.perl >resync.T
-	cat resync.T port/platform.perl > resync.T2
+	cat resync.T port/unix_platform.perl > resync.T2
 	/bin/rm -f resync.T
 	chmod +x resync.T2
 	mv -f resync.T2 resync
 
-gui/sccstool: gui/sccstool.tcl port/platform.tcl substvars
+gui/sccstool: gui/sccstool.tcl port/unix_platform.tcl substvars
 	./substvars gui/sccstool.tcl >gui/sccstool.T
-	./substvars port/platform.tcl > gui/platform.T
-	cat gui/platform.T gui/sccstool.T > gui/sccstool.T2
+	./substvars port/unix_platform.tcl > gui/unix_platform.T
+	cat gui/unix_platform.T gui/sccstool.T > gui/sccstool.T2
 	chmod +x gui/sccstool.T2
-	/bin/rm -f gui/platform.T gui/sccstool.T 
+	/bin/rm -f gui/unix_platform.T gui/sccstool.T 
 	mv -f gui/sccstool.T2 gui/sccstool
 
-gui/citool: gui/citool.tcl port/platform.tcl substvars
+gui/citool: gui/citool.tcl port/unix_platform.tcl substvars
 	./substvars gui/citool.tcl >gui/citool.T
-	./substvars port/platform.tcl > gui/platform.T
-	cat gui/platform.T gui/citool.T > gui/citool.T2
+	./substvars port/unix_platform.tcl > gui/unix_platform.T
+	cat gui/unix_platform.T gui/citool.T > gui/citool.T2
 	chmod +x gui/citool.T2
-	/bin/rm -f gui/platform.T gui/citool.T 
+	/bin/rm -f gui/unix_platform.T gui/citool.T 
 	mv -f gui/citool.T2 gui/citool
 
 gui/vitool: gui/vitool.tcl substvars
@@ -339,12 +339,12 @@ gui/vitool: gui/vitool.tcl substvars
 	chmod +x gui/vitool.T
 	mv -f gui/vitool.T gui/vitool
 
-gui/fm: gui/fm.tcl port/platform.tcl substvars
+gui/fm: gui/fm.tcl port/unix_platform.tcl substvars
 	./substvars gui/fm.tcl >gui/fm.T
-	./substvars port/platform.tcl > gui/platform.T
-	cat gui/platform.T gui/fm.T > gui/fm.T2
+	./substvars port/unix_platform.tcl > gui/unix_platform.T
+	cat gui/unix_platform.T gui/fm.T > gui/fm.T2
 	chmod +x gui/fm.T2
-	/bin/rm -f gui/platform.T gui/fm.T 
+	/bin/rm -f gui/unix_platform.T gui/fm.T 
 	mv -f gui/fm.T2 gui/fm
 
 gui/fm3: gui/fm3.tcl substvars
