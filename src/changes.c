@@ -167,7 +167,7 @@ usage:			system("bk help -s changes");
 			if (opts.local) lurls = parent_pushp();
 			if (opts.remote) rurls = parent_pullp();
 			unless (lurls || rurls) {
-				getMsg("changes_no_parent", 0, 0, stderr);
+				getMsg("missing_parent", 0, 0, stderr);
 				exit(1);
 			}
 		}

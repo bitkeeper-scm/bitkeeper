@@ -91,7 +91,14 @@ pull_main(int ac, char **av)
 		fprintf(stderr, "pull: cannot find package root.\n");
 		exit(1);
 	}
-	unless (urls)  urls = parent_pullp();
+	unless (urls) {
+		urls = parent_pullp();
+		unless (urls) {
+			freeLines(envVar, free);
+			getMsg("missing_parent", 0, 0, stderr);
+			return (1);
+		}
+	}
 
 	unless (urls) {
 err:		freeLines(envVar, free);
