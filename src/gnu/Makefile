@@ -33,10 +33,11 @@ clean clean-obj: os
 	do	test -f $$i/$$OS/Makefile || continue; \
 		(cd $$i && make clean); \
 	done
+	-bk -r . clean
 
 clobber: os
 	-@OS=$(OS); set -x; \
 	for i in $(DIRS); \
-	do	(cd $$i && { rm -rf $$OS; bk -r clean; }; ); \
+	do	(cd $$i && rm -rf BIN-*); \
 	done
-	-bk clean
+	-bk -r . clean
