@@ -222,6 +222,13 @@ proc resizeRequest {pathName maxWidth maxHeight width height type} \
 		# the window to some huge size, which will trigger 
 		# this proc, which will ... (read: infinite loop)
 		$pathName configure -width $width -height $height
+		
+		# turn off geometry propagation, so the children
+		# and this proc don't get into a fight for who says
+		# what the size of the window should be. 
+		catch {pack propagate $pathName 0}
+		catch {grid propagate $pathName 0}
+
 	}
 
 	unset ::inResizeRequest
