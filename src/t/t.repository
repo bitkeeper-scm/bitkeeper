@@ -168,7 +168,7 @@ echo OK
 echo $N Make sure we detect duplicate create in Bitkeeper/etc........$NL
 cd $HERE/copy1/BitKeeper/etc
 bk commit $Q -y"cset for old logged file"
-bk mv logged ../logged.old
+rm -f SCCS/s.logged
 echo 3333 > logged
 bk new $Q logged 2> new.out
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
@@ -183,21 +183,6 @@ cd project/src
 touch NEWFILE
 bk new $Q NEWFILE
 bk commit $Q -yNEWFILE 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 cd $HERE/copy
 chmod -w src
 bk pull $Q > OUT 2>&1
@@ -208,3 +193,4 @@ grep -q 'No write permission: src' OUT || {
 	exit 1
 }
 chmod +w src
+echo OK
