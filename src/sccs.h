@@ -480,6 +480,7 @@ typedef struct serial {
 typedef struct {
 	int	flags;		/* PROJ_* */
 	char	*root;		/* to the root of the project */
+	char	*csetFile;	/* Root key of ChangeSet file */
 	MDBM	*config;	/* config DB */
 } project;
 

@@ -1472,12 +1472,17 @@ getCSetFile(sccs *s)
 	sccs	*sc;
 
 	unless (s->proj && s->proj->root) return (0);
+	/*
+	 * Use cacched copy if available
+	 */
+	if (s->proj->csetFile) return (strdup(s->proj->csetFile));
 	sprintf(file, "%s/%s", s->proj->root, CHANGESET);
 	if (exists(file)) {
 		sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
 		assert(sc->tree);
 		sccs_sdelta(sc, sc->tree, file);
 		sccs_free(sc);
+		s->proj->csetFile = strdup(file);
 		return (strdup(file));
 	}
 	return (0);
@@ -3829,6 +3834,7 @@ proj_free(project *p)
 {
 	unless (p) return;
 	if (p->root) free(p->root);
+	if (p->csetFile) free(p->csetFile);
 	if (p->config) mdbm_close(p->config);
 	free(p);
 }
