@@ -3,7 +3,7 @@
 #include "logging.h"
 
 extern char *editor, *bin;
-private int	mkconfig(FILE *out, MDBM *flist);
+private int	mkconfig(FILE *out, MDBM *flist, int verbose);
 private void    usage(void);
 private void	defaultIgnore(void);
 private void	printField(FILE *out, MDBM *flist, char *field);
@@ -22,12 +22,13 @@ setup_main(int ac, char **av)
 	MDBM	*m, *flist = 0;
 	FILE	*f, *f1;
 	int	status;
+	int	print = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help setup");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "ac:efF:")) != -1) {
+	while ((c = getopt(ac, av, "ac:efF:p")) != -1) {
 		switch (c) {
 		    case 'c':					/* doc 2.0 */
 		    	unless(exists(optarg)) {
@@ -48,29 +49,43 @@ setup_main(int ac, char **av)
 		    case 'F':
 			flist = addField(flist, optarg);
 			break;
-		    case 'a':
+		    case 'a':		// XXX - is this used?
 			ask = 0;	/* don't ask */
+			break;
+		    case 'p':
+			print = 1;
 			break;
 		    default:
 			usage();
 		}
 	}
+
+	if (print) {
+		if (config_path) {
+			fprintf(stderr, "setup: can't mix -c and -p.\n");
+			exit(1);
+		}
+		mkconfig(stdout, flist, 0);
+		if (flist) mdbm_close(flist);
+		exit(0);
+	}
+
 	unless (package_path = av[optind]) {
 		printf("Usage: bk setup [-c<config file>] directory\n");
 		exit (0);
 	}
-	if (!allowNonEmptyDir && exists(package_path)) {
+	if (exists(package_path) && !allowNonEmptyDir) {
 		printf("bk: %s exists already, setup fails.\n", package_path);
 		exit (1);
 	}
-	unless(force) {
+	unless (force) {
 		getMsg("setup_1", 0, 0, '-', stdout);
 		flush_fd0(); /* for Win/98 and Win/ME */
 		printf("Create new package? [no] ");
 		if (fgets(buf, sizeof(buf), stdin) == NULL) buf[0] = 'n';
 		if ((buf[0] != 'y') && (buf[0] != 'Y')) exit (0);
 	}
-	if (!getcwd(here, sizeof here)) {
+	unless (getcwd(here, sizeof here)) {
 		perror("getcwd");
 		exit(1);
 	}
@@ -94,7 +109,7 @@ setup_main(int ac, char **av)
 		/* notepad.exe wants text mode */
 		f = fopen("BitKeeper/etc/config", "wt");
 		assert(f);
-		mkconfig(f, flist);
+		mkconfig(f, flist, 1);
 		fclose(f);
 		if (flist) mdbm_close(flist);
 		chmod("BitKeeper/etc/config", 0664);
@@ -172,7 +187,8 @@ err:			unlink("BitKeeper/etc/config");
 	}
 	if ((mdbm_fetch_str(m, "single_user") != 0) ^
 	    (mdbm_fetch_str(m, "single_host") != 0)) {
-		fprintf(stderr, "Setup: single_user and single_host must appear together.\n");
+		fprintf(stderr,
+		    "Setup: both single_user single_host are needed.\n");
 		if (config_path) goto err;
 		goto again;
 	}		
@@ -261,7 +277,7 @@ addField(MDBM *flist, char *field)
 {
 	char	*p;
 
-	unless (flist) flist = mdbm_open(NULL, 0, 0, 1024);
+	unless (flist) flist = mdbm_mem();
 
 	p = strchr(field, '=');
 	unless (p) {
@@ -275,29 +291,6 @@ addField(MDBM *flist, char *field)
 	return (flist);
 }
 
-/*
- * Find field separator
- */
-private char *
-fieldSeparator(char *field)
-{
-	char	*p;
-
-	/*
-	 * Check for filter prefix
-	 * e.g. [awc:/home/bk/bugfixes]checkout:get
-	 */
-	if (field[0] == '[')  {
-		/* Skip over the possible colon inside the filter */
-		p = strchr(field, ']');
-		unless (p) return (NULL); /* not a proper filter */
-		p = strchr(++p, ':');
-	} else {
-		p = strchr(field, ':');
-	}
-	return (p);
-}
-
 private void
 printField(FILE *out, MDBM *flist, char *field)
 {
@@ -308,11 +301,9 @@ use_default:	fputs(field, out);
 		return;
 	}
 
-	p = fieldSeparator(field);
-	unless (p) goto use_default;
+	unless (p = strrchr(field, ':')) goto use_default;
 	*p = 0;
-	val = mdbm_fetch_str(flist, field);
-	unless (val) goto use_default;
+	unless (val = mdbm_fetch_str(flist, field)) goto use_default;
 
 	/*
 	 * If we get here, user wants to override the default value
@@ -321,25 +312,57 @@ use_default:	fputs(field, out);
 	mdbm_delete_str(flist, field);
 }
 
+/*
+ * Return a file pointer to the config template, if we can find one.
+ */
+FILE	*
+config_template(void)
+{
+	FILE	*f;
+	char	*home = getenv("HOME");
+	char	path[MAXPATH];
+
+	/* don't look for templates during regressions, that will hose us */
+	if (getenv("BK_REGRESSION")) return (0);
+
+	if (home) {
+		sprintf(path, "%s/.bk/config.template", home);
+		if (f = fopen(path, "rt")) return (f);
+	}
+	sprintf(path, "%s/BitKeeper/etc/config.template", globalroot());
+	if (f = fopen(path, "rt")) return (f);
+	sprintf(path, "%s/etc/config.template", bin);
+	if (f = fopen(path, "rt")) return (f);
+	return (0);
+}
+
 private int
-mkconfig(FILE *out, MDBM *flist)
+mkconfig(FILE *out, MDBM *flist, int verbose)
 {
 	FILE	*in;
 	int	found = 0;
 	int	first = 1;
-	char	confTemplate[MAXPATH], buf[200], pattern[200];
-	char	*val;
+	int	licensed = 0;
+	char	*p, *val;
 	kvpair	kv;
+	char	buf[1000], pattern[200];
 
-
-	/*
-	 * If there is a local config file template, use that
-	 */
-	sprintf(confTemplate, "%s/BitKeeper/etc/config.template", globalroot());
-	if (in = fopen(confTemplate, "rt")) {
-		while (fnext(buf, in))	printField(out, flist, buf);
+	if (in = config_template()) {
+		while (fnext(buf, in)) {
+			if (buf[0] == '#') continue;
+			unless (p = strrchr(buf, ':')) continue;
+			chop(p);
+			for (*p++ = 0; *p && isspace(*p); p++);
+			unless (*p) continue;
+			/* command line stuff overrides */
+			if (flist && mdbm_fetch_str(flist, buf)) {
+				continue;
+			}
+			p = aprintf("%s=%s", buf, p);
+			flist = addField(flist, p);
+			free(p);
+		}
 		fclose(in);
-		return (0);
 	}
 
 	sprintf(buf, "%s/bkmsg.txt", bin);
@@ -347,8 +370,10 @@ mkconfig(FILE *out, MDBM *flist)
 		fprintf(stderr, "Unable to open %s\n", buf);
 		return (-1);
 	}
-	getMsg("config_preamble", 0, "# ", 0, out);
-	fputs("\n", out);
+	if (verbose) {
+		getMsg("config_preamble", 0, "# ", 0, out);
+		fputs("\n", out);
+	}
 
 	/*
 	 * look for config template
@@ -381,13 +406,20 @@ mkconfig(FILE *out, MDBM *flist)
 	/*
 	 * Now print the help message for each config entry
 	 */
+	licensed = flist && mdbm_fetch_str(flist, "license");
 	while (fgets(buf, sizeof(buf), in)) {
 		if (first && (buf[0] == '#')) continue;
 		first = 0;
 		if (streq("$\n", buf)) break;
 		chop(buf);
-		sprintf(pattern, "config_%s", buf);
-		getMsg(pattern, 0, "# ", 0, out);
+		if (licensed && 
+		    (streq(buf, "single_user") || streq(buf, "single_host"))) {
+		    	continue;
+		}
+		if (verbose) {
+			sprintf(pattern, "config_%s", buf);
+			getMsg(pattern, 0, "# ", 0, out);
+		}
 		if (flist && (val = mdbm_fetch_str(flist, buf))) {
 			fprintf(out, "%s: %s\n", buf, val);
 			mdbm_delete_str(flist, buf);

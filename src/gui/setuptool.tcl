@@ -1054,40 +1054,14 @@ proc parseLicenseData {type} \
 
 proc readConfig {type {filename {}}} \
 {
-
-	global errorCode
-	global tcl_platform
-
 	array set result {}
-
-	if {$type == "template"} {
-		if {$tcl_platform(platform) == "windows"} {
-			package require registry
-			set key {HKEY_LOCAL_MACHINE\Software\Microsoft\Windows}
-			append key {\CurrentVersion\Explorer\Shell Folders}
-			catch {set appdir \
-				   [registry get "$key" {Common AppData}]
-			}
-
-			if {$errorCode ==  {} } {
-				set filename [file join $appdir \
-						  BitKeeper etc config.template]
-			}
-		} else {
-			set filename "/etc/BitKeeper/etc/config.template"
+	set f [open "|bk setup -p" r]
+	while {[gets $f line] != -1} {
+		if {[regexp {^ *#} $line]} continue
+		if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
+			set result($key) [string trim $value]
 		}
 	}
-
-	if {[file exists $filename] && [file readable $filename]} {
-		set f [open $filename r]
-		while {[gets $f line] != -1} {
-			if {[regexp {^ *#} $line]} continue
-			if {[regexp {([^:]+) *: *(.*)} $line -> key value]} {
-				set result($key) [string trim $value]
-			}
-		}
-	}
-
 	return [array get result]
 }
 

@@ -135,18 +135,25 @@ CFLAGS	= $(CC_FAST_DEBUG) $(CC_WALL) \
 CPPFLAGS= -Izlib -Imdbm
 # Override this if you don't have it.
 RANLIB	= ranlib
-SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
+SRCS	= bk.c $(OBJ:.o=.c) \
+	mdbm/byte_order.c mdbm/debug.c mdbm/hash.c mdbm/mdbm.c \
+	tomcrypt/aes.c tomcrypt/aes_tab.c tomcrypt/ampi.c tomcrypt/base64.c \
+	tomcrypt/bits.c tomcrypt/crypt.c tomcrypt/ctr.c tomcrypt/demos/test.c \
+	tomcrypt/hash.c tomcrypt/hmac.c tomcrypt/md5.c tomcrypt/mem.c \
+	tomcrypt/mpi.c tomcrypt/packet.c tomcrypt/prime.c tomcrypt/rsa.c \
+	tomcrypt/rsa_sys.c tomcrypt/sprng.c tomcrypt/yarrow.c \
+	zlib/adler32.c zlib/compress.c zlib/crc32.c zlib/deflate.c \
+	zlib/gzio.c zlib/infblock.c zlib/infcodes.c zlib/inffast.c \
+	zlib/inflate.c zlib/inftrees.c zlib/infutil.c zlib/trees.c \
+	zlib/uncompr.c zlib/zutil.c
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h liblines.h logging.h mmap.h \
 	  purify.h range.h rcs.h resolve.h sccs.h system.h zgets.h \
 	  mdbm/mdbm.h tomcrypt/mycrypt.h zlib/zlib.h
-
-SCRSRCS	= bk.sh import.sh clone.sh \
-	  uuwrap.sh unuuwrap.sh port/unix_platform.sh \
+SCRSRCS	= bk.sh import.sh uuwrap.sh unuuwrap.sh port/unix_platform.sh \
 	  port/unix_platform.perl port/win32_platform.perl \
 	  port/win32_platform.sh gzip_uuwrap.sh ungzip_uuwrap.sh \
 	  resync.sh substvars.sh b64wrap.sh gzip_b64wrap.sh \
 	  unb64wrap.sh ungzip_b64wrap.sh
-
 MISC	= bkmsg.doc bitkeeper.config t/doit.sh
 
 export	GET
@@ -258,7 +265,7 @@ rebuild:
 	done
 
 srcs src: FORCE
-	-bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
+	-@bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 
 wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
