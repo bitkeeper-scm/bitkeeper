@@ -629,10 +629,14 @@ proc doInstall {} \
 
 proc log {string {tag {}}} \
 {
+	set yview [$::widgets(log) yview]
 	$::widgets(log) configure -state normal
 	$::widgets(log) insert end $string $tag
 	$::widgets(log) configure -state disabled
-	$::widgets(log) see end-1c
+	# only scroll if the user hasn't manually scrolled
+	if {[lindex $yview 1] >= 1} {
+		$::widgets(log) see end-1c
+	}
 	update idletasks
 }
 

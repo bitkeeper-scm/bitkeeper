@@ -1289,6 +1289,10 @@ _install()
 			echo $prog$EXE >> "$INSTALL_LOG"
 		done
 
+		# fix home directory
+		#  dotbk returns $HOMEDIR/$USER/Application Data/Bitkeeper/_bk
+		bk dotbk | sed 's,/[^/]*/[^/]*/[^/]*/_bk, /home,' >> \
+			"$DEST"/gnu/etc/fstab
 	fi
 
 	# permissions
