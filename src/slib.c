@@ -648,43 +648,61 @@ sccs_inherit(sccs *s, u32 flags, delta *d)
  * because of D_GONE'ing some interior nodes (csetprune()).
  * The code is here so that any time a new meta data is added that
  * requires dup'ing, that code will be put here as well to unDup it.
+ *
+ * XXX: this isn't efficient, but is less vulnerable than trying to
+ * do this in one step.  Safer to UNDUP in table order, and REDUP
+ * in reverse table order.
  */
-private void
-_reDup(sccs *s, delta *d)
+void
+sccs_reDup(sccs *s)
 {
-	delta	*p;
+	delta	*d, *p;
+	int	i;
 
-	unless (d) return;
-	p = d->parent;
-
-#define	REDUP(field, flag, str) \
-	if (p && p->field && d->field && streq(p->field, d->field)) { \
-		unless (d->flags & flag) free(d->field); \
-		d->field = p->field; \
-		d->flags |= flag; \
-	} \
-	else if (d->field && (d->flags & flag)) { \
+#define	UNDUP(field, flag, str) \
+	if (d->field && (d->flags & flag)) { \
 		d->field = strdup(d->field); \
 		d->flags &= ~flag; \
 	}
 
-	REDUP(pathname, D_DUPPATH, "path");
-	REDUP(hostname, D_DUPHOST, "host");
-	REDUP(zone, D_DUPZONE, "zone");
-	REDUP(csetFile, D_DUPCSETFILE, "csetFile");
-	REDUP(symlink, D_DUPLINK, "symlink");
-
-#undef	REDUP
-
-	for (p = d->kid; p; p = p->siblings) {
-		_reDup(s, p);
+	/* undup in forward table order */
+	for (d = s->table; d; d = d->next) {
+		UNDUP(pathname, D_DUPPATH, "path");
+		UNDUP(hostname, D_DUPHOST, "host");
+		UNDUP(zone, D_DUPZONE, "zone");
+		UNDUP(csetFile, D_DUPCSETFILE, "csetFile");
+		UNDUP(symlink, D_DUPLINK, "symlink");
 	}
-}
+#undef	UNDUP
 
-void
-sccs_reDup(sccs *s)
-{
-	_reDup(s, s->tree);
+#define	REDUP(field, flag, str) \
+	if (p->field && d->field && streq(p->field, d->field)) { \
+		free(d->field); \
+		d->field = p->field; \
+		d->flags |= flag; \
+	}
+
+	/* redup in reverse table order (from sccs_renumber()) */
+	for (i = 1; i < s->nextserial; i++) {
+		unless (d = sfind(s, i)) continue;
+		if (d->flags & D_GONE) continue;
+		unless (p = d->parent) continue;
+
+		if (p->flags & D_GONE) {
+			/* like an assert, but with more info */
+			fprintf(stderr, "Internal error: "
+				"Parent %s is GONE "
+				"and delta %s is not\n",
+				p->rev, d->rev);
+			exit (1);
+		}
+		REDUP(pathname, D_DUPPATH, "path");
+		REDUP(hostname, D_DUPHOST, "host");
+		REDUP(zone, D_DUPZONE, "zone");
+		REDUP(csetFile, D_DUPCSETFILE, "csetFile");
+		REDUP(symlink, D_DUPLINK, "symlink");
+	}
+#undef	REDUP
 }
 
 /*
