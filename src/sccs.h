@@ -1186,6 +1186,7 @@ int	saveStdin(char *tmpfile);
 char	**parent_pullp(void);
 char	**parent_pushp(void);
 char	**parent_allp(void);
+char	*parent_normalize(char *);
 
 extern char *bk_vers;
 extern char *bk_utc;

@@ -401,19 +401,3 @@ bkd(int compress, remote *r)
 	if (freeme) free(freeme);
 	return (p);
 }
-
-/*
- * Normalize only the file type url
- * If we cannot normalize it, return the original url
- */
-char *
-normalize_file_url(char *url)
-{
-	remote	*r = 0;
-
-	if ((r = remote_parse(url, 0)) && (r->type ==  ADDR_FILE) && r->path) {
-		url = fullname(r->path, 0);
-	}
-	if (r) remote_free(r);
-	return (strdup(url));
-}

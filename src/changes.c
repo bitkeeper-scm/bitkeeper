@@ -119,16 +119,6 @@ usage:			system("bk help -s changes");
 	if ((opts.local || opts.remote) && opts.rev) goto usage;
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
 
-	if (proj_cd2root()) {
-		/* If they are doing bk changes URL that's OK */
-		if (opts.local || opts.remote ||
-		    (av[optind] && streq(av[optind], "-"))) {
-			fprintf(stderr, "Can't find package root\n");
-			exit(1);
-		}
-		/* otherwise we don't really care */
-	}
-
 	/*
 	 * There are 4 major cases
 	 * 1) bk changes -L (url_list | -)
@@ -150,7 +140,10 @@ usage:			system("bk help -s changes");
 			}
 		} else if (av[optind]) {
 			while (av[optind]) {
-				urls = addLine(urls, strdup(av[optind++]));
+				char	*normal;
+
+				normal = parent_normalize(av[optind++]);
+				urls = addLine(urls, normal);
 			}
 		} else {
 			urls = opts.local ? parent_pushp() : parent_pullp();
@@ -160,6 +153,17 @@ usage:			system("bk help -s changes");
 		pid = mkpager();
 		putenv("BK_PAGER=cat");
 	}
+
+	if (proj_cd2root()) {
+		/* If they are doing bk changes URL that's OK */
+		if (opts.local || opts.remote ||
+		    (av[optind] && streq(av[optind], "-"))) {
+			fprintf(stderr, "Can't find package root\n");
+			exit(1);
+		}
+		/* otherwise we don't really care */
+	}
+
 	if (opts.local) {
 		EACH(urls) {
 			if (opts.urls && (nLines(urls) > 1)) {

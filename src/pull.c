@@ -83,7 +83,7 @@ pull_main(int ac, char **av)
 	 */
 	if (av[optind]) {
 		while (av[optind]) {
-			urls = addLine(urls, normalize_file_url(av[optind++]));
+			urls = addLine(urls, parent_normalize(av[optind++]));
 		}
 	}
 
