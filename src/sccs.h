@@ -739,6 +739,7 @@ char	*sccs_gethost(void);
 int	sccs_getComments(char *, char *, delta *);
 int	sccs_getHostName(delta *);
 int	sccs_getUserName(delta *);
+MDBM    *sccs_keys2mdbm(FILE *f);
 void	sfileUnget(void);
 char	*sfileNext(void);
 char	*sfileRev(void);
