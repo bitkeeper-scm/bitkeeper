@@ -197,9 +197,9 @@ echo OK
 cd ..
 echo $N Test bk unrm ................................................$NL
 bk unrm A/file4 > /dev/null
-if [ ! -f A/SCCS/s.file4 ]; then echo failed; exit; fi
-if [ -f A/SCCS/c.file4 ]; then echo failed; exit; fi
-if [ -f A/SCCS/c.file4@1.1 ]; then echo failed; exit; fi
+if [ ! -f A/SCCS/s.file4 ]; then echo failed; exit 1; fi
+if [ -f A/SCCS/c.file4 ]; then echo failed; exit 1; fi
+if [ -f A/SCCS/c.file4@1.1 ]; then echo failed; exit 1; fi
 XFILES=`bk -R sfiles -x`
 if [ "$XFILES" != "" ]; then echo filed; exit 1; fi
 bk rm A/file4
