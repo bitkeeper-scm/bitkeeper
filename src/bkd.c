@@ -337,7 +337,6 @@ do_cmds()
 
 			cmdlog_end(0, flags);
 
-			if (cmds[i].cmd == cmd_pull) out("OK-Unlocked\n");
 			if (flags & CMD_FAST_EXIT) exit(ret);
 			if (ret != 0) {
 				if (Opts.interactive) {
