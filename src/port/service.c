@@ -26,6 +26,7 @@ int				bkd_quit = 0; /* global */
 static void WINAPI bkd_service_ctrl(DWORD dwCtrlCode);
 static char *getError(char *buf, int len);
 void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
+void bkd_remove_service();
 void logMsg(char *msg);
 
 
@@ -61,6 +62,11 @@ bkd_install_service(bkdopts *opts)
 	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if ( schSCManager )
 	{
+		schService = OpenService(schSCManager, SERVICENAME, SERVICE_ALL_ACCESS);
+		if (schService) { /* if there is a old entry remove it */
+			CloseServiceHandle(schService);
+			bkd_remove_service(0);
+		}
         	schService = CreateService(schSCManager, SERVICENAME,
             			SERVICEDISPLAYNAME, SERVICE_ALL_ACCESS,
             			SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START,
@@ -70,7 +76,7 @@ bkd_install_service(bkdopts *opts)
 		if ( schService ) {
 			fprintf(stderr, "%s installed.\n", SERVICEDISPLAYNAME);
 			if (StartService(schService, 0, NULL) == 0) {
-				fprintf(stderr, "%s can not start srvice.\n",
+				fprintf(stderr, "%s can not start service.\n",
 							    SERVICEDISPLAYNAME);
 			}
 			CloseServiceHandle(schService);
@@ -106,47 +112,45 @@ bkd_start_service(int (*service_func)())
  * stop & remove the bkd service
  */
 void
-bkd_remove_service()
+bkd_remove_service(int verbose)
 {
 	SC_HANDLE   schService;
 	SC_HANDLE   schSCManager;
 
 	schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
 	if (!schSCManager) {
-        	fprintf(stderr, "OpenSCManager failed - %s\n",
-						getError(err,256));
+        	fprintf(stderr, "OpenSCManager failed:%s\n", getError(err,256));
 		return;
 	}
-	schService = OpenService(schSCManager, SERVICENAME,
-						    SERVICE_ALL_ACCESS);
+	schService = OpenService(schSCManager, SERVICENAME, SERVICE_ALL_ACCESS);
 
 	if (!schService) {
-		fprintf(stderr, "OpenService failed - %s\n", getError(err,256));
+		fprintf(stderr, "OpenService failed:%s\n", getError(err,256));
 		CloseServiceHandle(schSCManager);
 		return;
 	}
 	if (ControlService(schService,
 		SERVICE_CONTROL_STOP, &srvStatus)) {
-		fprintf(stderr, "Stopping %s.", SERVICEDISPLAYNAME);
+		if (verbose) fprintf(stderr, "Stopping %s.", SERVICEDISPLAYNAME);
 		Sleep(1000);
 
 		while(QueryServiceStatus(schService, &srvStatus)) {
 			if (srvStatus.dwCurrentState == SERVICE_STOP_PENDING ) {
-				fprintf(stderr, ".");
+				if (verbose) fprintf(stderr, ".");
 				Sleep(1000);
 			} else {
 				break;
 			}
 		}
 		if (srvStatus.dwCurrentState == SERVICE_STOPPED) {
-			fprintf(stderr, "\n%s stopped.\n", SERVICEDISPLAYNAME);
+			if (verbose) fprintf(stderr, "\n%s stopped.\n", SERVICEDISPLAYNAME);
 		} else {
 			fprintf(stderr, "\n%s failed to stop.\n",
 							    SERVICEDISPLAYNAME);
 		}
 	}
 	if(DeleteService(schService)) {
-		fprintf(stderr, "%s removed.\n", SERVICEDISPLAYNAME);
+		if (verbose) fprintf(stderr, "%s removed.\n", SERVICEDISPLAYNAME);
 	} else {
 		fprintf(stderr, "DeleteService failed - %s\n",
 							    getError(err,256));
@@ -184,14 +188,14 @@ bkd_register_ctrl()
 	/*
 	 * register our service control handler:
 	 */
-	statusHandle = RegisterServiceCtrlHandler(SERVICENAME,
-							    bkd_service_ctrl);
+	statusHandle =
+		RegisterServiceCtrlHandler(SERVICENAME, bkd_service_ctrl);
 	if (statusHandle == 0) {
 		char msg[2048];
 
             	sprintf(msg,
-	      "bkd: bkd_register_ctrl: can not get statusHandle, error code %d",
-								GetLastError());
+	         "bkd_register_ctrl: can not get statusHandle, %s",
+							getError(err, 256));
             	logMsg(msg);
 	}
 	return (statusHandle);
@@ -232,24 +236,24 @@ bkd_service_ctrl(DWORD dwCtrlCode)
 char *
 getError(char *buf, int len)
 {
-	int dwRet;
-	LPTSTR lpszTemp = NULL;
+	int rc;
+	char *buf1 = NULL;
 
-	dwRet = FormatMessage(
+	rc = FormatMessage(
 			FORMAT_MESSAGE_ALLOCATE_BUFFER|\
 			FORMAT_MESSAGE_FROM_SYSTEM|\
 			FORMAT_MESSAGE_ARGUMENT_ARRAY,
-			NULL, GetLastError(), LANG_NEUTRAL, (LPTSTR)&lpszTemp,
+			NULL, GetLastError(), LANG_NEUTRAL, (LPTSTR)&buf1,
 			0, NULL );
 
     	/* supplied buffer is not long enough */
-    	if (!dwRet || ((long)len < (long)dwRet+14)) {
+    	if (!rc || ((long)len < (long)rc+14)) {
        		buf[0] = '\0';
     	} else {
-        	lpszTemp[lstrlen(lpszTemp)-2] = '\0';
-        	sprintf(buf, "%s (0x%x)", lpszTemp, GetLastError());
+        	buf1[lstrlen(buf1)-2] = '\0';
+        	sprintf(buf, "%s (0x%x)", buf1, GetLastError());
     	}
-    	if (lpszTemp) LocalFree((HLOCAL) lpszTemp );
+    	if (buf1) LocalFree((HLOCAL) buf1);
 	return buf;
 }
 
@@ -260,7 +264,6 @@ reportStatus(SERVICE_STATUS_HANDLE sHandle,
 			int dwCurrentState, int dwWin32ExitCode, int dwWaitHint)
 {
 	static int dwCheckPoint = 1;
-	int rc = 1;
 
         if (dwCurrentState == SERVICE_START_PENDING) {
 		srvStatus.dwControlsAccepted = 0;
@@ -285,8 +288,7 @@ reportStatus(SERVICE_STATUS_HANDLE sHandle,
 		char msg[2048];
 	
 		sprintf(msg,
-		"bkd: can not set service status; error code = %d, hamdle= %x",
-						GetLastError(), statusHandle);
+		    "bkd: can not set service status; %s", getError(err, 256));
 		logMsg(msg);
 		exit(1);
         }
@@ -294,22 +296,13 @@ reportStatus(SERVICE_STATUS_HANDLE sHandle,
 
 
 
-VOID
+void
 logMsg(char *msg)
 {
-	char   msg1[256];
-	HANDLE  hEventSource;
-	LPTSTR  lpszStrings[2];
+	HANDLE	evtSrc = RegisterEventSource(NULL, SERVICENAME);
 
-	err_num = GetLastError();
-	hEventSource = RegisterEventSource(NULL, SERVICENAME);
-	sprintf(msg1, "%s error: %d", SERVICENAME, err_num);
-	lpszStrings[0] = msg1;
-	lpszStrings[1] = msg;
-	if (hEventSource != NULL) {
-		ReportEvent(hEventSource, EVENTLOG_ERROR_TYPE, 0, 0,
-						NULL, 2, 0, lpszStrings, NULL);
-		DeregisterEventSource(hEventSource);
-	}
+	if (!evtSrc) return;
+	ReportEvent(evtSrc, EVENTLOG_ERROR_TYPE, 0, 0, NULL, 1, 0, &msg, NULL);
+	DeregisterEventSource(evtSrc);
 }
 #endif

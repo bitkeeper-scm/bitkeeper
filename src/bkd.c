@@ -155,7 +155,6 @@ bkd_service_loop(int ac, char **av)
 	extern	void reportStatus(SERVICE_STATUS_HANDLE, int, int, int);
 	extern	void logMsg(char *);
 	SERVICE_STATUS_HANDLE   sHandle;
-	int	rm_service = 0;
 	
 	/*
 	 * Register our control interface with the service manager
@@ -179,11 +178,6 @@ bkd_service_loop(int ac, char **av)
 			goto done;
 		}
 	}
-
-	/*
-	 * remove the service after we process "count" connections
-	 */
-	if (Opts.count) rm_service = 1;
 
 	/*
 	 * Main loop
@@ -219,6 +213,12 @@ bkd_service_loop(int ac, char **av)
 				strcpy(Opts.remote, inet_ntoa(sin.sin_addr));
 			}
 		}
+		/*
+		 * Spawn a socket helper which will spawn a new bkd process
+		 * to service this connection. The new bkd process is connected
+		 * to the socket helper via pipes. Socket helper forward
+		 * all data between the pipes and the socket.
+		 */
 		if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) {
 			logMsg("bkd: can not spawn socket_helper");
 			break;
@@ -230,7 +230,6 @@ bkd_service_loop(int ac, char **av)
 
 done:	if (sock) CloseHandle((HANDLE)sock);
 	if (sHandle) reportStatus(sHandle, SERVICE_STOPPED, NO_ERROR, 0);
-	if (rm_service) bkd_remove_service();
 }
 
 
@@ -253,7 +252,7 @@ bkd_server()
 		bkd_start_service(bkd_service_loop);
 		exit(0);
 	} else if (Opts.remove) { 
-		bkd_remove_service(); /* shut down and remove bkd service */
+		bkd_remove_service(1); /* shut down and remove bkd service */
 		exit(0);
 	} else {
 		bkd_install_service(&Opts); /* install and start bkd service */
