@@ -60,8 +60,13 @@ getRealBaseName(char *path, char *realParentName, MDBM *db, char *realBaseName)
 	}
 	p = strrchr(path, '/');
 	if (p) {
-		*p = 0; 
-		parent = path; base = &p[1];
+		if (p == path) { 
+			parent = "/"; base = &p[1];
+			p = NULL;
+		} else {
+			*p = 0; 
+			parent = path; base = &p[1];
+		}
 	} else {
 		parent = "."; base = path;
 	}
@@ -111,7 +116,7 @@ getRealName(char *path, MDBM *db, char *realname)
 		if (*q == 0) {
 			strcpy(realname, mypath);
 			return (0);
-		}
+	}
 #else
 	if (q[0] == '/') {
 		q = &q[1];
@@ -122,6 +127,10 @@ getRealName(char *path, MDBM *db, char *realname)
 			q += 3;
 		}
 	}
+
+	/*
+	 * Scan each component in the path from top to bottom
+	 */
 	while (p  = strchr(q, '/')) {
 		*p = 0;
 		if (getRealBaseName(mypath, realname, db, name))  goto err;
@@ -146,7 +155,30 @@ getRealName(char *path, MDBM *db, char *realname)
 	}
 	if (getRealBaseName(mypath, realname, db, name))  goto err;
 	*r = 0;
-	concat_path(realname, realname, name);
+	
+	/*
+	 * Compute parent
+	 * We need this because if parent is "/", realanme[] is
+	 * never populated. 
+	 * We don't use dirname() here, because we don't want "."
+	 * when parent is dot.
+	 */
+	if (realname[0]) {
+		p = realname;
+	} else {
+		q = strrchr(mypath, '/');
+		if (q == NULL) { /* simple relative path: e.g. ChangeSet */
+			p = "";
+		} else if (q == mypath) {	/* pareht is "/" */
+			p = "/";
+		} else  {
+			p = mypath;
+			*q = 0;			/* chop off the base part */
+		}
+	}
+	/* when we get here, p point to the parent directory */
+
+	concat_path(realname, p, name);
 	return (1);
 err:	fprintf(stderr, "getRealName failed: mypath=%s\n", mypath);
 	return (0);
