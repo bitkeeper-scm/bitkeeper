@@ -14,6 +14,10 @@ getHomeDir(void)
 	int	len = MAXPATH;
 #define KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders"
 
+	if (homeDir = getenv("BK_TEST_HOME")) {
+		homeDir = strdup(homeDir);
+		return homeDir;
+	}
 	if (!getReg(HKEY_CURRENT_USER,
 				KEY, "AppData", home_buf, &len)) {
 		return (NULL);
@@ -31,7 +35,7 @@ getHomeDir(void)
 {
         char *homeDir;
 
-        homeDir = getenv("HOME");
+	unless (homeDir = getenv("BK_TEST_HOME")) homeDir = getenv("HOME");
 	if (homeDir) homeDir = strdup(homeDir);
         return homeDir;
 }

@@ -9,38 +9,124 @@
 #    constitutes your permission for BitMover, Inc. to distribute  the
 #    modifications under any license.
 
-# Copyright (c) 2001 Aaron Kushner
+# Copyright (c) 2004 Larry McVoy
 # %K%
 
-# Things that need to be added
-# 
-MYHOST=`bk gethost`
+
+HERE=`${CWD}`
+test -d $HERE/home || mkdir $HERE/home
+export BK_TEST_HOME=$HERE/home
+OUT=$HERE/out
+RC=`bk dotbk`/fm3.rc
 
 echo $N Create initial repository ...................................$NL
-HERE=`${CWD}`
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
 if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
 echo OK
+
 echo $N Create some data ............................................$NL
 cd $HERE/project/BitKeeper/etc
 mkdir $HERE/project/src
 cd $HERE/project/src
-echo foo > foo
-echo foo > foobar
-echo foo > foobaz
-echo foobaz >> foobaz
-echo foobar >> foobar
-
-bk ci $Q -i foo foobar foobaz
-if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
+cat >file1 <<EOF
+1: this is file1
+2: this is part of the original file
+3: this is part of the original file
+4: this is part of the original file
+5: this is part of the original file
+6: this is part of the original file
+7: this is part of the original file
+EOF
+cat >file2 <<EOF
+1: this is file2
+2: this is part of the original file
+3: this is part of the original file
+4: this is part of the original file
+5: this is part of the original file
+6: this is part of the original file
+7: this is part of the original file
+EOF
+bk ci $Q -i file1 file2
+bk commit $Q -y"initial checkin"
+if [ ! -f SCCS/s.file1 ]; then echo failed to create history; exit 1; fi
+# create clones
+cd $HERE
+bk clone $Q $HERE/project $HERE/remote
+bk clone $Q $HERE/project $HERE/local
+# introduce conflicts
+cd $HERE/remote/src
+bk get $Q -e file1
+cat >file1 <<EOF
+1: this is file1
+2: this has changed in the remote project
+3: this has changed in the remote project
+4: this is part of the original file
+   this has been added in the remote project
+   this has been added in the remote project
+5: this is part of the original file
+6: this has changed in both the local and remote project
+7: this is part of the original file
+EOF
+bk ci $Q -y"introduced conflicts" file1
+bk commit $Q -y"introduced conflicts in file1"
+cd $HERE/local/src
+bk get $Q -e file1
+cat >file1 <<EOF
+1: this is file1
+2: this has changed in the local project
+3: this is part of the original file
+4: this is part of the original file
+5: this is part of the original file
+6: this has changed in both the local and remote project
+7: this is part of the original file
+EOF
+bk ci $Q -y"introduced conflicts" file1
+bk commit $Q -y"introduced conflicts in file1"
+# pushing remote changes to parent
+cd $HERE/remote
+bk push $Q
+# pulling changes to local
+cd $HERE/local
+bk pull $Q 2>pull.err
+if [ ! -d RESYNC ]; then echo failed to create RESYNC directory; exit 1; fi
 echo OK
-echo "Use Left then Undo"
-echo
-echo $N Check fm3tool for undo problems .............................$NL
-cd $HERE/project/src
-bk co
-bk fm3tool foobar foo foobaz foo_output
+
+echo $N Simple startup and exit......................................$NL
+cd $HERE/local/RESYNC
+bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
+    test_invokeMenu File->Quit
+    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+err=$?
+test -s $OUT && { echo failed; cat $OUT; exit 1; }
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+echo OK
+
+echo $N Create dotbk/fm3.rc .........................................$NL
+test -f $RC && rm -f $RC
+cd $HERE/local/RESYNC
+bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
+    test_invokeMenu File->Quit
+    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+test -f $RC || (echo failed; exit 1; )
+echo "OK"
+
+echo $N Proper count of diffs and conflicts..........................$NL
+cd $HERE/local/RESYNC
+bk guitest fm3tool -f 1.1.1.1 1.1 1.2 src/file1 >$OUT 2>&1 <<'EOF'
+    global diffCount conf_todo
+    if {$conf_todo != 1 || $diffCount != 3} {
+	puts "conf_todo is $conf_to; expected 1"
+	puts "diffCount is $diffCount; expected 3"
+	exit 1
+    }
+    exit 0
+EOF
+err=$?
+test -s $OUT && { echo failed; cat $OUT; exit 1; }
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
 echo OK

@@ -1,0 +1,95 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# %K%
+
+HERE=`${CWD}`
+test -d $HERE/home || mkdir $HERE/home
+export BK_TEST_HOME=$HERE/home
+OUT=$HERE/out
+RC=`bk dotbk`/cset.rc
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+cd $HERE/project/BitKeeper/etc
+mkdir $HERE/project/src
+cd $HERE/project/src
+for f in file1 file2 file3 file4 file5 ; do
+    echo "this is $f" > $f 
+    bk ci $Q -i -y'new file' $f
+    if [ ! -f SCCS/s.$f ]; then echo failed to create file $f ; exit 1 ; fi
+done
+bk commit $Q -y'initial checkin' 
+bk tag $Q "BabySteps"
+echo OK
+
+echo $N Simple startup and exit......................................$NL
+bk guitest csettool >$OUT 2>&1 <<'EOF'
+    test_buttonPress Quit
+    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+err=$?
+if [ $err -ne 0 ]; then echo failed; echo "exited $err expected 0"; exit 1; fi
+if [ -s $OUT ] ; then
+    echo failed $err
+    echo "unexpected output:"
+    cat $OUT
+    exit 1 
+fi
+echo OK
+
+# this tests that the gui properly creates the rc file. We can rely
+# on the fact it should have been created by the previous test
+echo $N Create dotbk/cset.rc ........................................$NL
+test -f $RC && rm -f $RC
+bk guitest csettool >$OUT 2>&1 <<'EOF'
+    test_buttonPress Quit
+    after 5000 [list exit 99] ;# in case the buttonpress didn't work
+EOF
+test -f $RC || (echo "failed" ; exit 1; )
+echo "OK"
+
+echo $N Check prs-formatted list of files............................$NL
+bk guitest csettool >$OUT 2>&1 <<'EOF'
+    set actual [.l.filelist.t get 1.0 end-1c]
+    set expected {
+ChangeSet 1.2
+  src/file1@1.1
+  src/file2@1.1
+  src/file3@1.1
+  src/file4@1.1
+  src/file5@1.1
+}
+    # ignore leading/trailing whitespace...
+    set expected [string trim $expected]
+    set actual [string trim $actual]
+    if {$actual ne $expected} {
+    	puts "unexpected output. Expected:"
+        puts $expected
+        puts "actual:"
+        puts $actual
+    }
+    exit 0
+EOF
+if [ -s $OUT ] ; then
+    echo failed $err
+    cat $OUT
+    exit 1 
+fi
+echo OK
+

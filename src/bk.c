@@ -680,6 +680,23 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		return (spawn_cmd(_P_WAIT, av));
 	}
 
+	/* Handle GUI test */
+	if (streq(prog, "guitest")) {
+		sig_catch(SIG_IGN);
+		argv[0] = find_wish();
+		sprintf(cmd_path, "%s/t/guitest.tcl", bin);
+		argv[1] = cmd_path;
+		for (i = 2, j = 1; av[j]; i++, j++) {
+			if (i >= (MAXARGS-10)) {
+				fprintf(stderr, "bk: too many args\n");
+				exit(1);
+			}
+			argv[i] = av[j];
+		}
+		argv[i] = 0;
+		return (spawn_cmd(_P_WAIT, argv));
+	}
+
 	/*
 	 * If we get here, it is a 
 	 * a) bk shell function
