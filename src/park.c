@@ -10,7 +10,7 @@ private int purgeParkFile(int id);
 int
 park_main(int ac, char **av)
 {
-	char	parkfile[MAXPATH], changedfile[MAXPATH];
+	char	parkfile[MAXPATH] = "", changedfile[MAXPATH] = "";
 	char	*diffsopts, *comment = 0;
 	int 	lflag  = 0, qflag = 0, purge = 0, c, status, try = 0;
 	FILE	*f;
@@ -43,9 +43,10 @@ park_main(int ac, char **av)
 
 	bktemp(changedfile);
 	sysio(0, changedfile, 0, "bk", "sfiles", "-c", SYS);
-	if (size(changedfile) == 0) {
-		unless (qflag) printf("Nothing to park\n");
-		unlink(changedfile);
+	if (size(changedfile) <= 0) {
+empty:		unless (qflag) printf("Nothing to park\n");
+		if (parkfile[0]) unlink(parkfile);
+		if (changedfile[0]) unlink(changedfile);
 		return (0);
 	}
 
@@ -65,7 +66,7 @@ park_main(int ac, char **av)
 		unlink(changedfile);
 		return (1);
 	}
-	assert(size(parkfile) > 0);
+	if (size(parkfile) <= 0) goto empty;
 
 	/*
 	 * Store comment in comment file

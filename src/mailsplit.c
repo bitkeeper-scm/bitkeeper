@@ -7,13 +7,13 @@
 #define LINELEN	1024
 #define HDRLEN	256
 
-int line, outfd = 2;
-char buffer[LINELEN];
+private int line, outfd = 2;
+private char buffer[LINELEN];
 
-char *myname = "mailsplit";
-char **argv;
+private char *myname = "mailsplit";
+private char **argv;
 
-char from_name[HDRLEN], from_domain[HDRLEN];
+private char from_name[HDRLEN], from_domain[HDRLEN];
 
 static void parse_from(const char *);
 
@@ -36,7 +36,7 @@ static struct headers {
 	{ "Date: " }
 };
 
-enum Headers { FROM, SUBJECT, DATE, NRHEADERS };
+enum Headers { FROM, SUBJECT, M_DATE, NRHEADERS };
 
 static struct {
 	const char *name;
@@ -44,7 +44,7 @@ static struct {
 } arg_converion[] = {
 	{ "SUBJECT", header[SUBJECT].value },
 	{ "FROM", header[FROM].value },
-	{ "DATE", header[DATE].value },
+	{ "DATE", header[M_DATE].value },
 	{ "NAME", from_name },
 	{ "DOMAIN", from_domain }
 };
@@ -220,32 +220,6 @@ static int parse_headers(void)
 	return 1;
 }
 
-static void exec_program(void)
-{
-	execvp(argv[0], argv);
-	exit(128);
-}
-
-static int run_program(void)
-{
-	int pipefd[2];
-
-	if (pipe(pipefd))
-		syntax("couldn't create pipes");
-	signal(SIGCHLD, SIG_IGN);
-	signal(SIGPIPE, SIG_IGN);
-	switch (fork()) {
-	case -1:
-		syntax("Fork failed");
-	case 0:
-		dup2(pipefd[0], 0);
-		close(pipefd[1]);
-		exec_program();
-	}
-	outfd = pipefd[1];
-	close(pipefd[0]);
-	return 0;
-}
 
 static int parse_mail(void)
 {
@@ -253,7 +227,7 @@ static int parse_mail(void)
 
 	if (!parse_headers())
 		syntax("mail header error");
-	run_program();
+	spawnvp_wPipe(argv, &outfd, 0);
 	retval = skip_space();
 	close(outfd);
 	outfd = 2;
@@ -268,7 +242,7 @@ static int parse_mail(void)
 	return retval;
 }
 
-int main(int argc, char **argv)
+int mailsplit_main(int argc, char **argv)
 {
 	parse_args(argc, argv);
 

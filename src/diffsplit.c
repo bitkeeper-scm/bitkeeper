@@ -6,11 +6,11 @@
  */
 #define LINELEN	1024
 
-int line, outfd = 2;
-char buffer[LINELEN];
+private int line, outfd = 2;
+private char buffer[LINELEN];
 
-char *myname = "diffsplit";
-char **argv;
+private char *myname = "diffsplit";
+private char **argv;
 
 static void syntax(char *buf)
 {
@@ -25,7 +25,7 @@ static void syntax(char *buf)
  * Pre-diff explanation: max 64kB
  */
 #define EXPLANATION 65536
-char explanation[EXPLANATION];
+private char explanation[EXPLANATION];
 
 static struct {
 	const char *name;
@@ -134,39 +134,12 @@ static void cat_diff(void)
 		write(outfd, buffer, len);
 }
 
-static void exec_program(void)
-{
-	execvp(argv[0], argv);
-	exit(128);
-}
-
-static int run_program(void)
-{
-	int pipefd[2];
-
-	if (pipe(pipefd))
-		syntax("couldn't create pipes");
-	signal(SIGCHLD, SIG_IGN);
-	signal(SIGPIPE, SIG_IGN);
-	switch (fork()) {
-	case -1:
-		syntax("Fork failed");
-	case 0:
-		dup2(pipefd[0], 0);
-		close(pipefd[1]);
-		exec_program();
-	}
-	outfd = pipefd[1];
-	close(pipefd[0]);
-	return 0;
-}
-
 static int parse_file(void)
 {
 	int status;
 
 	parse_explanation();
-	run_program();
+	spawnvp_wPipe(argv, &outfd, 0);
 	cat_diff();
 	close(outfd);
 	outfd = 2;
@@ -181,7 +154,7 @@ static int parse_file(void)
 	return 0;
 }
 
-int main(int argc, char **argv)
+int diffsplit_main(int argc, char **argv)
 {
 	parse_args(argc, argv);
 

@@ -193,11 +193,7 @@ usage:		system("bk help -s takepatch");
 
 	unless (remote) cleanup(CLEAN_RESYNC | CLEAN_PENDING);
 
-	getConfig();	/* why do no conflict cases need this?
-			 * They do, t.logging will fail without it,
-			 * but why do we need the config file if we
-			 * are just updating?
-			 */
+	getConfig();
 
 	/*
 	 * The ideas here are to (a) automerge any hash-like files which
@@ -424,7 +420,14 @@ again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
 	 *    it.
 	 */
 	unless (s || newProject || newFile) {
-		if (gone(t, goneDB)) goneError(t);
+		if (gone(t, goneDB)) {
+			if (getenv("BK_GONE_OK")) {
+				skipPatch(p);
+				return (0);
+			} else {
+				goneError(t);
+			}
+		}
 		unless (rebuilt++) {
 			if (rebuild_id(t)) {
 				fprintf(stderr,
