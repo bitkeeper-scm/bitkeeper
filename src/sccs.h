@@ -946,6 +946,7 @@ int	licenseAcceptOne(int prompt, char *lic);
 char	*licenses_accepted(void);
 char	*mkline(char *mmap);
 int	mkdirp(char *dir);
+int	test_mkdirp(char *dir);
 int	mkdirf(char *file);
 char    *mode2FileType(mode_t m);
 int	getline(int in, char *buf, int size);
