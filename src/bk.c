@@ -15,7 +15,7 @@ char	*find_perl5();
 void	cmdlog_start(char **av);
 void	cmdlog_end(int ret);
 void	cmdlog_exit(void);
-private	void	cmdlog_dump();
+private	void	cmdlog_dump(int, char **);
 
 extern	void	getoptReset();
 int _createlod_main(int, char **);
@@ -102,7 +102,7 @@ int version_main(int, char **);
 int what_main(int, char **);
 int zone_main(int, char **);
 
-struct command cmdtbl[100] = {
+struct command cmdtbl[] = {
 	{"_createlod", _createlod_main},
 	{"_find", find_main }, /* internal helper function */
 	{"_logging", logging_main},
@@ -291,7 +291,7 @@ main(int ac, char **av)
 	getoptReset();
 
 	if (streq(prog, "cmdlog")) {
-		cmdlog_dump();
+		cmdlog_dump(ac, av);
 		return (0);
 	}
 
@@ -438,30 +438,55 @@ cmdlog_start(char **av)
 	}
 }
 
+private	struct {
+	char	*name;
+	int	len;
+} repolog[] = {
+	{"clone", 5 },
+	{"commit", 6 },
+	{"export", 6 },
+	{"pull", 4 },
+	{"push", 4 },
+	{"remote", 6 },
+	{ 0, 0 },
+};
+
 void
 cmdlog_end(int ret)
 {
 	FILE	*f;
-	char	*user;
+	int	i, repo = 0;
+	char	*user, *file;
 	char	path[MAXPATH];
 
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) return;
-	sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+	for (i = 0; repolog[i].name; i++) {
+		if (strneq(cmdlog_buffer, repolog[i].name, repolog[i].len)) {
+			repo = 1;
+			break;
+		}
+	}
+	if (repo) {
+		file = "repo_log";
+	} else {
+		file = "cmd_log";
+	}
+	sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
 	unless (f = fopen(path, "a")) {
 		sprintf(path, "%s/%s", bk_proj->root, BKROOT);
 		unless (exists(path)) return;
-		sprintf(path, "%s/BitKeeper/log/cmd_log", bk_proj->root);
+		sprintf(path, "%s/BitKeeper/log/%s", bk_proj->root, file);
 		mkdirf(path);
 		unless (f = fopen(path, "a")) return;
 	}
 	user = sccs_getuser();
-	fprintf(f, "%s@%u: ", user ? user : "Phantom User", time(0));
+	fprintf(f, "%s %u: ", user ? user : "Phantom User", time(0));
 	if (ret == LOG_BADEXIT) {
 		fprintf(f, "%s = ?\n", cmdlog_buffer);
 	} else {
 		fprintf(f, "%s = %d\n", cmdlog_buffer, ret);
 	}
-	if (fsize(fileno(f)) > LOG_MAXSIZE) {
+	if (!repo && (fsize(fileno(f)) > LOG_MAXSIZE)) {
 		char	old[MAXPATH];
 
 		sprintf(old, "%s-older", path);
@@ -474,7 +499,7 @@ cmdlog_end(int ret)
 }
 
 private	void
-cmdlog_dump()
+cmdlog_dump(int ac, char **av)
 {
 	FILE	*f;
 	time_t	t;
@@ -482,17 +507,29 @@ cmdlog_dump()
 	char	buf[4096];
 
 	unless (bk_proj && bk_proj->root) return;
-	sprintf(buf, "%s/BitKeeper/log/cmd_log", bk_proj->root);
-	unless (f = fopen(buf, "r")) return;
+	if (av[1] && streq(av[1], "-a")) {
+		sprintf(buf,
+	    "sort -n +1 %s/BitKeeper/log/repo_log %s/BitKeeper/log/cmd_log", 
+		    bk_proj->root, bk_proj->root);
+		f = popen(buf, "r");
+	} else {
+		sprintf(buf, "%s/BitKeeper/log/repo_log", bk_proj->root);
+		f = fopen(buf, "r");
+	}
+	unless (f) return;
 	while (fgets(buf, sizeof(buf), f)) {
-		unless (p = strchr(buf, '@')) continue;
+		for (p = buf; (*p != ' ') && (*p != '@'); p++);
 		*p++ = 0;
 		t = strtoul(p, 0, 0);
 		unless (p = strchr(p, ':')) continue;
 		p++;
 		printf("%s %.19s%s", buf, ctime(&t), p);
 	}
-	fclose(f);
+	if (av[1] && streq(av[1], "-a")) {
+		pclose(f);
+	} else {
+		fclose(f);
+	}
 }
 
 int

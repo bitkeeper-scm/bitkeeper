@@ -1326,7 +1326,10 @@ sccs_cd2root(sccs *s, char *root)
 		perror(BKROOT);
 		return (-1);
 	}
-
+	if (bk_proj && bk_proj->root) {
+		free(bk_proj->root);
+		bk_proj->root = strdup(".");
+	}
 	return (0);
 }
 
