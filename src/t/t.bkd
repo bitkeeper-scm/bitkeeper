@@ -136,10 +136,10 @@ echo $N check a push to bkd with a gfile conflict ...................$NL
 if [ "$PLATFORM" = "UNIX" ];then CNT=5; else CNT=2; fi
 P=50000
 cd $HERE/project
-bk bkd -q -d -p$P -xcd -c$CNT
+bk bkd -q -d -p$P -c$CNT
 while [ $? -eq 2 ]
 do	P=`expr $P + 1`
-	bk bkd -q -d -p$P -xcd -c$CNT
+	bk bkd -q -d -p$P -c$CNT
 done
 cd $HERE/project
 echo data1 > conflict.c
@@ -168,7 +168,7 @@ echo data3 > bar.c
 bk delta $Q -ydata3 bar.c
 bk commit $Q -ydata3
 cd $HERE/copy
-bk pull $Q http://localhost:$P
+bk pull $Q http://localhost:$P/.
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N check http clone from bkd ...................................$NL
@@ -198,22 +198,22 @@ do	P=`expr $P + 1`
 	bk bkd -q -d -p$P -c6 
 done
 cd $HERE
-bk clone bk://localhost:$P$HERE/copy $HERE/copy3 2> bk.out1
+bk clone bk://localhost:$P/copy $HERE/copy3 2> bk.out1
 grep -q "bkd std cannot access non-master" bk.out1
 if [ $? -ne 0 ]; then echo failed 1; cat bk.out1; exit 1; fi
 cd $HERE/copy2
-bk pull -c0 bk://localhost:$P$HERE/copy 2> bk.out2
+bk pull -c0 bk://localhost:$P/$HERE/copy 2> bk.out2
 grep -q "bkd std cannot access non-master" bk.out2
 if [ $? -ne 0 ]; then echo failed 2; cat bk.out1 bk.out2; exit 1; fi
 waitForUnlock $HERE/copy
-bk push -c0 bk://localhost:$P$HERE/copy 2> bk.out3
+bk push -c0 bk://localhost:$P/$HERE/copy 2> bk.out3
 grep -q "bkd std cannot access non-master" bk.out3
 if [ $? -ne 0 ]; then echo failed 3; cat bk.out2 bk.out3; exit 1; fi
 echo OK
 waitForUnlock $HERE/copy
 echo $N Make sure bk/basic allows clone from master repository ......$NL
 mkdir $HERE/copy/BitKeeper/etc/.master
-bk clone $Q bk://localhost:$P$HERE/copy $HERE/copy3
+bk clone $Q bk://localhost:$P/$HERE/copy $HERE/copy3
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N Make sure bk/basic allows push to master repository .........$NL
@@ -222,7 +222,7 @@ ls > JUNK
 bk new $Q JUNK
 (cd $HERE/copy; bk _loggingaccepted; )
 bk commit $Q -ywhatever
-bk push -t bk://localhost:$P$HERE/copy 2> bk.out
+bk push -t bk://localhost:$P/$HERE/copy 2> bk.out
 if [ $PLATFORM = "UNIX" ]; then CNT=6; else CNT=4; fi
 grep -q "pushing to is $CNT changesets" bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
@@ -232,7 +232,7 @@ cd $HERE/copy
 while ! bk lock -s; do true; done
 cd $HERE/copy2
 bk undo -fqr+
-bk pull $Q -t bk://localhost:$P$HERE/copy
+bk pull $Q -t bk://localhost:$P/$HERE/copy
 if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 if [ "$PLATFORM" = "WIN32" ]; then bk bkd -R 2> $DEV_NULL; fi

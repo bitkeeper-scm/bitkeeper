@@ -77,7 +77,8 @@ typedef struct {
  * Default BitKeeper port.
  * This is will change when we get a reserved port number.
  */
-#define	BK_PORT	0x3962
+#define	BK_PORT		0x3962
+#define	WEB_PORT	80
 
 extern	struct cmd cmds[];
 extern	int exists(char *);

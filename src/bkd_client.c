@@ -1,7 +1,7 @@
 #include "bkd.h"
 
 private	remote	*nfs_parse(char *p);
-private	remote	*url_parse(char *p);
+private	remote	*url_parse(char *p, int default_port);
 extern	char	cmdlog_buffer[];
 
 /*
@@ -29,9 +29,9 @@ remote_parse(char *p, int is_clone)
 	}
 	unless (p) return (0);
 	if (strneq("bk://", p, 5)) {
-		r = url_parse(p + 5);
+		r = url_parse(p + 5, BK_PORT);
 	} else if (strneq("http://", p, 7)) {
-		r = url_parse(p + 7);
+		r = url_parse(p + 7, WEB_PORT);
 		if (r) r->httpd = 1;
 	} else {
 		if (!is_clone && (bk_mode() == BK_BASIC)) {
@@ -89,8 +89,12 @@ nfs_parse(char *p)
 }
 
 /*
- * host[:port]/path or
- * user@host[:path] or
+ * host[:port]//path	(e.g. bitmover.com:80//full_path/to/repo)
+ * host[:port]/path	(e.g. bitmover.com:80/relative_path/to/repo)
+ * host[:port]:dospath	(e.g. bitmover.com:80:C:/full_path/to/repo)
+ * user@host[//path]
+ * user@host[/path]
+ * user@host[:path]
  * host:port
  * host
  *
@@ -98,7 +102,7 @@ nfs_parse(char *p)
  * 	 a colon in the path component
  */
 private	remote *
-url_parse(char *p)
+url_parse(char *p, int default_port)
 {
 	remote	*r;
 	char	*s;
@@ -124,16 +128,16 @@ url_parse(char *p)
 		 * destinaltion is a Win32 box
 		 */
 		while (isdigit(*p)) p++;
-		if (*p == ':') p++; /* skip optional colon */
+		if ((*p == ':') || (*p == '/')) p++; /* skip field separator */
 		if (*p) r->path = strdup(p);
 	} else if (s = strchr(p, '/')) {	/* host/path */
-		*s = 0;
-		r->port = BK_PORT;
+		*s++ = 0;
+		r->port = default_port;
 		r->host = strdup(p);
-		*s = '/';
+		//*s = '/';
 		r->path = strdup(s);
 	} else { 				/* host */
-		r->port = BK_PORT;
+		r->port = default_port;
 		r->host = strdup(p);
 		r->path = 0;
 	}
@@ -167,7 +171,7 @@ remote_unparse(remote *r)
 		    	}
 		}
 		if (r->path) {
-			unless(r->path[0] == '/') strcat(buf, ":");
+			strcat(buf, "/");
 			strcat(buf, r->path);
 		}
 		return (strdup(buf));
