@@ -79,7 +79,7 @@ r2c_main(int ac, char **av)
 	len = strlen(key);
 	while (fnext(buf, f)) {
 		/* 1.5\tkey key */
-		t = strchr(buf, ' '); assert(t); t++;
+		t = separator(buf); assert(t); t++;
 		if (strneq(t, key, len) && t[len] == '\n') {
 			t = strchr(buf, '\t'); assert(t); *t = 0;
 			printf("%s\n", buf);
@@ -103,7 +103,7 @@ notfound:	if (shortkey) {
 	len = strlen(shortkey);
 	while (fnext(buf, f)) {
 		/* 1.5 key key */
-		t = strchr(buf, ' '); assert(t); t++;
+		t = separator(buf); assert(t); t++;
 		if (strneq(t, shortkey, len) && t[len] == '\n') {
 			t = strchr(buf, '\t'); assert(t); *t = 0;
 			printf("%s\n", buf);

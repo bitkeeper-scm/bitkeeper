@@ -1,0 +1,104 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+
+# %K%
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create a file with spaces in the name .......................$NL
+mkdir src
+cd src
+echo foo > 'I am foo.c'
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i 'I am foo.c' bar.c h.h
+if [ ! -f SCCS/s.'I am foo.c' ]; then echo failed to create history; exit 1; fi
+echo OK
+echo $N Commit the files ............................................$NL
+bk commit $S -a -yCset -S"Hi there this is a changeset"
+if [ $? != 0 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Check the repository ........................................$NL
+bk -r check -a || { echo failed; exit 1; }
+echo OK
+echo $N Clone it and make sure the file came along ..................$NL
+cd $HERE
+bk clone $Q project clone || { echo failed; exit 1; }
+cd clone/src
+bk co $Q
+if [ "`cat 'I am foo.c'`" != "foo" ]
+then	echo failed to copy file data
+	exit 1
+fi
+echo OK
+echo $N Make some changes and check the diffs .......................$NL
+bk edit $Q 'I am foo.c'
+echo DIFFS >> 'I am foo.c'
+bk diffs 'I am foo.c' > DIFFS
+cat >WANT <<EOF
+===== I am foo.c 1.1 vs edited =====
+1a2
+> DIFFS
+EOF
+cmp -s DIFFS WANT || { echo failed; diff WANT DIFFS; exit 1; }
+echo OK
+if [ X$BK_TESTGUI != X ]
+then	echo $N Try fmtool on the file ......................................$NL
+	cat > JUNK <<EOF
+Pick everything on the left
+and click save, please.
+Otherwise this will fail.
+EOF
+	bk fmtool -geom +1+1 JUNK 'I am foo.c' 'the merge file' || {
+		echo failed
+		exit 1
+	}
+	cmp -s JUNK 'the merge file' || {
+		echo failed
+		diff JUNK 'the merge file'
+		sdiff -w50 JUNK 'the merge file'
+		exit 1
+	}
+	echo OK
+	echo $N Try difftool on the file ....................................$NL
+	bk difftool -geom +1+1 'I am foo.c' || { echo failed; exit 1; }
+	echo OK
+fi
+echo $N Check in the changes ........................................$NL
+if [ X$BK_TESTGUI != X ]
+then	bk citool
+else	bk delta $Q -y'should just be foo'
+fi
+writable 'I am foo.c' && { echo file is still writable; ls -l; exit 1; }
+echo OK
+echo $N Check the cset -r1.2 output .................................$NL
+bk cset -hr1.2 > GOT
+cat > WANT <<EOF
+src/I am foo.c@1.0..1.1
+src/bar.c@1.0..1.1
+src/h.h@1.0..1.1
+EOF
+cmp -s GOT WANT || { echo failed; diff WANT GOT; exit 1; }
+echo OK
+if [ X$BK_TESTGUI != X ]
+then	echo $N Try sccstool on the file ....................................$NL
+	bk sccstool 'I am foo.c' || { echo failed; exit 1; }
+	echo OK
+	echo $N Try csettool on the file ....................................$NL
+	bk csettool -geom +1+1 -r1.2 || { echo failed; exit 1; }
+	echo OK
+fi

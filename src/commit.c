@@ -230,7 +230,7 @@ do_commit(c_opts opts, char *sym, char *commentFile)
 	strcpy(buf, d->rev);
 	sccs_free(s);
 	logChangeSet(l, buf, opts.quiet);
-	return (rc);
+	return (rc ? 1 : 0);
 }
 
 private	void

@@ -144,7 +144,8 @@ passes(opts *opts)
 	}
 
 	if (exists("SCCS/s.ChangeSet")) {
-		unless (opts->idDB = loadDB(IDCACHE, 0, DB_NODUPS)) {
+		unless (opts->idDB =
+		    loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 			fprintf(stderr, "resolve: can't open %s\n", IDCACHE);
 			exit(1);
 		}

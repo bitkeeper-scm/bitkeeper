@@ -172,7 +172,7 @@ again:	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	}
 	close(fd);	/* unlink it when we are done */
 	sprintf(path, "%s/%s", p->root, IDCACHE);
-	unless (idDB = loadDB(path, 0, DB_NODUPS)) {
+	unless (idDB = loadDB(path, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		fprintf(stderr, "No idcache?  Creating one.\n");
 		idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	}

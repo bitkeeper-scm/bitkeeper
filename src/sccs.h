@@ -260,6 +260,7 @@
 #define DB_USELAST      0x04		/* use the last key found */
 #define	DB_KEYSONLY	0x08		/* boolean hashes */
 #define	DB_NOBLANKS	0x10		/* keys must have values or skip */
+#define	DB_KEYFORMAT	0x20		/* key/value are u@h|path|date|cksum */
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
@@ -843,5 +844,6 @@ MDBM *	loadOK();
 void	config(char *rev, FILE *f);
 int	ok_commit(int l, int alreadyAsked);
 int	cset_setup(int flags);
+char	*separator(char *);
 
 #endif	/* _SCCS_H_ */

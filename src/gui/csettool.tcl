@@ -204,8 +204,6 @@ proc sdiff {L R} \
 	global	rmList sdiffw
 
 	set rmList ""
-	# we need the extra quote arounf $R $L
-	# because win32 path may have space in it
 	set a [open "| grep {\r$} \"$L\"" r]
 	set b [open "| grep {\r$} \"$R\"" r]
 	if { ([gets $a dummy] < 0) && ([gets $b dummy] < 0)} {
@@ -232,7 +230,7 @@ proc sdiff {L R} \
 	}
 	exec bk undos $R > $dotR
 	set rmList [list $dotL $dotR]
-	return [open "| $sdiffw $dotL $dotR"]
+	return [open "| $sdiffw \"$dotL\" \"$dotR\""]
 }
 
 proc readFiles {L R} \
@@ -334,12 +332,12 @@ proc file_history {} \
 	set line $Files($lastFile)
 	set line "$line.0"
 	set file $RealFiles($lastFile)
-	if {[regexp "^  $file_start_stop" $file dummy file start stop] == 0} {
-		regexp "^  $file_stop" $file dummy f stop
+	if {[regexp "^  $file_start_stop" "$file" dummy file start stop] == 0} {
+		regexp "^  $file_stop" "$file" dummy f stop
 		set start $stop
-		set file $f
+		set file "$f"
 	}
-	exec bk -R sccstool $file &
+	exec bk -R sccstool "$file" &
 }
 
 proc dotFile {} \
@@ -364,20 +362,20 @@ proc dotFile {} \
 	.filelist.t tag remove select 1.0 end
 	.filelist.t tag add select $line "$line lineend + 1 char"
 	set file $RealFiles($lastFile)
-	if {[regexp "^  $file_start_stop" $file dummy file start stop] == 0} {
-		regexp "^  $file_stop" $file dummy f stop
+	if {[regexp "^  $file_start_stop" "$file" dummy file start stop] == 0} {
+		regexp "^  $file_stop" "$file" dummy f stop
 		set start $stop
-		set file $f
+		set file "$f"
 	}
-	set p [open "| bk prs -hr$start -d:PARENT: $file"]
+	set p [open "| bk prs -hr$start -d:PARENT: \"$file\""]
 	gets $p parent
 	close $p
 	if {$parent == ""} { set parent "1.0" }
-	set tmp [file tail $file]
+	set tmp [file tail "$file"]
 	set l [file join $tmp_dir $tmp-$parent[pid]]
 	set r [file join $tmp_dir $tmp-$stop[pid]]
-	exec bk get -qkpr$parent $file > $l
-	exec bk get -qkpr$stop $file > $r
+	exec bk get -qkpr$parent "$file" > $l
+	exec bk get -qkpr$stop "$file" > $r
 	readFiles $l $r
 	file delete $l $r
 
@@ -404,7 +402,7 @@ proc dotFile {} \
 	}
 	catch { close $prs }
 
-	set prs [open "| bk prs -bhC$stop {$dspec} $file" r]
+	set prs [open "| bk prs -bhC$stop {$dspec} \"$file\"" r]
 	set save ""
 	while { [gets $prs buf] >= 0 } {
 		if {$buf == "  "} { continue }
@@ -453,7 +451,7 @@ proc getFiles {revs} \
 			set line2File($line) $fileCount
 			set Files($fileCount) $line
 			set done 0
-			set pattern "(.*) (.*)(@.*)\$"
+			set pattern "(.*)/->/(.*)(@.*)\$"
 			if {[regexp $pattern $buf dummy oldName newName revs]} {
 				set RealFiles($fileCount) "  $newName$revs"
 				set buf "$oldName$revs"

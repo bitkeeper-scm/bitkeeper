@@ -100,7 +100,7 @@ proc revMap {file} \
         global rev2date serial2rev dev_null
 
         set dspec "-d:Ds:-:P: :DS: :Dy:/:Dm:/:Dd: :UTC-FUDGE:"
-        set fid [open "|bk prs -h {$dspec} $file 2>$dev_null" "r"]
+        set fid [open "|bk prs -h {$dspec} \"$file\" 2>$dev_null" "r"]
         while {[gets $fid s] >= 0} {
 		set rev [lindex $s 0]
 		set serial [lindex $s 1]
@@ -406,7 +406,7 @@ proc listRevs {file} \
 	# Figure out the biggest node and its length.
 	# XXX - this could be done on a per column basis.  Probably not
 	# worth it until we do LOD names.
-	set d [open "| bk lines $lineOpts $file 2>$dev_null" "r"]
+	set d [open "| bk lines $lineOpts \"$file\" 2>$dev_null" "r"]
 	set len 0
 	set big ""
 	while {[gets $d s] >= 0} {
@@ -540,7 +540,7 @@ proc prs {} \
 	getLeftRev
 	if {"$rev1" != ""} {
 		busy 1
-		set prs [open "| bk prs {$dspec} -r$rev1 $file 2>$dev_null"]
+		set prs [open "| bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"]
 		filltext $prs 1
 	} else {
 		set search(text) "Click on a revision"
@@ -552,7 +552,7 @@ proc history {} \
 	global	file dspec dev_null
 
 	busy 1
-	set f [open "| bk prs -h {$dspec} $file 2>$dev_null"]
+	set f [open "| bk prs -h {$dspec} \"$file\" 2>$dev_null"]
 	filltext $f 1
 }
 
@@ -575,7 +575,7 @@ proc get {} \
 	busy 1
 	set base [file tail $file]
 	if {$base != "ChangeSet"} {
-		set get [open "| bk get $getOpts -Pr$rev1 $file 2>$dev_null"]
+		set get [open "| bk get $getOpts -Pr$rev1 \"$file\" 2>$dev_null"]
 		filltext $get 1
 		return
 	}
@@ -675,10 +675,10 @@ proc cset {} \
 	.p.bottom.t configure -state normal
 	.p.bottom.t delete 1.0 end
 	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
+		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: \"$file\""]
 		while {[gets $revs r] >= 0} {
-			set c [exec bk r2c -r$r $file]
-			set p [format "%s %s ==> cset %s\n" $file $r $c]
+			set c [exec bk r2c -r$r "$file"]
+			set p [format "%s %s ==> cset %s\n" "$file" $r $c]
     			.p.bottom.t insert end "$p"
 			update
 			if {$csets == ""} {
@@ -689,7 +689,7 @@ proc cset {} \
 		}
 		close $revs
 	} else {
-		set csets [exec bk r2c -r$rev1 $file]
+		set csets [exec bk r2c -r$rev1 "$file"]
 	}
 	set p [open "|bk -R prs {$dspec} -r$csets ChangeSet" r]
 	filltext $p 1
@@ -702,9 +702,9 @@ proc r2c {} \
 	busy 1
 	set csets ""
 	if {[info exists rev2]} {
-		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
+		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: \"$file\""]
 		while {[gets $revs r] >= 0} {
-			set c [exec bk r2c -r$r $file]
+			set c [exec bk r2c -r$r "$file"]
 			if {$csets == ""} {
 				set csets $c
 			} else {
@@ -713,7 +713,7 @@ proc r2c {} \
 		}
 		close $revs
 	} else {
-		set csets [exec bk r2c -r$rev1 $file]
+		set csets [exec bk r2c -r$rev1 "$file"]
 	}
 	exec bk csettool -r$csets &
 	busy 0
@@ -1020,7 +1020,7 @@ proc widgets {} \
 		-text "Diff tool" -command "diff2 1" -state disabled
 	    label .menus.l -font $font(label) -width 50 -relief groove \
 		-pady $py -padx $px -borderwid $bw
-	    if {$file == "ChangeSet"} {
+	    if {"$file" == "ChangeSet"} {
 		    .menus.cset configure -command csettool
 		    pack .menus.help .menus.quit .menus.cset -side right
 	    } else {
@@ -1159,14 +1159,14 @@ proc sccstool {name} \
 	if {[info exists revY]} { unset revY }
 	set bad 0
 	set file [exec bk sfiles -g $name 2>$dev_null]
-	if {$file == ""} {
+	if {"$file" == ""} {
 		puts "No such file $name"
 		exit 0
 	}
-	.menus.l configure -text $file
-	listRevs $file
+	.menus.l configure -text "$file"
+	listRevs "$file"
 
-	revMap $file
+	revMap "$file"
 	dateSeparate
 
 	history
@@ -1223,7 +1223,7 @@ proc lineOpts {rev} \
 	global	lineOpts file
 
 	# Call lines to get this rev in the same format as we are using.
-	set f [open "| bk lines $lineOpts -r$rev $file"]
+	set f [open "| bk lines $lineOpts -r$rev \"$file\""]
 	gets $f rev
 	close $f
 	return $rev
@@ -1237,7 +1237,7 @@ if {$file == ""} {
 	set file ChangeSet
 }
 widgets
-sccstool $file
+sccstool "$file"
 if {$rev1 != ""} {
 	set rev1 [lineOpts $rev1]
 	highlight $rev1 "old"
