@@ -13885,6 +13885,7 @@ int
 sccs_reCache(int quiet)
 {
 	char	*av[4];
+	int	i;
 
 	av[0] = "bk";  av[1] = "idcache"; 
 	if (quiet) {
@@ -13893,7 +13894,9 @@ sccs_reCache(int quiet)
 		av[2] = 0;
 	}
 	av[3] = 0;
-	return (spawnvp_ex(_P_WAIT, av[0], av));
+	i = spawnvp_ex(_P_WAIT, av[0], av);
+	unless (WIFEXITED(i)) return (1);
+	return (WEXITSTATUS(i));
 }
 
 /*

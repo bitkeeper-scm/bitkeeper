@@ -342,6 +342,19 @@ main(int ac, char **av)
 	exit(ret);
 }
 
+private int
+spawn_cmd(int flag, char **av)
+{
+	int ret;
+
+	ret = spawnvp_ex(flag, av[0], av); 
+	unless (WIFEXITED(ret)) {
+		fprintf(stderr, "bk: cannot spawn %s\n", av[0]);
+		return (127);
+	}
+	return (WEXITSTATUS(ret));
+}
+
 
 private int
 run_cmd(char *prog, int is_bk, int ac, char **av)
@@ -383,8 +396,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		return (ret);
+		return (spawn_cmd(_P_WAIT, argv));
 	}
 
 	/*
@@ -422,8 +434,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		return (ret);
+		return (spawn_cmd(_P_WAIT, argv));
 	}
 
 	/*
@@ -441,8 +452,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 			argv[i] = av[j];
 		}
 		argv[i] = 0;
-		ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-		return (ret);
+		return (spawn_cmd(_P_WAIT, argv));
 	}
 
 	/*
@@ -450,8 +460,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 	 */
 	if (streq(prog, "patch") ||
 	    streq(prog, "diff3")) {
-		ret = spawnvp_ex(_P_WAIT, av[0], av);
-		return (ret);
+		return (spawn_cmd(_P_WAIT, av));
 	}
 
 	/*
@@ -472,8 +481,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 		argv[i] = av[j];
 	}
 	argv[i] = 0;
-	ret = spawnvp_ex(_P_WAIT, argv[0], argv);
-	return (ret);
+	return (spawn_cmd(_P_WAIT, argv));
 }
 
 #define	LOG_MAXSIZE	(32<<10)

@@ -234,7 +234,9 @@ usage:		system("bk help -s takepatch");
 		if (!echo) resolve[++i] = "-q";
 		if (textOnly) resolve[++i] = "-t";
 		if (noConflicts) resolve[++i] = "-c";
-		error = spawnvp_ex(_P_WAIT, resolve[0], resolve);
+		i = spawnvp_ex(_P_WAIT, resolve[0], resolve);
+		unless (WIFEXITED(i)) return (-1);
+		error = WEXITSTATUS(i);
 	}
 	exit(error);
 }

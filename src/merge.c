@@ -37,7 +37,8 @@ merge_main(int ac, char **av)
 	rc = spawnvp_ex(_P_WAIT, new_av[0], new_av);
 	/* restore parent's stdout */
 	close(1); dup2(fd1, 1);
-	return (rc);
+	unless (WIFEXITED(rc)) return (-1);
+	return (WEXITSTATUS(rc));
 }
 
 
