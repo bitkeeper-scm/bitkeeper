@@ -698,57 +698,57 @@ private void
 show_examples(void)
 {
 	fputs(
-"Summary of bk smerge output formats
- default
-    <<< local slib.c 1.642.1.6 vs 1.645
-    		   sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
-    -             assert(sc->tree);
-    -             sccs_sdelta(sc, sc->tree, file);
-    +             assert(HASGRAPH(sc));
-    +             sccs_sdelta(sc, sccs_ino(sc), file);
-    <<< remote slib.c 1.642.1.6 vs 1.642.2.1
-    -             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
-    +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
-    		  assert(sc->tree);
-    		  sccs_sdelta(sc, sc->tree, file);
-    >>>
-
- -2  (2 way format (like diff3))
-    <<< local slib.c 1.645
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
-    		  assert(HASGRAPH(sc));
-    		  sccs_sdelta(sc, sccs_ino(sc), file);
-    <<< remote slib.c 1.642.2.1
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
-    		  assert(sc->tree);
-    		  sccs_sdelta(sc, sc->tree, file);
-    >>>
-
- -3  (3 way format (shows gca)      
-    <<< gca slib.c 1.642.1.6
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
-    		  assert(sc->tree);
-    		  sccs_sdelta(sc, sc->tree, file);
-    <<< local slib.c 1.645
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
-    		  assert(HASGRAPH(sc));
-    		  sccs_sdelta(sc, sccs_ino(sc), file);
-    <<< remote slib.c 1.642.2.1
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
-    		  assert(sc->tree);
-    		  sccs_sdelta(sc, sc->tree, file);
-    >>>
-
- -n  ( newonly (like -2 except marks added lines))
-    <<< local slib.c 1.642.1.6 vs 1.645
-    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
-    +             assert(HASGRAPH(sc));
-    +             sccs_sdelta(sc, sccs_ino(sc), file);
-    <<< remote slib.c 1.642.1.6 vs 1.642.2.1
-    +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
-    		  assert(sc->tree);
-    		  sccs_sdelta(sc, sc->tree, file);
-    >>>
+"Summary of bk smerge output formats\n\
+ default\n\
+    <<< local slib.c 1.642.1.6 vs 1.645\n\
+    		   sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
+    -             assert(sc->tree);\n\
+    -             sccs_sdelta(sc, sc->tree, file);\n\
+    +             assert(HASGRAPH(sc));\n\
+    +             sccs_sdelta(sc, sccs_ino(sc), file);\n\
+    <<< remote slib.c 1.642.1.6 vs 1.642.2.1\n\
+    -             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
+    +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
+    		  assert(sc->tree);\n\
+    		  sccs_sdelta(sc, sc->tree, file);\n\
+    >>>\n\
+\n\
+ -2  (2 way format (like diff3))\n\
+    <<< local slib.c 1.645\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
+    		  assert(HASGRAPH(sc));\n\
+    		  sccs_sdelta(sc, sccs_ino(sc), file);\n\
+    <<< remote slib.c 1.642.2.1\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
+    		  assert(sc->tree);\n\
+    		  sccs_sdelta(sc, sc->tree, file);\n\
+    >>>\n\
+\n\
+ -3  (3 way format (shows gca)\n\
+    <<< gca slib.c 1.642.1.6\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
+    		  assert(sc->tree);\n\
+    		  sccs_sdelta(sc, sc->tree, file);\n\
+    <<< local slib.c 1.645\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
+    		  assert(HASGRAPH(sc));\n\
+    		  sccs_sdelta(sc, sccs_ino(sc), file);\n\
+    <<< remote slib.c 1.642.2.1\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
+    		  assert(sc->tree);\n\
+    		  sccs_sdelta(sc, sc->tree, file);\n\
+    >>>\n\
+\n\
+ -n  ( newonly (like -2 except marks added lines))\n\
+    <<< local slib.c 1.642.1.6 vs 1.645\n\
+    		  sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);\n\
+    +             assert(HASGRAPH(sc));\n\
+    +             sccs_sdelta(sc, sccs_ino(sc), file);\n\
+    <<< remote slib.c 1.642.1.6 vs 1.642.2.1\n\
+    +             sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);\n\
+    		  assert(sc->tree);\n\
+    		  sccs_sdelta(sc, sc->tree, file);\n\
+    >>>\n\
 ", stdout);
 }
 
@@ -970,7 +970,7 @@ merge_common_footer(char **lines[3])
 	push_region(r);
 
 	/* remove lines from GCA that are after these lines */
-	last_seq = MIN(seq(r->lines[LOCAL][1]), seq(r->lines[REMOTE][1]));
+	last_seq = min(seq(r->lines[LOCAL][1]), seq(r->lines[REMOTE][1]));
 	EACH(lines[GCA]) {
 		if (seq(lines[GCA][i]) >= last_seq) {
 			free(lines[GCA][i]);
@@ -999,7 +999,7 @@ merge_common_deletes(char **lines[3])
 	EACH (left) if (left[i][0] != '-') break;
 	cnt = i - 1;
 	EACH (right) if (right[i][0] != '-') break;
-	cnt = MIN(cnt, i - 1);
+	cnt = min(cnt, i - 1);
 	
 	if (cnt > 0) {
 		ret = 1;
@@ -1023,7 +1023,7 @@ merge_common_deletes(char **lines[3])
 		if (right[j][0] != '-') break;
 		--j;
 	}
-	cnt = MIN(cnt, i - j - 1);
+	cnt = min(cnt, i - j - 1);
 	
 	if (cnt > 0) {
 		EACH (lines[GCA]);
