@@ -252,35 +252,6 @@ proc get_config_info {} \
 	}
 }
 
-proc get_repo_name { w } \
-{
-        global st_bk_cfg st_repo_name
-
-	set bcolor #ffffff
-	wm title . "Setup"
-	frame $w -bg $bcolor
-	    frame $w.t1 -bd 2 -relief raised -bg $bcolor
-	    message $w.t1.m1 -width 600 -text $st_bk_cfg(msg1) -bg $bcolor
-	    label $w.t1.l -text "Repository Name: " -bg $bcolor
-	    entry $w.t1.e -width 30 -relief sunken -bd 2 -bg $bcolor \
-                -textvariable st_repo_name
-        pack $w.t1.m1 -side top -expand 1 -fill both
-        pack $w.t1.l $w.t1.e -side left -pady 30 -padx 10
-        pack $w.t1 -fill both -expand 1
-	button $w.b1 -text "Continue" \
-		-command "global st_dlg_button; set st_dlg_button 0"
-	pack $w.b1 -side left -expand 1 -padx 20 -pady 10
-	button $w.b2 -text "Exit" \
-		-command "global st_dlg_button; set st_dlg_button 1"
-	pack $w.b2 -side left -expand 1 -padx 20 -pady 10
-	bind $w.t1.e <FocusIn> " $w.b1 config -bd 3 -relief groove "
-	bind $w.t1.e <KeyPress-Return> " $w.b1 flash; $w.b1 invoke "
-	pack $w
-	tkwait variable st_dlg_button
-	destroy .repo
-        return 0
-}
-
 #
 # Used to ensure that the mandatory fields have text. 
 # TODO: Check validity of entries as much as possible
@@ -376,21 +347,19 @@ proc create_config { w } \
 			-bg $bcolor
 		    entry $w.t.e.$des -width 30 -relief sunken -bd 2 \
                         -bg $bcolor -textvariable st_cinfo($des)
-		    #pack $w.t.e.$des -side top -fill y -expand 1
-		    #pack $w.t.l.$des -side top -pady 1 -expand 1 -fill x
 		    grid $w.t.e.$des 
 		    grid $w.t.l.$des  -pady 1 -sticky e -ipadx 3
 		    bind $w.t.e.$des <FocusIn> \
 			"$w.t.t.t configure -state normal;\ 
 			$w.t.t.t delete 1.0 end;\
 			$w.t.t.t insert insert \$st_bk_cfg($des);\
-			$w.t.t.t configure -state disabled "
+			$w.t.t.t configure -state disabled"
 	}
+	#puts "(repository) $st_bk_cfg(repository)"
 	# Mandatory fields are highlighted
 	$w.t.e.repository config -bg $mcolor
 	$w.t.e.description config -bg $mcolor
 	$w.t.e.logging config -bg $mcolor
-	#puts "W in main is $w"
 	bind $w.t.e.repository <KeyRelease> {
 		check_config $widget
 	}
@@ -404,21 +373,15 @@ proc create_config { w } \
 		check_config $widget
 	}
 	$w.t config -background black
-	#bind $w.t.e <Tab> {tk_focusNext %W}
-	#bind $w.t.e <Shift-Tab> {tk_focusPrev %W}
-	#bind $w.t.e <Control-n> {tk_focusNext %W}
-	bind Entry <Tab> {tk_focusNext %W}
-	bind Entry <Shift-Tab> {tk_focusPrev %W}
-	bind Entry <Control-n> {tk_focusNext %W}
+	bind $w.t.e <Tab> {tk_focusNext %W}
+	bind $w.t.e <Shift-Tab> {tk_focusPrev %W}
+	bind $w.t.e <Control-n> {tk_focusNext %W}
 	focus $w.t.e.repository
-	#bind $w.t1.e <FocusIn> " $w.t.b1 config -bd 3 -relief groove "
-	#bind $w.t1.e <KeyPress-Return> " $w.t.b1 flash; $w.t.b1 invoke "
 	pack $w.t
 	pack $w
 	if { [$w.t.e.repository selection present] == 1 } {
 		puts "Repository selected"
 	}
-	#$w.t.e.repository get
 	tkwait variable st_dlg_button
 	#puts "st_dlg_button: $st_dlg_button"
 	if { $st_dlg_button != 0 } {
@@ -431,7 +394,7 @@ proc create_config { w } \
 
 proc main {} \
 {
-	global env argc argv st_repo_name st_dlg_button st_cinfo
+	global env argc argv st_repo_name st_dlg_button st_cinfo st_bk_cfg
 
 	license_check
 	set swidth [winfo screenwidth .]
@@ -478,6 +441,7 @@ proc getMessages {} \
 			append st_bk_cfg($topic) $help " "
 		}
 		if { $found == 0 } {
+			#puts "topic not found: $topic"
 			set st_bk_cfg($topic) ""
 		}	
 	}
