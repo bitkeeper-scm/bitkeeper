@@ -143,7 +143,7 @@ mv h.x h.h
 delta $Q -ydvorak h.h
 cd ..
 bk commit $Q -yzxcvbnm
-bk push -a $Q || { echo push w/ autopull failed; exit 1; }
+bk push -t -a $Q || { echo push w/ autopull failed; exit 1; }
 cd $HERE/project
 KEY2="`bk prs -hd:KEY: -r+ ChangeSet`"
 [ "$KEY" = "$KEY2" ] || { echo bad push; exit 1; }
@@ -159,7 +159,7 @@ cd ..
 bk commit $Q -yrogue
 KEY="`bk prs -hd:KEY: -r+ ChangeSet`"
 cd $HERE/copy
-bk push -a $Q 2> resolve.out
+bk push -t -a $Q 2> resolve.out
 test $? -ne 0 || { echo failed; cat resolve.out; exit 1; }
 grep -q 'unresolved conflicts, nothing is applied' resolve.out ||
     { cat resolve.out; exit 1; }
@@ -191,7 +191,7 @@ echo OK
 if [ $DO_REMOTE = YES -a X$NO_TTY = X ]; then
  echo $N Push with explicit remote parent ............................$NL
  cd $HERE/copy
- bk push -t $Q localhost:$HERE/project2 || { echo failed; exit 1; }
+ bk push $Q localhost:$HERE/project2 || { echo failed; exit 1; }
  KEY2="`cd $HERE/project2 && bk prs -hd:KEY: -r+ ChangeSet`"
  [ "$KEY" = "$KEY2" ] || { echo no push; exit 1; }
  cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
