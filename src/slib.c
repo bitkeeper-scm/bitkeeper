@@ -49,7 +49,7 @@ private delta*	sumArg(delta *d, char *arg);
 private	void	symArg(sccs *s, delta *d, char *name);
 private int	delta_table(sccs *s, FILE *out, int willfix);
 private time_t	getDate(delta *d);
-private	void	unlinkGfile(sccs *s);
+private	int	unlinkGfile(sccs *s);
 private int	write_pfile(sccs *s, int flags, delta *d,
 		    char *rev, char *iLst, char *i2, char *xLst, char *mRev);
 private time_t	date2time(char *asctime, char *z, int roundup);
@@ -7764,10 +7764,12 @@ diff_g(sccs *s, pfile *pf, char **tmpfile)
 	}
 }
 
-private void
+private int
 unlinkGfile(sccs *s)
 {
-	if (s->state & S_GFILE) unlink(s->gfile);	/* Careful */
+	if (s->state & S_GFILE) {
+		if (unlink(s->gfile)) return (-1);	/* Careful */
+	}
 	/*
 	 * zero out all gfile related field
 	 */
@@ -7775,6 +7777,7 @@ unlinkGfile(sccs *s)
 	s->symlink = 0;
 	s->gtime = s->mode = 0;
 	s->state &= ~S_GFILE;
+	return (0);
 }
 
 private void
@@ -8066,7 +8069,7 @@ count_lines(delta *d)
 /*
  * Look for files containing binary data that BitKeeper cannot handle,
  * when in text mode.
- * Righ now only NUL is unsupported
+ * Right now only NUL is unsupported
  * "\n\001" used to cause problem, this has been fixed.
  *
  * XXX Performance warning: This is slow if we get a very large text file
@@ -8078,8 +8081,8 @@ ascii(char *file)
 	u8	*p, *end;
 
 	if (!m) return (2);
-	for (p = (u8*)m->where, end = (u8*)m->end; p < end; p++) {
-		unless (*p) { /* null is not allowed */
+	for (p = (u8*)m->where, end = (u8*)m->end; p < end; ) {
+		unless (*p++) { /* null is not allowed */
 			mclose(m);
 			return (0);
 		}
@@ -11244,17 +11247,6 @@ out:
 	}
 
 	/*
-	 * If gfile is in use, we cannot delete
-	 * it when we are done. It is better to bail now
-	 * This test is mainly for win32
-	 */
-	if (HAS_GFILE(s) &&
-	    !(flags & DELTA_SAVEGFILE) && fileBusy(s->gfile)) {
-		verbose((stderr, "delta: %s is busy\n", s->gfile));
-		OUT;
-	}
-
-	/*
 	 * OK, checking done, start the delta.
 	 */
 	if (sccs_read_pfile("delta", s, &pf)) OUT;
@@ -11428,8 +11420,13 @@ out:
 	}
 
 	sccs_close(s), fclose(sfile), sfile = NULL;
+	unless (flags & DELTA_SAVEGFILE)  {
+		if (unlinkGfile(s)) {				/* Careful. */
+			fprintf(stderr, "delta: cannot unlink %s\n", s->gfile);
+			OUT;
+		}
+	}
 	unlink(s->sfile);					/* Careful. */
-	unless (flags & DELTA_SAVEGFILE)  unlinkGfile(s);	/* Careful */
 	t = sccsXfile(s, 'x');
 	if (rename(t, s->sfile)) {
 		fprintf(stderr,
