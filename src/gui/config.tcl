@@ -73,6 +73,7 @@ proc getConfig {prog} \
 	set _d(sccs.commentHeight) 5       ;# height of comment text widget
 	set _d(sccs.textWidth) 92	   ;# width of text windows
 	set _d(sccs.textHeight) 30	   ;# height of lower window
+	set _d(sccs.showHistory) "1M"	   ;# History to show in graph on start
 
 	if {$tcl_platform(platform) == "windows"} {
 		package require registry
