@@ -42,7 +42,7 @@ do_checksum(int dataOnly)
 	int	doDiffs = 0;
 	uLong	sum;
 
-	if (dataOnly) goto patch;
+	if (dataOnly) goto Patch;
 
 	/*
 	 * Just pass through anything up until a patch or diffs start.
@@ -58,7 +58,7 @@ abort:			fprintf(stderr, "adler32 aborting\n");
 			break;
 		}
 		if (streq(buf, PATCH_PATCH)) {
-			goto patch;
+			goto Patch;
 		}
 		fputs(buf, stdout);
 		if (feof(stdin)) {
@@ -99,7 +99,7 @@ eof:			fprintf(stderr, "adler32: did not see patch EOF\n");
 	/*
 	 * Wrap the patch in it's own envelope.
 	 */
-patch:
+Patch:
 	sum = 0;
 	while (fnext(buf, stdin)) {
 		if (streq(buf, PATCH_ABORT)) goto abort;

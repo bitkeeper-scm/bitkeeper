@@ -379,19 +379,23 @@ fm3tool: gui/fm3tool.tcl
 
 # Touch this and die.  --lm
 install: install-nolinks
-	@-for file in $(BINLINKS); \
+	@if uname -s | grep _NT; \
+	then	LN=cp; EXE=.exe; \
+	else	LN=ln; EXE=; \
+	fi; \
+	for file in $(BINLINKS); \
 	do	if [ $$file != bk ]; \
-		then	rm -f $(BINDIR)/$$file; \
-			ln $(BINDIR)/bk $(BINDIR)/$$file; \
+		then	rm -f $(BINDIR)/$$file$$EXE; \
+			$$LN $(BINDIR)/bk$$EXE $(BINDIR)/$$file$$EXE; \
 		fi; \
-	done
-	@-if [ -w /usr/bin ]; \
+	done; \
+	if [ -w /usr/bin ]; \
 	then	for file in $(BINLINKS); \
 		do	rm -f /usr/bin/$$file; \
 			ln -s $(BINDIR)/$$file /usr/bin/$$file; \
 		done; \
-	fi
-	@-if [ ! -d /var/bitkeeper ]; \
+	fi; \
+	if [ $$LN = ln -a ! -d /var/bitkeeper ]; \
 	then	mkdir /var/bitkeeper; chmod 777 /var/bitkeeper; \
 	fi
 
