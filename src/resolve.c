@@ -127,6 +127,18 @@ resolve_main(int ac, char **av)
 	return (c);
 }
 
+private void
+listPendingRenames()
+{
+	int fd1;
+
+	fprintf(stderr, "List of name conflict:\n");
+	fflush(stderr);
+	fd1 = dup(1); dup2(2, 1); /* redirect stdout to stderr */
+	system("bk _find . -name 'm.*' | xargs cat");
+	dup2(fd1, 1); close(fd1);
+}
+
 /*
  * Do the setup and then work through the passes.
  */
@@ -271,9 +283,12 @@ that will work too, it just gets another patch.\n");
 		}
 
 		if (opts->noconflicts) {
+			int fd1;
+
 			SHOUT();
 			fprintf(stderr,
 			    "Did not resolve %d renames, abort\n", n);
+			listPendingRenames();
 			resolve_cleanup(opts, CLEAN_RESYNC|CLEAN_PENDING);
 			exit(1);
 		}
@@ -528,7 +543,7 @@ pass2_renames(opts *opts)
 	 * files (think hashed directories.
 	 */
 	unless (f =
-	    popen("bk _find BitKeeper/RENAMES/SCCS | sort", "r")) {
+	    popen("bk _find BitKeeper/RENAMES/SCCS | bk _sort", "r")) {
 	    	return (0);
 	}
 	while (fnext(path, f)) {
@@ -541,7 +556,9 @@ pass2_renames(opts *opts)
 		/* Yes, I want this increment before the continue */
 		n++;
 		t = strrchr(path, '/');
-		unless (t[1] == 's') continue;
+		unless (t[1] == 's') {
+			continue;
+		}
 
 		unless ((s = sccs_init(path, INIT, opts->resync_proj)) &&
 		    s->tree) {
