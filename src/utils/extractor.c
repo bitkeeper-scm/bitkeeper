@@ -18,7 +18,7 @@
 #ifdef	WIN32
 #define	mkdir(a, b)	_mkdir(a)
 #define	RMDIR		"rmdir /s /q"
-#define	BINDIR		"C:/PROGRA~1/BitKeeper"
+#define	BINDIR		"C:/Program Files/BitKeeper"
 #else
 #define	RMDIR		"/bin/rm -rf"
 #define	BINDIR		"/usr/libexec/bitkeeper"
@@ -90,6 +90,34 @@ main(int ac, char **av)
 		}
 	} else if (av[1]) {
 		fprintf(stderr, "usage: %s [-u || <directory>]\n", av[0]);
+		fprintf(stderr,
+"Installs BitKeeper on the system.\n"
+"\n"
+"With no arguments this installer will unpack itself in a temp\n"
+"directory and then start a graphical installer to walk through the\n"
+"installation.\n"
+"\n"
+"If a directory is provided on the command line then a default\n"
+"installation is written to that directory.\n"
+"\n"
+"The -u option is for batch upgrades.  The existing BitKeeper is\n"
+"found on your PATH and then this version is installed over the top\n"
+"of it.  If no existing version of BitKeeper can be found, then a\n"
+"new installation is written to " BINDIR "\n"
+"\n"
+#ifdef WIN32
+"Administrator privileges are required for a full installation.  If\n"
+"installing from a non-privileged account, then the installer will only\n"
+"be able to do a partial install.\n"
+#else
+"Normally symlinks are created in /usr/bin for 'bk' and common SCCS\n"
+"tools.  If the user doesn't have permissions to write in /usr/bin\n"
+"then this step will be skipped.\n"
+"\n"
+"If DISPLAY is not set in the environment, then a text-based\n"
+"installer will be started instead of the graphical one.\n"
+#endif
+			);
 		exit(1);
 	}
 	if (dest) for (p = dest; *p; p++) if (*p == '\\') *p = '/';
