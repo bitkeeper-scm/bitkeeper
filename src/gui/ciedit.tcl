@@ -26,7 +26,7 @@ proc cmd_edit {which} \
 			edit_file
 		} elseif {$which == "fmtool"} {
 			set old [file join $tmp_dir old[pid]]
-			catch {exec bk get -qkp $filename >$old}
+			catch [list exec bk get -qkp $filename > $old] err
 			if {![file readable $old] || [file size $old] == 0} {
 				# XXX - replace with popup when I merge 
 				exec bk msgtool "Unable to bk get $filename"
@@ -34,7 +34,8 @@ proc cmd_edit {which} \
 				return
 			}
 			set merge [file join $tmp_dir merge[pid]]
-			set fd [open "| bk fmtool $old $filename $merge" r]
+			set cmd [list bk fmtool $old $filename $merge]
+			set fd [open "| $cmd" r]
 			fileevent $fd readable "eat $fd"
 			vwait edit_busy
 			if {[file readable $merge]} {
@@ -56,7 +57,8 @@ proc cmd_edit {which} \
 				set editor vim
 			}
 			set geom "$gc(ci.editWidth)x$gc(ci.editHeight)"
-			set fd [open "| xterm -g $geom -e $editor $filename" r]
+			set cmd [list xterm -g $geom -e $editor $filename]
+			set fd [open "| $cmd" r]
 			fileevent $fd readable "eat $fd"
 			vwait edit_busy
 		}
@@ -298,7 +300,7 @@ proc edit_file {} \
 	.edit.t.t configure -state normal
 	.edit.t.t delete 1.0 end
 	set old [file join $tmp_dir old[pid]]
-	catch {exec bk get -qkp "$filename" > $old} err
+	catch [list exec bk get -qkp $filename > $old] err
 	#displayMessage "$sdiffw ($old) ($filename) err=($err)"
 	set d [open "| $sdiffw \"$old\" \"$filename\"" "r"]
 	set f [open $filename "r"]
