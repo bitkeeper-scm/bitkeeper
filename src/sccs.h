@@ -1148,7 +1148,7 @@ char	*key2path(char *key, MDBM *idDB);
 int	check_licensesig(char *key, char *sign);
 void	delete_cset_cache(char *rootpath, int save);
 int	nFiles(void);
-u32	bk_license(char *user);
+u32	bk_license(char *user, int verbose);
 void	notice(char *key, char *arg, char *type);
 pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
