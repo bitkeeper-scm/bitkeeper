@@ -210,7 +210,7 @@ bkd(int compress, remote *r, int *sock)
 			do {
 				while (*t && !isspace(*t)) t++;
 				if (isspace(*t)) {
-					*t = 0; 
+					*t++ = 0; 
 					while (*t && isspace(*t)) t++;
 					if (*t && !isspace(*t)) cmd[++i] = t;
 				}
