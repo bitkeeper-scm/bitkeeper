@@ -577,6 +577,7 @@ import_RCS () {
 	fi
 	LINES=`wc -l < ${TMP}import$$`
 	LINES=`expr $LINES / $PARALLEL`
+	test $LINES -eq 0 && LINES=1
 	split -$LINES ${TMP}import$$ ${TMP}split$$
 	for i in ${TMP}split$$*
 	do	bk rcs2sccs $UNDOS $CUTOFF $VERIFY $QUIET -q - < $i &
