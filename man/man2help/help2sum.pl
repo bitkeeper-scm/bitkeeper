@@ -2,7 +2,7 @@
 eval "exec perl -Ssw $0 $@"
         if 0;
 
-sub main()
+sub main
 {
 	$MAN = "-man";
 	foreach $dir ('/usr/local/share',
@@ -53,7 +53,7 @@ sub main()
 	}
 }
 
-sub summary()
+sub summary
 {
 	open(O, ">$section.roff") || die "Can't open $section.roff";
 	open(B, "../bk-macros");
