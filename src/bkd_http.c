@@ -1358,11 +1358,11 @@ http_index(char *page)
 	t3y = now - (3*365*24*60*60);
 	for (d = s->table; d; d = d->next) {
 		if (user[0] && !streq(user, d->user)) continue;
+		if (d->type == 'R') continue;
 		unless (d->added > 0) {
-			cm++;
+			unless (d == s->tree) cm++;
 			continue;
 		}
-		if (d->type == 'R') continue;
 		assert(d->type == 'D');
 		if (d->date >= t1h) c1h++;
 		if (d->date >= t1d) c1d++;

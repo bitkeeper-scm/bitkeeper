@@ -363,9 +363,7 @@ these changes or do a \"bk pull -nl\" to see what they are.\n", rcsets);
 			;
 		} else if (lcsets == 0) {
 			fprintf(stderr,
-"----------------------------- Nothing to send -----------------------------\n"
-"---------------------------------------------------------------------------\n")
-			;
+			    "Nothing to send to %s\n", remote_unparse(r));
 		}
 	}
 	sccs_free(s);

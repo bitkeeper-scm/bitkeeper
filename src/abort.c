@@ -1,6 +1,7 @@
 /* Copyright (c) 2000 L.W.McVoy */
 #include "system.h"
 #include "sccs.h"
+#include "resolve.h"
 WHATSTR("@(#)%K%");
 
 void	abort_patch();
@@ -82,6 +83,9 @@ abort_patch(int leavepatch)
 	system(buf);
 	if (!leavepatch && pendingFile[0]) unlink(pendingFile);
 	rmdir(ROOT2PENDING);
+	unlink(BACKUP_LIST);
+	unlink(PASS4_TODO);
+	unlink(APPLIED);
 	repository_wrunlock(1);
 	repository_lockers(0);
 	exit(0);

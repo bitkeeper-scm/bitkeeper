@@ -2123,13 +2123,15 @@ pass4_apply(opts *opts)
 	 */
 	chdir(RESYNC2ROOT);
 	save = fopen(BACKUP_LIST, "w+");
-	sprintf(key, "bk sfind %s > " TODO, ROOT2RESYNC);
-	if (system(key) || !(f = fopen(TODO, "r+")) || !save) {
-		fprintf(stderr, "Unable to create|open " TODO);
+	unlink(PASS4_TODO);
+	sprintf(key, "bk sfind %s > " PASS4_TODO, ROOT2RESYNC);
+	if (system(key) || !(f = fopen(PASS4_TODO, "r+")) || !save) {
+		fprintf(stderr, "Unable to create|open " PASS4_TODO);
 		fclose(save);
 		mdbm_close(permDB);
 		resolve_cleanup(opts, 0);
 	}
+	chmod(PASS4_TODO, 0666);
 	while (fnext(buf, f)) {
 		chop(buf);
 		/*
@@ -2186,6 +2188,7 @@ pass4_apply(opts *opts)
 	 * Save the list of files and then remove them.
 	 */
 	if (size(BACKUP_LIST) > 0) {
+		unlink(BACKUP_SFIO);
 		if (sysio(BACKUP_LIST, BACKUP_SFIO, 0,
 						"bk", "sfio", "-omq", SYS)) {
 			fprintf(stderr,
@@ -2310,7 +2313,7 @@ Got:\n\
 	unlink(BACKUP_LIST);
 	unlink(BACKUP_SFIO);
 	unlink(APPLIED);
-	unlink(TODO);
+	unlink(PASS4_TODO);
 	unless (opts->quiet) {
 		fprintf(stderr,
 		    "Consistency check passed, resolve complete.\n");

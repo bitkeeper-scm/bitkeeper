@@ -295,7 +295,10 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		unlink(probe_list);
 		rc = 0;
 		if (!opts.quiet && streq(buf, "@NOTHING TO SEND@")) {
-			fprintf(stderr, "Nothing to pull.\n");
+			char	*p = remote_unparse(r);
+
+			fprintf(stderr, "Nothing to pull from %s\n", p);
+			free(p);
 		}
 		putenv("BK_STATUS=NOTHING");
 		goto done;
@@ -331,7 +334,12 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		rc = 0;
 		putenv("BK_STATUS=OK");
 	}  else if (streq(buf, "@NOTHING TO SEND@")) {
-		unless (opts.quiet) fprintf(stderr, "Nothing to pull.\n");
+		unless (opts.quiet) {
+			char	*p = remote_unparse(r);
+
+			fprintf(stderr, "Nothing to pull from %s\n", p);
+			free(p);
+		}
 		putenv("BK_STATUS=NOTHING");
 		rc = 0;
 	} else {

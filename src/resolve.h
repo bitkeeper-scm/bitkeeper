@@ -18,10 +18,10 @@
 #define	LOGGING_OK_CONFLICT	5
 #define	LOCAL			1
 #define	REMOTE			2
-#define	BACKUP_LIST		"BitKeeper/tmp/backup.list"
-#define	BACKUP_SFIO		"BitKeeper/tmp/backup.sfio"
-#define	TODO			"BitKeeper/tmp/sfile.list"
-#define	APPLIED			"BitKeeper/tmp/applied.list"
+#define	BACKUP_LIST		"BitKeeper/tmp/resolve_backup_list"
+#define	BACKUP_SFIO		"BitKeeper/tmp/resolve_backup_sfio"
+#define	PASS4_TODO		"BitKeeper/tmp/resolve_sfiles"
+#define	APPLIED			"BitKeeper/tmp/resolve_applied"
 #define	AUTO_MERGE		"Auto merged"
 #define	SCCS_MERGE		"SCCS merged"
 

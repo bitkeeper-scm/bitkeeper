@@ -185,11 +185,11 @@ if [ $? != 0 ]; then echo push exited with an error; exit 1; fi
 cd $HERE/project
 while ! bk lock -s; do true; done
 bk pull -t $HERE/clone > OUT 2>&1
-if [ "`cat OUT`" != "Nothing to pull." ]
-then	echo failed - bad status message
+grep -q 'Nothing to pull' OUT || {
+	echo failed - bad status message
 	cat OUT
 	exit 1
-fi
+}
 echo OK
 echo $N Make sure commit respect repository lock  ....................$NL
 mkdir -p $HERE/project/RESYNC/stuff
