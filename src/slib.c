@@ -8838,7 +8838,10 @@ out:
 	 * initial version in the pfile to make conditions tighter.
 	 */
 	if ((s->state & S_BITKEEPER) && n->r[1] == 1 && n->r[2] == 0) {
-		if (s->defbranch) free(s->defbranch);
+		if (s->defbranch) {
+			free(s->defbranch);
+			s->defbranch = 0;
+		}
 	}
 
 	/*
