@@ -1,0 +1,37 @@
+# Copyright (c) 2002 Wayne Scott
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+echo $N Create initial repository ...................................$NL
+no_logging project
+bk edit $Q BitKeeper/etc/config
+echo partial_check:yes >> BitKeeper/etc/config
+bk ci $Q -yy BitKeeper/etc/config
+bk commit $Q -yy
+echo OK
+
+echo $N Do rename on a pull and verify the idcache ..................$NL
+echo hi > file
+bk new $Q file
+bk commit $Q -yy
+cd ..
+bk clone $Q project copy
+cd copy
+bk mv file file2
+bk commit $Q -yy
+cd ../project
+# update the check timestamp
+bk -r check -ac || exit 1
+bk pull $Q ../copy || exit 1
+grep -q '|file|.* file2' BitKeeper/etc/SCCS/x.id_cache || {
+	echo idcache not updated!
+}
+echo OK
