@@ -119,8 +119,32 @@ The general format for the repository preference config file is
 [filter]preference:option
 .DE
 .LP
-LINE TERMINATION
+.SS Keyword Expansion
+.br
+Keyword expansion is turned OFF by default.  To have keyword expansion
+flags applied to a file automatically upon checkin, add the keyword
+preference to the BitKeeper/etc/config file.
 .LP
+Keyword preference options are:
+.TP .80i
+.B sccs
+expand SCCS keywords (%keyword%)
+.tp
+.B expand1
+exand keywords in the first line that contains keywords only (avoids printf
+conflicts)
+.tp
+.B rcs
+expand rcs keywords ($keyword$)
+.LP
+For example, having
+.DS
+keyword: sccs, expand1
+.DE
+in the config file will expand SCCS keywords only in the first line
+encountered that contains sccs keywords. 
+.SS Line Termination
+.br
 The unix and win32 operating systems use different characters to represent
 line terminations (eoln).  \*(BK, by default, sets the EOLN_NATIVE flag
 to "on" when an sfile is created.  To change this to make the
@@ -129,9 +153,8 @@ EOLN_NATIVE flag default to "off", add
 eoln:unix
 .DE
 to the BitKeeper/etc/config file.
-.LP
-CHECKOUT MODE
-.LP
+.SS Checkout Mode
+.br
 Specify checkout mode for a repository.  The default is to not show 
 gfiles unless files are checked out.  To override the default, to 
 have gfiles checked out in read-only or read-write mode, a line

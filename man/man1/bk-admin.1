@@ -64,13 +64,19 @@ which can be any of:
 mark the file as a \*(BK file (very rarely used, \fBnot\fP recommended)
 .tp
 .B EXPAND1
-expand keywords in first keyword containing line only (printf conflicts)
+expand keywords in first line that contains keywords only (printf conflicts)
+EXPAND1 must be explicitly set or set in the BitKeeper/etc/config file.
+See bk help config-etc.
 .tp
 .B RCS
 expand RCS keywords, i.e., $\fIkeyword\fP$ etc.
+RCS must be explicitly set or set in the BitKeeper/etc/config file.
+See bk help config-etc.
 .tp
 .B SCCS
 expand SCCS keywords, i.e., %\fIK\fP% etc.
+SCCS must be explicitly set or set in the BitKeeper/etc/config file.
+See bk help config-etc.
 .tp
 .B YEAR4
 display dates as 4 digit years 
