@@ -626,6 +626,113 @@ ok_local(sccs *s, int check_pending)
 	return (1);
 }
 
+/*
+ * Create the union of the two files in the older file and delete the
+ * younger file.
+ * If you are really thinking, you'll realize that remote updates to
+ * the deleted file will never be put in the non-deleted file.  That's
+ * true but not fatal, all it means is that some poor schmuck will be
+ * asked multiple times about the logging.
+ */
+int
+res_loggingok(resolve *rs)
+{
+	sccs	*here = (sccs*)rs->opaque;
+	sccs	*resync = (sccs*)rs->s;
+	char	left[MAXPATH];
+	char	right[MAXPATH];
+	char	cmd[MAXPATH*3];
+
+	/*
+	 * save the contents before we start moving stuff around.
+	 */
+	gettemp(left, "left");
+	gettemp(right, "right");
+	if (sccs_get(here, 0, 0, 0, 0, SILENT|PRINT, left) ||
+	    sccs_get(resync, 0, 0, 0, 0, SILENT|PRINT, right)) {
+		fprintf(stderr, "get failed, can't merge.\n");
+		unlink(left);
+		rs->opts->errors = 1;
+		return (0);
+	}
+
+	/*
+	 * Figure out which one we are going to move.
+	 * If the RESYNC one is the one to move, that's easy.
+	 * If the local one is the one to move, we need to remove
+	 * it but it doesn't exist in the RESYNC tree so we dance a little.
+	 */
+	sccs_close(resync);
+	sccs_close(here);
+	if (resync->tree->date > here->tree->date) {	/* easy */
+		if (rename(resync->sfile, LOGGING_OK)) {
+			perror(LOGGING_OK);
+			rs->opts->errors = 1;
+			return (-1);
+		}
+		if (sccs_rm(LOGGING_OK, 1)) {
+			rs->opts->errors = 1;
+			return (-1);
+		}
+		sprintf(cmd,
+		    "cp %s/%s %s", RESYNC2ROOT, LOGGING_OK, LOGGING_OK);
+		if (sys(cmd, rs->opts)) {
+			perror(cmd);
+			rs->opts->errors = 1;
+			return (-1);
+		}
+	} else {
+		/*
+		 * Copy the sfile to a temp dir and then remove it.
+		 * Then move the file out of RENAMES into the right place.
+		 */
+		mkdirp("BitKeeper/tmp/SCCS");
+		sprintf(cmd, "cp %s/%s BitKeeper/tmp/SCCS/%s",
+		    RESYNC2ROOT, LOGGING_OK, basenm(LOGGING_OK));
+		if (sys(cmd, rs->opts)) {
+			perror(cmd);
+			rs->opts->errors = 1;
+			return (-1);
+		}
+		sprintf(cmd, "BitKeeper/tmp/%s", basenm(GLOGGING_OK));
+		if (sccs_rm(cmd, 1)) {
+			rs->opts->errors = 1;
+			return (-1);
+		}
+		mkdirp("BitKeeper/etc/SCCS");
+		if (rename(resync->sfile, LOGGING_OK)) {
+			perror(LOGGING_OK);
+			rs->opts->errors = 1;
+			return (-1);
+		}
+	}
+
+	/*
+	 * OK, cool, we have the right file in LOGGING_OK so edit it and
+	 * sort -u the data files into it, and delta it.
+	 * XXX - we're going to want this code for the conflict case too.
+	 */
+	sprintf(cmd,
+	    "bk get -eg %s %s", rs->opts->quiet ? "-q" : "", GLOGGING_OK);
+	if (sys(cmd, rs->opts)) return (-1);
+	sprintf(cmd, "cat %s %s | sort -u > %s", left, right, GLOGGING_OK);
+	if (sys(cmd, rs->opts)) {
+		perror(cmd);
+		rs->opts->errors = 1;
+		return (-1);
+	}
+	unlink(left);
+	unlink(right);
+	sprintf(cmd, "bk delta -y'Auto merged' %s %s",
+	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
+	if (sys(cmd, rs->opts)) {
+		perror(cmd);
+		rs->opts->errors = 1;
+		return (-1);
+	}
+	return (0);
+}
+
 int
 sc_ml(resolve *rs)
 {
@@ -828,6 +935,16 @@ resolve_create(resolve *rs, int type)
 		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);
 		chdir(ROOT2RESYNC);
 		ret = resolve_loop("resolve_create sc", rs, sc_funcs);
+		if (rs->opaque) sccs_free((sccs*)rs->opaque);
+		return (ret);
+	    case LOGGING_OK_CONFLICT:
+		if (rs->opts->debug) fprintf(stderr, "LOGGING\n");
+		rs->prompt = rs->d->pathname;
+		rs->res_screate = 1;
+		chdir(RESYNC2ROOT);
+		rs->opaque = (void*)sccs_init(rs->dname, 0, 0);
+		chdir(ROOT2RESYNC);
+		ret = res_loggingok(rs);
 		if (rs->opaque) sccs_free((sccs*)rs->opaque);
 		return (ret);
 	    case RESYNC_CONFLICT:

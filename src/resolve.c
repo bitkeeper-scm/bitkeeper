@@ -48,6 +48,7 @@ private	int	rename_file(resolve *rs);
 private	int	rename_file(resolve *rs);
 private	void	restore(FILE *f, opts *o);
 private	void	unbackup(FILE *f);
+private void	merge_loggingok(resolve *rs);
 
 int
 resolve_main(int ac, char **av)
@@ -653,7 +654,6 @@ create(resolve *rs)
 	 * See if this name is taken in the repository.
 	 */
 again:	if (how = slotTaken(opts, rs->dname)) {
-
 		/* If we are just looking for space, skip this one */
 		unless (opts->resolveNames) return (-1);
 
@@ -667,7 +667,15 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 			return (-1);
 		}
 
-		ret = resolve_create(rs, how);
+		/*
+		 * If this is the BitKeeper/etc/logging_ok file,
+		 * automerge it.
+		 */
+		if (streq(GLOGGING_OK, rs->d->pathname)) {
+			ret = resolve_create(rs, LOGGING_OK_CONFLICT);
+		} else {
+			ret = resolve_create(rs, how);
+		}
 		if (opts->debug) {
 			fprintf(stderr, "resolve_create = %d %s\n",
 			    ret, ret == EAGAIN ? "EAGAIN" : "");
@@ -1562,6 +1570,11 @@ err:		resolve_free(rs);
 		return;
 	}
 
+	if (streq(LOGGING_OK, rs->s->sfile)) {
+		merge_loggingok(rs);
+		resolve_free(rs);
+		return;
+	}
 	if (opts->automerge) {
 		automerge(rs, 0);
 		resolve_free(rs);
@@ -1678,6 +1691,46 @@ automerge(resolve *rs, names *n)
 	rs->opts->errors = 1;
 	unlink(rs->s->gfile);
 	return;
+}
+
+/*
+ * Merge the logging_ok files, we just union the data.
+ */
+private void
+merge_loggingok(resolve *rs)
+{
+	char	left[MAXPATH];
+	char	right[MAXPATH];
+	char	cmd[MAXPATH*3];
+
+	/*
+	 * save the contents before we start moving stuff around.
+	 */
+	gettemp(left, "left");
+	gettemp(right, "right");
+	sprintf(cmd, "bk get -qp %s/%s > %s", RESYNC2ROOT, GLOGGING_OK, left);
+	if (sys(cmd, rs->opts) ||
+	    sccs_get(rs->s, 0, 0, 0, 0, SILENT|PRINT, right)) {
+		fprintf(stderr, "get failed, can't merge.\n");
+err:		unlink(left);
+		unlink(right);
+		rs->opts->errors = 1;
+		return;
+	}
+	if (edit(rs)) goto err;
+	sprintf(cmd, "cat %s %s | sort -u > %s", left, right, GLOGGING_OK);
+	if (sys(cmd, rs->opts)) {
+		perror(cmd);
+		goto err;
+	}
+	unlink(left);
+	unlink(right);
+	sprintf(cmd, "bk delta -y'Auto merged' %s %s",
+	    rs->opts->quiet ? "-q" : "", GLOGGING_OK);
+	if (sys(cmd, rs->opts)) {
+		perror(cmd);
+		goto err;
+	}
 }
 
 /*

@@ -10,12 +10,13 @@
 	fputs("===================== ERROR ========================\n", stderr);
 #define	SHOUT2() \
 	fputs("====================================================\n", stderr);
-#define	SFILE_CONFLICT	1
-#define	GFILE_CONFLICT	2
-#define	DIR_CONFLICT	3
-#define	RESYNC_CONFLICT	4
-#define	LOCAL		1
-#define	REMOTE		2
+#define	SFILE_CONFLICT		1
+#define	GFILE_CONFLICT		2
+#define	DIR_CONFLICT		3
+#define	RESYNC_CONFLICT		4
+#define	LOGGING_OK_CONFLICT	5
+#define	LOCAL			1
+#define	REMOTE			2
 
 /* passed around everywhere to record state */
 typedef struct {

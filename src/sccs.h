@@ -266,6 +266,8 @@
 #define	SGONE		"BitKeeper/etc/SCCS/s.gone"
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	GCHANGESET	"ChangeSet"
+#define	LOGGING_OK	"BitKeeper/etc/SCCS/s.logging_ok"
+#define	GLOGGING_OK	"BitKeeper/etc/logging_ok"
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
 #define	TMP_MODE	0666
