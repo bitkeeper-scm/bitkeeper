@@ -23,6 +23,10 @@ be malicious or ill advised and a prudent repository manager may have
 developed triggers to look for problems.  If the incoming data contained
 a new or modified trigger, and that trigger was run, triggers could not
 be used to implement security or other policies at the repository boundary.
+.LP
+Triggers only occur when events happen which (may) add changes.
+The removal of changes via bk undo, bk unpull, etc, does not result
+in any triggers being run.
 .SS
 TRIGGER NAMES
 .LP
