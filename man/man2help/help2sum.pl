@@ -11,6 +11,9 @@ sub main
 			$MAN = "-mgan";
 		}
 	}
+	if (-d "/opt/groff/share/groff/1.17.1/tmac") {
+		$MAN = "-mgan";
+	}
 
 	# We are trying to generate All.sum and each of the category.sum's.
 	# All we do is put the data in the file.
