@@ -131,9 +131,22 @@ check_main(int ac, char **av)
 		return (1);
 	}
 	if (sane_main(0, 0)) return (1);
-	unless (cset = sccs_init(s_cset, flags)) {
+retry:	unless (cset = sccs_init(s_cset, flags)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
+	}
+	if (cset->encoding & E_GZIP) {
+		sccs_free(cset);
+		if (verbose == 1) {
+			fprintf(stderr, "Uncompressing ChangeSet file...\n");
+		}
+		/* This will fail if we are locked */
+		if (sys("bk", "admin", "-Znone", "ChangeSet", SYS)) exit(1);
+		if (verbose == 1) {
+			fprintf(stderr,
+			    "Restarting check from the beginning...\n");
+		}
+		goto retry;
 	}
 	unless (cset = cset_fixLinuxKernelChecksum(cset)) return (1);
 	mixed = LONGKEY(cset) == 0;

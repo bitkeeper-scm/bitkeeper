@@ -355,6 +355,23 @@ grep "^Missing" ERRS > /dev/null && {
 }
 echo OK
 
+TESTDATA=/home/bk/test_data
+test -d $TESTDATA/cset-gzipped && {
+echo $N Make sure check works with compressed ChangeSet files........$NL
+cd $HERE
+bk clone $Q $TESTDATA/cset-gzipped p || {
+	echo "failed"
+	exit 1
+}
+cd p
+bk -r check -a || {
+	echo "failed"
+	exit 1
+}
+echo OK
+}
+true
+
 # XXX if we implement the additional code suggested in the comment before
 # sccs_skipdir, this is how to test it.
 #
