@@ -615,8 +615,6 @@ in_trigger(char *status, char *rev, char *root)
 	putenv(aprintf("BKD_USER=%s", sccs_getuser()));
 	putenv(aprintf("BKD_UTC=%s", bk_utc));
 	putenv(aprintf("BKD_VERSION=%s", bk_vers));
-	unsetenv("_BK_USER");
-	unsetenv("_BK_HOST");
 	if (status) putenv(status);
 	if (rev) {
 		putenv(aprintf("BK_CSETS=1.0..%s", rev));

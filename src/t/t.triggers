@@ -203,6 +203,7 @@ echo $N Make sure clone and clone -l have same pre-outgoing .........$NL
 cmp -s $HERE/pre-outgoing $HERE/pre-outgoing-l || {
 	echo failed
 	diff $HERE/pre-outgoing $HERE/pre-outgoing-l
+	exit 1
 }
 echo OK
 
@@ -249,7 +250,8 @@ cd $HERE/parent
 bk edit $Q BitKeeper/triggers
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/sh
-set | grep $DASHA BK | grep -v BK_LCLONE | sort > $HERE/post-incoming-clone-l
+set | grep $DASHA BK |
+    grep -v BK_LCLONE | grep -v _BK_ | sort > $HERE/post-incoming-clone-l
 exit 0
 EOF
 chmod +x BitKeeper/triggers/post-incoming
