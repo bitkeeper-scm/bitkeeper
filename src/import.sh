@@ -25,22 +25,24 @@ import() {
 	VERBOSE=-q
 	CUTOFF=
 	UNDOS=
-	while getopts c:efHij:l:rS:t:uvxq opt
+	FIX_ATTIC=NO
+	while getopts Ac:efHij:l:rS:t:uvxq opt
 	do	case "$opt" in
-		c) CUTOFF=-c$OPTARG;;	# /* doc 2.0 */
-		e) EX=YES;;			# /* undoc 2.0 - same as -x */
-		x) EX=YES;;			# /* doc 2.0 */
-		f) FORCE=YES;;			# /* doc 2.0 */
-		H) VERIFY=;;			# /* doc 2.0 */
-		i) INC=YES;;			# /* doc 2.0 */
-		j) PARALLEL=$OPTARG;;	# /* doc 2.0 */
-		l) LIST=$OPTARG;;		# /* doc 2.0 */
-		S) SYMBOL=-S$OPTARG;;	# /* doc 2.0 */
-		r) RENAMES=NO;;			# /* doc 2.0 */
-		t) TYPE=$OPTARG;;		# /* doc 2.0 */
-		q) QUIET=-qq; export _BK_SHUT_UP=YES;;	# /* doc 2.0 */
-		u) UNDOS=-u;;			# /* doc 2.0 */
-		v) VERBOSE=;;			# /* doc 2.0 */
+		A) FIX_ATTIC=YES;;		# doc 2.0
+		c) CUTOFF=-c$OPTARG;;		# doc 2.0
+		e) EX=YES;;			# undoc 2.0 - same as -x
+		x) EX=YES;;			# doc 2.0
+		f) FORCE=YES;;			# doc 2.0
+		H) VERIFY=;;			# doc 2.0
+		i) INC=YES;;			# doc 2.0
+		j) PARALLEL=$OPTARG;;		# doc 2.0
+		l) LIST=$OPTARG;;		# doc 2.0
+		S) SYMBOL=-S$OPTARG;;		# doc 2.0
+		r) RENAMES=NO;;			# doc 2.0
+		t) TYPE=$OPTARG;;		# doc 2.0
+		q) QUIET=-qq; export _BK_SHUT_UP=YES;;	# doc 2.0
+		u) UNDOS=-u;;			# doc 2.0
+		v) VERBOSE=;;			# doc 2.0
 		esac
 	done
 	shift `expr $OPTIND - 1`
@@ -413,6 +415,30 @@ import_text () {
 
 import_RCS () {
 	cd "$2"
+	if [ $FIX_ATTIC = YES ]
+	then	HERE=`pwd`
+		grep Attic/ ${TMP}import$$ | while read x
+		do	d=`dirname $x`
+			test -d $d || continue	# done already
+			cd $d || exit 1
+			for i in *,v
+			do	test -e ../$i && {
+				    echo Not moving $d/$i due to name conflict
+				}
+				test ! -e ../$i && mv $i ..
+			done
+			cd ..
+			rmdir Attic || { touch ${TMP}failed$$; exit 1; }
+			cd $HERE
+		done
+		test -f ${TMP}failed$$ && {
+			echo Attic processing failed, aborting.
+			exit 1
+		}
+		mv ${TMP}import$$ ${TMP}Attic$$
+		sed 's|Attic/||' < ${TMP}Attic$$ > ${TMP}import$$
+		rm ${TMP}Attic$$
+	fi
 	msg Converting RCS files.
 	msg WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]

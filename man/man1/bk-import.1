@@ -4,7 +4,7 @@
 .SH NAME
 bk import \- import a set of files into a \*(BK package
 .SH SYNOPSIS
-.Bc bk import [-efHiqrvu] [
+.Bc bk import [-AefHiqrvu] [
 .OPTreq \-c tag
 .Bc ] [
 .OPTreq \-j n
@@ -68,6 +68,11 @@ $ bk import -v -tCVS warehouse new
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
+.B \-A
+Attic processing (CVS import only).  Moves all files which do not have
+name conflicts from the Attic subdirectories to the enclosing repository,
+i.e., "mv Attic/*,v .".
+.tp
 .OPTreq \-c tag
 do not import anything after
 .ARG tag .
