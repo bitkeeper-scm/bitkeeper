@@ -101,11 +101,7 @@ again:
 		debug((stderr, "sfiles::AV got %s\n", buf));
 	}
 	if (flags & SF_HASREVS)  {
-#ifdef WIN32 /* Colon can not be a delimiter on NT  */
-		char	*r = strrchr(buf, '@');
-#else
-		char	*r = strrchr(buf, ':');
-#endif
+		char	*r = strrchr(buf, BK_FS);
 
 		rev[0] = 0;	/* paranoia is your friend */
 		if (!r) goto norev;

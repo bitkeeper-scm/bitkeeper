@@ -6561,6 +6561,19 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs)
 		return (-1);
 	}
 	/*
+	 * Disallow BK_FS characters in file name
+	 * ':' is used on Unix, '@' is used on Win32
+	 */
+	t = basenm(s->sfile);
+	if (strchr(t, ':') || strchr(t, '@')) {
+		fprintf(stderr,
+			"delta: %s: filename must not contain \":/@\"\n" , t);
+		sccs_unlock(s, 'z');
+		if (prefilled) sccs_freetree(prefilled);
+		s->state |= S_WARNED;
+		return (-1);
+	}
+	/*
 	 * XXX - this is bad we should use the x.file
 	 */
 	sfile = fopen(s->sfile, "wb"); /* open in binary mode */

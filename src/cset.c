@@ -448,11 +448,7 @@ csetList(sccs *cset, char *rev, int ignoreDeleted)
 				continue;
 			}
 		}
-#ifdef WIN32 /* Colon can not be a delimiter on NT  */
-		printf("%s@%s\n", sc->gfile, d->rev);
-#else
-		printf("%s:%s\n", sc->gfile, d->rev);
-#endif
+		printf("%s%c%s\n", sc->gfile, BK_FS, d->rev);
 		sccs_free(sc);
 	}
 	mdbm_close(idDB);
@@ -926,11 +922,7 @@ doRange(cset_t *cs, sccs *sc)
 	}
 	unless (e) return;
 	if ((cs->range == 2) && e->parent) e = e->parent;
-#ifdef WIN32 /* Colon can not be a delimiter on NT  */
-	printf("%s@%s..", sc->gfile, e->rev);
-#else
-	printf("%s:%s..", sc->gfile, e->rev);
-#endif
+	printf("%s%c%s..", sc->gfile, BK_FS, e->rev);
 	for (d = sc->table; d; d = d->next) {
 		if (d->flags & D_SET) {
 			printf("%s\n", d->rev);
@@ -1028,11 +1020,7 @@ doMarks(cset_t *cs, sccs *s)
 			if (cs->force || !(d->flags & D_CSET)) {
 				if (cs->verbose > 2) {
 					fprintf(stderr,
-#ifdef WIN32 /* Colon can not be a delimiter on NT  */
-					    "Mark %s@%s\n", s->gfile, d->rev);
-#else
-					    "Mark %s:%s\n", s->gfile, d->rev);
-#endif
+					    "Mark %s%c%s\n", s->gfile, BK_FS, d->rev);
 				}
 				d->flags |= D_CSET;
 				if (cs->newlod) mkNewlod(cs, s, d);
@@ -1099,11 +1087,7 @@ csetDeltas(cset_t *cs, sccs *sc, delta *start, delta *d)
 	// XXX - fixme - removed deltas not done.
 	// Is this an issue?  I think makepatch handles them.
 	unless (cs->makepatch || cs->range) {
-#ifdef WIN32 /* Colon can not be a delimiter on NT  */
-		if (d->type == 'D') printf("%s@%s\n", sc->gfile, d->rev);
-#else
-		if (d->type == 'D') printf("%s:%s\n", sc->gfile, d->rev);
-#endif
+		if (d->type == 'D') printf("%s%c%s\n", sc->gfile, BK_FS, d->rev);
 	}
 }
 
@@ -1120,13 +1104,8 @@ add(FILE *diffs, char *buf)
 	char	*rev;
 	delta	*d;
 
-#ifdef WIN32 /* Colon can not be a delimiter on NT  */
-	unless ((chop(buf) == '\n') && (rev = strrchr(buf, '@'))) {
-		fprintf(stderr, "cset: bad file@rev format: %s\n", buf);
-#else
-	unless ((chop(buf) == '\n') && (rev = strrchr(buf, ':'))) {
-		fprintf(stderr, "cset: bad file:rev format: %s\n", buf);
-#endif
+	unless ((chop(buf) == '\n') && (rev = strrchr(buf, BK_FS))) {
+		fprintf(stderr, "cset: bad file%crev format: %s\n", BK_FS, buf);
 		system("bk clean -u ChangeSet");
 		cset_exit(1);
 	}
@@ -1490,12 +1469,8 @@ sccs_patch(sccs *s, cset_t *cs)
 			delta	*top = list[0];
 
 			unless (top->pathname) {
-#ifdef WIN32 /* Colon can not be a delimiter on NT  */
-				fprintf(stderr, "\n%s@%s has no path\n",
-#else
-				fprintf(stderr, "\n%s:%s has no path\n",
-#endif
-				    s->gfile, d->rev);
+				fprintf(stderr, "\n%s%c%s has no path\n",
+				    s->gfile, BK_FS, d->rev);
 				cset_exit(1);
 			}
 			printf("== %s ==\n", top->pathname);
