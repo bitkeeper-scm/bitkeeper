@@ -23,7 +23,8 @@ import() {
 	PARALLEL=1
 	VERIFY=-h
 	CUTOFF=
-	while getopts c:efHij:l:rS:t:vq opt
+	UNDOS=
+	while getopts c:efHij:l:rS:t:uvq opt
 	do	case "$opt" in
 		c) CUTOFF=-c$OPTARG;;
 		e) EX=YES;;
@@ -36,6 +37,7 @@ import() {
 		r) RENAMES=NO;;
 		t) TYPE=$OPTARG;;
 		q) QUIET=-q;;
+		u) UNDOS=-u;;
 		v) QUIET=;;
 		esac
 	done
@@ -367,7 +369,8 @@ import_RCS () {
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	if [ $PARALLEL -eq 1 ]
-	then	bk rcs2sccs $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ || exit 1
+	then	bk rcs2sccs $UNDOS $CUTOFF $VERIFY $QUIET - < ${TMP}import$$ ||
+		    exit 1
 		bk _unlink < ${TMP}import$$
 		return
 	fi
@@ -375,7 +378,7 @@ import_RCS () {
 	LINES=`expr $LINES / $PARALLEL`
 	split -$LINES ${TMP}import$$ ${TMP}split$$
 	for i in ${TMP}split$$*
-	do	bk rcs2sccs $CUTOFF $VERIFY $QUIET -q - < $i &
+	do	bk rcs2sccs $UNDOS $CUTOFF $VERIFY $QUIET -q - < $i &
 	done
 	wait
 }
