@@ -31,12 +31,13 @@ usage: delta [-iluYpq] [-S<sym>] [-Z<alg>] [-y<c>] [files...]\n\n\
 
 #include "comments.c"
 int	newrev(sccs *s, pfile *pf);
+project	*proj;
 
 int
 main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = 0;
+	int	iflags = INIT_SAVEPROJ;
 	int	dflags = 0;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
@@ -51,6 +52,7 @@ main(int ac, char **av)
 	MMAP	*diffs = 0;
 	MMAP	*init = 0;
 	pfile	pf;
+	int	dash;
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -136,6 +138,7 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 	enc = sccs_encoding(0, encp, compp);
 	if (enc == -1) goto usage;
 
+	dash = av[optind] && streq(av[optind], "-");
 	name = sfileFirst(av[0], &av[optind], sflags);
 	/* They can only have an initFile for one file...
 	 * So we go get the next file and error if there
@@ -144,6 +147,13 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 	if ((initFile || diffsFile) && name && sfileNext()) {
 		fprintf(stderr,
 "%s: only one file may be specified with init or diffs file.\n", av[0]);
+		goto usage;
+	}
+
+	/* force them to do something sane */
+	if (!comment && dash && name && !(dflags & NEWFILE) && sfileNext()) {
+		fprintf(stderr,
+"%s: only one file may be specified without a checkin comment\n", av[0]);
 		goto usage;
 	}
 	if (initFile && (dflags & DELTA_DONTASK)) {
@@ -174,11 +184,12 @@ usage:			fprintf(stderr, "%s: usage error, try --help.\n",
 		if (dflags & DELTA_DONTASK) {
 			unless (d = getComments(0)) goto usage;
 		}
-		unless (s = sccs_init(name, iflags, 0)) {
+		unless (s = sccs_init(name, iflags, proj)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();
 			continue;
 		}
+		unless (proj) proj = s->proj;
 		if (dflags & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				dflags &= ~NEWFILE;

@@ -186,7 +186,7 @@ main (int argc, char **argv)
       if (!skip_rest_of_patch)
 	get_input_file (inname, outname);
     
-      if (!instat.st_size && log_names) 
+      if (!instat.st_size && log_names && outname) 
 	say ("Creating file %s\n", quotearg (outname));
 
       if (diff_type == ED_DIFF) {

@@ -19,6 +19,7 @@ private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s);
 private int	printstate(const serlist *state, const ser_t *slist);
+private int	whatstate(const serlist *state);
 private int	visitedstate(const serlist *state, const ser_t *slist);
 private void	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int oldsize, int n);
@@ -122,10 +123,7 @@ emptyDir(char *dir)
 	struct dirent *e;
 
 	d = opendir(dir);
-	unless (d) {
-		perror(dir);
-		return (0);
-	}
+	unless (d) return (0);
 
 	while (e = readdir(d)) {
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) continue;
@@ -1037,7 +1035,7 @@ scandiff(char *s, int *where, char *what, int *howmany)
 			*what = 'i';
 		else if (*s == 'd')
 			*what = 'x';
-		else unless (*s == 'D' || *s == 'I')
+		else unless (*s == 'D' || *s == 'I' || *s == 'N')
 			return (-1);
 		s++;
 		*where = atoi2(&s);
@@ -3103,6 +3101,7 @@ sccs_initProject(sccs *s)
 	 */
 	sprintf(path, "%s/RESYNC", root);
 	if (exists(path)) p->flags |= PROJ_RESYNC;
+	unless (emptyDir(READER_LOCK_DIR)) p->flags |= PROJ_READER;
 	return (p);
 }
 
@@ -3120,10 +3119,17 @@ resync_locked(project *p)
 	return (p && (p->flags & PROJ_RESYNC));
 }
 
+private inline int
+reader_locked(project *p)
+{
+	return (p && (p->flags & PROJ_READER));
+}
+
 int
 sccs_locked(project *p)
 {
-	return (resync_locked(p) && (getenv("BK_IGNORELOCK") == 0));
+	return ((resync_locked(p) || reader_locked(p)) &&
+	    (getenv("BK_IGNORELOCK") == 0));
 }
 
 /* used to tell us who is blocking the lock */
@@ -3134,6 +3140,7 @@ sccs_lockers(project *p)
 	if (sccs_locked(p)) {
 		fprintf(stderr, "Entire repository is locked");
 		if (resync_locked(p)) fprintf(stderr, " by RESYNC directory");
+		if (reader_locked(p)) fprintf(stderr, " by READER lock");
 		fprintf(stderr, ".\n");
 	}
 }
@@ -3150,6 +3157,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	sccs	*s;
 	struct	stat sbuf;
 	char	*t;
+	static	int YEAR4;
 
 	platformSpecificInit(name);
 	if (u_mask == 0x5eadbeef) {
@@ -3285,6 +3293,12 @@ sccs_init(char *name, u32 flags, project *proj)
 		s->proj = proj ? proj : sccs_initProject(s);
 		if (sccs_locked(s->proj)) s->state |= S_READ_ONLY;
 	}
+
+	/*
+	 * Let them force YEAR4
+	 */
+	unless (YEAR4) YEAR4 = getenv("BK_YEAR4") ? 1 : -1;
+	if (YEAR4 == 1) s->state |= S_YEAR4;
 
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
@@ -4119,6 +4133,18 @@ visitedstate(const serlist *state, const ser_t *slist)
 	return (0);
 }
 
+private int
+whatstate(const serlist *state)
+{
+	register serlist *s;
+
+	/* Loop until an I */
+	for (s = state[SLIST].next; s; s = s->next) {
+		if (s->type == 'I') break;
+	}
+	return ((s) ? s->serial : 0);
+}
+
 /* calculate printstate using where we are (state)
  * and list of active deltas (slist)
  * return either the serial if active, or 0 if not
@@ -4147,6 +4173,27 @@ printstate(const serlist *state, const ser_t *slist)
 	debug2((stderr, "printstate {} = 0\n"));
 
 	return (0);
+}
+
+private void inline
+fnnlputs(char *buf, FILE *out)
+{
+	register char	*t = buf;
+	char		fbuf[MAXLINE];
+	register char	*p = fbuf;
+
+	while (*t && (*t != '\n')) {
+		*p++ = *t++;
+		if (p == &fbuf[MAXLINE-1]) {
+			*p = 0;
+			p = fbuf;
+			fputs(fbuf, out);
+		}
+	}
+	if (p != fbuf) {
+		*p = 0;
+		fputs(fbuf, out);
+	}
 }
 
 private void inline
@@ -4659,6 +4706,8 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	MDBM	*DB = 0;
 	int	hash = 0;
 	int sccs_expanded, rcs_expanded;
+	int	lf_pend = 0;
+	ser_t	serial;
 
 	slist = d ? serialmap(s, d, flags, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -4750,6 +4799,11 @@ out:			if (slist) free(slist);
 				continue;
 			}
 			lines++;
+			if (lf_pend) {
+				fputc('\n', out);
+				if (flags & NEWCKSUM) sum += '\n';
+				lf_pend = 0;
+			}
 			if (flags & NEWCKSUM) {
 				for (e = buf; *e != '\n'; sum += *e++);
 				sum += '\n';
@@ -4805,7 +4859,9 @@ out:			if (slist) free(slist);
 			    }
 			    case E_ASCII:
 			    case E_GZIP:
-				fnlputs(e, out);
+				fnnlputs(e, out);
+				if (flags & NEWCKSUM) sum -= '\n';
+				lf_pend = print;
 				if (sccs_expanded) free(e1);
 				if (rcs_expanded) free(e2);
 				break;
@@ -4814,7 +4870,33 @@ out:			if (slist) free(slist);
 		}
 
 		debug2((stderr, "%.*s", linelen(buf), buf));
-		changestate(state, buf[1], atoi(&buf[3]));
+		serial = atoi(&buf[3]);
+		/* seek out E which closes text block for last line
+		 * printed.  serial for that block is in lf_pend.
+		 * whatstate returns serial of current text block
+		 * This is needed to make sure E isn't closing a D
+		 * The whatstate test isn't needed assuming diff
+		 * semantics of a replace is a delete followed
+		 * by an insert.  We know in that case, the condition
+		 * E and lf_pend == serial is enough because if E
+		 * is tagged 'N', there can be no 'D' following it.
+		 * If E isn't tagged, then lf_pend gets cleared.
+		 * In the name of robustness, that someday this
+		 * assumption might not be true, the whatstate check
+		 * is in there.
+		 */
+		if (buf[1] == 'E' && lf_pend == serial &&
+		    whatstate((const serlist*)state) == serial)
+		{
+			char	*n = &buf[3];
+			while (isdigit(*n)) n++;
+			unless (*n == 'N') {
+				fputc('\n', out);
+				lf_pend = 0;
+				if (flags & NEWCKSUM) sum += '\n';
+			}
+		}
+		changestate(state, buf[1], serial);
 		print = (d)
 		    ? printstate((const serlist*)state, (const ser_t*)slist)
 		    : visitedstate((const serlist*)state, (const ser_t*)slist);
@@ -5126,7 +5208,7 @@ err:		return (-1);
 
 private int
 outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
-	FILE *in, FILE *out)
+	int no_lf, FILE *in, FILE *out)
 {
 	char	*prefix;
 
@@ -5134,7 +5216,8 @@ outdiffs(sccs *s, int type, int side, int *left, int *right, int count,
 
 	if (side == RIGHT) {
 		if (type == GET_BKDIFFS) {
-			fprintf(out, "I%d %d\n", *left, count);
+			fprintf(out, "%c%d %d\n", no_lf ? 'N' : 'I',
+				*left, count);
 			*right += count; /* not used, but easy to inc */
 			prefix = "";
 		} else {
@@ -5232,6 +5315,8 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	char	*buf;
 	char	tmpfile[100];
 	FILE	*lbuf = 0;
+	int	no_lf = 0;
+	ser_t	serial;
 	int	ret = -1;
 
 	unless (s->state & S_SOPEN) {
@@ -5309,7 +5394,15 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	while (buf = nextdata(s)) {
 		unless (isData(buf)) {
 			debug2((stderr, "%.*s", linelen(buf), buf));
-			changestate(state, buf[1], atoi(&buf[3]));
+			serial = atoi(&buf[3]);
+			if (buf[1] == 'E' && serial == with &&
+			    serial == d->serial)
+			{
+				char	*n = &buf[3];
+				while (isdigit(*n)) n++;
+				if (*n == 'N') no_lf = 1;
+			}
+			changestate(state, buf[1], serial);
 			with = printstate((const serlist*)state,
 					(const ser_t*)slist);
 			old = slist[d->serial];
@@ -5326,10 +5419,11 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		if (count &&
 		    nextside != side && (side == LEFT || side == RIGHT)) {
 			if (outdiffs(s, type,
-			    side, &left, &right, count, lbuf, out)) {
+			    side, &left, &right, count, no_lf, lbuf, out)) {
 				goto done;
 			}
 			count = 0;
+			no_lf = 0;
 		}
 		side = nextside;
 		switch (side) {
@@ -5345,9 +5439,13 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 		}
 	}
 	if (count) { /* there is something left in the buffer */
-		if (outdiffs(s, type, side, &left, &right, count, lbuf, out))
+		if (outdiffs(s, type, side, &left, &right, count, no_lf,
+		    lbuf, out))
+		{
 			goto done;
+		}
 		count = 0;
+		no_lf = 0;
 	}
 	ret = 0;
 done:	if (s->encoding & E_GZIP) zgets_done();
@@ -6102,6 +6200,8 @@ fix_lf(char *gfile)
 	struct	stat sb;
 	char	c;
 
+	return (0);
+
 	if (lstat(gfile, &sb)) {
 		fprintf(stderr, "lstat: ");
 		perror(gfile);
@@ -6850,6 +6950,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs, char *
 	char	*t;
 	char	buf[MAXLINE];
 	admin	l[2];
+	int	no_lf = 0;
 	int	error = 0;
 
 	assert(s);
@@ -7047,16 +7148,22 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, MMAP *diffs, char *
 			 */
 			len = strlen(buf);
 			if (len && (buf[len - 1] != '\n')) {
-				s->dsum += fputdata(s, "\n", sfile);
+				/* put lf in sfile, but not in dsum */
+				fputdata(s, "\n", sfile);
+				no_lf = 1;
 			}
 		}
 	}
 	if (n0) {
-		fputdata(s, "\001E 2\n", sfile);
+		fputdata(s, "\001E 2", sfile);
+		if (no_lf) fputdata(s, "N", sfile);
+		fputdata(s, "\n", sfile);
 		fputdata(s, "\001I 1\n", sfile);
 		fputdata(s, "\001E 1\n", sfile);
 	} else {
-		fputdata(s, "\001E 1\n", sfile);
+		fputdata(s, "\001E 1", sfile);
+		if (no_lf) fputdata(s, "N", sfile);
+		fputdata(s, "\n", sfile);
 	}
 	error = end(s, n, sfile, flags, added, 0, 0);
 	if (gfile && (gfile != stdin)) {
@@ -8433,14 +8540,58 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 
 private void
-doctrl(sccs *s, char *pre, int val, FILE *out)
+doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 {
 	char	tmp[10];
 
 	sertoa(tmp, (unsigned short) val);
 	fputdata(s, pre, out);
 	fputdata(s, tmp, out);
+	fputdata(s, post, out);
 	fputdata(s, "\n", out);
+}
+
+void
+finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
+	ser_t *slist)
+{
+	int	print = *pp, incr = *ip;
+	sum_t	sum;
+	register char	*buf;
+	ser_t	serial;
+	int	lf_pend = 0;
+
+	debug((stderr, "finish(incr=%d, sum=%d, print=%d) ",
+		incr, s->dsum, print));
+	while (!eof(s)) {
+		unless (buf = nextdata(s)) break;
+		debug2((stderr, "G> %.*s", linelen(buf), buf));
+		sum = fputdata(s, buf, out);
+		if (isData(buf)) {
+			unless (print) continue;
+			unless (lf_pend) sum -= '\n';
+			lf_pend = print;
+			s->dsum += sum;
+			incr++;
+			continue;
+		}
+		serial = atoi(&buf[3]);
+		if (buf[1] == 'E' && lf_pend == serial &&
+		    whatstate((const serlist*)state) == serial)
+		{
+			char	*n = &buf[3];
+			while (isdigit(*n)) n++;
+			unless (*n == 'N') {
+				lf_pend = 0;
+				s->dsum += '\n';
+			}
+		}
+		changestate(state, buf[1], serial);
+		print = printstate((const serlist*)state, (const ser_t*)slist);
+	}
+	*ip = incr;
+	*pp = print;
+	debug((stderr, "incr=%d, sum=%d\n", incr, s->dsum));
 }
 
 #define	nextline(inc)	nxtline(s, &inc, 0, &lines, &print, out, state, slist)
@@ -8580,6 +8731,7 @@ delta_body(sccs *s, delta *n, MMAP *diffs, FILE *out, int *ap, int *dp, int *up)
 	int	added = 0, deleted = 0, unchanged = 0;
 	sum_t	sum;
 	char	*b;
+	int	no_lf = 0;
 
 	assert((s->state & S_READ_ONLY) == 0);
 	assert(s->state & S_ZFILE);
@@ -8612,9 +8764,12 @@ newcmd:
 		}
 		debug2((stderr, "where=%d what=%c\n", where, what));
 
-#define	ctrl(pre, val)	doctrl(s, pre, val, out)
+#define	ctrl(pre, val, post)	doctrl(s, pre, val, post, out)
 
-		if (what != 'a' && what != 'b' && what != 'I') where--;
+		if (what == 'c' || what == 'd' || what == 'D' || what == 'x')
+		{
+			where--;
+		}
 		while (lines < where) {
 			/*
 			 * XXX - this loops when I don't use the fudge as part
@@ -8623,49 +8778,35 @@ newcmd:
 			nextline(unchanged);
 		}
 		switch (what) {
-		    case 'a':
-			ctrl("\001I ", n->serial);
-			while (b = mnext(diffs)) {
-				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
-					goto newcmd;
-				}
-				s->dsum += fputdata(s, &b[2], out);
-				debug2((stderr,
-				    "INS %.*s", linelen(&b[2]), &b[2]));
-				added++;
-			}
-			break;
+		    case 'c':
 		    case 'd':
 			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
+			ctrl("\001D ", n->serial, "");
 			sum = s->dsum;
 			while (b = mnext(diffs)) {
+				if (strneq(b, "---\n", 4)) break;
+				if (strneq(b, "\\ No", 4)) continue;
 				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
+					ctrl("\001E ", n->serial, "");
 					s->dsum = sum;
 					goto newcmd;
 				}
 				nextline(deleted);
 			}
 			s->dsum = sum;
-			break;
-		    case 'c':
-			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
-			sum = s->dsum;
-			/* Toss the old stuff */
+			if (what != 'c') break;
+			ctrl("\001E ", n->serial, "");
+			/* fall through to */
+		    case 'a':
+			ctrl("\001I ", n->serial, "");
 			while (b = mnext(diffs)) {
-				if (strneq(b, "---\n", 4)) break;
-				nextline(deleted);
-			}
-			s->dsum = sum;
-			ctrl("\001E ", n->serial);
-			/* add the new stuff */
-			ctrl("\001I ", n->serial);
-			while (b = mnext(diffs)) {
+				if (strneq(b, "\\ No", 4)) {
+					s->dsum -= '\n';
+					no_lf = 1;
+					break;
+				}
 				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
+					ctrl("\001E ", n->serial, "");
 					goto newcmd;
 				}
 				s->dsum += fputdata(s, &b[2], out);
@@ -8674,13 +8815,14 @@ newcmd:
 				added++;
 			}
 			break;
+		    case 'N':
 		    case 'I':
 		    case 'i':
-			ctrl("\001I ", n->serial);
+			ctrl("\001I ", n->serial, "");
 			while (howmany--) {
 				/* XXX: not break but error */
 				unless (b = mnext(diffs)) break;
-				if (what == 'I' && b[0] == '\\') {
+				if (what != 'i' && b[0] == '\\') {
 					s->dsum += fputdata(s, &b[1], out);
 				} else {
 					s->dsum += fputdata(s, b, out);
@@ -8688,27 +8830,25 @@ newcmd:
 				debug2((stderr, "INS %.*s", linelen(b), b));
 				added++;
 			}
+			if (what == 'N') {
+				s->dsum -= '\n';
+				no_lf = 1;
+			}
 			break;
 		    case 'D':
 		    case 'x':
 			beforeline(unchanged);
-			ctrl("\001D ", n->serial);
+			ctrl("\001D ", n->serial, "");
 			sum = s->dsum;
 			while (howmany--) {
-				if (isdigit(b[0])) {
-					ctrl("\001E ", n->serial);
-					goto newcmd;
-				}
 				nextline(deleted);
 			}
 			s->dsum = sum;
 			break;
 		}
-		ctrl("\001E ", n->serial);
+		ctrl("\001E ", n->serial, no_lf ? "N" : "");
 	}
-	while (!eof(s)) {
-		nextline(unchanged);
-	}
+	finish(s, &unchanged, &print, out, state, slist);
 	*ap = added;
 	*dp = deleted;
 	*up = unchanged;
@@ -9862,19 +10002,15 @@ sccs_diffs(sccs *s, char *r1, char *r2,
 private void
 mkTag(char kind, char *label, char *rev, char *path, char tag[])
 {
-	if ((kind == DF_UNIFIED) || (kind == DF_CONTEXT)) {
-		sprintf(tag, "%s %s", path, rev);
-	} else  if (kind == DF_GNU_PATCH) {
-		/*
-		 * 1.0 => create (or reverse create in a reverse pacth )
-		 * DEV_NULL => delete (i.e. sccsrm)
-		 */
-		if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
-			sprintf(tag, "%s", "/dev/null");
-		} else {
-			sprintf(tag, "%s/%s", label? label : rev, path);
-		}
-	} else tag[0]= 0;
+	/*
+	 * 1.0 => create (or reverse create in a reverse pacth )
+	 * DEV_NULL => delete (i.e. sccsrm)
+	 */
+	if (streq(rev, "1.0") || streq(path, NULL_FILE)) {
+		sprintf(tag, "%s", "/dev/null");
+	} else {
+		sprintf(tag, "%s/%s", label? label : rev, path);
+	}
 }
 
 
@@ -10144,12 +10280,8 @@ normal_diff(sccs *s, char *lrev, char *rrev, u32 flags, char kind,
 	if (mkDiffTarget(s, lrev, kind, flags, here, lfile, pf)) goto done;
 	if (mkDiffTarget(s, rrev, kind, flags, here, rfile, 0 )) goto done;
 
-	if (kind == DF_GNU_PATCH) {
-		lpath = getHistoricPath(s, lrev); assert(lpath);
-		rpath = getHistoricPath(s, rrev); assert(rpath);
-	} else {
-		lpath = rpath = s->gfile;
-	}
+	lpath = getHistoricPath(s, lrev); assert(lpath);
+	rpath = getHistoricPath(s, rrev); assert(rpath);
 
 	/*
 	 * make the tag string to label the diff output, e.g.
@@ -12479,7 +12611,6 @@ sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 	return (s);
 
 out:	if (s) {
-		if (flags & INIT_SAVEPROJ) s->proj = 0;
 		sccs_free(s);
 	}
 	if (localkey) free(localkey);

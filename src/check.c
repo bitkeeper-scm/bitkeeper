@@ -11,6 +11,7 @@ char	*check_help = "\n\
 usage: check [-av]\n\n\
     -a		warn if the files listed are a subset of the repository\n\
     -f		fix any fixable errors\n\
+    -c		check file checksum\n\
     -v		list each file which is OK\n\n";
 
 MDBM	*buildKeys();
@@ -29,6 +30,8 @@ int	fix;		/* if set, fix up anything we can */
 int	names;		/* if set, we need to fix names */
 int	mixed;
 char	csetFile[] = CHANGESET;
+project	*proj;
+int	flags = INIT_SAVEPROJ|INIT_NOCKSUM;
 
 int
 main(int ac, char **av)
@@ -50,10 +53,11 @@ usage:		fprintf(stderr, "%s", check_help);
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "afv")) != -1) {
+	while ((c = getopt(ac, av, "acfv")) != -1) {
 		switch (c) {
 		    case 'a': all++; break;
 		    case 'f': fix++; break;
+		    case 'c': flags = INIT_SAVEPROJ; break;
 		    case 'v': verbose++; break;
 		    default:
 			goto usage;
@@ -68,16 +72,17 @@ usage:		fprintf(stderr, "%s", check_help);
 		fprintf(stderr, "check: can not find project root.\n");
 		return (1);
 	}
-	unless (s = sccs_init(csetFile, 0, 0)) {
+	unless (s = sccs_init(csetFile, flags, 0)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
+	proj = s->proj;
 	mixed = (s->state & S_KEY2) == 0;
 	db = buildKeys();
 	sccs_free(s);
 	for (name = sfileFirst("check", &av[optind], 0);
 	    name; name = sfileNext()) {
-		s = sccs_init(name, 0, 0);
+		s = sccs_init(name, flags, proj);
 		if (!s) continue;
 		if (!s->tree) {
 			if (!(s->state & S_SFILE)) {
@@ -194,7 +199,7 @@ checkAll(MDBM *db)
 		t = strchr(buf, ' ');
 		assert(t);
 		*t++ = 0;
-		unless (s = sccs_keyinit(buf, 0, 0, idDB)) {
+		unless (s = sccs_keyinit(buf, flags, proj, idDB)) {
 			unless (gone(buf, goneDB) ||
 			    mdbm_fetch_str(warned, buf)) {
 				fprintf(stderr, "keyinit(%s) failed.\n", buf);
@@ -300,7 +305,7 @@ buildKeys()
 	}
 	pclose(keys);
 	/* Add in ChangeSet keys */
-	unless (cset = sccs_init(csetFile, 0, 0)) {
+	unless (cset = sccs_init(csetFile, flags, proj)) {
 		fprintf(stderr, "check: ChangeSet file not inited\n");
 		exit (1);
 	}
@@ -374,7 +379,7 @@ out:	pclose(keys);
 char	*
 getFile(char *root, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(root, 0, 0, idDB);
+	sccs	*s = sccs_keyinit(root, flags, proj, idDB);
 	char	*t;
 
 	unless (s) return (strdup("[can not init]"));
@@ -386,7 +391,7 @@ getFile(char *root, MDBM *idDB)
 char	*
 getRev(char *root, char *key, MDBM *idDB)
 {
-	sccs	*s = sccs_keyinit(root, 0, 0, idDB);
+	sccs	*s = sccs_keyinit(root, flags, proj, idDB);
 	delta	*d;
 
 	unless (s) return (strdup("[can not init]"));

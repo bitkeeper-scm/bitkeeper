@@ -1,0 +1,99 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2000 Larry McVoy
+# %K%
+
+# Test the checkin and propogation of
+#	1.1 file with newline
+#	1.2 file without newline
+#
+#	1.1 file without newline
+#	1.2 file with newline
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+echo "logging: none" > $HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create files with and without newlines ......................$NL
+echo foo > foo.c; cp foo.c SAVEfoo.c
+echo $N bar$NL > bar.c; cp bar.c SAVEbar.c
+ci $Q -i foo.c bar.c 
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+if [ ! -f SCCS/s.bar.c ]; then echo failed to create history; exit 1; fi
+get $Q foo.c bar.c
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+echo OK
+echo $N Create a change set .........................................$NL
+bk commit $S -f -ywhatever
+echo OK
+cores
+echo $N Create a copy of the project ................................$NL
+cd $HERE
+bk resync $Q -a project copy
+if [ ! -d copy ]; then echo failed to make top level directory; exit 1; fi
+cd copy
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo OK
+echo $N Check resynced files for newline status .....................$NL
+echo foo > SAVEfoo.c
+echo $N bar$NL > SAVEbar.c
+if [ ! -f SCCS/s.foo.c ]; then echo failed to resync history; exit 1; fi
+if [ ! -f SCCS/s.bar.c ]; then echo failed to resync history; exit 1; fi
+get $Q foo.c bar.c
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+echo OK
+echo $N Check including no newline deltas ...........................$NL
+get $Q -e foo.c bar.c
+echo $N trunk$NL >> foo.c
+echo >> bar.c
+echo $N trunk$NL >> bar.c
+delta $Q -ytrunk foo.c bar.c
+get $Q -e -r1.1 foo.c bar.c
+echo $N branch$NL >> foo.c
+echo >> bar.c
+echo $N branch$NL >> bar.c
+delta $Q -ybranch foo.c bar.c
+echo branch >> SAVEfoo.c
+echo $N trunk$NL >> SAVEfoo.c
+echo >> SAVEbar.c
+echo branch >> SAVEbar.c
+echo bar >> SAVEbar.c
+echo $N trunk$NL >> SAVEbar.c
+get $Q -e -M1.1.1.1 foo.c
+get $Q -e -M1.1.1.1 bar.c
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+delta $Q -ymerge foo.c bar.c
+get $Q foo.c bar.c
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+echo OK
+bk commit $S -f -ywhatever
+echo $N Check for no newline changes back to project ................$NL
+cd $HERE
+bk resync $Q -a copy project
+cp copy/SAVEfoo.c project/SAVEfoo.c
+cp copy/SAVEbar.c project/SAVEbar.c
+cd project
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1; }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1; }
+echo OK
