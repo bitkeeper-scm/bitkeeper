@@ -53,7 +53,7 @@ unix_common_setup()
 	RM=/bin/rm
 	PLATFORM="UNIX"
 	DEV_NULL="/dev/null"
-	if [ -z "$TST_DIR" ]; then TST_DIR="/tmp"; fi
+	if [ -z "$TST_DIR" ]; then TST_DIR="/build"; fi
 	TST_DIR=`bk pwd $TST_DIR`       # if symlink, force to real path
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
@@ -84,12 +84,12 @@ unix_common_setup()
 	test -r $BIN3 || exit 1
 	export BIN1 BIN2 BIN3
 
-	BK_LIMITPATH=/tmp/.bktools-$USER
+	BK_LIMITPATH=/build/.bktools-$USER
 	rm -rf $BK_LIMITPATH
 	mkdir $BK_LIMITPATH
 	for f in awk expr sh grep egrep sed \
 	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
-	    co rcs ssh rsh gzip gunzip
+	    co rcs ssh rsh gzip gunzip [
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
 		then	echo ln -s $p $BK_LIMITPATH/$f
@@ -220,7 +220,7 @@ setup_env()
 	BK_REGRESSION=`bk _cleanpath $TST_DIR/.regression-$USER`
 	HERE=$BK_REGRESSION
 	BK_TMP=$BK_REGRESSION/.tmp
-	TMPDIR=/tmp/.tmp-$USER
+	TMPDIR=/build/.tmp-$USER
 	BKL_P=BKL5413557503d719ed00001200ffffe
 	BKL_P1=YgAAAo0AAAADgAAAADsCeUepwSCv8vdzC+zfqSI/LcdNEi6Oqas5Wj01Fa7w/0rY
 	BKL_P2=dGV7TM68nu7/Yw1sr5iwwEB4/BrY5EerWnFGYHhlOmnrgok04a4Ln/lLTpfFmpyd
@@ -378,6 +378,7 @@ do	echo ------------ ${i#t.} test
 			exit 1
 			;;
 	    /tmp/*)	;;
+	    /build/*)	;;
 	    *)		Really weird TMPDIR $tmpdir, I quit
 			exit 1
 			;;
