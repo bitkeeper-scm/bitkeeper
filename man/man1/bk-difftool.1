@@ -4,6 +4,10 @@
 bk difftool \- \*(BK Graphical Diff Tool
 .SH SYNOPSIS
 .B bk difftool
+.br
+.B bk difftool -
+.br
+.B bk difftool
 .ARG file1
 .br
 .B bk difftool 
@@ -26,12 +30,24 @@ bk difftool \- \*(BK Graphical Diff Tool
 The
 .B difftool
 command is a side-by-side differences viewer that shows each
-file in a window, with the differences color coded.
+file in a separate window, with the differences color coded.
 You can move back and forth through the diffs using the keys
 described below.
 All differences are highlighted, but as you move to a new diff,
 that diff becomes highlighted in a bold font.
 .SH ARGUMENTS
+.LP
+If no arguments are given, 
+.B difftool
+finds all the modified files in the current directory and
+subdirectories and allows the user to select the files they are
+interested in via a pull-down menu. Also, keyboard accelarators can
+be used to navigate between the files.
+.LP
+If a dash (-) is given as an argument, 
+.B
+difftool
+takes a list of files to view from stdin. For example, bk sfiles -gc | bk difftool -
 .LP
 If only one file is specified and that file is a locked and modified file,
 .B difftool
@@ -88,6 +104,12 @@ Previous diff
 .tp
 .B .
 Center the current diff on the screen
+.tp
+.B Control-N
+Go to then next file
+.tp
+.B Control-P
+Go to the previous file
 .SH SEE ALSO
 .LP
 .SA diffs 1

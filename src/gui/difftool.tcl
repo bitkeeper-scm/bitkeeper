@@ -1,6 +1,6 @@
 # difftool - view differences; loosely based on fmtool
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
-# %A% %@%
+# @(#) difftool.tcl 1.31@(#) akushner@vermin.dsl.snfc21.pacbell.net
 
 proc next {} \
 {
@@ -192,29 +192,29 @@ proc sdiff {L R} \
 	}
 	catch { close $a }
 	catch { close $b }
-	set dir [file dirname $L]
-	if {"$dir" == ""} {
-		set dotL .$L
-	} else {
-		set tail [file tail $L]
-		set dotL [file join $dir .$tail]
+	foreach {f} {L R} {
+		set dir [eval file dirname $f]
+		if {"$dir" == ""} {
+			eval set dot($f) ".$$f"
+		} else {
+			set tail [eval file tail $f]
+			set dot($f) [file join $dir .$tail]
+		}
+		eval exec bk undos $$f > $dot($f)
 	}
-	exec bk undos $L > $dotL
-	set dir [file dirname $R]
-	if {"$dir" == ""} {
-		set dotR .$R
-	} else {
-		set tail [file tail $R]
-		set dotR [file join $dir .$tail]
-	}
-	exec bk undos $R > $dotR
-	set rmList [list $dotL $dotR]
-	return [open "| $sdiffw $dotL $dotR"]
+	set rmList [list $dot(L) $dot(R)]
+	return [open "| $sdiffw $dot($f) $dot($f)"]
 }
 
 proc readFiles {L Ln R Rn} \
 {
 	global	Diffs DiffsEnd diffCount nextDiff lastDiff dev_null rmList
+	global  lfile lname rfile rname
+
+	# Trying to get reread to work correctly -- I don't like this 
+	# approach
+	set lfile $L; set lname $Ln
+	set rfile $R; set rname $Rn
 
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
@@ -390,13 +390,28 @@ proc widgets {} \
 	    text .diffs.left -width $gc(diff.diffWidth) \
 		-height $gc(diff.diffHeight) \
 		-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
+		-borderwidth 0\
+		-wrap none -font $gc(diff.fixedFont) \
+		-xscrollcommand { .diffs.xscroll set } \
+		-yscrollcommand { .diffs.yscroll set }
+	    # Annotated listing information
+	    text .diffs.left_annotate -width 10 \
+		-height 0 -padx 0 -borderwidth 0 -setgrid 1 \
+		-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
 		-wrap none -font $gc(diff.fixedFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -bg $gc(diff.textBG) -fg $gc(diff.textFG) \
 		-height $gc(diff.diffHeight) \
 		-width $gc(diff.diffWidth) \
+		-borderwidth 0 \
 		-state disabled -wrap none -font $gc(diff.fixedFont)
+	    text .diffs.right_annotate -width 10 \
+		-height 0 -padx 0 -borderwidth 0 -setgrid 1 \
+		-bg $gc(diff.textBG) -fg $gc(diff.textFG) -state disabled \
+		-wrap none -font $gc(diff.fixedFont) \
+		-xscrollcommand { .diffs.xscroll set } \
+		-yscrollcommand { .diffs.yscroll set }
 	    scrollbar .diffs.xscroll -wid $gc(diff.scrollWidth) \
 		-troughcolor $gc(diff.troughColor) \
 		-background $gc(diff.scrollColor) \
@@ -406,12 +421,25 @@ proc widgets {} \
 		-background $gc(diff.scrollColor) \
 		-orient vertical -command { yscroll }
 
-	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
-	    grid .diffs.left -row 1 -column 0 -sticky nsew
-	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
-	    grid .diffs.right -row 1 -column 2 -sticky nsew
-	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
-	    grid .diffs.xscroll -columnspan 3
+	    if {1} {
+		grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
+		grid .diffs.left -row 1 -column 0 -sticky nsew
+		grid .diffs.yscroll -row 1 -column 1 -sticky ns
+		grid .diffs.right -row 1 -column 2 -sticky nsew
+		grid .diffs.xscroll -row 2 -column 0 -sticky ew
+		grid .diffs.xscroll -columnspan 5
+	    } else {
+		grid .diffs.status -row 0 -column 0 -columnspan 5 -stick ew
+		grid .diffs.left_annotate -row 1 -column 0 -sticky nsew
+		grid .diffs.left -row 1 -column 1 -sticky nsew
+		grid .diffs.yscroll -row 1 -column 2 -sticky ns
+		grid .diffs.right_annotate -row 1 -column 3 -sticky nsew
+		grid .diffs.right -row 1 -column 4 -sticky nsew
+		grid .diffs.xscroll -row 2 -column 0 -sticky ew
+		grid .diffs.xscroll -columnspan 5
+		#grid forget .diffs.left_annotate
+		#grid forget .diffs.right_annotate
+	    }
 
 image create photo prevImage \
     -format gif -data {
@@ -441,11 +469,15 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    button .menu.quit -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-text "Quit" -command exit 
+		-text "Quit" -command cleanup
 	    button .menu.reread -font $gc(diff.buttonFont) \
 		-bg $gc(diff.buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-text "Reread" -command getFiles 
+		-text "Reread" -command {
+			global lname rname lfile rfile
+			#puts "$lfile $lname $rfile $rname"
+			readFiles $lfile $lname $rfile $rname
+		    }
 	    button .menu.help -bg $gc(diff.buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-font $gc(diff.buttonFont) -text "Help" \
@@ -478,7 +510,25 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-bg $gc(diff.buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Clear search" -state disabled -command { clearOrRecall }
-	    label $search(status) -width 20 -font $gc(diff.buttonFont) -relief flat
+	    label $search(status) -width 20 -font $gc(diff.buttonFont) \
+		-relief flat
+	    button .menu.filePrev -font $gc(diff.buttonFont) \
+		-bg $gc(diff.buttonColor) \
+		-pady $py -padx $px -borderwid $bw \
+		-image prevImage \
+		-state disabled -command { prevFile }
+
+	    button .menu.fileNext -font $gc(diff.buttonFont) \
+		-bg $gc(diff.buttonColor) \
+		-pady $py -padx $px -borderwid $bw \
+		-image nextImage \
+		-state normal -command { nextFile }
+
+	    menubutton .menu.mb -font $gc(diff.buttonFont) -relief raised \
+		-bg $gc(diff.buttonColor) -pady $py -padx $px \
+		-borderwid $bw -text "Files" -width 15 -state normal \
+		-menu .menu.mb.menu
+
 	    pack .menu.quit -side left
 	    pack .menu.help -side left
 	    pack .menu.reread -side left
@@ -487,9 +537,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    pack .menu.next -side left
 	    pack .menu.prompt -side left
 	    pack $search(text) -side left
-	    pack .menu.searchPrev -side left
+	    pack .menu.searchPrev -side left -fill y
 	    pack .menu.searchClear -side left
-	    pack .menu.searchNext -side left
+	    pack .menu.searchNext -side left -fill y
 	    pack $search(status) -side left -expand 1 -fill x
 
 	grid .menu -row 0 -column 0 -sticky ew
@@ -551,7 +601,9 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
-	bind all		$gc(diff.quit)	exit
+	bind all		$gc(diff.quit)	cleanup
+	bind all		<N>		nextFile
+	bind all		<P>		prevFile
 	bind all		<n>		next
 	bind all		<space>		next
 	bind all		<p>		prev
@@ -569,7 +621,7 @@ proc keyboard_bindings {} \
 	bindtags $search(text) { .menu.search Entry . }
 }
 
-proc getrev {file rev checkMods} \
+proc getRev {file rev checkMods} \
 {
 	global	tmp_dir
 
@@ -579,7 +631,7 @@ proc getrev {file rev checkMods} \
 		puts "$file is not under revision control."
 		exit 1
 	}
-	close $f
+	catch {close $f}
 	if {$checkMods} {
 		set f [open "| bk sfiles -gc \"$file\"" r]
 		if { ([gets $f dummy] <= 0)} {
@@ -602,55 +654,176 @@ proc usage {} \
 {
 	global	argv0
 
-	puts "usage:\tbk difftool file"
+	puts "usage:\tbk difftool"
+	puts "\tbk difftool file"
 	puts "\tbk difftool -r<rev> file"
 	puts "\tbk difftool -r<rev> -r<rev2> file"
 	puts "\tbk difftool file file2"
+	puts "\tbk difftool -"
 	exit
 }
 
 proc getFiles {} \
 {
-	global argv0 argv argc dev_null lfile rfile tmp_dir
+	global argv0 argv argc dev_null tmp_dir gc tcl_platform
+	global tmps lfile rfile menu lname rname
 
-	if {$argc < 1 || $argc > 3} { usage }
+	if {$argc > 3} { usage }
+	set files [list]
 	set tmps [list]
-	if {$argc == 1} {
-		set rfile [lindex $argv 0]
-		set rname $rfile
-		set lfile [getrev $rfile "+" 1]
-		lappend tmps $lfile
-		set lname "$rfile"
-	} elseif {$argc == 2} {
+	set cfiles ""
+
+	# try doing 'bk sfiles -gc | bk difftool -' to see how this works
+	#puts "argc=($argc) argv=($argv)"
+	if {$argc == 0} {
+		set fd [open "|bk sfiles -gcvU"]
+		while { [gets $fd str] >= 0} {
+			set fname [string range $str 5 [string length $str]]
+			#puts "fname=($fname)"
+			set cfiles [concat $cfiles [list "$fname"]]
+			set rfile $fname
+			set rname $rfile
+			set lfile [getRev $rfile "+" 1]
+			set lname "$rfile"
+			lappend tmps $lfile
+			eval lappend files {"$rfile $rname $lfile $lname"}
+		}
+		#puts "cfiles=($cfiles)"
+	} elseif {$argc == 1} { ;# bk difftool file
+		if {$argv == "-"} {
+			while {[gets stdin fname] >= 0} {
+				if {$fname != ""} {
+					set cfiles \
+					    [concat $cfiles [list "$fname"]]
+					set rfile $fname
+					set rname $rfile
+					set lfile [getRev $rfile "+" 1]
+					set lname "$rfile"
+					lappend tmps $lfile
+					eval lappend files \
+					    {"$rfile $rname $lfile $lname"}
+				}
+			}
+		} else {
+			set rfile [lindex $argv 0]
+			set rname $rfile
+			set lfile [getRev $rfile "+" 1]
+			lappend tmps $lfile
+			set lname "$rfile"
+			eval lappend files {"$rfile $rname $lfile $lname"}
+		}
+	} elseif {$argc == 2} { ;# bk difftool -r<rev> file
 		set a [lindex $argv 0]
 		if {[regexp -- {-r(.*)} $a junk rev1]} {
 			set rfile [lindex $argv 1]
 			if {[file exists $rfile] != 1} { usage }
 			set rname $rfile
-			set lfile [getrev $rfile $rev1 0]
+			set lfile [getRev $rfile $rev1 0]
 			set lname "$rfile@$rev1"
+			eval lappend files {"$rfile $rname $lfile $lname"}
 			lappend tmps $lfile
-		} else {
+		} else {         ;# bk difftool file file2"
 			set lfile [lindex $argv 0]
 			set lname $lfile
 			set rfile [lindex $argv 1]
 			set rname $rfile
+			eval lappend files {"$rfile $rname $lfile $lname"}
 		}
-	} else {
+	} else {  ;# bk difftool -r<rev> -r<rev2> file
 		set file [lindex $argv 2]
 		set a [lindex $argv 0]
 		if {![regexp -- {-r(.*)} $a junk rev1]} { usage }
-		set lfile [getrev $file $rev1 0]
+		set lfile [getRev $file $rev1 0]
 		set lname "$file@$rev1"
 		lappend tmps $lfile
 		set a [lindex $argv 1]
 		if {![regexp -- {-r(.*)} $a junk rev2]} { usage }
-		set rfile [getrev $file $rev2 0]
+		set rfile [getRev $file $rev2 0]
 		set rname "$file@$rev2"
 		lappend tmps $rfile
+		eval lappend files {"$rfile $rname $lfile $lname"}
 	}
-	readFiles $lfile $lname $rfile $rname
-	foreach tmp $tmps { file delete $tmp }
+	#puts "files=($files)"
+
+	# Now add the menubutton items if necessary
+	if {[llength $files] > 1} {
+		set m [menu .menu.mb.menu]
+		set item 1
+		foreach e $files {
+			set rf [lindex $e 0]; set rn [lindex $e 1]
+			set lf [lindex $e 2]; set ln [lindex $e 3]
+			#puts "\nrf=($rf) rn=($rn)\n\tln=($ln) lf=($lf)"
+			$m add command -label $rf \
+			    -command "pickFile $lf $ln $rf $rn $item"
+			incr item
+		}
+		pack configure .menu.filePrev .menu.mb .menu.fileNext \
+		    -side left -after .menu.help 
+		$m invoke 1
+		set menu(max) [$m index last]
+		set menu(selected) 1
+	} elseif {[llength $files] == 1} {
+		readFiles $lfile $lname $rfile $rname
+	} else {
+		cleanup
+	}
+}
+
+proc cleanup {} \
+{
+	global tmps
+
+	foreach tmp $tmps { catch {file delete $tmp} err }
+	exit
+
+}
+
+# Called from the menubutton -- updates the arrows and reads the correct file
+proc pickFile {lf ln rf rn item} \
+{
+	global menu
+
+	set menu(selected) $item
+	if {$menu(selected) == 1} {
+		.menu.filePrev configure -state disabled
+		.menu.fileNext configure -state normal
+	} elseif {$menu(selected) == $menu(max)} {
+		.menu.filePrev configure -state normal
+		.menu.fileNext configure -state disabled
+	} else {
+		.menu.filePrev configure -state normal
+		.menu.fileNext configure -state normal
+	}
+	readFiles $lf $ln $rf $rn
+}
+
+# Get the previous file when the button is selected -- update the arrow state
+proc prevFile {} \
+{
+	global menu
+	if {$menu(selected) > 1} {
+		incr menu(selected) -1
+		.menu.mb.menu invoke $menu(selected)
+		#puts "invoking $menu(selected)"
+		.menu.filePrev configure -state normal
+	} else {
+		.menu.filePrev configure -state disabled
+		.menu.fileNext configure -state normal
+	}
+}
+
+# Get the next file when the button is selected -- update the arrow state
+proc nextFile {} \
+{
+	global menu
+	if {$menu(selected) < $menu(max)} {
+		incr menu(selected)
+		.menu.mb.menu invoke $menu(selected)
+		#puts "invoking $menu(selected)"
+		.menu.filePrev configure -state normal
+	} else {
+		.menu.fileNext configure -state disabled
+	}
 }
 
 # Override searchsee definition so we scroll both windows
