@@ -329,9 +329,11 @@ import_patch() {
 }
 
 import_text () {
+	Q=$QUIET
+
 	cd $2
 	echo Checking in plain text files...
-	ci -is - < ${TMP}import$$ || exit 1
+	ci -i $Q - < ${TMP}import$$ || exit 1
 }
 
 import_RCS () {
