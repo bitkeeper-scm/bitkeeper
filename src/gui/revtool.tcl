@@ -1940,10 +1940,11 @@ proc revtool {lfname R {N {}}} \
 		pack configure .menus.difftool -before .menus.mb \
 		    -side left
 	}
-	while {"$file" == ""} {
+	if {"$file" == ""} {
 		displayMessage "No such file \"$lfname\" rev=($R) \nPlease \
 select a new file to view"
 		set lfname [selectFile]
+		if {$lfname == ""} { exit }
 		set file [exec bk sfiles -g $lfname 2>$dev_null]
 	}
 	if {[catch {exec bk root $file} proot]} {

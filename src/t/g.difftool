@@ -1,0 +1,69 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2001 Aaron Kushner
+# %K%
+
+# Things that need to be added
+# 
+MYHOST=`bk gethost`
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+cd $HERE/project/BitKeeper/etc
+mkdir $HERE/project/src
+cd $HERE/project/src
+ed <<EOF >/dev/null 2>&1
+a
+Test File %W%
+stuff
+stuff
+stuff
+stuff
+stuff
+.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+2,\$t.
+w foo
+EOF
+bk ci $Q -i foo 
+if [ ! -f SCCS/s.foo ]; then echo failed to create history; exit 1; fi
+bk edit $Q foo
+ed foo <<EOF >/dev/null 2>&1
+100,120s/stuff/more stuff/
+200,300s/stuff/more stuff with a really long line/
+400,420s/stuff/yuck/
+w
+EOF
+bk ci $Q  -y"test of difftool" foo 
+bk commit $Q -y"test of difftool"
+echo OK
+bk revtool
+echo "Use Left then Undo -- the Use Left/Right should then be available again."
+echo
+echo $N Check fmtool for undo problems .............................$NL
+cd $HERE/project/src
+bk csettool -r1.2
+# Should make a set of test cases that walk the tester through the
+# steps and then do a compare to make sure the output is correct
+echo OK
