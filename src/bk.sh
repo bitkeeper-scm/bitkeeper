@@ -68,7 +68,6 @@ _fixtool() {
 		test $DOIT = YES || continue
 		bk get -kpr+ "$x" > $previous
 		rm -f $merge
-		echo "bk fmtool $previous \"$x\" $merge"
 		bk fmtool $previous "$x" $merge
 		test -s $merge || continue
 		mv -f "$x" "${x}~"
