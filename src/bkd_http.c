@@ -96,7 +96,6 @@ cmd_httpget(int ac, char **av)
 {
 	char	buf[MAXPATH];
 	char	*name = &av[1][1];
-	int	state = 0;
 	int 	ret, i;
 	char	*s;
 	char	a[MAXPATH];
@@ -106,22 +105,14 @@ cmd_httpget(int ac, char **av)
 	 * Ignore the rest of the http header (if any), we don't care.
 	 */
 	if (ac > 2) {
-		while (read(0, buf, 1) == 1) {
-			if (buf[0] == '\r') {
-				switch (state) {
-				    case 0: case 2: state++; break;
-				    default: state = 0;
-				}
-			} else if (buf[0] == '\n') {
-				if (state == 1) state++;
-				else if (state == 3) break;
-				else state = 0;
-			} else {
-				state = 0;
+		while (fnext(buf, stdin)) {
+			// fputs(buf, stderr);
+			if (buf[0] == '\r' || buf[0] == '\n') {
+				break;
 			}
+			/* ignore everything else */
 		}
 	}
-
 	unless (av[1]) http_error(404, "get what?\n");
 
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) {
