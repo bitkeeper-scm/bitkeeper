@@ -908,14 +908,6 @@ applyCsetPatch(char *localPath,
 	FILE	*csets = 0;
 	char	csets_in[MAXPATH];
 
-#if 0
-# define MTm(x) fprintf(stderr, " " x " %s\n", milli());
-#else
-# define MTm(x) 
-#endif
-
-    MTm("START applyCsetPatch");
-
 	unless (p = patchList) return (0);
 
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
@@ -930,8 +922,6 @@ applyCsetPatch(char *localPath,
 		goto apply;
 	}
 	/* NOTE: the "goto" above .. skip the next block if no ChangeSet */
-
-    MTm("START prep work for existing ChangeSet file");
 
 	fileCopy2(localPath, p->resyncFile);
 	/* Open up the cset file */
@@ -970,7 +960,6 @@ applyCsetPatch(char *localPath,
 		}
 	}
 apply:
-    MTm("Top of 'apply:' ChangeSet file");
 	p = patchList;
 	if (p && p->pid) cset_map(s, nfound);
 	while (p) {
@@ -1042,17 +1031,12 @@ apply:
 		}
 		p = p->next;
 	}
-    MTm("before renumber");
-	sccs_renumber(s, SILENT);
-    MTm("before cset_write");
 	if (cset_write(s)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't write %s\n", p->resyncFile);
 		return -1;
 	}
-    MTm("after cset_write");
 
-#if 0
 	s->proj = 0; sccs_free(s);
 	/*
 	 * Fix up d->rev, there is probaply a better way to do this.
@@ -1060,15 +1044,11 @@ apply:
 	 * items brought in from patch.  Could call inherit.
 	 * For now, leave at this and watch performance.
 	 */
-	fprintf(stderr, " before renumber %u\n", time(0));
 	sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
-	fprintf(stderr, " after renumber %u\n", time(0));
 
 	s = sccs_init(patchList->resyncFile, SILENT, proj);
 	assert(s && s->tree);
-#endif
 
-    MTm("before csets_in write");
 	p = patchList;
 	sprintf(csets_in, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	csets = fopen(csets_in, "w");
@@ -1087,9 +1067,7 @@ apply:
 		p = p->next;
 	}
 	fclose(csets);
-    MTm("after csets_in write");
 
-    MTm("before LOCAL/REMOTE write");
 	/*
 	 * XXX What does this code do ??
 	 * this code seems to be setup the D_LOCAL ANd D_REMOTE flags 
@@ -1112,12 +1090,10 @@ apply:
 		d->flags |= p->local ? D_LOCAL : D_REMOTE;
 	}
 
-    MTm("after LOCAL/REMOTE write");
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
 		s->proj = 0; sccs_free(s);
 		return (-1);
 	}
-    MTm("after resolveFiles");
 	if (!confThisFile && (s->state & S_CSET) && 
 	    sccs_admin(s, 0, SILENT|ADMIN_BK, 0, 0, 0, 0, 0, 0, 0, 0)) {
 	    	confThisFile++;
@@ -1129,7 +1105,6 @@ apply:
 	freePatchList();
 	patchList = 0;
 	fileNum = 0;
-    MTm("end of applycset");
 	return (0);
 }
 

@@ -12032,9 +12032,8 @@ out:
 			unless (flags & NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
-				/* free(prefilled->rev);
-				 * prefilled->rev = 0;
-				 */
+				free(prefilled->rev);
+				prefilled->rev = 0;
 
 				/*
 				 * If we have random bits, we are the root of
