@@ -22,7 +22,8 @@ WHATSTR("@(#)%K%");
 private void	newRev(sccs *s, int flags, MDBM *db, delta *d);
 private void	remember(MDBM *db, delta *d);
 private int	taken(MDBM *db, delta *d);
-private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release);
+private int	redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release,
+		    ser_t *map);
 private void	parentSwap(sccs *s, delta *d, delta **pp, delta **mp,
 		    int flags);
 
@@ -93,6 +94,7 @@ sccs_renumber(sccs *s, u32 flags)
 	ser_t	i;
 	ser_t	release = 0;
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
+	ser_t	*map = calloc(s->nextserial, sizeof(ser_t));
 	ser_t	defserial = 0;
 	int	defisbranch = 1;
 	ser_t	maxrel = 0;
@@ -127,38 +129,37 @@ sccs_renumber(sccs *s, u32 flags)
 			 */
 			continue;
 		}
-		release = redo(s, d, db, flags, release);
+		release = redo(s, d, db, flags, release, map);
 		if (maxrel < release) maxrel = release;
 		if (!defserial || defserial != i) continue;
-	}
-
-	/* Restore default branch */
-	if (defserial) {
-		d = sfind(s, defserial);
-		assert(d);
+		/* Restore default branch */
+		assert(!s->defbranch);
 		unless (defisbranch) {
 			assert(d->rev);
 			s->defbranch = strdup(d->rev);
+			continue;
 		}
 		/* restore 1 or 3 digit branch? 1 if BK or trunk */
-		else if (d->r[2] == 0) {
+		if (d->r[2] == 0) {
 			sprintf(def, "%u", d->r[0]);
+			s->defbranch = strdup(def);
+			continue;
 		}
-		else {
-			sprintf(def, "%d.%d.%d", d->r[0], d->r[1], d->r[2]);
-		}
+		sprintf(def, "%d.%d.%d", d->r[0], d->r[1], d->r[2]);
 		s->defbranch = strdup(def);
+	}
+	if (s->defbranch) {
 		sprintf(def, "%d", maxrel);
 		if (streq(def, s->defbranch)) {
 			free(s->defbranch);
 			s->defbranch = 0;
 		}
 	}
-out:
 	if (Fix_inex) {
 		sccs_free(Fix_inex);
 		sccs_reDup(s);
 	}
+	free(map);
 	mdbm_close(db);
 }
 
@@ -315,7 +316,7 @@ parentSwap(sccs *s, delta *d, delta **pp, delta **mp, int flags)
 
 
 private	int
-redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release)
+redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 {
 	delta	*p;
 	delta	*m;
@@ -324,21 +325,22 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release)
 	p = d->parent;
 	unless (p || streq(d->rev, "1.1")) {
 		remember(db, d);
-		return (0);
+		return (release);
 	}
 
 	if (d->flags & D_META) {
 		for (p = d->parent; p->flags & D_META; p = p->parent);
 		memcpy(d->r, p->r, sizeof(d->r));
 		newRev(s, flags, db, d);
-		return (0);
+		return (release);
 	}
 
 	/*
+	 * If merge and it is on same lod as parent, and
 	 * If merge was on the trunk at time of merge, then swap
 	 */
-	if (d->merge) {
-		m = sfind(s, d->merge);
+	m = (d->merge) ? sfind(s, d->merge) : 0;
+	if (m && m->r[0] == p->r[0]) {
 		assert(p != m);
 		if (sccs_needSwap(p, m)) {
 			unless (Fix_inex) {
@@ -360,14 +362,28 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release)
 	}
 
 	/*
-	 * New release, not OK to rewrite these.
+	 * Release root (LOD root) in the form X.1 or X.0.Y.1
+	 * Sort so X.1 is printed first.
 	 */
-	if (!d->r[2] && (d->r[1] == 1)) {
-		if (++release == d->r[0]) {
-			remember(db, d);
+	if ((!d->r[2] && d->r[1] == 1) || (!d->r[1] && d->r[3] == 1)) {
+		unless (map[d->r[0]]) {
+			map[d->r[0]] = ++(release);
+		}
+		d->r[0] = map[d->r[0]];
+		d->r[1] = 1;
+		d->r[2] = 0;
+		d->r[3] = 0;
+		unless (taken(db, d)) {
+			newRev(s, flags, db, d);
 			return (release);
 		}
-		d->r[0] = release;
+		d->r[1] = 0;
+		d->r[2] = 0;
+		d->r[3] = 1;
+		do {
+			d->r[2]++;
+			assert(d->r[2] < 65535);
+		} while (taken(db, d));
 		newRev(s, flags, db, d);
 		return (release);
 	}
@@ -386,7 +402,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release)
 		d->r[1] = p->r[1] + 1;
 		unless (taken(db, d)) {
 			newRev(s, flags, db, d);
-			return (0);
+			return (release);
 		}
 		d->r[1] = p->r[1];
 		d->r[2] = 0;
@@ -396,7 +412,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release)
 			assert(d->r[2] < 65535);
 		} while (taken(db, d));
 		newRev(s, flags, db, d);
-		return (0);
+		return (release);
 	}
 	
 	/*
@@ -411,7 +427,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release)
 	d->r[3] = p->r[3] + 1;
 	if (!taken(db, d)) {
 		newRev(s, flags, db, d);
-		return (0);
+		return (release);
 	}
 
 	/* Try a new branch */
@@ -422,5 +438,5 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release)
 		assert(d->r[2] < 65535);
 	} while (taken(db, d));
 	newRev(s, flags, db, d);
-	return (0);
+	return (release);
 }

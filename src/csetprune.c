@@ -294,7 +294,7 @@ rebuildTags(sccs *s)
 		}
 		/* Move all tags directly onto delta, delete all "R" deltas */
 		if (md != d) {
-			md->flags |= D_GONE;
+			MK_GONE(s, md);
 			md = sym->metad = d;
 		}
 		md->flags |= D_SYMBOLS;
@@ -432,7 +432,13 @@ pruneEmpty(sccs *s, sccs *sb, MDBM *m)
 			}
 		}
 		else unless (n->flags & D_SYMBOLS) {
-			n->flags &= D_GONE;
+			/*
+			 * Mark nodes in the tag graph GONE
+			 * if they don't have a symbol (meaning
+			 * they are a merge node with type R
+			 * Do this here, because about to turn off D_SYMBOL
+			 */
+			MK_GONE(s, n);
 		}
 		n->ptag = n->mtag = 0;
 		n->symGraph = 0;
