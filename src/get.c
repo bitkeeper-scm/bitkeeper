@@ -21,7 +21,7 @@ _get_main(int ac, char **av, char *out)
 	int	dohash = 0;
 	int	commitedOnly = 0;
 	int	branch_ok = 0;
-	project	*proj = 0;
+	int	caseFoldingFS = 1;
 	MDBM	*realNameCache = 0;
 	char	realname[MAXPATH];
 
@@ -159,12 +159,25 @@ onefile:	fprintf(stderr,
 		return(1);
 	}
 
-	realNameCache = mdbm_open(NULL,0, 0, GOOD_PSIZE);
-	assert(realNameCache);
+	if (bk_proj && bk_proj->root) {
+		caseFoldingFS = isCaseFoldingFS(bk_proj->root);
+		realNameCache = mdbm_open(NULL,0, 0, GOOD_PSIZE);
+		assert(realNameCache);
+	}
+
 	for (; name; name = sfileNext()) {
-		getRealName(name, realNameCache, realname);
-		unless (s = sccs_init(realname, iflags, proj)) continue;
-		unless (proj) proj = s->proj;
+		if (caseFoldingFS) {
+			/*
+			 * For win32 FS and Samba.
+			 * We care about the realname because we want
+			 * the gfile to have the same case as the s.file
+			 * Otherwise other bk command such as bk delta
+			 * may be confused.
+			 */
+			getRealName(name, realNameCache, realname);
+			name = realname;
+		}
+		unless (s = sccs_init(name, iflags, bk_proj)) continue;
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];
@@ -260,7 +273,6 @@ onefile:	fprintf(stderr,
 		}
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	if (realNameCache) mdbm_close(realNameCache);
 	return (errors);
 }
