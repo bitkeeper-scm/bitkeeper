@@ -98,15 +98,11 @@ setup_main(int ac, char **av)
 	}
 	if (config_path == NULL) {
 		gethelp("setup_3", "", 0, stdout);
-		sprintf(buf, "%s/bitkeeper.config", bin);
-		f = fopen(buf, "rt");
-		assert(f);
 		f1 = fopen("config", "wt"); /* notepad.exe wants text mode */
 		assert(f1);
-		while (fgets(buf, sizeof(buf), f)) {
-			fputs(buf, f1);
-		} 
-		fclose(f); fclose(f1);
+		mkconfig(f1);
+		fclose(f1);
+		system("cp config D.config");
 		chmod("config", 0664);
 		while (1) {
 			printf("Editor to use [%s] ", editor);
@@ -120,7 +116,7 @@ setup_main(int ac, char **av)
 				sprintf(buf, "%s config", editor);
 			}
 			system(buf);
-			sprintf(buf, "cmp -s %s/bitkeeper.config config", bin);
+			sprintf(buf, "cmp -s D.config config", bin);
 			if (system(buf)) {
 				break;
 			} else {
@@ -131,6 +127,7 @@ setup_main(int ac, char **av)
 		sprintf(buf, "cp %s config", config_path);
 		system(buf);
 	}
+	unlink("D.config");
 	s = sccs_init(s_config, SILENT, NULL);
 	assert(s);
 	sccs_delta(s, SILENT|NEWFILE, 0, 0, 0, 0);

@@ -504,7 +504,7 @@ mkconfig(FILE *out)
 	gethelp("config_preamble", 0, "# ", out);
 	fputs("\n", out);
 	while (fgets(buf, sizeof(buf), in)) {
-		if (streq("#help_config_template", buf)) {
+		if (streq("#config_template\n", buf)) {
 			found = 1;
 			break;
 		}
@@ -520,7 +520,7 @@ mkconfig(FILE *out)
 		chop(buf);
 		sprintf(pattern, "config_%s", buf);
 		gethelp(pattern, 0, "# ", out);
-		fprintf(out, "\n%s:\t\n\n", buf);
+		fprintf(out, "%s: \n", buf);
 	}
 	fclose(in);
 	return (0);
