@@ -541,7 +541,7 @@ extern	char *upgrade_msg;
 typedef struct loc {
 	char	*p;		/* first byte of the data */
 	u32	len;		/* think 4GB is big enough? */
-	u8	isPatch:1;	/* this entry came from the patch file */
+	ser_t	serial;
 } loc;
 
 /*
@@ -594,6 +594,7 @@ typedef	struct sccs {
 	u16	userLen;	/* maximum length of any user name */
 	u16	revLen;		/* maximum length of any rev name */
 	loc	*locs;		/* for cset data */ 
+	u32	iloc;		/* index to element in *loc */ 
 	u32	nloc;		/* # of element in *loc */ 
 	u32	initFlags;	/* how we were opened */
 	u32	cksumok:1;	/* check sum was ok */

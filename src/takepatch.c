@@ -1245,7 +1245,7 @@ applyCsetPatch(char *localPath,
 	}
 apply:
 	p = patchList;
-	if (p && p->pid) cset_map(s, nfound);
+	if (p && p->pid) cweave_init(s, nfound);
 	while (p) {
 		if (echo == 3) fprintf(stderr, "%c\b", spin[n % 4]);
 		n++;
@@ -1277,9 +1277,7 @@ apply:
 			iF = p->initMmap;
 			dF = p->diffMmap;
 			if (isLogPatch && chkEmpty(s, dF)) return -1;
-			unless (d = cset_insert(s, iF, dF, p->pid)) {
-				return (-1);
-			}
+			d = cset_insert(s, iF, dF, p->pid);
 		} else {
 			assert(s == 0);
 			unless (s =
@@ -1311,10 +1309,8 @@ apply:
 				s->xflags |= X_LOGS_ONLY;
 				if (chkEmpty(s, dF)) return -1;
 			}
-			cset_map(s, nfound);
-			unless (d = cset_insert(s, iF, dF, p->pid)) {
-				return (-1);
-			}
+			cweave_init(s, nfound);
+			d = cset_insert(s, iF, dF, p->pid);
 			s->bitkeeper = 1;
 		}
 		/* LOD logging tree fix: All on LOD 1, renumber() will fix */
