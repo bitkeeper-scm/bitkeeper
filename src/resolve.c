@@ -1831,7 +1831,7 @@ automerge(resolve *rs)
 	 * and the program must return as follows:
 	 * 0 for no overlaps, 1 for some overlaps, 2 for errors.
 	 */
-	ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", "-ac",
+	ret = sysio(0, rs->s->gfile, 0, "bk", "smerge",
 		    rs->revs->local, rs->revs->gca, rs->revs->remote, 
 		    rs->s->gfile, SYS);
 	if (ret == 0) {

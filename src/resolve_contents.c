@@ -123,7 +123,7 @@ c_merge(resolve *rs)
 {
 	names	*n = rs->revs;
 	int	ret;
-	char	*args = "-ac";
+	char	*args = "--";
 	
 	if (rs->args) args = rs->args;
 	ret = sysio(0, rs->s->gfile, 0, "bk", "smerge", args,

@@ -1,5 +1,6 @@
 #include "system.h"
 #include "sccs.h"
+#include <string.h>
 
 private int	do_merge(int start, int end, FILE *inputs[3]);
 private void	usage(void);
@@ -10,16 +11,20 @@ private void	show_examples(void);
 private	int	parse_range(char *range, int *start, int *end);
 
 typedef struct region region;
+private	void	user_conflict(region *r);
+private	void	user_conflict_fdiff(region *r);
+
+
+/* automerge functions */
+private	void	enable_mergefcns(char *list, int enable);
+private	void	mergefcns_help(void);
+
 private int	merge_same_changes(region *r);
 private int	merge_only_one(region *r);
 private int	merge_content(region *r);
 private int	merge_common_header(region *r);
 private int	merge_common_footer(region *r);
 private	int	merge_common_deletes(region *r);
-
-private void	user_conflict(region *r);
-private void	user_conflict_fdiff(region *r);
-
 
 enum {
 	MODE_GCA,
@@ -38,11 +43,8 @@ enum {
 
 private	char	*revs[3];
 private	char	*file;
-private	int	automerge = 0;
 private	int	mode = MODE_GCA;
 private	int	show_seq;
-private	int	do_merge_common = 1;
-private	int	do_merge_content;
 private	int	fdiff;
 private	FILE	*fl, *fr;
 private	char	*anno = 0;
@@ -57,7 +59,7 @@ smerge_main(int ac, char **av)
 	int	start = 0, end = 0;
 	int	ret;
 
-	while ((c = getopt(ac, av, "23A:aCcefhnr:s")) != -1) {
+	while ((c = getopt(ac, av, "23A:a:efhnpr:s")) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -68,17 +70,15 @@ smerge_main(int ac, char **av)
 		    case 'n': /* newonly (like -2 except marks added lines) */
 			mode = MODE_NEWONLY;
 			break;
-		    case 'A': /* Add annotations */
+		    case 'p': /* Add annotations */
 		    	anno = optarg;
 			break;
-		    case 'a': /* automerge non-overlapping changes */
-			automerge = 1;
+		    case 'A':
+		    case 'a':
+			enable_mergefcns(optarg, c == 'a');
 			break;
 		    case 'f': /* fdiff output mode */
 			fdiff = 1;
-			break;
-		    case 'C': /* do not collapse same changes on both sides */
-			do_merge_common = 0;
 			break;
 		    case 'e': /* show examples */
 			show_examples();
@@ -91,9 +91,6 @@ smerge_main(int ac, char **av)
 			break;
 		    case 's': /* show sequence numbers */
 			show_seq = 1;
-			break;
-		    case 'c': /* experimental content merge */
-			do_merge_content = 1;
 			break;
 		    case 'h': /* help */
 		    default:
@@ -153,6 +150,7 @@ private void
 usage(void)
 {
 	system("bk help -s smerge");
+	mergefcns_help();
 }
 
 private char *
@@ -348,19 +346,73 @@ push_region(region *r)
  *   are passed in, but they are allowed to split them into multiple
  *   regions.
  */
-private	int	always_true = 1;
 struct mergefcns {
+	char	*name;
+	int	enable;
 	int	(*fcn)(region *r);
-	int	*flag;
+	char	*help;
 } mergefcns[] = {
-	{merge_same_changes,	&do_merge_common},
-	{merge_only_one,	&always_true},
-	{merge_content,		&do_merge_content},
-	{merge_common_header,   &do_merge_content},
-	{merge_common_footer,   &do_merge_content},
-	{merge_common_deletes,	&do_merge_content},
+	{"same_changes",	1, merge_same_changes,
+	"Notice when the same changes occur on both the left and the right"},
+	{"only_one",		1, merge_only_one,
+	"Notice only one side made a change and there is not merge"},
+	{"content",		1, merge_content,
+	"Merge modifications on both sides that are non-overlaping"},
+	{"common_header",	1, merge_common_header,
+	"Factor out common changes at beginning of conflict"},
+	{"common_footer",	1, merge_common_footer,
+	"Factor out common changes at end of conflict"},
+	{"common_deleted",	1, merge_common_deletes,
+	"Notice when both left and right have deleted the same lines from the gca"},
 };
 #define	N_MERGEFCNS (sizeof(mergefcns)/sizeof(struct mergefcns))
+
+private void
+enable_mergefcns(char *list, int enable)
+{
+	int	i;
+	int	len;
+
+	while (*list) {
+		list += strspn(list, ", ");
+		len = strcspn(list, ", ");
+		unless (len) break;
+
+		if (len == 3 && strneq(list, "all", 3)) {
+			for (i = 0; i < N_MERGEFCNS; i++) {
+				mergefcns[i].enable = enable;
+			}
+		} else {
+			for (i = 0; i < N_MERGEFCNS; i++) {
+				if (strlen(mergefcns[i].name) == len &&
+				    strneq(list, mergefcns[i].name, len)) {
+					mergefcns[i].enable = enable;
+					break;
+				}
+			}
+			if (i == N_MERGEFCNS) {
+				fprintf(stderr, 
+					"ERROR: unknown merge function '%*s'\n",
+					len, list);
+				exit(2);
+			}
+		}
+		list += len;
+	}
+}
+
+private void
+mergefcns_help(void)
+{
+	int	i;
+
+	for (i = 0; i < N_MERGEFCNS; i++) {
+		printf("\t%15s %8s %s\n", 
+		       mergefcns[i].name, 
+		       mergefcns[i].enable ? "enabled" : "disabled",
+		       mergefcns[i].help);
+	}
+}
 
 private int
 resolve_conflict(char **lines[3])
@@ -375,18 +427,16 @@ resolve_conflict(char **lines[3])
 	r->right = lines[RIGHT];
 	push_region(r);
 	while (regions) {
+		int	changed;
 		r = pop_region();
-		if (automerge) {
-			int	changed;
-			do {
-				changed = 0;
-				for (i = 0; i < N_MERGEFCNS; i++) {
-					unless (*mergefcns[i].flag) continue;
-					changed |= mergefcns[i].fcn(r);
-					if (r->automerged) break;
-				}
-			} while (changed && !r->automerged);
-		}
+		do {
+			changed = 0;
+			for (i = 0; i < N_MERGEFCNS; i++) {
+				unless (mergefcns[i].enable) continue;
+				changed |= mergefcns[i].fcn(r);
+				if (r->automerged) break;
+			}
+		} while (changed && !r->automerged);
 		if (r->automerged) {
 			/* This region was automerged */
 			if (fdiff) {
@@ -414,51 +464,6 @@ resolve_conflict(char **lines[3])
 		free(r);
 	}
 	return (ret);
-}
-
-/*
- * All the lines on both sides are identical.
- */
-private int
-merge_same_changes(region *r)
-{
-	int	i;
-
-	if (sameLines(r->left, r->right)) {
-		EACH(r->left) {
-			/* XXX add char to indicate 'both' */
-			r->merged = addLine(r->merged, strdup(r->left[i]));
-		}
-		r->automerged = 1;
-		return (1);
-	}
-	return (0);
-}
-
-/*
- * Only one side make changes
- */
-private int
-merge_only_one(region *r)
-{
-	int	i;
-	if (sameLines(r->left, r->gca)) {
-		EACH(r->right) {
-			/* add state to indicate 'right' ? */
-			r->merged = addLine(r->merged, strdup(r->right[i]));
-		}
-		r->automerged = 1;
-		return (1);
-	}
-	if (sameLines(r->right, r->gca)) {
-		EACH(r->left) {
-			/* add state to indicate 'left' ? */
-			r->merged = addLine(r->merged, strdup(r->left[i]));
-		}
-		r->automerged = 1;
-		return (1);
-	}
-	return (0);
 }
 
 private void
@@ -797,6 +802,58 @@ parse_range(char *range, int *start, int *end)
 	}
 	return(0);
 }
+
+/*--------------------------------------------------------------------
+ * Automerge functions
+ *--------------------------------------------------------------------
+ */
+
+/*
+ * All the lines on both sides are identical.
+ */
+private int
+merge_same_changes(region *r)
+{
+	int	i;
+
+	if (sameLines(r->left, r->right)) {
+		EACH(r->left) {
+			/* XXX add char to indicate 'both' */
+			r->merged = addLine(r->merged, strdup(r->left[i]));
+		}
+		r->automerged = 1;
+		return (1);
+	}
+	return (0);
+}
+
+/*
+ * Only one side make changes
+ */
+private int
+merge_only_one(region *r)
+{
+	int	i;
+	if (sameLines(r->left, r->gca)) {
+		EACH(r->right) {
+			/* add state to indicate 'right' ? */
+			r->merged = addLine(r->merged, strdup(r->right[i]));
+		}
+		r->automerged = 1;
+		return (1);
+	}
+	if (sameLines(r->right, r->gca)) {
+		EACH(r->left) {
+			/* add state to indicate 'left' ? */
+			r->merged = addLine(r->merged, strdup(r->left[i]));
+		}
+		r->automerged = 1;
+		return (1);
+	}
+	return (0);
+}
+
+
 
 private char **
 lines_modified(char **diff)

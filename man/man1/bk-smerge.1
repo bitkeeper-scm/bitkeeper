@@ -4,7 +4,11 @@
 bk smerge \- smart text-based 3-way file merge
 .SH SYNOPSIS
 .\"
-.B bk smerge [\-23Aaefhns] [
+.Bc bk smerge [\-23efhns] [
+.OPTreq \-A mergefcns
+.Bc ] [
+.OPTreq \-a mergefcns
+.Bc ] [
 .OPTreq \-r seqrange
 .B ] 
 .ARG local_rev
@@ -31,27 +35,22 @@ except it marks added lines)
 Print examples of all 4 output formats from 
 .B smerge
 .tp
-.B \-a
-Enable automerging of output
+.OPTreq \-a mergefcns
+Enable a list of merge functions seperated by commas.  'all' will enable
+all automerge algos.   Use 'bk smerge -h' to find the algos enabled by
+default.
 .tp
+.OPTreq \-A mergefcns
+Display a list of merge functions seperated by commas.  See \-a.
+\-Aall will turn off all automerging.
 .B \-f
 Enable fdiff output.  (Used internally by 
 .B  fm3merge
 )
 .tp
-.B \-A
-Do not automaticly collapse conflicts when the same text was added
-by local and remove users.
-.tp
 .B \-s
 Show sequence numbers in output
 .tp
-.B \-c
-Enable experimental content merger.  This example regions of conflict
-regions modified on both sides are unchanged on the other, a automerge
-is performed.  Requires
-.Bc \-a
- . 
 .tp
 .OPTreq \-r range
 When given a range of the format 'start..end' it limits the output to
