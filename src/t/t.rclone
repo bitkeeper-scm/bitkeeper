@@ -33,6 +33,7 @@ if [ $P -ne 0 ]; then echo failed to clear pending list; bk pending; exit 1; fi
 bk level 3
 echo OK
 cores
+
 echo $N rClone via pipe .............................................$NL
 cd $HERE
 if [ X$PLATFORM = X"WIN32" ]; then SLASH="//"; else SLASH="/"; fi
@@ -44,21 +45,24 @@ bk _rclone $Q -r1.1 $HERE/project $HERE/copy2 || { echo failed; exit 1; }
 cd $HERE/copy2
 if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
 echo OK
+
 # In this test we call the rclone code via the bk clone interface
 echo $N rClone via bk:// ............................................$NL
 cd $HERE
 rm -rf copy copy2
 P=50000
-bk bkd -q -p$P -c7
+bk bkd -q -p$P -c8
 while [ $? -eq 2 ]
 do      P=`expr $P + 1`
         bk bkd -q -p$P -c7
 done 
+
 bk clone $Q $HERE/project bk://localhost:$P/$HERE/copy
 [ -f copy/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 cd $HERE/copy
 if [ "`bk level`" != "Repository level is 3" ]; then echo failed; exit 1; fi
 echo OK
+
 echo $N rClone via http:// ..........................................$NL
 cd $HERE
 bk clone $Q $HERE/project http://localhost:$P/$HERE/copy2
@@ -74,3 +78,9 @@ bk clone -EBK_TESTVAR=XYZ $Q project http://localhost:$P/copy4
 [ -f copy4/src/SCCS/s.'F!O#O$ B%A^R&RR(R)RR' ] || { echo failed; exit 1; }
 echo OK
 # TODO test virtual host/root support
+
+echo $N rclone to illegal path ......................................$NL
+bk clone project http://localhost:$P//tmp/foozz.$$ 2> OUT
+if [ $? -eq 0 ]; then echo should have failed; exit 1; fi
+grep -q 'illegal cd' OUT || exit 1
+echo OK

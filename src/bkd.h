@@ -151,4 +151,5 @@ int	remote_lock_fail(char *buf, int verbose);
 void	drainErrorMsg(remote *r, char *buf, int bsize);
 int	listType(char *type);
 void	send_flush_block(remote *r);
+int	unsafe_cd(char *path);
 #endif
