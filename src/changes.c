@@ -3,29 +3,33 @@
 
 #define	MAXARGS 100
 
-typedef struct {
+private struct {
 	u32     verbose:1;
 	u32     tagOnly:1;
 	u32     ldiff:1;	/* want the new local csets */
 	u32     rdiff:1;	/* want the new remote csets */ 
 	u32	doSearch:1;	/* search the comments list */
+	u32	nomerge:1;	/* do not list _any_ merge deltas */
+	u32	noempty:1;	/* do not list empty merge deltas */
+	u32	html:1;		/* do html style output */
 	search	search;
 	char	*rev;
+	char	*dspec;
 	int	indent;
 } opts;
 
 
-private int	doit(opts, int dash);
-private int	doit_remote(opts opts, char **av, int optind);
+private int	doit(int dash);
+private int	doit_remote(char **av, int optind);
 private void	line2av(char *cmd, char **av);
 private int	mkpager();
+private int	want(sccs *s, delta *e);
 
 int
 changes_main(int ac, char **av)
 {
 	int	c, rc;
 	char	cmd[MAXLINE];
-	opts	opts;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help changes");
@@ -33,14 +37,23 @@ changes_main(int ac, char **av)
 	}   
 	
 	bzero(&opts, sizeof(opts));
-	while ((c = getopt(ac, av, "tLRr|/;v|")) != -1) {
+	while ((c = getopt(ac, av, "d;hi;LmRr|t/;v|")) != -1) {
 		switch (c) {
 		    /*
 		     * Note: do not add option 'k', it is reserved
 		     * for internal use
 		     */
+		    case 'd': opts.dspec = optarg; break;
+		    case 'h':
+			opts.html = 1;
+			unless (opts.indent) opts.indent = 1;
+			break;
 		    case 'i': opts.indent = atoi(optarg);   	/* undoc? 2.0 */
 			      break;
+		    case 'm':
+			if (opts.noempty) opts.nomerge = 1;
+			else opts.noempty = 1;
+			break;
 		    case 't': opts.tagOnly = 1; break;		/* doc 2.0 */
 		    case 'v':					/* doc 2.0 */
 			opts.verbose = 1;
@@ -63,9 +76,9 @@ usage:			system("bk help -s changes");
 	}
 
 	if (!av[optind]) {
-		return(doit(opts, 0));
+		return(doit(0));
 	} else if (streq("-", av[optind])) {
-		return(doit(opts, 1));
+		return(doit(1));
 	} else if (opts.ldiff) {
 		char	*new_av[20];
 		int	i, j, wfd, fd1, status;
@@ -105,7 +118,7 @@ usage:			system("bk help -s changes");
 		pid_t	pid;
 
 		fd1 = mkpager(&pid);
-		rc = doit_remote(opts, av, optind); 
+		rc = doit_remote(av, optind); 
 		if (fd1 >= 0) { dup2(fd1, 1); close(fd1); }
 		if (pid > 0) waitpid(pid, 0, 0);
 		return (rc);
@@ -197,28 +210,35 @@ line2av(char *cmd, char **av)
  * XXX May need to change the @ to BK_FS in the following dspec
  */
 #define	DSPEC	":DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n"
-#define	TSPEC	"$if(:TAG:){:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\n$each(:C:){  (:C:)\n}$each(:SYMBOL:){  TAG: (:SYMBOL:)\n}\n}"
+#define	HSPEC	"<tr bgcolor=lightblue><td font size=4>" \
+		"&nbsp;:Dy:-:Dm:-:Dd: :Th:::Tm:&nbsp;&nbsp;" \
+		":P:@:HT:</td></tr>\n" \
+		"$if(:TAG:){<tr bgcolor=yellow><td>&nbsp;Tag: :TAG:" \
+		"</td></tr>\n}" \
+		"<tr bgcolor=#f0f0f0><td>" \
+		"$each(:C:){&nbsp;(:C:)<br>\n}</td></tr>\n"
 
 private int
-doit(opts opts, int dash)
+doit(int dash)
 {
 	FILE	*f;
 	char	cmd[MAXKEY];
 	char	tmpfile[MAXPATH];
 	char	s_cset[] = CHANGESET;
 	char	buf[100];
-	char	*spec = opts.tagOnly ? TSPEC : DSPEC;
+	char	*spec;
 	char 	*end;
 	pid_t	pid, pgpid;
 	extern	char *pager;
 	char	*pager_av[MAXARGS];
-	int	i, fd1, pfd, wantSet;
+	int	i, fd1, pfd;
 	sccs	*s;
 	delta	*e;
 	int     noisy = 0;
 	int     expand = 1;  
 	RANGE_DECL;
 
+	spec = opts.dspec ? opts.dspec : opts.html ? HSPEC : DSPEC;
 	s = sccs_init(s_cset, SILENT, 0);
 	assert(s && s->tree);
 	if (opts.rev) {
@@ -231,11 +251,11 @@ doit(opts opts, int dash)
 		RANGE("changes", s, expand, noisy)
 		unless (SET(s)) {
 			for (e = s->rstop; e; e = e->next) {
-				e->flags |= D_SET;
+				if (want(s, e)) e->flags |= D_SET;
 				if (e == s->rstart) break;
 			}
+			s->state |= S_SET;
 		}
-		s->state |= S_SET;
 	} else if (dash) {
 		while (fgets(cmd, sizeof(cmd), stdin)) {
 			/* ignore blank lines and comments */
@@ -252,12 +272,13 @@ doit(opts opts, int dash)
 				e = e->parent;
 				assert(e);
 			}
-			e->flags |= D_SET;
+			if (want(s, e)) e->flags |= D_SET;
 		}
 		s->state |= S_SET;
 	} else if (opts.doSearch) {
 		for (e = s->table; e; e = e->next) {
-			if (e->type != 'D')  continue;
+			if (e->type != 'D') continue;
+			unless (want(s, e)) continue;
 			EACH(e->comments) {
 				if (searchMatch(e->comments[i], opts.search)) {
 					e->flags |= D_SET;
@@ -275,36 +296,87 @@ doit(opts opts, int dash)
 	fd1= mkpager(&pgpid);
 	f = fdopen(1, "wb"); /* needed by sccs_prsdelta() below */
 
+	if (opts.html) {
+		fputs("<html><body bgcolor=white>\n"
+		    "<table align=center bgcolor=black cellspacing=0 "
+		    "border=0 cellpadding=0><tr><td>\n"
+		    "<table width=100% cellspacing=1 border=0 cellpadding=1>"
+		    "<tr><td>\n", f);
+		fflush(f);
+	}
 	gettemp(tmpfile, "changes");
-	wantSet = SET(s);
 	s->xflags |= X_YEAR4;
 	for (e = s->table; e; e = e->next) {
 		if (feof(f)) break; /* for early pager exit */
-		if (wantSet && !(e->flags & D_SET)) continue;
+		if (SET(s)) {
+			unless (e->flags & D_SET) continue;
+		} else unless (want(s, e)) {
+			continue;
+		}
 		sccs_prsdelta(s, e, 0, spec, f);
 		fflush(f);
 		if (opts.verbose) {
+			MMAP	*m;
+
 			sprintf(cmd,
-			    "bk cset -Hr%s | bk _sort | bk sccslog -i%d - > %s",
-			    e->rev, opts.indent, tmpfile);
+			    "bk cset -Hr%s|bk _sort|bk sccslog -%si%d - > %s",
+			    e->rev, opts.html ? "h" : "", opts.indent, tmpfile);
 			system(cmd);
-			if (cat(tmpfile)) break;
+			if (opts.html) {
+				fprintf(f, "<tr bgcolor=white><td>");
+				fflush(f);
+			}
+			m = mopen(tmpfile, "");
+			for (i = 0; i < msize(m); ++i) {
+				if (m->mmap[i] == ' ') {
+					fputs("&nbsp;", f);
+				} else {
+					fputc(m->mmap[i], f);
+				}
+			}
+			mclose(m);
+			if (opts.html) {
+				fprintf(f, "</td></tr>\n");
+				fflush(f);
+			}
 		}
+	}
+	if (opts.html) {
+		fprintf(f, "</td></tr></table></table></body></html>\n");
+		fflush(f);
 	}
 	sccs_free(s);
 	close(1);
 	waitpid(pid, 0, 0);
 	unlink(tmpfile);
 	if (fd1 >= 0) { dup2(fd1, 1); close(fd1); }
-	if (pgpid >=0) waitpid(pgpid, 0, 0);
+	if (pgpid >= 0) waitpid(pgpid, 0, 0);
 	return (0);
 
 next:	return (1);
 }
 
+private int
+want(sccs *s, delta *e)
+{
+	if (opts.tagOnly && !(e->flags & D_SYMBOLS)) return (0);
+	if (opts.nomerge) {
+		unless (e->merge) return (1);
+	} else if (opts.noempty) {
+		unless (e->merge) {
+			return (1);
+		} else if (sfind(s, e->merge)->added) {
+			return (1);
+		}
+	} else {
+		return (1);
+	}
+	return (0);
+}
+
 
 private int
-send_part1_msg(remote *r, opts opts, char **av, int optind)
+send_part1_msg(remote *r, char **av, int optind)
 {
 	char	*cmd, buf[MAXPATH];
 	int	rc, i;
@@ -372,7 +444,7 @@ send_end_msg(remote *r, char *msg)
 }
 
 private int
-send_part2_msg(remote *r, opts opts, char **av, int optind, char *key_list)
+send_part2_msg(remote *r, char **av, int optind, char *key_list)
 {
 	int	rc, i;
 	char	msgfile[MAXPATH], buf[MAXLINE];
@@ -408,7 +480,7 @@ send_part2_msg(remote *r, opts opts, char **av, int optind, char *key_list)
  * TODO: this could be merged with synckeys() in synckeys.c
  */
 private int
-changes_part1(remote *r, opts opts, char **av, int optind, char *key_list)
+changes_part1(remote *r, char **av, int optind, char *key_list)
 {
 	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	int	flags, fd, rc, n, rcsets = 0, rtags = 0;
@@ -416,7 +488,7 @@ changes_part1(remote *r, opts opts, char **av, int optind, char *key_list)
 	delta	*d;
 
 	if (bkd_connect(r, 0, 1)) return (-1);
-	send_part1_msg(r, opts, av, optind);
+	send_part1_msg(r, av, optind);
 	if (r->rfd < 0) return (-1);
 
 	if (r->type == ADDR_HTTP) skip_http_hdr(r);
@@ -484,8 +556,7 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 }
 
 private int
-changes_part2(remote *r, opts opts,
-			char **av, int optind, char *key_list, int ret)
+changes_part2(remote *r, char **av, int optind, char *key_list, int ret)
 {
 	int	rc = 0;
 	char	buf[MAXLINE];
@@ -500,7 +571,7 @@ changes_part2(remote *r, opts opts,
 		send_end_msg(r, "@NOTHING TO SEND@\n");
 		goto done;
 	}
-	send_part2_msg(r, opts, av, optind, key_list);
+	send_part2_msg(r, av, optind, key_list);
 
 	getline2(r, buf, sizeof(buf));
 	if (remote_lock_fail(buf, 0)) {
@@ -529,7 +600,7 @@ done:	unlink(key_list);
 }
 
 private int
-doit_remote(opts opts, char **av, int optind)
+doit_remote(char **av, int optind)
 {
 	char 	key_list[MAXPATH] = "";
 	char 	*url = av[optind];
@@ -555,8 +626,8 @@ doit_remote(opts opts, char **av, int optind)
 		exit(1);
 	}
 
-	rc = changes_part1(r, opts, av, optind, key_list);
-	rc = changes_part2(r, opts, av, optind, key_list, rc);
+	rc = changes_part1(r, av, optind, key_list);
+	rc = changes_part2(r, av, optind, key_list, rc);
 	if (key_list[0]) unlink(key_list);
 	return (rc);
 }

@@ -20,6 +20,7 @@ private	int	n;
 private	int	pflag;		/* do basenames */
 private	int	Cflg;		/* comment format used by bk resolve */
 private	int	Aflg;		/* select all uncomitted deltas in a file */
+private	int	hflg;		/* more html friendly */
 private	int	fflg;		/*
 				 * factor out common comments from 
 				 * different delta
@@ -48,11 +49,12 @@ sccslog_main(int ac, char **av)
 		system("bk help sccslog");
 		return (0);
 	}
-	while ((c = getopt(ac, av, "ACc;fi;pr|v")) != -1) {
+	while ((c = getopt(ac, av, "ACc;fhi;pr|v")) != -1) {
 		switch (c) {
 		    case 'A': Aflg++; break;			/* doc 2.0 */
 		    case 'C': Cflg++; break;			/* doc 2.0 */
 		    case 'f': fflg++; break;
+		    case 'h': hflg++; break;
 		    case 'i': indent = atoi(optarg); break;	/* doc 2.0 */
 		    case 'p': pflag++; break;			/* doc 2.0 */
 		    case 'v': flags &= ~SILENT; break;		/* doc 2.0 */
@@ -184,13 +186,17 @@ printSortedLog(int indent)
 				printf("%s ", basenm(d->pathname));
 			}
 		}
-		printf("%s %s %s", d->rev, d->sdate, d->user);
-		if (d->hostname) printf("@%s", d->hostname);
-		printf(" +%d -%d\n", d->added, d->deleted);
+		unless (hflg) {
+			printf("%s %s %s", d->rev, d->sdate, d->user);
+			if (d->hostname) printf("@%s", d->hostname);
+			printf(" +%d -%d\n", d->added, d->deleted);
+		} else {
+			printf("<br>\n");
+		}
 		EACH(d->comments) {
 			if (d->comments[i][0] == '\001') continue;
 			if (indent) printf("%*s", indent, "");
-			printf("  %s\n", d->comments[i]);
+			printf("  %s%s\n", d->comments[i], hflg ? "<br>" : "");
 		}
 		printf("\n");
 	}
