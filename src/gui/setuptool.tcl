@@ -53,6 +53,11 @@ proc dialog { widgetname title trans  } \
 	    WM_DELETE_WINDOW "handle_close $widgetname "
 }
 
+proc handle_close {w} \
+{
+	exit
+}
+
 # Builds a set of buttons on the dialog.
 proc dialog_button { widgetname msg count } \
 {
@@ -89,10 +94,9 @@ proc dialog_wait { dlg width len } \
 	return $st_dlg_button
 }
 
-
 proc license_check {}  \
 {
-	global ret_value env
+	global ret_value env tcl_platform bkdir
 
 	#
 	# Make user accept license if environment var not set
@@ -100,15 +104,11 @@ proc license_check {}  \
 	if {[info exists env(BK_LICENSE)] && \
 	    [string compare $env(BK_LICENSE) "ACCEPTED"] == 0} {
 		return
-	} elseif {[info exists env(HOME)]} {
-		set bkaccepted [file join $env(HOME) .bkaccepted]
-		if {[file exists $bkaccepted]} {return}
         } elseif {$tcl_platform(platform) == "windows"} {
-		package require registry
-		set appdir [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
-		set bkdir [file join $appdir BitKeeper]
-		if {![file isdirectory $bkdir]} { file mkdir $bkdir }
-		set bkaccepted [file join $bkdir _bkgui]
+		set bkaccepted [file join $bkdir _bkaccepted]
+		if {[file exists $bkaccepted]} {return}
+	} elseif {[info exists env(HOME)]} {
+		set bkaccepted [file join $bkdir .bkaccepted]
 		if {[file exists $bkaccepted]} {return}
 	} else {
 		puts "Error: HOME not defined"
@@ -164,10 +164,9 @@ proc license_check {}  \
 #
 proc save_config_info {} \
 {
-	global st_cinfo env
+	global st_cinfo env bkrc
 
 	#puts "Writing config file: $env(HOME)"
-	set bkrc [file join $env(HOME) .bkrc]
 	if {[catch {open $bkrc w} fid]} {
 		puts stderr "Cannot open $bkrc"
 	} else {
@@ -182,9 +181,8 @@ proc save_config_info {} \
 
 proc read_bkrc {} \
 {
-	global env st_cinfo debug
+	global env st_cinfo debug bkrc
 
-	set bkrc [file join $env(HOME) .bkrc]
 	set fid [open $bkrc "r"]
 	#while { [ gets $fid line ] != -1 } {
 	#	.lic.t.text insert end $line
@@ -225,30 +223,26 @@ proc create_repo {} \
 	set repo $st_cinfo(repository)
 	catch { exec bk setup -f -c$cfile $repo } msg
 	if {$msg != ""} {
-		puts "Repository creation failed: $msg"
+		displayMessage "Repository creation failed: $msg"
 		exit 1
 	}
 	catch {file delete $cfile}
 	return 0
 }
 
+# Read previous values for config info from resource file
 proc get_config_info {} \
 {
-	global env st_cinfo
+	global env st_cinfo bkrc
 
-	if {[info exists env(HOME)]} {
-		set bkrc [file join $env(HOME) .bkrc]
-		if {[file exists $bkrc]} {
-			#puts "found file .bkrc"
-			read_bkrc
-			return 
-		} else {
-			#puts "didn't find file .bkrc"
-		}
-        } else {
-		puts "\$HOME not defined"
-		return 1
+	if {[file exists $bkrc]} {
+		#puts "found file .bkrc"
+		read_bkrc
+		return 
+	} else {
+		#puts "didn't find file .bkrc"
 	}
+	return 1
 }
 
 #
@@ -289,7 +283,7 @@ proc check_config { widget } \
 proc create_config {w} \
 {
 	global st_cinfo st_bk_cfg rootDir st_dlg_button logo widget topics
-	global gc
+	global gc tcl_platform
 
         getConfig "setup"
 
@@ -344,7 +338,11 @@ proc create_config {w} \
 			-bg $gc(setup.BG)
 		    entry $w.t.e.$desc -width 30 -relief sunken -bd 2 \
                         -bg $gc(setup.BG) -textvariable st_cinfo($desc)
-		    grid $w.t.e.$desc 
+		    if {$tcl_platform(platform) == "windows"} {
+			    grid $w.t.e.$desc  -pady 1
+		    } else {
+			    grid $w.t.e.$desc
+		    }
 		    grid $w.t.l.$desc  -pady 1 -sticky e -ipadx 3
 		    bind $w.t.e.$desc <FocusIn> "
 			$w.t.t.t configure -state normal;\
@@ -414,10 +412,29 @@ proc main {} \
 	}
 	create_config .cconfig
 	if {[create_repo] == 0} {
-		puts "repository created"
+		displayMessage "Repository created"
 		exit
 	} else {
-		puts "Failed to create repository"
+		displayMessage "Failed to create repository"
+	}
+}
+
+proc setbkdir {} \
+{
+	global bkdir bkrc tcl_platform
+
+        if {$tcl_platform(platform) == "windows"} {
+		package require registry
+		set appdir [registry get {HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders} AppData]
+		set bkdir [file join $appdir BitKeeper]
+		if {![file isdirectory $bkdir]} { file mkdir $bkdir }
+		set bkrc [file join $bkdir _bkrc]
+	} elseif {[info exists env(HOME)]} {
+		set bkdir $env(HOME)
+		set bkrc [file join $bkdir .bkrc]
+	} else {
+		displayMessage "HOME environment variable not set"
+		exit 1
 	}
 }
 
@@ -456,5 +473,6 @@ proc getMessages {} \
 }
 
 bk_init
+setbkdir
 getMessages
 main
