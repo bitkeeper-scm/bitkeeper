@@ -11,6 +11,7 @@
 #include "sccs.h"
 #include "zgets.h"
 #include "bkd.h"
+#include "logging.h"
 WHATSTR("@(#)%K%");
 
 private delta	*rfind(sccs *s, char *rev);
@@ -73,6 +74,9 @@ private int	checkGone(sccs *s, int bit, char *who);
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
 private void	singleUser(sccs *s, MDBM *m);
 private	int	parseConfig(char *buf, char **k, char **v);
+
+private	delta	*delta_lmarker;	/* old-style log marker */
+private	delta	*delta_cmarker;	/* old-style config marker */
 
 int
 emptyDir(char *dir)
@@ -4220,7 +4224,30 @@ sccs_init(char *name, u32 flags, project *proj)
 	} else {
 		s->cksumok = 1;
 	}
+	delta_lmarker = 0;
+	delta_cmarker = 0;
 	mkgraph(s, flags);
+	/*
+	 * The follow two blocks handler moving logging marker from
+	 * and old ChangeSet file to the seperate maker files.
+	 * This should be removed after 2.1.4b is no longer in use.
+	 */
+	if (CSET(s) && delta_lmarker && !exists(LMARK)) {
+		FILE	*f = fopen(LMARK, "wb");
+		if (f) {
+			sccs_pdelta(s, delta_lmarker, f);
+			fputc('\n', f);
+			fclose(f);
+		}
+	}		
+	if (CSET(s) && delta_cmarker && !exists(CMARK)) {
+		FILE	*f = fopen(CMARK, "wb");
+		if (f) {
+			sccs_pdelta(s, delta_cmarker, f);
+			fputc('\n', f);
+			fclose(f);
+		}
+	}		
 	debug((stderr, "mkgraph found %d deltas\n", s->numdeltas));
 	if (HASGRAPH(s)) {
 		if (misc(s)) {
@@ -9842,9 +9869,13 @@ modeArg(delta *d, char *arg)
 private delta *
 sumArg(delta *d, char *arg)
 {
+	char	*p;
 	if (!d) d = (delta *)calloc(1, sizeof(*d));
 	d->flags |= D_CKSUM;
 	d->sum = atoi(arg);
+	for (p = arg; isdigit(*p); p++);
+	if (*p == ' ' && !delta_lmarker) delta_lmarker = d;
+	if (*p == '\t' && !delta_cmarker) delta_cmarker = d;
 	return (d);
 }
 
@@ -14931,6 +14962,9 @@ sccs_utctime(delta *d)
 	return (sdate);
 }
 
+/*
+ * XXX why does this get an 'sccs *' ??
+ */
 void
 sccs_pdelta(sccs *s, delta *d, FILE *out)
 {
