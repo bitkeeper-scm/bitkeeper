@@ -6,7 +6,7 @@
 #define	unless(e)	if (!(e))
 
 int
-gethost_main()
+gethost_main(int ac, char **av)
 {
 	extern	char	*sccs_gethost();
 	char 	*host;
@@ -14,6 +14,11 @@ gethost_main()
 #ifdef WIN32
 	setmode(1, _O_BINARY);
 #endif
+	if (ac == 2 && !strcmp("--help", av[1])) {
+		system("bk help gethost");
+		return (1);
+	}
+
 	host = sccs_gethost();
 	if ((host == NULL) || (*host == '\0')) return (1);
 	printf("%s\n", host);

@@ -7,16 +7,6 @@
 #include "range.h"
 WHATSTR("@(#)%K%");
 
-private	char	*check_help = "\n\
-usage: check [-acfRv]\n\n\
-    -a		warn if the files listed are a subset of the repository\n\
-    -c		check file checksum\n\
-    -f		fix any fixable errors\n\
-    -g		list gone keys only\n\
-    -p		list deltas which are in more than one cset\n\
-    -R		only do checks which make sense in the RESYNC dir\n\
-    -v		list each file which is OK\n\n";
-
 private	MDBM	*buildKeys();
 private	char	*csetFind(char *key);
 private	int	check(sccs *s, MDBM *db, MDBM *marks);
@@ -83,7 +73,7 @@ check_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr, "%s", check_help);
+		system("bk help check");
 		return (1);
 	}
 
@@ -98,7 +88,8 @@ usage:		fprintf(stderr, "%s", check_help);
 		    case 'v': verbose++; break;
 		    case 'w': badWritable++; break;
 		    default:
-			goto usage;
+usage:			system("bk help -s check");
+			return (1);
 		}
 	}
 

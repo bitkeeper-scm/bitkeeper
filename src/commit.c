@@ -20,18 +20,6 @@ private	int	make_comment(char *cmt, char *commentFile);
 private int	do_commit(c_opts opts, char *sym,
 					char *pendingFiles, char *commentFile);
 
-private char    *commit_help = "\n\
-usage: commit  [-adFRqS:y:Y:]\n\n\
-    -a		do not ask the user about logging, fail the commit unless OK.\n\
-    -d		don't run interactively, just do the commit with the \n\
-		default comment\n\
-    -F		force a commit even if no pending deltas\n\
-    -R		this tells commit that it is processing the resync directory\n\
-    -q		run quietly\n\
-    -S<sym>	set the symbol to <sym> for the new changeset\n\
-    -y<comment>	set the changeset comment to <comment>\n\
-    -Y<file>	set the changeset comment to the content of <file>\n";
-
 int
 commit_main(int ac, char **av)
 {
@@ -42,7 +30,7 @@ commit_main(int ac, char **av)
 	c_opts	opts  = {0, 0, 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
-		fputs(commit_help, stderr);
+		system("bk help commit");
 		return (1);
 	}
 
@@ -67,6 +55,8 @@ commit_main(int ac, char **av)
 		    case 'Y':	doit = 1; getcomment = 0;
 				strcpy(commentFile, optarg);
 				break;
+		    default:	system("bk help -s commit");
+				return (1);
 		}
 	}
 
@@ -434,6 +424,10 @@ config_main(int ac, char **av)
 {
 	char	*rev = av[1] && strneq("-r", av[1], 2) ? &av[1][2] : 0;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help config");
+		return (1);
+	}
 	if (sccs_cd2root(0, 0)) {
 		fprintf(stderr, "Can't find package root\n");
 		return (1);

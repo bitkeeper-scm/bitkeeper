@@ -2,38 +2,7 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
-private	const char get_help[] = "\
-usage: get [-qkepdmunN] [-r<rev> | -c<date>] [files... | -]\n\
-   -a		align prefix output in a human readable form.\n\
-   -c<date>	get the latest revision before the date\n\
-   -d		prefix each line with the date it was last modified\n\
-   -D		output a diff\n\
-   -DD		output cset diffs\n\
-   -DDD 	output hash diffs\n\
-   -e		get file for editing\n\
-   -F		don't verify the file checksum\n\
-   -g		just do locking, don't get the file\n\
-   -G<name>	use <name> for the gfile\n\
-   -h		invert sense of file's hash flag\n\
-   -H		put file in its historic location\n\
-   -i<list>	include revs in <list>\n\
-   -k		don't expand keywords\n\
-   -l   	same as -e\n\
-   -m		prefix each line with the rev it was last modified in\n\
-   -M<rev>	merge with <rev>\n\
-   -N		prefix each line with its line number\n\
-   -n		prefix each line with the filename\n\
-   -p		write file to standard output\n\
-   -P		write to stdout, force get\n\
-   -q		run quietly\n\
-   -R		rev is part of pathname\n\
-   -r<rev>	get this revision\n\
-   -s		same as -q\n\
-   -S		if a gfile exists, don't check it out again\n\
-   -t		ignored, SCCS compat\n\
-   -T		set the gfile's mod time to the delta's creation time\n\
-   -u		prefix each line with the user who last modified it\n\
-   -x<list>	exclude revs in <list>\n";
+
 
 /*
  * The weird setup is so that I can #include this file into sccssh.c
@@ -55,6 +24,7 @@ _get_main(int ac, char **av, char *out)
 	project	*proj = 0;
 	MDBM	*realNameCache = 0;
 	char	realname[MAXPATH];
+	char	buf[100];
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -72,7 +42,8 @@ _get_main(int ac, char **av, char *out)
 	}
 
 	if (ac == 2 && streq("--help", av[1])) {
-		fprintf(stderr, get_help);
+		sprintf(buf, "bk help %s", name);
+		system(buf);
 		return (1);
 	}
 	if (streq(av[0], "edit")) flags |= GET_EDIT;
@@ -110,8 +81,8 @@ _get_main(int ac, char **av, char *out)
 		    case 'x': xLst = optarg; break;
 
 		    default:
-usage:			fprintf(stderr, "%s: usage error, try get --help\n",
-				av[0]);
+usage:			sprintf(buf, "bk help -s %s", name);
+			system(buf);
 			return (1);
 		}
 	}

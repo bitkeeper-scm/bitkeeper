@@ -6,12 +6,7 @@ private int	doit(int verbose, char *rev, int indent, int tagOnly, int dash);
 private void
 usage()
 {
-	fprintf(stderr,
-"usage: changes [-v<d>] [-r<rev>]\n\
-    -r<rev>	list changes for ChangeSet revision <rev>\n\
-    -t		only list changesets which are tagged\n\
-    -v		long listing, showing per file comments\n\
-    -v<d>	as above, but indent per file <d> spaces\n");
+	system("bk help -s changes");
     	exit(1);
 }
 
@@ -20,6 +15,11 @@ changes_main(int ac, char **av)
 {
 	int	c, indent = 0, verbose = 0, tagOnly = 0;
 	char	*rev = 0;
+
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help changes");
+		return (1);
+	}   
 
 	while ((c = getopt(ac, av, "tr|v|")) != -1) {
 		switch (c) {

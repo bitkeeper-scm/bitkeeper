@@ -1,9 +1,5 @@
-#include <stdio.h>
-#ifdef	WIN32
-#include <stdlib.h>
-#endif
-#include <string.h>
-#define	private	static
+#include "system.h"
+#include "sccs.h"
 
 private	void	undos(char *s);
 extern	void	platformSpecificInit(char *);
@@ -13,16 +9,26 @@ undos_main(int ac, char **av)
 {
 	FILE	*f;
 	char	buf[1024];
-	int 	optind = 1;
+	int 	c;
 	int	auto_new_line = 1;
 
-	platformSpecificInit(NULL);
-	if (strcmp(av[optind], "-n") == 0) {
-		optind++;
-		auto_new_line = 0;
+	if (ac == 2 && !strcmp("--help", av[1])) {
+		system("bk help undos");
+		return (0);
 	}
+
+	platformSpecificInit(NULL);
+ 	while ((c = getopt(ac, av, "n")) != -1) { 
+		switch (c) {
+		    case 'n': auto_new_line = 0; break;
+		    default:
+			system("bk help -s undos");
+			return (1);
+		}
+	}
+
 	if ((ac - optind) != 1) {
-		printf("usage: %s filename\n", av[0]);
+		system("bk help -s undos");
 		exit(1);
 	}
 	f = fopen(av[optind], "rb");

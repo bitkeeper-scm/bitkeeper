@@ -3,15 +3,6 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
-private char *clean_help =
-"usage: clean [-pqv] [files...]\n\
-    -p	print, i.e., show diffs of modified files\n\
-    -q	quiet operation, do not complain about nonexistant files\n\
-    -v	list files being cleaned\n\
-The default behaviour is to clean up all checked out files,\n\
-locked or unlocked.  Files are cleaned if they are unmodified,\n\
-so \"bk get -e; bk clean\" is a null operation.\n";
-
 private	int	hasGfile(char *name);
 
 /*
@@ -30,7 +21,7 @@ clean_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fputs(clean_help, stderr);
+		system("bk help clean");
 		return (1);
 	}
 	while ((c = getopt(ac, av, "pqv")) != -1) {
@@ -40,7 +31,8 @@ usage:		fputs(clean_help, stderr);
 		    case 'v': flags &= ~SILENT; break;
 			break;
 		    default:
-			goto usage;
+usage:			system("bk help -s clean");
+			return (1);
 		}
 	}
 

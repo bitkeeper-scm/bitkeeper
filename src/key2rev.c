@@ -15,14 +15,19 @@ key2rev_main(int ac, char **av)
 	sccs	*s;
 	char	buf[MAXPATH];
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help key2rev");
+		return (0);
+	}
+
 	unless (av[1]) {
-		fprintf(stderr, "Usage: %s file < keys\n", av[0]);
-		exit(1);
+		system("bk help -s key2rev");
+		return (1);
 	}
 	name = name2sccs(av[1]);
 	unless (s = sccs_init(name, 0, 0)) {
 		perror(name);
-		exit(1);
+		return (1);
 	}
 	free(name);
 	while (fnext(buf, stdin)) {
@@ -34,5 +39,5 @@ key2rev_main(int ac, char **av)
 		printf("%s\n", d->rev);
 	}
 	sccs_free(s);
-	exit(0);
+	return (0);
 }

@@ -2,7 +2,7 @@
 #include "sccs.h"
 
 int
-zone_main(void)
+zone_main(int ac, char **av)
 {
 	time_t	tt = time(0);
 	struct	tm tm;
@@ -10,6 +10,11 @@ zone_main(void)
 	long	offset;
 	int	hwest, mwest;
 	char	sign = '+';
+
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help zone");
+		return (0);
+	}
 
 	platformSpecificInit(NULL);
 	offset = localtimez(tt, &tm);

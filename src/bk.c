@@ -233,8 +233,7 @@ struct command cmdtbl[] = {
 int
 usage()
 {
-	fprintf(stderr, "usage bk [-r[dir]] | -R command [options] [args]\n");
-	printf("Try bk help for help.\n");
+	system("bk help -s bk");
 	exit(1);
 }
 
@@ -262,6 +261,10 @@ main(int ac, char **av)
 	}
 	if (av[1] && streq(av[1], "path") && !av[2]) {
 		printf("%s\n", getenv("PATH"));
+		exit(0);
+	}
+	if (av[1] && streq(av[1], "--help") && !av[2]) {
+		system("bk help bk");
 		exit(0);
 	}
 	argv[0] = "help";
@@ -606,6 +609,12 @@ cmdlog_dump(int ac, char **av)
 	time_t	t;
 	char	*p;
 	char	buf[4096];
+
+	
+	if (ac == 2 && streq("--help", av[1])) { 
+		system("bk help cmdlog");
+		return;
+	}
 
 	unless (bk_proj && bk_proj->root) return;
 	if (av[1] && streq(av[1], "-a")) {

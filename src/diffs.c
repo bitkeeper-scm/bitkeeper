@@ -22,32 +22,6 @@ WHATSTR("@(#)%K%");
  *	diffs -dalpha1
  * to behave differently.
  */
-private	char	*diffs_help = "\n\
-usage: diffs [-acDMsuU] [-d<d>] [-r<r>] [files...]\n\n\
-    -a		do diffs on all sfiles\n\
-    -c		do context diffs\n\
-    -C<r>	show all changes made by cset containing rev <r>\n\
-    -d<dates>	diff using date or symbol\n\
-    -D		prefix lines with dates\n\
-    -f		prefix lines with file names\n\
-    -h		don't print headers\n\
-    -M		prefix lines with revision numbers\n\
-    -n		do RCS style diffs\n\
-    -p		procedural diffs, like diff -p\n\
-    -P		produce patch diffs, similar to diff -Nur\n\
-    -r<r>	diff revision <r>\n\
-    -R<r>	diffs between parent of <r> and <r>\n\
-    -s		do side-by-side\n\
-    -u		do unified diffs\n\
-    -U		prefix lines with user names\n\
-    -v		be verbose about non matching ranges\n\n\
-    Ranges of dates, symbols, and/or revisions may be specified.\n\n\
-    -r1.3..1.6	    diffs 1.3 vs 1.6\n\
-    -d9207..92	    diffs changes from July 1 '92 to Dec 31 '92\n\
-    -d92..92	    diffs changes from Jan 1 '92 to Dec 31 '92\n\
-    The date can be a symbol instead of a date.  Dates and revisions may\n\
-    be mixed and matched, see range(1) for a full description.\n\n\
-";
 
 int
 diffs_main(int ac, char **av)
@@ -62,7 +36,7 @@ diffs_main(int ac, char **av)
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
-		fprintf(stderr, diffs_help);
+		system("bk help diffs");
 		return (1);
 	}
 
@@ -88,7 +62,7 @@ diffs_main(int ac, char **av)
 		    case 'U': flags |= GET_USER; break;
 		    RANGE_OPTS('d', 'r');
 		    default:
-usage:			fprintf(stderr, "diffs: usage error, try --help\n");
+usage:			system("bk help -s diffs");
 			return (1);
 		}
 	}

@@ -8,6 +8,10 @@ unwrap_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help unwrap");
+		return (0);
+	}
 	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (strneq(buf, "# Patch vers:", 13)) {
 			fprintf(stdout, "\n%s\n", buf);

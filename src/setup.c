@@ -15,6 +15,10 @@ setup_main(int ac, char **av)
 	sccs	*s;
 	MDBM	*m;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help setup");
+		return (0);
+	}
 	while ((c = getopt(ac, av, "c:f")) != -1) {
 		switch (c) {
 		    case 'c':	
@@ -163,11 +167,6 @@ defaultIgnore()
 private void
 usage()
 {
-	fprintf(stderr,
-		    "\n\
-usage: setup [-f] [-c<config file>] directory\n\
-\n\
-	-f               Don't ask for confirmation.\n\
-	-c<config file>  Configuration file to use for setup.\n\n");
+	system("bk help -s setup");
 	exit(1);
 }

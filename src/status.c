@@ -15,14 +15,14 @@ status_main(int ac, char **av)
 	char *package_path;
 
 	if (av[1] && streq(av[1], "--help")) {
-		fprintf(stderr, "%s", status_help);
+		system("bk help status");
 		return (0);
 	}
 	while ((c = getopt(ac, av, "v")) != -1) { 
 		switch (c) {
 		    case 'v': verbose++; break;
 		    default:
-			fprintf(stderr, "status: usage error, try --help.\n");
+			system("bk help -s status");
 			return (1);
 		}
 	}

@@ -15,9 +15,8 @@ lock_main(int ac, char **av)
 	char	*thisHost;
 
 	if (ac > 1 && streq("--help", av[1])) {
-usage:		fprintf(stderr,
-		    "usage: %s [-s] -b|l|r|w [repository root]\n", av[0]);
-		return (1);
+		system("bk help lock");
+		return (0);
 	}
 	while ((c = getopt(ac, av, "lqrsw")) != -1) {
 		switch (c) {
@@ -31,7 +30,9 @@ usage:		fprintf(stderr,
 				break;
 			}
 			/* fall through */
-		    default: goto usage;
+		    default:
+usage:			system("bk help -s lock");
+			return (1);
 		}
 	}
 	unless (what) what = 'l';

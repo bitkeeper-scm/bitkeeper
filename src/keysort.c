@@ -38,6 +38,11 @@ keysort_main(int ac, char **av)
 	mem_t	*memlist = calloc(sizeof(mem_t), 1);
 	mem_t	*mem = memlist;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help keysort");
+		return (0);
+	}
+
 	unless (lines && mem) {
 		perror("malloc");
 		exit(1);

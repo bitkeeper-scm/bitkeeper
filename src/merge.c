@@ -8,6 +8,11 @@ merge_main(int ac, char **av)
 	char	*new_av[8];
 	int	rc, fd, fd1;
 
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help merge");
+		return (0);
+	}
+
 	new_av[0] = "bk";
 	new_av[1] = "diff3";
 	new_av[2] = "-E";
@@ -18,7 +23,7 @@ merge_main(int ac, char **av)
 	new_av[7] = 0;
 
 	if (ac != 5) {
-		fprintf(stderr, "Usage: bk merge L G R M\n");
+		system("bk help -s merge");
 		return (1);
 	}
 	/* redirect stdout to av[4] for the child to inherit it*/

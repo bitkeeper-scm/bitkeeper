@@ -8,10 +8,15 @@
 #include "system.h"
 #include "sccs.h"
 
-sane_main()
+sane_main(int ac, char **av)
 {
 	int	errors = 0;
 	
+	if (ac == 2 && streq("--help", av[1])) {
+		system("bk help sane");
+		return (0);
+	}
+
 	if (chk_host()) errors++;
 	if (chk_user()) errors++;
 	if (sccs_cd2root(0, 0) == 0) {

@@ -6,19 +6,6 @@
 #include "system.h"
 #include "sccs.h"
 WHATSTR("@(#)%K%");
-private	const char annotate_help[] = "\
-usage: annotate [-adkmnNu] [-r<rev> | -c<date>] [files... | -]\n\
-   -a		align prefix output in a human readable form.\n\
-   -c<date>	get the latest revision before the date\n\
-   -d		prefix each line with the date it was last modified\n\
-   -k		do not expand keywords\n\
-   -m		prefix each line with the revision which created that line\n\
-   -N		prefix each line with its line number\n\
-   -n		prefix each line with the filename\n\
-   -r<rev>	get this revision\n\
-   -u		prefix each line with the user who last modified it\n\n\
-The annotate command can get it's options from $BK_ANNOTATE\n\
-we usually set this to BK_ANNOTATE=mnu\n";
 
 #define	BASE_FLAGS	(GET_EXPAND|PRINT|SILENT)
 
@@ -36,7 +23,7 @@ annotate_main(int ac, char **av)
 	name = strrchr(av[0], '/');
 
 	if (ac == 2 && streq("--help", av[1])) {
-		fprintf(stderr, annotate_help);
+		system("bk help annotate");
 		return (1);
 	}
 	for (t = getenv("BK_ANNOTATE"); t && *t; t++) {
@@ -63,8 +50,7 @@ annotate_main(int ac, char **av)
 		    case 'u': flags |= GET_USER; break;
 
 		    default:
-usage:			fprintf(stderr, "%s: usage error, try get --help\n",
-				av[0]);
+usage:			system("bk help -s annotate");
 			return (1);
 		}
 	}
