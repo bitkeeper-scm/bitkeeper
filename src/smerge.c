@@ -60,7 +60,7 @@ smerge_main(int ac, char **av)
 	int	ret;
 
 	mode = MODE_3WAY;
-	while ((c = getopt(ac, av, "23A:a:efhnpr:s")) != -1) {
+	while ((c = getopt(ac, av, "2A:a:efghnp:r:s")) != -1) {
 		switch (c) {
 		    case '2': /* 2 way format (like diff3) */
 			mode = MODE_2WAY;
@@ -357,9 +357,9 @@ struct mergefcns {
 } mergefcns[] = {
 	{"1",	1, merge_same_changes,
 	"Merge identical changes made by both sides"},
-	{"2",		1, merge_only_one,
+	{"2",	1, merge_only_one,
 	"Merge when only one side changes"},
-	{"3",		1, merge_content,
+	{"3",	1, merge_content,
 	"Merge adjacent non-overlapping modifications on both sides"},
 	{"4",	1, merge_common_header,
 	"Merge identical changes at the start of a conflict"},
