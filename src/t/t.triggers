@@ -719,6 +719,7 @@ test -z "$DUMP_VARS" || {
 
 echo $N Exit 2 out of a pre-resolve, make sure it leaves the patch ..$NL
 cd $HERE/project
+rm -rf PENDING
 rm BitKeeper/triggers/*
 cat > BitKeeper/triggers/pre-resolve <<EOF
 #!/bin/sh
@@ -751,6 +752,23 @@ test -z "$DUMP_VARS" || {
 	echo ====== pre-resolve ==========
 	cat $HERE/pre-resolve
 }
+
+echo $N Make sure we see BK_PATCH in the pre-resolve trigger ........$NL
+cd ../project/PENDING || exit 1
+GOT=`grep BK_PATCH= $HERE/pre-resolve`
+test "X$GOT" = X && {
+	echo Failed
+	cat $HERE/pre-resolve
+	exit 1
+}
+BK_PATCH='no such file'
+eval $GOT
+test -f "$BK_PATCH" || {
+	echo Failed
+	cat $HERE/pre-resolve
+	exit 1
+}
+echo OK
 
 echo $N Look for cset list in pre-resolve in the push ...............$NL
 cd $HERE/clone
