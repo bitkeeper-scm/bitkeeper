@@ -2185,7 +2185,7 @@ rm_sfile(char *sfile, int leavedirs)
 		fprintf(stderr, "No slash in %s??\n", sfile);
 		return (-1);
 	}
-	for (;;) {
+	while (p > sfile) {
 		*p-- = 0;
 		if (isdir(sfile)) {
 			char	rdir[MAXPATH];
@@ -2201,8 +2201,6 @@ rm_sfile(char *sfile, int leavedirs)
 			}
 		}
 		while ((p > sfile) && (*p != '/')) p--;
-		if (p >= sfile) continue;
-		break;
 	}
 	return (0);
 }
