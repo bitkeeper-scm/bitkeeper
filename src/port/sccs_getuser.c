@@ -43,3 +43,28 @@ sccs_resetuser()
 {
 	s = 0;
 }
+
+char	*
+sccs_realuser(void)
+{
+	char	*s;
+
+	s = getenv("SUDO_USER");
+	unless (s && s[0]) s = getenv("USER");
+	unless (s && s[0]) s = getlogin();
+#ifndef WIN32 /* win32 have no getpwuid() */
+	unless (s && s[0]) {
+		struct	passwd	*p = getpwuid(geteuid());
+
+		s = p->pw_name;
+	}
+#endif
+	unless (s && s[0]) s = UNKNOWN_USER;
+	if (strchr(s, '\n') || strchr(s, '\r')) {
+		fprintf(stderr,
+		    "bad user name: user name cannot contain LR or CR "
+		    "character\n");
+		s = NULL;
+	}
+	return (s);
+}
