@@ -178,15 +178,15 @@ check_main(int ac, char **av)
 		 * exit code 2 means try again, all other errors should be
 		 * distint.
 		 */
-		if (sccs_resum(s, 0, 0, 0)) errors |= 0x004;
-		if (chk_gfile(s)) errors |= 0x008;
-		if (no_gfile(s)) errors |= 0x010;
-		if (readonly_gfile(s)) errors |= 0x020;
-		if (writable_gfile(s)) errors |= 0x040;
-		if (chk_csetpointer(s)) errors |= 0x080;
-		if (want_dfile && chk_dfile(s)) errors |= 0x100;
-		if (check_eoln && chk_eoln(s, eoln_native)) errors |= 0x200;
-		if (chk_merges(s)) errors |= 0x400;
+		if (sccs_resum(s, 0, 0, 0)) errors |= 0x04;
+		if (chk_gfile(s)) errors |= 0x08;
+		if (no_gfile(s)) errors |= 0x08;
+		if (readonly_gfile(s)) errors |= 0x08;
+		if (writable_gfile(s)) errors |= 0x08;
+		if (chk_csetpointer(s)) errors |= 0x10;
+		if (want_dfile && chk_dfile(s)) errors |= 0x10;
+		if (check_eoln && chk_eoln(s, eoln_native)) errors |= 0x10;
+		if (chk_merges(s)) errors |= 0x20;
 
 		/*
 		 * Store the full length key and only if we are in mixed mode,
@@ -222,7 +222,7 @@ check_main(int ac, char **av)
 		}
 
 		if (e = check(s, db)) {
-			errors |= 0x1000;
+			errors |= 0x40;
 		} else {
 			if (verbose>1) fprintf(stderr, "%s is OK\n", s->sfile);
 		}
@@ -245,7 +245,7 @@ check_main(int ac, char **av)
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
-	if ((all || resync) && checkAll(keys)) errors |= 0x2000;
+	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	assert(strneq(ctmp, "BitKeeper/tmp/bk", 16));
 	unlink(ctmp);
 	mdbm_close(db);
@@ -291,10 +291,10 @@ check_main(int ac, char **av)
 	if (poly) warnPoly();
 	if (resync) {
 		chdir(RESYNC2ROOT);
-		if (sys("bk", "sane", SYS)) errors |= 0x4000;
+		if (sys("bk", "sane", SYS)) errors |= 0x80;
 		chdir(ROOT2RESYNC);
 	} else {
-		if (sys("bk", "sane", SYS)) errors |= 0x8000;
+		if (sys("bk", "sane", SYS)) errors |= 0x80;
 	}
 	if (verbose == 1) progress(nfiles+1, errors);
 	return (errors);

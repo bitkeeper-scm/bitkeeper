@@ -187,10 +187,10 @@ repository_lockers(project *p)
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 	lines = lockers(path);
 	EACH(lines) {
+		if (sccs_stalelock(path, 1)) continue;
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		sprintf(path, "%s/%s/%s", p->root, WRITER_LOCK_DIR, lines[i]);
-		fprintf(stderr, "\tWrite locker: %s%s\n",
-		    lines[i], sccs_stalelock(path, 0) ? " (stale)" : "");
+		fprintf(stderr, "\tWrite locker: %s\n", lines[i]);
 		n++;
 	}
 	freeLines(lines);
@@ -198,10 +198,10 @@ repository_lockers(project *p)
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
 	lines = lockers(path);
 	EACH(lines) {
+		if (sccs_stalelock(path, 1)) continue;
 		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		sprintf(path, "%s/%s/%s", p->root, READER_LOCK_DIR, lines[i]);
-		fprintf(stderr, "\tRead  locker: %s%s\n",
-		    lines[i], sccs_stalelock(path, 0) ? " (stale)" : "");
+		fprintf(stderr, "\tRead  locker: %s\n", lines[i]);
 		n++;
 	}
 	freeLines(lines);
