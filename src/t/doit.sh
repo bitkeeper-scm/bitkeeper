@@ -87,13 +87,12 @@ unix_common_setup()
 	BK_LIMITPATH=/build/.bktools-$USER
 	rm -rf $BK_LIMITPATH
 	mkdir $BK_LIMITPATH
-	for f in awk expr sh grep egrep sed \
+	for f in awk expr sh grep egrep sed env test [ sleep getopts \
 	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
-	    co rcs ssh rsh gzip gunzip [
+	    co rcs ssh rsh gzip gunzip remsh rcmd
 	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
-		then	echo ln -s $p $BK_LIMITPATH/$f
-			ln -s $p $BK_LIMITPATH/$f
+		then	ln -s $p $BK_LIMITPATH/$f
 		else	echo WARNING: could not find a $f binary.
 		fi
 	done
