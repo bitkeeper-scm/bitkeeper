@@ -58,7 +58,8 @@ added in 1.3.1.2
 EOF
 bk undos X > CMP1
 bk _get $Q -e -r1.6 -M1.3.1.2 FILE
-cmp -s CMP1 FILE
+bk undos FILE > CMP2
+cmp -s CMP1 CMP2
 if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
 bk delta $Q -y FILE
 echo 7 > X 

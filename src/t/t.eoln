@@ -22,7 +22,15 @@ fi
 
 # Note: This test assumes the shell "echo" comamnd output in binary mode
 echo $N Create initial repository ...................................$NL
-no_logging project
+#no_logging project
+echo "logging: none" > $HERE/c
+echo "single_user: bk" >> $HERE/c
+echo "single_host: free.bk" >> $HERE/c
+echo "description: BitKeeper Test repository" >> $HERE/c
+echo "email:		nobody@nowhere.bk" >> $HERE/c
+bk setup -f -c$HERE/c project
+touch project/BitKeeper/etc/SCCS/x.marked
+cd project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 P=`bk pending | wc -l`
@@ -33,7 +41,6 @@ echo $N Check ci co in EOLN_NATIVE mode .............................$NL
 echo -e 'data\r' > data
 cp data data.ref
 bk  ci $Q -i data
-bk admin $Q -fEOLN_NATIVE data
 bk co $Q data
 cmp -s data data.ref
 if [ $? -ne 0 ]; then echo failed; exit 1; fi

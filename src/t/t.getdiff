@@ -61,7 +61,8 @@ EOF
 bk undos X > CMP1
 echo $N "Check gfile to verify correct creation.......................$NL"
 bk get $S -r1.2 foo
-cmp -s foo CMP1
+bk undos foo > CMP2
+cmp -s CMP1 CMP2
 if [ $? != 0 ]; then echo Failed on rev 1.2; diff foo CMP1; exit 1; fi
 echo OK
 rm -f foo

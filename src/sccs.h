@@ -190,7 +190,8 @@
 					/* flags which can be changed */
 #define	X_MAYCHANGE	(X_RCS|X_YEAR4|X_SHELL|X_EXPAND1|X_SCCS|X_EOLN_NATIVE|X_KV)
 					/* default set of flags */
-#define	X_DEFAULT	(X_BITKEEPER|X_EXPAND1|X_CSETMARKED|X_SCCS)
+#define	X_DEFAULT	(X_BITKEEPER|X_EXPAND1|\
+					X_CSETMARKED|X_SCCS|X_EOLN_NATIVE)
 #define	X_REQUIRED	(X_BITKEEPER|X_CSETMARKED)
 
 /* bits for the xflags checker - lovely having legacy files, eh? */
@@ -1010,7 +1011,7 @@ int	sccs_tagleaves(sccs *, delta **, delta **);
 
 int     http_connect(remote *r, char *cgi_script);
 int     http_send(remote *, char *, size_t, size_t, char *, char *); 
-char *	user_preference(char *what, char buf[MAXPATH]);
+char *	user_preference(char *what);
 int	bktemp(char *buf);
 char	*bktmpfile();	/* return a char* to a just created temp file */
 void	updLogMarker(int ptype, int verbose);

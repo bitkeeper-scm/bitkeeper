@@ -6,7 +6,7 @@ WHATSTR("@(#)%K%");
 int	newrev(sccs *s, pfile *pf);
 
 char *
-user_preference(char *what, char buf[MAXPATH])
+user_preference(char *what)
 {
 	char *p;
 
@@ -145,7 +145,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 	}
 
 	unless (ignorePreference || checkout) {
-		p = user_preference("checkout", buf);
+		p = user_preference("checkout");
 		if (streq(p, "edit")) {
 			gflags |= GET_SKIPGET|GET_EDIT;
 			dflags |= DELTA_SAVEGFILE;

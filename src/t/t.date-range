@@ -277,7 +277,8 @@ rm -f FILE
 bk get $S -c90 -GFILE FILE
 echo 1.1 > X
 bk undos X > F
-cmp -s F FILE
+bk undos FILE > Y
+cmp -s F Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting the second delta with -c ............................$NL
@@ -287,7 +288,8 @@ echo 1.1 > X
 bk undos X > F
 echo 1.2 >> X
 bk undos X > F
-cmp -s F FILE
+bk undos FILE > Y
+cmp -s F Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting the all but last delta with -c ......................$NL
@@ -300,12 +302,14 @@ cat > X <<EOF
 1.4
 EOF
 bk undos X > F
-cmp -s F FILE
+bk undos FILE > Y
+cmp -s F Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Same thing with round down -c-98 ............................$NL
 bk get $S -c-98 -GFILE FILE
-cmp -s F FILE
+bk undos FILE > Y
+cmp -s F Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Attempting a bad date with -c80 .............................$NL
@@ -349,7 +353,8 @@ cat > X <<EOF
 1.8
 EOF
 bk undos X > F
-cmp -s F FILE
+bk undos FILE > Y
+cmp -s F Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting a delta in year 2000 with -c ........................$NL
@@ -364,7 +369,8 @@ cat > X <<EOF
 1.6
 EOF
 bk undos X > F
-cmp -s F FILE
+bk undos FILE > Y
+cmp -s F Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting a delta in year 2001 with -c ........................$NL
@@ -380,7 +386,8 @@ cat > X <<EOF
 1.7
 EOF
 bk undos X > F
-cmp -s F FILE
+bk undos FILE > Y
+cmp -s F Y
 if [ $? -ne 0 ]; then echo Failed - files differ.; exit 1; fi
 echo OK
 echo $N Getting a range from 98..01 with -c .........................$NL

@@ -5610,9 +5610,12 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		 * Note: This has no effect when we print to stdout
 		 * We want this becuase we want diff_gfile() to
 		 * diffs file with normlized to LF.
+		 *
+		 * Win32 note: t.bkd regression failed if ChangeSet have
+		 * have CRLF terminattion.
 		 */
 		if (((encode == E_ASCII) || (encode == E_GZIP)) &&
-		    (s->xflags & X_EOLN_NATIVE)) {
+		    !CSET(s) && (s->xflags&X_EOLN_NATIVE)) {
 			mode = "wt";
 		}
 		*op = toStdout ? stdout : fopen(file, mode);
@@ -8737,19 +8740,19 @@ out:		sccs_unlock(s, 'z');
 	explode_rev(n);
 	if (nodefault) {
 		if (prefilled) s->xflags |= prefilled->xflags;
-	} else if (s->encoding == E_ASCII) {
+	} else if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 		unless (CSET(s)) {
 			/* check eoln preference */
+			s->xflags |= X_DEFAULT;
 			if (s->proj) {
 				db = loadConfig(s->proj->root, 0);
 				if (db) {
 					char *p = mdbm_fetch_str(db, "eoln");
-					if (p && streq("native", p)) {
-						s->xflags |= X_EOLN_NATIVE;
+					if (p && streq("unix", p)) {
+						s->xflags &= ~X_EOLN_NATIVE;
 					}
 				}
 			}
-			s->xflags |= X_DEFAULT;
 		}
 	}
 	n->serial = s->nextserial++;
