@@ -326,6 +326,7 @@ init_main_loop()
 # -v 	turn on verbose mode
 # -x	trace command execution
 # -r	use rsh instead of ssh
+# -p    prompt before doing the cleanup (mostly useful for interactive GUI tests)
 #
 get_options()
 {
@@ -333,8 +334,10 @@ get_options()
 	S=-s;
 	KEEP_GOING=NO
 	TESTS=0
+	PAUSE=NO
 	while true
 	do	case $1 in
+		    -p) PAUSE=YES;;
 	            -f) FAIL_WARNING=YES;;
 		    -i) KEEP_GOING=YES;;
 		    -r) export PREFER_RSH=YES;;
@@ -433,6 +436,21 @@ echo ''
 			fi
 		}
 	}
+
+	if [ "$PAUSE" = "YES" ]
+	then
+	    bk msgtool -Y "Click to continue" \
+"The test script is now paused so you may examine 
+the working environment before it is cleaned up. 
+
+pwd: `pwd`
+tmp: $TMPDIR
+output file: $TMPDIR/OUT.$$
+
+I hope your testing experience was positive! :-)
+"
+	fi
+
 	$RM -f $TMPDIR/OUT.$$
 	if [ $EXIT -ne 0 -o $BAD -ne 0 ]
 	then

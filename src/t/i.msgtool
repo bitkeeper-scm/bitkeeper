@@ -1,0 +1,136 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2000 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Copyright (c) 2004 Larry McVoy
+# %K%
+
+HERE=`${CWD}`
+test -d $HERE/home || mkdir $HERE/home
+export BK_TEST_HOME=$HERE/home
+
+echo $N Starting the msgtool launcher ...............................$NL
+bk guitest <<'EOF'
+# since msgtool isn't interactive I figured this test would be more
+# useful if we pop up a dialog letting you pick which msgtool options
+# to set. This doesn't support all msgtool options, but it covers the
+# most common ones.
+proc main {} \
+{
+	global runtime
+	array set runtime {
+		yes ""
+		no  ""
+		type ""
+		title ""
+		command ""
+		message "Hello, World"
+	}
+	widgets
+	.instructions configure \
+	    -text "Modify any options you wish then press 'Run'\
+		   to start msgtool"
+	updateCommand runtime title w
+	trace variable runtime w updateCommand
+}
+proc widgets {} \
+{
+	global runtime
+
+	option add *Entry.borderWidth 1 widgetDefault
+	label .instructions 
+	array set f [font actual [.instructions cget -font]]
+	set f(-weight) bold
+	.instructions configure -font [array get f]
+	label .titleLabel -text "Title:"
+	label .yesLabel -text "'Yes' button label:"
+	label .noLabel -text "'No' button label:"
+	label .typeLabel -text "Type of message:"
+	label .commandLabel -text "Command:"
+	label .messageLabel -text "Message:"
+	entry .message -textvariable runtime(message)
+	entry .title -textvariable runtime(title) 
+	entry .yes -textvariable runtime(yes)
+	entry .no -textvariable runtime(no)
+	entry .command -textvariable runtime(command)
+	frame .buttonFrame
+	button .quit -command exit -width 7 -text "Quit"
+	button .run -command run -text "Run" -width 7
+	frame .radioButtons
+	radiobutton .typeDefault \
+	    -variable runtime(type) \
+	    -text "default" \
+	    -value "" 
+	radiobutton .typeError \
+	    -variable runtime(type) \
+	    -text "Error" \
+	    -value "-E"
+	radiobutton .typeWarning \
+	    -variable runtime(type) \
+	    -text "Warning" \
+	    -value "-W"
+	radiobutton .typeInfo \
+	    -variable runtime(type) \
+	    -text "Information" \
+	    -value "-I"
+	pack .typeDefault .typeError .typeWarning .typeInfo \
+	    -side left \
+	    -in .radioButtons
+	grid .instructions -row 0 -column 1 -sticky ew -pady 8
+	grid .titleLabel -row 1 -column 0 -sticky e
+	grid .title -row 1 -column 1 -sticky ew 
+	grid .yesLabel -row 2 -column 0 -sticky e
+	grid .yes -row 2 -column 1 -sticky ew
+	grid .noLabel -row 3 -column 0 -sticky e
+	grid .no -row 3 -column 1 -sticky ew
+	grid .typeLabel -row 4 -column 0 -sticky e
+	grid .radioButtons -row 4 -column 1 -sticky ew
+	grid .messageLabel -row 5 -column 0 -sticky e
+	grid .message -row 5 -column 1 -sticky ew
+	grid .commandLabel -row 6 -column 0 -sticky e
+	grid .command -row 6 -column 1 -columnspan 2 -pady 8 -sticky ew
+	pack .quit .run -in .buttonFrame -side right  -padx 8
+	grid .buttonFrame -row 7 -column 1 -sticky e -pady 4 -padx 4 -ipady 4
+	grid columnconfigure . 2 -weight 1 -minsize 16
+	grid rowconfigure . 7 -weight 1
+}
+
+proc run {} \
+{
+	global runtime env
+	set x [winfo rootx .]
+	set y [winfo rooty .]
+	incr x 50
+	incr y 50
+	set env(BK_MSG_GEOM) "+$x+$y"
+	eval exec $runtime(command) &
+}
+
+proc updateCommand {name1 name2 op} \
+{
+	global runtime
+	if {$name2 == "command"} return
+
+	set command {bk msgtool}
+	if {$runtime(title) ne ""} {lappend command -T $runtime(title)}
+	if {$runtime(yes) ne ""} {lappend command -Y $runtime(yes)}
+	if {$runtime(no) ne ""} {lappend command -N $runtime(no)}
+	if {$runtime(type) ne ""} {
+		lappend command $runtime(type)
+	}
+	lappend command $runtime(message)
+	.command configure -state normal
+	set runtime(command) $command
+	.command configure -state disabled
+}
+
+main
+EOF
+echo OK
