@@ -33,8 +33,8 @@ BINS	= $(BK)
 # splitting it into generic, zlib, and mdbm parts.  Keep it sorted.
 OBJ	= abort.o adler32.o admin.o annotate.o \
 	  bkpowered.o dir_gif.o file_gif.o \
-	  bkd.o bkd_cd.o bkd_client.o bkd_clone.o bkd_cmdtab.o bkd_diffs.o \
-	  bkd_get.o bkd_http.o bkd_misc.o bkd_pull.o \
+	  bkd.o bkd_cd.o bkd_client.o bkd_clone.o bkd_cmdtab.o \
+	  bkd_http.o bkd_misc.o bkd_pull.o \
 	  bkd_push.o bkd_pwd.o bkd_rootkey.o bkd_status.o \
 	  bkd_version.o bk.o bkusers.o changes.o check.o chksum.o \
 	  clean.o clone.o comments.o commit.o compress.o \
@@ -54,13 +54,12 @@ OBJ	= abort.o adler32.o admin.o annotate.o \
 	  port/spawn.o port/getnull.o port/http_proxy.o port/service.o \
 	  prs.o pull.o purify.o push.o pwd.o r2c.o \
 	  range.o rcs.o rcsparse.o rcs2sccs.o receive.o rechksum.o renumber.o \
-	  lock.o rdiffs.o rget.o \
-	  resolve.o resolve_contents.o resolve_create.o \
+	  lock.o resolve.o resolve_contents.o resolve_create.o \
 	  resolve_flags.o resolve_generic.o resolve_modes.o \
 	  resolve_renames.o resolve_filetypes.o rmdel.o rset.o \
 	  sane.o sccs_mv.o sccscat.o sccslog.o sccsmv.o sccsrm.o \
 	  send.o sendbug.o setup.o \
-	  sfiles.o sfind.o sfio.o sids.o sinfo.o slib.o smoosh.o \
+	  sfiles.o sfind.o sfio.o sinfo.o slib.o \
 	  status.o stripdel.o takepatch.o undo.o undos.o \
 	  unique.o unedit.o unlink.o unlock.o unwrap.o user.o utils.o \
 	  version.o what.o zgets.o zone.o license.o trigger.o
@@ -511,7 +510,6 @@ bkd_cd.o:	bkd_cd.c $(B) $(H) $(Z)
 bkd_client.o:	bkd_client.c $(B) $(H) $(Z)
 bkd_clone.o:	bkd_clone.c $(B) $(H) $(Z)
 bkd_cmdtab.o:	bkd_cmdtab.c $(B) $(H) $(Z)
-bkd_diffs.o:	bkd_diffs.c $(B) $(H) $(Z)
 bkd_misc.o:	bkd_misc.c $(B) $(H) $(Z)
 bkd_pull.o:	bkd_pull.c $(B) $(H) $(Z)
 bkd_push.o:	bkd_push.c $(B) $(H) $(Z)
@@ -532,8 +530,6 @@ cset.o:		cset.c $(H) range.h $(Z)
 cset_inex.o:	cset_inex.c $(H) $(Z)
 delta.o:	delta.c $(H)
 diffs.o:	diffs.c $(H) range.h
-rdiffs.o:	rdiffs.c $(H) range.h
-rget.o:		rget.c $(H) range.h
 dirname.o:	dirname.c
 export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
@@ -627,10 +623,8 @@ sendbug.o:	sendbug.c $(H)
 setup.o:	setup.c $(H)
 sfiles.o:	sfiles.c $(H)
 sfio.o:		sfio.c $(H) $(Z)
-sids.o:		sids.c $(H)
 sinfo.o:	sinfo.c $(H)
 slib.o:		slib.c $(H) zgets.h
-smoosh.o:	smoosh.c $(H)
 spawn.o:	port/spawn.c $(H)
 status.o:	status.c $(H)
 stripdel.o:	stripdel.c $(H) range.h

@@ -368,7 +368,6 @@ typedef struct delta {
 	struct	delta *kid;		/* next delta on this branch */
 	struct	delta *siblings;	/* pointer to other branches */
 	struct	delta *next;		/* all deltas in table order */
-	struct	delta *link;		/* link to a matching delta (smoosh) */
 	int	flags;			/* per delta flags */
 } delta;
 

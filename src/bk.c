@@ -84,8 +84,6 @@ int r2c_main(int, char **);
 int range_main(int, char **);
 int rcs2sccs_main(int, char **);
 int rcsparse_main(int, char **);
-int rdiffs_main(int, char **);
-int rget_main(int, char **);
 int receive_main(int, char **);
 int rechksum_main(int, char **);
 int renumber_main(int, char **);
@@ -104,9 +102,7 @@ int setup_main(int, char **);
 int sfiles_main(int, char **);
 int sfind_main(int, char **);
 int sfio_main(int, char **);
-int sids_main(int, char **);
 int sinfo_main(int, char **);
-int smoosh_main(int, char **);
 int status_main(int, char **);
 int stripdel_main(int, char **);
 int takepatch_main(int, char **);
@@ -125,7 +121,7 @@ int zone_main(int, char **);
 struct command cmdtbl[] = {
 	{"_adler32", adler32_main},
 	{"_createlod", _createlod_main},
-	{"_find", find_main }, /* internal helper function */
+	{"_find", find_main }, 		/* internal helper function */
 	{"_keysort", keysort_main},
 	{"_logging", logging_main},
 	{"_loggingaccepted", loggingaccepted_main},
@@ -149,7 +145,7 @@ struct command cmdtbl[] = {
 	{"cset", cset_main},
 	{"delta", delta_main},
 	{"diffs", diffs_main},
-	{"edit", get_main},	/* aliases */
+	{"edit", get_main},		/* aliases */
 	{"export", export_main},
 	{"fdiff", fdiff_main},
 	{"fix", fix_main},
@@ -167,32 +163,30 @@ struct command cmdtbl[] = {
 	{"help", help_main},
 	{"helpsearch", helpsearch_main},
 	{"helptopics", helptopics_main},
-	{"info", sinfo_main},	/* aliases */
+	{"info", sinfo_main},		/* aliases */
 	{"isascii", isascii_main},
 	{"key2rev", key2rev_main},
-	{"lines", lines_main},
+	{"lines", lines_main},		/* XXX - should be _lines, undoc */
 	{"lock", lock_main},
 	{"lod", lod_main},
 	{"log", log_main},
-	{"mail", mail_main},
+	{"mail", mail_main},		/* XXX - should be _mail, undoc */
 	{"merge", merge_main},
-	{"mklock", mklock_main}, /* for regression test only */
-	{"mtime", mtime_main},
+	{"mklock", mklock_main},	/* for regression test only, undoc */
+	{"mtime", mtime_main},		/* for regression test only, undoc */
 	{"mv", mv_main},
 	{"names", names_main},
-	{"new", delta_main},	/* aliases */
+	{"new", delta_main},		/* aliases */
 	{"parent", parent_main},
 	{"pending", pending_main},
 	{"prs", prs_main},
 	{"pull", pull_main},
 	{"push", push_main},
-	{"pwd", pwd_main},
+	{"pwd", pwd_main},		/* for regression test only, undoc */
 	{"r2c", r2c_main},
 	{"range", range_main},
 	{"rcs2sccs", rcs2sccs_main},
 	{"rcsparse", rcsparse_main},
-	{"rdiffs", rdiffs_main},
-	{"rget", rget_main},
 	{"receive", receive_main},
 	{"rechksum", rechksum_main},
 	{"renumber", renumber_main},
@@ -214,9 +208,7 @@ struct command cmdtbl[] = {
 	{"sfiles", sfind_main}, /* aliases */
 	{"sfind", sfind_main},
 	{"sfio", sfio_main},
-	{"sids", sids_main},
 	{"sinfo", sinfo_main},
-	{"smoosh", smoosh_main},
 	{"status", status_main},
 	{"stripdel", stripdel_main},
 	{"takepatch", takepatch_main},
