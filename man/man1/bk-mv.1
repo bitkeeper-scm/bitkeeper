@@ -31,12 +31,17 @@ i.e., they happen automatically when you pull changes into your
 repository from another repository unless you have also renamed the file.
 In that case, the resolver will prompt you to choose a name.
 .LP
-If the last argument is an existing directory, `bk mv' moves each
-other given file into a file with the same name in that directory.
+If the last argument is an existing directory,
+.B bk mv
+moves all listed files into that directory.
 Otherwise, if only two files are given, it renames the first as the
-second.  It is an error if the last argument is not a directory and
-more than two files are given. In summary, `bk mv' behaves like a 
-a regular Unix `mv' command, execpt that it knows about the additional
+second.  It is an error if more than two files are listed and the last
+argument is not a directory.  In summary,
+.B bk mv
+behaves like a 
+a regular Unix 
+.B mv
+command, execpt that it knows about the additional
 BitKeeper files.
 .SH NOTES
 .LP
@@ -59,7 +64,7 @@ Fully supported in \*(BK Professional in all repositories.
 .BU
 Limited functionality in \*(BK Basic.
 bk mv should only be used in the master repository 
-since the resolver can not merge rename conflicts in \*(BK Basic.
+since the resolver cannot merge rename conflicts in \*(BK Basic.
 The actual requirement is that it is only
 used in one repository, then all repositories must sync with
 that repository.  The easiest way to accomplish this is to

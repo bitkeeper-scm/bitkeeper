@@ -50,9 +50,9 @@ $ bk diffs -C<rev1,rev2> -u
 .DE
 The two forms are shown because it is sometimes useful to diff a subset,
 which may be accomplished by filtering the output of bk rset.
-The first form ignore the effect of rename and always output diffs relative
-to the same s.file. The second form account the effect of rename, the diffs
-could be from files extracted from different s.file.
+The first form ignores file renames and always outputs diffs relative
+to the same s.file.  The second form accounts for renames, i.e.,
+the diffs may be from files extracted from different s.files.
 .SH OPTIONS
 .if t .TP
 .if n .TP 1i
