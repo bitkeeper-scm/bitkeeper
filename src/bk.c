@@ -73,6 +73,7 @@ int loggingto_main(int, char **);
 int mail_main(int, char **);
 int makepatch_main(int, char **);
 int merge_main(int, char **);
+int migrate_main(int, char **);
 int mklock_main(int, char **);
 int mtime_main(int, char **);
 int mv_main(int, char **);
@@ -132,6 +133,7 @@ struct command cmdtbl[] = {
 	{"_loggingaccepted", loggingaccepted_main},
 	{"_loggingask", loggingask_main},
 	{"_loggingto", loggingto_main},
+	{"_migrate", migrate_main},
 	{"_mail", mail_main},
 	{"_get", get_main},
 	{"_sortmerge", sortmerge_main},
