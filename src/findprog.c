@@ -54,3 +54,17 @@ prog2path(char *prog)
 	free(path);
 	return (0);
 }
+
+int
+findprog_main(int ac, char **av)
+{
+	char	*path;
+
+	if (path = prog2path(av[1])) {
+		puts(path);
+		free(path);
+		return (0);
+	}
+	return (1);
+}
+

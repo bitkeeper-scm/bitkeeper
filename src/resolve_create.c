@@ -821,7 +821,7 @@ res_loggingok(resolve *rs)
 	sprintf(cmd,
 	    "bk get -eg %s %s", rs->opts->quiet ? "-q" : "", GLOGGING_OK);
 	if (oldsys(cmd, rs->opts)) return (-1);
-	sprintf(cmd, "cat %s %s | sort -u > %s", left, right, GLOGGING_OK);
+	sprintf(cmd, "cat %s %s | bk _sort -u > %s", left, right, GLOGGING_OK);
 	if (oldsys(cmd, rs->opts)) {
 		perror(cmd);
 		rs->opts->errors = 1;

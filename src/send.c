@@ -50,8 +50,10 @@ getNewRevs(char *to, char *rev, char *url)
 	 * For historical reason, we store the revs in x_sendlog
 	 * We should reallly store the keys, because the rev notation
 	 * does not record if tags are transfered
+	 *
+	 * The "grep -v -f-" is a replacement for "comm -23".
 	 */
-	sprintf(buf, "bk _sort -u < %s | comm -23 %s - > %s",
+	sprintf(buf, "bk _sort -u < %s | grep -v -f- %s > %s",
 		x_sendlog, here, keysFile);
 	system(buf);
 	sprintf(buf, "cp %s %s", x_sendlog, here);
