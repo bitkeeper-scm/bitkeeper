@@ -8,11 +8,7 @@ bk isascii \- check that a file is ascii
 .SH DESCRIPTION
 .B bk isascii
 looks through a file for binary data which \*(BK can not handle without
-encoding the file.  This consists of either a NULL (zero byte) or the
-two byte sequence \en\e001, aka
-.SM NEWLINE
-followed by
-.SM CTRL-A.
+encoding the file.  This consists of a NULL (zero byte).
 .SH EXIT CODES
 0 if ascii, 1 otherwise.
 .SH CATEGORY
