@@ -12,6 +12,10 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+# need license to work outside of a repository
+BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1$BKL_P2$BKL_P3"
+export BK_CONFIG
+
 bk admin $Q -n include
 touch X
 for i in 1 2 3 4 5 6 7 8 9 10

@@ -12,6 +12,10 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+# need license to work outside of a repository
+BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1$BKL_P2$BKL_P3"
+export BK_CONFIG
+
 echo $N Set the default branch ......................................$NL
 ls > branch
 bk ci -i $Q branch

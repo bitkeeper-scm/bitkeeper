@@ -96,6 +96,10 @@ done
 cd $HERE
 rm -rf root
 
+# need license to work outside of a repository
+BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1$BKL_P2$BKL_P3"
+export BK_CONFIG
+
 echo $N Check in files named s.something ............................$NL
 mkdir -p bar/blech
 echo foo > s.foo

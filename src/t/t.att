@@ -12,10 +12,34 @@
 # Copyright (c) 1999 Larry McVoy
 # %k%
 
+echo $N Setup license server for AT\&T files .........................$NL
+echo "logging: none" > c
+echo "description: BitKeeper Test repository" >> c
+echo "email: nobody@nowhere.bk" >> c
+echo license: $BKL_P >> c
+echo licsign1: $BKL_P1 >> c
+echo licsign2: $BKL_P2 >> c
+echo licsign3: $BKL_P3 >> c
+BK_HOST=bk_regression.bitkeeper.com bk setup -f -cc license
+cd license
+P=50000
+bk bkd -q -d -p$P -c1
+while [ $? -eq 2 ]
+do	P=`expr $P + 1`
+	bk bkd -q -d -p$P -c1
+done
+export BK_LICURL=bk://localhost:$P/
+bk leaseflush
+echo OK
+
+echo $N Setup some files ............................................$NL
+cd $HERE
 date > date
 bk ci $Q -i -l date || exit 1
 echo new > date
 bk ci $Q -y date || exit 1
+echo OK
+
 echo $N Make sure get -r1.1 works w/ no b flag ......................$NL
 bk get $S -er1.1 date
 if [ ! -f SCCS/p.date ]; then echo Failed, did not edit file.; exit 1; fi

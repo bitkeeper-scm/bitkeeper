@@ -65,6 +65,11 @@ set `grep -v "^.cF" SCCS/s.stdin | wc -w`
 if [ $1 -ne $BASE2 ]; then echo Failed - wrong size.; exit 1; fi
 echo OK
 cd $HERE; rm -rf project; mkdir project; cd project
+
+# need license to work outside of a repository
+BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1$BKL_P2$BKL_P3"
+export BK_CONFIG
+
 echo $N Creating an empty file with rel 3.1 .........................$NL
 bk admin $Q -r3.1 -n empty
 if [ $? -ne 0 ]; then echo Failed - exit code.; exit 1; fi

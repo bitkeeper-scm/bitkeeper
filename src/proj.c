@@ -359,3 +359,19 @@ proj_chdir(char *newdir)
 	return (ret);
 }
 
+/*
+ * create a fake project struct that is used for files that
+ * are outside any repository.  This is used by the lease code.
+ */
+project *
+proj_fakenew(void)
+{
+	project	*ret;
+
+	new(ret);
+	ret->root = strdup("/");
+	ret->csetrootkey = strdup("SCCS");
+	ret->csetmd5rootkey = strdup("SCCS");
+
+	return (ret);
+}

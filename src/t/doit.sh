@@ -358,6 +358,7 @@ init_main_loop
 FAILED=
 for i in $list
 do	echo ------------ ${i#t.} test
+        bk leaseflush
 	mkdir -p $BK_REGRESSION/.tmp || exit 1
 	cat setup $i | @TEST_SH@ $dashx
 	EXIT=$?

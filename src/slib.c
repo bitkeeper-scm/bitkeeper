@@ -3890,7 +3890,7 @@ loadConfig(char *root)
 	MDBM *db;
 
 	db = loadRepoConfig(root);
-	unless (db) return (NULL);
+	unless (db) db = mdbm_mem();
 	loadGlobalConfig(db);
 	loadEnvConfig(db);
 	return (db);
@@ -4077,7 +4077,7 @@ sccs_init(char *name, u32 flags)
 
 	signal(SIGPIPE, SIG_IGN); /* win32 platform does not have sigpipe */
 	if (sig_ignore() == 0) s->unblock = 1;
-	if (BITKEEPER(s)) lease_check(s->proj);
+	lease_check(s->proj);
 	return (s);
 }
 

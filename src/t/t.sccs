@@ -12,6 +12,10 @@
 # Copyright (c) 1999 Larry McVoy
 # %K%
 
+# need license to work outside of a repository
+BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1$BKL_P2$BKL_P3"
+export BK_CONFIG
+
 echo $N Allow bad dates if in SCCS mode .............................$NL
 R=1
 for D in '87/05/28 23:49:57' '97/05/28 23:49:57' '97/05/27 01:34:11' '97/06/23 01:33:45' '98/01/30 17:45:17'

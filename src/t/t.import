@@ -423,6 +423,10 @@ test -f projc/src/baz.c || exit 1
 rm -rf import1 import2 projc
 echo OK
 
+# need license to work outside of a repository
+BK_CONFIG="license:$BKL_P;licsign1:$BKL_P1$BKL_P2$BKL_P3"
+export BK_CONFIG
+
 echo $N Test import of an sccs file .................................$NL
 cd $HERE
 mkdir -p import_sccs/src
@@ -443,6 +447,8 @@ bk undos bar.c > X
 bk undos $HERE/import_sccs/src/bar.c > Y
 cmp -s X Y
 echo OK
+
+unset BK_CONFIG
 
 if [ $PLATFORM != "WIN32" ]
 then #----------------------------------------------------------------

@@ -70,4 +70,7 @@ int	proj_chdir(char *newdir);
  */
 void	proj_reset(project *p);
 
+
+project *proj_fakenew(void);
+
 #endif
