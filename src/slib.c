@@ -10015,7 +10015,7 @@ addMode(char *me, sccs *sc, delta *n, char *mode)
 	n = modeArg(n, newmode);
 }
 
-void
+private int
 changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 {
 	char	buf[50];
@@ -10032,7 +10032,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 			verbose((stderr,
 				"admin: warning: %s %s flag is already on\n",
 				sc->sfile, flag));
-			return;
+			return (0);
 		} 
 		xflags |= mask;
 	} else {
@@ -10040,7 +10040,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 			verbose((stderr,
 				"admin: warning: %s %s flag is already off\n",
 				sc->sfile, flag));
-			return;
+			return (0);
 		}
 		xflags &= ~mask;
 	}
@@ -10050,6 +10050,7 @@ changeXFlag(sccs *sc, delta *n, int flags, int add, char *flag)
 	n->xflags = xflags;
 	sprintf(buf, "Turn %s %s flag", add ? "on": "off", flag);
 	n->comments = addLine(n->comments, strdup(buf));
+	return (1);
 }
 
 int
@@ -10200,6 +10201,7 @@ sccs_admin(sccs *sc, delta *p, u32 flags, char *new_encp, char *new_compp,
 {
 	FILE	*sfile = 0;
 	int	new_enc, error = 0, locked = 0, i, old_enc = 0;
+	int	flagsChanged = 0;
 	char	*t;
 	char	*buf;
 	delta	*d = 0;
@@ -10342,7 +10344,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		int	add = f[i].flags & A_ADD;
 		char	*v = &f[i].thing[1];
 
-		flags |= NEWCKSUM;
+		//flags |= NEWCKSUM;
 		if (isupper(f[i].thing[0])) {
 			char *fl = f[i].thing;
 
@@ -10353,7 +10355,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
 				ALLOC_D();
-				changeXFlag(sc, d, flags, add, fl);
+				flagsChanged += changeXFlag(sc, d, flags, add, fl);
 			}
 #if 0
 			else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
@@ -10367,6 +10369,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			else if (streq(fl, "DEFAULT")) {
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = v ? strdup(v) : 0;
+				flagsChanged++;
 			} else {
 				if (v) fprintf(stderr,
 					       "admin: unknown flag %s=%s\n",
@@ -10385,11 +10388,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			sc->state = S_WARNED;
 		} else {
 			switch (f[i].thing[0]) {
-				//char	buf[500];
 				char	*buf;
 			    case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
+				flagsChanged++;
 				break;
 			    case 'e':
 				if (BITKEEPER(sc)) {
@@ -10398,11 +10401,12 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					if (*v) new_enc = atoi(v);
 					verbose((stderr,
 					    "New encoding %d\n", new_enc));
+					flagsChanged++;
 				}
 		   		break;
 			    default:
-				//sprintf(buf, "%c %s", v[-1], v);
 				buf = aprintf("%c %s", v[-1], v);
+				flagsChanged++;
 				if (add) {
 					sc->flags =
 						addLine(sc->flags, strdup(buf));
@@ -10420,6 +10424,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			}
 		}
 	}
+	if (flagsChanged) flags |= NEWCKSUM;
 
 	if (flags & ADMIN_ADD1_0) {
 		insert_1_0(sc);

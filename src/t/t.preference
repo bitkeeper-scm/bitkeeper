@@ -101,7 +101,4 @@ if [ ! -f $HERE/copy2/src/foo.c ]; then echo failed 1; exit 1; fi
 if [ ! -w $HERE/copy2/src/foo.c ]; then echo failed 2; exit 1; fi
 if [ ! -f $HERE/copy2/src/SCCS/p.foo.c ]; then echo failed; exit 1; fi
 echo OK
-set -x
-bk flags foo.c
-bk admin -FSCCS foo.c
 # TODO add support for bk undo ?
