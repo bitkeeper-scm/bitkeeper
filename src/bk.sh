@@ -832,6 +832,10 @@ _init() {
 	exit 1
 }
 
+_printpath () {
+	echo $BIN
+}
+
 # ------------- main ----------------------
 _init
 
@@ -845,7 +849,7 @@ case "$1" in
 	;;
     setup|changes|pending|commit|sendbug|send|\
     mv|resync|edit|unedit|man|undo|save|docs|rm|new|version|\
-    root|status|export|import)
+    root|status|export|import|printpath)
 	cmd=$1
     	shift
 	_$cmd "$@"

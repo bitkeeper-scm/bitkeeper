@@ -7,7 +7,6 @@
  * timezone offset in seconds normalized to (-43200, 43200].
  */
 
-#include "config.h"
 #include "system.h"
 
 long
