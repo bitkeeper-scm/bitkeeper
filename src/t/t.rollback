@@ -70,7 +70,7 @@ sed "s/$KEY/$BADKEY/" < SCCS/s-ChangeSet > SCCS/s.ChangeSet
 bk admin -z ChangeSet
 bk rechksum -f ChangeSet 2>/dev/null
 cd $HERE/copy
-bk pull $Q $HERE/project 2>/dev/null
+bk pull -t $Q $HERE/project 2>/dev/null
 if [ -d RESYNC ]; then echo failed to abort the takepatch; exit 1; fi
 echo OK
 
@@ -88,7 +88,7 @@ cd $HERE
 tar cf COPY copy
 cd copy
 rm RESYNC/SCCS/s.LS
-bk resolve $Q 2>ERRORS
+bk resolve -t $Q 2>ERRORS
 if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
 if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi
 grep -q 'ERROR: missing or corrupted file' ERRORS
@@ -107,7 +107,7 @@ cd copy
 chmod +w RESYNC/SCCS/s.LS
 echo foo >> RESYNC/SCCS/s.LS
 chmod -w RESYNC/SCCS/s.LS
-bk resolve $Q 2>ERRORS
+bk resolve -t $Q 2>ERRORS
 if [ $? -eq 0 ]; then echo failed to exit with an error; exit 1; fi
 if [ ! -d RESYNC ]; then echo failed to leave RESYNC; exit 1; fi
 grep -q 'bad file checksum, corrupted file' ERRORS
