@@ -48,8 +48,8 @@ private int	expires = 0;
 
 #define	OUTER_TABLE	"<table width=100% bgcolor=black cellspacing=0 border=0 cellpadding=2><tr><td>\n"
 #define INNER_TABLE	"<table width=100% cellpadding=3 cellspacing=1 border=0>"
-#define OUTER_END	"</td></tr></table>\n"
 #define	INNER_END	"</table>"
+#define OUTER_END	"</td></tr></table>\n"
 
 #define BKWEB_SERVER_VERSION	"0.2"
 
@@ -261,7 +261,7 @@ navbutton(int active, int tag, char *start, char *end)
 		start = 0;
 	} else if (strneq(start,"ChangeSet", 9)) {
 		if (start[9] != '@') {
-			out("All ChangeSets");
+			out("All Changesets");
 		} else if (start[10] == '+') {
 			out("Latest ChangeSet");
 		} else if (start[10] == '-') {
@@ -313,7 +313,7 @@ navbutton(int active, int tag, char *start, char *end)
 		out("Statistics");
 		start = 0;
 	} else if (strneq(start, "related/", 8)) {
-		out("ChangeSets for ");
+		out("Changesets for ");
 		start += 8;
 	} else if (strneq(start, "src", 3)) {
 		start += 3;
@@ -1275,8 +1275,8 @@ http_stats(char *page)
 	out(OUTER_TABLE INNER_TABLE
 	    "<tr bgcolor=#d0d0d0>\n"
 	    "<th>Author</th>\n"
-	    "<th>Recent ChangeSets</th>\n"
-	    "<th>All ChangeSets</th></tr>\n");
+	    "<th>Recent changesets</th>\n"
+	    "<th>All changesets</th></tr>\n");
 
 	while (fnext(buf,p)) {
 		unless (sscanf(buf, " %s %d %s", user, &ct, units) == 3) {
@@ -1445,19 +1445,16 @@ http_index(char *page)
 		if (m) mdbm_close(m);
 	}
 
-
+	out("<table width=100%><tr><td valign=top width=50%>\n");
 	out("<table width=100%>\n");
 #define	DOIT(c, l, u, t) \
 	if (c && (c != l)) { \
-		out("<tr><td width=45%>&nbsp;</td>"); \
-		sprintf(buf, "<td><a href=ChangeSet@-%s%s>", u, navbar); \
+		sprintf(buf, "<tr><td><a href=ChangeSet@-%s%s>", u, navbar); \
 		out(buf); \
 		sprintf(buf, \
-		    "%d&nbsp;ChangeSets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
+		    "%d&nbsp;Changesets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
 		out(buf); \
-		out("</td>\n"); \
-		out("<td width=45%>&nbsp;</td>"); \
-		out("</tr>\n"); \
+		out("</td></tr>\n"); \
 	}
 	DOIT(c1h, 0, "1h", "hour");
 	DOIT(c1d, c1h, "1d", "day");
@@ -1475,34 +1472,33 @@ http_index(char *page)
 	DOIT(c1y, c9m, "1y", "year");
 	DOIT(c2y, c1y, "2y", "two&nbsp;years");
 	DOIT(c3y, c2y, "3y", "three&nbsp;years");
-	out("<tr><td>&nbsp;</td><td>");
-	sprintf(buf,"<a href=ChangeSet%s>", navbar);
+	sprintf(buf,"<tr><td><a href=ChangeSet%s>", navbar);
 	out(buf);
-	sprintf(buf, "All %d ChangeSets", c);
+	sprintf(buf, "All %d changesets", c);
 	out(buf);
-	out("</a></td><td>&nbsp;</td></tr>");
-	out("<tr><td>&nbsp;</td>");
-	sprintf(buf,
-	    "<td><a href=src%s>Browse the source tree</a></td>", navbar);
-	out(buf);
-	out("<td>&nbsp;</td></tr>");
+	out("</a></td></tr>");
+	out("</table>");
+	out("</td><td valign=top width=50%>");
+	out("<table width=100%>\n\n");
 	unless (user[0]) {
-		out("<tr>\n"
-		    "  <td>&nbsp;</td>\n");
 		sprintf(buf,
-		    "  <td><a href=stats%s>User statistics</a></td>\n",
+		    "<tr><td><a href=stats%s>User statistics</a></td></tr>\n",
 		    navbar);
 		out(buf);
-		out("  <td>&nbsp;</td>\n"
-		    "</tr>\n");
 	}
-	out("<tr>\n"
-	    "  <td></td>\n");
-	sprintf(buf, "  <td><a href=tags%s>Tags</a></td>\n", navbar);
+	sprintf(buf, "<tr><td><a href=tags%s>Tags</a></td></tr>\n", navbar);
 	out(buf);
-	out("  <td>&nbsp;</td>\n"
-	    "</tr>\n");
-	out("</table>\n");
+	sprintf(buf,
+	    "<tr><td><a href=src%s>Browse the source tree</a></td></tr>",
+	    navbar);
+	out(buf);
+	out("<tr><td>&nbsp;</td></tr>\n");
+#ifdef notyet
+	out("<tr><td><a href=http://www.bitkeeper.com/bkweb/help.html>Help"
+	    "</a></td></tr>\n");
+#endif
+	out("</table>");
+	out("</table>");
 	if (!embedded) trailer(0);
 }
 
@@ -1810,7 +1806,7 @@ http_related(char *file)
 
 	if (!embedded) {
 		httphdr(".html");
-		header(0, COLOR_CHANGES, "ChangeSets that modify %s", 0, file);
+		header(0, COLOR_CHANGES, "Changesets that modify %s", 0, file);
 	}
 
 	if (count) {
