@@ -201,8 +201,6 @@ cmp -s clone/WANT GOT || {
 	diff clone/WANT GOT
 	exit 1
 }
-bk lock -U
-bk lock -U $HERE/clone
 echo OK
 
 echo $N Demonstrate out of order changesets .........................$NL
@@ -305,6 +303,3 @@ grep -q "1.6" out || {
 	exit 1
 }
 echo OK
-
-# wait for bkd locks
-bk lock -U $HERE/project

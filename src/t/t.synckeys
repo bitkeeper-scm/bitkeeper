@@ -57,7 +57,6 @@ echo OK
 echo $N make sure bk send xfers tags correctly ......................$NL
 bk send $Q -u$HERE/project  - > $HERE/patch
 cd $HERE/project
-bk lock -U
 bk takepatch -qa < $HERE/patch
 bk prs -hn -d:TAG: | grep copy1 > OUT2
 test $? -eq 0 || {
