@@ -87,6 +87,8 @@ findcset_main(int ac, char **av)
 		}
 	}
 
+	has_proj("findcset");
+
 	if (tagFile && openTags(tagFile)) return (1);
 
 	/*

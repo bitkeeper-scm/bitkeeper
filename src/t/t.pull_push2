@@ -111,15 +111,24 @@ bk lock -w &
 LOCKPID=$!
 bk lock -L
 cd $HERE/copy2
-bk lock -U
 bk pull $HERE/project > /dev/null 2>&1 &
 PULL_PID=$!
+# Wait for pull to lock the repo
+bk lock -L
 sleep 1
 ps alx  | grep ${PULL_PID} | grep -q "defunc"
-if [ $? -eq 0 ]; then echo failed; kill -9 ${LOCKPID} ${PULL_PID}; exit 1; fi
-bk unlock -w $HERE/project
-waitForUnlock $HERE/project
-bk unlock -w $HERE/copy2
-waitForUnlock $HERE/copy2
+if [ $? -eq 0 ]
+then	echo failed
+	kill -9 ${LOCKPID} ${PULL_PID}
+	exit 1
+fi
+# unlock the repo so pull can finish
+cd $HERE/project/BitKeeper
+rm -rf readers writer
+# Now go back and wait for pull to exit, it drops the lock
+# We need to do this because on slow machines we can remove all this stuff,
+# go to the next test, and have the pull lock the new repo.  Lovely, that.
+cd $HERE/copy2
+bk lock -U
 echo OK
 fi #---------------------------------------------------------------------
