@@ -80,7 +80,7 @@ get $Q -e hash
 clean $Q hash
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to SCCS expand file .. check sfiles -c ............$NL
-echo %K% > sccsexp
+echo %""K% > sccsexp
 ci $Q -i sccsexp
 get $Q sccsexp
 mv sccsexp sccsexp.ro
@@ -107,8 +107,8 @@ echo $N No change to RCS expand file ....check clean ................$NL
 clean $Q rcsexp
 if [ $? -ne 0 ] ; then echo failed; fail=yes; else echo OK; fi
 echo $N No change to expand first keyword only .. check sfiles -c ...$NL
-echo %@% > exp1 
-echo %K% >> exp1 
+echo %""@% > exp1 
+echo %""K% >> exp1 
 ci $Q -i exp1
 admin -fEXPAND1 exp1
 get $Q exp1
