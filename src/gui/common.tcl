@@ -17,3 +17,15 @@ proc cd2root {} \
 	exit 1
 }
 
+proc check_keytmp {} \
+{
+	global	bin
+
+	if {[file writable "/var/bitkeeper"] == 1} { return }
+	set tmpdir [file join $bin "tmp"]
+	if {[file writable $tmpdir] == 1} { return }
+	puts "Unable to write in directory $tmpdir"
+	puts "BitKeeper needs this directory to be world writable,"
+	puts "please fix this and try again."
+	exit 1
+}
