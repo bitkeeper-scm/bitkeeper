@@ -368,10 +368,5 @@ The GUI configuration was designed and is maintained by Aaron Kushner.
 .SA histtool 1
 .SA fmtool 1
 .SA renametool 1
-.\" help://GUI
-.\" help://GUI-config
-.\" help://gui-config
-.\" help://gui config
-.\" help://gui configuration
 .SH CATEGORY
 .B GUI-tools
