@@ -415,7 +415,6 @@ install: install-nolinks
 	@-if [ -w /usr/bin ]; \
 	then	for file in $(BINLINKS); \
 		do	rm -f /usr/bin/$$file; \
-			rm -f $(BK_BIN)/$$file; \
 			ln -s $(BK_BIN)/$$file /usr/bin/$$file; \
 		done; \
 	fi
