@@ -2574,7 +2574,11 @@ copyAndGet(opts *opts, char *from, char *to)
 		getFlags = default_getFlags;
 		//ttyprintf("checkout %s with defaults(%d)\n", key, getFlags);
 	}
-	if (getFlags && !opts->logging) {
+	if (opts->logging) {
+		unless (strneq(to, "BitKeeper/etc/SCCS", 18)) {
+			assert(!HAS_GFILE(s));
+		}
+	} else if (getFlags) {
 		sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 	} else {
 		assert(!HAS_GFILE(s));
