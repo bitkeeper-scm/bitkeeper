@@ -203,7 +203,6 @@ mode2FileType(mode_t m)
 int
 fileType(mode_t m)
 {
-	// XXX this code may not be portable
 	return (m & S_IFMT);
 }
 

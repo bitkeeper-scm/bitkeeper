@@ -747,6 +747,7 @@ isIgnored(char *file)
 	if ((len >= 14) && strneq("BitKeeper/log/", gfile, 14)) return (1);
 	if ((len >= 17) && strneq("BitKeeper/writer/", gfile, 17)) return (1);
 	if ((len >= 18) && strneq("BitKeeper/readers/", gfile, 18)) return (1);
+	if ((len >= 8) && strneq("PENDING/", gfile, 8)) return (1);
 	
 	return (0);
 }
@@ -975,7 +976,7 @@ skip:			mdbm_close(gDB);
 	 * First eliminate as much as we can from SCCS dir;
 	 * the leftovers in the gDB should be extras.
 	 *
-	 * Note: We don't use fifo to loop thru the sfile
+	 * Note: We use the fifo to loop thru the sfile
 	 * because if we use mdbm_frist/next, we cannot delete
 	 * entry while we are in the first/next loop, it screw up
 	 * the mdbm internal index.

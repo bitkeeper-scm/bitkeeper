@@ -10,7 +10,7 @@ bkd_reap(pid_t resync, int r_pipe, int w_pipe)
 	if (resync > 0) {
 		/*
 		 * win32 does not support the WNOHANG options
-		 * there alos not need to reap child process on win32
+		 * there s also no need to reap child process on win32
 		 */
 		int	i;
 

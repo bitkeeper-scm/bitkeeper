@@ -39,7 +39,7 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  clean.o cleanpath.o clone.o comments.o commit.o compress.o \
 	  converge.o cset.o csets.o cset_inex.o \
 	  delta.o diffs.o dirname.o export.o fdiff.o \
-	  filecopy.o find.o fix.o g2sccs.o \
+	  find.o fix.o g2sccs.o \
 	  gca.o get.o gethelp.o gethost.o getopt.o \
 	  gettemp.o getuser.o glob.o gnupatch.o graft.o grep.o \
 	  help.o http.o host.o isascii.o \
@@ -52,7 +52,8 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  park.o parent.o pending.o \
 	  port/bkd_client.o port/check_gfile.o \
 	  port/lock.o port/mnext.o port/popen.o \
-	  port/executable.o port/fileinfo.o port/findprog.o port/fullname.o \
+	  port/executable.o \
+	  port/filecopy.o port/fileinfo.o port/findprog.o port/fullname.o \
 	  port/flushsocket.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
 	  port/getrealcwd.o port/getrealname.o port/gui.o port/hostColonPath.o \
@@ -578,7 +579,6 @@ dirname.o:	dirname.c
 export.o:	export.c $(H)
 fdiff.o:	fdiff.c $(H)
 files.o:	files.c $(H)
-filecopy.o:	filecopy.c $(H)
 fix.o:		fix.c $(H)
 fullname.o:	port/fullname.c $(H)
 g2sccs.o:	g2sccs.c $(H)
@@ -626,6 +626,7 @@ park.o:		park.c $(H)
 pending.o:	pending.c $(H)
 popen.o:	popen.c $(H)
 port/check_gfile.o:	port/check_gfile.c $(H) 
+port/filecopy.o:	port/filecopy.c $(H)
 port/fileinfo.o:	port/fileinfo.c $(H) 
 port/findprog.o:	port/findprog.c $(H) 
 port/flushsocket.o:	port/flushsocket.c $(B) $(H)
