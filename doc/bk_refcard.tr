@@ -4,19 +4,19 @@
 .nr FM 0.25i      \" Footer Margin
 .nr LL 3.0i       \" Line Length
 .nr GUTTER .5i	  \" Gutter
-.nr PO 0.25i      \" Page Offset
+.nr PO 0.5i      \" Page Offset
 .nr PL 8.5i	  \" Page length
-.nr PS 10	  \" Point size
+.nr PS 9	  \" Point size
 .nr VS \n[PS]+2   \" Vertical spacing
 .nr COL 1	  \" Current column
-.nr COLS 4	  \" Max number of columns
+.nr COLS 3	  \" Max number of columns
 .ll \n[LL]u
 .po \n[PO]u
 .pl \n[PL]u
 .ps \n[PS]
 .vs \n[VS]
 .\" Define our own box drawing routines using some nifty features of
-.\" GNU troff.  We may come back and add drop shadows at some point.
+.\" GNU troff.
 .de B1
 .	br
 .	ne 1.5i
@@ -30,12 +30,14 @@
 .	nr HEIGHT \\n[nl]u-\\n[a]u
 .	nr WIDTH \\n[LL]u+.1i
 .	po -.05i
-\\D't .1'
+\\D't 500'
 .	sp -1
 \\D'p 0 0 \\n[WIDTH]u 0 0 -\\n[HEIGHT]u -\\n[WIDTH]u 0'
 .	po +\\n[WIDTH]u
 .	sp -1
 .	nr HEIGHT -.05i
+\\D't .1'
+.	sp -1
 \\D'P 0 0 .05i 0 0 -\\n[HEIGHT]u -.05i 0'
 .	po
 .	po +.05i
@@ -49,8 +51,8 @@
 .	ie \\n[.$]=1 .ps +\\$1
 .	el .ps +4
 .	ft B
-.	nr INDENT1 .15i
-.	nr INDENT2 .5i
+.	nr INDENT1 .10i
+.	nr INDENT2 .4i
 ..
 .de H1
 .	SH 4
@@ -77,7 +79,7 @@
 .	ta \\n[INDENT1]u \\n[INDENT2]u
 .	ti 0
 .	ft B
-\t\\$1\t\c
+\t\\$1\t\ \c
 .	ft R
 ..
 .de LP
@@ -90,7 +92,7 @@
 .		bp
 .		sp |\n[HM]u
 .		nr COL 1
-.		nr PO .25i \}
+.		nr PO .5i \}
 .	el \{\
 .		sp |\\n[TOP]u
 .		nr PO +\\n[LL]u
@@ -100,6 +102,7 @@
 .sp |\n[HM]u
 .mk TOP
 .ce 1000
+.sp 1
 .ps 16
 .ft B
 BitKeeper Reference Card
@@ -117,7 +120,7 @@ http://www.bitkeeper.com
 .H1
 BitKeeper Command Syntax
 .LP
-bk [\fIglobal_options] \fIcommand [\fIcommand_options] [\fIargs]
+bk [\fIglobal_options\fP] \fIcommand\fP [\fIcommand_options\fP] [\fIargs\fP]
 .H1
 \fBGlobal Options:
 .IP -R
@@ -142,220 +145,205 @@ Run quietly
 .H1
 Repository-Level Commands
 .\" # 
+.\" # Abort
+.\" # 
+.H2
+bk abort
+.LP
+Abort a failed pull, push, or resync
+.\" # 
 .\" # Changes
 .\" # 
 .H2
-changes
+bk changes
 .LP
-Shows the changesets in your local work area.
+List changesets in this repository.  See also 
+\fBbk revtool\fP.
 .\" # 
 .\" # Check
 .\" # 
 .H2
-check -r [\fIoptions\fB]
+bk -r check -a [\fIoptions\fP]
 .LP
-Check consistency of the repository
-.IP -a
-Ensure every delta in Changest is part of repository
+Run a consistency check (like fsck).
+.IP -w
+List writable files without lock files.
 .\" # 
 .\" # Clone
 .\" # 
 .H2
-clone [\fIoptions\fB] \fIsource \fIdestination
+bk clone [\fIoptions\fP] \fIsource \fIdestination\fP
 .LP
 Make a copy of a repository
-.IP -r\fIrev\fP
-Revision
-.IP -z[\fI0-9\fP]
-Compression Level
+.IP -r\fIrev|tag\fP
+clone backwards to the changeset specified by \fIrev\fP or \fItag\fP.
 .H2
 .\" # 
 .\" # Commit
 .\" # 
 .H2
-commit [\fIoptions\fB]
+bk commit [\fIoptions\fP]
 .LP
-Added deltas to a changeset
-.IP -d
-non-interactive; commit with default comments
-.IP -Smsg
-Tag tree with \fImsg\fB when commiting
+Group checked in changes into a changeset
+.\" .IP -Smsg
+.\" Tag tree with \fImsg\fP when committing
 .IP -yx
-Set check-in comment to \fImsg\fB
-.IP -Yx
-Get check-in comment from file \fIfile\fB
-.B2
-.B1
-.sp .5
+Set check-in comment to \fIx\fP
+.\" .IP -Yx
+.\" Get check-in comment from file \fIx\fP
+.LP
+See also \fBbk citool\fP.
 .\" # 
 .\" # Export
 .\" # 
 .H2
-export [\fIoptions\fB] [\fIsource\fB] \fIdest\fB
+bk export [\fIoptions\fP] [\fIsource\fP] \fIdest\fP
 .LP
-Generates clear-text trees or patches from BitKeeper repositories
-.IP -d<date>
-Export the tree as of date <date>.
-.IP -i<pattern>    
-Export only pathnames matching <pattern>.
+Extract a particular version as a tree or a patch
+.IP -i\fIpat\fP    
+Export only pathnames matching pattern \fIpat\fP.
 .IP -k             
-Do not expand keywords (default is to expand keywords).
-.IP -r<rev>        
-Export the tree as of revision <rev>.
-.IP -x<pattern>    
-Export all pathnames not matching <pattern>
-.\" # 
-.\" # Info
-.\" # 
+Do not expand keywords.
+.IP -r\fIrev\fP        
+Export the tree as of revision \fIrev\fP.
+.IP -t\fIpatch\fP
+Export the specified revision[s] as a traditional patch.
+.IP -x\fIpat\fP    
+Export all pathnames not matching pattern \fIpat\fP.
+.H2
+bk import [\fIoptions\fP] \fIsource\fP \fIdest\fP
+.LP
+Import external changes into a BK repository.
+.IP -t\fIpatch\fP
+Import a patch (can be done repeatedly).
+.IP -t\fICVS\fP
+Import a CVS (one time only).
+.sp 1.1
+.B2
+.B1
+.H1
+Repository-Level Commands...
 .sp .5
-.H2
-info [\fIfiles\fB]
-.LP
-Shows the state of a list of files
-.\" # 
-.\" # lock
-.\" # 
-.H2
-lock [\fIoptions\fB] [\fIfiles\fB]
-.LP
-View or set locks on a repository
-.IP -l
-list lockers on repository
-.IP -r
-add non-exclusive read lock
-.IP -w
-add exclusive read lock
 .\" # 
 .\" # Parents
 .\" # 
 .H2
-parent [\fIoptions\fB] [\fIfiles\fB]
+bk parent [\fIrepository\fP]
 .LP
-Sets or shows repository where we push and pull from
-.IP -r
-Remove parent pointer.
+Show or set the repository from which we pull or to which we push
 .\" # 
 .\" # Pending
 .\" # 
 .H2
-pending [\fIoptions\fB] [\fIfiles\fB]
+bk pending 
 .LP
-Show changes made to local work area, but not yet committed to a 
-changeset.
+Show checkins made to files in this repository which have not been
+committed to a changeset.
 .\" # 
 .\" # Pull
 .\" # 
 .H2
-pull [\fIoptions\fB] [\fIparent\fB]
+bk pull [\fIoptions\fP] [\fIsource\fP]
 .LP
-Updates a repository from its parent
+Pulls changes from the parent or source to this repository
 .IP -i
-Turn off automerge.
+Turn off automerge
 .IP -l
-Long listing of changesets to be pulled.
+Verbose listing of changesets to be pulled
 .IP -n
-Don't actually do the pull, just list.
-.IP -r
-Do not run resolve.
-.IP -t
-Use text-mode only.
+Dry run, list changes (-l for verbose listing)
 .\" # 
 .\" # Push
 .\" # 
 .H2
-push [\fIoptions\fB] [\fIparent\fB]
+bk push [\fIoptions\fP] [\fIdestination\fP]
 .LP
-Update a parent repository.
+Push changes from this repository to the parent or dest
 .IP -a
-Automatically do a pull, before the push.
-.IP -g
-Use GUI tools when resolving.
+Automatically do a pull if the push has conflicts
 .IP -l
-Long listing of changeset.
+Verbose listing of changesets to be pushed
 .IP -n
-Don't actually do the push
-.IP -t
-Use text-mode when resolving
+Dry run, list changes (-l for verbose listing)
 .\" # 
 .\" # Receive
 .\" # 
 .H2
-receive [\fItakepatch options\fB] [\fIrepository\fB]
+bk receive [\fItakepatch_options\fP] [\fIrepository\fP]
 .LP
-Apply patches received via email
-.B2
-.B1
-.sp .5
+Apply patches received via email (see also bk send)
+.IP -a
+Call resolve to apply the changes
 .\" # 
 .\" # Resolve
 .\" # 
 .H2
-resolve [\fIoptions\fB] [\fIproject_root\fB]
+bk resolve [\fIoptions\fP] [\fIproject_root\fP]
 .LP
-Merge new work after a push, pull, or resync
+Merge conflicts created by a pull
 .IP -a
-Automerge
-.IP -c
-No conflicts. Only merge nonconflicting lines.
-.IP -l<\fIlog\fB>
-Save operations to \fIlog\fB. Provides audit info.
-.IP -m\fImerge\fB
-Use the \fImerge\fB program to merge diffs
-.IP -r
-Remerge
+Automerge if possible
+.IP -l
+Show more status on stderr
 .IP -t
-Text-only mode.
-.IP -y[\fI<str>\fP]
-Use \fImsg\fB as the check-in message
+Text-only mode, use no GUI tools.
+.IP -y[\fImsg\fP]
+Use \fImsg\fP as the check-in message
 .\" # 
 .\" # Send
 .\" # 
 .sp .5
 .H2
-send [\fIoptions\fB] [\fIfiles\fB]
+bk send [\fIoptions\fP] email_address
 .LP
 Synchronize repositories using email as the transport.
 .IP -d
 Prepend the patch with unified diffs.
 .IP -w\fIcmd\fP
-Wrap the patch with <cmd> before sending it.
+Wrap the patch with \fIcmd\fP before sending it.
 .IP -r\fIrevs\fP
 Specify the list of changesets to send.
 .\" # 
 .\" # Setup
 .\" # 
 .H2
-setup [\fIoptions\fB] [\fIdirectory\fB]
+bk setup [\fIoptions\fP] [\fIdirectory\fP]
 .LP
-Setup a new BitKeeper repository.
-.IP -c\fIstr
-Configuration file
-.IP -n\fIstr
-Project Name
+Create a new BitKeeper package
+.IP -c\fIfile\fP
+Use \fIfile\fP as the configuration file
+.LP
+Use \fBbk clone\fP to create copies, \fBbk setup\fP
+is for the creation of a new package.
 .\" # 
 .\" # Status
 .\" # 
 .H2
-status [\fIoptions\fB] [\fIrepository\fB]
+bk status [\fIoptions\fP] [\fIrepository\fP]
 .LP
-Shows information such as number of files, uncommitted files,
-bk version, etc.
+Shows repository information such as number of files,
+uncommitted files, bk version, etc.
 .H2
 .\" # 
 .\" # Tags
 .\" # 
-tag [\fIoptions\fB] symbol
+bk tag [\fIoptions\fP] \fIsymbol\fP
 .LP
-Tags the repository with a symbolic name
+Tags the most recent changeset with a symbolic name
 .IP
--r<rev>
-Version of the repository to tag
+-r\fIrev\fP
+Tag \fIrev\fP instead of most recent changeset.
+.LP
+See also \fBbk clone -r\fP.
+.H2
 .\" # 
 .\" # Version
 .\" # 
-version
+.\" XXX not sure how important this is.
+bk version
 .LP
-Shows version of BitKeeper software.
+Shows BitKeeper software version.
+.sp .5
 .B2
 .B1
 .\" ############################
@@ -365,164 +353,172 @@ Shows version of BitKeeper software.
 .\" ############################
 .H1
 File-Level Commands
+.H2
+Specifying file argument lists
+.LP
+\fBbk\fP \fIcmd\fP - invokes \fIcmd\fP on \fI./SCCS/s.*\fP
+.LP
+\fBbk\fP \fIcmd *.c\fP - invokes \fIcmd\fP on \fI./SCCS/s.*.c\fP
+.LP
+\fBbk -r\fP \fIcmd\fP - invokes \fIcmd\fP on all revision controlled files
+.LP
+\fBbk -r\fP\fIdir cmd\fP - as above, starts at \fIdir\fP instead of repository
+root
+.LP
+\fBbk -c -r\fP \fIcmd\fP - invokes \fIcmd\fP on all modified files
+.LP
+\fBbk -x -r\fP \fIcmd\fP - invokes \fIcmd\fP on all files \fBnot\fP under
+revision control
+.LP
+See also \fBbk sfiles\fP.
+.sp .5
 .\" # 
 .\" # Ci
 .\" # 
 .H2
-ci [\fIoptions\fB] [\fIfiles\fB]
+bk ci [\fIoptions\fP] [\fIfiles\fP]
 .LP
-Stores your new revisions into the repository
-.IP -l
-Follow check in with a locked check out like ``get -e''
-.IP -f
-Force creation of a null delta when invoked as ci
-.IP -u
-Follow check in with an unlocked check out like ``get''
-.IP -y\fI<str>\fP
-Sets the revision comment to <comment>
+Checks in locked and modified files
+.IP -y\fIstr\fP
+Sets the revision comment to \fIstr\fR
 .IP -p
-Print differences before prompting for comments
-.B2
-.B1
-.sp .5
+Prints differences before prompting for comments
 .\" # 
 .\" # Clean
 .\" # 
 .H2
-clean [\fIoptions\fB] [\fIfiles\fB]
+bk clean [\fIoptions\fP] [\fIfiles\fP]
 .LP
-Remove unmodified files from current directory
-.IP -v
-Verbose. List deleted and modified files
+Unlock and remove unmodified working files
 .IP -p
-Shows diffs for all modified files
+Shows differences for all modified files
 .\" # 
 .\" # Co
 .\" # 
 .H2
-co [\fIoptions\fB] [\fIfiles\fB]
+bk co [\fIoptions\fP] [\fIfiles\fP]
 .LP
-Check out files read-only
-.IP -l
-Checks out locked copy of the file for editing
-Same as 'get -e'.
+Check out files 
 .\" # 
 .\" # Diffs
 .\" # 
 .H2
-diffs [\fIoptions\fB] [\fIfiles\fB]
+bk diffs [\fIoptions\fP] [\fIfiles\fP]
 .LP
-View changes between different revision of a file.
+Show differences in revision controlled files
+.IP -c
+Do context diffs
 .IP -D
-Prefix lines with dates
+Prefix diffs with dates (2 revisions only)
 .IP -f
 Prefix lines with file names
 .IP -M
 Prefix lines with revision numbers
-.IP -r<r>
-Diff revision <r>
-.IP -u
-Do unified diffs
+.IP -r\fIrev\fP
+Diff working file against revision \fIrev\fP
+.IP -r\fIr1..r2\fP
+Diff revision \fIr1\fP against revision \fIr2\fP
 .IP -U
 Prefix lines with user names
+.IP -u
+Do unified diffs
 .\" # 
 .\" # Edit
 .\" # 
 .H2
-edit [\fIoptions\fB] [\fIfiles\fB]
+bk edit [\fIoptions\fP] [\fIfiles\fP]
 .LP
-Checks out files for editing.
-.\" # 
-.\" # Fix
-.\" # 
-.H2
-fix [\fIoptions\fB] [\fIfiles\fB]
-.LP
-Make changes to the most recent delta of a file.
-.\" # 
-.\" # Gone
-.\" # 
-.H2
-gone [\fIoptions\fB] \fIkey\fB [\fIkey\fB]
-.LP
-Remove a file permanently from the repository
+Checks out and locks files for editing.
 .\" # 
 .\" # Mv
 .\" # 
 .H2
-mv [\fIoptions\fB] [\fIsource\fB] [\fIdestination\fB]
+bk mv \fIsource\fP \fIdestination\fP
 .LP
-move file 
+move file, recording the move
+.\" # 
+.\" # Mvdir
+.\" # 
+.H2
+bk mvdir \fIsource\fP \fIdestination\fP
+.LP
+move directory, recording the move for all files
 .\" # 
 .\" # New
 .\" # 
 .H2
-new [\fIfiles\fB]
+bk new [\fIoptions\fP] [\fIfiles\fP]
 .LP
 Add a new file to the repository
 .\" # 
 .\" # Prs
 .\" # 
 .H2
-prs [\fIoptions\fB] [\fIfiles\fB]
+bk prs [\fIoptions\fP] [\fIfiles\fP]
 .LP
 View revision history of a file or repository
-.IP -c<date>
+.IP -c\fIdate\fP
 Cut-off dates.
-.IP -d<spec>
+.IP -d\fIspec\fP
 Specify output data specification
-.IP -m
-Print metadata, such as users and symbols.
-.IP -r<rev>
-Specify a revision, or part of a range.
-.IP -v
-Complain about SCCS files that do not match the range.
+.IP -h
+Suppress headers
+.IP -r\fIrev\fP
+Specify a revision, or part of a range
 .\" # 
 .\" # Rm
 .\" # 
 .H2
-rm [\fIoptions\fB] [\fIfiles\fB]
+bk rm \fIfiles\fP
 .LP
-Delete a file. 
-.\" # 
-.\" # Sccslog
-.\" # 
-.H2
-sccslog [\fIoptions\fB] [\fIfiles\fB]
-.LP
-View BitKeeper logs
-.IP -c<dates>
-Cut off dates.
-.\" # 
-.\" # Sfiles
-.\" # 
-.H2
-sfiles [\fIoptions\fB] [\fIdirectories\fB]
-.LP
-Generates a list of files.
+Remove a file in a recoverable way
 .B2
 .B1
 .sp .5
 .\" # 
+.\" # Sccslog
+.\" # 
+.H2
+bk sccslog [\fIoptions\fP] [\fIfiles\fP]
+.LP
+Time ordered listing of deltas over all files
+.\" # 
+.\" # Sfiles
+.\" # 
+.H2
+bk sfiles [\fIoptions\fP] [\fIdirectory\fP]
+.LP
+Generates a list of files.
+.IP -c
+List locked and modified files
+.IP -d
+List directories under revision control
+.IP -n
+List files not in the correct location (names)
+.IP -p
+List files with pending deltas
+.IP -x
+List files not under revision control
+.\" # 
 .\" # Undo
 .\" # 
 .H2
-undo [\fIoptions\fB] [\fIfiles\fB]
+bk undo [\fIoptions\fP] [\fIfiles\fP]
 .LP
 Remove one or more changesets
-.IP -a<rev>
-Remove all changesets which occurred after <rev>.
+.IP -a\fIrev\fP
+Remove all changesets which occurred after \fIrev\fP
 .IP -f
-Force the undo to complete.
+Do not prompt for confirmation
 .IP -s
-Do not save undone changes as a patch.
-.IP -r<revs>
-Remove the list of changesets specified by <revs>.
+Do not save undone changes as a patch
+.IP -r\fIrevs\fP
+Remove the list of changesets specified by \fIrevs\fP
 .\" # 
 .\" # What
 .\" # 
 .H2
-what [\fIfiles\fB]
+bk what \fIfiles\fP
 .LP
 Shows SCCS keywords embedded within a file
 .B2
@@ -535,15 +531,17 @@ Shows SCCS keywords embedded within a file
 .\" ############################
 .H1
 BitKeeper File Types
+.sp .25
 .IP foo.c 1i
 gfile, this is your source file
 .IP SCCS/s.foo.c
 s.file - file with all revision history
 .IP SCCS/p.foo.c
-p.file - lock file
+p.file - lock file created when file is edited
 .IP SCCS/z.foo.c
+z.file - lock file created when checking in a new version 
 .IP SCCS/x.foo.c
-.IP SCCS/b.foo.c
+x.file - temporary file containing s.file underway
 .B2
 .\" ############################
 .\" #
@@ -552,17 +550,98 @@ p.file - lock file
 .\" ############################
 .B1
 .sp .5
-.ps 10
-bk sfiles -x | bk new -
+.H1
+Common operations
+.H2
+Get a working copy of a tree
+.LP
+\fBbk clone bitmover.com:/home/bk/bugfixes\fP
+.H2
+Edit some files
+.LP
+\fBcd bugfixes/src
 .br
-Check in all files not under revision control
+\fBbk vi sccs.h slib.c\fP
+.H2
+Check in the files, creating a changeset
+.LP
+\fBbk citool\fP
+.H2
+Push the changes back up
+.LP
+\fBbk push\fP
+.H2
+Pull updates
+.LP
+\fBbk pull\fP
+.H2
+Graphically browse a file's history
+.LP
+\fBbk revtool\fP \fIfile\fP
+.H2
+Graphically browse a project's history
+.LP
+\fBbk revtool\fP
 .B2
-
+.\"# 
+.\"# Graphical Tools
+.\"# 
+.B1
+.sp .5
+.H1
+Graphical Tools
+.sp .25
+.H2
+bk citool [\fIdir or file list\fP]
+.LP
+Graphical checkin tool, shows all modified files and all files not
+under revision control.  Click on a modified file and the differences
+are shown and a comment window is available for checkin comments.
+Can pop up an editor tool to walk through changes; can pop up
+revtool to view history.  Integration with the bug database is coming.
+.H2
+bk csettool [-r\fIrevs\fP]
+.LP
+View all changes contained in a changeset or set of changesets.  Lists
+the changesets, the deltas in each file in each changeset, and shows
+the differences of each file.
+.H2
+bk difftool \fIleft\fP \fIright\fP
+.LP
+Side-by-side file difference viewer.  If \fIright\fP is a directory the
+implied name is \fIright/left\fP, like diff(1).
+.H2
+bk fmtool \fIlocal\fP \fIremote\fP \fImerge\fP
+.LP
+Side-by-side merge tool for resolving differences.  Walks through each
+change, allows you to select either, places the selection in a merge
+window which can then be edited directly.
+.H2
+bk helptool [\fItopic\fP]
+.LP
+Online help system with search facility.
+.H2
+bk repotool
+.LP
+Graphical tool to manage projects and bug database
+.H2
+bk revtool [\fIfilename\fP]
+.LP
+Graphically browse file or project history.  Click left on a node and
+then click right on a later node to view differences.  Double click on 
+a node to get an annotated listing of that version of the file.  Hit
+"c" to get an annotated listing of \fBall\fP versions of a file
+(\fBtry this!\fP).  Click
+on any line in an annotated listing to jump to that node of the revision
+history.  Click "View Changeset" to see all other files changed at the
+same time as the selected line.
+.B2
 .\" ############################
 .\" #
 .\" # Ranges and Dates
 .\" #
 .\" ############################
+.sp 2.1
 .B1
 .H1
 Range and Date Syntax
@@ -582,40 +661,86 @@ Specify dates:
 -c98..98
 .sp .5
 .B2
-.sp 5
-.\"# 
-.\"# Graphical Tools
-.\"# 
+.\" ############################
+.\" #
+.\" # Merging
+.\" #
+.\" ############################
 .B1
-.sp .5
 .H1
-Graphical Tools
+Merging
+.sp .5
 .H2
-citool [\fIdir or file list\fB]
+bk help merging
 .LP
-Check in tool
+Get help on the merge process
 .H2
-csettool -r\fIfilename\fB
+bk help merge-binaries
 .LP
-View detailed info about a changeset
+Get help on merging binaries
+.B2
+.\" ############################
+.\" #
+.\" # Searching
+.\" #
+.\" ############################
+.B1
+.H1
+Searching
+.sp .5
 .H2
-difftool \fIleft\fB \fIright\fB
+bk grep [\fIoptions\fP] pattern [\fIfiles\fP]
 .LP
-Side-by-side difference viewer
+Search some/all revisions of one or more files for a string.
+.IP -r+
+Search only the most recent revision
 .H2
-fmtool \fIlocal\fB \fIremote\fB \fImerge\fB
+bk annotate [\fIoptions\fP] [\fIfiles\fP]
 .LP
-Side-by-side merge tool for resolving differences
+Show an annotated listing
 .H2
-helptool [\fItopic\fB]
+bk sccscat [\fIoptions\fP] [\fIfiles\fP]
 .LP
-Online help system
+Show an annotated listing of \fBall\fR versions of a file
+.B2
+.\" ############################
+.\" #
+.\" # More help
+.\" #
+.\" ############################
+.B1
+.H1
+Getting more help
+.sp .5
 .H2
-renametool < \fIfilelist\fB
+Other commands
 .LP
-Use to resolve rename conflicts
+This reference card is not a complete listing of the commands and their
+options; it lists the most commonly used combinations.  See the help
+facilities described below for a complete listing.
 .H2
-sccstool [\fIfilename\fB]
+bk helptool [\fIcmd\fP]
 .LP
-Graphically browse file or project history
+Graphical, hyperlinked, searchable help tool.  Shows all man pages,
+can search on words, page views stack like Netscape.
+.H2
+bk help \fIcmd\fP
+.LP
+Shows man page like help for \fIcmd\fP.
+.H2
+http://www.bitkeeper.com/UG
+.LP
+Online user guide.
+.H2
+bk sendbug
+.LP
+To report a bug or request a feature.
+.H2
+mail support@bitmover.com
+.LP
+For support from the development team.
+.H2
++1-415-401-8808
+.LP
+For \fBright now\fP support.
 .B2
