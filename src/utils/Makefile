@@ -18,7 +18,7 @@ installer.tcl: install.tcl ../gui/lib/tkwizard.tcl ../gui/common.tcl \
 munge: munge.c ../unix.h
 	$(CC) -O munge.c -o munge
 
-clobber clean:
+clobber clean clean-obj:
 	/bin/rm -f _data _data.c _data.o a.out munge testdata testdata.tar \
-	    core testdata.bin bk-*.bin
+	    core testdata.bin bk-*.bin bk-*.tgz installer.tcl
 	bk -r. clean

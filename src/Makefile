@@ -267,11 +267,11 @@ clean-bin: FORCE
 	-@cd gnu && $(MAKE) clean 
 	-@cd win32 && $(MAKE) clean
 	-@cd tcltk && $(MAKE) clean
+	-@cd ../man && $(MAKE) clean
 
 clean clobber distclean: rebuild FORCE
 	-@bk -r clean
 	-@rm -f tags TAGS
-	-@cd ../man/man2help && $(MAKE) clobber
 
 rebuild:
 	-@rm -f *.bb *.bbg *.da *.gcov bklink.[eo]??
@@ -281,10 +281,13 @@ rebuild:
 	-@rm -f $(LIBS) bkdsubstr bkhelp.txt bkmsg.txt a.out
 	-@rm -f core bkver.c tclwrap tclwrap.o blowfish.o $(WIN_TMP)
 	-@rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS)
+	-@rm -rf tmp
 	-@cd gnu && $(MAKE) clean clean-obj
 	-@cd win32 && $(MAKE) clean clean-obj
 	-@cd tcltk && $(MAKE) clean clean-obj
 	-@cd ../doc && $(MAKE) clean clean-obj
+	-@cd ../man && $(MAKE) clean clean-obj
+	-@cd utils && $(MAKE) clean clean-obj
 
 srcs src: FORCE
 	-bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
@@ -660,7 +663,6 @@ _image:
 		BINDIR=$$DIR ${MAKE} -e install-nolinks; \
 		for i in $(BINS); do $(STRIP) $$DIR/$$i; done; \
 		cd utils && BINDIR=$$DIR ${MAKE} -e image; \
-		rm -rf tmp; \
 	fi
 
 crankturn: crank.sh remote.sh
