@@ -204,7 +204,7 @@ C
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "BITKEEPER,CSETMARKED,SINGLE" ]
+if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,SINGLE" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1
@@ -234,7 +234,7 @@ This is a checkin comment
 EOF
 cd $HERE/copy/src
 FLAGS=`bk prs -h -r+ -d:FLAGS: foo.c`
-if [ "$FLAGS" != "BITKEEPER,CSETMARKED,SINGLE" ]
+if [ "$FLAGS" != "BITKEEPER,EXPAND1,CSETMARKED,SINGLE" ]
 then	echo failed with mode $FLAGS
 	bk prs -h -d':REV:\t:FLAGS:\n' foo.c
 	exit 1

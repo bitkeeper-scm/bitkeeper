@@ -154,6 +154,7 @@ int	users_main(int, char **);
 int	val_main(int, char **);
 int	version_main(int, char **);
 int	what_main(int, char **);
+int	xflags_main(int, char **);
 int	zone_main(int, char **);
 
 struct command cmdtbl[] = {
@@ -295,6 +296,7 @@ struct command cmdtbl[] = {
 	{"val", val_main},	
 	{"version", version_main},	/* doc 2.0 */
 	{"what", what_main},		/* doc 2.0 */
+	{"xflags", xflags_main},
 	{"zone", zone_main},		/* doc 2.0 */
 
 	{0, 0},

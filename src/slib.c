@@ -75,6 +75,7 @@ private	void	uniqRoot(sccs *s);
 private int	checkGone(sccs *s, int bit, char *who);
 char		*now();
 private	int	openOutput(sccs*s, int encode, char *file, FILE **op);
+private void	singleUser(sccs *s);
 
 int
 exists(char *s)
@@ -3350,7 +3351,7 @@ done:		if (CSET(s) && (d->type == 'R') &&
 	 * For all the metadata nodes, go through and propogate the data up to
 	 * the real node.
 	 */
-	metaSyms(s);
+	if (CSET(s)) metaSyms(s);
 
 	/*
 	 * The very first (1.1) delta has a landing pad in it for fast file
@@ -7013,6 +7014,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 		unless (s->tree->xflags) {
 			s->tree->flags |= D_XFLAGS;
 			s->tree->xflags = X_DEFAULT;
+			singleUser(s);
+			s->tree->xflags |= s->xflags & X_SINGLE;
 		}
 		/* for old binaries */
 		s->tree->xflags |= X_BITKEEPER|X_CSETMARKED;
@@ -8378,6 +8381,39 @@ nullCheck(MMAP *m)
 	return (0);
 }
 
+private void
+singleUser(sccs *s)
+{
+	MDBM	*m;
+	delta	*d;
+	char	*user, *host;
+
+	unless (s && s->proj && s->proj->root) return;
+	unless (m = loadConfig(s->proj->root, 0)) return;
+	user = mdbm_fetch_str(m, "single_user");
+	host = mdbm_fetch_str(m, "single_host");
+	unless (user && host) {
+		mdbm_close(m);
+		return;
+	}
+	d = s->tree;
+	free(d->user);
+	d->user = strdup(user);
+	if (d->hostname) free(d->hostname);
+	d->hostname = strdup(host);
+	d->flags &= ~D_DUPHOST;
+	if (d->kid) {
+		d = d->kid;
+		free(d->user);
+		d->user = strdup(user);
+		if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
+		d->hostname = s->tree->hostname;
+		d->flags |= D_DUPHOST;
+	}
+	mdbm_close(m);
+	s->xflags |= X_SINGLE;
+}
+
 /*
  * Check in initial sfile.
  *
@@ -8511,7 +8547,7 @@ out:		sccs_unlock(s, 'z');
 	if (nodefault) {
 		if (prefilled) s->xflags |= prefilled->xflags;
 	} else if (s->encoding == E_ASCII) {
-		s->xflags |= X_SCCS;		/* default to SCCS keywords */
+		unless (CSET(s)) s->xflags |= X_DEFAULT;
 	}
 	n->serial = s->nextserial++;
 	s->table = n;
@@ -8550,10 +8586,6 @@ out:		sccs_unlock(s, 'z');
 		s->xflags |= X_BITKEEPER;
 	}
 	if (BITKEEPER(s)) {
-		MDBM	*m;
-		delta	*d;
-		char	*user, *host, *always_edit;
-
 		s->version = SCCS_VERSION;
 		if (flags & DELTA_HASH) s->xflags |= X_HASH;
 		unless (flags & DELTA_PATCH) {
@@ -8573,32 +8605,8 @@ out:		sccs_unlock(s, 'z');
 				first->csetFile = getCSetFile(s);
 			}
 		}
-
-		unless (s->proj && s->proj->root) goto no_config;
-		unless (m = loadConfig(s->proj->root, 0)) goto no_config;
-		user = mdbm_fetch_str(m, "single_user");
-		host = mdbm_fetch_str(m, "single_host");
-		unless (user && host) goto no_config;
-		d = s->tree;
-		free(d->user);
-		d->user = strdup(user);
-		if (d->hostname) free(d->hostname);
-		d->hostname = strdup(host);
-		d->flags &= ~D_DUPHOST;
-		if (d->kid) {
-			d = d->kid;
-			free(d->user);
-			d->user = strdup(user);
-			if (d->hostname && !(d->flags & D_DUPHOST)) {
-				free(d->hostname);
-			}
-			d->hostname = s->tree->hostname;
-			d->flags |= D_DUPHOST;
-		}
-		s->xflags |= X_SINGLE;
-		first->xflags |= X_SINGLE;
-
-		mdbm_close(m);
+		singleUser(s);
+		first->xflags |= (s->xflags & X_SINGLE);
 	}
 
 no_config:
@@ -8832,14 +8840,15 @@ checkOpenBranch(sccs *s, int flags)
 
 /*
  * Check all the BitKeeper specific stuff such as
- *	. xflags implied by s->state matches xflags implied top-of-trunk delta
  *	. no open branches
  *	. checksums on all deltas
+ *	. xflags history
  */
 private int
 checkInvariants(sccs *s, int flags)
 {
 	int	error = 0;
+	int	xf = (flags & SILENT) ? XF_STATUS : XF_DRYRUN;
 	delta	*d;
 
 	error |= checkOpenBranch(s, flags);
@@ -8848,6 +8857,12 @@ checkInvariants(sccs *s, int flags)
 		if ((d->type == 'D') && !(d->flags & D_CKSUM)) {
 			verbose((stderr,
 			    "%s@@%s: no checksum\n", s->gfile, d->rev));
+		}
+		if (d->xflags && checkXflags(s, d, xf)) {
+			extern	int xflags_failed;
+
+			xflags_failed = 1;
+			error |= 1;
 		}
 	}
 	return (error);
@@ -9291,6 +9306,8 @@ symArg(sccs *s, delta *d, char *name)
 	symbol	*sym;
 
 	assert(d);
+
+	unless (CSET(s)) return;	/* no tags on regular files */
 
 	/* stash away the parent (and maybe merge) serial numbers */
 	if (isdigit(*name)) {
@@ -10049,10 +10066,10 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 			v = strchr(v, '=');
 			if (v) *v++ = '\0';
 			if (v && *v == '\0') v = 0;
-			ALLOC_D();
 
 			if (name2xflg(fl) & X_MAYCHANGE) {
 				if (v) goto noval;
+				ALLOC_D();
 				changeXFlag(sc, d, flags, add, fl);
 			}
 #if 0
@@ -10086,16 +10103,20 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		} else {
 			switch (f[i].thing[0]) {
 				char	buf[500];
-
-			case 'd':
+			    case 'd':
 				if (sc->defbranch) free(sc->defbranch);
 				sc->defbranch = *v ? strdup(v) : 0;
 				break;
-			case 'e':
-				if (*v) new_enc = atoi(v);
-				verbose((stderr, "New encoding %d\n", new_enc));
+			    case 'e':
+				if (BITKEEPER(sc)) {
+					fprintf(stderr, "Unsupported.\n");
+				} else {
+					if (*v) new_enc = atoi(v);
+					verbose((stderr,
+					    "New encoding %d\n", new_enc));
+				}
 		   		break;
-			default:
+			    default:
 				sprintf(buf, "%c %s", v[-1], v);
 				if (add) {
 					sc->flags =
@@ -12714,7 +12735,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (flags & X_YEAR4) {
 			if (comma) fs(","); fs("YEAR4"); comma = 1;
 		}
-#ifdef S_ISSHELL
+#ifdef X_SHELL
 		if (flags & X_SHELL) {
 			if (comma) fs(","); fs("SHELL"); comma = 1;
 		}
