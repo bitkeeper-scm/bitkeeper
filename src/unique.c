@@ -61,27 +61,11 @@ lockHome()
  * Use BK_TMP first, we set that for the regression tests.
  */
 private char	*
-keysHome()
+keysHome(void)
 {
-	char	*t;
-	char	path[MAXPATH];
-
 	if (keysFile) return (keysFile);
-	if ((t = getenv("BK_TMP")) && isdir(t)) {
-		concat_path(path, t, ".bk_keys");
-		return (keysFile = (strdup)(path));
-	}
-	t = getHomeDir();
-	if (t) {
-		concat_path(path, t, ".bk_keys");
-		free(t);
-		return (keysFile = (strdup)(path));
-	}
-	if (exists(SHARED_KEYDIR)) {
-		return (keysFile = (strdup)(SHARED_KEYDIR));
-	}
-	sprintf(path, "%s/.bk_keys", TMP_PATH);
-	return (keysFile = (strdup)(path));
+	keysFile = aprintf("%s/bk_keys", getBkDir());
+	return (keysFile);
 }
 
 #ifdef WIN32

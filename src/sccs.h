@@ -1039,6 +1039,7 @@ off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
 char	*getHomeDir(void);
+char	*getBkDir(void);
 char	*age(time_t secs, char *space);
 	/* this must be the last argument to all calls to sys/sysio */
 #define	SYS	(char*)0, 0xdeadbeef
