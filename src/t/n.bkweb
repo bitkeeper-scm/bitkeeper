@@ -72,3 +72,25 @@ get /$D/project/src
 EOF
 grep HEADER $FILE >/dev/null || { echo failed; exit 1; }
 echo OK
+
+echo $N Check for base href= ........................................$NL
+
+peek()
+{
+	__A=`grep '<base href=' $FILE`
+	__B=`echo $__A | sed -e 's/^.*<base href=//'`
+	__C=`echo $__B | sed -e 's/>.*$//'`
+	case $__C in
+	    */)	;;
+	    *)	echo failed;
+		exit 1
+		;;
+	esac
+}
+
+(echo get /$D/project/ | bk bkd) > $FILE ; peek
+(echo get /$D/project | bk bkd) > $FILE ; peek
+(echo get /$D/project/index.html | bk bkd) > $FILE ; peek
+(cd $D/project; echo get / | bk bkd) > $FILE ; peek
+(cd $D/project; echo get /index.html | bk bkd) > $FILE ; peek
+echo OK

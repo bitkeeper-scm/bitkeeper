@@ -18,16 +18,18 @@ private void	http_src(char *pathrev);
 private void	http_hist(char *pathrev);
 private void	http_patch(char *rev);
 private void	http_gif(char *path);
+private void	http_stats(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *path, char *color, char *title, char *header, ...);
 private void	printnavbar();
+private char	*parseurl(char *);
 private void	learn();
 private void	trailer(char *path);
 private char	*units(char *t);
 private char	*findRoot(char *name);
 private int	has_temp_license();
-private	char	*root;
+private	char	root[MAXPATH];
 private int	embedded = 0;
 
 #define	COLOR_TOP	"lightblue"	/* index.html */
@@ -41,9 +43,12 @@ private int	embedded = 0;
 
 #define BKWEB_SERVER_VERSION	"0.2"
 
-private char arguments[MAXPATH] = { 0 };
-private char navbar[MAXPATH] = { 0 };
-private char thisPage[MAXPATH] = { 0 };
+private char arguments[MAXPATH];
+private char navbar[MAXPATH];
+private char thisPage[MAXPATH];
+private char user[80];
+private char prefix[100];
+private char suffix[10];
 
 private struct pageref {
     vfn  content;
@@ -65,6 +70,7 @@ private struct pageref {
     { http_both,    "both.html",      "both/", 5 },
     { http_anno,    "anno.html",      "anno/", 5 },
     { http_diffs,   "diffs.html",     "diffs/", 6 },
+    { http_stats,   "stats.html",     "stats",  0, HAS_ARG, 0 },
     { 0 },
 };
 
@@ -100,18 +106,13 @@ cmd_httpget(int ac, char **av)
 		}
 	}
 
-	if (s = strchr(name, '?')) {
-		*s++ = 0;
-		strcpy(arguments, s);
-		strcpy(navbar, s);
-	} else {
-		arguments[0] = 0;
+	unless (av[1]) {
+		http_error(404, "get what?\n");
 	}
 
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) {
 		http_error(500, "path too long for bkweb");
 	}
-	unless (*name) name = "index.html";
 
 	/*
 	 * Go find the project root.
@@ -121,15 +122,18 @@ cmd_httpget(int ac, char **av)
 		unless (name = findRoot(name)) {
 			http_error(503, "Can't find project root");
 		}
-	} else root = url(0);
+	} else {
+		strcpy(root, url(""));
+	}
+
+	name = parseurl(name);
+	if (user[0]) sprintf(root+strlen(root), "user=%s/", user);
+	unless (*name) name = "index.html";
 
 	unless (bk_options()&BKOPT_WEB || has_temp_license()) {
 		http_error(503, "bkWeb option is disabled: %s", upgrade_msg);
 	}
 
-	unless (av[1]) {
-		http_error(404, "get what?\n");
-	}
 	sprintf(buf, "BitKeeper/html/%s", name);
 
 	for (i = 0; pages[i].content; i++) {
@@ -172,7 +176,7 @@ whoami(char *fmt, ...)
 		strcat(navbar, "|");
 		strcat(navbar, thisPage);
 	} else {
-		strcpy(navbar, "nav=");
+		strcpy(navbar, "?nav=");
 		strcat(navbar, thisPage);
 	}
 }
@@ -185,9 +189,39 @@ navbutton(int active, int tag, char *start, char *end)
 	char *p;
 	char buf[MAXPATH];
 	int ct;
+	static int shiftroot=0;
 
 	for (sep = start; sep < end && *sep != '#'; ++sep)
 	    ;
+
+	/* control field; not an actual button */
+	if (start[0] == '!') {
+		switch (start[1]) {
+		    case '-':
+			/* change base url to one that doesn't include user */
+			for (p = &root[strlen(root)-2]; p > root && *p != '/';
+			    --p) ;
+			if (!shiftroot && p > root && strneq(p,"/user=",6)) {
+				strncpy(buf, root, (p-root)+1);
+				buf[p-root+1] = 0;
+				out("<base href=");
+				out(buf);
+				out(">\n");
+				shiftroot = 1;
+			}
+			break;
+		    case '+':
+			/* use normal base url */
+			if (shiftroot) {
+				out("<base href=");
+				out(root);
+				out(">\n");
+				shiftroot = 0;
+			}
+			break;
+		}
+		return;
+	}
 	out("<a style=\"text-decoration: none\" ");
 	if (tag) {
 		ct = start-arguments;
@@ -203,7 +237,11 @@ navbutton(int active, int tag, char *start, char *end)
 	out(active ? "<font size=2 color=lightblue>"
 		   : "<font size=2 color=yellow>");
 
-	if (strneq(start,"ChangeSet", 9)) {
+	if (++sep < end) {
+		sprintf(buf, "%.*s", end-sep, sep);
+		out(buf);
+		start = 0;
+	} else if (strneq(start,"ChangeSet", 9)) {
 		if (start[9] != '@') {
 			out("All ChangeSets");
 		} else if (start[10] == '+') {
@@ -215,9 +253,18 @@ navbutton(int active, int tag, char *start, char *end)
 			    ct, units(start+11));
 			out(buf);
 		}
+		if (user[0] && !shiftroot) {
+			out(" by ");
+			out(user);
+		}
 		start = 0;
 	} else if (strneq(start, "index.html", 10)) {
-		out("Home");
+		if (user[0] && !shiftroot) {
+			out("All ChangeSets by ");
+			out(user);
+		} else {
+			out("Home");
+		}
 		start = 0;
 	} else if (strneq(start, "hist/", 5)) {
 		out("History of ");
@@ -234,6 +281,9 @@ navbutton(int active, int tag, char *start, char *end)
 	} else if (strneq(start, "cset@", 5)) {
 		out("ChangeSet ");
 		start += 5;
+	} else if (strneq(start, "stats", 5)) {
+		out("Statistics");
+		start = 0;
 	} else if (strneq(start, "src", 3)) {
 		start += 3;
 		if (sep-start == 2 && strneq(start, "/.", 2)) {
@@ -247,8 +297,8 @@ navbutton(int active, int tag, char *start, char *end)
 		}
 	}
 	if (start) {
-	    sprintf(buf, "%.*s", sep-start, start);
-	    out(buf);
+		sprintf(buf, "%.*s", sep-start, start);
+		out(buf);
 	}
 	out("</font></a>\n");
 	unless (active) out("<font size=2 color=white>"
@@ -267,8 +317,8 @@ printnavbar()
 	/* put in a navigation bar */
 	out("<table width=100% cellpadding=4>\n"
 	    "<tr bgcolor=black><td align=left>\n");
-	if (strneq(navbar, "nav=", 4)) {
-		for (start = arguments+4; *start; ++start) {
+	if (strneq(navbar, "?nav=", 5)) {
+		for (start = arguments+5; *start; ++start) {
 			for (end = start; *end && *end != '|'; ++end)
 				;
 			navbutton(0, !first,start,end);
@@ -348,7 +398,7 @@ findRoot(char *name)
 	sprintf(path, "%s/BitKeeper/etc", name);
 	if (isdir(path)) {
 		chdir(name);
-		root = url(name);
+		strcpy(root, url(name));
 		return ("index.html");
 	}
 	for (s = strrchr(name, '/'); s && (s != name); ) {
@@ -357,7 +407,7 @@ findRoot(char *name)
 		unless (--tries) break;		/* just in case */
 		if (isdir(path)) {
 			chdir(name);
-			root = url(name);
+			strcpy(root, url(name));
 			return (s + 1);
 		}
 		t = strrchr(name, '/');
@@ -414,16 +464,16 @@ http_changes(char *rev)
 		whoami("ChangeSet");
 	}
 
-	i = snprintf(dspec, sizeof dspec, "-d<tr>\n"
+	i = snprintf(dspec, sizeof dspec, "-d%s<tr>\n"
 			" <td align=right>:HTML_AGE:</td>\n"
 			" <td align=center>:USER:</td>\n"
 			" <td align=center"
 			"$if(:TAG:){ bgcolor=yellow}>"
-			"<a href=cset@:I:?%s>:I:</a>"
+			"<a href=cset@:I:%s>:I:</a>"
 			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 			"</td>\n"
 			" <td>:HTML_C:</td>\n"
-			"</tr>\n", navbar);
+			"</tr>\n%s", prefix, navbar, suffix);
 
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_changes");
@@ -469,19 +519,19 @@ http_cset(char *rev)
 	whoami("cset@%s", rev);
 
 	i = snprintf(dspec, sizeof dspec,
-	    "<tr bgcolor=#d8d8f0><td>&nbsp;"
+	    "%s<tr bgcolor=#d8d8f0><td>&nbsp;"
 	    ":GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:"
 	    "$if(:DOMAIN:){@:DOMAIN:}"
 	    "$if(:GFILE:=ChangeSet){"
-	      "&nbsp;&nbsp;<a href=patch@:REV:?%s>"
+	      "&nbsp;&nbsp;<a href=patch@:REV:%s>"
 	      "<font color=darkblue>[all diffs]</font></a>"
 	    "}"
 	    "$if(:GFILE:!=ChangeSet){"
-	      "&nbsp;&nbsp;<a href=hist/:GFILE:?%s>"
+	      "&nbsp;&nbsp;<a href=hist/:GFILE:%s>"
 	      "<font color=darkblue>[history]</font></a>"
-	      "&nbsp;&nbsp;<a href=anno/:GFILE:@:REV:?%s>"
+	      "&nbsp;&nbsp;<a href=anno/:GFILE:@:REV:%s>"
 	      "<font color=darkblue>[annotate]</font></a>"
-	      "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:?%s>"
+	      "&nbsp;&nbsp;<a href=diffs/:GFILE:@:REV:%s>"
 	      "<font color=darkblue>[diffs]</font></a>"
 	    "}"
 	    "</td>"
@@ -492,7 +542,10 @@ http_cset(char *rev)
 	    "$each(:C:){"
 	      "<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>"
 	    "}"
-	    "<tr><td>&nbsp;</td></tr>\n", navbar, navbar, navbar, navbar);
+	    "<tr><td>&nbsp;</td></tr>\n%s",
+	    prefix,
+	    navbar, navbar, navbar, navbar,
+	    suffix);
 
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_cset");
@@ -679,16 +732,16 @@ http_hist(char *pathrev)
 	whoami("hist/%s", pathrev);
 
 	i = snprintf(dspec, sizeof(dspec),
-		"<tr>\n"
+		"%s<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:</td>\n"
 		" <td align=center"
 		"$if(:TAG:){ bgcolor=yellow}"
 		"$if(:RENAME:){$if(:I:!=1.1){ bgcolor=orange}}>"
-		"<a href=diffs/:GFILE:@:I:?%s>:I:</a>"
+		"<a href=diffs/:GFILE:@:I:%s>:I:</a>"
 		"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 		"</td>\n <td>:HTML_C:</td>\n"
-		"</tr>\n", navbar);
+		"</tr>\n%s", prefix, navbar, suffix);
 
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_hist");
@@ -741,20 +794,20 @@ http_src(char *path)
 	whoami("src/%s", path);
 
 	i = snprintf(dspec, sizeof dspec,
-	    "<tr bgcolor=lightyellow>"
+	    "%s<tr bgcolor=lightyellow>"
 	    " <td><img src=file.gif></td>"
 	    " <td>"
-	      "$if(:GFILE:=ChangeSet){<a href=ChangeSet@+?%s>&nbsp;:G:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:?%s>&nbsp;:G:</a>}"
+	      "$if(:GFILE:=ChangeSet){<a href=ChangeSet@+%s>&nbsp;:G:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=hist/:GFILE:%s>&nbsp;:G:</a>}"
 	    "</td>"
 	    " <td align=center>"
-	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:?%s>&nbsp;:REV:</a>}"
-	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:?%s>:REV:</a>}"
+	      "$if(:GFILE:=ChangeSet){<a href=cset@:REV:%s>&nbsp;:REV:</a>}"
+	      "$if(:GFILE:!=ChangeSet){<a href=anno/:GFILE:@:REV:%s>:REV:</a>}"
 	    "</td>"
 	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
 	    " <td align=center>:USER:</td>"
 	    " <td>:HTML_C:&nbsp;</td>"
-	    "</tr>\n", navbar, navbar, navbar, navbar);
+	    "</tr>\n%s", prefix, navbar, navbar, navbar, navbar, suffix);
 
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_src");
@@ -790,9 +843,9 @@ http_src(char *path)
 		}
 		if (lstat(buf, &sbuf) == -1) continue;
 		if (path[1]) {
-			sprintf(buf, "<a href=src/%s/%s?%s>", path, e->d_name, navbar);
+			sprintf(buf, "<a href=src/%s/%s%s>", path, e->d_name, navbar);
 		} else {
-			sprintf(buf, "<a href=src/%s?%s>", e->d_name, navbar);
+			sprintf(buf, "<a href=src/%s%s>", e->d_name, navbar);
 		}
 		//s = age(now - sbuf.st_mtime, "&nbsp;");
 		if (S_ISDIR(sbuf.st_mode)) {
@@ -944,12 +997,12 @@ http_diffs(char *pathrev)
 	whoami("diffs/%s", pathrev);
 
 	i = snprintf(dspec, sizeof dspec,
-		"<tr>\n"
+		"%s<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
-		" <td align=center><a href=anno/:GFILE:@:I:?%s>:I:</a></td>\n"
+		" <td align=center><a href=anno/:GFILE:@:I:%s>:I:</a></td>\n"
 		" <td>:HTML_C:</td>\n"
-		"</tr>\n", navbar);
+		"</tr>\n%s", prefix, navbar, suffix);
 
 	if (i == -1) {
 		http_error(500, "buffer overflow in http_diffs");
@@ -1087,6 +1140,85 @@ units(char *t)
     	}
 }
 
+
+private void
+http_stats(char *page)
+{
+	int	recent_cs, old_cs;
+	char	c_user[80];
+	char	user[80];
+	int	ct;
+	char	units[80];
+	char	buf[200];
+	FILE	*p;
+
+	unless (p = popen("bk prs -h -d':USER: :AGE:\n' ChangeSet | bk _sort", "r"))
+		http_error(500, "bk prs failed: %s", strerror(errno));
+
+	c_user[0] = 0;
+	recent_cs = old_cs = 0;
+
+	/* don't use whoami, because I need to have absolute urls for
+	 * the parent pages in the navbar
+	 */
+	sprintf(navbar, "?nav=!-|index.html|stats|!+", root, root);
+	sprintf(thisPage, "stats");
+
+	if (!embedded) {
+		httphdr(".html");
+		header("stats", COLOR_PATCH,
+		    "User statistics",
+		    0);
+	}
+
+
+	out("<table width=100% border=1 cellpadding=2"
+	    " cellspacing=0 bgcolor=white>\n"
+	    "<tr bgcolor=#d0d0d0>\n"
+	    "<th>Author</th>\n"
+	    "<th>New ChangeSets</th>\n"
+	    "<th>Old ChangeSets</th></tr>\n");
+
+	while (fnext(buf,p)) {
+		unless (sscanf(buf, "%s %d %s", user, &ct, units) == 3)
+			continue;
+
+		if (streq(user, c_user)) {
+			if (strneq(units, "year", 4)) {
+				ct *= 365*24;
+			} else if (strneq(units, "month", 5)) {
+				ct *= 30*24;
+			} else if (strneq(units, "week", 4)) {
+				ct *= 7*24;
+			} else if (strneq(units, "day", 3)) {
+				ct *= 24;
+			}
+			if (ct > 30*24)
+				old_cs ++;
+			else
+				recent_cs ++;
+		} else {
+			if (c_user[0]) {
+				sprintf(buf,
+				    "<tr>\n"
+				    "<td>"
+				    "<a href=\"user=%s%s\">%s</a></td>\n"
+				    "<td>%d</td>\n"
+				    "<td>%d</td></tr>\n",
+				    c_user, navbar, c_user,
+				    recent_cs, old_cs);
+				out(buf);
+			}
+			strcpy(c_user, user);
+			recent_cs = old_cs = 0;
+		}
+	}
+	pclose(p);
+	out("</table>\n");
+	if (!embedded) trailer("patch");
+}
+
+
 private void
 http_index(char *page)
 {
@@ -1119,6 +1251,7 @@ http_index(char *page)
 	t2y = now - (2*365*24*60*60);
 	t3y = now - (3*365*24*60*60);
 	for (d = s->table; d; d = d->next) {
+		if (user[0] && !streq(user, d->user)) continue;
 		unless (d->type == 'D') continue;
 		if (d->date >= t1h) c1h++;
 		if (d->date >= t1d) c1d++;
@@ -1195,7 +1328,7 @@ http_index(char *page)
 #define	DOIT(c, l, u, t) \
 	if (c && (c != l)) { \
 		out("<tr><td width=45%>&nbsp;</td>"); \
-		sprintf(buf, "<td><a href=ChangeSet@-%s?%s>", u, navbar); \
+		sprintf(buf, "<td><a href=ChangeSet@-%s%s>", u, navbar); \
 		out(buf); \
 		sprintf(buf, \
 		    "%d&nbsp;ChangeSets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
@@ -1221,16 +1354,24 @@ http_index(char *page)
 	DOIT(c2y, c1y, "2y", "two&nbsp;years");
 	DOIT(c3y, c2y, "3y", "three&nbsp;years");
 	out("<tr><td>&nbsp;</td><td>");
-	sprintf(buf,"<a href=ChangeSet?%s>", navbar);
+	sprintf(buf,"<a href=ChangeSet%s>", navbar);
 	out(buf);
 	sprintf(buf, "All %d ChangeSets", c);
 	out(buf);
 	out("</a></td><td>&nbsp;</td></tr>");
 	out("<tr><td>&nbsp;</td>");
 	sprintf(buf,
-	    "<td><a href=src?%s>Browse the source tree</a></td>", navbar);
+	    "<td><a href=src%s>Browse the source tree</a></td>", navbar);
 	out(buf);
 	out("<td>&nbsp;</td></tr>");
+	unless (user[0]) {
+		out("<tr><td>&nbsp;</td>");
+		sprintf(buf,
+		    "<td><a href=stats%s>User statistics</a></td>",
+		    navbar);
+		out(buf);
+		out("<td>&nbsp;</td></tr>");
+	}
 	out("</table>\n");
 	if (!embedded) trailer(0);
 }
@@ -1342,6 +1483,10 @@ http_error(int status, char *fmt, ...)
 }
 
 
+/* if path is null, you get back a url suitable for placing in an error
+ * message ``bkweb server on host:port'', and if path is not null, you
+ * get back a real url suitable for placing into a href
+ */
 private char *
 url(char *path)
 {
@@ -1392,4 +1537,37 @@ private int
 has_temp_license()
 {
     return 1;
+}
+
+
+
+private char *
+parseurl(char *url)
+{
+	char *s;
+
+	thisPage[0] = arguments[0] = navbar[0] = user[0] = 0;
+	prefix[0] = suffix[0] = 0;
+
+	while (s = strrchr(url, '?')) {
+		if (strneq(s, "?nav=", 5)) {
+			strcpy(arguments, s);
+			strcpy(navbar, s);
+		}
+		*s = 0;
+	}
+	if (strneq(url, "user=", 5)) {
+		if (s = strchr(url, '/')) {
+			*s++ = 0;
+		} else {
+			s = url;
+		}
+		strcpy(user, url+5);
+
+		sprintf(prefix, "$if(:USER:=%s){", user);
+		sprintf(suffix, "}");
+
+		return (s == url) ? "" : s;
+	}
+	return url;
 }
