@@ -1,16 +1,17 @@
 .so bk-macros
 .TH "bk sane" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME
-bk sane \- check for various \*(BK needs
+bk sane \- check for various \*(BK requirements
 .SH SYNOPSIS
 .B bk sane
 .SH DESCRIPTION
-This command is used to check for various things which \*(BK needs to
-run.  At the time of this writing, it checked for a valid hostname, username,
-permissions on various metadata directories, and the ability to lock the
-idcache.  The command produces no output if everything is sane, otherwise
-it complains on stderr and exits non-zero.
+Run this command from within a repository to check whether the repository
+is configured correctly.  Sane checks for a valid hostname, username,
+permissions on various metadata directories, and the ability to lock
+the idcache.  If everything is sane, the command exits with a 0 exit
+status and no output.  If there are problems, a detailed error message
+is displayed on stderr and a non-zero exit status is returned.
 .LP
-Please run this command and include its output in any bug reports.
+When submitting bugreports, please include the output of this command.
 .SH CATEGORY
 .B Admin

@@ -8,20 +8,24 @@ proc widgets {} \
 {
 	global	scroll wish tcl_platform search gc d app
 
-	# Set global app var so that difflib knows which global config
-	# vars to read
-	if {$tcl_platform(platform) == "windows"} {
-		set gc(py) -2; set gc(px) 1; set gc(bw) 2
-	} else {
-		set gc(py) 1; set gc(px) 4; set gc(bw) 2
-	}
 	getConfig "diff"
 	option add *background $gc(BG)
 
 	set g [wm geometry .]
-	wm iconify .
 	wm title . "Diff Tool"
 
+	if {$tcl_platform(platform) == "windows"} {
+		set gc(py) -2; set gc(px) 1; set gc(bw) 2
+		if {("$g" == "1x1+0+0") && ("$gc(diff.geometry)" != "")} {
+			wm geometry . $gc(diff.geometry)
+		}
+	} else {
+		set gc(py) 1; set gc(px) 4; set gc(bw) 2
+		# We iconify here so that the when we finally deiconify, all
+		# of the widgets are correctly sized. Fixes irritating 
+		# behaviour on ctwm.
+		wm iconify .
+	}
 	frame .diffs
 	    frame .diffs.status
 		label .diffs.status.l -background $gc(diff.oldColor) \
