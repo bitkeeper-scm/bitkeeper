@@ -238,25 +238,10 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 "----------------------- Sending the following csets ------------------------");
 				}
 			}
-			n += strlen(buf) + 1;
-			fputs(&buf[1], stderr);
-			if (n > 72) {
-				n = 0;
-				fputs("\n", stderr);
-			} else {
-				fputs(" ", stderr);
-			}
+			fprintf(stderr, "%s\n", &buf[1]);
 		}
-		if (i) fputs("\n", stderr);
-
+		/* load up the next line */
 		getline2(r, buf, sizeof(buf));
-		if (streq(buf, "@CHANGE LIST@")) {
-			while (getline2(r, buf, sizeof(buf)) > 0) {
-				if (streq(buf, "@END@")) break;
-				fprintf(stderr, "%s\n", &buf[1]);
-			}
-			getline2(r, buf, sizeof(buf));
-		}
 		if (i) {
 			fprintf(stderr, "%s\n",
 "----------------------------------------------------------------------------");

@@ -306,23 +306,25 @@ ChangeSet file do not match.  Please check the pathnames and try again.\n");
 "----------------------- Sending the following csets -----------------------\n":
 "---------------------- Would send the following csets ---------------------\n")
 			;
-			n = 0;
-			for (d = s->table; d; d = d->next) {
-				if (d->flags & D_SET) continue;
-				unless (d->type == 'D') continue;
-				n += strlen(d->rev) + 1;
-				fprintf(stderr, "%s", d->rev);
-				fputs(buf, stderr);
-				if (n > 72) {
-					n = 0;
-					fputs("\n", stderr);
-				} else {
-					fputs(" ", stderr);
+			if (opts.list) {
+				listIt(s);
+			} else {
+				n = 0;
+				for (d = s->table; d; d = d->next) {
+					if (d->flags & D_VISITED) continue;
+					unless (d->type == 'D') continue;
+					n += strlen(d->rev) + 1;
+					fprintf(stderr, "%s", d->rev);
+					if (n > 72) {
+						n = 0;
+						fputs("\n", stderr);
+					} else {
+						fputs(" ", stderr);
+					}
 				}
+				fputs("\n", stderr);
 			}
-			fputs("\n", stderr);
-			if (opts.list) listIt(s);
-			fprintf(stderr,
+			unless (opts.doit) fprintf(stderr,
 "---------------------------------------------------------------------------\n")
 			;
 		} else if (local_only == 0) {
@@ -647,16 +649,11 @@ private	void
 listIt(sccs *s)
 {
 	delta	*d;
-	int 	first = 1;
 
+	s->state |= S_READ_ONLY;	/* just in case, see listrev() */
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		if (d->flags & D_VISITED) continue;
-		if (first) {
-			first = 0;
-		} else {
-			fputs("\n", stdout);
-		}
 		listrev(d);
 	}
 }
@@ -687,6 +684,4 @@ listrev(delta *d)
 	if (d->hostname) printf("@%s", d->hostname);
 	printf("\n");
 	EACH(d->comments) printf("  %s\n", d->comments[i]);
-	sprintf(cmd, "bk cset -Hr%s", d->rev);
-	system(cmd);
 }

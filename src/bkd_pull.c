@@ -266,7 +266,6 @@ listIt2(sccs *s)
 	delta   *d;
 	int	first = 1;
 
-	fputs("@CHANGE LIST@\n", stdout);
 	for (d = s->table; d; d = d->next) {
 		unless (d->type == 'D') continue;
 		if (d->flags & D_VISITED) continue;
@@ -277,7 +276,6 @@ listIt2(sccs *s)
 		}
 		listrev2(d);
 	}
-	fputs("@END@\n", stdout);
 }
 #endif /* OPULL */
 
@@ -288,7 +286,6 @@ listrev2(delta *d)
 	char	*t;
 	int	i;
 	char	buf[100];
-	FILE	*f;
 
 	assert(d);
 	printf("%cChangeSet@%s, ", BKD_DATA, d->rev);
@@ -311,23 +308,10 @@ listrev2(delta *d)
 	if (d->hostname) {
 		printf("@%s", d->hostname);
 	}
-	fputs("\n", stdout);
+	printf("\n");
 	EACH(d->comments) {
-		printf("%c%s\n", BKD_DATA, d->comments[i]);
+		printf("%c  %s\n", BKD_DATA, d->comments[i]);
 	}
-	printf("%c\n", BKD_DATA);
-
-	/*
-	 * XXX FIXME: This is slow, we should do this
-	 * without a sub process for each cset
-	 */
-	sprintf(buf, "bk cset -Hr%s", d->rev);
-	f = popen(buf, "r");
-	assert(f);
-	while (fnext(buf, f)) {
-		printf("%c%s", BKD_DATA, buf);
-	}
-	pclose(f);
 }
 
 int
@@ -439,22 +423,20 @@ cmd_pull_part2(int ac, char **av)
 	if (fputs("@OK@\n", stdout) < 0) {
 		perror("fputs ok");
 	}
-	fflush(stdout);
-	if (verbose || list) {
+	if (local_count && (verbose || list)) {
 		printf("@REV LIST@\n");
-		if (local_count == 0) {
-			printf("@END@\n");
-			goto next;
-		}
-		for (d = s->table; d; d = d->next) {
-			if (d->flags & D_VISITED) continue;
-			unless (d->type == 'D') continue;
-			printf("%c%s\n", BKD_DATA, d->rev);
+		if (list) {
+			listIt2(s);
+		} else {
+			for (d = s->table; d; d = d->next) {
+				if (d->flags & D_VISITED) continue;
+				unless (d->type == 'D') continue;
+				printf("%c%s\n", BKD_DATA, d->rev);
+			}
 		}
 		printf("@END@\n");
 	}
-	if (list) listIt2(s);
-
+	fflush(stdout);
 
 next:	sccs_free(s);
 
