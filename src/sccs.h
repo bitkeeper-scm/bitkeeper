@@ -622,6 +622,17 @@ typedef struct {
 } pfile;
 
 /*
+ * Timestamp record format
+ */
+typedef struct {
+	time_t	gfile_mtime;
+	off_t	gfile_size;
+	mode_t	permissions;
+	time_t	sfile_mtime;
+	off_t	sfile_size;
+} tsrec;
+
+/*
  * RESYNC directory layout.
  *
  * This directory is created at the same level as the working directory
@@ -1074,10 +1085,10 @@ int	isEvalLicense();
 char	*globalroot();
 void	sccs_touch(sccs *s);
 int	setlevel(int);
-int	consistency(int quiet);
 void	sccs_rmUncommitted(int quiet);    
 void	rmEmptyDirs(int quiet);    
 int	after(int quiet, char *rev);
+int	consistency(int quiet);
 int	lod(int quiet, char *rev);
 int	logs_pending(int ptype, int skipRecentCset, int grace); 
 int	diff_gfile(sccs *s, pfile *pf, int expandKeyWord, char *tmpfile);
@@ -1090,6 +1101,10 @@ int	delta_table(sccs *s, FILE *out, int willfix);
 char	**getdir(char *); 
 char	*getParent(void);
 delta	*getSymlnkCksumDelta(sccs *s, delta *d);
+MDBM	*generateTimestampDB(project *p);
+int	timeMatch(char *gfile, char *sfile, MDBM *timestamps);
+void	dumpTimestampDB(project *p, MDBM* db);
+void	updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int diff);
 struct tm
         *utc2tm(time_t t);
 void	fix_stime(sccs *s);
@@ -1133,6 +1148,7 @@ int	uudecode(FILE *in, FILE *out);
 void	sccs_unmkroot(char *path);
 int	chk_host(void);
 int	chk_user(void);
+void	set_timestamps(sccs *s);
 
 extern char *bk_vers;
 extern char *bk_utc;

@@ -81,7 +81,7 @@ if [ $? -eq 0 ]; then echo failed; exit 1; fi
 echo OK
 echo $N check cnt-A when pushing stuff ..............................$NL
 cd $HERE
-bk clone $Q project copy
+bk clone $Q project copy || exit 1
 cd $HERE/project
 echo foo > foo
 bk new $Q foo
