@@ -672,3 +672,29 @@ smallTree(int threshold)
         pclose(f);
         return (1);
 }         
+
+/*
+ * This function works like sprintf(), expect it return a
+ * malloc'ed buffer which caller should free when done
+ */
+char *
+aprintf(char *fmt, ...)
+{
+	va_list	ptr;
+	int	rc, size = 512;
+	char	*buf = malloc(size);
+
+	va_start(ptr, fmt);
+
+	rc = vsnprintf(buf, size, fmt, ptr);
+	while ((rc == -1) || (rc >= size)) {
+		if (rc == -1) size *= 2;
+		if (rc >= size) size = rc + 1;
+		free(buf);
+		buf = (char *) malloc(size);
+		assert(buf);
+		rc = vsnprintf(buf, size, fmt, ptr);
+	}
+	va_end(ptr);
+	return (buf); /* caller should free */
+}

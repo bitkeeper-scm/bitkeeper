@@ -13,7 +13,7 @@ getNewRevs(char *to, char *rev)
 {
 	char	x_sendlog[MAXPATH], here[MAXPATH], has[MAXPATH];
 	char	buf[MAXLINE];
-	static	char revbuf[MAXLINE] = "";
+	char	revbuf[MAXLINE] = "";
 	static	char revsFile[MAXPATH];
 	FILE	*f;
 	int	first = 1;
@@ -105,15 +105,10 @@ printHdr(FILE *f, char *revsFile, char *rev, char *wrapper)
 int
 send_main(int ac,  char **av)
 {
-	int	c, i, rc = 0;
-	int	force = 0;
-	char	*dflag = "", *qflag = "-vv";
-	char	*wrapper = NULL;
-	char	*revsFile = 0, *rev = "1.0..";
-	char	*to, *p;
-	char	buf[MAXLINE];
-	char	*patch = 0, *out;
-	char	*revArgs = 0, *wrapperArgs = 0;
+	int	c, rc = 0, force = 0;
+	char	*to, *p, *out, *cmd, *dflag = "", *qflag = "-vv";
+	char	*wrapper = 0,*patch = 0, *revsFile = 0, *revArgs = 0;
+	char	*wrapperArgs = "", *rev = "1.0..";
 	FILE	*f;
 
 	if (bk_mode() == BK_BASIC) {
@@ -151,7 +146,7 @@ send_main(int ac,  char **av)
 	}
 
 	/*
-	 * Set up input mode for makepatch
+	 * Set up rev list for makepatch
 	 */
 	if (!streq(to, "-") && !force) {
 		/*
@@ -163,11 +158,9 @@ send_main(int ac,  char **av)
 			printf("Nothing to send to %s, use -f to force.\n", to);
 			exit(0);
 		}
-		revArgs = malloc(strlen(revsFile) + 8);
-		sprintf(revArgs, "-r - < %s", revsFile);
+		revArgs = aprintf("-r - < %s", revsFile);
 	} else {
-		revArgs = malloc(strlen(rev) + 3);
-		sprintf(revArgs, "-r%s", rev);
+		revArgs = aprintf("-r%s", rev);
 	}
 
 	/*
@@ -179,14 +172,16 @@ send_main(int ac,  char **av)
 		f = stdout;
 		out = "";
 	} else {
-		patch = (char *) malloc(MAXPATH);
-		sprintf(patch, "%s/bk_patch%d", TMP_PATH, getpid());
-		assert(strlen(patch) < MAXPATH);
+		patch = aprintf(patch, "%s/bk_patch%d", TMP_PATH, getpid());
 		f = fopen(patch, "wb");
 		assert(f);
-		out = (char *) malloc(strlen(patch) + 5);
-		sprintf(out, " >> %s", patch);
+		out = aprintf(" >> %s", patch);
 	}
+
+	/*
+	 * Set up wrapper
+	 */
+	if (wrapper) wrapperArgs = aprintf(" | bk %swrap", wrapper);
 
 	/*
 	 * Print patch header
@@ -196,15 +191,9 @@ send_main(int ac,  char **av)
 	/*
 	 * Now make the patch
 	 */
-	if (wrapper) {
-		wrapperArgs = (char *) malloc(strlen(wrapper) + 11);
-		sprintf(wrapperArgs,  " | bk %swrap", wrapper);
-	} else {
-		wrapperArgs = "";
-	}
-	sprintf(buf, "bk makepatch %s %s %s %s %s",
+	cmd = aprintf("bk makepatch %s %s %s %s %s",
 				    dflag, qflag, revArgs, wrapperArgs, out);
-	if ((rc = system(buf)) != 0)  goto out;
+	if ((rc = system(cmd)) != 0)  goto out;
 
 
 	/*
@@ -218,6 +207,7 @@ out:	if (patch) {
 	}
 	if (revsFile) unlink(revsFile);
 	if (revArgs) free(revArgs);
+	if (cmd) free(cmd);
 	if (*out) free(out);
 	if (*wrapperArgs) free(wrapperArgs);
 	return (rc);

@@ -981,6 +981,7 @@ void	updLogMarker(int ptype, int verbose);
 char	*getRealCwd(char *, size_t);
 int	smallTree(int threshold);
 MDBM	*csetDiff(MDBM *, int);
+char	*aprintf(char *fmt, ...);
 
 extern char *bk_vers;
 extern char *bk_utc;
