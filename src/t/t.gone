@@ -18,6 +18,7 @@ no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
 if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
 echo OK
+
 echo $N Create some data, commit it, clone it .......................$NL
 echo foo > foo.c
 echo bar > bar.c
@@ -28,6 +29,7 @@ bk commit $S -a -yCset
 cd $HERE
 bk clone $Q project copy
 echo OK
+
 echo $N Add some data, commit it, then remove the file ..............$NL
 cd $HERE/project
 bk edit $Q foo.c
@@ -36,9 +38,22 @@ bk ci $Q -ywhatever foo.c
 bk commit $Q -ywhatever
 KEY="`bk prs -hr+ -d:ROOTKEY: foo.c`"
 rm -f SCCS/s.foo.c
+bk -r check -a 2> ERR && {
+	echo should have failed
+	exit 1
+}
+bk -r check -ag > gonestuff && exit 1
+echo "$KEY" > wanted
+checkfiles gonestuff wanted
+grep -q 'Missing file (chk3)' ERR || {
+	echo Bad or no error message from check
+	cat ERR
+	exit 1
+}
 bk gone $Q "$KEY"
 bk -r check -a || exit 1
 echo OK
+
 echo $N Pull to child without committing gone file, should fail .....$NL
 cd $HERE/copy
 bk pull $Q 2>OUT
@@ -47,6 +62,7 @@ grep -q 'is missing and key is not in a committed gone delta' OUT || {
 	exit 1
 }
 echo OK
+
 echo $N Commit gone file and try pull again .........................$NL
 cd $HERE/project
 bk commit $Q -ygone
@@ -136,4 +152,38 @@ cd ../gonelog
 while [ -d PENDING ]
 do	sleep 1
 done
+echo OK
+
+echo $N Try removing just one delta from a file .....................$NL
+cd $HERE/project
+bk edit $Q bar.c || exit 1
+echo foo >> bar.c
+bk ci $Q -ynew bar.c || exit 1
+bk commit $Q -ynew || exit 1
+KEY="`bk prs -hr+ -d:KEY: bar.c`"
+bk stripdel -Cr+ $Q bar.c || exit 1
+bk -r check -a 2>ERR && {
+	echo should have failed
+	echo ERR
+	exit 1
+}
+grep -q "Missing delta (chk2) in bar.c" ERR || {
+	echo wrong error message
+	cat ERR
+	exit 1
+}
+bk -r check -agg > missing
+echo "$KEY" > wanted
+checkfiles missing wanted
+echo OK
+
+echo $N Update gone file and get check to pass again ................$NL
+bk -r check -agg | bk gone - 2> OUT || exit 1
+bk -r check -a || exit 1
+bk commit $Q -ynew2 || exit 1
+bk edit $Q bar.c || exit 1
+echo more >> bar.c
+bk ci $Q -ynew3 bar.c || exit 1
+bk commit $Q -ynew3 || exit 1
+bk -r check -a || exit 1
 echo OK

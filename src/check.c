@@ -286,9 +286,13 @@ retry:	unless ((cset = sccs_init(s_cset, flags)) && HASGRAPH(cset)) {
 	 */
 	if (all &&
 	    ((actual != nfiles) || !exists("BitKeeper/log/NFILES"))) {
-		FILE	*f = fopen("BitKeeper/log/NFILES", "w");
-		fprintf(f, "%u\n", actual);
-		fclose(f);
+		FILE	*f;
+
+		unlink("BitKeeper/log/NFILES");
+		if (f = fopen("BitKeeper/log/NFILES", "w")) {
+			fprintf(f, "%u\n", actual);
+			fclose(f);
+		}
 	}
 	if ((all || resync) && checkAll(keys)) errors |= 0x40;
 	unlink(ctmp);
@@ -373,7 +377,7 @@ private void
 progress(int n, int err)
 {
 	static	int last = 0;
-	int	percent = (n * 100) / nfiles;
+	int	percent = nfiles ? (n * 100) / nfiles : 100;
 	int	i, want;
 	char	buf[81];
 
