@@ -134,7 +134,7 @@ uncompressed()
 private int
 compressed(int level, int hflag)
 {
-	int	status;
+	int	status, fd;
 	char	*tmpf;
 	FILE	*fh;
 	char	*sfiocmd;
@@ -154,7 +154,9 @@ compressed(int level, int hflag)
 	signal(SIGCHLD, SIG_DFL);
 	fh = popen(sfiocmd, "r");
 	free(sfiocmd);
-	gzipAll2fd(fileno(fh), 1, level, 0, 0, hflag, 0);
+	fd = fileno(fh);
+	setmode(fd, _O_BINARY); /* for win32 */
+	gzipAll2fd(fd, 1, level, 0, 0, hflag, 0);
 	status = pclose(fh);
 	unlink(tmpf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) return (1);
