@@ -55,7 +55,8 @@ bk ci $Q -y bar2.c
 bk commit $S -a -y"This is a \"Change Set\" C"
 cd $HERE/project
 bk export -T -k -r1.3 $HERE/a
-bk export -hT -tpatch -r1.3,1.4 | bk patch -sp 1 -d $HERE/a
+bk export -hT -tpatch -r1.3,1.4 > patch
+bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.4 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
@@ -69,9 +70,8 @@ bk ci $Q -i foo.c
 bk commit $S -a -y"abc"
 cd $HERE/project
 bk export -T -k -r1.4 $HERE/a
-# Note: mkdiffs's patch format is intended for GNU patch version 2.5
-# or higher, and may mot work older the version of patch command.
-bk export -hT -tpatch -r1.4,1.5 | bk patch -sp 1 -d $HERE/a
+bk export -hT -tpatch -r1.4,1.5 > patch
+bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.5 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -83,14 +83,16 @@ bk sccsrm bar.c
 bk commit $S -a -y"abc"
 cd $HERE/project
 bk export -T -k -r1.5 $HERE/a
-bk export -hT -tpatch -r1.5,1.6 | bk patch -sp 1 -d $HERE/a
+bk export -hT -tpatch -r1.5,1.6 > patch 
+bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.6 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 rm -rf $HERE/a $HERE/b
 echo $N Test reverse patch \& un-delete ..............................$NL
 bk export -T -k -r1.6 $HERE/a
-bk export -hT -tpatch -r1.6,1.5 | bk patch -sp 1 -d $HERE/a
+bk export -hT -tpatch -r1.6,1.5 > patch
+bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.5 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
@@ -98,7 +100,8 @@ rm -rf $HERE/a $HERE/b
 echo $N Test reverse patch \& reverse-rename .........................$NL
 cd $HERE/project
 bk export -T -k -r1.5 $HERE/a
-bk export -hT -tpatch -r1.5,1.4 | bk patch -sp 1 -d $HERE/a
+bk export -hT -tpatch -r1.5,1.4 > patch
+bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.4 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -107,7 +110,8 @@ rm -rf $HERE/a $HERE/b
 echo $N Test non-adjacent ChangeSet .................................$NL
 cd $HERE/project
 bk export -T -k -r1.1 $HERE/a
-bk export -hT -tpatch -r1.1,1.6 | bk patch -sp 1 -d $HERE/a
+bk export -hT -tpatch -r1.1,1.6 > patch
+bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.6 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -116,7 +120,8 @@ rm -rf $HERE/a $HERE/b
 echo $N Test reverse non-adjacent ChangeSet .........................$NL
 cd $HERE/project
 bk export -T -k -r1.5 $HERE/a
-bk export -hT -tpatch -r1.5,1.1 | bk patch -sp 1 -d $HERE/a
+bk export -hT -tpatch -r1.5,1.1 > patch
+bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.1 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
@@ -134,7 +139,8 @@ bk mv tmp moo.c
 bk commit $S -a -y"abc"
 cd $HERE/project
 bk export -T -k -r1.6 $HERE/a
-bk export -hT -tpatch -r1.6,1.7 | bk patch -sp 1 -d $HERE/a
+bk export -hT -tpatch -r1.6,1.7 > patch
+bk patch -sp 1 -d $HERE/a < patch
 bk export -T -k -r1.7 $HERE/b
 diff -r $HERE/a $HERE/b
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
