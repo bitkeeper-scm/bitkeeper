@@ -53,12 +53,14 @@ private	char	csetFile[] = CHANGESET; /* for win32, need writable buffer */
 private	cset_t	copts;
 private char	*spin = "|/-\\";
 
+#define	RSIZ	200
+
 int
 makepatch_main(int ac, char **av)
 {
 	int	dash, c, i;
 	char	*nav[15];
-	char	range[500];
+	char	range[RSIZ];
 
 	if (ac == 2 && streq("--help", av[1])) {
 usage:		system("bk help makepatch");
@@ -67,23 +69,20 @@ usage:		system("bk help makepatch");
 	dash = streq(av[ac-1], "-");
 	nav[i=0] = "makepatch";
 	range[0] = 0;
-	while ((c = getopt(ac, av, "c|e|d|r|sCqv")) != -1) {
+	while ((c = getopt(ac, av, "c|e|dr|sCqv")) != -1) {
 		if (i == 14) goto usage;
 		switch (c) {
+		    case 'd':
+			nav[++i] = "-d";
+			break;
 		    case 'r':
 		    	c = 'm';
 		    case 'c':
 		    case 'e':
-		    case 'd':
-			if (optarg && (strlen(optarg) >= sizeof(range) - 10)) {
-				fprintf(stderr,
-				    "buffer overflow in makepatch\n");
-				exit(1);
-			}
 			if (range[0]) goto usage;
 			c = snprintf(range,
-			    sizeof(range),  "-%c%s", c, optarg ? optarg : "");
-			if (c >= sizeof(range)) {
+			    RSIZ,  "-%c%s", c, optarg ? optarg : "");
+			if (c >= RSIZ) {
 				fprintf(stderr,
 				    "makepatch: arg size overflow\n");
 				goto usage;

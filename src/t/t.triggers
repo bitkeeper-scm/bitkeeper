@@ -18,7 +18,445 @@ else
 	if [ -z "$DO_REMOTE" ]; then DO_REMOTE=YES; fi
 fi
 
-# Tests to see if triggers work.
+echo $N Check commit trigger environment variables ..................$NL
+cd $HERE
+no_logging project
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-commit <<EOF
+#!/bin/sh
+set | grep BK | sort > $HERE/pre-commit
+exit 0
+EOF
+cat > BitKeeper/triggers/post-commit <<EOF
+#!/bin/sh
+set | grep BK | sort > $HERE/post-commit
+exit 0
+EOF
+chmod +x BitKeeper/triggers/*
+echo h > h.h
+bk ci $Q -i h.h
+bk commit $S -a -yCset
+grep -q BK_CSETS $HERE/pre-commit && {
+	echo should not have defined BK_CSETS in pre-commit
+	exit 1
+}
+grep -q BK_STATUS=OK $HERE/post-commit || {
+	echo no/bad exit status
+	cat $HERE/post-commit
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-commit ==========
+	cat $HERE/pre-commit
+	echo ========== post-commit ==========
+	cat $HERE/post-commit
+}
+
+echo $N Make sure commit can be told to fail and it does so nicely ..$NL
+cat > BitKeeper/triggers/pre-commit <<EOF
+#!/bin/sh
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+echo c > c.c
+bk ci $Q -i c.c
+bk commit $S -a -yCset2 2>/dev/null && {
+	echo failed to exit with an error status
+	exit 1
+}
+if [ `bk sfiles -gp` != c.c ]
+then	echo bad pending list
+	exit 1
+fi
+echo OK
+
+echo $N Make sure we get the list of pending files in pre-commit ....$NL
+cat > BitKeeper/triggers/pre-commit <<EOF
+#!/bin/sh 
+cp \$BK_PENDING $HERE/BK_PENDING
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+bk commit $S -a -yCset2 2>/dev/null && {
+	echo failed to exit with an error status
+	exit 1
+}
+test -f $HERE/BK_PENDING || {
+	echo failed to copy the file
+	exit 1
+}
+test SCCS/s.c.c@1.1 = `cat $HERE/BK_PENDING` || {
+	echo bad file list
+	cat $HERE/BK_PENDING
+	exit 1
+}
+echo OK
+
+echo $N Extract user from file list of pending deltas ...............$NL
+test `bk prs -hd':USER:\n' - < $HERE/BK_PENDING` = bk || {
+	echo can not extract user from file list
+	exit 1
+}
+echo OK
+
+echo $N Make sure commit succeeds when told it is OK ................$NL
+cat > BitKeeper/triggers/pre-commit <<EOF
+#!/bin/sh
+exit 0
+EOF
+chmod +x BitKeeper/triggers/*
+bk commit $S -a -yCset2 || {
+	echo failed
+	exit 1
+}
+echo OK
+
+echo $N Make sure clone is passed the right variables ...............$NL
+cat > BitKeeper/triggers/pre-outgoing <<EOF
+#!/bin/sh
+set | grep BK_ | sort > $HERE/pre-outgoing
+exit 1
+EOF
+cat > BitKeeper/triggers/post-outgoing <<EOF
+#!/bin/sh
+set | grep BK_ | sort > $HERE/post-outgoing
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE
+bk clone $Q project clone && {
+	echo failed to exit with an error status
+	exit 1
+}
+test -d clone && {
+	echo should not have created repository
+	exit 1
+}
+bk clone $Q -r1.1 project clone 
+grep -q BK_CSETS=1.0..1.1 $HERE/pre-outgoing || {
+	echo failed to put cset list in the env
+	exit 1
+}
+rm project/BitKeeper/triggers/pre-outgoing
+bk clone $Q -r1.1 project clone || {
+	echo should have succeeded and did not
+	exit 1
+}
+test -d clone || {
+	echo should have created repository
+	exit 1
+}
+grep -q BK_CSETS=1.0..1.1 $HERE/post-outgoing || {
+	echo failed to put cset list in the env
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-outgoing ==========
+	cat $HERE/pre-outgoing
+	echo ========== post-outgoing ==========
+	cat $HERE/post-outgoing
+}
+
+echo $N Make sure pull is passed the right variables ................$NL
+cd project
+cat > BitKeeper/triggers/pre-outgoing <<EOF
+#!/bin/sh
+set | grep BK_ | sort > $HERE/pre-outgoing
+cp \$BK_CSETLIST $HERE/CSETS
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE/clone
+bk pull $Q && {
+	echo failed to exit with an error status
+	exit 1
+}
+grep -q BK_CSETLIST $HERE/pre-outgoing || {
+	echo failed to put cset list file in the env
+	exit 1
+}
+grep -q BK_LOCALCSETS=2 $HERE/pre-outgoing || {
+	echo failed to put local csets in the env
+	exit 1
+}
+grep -q BK_REMOTECSETS=0 $HERE/pre-outgoing || {
+	echo failed to put remote csets in the env
+	exit 1
+}
+test -d RESYNC && {
+	echo failed to clean up RESYNC dir
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-outgoing ==========
+	cat $HERE/pre-outgoing
+	echo ========== post-outgoing ==========
+	cat $HERE/post-outgoing
+}
+
+echo $N Make sure pre-incoming triggers fail the pull ...............$NL
+rm $HERE/project/BitKeeper/triggers/pre-outgoing
+cd $HERE/clone
+mkdir BitKeeper/triggers
+cat > BitKeeper/triggers/pre-incoming <<EOF
+#!/bin/sh
+set | grep BK_ | sort > $HERE/pre-incoming
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+bk pull $Q && {
+	echo failed to exit non zero with failed pre-incoming trigger
+	exit 1
+}
+test -d RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-incoming ==========
+	cat $HERE/pre-incoming
+}
+
+echo $N Make sure pre-resolve triggers fail the pull ................$NL
+cd $HERE/clone
+rm BitKeeper/triggers/*
+cat > BitKeeper/triggers/pre-resolve <<EOF
+#!/bin/sh
+set | grep BK_ | sort > $HERE/pre-resolve
+pwd > $HERE/PWD
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+bk pull $Q && {
+	echo failed to exit non zero with failed pre-incoming trigger
+	exit 1
+}
+test -d RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -f $HERE/pre-resolve || {
+	echo failed to call trigger
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ========== pre-resolve ==========
+	cat $HERE/pre-resolve
+}
+
+echo $N Make sure we can see the data in the pre-resolve trigger ....$NL
+cat > BitKeeper/triggers/pre-resolve <<EOF
+#!/bin/sh
+bk changes - < \$BK_CSETLIST > $HERE/changes
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+bk pull $Q && {
+	echo failed to exit non zero with failed pre-incoming trigger
+	exit 1
+}
+test -d RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -s $HERE/changes || {
+	echo failed to create change list
+	exit 1
+}
+grep -q ChangeSet@1.3 $HERE/changes || {
+	echo failed to list the ChangeSet
+	exit 1
+}
+echo OK
+
+echo $N Make sure we can see the data in the post-incoming trigger ..$NL
+rm BitKeeper/triggers/* $HERE/changes
+cat > BitKeeper/triggers/post-incoming <<EOF
+#!/bin/sh
+bk changes - < \$BK_CSETLIST > $HERE/changes
+EOF
+chmod +x BitKeeper/triggers/*
+bk pull $Q || {
+	echo failed to exit zero
+	exit 1
+}
+test -d RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -s $HERE/changes || {
+	echo failed to create change list
+	exit 1
+}
+grep -q ChangeSet@1.3 $HERE/changes || {
+	echo failed to list the ChangeSet
+	exit 1
+}
+echo OK
+
+echo $N Fail a push in pre-incoming and make sure we clean up .......$NL
+rm $HERE/pre-* $HERE/post-*
+cd $HERE/project
+rm BitKeeper/triggers/*
+cat > BitKeeper/triggers/pre-incoming <<EOF
+#!/bin/sh
+echo I am the remote pre-incoming trigger and I am failing
+set | grep BK_ | sort > $HERE/pre-incoming
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE/clone
+ls > LS
+bk new $Q LS
+bk commit -ywhatever $Q
+bk push 2>OUT && {
+	echo push should have failed
+	exit 1
+}
+test -d ../project/RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -d ../project/PENDING && {
+	echo failed to clean up PENDING
+	exit 1
+}
+grep -q 'I am the remote pre-incoming trigger' OUT || {
+	echo failed to pass back the trigger message
+	cat OUT
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ====== pre-push-incoming ==========
+	cat $HERE/pre-incoming
+}
+
+echo $N Fail a push in pre-resolve and make sure we clean up ........$NL
+cd $HERE/project
+rm BitKeeper/triggers/*
+cat > BitKeeper/triggers/pre-resolve <<EOF
+#!/bin/sh
+echo pre-resolve failing
+set | grep BK_ | sort >> $HERE/pre-resolve
+exit 1
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE/clone
+rm -f BitKeeper/triggers/* $HERE/pre-resolve
+bk push 2>OUT && {
+	echo push should have failed
+	exit 1
+}
+test -d ../project/RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -d ../project/PENDING && {
+	echo failed to clean up PENDING
+	exit 1
+}
+grep -q 'pre-resolve failing' OUT || {
+	echo failed to pass back trigger output
+	cat OUT
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ====== pre-resolve ==========
+	cat $HERE/pre-resolve
+}
+
+echo $N Exit 2 out of a pre-resolve, make sure it leaves the patch ..$NL
+cd $HERE/project
+rm BitKeeper/triggers/*
+cat > BitKeeper/triggers/pre-resolve <<EOF
+#!/bin/sh
+echo pre-resolve failing but leaving patch
+exit 2
+EOF
+chmod +x BitKeeper/triggers/*
+cd $HERE/clone
+rm -f BitKeeper/triggers/* $HERE/pre-resolve
+bk push 2>OUT && {
+	echo push should have failed
+	exit 1
+}
+test -d ../project/RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -d ../project/PENDING || {
+	echo failed to leave PENDING
+	exit 1
+}
+grep -q 'pre-resolve failing but leaving patch' OUT || {
+	echo failed to pass back trigger output
+	cat OUT
+	exit 1
+}
+echo OK
+test -z "$DUMP_VARS" || {
+	echo ====== pre-resolve ==========
+	cat $HERE/pre-resolve
+}
+
+echo $N Look for cset list in pre_resolve in the push ...............$NL
+cd $HERE/clone
+cat > $HERE/project/BitKeeper/triggers/pre-resolve <<EOF
+#!/bin/sh
+bk changes - < \$BK_CSETLIST > $HERE/changes
+exit 1
+EOF
+chmod +x $HERE/project/BitKeeper/triggers/*
+bk push $Q && {
+	echo failed to exit nonzero
+	exit 1
+}
+test -d $HERE/project/RESYNC && {
+	echo failed to clean up RESYNC
+	exit 1
+}
+test -s $HERE/changes || {
+	echo failed to create change list
+	exit 1
+}
+grep -q ChangeSet@1.4 $HERE/changes || {
+	echo failed to list the ChangeSet
+	exit 1
+}
+echo OK
+
+echo $N Look for cset list in post in the push ......................$NL
+cd $HERE/clone
+rm $HERE/project/BitKeeper/triggers/* $HERE/changes
+cat > $HERE/project/BitKeeper/triggers/post-incoming <<EOF
+#!/bin/sh
+bk changes - < \$BK_CSETLIST > $HERE/changes
+exit 0
+EOF
+chmod +x $HERE/project/BitKeeper/triggers/*
+bk push $Q || {
+	echo failed to exit zero, exited $?
+	exit 1
+}
+test -s $HERE/changes || {
+	echo failed to create change list
+	exit 1
+}
+grep -q ChangeSet@1.4 $HERE/changes || {
+	echo failed to list the ChangeSet
+	exit 1
+}
+echo OK
+
+cd $HERE
+rm -rf *
+
 echo $N Create initial repository ...................................$NL
 no_logging project
 if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
@@ -58,16 +496,19 @@ for x in pre post;do
 	done
 done
 
-# Overwrite the post incommong trigger with a more interesting one
+# Overwrite the pre incoming trigger with a more interesting one
 cat >good2 <<EOF
 #! /bin/sh
 echo "\`bk root\`/\$0: trigger fired"
+test "X$BK_RESYNC" = XFALSE || exit 0
 if [ ! -d RESYNC ]; then echo "missing RESYNC TREE"; exit 1; fi
-if [ X\$BK_CLIENT_USER != X`bk getuser` ]; then echo "Wrong user"; exit 1; fi
-echo "post-incoming trigger: user=\$BK_CLIENT_USER"
+if [ X\$BK_REMOTE_USER != X`bk getuser` ]; then echo "Wrong user"; exit 1; fi
+echo "post-incoming trigger: user=\$BK_REMOTE_USER"
 REV=\`cat RESYNC/BitKeeper/etc/csets-in\`
 echo "incoming rev=\$REV"
-bk prs -hnr\$REV RESYNC/ChangeSet
+for i in $REV
+do	echo ChangeSet@$i
+done | bk prs -h -
 exit 0
 EOF
 bk undos good2 > pre-incoming
@@ -136,25 +577,7 @@ bk get $Q -e foo.c
 echo 4 >> foo.c
 bk delta $Q -y2 foo.c
 bk commit $Q -y"cset comment for 1.4" > /dev/null 2>&1
-
-bk push >push.out 2>&1 || { echo failed; exit 1; }
-# Importtant: must wait for the remote tree to unlock before we 
-# check the output file
-grep -q "$HERE/project/BitKeeper/triggers/pre-incoming: trigger fired" push.out
-if [ $? -ne 0 ]; then echo failed 2; cat push.out; exit 1; fi
-grep -q "$HERE/project/BitKeeper/triggers/post-incoming: trigger fired" push.out
-if [ $? -ne 0 ]; then echo failed 4; cat push.out; exit 1; fi
-grep -q "$HERE/copy/BitKeeper/triggers/pre-outgoing: trigger fired" push.out
-if [ $? -ne 0 ]; then echo failed 5; cat push.out; exit 1; fi
-grep -q "$HERE/copy/BitKeeper/triggers/post-outgoing: trigger fired" push.out
-if [ $? -ne 0 ]; then echo failed 6; cat push.out; exit 1; fi
-grep -q "post-incoming trigger: user=`bk getuser`" push.out
-if [ $? -ne 0 ]; then echo failed 7; cat push.out; exit 1; fi
-grep -q "incoming rev=1.4" push.out
-if [ $? -ne 0 ]; then echo failed 8; cat push.out; exit 1; fi
-grep -q "C cset comment for 1.4" push.out 
-if [ $? -ne 0 ]; then echo failed 9; cat push.out; exit 1; fi
-# Wait for the remote push process to exit before we remove the trigger
+bk push >push.out 2>&1 || { echo failed; cat push.out; exit 1; }
 cd $HERE/project/BitKeeper/triggers
 rm -f *
 echo OK
@@ -228,13 +651,16 @@ echo OK
 echo $N auto-mirroring ..............................................$NL
 cd $HERE/project/BitKeeper/triggers
 rm -f *
-#cd $HERE/project
-#while ! bk lock -s; do true; done
-bk clone $Q $HERE/project $HERE/backup
+while ! bk lock -ls
+do	#echo waiting for the repository to become unlocked
+	sleep 1
+done
+bk clone $Q $HERE/project $HERE/backup || exit 1
 cd $HERE/project/BitKeeper/triggers
-echo "#! /bin/sh"			> post-incoming
-echo "echo Auto_mirror 1>\&2"	>> post-incoming
-echo "bk push -q $HERE/backup"	>> post-incoming
+cat > post-incoming <<EOF
+#! /bin/sh
+bk push $Q $HERE/backup || echo Failed to mirror the repository
+EOF
 chmod +x post-incoming
 cd $HERE/copy/src
 echo data > car.c
@@ -251,4 +677,3 @@ do
 done
 if [ ! -f $HERE/backup/src/SCCS/s.car.c ]; then echo failed; exit 1; fi
 echo OK
-## XXX TODO need test for trigger env variables

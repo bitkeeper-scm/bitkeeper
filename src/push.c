@@ -181,9 +181,8 @@ unPublish(sccs *s, delta *d)
 void
 updLogMarker(int ptype)
 {
-	FILE	*f;
 	sccs	*s;
-	delta	*d, *d2;
+	delta	*d;
 	char	s_cset[] = CHANGESET;
 
 	/*
@@ -242,7 +241,7 @@ send_part1_msg(opts opts, remote *r, char rev_list[], char **envVar)
 private int
 push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 {
-	char	buf[MAXPATH], s_cset[] = CHANGESET, *p;
+	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	int	fd, rc, n, lcsets, rcsets, rtags;
 	sccs	*s;
 	delta	*d;
@@ -259,6 +258,13 @@ push_part1(opts opts, remote *r, char rev_list[MAXPATH], char **envVar)
 		getline2(r, buf, sizeof(buf));
 	} else {
 		drainNonStandardMsg(r, buf, sizeof(buf));
+	}
+	if (streq(buf, "@TRIGGER INFO@")) {
+		if (getTriggerInfoBlock(r, opts.verbose)) {
+			rc = 1;
+			return (-1);
+		}
+		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, opts.verbose)) return (-1);
 
@@ -354,8 +360,7 @@ private u32
 genpatch(opts opts, int level, int wfd, char *rev_list)
 {
 	char	*makepatch[10] = {"bk", "makepatch", 0};
-	char	buf[4096];
-	int	fd0, fd, rfd, n, status, i = 0;
+	int	fd0, fd, rfd, n, status;
 	pid_t	pid;
 
 	opts.in = opts.out = 0;
@@ -380,7 +385,7 @@ genpatch(opts opts, int level, int wfd, char *rev_list)
 }
 
 private u32
-patch_size (opts opts, int gzip, char *rev_list)
+patch_size(opts opts, int gzip, char *rev_list)
 {
 	int	fd;
 	u32	n;
@@ -434,8 +439,6 @@ send_patch_msg(opts opts, remote *r, char rev_list[], int ret, char **envVar)
 	int	rc;
 	u32	extra = 0;
 	int	gzip;
-	int	nul = 0;
-	int	true = 1;
 
 	/*
 	 * If we are using ssh/rsh do not do gzip ourself
@@ -496,24 +499,25 @@ push_part2(char **av, opts opts,
 {
 
 	char	buf[4096];
-	int	n, status, rc = 0, done = 0, do_pull = 0;
+	int	n, rc = 0, done = 0, do_pull = 0;
 
+	putenv("BK_CMD=push");
 	if (ret == 0){
-		putenv("BK_OUTGOING=NOTHING");
+		putenv("BK_STATUS=NOTHING");
 		send_end_msg(opts, r, "@NOTHING TO SEND@\n", rev_list, envVar);
 		done = 1;
 	} else if (ret == 1) {
-		putenv("BK_OUTGOING=CONFLICT");
+		putenv("BK_STATUS=CONFLICT");
 		send_end_msg(opts, r, "@CONFLICT@\n", rev_list, envVar);
 		if (opts.autopull) do_pull = 1;
 		done = 1;
 	} else {
 		/*
 		 * We are about to request the patch, fire pre trigger
-		 * Setup the BK_REVLISTFILE env variable, in case the trigger 
+		 * Setup the BK_CSETS env variable, in case the trigger 
 		 * script wants it.
 		 */
-		sprintf(buf, "BK_REVLISTFILE=%s", rev_list);
+		sprintf(buf, "BK_CSETS=%s", rev_list);
 		putenv(buf); 
 		if (!opts.metaOnly && trigger(av, "pre")) {
 			send_end_msg(opts, r, "@ABORT@\n", rev_list, envVar);
@@ -555,7 +559,7 @@ push_part2(char **av, opts opts,
 		getline2(r, buf, sizeof(buf));
 	}
 	if (streq(buf, "@TRIGGER INFO@")) {
-		if (getTriggerInfoBlock(r, opts.verbose)) {
+		if (getTriggerInfoBlock(r, 1|opts.verbose)) {
 			rc = 1;
 			goto done;
 		}
@@ -586,10 +590,10 @@ push_part2(char **av, opts opts,
 		rename(rev_list, CSETS_OUT);
 		rev_list[0] = 0;
 	}
-	putenv("BK_OUTGOING=OK");
+	putenv("BK_STATUS=OK");
 
 done:	if (!opts.metaOnly) {
-		if (rc) putenv("BK_OUTGOING=CONFLICT");
+		if (rc) putenv("BK_STATUS=CONFLICT");
 		trigger(av, "post");
 	}
 	if (rev_list[0]) unlink(rev_list);
@@ -607,10 +611,7 @@ private	int
 push(char **av, opts opts, remote *r, char **envVar)
 {
 	int	ret;
-	sccs	*cset = 0;
-	char	*root;
 	int	gzip;
-	char	buf[MAXKEY];
 	char	rev_list[MAXPATH];
 
 	gzip = opts.gzip && r->port;

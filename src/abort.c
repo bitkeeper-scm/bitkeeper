@@ -12,7 +12,7 @@ void	abort_patch();
 int
 abort_main(int ac, char **av)
 {
-	int	c, force = 0;
+	int	c, force = 0, leavepatch = 0;
 	char	buf[MAXPATH];
 
 	debug_main(av);
@@ -20,9 +20,10 @@ abort_main(int ac, char **av)
 		system("bk help abort");
 		return (1);
 	}
-	while ((c = getopt(ac, av, "f")) != -1) {
+	while ((c = getopt(ac, av, "fp")) != -1) {
 		switch (c) {
 		    case 'f': force = 1; break; /* doc 2.0 */
+		    case 'p': leavepatch = 1; break; /* undoc? 2.0 */
 		    default:
 usage:			system("bk help -s abort");
 			return (1);
@@ -45,12 +46,12 @@ usage:			system("bk help -s abort");
 			exit(0);
 		}
 	}
-	abort_patch();
+	abort_patch(leavepatch);
 	exit(0);
 }
 
 void
-abort_patch()
+abort_patch(int leavepatch)
 {
 	char	buf[MAXPATH];
 	char	pendingFile[MAXPATH];
@@ -73,13 +74,13 @@ abort_patch()
 	} else {
 		fnext(pendingFile, f);
 		chop(pendingFile);
+		fclose(f);
 	}
-	fclose(f);
 
 	assert(exists("RESYNC"));
 	sprintf(buf, "%s -rf RESYNC", RM);
 	system(buf);
-	if (pendingFile[0]) unlink(pendingFile);
+	if (!leavepatch && pendingFile[0]) unlink(pendingFile);
 	rmdir(ROOT2PENDING);
 	repository_wrunlock(1);
 	repository_lockers(0);

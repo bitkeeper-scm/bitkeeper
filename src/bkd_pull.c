@@ -3,7 +3,6 @@
 private	void	listIt(sccs *s);
 private	void	listrev(delta *d);
 private	void	listIt2(sccs *s, int list);
-private	void	listrev2(delta *d);
 private int	uncompressed(char *tmpfile);
 private int	compressed(int gzip, char *tmpfile);
 extern	MDBM	*csetKeys(MDBM *);
@@ -64,7 +63,7 @@ cmd_pull(int ac, char **av)
 	 * Get the set of keys not present in them.
 	 */
 	unless (me = csetKeys(them)) {
-		putenv("BK_OUTGOING=NOTHING");
+		putenv("BK_STATUS=NOTHING");
 		out("OK-Nothing to send.\n");
 		out("OK-Unlocked\n"); /* lock is relaesed when we return */
 		goto out;
@@ -79,7 +78,7 @@ cmd_pull(int ac, char **av)
 			OUT;
 		}
 	} else {
-		putenv("BK_OUTGOING=DRYRUN");
+		putenv("BK_STATUS=DRYRUN");
 		if (verbose || list) out(
 "OK-------------------- Would send the following csets -------------------\n");
 	}
@@ -296,8 +295,7 @@ cmd_pull_part1(int ac, char **av)
 	FILE	*f;
 
 	sendServerInfoBlock();
-
-	p = getenv("BK_CLIENT_PROTOCOL");
+	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");
 		out(BKD_VERSION); 
@@ -330,34 +328,18 @@ cmd_pull_part1(int ac, char **av)
 	return (0);
 }
 
-/*
- * Set up env variables for trigger
- */
-private void
-triggerEnv(int dont, int local_count, char *rev_list, char *envbuf)
-{
-	if (dont) {
-		putenv("BK_OUTGOING=DRYRUN");
-	} else if (local_count == 0) {
-		putenv("BK_OUTGOING=NOTHING");
-	} else {
-		putenv("BK_OUTGOING=OK");
-	}
-	sprintf(envbuf, "BK_REVLISTFILE=%s", rev_list);
-	putenv(envbuf);
-}
-
-
 int
 cmd_pull_part2(int ac, char **av)
 {
-	int	c, rc = 0, fd, local, debug = 0;
+	int	c, rc = 0, fd, local, rem, debug = 0;
 	int	gzip = 0, metaOnly = 0, dont = 0, verbose = 1, list = 0;
-	char	buf[4096], rev_list[MAXPATH], s_cset[] = CHANGESET;
-	char	envbuf[MAXPATH], gzip_str[30] = "";
+	char	buf[4096], s_cset[] = CHANGESET;
+	char	*revs = bktmpfile();
+	char	*serials = bktmpfile();
 	sccs	*s;
 	delta	*d;
 	remote	r;
+	FILE	*f;
 
 	while ((c = getopt(ac, av, "delnqz|")) != -1) {
 		switch (c) {
@@ -377,15 +359,13 @@ cmd_pull_part2(int ac, char **av)
 	sendServerInfoBlock();
 
 	/*
-	 * What we want is: remote => bk _prunekey => rev_list
+	 * What we want is: remote => bk _prunekey => serials
 	 */
-	bktemp(rev_list);
-
-	fd = open(rev_list, O_CREAT|O_WRONLY, 0644);
+	fd = open(serials, O_WRONLY, 0);
 	bzero(&r, sizeof(r));
 	s = sccs_init(s_cset, 0, 0);
 	assert(s && s->tree);
-	if (prunekey(s, &r, fd, 1, &local, 0, 0) < 0) {
+	if (prunekey(s, &r, fd, 1, &local, &rem, 0) < 0) {
 		sccs_free(s);
 		rc = 1;
 		goto done;
@@ -409,14 +389,26 @@ cmd_pull_part2(int ac, char **av)
 		printf("@END@\n");
 	}
 	fflush(stdout);
-
-next:	sccs_free(s);
+	f = fopen(revs, "w");
+	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_VISITED) continue;
+		unless (d->type == 'D') continue;
+		fprintf(f, "%s\n", d->rev);
+	}
+	fclose(f);
+	sccs_free(s);
 
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
-	 * Set up the BK_REVLISTFILE env variable for the trigger script
+	 * Set up the BK_CSETS env variable for the trigger script
 	 */
-	triggerEnv(dont, local, rev_list, envbuf);
+	sprintf(buf, "BK_CSETLIST=%s", revs);
+	putenv((strdup)(buf));
+	sprintf(buf, "BK_LOCALCSETS=%d", local);
+	putenv((strdup)(buf));
+	sprintf(buf, "BK_REMOTECSETS=%d", rem);
+	putenv((strdup)(buf));
+
 	if (!metaOnly && trigger(av,  "pre")) {
 		rc = 1;
 		goto done;
@@ -438,29 +430,36 @@ next:	sccs_free(s);
 	fputs("@PATCH@\n", stdout);
 	fflush(stdout); 
 	sprintf(buf, "bk makepatch -s %s - < %s | bk _gzip -z%d",
-				metaOnly ? "-e" : "", rev_list, gzip);
+				metaOnly ? "-e" : "", serials, gzip);
 	if (system(buf)) {
 		fprintf(stderr, "cmd_pull_part2: makepatch failed\n");
 	}
-
-
 	flushSocket(1); /* This has no effect for pipe, should be OK */
 
-done:	if (rc) {
-		unlink(rev_list);
-		sprintf(buf, "BK_OUTGOING=ERROR %d", rc);
-		putenv(buf);
+done:	unlink(serials); free(serials);
+	if (dont) {
+		putenv("BK_STATUS=DRYRUN");
+	} else if (local == 0) {
+		putenv("BK_STATUS=NOTHING");
+	} else {
+		putenv("BK_STATUS=OK");
+	}
+	if (rc) {
+		unlink(revs); free(revs);
+		sprintf(buf, "BK_STATUS=%d", rc);
+		putenv((strdup)(buf));
 	} else {
 		/*
 		 * Pull is ok:
-		 * a) rename rev_list to CSETS_OUT
-		 * b) update $REV_LISTFILE to point to CSETS_OUT
+		 * a) rename revs to CSETS_OUT
+		 * b) update $CSETS to point to CSETS_OUT
 		 */
 		unlink(CSETS_OUT);
-		if (rename(rev_list, CSETS_OUT)) perror(CSETS_OUT);
+		if (rename(revs, CSETS_OUT)) perror(CSETS_OUT);
+		free(revs);
 		chmod(CSETS_OUT, 0666);
-		sprintf(envbuf, "BK_REVLISTFILE=%s", CSETS_OUT);
-		putenv(envbuf);
+		sprintf(buf, "BK_CSETLIST=%s", CSETS_OUT);
+		putenv((strdup)(buf));
 	}
 	/*
 	 * Fire up the post-trigger (for non-logging tree only)

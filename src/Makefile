@@ -311,7 +311,7 @@ bk.ver: ../SCCS/s.ChangeSet utils/os utils/gnu-os
 	mv -f bk.v bk.ver
 
 bkver.c: ../SCCS/s.ChangeSet
-	bk prs -hr+ -d'char bk_vers[] = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\n' ../ChangeSet > bk.v
+	bk prs -hr+ -d'char *bk_vers = "$$if(:SYMBOL:){:SYMBOL:}$$unless(:SYMBOL:){:UTC:}";\nchar *bk_utc = ":UTC:";\nchar *bk_time = ":TIME_T:";\n' ../ChangeSet > bk.v
 	mv -f bk.v bkver.c
 
 # Because we need the execute bit on

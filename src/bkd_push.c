@@ -104,16 +104,16 @@ cmd_push(int ac, char **av)
 			if (error = WEXITSTATUS(status)) goto out;
 		} else {
 			/* must have been signaled or something else */
-			putenv("BK_INCOMING=SIGNALED");
+			putenv("BK_STATUS=SIGNALED");
 			OUT;
 		}
 	} else {
 		if (got == 8) {
 			if (streq(buf, "@NADA!@\n")) {
-				putenv("BK_INCOMING=NOTHING");
+				putenv("BK_STATUS=NOTHING");
 				goto out;
 			} else if (streq(buf, "@LATER@\n")) {
-				putenv("BK_INCOMING=CONFLICTS");
+				putenv("BK_STATUS=CONFLICTS");
 				goto out;
 			}
 		}
@@ -153,7 +153,7 @@ cmd_push_part1(int ac, char **av)
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock();
 
-	p = getenv("BK_CLIENT_PROTOCOL");
+	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
 		out("ERROR-protocol version mismatch, want: ");
 		out(BKD_VERSION); 
@@ -188,6 +188,11 @@ cmd_push_part1(int ac, char **av)
 		}
 		out("ERROR-bkd std cannot access non-master repository\n");
 		out("@END@\n");
+		drain();
+		return (1);
+	}
+		
+	if (!metaOnly && trigger(av, "pre")) {
 		drain();
 		return (1);
 	}
@@ -229,24 +234,6 @@ cmd_push_part1(int ac, char **av)
 	return (0);
 }
 
-private void
-triggerEnv(int dont, int nothing, int conflict)
-{
-	/*
-	 * The value of BK_INCOMING can be overriden later
-	 * if we hit error condition
-	 */
-	if (dont) {
-		putenv("BK_INCOMING=DRYRUN");
-	} else if (nothing) {
-		putenv("BK_INCOMING=NOTHING");
-	} else if (conflict) {
-		putenv("BK_INCOMING=CONFLICTS");
-	} else {
-		putenv("BK_INCOMING=OK");
-	}
-}
-
 int
 cmd_push_part2(int ac, char **av)
 {
@@ -255,10 +242,9 @@ cmd_push_part2(int ac, char **av)
 	pid_t	pid;
 	char	buf[4096];
 	char	bkd_nul = BKD_NUL;
+	char	*pr[2] = { "remote resolve", 0 };
 	static	char *takepatch[] = { "bk", "takepatch", "-vv", "-c", 0};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
-
-
 
 #ifndef	WIN32
 	signal(SIGCHLD, SIG_DFL);
@@ -294,18 +280,20 @@ cmd_push_part2(int ac, char **av)
 		 */
 		return (0);
 	}
+	putenv("BK_STATUS=OK");
 	if (streq(buf, "@NOTHING TO SEND@")) {
 		nothing = 1;
+		putenv("BK_STATUS=NOTHING");
 	} else if (streq(buf, "@CONFLICT@")) {
 		conflict = 1;
+		putenv("BK_STATUS=CONFLICTS");
 	}
-	triggerEnv(dont, nothing, conflict);
+	if (dont) putenv("BK_STATUS=DRYRUN");
 	if (nothing || conflict) {
-		if (!metaOnly) trigger(av, "pre");
 		goto done;
 	}
 	if (!streq(buf, "@PATCH@")) {
-		fprintf(stderr, "expect @PATHCH@, got <%s>\n", buf);
+		fprintf(stderr, "expect @PATCH@, got <%s>\n", buf);
 		rc = 1;
 		goto done;
 	}
@@ -337,12 +325,12 @@ cmd_push_part2(int ac, char **av)
 	}
 	fputs("@END@\n", stdout);
 	if (!WIFEXITED(status)) {
-		putenv("BK_INCOMING=SIGNALED");
+		putenv("BK_STATUS=SIGNALED");
 		rc = 1;
 		goto done;
 	}
 	if (WEXITSTATUS(status)) {
-		putenv("BK_INCOMING=CONFLICTS");
+		putenv("BK_STATUS=CONFLICTS");
 		rc = 1;
 		goto done;
 	}
@@ -351,8 +339,13 @@ cmd_push_part2(int ac, char **av)
 	/*
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 */
-	if (!metaOnly && trigger(av,  "pre")) {
-		system("bk abort -f");
+	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
+	if (!metaOnly && (c = trigger(pr,  "pre"))) {
+		if (c == 2) {
+			system("bk abort -fp");
+		} else {
+			system("bk abort -f");
+		}
 		return (1);
 	}
 
@@ -380,12 +373,12 @@ cmd_push_part2(int ac, char **av)
 	fputs("@END@\n", stdout);
 	fflush(stdout);
 	if (!WIFEXITED(status)) {
-		putenv("BK_INCOMING=SIGNALED");
+		putenv("BK_STATUS=SIGNALED");
 		rc = 1;
 		goto done;
 	}
 	if (WEXITSTATUS(status)) {
-		putenv("BK_INCOMING=CONFLICTS");
+		putenv("BK_STATUS=CONFLICTS");
 		rc = 1;
 		goto done;
 	}
@@ -394,6 +387,7 @@ done:	/*
 	 * Fire up the post-trigger (for non-logging tree only)
 	 */
 	if (metaOnly) av[0] = "remote log push";
+	putenv("BK_RESYNC=FALSE");
 	trigger(av,  "post");
 	return (rc);
 }

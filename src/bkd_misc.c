@@ -26,6 +26,7 @@ cmd_help(int ac, char **av)
 }
 
 
+int
 cmd_putenv(int ac, char **av)
 {
 	char *p;
@@ -41,6 +42,6 @@ cmd_putenv(int ac, char **av)
 	 */
 	if ((len == 3) && strneq(av[1], "IFS", 3)) return (1);
 	if ((len == 4) && strneq(av[1], "PATH", 4)) return (1);
-	putenv(strdup(av[1])); /* memory is not released until we exit */
+	putenv(strdup(av[1])); /* XXX - memory is not released until we exit */
 	return (0);
 }

@@ -45,7 +45,7 @@ int
 cmd_cd(int ac, char **av)
 {
 	char *p = av[1];
-	char *rootkey, buf[MAXPATH], log_root[MAXPATH] = "";
+	char *rootkey, buf[MAXPATH];
 	extern int errno;
 
 #ifdef WIN32
@@ -106,7 +106,7 @@ cmd_cd(int ac, char **av)
 	}
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
-	unless (getenv("BK_CLIENT_PROTOCOL")) {
+	unless (getenv("BK_REMOTE_PROTOCOL")) {
 		/*
 		 * For old 1.2 client
 		 */

@@ -1,0 +1,281 @@
+[Thu Dec 14 19:40:09 PST 2000]
+
+Basic trigger overview.
+
+Event classes
+    pre-commit
+	- called before a changeset is committed
+    	- exit !0 fails the commit
+	- typically used for integrity checks
+    post-commit
+	- called after a changeset is committed
+	- typically used for notification
+    pre-incoming
+	- called before an incoming push/pull is started
+    	- exit !0 fails the incoming event
+	- typically used for locking down a repository
+    pre-resolve
+	- called after the data has been union-ed in the RESYNC directory
+	- called in the RESYNC directory, not the enclosing repository
+	- exit 0 allows the pull/push
+	- exit 1 fails the entire pull/push
+	- exit 2 fails the entire pull/push but leaves the patch in PENDING
+	- typically used to examine changes before taking them
+    pre-apply [ NOT IMPLEMENTED ]
+	- called in the RESYNC directory, not the enclosing repository
+	- called after the data has been merged in the RESYNC directory
+	  but before it is applied to the tree.  Last chance to say no,
+	  allows examination of the merge changes
+	- exit 0 allows the pull/push
+	- exit 1 fails the entire pull/push
+	- exit 2 fails the pull/push but leaves the patch in PENDING
+	- exit 3 fails the pull/push but leaves the patch in PENDING and
+	  the RESYNC tree in PENDING/RESYNC-<date>
+	- typically used to examine changes before taking them
+    post-incoming
+	- called after the data has been applied to the tree
+	- typically used for notification
+    pre-outgoing
+	- called before an outgoing pull/push/clone event
+	- exit !0 fails the outgoing event
+	- typically used for locking down a repository
+    post-outgoing
+	- called after the outgoing event
+	- typically used for notification
+
+Missing triggers
+    - post-resolve; unlikely to be added, use pre-apply.
+    - post-apply; unlikely to be added, use post-incoming
+    - pre-delta; not implemented, will be implemented at some point
+      We need this for spelling/cstyle/whatever checks.
+
+Difference between pre- and post-
+    pre-triggers may cause events to fail;
+    post-triggers are informational only.
+
+Paranoid mode for gatekeeper trees
+    Because triggers can propogate and because they can do bad things like
+    "rm -rf .", it is a wise idea to put a non-propogating paranoid trigger
+    like so in your tree:
+
+    cat > BitKeeper/triggers/pre-apply-paranoid <<EOF
+    #!/bin/sh
+
+    # This is running in the RESYNC tree, we're looking for any new
+    # triggers and/or changes to triggers.
+    # Done after the resolve stage because they could be sneaky and create
+    # the file in an earlier changeset and then move it and we'd miss it
+    # because it hasn't been moved yet.
+    test `bk sfiles BitKeeper/triggers | wc -l` -gt 0 && {
+    	echo Changes delayed until they are reviewed
+	exit 3
+    }
+    exit 0
+
+BK_CSETLIST
+    If set, contains the name of a file which contains the list of 
+    changesets being received.
+BK_CSETS
+    If set, contains the list of changesets being sent.
+BK_EVENT
+    Set to the event type (pull/push/etc)
+BK_LOCALCSETS
+    If set, the number of local changesets (and/or tags) which are not
+    present in the remote repository.
+BK_LOCAL_HOST
+    BK's idea of the local host name.
+BK_LOCAL_ROOT
+    The root of the local repository.
+BK_LOCAL_TIME_T
+    The Unix style timestamp of the local version of BK.
+BK_LOCAL_USER
+    BK's idea of the local user name.
+BK_LOCAL_UTC
+    The timestamp of the local version of BK expressed as YYYYMMDDHHMMSS.
+BK_LOCAL_VERSION
+    The version of the local BK either as the symbolic name or the UTC.
+BK_PENDING
+    Set in the commit triggers; contains the name of a file which contains
+    the list of files with pending deltas.
+BK_REMOTECSETS
+    If set, the number of remote changesets (and/or tags) which are not
+    present in the local repository.
+BK_REMOTE_HOST
+BK_REMOTE_ROOT
+BK_REMOTE_TIME_T
+BK_REMOTE_USER
+BK_REMOTE_UTC
+BK_REMOTE_VERSION
+    Same as the local version only for the remote repository or BK.
+BK_STATUS
+    If set, contains status about the command associated with the trigger.
+BK_TRIGGER
+    Set the the trigger class (but not instance).  I.e., pre-incoming.
+
+========== pre-commit ==========
+BK_EVENT=commit
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/project
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_PENDING=/tmp/bk_pendingQl1pzl
+    File
+    File format is
+    SCCS/s.c.c@1.1
+    src/foo/SCCS/s.foo.c@1.19
+    ...
+BK_TRIGGER=pre-commit
+========== post-commit ==========
+BK_EVENT=commit
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/project
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_PENDING=/tmp/bk_pendingQl1pzl
+    File, same as above
+BK_STATUS=OK
+BK_TRIGGER=post-commit
+========== pre-outgoing ==========
+BK_CSETS=1.0..1.1
+BK_EVENT='outgoing clone'
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/project
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_REMOTE_HOST=work.bitmover.com
+BK_REMOTE_ROOT=/tmp/.regression-lm/clone
+BK_REMOTE_TIME_T=976513398
+BK_REMOTE_USER=lm
+BK_REMOTE_UTC=20001211054318
+BK_REMOTE_VERSION=20001211054318
+BK_TRIGGER=pre-outgoing
+========== post-outgoing ==========
+BK_CSETS=1.0..1.1
+BK_EVENT='outgoing clone'
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/project
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_REMOTE_HOST=work.bitmover.com
+BK_REMOTE_ROOT=/tmp/.regression-lm/clone
+BK_REMOTE_TIME_T=976513398
+BK_REMOTE_USER=lm
+BK_REMOTE_UTC=20001211054318
+BK_REMOTE_VERSION=20001211054318
+BK_STATUS=OK
+BK_TRIGGER=post-outgoing
+========== pre-outgoing ==========
+BK_CSETLIST=BitKeeper/tmp/bkQhAi2b
+    File
+    File format is
+    1.2
+    1.3
+    1.4
+    1.4.1.1
+    In other words, a list of revisions, one revision per line.
+BK_EVENT='outgoing pull'
+BK_LOCALCSETS=2
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/project
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_REMOTECSETS=0
+BK_REMOTE_HOST=work.bitmover.com
+BK_REMOTE_ROOT=/tmp/.regression-lm/clone
+BK_REMOTE_TIME_T=976513398
+BK_REMOTE_USER=lm
+BK_REMOTE_UTC=20001211054318
+BK_REMOTE_VERSION=20001211054318
+BK_TRIGGER=pre-outgoing
+========== post-outgoing ==========
+BK_CSETLIST=BitKeeper/tmp/bkQhAi2b
+BK_EVENT='outgoing pull'
+BK_LOCALCSETS=2
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/project
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_REMOTECSETS=0
+BK_REMOTE_HOST=work.bitmover.com
+BK_REMOTE_ROOT=/tmp/.regression-lm/clone
+BK_REMOTE_TIME_T=976513398
+BK_REMOTE_USER=lm
+BK_REMOTE_UTC=20001211054318
+BK_REMOTE_VERSION=20001211054318
+BK_STATUS=1
+BK_TRIGGER=post-outgoing
+========== pre-incoming ==========
+BK_EVENT='incoming pull'
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/clone
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_REMOTE_HOST=work.bitmover.com
+BK_REMOTE_ROOT=/tmp/.regression-lm/project
+BK_REMOTE_TIME_T=976513398
+BK_REMOTE_USER=lm
+BK_REMOTE_UTC=20001211054318
+BK_REMOTE_VERSION=20001211054318
+BK_TRIGGER=pre-incoming
+========== pre-resolve ==========
+BK_CSETLIST=BitKeeper/etc/csets-in
+BK_EVENT=resolve
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/clone/RESYNC
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_REMOTE_HOST=work.bitmover.com
+BK_REMOTE_ROOT=/tmp/.regression-lm/project
+BK_REMOTE_TIME_T=976513398
+BK_REMOTE_USER=lm
+BK_REMOTE_UTC=20001211054318
+BK_REMOTE_VERSION=20001211054318
+BK_TRIGGER=pre-resolve
+====== pre-push-incoming ==========
+BK_EVENT='incoming push'
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/project
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_REMOTE_HOST=work.bitmover.com
+BK_REMOTE_ROOT=/tmp/.regression-lm/clone
+BK_REMOTE_TIME_T=976513398
+BK_REMOTE_USER=lm
+BK_REMOTE_UTC=20001211054318
+BK_REMOTE_VERSION=20001211054318
+BK_TRIGGER=pre-incoming
+====== pre-resolve ==========
+BK_CSETLIST=BitKeeper/etc/csets-in
+BK_EVENT=resolve
+BK_LOCAL_HOST=work.bitmover.com
+BK_LOCAL_ROOT=/tmp/.regression-lm/project/RESYNC
+BK_LOCAL_TIME_T=976513398
+BK_LOCAL_USER=lm
+BK_LOCAL_UTC=20001211054318
+BK_LOCAL_VERSION=20001211054318
+BK_REMOTE_HOST=work.bitmover.com
+BK_REMOTE_ROOT=/tmp/.regression-lm/clone
+BK_REMOTE_TIME_T=976513398
+BK_REMOTE_USER=lm
+BK_REMOTE_UTC=20001211054318
+BK_REMOTE_VERSION=20001211054318
+BK_STATUS=OK
+BK_TRIGGER=pre-resolve

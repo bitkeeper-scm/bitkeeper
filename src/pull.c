@@ -70,14 +70,15 @@ usage:			system("bk help -s push");
 		if (bk_mode() == BK_BASIC) {
 			if (try > 0) {
 				fprintf(stderr,
-			    "pull: retry request detected: %s", upgrade_msg);
+				    "pull: retry request detected: %s",
+				    upgrade_msg);
 			}
 			break;
 		}
 		if (try != -1) --try;
 		unless(opts.quiet) {
 			fprintf(stderr,
-				"pull: remote locked, trying again...\n");
+			    "pull: remote locked, trying again...\n");
 		}
 		sleep(min((i++ * 2), 10));
 	}
@@ -109,14 +110,13 @@ send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.debug) fprintf(f, " -d");
 	fputs("\n", f);
 	fclose(f);
-
 	rc = send_file(r, buf, 0, opts.gzip);	
 	unlink(buf);
 	return (rc);
 }
 
 private int
-pull_part1(opts opts, remote *r, char probe_list[], char **envVar)
+pull_part1(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	buf[MAXPATH];
 	int	rc, n, fd;
@@ -137,6 +137,7 @@ pull_part1(opts opts, remote *r, char probe_list[], char **envVar)
 		disconnect(r, 2);
 		return (1);
 	}
+	if (!opts.metaOnly && trigger(av, "pre")) return (1);
 	bktemp(probe_list);
 	fd = open(probe_list, O_CREAT|O_WRONLY, 0644);
 	assert(fd >= 0);
@@ -157,7 +158,6 @@ send_keys_msg(opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	msg_file[MAXPATH], buf[MAXPATH * 2];
 	FILE	*f;
-	MMAP    *m;
 	int	status, rc;
 
 	bktemp(msg_file);
@@ -199,8 +199,10 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 {
 	char	buf[MAXPATH * 2];
 	int	rc = 0, n, i;
+	char	*pr[2] = { "resolve", 0 };
 
 	if (send_keys_msg(opts, r, probe_list, envVar)) {
+		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;
 		goto done;
 	}
@@ -214,6 +216,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		getline2(r, buf, sizeof(buf));
 	}
 	if (get_ok(r, buf, !opts.quiet)) {
+		putenv("BK_STATUS=PROTOCOL ERROR");
 		rc = 1;
 		goto done;
 	}
@@ -262,7 +265,8 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	 */
 	if (streq(buf, "@TRIGGER INFO@")) {
 		if (getTriggerInfoBlock(r, !opts.quiet)) {
-			rc = 1;
+			putenv("BK_STATUS=REMOTE TRIGGER FAILURE");
+			rc = 2;
 			goto done;
 		}
 		getline2(r, buf, sizeof (buf));
@@ -274,32 +278,42 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		if (!opts.quiet && streq(buf, "@NOTHING TO SEND@")) {
 			fprintf(stderr, "Nothing to pull.\n");
 		}
+		putenv("BK_STATUS=NOTHING");
 		goto done;
 	}
 
 	if (streq(buf, "@PATCH@")) {
 		if (takepatch(opts, opts.gzip, r)) {
+			putenv("BK_STATUS=TAKEPATCH FAILED");
 			rc = 1;
 			goto done;
 		}
 		/*
 		 * We are about to run resolve, fire pre trigger
 		 */
-		if (!opts.metaOnly && trigger(av, "pre")) {
-			rc = 1;
+		putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
+		if (!opts.metaOnly && (i = trigger(pr, "pre"))) {
+			putenv("BK_STATUS=LOCAL TRIGGER FAILURE");
+			rc = 2;
+			if (i == 2) {
+				system("bk abort -fp");
+			} else {
+				system("bk abort -f");
+			}
 			goto done;
 		}
 		unless (opts.noresolve) {
 			if (resolve(opts, r)) {
 				rc = 1;
+				putenv("BK_STATUS=CONFLICT");
 				goto done;
 			}
 		}
 		rc = 0;
-		putenv("BK_INCOMING=OK");
+		putenv("BK_STATUS=OK");
 	}  else if (streq(buf, "@NOTHING TO SEND@")) {
 		unless (opts.quiet) fprintf(stderr, "Nothing to pull.\n");
-		putenv("BK_INCOMING=NOTHING");
+		putenv("BK_STATUS=NOTHING");
 		rc = 0;
 	} else {
 		fprintf(stderr, "protocol error: <%s>\n", buf);
@@ -307,9 +321,10 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 			fprintf(stderr, "protocol error: <%s>\n", buf);
 		}
 		rc = 1;
+		putenv("BK_STATUS=PROTOCOL ERROR");
 	}
 
-done:	if (rc) putenv("BK_INCOMING=CONFLICT");
+done:	putenv("BK_RESYNC=FALSE");
 	unless (opts.metaOnly) trigger(av, "post");
 	unlink(probe_list);
 	/*
@@ -355,7 +370,7 @@ pull(char **av, opts opts, remote *r, char **envVar)
 	sccs_free(cset);  /* for win32 */
 	root = strdup(buf);
 
-	rc = pull_part1(opts, r, key_list, envVar);
+	rc = pull_part1(av, opts, r, key_list, envVar);
 	if (rc) return (rc); /* fail */
 	if (pull_part2(av, opts, r, key_list, envVar)) return (1); /* fail */
 	return (0);
@@ -367,7 +382,6 @@ takepatch(opts opts, int gzip, remote *r)
 	int	n, status, pfd;
 	pid_t	pid;
 	char	*cmds[10];
-	char	buf[4096];
 
 	cmds[n = 0] = "bk";
 	cmds[++n] = "takepatch";

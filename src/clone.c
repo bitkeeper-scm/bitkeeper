@@ -85,9 +85,9 @@ usage()
 private int
 send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 {
-	char	buf[MAXPATH], *p;
+	char	buf[MAXPATH];
 	FILE    *f;
-	int	rc, len;
+	int	rc;
 
 	gettemp(buf, "clone");
 	f = fopen(buf, "w");
@@ -96,6 +96,7 @@ send_clone_msg(opts opts, int gzip, remote *r, char **envVar)
 	if (r->path) add_cd_command(f, r);
 	fprintf(f, "clone");
 	if (gzip) fprintf(f, " -z%d", gzip);
+	if (opts.rev) fprintf(f, " -r%s", opts.rev);
 	if (opts.quiet) fprintf(f, " -q");
 	fputs("\n", f);
 	fclose(f);
@@ -109,7 +110,7 @@ private int
 clone(char **av, opts opts, remote *r, char *local, char **envVar)
 {
 	char	*p, buf[MAXPATH];
-	int	n, gzip, rc = 1, ret = 0;
+	int	gzip, rc = 1, ret = 0;
 
 	gzip = r->port ? opts.gzip : 0;
 	local = fullname(local, 0);
@@ -117,6 +118,14 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: %s exists already\n", local);
 		usage();
 	}
+	if (opts.rev) {
+		sprintf(buf, "BK_CSETS=1.0..%s", opts.rev);
+		putenv((strdup)(buf));
+	} else {
+		putenv("BK_CSETS=1.0..");
+	}
+	sprintf(buf, "BK_REMOTE_ROOT=%s", local);
+	putenv((strdup)(buf));
 	if (send_clone_msg(opts, gzip, r, envVar)) goto done;
 
 	if (r->httpd) skip_http_hdr(r);
@@ -195,12 +204,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	
 	rc  = 0;
 done:	if (rc) {
-		putenv("BK_INCOMING=CONFLICT");
+		putenv("BK_STATUS=ERROR");
 	} else {
-		putenv("BK_INCOMING=OK");
+		putenv("BK_STATUS=OK");
 	}
 	/*
-	 * Don't borther to fire trigger if we have no tree
+	 * Don't bother to fire trigger if we have no tree.
 	 */
 	if (bk_proj) trigger(av, "post");
 	wait_eof(r, opts.debug); /* wait for remote to disconnect */
@@ -231,9 +240,7 @@ sfio(opts opts, int gzip, remote *r)
 	int	n, status;
 	pid_t	pid;
 	int	pfd;
-	u32	hlen;
 	char	*cmds[10];
-	char	buf[4096];
 
 	cmds[n = 0] = "bk";
 	cmds[++n] = "sfio";

@@ -27,7 +27,7 @@ commit_main(int ac, char **av)
 	int	c, doit = 0, force = 0, getcomment = 1;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 	char	commentFile[MAXPATH], pendingFiles[MAXPATH] = "";
-	char	*sym = 0, *commit_list = 0;
+	char	*sym = 0;
 	c_opts	opts  = {0, 0, 0, 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
@@ -161,8 +161,7 @@ logs_pending(int ptype)
 {
 	sccs 	*s;
 	delta	*d;
-	char 	key[MAXKEY], s_cset[] = CHANGESET;
-	FILE	*f;
+	char 	s_cset[] = CHANGESET;
 	int	i = 0;
 
 	s = sccs_init(s_cset, 0, 0);
@@ -170,7 +169,7 @@ logs_pending(int ptype)
 	for (d = sccs_top(s); d; d = d->next) {
 		if (d->published && (d->ptype == ptype)) sccs_color(s, d);
 	}
-count:	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; d = d->next) {
 		if (d->type != 'D') continue; 
 		if (d->flags & D_VISITED) continue; 
 		i++;
@@ -254,8 +253,6 @@ do_commit(char **av, c_opts opts, char *sym,
 	char	pendingFiles2[MAXPATH] = "";
 	char    s_logging_ok[] = LOGGING_OK;
 	char	*cset[10] = {"bk", "cset", 0};
-	sccs	*s;
-	delta	*d;
 	FILE 	*f, *f2;
 #define	MAX_PENDING_LOG 20
 
@@ -289,7 +286,6 @@ do_commit(char **av, c_opts opts, char *sym,
 	}
 	if (pending(s_logging_ok)) {
 		int     len = strlen(s_logging_ok); 
-		char    tmp[100];
 
 		/*
 		 * Redhat 5.2 cannot handle opening a file
@@ -319,12 +315,13 @@ do_commit(char **av, c_opts opts, char *sym,
 	/*
 	 * XXX Do we want to fire the trigger when we are in RESYNC ?
 	 */
-	putenv("COMMIT=OK");
+	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
+	sprintf(buf, "BK_PENDING=%s", p);
+	putenv((strdup)(buf));
 	if (trigger(av, "pre")) {
 		rc = 1;
 		goto done;
 	}
-	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
 	i = 2;
 	if (opts.lod ) cset[i++] = "-L";
 	if (opts.quiet) cset[i++] = "-q";
@@ -343,12 +340,12 @@ do_commit(char **av, c_opts opts, char *sym,
 	status = spawnvp_ex(_P_WAIT, cset[0], cset);
 	close(0); dup2(fd0, 0); close(fd0);
 
+	putenv("BK_STATUS=OK");
 	if (!WIFEXITED(status)) {
-		putenv("COMMIT=SIGNALED");
+		putenv("BK_STATUS=SIGNALED");
 		rc = 1;
-	} else {
-		rc = WEXITSTATUS(status);
-		sprintf(buf, "COMMIT=ERROR %d", rc);
+	} else if (rc = WEXITSTATUS(status)) {
+		sprintf(buf, "BK_STATUS=%d", rc);
 		putenv(buf);
 	}
 	trigger(av, "post");
@@ -368,7 +365,6 @@ done:	if (unlink(commentFile)) perror(commentFile);
 		if (unlink(pendingFiles2)) perror(pendingFiles2);
 	}
 	if (rc) return (rc); /* if commit failed do not send log */
-	notify();
 	/*
 	 * If we are doing a commit in RESYNC
 	 * do not log the cset. Let the resolver

@@ -185,10 +185,11 @@ defaultIgnore()
 	int	fd = open("BitKeeper/etc/ignore", O_CREAT|O_RDWR, 0664);
 
 	if (write(fd, "BitKeeper/*/*\n", 14) != 14) {
-		perror("write");
+err:		perror("write");
 		close(fd);
 		return;
 	}
+	if (write(fd, "PENDING/*\n", 10) != 10) goto err;
 	close(fd);
 	system("bk new -Pq BitKeeper/etc/ignore");
 }
