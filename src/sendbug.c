@@ -3,6 +3,15 @@
 
 extern char *editor;
 
+private char *sendbug_help = "\n\
+usage: sendbug [ --help]\n\
+	This command is used to file a bug report.\n\
+	This is a interactive command, it will display a\n\
+	bug report template, bring up a editor so the user\n\
+	can fill in the bug detail. When the user exit the editor,\n\
+	it will ask for confimation to email the bug report\n\
+	to the BitKeeper database.\n";
+
 int
 sendbug_main(int ac,  char **av)
 {
@@ -10,6 +19,10 @@ sendbug_main(int ac,  char **av)
 	char	bug[MAXPATH];
 	FILE	*f;
 
+	if (ac > 1 && streq("--help", av[1]))  {
+		fputs(sendbug_help, stderr);
+		exit(1);
+	}
 	sprintf(bug, "%s/bk_bug%d", TMP_PATH, getpid());
 	f = fopen(bug, "wb");
 	gethelp("bugtemplate", 0, f);
