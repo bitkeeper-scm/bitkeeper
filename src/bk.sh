@@ -540,17 +540,16 @@ _pending() {
 }
 
 _chkConfig() {
-	_cd2root
-	if [ ! -f  ${cfgDir}SCCS/s.config ]
+	if [ ! -f  ${BK_ETC}SCCS/s.config ]
 	then
 		_gethelp chkconfig_missing $BIN
 		return 1
 	fi
-	if [ -f ${cfgDir}config ]
-	then	${BIN}clean ${cfgDir}config
+	if [ -f ${BK_ETC}config ]
+	then	${BIN}clean ${BK_ETC}config
 	fi
-	${BIN}get -q ${cfgDir}config 
-	cmp -s ${cfgDir}config ${BIN}bitkeeper.config
+	${BIN}get -q ${BK_ETC}config 
+	cmp -s ${BK_ETC}config ${BIN}bitkeeper.config
 	if [ $? -eq 0 ]
 	then	_gethelp chkconfig_inaccurate $BIN
 		return 1
@@ -574,8 +573,8 @@ _sendConfig() {
 	  echo "Host:		`hostname`"
 	  echo "Root:		`pwd`"
 	  echo "Date:		`date`"
-	  ${BIN}get -ps ${cfgDir}config | \
-	    grep -v '^#' ${cfgDir}config | grep -v '^$'
+	  ${BIN}get -ps ${BK_ETC}config | \
+	    grep -v '^#' ${BK_ETC}config | grep -v '^$'
 	) | _mail $1 "BitKeeper config: $P"
 }
 
@@ -621,12 +620,12 @@ _mail() {
 }
 
 _logAddr() {
-	LOG=`grep "^logging:" ${cfgDir}config | tr -d '[\t, ]'`	
+	LOG=`grep "^logging:" ${BK_ETC}config | tr -d '[\t, ]'`	
 	case X${LOG} in 
 	Xlogging:*)
 		;;
 	*)	echo "Bad config file, can not find logging entry"
-		${BIN}clean ${cfgDir}config
+		${BIN}clean ${BK_ETC}config
 		return 1
 		;;
 	Xlogging:.*bitkeeper.openlogging.org)
@@ -665,8 +664,8 @@ s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\
 # XXX - should probably ask once for each user.
 _checkLog() {
 	# If we have a logging_ok message, then we are done.
-	if [ `grep "^logging_ok:" ${cfgDir}config | wc -l` -gt 0 ]
-	then	${BIN}clean ${cfgDir}config
+	if [ `grep "^logging_ok:" ${BK_ETC}config | wc -l` -gt 0 ]
+	then	${BIN}clean ${BK_ETC}config
 		return
 	fi
 
@@ -678,17 +677,17 @@ _checkLog() {
 		read x
 		case X$x in
 	    	    X[Yy]*) 
-			${BIN}clean ${cfgDir}config
-			${BIN}get -seg {cfgDir}config
-			${BIN}get -kps {cfgDir}config |
+			${BIN}clean ${BK_ETC}config
+			${BIN}get -seg {BK_ETC}config
+			${BIN}get -kps {BK_ETC}config |
 			sed -e '/^logging:/a\
-logging_ok:	to '$LOGADDR > ${cfgDir}config
-			${BIN}delta -y'Logging OK' ${cfgDir}config
+logging_ok:	to '$LOGADDR > ${BK_ETC}config
+			${BIN}delta -y'Logging OK' ${BK_ETC}config
 			return
 			;;
 		esac
 		_gethelp log_abort
-		${BIN}clean ${cfgDir}config
+		${BIN}clean ${BK_ETC}config
 		exit 1
 	else
 		_sendConfig config@openlogging.org
@@ -753,7 +752,7 @@ _commit() {
 		d) DOIT=YES;;
 		f) CHECKLOG=:;;
 		F) FORCE=YES;;
-		R) RESYNC=YES; cfgDir="../BitKeeper/etc/";; # called from RESYNC
+		R) RESYNC=YES; BK_ETC="../BitKeeper/etc/";; # called from RESYNC
 		s|q) QUIET=YES; COPTS="-s $COPTS";;
 		S) SYM="-S$OPTARG";;
 		y) DOIT=YES; GETCOMMENTS=NO
@@ -1038,7 +1037,7 @@ _export() {
 }
 
 _init() {
-	cfgDir="BitKeeper/etc/"
+	BK_ETC="BitKeeper/etc/"
 
 	if [ '-n foo' = "`echo -n foo`" ] 
 	then    NL='\c'
