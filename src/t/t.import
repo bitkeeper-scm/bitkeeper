@@ -305,6 +305,11 @@ test "`bk prs -hr+ -nd:P:@:HOST:+:IMPORTER: foo`" = "$U" || {
 	bk prs -r+ -nd':P:@:HOST:+:IMPORTER:' foo
 	exit 1
 }
+test "`bk prs -hr+ -nd:P:@:HOST:+:IMPORTER: ChangeSet`" = "$U" || {
+	echo did not pick up email address, wanted $U
+	bk prs -r+ -nd':P:@:HOST:+:IMPORTER:' ChangeSet
+	exit 1
+}
 bk changes -r+ > C
 grep -q 'citool cursor fix' C || {
 	echo Did not pick up subject line

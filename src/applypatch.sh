@@ -5,6 +5,7 @@ BK_IMPORTER=`bk getuser -r`
 BK_USER="$1"
 BK_HOST="$2"
 SUBJECT=`echo "$3" | sed 's/\(\(Re: \)*\[[^]]*\]\)* *\(.*\)/\3/'`
+export BK_IMPORTER
 export BK_USER BK_HOST SUBJECT
 CMITMSG="[PATCH] $SUBJECT"
 test -n "$4" && CMITMSG="$CMITMSG
