@@ -51,8 +51,8 @@ OBJ	= abort.o adler32.o admin.o approve.o annotate.o \
 	  park.o parent.o pending.o popen.o \
 	  port/executable.o port/findprog.o port/fullname.o port/flushsocket.o \
 	  port/gethomedir.o port/gethost.o port/getinput.o \
-	  port/mail.o port/platforminit.o \
-	  port/randomBits.o port/samepath.o port/sccs_lockfile.o \
+	  port/mail.o port/platforminit.o port/randomBits.o port/rlimit.o \
+	  port/samepath.o port/sccs_lockfile.o \
 	  port/sccs_root.o port/sig.o port/socket2pipe.o port/spawn.o \
 	  port/getnull.o port/http_proxy.o port/service.o \
 	  prs.o pull.o purify.o push.o pwd.o r2c.o \

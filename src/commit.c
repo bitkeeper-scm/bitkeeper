@@ -27,7 +27,7 @@ commit_main(int ac, char **av)
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 	char	commentFile[MAXPATH], pendingFiles[MAXPATH] = "";
 	char	*sym = 0;
-	c_opts	opts  = {0, 0, 0, 0, 0};
+	c_opts	opts  = {0, 0, 0, 0};
 
 	if (ac > 1 && streq("--help", av[1])) {
 		system("bk help commit");

@@ -451,19 +451,21 @@ findRoot(char *name)
 private void
 httphdr(char *file)
 {
-	char	buf[2048];
-
-	sprintf(buf,
+	char	*buf = aprintf(
 	    "HTTP/1.0 200 OK\r\n"
 	    "%s\r\n"
 	    "Server: bkhttp/%s\r\n"
 	    "Content-Type: %s\r\n"
 	    "Last-Modified: %s\r\n"
+	    "Expires: %s\r\n"
 	    "\r\n",
 	    http_time(),
 	    BKWEB_SERVER_VERSION,
-	    type(file), http_time());
+	    type(file),
+	    http_time(),
+	    http_expires());
 	out(buf);
+	free(buf);
 }
 
 private void
@@ -1499,7 +1501,7 @@ http_index(char *page)
 	sprintf(buf,
 	    "<a href=src%s>Browse the source tree</a></td></tr>", navbar);
 	out(buf);
-	if (bkweb) {
+	if (bkweb && !exists(WEBMASTER)) {
 		out("<tr><td align=middle>");
 		sprintf(buf,
 		    "<a href=%s>BK/Web site for this package</a></td></tr>\n",
@@ -1544,7 +1546,6 @@ http_index(char *page)
 	if (!embedded) trailer(0);
 }
 
-
 /*
  * "Tue, 28 Jan 97 01:20:30 GMT";
  *  012345678901234567890123456
@@ -1559,9 +1560,7 @@ http_time()
 	static	char buf[100];
 
 	time(&tt);
-	if (tt == save_tt) {
-		return (buf);
-	}
+	if (tt == save_tt) return (buf);
 	save_tt = tt;
 	t = gmtime(&tt);
 	if (buf[0] && (tt - save_tt < 3600)) {
@@ -1571,6 +1570,24 @@ http_time()
 		if (save_tm.tm_min == t->tm_min) return (buf);
 	}
 	save_tm = *t;
+	strftime(buf, sizeof(buf), "%a, %d %b %y %H:%M:%S %Z", t);
+	return(buf);
+}
+
+/*
+ * "Tue, 28 Jan 97 01:20:30 GMT";
+ *  012345678901234567890123456
+ */
+char	*
+http_expires()
+{
+	time_t	expires;
+	struct	tm *t;
+	static	char buf[100];
+
+	time(&expires);
+	expires += 60;
+	t = gmtime(&expires);
 	strftime(buf, sizeof(buf), "%a, %d %b %y %H:%M:%S %Z", t);
 	return(buf);
 }

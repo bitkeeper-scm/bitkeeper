@@ -143,7 +143,7 @@ usage:			system("bk help -s diffs");
 		 * Optimize out the case where we we are readonly and diffing
 		 * TOT.
 		 */
-		if (!things && !IS_EDITED(s)) goto next;
+		if (!things && !Rev && !IS_EDITED(s)) goto next;
 
 		/*
 		 * Optimize out the case where we have a locked file with

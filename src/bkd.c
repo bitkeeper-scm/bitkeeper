@@ -35,7 +35,6 @@ bkd_main(int ac, char **av)
 
 	loadNetLib();
 
-
 	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:qRs:St:u:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;	/* doc 2.0 */
@@ -84,6 +83,7 @@ bkd_main(int ac, char **av)
 #ifndef WIN32
 	if (uid) ids(uid);
 #endif
+	core();
 	putenv("PAGER=cat");
 	if (Opts.daemon) {
 		if (tcp_pair(licenseServer) == 0) {
