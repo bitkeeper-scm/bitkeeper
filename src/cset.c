@@ -465,7 +465,7 @@ is being automatically generated and added to all files.  If your repository\n\
 is large, this is going to take a while - it has to rewrite each file.\n\
 This is a one time event to upgrade this repository to the latest format.\n\
 Please stand by.\n\n");
-		sprintf(buf, "bk csetmark -v", verbose ? "-v" : "");
+		sprintf(buf, "bk csetmark -av", verbose ? "-v" : "");
 		system(buf);
 		doneFullRemark++;
 		goto retry;

@@ -71,8 +71,8 @@ again:
 			flist = 0;
 			return (0);
 		}
-		name = buf;
-		chop(name);
+		chop(buf);
+		debug((stderr, "sfiles::FILE got %s\n", buf));
 	} else if (d) {
 		while ((e = readdir(d))) {
 			/* 
@@ -82,7 +82,9 @@ again:
 			 * See test case "A/" in "basic test" of regression test
 			 */
 			concat_path(buf, prefix, e->d_name);
+			/* I thought I didn't need this but I was wrong. */
 			unless (oksccs(buf, flags, 0)) continue;
+			debug((stderr, "sfiles::DIR got %s\n", buf));
 			goto norev;
 		}
 		closedir(d);
@@ -94,6 +96,7 @@ again:
 			return (0);
 		}
 		strcpy(buf, name);
+		debug((stderr, "sfiles::AV got %s\n", buf));
 	}
 	if (flags & SF_HASREVS)  {
 		char	*r = strrchr(buf, ':');
@@ -102,6 +105,12 @@ again:
 		if (!r) goto norev;
 		*r++ = 0;
 		strcpy(rev, r);
+		debug((stderr, "sfiles::REV got %s\n", rev));
+		/*
+		 * XXX - this works for diffs but may or may not be the right
+		 * long term answer.
+		 */
+		flags &= ~SF_GFILE;
 	}
 norev:	
 	if (!is_sccs(buf)) {

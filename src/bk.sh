@@ -136,7 +136,7 @@ send() {
 		then	LOG=BitKeeper/log/$1
 			if [ -f $LOG ]
 			then	sort -u < $LOG > /tmp/has$$
-				${BIN}prs -hd:ID: ChangeSet | sort > /tmp/here$$
+				${BIN}prs -hd:KEY: ChangeSet| sort > /tmp/here$$
 				FIRST=yes
 				comm -23 /tmp/here$$ /tmp/has$$ |
 				${BIN}key2rev ChangeSet | while read x
@@ -154,16 +154,16 @@ send() {
 				fi
 			else	REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			fi
-	    		${BIN}prs -hd:ID: ChangeSet > $LOG
+	    		${BIN}prs -hd:KEY: ChangeSet > $LOG
 		fi
 	else	
 		LOG=BitKeeper/log/$OUTPUT
 		if [ -f $LOG ]
-		then	(cat $LOG; ${BIN}prs -hd:ID: -r$REV ChangeSet) |
+		then	(cat $LOG; ${BIN}prs -hd:KEY: -r$REV ChangeSet) |
 			    sort -u > /tmp/log$$
 		    	cat /tmp/log$$ > $LOG
 			/bin/rm -f /tmp/log$$
-		else	${BIN}prs -hd:ID: -r$REV ChangeSet > $LOG
+		else	${BIN}prs -hd:KEY: -r$REV ChangeSet > $LOG
 		fi
 	fi
 	case X$OUTPUT in
@@ -268,13 +268,13 @@ resync() {
 		FHOST=${1%:*}
 		FDIR=${1#*:}
 		PRS="ssh $SSH -x $FHOST 
-		    'cd $FDIR && exec bk prs -Cr$REV -bhd:ID:%:I: ChangeSet'"
+		    'cd $FDIR && exec bk prs -Cr$REV -bhd:KEY:%:I: ChangeSet'"
 		GEN_LIST="ssh $SSH -x $FHOST 'cd $FDIR && bk cset -m $V -'"
 		;;
 	*)
 		FHOST=
 		FDIR=$1
-		PRS="(cd $FDIR && exec ${BIN}prs -Cr$REV -bhd:ID:%:I: ChangeSet)"
+		PRS="(cd $FDIR && exec ${BIN}prs -Cr$REV -bhd:KEY:%:I: ChangeSet)"
 		GEN_LIST="(cd $FDIR && ${BIN}cset -m $V -)"
 		;;
 	esac
@@ -283,7 +283,7 @@ resync() {
 		THOST=${2%:*}
 		TDIR=${2#*:}
 		PRS2="ssh $SSH -x $THOST
-		    'cd $TDIR && exec bk prs -r1.0.. -bhd:ID: ChangeSet'"
+		    'cd $TDIR && exec bk prs -r1.0.. -bhd:KEY: ChangeSet'"
 		# Much magic in this next line.
 		INIT=-`ssh $SSH -x $THOST "if test -d $TDIR;
 		    then if test -d $TDIR/BitKeeper/etc;
@@ -305,7 +305,7 @@ resync() {
 	*)
 		THOST=
 		TDIR=$2
-		PRS2="(cd $TDIR && exec ${BIN}prs -r1.0.. -bhd:ID: ChangeSet)"
+		PRS2="(cd $TDIR && exec ${BIN}prs -r1.0.. -bhd:KEY: ChangeSet)"
 		if [ -d $TDIR ]
 		then	if [ -d $TDIR/RESYNC ]
 			then echo "resync: $TDIR/RESYNC exists, patch in progress"
@@ -551,22 +551,33 @@ commit() {
 	done
 	shift `expr $OPTIND - 1`
 	cd2root
+	${BIN}sfiles -Ca > /tmp/list$$
+	if [ $? != 0 ]
+	then	/bin/rm -f /tmp/list$$
+		cat <<EOF
+
+You need to go figure out why have two files with the same ID
+and correct that situation before this ChangeSet can be created.
+
+EOF
+		exit 1
+	fi
 	if [ $GETCOMMENTS = yes ]
-	then	${BIN}sfiles -Ca > /tmp/list$$
+	then	
 		if [ ! -s /tmp/list$$ ]
 		then	echo Nothing to commit
 			/bin/rm -f /tmp/list$$
 			exit 0
 		fi
 		${BIN}sccslog -C - < /tmp/list$$ > /tmp/comments$$
-		/bin/rm -f /tmp/list$$
-	else	N=`${BIN}sfiles -C | wc -l`
+	else	N=`wc -l < /tmp/list$$`
 		if [ $N -eq 0 ]
 		then	echo Nothing to commit
 			/bin/rm -f /tmp/list$$
 			exit 0
 		fi
 	fi
+	/bin/rm -f /tmp/list$$
 	COMMENTS=
 	L=----------------------------------------------------------------------
 	if [ $DOIT = yes ]

@@ -101,6 +101,12 @@ isreg(char *s)
 	return (S_ISREG(sbuf.st_mode));
 }
 
+inline int
+writable(char *s)
+{
+	return (access(s, W_OK) == 0);
+}
+
 int
 size(char *s)
 {
@@ -3722,10 +3728,30 @@ almostUnique(int harder)
 	if (harder) max = 1000000;
 	do {
 		gettimeofday(&tv, 0);
-		val = tv.tv_usec % 100000;
+		val = tv.tv_usec / 10;
 	} while (max-- && !val);
-	while (!val) val = time(0) % 100000;
+	while (!val) val = time(0) / 10;
 	return (val);
+}
+
+/*
+ * Dig out more information to make the file unique and stuff it in buf.
+ * Use /dev/urandom, /dev/random if present.  Otherwise use anything else
+ * we can find.
+ */
+moreUnique(char *buf)
+{
+	int	fd;
+
+	buf[0] = 0;
+	if (((fd = open("/dev/urandom", 0)) >= 0) ||
+	    ((fd = open("/dev/random", 0)) >= 0)) {
+	    	u32	a, b;
+
+		read(fd, &a, 4);
+		read(fd, &b, 4);
+		sprintf(buf, "R %x%x", a, b);
+	}
 }
 
 /* XXX - make this private once tkpatch is part of slib.c */
@@ -6441,7 +6467,7 @@ full(char *path)
 			*s = 0;
 		}
 		statfs(path, &sf);
-		*s = '/';
+		if (s) *s = '/';
 	}
 	return ((sf.f_bsize * sf.f_bfree) > 0);
 }
@@ -6563,13 +6589,6 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		    n->rev, s->sfile);
 		return (-1);
 	}
-	unless (flags & DELTA_PATCH) {
-		unless (hasComments(n)) {
-			sprintf(buf, "BK %s created on %s by %s",
-			    fullname(s->gfile, 0), n->sdate, n->user);
-			n->comments = addLine(n->comments, strdup(buf));
-		}
-	}
 	if (t = getenv("BK_LOD")) {
 		unless (n->flags & D_LODSTR) {
 			n->flags |= D_LODSTR;
@@ -6592,7 +6611,16 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		free(n->sym);
 		n->sym = 0;
 	}
-	addLod("delta", s, flags, l, 0);
+	unless (nodefault || (flags & DELTA_PATCH)) {
+		if (n0) n = n0;
+		unless (hasComments(n)) {
+			sprintf(buf, "%s created on %s by %s",
+			    fullname(s->gfile, 0), n->sdate, n->user);
+			n->comments = addLine(n->comments, strdup(buf));
+		}
+		moreUnique(buf);
+		if (buf[0]) n->comments = addLine(n->comments, strdup(buf));
+	}
 	if (delta_table(s, sfile, 1)) {
 		error++;
 		goto abort;
@@ -8980,6 +9008,7 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 	char	buf[MAXLINE];
 	pfile	pf;
 	int	first = 1;
+	int	here;
 	char	spaces[80];
 
 	bzero(&pf, sizeof(pf));
@@ -9015,27 +9044,27 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		free_pfile(&pf);
 		return (-3);
 	}
-	sprintf(tmpfile, "%s-%s", s->gfile, left);
-	if (!exists(tmpfile) && 
-	    sccs_get(s, left,
-	    pf.mRev, pf.iLst, pf.xLst, flags|SILENT|PRINT, tmpfile)) {
-		/*
-		 * Maybe that was a RO directory.
-		 * Unlink just in case some other erro, safe because we know
-		 * we just created this.
-		 */
-		unlink(tmpfile);
+	sprintf(tmpfile, "%s", dirname(s->gfile));
+	here = writable(tmpfile);
+	if (here) {
+		sprintf(tmpfile, "%s-%s", s->gfile, left);
+	} else {
 		sprintf(tmpfile,
 		    "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), left, getpid());
-		if (sccs_get(s, left,
-		    pf.mRev, pf.iLst, pf.xLst, flags|SILENT|PRINT, tmpfile)) {
+	}
+	if (exists(tmpfile) || sccs_get(s, left,
+	    pf.mRev, pf.iLst, pf.xLst, flags|SILENT|PRINT, tmpfile)) {
 			unlink(tmpfile);
 			free_pfile(&pf);
 			return (-1);
-		}
+	}
+	if (here) {
+		sprintf(tmp2, "%s-%s", s->gfile, r2 ? r2 : "-2");
+	} else {
+		sprintf(tmp2, "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile),
+		    r2 ? r2 : "-2", getpid());
 	}
 	if (r2 || !HAS_GFILE(s)) {
-		sprintf(tmp2, "%s-%s", s->gfile, r2 ? r2 : "-2");
 		if (sccs_get(s, right, 0, 0, 0, flags|SILENT|PRINT, tmp2)) {
 			unlink(tmpfile);
 			unlink(tmp2);
@@ -9045,12 +9074,18 @@ sccs_diffs(sccs *s, char *r1, char *r2, u32 flags, char kind, FILE *out)
 		leftf = tmpfile;
 		rightf = tmp2;
 	} else if (s->symlink) {
-		sprintf(tmp2, "%s-2", tmpfile);
-		diffs = fopen(tmp2, "w");
-		fprintf(diffs, "SYMLINK -> %s\n", s->symlink);
-		fclose(diffs);
-		leftf = tmpfile;
-		rightf = tmp2;
+		if (diffs = fopen(tmp2, "w")) {
+			fprintf(diffs, "SYMLINK -> %s\n", s->symlink);
+			fclose(diffs);
+			leftf = tmpfile;
+			rightf = tmp2;
+		} else {
+			perror(tmp2);
+			unlink(tmpfile);
+			unlink(tmp2);
+			free_pfile(&pf);
+			return (-1);
+		}
 	} else {
 		tmp2[0] = 0;
 		leftf = tmpfile;
@@ -9637,7 +9672,14 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 	if (streq(kw, "KEY")) {
-		if (out) sccs_pdelta(sccs_ino(s), out);
+		if (out) sccs_pdelta(d, out);
+		return (strVal);
+	}
+
+	if (streq(kw, "SHORTKEY")) {
+		char	buf[30];
+		sprintf(buf, "%x", (int)d->date);
+		fs(buf);
 		return (strVal);
 	}
 
@@ -9682,11 +9724,6 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		if (s->gfile) {
 			fs(s->gfile);
 		}
-		return (strVal);
-	}
-
-	if (streq(kw, "ID")) {
-		if (out) sccs_pdelta(d, out);
 		return (strVal);
 	}
 
