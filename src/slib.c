@@ -8515,6 +8515,11 @@ checkInvariants(sccs *s)
 	u8	*lodmap = 0;
 	ser_t	next;
 
+	/*
+	 * Allows open branch for logging repository
+	 */
+	if (s->state & S_LOGS_ONLY) return (0);
+
 	next = sccs_nextlod(s);
 	/* next now equals one more than greatest that exists
 	 * so last entry in array is lodmap[next-1] which is 

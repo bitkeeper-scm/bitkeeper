@@ -1463,7 +1463,7 @@ pass3_resolve(opts *opts)
 	char	buf[MAXPATH], s_cset[] = CHANGESET;
 	FILE	*p;
 	int	n = 0;
-	int	mustCommit, pc, pe;
+	int	isLoggingRepository = 0, mustCommit, pc, pe;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 3 ====\n");
 	opts->pass = 3;
@@ -1562,10 +1562,14 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		resolve	*rs;
 		
 		s = sccs_init(s_cset, INIT, opts->resync_proj);
-		rs = resolve_init(opts, s);
-		edit(rs);
-		unlink(sccs_Xfile(s, 'r'));
-		resolve_free(rs);
+		if (s->state & S_LOGS_ONLY) {
+			isLoggingRepository  = 1;
+		} else {
+			rs = resolve_init(opts, s);
+			edit(rs);
+			unlink(sccs_Xfile(s, 'r'));
+			resolve_free(rs);
+		}
 	} else if (exists("SCCS/p.ChangeSet")) {
 		/*
 		 * The only way I can think of this happening is if we are
@@ -1594,6 +1598,11 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		unlink(buf);
 	}
 	pclose(p);
+
+	/*
+	 * For logging repository, do not commit merge node
+	 */ 
+	if (isLoggingRepository) return (0);
 
 	/*
 	 * If there is nothing to do, bail out.
@@ -1724,6 +1733,14 @@ conflict(opts *opts, char *sfile)
 	deltas	d;
 	
 	s = sccs_init(sfile, INIT, opts->resync_proj);
+
+	/*
+	 * If we are in a logging repository
+	 * do not try to resolve conflict
+	 * i.e we allow open branch
+	 */
+	if (s->state & S_LOGS_ONLY) return;
+
 	rs = resolve_init(opts, s);
 	assert(streq(rs->dname, s->sfile));
 

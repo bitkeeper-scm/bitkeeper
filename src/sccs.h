@@ -295,6 +295,7 @@
 
 #define	MAXREV	24	/* 99999.99999.99999.99999 */
 
+#define	OPENLOG_HOME	"bitmover.com"
 #define	SCCSTMP		"SCCS/T.SCCSTMP"
 #define	BKROOT		"BitKeeper/etc"
 #define	GONE		"BitKeeper/etc/gone"

@@ -473,6 +473,15 @@ http_anno(char *pathrev)
 	unless (s = strrchr(pathrev, '@')) exit(1);
 	*s++ = 0;
 	sprintf(buf, "bk annotate -uma -r%s %s", s, pathrev);
+
+	/*
+	 * Do not show the license key in config file
+	 * XXX Do we need to also check the S_LOGS_ONLY flags?
+	 */
+	if (streq(pathrev, "BitKeeper/etc/config")) {
+		strcat(buf,
+			" | sed -e's/| license:.*$/| license: XXXXXXXXXXXXX/'");
+	}
 	f = popen(buf, "r");
 	while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
 		n = htmlify(buf, html, n);
