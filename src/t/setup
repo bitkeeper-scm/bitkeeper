@@ -30,6 +30,7 @@ then
 	TMP=$TEMP
 	USR_TMP=C:/usr/tmp
 	if [ ! -d $USR_TMP ]; then mkdir -p $USR_TMP 2> nul; fi
+	BK_TMP=$USR_TMP
 	CAT="bin_mode_cat"
 	ECHO="bin_mode_echo"
 	RM=rm
@@ -54,7 +55,7 @@ then
 	binary_data2="$BK_BIN/co.exe"
 	PATH=$_BK_BIN:$_BK_BIN/bin/gnu:$PATH
 	BK_BIN="$BK_BIN/"
-	export PATH BK_BIN
+	export PATH BK_BIN BK_TMP
 	# It is unlikely that ssh/rsh to localhost will work on NT.
 	DO_REMOTE=NO
 else
@@ -76,7 +77,6 @@ else
 	fi
 	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 	BK_BIN="$BK_BIN/"
-	export PATH BK_BIN
 	binary_data=/bin/ls
 	binary_data2=/bin/rm
 	data="data"
@@ -89,6 +89,8 @@ else
 	then USR_TMP=/var/tmp
 	else USR_TMP=`pwd`	# better than nothing.
 	fi
+	BK_TMP=$USR_TMP
+	export PATH BK_BIN BK_TMP
 	unset CDPATH
 	if [ X$DO_REMOTE != XNO ]; then
 	if [ X$PREFER_RSH != X ]
