@@ -211,7 +211,11 @@ bkd(int compress, remote *r, int *r_pipe, int *w_pipe)
 	if (r->port) {
 		assert(r->host);
 #ifdef WIN32
-		tcp_pipe(r->host, r->port, r_pipe, w_pipe);
+		p = tcp_pipe(r->host, r->port, r_pipe, w_pipe);
+		if (p == ((pid_t) -1)) {
+			fprintf(stderr, "can not create socket_helper\n");
+			return (-1);
+		}
 #else
 		*r_pipe = *w_pipe = tcp_connect(r->host, r->port);
 #endif

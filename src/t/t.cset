@@ -84,10 +84,12 @@ cat > DIFFS <<EOF
 8a9
 > foo
 EOF
-bk diffs C | diff - DIFFS > EMPTY
+bk diffs C > CMP1
+diff CMP1 DIFFS > EMPTY
 if [ -s EMPTY ]
 then	echo failed to leave C alone
-	bk diffs C | diff - DIFFS 
+	bk diffs C  > CMP1
+	diff CMP1 DIFFS 
 	exit 1
 fi
 if [ `bk prs -hd:I: -r+ A` != 1.3 ]

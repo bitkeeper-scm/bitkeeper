@@ -132,7 +132,8 @@ cd $HERE
 bk clone $Q -rright proj right
 cd right
 bk get $Q foo bar
-echo right > CMPBAR
+echo right > X
+bk undos X > CMPBAR
 echo $N $NL > CMPFOO
 cmp -s foo CMPFOO
 if [ $? -ne 0 ]; then echo failed foo diff; exit 1; fi
@@ -144,8 +145,9 @@ cd $HERE
 bk clone $Q -rleft proj left
 cd left
 bk get $Q foo bar
-echo left > CMPFOO
-echo $N $NL > CMPBAR
+echo left > X
+bk undos X > CMPFOO
+echo $N $NL >  CMPBAR
 cmp -s foo CMPFOO
 if [ $? -ne 0 ]; then echo failed foo diff; exit 1; fi
 cmp -s bar CMPBAR
