@@ -68,7 +68,7 @@ parent_main(int ac,  char **av)
 			fclose(f);
 			exit(0);
 		}
-		printf("Must specify parent root directory\n");
+		printf("This package has no parent\n");
 		exit(1);
 	}
 	sprintf(buf, "%s/BitKeeper/etc", av[optind]);
