@@ -301,11 +301,38 @@ line_cmp (s1, s2)
 {
   register unsigned char const *t1 = (unsigned char const *) s1;
   register unsigned char const *t2 = (unsigned char const *) s2;
+  register unsigned char c1;
+  register unsigned char c2;
+
+  if (ignore_to_str[0])
+    {
+      int ign_len = strlen(&ignore_to_str[1]);
+
+      while ((c1 = *t1++) != '\n')
+	if (c1 == ignore_to_str[0])
+	  if (strncmp(t1, &ignore_to_str[1], ign_len) == 0)
+	    {
+	      t1 += ign_len;
+	      break;
+	    }
+      if (c1 == '\n')
+         t1 = s1;
+
+      while ((c2 = *t2++) != '\n')
+	if (c2 == ignore_to_str[0])
+	  if (strncmp(t2, &ignore_to_str[1], ign_len) == 0)
+	    {
+	      t2 += ign_len;
+	      break;
+	    }
+      if (c2 == '\n')
+         t2 = s2;
+    }
 
   while (1)
     {
-      register unsigned char c1 = *t1++;
-      register unsigned char c2 = *t2++;
+      c1 = *t1++;
+      c2 = *t2++;
 
       /* Test for exact char equality first, since it's a common case.  */
       if (c1 != c2)
@@ -519,6 +546,21 @@ output_1_line (text, limit, flag_format, line_flag)
      const char *text, *limit, *flag_format, *line_flag;
 {
 
+  if (ignore_to_str[0] && text < limit)
+    {
+      const char *start = text;
+      int ign_len = strlen(&ignore_to_str[1]);
+
+      while (text < limit)
+        if (*text++ == ignore_to_str[0])
+	  if (strncmp(text, &ignore_to_str[1], ign_len) == 0)
+	    {
+	      text += ign_len;
+	      break;
+	    }
+      if (text >= limit)
+	  text = start;
+    }
   if (!tab_expand_flag && !ignore_trailing_cr_flag)
     fwrite (text, sizeof (char), limit - text, outfile);
   else if (ignore_trailing_cr_flag) {
