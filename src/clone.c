@@ -234,7 +234,7 @@ done:	if (rc) {
 	 * Force a client side EOF before we wait for server side EOF.
 	 * Needed only if remote is running csh; csh have a fd lead
 	 * which cause it fail to send us EOF when we close stdout and stderr.
-	 * Csh only send us EOF and the bkd exit, yuck !!
+	 * Csh only send us EOF when the bkd exit, yuck !!
 	 */
 	disconnect(r, 1);
 

@@ -2,138 +2,101 @@
 
 private int getsfio(int verbose, int gzip);
 
-int
-cmd_rclone_part1(int ac, char **av)
+typedef	struct {
+	u32	debug:1;
+	u32	verbose:1;
+	u32	gzip;
+} opts;
+
+private char *
+rclone_common(int ac, char **av, opts *opts)
 {
 	extern	int errno;
-	int	c, gzip = 0, verbose = 0,  debug = 0;
-	char 	*p, *path, buf[MAXPATH];
+	int	c;
+	char	*p;
 
-	while ((c = getopt(ac, av, "vdz|")) != -1) { 
-		switch(c) {
-	    	    case 'd': debug = 1; break;
-	    	    case 'v': verbose = 1; break;
-	    	    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;  
-			if (gzip < 0 || gzip > 9) gzip = 6;
+	while ((c = getopt(ac, av, "vdz|")) != -1) {
+		switch (c) {
+		    case 'd': opts->debug = 1; break;
+		    case 'v': opts->verbose = 1; break;
+		    case 'z':
+			opts->gzip = optarg ? atoi(optarg) : 6;
+			if (opts->gzip < 0 || opts->gzip > 9) opts->gzip = 6;
 			break;
-	    	    default: break;
+		    default: break;
 		}
 	}
-
-	path = av[optind];
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
 	sendServerInfoBlock();
 
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {
-	        unless (p && streq(p, BKD_VERSION)) {
+		unless (p && streq(p, BKD_VERSION)) {
 			out("ERROR-protocol version mismatch, want: ");
 			out(BKD_VERSION);
 			out(", got ");
 			out(p ? p : "");
 			out("\n");
-			drain();
-			return (1);
+err:			drain();
+			return (NULL);
 		}
-        }    
+	}
 
-	unless (path) {
-		out("ERROR-path missing");
+	unless (av[optind]) {
+		out("ERROR-path missing\n");
+		goto err;
+	}
+
+	return (strdup(av[optind]));
+}
+
+int
+cmd_rclone_part1(int ac, char **av)
+{
+	opts	opts;
+	char	pbuf[MAXPATH];
+	char	*path, *p;
+
+	unless (path = rclone_common(ac, av, &opts)) return (1);
+	if (exists(path)) {
+		p = aprintf("ERROR-path \"\%s\" already exists\n", path);
+err:		out(p);
+		free(p);
+		free(path);
 		drain();
 		return (1);
 	}
-
-	strcpy(buf, path);
-	/*
-	 * XXX TODO: Transformation of
-	 * BK_VHOST, project_name, path => /repos/<section>/<project>bk/<path>
-	 * can be done here.
-	 *
-	 * sprintf(buf, "/repos/%c/%s/bk/%s", REPOS,  pname[0], pname, path);
-	 */
-	if (exists(buf)) {
-		p = aprintf("ERROR-path \"\%s\" already exists\n", path);
-                out(p);
-		free(p);
-		drain();
-                return (1);
-	}
-	if (mkdirp(buf)) {
+	if (mkdirp(path)) {
 		p = aprintf(
 			"ERROR-cannot make directory %s: %s\n",
 			path, strerror(errno));
-		out(p);
-		free(p);
-		drain();
-                return (1);
+		goto err;
 	}
 	out("@OK@\n");
+	free(path);
 	return (0);
 }
 
 int
 cmd_rclone_part2(int ac, char **av)
 {
+	opts	opts;
+	char	buf[MAXPATH];
+	char	*path, *p;
+	char	bkd_nul = BKD_NUL;
+	int	fd2, rc = 0;
 
-	extern	int errno;
-	int	c, fd2, rc = 0, gzip = 0, verbose = 0,  debug = 0;
-	char    bkd_nul = BKD_NUL; 
-	char 	*p, *path;
-	char	buf[200];
-
-	while ((c = getopt(ac, av, "vdz|")) != -1) { 
-		switch(c) {
-	    	    case 'd': debug = 1; break;
-	    	    case 'v': verbose = 1; break;
-	    	    case 'z':
-			gzip = optarg ? atoi(optarg) : 6;  
-			if (gzip < 0 || gzip > 9) gzip = 6;
-			break;
-	    	    default: break;
-		}
-	}
-
-	path = av[optind];
-
-	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock();
-
-	p = getenv("BK_REMOTE_PROTOCOL");
-	unless (p && streq(p, BKD_VERSION)) {
-	        unless (p && streq(p, BKD_VERSION)) {
-			out("ERROR-protocol version mismatch, want: ");
-			out(BKD_VERSION);
-			out(", got ");
-			out(p ? p : "");
-			out("\n");
-			drain();
-			return (1);
-		}
-        }    
-
-	unless (path) {
-		out("ERROR-path missing");
+	unless (path = rclone_common(ac, av, &opts)) return (1);
+	if (chdir(path)) {
+		p = aprintf("ERROR-cannot chdir to \"\%s\"\n", path);
+		out(p);
+		free(p);
+		free(path);
 		drain();
 		return (1);
 	}
-
-	/*
-	 * XXX TODO: Transformation of
-	 * BK_VHOST, project_name, path => /repos/<section>/<project>bk/<path>
-	 * can be done here.
-	 *
-	 * sprintf(buf, "/repos/%c/%s/bk/%s", REPOS,  pname[0], pname, path);
-	 */
-	strcpy(buf, path);
-	if (chdir(buf)) {
-		p = aprintf("ERROR-cannot chdir to \"\%s\"\n", path);
-                out(p);
-		free(p);
-		drain();
-                return (1);
-	}
+	free(path);
 
 	getline(0, buf, sizeof(buf));
 	if (!streq(buf, "@SFIO@")) {
@@ -155,37 +118,37 @@ cmd_rclone_part2(int ac, char **av)
 	bk_proj = proj_init(0);
 
 	printf("@SFIO INFO@\n");
-	fflush(stdout); 
+	fflush(stdout);
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
-	rc = getsfio(verbose, gzip);
+	rc = getsfio(opts.verbose, opts.gzip);
 	getline(0, buf, sizeof(buf));
 	if (!streq("@END@", buf)) {
 		fprintf(stderr, "cmd_rclone: warning: lost end marker\n");
 	}
-	if (rc) { 
+	if (rc) {
 		write(1, &bkd_nul, 1);
-err:		printf("%c%d\n", BKD_RC, rc);
+		printf("%c%d\n", BKD_RC, rc);
 		fflush(stdout);
 		goto done;
 	}
 	/* remove any uncommited stuff */
-	if (rc = rmUncommitted(!verbose)) goto err;
+	rmUncommitted(!opts.verbose);
 
 	/* clean up empty directories */
-	rmEmptyDirs(!verbose);
+	rmEmptyDirs(!opts.verbose);
 
 	/*
-	 * TODO: set up parent pointer
+	 * XXX TODO: set up parent pointer
 	 */
 
-	consistency(!verbose);
+	consistency(!opts.verbose);
 	write(1, &bkd_nul, 1);
 done:
 	fputs("@END@\n", stdout); /* end SFIO INFO block */
 	fflush(stdout);
-
-	return (rc); 
+	trigger(av,  "post");
+	return (rc);
 }
 
 private int

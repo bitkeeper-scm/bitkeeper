@@ -9,7 +9,7 @@ private	void	log_cmd(int i, int ac, char **av);
 private	void	reap(int sig);
 private	void	usage();
 
-char 		*logRoot;
+char 		*logRoot, *vRootPrefix;
 int		licenseServer[2];	/* bkweb license pipe */
 time_t		licenseEnd = 0;		/* when a temp bk license expires */
 time_t		requestEnd = 0;
@@ -37,7 +37,7 @@ bkd_main(int ac, char **av)
 	 * 	 These option are used by the win32 bkd service as internal
 	 *	 interface.
 	 */
-	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:qRs:St:u:x:")) != -1) {
+	while ((c = getopt(ac, av, "c:dDeE:hil|L:p:P:qRs:St:u:V:x:")) != -1) {
 		switch (c) {
 		    case 'c': Opts.count = atoi(optarg); break;
 		    case 'd': Opts.daemon = 1; break;		/* doc 2.0 */
@@ -50,6 +50,8 @@ bkd_main(int ac, char **av)
 			break;
 		    case 'L':					/* doc 2.0 */
 			logRoot = strdup(optarg); break;
+		    case 'V':
+			vRootPrefix = strdup(optarg); break;
 		    case 'p': Opts.port = atoi(optarg); break;	/* doc 2.0 */
 		    case 'P': Opts.pidfile = optarg; break;	/* doc 2.0 */
 		    case 'q': Opts.quiet = 1; break; 		/* undoc? 2.0 */
@@ -69,6 +71,12 @@ bkd_main(int ac, char **av)
 	if (logRoot && !IsFullPath(logRoot)) {
 		fprintf(stderr,
 		    "bad log root: %s: must be a full path name\n", logRoot);
+		return (1);
+	}
+
+	if (vRootPrefix && !IsFullPath(vRootPrefix)) {
+		fprintf(stderr,
+		    "bad vroot: %s: must be a full path name\n", vRootPrefix);
 		return (1);
 	}
 
