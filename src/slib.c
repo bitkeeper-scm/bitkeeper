@@ -3781,7 +3781,7 @@ pref_parse(char *buf)
 }
 
 /*
- * filter: retutn 1 if match
+ * filter: return 1 if match
  */
 int
 filter(char *buf)
@@ -3790,14 +3790,14 @@ filter(char *buf)
 	char *h;
 
 	r = pref_parse(buf);
-	if ((r->user) && !match_one(sccs_getuser(), r->user)) {
-no_match:		remote_free(r);
+	if ((r->user) && !match_one(sccs_getuser(), r->user, 0)) {
+no_match:	remote_free(r);
 		return (0);
 	}
 
 	if (r->host) {
 		h = sccs_gethost();
-		unless (h && match_one(h, r->host)) goto no_match;
+		unless (h && match_one(h, r->host, 1)) goto no_match;
 	}
 
 	if (r->path) {
@@ -3808,8 +3808,9 @@ no_match:		remote_free(r);
 			free(bk_proj->root);
 			bk_proj->root = strdup(t);
 		}
-		/* XXX TODO: win32 path matching should be case in sensitive */
-		unless (match_one(bk_proj->root, r->path)) goto no_match;
+		unless (match_one(bk_proj->root, r->path, !mixedCasePath())) {
+			goto no_match;
+		}
 	}
 
 	remote_free(r);

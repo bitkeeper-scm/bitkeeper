@@ -201,12 +201,12 @@ private int
 included(char *fname, char *include)
 {
 	unless (include && include[0]) return (1);
-	return (match_one(fname, include));
+	return (match_one(fname, include, 0));
 }
 
 private int
 excluded(char *fname, char *exclude)
 {
 	unless (exclude && exclude[0]) return (0);
-	return (match_one(fname, exclude));
+	return (match_one(fname, exclude, 0));
 }

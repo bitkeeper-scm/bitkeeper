@@ -66,7 +66,7 @@ do_print(char *path)
 		printf("%s\n", path);
 		return;
 	}
-	if (match_globs(t, globs)) printf("%s\n", path);
+	if (match_globs(t, globs, 0)) printf("%s\n", path);
 }
 
 

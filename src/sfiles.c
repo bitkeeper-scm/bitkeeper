@@ -656,7 +656,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 	}
 	if (base[-1] != '/') *base++ = '/';
 	EACH (d) {
-		if (match_globs(d[i], ignore)) {
+		if (match_globs(d[i], ignore, 0)) {
 			debug((stderr, "SKIP\t%s\n", d[i]));
 			continue;
 		}
@@ -666,8 +666,8 @@ lftw_inner(char *path, char *base, struct stat *sb,
 			continue;
 		}
 		strcpy(base, d[i]);
-		if (match_globs(path, ignore) ||
-		    (plus2 && match_globs(path + 2, ignore))) {
+		if (match_globs(path, ignore, 0) ||
+		    (plus2 && match_globs(path + 2, ignore, 0))) {
 			debug((stderr, "SKIP\t%s\n", path));
 			continue;
 		}

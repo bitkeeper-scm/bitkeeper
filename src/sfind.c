@@ -691,7 +691,7 @@ isIgnored(char *file)
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
 	unless (opts.all) {
-		if (match_globs(file, ignore)) {
+		if (match_globs(file, ignore, 0)) {
 			debug((stderr, "SKIP\t%s\n", file));
 			return (1);
 		}
@@ -700,7 +700,7 @@ isIgnored(char *file)
 		 * For backward compat with "bk sfiles"
 		 * trimed "./" and match against ignore list.
 		 */
-		if ((gfile !=  file) && match_globs(gfile, ignore)) {
+		if ((gfile !=  file) && match_globs(gfile, ignore, 0)) {
 			debug((stderr, "SKIP\t%s\n", gfile));
 			return (1);
 		}
@@ -714,7 +714,7 @@ isIgnored(char *file)
 			for (q = p; *q && (*q != '/'); q++);
 			save = *q;
 			*q = 0;
-			if (match_globs(p, ignore)) {
+			if (match_globs(p, ignore, 0)) {
 				*q = save;
 				debug((stderr, "SKIP\t%s\n", gfile));
 				return (1);
