@@ -45,6 +45,9 @@ typedef struct {
 	u32     xflg:1;     		/* show xtra files	*/
 	u32     gflg:1;     		/* print gfile name	*/
 	u32     Cflg:1;     		/* want file@rev format	*/
+	u32     splitRoot:1;   		/* split root mode	*/
+	u32     dfile:1;   		/* use d.file to find 	*/
+					/* pending delta	*/
 } options;
 
 typedef struct _q_item {
@@ -60,7 +63,6 @@ typedef struct {
 private project *proj;
 private options	opts;
 private globv	ignore; 
-private	int	splitRootMode;
 
 private void do_print(char state[4], char *file, char *rev);
 private void walk(char *dir, int level);
@@ -124,7 +126,7 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 		if (mdbm_fetch_str(gDB, &p[2])) flags |= INIT_HASgFILE;
 		*p = 's'; /* because hasfile() stomps */
 	}
-	unless (splitRootMode) flags |= INIT_ONEROOT;
+	unless (opts.splitRoot) flags |= INIT_ONEROOT;
 	s = sccs_init(name, flags|INIT_SAVEPROJ, proj);
         if (s && !proj) proj = s->proj;
         return (s);
@@ -251,6 +253,33 @@ chk_pending(sccs *s, char *gfile, char state[4], MDBM *sDB, MDBM *gDB)
 	char	*rev;
 	int	local_s = 0;
 
+	char	buf[MAXPATH];
+
+	if (opts.dfile) {
+		if (sDB) {
+			strcpy(buf, "d.");
+			strcpy(&buf[2], basenm(gfile));
+			unless (mdbm_fetch_str(sDB, buf)) {
+				state[PSTATE] = ' ';
+				do_print(state, gfile, 0);
+				return;
+			}
+		} else {
+			char *dfile = name2sccs(gfile);
+			char *p;
+
+			p = basenm(dfile);
+			*p = 'd';
+			unless (exists(dfile)) {
+				free(dfile);
+				state[PSTATE] = ' ';
+				do_print(state, gfile, 0);
+				return;
+			}
+			free(dfile);
+		}
+	}
+
 	unless (s) {
 		char *sfile = name2sccs(gfile);
 		s = init(sfile, INIT_NOCKSUM, sDB, gDB);
@@ -263,8 +292,17 @@ chk_pending(sccs *s, char *gfile, char state[4], MDBM *sDB, MDBM *gDB)
 	 * check for pending deltas
 	 * TODO: need to handle LOD
 	 */                                    
-	d = sccs_top(s);
+	unless (d = sccs_getrev(s, "+", 0, 0))  {
+		state[PSTATE] = ' ';
+		do_print(state, gfile, 0);
+		goto out;	
+	}
 	assert(d);
+
+	/*
+	 * XXX TODO we need to handle LOD and out-of-view file here
+	 */
+
 	state[PSTATE] = (d->flags & D_CSET) ? ' ' : 'p';
 	if (opts.Aflg) {
 		if (d->flags & D_CSET) {
@@ -288,7 +326,18 @@ chk_pending(sccs *s, char *gfile, char state[4], MDBM *sDB, MDBM *gDB)
 	/*
 	 * Do not sccs_close() if it is passed in from outside 
 	 */
-	if (local_s) sccs_close(s);
+out:	if (local_s) sccs_close(s);
+	if (opts.dfile) {
+		/* No pending delta, remove redundant d.file */
+		unless (state[PSTATE] == 'p') {
+			char *p, *dfile = name2sccs(gfile);
+
+			p = basenm(dfile);
+			*p = 'd';
+			unlink(dfile);
+			free(dfile);
+		}
+	}
 }
 
 private void
@@ -371,28 +420,35 @@ walk(char *dir, int level)
 	assert(buf);
 
 	if (level == 0) {
-		char dummy[MAXPATH];
+		char tmp[MAXPATH];
 
-		_relativeName(dir, 1, 0, 1, 0, buf); /* find root */
-		splitRootMode = hasRootFile(buf, dummy);
+		/*
+		 * Find project root and put it in buf
+		 */
+		unless (_relativeName(dir, 1, 0, 1, 0, buf)) {
+			fprintf(stderr,
+				"%s is not a BitKeeper repository\n", dir);
+			return;
+		}
+		//splitRootMode = hasRootFile(buf, tmp);
+		opts.splitRoot = hasRootFile(buf, tmp);
 		if (!opts.aflg) {
 			FILE	*ignoref; 
 
-			sprintf(buf, "%s/BitKeeper/etc/ignore", buf);
-			unless (exists(buf)) get(buf, SILENT, "-");
-			if (ignoref = fopen(buf, "r")) {
+			sprintf(tmp, "%s/BitKeeper/etc/ignore", buf);
+			unless (exists(tmp)) get(buf, SILENT, "-");
+			if (ignoref = fopen(tmp, "r")) {
 				ignore = read_globs(ignoref, 0);
 				fclose(ignoref);
 			}
 		}           
+		sprintf(tmp, "%s/BitKeeper/etc/.use_d_file", buf);
+		opts.dfile = exists(tmp);
+		assert(proj == 0);
 	}
 
 	concat_path(buf, dir, "SCCS");
-#ifdef OLD
-	unless (exists(buf)) {
-#else
 	unless (sccs_dh =  opendir(buf)) {
-#endif
 		/*
 		 * TODO: we need to check for the caes where
 		 * the pwd is a SCCS dir
@@ -662,6 +718,7 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 						    k = mdbm_nextkey(sDB)) {
 			char buf1[MAXPATH];
 
+			if (strneq("d.", k.dptr, 2)) continue;
 			if (strneq("x.", k.dptr, 2)) continue;
 			if (strneq("s.", k.dptr, 2)) continue;
 			if (strneq("c.", k.dptr, 2)) continue;
@@ -691,8 +748,9 @@ sccsdir(char *dir, int level, DIR *sccs_dh)
 	for (i = dlist.first; i; i = i->next) {
 		strcpy(&buf[2], i->path);
 		if (mdbm_fetch_str(sDB, buf)) {
+			concat_path(buf, dir, i->path);
 			fprintf(stderr,
-			"Warning: %s should not be a directory\n", i->path);
+			"Warning: %s should not be a directory\n", buf);
 		}
 	}
 

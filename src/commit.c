@@ -99,7 +99,7 @@ commit_main(int ac, char **av)
 		}
 		fclose(f);
 	} else {
-		sprintf(buf, "bk sfiles -C > %s", pendingFiles);
+		sprintf(buf, "bk sfind -C > %s", pendingFiles);
 		if (system(buf) != 0) {
 			unlink(pendingFiles);
 			unlink(commentFile);
@@ -226,6 +226,7 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 	char	s_cset[MAXPATH] = CHANGESET;
 	sccs	*s;
 	delta	*d;
+	FILE 	*f;
 
 	unless (ok_commit(l, opts.alreadyAsked)) {
 		if (commentFile) unlink(commentFile);
@@ -239,6 +240,27 @@ do_commit(c_opts opts, char *sym, char *pendingFiles, char *commentFile)
 		hasComment? "-Y" : "", hasComment ? commentFile : "",
 		pendingFiles);
 	rc = system(buf);
+	if (rc == 0) {
+		/*
+		 * remove the d.file
+		 */
+		f = fopen(pendingFiles, "rt");
+		while (fgets(buf, sizeof(buf), f)) {
+			char *p, *q;
+
+			p = strchr(buf, '@');
+			*p = 0;
+			q = name2sccs(buf);
+			p = strrchr(q, '/');
+			p[1] = 'd';
+			unlink(q);
+			free(q);
+		}
+		unless (opts.resync) {
+			sprintf(buf, "%setc/.use_d_file", BitKeeper);
+			mkdir(buf, 0777);
+		}
+	}
 	unlink(commentFile);
 	unlink(pendingFiles);
 	notify();
