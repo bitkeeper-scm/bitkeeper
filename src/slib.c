@@ -5920,6 +5920,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	unless (RCS(s)) flags &= ~(GET_RCSEXPAND);
 
 	if (flags & GET_MODNAME) base = basenm(s->gfile);
+	else if (flags & GET_FULLPATH) base = s->gfile;
 	/*
 	 * We want the data to start on a tab aligned boundry
 	 */
@@ -5927,7 +5928,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int	len = 0;
 
 
-		if (flags&GET_MODNAME) len += strlen(base) + 1;
+		if (flags&(GET_MODNAME|GET_FULLPATH)) len += strlen(base) + 1;
 		if (flags&GET_PREFIXDATE) len += 9;
 		if (flags&GET_USER) len += s->userLen + 1;
 		if (flags&GET_REVNUMS) len += s->revLen + 1;
@@ -6010,7 +6011,7 @@ out:			if (slist) free(slist);
 			if ((flags & GET_PREFIX) && (flags & GET_ALIGN)) {
 				delta *tmp = sfind(s, (ser_t) print);
 
-				if (flags&GET_MODNAME)
+				if (flags&(GET_MODNAME|GET_FULLPATH))
 					fprintf(out, "%s ", base);
 				if (flags&GET_PREFIXDATE)
 					fprintf(out, "%8.8s ", tmp->sdate);
@@ -6026,7 +6027,7 @@ out:			if (slist) free(slist);
 			} else if (flags & GET_PREFIX) {
 				delta *tmp = sfind(s, (ser_t) print);
 
-				if (flags&GET_MODNAME)
+				if (flags&(GET_MODNAME|GET_FULLPATH))
 					fprintf(out, "%s\t", base);
 				if (flags&GET_PREFIXDATE)
 					fprintf(out, "%8.8s\t", tmp->sdate);

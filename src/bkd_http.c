@@ -20,6 +20,7 @@ private void	http_hist(char *pathrev);
 private void	http_patch(char *rev);
 private void	http_gif(char *path);
 private void	http_stats(char *path);
+private void	http_search(char *path);
 private void	http_related(char *path);
 private void	http_license(char *path);
 private void	http_tags(char *path);
@@ -37,14 +38,7 @@ private	char	root[MAXPATH];
 private int	embedded = 0;
 private int	expires = 0;
 
-#define	COLOR_TOP	"lightblue"	/* index.html */
-#define	COLOR_CHANGES	"lightblue"	/* ChangeSet */
-#define	COLOR_CSETS	"lightblue"	/* cset */
-#define	COLOR_HIST	"lightblue"	/* hist */
-#define	COLOR_ANNO	"lightblue"	/* anno */
-#define	COLOR_SRC	"lightblue"	/* src */
-#define	COLOR_DIFFS	"lightblue"	/* diffs */
-#define	COLOR_PATCH	"lightblue"	/* patch */
+#define	COLOR		"lightblue"
 
 #define	OUTER_TABLE	"<table width=100% bgcolor=black cellspacing=0 border=0 cellpadding=2><tr><td>\n"
 #define INNER_TABLE	"<table width=100% cellpadding=3 cellspacing=1 border=0>"
@@ -60,6 +54,7 @@ private char	user[80];
 private char	prefix[100];
 private char	suffix[10];
 private int	isLoggingTree;
+private	char	*expr;
 
 private struct pageref {
     vfn  content;
@@ -81,6 +76,7 @@ private struct pageref {
     { http_both,    "both",      "both/", 5 },
     { http_anno,    "anno",      "anno/", 5 },
     { http_diffs,   "diffs",     "diffs/", 6 },
+    { http_search,  "search",    "search/", 7 },
     { http_stats,   "stats",     "stats",  0, HAS_ARG, 0 },
     { http_related, "related",   "related/", 8 },
     { http_license, 0,           "license" },
@@ -117,9 +113,7 @@ cmd_httpget(int ac, char **av)
 		}
 	}
 
-	unless (av[1]) {
-		http_error(404, "get what?\n");
-	}
+	unless (av[1]) http_error(404, "get what?\n");
 
 	if ((strlen(name) + sizeof("BitKeeper/html") + 2) >= MAXPATH) {
 		http_error(500, "path too long for bkweb");
@@ -521,7 +515,7 @@ http_changes(char *rev)
 
 	if (!embedded) {
 		httphdr(".html");
-		header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
+		header(0, COLOR, "ChangeSet Summaries", 0);
 	}
 
 	out(OUTER_TABLE INNER_TABLE
@@ -628,7 +622,7 @@ http_cset(char *rev)
 
 	if (!embedded) {
 		httphdr("cset.html");
-		header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
+		header("cset", COLOR, "Changeset details for %s", 0, rev);
 	}
 
 	out("<table width=100% bgcolor=black cellspacing=0 border=0 "
@@ -813,7 +807,7 @@ http_hist(char *pathrev)
 
 	if (!embedded) {
 		httphdr(".html");
-		header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
+		header("hist", COLOR, "Revision history for %s", 0, pathrev);
 	}
 
 	av[i=0] = "bk";
@@ -899,7 +893,7 @@ http_src(char *path)
 
 	if (!embedded) {
 		httphdr(".html");
-		header("src", COLOR_SRC, "Source directory &lt;%s&gt;", 0,
+		header("src", COLOR, "Source directory &lt;%s&gt;", 0,
 		    path[1] ? path : "project root");
 	}
 
@@ -987,7 +981,7 @@ http_anno(char *pathrev)
 	if (!embedded) {
 		httphdr(".html");
 		header("anno",
-		    COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
+		    COLOR, "Annotated listing of %s", 0, pathrev);
 	}
 
 	*s++ = 0;
@@ -1108,7 +1102,7 @@ http_diffs(char *pathrev)
 
 	if (!embedded) {
 		httphdr(".html");
-		header("diffs", COLOR_DIFFS, "Changes for %s", 0, pathrev);
+		header("diffs", COLOR, "Changes for %s", 0, pathrev);
 	}
 
 	*s++ = 0;
@@ -1166,7 +1160,7 @@ http_patch(char *rev)
 
 	if (!embedded) {
 		httphdr(".html");
-		header("rev", COLOR_PATCH,
+		header("rev", COLOR,
 		    "All diffs for ChangeSet %s",
 		    0,
 		    rev, navbar, rev);
@@ -1266,7 +1260,7 @@ http_stats(char *page)
 
 	if (!embedded) {
 		httphdr(".html");
-		header("stats", COLOR_PATCH,
+		header("stats", COLOR,
 		    "User statistics",
 		    0);
 	}
@@ -1444,9 +1438,9 @@ http_index(char *page)
 
 			if (user[0] && snprintf(titlebar, sizeof titlebar,
 			    "ChangeSet activity for %s", user) != -1) {
-				title(titlebar, buf, COLOR_TOP);
+				title(titlebar, buf, COLOR);
 			} else {
-				title("ChangeSet activity", buf, COLOR_TOP);
+				title("ChangeSet activity", buf, COLOR);
 			}
 		}
 		out("</td></tr></table>\n");
@@ -1528,6 +1522,11 @@ http_index(char *page)
 	out("<tr><td><a href=http://www.bitkeeper.com/bkweb/help.html>Help"
 	    "</a></td></tr>\n");
 #endif
+	unless (isLoggingTree) {
+		out("<tr><td><pre><form method=get action=\"search/\">\n"
+		    "Search: <input type=\"text\" name=\"expr\"> "
+		    "<input type=\"submit\" value=\"Go\"></pre></td></tr>\n");
+	}
 	out("</table>");
 	out("</table>");
 	if (!embedded) trailer(0);
@@ -1770,9 +1769,10 @@ parseurl(char *url)
 		if (strneq(s, "?nav=", 5)) {
 			strcpy(arguments, s);
 			strcpy(navbar, s);
-		}
-		else if (strneq(s, "?expires=", 8)) {
+		} else if (strneq(s, "?expires=", 8)) {
 			expires=atoi(s+9);
+		} else if (strneq(s, "?expr=", 5)) {
+			expr = strdup(&s[6]);
 		}
 		*s = 0;
 	}
@@ -1837,7 +1837,7 @@ http_related(char *file)
 
 	if (!embedded) {
 		httphdr(".html");
-		header(0, COLOR_CHANGES, "Changesets that modify %s", 0, file);
+		header(0, COLOR, "Changesets that modify %s", 0, file);
 	}
 
 	if (count) {
@@ -1954,7 +1954,7 @@ http_tags(char *page)
 
 	if (!embedded) {
 		httphdr(".html");
-		header(0, COLOR_CHANGES, "Tags", 0);
+		header(0, COLOR, "Tags", 0);
 	}
 
 	out(OUTER_TABLE INNER_TABLE
@@ -1978,4 +1978,73 @@ http_tags(char *page)
 	out(INNER_END OUTER_END);
 
 	if (!embedded) trailer("tags");
+}
+
+/*
+ * expr
+ */
+private void
+http_search(char *junk)
+{
+	char	*file, *rev, *text;
+	int	i, first = 1;
+	FILE	*f;
+	char	buf[8<<10];
+
+	whoami("index.html");
+
+	if (!embedded) {
+		httphdr(".html");
+		i = snprintf(buf,
+		    sizeof(buf), "Search results for bk -r grep %s\n", expr);
+		if (i == -1) {
+			header(0, COLOR, "Search results", 0);
+		} else {
+			header(0, COLOR, buf, 0);
+		}
+	}
+
+	sprintf(buf, "bk -Ur grep -r_BK_TOP -fm '%s'", expr);
+	unless (f = popen(buf, "r")) http_error(404, "grep failed?\n");
+	
+	while (fnext(buf, f)) {
+		if (first) {
+			out(OUTER_TABLE INNER_TABLE
+			    "<tr bgcolor=#d0d0d0>\n"
+			    "  <th>File</th>\n"
+			    "  <th>Rev</th>\n"
+			    "  <th>Match</th>\n"
+			    "</tr>\n");
+			first = 0;
+		}
+		file = buf;
+		unless (rev = strchr(buf, '\t')) continue;
+		*rev++ = 0;
+		unless (text = strchr(rev, '\t')) continue;
+		*text++ = 0;
+		out("<tr bgcolor=white><td><a href=anno/");
+		out(file);
+		out("@");
+		out(rev);
+		out(">");
+		out(file);
+		out("</a></td>\n<td><a href=diffs/");
+		out(file);
+		out("@");
+		out(rev);
+		out(">");
+		out(rev);
+		out("</a></td>\n<td>");
+		htmlify(text, strlen(text));
+		out("</td></tr>");
+	}
+	pclose(f);
+	if (first) {
+		out("<p><table align=middle><tr><td>"
+		    "No matches found.</td></tr></table><p>\n");
+	} else {
+		out(INNER_END OUTER_END);
+	}
+
+	if (!embedded) trailer("search");
 }
