@@ -341,7 +341,8 @@ out:		if (commentFile) unlink(commentFile);
 				system("bk _lconfig");
 			}
 			if ((logs_pending(ptype, 1) >= max_pending)) {
-				printf(
+				if (l&LOG_OPEN) {
+					printf(
 "============================================================================\n"
 "Error: Max pending log exceeded, commit aborted\n\n"
 "This error indicates that the BitKeeper program is unable to contact \n"
@@ -361,9 +362,33 @@ out:		if (commentFile) unlink(commentFile);
 "\t\"bk -R inode ChangeSet\" command.\n"
 "============================================================================\n"
 , MAX_PENDING_LOG);
+				} else {
+					printf(
+"============================================================================\n"
+"Error: Max pending config log exceeded, commit aborted\n\n"
+"This error indicates that the BitKeeper program is unable to contact \n"
+"www.bitkeeper.com to send the config log. The number of unlogged \n"
+"config log have exceeded the allowed threshold of %d. \n"
+"There are three possible causes for this error:\n"
+"a) Network connectivity problem.\n"
+"b) Problems in the config interface at www.bitkeeper.com.\n"
+"c) You BitKeeper liecence is due for renewal and we have not receive\n"
+"   your payment.\n"
+"Please run the logging command in debug mode to see what the problem is:\n"
+"\t\"bk _lconfig  -d\"\n\n"
+"If you have ruled out a network connectivity problem at your local network,\n"
+"please email the following information to support@bitmover.com:\n"
+"a) Output of the above logging command\n"
+"b) Your license key in the BitKeeper/etc/config file\n"
+"c) Root key of your project using the following command:\n"
+"\t\"bk -R inode ChangeSet\" command.\n"
+"============================================================================\n"
+, MAX_PENDING_LOG);
+				}
 				goto out;
 			}
 		} else if (log_quota <= 10) {
+			if (l&LOG_OPEN) {
 				printf(
 "============================================================================\n"
 "Warning: BitKeeper was unable to transmit log for the previous commit.\n"
@@ -373,6 +398,18 @@ out:		if (commentFile) unlink(commentFile);
 "transmission with the command \"bk log -d\".\n"
 "============================================================================\n"
 , log_quota);
+			} else {
+				printf(
+"============================================================================\n"
+"Warning: BitKeeper was unable to transmit config log for the previous\n"
+"commit. Your log quota is now down to %d. You will not be able to commit\n"
+"ChangeSet if yor log quota is down to zero. Please check:\n"
+"a) Your network configuration and make sure logs are transmitted properly.\n"
+"   You can test your log transmission with the command \"bk _lconfig -d\".\n"
+"b) Your license key is not due for renewal.\n"
+"============================================================================\n"
+, log_quota);
+			}
 		}
 		if (!(l&LOG_OPEN) && (l&LOG_LIC_SINGLE) &&
 					!smallTree(BK_SINGLE_THRESHOLD)) {
@@ -677,7 +714,7 @@ cset_user(FILE *f, sccs *s, delta *d1, char *keylist)
 		i++;
 	}
 	free(p);
-next:	mdbm_close(uDB);
+	mdbm_close(uDB);
 	return (i);
 }
 
@@ -745,8 +782,7 @@ config(FILE *f)
 		fprintf(f," %u", d->dateFudge);
 		fputs("\n", f);
 		cset_user(f, s, d, tmpfile);
-		f1 = fopen(tmpfile,  "w"); /* truncate it */
-		fclose(f1);
+		fclose(fopen(tmpfile,  "w")); /* truncate it */
 	}
 	sccs_free(s);
 	unlink(tmpfile);
