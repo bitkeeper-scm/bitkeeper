@@ -133,10 +133,7 @@ int rng_make_prng(int bits, int wprng, prng_state *prng,
    if (prng_descriptor[wprng].ready(prng) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
-
    zeromem(buf, sizeof(buf));
    return CRYPT_OK;
 }
-
-static const char *ID_TAG = "bits.c";
 

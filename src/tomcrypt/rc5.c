@@ -214,5 +214,5 @@ int rc5_keysize(int *desired_keysize)
 
 #endif
 
-static const char *ID_TAG = "rc5.c";
+
 

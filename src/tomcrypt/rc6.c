@@ -233,5 +233,4 @@ int rc6_keysize(int *desired_keysize)
 
 #endif /*RC6*/
 
-static const char *ID_TAG = "rc6.c";
 

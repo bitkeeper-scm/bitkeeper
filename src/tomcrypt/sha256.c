@@ -213,5 +213,4 @@ int  sha256_test(void)
 
 #endif
 
-static const char *ID_TAG = "sha256.c";
 

@@ -849,5 +849,3 @@ static const unsigned long rco_tab[10] = {
  0x00000020UL, 0x00000040UL, 0x00000080UL, 0x0000001bUL, 0x00000036UL
  };
 
-static const char *ID2_TAG = "aes_tab.c"; 
- 

@@ -45,5 +45,4 @@ const unsigned char safer_lbox[256] = {
 
 #endif
 
-static const char *ID_TAG = "safer_tab.c";
 

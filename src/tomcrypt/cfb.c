@@ -29,8 +29,11 @@ int cfb_start(int cipher, const unsigned char *IV, const unsigned char *key,
    return CRYPT_OK;
 }
 
-void cfb_encrypt(const unsigned char *pt, unsigned char *ct, int len, symmetric_CFB *cfb)
+int cfb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_CFB *cfb)
 {
+   if (cipher_is_valid(cfb->cipher) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+   }
    while (len--) {
        if (cfb->padlen == cfb->blocklen) {
           cipher_descriptor[cfb->cipher].ecb_encrypt(cfb->pad, cfb->IV, &cfb->key);
@@ -41,10 +44,14 @@ void cfb_encrypt(const unsigned char *pt, unsigned char *ct, int len, symmetric_
        ++ct;
        ++cfb->padlen;
    }
+   return CRYPT_OK;
 }
 
-void cfb_decrypt(const unsigned char *ct, unsigned char *pt, int len, symmetric_CFB *cfb)
+int cfb_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, symmetric_CFB *cfb)
 {
+   if (cipher_is_valid(cfb->cipher) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+   }
    while (len--) {
        if (cfb->padlen == cfb->blocklen) {
           cipher_descriptor[cfb->cipher].ecb_encrypt(cfb->pad, cfb->IV, &cfb->key);
@@ -56,9 +63,8 @@ void cfb_decrypt(const unsigned char *ct, unsigned char *pt, int len, symmetric_
        ++ct;
        ++cfb->padlen;
    }
+   return CRYPT_OK;
 }
 
 #endif
 
-static const char *ID_TAG = "cfb.c"; 
- 

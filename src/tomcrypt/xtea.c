@@ -110,5 +110,5 @@ int xtea_keysize(int *desired_keysize)
 
 #endif
 
-static const char *ID_TAG = "xtea.c"; 
+
 

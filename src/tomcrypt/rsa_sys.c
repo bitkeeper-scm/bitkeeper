@@ -240,7 +240,7 @@ int rsa_sign(const unsigned char *in,  unsigned long inlen,
    }
 
    /* check size */
-   if (*outlen < (8+rsa_size)) {
+   if (*outlen < (PACKET_SIZE+rsa_size)) {
       crypt_error = "Buffer Overrun in rsa_sign()."; 
       return CRYPT_ERROR;
    }
@@ -285,7 +285,7 @@ int rsa_verify(const unsigned char *sig, const unsigned char *msg,
       return CRYPT_ERROR;
    }
 
-   /* grab cipher name */
+   /* grab hash name */
    y = PACKET_SIZE;
    hash = find_hash_id(sig[y++]);
    if (hash == -1) {
@@ -385,9 +385,8 @@ int rsa_encrypt_key(const unsigned char *inkey, unsigned long inlen,
    return CRYPT_OK;
 }
 
-int rsa_decrypt_key(const unsigned char *in,  unsigned long len,
-                    unsigned char *outkey, unsigned long *keylen,
-                    rsa_key *key)
+int rsa_decrypt_key(const unsigned char *in, unsigned char *outkey, 
+                    unsigned long *keylen, rsa_key *key)
 {
    unsigned char sym_key[MAXBLOCKSIZE], rsa_in[4096], rsa_out[4096];
    unsigned long x, y, z, i, rsa_size;
@@ -443,7 +442,109 @@ int rsa_decrypt_key(const unsigned char *in,  unsigned long len,
    return CRYPT_OK;
 }
 
+int rsa_sign_hash(const unsigned char *in,  unsigned long inlen, 
+                        unsigned char *out, unsigned long *outlen, 
+                        rsa_key *key)
+{
+   unsigned long rsa_size, x, y;
+   unsigned char rsa_in[4096], rsa_out[4096];
+
+   /* type of key? */
+   if (key->type != PK_PRIVATE && key->type != PK_PRIVATE_OPTIMIZED) {
+      crypt_error = "Cannot sign with public key in rsa_sign().";
+      return CRYPT_ERROR;
+   }
+
+   /* pad it */
+   x = sizeof(rsa_out);
+   if (rsa_signpad(in, inlen, rsa_out, &x) == CRYPT_ERROR) {
+      return CRYPT_ERROR;
+   }
+
+   /* sign it */
+   rsa_size = sizeof(rsa_in);
+   if (rsa_exptmod(rsa_out, x, rsa_in, &rsa_size, PK_PRIVATE, key) == CRYPT_ERROR) {
+      return CRYPT_ERROR;
+   }
+
+   /* check size */
+   if (*outlen < (PACKET_SIZE+rsa_size)) {
+      crypt_error = "Buffer Overrun in rsa_sign_hash()."; 
+      return CRYPT_ERROR;
+   }
+
+   /* now lets output the message */
+   y = PACKET_SIZE;
+
+   /* output the len */
+   STORE32L(rsa_size, (out+y));
+   y += 4;
+
+   /* store the signature */
+   for (x = 0; x < rsa_size; x++, y++) {
+       out[y] = rsa_in[x];
+   }
+
+   /* store header */
+   packet_store_header(out, PACKET_SECT_RSA, PACKET_SUB_SIGNED, y);
+
+   /* clean up */
+   zeromem(rsa_in, sizeof(rsa_in));
+   zeromem(rsa_out, sizeof(rsa_out));
+   *outlen = y;
+   return CRYPT_OK;
+}
+
+int rsa_verify_hash(const unsigned char *sig, const unsigned char *md,
+                          int *stat, rsa_key *key)
+{
+   unsigned long rsa_size, x, y, z;
+   unsigned char rsa_in[4096], rsa_out[4096];
+
+   /* always be incorrect by default */
+   *stat = 0;
+
+   /* verify header */
+   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_RSA, PACKET_SUB_SIGNED) == CRYPT_ERROR) {
+      crypt_error = "Invalid header for input in rsa_verify().";
+      return CRYPT_ERROR;
+   }
+
+   /* get the len */
+   y = PACKET_SIZE;
+   LOAD32L(rsa_size, (sig+y));
+   y += 4;
+
+   /* load the signature */
+   for (x = 0; x < rsa_size; x++, y++) {
+       rsa_in[x] = sig[y];
+   }
+
+   /* exptmod it */
+   x = sizeof(rsa_in);
+   if (rsa_exptmod(rsa_in, rsa_size, rsa_out, &x, PK_PUBLIC, key) == CRYPT_ERROR) {
+      return CRYPT_ERROR;
+   }
+
+   /* depad it */
+   z = sizeof(rsa_in);
+   if (rsa_signdepad(rsa_out, x, rsa_in, &z) == CRYPT_ERROR) {
+      return CRYPT_ERROR;
+   }
+
+   /* check? */
+   if (!memcmp(rsa_in, md, z)) {
+      *stat = 1;
+   }
+
+   zeromem(rsa_in, sizeof(rsa_in));
+   zeromem(rsa_out, sizeof(rsa_out));
+   return CRYPT_OK;
+}
+
+
+
 #endif
 
-static const char *ID_TAG = "rsa_sys.c"; 
+
 

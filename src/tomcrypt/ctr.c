@@ -28,9 +28,13 @@ int ctr_start(int cipher, const unsigned char *count, const unsigned char *key, 
    return CRYPT_OK;
 }
 
-void ctr_encrypt(const unsigned char *pt, unsigned char *ct, int len, symmetric_CTR *ctr)
+int ctr_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_CTR *ctr)
 {
    int x;
+
+   if (cipher_is_valid(ctr->cipher) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+   }
 
    while (len--) {
       /* is the pad empty? */
@@ -49,14 +53,13 @@ void ctr_encrypt(const unsigned char *pt, unsigned char *ct, int len, symmetric_
       }
       *ct++ = *pt++ ^ ctr->pad[ctr->padlen++];
    }
+   return CRYPT_OK;
 }
 
-void ctr_decrypt(const unsigned char *ct, unsigned char *pt, int len, symmetric_CTR *ctr)
+int ctr_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, symmetric_CTR *ctr)
 {
-   ctr_encrypt(ct, pt, len, ctr);
+   return ctr_encrypt(ct, pt, len, ctr);
 }
 
 #endif
-
-static const char *ID_TAG = "ctr.c";
 

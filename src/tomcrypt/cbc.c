@@ -26,7 +26,7 @@ int cbc_start(int cipher, const unsigned char *IV, const unsigned char *key,
    return CRYPT_OK;
 }
 
-void cbc_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_CBC *cbc)
+int cbc_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_CBC *cbc)
 {
    int x;
    unsigned char tmp[MAXBLOCKSIZE];
@@ -37,6 +37,9 @@ void cbc_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_CBC *cbc)
    }
 
    /* encrypt */
+   if (cipher_is_valid(cbc->cipher) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+   }
    cipher_descriptor[cbc->cipher].ecb_encrypt(tmp, ct, &cbc->key);
 
    /* store IV [ciphertext] for a future block */
@@ -45,14 +48,18 @@ void cbc_encrypt(const unsigned char *pt, unsigned char *ct, symmetric_CBC *cbc)
 #ifdef CLEAN_STACK
    zeromem(tmp, sizeof(tmp));
 #endif
+   return CRYPT_OK;
 }
 
-void cbc_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_CBC *cbc)
+int cbc_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_CBC *cbc)
 {
    int x;
    unsigned char tmp[MAXBLOCKSIZE], tmp2[MAXBLOCKSIZE];
 
    /* decrypt the block from ct into tmp */
+   if (cipher_is_valid(cbc->cipher) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+   }
    cipher_descriptor[cbc->cipher].ecb_decrypt(ct, tmp, &cbc->key);
 
    /* xor IV against the plaintext of the previous step */
@@ -72,11 +79,8 @@ void cbc_decrypt(const unsigned char *ct, unsigned char *pt, symmetric_CBC *cbc)
    zeromem(tmp, sizeof(tmp));
    zeromem(tmp2, sizeof(tmp2));
 #endif
+   return CRYPT_OK;
 }
 
 #endif
 
-
-
-static const char *ID_TAG = "cbc.c"; 
- 

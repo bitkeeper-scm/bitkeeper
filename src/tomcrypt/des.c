@@ -708,5 +708,5 @@ int des3_keysize(int *desired_keysize)
     return CRYPT_OK;
 }
 
-#endif /* def DES */
+#endif
 

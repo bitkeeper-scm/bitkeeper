@@ -23,8 +23,11 @@ int ofb_start(int cipher, const unsigned char *IV, const unsigned char *key,
    return cipher_descriptor[cipher].setup(key, keylen, num_rounds, &ofb->key);
 }
 
-void ofb_encrypt(const unsigned char *pt, unsigned char *ct, int len, symmetric_OFB *ofb)
+int ofb_encrypt(const unsigned char *pt, unsigned char *ct, unsigned long len, symmetric_OFB *ofb)
 {
+   if (cipher_is_valid(ofb->cipher) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+   }
    while (len--) {
        if (ofb->padlen == ofb->blocklen) {
           cipher_descriptor[ofb->cipher].ecb_encrypt(ofb->IV, ofb->IV, &ofb->key);
@@ -32,15 +35,15 @@ void ofb_encrypt(const unsigned char *pt, unsigned char *ct, int len, symmetric_
        }
        *ct++ = *pt++ ^ ofb->IV[ofb->padlen++];
    }
+   return CRYPT_OK;
 }
 
-void ofb_decrypt(const unsigned char *ct, unsigned char *pt, int len, symmetric_OFB *ofb)
+int ofb_decrypt(const unsigned char *ct, unsigned char *pt, unsigned long len, symmetric_OFB *ofb)
 {
-   ofb_encrypt(ct, pt, len, ofb);
+   return ofb_encrypt(ct, pt, len, ofb);
 }
 
 
 #endif
 
-static const char *ID_TAG = "ofb.c"; 
  

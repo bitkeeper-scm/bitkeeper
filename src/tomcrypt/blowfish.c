@@ -669,5 +669,3 @@ int blowfish_keysize(int *desired_keysize)
 
 #endif
 
-static const char *ID_TAG = "blowfish.c";
-

@@ -255,5 +255,4 @@ int  md5_test(void)
 
 #endif
 
-static const char *ID_TAG = "md5.c";
 

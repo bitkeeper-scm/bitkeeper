@@ -218,5 +218,4 @@ int  sha1_test(void)
 
 #endif
 
-static const char *ID_TAG = "sha1.c";
 

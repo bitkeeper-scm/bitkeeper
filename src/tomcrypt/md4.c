@@ -277,5 +277,4 @@ int md4_test(void)
 
 #endif
 
-static const char *ID_TAG = "md4.c";
 

@@ -14,12 +14,12 @@ const struct _prng_descriptor yarrow_desc =
 int yarrow_start(prng_state *prng)
 {
    /* these are the default hash/cipher combo used */
-#ifdef BLOWFISH
-   prng->yarrow.cipher = register_cipher(&blowfish_desc);
+#ifdef RIJNDAEL
+   prng->yarrow.cipher = register_cipher(&rijndael_desc);
 #elif defined(TWOFISH)
    prng->yarrow.cipher = register_cipher(&twofish_desc);
-#elif defined(RIJNDAEL)
-   prng->yarrow.cipher = register_cipher(&rijndael_desc);
+#elif defined(BLOWFISH)
+   prng->yarrow.cipher = register_cipher(&blowfish_desc);
 #elif defined(SERPENT)
    prng->yarrow.cipher = register_cipher(&serpent_desc);
 #elif defined(SAFER)
@@ -37,18 +37,18 @@ int yarrow_start(prng_state *prng)
 #elif
    #error YARROW needs at least one CIPHER
 #endif
-   if (prng_is_valid(prng->yarrow.cipher) == CRYPT_ERROR) {
+   if (cipher_is_valid(prng->yarrow.cipher) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
 
-#ifdef SHA1
-   prng->yarrow.hash   = register_hash(&sha1_desc);
+#ifdef SHA256
+   prng->yarrow.hash   = register_hash(&sha256_desc);
 #elif defined(SHA512)
    prng->yarrow.hash   = register_hash(&sha512_desc);
 #elif defined(SHA384)
    prng->yarrow.hash   = register_hash(&sha384_desc);
-#elif defined(SHA256)
-   prng->yarrow.hash   = register_hash(&sha256_desc);
+#elif defined(SHA1)
+   prng->yarrow.hash   = register_hash(&sha1_desc);
 #elif defined(TIGER)
    prng->yarrow.hash   = register_hash(&tiger_desc);
 #elif defined(MD5)
@@ -64,7 +64,6 @@ int yarrow_start(prng_state *prng)
 
    /* zero the memory used */
    zeromem(prng->yarrow.pool, sizeof(prng->yarrow.pool));
-   zeromem(prng->yarrow.buf, sizeof(prng->yarrow.buf));
 
    return CRYPT_OK;
 }
@@ -102,16 +101,13 @@ int yarrow_ready(prng_state *prng)
       return CRYPT_ERROR;
    }
 
-   /* clear the CTR counter */
-   zeromem(prng->yarrow.buf, sizeof(prng->yarrow.buf));
-
    /* setup CTR mode using the "pool" as the key */
    ks = hash_descriptor[prng->yarrow.hash].hashsize;
    if (cipher_descriptor[prng->yarrow.cipher].keysize(&ks) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
 
-   if (ctr_start(prng->yarrow.cipher, prng->yarrow.buf, prng->yarrow.pool, ks, 0, &prng->yarrow.ctr) == CRYPT_ERROR) {
+   if (ctr_start(prng->yarrow.cipher, prng->yarrow.pool, prng->yarrow.pool, ks, 0, &prng->yarrow.ctr) == CRYPT_ERROR) {
       return CRYPT_ERROR;
    }
    return CRYPT_OK;
@@ -119,11 +115,11 @@ int yarrow_ready(prng_state *prng)
 
 unsigned long yarrow_read(unsigned char *buf, unsigned long len, prng_state *prng)
 {
-   ctr_encrypt(buf, buf, len, &prng->yarrow.ctr);
+   if (ctr_encrypt(buf, buf, len, &prng->yarrow.ctr) == CRYPT_ERROR) {
+      return 0;
+   }
    return len;
 }
 
 #endif
-
-static const char *ID_TAG = "yarrow.c"; 
 

@@ -108,6 +108,8 @@
 
 #define MECC     /* Include ECC code? */
 
+#define KR       /* Include keyring support? */
+
 /* packet code */
 #if defined(MRSA) || defined(MDH) || defined(MECC)
     #define PACKET
@@ -146,7 +148,9 @@
 /* ECC Key settings */
 #ifdef MECC 
 
+#define ECC160
 #define ECC192
+#define ECC224
 #define ECC256
 #define ECC384
 #define ECC521

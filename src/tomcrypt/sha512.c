@@ -256,5 +256,5 @@ int  sha512_test(void)
 
 #endif
 
-static const char *ID_TAG = "sha512.c";
+
 

@@ -31,7 +31,7 @@ int ecc_encrypt(const unsigned char *in,  unsigned long len,
     }
 
     /* make a random key and export the public copy */
-    if (ecc_make_key(ecc_get_size(key), prng, wprng, &pubkey) == CRYPT_ERROR) 
+    if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) == CRYPT_ERROR) 
        return CRYPT_ERROR;
 
     pubkeysize = sizeof(pub_expt);
@@ -280,7 +280,7 @@ int ecc_sign(const unsigned char *in,  unsigned long inlen,
    }
 
    /* make up a key and export the public copy */
-   if (ecc_make_key(ecc_get_size(key), prng, wprng, &pubkey) == CRYPT_ERROR) 
+   if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) == CRYPT_ERROR) 
       return CRYPT_ERROR;
 
    pubkeysize = sizeof(epubkey);
@@ -307,9 +307,9 @@ int ecc_sign(const unsigned char *in,  unsigned long inlen,
    if (mp_read_raw(&b, md, 1+hash_descriptor[hash].hashsize) != MP_OKAY)  { goto error; }
 
    /* find b = (m - x)/k */
-   if (mp_invmod(&pubkey.k, &p, &pubkey.k) != MP_OKAY) { goto error; } /* k = 1/k */
-   if (mp_submod(&b, &key->k, &p, &b) != MP_OKAY) { goto error; }      /* b = m - x */
-   if (mp_mulmod(&b, &pubkey.k, &p, &b) != MP_OKAY) { goto error; }    /* b = (m - x)/k */
+   if (mp_invmod(&pubkey.k, &p, &pubkey.k) != MP_OKAY)                    { goto error; } /* k = 1/k */
+   if (mp_submod(&b, &key->k, &p, &b) != MP_OKAY)                         { goto error; } /* b = m - x */
+   if (mp_mulmod(&b, &pubkey.k, &p, &b) != MP_OKAY)                       { goto error; } /* b = (m - x)/k */
 
    /* export it */
    rsize = mp_raw_size(&b);
@@ -428,7 +428,7 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
    } 
 
    /* load b */
-   if (mp_read_raw(&b, (unsigned char *)sig+y, x) != MP_OKAY) { goto error; }
+   if (mp_read_raw(&b, (unsigned char *)sig+y, x) != MP_OKAY)                      { goto error; }
    y += x;
 
    /* get m in binary a bignum */
@@ -438,25 +438,26 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
       res = CRYPT_ERROR;
       goto error;
    }
-   if (mp_read_raw(&m, md, hash_descriptor[hash].hashsize + 1) != MP_OKAY) { goto error; }
+   if (mp_read_raw(&m, md, hash_descriptor[hash].hashsize + 1) != MP_OKAY)         { goto error; }
    
    /* load prime */
-   if (mp_read_radix(&p, sets[key->idx].prime, 10) != MP_OKAY) { goto error; }
+   if (mp_read_radix(&p, sets[key->idx].prime, 10) != MP_OKAY)                     { goto error; }
 
    /* get bA */
-   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR) { goto error; }
+   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR)          { goto error; }
    
    /* get bA + Y */
    if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR) { goto error; }
 
    /* get mG */
-   if (mp_read_radix(&mG->x, sets[key->idx].Gx, 16) != MP_OKAY) { goto error; }
-   if (mp_read_radix(&mG->y, sets[key->idx].Gy, 16) != MP_OKAY) { goto error; }
-   if (ecc_mulmod(&m, mG, mG, &p) == CRYPT_ERROR) { goto error; }
+   if (mp_read_radix(&mG->x, sets[key->idx].Gx, 16) != MP_OKAY)                    { goto error; }
+   if (mp_read_radix(&mG->y, sets[key->idx].Gy, 16) != MP_OKAY)                    { goto error; }
+   if (ecc_mulmod(&m, mG, mG, &p) == CRYPT_ERROR)                                  { goto error; }
 
    /* compare mG to bA + Y */
-   if (!mp_cmp(&mG->x, &pubkey.pubkey.x) && !mp_cmp(&mG->y, &pubkey.pubkey.y))
+   if (!mp_cmp(&mG->x, &pubkey.pubkey.x) && !mp_cmp(&mG->y, &pubkey.pubkey.y)) {
       *stat = 1;
+   }
 
    /* clear up and return */
    res = CRYPT_OK;
@@ -493,7 +494,7 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
     }
 
     /* make a random key and export the public copy */
-    if (ecc_make_key(ecc_get_size(key), prng, wprng, &pubkey) == CRYPT_ERROR) 
+    if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) == CRYPT_ERROR) 
        return CRYPT_ERROR;
 
     pubkeysize = sizeof(pub_expt);
@@ -523,8 +524,9 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
     }
 
     /* Encrypt the key */
-    for (x = 0; x < keylen; x++)
+    for (x = 0; x < keylen; x++) {
       skey[x] ^= inkey[x];
+    }
 
     /* output header */
     y = PACKET_SIZE;
@@ -559,9 +561,8 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
     return CRYPT_OK;
 }
 
-int ecc_decrypt_key(const unsigned char *in,  unsigned long len, 
-                          unsigned char *outkey, unsigned long *keylen, 
-                          ecc_key *key)
+int ecc_decrypt_key(const unsigned char *in, unsigned char *outkey, 
+                          unsigned long *keylen, ecc_key *key)
 {
    unsigned char shared_secret[256], skey[MAXBLOCKSIZE];
    unsigned long x, y, z, res, hashsize, keysize;
@@ -636,5 +637,202 @@ int ecc_decrypt_key(const unsigned char *in,  unsigned long len,
    return res;
 }
 
-static const char *ID2_TAG = "ecc_sys.c"; 
- 
+int ecc_sign_hash(const unsigned char *in,  unsigned long inlen, 
+                        unsigned char *out, unsigned long *outlen, 
+                        prng_state *prng, int wprng, ecc_key *key)
+{
+   ecc_key pubkey;
+   mp_int b, p;
+   unsigned char epubkey[256], er[256], md[MAXBLOCKSIZE];
+   unsigned long x, y, pubkeysize, rsize;
+   int res;
+
+   /* is this a private key? */
+   if (key->type != PK_PRIVATE) {
+      crypt_error = "Cannot sign with public key in ecc_sign().";
+      return CRYPT_ERROR;
+   }
+
+   if (prng_is_valid(wprng) == CRYPT_ERROR) {
+      return CRYPT_ERROR;
+   }
+
+   /* make up a key and export the public copy */
+   if (ecc_make_key(prng, wprng, ecc_get_size(key), &pubkey) == CRYPT_ERROR) {
+      return CRYPT_ERROR;
+   }
+
+   pubkeysize = sizeof(epubkey);
+   if (ecc_export(epubkey, &pubkeysize, PK_PUBLIC, &pubkey) == CRYPT_ERROR) {
+      ecc_free(&pubkey);
+      return CRYPT_ERROR;
+   }
+
+   /* get the hash and load it as a bignum into 'b' */
+   md[0] = 0;
+   memcpy(md+1, in, MIN(sizeof(md)-1,inlen));
+
+   /* init the bignums */
+   if (mp_init_multi(&b, &p, NULL) != MP_OKAY) { 
+      crypt_error = "Out of memory in ecc_sign().";
+      ecc_free(&pubkey);
+      return CRYPT_ERROR;
+   }
+   if (mp_read_radix(&p, sets[key->idx].order, 10) != MP_OKAY)            { goto error; }
+   if (mp_read_raw(&b, md, 1+MIN(sizeof(md)-1,inlen)) != MP_OKAY)         { goto error; }
+
+   /* find b = (m - x)/k */
+   if (mp_invmod(&pubkey.k, &p, &pubkey.k) != MP_OKAY)                    { goto error; } /* k = 1/k */
+   if (mp_submod(&b, &key->k, &p, &b) != MP_OKAY)                         { goto error; } /* b = m - x */
+   if (mp_mulmod(&b, &pubkey.k, &p, &b) != MP_OKAY)                       { goto error; } /* b = (m - x)/k */
+
+   /* export it */
+   rsize = mp_raw_size(&b);
+   if (rsize > sizeof(er)) { 
+      goto error; 
+   }
+   mp_toraw(&b, er);
+
+   /* now lets check the outlen before we write */
+   if (*outlen < (12 + rsize + pubkeysize)) {
+      crypt_error = "Buffer overflow in ecc_sign().";
+      res = CRYPT_ERROR;
+      goto done1;
+   }
+
+   /* lets output */
+   y = PACKET_SIZE;
+   
+   /* size of public key */
+   STORE32L(pubkeysize, out+y);
+   y += 4;
+
+   /* copy the public key */
+   for (x = 0; x < pubkeysize; x++, y++) {
+       out[y] = epubkey[x];
+   }
+
+   /* size of 'r' */
+   STORE32L(rsize, out+y);
+   y += 4;
+
+   /* copy r */
+   for (x = 0; x < rsize; x++, y++) {
+       out[y] = er[x];
+   }
+
+   /* store header */
+   packet_store_header(out, PACKET_SECT_ECC, PACKET_SUB_SIGNED, y);
+
+   /* clear memory */
+   *outlen = y;
+   res = CRYPT_OK;
+   goto done1;
+error:
+   res = CRYPT_ERROR;
+   crypt_error = "Out of memory in ecc_sign().";
+done1:
+   mp_clear_multi(&b, &p, NULL);
+   ecc_free(&pubkey);
+   zeromem(er, sizeof(er));
+   zeromem(epubkey, sizeof(epubkey));
+   zeromem(md, sizeof(md));
+   return res;   
+}
+
+/* verify that mG = (bA + Y) */
+int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash, 
+                     unsigned long inlen, int *stat, 
+                     ecc_key *key)
+{
+   ecc_point *mG;
+   ecc_key   pubkey;
+   mp_int b, p, m;
+   unsigned long x, y;
+   int res;
+   unsigned char md[MAXBLOCKSIZE];
+
+   /* default to invalid signature */
+   *stat = 0;
+
+   /* is the message format correct? */
+   if (packet_valid_header((unsigned char *)sig, PACKET_SECT_ECC, PACKET_SUB_SIGNED) == CRYPT_ERROR) {
+      crypt_error = "Invalid message format for ecc_verify().";
+      return CRYPT_ERROR;
+   }     
+
+   /* get hash name */
+   y = PACKET_SIZE;
+
+   /* get size of public key */
+   LOAD32L(x, sig+y);
+   y += 4;
+
+   /* load the public key */
+   if (ecc_import((unsigned char*)sig+y, &pubkey) == CRYPT_ERROR) {
+      ecc_free(&pubkey);
+      return CRYPT_ERROR;
+   }
+   y += x;
+
+   /* load size of 'b' */
+   LOAD32L(x, sig+y);
+   y += 4;
+
+   /* init values */
+   if (mp_init_multi(&b, &m, &p, NULL) != MP_OKAY) { 
+      crypt_error = "Out of memory in ecc_verify()."; 
+      ecc_free(&pubkey);
+      return CRYPT_ERROR;
+   }
+
+   mG = new_point();
+   if (mG == NULL) { 
+      crypt_error = "Out of memory in ecc_verify()."; 
+      mp_clear_multi(&b, &m, &p, NULL);
+      ecc_free(&pubkey);
+      return CRYPT_ERROR;
+   } 
+
+   /* load b */
+   if (mp_read_raw(&b, (unsigned char *)sig+y, x) != MP_OKAY)                      { goto error; }
+   y += x;
+
+   /* get m in binary a bignum */
+   md[0] = 0;
+   memcpy(md+1,hash,MIN(sizeof(md)-1,inlen));
+   if (mp_read_raw(&m, md, 1+MIN(sizeof(md)-1,inlen)) != MP_OKAY)                  { goto error; }
+   
+   /* load prime */
+   if (mp_read_radix(&p, sets[key->idx].prime, 10) != MP_OKAY)                     { goto error; }
+
+   /* get bA */
+   if (ecc_mulmod(&b, &pubkey.pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR)          { goto error; }
+   
+   /* get bA + Y */
+   if (add_point(&pubkey.pubkey, &key->pubkey, &pubkey.pubkey, &p) == CRYPT_ERROR) { goto error; }
+
+   /* get mG */
+   if (mp_read_radix(&mG->x, sets[key->idx].Gx, 16) != MP_OKAY)                    { goto error; }
+   if (mp_read_radix(&mG->y, sets[key->idx].Gy, 16) != MP_OKAY)                    { goto error; }
+   if (ecc_mulmod(&m, mG, mG, &p) == CRYPT_ERROR)                                  { goto error; }
+
+   /* compare mG to bA + Y */
+   if (!mp_cmp(&mG->x, &pubkey.pubkey.x) && !mp_cmp(&mG->y, &pubkey.pubkey.y)) {
+      *stat = 1;
+   }
+
+   /* clear up and return */
+   res = CRYPT_OK;
+   goto done1;
+error:
+   res = CRYPT_ERROR;
+   crypt_error = "Out of memory in ecc_verify().";
+done1:
+   del_point(mG);
+   ecc_free(&pubkey);
+   mp_clear_multi(&p, &m, &b, NULL);
+   zeromem(md, sizeof(md));
+   return CRYPT_OK;
+}
+

@@ -1,4 +1,5 @@
 #include "mycrypt.h"
+#include <signal.h>
 
 char *crypt_error;
 
@@ -168,7 +169,7 @@ int find_cipher_any(const char *name, int blocklen, int keylen)
    if (x != -1) return x;
 
    for (x = 0; cipher_descriptor[x].name != NULL; x++) {
-       if (blocklen <= cipher_descriptor[x].block_length && keylen <= cipher_descriptor[x].max_key_length) {
+       if (blocklen <= (int)cipher_descriptor[x].block_length && keylen <= (int)cipher_descriptor[x].max_key_length) {
           return x;
        }
    }
@@ -488,6 +489,4 @@ const char *crypt_build_settings =
 
     "\n\n\n"
     ;
-
-static const char *ID_TAG = "crypt.c";
 

@@ -105,5 +105,3 @@ error:
 
 #endif
 
-static const char *ID_TAG = "base64.c"; 
-

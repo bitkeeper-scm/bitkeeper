@@ -92,7 +92,7 @@ int  sha384_test(void)
   }
 }
 
-static const char *ID2_TAG = "sha384.c";
+
 
 
 

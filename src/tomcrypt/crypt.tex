@@ -44,12 +44,12 @@
 \def\gap{\vspace{0.5ex}}
 \makeindex
 \begin{document}
-\title{Tiny Crypto Library \\ ``LibTomCrypt'' \\ Version 0.66}
+\title{A Tiny Crypto Library, \\ LibTomCrypt \\ Version 0.67}
 \author{Tom St Denis \\
 Algonquin College \\
 \\
 tomstdenis@yahoo.com \\
-http://libtomcrypt.sunsite.dk \\ \\
+http://libtomcrypt.iaw.ca \\ \\
 Phone: 1-613-836-3160\\
 111 Banning Rd \\
 Kanata, Ontario \\
@@ -60,26 +60,37 @@ Canada
 \newpage
 \tableofcontents
 \chapter{Introduction}
-\section{What is the Tiny Crypto Library?}
-Since I really could care less for a name you can call this library either ``Tiny Crypto Library'' or ``libtomcrypt.a''.  
+\section*{Foreword}
+This is a special foreword for the v0.67 release only.  V0.67 is one of the few major milestone transitions for the 
+libtomcrypt project.  This release features an updated API, new functions and the beginings of an entirely new manual
+using the Docer system by Tom St Denis.  Time is fairly pressed to get this documentation done and while its agreed that
+good documentation is a requisit for a good library it is possible that the manual is out of sync with the API.  For the most
+part the API [non public key related] is the same with subtle changes.  It makes little sense to revise this manual when
+a new one [from scratch] is planned for the v0.68 release.
 
-So what is ``libtomcrypt.a''?  It is a portable ANSI C cryptographic library that supports
-symmetric ciphers, one-way hashes, pseudo-random number generators and public key crypto (via RSA,DH or ECC/DH).  It is 
-designed to compile out of the box with the GNU C Compiler (GCC) version 2.95.3 (and higher) and with MSVC version 6.00 and
-higher.
+For this reason the developers are suggested to read the header files for the correct up-to-date prototypes.  Fortunately
+one of the updates in v0.67 is the new organization for the header files.  They have been split into logical categories 
+beginning with ``mycrypt\_''.  For example, all of the base public-key crypto prototypes are in ``mycrypt\_pk.h''.
+\newpage
 
-The library is designed so new ciphers/hashes/prngs can be added and the existing API (and helper API functions) will 
+\section{What is the libtomcrypt?}
+libtomcrypt is a portable ANSI C cryptographic library that supports
+symmetric ciphers, one-way hashes, pseudo-random number generators, public key cryptography (via RSA,DH or ECC/DH) and 
+a plethora of support routines.  It is designed to compile out of the box with the GNU C Compiler (GCC) version 
+2.95.3 (and higher) and with MSVC version 6 in win32.
+
+The library is designed so new ciphers/hashes/PRNGs can be added at runtime and the existing API (and helper API functions) will 
 be able to use the new designs automatically.  There exist self-check functions for each cipher and hash to ensure that
-they compile and execute to the design specifications.  The library also performs extensive parameter error checking
+they compile and execute to the published design specifications.  The library also performs extensive parameter error checking
 and will give verbose error messages.
 
 \subsection{What the library {\bf IS} for?}
 
 The library typically serves as a basis for other protocols and message formats.  For example, it should be possible to 
 take the RSA routines out of this library, apply the appropriate message padding and get PKCS compliant RSA routines.  The
-goal is to provide these low level core functions.  
+goal of this package is to provide these low level core functions.  
 
-The library also serves well as a toolkit for applications where they don't wish to be OpenPGP, PKCS, etc. compliant.
+The library also serves well as a toolkit for applications where they don't need to be OpenPGP, PKCS, etc. compliant.
 Often one simply wants the ciphers, hashes, prngs and PK algorithms available, the actual message format is not important.  
 This can makes the library versatile since it allows you to make up your own message format that suits the task at hand.  
 To serve this end the library provide functions such as ``rsa\_encrypt()'', ``dh\_encrypt()'' and ``ecc\_encrypt()'' which 
@@ -115,17 +126,18 @@ The idea is that I am not striving to replace OpenSSL or Crypto++ or Cryptlib or
 With this library all core functions (ciphers, hashes, prngs) have the {\bf exact} same prototype definition.  They all load
 and store data in a format independent of the platform.  This means if you encrypt with Blowfish on a PPC it should decrypt
 on an x86 with zero problems.  The consistent API also means that if you learn how to use blowfish with my library you 
-know how to use Safer+ or RC6 or Serpent or ... as well.  With all of my core functions there is a central descriptor table 
+know how to use Safer+ or RC6 or Serpent or ... as well.  With all of the core functions there are central descriptor tables 
 that can be used to make a program automatically pick between ciphers, hashes and PRNGs at runtime.  That means your 
-application can support all ciphers/hashes/prngs without changing the source.
+application can support all ciphers/hashes/prngs without changing the source code.
 
 \section{License}
 
-All of the code except for MPI, the Zlib compression code and the AES/Serpent code has been written from scratch by 
-Tom St Denis and as such is under the officially binding ``Tom Doesn't Care About Licenses'' or TDCAL license.  This entitles the 
-user to use this library for {\em whatever} they want without any form of repayment to the author whatsoever.  Similarly
-MPI is public domain software copyrighted by Michael Fromberger and may be freely used.  The Serpent and AES code are 
-copyrighted by Brian Gladman and available for any purpose provided the copyright message and rights remains intact.
+All of the code except for MPI, the Zlib compression code and a few of the ciphers and hash functions have been written 
+from scratch by Tom St Denis and as such is under the officially binding ``Tom Doesn't Care About Licenses'' or TDCAL 
+license.  This entitles the user to use this library for {\em whatever} they want without any form of repayment to 
+the author whatsoever.  Similarly MPI is public domain software copyrighted by Michael Fromberger and may be freely 
+used.  The Serpent and AES code are copyrighted by Brian Gladman and available for any purpose provided the 
+copyright message and rights remains intact.
 
 The ``Zlib'' compression code is copyrighted\footnote{Written by Jean-loup Gailly and Mark Adler.} ``freeware'' code.  It
 may be freely distributed, modified and used provided the copyright and origins of the code are not removed or altered.
@@ -136,24 +148,24 @@ The net effect of all the varying licenses results in these simple rules:
 \begin{enumerate}
      \item The code is free to distribute, modify and use in commercial projects.
      \item You may not remove or alter any copyright notice or header disclosing authors names and original code origins.
+     \item Unlike the GPL you are {\em NOT} required to distribute the source with your projects.
 \end{enumerate}
 
 \section{Building the library}
 
 To build the library on a GCC equipped platform simply type ``make'' at your command prompt.  It will build the library
-file ``libtomcrypt.a''.  If you are on a non-x86 platform comment out the appropriate line in ``makefile''.  To build the
-test executable just take off the ``.exe''.  I hope to have a makefile for *NIX platforms shortly.
+file ``libtomcrypt.a''.  If you are on a non-x86 platform comment out the appropriate line in ``makefile''.  
 
 Some users have noted that they must first convert the CR/LF nature of the files to the *NIX LF format before they will
-compile correctly.  I will include an updated makefile in future releases to address this.  For now just change the files
+compile correctly.  For now just change the files
 manually before compiling.  To install the library copy all of the ``.h'' files into your ``\#include'' path and the 
 single libtomcrypt.a file into your library path.
 
-With MSVC you can build the library with ``make -f makefile.vc''.
+With MSVC you can build the library with ``nmake -f makefile.vc''.
 
 \subsection{Too big?}
-As I have been developing this library I've seen it grow from a small $40$kb to a huge $>400$kb it is now.  Now you may not want
-to have all this big pile of code in your application.
+As I have been developing this library I've seen it grow from a small $40$kb to a huge $>500$kb it is now.  Now you 
+may not want to have all this big pile of code in your application.
 
 To make it easy to save space I have written a series of \#define switches at the top of ``mycrypt\_cfg.h''.  Just comment out the
 switch for the algorithm you do {\bf NOT} want and rebuild the library.  This lets you remove ciphers, hashes, prngs, modes of
@@ -167,8 +179,9 @@ key settings you want to support.
 As a side bonus this lets you remove RC5 and RC6 which is a good idea if you release your application in the US since RSA holds
 patents on both RC5 and RC6.  Note that if you do not actually use any of the particular ciphers/prngs/hashes they will not get 
 linked into the application.  The build time switches are mostly for if you intend to include the library on your small memory device
-as say some sort of shared library or if your compiler cannot handle some of the code (e.g. 64-bit long long's).  With all versions of
-GCC above 2.95.3 the library will build regardless of what platform provided the library doesn't exhaust the platforms memory space.
+as say some sort of shared library or if your compiler cannot handle some of the code (e.g. 64-bit long long's).  With all 
+versions of GCC above 2.95.3 the library will build regardless of what platform provided the library doesn't exhaust 
+the platforms memory space.
 
 \section{Thanks}
 I would like to give thanks to the following people (in no particular order) for helping me develop this project:
@@ -183,6 +196,7 @@ I would like to give thanks to the following people (in no particular order) for
    \item Dobes Vandermeer
    \item Daniel Richards
    \item Wayne Scott
+   \item Andrew Tyler
 \end{enumerate}
 
 \chapter{The Application Programming Interface (API)}
@@ -207,7 +221,7 @@ void somefunc(void)
 
 There is no initialization routine for the library and for the most part the code is thread safe.  The only thread
 related issue is if you use the same symmetric cipher, hash or public key state data in multiple threads.  Normally
-that is not an issue, therefore, the library is thread safe.  Another potential pitfall is if multiple errors occur
+that is not an issue.  Another potential pitfall is if multiple errors occur
 simultaneously.  In this case the functions will still return {\bf CRYPT\_ERROR} like they should but the ``crypt\_error''
 variable will not apply to the specific error.  Therefore, it is a good idea to treat the ``crypt\_error'' as suggestion
 in multi-threaded applications.
@@ -292,9 +306,8 @@ either ``buffer'' or ``x'' and simply return {\bf CRYPT\_ERROR}.  If the functio
 back into ``x'' so that the calling application will know how many bytes used.
 
 \section{Functions that need a PRNG}
-Certain functions such as ``rsa\_make\_key()'' require a PRNG to function since they must make up a random key to be
-secure.  These functions do not setup the PRNG themselves so it is the responsibility of the calling application to initialize
-the PRNG before calling them.
+Certain functions such as ``rsa\_make\_key()'' require a PRNG.  These functions do not setup the PRNG themselves so it is 
+the responsibility of the calling function to initialize the PRNG before calling them.
 
 \section{Functions that use Arrays of Octets}
 Most functions require inputs that are arrays of the data type ``unsigned char''.  Whether it is a symmetric key, IV
@@ -672,18 +685,21 @@ is a pointer to the structure you want to hold the information for the mode of o
 Both routines return {\bf CRYPT\_OK} if the cipher initialized correctly, otherwise they return {\bf CRYPT\_ERROR}.  To 
 actually encrypt or decrypt the following routines are provided:
 \begin{verbatim}
-void XXX_encrypt(const unsigned char *pt, unsigned char *ct, 
-                 symmetric_XXX *XXX);
-void XXX_decrypt(const unsigned char *ct, unsigned char *pt,
-                 symmetric_XXX *XXX);
+int XXX_encrypt(const unsigned char *pt, unsigned char *ct, 
+                symmetric_XXX *XXX);
+int XXX_decrypt(const unsigned char *ct, unsigned char *pt,
+                symmetric_XXX *XXX);
 
-void YYY_encrypt(const unsigned char *pt, unsigned char *ct, 
-                 int len, symmetric_YYY *YYY);
-void YYY_decrypt(const unsigned char *ct, unsigned char *pt, 
-                 int len, symmetric_YYY *YYY);
+int YYY_encrypt(const unsigned char *pt, unsigned char *ct, 
+                unsigned long len, symmetric_YYY *YYY);
+int YYY_decrypt(const unsigned char *ct, unsigned char *pt, 
+                unsigned long len, symmetric_YYY *YYY);
 \end{verbatim}
 Where ``XXX'' is one of (ecb, cbc) and ``YYY'' is one of (ctr, ofb, cfb).  In the CTR, OFB and CFB cases ``len'' is the
-size of the buffer (as number of chars) to encrypt or decrypt.
+size of the buffer (as number of chars) to encrypt or decrypt.  The CTR, OFB and CFB modes are order sensitive but not
+chunk sensitive.  That is you can encrypt ``ABCDEF'' in three calls like ``AB'', ``CD'', ``EF'' or two like ``ABCDE'' and ``F''
+and end up with the same ciphertext.  However, encrypting ``ABC'' and ``DABC'' will result in different ciphertexts.  All
+four of the functions return {\bf CRYPT\_ERROR} on error.
 
 To decrypt in either mode you simply perform the setup like before (recall you have to fetch the IV value you used)
 and use the decrypt routine on all of the blocks.  When you are done working with either mode you should wipe the 
@@ -870,12 +886,18 @@ int hash_memory(int hash, const unsigned char *data,
 int hash_file(int hash, const char *fname, 
               unsigned char *dst,
               unsigned long *outlen);
+
+int hash_filehandle(int hash, FILE *in, 
+                    unsigned char *dst, unsigned long *outlen);
 \end{verbatim}
 
 Both functions return {\bf CRYPT\_OK} on success, otherwise they return {\bf CRYPT\_ERROR}.  The ``hash'' parameter is
 the location in the descriptor table of the hash.  The ``*outlen'' variable is used to keep track of the output size.  You
 must set it to the size of your output buffer before calling the functions.  When they complete succesfully they store
-the length of the message digest back in it.  The functions are otherwise straightforward.  To perform the above 
+the length of the message digest back in it.  The functions are otherwise straightforward.  The ``hash\_filehandle'' function
+assumes that ``in'' is an file handle opened in binary mode.  It will not reset the file position after hashing the content.
+
+To perform the above 
 hash with md5 the following code could be used:
 \begin{small}
 \begin{verbatim}
@@ -1156,35 +1178,6 @@ platform where the RNG doesn't work well.  Example usage of this function is giv
 #include <mycrypt.h>
 int main(void)
 {
-   prng_state prng;
-
-   /* register yarrow */
-   if (register_prng(&yarrow_desc) == -1) {
-      printf("Error registering Yarrow: %s\n", crypt_error);
-      return -1;
-   }
-
-   /* setup the PRNG */
-   if (rng_make_prng(128, find_prng("yarrow"), &prng, NULL) == CRYPT_ERROR) {
-      printf("Error setting up PRNG, %s\n", crypt_error);
-      return -1;
-   }
-   return 0;
-}
-\end{verbatim}
-
-\section{PRNGs Included}
-The library currently includes two different PRNG systems, the first is ``yarrow'' which is a derivative of the ``yarrow''
-PRNG\footnote{It uses a cipher in CTR mode like Yarrow but has a different reseed mechanism that is simpler.}.  The second 
-is ``sprng'' which uses the ``rng\_get\_bytes()'' function as a source.
-
-You never need to start, seed or ready the ``sprng'' PRNG, you can use it right away.  If you call a function that needs a 
-PRNG  you can pass ``prng\_find('sprng')'' as the index and NULL as the prng state.  For example, below is a snippet that
-makes an ECC key with this PRNG:
-\begin{verbatim}
-#include <mycrypt.h>
-int main(void)
-{
    ecc_key mykey;
    prng_state prng;
 
@@ -1201,7 +1194,35 @@ int main(void)
    }
 
    /* make a 192-bit ECC key */
-   if (ecc_make_key(24, NULL, find_prng("yarrow"), &mykey) == CRYPT_ERROR) {
+   if (ecc_make_key(&prng, find_prng("yarrow"), 24, &mykey) == CRYPT_ERROR) {
+      printf("Error making key: %s\n", crypt_error);
+      return -1;
+   }
+   return 0;
+}
+\end{verbatim}
+
+\section{PRNGs Included}
+The library currently includes two different PRNG systems, the first is ``yarrow'' which is a derivative of the ``yarrow''
+PRNG\footnote{It uses a cipher in CTR mode like Yarrow but has a different reseed mechanism that is simpler.}.  The second 
+is ``sprng'' which uses the ``rng\_get\_bytes()'' function as a source.
+
+You never need to start, seed or ready the ``sprng'' PRNG, you can use it right away.  If you call a function that needs a 
+PRNG  you can pass ``prng\_find(`sprng')'' as the index and NULL as the prng state.  For example, below is a snippet that
+makes an ECC key with this PRNG:
+\begin{verbatim}
+#include <mycrypt.h>
+int main(void)
+{
+   ecc_key mykey;
+   /* register sprng */
+   if (register_prng(&sprng_desc) == -1) {
+      printf("Error registering sprng: %s\n", crypt_error);
+      return -1;
+   }
+
+   /* make a 192-bit ECC key */
+   if (ecc_make_key(NULL, find_prng("sprng"), 24, &mykey) == CRYPT_ERROR) {
       printf("Error making key: %s\n", crypt_error);
       return -1;
    }
@@ -1321,6 +1342,17 @@ the padding scheme used in ``rsa\_sign()'' you cannot use the SHA-384 or SHA-512
 RSA keys.  This is because the padding makes the values too large to fit in the space allowed.  You can use SHA-384
 with 1160 and above bit RSA keys.  You can use SHA-512 with 1544 and above bit RSA keys.
 
+There are related functions to sign and verify hashes.
+\begin{verbatim}
+int rsa_sign_hash(const unsigned char *in,  unsigned long inlen, 
+                        unsigned char *out, unsigned long *outlen, 
+                        rsa_key *key);
+
+int rsa_verify_hash(const unsigned char *sig, const unsigned char *hash,
+                          int *stat, rsa_key *key);
+\end{verbatim}
+Which works just like the two previous functions except the data is not hashed before being signed.
+
 There are times where you may want to encrypt a message to multiple recipients via RSA public keys.  The simplest way to
 accomplish this is to make up your own symmetric key and then RSA encrypt the symmetric key using all of the recipients
 public keys.  To facilitate this task two functions\footnote{Donated by Clay Culver.} are available:
@@ -1329,9 +1361,8 @@ int rsa_encrypt_key(const unsigned char *inkey, unsigned long inlen,
                           unsigned char *outkey, unsigned long *outlen,
                           prng_state *prng, int wprng, rsa_key *key);
 
-int rsa_decrypt_key(const unsigned char *in,  unsigned long len, 
-                          unsigned char *outkey, unsigned long *keylen,
-                          rsa_key *key);
+int rsa_decrypt_key(const unsigned char *in, unsigned char *outkey, 
+                          unsigned long *keylen, rsa_key *key);
 \end{verbatim}
 
 The ``rsa\_encrypt\_key()'' function accepts a symmetric key (limited to 32 bytes) as input in ``inkey''.  ``inlen''
@@ -1422,8 +1453,8 @@ called ``dh\_key'' which stores the Diffie-Hellman key in a format these routine
 make a Diffie-Hellman private key pair:
 \index{dh\_make\_key()}
 \begin{verbatim}
-int dh_make_key(int keysize, prng_state *prng, 
-                int wprng, dh_key *key);
+int dh_make_key(prng_state *prng, int wprng, 
+                int keysize, dh_key *key);
 \end{verbatim}
 The ``keysize'' is the size of the modulus you want in bytes.  Currently support sizes are 64 to 512 bytes which correspond 
 to key sizes of 512 to 4096 bits. The smaller the key the faster it is to use however it will be less secure.  When 
@@ -1491,7 +1522,7 @@ int establish_secure_socket(int sock, int mode, unsigned char *key,
    dh_key mykey, theirkey;
 
    /* make up our private key */
-   if (dh_make_key(128, prng, wprng, &mykey) == CRYPT_ERROR) 
+   if (dh_make_key(prng, wprng, 128, &mykey) == CRYPT_ERROR) 
       return CRYPT_ERROR;
 
    /* export our key as public */ 
@@ -1615,9 +1646,8 @@ int dh_encrypt_key(const unsigned char *inkey, unsigned long keylen,
                          prng_state *prng, int wprng, int hash, 
                          dh_key *key);
 
-int dh_decrypt_key(const unsigned char *in,  unsigned long len, 
-                         unsigned char *outkey, unsigned long *keylen, 
-                         dh_key *key);
+int dh_decrypt_key(const unsigned char *in, unsigned char *outkey, 
+                         unsigned long *keylen, dh_key *key);
 \end{verbatim}
 Where ``inkey'' is an input symmetric key of no more than 32 bytes.  Essentially these routines created a random public key
 and find the hash of the shared secret.  The message digest is than XOR'ed against the symmetric key.  All of the required
@@ -1643,6 +1673,17 @@ int dh_verify(const unsigned char *sig,
 Where ``sig'' is the output of ''dh\_sign()`` and ``msg'' is the message of length ``inlen''.  It stores a zero in ``stat''
 if the signature is invalid otherwise it puts a one in there.  The function returns {\bf CRYPT\_ERROR} on error, otherwise
 it returns {\bf CRYPT\_OK}.
+
+Similar to the RSA system you can sign and verify a pre-hashed block as well using:
+\begin{verbatim}
+int dh_sign_hash(const unsigned char *in,  unsigned long inlen,
+                       unsigned char *out, unsigned long *outlen,
+                       prng_state *prng, int wprng, dh_key *key);
+
+int dh_verify_hash(const unsigned char *sig, const unsigned char *hash, 
+                         unsigned long inlen, int *stat, 
+                         dh_key *key);
+\end{verbatim}
 
 \chapter{Elliptic Curve Cryptography}
 
@@ -1673,12 +1714,12 @@ than or equal to 256-bits is sufficient for long term security.
 Like the DH routines there is a key structure ``ecc\_key'' used by the functions.  There is a function to make a key:
 \index{ecc\_make\_key()}
 \begin{verbatim}
-int ecc_make_key(int keysize, prng_state *prng, 
-                 int wprng, ecc_key *key);
+int ecc_make_key(prng_state *prng, int wprng, 
+                 int keysize, ecc_key *key);
 \end{verbatim}
 
-The ``keysize'' is the size of the modulus in bytes desired.  Currently directly supported values are 24, 32, 48 and 65 which
-correspond to key sizes of 192, 256, 384 and 521 bits respectively.  If you pass a key size that is between any key size
+The ``keysize'' is the size of the modulus in bytes desired.  Currently directly supported values are 20, 24, 28, 32, 48 and 65 bytes which
+correspond to key sizes of 160, 192, 224, 256, 384 and 521 bits respectively.  If you pass a key size that is between any key size
 it will round the keysize up to the next available one.  The rest of the parameters work like they do in the ``dh\_make\_key()'' function.  It returns
 {\bf CRYPT\_ERROR} on error, otherwise it returns {\bf CRYPT\_OK}.  To free the ram allocated by a key call:
 \index{ecc\_free()}
@@ -1751,9 +1792,8 @@ int ecc_encrypt_key(const unsigned char *inkey, unsigned long keylen,
                           prng_state *prng, int wprng, int hash, 
                           ecc_key *key);
 
-int ecc_decrypt_key(const unsigned char *in,  unsigned long len, 
-                          unsigned char *outkey, unsigned long *keylen, 
-                          ecc_key *key);
+int ecc_decrypt_key(const unsigned char *in, unsigned char *outkey, 
+                          unsigned long *keylen, ecc_key *key);
 \end{verbatim}
 You can sign messages with the ECC routines as well, to sign a message call:
 \index{ecc\_sign()}
@@ -1774,6 +1814,172 @@ int ecc_verify(const unsigned char *sig, const unsigned char *msg,
 \end{verbatim}
 Where ``sig'' is the signature from ``ecc\_sign()'' and ``msg'' is the input message.  It sets ``stat'' to 0 if the signature
 is invalid and it sets ``stat'' to 1 if its valid.  This function returns {\bf CRYPTO\_ERROR} on error, otherwise it returns {\bf CRYPT\_OK}.
+
+To sign or verify pre-hashed blocks use
+\begin{verbatim}
+int ecc_sign_hash(const unsigned char *in,  unsigned long inlen,
+                        unsigned char *out, unsigned long *outlen,
+                        prng_state *prng, int wprng, ecc_key *key);
+
+int ecc_verify_hash(const unsigned char *sig, const unsigned char *hash, 
+                          unsigned long inlen, int *stat, 
+                          ecc_key *key);
+\end{verbatim}
+
+\chapter{Public Keyrings}
+\section{Introduction}
+In order to simplify the usage of the public key algorithms a set of keyring routines have been developed.  They let the 
+developer manage asymmetric keys by providing load, save, export, import routines as well as encrypt, decrypt, sign, verify
+routines in a unified API.  That is all three types of PK systems can be used within the same keyring with the same API.
+
+To define types of keys there are four enumerations used globaly:
+\begin{verbatim}
+enum {
+   NON_KEY=0,
+   RSA_KEY,
+   DH_KEY,
+   ECC_KEY
+};
+\end{verbatim}
+
+To make use of the system the developer has to know how link-lists work.  The main structure that the keyring routines use 
+is the ``pk\_key'' defined as:
+\begin{small}
+\begin{verbatim}
+typedef struct Pk_key {
+    int     key_type,             /* PUBLIC, PRIVATE, PRIVATE_OPTIMIZED */
+            system;               /* RSA, ECC or DH ?   */
+
+    char    name[MAXLEN],         /* various info's about this key */
+            email[MAXLEN],
+            description[MAXLEN];
+
+    unsigned long ID;             /* CRC32 of the name/email/description together */
+
+    _pk_key key;
+
+    struct Pk_key  *next;         /* linked list chain */
+} pk_key;
+\end{verbatim}
+\end{small}
+
+The list is chained via the ``next'' member and terminated with the node of the list that has ``system'' equal to 
+{\bf NON\_KEY}.
+
+\section{The Keyring API}
+To initialize a blank keyring the function ``kr\_init()'' is used.
+\begin{verbatim}
+int kr_init(pk_key **pk);
+\end{verbatim}
+You pass it a pointer to a pointer of type ``pk\_key'' where it will allocate ram for one node of the keyring and sets the
+pointer.  On error it returns {\bf CRYPT\_ERROR}.
+
+Now instead of calling the PK specific ``make\_key'' functions there is one function that can make all three types of keys.
+\begin{verbatim}
+int kr_make_key(pk_key *pk, prng_state *prng, int wprng, 
+                int system, int keysize, const char *name,
+                const char *email, const char *description);
+\end{verbatim}
+The ``name'', ``email'' and ``description'' parameters are simply little pieces of information that you can tag along with a
+key.  They can each be either blank or any string less than 256 bytes.  ``system'' is one of the enumeration elements, that
+is {\bf RSA\_KEY}, {\bf DH\_KEY} or {\bf ECC\_KEY}.  ``keysize'' is the size of the key you desire which is regulated by
+the individual systems, for example, RSA keys are limited in keysize from 128 to 512 bytes.
+
+To find keys along a keyring there are two functions provided:
+\begin{verbatim}
+pk_key *kr_find(pk_key *pk, unsigned long ID);
+
+pk_key *kr_find_name(pk_key *pk, const char *name);
+\end{verbatim}
+The first searches by the 32-bit ID provided and the latter checks the name against the keyring.  They both return a pointer
+to the node in the ring of a match or {\bf NULL} if no match is found.
+
+To export or import a single node of a keyring the two functions are provided:
+\begin{verbatim}
+int kr_export(pk_key *pk, unsigned long ID, int key_type, 
+              unsigned char *out, unsigned long *outlen);
+
+int kr_import(pk_key *pk, const unsigned char *in);
+\end{verbatim}
+The export function exports the key with an ID provided and of a specific type much like the normal PK export routines.  The
+``key\_type'' is one of {\bf PK\_PUBLIC} or {\bf PK\_PRIVATE}.  In this function with RSA keys the type 
+{\bf PK\_PRIVATE\_OPTIMIZED} is the same as the {\bf PK\_PRIVATE} type.  The import function will read in a packet and 
+add it to the keyring.  Both functions return {\bf CRYPT\_ERROR} on error.
+
+To load and save whole keyrings from disk:
+\begin{verbatim}
+int kr_load(pk_key **pk, FILE *in, symmetric_CTR *ctr);
+
+int kr_save(pk_key *pk, FILE *out, symmetric_CTR *ctr);
+\end{verbatim}
+Both take file pointers to allow the user to pre-append data to the stream.  The ``ctr'' parameter should be setup with 
+``ctr\_start'' or set to NULL.  This parameter lets the user encrypt the keyring as its written to disk, if it is set
+to NULL the data is written without being encrypted.  The load function assumes the list has not been initialized yet 
+and will reset the pointer given to it.
+
+There are the four encrypt, decrypt, sign and verify functions as well
+\begin{verbatim}
+int kr_encrypt_key(pk_key *pk, unsigned long ID, 
+                   const unsigned char *in, unsigned long inlen,
+                   unsigned char *out, unsigned long *outlen,
+                   prng_state *prng, int wprng, int hash);
+
+int kr_decrypt_key(pk_key *pk, const unsigned char *in,
+                   unsigned char *out, unsigned long *outlen);
+
+int kr_sign_hash(pk_key *pk, unsigned long ID, 
+                 const unsigned char *in, unsigned long inlen,
+                 unsigned char *out, unsigned long *outlen,
+                 prng_state *prng, int wprng);
+
+int kr_verify_hash(pk_key *pk, const unsigned char *in, 
+                   const unsigned char *hash, unsigned long hashlen,
+                   int *stat);
+\end{verbatim}
+These all will be explained in the v0.68 manual.  
+
+To delete keys and clear rings there are:
+\begin{verbatim}
+int kr_del(pk_key **_pk, unsigned long ID);
+int kr_clear(pk_key **pk);
+\end{verbatim}
+``kr\_del'' will try to remove a key with a given ID from the ring and ``kr\_clear'' will completely empty a list and free
+the memory associated with it.  Both return {\bf CRYPT\_ERROR} on error.  Below is small example using the keyring API:
+
+\begin{small}
+\begin{verbatim}
+#include <mycrypt.h>
+int main(void)
+{
+   pk_key *kr;
+   unsigned char buf[4096];
+   unsigned long len;
+
+   /* make a new list */
+   if (kr_init(&kr) == CRYPT_ERROR) {
+      printf("kr_init: %s\n", crypt_error);
+      exit(-1);
+   }
+
+   /* add a key to it */
+   register_prng(&sprng_desc);
+   if (kr_make_key(kr, NULL, find_prng("sprng"), RSA_KEY, 128, 
+                   "TomBot", "tomstdenis@yahoo.com", "test key") == CRYPT_ERROR) {
+      printf("kr_make_key: %s\n", crypt_error);
+      exit(-1);
+   }
+
+   /* export the first key */
+   len = sizeof(buf);
+   if (kr_export(kr, kr->ID, PK_PRIVATE, buf, &len) == CRYPT_ERROR) {
+      printf("kr_export: %s\n", crypt_error);
+      exit(-1);
+   }
+
+   /* ... */
+}  
+\end{verbatim}
+\end{small}
 
 \chapter{$GF(2^w)$ Math Routines}
 
@@ -1848,7 +2054,7 @@ you pass it must be the same as returned by ``gf\_size()'' or it will not load c
 The library provides functions to encode and decode a RFC1521 base64 coding scheme.  This means that it can decode what it 
 encodes but the format used does not comply to any known standard.  The characters used in the mappings are:
 \begin{verbatim}
-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/
+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
 \end{verbatim}
 Those characters should are supported in virtually any 7-bit ASCII system which means they can be used for transport over
 common e-mail, usenet and HTTP mediums.  The format of an encoded stream is just a literal sequence of ASCII characters

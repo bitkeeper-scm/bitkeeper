@@ -300,10 +300,7 @@ int rc2_keysize(int *keysize)
    }
 }
 
-
-
-
 #endif
 
-static const char *ID = "rc2.c";
+
 

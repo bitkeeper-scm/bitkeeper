@@ -20,10 +20,9 @@ int hash_memory(int hash, const unsigned char *data, unsigned long len, unsigned
     return CRYPT_OK;
 }
 
-int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *outlen)
+int hash_filehandle(int hash, FILE *in, unsigned char *dst, unsigned long *outlen)
 {
     hash_state md;
-    FILE *in;
     unsigned char buf[512];
     int x;
 
@@ -37,9 +36,8 @@ int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *ou
     }
     *outlen = hash_descriptor[hash].hashsize;
 
-    in = fopen(fname, "rb");
     if (in == NULL) { 
-       crypt_error = "Error opening file in hash_file()."; 
+       crypt_error = "Invalid file handle in hash_filehandle()."; 
        return CRYPT_ERROR; 
     }
     hash_descriptor[hash].init(&md);
@@ -47,13 +45,35 @@ int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *ou
         x = fread(buf, 1, sizeof(buf), in);
         hash_descriptor[hash].process(&md, buf, x);
     } while (x == sizeof(buf));
-    fclose(in);
     hash_descriptor[hash].done(&md, dst);
+
 #ifdef CLEAN_STACK
     zeromem(buf, sizeof(buf));
 #endif
+
     return CRYPT_OK;
 }
 
-static const char *ID_TAG = "hash.c"; 
- 
+
+int hash_file(int hash, const char *fname, unsigned char *dst, unsigned long *outlen)
+{
+    FILE *in;
+
+    if (hash_is_valid(hash) == CRYPT_ERROR) {
+        return CRYPT_ERROR;
+    }
+
+    in = fopen(fname, "rb");
+    if (in == NULL) { 
+       crypt_error = "Error opening file in hash_file()."; 
+       return CRYPT_ERROR; 
+    }
+
+    if (hash_filehandle(hash, in, dst, outlen) == CRYPT_ERROR) {
+       return CRYPT_ERROR;
+    }
+    fclose(in);
+
+    return CRYPT_OK;
+}
+

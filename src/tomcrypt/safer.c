@@ -406,6 +406,5 @@ int safer_sk128_test(void)
 
 #endif
 
-static const char *ID_TAG = "safer.c";
 
 

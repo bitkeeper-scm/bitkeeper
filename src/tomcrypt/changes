@@ -1,3 +1,23 @@
+Oct 16th, 2002
+v0.67  -- Moved the function prototypes into files mycrypt_*.h.  To "install" the lib just copy all the 
+          header files "*.h" from the base of this project into your global include path.
+       -- Made the OFB/CFB/CTR functions use "unsigned long" for the length instead of "int"
+       -- Added keyring support for the PK functions
+       -- ***API CHANGE*** changed the ecc_make_key and dh_make_key to act more like rsa_make_key.  Basically
+          move the first argument to the next to last.
+       -- Fixed bug in dh_test() that wouldn't test the primality of the order of the sub-group
+       -- replaced the primes in the DH code with new ones that are larger than the size they are 
+          associated with.  That is a 1024-bit DH key will have a 1025-bit prime as the modulus
+       -- cleaned up all the PK code, changed a bit of the API around [not source compatible with v0.66]
+       -- major editing of the manual, started Docer program
+       -- added 160 and 224 bit key settings for ECC.  This makes the DH and ECC binary wise incompatible with v0.66
+       -- Added an additional check for memory errors in is_prime() and cleaned up prime.c a bit
+       -- Removed ID_TAG from all files [meh, not a big fan...]
+       -- Removed unused variable from yarrow state and made AES/SHA256 the default cipher/hash combo
+       -- Fixed a bug in the Yarrow code that called prng_is_valid instead of cipher_is_valid from yarrow_start()
+       -- The ECB/CBC/OFB/CFB/CTR wrappers now check that the cipher is valid in the encrypt/decrypt calls
+          Returns int now instead of void.
+
 Sept 24th, 2002
 v0.66  -- Updated the /demos/test.c program to time the hashes correctly.  Also it uses the yarrow PRNG for all of the 
           tests meaning its possible to run on RNG less platforms 

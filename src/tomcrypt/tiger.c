@@ -756,5 +756,5 @@ Hash of "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-ABCDEFG
         00B83EB4E53440C5 76AC6AAEE0A74858 25FD15E70A59FFE4
 */
 
-static const char *ID_TAG = "tiger.c"; 
+
 
