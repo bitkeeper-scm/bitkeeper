@@ -2222,7 +2222,7 @@ lod:
 inline int
 peekc(sccs *s)
 {
-	if (s->encoding == E_GZIP) return (zpeekc());
+	if (s->encoding & E_GZIP) return (zpeekc());
 	return (*s->where);
 }
 
@@ -2261,7 +2261,7 @@ fastnext(sccs *s)
 private inline char *
 nextdata(sccs *s)
 {
-	if (s->encoding != E_GZIP) return (fastnext(s));
+	unless (s->encoding & E_GZIP) return (fastnext(s));
 	return (zgets());
 }
 
@@ -3060,6 +3060,7 @@ misc(sccs *s)
 			    case E_UUENCODE:
 			    case E_UUGZIP:
 			    case E_GZIP:
+			    case E_GZIP|E_UUENCODE:
 				s->encoding = atoi(&buf[5]);
 				break;
 			    default:
@@ -4421,13 +4422,13 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 		int	len = next - fbuf;
 
 		if (len) {
-			if (s->encoding == E_GZIP) {
+			if (s->encoding & E_GZIP) {
 				zputs((void *)s, out, fbuf, len, gzip_sum);
 			} else {
 				fwrite(fbuf, 1, len, out);
 			}
 		}
-		if (s->encoding == E_GZIP) {
+		if (s->encoding & E_GZIP) {
 			zputs_done((void *)s, out, gzip_sum);
 		} else {
 			s->cksum += sum2;
@@ -4443,7 +4444,7 @@ fputdata(sccs *s, u8 *buf, FILE *out)
 		sum += *t;
 		*p++ = *t;
 		if (p == &fbuf[sizeof(fbuf)]) {
-			if (s->encoding == E_GZIP) {
+			if (s->encoding & E_GZIP) {
 				zputs((void *)s,
 				    out, fbuf, sizeof(fbuf), gzip_sum);
 			} else {
@@ -4581,6 +4582,7 @@ openOutput(int encode, char *file, FILE **op)
 	    case E_ASCII:
 	    case E_UUENCODE:
 	    case E_GZIP:
+	    case (E_GZIP|E_UUENCODE):
 #ifdef SPLIT_ROOT
 		unless (toStdout) {
 			char *s = rindex(file, '/');
@@ -4837,7 +4839,7 @@ out:		if (slist) free(slist);
 		goto out;
 	}
 	seekto(s, s->data);
-	if (s->encoding == E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	sum = 0;
 	while (buf = nextdata(s)) {
 		register u8 *e;
@@ -4889,6 +4891,7 @@ out:		if (slist) free(slist);
 				}
 			}
 			switch (encoding) {
+			    case E_GZIP|E_UUENCODE:
 			    case E_UUENCODE:
 			    case E_UUGZIP: {
 				uchar	obuf[50];
@@ -4918,7 +4921,7 @@ out:		if (slist) free(slist);
 		    d->sum, sum, d->rev, s->sfile);
 	}
 
-	if (s->encoding == E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) zgets_done();
 	error = ferror(out) || fflush(out);
 	if (popened) {
 		pclose(out);
@@ -5299,7 +5302,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	popened = openOutput(encoding, printOut, &out);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
-	if (s->encoding == E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	side = NEITHER;
 	nextside = NEITHER;
 
@@ -5347,7 +5350,7 @@ sccs_getdiffs(sccs *s, char *rev, u32 flags, char *printOut)
 	}
 	ret = 0;
 getdifferr:
-	if (s->encoding == E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) zgets_done();
 	if (lbuf) {
 		fclose(lbuf);
 		unlink(tmpfile);
@@ -5841,7 +5844,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	slist = serialmap(s, d, 0, 0, 0, 0);
 	state = allocstate(0, 0, s->nextserial);
 	seekto(s, s->data);
-	if (s->encoding == E_GZIP) zgets_init(s->where, s->size - s->data);
+	if (s->encoding & E_GZIP) zgets_init(s->where, s->size - s->data);
 	while (fbuf = nextdata(s)) {
 		if (fbuf[0] != '\001') {
 			if (!print) continue;
@@ -5870,7 +5873,7 @@ sccs_hasDiffs(sccs *s, u32 flags)
 	    feof(tmp) ? "gfile done" : "gfile not done"));
 	RET(1);
 out:
-	if (s->encoding == E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) zgets_done();
 	if (name) {
 		if (tmpfile) unlink(name);
 		free(name);
@@ -5904,7 +5907,7 @@ deflate_gfile(sccs *s, char *tmpfile)
 	int	n;
 
 	unless (out = fopen(tmpfile, "w")) return (-1);
-	switch (s->encoding) {
+	switch (s->encoding & E_DATAENC) {
 	    case E_UUENCODE:
 		in = fopen(s->gfile, "r");
 		n = uuencode(in, out);
@@ -6368,6 +6371,7 @@ openInput(sccs *s, int flags, FILE **inp)
 	char	*file = (flags&DELTA_EMPTY) ? DEV_NULL : s->gfile;
 	char	buf[MAXPATH];
 	char	*mode = "rb";	/* default mode is binary mode */
+	int 	compress;
 
 	unless (flags & DELTA_EMPTY) {
 		unless (HAS_GFILE(s)) {
@@ -6375,7 +6379,8 @@ openInput(sccs *s, int flags, FILE **inp)
 			return (-1);
 		}
 	}
-	switch (s->encoding) {
+	compress = s->encoding & E_GZIP;
+	switch (s->encoding & E_DATAENC) {
 	    default:
 	    case E_ASCII:
 		mode = "rt"; /* read in text mode */
@@ -6386,10 +6391,13 @@ openInput(sccs *s, int flags, FILE **inp)
 			return (0);
 		}
 		*inp = fopen(file, mode);
-		if ((s->encoding == E_ASCII) && ascii(*inp)) return (0);
-		s->encoding = E_UUENCODE;
+		if (((s->encoding & E_DATAENC)== E_ASCII) && ascii(*inp))
+			return (0);
+		s->encoding = compress | E_UUENCODE;
 		return (0);
 	    case E_UUGZIP:
+		/* we do'nt support compressed E_UUGZIP yet */
+		assert((compress & E_GZIP) == 0);
 		/*
 		 * Some very seat of the pants testing showed that -4 was
 		 * the best time/space tradeoff.
@@ -6675,7 +6683,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		goto abort;
 	}
 	buf[0] = 0;
-	if (s->encoding == E_GZIP) zputs_init();
+	if (s->encoding & E_GZIP) zputs_init();
 	if (n0) {
 		fputdata(s, "\001I 2\n", sfile);
 	} else {
@@ -7620,7 +7628,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
  * For large files, this is a win.
  */
 int
-sccs_admin(sccs *sc, u32 flags, int *new_encp,
+sccs_admin(sccs *sc, u32 flags, int *new_encp, int *new_compp,
 	admin *f, admin *l, admin *u, admin *s, char *text)
 {
 	FILE	*sfile = 0;
@@ -7629,6 +7637,17 @@ sccs_admin(sccs *sc, u32 flags, int *new_encp,
 	BUF	(buf);
 
 	new_enc = new_encp ? *new_encp : sc->encoding;
+	if (new_compp) {
+		if (*new_compp & E_GZIP) 
+			new_enc |= E_GZIP;
+		else	new_enc &= ~E_GZIP;
+	}
+	if (new_enc == (E_GZIP|E_UUGZIP)) {
+		fprintf(stderr,
+			"can't compress a file with E_UUGZIP encoding\n");
+		error = -1; sc->state |= S_WARNED;
+		return (error);
+	} 
 	GOODSCCS(sc);
 	unless (flags & ADMIN_FORMAT) {
 		unless (locked = lock(sc, 'z')) {
@@ -7804,8 +7823,8 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	assert(sc->state & S_SOPEN);
 	seekto(sc, sc->data);
 	debug((stderr, "seek to %d\n", sc->data));
-	if (old_enc == E_GZIP) zgets_init(sc->where, sc->size - sc->data);
-	if (new_enc == E_GZIP) zputs_init();
+	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
+	if (new_enc & E_GZIP) zputs_init();
 	if (new_enc != old_enc) {
 		sc->encoding = old_enc;
 		while (buf = nextdata(sc)) {
@@ -7830,7 +7849,7 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	badcksum(sc);
 #endif
 	sccs_close(sc), fclose(sfile), sfile = NULL;
-	if (old_enc == E_GZIP) zgets_done();
+	if (old_enc & E_GZIP) zgets_done();
 	unlink(sc->sfile);		/* Careful. */
 	t = sccsXfile(sc, 'x');
 	if (rename(t, sc->sfile)) {
@@ -7912,7 +7931,7 @@ delta_body(sccs *s, delta *n, FILE *diffs, FILE *out, int *ap, int *dp, int *up)
 	 * Do the actual delta.
 	 */
 	seekto(s, s->data);
-	if (s->encoding == E_GZIP) {
+	if (s->encoding & E_GZIP) {
 		zgets_init(s->where, s->size - s->data);
 		zputs_init();
 	}
@@ -8034,7 +8053,7 @@ newcmd:
 	*up = unchanged;
 	if (state) free(state);
 	if (slist) free(slist);
-	if (s->encoding == E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) zgets_done();
 	return (0);
 }
 
@@ -8642,7 +8661,7 @@ abort:		fclose(sfile);
 		return (-1);
 	}
 	seekto(s, s->data);
-	if (s->encoding == E_GZIP) {
+	if (s->encoding & E_GZIP) {
 		zgets_init(s->where, s->size - s->data);
 		zputs_init();
 	}
@@ -8651,7 +8670,7 @@ abort:		fclose(sfile);
 		fputdata(s, buf, sfile);
 	}
 	if (fputdata(s, 0, sfile)) goto abort;
-	if (s->encoding == E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", s->cksum);
 	sccs_close(s); fclose(sfile); sfile = NULL;
@@ -11067,7 +11086,7 @@ rmdelout:
 		goto rmdelout;
 	}
 
-	if (s->encoding == E_GZIP) {
+	if (s->encoding & E_GZIP) {
 		zgets_init(s->where, s->size - s->data);
 		zputs_init();
 	}
@@ -11081,7 +11100,7 @@ rmdelout:
 		unlock(s, 'x');
 		goto rmdelout;
 	}
-	if (s->encoding == E_GZIP) zgets_done();
+	if (s->encoding & E_GZIP) zgets_done();
 	fseek(sfile, 0L, SEEK_SET);
 	fprintf(sfile, "\001h%05u\n", s->cksum);
 
