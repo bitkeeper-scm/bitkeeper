@@ -64,7 +64,6 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 		RANGE("prs", s, expand, noisy);
 		unless(s->rstart) goto next; /* happen when we have only 1.0 delta */
 		assert(s->rstop);
-		if (didone++) printf("\n");
 		if (doheader) {
 			printf("======== %s %s", s->gfile, s->rstart->rev);
 			if (s->rstop != s->rstart) {

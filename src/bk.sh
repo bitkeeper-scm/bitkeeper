@@ -364,66 +364,46 @@ _rm() {
 	${BIN}sccsrm "$@"
 }
 
-# Usage: undo [-f] [-F]
+# Usage: undo cset,cset,cset
 _undo() {
-	echo Undo is temporarily unsupported while we work out some bugs
-	exit 1
-
-	##############################################
+	ASK=YES
+	V=
+	while getopts fv opt
+	do	case "$opt" in
+		f) ASK=NO;;
+		v) V="v$V";;
+		esac
+	done
+	shift `expr $OPTIND - 1`
+	if [ X$V != X ]; then V="-$V"; fi
 	_cd2root
-	ASK=yes
-	FORCE=
-	if [ X$1 = X-f ]
-	then	ASK=
-		shift
-	fi
-	if [ X$1 = X-F ]
-	then	FORCE=yes
-	fi
-	if [ X$FORCE = X ]
-	then	${BIN}sfiles -Ca > /tmp/p$$
-		if [ -s /tmp/p$$ ]
-		then	echo Repository has uncommitted changes, undo aborted
-			/bin/rm /tmp/p$$
-			exit 1
-		fi
-	fi
-	REV=`${BIN}prs -hr+ -d:I: ChangeSet`
-	${BIN}cset -l$REV > /tmp/undo$$
-	sed 's/:.*//' < /tmp/undo$$ | sort -u | xargs ${BIN}sfiles -c > /tmp/p$$
-	if [ -s /tmp/p$$ ]
-	then	echo "Undo would remove the following modified files:"
-		cat /tmp/p$$
-		echo ""
-		echo "Undo aborted"
-		/bin/rm /tmp/p$$ /tmp/undo$$
+	if [ X"$@" = X ]
+	then	echo usage bk undo cset-revision
 		exit 1
 	fi
-	if [ X$ASK = Xyes ]
-	then	while true
-		do	echo ""
-			echo ------- About to remove these deltas -----------
-			cat /tmp/undo$$
-			echo "-----------------------------------------------"
-			echo ""
-			echo $N "Remove these? (y)es, (n)o "$NL
-			read x
-			case X$x in
-		    	Xy*)	${BIN}rmdel -D - < /tmp/undo$$
-				EXIT=$?
-				/bin/rm -f /tmp/undo$$
-				exit $EXIT
-				;;
-			*) 	/bin/rm -f /tmp/undo$$
-				exit 0
-				;;
-			esac
-		done
-	else	${BIN}rmdel -D - < /tmp/undo$$
-		EXIT=$?
-		/bin/rm -f /tmp/undo$$
-		exit $EXIT
+	bk cset -lr"$@" > /tmp/rmdel$$
+	if [ ! -s /tmp/rmdel$$ ]
+	then	echo undo: nothing to undo in "$@"
+		exit 0
 	fi
+	if [ $ASK = YES ]
+	then	echo ---------------------------------------------------------
+		cat /tmp/rmdel$$ 
+		echo ---------------------------------------------------------
+		echo $N "Remove these [y/n]? "$NL
+		read x
+		case X"$x" in
+		    Xy*)	;;
+		    *)		/bin/rm -f /tmp/rmdel$$
+		    		exit 0;;
+		esac
+	fi
+	bk rmdel -S $V - < /tmp/rmdel$$
+	if [ $? != 0 ]
+	then	echo Undo of "$@" failed
+	else	echo Undo of "$@" succeeded
+	fi
+	/bin/rm -f /tmp/rmdel$$
 }
 
 _pending() {
@@ -715,6 +695,11 @@ _commandHelp() {
 	do	case $i in
 		citool|sccstool|vitool|fm|fm3)
 			_gethelp help_gui $BIN | $PAGER
+			;;
+		# this is the list of commands which have better help in the
+		# helptext file than --help yields.
+		check)
+			_gethelp help_$i $BIN | $PAGER
 			;;
 		*)
 			if [ -x "${BIN}$i" -a -f "${BIN}$i" ]
