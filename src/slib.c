@@ -68,6 +68,8 @@ void		free_pfile(pfile *pf);
 private int	sameFileType(sccs *s, delta *d);
 private int	deflate_gfile(sccs *s, char *tmpfile);
 private int	isRegularFile(mode_t m);
+private void	sccs_freetable(delta *d);
+delta *		sccs_kid(sccs *s, delta *d);  /* In range.c */
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -486,6 +488,46 @@ sccs_freetree(delta *tree)
 	if (tree->symlink && !(tree->flags & D_DUPLINK)) free(tree->symlink);
 	free(tree);
 }
+
+/*
+ * Free the entire delta table.
+ * This follows the ->next pointer and is not recursive.
+ */
+private void
+sccs_freetable(delta *t)
+{
+	delta *u;
+
+	if (!t) return;
+
+	debug((stderr, "freetable():\n"));
+	for(; t; t = u) {
+		debug((stderr, "\t%s %s %d\n", t->rev, t->sdate, t->serial));
+
+		if (t->comments) freeLines(t->comments);
+		if (t->mr) freeLines(t->mr);
+
+		if (t->rev) free(t->rev);
+		if (t->user) free(t->user);
+		if (t->sdate) free(t->sdate);
+		if (t->include) free(t->include);
+		if (t->exclude) free(t->exclude);
+		if (t->ignore) free(t->ignore);
+		if (t->sym) free(t->sym);
+
+		if (t->hostname && !(t->flags & D_DUPHOST)) free(t->hostname);
+		if (t->pathname && !(t->flags & D_DUPPATH)) free(t->pathname);
+		if (t->symlink && !(t->flags & D_DUPLINK)) free(t->symlink);
+		if (t->zone && !(t->flags & D_DUPZONE)) free(t->zone);
+		if (t->csetFile && !(t->flags & D_DUPCSETFILE)) {
+			free(t->csetFile);
+		}
+
+		u = t->next;
+		free(t);
+	}
+}
+
 
 /*
  * Generate the rev numbers for the lod.
@@ -2737,7 +2779,7 @@ bad:
 			    "line follows:\n\t",
 			    s->sfile, line, expected);
 			fprintf(stderr, "``%.*s''\n", linelen(buf)-1, buf);
-			sccs_freetree(s->table);
+			sccs_freetable(s->table);
 			s->table = 0;
 			return;
 		}
@@ -3427,7 +3469,7 @@ sccs_free(sccs *s)
 	fprintf(stderr, "Closing size = %d\n", sb.st_size);
 	}
 #endif
-	if (s->tree) sccs_freetree(s->tree);
+	if (s->table) sccs_freetable(s->table);
 	for (sym = s->symbols; sym; sym = t) {
 		t = sym->next;
 		if (sym->name) free(sym->name);
@@ -5454,9 +5496,24 @@ delta_table(sccs *s, FILE *out, int willfix)
 	s->cksum = 0;
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) {
-			while (d = d->next) assert(d->flags & D_GONE);
-			break;
+			/* This delta has been deleted - it is not to be
+			 * written out at all.
+			 *
+			 * All the children (d->kid) of this delta on
+			 * the same branch must also have been deleted.
+			 * If this branch was merged, the merge node and
+			 * all its children must have been deleted too.
+			 *
+			 * This check is expensive, but D_GONE nodes should
+			 * be extremely rare.
+			 */
+			delta *k = d;
+			while(k = sccs_kid(s, k))
+			    assert(k->flags & D_GONE);
+
+			continue;
 		}
+		    
 		assert(d->date);
 		if (d->next) {
 			assert(d->next->date);
@@ -11146,7 +11203,10 @@ delta_destroy(sccs *s, delta *d, int flags)
 		verbose((stderr,
 		    "rmdel: destroying %s:%s\n", s->gfile, e->rev));
 	}
-	s->table = d;
+	/* s->table = d;
+	 * Anyone who uses the sccs structure after this must respect
+	 * D_GONE.
+	 */
 	return 0;
 }
 
