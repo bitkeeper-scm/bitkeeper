@@ -15,6 +15,7 @@ typedef struct {
 
 extern	char	*editor, *bin, *BitKeeper;
 extern	int	do_clean(char *, int);
+extern	int	loggingask_main(int, char**);
 private	void	make_comment(char *cmt, char *commentFile);
 private int	do_commit(c_opts opts, char *sym, char *commentFile);
 void		cat(char *file);
@@ -186,6 +187,7 @@ ok_commit(int l, c_opts opts)
 		return (0);
 	}
 	assert("ok_commit" == 0);
+	return (-1);	/* lint */
 }
 
 private int
@@ -248,7 +250,7 @@ logChangeSet(int l, char *rev, int quiet)
 	char	start_rev[1024];
 	char	*to = logAddr();
 	FILE	*f;
-	int	dotCount = 0, try = 0, n, status;
+	int	dotCount = 0, junk, n, status;
 	pid_t	pid;
 	char 	*av[] = {
 		"bk",
@@ -263,13 +265,12 @@ logChangeSet(int l, char *rev, int quiet)
 	/*
 	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
 	 */
-	if (getenv("BK_REGRESSION") && (sscanf(rev, "1.%d", &n) == 1)) {
+	if (getenv("BK_REGRESSION") &&
+	    (sscanf(rev, "%d.%d", &junk, &n) == 2)) {
 		if (n <= 20) return;
 	}
 
-	unless (l & LOG_OPEN) {
-		sendConfig("config@openlogging.org");
-	}
+	unless (l & LOG_OPEN) sendConfig("config@openlogging.org", rev);
 	if (streq("none", to)) return;
 
 	strcpy(start_rev, rev);
@@ -287,7 +288,7 @@ logChangeSet(int l, char *rev, int quiet)
 	sprintf(p, "%d", n);
 	sprintf(commit_log, "%s/commit_log%d", TMP_PATH, getpid());
 	f = fopen(commit_log, "wb");
-	header(f);
+	cset_header(f);
 	fprintf(f, "---------------------------------\n");
 	fclose(f);
 	sprintf(buf, "bk sccslog -r%s ChangeSet >> %s", rev, commit_log);
@@ -320,14 +321,17 @@ logChangeSet(int l, char *rev, int quiet)
 }
 
 void
-sendConfig(char *to)
+sendConfig(char *to, char *rev)
 {
 	char	*dspec, subject[MAXLINE];
 	char	config_log[MAXPATH], buf[MAXLINE];
-	char	config[MAXPATH], aliases[MAXPATH];
+	char	aliases[MAXPATH];
 	char	s_cset[MAXPATH] = CHANGESET;
+	MDBM	*db = loadConfig(".");
+	kvpair	kv;
 	FILE *f, *f1;
-	time_t tm;
+	time_t	tm;
+	int	n, junk;
 	char 	*av[] = {
 		"bk",
 		"log",
@@ -338,34 +342,50 @@ sendConfig(char *to)
 		0
 	};
 
+	/*
+	 * Allow up to 20 ChangeSets with $REGRESSION set to not be logged.
+	 */
+	if (getenv("BK_REGRESSION") &&
+	    (sscanf(rev, "%d.%d", &junk, &n) == 2)) {
+		if (n <= 20) return;
+	}
+
 	sprintf(config_log, "%s/bk_config_log%d", TMP_PATH, getpid());
 	if (exists(config_log)) {
 		fprintf(stderr, "Error %s already exist", config_log);
 		exit(1);
 	}
+
 	f = fopen(config_log, "wb");
 	status(0, f);
-
 	dspec = "$each(:FD:){Proj:\\t(:FD:)}\\nID:\\t:KEY:";
 	do_prsdelta(s_cset, "1.0", 0, dspec, f);
-	fprintf(f, "User:\t%s\n", sccs_getuser());
-	fprintf(f, "Host:\t%s\n", sccs_gethost());
-	fprintf(f, "Root:\t%s\n", fullname(".", 0));
+	fprintf(f, "User:\t%s", sccs_realuser());
+	if (streq(sccs_getuser(), BK_FREEUSER)) fprintf(f, " (free use)");
+	fprintf(f, "\nHost:\t%s", sccs_realhost());
+	if (streq(sccs_gethost(), BK_FREEHOST)) fprintf(f, " (free use)");
+	fprintf(f, "\nRoot:\t%s\n", fullname(".", 0));
+	fprintf(f, "Rev:\t%s\n", rev);
+	fprintf(f, "Cset:\t");
+	do_prsdelta(s_cset, 0, 0, ":KEY:", f);
 	tm = time(0);
 	fprintf(f, "Date:\t%s", ctime(&tm));
-	sprintf(config, "%s/bk_configX%d", TMP_PATH, getpid());
-	sprintf(buf, "%setc/SCCS/s.config", BitKeeper);
-	get(buf, SILENT|PRINT, config);
-	f1 = fopen(config, "rt");
-	while (fgets(buf, sizeof(buf), f1)) {
-		if ((buf[0] == '#') || (buf[0] == '\n')) continue;
-		fputs(buf, f);
+	assert(db);
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		fprintf(f, "%s:\t%s\n", kv.key.dptr, kv.val.dptr);
 	}
-	fclose(f1);
-	unlink(config);
+	mdbm_close(db);
+	if (db = loadOK()) {
+		fprintf(f, "Logging OK:\n");
+		for (kv = mdbm_first(db);
+		    kv.key.dsize != 0; kv = mdbm_next(db)) {
+			fprintf(f, "%s\n", kv.key.dptr);
+		}
+		mdbm_close(db);
+	}
 	fprintf(f, "User List:\n");
 	bkusers(0, 0, f);
-	fprintf(f, "=====\n");
+	fprintf(f, "=======================\n");
 	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
 	if (exists(buf)) {
 		fprintf(f, "Alias  List:\n");
@@ -379,19 +399,9 @@ sendConfig(char *to)
 		}
 		fclose(f1);
 		unlink(aliases);
-		fprintf(f, "=====\n");
+		fprintf(f, "=======================\n");
 	}
 	fclose(f);
-
-	if (getenv("BK_TRACE_LOG") && streq(getenv("BK_TRACE_LOG"), "YES")) {
-		printf("sending config file...\n");
-	}
-        if (strstr(package_name(), "BitKeeper Test repo") &&
-            (bkusers(1, 1, 0) <= 5)) {
-                /* TODO : make sure our root dir is /tmp/.regression... */
-		unlink(config_log);
-                return ;
-        }             
 	sprintf(subject, "BitKeeper config: %s", package_name());
 	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);
 }

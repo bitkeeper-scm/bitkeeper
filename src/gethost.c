@@ -1,17 +1,18 @@
-#include <stdio.h>
+#include "system.h"
+#include "sccs.h"
 #ifdef WIN32
 #include <io.h>
 #include <fcntl.h>
 #endif
 
 int
-gethost_main()
+gethost_main(int ac, char **av)
 {
-	extern	char	*sccs_gethost();
+	int	real = (av[1] && streq(av[1], "-r"));
 
 #ifdef WIN32
 	setmode(1, _O_BINARY);
 #endif
-	printf("%s\n", sccs_gethost());
+	printf("%s\n", real ? sccs_realhost() : sccs_gethost());
 	return (0);
 }

@@ -31,7 +31,7 @@ do_clean(char *file, int flags)
 }
 
 void
-header(FILE *f)
+cset_header(FILE *f)
 {
 	char	parent_file[MAXPATH];
 	char	buf[MAXPATH];
@@ -123,7 +123,7 @@ notify()
 	if (size(notify_file) <= 0) return;
 	sprintf(notify_log, "%s/bk_notify%d", TMP_PATH, getpid());
 	f = fopen(notify_log, "wb");
-	header(f);
+	cset_header(f);
 	fclose(f);
 	sprintf(buf, "bk sccslog -r+ ChangeSet >> %s", notify_log);
 	system(buf);

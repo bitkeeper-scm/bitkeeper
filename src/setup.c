@@ -116,8 +116,7 @@ setup_main(int ac, char **av)
 				sprintf(buf, "%s config", editor);
 			}
 			system(buf);
-			sprintf(buf, "cmp -s D.config config", bin);
-			if (system(buf)) {
+			if (system("cmp -s D.config config")) {
 				break;
 			} else {
 				printf("Sorry, you have to fill this out.\n");
@@ -147,6 +146,6 @@ setup_main(int ac, char **av)
                 fprintf(stderr, "setup: can not find package root.\n");
                 exit(1);
         }                           
-	sendConfig("setups@openlogging.org");
+	sendConfig("setups@openlogging.org", "1.0");
 	return (0);
 }

@@ -394,28 +394,54 @@ strnleq(register char *s, register char *t)
 	}
 	return (0);
 }
+private	char *
+getuser(int real)
+{
+	static	char	*user;
+
+	if (real && user) {
+		free(user);
+		user = 0;
+	}
+	if (user) return (user);
+	if (real) {
+		user = getenv("USER");
+	} else {
+		unless (user = getenv("BK_USER")) user = getenv("USER");
+	}
+	if (!user || !user[0] ) {
+		user = getlogin();
+	}
+#ifndef WIN32
+	if (!user || !user[0] ) {
+		struct	passwd	*p = getpwuid(getuid());
+
+		user = p->pw_name;
+	}
+#endif
+	if (!user || !user[0] ) {
+		user = UNKNOWN_USER;
+	}
+	/* do not leave this set, we want to cache the other one */
+	if (real) {
+		char	*tmp = user;
+
+		user = 0;
+		return (strdup(tmp));
+	}
+	return (strdup(user));
+}
+
+char	*
+sccs_realuser(void)
+{
+	return (getuser(1));
+}
 
 char	*
 sccs_getuser(void)
 {
-	static	char	*s;
-
-	if (s) return (s);
-	unless (s = getenv("BK_USER")) s = getenv("USER");
-	if (!s || !s[0] ) {
-		s = getlogin();
-	}
-#ifndef WIN32
-	if (!s || !s[0] ) {
-		struct	passwd	*p = getpwuid(getuid());
-
-		s = p->pw_name;
-	}
-#endif
-	if (!s || !s[0] ) {
-		s = UNKNOWN_USER;
-	}
-	return (s);
+	return (getuser(0));
 }
 
 /*
@@ -4044,7 +4070,7 @@ date(delta *d, time_t tt)
 	zoneArg(d, tmp);
 	getDate(d);
 	if (d->date != tt) {
-		fprintf(stderr, "Date=[%s%s] d->date=%u tt=%u\n",
+		fprintf(stderr, "Date=[%s%s] d->date=%lu tt=%lu\n",
 		    d->sdate, d->zone, d->date, tt);
 		fprintf(stderr, "Internal error on dates, aborting.\n");
 		assert(d->date == tt);
@@ -4075,7 +4101,7 @@ testdate(time_t t)
 
 	if (date2time(date, zone, EXACT) != t) {
 		fprintf(stderr, "Internal error on dates, aborting.\n");
-		fprintf(stderr, "time_t=%u vs %u date=%s zone=%s\n",
+		fprintf(stderr, "time_t=%lu vs %lu date=%s zone=%s\n",
 		    date2time(date, zone, EXACT), t, date, zone);
 		exit(1);
 	}
