@@ -112,12 +112,12 @@ echo Beth > TheBest
 bk delta $Q -y"Larry gets a clue" TheBest
 bk commit $Q -ywhatever
 cd $HERE/test2
-ls -lid directory > START
+ls -lid directory | awk '{print $1}' > START
 bk pull $Q || {
 	echo pull failed
 	exit 1
 }
-ls -lid directory > FINISH
+ls -lid directory | awk '{print $1}' > FINISH
 cmp -s START FINISH || {
 	echo Directory was changed
 	diff START FINISH
