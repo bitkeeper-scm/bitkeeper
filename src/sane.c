@@ -39,6 +39,7 @@ sane_main(int ac, char **av)
 		else if (chk_idcache()) errors++;
 	} else {
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");
+		errors++;
 	}
 	//chk_tcl();
 	//chk_ssh();
