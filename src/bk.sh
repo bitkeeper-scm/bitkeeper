@@ -331,7 +331,7 @@ _push() {
 }
 
 _diffr() {
-	D=NO
+	DODIFFS=NO
 	DOPTS=
 	CMD=${BIN}sccslog
 	ALL=NO
@@ -340,21 +340,21 @@ _diffr() {
 	while getopts acdDflMprsuU opt
 	do	case "$opt" in
 		a) ALL=YES;;
-		c) D=YES; DOPTS="-c $DOPTS";;
-		d) D=YES;;
-		D) D=YES; DOPTS="-D $DOPTS";;
-		f) D=YES; DOPTS="-f $DOPTS";;
+		c) DODIFFS=YES; DOPTS="-c $DOPTS";;
+		d) DODIFFS=YES;;
+		D) DODIFFS=YES; DOPTS="-D $DOPTS";;
+		f) DODIFFS=YES; DOPTS="-f $DOPTS";;
 		l) LEFTONLY=YES;;
-		M) D=YES; DOPTS="-M $DOPTS";;
-		p) D=YES; DOPTS="-p $DOPTS";;
+		M) DODIFFS=YES; DOPTS="-M $DOPTS";;
+		p) DODIFFS=YES; DOPTS="-p $DOPTS";;
 		r) RIGHTONLY=YES;;
-		s) D=YES; DOPTS="-s $DOPTS";;
-		u) D=YES; DOPTS="-u $DOPTS";;
-		U) D=YES; DOPTS="-U $DOPTS";;
+		s) DODIFFS=YES; DOPTS="-s $DOPTS";;
+		u) DODIFFS=YES; DOPTS="-u $DOPTS";;
+		U) DODIFFS=YES; DOPTS="-U $DOPTS";;
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	if [ $D = YES ]; then CMD="${BIN}diffs $DOPTS"; fi
+	if [ $DODIFFS = YES ]; then CMD="${BIN}diffs $DOPTS"; fi
 	if [ "X$1" = X -o "X$2" = X -o "X$3" != X ]
 	then	echo "Usage: diffr [diffs opts] repository different_repository"
 		exit 1
@@ -388,7 +388,7 @@ _diffr() {
 	(
 		cd $LEFT
 	    (
-		if [ $D = NO ]
+		if [ $DODIFFS = NO -a $ALL = YES ]
 		then	${BIN}sfiles -cg | while read x
 			do	echo $x
 				echo "  modified and not checked in."
@@ -397,13 +397,13 @@ _diffr() {
 		fi
 		(
 		if [ $ALL = YES ]
-		then	if [ $D = YES ]
+		then	if [ $DODIFFS = YES ]
 			then	${BIN}sfiles -c
 			fi
 			${BIN}sfiles -CRA
 		fi
 		for i in $LREVS
-		do	if [ $D = YES ]
+		do	if [ $DODIFFS = YES ]
 			then	${BIN}cset -R${i}..$i
 				else	echo "ChangeSet:$i"
 			fi
@@ -419,7 +419,7 @@ _diffr() {
 		
 		cd $RIGHT
 	    (
-		if [ $D = NO ]
+		if [ $DODIFFS = NO -a $ALL = YES ]
 		then	${BIN}sfiles -cg | while read x
 			do	echo $x
 				echo "  modified and not checked in."
@@ -428,13 +428,13 @@ _diffr() {
 		fi
 		(
 		if [ $ALL = YES ]
-		then	if [ $D = YES ]
+		then	if [ $DODIFFS = YES ]
 			then	${BIN}sfiles -c
 			fi
 			${BIN}sfiles -CRA
 		fi
 		for i in $RREVS
-		do	if [ $D = YES ]
+		do	if [ $DODIFFS = YES ]
 			then	${BIN}cset -R${i}..$i
 			else	echo "$RIGHT/ChangeSet:$i"
 			fi
@@ -645,6 +645,7 @@ _undo() {
 	then	echo Failed to create undo backup $UNDO
 		exit 1
 	fi
+	# XXX Colon can not be a BK_FS on win32
 	sed 's/[:@]/ /' < ${TMP}rmlist$$ | while read f r
 	do	echo $f
 		${BIN}stripdel $Q -Cr$r $f
@@ -652,12 +653,12 @@ _undo() {
 		then	echo Undo of "$@" failed 1>&2
 			exit 1
 		fi
-	done > /tmp/mv$$
-	if [ $? != 0 ]; then /bin/rm -f /tmp/mv$$; exit 1; fi
+	done > ${TMP}mv$$
+	if [ $? != 0 ]; then $RM -f ${TMP}mv$$; exit 1; fi
 
 	# Handle any renames.  Done outside of stripdel because names only
 	# make sense at cset boundries.
-	${BIN}prs -hr+ -d':PN: :SPN:' - < /tmp/mv$$ | while read a b
+	${BIN}prs -hr+ -d':PN: :SPN:' - < ${TMP}mv$$ | while read a b
 	do	if [ $a != $b ]
 		then	if [ -f $b ]
 			then	echo Unable to mv $a $b, $b exists
@@ -673,6 +674,7 @@ _undo() {
 		fi
 		${BIN}renumber $b
 	done 
+	/bin/rm -f ${TMP}mv$$ ${TMP}rmlist$$ ${TMP}undo$$
 	if [ X$Q = X ]
 	then	echo Patch containing these undone deltas left in $UNDO,
 		echo running consistency check...
@@ -1104,11 +1106,19 @@ _sendbug() {
 # not contain a hash either.  For command help texts, the second arg
 # is $BIN.  The tags must be unique and nonempty, and may not contain
 # spaces or shell or regexp metachars.
-
+#
+# We also use this file for error messages so the format is that all
+# help tags are of the form help_whatever
 _gethelp() {
 	sed -n  -e '/^#'$1'$/,/^\$$/{' \
-		-e '/^#/d; /^\$/d; s#\#\##'"$2"'#; p' \
+		-e '/^#/d; /^\$/d; s|#BKARG#|'"$2"'|; p' \
 		-e '}' ${BIN}bkhelp.txt
+}
+
+# List all help and command topics, it's the combo of what is in bin and
+# what is in the help file.  This is used for helptool.
+_topics() {
+	_gethelp help_topiclist
 }
 
 _commandHelp() {
@@ -1119,33 +1129,21 @@ _commandHelp() {
 
 	for i in $*
 	do	case $i in
-		citool|sccstool|vitool|fm|fm3)
-			_gethelp help_gui $BIN | $PAGER
-			;;
-		# this is the list of commands which have better help in the
-		# helptext file than --help yields.
-		unlock|unedit|check|import|sdiffs|resync|pull|push|parent|\
-		clone|fix|info)
+		    RCS|backups|basics|changes|changesets|check|clone|commit|\
+		    debug|differences|diffr|export|fix|gui|history|import|\
+		    info|merge|mv|overview|parent|path|pending|pull|push|\
+		    ranges|receive|regression|renames|resync|rm|root|save|\
+		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
+		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
+		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
+		    csettool|difftool|merging)
 			_gethelp help_$i $BIN | $PAGER
 			;;
-		*)
+		    *)
 			if [ -x "${BIN}$i" -a -f "${BIN}$i" ]
-			then	echo -------------- $i help ---------------
-				${BIN}$i --help
-			else	case $i in
-				    overview|setup|basics|differences|\
-				    history|tags|changesets|resync|merge|\
-				    renames|gui|path|ranges|terms|regression|\
-				    backups|debug|sendbug|commit|pending|send|\
-				    resync|changes|undo|save|RCS|status|\
-				    sccsmv|mv|sccsrm|rm|version|root|export|\
-				    users|receive|wrap|unwrap|diffr)
-					_gethelp help_$i $BIN | $PAGER
-					;;
-				    *)
-					echo No help for "$i", check spelling.
-					;;
-				esac
+			then	echo "                -------------- $i help ---------------"
+				${BIN}$i --help 2>&1
+			else	echo No help for "$i", check spelling.
 			fi
 		esac
 	done
@@ -1281,7 +1279,8 @@ case "$1" in
     setup|changes|pending|commit|sendbug|send|receive|\
     mv|edit|unedit|unlock|man|undo|save|rm|new|version|\
     root|status|export|users|sdiffs|unwrap|clone|\
-    pull|push|parent|diffr|fix|info|vi|r2c|rev2cset)
+    pull|push|parent|diffr|fix|info|vi|r2c|rev2cset|\
+    topics)
 	cmd=$1
     	shift
 	_$cmd "$@"
@@ -1332,7 +1331,7 @@ shift
 
 # Run our stuff first if we can find it.
 # win32 note: we test for the tcl script first, because it has .tcl suffix
-for w in citool sccstool vitool fm fm3
+for w in citool sccstool vitool fm fmtool fm3 fm3tool difftool helptool csettool
 do	if [ $cmd = $w ]
 	then
 		# pick up our own wish shell if it exists
