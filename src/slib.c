@@ -8507,8 +8507,13 @@ getHashSum(sccs *sc, delta *n, FILE *diffs)
 		perror("fseek for hash checksum");
 		return (-1);
 	}
-	unless (fnext(buf, diffs) && streq(buf, "0a0\n")) {
-bad:		fprintf(stderr, "bad diffs: %s\n", buf);
+	unless (fnext(buf, diffs)) {
+		/* there are no diffs, we have the checksum, it's OK */
+		return (0);
+	}
+	unless (streq(buf, "0a0\n")) {
+		fprintf(stderr, "Missing 0a0, ");
+bad:		fprintf(stderr, "bad diffs: '%s'\n", buf);
 		return (-1);
 	}
 	while (fnext(buf, diffs)) {
