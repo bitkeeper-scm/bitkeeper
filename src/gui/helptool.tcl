@@ -72,6 +72,7 @@ proc doSelect {x} \
 	busy 1
 	.ctrl.topics see $line
 	set topic [.ctrl.topics get $line "$line lineend"]
+	if {$topic == ""} { busy 0; return }
 	if {[regexp {^ } $topic] == 0} {
 		doNext $x
 		return
