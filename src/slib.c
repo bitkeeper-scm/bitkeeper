@@ -6188,6 +6188,30 @@ getKey(MDBM *DB, char *buf, int flags, char *root)
 	}
 }
 
+private char	*
+get_lineName(sccs *s, ser_t ser, MDBM *db, u32 lnum, char *buf)
+{
+	datum	k, v;
+
+	/* see if ser is in mdbm, if not, gen an md5 name and stick in buf */
+	k.dptr = (void *)&ser;
+	k.dsize = sizeof(ser_t);
+	v = mdbm_fetch(db, k);
+	if (v.dsize) {
+		strcpy(buf, v.dptr);
+	} else {
+		sccs_md5delta(s, sfind(s, ser), buf);
+		v.dptr = (void *)buf;
+		v.dsize = strlen(buf) + 1;
+		if (mdbm_store(db, k, v, MDBM_INSERT)) {
+			fprintf(stderr, "lineName cache: insert error\n");
+			return (0);
+		}
+	}
+	sprintf(&buf[v.dsize - 1], ".%u", lnum);
+	return (buf);
+}
+
 private int
 getRegBody(sccs *s, char *printOut, int flags, delta *d,
 		int *ln, char *iLst, char *xLst)
@@ -6212,6 +6236,9 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 	int	lf_pend = 0;
 	ser_t	serial;
 	char	align[16];
+	char	lnamebuf[64]; /* md5sum + '.' + linenumber */
+	MDBM	*namedb = 0;
+	u32	*lnum = 0;
 
 	slist = d ? serialmap(s, d, iLst, xLst, &error)
 		  : setmap(s, D_SET, 0);
@@ -6273,6 +6300,10 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	if (flags & GET_MODNAME) base = basenm(s->gfile);
 	else if (flags & GET_FULLPATH) base = s->gfile;
+	if (flags & GET_LINENAME) {
+		lnum = calloc(s->nextserial, sizeof(*lnum));
+		namedb = mdbm_mem();
+	}
 	/*
 	 * We want the data to start on a tab aligned boundry
 	 */
@@ -6333,6 +6364,10 @@ out:			if (slist) free(slist);
 		if (isData(buf)) {
 			++seq;
 			(*counter)++;
+			if (lnum) { /* count named lines */
+				lnum[print ? print
+				    : whatstate((const serlist*)state)]++;
+			}
 			if (buf[0] == CNTLA_ESCAPE) {
 				assert((encoding == E_ASCII) ||
 							(encoding == E_GZIP));
@@ -6407,6 +6442,15 @@ out:			if (slist) free(slist);
 					fprintf(out, "%s\t", tmp->rev);
 				if (flags&GET_LINENUM)
 					fprintf(out, "%6d\t", lines);
+				if (flags&GET_LINENAME) {
+					char	*p;
+
+					p = get_lineName(s, print,
+					    namedb, lnum[print], lnamebuf);
+					assert(p &&
+					    strlen(p) < sizeof(lnamebuf));
+					fprintf(out, "%s\t", p);
+				}
 			}
 			e = buf;
 			sccs_expanded = rcs_expanded = 0;
@@ -6624,6 +6668,8 @@ out:			if (slist) free(slist);
 	*ln = lines;
 	if (slist) free(slist);
 	if (state) free(state);
+	if (namedb) mdbm_close(namedb);
+	if (lnum) free(lnum);
 	if (DB) {
 		if (s->mdbm) mdbm_close(s->mdbm);
 		s->mdbm = DB;
