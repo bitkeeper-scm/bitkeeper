@@ -1,9 +1,13 @@
 
 # Try to find the project root, limiting ourselves to 40 directories
-proc cd2root {} \
+proc cd2root { {startpath {}} } \
 {
 	set n 40
-	set dir "."
+	if {$startpath != ""} {
+		set dir $startpath
+	} else {
+		set dir "."
+	}
 	while {$n > 0} {
 		set path [file join $dir BitKeeper etc]
 		if {[file isdirectory $path]} {
@@ -22,22 +26,12 @@ proc cd2root {} \
 proc displayMessage {msg {exit {}}} \
 {
 
-    global tcl_platform
+	global tcl_platform
 
-    if {$tcl_platform(platform) == "windows"} {
-        tk_messageBox -title "Error" -type ok -icon error -message $msg
-        #error "Fatal"
+	tk_messageBox -title "Error" -type ok -icon error -message $msg
 	if {$exit == 1} {
 		exit 1
 	} else {
 		return
 	}
-    } else {
-        puts stderr $msg
-	if {$exit == 1} {
-		exit 1
-	} else {
-		return
-	}
-    }
 }

@@ -143,6 +143,12 @@ proc getFiles {revs file_rev} \
 
 	busy 1
 
+	# Only search for the last part of the file. This might fail when there are
+	# multiple file.c@rev in the tree. However, I am trying to solve the case where
+	# csettool is called like -f~user/some_long_path/src/file.c. The preceding would
+	# never match any of the items in the file list
+	set file_rev [file tail $file_rev]
+
 	# Initialize these variables so that files with no differences don't
 	# cause failures
         set Diffs(0) 1.0
@@ -521,7 +527,7 @@ proc main {} \
 	}
 	#displayMessage "csetttool: revs=($revs) file=($file_rev)"
 	bk_init
-	cd2root
+	cd2root [file dirname $file_rev]
 	set dspec "-d\$if(:Li: -gt 0){(:I:)\n}"
 	set fd [open "| bk prs -hr$revs {$dspec} ChangeSet" r]
 	# Only need to read first line to know whether there is content
