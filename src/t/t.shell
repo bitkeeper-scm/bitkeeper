@@ -48,12 +48,15 @@ do	cd $HERE/$i
 done
 cd $HERE/copy
 bk resync $Q
+cd ..
+tar cf TAR copy
+cd copy
 echo OK
 echo $N Make sure shell escapes to an interactive shell work ........$NL
 ( echo '!'
   echo echo ESCAPE_FROM_NEW_YORK
   echo exit
-  echo q ) | bk resolve $Q > OUT 2>ERR
+  echo q ) | bk resolve $Q > OUT 2>/dev/null
 grep -q ESCAPE_FROM_NEW_YORK OUT || { 
 	echo failed to escape
 	cat OUT
@@ -61,8 +64,12 @@ grep -q ESCAPE_FROM_NEW_YORK OUT || {
 }
 echo OK
 echo $N Make sure shell escapes to run a command work ...............$NL
+cd ..
+rm -rf copy
+tar xf TAR
+cd copy
 ( echo '!diff $BK_LOCAL $BK_REMOTE'
-  echo q ) | bk resolve $Q > OUT 2>ERR
+  echo q ) | bk resolve $Q > OUT 2>/dev/null
 cat > DIFFS <<EOF
 2,3c2,3
 < 2-copy
