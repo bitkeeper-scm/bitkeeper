@@ -88,11 +88,7 @@ file1
 ======== project2/file1 1.1 ========
 file1
 EOF
-diff -q out expected || {
-	echo wrong output
-	diff out expected
-	exit 1
-}
+checkfiles out expected
 echo OK
 echo $N 'bk prs' of two projects from third project....................$NL
 cd $HERE/project3
@@ -105,11 +101,7 @@ file1
 ======== ../project2/file1 1.1 ========
 file1
 EOF
-diff -q out expected || {
-	echo wrong output
-	diff out expected
-	exit 1
-}
+checkfiles out expected
 echo OK
 echo $N 'bk delta' of two projects from outside any project ...........$NL
 cd $HERE
