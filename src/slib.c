@@ -6781,7 +6781,8 @@ isleaf(register delta *d)
 	if (d->type != 'D') return (0);
 	for (d = d->kid; d; d = d->siblings) {
 		if (d->flags & D_GONE) continue;
-		if (d->type == 'D') return (0);
+		if (d->type != 'D') continue;
+		if (d->r[0] == 1 || d->r[1] != 1) return (0);
 	}
 	return (1);
 }
@@ -6795,19 +6796,38 @@ checkInvariants(sccs *s)
 {
 	delta	*d;
 	int	tips = 0;
+	u8	*lodmap = 0;
+	u16	next;
+
+	next = sccs_nextlod(s);
+	/* next now equals one more than greatest that exists
+	 * so last entry in array is lodmap[next-1] which is 
+	 * is current max.
+	 */
+	unless (lodmap = calloc(next, sizeof(lodmap))) {
+		perror("calloc lodmap");
+		return (1);
+	}
 
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
-		if (!(d->flags & D_MERGED) && isleaf(d)) tips++;
+		unless (!(d->flags & D_MERGED) && isleaf(d)) continue;
+		unless (lodmap[d->r[0]]++) continue; /* first leaf OK */
+		tips++;
 	}
-	unless (tips > 1) return (0);
+
+	unless (tips) {
+		if (lodmap) free(lodmap);
+		return (0);
+	}
+
 	for (d = s->table; d; d = d->next) {
 		if (d->flags & D_GONE) continue;
-		if (!(d->flags & D_MERGED) && isleaf(d)) {
-			fprintf(stderr,
-			    "%s: unmerged leaf %s\n", s->sfile, d->rev);
-		}
+		unless (!(d->flags & D_MERGED) && isleaf(d)) continue;
+		unless (lodmap[d->r[0]] > 1) continue;
+		fprintf(stderr, "%s: unmerged leaf %s\n", s->sfile, d->rev);
 	}
+	if (lodmap) free(lodmap);
 	return (1);
 }
 
@@ -10951,7 +10971,7 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 	FILE	*f = 0;
 	delta	*d, *a = 0, *b = 0;
 	char	*n[3];
-	u16	*lodmap = 0;
+	u8	*lodmap = 0;
 	u16	next;
 	u16	defbranch;
 	int	retcode = -1;
@@ -10966,7 +10986,7 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 	 */
 	unless (lodmap = calloc(next, sizeof(lodmap))) {
 		perror("calloc lodmap");
-		goto out;
+		goto err;
 	}
 
 	defbranch = (s->defbranch) ? atoi(s->defbranch) : (next - 1);
@@ -10993,14 +11013,14 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 
 		fprintf(stderr, "\ntakepatch: ERROR: conflict on lod %d\n",
 			d->r[0]);
-		goto out;
+		goto err;
 	}
 	if (b) {
 		d = gca(a, b);
 		assert(d);
 		unless (f = fopen(sccsXfile(s, 'r'), "w")) {
 			perror("r.file");
-			return (-1);
+			goto err;
 		}
 		/*
 		 * Always put the local stuff on the left, if there
@@ -11018,7 +11038,7 @@ sccs_resolveFile(sccs *s, int noRfile, char *lpath, char *gpath, char *rpath)
 mfile:	if (lpath) {
 		unless (f = fopen(sccsXfile(s, 'm'), "w")) {
 			perror("m.file");
-			goto out;
+			goto err;
 		}
 		n[0] = name2sccs(lpath);
 		n[1] = name2sccs(gpath);
@@ -11030,7 +11050,7 @@ mfile:	if (lpath) {
 		free(n[2]);
 	}
 	retcode = (b ? 1 : 0);
-out:
+err:
 	if (lodmap) free(lodmap);
 	return (retcode);
 }

@@ -992,14 +992,16 @@ _commit() {
 	COPTS=
 	CHECKLOG=_checkLog
 	FORCE=NO
+	LOD=NO
 	RESYNC=NO
 	QUIET=NO
 	SYM=
-	while getopts dfFRqsS:y:Y: opt
+	while getopts dfFLRqsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=YES;;
 		f) CHECKLOG=:;;
 		F) FORCE=YES;;
+		L) LOD=YES; COPTS="-L $COPTS";;
 		R) RESYNC=YES; BK_ETC="../BitKeeper/etc/";; # called from RESYNC
 		s|q) QUIET=YES; COPTS="-s $COPTS";;
 		S) SYM="-S$OPTARG";;
