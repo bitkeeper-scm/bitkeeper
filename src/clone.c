@@ -4,6 +4,9 @@
 #include "bkd.h"
 #include "bkd.h"
 
+/*
+ * Do not change this sturct until we phase out bkd 1.2 support
+ */
 typedef struct {
 	u32	debug:1;		/* -d: debug mode */
 	u32	quiet:1;		/* -q: shut up */
@@ -124,16 +127,10 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 	if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
 	} else {
-		/*
-		 * No server info block => 1.2 bkd
-		 */
-		fprintf(stderr,
-			"Remote seems to be running a older BitKeeper release\n"
-			"Try \"bk opush\", \"bk opull\" or \"bk oclone\"\n");
-		while (read_blk(r, buf, sizeof(buf))); /* drain remote output */
-		disconnect(r, 2);
-		goto done;
-		
+#ifdef BKD_VERSION1_2
+		/* try bkd 1.2 protocol */
+		try_clone1_2(opts.quiet, gzip, opts.rev, r, local);
+#endif
 	}
 	if (get_ok(r, 0, !opts.quiet)) {
 		disconnect(r, 2);
@@ -243,7 +240,7 @@ sfio(opts opts, int gzip, remote *r)
 	cmds[++n] = "-i";
 	if (opts.quiet) cmds[++n] = "-q";
 	cmds[++n] = 0;
-	pid = spawnvp_wPipe(cmds, &pfd);
+	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
 	if (pid == -1) {
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);

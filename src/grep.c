@@ -66,7 +66,7 @@ grep_main(int ac, char **av)
 	if (g) gav[++i] = grep_opts;
 	gav[++i] = av[optind++];
 	gav[++i] = 0;
-	if ((pid = spawnvp_wPipe(gav, &fd)) == -1) {
+	if ((pid = spawnvp_wPipe(gav, &fd, BIG_PIPE)) == -1) {
 		fprintf(stderr, "cannot spawn grep\n");
 		exit(1);
 	}

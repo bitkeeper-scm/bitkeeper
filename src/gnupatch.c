@@ -251,7 +251,7 @@ gnupatch_main(int ac, char **av)
 	 */
 	unless (diff_style) diff_style = "u";
 	sprintf(diff_opts, "-Nr%c", diff_style[0]);
-	spawnvp_rPipe(diff_av, &rfd);
+	spawnvp_rPipe(diff_av, &rfd, BIG_PIPE);
 	pipe = fdopen(rfd, "r");
 	while (fgets(buf, sizeof(buf), pipe)) {
 #ifdef WIN32

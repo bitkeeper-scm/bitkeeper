@@ -70,7 +70,7 @@ cmd_push(int ac, char **av)
 		if (gzip) {
 			/* Arrange to have stderr go to stdout */
 			fd2 = dup(2); dup2(1, 2);
-			pid = spawnvp_wPipe(tp, &wfd);
+			pid = spawnvp_wPipe(tp, &wfd, 0);
 			if (pid == -1) {
 				outc(BKD_EXITOK);
 				goto out;
@@ -206,7 +206,7 @@ cmd_push_part1(int ac, char **av)
 	assert(fd == 1);
 	out("@OK@\n"); /* send it into the file */
 	unless (debug) listkey[2] = 0;
-	pid = spawnvp_wPipe(listkey, &wfd);
+	pid = spawnvp_wPipe(listkey, &wfd, 0);
 	close(1); dup2(fd1, 1); close(fd1);
 	while (n = getline(0, buf, sizeof(buf))) {
 		write(wfd, buf, n);
@@ -320,7 +320,7 @@ cmd_push_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	if (metaOnly) takepatch[3] = 0; /* allow conflict in logging patch */
-	pid = spawnvp_wPipe(takepatch, &pfd);
+	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
 	dup2(fd2, 2); close(fd2);
 	gunzipAll2fd(0, pfd, gzip, 0, 0);
 	close(pfd);
@@ -364,7 +364,7 @@ cmd_push_part2(int ac, char **av)
 	/* Arrange to have stderr go to stdout */
 	fd2 = dup(2); dup2(1, 2);
 	if (metaOnly) resolve[3] = 0; /* allow conflict in logging patch */
-	pid = spawnvp_wPipe(resolve, &pfd);
+	pid = spawnvp_wPipe(resolve, &pfd, 0);
 	dup2(fd2, 2); close(fd2);
 	waitpid(pid, &status, 0);
 	close(pfd);

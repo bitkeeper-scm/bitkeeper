@@ -97,10 +97,8 @@ compressed(int level, int hflag)
 #ifndef WIN32
 	signal(SIGCHLD, SIG_DFL);
 #endif
-	pid = spawnvp_rPipe(cmd, &rfd);
-	if (pid == -1) {
-		return (1);
-	}
+	pid = spawnvp_rPipe(cmd, &rfd, BIG_PIPE);
+	if (pid == -1) return (1);
 	gzipAll2fd(rfd, 1, level, 0, 0, hflag, 0);
 	waitpid(pid, &status, 0);
 	return (0);

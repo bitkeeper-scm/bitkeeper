@@ -345,7 +345,8 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	} else {
 		ret = getline2(r, buf, sizeof(buf));
 		if (ret <= 0) {
-			if (verbose) fprintf(stderr, "get_ok: Got EOF.\n");
+			/* ssh/rsh login failure will give us EOF */
+			//if (verbose) fprintf(stderr, "get_ok: Got EOF.\n");
 			return (1); /* failed */
 		}
 		p = buf;

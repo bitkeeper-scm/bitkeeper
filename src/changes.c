@@ -83,7 +83,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN);
 #endif
-	pid = spawnvp_wPipe(av, &pfd);
+	pid = spawnvp_wPipe(av, &pfd, 0);
 	close(1);
 	dup2(pfd, 1);
 	close(pfd);

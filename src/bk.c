@@ -720,7 +720,7 @@ bk_sfiles(int ac, char **av)
 	for (i = 1, j = 0; cmds[i] = av[j]; i++, j++);
 	cmds[i++] = "-";
 	cmds[i] = 0;
-	if ((pid = spawnvp_wPipe(cmds, &pfd)) == -1) {
+	if ((pid = spawnvp_wPipe(cmds, &pfd, 0)) == -1) {
 		fprintf(stderr, "cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	} 

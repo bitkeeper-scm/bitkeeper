@@ -371,7 +371,7 @@ takepatch(opts opts, int gzip, remote *r)
 	cmds[++n] = "takepatch";
 	unless (opts.quiet) cmds[++n] = "-mvv";
 	cmds[++n] = 0;
-	pid = spawnvp_wPipe(cmds, &pfd);
+	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
 	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
 	close(pfd);
 

@@ -39,7 +39,7 @@ cset_inex(int flags, char *op, char *revs)
 	sprintf(buf, "-r%s", revs);
 	av[++i] = buf;
 	av[++i] = 0;
-	pid = spawnvp_rPipe(av, &fd);
+	pid = spawnvp_rPipe(av, &fd, 0);
 	if (pid == -1) {
 		perror("spawnvp_rPipe");
 		return (1);
@@ -170,7 +170,7 @@ getComments(char *op, char *revs)
 	av[++i] = buf;
 	av[++i] = CHANGESET;
 	av[++i] = 0;
-	pid = spawnvp_rPipe(av, &i);
+	pid = spawnvp_rPipe(av, &i, 0);
 	if (pid == -1) {
 		perror("spawnvp_rPipe");
 		return (0);
@@ -285,7 +285,7 @@ undoit(MDBM *m)
 	av[++i] = "sfiles";
 	av[++i] = "-gpAC";
 	av[++i] = 0;
-	pid = spawnvp_rPipe(av, &i);
+	pid = spawnvp_rPipe(av, &i, 0);
 	if (pid == -1) {
 		perror("spawnvp_rPipe");
 		exit(1);

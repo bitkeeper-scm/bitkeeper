@@ -360,7 +360,7 @@ genpatch(opts opts, int level, int wfd, char *rev_list)
 	fd0 = dup(0); close(0);
 	fd = open(rev_list, O_RDONLY, 0);
 	assert(fd == 0);
-	pid = spawnvp_rPipe(makepatch, &rfd);
+	pid = spawnvp_rPipe(makepatch, &rfd, 0);
 	dup2(fd0, 0); close(fd0);
 	gzipAll2fd(rfd, wfd, level, &(opts.in), &(opts.out), 1, opts.verbose);
 	close(rfd);
