@@ -708,7 +708,7 @@ sfind(sccs *s, int serial)
 {
 	delta	*t;
 
-	assert(serial <= s->numdeltas);
+	assert(serial <= s->nextserial);
 	if (serial >= s->ser2dsize) goto realloc;
 	if (s->ser2delta && s->ser2delta[serial]) return (s->ser2delta[serial]);
 	if (s->ser2delta) {
@@ -725,7 +725,7 @@ sfind(sccs *s, int serial)
 realloc:
 	if (s->ser2delta) free(s->ser2delta);
 	/* We leave a little extra room for sccs_delta. */
-	s->ser2dsize = s->numdeltas+10;
+	s->ser2dsize = s->nextserial+10;
 	s->ser2delta = calloc(s->ser2dsize, sizeof(delta*));
 	for (t = s->table; t; t = t->next) {
 		if (t->serial >= s->ser2dsize) {
@@ -2900,7 +2900,6 @@ done:		;	/* CSTYLED */
 	while (d) {
 		delta	*therest = d->kid;
 
-		assert(d->serial <= s->numdeltas);
 		d->kid = 0;
 		dinsert(s, flags, d);
 		d = therest;
@@ -4036,7 +4035,7 @@ visitedmap(sccs *s)
 
 	for (t = s->table; t; t = t->next) {
 		if (t->type != 'D') continue;
- 		assert(t->serial <= s->numdeltas);
+ 		assert(t->serial <= s->nextserial);
 		if (t->flags & D_SET) {
 			slist[t->serial] = 1;
 		}
@@ -4071,7 +4070,7 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 		for (t = walkList(s, iLst, errp);
 		    !*errp && t; t = walkList(s, 0, errp)) {
 			verbose((stderr, " %s", t->rev));
-			assert(t->serial <= s->numdeltas);
+			assert(t->serial <= s->nextserial);
 			slist[t->serial] = S_INC;
  		}
 		verbose((stderr, "\n"));
@@ -4082,7 +4081,7 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 		verbose((stderr, "Excluded:"));
 		for (t = walkList(s, xLst, errp);
 		    !*errp && t; t = walkList(s, 0, errp)) {
-			assert(t->serial <= s->numdeltas);
+			assert(t->serial <= s->nextserial);
 			verbose((stderr, " %s", t->rev));
 			if (slist[t->serial] == S_INC)
 				*errp = 3;
@@ -4107,7 +4106,7 @@ serialmap(sccs *s, delta *d, int flags, char *iLst, char *xLst, int *errp)
 	for (t = s->table; t; t = t->next) {
 		if (t->type != 'D') continue;
 
- 		assert(t->serial <= s->numdeltas);
+ 		assert(t->serial <= s->nextserial);
 		
 		/* if an ancestor and not excluded, or if included */
 		if ( (t == n && slist[t->serial] != S_EXCL)
@@ -7608,6 +7607,11 @@ out:
 		if (checkrevs(sc, flags) || checkdups(sc) ||
 		    ((flags & ADMIN_ASCII) && badchars(sc))) {
 			OUT;
+		}
+		if (sc->nextserial != (sc->numdeltas + 1)) {
+			fprintf(stderr,
+			    "admin: gaps in serials in %s (somewhat unusual)\n",
+			    sc->sfile);
 		}
 		verbose((stderr, "admin: %s checks out OK\n", sc->sfile));
 		goto out;

@@ -512,6 +512,8 @@ typedef	struct sccs {
 	lod	*lods;		/* all lines of development */
 	char	*defbranch;	/* defbranch, if set */
 	int	numdeltas;	/* number of entries in the graph */
+	int	nextserial;	/* next unused serial # */
+				/* due to gaps, those two may not be the same */
 	delta	**ser2delta;	/* indexed by serial, returns delta */
 	int	ser2dsize;	/* just to be sure */
 	char	*mmap;		/* mapped file */
@@ -533,7 +535,6 @@ typedef	struct sccs {
 	char	*random;	/* random bits for file ID */
 	mode_t	mode;		/* mode of the gfile */
 	off_t	data;		/* offset to data in file */
-	int	nextserial;	/* next unused serial # */
 	delta	*rstart;	/* start of a range (1.1 - oldest) */
 	delta	*rstop;		/* end of range (1.5 - youngest) */
 	sum_t	 cksum;		/* SCCS chksum */
