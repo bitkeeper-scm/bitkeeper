@@ -3300,8 +3300,8 @@ checktags(sccs *s, delta *leaf, int flags)
 	return (1);
 }
 
-private int
-badTag(char *me, char *tag, int flags)
+int
+sccs_badTag(char *me, char *tag, int flags)
 {
 	char	*p;
 
@@ -3380,7 +3380,7 @@ checkTags(sccs *s, int flags)
 	for (sym = s->symbols; sym; sym = sym->next) {
 		unless (sym->symname) continue;
 		/* XXX - not really "check" all the time */
-		if (badTag("check", sym->symname, flags)) bad = 1;
+		if (sccs_badTag("check", sym->symname, flags)) bad = 1;
 	}
 	if (bad) return (128);
 
@@ -10464,7 +10464,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 			continue;
 		}
 		if (!rev || !*rev) rev = d->rev;
-		if (badTag(me, s[i].thing, flags)) goto sym_err;
+		if (sccs_badTag(me, s[i].thing, flags)) goto sym_err;
 		if (dupSym(sc->symbols, sym, rev)) {
 			verbose((stderr,
 			    "%s: symbol %s exists on %s\n", me, sym, rev));

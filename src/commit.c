@@ -46,7 +46,9 @@ commit_main(int ac, char **av)
 				break;
 		    case 's':	/* fall thru  *//* internal */	/* undoc 2.0 */
 		    case 'q':	opts.quiet = 1; break;		/* doc 2.0 */
-		    case 'S':	sym = optarg; break;		/* doc 2.0 */
+		    case 'S':	sym = optarg;
+				if (sccs_badTag("commit", sym, 0)) exit (1);
+				break;		/* doc 2.0 */
 		    case 'y':					/* doc 2.0 */
 			dflags |= DELTA_DONTASK;
 			comments_save(optarg);
