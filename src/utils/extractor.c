@@ -33,6 +33,7 @@ extern unsigned char data_data[];
 void	extract(char *, char *, u32, char *);
 char	*findtmp(void);
 int	isdir(char*);
+void	rmTree(char *dir);
 
 main(int ac, char **av)
 {

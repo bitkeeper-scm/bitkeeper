@@ -93,7 +93,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	port/gethost.o port/getinput.o port/getnull.o \
 	port/getrealcwd.o port/getrealname.o port/globalroot.o port/gui.o \
 	port/hostColonPath.o port/http_proxy.o \
-	port/lock.o port/mail.o port/mnext.o \
+	port/lock.o port/lock_dir.o port/mail.o port/mnext.o \
 	port/ns_sock_host2ip.o port/platforminit.o \
 	port/randomBits.o \
 	port/rlimit.o port/runable.o port/samepath.o \
@@ -125,7 +125,7 @@ PSCR	= t/doit
 # Put UWTLIB first, it checks out files needed by mdbm on winblows.
 LIBS	= $(UWTLIB) zlib/libz.a mdbm/libmdbm.a tomcrypt/libtomcrypt.a
 DATA	= bitkeeper.config bkmsg.txt bkhelp.txt \
-	../doc/bk_refcard.ps ../doc/bk_refcard.pdf
+	../doc/bk_refcard.ps ../doc/bk_refcard.pdf ../RELEASE-NOTES
 ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(DATA) $(XTRA) GUI
 
 # FASTPURIFY does not do overrun/underrun checking at each alloc/free

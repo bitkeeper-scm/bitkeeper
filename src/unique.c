@@ -38,6 +38,8 @@
 #include "sccs.h"
 WHATSTR("@(#)%K%");
 
+char		*lock_dir(void);
+
 private	char	*lockHome(void);
 private	char	*keysHome(void);
 private	int	uniq_regen(void);
@@ -53,7 +55,7 @@ lockHome()
 	char	path[MAXPATH];
 
 	if (lockFile) return (lockFile);
-	sprintf(path, "%s/.bk_kl%s", TMP_PATH, sccs_realuser());
+	sprintf(path, "%s/.bk_kl%s", lock_dir(), sccs_realuser());
 	return (lockFile = (strdup)(path));
 }
 

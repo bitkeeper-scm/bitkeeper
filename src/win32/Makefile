@@ -47,6 +47,7 @@ msys: ./msysver.sh MSYSKEY FORCE
 		}; \
 		true; \
 	fi
+	rm -f $(MSYSBIN)/bin/rxvt.exe
 
 bkshellx: getdatarepo BKSHELLXKEY FORCE
 	[ -d dll ] || mkdir dll
@@ -63,6 +64,7 @@ install: all blat data/bk.ico
 	cp -f data/bk.ico $(BINDIR)/bk.ico
 	cp -f dll/scc/lib/bkscc.dll $(BINDIR)
 	cp -f dll/shellx/bin/shellx $(BINDIR)
+	cp -f dll/shellx/bin/bkshellx_cmd.sh $(BINDIR)
 	cp -f dll/shellx/lib/Bk*.ico $(BINDIR)
 	cp -f dll/shellx/lib/BkShellX.dll $(BINDIR)
 	cd pub/blat && make BINDIR=$(BINDIR) install

@@ -42,7 +42,7 @@ proc initGlobals {} \
 	if {$tcl_platform(platform) == "windows"} {
 		set runtime(enableSccDLL) 1
 		set runtime(enableShellxLocal) 1
-		set runtime(enableShellxNetwork) 1
+		set runtime(enableShellxNetwork) 0
 		set runtime(places) \
 		    [list [normalize {C:/Program Files/BitKeeper}]]
 		set runtime(symlinkDir) ""
@@ -339,8 +339,6 @@ proc widgets {} \
 		    set d [string map $map $::strings(InstallDLLs)]
 		    $this stepconfigure InstallDLLs -description [unwrap $d]
 
-		    set ::runtime(installDLLs) 1
-
 		    checkbutton $w.shellx-local \
 			-anchor w \
 			-text "Enable Explorer integration on LOCAL drives" \
@@ -631,10 +629,14 @@ proc doInstall {} \
 
 proc log {string {tag {}}} \
 {
+	set yview [$::widgets(log) yview]
 	$::widgets(log) configure -state normal
 	$::widgets(log) insert end $string $tag
 	$::widgets(log) configure -state disabled
-	$::widgets(log) see end-1c
+	# only scroll if the user hasn't manually scrolled
+	if {[lindex $yview 1] >= 1} {
+		$::widgets(log) see end-1c
+	}
 	update idletasks
 }
 
@@ -680,6 +682,13 @@ proc doCommand {args} \
 
 	# This variable is set by readPipe when we get EOF on the pipe
 	vwait ::DONE
+
+	if {$::DONE == 2} {
+		# exit immediately; system must reboot. If we don't
+		# exit it can cause the reboot process to hang on 
+		# Windows/Me
+		exit 2
+	}
 
 	if {$::DONE != 0} {
 		set error "unexpected error"
@@ -926,13 +935,19 @@ set strings(Overwrite) {
 }
 
 set strings(InstallDLLs) {
-	BitKeeper includes optional integration with Windows explorer
-	and Visual C++ 6.0. 
+	BitKeeper includes optional integration with Windows Explorer
+	and Visual Studio (but not Visual Studio.net, that's coming soon).
 
-	The explorer integration can be enabled separately for local
+	The Explorer integration can be enabled separately for local
 	and remote hard drives.  Enabling this option on remote drives
 	can lead to performance problems if you have a slow or
 	unreliable network. 
+
+	These features are only available to commercial users of BitKeeper.
+	If you are evaluating BitKeeper for commercial use please make
+	sure you have received an evaluation key to enable these
+	features. See http://www.bitkeeper.com for information on
+	getting an evaluation key or a commercial license key.
 }
 
 set strings(Install) {
@@ -976,7 +991,7 @@ Installation of
 
 is completed. Enjoy BitKeeper and send support@bitmover.com
 any questions. Don't forget to try the quick and informative
-demo at http://www.bitkeeper.com/Test-Drive.html
+demo at http://www.bitkeeper.com/Test.html
 
 The BitKeeper Team
 }
