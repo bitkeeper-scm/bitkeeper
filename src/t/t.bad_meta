@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# Copyright (c) 1999 Andrew Chang
+# %K%
+
+echo $N Create initial repository ...................................$NL
+HERE=`${CWD}`
+echo "logging: /dev/null" > $HERE/c
+echo "logging_ok: t" >>$HERE/c
+bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
+if [ ! -d project ]; then echo failed to make top level directory; exit 1; fi
+cd project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+P=`bk pending | wc -l`
+if [ $P -ne 0 ]; then echo files are pending; bk pending; exit 1; fi
+echo OK
+echo $N Create some data ............................................$NL
+mkdir src
+cd src
+echo foo > foo.c
+echo bar > bar.c
+echo h > h.h
+bk ci $Q -i foo.c bar.c h.h
+if [ ! -f SCCS/s.foo.c ]; then echo failed to create history; exit 1; fi
+echo OK
+echo $N check disabling of user \& group data ........................$NL
+admin -aawc foo.c 2> admin.out
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+grep -q "not supported" admin.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+admin -eawc foo.c 2> admin.out
+if [ $? -eq 0 ]; then echo failed; exit 1; fi
+grep -q "not supported" admin.out
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+$RM admin.out
+echo OK

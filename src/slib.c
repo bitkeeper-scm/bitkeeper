@@ -7872,6 +7872,11 @@ out:
 	}
 
 user:	for (i = 0; u && u[i].flags; ++i) {
+		if (sc->state & S_BITKEEPER) {
+			fprintf(stderr,
+			    "admin: changing user/group is not supported\n");
+			OUT;
+		}
 		flags |= NEWCKSUM;
 		if (u[i].flags & A_ADD) {
 			sc->usersgroups =
