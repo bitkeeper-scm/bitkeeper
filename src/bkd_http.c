@@ -16,6 +16,7 @@ private void	http_gif(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
 private void	header(char *path, char *color, char *title, char *header, ...);
+private void	printnavbar();
 private void	learn();
 private void	trailer(char *path);
 private char	*findRoot(char *name);
@@ -30,8 +31,9 @@ private	char	*root;
 #define	COLOR_DIFFS	"lightblue"	/* diffs */
 #define	COLOR_PATCH	"lightblue"	/* patch */
 
-char arguments[MAXPATH];
-char nav[MAXPATH];
+char arguments[MAXPATH] = { 0 };
+char navbar[MAXPATH] = { 0 };
+char thisPage[MAXPATH] = { 0 };
 
 /*
  */
@@ -66,18 +68,9 @@ cmd_httpget(int ac, char **av)
 	if (s = strchr(name, '?')) {
 		*s++ = 0;
 		strcpy(arguments, s);
-		sprintf(nav, "%s:", arguments);
-
-		/* arguments:  ?nav=url+key:url+key:url+key:url+key:url+key
-			key is the path, so a source search will be
-			src/.../dir/file?nav=url+name:url+name:...
-			and it will show up on the html as
-
-			(home) >> (src) >> (...)
-		 */
+		strcpy(navbar, s);
 	} else {
 		arguments[0] = 0;
-		strcpy(nav, "nav=");
 	}
 
 	unless (*name) name = "index.html";
@@ -147,6 +140,122 @@ cmd_httpget(int ac, char **av)
 
 
 private void
+whoami(char *fmt, ...)
+{
+	va_list ptr;
+
+	va_start(ptr, fmt);
+	vsprintf(thisPage, fmt, ptr);
+	va_end(ptr);
+
+	if (navbar[0]) {
+		strcat(navbar, ":");
+		strcat(navbar, thisPage);
+	} else {
+		strcpy(navbar, "nav=");
+		strcat(navbar, thisPage);
+	}
+}
+
+
+private void
+navbutton(int bold, int tag, char *start, char *end)
+{
+	char *sep;
+	char buf[MAXPATH];
+	int ct;
+
+	for (sep = start; sep < end && *sep != '|'; ++sep)
+		;
+	if (*sep == '|') {
+		out(bold ? "<th>" : "<td>" );
+		if (tag) {
+			sprintf(buf, "<a href=\"%.*s?%.*s\">",
+			    sep-start, start, start-arguments, arguments);
+		} else {
+			sprintf(buf, "<a href=\"%.*s\">", sep-start,start);
+		}
+		out(buf);
+		sep++;
+		if (*sep == '@') {
+			switch (sep[1]) {
+			    case 'C':	/* range of changesets */
+				if (sep[2] == '*') {
+					out("All ChangeSets");
+				} else {
+					ct = atoi(sep+3);
+					sprintf(buf,
+					    "Changesets in the last %d day%s",
+					    ct, (ct!=1) ? "s" : "");
+					out(buf);
+				}
+				out("</a>");
+				goto fin;
+			    case 'H':
+				out("Home</a>");
+				goto fin;
+			    case 'h':	/* history of a file */
+				out("History of ");
+				break;
+			    case 'a':	/* annotated versions for a file */
+				out("Annotations for ");
+				break;
+			    case 'd':	/* diffs */
+				out("Diffs for ");
+				break;
+			    case 'c':	/* a particular changeset */
+				out("ChangeSet ");
+				break;
+			    case 'p':	/* patch */
+				out("Patch for ");
+			    default:
+				goto regular;
+			}
+			sep += 2;
+			sprintf(buf, "%.*s</a>", end-sep, sep);
+			out(buf);
+			goto fin;
+		}
+	regular:
+		sprintf(buf, "%.*s</a>", end-sep, sep);
+		out(buf);
+	}
+    fin:
+	out(bold ? "</th>\n" : "</td>\n");
+}
+
+
+private void
+printnavbar()
+{
+	char *start, *end;
+	int first = 1;
+
+	out("<!-- [");out(navbar);out("] -->\n");
+	/* put in a navigation bar */
+	out("<font>\n"
+	    "<table border=1>\n"
+	    "<tr>\n");
+
+	if (strneq(navbar, "nav=", 4)) {
+		for (start = arguments+4; *start; ++start) {
+			for (end = start; *end && *end != ':'; ++end)
+				;
+			navbutton(0, !first,start,end);
+			start = end;
+			first = 0;
+		}
+	}
+	navbutton(1, !first, thisPage, thisPage+strlen(thisPage));
+
+	out("</tr>\n"
+	    "</table>\n"
+	    "</font>\n"
+	    "<hr>\n");
+}
+
+
+private void
 header(char *path, char *color, char *titlestr, char *headerstr, ...)
 {
 	char buf[MAXPATH];
@@ -183,26 +292,7 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 		out("/>\n");
 	}
 
-	/* put in a navigation bar */
-	out("<a href=\"index.html\">home</a>");
-	if (strneq(arguments, "nav=", 4)) {
-		for (s = arguments+4; *s; ) {
-			for (t = s; *t && *t != ':' && *t != '+'; ++t)
-				;
-			if (*t == '+') {
-				sprintf(buf, "&nbsp;&gt;&gt;&nbsp;<a href=\"%.*s?%.*s\">",
-				    t-s, s, s-arguments, arguments);
-				out(buf);
-				for (s=++t; *t && *t != ':'; ++t)
-					;
-				sprintf(buf, "%.*s</a>", t-s, s);
-				out(buf);
-				s = *t ? (1+t) : t;
-			}
-			else break;
-		}
-	}
-	out("<br><hr>\n");
+	printnavbar();
 
 	unless (include(path, "header.txt")) {
 		m = loadConfig(".", 0);
@@ -296,10 +386,11 @@ http_changes(char *rev)
 	char	*d;
 
 	if (rev) {
-		sprintf(nav+strlen(nav), "ChangeSet@%s+%s", rev, rev);
+		whoami("ChangeSet@%s|@C%s", rev, rev);
 	} else {
-		strcat(nav, "ChangeSet+all&#020;changesets");
+		whoami("ChangeSet|@C*");
 	}
+
 	sprintf(dspec,  "-d<tr>\n"
 			" <td align=right>:HTML_AGE:</td>\n"
 			" <td align=center>:USER:</td>\n"
@@ -309,7 +400,7 @@ http_changes(char *rev)
 			"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 			"</td>\n"
 			" <td>:HTML_C:</td>\n"
-			"</tr>\n", nav);
+			"</tr>\n", navbar);
 
 	httphdr(".html");
 	header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
@@ -346,7 +437,7 @@ http_cset(char *rev)
 	char	*d, **lines = 0;
 	char	dspec[MAXPATH*2];
 
-	sprintf(nav+strlen(nav), "cset@%s+%s", rev, rev);
+	whoami("cset@%s|@c%s", rev, rev);
 
 	sprintf(dspec,
 	    "<tr bgcolor=#d8d8f0><td>&nbsp;"
@@ -372,7 +463,7 @@ http_cset(char *rev)
 	    "$each(:C:){"
 	      "<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>"
 	    "}"
-	    "<tr><td>&nbsp;</td></tr>\n", nav, nav, nav, nav);
+	    "<tr><td>&nbsp;</td></tr>\n", navbar, navbar, navbar, navbar);
 
 	httphdr("cset.html");
 
@@ -535,7 +626,7 @@ http_hist(char *pathrev)
 	MDBM	*m;
 	char	dspec[MAXPATH*2];
 
-	sprintf(nav+strlen(nav), "hist/%s+%s", pathrev, pathrev);
+	whoami("hist/%s|@h%s", pathrev, pathrev);
 
 	sprintf(dspec,
 		"<tr>\n"
@@ -547,7 +638,7 @@ http_hist(char *pathrev)
 		"<a href=diffs/:GFILE:@:I:?%s>:I:</a>"
 		"$if(:TAG:){$each(:TAG:){<br>(:TAG:)}}"
 		"</td>\n <td>:HTML_C:</td>\n"
-		"</tr>\n", nav);
+		"</tr>\n", navbar);
 
 	httphdr(".html");
 	header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
@@ -591,7 +682,10 @@ http_src(char *path)
 	time_t	now;
 	char 	dspec[MAXPATH*2];
 
-	sprintf(nav+strlen(nav), "src/%s+%s", path, streq(path, ".") ? "sources" : path);
+	unless (t = strrchr(path, '/')) t = path-1;
+
+	whoami("src/%s|%s", path, t+1);
+
 	sprintf(dspec, 
 	    "<tr bgcolor=lightyellow>"
 	    " <td><img src=file.gif></td>"
@@ -606,7 +700,7 @@ http_src(char *path)
 	    " <td align=right><font size=2>:HTML_AGE:</font></td>"
 	    " <td align=center>:USER:</td>"
 	    " <td>:HTML_C:&nbsp;</td>"
-	    "</tr>\n", nav, nav, nav, nav);
+	    "</tr>\n", navbar, navbar, navbar, navbar);
 
 
 	if (!path || !*path) path = ".";
@@ -637,9 +731,9 @@ http_src(char *path)
 		}
 		if (lstat(buf, &sbuf) == -1) continue;
 		if (path[1]) {
-			sprintf(buf, "<a href=src/%s/%s?%s>", path, e->d_name, nav);
+			sprintf(buf, "<a href=src/%s/%s?%s>", path, e->d_name, navbar);
 		} else {
-			sprintf(buf, "<a href=src/%s?%s>", e->d_name, nav);
+			sprintf(buf, "<a href=src/%s?%s>", e->d_name, navbar);
 		}
 		//s = age(now - sbuf.st_mtime, "&nbsp;");
 		if (S_ISDIR(sbuf.st_mode)) {
@@ -692,6 +786,8 @@ http_anno(char *pathrev)
 	MDBM	*m;
 
 	httphdr(".html");
+
+	whoami("anno/%s|@a%s", pathrev, pathrev);
 
 	header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
 
@@ -776,14 +872,15 @@ http_diffs(char *pathrev)
 	char	dspec[MAXPATH*2];
 
 
-	sprintf(nav+strlen(nav), "diffs/%s+%s", pathrev, pathrev);
+	whoami("diffs/%s|@d%s", pathrev, pathrev);
+
 	sprintf(dspec,
 		"<tr>\n"
 		" <td align=right>:HTML_AGE:</td>\n"
 		" <td align=center>:USER:$if(:DOMAIN:){@:DOMAIN:}</td>\n"
-		" <td align=center><a href=/anno/:GFILE:@:I:?%s>:I:</a></td>\n"
+		" <td align=center><a href=anno/:GFILE:@:I:?%s>:I:</a></td>\n"
 		" <td>:HTML_C:</td>\n"
-		"</tr>\n", nav);
+		"</tr>\n", navbar);
 
 	httphdr(".html");
 	header("diffs", COLOR_DIFFS, "Changes for %s", 0, pathrev);
@@ -836,8 +933,10 @@ http_patch(char *rev)
 
 	httphdr(".html");
 
+	whoami("patch@%s|@p%s", rev, rev);
+
 	header("rev", COLOR_PATCH,
-	    "Patch for ChangeSet <a href=/cset@%s>%s</a>",
+	    "Patch for ChangeSet <a href=cset@%s>%s</a>",
 	    "Patch for ChangeSet %s",
 	    rev, rev);
 
@@ -942,6 +1041,10 @@ http_index()
 	    "</title></head>\n"
 	    "<body alink=black link=black bgcolor=white>\n");
 
+	whoami("index.html|@H");
+
+	printnavbar();
+
 	unless (include(0, "homepage.txt")) {
 		if (t) {
 			title("ChangeSet activity", t, COLOR_TOP);
@@ -954,7 +1057,7 @@ http_index()
 #define	DOIT(c, l, u, t) \
 	if (c && (c != l)) { \
 		out("<tr><td width=45%>&nbsp;</td>"); \
-		sprintf(buf, "<td><a href=ChangeSet@-%s>", u); \
+		sprintf(buf, "<td><a href=ChangeSet@-%s?%s>", u, navbar); \
 		out(buf); \
 		sprintf(buf, \
 		    "%d&nbsp;ChangeSets&nbsp;in&nbsp;the&nbsp;last&nbsp;%s</a>", c, t); \
@@ -974,13 +1077,14 @@ http_index()
 	DOIT(c1m, c3w, "31d", "month");
 	DOIT(c2m, c1m, "62d", "two&nbsp;months");
 	out("<tr><td>&nbsp;</td><td>");
-	out("<a href=ChangeSet>");
+	sprintf(buf,"<a href=ChangeSet?%s>", navbar);
+	out(buf);
 	sprintf(buf, "All %d ChangeSets", c);
 	out(buf);
 	out("</a></td><td>&nbsp;</td></tr>");
 	out("<tr><td>&nbsp;</td>");
 	sprintf(buf,
-	    "<td><a href=src>Browse the source tree</a></td>");
+	    "<td><a href=src?%s>Browse the source tree</a></td>", navbar);
 	out(buf);
 	out("<td>&nbsp;</td></tr>");
 	out("</table>\n");
