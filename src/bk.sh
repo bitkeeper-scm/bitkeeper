@@ -226,12 +226,11 @@ _status() {
 		v) V=YES;;
 		esac
 	done
-	if [ X$1 != X -a -d "$1" ]
-	then	cd $1
-	fi
+	shift `expr $OPTIND - 1`
+	if [ X$1 != X -a -d "$1" ]; then cd $1; fi
 	_cd2root
 	echo Status for BitKeeper repository `pwd`
-	bk version
+	_version
 	if [ -d RESYNC ]
 	then	echo Resync in progress
 	else	if [ -d PENDING ]
@@ -240,13 +239,18 @@ _status() {
 	fi
 	# List counts or file states
 	if [ $V = YES ]
-	then	( bk sfiles -x | sed 's/^/Extra:		/'
+	then	
+		_users | sed 's/^/User:		/'
+		( bk sfiles -x | sed 's/^/Extra:		/'
 		  bk sfiles -cg | sed 's/^/Modified:	/'
 		  bk sfiles -Cg | sed 's/^/Uncommitted:	/'
 		) | sort
-	else	echo `bk sfiles -x | wc -l` files not under revision control.
-		echo `bk sfiles -c | wc -l` files modified and not checked in.
-		echo `bk sfiles -C | wc -l` files with uncommitted deltas.
+	else	
+		echo "`_users | wc -l` people have made deltas."
+		echo "`bk sfiles | wc -l` files under revision control."
+		echo "`bk sfiles -x | wc -l` files not under revision control."
+		echo "`bk sfiles -c | wc -l` files modified and not checked in."
+		echo "`bk sfiles -C | wc -l` files with uncommitted deltas."
 	fi
 }
 
@@ -445,14 +449,17 @@ _chkConfig() {
 	fi
 }
 
-# Send the config file 
+# Send configuration information for those sites which have disabled logging.
+# This information is not to be publicly disclosed but because it travels
+# over email, we can't leak any sensitive information.
 _sendConfig() {
 	if [ X$1 = X ]
 	then	return		# error, should never happen
 	fi
 	_cd2root
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
-	( ${BIN}prs -hr1.0 \
+	( ${BIN}bk status
+	  ${BIN}prs -hr1.0 \
 	-d'$each(:FD:){Project:\t(:FD:)}\nChangeSet ID:\t:LONGKEY:' ChangeSet;
 	  echo "User:		$USER"
 	  echo "Host:		`hostname`"
@@ -478,22 +485,26 @@ _logAddr() {
 	echo ${LOG#*:} 
 }
 
-# Determine if the repo is multiuser.
-# If it isn't, we don't need to log anything.
 # The rule is: for any user@host.dom.ain, if the last component is 3 letters,
 # then the last two components are significant; if the last components are
 # two letters, then the last three are.
 # This is not always right (consider .to) but works most of the time.
 # We are fascist about the letters allowed on the RHS of an address.
-_checkMultiuser() {
-	${BIN}prs -hd:HT: ChangeSet >/tmp/hosts$$
-	${BIN}prs -hd:P: ChangeSet >/tmp/users$$
-	tr A-Z a-z </tmp/hosts$$ | sed '
-s/^[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/\1.\2/
-s/^[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\2/
-' > /tmp/shosts$$
-	paste -d@ /tmp/users$$ /tmp/shosts$$ | sort | uniq | wc -l
-	rm -f /tmp/hosts$$ /tmp/users$$ /tmp/shosts$$
+_users() {
+	if [ "X$1" = "X-a" ]; then ALL=YES; shift; else ALL=NO; fi
+	if [ X$1 != X -a -d "$1" ]; then cd $1; fi
+	_cd2root
+	${BIN}prs -hd':P:@:HT:' ChangeSet | sort -u > /tmp/users$$
+	if [ $ALL = "YES" ]
+	then	cat /tmp/users$$
+		/bin/rm /tmp/users$$
+		return
+	fi
+	tr A-Z a-z </tmp/users$$ | sed '
+s/@[a-z0-9.-]*\.\([a-z0-9-]*\)\.\([a-z0-9-][a-z0-9-][a-z0-9-]\)$/@\1.\2/
+s/@[a-z0-9.-]*\.\([a-z0-9-]*\.[a-z0-9-][a-z0-9-]\)\.\([a-z0-9-][a-z0-9-]\)$/\1.\2/
+' | sort -u
+	/bin/rm -f /tmp/users$$
 }
 
 # Log the changeset to openlogging.org or wherever they said to send it.
@@ -628,7 +639,7 @@ _commit() {
 		fi
 		LOGADDR=`_logAddr` || exit 1
 		export LOGADDR
-		nusers=`_checkMultiuser` || exit 1
+		nusers=`_users | wc -l` || exit 1
 		if [ $nusers -gt 1 ]
 		then $CHECKLOG
 		fi
@@ -659,7 +670,7 @@ _commit() {
 			fi
 			LOGADDR=`_logAddr` || exit 1
 			export LOGADDR
-			nusers=`_checkMultiuser` || exit 1
+			nusers=`_users | wc -l` || exit 1
 			if [ $nusers -gt 1 ]
 			then $CHECKLOG
 			fi
@@ -797,7 +808,8 @@ _commandHelp() {
 				    renames|gui|path|ranges|terms|regression|\
 				    backups|debug|sendbug|commit|pending|send|\
 				    resync|changes|undo|save|docs|RCS|status|\
-				    sccsmv|mv|sccsrm|rm|version|root|export)
+				    sccsmv|mv|sccsrm|rm|version|root|export|\
+				    users)
 					_gethelp help_$i $BIN | $PAGER
 					;;
 				    *)
@@ -925,7 +937,7 @@ case "$1" in
 	;;
     setup|changes|pending|commit|sendbug|send|\
     mv|oldresync|edit|unedit|man|undo|save|docs|rm|new|version|\
-    root|status|export)
+    root|status|export|users)
 	cmd=$1
     	shift
 	_$cmd "$@"

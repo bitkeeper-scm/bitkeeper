@@ -229,6 +229,8 @@
 #define	CHANGESET	"SCCS/s.ChangeSet"
 #define	IDCACHE		"BitKeeper/etc/SCCS/x.id_cache"
 #define	IDCACHE_LOCK	"BitKeeper/etc/SCCS/z.id_cache"
+#define	TMP_MODE	0666
+#define	GROUP_MODE	0664
 
 #define	ROOT_USER	"root"
 #define	UNKNOWN_USER	"anon"

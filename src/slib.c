@@ -3717,7 +3717,8 @@ sccs_lock(sccs *sccs, char type)
 
 	if ((type == 'z') && (sccs->state & S_READ_ONLY)) return (0);
 	s = sccsXfile(sccs, type);
-	islock = open(s, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : 0644);
+	islock =
+	    open(s, O_CREAT|O_WRONLY|O_EXCL, type == 'z' ? 0444 : GROUP_MODE);
 	close(islock);
 	if (islock > 0) sccs->state |= S_ZFILE;
 	debug((stderr, "lock(%s) = %d\n", sccs->sfile, islock > 0));
@@ -6301,7 +6302,7 @@ fix_lf(char *gfile)
 	}               
 	unless (sb.st_mode & 0200) return (0);
 	if (sb.st_size > 0) {
-		if ((fd = open(gfile, 2, 0660)) == -1) {
+		if ((fd = open(gfile, 2, GROUP_MODE)) == -1) {
 			return (0);
 		}
 		if (lseek(fd, sb.st_size - 1, 0) != sb.st_size - 1) {
@@ -6930,7 +6931,7 @@ updatePending(sccs *s, delta *d)
 	assert(exists(buf));
 
 	concat_path(buf, buf, "x.pending");
-	fd = open(buf, O_CREAT|O_APPEND|O_WRONLY, 0660);
+	fd = open(buf, O_CREAT|O_APPEND|O_WRONLY, GROUP_MODE);
 	unless (fd > 0) return;
 	sccs_sdelta(s, sccs_ino(s), buf);
 	strcat(buf, " ");

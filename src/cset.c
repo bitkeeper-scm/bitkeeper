@@ -373,7 +373,7 @@ intr:		sccs_whynot("cset", cset);
 		purify_list();
 		return (1);
 	}
-	close(creat(IDCACHE, 0664));
+	close(creat(IDCACHE, GROUP_MODE));
 	sccs_free(cset);
 	commentsDone(saved);
 	hostDone();
@@ -725,6 +725,7 @@ csetlist(sccs *cset)
 		}
 		sprintf(buf, "sort < %s > %s", cat, csort);
 		if (system(buf)) goto fail;
+		chmod(csort, TMP_MODE);		/* in case we don't unlink */
 		unlink(cat);
 		if (verbose > 5) {
 			sprintf(buf, "cat %s", csort);
@@ -732,7 +733,7 @@ csetlist(sccs *cset)
 		}
 		goneDB = loadDB(GONE, 0, DB_KEYSONLY|DB_NODUPS);
 	} else {
-		close(creat(csort, 0666));
+		close(creat(csort, TMP_MODE));
 	}
 	unless (list = fopen(csort, "r")) {
 		perror(buf);
@@ -1090,7 +1091,7 @@ lock(char *lockName)
 {
 	int	i;
 
-	unless ((i = open(lockName, O_CREAT|O_EXCL, 0600)) > 0) {
+	unless ((i = open(lockName, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
 		fprintf(stderr, "cset: can't lock %s\n", lockName);
 		exit(1);
 	}

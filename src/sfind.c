@@ -295,14 +295,12 @@ rebuild()
 
 	unless (rFlg) goto c;
 
-	/* Used to be unlink(IDCACHE) which I took away hoping not to
-	 * to tickle Linux 2.[23].x NFS bugs.
-	 */
-	unless ((i = open(IDCACHE_LOCK, O_CREAT|O_EXCL, 0666)) > 0) {
+	unless ((i = open(IDCACHE_LOCK, O_CREAT|O_EXCL, GROUP_MODE)) > 0) {
 		fprintf(stderr, "sfiles: can't lock id cache\n");
 		exit(1);
 	}
 	close(i);	/* unlink it when we are done */
+	unlink(IDCACHE);
 	unless (id_cache = fopen(IDCACHE, "w")) {
 		perror(IDCACHE);
 		exit(1);
