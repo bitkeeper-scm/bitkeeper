@@ -57,7 +57,7 @@ bk pull -t $Q 2>MSGS || {
 	find . -type f -print
 	exit 1
 }
-grep -q 'It is marked as gone but exists in your repository, missing' MSGS || {
+grep -q 'Marked gone (chk1): foo.c' MSGS || {
 	echo Bad or no warning message from pull
 	cat MSGS
 	exit 1

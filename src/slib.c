@@ -15290,8 +15290,8 @@ sccs_reCache(int quiet)
 int
 gone(char *key, MDBM *db)
 {
-	unless (strchr(key, '|')) return (0);
 	unless (db) return (0);
+	unless (strchr(key, '|')) return (0);
 	return (mdbm_fetch_str(db, key) != 0);
 }
 

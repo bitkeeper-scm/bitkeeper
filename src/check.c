@@ -1122,7 +1122,7 @@ check(sccs *s, MDBM *db)
 	} else unless (resync ||
 	    streq(s->sfile, s->spathname) || LOGS_ONLY(s)) {
 		fprintf(stderr,
-		    "check: %s should be %s\n", s->gfile, s->spathname);
+		    "check: %s should be %s\n", s->sfile, s->spathname);
 		errors++;
 		names = 1;
 	}

@@ -11,7 +11,7 @@
 
 
 # Copyright (c) 2002 Rick Smith
-# rick@work.bitmover.com|src/t/t.fixlod|20020807140630|47048
+# %K%
 
 echo $N Create initial repository ...................................$NL
 no_logging project
@@ -56,7 +56,7 @@ mv d1/SCCS/s.a old-d1-s.a
 chmod 444 tmp
 mv tmp d1/SCCS/s.a
 bk admin -z d1/SCCS/s.a
-test `bk prs -r+ -hd:I: ChangeSet` = 2.1 || {
+test `bk prs -r2 -hd:I: ChangeSet` = 2.1 || {
 	echo Failed: could not create fake lod
 	exit 1
 }
@@ -99,7 +99,7 @@ test `wc -l < results` -eq 0 || {
 	cat results
 	exit 1
 }
-bk pull $Q ../project 1 > pull.out 2 > pull.err || {
+bk pull $Q ../project > pull.out 2> pull.err || {
 	echo Pull failed.
 	echo STDOUT
 	cat pull.out
