@@ -84,7 +84,6 @@ cmd_rclone_part2(int ac, char **av)
 	opts	opts;
 	char	buf[MAXPATH];
 	char	*path, *p;
-	char	bkd_nul = BKD_NUL;
 	int	fd2, rc = 0;
 
 	unless (path = rclone_common(ac, av, &opts)) return (1);
@@ -127,7 +126,7 @@ cmd_rclone_part2(int ac, char **av)
 		fprintf(stderr, "cmd_rclone: warning: lost end marker\n");
 	}
 	if (rc) {
-		write(1, &bkd_nul, 1);
+		fputc(BKD_NUL, stdout);
 		printf("%c%d\n", BKD_RC, rc);
 		fflush(stdout);
 		goto done;
@@ -143,11 +142,14 @@ cmd_rclone_part2(int ac, char **av)
 	 */
 
 	consistency(!opts.verbose);
-	write(1, &bkd_nul, 1);
+	/* restore original stderr */
+	dup2(fd2, 2); close(fd2);
+	fputc(BKD_NUL, stdout);
 done:
 	fputs("@END@\n", stdout); /* end SFIO INFO block */
 	fflush(stdout);
 	trigger(av,  "post");
+	repository_wrunlock(0);
 	return (rc);
 }
 
@@ -156,12 +158,9 @@ getsfio(int verbose, int gzip)
 {
 	int	n, status, pfd;
 	u32	in, out;
-	char	*cmds[10] = {"bk", "sfio", "-i", 0};
+	char	*cmds[10] = {"bk", "sfio", "-i", "-q", 0};
 	pid_t	pid;
 
-	n = 3;
-	unless (verbose) cmds[++n] = "-q";
-	cmds[++n] = 0;
 	pid = spawnvp_wPipe(cmds, &pfd, BIG_PIPE);
 	if (pid == -1) {
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
