@@ -264,7 +264,7 @@ proc highlightTextRev {rev file} \
 proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 {
 	global curLine cdim gc file dev_null dspec rev2rev_name ttype
-	global w rev1 srev errorCode comments_mapped firstnode
+	global w rev1 errorCode comments_mapped firstnode
 
 	if {[info exists fname]} {unset fname}
 
@@ -296,7 +296,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		}
 		pack configure $w(cframe) \
 		    -fill x \
-		    -expand true \
+		    -expand false \
 		    -anchor n \
 		    -before $w(apframe)
 		pack configure $w(apframe) \
@@ -388,7 +388,6 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		busy 0
 		return
 	}
-	set srev ""
 	set name [$win get $curLine "$curLine lineend"]
 	if {$name == ""} { puts "Error: name=($name)"; busy 0; return }
 	if {[info exists rev2rev_name($rev)]} {
@@ -882,7 +881,7 @@ proc setScrollRegion {} \
 	#puts "bb_all=>($bb_all)"
 }
 
-proc listRevs {r file {N {}}} \
+proc listRevs {r file} \
 {
 	global	bad Opts merges dev_null ht screen stacked gc w
 	global	errorCode
@@ -902,18 +901,10 @@ proc listRevs {r file {N {}}} \
 	# XXX - should do it in all corners.
 	#$w(graph) create text 0 0 -anchor nw -text " "
 
-	# Figure out the biggest node and its length.
-	# XXX - this could be done on a per column basis.  Probably not
-	# worth it until we do LOD names.
-	if {$N != ""} { set n "-n$N" }
 	set errorCode [list]
-	set d [open "| bk prs -hr+ -nd:DS: \"$file\" 2>$dev_null" "r"]
-	gets $d s
-	close $d
-	if {$s < 300} { set r "" }
-	set d [open "| bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null" "r"]
+	set d [open "| bk _lines $Opts(line) $r \"$file\" 2>$dev_null" "r"]
 
-	#puts "bk _lines $Opts(line) $n $r \"$file\" 2>$dev_null"
+	# puts "bk _lines $Opts(line) $r \"$file\" 2>$dev_null"
 	if  {[lindex $errorCode 2] == 1} {
 		puts stderr "Error: Invalid revision number. rev=($r)"
 		exit 1;
@@ -1213,20 +1204,12 @@ proc sccscat {} \
 #
 proc selectNode { type {val {}}} \
 {
-	global file dev_null rev1 rev2 Opts w srev ttype sem lock
+	global file dev_null rev1 rev2 Opts w ttype sem lock
 
 	if {[info exists lock] && ($lock == "inprs")} {
 		set sem "show_sccslog"
 		return
 	}
-	# XXX: Oy, this is yucky. Setting srev to "" since we just clicked
-	# on a node and we no longer looking at a specific rev (used to 
-	# determine what we are looking at in selectTag. This fixes a bug
-	# where we were forced to click on a line twice to get the comments.
-	# The right fix is to use tcl Marks to determine what we are looking
-	# at.
-	set srev ""
-
 	if {$type == "id"} {
 		#getLeftRev $val
 	} elseif {$type == "rev"} {
@@ -1312,10 +1295,10 @@ proc displayDiff {rev1 rev2} \
 #
 proc gotoRev {f hrev} \
 {
-	global srev rev1 rev2 gc dev_null
+	global rev1 rev2 gc dev_null
 
 	set rev1 $hrev
-	revtool $f $hrev $gc(rev.showRevs)
+	revtool $f $hrev
 	set hrev [lineOpts $hrev]
 	highlight $hrev "old"
 	catch {exec bk prs -hr$hrev -d:I:-:P: $f 2>$dev_null} out
@@ -1605,16 +1588,16 @@ proc widgets {} \
 	set Opts(get) "-aum"
 	set Opts(line) "-u -t"
 	set yspace 20
-	# cframe	- comment frame	
-	# apframe	- annotation/prs frame
-	# ctext		- comment text window
-	# aptext	- annotation and prs text window
 	# graph		- graph canvas window
-	set w(cframe) .p.b.c
-	set w(ctext) .p.b.c.t
-	set w(apframe) .p.b.p
-	set w(aptext) .p.b.p.t
-	set w(graph) .p.top.c
+	# cframe	- comment frame	
+	# ctext		- comment text window (pops open)
+	# apframe	- annotation/prs frame
+	# aptext	- annotation window
+	set w(graph)	.p.top.c
+	set w(cframe)	.p.b.c
+	set w(ctext)	.p.b.c.t
+	set w(apframe)	.p.b.p
+	set w(aptext)	.p.b.p.t
 	set stacked 1
 
 	getConfig "rev"
@@ -1649,41 +1632,41 @@ proc widgets {} \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
 		$m add command -label "Last Day" \
-		    -command {set srev ""; revtool $fname -1D}
+		    -command {revtool $fname -1D}
 		$m add command -label "Last 2 Days" \
-		    -command {set srev ""; revtool $fname -2D}
+		    -command {revtool $fname -2D}
 		$m add command -label "Last 3 Days" \
-		    -command {set srev ""; revtool $fname -3D}
+		    -command {revtool $fname -3D}
 		$m add command -label "Last 4 Days" \
-		    -command {set srev ""; revtool $fname -4D}
+		    -command {revtool $fname -4D}
 		$m add command -label "Last 5 Days" \
-		    -command {set srev ""; revtool $fname -5D}
+		    -command {revtool $fname -5D}
 		$m add command -label "Last 6 Days" \
-		    -command {set srev ""; revtool $fname -6D}
+		    -command {revtool $fname -6D}
 		$m add command -label "Last Week" \
-		    -command {set srev ""; revtool $fname -W}
+		    -command {revtool $fname -1W}
 		$m add command -label "Last 2 Weeks" \
-		    -command {set srev ""; revtool $fname -2W}
+		    -command {revtool $fname -2W}
 		$m add command -label "Last 3 Weeks" \
-		    -command {set srev ""; revtool $fname -3W}
+		    -command {revtool $fname -3W}
 		$m add command -label "Last 4 Weeks" \
-		    -command {set srev ""; revtool $fname -4W}
+		    -command {revtool $fname -4W}
 		$m add command -label "Last 5 Weeks" \
-		    -command {set srev ""; revtool $fname -5W}
+		    -command {revtool $fname -5W}
 		$m add command -label "Last 6 Weeks" \
-		    -command {set srev ""; revtool $fname -6W}
+		    -command {revtool $fname -6W}
 		$m add command -label "Last 2 Months" \
-		    -command {set srev ""; revtool $fname -2M}
+		    -command {revtool $fname -2M}
 		$m add command -label "Last 3 Months" \
-		    -command {set srev ""; revtool $fname -3M}
+		    -command {revtool $fname -3M}
 		$m add command -label "Last 6 Months" \
-		    -command {set srev ""; revtool $fname -6M}
+		    -command {revtool $fname -6M}
 		$m add command -label "Last 9 Months" \
-		    -command {set srev ""; revtool $fname -9M}
+		    -command {revtool $fname -9M}
 		$m add command -label "Last Year" \
-		    -command {set srev ""; revtool $fname -1Y}
+		    -command {revtool $fname -1Y}
 		$m add command -label "All Changes" \
-		    -command {set srev ""; revtool $fname 1.1..}
+		    -command {revtool $fname 1.1..}
 	    button .menus.cset -font $gc(rev.buttonFont) -relief raised \
 		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
@@ -1704,14 +1687,14 @@ proc widgets {} \
 		    -command { 
 		    	set fname [selectFile]
 			if {$fname != ""} {
-				revtool $fname "-$gc(rev.showHistory)"
+				revtool $fname
 			}
 		    }
 		$gc(fmenu) add command -label "Project History" \
 		    -command {
 			cd2root
 			set fname ChangeSet
-		    	revtool ChangeSet -$gc(rev.showHistory)
+		    	revtool ChangeSet
 		    }
 		$gc(fmenu) add separator
 		$gc(fmenu) add cascade -label "Current ChangeSet" \
@@ -1721,7 +1704,7 @@ proc widgets {} \
 		menu $gc(recent) 
 		menu $gc(current) 
 		$gc(recent) add command -label "$fname" \
-		    -command "revtool $fname -$gc(rev.showHistory)"
+		    -command "revtool $fname"
 		getHistory
 	    if {"$fname" == "ChangeSet"} {
 		    #.menus.cset configure -command csettool
@@ -1788,14 +1771,11 @@ proc widgets {} \
 
 		pack .p.b.c.yscroll -side right -fill y
 		pack .p.b.c.xscroll -side bottom -fill x
-		pack .p.b.c.t -expand true -fill both
+		pack .p.b.c.t -expand true -fill x
 
 		pack .p.b.p.yscroll -side right -fill y
 		pack .p.b.p.xscroll -side bottom -fill x
 		pack .p.b.p.t -expand true -fill both
-
-		#pack .p.b.c -expand true -fill both
-		#pack forget .p.b.c
 
 		pack .p.b.p -expand true -fill both -anchor s
 		pack .p.b -expand true -fill both -anchor s
@@ -1953,7 +1933,7 @@ proc selectFile {} \
 			#pack forget .menus.difftool
 		} else {
 			$gc(recent) add command -label "$fname" \
-			    -command "revtool $fname -$gc(rev.showHistory)" 
+			    -command "revtool $fname"
 		}
 	}
 	catch {close $f}
@@ -2001,20 +1981,18 @@ proc getHistory {} \
 	while {[gets $h file] >= 0} {
 		if {$file == "ChangeSet"} {continue}
 		$gc(recent) add command -label "$file" \
-		    -command "revtool $file -$gc(rev.showHistory)" 
+		    -command "revtool $file"
 	}
 	catch {close $h}
 }
 
 # Arguments:
 #  lfname	filename that we want to view history
-#  R		Revision or time period that we want to view
-#  N		Number of revs to show
-#
-proc revtool {lfname R {N {}}} \
+#  R		Revision, time period, or number of revs that we want to view
+proc revtool {lfname {R {}}} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
-	global  srev Opts gc file rev2rev_name cdim firstnode fname
+	global  Opts gc file rev2rev_name cdim firstnode fname
 	global  merge diffpair
 
 	# Set global so that other procs know what file we should be
@@ -2052,22 +2030,27 @@ select a new file to view"
 	} else {
 		wm title . "revtool: $proot: $file $R"
 	}
-	if {$srev != ""} {
-		set Opts(line_time) "-R$srev.."
+	if {[info exists merge(G)] && ($merge(G) != "")} {
+		set gca $merge(G)
 	} else {
-		set Opts(line_time) "-R$R"
+		set gca ""
+	}
+	if {$R == ""} {
+		if {$gca != ""} {
+			set R "-R$gca.."
+		} else {
+			set R "-n$gc(rev.showRevs)"
+		}
+	} elseif {[regexp -- {^-} $R] == 0} {
+		set R "-R$R"
 	}
 	# If valid time range given, do the graph
-	if {[listRevs $Opts(line_time) "$file" $N] == 0} {
+	if {[listRevs $R "$file"] == 0} {
 		revMap "$file"
 		dateSeparate
 		setScrollRegion
 		set first [$w(graph) gettags $firstnode]
-		if {$srev == ""} {
-			history "-r$R"
-		} else {
-			history "-r$srev"
-		}
+		history "-r$R"
 	} else {
 		set ago ""
 		catch {set ago [exec bk prs -hr+ -d:AGE: $lfname]}
@@ -2076,14 +2059,15 @@ select a new file to view"
 		$w(aptext) insert end  "Error: No data within the given time\
 period; please choose a longer amount of time.\n
 The file $lfname was last modified ($ago) ago."
-		revtool $lfname +
+		revtool $lfname 1.1..
 	}
-	# Now make sure that the last node is visible in the canvas
-	if {$srev == ""} {
-		catch {exec bk prs -hr+ -d:I:-:P: $lfname 2>$dev_null} out
+	# Now make sure that the last/gca node is visible in the canvas
+	if {$gca != ""} {
+		set r $gca
 	} else {
-		catch {exec bk prs -hr$srev -d:I:-:P: $lfname 2>$dev_null} out
+		set r +
 	}
+	catch {exec bk prs -hr$r -d:I:-:P: $lfname 2>$dev_null} out
 	if {$out != ""} {
 		centerRev $out
 	}
@@ -2120,19 +2104,17 @@ proc init {} \
 }
 
 #
-# srev	- specified revision to warp to on startup
-# rev1	- left-side revision
+# rev1	- left-side revision (or revision to warp to on startup)
 # rev2	- right-side revision
 # gca	- greatest common ancestor
 #
 proc arguments {} \
 {
-	global rev1 rev2 dfile argv argc fname gca srev errorCode
+	global rev1 rev2 dfile argv argc fname gca errorCode
 
 	set rev1 ""
 	set rev2 ""
 	set gca ""
-	set srev ""
 	set fname ""
 	set dfile ""
 	set fnum 0
@@ -2167,9 +2149,6 @@ proc arguments {} \
 	if {($gca != "") && (($rev2 == "") || ($rev1 == ""))} {
 		puts stderr "error: GCA options requires -l and -r"
 		exit
-	}
-	if {($rev1 != "") && (($rev2 == "") && ($gca == ""))} {
-		set srev $rev1
 	}
 
 	# regexes for valid revision numbers. This probably should be
@@ -2246,7 +2225,7 @@ proc lineOpts {rev} \
 #	 the gca, local, and remote when we do a select range
 proc startup {} \
 {
-	global fname rev2rev_name w rev1 rev2 gca srev errorCode gc dev_null
+	global fname rev2rev_name w rev1 rev2 gca errorCode gc dev_null
 	global file merge diffpair dfile
 
 	if {$gca != ""} {
@@ -2256,21 +2235,7 @@ proc startup {} \
 	} elseif {$rev2 != ""} { 
 		set diffpair(right) $rev2 
 	}
-	if {$srev != ""} {  ;# If -l option without the -r -G
-		revtool $fname "-$srev" $gc(rev.showRevs)
-		set rev1 [lineOpts $srev]
-		highlight $rev1 "old"
-		set file [exec bk sfiles -g $fname 2>$dev_null]
-		highlightTextRev $rev1 $fname
-		.menus.cset configure -state normal 
-	} elseif {$rev1 == ""} { ;# if no arguments
-		# If called with no args, show the last 200 revs
-		revtool $fname "-$gc(rev.showHistory)" $gc(rev.showRevs)
-	} else { ;# if -l argument
-		set diffpair(left) $rev1
-		set srev $rev1
-		revtool $fname "-$rev1"
-	}
+	revtool $fname 
 	if {[info exists rev2] && ($rev2 != "")} {
 		set diffpair(right) $rev2
 		diff2 2
