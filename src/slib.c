@@ -19,6 +19,7 @@ private int	samebranch_bk(delta *a, delta *b, int bk_mode);
 private char	*sccsXfile(sccs *sccs, char type);
 private int	badcksum(sccs *s);
 private int	printstate(const serlist *state, const ser_t *slist);
+private int	whatstate(const serlist *state);
 private int	visitedstate(const serlist *state, const ser_t *slist);
 private void	changestate(register serlist *state, char type, int serial);
 private serlist *allocstate(serlist *old, int oldsize, int n);
@@ -4084,6 +4085,18 @@ visitedstate(const serlist *state, const ser_t *slist)
 	return (0);
 }
 
+private int
+whatstate(const serlist *state)
+{
+	register serlist *s;
+
+	/* Loop until an I */
+	for (s = state[SLIST].next; s; s = s->next) {
+		if (s->type == 'I') break;
+	}
+	return ((s) ? s->serial : 0);
+}
+
 /* calculate printstate using where we are (state)
  * and list of active deltas (slist)
  * return either the serial if active, or 0 if not
@@ -4809,10 +4822,23 @@ out:			if (slist) free(slist);
 
 		debug2((stderr, "%.*s", linelen(buf), buf));
 		serial = atoi(&buf[3]);
-		/* need to not generate newline when seeing:
-		 *   ^AI 2; text; ^AE 2N; ^AI 1; ^AE 1
+		/* seek out E which closes text block for last line
+		 * printed.  serial for that block is in lf_pend.
+		 * whatstate returns serial of current text block
+		 * This is needed to make sure E isn't closing a D
+		 * The whatstate test isn't needed assuming diff
+		 * semantics of a replace is a delete followed
+		 * by an insert.  We know in that case, the condition
+		 * E and lf_pend == serial is enough because if E
+		 * is tagged 'N', there can be no 'D' following it.
+		 * If E isn't tagged, then lf_pend gets cleared.
+		 * In the name of robustness, that someday this
+		 * assumption might not be true, the whatstate check
+		 * is in there.
 		 */
-		if (buf[1] == 'E' && print == serial && lf_pend == serial) {
+		if (buf[1] == 'E' && lf_pend == serial &&
+		    whatstate((const serlist*)state) == serial)
+		{
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
 			unless (*n == 'N') {
@@ -8476,6 +8502,49 @@ doctrl(sccs *s, char *pre, int val, char *post, FILE *out)
 	fputdata(s, "\n", out);
 }
 
+void
+finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
+	ser_t *slist)
+{
+	int	print = *pp, incr = *ip;
+	sum_t	sum;
+	register char	*buf;
+	ser_t	serial;
+	int	lf_pend = 0;
+
+	debug((stderr, "finish(incr=%d, sum=%d, print=%d) ",
+		incr, s->dsum, print));
+	while (!eof(s)) {
+		unless (buf = nextdata(s)) break;
+		debug2((stderr, "G> %.*s", linelen(buf), buf));
+		sum = fputdata(s, buf, out);
+		if (isData(buf)) {
+			unless (print) continue;
+			unless (lf_pend) sum -= '\n';
+			lf_pend = print;
+			s->dsum += sum;
+			incr++;
+			continue;
+		}
+		serial = atoi(&buf[3]);
+		if (buf[1] == 'E' && lf_pend == serial &&
+		    whatstate((const serlist*)state) == serial)
+		{
+			char	*n = &buf[3];
+			while (isdigit(*n)) n++;
+			unless (*n == 'N') {
+				lf_pend = 0;
+				s->dsum += '\n';
+			}
+		}
+		changestate(state, buf[1], serial);
+		print = printstate((const serlist*)state, (const ser_t*)slist);
+	}
+	*ip = incr;
+	*pp = print;
+	debug((stderr, "incr=%d, sum=%d\n", incr, s->dsum));
+}
+
 #define	nextline(inc)	nxtline(s, &inc, 0, &lines, &print, out, state, slist)
 #define	beforeline(inc) nxtline(s, &inc, 1, &lines, &print, out, state, slist)
 
@@ -8648,7 +8717,7 @@ newcmd:
 
 #define	ctrl(pre, val, post)	doctrl(s, pre, val, post, out)
 
-		if (what == 'c' || what == 'd' && what == 'D' || what == 'x')
+		if (what == 'c' || what == 'd' || what == 'D' || what == 'x')
 		{
 			where--;
 		}
@@ -8730,9 +8799,7 @@ newcmd:
 		}
 		ctrl("\001E ", n->serial, no_lf ? "N" : "");
 	}
-	while (!eof(s)) {
-		nextline(unchanged);
-	}
+	finish(s, &unchanged, &print, out, state, slist);
 	*ap = added;
 	*dp = deleted;
 	*up = unchanged;

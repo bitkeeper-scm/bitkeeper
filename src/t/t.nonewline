@@ -61,3 +61,29 @@ get $Q foo.c bar.c
 cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1 }
 cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1 }
 echo OK
+echo $N Check including no newline deltas ...........................$NL
+get $Q -e foo.c bar.c
+echo $N trunk$NL >> foo.c
+echo >> bar.c
+echo $N trunk$NL >> bar.c
+delta $Q -ytrunk foo.c bar.c
+get $Q -e -r1.1 foo.c bar.c
+echo $N branch$NL >> foo.c
+echo >> bar.c
+echo $N branch$NL >> bar.c
+delta $Q -ybranch foo.c bar.c
+echo branch >> SAVEfoo.c
+echo $N trunk$NL >> SAVEfoo.c
+echo >> SAVEbar.c
+echo branch >> SAVEbar.c
+echo bar >> SAVEbar.c
+echo $N trunk$NL >> SAVEbar.c
+get $Q -e -i1.1.1.1 foo.c
+get $Q -e -i1.1.1.1 bar.c
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1 }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1 }
+delta $Q -ymerge foo.c bar.c
+get $Q foo.c bar.c
+cmp -s foo.c SAVEfoo.c || { echo foo.c is wrong; diff foo.c SAVEfoo.c; exit 1 }
+cmp -s bar.c SAVEbar.c || { echo bar.c is wrong; diff bar.c SAVEbar.c; exit 1 }
+echo OK
