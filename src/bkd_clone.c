@@ -4,14 +4,14 @@
  * Send the sfio file to stdout
  */
 int
-cmd_clone(int ac, char **av, int in, int out)
+cmd_clone(int ac, char **av)
 {
 	int	c;
 	pid_t	pid;
 	static	char *cmd[] = { "bk", "-r", "sfio", "-o", 0, 0 };
 
 	if (!exists("BitKeeper/etc")) {
-		writen(out, "ERROR-Not at project root\n");
+		writen(1, "ERROR-Not at project root\n");
 		exit(1);
 	}
 	while ((c = getopt(ac, av, "q")) != -1) {
@@ -20,17 +20,17 @@ cmd_clone(int ac, char **av, int in, int out)
 	    	}
 	}
 	unless (repository_rdlock() == 0) {
-		writen(out, "ERROR-Can't get read lock on the repository.\n");
+		writen(1, "ERROR-Can't get read lock on the repository.\n");
 		exit(1);
 	} else {
-		writen(out, "OK-read lock granted\n");
+		writen(1, "OK-read lock granted\n");
 	}
 	    
 	if (pid = fork()) {
 		int	status;
 
 		if (pid == -1) {
-			writen(out, "ERROR-fork failed\n");
+			writen(1, "ERROR-fork failed\n");
 			repository_rdunlock(0);
 			exit(1);
 		}
@@ -38,8 +38,6 @@ cmd_clone(int ac, char **av, int in, int out)
 		repository_rdunlock(0);
 		exit(0);
 	} else {
-		if (out != 1) { close(1); dup(out); close(out); }
-		if (in != 0) { close(0); dup(in); close(in); }
 		execvp(cmd[0], cmd);
 	}
 	exit(1);

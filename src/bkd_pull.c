@@ -1,10 +1,10 @@
 #include "bkd.h"
 
-void	listIt(sccs *s, int out);
-void	listrev(delta *d, int out);
+void	listIt(sccs *s);
+void	listrev(delta *d);
 
 int
-cmd_pull(int ac, char **av, int in, int out)
+cmd_pull(int ac, char **av)
 {
 	static	char *cset[] = { "bk", "cset", "-m", "-", 0 };
 	char	buf[4096];
@@ -21,15 +21,15 @@ cmd_pull(int ac, char **av, int in, int out)
 	sccs	*s;
 
 	if (!exists("BitKeeper/etc")) {
-		writen(out, "ERROR-Not at project root\n");
+		writen(1, "ERROR-Not at project root\n");
 		exit(1);
 	}
 
 	unless (repository_rdlock() == 0) {
-		writen(out, "ERROR-Can't get read lock on the repository.\n");
+		writen(1, "ERROR-Can't get read lock on the repository.\n");
 		exit(1);
 	} else {
-		writen(out, "OK-read lock granted\n");
+		writen(1, "OK-read lock granted\n");
 	}
 
 	while ((c = getopt(ac, av, "lnq")) != -1) {
@@ -45,7 +45,7 @@ cmd_pull(int ac, char **av, int in, int out)
 	 */
 #define	OUT	{ error = 1; goto out; }
 	unless (them = mdbm_open(NULL, 0, 0, GOOD_PSIZE)) OUT;
-	while (getline(in, buf, sizeof(buf)) > 0) {
+	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (streq("@ABORT@", buf)) OUT;
 		if (streq("@END@", buf)) break;
 		mdbm_store_str(them, buf, "", 0);
@@ -66,7 +66,7 @@ cmd_pull(int ac, char **av, int in, int out)
 		unless (mdbm_fetch_str(them, buf)) {
 			if (first) {
 				// XXX
-				writen(out,
+				writen(1,
 				    "Different project, root key mismatch\n");
 				goto out;
 			}
@@ -77,17 +77,17 @@ cmd_pull(int ac, char **av, int in, int out)
 	}
 	pclose(f); f = 0;
 	unless (bytes) {
-		if (doit) writen(out, "OK-Nothing to send.\n");
+		if (doit) writen(1, "OK-Nothing to send.\n");
 		goto out;
 	}
-	writen(out, "OK-something to send.\n");
+	writen(1, "OK-something to send.\n");
 	if (doit) {
-		if (verbose || list) writen(out, 
+		if (verbose || list) writen(1, 
 "OK--------------------- Sending the following csets ---------------------\n");
 		gettemp(tmpfile, "push");
 		f = fopen(tmpfile, "w");
 	} else {
-		if (verbose || list) writen(out,
+		if (verbose || list) writen(1,
 "OK-------------------- Would send the following csets -------------------\n");
 	}
 	if (list) {
@@ -102,40 +102,39 @@ cmd_pull(int ac, char **av, int in, int out)
 
 			d->flags |= D_SET;
 		} else if (verbose) {
-			writen(out, kv.key.dptr);
+			writen(1, kv.key.dptr);
 		}
 		bytes += kv.key.dsize;
 		if (bytes >= 50) {
-			if (verbose) writen(out, "\nOK-");
+			if (verbose) writen(1, "\nOK-");
 			bytes = 0;
 		} else {
-			if (verbose) writen(out, " ");
+			if (verbose) writen(1, " ");
 		}
 	}
 	if (verbose || list) {
 		if (list) {
-			listIt(s, out);
+			listIt(s);
 			sccs_free(s);
 		} else {
-			writen(out, "\n");
+			writen(1, "\n");
 		}
-		writen(out, 
+		writen(1, 
 "OK----------------------------------------------------------------------\n");
-		writen(out, "OK-END\n");
+		writen(1, "OK-END\n");
 	}
 	unless (doit) goto out;
 
 	fclose(f); f = 0;
 
 	/*
-	 * What I want is to run cset with stdin being the file and
-	 * stdout being the socket.
+	 * What I want is to run cset with stdin being the file.
 	 */
 	if (pid = fork()) {
 		int	status;
 
 		if (pid == -1) {
-			writen(out, "ERROR-fork failed\n");
+			writen(1, "ERROR-fork failed\n");
 			goto out;
 		}
 		waitpid(pid, &status, 0);
@@ -148,7 +147,6 @@ cmd_pull(int ac, char **av, int in, int out)
 	} else {
 		close(0);
 		open(tmpfile, 0, 0);
-		if (out != 1) { close(1); dup(out); close(out); }
 		execvp(cset[0], cset);
 	}
 
@@ -157,31 +155,31 @@ out:
 	if (them) mdbm_close(them);
 	if (me) mdbm_close(me);
 	repository_rdunlock(0);
-	writen(out, "OK-Unlocked\n");
+	writen(1, "OK-Unlocked\n");
 	exit(error);
 }
 
 void
-listIt(sccs *s, int out)
+listIt(sccs *s)
 {
 	delta	*d;
 
 	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_SET) listrev(d, out);
+		if (d->flags & D_SET) listrev(d);
 	}
 }
 
 void
-listrev(delta *d, int out)
+listrev(delta *d)
 {
 	char	*t;
 	int	i;
 	char	buf[100];
 
 	assert(d);
-	writen(out, "OK-ChangeSet@");
-	writen(out, d->rev);
-	writen(out, ", ");
+	writen(1, "OK-ChangeSet@");
+	writen(1, d->rev);
+	writen(1, ", ");
 	if (atoi(d->sdate) <= 68) {
 		strcpy(buf, "20");
 		strcat(buf, d->sdate);
@@ -193,22 +191,22 @@ listrev(delta *d, int out)
 	}
 	for (t = buf; *t != '/'; t++); *t++ = '-';
 	for ( ; *t != '/'; t++); *t = '-';
-	writen(out, buf);
+	writen(1, buf);
 	if (d->zone) {
-		writen(out, "-");
-		writen(out, d->zone);
+		writen(1, "-");
+		writen(1, d->zone);
 	}
-	writen(out, ", ");
-	writen(out, d->user);
+	writen(1, ", ");
+	writen(1, d->user);
 	if (d->hostname) {
-		writen(out, "@");
-		writen(out, d->hostname);
+		writen(1, "@");
+		writen(1, d->hostname);
 	}
-	writen(out, "\n");
+	writen(1, "\n");
 	EACH(d->comments) {
-		writen(out, "OK-  ");
-		writen(out, d->comments[i]);
-		writen(out, "\n");
+		writen(1, "OK-  ");
+		writen(1, d->comments[i]);
+		writen(1, "\n");
     	}
-	writen(out, "OK-\n");
+	writen(1, "OK-\n");
 }

@@ -1,22 +1,7 @@
 #include "bkd.h"
 
-/*
- * Send:
- *	lock status
- *	key
- *	key
- *	...
- *	@END@
- * Receive:
- *	@PATCH@
- *	patch of anything not in the list
- * Send:
- *	@DONE@
- *
- * Returns - errors only, success exits.
- */
 int
-cmd_push(int ac, char **av, int in, int out)
+cmd_push(int ac, char **av)
 {
 	int	error = 0;
 	pid_t	pid;
@@ -28,15 +13,15 @@ cmd_push(int ac, char **av, int in, int out)
 				    /* see verbose below    ^^ */
 
 	if (!exists("BitKeeper/etc")) {
-		writen(out, "ERROR-Not at project root\n");
+		writen(1, "ERROR-Not at project root\n");
 		exit(1);
 	}
 
 	if (repository_wrlock()) {
-		writen(out, "ERROR-Unable to lock repository for update.\n");
+		writen(1, "ERROR-Unable to lock repository for update.\n");
 		exit(1);
 	} else {
-		writen(out, "OK-write lock granted\n");
+		writen(1, "OK-write lock granted\n");
 	}
 
 	while ((c = getopt(ac, av, "q")) != -1) {
@@ -53,11 +38,11 @@ cmd_push(int ac, char **av, int in, int out)
 		int	status;
 
 		if (pid == -1) {
-			writen(out, "@END@\n");
+			writen(1, "@END@\n");
 			goto out;
 		}
 		waitpid(pid, &status, 0);
-		writen(out, "@END@\n");
+		writen(1, "@END@\n");
 		if (WIFEXITED(status)) {
 			if (error = WEXITSTATUS(status)) goto out;
 		} else {
@@ -65,7 +50,6 @@ cmd_push(int ac, char **av, int in, int out)
 			OUT;
 		}
 	} else {
-		if (out != 1) { close(1); dup(out); close(out); }
 		execvp(prs[0], prs);
 	}
 
@@ -74,9 +58,7 @@ cmd_push(int ac, char **av, int in, int out)
 	 * @PATCH@ followed by a patch or some error.
 	 */
 	bzero(buf, sizeof(buf));
-	if ((readn(in, buf, 8) == 8) && streq(buf, "@PATCH@\n")) {
-		if (in != 0) { close(0); dup(in); close(in); }
-		if (out != 1) { close(1); dup(out); close(out); }
+	if ((readn(0, buf, 8) == 8) && streq(buf, "@PATCH@\n")) {
 		/*
 		 * Wait for takepatch to get done and then send ack.
 		 */
@@ -84,11 +66,11 @@ cmd_push(int ac, char **av, int in, int out)
 			int	status;
 
 			if (pid == -1) {
-				writen(out, "@DONE@\n");
+				writen(1, "@DONE@\n");
 				goto out;
 			}
 			waitpid(pid, &status, 0);
-			writen(out, "@DONE@\n");
+			writen(1, "@DONE@\n");
 			if (WIFEXITED(status)) {
 				if (error = WEXITSTATUS(status)) goto out;
 			} else {
