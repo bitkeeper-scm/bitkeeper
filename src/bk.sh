@@ -42,7 +42,7 @@ _renames() {
 		;;
 	esac
 	__cd2root
-	bk rset -h "$1" | awk -F@ '{ if ($1 != $2) print $2 " -> " $1 }'
+	bk rset -h "$1" | awk -F'|' '{ if ($1 != $2) print $2 " -> " $1 }'
 }
 
 # shorthand
