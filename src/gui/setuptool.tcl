@@ -36,8 +36,8 @@ proc dialog_position { dlg width len } \
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
 	#puts $swidth; puts $sheight
-	set x [expr ($swidth/2) - 100]
-	set y [expr ($sheight/2) - 100]
+	set x [expr {($swidth/2) - 100}]
+	set y [expr {($sheight/2) - 100}]
 	#wm geometry $dlg 400x400+$x+$y
 	wm geometry $dlg ${width}x${len}+$x+$y
 }
@@ -48,7 +48,7 @@ proc dialog { widgetname title trans  } \
 	toplevel $widgetname -class Dialog
 	wm title $widgetname $title
 	#only mark as transient on demand
-	if { $trans } {
+	if {$trans} {
 		wm transient $widgetname
 	}
 	#Handle wm Close choice.
@@ -105,7 +105,7 @@ proc license_check {}  \
 		return
 	} elseif {[ info exists env(HOME)] } {
 		set bkaccepted [file join $env(HOME) .bkaccepted]
-		if [ file exists $bkaccepted ] {
+		if {[file exists $bkaccepted]} {
 			return 
 		} else {
 			puts ".bkaccepted does not exist"
@@ -141,13 +141,13 @@ proc license_check {}  \
 	pack .lic.t -fill both -expand 1 
 	dialog_bottom .lic Agree "Don't Agree"
 	set rc [ dialog_wait .lic 600 480 ]
-	if { $rc == 1 } {
+	if {$rc == 1} {
 		puts "rc is $rc"
 		exit
 	}
 	if {[info exist bkaccepted]} {
 		#puts "exist bkaccepted"
-		if [catch {open $bkaccepted w} fid] {
+		if {[catch {open $bkaccepted w} fid]} {
 			puts stderr "Cannot open $bkaccepted"
 		} else {
 			#puts stderr "touching .bkaccepted"
@@ -168,7 +168,7 @@ proc save_config_info {} \
 
 	#puts "Writing config file: $env(HOME)"
 	set bkrc [file join $env(HOME) .bkrc]
-	if [catch {open $bkrc w} fid] {
+	if {[catch {open $bkrc w} fid]} {
 		puts stderr "Cannot open $bkrc"
 	} else {
 		foreach el [lsort [array names st_cinfo]] {
@@ -191,14 +191,14 @@ proc read_bkrc {} \
 	#}
 	while { [ gets $fid line ] != -1 } {
 		set col [string first ":" $line ]
-		set key [string range $line 0 [expr $col -1]]
-		set var [string range $line [expr $col + 1] \
+		set key [string range $line 0 [expr {$col - 1}]]
+		set var [string range $line [expr {$col + 1}] \
 		     [string length $line]]
 	        set var [string trimleft $var]
 	        set var [string trimright $var]
 		set st_cinfo($key) $var
 	}
-	if { $debug } {
+	if {$debug} {
 		foreach el [lsort [array names st_cinfo]] {
 			puts "$el = $st_cinfo($el)"
 		}
@@ -224,7 +224,7 @@ proc create_repo {} \
 	close $cfid
 	set repo $st_cinfo(repository)
 	catch { exec bk setup -f -c$cfile -n'$escaped_des' $repo } msg
-	if { $msg != "" } {
+	if {$msg != ""} {
 		puts "Repository creation failed: $msg"
 		exit 1
 	}
@@ -236,10 +236,10 @@ proc get_config_info {} \
 {
 	global env st_cinfo
 
-	if {[ info exists env(HOME)] } {
+	if {[info exists env(HOME)]} {
 		#puts "Home exists"
 		set bkrc [file join $env(HOME) .bkrc]
-		if [ file exists $bkrc ] {
+		if {[file exists $bkrc]} {
 			#puts "found file .bkrc"
 			read_bkrc
 			return 
@@ -262,25 +262,25 @@ proc check_config { widget } \
 {
         global st_cinfo
 
-        if { "$st_cinfo(repository)" != "" } {
+        if {"$st_cinfo(repository)" != ""} {
                 #puts "repository: $st_cinfo(repository)"
                 set repo 1
         } else {
                 set repo 0
         }
-        if { "$st_cinfo(logging)" != "" } {
+        if {"$st_cinfo(logging)" != ""} {
                 #puts "logging: $st_cinfo(logging)"
                 set log 1
         } else {
                 set log 0
         }
-        if { "$st_cinfo(des)" != "" } {
+        if {"$st_cinfo(des)" != ""} {
                 #puts "descripton: $st_cinfo(des)"
                 set des 1
         } else {
                 set des 0
         }
-        if { ($repo == 1) && ($log == 1) && ($des == 1) } {
+        if {($repo == 1) && ($log == 1) && ($des == 1)} {
                 $widget.t.bb.b1 configure -state normal
         } else {
                 $widget.t.bb.b1 configure -state disabled
@@ -298,8 +298,8 @@ proc create_config { w } \
 	set mcolor #deeaf4	;# color for mandatory fields
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
-	set x [expr ($swidth/2) - 100]
-	set y [expr ($sheight/2) - 100]
+	set x [expr {($swidth/2) - 100}]
+	set y [expr {($sheight/2) - 100}]
 	wm geometry . +$x+$y
 
 	frame $w -bg $bcolor
@@ -374,11 +374,11 @@ proc create_config { w } \
 	focus $w.t.e.repository
 	pack $w.t
 	pack $w
-	if { [$w.t.e.repository selection present] == 1 } {
+	if {[$w.t.e.repository selection present] == 1} {
 		puts "Repository selected"
 	}
 	tkwait variable st_dlg_button
-	if { $st_dlg_button != 0 } {
+	if {$st_dlg_button != 0} {
 		puts stderr "Cancelling creation of repository"
 		exit
 	}
@@ -393,13 +393,13 @@ proc main {} \
 	license_check
 	set swidth [winfo screenwidth .]
 	set sheight [winfo screenheight .]
-	set x [expr ($swidth/2) - 100]
-	set y [expr ($sheight/2) - 100]
+	set x [expr {($swidth/2) - 100}]
+	set y [expr {($sheight/2) - 100}]
 	#wm geometry . ${width}x${len}+$x+$y
 	wm geometry . +$x+$y
 	get_config_info
 	# Override the repo name found in the .bkrc file if argc is set
-	if { $argc == 1 } {
+	if {$argc == 1} {
 		set st_cinfo(repository) [lindex $argv 0]
 	}
 	create_config .cconfig
@@ -433,7 +433,7 @@ proc getMessages {} \
 			#puts "$topic: $help"
 			append st_bk_cfg($topic) $help " "
 		}
-		if { $found == 0 } {
+		if {$found == 0} {
 			#puts "topic not found: $topic"
 			set st_bk_cfg($topic) ""
 		}	

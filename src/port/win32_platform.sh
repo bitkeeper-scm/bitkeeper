@@ -41,18 +41,18 @@ __platformInit()
 		export PATH BK_BIN UNIX_BIN
 		BIN=$BK_BIN
 		RM=rm.exe
-		TMP="${TEMP}/"
+		TMP=`bk pwd -sf "$TEMP"`
 		DEV_NULL=nul
 		ECHO=${BIN}/bin_mode_echo.exe
 		MAIL_CMD=${BIN}/mail.exe
-		wish=${_TCL_BIN}/wish81.exe
+		wish=${_TCL_BIN}/wish83.exe
 		ext=".exe"
 		tcl=".tcl"
 
 		# XXX can not use a win32 native editor
 		# becuase they put themself in backgroud mode
 		if [ X$EDITOR = X ]
-		then EDITOR=${_VIM}/vi.exe
+		then EDITOR=notepad.exe
 		fi
 		if [ X$PAGER = X ]
 		then PAGER=less

@@ -65,8 +65,8 @@ proc highlightDiffs {start stop} \
 	.diffs.r tag delete d
 	.diffs.l tag add d $start $stop
 	.diffs.r tag add d $start $stop
-	.diffs.l tag configure d -foreground black -font $gc(rename,bFont)
-	.diffs.r tag configure d -foreground black -font $gc(rename,bFont)
+	.diffs.l tag configure d -foreground black -font $gc(rename,fixedboldFont)
+	.diffs.r tag configure d -foreground black -font $gc(rename,fixedboldFont)
 }
 
 proc topLine {} \
@@ -84,12 +84,12 @@ proc scrollDiffs {start stop} \
 	# center the diff in the window (if it is smaller than the window).
 	set Diff [lindex [split $start .] 0]
 	set End [lindex [split $stop .] 0]
-	set size [expr $End - $Diff]
+	set size [expr {$End - $Diff}]
 	# Center it.
 	if {$size < $gc(rename,diffHeight)} {
-		set j [expr $gc(rename,diffHeight) - $size]
-		set j [expr $j / 2]
-		set i [expr $Diff - $j]
+		set j [expr {$gc(rename,diffHeight) - $size}]
+		set j [expr {$j / 2}]
+		set i [expr {$Diff - $j}]
 		if {$i < 0} {
 			set want 1
 		} else {
@@ -100,7 +100,7 @@ proc scrollDiffs {start stop} \
 	}
 
 	set top [topLine]
-	set move [expr $want - $top]
+	set move [expr {$want - $top}]
 	.diffs.l yview scroll $move units
 	.diffs.r yview scroll $move units
 }
@@ -346,7 +346,7 @@ proc getFiles {} \
 		set ht $rightCount
 	}
 	if {$ht > 12} { set ht 12 }
-	set diff [expr $gc(rename,listHeight) - $ht]
+	set diff [expr {$gc(rename,listHeight) - $ht}]
 	incr gc(rename,diffHeight) $gc(rename,listHeight)
 	incr gc(rename,listHeight) -$diff
 	.diffs.l configure -height $gc(rename,diffHeight)
@@ -488,7 +488,7 @@ proc sh {buf} \
 	.files.sh configure -state normal
 	.files.sh insert end $buf select
 	.files.sh configure -state disabled
-	.files.sh tag configure select -background $gc(rename,bColor) \
+	.files.sh tag configure select -background $gc(rename,backgroundColor) \
 	    -relief groove -borderwid 1
 	.menu.undo configure -state normal
 	.menu.apply configure -state normal
@@ -533,7 +533,7 @@ proc Undo {} \
 	if {$undoFile != ""} {
 		set l $undoLine
 		.files.sh tag add select "$l linestart" "$l lineend + 1 char"
-		.files.sh tag configure select -background $gc(rename,bColor) \
+		.files.sh tag configure select -background $gc(rename,backgroundColor) \
 		    -relief groove -borderwid 1
 	} else {
 		.menu.undo configure -state disabled
@@ -563,7 +563,7 @@ proc Guess {} \
 	set left [file tail $leftFile]
 
 	# Try an exact basename match
-	set l [expr $guessNext + 1]
+	set l [expr {$guessNext + 1}]
 	set file [.files.r get "$l.0" "$l.0 lineend"]
 	while {$file != ""} {
 		set right [file tail $file]
@@ -578,7 +578,7 @@ proc Guess {} \
 	}
 
 	# Try a partial basename match, ignoring case
-	set l [expr $guessNext + 1]
+	set l [expr {$guessNext + 1}]
 	set file [.files.r get "$l.0" "$l.0 lineend"]
 	while {$file != ""} {
 		set right [file tail $file]
@@ -656,7 +656,7 @@ proc Apply {} \
 	} else {
 		set undoLine 1.0
 		.files.sh tag add select "1.0 linestart" "1.0 lineend + 1 char"
-		.files.sh tag configure select -background $gc(rename,bColor) \
+		.files.sh tag configure select -background $gc(rename,backgroundColor) \
 		    -relief groove -borderwid 1
 	}
 	busy 0
@@ -708,7 +708,7 @@ proc Select {which line file l} \
 		set $file $foo
 		$which tag delete select
 		$which tag add select "$l linestart" "$l lineend + 1 char"
-		$which tag configure select -background $gc(rename,bColor) \
+		$which tag configure select -background $gc(rename,backgroundColor) \
 		    -relief groove -borderwid 1
 		$which see $l
 		set doDiff 1
@@ -761,13 +761,13 @@ proc page {w xy dir one} \
 	global	gc
 
 	if {$xy == "yview"} {
-		set lines [expr $dir * $gc(rename,diffHeight)]
+		set lines [expr {$dir * $gc(rename,diffHeight)}]
 	} else {
 		# XXX - should be width.
 		set lines 16
 	}
 	if {$one == 1} {
-		set lines [expr $dir * 1]
+		set lines [expr {$dir * 1}]
 	} else {
 		incr lines -1
 	}
@@ -777,7 +777,7 @@ proc page {w xy dir one} \
 
 proc fontHeight {f} \
 {
-	return [expr [font metrics $f -ascent] + [font metrics $f -descent]]
+	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
 proc computeHeight {} \
@@ -787,7 +787,7 @@ proc computeHeight {} \
 	update
 	set f [fontHeight [.diffs.l cget -font]]
 	set p [winfo height .diffs.l]
-	set gc(rename,diffHeight) [expr $p / $f]
+	set gc(rename,diffHeight) [expr {$p / $f}]
 }
 
 proc adjustHeight {diff list} \
@@ -808,35 +808,15 @@ proc widgets {} \
 	global	scroll wish tcl_platform gc d
 
 	if {$tcl_platform(platform) == "windows"} {
-		set d(rename,bFont) {helvetica 9 roman bold}
-		set d(rename,pFont) {helvetica 9 roman }
-		set d(rename,BFont) {helvetica 9 roman bold}
-		set d(rename,lFont) {helvetica 9 roman bold}
-		set diffFont {helvetica 9 roman}
 		set swid 18
 		set y 0
 		set filesHt 9
 	} else {
-		set d(rename,bFont) {fixed 12 roman bold}
-		set d(rename,pFont) {fixed 12 roman }
-		set d(rename,BFont) {times 12 roman bold}
-		set d(rename,lFont) {times 12 roman bold}
-		set diffFont {fixed 12 roman}
 		set swid 12
 		set y 1
 		set filesHt 7
 	}
-	set d(rename,leftWidth) 60
-	set d(rename,rightWidth) 60
-	set d(rename,diffHeight) 20
-	set d(rename,listHeight) 8
-	set d(rename,tColor) lightseagreen
-	set d(rename,oColor) orange
-	set d(rename,nColor) yellow
-	set d(rename,bColor) ghostwhite
-	set d(rename,geometry) ""
-
-	getDefaults "rename" ".renametooltrc"
+	getConfig "rename" ".renametooltrc"
 
 	set g [wm geometry .]
 	if {("$g" == "1x1+0+0") && ("$gc(rename,geometry)" != "")} {
@@ -847,50 +827,59 @@ proc widgets {} \
 	set py 2
 	set px 4
 	set bw 2
-	frame .menu -background $gc(rename,bColor)
-	    button .menu.prev -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	frame .menu -background $gc(rename,backgroundColor)
+	    button .menu.prev -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "<< Diff" -state disabled -command prev
-	    button .menu.next -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	    button .menu.next -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> Diff" -state disabled -command next
-	    button .menu.history -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	    button .menu.history -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "History" -state disabled \
 		-command history
-	    button .menu.delete -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	    button .menu.delete -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Delete" -state disabled -command "Delete 1"
-	    button .menu.deleteAll -font $gc(rename,BFont) \
-		-bg $gc(rename,BColor) \
+	    button .menu.deleteAll -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Delete All" -command DeleteAll
-	    button .menu.guess -font $gc(rename,BFont) \
-		-bg $gc(rename,BColor) \
+	    button .menu.guess -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Guess" -command Guess 
-	    button .menu.rename -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	    button .menu.rename -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Rename" -state disabled -command Rename 
-	    button .menu.create -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	    button .menu.create -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Create" -state disabled -command "Create 1"
-	    button .menu.createAll -font $gc(rename,BFont) 
-		-bg $gc(rename,BColor) \
+	    button .menu.createAll -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Create All" -command CreateAll
-	    button .menu.undo -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	    button .menu.undo -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Undo" -state disabled -command Undo
-	    button .menu.apply -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	    button .menu.apply -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Apply" -state disabled -command Apply
-	    button .menu.quit -font $gc(rename,BFont) -bg $gc(rename,BColor) \
+	    button .menu.quit -font $gc(rename,buttonFont) \
+		-bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -command exit 
-	    button .menu.help -bg $gc(rename,BColor) \
+	    button .menu.help -bg $gc(rename,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-font $gc(rename,BFont) -text "Help" \
+		-font $gc(rename,buttonFont) -text "Help" \
 		-command { exec bk helptool renametool & }
 	    pack .menu.prev  -side left
 	    pack .menu.next -side left
@@ -907,44 +896,49 @@ proc widgets {} \
 	    pack .menu.help -side right
 
 	frame .files
-	    label .files.deletes -font $gc(rename,lFont) -relief raised \
-		-borderwid 1 -background $gc(rename,bColor) \
+	    label .files.deletes -font $gc(rename,labelFont) -relief raised \
+		-borderwid 1 -background $gc(rename,backgroundColor) \
 		-text "Deleted files"
-	    label .files.creates -font $gc(rename,lFont) -relief raised \
-		-borderwid 1 -background $gc(rename,bColor) \
+	    label .files.creates -font $gc(rename,labelFont) -relief raised \
+		-borderwid 1 -background $gc(rename,backgroundColor) \
 		-text "Created files"
-	    label .files.resolved -font $gc(rename,lFont) -relief raised \
-		-borderwid 1 -background $gc(rename,bColor) \
+	    label .files.resolved -font $gc(rename,labelFont) -relief raised \
+		-borderwid 1 -background $gc(rename,backgroundColor) \
 		-text "Resolved files"
 	    text .files.l -height $gc(rename,listHeight) -wid 1 \
-		-state disabled -wrap none -font $gc(rename,pFont) \
+		-state disabled -wrap none -font $gc(rename,fixedFont) \
 		-xscrollcommand { .files.xsl set } \
 		-yscrollcommand { .files.ysl set }
-	    scrollbar .files.xsl -wid $swid -troughcolor $gc(rename,tColor) \
+	    scrollbar .files.xsl -wid $swid \
+		-troughcolor $gc(rename,troughColor) \
 		-orient horizontal \
 		-command ".files.l xview"
-	    scrollbar .files.ysl -wid $swid -troughcolor $gc(rename,tColor) \
+	    scrollbar .files.ysl -wid $swid \
+		-troughcolor $gc(rename,troughColor) \
 		-orient vertical \
 		-command ".files.l yview"
 	    text .files.r -height $gc(rename,listHeight) -wid 1 \
-		-state disabled -wrap none -font $gc(rename,pFont) \
+		-state disabled -wrap none -font $gc(rename,fixedFont) \
 		-xscrollcommand { .files.xsr set } \
 		-yscrollcommand { .files.ysr set }
-	    scrollbar .files.xsr -wid $swid -troughcolor $gc(rename,tColor) \
+	    scrollbar .files.xsr -wid $swid \
+		-troughcolor $gc(rename,troughColor) \
 		-orient horizontal \
 		-command ".files.r xview"
-	    scrollbar .files.ysr -wid $swid -troughcolor $gc(rename,tColor) \
+	    scrollbar .files.ysr -wid $swid \
+		-troughcolor $gc(rename,troughColor) \
 		-orient vertical \
 		-command ".files.r yview"
 	    text .files.sh -height $gc(rename,listHeight) -wid 1 \
-		-state disabled -wrap none -font $gc(rename,pFont) \
+		-state disabled -wrap none -font $gc(rename,fixedFont) \
 		-xscrollcommand { .files.xssh set } \
 		-yscrollcommand { .files.yssh set }
-	    scrollbar .files.xssh -wid $swid -troughcolor $gc(rename,tColor) \
+	    scrollbar .files.xssh -wid $swid \
+		-troughcolor $gc(rename,troughColor) \
 		-orient horizontal \
 		-command ".files.sh xview"
 	    scrollbar .files.yssh -wid $swid \
-		-troughcolor $gc(rename,tColor) \
+		-troughcolor $gc(rename,troughColor) \
 		-orient vertical \
 		-command ".files.sh yview"
 	    grid .files.deletes -row 0 -column 0 -sticky ewns
@@ -962,31 +956,32 @@ proc widgets {} \
 
 	frame .diffs
 	    frame .diffs.status
-		label .diffs.status.l -background $gc(rename,oColor) \
-		    -font $gc(rename,lFont) \
+		label .diffs.status.l -background $gc(rename,oldColor) \
+		    -font $gc(rename,labelFont) \
 		    -relief sunken -borderwid 2
-		label .diffs.status.middle -background $gc(rename,bColor) \
-		    -font $gc(rename,lFont) -wid 26 \
+		label .diffs.status.middle \
+		    -background $gc(rename,backgroundColor) \
+		    -font $gc(rename,labelFont) -wid 26 \
 		    -relief sunken -borderwid 2
-		label .diffs.status.r -background $gc(rename,nColor) \
-		    -font $gc(rename,lFont) \
+		label .diffs.status.r -background $gc(rename,newColor) \
+		    -font $gc(rename,labelFont) \
 		    -relief sunken -borderwid 2
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
 	    text .diffs.l -width $gc(rename,leftWidth) \
 		-height $gc(rename,diffHeight) \
-		-state disabled -wrap none -font $diffFont \
+		-state disabled -wrap none -font $gc(rename,diffFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.r -width $gc(rename,rightWidth) \
 		-height $gc(rename,diffHeight) \
-		-state disabled -wrap none -font $diffFont
+		-state disabled -wrap none -font $gc(rename,diffFont)
 	    scrollbar .diffs.xscroll -wid $swid \
-		-troughcolor $gc(rename,tColor) \
+		-troughcolor $gc(rename,troughColor) \
 		-orient horizontal -command { xscroll }
 	    scrollbar .diffs.yscroll -wid $swid \
-		-troughcolor $gc(rename,tColor) \
+		-troughcolor $gc(rename,troughColor) \
 		-orient vertical -command { yscroll }
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.l -row 1 -column 0 -sticky nsew
@@ -1021,8 +1016,8 @@ proc widgets {} \
 	set foo [bindtags .diffs.l]
 	computeHeight
 
-	.diffs.l tag configure diff -background $gc(rename,oColor)
-	.diffs.r tag configure diff -background $gc(rename,nColor)
+	.diffs.l tag configure diff -background $gc(rename,oldColor)
+	.diffs.r tag configure diff -background $gc(rename,newColor)
 }
 
 # Set up keyboard accelerators.

@@ -116,7 +116,7 @@ proc dumpLists {A B} {
 	puts "$A S($nextSame): $Same D($nextDiff): $Diff B($nextBoth): $Both -> $B"
 	puts -nonewline "B: "
 	for {set i $nextBoth} {$i <= $maxBoth} {incr i 2} {
-		set j [expr $i + 1]
+		set j [expr {$i + 1}]
 		set a [lindex $rBoth $i]
 		set b [lindex $rBoth $j]
 		puts -nonewline "$a,$b "
@@ -124,7 +124,7 @@ proc dumpLists {A B} {
 	puts ""
 	puts -nonewline "S: "
 	for {set i $nextSame} {$i <= $maxSame} {incr i 2} {
-		set j [expr $i + 1]
+		set j [expr {$i + 1}]
 		set a [lindex $rSame $i]
 		set b [lindex $rSame $j]
 		puts -nonewline "$a,$b "
@@ -132,7 +132,7 @@ proc dumpLists {A B} {
 	puts ""
 	puts -nonewline "D: "
 	for {set i $nextDiff} {$i <= $maxDiff} {incr i 2} {
-		set j [expr $i + 1]
+		set j [expr {$i + 1}]
 		set a [lindex $rDiff $i]
 		set b [lindex $rDiff $j]
 		puts -nonewline "$a,$b "
@@ -167,7 +167,7 @@ proc useDiff {which color} \
 	.merge.menu.redo configure -state disabled
 
 	# See if it is an empty diff; if so, just call skip and return.
-	set type [expr $nextBoth / 2]
+	set type [expr {$nextBoth / 2}]
 	set type [lindex $types $type]
 	if {$which == "left"} {
 		if {$type == ">"} { skip; return }
@@ -198,9 +198,9 @@ proc useDiff {which color} \
 	# What I want is to have the first line of the new stuff at the top
 	# of the merge window.
 	.merge.t see $Here
-	set Here [expr [lindex [split $Here .] 0] - 1]
+	set Here [expr {[lindex [split $Here .] 0] - 1}]
 	set top [lindex [split [.merge.t index @1,1] .] 0]
-	.merge.t yview scroll [expr $Here - $top] units
+	.merge.t yview scroll [expr {$Here - $top}] units
 }
 
 # Skip the current diff.  Isn't this easy?
@@ -220,8 +220,8 @@ proc skip {} \
 	.merge.t see $Here
 }
 
-proc useLeft {} { global gc(fm,oColor); useDiff "left" $gc(fm,oColor) }
-proc useRight {} { global gc(fm,nColor); useDiff "right" $gc(fm,nColor) }
+proc useLeft {} { global gc; useDiff "left" $gc(fm,oldColor) }
+proc useRight {} { global gc; useDiff "right" $gc(fm,newColor) }
 
 proc saveMark {which} \
 {
@@ -283,8 +283,10 @@ proc highlightDiffs {} \
 		.diffs.left tag add d $Diff $End
 		.diffs.right tag add d $Diff $End
 	}
-	.diffs.left tag configure d -foreground black -font $gc(fm,bFont)
-	.diffs.right tag configure d -foreground black -font $gc(fm,bFont)
+	.diffs.left tag configure d -foreground black \
+	    -font $gc(fm,fixedboldFont)
+	.diffs.right tag configure d -foreground black \
+	    -font $gc(fm,fixedboldFont)
 }
 
 proc topLine {} \
@@ -304,16 +306,16 @@ proc scrollDiffs {where} \
 	# too big to fit or fits exactly) or
 	# center the diff in the window (if it is smaller than the window).
 	set Diff [lindex $rDiff $nextDiff]
-	set End [lindex $rDiff [expr 1 + $nextDiff]]
-	set size [lindex [split [expr $End - $Diff] "."] 0]
+	set End [lindex $rDiff [expr {1 + $nextDiff}]]
+	set size [lindex [split [expr {$End - $Diff}] "."] 0]
 	if {$size >= $gc(fm,diffHeight)} {
 		set i $where
 	} else {
 		# Center it.
-		set j [expr $gc(fm,diffHeight) - $size]
-		set j [expr $j / 2]
+		set j [expr {$gc(fm,diffHeight) - $size}]
+		set j [expr {$j / 2}]
 		if {$j > 0} { incr j -1 }
-		set i [expr $where - $j]
+		set i [expr {$where - $j}]
 	}
 	set l [topLine]
 	while {($l < $i) && ($i > $gc(fm,diffHeight))} {
@@ -330,9 +332,9 @@ proc scrollDiffs {where} \
 	.diffs.right tag delete highLight
 	.diffs.left tag add highLight $Diff $End
 	.diffs.right tag add highLight $Diff $End
-	.diffs.left tag configure highLight -font $gc(fm,bFont) \
+	.diffs.left tag configure highLight -font $gc(fm,fixedboldFont) \
 	    -foreground black -background #e0e0e0
-	.diffs.right tag configure highLight -font $gc(fm,bFont) \
+	.diffs.right tag configure highLight -font $gc(fm,fixedboldFont) \
 	    -foreground black -background #e0e0e0
 }
 
@@ -480,7 +482,7 @@ proc save {} \
 	}
 	set o [open $outputFile w]
 	set Text [.merge.t get 1.0 "end - 1 char"]
-	set len [expr [string length $Text] - 1]
+	set len [expr {[string length $Text] - 1}]
 	set last [string index $Text $len]
 	if {"$last" == "\n"} {
 		puts -nonewline $o $Text
@@ -618,7 +620,7 @@ proc readFiles {L R O} \
 			lappend types $last
 			# rBoth is built up this way because the tags stuff
 			# collapses adjacent tags together.
-			set start [expr $lineNo - $n]
+			set start [expr {$lineNo - $n}]
 			lappend rBoth "$start.0" "$lineNo.0"
 			# Ditto for diffs
 			if {$last != "S"} {
@@ -640,7 +642,7 @@ proc readFiles {L R O} \
 	incr lineNo 1
 	# rBoth is built up this way because the tags stuff
 	# collapses adjacent tags together.
-	set start [expr $lineNo - $n]
+	set start [expr {$lineNo - $n}]
 	lappend rBoth "$start.0" "$lineNo.0"
 	# Ditto for diffs
 	if {$last != "S"} {
@@ -663,9 +665,9 @@ proc readFiles {L R O} \
 	set nextSame 0
 	set nextDiff 0
 	set nextBoth 0
-	set maxSame [expr [llength $rSame] - 2]
-	set maxDiff [expr [llength $rDiff] - 2]
-	set maxBoth [expr [llength $rBoth] - 2]
+	set maxSame [expr {[llength $rSame] - 2}]
+	set maxDiff [expr {[llength $rDiff] - 2}]
+	set maxBoth [expr {[llength $rBoth] - 2}]
 	.diffs.left configure -state disabled
 	.diffs.right configure -state disabled
 	. configure -cursor left_ptr
@@ -707,21 +709,21 @@ proc page {w xy dir one} \
 
 	if {$w == ".diffs"} {
 		if {$xy == "yview"} {
-			set lines [expr $dir * $gc(fm,diffHeight)]
+			set lines [expr {$dir * $gc(fm,diffHeight)}]
 		} else {
 			# XXX - should be width.
 			set lines 16
 		}
 	} else {
 		if {$xy == "yview"} {
-			set lines [expr $dir * $gc(fm,mergeHeight)]
+			set lines [expr {$dir * $gc(fm,mergeHeight)}]
 		} else {
 			# XXX - should be width.
 			set lines 16
 		}
 	}
 	if {$one == 1} {
-		set lines [expr $dir * 1]
+		set lines [expr {$dir * 1}]
 	} else {
 		incr lines -1
 	}
@@ -735,7 +737,7 @@ proc page {w xy dir one} \
 
 proc height {w} \
 {
-	global	scroll
+	global	scroll gc
 
 	set jump 2
 	if {$w == ".diffs"} {
@@ -759,7 +761,7 @@ proc height {w} \
 
 proc fontHeight {f} \
 {
-	return [expr [font metrics $f -ascent] + [font metrics $f -descent]]
+	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
 proc computeHeight {w} \
@@ -770,11 +772,11 @@ proc computeHeight {w} \
 	if {$w == "diffs"} {
 		set f [fontHeight [.diffs.left cget -font]]
 		set p [winfo height .diffs.left]
-		set gc(fm,diffHeight) [expr $p / $f]
+		set gc(fm,diffHeight) [expr {$p / $f}]
 	} else {
 		set f [fontHeight [.merge.t cget -font]]
 		set p [winfo height .merge.t]
-		set gc(fm,mergeHeight) [expr $p / $f]
+		set gc(fm,mergeHeight) [expr {$p / $f}]
 	}
 }
 
@@ -783,28 +785,11 @@ proc widgets {L R O} \
 	global	scroll wish tcl_platform gc d
 
 	if {$tcl_platform(platform) == "windows"} {
-		set d(fm,pFont) {terminal 9 roman}
-		set d(fm,bFont) {helvetica 9 roman bold}
-		set d(fm,BFont) {helvetica 9 roman bold}
 		set swid 18
 	} else {
-		set d(fm,pFont) {fixed 12 roman}
-		set d(fm,bFont) {fixed 12 roman bold}
-		set d(fm,BFont) {times 12 roman bold}
 		set swid 12
 	}
-	set d(fm,diffWidth) 65
-	set d(fm,diffHeight) 30
-	set d(fm,mergeWidth) 80
-	set d(fm,mergeHeight) 20
-	set d(fm,tColor) #d0d0d0
-	set d(fm,oColor) orange
-	set d(fm,nColor) yellow
-	set d(fm,bColor) ghostwhite
-	set d(fm,BColor) #d0d0d0
-	set d(fm,geometry) ""
-
-	getDefaults "fm" ".fmrc"
+	getConfig "fm" ".fmrc"
 
 	set g [wm geometry .]
 	if {("$g" == "1x1+0+0") && ("$gc(fm,geometry)" != "")} {
@@ -819,23 +804,25 @@ proc widgets {L R O} \
 	wm title . "File Merge"
 
 	frame .diffs
-	    label .diffs.l -background $gc(fm,oColor) \
-		-font $gc(fm,BFont)
-	    label .diffs.r -background $gc(fm,nColor) \
-		-font $gc(fm,BFont)
+	    label .diffs.l -background $gc(fm,oldColor) \
+		-font $gc(fm,buttonFont)
+	    label .diffs.r -background $gc(fm,newColor) \
+		-font $gc(fm,buttonFont)
 	    text .diffs.left -width $gc(fm,diffWidth) \
 		-height $gc(fm,diffHeight) \
-		-background $gc(fm,bColor) \
-		-state disabled -wrap none -font $gc(fm,pFont) \
+		-background $gc(fm,backgroundColor) \
+		-state disabled -wrap none -font $gc(fm,fixedFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set }
 	    text .diffs.right -width $gc(fm,diffWidth) \
 		-height $gc(fm,diffHeight) \
-		-background $gc(fm,bColor) \
-		-state disabled -wrap none -font $gc(fm,pFont)
-	    scrollbar .diffs.xscroll -wid $swid -troughcolor $gc(fm,tColor) \
+		-background $gc(fm,backgroundColor) \
+		-state disabled -wrap none -font $gc(fm,fixedFont)
+	    scrollbar .diffs.xscroll -wid $swid \
+		-troughcolor $gc(fm,troughColor) \
 		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $swid -troughcolor $gc(fm,tColor) \
+	    scrollbar .diffs.yscroll -wid $swid \
+		-troughcolor $gc(fm,troughColor) \
 		-orient vertical -command { yscroll }
 	    grid .diffs.l -row 0 -column 0 -sticky nsew
 	    grid .diffs.r -row 0 -column 2 -sticky nsew
@@ -846,41 +833,58 @@ proc widgets {L R O} \
 	    grid .diffs.xscroll -columnspan 3
 
 	frame .merge
-	    label .merge.l -background slategrey \
-		-font $gc(fm,bFont)
-	    text .merge.t -width $gc(fm,mergeWidth) -height $gc(fm,mergeHeight) \
-		-background $gc(fm,bColor) \
-		-wrap none -font $gc(fm,pFont) \
+	    label .merge.l -background $gc(fm,backgroundColor) \
+		-font $gc(fm,fixedboldFont)
+	    text .merge.t -width $gc(fm,mergeWidth) \
+		-height $gc(fm,mergeHeight) \
+		-background $gc(fm,backgroundColor) \
+		-wrap none -font $gc(fm,fixedFont) \
 		-xscrollcommand { .merge.xscroll set } \
 		-yscrollcommand { .merge.yscroll set }
-	    scrollbar .merge.xscroll -wid $swid -troughcolor $gc(fm,tColor) \
+	    scrollbar .merge.xscroll -wid $swid \
+		-troughcolor $gc(fm,troughColor) \
 		-orient horizontal -command { .merge.t xview }
-	    scrollbar .merge.yscroll -wid $swid -troughcolor $gc(fm,tColor) \
+	    scrollbar .merge.yscroll -wid $swid \
+		-troughcolor $gc(fm,troughColor) \
 		-orient vertical -command { .merge.t yview }
 	    frame .merge.menu
-		button .merge.menu.open -width 7 -bg $gc(fm,BColor) \
-		    -font $gc(fm,BFont) -text "Open" \
+		button .merge.menu.open -width 7 -bg $gc(fm,buttonColor) \
+		    -font $gc(fm,buttonFont) -text "Open" \
 		    -command selectFiles
-		button .merge.menu.restart -font $gc(fm,BFont) -bg $gc(fm,BColor) \
+		button .merge.menu.restart -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
 		    -text "Restart" -width 7 -state disabled -command restart
-		button .merge.menu.undo -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Undo" -width 7 -state disabled -command undo
-		button .merge.menu.redo -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Redo" -width 7 -state disabled -command redo
-		button .merge.menu.skip -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Skip" -width 7 -state disabled -command skip
-		button .merge.menu.left -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Use\nLeft" -width 7 -state disabled -command useLeft
-		button .merge.menu.right -font $gc(fm,BFont) -bg $gc(fm,BColor) \
-		    -text "Use\nright" -width 7 -state disabled -command useRight
-		label .merge.menu.l -font $gc(fm,BFont) -bg $gc(fm,BColor) \
+		button .merge.menu.undo -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Undo" -width 7 -state disabled \
+		    -command undo
+		button .merge.menu.redo -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Redo" -width 7 -state disabled \
+		    -command redo
+		button .merge.menu.skip -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Skip" -width 7 -state disabled \
+		    -command skip
+		button .merge.menu.left -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Use\nLeft" -width 7 -state disabled \
+		    -command useLeft
+		button .merge.menu.right -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
+		    -text "Use\nright" -width 7 -state disabled \
+		    -command useRight
+		label .merge.menu.l -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
 		    -width 20 -relief groove -pady 2
-		button .merge.menu.save -font $gc(fm,BFont) -bg $gc(fm,BColor) \
+		button .merge.menu.save -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
 		    -text "Done" -width 7 -command save -state disabled
-		button .merge.menu.help -width 7 -bg $gc(fm,BColor) \
-		    -font $gc(fm,BFont) -text "Help" \
+		button .merge.menu.help -width 7 -bg $gc(fm,buttonColor) \
+		    -font $gc(fm,buttonFont) -text "Help" \
 		    -command { exec bk helptool fmtool & }
-		button .merge.menu.quit -font $gc(fm,BFont) -bg $gc(fm,BColor) \
+		button .merge.menu.quit -font $gc(fm,buttonFont) \
+		    -bg $gc(fm,buttonColor) \
 		    -text "Quit" -width 7 -command cmd_done
 		grid .merge.menu.l -row 0 -column 0 -columnspan 2 -sticky ew
 		grid .merge.menu.open -row 1 -sticky ew
@@ -897,7 +901,8 @@ proc widgets {L R O} \
 	    grid .merge.t -row 1 -column 0 -sticky nsew
 	    grid .merge.yscroll -row 1 -column 1 -sticky ns
 	    grid .merge.menu -row 0 -rowspan 3 -column 2 -sticky n
-	    grid .merge.xscroll -row 2 -rowspan 2 -column 0 -columnspan 2 -sticky ew
+	    grid .merge.xscroll -row 2 -rowspan 2 -column 0 \
+		-columnspan 2 -sticky ew
 
 	label .status -relief sunken \
 	    -borderwidth 2 -anchor w -font {clean 12 roman}
@@ -984,8 +989,8 @@ proc confirm {msg l} \
 	    pack .c.top -padx 8 -pady 8
 	    pack .c.sep -fill x -pady 4
 	    pack .c.controls -pady 4
-	set x [expr [winfo rootx .merge.menu]-150]
-	set y [expr [winfo rooty .merge.menu]-60]
+	set x [expr {[winfo rootx .merge.menu] - 150}]
+	set y [expr {[winfo rooty .merge.menu] - 60}]
 	wm geometry .c "+$x+$y"
 	wm transient .c .
 }

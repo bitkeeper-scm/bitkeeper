@@ -154,7 +154,7 @@ sfileFirst(char *cmd, char **Av, int Flags)
 	sfileDone();
 	rev[0] = 0;
 	prog = cmd;
-	flags = Flags|SF_HASREVS; /* this cause problem with win32 path */
+	flags = Flags|SF_HASREVS; 
 	if (Av[0]) {
 		if (streq("-", Av[0])) {
 			if (Av[1]) {

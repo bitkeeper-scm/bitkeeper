@@ -83,8 +83,8 @@ proc highlightDiffs {start stop} \
 	.diffs.right tag delete d
 	.diffs.left tag add d $start $stop
 	.diffs.right tag add d $start $stop
-	.diffs.left tag configure d -font $gc(cset,bFont)
-	.diffs.right tag configure d -font $gc(cset,bFont)
+	.diffs.left tag configure d -font $gc(cset,fixedboldFont)
+	.diffs.right tag configure d -font $gc(cset,fixedboldFont)
 }
 
 proc topLine {} \
@@ -102,12 +102,12 @@ proc scrollDiffs {start stop} \
 	# center the diff in the window (if it is smaller than the window).
 	set Diff [lindex [split $start .] 0]
 	set End [lindex [split $stop .] 0]
-	set size [expr $End - $Diff]
+	set size [expr {$End - $Diff}]
 	# Center it.
 	if {$size < $gc(cset,diffHeight)} {
-		set j [expr $gc(cset,diffHeight) - $size]
-		set j [expr $j / 2]
-		set i [expr $Diff - $j]
+		set j [expr {$gc(cset,diffHeight) - $size}]
+		set j [expr {$j / 2}]
+		set i [expr {$Diff - $j}]
 		if {$i < 0} {
 			set want 1
 		} else {
@@ -118,7 +118,7 @@ proc scrollDiffs {start stop} \
 	}
 
 	set top [topLine]
-	set move [expr $want - $top]
+	set move [expr {$want - $top}]
 	.diffs.left yview scroll $move units
 	.diffs.right yview scroll $move units
 }
@@ -129,7 +129,7 @@ proc chunks {n} \
 
 	set l [.diffs.left index "end - 1 char linestart"]
 	set Diffs($nextDiff) $l
-	set e [expr $n + [lindex [split $l .] 0]]
+	set e [expr {$n + [lindex [split $l .] 0]}]
 	set DiffsEnd($nextDiff) "$e.0"
 	incr nextDiff
 }
@@ -520,13 +520,13 @@ proc page {w xy dir one} \
 	global	gc
 
 	if {$xy == "yview"} {
-		set lines [expr $dir * $gc(cset,diffHeight)]
+		set lines [expr {$dir * $gc(cset,diffHeight)}]
 	} else {
 		# XXX - should be width.
 		set lines 16
 	}
 	if {$one == 1} {
-		set lines [expr $dir * 1]
+		set lines [expr {$dir * 1}]
 	} else {
 		incr lines -1
 	}
@@ -536,7 +536,7 @@ proc page {w xy dir one} \
 
 proc fontHeight {f} \
 {
-	return [expr [font metrics $f -ascent] + [font metrics $f -descent]]
+	return [expr {[font metrics $f -ascent] + [font metrics $f -descent]}]
 }
 
 proc computeHeight {} \
@@ -546,7 +546,7 @@ proc computeHeight {} \
 	update
 	set f [fontHeight [.diffs.left cget -font]]
 	set p [winfo height .diffs.left]
-	set gc(cset,diffHeight) [expr $p / $f]
+	set gc(cset,diffHeight) [expr {$p / $f}]
 }
 
 proc adjustHeight {diff list} \
@@ -566,38 +566,14 @@ proc widgets {} \
 	global	scroll gc wish tcl_platform d
 
 	if {$tcl_platform(platform) == "windows"} {
-		set d(cset,listFont) {helvetica 9 roman}
-		set d(cset,BFont) {helvetica 9 roman bold}
-		set d(cset,pFont) {terminal 9 roman}
-		set d(cset,bFont) {terminal 9 roman bold}
-		set d(cset,lFont) {helvetica 9 roman bold}
-		set d(cset,leftWidth) 40
-		set d(cset,rightWidth) 80
 		set py 0; set px 1; set bw 2
 		set swid 18
 	} else {
-		set d(cset,listFont) {fixed 12 roman}
-		set d(cset,BFont) {times 12 roman bold}
-		set d(cset,pFont) {fixed 12 roman}
-		set d(cset,bFont) {fixed 12 roman bold}
-		set d(cset,lFont) {fixed 12 roman bold}
-		set d(cset,leftWidth) 55
-		set d(cset,rightWidth) 80
 		set py 1; set px 4; set bw 2
 		set swid 12
 	}
-	set d(cset,diffHeight) 30
-	set d(cset,bColor) #d0d0d0
-	set d(cset,BColor) #d0d0d0
-	set d(cset,tColor) lightseagreen
-	set d(cset,statusColor) lightblue
-	set d(cset,sColor) yellow
-	set d(cset,oColor) orange
-	set d(cset,rColor) yellow
-	set d(cset,listHeight) 12
-	set d(cset,geometry) ""
 
-	getDefaults "cset" ".csetoolrc"
+	getConfig "cset" ".csetoolrc"
 
 	set g [wm geometry .]
 	if {("$g" == "1x1+0+0") && ("$gc(cset,geometry)" != "")} {
@@ -610,12 +586,12 @@ proc widgets {} \
 		-state disabled -wrap none -font $gc(cset,listFont) \
 		-xscrollcommand { .filelist.xscroll set } \
 		-yscrollcommand { .filelist.yscroll set } \
-		-background $gc(cset,bColor)
+		-background $gc(cset,backgroundColor)
 	    scrollbar .filelist.xscroll -wid $swid \
-		-troughcolor $gc(cset,tColor) \
+		-troughcolor $gc(cset,troughColor) \
 		-orient horizontal -command ".filelist.t xview"
 	    scrollbar .filelist.yscroll -wid $swid \
-		-troughcolor $gc(cset,tColor) \
+		-troughcolor $gc(cset,troughColor) \
 		-orient vertical -command ".filelist.t yview"
 	    grid .filelist.t -row 0 -column 0 -sticky ewns
 	    grid .filelist.yscroll -row 0 -column 1 -sticky nse -rowspan 2
@@ -626,12 +602,12 @@ proc widgets {} \
 		-state disabled -wrap none -font $gc(cset,listFont) \
 		-xscrollcommand { .sccslog.xscroll set } \
 		-yscrollcommand { .sccslog.yscroll set } \
-		-background $gc(cset,bColor)
+		-background $gc(cset,backgroundColor)
 	    scrollbar .sccslog.xscroll -wid $swid \
-		-troughcolor $gc(cset,tColor) \
+		-troughcolor $gc(cset,troughColor) \
 		-orient horizontal -command ".sccslog.t xview"
 	    scrollbar .sccslog.yscroll -wid $swid \
-		-troughcolor $gc(cset,tColor) \
+		-troughcolor $gc(cset,troughColor) \
 		-orient vertical -command ".sccslog.t yview"
 	    grid .sccslog.t -row 0 -column 0 -sticky ewns
 	    grid .sccslog.yscroll -row 0 -column 1 -sticky nse -rowspan 2
@@ -639,28 +615,32 @@ proc widgets {} \
 
 	frame .diffs
 	    frame .diffs.status
-		label .diffs.status.l -background $gc(cset,oColor) \
-		    -font $gc(cset,lFont) -relief sunken -borderwid 2
+		label .diffs.status.l -background $gc(cset,oldColor) \
+		    -font $gc(cset,labelFont) \
+		    -relief sunken -borderwid 2
 		label .diffs.status.middle -background $gc(cset,statusColor) \
-		    -font $gc(cset,lFont) -wid 26 -relief sunken -borderwid 2
-		label .diffs.status.r -background $gc(cset,rColor) \
-		    -font $gc(cset,lFont) -relief sunken -borderwid 2
+		    -font $gc(cset,labelFont) -wid 26 \
+		    -relief sunken -borderwid 2
+		label .diffs.status.r -background $gc(cset,newColor) \
+		    -font $gc(cset,labelFont) -relief sunken -borderwid 2
 		grid .diffs.status.l -row 0 -column 0 -sticky ew
 		grid .diffs.status.middle -row 0 -column 1
 		grid .diffs.status.r -row 0 -column 2 -sticky ew
 	    text .diffs.left -width $gc(cset,leftWidth) \
 		-height $gc(cset,diffHeight) \
-		-state disabled -wrap none -font $gc(cset,pFont) \
+		-state disabled -wrap none -font $gc(cset,fixedFont) \
 		-xscrollcommand { .diffs.xscroll set } \
 		-yscrollcommand { .diffs.yscroll set } \
-		-background $gc(cset,bColor)
+		-background $gc(cset,backgroundColor)
 	    text .diffs.right -width $gc(cset,rightWidth) \
 		-height $gc(cset,diffHeight) \
-		-state disabled -wrap none -font $gc(cset,pFont) \
-		-background $gc(cset,bColor)
-	    scrollbar .diffs.xscroll -wid $swid -troughcolor $gc(cset,tColor) \
+		-state disabled -wrap none -font $gc(cset,fixedFont) \
+		-background $gc(cset,backgroundColor)
+	    scrollbar .diffs.xscroll -wid $swid \
+		-troughcolor $gc(cset,troughColor) \
 		-orient horizontal -command { xscroll }
-	    scrollbar .diffs.yscroll -wid $swid -troughcolor $gc(cset,tColor) \
+	    scrollbar .diffs.yscroll -wid $swid \
+		-troughcolor $gc(cset,troughColor) \
 		-orient vertical -command { yscroll }
 	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
@@ -671,42 +651,49 @@ proc widgets {} \
 
 	set menuwid 7
 	frame .menu
-	    button .menu.prevCset -font $gc(cset,BFont) -bg $gc(cset,BColor) \
+	    button .menu.prevCset -font $gc(cset,buttonFont) \
+		-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "<< Cset" -width $menuwid -command prevCset
-	    button .menu.nextCset -font $gc(cset,BFont) -bg $gc(cset,BColor) \
+	    button .menu.nextCset -font $gc(cset,buttonFont) \
+		-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> Cset" -width $menuwid -command nextCset
-	    button .menu.prevFile -font $gc(cset,BFont) -bg $gc(cset,BColor) \
+	    button .menu.prevFile -font $gc(cset,buttonFont) \
+		-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "<< File" -width $menuwid -command prevFile
-	    button .menu.nextFile -font $gc(cset,BFont) -bg $gc(cset,BColor) \
+	    button .menu.nextFile -font $gc(cset,buttonFont) \
+		-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> File" -width $menuwid -command nextFile
-	    button .menu.prev -font $gc(cset,BFont) -bg $gc(cset,BColor) \
+	    button .menu.prev -font $gc(cset,buttonFont) \
+		-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "<< Diff" -width $menuwid -state disabled \
 		-command prev
-	    button .menu.next -font $gc(cset,BFont) -bg $gc(cset,BColor) \
+	    button .menu.next -font $gc(cset,buttonFont) \
+		-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text ">> Diff" -width $menuwid -state disabled \
 		-command next
-	    button .menu.cset_history -font $gc(cset,BFont) \
-	       	-bg $gc(cset,BColor) \
+	    button .menu.cset_history -font $gc(cset,buttonFont) \
+	       	-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "ChangeSet History" \
 		-command "exec bk sccstool &"
-	    button .menu.file_history -font $gc(cset,BFont) \
-		-bg $gc(cset,BColor) \
+	    button .menu.file_history -font $gc(cset,buttonFont) \
+		-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "File History" \
 		-command file_history
-	    button .menu.quit -font $gc(cset,BFont) -bg $gc(cset,BColor) \
+	    button .menu.quit -font $gc(cset,buttonFont) \
+		-bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
 		-text "Quit" -width $menuwid -command exit 
-	    button .menu.help -width $menuwid -bg $gc(cset,BColor) \
+	    button .menu.help -width $menuwid -bg $gc(cset,buttonColor) \
 		-pady $py -padx $px -borderwid $bw \
-		-font $gc(cset,BFont) -text "Help" \
+		-font $gc(cset,buttonFont) -text "Help" \
 		-command { exec bk helptool csettool & }
 	    #grid .menu.prevCset -row 0 -column 0
 	    #grid .menu.nextCset -row 0 -column 1
@@ -747,20 +734,18 @@ proc widgets {} \
 	set foo [bindtags .diffs.left]
 	computeHeight
 
-	.diffs.left tag configure diff -background $gc(cset,oColor)
-	.diffs.right tag configure diff -background $gc(cset,rColor)
-	.filelist.t tag configure select -background $gc(cset,sColor) \
+	.diffs.left tag configure diff -background $gc(cset,oldColor)
+	.diffs.right tag configure diff -background $gc(cset,newColor)
+	.filelist.t tag configure select -background $gc(cset,highlightColor) \
 	    -relief groove -borderwid 1
-	.filelist.t tag configure cset -background $gc(cset,bColor)
-	.sccslog.t tag configure cset -background $gc(cset,bColor)
+	.filelist.t tag configure cset -background $gc(cset,backgroundColor)
+	.sccslog.t tag configure cset -background $gc(cset,backgroundColor)
 	.sccslog.t tag configure file_tag -underline true
 	. configure -cursor left_ptr
 	.sccslog.t configure -cursor left_ptr
 	.filelist.t configure -cursor left_ptr
 	.diffs.left configure -cursor left_ptr
 	.diffs.right configure -cursor left_ptr
-	bind all <Button-4> prev
-	bind all <Button-5> next
 }
 
 # Set up keyboard accelerators.
@@ -797,6 +782,8 @@ proc keyboard_bindings {} \
 	bind all <period>	dot
 	bind all <N>		nextFile
 	bind all <P>		prevFile
+	bind all <Button-4>	prev
+	bind all <Button-5>	next
 
 	bind .filelist.t <ButtonPress> { pixSelect %x %y }
 }

@@ -81,6 +81,7 @@ int pending_main(int, char **);
 int prs_main(int, char **);
 int pull_main(int, char **);
 int push_main(int, char **);
+int pwd_main(int, char **);
 int r2c_main(int, char **);
 int range_main(int, char **);
 int rcs2sccs_main(int, char **);
@@ -187,6 +188,7 @@ struct command cmdtbl[] = {
 	{"prs", prs_main},
 	{"pull", pull_main},
 	{"push", push_main},
+	{"pwd", pwd_main},
 	{"r2c", r2c_main},
 	{"range", range_main},
 	{"rcs2sccs", rcs2sccs_main},
@@ -413,7 +415,11 @@ main(int ac, char **av)
 	/*
 	 * Is it a known C program ?
 	 */
-	if (streq(prog, "patch") || streq(prog, "diff3")) {
+	if (streq(prog, "patch") ||
+#ifdef WIN32
+	    streq(prog, "pwd") ||
+#endif
+	    streq(prog, "diff3")) {
 		cmdlog_start(av);
 		ret = spawnvp_ex(_P_WAIT, av[0], av);
 		cmdlog_end(ret);

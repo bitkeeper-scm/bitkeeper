@@ -162,7 +162,7 @@ proc bkhelp {topic} \
 	}
 	catch {close $f} dummy
 	.text.help configure -state disabled
-	.text.help tag configure seealso -foreground $gc(help,tagColor) \
+	.text.help tag configure seealso -foreground $gc(help,linkColor) \
 	    -underline true
 }
 
@@ -173,7 +173,7 @@ proc embedded_tag {line} \
 	while {$line != ""} {
 		set start [string first "bk " $line]
 		if {$start == -1} { break }
-		set end [expr $start + 7]
+		set end [expr {$start + 7}]
 		set t [string range $line $start $end]
 		#puts "  big?=$t"
 		if {$t == "bk help "} { incr start 5 }
@@ -233,7 +233,7 @@ proc search {} \
 	set last ""
 	while {[gets $f line] >= 0} {
 		set tab [string first "\t" $line"]
-		set key [string range $line 0 [expr $tab - 1]]
+		set key [string range $line 0 [expr {$tab - 1}]]
 		incr tab
 		set sentence [string range $line $tab end]
 		set sentence [string trim $sentence]
@@ -279,8 +279,8 @@ proc scroll {what dir} \
 	} elseif {$dir == -1 && $a == 0 && $line > 1.0} {
 		doNext -1
 	} elseif {$what == "page"} {
-		set x [expr $gc(help,height) - 1]
-		set x [expr $x * $dir]
+		set x [expr {$gc(help,height) - 1}]
+		set x [expr {$x * $dir}]
 		.text.help yview scroll $x units
 	} else {
 		.text.help yview scroll $dir units
@@ -297,27 +297,12 @@ proc widgets {} \
 
 	if {$tcl_platform(platform) == "windows"} {
 		set swid 20
-		set d(help,pFont) {helvetica 10 roman}
-		set d(help,bFont) {helvetica 10 roman bold}
-		set d(help,BFont) {helvetica 10 roman bold}
 		set py 0
 	} else {
 		set swid 14
-		set d(help,pFont) {fixed 13 roman}
-		set d(help,bFont) {Times 13 roman bold}
-		set d(help,BFont) {Times 13 roman bold}
 		set py 1
 	}
-	set d(help,bColor) #d0d0d0
-	set d(help,BColor) #d0d0d0
-	set d(help,sColor) yellow
-	set d(help,tColor) grey
-	set d(help,tagColor) blue
-	set d(help,searchColor) orange
-	set d(help,geometry) ""
-	set d(help,height) 40
-
-	getDefaults "help" ".helptoolrc"
+	getConfig "help" ".helptoolrc"
 
 	set rootX [winfo screenwidth .]
 	set rootY [winfo screenheight .]
@@ -328,30 +313,32 @@ proc widgets {} \
 	set firstConfig 1
 
 	frame .menu -borderwidth 0 -relief flat
-	    button .menu.done -text "Quit" -font $gc(help,BFont) -borderwid 1 \
-		-pady $py -background $gc(help,BColor) -command { exit }
-	    button .menu.help -text "Help" -font $gc(help,BFont) -borderwid 1 \
-		-pady $py -background $gc(help,BColor) -command {
+	    button .menu.done -text "Quit" -font $gc(help,buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+		-command { exit }
+	    button .menu.help -text "Help" -font $gc(help,buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+		-command {
 			global	line
 
 			clearSearch
 			set line [topic2line helptool]
 			doSelect 1
 		}
-	    button .menu.back -text "Back" -font $gc(help,BFont) -borderwid 1 \
-		-pady $py -background $gc(help,BColor) \
+	    button .menu.back -text "Back" -font $gc(help,buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
 		-state disabled -command { back }
-	    button .menu.forw -text "Forw" -font $gc(help,BFont) -borderwid 1 \
-		-pady $py -background $gc(help,BColor) \
+	    button .menu.forw -text "Forw" -font $gc(help,buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
 		-state disabled -command { forw }
-	    button .menu.clear -text "Clear search" -font $gc(help,BFont) \
-		-borderwid 1 -pady $py -background $gc(help,BColor) \
+	    button .menu.clear -text "Clear search" -font $gc(help,buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
 		-command { clearSearch }
-	    button .menu.search -text "Search:" -font $gc(help,BFont) \
-		-borderwid 1 -pady $py -background $gc(help,BColor) \
+	    button .menu.search -text "Search:" -font $gc(help,buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
 		-command { search }
-	    entry .menu.entry -font $gc(help,bFont) -borderwid 1 \
-		-background $gc(help,bColor) -relief sunken \
+	    entry .menu.entry -font $gc(help,fixedboldFont) -borderwid 1 \
+		-background $gc(help,backgroundColor) -relief sunken \
 		-textvariable search_word
 	    grid .menu.done -row 0 -column 0 -sticky ew
 	    grid .menu.help -row 0 -column 1 -sticky ew
@@ -363,15 +350,15 @@ proc widgets {} \
 	    grid columnconfigure .menu 7 -weight 1
 	frame .ctrl -borderwidth 0 -relief flat
 	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
-		-font $gc(help,pFont) -width 14 \
-		-background $gc(help,bColor) \
+		-font $gc(help,fixedFont) -width 14 \
+		-background $gc(help,backgroundColor) \
 		-yscrollcommand { .ctrl.yscroll set } \
 		-xscrollcommand { .ctrl.xscroll set }
 	    scrollbar .ctrl.yscroll -width $swid \
 		-command ".ctrl.topics yview" \
-		-troughcolor $gc(help,tColor)
+		-troughcolor $gc(help,troughColor)
 	    scrollbar .ctrl.xscroll \
-		-troughcolor $gc(help,tColor) \
+		-troughcolor $gc(help,troughColor) \
 		-orient horiz -width $swid -command ".ctrl.topics xview"
 
 	    grid .ctrl.topics -row 0 -column 0 -sticky nsew
@@ -380,16 +367,16 @@ proc widgets {} \
 	    grid rowconfigure .ctrl 0 -weight 1
 
 	frame .text -borderwidth 0 -relief flat
-	    text .text.help -wrap none -font $gc(help,pFont) \
+	    text .text.help -wrap none -font $gc(help,fixedFont) \
 		-width 78 -height $gc(help,height) -padx 4 \
-		-background $gc(help,bColor) \
+		-background $gc(help,backgroundColor) \
 		-xscrollcommand { .text.x2scroll set } \
 		-yscrollcommand { .text.y2scroll set }
 	    scrollbar .text.x2scroll -orient horiz \
-		-troughcolor $gc(help,tColor) \
+		-troughcolor $gc(help,troughColor) \
 		-width $swid -command ".text.help xview"
 	    scrollbar .text.y2scroll -width $swid \
-		-troughcolor $gc(help,tColor) \
+		-troughcolor $gc(help,troughColor) \
 		-command ".text.help yview"
 
 	    grid .text.help -row 0 -column 1 -sticky nsew
@@ -422,6 +409,8 @@ proc widgets {} \
 	bind . <Home>		 ".text.help yview -pickplace 1.0"
 	bind . <End>		 ".text.help yview -pickplace end"
 	bind . <Escape>		{ exit }
+	bind . <Button-4> { scroll "page" -1 }
+	bind . <Button-5> { scroll "page" 1 }
 	bind .menu.entry <Return> { search }
 	bind .text.help <Configure> {
 		global	gc pixelsPerLine firstConfig
@@ -430,13 +419,13 @@ proc widgets {} \
 		# This gets executed once, when we know how big the text is
 		if {$firstConfig == 1} {
 			set h [winfo height .text.help]
-			set pixelsPerLine [expr $h / $gc(help,height)]
+			set pixelsPerLine [expr {$h / $gc(help,height)}]
 			set firstConfig 0
 		}
-		set x [expr $x / $pixelsPerLine]
+		set x [expr {$x / $pixelsPerLine}]
 		set gc(help,height) $x
 	}
-	.ctrl.topics tag configure "select" -background $gc(help,sColor) \
+	.ctrl.topics tag configure "select" -background $gc(help,highlightColor) \
 	    -relief ridge -borderwid 1
 	.text.help tag configure "title" -background #8080c0 \
 	    -relief groove -borderwid 2

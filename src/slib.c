@@ -1610,16 +1610,18 @@ sPath(char *name, int isDir)
 	 *  If there is a local SCCS directory, use it
 	 */
 	cleanPath(name, buf);
-	path = name2sccs(buf);
-	strrchr(path, '/')[0] = 0;
-	assert(streq("SCCS", basenm(path)));
-	if (isdir(path)) {
+	unless (isDir) {
+		path = name2sccs(buf);
+		assert(path);
+		strrchr(path, '/')[0] = 0;
+		assert(streq("SCCS", basenm(path)));
+		if (isdir(path)) {
+			free(path);
+			debug((stderr, "sPath(%s) -> %s\n", name, name));
+			return (name);
+		}
 		free(path);
-		//return (fullname(buf, 0));
-		debug((stderr, "sPath(%s) -> %s\n", name, name));
-		return (name);
 	}
-	free(path);
 
 	path = _relativeName(name, isDir, 0, 0, 0, gRoot);
 	if (IsFullPath(path)) return path; /* no root marker */

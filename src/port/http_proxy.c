@@ -234,7 +234,6 @@ addProxy(char *type, char *line, char **proxies)
 	strcpy(proxy_host, line);
 	proxy_port = atoi(++q);
 	sprintf(buf, "%s %s:%d", type, proxy_host, proxy_port);
-fprintf(stderr, "####adding <%s>\n", buf);
 	return (addLine(proxies, strdup(buf)));
 }
 
