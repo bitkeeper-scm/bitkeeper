@@ -41,7 +41,6 @@ int	adler32_main(int, char **);
 int	admin_main(int, char **);
 int	annotate_main(int, char **);
 int	applyall_main(int, char **);
-int	approve_main(int, char **);
 int	base64_main(int, char **);
 int	bkd_main(int, char **);
 int	cat_main(int, char **);
@@ -229,7 +228,6 @@ struct	command cmdtbl[] = {
 	{"abort", abort_main},			/* doc 2.0 */	
 	{"add", delta_main},			/* doc 2.0 */
 	{"admin", admin_main},			/* doc 2.0 */
-	{"approve", approve_main},		/* doc 2.0 */
 	{"annotate", annotate_main},		/* doc 2.0 */
 	{"base64", base64_main},		/* need doc 2.2 */
 	{"bkd", bkd_main },			/* doc 2.0 */
