@@ -141,6 +141,7 @@ getrev(char *top_rev)
 	char	tmpfile[MAXPATH];
 	char	cmd[MAXKEY];
 	int	fd, len, sz;
+	char	*retptr = 0;
 
 	checkRev(top_rev);
 	sprintf(tmpfile, "%s/bk_tmp%d", TMP_PATH, getpid());
@@ -152,15 +153,18 @@ getrev(char *top_rev)
 	fd = open(tmpfile, O_RDONLY, 0);
 	if (buf) free(buf);
 	sz = size(tmpfile);
-	buf = malloc(sz + 1);
-	if ((len = read(fd, buf, sz)) < 0) {
-		perror(tmpfile);
-		exit(1);
+	if (sz) {
+		buf = malloc(sz + 1);
+		if ((len = read(fd, buf, sz)) < 0) {
+			perror(tmpfile);
+			exit(1);
+		}
+		close(fd);
+		buf[len] = 0;
+		retptr = buf;
 	}
-	close(fd);
 	unlink(tmpfile);
-	buf[len] = 0;
-	return (buf);
+	return (retptr);
 }
 
 MDBM *
@@ -174,6 +178,7 @@ mk_list(char *rev_list, char *rev)
 	cmd = malloc(strlen(rev) + 100);
 	sprintf(cmd, "bk cset -ffl%s > %s", rev, rev_list);
 	if (system(cmd) != 0) {
+		printf("undo: %s\n", cmd);
 		printf("undo: can not extact revision list\n");
 		return (NULL);
 	}
