@@ -5,22 +5,6 @@ WHATSTR("@(#)%K%");
 
 int	newrev(sccs *s, pfile *pf);
 
-char *
-user_preference(char *what)
-{
-	char *p;
-
-	unless (bk_proj) return "";
-	unless (bk_proj->config) {
-		unless (bk_proj->root) return "";
-		bk_proj->config = loadConfig(bk_proj->root, 0);
-		unless (bk_proj->config) return "";
-	}
-	p = mdbm_fetch_str(bk_proj->config, what);
-	unless (p) p = "";
-	return (p);
-}
-
 int
 delta_main(int ac, char **av)
 {
