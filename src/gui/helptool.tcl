@@ -142,28 +142,32 @@ proc bkhelp {topic} \
 	set f [open "| bk help -p $topic"]
 	.text.help configure -state normal
 	.text.help delete 1.0 end
-	set first 1
+	set lineno 1
 	while {[gets $f help] >= 0} {
-		if {[string first "bk " $help] == -1} {
+		if {($lineno < 3) || ([string first "bk " $help] == -1)} {
 			.text.help insert end "$help\n"
 		} else {
 			embedded_tag "$help"
 		}
 
-		if {$first == 1} {
-			set first 0
+		if {[regexp {^[ \t\nA-Z]+$} $help]} {
+			set i "$lineno.0"
+			.text.help tag add "bold" $i "$i lineend"
+		}
+		if {$lineno == 1} {
 			if {[regexp {^[ \t]*[-=]} $help]} {
 				.text.help insert 1.0 "\n"
 				.text.help insert end "\n"
-				.text.help tag \
-				    add "title" 1.0 "3.0 lineend + 1 char"
+				incr lineno 2
 			}
 		}
+		incr lineno
 	}
+	.text.help tag add "bold" 2.0 "2.0 lineend + 1 char"
+	set i "$lineno.0"
+	.text.help tag add "bold" "$i - 2 lines" end
 	catch {close $f} dummy
 	.text.help configure -state disabled
-	.text.help tag configure seealso -foreground $gc(help,linkColor) \
-	    -underline true
 }
 
 # Find each occurrence of bk <cmd> or bk help <cmd> and tag cmd.
@@ -252,7 +256,7 @@ proc search {} \
 	}
 	catch {close $f} dummy
 	.text.help configure -state disabled
-	.text.help tag configure seealso -foreground $gc(help,linkColor) \
+	.text.help tag configure seealso -foreground $gc(help.linkColor) \
 	    -underline true
 }
 
@@ -279,8 +283,8 @@ proc scroll {what dir} \
 	} elseif {$dir == -1 && $a == 0 && $line > 1.0} {
 		doNext -1
 	} elseif {$what == "page"} {
-		set x [expr {$gc(help,height) - 1}]
-		set x [expr {$x * $dir}]
+		set x [expr $gc(help.height) - 1]
+		set x [expr $x * $dir]
 		.text.help yview scroll $x units
 	} else {
 		.text.help yview scroll $dir units
@@ -296,28 +300,27 @@ proc widgets {} \
 	set stackPos 0
 
 	if {$tcl_platform(platform) == "windows"} {
-		set swid 20
 		set py 0
 	} else {
-		set swid 14
 		set py 1
 	}
-	getConfig "help" ".helptoolrc"
+	getConfig "help"
+	option add *background $gc(BG)
 
 	set rootX [winfo screenwidth .]
 	set rootY [winfo screenheight .]
-	if {"$gc(help,geometry)" != ""} {
-		wm geometry . $gc(help,geometry)
+	if {"$gc(help.geometry)" != ""} {
+		wm geometry . $gc(help.geometry)
 	}
 	wm title . "BitKeeper Help"
 	set firstConfig 1
 
 	frame .menu -borderwidth 0 -relief flat
-	    button .menu.done -text "Quit" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.done -text "Quit" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command { exit }
-	    button .menu.help -text "Help" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.help -text "Help" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command {
 			global	line
 
@@ -325,21 +328,21 @@ proc widgets {} \
 			set line [topic2line helptool]
 			doSelect 1
 		}
-	    button .menu.back -text "Back" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.back -text "Back" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-state disabled -command { back }
-	    button .menu.forw -text "Forw" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.forw -text "Forw" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-state disabled -command { forw }
-	    button .menu.clear -text "Clear search" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.clear -text "Clear search" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command { clearSearch }
-	    button .menu.search -text "Search:" -font $gc(help,buttonFont) \
-		-borderwid 1 -pady $py -background $gc(help,buttonColor) \
+	    button .menu.search -text "Search:" -font $gc(help.buttonFont) \
+		-borderwid 1 -pady $py -background $gc(help.buttonColor) \
 		-command { search }
-	    entry .menu.entry -font $gc(help,fixedboldFont) -borderwid 1 \
-		-background $gc(help,backgroundColor) -relief sunken \
-		-textvariable search_word
+	    entry .menu.entry -font $gc(help.fixedBoldFont) -borderwid 1 \
+		-background $gc(help.textBG) -fg $gc(help.textFG) \
+		-relief sunken -textvariable search_word
 	    grid .menu.done -row 0 -column 0 -sticky ew
 	    grid .menu.help -row 0 -column 1 -sticky ew
 	    grid .menu.back -row 0 -column 3 -sticky ew
@@ -350,16 +353,19 @@ proc widgets {} \
 	    grid columnconfigure .menu 7 -weight 1
 	frame .ctrl -borderwidth 0 -relief flat
 	    text .ctrl.topics -spacing1 1 -spacing3 1 -wrap none \
-		-font $gc(help,fixedFont) -width 14 \
-		-background $gc(help,backgroundColor) \
+		-font $gc(help.fixedFont) -width 14 \
+		-background $gc(help.listBG) \
 		-yscrollcommand { .ctrl.yscroll set } \
 		-xscrollcommand { .ctrl.xscroll set }
-	    scrollbar .ctrl.yscroll -width $swid \
+	    scrollbar .ctrl.yscroll -width $gc(help.scrollWidth) \
 		-command ".ctrl.topics yview" \
-		-troughcolor $gc(help,troughColor)
+		-background $gc(help.scrollColor) \
+		-troughcolor $gc(help.troughColor)
 	    scrollbar .ctrl.xscroll \
-		-troughcolor $gc(help,troughColor) \
-		-orient horiz -width $swid -command ".ctrl.topics xview"
+		-troughcolor $gc(help.troughColor) \
+		-background $gc(help.scrollColor) \
+		-orient horiz \
+		-width $gc(help.scrollWidth) -command ".ctrl.topics xview"
 
 	    grid .ctrl.topics -row 0 -column 0 -sticky nsew
 	    grid .ctrl.yscroll -row 0 -column 1 -sticky nse
@@ -367,16 +373,18 @@ proc widgets {} \
 	    grid rowconfigure .ctrl 0 -weight 1
 
 	frame .text -borderwidth 0 -relief flat
-	    text .text.help -wrap none -font $gc(help,fixedFont) \
-		-width 78 -height $gc(help,height) -padx 4 \
-		-background $gc(help,backgroundColor) \
+	    text .text.help -wrap none -font $gc(help.fixedFont) \
+		-width 65 -height $gc(help.height) -padx 4 \
+		-background $gc(help.textBG) -fg $gc(help.textFG) \
 		-xscrollcommand { .text.x2scroll set } \
 		-yscrollcommand { .text.y2scroll set }
 	    scrollbar .text.x2scroll -orient horiz \
-		-troughcolor $gc(help,troughColor) \
-		-width $swid -command ".text.help xview"
-	    scrollbar .text.y2scroll -width $swid \
-		-troughcolor $gc(help,troughColor) \
+		-troughcolor $gc(help.troughColor) \
+		-background $gc(help.scrollColor) \
+		-width $gc(help.scrollWidth) -command ".text.help xview"
+	    scrollbar .text.y2scroll -width $gc(help.scrollWidth) \
+		-troughcolor $gc(help.troughColor) \
+		-background $gc(help.scrollColor) \
 		-command ".text.help yview"
 
 	    grid .text.help -row 0 -column 1 -sticky nsew
@@ -419,19 +427,22 @@ proc widgets {} \
 		# This gets executed once, when we know how big the text is
 		if {$firstConfig == 1} {
 			set h [winfo height .text.help]
-			set pixelsPerLine [expr {$h / $gc(help,height)}]
+			set pixelsPerLine [expr {$h / $gc(help.height)}]
 			set firstConfig 0
 		}
 		set x [expr {$x / $pixelsPerLine}]
-		set gc(help,height) $x
+		set gc(help.height) $x
 	}
-	.ctrl.topics tag configure "select" -background $gc(help,highlightColor) \
+	.ctrl.topics tag configure "select" -background $gc(help.selectColor) \
 	    -relief ridge -borderwid 1
-	.text.help tag configure "title" -background #8080c0 \
-	    -relief groove -borderwid 2
-	.ctrl.topics tag configure "search" -background $gc(help,searchColor) \
+	.text.help tag configure "title" -background #8080c0
+	.text.help tag configure "bold" -font $gc(help.fixedBoldFont)
+	.text.help tag configure seealso -foreground $gc(help.linkColor) \
+	    -underline true
+	.ctrl.topics tag configure "search" -background $gc(help.topicsColor) \
 	    -relief ridge -borderwid 1
 	focus .menu.entry
+	. configure -background $gc(BG)
 }
 
 proc busy {busy} \
