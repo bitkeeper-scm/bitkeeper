@@ -82,6 +82,7 @@ find . -type f | while read x
 do	cmp -s $x ../project/$x && echo $x
 done | sort > ../SAME
 cat > ../WANT <<EOF
+./BitKeeper/etc/bkstate
 ./BitKeeper/etc/config
 ./BitKeeper/etc/ignore
 ./ChangeSet
