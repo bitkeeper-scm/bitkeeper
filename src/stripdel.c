@@ -193,11 +193,20 @@ strip_list(s_opts opts)
 			if (s && doit(s, opts)) goto fail;
 			if (s) sccs_free(s);
 			s = sccs_init(name, SILENT|INIT_SAVEPROJ, proj);
-			assert(s);
+			unless (s && s->tree) {
+				fprintf(stderr,
+					    "stripdel: can't init %s\n", name);
+				goto fail;
+			}
 			unless(proj) proj = s->proj;
 		}
 		rev = sfileRev(); assert(rev);
-		d = findrev(s, rev); assert(d);
+		d = findrev(s, rev); 
+		unless (d) {
+			fprintf(stderr,
+			    "stripdel: can't find rev %s in %s\n", rev, name);
+			goto fail;
+		}
 		d->flags |= D_SET;
 	}
 	if (s && doit(s, opts)) goto fail;
