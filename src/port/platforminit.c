@@ -29,6 +29,7 @@ platformInit(char **av)
 	int	add2path = 1;
 	int	n;
 	int	flags = SILENT;	/* for debugging */
+	mode_t	m;
 #ifdef WIN32
 	char	buf2[10 * MAXPATH], buf1[MAXPATH];
 #endif
@@ -37,7 +38,8 @@ platformInit(char **av)
 	if (bin) return;
 	if ((editor = getenv("EDITOR")) == NULL) editor = strdup(EDITOR);
 	if ((pager = getenv("PAGER")) == NULL) pager = strdup(PAGER);
-	umask(002);
+	m = umask(0) & 002;
+	umask(m);
 
 	unless (p = getenv("PATH")) return;	/* and pray */
 #ifdef WIN32
