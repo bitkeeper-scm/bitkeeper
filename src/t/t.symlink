@@ -18,6 +18,7 @@ then
 	exit 0
 fi
 
+HERE=`pwd`
 echo $N Create a symlink ............................................$NL
 umask 0
 bk cset -i -s .
@@ -210,4 +211,286 @@ bk clean
 if [ -f SCCS/p.symlink ]; then echo failed; exit 1; fi;
 echo OK
 ${RM} -rf symlink symfile newlink file file1 file2 file3 dir1 SCCS
+
+# Test resyncing and resolving symlink <-> file conflicts
+echo $N Create initial repository for symlink resync ................$NL
+cd $HERE
+echo "logging: none" > $HERE/config
+bk setup -f -n'BitKeeper Test repository' -c$HERE/config SL
+if [ ! -d SL ]; then echo failed to make top level directory; exit 1; fi
+touch BitKeeper/etc/SCCS/x.marked
+echo OK
+echo $N Create a regular file and a symlink .........................$NL
+cd SL
+ln -s dangling/symlink link
+echo i am a file > file
+bk ci $Q -i link file
+bk commit $S -f -y"This is a \"Change Set\""
+echo OK
+cores
+bk -r check -a
+echo $N Save a tarball of the repository ............................$NL
+cd $HERE
+tar cf SAVE SL
+echo OK
+
+echo $N Check that a symlink to file transition resyncs .............$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE
+mv SL copy
+tar xf SAVE
+cd SL
+bk edit $Q link
+rm link
+echo convert link to file > link
+bk ci $Q -y'link -> file' link
+bk commit $Q -y'link -> file' 
+cd $HERE
+bk resync $Q -at SL copy
+cd copy
+bk co $Q link
+if [ ! -f link ]
+then	echo failed to upgrade file to a regular file; exit 1
+fi
+if [ "`cat link`" != 'convert link to file' ]
+then	echo failed to put contents in file; exit 1
+fi
+echo OK
+
+echo $N Check that a file to symlink transition resyncs .............$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE
+mv SL copy
+tar xf SAVE
+cd SL
+bk edit $Q file
+rm file
+ln -s another/dangling/link file
+bk ci $Q -y'file -> link' file
+bk commit $Q -y'file -> link' 
+cd $HERE
+bk resync $Q -at SL copy
+cd copy
+bk co $Q file
+if [ -f file ]
+then	echo failed to upgrade file to a link; exit 1
+fi
+grep -q '^.cOl......... another/dangling/link' SCCS/s.file
+if [ $? -ne 0 ]
+then	echo failed to convert to symlink; exit 1
+fi
+echo OK
+
+echo $N Check symlink to file, choosing file ........................$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE
+mv SL copy
+tar xf SAVE
+cd SL
+bk edit $Q link
+rm link
+echo convert link to file > link
+bk ci $Q -y'link -> file' link
+bk commit $Q -y'link -> file' 
+cd $HERE/copy
+bk edit $Q link
+rm link
+ln -s a/different/pointer link
+bk ci $Q -ywhatever link
+bk commit $Q -ywhatever
+cd $HERE
+tar cf SAVE2 SL copy
+bk resync $Q -t SL copy
+cd copy
+bk resolve $Q -t <<EOF >RESOLVE 2>&1
+r
+u
+EOF
+if [ $? -ne 0 ]
+then	echo resolve failed; exit 1
+fi
+bk co $Q link
+if [ ! -f link ]
+then	echo failed to upgrade file to a regular file; exit 1
+fi
+if [ "`cat link`" != 'convert link to file' ]
+then	echo failed to put contents in file; exit 1
+fi
+echo OK
+
+echo $N Check symlink to file, choosing symlink .....................$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE2
+bk resync $Q -t SL copy
+cd copy
+bk resolve $Q -t <<EOF >RESOLVE 2>&1
+l
+u
+EOF
+if [ $? -ne 0 ]
+then	echo resolve failed; cat RESOLVE; exit 1
+fi
+bk co $Q link
+if [ ! -L link ]
+then	echo failed to leave link a link; ls -l link; cat RESOLVE; exit 1
+fi
+echo OK
+
+echo $N Check file to symlink, choosing file ........................$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE
+mv SL copy
+tar xf SAVE
+cd SL
+bk edit $Q link
+rm link
+echo convert link to file > link
+bk ci $Q -y'link -> file' link
+bk commit $Q -y'link -> file' 
+cd $HERE/copy
+bk edit $Q link
+rm link
+ln -s a/different/pointer link
+bk ci $Q -ywhatever link
+bk commit $Q -ywhatever
+cd $HERE
+tar cf SAVE2 SL copy
+bk resync $Q -t copy SL
+cd SL
+bk resolve $Q -t <<EOF >RESOLVE 2>&1
+l
+u
+EOF
+if [ $? -ne 0 ]
+then	echo resolve failed; exit 1
+fi
+bk co $Q link
+if [ ! -f link ]
+then	echo failed to upgrade file to a regular file; exit 1
+fi
+if [ "`cat link`" != 'convert link to file' ]
+then	echo failed to put contents in file; exit 1
+fi
+echo OK
+
+echo $N Check file to symlink, choosing symlink .....................$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE2
+bk resync $Q -t copy SL
+cd SL
+bk resolve $Q -t <<EOF >RESOLVE 2>&1
+r
+u
+EOF
+if [ $? -ne 0 ]
+then	echo resolve failed; cat RESOLVE; exit 1
+fi
+bk co $Q link
+if [ ! -L link ]
+then	echo failed to leave link a link; ls -l link; cat RESOLVE; exit 1
+fi
+echo OK
+
+echo $N Check file to symlink, with rename, choosing symlink ........$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE2
+cd copy
+bk mv link renamed
+bk commit $Q -ymv
+cd $HERE
+bk resync $Q -t copy SL
+cd SL
+bk resolve -t $Q <<EOF >RESOLVE 2>&1
+r
+u
+EOF
+if [ $? -ne 0 ]
+then	echo resolve failed; cat RESOLVE; exit 1
+fi
+bk co $Q renamed
+if [ ! -L renamed ]
+then	echo failed to leave renamed a link; ls -l renamed; cat RESOLVE; exit 1
+fi
+echo OK
+
+echo $N Both renamed, symlink converted to file, choose l l .........$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE2
+cd copy
+bk mv link copy
+bk commit $Q -ymv
+cd $HERE/SL
+bk mv link SL
+bk commit $Q -ymv
+cd $HERE
+bk resync $Q -t copy SL
+tar cf SAVE3 SL
+cd SL
+# At this point
+#	local		remote
+#	SL		copy
+#	FILE		SYMLINK
+# resolve does name, then file type
+bk resolve -t $Q <<EOF >RESOLVE 2>&1
+l
+l
+u
+EOF
+if [ $? -ne 0 ]
+then	echo resolve failed; cat RESOLVE; exit 1
+fi
+bk co $Q SL
+if [ ! -f SL ]
+then	echo failed to make SL a file; exit 1
+fi
+if [ "`cat SL`" != 'convert link to file' ]
+then	echo bad contents: `cat SL`
+	exit 1
+fi
+echo OK
+
+echo $N Both renamed, symlink converted to file, choose l r .........$NL
+cd $HERE
+rm -rf SL copy
+tar xf SAVE2
+cd copy
+bk mv link copy
+bk commit $Q -ymv
+cd $HERE/SL
+bk mv link SL
+bk commit $Q -ymv
+cd $HERE
+bk resync $Q -t copy SL
+tar cf SAVE3 SL
+cd SL
+# At this point
+#	local		remote
+#	SL		copy
+#	FILE		SYMLINK
+# resolve does name, then file type
+bk resolve -t $Q <<EOF >RESOLVE 2>&1
+l
+r
+u
+EOF
+if [ $? -ne 0 ]
+then	echo resolve failed; cat RESOLVE; exit 1
+fi
+bk co $Q SL
+if [ ! -L SL ]
+then	echo failed to make SL a file; exit 1
+fi
+if [ "`bk get -pq SL`" != 'SYMLINK -> a/different/pointer' ]
+then	echo bad link contents: `bk get -pq SL`
+	exit 1
+fi
+echo OK
 

@@ -27,9 +27,11 @@ WHATSTR("@(#)%K%");
 #define	u32		unsigned int
 
 private	int	sfio_out(void);
-private int	out(char *file);
+private int	out_file(char *file, struct stat *);
+private int	out_link(char *file, struct stat *);
 private	int	sfio_in(int extract);
-private int	in(char *file, int todo, int extract);
+private int	in_link(char *file, int todo, int extract);
+private int	in_file(char *file, int todo, int extract);
 private	int	mkfile(char *file);
 extern	void	platformSpecificInit(char *name);
 
@@ -85,6 +87,7 @@ sfio_out()
 {
 	char	buf[1024];
 	char	len[5];
+	struct	stat sb;
 
 #ifdef WIN32
 	setmode(0, _O_TEXT); /* read file list in text mode */
@@ -95,41 +98,84 @@ sfio_out()
 		sprintf(len, "%04d", strlen(buf));
 		writen(1, len, 4);
 		writen(1, buf, strlen(buf));
-		if (out(buf)) return (1);
+		if (lstat(buf, &sb)) return (1);
+		if (S_ISLNK(sb.st_mode)) {
+			unless (doModes) {
+				fprintf(stderr,
+				"Warning: symlink %s sent as regular file.\n",
+				buf);
+				stat(buf, &sb);
+				goto reg;
+			}
+			if (out_link(buf, &sb)) return (1);
+		} else if (S_ISREG(sb.st_mode)) {
+reg:			if (out_file(buf, &sb)) return (1);
+		} else {
+			fprintf(stderr, "unknown file type %s ignored\n",  buf);
+		}
 	}
 	return (0);
 }
 
 private int
-out(char *file)
+out_link(char *file, struct stat *sp)
 {
 	char	buf[1024];
-	int	fd = open(file, 0, 0);
-	struct	stat sb;
 	char	len[11];
-	int	n, nread = 0;
+	int	n;
 	u32	sum = 0;
 
-	if ((fd == -1) || fstat(fd, &sb)) {
+	n = readlink(file, buf, sizeof(buf));
+	if (n == -1) {
 		perror(file);
 		return (1);
 	}
-	sprintf(len, "%010u", (unsigned int)sb.st_size);
+	/*
+	 * We have 10 chars into which we can encode a type.
+	 * We know the pathname is <= 4 chars, so we encode the
+	 * symlink as "SLNK001024".
+	 */
+	sprintf(len, "SLNK%06u", (unsigned int)n);
+	writen(1, len, 10);
+	writen(1, buf, n);
+	sum += adler32(sum, buf, n);
+	sprintf(buf, "%010u", sum);
+	writen(1, buf, 10);
+	assert(doModes);
+	sprintf(buf, "%03o", sp->st_mode & 0777);
+	writen(1, buf, 3);
+	return (0);
+}
+
+private int
+out_file(char *file, struct stat *sp)
+{
+	char	buf[1024];
+	char	len[11];
+	int	fd = open(file, 0, 0);
+	int	n, nread = 0;
+	u32	sum = 0;
+
+	if (fd == -1) {
+		perror(file);
+		return (1);
+	}
+	sprintf(len, "%010u", (unsigned int)sp->st_size);
 	writen(1, len, 10);
 	while ((n = readn(fd, buf, sizeof(buf))) > 0) {
 		nread += n;
 		sum += adler32(sum, buf, n);
 		if (writen(1, buf, n) != n) return (1);
 	}
-	if (nread != sb.st_size) {
+	if (nread != sp->st_size) {
 		fprintf(stderr, "Size mismatch on %s %u:%u\n",
-		    file, nread, (unsigned int)sb.st_size);
+		    file, nread, (unsigned int)sp->st_size);
 		return (1);
 	}
 	sprintf(buf, "%010u", sum);
 	writen(1, buf, 10);
 	if (doModes) {
-		sprintf(buf, "%03o", sb.st_mode & 0777);
+		sprintf(buf, "%03o", sp->st_mode & 0777);
 		writen(1, buf, 3);
 	}
 	close(fd);
@@ -178,13 +224,71 @@ sfio_in(int extract)
 		}
 		datalen[10] = 0;
 		len = 0;
-		sscanf(datalen, "%010d", &len);
-		if (in(buf, len, extract)) return (1);
+		if (strneq("SLNK00", datalen, 6)) {
+			sscanf(&datalen[6], "%04d", &len);
+			if (in_link(buf, len, extract)) return (1);
+		} else {
+			sscanf(datalen, "%010d", &len);
+			if (in_file(buf, len, extract)) return (1);
+		}
 	}
 }
 
 private int
-in(char *file, int todo, int extract)
+in_link(char *file, int pathlen, int extract)
+{
+	char	buf[1024];
+	mode_t	mode = 0;
+	u32	sum = 0, sum2 = 0;
+	unsigned int imode;  /* mode_t might be a short */
+
+fprintf(stderr, "LINK(%s)\n", file);
+	unless (pathlen) {
+		fprintf(stderr, "symlink with 0 length?\n");
+		return (1);
+	}
+	if (readn(0, buf, pathlen) != pathlen) return (1);
+	buf[pathlen] = 0;
+fprintf(stderr, "LINK(%s) -> %s\n", file, buf);
+	sum = adler32(0, buf, pathlen);
+	if (extract) {
+		if (symlink(buf, file)) {
+			mkdirp(file);
+			if (symlink(buf, file)) {
+				perror(file);
+				return (1);
+			}
+		}
+	}
+done:	if (readn(0, buf, 10) != 10) {
+		perror("chksum read");
+		goto err;
+	}
+	sscanf(buf, "%010u", &sum2);
+	if (sum != sum2) {
+		fprintf(stderr,
+		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
+		goto err;
+	}
+	if (readn(0, buf, 3) != 3) {
+		perror("mode read");
+		goto err;
+	}
+	sscanf(buf, "%03o", &imode);
+	mode = imode;
+	if (extract) {
+		chmod(file, mode & 0777);
+	}
+	unless (quiet) fprintf(stderr, "%s\n", file);
+	return (0);
+
+err:	
+	if (extract) unlink(file);
+	return (1);
+}
+
+private int
+in_file(char *file, int todo, int extract)
 {
 	char	buf[1024];
 	int	n;

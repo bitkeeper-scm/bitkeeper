@@ -5,10 +5,10 @@ extern char *editor, *pager, *bin;
 
 setup_main(int ac, char **av)
 {
-	int force = 0, c, logsetup;
-	char *project_name = NULL, *project_path = NULL, *config_path = NULL;
-	char buf[1024], my_editor[1024], setup_files[MAXPATH];
-	FILE *f;
+	int	force = 0, c, logsetup;
+	char	*project_name = 0, *project_path = 0, *config_path = 0;
+	char	buf[1024], my_editor[1024], setup_files[MAXPATH];
+	FILE	*f;
 
 	platformInit();
 
@@ -30,7 +30,7 @@ setup_main(int ac, char **av)
 		printf("bk: %s exists already, setup fails.\n", project_path);
 		exit (1);
 	}
-
+	license();
 	unless(force) {
 		gethelp("setup_1", "", stdout);
 		printf("Create new project? [no] ");

@@ -16,11 +16,11 @@ WHATSTR("@(#)%K%");
 private	char	*sum_help = "\n\
 usage: rechksum [-cfo] file file | -\n\n\
     -c		check existing checksums but do not correct them\n\
-    -f		force a regeneration of the checksum\n\
+    -f		force a regeneration of the checksum (dangerous, breaks keys)\n\
     -o		go from v2 to old v1 sum format\n\
     -v		verbose\n\n";
 
-private	int	resum(sccs *s, delta *d, int flags, int old7bit, int dont);
+private	int	resum(sccs *s, delta *d, int, int flags, int old7bit, int dont);
 private	int	sumit(char *path, int *old, int *new, int old7bit);
 
 int
@@ -60,7 +60,7 @@ usage:		fprintf(stderr, "%s", sum_help);
 		}
 		for (doit = 0, d = s->table; d; d = d->next) {
 			if ((d->type == 'D') && (d->added || d->deleted)) {
-				doit += resum(s, d, flags, old, dont);
+				doit += resum(s, d, verbose, flags, old, dont);
 			}
 		}
 		if (verbose) {
@@ -87,20 +87,38 @@ usage:		fprintf(stderr, "%s", sum_help);
 }
 
 private	int
-resum(sccs *s, delta *d, int flags, int old7bit, int dont)
+resum(sccs *s, delta *d, int verbose, int flags, int old7bit, int dont)
 {
 	int	old, new;
 	int	encoding = s->encoding;
 
 	unless (sccs_restart(s)) { perror("restart"); exit(1); }
 
-	if (IS_EDITED(s)) {
+	if (S_ISLNK(d->mode)) {
+		u8	*t;
+		u16	sum = 0;
+
+		for (t = d->symlink; *t; sum += *t++);
+		if (sum == d->sum) return (0);
+		unless ((flags & GET_FORCE) && !dont) {
+			fprintf(stderr,
+			  "Bad symlink checksum %d:%d in %s:%s NOT corrected\n",
+			    d->sum, sum, s->sfile, d->rev);
+			return (0);
+		} else {
+			d->sum = sum;
+			d->flags |= D_CKSUM;
+			return (1);
+		}
+	}
+
+	if (sccs_clean(s, SILENT)) {
 		fprintf(stderr,
-		    "Can't do checksums on edited file %s\n", s->sfile);
+		    "Can't do checksums on unclean file %s\n", s->sfile);
 		return (0);
 	}
 
-	//fprintf(stderr, "%s:%s\n", s->sfile, d->rev);
+	if (verbose>1) fprintf(stderr, "%s:%s\n", s->sfile, d->rev);
 
 	/* expand the file in the form that we checksum it */
 	if ((s->encoding == E_UUENCODE) || (s->encoding == E_UUGZIP)) {
@@ -117,6 +135,7 @@ resum(sccs *s, delta *d, int flags, int old7bit, int dont)
 		s->encoding = encoding;
 		return (0);
 	}
+
 	s->encoding = encoding;
 
 	if (sumit(s->gfile, &old, &new, old7bit)) {
@@ -142,7 +161,9 @@ resum(sccs *s, delta *d, int flags, int old7bit, int dont)
 		d->flags |= D_CKSUM;
 		return (1);
 	} else {
-		//fprintf(stderr, "Converting %s:%s\n", s->sfile, d->rev);
+		if (verbose>1) {
+			fprintf(stderr, "Converting %s:%s\n", s->sfile, d->rev);
+		}
 		d->sum = new;
 		d->flags |= D_CKSUM;
 		return (1);
