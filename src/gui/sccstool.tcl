@@ -35,7 +35,7 @@ proc ht {id} \
 # black - do a black rectangle
 proc highlight {id type {rev ""}} \
 {
-	global gc
+	global gc 
 
 	set bb [.p.top.c bbox $id]
 	set x1 [lindex $bb 0]
@@ -44,7 +44,6 @@ proc highlight {id type {rev ""}} \
 	set y2 [lindex $bb 3]
 
 	#puts "highlight: REV ($rev)"
-
 	switch $type {
 	    revision {\
 		#puts "highlight: revision ($rev)"
@@ -115,6 +114,155 @@ proc revMap {file} \
                 set rev2date($rev) $date
                 set serial2rev($serial) $rev
         }
+}
+
+#
+# Build list of revision and tags so that we can jump to a specific tag
+#
+# This function should only be called if looking at the ChangeSet file
+# or no args given on the command line:
+#
+# bk prs  -bhd'$if(:SYMBOL:){:I: :SYMBOL:}\n' ChangeSet| sed -e '/^$/d'
+#
+proc getTags {} \
+{
+    	global tag2rev dev_null
+
+        set tags "-d\$if(:SYMBOL:){:I:-:USER: :SYMBOL:}"
+
+        # Sort in reverse order so that the highest number revision gets
+        # stored in the associative array for a given tag
+        # 
+        set fid [open "|bk prs -bh {$tags} ChangeSet 2>$dev_null" "r"]
+		while {[gets $fid s] >= 0} {
+			if { [string length $s] == 0 } {
+               			continue
+			}
+			set rev [lindex $s 0]
+			set tag [lindex $s 1]
+			set tag2rev($tag) $rev
+	        }
+}
+
+#
+# Create floating window that displays the list of all tags
+#
+proc showTags {} \
+{
+	global tag2rev gc curLine
+
+	getTags
+	set curLine 1.0
+
+	toplevel .tw
+	    frame .tw.top
+		text .tw.top.t -width 40 -height 10 \
+		    -font $gc(sccs.fixedFont) \
+		    -xscrollcommand { .tw.top.xscroll set } \
+		    -yscrollcommand { .tw.top.yscroll set } \
+		    -bg $gc(sccs.textBG) -fg $gc(sccs.textFG) -wrap none 
+		scrollbar .tw.top.xscroll -orient horizontal \
+		    -wid $gc(sccs.scrollWidth) -command { .tw.top.t xview } \
+		    -background $gc(sccs.scrollColor) \
+		    -troughcolor $gc(sccs.troughColor)
+		scrollbar .tw.top.yscroll -orient vertical \
+		    -wid $gc(sccs.scrollWidth) \
+		    -command { .tw.top.t yview } \
+		    -background $gc(sccs.scrollColor) \
+		    -troughcolor $gc(sccs.troughColor)
+	    frame .tw.bottom
+		button .tw.bottom.quit -font $gc(sccs.buttonFont) \
+		    -relief raised \
+		    -bg $gc(sccs.buttonColor) \
+		    -pady 3 -padx 3 -borderwid 3 \
+		    -text "Close" -command {destroy .tw}
+		button .tw.bottom.next -font $gc(sccs.buttonFont) \
+		    -relief raised \
+		    -bg $gc(sccs.buttonColor) \
+		    -pady 3 -padx 3 -borderwid 3 \
+		    -text "Next" -command {selectTag 0 0 1}
+		button .tw.bottom.prev -font $gc(sccs.buttonFont) \
+		    -relief raised \
+		    -bg $gc(sccs.buttonColor) \
+		    -pady 3 -padx 3 -borderwid 3 \
+		    -text "Prev" -command {selectTag 0 0 -1}
+
+	pack .tw.top.yscroll -side right -fill y
+	pack .tw.top.xscroll -side bottom -fill x
+	pack .tw.top.t -expand true -fill both
+	pack .tw.bottom.quit .tw.bottom.prev .tw.bottom.next \
+	    -side left -expand true -fill both
+	pack .tw.top .tw.bottom -side top -fill both
+
+	bind .tw.top.t <Button-1> { selectTag %x %y }
+	.tw.top.t tag configure "select" -background $gc(sccs.selectColor)
+	foreach tag [lsort [array names tag2rev]] {
+		#puts "tag=($tag) val=($tag2rev($tag))"
+		.tw.top.t insert end "$tag\n"
+	}
+	bindtags .tw.top.t {.tw.top.t . all}
+
+	# Now set the selection to the first tag
+	selectTag 0 0
+}
+
+# 
+# Center the selected bitkeeper tag in the middle of the canvas
+#
+# If called from the mouse <B1> binding, the x and y value are set
+# If called from the next/previous buttons, only the line variable
+# is set
+#
+proc selectTag {{x {}} {y {}} {line {}}} \
+{
+	global tag2rev curLine dimension gc file dev_null dspec
+
+	if {($line == -1) || ($line == 1)} {
+		set top [expr {$curLine - 3}]
+		set numLines [.tw.top.t index "end -1 chars linestart" ]
+		if {($line == 1) && ($curLine < ($numLines - 1))} {
+			set curLine [expr $curLine + 1.0]
+		} elseif {($line == -1) && ($curLine >= 1.0)} {
+			set curLine [expr $curLine - 1.0]
+		}
+		if {$top >= 0} {
+			set frac [expr {$top / $numLines}]
+			.tw.top.t yview moveto $frac
+		}
+	} else {
+		set curLine [.tw.top.t index "@$x,$y linestart"]
+	}
+	#puts "curLine=($curLine) line=($line)"
+	set name [.tw.top.t get $curLine "$curLine lineend"]
+	if {$name == ""} { puts "Error: name=($name)"; return }
+	.tw.top.t tag remove "select" 1.0 end
+	.tw.top.t tag add "select" "$curLine" "$curLine lineend + 1 char"
+
+	if {[info exists tag2rev($name)]} {
+		.p.top.c delete tag
+		set rev $tag2rev($name)
+		set x1 [lindex [.p.top.c coords $rev] 0]
+		set y1 [lindex [.p.top.c coords $rev] 1]
+		set x2 [lindex [.p.top.c coords $rev] 2]
+		set y2 [lindex [.p.top.c coords $rev] 3]
+		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
+		    -outline $gc(sccs.revOutline) -fill $gc(sccs.tagColor) \
+		    -tags tag]
+		.p.top.c raise revtext
+		set width [.p.top.c cget -width]
+		set xdiff [expr $width / 2]
+		set xfract [expr ($x2 - $width) / $dimension(right)]
+		.p.top.c xview moveto $xfract
+		#puts "($curLine) name=($name) rev=($tag2rev($name))"
+		#puts "$x $dimension(right) $xfract"
+		regsub -- {-.*} $rev "" id
+		set prs [open "| bk prs {$dspec} -r$id \"$file\" 2>$dev_null"]
+		filltext $prs 1
+	} else {
+		puts "Error: tag not found ($name)"
+		return
+	}
+	return
 }
 
 # Separate the revisions by date with a vertical bar
@@ -397,6 +545,7 @@ proc mergeArrow {m ht} \
 proc listRevs {file} \
 {
 	global	bad lineOpts merges dev_null line_rev ht screen stacked gc
+	global  dimension
 
 	set screen(miny) 0
 	set screen(minx) 0
@@ -473,6 +622,10 @@ proc listRevs {file} \
 	set y1 [expr {[lindex $bb 1] - 10}]
 	set x2 [expr {[lindex $bb 2] + 10}]
 	set y2 [expr {[lindex $bb 3] + 10}]
+	set dimension(left) $x1
+	set dimension(right) $x2
+	set dimension(top) $y1
+	set dimension(bottom) $y2
 	.p.top.c create text $x1 $y1 -anchor nw -text " "
 	.p.top.c create text $x1 $y2 -anchor sw -text " "
 	.p.top.c create text $x2 $y1 -anchor ne -text " "
@@ -1025,6 +1178,7 @@ proc widgets {} \
         bind . <Control-Button-5> ".p.top.c yview scroll 1 units"
         bind . <Button-4> ".p.bottom.t yview scroll -5 units"
         bind . <Button-5> ".p.bottom.t yview scroll 5 units"
+	bind .p.top.c <t>		"showTags"
 
 	# Command window bindings.
 	bind .p.top.c <slash> "search /"
