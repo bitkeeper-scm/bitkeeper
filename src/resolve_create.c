@@ -246,12 +246,12 @@ res_vr(resolve *rs)
 }
 
 int
-sccstool(char *name)
+revtool(char *name)
 {
 	char	*av[10];
 
 	av[0] = "bk";
-	av[1] = "sccstool";
+	av[1] = "revtool";
 	av[2] = name;
 	av[3] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
@@ -265,7 +265,7 @@ res_pl(resolve *rs)
 		sccs	*s = (sccs*)rs->opaque;
 
 		chdir(RESYNC2ROOT);
-		sccstool(s->gfile);
+		revtool(s->gfile);
 		chdir(ROOT2RESYNC);
 		return (0);
 	}
@@ -276,7 +276,7 @@ res_pl(resolve *rs)
 int
 res_pr(resolve *rs)
 {
-	sccstool(rs->s->gfile);
+	revtool(rs->s->gfile);
 	return (0);
 }
 

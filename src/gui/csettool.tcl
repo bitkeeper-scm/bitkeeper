@@ -103,7 +103,7 @@ proc file_history {} \
 		set start $stop
 		set file "$f"
 	}
-	catch {exec bk -R histtool -a $stop "$file" &}
+	catch {exec bk -R revtool -l$stop "$file" &}
 }
 
 # Takes a line number as an arg when creating continuations for the file menu
@@ -479,7 +479,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-menu .menu.mb.menu
 		set m [menu .menu.mb.menu]
 		$m add command -label "ChangeSet History" \
-		    -command "exec bk histtool &"
+		    -command "exec bk revtool &"
 		$m add command -label "File History" \
 		    -command file_history
 	    button .menu.quit -font $gc(cset.buttonFont) \

@@ -672,7 +672,7 @@ proc history {} \
 {
 	global	leftFile
 
-	exec bk sccstool $leftFile &
+	catch {exec bk revtool $leftFile &}
 }
 
 # --------------- Window stuff ------------------

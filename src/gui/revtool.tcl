@@ -1,4 +1,4 @@
-# histtool - a tool for viewing SCCS files graphically.
+# revtool - a tool for viewing SCCS files graphically.
 # Copyright (c) 1998 by Larry McVoy; All rights reserved.
 #
 # %W% %@%
@@ -29,13 +29,13 @@ proc ht {id} \
 #
 # Set highlighting on the bounding box containing the revision number
 #
-# revision - (default style box) gc(hist.revOutline)
+# revision - (default style box) gc(rev.revOutline)
 # merge -
 # red - do a red rectangle
 # arrow - do a $arrow outline
-# old - do a rectangle in gc(hist.oldColor)
-# new - do a rectangle in gc(hist.newColor)
-# black - do a black rectangle -- used for GCA
+# old - do a rectangle in gc(rev.oldColor)
+# new - do a rectangle in gc(rev.newColor)
+# gca - do a black rectangle -- used for GCA
 proc highlight {id type {rev ""}} \
 {
 	global gc w
@@ -57,19 +57,19 @@ proc highlight {id type {rev ""}} \
 	    revision {\
 		#puts "highlight: revision ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $gc(hist.revColor) \
-		    -outline $gc(hist.revOutline) \
+		    -fill $gc(rev.revColor) \
+		    -outline $gc(rev.revOutline) \
 		    -width 1 -tags [list $rev revision]]}
 	    merge   {\
 		#puts "highlight: merge ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -fill $gc(hist.revColor) \
-		    -outline $gc(hist.mergeOutline) \
+		    -fill $gc(rev.revColor) \
+		    -outline $gc(rev.mergeOutline) \
 		    -width 1 -tags [list $rev revision]]}
 	    arrow   {\
 		#puts "highlight: arrow ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(hist.arrowColor) -width 1]}
+		    -outline $gc(rev.arrowColor) -width 1]}
 	    red     {\
 		#puts "highlight: red ($rev)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
@@ -77,13 +77,21 @@ proc highlight {id type {rev ""}} \
 	    old  {\
 		#puts "highlight: old ($rev) id($id)"
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(hist.revOutline) -fill $gc(hist.oldColor) \
+		    -outline $gc(rev.revOutline) -fill $gc(rev.oldColor) \
 		    -tags old]}
 	    new   {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
-		    -outline $gc(hist.revOutline) -fill $gc(hist.newColor) \
+		    -outline $gc(rev.revOutline) -fill $gc(rev.newColor) \
 		    -tags new]}
-	    black  {\
+	    local   {\
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
+		    -outline $gc(rev.revOutline) -fill $gc(rev.localColor) \
+		    -width 2 -tags local]}
+	    remote   {\
+		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
+		    -outline $gc(rev.revOutline) -fill $gc(rev.remoteColor) \
+		    -width 2 -tags remote]}
+	    gca  {\
 		set bg [$w(graph) create rectangle $x1 $y1 $x2 $y2 \
 		    -outline black -width 2 -fill lightblue]}
 	}
@@ -199,7 +207,7 @@ proc diffParent {} \
 #
 #    B1 - calls getLeftRev
 #    B3 - calls getRightRev
-#    D1 - if in annotate, brings up histtool, else gets file annotation
+#    D1 - if in annotate, brings up revtool, else gets file annotation
 #
 proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 {
@@ -249,7 +257,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		set rev1 $rev
 		$w(aptext) configure -height 15
 		#.p.b configure -background green
-		$w(ctext) configure -height $gc(hist.commentHeight) 
+		$w(ctext) configure -height $gc(rev.commentHeight) 
 		$w(aptext) configure -height 50
 		if {[winfo ismapped $w(ctext)]} {
 			set comments_mapped 1
@@ -263,7 +271,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		set prs [open "| bk prs {$dspec} -hr$rev \"$file\" 2>$dev_null"]
 		filltext $w(ctext) $prs 1
 		set wht [winfo height $w(cframe)]
-		set cht [font metrics $gc(hist.fixedFont) -linespace]
+		set cht [font metrics $gc(rev.fixedFont) -linespace]
 		set adjust [expr {int($wht) / $cht}]
 		#puts "cheight=($wht) char_height=($cht) adj=($adjust)"
 		if {($curLine > $adjust) && ($comments_mapped == 0)} {
@@ -295,7 +303,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 	}
 	$win tag add "select" "$curLine" "$curLine lineend + 1 char"
 
-	# If in cset prs output, get the filename and start a new histtool
+	# If in cset prs output, get the filename and start a new revtool
 	# on that file.
 	#
 	# Assumes that the output of prs looks like:
@@ -308,7 +316,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		set fname [$win get $prevLine "$prevLine lineend"]
 		if {($bindtype == "B1") && ($fname != "") && 
 		    ($fname != "ChangeSet")} {
-			catch {exec bk histtool -a $rev $fname &} err
+			catch {exec bk revtool -l$rev $fname &} err
 		}
 		return
 	}
@@ -473,9 +481,9 @@ proc dateSeparate { } { \
 			# Attempt to center datestring between verticals
 			set tx [expr {$x - (($x - $lastx)/2) - 13}]
 			$w(graph) create text $tx $ty \
-			    -fill $gc(hist.dateColor) \
+			    -fill $gc(rev.dateColor) \
 			    -justify center \
-			    -anchor n -text "$date" -font $gc(hist.fixedFont) \
+			    -anchor n -text "$date" -font $gc(rev.fixedFont) \
 			    -tags date_text
 
 			set prevday $curday
@@ -491,8 +499,8 @@ proc dateSeparate { } { \
 
 	set tx [expr {$screen(maxx) - (($screen(maxx) - $x)/2) + 20}]
 	$w(graph) create text $tx $ty -anchor n \
-		-fill $gc(hist.dateColor) \
-		-text "$date" -font $gc(hist.fixedFont) \
+		-fill $gc(rev.dateColor) \
+		-text "$date" -font $gc(rev.fixedFont) \
 		-tags date_text
 }
 
@@ -535,18 +543,18 @@ proc addline {y xspace ht l} \
 			set a [expr {$last + 2}]
 			$w(graph) create line $a $ly $b $ly \
 			    -arrowshape {4 4 2} -width 1 \
-			    -fill $gc(hist.arrowColor) -arrow last
+			    -fill $gc(rev.arrowColor) -arrow last
 		}
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [$w(graph) create text $x $y -fill "red" \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(hist.fixedBoldFont) -tags "$rev revtext"]
+			    -font $gc(rev.fixedBoldFont) -tags "$rev revtext"]
 			highlight $id "red" $rev
 			incr bad
 		} else {
 			set id [$w(graph) create text $x $y -fill #241e56 \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $gc(hist.fixedBoldFont) -tags "$rev revtext"]
+			    -font $gc(rev.fixedBoldFont) -tags "$rev revtext"]
 			if {![info exists firstnode]} { set firstnode $id }
 			if {$m == 1} { 
 				highlight $id "merge" $rev
@@ -660,7 +668,7 @@ proc line {s width ht} \
 	incr y [expr {$ht / -2}]
 	incr x -4
 	set id [$w(graph) create line $px $py $x $y -arrowshape {4 4 4} \
-	    -width 1 -fill $gc(hist.arrowColor) -arrow last]
+	    -width 1 -fill $gc(rev.arrowColor) -arrow last]
 	$w(graph) lower $id
 }
 
@@ -692,7 +700,7 @@ proc mergeArrow {m ht} \
 		incr px 2
 	}
 	$w(graph) lower [$w(graph) create line $px $py $x $y \
-	    -arrowshape {4 4 4} -width 1 -fill $gc(hist.arrowColor) \
+	    -arrowshape {4 4 4} -width 1 -fill $gc(rev.arrowColor) \
 	    -arrow last]
 }
 
@@ -794,9 +802,9 @@ proc listRevs {range file} \
 		}
 	}
 	catch {close $d} err
-	set len [font measure $gc(hist.fixedBoldFont) "$big"]
-	set ht [font metrics $gc(hist.fixedBoldFont) -ascent]
-	incr ht [font metrics $gc(hist.fixedBoldFont) -descent]
+	set len [font measure $gc(rev.fixedBoldFont) "$big"]
+	set ht [font metrics $gc(rev.fixedBoldFont) -ascent]
+	incr ht [font metrics $gc(rev.fixedBoldFont) -descent]
 
 	set ht [expr {$ht * 2}]
 	set len [expr {$len + 10}]
@@ -813,7 +821,7 @@ proc listRevs {range file} \
 		mergeArrow $m $ht
 	}
 	if {$bad != 0} {
-		wm title . "histtool: $file -- $bad bad revs"
+		wm title . "revtool: $file -- $bad bad revs"
 	}
 	return 0
 } ;# proc listRevs
@@ -1061,7 +1069,7 @@ proc gotoRev {f hrev} \
 
 	set rev1 $hrev
 	#displayMessage "gotoRev hrev=($hrev) f=($f) rev1=($rev1)"
-	histtool $f $hrev
+	revtool $f $hrev
 	set hrev [lineOpts $hrev]
 	highlight $hrev "old"
 	catch {exec bk prs -hr$hrev -d:I:-:P: $f 2>$dev_null} out
@@ -1232,7 +1240,7 @@ proc PaneCreate {} \
 	set ysize [expr {[winfo reqheight .p.top] + [winfo reqheight .p.b.p]}]
 	set percent [expr {[winfo reqheight .p.b] / double($ysize)}]
 	.p configure -height $ysize -width $xsize -background black
-	frame .p.fakesb -height $gc(hist.scrollWidth) -background grey \
+	frame .p.fakesb -height $gc(rev.scrollWidth) -background grey \
 	    -borderwid 1.25 -relief sunken
 	    label .p.fakesb.l -text "<-- scrollbar -->"
 	    pack .p.fakesb.l -expand true -fill x
@@ -1366,7 +1374,7 @@ proc widgets {} \
 	set w(graph) .p.top.c
 	set stacked 1
 
-	getConfig "hist"
+	getConfig "rev"
 	option add *background $gc(BG)
 
 	if {$tcl_platform(platform) == "windows"} {
@@ -1377,11 +1385,11 @@ proc widgets {} \
 		set gc(histfile) [file join $gc(bkdir) ".bkhistory"]
 	}
 
-	set Opts(line_time)  "-R-$gc(hist.showHistory)"
-	if {"$gc(hist.geometry)" != ""} {
-		wm geometry . $gc(hist.geometry)
+	set Opts(line_time)  "-R-$gc(rev.showHistory)"
+	if {"$gc(rev.geometry)" != ""} {
+		wm geometry . $gc(rev.geometry)
 	}
-	wm title . "histtool"
+	wm title . "revtool"
 
 # XXX: These bitmaps should be in a library!
 image create photo prevImage \
@@ -1396,66 +1404,66 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 }
 
 	frame .menus
-	    button .menus.quit -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) \
+	    button .menus.quit -font $gc(rev.buttonFont) -relief raised \
+		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Quit" -command done
-	    button .menus.help -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) \
+	    button .menus.help -font $gc(rev.buttonFont) -relief raised \
+		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
-		-text "Help" -command { exec bk helptool histtool & }
-	    menubutton .menus.mb -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) \
+		-text "Help" -command { exec bk helptool revtool & }
+	    menubutton .menus.mb -font $gc(rev.buttonFont) -relief raised \
+		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Select Range" -width 15 -state normal \
 		-menu .menus.mb.menu
 		set m [menu .menus.mb.menu]
 		$m add command -label "Last Day" \
-		    -command {set srev ""; histtool $fname -1D}
+		    -command {set srev ""; revtool $fname -1D}
 		$m add command -label "Last 2 Days" \
-		    -command {set srev ""; histtool $fname -2D}
+		    -command {set srev ""; revtool $fname -2D}
 		$m add command -label "Last 3 Days" \
-		    -command {set srev ""; histtool $fname -3D}
+		    -command {set srev ""; revtool $fname -3D}
 		$m add command -label "Last 4 Days" \
-		    -command {set srev ""; histtool $fname -4D}
+		    -command {set srev ""; revtool $fname -4D}
 		$m add command -label "Last 5 Days" \
-		    -command {set srev ""; histtool $fname -5D}
+		    -command {set srev ""; revtool $fname -5D}
 		$m add command -label "Last 6 Days" \
-		    -command {set srev ""; histtool $fname -6D}
+		    -command {set srev ""; revtool $fname -6D}
 		$m add command -label "Last Week" \
-		    -command {set srev ""; histtool $fname -W}
+		    -command {set srev ""; revtool $fname -W}
 		$m add command -label "Last 2 Weeks" \
-		    -command {set srev ""; histtool $fname -2W}
+		    -command {set srev ""; revtool $fname -2W}
 		$m add command -label "Last 3 Weeks" \
-		    -command {set srev ""; histtool $fname -3W}
+		    -command {set srev ""; revtool $fname -3W}
 		$m add command -label "Last 4 Weeks" \
-		    -command {set srev ""; histtool $fname -4W}
+		    -command {set srev ""; revtool $fname -4W}
 		$m add command -label "Last 5 Weeks" \
-		    -command {set srev ""; histtool $fname -5W}
+		    -command {set srev ""; revtool $fname -5W}
 		$m add command -label "Last 6 Weeks" \
-		    -command {set srev ""; histtool $fname -6W}
+		    -command {set srev ""; revtool $fname -6W}
 		$m add command -label "Last 2 Months" \
-		    -command {set srev ""; histtool $fname -2M}
+		    -command {set srev ""; revtool $fname -2M}
 		$m add command -label "Last 3 Months" \
-		    -command {set srev ""; histtool $fname -3M}
+		    -command {set srev ""; revtool $fname -3M}
 		$m add command -label "Last 6 Months" \
-		    -command {set srev ""; histtool $fname -6M}
+		    -command {set srev ""; revtool $fname -6M}
 		$m add command -label "Last 9 Months" \
-		    -command {set srev ""; histtool $fname -9M}
+		    -command {set srev ""; revtool $fname -9M}
 		$m add command -label "Last Year" \
-		    -command {set srev ""; histtool $fname -1Y}
+		    -command {set srev ""; revtool $fname -1Y}
 		$m add command -label "All Changes" \
-		    -command {set srev ""; histtool $fname 1.1..}
-	    button .menus.cset -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) \
+		    -command {set srev ""; revtool $fname 1.1..}
+	    button .menus.cset -font $gc(rev.buttonFont) -relief raised \
+		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "View Changeset " -width 15 -command r2c -state disabled
-	    button .menus.difftool -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) \
+	    button .menus.difftool -font $gc(rev.buttonFont) -relief raised \
+		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Diff tool" -command "diff2 1" -state disabled
-	    menubutton .menus.fmb -font $gc(hist.buttonFont) -relief raised \
-		-bg $gc(hist.buttonColor) \
+	    menubutton .menus.fmb -font $gc(rev.buttonFont) -relief raised \
+		-bg $gc(rev.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "Select File" -width 12 -state normal \
 		-menu .menus.fmb.menu
@@ -1466,14 +1474,14 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		    -command { 
 		    	set fname [selectFile]
 			if {$fname != ""} {
-				histtool $fname "-$gc(hist.showHistory)"
+				revtool $fname "-$gc(rev.showHistory)"
 			}
 		    }
 		$gc(fmenu) add command -label "Project History" \
 		    -command {
 			cd2root
 			set fname ChangeSet
-		    	histtool ChangeSet -$gc(hist.showHistory)
+		    	revtool ChangeSet -$gc(rev.showHistory)
 		    }
 		$gc(fmenu) add separator
 		$gc(fmenu) add cascade -label "Current ChangeSet" \
@@ -1483,7 +1491,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		menu $gc(recent) 
 		menu $gc(current) 
 		$gc(recent) add command -label "$fname" \
-		    -command "histtool $fname -$gc(hist.showHistory)"
+		    -command "revtool $fname -$gc(rev.showHistory)"
 		getHistory
 	    if {"$fname" == "ChangeSet"} {
 		    #.menus.cset configure -command csettool
@@ -1495,17 +1503,17 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    }
 	frame .p
 	    frame .p.top -borderwidth 2 -relief sunken
-		scrollbar .p.top.xscroll -wid $gc(hist.scrollWidth) \
+		scrollbar .p.top.xscroll -wid $gc(rev.scrollWidth) \
 		    -orient horiz \
 		    -command "$w(graph) xview" \
-		    -background $gc(hist.scrollColor) \
-		    -troughcolor $gc(hist.troughColor)
-		scrollbar .p.top.yscroll -wid $gc(hist.scrollWidth)  \
+		    -background $gc(rev.scrollColor) \
+		    -troughcolor $gc(rev.troughColor)
+		scrollbar .p.top.yscroll -wid $gc(rev.scrollWidth)  \
 		    -command "$w(graph) yview" \
-		    -background $gc(hist.scrollColor) \
-		    -troughcolor $gc(hist.troughColor)
+		    -background $gc(rev.scrollColor) \
+		    -troughcolor $gc(rev.troughColor)
 		canvas $w(graph) -width 500 \
-		    -background $gc(hist.canvasBG) \
+		    -background $gc(rev.canvasBG) \
 		    -xscrollcommand ".p.top.xscroll set" \
 		    -yscrollcommand ".p.top.yscroll set"
 		pack .p.top.yscroll -side right -fill y
@@ -1515,38 +1523,38 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	    frame .p.b -borderwidth 2 -relief sunken
 	    	# prs and annotation window
 		frame .p.b.p
-		    text .p.b.p.t -width $gc(hist.textWidth) \
-			-height $gc(hist.textHeight) \
-			-font $gc(hist.fixedFont) \
+		    text .p.b.p.t -width $gc(rev.textWidth) \
+			-height $gc(rev.textHeight) \
+			-font $gc(rev.fixedFont) \
 			-xscrollcommand { .p.b.p.xscroll set } \
 			-yscrollcommand { .p.b.p.yscroll set } \
-			-bg $gc(hist.textBG) -fg $gc(hist.textFG) -wrap none 
+			-bg $gc(rev.textBG) -fg $gc(rev.textFG) -wrap none 
 		    scrollbar .p.b.p.xscroll -orient horizontal \
-			-wid $gc(hist.scrollWidth) -command { .p.b.p.t xview } \
-			-background $gc(hist.scrollColor) \
-			-troughcolor $gc(hist.troughColor)
+			-wid $gc(rev.scrollWidth) -command { .p.b.p.t xview } \
+			-background $gc(rev.scrollColor) \
+			-troughcolor $gc(rev.troughColor)
 		    scrollbar .p.b.p.yscroll -orient vertical \
-			-wid $gc(hist.scrollWidth) \
+			-wid $gc(rev.scrollWidth) \
 			-command { .p.b.p.t yview } \
-			-background $gc(hist.scrollColor) \
-			-troughcolor $gc(hist.troughColor)
+			-background $gc(rev.scrollColor) \
+			-troughcolor $gc(rev.troughColor)
 		# change comment window
 		frame .p.b.c
-		    text .p.b.c.t -width $gc(hist.textWidth) \
-			-height $gc(hist.commentHeight) \
-			-font $gc(hist.fixedFont) \
+		    text .p.b.c.t -width $gc(rev.textWidth) \
+			-height $gc(rev.commentHeight) \
+			-font $gc(rev.fixedFont) \
 			-xscrollcommand { .p.b.c.xscroll set } \
 			-yscrollcommand { .p.b.c.yscroll set } \
-			-bg $gc(hist.commentBG) -fg $gc(hist.textFG) -wrap none 
+			-bg $gc(rev.commentBG) -fg $gc(rev.textFG) -wrap none 
 		    scrollbar .p.b.c.xscroll -orient horizontal \
-			-wid $gc(hist.scrollWidth) -command { .p.b.c.t xview } \
-			-background $gc(hist.scrollColor) \
-			-troughcolor $gc(hist.troughColor)
+			-wid $gc(rev.scrollWidth) -command { .p.b.c.t xview } \
+			-background $gc(rev.scrollColor) \
+			-troughcolor $gc(rev.troughColor)
 		    scrollbar .p.b.c.yscroll -orient vertical \
-			-wid $gc(hist.scrollWidth) \
+			-wid $gc(rev.scrollWidth) \
 			-command { .p.b.c.t yview } \
-			-background $gc(hist.scrollColor) \
-			-troughcolor $gc(hist.troughColor)
+			-background $gc(rev.scrollColor) \
+			-troughcolor $gc(rev.troughColor)
 
 		pack .p.b.c.yscroll -side right -fill y
 		pack .p.b.c.xscroll -side bottom -fill x
@@ -1588,7 +1596,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	bind $w(graph) <d>		"diffParent"
 	bind $w(graph) <Button-2>	{history; break}
 	bind $w(graph) <Double-2>	{history tags; break}
-	bind $w(graph) $gc(hist.quit)	"done"
+	bind $w(graph) $gc(rev.quit)	"done"
 	bind $w(graph) <s>		"sfile"
 	bind $w(graph) <Prior>		"$w(aptext) yview scroll -1 pages"
 	bind $w(graph) <Next>		"$w(aptext) yview scroll  1 pages"
@@ -1643,7 +1651,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		bind . <Button-5>	  "$w(aptext) yview scroll 5 units"
 	}
 	$search(widget) tag configure search \
-	    -background $gc(hist.searchColor) -font $gc(hist.fixedBoldFont)
+	    -background $gc(rev.searchColor) -font $gc(rev.fixedBoldFont)
 	search_keyboard_bindings
 	bind . <n>	{
 	    set search(dir) "/"
@@ -1660,9 +1668,9 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 	bind $w(aptext) <Double-1> { selectTag %W %x %y "D1"; break }
 
 	# highlighting.
-	$w(aptext) tag configure "newTag" -background $gc(hist.newColor)
-	$w(aptext) tag configure "oldTag" -background $gc(hist.oldColor)
-	$w(aptext) tag configure "select" -background $gc(hist.selectColor)
+	$w(aptext) tag configure "newTag" -background $gc(rev.newColor)
+	$w(aptext) tag configure "oldTag" -background $gc(rev.oldColor)
+	$w(aptext) tag configure "select" -background $gc(rev.selectColor)
 
 	bindtags $w(aptext) {.p.b.p.t . all}
 	bindtags $w(ctext) {.p.b.c.t . all}
@@ -1697,7 +1705,7 @@ proc selectFile {} \
 			#pack forget .menus.difftool
 		} else {
 			$gc(recent) add command -label "$fname" \
-			    -command "histtool $fname -$gc(hist.showHistory)" 
+			    -command "revtool $fname -$gc(rev.showHistory)" 
 		}
 	}
 	catch {close $f}
@@ -1717,9 +1725,9 @@ proc saveHistory {} \
 	} else {
 		# Start at 3 so we skip over the "Add new" and sep entries
 		set start 3
-		set saved [expr $gc(hist.savehistory) + 2]
+		set saved [expr $gc(rev.savehistory) + 2]
 		if {$num > $saved} {
-			set start [expr $num - $gc(hist.savehistory)]
+			set start [expr $num - $gc(rev.savehistory)]
 		}
 		for {set i $start} {$i <= $num} {incr i 1} {
 			set index $i
@@ -1745,7 +1753,7 @@ proc getHistory {} \
 	while {[gets $h file] >= 0} {
 		if {$file == "ChangeSet"} {continue}
 		$gc(recent) add command -label "$file" \
-		    -command "histtool $file -$gc(hist.showHistory)" 
+		    -command "revtool $file -$gc(rev.showHistory)" 
 	}
 	catch {close $h}
 }
@@ -1754,7 +1762,7 @@ proc getHistory {} \
 #  lfname	filename that we want to view history
 #  R		Revision or time period that we want to view
 #
-proc histtool {lfname R} \
+proc revtool {lfname R} \
 {
 	global	bad revX revY search dev_null rev2date serial2rev w
 	global  srev Opts gc file rev2rev_name cdim firstnode fname
@@ -1789,9 +1797,9 @@ select a new file to view"
 		set file [exec bk sfiles -g $lfname 2>$dev_null]
 	}
 	if {[catch {exec bk root $file} proot]} {
-		wm title . "histtool: $file $R"
+		wm title . "revtool: $file $R"
 	} else {
-		wm title . "histtool: $proot: $file $R"
+		wm title . "revtool: $proot: $file $R"
 	}
 	if {$srev != ""} {
 		set Opts(line_time) "-R$srev.."
@@ -1817,7 +1825,7 @@ select a new file to view"
 		$w(aptext) insert end  "Error: No data within the given time\
 period; please choose a longer amount of time.\n
 The file $lfname was last modified ($ago) ago."
-		histtool $lfname +
+		revtool $lfname +
 	}
 	# Now make sure that the last node is visible in the canvas
 	if {$srev == ""} {
@@ -1850,44 +1858,54 @@ proc init {} \
 #
 proc arguments {} \
 {
-	global rev1 rev2 argv fname gca srev errorCode
+	global rev1 rev2 argv argc fname gca srev errorCode
 
-	set state flag
 	set rev1 ""
 	set rev2 ""
 	set gca ""
 	set srev ""
 	set fname ""
-	foreach arg $argv {
-		switch -- $state {
-		    flag {
-			switch -glob -- $arg {
-			    -G		{ set state gca }
-			    -l		{ set state remote }
-			    -r		{ set state local }
-			    -a		{ set state srev }
-			    default	{ set fname $arg }
-			}
+	set fnum 0
+	set argindex 0
+
+	while {$argindex < $argc} {
+		set arg [lindex $argv $argindex]
+		switch -regexp -- $arg {
+		    "^-G.*" {
+			set gca [string range $arg 2 end]
 		    }
-		    gca {
-		    	set gca $arg 
-			set state flag
+		    "^-r.*" {
+			#set rev2_tmp [lindex $argv $argindex]
+		   	#regexp {^[ \t]*-r(.*)} $rev2_tmp dummy revs
+			set rev2 [string range $arg 2 end]
 		    }
-		    local {
-		    	set rev1 $arg 
-			set state flag
+		    "^-l.*" {
+			set rev1 [string range $arg 2 end]
 		    }
-		    remote {
-		    	set rev2 $arg
-			set state flag
-		    }
-		    srev {
-		    	set srev $arg
-			set state flag
+		    default {
+		    	incr fnum
+			set opts(file,$fnum) $arg
 		    }
 		}
+		incr argindex
 	}
-	if {$fname == ""} {
+	set arg [lindex $argv $argindex]
+
+	if {($gca != "") && (($rev2 == "") || ($rev1 == ""))} {
+		puts stderr "error: GCA options requires -l and -r"
+		exit
+	}
+	if {($rev1 != "") && (($rev2 == "") && ($gca == ""))} {
+		set srev $rev1
+	}
+
+	#puts stderr "gca=($gca) rev1=($rev1) rev2=($rev2)"
+	#puts stderr "fnum=($fnum) arg=($arg) argi=($argindex) argv=($argv) f=($opts(file,$fnum))"
+
+	if {$fnum > 1} {
+		puts stderr "error: Too many args"
+		exit 1
+	} elseif {$fnum == 0} {
 		cd2root
 		# This should match the CHANGESET path defined in sccs.h
 		set fname ChangeSet
@@ -1896,7 +1914,8 @@ proc arguments {} \
 			displayMessage "$err" 0
 			exit 1
 		}
-	} else {
+	} elseif {$fnum == 1} {
+		set fname $opts(file,1)
 		if {[file isdirectory $fname]} {
 			catch {cd $fname} err
 			if {$err != ""} {
@@ -1939,28 +1958,30 @@ proc startup {} \
 	global file
 
 	#displayMessage "srev=($srev) rev1=($rev1) rev2=($rev2) gca=($gca)"
-	if {$srev != ""} {
-		histtool $fname "-$srev"
+	if {$srev != ""} {  ;# If -a option
+		revtool $fname "-$srev"
 		set rev1 [lineOpts $srev]
 		highlight $rev1 "old"
 		set file [exec bk sfiles -g $fname 2>$dev_null]
 		.menus.cset configure -state normal 
-	} elseif {$rev1 == ""} {
-		histtool $fname "-$gc(hist.showHistory)"
-	} else {
+	} elseif {$rev1 == ""} { ;# if no arguments
+		revtool $fname "-$gc(rev.showHistory)"
+	} else { ;# if -l argument
 		set srev $rev1
-		histtool $fname "-$rev1"
+		revtool $fname "-$rev1"
 		set rev1 [lineOpts $rev1]
 		highlight $rev1 "old"
 	}
 	if {[info exists rev2] && ($rev2 != "")} {
 		set rev2 [lineOpts $rev2]
-		highlight $rev2 "new"
+		highlight $rev2 "remote"
 		diff2 2
 	} 
 	if {$gca != ""} {
 		set gca [lineOpts $gca]
-		highlight $gca "black"
+		highlight $gca "gca"
+		# If gca is set, we know we have a local node that needs color
+		highlight $rev1 "local"
 	}
 }
 

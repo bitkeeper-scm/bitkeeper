@@ -1,25 +1,25 @@
 .so bk-macros
-.TH "bk histtool" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk revtool" 1 20%E% "\*(BC" "\*(UM"
 
 
 .\"    =============== BitKeeper Graphical History Browser ===============
 .SH NAME
-bk histtool \- \*(BK graphical history browser
+bk revtool \- \*(BK graphical history browser
 .SH SYNOPSIS
-.Bc bk histtool [
+.Bc bk revtool [
 .ARGc filename
 .B ]
 .SH DESCRIPTION
 .LP
-histtool is one of the primary tools for doing code reviews, when tracking 
+revtool is one of the primary tools for doing code reviews, when tracking 
 down bugs, and when following the progress of a project.
 .LP
-The histtool program shows checkin comments and the graph of a project
+The revtool program shows checkin comments and the graph of a project
 or file.  Histtool may be used to view any file under revision control,
 including the ChangeSet file. When no filename is given, the entire
 package history is shown.
 .LP
-There are two windows displayed when histtool is started. The top
+There are two windows displayed when revtool is started. The top
 window is used to display the graph of revision history and the bottom
 window is used to show the history or differences between versions.
 
@@ -64,7 +64,7 @@ If you click left/right on a range of changesets, you will get the
 history of the entire range of changesets.  To see the history and the
 differences in detail, you can click on the "View changeset" button
 to bring up the changeset browser tool, csettool.  Typical usage is
-to browse the ChangeSet file with histtool and drill down using
+to browse the ChangeSet file with revtool and drill down using
 .B bk
 .BR csettool .
 .SH BINDINGS
@@ -155,7 +155,7 @@ Reverse search.
 Search for the next occurrence of the string.
 .tp
 .B Control\-q
-Quit histtool.
+Quit revtool.
 .SH "SEE ALSO"
 .SA Intro-GUItools 1
 .SH CATEGORY

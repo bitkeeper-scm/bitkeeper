@@ -89,7 +89,7 @@ rfuncs	ft_funcs[] = {
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "l", "local", "use the type of the local file", ft_local },
-    { "p", "sccstool", "graphical picture of the file history", res_sccstool },
+    { "p", "revtool", "graphical picture of the file history", res_revtool },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "remote", "use the type of the remote file", ft_remote },
     { "x", "explain", "explain the choices", ft_explain },

@@ -159,13 +159,13 @@ r_r(resolve *rs)
 }
 
 int
-res_sccstool(resolve *rs)
+res_revtool(resolve *rs)
 {
 	char	*av[10];
 
-	if (rs->revs) return (c_sccstool(rs));
+	if (rs->revs) return (c_revtool(rs));
 	av[0] = "bk";
-	av[1] = "sccstool";
+	av[1] = "revtool";
 	av[2] = rs->s->gfile;
 	av[3] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
@@ -184,7 +184,7 @@ rfuncs	r_funcs[] = {
     { "H", "helptool", "run helptool", r_helptool },
     { "l", "use local", "use the local file name", r_l },
     { "m", "move", "move the file to someplace else", res_mr },
-    { "p", "sccstool", "graphical picture of the file history", res_sccstool },
+    { "p", "revtool", "graphical picture of the file history", res_revtool },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "use remote", "use the remote file name", r_r },
     { "vl", "view local", "view the local file", res_vl },

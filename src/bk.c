@@ -448,6 +448,7 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 	    streq(prog, "_citool") ||
 	    streq(prog, "sccstool") ||
 	    streq(prog, "histtool") ||
+	    streq(prog, "revtool") ||
 	    streq(prog, "histool") ||
 	    streq(prog, "setuptool") ||
 	    streq(prog, "fmtool") ||
@@ -462,8 +463,9 @@ run_cmd(char *prog, int is_bk, int ac, char **av)
 #endif
 		signal(SIGTERM, SIG_IGN);
 		argv[0] = find_wish();
-		if (streq(prog, "sccstool")) prog = "histtool";
-		if (streq(prog, "histool")) prog = "histtool";
+		if (streq(prog, "sccstool")) prog = "revtool";
+		if (streq(prog, "histool")) prog = "revtool";
+		if (streq(prog, "revtool")) prog = "revtool";
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {

@@ -94,14 +94,15 @@ int
 f_explain(resolve *rs)
 {
 	fprintf(stderr, 
-"----------------------------------------------------------------------\n\
-The file has a flags conflict.  This means that both the local\n\
-and remote have attached file flags which have are different.\n\
-You need to resolve this by picking one of them.\n\
-Your choices are to either choose the local or remote flags.  If it\n\
-turns out that neither of these are what you want, you can pick one,\n\
-finish the resolve, and then do a \"bk admin -f<FLAG> file\".\n\
-----------------------------------------------------------------------\n\n");
+"------------------------------------------------------------------------\n\
+This file has a flag conflict where the local and remote files have \n\
+file flags that are different.\n\
+You need to resolve this conflict by picking one of the files.\n\
+Your can choose either the local or remote flags as the ones you want.\n\
+However, if it turns out that neither of these are what you want, you can \n\
+temporarily pick one file to finish the resolve, and then modify the \n\
+file later using the following: \"bk admin -f<FLAG> file\".\n\
+------------------------------------------------------------------------\n\n");
 	return (0);
 }
 
@@ -138,7 +139,7 @@ rfuncs	f_funcs[] = {
     { "hl", "hist local", "revision history of the local file", res_hl },
     { "hr", "hist remote", "revision history of the remote file", res_hr },
     { "l", "local", "use the flags on local file", f_local },
-    { "p", "sccstool", "graphical picture of the file history", res_sccstool },
+    { "p", "revtool", "graphical picture of the file history", res_revtool },
     { "q", "quit", "immediately exit resolve", res_quit },
     { "r", "remote", "use the flags on remote file", f_remote },
     { "x", "explain", "explain the choices", f_explain },

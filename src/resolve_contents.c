@@ -178,21 +178,24 @@ c_smerge(resolve *rs)
 }
 
 int
-c_sccstool(resolve *rs)
+c_revtool(resolve *rs)
 {
-	char	*av[10];
+	char    *av[7];
+	char    revs[3][MAXREV+2];
+	int     i;
 
-	av[0] = "bk";
-	av[1] = "sccstool";
-	av[2] = "-l";
-	av[3] = rs->revs->local;
-	av[4] = "-r";
-	av[5] = rs->revs->remote;
-	av[6] = "-G";
-	av[7] = rs->revs->gca;
-	av[8] = rs->s->gfile;
-	av[9] = 0;
+	av[i=0] = "bk";
+	av[++i] = "revtool";
+	sprintf(revs[0], "-l%s", rs->revs->local);
+	sprintf(revs[1], "-r%s", rs->revs->remote);
+	sprintf(revs[2], "-G%s", rs->revs->gca);
+	av[++i] = revs[0];
+	av[++i] = revs[1];
+	av[++i] = revs[2];
+	av[++i] = rs->s->gfile;
+	av[++i] = 0;
 	spawnvp_ex(_P_NOWAIT, "bk", av);
+
 	return (0);
 }
 
@@ -349,29 +352,29 @@ rfuncs	c_funcs[] = {
     { "!", "shell", "escape to an interactive shell", c_shell },
     { "a", "abort", "abort the patch, DISCARDING all merges", res_abort },
     { "cl", "clear", "clear the screen", res_clear },
-    { "C", "commit", "commit to the merged file", c_commit },
+    { "C", "commit", "commit the merged file", c_commit },
     { "d", "diff", "diff the local file against the remote file", res_diff },
     { "D", "difftool",
-      "run side by side graphical difftool on local and remote", res_difftool },
-    { "dl", "diff local", "diff the GCA vs local file", c_dgl },
-    { "dr", "diff remote", "diff the GCA vs remote file", c_dgr },
-    { "dlm", "diff local merge", "diff the local file vs merge file", c_dlm },
+      "run side-by-side graphical difftool on local and remote", res_difftool },
+    { "dl", "diff local", "diff the GCA vs. local file", c_dgl },
+    { "dr", "diff remote", "diff the GCA vs. remote file", c_dgr },
+    { "dlm", "diff local merge", "diff the local file vs. merge file", c_dlm },
     { "drm", "diff remote merge", "diff the remote file vs merge file", c_drm },
     { "e", "edit merge",
       "automerge (if not yet merged) and then edit the merged file", c_em },
     { "f", "fmtool", "merge with graphical filemerge", c_fmtool },
     { "F", "fm3tool",
-      "merge with graphical experimental 3 way filemerge", c_fm3tool },
+      "merge with graphical experimental three-way filemerge", c_fm3tool },
     { "h", "history", "revision history of all changes", res_h },
     { "hl", "hist local", "revision history of the local changes", res_hl },
     { "hr", "hist remote", "revision history of the remote changes", res_hr },
     { "H", "helptool", "show merge help in helptool", c_helptool },
     { "m", "merge", "automerge the two files", c_merge },
-    { "p", "sccstool", "graphical picture of the file history", c_sccstool },
+    { "p", "revtool", "graphical picture of the file history", c_revtool },
     { "q", "quit", "immediately exit resolve", c_quit },
     { "s", "sccsmerge", "merge the two files using SCCS' algorthm", c_smerge },
     { "sd", "sdiff",
-      "side by side diff of the local file vs. the remote file", res_sdiff },
+      "side-by-side diff of the local file vs. the remote file", res_sdiff },
     { "v", "view merge", "view the merged file", c_vm },
     { "vl", "view local", "view the local file", res_vl },
     { "vr", "view remote", "view the remote file", res_vr },
