@@ -286,29 +286,37 @@ csetDiff(MDBM *not,  int wantTag)
 }
 
 
+int
+bkd_connect(remote *r, int compress)
+{
+	assert((r->rfd == -1) && (r->wfd == -1));
+	bkd(compress, r);
+	if (r->trace) {
+		fprintf(stderr,
+			"send_msg: r->rfd = %d, r->wfd = %d\n",
+			r->rfd, r->wfd);
+	}
+	if (r->wfd < 0) {
+		fprintf(stderr, "Cannot connect to %s\n", remote_unparse(r));
+		return (-1);
+	}
+	return (0);
+}
+
+
 
 int 
 send_msg(remote *r, char *msg, int mlen, int extra, int compress)
 {
+	assert(r->wfd != -1);
 	if (r->httpd) {
-		assert((r->rfd == -1) && (r->wfd == -1));
-		bkd(compress, r);
-		if (r->trace) {
-			fprintf(stderr,
-				"send_msg: r->rfd = %d, r->wfd = %d\n",
-				r->rfd, r->wfd);
-		}
-		if ((r->wfd < 0) && r->trace) {
-			fprintf(stderr,
-				"send_msg: cannot connect to %s:%d\n",
-				r->host, r->port);
+		if (http_send(r, msg, mlen, extra, "BitKeeper", WEB_BKD_CGI)) {
+			fprintf(stderr, "http_send failed\n");
 			return (-1);
 		}
-		http_send(r, msg, mlen, extra, "BitKeeper", WEB_BKD_CGI);
 	} else {
-		if (r->wfd == -1) bkd(compress, r);
 		if (write_blk(r, msg, mlen) != mlen) {
-			if (r->trace) perror("send_msg");
+			perror("send_msg");
 			return (-1);
 		}
 	}
