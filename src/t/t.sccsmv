@@ -68,15 +68,26 @@ bk mv C/file1 C/file4 B
 if [ ! -d C ]; then echo failed; exit 1; fi
 bk -r check -a || exit 1
 echo OK
-echo $N Test sccsmv to directory that does not exist ................$NL
-bk sccsmv B BBBB || { echo error; exit 1; }
+echo $N Test bk mvdir to directory that does not exist ..............$NL
+mkdir B/B1
+date > B/B1/fileB1
+bk new $Q B/B1/fileB1
+#bk sccsmv B BBBB || { echo error; exit 1; }
+bk mvdir B BBBB
 if [ ! -f BBBB/SCCS/s.file4 ]
 then	echo failed to move file; exit 1
+fi
+if [ ! -f BBBB/B1/SCCS/s.fileB1 ]
+then	echo failed to move fileB1; exit 1
 fi
 bk -r check -a || exit 1
 echo OK
 echo $N And move it back ............................................$NL
-bk sccsmv BBBB B || { echo error; exit 1; }
+#bk sccsmv BBBB B || { echo error; exit 1; }
+bk mvdir BBBB B || { echo error; exit 1; }
+if [ ! -f B/B1/SCCS/s.fileB1 ]
+then	echo failed to move fileB1; exit 1
+fi
 echo OK
 echo $N Test sccsrm w/ p locked file ................................$NL
 bk get $Q -e B/file1
@@ -169,4 +180,21 @@ cmp -s S.G SCCS/s..del-G
 if [ $? = 0 ]; then echo Failed to add rm delta; exit 1; fi
 if [ -f p.G ]; then echo Failed to rm p.G; exit 1; fi
 if [ -f p..del-G ]; then echo Failed to rm p..del-G; exit 1; fi
+echo OK
+echo $N Test bk rmdir ...............................................$NL
+date > B/B1/fileB2
+bk rmdir B | grep -q "unchecked"
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk delta $Q -i -l B/B1/fileB2
+echo new > B/B1/fileB2
+bk rmdir B | grep -q "edited"
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+bk delta $Q -y B/B1/fileB2
+bk rmdir B
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ -d B ]; then echo failed; exit 1; fi
+bk -r check -a
+if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ -f Bitkeeper/deleted/s..del-fileB1 ]; then echo failed; exit 1; fi
+if [ -f Bitkeeper/deleted/s..del-fileB2 ]; then echo failed; exit 1; fi
 echo OK

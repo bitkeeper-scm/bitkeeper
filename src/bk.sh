@@ -118,6 +118,59 @@ _sdiffs() {
 	bk diffs -s "$@"
 }
 
+_mvdir() {
+
+	# XXX TODO: Make sure resolve clean up empty dir
+	# XXX       after applying mvdir cset
+	case `bk version` in
+	*Standard*)
+		echo "bk mvdir is not supported in this BitKeeper Standard"
+		exit 1;
+		;;
+	esac
+	if [ X$3 != X ]; then echo "usage bk mvdir from_dir to_dir"; exit 1; fi
+	if [ ! -d $1 ]; then echo $1 is not a directory; exit 1; fi
+	if [ -e $2 ]; then echo $2 already exist; exit 1; fi
+	
+	# Win32 note: must use relative path or drive:/path
+	# because cygwin mv interprete /path relative to mount tables.
+	mv $1 $2
+	cd $2
+	bk sfiles | bk edit -q -
+	bk sfiles | bk delta -q -ymvdir -
+	# update id cache
+	bk sfiles -r
+}
+
+_rmdir() {
+
+	if [ X$2 != X ]; then echo "usage bk rmdir dir"; exit 1; fi
+	if [ ! -d "$1" ]; then echo "$1 is not a directory"; exit 1; fi
+	XNUM=`bk sfiles -x $1 | wc -l`
+	if [ "$XNUM" -ne 0 ]
+	then
+		echo "There are unchecked files under $1";
+		bk sfiles -x $1
+		exit 1
+	fi
+	CNUM=`bk sfiles -c $1 | wc -l`
+	if [ "$CNUM" -ne 0 ]
+	then
+		echo "There are edited files under $1";
+		bk sfiles -cg $1
+		exit 1
+	fi
+	bk sfiles $1 | bk sccsrm -d -
+	SNUM=`bk sfiles $1 | wc -l`
+	if [ "$SNUM" -ne 0 ]; 
+	then
+		echo "Failed to rm the following files:"
+		bk sfiles -g $1
+	fi
+	rmdir $1
+	exit 0
+}
+
 # usage: tag [r<rev>] symbol
 _tag() {
 	__cd2root
