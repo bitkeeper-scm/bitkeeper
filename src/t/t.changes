@@ -264,4 +264,14 @@ if [ "$files" != "ChangeSetfoofooChangeSetbarbar" ]
 then	echo failed; exit 1;
 else	echo OK
 fi
+cd $HERE
+rm -rf p
 
+echo $N Does combining restrictions work ............................$NL
+cd project
+revs=`bk changes -c-1Y -ujoe -d:REV:`
+test X$revs != X1.5 && {
+	echo failed
+	exit 1
+}
+echo OK

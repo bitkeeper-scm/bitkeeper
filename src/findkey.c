@@ -65,8 +65,8 @@ findkey_main(int ac, char **av)
 	}
 	unless (look.random || look.cksum ||
 	    look.email || look.host || look.path || look.utc || look.user) {
-	    	unless (av[optind] && strchr(av[optind], '|')) {
-			fprintf(stderr, "%s: missing key\n", av[0]);
+	    	unless (av[optind] && isKey(av[optind])) {
+			fprintf(stderr, "%s: missing or invalid key\n", av[0]);
 			return (1);
 		}
 		look.key = av[optind++];
@@ -118,12 +118,16 @@ findkey(sccs *s, look l)
 	delta	*d;
 	char	key[MAXKEY];
 
+	if (l.key) {
+		if (d = sccs_findKey(s, l.key)) {
+			printf("%s|%s", s->gfile, d->rev);
+			if (l.pkey) printf("\t%s", l.key);
+			printf("\n");
+		}
+		return;
+	}
 	for (d = s->table; d; d = d->next) {
 		/* continues if no match, print if we get through all */
-		if (l.key) {
-			sccs_sdelta(s, d, key);
-			unless (streq(key, l.key)) continue;
-		} 
 		if (l.random) {
 			unless (d->random && streq(d->random, l.random)) {
 				continue;

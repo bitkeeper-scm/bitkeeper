@@ -256,7 +256,7 @@ rdlock(void)
 		ldebug(("RDLOCK by %u failed, write locked\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
-	write_log(p->root, "cmd_log", 1, "obtain read lock");
+	write_log(p->root, "cmd_log", 1, "obtain read lock (%u)", getpid());
 	proj_free(p);
 	ldebug(("RDLOCK %u\n", getpid()));
 	return (0);
@@ -322,7 +322,7 @@ wrlock(void)
 		ldebug(("WRLOCK by %u failed, readers won\n", getpid()));
 		return (LOCKERR_LOST_RACE);
 	}
-	write_log(p->root, "cmd_log", 1, "obtain write lock");
+	write_log(p->root, "cmd_log", 1, "obtain write lock (%u)", getpid());
 	proj_free(p);
 	/* XXX - this should really be some sort cookie which we pass through,
 	 * like the contents of the lock file.  Then we ignore iff that matches.
@@ -373,7 +373,8 @@ repository_downgrade()
 		return (-2); /* possible permission problem */
 	}
 	repository_wrunlock(0);
-	write_log(p->root, "cmd_log", 1, "downgrade write lock");
+	write_log(p->root, "cmd_log", 1,
+	    "downgrade write lock (%u)", getpid());
 	proj_free(p);
 	return (0);
 }
@@ -408,7 +409,7 @@ repository_rdunlock(int all)
 	/* clean out our lock, if any */
 	rdlockfile(p->root, path);
 	if (unlink(path) == 0) {
-		write_log(p->root, "cmd_log", 1, "read unlock");
+		write_log(p->root, "cmd_log", 1, "read unlock (%u)", getpid());
 		ldebug(("RDUNLOCK %u\n", getpid()));
 	}
 	sprintf(path, "%s/%s", p->root, READER_LOCK_DIR);
@@ -441,7 +442,8 @@ repository_wrunlock(int all)
 	putenv("BK_IGNORELOCK=NO");
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
 	if (sccs_mylock(path) && (sccs_unlockfile(path) == 0)) {
-		write_log(p->root, "cmd_log", 1, "write unlock");
+		write_log(p->root, "cmd_log", 1,
+		    "write unlock (%u)", getpid());
 		ldebug(("WRUNLOCK %u\n", getpid()));
 		sprintf(path, "%s/%s", p->root, WRITER_LOCK_DIR);
 		rmdir(path);

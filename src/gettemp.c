@@ -33,7 +33,10 @@ setup_tmpdirs(void)
 		mkdirp(BKTMP);
 		getcwd(newdir, sizeof(newdir));
 		tmp = aprintf("%s/" BKTMP, newdir);
-		tmpdirs[tmpdirs_len++] = (strdup)(tmp);
+		/* Don't allow pathnames with shell characters */
+		if (strcspn(tmp, " \t\n\r\'\"><|`$&;[]*()\\") == strlen(tmp)) {
+			tmpdirs[tmpdirs_len++] = (strdup)(tmp);
+		}
 		free(tmp);
 		chdir(olddir);
 	}

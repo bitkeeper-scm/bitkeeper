@@ -95,7 +95,6 @@ cmd_push_part1(int ac, char **av)
 		return (1);
 	}
 
-	signal(SIGCHLD, SIG_DFL); /* for free bsd */
 	if (debug) fprintf(stderr, "cmd_push_part1: calling listkey\n");
 	sprintf(cmd, "bk _listkey %s > BitKeeper/tmp/lk%u", 
 	    metaOnly ? "-e": "", getpid());
@@ -145,7 +144,6 @@ cmd_push_part2(int ac, char **av)
 	static	char *takepatch[5] = { "bk", "takepatch"};
 	static	char *resolve[7] = { "bk", "resolve", "-t", "-c", 0, 0, 0};
 
-	signal(SIGCHLD, SIG_DFL);
 	while ((c = getopt(ac, av, "deGnqz|")) != -1) {
 		switch (c) {
 		    case 'z':
@@ -216,6 +214,7 @@ cmd_push_part2(int ac, char **av)
 	 * save the patch and spawn inself in the background.  to
 	 * apply and resolve the changes.
 	 */
+	putenv("BK_REMOTE=YES");
 	if (metaOnly) takepatch[i++] = "-aL";
 	takepatch[i] = 0;
 	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
@@ -253,7 +252,6 @@ cmd_push_part2(int ac, char **av)
 	 * Fire up the pre-trigger (for non-logging tree only)
 	 */
 	putenv("BK_CSETLIST=BitKeeper/etc/csets-in");
-	putenv("BK_REMOTE=YES");
 	if (c = trigger("remote resolve",  "pre")) {
 		if (c == 2) {
 			system("bk abort -fp");

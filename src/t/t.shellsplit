@@ -1,0 +1,57 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2002 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+shellsplit()
+{
+	i=1
+	for f do
+		echo $NX "$i: ("$NXL
+		echo $NX "$f"$NXL
+		echo ")"
+		i=`expr $i + 1`
+	done
+}
+
+dotest()
+{
+	line="Test shellSplit '$1' "
+	len=`echo "$line" | wc -c`
+	len=`expr 62 - $len`
+	fill=`printf "%${len}s" "" | sed -e 's/ /./g' 2> /dev/null`
+	echo $N "$line$fill" $NL
+	bk _shellSplit_test "$1" > BK
+	eval shellsplit "$1" > SH
+ 	diff SH BK > DIFFS || {
+		echo "shellSplit failed ($1)"
+		echo "diff SH BK"
+		cat DIFFS
+		exit 1
+	}
+	echo OK
+}
+	
+dotest 'a\ b c d'
+dotest 'a b c d'
+dotest '  a b   c d  '
+dotest 'a  b c d'
+dotest 'a\ b c d'
+dotest 'a '
+dotest 'a\ '
+dotest 'a\  b c d'
+dotest 'a b "c d"'
+dotest "' a b c'"
+dotest "'' a b "
+dotest "a ' \\ \d \ '"
+dotest 'a b " c d"  '
+dotest 'a b "\ c\" d"  '
+dotest 'a b "" c'
+dotest "a b '' c"
+dotest '""a \ ddb c d'

@@ -10,43 +10,48 @@ extern	time_t	requestEnd;
 
 
 #ifndef WIN32
-/*
- * For now, accept only numeric ids.
- * XXX - need to do groups.
- */
+#include <grp.h>
+
 void
-ids()
+ids(void)
 {
-	uid_t	u;
+	struct	passwd *pw;
+	struct	group *gp;
 	gid_t	g;
+	uid_t	u;
 
-	if (Opts.gid && isdigit(Opts.gid[0])) {
-		g = atoi(Opts.gid);
-		if (Opts.log) fprintf(Opts.log, "Run as GID %u\n", getgid());
-#ifdef	__hpux__
-		setresgid((gid_t)-1, g, (gid_t)-1);
-#else
-		setegid(g);
-#endif
-		if (Opts.log) fprintf(Opts.log, "Set to GID %u\n", getegid());
-	}
-	if (Opts.uid && isdigit(Opts.uid[0])) {
-		struct	passwd *p;
+	unless (Opts.gid && *Opts.gid) goto uid;
 
-		u = atoi(Opts.uid);
-		if (Opts.log) fprintf(Opts.log, "Run as UID %u\n", getuid());
-#ifdef	__hpux__
-		setresuid((uid_t)-1, u, (uid_t)-1);
-#else
-		seteuid(u);
-#endif
-		p = getpwuid(geteuid());
-		safe_putenv("USER=%s", p->pw_name);
-		if (Opts.log) {
-			fprintf(Opts.log,
-			    "Set to UID %u (%s)\n", geteuid(), sccs_getuser());
+	if (isdigit(*Opts.gid)) {
+		g = (gid_t)atoi(Opts.gid);
+	} else {
+		while (gp = getgrent()) {
+			if (streq(Opts.gid, gp->gr_name)) break;
 		}
+		unless (gp) {
+			fprintf(stderr,
+			    "Unable to find group '%s', abort\n", Opts.gid);
+			exit(1);
+		}
+		g = gp->gr_gid;
 	}
+	if (setgid(g)) perror("setgid");
+
+uid:	unless (Opts.uid && *Opts.uid) return;
+
+	if (isdigit(*Opts.uid)) {
+		u = (uid_t)atoi(Opts.uid);
+	} else {
+		unless (pw = getpwnam(Opts.uid)) {
+			fprintf(stderr,
+			    "Unable to find user '%s', abort\n", Opts.uid);
+			exit(1);
+		}
+		u = pw->pw_uid;
+	}
+	if (setuid(u)) perror("setuid");
+	pw = getpwuid(getuid());
+	safe_putenv("USER=%s", pw->pw_name);
 }
 #else
 void
@@ -199,6 +204,7 @@ bkd_server(char **not_used)
 		close(0); dup(n);
 		close(1); dup(n);
 		close(n);
+		signal(SIGCHLD, SIG_DFL);	/* restore signals */
 		do_cmds();
 		exit(0);
 	}

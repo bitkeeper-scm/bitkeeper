@@ -108,7 +108,7 @@ static unsigned long rng_fake(unsigned char *buf, unsigned long len)
 	struct timeval tv;
 
 	gettimeofday(&tv, 0);
-	seed ^= tv.tv_usec;
+	seed = tv.tv_usec;
 	seed ^= getpid();
 	seed = (seed << 7) | (seed >> 25);
 #ifndef WIN32
@@ -125,10 +125,6 @@ unsigned long rng_get_bytes(unsigned char *buf, unsigned long len,
                             void (*callback)(void))
 {
    int x = 0;
-
-   if (getenv("BK_REGRESSION")) {
-	   x += rng_fake(buf+x, len-x);    if (x==len) { return x; }
-   }
 
    x += rng_nix(buf+x, len-x, callback);   if (x==len) { return x; }
 #ifdef WIN32

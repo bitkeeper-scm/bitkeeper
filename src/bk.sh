@@ -46,13 +46,25 @@ _renames() {
 }
 
 # shorthand
+_gfiles() {		# /* undoc? 2.0 */
+	exec bk sfiles -g "$@"
+}
+
 _inode() {		# /* undoc? 2.0 */
 	bk prs -hr+ -nd':ROOTKEY:' "$@"
 }
 
 # shorthand
-_identity() {		# /* undoc? 2.0 */
+_id() {
+	test "X$1" = X-r && {
+		bk sane 2>/dev/null
+		bk -R cat BitKeeper/log/repo_id
+		exit 0
+	}
 	bk -R prs -hr+ -nd':ROOTKEY:' ChangeSet
+}
+_identity() {	# alias for backwards compat
+	_id $*
 }
 
 # shorthand
@@ -72,7 +84,7 @@ _compression() {		# /* undoc? 2.0 */
 
 # shorthand
 _tags() {
-	bk changes -t
+	exec bk changes -t
 }
 
 # superset - see if the parent is ahead
@@ -327,24 +339,6 @@ _csets() {		# /* doc 2.0 */
 		exec bk csettool "$@" - < BitKeeper/etc/csets-in
 	fi
 	echo "Can not find csets to view."
-	exit 1
-}
-
-_locked() {		# /* undoc? 2.0 */
-	V=NO
-	while getopts v opt
-	do	case "$opt" in
-		v) V=YES;;
-		esac
-	done
-	shift `expr $OPTIND - 1`
-	__cd2root
-	test -d RESYNC && {
-		if [ $V = YES ]
-		then	echo "Repository is locked by RESYNC directory."
-		fi
-		exit 0
-	}
 	exit 1
 }
 

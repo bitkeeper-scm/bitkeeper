@@ -195,8 +195,8 @@ listkey_main(int ac, char **av)
 		}
 	}
 	unless (lines && lines[1]) goto mismatch;	/* sort of */
-	note = aprintf("keysin=%u(%u)", sum, i);
-	cmdlog_addnote(note);
+	note = aprintf("%u(%u)", sum, i);
+	cmdlog_addnote("keysin", note);
 	free(note);
 
 	/*
@@ -307,8 +307,8 @@ mismatch:	if (debug) fprintf(stderr, "listkey: no match key\n");
 	}
 	out("@END@\n");
 	sccs_free(s);
-	note = aprintf("keysout=%u(%u)", sum, i);
-	cmdlog_addnote(note);
+	note = aprintf("%u(%u)", sum, i);
+	cmdlog_addnote("keysout", note);
 	free(note);
 	return (0);
 }

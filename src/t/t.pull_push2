@@ -40,13 +40,13 @@ cd $HERE/copy/src
 bk edit $Q bar.c h.h
 echo new2 > bar.c
 echo new2 > h.h
-bk pull  2> pull.out 1>&2
+bk pull  > pull.out 2>&1
 grep -q "bar.c is edited" pull.out || { echo failed; exit 1; }
 grep -q "h.h is edited" pull.out || { echo failed; cat pull.out; exit 1; }
 echo OK
 echo $N push to a repo with edited files ............................$NL
 cd $HERE/project
-bk push $HERE/copy 2> push.out
+bk push $HERE/copy > push.out 2>&1
 grep -q "bar.c is edited" push.out || { echo failed; exit 1; }
 grep -q "h.h is edited" push.out || { echo failed; exit 1; }
 echo OK
@@ -108,7 +108,7 @@ LOCKPID=$!
 bk lock -L
 cd $HERE/copy2
 bk lock -U
-bk pull $HERE/project 2> /dev/null &
+bk pull $HERE/project > /dev/null 2>&1 &
 PULL_PID=$!
 sleep 1
 ps alx  | grep ${PULL_PID} | grep -q "defunc"

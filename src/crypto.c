@@ -139,32 +139,6 @@ make_keypair(int bits, char *secret, char *public)
 	rsa_free(&key);
 	return (0);
 }
-
-private char *
-loadfile(char *file, int *size)
-{
-	FILE	*f;
-	struct	stat	statbuf;
-	char	*ret;
-	int	len;
-
-	f = fopen(file, "rb");
-	unless (f) return (0);
-
-	if (fstat(fileno(f), &statbuf)) {
- err:		fclose(f);
-		return (0);
-	}
-	len = statbuf.st_size;
-	ret = malloc(len);
-	unless (ret) goto err;
-	fread(ret, 1, len, f);
-	fclose(f);
-
-	if (size) *size = len;
-	return (ret);
-}
-
 private void
 loadkey(char *file, rsa_key *key)
 {
@@ -358,13 +332,9 @@ check_licensesig(char *key, char *sign)
 	loadkey(pubkey, &rsakey);
 
 	outlen = sizeof(signbin);
-	if (base64_decode(sign, strlen(sign), signbin, &outlen)) {
- err:		fprintf(stderr, "licsign: %s\n", crypt_error);
-		return (-1);
-	}
-
-	if (rsa_verify(signbin, key, strlen(key), &stat, &rsakey)) goto err;
-	return (stat ? 0 : -1);
+	if (base64_decode(sign, strlen(sign), signbin, &outlen)) return (-1);
+	if (rsa_verify(signbin, key, strlen(key), &stat, &rsakey)) return (-1);
+	return (stat ? 0 : 1);
 }
 
 private	int

@@ -123,8 +123,8 @@ echo $N propogate info about truly gone file ........................$NL
 # now remove it from logging tree
 rm -f ../gonelog/SCCS/s.A
 bk edit $Q A
-bk delta $Q -y'none' A
-bk commit $Q -y'none'
+bk delta $Q -y'none' A || exit 1
+bk commit $Q -y'none' || exit 1
 bk push -e ../gonelog 1>OUT 2>ERR || {
 	echo Failed
 	echo STDOUT
@@ -134,11 +134,7 @@ bk push -e ../gonelog 1>OUT 2>ERR || {
 	exit 1
 }
 cd ../gonelog
-while [ -f PENDING/2*[0-9] -o -f PENDING/lock ]
+while [ -d PENDING ]
 do	sleep 1
 done
-test -f PENDING/BAD.*.log && {
-	cat PENDING/BAD.*.log
-	exit 1
-}
 echo OK

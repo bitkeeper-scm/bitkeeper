@@ -16,7 +16,6 @@ remote_parse(const char *url, int skip_checks)
 {
 	char	*freeme = 0;
 	static	int echo = -1;
-	int	append = 0;
 	remote	*r;
 	char	*p;
 
@@ -69,13 +68,6 @@ remote_parse(const char *url, int skip_checks)
 		} else {
 			r = nfs_parse(p);
 		}
-	}
-	if (r && append && cmdlog_buffer[0]) {
-		char	*rem = remote_unparse(r);
-
-		strcat(cmdlog_buffer, " ");
-		strcat(cmdlog_buffer, rem);
-		free(rem);
 	}
 	if (echo && r) fprintf(stderr, "RP[%s]->[%s]\n", p, remote_unparse(r));
 	if (freeme) free(freeme);
@@ -403,8 +395,6 @@ bkd(int compress, remote *r)
 			fprintf(stderr, "CMD[%d]=%s\n", i, cmd[i]);
 		}
 	}
-
-	signal(SIGCHLD, SIG_DFL);
 	p = spawnvp_rwPipe(cmd, &(r->rfd), &(r->wfd), BIG_PIPE);
 	if (freeme) free(freeme);
 	return (p);

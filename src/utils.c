@@ -1,7 +1,6 @@
 #include "bkd.h"
 
 bkdopts	Opts;	/* has to be declared here, other people use this code */
-private void	line2av(char *cmd, char **av);
 
 #ifndef WIN32
 int
@@ -51,6 +50,32 @@ cat(char *file)
 	return (0);
 }
 #endif
+
+char *
+loadfile(char *file, int *size)
+{
+	FILE	*f;
+	struct	stat	statbuf;
+	char	*ret;
+	int	len;
+
+	f = fopen(file, "rb");
+	unless (f) return (0);
+
+	if (fstat(fileno(f), &statbuf)) {
+ err:		fclose(f);
+		return (0);
+	}
+	len = statbuf.st_size;
+	ret = malloc(len+1);
+	unless (ret) goto err;
+	fread(ret, 1, len, f);
+	fclose(f);
+	ret[len] = 0;
+
+	if (size) *size = len;
+	return (ret);
+}
 
 /*
  * Write the data to either the gzip channel or to 1.
@@ -329,7 +354,9 @@ prompt_main(int ac, char **av)
 	int	i, c, ret, ask = 1, nogui = 0;
 	char	*prog = 0, *file = 0, *no = "NO", *yes = "OK", *title = 0;
 	char	*type = 0;
+	char	*cmd;
 	FILE	*in, *out = 0;
+	char	msgtmp[MAXPATH];
 	extern	char *pager;
 
 	while ((c = getopt(ac, av, "cegiowxf:n:p:t:y:")) != -1) {
@@ -352,8 +379,18 @@ prompt_main(int ac, char **av)
 	    (!(file || prog) && !av[optind]) ||
 	    (av[optind] && av[optind+1]) || (file && prog)) {
 err:		system("bk help -s prompt");
+		if (file == msgtmp) unlink(msgtmp);
 		if (out) pclose(out);
 		exit(1);
+	}
+	if (prog) {
+		assert(!file);
+		bktmp(msgtmp, "prompt");
+		file = msgtmp;
+		cmd = aprintf("%s > %s", prog, file);
+		putenv("PAGER=cat");
+		if (system(cmd)) goto err;
+		free(cmd);
 	}
 	if (getenv("BK_GUI") && !nogui) {
 		char	*nav[19];
@@ -375,15 +412,13 @@ err:		system("bk help -s prompt");
 		if (file) {
 			nav[++i] = "-F";
 			nav[++i] = file;
-		} else if (prog) {
-			nav[++i] = "-P";
-			nav[++i] = prog;
 		} else {
 			nav[++i] = av[optind];
 		}
 		nav[++i] = 0;
 		assert(i < sizeof(nav)/sizeof(char*));
 		ret = spawnvp_ex(_P_WAIT, nav[0], nav);
+		if (prog) unlink(msgtmp);
 		if (WIFEXITED(ret)) exit(WEXITSTATUS(ret));
 		exit(2);
 	}
@@ -411,20 +446,14 @@ err:		system("bk help -s prompt");
 		fputc('\n', out);
 		fflush(out);
 	}
-	if (file || prog) {
-		char	buf[1024];
+	if (file) {
+		char	buf[MAXLINE];
 
-		if (file) {
-			unless (in = fopen(file, "r")) goto err;
-		} else {
-			putenv("PAGER=cat");
-			unless (in = popen(prog, "r")) goto err;
-		}
+		unless (in = fopen(file, "r")) goto err;
 		while (fnext(buf, in)) {
 			fputs(buf, out);
 		}
-		if (file) fclose(in);
-		if (prog) pclose(in);
+		fclose(in);
 	} else if (streq(av[optind], "-")) {
 		goto err;
 	} else {
@@ -436,6 +465,7 @@ err:		system("bk help -s prompt");
 		fputc('\n', out);
 	}
 	pclose(out);
+	if (prog) unlink(msgtmp);
 	/* No exit status if no prompt */
 	unless (ask) exit(0);
 	exit(confirm(yes ? yes : "OK") ? 0 : 1);
@@ -617,6 +647,27 @@ get_ok(remote *r, char *read_ahead, int verbose)
 	return (1); /* failed */
 }
 
+/*
+ * Return the repo_id if there is one.
+ * Assumes we are at the root of the repository.
+ * Caller frees.
+ */
+char *
+repo_id(void)
+{
+	char	*root = sccs_root(0);
+	char	*file;
+	char	*repoid;
+
+	unless (root) return (0);
+	file = aprintf("%s/" REPO_ID, root);
+	free(root);
+	repoid = loadfile(file, 0);
+	free(file);
+	unless (repoid) return (0);
+	chomp(repoid);
+	return (repoid);
+}
 
 char *
 rootkey(char *buf)
@@ -689,7 +740,7 @@ void
 sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 {
 	int	i;
-	char	*root, *user, *host;
+	char	*root, *user, *host, *repo;
 
 	if (r->host)
 		fprintf(f, "putenv BK_VHOST=%s\n", r->host);
@@ -703,6 +754,10 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	fprintf(f, "putenv _BK_USER=%s\n", user);	/* XXX remove in 3.0 */
 	host = sccs_gethost();
 	fprintf(f, "putenv _BK_HOST=%s\n", host);
+	if (repo = repo_id()) {
+		fprintf(f, "putenv BK_REPO_ID=%s\n", repo);
+		free(repo);
+	}
 
 	/*
 	 * We have no Package root when we clone, so skip root related variables
@@ -744,6 +799,9 @@ getServerInfoBlock(remote *r)
 			safe_putenv("BK_REMOTE_%s", buf);
 		} else {
 			safe_putenv("BKD_%s", buf);
+			if (strneq(buf, "REPO_ID=", 8)) {
+				cmdlog_addnote("rmts", buf+8);
+			}
 		}
 	}
 	return (1); /* protocol error, never saw @END@ */
@@ -753,6 +811,7 @@ void
 sendServerInfoBlock(int is_rclone)
 {
 	char	buf[MAXPATH];
+	char	*repoid;
 
 	out("@SERVER INFO@\n");
         sprintf(buf, "PROTOCOL=%s\n", BKD_VERSION);	/* protocol version */
@@ -780,6 +839,10 @@ sendServerInfoBlock(int is_rclone)
 	out(sccs_getuser());
 	out("\nHOST=");
 	out(sccs_gethost());
+	if (repoid = repo_id()) {
+		sprintf(buf, "\nREPO_ID=%s", repoid);
+		out(buf);
+	}
 	out("\n@END@\n");
 } 
 
@@ -1130,7 +1193,7 @@ getdir(char *dir)
 	}
 	lines = addLine(lines, strdup("f"));
 	assert(streq("f", lines[1]));
-	removeLineN(lines, 1);
+	removeLineN(lines, 1, free);
 
 	do {
 		unless (streq(file, ".") || streq(file, "..")) {
@@ -1187,7 +1250,7 @@ mkpager()
 /*
  * Convert a command line to a av[] vector
  */
-private void
+void
 line2av(char *cmd, char **av)
 {
 	char	*p, *q, *s;

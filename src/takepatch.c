@@ -741,7 +741,7 @@ metaUnionResyncFile(char *from, char *to)
 
 	sprintf(temp, "%s.cp", to);
 	unlink(temp);
-	sprintf(buf, "cat %s %s | bk sort -u", from, to);
+	sprintf(buf, "cat %s %s | bk _sort -u", from, to);
 	w = fopen(temp, "wb");
 	f = popen(buf, "r");
 	fputs(METAUNIONHEAD, w);
@@ -2293,8 +2293,8 @@ error:					fprintf(stderr, "GOT: %s", buf);
 			cleanup(CLEAN_RESYNC);
 		}
 		if (isLogPatch) saveEnviroment(pendingFile);
-		note = aprintf("psize=%u", size(incoming));
-		cmdlog_addnote(note);
+		note = aprintf("%u", size(incoming));
+		cmdlog_addnote("psize", note);
 		free(note);
 		rename(incoming, pendingFile);
 		unless (flags & SILENT) {

@@ -1,362 +1,196 @@
-2.0beta13???? Release notes
-    This version adds a check for the cset file pointer in every SCCS
-    file to the 'check' command.  This is a pointer that indicates the 
-    ROOTKEY of the ChangeSet file where the file was created.  The
-    check can indicate when a SCCS file is copied into a repository
-    from somewhere else. 
-    Some older versions of BitKeeper didn't set the field correctly
-    and a 'bk -r check -a' will give messages like this:
-
-	Extra file: SCCS/s.ChangeSet
-	     belongs to: mason@coffee.suse.com|ChangeSet|20010419131948|47459|8349d
-	     should be:  mason@suse.com|ChangeSet|20010419131948|47459|8349d
-
-    These can be repaired by running 'bk -r check -af'
-    This fix will have to be repeated in every repository.
-
-2.0_3pardata Release notes
-    This version fixes a long standing but undetected bug that leaves
-    unmerged tags in the tree.  With this version, trees might see errors
-    that look like this:
-	Unmerged tag tips:
-		1.8.7.51         D1299
-		1.316.20.1       ?
-		1.8.25.1         <tag merge>
-	SCCS/s.ChangeSet: unmerged symleaf 1.8.7.51
-	SCCS/s.ChangeSet: unmerged symleaf 1.316.20.1
-	SCCS/s.ChangeSet: unmerged symleaf 1.8.25.1
-	Unmerged tag tips:
-		1.8.7.51         D1299
-		1.316.20.1       ?
-		1.8.25.1         <tag merge>
-
-    This is an indication that your tree was damaged by a previous
-    version of the bitkeeper. You can fix this with the following steps:
- 
-      a) If you don't have a backup of your tree, make one, just to be
-	 extra safe.  The fix only touches SCCS/s.ChangeSet so a
-	 backup is really just saving that file.
-      b) run "bk tagmerge" which will give errors like above but then
-	 will complete without incident.
-      c) run "bk admin -hhh ChangeSet" - if that is silent, all is
-	 well.  Run a "bk -r check -ac" just to be sure if you like.
-      d) propagate this change by pulling to other clones.
-
-    'tagmerge' is a special command created to fix this one problem.
-    The problem will not reappear with binaries after this point and
-    'tagmerge' will likely disappear in the future.
-
-2.0beta12 Release notes
-    bk push -n will hang against earlier versions of the code.
-
-    bk push -n now gets a read lock instead of write lock if the remote side is 
-    also upgraded.  
-
-2.0beta9.1 Release notes
-    Add a binary resolver, it allows you to use one or the other versions.
-    Fix a bug in the lclone locking code.
-
-2.0beta9 Release notes
-
-    Undo can no longer be interrupted leaving a half undone tree.
-
-    Don't annotate binaries.
-
-    Fixed a pathname buffer overflow problem; generically fixed many potential
-    similar problems by using aprintf which allocates space as need.
-
-    Fix a problem where connection attempts to BKDs which are done did not 
-    produce an error message.
-
-    Added repository read locking to lclone.
-
-    Reworked the on disk flags (xflags). 
-
-    !!!! Note !!!!
-
-    you will almost certainly see check complain about flags the first time you
-    run it.  Just run
-
-		bk -r check -acf
-		bk -r check -acf
-
-    and that should fix it.  If you are worried about it, clone your tree first
-    and try it there.
-
-    You have to run the above command in each repository, the fix does not
-    propogate.
-
 ===============================================================================
-Release notes for BitKeeper version XXX.   These release notes cover
+Release notes for BitKeeper version 3.0.1.   These release notes cover
 the following topics:
 
-. Installation
 . Upgrade Notes
-. Changes from last release
-	. Interface changes
-	. New Features
-	. Noteworthy bug fixes
-. Known Bugs
-
-
-We have binary releases for Linux on Sparc, Intel, PPC, and Alpha,
-Irix6, FreeBSD 2.2, FreeBSD 3,4, FreeBSD 4.1, OpenBSD 2.7, HP-UX,
-AIX, Sparc Solaris, Solaris X86, Windows98/NT/2000.
-
-Installation
------------------------------------------------------------------------------
-
-The binary tarball unpacks into a directory named "bitkeeper".  This
-may be placed in /usr or /usr/local as you see fit.  Several files
-should then be symlinked from the bitkeeper directory into a public
-binary directory.  The minimum is bitkeeper/bk and bitkeeper/get.  If
-you wish to use BitKeeper in conjunction with Emacs vc-mode, you will
-also need to symlink admin, delta, prs, rmdel, and unget.  Do NOT
-symlink ci and co; this will interfere with RCS.  We no longer
-recommend that you place the bitkeeper directory in your PATH.
-
-For you cut-and-paste fans:
-
-	BK=/usr/bitkeeper # change this to match your installation
-	cd /usr/bin
-	ln -s $BK/bk .
-	ln -s $BK/get .
-	ln -s $BK/admin .
-	ln -s $BK/delta .
-	ln -s $BK/prs .
-	ln -s $BK/rmdel .
-	ln -s $BK/unget .
-
-You will need Tcl and Tk for the GUI (We recommended tcl versions
->=8.0.5).  If /bin/sh is not POSIX compliant, "bk.script" won't work.
-Try changing the #! line to point at ksh or bash if you have problems.
-
-Some vendors' versions of diff have bugs which are tickled by
-BitKeeper.  If you have problems, we recommend you install GNU diff.
+. New Features
+. Noteworthy bug fixes
 
 Upgrade notes
 ----------------------------------------------------------------------------
 
-1) As a precautionary measure, we recommend the first thing you do is backup
-   your repositories in case something goes wrong.
-
-2) in each repository, run
-
-        bk cset -vfM1.0..
-
-   This makes sure that all of your change sets are actually
-   recorded in the various files.  When we add the transaction log we won't
-   need this anymore, but for now...
-
-3) in each repository, make sure that BitKeeper is happy by:
-
-        bk -r check -a
-
-   This makes sure each delta in each file that says it is in a change
-   set actually _is_ in a change set.  Then we do it the other
-   way:  for each change set in the ChangeSet file, we make sure that the
-   change set is marked in the files.  Then we make sure that all the files
-   and deltas in the ChangeSet file are in the repository (this will
-   flag any missing files).
-
-4) If you find any missing files, you have several options:
-   a) if the files are truly missing in all repositories (this can happen
-      if someone inadvertently checked in a.out and then somebody had the
-      bright idea of removing SCCS/s.a.out), then you can add the key for
-      the file to BitKeeper/etc/gone and check in the gone file with a
-      "bk new gone".  The key should be the string that BK spits out
-      when you run check. For example:
-
-        lm@lm.bitmover.com|src/undo.c|19990818003019|59393
-
-      Make sure that there are no leading or trailing spaces.
-
-      Note: the gone file doesn't make files be gone, you did that.  All
-      it does is make BK not be upset that they are gone.  If the file
-      ever reappears, BK will ignore the entry in the gone file.
-
-   b) if you can find the file somewhere else, try copying it in by hand
-      and then repeat the
-
-        bk cset -vfM1.0..
-        bk -r check -a
-
-      if you get no errors, you're done.
-
-   c) if the proceeding gave you errors, then your recovered file is either
-      ahead of or behind the repository.  Contact us and we'll help you fix
-      it.
-
-5) There are some new commands which you may like:
-
-    bk version - shows BK version like so:
-    BitKeeper version is 20000919233720 for x86-glibc21-linux
-
-    bk status - shows the status of a tree like so:
-     Status for BitKeeper repository work.bitmover.com:/home/bk/stable
-     BitKeeper/Free,bkweb version is 20000919233720 for x86-glibc21-linux
-     Built by: lm@work.bitmover.com
-     Built on: Tue Sep 19 17:01:38 PDT 2000
-     Parent repository is work.bitmover.com:/home/bk/lm
-     Pending patches
-         73 people have made deltas.
-       1068 files under revision control.
-          2 files not under revision control.
-          0 files modified and not checked in.
-          0 files with checked in, but not committed, deltas.
-
-
-Changes from last release
-----------------------------------------------------------------------------
-
-This section contains information on the following topics:
-
-. Interface changes
-. New features
-. Noteworthy bug fixes
-
-
-Interface Changes
-----------------------------------------------------------------------------
-
-a) Two BitKeeper system files have been renamed:
-
-BitKeeper/etc/csets -> Bitkeeper/etc/csets-in
-BitKeeper/etc/pushed -> BitKeeper/etc/csets-out
-
-Typically these files are accessed by the user supplied trigger scripts.
-This mean your trigger scripts must be updated when you upgrade to
-BitKeeper 2.0.
-
-b) bk mkdiffs command has been removed in 2.x.  It is replaced by
-   bk export -tpatch, which is much faster.
-
-c) The new default option of "bk lock" is the -l option (verbose mode).
-   To get the silent mode, use the "bk lock -q" option.
-
-d) prs -d option now supports the -gt -lt -eq -ne -ge -le operators.
-
-e) prs -d option no longer prints a line feed by default at the end of each
-   delta record.
-
-f) cset -t option has been moved to rset -l.
-   cset -R option has been moved to rset -rA,B.
-
-g) In release 1.x, the ignore filter will ignore a directory even if it has
-   files under SCCS control. This is bad, since citool may miss files that
-   need to be checked-in/committed.  In relesae 2.0, the ignore filter
-   applies _only_ to g-files not under sccs control -- it does not ignore
-   an entire directory.
-
+Nothing is required to upgrade from the 3.0 release.
 
 New Features
 ----------------------------------------------------------------------------
-a) For users who prefer their g-file to be visible always, even after a
-   file is checked in or comitted, you can achieve this by adding the
-   following line in the config file:
- 	checkout:get
-   or
- 	checkout:edit
-   or
- 	checkout:none
 
-   Users can also enable the preference on a per user, per host, per
-   repsitory basis. This is done as a selection filter at the beginning
-   of the reference line, e.g.:
+  - Export a BK_COMMENTFILE variable so that the pre-commit triggers
+    can check the comments for entries such as BUGIDs
+    (see 'bk help trigger' for more information)
 
-   	[awc]:checkout:get
-   or
-   	[awc@work.bitmover.com:/home/bk/stable]checkout:edit
-   or
-   	[@work.bitmover.com]checkout:get
-   or
-   	[:/home/bk/stable]heckout:get
+  - Several Performance enhancements
+     - recode some sections of takepatch to dramatically speedup
+       applying large numbers of deltas to 1 file
+     - Fixes to make 'bk clone -l' faster
+     - enable partial checks in 'bk clone -l' and 'bk undo'
 
+  - Now each repository generates a unique identifier that can be used
+    for tracking.  The id can be fetched with 'bk id -r' and it is
+    passed to triggers in BK_REPO_ID and BKD_REPO_ID.  The ID of
+    remote repositories are also recorded in the logs.
+  
+  - Added the ability for the following GUIs to save and restore their
+    geometry information: renametool, fmtool, fm3tool, citool, bugform
 
-b) byte count transfered by each push/pull/clone command is
-   logged in the repo-log
-c) bk sfiles is much faster (4X) when scanning a large tree
-   (this means citool should start up much faster)
-d) The  Windows98/NT/2000 version now installs a helptool menu entry
-   in the Bitkeeper menu.
+  - win32: make installation of bkshellx.dll and bkscc.dll optional
 
-e) GUI Tools
-       New color scheme
+  Security fixes:
 
-       Consistent keybindings across all tools
+    Put all tmp files in BitKeeper/tmp by default.  Allow user to
+    change the tmp location with TMPDIR
 
-       Added mousewheel support to most of the tools
-      
-       Single configuration file for all tools. The .bkgui
-       configuration file is now used to modify the colors,
-       keybindings, and widget dimensions.
-
-f) citool
-       When staring citool, a progress bar now shows the number of
-       files that are being scanned.
-
-       citool now shows files that are not under revision control and
-       give the user the option to place them under revision control
-
-       By clicking on the file-type icon, users can exclude modified
-       and pending files from the current changeset in cases where
-       they might want to push some work to another repository,
-       but might want to hold some files back that require more work.
-
-       Files not under revision control can be placed on the ignore list
-       by clicking on the file name.
-
-g) sccstool/histtool changes
-      Renamed sccstool to histtool.
-
-      Starts much quicker on large trees since we only display the
-      last month's worth of revisions, by default. There is a 
-      "Select Range" button that allow the user to view earlier 
-      revisions.
-
-      When viewing the annotated file listing, clicking on a line
-      will bring up the check-in comments for the line.
-
-      When viewing the files that make up a changeset (double-clicking
-      on a revision node), clicking on a filename will bring up
-      another sccstool for the given file.
-
-      Single-clicking the middle mouse button redisplays the entire
-      revision history for a file in the lower text window.
-
-      Double-clicking the middle mouse button display only the tagged
-      changesets in the lower text window.
-
-h) helptool
-      Added searching
-
-      Added history stack so that you can go back to the previous help 
-      topics
-
-i) difftool
-      Added ability to search the diffs
-
-      Added ability to reread the file
-	
-
+    Never use /bin/sh to run subprocesses
 
 Noteworthy Bug Fixes
 ----------------------------------------------------------------------------
 
+  2002-09-13-002: 'bk parent' prints bogus error when there is no parent
+  2002-10-10-002: If takepatch fails because a file is edited print the 
+		  original file name not the name it will be after this 
+		  patch.
+  2002-10-11-002: A failed undo will no longer clean some files in the
+		  users tree.
+  2002-11-15-002: 'bk changes -uUSER -c-1w' didn't work.
+  2002-11-19-002: revtool would sort revisions incorrectly (1.9 vs 1.10)
+  2002-11-06-002: Go to a different uid/gid permanently in bkd.
 
-Known bugs
-----------------------------------------------------------------------------
+  Fix bug where changes in an edited config file didn't get used during
+  a pull.
 
-Import and rcs2sccs still don't work nearly as well as we would like.
-You can get your CVS tree converted, but it will take quite a bit of
-handholding.  See the comments in rcs2sccs.perl.
+  Fix bug where DOS line termination was not always removed correctly
+  when a file is originally created or imported.
 
-Excessive use is made of files in /tmp.  There may be security issues
-related to this.
+  Fix bug that didn't allow people to enable single_user repositories
+  and openlogging at the same time. Though it's not clear why a user
+  would want to use these together.
 
-LODs are still not implemented.
+  Fix rare condition where a tag conflict doesn't go away after it is
+  resolved originally.
 
-bkWeb is not working on NT yet.
+  Fix some problems running on a case-folding file system under UNIX.
+  The default FS for Mac OS X is an example.
 
-----------------------------------------------------------------------------
-All trademarks are property of their respective owners.
+  Minor bug in SCCS keyword expansion.  '% %A%' didn't expand
+
+  citool will now always report any errors or unexpect output from 
+  'bk commit' to the user and give them a chance to recover.
+
+===============================================================================
+Release notes for BitKeeper version 3.0
+
+bk-3.0 was released on october 10th, here are the release notes against
+bk-2.1.6-pre5; we probably won't do relnotes vs bk-2.0.x unless people
+really need them, as far as we can tell everyone is running 2.1.x.
+
+Bug fixes
+    - catch all error returns from zlib, catches truncated files.
+    - bk cp 
+    - many repo locking problems fixed, locking stress tested
+    - better handling of config logging
+    - more complete handling of checkout:{get,edit}
+    - bk mv now works like Unix mv
+    - csetprune fully supported
+    - various bugs in fm3tool (3 way file merge) fixed
+    - more polished look and feel for the GUIs
+    - the cursor no longer disappears in citool
+    - citool no longer loses comments in the error path
+    - attempt to have the default GUI fonts be reasonable on all resolutions
+    - bk changes can list changes in a remote repository; it has many useful
+      options such as the ability to filter on user, strings, etc.
+    - fixed the search path for programs, the last component wasn't used
+    - cvs import supported on windows
+    - patch imports now work into trees which have modified / new files
+    - patch import does repository locking
+    - make interrupts in delta/commit work consistently on Unix & Windows
+    - the config option partial_check is more widely supported 
+    - Partial list of closed bugs:
+      2001-01-06-003 resolve doesn't respect the checkout policy
+      2001-01-08-003 pull, pull which fails, bk unpull unpulls the first
+      2001-02-07-002 menus in guitools look like buttons.
+	make them look like menus
+      2001-02-21-004 bk clone /nonexistant/dir dir fails strangely
+      2001-06-29-003 citool loses the comments in too many different situations
+      2001-08-29-001 BK installer installs
+	files world-writeable owned by uid 3536
+      2001-09-26-001 Changed comment in citool's ChangeSet is not saved
+      2002-02-26-003 revtool fails with
+      2002-03-01-004 sendbug GUI window too tall on 1024x480 screen
+      2002-03-24-002 changes -R can hang when there are no changes
+      2002-04-02-001 bk changes needs to retry if it can't get a lock
+      2002-04-02-002 chmod - wrong argument causes repository loss
+      2002-04-03-001 bk tag should not allow commas in tags
+      2002-04-06-002 ASCII files can falsely be identified as binary
+      2002-04-09-002 bk chmod needs to respect checkout pref
+      2002-04-10-003 bk resync won't pull from other url than parent
+      2002-04-16-002 changes -R asserted
+      2002-04-17-002 Double file moves leak cfiles
+      2002-04-23-001 bk patch assertion failure.
+      2002-05-02-001 with checkout:get in config file,
+	BitKeeper/deleted files are all checked out
+      2002-05-10-002 bk pull errors don't re-edit the working files
+      2002-05-10-004 bk: port/mnext.c:17: mnext:
+	Assertion 's[-1] == '\n'' failed.
+      2002-05-27-001 bkd outputs wrong base href for
+	"changeset activity for <user>" page
+      2002-07-10-002 bk chmod doesn't obey checkout: get
+      2002-08-28-001 bk get SCCS/*.jpeg SCCS/*.png
+	in linux-2.4 bitkeeper tree crashes
+      2002-08-30-001 bk fix -c leaves the repository inconsistent
+	for files with a space in their path/name
+      2002-09-09-003 Command mis-match on citool
+      2002-09-11-001 "bk changes -a" behavior doesn't
+	imply -e, despite what the documentation says...
+      2002-09-11-002 "bk changes -R" and "bk changes -L" inconsistent
+      2002-09-12-001 "bk push" error message tells user to use obsolete commands
+      2002-09-19-004 "bk comments -"
+	dumps core when input contains header but no comments
+
+Performance enhancements
+    - both sides of a pull/push now do 1 pass over the ChangeSet file, the
+      more changesets you are pulling at one time, the more this helps.
+      In an extreme example it went from 20 minutes to 3 seconds.
+    - removed N^2 and N! loops in check and takepatch
+      
+Interface changes / additions
+    - bk help/helptool ignore case by default in searches
+    - bk import -temail (from Linus)
+    - bk man added and the man page source is shipped so you can print them
+    - bk prompt interface which works in GUI or cli mode
+    - -r<rev> may be replaced with -r@<csetrev>.  Eg bk -r diffs -r@bk-2.0
+    - bk clone -l (aka lclone) runs same triggers as regular clone
+    - bk relink can take multiple directories
+    - bk setuptool, graphical project creator, much nicer than bk setup
+    - bk csettool can toggle annotations on/off
+    - bk csettool has vi-like forward/back/expose bindings
+    - bk helptool has vi-like forward/back bindings
+    - GUI tools "remember" their size and location
+    - bk revtool always does forward diffs
+    - "d" always works in revtool, even with only one node selected
+    - bk bkd -s<dir> is no longer supported, see -C
+    - bkd.1 notes that it does not work when started in subst'ed drive.
+    - bk check has -gg/-ggg options for handling both gone-ed files and/or
+      gone-ed deltas.  Also has -ff to fix fixable errors which where the
+      fixes may be destructive (unlikely to be needed by anyone other than
+      the MySQL maintainers)
+    - bk check prints shorter error messages with a tag, like (chk2).  To
+      see the long message run "bk help <tag>"
+    - bk comments with no args implies -C+
+    - bk ci/delta now respects the SCCS/c.<file> as implied comments
+    - bk getuser -r option added to get real user (not $BK_USER)
+    - bk parent -p
+    - bk prs has new keywords LI/LD/LU/IMPORTER
+    - Added $no_proxy env var, see bk help url
+    - bk grep prints full path names instead of basenames
+    - bk tag does not allow , or .. in tag names
+    - installer takes a -f option to just install it
+
+Commercial user changes
+    - added digital signatures for license keys, you must get a signed key
+      to run bk-3.0.
+
+Platforms
+    - MacOS X (command line only)
+    - Linux/IA64 (Itanium)
+    - Linux/PARISC
+    - Linux/zseries
+    - statically linked Linux/x86

@@ -107,7 +107,7 @@ do	P=`expr $P + 1`
 	bk bkd -q -xpull -p$P -c1 
 done
 cd $HERE/copy/src
-bk pull -t bk://localhost:$P 2> pull.out 
+bk pull -t bk://localhost:$P > pull.out 2>&1
 grep -q "bkd has disabled" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1; fi
 echo OK
@@ -179,7 +179,7 @@ waitForUnlock $HERE/project
 cd $HERE/copy
 bk mv old.c conflict.c
 bk commit $Q -ygconflict
-echo "" | bk push -c1 bk://localhost:$P 2> bk.out 
+echo "" | bk push -c1 bk://localhost:$P > bk.out 2>&1
 grep -q "Did not resolve 1 renames, no conflicts causing abort." bk.out
 if [ $? -ne 0 ]; then echo failed; cat bk.out; exit 1; fi
 rm -f  $HERE/project/conflict.c
@@ -217,13 +217,13 @@ do	P=`expr $P + 1`
 	bk bkd -q -d -Ce -p$P -c3
 done
 cd $HERE/copy
-bk pull bk://localhost:$P/$HERE/project 2> pull.out
+bk pull bk://localhost:$P/$HERE/project > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
-bk pull bk://localhost:$P.. 2> pull.out
+bk pull bk://localhost:$P.. > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
-bk pull bk://localhost:$P/sub/../../project 2> pull.out
+bk pull bk://localhost:$P/sub/../../project > pull.out 2>&1
 grep -q "ERROR-cannot cd to" pull.out
 if [ $? -ne 0 ]; then echo failed; cat pull.out; exit 1 ; fi
 echo OK
@@ -238,13 +238,13 @@ do	P=`expr $P + 1`
 	BK_USER=garbage bk bkd -qdp$P -c4
 done
 cd $HERE/copy
-BK_USER=pull_USER bk pull bk://localhost:$P/$HERE/project 2> pull.out
+BK_USER=pull_USER bk pull bk://localhost:$P/$HERE/project > pull.out 2>&1
 grep -q pull_USER $HERE/project/BitKeeper/log/repo_log || {
 	echo failed to get first name right in pull
 	cat $HERE/project/BitKeeper/log/repo_log
 	exit 1
 }
-BK_USER=USER_PULL bk pull bk://localhost:$P/$HERE/project 2> pull.out
+BK_USER=USER_PULL bk pull bk://localhost:$P/$HERE/project > pull.out 2>&1
 grep -q USER_PULL $HERE/project/BitKeeper/log/repo_log || {
 	echo failed to get second name right in pull
 	cat $HERE/project/BitKeeper/log/repo_log

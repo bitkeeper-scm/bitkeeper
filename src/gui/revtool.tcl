@@ -177,7 +177,7 @@ proc chkSpace {x1 y1 x2 y2} \
 #
 proc revMap {file} \
 {
-	global rev2date serial2rev dev_null revX
+	global rev2date serial2rev dev_null revX rev2serial
 
 	#set dspec "-d:I:-:P: :DS: :Dy:/:Dm:/:Dd:/:TZ: :UTC-FUDGE:\n"
 	set dspec "-d:I:-:P: :DS: :UTC: :UTC-FUDGE:\n"
@@ -193,13 +193,14 @@ proc revMap {file} \
 		#puts "rev: ($rev) utc: $utc ser: ($serial) date: ($date)"
 		set rev2date($rev) $date
 		set serial2rev($serial) $rev
+		set rev2serial($rev) $serial
 	}
 	catch { close $fid }
 }
 
 proc orderSelectedNodes {reva revb} \
 {
-	global rev1 rev2 anchor rev2rev_name w
+	global rev1 rev2 anchor rev2rev_name w rev2serial
 
  	if {[info exists rev2rev_name($reva)]} {
  		set reva $rev2rev_name($reva)
@@ -208,7 +209,12 @@ proc orderSelectedNodes {reva revb} \
  		set revb $rev2rev_name($revb)
  	}
 
-	if {$reva < $revb} {
+	if {![info exists rev2serial($reva)] ||
+	    ![info exists rev2serial($revb)]} {
+		return
+	}
+
+	if {$rev2serial($reva) < $rev2serial($revb)} {
 		set rev2 [getRev new $revb]
 		set rev1 [getRev old $reva]
 	} else {
@@ -234,7 +240,7 @@ proc doDiff {{difftool 0}} \
 	if {![info exists anchor] || $anchor == ""} return
 
 	# No second rev? Get the parent
-	if {![info exists rev2] || $rev2 == $rev1} {
+	if {![info exists rev2] || "$rev2" == "$rev1" || "$rev2" == ""} {
 		set rev2 $anchor
 		set rev1 [exec bk prs -d:PARENT: -hr${anchor} $file]
 	}
@@ -550,7 +556,8 @@ proc centerRev {revname} \
 # Walks down an array serial numbers and places bar when the date
 # changes
 #
-proc dateSeparate { } { \
+proc dateSeparate { } \
+{
 
 	global serial2rev rev2date revX revY ht screen gc w
 	global month

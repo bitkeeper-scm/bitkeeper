@@ -225,7 +225,6 @@ getsfio(int verbose, int gzip)
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return (1);
 	}
-	signal(SIGCHLD, SIG_DFL);
 	gunzipAll2fd(0, pfd, gzip, &in, &out);
 	close(pfd);
 	waitpid(pid, &status, 0);

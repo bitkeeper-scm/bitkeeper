@@ -336,6 +336,7 @@ int
 c_shell(resolve *rs)
 {
 	names	*n = rs->tnames;
+	char	*av[10];
 
 	safe_putenv("BK_GCA=%s", n->gca);
 	safe_putenv("BK_LOCAL=%s", n->local);
@@ -345,7 +346,11 @@ c_shell(resolve *rs)
 		system("sh -i");
 		return (0);
 	}
-	system(rs->shell);
+	av[0] = "sh";
+	av[1] = "-c";
+	av[2] = rs->shell;
+	av[3] = 0;
+	spawnvp_ex(_P_WAIT, av[0], av);
 	return (0);
 }
 

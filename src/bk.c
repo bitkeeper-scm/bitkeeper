@@ -7,6 +7,7 @@
 
 char	*editor = 0, *pager = 0, *bin = 0;
 char	*BitKeeper = "BitKeeper/";	/* XXX - reset this? */
+char	**bk_environ;
 project	*bk_proj = 0;
 jmp_buf	exit_buf;
 char	cmdlog_buffer[MAXPATH*4];
@@ -158,6 +159,7 @@ int	sfio_main(int, char **);
 int	shrink_main(int, char **);
 int	sinfo_main(int, char **);
 int	smerge_main(int, char **);
+int	shellSplit_test_main(int ac, char **av);
 int	socket2pipe_main(int, char **);
 int	sort_main(int, char **);
 int	sortmerge_main(int, char **);
@@ -219,6 +221,7 @@ struct	command cmdtbl[] = {
 	{"_socket2pipe", socket2pipe_main},	/* for win32 only */
 	{"_sort", sort_main},
 	{"_sortmerge", sortmerge_main},
+	{"_shellSplit_test", shellSplit_test_main},
 	{"_strings", strings_main},
 	{"_timestamp", timestamp_main},
 	{"_unlink", unlink_main },
@@ -407,7 +410,7 @@ save_gmon(void)
 }
 
 int
-main(int ac, char **av)
+main(int ac, char **av, char **env)
 {
 	int	i, c, si, is_bk = 0, dashr = 0;
 	int	ret;
@@ -432,6 +435,7 @@ main(int ac, char **av)
 	}
 	atexit(cmdlog_exit);
 	platformInit(av); 
+	bk_environ = env;
 	assert(bin);
 	if (av[1] && streq(av[1], "bin") && !av[2]) {
 		printf("%s\n", bin ? bin : "no path found");
@@ -714,8 +718,8 @@ private	struct {
 	 * This is a hack because we short circuit part2 in changes.c.
 	 * It opens a tiny race.
 	 */
-	{"chg_part1", CMD_RDLOCK|CMD_RDUNLOCK},
-	{"chg_part2", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote changes part1", CMD_RDLOCK|CMD_RDUNLOCK},
+	{"remote changes part2", CMD_RDLOCK|CMD_RDUNLOCK},
 	{ 0, 0 },
 };
 
@@ -758,19 +762,11 @@ cmdlog_start(char **av, int httpMode)
 
 	unless (bk_proj && bk_proj->root) return;
 
-	if (cmdlog_repo) {
-		sprintf(cmdlog_buffer,
-		    "%s:%s", sccs_gethost(), fullname(bk_proj->root, 0));
-	}
 	for (len = 1, i = 0; av[i]; i++) {
 		len += strlen(av[i]) + 1;
 		if (len >= sizeof(cmdlog_buffer)) continue;
-		if (i || cmdlog_repo) {
-			strcat(cmdlog_buffer, " ");
-			strcat(cmdlog_buffer, av[i]);
-		} else {
-			strcpy(cmdlog_buffer, av[i]);
-		}
+		if (i) strcat(cmdlog_buffer, " ");
+		strcat(cmdlog_buffer, av[i]);
 	}
 	if (getenv("BK_TRACE")) ttyprintf("CMD %s\n", cmdlog_buffer);
 
@@ -843,14 +839,19 @@ cmdlog_start(char **av, int httpMode)
 		}
 	}
 	if (cmdlog_flags & CMD_BYTES) save_byte_count(0); /* init to zero */
+	if (strneq("remote ", av[0], 7)) {
+		char	*repoid = getenv("BK_REPO_ID");
+		if (repoid) cmdlog_addnote("rmtc", repoid);
+	}
 }
 
-private	char	**notes = 0;
+private	MDBM	*notes = 0;
 
 void
-cmdlog_addnote(char *note)
+cmdlog_addnote(char *key, char *val)
 {
-	notes = addLine(notes, strdup(note));
+	unless (notes) notes = mdbm_mem();
+	mdbm_store_str(notes, key, val, MDBM_REPLACE);
 }
 
 int
@@ -859,6 +860,7 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 	FILE	*f;
 	char	*user;
 	char	path[MAXPATH];
+	off_t	logsize;
 	va_list	ap;
 
 	sprintf(path, "%s/BitKeeper/log/%s", root, file);
@@ -875,21 +877,21 @@ write_log(char *root, char *file, int rotate, char *format, ...)
 	user = sccs_getuser();
 	fprintf(f, "%c%s %lu %s: ",
 	    log_versions[LOGVER],
-	    user ? user : "Phantom User", time(0), bk_vers);
+	    user ? user : "Phantom.User", time(0), bk_vers);
 	va_start(ap, format);
 	vfprintf(f, format, ap);
 	va_end(ap);
 	fputc('\n', f);
+	logsize = fsize(fileno(f));
+	fclose(f);
 
 #define	LOG_MAXSIZE	(1<<20)
-	if (rotate && fsize(fileno(f)) > LOG_MAXSIZE) {
+	if (rotate && logsize > LOG_MAXSIZE) {
 		char	old[MAXPATH];
 
 		sprintf(old, "%s-older", path);
-		fclose(f);
 		rename(path, old);
 	} else {
-		fclose(f);
 		chmod(path, 0666);
 	}
 	return (0);
@@ -899,14 +901,21 @@ int
 cmdlog_end(int ret)
 {
 	int	flags = cmdlog_flags & CMD_FAST_EXIT;
-	char	*file;
-	int	rotate;
-	char	*log, *newlog;
-	int	i, len;
+	char	*log;
+	int	len, savelen;
+	kvpair	kv;
 
 	purify_list();
 	unless (cmdlog_buffer[0] && bk_proj && bk_proj->root) {
 		return (flags);
+	}
+
+	/* add last minute notes */
+	if (cmdlog_repo && (cmdlog_flags&CMD_BYTES)) {
+		char	buf[20];
+
+		sprintf(buf, "%u", (u32)get_byte_count());
+		cmdlog_addnote("xfered", buf);
 	}
 
 	if (getenv("BK_SHOWPROC")) {
@@ -916,37 +925,32 @@ cmdlog_end(int ret)
 		fprintf(f, " %s = %d\n", cmdlog_buffer, ret);
 		fclose(f);
 	}
-	log = malloc(strlen(cmdlog_buffer) + 100);
+	len = strlen(cmdlog_buffer) + 20;
+	EACH_KV (notes) len += kv.key.dsize + kv.val.dsize;
+	log = malloc(len);
 	if (ret == LOG_BADEXIT) {
 		sprintf(log, "%s = ?", cmdlog_buffer);
 	} else {
 		sprintf(log, "%s = %d", cmdlog_buffer, ret);
 	}
-	if (cmdlog_repo) {
-		file = "repo_log";
-		rotate = 0;
-		if (cmdlog_flags&CMD_BYTES) {
-			sprintf(&log[strlen(log)],
-			    " xfered=%u", (u32)get_byte_count());
-		}
-	} else {
-		file = "cmd_log";
-		rotate = LOG_MAXSIZE;
-	}
+	savelen = len;
 	len = strlen(log);
-	EACH (notes) len += 1 + strlen(notes[i]);
-	newlog = malloc(len+1);
-	strcpy(newlog, log);
-	free(log);
-	log = newlog;
-	len = strlen(log);
-	EACH (notes) {
+	EACH_KV (notes) {
 	    	log[len++] = ' ';
-		strcpy(&log[len], notes[i]);
-		log[len] = 0;
+		strcpy(&log[len], kv.key.dptr);
+		len += kv.key.dsize - 1;
+	    	log[len++] = '=';
+		strcpy(&log[len], kv.val.dptr);
+		len += kv.val.dsize - 1;
 	}
-	freeLines(notes, free);
-	if (write_log(bk_proj->root, file, rotate, log)) {
+	assert(len < savelen);
+	mdbm_close(notes);
+	notes = 0;
+	if (write_log(bk_proj->root, "cmd_log", 0, "%s", log)) {
+		return (flags);
+	}
+	if (cmdlog_repo &&
+	    write_log(bk_proj->root, "repo_log", LOG_MAXSIZE, "%s", log)) {
 		return (flags);
 	}
 	free(log);
@@ -980,8 +984,7 @@ cmdlog_dump(int ac, char **av)
 	char	*version;
 	char	*user;
 	char	buf[MAXPATH*3];
-	char	logf[MAXPATH];
-	int	yelled = 0, c, all = 0, ct = 0;
+	int	yelled = 0, c, all = 0;
 	RANGE_DECL;
 
 	unless (bk_proj && bk_proj->root) return;
@@ -995,27 +998,9 @@ usage:			system("bk help cmdlog");
 		}
 	}
 	if (things && d[0]) cutoff = rangeCutOff(d[0]);
-	if (all) {
-		sprintf(buf, "sort -n +1");
-		sprintf(logf, "%s/BitKeeper/log/repo_log", bk_proj->root);
-		if (exists(logf)) {
-			strcat(buf, " ");
-			strcat(buf, logf);
-			ct++;
-		}
-		sprintf(logf, "%s/BitKeeper/log/cmd_log", bk_proj->root);
-		if (exists(logf)) {
-			strcat(buf, " ");
-			strcat(buf, logf);
-			ct++;
-		}
-		unless (ct) return;
-
-		f = popen(buf, "r");
-	} else {
-		sprintf(buf, "%s/BitKeeper/log/repo_log", bk_proj->root);
-		f = fopen(buf, "r");
-	}
+	sprintf(buf, "%s/BitKeeper/log/%s", bk_proj->root,
+	    (all ? "cmd_log" : "repo_log"));
+	f = fopen(buf, "r");
 	unless (f) return;
 	while (fgets(buf, sizeof(buf), f)) {
 		user = buf;

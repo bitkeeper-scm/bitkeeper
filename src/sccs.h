@@ -338,6 +338,7 @@
 #define	DFILE		"BitKeeper/etc/SCCS/x.dfile"
 #define	WEBMASTER	"BitKeeper/etc/webmaster"
 #define	CHECKED		"BitKeeper/log/checked"
+#define	REPO_ID		"BitKeeper/log/repo_id"
 #define PARENT		"BitKeeper/log/parent"
 #define PUSH_PARENT	"BitKeeper/log/push-parent"
 #define PULL_PARENT	"BitKeeper/log/pull-parent"
@@ -364,9 +365,6 @@ int	bk_mode(void);
 
 typedef	unsigned short	ser_t;
 typedef	unsigned short	sum_t;
-typedef	unsigned int	u32;
-typedef	unsigned short	u16;
-typedef	unsigned char	u8;
 typedef	char		**globv;
 
 #include "liblines.h"
@@ -830,6 +828,7 @@ delta	*sccs_key2delta(sccs *sc, char *key);
 int	sccs_keyunlink(char *key, project *proj, MDBM *idDB, MDBM *dirs);
 char	*sccs_impliedList(sccs *s, char *who, char *base, char *rev);
 int	sccs_sdelta(sccs *s, delta *, char *);
+void	sccs_md5delta(sccs *s, delta *d, char *b64);                            
 void	sccs_shortKey(sccs *s, delta *, char *);
 int	sccs_resum(sccs *s, delta *d, int diags, int dont);
 int	sccs_newchksum(sccs *s);
@@ -851,6 +850,8 @@ delta	*findrev(sccs *, char *);
 delta	*sccs_top(sccs *);
 delta	*sccs_findKey(sccs *, char *);
 MDBM	*sccs_findKeyDB(sccs *, u32);
+int	isKey(char *key);
+delta	*sccs_findMD5(sccs *s, char *md5);                              
 delta	*sccs_dInit(delta *, char, sccs *, int);
 char	*sccs_getuser(void);
 void	sccs_resetuser(void);
@@ -1034,8 +1035,9 @@ off_t	fsize(int fd);
 char	*separator(char *);
 int	trigger(char *cmd, char *when);
 void	cmdlog_start(char **av, int want_http_hdr);
-void	cmdlog_addnote(char *note);
+void	cmdlog_addnote(char *key, char *val);
 int	cmdlog_end(int ret);
+int	write_log(char *root, char *file, int rotate, char *format, ...);
 off_t	get_byte_count(void);
 void	save_byte_count(unsigned int byte_count);
 int	cat(char *file);
@@ -1164,6 +1166,11 @@ pid_t	findpid(pid_t pid);
 void	save_log_markers(void);
 void	update_log_markers(int verbose);
 int	isCaseFoldingFS(char *root);
+void	line2av(char *cmd, char **av);
+void	smerge_saveseq(u32 seq);
+char	*loadfile(char *file, int *size);
+char	*repo_id(void);
+void	fromTo(char *op, remote *r, remote *l);
 void	set_timestamps(char *sfile);
 
 extern char *bk_vers;

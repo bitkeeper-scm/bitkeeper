@@ -121,6 +121,7 @@ cat > BitKeeper/triggers/post-outgoing <<EOF
 set | grep $DASHA BK | sort > $HERE/post-outgoing
 EOF
 chmod +x BitKeeper/triggers/*
+project_repoid=`bk identity -r`
 cd $HERE
 bk clone $Q project clone && {
 	echo failed to exit with an error status
@@ -150,6 +151,12 @@ test -d clone || {
 }
 grep -q BK_CSETS=1.0..1.1 $HERE/post-outgoing || {
 	echo failed to put cset list in the env
+	exit 1
+}
+grep BKD_REPO_ID= $HERE/post-outgoing > $HERE/tmp
+fgrep "$project_repoid" $HERE/tmp > /dev/null || {
+	echo "failed to record where we came from which is $project_repoid"
+	cat $HERE/post-outgoing
 	exit 1
 }
 echo OK
@@ -235,9 +242,11 @@ cd parent
 rm -f BitKeeper/triggers/*
 cat > BitKeeper/triggers/post-incoming <<EOF
 #!/bin/sh
+# ignore BK_REPO_ID because clone and clone-l had different ids
 set | grep $DASHA BK |
     grep -v BK_IGNORELOCK |
     grep -v BKD_LEVEL |
+    grep -v BK_REPO_ID |
     sort > $HERE/post-incoming-clone
 exit 0
 EOF
@@ -248,6 +257,12 @@ cd $HERE
 bk clone $Q parent clone2
 test -f $HERE/post-incoming-clone || {
 	echo failed to run post-incoming trigger
+	exit 1
+}
+grep BKD_REPO_ID= $HERE/post-incoming-clone > $HERE/tmp
+fgrep "$project_repoid" $HERE/tmp > /dev/null || {
+	echo "failed to record where we came from which is $project_repoid"
+	cat $HERE/post-incoming-clone
 	exit 1
 }
 echo OK
@@ -267,7 +282,7 @@ cat > BitKeeper/triggers/post-incoming <<EOF
 set | grep $DASHA BK |
     grep -v BK_LCLONE |
     grep -v _BK_ |
-    grep -v BK_IGNORELOCK |
+    grep -v BK_REPO_ID |
     sort > $HERE/post-incoming-clone-l
 exit 0
 EOF
@@ -542,6 +557,7 @@ bk changes - < \$BK_CSETLIST > $HERE/changes
 set | grep $DASHA BK | sort -u > $HERE/post-incoming
 EOF
 chmod +x BitKeeper/triggers/*
+clone_repoid=`bk identity -r`
 bk pull $Q || {
 	echo failed to exit zero
 	exit 1
@@ -556,6 +572,16 @@ test -s $HERE/changes || {
 }
 grep -q ChangeSet@1.3 $HERE/changes || {
 	echo failed to list the ChangeSet
+	exit 1
+}
+grep BKD_REPO_ID= $HERE/post-incoming > $HERE/tmp
+fgrep "$project_repoid" $HERE/tmp > /dev/null || {
+	echo failed to record where we came from
+	exit 1
+}
+grep BK_REPO_ID= $HERE/post-incoming > $HERE/tmp
+fgrep "$clone_repoid" $HERE/tmp > /dev/null || {
+	echo failed to record where we are
 	exit 1
 }
 echo OK
@@ -579,7 +605,7 @@ cd $HERE/clone
 ls > LS
 bk new $Q LS
 bk commit -ywhatever $Q
-bk push 2>OUT 1>&2 && {
+bk push >OUT 2>&1 && {
 	echo push should have failed
 	exit 1
 }
@@ -618,7 +644,7 @@ ls > whatever
 bk new $Q whatever
 bk commit -ywhatever $Q
 cd $HERE/project
-bk pull -R $HERE/clone 2>OUT || {
+bk pull -R $HERE/clone > OUT 2>&1 || {
 	echo pull should not have failed
 	exit 1
 }
@@ -666,7 +692,7 @@ chmod +x BitKeeper/triggers/*
 waitForUnlock $HERE/project
 cd $HERE/clone
 rm -f BitKeeper/triggers/* $HERE/pre-resolve
-bk push 2>OUT 1>&2 && {
+bk push > OUT 2>&1 && {
 	echo push should have failed
 	cat OUT
 	exit 1
@@ -702,7 +728,7 @@ EOF
 chmod +x BitKeeper/triggers/*
 cd $HERE/clone
 rm -f BitKeeper/triggers/* $HERE/pre-resolve
-bk push 2>OUT 1>&2 && {
+bk push > OUT 2>&1 && {
 	echo push should have failed
 	exit 1
 }

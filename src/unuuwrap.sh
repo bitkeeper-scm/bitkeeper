@@ -3,15 +3,4 @@
 # unuuwrap - the receiving side of a uuencode stream
 # %W%
 
-cd /tmp
-TMP=unuu$$
-cat > $TMP
-uudecode $TMP
-set `grep '^begin ' $TMP`
-FILE=$3
-if [ ! -r $FILE ]
-then	chmod 0664 $FILE
-fi
-cat $FILE
-/bin/rm -f $FILE $TMP
-exit 0
+exec bk uudecode 

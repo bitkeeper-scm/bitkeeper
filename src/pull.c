@@ -14,6 +14,7 @@ typedef	struct {
 	u32	noresolve:1;		/* -R: don't run resolve at all */
 	u32	textOnly:1;		/* -t: don't pass -t to resolve */
 	u32	debug:1;		/* -d: debug */
+	u32	gotsome:1;		/* we got some csets */
 	int	gzip;			/* -z[level] compression */
 	int	delay;			/* -w<delay> */
 	u32	in, out;		/* stats */
@@ -105,7 +106,7 @@ err:		freeLines(envVar, free);
 		if (opts.debug) r->trace = 1;
 		if (print_title) {
 			if (i > 1)  printf("\n");
-			printf("%s:\n", pList[i]);
+			fromTo("Pull", r, 0);
 		}
 		/*
 		 * retry if parent is locked
@@ -138,6 +139,31 @@ err:		freeLines(envVar, free);
 	return (rc);
 }
 
+void
+fromTo(char *op, remote *f, remote *t)
+{
+	char	*from, *to;
+	remote	*tmp;
+
+	assert(f || t);
+	if (f) {
+		from = remote_unparse(f);
+	} else {
+		tmp = remote_parse(bk_proj->root, 1);
+		from = remote_unparse(tmp);
+		remote_free(tmp);
+	}
+	if (t) {
+		to = remote_unparse(t);
+	} else {
+		tmp = remote_parse(bk_proj->root, 1);
+		to = remote_unparse(tmp);
+		remote_free(tmp);
+	}
+	printf("%s %s -> %s\n", op, from, to);
+	free(from);
+	free(to);
+}
 
 private int
 send_part1_msg(opts opts, remote *r, char probe_list[], char **envVar)
@@ -308,6 +334,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 				} else {
 					fprintf(stderr, "%s\n",
 "---------------------- Receiving the following csets -----------------------");
+					opts.gotsome = 1;
 				}
 			}
 			fprintf(stderr, "%s", &buf[1]);
@@ -347,10 +374,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 	if (opts.dont) {
 		rc = 0;
 		if (!opts.quiet && streq(buf, "@NOTHING TO SEND@")) {
-			char	*p = remote_unparse(r);
-
-			fprintf(stderr, "Nothing to pull from %s\n", p);
-			free(p);
+			fprintf(stderr, "Nothing to pull.\n");
 		}
 		putenv("BK_STATUS=DRYRUN");
 		goto done;
@@ -388,10 +412,7 @@ pull_part2(char **av, opts opts, remote *r, char probe_list[], char **envVar)
 		putenv("BK_STATUS=OK");
 	}  else if (streq(buf, "@NOTHING TO SEND@")) {
 		unless (opts.quiet) {
-			char	*p = remote_unparse(r);
-
-			fprintf(stderr, "Nothing to pull from %s\n", p);
-			free(p);
+			fprintf(stderr, "Nothing to pull.\n");
 		}
 		putenv("BK_STATUS=NOTHING");
 		rc = 0;

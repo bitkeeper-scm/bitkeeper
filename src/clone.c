@@ -26,7 +26,7 @@ private int	linkdir(char *from, char *dir);
 private int	relink(char *a, char *b);
 private	int	do_relink(char *from, char *to, int quiet, char *here);
 private int	out_trigger(char *status, char *rev, char *when);
-private int	in_trigger(char *status, char *rev, char *root);
+private int	in_trigger(char *status, char *rev, char *root, char *repoid);
 extern	int	rclone_main(int ac, char **av);
 
 int
@@ -86,7 +86,7 @@ clone_main(int ac, char **av)
 		remote	*l;
 		l = remote_parse(av[optind + 1], 1);
 		unless (l) {
-err:		if (r) remote_free(r);
+err:			if (r) remote_free(r);
 			if (l) remote_free(l);
 			usage();
 		}
@@ -196,6 +196,12 @@ clone(char **av, opts opts, remote *r, char *local, char **envVar)
 		fprintf(stderr, "clone: cannot determine remote pathname\n");
 		disconnect(r, 2);
 		goto done;
+	}
+	unless (opts.quiet) {
+		remote	*l = remote_parse(local, 0);
+
+		fromTo("Clone", r, l);
+		remote_free(l);
 	}
 
 	getline2(r, buf, sizeof (buf));
@@ -343,7 +349,6 @@ sfio(opts opts, int gzip, remote *r)
 		fprintf(stderr, "Cannot spawn %s %s\n", cmds[0], cmds[1]);
 		return(1);
 	}
-	signal(SIGCHLD, SIG_DFL);
 	gunzipAll2fd(r->rfd, pfd, gzip, &(opts.in), &(opts.out));
 	close(pfd);
 	waitpid(pid, &status, 0);
@@ -503,8 +508,11 @@ lclone(opts opts, remote *r, char *to)
 	char	skip[MAXPATH];
 	FILE	*f;
 	char	*p;
+	char	*fromid;
 	int	level;
 	struct	stat sb;
+	char	**files;
+	int	i;
 
 	assert(r);
 	unless (r->type == ADDR_FILE) {
@@ -587,27 +595,38 @@ out:		chdir(from);
 	}
 	sprintf(buf, "%s/%s", dest, IDCACHE);
 	link(IDCACHE, buf);	/* linking IDCACHE is safe */
-	chdir("BitKeeper/etc/SCCS");
-	/* the 2 redirect works, we're on Unix */
-	p = aprintf("cp x.* %s/BitKeeper/etc/SCCS 2>/dev/null", dest);
-	system(p);
-	free(p);
+	files = getdir("BitKeeper/etc/SCCS");
+	EACH (files) {
+		if (streq(files[i], "x.id_cache")) continue;
+		if (strneq("x.", files[i], 2)) {
+			p = aprintf("cp '%s/%s' '%s/%s'",
+			    "BitKeeper/etc/SCCS", files[i],
+			    dest, "BitKeeper/etc/SCCS");
+			system(p);
+			free(p);
+		}
+	}
+	freeLines(files, free);
 	chdir(from);
 	repository_rdunlock(0);
+	fromid = repo_id();
 	chdir(dest);
 	rmdir("RESYNC");		/* undo wants it gone */
 	if (clone2(opts, r)) {
 		mkdir("RESYNC", 0777);
-		in_trigger("BK_STATUS=FAILED", opts.rev, from);
+		in_trigger("BK_STATUS=FAILED", opts.rev, from, fromid);
+		free(fromid);
 		goto out;
 	}
-	in_trigger("BK_STATUS=OK", opts.rev, from);
+	in_trigger("BK_STATUS=OK", opts.rev, from, fromid);
+	free(fromid);
 	chdir(from);
 	/*
 	 * Invalidate the project cache, we have changed directory
 	 */
 	if (bk_proj) proj_free(bk_proj);
 	bk_proj = proj_init(0);
+	putenv("BKD_REPO_ID=");
 	out_trigger("BK_STATUS=OK", opts.rev, "post");
 	remote_free(r);
 	return (0);
@@ -633,7 +652,7 @@ out_trigger(char *status, char *rev, char *when)
 }
 
 private int
-in_trigger(char *status, char *rev, char *root)
+in_trigger(char *status, char *rev, char *root, char *repoid)
 {
 	safe_putenv("BKD_HOST=%s", sccs_gethost());
 	safe_putenv("BKD_ROOT=%s", root);
@@ -647,6 +666,7 @@ in_trigger(char *status, char *rev, char *root)
 	} else {
 		putenv("BK_CSETS=1.0..");
 	}
+	if (repoid) safe_putenv("BKD_REPO_ID=%s", repoid);
 	putenv("BK_LCLONE=YES");
 	return (trigger("clone", "post"));
 }

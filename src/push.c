@@ -109,7 +109,7 @@ err:		freeLines(envVar, free);
 		opts.lcsets = opts.rcsets = opts.rtags = 0;
 		if (print_title) {
 			if (i > 1)  printf("\n");
-			printf("%s:\n", pList[i]);
+			fromTo("Push", 0, r);
 		}
 		for (;;) {
 			rc = push(av, r, envVar);
@@ -324,8 +324,7 @@ tags:			fprintf(opts.out,
 			}
 			if (opts.rtags && !opts.metaOnly) goto tags;
 		} else if (opts.lcsets == 0) {
-			fprintf(opts.out,
-			    "Nothing to send to %s\n", url);
+			fprintf(opts.out, "Nothing to push.\n");
 			if (opts.rcsets && !opts.metaOnly) {
 				fprintf(opts.out, "but the");
 				goto csets;

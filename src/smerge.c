@@ -16,9 +16,8 @@ private void	usage(void);
 private int	resolve_conflict(conflct *curr);
 private diffln	*unidiff(conflct *curr, int left, int right);
 private void	show_examples(void);
-private	int	parse_range(char *range, u32 *start, u32 *end);
 private int	sameline(ld_t *left, ld_t *right);
-private	void	file_init(file_t *f, char *filename);
+private	int	file_init(char *file, char *rev, char *anno, file_t *f);
 private	void	file_free(file_t *f);
 
 private void	highlight_diff(diffln *diff);
@@ -65,6 +64,7 @@ struct diffln {
 };
 
 struct file {
+	char	*tmpfile;
 	MMAP	*m;
 	ld_t	*lines;
 	int	n;
@@ -75,19 +75,20 @@ private	char	*revs[3];
 private	file_t	body[3];
 private	char	*file;
 private	int	mode;
-private	int	show_seq;
 private	int	fdiff;
 private	char	*anno = 0;
+#ifdef	SHOW_SEQ
+private	int	parse_range(char *range, u32 *start, u32 *end);
+private	int	show_seq;
+#endif
 
 int
 smerge_main(int ac, char **av)
 {
 	int	c;
 	int	i;
-	char	bodytmp[3][MAXPATH];
 	u32	start = 0, end = ~0;
 	int	ret = 0;
-	int	status;
 	int	do_diff3 = 0;
 	int	identical = 0;
 
@@ -122,6 +123,12 @@ smerge_main(int ac, char **av)
 		    case 'e': /* show examples */
 			show_examples();
 			return(2);
+#ifdef	SHOW_SEQ
+/*
+ * This stuff is removed for 3.0.
+ * If it gets added back, there is also a regression for this
+ * in the t.smerge history that should be recovered.
+ */
 		    case 'r': /* show output in the range <r> */
 			if (parse_range(optarg, &start, &end)) {
 				usage();
@@ -131,6 +138,7 @@ smerge_main(int ac, char **av)
 		    case 's': /* show sequence numbers */
 			show_seq = 1;
 			break;
+#endif
 		    case 'h': /* help */
 		    default:
 			usage();
@@ -149,22 +157,9 @@ smerge_main(int ac, char **av)
 	revs[GCA] = find_gca(file, revs[LEFT], revs[RIGHT]);
 	
 	for (i = 0; i < 3; i++) {
-		char	*cmd;
-		bktmp(bodytmp[i], "smerge");
-		cmd = aprintf("bk get %s%s -qkpO -r%s '%s' > '%s'",
-		    anno ? "-a" : "",
-		    anno ? anno : "",
-		    revs[i],
-		    file, bodytmp[i]);
-		status = system(cmd);
-		if (status) {
-			fprintf(stderr, "Fetch of revision %s failed!\n",
-			    revs[i]);
-			ret = 2;
+		if (file_init(file, revs[i], anno, &body[i])) {
 			goto err;
 		}
-		free(cmd);
-		file_init(&body[i], bodytmp[i]);
 	}
 	if (body[LEFT].n == body[RIGHT].n) {
 		for (i = 0; i < body[LEFT].n; i++) {
@@ -176,7 +171,6 @@ smerge_main(int ac, char **av)
 			free(revs[RIGHT]);
 			revs[RIGHT] = strdup(revs[LEFT]);
 			file_free(&body[RIGHT]);
-			unlink(bodytmp[RIGHT]);
 			body[RIGHT] = body[LEFT];
 			identical = 1;
 		}
@@ -193,55 +187,85 @@ smerge_main(int ac, char **av)
 	for (i = 0; i < 3; i++) {
 		unless (i == RIGHT && identical) {
 			file_free(&body[i]);
-			unlink(bodytmp[i]);
 		}
 		free(revs[i]);
 	}
 	return (ret);
 }
 
+static	char	**seqlist = 0;
+
+void
+smerge_saveseq(u32 seq)
+{
+	seqlist = addLine(seqlist, (char *)seq);
+}
+
 /*
  * Open a file and populate the file_t structure.
  */
-private	void
-file_init(file_t *f, char *filename)
+private	int
+file_init(char *file, char *rev, char *anno, file_t *f)
 {
 	char	*p;
 	char	*end;
 	int	l;
+	sccs	*s;
+	int	flags = GET_SEQ|SILENT|PRINT;
+	int	i;
+	char	*sfile = name2sccs(file);
+	char	tmp[MAXPATH];
 
-	f->m = mopen(filename, "r");
+	if (anno) {
+		flags |= GET_ALIGN;
+		p = anno;
+		while (*p) {
+			switch (*p++) {
+			    case 'd': flags |= GET_PREFIXDATE; break;
+			    case 'f': flags |= GET_FULLPATH; break;
+			    case 'H': flags |= GET_PATH; break;
+			    case 'm': flags |= GET_REVNUMS; break;
+			    case 'n': flags |= GET_MODNAME; break;
+			    case 'N': flags |= GET_LINENUM; break;
+			    case 'u': flags |= GET_USER; break;
+			}
+		}
+	}
+
+	bktmp(tmp, "smerge");
+	f->tmpfile = strdup(tmp);
+	s = sccs_init(sfile, 0, 0);
+	unless (s && s->tree) return (-1);
+	free(sfile);
+	if (sccs_get(s, rev, 0, 0, 0, flags, f->tmpfile)) {
+		fprintf(stderr, "Fetch of revision %s failed!\n", rev);
+		return (-1);
+	}
+	sccs_free(s);
+
+	f->m = mopen(f->tmpfile, "r");
 	unless (f->m) {
-		fprintf(stderr, "Open of %s failed!\n", filename);
+		fprintf(stderr, "Open of %s failed!\n", f->tmpfile);
 		exit(2);
 	}
 
 	end = f->m->end;
 
-	/*
-	 * Let's assume there are 20 chars per line (matches my source).
-	 */
-	f->n = f->m->size / 20;
-	if (!f->n) f->n = 20;
-	f->lines = calloc(f->n, sizeof(ld_t));
+	f->n = nLines(seqlist);
+	f->lines = calloc(f->n+1, sizeof(ld_t));
+	EACH (seqlist) {
+		f->lines[i-1].seq = (u32)seqlist[i];
+		seqlist[i] = 0;
+	}
+	freeLines(seqlist, 0);
+	seqlist = 0;
 
 	l = 0;
 	p = f->m->where;
 	while (p) {
 		char	*start;
 
-		if (l+1 >= f->n) {
-			ld_t	*tmp;
-
-			f->n *= 2;
-			tmp = calloc(f->n, sizeof(ld_t));
-			assert(tmp);
-			memcpy(tmp, f->lines, l * sizeof(ld_t));
-			free(f->lines);
-			f->lines = tmp;
-		}
-		f->lines[l].seq = strtoul(p, &p, 10);
-		++p;
+		assert(l < f->n);
 		if (anno) {
 			f->lines[l].anno = p;
 			while (p < end && *p++ != '|');
@@ -260,16 +284,27 @@ file_init(file_t *f, char *filename)
 	f->lines[l].line = end;
 	f->lines[l].anno = 0;
 	f->lines[l].len = 0;
-	f->n = l;
+	assert(f->n == l);
+
+	return (0);
 }
 
 private	void
 file_free(file_t *f)
 {
-	free(f->lines);
-	f->lines = 0;
-	mclose(f->m);
-	f->m = 0;
+	if (f->lines) {
+		free(f->lines);
+		f->lines = 0;
+	}
+	if (f->m) {
+		mclose(f->m);
+		f->m = 0;
+	}
+	if (f->tmpfile) {
+		unlink(f->tmpfile);
+		free(f->tmpfile);
+		f->tmpfile = 0;
+	}
 }
 
 /*
@@ -383,7 +418,9 @@ printline(ld_t *ld, char first_char)
 
 	if (fdiff && !first_char) first_char = ' ';
 	if (first_char) putchar(first_char);
+#ifdef	SHOW_SEQ
 	if (show_seq) printf("%6d\t", ld->seq);
+#endif
 
 	/* Print annotation before line, if present */
 	if (a) while (a < p) putchar(*a++);
@@ -1648,6 +1685,7 @@ default		(3 way format (shows gca))\n\
 ", stdout);
 }
 
+#ifdef SHOW_SEQ
 /*
  * Parse a range string from the command line.
  * Valid formats:
@@ -1670,6 +1708,7 @@ parse_range(char *range, u32 *start, u32 *end)
 	}
 	return(0);
 }
+#endif
 
 /*--------------------------------------------------------------------
  * Automerge functions

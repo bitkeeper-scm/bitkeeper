@@ -220,10 +220,8 @@ out:		if (commentFile) unlink(commentFile);
 	 */
 	p = pendingFiles2[0] ? pendingFiles2 : pendingFiles;
 	safe_putenv("BK_PENDING=%s", p);
-	if (trigger(av[0], "pre")) {
-		rc = 1;
-		goto done;
-	}
+	safe_putenv("BK_COMMENTFILE=%s", commentFile);
+	if (rc = trigger(av[0], "pre")) goto done;
 	i = 2;
 	if (opts.quiet) cset[i++] = "-q";
 	if (sym) {

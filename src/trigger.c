@@ -17,6 +17,7 @@ private void
 trigger_env(char *prefix, char *event, char *what)
 {
 	char	buf[100];
+	char	*repoid;
 
 	if (streq("BK", prefix)) {
 		put_trigger_env("BK", "SIDE", "client");
@@ -34,6 +35,7 @@ trigger_env(char *prefix, char *event, char *what)
 	put_trigger_env(prefix, "VERSION", bk_vers);
 	sprintf(buf, "%d", getlevel());
 	put_trigger_env(prefix, "LEVEL", buf);
+	if (repoid = repo_id()) put_trigger_env(prefix, "REPO_ID", repoid);
 }
 
 
@@ -191,7 +193,6 @@ runit(char *file, char *output)
 	int	status, rc;
 
 	safe_putenv("BK_TRIGGER=%s", basenm(file));
-	signal(SIGCHLD, SIG_DFL); /* for solaris */
 	status = sysio(0, output, 0, file, SYS);
 	if (WIFEXITED(status)) {
 		rc = WEXITSTATUS(status);

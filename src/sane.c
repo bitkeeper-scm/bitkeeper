@@ -3,13 +3,16 @@
  * are not.  Exit status reflects the whining level.
  *
  * Copyright (c) 2000 Larry McVoy, Andrew Chang.
+ * %K%
  */
 
 #include "system.h"
 #include "sccs.h"
+#include "tomcrypt/mycrypt.h"
 
 private	int	chk_permissions(void);
 private	int	chk_idcache(void);
+private void	chk_id(void);
 
 int
 sane_main(int ac, char **av)
@@ -44,6 +47,7 @@ sane_main(int ac, char **av)
 	//chk_tcl();
 	//chk_ssh();
 	//chk_http();
+	chk_id();
 	return (errors);
 }
 
@@ -204,4 +208,53 @@ chk_idcache(void)
 	}
 	sccs_unlockfile(IDCACHE_LOCK);
 	return (0);
+}
+
+/*
+ * If the repository does not have an identifier, create one if we can.
+ * Note that the full name of the repository is the root key plus this.
+ * The repo name is host|/path/to/repo|user|date|randbits.
+ */
+private void
+chk_id(void)
+{
+	char	path[MAXPATH];
+	char	buf[100];
+	char	rand[6];
+	unsigned long	outlen;
+	time_t	t = time(0);
+	FILE	*f;
+
+	if (exists(REPO_ID)) return;	/* validate existing ID?? */
+	unless (f = fopen(REPO_ID, "w")) return;	/* no write perms? */
+
+	/*date*/
+	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtimez(&t, 0));
+	fprintf(f, "%s%s|", buf, sccs_zone(time(0)));
+
+	/*host*/
+	fprintf(f, "%s|", sccs_gethost());
+
+	/*path*/
+	path[0] = 0;
+	getcwd(path, MAXPATH);
+	fprintf(f, "%s|", path);
+
+	/*user*/
+	fprintf(f, "%s|", sccs_getuser());
+
+	/*randbits*/
+	if (rng_get_bytes(buf, 3, 0) != 3) {
+		fprintf(stderr, "chk_id: failed to get random date\n");
+		exit(1);
+	}
+	outlen = sizeof(rand);
+	if (base64_encode(buf, 3, rand, &outlen)) {
+		fprintf(stderr, "chk_id: %s\n", crypt_error);
+		exit(1);
+	}
+	assert(outlen < sizeof(rand));
+	fprintf(f, "%s\n", rand);
+
+	fclose(f);
 }
