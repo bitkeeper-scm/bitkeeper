@@ -6,7 +6,7 @@ extern char *editor, *pager, *bin;
 int
 setup_main(int ac, char **av)
 {
-	int	force = 0, c, logsetup;
+	int	force = 0, c;
 	char	*project_name = 0, *project_path = 0, *config_path = 0;
 	char	buf[1024], my_editor[1024], setup_files[MAXPATH];
 	FILE	*f;
@@ -77,7 +77,6 @@ setup_main(int ac, char **av)
 	f = fopen("Description", "rt");
 	fgets(buf, sizeof(buf), f);
 	fclose(f);
-	logsetup = strneq(buf, "BitKeeper Test", 14) ? 0 : 1;
 	unlink("Description"); unlink("D.save");
 	if (chdir("BitKeeper/etc") != 0) {
 		perror("cd BitKeeper/etc");
@@ -115,7 +114,6 @@ setup_main(int ac, char **av)
 	system("bk ci -qi config");
 	system("bk get -q config");
 
-	if (logsetup) system("bk sendconfig setups@openlogging.org");
 	sprintf(setup_files, "%s/setup_files%d", TMP_PATH, getpid());
 	sprintf(buf, "bk sfiles -C > %s", setup_files);
 	system(buf);
@@ -123,5 +121,6 @@ setup_main(int ac, char **av)
 	    "bk cset -q -y\"Initial repository create\" -  < %s", setup_files);
 	system(buf);
 	unlink(setup_files);
+	system("bk sendconfig -Q0 setups@openlogging.org");
 	return (0);
 }

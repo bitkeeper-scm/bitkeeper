@@ -733,6 +733,7 @@ char	*match_globs(char *string, globv globs);
 void	free_globs(globv globs);
 void	remark(int quiet);
 int	readn(int from, char *buf, int size);
+void	sendConfig(char *, int, int);
 int	writen(int to, char *buf, int size);
 char	chop(register char *s);
 int	mkdirp(char *dir);

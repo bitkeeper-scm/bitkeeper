@@ -66,7 +66,7 @@ done:	fclose(f1);
 }
 
 void
-sendConfig(char *to)
+sendConfig(char *to, int quiet, int quota)
 {
 	char	*dspec;
 	char	config_log[MAXPATH], buf[MAXLINE];
@@ -74,9 +74,8 @@ sendConfig(char *to)
 	char	s_cset[MAXPATH] = CHANGESET;
 	FILE *f, *f1;
 	time_t tm;
-	extern int bkusers();
 
-	if (bkusers(1, 1, 0) <= 1) return;
+	if (bkusers(1, 1, 0) <= quota) return;
 	sprintf(config_log, "%s/bk_config_log%d", TMP_PATH, getpid());
 	if (exists(config_log)) {
 		fprintf(stderr, "Error %s already exist", config_log);
@@ -242,6 +241,7 @@ project_name()
 	static	char pname[MAXLINE] = "";
 	char	changeset[MAXPATH] = CHANGESET;
 
+	if (pname[0]) return(pname); /* cached */
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "project name: Can not find project root\n");
 		return (pname);
@@ -311,8 +311,9 @@ mail(char *to, char *subject, char *file)
 		0
 	};
 
-	if (streq("BitKeeper Test repository", project_name()) &&
+	if (strstr(project_name(), "BitKeeper Test repo") &&
 	    (bkusers(1, 1, 0) <= 5)) {
+		/* TODO : make sure our root dir is /tmp/.regression... */
 		return;
 	}
 
@@ -504,8 +505,7 @@ checkLog(int quiet)
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
 		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			char	*cname = &buf[17];
-			setlog(cname);
+			setlog(&buf[17]);
 			return (0);
 		} else {
 			gethelp("log_abort", logAddr(), stdout);
@@ -515,20 +515,14 @@ checkLog(int quiet)
 		gethelp("close_log_query", logAddr(), stdout);
 		printf("OK [y/n]? ");
 		fgets(ans, sizeof(ans), stdin);
-		if ((ans[0] == 'Y') || (ans[0] == 'y')) {
-			char	*cname = &buf[18];
-
-			setlog(cname);
-			return (0);
-		} else {
-			sendConfig("config@openlogging.org");
-			return (0);
-		}
+		if ((ans[0] == 'Y') || (ans[0] == 'y')) setlog(&buf[18]);
+		sendConfig("config@openlogging.org", 1, 1);
+		return (0);
 	} else if (streq("need_seats", buf)) {
 		gethelp("seat_info", "", stdout);
 		return (1);
 	} else if (streq("commit_and_mailcfg", buf)) {
-		sendConfig("config@openlogging.org");
+		sendConfig("config@openlogging.org", 1, 1);
 		return (0);
 	} else if (streq("commit_and_maillog", buf)) {
 		return (0);
