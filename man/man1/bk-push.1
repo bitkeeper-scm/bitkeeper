@@ -3,7 +3,9 @@
 .SH NAME
 bk push \- send local changes to the parent repository
 .SH SYNOPSIS
-.Bc bk push [\-aglnqt] [
+.Bc bk push [\-agnqt] [\-l[
+.ARGc arg
+.Bc ]] [
 .OPTequal \-E env var
 .Bc ] [\-z[
 .ARGc d
@@ -48,16 +50,27 @@ Export environment variable to remote site.
 .B -g
 Allow the use of GUI tools during the resolve (unlike resolve -t).
 .tp
-.B \-l
-Do a long listing of changesets to be sent (like bk changes
-does).  May be combined with 
-.B \-n 
-to get a repository difference summary.
-.tp
-.B \-ll
+.OPTopt \-l arg
+Without arguments, \-l lists the changesets with associated comments 
+to be sent (like bk changes).  May be combined with \-n to get
+a repository different summary (see also bk changes \-R/\-L).
+You can change the listing by supplying one of the following 
+arguments:
+.RS
+.tp .3i
+.B l
 Do a long listing of the changeset and individual file change history to be
 sent (like bk changes -v).  May be combined with \-n to get a verbose 
 repository difference summary.
+.tp
+.B k
+Do a listing of the changeset keys to be sent (like bk changes -k).
+May be combined with \-n.
+.tp
+.B r
+Do a listing of the changeset revisions and tags to be sent.
+May be combined with \-n.
+.RE
 .tp
 .B \-n
 Don't actually push, just show what would be pushed.
@@ -86,6 +99,7 @@ but not with rsh.
 .SH "SEE ALSO"
 .SA pull 1
 .SA parent 1
+.SA changes 1
 .SA resolve 1
 .SA triggers 1
 .SH AVAILABILITY

@@ -43,6 +43,10 @@ bk new newfile
 .DE
 The usefulness of this option is more apparent when you consider having
 a mixed list of files, some under revision control and some not.
+.sp
+When called with this option, bk delta will not create a null delta on
+an edited, but unmodified file.
+.sp
 .tp
 .B \-c
 Do not verify file checksum (slight performance win).
