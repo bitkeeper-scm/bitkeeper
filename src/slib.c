@@ -5534,7 +5534,6 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 				fputs("XXXXX", out);
 				fputmeta(s, "\n", out);
 			} else if (d->flags & D_CKSUM) {
-				assert(d->type == 'D');
 				/*
 				 * It turns out not to be worth to save the
 				 * few bytes you might save by not making this
@@ -5624,7 +5623,7 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 			*p   = '\0';
 			fputmeta(s, buf, out);
 		}
-		if (!d->next && (s->state & S_CSET)) {
+		if (!d->next) {
 #if LPAD_SIZE > 0
 			/* Landing pad for fast rewrites */
 			fputmeta(s, "\001c", out);
@@ -7477,11 +7476,12 @@ int
 sccs_addSym(sccs *sc, u32 flags, char *s)
 {
 	char	*rev;
-	delta	*d = 0;
+	delta	*n = 0, *d = 0;
 	char	*t, *r;
 	sum_t	sum;
 	int	len;
 	char	buf[1024];
+	char	fudge[30];
 
 	if (!sccs_lock(sc, 'z')) {
 		fprintf(stderr, "sccs_addSym: can't zlock %s\n", sc->gfile);
@@ -7524,9 +7524,26 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	 * ^Ac S symbol
 	 * ^Ae
 	 */
+	n = sccs_dInit(0, 'R', sc, 0);
+	n->sum = almostUnique(1);
+	while (n->date <= sc->table->date) {
+		n->date++;
+		n->dateFudge++;
+	}
+	if (n->dateFudge) {
+		sprintf(fudge, "\001cF%d\n", n->dateFudge);
+	} else {
+		fudge[0] = 0;
+	}
 	sprintf(buf,
-"\001s 00000/00000/00000\n\001d R %s %s %s %d %d\n\001cS%s\n\001e\n",
-	    rev, now(), sccs_getuser(), sc->nextserial++, d->serial, s);
+"\001s 00000/00000/00000\n\
+\001d R %s %s %s %d %d\n\
+%s\
+\001cK%05u\n\
+\001cS%s\n\
+\001e\n",
+	    rev, n->sdate, n->user, sc->nextserial++, d->serial, 
+	    fudge, almostUnique(1), s);
 	sc->numdeltas++;
 	/* XXX - timezone */
 	len = strlen(buf);
@@ -7538,6 +7555,7 @@ norev:			verbose((stderr, "admin: can't find rev %s in %s\n",
 	if ((t - sc->landingpad) <= len) {
 		sc->numdeltas--;
 		sc->nextserial--;
+		if (n) freedelta(n);
 		free(s);
 		sccs_unlock(sc, 'z');
 		return (EAGAIN);
@@ -7616,6 +7634,7 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 		n->next = sc->table;
 		sc->table = n;
 		n = sccs_dInit(n, 'R', sc, 0);
+		n->sum = almostUnique(1);
 		n->rev = strdup(d->rev);
 		explode_rev(n);
 		n->pserial = d->serial;
@@ -7862,7 +7881,7 @@ out:
 #if 0
 		/*
 		 * Until such time as we decide to rewrite all the serial
-		 * numbers when running stipdel, we can't do this.
+		 * numbers when running stripdel, we can't do this.
 		 */
 		if (sc->nextserial != (sc->numdeltas + 1)) {
 			verbose((stderr,
@@ -8620,6 +8639,18 @@ skip:
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
+	/* Random bits are used only for 1.0 deltas in conversion scripts */
+	if (WANT('R')) {
+		unless (streq("1.0", d->rev)) {
+			fprintf(stderr, "sccs_getInit: ramdom only on 1.0\n");
+		} else if (sc) {
+			sc->random = strnonldup(&buf[2]);
+		} else {
+			fprintf(stderr, "sccs_getInit: ramdom needs sccs\n");
+		}
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
 	/* symbols are optional */
 	if (WANT('S')) {
 		d->sym = strdup(&buf[2]);
@@ -8996,6 +9027,11 @@ out:
 			if (prefilled->flags & D_XFLAGS) {
 				/*  XXX this code will be affected by LOD */
 				u32 bits = prefilled->xflags;
+				if (bits & X_BITKEEPER) {
+					s->state |= S_BITKEEPER;
+				} else {
+					s->state &= ~S_BITKEEPER;
+				}
 				if (bits & X_YEAR4) {
 					s->state |= S_YEAR4;
 				} else {

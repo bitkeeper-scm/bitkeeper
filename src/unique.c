@@ -47,6 +47,7 @@ uniq_lock()
 	pid_t	pid = 0;
 	int	fd;
 	int	first = 1;
+	int	slept = 0;
 	char	path[MAXPATH];
 #ifdef WIN32
 	int	retry = 0;
@@ -123,9 +124,15 @@ uniq_lock()
 			}
 			unless (pid) continue;
 			if (kill(pid, 0) == 0) {
-				sleep(1);
+				slept++;
+				sleep(slept);
 			} else {
 				unlink(path);
+			}
+			if (slept > 4) {
+				fprintf(stderr,
+				    "Waiting for process %d who has lock %s\n",
+				    pid, path);
 			}
 		}
 	}

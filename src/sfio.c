@@ -13,7 +13,7 @@
  *	char	datalen[10];
  *	char	data[atoi(datalen)];
  *	char	adler32[10];
- *	char	mode[3];
+ *	char	mode[3];	(VERSMODE only)
  * repeats, except for the version number.
  */
 #include "system.h"
@@ -21,7 +21,9 @@
 #undef	unlink		/* I know the files are writable, I created them */
 WHATSTR("@(#)%K%");
 
-#define	SFIO_VERS	"SFIO v 1.2"	/* must be 10 bytes exactly */
+#define	SFIO_VERSNOMODE	"SFIO v 1.2"	/* must be 10 bytes exactly */
+#define	SFIO_VERSMODE	"SFIO v 1.3"	/* must be 10 bytes exactly */
+#define	SFIO_VERS	(doModes ? SFIO_VERSMODE : SFIO_VERSNOMODE)
 #define	u32		unsigned int
 
 int	sfio_out(void);
@@ -38,15 +40,17 @@ int	writen(int from, char *buf, int size);
 extern	void platformSpecificInit(char *name);
 
 static const char help[] = "\
-usage:	sfio [-q] -i | -p < archive\n\
-or:	sfio [-q] -o < filelist\n\
+usage:	sfio [-q] [-m] -i | -p < archive\n\
+or:	sfio [-q] [-m] -o < filelist\n\
 \n\
   -i	extract archive\n\
-  -p	list contents of archive\n\
+  -m	transfer file modes (default not to do so)\n\
   -o	create archive\n\
+  -p	list contents of archive\n\
   -q	quiet mode\n";
 
-static int quiet;
+static	int quiet;
+static	int doModes;
 
 #define M_IN	1
 #define M_OUT	2
@@ -59,12 +63,12 @@ main(int ac, char **av)
 
 	platformSpecificInit(NULL);
 	if (ac == 2 && streq(av[1], "--help")) goto usage;
-	while ((c = getopt(ac, av, "iopqs")) != -1) {
+	while ((c = getopt(ac, av, "imopqs")) != -1) {
 		switch (c) {
 		    case 'i': if (mode) goto usage; mode = M_IN;   break;
 		    case 'o': if (mode) goto usage; mode = M_OUT;  break;
 		    case 'p': if (mode) goto usage; mode = M_LIST; break;
-		    case 's':
+		    case 'm': doModes = 1; break;
 		    case 'q': quiet = 1; break;
 		default:
 			goto usage;
@@ -125,6 +129,10 @@ out(char *file)
 	}
 	sprintf(buf, "%010u", sum);
 	writen(1, buf, 10);
+	if (doModes) {
+		sprintf(buf, "%03o", sb.st_mode & 0777);
+		writen(1, buf, 3);
+	}
 	close(fd);
 	return (0);
 }
@@ -193,6 +201,7 @@ in(char *file, int todo, int extract)
 	char	buf[1024];
 	int	n;
 	int	fd = -1;
+	mode_t	mode;
 	u32	sum = 0, sum2 = 0;
 
 	unless (todo) {
@@ -224,7 +233,17 @@ in(char *file, int todo, int extract)
 		    "Checksum mismatch %u:%u for %s\n", sum, sum2, file);
 		goto err;
 	}
-	if (extract) close(fd);
+	if (doModes) {
+		if (readn(0, buf, 3) != 3) {
+			perror("mode read");
+			goto err;
+		}
+		sscanf(buf, "%03o", &mode);
+	}
+	if (extract) {
+		close(fd);
+		if (doModes) chmod(file, mode & 0777);
+	}
 	unless (quiet) fprintf(stderr, "%s\n", file);
 	return (0);
 

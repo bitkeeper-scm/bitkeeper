@@ -4,7 +4,8 @@
 BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines prs range rechksum renumber	 \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
-	  sinfo stripdel smoosh takepatch undos what gca mtime zone
+	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
+	  isascii
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex
 PSCR	= t/doit

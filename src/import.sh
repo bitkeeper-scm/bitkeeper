@@ -176,7 +176,7 @@ import_transfer () {
 	echo "	from $FROM"
 	echo "	to   $TO"
 	cd $FROM
-	sfio -oq < /tmp/import$$ | (cd $TO && sfio -iq) || exit 1
+	sfio -omq < /tmp/import$$ | (cd $TO && sfio -imq) || exit 1
 }
 
 import_doimport_text () {
@@ -190,7 +190,7 @@ import_doimport_RCS () {
 	echo Converting RCS files.
 	echo WARNING: Branches will be discarded.
 	echo Ignore errors relating to missing newlines at EOF.
-	rcs2sccs -htq - < /tmp/import$$ || exit 1
+	rcs2sccs -hst - < /tmp/import$$ || exit 1
 	xargs rm -f < /tmp/import$$
 }
 
@@ -218,14 +218,15 @@ import_doimport_SCCS () {
 
 import_finish () {
 	cd $1
+	echo ""
 	echo Validating all SCCS files
-	bk sfiles | bk admin -qH - > /tmp/admin$$
-	if [ -z /tmp/admin$$ ]
-	then	echo OK
-	else	echo Import failed because
+	bk -r admin -qhh > /tmp/admin$$
+	if [ -s /tmp/admin$$ ]
+	then	echo Import failed because
 		cat /tmp/admin$$
 		exit 1
 	fi
+	echo OK
 	
 	rm -f /tmp/import$$ /tmp/admin$$
 	bk sfiles -r
