@@ -4,8 +4,12 @@
 
 proc next {} \
 {
-	global	diffCount lastDiff
+	global	diffCount lastDiff DiffsEnd
 
+	if {[visible $DiffsEnd($lastDiff)] == 0} {
+		Page "yview" 1 0
+		return
+	}
 	if {$lastDiff >= $diffCount} {
 		nextFile
 		return
@@ -16,14 +20,32 @@ proc next {} \
 
 proc prev {} \
 {
-	global	Diffs DiffsEnd diffCursor diffCount lastDiff
+	global	Diffs DiffsEnd lastDiff diffCount lastFile
 
+	if {[visible $Diffs($lastDiff)] == 0} {
+		Page "yview" -1 0
+		return
+	}
 	if {$lastDiff <= 1} {
+		if {$lastFile == 1} { return }
 		prevFile
+		set lastDiff $diffCount
+		dot
+		while {[visible $DiffsEnd($lastDiff)] == 0} {
+			Page "yview" 1 0
+		}
 		return
 	}
 	incr lastDiff -1
 	dot
+}
+
+proc visible {index} \
+{
+	if {[llength [.diffs.right bbox $index]] > 0} {
+		return 1
+	}
+	return 0
 }
 
 proc dot {} \
@@ -350,7 +372,7 @@ proc dotFile {} \
 	}
 	catch { close $prs }
 
-	set r [open "| bk -R prs -bhC$stop {$dspec} $file" r]
+	set prs [open "| bk -R prs -bhC$stop {$dspec} $file" r]
 	set save ""
 	while { [gets $prs buf] >= 0 } {
 		if {$buf == "  "} { continue }
