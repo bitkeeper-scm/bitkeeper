@@ -42,6 +42,7 @@ private int	checkRev(sccs *s, char *file, delta *d, int flags);
 private int	checkrevs(sccs *s, int flags);
 private int	stripChecks(sccs *s, delta *d, char *who);
 private delta*	csetFileArg(delta *d, char *name);
+private delta*	dateArg(delta *d, char *arg, int defaults);
 private delta*	hostArg(delta *d, char *arg);
 private delta*	pathArg(delta *d, char *arg);
 private delta*	randomArg(delta *d, char *arg);
@@ -8818,14 +8819,18 @@ openInput(sccs *s, int flags, FILE **inp)
 delta *
 sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 {
-	int i;
+	int	i;
+	char	*t;
 
-	if (!d) d = calloc(1, sizeof(*d));
+	unless (d) d = calloc(1, sizeof(*d));
 	d->type = type;
 	assert(s);
 	if (BITKEEPER(s) && (type == 'D')) d->flags |= D_CKSUM;
 	unless (d->sdate) {
-		if (s->initFlags & INIT_FIXDTIME) {
+		if (t = getenv("BK_DATE_TIME_ZONE")) {
+			dateArg(d, t, 1);
+			assert(!(d->flags & D_ERROR));
+		} else if (s->initFlags & INIT_FIXDTIME) {
 			date(d, s->gtime);
 
 			/*
