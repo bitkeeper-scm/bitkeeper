@@ -1,15 +1,17 @@
+HERE	:= $(shell pwd)
+
 all: uwtlib diffutils patch msys
 	cd pub/winctl && unset MAKEFLAGS && make
 
-clean clean-obj:
-	-@if uname -s | grep _NT; \
-	then \
-		cd uwtlib && make $@ && cd ..; \
-		cd pub/blat && make $@ && cd ../../; \
-		cd pub/winctl && make $@ && cd ../../; \
-		cd pub/diffutils && make $@ && cd ../../; \
-		cd pub/patch && make $@ && cd ../../; \
-	fi
+clean clean-obj clobber:
+	test -d c:/ && { \
+		cd $(HERE)/uwtlib && make $@; \
+		cd $(HERE)/pub/blat && make $@; \
+		cd $(HERE)/pub/winctl && make $@; \
+		cd $(HERE)/pub/diffutils && make $@; \
+		cd $(HERE)/pub/patch && make $@; \
+	}
+	@true
 
 FORCE:
 

@@ -87,9 +87,8 @@ proc install {} \
 
 	set installfrom [pwd]
 
-	log "installing..."
 	set err [catch {
-		doCommand bk install -f $runtime(destination)
+		doCommand bk install -v -f $runtime(destination)
 	} result]
 
 	if {$err == 0} {
