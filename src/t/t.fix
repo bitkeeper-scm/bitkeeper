@@ -293,3 +293,100 @@ bk fix -c || {
 	exit 1
 }
 echo OK
+
+# Create a cset that has an inc/exc in a file 
+# bk fix -c it
+# bk pull the cset and make sure we get a reasonable error message
+
+cd $HERE
+rm -rf project clone
+echo $N Create initial repository and file with exclude .............$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo foo > foo
+echo bar > bar.c
+bk new $Q foo bar.c
+bk commit $S -a -yCset
+bk get -e -x1.1 $Q foo
+bk delta -yexclude $Q foo
+bk commit $S -a -yCset2
+echo OK
+cores
+
+echo $N Clone repository ............................................$NL
+bk clone $Q $HERE/project $HERE/clone
+echo OK
+
+echo $N Fix the cset, pull, should fill in and allow update .........$NL
+cd $HERE/clone
+bk stripdel $Q -C -r+ ChangeSet
+bk admin -D foo
+bk cset -M1.1..
+bk -R sfiles -P >/dev/null
+bk -r check -ac || exit 1
+
+# What is happening is that we are pulling in the data which fills in the
+# changeset around this delta.  The data is already in the local file and
+# the keys match so we don't have to fill it in.  But we also don't mark
+# the file as having D_CSET on the tip so it looks like it is pending and
+# we try and commit it at the end and find that we already have this key
+# in the ChangeSet file.
+#
+# We could either fail the update completely because of the pending delta
+# or notice in applypatch that it isn't marked and fix the marks.
+#
+# If we are going to get clever we need to try and force a test with both
+# local deltas should be pending and local deltas which should not be
+# pending after the pull.
+bk pull $Q > OUT 2>&1 || {
+	cat OUT
+	exit 1
+}
+echo OK
+
+# Create a cset that has an inc/exc in a file 
+# bk fix -c it and add another genuinely local change
+# bk pull the cset and make sure we get a reasonable error message
+
+cd $HERE
+rm -rf project clone
+echo $N Create initial repository and file with exclude .............$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+if [ ! -f SCCS/s.ChangeSet ]; then echo failed to make ChangeSet; exit 1; fi
+echo foo > foo
+echo bar > bar.c
+bk new $Q foo bar.c
+bk commit $S -a -yCset
+bk get -e -x1.1 $Q foo
+bk delta -yexclude $Q foo
+bk commit $S -a -yCset2
+echo OK
+cores
+
+echo $N Clone repository ............................................$NL
+bk clone $Q $HERE/project $HERE/clone
+echo OK
+
+echo $N Fix the cset, pull, should fail update due to pending .......$NL
+cd $HERE/clone
+bk stripdel $Q -C -r+ ChangeSet
+bk admin -D foo
+bk cset -M1.1..
+bk edit $Q foo
+bk delta $Q -ywhatever foo
+bk -R sfiles -P >/dev/null
+bk -r check -ac || exit 1
+
+bk pull $Q > OUT 2>&1 && {
+	echo should have failed
+	cat OUT
+	exit 1
+}
+grep -q "has uncommitted changes" OUT || {
+	echo Bad error message
+	cat OUT
+	exit 1
+}
+echo OK

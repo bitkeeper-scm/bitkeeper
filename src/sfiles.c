@@ -56,7 +56,6 @@ private	int	hasDiffs(char *file);
 private	int	isSccs(char *s);
 private	void	rebuild(void);
 private	char	*name(char *);
-private	sccs	*cset;
 typedef	void	(*lftw_func)(const char *path, int mode);
 private	void	file(char *f, lftw_func func);
 private	void	lftw(const char *dir, lftw_func func);
@@ -410,6 +409,7 @@ idcache_main(int ac, char **av)
 private	void
 rebuild()
 {
+	sccs	*cset;
 	char s_cset[] = CHANGESET;
 
 	unless (cset = init(s_cset, 0)) {
@@ -422,14 +422,7 @@ rebuild()
 		exit(1);
 	}
 	mixed = !LONGKEY(cset);
-
-	if (Cflg) {
-		if (csetIds(cset, 0)) {
-			perror("sfiles: can't init ChangeSet DB");
-			sccs_free(cset);
-			exit(1);
-		}
-	}
+	sccs_free(cset);
 
 	unless (rFlg) goto c;
 
@@ -472,7 +465,7 @@ c:	lftw(".", caches);
 			chmod(IDCACHE, GROUP_MODE);
 		}
 	}
-out:	sccs_free(cset);
+out:	
 	mdbm_close(idDB);
 	if (proj) proj_free(proj);
 }

@@ -305,15 +305,15 @@ usage:		system("bk help -s takepatch");
 		    */
 
 	if (resolve) {
-		char 	*resolve[7] = {"bk", "resolve", "-q", 0, 0, 0, 0};
+		char 	*resolve[] = {"bk", "resolve", 0, 0, 0, 0, 0};
 		int 	i;
 
 		if (echo) {
 			fprintf(stderr,
 			    "Running resolve to apply new work...\n");
 		}
-		i = 2;
-		if (!echo) resolve[++i] = "-q";
+		i = 1;
+		unless (echo) resolve[++i] = "-q";
 		if (textOnly) resolve[++i] = "-t";
 		if (noConflicts) resolve[++i] = "-c";
 		i = spawnvp_ex(_P_WAIT, resolve[0], resolve);
@@ -1116,7 +1116,7 @@ uncommitted(char *file)
 {
 	SHOUT();
 	fprintf(stderr,
-"takepatch: %s has uncommitted changes\n\
+"takepatch: \"%s\" has uncommitted changes.\n\
 Please commit pending changes with `bk commit' and reapply the patch.\n",
 		file);
 }
@@ -1407,6 +1407,63 @@ apply:
 	return (0);
 }
 
+/* 
+ * an existing file that was in the patch but didn't
+ * get any deltas.  Usually an error, but we should
+ * handle this better.
+ */
+private int
+noupdates(char *localPath)
+{
+	char    *resync = aprintf("RESYNC/%s", localPath);
+	int	rc = 0, i = 0;
+	sccs	*s;
+	delta	*d;
+	FILE	*f;
+	char	*p, buf[MAXKEY*2], key[MAXKEY];
+	
+	while (exists(resync)) {
+		free(resync);
+		resync = aprintf("RESYNC/BitKeeper/RENAMES/s.%d", i++);
+	}
+	fileCopy2(localPath, resync);
+
+	/* No changeset, no marks for you, dude */
+	unless (exists(ROOT2RESYNC "/SCCS/s.ChangeSet")) goto out;
+
+	/*
+	 * bk fix -c can leave files that are pending but then a pull
+	 * puts back the changes.  Make sure that if we have pending
+	 * deltas we are either filling that back in or error with a
+	 * pending message.
+	 */
+	s = sccs_init(resync, INIT_NOCKSUM, 0);
+	sccs_sdelta(s, sccs_ino(s), key);
+	f = popen("bk sccscat -h " ROOT2RESYNC "/ChangeSet", "r");
+	while (fnext(buf, f)) {
+		chomp(buf);
+		p = separator(buf);
+		assert(p);
+		*p++ = 0;
+		unless (streq(key, buf)) continue;
+		d = sccs_findKey(s, p);
+		assert(d);
+		if (d->flags & D_CSET) continue;
+		if (echo > 4) fprintf(stderr,"MARK(%s|%s)\n", s->gfile, d->rev);
+		d->flags |= D_CSET;
+	}
+	pclose(f);
+	unless (sccs_top(s)->flags & D_CSET) {
+		uncommitted(s->gfile + strlen(ROOT2RESYNC) + 1);
+		rc = -1;
+	} else {
+		sccs_newchksum(s);
+	}
+	sccs_free(s);
+out:	free(resync);
+	return (rc);
+}
+
 /*
  * If the destination file does not exist, just apply the patches to create
  * the new file.
@@ -1429,23 +1486,8 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 
 	reversePatch();
 	p = patchList;
-	if (!p && localPath) {
-		/* 
-		 * an existing file that was in the patch but didn't
-		 * get any deltas.  Usually an error, but we should
-		 * handle this better.
-		 */
-		char    *resync = aprintf("RESYNC/%s", localPath);
-		int	i = 0;
-		
-		while (exists(resync)) {
-                  	free(resync);
-			resync = aprintf("RESYNC/BitKeeper/RENAMES/s.%d", i++);
-		}
-		fileCopy2(localPath, resync);
-		free(resync);
-		return (0);
-	}
+	if (!p && localPath) return (noupdates(localPath));
+
 	if (echo == 3) fprintf(stderr, "%c\b", spin[n++ % 4]);
 	if (echo > 7) {
 		fprintf(stderr, "L=%s\nR=%s\nP=%s\nM=%s\n",
