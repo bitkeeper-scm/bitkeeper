@@ -43,6 +43,7 @@ private void	checkins(opts *opts, char *comment);
 private	void	rename_delta(resolve *rs, char *sf, delta *d, char *rf, int w);
 private	int	rename_file(resolve *rs);
 private	void	restore(opts *o);
+private void	resolve_post(int c);
 private void	unapply(FILE *f);
 private int	copyAndGet(char *from, char *to, project *proj, int getFlags);
 private int	writeCheck(sccs *s, MDBM *db);
@@ -124,7 +125,26 @@ resolve_main(int ac, char **av)
 	c = passes(&opts);
 	mdbm_close(localDB);
 	mdbm_close(resyncDB);
+	resolve_post(c);
 	return (c);
+}
+
+private void
+resolve_post(int c)
+{
+	char	*av[] = { "resolve", 0 };
+
+	if (getenv("POST_INCOMING_TRIGGER") &&
+	    streq(getenv("POST_INCOMING_TRIGGER"), "NO")) {
+	    	return;
+	}
+	/* XXX - there can be other reasons */
+	if (c) {
+		putenv("BK_STATUS=CONFLICTS");
+	} else {
+		putenv("BK_STATUS=OK");
+	}
+	trigger(av, "post");
 }
 
 private void
@@ -2654,6 +2674,8 @@ resolve_cleanup(opts *opts, int what)
 		unless (what & CLEAN_NOSHOUT) SHOUT2();
 		exit(1);
 	}
+
+	resolve_post(0);
 
 	/*
 	 * Force a logging process even if we did not create a merge node
