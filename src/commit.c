@@ -321,16 +321,89 @@ logChangeSet(int l, char *rev, int quiet)
 }
 
 void
+config(char *rev, FILE *f)
+{
+	char	*dspec;
+	kvpair	kv;
+	time_t	tm;
+	FILE	*f1;
+	MDBM	*db = loadConfig(".");
+	char	buf[MAXLINE], aliases[MAXPATH];
+	char	s_cset[MAXPATH] = CHANGESET;
+
+	status(0, f);
+	dspec = "$each(:FD:){Proj:      (:FD:)}\\nID:        :KEY:";
+	do_prsdelta(s_cset, "1.0", 0, dspec, f);
+	fprintf(f, "%-10s %s", "User:", sccs_realuser());
+	if (streq(sccs_getuser(), BK_FREEUSER)) fprintf(f, " (free use)");
+	fprintf(f, "\n%-10s %s", "Host:", sccs_realhost());
+	if (streq(sccs_gethost(), BK_FREEHOST)) fprintf(f, " (free use)");
+	fprintf(f, "\n%-10s %s\n", "Root:", fullname(".", 0));
+	sprintf(buf, "%slog/parent", BitKeeper);
+	if (exists(buf)) {
+		FILE	*f1;
+
+		f1 = fopen(buf, "rt");
+		if (fgets(buf, sizeof(buf), f1)) {
+			fprintf(f, "%-10s %s", "Parent:", buf);
+		}
+		fclose(f1);
+	}
+	if (rev) fprintf(f, "%-10s %s\n", "Revision:", rev);
+	fprintf(f, "%-10s ", "Cset:");
+	do_prsdelta(s_cset, rev, 0, ":KEY:", f);
+	tm = time(0);
+	fprintf(f, "%-10s %s", "Date:", ctime(&tm));
+	assert(db);
+	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
+		sprintf(buf, "%s:", kv.key.dptr);
+		fprintf(f, "%-10s %s\n", buf, kv.val.dptr);
+	}
+	mdbm_close(db);
+	if (db = loadOK()) {
+		fprintf(f, "Logging OK:\n");
+		for (kv = mdbm_first(db);
+		    kv.key.dsize != 0; kv = mdbm_next(db)) {
+			fprintf(f, "\t%s\n", kv.key.dptr);
+		}
+		mdbm_close(db);
+	}
+	fprintf(f, "User List:\n");
+	bkusers(0, 0, "\t", f);
+	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
+	if (exists(buf)) {
+		fprintf(f, "Alias  List:\n");
+		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
+		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
+		get(buf, SILENT|PRINT, aliases);
+		f1 = fopen(aliases, "r");
+		while (fgets(buf, sizeof(buf), f1)) {
+			if ((buf[0] == '#') || (buf[0] == '\n')) continue;
+			fprintf(f, "\t%s", buf);
+		}
+		fclose(f1);
+		unlink(aliases);
+	}
+}
+
+int
+config_main(int ac, char **av)
+{
+	char	*rev = av[1] && strneq("-r", av[1], 2) ? &av[1][2] : 0;
+
+	if (sccs_cd2root(0, 0)) {
+		fprintf(stderr, "Can't find package root\n");
+		return (1);
+	}
+	config(rev, stdout);
+	return (0);
+}
+
+void
 sendConfig(char *to, char *rev)
 {
-	char	*dspec, subject[MAXLINE];
-	char	config_log[MAXPATH], buf[MAXLINE];
-	char	aliases[MAXPATH];
-	char	s_cset[MAXPATH] = CHANGESET;
-	MDBM	*db = loadConfig(".");
-	kvpair	kv;
-	FILE *f, *f1;
-	time_t	tm;
+	char	subject[MAXLINE], config_log[MAXPATH];
+	FILE	*f;
 	int	n, junk;
 	char 	*av[] = {
 		"bk",
@@ -350,58 +423,9 @@ sendConfig(char *to, char *rev)
 		if (n <= 20) return;
 	}
 
-	sprintf(config_log, "%s/bk_config_log%d", TMP_PATH, getpid());
-	if (exists(config_log)) {
-		fprintf(stderr, "Error %s already exist", config_log);
-		exit(1);
-	}
-
-	f = fopen(config_log, "wb");
-	status(0, f);
-	dspec = "$each(:FD:){Proj:\\t(:FD:)}\\nID:\\t:KEY:";
-	do_prsdelta(s_cset, "1.0", 0, dspec, f);
-	fprintf(f, "User:\t%s", sccs_realuser());
-	if (streq(sccs_getuser(), BK_FREEUSER)) fprintf(f, " (free use)");
-	fprintf(f, "\nHost:\t%s", sccs_realhost());
-	if (streq(sccs_gethost(), BK_FREEHOST)) fprintf(f, " (free use)");
-	fprintf(f, "\nRoot:\t%s\n", fullname(".", 0));
-	fprintf(f, "Rev:\t%s\n", rev);
-	fprintf(f, "Cset:\t");
-	do_prsdelta(s_cset, 0, 0, ":KEY:", f);
-	tm = time(0);
-	fprintf(f, "Date:\t%s", ctime(&tm));
-	assert(db);
-	for (kv = mdbm_first(db); kv.key.dsize != 0; kv = mdbm_next(db)) {
-		fprintf(f, "%s:\t%s\n", kv.key.dptr, kv.val.dptr);
-	}
-	mdbm_close(db);
-	if (db = loadOK()) {
-		fprintf(f, "Logging OK:\n");
-		for (kv = mdbm_first(db);
-		    kv.key.dsize != 0; kv = mdbm_next(db)) {
-			fprintf(f, "%s\n", kv.key.dptr);
-		}
-		mdbm_close(db);
-	}
-	fprintf(f, "User List:\n");
-	bkusers(0, 0, f);
-	fprintf(f, "=======================\n");
-	sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
-	if (exists(buf)) {
-		fprintf(f, "Alias  List:\n");
-		sprintf(aliases, "%s/bk_aliasesX%d", TMP_PATH, getpid());
-		sprintf(buf, "%setc/SCCS/s.aliases", BitKeeper);
-		get(buf, SILENT|PRINT, aliases);
-		f1 = fopen(aliases, "r");
-		while (fgets(buf, sizeof(buf), f1)) {
-			if ((buf[0] == '#') || (buf[0] == '\n')) continue;
-			fputs(buf, f);
-		}
-		fclose(f1);
-		unlink(aliases);
-		fprintf(f, "=======================\n");
-	}
-	fclose(f);
+	gettemp(config_log, "config");
+	unless (f = fopen(config_log, "wb")) return;
+	config(rev, f);
 	sprintf(subject, "BitKeeper config: %s", package_name());
 	if (spawnvp_ex(_P_NOWAIT, av[0], av) == -1) unlink(config_log);
 }

@@ -21,6 +21,7 @@ int chksum_main(int, char **);
 int clean_main(int, char **);
 int clone_main(int, char **);
 int commit_main(int, char **);
+int config_main(int, char **);
 int createlod_main(int, char **);
 int cset_main(int, char **);
 int delta_main(int, char **);
@@ -44,8 +45,8 @@ int lock_main(int, char **);
 int lod_main(int, char **);
 int log_main(int, char **);
 int logging_main(int, char **);
-int loggingask_main(int ac, char **av);
 int loggingaccepted_main(int ac, char **av);
+int loggingask_main(int ac, char **av);
 int loggingto_main(int, char **);
 int mklock_main(int, char **);
 int mtime_main(int, char **);
@@ -109,6 +110,7 @@ struct command cmdtbl[100] = {
 	{"clone", clone_main},
 	{"co", get_main},
 	{"commit", commit_main},
+	{"config", config_main},
 	{"createlod", createlod_main},
 	{"cset", cset_main},
 	{"delta", delta_main},

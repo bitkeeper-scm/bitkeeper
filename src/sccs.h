@@ -780,7 +780,7 @@ void	status(int verbose, FILE *out);
 void	notify();
 char	*logAddr();
 char	*package_name();
-int	bkusers(int countOnly, int raw, FILE *out);
+int	bkusers(int countOnly, int raw, char *prefix, FILE *out);
 globv	read_globs(FILE *f, globv oldglobs);
 char	*match_globs(char *string, globv globs);
 void	free_globs(globv globs);
@@ -833,5 +833,6 @@ void	get_http_proxy(char *proxy_host, int *proxy_port);
 int	confirm(char *msg);
 int	setlod_main(int ac, char **av);
 MDBM *	loadOK();
+void	config(char *rev, FILE *f);
 
 #endif	/* _SCCS_H_ */

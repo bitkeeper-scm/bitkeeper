@@ -33,24 +33,8 @@ do_clean(char *file, int flags)
 void
 cset_header(FILE *f)
 {
-	char	parent_file[MAXPATH];
-	char	buf[MAXPATH];
 	char	*p;
 
-	gethelp("version", 0, 0, f);
-	fprintf(f, "Repository %s:%s\n",
-	    sccs_gethost(), fullname(".", 0));
-	sprintf(parent_file, "%slog/parent", BitKeeper);
-	if (exists(parent_file)) {
-		FILE	*f1;
-
-		f1 = fopen(parent_file, "rt");
-		if (fgets(buf, sizeof(buf), f1)) {
-			fputs("Parent repository ", f);
-			fputs(buf, f);
-		}
-		fclose(f1);
-	}
 	p = package_name();
 	if (p[0]) {
 		fprintf(f,
@@ -58,6 +42,7 @@ cset_header(FILE *f)
 	} else {
 		fprintf(f, "Changeset by %s\n", sccs_getuser());
 	}
+	config(0, f);
 	fprintf(f, "\n");
 }
 
@@ -190,7 +175,7 @@ status(int verbose, FILE *f)
 	if (verbose) {
 		f1 = fopen(tmp_file, "wb");
 		assert(f1);
-		bkusers(0, 0, f1);
+		bkusers(0, 0, 0, f1);
 		fclose(f1);
 		f1 = fopen(tmp_file, "rt");
 		while (fgets(buf, sizeof(buf), f1)) {
@@ -221,7 +206,8 @@ status(int verbose, FILE *f)
 	} else {
 		int i;
 
-		fprintf(f, "%6d people have made deltas.\n", bkusers(1, 0, 0));
+		fprintf(f,
+		    "%6d people have made deltas.\n", bkusers(1, 0, 0, 0));
 		sprintf(buf, "bk sfiles > %s", tmp_file);
 		system(buf);
 		f1 = fopen(tmp_file, "rt");
