@@ -42,36 +42,40 @@ _fixtags() {		# /* undoc 2.0 */
 # fi
 _fixtool() {
 	__cd2root
-	bk sfiles -cg > /tmp/fix$$
-	test -s /tmp/fix$$ || {
+	fix=${TMP}/fix$$	
+	merge=${TMP}/merge$$	
+	previous=${TMP}/previous$$	
+	bk sfiles -cg > $fix
+	test -s $fix || {
 		echo Nothing to fix
-		rm -f /tmp/fix$$
+		rm -f $fix
 		exit 0
 	}
 	# XXX - this does not work if the filenames have spaces, etc.
-	for x in `cat /tmp/fix$$`
-	do	bk diffs $x | more 
+	for x in `cat $fix`
+	do	bk diffs $x | ${PAGER} 
 		echo $N "Fix ${x}? y)es q)uit n)o: "$NL
 		read ans 
 		DOIT=YES
 		case "X$ans" in
 		    X[Yy]*) ;;
 		    X[q]*)
-		    	rm -f /tmp/merge$$ /tmp/previous$$ 2>/dev/null
+		    	rm -f $fix $merge $previous 2>/dev/null
 		    	exit 0
 			;;
 		    *) DOIT=NO;;
 		esac
 		test $DOIT = YES || continue
-		bk get -kpr+ "$x" > /tmp/previous$$
-		rm -f /tmp/merge$$
-		bk fmtool /tmp/previous$$ "$x" /tmp/merge$$
-		test -s /tmp/merge$$ || continue
+		bk get -kpr+ "$x" > $previous
+		rm -f $merge
+		echo "bk fmtool $previous \"$x\" $merge"
+		bk fmtool $previous "$x" $merge
+		test -s $merge || continue
 		mv -f "$x" "${x}~"
 		# Cross file system probably
-		cp /tmp/merge$$ "$x"
+		cp $merge "$x"
 	done
-	rm -f /tmp/merge$$ /tmp/previous$$ 2>/dev/null
+	rm -f $fix $merge $previous 2>/dev/null
 }
 
 # Run csettool on the list of csets, if any

@@ -36,6 +36,7 @@ __platformInit()
 		wish=${_TCL_BIN}/wish83.exe
 		ext=".exe"
 		tcl=".tcl"
+		PAGER=less
 
 		if [ X$EDITOR = X ]
 		then EDITOR=notepad.exe
