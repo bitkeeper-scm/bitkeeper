@@ -85,12 +85,13 @@ mkdir gonelog
 cd gonelog
 bk takepatch -ia -f ../gone.e
 cd $HERE
-bk clone -l $Q gonebase gone1
-bk clone -l $Q gonebase gone2
+bk clone $Q gonebase gone1
+bk clone $Q gonebase gone2
 echo OK
 
 echo $N propogate info about a gone file ............................$NL
 cd gone1
+touch BitKeeper/etc/SCCS/x.marked # work around for bug 2002-08-27-003
 rm -f A SCCS/*.A
 bk -r check -ag | bk gone $Q -
 bk commit $Q -y'gone'

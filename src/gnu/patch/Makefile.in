@@ -128,8 +128,9 @@ ACINCLUDE_INPUTS = $(M4DIR)/ccstdc.m4 $(M4DIR)/d-ino.m4 \
   $(M4DIR)/inttypes_h.m4 $(M4DIR)/largefile.m4 $(M4DIR)/malloc.m4 \
   $(M4DIR)/protos.m4 $(M4DIR)/realloc.m4 $(M4DIR)/utimbuf.m4
 
-$(srcdir)/aclocal.m4: $(ACINCLUDE_INPUTS)
-	cat $(ACINCLUDE_INPUTS) >$(srcdir)/aclocal.m4
+# do not re-gen aclocal.m4, always use the one we checked out from BK
+#$(srcdir)/aclocal.m4: $(ACINCLUDE_INPUTS)
+#	cat $(ACINCLUDE_INPUTS) >$(srcdir)/aclocal.m4
 
 patchlevel.h: configure.in
 	echo '#define PATCH_VERSION "$(VERSION)"' >patchlevel.h

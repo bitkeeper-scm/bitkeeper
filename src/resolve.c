@@ -2800,7 +2800,7 @@ restore_checkouts(opts *opts)
 		sccs	*s;
 		s = sccs_keyinit(kv.key.dptr, INIT, 
 		    opts->local_proj, opts->idDB);
-		
+
 		unless (s) continue;
 
 		switch (kv.val.dptr[0]) {
@@ -2820,9 +2820,8 @@ restore_checkouts(opts *opts)
 		if (getFlags) {
 			sccs_get(s, 0, 0, 0, 0, SILENT|getFlags, "-");
 		}
+		sccs_free(s);
 	}
 	mdbm_close(opts->checkoutDB);
 	opts->checkoutDB = 0;
 }
-
-		

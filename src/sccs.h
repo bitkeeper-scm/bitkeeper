@@ -1109,7 +1109,7 @@ void	sccs_color(sccs *s, delta *d);
 int	out(char *buf);
 int	getlevel(void);
 int	isSymlnk(char *s);
-void	cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
+delta	*cset_insert(sccs *s, MMAP *iF, MMAP *dF, char *parentKey);
 int	cset_map(sccs *s, int extras);
 int	cset_write(sccs *s);
 int	cset_diffs(sccs *s, ser_t ser);
