@@ -25,6 +25,9 @@ private int doit(sccs *, s_opts);
 private	int do_check(sccs *s, int flags);
 private int strip_list(s_opts);
 
+private	int	logmarker_needed = 0;
+private	int	logmarker_ptype;
+
 int
 stripdel_main(int ac, char **av)
 {
@@ -51,8 +54,10 @@ usage:			system("bk help -s stripdel");
 			return (1);
 		}
 	}
-	if (av[optind] && streq(av[optind], "-")) return (strip_list(opts));
-
+	if (av[optind] && streq(av[optind], "-")) {
+		rc = strip_list(opts);
+		goto done;
+	}
 	unless (opts.stripBranches || (things && r[0])) {
 		fprintf(stderr, "stripdel: must specify revisions.\n");
 		return (1);
@@ -81,6 +86,14 @@ usage:			system("bk help -s stripdel");
 	rc = doit(s, opts);
 	sccs_free(s);
 	sfileDone();
+done:   
+	if (!opts.checkOnly && logmarker_needed) {
+		/* 
+		 * XXX the debug argument to updLogMarker is unusable
+		 * because it uses a bad filehandle.
+		 */
+		updLogMarker(logmarker_ptype, 0);
+	}
 	return (rc);
 next:	return (1);
 }
@@ -216,6 +229,10 @@ set_meta(sccs *s, int stripBranches, int *count)
 			if (e->merge) {
 				sfind(s, e->merge)->flags &= ~D_MERGED;
 				redo_merge = 1;
+			}
+			if (CSET(s) && e->published) {
+				logmarker_needed = 1;
+				logmarker_ptype = e->ptype;
 			}
 			continue;
 		}
