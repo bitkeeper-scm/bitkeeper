@@ -92,7 +92,7 @@ proc registry_install {destination} \
 	reg set $HKLMS\\$MWC\\Uninstall\\$id URLInfoAbout \
 		 "http://www.bitkeeper.com"
 	reg set $HKLMS\\$MWC\\Uninstall\\$id HelpLink \
-		 "http://www.bitmover.com"
+		 "http://www.bitkeeper.com/Support.html"
 
 }
 
@@ -100,10 +100,10 @@ proc startmenu_install {dest {group "BitKeeper"}} \
 {
 	global env shortcutlog
 
-	set dest [file nativename $dest]
-	set bk [file nativename [file join $dest bk.exe]]
-	set uninstall [file nativename [file join $dest bkuninstall.exe]]
-	set installlog [file nativename [file join $dest install.log]]
+	set dest [shortname $dest]
+	set bk [shortname [file join $dest bk.exe]]
+	set uninstall [shortname [file join $dest bkuninstall.exe]]
+	set installlog [shortname [file join $dest install.log]]
 	lappend shortcutlog "CreateGroup \"$group\""
 	# by not specifying whether this is a common or user group 
 	# it will default to common if the user has admin privs and
@@ -227,7 +227,7 @@ proc addpath {type dir} \
 
 proc shortname {dir} \
 {
-	catch {set dir [exec bk pwd -s $dir]}
+	catch {set dir [file attributes $dir -shortname]}
 	return $dir
 }
 
