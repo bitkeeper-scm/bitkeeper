@@ -112,8 +112,8 @@ file later using the following: \"bk admin -f<FLAG> file\".\n\
 private int
 f_local(resolve *rs)
 {
-	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
-	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+	delta	*l = sccs_findrev(rs->s, rs->revs->local);
+	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
@@ -125,8 +125,8 @@ f_local(resolve *rs)
 private int
 f_remote(resolve *rs)
 {
-	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
-	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+	delta	*l = sccs_findrev(rs->s, rs->revs->local);
+	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
 
 	sccs_close(rs->s); /* for win32 */
 	flags_delta(rs, rs->s->sfile,
@@ -155,9 +155,9 @@ f_remote(resolve *rs)
 private int
 f_merge(resolve *rs)
 {
-	delta	*l = sccs_getrev(rs->s, rs->revs->local, 0, 0);
-	delta	*r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
-	delta	*g = sccs_getrev(rs->s, rs->revs->gca, 0, 0);
+	delta	*l = sccs_findrev(rs->s, rs->revs->local);
+	delta	*r = sccs_findrev(rs->s, rs->revs->remote);
+	delta	*g = sccs_findrev(rs->s, rs->revs->gca);
 	int	lf, rf, gf;
 	int	newflags;
 
@@ -185,7 +185,7 @@ f_merge(resolve *rs)
 		flags_delta(rs, rs->s->sfile, 
 			    l, newflags, sccs_Xfile(rs->s, 'r'), LOCAL);
 		/* remove delta must be refetched after previous delta */
-		r = sccs_getrev(rs->s, rs->revs->remote, 0, 0);
+		r = sccs_findrev(rs->s, rs->revs->remote);
 		sccs_close(rs->s); /*
 				    * for win32, have to close it again
 				    * becuase the previous flags_delta()

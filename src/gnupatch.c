@@ -33,7 +33,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 		char	*r = streq(".", rev) ? "+": rev;
 		char	*ogfile;
 
-		d = findrev(s, r);
+		d = sccs_findrev(s, r);
 		assert(d);
 		unless ((d->mode == 0) || S_ISREG(d->mode)) {
 			fprintf(stderr,

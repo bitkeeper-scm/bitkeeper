@@ -41,7 +41,7 @@ r2c_main(int ac, char **av)
 		fprintf(stderr, "r2c: cannot find package root.\n");
 		exit(1);
 	}
-	unless (e = sccs_getrev(s, &av[1][2], 0, 0)) {
+	unless (e = sccs_findrev(s, &av[1][2])) {
 		fprintf(stderr, "r2c: can't find rev like %s in %s\n",
 		    &av[1][2], name);
 	    	exit(1);
