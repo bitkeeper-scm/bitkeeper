@@ -149,11 +149,21 @@ out:		for (c = 2; c < nac; c++) free(nav[c]);
 		unless (av[optind]) free(url);
 		return (1); /* interrupted */
 	} else {
-		int	ret = doit_remote(&nav[1], url);
+		int	rc;
+		int	i = 0;
 
+		for (;;) {
+			rc = doit_remote(&nav[1], url);
+			if (rc != -2) break; /* -2 means locked */
+			fprintf(stderr,
+			    "changes: remote locked, trying again...\n");
+			sleep(min((i++ * 2), 10)); /* auto back off */
+		}
+		
 		for (c = 2; c < nac; c++) free(nav[c]);
 		unless (av[optind]) free(url);
-		return (ret);
+		
+		return (rc);
 	}
 }
 
@@ -566,6 +576,7 @@ private int
 changes_part2(remote *r, char **av, char *key_list, int ret)
 {
 	int	rc = 0;
+	int	rc_lock;
 	char	buf[MAXLINE];
 	pid_t	pid;
 
@@ -582,8 +593,8 @@ changes_part2(remote *r, char **av, char *key_list, int ret)
 	send_part2_msg(r, av, key_list);
 
 	getline2(r, buf, sizeof(buf));
-	if (remote_lock_fail(buf, 0)) {
-		rc = -1;
+	if (rc_lock = remote_lock_fail(buf, 0)) {
+		rc = rc_lock;
 		goto done;
 	} else if (streq(buf, "@SERVER INFO@")) {
 		getServerInfoBlock(r);
@@ -638,7 +649,7 @@ doit_remote(char **av, char *url)
 		av[rc] = tmp;
 	}
 	rc = changes_part1(r, av, key_list);
-	if (opts.remote) {
+	if (rc >= 0 && opts.remote) {
 		rc = changes_part2(r, av, key_list, rc);
 	}
 	remote_free(r);
