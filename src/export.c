@@ -14,7 +14,7 @@ export_main(int ac,  char **av)
 	char	file_rev[MAXPATH];
 	char	buf[MAXLINE], buf1[MAXPATH];
 	char	include[MAXLINE] = "";
-	char	exclude[MAXLINE];
+	char	exclude[MAXLINE] = "";
 	char	*src, *dst;
 	char	*p, *q, *p_sav;
 	char	src_path[MAXPATH], dst_path[MAXPATH];
@@ -22,15 +22,14 @@ export_main(int ac,  char **av)
 	delta	*d;
 	FILE	*f;
 	char	*type = 0;
+	int	sysfiles = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
 		system("bk help export");
 		return (1);
 	}
 
-	sprintf(exclude, "*%cBitKeeper/*%c*", BK_FS, BK_FS);
-
-	while ((c = getopt(ac, av, "d:hkp:t:Twvi|x|r:")) != -1) {
+	while ((c = getopt(ac, av, "d:hkp:t:Twvi|x|r:S")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;		/* doc 2.0 */
 		    case 'q':					/* undoc 2.0 */
@@ -40,6 +39,7 @@ export_main(int ac,  char **av)
 			hflag = 1; break; /*disable patch header*/
 		    case 'k':	kflag = 1; break;		/* doc 2.0 */
 		    case 'p':	trim = atoi(optarg); break;
+		    case 'S':   sysfiles = 1; break;		/* undoc 2.2 */
 		    case 'r':	rev = optarg; break;		/* doc 2.0 */
 		    case 't':	if (type) goto usage;		/* doc 2.0 */
 				type = optarg; 
@@ -118,6 +118,8 @@ usage:			system("bk help -s export");
 		p = strchr(buf, BK_FS);
 		assert(p);
 		*p++ = '\0';
+		/* skip BitKeeper and deleted files */
+		if (!sysfiles && strneq(p, "BitKeeper/", 10)) continue;
 		if (streq(buf, "ChangeSet")) continue;
 		sprintf(buf1, "%s/%s", src_path, buf);
 		t = name2sccs(buf1);
@@ -187,9 +189,17 @@ export_patch(char *diff_style, char *rev,
 	f = fopen(file_rev, "rt");
 	assert(f);
 	while (fgets(buf, sizeof(buf), f)) {
+		char	*fstart, *fend;
+
 		chop(buf);
 		if (!included(buf, include)) continue;
 		if (excluded(buf, exclude)) continue;
+		/* Skip BitKeeper/ files (but pass deletes..) */
+		fstart = strchr(buf, BK_FS) + 1;
+		fend = strchr(fstart, BK_FS) + 1;
+		fend = strchr(fend, BK_FS) + 1;
+		if (strneq(fstart, "BitKeeper/", 10) &&
+		    strneq(fend, "BitKeeper/", 10)) continue;
 		fprintf(f1, "%s\n", buf);
 	}
 	fclose(f);

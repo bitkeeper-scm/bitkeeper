@@ -1,5 +1,4 @@
 .so bk-macros
-.\" XXX -t is listed in synopsis, but not in options
 .TH "bk export" 1 20%E% "\*(BC" "\*(UM"
 .SH NAME 
 bk export \- checks out clear-text version of all \*(BK files
@@ -91,9 +90,9 @@ Note that
 .I \-i
 and
 .I \-x
-take a single,
-.BR egrep \-style
-regular expression which is matched against the partial pathname from the root.
+take a file glob like used by 
+.BR bk ignore
+which is matched against the partial pathname from the root.
 .LP
 .SH SEE ALSO
 .BR diff (1)
