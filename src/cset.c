@@ -749,7 +749,7 @@ again:	/* doDiffs can make it two pass */
 			assert(!cs->compat);
 			fputs(PATCH_CURRENT, stdout);
 			fputs(PATCH_LOGGING, stdout);
-		} else if (cs->compat || getenv("_BK_FORCE_COMPAT")) {
+		} else if (cs->compat) {
 			fputs(PATCH_COMPAT, stdout);
 		} else {
 			fputs(PATCH_CURRENT, stdout);

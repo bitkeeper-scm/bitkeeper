@@ -71,21 +71,6 @@ revs=`bk prs -hd':I:\n' src/'F!O#O$ B%A^R&RR(R)RR' | wc -l`
 grep -q TAG1 SCCS/s.ChangeSet || { echo did not propogate tag; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 echo OK
-echo $N Push a new changeset created with a tag using opush .........$NL
-cd $HERE
-tar cf P.tar project
-cd $HERE/copy/src
-bk get $Q -e 'F!O#O$ B%A^R&RR(R)RR'
-echo delta two >> 'F!O#O$ B%A^R&RR(R)RR'
-bk delta $Q -yopush_cset 'F!O#O$ B%A^R&RR(R)RR'
-bk commit $Q -yopush_cset -STAG2
-_BK_FORCE_COMPAT=YES bk opush -t > OUT 2>&1
-grep -q 'will not accept tags in compatibility mode' OUT || {
-	echo bad error message
-	cat OUT
-	exit 1
-}
-echo OK
 
 echo $N Resolve a tag conflict, pick remote, see if it sticks .......$NL
 cd $HERE
