@@ -601,6 +601,11 @@ check(sccs *s, MDBM *db, MDBM *marks)
 	 */
 	if (all && !streq(ino->pathname, d->pathname)) {
 		fprintf(idcache, "%s %s\n", buf, s->gfile);
+		if (mixed && (t = sccs_iskeylong(buf))) {
+			*t = 0;
+			 fprintf(idcache, "%s %s\n", buf, s->gfile);
+			*t = '|';
+		} 
 	}
 
 	/* Make sure that we think we have cset marks */
