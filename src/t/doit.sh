@@ -88,7 +88,7 @@ unix_common_setup()
 	rm -rf $BK_LIMITPATH
 	mkdir $BK_LIMITPATH
 	for f in awk expr sh grep egrep sed \
-	    basename dirname cat cp ln mkdir mv rm rmdir sort touch wc xargs \
+	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip
 	do	p=`bk _findprog $f`
 		if [ $? -eq 0 ]

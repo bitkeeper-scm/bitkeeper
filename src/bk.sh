@@ -443,7 +443,7 @@ _unrm () {
 
 	# Find all the possible files, sort with most recent delete first.
 	bk -r. prs -Dhnr+ -d':TIME_T:|:GFILE' | \
-		sort -r -n | awk -F'|' '{print $2}' | \
+		bk _sort -r -n | awk -F'|' '{print $2}' | \
 		bk prs -Dhnpr+ -d':GFILE:|:DPN:' - | \
 		grep '^.*|.*'"$rpath"'.*' >$LIST
 
@@ -1118,6 +1118,13 @@ EOF
 		X) help=1;;
 		esac
 		done
+}
+
+# XXX the old 'bk _keysort' has been removed, but we keep this just
+# in case someone calls _keysort after some merge or something.
+__keysort()
+{
+    bk _sort "$@"
 }
 
 # ------------- main ----------------------

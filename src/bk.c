@@ -93,7 +93,6 @@ int	idcache_main(int, char **);
 int	isascii_main(int, char **);
 int	key2rev_main(int, char **);
 int	key2path_main(int, char **);
-int	keysort_main(int, char **);
 int	keyunlink_main(int, char **);
 int	lconfig_main(int, char **);
 int	level_main(int, char **);
@@ -203,7 +202,6 @@ struct	command cmdtbl[] = {
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
 	{"_gzip", gzip_main }, 
-	{"_keysort", keysort_main},
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
 	{"_lconfig", lconfig_main},	
