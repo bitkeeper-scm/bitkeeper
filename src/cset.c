@@ -1033,7 +1033,7 @@ doMarks(cset_t *cs, sccs *s)
 	}
 	if (did || !(s->state & S_CSETMARKED)) {
 		s->state |= S_CSETMARKED;
-		sccs_admin(s, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
+		sccs_admin(s, 0, NEWCKSUM, 0, 0, 0, 0, 0, 0, 0, 0);
 		if ((cs->verbose > 1) && did) {
 			fprintf(stderr,
 			    "Marked %d csets in %s\n", did, s->gfile);

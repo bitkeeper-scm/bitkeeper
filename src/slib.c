@@ -2427,6 +2427,11 @@ meta(sccs *s, delta *d, char *buf)
 	    case 'S':
 		symArg(s, d, &buf[3]);
 		break;
+	    case 'X':
+		assert(d);
+		d->flags |= D_XFLAGS;
+		d->xflags = atoi(&buf[3]);
+		break;
 	    case 'Z':
 		zoneArg(d, &buf[3]);
 		break;
@@ -5542,6 +5547,13 @@ delta_table(sccs *s, FILE *out, int willfix, int fixDate)
 				fputmeta(s, buf, out);
 			}
 		}
+		if (d->flags & D_XFLAGS) {
+			p = fmts(buf, "\001cX");
+			p = fmtu(p, d->xflags);
+			*p++ = '\n';
+			*p   = '\0';
+			fputmeta(s, buf, out);
+		}
 		if (d->zone && !(d->flags & D_DUPZONE)) {
 			p = fmts(buf, "\001cZ");
 			p = fmts(p, d->zone);
@@ -7554,30 +7566,107 @@ sym_err:		error = 1; sc->state |= S_WARNED;
 	return (added);
 }
 
-private int
-addMode(char *me, sccs *sc, int flags, char *mode, int *ep)
+
+delta *
+sccs_newDelta(sccs *sc, int isNullDelta)
 {
-	delta	*d, *n;
-	char	*rev, buf[30];
+	delta *p, *n;
+	char	*rev;
 	int 	f = 0;  /* XXX this may be affected by LOD */
 
-	unless (mode) return 0;
-	d = findrev(sc, 0);
+	p = findrev(sc, 0);
 	n = calloc(1, sizeof(delta));
 	n->next = sc->table;
 	sc->table = n;
 	n = sccs_dInit(n, 'D', sc, 0);
-	rev = d->rev;
+	rev = p->rev;
 	getedit(sc, &rev, f);
 	n->rev = strdup(rev);
-	n->pserial = d->serial;
+	n->pserial = p->serial;
 	n->serial = sc->nextserial++;
+	sc->numdeltas++;
+	if (isNullDelta) {
+		n->added = n->deleted = 0;
+		n->same = p->same + p->added - p->deleted;
+		n->sum = (unsigned short) almostUnique(0);
+		n->flags |= D_CKSUM;
+	}
+	dinsert(sc, 0, n);
+	return n;
+}
+
+private int 
+name2xflg(char *fl)
+{
+	if (streq(fl, "EXPAND1")) {
+		return X_EXPAND1;
+	} else if (streq(fl, "RCS")) {
+		return X_RCSEXPAND;
+	} else if (streq(fl, "YEAR4")) {
+		return X_YEAR4;
+	}
+	assert("bad flag" == 0);
+}
+
+private delta *
+addMode(char *me, sccs *sc, delta *n, char *mode)
+{
+	char	buf[50];
+
+	assert(mode);
+	unless (n) n = sccs_newDelta(sc, 1);
 	sprintf(buf, "Change mode to %s", mode);
 	n->comments = addLine(n->comments, strdup(buf));
-	sc->numdeltas++;
 	n = modeArg(n, mode);
-	dinsert(sc, 0, n);
-	return 1;
+	return n;
+}
+
+private delta *
+changeXFlag(char *me, sccs *sc, delta *n, int add, char *flag)
+{
+	char	buf[50];
+	u32	xflags, mask;
+
+	assert(flag);
+
+	/*
+	 * If this is the first time we touch n->xflags,
+	 * initialize it from sc->state.
+	 */
+	unless (n && (n->flags & D_XFLAGS)) {
+		xflags = 0;
+		if (sc->state & S_EXPAND1) xflags |= X_EXPAND1;
+		if (sc->state & S_RCS) xflags |= X_RCSEXPAND;
+		if (sc->state & S_YEAR4) xflags |= X_YEAR4;
+		/* XXX Do we want to grap other X flags here ??*/
+	} else {
+		xflags = n->xflags;
+	}
+
+	mask = name2xflg(flag);
+	if (add) {
+		if (xflags & mask) {
+			fprintf(stderr,
+				"%s: %s flag is already on, ignored\n",
+				me, flag);
+			return n;
+		} 
+		xflags |= mask;
+	} else {
+		unless (xflags & mask) {
+			fprintf(stderr,
+				"%s: %s flag is already off, ignored \n",
+				me, flag);
+			return n;
+		}
+		xflags &= ~mask;
+	}
+	unless (n) n = sccs_newDelta(sc, 1);
+	n->flags |= D_XFLAGS;
+	n->xflags = xflags;
+	sprintf(buf, "Turn %s %s flag", add ? "on": "off", flag);
+	n->comments = addLine(n->comments, strdup(buf));
+	return n;
 }
 
 /*
@@ -7631,7 +7720,7 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
  * For large files, this is a win.
  */
 int
-sccs_admin(sccs *sc, u32 flags, char *new_encp, char *new_compp,
+sccs_admin(sccs *sc, delta *d, u32 flags, char *new_encp, char *new_compp,
 	admin *f, admin *z, admin *u, admin *s, char *mode, char *text)
 {
 	FILE	*sfile = 0;
@@ -7698,7 +7787,8 @@ out:
 		flags |= NEWCKSUM;
 		fixDate = 1;
 	}
-	if (addMode("admin", sc, flags, mode, &error)) {
+	if (mode) {
+		addMode("admin", sc, d, mode);
 		flags |= NEWCKSUM;
 		fixDate = 1;
 	}
@@ -7770,34 +7860,40 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 
 			if (streq(fl, "EXPAND1")) {
 				if (v) goto noval;
+				d = changeXFlag("admin", sc, d, add, fl);
 				if (add)
 					sc->state |= S_EXPAND1;
 				else
 					sc->state &= ~S_EXPAND1;
-			} else if (streq(fl, "BK")) {
-				if (v) goto noval;
-				if (add)
-					sc->state |= S_BITKEEPER;
-				else
-					sc->state &= ~S_BITKEEPER;
 			} else if (streq(fl, "RCS")) {
 				if (v) goto noval;
+				d = changeXFlag("admin", sc, d, add, fl);
 				if (add)
 					sc->state |= S_RCS;
 				else
 					sc->state &= ~S_RCS;
 			} else if (streq(fl, "YEAR4")) {
 				if (v) goto noval;
+				d = changeXFlag("admin", sc, d, add, fl);
 				if (add)
 					sc->state |= S_YEAR4;
 				else
 					sc->state &= ~S_YEAR4;
+			/* Flags below are non propagated */
+			} else if (streq(fl, "BK")) {
+				if (v) goto noval;
+				if (add)
+					sc->state |= S_BITKEEPER;
+				else
+					sc->state &= ~S_BITKEEPER;
+#ifdef S_ISSHELL
 			} else if (streq(fl, "SHELL")) {
 				if (v) goto noval;
 				if (add)
 					sc->state |= S_ISSHELL;
 				else
 					sc->state &= ~S_ISSHELL;
+#endif
 			} else if (streq(fl, "BRANCHOK")) {
 				if (v) goto noval;
 				if (add)
@@ -8371,8 +8467,8 @@ skip:
 	/* cksums are optional but shouldn't be */
 	if (WANT('K')) {
 		d = sumArg(d, &buf[2]);
-		unless (buf = mkline(mnext(f))) goto out; lines++;
 		d->flags |= D_ICKSUM;
+		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
 	/* merge deltas are optional */
@@ -8426,6 +8522,12 @@ skip:
 				d->exclude = addSerial(d->exclude, e->serial);
 			}
 		}
+		unless (buf = mkline(mnext(f))) goto out; lines++;
+	}
+
+	if (WANT('X')) {
+		d->xflags = atoi(&buf[2]);	
+		d->flags |= D_XFLAGS;
 		unless (buf = mkline(mnext(f))) goto out; lines++;
 	}
 
@@ -8761,6 +8863,25 @@ out:
 			    streq(prefilled->pathname, "ChangeSet")) {
 				s->state |= S_CSET;
 		    	}
+			if (prefilled->flags & D_XFLAGS) {
+				/*  XXX this code will be affected by LOD */
+				u32 bits = prefilled->xflags;
+				if (bits & X_YEAR4) {
+					s->state |= S_YEAR4;
+				} else {
+					s->state &= ~S_YEAR4;
+				}
+				if (bits & X_RCSEXPAND) {
+					s->state |= S_RCS;
+				} else {
+					s->state &= ~S_RCS;
+				}
+				if (bits & X_EXPAND1) {
+					s->state |= S_EXPAND1;
+				} else {
+					s->state &= ~S_EXPAND1;
+				}
+			}
 			unless (flags & NEWFILE) {
 				/* except the very first delta   */
 				/* all rev are subject to rename */
@@ -10531,6 +10652,9 @@ do_patch(sccs *s, delta *start, delta *stop, int flags, FILE *out)
 		fprintf(out, "x ");
 		sccs_pdelta(s, d, out);
 		fprintf(out, "\n");
+	}
+	if (start->flags & D_XFLAGS) {
+		fprintf(out, "X %u\n", start->xflags);
 	}
 	if (s->tree->zone) assert(start->zone);
 	fprintf(out, "------------------------------------------------\n");

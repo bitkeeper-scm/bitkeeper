@@ -80,6 +80,7 @@ main(int ac, char **av)
 	int	fastSym = 0, dopath = 0, rmCset = 0, rmPath = 0;
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
+	delta	*d = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -254,7 +255,12 @@ main(int ac, char **av)
 				goto next;
 			}
 		}
-		if (sccs_admin(sc, flags, encp, compp, f, 0, u, s, m, text)) {
+		/*
+		 * if we just created a new file, reuse the new delta
+		 */
+		if (flags & NEWFILE) d = findrev(sc, rev);
+		if (sccs_admin(
+			    sc, d, flags, encp, compp, f, 0, u, s, m, text)) {
 			sccs_whynot("admin", sc);
 			error = 1;
 		}
