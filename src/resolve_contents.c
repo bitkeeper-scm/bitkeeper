@@ -253,7 +253,7 @@ c_vm(resolve *rs)
 	return (0);
 }
 
-int
+private int
 needs_merge(resolve *rs)
 {
 	MMAP	*m;
@@ -267,11 +267,13 @@ needs_merge(resolve *rs)
 		fprintf(stderr, "%s cannot be opened\n", rs->s->gfile);
 		return (0);
 	}
-	while ((t = mnext(m)) && ((m->end - t) > 7)) {
+	t = m->where;
+	while (t < m->end) {
 		if (strneq(t, "<<<<<<", 6)) {
 			ok = 0;
 			break;
 		}
+		while (t < m->end && *t++ != '\n');
 	}
 	mclose(m);
 	if (ok) return (0);
