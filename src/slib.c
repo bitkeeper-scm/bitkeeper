@@ -5236,7 +5236,7 @@ openOutput(sccs *s, int encode, char *file, FILE **op)
 		 * We want this becuase we want diff_gfile() to
 		 * diffs file with normlized to LF.
 		 */
-		if ((encode == E_ASCII) &&
+		if (((encode == E_ASCII) || (encode == E_GZIP)) &&
 		    (s->state&S_EOLN_NATIVE)) {
 			mode = "wt";
 		}
