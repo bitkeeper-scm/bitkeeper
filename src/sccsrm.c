@@ -20,7 +20,8 @@ main(int ac, char **av)
                 switch (c) {
                     case 'd': useCommonDir++; break;
                     default:
-                        fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
+                        fprintf(stderr,
+			    "usage: %s [-d] file1 file2 ...\n", av[0]);
                         return (1);
                 }
         }                    
@@ -28,7 +29,8 @@ main(int ac, char **av)
 usage:		fprintf(stderr, "usage: %s [-d] file1 file2 ...\n", av[0]);
 		exit(1);
 	}
-	for (name = sfileFirst("sccsrm",&av[optind], 0); name; name = sfileNext()) {
+	for (name = sfileFirst("sccsrm",&av[optind], 0);
+	    name; name = sfileNext()) {
 		errors |= sccs_rm(name, useCommonDir);
 	}
 	sfileDone();

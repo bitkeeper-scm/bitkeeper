@@ -427,7 +427,7 @@ _undo() {
 }
 
 _pending() {
-	exec ${BIN}sfiles -Ca | ${BIN}sccslog -p - | $PAGER
+	exec ${BIN}sfiles -Ca | ${BIN}sccslog - | $PAGER
 }
 
 _chkConfig() {

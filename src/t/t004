@@ -1,0 +1,47 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo --------------- Branch tests %M% ------------------
+echo $N Set the default branch ......................$NL
+ls > branch
+ci -i $Q branch
+for i in 2 3 4
+do	co -l $Q branch
+	delta -y'foo' $S branch
+done
+admin $Q -fd1.2 branch
+grep -q '^.f d 1.2' SCCS/s.branch
+if [ $? -ne 0 ]; then echo Failed to add default branch; exit 1; fi
+echo OK
+echo $N Make sure that it creates a new branch ......$NL
+co $Q -l branch
+grep -q '1.2 1.2.1.1 ' SCCS/p.branch
+if [ $? -ne 0 ]; then echo Failed to create new branch; exit 1; fi
+echo OK
+# XXX - need to create a file with 1.1 in it and then set default branch
+# to 1.5.1 and make sure that a co doesn't core dump.
+echo $N Check ci -l on branch .......................$NL
+clean branch
+co $Q -l -r1.3 branch
+echo "this is branch 1.3.1.1" > branch
+ci $Q -l -y branch
+echo "this is branch 1.3.1.2" > branch
+ci $Q -l -y branch
+clean
+co $Q -r1.3.1.2 branch
+echo "this is branch 1.3.1.2" > branch.ref
+cmp -s branch.ref branch
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Check delta -l on branch ....................$NL
+clean branch
+co $Q -l -r1.3.1.2 branch
+echo "this is branch 1.3.1.3" > branch
+delta $Q -y -l branch
+clean
+echo "this is branch 1.3.1.3" > branch.ref
+co $Q -r1.3.1.3 branch
+cmp -s branch.ref branch
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK

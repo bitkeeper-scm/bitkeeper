@@ -1,0 +1,19 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo ---------- relative path test %M% ------------
+echo $N checking pathname w/o cset file .............$NL
+${RM} -rf BitKeeper SCCS/s.ChangeSet
+echo "1234" > path
+ci $Q -l -i path
+P=`prs -h -d':DPN:' path`
+if [ $P != `pwd`/path ]; then echo Failed; exit 1; fi
+echo OK
+echo $N checking pathname w/ cset file ..............$NL
+cset -is .
+echo 5678 > path
+ci $Q -y path
+P=`prs -r1.2 -h -d':DPN:' path`
+if [ $P != "path" ]; then echo Failed; exit 1; fi
+echo OK

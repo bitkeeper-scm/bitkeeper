@@ -1,0 +1,99 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo ---------- diffs tests %M% ------------
+${ECHO} 1.1 > Mydiffs
+admin -q -n -iMydiffs Mydiffs
+${RM} -f Mydiffs
+# D 1.2 93/03/11 00:50:40.000 butthead 2 1  9/2/44
+# C added 4.x etc targets
+for i in 2 3 4 5 6 7 8 9 10
+do	co $Q -l Mydiffs
+	${ECHO} 1.$i >> Mydiffs
+	${ECHO} "D 1.$i 20/03/11 00:00:0$i butthead a b c/d/e" | sed s/010/10/ | ${CAT} > Init
+	${ECHO} "c Rev $i" >> Init
+	${ECHO} "------------------------------------------------" >> Init
+	delta $Q -IInit Mydiffs
+done
+echo $N Checking diffs against readonly file ........$NL
+co $Q -r1.9 Mydiffs
+diffs Mydiffs > D
+${CAT} > W << EOF
+===== Mydiffs 1.10 vs ? =====
+10d9
+< 1.10
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK
+echo $N Checking diff against edited file ...........$NL
+co $Q -l Mydiffs
+${ECHO} foo >> Mydiffs
+diffs Mydiffs > D
+${CAT} > W <<EOF
+===== Mydiffs 1.10 vs edited =====
+10a11
+> foo
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK
+echo $N Checking diff -r1.8 against edited file .....$NL
+diffs -r1.8 Mydiffs > D
+${CAT} > W <<EOF
+===== Mydiffs 1.8 vs edited =====
+8a9,11
+> 1.9
+> 1.10
+> foo
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK
+echo $N Checking diff -r1.8 w/ no file ..............$NL
+clean -u Mydiffs
+diffs -r1.8 Mydiffs > D
+${CAT} > W <<EOF
+===== Mydiffs 1.8 vs 1.10 =====
+8a9,10
+> 1.9
+> 1.10
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK
+echo $N Checking diff -r1.8 -r1.9 ...................$NL
+diffs -r1.8 -r1.9 Mydiffs > D
+${CAT} > W <<EOF
+===== Mydiffs 1.8 vs 1.9 =====
+8a9
+> 1.9
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK
+echo $N Checking diff -dSSS -r1.9 ...................$NL
+admin $Q -SSSS:1.7 Mydiffs
+diffs -dSSS -r1.9 Mydiffs > D
+${CAT} > W <<EOF
+===== Mydiffs 1.7 vs 1.9 =====
+7a8,9
+> 1.8
+> 1.9
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; diff D W; exit 1; fi
+echo OK
+echo $N Checking diff -dSSS .........................$NL
+diffs -dSSS Mydiffs > D
+${CAT} > W <<EOF
+===== Mydiffs 1.7 vs 1.10 =====
+7a8,10
+> 1.8
+> 1.9
+> 1.10
+EOF
+cmp -s D W
+if [ $? -ne 0 ]; then echo Failed to get correct diffs.; exit 1; fi
+echo OK

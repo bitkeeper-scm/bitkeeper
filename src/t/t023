@@ -1,0 +1,198 @@
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+echo --------------- Symlink tests %M% -------------------
+echo $N Create a symlink ............................$NL
+umask 0
+cset -is .
+echo "xx" > file
+ln -s file symlink
+mv file file.tmp
+ci $Q -i symlink
+grep -q '^.cOlrwxrwxrwx file' SCCS/s.symlink
+if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+admin -h symlink 2> ${DEV_NULL}
+if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
+echo OK
+rm -f symlink
+echo $N Check checkout of symlink ...................$NL
+co $Q symlink
+if [ ! -h symlink ]; then echo failed; fi 
+mv file.tmp file
+cmp -s symlink file
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+rm -f symlink
+echo $N Check update of symlink .....................$NL
+co $Q -l symlink
+rm -f symlink file
+echo "this is file2" > file2
+ln -s file2 symlink
+${CAT} > CMP1 << EOF
+symlink has been modified, needs delta.
+EOF
+clean 2> CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo clean Failed.; exit 1; fi
+mv file2 file2.tmp
+ci $Q -y symlink
+rm -f symlink
+grep -q '^.cOlrwxrwxrwx file2' SCCS/s.symlink
+if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+admin -h symlink 2> ${DEV_NULL}
+if [ $? -ne 0 ]; then echo bad sfile.; exit 1; fi
+${CAT} > CMP1 << EOF
+1.2
+1.1
+EOF
+prs -h -d":I:" symlink > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+co $Q symlink
+if [ ! -h symlink ]; then echo failed; fi 
+mv file2.tmp file2
+cmp -s symlink file2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK
+echo $N Symlink to real file conversion .............$NL
+co $Q -l symlink
+rm -f symlink
+${ECHO} "this is a real file" > symlink 
+cp symlink symlink.ref
+${CAT} > CMP1 << EOF
+===== symlink (file type) 1.2 vs edited =====
+< SYMLINK
+-
+> FILE
+EOF
+clean -p  > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo clean Failed.; exit 1; fi
+ci $Q -y symlink
+rm -f symlink
+co $Q symlink
+cmp -s symlink.ref symlink
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK     
+echo $N Check change text file into a symlink........$NL
+co $Q -l symlink
+rm -f symlink
+${ECHO} "this is file3" > file3
+ln -s file3 symlink
+${CAT} > CMP1 << EOF
+symlink has different file type, needs delta.
+EOF
+clean 2> CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed - got `cat CMP2`; exit 1; fi
+ci $Q -y symlink
+rm -f symlink
+co $Q symlink
+if [ ! -h symlink ]; then echo failed; fi 
+cmp -s symlink file3
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK     
+rm -f symlink
+echo $N Check symlink to a directory ................$NL
+mkdir dir1
+co $Q -l symlink
+rm -f symlink
+ln -s dir1 symlink
+ci $Q -y symlink
+grep -q '^.cOlrwxrwxrwx dir1' SCCS/s.symlink
+if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+echo OK
+echo $N Check dangling symlink ......................$NL
+co $Q -l symlink
+rm -f symlink
+ln -f -s this_file_does_not_exist symlink
+ci $Q -y symlink
+grep -q '^.cOlrwxrwxrwx this_file_does_not_exist' SCCS/s.symlink
+if [ $? -ne 0 ]; then echo bad mode.; exit 1; fi
+echo OK
+co $Q -l symlink
+rm -f symlink
+ln -f -s dir1 symlink
+ci $Q -y symlink
+echo $N Check clean on symlink directory ............$NL
+co $Q symlink
+touch dir1/data
+ci $Q -i -l dir1/data
+clean .
+if [ -h symlink ]; then echo failed; exit 1; fi
+echo OK
+echo $N Make sure text data is preserved.............$NL
+co $Q -r1.3 symlink
+cmp -s symlink.ref symlink
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK     
+echo $N Check print option for symlink ..............$NL
+${CAT} > CMP1 << EOF
+SYMLINK -> dir1
+EOF
+get $Q -p symlink > CMP2 
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; diff CMP1 CMP2; exit 1; fi
+echo OK     
+echo $N Check diff option for text/symlink ..........$NL
+${CAT} > CMP1 << EOF
+===== symlink 1.3 vs 1.4 =====
+1c1
+< this is a real file
+---
+> SYMLINK -> file3
+EOF
+diffs -r1.3 -r1.4 symlink > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK     
+echo $N Check diff option for symlink/text ..........$NL
+${CAT} > CMP1 << EOF
+===== symlink 1.2 vs 1.3 =====
+1c1
+< SYMLINK -> file2
+---
+> this is a real file
+EOF
+diffs -r1.2 -r1.3 symlink > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK     
+echo $N Check diff option for symlink/symlink .......$NL
+${CAT} > CMP1 << EOF
+===== symlink 1.1 vs 1.2 =====
+1c1
+< SYMLINK -> file
+---
+> SYMLINK -> file2
+EOF
+diffs -r1.1 -r1.2 symlink > CMP2
+cmp -s CMP1 CMP2
+if [ $? -ne 0 ]; then echo Failed.; exit 1; fi
+echo OK     
+echo $N Test sfile -c on symlink ....................$NL
+co $Q -l symlink
+if [ ! -h symlink ]; then echo failed; fi 
+CNT=`sfiles -c symlink | wc -l`
+if [ $CNT != 0 ]; then echo failed; exit 1; fi
+rm -f symlink
+ln -f -s file1 symlink
+CNT=`sfiles -c symlink | wc -l`
+if [ $CNT != 1 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Test sfile -x  on symlink ....................$NL
+CNT=`sfiles -x symlink | wc -l`
+if [ $CNT != 0 ]; then echo failed; exit 1; fi
+ln -f -s file3 newlink
+CNT=`sfiles -x newlink | wc -l`
+if [ $CNT != 1 ]; then echo failed; exit 1; fi
+echo OK
+echo $N Test clean on symlink .......................$NL
+clean -u symlink
+co $Q -l symlink
+clean 
+if [ -f SCCS/p.symlink ]; then echo failed; exit 1; fi;
+echo OK
+${RM} -rf symlink symfile newlink file file1 file2 file3 dir1 SCCS
+

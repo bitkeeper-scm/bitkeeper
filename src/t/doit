@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# Copright (c) 1999 Larry McVoy
+# %K%
+
+if [ X"$*" != X ]
+then	for i in $*
+	do	cat setup $i cleanup | sh
+		EXIT=$?
+		if [ $EXIT != 0 ]
+		then	echo Test exited with error $EXIT
+			exit $EXIT
+		fi
+	done
+else
+	for i in t???
+	do	cat setup $i cleanup | sh
+		EXIT=$?
+		if [ $EXIT != 0 ]
+		then	echo Test exited with error $EXIT
+			exit $EXIT
+		fi
+	done
+fi
+echo ------------------------------------------------
+echo All requested tests passed, must be my lucky day
+echo ------------------------------------------------
+exit 0
