@@ -1,0 +1,76 @@
+[Thu Jan 27 17:51:59 PST 2000]
+
+BitScrambler, the BitKeeper firewall
+------------------------------------
+
+Problem:
+    suppose there are N+1 groups which want to share a project and do
+    joint work on the project.  The Nth+1 group is the open source 
+    community but the other N groups are corporations which may wish to
+    cooperate but hold back their details, such as who is doing what.
+
+Solution for a single coporation + the open source community:
+    Construct a two sided firewall repository.  The repository has
+    a public and private side, somewhat similar to a public and a
+    private net.  What we are going to do is ``masquerade'' all the
+    private users as anonymous users.  
+
+    The name remapping is an automatically generated table of names which
+    maps *@*.domain.com to user1@domain.com, user2@domain.com, etc.
+
+    Like so:
+
+		----------------------------
+    		{ Internal BitKeeper Cloud }
+		{ multiple repositories,   }
+		{ all with real names,     }
+		{ for both internal people }
+		{ and external people      }
+		----------------------------
+		            ||
+			    ||
+		----------------------------
+		{ Firewall BK Repository   }
+		{ all internal names are   }
+		{ externally visible as    }
+		{ user1@host1, user2@host2 }
+		{ external names unchanged }
+		----------------------------
+			    ||
+			    ||
+		----------------------------
+		{ External BitKeeper Cloud }
+		{ multiple repositories,   }
+		{ all with real names for  }
+		{ external people, but fake}
+		{ names for internal people}
+		----------------------------
+    
+    In addition to name remapping, the firewall could be configured to put
+    the external changes all in an external LOD, and the internal changes
+    in an internal LOD.
+
+    The firewall could also filter the comments for inappropriate messages
+    such as a string of keyowrds (obscenities, trade secrets, etc.).
+
+Solution for multiple coporations + the open source community:
+    It's more or less the same as the other one, except each company has a
+    firewall repository through which changes move.
+
+
+Effects:
+    We preserve full BitKeeper semantics, support for LOD's, tracking of 
+    external changes, etc.  BitKeeper doesn't care about the comments
+    or user names as long as they are consistently remapped.
+
+    We preserve anonymity for the internal developers.  This doesn't mean
+    that there is no contact between the internal and external developers,
+    it means that the contact is carried out at the discretion of the
+    internal corporation.  The corporation can appoint a liason who is the
+    contact person for the project.  If an external person has issues, they
+    can raise them with the liason and the liason is able to know from 
+    the history who the real internal person is, and can either find out
+    what is needed or put the two people in direct contact.
+
+    An example of what this prevents is headhunters having access to
+    your internal list of developers.
