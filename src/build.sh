@@ -9,7 +9,8 @@ ms_env()
 		echo running in wrong environment, respawning...
 		bk get -S ./buildenv.sh
 		export BK_USEMSYS=1
-		exec bk sh ./buildenv.sh $0 "$orig_args"
+		bk sh ./buildenv.sh
+		exec C:/build/buildenv/bin/sh --login $0 $orig_args
 	}
 
 	SYS=win32

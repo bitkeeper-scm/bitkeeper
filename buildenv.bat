@@ -32,7 +32,8 @@ set BK_USEMSYS=1
 rem  just in case bk is not already on our PATH
 PATH=%PATH%;C:\Program Files\BitKeeper
 bk get -S src/buildenv.sh
-start bk sh src/buildenv.sh
+bk sh src/buildenv.sh
+c:\build\buildenv\bin\sh --login
 exit
 
 :EOF
