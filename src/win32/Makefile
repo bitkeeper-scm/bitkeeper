@@ -6,6 +6,7 @@ clean clean-obj:
 	cd uwtlib && make $@
 	cd util && make $@
 	cd pub/blat && make $@
+	-cd pub/vim/src && get Makefile.w32 ctags/Makefile.w32 xxd/Makefile.w32
 	cd pub/vim/src && unset MAKEFLAGS && nmake -f Makefile.w32 clean
 
 FORCE:

@@ -13,12 +13,12 @@ BKMERGE=bkmerge
 CC_OUT	=-o $@
 LD_OUT	=-o $@
 LD	=cc
-MORE	=more
 CC_FAST	=-O2
 CC_DEBUG=-g
 CC_FAST_DEBUG=-g -o
 CC_NOFRAME=-fomit-frame-pointer
 CC_WALL=-Wall -Wno-parentheses -Wno-char-subscripts
+INSTALL=install
 XTRA=
 #UWTLIB is used on win32 only - passed in from build.sh
 UWTLIB	=
@@ -94,9 +94,9 @@ HDRS	= bkd.h lib_tcp.h mmap.h purify.h range.h resolve.h sccs.h \
 	  zlib/inffixed.h zlib/inftrees.h zlib/infutil.h zlib/trees.h \
 	  zlib/zconf.h zlib/zlib.h zlib/zutil.h
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh clone.sh \
-	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
+	  gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
-	  gui/helptool.tcl gui/mkindex.tcl oldresync.perl uuwrap.sh \
+	  gui/helptool.tcl gui/mkindex.tcl uuwrap.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -106,7 +106,11 @@ MISC	= bkhelp.doc config.h.in configure substvars.in bitkeeper.config \
 	  t/doit.sh
 
 default:
-	@bk get -qp HEADER LICENSE BUILD.txt | $(MORE)
+	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
+	then PAGER=less; \
+	else PAGER=more; \
+	fi; \
+	bk get -qp HEADER LICENSE BUILD.txt | $${PAGER}
 
 all: $(ALL)
 
@@ -159,11 +163,11 @@ production_all:
 	$(MAKE) production_purify prefix=$(BINDIR)/purify
 	$(MAKE) production
 
-production: rebuild p install
-production_g: rebuild gO install
-production_debug: rebuild debug install
-production_ndebug: rebuild ndebug install
-production_purify: rebuild purify install
+production: rebuild p $(INSTALL)
+production_g: rebuild gO $(INSTALL)
+production_debug: rebuild debug $(INSTALL)
+production_ndebug: rebuild ndebug $(INSTALL)
+production_purify: rebuild purify $(INSTALL)
 production_image: rebuild p image
 
 # Cleanup targets.
@@ -176,6 +180,7 @@ clean-obj: FORCE
 clean-bin: FORCE
 	-rm -f $(BINS) $(SCRIPTS) $(LOCALSCR) $(PSCR) $(LINKS) MANIFEST
 	cd gnu && $(MAKE) clean
+	cd win32 && $(MAKE) clean
 
 clean-cfg: FORCE
 	-rm -f config.h stamp-h substvars config.status \
@@ -185,7 +190,6 @@ clean-src: FORCE
 	-bk -r . clean
 	-rm -f tags TAGS
 
-# This would be called "clean" but that's a command name.
 cclean sccsclean nice: clean-obj clean-src
 
 clobber distclean: clean-obj clean-bin clean-cfg clean-src
@@ -203,7 +207,11 @@ get-e: FORCE
 	$(MAKE) tags
 
 log: FORCE
-	bk sccslog $(SRCS) $(HDRS) | more
+	-if [ `uname -s` = "CYGWIN_NT-4.0" ];\
+	then PAGER=less; \
+	else PAGER=more; \
+	fi; \
+	bk sccslog $(SRCS) $(HDRS) | $${PAGER}
 
 tags: FORCE
 	@for i in $(SRCS) $(HDRS) $(SCRSRCS) $(MISC); \
@@ -330,16 +338,6 @@ pmerge: pmerge.perl port/$(SYS)_platform.perl substvars
 	./substvars pmerge.perl port/$(SYS)_platform.perl > pmerge.T
 	chmod +x pmerge.T
 	mv -f pmerge.T pmerge
-
-oldresolve: resolve.perl port/$(SYS)_platform.perl substvars
-	./substvars resolve.perl port/$(SYS)_platform.perl > oldresolve.T
-	chmod +x oldresolve.T
-	mv -f oldresolve.T oldresolve
-
-oldresync: oldresync.perl port/$(SYS)_platform.perl substvars
-	./substvars oldresync.perl port/$(SYS)_platform.perl > oldresync.T
-	chmod +x oldresync.T
-	mv -f oldresync.T oldresync
 
 mkdiffs: mkdiffs.perl port/$(SYS)_platform.perl substvars
 	./substvars mkdiffs.perl port/$(SYS)_platform.perl > mkdiffs.T
@@ -490,12 +488,13 @@ crankturn: build crank
 cranktest:
 	$(MAKE) HOSTS="$(HOSTS)" CRANKCMD="bk regression" crankit
 
+# It is OK if we fail to "rm buld" on win32.
+# We can not "rm build " when we are running it.
 build: build.sh
-	# This does not work on win32, can not "rm build" when we are running it
-	rm -f build
-	cp build.sh build
-	chmod +x build
-	chmod -w build
+	-rm -f build
+	-cp build.sh build
+	-chmod +x build
+	-chmod -w build
 
 crank: crank.sh
 	rm -f crank

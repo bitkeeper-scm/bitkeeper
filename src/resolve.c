@@ -58,6 +58,9 @@ resolve_main(int ac, char **av)
 
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
+#ifdef WIN32
+	setmode(0, _O_TEXT);
+#endif
 	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {
 		switch (c) {
 		    case 'a': opts.automerge = 1; break;
@@ -1781,6 +1784,10 @@ pass4_apply(opts *opts)
 	int	create;
 	MDBM	*backups = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	char	*av[5] = {"bk", "-r", "check", "-a", 0};
+	char 	*av_r[4] = {"bk", "sfiles", ROOT2RESYNC, 0};
+	char 	*av_w[5] = {"bk", "get", "-s", "-", 0};
+	int	rfd, status;
+	pid_t	pid;
 
 	if (opts->log) fprintf(opts->log, "==== Pass 4 ====\n");
 	opts->pass = 4;
@@ -1897,6 +1904,7 @@ pass4_apply(opts *opts)
 	/*
 	 * Pass 4c - apply the files.
 	 */
+#ifdef OLD
 	sprintf(key, "bk sfiles %s", ROOT2RESYNC);
 	unless (p = popen(key, "r")) {
 		unbackup(save);
@@ -1904,6 +1912,16 @@ pass4_apply(opts *opts)
 		perror("popen of bk sfiles");
 		exit (1);
 	}
+#else
+	pid = spawnvp_rPipe(av_r, &rfd);
+	unless (pid > (pid_t)-1) {
+		unbackup(save);
+		unlink(orig);
+		perror("spawn of bk sfiles");
+		exit (1);
+	}
+	p = fdopen(rfd, "rt");
+#endif
 	unless (get = popen("bk get -s -", "w")) {
 		unbackup(save);
 		unlink(orig);
@@ -1936,7 +1954,8 @@ pass4_apply(opts *opts)
 			fprintf(get, "%s\n", &buf[offset]);
 		}
 	}
-	pclose(p);
+	//pclose(p);
+	waitpid(pid, &status, 0);
 	pclose(get);
 	unless (opts->quiet) {
 		fprintf(stderr,

@@ -552,7 +552,6 @@ gotit:
 		}
 		t = strrchr(buf, '/');
 		*t = 0;
-		localName2bkName(buf, buf);
 #ifdef WIN32
 		/*
 		 * Convert to short path name, because the shell 
@@ -560,6 +559,7 @@ gotit:
 		 */
 		GetShortPathName(buf, buf, sizeof(buf));
 #endif
+		localName2bkName(buf, buf);
 		bin = buf; /* buf is static */
 
 		if (add2path) {
@@ -573,6 +573,9 @@ gotit:
 			putenv(s);
 		}
 #ifdef WIN32
+		/* convert to lower case: because W98 gives us upper case av */
+		p = av[0];
+		while (*p) { *p = tolower(*p); p++; }
 		p = strrchr(av[0], '.');
 		if (p && streq(".exe", p)) *p = 0; /* remove .exe */
 #endif

@@ -17,17 +17,16 @@ case `uname -s` in
 		;;
 	Windows_NT|CYGWIN_NT*)
 		SYS=win32
-		MORE=less
 		MAKE="make -e"
 		CC=cl
 		LD=link
 		MKLIB=./win32/util/mklib
 		if [ ! -f ${MKLIB} ]; then get ${MKLIB}; fi
-		CFLAGS="-nologo -ZI -Od -DWIN32 -D_MT -D_DLL -MD"
+		CFLAGS="-nologo -O2 -DWIN32 -D_MT -D_DLL -MD"
 		CC_COMMON="-nologo -DWIN32 -D_MT -D_DLL -MD"
 		CC_FAST="-O2 $CC_COMMON"
 		CC_DEBUG="-ZI -Od $CC_COMMON"
-		CC_FAST_DEBUG=$CC_DEBUG
+		CC_FAST_DEBUG=$CC_FAST
 		CC_WALL="-W3"
 		CC_NOFRAME=
 		CC_OUT='-Fo$@'
@@ -53,11 +52,12 @@ case `uname -s` in
 		# BINDIR should really be :C:/Program Files/BitKeeper
 		# The shell can not handle space in pathname, so
 		# we use the short name here
-		XTRA=win32
 		BINDIR="C:/Progra~1/BitKeeper"
+		XTRA=win32
+		INSTALL=install-nolinks
 		export SYS CFLAGS CC_OUT LD_OUT LD AR RANLIB UWTLIB LDFLAGS
 		export CC_FAST CC_DEBUG CC_NOFRAME CC_WALL LINK_LIB
-		export BK BKMERGE MORE UWT_H WIN_UTIL BINDIR XTRA
+		export BK BKMERGE UWT_H WIN_UTIL BINDIR XTRA INSTALL
 		;;
 esac
 $MAKE "CC=$CC" "LD=$LD" "XLIBS=$XLIBS" "$@"
