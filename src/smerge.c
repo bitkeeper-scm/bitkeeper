@@ -51,9 +51,10 @@ enum {
 
 /* ld = line data  (Information to save about each line in the file) */
 struct ld {
+	u32	seq;		/* seq number for line */
 	char	*line;		/* Pointer to data in line */
 	int	len;		/* length of line */
-	u32	seq;		/* seq number for line */
+	char	*anno;		/* Pointer to annotations */
 };
 
 struct diffln {
@@ -250,7 +251,15 @@ file_init(file_t *f, char *filename)
 			f->lines = tmp;
 		}
 		f->lines[l].seq = strtoul(p, &p, 10);
-		f->lines[l].line = ++p;
+		++p;
+		if (anno) {
+			f->lines[l].anno = p;
+			while (p < end && *p++ != '|');
+			++p;	/* skip space after | */
+		} else {
+			f->lines[l].anno = 0;
+		}
+		f->lines[l].line = p;
 		len = 0;
 		while (p < end && *p++ != '\n') ++len;
 		f->lines[l].len = len + 1;
@@ -259,6 +268,7 @@ file_init(file_t *f, char *filename)
 	}
 	f->lines[l].seq = ~0;
 	f->lines[l].line = end;
+	f->lines[l].anno = 0;
 	f->lines[l].len = 0;
 	f->n = l;
 }
@@ -337,12 +347,17 @@ usage(void)
 private void
 printline(ld_t *ld, char first_char)
 {
+	char	*a = ld->anno;
 	char	*p = ld->line;
 	char	*end = ld->line + ld->len;
 
 	if (fdiff && !first_char) first_char = ' ';
 	if (first_char) putc(first_char, outf);
 	if (show_seq) fprintf(outf, "%6d\t", ld->seq);
+
+	/* Print annotation before line, if present */
+	if (a) while (a < p) putc(*a++, outf);
+	/* Print line */
 	while (p < end) putc(*p++, outf);
 }
 
@@ -1462,7 +1477,7 @@ unidiff(conflct *curr, int left, int right)
 private void
 highlight_line(diffln *del, diffln *add)
 {
-	int s, e;
+	int	s, e;
 	char	*dline = del->ld->line;
 	int	dlen = del->ld->len;
 	char	*aline = add->ld->line;
@@ -1476,7 +1491,7 @@ highlight_line(diffln *del, diffln *add)
 	while (e < dlen - s && e < alen - s && 
 	    dline[dlen - e - 1] == aline[alen - e - 1]) e++;
 	
-	len = min(alen, dlen);
+	len = max(alen, dlen);
 
 	if (s + e < len / 3) return; /* not enough matched */
 	
