@@ -71,23 +71,8 @@ mv foo.c top
 perl -p -e 's/ D 1\.1\.1\.1 / D 2.0.4.1 /; s/ D 1\.2 / D 2.0.7.1 /'  \
 	sfoo | bk undos > SCCS/X
  bk undos SCCS/X > SCCS/s.foo.c
-bk admin $Q -z foo.c
-cmp -s sfoo SCCS/s.foo.c
-if [ $? -eq 0 ]; then echo Failed to alter revions; exit 1; fi
-bk renumber $Q foo.c
-cp -f SCCS/s.foo.c cp
-bk renumber $Q foo.c
-cmp -s cp SCCS/s.foo.c
-if [ $? -ne 0 ]; then echo Failed idempotent 1; exit 1; fi
-bk get $Q foo.c
-cmp -s top foo.c
-if [ $? -eq 0 ]; then echo Failed to get new top; exit 1; fi
-bk admin $Q -fd foo.c	# turn off default branch reassignment
-bk get $Q foo.c
-cmp -s top foo.c
-if [ $? -ne 0 ]; then echo Failed to fix numbers; exit 1; fi
-cp -f SCCS/s.foo.c cp
-bk renumber $Q foo.c
-cmp -s cp SCCS/s.foo.c
-if [ $? -ne 0 ]; then echo Failed idempotent 2; exit 1; fi
+bk admin $Q -z foo.c 2>OUT && {
+	echo should have failed
+	exit 1
+} 
 echo OK

@@ -9865,7 +9865,8 @@ private int
 checkRev(sccs *s, char *file, delta *d, int flags)
 {
 	int	i, error = 0;
-	delta	*e;
+	int	badparent;
+	delta	*e, *p;
 
 	if ((d->type == 'R') || (d->flags & D_GONE)) return (0);
 
@@ -9915,32 +9916,22 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 	/*
 	 * make sure that the parent points at us.
 	 */
-	if (d->parent) {
-		for (e = d->parent->kid; e; e = e->siblings) {
+	if (p = d->parent) {
+		for (e = p->kid; e; e = e->siblings) {
 			if (e == d) break;
 		}
 		if (!e) {
 			unless (flags & ADMIN_SHUTUP) {
 				fprintf(stderr,
 				    "%s: parent %s does not point to %s?!?!\n",
-				    file, d->parent->rev, d->rev);
+				    file, p->rev, d->rev);
 			}
 			error = 1;
 		}
-	}
-
-	/*
-	 * Two checks here.
-	 * If they are on the same branch, is the sequence numbering
-	 * correct?  Handle 1.9 -> 2.1 properly.
-	 */
-	if (!d->parent) goto done;
-	/* If a x.y.z.q release, then it's trunk node should be x.y */
-	if (d->r[2]) {
-		delta	*p;
-
-		for (p = d->parent; p && p->r[3]; p = p->parent);
-		if (!p) {
+	} else {
+		/* no parent */
+		if (BITKEEPER(s) &&
+		    !(streq(d->rev, "1.0") || streq(d->rev, "1.1"))) {
 			unless (flags & ADMIN_SHUTUP) {
 				fprintf(stderr,
 				    "%s: rev %s not connected to trunk\n",
@@ -9948,66 +9939,59 @@ checkRev(sccs *s, char *file, delta *d, int flags)
 			}
 			error = 1;
 		}
-		if (d->r[1] && ((p->r[0] != d->r[0]) || (p->r[1] != d->r[1])))
-		{
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "%s: rev %s has incorrect parent %s\n",
-				    file, d->rev, p->rev);
-			}
-			error = 1;
-		}
-		/* if it's a x.y.z.q and not a .1, then check parent */
-		if ((d->r[3] > 1) && (d->parent->r[3] != d->r[3]-1)) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "%s: rev %s has incorrect parent %s\n",
-				    file, d->rev, p->rev);
-			}
-			error = 1;
-		}
-#ifdef	CRAZY_WOW
-		XXX - this should be an option to admin.
-
-		/* if there is a parent, and the parent is a x.y.z.q, and
-		 * this is an only child,
-		 * then insist that the revs are on the same branch.
-		 */
-		if (d->parent && d->parent->r[2] &&
-		    onlyChild(d) && !samebranch(d, d->parent)) {
-			fprintf(stderr, "%s: rev %s has incorrect parent %s\n",
-			    file, d->rev, d->parent->rev);
-			error = 1;
-		}
-#endif
-		/* OK */
-		goto time;
+		goto done;
 	}
-	/* If on the trunk and release numbers are the same,
-	 * then the revisions should be in sequence.
+
+	badparent = 0;
+	/*
+	 * Two checks here.
+	 * If they are on the same branch, is the sequence numbering
+	 * correct?  Handle 1.9 -> 2.1 properly.
 	 */
-	if (d->r[0] == d->parent->r[0]) {
-		if (d->r[1] != d->parent->r[1]+1) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr,
-				    "%s: rev %s has incorrect parent %s\n",
-				    file, d->rev, d->parent->rev);
+	if (d->r[2]) {
+		/* If a x.y.z.q release, then it's trunk node should be x.y, */
+		if ((p->r[0] != d->r[0]) || (p->r[1] != d->r[1])) {
+			badparent = 1;
+		}
+		if (d->r[3] == 0) badparent = 1;
+		if (p->r[2]) {
+			if ((d->r[3] > 1) && (d->r[3] != p->r[3]+1)) {
+				badparent = 1;
 			}
-			error = 1;
+#ifdef	CRAZY_WOW
+			// XXX - this should be an option to admin.
+
+			/* if there is a parent, and the parent is a
+			 * x.y.z.q, and this is an only child, then
+			 * insist that the revs are on the same
+			 * branch.
+			 */
+			if (onlyChild(d) && !samebranch(d, d->parent)) {
+				badparent = 1;
+			}
+#endif
+		} else {
+			if (d->r[3] != 1) badparent = 1;
 		}
 	} else {
-		/* Otherwise, this should be a .1 node or 0.y.1 node */
-		if (d->r[1] != 1 && (!d->r[1] || d->r[3] != 1)) {
-			unless (flags & ADMIN_SHUTUP) {
-				fprintf(stderr, "%s: rev %s should be a .1 rev"
-				    " since parent %s is a different release\n",
-				    file, d->rev, d->parent->rev);
-			}
-			error = 1;
+		if (d->r[0] == p->r[0]) {
+			if (d->r[1] != p->r[1]+1) badparent = 1;
+		} else {
+			/* LOD case needed for _fix_lod1 */
+			if (d->r[1] != 1) badparent = 1;
 		}
 	}
+	if (badparent) {
+		unless (flags & ADMIN_SHUTUP) {
+			fprintf(stderr,
+			    "%s: rev %s has incorrect parent %s\n",
+			    file, d->rev, p->rev);
+		}
+		error = 1;
+	}
+
 	/* If there is a parent, make sure the dates increase. */
-time:	if (d->parent && (d->date < d->parent->date)) {
+	if (d->date < p->date) {
 		if (flags & ADMIN_TIME) {
 			fprintf(stderr,
 			    "%s: time goes backwards between %s and %s\n",
