@@ -130,7 +130,7 @@ clean-obj: FORCE
 		$(LIBS) a.out core
 
 clean-bin: FORCE
-	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(DATA) $(LINKS) MANIFEST
+	-/bin/rm -f $(BINS) $(PRIVATE) $(SCRIPTS) $(LINKS) MANIFEST
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars install.sh config.status \
