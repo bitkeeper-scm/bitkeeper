@@ -1,0 +1,75 @@
+# This file is part of the BitKeeper Regression test suite.
+# All of the files in this directory are Copyright (c) 2004 BitMover, Inc.
+# and are not licensed under the terms of the BKL (BitKeeper License).
+# Standard copyright law applies.
+# 
+# Redistribution in modified form is prohibited with one exception:
+#    proposed modifications may be sent back to dev@bitmover.com for
+#    possible inclusion in future releases.  Sending such modifications
+#    constitutes your permission for BitMover, Inc. to distribute  the
+#    modifications under any license.
+
+# Tests for pull -u
+echo $N Create initial repositories .................................$NL
+no_logging project
+if [ ! -d BitKeeper/etc ]; then echo failed to make BitKeeper/etc; exit 1; fi
+echo foo > foo
+bk new $Q foo
+bk commit $Q -yfoo
+cd $HERE
+bk clone $Q project clone
+bk clone $Q project tag
+bk clone $Q project cset
+cd $HERE/project
+echo bar > bar
+bk new $Q bar
+bk commit $Q -ybar
+bk edit $Q bar
+bk delta $Q -ybar bar
+bk commit $Q -ybar
+echo OK
+
+echo $N Try to update with a local cset .............................$NL
+cd $HERE/cset
+echo whatever > whatever
+bk new $Q whatever
+bk commit $Q -ywhatever
+bk pull -u > OUT 2>&1
+grep -q 'not updating due to local' OUT || {
+	echo Wrong error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try to update with a local tag ..............................$NL
+cd $HERE/tag
+bk tag $Q local_tag
+bk pull -u > OUT 2>&1
+grep -q 'not updating due to local' OUT || {
+	echo Wrong error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try to update with a local cset and local tag ...............$NL
+cd $HERE/cset
+bk tag $Q tag2
+bk pull -u > OUT 2>&1
+grep -q 'not updating due to local' OUT || {
+	echo Wrong error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+echo $N Try to update successfully ..................................$NL
+cd $HERE/clone
+bk pull -u > OUT 2>&1
+grep -q 'not updating due to local' OUT && {
+	echo Wrong error message
+	cat OUT
+	exit 1
+}
+echo OK

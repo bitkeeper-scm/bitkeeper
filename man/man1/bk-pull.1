@@ -4,7 +4,7 @@
 .SH NAME
 bk pull \- update a repository from its parent[s]
 .SH SYNOPSIS
-.Bc bk pull [\-iqRt] [
+.Bc bk pull [\-iqRtu] [
 .OPTequal \-E env var
 .Bc ] [\-z[
 .ARGc d
@@ -70,6 +70,10 @@ Pass
 to resolve (
 .B \-t
 means do not use the GUI tools.)
+.tp
+.B \-u
+Do not complete the pull if there are local changesets, i.e., insist
+that this operation is an update operation.
 .tp
 .OPTreq \-z d
 Do compression at level
