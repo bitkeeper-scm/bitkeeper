@@ -9146,6 +9146,8 @@ name2xflg(char *fl)
 		return X_RCS;
 	} else if (streq(fl, "YEAR4")) {
 		return X_YEAR4;
+	} else if (streq(fl, "HASH")) {
+		return X_HASH;
 	} else if (streq(fl, "SINGLE")) {
 		return X_SINGLE;
 	} else if (streq(fl, "SHELL")) {
@@ -9256,7 +9258,7 @@ int
 sccs_getxflags(delta *d)
 {
 	unless (d) return (0);
-	if (d->flags & D_XFLAGS) return (d->xflags);
+	if (d->flags & D_XFLAGS) return (d->xflags & X_XFLAGS);
 	if (d->parent) return (sccs_getxflags(d->parent));
 	return (0); /* old sfile, xflags values unknown */
 }                    
@@ -9556,6 +9558,13 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_YEAR4;
 				else
 					sc->state &= ~S_YEAR4;
+			} else if (streq(fl, "HASH")) {
+				if (v) goto noval;
+				changeXFlag(sc, d, flags, add, fl);
+				if (add)
+					sc->state |= S_HASH;
+				else
+					sc->state &= ~S_HASH;
 			} else if (streq(fl, "SINGLE")) {
 				if (v) goto noval;
 				changeXFlag(sc, d, flags, add, fl);
@@ -9580,8 +9589,6 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 					sc->state |= S_ALWAYS_EDIT;
 				else
 					sc->state &= ~S_ALWAYS_EDIT;
-
-
 			/* Flags below are non propagated */
 			} else if (streq(fl, "BK") || streq(fl, "BITKEEPER")) {
 				if (v) goto noval;

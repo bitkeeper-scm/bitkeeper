@@ -1099,7 +1099,7 @@ flags_delta(resolve *rs,
 {
 	char	buf[MAXPATH];
 	sccs	*s;
-	int	bits = flags & X_USER;
+	int	bits = flags & X_XFLAGS;
 
 	if (rs->opts->debug) {
 		fprintf(stderr, "flags(%s, %s, 0x%x, %s)\n",
@@ -1117,6 +1117,12 @@ flags_delta(resolve *rs,
 	doit(X_RCS, "RCS");
 	doit(X_SCCS, "SCCS");
 	doit(X_EXPAND1, "EXPAND1");
+#ifdef S_ISSHELL
+	doit(X_ISSHELL, "SHELL");
+#endif
+	doit(X_HASH, "HASH");
+	doit(X_SINGLE, "SINGLE");
+	doit(X_ALWAYS_EDIT, "ALWAYS_EDIT");
 	strcat(buf, " ");
 	strcat(buf, sfile);
 	if (rs->opts->debug) fprintf(stderr, "cmd: [%s]\n", buf);

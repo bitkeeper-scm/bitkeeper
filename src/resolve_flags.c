@@ -14,10 +14,12 @@ flags(int bits)
 #define	fs(s)	strcat(buf, s)
 
 	buf[0] = 0;
+#if 0
 	if (bits & X_BITKEEPER) {
 		fs("BITKEEPER");
 		comma = 1;
 	}
+#endif
 	if (bits & X_YEAR4) {
 		if (comma) fs(","); fs("YEAR4"); comma = 1;
 	}
@@ -30,9 +32,11 @@ flags(int bits)
 	if (bits & X_EXPAND1) {
 		if (comma) fs(","); fs("EXPAND1"); comma = 1;
 	}
+#if 0
 	if (bits & X_CSETMARKED) {
 		if (comma) fs(","); fs("CSETMARKED"); comma = 1;
 	}
+#endif
 	if (bits & X_HASH) {
 		if (comma) fs(","); fs("HASH"); comma = 1;
 	}
@@ -41,6 +45,9 @@ flags(int bits)
 		if (comma) fs(","); fs("ISSHELL"); comma = 1;
 	}
 #endif
+	if (bits & X_ALWAYS_EDIT) {
+		if (comma) fs(","); fs("ALWAYS_EDIT"); comma = 1;
+	}
 	return (buf);
 }
 

@@ -142,8 +142,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		}
 
 		unless (HAS_PFILE(s)) {
-			if (((s->mode == 0) || S_ISREG(s->mode)) &&
-			    IS_WRITABLE(s)) {
+			if (S_ISREG(s->mode) && IS_WRITABLE(s)) {
 				fprintf(stderr,
 "===========================================================================\n\
 check: %s writable but not checked out, this usually means that you have\n\
