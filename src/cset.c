@@ -1406,7 +1406,11 @@ char	*
 file2str(char *f)
 {
 	struct	stat sb;
+#ifdef WIN32
+	int	fd = open(f, O_RDONLY|_O_TEXT, 0);
+#else
 	int	fd = open(f, O_RDONLY, 0);
+#endif
 	char	*s;
 
 	if ((fd == -1) || (fstat(fd, &sb) == -1) || (sb.st_size == 0)) {
