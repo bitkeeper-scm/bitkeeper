@@ -25,7 +25,7 @@ adler32_main(void)
 private void
 do_checksum(void)
 {
-	char buf[2*MAXPATH];
+	char buf[MAXLINE];
 	int len;
 	int doXsum = 0;
 	uLong sum = 0;
@@ -43,11 +43,24 @@ do_checksum(void)
 		 "# that BitKeeper cares about, is below these diffs.\n")) {
 			doXsum = 1;
 		}
+
+more:		len = strlen(buf);
+		assert(len < (sizeof(buf)));
+		assert(buf[len] == 0);  
+
 		if (doXsum) {
 			len = strlen(buf);
 			sum = adler32(sum, buf, len);
 		}
 		fputs(buf, stdout);
+		/*
+		 * If this line is longer the buffer size,
+		 * get the rest of the line.
+		 */
+		if (buf[len-1] != '\n') {
+			assert(!feof(stdin));
+			if (fnext(buf, stdin)) goto more;
+		}       
 		if (feof(stdin)) break;
 	}
 	printf("# Patch checksum=%.8lx\n", sum);
