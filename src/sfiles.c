@@ -1108,27 +1108,33 @@ enableFastPendingScan()
 
 /*
  * Return true if we should skip this directory (it contains .bk_skip).
- * If there is an SCCS directory then complain, and return false,
- * because that is likely to be a mistake.
- *
- * The intent is, if users need to be able to .bk_skip a directory with
- * SCCS/, then this should be extended to check for $d/.bk_skip and
- * $d/SCCS/.bk_skip.  The workaround is to rename SCCS/, or to move it to
- * a subdirectory, at the same time as creating a .bk_skip.
+ * If there is an SCCS directory without a SCCS/.bk_skip then complain,
+ * and return false, because that is likely to be a mistake.
  */
 int
 sfiles_skipdir(char *dir)
 {
+	char	*p;
 	char	buf[MAXPATH];
 
+	/* No .bk_skip? */
 	snprintf(buf, sizeof(buf), "%s/%s", dir, BKSKIP);
 	unless (exists(buf)) return (0);
-	snprintf(buf, sizeof(buf), "%s/%s", dir, "SCCS");
-	if (isdir(buf) && !exists(strcat(buf, "/" BKSKIP))) {
-		getMsg("bk_skip_and_sccs", dir, 0, stderr);
-		return (0);
-	}
-	return (1);
+
+	/* There is a .bk_skip; if we are in SCCS already then we skip */
+	if ((p = strrchr(dir, '/')) && streq(p, "/SCCS")) return (1);
+
+	/* We are not in SCCS; if there is no SCCS dir then skip */
+	snprintf(buf, sizeof(buf), "%s/SCCS", dir);
+	unless (isdir(buf)) return (1);
+
+	/* We're not in SCCS, there is an SCCS, if SCCS/.bk_skip then skip */
+	snprintf(buf, sizeof(buf), "%s/SCCS/%s", dir, BKSKIP);
+	if (exists(buf)) return (1);
+
+	/* OK, .bk_skip without SCCS/.bk_skip - flag it and keep going */
+	getMsg("bk_skip_and_sccs", dir, 0, 0, stderr);
+	return (0);
 }
 
 typedef struct sinfo sinfo;

@@ -270,6 +270,8 @@ rebuild:
 
 srcs src: FORCE
 	-@bk get -s $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
+	-@bk -rlibc get -s
+	-@bk -rutils get -s
 
 wc: $(HDRS) $(SRCS) $(SCRSRCS) $(MISC)
 	wc -l $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
@@ -280,16 +282,11 @@ get-e: FORCE
 
 tags: FORCE
 	-@bk get -qST $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
-	@ctags --file-tags=yes --c-types=d+f+s+t $(SRCS) $(HDRS)
-	@mv -f tags .tags
-	@bk cat bkmsg.doc | egrep '^#[a-zA-Z_0-9]+$$' | sed 's/#//' | \
-	while read x; \
-	do	echo "$$x	bkmsg.doc	/^#$$x$$/;\"	f"; \
-	done >> .tags
-	@sort < .tags > tags
-	@rm -f .tags
+	@bk -rlibc get -S -s
+	@bk -rutils get -S -s
+	@ctags --file-tags=yes --c-types=d+f+s+t \
+	    $(SRCS) $(HDRS) libc/*.c libc/string/*.c utils/*.c
 	@echo ctags completed
-
 TAGS: FORCE
 	-@bk get -qST $(SRCS) $(HDRS) $(SCRSRCS) $(MISC)
 	@etags $(SRCS) $(HDRS)

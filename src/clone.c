@@ -715,8 +715,8 @@ linkdir(char *from, char *dir)
 {
 	char	buf[MAXPATH];
 	char	dest[MAXPATH];
-	DIR	*d;
-	struct	dirent *e;
+	int	i;
+	char	**d;
 
 	sprintf(buf, "%s/SCCS", dir);
 	if (mkdirp(buf)) {
@@ -724,27 +724,26 @@ linkdir(char *from, char *dir)
 		return (-1);
 	}
 	sprintf(buf, "%s/%s/SCCS", from, dir);
-	unless (d = opendir(buf)) {
+	unless (d = getdir(buf)) {
 		perror(buf);
 		return (-1);
 	}
-	unless (d) return (0);
-	while (e = readdir(d)) {
-		unless (e->d_name[0] == 's' || e->d_name[0] == 'd') continue;
-		sprintf(buf, "%s/%s/SCCS/%s", from, dir, e->d_name);
+	EACH (d) {
+		unless (d[i][0] == 's' || d[i][0] == 'd') continue;
+		sprintf(buf, "%s/%s/SCCS/%s", from, dir, d[i]);
 		if (access(buf, R_OK)) {
 			perror(buf);
-			closedir(d);
+			freeLines(d, free);
 			return (-1);
 		}
-		sprintf(dest, "%s/SCCS/%s", dir, e->d_name);
+		sprintf(dest, "%s/SCCS/%s", dir, d[i]);
 		if (link(buf, dest)) {
 			perror(dest);
-			closedir(d);
+			freeLines(d, free);
 			return (-1);
 		}
 	}
-	closedir(d);
+	freeLines(d, free);
 	return (0);
 }
 

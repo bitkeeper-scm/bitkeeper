@@ -1,7 +1,7 @@
 
 openssl=0
-test "$PLATFORM" != "WIN32" && {
-	openssl version 2>/dev/null >/dev/null && {
+test "$PLATFORM" != "WIN32" -a `bk gethost -r` != "freebsd.bitmover.com" && {
+	openssl version >/dev/null 2>&1 && {
 		openssl=1
 	}
 }

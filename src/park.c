@@ -434,21 +434,19 @@ printComments(char *parkfile)
 private int
 listParkFile()
 {
-	struct	dirent *e;
-	DIR	*dh;
+	int	i;
+	char	**d;
 	char	parkfile[MAXPATH];
 
-	dh = opendir(BKTMP);
-	unless (dh) return (0);
-	while ((e = readdir(dh)) != NULL) {
-		if ((strlen(e->d_name) > 9) &&
-		    strneq(e->d_name, "parkfile_", 9)) {
-			printf("%s\n", e->d_name);
-			sprintf(parkfile, "%s/%s", BKTMP, e->d_name);
+	unless (d = getdir(BKTMP)) return (0);
+	EACH (d) {
+		if ((strlen(d[i]) > 9) && strneq(d[i], "parkfile_", 9)) {
+			printf("%s\n", d[i]);
+			sprintf(parkfile, "%s/%s", BKTMP, d[i]);
 			printComments(parkfile);
 		}
 	}
-	closedir(dh);
+	freeLines(d, free);
 	return (0);
 }
 
@@ -1347,9 +1345,8 @@ skip_apply:
 int
 unpark_main(int ac, char **av)
 {
-	struct	dirent *e;
-	DIR	*dh;
-	int	i, c;
+	char	**d;
+	int	i, j, c;
 	int	top = 0, force = 0, clean = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -1361,11 +1358,9 @@ unpark_main(int ac, char **av)
 		switch (c) {
 		    case 'c':	clean = 1; break;
 		    case 'f':	force = 1; break;
-		    default: 	usage2();
-				return (1);
+		    default: 	usage2(); return (1);
 		}
 	}
-
 
 	if (proj_cd2root()) {
 		fprintf(stderr, "Can't find package root\n");
@@ -1382,31 +1377,24 @@ unpark_main(int ac, char **av)
 		return (do_unpark(id, clean, force)); 
 	}
 
-	dh = opendir(BKTMP);
-	unless (dh) {
+	unless (d = getdir(BKTMP)) {
 empty:		fprintf(stderr, "No parkfile found\n");
 		return (0);
 	}
 
 	/*
-	 * The parkfile list is a LIFO, last one parked got unprak first
+	 * The parkfile list is a LIFO, last one parked got unparked first
 	 */
-	while ((e = readdir(dh)) != NULL) {
-		if ((strlen(e->d_name) > 9) &&
-		    strneq(e->d_name, "parkfile_", 9)) {
-			i = atoi(&(e->d_name[9]));
-			if (i > top) top = i; /* get the highest number */
+	EACH (d) {
+		if ((strlen(d[i]) > 9) && strneq(d[i], "parkfile_", 9)) {
+			j = atoi(&(d[i][9]));
+			if (j > top) top = j; /* get the highest number */
 		}
 	}
-	closedir(dh);
+	freeLines(d, free);
 	if (top == 0) goto empty;
-
 	return (do_unpark(top, clean, force));
 }
-
-
-
-
 
 /*
  * Return ture if we can run diff over the baseline delta and the gfile

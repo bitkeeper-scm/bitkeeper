@@ -125,8 +125,11 @@ The directory #BKARG# contains both .bk_skip and SCCS.
 BitKeeper ignores the .bk_skip file in this case.  To get rid of this
 warning, remove the file #BKARG#/.bk_skip.
 
-If you want to skip #BKARG#,
-either rename the SCCS directory, or move it into a subdirectory.
+If you did want to skip #BKARG#,
+then do this:
+
+touch #BKARG#/SCCS/.bk_skip
+
 $
 #saw_blanknonl
 The file #BKARG# is corrupted because of a bug in

@@ -742,10 +742,3 @@ Interface changes / additions
 Commercial user changes
     - added digital signatures for license keys, you must get a signed key
       to run bk-3.0.
-
-Platforms
-    - MacOS X (command line only)
-    - Linux/IA64 (Itanium)
-    - Linux/PARISC
-    - Linux/zseries
-    - statically linked Linux/x86

@@ -386,21 +386,18 @@ bk -r check -a >OUT 2>ERRS
 }
 echo OK
 
-# XXX if we implement the additional code suggested in the comment before
-# sccs_skipdir, this is how to test it.
-#
-# echo $N Make sure .bk_skip and SCCS/.bk_skip works ..................$NL
-# # this one should not cause a warning, but the check will complain about
-# # missing files
-# cd $HERE/clone
-# touch d1/sub1/SCCS/.bk_skip
-# bk -r check -a >OUT 2>ERRS
-# grep -v 'Missing file' ERRS > E2
-# [ -s E2 ] && {
-# 	echo "Unexpected error output from check; output was"
-# 	cat OUT
-# 	echo "error output was"
-# 	cat ERRS
-# 	exit 1
-# }
-# echo OK
+echo $N Make sure .bk_skip and SCCS/.bk_skip works ..................$NL
+# this one should not cause a warning, but the check will complain about
+# missing files
+cd $HERE/clone
+touch d1/sub1/SCCS/.bk_skip
+bk -r check -a >OUT 2>ERRS
+grep -v 'Missing file' ERRS > E2
+test -s E2 && {
+	echo "Unexpected error output from check; output was"
+	cat OUT
+	echo "error output was"
+	cat ERRS
+	exit 1
+}
+echo OK

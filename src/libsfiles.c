@@ -28,7 +28,8 @@ private	int flags;		/* saved flags */
 private	char **av;		/* saved copy of argv */
 private	int ac;			/* where we are - starts at 0 */
 private	FILE *flist;		/* set if getting files from stdin */
-private	DIR *d;			/* directory we are reading */
+private	char **d;		/* getdir() of directory we are reading */
+private	int di;			/* index into d */
 private	char prefix[MAXPATH];	/* path/to/dir/SCCS/ */
 private	char buf[MAXPATH];	/* pathname we actually pass back */
 private	int unget;		/* if set, return path again */
@@ -54,7 +55,6 @@ char *
 sfileNext()
 {
 	char	*name;
-	struct	dirent *e;
 
 	if (unget) {
 		unget = 0;
@@ -73,14 +73,15 @@ again:
 		chomp(buf);
 		debug((stderr, "sfiles::FILE got %s\n", buf));
 	} else if (d) {
-		while ((e = readdir(d))) {
+		while (di <= nLines(d)) {
 			/*
 			 * readdir returns the base name only, must re-construct
 			 * the relative path. Otherwise oksccs will be checking
 			 * the wrong file.
 			 * See test case "A/" in "basic test" of regression test
 			 */
-			concat_path(buf, prefix, e->d_name);
+			concat_path(buf, prefix, d[di]);
+			di++;
 			/* I thought I didn't need this but I was wrong. */
 			unless (oksccs(buf, flags, 0)) continue;
 			if ((flags & SF_NOCSET) && isCsetFile(buf)) {
@@ -89,7 +90,7 @@ again:
 			debug((stderr, "sfiles::DIR got %s\n", buf));
 			goto norev;
 		}
-		closedir(d);
+		freeLines(d, free);
 		d = 0;
 		return (0);
 	} else if (av) {
@@ -222,13 +223,14 @@ sfileFirst(char *cmd, char **Av, int Flags)
 				return (0);
 			}
 			concat_path(prefix, Av[0], "SCCS");
-			unless (d = opendir(prefix)) {
+			di = 1;
+			unless (d = getdir(prefix)) {
 				/*
 				 * trim off the "SCCS" part
 				 * and try again
 				 */
 				prefix[strlen(prefix) - 4] = 0;
-				unless (d = opendir(prefix)) {
+				unless (d = getdir(prefix)) {
 					perror(prefix);
 				}
 			}
@@ -243,17 +245,17 @@ sfileFirst(char *cmd, char **Av, int Flags)
 		return (sfileNext());
 	}
 	if (flags & SF_NODIREXPAND) return (0);
-	if (!d) {
+	unless (d) {
+		di = 1;
 		strcpy(prefix, "SCCS");
-		d = opendir("SCCS");
-	}
-	if (!d) {
-		/*
-		 * trim off the "SCCS" part
-		 * and try again
-		 */
-		prefix[0] = 0;
-		d = opendir(".");
+		unless (d = getdir("SCCS")) {
+			/*
+			 * trim off the "SCCS" part
+			 * and try again
+			 */
+			prefix[0] = 0;
+			d = getdir(".");
+		}
 	}
 	return (sfileNext());
 }
@@ -265,7 +267,7 @@ sfileDone()
 		av = 0;
 		ac = 0;
 	} else if (d) {
-		closedir(d);
+		freeLines(d, free);
 		d = 0;
 	} else if (flist) {
 		if (flist != stdin) fclose(flist);

@@ -2122,18 +2122,15 @@ edit(resolve *rs)
 private	int
 pendingRenames()
 {
-	DIR	*dir;
-	struct dirent *d;
-	int	n = 0;
+	char	**d;
+	int	i, n = 0;
 
-	unless (dir = opendir("BitKeeper/RENAMES/SCCS")) return (0);
-	while (d = readdir(dir)) {
-		if (streq(d->d_name, ".") || streq(d->d_name, "..")) continue;
-		fprintf(stderr,
-		    "Pending: BitKeeper/RENAMES/SCCS/%s\n", d->d_name);
+	unless (d = getdir("BitKeeper/RENAMES/SCCS")) return (0);
+	EACH (d) {
+		fprintf(stderr, "Pending: BitKeeper/RENAMES/SCCS/%s\n", d[i]);
 		n++;
 	}
-	closedir(dir);
+	freeLines(d, free);
 	return (n);
 }
 
@@ -2212,8 +2209,9 @@ commit(opts *opts)
 
 	cmds[i = 0] = "bk";
 	cmds[++i] = "commit";
+	cmds[++i] = "-Ra";
 	/* force a commit if we are a null merge */
-	cmds[++i] = (opts->resolved || opts->renamed) ? "-Ra" : "-FRa";
+	unless (opts->resolved || opts->renamed) cmds[++i] = "-F";
 	if (opts->quiet) cmds[++i] = "-s";
 	if (opts->comment) {
 		cmt = malloc(strlen(opts->comment) + 10);

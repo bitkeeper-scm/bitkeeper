@@ -391,14 +391,15 @@ rmDir(char *dir)
 
 /*
  * Get a list of c.file[@rev] files
+ * XXX - this should NOT be done like this, there should be a generic API
+ * for managing the c.files.
  */
 private char **
 xfileList(char *sfile)
 {
-	char 	*dir, *p, *xname;
+	char 	*dir, *p, *q, *xname, **d;
 	char	**xlist = NULL;
-	DIR	*dh;
-	struct  dirent *e;
+	int	i;
 	char	buf[MAXPATH];
 
 	strcpy(buf, sfile);
@@ -407,20 +408,14 @@ xfileList(char *sfile)
 	assert(p);
 	assert(p[1] == 's');
 	xname = &p[2];
-
-	dh = opendir(dir);
-	unless (dh) return (0);
-	while ((e = readdir(dh)) != NULL) {
-		char *q;
-
-		q = strrchr(e->d_name, '@');
-		if (q) *q = 0;
-		if (streq(xname, &(e->d_name[1]))) {
+	unless (d = getdir(dir)) return (0);
+	EACH (d) {
+		if (q = strrchr(d[i], '@')) *q = 0;
+		if (streq(xname, &(d[i][1]))) {
 			if (q) *q = '@';
-			xlist = addLine(xlist,
-					aprintf("%s/%s", dir, e->d_name));
+			xlist = addLine(xlist, aprintf("%s/%s", dir, d[i]));
 		}
 	}
-	closedir(dh);
+	freeLines(d, free);
 	return (xlist);
 }

@@ -118,9 +118,8 @@ private void
 printHdr(FILE *f, char *revsFile, char *rev, char *wrapper)
 {
 	listCsetRevs(f, revsFile, rev);
-
-	if (wrapper) fprintf(f, "## Wrapped with %s ##\n\n", wrapper);
 	fprintf(f, "\n");
+	if (wrapper) fprintf(f, "## Wrapped with %s ##\n", wrapper);
 	fflush(f);
 }
 
