@@ -926,11 +926,11 @@ set strings(Overwrite) {
 }
 
 set strings(InstallDLLs) {
-	BitKeeper includes optional integration with the explorer
-	and and Visual C++ 6.0. 
+	BitKeeper includes optional integration with Windows explorer
+	and Visual C++ 6.0. 
 
 	The explorer integration can be enabled separately for local
-	and remote hard drives. Enabling this option on remote drives
+	and remote hard drives.  Enabling this option on remote drives
 	can lead to performance problems if you have a slow or
 	unreliable network. 
 }

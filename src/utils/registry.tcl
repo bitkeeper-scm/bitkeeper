@@ -79,7 +79,12 @@ proc registry_install {destination} \
         # key (versus creating it). Andrew wanted to know the exact
 	# bits added to the path so we'll pass that info along so 
 	# it gets logged
-	set env(PATH) "$destination;$env(PATH)"
+	if {![info exists env(BK_OLDPATH)]} {
+		# Pure paranoia but I don't want to stomp on the entire path
+		set env(PATH) "$destination;$env(PATH)"
+	} else {
+		set env(PATH) "$destination;$env(BK_OLDPATH)"
+	}
 	set key "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet"
 	append key "\\Control\\Session Manager\\Environment"
 	reg modify $key Path $env(PATH) $destination
