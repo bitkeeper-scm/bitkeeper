@@ -356,6 +356,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-image prevImage -command prevFile
 	    menubutton .menu.fmb -font $gc(cset.buttonFont) -relief raised \
+	        -indicatoron 1 \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "File" -width 8 -state normal \
@@ -382,6 +383,7 @@ XhKKW2N6Q2kOAPu5gDDU9SY/Ya7T0xHgTQSTAgA7
 			next
 		}
 	    menubutton .menu.mb -font $gc(cset.buttonFont) -relief raised \
+	        -indicatoron 1 \
 		-bg $gc(cset.buttonColor) \
 		-pady $gc(py) -padx $gc(px) -borderwid $gc(bw) \
 		-text "History" -width 8 -state normal \
