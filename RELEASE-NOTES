@@ -24,6 +24,7 @@ New Features
 Noteworthy Bug Fixes
 ----------------------------------------------------------------------------
 
+2002-02-08-002	pull will now silently fix a locked sfile with missing gfile
 2002-03-06-002 	bk fix -c collapses multiple revisions of a single file for a
 		ChangeSet
 2002-03-22-004 	fixtool does not preserve permissions
@@ -35,8 +36,12 @@ Noteworthy Bug Fixes
 		hint as to what's wrong
 2004-03-31-001 	After bk fix -c check fails
 2004-05-19-004 	fix -c should save a backup patch, like undo
+2004-05-31-001	in bkweb "all diffs for ChangeSet" works again
 
 bk fixtool now works on Windows.
+
+Takepatch will again refuse to accept incoming csets that have
+checksum problems.
 
 The installer code has been extensively reworked for the Windows platform.
 Most of the changes are behind the scenes, but the installer should
