@@ -6538,8 +6538,10 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			}
 			s->state |= S_BITKEEPER|S_CSETMARKED;	
 			first->flags |= D_CKSUM;
-			sprintf(buf, "%s", fullname(s->gfile, 0));
-			n->comments = addLine(n->comments, strdup(buf));
+			unless (flags & DELTA_PATCH) {
+				sprintf(buf, "%s", fullname(s->gfile, 0));
+				n->comments = addLine(n->comments, strdup(buf));
+			}
 		} else {
 			t = relativeName(s, 0, 0);
 			assert(t);
@@ -6561,13 +6563,11 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 		return (-1);
 	}
 	unless (flags & DELTA_PATCH) {
-#ifdef ATT_SCCS
 		unless (hasComments(n)) {
-			sprintf(buf, "%s created on %s by %s",
-			    s->gfile, n->sdate, n->user);
+			sprintf(buf, "BK %s created on %s by %s",
+			    fullname(s->gfile, 0), n->sdate, n->user);
 			n->comments = addLine(n->comments, strdup(buf));
 		}
-#endif
 	}
 	if (t = getenv("BK_LOD")) {
 		unless (n->flags & D_LODSTR) {
@@ -9640,6 +9640,27 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (strVal);
 	}
 
+	/*
+	 * Print out more information than normal, including the
+	 * checksum and the path to the root of the project ChangeSet
+	 * if this is the ChangeSet file.
+	 */
+	if (streq(kw, "LONGKEY")) {
+		if (out && d) {
+
+			sccs_pdelta(d, out);
+			if (d->flags & D_CKSUM) {
+				fprintf(out, "-%05d", (int)d->sum);
+			}
+			if ((s->state & S_CSET) && (d == sccs_ino(s)) &&
+			    d->comments && d->comments[1] &&
+			    (d->comments[1][0] == '/')) {
+				fprintf(out, "-%s", d->comments[1]);
+			}
+		}
+		return (strVal);
+	}
+
 	if (streq(kw, "GFILE")) {
 		if (s->gfile) {
 			fs(s->gfile);
@@ -10001,6 +10022,7 @@ do_prs(sccs *s, delta *d, int flags, const char *dspec, FILE *out)
 	const char *end;
 
 	if (d->type != 'D') return;
+	if ((s->state & S_SET) && !(d->flags & D_SET)) return;
 	if (fprintDelta(
 		    out, NULL,  dspec, end = &dspec[strlen(dspec) - 1], s, d))
 		fputc('\n', out);

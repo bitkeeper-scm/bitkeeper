@@ -23,6 +23,7 @@ WHATSTR("@(#)%K%");
  */
 char *takepatch_help = "\n\
 usage: takepatch [-cFiv] [-f file]\n\n\
+    -a		apply the changes (call resolve)\n\
     -c		do not accept conflicts with this patch\n\
     -F		(fast) do rebuild id cache when creating files\n\
     -f<file>	take the patch from <file> and do not save it\n\
@@ -56,6 +57,7 @@ int	noConflicts;	/* if set, abort on conflicts */
 char	pendingFile[MAXPATH];
 FILE	*input;
 int	fast;		/* skip idcache rebuilds for new files */
+int	resolve;
 
 int
 main(int ac, char **av)
@@ -68,8 +70,9 @@ main(int ac, char **av)
 
 	input = stdin;
 	debug_main(av);
-	while ((c = getopt(ac, av, "cFf:iv")) != -1) {
+	while ((c = getopt(ac, av, "acFf:iv")) != -1) {
 		switch (c) {
+		    case 'a': resolve++; break;
 		    case 'c': noConflicts++; break;
 		    case 'F': fast++; break;
 		    case 'f': input = fopen(optarg, "rt"); break;
@@ -111,6 +114,13 @@ usage:		fprintf(stderr, takepatch_help);
 	}
 	unless (remote) {
 		cleanup(CLEAN_RESYNC | CLEAN_PENDING);
+	}
+	if (resolve) {
+		if (echo) {
+			fprintf(stderr,
+			    "Running resolve to apply new work...\n");
+		}
+		system("bk resolve");
 	}
 	exit(0);
 }
@@ -268,9 +278,7 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 		fprintf(stderr, "takepatch: %3d new in %s ", nfound, gfile);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
-	if (patchList && gca) {
-		if (getLocals(s, gca, name) && noConflicts) noconflicts();
-	}
+	if (patchList && gca) getLocals(s, gca, name);
 	applyPatch(s ? s->sfile : 0, name, flags, perfile);
 	if (echo == 2) fprintf(stderr, " \n");
 	if (perfile) free(perfile);
@@ -620,6 +628,7 @@ apply:
 		    sccs_resolveFile(s, localPath, gcaPath, remotePath);
 	}
 	sccs_free(s);
+	if (noConflicts && conflicts) noconflicts();
 	for (p = patchList; p; ) {
 		patch	*next = p->next;
 
@@ -867,7 +876,7 @@ tree:
 		unless (started) {
 			fprintf(stderr,
 "takepatch: nothing to do in patch, which probably means a patch version\n\
-mismatch.  You need to make sure that the software generating the patch is\n
+mismatch.  You need to make sure that the software generating the patch is\n\
 the same as the software accepting the patch.  We were looking for\n\
 %s", PATCH_VERSION);
 		}

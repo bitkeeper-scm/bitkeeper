@@ -100,7 +100,7 @@ function import {
 BitKeeper can currently handle the following types of files:
 
     plain	- these are regular files which are not under revision control
-    SCCS	- SCCS files which are not presently under revision control
+    SCCS	- SCCS files which are not presently under BitKeeper
 
 If the files you wish to import do not match any of these forms, you will
 have to write your own conversion scripts.  See the rcs2sccs perl script
@@ -293,7 +293,7 @@ function import_finish {
 	rm -f /tmp/sccs$$ /tmp/import$$ /tmp/notsccs$$ /tmp/reparent$$ /tmp/rep$$
 	bk sfiles -r
 	echo "Creating initial changeset (should have $NFILES + 2 lines)"
-	bk sfiles -C | bk cset -y'Initial changeset'
+	bk commit -f -y'Import changeset'
 }
 
 function import_SCCS {

@@ -3,13 +3,13 @@
 # bk.sh - front end to BitKeeper commands
 # @(#)%K%
 
-function usage {
+usage() {
 	echo usage $0 command '[options]' '[args]'
 	echo Try $0 help for help.
 	exit 0
 }
 
-function help {
+help() {
 	cat <<EOF
     ====================== BitKeeper help v%I% ======================
 
@@ -72,7 +72,7 @@ EOF
 	exit 0
 }
 
-function help_overview {
+help_overview() {
 	cat <<EOF
     ====================== BitKeeper overview ======================
 
@@ -97,7 +97,7 @@ may we suggest the following topics in order
 EOF
 }
 
-function help_setup {
+help_setup() {
 	cat <<EOF
     ====================== BitKeeper setup ======================
 
@@ -139,7 +139,7 @@ Have fun!
 EOF
 }
 
-function help_basics {
+help_basics() {
 	cat <<EOF
     ================= BitKeeper revision basics =================
 
@@ -199,7 +199,7 @@ More information
 EOF
 }
 
-function help_terms {
+help_terms() {
 	cat <<EOF
     ====================== BitKeeper terms ======================
 
@@ -229,7 +229,7 @@ to list all of them here, but send a bug if you find one we missed.
 EOF
 }
 
-function help_ranges {
+help_ranges() {
 	cat <<EOF
     ====================== Specifying ranges ======================
 
@@ -273,7 +273,7 @@ A single -r, because it is the first revision seen, rounds down and means
 EOF
 }
 
-function help_differences {
+help_differences() {
 	cat <<EOF
     ====================== Viewing differences ======================
 
@@ -295,7 +295,7 @@ Run "bk help diffs" for more information.
 EOF
 }
 
-function help_history {
+help_history() {
 	cat <<EOF
     ================= Viewing changset and file history =================
 
@@ -343,7 +343,7 @@ SEE ALSO
 EOF
 }
 
-function help_tags {
+help_tags() {
 	cat <<EOF
     ====================== BitKeeper tags ======================
 
@@ -371,7 +371,7 @@ XXX - need to talk about the cset -R/-r commands and tags.
 EOF
 }
 
-function help_RCS {
+help_RCS() {
 	cat <<EOF
     ====================== BitKeeper and RCS ======================
 
@@ -401,7 +401,7 @@ the bk script itself.
 EOF
 }
 
-function help_commit {
+help_commit() {
 	cat <<EOF
     ========== Committing changes to a BitKeeper changeset =========
 
@@ -435,7 +435,7 @@ SEE ALSO
 EOF
 }
 
-function help_pending {
+help_pending() {
 	cat <<EOF
     ====================== Uncommitted changes ======================
 
@@ -453,7 +453,7 @@ SEE ALSO
 EOF
 }
 
-function help_changes {
+help_changes() {
 	cat <<EOF
     ====================== changesets ======================
 
@@ -466,7 +466,7 @@ SEE ALSO
 EOF
 }
 
-function help_changesets {
+help_changesets() {
 	cat <<EOF
     ====================== BitKeeper changesets ======================
 
@@ -492,7 +492,7 @@ The latter is the recommended way of doing things at this point.
 EOF
 }
 
-function help_undo {
+help_undo() {
 	cat <<EOF
     ====================== BitKeeper undo ======================
 
@@ -526,7 +526,7 @@ SEE ALSO
 EOF
 }
 
-function help_resync {
+help_resync() {
 	cat <<EOF
     ====================== BitKeeper resyncs ======================
 
@@ -558,6 +558,7 @@ and the RESYNC directory is a sparse copy of the destination with the patch
 applied.  The resolution of any conflicts takes place in the RESYNC directory.
 
 OPTIONS
+    -a		apply the changes (calls resolve)
     -c		fail the resync if it would create conflicts in the destination
     -C		turn on ssh compression (for remote resyncs)
     -q		be quiet during the resync
@@ -577,7 +578,7 @@ SEE ALSO
 EOF
 }
 
-function help_merging {
+help_merging() {
 	cat <<EOF
     ====================== merging differences ======================
 
@@ -586,7 +587,7 @@ No merge help yet, type help in resolve for more info.
 EOF
 }
 
-function help_renames {
+help_renames() {
 	cat <<EOF
     ================== BitKeeper pathname tracking ==================
 
@@ -597,12 +598,12 @@ projects renamed the same file.
 EOF
 }
 
-function help_docs {
+help_docs() {
 	echo "The docs command dumps all documentation to stdout"
 	echo "It's pretty lame at the moment"
 }
 
-function help_mv {
+help_mv() {
 	cat <<EOF
     =========== Renaming files in BitKeeper ===========
 
@@ -618,11 +619,11 @@ SEE ALSO
 EOF
 }
 
-function help_sccsmv {
+help_sccsmv() {
 	help_mv
 }
 
-function help_rm {
+help_rm() {
 	cat <<EOF
     =========== Removing files in BitKeeper ===========
 
@@ -642,11 +643,11 @@ SEE ALSO
 EOF
 }
 
-function help_sccsrm {
+help_sccsrm() {
 	help_rm
 }
 
-function help_gui {
+help_gui() {
 	cat <<EOF
     ============== BitKeeper Graphical User Interface  ==============
 
@@ -675,7 +676,7 @@ fm3		- 3 way file merge.  Usage: fm3 left gca right output
 EOF
 }
 
-function help_regression {
+help_regression() {
 	cat <<EOF
     ============== BitKeeper Regression Test  ==============
 
@@ -685,7 +686,7 @@ Try running it if you want to see all the tests.
 EOF
 }
 
-function help_path {
+help_path() {
 	cat <<EOF
     ================= Setting up your BitKeeper path =================
 
@@ -707,7 +708,7 @@ in a directory with RCS files, it execs the RCS co.
 EOF
 }
 
-function help_backups {
+help_backups() {
 	cat <<EOF
     =============== Safeguarding your BitKeeper repositories ===============
 
@@ -721,7 +722,7 @@ from where you are):
 EOF
 }
 
-function help_debug {
+help_debug() {
 	cat <<EOF
     =============== Debugging BitKeeper ===============
 
@@ -756,7 +757,7 @@ or
 EOF
 }
 
-function help_save {
+help_save() {
 	cat <<EOF
     =============== Saving BitKeeper patches ===============
 
@@ -775,7 +776,7 @@ SEE ALSO
 EOF
 }
 
-function help_send {
+help_send() {
 	cat <<EOF
     =============== Sending BitKeeper patches ===============
 
@@ -829,7 +830,7 @@ SEE ALSO
 EOF
 }
 
-function help_sendbug {
+help_sendbug() {
 	cat <<EOF
     =============== BitKeeper bug reporting ===============
 
@@ -848,7 +849,7 @@ Thanks.
 EOF
 }
 
-function cd2root {
+cd2root() {
 	while [ ! -d "BitKeeper/etc" ]
 	do	cd ..
 		if [ `pwd` = "/" ]
@@ -858,14 +859,28 @@ function cd2root {
 	done
 }
 
-function setup { 
+setup() { 
+	CONFIG=
+	NAME=
+	FORCE=no
+	while getopts c:fn: opt
+	do	case "$opt" in
+		    c) CONFIG=$OPTARG;;
+		    f) FORCE=yes;;
+		    n) NAME=$OPTARG;;
+		esac
+	done
+	shift `expr $OPTIND - 1`
 	if [ X"$1" = X -o X"$2" != X ]
-	then	echo Usage: bk setup directory; exit 0
+	then	echo \
+	    'Usage: bk setup [-c<config file>] [-n <project name>] directory'
+		exit 0
 	fi
 	if [ -e "$1" ]
 	then	echo bk: "$1" exists already, setup fails.; exit 1
 	fi
-	cat <<EOF
+	if [ $FORCE = no ]
+	then	cat <<EOF
 
 ----------------------------------------------------------------------
 
@@ -880,20 +895,22 @@ be able to exchange work between the two projects.
 
 ----------------------------------------------------------------------
 EOF
-	echo $N "Create new project? [no] " $NL
-	read ans
-	case X$ans in
-	    Xy*)
-	    	;;
-	    *)
-	    	exit 0
-		;;
-	esac
+		echo $N "Create new project? [no] " $NL
+		read ans
+		case X$ans in
+		    Xy*)
+		    	;;
+		    *)
+		    	exit 0
+			;;
+		esac
+	fi
 
 	mkdir -p "$1"
 	cd $1 || exit 1
 	mkdir -p BitKeeper/etc BitKeeper/bin BitKeeper/caches
-	cat <<EOF
+	if [ "X$NAME" = X ]
+	then	cat <<EOF
 
 --------------------------------------------------------
 Please create a description of this project.
@@ -906,21 +923,32 @@ or
 
 EOF
 
-	echo "Replace this with your project description" > Description
-	echo $N "Editor to use [$EDITOR] " $NL
-	read editor
-	echo 
-	if [ X$editor != X ]
-	then	$editor Description
-	else	$EDITOR Description
+		while true
+		do	echo "Replace this with your project description" \
+			    > Description
+			cp Description D.save
+			echo $N "Editor to use [$EDITOR] " $NL
+			read editor
+			echo 
+			if [ X$editor != X ]
+			then	$editor Description
+			else	$EDITOR Description
+			fi
+			cmp -s D.save Description
+			if [ $? -eq 0 ]
+			then	echo Sorry, you have to put something in there.
+			else	break
+			fi
+		done
+	else	echo "$NAME" > Description
 	fi
-	# XXX - Make sure that they changed it.
-	${BIN}cset -i .
-	${BIN}admin -tDescription ChangeSet
-	/bin/rm -f Description
+	${BIN}cset -si .
+	${BIN}admin -qtDescription ChangeSet
+	/bin/rm -f Description D.save
 	cp ${BIN}/bitkeeper.config BitKeeper/etc/config
 	cd BitKeeper/etc
-	cat <<EOF
+	if [ "X$CONFIG" = X ]
+	then	cat <<EOF
 
 --------------------------------------------------------
 Please fill out the configuration template in your editor.
@@ -928,25 +956,33 @@ This is used for support purposes as well as licensing.
 --------------------------------------------------------
 
 EOF
-
-	echo $N "Editor to use [$EDITOR] " $NL
-	read editor
-	echo 
-	if [ X$editor != X ]
-	then	$editor config
-	else	$EDITOR config
+		while true
+		do	echo $N "Editor to use [$EDITOR] " $NL
+			read editor
+			echo 
+			if [ X$editor != X ]
+			then	$editor config
+			else	$EDITOR config
+			fi
+			cmp -s ${BIN}/bitkeeper.config config
+			if [ $? -eq 0 ]
+			then	echo "Sorry, you have to really fill this out."
+			else	break
+			fi
+		done
+	else	cp $CONFIG config
 	fi
-	# XXX - Make sure that they changed it.
-	${BIN}ci -i config
+	${BIN}ci -qi config
 	${BIN}get -s config
+	sendConfig setups@openlogging.org
 }
 
 # This will go find the root if we aren't at the top
-function changes {
+changes() {
 	echo ChangeSet | ${BIN}sccslog $@ -
 }
 
-function send {
+send() {
 	V=-vv
 	D=
 	while getopts dq opt
@@ -969,10 +1005,10 @@ function send {
 		then	LOG=BitKeeper/log/$1
 			if [ -f $LOG ]
 			then	sort -u < $LOG > /tmp/has$$
-				bk prs -hd:ID: ChangeSet | sort > /tmp/here$$
+				${BIN}prs -hd:ID: ChangeSet | sort > /tmp/here$$
 				FIRST=yes
 				comm -23 /tmp/here$$ /tmp/has$$ |
-				bk key2rev ChangeSet | while read x
+				${BIN}key2rev ChangeSet | while read x
 				do	if [ $FIRST != yes ]
 					then	echo $N ",$x"$NL
 					else	echo $N "$x"$NL
@@ -985,19 +1021,19 @@ function send {
 				then	echo Nothing new to send to $OUTPUT
 					exit 0
 				fi
-			else	REV=`bk prs -hr+ -d:I: ChangeSet`
+			else	REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 			fi
-	    		bk prs -hd:ID: ChangeSet > $LOG
+	    		${BIN}prs -hd:ID: ChangeSet > $LOG
 		fi
 	else	REV=$1
 		OUTPUT=$2
 		LOG=BitKeeper/log/$OUTPUT
 		if [ -f $LOG ]
-		then	(cat $LOG; bk prs -hd:ID: -r$REV ChangeSet) |
+		then	(cat $LOG; ${BIN}prs -hd:ID: -r$REV ChangeSet) |
 			    sort -u > /tmp/log$$
 		    	cat /tmp/log$$ > $LOG
 			/bin/rm -f /tmp/log$$
-		else	bk prs -hd:ID: -r$REV ChangeSet > $LOG
+		else	${BIN}prs -hd:ID: -r$REV ChangeSet > $LOG
 		fi
 	fi
 	case X$OUTPUT in
@@ -1011,7 +1047,7 @@ function send {
 	esac
 }
 
-function save {
+save() {
 	V=-vv
 	case X$1 in
 	X-q)	V=; shift
@@ -1023,7 +1059,7 @@ function save {
 	fi
 	if [ X$2 = X ]
 	then	cd2root
-		REV=`bk prs -hr+ -d:I: ChangeSet`
+		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
 		OUTPUT=$1
 	else	REV=$1
 		OUTPUT=$2
@@ -1035,16 +1071,18 @@ function save {
 	exit $?
 }
 
-function resync {
+resync() {
 	V=-vv
 	v=
 	REV=1.0..
 	C=
 	FAST=
 	SSH=
+	A=
 	# XXX - how portable is this?  Seems like it is a ksh construct
-	while getopts cCFqr:Sv opt
+	while getopts acCFqr:Sv opt
 	do	case "$opt" in
+		a) A=-a;;
 		q) V=;;
 		c) C=-c;;
 		C) SSH="-C $SSH";;
@@ -1057,7 +1095,7 @@ function resync {
 	shift `expr $OPTIND - 1`
 	if [ X$v != X ]; then V=-$v; fi
 	if [ X"$2" = X ]
-	then	echo "usage: bk resync source_dir dest_dir"
+	then	echo "usage: bk resync [options] source_dir dest_dir"
 		exit 1
 	fi
 	case $1 in
@@ -1065,14 +1103,14 @@ function resync {
 		FHOST=${1%:*}
 		FDIR=${1#*:}
 		PRS="ssh $SSH -x $FHOST 
-		    'cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet'"
+		    'cd $FDIR && exec bk prs -Cr$REV -bhd:ID:%:I: ChangeSet'"
 		GEN_LIST="ssh $SSH -x $FHOST 'cd $FDIR && bk cset -m $V -'"
 		;;
 	*)
 		FHOST=
 		FDIR=$1
-		PRS="(cd $FDIR && exec bk prs -r$REV -bhd:ID:%:I: ChangeSet)"
-		GEN_LIST="(cd $FDIR && bk cset -m $V -)"
+		PRS="(cd $FDIR && exec ${BIN}prs -Cr$REV -bhd:ID:%:I: ChangeSet)"
+		GEN_LIST="(cd $FDIR && ${BIN}cset -m $V -)"
 		;;
 	esac
 	case $2 in
@@ -1080,7 +1118,7 @@ function resync {
 		THOST=${2%:*}
 		TDIR=${2#*:}
 		PRS2="ssh $SSH -x $THOST
-		    'cd $TDIR && exec bk prs -bhd:ID: ChangeSet'"
+		    'cd $TDIR && exec bk prs -r1.0.. -bhd:ID: ChangeSet'"
 		# Much magic in this next line.
 		INIT=-`ssh $SSH -x $THOST "if test -d $TDIR;
 		    then if test -d $TDIR/BitKeeper/etc;
@@ -1097,12 +1135,12 @@ function resync {
 		then	INIT=
 		fi
 		TKPATCH="ssh $SSH -x $THOST
-		    'cd $TDIR && exec bk takepatch $FAST $C $V $INIT'"
+		    'cd $TDIR && exec bk takepatch $A $FAST $C $V $INIT'"
 		;;
 	*)
 		THOST=
 		TDIR=$2
-		PRS2="(cd $TDIR && exec bk prs -bhd:ID: ChangeSet)"
+		PRS2="(cd $TDIR && exec ${BIN}prs -r1.0.. -bhd:ID: ChangeSet)"
 		if [ -d $TDIR ]
 		then	if [ -d $TDIR/RESYNC ]
 			then echo "resync: $TDIR/RESYNC exists, patch in progress"
@@ -1117,7 +1155,7 @@ function resync {
 			mkdir -p $TDIR
 		fi
 			
-		TKPATCH="(cd $TDIR && bk takepatch $FAST $C $V $INIT)"
+		TKPATCH="(cd $TDIR && ${BIN}takepatch $A $FAST $C $V $INIT)"
 		;;
 	esac
 
@@ -1126,7 +1164,7 @@ function resync {
 	else	eval $PRS2 > /tmp/to$$
 	fi
 	eval $PRS  > /tmp/from$$
-	REV=`bk cset_todo /tmp/from$$ /tmp/to$$`
+	REV=`${BIN}cset_todo /tmp/from$$ /tmp/to$$`
 	/bin/rm /tmp/from$$ /tmp/to$$
 	if [ "X$REV" != X ]
 	then	if [ X$V != X ]
@@ -1140,24 +1178,29 @@ function resync {
 	exit 0
 }
 
-function edit {
-	bk get -e "$@"
+# XXX - not documented
+new() {
+	${BIN}ci -i "$@"
 }
 
-function unedit {
-	bk clean -u "$@"
+edit() {
+	${BIN}get -e "$@"
 }
 
-function mv {
-	bk sccsmv "$@"
+unedit() {
+	${BIN}clean -u "$@"
 }
 
-function rm {
-	bk sccsrm "$@"
+mv() {
+	${BIN}sccsmv "$@"
+}
+
+rm() {
+	${BIN}sccsrm "$@"
 }
 
 # Usage: undo [-f] [-F]
-function undo {
+undo() {
 	echo Undo is temporarily unsupported while we work out some bugs
 	exit 1
 
@@ -1173,16 +1216,16 @@ function undo {
 	then	FORCE=yes
 	fi
 	if [ X$FORCE = X ]
-	then	bk sfiles -Ca > /tmp/p$$
+	then	${BIN}sfiles -Ca > /tmp/p$$
 		if [ -s /tmp/p$$ ]
 		then	echo Repository has uncommitted changes, undo aborted
 			/bin/rm /tmp/p$$
 			exit 1
 		fi
 	fi
-	REV=`bk prs -hr+ -d:I: ChangeSet`
-	bk cset -l$REV > /tmp/undo$$
-	sed 's/:.*//' < /tmp/undo$$ | sort -u | xargs bk sfiles -c > /tmp/p$$
+	REV=`${BIN}prs -hr+ -d:I: ChangeSet`
+	${BIN}cset -l$REV > /tmp/undo$$
+	sed 's/:.*//' < /tmp/undo$$ | sort -u | xargs ${BIN}sfiles -c > /tmp/p$$
 	if [ -s /tmp/p$$ ]
 	then	echo "Undo would remove the following modified files:"
 		cat /tmp/p$$
@@ -1201,7 +1244,7 @@ function undo {
 			echo $N "Remove these? (y)es, (n)o "$NL
 			read x
 			case X$x in
-		    	Xy*)	bk rmdel -D - < /tmp/undo$$
+		    	Xy*)	${BIN}rmdel -D - < /tmp/undo$$
 				EXIT=$?
 				/bin/rm -f /tmp/undo$$
 				exit $EXIT
@@ -1211,116 +1254,217 @@ function undo {
 				;;
 			esac
 		done
-	else	bk rmdel -D - < /tmp/undo$$
+	else	${BIN}rmdel -D - < /tmp/undo$$
 		EXIT=$?
 		/bin/rm -f /tmp/undo$$
 		exit $EXIT
 	fi
 }
 
-function pending {
+pending() {
 	exec ${BIN}sfiles -Ca | ${BIN}sccslog -p - | $PAGER
 }
 
-function doLog {
+chkConfig() {
 	cd2root
 	if [ ! -f  BitKeeper/etc/SCCS/s.config ]
 	then
-		echo "Con not find BitKeeper/etc/SCCS/s.config"
+		cat <<EOF
+
+Your BitKeeper project is missing the config file
+
+    BitKeeper/etc/SCCS/s.config
+
+Please copy the one from ${BIN}bitkeeper.config to
+BitKeeper/etc/config, edit it to reflect your site,
+and try this command again.
+
+EOF
 		/bin/rm -f /tmp/comments$$
 		exit 1
 	fi
-	bk get -q BitKeeper/etc/config 
+	${BIN}get -q BitKeeper/etc/config 
+	cmp -s BitKeeper/etc/config ${BIN}bitkeeper.config
+	if [ $? -eq 0 ]
+	then	cat <<EOF
+
+Your config file, BitKeeper/etc/config, does not reflect your site.
+Please check it out (bk edit BitKeeper/etc/config), modify it to
+reflect your site, check it in, and try this command again.
+
+Thanks.
+
+EOF
+		/bin/rm -f /tmp/comments$$
+		exit 1
+	fi
+}
+
+# Send the config file 
+sendConfig() {
+	if [ X$1 = X ]
+	then	return		# error, should never happen
+	fi
+	cd2root
+	${BIN}get -s BitKeeper/etc/config
+	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
+	( ${BIN}prs -hr1.0 \
+	-d'$each(:FD:){Project:\t(:FD:)}\nChangeSet ID:\t:LONGKEY:' ChangeSet;
+	  echo "Host:		`hostname`"
+	  echo "Root:		`pwd`"
+	  echo "User:		$USER"
+	  grep -v '^#' BitKeeper/etc/config | grep -v '^$'
+	) | mail -s "BitKeeper config: $P" $1
+	${BIN}clean BitKeeper/etc/config
+}
+
+logAddr() {
+	chkConfig
 	LOG=`grep "^logging:" BitKeeper/etc/config | tr -d '[\t, ]'`	
-	case  ${LOG} in 
-	logging:*)
-		LOGADDR=${LOG#*:} 
-		echo $LOGADDR | grep -q "@openlogging.org$"
-		if [ $? -eq 0 ]
-		then 
-			cat << EOF
-BitKeeper is about to publish a summary of this ChangeSet (not the source code)
-at $LOGADDR. Do you want to proceed?
-EOF
-			read x
-			case X$x in
-		    	    X[Yy]*) 
-			    bk clean BitKeeper/etc/config
-			    return
-			    ;;
-				*)
-			    cat << EOF
-Bitkeeper is aborting this commit session now. 
-This version of Bitkeeper is intended for project that wishes to publish
-their progress via open-logging. To purchase a copy of Bitkeeper with
-no open-logging feature, please contact Bitmover Inc. at 415-821-5758,
-or email sales@bitmover.com and ask for BitKeeperPro.
-Thank you for using Bitkeeper.
-EOF
-		 	/bin/rm -f /tmp/comments$$
-			bk clean BitKeeper/etc/config
-			exit 1
-			esac
-			
-		else
-			cat BitKeeper/etc/config | \
-					/bin/mail commerical@openlogging.org
-			bk clean BitKeeper/etc/config
-			return
-		fi
+	case X${LOG} in 
+	Xlogging:*)
 		;;
 	*)	echo "Bad config file, can not find logging entry"
 		/bin/rm -f /tmp/comments$$
-		bk clean BitKeeper/etc/config
+		${BIN}clean BitKeeper/etc/config
 		exit 1 
 		;;
 	esac
-	# we should never get here
-	exit 1
+	export LOGADDR=${LOG#*:} 
 }
 
-function commit {
+# Log the changeset to openlogging.org or wherever they said to send it.
+# If they agree to the logging, record that fact in the config file.
+# If they have agreed, then don't keep asking the question.
+# XXX - should probably ask once for each user.
+doLog() {
+	logAddr
+
+	grep -q "^logging_ok:" BitKeeper/etc/config
+	if [ $? -eq 0 ]
+	then	${BIN}clean BitKeeper/etc/config
+		return
+	fi
+	echo $LOGADDR | grep -q "@openlogging.org$"
+	if [ $? -eq 0 ]
+	then 
+		cat << EOF
+
+----------------------------------------------------------------------------
+
+This is a one time query about your setup.  You've configured BitKeeper
+to send ChangeSet summaries to
+	$LOGADDR
+There is a web server there which converts the summaries to HTML and
+publishes them on the web.  One benefit of this is that no matter where
+in the world changes get made to this source base, you can go to
+$LOGADDR to see who else is making changes.
+
+We're asking you if it is OK to publish the changes.  You should say no
+if you are working on proprietary and/or sensitive information that your
+employer would not want made public.  If you say no, you will be given
+more information on what to do instead (you can buy a copy of BitKeeper
+so that you don't have to publish this information on the web).
+
+If you are working on an open source type project, it is almost certainly
+OK and in fact desirable that you publish the change information.
+
+BitKeeper is about to send a summary of this ChangeSet at
+$LOGADDR
+
+EOF
+		echo $N "OK [y/n]? "$NL
+		read x
+		case X$x in
+	    	    X[Yy]*) 
+			${BIN}clean BitKeeper/etc/config
+			${BIN}get -seg BitKeeper/etc/config
+			${BIN}get -kps BitKeeper/etc/config |
+			sed -e '/^logging:/a\
+logging_ok:	to '$LOGADDR > BitKeeper/etc/config
+			${BIN}delta -y'Logging OK' BitKeeper/etc/config
+			return
+			;;
+		esac
+		cat << EOF
+
+Bitkeeper is aborting this commit.
+
+This version of Bitkeeper is intended for projects which wish to publish
+their progress via open-logging. To purchase a copy of Bitkeeper without
+the open logging feature, please email sales@bitmover.com and ask for
+BitKeeperPro.  Thanks.
+
+EOF
+	 	/bin/rm -f /tmp/comments$$
+		${BIN}clean BitKeeper/etc/config
+		exit 1
+	else
+		sendConfig config@openlogging.org
+	fi
+}
+
+sendLog() {
+	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
+	( ${BIN}prs -hr1.0 \
+	    -d'$each(:FD:){# Project:\t(:FD:)}\n# ChangeSet ID: :LONGKEY:' \
+	    ChangeSet;
+	  echo "# Host:		`hostname`"
+	  echo "# Root:		`pwd`"
+	  echo "# User:		$USER"
+	  ${BIN}cset -c$REV
+	) | mail -s "BitKeeper log: $P" $LOGADDR
+}
+
+commit() {
 	DOIT=no
-	GETIT=yes
+	GETCOMMENTS=yes
 	COPTS=
-	while getopts dsS:y:Y: opt
+	FORCE=no
+	while getopts dfsS:y:Y: opt
 	do	case "$opt" in
 		d) DOIT=yes;;
+		f) FORCE=yes;;
 		s) COPTS="-s $COPTS";;
 		S) COPTS="-S$OPTARG $COPTS";;
-		y) DOIT=yes; GETIT=no; echo "$OPTARG" > /tmp/comments$$;;
-		Y) DOIT=yes; GETIT=no; cp "$OPTARG" /tmp/comments$$;;
+		y) DOIT=yes; GETCOMMENTS=no; echo "$OPTARG" > /tmp/comments$$;;
+		Y) DOIT=yes; GETCOMMENTS=no; cp "$OPTARG" /tmp/comments$$;;
 		esac
 	done
 	shift `expr $OPTIND - 1`
-	if [ $GETIT = yes ]
-	then	${BIN}sfiles -Ca | ${BIN}sccslog -C - > /tmp/comments$$
-		if [ ! -s /tmp/comments$$ ]
+	cd2root
+	if [ $GETCOMMENTS = yes ]
+	then	${BIN}sfiles -Ca > /tmp/list$$
+		if [ ! -s /tmp/list$$ ]
 		then	echo Nothing to commit
+			/bin/rm -f /tmp/list$$
 			exit 0
 		fi
+		${BIN}sccslog -C - < /tmp/list$$ > /tmp/comments$$
+		/bin/rm -f /tmp/list$$
 	else	N=`${BIN}sfiles -C | wc -l`
 		if [ $N -eq 0 ]
 		then	echo Nothing to commit
+			/bin/rm -f /tmp/list$$
 			exit 0
 		fi
 	fi
 	COMMENTS=
 	L=----------------------------------------------------------------------
 	if [ $DOIT = yes ]
-	then	if [ -s /tmp/comments$$ ]
-		 then	COMMENTS="-Y/tmp/comments$$"
-		 fi
-		 doLog;
-		 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
-		 EXIT=$?
-		 /bin/rm -f /tmp/comments$$
-		 ${BIN}csetmark -r+
-		 # Assume top of trunk is the right rev
-		 # XXX TODO: Needs to account for LOD when it is implemented
-		 REV=`${BIN}prs -hr+  -d:I: ChangeSet`
-		 ${BIN}cset -c$REV | /bin/mail $LOGADDR
-		 exit $EXIT;
+	then	if [ -f /tmp/comments$$ ]
+		then	COMMENTS="-Y/tmp/comments$$"
+		fi
+		if [ $FORCE = no ]; then doLog; else logAddr; fi
+		${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
+		EXIT=$?
+		/bin/rm -f /tmp/comments$$
+		${BIN}csetmark -r+
+		# Assume top of trunk is the right rev
+		# XXX TODO: Needs to account for LOD when it is implemented
+		REV=`${BIN}prs -hr+ -d:I: ChangeSet`
+		sendLog $REV
+		exit $EXIT;
 	fi
 	while true
 	do	
@@ -1333,30 +1477,32 @@ function commit {
 		read x
 		case X$x in
 		    X[uy]*) 
-			 if [ -s /tmp/comments$$ ]
-			 then	COMMENTS="-Y/tmp/comments$$"
-			 fi
-			 doLog;
-			 ${BIN}sfiles -C | ${BIN}cset "$COMMENTS" $COPTS $@ -
-			 EXIT=$?
-			 /bin/rm -f /tmp/comments$$
-			 # Assume top of trunk is the right rev
-			 # XXX TODO: Needs to account for LOD when it is implemented
-			 REV=`${BIN}prs -hr+  -d:I: ChangeSet`
-			 ${BIN}cset -c$REV | /bin/mail $LOGADDR
-	    	 	 exit $EXIT;
-		 	 ;;
+			if [ -s /tmp/comments$$ ]
+			then	COMMENTS="-Y/tmp/comments$$"
+			fi
+			if [ $FORCE = no ]; then doLog; else logAddr; fi
+			${BIN}sfiles -C |
+			    eval ${BIN}cset "$COMMENTS" $COPTS $@ -
+			EXIT=$?
+			/bin/rm -f /tmp/comments$$
+			# Assume top of trunk is the right rev
+			# XXX TODO: Needs to account for LOD 
+			REV=`${BIN}prs -hr+ -d:I: ChangeSet`
+			${BIN}csetmark -r+
+			sendLog $REV
+	    	 	exit $EXIT;
+		 	;;
 		    Xe*) $EDITOR /tmp/comments$$
-			 ;;
+			;;
 		    Xa*) /bin/rm -f /tmp/comments$$
-			 echo Commit aborted.
-			 exit 0
-			 ;;
+			echo Commit aborted.
+			exit 0
+			;;
 		esac
 	done
 }
 
-function man {
+man() {
 	export MANPATH=${BIN}man:$MANPATH
 	for i in /usr/bin /bin /usr/local/bin /usr/sbin
 	do	if [ -x /usr/bin/man ]
@@ -1367,11 +1513,11 @@ function man {
 	exit 1
 }
 
-function commitmerge {
+commitmerge() {
 	exec ${BIN}sfiles -C | ${BIN}cset -yMerge $@ -
 }
 
-function sendbug {
+sendbug() {
 	cat > /tmp/bug$$ <<EOF
 
 BitKeeper Bug Report
@@ -1459,7 +1605,7 @@ EOF
 	done
 }
 
-function docs {
+docs() {
 	for i in admin backups basics changes changesets chksum ci clean \
 	    co commit cset cset_todo debug delta differences diffs docs \
 	    edit get gui history import makepatch man merging overview \
@@ -1474,7 +1620,7 @@ function docs {
 	done
 }
 
-function commandHelp {
+commandHelp() {
 	DID=no
 	for i in $* 
 	do	case $i in
@@ -1507,7 +1653,7 @@ function commandHelp {
 	fi
 }
 
-function init {
+init() {
 	if [ '-n foo' = "`echo -n foo`" ] 
 	then    NL='\c'
 	        N=
@@ -1547,7 +1693,7 @@ case "$1" in
 	exit 1
 	;;
     setup|changes|pending|commit|commitmerge|sendbug|send|\
-    mv|resync|edit|unedit|man|undo|save|docs|rm)
+    mv|resync|edit|unedit|man|undo|save|docs|rm|new)
 	cmd=$1
     	shift
 	$cmd "$@"
@@ -1584,6 +1730,7 @@ then	if [ X$2 != X -a -d $2 ]
 fi
 if [ X$1 = X-R ]
 then	cd2root
+	shift
 fi
 if [ $SFILES = yes ]
 then	bk sfiles | bk "$@" -
