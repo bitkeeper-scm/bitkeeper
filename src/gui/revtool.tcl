@@ -1354,19 +1354,23 @@ proc currentMenu {} \
 {
 	global file gc rev1 rev2 bk_fs dev_null 
 
-	$gc(fmenu) entryconfigure "Current ChangeSet" \
+	$gc(fmenu) entryconfigure "Current Changeset*" \
 	    -state disabled
 	if {$file != "ChangeSet"} {return}
 
 	if {![info exists rev1] || $rev1 == ""} {return}
-	$gc(fmenu) entryconfigure "Current ChangeSet" \
+	$gc(fmenu) entryconfigure "Current Changeset*" \
 	    -state normal
 
-	if {![info exists rev2] || ($rev2 == "")} { 
+	if {![info exists rev2] || ($rev2 == "") || $rev2 == $rev1} { 
 		set end $rev1 
+		$gc(fmenu) entryconfigure "Current Changeset*" \
+		    -label "Current Changeset"
 	} else {
 		# don't want to modify global rev2 in this procedure
 		set end $rev2
+		$gc(fmenu) entryconfigure "Current Changeset*" \
+		    -label "Current Changesets"
 	}
 	busy 1
 	cd2root
@@ -1781,7 +1785,7 @@ proc widgets {} \
 		    	revtool ChangeSet
 		    }
 		$gc(fmenu) add separator
-		$gc(fmenu) add cascade -label "Current ChangeSet" \
+		$gc(fmenu) add cascade -label "Current Changeset" \
 		    -menu $gc(current)
 		menu $gc(current) 
 	    if {"$fname" == "ChangeSet"} {
