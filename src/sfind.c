@@ -23,6 +23,7 @@ usage: sfiles [-aAcCeEgjlmpux] [directories]\n\n\
     -l		list locked files (p.file and/or z.file)\n\
     -m		annotate the output with state markers\n\
     -n		list unchanged (no-change) files\n\
+    -o<file>	send the file list to <file>, and progress info to stdout\n\
     -u		list unlocked files\n\
     -p		list files with pending delta(s)\n\
     -S		summarize output\n\
@@ -50,7 +51,8 @@ typedef struct {
 	u32     splitRoot:1;   		/* split root mode	*/
 	u32     dfile:1;   		/* use d.file to find 	*/
 					/* pending delta	*/
-	u32     fflg:1;     		/* redirect file list  	*/
+	u32	progress:1;		/* if set, send progress to stdout */
+	FILE	*out;			/* send output here */
 	u32     Sflg:1;     		/* summarize output  	*/
 } options;
 
@@ -67,8 +69,8 @@ typedef struct {
 private project *proj;
 private options	opts;
 private globv	ignore; 
-private FILE	*output;
-private unsigned int s_count, x_count, j_count; /* progress counter */
+private u32	 d_count, s_count, x_count; /* progress counter */
+private u32	 s_last, x_last; /* progress counter */
 private unsigned int c_count, p_count;
 
 private void do_print(char state[4], char *file, char *rev);
@@ -144,23 +146,28 @@ int
 sfind_main(int ac, char **av)
 {
         int     c, i; 
-	char	*root, *path, buf[MAXPATH], *fname;
+	char	*root, *path, buf[MAXPATH];
 
 	if ((ac > 1) && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", sfind_usage);
 		return (0);
 	}                
 
-	while ((c = getopt(ac, av, "aAcCeEf:gjlmSpux")) != -1) {
+	while ((c = getopt(ac, av, "aAcCeEgjlmo:pSux")) != -1) {
 		switch (c) {
 		    case 'a':	opts.aflg = 1; break;
 		    case 'A':	opts.Aflg = 1; break;
 		    case 'c':	opts.cflg = 1; break;
-		    case 'f':	opts.fflg = 1; fname=optarg; break;
 		    case 'g':	opts.gflg = 1; break;
 		    case 'j':	opts.jflg = 1; break;
 		    case 'l':	opts.lflg = 1; break;
 		    case 'n':	opts.nflg = 1; break;
+		    case 'o':	unless (opts.out = fopen(optarg, "w")) {
+		    			perror(optarg);
+					exit(1);
+				}
+				opts.progress = 1;
+				break;
 		    case 'C':	opts.Cflg = 1; 
 				opts.pflg = 1;
 				break; /* backward compat */
@@ -180,17 +187,8 @@ usage:		fprintf(stderr, "%s", sfind_usage);
 		    default: 	goto usage;
 		}
 	}
-
-	if (opts.fflg) {
-		output = fopen(fname, "wb");
-		unless (output) {
-			perror(fname);
-			return(1);
-		}
-	} else {
-		output = stdout;
-	}
-	
+	unless (opts.out) opts.out = stdout;
+	c_count = p_count = d_count = s_count = x_count = 0;
 
 	/*
 	 * If user did not select any option,
@@ -228,7 +226,8 @@ usage:		fprintf(stderr, "%s", sfind_usage);
                         }
                 }
 	}
-	if (opts.fflg) fclose(output);
+	if (opts.out) fclose(opts.out);
+	if (opts.progress) progress(2);
 	return (0);
 }
 
@@ -434,9 +433,6 @@ print_summary()
 	if (opts.xflg) {
 		fprintf(output, "%6d files not under revision control.\n", x_count);
 	}
-	if (opts.jflg) {
-		fprintf(output, "%6d junk files under the SCCS directory.\n", j_count);
-	}
 	if (opts.cflg) {
 		fprintf(output, "%6d files modified and not checked in.\n", c_count);
 	}
@@ -495,11 +491,12 @@ walk(char *dir, int level)
 			opts.aflg = 1;
 		}
 		assert(proj == 0);
-
+#if 0
 		/*
 		 * XXX TODO: should we reset the progress counter ?
 		 */
-		s_count = x_count = j_count = 0;
+		s_count = x_count = 0;
+#endif
 	}
 
 	concat_path(buf, dir, "SCCS");
@@ -551,6 +548,28 @@ done:	if (level == 0) {
 		if (proj) proj_free(proj); proj = 0;
 		if (opts.Sflg) print_summary();
 	}
+	if (opts.progress) progress(0);
+}
+
+progress(int force)
+{
+	static	struct timeval tv;
+	struct	timeval now;
+	int	msec;
+
+	if (force <= 1) {
+		gettimeofday(&now, 0);
+		msec = (now.tv_sec - tv.tv_sec) * 1000;
+		msec += now.tv_usec / 1000;
+		msec -= tv.tv_usec / 1000;
+		if (tv.tv_sec && (msec < 11)) return;
+		tv = now;
+	}
+	if (!force && (s_last == s_count) && (x_last == x_count)) return;
+	printf("%d %d %d\n", s_count, x_count, d_count);
+	fflush(stdout);
+	s_last = s_count;
+	x_last = x_count;
 }
 
 private int
@@ -618,9 +637,9 @@ print_it(char state[4], char *file, char *rev)
 	char *sfile, *gfile;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
-	if (opts.show_markers) fprintf(output, "%s ", state);
+	if (opts.show_markers) fprintf(opts.out, "%s ", state);
 	if (opts.gflg || (state[CSTATE] == 'x') || (state[CSTATE] == 'j'))  {
-		fputs(gfile, output);	/* print gfile name */
+		fputs(gfile, opts.out);	/* print gfile name */
 	} else {
 		sfile = name2sccs(gfile);
 		/*
@@ -628,50 +647,29 @@ print_it(char state[4], char *file, char *rev)
 		 * we should be able to better optimized the sPath() code
 		 * e.g. we could pass project struct into sPath()
 		 */
-		fputs(opts.splitRoot ? sPath(sfile, 0) : sfile, output);
+		fputs(opts.splitRoot ? sPath(sfile, 0) : sfile, opts.out);
 		free(sfile);
 	}
-	if (rev) fprintf(output, "@%s", rev);
-	fputs("\n", output);
-}
-
-private void
-upd_progress_counter(char state[4], char *file)
-{
-#define UPD_FREQUENCY 10
-
-	if (state[PSTATE] == 'p') p_count++;
-
-	switch (state[CSTATE]) {
-	    case 'j':	if (isTagFile(file)) return;
-			j_count++;
-			unless (opts.fflg) return;
-			unless (j_count % UPD_FREQUENCY) {
-				if (opts.fflg) printf("j %d\n", j_count);
-			}
-			break;
-	    case 'x':	if (isIgnored(file)) return;
-			x_count++;
-			unless (opts.fflg) return;
-			unless (x_count % UPD_FREQUENCY) {
-				printf("x %d\n", j_count);
-			}
-	    case 'c':	c_count++;
-			/* fall thru */
-	    default:	s_count++;
-			unless (opts.fflg) return;
-			unless (s_count % UPD_FREQUENCY) {
-				printf("s %d\n", s_count);
-			}
-			break;
-	}
+	if (rev) fprintf(opts.out, "@%s", rev);
+	fputs("\n", opts.out);
 }
 
 private void
 do_print(char state[4], char *file, char *rev)
 {
 
-	upd_progress_counter(state, file);
+	if (state[PSTATE] == 'p') p_count++;
+	switch (state[CSTATE]) {
+	    case 'j': break;
+	    case 'x': unless (isIgnored(file)) x_count++;
+	    case 'c': c_count++;
+	    	/* fall through */
+	    default: s_count++;
+	}
+	if (opts.progress && 
+	    (((s_count - s_last) > 100) || ((x_count - x_last) > 100))) { 
+		progress(1);
+	}
 	if (opts.Sflg) return; /* user wants summary only, skip the detail */
 	if ((state[PSTATE] == 'p') && opts.pflg) goto print;
 
@@ -763,6 +761,8 @@ sccsdir(char *dir, int level, DIR *sccs_dh, char buf[MAXPATH])
 		}
 	}
 	closedir(dh);
+	d_count++;
+	if (opts.progress) progress(1);
 
 	/*
 	 * Get all the SCCS/?.files
