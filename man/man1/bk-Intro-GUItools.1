@@ -12,12 +12,12 @@ is covered more thoroughly in its own section.
 .if t .TP .75i
 .if n .TP 1.25i
 .B citool
-Run this to see which files need to be checked in. Also, files can
+Used to check in files and create changesets. Also, files can
 be excluded from the changeset via citool.
 .tp
 .B csettool
-Used to view changesets.  Shows the check-in comments and the 
-diffs of each file in a changeset.  
+Used to view the files in a changeset.  Shows the check-in comments and the 
+diffs for each file in the changeset.  
 You can get to a particular changeset by running
 .B histtool
 on a file, finding and selecting a change in that file,
@@ -35,7 +35,7 @@ This is the graphical interface for online \*(BK documentation.
 It has hyperlinked information, search facilities, and a table of contents.
 .tp
 .B fmtool
-Two-way file merge program.  It walks you through differences
+Two-way file merge program that displays the differences
 between two files and allows selecting either change.
 .\" XXX - removed fm3tool references because it does not exist in
 .\" 	  the man pages.  - amy 10/10/2000
@@ -44,13 +44,14 @@ between two files and allows selecting either change.
 .\"Three-way file merge.  Usage: fm3 left GCA right output.
 .tp
 .B renametool
-Used to find renames when importing a patch.  Called
-automatically from "bk import -tpatch".
+Used to find renames when importing a patch.  Invoked
+automatically when "bk import -tpatch" is run.
 .tp
 .B histtool
-The primary tool for viewing file history and contents.  Probably 
-the second most popular GUI tool - just about everything in this tool is
-clickable to get more information about changes. 
+The primary tool for viewing file history and contents.  After citool,
+histtool will be the gui-tool you use most often - just about everything 
+in this tool is clickable to get more information about changes. 
+
 .SH "SEE ALSO"
 .SA citool 1
 .SA csettool 1
