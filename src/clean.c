@@ -52,7 +52,7 @@ usage:		fprintf(stderr, "usage: %s [-puv] [files...]\n", av[0]);
 			exit(1);
 		}
 	} else {
-		name = sfileFirst("clean", &av[optind], SF_GFILE);
+		name = sfileFirst("clean", &av[optind], SF_SILENT|SF_GFILE);
 	}
 	while (name) {
 		if ((s = sccs_init(name, flags))) {

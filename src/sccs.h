@@ -120,7 +120,6 @@ extern	char *strdup(char *s);
 #define fnext(buf, in)  fgets(buf, sizeof(buf), in)
 #define	unlink(f)	smartUnlink(f)
 #define	rename(o, n)	smartRename(o, n)
-#define	sameFileType(a, b) (fileType(a->mode) == fileType(b->mode))
 #ifdef	USE_STDIO
 #define next(buf, s)	fnext(buf, s->file)
 #define	seekto(s,where)	fseek(s->file, (long)where, SEEK_SET)

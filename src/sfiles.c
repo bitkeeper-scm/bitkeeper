@@ -212,7 +212,7 @@ oksccs(char *sfile, int flags, int complain)
 	}
 	if (s[0] != 's' || s[1] != '.') {
 		if (complain)
-			fprint(stderr, "%s: not an s.file: %s\n", prog, sfile);
+			fprintf(stderr, "%s: not an s.file: %s\n", prog, sfile);
 		return (0);
 	}
 	g = sccs2name(sfile);
@@ -220,11 +220,11 @@ oksccs(char *sfile, int flags, int complain)
 	if ((flags&SF_GFILE) && !ok) {
 		if (complain) {
 			unless (exists(sfile)) {
-				fprint(stderr,
+				fprintf(stderr,
 				    "%s: neither '%s' nor '%s' exists.\n",
 				    prog, g, sfile);
 			} else {
-				fprint(stderr,
+				fprintf(stderr,
 				    "%s: no such file: %s\n", prog, g);
 			}
 		}

@@ -452,6 +452,7 @@ applyPatch(int flags)
 		    "takepatch: can't open %s\n", p->resyncFile);
 		exit(1);
 	}
+	s->state |= S_BRANCHOK;
 apply:
 	p = patchList;
 	while (p) {
@@ -472,7 +473,7 @@ apply:
 				newflags = NOCKSUM|SILENT|SKIPGET|EDIT;
 				/* CSTYLED */
 				if (sccs_get(s, d->rev, 0,0,0, newflags, "-")) {
-					perror("get");
+				    	perror("get");
 					exit(1);
 				}
 				if (echo > 6) {
@@ -486,10 +487,9 @@ apply:
 				iF = fopen(p->initFile, "r");
 				dF = fopen(p->diffFile, "r");
 				newflags = (echo > 2) ?
-				    //NOCKSUM|FORCE|BRANCHOK|PATCH :
 				    NOCKSUM|FORCE|PATCH :
-				    //NOCKSUM|FORCE|BRANCHOK|PATCH|SILENT;
 				    NOCKSUM|FORCE|PATCH|SILENT;
+				assert(s->state & S_BRANCHOK);
 				if (sccs_delta(s, newflags, 0, iF, dF)) {
 					perror("delta");
 					exit(1);
@@ -509,13 +509,12 @@ apply:
 				exit(1);
 			}
 			sccscopy(s, p->init);
+			s->state |= S_BRANCHOK;
 			iF = fopen(p->initFile, "r");
 			dF = fopen(p->diffFile, "r");
 			d = 0;
 			newflags = (echo > 2) ?
-			    //NOCKSUM|NEWFILE|FORCE|BRANCHOK|PATCH :
 			    NOCKSUM|NEWFILE|FORCE|PATCH :
-			    //NOCKSUM|NEWFILE|FORCE|BRANCHOK|PATCH|SILENT;
 			    NOCKSUM|NEWFILE|FORCE|PATCH|SILENT;
 			if (newProject &&
 			    streq("RESYNC/SCCS/s.ChangeSet", p->resyncFile)) {

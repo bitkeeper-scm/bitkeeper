@@ -58,9 +58,9 @@ main(int ac, char **av)
 	}
 
 	if (name = strrchr(av[0], '/')) {
-		kind = streq(++name, "sdiffs") ? D_SDIFF : D_DIFF;
+		kind = streq(++name, "sdiffs") ? DF_SDIFF : DF_DIFF;
 	} else {
-		kind = streq(av[0], "sdiffs") ? D_SDIFF : D_DIFF;
+		kind = streq(av[0], "sdiffs") ? DF_SDIFF : DF_DIFF;
 	}
 	while ((c = getopt(ac, av, "acd;DMnpr|suUv")) != -1) {
 		switch (c) {

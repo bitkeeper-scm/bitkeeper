@@ -62,6 +62,7 @@ private void	updatePending(sccs *s, delta *d);
 void		concat_path(char *buf, char *first, char *second);
 private int	fix_lf(char *gfile);
 void		free_pfile(pfile *pf);
+private int	sameFileType(sccs *s, delta *d);
 
 private unsigned int u_mask = 0x5eadbeef;
 
@@ -1004,7 +1005,11 @@ explode_rev(delta *d)
 
 	while (*s) { if (*s++ == '.') dots++; }
 	if (dots > 3) d->flags |= D_ERROR|D_BADFORM;
-	scanrev(d->rev, &d->r[0], &d->r[1], &d->r[2], &d->r[3]);
+	switch (scanrev(d->rev, &d->r[0], &d->r[1], &d->r[2], &d->r[3])) {
+	    case 1: d->r[1] = 0;	/* fall through */
+	    case 2: d->r[2] = 0;	/* fall through */
+	    case 3: d->r[3] = 0;
+	}
 }
 
 private char *
@@ -4854,6 +4859,16 @@ sameMode(delta *a, delta *b)
 	
 }
 
+private int
+sameFileType(sccs *s, delta *d)
+{
+	if (d->flags & D_MODE) {
+		return (fileType(s->mode) == fileType(d->mode));
+	} else {			/* assume no mode means regular file */
+		return (S_ISREG(s->mode));
+	}
+}
+
 /*
  * The table is all here in order, just print it.
  * New in Feb, '99: remove duplicates of metadata.
@@ -5486,7 +5501,7 @@ sccs_clean(sccs *s, int flags)
 		return (1);
 	}
 
-        unless (sameFileType(s, d)) {
+	unless (sameFileType(s, d)) {
 		unless (flags & PRINT) {
 			fprintf(stderr,
 			"%s has been modified, needs delta.\n", s->gfile);
