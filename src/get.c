@@ -133,7 +133,7 @@ usage:			fprintf(stderr, "get: usage error, try get --help\n");
 		return (1);
 	}
 	for (; name; name = sfileNext()) {
-		unless (s = sccs_init(name, iflags)) continue;
+		unless (s = sccs_init(name, iflags, 0)) continue;
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];

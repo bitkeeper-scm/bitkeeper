@@ -66,7 +66,7 @@ usage:		fputs(clean_help, stderr);
 		name = sfileFirst("clean", &av[optind], SF_DELETES|SF_GFILE);
 	}
 	while (name) {
-		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM))) {
+		if ((s = sccs_init(name, SILENT|INIT_NOCKSUM, 0))) {
 			(void)sccs_clean(s, flags);
 			sccs_free(s);
 		}

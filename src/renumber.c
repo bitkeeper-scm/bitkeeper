@@ -82,7 +82,7 @@ usage:		fprintf(stderr, "usage: %s [-n] [files...]\n", av[0]);
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
 		rewrote = 0;
-		s = sccs_init(name, flags);
+		s = sccs_init(name, flags, 0);
 		if (!s) continue;
 		unless (s->tree) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",

@@ -28,7 +28,7 @@ main(int ac, char **av)
 	}
 
 	name = sfileFirst("lines", &av[optind], 0);
-	if (name && (s = sccs_init(name, 0))) {
+	if (name && (s = sccs_init(name, 0, 0))) {
 		prevs(s);
 		sccs_free(s);
 	}

@@ -45,7 +45,7 @@ rmdel_main(int ac, char **av, char *out)
 	}
 	name = sfileFirst("rmdel", &av[optind], 0);
 	while (name) {
-		unless (s = sccs_init(name, flags)) {
+		unless (s = sccs_init(name, flags, 0)) {
 			name = sfileNext();
 			continue;
 		}

@@ -107,7 +107,7 @@ usage:			fprintf(stderr, "diffs: usage error, try --help\n");
 		int	ex = 0;
 		char	*r1 = 0, *r2 = 0;
 
-		unless ((s = sccs_init(name, flags))) goto next;
+		unless ((s = sccs_init(name, flags, 0))) goto next;
 		RANGE("diffs", s, 0, (flags & SILENT) == 0);
 		if (things) {
 			unless (s->rstart && (r1 = s->rstart->rev)) goto next;

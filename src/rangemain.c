@@ -40,7 +40,7 @@ usage:			fprintf(stderr,
 	}
 	for (name = sfileFirst("range", &av[optind], 0);
 	    name; name = sfileNext()) {
-	    	unless (s = sccs_init(name, INIT_NOCKSUM)) {
+	    	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) {
 			continue;
 		}
 		if (!s->tree) goto next;

@@ -140,7 +140,7 @@ usage:			fprintf(stderr, "delta: usage error, try --help.\n");
 		if (dflags & DELTA_DONTASK) {
 			unless (d = getComments(0)) goto usage;
 		}
-		unless (s = sccs_init(name, iflags)) {
+		unless (s = sccs_init(name, iflags, 0)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();
 			continue;

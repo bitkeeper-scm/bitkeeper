@@ -59,7 +59,7 @@ usage:			fprintf(stderr, "prs: usage error, try --help\n");
 	}
 	for (name = sfileFirst("prs", &av[optind], 0);
 	    name; name = sfileNext()) {
-		unless (s = sccs_init(name, init_flags)) continue;
+		unless (s = sccs_init(name, init_flags, 0)) continue;
 		if (!s->tree) goto next;
 		RANGE("prs", s, expand, noisy);
 		unless(s->rstart) goto next; /* happen when we have only 1.0 delta */

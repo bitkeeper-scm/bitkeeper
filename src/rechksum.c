@@ -36,7 +36,7 @@ main(int ac, char **av)
 	}
 	for (name = sfileFirst("rechksum", &av[optind], 0);
 	    name; name = sfileNext()) {
-		s = sccs_init(name, 0);
+		s = sccs_init(name, 0, 0);
 		if (!s) continue;
 		unless (s->tree) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",

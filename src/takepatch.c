@@ -37,13 +37,14 @@ usage: takepatch [-cFiv] [-f file]\n\n\
 
 
 delta	*getRecord(FILE *f);
-int	extractPatch(char *name, FILE *p, int flags, int fast);
+int	extractPatch(char *name, FILE *p, int flags, int fast, char *root);
 int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int, int*);
-int	applyPatch(char *local, char *remote, int flags, sccs *perfile);
+int	applyPatch(
+	    char *local, char *remote, int flags, sccs *perfile, char *root);
 int	getLocals(sccs *s, delta *d, char *name);
 void	insertPatch(patch *p);
 void	initProject(void);
-FILE	*init(FILE *p, int flags);
+FILE	*init(FILE *p, int flags, char **rootp);
 int	mkdirp(char *file);
 int	fileCopy(char *from, char *to);
 void	rebuild_id(char *id);
@@ -73,7 +74,7 @@ main(int ac, char **av)
 	int	c;
 	int	flags = SILENT;
 	int	files = 0;
-	char	*t;
+	char	*resyncRoot, *t;
 	int	remote = 0;
 	int	resolve = 0;
 	int	fast = 0;	/* undocumented switch for scripts, 
@@ -99,7 +100,7 @@ usage:		fprintf(stderr, takepatch_help);
 		return (1);
 	}
 
-	p = init(input, flags);
+	p = init(input, flags, &resyncRoot);
 
 	/*
 	 * Find a file and go do it.
@@ -117,9 +118,10 @@ usage:		fprintf(stderr, takepatch_help);
 		}
 		*t = 0;
 		files++;
-		remote += extractPatch(&buf[3], p, flags, fast);
+		remote += extractPatch(&buf[3], p, flags, fast, resyncRoot);
 	}
 	fclose(p);
+	free(resyncRoot);
 	purify_list();
 	if (echo) {
 		fprintf(stderr,
@@ -162,7 +164,7 @@ getRecord(FILE *f)
  * sent; it might be different than the local name.
  */
 int
-extractPatch(char *name, FILE *p, int flags, int fast)
+extractPatch(char *name, FILE *p, int flags, int fast, char *root)
 {
 	delta	*tmp;
 	sccs	*s = 0;
@@ -287,12 +289,12 @@ again:	s = sccs_keyinit(buf, INIT_NOCKSUM, idDB);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
 	if (patchList && gca) getLocals(s, gca, name);
-	applyPatch(s ? s->sfile : 0, name, flags, perfile);
+	applyPatch(s ? s->sfile : 0, name, flags, perfile, root);
 	if (echo == 2) fprintf(stderr, " \n");
 	if (perfile) free(perfile);
-	if (s) sccs_free(s);
 	free(gfile);
 	free(name);
+	if (s) sccs_free(s);
 	return (nfound);
 }
 
@@ -533,7 +535,8 @@ stderr);
  * the list.
  */
 int
-applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
+applyPatch(
+    char *localPath, char *remotePath, int flags, sccs *perfile, char *root)
 {
 	patch	*p = patchList;
 	FILE	*iF, *dF;
@@ -559,7 +562,7 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 		perror("cp");
 		cleanup(CLEAN_RESYNC);
 	}
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, root)) {
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
 		cleanup(CLEAN_RESYNC);
 	}
@@ -594,7 +597,7 @@ applyPatch(char *localPath, char *remotePath, int flags, sccs *perfile)
 	/* sccs_restart does not rebuild the graph and we just pruned it,
 	 * so do a hard restart.
 	 */
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, root)) {
 		fprintf(stderr,
 		    "takepatch: can't open %s\n", p->resyncFile);
 		cleanup(CLEAN_RESYNC);
@@ -649,7 +652,7 @@ apply:
 			}
 		} else {
 			assert(s == 0);
-			unless (s = sccs_init(p->resyncFile, NEWFILE)) {
+			unless (s = sccs_init(p->resyncFile, NEWFILE, root)) {
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
 				    p->resyncFile);
@@ -669,13 +672,13 @@ apply:
 			if (s->state & S_BAD_DSUM) cleanup(CLEAN_RESYNC);
 			fclose(iF);	/* dF done by delta() */
 			sccs_free(s);
-			s = sccs_init(p->resyncFile, INIT_NOCKSUM);
+			s = sccs_init(p->resyncFile, INIT_NOCKSUM, root);
 		}
 		p = p->next;
 	}
 
 	sccs_free(s);
-	s = sccs_init(patchList->resyncFile, 0);
+	s = sccs_init(patchList->resyncFile, 0, root);
 	assert(s);
 	gcaPath = gca ? name2sccs(gca->pathname) : 0;
 	/* 2 of the clauses below need this and it's cheap so... */
@@ -863,10 +866,11 @@ initProject()
  * we are still here.
  */
 FILE *
-init(FILE *p, int flags)
+init(FILE *p, int flags, char **resyncRootp)
 {
 	char	buf[MAXPATH];
 	char	file[MAXPATH];
+	char	*root;
 	int	i, len;
 	int	started = 0;
 	FILE	*f, *g;
@@ -877,10 +881,13 @@ init(FILE *p, int flags)
 		goto tree;
 	}
 
-	if (sccs_cd2root(0, 0)) {
+	root = sccs_root(0, 0);
+	if (sccs_cd2root(0, root)) {
 		fprintf(stderr, "takepatch: can't find project root.\n");
 		cleanup(CLEAN_PENDING|CLEAN_RESYNC);
 	}
+	*resyncRootp = malloc(strlen(root) + 8);
+	sprintf(*resyncRootp, "%s%s", root, "/RESYNC");
 
 tree:
 	/*

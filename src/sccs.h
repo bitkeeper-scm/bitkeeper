@@ -103,6 +103,7 @@
 #define S_ISSHELL	0x00200000	/* this is a shell script */
 #define	S_SET		0x00400000	/* the tree is marked with a set */
 #define	S_CSETMARKED	0x00800000	/* X_CSETMARKED match */
+#define S_CACHEROOT	0x01000000	/* do'nt free the root entry */
 
 /*
  * Options to sccs_diffs()
@@ -499,7 +500,7 @@ int	sccs_info(sccs *s, u32 flags);
 int	sccs_prs(sccs *s, u32 flags, int reverse, char *dspec, FILE *out);
 delta	*sccs_getrev(sccs *s, char *rev, char *date, int roundup);
 delta	*sccs_findDelta(sccs *s, delta *d);
-sccs	*sccs_init(char *filename, u32 flags);
+sccs	*sccs_init(char *filename, u32 flags, char *root);
 sccs	*sccs_restart(sccs *s);
 void	sccs_free(sccs *);
 void	sccs_freetree(delta *);

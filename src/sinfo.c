@@ -54,7 +54,7 @@ usage:		fprintf(stderr, "usage: %s [-f] [files...]\n", av[0]);
 			printf("\n");
 			continue;
 		}
-		s = sccs_init(name, INIT_NOCKSUM);
+		s = sccs_init(name, INIT_NOCKSUM, 0);
 		if (!s) continue;
 		e |= sccs_info(s, 0);
 		sccs_free(s);

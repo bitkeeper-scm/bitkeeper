@@ -241,7 +241,7 @@ name(char *sfile)
 int
 hasDiffs(char *file)
 {
-	sccs	*s = sccs_init(file, INIT_NOCKSUM);
+	sccs	*s = sccs_init(file, INIT_NOCKSUM, 0);
 
 	if (!s) return (0);
 	if (sccs_hasDiffs(s, 0) >= 1) {
@@ -274,7 +274,7 @@ rebuild()
 	int	i;
 	sccs	*cset;
 
-	unless (cset = sccs_init("SCCS/s.ChangeSet", 0)) {
+	unless (cset = sccs_init("SCCS/s.ChangeSet", 0, 0)) {
 		perror("sfiles: can't init ChangeSet");
 		exit(1);
 	}
@@ -365,7 +365,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 	if (S_ISDIR(sb->st_mode)) return (0);
 	if ((file[0] == '.') && (file[1] == '/')) file += 2;
 	unless (is_sccs(file)) return (0);
-	unless (sc = sccs_init(file, INIT_NOCKSUM)) return (0);
+	unless (sc = sccs_init(file, INIT_NOCKSUM, 0)) return (0);
 	unless (HAS_SFILE(sc) && sc->cksumok) {
 		sccs_free(sc);
 		return (0);

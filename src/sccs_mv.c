@@ -17,7 +17,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	pfile	pf;
 	int	flags = SILENT|DELTA_FORCE; 
 
-	unless (s = sccs_init(name, INIT_NOCKSUM)) return (1);
+	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) return (1);
 	unless (HAS_SFILE(s)) {
 		fprintf(stderr, "sccsmv: not an SCCS file: %s\n", name);
 		sccs_free(s);
@@ -83,7 +83,7 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	/* we do'nt want the sPath() adjustment		  */
 	free(sfile);
 	sfile = name2sccs(destfile);
-	unless (s = sccs_init(sfile, 0)) { error++; goto out; }
+	unless (s = sccs_init(sfile, 0, 0)) { error++; goto out; }
 	unless (HAS_PFILE(s)) {
 		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-")) {
 			error = 1;

@@ -20,7 +20,7 @@ main(int ac, char **av)
 		exit(1);
 	}
 	name = name2sccs(av[1]);
-	unless (s = sccs_init(name, 0)) {
+	unless (s = sccs_init(name, 0, 0)) {
 		perror(name);
 		exit(1);
 	}

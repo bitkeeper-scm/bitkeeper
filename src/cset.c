@@ -178,7 +178,7 @@ usage:		fprintf(stderr, "%s", cset_help);
 		fprintf(stderr, "cset: can not find project root.\n");
 		return (1);
 	}
-	cset = sccs_init(csetFile, flags);
+	cset = sccs_init(csetFile, flags, 0);
 	if (!cset) return (101);
 
 	/*
@@ -849,7 +849,7 @@ add(MDBM *csDB, char *buf)
 		exit(1);
 	}
 	*rev++ = 0;
-	unless (s = sccs_init(buf, INIT_NOCKSUM|SILENT)) {
+	unless (s = sccs_init(buf, INIT_NOCKSUM|SILENT, 0)) {
 		fprintf(stderr, "cset: can't init %s\n", buf);
 		system("bk clean -u ChangeSet");
 		exit(1);
@@ -1014,7 +1014,7 @@ csetCreate(sccs *cset, int flags, char *sym)
 
 	d = mkChangeSet(cset);
 	date = d->date;
-	unless (cset = sccs_init(csetFile, flags)) {
+	unless (cset = sccs_init(csetFile, flags, 0)) {
 		perror("init");
 		goto out;
 	}

@@ -213,7 +213,7 @@ main(int ac, char **av, char **ev)
 				continue;
 			}
 		}
-		sc = sccs_init(name, init_flags);
+		sc = sccs_init(name, init_flags, 0);
 		unless (sc) { name = sfileNext(); continue; }
 		unless (sc->tree) {
 			fprintf(stderr,
@@ -339,7 +339,7 @@ do_checkin(char *name, int *encp,
 	sccs	*s;
 	int	error;
 
-	unless (s = sccs_init(name, flags)) { return (-1); }
+	unless (s = sccs_init(name, flags, 0)) { return (-1); }
 	s->encoding = encp ? *encp : E_ASCII;
 	if (HAS_SFILE(s)) {
 		fprintf(stderr, "admin: %s exists.\n", s->sfile);

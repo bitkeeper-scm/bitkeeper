@@ -923,7 +923,7 @@ sccs_fixDates(sccs *s)
 
 /*
  * Fix the date in a new delta.
- * Make sure date is increasing realtive to the parent (on the same barnch)
+ * Make sure date is increasing 
  */
 void
 fixNewDate(sccs *s)
@@ -1469,7 +1469,7 @@ getCSetFile(sccs *s)
 	unless (root = sccs_root(s, 0)) return (0);
 	sprintf(file, "%s/%s", root, CHANGESET);
 	if (exists(file)) {
-		sc = sccs_init(file, INIT_NOCKSUM);
+		sc = sccs_init(file, INIT_NOCKSUM, 0);
 		assert(sc->tree);
 		sccs_sdelta(file, sc->tree);
 		sccs_free(sc);
@@ -3299,7 +3299,7 @@ err:			free(s->gfile);
  * It should be OK to have multiple files open at once.
  */
 sccs*
-sccs_init(char *name, u32 flags)
+sccs_init(char *name, u32 flags, char *root)
 {
 	sccs	*s = calloc(1, sizeof(*s));
 	struct	stat sbuf;
@@ -3356,6 +3356,10 @@ sccs_init(char *name, u32 flags)
 	s->zfile = strdup(sccsXfile(s, 'z'));
 	if (isreg(s->pfile)) s->state |= S_PFILE;
 	if (isreg(s->zfile)) s->state |= S_ZFILE;
+	if (root) {
+		s->root = root; 
+		s->state |= S_CACHEROOT;
+	}
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
 	if (flags & INIT_MAPWRITE) {
@@ -3527,7 +3531,7 @@ sccs_free(sccs *s)
 		free(l->name);
 		free(l);
 	}
-	if (s->root) free(s->root);
+	if ((s->root) && ((s->state & S_CACHEROOT) == 0)) free(s->root);
 	if (s->random) free(s->random);
 	if (s->symlink) free(s->symlink);
 	free(s);
@@ -6627,9 +6631,7 @@ checkin(sccs *s, int flags, delta *prefilled, int nodefault, FILE *diffs)
 			s->state |= S_BITKEEPER|S_CSETMARKED;	
 			first->flags |= D_CKSUM;
 		} else {
-			t = relativeName(s, 0, 0);
-			assert(t);
-			if (t[0] != '/') {
+			if (sccs_root(s, 0)) {
 				unless (first->csetFile) {
 					first->csetFile = getCSetFile(s);
 				}
@@ -10580,8 +10582,8 @@ sccs_smoosh(char *lfile, char *rfile)
 {
 	int	error = 0;
 
-	left = sccs_init(lfile, 0);
-	right = sccs_init(rfile, 0);
+	left = sccs_init(lfile, 0, 0);
+	right = sccs_init(rfile, 0, 0);
 	if (!left || !HAS_SFILE(left) || !right || !HAS_SFILE(right)) {
 		error = 100;
 		goto out;
@@ -10964,7 +10966,7 @@ sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 		p = name2sccs(t);
 		*r = '|';
 	}
-	s = sccs_init(p, flags);
+	s = sccs_init(p, flags, 0);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
 	sccs_sdelta(buf, sccs_ino(s));
