@@ -393,6 +393,8 @@ proc selectTag { win {x {}} {y {}} {line {}} {bindtype {}}} \
 	return
 } ;# proc selectTag
 
+# Always center nodes vertically, but don't center horizontally unless
+# node not in view.
 #
 # revname:  revision-username (e.g. 1.832-akushner)
 #
@@ -403,12 +405,14 @@ proc centerRev {revname} \
 	# XXX:
 	# If you go adding tags to the revisions, the index to 
 	# rev_x2 might need to be modified
-	set rev_x2 [lindex [$w(graph) coords $revname] 0]
-	set cwidth [$w(graph) cget -width]
-	set xdiff [expr $cwidth / 2]
-	set xfract [expr ($rev_x2 - $cdim(s,x1) - $xdiff) /  \
-	    ($cdim(s,x2) - $cdim(s,x1))]
-	$w(graph) xview moveto $xfract
+	set bbox [$w(graph) bbox $revname]
+	set b_x1 [lindex $bbox 0]
+	set b_x2 [lindex $bbox 2]
+	set b_y1 [lindex $bbox 1]
+	set b_y2 [lindex $bbox 3]
+
+	#displayMessage "b_x1=($b_x1) b_x2=($b_x2) b_y1=($b_y1) b_y2=($b_y2)"
+	#displayMessage "cdim_x=($cdim(s,x1)) cdim_x2=($cdim(s,x2)) cdim_y=($cdim(s,y1)) cdim_y2=($cdim(s,y2))"
 
 	set rev_y2 [lindex [$w(graph) coords $revname] 1]
 	set cheight [$w(graph) cget -height]
@@ -416,6 +420,17 @@ proc centerRev {revname} \
 	set yfract [expr ($rev_y2 - $cdim(s,y1) - $ydiff) /  \
 	    ($cdim(s,y2) - $cdim(s,y1))]
 	$w(graph) yview moveto $yfract
+
+	# XXX: Not working the way I would like
+	#if {($b_x1 >= $cdim(s,x1)) && ($b_x2 <= $cdim(s,x2))} {return}
+
+	set rev_x2 [lindex [$w(graph) coords $revname] 0]
+	set cwidth [$w(graph) cget -width]
+	set xdiff [expr $cwidth / 2]
+	set xfract [expr ($rev_x2 - $cdim(s,x1) - $xdiff) /  \
+	    ($cdim(s,x2) - $cdim(s,x1))]
+	$w(graph) xview moveto $xfract
+
 }
 
 # Separate the revisions by date with a vertical bar
