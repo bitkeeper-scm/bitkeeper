@@ -189,7 +189,9 @@ getline(int in, char *buf, int size)
 int
 read_blk(remote *r, char *buf, int len)
 {
-	if (r->isSocket) {
+	if (r->rf) {
+		return (fread(buf, 1, len, r->rf));
+	} else if (r->isSocket) {
 		return (recv(r->rfd, buf, len, 0));
 	} else {
 		return (read(r->rfd, buf, len));

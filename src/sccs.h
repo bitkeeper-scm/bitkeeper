@@ -743,6 +743,7 @@ typedef struct {
 	u16	isSocket:1;	/* if set, rfd and wfd are sockets */
 	u16	badhost:1;	/* if set, hostname lookup failed */
 	int	rfd;		/* read fd for the remote channel */
+	FILE	*rf;		/* optional stream handle for remote channel */
 	int	wfd;		/* write fd for the remote channel */
 	char	*user;		/* remote user if set */
 	char	*host;		/* remote host if set */
