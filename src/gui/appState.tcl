@@ -141,6 +141,7 @@ proc ::appState::save {app statevar {version 1.0} {filename ""}} \
 		 \ndata format version $version\n"
 
 	foreach key [lsort [array names state]] {
+		if {[string match $key "Version"]} continue
 		if {[string first \n $state($key)]>= 0} {
 			puts $f "define $key <<END\n$state($key)\n<<END"
 		} else {
@@ -152,6 +153,9 @@ proc ::appState::save {app statevar {version 1.0} {filename ""}} \
 	return 1
 }
 
+# reads and discards all data up to and including a line that looks 
+# like 'data format version <version number>'. The <version number> 
+# is returned.
 proc ::appState::getVersion {datavar} \
 {
 	upvar $datavar data
