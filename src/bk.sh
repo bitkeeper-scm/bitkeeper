@@ -794,7 +794,8 @@ _treediff() {
 		exit 1
 	fi
 	bk diff -Nur \
-	    --exclude=SCCS --exclude=BitKeeper --exclude=ChangeSet "$1" "$2"
+	    --exclude=RCS --exclude=CVS --exclude=SCCS \
+	    --exclude=BitKeeper --exclude=ChangeSet "$1" "$2"
 }
 
 _rmgone() {
