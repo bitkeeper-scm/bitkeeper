@@ -180,7 +180,7 @@ proc app_init {} \
 	# some are allowed is simply that I haven't found the time to
 	# disable the particular widgets or steps for the other
 	# options.
-	set allowedRO {checkout repository autofix compression}
+	set allowedRO {checkout repository autofix compression licenseType}
 
 	# process command line args, which may also override some of
 	# the defaults. Note that -F and -S aren't presently
@@ -352,13 +352,13 @@ proc widgets {} \
 
 	. stepconfigure EndUserLicense -body {
 
-		global wizData
-		global licenseInfo
+		global wizData widgets licenseInfo
 
 		set wizData(licenseAccept) ""
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(EndUserLicense) $w
 
 		text $w.text \
 		    -yscrollcommand [list $w.vsb set] \
@@ -412,51 +412,81 @@ proc widgets {} \
 
 	. stepconfigure LicenseType -body {
 
-		global wizData
+		global wizData readonly widgets
 
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(LicenseType) $w
 
-		radiobutton $w.commercialRadiobutton \
+		radiobutton $w.paidrb \
 		    -text "Commercial" \
 		    -value "commercial" \
 		    -variable wizData(licenseType) \
 		    -command {. configure -path commercial-lic}
 
-		button $w.moreInfoCommercial -text "More info" \
+		button $w.paidmi -text "More info" \
 		    -bd 1 \
 		    -command [list moreInfo commercial]
 
-		radiobutton $w.singleRadiobutton \
+		radiobutton $w.singlerb \
 		    -text "Single User / Single Host" \
 		    -value "singleuser" \
 		    -variable wizData(licenseType) \
 		    -command {. configure -path singleuser-lic}
 
-		button $w.moreInfoSingle -text "More info" -bd 1 \
+		button $w.singlemi -text "More info" -bd 1 \
 		    -command [list moreInfo singleuser]
 
-		radiobutton $w.openloggingRadiobutton \
+		radiobutton $w.olrb \
 		    -text "Open Logging" \
 		    -value "openlogging" \
 		    -variable wizData(licenseType) \
 		    -command {. configure -path openlogging-lic}
 
-		button $w.moreInfoOpenlogging -text "More info" -bd 1 \
+		button $w.olmi -text "More info" -bd 1 \
 		    -command [list moreInfo openlogging]
 		
-		grid $w.commercialRadiobutton -row 0 -column 0 -sticky w
-		grid $w.singleRadiobutton     -row 1 -column 0 -sticky w
-		grid $w.openloggingRadiobutton -row 2 -column 0 -sticky w
+		grid $w.paidrb -row 0 -column 0 -sticky w
+		grid $w.singlerb     -row 1 -column 0 -sticky w
+		grid $w.olrb -row 2 -column 0 -sticky w
 
-		grid $w.moreInfoCommercial  -row 0 -column 1 -padx 8
-		grid $w.moreInfoSingle      -row 1 -column 1 -padx 8
-		grid $w.moreInfoOpenlogging -row 2 -column 1 -padx 8
+		grid $w.paidmi  -row 0 -column 1 -padx 8
+		grid $w.singlemi      -row 1 -column 1 -padx 8
+		grid $w.olmi -row 2 -column 1 -padx 8
 
 		# this adds invisible rows and columns to take up the slack
 		grid columnconfigure $w 2 -weight 1
 		grid rowconfigure $w 3 -weight 1
+
+		if {[info exists readonly(licenseType)]} {
+			switch -exact -- $wizData(licenseType) {
+				commercial {
+					$w.paidrb configure -state normal
+					$w.singlerb configure -state disabled
+					$w.olrb configure -state disabled
+					$w.paidmi configure -state normal
+					$w.singlemi configure -state disabled
+					$w.olmi configure -state disabled
+				}
+				singleuser {
+					$w.paidrb configure -state disabled
+					$w.singlerb configure -state normal
+					$w.olrb configure -state disabled
+					$w.paidmi configure -state disabled
+					$w.singlemi configure -state normal
+					$w.olmi configure -state disabled
+				}
+				openlogging {
+					$w.paidrb configure -state disabled
+					$w.singlerb configure -state disabled
+					$w.olrb configure -state normal
+					$w.paidmi configure -state disabled
+					$w.singlemi configure -state disabled
+					$w.olmi configure -state normal
+				}
+			}
+		}
 	}
 
 
@@ -466,12 +496,12 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_LicenseKey]]
 
 	. stepconfigure LicenseKey -body {
-		global wizData
-		global gc
+		global wizData gc widgets
 
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(LicenseKey) $w
 
 		set ::widgets(license)  $w.license
 		set ::widgets(licsign1) $w.licsign1Entry
@@ -532,8 +562,7 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_UserHostInfo]]
 
 	. stepconfigure UserHostInfo -body {
-		global wizData
-		global gc
+		global wizData gc widgets
 
 		$this configure -defaultbutton next
 
@@ -545,6 +574,7 @@ proc widgets {} \
 		trace variable wizData(single_host) w {validate user/host}
 
 		set w [$this info workarea]
+		set widgets(UserHostInfo) $w
 
 		label $w.usernameLabel -text "Username:"
 		label $w.hostnameLabel -text "Host:"
@@ -576,13 +606,12 @@ proc widgets {} \
 
 	. stepconfigure RepoInfo -body {
 
-		global wizData
-		global options
-		global readonly
+		global wizData options readonly widgets
 
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(RepoInfo) $w
 
 		trace variable wizData(description) w {validate repoInfo}
 		trace variable wizData(email) w {validate repoInfo}
@@ -694,11 +723,12 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_ContactInfo]]
 
 	. stepconfigure ContactInfo -body {
-		global wizData
+		global wizData widgets
 
 		$this configure -defaultbutton next
 
 		set w [$this info workarea]
+		set widgets(ContactInfo) $w
 
 		label $w.nameLabel    -text "Name:"
 		label $w.streetLabel  -text "Street:"
@@ -771,8 +801,10 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_KeywordExpansion]]
 
 	. stepconfigure KeywordExpansion -body {
+		global widgets
 
 		set w [$this info workarea]
+		set widgets(KeywordExpansion) $w
 
 		$this configure -defaultbutton next
 
@@ -842,7 +874,10 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_CheckoutMode]]
 
 	. stepconfigure CheckoutMode -body {
+		global widgets
+
 		set w [$this info workarea]
+		set widgets(CheckoutMode) $w
 
 		$this configure -defaultbutton next
 
@@ -866,7 +901,9 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_Compression]]
 
 	. stepconfigure Compression -body {
+		global widgets
 		set w [$this info workarea]
+		set widgets(Compression) $w
 
 		$this configure -defaultbutton next
 
@@ -890,7 +927,10 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_Autofix]]
 
 	. stepconfigure Autofix -body {
+		global widgets
+
 		set w [$this info workarea]
+		set widgets(Autofix) $w
 
 		$this configure -defaultbutton next
 
@@ -922,12 +962,13 @@ proc widgets {} \
 	    -description [wrap [getmsg setuptool_step_Finish]]
 
 	. stepconfigure Finish -body {
-		global wizData
+		global wizData widgets
 
 		$this configure -defaultbutton finish
 		$this buttonconfigure finish -text Finish
 
 		set w [$this info workarea]
+		set widgets(Finish) $w
 		text $w.text
 		scrollbar $w.vsb -command [list $w.text yview]
 		$w.text configure -yscrollcommand [list $w.vsb set]
