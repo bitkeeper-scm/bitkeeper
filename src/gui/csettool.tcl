@@ -491,17 +491,19 @@ proc busy {busy} \
 	} else {
 		. configure -cursor hand2
 		.filelist.t configure -cursor hand2
+		.menu configure -cursor hand1
 	}
 	update
 }
+
 proc pixSelect {x y} \
 {
 	global	lastFile line2File
 
 	set line [.filelist.t index "@$x,$y"]
 	set x [.filelist.t get "$line linestart" "$line linestart +2 chars"]
+	if {$x != "  "} { return }
 	set line [lindex [split $line "."] 0]
-	if {$x != "  "} { incr line }
 	set lastFile $line2File($line)
 	dotFile
 }
@@ -561,9 +563,21 @@ proc computeHeight {} \
 	set diffHeight [expr $p / $f]
 }
 
+proc adjustHeight {diff list} \
+{
+	global	diffHeight listHt
+
+	incr listHt $list
+	.filelist.t configure -height $listHt
+	.sccslog.t configure -height $listHt
+	incr diffHeight $diff
+	.diffs.left configure -height $diffHeight
+	.diffs.right configure -height $diffHeight
+}
+
 proc widgets {} \
 {
-	global	leftColor rightColor scroll diffbFont diffHeight
+	global	leftColor rightColor scroll diffbFont diffHeight listHt
 	global	buttonFont wish tcl_platform
 
 	if {$tcl_platform(platform) == "windows"} {
@@ -604,7 +618,7 @@ proc widgets {} \
 	wm title . "Cset Tool"
 
 	frame .filelist
-	    text .filelist.t -height $listHt -wid 30 \
+	    text .filelist.t -height $listHt -wid 40 \
 		-state disabled -wrap none -font $listFont \
 		-xscrollcommand { .filelist.xscroll set } \
 		-yscrollcommand { .filelist.yscroll set }
@@ -617,7 +631,7 @@ proc widgets {} \
 	    grid .filelist.xscroll -row 1 -column 0 -sticky ew
 
 	frame .sccslog
-	    text .sccslog.t -height $listHt -wid 61 \
+	    text .sccslog.t -height $listHt -wid 51 \
 		-state disabled -wrap none -font $listFont \
 		-xscrollcommand { .sccslog.xscroll set } \
 		-yscrollcommand { .sccslog.yscroll set }
@@ -767,6 +781,8 @@ proc keyboard_bindings {} \
 		.diffs.left yview -pickplace end
 		.diffs.right yview -pickplace end
 	}
+	bind all <Alt-Up> { adjustHeight 1 -1 }
+	bind all <Alt-Down> { adjustHeight -1 1 }
 	bind all <q>		exit
 	bind all <space>	next
 	bind all <n>		next
