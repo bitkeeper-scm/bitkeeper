@@ -727,7 +727,7 @@ config(FILE *f)
 	MDBM	*db;
 	char	buf[MAXLINE], tmpfile[MAXPATH];
 	char	s_cset[] = CHANGESET;
-	char	*p, *dspec;
+	char	*p, *dspec, *license;
 	sccs	*s;
 	delta	*d;
 
@@ -756,6 +756,16 @@ config(FILE *f)
 		}
 		fclose(f1);
 	}
+
+	license = bk_license();
+	if (license) {
+		if (strneq("EVAL", license, 4) ||
+		    isEvalLicense() ||
+		    (bk_options() & BKOPT_MONTHLY)) {
+			fprintf(f, "License:\t%s\n", license);
+		}
+	}
+
  	s = sccs_init(s_cset, INIT_NOCKSUM, NULL);
 	assert(s && s->tree);
 	fprintf(f, "ID:\t");

@@ -978,6 +978,7 @@ void	save_byte_count(unsigned int byte_count);
 int	bk_mode();
 int	cat(char *file);
 char	*bk_model(char *buf, int len);
+char	*bk_license();
 char	*getHomeDir();
 char	*age(time_t secs, char *space);
 void	sortLines(char **);
