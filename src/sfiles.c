@@ -588,7 +588,6 @@ out:
  * function to call with the file name; depth is whether to process a
  * directory name before or after its children.
  */
-#define GFILE(s) ((isalpha((s)[0]) && (s)[1] == '.') ? (s)+2 : (s))
 
 private	void
 lftw_inner(char *path, char *base, struct stat *sb,
@@ -617,7 +616,7 @@ lftw_inner(char *path, char *base, struct stat *sb,
 		if (streq(e->d_name, ".") || streq(e->d_name, "..")) {
 			continue;
 		}
-		if (match_globs(GFILE(e->d_name), ignore)) {
+		if (match_globs(e->d_name, ignore)) {
 			debug((stderr, "SKIP\t%s\n", e->d_name));
 			continue;
 		}
@@ -627,6 +626,10 @@ lftw_inner(char *path, char *base, struct stat *sb,
 			continue;
 		}
 		strcpy(base, e->d_name);
+		if (match_globs(path, ignore)) {
+			debug((stderr, "SKIP\t%s\n", path));
+			continue;
+		}
 
 #ifdef DT_UNKNOWN
 		if (e->d_type != DT_UNKNOWN) mode = DTTOIF(e->d_type);
@@ -683,9 +686,10 @@ lftw(const char *dir, lftw_func func)
 	char		path[MAXPATH];
 	struct stat	st;
 
-	unless (aFlg || (root = sccs_root(0)) == NULL) {
+	if (xFlg && !aFlg && (root = sccs_root(0))) {
 		sprintf(path, "%s/BitKeeper/etc/ignore", root);
-		if ((ignoref = fopen(path, "r")) != NULL) {
+		unless (exists(path)) get(path, SILENT, "-");
+		if (ignoref = fopen(path, "r")) {
 			ignore = read_globs(ignoref, 0);
 			fclose(ignoref);
 		}

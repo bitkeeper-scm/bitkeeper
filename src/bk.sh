@@ -196,23 +196,26 @@ _tag() {
 
 # usage: ignore glob [glob ...]
 #    or: ignore
-# XXX Open issue: should BK/etc/ignore be revisioned?
-# Can make case either way.  Currently it's not.
 _ignore() {
 	__cd2root
-	if [ ! -d BitKeeper/etc ]
-	then	echo No BitKeeper/etc
-		exit 1
-	fi
 	if [ "x$1" = x ]
 	then	if [ -f BitKeeper/etc/ignore ]
-		then cat BitKeeper/etc/ignore
+		then	cat BitKeeper/etc/ignore
+		else	if [ -f BitKeeper/etc/SCCS/s.ignore ]
+			then	bk get -sp BitKeeper/etc/ignore
+			fi
 		fi
 		exit 0
 	fi
+	test -f BitKeeper/etc/SCCS/s.ignore && bk edit -q BitKeeper/etc/ignore
 	for i
 	do	echo "$i" >> BitKeeper/etc/ignore
 	done
+	if [ -f BitKeeper/etc/SCCS/s.ignore ]
+	then	bk delta -q -y"added $*" BitKeeper/etc/ignore
+	else	bk new -q BitKeeper/etc/ignore
+	fi
+	exit 0
 }	
 
 # usage: chmod mode file [file ...]
