@@ -62,7 +62,7 @@ setup_main(int ac, char **av)
 		printf("bk: %s exists already, setup fails.\n", package_path);
 		exit (1);
 	}
-	license();
+	unless (licenseAccept()) exit(1);
 	unless(force) {
 		getMsg("setup_1", 0, 0, '-', stdout);
 		printf("Create new package? [no] ");

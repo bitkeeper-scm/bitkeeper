@@ -66,7 +66,7 @@ proc init {} \
 				append options(-message) $buf
 				if {[eof $f]} { break }
 			}
-			close $f
+			catch { close $f }
 		} else {
 			set options(-message) $message
 		}

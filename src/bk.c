@@ -200,7 +200,6 @@ struct	command cmdtbl[] = {
 	{"_key2path", key2path_main},
 	{"_keyunlink", keyunlink_main },
 	{"_lconfig", lconfig_main},	
-	{"_license", license_main},
 	{"_lines", lines_main},	
 	{"_link", link_main},	
 	{"_listkey", listkey_main},	
@@ -277,6 +276,7 @@ struct	command cmdtbl[] = {
 	{"isascii", isascii_main},		/* doc 2.0 */
 	{"key2rev", key2rev_main},		/* doc 2.0 */
 	{"level", level_main},			/* doc 2.0 */
+	{"license", license_main},		/* undoc */
 	{"lock", lock_main},			/* doc 2.0 */
 	{"lod", lod_main},	/* XXX - doc 2.0 - says doesn't work yet */
 	{"log", log_main},

@@ -583,31 +583,43 @@ esac
 exit 0
 $
 #bkl_new_preamble
-1
-$
-#bkl_upgrade_preamble
-2
+In order to use BitKeeper in this repository, you need to accept the 
+BitKeeper license.  The BitKeeper license is what grants you the right
+to use BitKeeper on this repository.  Please read the license carefully,
+it is a contract and you must abide by the terms.  Your acceptance will be
+recorded on this machine and you will not be asked again.
 $
 #bkcl_new_preamble
-3
+In order to use BitKeeper in this repository, you need to accept the
+BitKeeper Commercial license.  This license is what grants you the right
+to use BitKeeper on this repository.  Please read the license carefully,
+it is a contract and you must abide by the terms.  Your acceptance will
+be recorded on this machine and you will not be asked again.
 $
+#bkl_upgrade_preamble
 #bkcl_upgrade_preamble
-4
+The BitKeeper license required for the use of this repository has changed
+and you need to accept the new version in order to make changes in this
+repository.  Your acceptance will be recorded on this machine and you will
+not be asked again.
 $
 #repo_new_preamble
-5
+In order to use BitKeeper in this repository, you need to accept the
+associated Repository license.  The Repository license is part of the the
+repository and it is a condition of the BitKeeper license that you agree
+with the Repository license.  Please read the license carefully, it is a
+contract and you must abide by the terms.  Your acceptance will be recorded
+on this machine and you will not be asked again.
 $
 #repo_upgrade_preamble
-6
+The Repository license associated with the use of this repository has
+changed and you need to accept the new version in order to make changes in
+this repository.  Your acceptance will be recorded on this machine and you
+will not be asked again.
 $
-#lic_acceptable
-
-You can avoid seeing this message in the future by adding the following
-to your .profile:
-
-	BK_LICENSE=ACCEPTED
-
-or, if you use csh
-	setenv BK_LICENSE ACCEPTED
+#lic_alwaysOK
+If you do not want to be prompted about license questions in the future,
+set the environment variable BK_LICENSE to the value ACCEPTED.  Doing so
+means that you are agreeing to any future versions of any license associated
+with this repository.
 $
-
