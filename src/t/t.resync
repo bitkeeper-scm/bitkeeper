@@ -566,6 +566,6 @@ bk ci $Q -y overlap.c
 bk commit $S -y"abc"
 bk resync $Q $HERE/project $HERE/copy
 bk resolve $Q -a $HERE/copy 2> resolve.out
-grep -q "Overlap change detected" resolve.out
+grep -q "resolve postponed" resolve.out
 if [ $? -ne 0 ]; then echo failed; cat resolve.out; exit 1; fi
 echo OK
