@@ -194,7 +194,7 @@ u
 EOF
 [ $? -eq 0 ] || { echo resolve failed; cat resolve.out; exit 1; }
 L=`bk get $Q -p src/h.h | wc -l`
-[ $L -eq 7 ] || { echo merge failed; exit 1; }
+[ $L -eq 5 ] || { echo merge failed; exit 1; }
 cd $HERE/project; checkLocks; cd $HERE/copy; checkLocks
 cd $HERE
 cp -rp project project2

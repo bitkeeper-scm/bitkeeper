@@ -88,6 +88,7 @@ BitMover can be reached in the United States at 415-401-8808
 during business hours (PST) or via email at sales@bitmover.com.
 Thanks!
 $
+#config_license
 #license_none
 You do not have a license for BitKeeper and the logging field in the
 BitKeeper/etc/config file is not set to "logging@openlogging.org".
@@ -350,16 +351,6 @@ $
 #config_single_host
 
 If this field is set, all checkins will appear to be made on this host.
-
-$
-#config_license
-
-A license key is required when not using openlogging. If the logging
-entry is set to "logging@openlogging.org", you do not need a license
-key.
-
-If you would like an evaluation license key, please send email at
-sales@bitmover.com. You will receive a key that is good for 30 days.
 
 $
 #config_template
