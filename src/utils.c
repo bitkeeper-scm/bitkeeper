@@ -1149,8 +1149,18 @@ pager(void)
 	int	i;
 
 	if (pg) return (pg); /* already cached */
-	if (pg = getenv("BK_PAGER")) return (pg);
-	if (pg = getenv("PAGER")) return (pg);
+
+	unless (pg = getenv("BK_PAGER")) pg = getenv("PAGER");
+
+	/* env can be PAGER="less -E" */
+	if (pg) {
+		char	**cmds = shellSplit(pg);
+
+		unless (cmds && cmds[1] && which(cmds[1], 0, 1)) pg = 0;
+		freeLines(cmds, free);
+	}
+	if (pg) return (strdup(pg));	/* don't trust env to not change */
+
 	for (i = 0; pagers[i]; i++) {
 		if (which(pagers[i], 0, 1)) {
 			pg = pagers[i];
@@ -1159,7 +1169,6 @@ pager(void)
 	}
 	return (pg = "bk more");
 }
-
 
 #define	MAXARGS	100
 /*

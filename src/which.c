@@ -61,6 +61,8 @@ whichp(char *prog, int internal, int external)
 
 PATH:	unless (external) return (0);
 
+	if ((prog[0] == '/') && executable(prog)) return (strdup(prog));
+
         path = aprintf("%s%c", getenv("PATH"), PATH_DELIM);
 	s = strrchr(path, PATH_DELIM);
 	if (s[-1] == PATH_DELIM) *s = 0;
