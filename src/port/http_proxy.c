@@ -10,7 +10,7 @@
 void
 save_cached_proxy(char *proxy)
 {
-	char *p = sccs_root(0);
+	char *p = proj_root(0);
 	char cached_proxy[MAXPATH];
 	FILE *f;
 	
@@ -24,7 +24,7 @@ save_cached_proxy(char *proxy)
 char **
 _get_cached_proxy(char **proxies)
 {
-	char *p = sccs_root(0);
+	char *p = proj_root(0);
 	char buf[MAXPATH];
 	FILE *f;
 

@@ -45,9 +45,7 @@ hasTriggers(void)
 	int	ret;
 
 	if (getenv("_IN_DELTA")) return (0);
-	if (bk_proj && bk_proj->root) {
-		t = strdup(bk_proj->root);
-	} else unless (t = sccs_root(0)) {
+	unless (t = proj_root(0)) {
 		return (0);
 	}
 	unless (streq(t, ".")) {
@@ -55,7 +53,6 @@ hasTriggers(void)
 	} else {
 		dir = strdup("BitKeeper/triggers");
 	}
-	free(t);
 	lines = getTriggers(dir, "pre-delta");
 	ret = lines != 0;
 	freeLines(lines, free);
@@ -102,7 +99,7 @@ int
 delta_main(int ac, char **av)
 {
 	sccs	*s;
-	int	iflags = INIT_SAVEPROJ;
+	int	iflags = 0;
 	int	dflags = 0;
 	int	gflags = 0;
 	int	sflags = SF_GFILE|SF_WRITE_OK;
@@ -118,7 +115,6 @@ delta_main(int ac, char **av)
 	MMAP	*init = 0;
 	pfile	pf;
 	int	dash, errors = 0, fire;
-	project	*proj = 0;
 
 	debug_main(av);
 	name = strrchr(av[0], '/');
@@ -183,7 +179,7 @@ comment:		comments_save(optarg);
 			    goto usage;
 
 		    /* LM flags */
-		    case '1': iflags |= INIT_ONEROOT; break;	/* undoc 2.0 */
+		    case '1': break;			/* undoc/ignored 2.0 */
 		    case 'a':					/* doc 2.0 */
 		    	dflags |= DELTA_AUTO;
 			dflags &= ~DELTA_FORCE;
@@ -303,13 +299,12 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			unless (d = comments_get(0)) goto usage;
 		}
 		if (mode) d = sccs_parseArg(d, 'O', mode, 0);
-		unless (s = sccs_init(name, iflags, proj)) {
+		unless (s = sccs_init(name, iflags)) {
 			if (d) sccs_freetree(d);
 			name = sfileNext();
 			errors |= 1;
 			continue;
 		}
-		unless (proj) proj = s->proj;
 		if (df & DELTA_AUTO) {
 			if (HAS_SFILE(s)) {
 				df &= ~NEWFILE;
@@ -383,7 +378,7 @@ usage:			sprintf(buf, "bk help -s %s", name);
 			sccs_sdelta(s, d, key);
 			sccs_free(s);
 			strip_danglers(name, dflags);
-			s = sccs_init(name, iflags, proj);
+			s = sccs_init(name, iflags);
 			d = sccs_findKey(s, key);
 			assert(d);
 			nrev = d->rev;
@@ -432,7 +427,6 @@ next:		if (init) mclose(init);
 	}
 	sfileDone();
 	comments_done();
-	if (proj) proj_free(proj);
 	return (errors);
 }
 

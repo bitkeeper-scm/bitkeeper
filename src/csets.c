@@ -10,6 +10,7 @@ f2csets_main(int argc, char **argv)
 {
 	char	rootkey[MAXKEY];
 	FILE	*f;
+	char	*sfile;
 	char	buf[MAXPATH+100];
 	char	key[MAXKEY*2];
 	int	i;
@@ -25,17 +26,11 @@ f2csets_main(int argc, char **argv)
 	/* build the SCCS file from the filename, then init it and get
 	 * the rootkey and the bk root out of that
 	 */
-	if (p = strrchr(argv[1], '/')) {
-		++p;
-	} else {
-		p = argv[1];
-	}
+	sfile = name2sccs(argv[1]);
+	unless (s = sccs_init(sfile, INIT_NOCKSUM|INIT_NOSTAT)) return(1);
+	free(sfile);
 
-	sprintf(buf, "%.*sSCCS/s.%s", (p-argv[1]), argv[1], p);
-
-	unless (s = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT, 0)) return(1);
-
-	sccs_cd2root(s, 0);
+	proj_cd2root();
 	sccs_sdelta(s, sccs_ino(s), rootkey);
 	sccs_free(s);
 

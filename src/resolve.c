@@ -113,11 +113,7 @@ resolve_main(int ac, char **av)
 		opts.from_pullpush = 1;
 	}
 	unless (opts.mergeprog) opts.mergeprog = getenv("BK_RESOLVE_MERGEPROG");
-	if ((av[optind] != 0) && isdir(av[optind])) {
-		chdir(av[optind]);
-		if (bk_proj) proj_free(bk_proj);
-		bk_proj = proj_init(0);
-	}
+	if ((av[optind] != 0) && isdir(av[optind])) chdir(av[optind]);
 
 	if (opts.pass3 && !opts.textOnly && !hasGUIsupport()) {
 		opts.textOnly = 1; 
@@ -242,7 +238,7 @@ passes(opts *opts)
 	/*
 	 * Make sure we are where we think we are.  
 	 */
-	unless (exists("BitKeeper/etc")) sccs_cd2root(0, 0);
+	unless (exists("BitKeeper/etc")) proj_cd2root();
 	unless (exists("BitKeeper/etc")) {
 		fprintf(stderr, "resolve: can't find package root.\n");
 		resolve_cleanup(opts, 0);
@@ -264,9 +260,7 @@ passes(opts *opts)
 		/* fake one for new repositories */
 		opts->idDB = mdbm_mem();
 	}
-	opts->local_proj = proj_init(0);
 	chdir(ROOT2RESYNC);
-	opts->resync_proj = proj_init(0);
 	unless (opts->from_pullpush || opts->quiet) {
 		fprintf(stderr,
 		    "Verifying consistency of the RESYNC tree...\n");
@@ -305,7 +299,7 @@ passes(opts *opts)
 	}
 	while (fnext(buf, p)) {
 		chop(buf);
-		unless (s = sccs_init(buf, INIT, opts->resync_proj)) continue;
+		unless (s = sccs_init(buf, INIT_NOCKSUM)) continue;
 
 		/* save the key for ALL sfiles, RESYNC and RENAMES alike */
 		sccs_sdelta(s, sccs_ino(s), path);
@@ -473,6 +467,7 @@ nameOK(opts *opts, sccs *s)
 	char	path[MAXPATH], realname[MAXPATH];
 	char	buf[MAXPATH];
 	sccs	*local = 0;
+	int	ret;
 
 	/*
 	 * Are we in the right sfile? (through LOD shuffling, might not be)
@@ -496,7 +491,7 @@ nameOK(opts *opts, sccs *s)
 	assert(realname);
 	assert(strcasecmp(path, realname) == 0);
 	if (streq(path, realname) &&
-	    (local = sccs_init(path, INIT, opts->local_proj)) &&
+	    (local = sccs_init(path, INIT_NOCKSUM)) &&
 	    HAS_SFILE(local)) {
 		save_checkout_state(opts->checkoutDB, local);
 		if (IS_EDITED(local) && sccs_clean(local, SILENT)) {
@@ -519,7 +514,7 @@ nameOK(opts *opts, sccs *s)
 
 	chdir(RESYNC2ROOT);
 	sccs_sdelta(s, sccs_ino(s), buf);
-	local = sccs_keyinit(buf, INIT, opts->local_proj, opts->idDB);
+	local = sccs_keyinit(buf, INIT_NOCKSUM, opts->idDB);
 	if (local) {
 		save_checkout_state(opts->checkoutDB, local);
 		if (IS_EDITED(local) &&
@@ -530,25 +525,25 @@ nameOK(opts *opts, sccs *s)
 			opts->edited = 1;
 		}
 		sccs_free(local);
-		chdir(ROOT2RESYNC);
 		if (opts->debug) {
 			fprintf(stderr,
 			    "nameOK(%s) => keys match, paths don't match\n",
 			    s->gfile);
 		}
-		return (0);
+		ret = 0;
 	} else if (exists(s->gfile)) {
-		chdir(ROOT2RESYNC);
 		if (opts->debug) {
 			fprintf(stderr,
 			    "nameOK(%s) => no sfile, but has local gfile\n",
 			    s->gfile);
 		}
-		return (0);
+		ret = 0;
+	} else {
+		if (opts->debug) fprintf(stderr, "nameOK(%s) = 1\n", s->gfile);
+		ret = 1;
 	}
 	chdir(ROOT2RESYNC);
-	if (opts->debug) fprintf(stderr, "nameOK(%s) = 1\n", s->gfile);
-	return (1);
+	return (ret);
 }
 
 /*
@@ -657,7 +652,7 @@ pass2_renames(opts *opts)
 		t = strrchr(path, '/');
 		unless (t[1] == 's') continue;
 
-		unless ((s = sccs_init(path, INIT, opts->resync_proj)) &&
+		unless ((s = sccs_init(path, INIT_NOCKSUM)) &&
 		    HASGRAPH(s)) {
 			if (s) sccs_free(s);
 			fprintf(stderr, "Ignoring %s\n", path);
@@ -853,7 +848,7 @@ again:	if (how = slotTaken(opts, rs->dname)) {
 	 */
 	sccs_sdelta(rs->s, sccs_ino(rs->s), buf);
 	chdir(RESYNC2ROOT);
-	local = sccs_keyinit(buf, INIT, opts->local_proj, opts->idDB);
+	local = sccs_keyinit(buf, INIT_NOCKSUM, opts->idDB);
 	chdir(ROOT2RESYNC);
 	if (local) {
 		if (opts->debug) {
@@ -1189,7 +1184,7 @@ type_delta(resolve *rs,
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
 	sfile = buf;
 	sccs_free(rs->s);
-	s = sccs_init(sfile, INIT, rs->opts->resync_proj);
+	s = sccs_init(sfile, INIT_NOCKSUM);
 	assert(s);
 	if (rs->opts->debug) {
 		fprintf(stderr, "type reopens %s (%s)\n", sfile, s->gfile);
@@ -1227,7 +1222,7 @@ mode_delta(resolve *rs, char *sfile, delta *d, mode_t m, char *rfile, int which)
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
 	sfile = buf;
 	sccs_free(rs->s);
-	s = sccs_init(sfile, INIT, rs->opts->resync_proj);
+	s = sccs_init(sfile, INIT_NOCKSUM);
 	assert(s);
 	if (rs->opts->debug) {
 		fprintf(stderr, "mode reopens %s (%s)\n", sfile, s->gfile);
@@ -1292,7 +1287,7 @@ flags_delta(resolve *rs,
 	strcpy(buf, sfile);	/* it's from the sccs we are about to free */
 	sfile = buf;
 	sccs_free(rs->s);
-	s = sccs_init(sfile, INIT, rs->opts->resync_proj);
+	s = sccs_init(sfile, INIT_NOCKSUM);
 	assert(s);
 	if (rs->opts->debug) {
 		fprintf(stderr, "flags reopens %s (%s)\n", sfile, s->gfile);
@@ -1414,7 +1409,7 @@ slotTaken(opts *opts, char *slot)
 	chdir(RESYNC2ROOT);
 	if (exists(slot)) {
 		char	buf2[MAXKEY];
-		sccs	*local = sccs_init(slot, INIT, opts->local_proj);
+		sccs	*local = sccs_init(slot, INIT_NOCKSUM);
 
 		/*
 		 * If we can find this key in the RESYNC dir then it is
@@ -1603,7 +1598,7 @@ err:		fprintf(stderr, "resolve: had errors, nothing is applied.\n");
 		resolve	*rs;
 		
 		unless (opts->logging) {
-			s = sccs_init(s_cset, INIT, opts->resync_proj);
+			s = sccs_init(s_cset, INIT_NOCKSUM);
 			rs = resolve_init(opts, s);
 			edit(rs);
 			/* We may restore it if we bail early */
@@ -1746,7 +1741,7 @@ checkins(opts *opts, char *comment)
 	}
 	while (fnext(buf, p)) {
 		chop(buf);
-		s = sccs_init(buf, INIT, opts->resync_proj);
+		s = sccs_init(buf, INIT_NOCKSUM);
 		assert(s);
 		do_delta(opts, s, comment);
 		sccs_free(s);
@@ -1769,7 +1764,7 @@ conflict(opts *opts, char *sfile)
 	resolve	*rs;
 	deltas	d;
 	
-	s = sccs_init(sfile, INIT, opts->resync_proj);
+	s = sccs_init(sfile, INIT_NOCKSUM);
 
 	rs = resolve_init(opts, s);
 	assert(streq(rs->dname, s->sfile));
@@ -2349,7 +2344,7 @@ pass4_apply(opts *opts)
 		 * We want to check the checksum here and here only
 		 * before we throw it over the wall.
 		 */
-		unless (r = sccs_init(buf, INIT_SAVEPROJ, opts->resync_proj)) {
+		unless (r = sccs_init(buf, 0)) {
 			fprintf(stderr,
 			    "resolve: can't init %s - abort.\n", buf);
 			fclose(save);
@@ -2370,7 +2365,7 @@ pass4_apply(opts *opts)
 
 		sccs_sdelta(r, sccs_ino(r), key);
 		sccs_free(r);
-		if (l = sccs_keyinit(key, INIT, opts->local_proj, opts->idDB)) {
+		if (l = sccs_keyinit(key, INIT_NOCKSUM, opts->idDB)) {
 			/*
 			 * This should not happen, the repository is locked.
 			 */
@@ -2587,7 +2582,7 @@ copyAndGet(opts *opts, char *from, char *to)
 		if (link(from, to) && fileCopy(from, to)) return (-1);
 	}
 
-	s = sccs_init(to, INIT_SAVEPROJ, opts->local_proj);
+	s = sccs_init(to, 0);
 	assert(s && HASGRAPH(s));
 	sccs_sdelta(s, sccs_ino(s), key);
 	co = mdbm_fetch_str(opts->checkoutDB, key);
@@ -2672,8 +2667,6 @@ freeStuff(opts *opts)
 	/*
 	 * Clean up allocations/files/dbms
 	 */
-	if (opts->local_proj) proj_free(opts->local_proj);
-	if (opts->resync_proj) proj_free(opts->resync_proj);
 	if (opts->log && (opts->log != stderr)) fclose(opts->log);
 	if (opts->rootDB) mdbm_close(opts->rootDB);
 	if (opts->idDB) mdbm_close(opts->idDB);
@@ -2690,7 +2683,7 @@ csets_in(opts *opts)
 
 	if (opts->didMerge) {
 		chdir(ROOT2RESYNC);
-		s = sccs_init(s_cset, 0, 0);
+		s = sccs_init(s_cset, 0);
 		assert(s && HASGRAPH(s));
 		d = sccs_top(s);
 		assert(d && d->merge);
@@ -2833,8 +2826,7 @@ restore_checkouts(opts *opts)
 
 	EACH_KV(opts->checkoutDB) {
 		sccs	*s;
-		s = sccs_keyinit(kv.key.dptr, INIT, 
-		    opts->local_proj, opts->idDB);
+		s = sccs_keyinit(kv.key.dptr, INIT_NOCKSUM, opts->idDB);
 
 		unless (s) continue;
 

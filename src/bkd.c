@@ -155,8 +155,8 @@ get_byte_count()
 	off_t	byte_count = 0;
 	FILE *f = 0;
 
-	unless (bk_proj && bk_proj->root) return (0);
-	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	unless (proj_root(0)) return (0);
+	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
 	f = fopen(buf, "r");
 	if (f && fgets(buf, sizeof(buf), f)) {
 		if (strlen(buf) > 11) {
@@ -177,8 +177,8 @@ save_byte_count(unsigned int byte_count)
 	FILE	*f;
 	char	buf[MAXPATH];
 
-	unless (bk_proj && bk_proj->root) return;
-	sprintf(buf, "%s/BitKeeper/log/byte_count", bk_proj->root);
+	unless (proj_root(0)) return;
+	sprintf(buf, "%s/BitKeeper/log/byte_count", proj_root(0));
 	f = fopen(buf, "w");
 	if (f) {
 		fprintf(f, "%u\n", byte_count);
@@ -206,11 +206,7 @@ do_cmds()
 		getoptReset();
 		if ((i = findcmd(ac, av)) != -1) {
 			if (Opts.log) log_cmd(i, ac, av);
-			if (!bk_proj ||
-			    !bk_proj->root || !isdir(bk_proj->root)) {
-				if (bk_proj) proj_free(bk_proj);
-				bk_proj = proj_init(0);
-			}
+			proj_reset(0); /* XXX needed? */
 
 			if (Opts.http_hdr_out) http_hdr(Opts.daemon);
 			cmdlog_start(av, httpMode);

@@ -17,8 +17,7 @@ clean_main(int ac, char **av)
 	int	c;
 	int	ret = 0;
 	char	*name;
-	project	*proj = 0;
-
+	
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
 		system("bk help clean");
@@ -40,16 +39,14 @@ clean_main(int ac, char **av)
 	name = sfileFirst("clean", &av[optind], SF_DELETES|sflags);
 	while (name) {
 		unless (hasGfile(name)) goto next;
-		s = sccs_init(name, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		s = sccs_init(name, SILENT|INIT_NOCKSUM);
 		if (s) {
 			if (sccs_clean(s, flags)) ret = 1;
-			unless (proj) proj = s->proj;
 			sccs_free(s);
 		}
 next:		name = sfileNext();
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (ret);
 }
 
@@ -57,20 +54,13 @@ next:		name = sfileNext();
  * XXX - for bk -r clean, we should have this test also in sfiles.c
  */
 private	int
-hasGfile(char *name)
+hasGfile(char *sfile)
 {
-	char	gfile[MAXPATH];
-
-	strcpy(gfile, name);
-	name = strrchr(gfile, '/');
-	assert(name);	/* has to be SCCS/ at least */
-	if (name == &gfile[4]) {
-		assert(strneq(gfile, "SCCS/", 5));
-		name += 3;
-		return (exists(name));
-	}
-	/* name points here v  */
-	assert(strneq("/SCCS/s.", name - 5, 8));
-	memmove(name - 4, name + 3, strlen(name + 3) + 1);
-	return (exists(gfile));
+	char	*gfile = sccs2name(sfile);
+	int	ret;
+	
+	assert(gfile);
+	ret = exists(gfile);
+	free(gfile);
+	return (ret);
 }

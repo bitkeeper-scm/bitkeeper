@@ -119,7 +119,7 @@ bk admin $Q -Sright ChangeSet
 cd $HERE/proj
 bk pull -t $Q $HERE/copy2
 bk admin $Q -Sleft ChangeSet
-bk pull -t $Q $HERE/copy1
+bk pull -t $Q $HERE/copy1 || exit 1
 if [ $? -ne 0 ]; then echo failed pull; exit 1; fi
 echo OK
 echo $N Check stripdel managing tree with twice merged cset -1- .....$NL
@@ -129,7 +129,7 @@ cd right
 bk get $Q foo bar
 echo right > X
 bk undos X > CMPBAR
-echo $N $NL > CMPFOO
+echon "" > CMPFOO
 cmp -s foo CMPFOO
 if [ $? -ne 0 ]; then echo failed foo diff; exit 1; fi
 cmp -s bar CMPBAR
@@ -142,7 +142,7 @@ cd left
 bk get $Q foo bar
 echo left > X
 bk undos X > CMPFOO
-echo $N $NL >  CMPBAR
+echon '' >  CMPBAR
 cmp -s foo CMPFOO
 if [ $? -ne 0 ]; then echo failed foo diff; exit 1; fi
 cmp -s bar CMPBAR

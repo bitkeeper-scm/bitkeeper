@@ -22,7 +22,6 @@ checksum_main(int ac, char **av)
 	int	fix = 0, diags = 0, bad = 0, do_sccs = 0, ret = 0;
 	int	c;
 	char	*off = 0;
-	project	*proj = 0;
 
 	if (ac > 1 && streq("--help", av[1])) {
 		system("bk help checksum");
@@ -43,9 +42,8 @@ checksum_main(int ac, char **av)
 	
 	for (name = sfileFirst("checksum", &av[optind], 0);
 	    name; name = sfileNext()) {
-		s = sccs_init(name, INIT_SAVEPROJ, proj);
+		s = sccs_init(name, 0);
 		unless (s) continue;
-		unless (proj) proj = s->proj;
 		unless (HASGRAPH(s)) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
 			    av[0], s->sfile);
@@ -89,7 +87,6 @@ checksum_main(int ac, char **av)
 		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (ret ? ret : (doit ? 1 : 0));
 }
 

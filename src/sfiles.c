@@ -62,7 +62,6 @@ private	void	file(char *f, lftw_func func);
 private	void	lftw(const char *dir, lftw_func func);
 private	void	process(const char *filename, int mode);
 private	void	caches(const char *filename, int mode);
-private	project	*proj = 0;
 
 int
 sfiles_main(int ac, char **av)
@@ -106,15 +105,12 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 				av[0], rFlg ? 'r' : 'C');
 			return (1);
 		}
-		/* perror is in sccs_root, don't do it twice */
-		unless (sccs_cd2root(0, 0) == 0) {
-			return (1);
-		}
+		if (proj_cd2root()) return (1);
 		rebuild();
 		return (dups ? 1 : 0);
 	}
 	if (!av[optind]) {
-		path = xFlg ? "." : sPath(".", 1);
+		path = ".";
 		lftw(path, process);
 	} else if (streq("-", av[optind])) {
 		char	buf[MAXPATH];
@@ -122,7 +118,7 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		setmode(0, _O_TEXT); /* read file list in text mode */
 		while (fnext(buf, stdin)) {
 			chop(buf);
-			path = xFlg ? buf : sPath(buf, 1);
+			path = buf;
 			file(path, process);
 		}
 	} else {
@@ -132,24 +128,22 @@ usage:		fprintf(stderr, "%s", sfiles_usage);
 		for (i = optind; i < ac; ++i) {
 			localName2bkName(av[i], av[i]);
 			if (isdir(av[i])) {
-				path =  xFlg ? av[i] : sPath(av[i], 1);
+				path =  av[i];
 				lftw(path, process);
 			} else {
-				path =  xFlg ? av[i] : sPath(av[i], 0);
+				path =  av[i];
 				file(path, process);
 			}
 		}
 	}
-	if (proj) proj_free(proj);
 	return (0);
 }
 
 private inline sccs *
 init(char *name, int flags)
 {
-	sccs	*s = sccs_init(name, flags|INIT_SAVEPROJ, proj);
+	sccs	*s = sccs_init(name, flags);
 
-	if (s && !proj) proj = s->proj;
 	return (s);
 }
 
@@ -394,10 +388,7 @@ idcache_main(int ac, char **av)
 		fprintf(stderr, "Rebuilding idcache\n");
 	}
 
-	/* perror is in sccs_root, don't do it twice */
-	unless (sccs_cd2root(0, 0) == 0) {
-		return (1);
-	}
+	if (proj_cd2root()) return (1);
 
 	aFlg = cFlg = Cflg = dFlg = gFlg = lFlg = pFlg = Pflg = vFlg = 0;
 	Dflg = Aflg = Rflg = kFlg = xFlg = uFlg = 0;
@@ -476,7 +467,6 @@ c:	lftw(".", caches);
 	}
 out:	sccs_free(cset);
 	mdbm_close(idDB);
-	if (proj) proj_free(proj);
 }
 
 private	void
@@ -714,19 +704,17 @@ lftw(const char *dir, lftw_func func)
 {
 	FILE		*ignoref;
 	globv		ignore = NULL;
-	char		*root = 0;
+	char		*root;
 	char		path[MAXPATH];
 	struct stat	st;
 
-	if (xFlg && !aFlg && (root = sccs_root(0))) {
+	if (xFlg && !aFlg && (root = proj_root(0))) {
 		sprintf(path, "%s/BitKeeper/etc/ignore", root);
 		unless (exists(path)) get(path, SILENT, "-");
 		if (ignoref = fopen(path, "r")) {
 			ignore = read_globs(ignoref, 0);
 			fclose(ignoref);
 		}
-		free(root);
-		root = 0;
 	}
 
 	strcpy(path, dir);

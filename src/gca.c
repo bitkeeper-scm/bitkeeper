@@ -41,7 +41,7 @@ usage:			system("bk help -s gca");
 	unless (r1 && r2) goto usage;
 	unless (name = sfileFirst("gca", &av[optind], 0)) goto usage;
 	if (sfileNext()) goto usage;
-	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) {
+	unless (s = sccs_init(name, INIT_NOCKSUM)) {
 		perror(name);
 		exit(1);
 	}

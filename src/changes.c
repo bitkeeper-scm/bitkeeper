@@ -96,7 +96,7 @@ usage:			system("bk help -s changes");
 	nav[nac] = 0;
 	if ((opts.local || opts.remote) && opts.rev) goto usage;
 	if (opts.keys && (opts.verbose||opts.html||opts.dspec)) goto usage;
-	if (sccs_cd2root(0, 0)) {
+	if (proj_cd2root()) {
 		if (!av[optind] || opts.local || opts.remote) {
 			fprintf(stderr, "Can't find package root\n");
 			exit(1);
@@ -247,7 +247,7 @@ doit(int dash)
 	} else {
 		spec = DSPEC;
 	}
-	s = sccs_init(s_cset, SILENT, 0);
+	s = sccs_init(s_cset, SILENT);
 	assert(s && s->tree);
 	if (opts.rev || opts.date) {
 		if (opts.rev) {
@@ -550,7 +550,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	 */
 	bktmp(key_list, "keylist");
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
-	s = sccs_init(s_cset, 0, 0);
+	s = sccs_init(s_cset, 0);
 	flags = PK_REVPREFIX|PK_RKEY;
 	rc = prunekey(s, r, fd, flags, 0, NULL, &rcsets, &rtags);
 	if (rc < 0) {

@@ -487,7 +487,7 @@ csetDiff(MDBM *not,  int wantTag)
 	MDBM	*db = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	int	n = 0;
 		
-	unless (s = sccs_init(s_cset, INIT_NOCKSUM, 0)) {
+	unless (s = sccs_init(s_cset, INIT_NOCKSUM)) {
 		mdbm_close(db);
 		return (0);
 	}
@@ -657,13 +657,12 @@ get_ok(remote *r, char *read_ahead, int verbose)
 char *
 repo_id(void)
 {
-	char	*root = sccs_root(0);
+	char	*root = proj_root(0);
 	char	*file;
 	char	*repoid;
 
 	unless (root) return (0);
 	file = aprintf("%s/" REPO_ID, root);
-	free(root);
 	repoid = loadfile(file, 0);
 	free(file);
 	unless (repoid) return (0);
@@ -677,7 +676,7 @@ rootkey(char *buf)
 	char	s_cset[] = CHANGESET;
 	sccs	*s;
 
-	s = sccs_init(s_cset, INIT_NOCKSUM, 0);
+	s = sccs_init(s_cset, INIT_NOCKSUM);
 	assert(s);
 	sccs_sdelta(s, sccs_ino(s), buf);
 	sccs_free(s);
@@ -720,7 +719,7 @@ put_trigger_env(char *prefix, char *v, char *value)
 void
 putroot(char *where)
 {
-	char	*root = sccs_root(0);
+	char	*root = proj_root(0);
 
 	if (root) {
 		if (streq(root, ".")) {
@@ -731,7 +730,6 @@ putroot(char *where)
 		} else {
 			safe_putenv("%s_ROOT=%s", where, root);
 		}
-		free(root);
 	}
 }
 
@@ -776,18 +774,9 @@ sendEnv(FILE *f, char **envVar, remote *r, int isClone)
 	 */
 	unless (isClone) {
 		fprintf(f, "putenv BK_LEVEL=%d\n", getlevel());
-
-		root = sccs_root(0);
-		if (root) {
-			if (streq(root, ".")) {
-				char	pwd[MAXPATH];
-
-				getcwd(pwd, MAXPATH);
-				fprintf(f, "putenv BK_ROOT=%s\n", pwd);
-			} else {
-				fprintf(f, "putenv BK_ROOT=%s\n", root);
-			}
-			free(root);
+		
+		if (root = proj_root(0)) {
+			fprintf(f, "putenv BK_ROOT=%s\n", root);
 		}
 	}
 
@@ -1110,7 +1099,7 @@ savefile(char *dir, char *prefix, char *pathname)
 void
 has_proj(char *who)
 {
-	if (bk_proj && bk_proj->root) return;
+	if (proj_root(0)) return;
 	fprintf(stderr, "%s: cannot find package root\n", who);
 	exit(1);
 }

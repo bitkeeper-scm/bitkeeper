@@ -49,7 +49,7 @@ usage:			fprintf(stderr,
 	name = sfileFirst("lines", &av[optind], 0);
 	if (sfileNext() || !name) goto usage;
 
-	if (name && (s = sccs_init(name, INIT_NOCKSUM, 0))) {
+	if (name && (s = sccs_init(name, INIT_NOCKSUM))) {
 		ser = 0;
 		renumber(s->table);
 		if (n) {

@@ -47,7 +47,7 @@ abort_main(int ac, char **av)
 		remote_free(r);
 		chdir(av[optind]);
 	}
-	sccs_cd2root(0, 0);
+	proj_cd2root();
 	unless (exists(ROOT2RESYNC)) {
 		fprintf(stderr, "No RESYNC dir, nothing to abort.\n");
 		exit(0);

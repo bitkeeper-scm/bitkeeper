@@ -41,16 +41,16 @@ WHATSTR("@(#)%K%");
 		    "---------------------------------------\n", stderr);
 
 private	delta	*getRecord(MMAP *f);
-private	int	extractPatch(char *name, MMAP *p, int flags, project *proj);
+private	int	extractPatch(char *name, MMAP *p, int flags);
 private	int	extractDelta(char *name, sccs *s, int newFile, MMAP *f, int, int*);
-private	int	applyPatch(char *local, int flags, sccs *perfile, project *p);
+private	int	applyPatch(char *local, int flags, sccs *perfile);
 private	int	applyCsetPatch(char *localPath, int nfound, int flags,
-						sccs *perfile, project *proj);
+						sccs *perfile);
 private	int	getLocals(sccs *s, delta *d, char *name);
 private	void	insertPatch(patch *p);
 private	void	reversePatch(void);
 private	void	initProject(void);
-private	MMAP	*init(char *file, int flags, project **p);
+private	MMAP	*init(char *file, int flags);
 private	int	rebuild_id(char *id);
 private	void	cleanup(int what);
 private	void	changesetExists(void);
@@ -113,7 +113,6 @@ takepatch_main(int ac, char **av)
 	int	error = 0;
 	int	remote = 0;
 	int	resolve = 0;
-	project	*proj = 0;
 	int	textOnly = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -152,7 +151,7 @@ usage:		system("bk help -s takepatch");
 		return (1);
 	}
 
-	p = init(input, flags, &proj);
+	p = init(input, flags);
 
 	if (streq(input, "-") && isLogPatch) {
 		if (newProject) {
@@ -224,7 +223,7 @@ usage:		system("bk help -s takepatch");
 		}
 		*t = 0;
 		files++;
-		rc = extractPatch(&b[3], p, flags, proj);
+		rc = extractPatch(&b[3], p, flags);
 		free(b);
 		if (rc < 0) {
 			error = rc;
@@ -233,7 +232,6 @@ usage:		system("bk help -s takepatch");
 		remote += rc;
 	}
 	mclose(p);
-	proj_free(proj);
 	if (idDB) { mdbm_close(idDB); idDB = 0; }
 	if (goneDB) { mdbm_close(goneDB); goneDB = 0; }
 	if (error < 0) {
@@ -435,7 +433,7 @@ shout(void)
  * sent; it might be different than the local name.
  */
 private	int
-extractPatch(char *name, MMAP *p, int flags, project *proj)
+extractPatch(char *name, MMAP *p, int flags)
 {
 	delta	*tmp;
 	sccs	*s = 0;
@@ -489,7 +487,7 @@ extractPatch(char *name, MMAP *p, int flags, project *proj)
 	if (newProject && !newFile) notfirst();
 
 	if (echo>4) fprintf(stderr, "%s\n", t);
-again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM|INIT_SAVEPROJ, proj, idDB);
+again:	s = sccs_keyinit(t, SILENT|INIT_NOCKSUM, idDB);
 	/*
 	 * Unless it is a brand new workspace, or a new file,
 	 * rebuild the id cache if look up failed.
@@ -622,18 +620,25 @@ error:			if (perfile) sccs_free(perfile);
 	}
 	if ((s && CSET(s)) || (!s && streq(name, CHANGESET))) {
 		rc = applyCsetPatch(s ? s->sfile : 0 ,
-						nfound, flags, perfile, proj);
+						nfound, flags, perfile);
 	} else {
 		if (patchList && tableGCA) getLocals(s, tableGCA, name);
-		rc = applyPatch(s ? s->sfile : 0, flags, perfile, proj);
+		rc = applyPatch(s ? s->sfile : 0, flags, perfile);
 	}
 	if (echo == 2) fprintf(stderr, "\n");
 	if (echo == 3) fprintf(stderr, " \n");
 	if (perfile) sccs_free(perfile);
+	if (streq(gfile, "BitKeeper/etc/config")) {
+		/*
+		 * If we have rewritten the config file we need to
+		 * flush the cache of config data in the project
+		 * struct.
+		 */
+		proj_reset(0);
+	}
 	free(gfile);
 	free(name);
 	if (s) {
-		s->proj = 0;
 		sccs_free(s);
 	}
 	if (rc < 0) {
@@ -1178,7 +1183,7 @@ chkEmpty(sccs *s, MMAP *dF)
  */
 private	int
 applyCsetPatch(char *localPath,
-			int nfound, int flags, sccs *perfile, project *proj)
+			int nfound, int flags, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
@@ -1208,7 +1213,7 @@ applyCsetPatch(char *localPath,
 
 	fileCopy2(localPath, p->resyncFile);
 	/* Open up the cset file */
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
 		return -1;
@@ -1280,7 +1285,7 @@ apply:
 		} else {
 			assert(s == 0);
 			unless (s =
-			    sccs_init(p->resyncFile, NEWFILE|SILENT, proj)) {
+			    sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 				SHOUT();
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
@@ -1330,7 +1335,7 @@ apply:
 		return -1;
 	}
 
-	s->proj = 0; sccs_free(s);
+	sccs_free(s);
 	/*
 	 * Fix up d->rev, there is probaply a better way to do this.
 	 * XXX: not only renumbers, but collapses inheritance on
@@ -1339,7 +1344,7 @@ apply:
 	 */
 	sys("bk", "renumber", "-q", patchList->resyncFile, SYS);
 
-	s = sccs_init(patchList->resyncFile, SILENT, proj);
+	s = sccs_init(patchList->resyncFile, SILENT);
 	assert(s && s->tree);
 
 	unless (sccs_findKeyDB(s, 0)) {
@@ -1388,7 +1393,7 @@ apply:
 	}
 
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
-		s->proj = 0; sccs_free(s);
+		sccs_free(s);
 		return (-1);
 	}
 	if (!confThisFile && (s->state & S_CSET) && 
@@ -1397,7 +1402,7 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
-	s->proj = 0; sccs_free(s);
+	sccs_free(s);
 	if (noConflicts && conflicts) noconflicts();
 	freePatchList();
 	patchList = 0;
@@ -1412,7 +1417,7 @@ apply:
  * the list.
  */
 private	int
-applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
+applyPatch(char *localPath, int flags, sccs *perfile)
 {
 	patch	*p;
 	MMAP	*iF;
@@ -1460,7 +1465,7 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 		goto apply;
 	}
 	fileCopy2(localPath, p->resyncFile);
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
 		SHOUT();
 		fprintf(stderr, "takepatch: can't open %s\n", p->resyncFile);
 		return -1;
@@ -1531,11 +1536,11 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 			return -1;
 		}
 	}
-	s->proj = 0; sccs_free(s);
+	sccs_free(s);
 	/* sccs_restart does not rebuild the graph and we just pruned it,
 	 * so do a hard restart.
 	 */
-	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags, proj)) {
+	unless (s = sccs_init(p->resyncFile, INIT_NOCKSUM|flags)) {
 		SHOUT();
 		fprintf(stderr,
 		    "takepatch: can't open %s\n", p->resyncFile);
@@ -1632,7 +1637,7 @@ apply:
 		} else {
 			assert(s == 0);
 			unless (s =
-			    sccs_init(p->resyncFile, NEWFILE|SILENT, proj)) {
+			    sccs_init(p->resyncFile, NEWFILE|SILENT)) {
 				SHOUT();
 				fprintf(stderr,
 				    "takepatch: can't create %s\n",
@@ -1682,8 +1687,8 @@ apply:
 			}
 			if (s->bad_dsum || s->io_error) return (-1);
 			mclose(iF);	/* dF done by delta() */
-			s->proj = 0; sccs_free(s);
-			s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT, proj);
+			sccs_free(s);
+			s = sccs_init(p->resyncFile, INIT_NOCKSUM|SILENT);
 		}
 		p = p->next;
 	}
@@ -1691,8 +1696,8 @@ apply:
 	if (csets) {
 		fclose(csets);
 	}
-	s->proj = 0; sccs_free(s);
-	s = sccs_init(patchList->resyncFile, SILENT, proj);
+	sccs_free(s);
+	s = sccs_init(patchList->resyncFile, SILENT);
 	assert(s);
 	if (encoding & E_GZIP) s = sccs_gzip(s);
 	for (d = 0, p = patchList; p; p = p->next) {
@@ -1713,12 +1718,12 @@ apply:
 		if (sccs_isleaf(s, d) && !(d->flags & D_CSET)) pending++;
 	}
 	if (pending) {
-		s->proj = 0; sccs_free(s);
+		sccs_free(s);
 		uncommitted(localPath);
 		return -1;
 	}
 	if ((confThisFile = sccs_resolveFiles(s)) < 0) {
-		s->proj = 0; sccs_free(s);
+		sccs_free(s);
 		return (-1);
 	}
 	if (!confThisFile && (s->state & S_CSET) && 
@@ -1727,7 +1732,7 @@ apply:
 		/* yeah, the count is slightly off if there were conflicts */
 	}
 	conflicts += confThisFile;
-	s->proj = 0; sccs_free(s);
+	 sccs_free(s);
 	if (noConflicts && conflicts) noconflicts();
 	freePatchList();
 	patchList = 0;
@@ -1990,7 +1995,7 @@ resync_lock(void)
  * background from a previous patch.
  */
 private	MMAP	*
-init(char *inputFile, int flags, project **pp)
+init(char *inputFile, int flags)
 {
 	char	buf[BUFSIZ];		/* used ONLY for input I/O */
 	char	*root, *t;
@@ -1998,7 +2003,6 @@ init(char *inputFile, int flags, project **pp)
 	FILE	*f, *g;
 	MMAP	*m = 0;
 	uLong	sumC = 0, sumR = 0;
-	project	*p = 0;
 	struct	{
 		u32	newline:1;	/* current line is a newline */
 		u32	preamble_nl:1;	/* previous line was a newline */
@@ -2041,11 +2045,8 @@ init(char *inputFile, int flags, project **pp)
 
 	if (newProject) {
 		initProject();
-		new(p);
-		p->root = strdup(ROOT2RESYNC);
-		*pp = p;
 	} else {
-		root = sccs_root(0);
+		root = proj_root(0);
 		if (!root && emptyDir(".")) {
 			/* If we are invoked in an empty directory,
 			 * assume they meant -i.
@@ -2055,24 +2056,14 @@ init(char *inputFile, int flags, project **pp)
 				      stderr);
 			}
 			initProject();
-			new(p);
-			p->root = strdup(ROOT2RESYNC);
-			*pp = p;
 			newProject = 1;
-		} else if (sccs_cd2root(0, root)) {
+		} else if (proj_cd2root()) {
 			SHOUT();
 			fputs("takepatch: can't find package root.\n", stderr);
 			SHOUT2();
 			exit(1);
 		} else {
-			char	*tmp = root;
-
-			root = malloc(strlen(root) + 8);
-			sprintf(root, "%s/%s", tmp, ROOT2RESYNC);
-			new(p);
-			p->root = root;
-			*pp = p;
-			free(tmp);
+			proj_reset(0);
 		}
 	}
 	if (exists(LOG_TREE)) isLogPatch = 1;

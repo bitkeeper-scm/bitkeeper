@@ -39,7 +39,7 @@ undo_main(int ac,  char **av)
 		system("bk help undo");
 		return (0);
 	}
-	if (sccs_cd2root(0, 0) == -1) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "undo: cannot find package root.\n");
 		exit(1);
 	}
@@ -246,7 +246,7 @@ private void
 checkRev(char *rev)
 {
 	char	file[MAXPATH] = CHANGESET;
-	sccs	*s = sccs_init(file, 0, 0);
+	sccs	*s = sccs_init(file, 0);
 	delta	*d;
 
 	unless (s) {
@@ -378,22 +378,18 @@ private int
 clean_file(char **fileList)
 {
 	sccs	*s;
-	project *proj = 0;
 	int	i;
 
 	EACH(fileList) {
-		s = sccs_init(fileList[i], INIT_NOCKSUM|INIT_SAVEPROJ, proj);
+		s = sccs_init(fileList[i], INIT_NOCKSUM);
 		assert(s && HASGRAPH(s));
-		unless(proj) proj = s->proj;
 		if (sccs_clean(s, SILENT)) {
 			printf("Cannot clean %s, Undo aborted\n", fileList[i]);
 			sccs_free(s);
-			if (proj) proj_free(proj);
 			return (-1);
 		}
 		sccs_free(s);
 	}
-	if (proj) proj_free(proj);
 	return (0);
 }
 
@@ -524,7 +520,7 @@ void
 save_log_markers(void)
 {
 	int	i;
-	sccs	*s = sccs_csetInit(0, 0);
+	sccs	*s = sccs_csetInit(0);
 	unless (s) return;
 	
 	for (i = 0; i < 2; i++) {
@@ -547,7 +543,7 @@ void
 update_log_markers(int verbose)
 {
 	int	i;
-	sccs	*s = sccs_csetInit(0, 0);
+	sccs	*s = sccs_csetInit(0);
 	unless (s) return;
 	
 	/* Clear marks that are still valid */

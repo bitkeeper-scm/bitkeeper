@@ -137,8 +137,6 @@ cmd_cd(int ac, char **av)
 			return (1);
 		}
 	}
-	if (bk_proj) proj_free(bk_proj);
-	bk_proj = proj_init(0);
 	unless (getenv("BK_REMOTE_PROTOCOL")) {
 		/*
 		 * For old 1.2 client

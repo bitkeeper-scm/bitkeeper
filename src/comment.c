@@ -75,7 +75,7 @@ comments_main(int ac, char **av)
 	 * in a changeset or a list of files on the command line.
 	 */
 	if (csetrev) {
- cset:		if (sccs_cd2root(0, 0)) {
+ cset:		if (proj_cd2root()) {
 			fprintf(stderr,
 			    "comments: can't find repository root\n");
 			exit(1);
@@ -236,7 +236,7 @@ write_editfile(FILE *f, char **files, int to_stdout)
 		t = strchr(name, BK_FS);
 		*t++ = 0;
 		
-		unless (s = sccs_init(name, 0, 0)) continue;
+		unless (s = sccs_init(name, 0)) continue;
 		unless (HASGRAPH(s)) goto next;
 		unless (d = sccs_getrev(s, t, 0, 0)) {
 			fprintf(stderr, "%s|%s not found\n", s->gfile, t);
@@ -271,7 +271,7 @@ change_comments(char *file, char *rev, char **comments)
 	int	i;
 	
 	sfile = name2sccs(file);
-	unless (s = sccs_init(sfile, 0, 0)) goto err;
+	unless (s = sccs_init(sfile, 0)) goto err;
 	unless (HASGRAPH(s)) goto err;
 	unless (d = sccs_getrev(s, rev, 0, 0)) {
 		fprintf(stderr, "%s|%s not found\n", s->gfile, rev);

@@ -10,7 +10,7 @@ int
 _get_main(int ac, char **av, char *out)
 {
 	sccs	*s;
-	int	iflags = INIT_SAVEPROJ, flags = GET_EXPAND, c, errors = 0;
+	int	iflags = 0, flags = GET_EXPAND, c, errors = 0;
 	char	*iLst = 0, *xLst = 0, *name, *rev = 0, *cdate = 0, *Gname = 0;
 	char	*prog;
 	char	*mRev = 0;
@@ -158,8 +158,8 @@ onefile:	fprintf(stderr,
 		return(1);
 	}
 
-	if (bk_proj && bk_proj->root) {
-		caseFoldingFS = isCaseFoldingFS(bk_proj->root);
+	if (proj_root(0)) {
+		caseFoldingFS = isCaseFoldingFS(proj_root(0));
 		realNameCache = mdbm_open(NULL,0, 0, GOOD_PSIZE);
 		assert(realNameCache);
 	}
@@ -176,7 +176,7 @@ onefile:	fprintf(stderr,
 			getRealName(name, realNameCache, realname);
 			name = realname;
 		}
-		unless (s = sccs_init(name, iflags, bk_proj)) continue;
+		unless (s = sccs_init(name, iflags)) continue;
 		if (Gname) {
 			if (gdir) {
 				char	buf[1024];

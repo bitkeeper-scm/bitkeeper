@@ -40,7 +40,6 @@ admin_main(int ac, char **av)
 	delta	*d = 0;
 	int 	was_edited = 0, new_delta = 0;
 	pfile	pf;
-	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -196,7 +195,6 @@ admin_main(int ac, char **av)
 		fprintf(stderr, "admin: Only one file with -i/-n\n");
 		goto usage;
 	}
-	unless (flags & NEWFILE) init_flags |= INIT_SAVEPROJ;
 
 	ckopts = user_preference("checkout");
 	if (streq("GET", ckopts) || streq("EDIT", ckopts)) {
@@ -213,9 +211,8 @@ admin_main(int ac, char **av)
 				continue;
 			}
 		}
-		sc = sccs_init(name, init_flags, proj);
+		sc = sccs_init(name, init_flags);
 		unless (sc) { name = sfileNext(); continue; }
-		if (!proj && (init_flags & INIT_SAVEPROJ)) proj = sc->proj;
 		unless (HASGRAPH(sc)) {
 			fprintf(stderr,
 				"admin: can't read delta table in %s\n",
@@ -287,7 +284,7 @@ admin_main(int ac, char **av)
 			char *nrev;
 
 			sccs_free(sc);
-			sc = sccs_init(name, init_flags, proj);
+			sc = sccs_init(name, init_flags);
 			nrev = findrev(sc, pf.newrev) ? pf.newrev: pf.oldrev;
 			if (sccs_get(sc, nrev, 0, 0, 0, gflags, "-")) {
 				fprintf(stderr, "cannot adjust p file\n");	
@@ -297,7 +294,6 @@ next:		sccs_free(sc);
 		name = sfileNext();
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (error);
 usage:	system("bk help -s admin");
 	return (1);
@@ -331,8 +327,8 @@ do_checkin(char *name, char *encp, char *compp,
 	int	error, enc;
 	struct	stat sb;
 
-	unless (s = sccs_init(name, flags, 0)) return (-1);
-	if (rev && !streq(rev, "1.1") && s->proj && s->proj->root) {
+	unless (s = sccs_init(name, flags)) return (-1);
+	if (rev && !streq(rev, "1.1") && proj_root(s->proj)) {
 		fprintf(stderr,
 		    "admin: can not specify initial rev for BK files\n");
 		sccs_free(s);

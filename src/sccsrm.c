@@ -51,15 +51,15 @@ sccs_rmName(sccs *s, int useCommonDir)
 	char	*r, *t, *b;
 	int	try = 0;
 	delta	*d;
+	char	*root;
 
 	b = basenm(s->sfile);
 	if (useCommonDir) {
-		unless (s && s->proj && s->proj->root) {
+		unless (root = proj_root(s->proj)) {
 			fprintf(stderr, "sccsrm: cannot find root?\n");
 			return (NULL);
 		}
-		sprintf(path, "%s/BitKeeper/deleted/SCCS",
-				fullname(sPath(s->proj->root, 1), 0));
+		sprintf(path, "%s/BitKeeper/deleted/SCCS", root);
 		t = &path[strlen(path)];
 		*t++ = '/';
 	} else {
@@ -97,7 +97,7 @@ sccs_rm(char *name, char *del_name, int useCommonDir, int force)
 	sccs	*s;
 
 	sfile = name2sccs(name);
-	s = sccs_init(sfile, 0, 0);
+	s = sccs_init(sfile, 0);
 	unless (s && HASGRAPH(s) && BITKEEPER(s)) {
 		fprintf(stderr,
 		    "Warning: %s is not a BitKeeper file, ignored\n", name);
@@ -176,13 +176,12 @@ sccs_gone(int quiet, FILE *f)
 	/* eat the keys first because check will complain if we edit the file */
 	while (fnext(key, f)) mdbm_store_str(db, key, "", MDBM_INSERT);
 
-	root = sccs_root(0);
+	root = proj_root(0);
 	assert(root);
 	sprintf(s_gone, "%s/BitKeeper/etc/SCCS/s.gone", root);
 	sprintf(g_gone, "%s/BitKeeper/etc/gone", root);
-	free(root);
 
-	s = sccs_init(s_gone, SILENT, 0);
+	s = sccs_init(s_gone, SILENT);
 	assert(s);
 	if (exists(s_gone)) {
 		unless (IS_EDITED(s)) {

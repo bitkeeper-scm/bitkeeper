@@ -13,7 +13,7 @@ do_prsdelta(char *file, char *rev, int flags, char *dspec, FILE *out)
 	sccs *s;
 	delta *d;
 
-	s = sccs_init(file, INIT_NOCKSUM, NULL);
+	s = sccs_init(file, INIT_NOCKSUM);
 	assert(s);
 	s->state &= ~S_SET;
 	d = findrev(s, rev);
@@ -25,7 +25,7 @@ void
 do_clean(char *file, int flags)
 {
 	sccs *s;
-	s = sccs_init(file, INIT_NOCKSUM, NULL);
+	s = sccs_init(file, INIT_NOCKSUM);
 	assert(s);
 	sccs_clean(s, flags);
 	sccs_free(s);
@@ -38,11 +38,11 @@ get(char *path, int flags, char *output)
 	int ret;
 
 	if (sccs_filetype(path) == 's') {
-		s = sccs_init(path, SILENT, 0);
+		s = sccs_init(path, SILENT);
 	} else {
 		char	*p = name2sccs(path);
 
-		s = sccs_init(p, SILENT, 0);
+		s = sccs_init(p, SILENT);
 		free(p);
 	}
 	unless (s && HASGRAPH(s)) {

@@ -34,9 +34,8 @@ renumber_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	char	*name;
-	int	c, dont = 0, quiet = 0, flags = INIT_SAVEPROJ;
+	int	c, dont = 0, quiet = 0, flags = INIT_SHUTUP;
 	delta	*leaf(delta *tree);
-	project	*proj = 0;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -55,9 +54,8 @@ renumber_main(int ac, char **av)
 	}
 	for (name = sfileFirst("renumber", &av[optind], 0);
 	    name; name = sfileNext()) {
-		s = sccs_init(name, flags, proj);
+		s = sccs_init(name, flags);
 		unless (s) continue;
-		unless (proj) proj = s->proj;
 		unless (HASGRAPH(s)) {
 			fprintf(stderr, "%s: can't read SCCS info in \"%s\".\n",
 			    av[0], s->sfile);
@@ -79,7 +77,6 @@ renumber_main(int ac, char **av)
 		sccs_free(s);
 	}
 	sfileDone();
-	if (proj) proj_free(proj);
 	return (0);
 }
 
@@ -344,7 +341,7 @@ redo(sccs *s, delta *d, MDBM *db, int flags, ser_t release, ser_t *map)
 		assert(p != m);
 		if (sccs_needSwap(p, m)) {
 			unless (Fix_inex) {
-				Fix_inex = sccs_init(s->sfile, flags, 0);
+				Fix_inex = sccs_init(s->sfile, flags);
 				unless (Fix_inex) {
 					fprintf(stderr, "Renumber: Error: "
 					    "Init %s failed in redo()\n",

@@ -1299,7 +1299,8 @@ basenm(char *s)
 void
 cleanPath(char *path, char cleanPath[])
 {
-	char	buf[MAXPATH], *p, *r, *top;
+	const	char	*top, *p;
+	char	buf[MAXPATH], *r;
 	int	dotCnt = 0;	/* number of "/.." */
 #define isEmpty(buf, r) 	(r ==  &buf[sizeof (buf) - 2])
 
@@ -1365,37 +1366,6 @@ cleanPath(char *path, char cleanPath[])
  * All of this pathname/changeset shit needs to be reworked.
  * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  */
-
-/*
- * Change directories to the package root or return -1.  If the second
- * arg is non-null, then that's the root, and we aren't to call
- * sccs_root to find it.  The only place that does that is
- * takepatch.c, and it probably shouldn't.
- */
-int
-sccs_cd2root(sccs *s, char *root)
-{
-	if (root) {
-		chdir(root);
-	} else if (s && s->proj && s->proj->root) {
-		chdir(s->proj->root);
-	} else {
-		char	*r = sccs_root(0);
-
-		unless (r) return (-1);
-		chdir(r);
-		free(r);
-	}
-	unless (exists(BKROOT)) {
-		perror(BKROOT);
-		return (-1);
-	}
-	if (bk_proj && bk_proj->root) {
-		free(bk_proj->root);
-		bk_proj->root = strdup(".");
-	}
-	return (0);
-}
 
 void
 sccs_mkroot(char *path)
@@ -1487,34 +1457,6 @@ sccs_unmkroot(char *path)
 	}
 }
 
-
-/*
- * Return the ChangeSet file id.
- */
-char	*
-getCSetFile(project *p)
-{
-	char	file[MAXPATH];
-	sccs	*sc;
-
-	unless (p && p->root) return (0);
-	/*
-	 * Use cached copy if available
-	 */
-	if (p->csetFile) return (strdup(p->csetFile));
-	sprintf(file, "%s/%s", p->root, CHANGESET);
-	if (exists(file)) {
-		sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
-		assert(HASGRAPH(sc));
-		sccs_sdelta(sc, sccs_ino(sc), file);
-		sccs_free(sc);
-		p->csetFile = strdup(file);
-		return (strdup(file));
-	}
-	return (0);
-}
-
-
 /*
  * Return the pathname relative to the first ChangeSet file found.
  *
@@ -1523,84 +1465,29 @@ getCSetFile(project *p)
  */
 char	*
 _relativeName(char *gName, int isDir, int withsccs,
-	    int mustHaveRmarker, int wantRealName, project *proj, char *root)
+	    int mustHaveRmarker, int wantRealName, project *proj)
 {
-	char	*t, *s, *top;
-	int	i, j;
-	char	tmp[MAXPATH], buf[MAXPATH];
+	char	*t, *s;
+	char	*root;
+	int	len;
+	project	*freeproj = 0;
+	char	tmp[MAXPATH];
 	static  char buf2[MAXPATH];
 
 	strcpy(tmp, fullname(gName, 0));
 	if (!IsFullPath(tmp)) return (0);
+	tmp[strlen(tmp)+1] = 0;	/* for code below */
 	t = tmp;
 
-	if (proj && proj->root) {
-		int len;
-		
-		if (!IsFullPath(proj->root)) {
-			s = strdup(fullname(proj->root, 0));
-			free(proj->root);
-			proj->root = s;
-		}
-		len = strlen(proj->root);
-		if (strneq(proj->root, t, len)) {
-			s = &t[len];
-			assert((*s == '\0') || (*s == '/'));
-			goto got_root;
-		}
-	}
+	unless (proj) proj = freeproj = proj_init(t);
+	unless (proj) return (mustHaveRmarker ? 0 : tmp);
 
-	strcpy(buf, t); top = buf;
-	if (isDriveColonPath(buf)) top = &buf[2]; /* for win32 path */
-	assert(top[0] == '/');
-	if (isDir) {
-		s = &buf[strlen(buf)];
-		s[0] = '/';
-	} else {
-		/* trim off the file part */
-		s = strrchr(buf, '/');
-	}
-
-	/*
-	 * Now work backwards up the tree until we find a root marker
-	 */
-	for (i = 0; s >= top; i++) {
-		strcpy(++s, BKROOT);
-		if (exists(buf))  break;
-		if (--s <= top) {
-			/*
-			 * if we get here, we hit the top
-			 * and did not find the root marker
-			 */
-			if (root) root[0] = 0;
-			if (mustHaveRmarker) return (0);
-			strcpy(buf2, t);
-			return (buf2); /* return full path name */
-		}
-		/* s -> / in .../foo/SCCS/s.foo.c */
-		for (--s; (*s != '/') && (s > top); s--);
-	}
-	assert(s >= top);
-
-	/*
-	 * go back in other buffer to this point and copy forwards,
-	 */
-	if (isDir) {
-		s = &t[strlen(t)];
-		s[0] = '/'; s[1] = 0;
-	} else {
-		/* trim off the file part */
-		s = strrchr(t, '/');
-	}
-	for (j = 1; j <= i; ++j) {
-		for (--s; (*s != '/') && (s > t); s--);
-	}
-
-got_root:
-	if (root) {
-		int len = s - t;
-		strncpy(root, t, len); root[len] = 0;
-	}
+	root = proj_root(proj);
+	len = strlen(root);
+	assert(strneq(root, t, len));
+	if (freeproj) proj_free(freeproj);
+	s = &t[len];
+	assert((*s == '\0') || (*s == '/'));
 
 	/*
 	 * Must cd to project root before we call getRealName()
@@ -1650,7 +1537,7 @@ relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 	char	*s, *g;
 
 	g = sccs2name(sc->sfile);
-	s = _relativeName(g, 0, withsccs, mustHaveRmarker, 1, sc->proj, NULL);
+	s = _relativeName(g, 0, withsccs, mustHaveRmarker, 1, sc->proj);
 	free(g);
 
 	unless (s) return (0);
@@ -1658,95 +1545,6 @@ relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 	if (strncmp("RESYNC/", s, 7) == 0) s += 7;
 	return (s);
 }
-
-#ifdef SPLIT_ROOT
-
-/*
- * If we get a rootfile, (i.e split root),
- * copy the the new sroot from the root file, return 1;
- * otherwise return 0
- */
-int
-hasRootFile(char *gRoot, char *sRoot)
-{
-	FILE	*f;
-	char 	*p, rootfile[1024], buf[1024];
-#define ROOTFILE  "BitKeeper/etc/RootFile"
-
-	/*
-	 * TODO:
-	 * we need to cache the sRoot value
-	 */
-	concat_path(rootfile, gRoot, ROOTFILE);
-	unless (exists(rootfile)) return 0;
-	f = fopen(rootfile, "rt");
-	unless (f) {
-		perror(rootfile);
-		return 0;
-	}
-
-	while(fnext(buf, f)) {
-		if (buf[0] == '#') continue; /* skip comment */
-		if (chop(buf) != '\n') {
-			assert("line too long in rootfile" == 0);
-		}
-		p = strchr(buf, ' '); assert(p);
-		*p++ = 0;
-		if (streq(buf, "SROOT")) {
-			strcpy(sRoot, p);
-			localName2bkName(sRoot, sRoot);
-			fclose(f);
-			return 1;
-		}
-	}
-	fclose(f);
-	fprintf(stderr, "Warning: %s has no SROOT entry, ignored\n", rootfile);
-	return 0;
-}
-
-/*
- * Given a file/dir name , return its path in the S root tree
- * return value is in local static buffer
- * user must copy it before calling other function
- */
-char *
-sPath(char *name, int isDir)
-{
-	static	char buf[1024];
-	char	*path, gRoot[1024], sRoot[1024];
-
-	/*
-	 *  If there is a local SCCS directory, use it
-	 */
-	cleanPath(name, buf);
-	unless (isDir) {
-		path = name2sccs(buf);
-		assert(path);
-		strrchr(path, '/')[0] = 0;
-		assert(streq("SCCS", basenm(path)));
-		if (isdir(path)) {
-			free(path);
-			debug((stderr, "sPath(%s) -> %s\n", name, name));
-			return (name);
-		}
-		free(path);
-	}
-
-	path = _relativeName(name, isDir, 0, 0, 0, 0, gRoot);
-	if (IsFullPath(path)) return path; /* no root marker */
-	if (hasRootFile(gRoot, sRoot)) {
-		concat_path(buf, sRoot, path);
-	} else {
-		return (name);
-	}
-	cleanPath(buf, buf);
-	debug((stderr, "sPath(%s) -> %s\n", name, buf));
-	return buf;
-}
-#else
-char *
-sPath(char *name, int isDir) { return name; }
-#endif /* SPLIT_ROOT */
 
 private inline symbol *
 findSym(symbol *s, char *name)
@@ -2206,7 +2004,7 @@ private delta *
 cset2rev(sccs *s, char *rev)
 {
 	static	struct	stat	csetstat = {0};
-	char	*rootpath = 0;
+	char	*rootpath;
 	char	*mpath = 0;
 	MDBM	*m = 0;
 	delta	*ret = 0;
@@ -2214,7 +2012,7 @@ cset2rev(sccs *s, char *rev)
 	char	*deltakey;
 	char	rootkey[MAXKEY];
 
-	unless (rootpath = sccs_root(0)) goto ret;
+	unless (rootpath = proj_root(0)) goto ret;
 
 	/*  stat cset file once per process */
 	unless (csetstat.st_mtime) {
@@ -2245,7 +2043,7 @@ cset2rev(sccs *s, char *rev)
 
 		/* fetch MDBM from ChangeSet */
 		unless (s_cset) s_cset = aprintf("%s/" CHANGESET, rootpath);
-		unless (sc = sccs_init(s_cset, 0, 0)) goto ret;
+		unless (sc = sccs_init(s_cset, 0)) goto ret;
 		if (sccs_get(sc, rev, 0, 0, 0, SILENT|GET_HASHONLY, 0)) {
 			csetm = 0;
 		} else {
@@ -2283,7 +2081,6 @@ cset2rev(sccs *s, char *rev)
  ret:
 	if (s_cset) free(s_cset);
 	if (mpath) free(mpath);
-	if (rootpath) free(rootpath);
 	return (ret);
 }
 
@@ -3612,7 +3409,9 @@ done:		if (CSET(s) && (d->type == 'R') &&
 		dinsert(s, flags, d, 0);
 		d = therest;
 	}
-	if (checkrevs(s, flags) & 1) s->state |= S_BADREVS;
+	if (checkrevs(s, (flags & INIT_SHUTUP) ? ADMIN_SHUTUP : 0) & 1) {
+		s->state |= S_BADREVS;
+	}
 
 	/*
 	 * For all the metadata nodes, go through and propogate the data up to
@@ -3889,6 +3688,7 @@ filter(char *buf)
 {
 	remote *r;
 	char *h;
+	char	*root;
 
 	r = pref_parse(buf);
 	if ((r->user) && !match_one(sccs_getuser(), r->user, 0)) {
@@ -3901,13 +3701,7 @@ no_match:	remote_free(r);
 		unless (h && match_one(h, r->host, 1)) goto no_match;
 	}
 
-	if (r->path && bk_proj) {
-		char	*root = bk_proj->root;
-		unless (IsFullPath(root)) {
-			root = fullname(root, 0);
-			
-			assert(root);
-		}
+	if (r->path && (root = proj_root(0))) {
 		unless (match_one(root, r->path, !mixedCasePath())) {
 			goto no_match;
 		}
@@ -3997,7 +3791,6 @@ loadRepoConfig(char *root)
 	MDBM	*DB = 0;
 	char 	*config;
 	sccs	*s = 0;
-	project *proj = 0;
 
 	/*
 	 * If the config is already checked out, use that.
@@ -4020,17 +3813,7 @@ out:		free(config);
 		return (0);
 	}
 
-	/*
-	 * Hand make a project struct, so sccs_init(s_config, ..) below
-	 * won't call us again, otherwise we end up in a loop.
-	 */
-	proj = calloc(1, sizeof(*proj));
-	proj->root = strdup(root);
-	s = sccs_init(config, SILENT, proj);
-	unless (s) {
-		proj_free(proj);
-		goto out;
-	}
+	unless (s = sccs_init(config, SILENT)) goto out;
 	s->state |= S_CONFIG; /* This should really be stored on disk */
 	if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_HASH|GET_HASHONLY, 0)) {
 		sccs_free(s);
@@ -4073,67 +3856,6 @@ loadConfig(char *root)
 	return (loadGlobalConfig(db));
 }
 
-/*
- * Initialize the project struct.
- * We don't put it in the sccs in case there isn't one, the caller can do it.
- * Callers of this (see locking.c) depend on it returning NULL if there is
- * no BitKeeper root.
- *
- * XXX - this is fine for when we start, but what if the locking status
- * changes while we are running?
- * Seems to me that the check for locking should be at delta time.
- */
-project	*
-chk_proj_init(sccs *s, char *file, int line)
-{
-	char	*root;
-	project	*p;
-
-	assert((s == 0) || (s->proj == 0));
-
-	unless (root = sccs_root(s)) return (0);
-	p = chk_calloc(1, sizeof(*p), file, line);
-	p->root = root;
-	return (p);
-}
-
-/*
- * Return config MDBM for this project.
- * Do not free this MDBM!
- */
-MDBM *
-proj_config(project *p)
-{
-	unless (p) return (0);
-	unless (p->config) {
-		unless (p->root) return (0);
-		p->config = loadConfig(p->root);
-	}
-	return (p->config);
-}
-
-int
-proj_cd2root(project *p)
-{
-	int	ret = p && p->root && (chdir(p->root) == 0);
-
-	if (ret && !streq(".", p->root)) {
-		free(p->root);
-		p->root = strdup(".");
-	}
-	return (ret);
-}
-
-void
-proj_free(project *p)
-{
-	unless (p) return;
-	if (p->root) free(p->root);
-	if (p->csetFile) free(p->csetFile);
-	if (p->config) mdbm_close(p->config);
-	free(p);
-}
-
 #if	defined(linux) && defined(sparc)
 flushDcache()
 {
@@ -4156,7 +3878,7 @@ flushDcache()
  * If the project is passed in, use it, else init one if we are in BK mode.
  */
 sccs*
-sccs_init(char *name, u32 flags, project *proj)
+sccs_init(char *name, u32 flags)
 {
 	sccs	*s;
 	struct	stat sbuf;
@@ -4173,11 +3895,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	localName2bkName(name, name);
 	if (sccs_filetype(name) == 's') {
 		s = calloc(1, sizeof(*s));
-		if (flags & INIT_ONEROOT) {
-			s->sfile = strdup(name);
-		} else {
-			s->sfile = strdup(sPath(name, 0));
-		}
+		s->sfile = strdup(name);
 		s->gfile = sccs2name(name);
 	} else {
 		fprintf(stderr, "Not an SCCS file: %s\n", name);
@@ -4185,8 +3903,14 @@ sccs_init(char *name, u32 flags, project *proj)
 	}
 
 	s->initFlags = flags;
-	s->proj = proj ? proj : proj_init(s);
 	t = strrchr(s->sfile, '/');
+	if (t) {
+		*t = 0;
+		s->proj = proj_init(s->sfile);
+		*t = '/';
+	} else {
+		s->proj = proj_init(".");
+	}
 	if (t && streq(t, "/s.ChangeSet")) {
 		s->xflags |= X_HASH;
 		s->state |= S_CSET;
@@ -4238,13 +3962,11 @@ sccs_init(char *name, u32 flags, project *proj)
 		if (isreg(s->pfile)) s->state |= S_PFILE;
 		if (isreg(s->zfile)) s->state |= S_ZFILE;
 	}
-	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
+	debug((stderr, "init(%s) -> %s, %s\n", s->gfile, s->sfile, s->gfile));
 	s->nextserial = 1;
 	s->fd = -1;
 	s->mmap = (caddr_t)-1;
 	sccs_open(s);
-
-	if (flags & INIT_SAVEPROJ) s->state |= S_SAVEPROJ;
 
 	if (s->mmap == (caddr_t)-1) {
 		if ((errno == ENOENT) || (errno == ENOTDIR)) {
@@ -4391,12 +4113,10 @@ sccs	*
 sccs_reopen(sccs *s)
 {
 	sccs	*s2;
-	project	*proj;
 
 	assert(s);
-	proj = (s->initFlags & INIT_SAVEPROJ) ? s->proj : 0;
 	sccs_close(s);
-	s2 = sccs_init(s->sfile, s->initFlags, proj);
+	s2 = sccs_init(s->sfile, s->initFlags);
 	assert(s2);
 	sccs_free(s);
 	return (s2);
@@ -4557,7 +4277,6 @@ sccs_free(sccs *s)
 	freeLines(s->usersgroups, free);
 	freeLines(s->flags, free);
 	freeLines(s->text, free);
-	if (s->proj && !(s->state & S_SAVEPROJ)) proj_free(s->proj);
 	if (s->symlink) free(s->symlink);
 	if (s->mdbm) mdbm_close(s->mdbm);
 	if (s->findkeydb) mdbm_close(s->findkeydb);
@@ -4576,13 +4295,13 @@ sccs_free(sccs *s)
  */
 
 sccs	*
-sccs_csetInit(u32 flags, project *proj)
+sccs_csetInit(u32 flags)
 {
 	char	*rootpath;
 	char	csetpath[MAXPATH];
 	sccs	*cset = 0;
 
-	unless (rootpath = sccs_root(0)) goto ret;
+	unless (rootpath = proj_root(0)) return (0);
 	if (streq(rootpath, ".")) {
 		strcpy(csetpath, CHANGESET);
 	} else {
@@ -4590,9 +4309,7 @@ sccs_csetInit(u32 flags, project *proj)
 		strcat(csetpath, "/" CHANGESET);
 	}
 	debug((stderr, "sccs_csetinit: opening changeset '%s'\n", csetpath));
-	cset = sccs_init(csetpath, flags, proj);
-ret:
-	if (rootpath) free(rootpath);
+	cset = sccs_init(csetpath, flags);
 	return (cset);
 }
 
@@ -4772,7 +4489,7 @@ sccs_lock(sccs *s, char type)
 	int	lockfd, verbose;
 
 	if (READ_ONLY(s)) return (0);
-	
+
 	verbose = (s->state & SILENT) ? 0 : 1;
 	if ((type == 'z') && repository_locked(s->proj)) return (0);
 
@@ -6188,8 +5905,7 @@ setupOutput(sccs *s, char *printOut, int flags, delta *d)
 	} else if (flags & GET_PATH) {
 		/* put the file in its historic location */
 		assert(d->pathname);
-		_relativeName(".", 1 , 0, 0, 0, s->proj, path); /* get groot */
-		concat_path(path, path, d->pathname);
+		concat_path(path, proj_root(0), d->pathname);
 		f = path;
 		unlink(f);
 	} else {
@@ -6387,7 +6103,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 			s->state |= S_WARNED;
 			goto out;
 		}
-		assert(s->proj->root);
+		assert(proj_root(s->proj));
 	}
 
 	if (RCS(s) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
@@ -6480,7 +6196,7 @@ out:			if (slist) free(slist);
 			}
 			if (hash) {
 				if (getKey(DB, buf, hashFlags|flags,
-							s->proj->root) == 1) {
+					proj_root(s->proj)) == 1) {
 					unless (flags &
 					    (GET_HASHONLY|GET_SUM)) {
 						fnlputs(buf, out);
@@ -7989,7 +7705,7 @@ _hasDiffs(sccs *s, delta *d, u32 flags, int inex, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *r = _relativeName(s->gfile, 0, 0, 1, 1, s->proj, 0);
+		char *r = _relativeName(s->gfile, 0, 0, 1, 1, s->proj);
 		if (r && !streq(d->pathname, r)) RET(1);
 	}
 
@@ -8260,7 +7976,7 @@ diff_gmode(sccs *s, pfile *pf)
 
 	/* If the path changed, it is a diff */
 	if (d->pathname) {
-		char *q, *r = _relativeName(s->sfile, 0, 0, 1, 1, s->proj, 0);
+		char *q, *r = _relativeName(s->sfile, 0, 0, 1, 1, s->proj);
 
 		if (r) {
 			q = sccs2name(r);
@@ -8948,7 +8664,7 @@ sccs_dInit(delta *d, char type, sccs *s, int nodefault)
 			 * because we cannot trust the gfile name on
 			 * win32 case-folding file system.
 			 */
-			p = _relativeName(s->sfile, 0, 0, 0, 1, s->proj, NULL);
+			p = _relativeName(s->sfile, 0, 0, 0, 1, s->proj);
 			q = sccs2name(p);		
 			pathArg(d, q);
 			free(q);
@@ -9000,16 +8716,6 @@ updMode(sccs *s, delta *d, delta *dParent)
 		}
 		d->flags |= D_MODE;
 	}
-}
-
-void
-get_sroot(char *sfile, char *sroot)
-{
-	char *g;
-	g = sccs2name(sfile); /* strip SCCS */
-	sroot[0] = 0;
-	_relativeName(g, 0, 0, 1, 0, 0, sroot);
-	free(g);
 }
 
 private void
@@ -9118,7 +8824,7 @@ checkin(sccs *s,
 	int	error = 0;
 	int	bk_etc = 0;
 	int	short_key = 0;
-	MDBM	*db = 0;
+	MDBM	*db;
 
 	assert(s);
 	debug((stderr, "checkin %s %x\n", s->gfile, flags));
@@ -9306,7 +9012,7 @@ out:		sccs_unlock(s, 'z');
 			d->comments = addLine(d->comments, strdup(buf));
 		}
 	}
-	if ((flags & DELTA_PATCH) || s->proj) {
+	if ((flags & DELTA_PATCH) || proj_root(s->proj)) {
 		s->bitkeeper = 1;
 		s->xflags |= X_BITKEEPER;
 	}
@@ -9328,7 +9034,9 @@ out:		sccs_unlock(s, 'z');
 			first->flags |= D_CKSUM;
 		} else {
 			unless (first->csetFile) {
-				first->csetFile = getCSetFile(s->proj);
+				char	*c = proj_csetrootkey(s->proj);
+
+				if (c) first->csetFile = strdup(c);
 			}
 		}
 		first->xflags |= (s->xflags & X_SINGLE);
@@ -15825,7 +15533,7 @@ sccs_iskeylong(char *t)
  * Return NULL if the file is there but does not have the same root inode.
  */
 sccs	*
-sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
+sccs_keyinit(char *key, u32 flags, MDBM *idDB)
 {
 	datum	k, v;
 	char	*p;
@@ -15853,7 +15561,7 @@ sccs_keyinit(char *key, u32 flags, project *proj, MDBM *idDB)
 		p = name2sccs(t);
 		*r = '|';
 	}
-	s = sccs_init(p, flags, proj);
+	s = sccs_init(p, flags);
 	free(p);
 	unless (s && HAS_SFILE(s))  goto out;
 

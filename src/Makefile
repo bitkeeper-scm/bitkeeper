@@ -79,7 +79,8 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	logging.o mail.o merge.o mkdir.o mklock.o \
 	mailsplit.o mmap.o mtime.o multiuser.o names.o newrev.o \
 	opark.o parent.o park.o \
-	pending.o preference.o port/bkd_client.o port/bkd_server.o \
+	pending.o preference.o proj.o \
+	port/bkd_client.o port/bkd_server.o \
 	port/check_gfile.o port/executable.o \
 	port/filecopy.o port/fileinfo.o port/findpid.o \
 	port/findprog.o port/flushsocket.o \
@@ -153,7 +154,7 @@ LTOMCRYPT = -Ltomcrypt -ltomcrypt
 RANLIB	= ranlib
 SRCS	= $(OBJ:.o=.c) $(MDBMOBJ:.o=.c) $(ZLIBOBJ:.o=.c) $(TOMCRYPTOBJ:.o=.c)
 HDRS	= $(SYS).h $(UWT_H) bkd.h lib_tcp.h logging.h mdbm/common.h \
-	  mdbm/mdbm.h mdbm/tune.h mmap.h purify.h range.h rcs.h \
+	  mdbm/mdbm.h mdbm/tune.h mmap.h proj.h purify.h range.h rcs.h \
 	  liblines.h resolve.h sccs.h system.h \
 	  tomcrypt/mpi-config.h tomcrypt/mpi.h tomcrypt/mycrypt_cfg.h \
 	  tomcrypt/mpi-types.h tomcrypt/mycrypt.h \

@@ -28,7 +28,6 @@ typedef struct {
 	u32     Aflg:1;			/* use with -p show	*/
 					/* all pending deltas	*/
 	u32     Cflg:1;     		/* want file<BK_FS>rev format	*/
-	u32     splitRoot:1;   		/* split root mode	*/
 	u32     dfile:1;   		/* use d.file to find 	*/
 					/* pending delta	*/
 	u32	fixdfile:1;		/* fix up  the dfile tag */
@@ -49,7 +48,6 @@ typedef struct {
 } fifo;
 
 private	jmp_buf	sfind_exit;
-private project *proj;
 private options	opts;
 private char	**ignore, **dont_ignore; 
 private u32	d_count, s_count, x_count; /* progress counter */
@@ -119,10 +117,8 @@ init(char *name, int flags, MDBM *sDB, MDBM *gDB)
 		if (mdbm_fetch_str(gDB, &p[2])) flags |= INIT_HASgFILE;
 		*p = 's'; /* because hasfile() stomps */
 	}
-	unless (opts.splitRoot) flags |= INIT_ONEROOT;
 	if (strneq(name, "./", 2)) name += 2;
-	s = sccs_init(name, flags|INIT_SAVEPROJ, proj);
-        if (s && !proj) proj = s->proj;
+	s = sccs_init(name, flags);
         return (s);
 }
 
@@ -551,17 +547,6 @@ print_summary()
 	}
 }
 
-
-
-/*
- * This function returns NULL if it cannot find project root
- */
-private char *
-find_root(char *dir, char *root)
-{
-	return (_relativeName(dir, 1, 0, 1, 0, 0, root));
-}
-
 private void
 walk(char *dir, int level)
 {
@@ -577,17 +562,18 @@ walk(char *dir, int level)
 	if (exists(buf)) return;
 
 	if (level == 0) {
+		project	*proj;
+		char	*root;
 		char tmp[MAXPATH];
 
 		/*
-		 * Find project root and put it in buf
+		 * Find project root
 		 */
-		if (find_root(dir, buf)) {
-			opts.splitRoot = hasRootFile(buf, tmp);
+		if ((proj = proj_init(dir)) && (root = proj_root(proj))) {
 			if (!opts.all) {
 				FILE	*ignoref; 
 
-				sprintf(tmp, "%s/BitKeeper/etc/ignore", buf);
+				sprintf(tmp, "%s/BitKeeper/etc/ignore", root);
 				unless (exists(tmp)) get(tmp, SILENT, "-");
 				if (ignoref = fopen(tmp, "rt")) {
 					ignore = read_globs(ignoref, 0);
@@ -599,9 +585,10 @@ walk(char *dir, int level)
 				    strdup("./BitKeeper/etc/gone"));
 			}           
 			unless (opts.fixdfile) {
-				sprintf(tmp, "%s/%s", buf, DFILE);
+				sprintf(tmp, "%s/%s", root, DFILE);
 				opts.dfile = exists(tmp);
 			}
+			proj_free(proj);
 		} else {
 			/*
 			 * Dir is not a BitKeeper repository,
@@ -609,7 +596,6 @@ walk(char *dir, int level)
 			 */
 			opts.all = 1;
 		}
-		assert(proj == 0);
 #if 0
 		/*
 		 * XXX TODO: should we reset the progress counter ?
@@ -619,11 +605,7 @@ walk(char *dir, int level)
 	}
 
 	concat_path(buf, dir, "SCCS");
-	/*
-	 * TODO: for better performance in split root mode,
-	 * we should be able to better optimized the sPath() code
-	 */
-	sdh = getdir(opts.splitRoot ? sPath(buf, 1) : buf);
+	sdh = getdir(buf);
 	unless (sdh) {
 		/*
 		 * TODO: we need to check for the caes where
@@ -655,7 +637,6 @@ walk(char *dir, int level)
 done:	if (level == 0) {
 		if (ignore) free_globs(ignore);  ignore = 0;
 		if (dont_ignore) free_globs(dont_ignore);  dont_ignore = 0;
-		if (proj) proj_free(proj); proj = 0;
 		if (opts.summarize) print_summary();
 
 		/*
@@ -793,13 +774,7 @@ error:				perror("output error");
 		if (fputs(gfile, opts.out) < 0) goto error;
 	} else {
 		sfile = name2sccs(gfile);
-		/*
-		 * TODO: for better performance in split root mode,
-		 * we should be able to better optimized the sPath() code
-		 * e.g. we could pass project struct into sPath()
-		 */
-		if (fputs(opts.splitRoot ?
-				sPath(sfile, 0) : sfile, opts.out) < 0) {
+		if (fputs(sfile, opts.out) < 0) {
 			goto error;
 		}
 		free(sfile);

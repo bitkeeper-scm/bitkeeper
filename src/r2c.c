@@ -33,11 +33,11 @@ r2c_main(int ac, char **av)
 		exit(1);
 	}
 	name = name2sccs(av[2]);
-	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) {
+	unless (s = sccs_init(name, INIT_NOCKSUM)) {
 		perror(name);
 		exit(1);
 	}
-	if (sccs_cd2root(s, 0)) {
+	if (proj_cd2root()) {
 		fprintf(stderr, "r2c: cannot find package root.\n");
 		exit(1);
 	}
@@ -62,7 +62,7 @@ r2c_main(int ac, char **av)
 		shortkey = 0;
 	}
 	strcpy(buf, CHANGESET);
-	unless (cset = sccs_init(buf, INIT_NOCKSUM, 0)) {
+	unless (cset = sccs_init(buf, INIT_NOCKSUM)) {
 		fprintf(stderr, "r2c: cannot init ChangeSet\n");
 		exit(1);
 	}
