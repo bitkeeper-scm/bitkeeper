@@ -72,8 +72,6 @@ send_main(int ac,  char **av)
 	char	patch[MAXPATH], out[MAXPATH];
 	FILE	*f;
 
-	platformInit();
-
 	while ((c = getopt(ac, av, "dfqr:w:")) != -1) {
 		switch (c) {
 		    case 'd':	dflag = "-d"; break;

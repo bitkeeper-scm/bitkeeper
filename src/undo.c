@@ -18,8 +18,6 @@ undo_main(int ac,  char **av)
 #define	BK_TMP  "BitKeeper/tmp"
 #define	BK_UNDO "BitKeeper/tmp/undo"
 
-	platformInit();
-
 	while ((c = getopt(ac, av, "a:fqsr:")) != -1) {
 		switch (c) {
 		    case 'a':	rev = getrev(optarg);

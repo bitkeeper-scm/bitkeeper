@@ -11,7 +11,6 @@ help_main(int ac,  char **av)
 	int	i = 0;
 	FILE	*f;
 
-	platformInit();
 	if (ac == 1) {
 		sprintf(buf, "bk gethelp help | %s", pager);
 		system(buf);

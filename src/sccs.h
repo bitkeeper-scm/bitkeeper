@@ -710,7 +710,6 @@ int	uniq_update(char *key, time_t t);
 int	uniq_root(char *key);
 int	uniq_close(void);
 void	cd2root();
-void	platformInit();
 void	mail(char *to, char *subject, char *file);
 void	logChangeSet(char *rev);
 int	gethelp(char *help_name, char *bkarg, FILE *f);

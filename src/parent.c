@@ -11,7 +11,6 @@ parent_main(int ac,  char **av)
 	FILE	*f;
 	int	c, i = 0, do_remove = 0, quiet = 0;
 
-	platformInit();
 	if (sccs_cd2root(0, 0) == -1) {
 		fprintf(stderr, "parent: can not find project root.\n");
 		exit(1);

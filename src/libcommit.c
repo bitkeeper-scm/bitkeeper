@@ -495,53 +495,6 @@ gethelp(char *help_name, char *bkarg, FILE *outf)
 	return (found);
 }
 
-#ifdef OLD
-void
-platformInit()
-{
-	// XXX TODO:  Need a new way to handle the @bitkeeper_bin@ installed
-	// time variable.
-	char	*paths[] = {
-		"/usr/libexec/bitkeeper/",
-		"/usr/lib/bitkeeper/",
-		"/usr/bitkeeper/",
-		"/opt/bitkeeper/",
-		"/usr/local/bitkeeper/",
-		"/usr/local/bin/bitkeeper/",
-		"/usr/bin/bitkeeper/",
-		0
-	};
-
-	char	buf[MAXPATH];
-	int	i = -1;
-
-	if (bin) return;
-#ifdef	WIN32
-	setmode(1, _O_BINARY);
-	setmode(2, _O_BINARY);
-#endif
-	if ((editor = getenv("EDITOR")) == NULL) editor = "vi";
-	if ((pager = getenv("PAGER")) == NULL) pager = "more";
-
-#define	TAG_FILE "bk"
-	if ((bin = getenv("BK_BIN")) != NULL) {
-		char	buf[MAXPATH];
-		sprintf(buf, "%s%s", bin, TAG_FILE);
-		if (exists(buf)) return;
-	}
-
-	while (paths[++i]) {
-		sprintf(buf, "%s%s", paths[i], TAG_FILE);
-		if (exists(buf)) {
-			bin =  strdup(paths[i]);
-			return;
-		}
-	}
-	bin = strdup("/usr/libexec/bitkeeper/");
-	return;
-}
-#endif
-
 int
 checkLog()
 {

@@ -172,7 +172,27 @@ main(int ac, char **av)
 	/*
 	 * XXX TODO: implement "__logCommand"
 	 */
-	platformInit(); 
+	platformInit(av); 
+
+	/*
+	 * Set up Env variables
+	 */
+	assert(bin);
+	p = getenv("PATH");
+	unless (p && strneq(bin, getenv("PATH"), strlen(bin) - 1)) {
+		char path[MAXLINE];
+		int last = strlen(bin) -1;
+
+		assert(bin[last] == '/');
+		bin[last] = 0; /* trim tailing slash */
+		sprintf(path, "PATH=%s:%s", bin, getenv("PATH"));
+		bin[last] = '/'; /* restore tailing slash */
+		putenv(strdup(path));
+
+	}
+	sprintf(cmd_path, "BK_BIN=%s", bin);
+	putenv(strdup(cmd_path));
+
 	av[0] = basenm(av[0]);
 	if (streq(av[0], BK)) {
 		if (av[1] == NULL) {
@@ -225,25 +245,6 @@ main(int ac, char **av)
 		}
 		av++; ac--;
 	}
-
-	/*
-	 * Set up Env variables
-	 */
-	assert(bin);
-	p = getenv("PATH");
-	unless (p && strneq(bin, getenv("PATH"), strlen(bin) - 1)) {
-		char path[MAXLINE];
-		int last = strlen(bin) -1;
-
-		assert(bin[last] == '/');
-		bin[last] = 0; /* trim tailing slash */
-		sprintf(path, "PATH=%s:%s", bin, getenv("PATH"));
-		bin[last] = '/'; /* restore tailing slash */
-		putenv(strdup(path));
-
-	}
-	sprintf(cmd_path, "BK_BIN=%s", bin);
-	putenv(strdup(cmd_path));
 
 	/*
 	 * look up the internal command 
@@ -453,10 +454,10 @@ next:		p = ++s;
 	exit(1);
 }
 
-void
-platformInit()
+private void
+platformInit(char **av)
 {
-	char	buf[MAXPATH], *p, *q;
+	char	buf[MAXPATH], buf1[MAXPATH], *p, *q;
 	char	link[MAXPATH];
 	int	i = -1, len;
 
@@ -469,19 +470,25 @@ platformInit()
 	if ((pager = getenv("PAGER")) == NULL) pager = "more";
 
 	if ((bin = getenv("BK_BIN")) != NULL) {
-		char	buf[MAXPATH];
 		sprintf(buf, "%sbk", bin);
 		if (exists(buf)) return;
 	}
 
-	if (q = find_prog("bk")) {
-		int len;
-		char link[MAXPATH];
+	if (IsFullPath(av[0]) && streq("bk", basenm(av[0]))) {
+		/* If user specified a absolute path, */
+		/* use that to compute BK_BIN 	      */
+		q = av[0];
+	} else {
+		/* compute BK_BIN from $PATH */
+		q = find_prog("bk");
+	}
+	if (q) {
 		if ((len = readlink(q, link, sizeof(link))) != -1) {
 			assert(len < sizeof(link));
 			sprintf(buf, "%s/", dirname(link));
 		}  else {
-			sprintf(buf, "%s/", dirname(q));
+			strcpy(buf1, q); /* because dirname stomp */
+			sprintf(buf, "%s/", dirname(buf1));
 		}
 		bin = strdup(buf);
 		return;

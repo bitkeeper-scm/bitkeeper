@@ -20,8 +20,6 @@ commit_main(int ac, char **av)
 	int	rc, c, doit = 0;
 	char	buf[MAXLINE], s_cset[MAXPATH] = CHANGESET;
 
-	platformInit();
-
 	sprintf(commit_file, "%s/bk_commit%d", TMP_PATH, getpid());
 	while ((c = getopt(ac, av, "dfFLRqsS:y:Y:")) != -1) {
 		switch (c) {

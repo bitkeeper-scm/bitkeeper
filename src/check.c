@@ -47,6 +47,7 @@ check_main(int ac, char **av)
 	char	buf[MAXPATH];
 	char	*t;
 
+
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", check_help);

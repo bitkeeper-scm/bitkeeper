@@ -20,8 +20,6 @@ export_main(int ac,  char **av)
 	delta	*d;
 	FILE	*f;
 
-	platformInit();
-
 	while ((c = getopt(ac, av, "Dktwvi:x:r:")) != -1) {
 		switch (c) {
 		    case 'v':	vflag = 1; break;

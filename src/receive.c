@@ -9,8 +9,6 @@ receive_main(int ac,  char **av)
 	char	buf[MAXLINE], opts[MAXLINE] = "";
 	char	*path;
 
-	platformInit();  
-
 	while ((c = getopt(ac, av, "acFiStv")) != -1) {
 		switch (c) { 
 		    case 'a': strcat(opts, " -a"); break;

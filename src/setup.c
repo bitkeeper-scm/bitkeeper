@@ -10,8 +10,6 @@ setup_main(int ac, char **av)
 	char	buf[1024], my_editor[1024], setup_files[MAXPATH];
 	FILE	*f;
 
-	platformInit();
-
 	while ((c = getopt(ac, av, "c:fn:")) != -1) {
 		switch (c) {
 		    case 'c':	localName2bkName(optarg, optarg);

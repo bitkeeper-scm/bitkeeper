@@ -12,8 +12,6 @@ fix_main(int ac,  char **av)
 	sccs	*s;
 	delta	*d;
 
-	platformInit();
-
 	while ((c = getopt(ac, av, "qv")) != -1) {
 		switch (c) {
 		    case 'q': break;

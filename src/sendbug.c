@@ -9,7 +9,6 @@ sendbug_main(int ac,  char **av)
 	char	bug[MAXPATH];
 	FILE	*f;
 
-	platformInit();
 	sprintf(bug, "%s/bk_bug%d", TMP_PATH, getpid());
 	f = fopen(bug, "wb");
 	gethelp("bugtemplate", 0, f);

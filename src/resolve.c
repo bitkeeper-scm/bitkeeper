@@ -57,8 +57,6 @@ resolve_main(int ac, char **av)
 	static	opts opts;	/* so it is zero */
 	extern	char *bk_dir;
 
-	platformInit();
-
 	opts.pass1 = opts.pass2 = opts.pass3 = opts.pass4 = 1;
 
 	while ((c = getopt(ac, av, "l|y|m;aAcdFqrtv1234")) != -1) {

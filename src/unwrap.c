@@ -8,7 +8,6 @@ unwrap_main(int ac,  char **av)
 {
 	char	buf[MAXLINE];
 
-	platformInit();
 	while (getline(0, buf, sizeof(buf)) > 0) {
 		if (strneq(buf, "# Patch vers:", 13)) {
 			fprintf(stdout, "%s\n", buf);
