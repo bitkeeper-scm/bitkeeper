@@ -7707,6 +7707,8 @@ delta_table(sccs *s, FILE *out, int willfix)
 	int	gonechkd = 0;
 	int	strip_tags = CSET(s) && getenv("_BK_STRIPTAGS");
 	int	version = SCCS_VERSION;
+	symbol	*sym;
+	int	syms_sorted;
 
 	if (getenv("_BK_SCCS_VERSION")) {
 		version = atoi(getenv("_BK_SCCS_VERSION"));
@@ -7745,6 +7747,26 @@ delta_table(sccs *s, FILE *out, int willfix)
 		}
 	}
 
+	/*
+	 * determine if the s->symbols is in order.
+	 * If so we can use an optimization to only walk the list once.
+	 * XXX In the future s->symbols should be a liblines array
+	 *     and changed to always be in order.
+	 */
+	syms_sorted = 1;
+	for (sym = s->symbols; sym; sym = sym->next) {
+		unless (sym->metad) { /* csetprune */
+			syms_sorted = 0;
+			break;
+		}
+		unless (sym->next) break;
+		if (!sym->next->metad ||
+		    (sym->metad->serial < sym->next->metad->serial)) {
+			syms_sorted = 0;
+			break;
+		}
+	}
+	sym = s->symbols;
 	for (d = s->table; d; d = d->next) {
 		if ((d->next == NULL) && (s->state & S_FAKE_1_0)) {
 			/* If the 1.0 delta is a fake, skip it */
@@ -7938,9 +7960,12 @@ delta_table(sccs *s, FILE *out, int willfix)
 			fputmeta(s, buf, out);
 		}
 		if (d->flags & D_SYMBOLS) {
-			symbol	*sym;
-
-			for (sym = s->symbols; sym; sym = sym->next) {
+			unless (syms_sorted) sym = s->symbols;
+			for (; sym; sym = sym->next) {
+				if (syms_sorted &&
+				    (sym->metad->serial < d->serial)) {
+					break;
+				}
 				unless (sym->metad == d) continue;
 				if (!strip_tags || 
 				    streq(KEY_FORMAT2, sym->symname)) {
