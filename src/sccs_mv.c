@@ -6,6 +6,7 @@ WHATSTR("%Z%%K%");
 private	char	*getRelativeName(char *, project *proj);
 private	void	rmDir(char *);
 private	int	update_idcache(sccs *s, char *old, char *new);
+private char	**xfileList(char *sfile);
 
 private char *
 mkXfile(char *sfile, char type)
@@ -79,14 +80,16 @@ int
 sccs_mv(char *name,
 	char *dest, int isDir, int isDelete, int isUnDelete, int force)
 {
-	char 	*p, *q, *t, *destfile, *oldpath, *newpath;
+	char 	*q, *t, *destfile, *oldpath, *newpath;
 	char	*gfile, *sfile;
 	char	buf[1024], commentBuf[MAXPATH*2];
 	char	*ogfile, *osfile;
+	char	**xlist = NULL;
 	sccs	*s;
 	delta	*d;
 	int	error = 0, was_edited = 0;
 	int	flags = SILENT|DELTA_FORCE;
+	int	i;
 	MMAP	*nulldiff;
 	time_t	gtime;
 
@@ -148,17 +151,6 @@ sccs_mv(char *name,
 
 	error = mv(s->sfile, sfile);
 
-	/*
-	 * move the d.file
-	 */
-	p = mkXfile(s->sfile, 'd');
-	if (!error && exists(p)) {
-		q = mkXfile(sfile, 'd');
-		error = mv(p, q);
-		free(q);
-	}
-	free(p);
-
 	ogfile = strdup(s->gfile);
 	osfile = strdup(s->sfile);
 //fprintf(stderr, "mv(%s, %s) = %d\n", s->sfile, sfile, error);
@@ -217,6 +209,46 @@ sccs_mv(char *name,
 	s->gtime = gtime;
 	fix_stime(s);
 	
+	/*
+	 * Clean up or move the helper file
+	 * a) c.file[@rev] 
+	 * b) d.file
+	 */
+	xlist = xfileList(osfile);
+	EACH(xlist) {
+		char	nbuf[MAXPATH];
+		char	*obase, *ndir, *nbase, *n_path, *rev;
+		char	prefix;
+
+		obase = basenm(xlist[i]);
+		prefix =obase[0];
+		/* Warn if not a c.file or a d.file */
+		unless (strchr("cd", prefix)) {
+			fprintf(stderr,
+			    "Warning: unexpected helper file: %s, skipped\n",
+			    xlist[i]);
+			continue;
+		}
+		if (isDelete && (prefix != 'd')) {
+			unlink(xlist[i]);
+		} else {
+			strcpy(nbuf, sfile);
+			nbase = basenm(sfile);
+			ndir = dirname(nbuf);
+			/*
+			 * subsitude old dir with new dir
+			 * subsitude old base name with new base name
+			 * if c.file@rev, glue on the @rev part
+			 */
+			rev = NULL;
+			if (prefix == 'c') rev = strrchr(obase, '@');
+			n_path = aprintf("%s/%c.%s%s",
+				ndir, prefix, &nbase[2], rev ? rev : "");
+			mv(xlist[i], n_path);
+			free(n_path);
+		}
+	}
+	freeLines(xlist);
 	unless (isUnDelete) sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);
@@ -364,4 +396,40 @@ rmDir(char *dir)
 	if (streq(".", dir) || samepath(".", dir)) return;
 	debug((stderr, "removing %s\n", dir));
 	rmdir(dir);
+}
+
+/*
+ * Get a list of c.file[@rev] files
+ */
+private char **
+xfileList(char *sfile)
+{
+	char	buf[MAXPATH];
+	char 	*dir, *p, *xname;
+	char	**xlist = NULL;
+	DIR	*dh;
+	struct  dirent *e;
+
+	strcpy(buf, sfile);
+	dir =  dirname(buf);
+	p = strrchr(sfile, '/');
+	assert(p);
+	assert(p[1] == 's');
+	xname = &p[2];
+
+	dh = opendir(dir);
+	unless (dh) return (0);
+	while ((e = readdir(dh)) != NULL) {
+		char *q;
+
+		q = strrchr(e->d_name, '@');
+		if (q) *q = 0;
+		if (streq(xname, &(e->d_name[1]))) {
+			if (q) *q = '@';
+			xlist = addLine(xlist,
+					aprintf("%s/%s", dir, e->d_name));
+		}
+	}
+	closedir(dh);
+	return (xlist);
 }
