@@ -546,7 +546,7 @@ output_1_line (text, limit, flag_format, line_flag)
      const char *text, *limit, *flag_format, *line_flag;
 {
 
-  if (ignore_to_str && text < limit)
+  if (ignore_to_str[0] && text < limit)
     {
       const char *start = text;
       int ign_len = strlen(&ignore_to_str[1]);

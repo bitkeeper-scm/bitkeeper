@@ -806,7 +806,8 @@ diffwalk_new(file_t *left, file_t *right)
 	char	*cmd;
 
 	new(dw);
-	cmd = aprintf("bk mydiff %s %s %s", (anno ? "-a\\|" : ""),
+	cmd = aprintf("bk diff %s %s %s",
+	    (anno ? "--ignore-to-str='\\| '" : ""),
 	    left->tmpfile, right->tmpfile);
 	dw->diff = popen(cmd, "r");
 	free(cmd);
