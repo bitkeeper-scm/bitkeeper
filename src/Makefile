@@ -50,6 +50,7 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
 	  utils.o bkd_cmdtab.o lib_tcp.o bkd.o
 BINOBJ	= $(BINS:=.o)
+BKDSRCS	= $(BKDOBJ:.o=.c)
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
 	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c)
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
@@ -586,6 +587,8 @@ purify.o:	purify.c $(commondeps)
 rcs.o:		rcs.c $(sccsdeps)
 sccs_mv.o:	sccs_mv.c $(sccsdeps)
 zgets.o:	zgets.c zgets.h zlib/zlib.h zlib/zconf.h
+
+$(BKDSRCS):	bkd.h lib_tcp.h
 
 # libsccs, port/ directory
 port/disksp.o:		port/disksp.c $(commondeps)
