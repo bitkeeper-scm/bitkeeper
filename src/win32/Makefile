@@ -33,7 +33,8 @@ msys: ./msysver.sh FORCE
 	MSYSVER=`./msysver.sh`; \
 	if [ $$? -eq 0 -a -f $$MSYSVER ]; \
 	then	tar -C$(MSYSBIN) -xzf $$MSYSVER; \
-	else	test -d msys || bk clone bk://data.bitmover.com/msys msys; \
+	else	test -d msys || bk clone -r`tail -1 MSYSKEY` \
+			bk://data.bitmover.com/msys msys; \
 		bk get msys/$(MSYS); \
 		tar -C$(MSYSBIN) -xzf msys/$(MSYS); \
 		MSYSVER=`./msysver.sh` && test -f $$MSYSVER || { \
