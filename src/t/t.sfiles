@@ -9,7 +9,7 @@ set -e
 trap 'echo failed' 0
 cset $Q -i .
 echo "logging: /dev/null" > BitKeeper/etc/config
-echo "logging_ok: t" >> BitKeeper/etc/config
+echo "logging_ok: no" >> BitKeeper/etc/config
 ci -i $Q BitKeeper/etc/config
 sfiles -C | cset $Q -yInitial
 mkdir bar

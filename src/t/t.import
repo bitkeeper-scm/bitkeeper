@@ -6,7 +6,7 @@
 echo $N Test import plain file ......................................$NL
 HERE=`${CWD}`
 echo "logging: /dev/null" > $HERE/c
-echo "logging_ok: t" >>$HERE/c
+echo "logging_ok: no" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
 mkdir -p import_dir/src
 ${ECHO} foo > import_dir/src/foo.c

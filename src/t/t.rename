@@ -11,7 +11,7 @@ HERE=`pwd`
 mkdir gca; cd gca
 cset -qi .
 echo "logging: lm@openlogging.org" > BitKeeper/etc/config
-echo "logging_ok: lm@openlogging.org" >> BitKeeper/etc/config
+echo "logging_ok: no" >> BitKeeper/etc/config
 ci -i $Q BitKeeper/etc/config
 mkdir src
 cd src
