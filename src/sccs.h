@@ -340,7 +340,8 @@
 #define	BK_CONFIG_THRESHOLD 100	 /* single user tree config log threshold */
 #define	BK_SINGLE_THRESHOLD 1000 /* single user tree close logging threshold */
 
-#define BKOPT_WEB	0x0001
+#define BKOPT_WEB	0x0001	/* Enable bk web */
+#define BKOPT_MONTHLY	0x0002	/* This is a monthly license */ 
 #define BKOPT_ALL	0xffff
 
 #define	CNTLA_ESCAPE	'\001'	/* escape character for ^A is also a ^A */
