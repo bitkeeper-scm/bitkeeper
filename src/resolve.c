@@ -2492,12 +2492,12 @@ resolve_cleanup(opts *opts, int what)
 	/*
 	 * If we are done, save the csets file.
 	 */
-	sprintf(buf, "%s/%s", ROOT2RESYNC, "BitKeeper/etc/csets");
+	sprintf(buf, "%s/%s", ROOT2RESYNC, CSETS_IN);
 	if ((what & CLEAN_OK) && exists(buf)) {
-		rename(buf, "BitKeeper/etc/csets");
+		rename(buf, CSETS_IN);
 		if (opts->log) {
 			fprintf(stdlog,
-			    "rename(%s, BitKeeper/etc/csets)\n", buf);
+			    "rename(%s, %s)\n", buf, CSETS_IN);
 		}
 	}
 

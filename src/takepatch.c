@@ -782,7 +782,6 @@ applyPatch(char *localPath, int flags, sccs *perfile, project *proj)
 	char	lodkey[MAXPATH];
 	int	lodbranch = 1;	/* true if LOD is branch; false if revision */
 	int	confThisFile;
-#define	CSETS	"RESYNC/BitKeeper/etc/csets"
 	FILE	*csets = 0;
 
 	unless (p) return (0);
@@ -928,7 +927,11 @@ apply:
 
 					assert(d);
 					unless (csets) {
-						csets = fopen(CSETS, "w");
+						char csets_in[MAXPATH];
+
+						sprintf(csets_in, "%s/%s",
+							ROOT2RESYNC, CSETS_IN);
+						csets = fopen(csets_in, "w");
 						assert(csets);
 					}
 					unless (first) fprintf(csets, ",");

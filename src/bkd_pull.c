@@ -12,7 +12,6 @@ int
 cmd_pull(int ac, char **av)
 {
 	char	buf[4096];
-	char	tmpfile[MAXPATH];
 	char	csetfile[200] = CHANGESET;
 	FILE	*f = 0;
 	MDBM	*them = 0, *me = 0;
@@ -76,8 +75,8 @@ cmd_pull(int ac, char **av)
 	if (doit) {
 		if (verbose || list) out(
 "OK--------------------- Sending the following csets ---------------------\n");
-		gettemp(tmpfile, "push");
-		f = fopen(tmpfile, "w");
+		f = fopen(CSETS_OUT, "w");
+		assert(f);
 	} else {
 		putenv("BK_OUTGOING=DRYRUN");
 		if (verbose || list) out(
@@ -124,9 +123,9 @@ cmd_pull(int ac, char **av)
 	fclose(f); f = 0;
 
 	if (gzip) {
-		error = compressed(gzip, tmpfile);
+		error = compressed(gzip, CSETS_OUT);
 	} else {
-		error = uncompressed(tmpfile);
+		error = uncompressed(CSETS_OUT);
 	}
 
 out:
@@ -137,7 +136,7 @@ out:
 }
 
 private int
-uncompressed(char *tmpfile)
+uncompressed(char *csets_out)
 {
 	int	fd0, fd;
 	int	status;
@@ -148,7 +147,7 @@ uncompressed(char *tmpfile)
 	 */
 
 	fd0 = dup(0); close(0);
-	fd = open(tmpfile, 0,  0);
+	fd = open(csets_out, 0,  0);
 	assert(fd == 0);
 	pid = spawnvp_ex(_P_NOWAIT, cset[0], cset);
 	if (pid == -1) {
@@ -158,7 +157,6 @@ uncompressed(char *tmpfile)
 	}
 	close(0); dup2(fd0, 0); close(fd0);
 	waitpid(pid,  &status, 0);
-	unlink(tmpfile);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));
 	}
@@ -167,7 +165,7 @@ uncompressed(char *tmpfile)
 
 //XXX this code path have no regression test
 private int
-compressed(int gzip, char *tmpfile)
+compressed(int gzip, char *csets_out)
 {
 	pid_t	pid;
 	int	fd0, fd, n;
@@ -178,7 +176,7 @@ compressed(int gzip, char *tmpfile)
 	signal(SIGCHLD, SIG_DFL);
 #endif
 	fd0 = dup(0); close(0);
-	fd = open(tmpfile, 0,  0);
+	fd = open(csets_out, 0,  0);
 	pid = spawnvp_rPipe(cset, &rfd);
 	if (pid == -1) {
 		repository_rdunlock(0);
@@ -191,7 +189,6 @@ compressed(int gzip, char *tmpfile)
 	}
 	gzip_done();
 	waitpid(pid, &status, 0);
-	unlink(tmpfile);
 	if (WIFEXITED(status)) {
 		return (WEXITSTATUS(status));
 	}
