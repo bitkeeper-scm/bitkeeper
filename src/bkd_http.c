@@ -428,6 +428,7 @@ http_hist(char *pathrev)
 	    "$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)"
 	    "</td></tr>}<tr><td>&nbsp;&nbsp;</td></tr>\n";
 
+	httphdr(".html");
 	header("hist");
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
@@ -582,6 +583,7 @@ http_anno(char *pathrev)
 	char	*s, *d;
 	MDBM	*m;
 
+	httphdr(".html");
 	header("anno");
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
@@ -671,6 +673,7 @@ http_diffs(char *pathrev)
 	int	n;
 	char	*s;
 
+	httphdr(".html");
 	header("diffs");
 	out("<pre><font size=2>\n");
 	unless (s = strrchr(pathrev, '@')) exit(1);
@@ -700,6 +703,7 @@ http_patch(char *rev)
 	char	html[18<<10];
 	int	n;
 
+	httphdr(".html");
 	header("patch");
 	out("<pre><font size=2>\n");
 	sprintf(buf, "bk export -T -h -x -tpatch -r%s", rev);

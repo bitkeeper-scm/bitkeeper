@@ -13932,11 +13932,17 @@ sccs_ino(sccs *s)
 }
 
 int
-sccs_reCache(void)
+sccs_reCache(int quiet)
 {
-	char	*av[3];
+	char	*av[4];
 
-	av[0] = "bk";  av[1] = "idcache"; av[2] = 0;
+	av[0] = "bk";  av[1] = "idcache"; 
+	if (quiet) {
+		av[2] = "-q";
+	} else {
+		av[2] = 0;
+	}
+	av[3] = 0;
 	return spawnvp_ex(_P_WAIT, av[0], av);
 }
 
@@ -13958,19 +13964,23 @@ loadDB(char *file, int (*want)(char *), int style)
 	MDBM	*DB = 0;
 	FILE	*f = 0;
 	char	*v;
-	int	first = 1;
+	int	idcache = 0, first = 1, quiet = 1;
 	int	flags;
 	char	buf[MAXLINE];
 	char	*av[5];
+	u32	sum = 0;
+
 
 	// XXX awc->lm: we should check the z lock here
 	// someone could be updating the file...
+	idcache = strstr(file, IDCACHE) ? 1 : 0;
 again:	unless (f = fopen(file, "rt")) {
-		if (first && streq(file, IDCACHE)) {
+		if (first && idcache) {
 recache:		first = 0;
+			sum = 0;
 			if (f) fclose(f);
 			if (DB) mdbm_close(DB);
-			if (sccs_reCache()) goto out;
+			if (sccs_reCache(quiet)) goto out;
 			goto again;
 		}
 		if (first && streq(file, GONE) && exists(SGONE)) {
@@ -13996,10 +14006,34 @@ out:		if (f) fclose(f);
 		exit(1);
 	}
 	while (fnext(buf, f)) {
-		if (buf[0] == '#') continue;
+		if (buf[0] == '#') {
+			if (strneq(buf, "#$sum$ ", 7)) {
+				if (atoi(&buf[7]) == sum) {
+					idcache = 2;	/* OK */
+					break;		/* done */
+				}
+				if (first) {
+					fprintf(stderr,
+					    "Bad idcache chksum %u:%u, ",
+					    atoi(&buf[7]), sum);
+					quiet = 0;
+					goto recache;
+				}
+			}
+			continue;
+		}
 		if (want && !want(buf)) continue;
+		if (idcache) {
+			u8	*u;
+
+			for (u = buf; *u; sum += *u++);
+		}
 		if (chop(buf) != '\n') {
-			if (first && streq(file, IDCACHE)) goto recache;
+			if (first && idcache) {
+				fprintf(stderr, "Detected bad idcache, ");
+				quiet = 0;
+				goto recache;
+			}
 			fprintf(stderr, "bad path: <%s> in %s\n", buf, file);
 			mdbm_close(DB);
 			return (0);
@@ -14014,7 +14048,12 @@ out:		if (f) fclose(f);
 			}
 			if (!v && (style & DB_NOBLANKS)) continue;
 			unless (v) {
-				if (first && streq(file, IDCACHE)) goto recache;
+				if (first && idcache) {
+					fprintf(stderr,
+					    "Detected bad idcache, ");
+					quiet = 0;
+					goto recache;
+				}
 				fprintf(stderr, "Corrupted DB %s\n", file);
 				mdbm_close(DB);
 				return (0);
@@ -14037,6 +14076,11 @@ out:		if (f) fclose(f);
 			fprintf(stderr, "loadDB(%s) failed\n", file);
 			goto out;
 		}
+	}
+	if (idcache && (idcache != 2)) {
+		fprintf(stderr, "No checksum trailer in idcache, ");
+		quiet = 0;
+		goto recache;
 	}
 	fclose(f);
 	return (DB);

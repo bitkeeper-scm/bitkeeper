@@ -322,6 +322,7 @@ cset_setup(int flags)
 {
 	sccs	*cset;
 	delta	*d = 0;
+	int	fd;
 	char	**syms = 0;
 
 	cset = sccs_init(csetFile, flags & SILENT, 0);
@@ -341,7 +342,9 @@ intr:		sccs_whynot("cset", cset);
 		freeLines(syms);
 		return (1);
 	}
-	close(creat(IDCACHE, GROUP_MODE));
+	fd = creat(IDCACHE, GROUP_MODE);
+	write(fd, "#$sum$ 0\n", 9);
+	close(fd);
 	sccs_free(cset);
 	comments_done();
 	host_done();
@@ -514,10 +517,10 @@ retry:	sc = sccs_keyinit(lastkey, INIT_NOCKSUM, 0, idDB);
 		/* cache miss, rebuild cache */
 		unless (doneFullRebuild) {
 			mdbm_close(idDB);
-			if (cs->verbose) fputs("Rebuilding caches...\n", stderr);
-			if (sccs_reCache()) {
+			if (sccs_reCache(!cs->verbose)) {
 				fprintf(stderr,
 				    "cset: cannot build %s\n", IDCACHE);
+				// XXX - exit or not?
 			}
 			doneFullRebuild = 1;
 			unless (idDB =

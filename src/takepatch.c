@@ -1708,7 +1708,7 @@ rebuild_id(char *id)
 "takepatch: miss in idcache while looking for\n\t     \"%s\",\n\
 \t     rebuilding (this can take a while)...", id);
 	}
-	if (sccs_reCache()) return (1);
+	if (sccs_reCache(1)) return (1);
 	if (idDB) mdbm_close(idDB);
 	unless (idDB = loadDB(IDCACHE, 0, DB_KEYFORMAT|DB_NODUPS)) {
 		perror("SCCS/x.id_cache");

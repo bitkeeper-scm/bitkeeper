@@ -778,7 +778,7 @@ char	*sccs_nivPath(sccs *s);
 char	*sccs_setpathname(sccs *s);
 char	*sPath(char *name, int isDir);
 delta	*sccs_next(sccs *s, delta *d);
-int	sccs_reCache(void);
+int	sccs_reCache(int quiet);
 int	sccs_meta(sccs *s, delta *parent, MMAP *initFile);
 int	sccs_resolveFiles(sccs *s);
 sccs	*sccs_keyinit(char *key, u32 flags, project *p, MDBM *idDB);

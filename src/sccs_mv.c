@@ -204,6 +204,14 @@ out:	if (s) sccs_free(s);
 	return (error);
 }
 
+private	u32	id_sum;
+
+private void
+idsum(u8 *s)
+{
+	while (*s) id_sum += *s++;
+}
+
 /*
  * Update the idcache for this file.
  */
@@ -264,10 +272,15 @@ again:
 # and it will be rebuilt as needed.\n\
 # The format of the file is <ID> <PATHNAME>\n\
 # The file is used for performance during makepatch/takepatch commands.\n");
+	id_sum = 0;
 	for (kv = mdbm_first(idDB); kv.key.dsize != 0; kv = mdbm_next(idDB)) {
 		fprintf(f, "%s %s\n", kv.key.dptr, kv.val.dptr);
+		idsum(kv.key.dptr);
+		idsum(kv.val.dptr);
+		idsum(" \n");
 	}
 	mdbm_close(idDB);
+	fprintf(f, "#$sum$ %u\n", id_sum);
 	fclose(f);
 	sprintf(path, "%s/%s", p->root, IDCACHE_LOCK);
 	if (sccs_lockfile(path, 16)) {

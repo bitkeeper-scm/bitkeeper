@@ -153,7 +153,7 @@ _mvdir() {
 	cd $2
 	bk sfiles -u | bk edit -q -
 	bk sfiles | bk delta -q -ymvdir -
-	bk idcache
+	bk idcache -q
 }
 
 _rmdir() {

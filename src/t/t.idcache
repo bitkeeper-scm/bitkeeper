@@ -46,4 +46,71 @@ then	echo commit failed
 fi
 bk sccsrm bar.c
 bk commit $S -a -y"rm"
+bk -r check -a || exit 1
 echo OK
+
+echo $N corrupt the idcache, should rebuild .........................$NL
+bk -R ed BitKeeper/etc/SCCS/x.id_cache <<EOF >/dev/null 2>&1
+1
+i
+hi mom
+.
+w
+q
+EOF
+bk -r check -a 2>OUT || exit 1
+grep -q 'Rebuilding idcache' OUT || {
+	echo Bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+
+bk sane
+echo $N No write permission on idcache ..............................$NL
+bk -R ed BitKeeper/etc/SCCS/x.id_cache <<EOF >/dev/null 2>&1
+1
+i
+hi mom
+.
+w
+q
+EOF
+chmod -w `bk root`/BitKeeper/etc/SCCS/x.id_cache
+bk -r check -a 2>OUT || exit 1
+grep -q 'Rebuilding idcache' OUT || {
+	echo Bad error message
+	cat OUT
+	exit 1
+}
+grep 'hi mom' `bk root`/BitKeeper/etc/SCCS/x.id_cache && {
+	echo failed to rewrite cache
+	cat `bk root`/BitKeeper/etc/SCCS/x.id_cache
+	exit 1
+}
+echo OK
+
+echo $N No write permission on BitKeeper/etc/SCCS ...................$NL
+bk -R ed BitKeeper/etc/SCCS/x.id_cache <<EOF >/dev/null 2>&1
+1
+i
+hi mom
+.
+w
+q
+EOF
+chmod -w `bk root`/BitKeeper/etc/SCCS
+bk -r check -a 2>OUT && {
+	chmod +w `bk root`/BitKeeper/etc/SCCS
+	echo failed to error about write permission
+	cat OUT
+	exit 1
+}
+chmod +w `bk root`/BitKeeper/etc/SCCS
+grep -q 'no write permission' OUT || {
+	echo Bad error message
+	cat OUT
+	exit 1
+}
+echo OK
+

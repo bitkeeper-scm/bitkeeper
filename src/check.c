@@ -32,6 +32,7 @@ private	project	*proj;
 private	sccs	*cset;	/* the initialized cset file */
 private int	flags = SILENT|INIT_SAVEPROJ|INIT_NOCKSUM;
 private	FILE	*idcache;
+private	u32	id_sum;
 private char	id_tmp[100]; /* BitKeeper/tmp/bkXXXXXX */
 private	int	poly;
 private	int	polyList;
@@ -107,6 +108,7 @@ check_main(int ac, char **av)
 		fprintf(stderr, "check: cannot find package root.\n");
 		return (1);
 	}
+	if (sane_main(0, 0)) return (1);
 	unless (cset = sccs_init(s_cset, flags, 0)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
@@ -202,6 +204,7 @@ To fix all bad writable file, use the following command:\n\
 	listMarks(marks);
 	sfileDone();
 	if (all) {
+		fprintf(idcache, "#$sum$ %u\n", id_sum);
 		fclose(idcache);
 		if (sccs_lockfile(IDCACHE_LOCK, 16)) {
 			fprintf(stderr, "Not updating cache due to locking.\n");
@@ -383,6 +386,7 @@ init_idcache()
 		perror(id_tmp);
 		exit(1);
 	}
+	id_sum = 0;
 }
 
 /*
@@ -646,6 +650,12 @@ markCset(sccs *s, delta *d)
 	} while (d && !(d->flags & D_CSET));
 }
 
+private void
+idsum(u8 *s)
+{
+	while (*s) id_sum += *s++;
+}
+
 /*
 	1) for each key in the changeset file, we need to make sure the
 	   key is in the source file and is marked.
@@ -728,10 +738,16 @@ check(sccs *s, MDBM *db, MDBM *marks)
 			sccs_sdelta(s, ino, buf);
 			if (s->grafted || !streq(ino->pathname, s->gfile)) {
 				fprintf(idcache, "%s %s\n", buf, s->gfile);
+				idsum(buf);
+				idsum(s->gfile);
+				idsum(" \n");
 				if (mixed && (t = sccs_iskeylong(buf))) {
 					*t = 0;
 					 fprintf(idcache,
 					    "%s %s\n", buf, s->gfile);
+					idsum(buf);
+					idsum(s->gfile);
+					idsum(" \n");
 					*t = '|';
 				} 
 			}

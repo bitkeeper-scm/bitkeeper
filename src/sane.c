@@ -21,14 +21,14 @@ sane_main(int ac, char **av)
 	if (chk_user()) errors++;
 	if (sccs_cd2root(0, 0) == 0) {
 		if (chk_permissions()) errors++;
-		if (chk_idcache()) errors++;
+		else if (chk_idcache()) errors++;
 	} else {
 		fprintf(stderr, "sane: not in a BitKeeper repository\n");
 	}
 	//chk_tcl();
 	//chk_ssh();
 	//chk_http();
-	exit (errors);
+	return (errors);
 }
 
 /* insist on a valid host */
@@ -66,7 +66,7 @@ write_chk(char *path, int must)
 		return (0);
 	}
 	if (access(path, W_OK) != 0) {
-		fprintf(stderr, "sane: unable to write %s\n", path);
+		fprintf(stderr, "sane: no write permission on %s\n", path);
 		return (1);
 	}
 	return (0);
@@ -77,6 +77,7 @@ chk_permissions()
 {
 	return (write_chk("BitKeeper", 1) |
 	    write_chk("BitKeeper/etc", 1) |
+	    write_chk("BitKeeper/etc/SCCS", 1) |
 	    write_chk("BitKeeper/tmp", 1) |
 	    write_chk("BitKeeper/log", 1) |
 	    write_chk("BitKeeper/log/cmd_log", 0) |
@@ -95,9 +96,7 @@ chk_idcache()
 		return (1);
 	}
 	if (sccs_lockfile(IDCACHE_LOCK, 6)) {
-		fprintf(stderr, "sane: can't lock id cache");
-		open(IDCACHE_LOCK, O_CREAT|O_EXCL, GROUP_MODE);
-		perror("");
+		fprintf(stderr, "sane: can't lock id cache\n");
 		return (1);
 	}
 	unlink(IDCACHE_LOCK);

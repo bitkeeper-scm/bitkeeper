@@ -38,11 +38,16 @@ usage: sfiles [-aAcCdDglkpPRrux] [directories]\n\n\
 /*
  * XXX - what should be done here is all the flags should be a bitmask
  * and then we can easily check for the combinations we accept.
+ *
+ * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ * Not reentrant.  Do not call this and then expect the flags to be zero.
+ * XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  */
 private	int	aFlg, cFlg, Cflg, dFlg, gFlg, lFlg, pFlg, Pflg, rFlg, vFlg;
 private	int	Dflg, Aflg, Rflg, kFlg, xFlg, uFlg;
 private	FILE	*id_cache;
 private	char	id_tmp[100];	/* BitKeeper/tmp/idXXXXXX */
+private	u32	id_sum;
 private	void	keys(char *file);
 private	MDBM	*idDB;		/* used to detect duplicate keys */
 private	int	dups;		/* duplicate key count */
@@ -386,12 +391,18 @@ keys(char *file)
 int
 idcache_main(int ac, char **av)
 {
-	fprintf(stderr, "Rebuilding idcache\n");
+	unless ((ac == 2) && streq(av[1], "-q")) {
+		fprintf(stderr, "Rebuilding idcache\n");
+	}
 
 	/* perror is in sccs_root, don't do it twice */
 	unless (sccs_cd2root(0, 0) == 0) {
 		return (1);
 	}
+
+	aFlg = cFlg = Cflg = dFlg = gFlg = lFlg = pFlg = Pflg = vFlg = 0;
+	Dflg = Aflg = Rflg = kFlg = xFlg = uFlg = 0;
+	rFlg = 1;
 	rebuild();
 	return (dups ? 1 : 0);
 }
@@ -439,10 +450,12 @@ rebuild()
 # and it will be rebuilt as needed.  \n\
 # The format of the file is <ID> <PATHNAME>\n\
 # The file is used for performance during makepatch/takepatch commands.\n");
+	id_sum = 0;
 	idDB = mdbm_open(NULL, 0, 0, GOOD_PSIZE);
 	assert(idDB);
 c:	lftw(".", caches);
 	if (id_cache) {
+		fprintf(id_cache, "#$sum$ %u\n", id_sum);
 		fclose(id_cache);
 		if (sccs_lockfile(IDCACHE_LOCK, 16)) {
 			fprintf(stderr, "Not updating cache due to locking.\n");
@@ -493,6 +506,12 @@ pr(sccs *sc, delta *d)
 	    gFlg ? sc->gfile : sc->sfile, BK_FS, d->parent->rev, d->rev);
 }
 
+private void
+idsum(u8 *s)
+{
+	while (*s) id_sum += *s++;
+}
+
 private	void
 caches(const char *filename, int mode)
 {
@@ -525,12 +544,18 @@ caches(const char *filename, int mode)
 			if (sc->grafted || !streq(ino->pathname, sc->gfile)) {
 				if (vFlg) printf("%s %s\n", buf, sc->gfile);
 				fprintf(id_cache, "%s %s\n", buf, sc->gfile);
+				idsum(buf);
+				idsum(sc->gfile);
+				idsum(" \n");
 			}
 			if (mixed && (t = sccs_iskeylong(buf))) {
 				*t = 0;
 				unless (streq(ino->pathname, sc->gfile)) {
 					fprintf(id_cache,
 					    "%s %s\n", buf, sc->gfile);
+					idsum(buf);
+					idsum(sc->gfile);
+					idsum(" \n");
 				}
 				save(sc, idDB, buf);
 				*t = '|';
