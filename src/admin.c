@@ -59,6 +59,7 @@ void	clearCset(sccs *s, int flags, int which);
 void	clearPath(sccs *s, int flags);
 void	touch(sccs *s);
 int	setMerge(sccs *sc, char *merge, char *rev);
+int     newrev(sccs *s, pfile *pf); 
 
 int
 main(int ac, char **av)
@@ -80,6 +81,7 @@ main(int ac, char **av)
 	int	doDates = 0, touchGfile = 0;
 	char	*m = 0;
 	delta	*d = 0;
+	pfile	pf;
 
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
@@ -248,6 +250,7 @@ main(int ac, char **av)
 				goto next;
 			}
 		}
+		if (HAS_PFILE(sc)) newrev(sc, &pf);
 		/*
 		 * if we just created a new file, reuse the new delta
 		 */
@@ -258,6 +261,19 @@ main(int ac, char **av)
 			error = 1;
 		}
 		if (touchGfile) touch(sc);
+		/*
+		 * re init the graph so we can find the new delta
+		 */
+		sccs_free(sc);
+		sc = sccs_init(name, init_flags, 0);
+		if (HAS_PFILE(sc) && findrev(sc, pf.newrev)) {
+			int gflags = GET_SKIPGET|GET_EDIT;
+
+			unlink(sc->pfile);
+			if (sccs_get(sc, pf.newrev, 0, 0, 0, gflags, "-")) {
+				fprintf(stderr, "can not adjust p file\n");	
+			}
+		}
 next:		sccs_free(sc);
 		name = sfileNext();
 	}
