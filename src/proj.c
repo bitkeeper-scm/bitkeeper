@@ -266,12 +266,8 @@ proj_csetrootkey(project *p)
 	} else {
 		sprintf(buf, "%s/%s", p->root, CHANGESET);
 		if (exists(buf)) {
-			/*
-			 * XXX This is still doing too much work to
-			 * get the root key We don't need to init the
-			 * whole graph
-			 */
-			sc = sccs_init(buf, INIT_NOCKSUM|INIT_NOSTAT);
+			sc = sccs_init(buf,
+			    INIT_NOCKSUM|INIT_NOSTAT|INIT_SHUTUP);
 			assert(sc->tree);
 			sccs_sdelta(sc, sc->tree, buf);
 			p->csetrootkey = strdup(buf);
