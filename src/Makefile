@@ -319,7 +319,7 @@ bk.script: bk.sh port/$(SYS)_platform.sh substvars
 
 bkmsg.txt: bkmsg.doc bk.ver Makefile
 	sed "s/@version@/`cat bk.ver`/" bkmsg.doc | \
-	sed "s?@builder@?`./bk getuser`@`./bk gethost`?" | \
+	sed "s?@builder@?`./bk getuser`@`./bk gethost` in `pwd`?" | \
 	sed "s/@built_date@/`date`/" > bkmsg.txt
 
 bkhelp.txt: build FRC
