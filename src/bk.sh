@@ -29,7 +29,6 @@ Documentation topics:
     ranges	- information about sepcifying ranges of revisions
     tags	- information about symbolic tags
     changesets	- information about grouping of deltas into a feature
-    resync	- information about keeping repositories in sync
     merging	- information about merging changes from another repository
     renames	- information about file renames
     gui		- information about the graphical user interface tools
@@ -50,17 +49,18 @@ Command topics:
     edit	- synonym for "co -l" or "get -e"
     get		- checks out files (SCCS version of co)
     import	- import a set of files into a project
-    makepatch	- generates patches to propogate to other repositories
     prs		- prints revision history (like RCS rlog)
     regression	- regression test
     renumber	- repairs files damaged by Sun's Teamware product
     resolve	- resolve a patch
+    resync	- resync two BitKeeper projects in the local file system
     rmdel	- removes deltas
     sccslog	- like prs except it sorts deltas by date across all files
+    send	- send a patch
     sendbug	- how to report a bug
     sfiles	- generates lists of revision control files
-    takepatch	- takes the output of makepatch and applies it
-    uncommitted	- list deltas which need to be in a changeset
+    take	- take a patch
+    pending	- list deltas which need to be in a changeset
     unedit	- synonym for "clean -u"
     what	- looks for SCCS keywords and prints them
 EOF
@@ -441,7 +441,7 @@ function help_commit {
 
 You can see what needs to be committed by running
 
-    $ bk uncommitted
+    $ bk pending
 
 Note that this does NOT list files which are not yet checked in, it only
 lists files which have checked in deltas which are not yet in a changeset.
@@ -452,25 +452,44 @@ To commit the changes, just run
 
 All changes which you have checked in will be checked into a changeset.
 You will prompted for comments, please describe the changes that you
-have made.  It's useful to have the output of "bk uncommitted" in another
+have made.  It's useful to have the output of "bk pending" in another
 window to see what you did.  We realize this is lame, we'll be making this
 part of the citool checkin tool very soon.
 
 SEE ALSO
-    bk help changesets
+    bk help pending
+    bk help changes
 EOF
 }
 
-function help_uncommitted {
+function help_pending {
 	cat <<EOF
     ====================== Uncommitted changes ======================
 
+The pending command tells you what changes have been checked in here in 
+your local work area but not yet committed to a changeset.  You have to
+commit to a changeset in order to send the change to some other work area.
+
 To see what needs to be committed to a change set, run
 
-    $ bk uncommitted
+    $ bk pending
 
 SEE ALSO
-    bk help changesets
+    bk help commit
+    bk help changes
+EOF
+}
+
+function help_changes {
+	cat <<EOF
+    ====================== changesets ======================
+
+The changes command tells you what changesets have been checked in here
+in your local work area.
+
+SEE ALSO
+    bk help commit
+    bk help pending
 EOF
 }
 
@@ -488,7 +507,14 @@ This means that the minimal set of steps to send out a change is
     $ bk co -l foo.c
     $ bk ci foo.c
     $ bk commit
-    $ bk send user@host.com
+    $ bk send 1.2 user@host.com
+
+Alternatively, if the destination is in the local file system, you can send 
+the changes by running
+
+    $ bk resync source_root destination_root
+
+The latter is the reccommended way of doing things at this point.
 
 EOF
 }
@@ -497,7 +523,29 @@ function help_resync {
 	cat <<EOF
     ====================== BitKeeper resyncs ======================
 
-Resync is not yet documented.
+You can resync directories in a local file system.  To do so, after you
+have run
+
+    $ bk pending
+    $ bk commit
+
+to make sure that all the changes are in a changeset, run 
+
+    $ bk resync source_root destination_root
+
+If that completes successfully, you still need to resolve the changes.  
+The resync did not change anything in the destination other than creating
+a PENDING and RESYNC directory.  The PENDING directory contains the patch
+and the RESYNC directory is a sparse copy of the destination with the patch
+applied.  The resolution of any conflicts takes place in the RESYNC directory.
+
+To resolve, run
+
+    $ bk resolve destination
+
+SEE ALSO
+    bk help pending
+    bk help commit
 
 EOF
 }
@@ -506,7 +554,7 @@ function help_merging {
 	cat <<EOF
     ====================== merging differences ======================
 
-Merging is not yet documented.
+No merge help yet, type help in resolve for more info.
 
 EOF
 }
@@ -515,7 +563,9 @@ function help_renames {
 	cat <<EOF
     ================== BitKeeper pathname tracking ==================
 
-Pathname tracking is not yet documented.
+Renames happen automatically when you resync or send/take.  The resolve
+command will auto apply any non conflicting renames and as for your help
+if the both projects renamed the same file.
 
 EOF
 }
@@ -630,6 +680,31 @@ or
 EOF
 }
 
+function help_send {
+	cat <<EOF
+    =============== Sending BitKeeper patches ===============
+
+For now, this is very primitive.  You need to know the state of the other
+work area and list the change set revs that you want to send to them.
+See the resync command for an easier way.
+
+So if you were in sync yesterday, and you made one changeset since then,
+you can do a 
+
+    $ bk changes -r+
+
+to see the top revision number and then do a
+
+    $ bk send 1.10 user@host.com
+
+and BitKeeper will generate the patch and mail it for you.
+
+SEE ALSO
+    bk help resync
+
+EOF
+}
+
 function help_sendbug {
 	cat <<EOF
     =============== BitKeeper bug reporting ===============
@@ -705,22 +780,203 @@ EOF
 
 # This will go find the root if we aren't at the top
 function changes {
-	echo ChangeSet | ${BIN}sccslog -
+	echo ChangeSet | ${BIN}sccslog $@ -
 }
 
+function send {
+	case X$2 in
+	    X-)	${BIN}cset -l$1 | ${BIN}makepatch -v - 
+	    	;;
+	    *)	${BIN}cset -l$1 | ${BIN}makepatch -v - | \
+	    	mail -s "BitKeeper patch" $2
+	    	;;
+	esac
+}
+
+function resync {
+	if [ ! -d "$1/BitKeeper/etc" ]
+	then	echo "resync: $1 is not a BitKeeper project root"
+	fi
+	if [ X"$2" = X ]
+	then	echo "usage: bk resync source_dir dest_dir"
+		exit 1
+	fi
+	if [ ! -d "$2" ]
+	then	mkdir -p "$2"
+		if [ ! -d "$2" ]
+		then	exit 1
+		fi
+		TPOPTS="-ivv"
+	else	if [ ! -d "$2/BitKeeper/etc" ]
+		then	echo "resync: $2 is not a BitKeeper project root"
+		fi
+		TPOPTS="-vv"
+	fi
+	HERE=`pwd`
+	cd $1
+	FROM=`pwd`
+	cd $HERE
+	cd $2
+	TO=`pwd`
+	if [ -d "$TO/RESYNC" ]
+	then	echo "resync: $TO/RESYNC exists, patch in progress"
+		exit 1
+	fi
+	cd $FROM
+	bk smoosh ChangeSet $TO/ChangeSet | sed 's/ChangeSet://' | while read x
+	do	bk cset -l$x
+	done | sort -u > /tmp/list$$
+	if [ -s /tmp/list$$ ]
+	then	bk makepatch -vv - > /tmp/resync$$ < /tmp/list$$
+	else	echo "resync: $TO is a superset of $FROM"
+		exit 0
+	fi
+	/bin/rm /tmp/list$$
+	cd $TO
+	bk takepatch $TPOPTS < /tmp/resync$$
+	/bin/rm /tmp/resync$$
+	exit 0
+}
+
+function mv {
+	sccsmv "$@"
+}
+
+# Use sfiles to figure out the gfile name and the sfile name of each file
+# then move them and put a null delta on them.
+function sccsmv {
+	if [ "X$1" = X ]
+	then	echo "usage: sccsmv from to"
+		exit 1
+	fi
+	LIST=
+	DEST=
+	SFILES=
+	while [ "X$1" != X ]
+	do	LIST="$LIST$DEST"
+		DEST=" $1"
+		shift
+	done
+	if [ -e $DEST -a ! -d $DEST ]
+	then	echo "sccsmv: $DEST exists"
+		exit 1
+	fi
+	if [ ! -d $DEST ]
+	then	S=`bk sfiles $DEST`
+		if [ "X$S" != X ]
+		then	echo "sccsmv: $S exists"
+			exit 1
+		fi
+	fi
+	if [ X"$LIST" = X ]
+	then	echo 'sccsmv what?'
+		exit 1
+	fi
+	DIDONE=0
+	for i in $LIST
+	do 	if [ -d $i ]
+		then	echo "sccsmv: can not handle directories yet."
+		else	
+			S=`bk sfiles $i`
+			if [ X"$S" = X ]
+			then	echo "sccsmv: not an sccsfile: $i"
+			else	
+				E=`bk sfiles -c $i`
+				if [ X"$E" != X ]
+				then	echo "sccsmv: can't move edited $i"
+					exit 1
+				fi
+				SFILES="$SFILES$S "
+				DIDONE=`expr $DIDONE + 1`
+			fi
+		fi
+	done
+	if [ X$DIDONE = X ]
+	then	exit 0
+	fi
+	if [ $DIDONE -gt 1 -a ! -d $DEST ]
+	then	echo "sccsmv: destination must be a directory"
+		exit 1
+	fi
+	#echo "sccsmv ${SFILES}to$DEST"
+	if [ -d $DEST ]
+	then	B=`basename $DEST`
+		if [ $B != SCCS ]
+		then	SDEST=$DEST/SCCS
+			GDEST=$DEST
+			if [ ! -d $SDEST ]
+			then	mkdir $SDEST
+				if [ ! -d $SDEST ]
+				then	exit 1
+				fi
+			fi
+		else	SDEST=$DEST/SCCS
+		fi
+	else	case $DEST in
+		*SCCS/s.*)
+		    GDEST=`echo $DEST | sed 's,SCCS/s.,,'`
+		    SDEST=$DEST
+		    ;;
+		*)
+		    GDEST=$DEST
+		    SDEST=`bk g2sccs $DEST`
+		    ;;
+		esac
+	fi
+	for s in $SFILES
+	do	SBASE=`basename $s`
+		G=`bk sfiles -g $s`
+		GBASE=`basename $G`
+		if [ -d $DEST ]
+		then	if [ -e $SDEST/$SBASE ]
+			then	echo $SDEST/$SBASE exists
+				exit 1
+			fi
+			if [ -e $GDEST/$GBASE ]
+			then	echo GDEST/$GBASE exists
+				exit 1
+			fi
+			echo sccsmv $s $SDEST/$SBASE
+			/bin/mv $s $SDEST/$SBASE
+			if [ -f $G ]
+			then	echo sccsmv $G $GDEST/$GBASE
+				/bin/mv $G $GDEST/$GBASE
+			fi
+			bk get -se $SDEST/$SBASE
+			bk delta -syRenamed $SDEST/$SBASE
+		else	# destination is a regular file
+			echo "sccsmv $s $SDEST"
+			/bin/mv $s $SDEST
+			if [ -f $G ]
+			then	echo "sccsmv $G $GDEST"
+				/bin/mv $G $GDEST
+			fi
+			bk get -se $SDEST
+			bk delta -syRenamed $SDEST
+		fi
+	done
+	# XXX - this needs to update the idcache
+	# I currently do it in resolve.perl
+	exit 0
+}
+	
 function mkpatch {
 	exec ${BIN}makepatch "$@"
 }
 
-function uncommitted {
+function pending {
 	exec ${BIN}sfiles -Ca | ${BIN}sccslog -p - | $PAGER
 }
 
 function commit {
-	exec ${BIN}sfiles -Ca | ${BIN}cset -
+	exec ${BIN}sfiles -C | ${BIN}cset -
 }
 
-function tkpatch {
+function commitmerge {
+	exec ${BIN}sfiles -C | ${BIN}cset -yMerge -
+}
+
+function take {
 	exec ${BIN}takepatch "$@"
 }
 
@@ -737,7 +993,7 @@ with your information.
 
 Bug/RFE:	[bug is obvious, RFE is request for enhancement]
 
-Severity:	[1 - no big deal, 5 - can't use BitKeeper until this is fixed]
+Severity:	[5 - no big deal, 1 - can't use BitKeeper until this is fixed]
 
 Program:	[cset, co, delta, etc.  If you know which caused the problem]
 
@@ -784,7 +1040,8 @@ function commandHelp {
 				    overview|setup|basics|import|differences|\
 				    history|tags|changesets|resync|merging|\
 				    renames|gui|path|ranges|terms|regression|\
-				    backups|debug|sendbug|commit|uncommitted)
+				    backups|debug|sendbug|commit|pending|send|\
+				    resync|changes)
 					help_$i | $PAGER
 					;;
 				    *)
@@ -834,7 +1091,7 @@ fi
 case "$1" in
     admin|ci|clean|co|delta|diffs|edit|get|makepatch|prs|\
     renumber|rmdel|sccslog|sdiffs|sfiles|sids|sinfo|\
-    smark|smoosh|takepatch|unedit|what|import|cset)
+    smark|smoosh|takepatch|unedit|what|import|cset|resolve|g2sccs)
 	cmd=$1
 	shift
     	exec ${BIN}$cmd "$@"
@@ -845,7 +1102,8 @@ case "$1" in
     citool|sccstool|vitool|fm|fm3)
     	gui "$@"
 	;;
-    mkpatch|tkpatch|changes|setup|uncommitted|commit|sendbug)
+    setup|changes|pending|commit|commitmerge|sendbug|send|take|\
+    sccsmv|mv|resync)
 	cmd=$1
     	shift
 	eval $cmd "$@"
@@ -870,4 +1128,4 @@ case "$1" in
     	usage
 	;;
 esac
-exit 0
+exit $?

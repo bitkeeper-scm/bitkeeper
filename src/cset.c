@@ -138,7 +138,7 @@ next:				sccs_free(cset);
 			/* XXX - this needs to be sccs_kid(cset, cset->rstart)
 			 * when we build that interface.
 			 */
-			cset->rstart = cset->rstart->kid;
+			if (cset->rstart->kid) cset->rstart = cset->rstart->kid;
 		}
 		csetlist(cset);
 		return (0);
@@ -377,6 +377,7 @@ retry:		v = mdbm_fetch(idDB, k);
 					    v.dptr, sc->sfile);
 					exit(1);
 				}
+				visit(prev);
 				csetDeltas(sc, prev, d);
 			} else {
 				csetDeltas(sc, 0, d);
@@ -398,6 +399,12 @@ retry:		v = mdbm_fetch(idDB, k);
 	mdbm_close(db);
 }
 
+visit(delta *d)
+{
+	d->flags |= D_VISITED;
+	if (d->parent) visit(d->parent);
+}
+
 /*
  * Print out everything leading from start to d, not including start.
  */
@@ -408,6 +415,7 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	delta	*sfind(sccs *, ser_t);
 
 	unless (d) return;
+	debug((stderr, "cD(%s, %s)\n", sc->gfile, d->rev));
 	if ((d == start) || (d->flags & D_VISITED)) return;
 	d->flags |= D_VISITED;
 	csetDeltas(sc, start, d->parent);
@@ -483,11 +491,15 @@ mkChangeSet(sccs *cset)
 	/*
 	 * Edit the ChangeSet file - we need it edited to modify it as well
 	 * as load in the current state.
+	 * If the edit flag is off, then make sure the file is already edited.
 	 */
-	if (sccs_get(cset, 0, 0, 0, 0, EDIT|SILENT, "-")) {
-		unless (BEEN_WARNED(cset)) {
-			fprintf(stderr, "cset: get of ChangeSet failed\n");
-			exit(1);
+	unless (IS_EDITED(cset)) {
+		if (sccs_get(cset, 0, 0, 0, 0, EDIT|SILENT, "-")) {
+			unless (BEEN_WARNED(cset)) {
+				fprintf(stderr,
+				    "cset: get -e of ChangeSet failed\n");
+				exit(1);
+			}
 		}
 	}
 	unless (csDB = loadDB("ChangeSet", 0)) {
@@ -505,9 +517,6 @@ mkChangeSet(sccs *cset)
 		add(csDB, buf);
 	}
 
-	/*
-	 * XXX - needs to have an entry for the cset file itself.
-	 */
 	sort = popen("sort > ChangeSet", "wt");
 	assert(sort);
 	sccs_sdelta(key, sccs_ino(cset));

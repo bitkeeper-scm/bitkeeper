@@ -263,6 +263,12 @@ c:	ftw(".", caches, 15);
 	}
 }
 
+visit(delta *d)
+{
+	d->flags |= D_VISITED;
+	if (d->parent) visit(d->parent);
+}
+
 /*
  * Print out everything leading from start to d, not including start.
  * XXX - stolen from cset.c - both copies need to go in slib.c.
@@ -276,7 +282,6 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 	unless (d) return;
 	if ((d == start) || (d->flags & D_VISITED)) return;
 	d->flags |= D_VISITED;
-	csetDeltas(sc, start, d->parent);
 	/*
 	 * We don't need the merge pointer, it is part of the include list.
 	 * if (d->merge) csetDeltas(sc, start, sfind(sc, d->merge));
@@ -286,6 +291,7 @@ csetDeltas(sccs *sc, delta *start, delta *d)
 
 		csetDeltas(sc, e->parent, e);
 	}
+	csetDeltas(sc, start, d->parent);
 	// XXX - fixme - removed deltas not done.
 	// Is this an issue?  I think makepatch handles them.
 	if (d->type == 'D') printf("%s:%s\n", sc->sfile, d->rev);
@@ -364,6 +370,7 @@ caches(const char *filename, const struct stat *sb, int flag)
 			while (e && (e->type != 'D')) e = e->parent;
 			if (e != d) {
 				if (aFlg) {
+					visit(e);
 					csetDeltas(sc, e, d);
 				} else {
 					printf("%s:%s\n", sc->sfile, d->rev);

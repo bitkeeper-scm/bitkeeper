@@ -9,8 +9,7 @@ WHATSTR("%W%");
 char	*log_help = "\n\
 usage: sccslog [-hpv] [-c<d>] [-r<r>] [file list...] OR [-] OR []\n\n\
     -c<dates>	Cut off dates.  See range(1) for details.\n\
-    -h		show hostnames, i.e., user@host in log.\n\
-    -p		show full pathnames instead of basenames.\n\
+    -p		show basenames instead of full pathnames.\n\
     -r<r>	specify a revision or a part of a range.\n\
     -v		be verbose about errors and processing\n\n\
     Note that <date> may be a symbol, which implies the date of the\n\
@@ -30,8 +29,7 @@ void	freelog(void);
 
 delta	*list, **sorted;
 int	n;
-int	pflag;		/* do full pathnames */
-int	hflag;		/* user@host instead of just user */
+int	pflag;		/* do basenames */
 
 int
 main(int ac, char **av)
@@ -53,7 +51,6 @@ main(int ac, char **av)
 	}
 	while ((c = getopt(ac, av, "c;hpr|v")) != -1) {
 		switch (c) {
-		    case 'h': hflag++; break;
 		    case 'p': pflag++; break;
 		    case 'v': flags &= ~SILENT; break;
 		    RANGE_OPTS('c', 'r');
@@ -148,14 +145,14 @@ printlog()
 		d = sorted[j];
 		unless (d->type == 'D') continue;
 		if (d->pathname) {
-			if (pflag) {
+			unless (pflag) {
 				printf("%s\n  ", d->pathname);
 			} else {
 				printf("%s ", basenm(d->pathname));
 			}
 		}
 		printf("%s %s %s", d->rev, d->sdate, d->user);
-		if (hflag && d->hostname) printf("@%s", d->hostname);
+		if (d->hostname) printf("@%s", d->hostname);
 		printf(" +%d -%d\n", d->added, d->deleted);
 		EACH(d->comments) {
 			if (d->comments[i][0] == '\001') continue;

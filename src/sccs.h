@@ -281,6 +281,7 @@ extern	char *strdup(char *s);
 #define	D_LODCONT	0x00100000	/* LOD continuation down a branch */
 #define	D_DUPLOD	0x00200000	/* shared ->lod */
 #define	D_LODSTR	0x00400000	/* lod pointer is a string: getInit() */
+#define	D_GONE		0x00800000	/* this delta is gone, don't print */
 
 /*
  * Signal handling.

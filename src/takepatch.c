@@ -23,6 +23,9 @@ WHATSTR("%W%");
  */
 char *takepatch_help = "usage: takepatch [-v] [-i]\n";
 
+#define	CLEAN_RESYNC	1
+#define	CLEAN_PENDING	2
+
 delta	*getRecord(FILE *f);
 int	extractPatch(FILE *p, int flags);
 int	extractDelta(char *name, sccs *s, int newFile, FILE *f, int flags);
@@ -43,6 +46,7 @@ int	newProject;
 MDBM	*idDB;
 delta	*gca;
 int	nfound;
+char	pendingFile[1024];
 
 int
 main(int ac, char **av)
@@ -157,6 +161,11 @@ extractPatch(FILE *p, int flags)
 			    "takepatch: can't find file '%s'\n", name);
 			exit(1);
 		}
+		if (IS_EDITED(s)) {
+			fprintf(stderr,
+			    "takepatch: %s is edited\n", name);
+			cleanup(CLEAN_RESYNC);
+		}
 		if (s->state & PFILE) {
 			fprintf(stderr, 
 			    "takepatch: %s is locked.\n", s->sfile);
@@ -192,7 +201,7 @@ extractPatch(FILE *p, int flags)
 		    nfound, nfound > 1 ? "s" : "", gfile);
 		if (echo != 2) fprintf(stderr, "\n");
 	}
-	if (patchList && gca) getLocals(s, gca->kid, name);
+	if (patchList && gca) getLocals(s, gca, name);
 	applyPatch(flags);
 	if (echo == 2) fprintf(stderr, " \n");
 	sccs_free(s);
@@ -517,53 +526,56 @@ apply:
 }
 
 /*
- * Given a parent node, include all descendants of that node in the list.
+ * Include up to but not including gca in the list.
  */
 int
-getLocals(sccs *s, delta *d, char *name)
+getLocals(sccs *s, delta *g, char *name)
 {
 	FILE	*t;
 	patch	*p;
+	delta	*d;
 	static	char tmpf[1024];	/* don't allocate on stack */
 
-	if (!d) return (0);
-
-	sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++no);
-	unless (t = fopen(tmpf, "w")) {
-		perror(tmpf);
-		exit(0);
-	}
-	s->rstart = s->rstop = d;
-	sccs_restart(s);
-	sccs_prs(s, PATCH|SILENT, NULL, t);
-	fclose(t);
-	p = calloc(1, sizeof(patch));
-	p->flags = PATCH_LOCAL;
-	p->initFile = strdup(tmpf);
-	p->localFile = strdup(name);
-	sprintf(tmpf, "RESYNC/%s", name);
-	p->resyncFile = strdup(tmpf);
-	sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", no);
-	unless (d->flags & D_META) {
-		p->diffFile = strdup(tmpf);
+	for (d = s->table; d != g; d = d->next) {
+		assert(d);
+		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-init", ++no);
+		unless (t = fopen(tmpf, "w")) {
+			perror(tmpf);
+			exit(0);
+		}
+		s->rstart = s->rstop = d;
 		sccs_restart(s);
-		sccs_getdiffs(s, d->rev, 0, tmpf);
-	} else {
-		p->flags |= PATCH_META;
+		sccs_prs(s, PATCH|SILENT, NULL, t);
+		fclose(t);
+		p = calloc(1, sizeof(patch));
+		p->flags = PATCH_LOCAL;
+		p->initFile = strdup(tmpf);
+		p->localFile = strdup(name);
+		sprintf(tmpf, "RESYNC/%s", name);
+		p->resyncFile = strdup(tmpf);
+		sprintf(tmpf, "RESYNC/BitKeeper/tmp/%03d-diffs", no);
+		unless (d->flags & D_META) {
+			p->diffFile = strdup(tmpf);
+			sccs_restart(s);
+			sccs_getdiffs(s, d->rev, 0, tmpf);
+		} else {
+			p->flags |= PATCH_META;
+		}
+		unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
+			assert(d->date);
+		}
+		sccs_sdelta(tmpf, d->parent);
+		p->pid = strdup(tmpf);
+		sccs_sdelta(tmpf, d);
+		p->me = strdup(tmpf);
+		p->order = d->date;
+		if (echo>5) {
+			fprintf(stderr,
+			    "LOCAL: %s %s %u\n", d->rev, p->me, p->order);
+		}
+		insertPatch(p);
+		nfound++;
 	}
-	unless (d->date || streq("70/01/01 00:00:00", d->sdate)) {
-		assert(d->date);
-	}
-	sccs_sdelta(tmpf, d->parent);
-	p->pid = strdup(tmpf);
-	sccs_sdelta(tmpf, d);
-	p->me = strdup(tmpf);
-	p->order = d->date;
-	if (echo>5) fprintf(stderr, "LOCAL: %s %s %u\n", d->rev, p->me, p->order);
-	insertPatch(p);
-	nfound++;
-	getLocals(s, d->kid, name);
-	getLocals(s, d->siblings, name);
 	return (0);
 }
 
@@ -689,11 +701,19 @@ tree:
 		}
 		exit(1);
 	}
+	unless (mkdir("RESYNC/SCCS", 0775) == 0) {
+		perror("mkdir");
+		exit(1);
+	}
 	unless (mkdir("RESYNC/BitKeeper", 0775) == 0) {
 		perror("mkdir");
 		exit(1);
 	}
 	unless (mkdir("RESYNC/BitKeeper/tmp", 0775) == 0) {
+		perror("mkdir");
+		exit(1);
+	}
+	unless (mkdir("RESYNC/BitKeeper/etc", 0775) == 0) {
 		perror("mkdir");
 		exit(1);
 	}
@@ -717,8 +737,8 @@ tree:
 
 		tm = localtime(&now);
 		strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
-		sprintf(file, "PENDING/%s.%02d", buf, i);
-		if (f = fopen(file, "w+")) {
+		sprintf(pendingFile, "PENDING/%s.%02d", buf, i);
+		if (f = fopen(pendingFile, "w+")) {
 			break;
 		}
 		if (i > 10) {
@@ -732,9 +752,9 @@ tree:
 		exit(1);
 	}
 	unless (flags & SILENT) {
-		fprintf(stderr, "takepatch: saving patch in %s\n", file);
+		fprintf(stderr, "takepatch: saving patch in %s\n", pendingFile);
 	}
-	fprintf(g, "%s\n", file);
+	fprintf(g, "%s\n", pendingFile);
 	fclose(g);
 
 	/*
@@ -796,4 +816,24 @@ fileCopy(char *from, char *to)
 	system(s);
 	free(s);
 	return (0);
+}
+
+cleanup(int what)
+{
+	if (what & CLEAN_RESYNC) {
+		assert(exists("RESYNC"));
+		system("/bin/rm -rf RESYNC");
+	} else {
+		fprintf(stderr, "takepatch: RESYNC directory left intact.\n");
+	}
+	if (what & CLEAN_PENDING) {
+		assert(exists("PENDING"));
+		system("/bin/rm -rf PENDING");
+	} else {
+		if (exists(pendingFile)) {
+			fprintf(stderr, "takepatch: patch left in %s\n",
+			    pendingFile);
+		}
+	}
+	exit(1);
 }

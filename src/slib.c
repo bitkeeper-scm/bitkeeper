@@ -1144,6 +1144,11 @@ sccs_mkroot(char *path)
 {
 	char	buf[1024];
 
+	sprintf(buf, "%s/SCCS", path);
+	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
+		perror(buf);
+		exit(1);
+	}
 	sprintf(buf, "%s/BitKeeper", path);
 	if ((mkdir(buf, 0775) == -1) && (errno != EEXIST)) {
 		perror(buf);
@@ -4178,7 +4183,7 @@ err:		if (slist) free(slist);
 		popened = openOutput(encoding, printOut, &out);
 	}
 	if ((s->state & RCS) && (flags & EXPAND)) flags |= RCSEXPAND;
-	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst) {
+	if ((s->state & BITKEEPER) && d->sum && !iLst && !xLst && !i2) {
 		flags |= NEWCKSUM;
 	}
 	/* Think carefully before changing this */
@@ -4586,6 +4591,10 @@ delta_table(sccs *s, FILE *out, int willfix)
 	fprintf(out, "\001hXXXXX\n");
 	s->cksum = 0;
 	for (d = s->table; d; d = d->next) {
+		if (d->flags & D_GONE) {
+			while (d = d->next) assert(d->flags & D_GONE);
+			break;
+		}
 		assert(d->date);
 		if (d->next) {
 			assert(d->next->date);
@@ -9406,40 +9415,24 @@ delta_rm(sccs *s, delta *d, FILE *sfile, int flags)
 	return 0;
 }
 
+/*
+ * Remove all deltas after the specified delta.
+ * After means in table order, not graph order.
+ */
 private int
 delta_destroy(sccs *s, delta *d)
 {
-	delta *node, *nextnode;
-	delta **nptr;
-	ser_t serial = d->serial;
+	delta	*e;
 
-	/* algo: trim purged members from kid/siblings tree
-	 * 	so putflags will work
-	 *
-	 *	free the memory for the purged siblings.
+	/*
+	 * Mark all the nodes we want gone.
+	 * delta_table() respects the D_GONE flag.
 	 */
-
-	for (node = s->table; node; node = node->next) {
-		/* reset all the kid and siblings info */
-		nptr = &(node->kid);
-		while (*nptr) {
-			if ((*nptr)->serial > serial) {
-				nextnode = *nptr;
-				*nptr = nextnode->siblings;
-				nextnode->siblings = NULL;
-			}
-			else
-				nptr = &((*nptr)->siblings);
-		}
+	for (e = s->table; e != d; e = e->next) {
+		assert(e);
+		e->flags |= D_GONE;
 	}
-	for (node = s->table; node; node = nextnode) {
-		if (node->serial <= serial)
-			break;
-
-		nextnode = node->next;	/* save copy because about to free */
-		sccs_freetree(node);	/* no tree left, just free node */
-	}
-	s->table = node;	/* whether NULL or something */
+	s->table = d;
 	return 0;
 }
 
