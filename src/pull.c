@@ -141,6 +141,7 @@ fromTo(char *op, remote *f, remote *t)
 	width = strlen(op) - 3;
 	if (width < 0) width = 0;
 	printf("%s %s\n%*s -> %s\n", op, from, width, "", to);
+	fflush(stdout);
 	free(from);
 	free(to);
 }
