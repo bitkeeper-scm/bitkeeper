@@ -529,7 +529,7 @@ changes_part1(remote *r, char **av, char *key_list)
 	}
 
 	/*
-	 * What we want is: "remote => bk _prunekey => keylist
+	 * What we want is: "remote => bk _prunekey => keylist"
 	 */
 	bktemp(key_list);
 	fd = open(key_list, O_CREAT|O_WRONLY, 0644);
@@ -641,6 +641,7 @@ doit_remote(char **av, char *url)
 	if (opts.remote) {
 		rc = changes_part2(r, av, key_list, rc);
 	}
+	remote_free(r);
 	if (key_list[0]) unlink(key_list);
 	return (rc);
 }

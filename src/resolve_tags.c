@@ -178,6 +178,7 @@ resolve_tags(opts *opts)
 	unless (i) {
 		sccs_tagMerge(s, 0, 0);
 		sccs_free(s);
+		mdbm_close(m);
 		return (1);
 	}
 	chdir(RESYNC2ROOT);
@@ -245,6 +246,7 @@ resolve_tags(opts *opts)
 		n--;
 	}
 	sccs_free(local);
+	mdbm_close(m);
 	resolve_free(rs);
 	return (1);
 }

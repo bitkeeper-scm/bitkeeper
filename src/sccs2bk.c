@@ -314,7 +314,6 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 	char	randstr[17];
 	int	chksum = 0;
 	FILE	*fh;
-	char	*p;
 	int	size;
 	char	buf[4096];
 	u32	randbits = 0;
@@ -322,8 +321,10 @@ mkinit(sccs *s, delta *d, char *file, char *key)
 	int	binary = 0;
 
 	if (file) {
+		char	*p;
 		p = aprintf("bk get -qkpr1.1 %s", file);
 		fh = popen(p, "r");
+		free(p);
 		while (size = fread(buf, 1, sizeof(buf), fh)) {
 			randbits = adler32(randbits, buf, size);
 			for (i = 0; i < size; i++) {

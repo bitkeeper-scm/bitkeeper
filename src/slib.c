@@ -3065,6 +3065,7 @@ sccs_tagMerge(sccs *s, delta *d, char *tag)
 	m = mrange(buf, buf + strlen(buf), "");
 	/* note: this rewrites the s.file, no pointers make sense after it */
 	sccs_meta(s, d, m, 1);
+	free(buf);
 }
 
 /*
@@ -8947,13 +8948,16 @@ updatePending(sccs *s)
 	touch(sccsXfile(s, 'd'),  GROUP_MODE);
 }
 
+/* s/\r\n$/\n/ */
 private void
 fix_crnl(register char *s)
 {
-	while (s[1]) s++;
-	if (s[-1] == '\r') {
-		s[-1] = '\n';
-		s[0] = 0;
+	char	*p = s;
+	while (*p) p++;
+	unless (p - s >= 2) return;
+	if (p[-2] == '\r' && p[-1] == '\n') {
+		s[-2] = '\n';
+		s[-1] = 0;
 	}
 }
 

@@ -172,9 +172,10 @@ sccs_gone(int quiet, FILE *f)
 	assert(root);
 	sprintf(s_gone, "%s/BitKeeper/etc/SCCS/s.gone", root);
 	sprintf(g_gone, "%s/BitKeeper/etc/gone", root);
+	free(root);
 	comments_save("Gone");
 	if (exists(s_gone)) {
-		s = sccs_init(s_gone, SILENT|INIT_SAVEPROJ, 0);
+		s = sccs_init(s_gone, SILENT, 0);
 		assert(s);
 		unless (IS_EDITED(s)) {
 			sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-"); 
@@ -188,7 +189,7 @@ sccs_gone(int quiet, FILE *f)
 		gfile = fopen(g_gone, "wb");
 		while (fnext(key, f)) fputs(key, gfile);
 		fclose(gfile);
-		s = sccs_init(s_gone, SILENT|INIT_SAVEPROJ, 0);
+		s = sccs_init(s_gone, SILENT, 0);
 		assert(s);
 		sccs_delta(s, SILENT|NEWFILE|DELTA_DONTASK, 0, 0, 0, 0);
 	}

@@ -97,6 +97,8 @@ cmd_httpget(int ac, char **av)
 	int	state = 0;
 	int 	ret, i;
 	char	*s;
+	char	a[MAXPATH];
+	char	b[MAXPATH];
 
 	/*
 	 * Ignore the rest of the http header (if any), we don't care.
@@ -131,19 +133,12 @@ cmd_httpget(int ac, char **av)
 	 * as in bkd_cd.c
 	 * Don't give seperate error messages as that is an information leak.
 	 */
-	if (*name == '/') {
-		char	a[MAXPATH];
-		char	b[MAXPATH];
-
-		getcwd(a, MAXPATH);
-		name = findRoot(name);
-		getcwd(b, MAXPATH);
-		unless (name && 
-		    (strlen(b) >= strlen(a)) && strneq(a, b, strlen(a))) {
-			http_error(503, "Can't find project root");
-		}
-	} else {
-		strcpy(root, url(""));
+	getcwd(a, MAXPATH);
+	name = findRoot(name);
+	getcwd(b, MAXPATH);
+	unless (name && 
+	    (strlen(b) >= strlen(a)) && strneq(a, b, strlen(a))) {
+		http_error(503, "Can't find project root");
 	}
 
 	name = parseurl(name);
@@ -445,6 +440,7 @@ findRoot(char *name)
 	char	path[MAXPATH];
 	int	tries = 256;
 	
+	unless (*name) name = ".";
 	sprintf(path, "%s/BitKeeper/etc", name);
 	if (isdir(path)) {
 		chdir(name);

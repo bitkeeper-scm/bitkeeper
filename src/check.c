@@ -291,6 +291,7 @@ check_main(int ac, char **av)
 		}
 	}
 	if (csetKeys.deltas) free(csetKeys.deltas);
+	if (csetKeys.r2i) mdbm_close(csetKeys.r2i);
 	if (poly) warnPoly();
 	if (resync) {
 		chdir(RESYNC2ROOT);
@@ -449,6 +450,8 @@ keywords(sccs *s)
 	same = sameFiles(a, b);
 	unlink(a);
 	unlink(b);
+	free(a);
+	free(b);
 	return (!same);
 }
 

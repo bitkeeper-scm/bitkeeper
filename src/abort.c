@@ -39,7 +39,12 @@ abort_main(int ac, char **av)
 			fprintf(stderr, "Cannot parse \"%s\"\n", av[optind]);
 			return (1);
 		}
-		if (r->host) return (remoteAbort(r));
+		if (r->host) {
+			int	ret = remoteAbort(r);
+			remote_free(r);
+			return (ret);
+		}
+		remote_free(r);
 		chdir(av[optind]);
 	}
 	sccs_cd2root(0, 0);
