@@ -1227,7 +1227,10 @@ fix_stime(sccs *s)
 #else
 	ut.modtime = s->gtime - 1;
 #endif
-	utime(s->sfile, &ut);
+	if (utime(s->sfile, &ut)) {
+		fprintf(stderr, "fix_stime: failed\n");
+		perror(s->sfile);
+	}
 }
 
 /*
