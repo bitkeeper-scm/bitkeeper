@@ -953,99 +953,104 @@ samefile(char *a, char *b)
 	return ((sa.st_dev == sb.st_dev) && (sa.st_ino == sb.st_ino));
 }
 
+
+/*
+ * clean up ".." and "." in a path name
+ */
+cleanPath(char *path, char cleanPath[])
+{
+	char	buf[1024], *p, *r, *top;
+	int	dotCnt = 0;	/* number of "/.." */
+#define isEmpty(buf, r) 	(r ==  &buf[sizeof (buf) - 2])
+
+	r = &buf[sizeof (buf) - 1]; *r-- = 0;
+	p = &path[strlen(path) - 1];
+
+	/* for win32 path */
+	top = (path[1] == ':')  ? top = &path[2] : path;
+	/* trim trailing '/' */
+	if ((*p == '/') && (p != top))  p--; 
+	while (p >= top) { 	/* scan backward */
+		if ((p >= &top[2]) && (p[-2] == '/') && 
+		    (p[-1] == '.') && (p[0] == '.')) {
+			dotCnt++; p = &p[-3];	/* process "/.." */
+		} else if ((p >= &top[1]) && (p[-1] == '/') && 
+		    	 (p[0] == '.')) {
+			p = &p[-2];		/* process "/." */
+		} else if ((p == top) && (p[0] == '.')) {
+			p = &p[-1];		/* process "." */
+		} else {
+			if (dotCnt) {
+				/* skip dir impacted by ".." */
+				while ((p >= top) && (*p != '/')) p--;
+				p--; dotCnt--;
+			} else {
+				/* copy regular directory */
+				unless (isEmpty(buf, r)) *r-- = '/';
+				while ((p >= top) && (*p != '/')) *r-- = *p--;
+				p--;
+			}
+		}
+	}
+	
+	if (!isEmpty(buf, r) && (top[0] != '/')) {
+		/* put back any ".." with no known parent directory  */
+		while (dotCnt--) {
+			unless (isEmpty(buf, r)) *r-- = '/';
+			*r-- = '.'; *r-- = '.';
+		}
+	}
+	
+	if (top[0] == '/') *r-- = '/';
+	if (top != path) { *r-- = path[1]; *r-- = path[0]; }
+	if (*++r) {
+		strcpy(cleanPath, r);
+	} else {
+		strcpy(cleanPath, ".");
+	}
+	/* for win32 path */
+	if ((r[1] == ':') && (r[2] == '\0')) strcat(cleanPath, "/");
+#undef	isEmpty
+}
+
 /*
  * Translate SCCS/s.foo.c to /u/lm/smt/sccs/SCCS/s.foo.c
- * This is weird because I do not trust the gfile.  admin -i/dev/null
- * XXX - this is slow.
- * XXX - I made it faster by looking at $PWD.  This works as long as we
- * only do operations on `pwd`/SCCS.
  */
 char	*
-fullname(sccs *s, int withsccs)
+fullname(char *gfile, int withsccs)
 {
 	static	char new[1024];
-	char	here[1024];
 	char	*t;
-	char	*gfile = sccs2name(s->sfile);
-	char	*sfile;
 
-	/*
-	 * If they have a full path name, then just use that.
-	 * It's quicker than calling getcwd.
-	 */
 	if (IsFullPath(gfile)) {
-		if (withsccs) {
-			char	*sfile = name2sccs(gfile);
-
-			free(gfile);
-			strcpy(new, sfile);
-			free(sfile);
-			return (new);
-		}
+		/*
+		 * If they have a full path name, then just use that.
+		 * It's quicker than calling getcwd.
+		 */
 		strcpy(new, gfile);
-		free(gfile);
-		debug((stderr, "fullname1: %s\n", new));
-		return (new);
-	}
-
-	/*
-	 * If we have a relative name and we are where we think
-	 * we are, then use that.  Again, quicker.
-	 */
-	if ((strncmp("SCCS/", s->sfile, 5) == 0) &&
-	    (t = getenv("PWD")) && samefile(".", t)) {
-		if (withsccs) {
-			sfile = name2sccs(gfile);
-			sprintf(new, "%s/%s", t, sfile);
-			free(sfile);
-		} else {
-			sprintf(new, "%s/%s", t, gfile);
-		}
-		free(gfile);
-		debug((stderr, "fullname2: %s\n", new));
-		return (new);
-	}
-
-	getcwd(here, sizeof(here));
-
-	/*
-	 * If there is no slash in gfile, it's here.
-	 */
-	if (!strchr(gfile, '/')) {
-		strcpy(new, here);
-		strcat(new, "/");
-		if (withsccs) {
-			sfile = name2sccs(gfile);
-			strcat(new, sfile);
-			free(sfile);
-		} else {
-			strcat(new, gfile);
-		}
-		free(gfile);
-		debug((stderr, "fullname3: %s\n", new));
-		return (new);
-	}
-
-	/*
-	 * We have a partial name like foo/bar/blech or
-	 * ../fs/ufs/bmap.c
-	 */
-	t = strrchr(gfile, '/');
-	*t = 0;
-	if (chdir(gfile)) {
-		/* shouldn't happen, if it does, we have bigger problems */
-		perror(gfile);
-		return (0);
+	} else if  ((t = getenv("PWD")) && samefile(".", t)) {
+		/*
+		 * If we have a relative name and $PWD points to where
+		 * we are, then use that.  Again, quicker.
+		 */ 
+		concat_path(new, t, gfile);
 	} else {
 		getcwd(new, sizeof(new));
-		chdir(here);
+		setenv("PWD", new, 1);
+		/*
+		 * TODO we should store the PWD info
+		 * in the project stuct or some here
+		 * so it will be faster on the next call
+		 */
+		concat_path(new, new, gfile);
 	}
-	*t = '/';
-	if (withsccs) strcat(new, "/SCCS");
-	strcat(new, "/");
-	strcat(new, basenm(gfile));
-	free(gfile);
-	debug((stderr, "fullname4: %s\n", new));
+
+	cleanPath(new, new);
+	if (withsccs)  {
+		char	*sfile = name2sccs(new);
+		strcpy(new, sfile);
+		free(sfile);
+	}
 	return (new);
 }
 
@@ -1202,91 +1207,92 @@ getCSetFile(sccs *s)
 /*
  * Return the pathname relative to the first ChangeSet file found.
  *
- * Note: this only works for SCCS/s.foo style pathnames.
- *
  * XXX - this causes a 5-10% slowdown, more if the tree is very deep.
  * I need to cache changeset lookups.
  */
 char	*
-_relativeName(sccs *sc, int withsccs, int mustHaveCS)
+_relativeName(char *gName,
+	    int isDir, int withsccs, int mustHaveRmarker, char *root)
 {
 	char	*t, *s, *top;
 	int	i, j;
 	static	char buf[1024];
 
-	t = fullname(sc, 1);
-	strcpy(buf, t);
-	top = buf;
-	if (buf[0] && buf[1] == ':') top = &buf[2]; /* account for WIN32 path */
+	t = fullname(gName, 0);
+	strcpy(buf, t); top = buf;
+	if (buf[0] && buf[1] == ':') top = &buf[2]; /* for WIN32 path */
 	assert(top[0] == '/');
-	s = strrchr(buf, '/');
-	for (--s; (*s != '/') && (s > top); s--);
-	strcpy(++s, BKROOT);
-	if (exists(buf)) {
-		debug((stderr, "relname1: %s\n", basenm(sc->gfile)));
-		return (basenm(sc->gfile));
+	if (isDir) {
+		s = &buf[strlen(buf)];
+		s[0] = '/';
+	} else {
+		/* trim off the file part */
+		s = strrchr(buf, '/');
 	}
-	for (--s; (*s != '/') && (s > t); s--);
 
 	/*
-	 * Now work backwards up the tree until we find a BKROOT
-	 * or root (i.e. / or  <driver_letter>: )
-	 * XXX - I strongly suspect this needs to be rewritten.
+	 * Now work backwards up the tree until we find a root marker 
 	 */
 	for (i = 0; s >= top; i++) {
-		debug((stderr, "rname: %s\n", buf));
+		strcpy(++s, BKROOT);
+		if (exists(buf))  break;
 		if (--s <= top) {
-			if (mustHaveCS) return (0);
-			debug((stderr, "relname2: %s\n", t));
-			return (t);
+			/* 
+			 * if we get here, we hit the top
+			 * and did not find the root marker
+			 */
+			if (root) root[0] = 0;
+			if (mustHaveRmarker) return (0);
+			return (t); /* return full path name */
 		}
 		/* s -> / in .../foo/SCCS/s.foo.c */
 		for (--s; (*s != '/') && (s > top); s--);
-		assert(s >= top);
-		strcpy(++s, BKROOT);
-		unless (exists(buf)) {
-			if (streq(top, "/BitKeeper/etc")) {
-				strcpy(buf, t);
-				debug((stderr, "relname3: %s\n", buf));
-				return (buf);
-			}
-			continue;
-		}
-		/*
-		 * go back in other buffer to this point and copy forwards,
-		 * then remove the SCCS/ part.
-		 */
-		s = strrchr(t, '/');
-		for (j = -1; j <= i; ++j) {
-			for (--s; (*s != '/') && (s > t); s--);
-		}
-		strcpy(buf, ++s);
-		if (withsccs) {
-			debug((stderr, "relname4: %s\n", buf));
-			return (buf);
-		}
-		s = strrchr(buf, '/');
-		for (--s; *s != '/'; s--);
-		/*
-		 * This is weird because of admin -i<whatever>.
-		 * We want to take the name from the s.file, that's all
-		 * we can trust.
-		 */
-		strcpy(++s, basenm(sc->sfile) + 2);
-		debug((stderr, "relname5: %s\n", buf));
-		return (buf);
 	}
-	assert("relativeName screwed up" == 0);
-	return (0);	/* lint */
+	assert(s >= top);
+
+	/*
+	 * go back in other buffer to this point and copy forwards,
+	 */
+	if (isDir) {
+		s = &t[strlen(t)];
+		s[0] = '/'; s[1] = 0;
+	} else {
+		/* trim off the file part */
+		s = strrchr(t, '/');
+	}
+	for (j = 1; j <= i; ++j) {
+		for (--s; (*s != '/') && (s > t); s--);
+	}
+	if (root) {
+		int len = s - t;
+		strncpy(root, t, len); root[len] = 0;
+	}
+	strcpy(buf, ++s);
+	if (isDir) {
+		if (buf[0] == 0) strcpy(buf, ".");
+		return buf;
+	}
+	if (withsccs) {
+		char *sName;
+
+		sName = name2sccs(buf);
+		strcpy(buf, sName);
+		free(sName);
+	}
+	return (buf);
 }
 
 /*
  * Trim off the RESYNC/ part of the pathname, that's garbage.
  */
 char	*
-relativeName(sccs *sc, int withsccs, int mustHaveCS)
+relativeName(sccs *sc, int withsccs, int mustHaveRmarker)
 {
-	char	*s = _relativeName(sc, withsccs, mustHaveCS);
+	char	*s, *g;
+
+	g = sccs2name(sc->sfile);
+	s = _relativeName(g, 0, withsccs, mustHaveRmarker, NULL);
+	free(g);
 
 	unless (s) return (0);
 
@@ -1866,7 +1872,7 @@ expand(sccs *s, delta *d, char *l)
 {
 	static	char buf[1024];
 	char	*t = buf;
-	char	*tmp;
+	char	*tmp, *g;
 	time_t	now = 0;
 	struct	tm *tm;
 	u16	a[4];
@@ -1974,7 +1980,9 @@ expand(sccs *s, delta *d, char *l)
 			break;
 
 		    case 'P':	/* full: /u/lm/smt/sccs/SCCS/s.slib.c */
-			tmp = fullname(s, 1);
+			g = sccs2name(s->sfile);
+			tmp = fullname(g, 1);
+			free(g);
 			strcpy(t, tmp); t += strlen(tmp);
 			break;
 
@@ -2059,7 +2067,7 @@ rcsexpand(sccs *s, delta *d, char *l)
 {
 	static	char buf[1024];
 	char	*t = buf;
-	char	*tmp;
+	char	*tmp, *g;
 	delta	*h;
 
 	while (*l != '\n') {
@@ -2162,7 +2170,9 @@ rcsexpand(sccs *s, delta *d, char *l)
 			l += 10;
 		} else if (strneq("$Source$", l, 8)) {
 			strcpy(t, "$Source: "); t += 9;
-			tmp = fullname(s, 1);
+			g = sccs2name(s->sfile);
+			tmp = fullname(g, 1);
+			free(g);
 			strcpy(t, tmp); t += strlen(tmp);
 			*t++ = ' '; *t++ = '$';
 			l += 8;
@@ -3388,18 +3398,19 @@ addSerial(ser_t *space, ser_t s)
 		tmp[0] = (ser_t)(size * 2);
 		free(space);
 		space = tmp;
-
 	} else {
 		int last = space[0] - 1;
 
 		EACH(space) if (space[i] > s) break; 
 		assert((i >= 1) && (i <= last));
 		if (space[i] > s) {
-			/* we have a "insert", move stuff up one slot */
-			for (j = last; j >= i + 1; j--) {
-				assert((j >= 2) && (j <= last));
-				if (space[ j - 1]) space[j] = space[j - 1];
-			}
+			/*
+			 * we have a "insert", skip the zero's
+			 * then move stuff up one slot
+			 */
+			for (j = last - 1; (j >= i) & !space[j]; j--);
+			memmove(&space[i + 1],
+				&space[i], (j - i + 1) * sizeof(ser_t));
 		}
 		space[i] = s; 
 	}
