@@ -30,10 +30,10 @@ proc ht {id} \
 # red - do a red rectangle
 # lightblue - do a lightblue rectangle
 # arrow - do a $arrow outline
-# orange - do a orange rectangle
-# yellow - do a yellow rectangle
-# black - do a yellow rectangle
-proc highlight {id type} \
+# old - do a orange rectangle
+# new - do a yellow rectangle
+# black - do a black rectangle
+proc highlight {id type {rev ""}} \
 {
 	global	color
 
@@ -43,31 +43,40 @@ proc highlight {id type} \
 	set x2 [lindex $bb 2]
 	set y2 [lindex $bb 3]
 
+	#puts "highlight: REV ($rev)"
+
 	switch $type {
 	    revision {\
-		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline $color(revision) -width 1]}
+		#puts "highlight: revision ($rev)"
+		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
+		    -fill $color(background) -outline $color(rev) \
+		    -width 1 -tags "$rev" ]}
 	    merge   {\
-		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline $color(merge) -width 1]}
+		#puts "highlight: merge ($rev)"
+		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
+		    -fill $color(background) -outline $color(merge) \
+		    -width 1 -tags "$rev"]}
 	    arrow   {\
-		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline $color(arrow) -width 1]}
+		#puts "highlight: arrow ($rev)"
+		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
+		    -outline $color(arrow) -width 1]}
 	    red     {\
-	        set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline "red" -width 1.5]}
-	    orange  {\
-		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline "" -fill orange -tags orange]}
-	    yellow   {\
-		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline "" -fill yellow -tags yellow]}
+		#puts "highlight: red ($rev)"
+	        set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
+		    -outline "red" -width 1.5 -tags "$rev"]}
+	    old  {\
+		#puts "highlight: old ($rev) id($id)"
+		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
+		    -outline $color(rev) -fill $color(old) -tags old]}
+	    new   {\
+		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
+		    -outline $color(rev) -fill $color(new) -tags new]}
 	    black  {\
-		set bg [.p.top.c create rectangle \
-		    $x1 $y1 $x2 $y2 -outline black -fill lightblue]}
+		set bg [.p.top.c create rectangle $x1 $y1 $x2 $y2 \
+		    -outline black -fill lightblue]}
 	}
 
-	.p.top.c lower $bg
+	.p.top.c raise revtext
 	return $bg
 }
 
@@ -224,17 +233,17 @@ proc addline {y xspace ht l} \
 		if {[regsub -- "-BAD" $rev "" rev] == 1} {
 			set id [.p.top.c create text $x $y -fill "red" \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $font(bold) -tags "$rev"]
-			highlight $id "red"
+			    -font $font(bold) -tags "$rev revtext"]
+			highlight $id "red" $rev
 			incr bad
 		} else {
 			set id [.p.top.c create text $x $y -fill #241e56 \
 			    -anchor sw -text "$txt" -justify center \
-			    -font $font(bold) -tags "$rev"]
+			    -font $font(bold) -tags "$rev revtext"]
 			if {$m == 1} { 
-				highlight $id "merge"
+				highlight $id "merge" $rev
 			} else {
-				highlight $id "revision"
+				highlight $id "revision" $rev
 			}
 		}
 		#puts "ADD $word -> $rev @ $x $y"
@@ -474,11 +483,11 @@ proc getLeftRev {} \
 {
 	global	rev1 rev2
 
-	.p.top.c delete yellow
-	.p.top.c delete orange
+	.p.top.c delete new
+	.p.top.c delete old
 	.menus.cset configure -state disabled -text "View changeset "
 	.menus.difftool configure -state disabled
-	set rev1 [getRev "orange"]
+	set rev1 [getRev "old"]
 	if {[info exists rev2]} { unset rev2 }
 	if {$rev1 != ""} { .menus.cset configure -state normal }
 }
@@ -487,21 +496,23 @@ proc getRightRev {} \
 {
 	global	rev2 file
 
-	.p.top.c delete yellow
-	set rev2 [getRev "yellow" ]
+	.p.top.c delete new
+	set rev2 [getRev "new" ]
 	if {$rev2 != ""} {
 		.menus.difftool configure -state normal
 		.menus.cset configure -text "View changesets"
 	}
 }
 
+# Returns the revision number (without the -username portion)
 proc getRev {type} \
 {
 	set id [.p.top.c gettags current]
+	#puts "ID (all) is $id"
 	set id [lindex $id 0]
 	if {("$id" == "current") || ("$id" == "")} { return "" }
 	.p.top.c select clear
-	highlight $id $type
+	highlight $id $type 
 	regsub -- {-.*} $id "" id
 	return $id
 }
@@ -975,9 +986,11 @@ proc widgets {} \
 	# maybe try: -misc-fixed-medium-*-*-*-13-*-*-*-*-*-*-*
 	# if 6x13 doesn't work
 
+	set color(old) orange     ;# color of old revision
+	set color(new) yellow     ;# color of new revision
 	set color(arrow) darkblue
 	set color(merge) darkblue
-	set color(revision) darkblue
+	set color(rev) darkblue
 	set color(date) slategrey
 	set color(branchArrow) $color(arrow)
 	set color(mergeArrow) $color(arrow)
@@ -1105,8 +1118,8 @@ proc widgets {} \
 	    -background lightblue -relief groove -borderwid 2
 
 	# highlighting.
-	.p.bottom.t tag configure "newTag" -background yellow
-	.p.bottom.t tag configure "oldTag" -background orange
+	.p.bottom.t tag configure "newTag" -background $color(new)
+	.p.bottom.t tag configure "oldTag" -background $color(old)
 
 	focus .p.top.c
 }
@@ -1226,11 +1239,11 @@ widgets
 sccstool $file
 if {$rev1 != ""} {
 	set rev1 [lineOpts $rev1]
-	highlight $rev1 "orange"
+	highlight $rev1 "old"
 }
 if {$rev2 != ""} {
 	set rev2 [lineOpts $rev2]
-	highlight $rev2 "yellow"
+	highlight $rev2 "new"
 	diff2 2
 } 
 if {$gca != ""} {
