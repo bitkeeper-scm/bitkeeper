@@ -26,7 +26,7 @@ proc dot {} \
 
 	scrollDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
 	highlightDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
-	.status configure -text "Diff $lastDiff of $diffCount"
+	.diffs.status.middle configure -text "Diff $lastDiff of $diffCount"
 	if {$lastDiff == 1} {
 		.menu.prev configure -state disabled
 	} else {
@@ -207,9 +207,10 @@ proc readFiles {L R} \
 	.diffs.left configure -state normal
 	.diffs.right configure -state normal
  	set t [clock format [file mtime $L] -format "%r %D"]
-	.diffs.l configure -text "$L ($t)"
+	.diffs.status.l configure -text "$L ($t)"
  	set t [clock format [file mtime $R] -format "%r %D"]
-	.diffs.r configure -text "$R ($t)"
+	.diffs.status.r configure -text "$R ($t)"
+	.diffs.status.middle configure -text "... Diffing ..."
 	.diffs.left delete 1.0 end
 	.diffs.right delete 1.0 end
 
@@ -333,8 +334,8 @@ proc widgets {L R} \
 	set leftColor orange
 	set rightColor yellow
 	set swid 12
-	set boldFont {clean 12 roman bold}
-	set buttonFont {clean 10 roman bold}
+	set boldFont {helvetica 12 roman bold}
+	set buttonFont {helvetica 12 roman bold}
 	set geometry ""
 	if {[file readable ~/.difftoolrc]} {
 		source ~/.difftoolrc
@@ -347,10 +348,17 @@ proc widgets {L R} \
 	wm title . "Diff Tool"
 
 	frame .diffs
-	    label .diffs.l -background $leftColor \
-		-font $buttonFont
-	    label .diffs.r -background $rightColor \
-		-font $buttonFont
+	    frame .diffs.status
+		label .diffs.status.l -background $leftColor \
+		    -font $buttonFont -relief sunken -borderwid 2
+		label .diffs.status.r -background $rightColor \
+		    -font $buttonFont -relief sunken -borderwid 2
+		label .diffs.status.middle \
+		    -foreground black -background lightblue \
+		    -font $buttonFont -wid 26 -relief sunken -borderwid 2
+		grid .diffs.status.l -row 0 -column 0 -sticky ew
+		grid .diffs.status.middle -row 0 -column 1
+		grid .diffs.status.r -row 0 -column 2 -sticky ew
 	    text .diffs.left -width $diffWidth -height $diffHeight \
 		-state disabled -wrap none -font $diffFont \
 		-xscrollcommand { .diffs.xscroll set } \
@@ -361,39 +369,42 @@ proc widgets {L R} \
 		-orient horizontal -command { xscroll }
 	    scrollbar .diffs.yscroll -wid $swid -troughcolor $tcolor \
 		-orient vertical -command { yscroll }
-	    grid .diffs.l -row 0 -column 0 -sticky nsew
-	    grid .diffs.r -row 0 -column 2 -sticky nsew
+	    grid .diffs.status -row 0 -column 0 -columnspan 3 -stick ew
 	    grid .diffs.left -row 1 -column 0 -sticky nsew
 	    grid .diffs.yscroll -row 1 -column 1 -sticky ns
 	    grid .diffs.right -row 1 -column 2 -sticky nsew
 	    grid .diffs.xscroll -row 2 -column 0 -sticky ew
 	    grid .diffs.xscroll -columnspan 3
 
+	set py 1
+	set px 4
+	set bw 2
 	frame .menu
 	    button .menu.prev -font $buttonFont -bg grey \
-		-text "Previous" -width 7 -state disabled -command prev
+		-pady $py -padx $px -borderwid $bw \
+		-text "Previous" -state disabled -command prev
 	    button .menu.next -font $buttonFont -bg grey \
-		-text "Next" -width 7 -state disabled -command next
+		-pady $py -padx $px -borderwid $bw \
+		-text "Next" -state disabled -command next
 	    button .menu.quit -font $buttonFont -bg grey \
-		-text "Quit" -width 7 -command exit 
-	    button .menu.help -width 7 -bg grey \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Quit" -command exit 
+	    button .menu.help -bg grey \
+		-pady $py -padx $px -borderwid $bw \
 		-font $buttonFont -text "Help" \
 		-command { exec bk helptool difftool & }
-	    grid .menu.prev -row 0 -column 0
-	    grid .menu.next -row 0 -column 1
-	    grid .menu.quit -row 0 -column 2
-	    grid .menu.help -row 0 -column 3
+	    pack .menu.prev -side left
+	    pack .menu.next -side left
+	    pack .menu.quit -side right
+	    pack .menu.help -side right
 
-	label .status -relief sunken -width 20 \
-	    -borderwidth 2 -anchor center -font {clean 12 roman}
-
-	grid .diffs -row 0 -column 0 -columnspan 2 -sticky nsew
-	grid .status -row 1 -column 0 -sticky ew
-	grid .menu -row 1 -column 1 -sticky ew
+	grid .menu -row 0 -column 0 -sticky ew
+	grid .diffs -row 1 -column 0 -sticky nsew
 	grid rowconfigure .diffs 1 -weight 1
-	grid rowconfigure . 0 -weight 1
-	grid rowconfigure . 1 -weight 0
-	grid rowconfigure . 2 -weight 0
+	grid rowconfigure . 0 -weight 0
+	grid rowconfigure . 1 -weight 1
+	grid columnconfigure .diffs.status 0 -weight 1
+	grid columnconfigure .diffs.status 2 -weight 1
 	grid columnconfigure .diffs 0 -weight 1
 	grid columnconfigure .diffs 2 -weight 1
 	grid columnconfigure . 0 -weight 1
@@ -401,7 +412,7 @@ proc widgets {L R} \
 	# smaller than this doesn't look good.
 	wm minsize . 300 300
 
-	.status configure -text "Welcome to difftool!"
+	.diffs.status.middle configure -text "Welcome to difftool!"
 
 	bind .diffs <Configure> { computeHeight }
 	foreach w {.diffs.left .diffs.right} {

@@ -262,7 +262,7 @@ proc listRevs {file} \
 	}
 
 	if {$bad != 0} {
-		.info.l configure -text "$file -- $bad bad revs"
+		.menus.l configure -text "$file -- $bad bad revs"
 	}
 	set bb [.p.top.c bbox all]
 	set x1 [expr [lindex $bb 0] - 10]
@@ -276,7 +276,32 @@ proc listRevs {file} \
 	set bb [.p.top.c bbox all]
 	.p.top.c configure -scrollregion $bb
 	.p.top.c xview moveto 1
-	.p.top.c yview moveto 0
+	.p.top.c yview moveto .3
+}
+
+proc getLeftRev {} \
+{
+	global	rev1 rev2
+
+	.p.top.c delete yellow
+	.p.top.c delete orange
+	.menus.cset configure -state disabled -text "View changeset "
+	.menus.difftool configure -state disabled
+	set rev1 [getRev 2]
+	if {[info exists rev2]} { unset rev2 }
+	if {$rev1 != ""} { .menus.cset configure -state normal }
+}
+
+proc getRightRev {} \
+{
+	global	rev2 file
+
+	.p.top.c delete yellow
+	set rev2 [getRev 3]
+	if {$rev2 != "" && $file != "ChangeSet"} {
+		.menus.difftool configure -state normal
+		.menus.cset configure -text "View changesets"
+	}
 }
 
 proc getRev {type} \
@@ -286,14 +311,16 @@ proc getRev {type} \
 	if {("$id" == "current") || ("$id" == "")} { return "" }
 	.p.top.c select clear
 	highlight $id $type
+	regsub -- {-.*} $id "" id
 	return $id
 }
 
-proc filltext {f} \
+proc filltext {f clear} \
 {
 	global	search
 
-	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
+	.p.bottom.t configure -state normal
+	if {$clear == 1} { .p.bottom.t delete 1.0 end }
 	while { [gets $f str] >= 0 } {
 		.p.bottom.t insert end "$str\n"
 	}
@@ -301,20 +328,18 @@ proc filltext {f} \
 	.p.bottom.t configure -state disabled
 	searchreset
 	set search(text) "Welcome"
-	busy 0
+	if {$clear == 1 } { busy 0 }
 }
 
 proc prs {} \
 {
-	global file rev1 dspec dev_null bk_prs
+	global file rev1 dspec dev_null bk_prs search
 
-	.p.top.c delete yellow
-	.p.top.c delete orange
-	set rev1 [getRev 2]
+	getLeftRev
 	if {"$rev1" != ""} {
 		busy 1
 		set prs [open "| $bk_prs {$dspec} -r$rev1 $file 2>$dev_null"]
-		filltext $prs
+		filltext $prs 1
 	} else {
 		set search(text) "Click on a revision"
 	}
@@ -326,7 +351,7 @@ proc history {} \
 
 	busy 1
 	set f [open "| $bk_prs -m {$dspec} $file 2>$dev_null"]
-	filltext $f
+	filltext $f 1
 }
 
 proc sfile {} \
@@ -334,26 +359,26 @@ proc sfile {} \
 	global	file
 
 	busy 1
-	set f [open "$file" "r"]
-	filltext $f
+	set sfile [exec bk sfiles $file]
+	set f [open "$sfile" "r"]
+	filltext $f 1
 }
 
 proc get {} \
 {
 	global file dev_null bk_cset bk_get rev1 rev2 diffOpts
 
+	getLeftRev
+	if {"$rev1" == ""} { return }
 	busy 1
-	.p.top.c delete yellow
-	.p.top.c delete orange
-	set rev1 [getRev 2]; if {"$rev1" == ""} { return }
 	set base [file tail $file]
-	if {$base != "s.ChangeSet"} {
+	if {$base != "ChangeSet"} {
 		set get [open "| $bk_get -mudPr$rev1 $file 2>$dev_null"]
-		filltext $get
+		filltext $get 1
 		return
 	}
 	set rev2 $rev1
-	csetdiff2
+	csetdiff2 0
 }
 
 proc difftool {a b} \
@@ -365,7 +390,7 @@ proc difftool {a b} \
 	set marker [file join $tmp_dir difftool]
 	set pid [pid]
 	set marker "$marker-$pid"
-	exec bk difftool -geometry +$x+$y $a $b $marker & &
+	exec bk difftool -geometry +$x+$y $a $b $marker &
 	after 100
 	while {[file exists $marker] == 0} {
 		after 500
@@ -374,18 +399,26 @@ proc difftool {a b} \
 	busy 0
 }
 
-proc diff2 {fm} \
+proc csettool {} \
+{
+	global	rev1 rev2 file
+
+	if {[info exists rev1] != 1} { return }
+	if {[info exists rev2] != 1} { set rev2 $rev1 }
+	exec bk csettool -r$rev1..$rev2 &
+}
+
+proc diff2 {difftool} \
 {
 	global file rev1 rev2 diffOpts getOpts dspecnonl dev_null
 	global bk_cset tmp_dir
 
 	if {[info exists rev1] != 1} { return }
-	.p.top.c delete yellow
-	set rev2 [getRev 3]
+	if {$difftool == 0} { getRightRev }
 	if {"$rev2" == ""} { return }
 	set base [file tail $file]
-	if {$base == "s.ChangeSet"} {
-		csetdiff2
+	if {$base == "ChangeSet"} {
+		csetdiff2 0
 		return
 	}
 	busy 1
@@ -395,7 +428,7 @@ proc diff2 {fm} \
 	set b [open "| get $getOpts -kPr$rev2 $file >$r2 2>$dev_null" "w"]
 	catch { close $a; }
 	catch { close $b; }
-	if {$fm == 1} {
+	if {$difftool == 1} {
 		difftool $r1 $r2
 		return
 	}
@@ -414,34 +447,75 @@ proc diff2 {fm} \
 	busy 0
 }
 
-proc csetdiff2 {} \
+proc csetdiff2 {doDiffs} \
 {
-	global file rev1 rev2 diffOpts dev_null bk_cset
+	global file rev1 rev2 diffOpts dev_null bk_cset bk_sccslog
 
 	busy 1
 	set l 3
 	.p.bottom.t configure -state normal; .p.bottom.t delete 1.0 end
-	.p.bottom.t insert end "- $file version $rev1\n"
-	.p.bottom.t insert end "+ $file version $rev2\n\n"
-	.p.bottom.t tag add "oldTag" 1.0 "1.0 lineend + 1 char"
-	.p.bottom.t tag add "newTag" 2.0 "2.0 lineend + 1 char"
+	.p.bottom.t insert end "ChangeSet history for $rev1..$rev2\n\n"
 
-	set log [open "| bk -R sccslog -r$rev1..$rev2 ChangeSet "]
-	while { [gets $log str] >= 0 } {
-		.p.bottom.t insert end "$str\n"
-		incr l
+	set revs [open "| bk -R prs -hbMr$rev1..$rev2 -d:I: ChangeSet"]
+	while {[gets $revs r] >= 0} {
+		set c [open "|$bk_sccslog -r$r ChangeSet" r]
+		filltext $c 0
+		set log [open "|$bk_cset -r$r | sort | $bk_sccslog -" r]
+		filltext $log 0
 	}
-	close $log
-	set log [open "| $bk_cset -r$rev1..$rev2 | sort | bk -R sccslog -"]
-	while { [gets $log str] >= 0 } {
-		.p.bottom.t insert end "$str\n"
-		incr l
+	busy 0
+}
+
+proc cset {} \
+{
+	global file rev1 rev2 bk_prs dspec
+
+	busy 1
+	set csets ""
+	.p.bottom.t configure -state normal
+	.p.bottom.t delete 1.0 end
+	if {[info exists rev2]} {
+		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
+		while {[gets $revs r] >= 0} {
+			set c [exec bk r2c $file $r]
+			set p [format "%s %s ==> cset %s\n" $file $r $c]
+    			.p.bottom.t insert end "$p"
+			update
+			if {$csets == ""} {
+				set csets $c
+			} else {
+				set csets "$csets,$c"
+			}
+		}
+		close $revs
+	} else {
+		set csets [exec bk r2c $file $rev1]
 	}
-	close $log
-	set diffs [open "| $bk_cset -R$rev1..$rev2 | sort | bk -R diffs  $diffOpts -"]
-	diffs $diffs $l
-	.p.bottom.t configure -state disabled
-	searchreset
+	set p [open "|bk -R prs {$dspec} -r$csets ChangeSet" r]
+	filltext $p 1
+}
+
+proc r2c {} \
+{
+	global file rev1 rev2
+
+	busy 1
+	set csets ""
+	if {[info exists rev2]} {
+		set revs [open "| bk prs -hbMr$rev1..$rev2 -d:I: $file"]
+		while {[gets $revs r] >= 0} {
+			set c [exec bk r2c $file $r]
+			if {$csets == ""} {
+				set csets $c
+			} else {
+				set csets "$csets,$c"
+			}
+		}
+		close $revs
+	} else {
+		set csets [exec bk r2c $file $rev1]
+	}
+	exec bk csettool -r$csets &
 	busy 0
 }
 
@@ -679,7 +753,7 @@ proc busy {busy} \
 proc widgets {} \
 {
 	global	font bfont arrow background search swid diffOpts getOpts
-	global	lineOpts dspec dspecnonl wish bithelp yspace paned
+	global	lineOpts dspec dspecnonl wish bithelp yspace paned file
 
 	set dspec \
 "-d:I:\t:D: :T::TZ: :P:\$if(:HT:){@:HT:}  :DPN:\n\$each(:C:){\t(:C:)}\n"
@@ -692,9 +766,8 @@ proc widgets {} \
 	set search(text) ""
 	set search(dir) ""
 	set swid 12
-	set font -adobe-helvetica-medium-r-normal-*-12-*-*-*-*-*-*-*
-	set bfont -adobe-helvetica-bold-r-normal-*-12-*-*-*-*-*-*-*
-	set pady 1
+	set font {helvetica 12 roman}
+	set bfont {helvetica 12 roman bold}
 	set arrow #BCD2EE
 	set arrow darkblue
 	set background #9fb6b8
@@ -706,23 +779,32 @@ proc widgets {} \
 		wm geometry . $geometry
 	}
 	wm title . "SCCS Tool"
+	set py 1
+	set px 4
+	set bw 2
 	frame .menus
-	    button .menus.quit -font $bfont -width 7 -relief raised \
-		-pady $pady -text "Quit" -command done
-	    button .menus.help -font $bfont -width 7 -relief raised \
-		-pady $pady -text "Help" -command { exec bk helptool sccstool & }
-#	    button .menus.new -font $bfont -width 7 -relief raised \
-#		-pady $pady -text "Open" -command openFile
-#	    button .menus.prev -font $bfont -width 7 -relief raised \
-#		-pady $pady -text "Prev" -state disabled -command "next -1"
-#	    button .menus.next -font $bfont -width 7 -relief raised \
-#		-pady $pady -text "Next" -command "next 1"
-#	    pack .menus.new .menus.help .menus.quit .menus.prev .menus.next -side left
-	    pack .menus.help .menus.quit -side right
-
-	frame .info
-	    label .info.l -pady $pady -font $bfont -width 73 -relief groove
-	    pack .info.l -expand yes -fill x
+	    button .menus.quit -font $bfont -relief raised \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Quit" -command done
+	    button .menus.help -font $bfont -relief raised \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Help" -command { exec bk helptool sccstool & }
+	    button .menus.cset -font $bfont -relief raised \
+		-pady $py -padx $px -borderwid $bw \
+		-text "View changeset " -width 15 -command r2c -state disabled
+	    button .menus.difftool -font $bfont -relief raised \
+		-pady $py -padx $px -borderwid $bw \
+		-text "Diff tool" -command "diff2 1" -state disabled
+	    label .menus.l -font $bfont -width 73 -relief groove \
+		-pady $py -padx $px -borderwid $bw
+	    if {$file == "ChangeSet"} {
+		    .menus.cset configure -command csettool
+		    pack .menus.help .menus.quit .menus.cset -side right
+	    } else {
+		    pack .menus.difftool .menus.help .menus.quit .menus.cset \
+			-side right
+	    }
+	    pack .menus.l -expand yes -fill x -side left
 
 	frame .p
 	    frame .p.top -borderwidth 2 -relief sunken
@@ -737,7 +819,7 @@ proc widgets {} \
 		pack .p.top.c -expand true -fill both
 
 	    frame .p.bottom -borderwidth 2 -relief sunken
-		text .p.bottom.t -width 80 -height 12 -font $font -wrap none \
+		text .p.bottom.t -width 80 -height 24 -font $font -wrap none \
 		    -xscrollcommand { .p.bottom.xscroll set } \
 		    -yscrollcommand { .p.bottom.yscroll set }
 		scrollbar .p.bottom.xscroll -orient horizontal \
@@ -761,7 +843,6 @@ proc widgets {} \
 		pack .cmd.t -side left -fill x -expand true
 
 	pack .menus -side top -fill x
-	pack .info -side top -fill x
 	pack .p -side top -expand true -fill both
 	pack propagate .p off
 	pack .cmd -side left -expand yes -fill x
@@ -774,7 +855,7 @@ proc widgets {} \
 	bind .p.top.c <1>		{ prs; break }
 	bind .p.top.c <3>		"diff2 0; break"
 	bind .p.top.c <Double-1>	"get; break"
-	bind .p.top.c <d>		"diff2 1"
+	bind .p.top.c <c>		"cset"
 	bind .p.top.c <h>		"history"
 	bind .p.top.c <q>		"exit"
 	bind .p.top.c <s>		"sfile"
@@ -849,8 +930,8 @@ proc sccstool {name} \
 	if {[info exists revX]} { unset revX }
 	if {[info exists revY]} { unset revY }
 	set bad 0
-	set file [exec $bk_sfiles $name 2>$dev_null]
-	.info.l configure -text $file
+	set file [exec $bk_sfiles -g $name 2>$dev_null]
+	.menus.l configure -text $file
 	listRevs $file
 	history
 	set search(text) "Welcome"
@@ -860,7 +941,7 @@ proc sccstool {name} \
 
 proc init {} \
 {
-	global bin bk_prs bk_cset bk_get bk_renumber bk_sfiles
+	global bin bk_sccslog bk_prs bk_cset bk_get bk_renumber bk_sfiles
 	global bk_lines
 
 	bk_init
@@ -870,15 +951,16 @@ proc init {} \
 	set bk_renumber [file join $bin renumber]
 	set bk_sfiles [file join $bin sfiles]
 	set bk_lines [file join $bin lines]
+	set bk_sccslog [file join $bin sccslog]
 }
 
 init
-widgets
 if {"$argv" != ""} {
-	set next 0
-	sccstool [lindex $argv $next]
+	set file [lindex $argv 0]
 } else {
 	cd2root
 	# This should match the CHANGESET path defined in sccs.h
-	sccstool "SCCS/s.ChangeSet"
+	set file ChangeSet
 }
+widgets
+sccstool $file
