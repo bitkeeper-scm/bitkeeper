@@ -95,6 +95,13 @@
 .if t \fB\\$1\fP \ \fI\\$2\fP\c
 .if n \fB\\$1\fP <\\$2>\c
 ..
+.de REQreq
+.\" Non-breaking Bold Italic for required arg no space (reqarg)
+.\" required character with a required argument no space
+.\" -cREQUIRED or -c<REQUIRED>
+.if t \fB\\$1\fP\fI\\$2\fP
+.if n \fB\\$1\fP<\\$2>
+..
 .de OPTopt
 .\" Bold Italic for option arg with [] (option[arg])
 .\" option character with a optional argument with no space

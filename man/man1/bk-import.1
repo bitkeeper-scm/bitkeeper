@@ -4,26 +4,56 @@
 .SH NAME
 bk import \- import a set of files into a \*(BK package
 .SH SYNOPSIS
-.Bc bk import [-AefHiqrvu] [
+.Bc bk import [-CfHqvr] [
+.OPTreq \-S s
+.B ]
+.REQreq \-t patch 
+.ARG patch
+.ARG dst
+.sp
+.Bc bk import [-CfHiqvx] [
+.OPTreq \-S s
+.Bc ] [
+.OPTreq \-l f
+.B ]
+.REQreq \-t plain
+.ARG dir
+.ARG dst
+.sp
+.Bc bk import [-CfHiqvx] [
+.OPTreq \-S s
+.Bc ] [
+.OPTreq \-l f
+.B ]
+.REQreq \-t SCCS
+.ARG dir
+.ARG dst
+.sp
+.Bc bk import [-ACfHiquvx] [
 .OPTreq \-c tag
 .Bc ] [
 .OPTreq \-j n
 .Bc ] [
-.OPTreq \-l file
+.OPTreq \-l f
 .Bc ] [
-.OPTreq \-S sym
+.OPTreq \-S s
 .Bc ] [
-.OPTreq \-t type
+.OPTreq \-t CVS
+.Bc |
+.ARGc RCS
 .B ]
-.ARG dir|patch
-.ARG destination
+.ARG dir
+.ARG dst
 .SH DESCRIPTION
 .LP
-Use bk import to put non-\*(BK files into a \*(BK package and check-in
-the initial revision.
+Use bk import to put non-\*(BK files into a \*(BK package.  Non-\*(BK files
+include plain ascii text files, patches (diffs), SCCS, CVS, and RCS files.
 .LP
-The destination should be a bitkeeper package.  Please see
-bk help setup if a package is not yet set up.
+Import can be used to initially populate a \*(BK package from a 
+non-\*(BK tree.  In the case of CVS, RCS, SCCS files,
+import should only be invoked once over the data to import.  
+It can be used repeatedly if you are importing 
+traditional (or non-traditional) patches into a repository over time.  
 .LP
 You can import files by specifying the directory
 containing files for import (Note: All files under the directory will
@@ -48,9 +78,9 @@ Include>> *.h
 Include>> Makefile
 Include>> .
 .DE
-Importing from a CVS tree:
+To import from a CVS tree:
 .DS
-$ bk import -v -tCVS warehouse new
+bk import -v -tCVS warehouse new
 .DE
 .SH OPTIONS
 .if t .TP
@@ -59,6 +89,9 @@ $ bk import -v -tCVS warehouse new
 Attic processing (CVS import only).  Moves all files which do not have
 name conflicts from the Attic subdirectories to the enclosing repository,
 i.e., "mv Attic/*,v .".
+.tp
+.B \-C
+Do not commit the ChageSet.
 .tp
 .OPTreq \-c tag
 do not import anything after
@@ -126,6 +159,46 @@ Be verbose.
 .B \-x
 Prompts for a regular expression to apply to the list
 of files.  All matches are excluded.
+.SH "IMPORTING PATCHES"
+.LP
+Importing patches can be done multiple times into a package.  Import handles
+file renames in the following way: import remembers all the deleted files
+and remembers all the new files and then launches bk renametool for the
+user to match renamed files manually.
+.SH "IMPORTING CVS/RCS FILES"
+.LP
+This is a one time only import.  Importing to a clone of the destination 
+package is advised.  
+.LP
+bk import will assume that the default branch is the one to be imported,
+other branches are discarded.  Metadata from the CVS/RCS files is 
+preserved.
+.LP
+The type of import requires RCS 5.6 or later.
+.SH "IMPORTING PLAIN TEXT"
+.LP
+Importing a plain text file into a \*(BK package can only be done once.
+If there is already a file in the package that has the same name as a
+file to be imported the import will fail.  If a package is already
+populated with files use the -i option or the -l option 
+to avoid trying to import files already in the package.  Because of the
+preceeding constraints, import does not catch renames with plain text files.
+If a file has been renamed, it can be imported, but the original file will
+still exist in the package so it is important to remove the original file
+from the package tree.
+.SH "IMPORTING SCCS FILES"
+.LP
+Teamware files can be imported.  The history of the file is preserved, but
+the unmerged branches are discarded.  This is okay because the necessary 
+metadata is in the mainline.  
+.LP
+Importing \*(BK files is not supported.  Use bk clone.
+.SH "ERROR HANDLING"
+.LP
+Import does not handle errors in a robust way.  If unsuccessful, import
+may leave work half done in the destination package.  It is suggested that
+import destination repository is a clone of the original package in case of
+a failed import.
 .SH "SEE ALSO"
 .SA rcs2sccs 1
 .SA undos 1

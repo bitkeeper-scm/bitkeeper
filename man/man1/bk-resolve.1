@@ -36,29 +36,29 @@ be found in RESYNC/BitKeeper/etc/csets).
 .LP
 Resolve traverses all of the files, prompting you with a list of files
 needing to be merged.  The following are the stages when resolving files:
-.TP 2
-\*(BU
+.TP .4i
+.B \*(BU
 create and rename conflicts
 .tp
-\*(BU 
+.B \*(BU
 mode conflicts (file permissions)
 .tp
-\*(BU
+.B \*(BU
 file flag conflicts
 .tp
-\*(BU
+.B \*(BU
 file content conflicts
 .LP
 In the future, we will be adding resolve stages for the following:
-.TP 2
-\*(BU
+.TP .3i
+.B \*(BU
 symbol "conflicts" (local and remote added the "alpha" symbol to
 different deltas)
 .tp
-\*(BU
+.B \*(BU
 descriptive text conflicts
 .tp
-\*(BU
+.B \*(BU
 LOD name conflicts
 .LP
 When there are no conflicts left to be merged, resolve groups any merge
