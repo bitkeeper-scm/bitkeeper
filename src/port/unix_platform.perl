@@ -31,6 +31,12 @@ sub bg_system
 	system("$cmd $args &");
 }
 
+# Get Process exit status
+sub exitStatus
+{
+	$_[0] >> 8;
+}
+
 # Unix exec
 # We need this becuase perl exec on win32 runs new program in "background"
 sub doExec

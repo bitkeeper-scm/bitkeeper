@@ -40,6 +40,12 @@ sub bg_system
 	Win32::Process::Create($proc, $cmd, "$cmd $args" , 0, DETACHED_PROCESS, ".");
 }
 
+# Get Process exit status
+sub exitStatus
+{
+	0x00ff & $_[0];
+}
+
 # Simulate a unix exec, new program must run in foreground,
 # regular perl exec on win32 resulted in a background process
 sub doExec
