@@ -192,6 +192,17 @@ cmd_push_part2(int ac, char **av)
 	if (metaOnly && !debug) quiet = 1; /* force quiet for logging code */
 	unless (quiet) takepatch[i++] = "-vvv";
 	unless (metaOnly) takepatch[i++] = "-c"; /* normal patch no conflict */
+	/*
+	 * Allow conflicts in logging patch by stomping on "-c".
+	 * Tell takepatch it's logging so we drop the write lock while
+	 * getting the patch.  We don't bother getting the write lock
+	 * back because takepatch will have locked the tree with the
+	 * RESYNC directory, which is a long lived write lock.
+	 */
+	if (metaOnly) {
+		repository_wrunlock(0);
+		takepatch[i++] = "-L";
+	}
 	takepatch[i] = 0;
 	pid = spawnvp_wPipe(takepatch, &pfd, BIG_PIPE);
 	dup2(fd2, 2); close(fd2);
@@ -272,7 +283,9 @@ cmd_push_part2(int ac, char **av)
 	}
 
 done:	/*
-	 * Fire up the post-trigger (for non-logging tree only)
+	 * Note: in the logging tree case, if there was an error, we do not
+	 * have a write lock on the repository unless the error path left the
+	 * RESYNC directory.
 	 */
 	if (metaOnly) av[0] = "remote log push";
 	putenv("BK_RESYNC=FALSE");

@@ -345,7 +345,42 @@ import_patch() {
 	# XXX TODO For gfile with a sfile, patch -E option should translates
 	#          delete event to "bk rm"
 	(cd "$HERE"; cat "$PATCH") > ${TMP}patch$$
-	bk patch -g1 -f -p1 -ZsE --bkimport -z '=-PaTcH_BaCkUp!' \
+
+	# Make sure the target files are not in modified state
+	bk patch --dry-run --lognames -g1 -f -p1 -ZsE < ${TMP}patch$$ \
+								> ${TMP}plog$$
+	egrep 'Creating|Removing file|Patching file' ${TMP}plog$$ | \
+	    sed -e 's/Removing file //' \
+		-e 's/Creating file //' \
+		-e 's/Patching file //' | \
+	    			sort -u  > ${TMP}plist$$
+	CONFLICT=NO
+	MCNT=`bk sfiles -c - < ${TMP}plist$$ | wc -l`
+	if [ $MCNT -ne 0 ]
+	then
+		echo "Cannot import to modified file:"
+		bk sfiles -c - < ${TMP}plist$$
+		CONFLICT=YES
+	fi
+	MCNT=`bk sfiles -p - < ${TMP}plist$$ | wc -l`
+	if [ $MCNT -ne 0 ]
+	then
+		echo "Cannot import to file with uncommitted delta:"
+		bk sfiles -p - < ${TMP}plist$$
+		CONFLICT=YES
+	fi
+	MCNT=`bk sfiles -x - < ${TMP}plist$$ | wc -l`
+	if [ $MCNT -ne 0 ]
+	then
+		echo "Cannot import to existing extra file"
+		bk sfiles -x - < ${TMP}plist$$
+		CONFLICT=YES
+	fi
+
+	if [ $CONFLICT = YES ]; then Done 1; fi
+	
+
+	bk patch -g1 -f -p1 -ZsE -z '=-PaTcH_BaCkUp!' \
 	    --forcetime --lognames < ${TMP}patch$$ > ${TMP}plog$$ 2>&1 || {
 		echo 'Patch failed.  **** patch log follows ****'
 		cat ${TMP}plog$$
@@ -359,8 +394,10 @@ import_patch() {
 	    sed 's/Creating file //' > ${TMP}creates$$
 	grep '^Removing file ' ${TMP}plog$$ |
 	    sed 's/Removing file //' > ${TMP}deletes$$
+	# We need to "sort -u" beacuse patchfile created by "interdiff"
+	# can patch the same target file multiple time!!
 	grep '^Patching file ' ${TMP}plog$$ |
-	    sed 's/Patching file //' > ${TMP}patching$$
+	    sed 's/Patching file //' | sort -u > ${TMP}patching$$
 
 	bk sfiles -x | grep '=-PaTcH_BaCkUp!$' | bk _unlink
 	while read x
@@ -395,6 +432,13 @@ import_patch() {
 		patch_undo
 		Done 1
 	}
+	# Store file's root key, because path may change after "bk rm"
+	# Note: a new/extra  file does _not_ have a root key yet, so the key
+	# list only contain "patched" or "deleted" files.
+	cat ${TMP}patching$$  ${TMP}deletes$$ | \
+				bk prs -hnr+ -d:ROOTKEY: - > ${TMP}keys$$
+
+	DELETE_AND_CREATE=NOT_YET
 	if [ $RENAMES = YES ]
 	then	msg Checking for potential renames in `pwd` ...
 		# Go look for renames
@@ -404,20 +448,35 @@ import_patch() {
 			echo ""
 			cat ${TMP}creates$$
 	    		) | bk renametool $Q
+			# Renametool may have moved a s.file on the "delete"
+			# list under a gfile on the "create" list. Check for
+			# this case and make a delta.
+			bk sfiles -gc - < ${TMP}creates$$ | \
+					bk ci $VERBOSE -G "$COMMENTOPT" -
+
+			# "bk rm" and "bk new" was done in renametool
+			# XXX BUG: renametool should exit non-zero if
+			# user hit the "quit" button without fully resoving
+			# the delete/create list
+			DELETE_AND_CREATE=DONE
 		fi
 	fi
-	msg Checking in new or modified files in `pwd` ...
-	# Do the deletes automatically
-	if [ -s ${TMP}deletes$$ -a ! -s ${TMP}creates$$ ]
-	then	msg Removing `wc -l < ${TMP}deletes$$` files
-		bk rm -f - < ${TMP}deletes$$
+
+	if [ $DELETE_AND_CREATE = NOT_YET ]
+	then	
+		msg Checking in new or modified files in `pwd` ...
+		if [ -s ${TMP}deletes$$ ]
+		then
+			msg Removing `wc -l < ${TMP}deletes$$` files
+			bk rm -f - < ${TMP}deletes$$
+		fi
+		if [ -s ${TMP}creates$$ ]
+		then
+			msg Creating `wc -l < ${TMP}creates$$` files
+			bk new $Q -G "$COMMENTOPT" - < ${TMP}creates$$
+		fi
+			
 	fi
-	# Do the creates automatically
-	if [ ! -s ${TMP}deletes$$ -a -s ${TMP}creates$$ ]
-	then	msg Creating `wc -l < ${TMP}creates$$` files
-		bk new $Q -G "$COMMENTOPT" - < ${TMP}creates$$
-	fi
-	rm -f ${TMP}creates$$ ${TMP}deletes$$
 
 	bk ci $VERBOSE -G "$COMMENTOPT" - <  ${TMP}patching$$
 
@@ -429,8 +488,24 @@ import_patch() {
 	if [ $? -eq 1 ]
 	then 	Done 1
 	fi
+
+	# We limit the commit to only the files we patched and created.
+	# Note: the create list may have files that are no longer a
+	# real "create" # because renametool may have matched it up with
+	# a deleted file and transformed it to a rename.
+	#
+	# Note: renametool does not update the idcache when it
+	# move a s.file to match up a "delete" with a "create". Fotrunately,
+	# the new s.file location is always captured on the "create" list.
+	# We are counting on "bk sfiles -C" to ignore files which are
+	# without a s.file. Otherwise we would have to rebuild the idcache,
+	# which is slow.
 	msg Creating changeset for $PNAME in `pwd` ...
-	bk sfiles -C | bk commit $QUIET $SYMBOL -a -y"`basename $PNAME`" -
+	bk _key2path < ${TMP}keys$$ > ${TMP}patching$$
+	cat ${TMP}creates$$ ${TMP}patching$$ | sort -u | \
+			bk sfiles -C - | \
+			bk commit $QUIET $SYMBOL -a -y"`basename $PNAME`" -
+
 	msg Done.
 	Done 0
 }
@@ -633,7 +708,8 @@ validate_patch() {
 }
 
 Done() {
-	for i in patch rejects plog locked import sccs rm patching
+	for i in patch rejects plog locked import sccs rm patching \
+		plist creates deletes keys
 	do	rm -f ${TMP}${i}$$
 	done
 	exit $1
