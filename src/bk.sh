@@ -433,7 +433,7 @@ _root() {
 _links() {
 	if [ X$1 = X ]
 	then	echo "usage: bk links bk-bin-dir [public-dir]"
-		echo "Typical is bk links /usr/libexec/bitkeeper"
+		echo "Typical is bk links /usr/libexec/bitkeeper /usr/bin"
 		exit 1
 	fi
 	test -x $1/bk || { echo Can not find bin directory; exit 1; }
