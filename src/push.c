@@ -590,7 +590,11 @@ push_part2(char **av, remote *r, char *rev_list, int ret, char **envVar)
 		}
 		getline2(r, buf, sizeof(buf));
 		if (buf[0] == BKD_RC) {
-			rc = atoi(&buf[1]);
+			if (rc = atoi(&buf[1])) {
+				fprintf(stderr,
+				    "Push failed: remote takepatch exited %d\n",
+				    rc);
+			}
 			getline2(r, buf, sizeof(buf));
 		}
 		unless (streq(buf, "@END@") && (rc == 0)) {
