@@ -123,6 +123,15 @@ proc getConfig {prog} \
 
 	set _d(rename.listHeight) 8
 
+	# N.B. 500ms is the hard-coded constant in tk used to detect
+	# double clicks. We need a number slightly larger than that. The
+	# book Practical Programming in Tcl/Tk, 4th ed. recommends 600. This
+	# results in a noticable delay before a single-click is processed 
+	# but there really is no other solution when a double-click must
+	# override a single click, or a single-click action will take more
+	# than 500ms and therefore preventing double-clicks from ever being
+	# noticed.
+	set _d(rev.doubleclick) 600  ;# XXX: NOTDOC
 	set _d(rev.sashBG) $BLACK
 	set _d(rev.canvasBG) #9fb6b8	  	;# graph background
 	set _d(rev.commentBG) $LIGHTBLUE	;# background of comment text
