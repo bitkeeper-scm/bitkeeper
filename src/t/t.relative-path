@@ -26,3 +26,13 @@ ci $Q -y path
 P=`prs -r1.2 -h -d':DPN:' path`
 if [ $P != "path" ]; then echo Failed; exit 1; fi
 echo OK
+echo $N checking pathname w/ symlink directory ......................$NL
+mkdir src
+touch src/foo
+ci $Q -i src/foo
+ln -s src symlink
+co $Q -l src/foo
+delta $Q -ysym-path symlink/foo
+P=`prs -r1.2 -h -d':DPN:' src/foo`
+if [ $P != "src/foo" ]; then echo Failed; exit 1; fi
+echo OK
