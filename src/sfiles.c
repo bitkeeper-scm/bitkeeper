@@ -342,7 +342,7 @@ keys(char *file)
 	delta	*d;
 	static	time_t	cutoff;
 	static	char *host;
-	static	first = 1;
+	static	int first = 1;
 
 	unless (s) return;
 	unless (s->table) {

@@ -226,7 +226,7 @@ uniq_close()
 	char	*bin;
 	char	path[MAXPATH];
 
-	unless (dirty) return (0);
+	unless (dirty) goto close;
 	unless (bin = findBin()) {
 		fprintf(stderr, "Can not find BitKeeper bin directory");
 		return (-1);
@@ -244,7 +244,7 @@ uniq_close()
 	}
 	fclose(f);
 	uniq_unlock();
-	mdbm_close(db);
+close:	mdbm_close(db);
 	db = 0;
 	dirty = 0;
 	return (0);

@@ -191,7 +191,6 @@ in(char *file, int todo, int extract)
 	char	buf[1024];
 	int	n;
 	int	fd = -1;
-	int	mode;
 	u32	sum = 0, sum2 = 0;
 
 	unless (todo) {

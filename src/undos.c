@@ -4,6 +4,7 @@
 #endif
 
 void undos(char *s);
+extern void platformSpecificInit(char *);
 
 int
 main(int ac, char **av)

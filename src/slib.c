@@ -245,25 +245,6 @@ Chmod(char *fname, mode_t mode)
 }
 
 /*
- * Dup up to but not including the newline.
- */
-private char	*
-strnonldup(char *s)
-{
-	register char *t = s;
-	int	len;
-
-	while (*t++ && (t[-1] != '\n'));
-	len = t - s;
-	len--;
-	t = malloc(len + 1);
-	assert(t);
-	strncpy(t, s, len);
-	t[len] = 0;
-	return (t);
-}
-
-/*
  * Compare up to but not including the newline.
  * They should be newlines or nulls.
  */
@@ -480,6 +461,32 @@ atoiMult(char *s)
 	return (val);
 }
 
+/* Free one delta.  */
+private inline void
+freedelta(delta *d)
+{
+	freeLines(d->comments);
+	freeLines(d->mr);
+	freeLines(d->text);
+
+	if (d->rev) free(d->rev);
+	if (d->user) free(d->user);
+	if (d->sdate) free(d->sdate);
+	if (d->include) free(d->include);
+	if (d->exclude) free(d->exclude);
+	if (d->ignore) free(d->ignore);
+	if (d->sym) free(d->sym);
+	if (d->symlink && !(d->flags & D_DUPLINK)) free(d->symlink);
+	if (d->hostname && !(d->flags & D_DUPHOST)) free(d->hostname);
+	if (d->pathname && !(d->flags & D_DUPPATH)) free(d->pathname);
+	if (d->zone && !(d->flags & D_DUPZONE)) free(d->zone);
+	if (d->csetFile && !(d->flags & D_DUPCSETFILE)) {
+		free(d->csetFile);
+	}
+	free(d);
+}
+
+
 /*
  * Free the delta tree.
  */
@@ -489,28 +496,10 @@ sccs_freetree(delta *tree)
 	if (!tree) return;
 
 	debug((stderr, "freetree(%s %s %d)\n",
-	    notnull(tree->rev), notnull(tree->sdate), tree->serial));
+	       notnull(tree->rev), notnull(tree->sdate), tree->serial));
 	sccs_freetree(tree->siblings);
 	sccs_freetree(tree->kid);
-	if (tree->comments) {
-		freeLines(tree->comments);
-	}
-	if (tree->mr) freeLines(tree->mr);
-	if (tree->rev) free(tree->rev);
-	if (tree->user) free(tree->user);
-	if (tree->sdate) free(tree->sdate);
-	if (tree->include) free(tree->include);
-	if (tree->exclude) free(tree->exclude);
-	if (tree->ignore) free(tree->ignore);
-	if (tree->hostname && !(tree->flags & D_DUPHOST)) free(tree->hostname);
-	if (tree->pathname && !(tree->flags & D_DUPPATH)) free(tree->pathname);
-	if (tree->zone && !(tree->flags & D_DUPZONE)) free(tree->zone);
-	if (tree->csetFile && !(tree->flags & D_DUPCSETFILE)) {
-		free(tree->csetFile);
-	}
-	if (tree->sym) free(tree->sym);
-	if (tree->symlink && !(tree->flags & D_DUPLINK)) free(tree->symlink);
-	free(tree);
+	freedelta(tree);
 }
 
 /*
@@ -526,29 +515,10 @@ sccs_freetable(delta *t)
 
 	debug((stderr, "freetable():\n"));
 	for(; t; t = u) {
-		debug((stderr, "\t%s %s %d\n", t->rev, t->sdate, t->serial));
-
-		if (t->comments) freeLines(t->comments);
-		if (t->mr) freeLines(t->mr);
-
-		if (t->rev) free(t->rev);
-		if (t->user) free(t->user);
-		if (t->sdate) free(t->sdate);
-		if (t->include) free(t->include);
-		if (t->exclude) free(t->exclude);
-		if (t->ignore) free(t->ignore);
-		if (t->sym) free(t->sym);
-
-		if (t->hostname && !(t->flags & D_DUPHOST)) free(t->hostname);
-		if (t->pathname && !(t->flags & D_DUPPATH)) free(t->pathname);
-		if (t->symlink && !(t->flags & D_DUPLINK)) free(t->symlink);
-		if (t->zone && !(t->flags & D_DUPZONE)) free(t->zone);
-		if (t->csetFile && !(t->flags & D_DUPCSETFILE)) {
-			free(t->csetFile);
-		}
-
+		debug((stderr, "\t%s %s %d\n",
+		       notnull(t->rev), notnull(t->sdate), t->serial));
 		u = t->next;
-		free(t);
+		freedelta(t);
 	}
 }
 
@@ -3246,9 +3216,7 @@ sccs_free(sccs *s)
 {
 	symbol	*sym, *t;
 
-	assert(s);
-	assert(s->sfile);
-	assert(s->gfile);
+	unless (s) return;
 	sccsXfile(s, 0);
 #if 0
 	{ struct stat sb;
@@ -3264,10 +3232,10 @@ sccs_free(sccs *s)
 		if (sym->rev) free(sym->rev);
 		free(sym);
 	}
-	free(s->sfile);
-	free(s->gfile);
-	free(s->zfile);
-	free(s->pfile);
+	if (s->sfile) free(s->sfile);
+	if (s->gfile) free(s->gfile);
+	if (s->zfile) free(s->zfile);
+	if (s->pfile) free(s->pfile);
 	if (s->state & S_CHMOD) {
 		struct	stat sbuf;
 

@@ -263,7 +263,7 @@ again:	s = sccs_keyinit(t, INIT_NOCKSUM, idDB);
 			SHOUT();
 			fprintf(stderr,
 			   "takepatch: can't find key '%s' in id cache\n", t);
-cleanup:			if (perfile) free(perfile);
+cleanup:			if (perfile) sccs_free(perfile);
 			if (gfile) free(gfile);
 			if (s) sccs_free(s);
 			free(name);
@@ -345,7 +345,7 @@ cleanup:			if (perfile) free(perfile);
 	if (patchList && gca) getLocals(s, gca, name);
 	rc = applyPatch(s ? s->sfile : 0, name, flags, perfile, root);
 	if (echo == 2) fprintf(stderr, " \n");
-	if (perfile) free(perfile);
+	if (perfile) sccs_free(perfile);
 	free(gfile);
 	free(name);
 	if (s) sccs_free(s);

@@ -351,25 +351,6 @@ spawn_checksum_child(void)
 	return pid;
 }
 
-/*
- * Dup up to but not including the newline.
- */
-private char    *
-strnonldup(char *s)
-{
-	register char *t = s;
-	int     len;
-
-	while (*t++ && (t[-1] != '\n'));
-	len = t - s;
-	len--;
-	t = malloc(len + 1);
-	assert(t);
-	strncpy(t, s, len);
-	t[len] = 0;
-	return (t);
-}          
-
 int
 csetInit(sccs *cset, int flags, char *text)
 {
@@ -1136,7 +1117,7 @@ private void
 add(FILE *diffs, char *buf)
 {
 	sccs	*s;
-	char	*rev;
+	char	*rev = 0;
 	delta	*d;
 
 	unless ((chop(buf) == '\n') && (rev = strrchr(buf, BK_FS))) {

@@ -4,6 +4,7 @@
 void	rangeReset(sccs *sc);
 int	rangeAdd(sccs *sc, char *rev, char *date);
 int	rangeConnect(sccs *s);
+void	rangeCset(sccs *s, delta *d);
 void	rangeSetExpand(sccs *s);
 int	rangeList(sccs *sc, char *rev);
 int	rangeProcess(char *me, sccs *s, int expand, int noisy,

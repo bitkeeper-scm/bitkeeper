@@ -285,7 +285,7 @@ typedef struct delta {
 	char	**mr;			/* MR's are just passed through */
 	char	**comments;		/* Comment log */
 	/* New stuff in lm's sccs */
-	char	**text;		/* descriptive text log */
+	char	**text;			/* descriptive text log */
 	char	*hostname;		/* hostname where revision was made */
 	char	*pathname;		/* pathname to the file */
 	char	*zone;			/* 08:00 is time relative to GMT */
