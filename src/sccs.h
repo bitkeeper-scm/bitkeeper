@@ -834,8 +834,6 @@ char	*sccs_realuser(void);
 int	sccs_markMeta(sccs *);
 
 delta	*modeArg(delta *d, char *arg);
-FILE	*fastPopen(const char*, const char*);
-int	fastPclose(FILE*);
 char    *fullname(char *, int);
 int	fileType(mode_t m);
 char	chop(char *s);
