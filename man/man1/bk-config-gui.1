@@ -1,73 +1,14 @@
 .so bk-macros
-.TH "bk config-files" 1 20%E% "\*(BC" "\*(UM"
+.TH "bk config-bkgui" 1 2000/11/08 "\*(BC" "\*(UM"
 .SH NAME 
-bk config-files \- \*(BK configuration files
+bk config-bkgui \- configuration for \*(BK graphical tools
 .SH DESCRIPTION
 .LP
-There are several config files that can be manipulated by
-a \*(BK user.
-
-.SH USER PREFERENCES
-.LP
-User preferences can be defined in the BitKeeper/etc/config file.
-The general format for the user preference config file is 
-.DS
-[filter]:preference:option
-.DE
-Currently, checkout is the only user preference supported.
-To set, add a line to the BitKeeper/etc/config file as follows:
-.DS
-checkout:option
-.DE
-Where option is one of:
-.RS 1i
-.TP
-.B get
-Automatically do a bk get
-.ARG file
-after doing a bk delta
-.ARG file .
-(Checkout in read-only mode.)
-.tp
-.B edit
-Automatically do a bk edit
-.ARG file
-after doing a bk delta
-.ARG file .
-(Checkout in edit mode.)
-.tp
-.B none
-Clear the gfile after doing a bk delta
-.ARG file .
-(This is the default.)
-.RE
-.LP
-Preferences can be set per user, per host, or per repository via filters.
-.RS 1i
-.TP
-.B per user
-[jdoe]:checkout:get
-.tp
-.B per host
-[@xyz.com]:checkout:none
-.tp
-.B per user@host
-[jdoe@xyz.com]:checkout:get
-.tp
-.B per repository
-[/path/to/repository]:checkout:edit
-.br
-[@xyz.com:/path/to/repository]:checkout:get
-.br
-[jdoe@xyz.com:/path/to/repository]:checkout:edit 
-.RE
-
-.SH GUI CONFIGURATION
 BitKeeper uses a configuration file called 
-.B .bkgui
+.B bkgui
 for the 
-configuration of the graphical tools such as citool, sccstool,
-difftool, etc.  The configuration file is used to modify
+configuration of the \*(BK graphical tools.
+The configuration file is used to modify
 colors, fonts, and widget dimensions. 
 .LP
 On 
@@ -79,9 +20,13 @@ where
 refers to the users home directory.
 .LP
 On Microsoft Windows NT and Windows 98 systems,
+.DS
 .B %SystemRoot%\eProfiles\e%User%\eApplication  Data\eBitKeeper\e_bkgui 
+.DE
 is the location of the config file; this path is usually
+.DS
 .B c:\ewinnt\eProfiles\e%User%\eApplication\ Data\eBitKeeper\e_bkgui
+.DE
 .LP
 The config file must be a valid tcl program as it is
 evaluated by the \*(BK GUI tools (which are also tcl/tk programs).
@@ -131,10 +76,11 @@ set gc(ci.buttonColor) pink
 set gc(help.buttonColor) yellow
 .DE
 .LP
-It is probably obvious, but the tool names used to get to tool specific
-variables (or to have a change only apply to that tool) are just the
+The tool names used to get to tool specific
+variables (or to have a change only apply to that tool) are the
 GUI tool's name with the trailing \*(lqtool\*(rq dropped, i.e.,
 \*(lqdiff\*(rq for \*(lqdifftool.\*(rq
+.SH GUI CONFIGURATION
 .SS GLOBAL VARIABLES
 The following is a list of variables used by the various gui tools.
 Each of these needs to be in a statement like: 
@@ -389,6 +335,8 @@ The GUI configuration was designed and is maintained by Aaron Kushner.
 .SA fmtool 1
 .SA renametool 1
 .\" help://GUI
+.\" help://gui
+.\" help://bkgui
 .\" help://GUI-config
 .\" help://gui-config
 .\" help://gui config

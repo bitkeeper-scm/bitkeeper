@@ -13,6 +13,7 @@ PS4:
 	a2ps -4 -o PS4 < PS
 
 get:
+	-@bk get -q .
 	-@bk get -q man1
 
 clean:

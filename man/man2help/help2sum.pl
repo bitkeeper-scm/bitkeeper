@@ -66,10 +66,17 @@ sub summary()
 	if ($section =~ /^[0-9a-zA-Z]$/) {
 		print O "commands in section $section\n";
 	} elsif ($section eq "All") {
-		print O "all categories/sections\n";
+		print O "all commands and topics\n";
 	} else {
 		print O "the $section category\n";
 	}
+	# amy additions XXX
+	if (-r "$section.description") {
+		open (DESC, "$section.description");
+		print O <DESC>;
+		close(DESC);
+	}
+	# end amy additions XXX
 	print O ".SH COMMANDS\n";
 	print O ".nf\n";
 	open(S, "$section.summaries");
@@ -80,6 +87,12 @@ sub summary()
 	open(F, ">$section.done");
 	print F "help://$section\n";
 	print F "help://$section.sum\n";
+	if ($section eq "All") {
+		print F "help://topics\n";
+		print F "help://topic\n";
+		print F "help://command\n";
+		print F "help://commands\n";
+	}
 	open(G, "groff -rhelpdoc=1 $MAN -P-u -P-b -Tascii < $section.roff |");
 	$nl = 0;
 	while (<G>) {
