@@ -81,7 +81,7 @@ usage:		fprintf(stderr, "usage: renumber [-nq] [files...]\n");
 		}
 		sccs_free(s);
 	}
-	if (lodmap) unmap_changeset(cscat, lodmap);
+	unmap_changeset(cscat, lodmap);
 	sfileDone();
 	purify_list();
 	return (0);
@@ -111,10 +111,8 @@ mkmap(sccs *s, MMAP *lodmap)
 	mseekto(lodmap, 0);
 	while (t = mnext(lodmap)) {
 		r = t;
-		while (*t != '|' && *t != '\n')  t++;
-		assert(*t == '|');
-		t++;
-		assert(*t == ' ');
+		while (*t != '\t' && *t != '\n')  t++;
+		assert(*t == '\t');
 		t++;
 		f = t;
 		unless (strneq(filekey, f, keylen)) continue;
@@ -307,10 +305,9 @@ ret:	if (cset) sccs_free(cset);
 void
 unmap_changeset(char *tfile, MMAP *lodmap)
 {
-	unless (lodmap) return;
 	debug((stderr, "renumber: unmapped changeset '%s'\n", tfile));
-	mclose(lodmap);
-	unlink(tfile);
+	if (lodmap) mclose(lodmap);
+	unlink(tfile);	/* unlink it after lodmap closed */
 }
 
 u16

@@ -193,7 +193,7 @@ ssh sshtest:
 	$(MAKE) realtest
 
 test tests rsh rshtest:
-	PREFER_RSH=yes $(MAKE) realtest
+	PREFER_RSH=YES $(MAKE) realtest
 
 realtest: $(ALL) t/doit
 	-./bk get -q t/SCCS/s.t.* t/setup t/cleanup
