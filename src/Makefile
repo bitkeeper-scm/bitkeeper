@@ -5,7 +5,7 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines prs range rechksum renumber	 \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii
+	  isascii resyncwrap
 SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 bithelp mkindex \
 	  renametool mkdiffs
@@ -492,12 +492,15 @@ g2sccs.o:	g2sccs.c $(sccsdeps)
 get.o:		get.c $(sccsdeps)
 gethost.o:	gethost.c
 getuser.o:	getuser.c
+isascii.o:	isascii.c
 key2rev.o:	key2rev.c $(sccsdeps)
 lines.o:	lines.c $(sccsdeps)
+mtime.o:	mtime.c
 prs.o:		prs.c $(sccsdeps) range.h
 range.o:	range.c $(sccsdeps) range.h
 rechksum.o:	rechksum.c $(sccsdeps)
 renumber.o:	renumber.c $(sccsdeps)
+resyncwrap.o:	resyncwrap.c $(commondeps)
 rmdel.o:	rmdel.c $(sccsdeps) range.h
 stripdel.o:	stripdel.c $(sccsdeps) range.h
 sccscat.o:	sccscat.c $(sccsdeps) range.h
@@ -514,10 +517,7 @@ smoosh.o:	smoosh.c $(sccsdeps)
 takepatch.o:	takepatch.c $(sccsdeps)
 undos.o:	undos.c
 what.o:		what.c $(sccsdeps)
-
-# These are used only by the test suite.
 zone.o:		zone.c $(commondeps)
-mtime.o:	mtime.c
 
 # libsccs
 dirname.o:	dirname.c config.h

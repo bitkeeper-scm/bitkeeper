@@ -265,7 +265,7 @@ mkfile(char *file)
 		fprintf(stderr, "%s exists\n", file);
 		return (-1);
 	}
-again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0600);
+again:	fd = open(file, O_CREAT|O_EXCL|O_WRONLY, 0666);
 	if (fd != -1) return (fd);
 	if (errno == EEXIST) {
 		perror(file);
@@ -287,14 +287,14 @@ mkdirp(char *dir)
 {
 	char	*t;
 
-	if ((mkdir(dir, 0775) == 0) || (errno == EEXIST)) return (0);
+	if ((mkdir(dir, 0777) == 0) || (errno == EEXIST)) return (0);
 	for (t = dir; *t; t++) {
 		unless (*t == '/') continue;
 		*t = 0;
-		mkdir(dir, 0775);
+		mkdir(dir, 0777);
 		*t = '/';
 	}
-	return (mkdir(dir, 0775));
+	return (mkdir(dir, 0777));
 }
 
 /*
