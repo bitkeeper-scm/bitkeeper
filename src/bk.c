@@ -112,6 +112,7 @@ int	mail_main(int, char **);
 int	makepatch_main(int, char **);
 int	merge_main(int, char **);
 int	mklock_main(int, char **);
+int	more_main(int, char **);
 int	mtime_main(int, char **);
 int	multiuser_main(int, char **);
 int	mv_main(int, char **);
@@ -289,6 +290,7 @@ struct	command cmdtbl[] = {
 	{"makepatch", makepatch_main},		/* doc 2.0 */
 	{"merge", merge_main},			/* doc 2.0 */
 	{"mklock", mklock_main},	/* regression test */ /* undoc 2.0 */
+	{"more", more_main},
 	{"mtime", mtime_main},		/* regression test */ /* undoc 2.0 */
 	{"mv", mv_main},			/* doc 2.0 */
 	{"multiuser", multiuser_main},		/* doc 2.0 */

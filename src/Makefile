@@ -97,6 +97,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	port/sccs_getuser.o port/sccs_lockfile.o \
 	port/sccs_root.o port/sig.o port/socket2pipe.o \
 	port/spawn.o port/system.o \
+	port/tty.o \
 	prs.o pull.o purify.o push.o putenv.o pwd.o \
 	r2c.o range.o rcheck.o rclone.o rcs.o rcs2sccs.o rcsparse.o \
 	receive.o renumber.o resolve.o \
@@ -106,7 +107,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	resolve_renames.o resolve_tags.o rmdel.o \
 	root.o rset.o scompress.o sane.o sccs.o sccs_mv.o sccs2bk.o sccscat.o \
 	sccslog.o sccsmv.o sccsrm.o send.o sendbug.o \
-	set.o setup.o sfiles.o sfind.o sfio.o shrink.o sinfo.o \
+	set.o setup.o sfiles.o sfind.o sfio.o shellcmd.o shrink.o sinfo.o \
 	slib.o smerge.o sort.o status.o stripdel.o synckeys.o sys.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
