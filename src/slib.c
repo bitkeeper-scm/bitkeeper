@@ -15558,11 +15558,9 @@ timeMatch(char *gfile, char *sfile, MDBM *timestamps)
 	if (v.dsize == 0) return 0;	/* no entry for file */
 	assert(v.dsize == sizeof(*ts));
 	ts = (tsrec*) v.dptr;
-	if (lstat(gfile, &sb) != 0) {
-		/* We should never get here */
-		perror(gfile);
-		return 0;
-	}
+
+	if (lstat(gfile, &sb) != 0) return 0;	/* might not exist */
+
 	if (sb.st_mtime != ts->gfile_mtime
 	    || sb.st_size != ts->gfile_size
 	    || sb.st_mode != ts->permissions)
@@ -15605,11 +15603,7 @@ updateTimestampDB(char *gfile, char *sfile, MDBM *timestamps, int different)
 		return;
 	}
 		
-	if (lstat(gfile, &sb) != 0) {
-		/* We should never get here */
-		perror(gfile);
-		return;
-	}
+	if (lstat(gfile, &sb) != 0) return; /* might not exist */
 	ts.gfile_mtime = sb.st_mtime;
 	ts.gfile_size = sb.st_size;
 	ts.permissions = sb.st_mode;
