@@ -12,6 +12,9 @@
 # Copright (c) 1999 Larry McVoy
 # %K%
 
+# *IMPORTANT* This file should be kept small, it is called in the main loop
+#	      of doit.sh
+
 cores()
 {
 	OUT="$BK_REGRESSION/cores"
@@ -78,6 +81,8 @@ no_logging() {
 
 cd "$BK_REGRESSION" || exit 1
 HERE=`bk pwd`
+
+# XXX This test should be moved to doit.sh for better test performance
 for i in .. ../.. ../../.. ../../..
 do	if [ -d ${i}/BitKeeper/etc ]
 	then	cat <<EOF
@@ -92,3 +97,6 @@ EOF
 		exit 1
 	fi
 done
+
+# We need this because ksh on Solaris override $PATH from .profile
+PATH=$BK_PATH

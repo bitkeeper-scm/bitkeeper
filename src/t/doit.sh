@@ -181,7 +181,8 @@ init_main_loop()
 	# check it again for tmp file leak when we are in clean_up()
 	ls -a $TMP > $TMP/T.${USER}
 
-	export PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
+	BK_PATH=$PATH
+	export PATH BK_PATH PLATFORM DEV_NULL TST_DIR CWD BK_LICENSE
 	export USER BK_FS BK_REGRESSION BK_TMP NL N Q S CORES
 }
 
