@@ -51,7 +51,8 @@ force binary file (data will be uuencoded in s.file).
 .tp
 .RE
 .ll
-.tp 1.6i
+.if t .tp .85i
+.if n .tp 1.6i
 .OPTreq \-f flag
 set 
 .ARG flag 
@@ -129,12 +130,6 @@ read initial text from
 .ARG file
 (default stdin).
 .tp
-.OPTreq \-m mode
-set the mode of the file;
-.ARG mode
-is either in octal or in the form 
-.BR -rwxrwxrwx .
-.tp
 .OPTreq \-M merge
 Mark branch specified by revision
 .ARG merge
@@ -208,6 +203,9 @@ compression algorithm to compress the data section of the s.files.
 .B none
 no compression
 .RE
+.br
+.if t .ll 6.5i
+.if n .ll 6.5i
 .SH BUGS
 .LP
 This command does way too much and is likely to be split apart.

@@ -55,6 +55,7 @@ grep -q '^.cO-rwxrwxrwx' SCCS/s.prog
 if [ $? -eq 0 ]; then echo added permissions and should not have; exit 1; fi
 if [ -f "SCCS/p.prog" ]; then echo Failed to remove p.prog; exit 1; fi
 echo OK
+
 echo $N Change permissions with admin ...............................$NL
 bk get $Q prog
 bk admin -m-rwx------ prog
@@ -66,6 +67,13 @@ if [ "$COMMENT" != "Change mode to -rwx------" ]; then echo fail; exit 1; fi
 grep -q '^.cO-rwx------' SCCS/s.prog
 if [ $? -ne 0 ]; then echo failed to add permissions; exit 1; fi
 echo OK
+
+echo $N Make sure null change is not delta-ed .......................$NL
+bk admin -m-rwx------ prog
+REV=`bk prs -h -r+ -d":I:" prog`
+if [ "$REV" != "1.3" ]; then echo fail to create a new delta; exit 1; fi 
+echo OK
+
 echo $N Check new permissions on checked out file ...................$NL
 bk co $Q prog
 checkperm -r-x------ prog
@@ -82,20 +90,139 @@ echon Check changing permissions on locked file ...................
 bk admin -m-rwxrw---x prog
 checkperm -rwxrw---x prog
 echo OK
+
 echon Check cumulative changes to file permissions ................
 bk unedit prog
 bk admin -m-rw-rw-r-- prog
+test `bk prs -hr+ -nd:RWXMODE: prog` = -rw-rw-r-- || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: prog
+}
 bk chmod o+w prog
+test `bk prs -hr+ -nd:RWXMODE: prog` = -rw-rw-rw- || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: prog
+}
 bk chmod o+x prog
+test `bk prs -hr+ -nd:RWXMODE: prog` = -rw-rw-rwx || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: prog
+}
 bk co $Q prog
 checkperm -r--r--r-x prog
 bk co -l $Q prog
 checkperm -rw-rw-rwx prog
+bk clean prog
 echo OK
 
 echo $N Make sure we can not remove owner read/write permission .....$NL
 bk clean prog
 bk chmod 0 prog 2>/dev/null
+bk edit $Q prog
+checkperm -rw------- prog
+echo OK
+
+echo $N Make sure that we tell people about parsing errors ..........$NL
+bk clean prog
+bk chmod u@xyz prog 2>out
+grep -q 'Illegal file mode' out || {
+	echo bad error message
+	cat out
+	exit 1
+}
+bk edit $Q prog
+checkperm -rw------- prog
+echo OK
+
+echo $N Test u= permissions .........................................$NL
+bk clean prog
+bk chmod u=rwx prog
+bk edit $Q prog
+checkperm -rwx------ prog
+echo OK
+
+echo $N Test g= permissions .........................................$NL
+bk clean prog
+bk chmod g=rwx prog
+bk edit $Q prog
+checkperm -rwxrwx--- prog
+bk clean prog
+bk chmod g= prog
+bk edit $Q prog
+checkperm -rwx------ prog
+echo OK
+
+echo $N Test o= permissions .........................................$NL
+bk clean prog
+bk chmod o=rwx prog
+bk edit $Q prog
+checkperm -rwx---rwx prog
+bk clean prog
+bk chmod o= prog
+bk edit $Q prog
+checkperm -rwx------ prog
+echo OK
+
+echo $N Test ugo= permissions .......................................$NL
+bk clean prog
+bk chmod ugo=rw prog
+bk edit $Q prog
+checkperm -rw-rw-rw- prog
+bk clean prog
+bk chmod ugo=rwx prog
+bk edit $Q prog
+checkperm -rwxrwxrwx prog
+echo OK
+
+bk clean prog
+bk chmod 600 prog
+echo $N Test u+ permissions .........................................$NL
+bk clean prog
+bk chmod u+rwx prog
+bk edit $Q prog
+checkperm -rwx------ prog
+echo OK
+
+echo $N Test g+ permissions .........................................$NL
+bk clean prog
+bk chmod g+rwx prog
+bk edit $Q prog
+checkperm -rwxrwx--- prog
+echo OK
+
+echo $N Test o+ permissions .........................................$NL
+bk clean prog
+bk chmod o+rwx prog
+bk edit $Q prog
+checkperm -rwxrwxrwx prog
+echo OK
+
+echo $N Test ugo- permissions .......................................$NL
+bk clean prog
+bk chmod ugo-x prog
+bk edit $Q prog
+checkperm -rw-rw-rw- prog
+echo OK
+
+bk clean prog
+bk chmod 777 prog
+echo $N Test u- permissions .........................................$NL
+bk clean prog
+bk chmod u-x prog
+bk edit $Q prog
+checkperm -rw-rwxrwx prog
+echo OK
+
+echo $N Test g- permissions .........................................$NL
+bk clean prog
+bk chmod g-rwx prog
+bk edit $Q prog
+checkperm -rw----rwx prog
+echo OK
+
+echo $N Test o- permissions .........................................$NL
+bk clean prog
+bk chmod o-rwx prog
 bk edit $Q prog
 checkperm -rw------- prog
 echo OK

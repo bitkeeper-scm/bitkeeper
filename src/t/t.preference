@@ -98,11 +98,18 @@ echo OK
 
 echo $N checkout:GET w chmod ........................................$NL
 test -x foo.c && { echo failed; exit 1; }
-bk chmod +x foo.c || exit 1
+bk chmod 775 foo.c || exit 1
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ -w foo.c ]; then echo failed; exit 1; fi
 if [ -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
-test -x foo.c || { echo failed; exit 1; }
+test `bk prs -hr+ -nd:RWXMODE: foo.c` = "-rwxrwxr-x" || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: foo.c
+	exit 1
+}
+test "$PLATFORM" != "WIN32" && {
+	test -x foo.c || { echo failed; exit 1; }
+}
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 bk stripdel $Q -r+ foo.c
@@ -138,11 +145,18 @@ echo $N checkout:EDIT w chmod .......................................$NL
 bk unedit foo.c
 test -w foo.c || { echo failed; exit 1; }
 test -x foo.c && { echo failed; exit 1; }
-bk chmod +x foo.c || exit 1
+bk chmod 775 foo.c || exit 1
 if [ ! -f foo.c ]; then echo failed; exit 1; fi
 if [ ! -w foo.c ]; then echo failed; exit 1; fi
 if [ ! -f SCCS/p.foo.c ]; then echo failed; exit 1; fi
-test -x foo.c || { echo failed; exit 1; }
+test `bk prs -hr+ -nd:RWXMODE: foo.c` = "-rwxrwxr-x" || {
+	echo failed
+	bk prs -hr+ -nd:RWXMODE: foo.c
+	exit 1
+}
+test "$PLATFORM" != "WIN32" && {
+	test -x foo.c || { echo failed; exit 1; }
+}
 find SCCS -newer foo.c | grep SCCS/s.foo.c > /dev/null
 if [ $? -eq 0 ]; then echo failed; exit 1; fi
 bk chmod 400 foo.c 2> CHMOD_WARN || {

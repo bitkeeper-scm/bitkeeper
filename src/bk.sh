@@ -679,25 +679,24 @@ _chmod() {		# /* doc 2.0 */
 	fi
 	MODE=$1
 	shift
-	for i in `bk sfiles -g ${1+"$@"}`
+	ROOT=`bk root`
+	rm -f "$ROOT/BitKeeper/tmp/err$$"
+	bk gfiles ${1+"$@"} | while read i
 	do	bk clean "$i" || {
 			echo Can not clean "$i," skipping it
 			continue
 		}
-		bk get -qe "$i" || {
-			echo Can not edit "$i," skipping it
-			continue
+		bk admin -m$MODE "$i" || {
+			echo "$i" > "$ROOT/BitKeeper/tmp/err$$"
+			break
 		}
-		omode=`ls -l "$i" | sed 's/[ \t].*//'`
-		chmod $MODE "$i"
-		mode=`ls -l "$i" | sed 's/[ \t].*//'`
-		chmod u+rw "$i"
-		bk unedit "$i"	# follow checkout modes
-		if [ $omode = $mode ]
-		then	continue
-		fi
-		bk admin -m$mode "$i"
+		bk unedit "$i"
 	done
+	test -f "$ROOT/BitKeeper/tmp/err$$" && {
+		rm -f "$ROOT/BitKeeper/tmp/err$$"
+		exit 1
+	}
+	exit 0
 }
 
 _after() {		# /* undoc? 2.0 */
