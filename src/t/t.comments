@@ -1,0 +1,25 @@
+
+echo $N Modify comments from stdin ..................................$NL
+no_logging proj
+touch bar.c
+bk new $Q bar.c
+BK_LICENSE=ACCEPTED bk commit $Q -ynew
+cat >c <<EOF
+### Comments for ChangeSet|1.2
+modified comment
+EOF
+cat c | bk comments - || exit 1
+bk -R prs -r+ -hnd:C: ChangeSet | grep -q "modified comment" || exit 1
+echo OK
+
+echo $N Demonstrate that comments must follow format ................$NL
+
+echo "hi bob" | bk comments - 2>ERR && {
+	echo should have failed
+	exit 1
+}
+grep -q "Illegal format" ERR || {
+	echo wrong error message
+	exit 1
+}
+echo OK
