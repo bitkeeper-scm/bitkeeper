@@ -1352,8 +1352,7 @@ _install()
 		echo Installing data in "$DEST" ...
 	}
 	if [ "X$OSTYPE" = "Xmsys" ]
-	then 	echo "fixing up permissions, please wait..."
-		find "$SRC" | xargs chmod +w	# for Win/Me
+	then 	find "$SRC" | xargs chmod +w	# for Win/Me
 	fi
 	(cd "$SRC"; tar cf - .) | (cd "$DEST"; tar x${V}f -)
 	
@@ -1406,7 +1405,7 @@ _install()
 	# registry
 	if [ "X$OSTYPE" = "Xmsys" ]
 	then
-		test $VERBOSE = YES && echo "updating registry..."
+		test $VERBOSE = YES && echo "Updating registry and path ..."
 		gui/bin/tclsh gui/lib/registry.tcl $DLLOPTS "$DEST" 
 		test -z "$DLLOPTS" || __register_dll "$DEST"/BkShellX.dll
 		# This tells extract.c to reboot if it is needed
