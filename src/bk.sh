@@ -973,7 +973,7 @@ __sendConfig() {
 	if [ X$1 = X ]
 	then	return		# error, should never happen
 	fi
-	if [ X$BK_REGRESSION = XYES ]; then echo "sending config file..."; fi
+	if [ X$BK_TRACE_LOG = XYES ]; then echo "sending config file..."; fi
 	__cd2root
 	P=`${BIN}prs -hr1.0 -d:FD: ChangeSet | head -1`
 	( __status
@@ -995,9 +995,8 @@ __mail() {
 	TO=$1
 	shift
 	SUBJ="$@"
-
 	
-	if [ X$BK_REGRESSION = XYES ]; then return; fi
+	if [ X$BK_TRACE_LOG = XYES ]; then return; fi
 	# Try to find sendmail, it works better, especially on IRIX.
 	for i in /usr/bin /usr/sbin /usr/lib /usr/etc /etc /bin
 	do	if [ -x "$i/sendmail" ]
@@ -1110,44 +1109,62 @@ logging_ok:	'$1 > ${BK_ETC}config
 # XXX - should probably ask once for each user.
 __checkLog() {
 	msg=`_getLog`
-	case $msg in
-	    ask_open_logging|ask_close_logging)
-		__gethelp log_query `__logAddr`
+	case X$msg in
+	    Xask_open_logging)
+		__gethelp open_log_query `__logAddr`
 		read x
 		case X$x in
 		    X[Yy]*)
-			# XXXXXX should restart ?
 			_setLog `getuser`
 			return 0
 			;;
 		   *)
-			if [ X$msg = "ask_close_logging" ]
-			then	__sendConfig
-				return 0
-			else 	return 1
-			fi
+			__gethelp log_abort
+			return 1
 			;;
 		esac
 		;;
-	    need_seats)
+	    Xask_close_logging)
+		__gethelp close_log_query `__logAddr`
+		read x
+		case X$x in
+		    X[Yy]*)
+			_setLog `getuser`
+			return 0
+			;;
+		   *)
+			if [ `__nusers` -gt 1 ]
+			then __sendConfig config@openlogging.org 
+			fi
+			return 0
+			;;
+		esac
+		;;
+	    Xneed_seats)
 		__gethelp seat_query
 		# XXXX TODO need code to add seats here
 		return 1
 		;;
-	    commit_and_mailcfg)
-		__sendConfig
+	    Xcommit_and_mailcfg)
+		if [ `__nusers` -gt 1 ]
+		then __sendConfig config@openlogging.org 
+		fi
 		return 0
 		;;
-	    commit_and_maillog)
+	    Xcommit_and_maillog)
 		# changeSet is sent after it is checked in
 		return 0
+		;;
+	    *)
+		# unknown return code, we should never get here
+		return 1
 		;;
 	esac
 }
 
 __logChangeSet() {
 	if [ "`_getLog`" != "commit_and_maillog" ]; then return; fi
-	if [ X$BK_REGRESSION = XYES ]; then echo "sending ChangeSet to $LOGADDR..."; fi
+	if [ X$BK_TRACE_LOG = XYES ]; then echo "sending ChangeSet to $LOGADDR..."; fi
 	# Determine if this is the first rev where logging is active.
 	key=`${BIN}cset -c -r$REV | grep BitKeeper/etc/config |cut -d' ' -f2`
 	if [ x$key != x ]
