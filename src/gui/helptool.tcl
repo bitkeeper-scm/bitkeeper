@@ -185,7 +185,7 @@ proc bk_highlight {} \
 	set t .text.help
 	while {"$index" != ""} {
 		set index [$t search \
-		    -count bklen -regexp {(^| |`|")bk([ ]+|$)} $index end]
+		    -count bklen -regexp {(^| |`|"|/)bk([ ]+|$)} $index end]
 		if {"$index" == ""} { break }
 
 		# Get start of "bk"

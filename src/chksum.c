@@ -30,10 +30,15 @@ chksum_main(int ac, char **av)
 		return (1);
 	}
 
-	if (av[1] && (strcmp(av[1], "-o") == 0)) {
-		off = atoi(av[2]);
-		av += 2;
-		ac -= 2;
+	if (av[1] && (strncmp(av[1], "-o", 2) == 0)) {
+		if (av[1][2]) {
+			off = atoi(&av[1][2]);
+			av++, ac--;
+		} else {
+			off = atoi(av[2]);
+			av += 2;
+			ac -= 2;
+		}
 	}
 	if (ac == 1) {
 		if (do_chksum(0, off, &sum)) return (1);

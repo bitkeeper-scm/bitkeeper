@@ -10,9 +10,12 @@ private void	http_cset(char *rev);
 private void	http_anno(char *pathrev);
 private void	http_both(char *pathrev);
 private void	http_diffs(char *pathrev);
+private void	http_hist(char *pathrev);
 private void	http_patch(char *rev);
 private void	http_bkpowered();
 private void	title(char *title);
+private void	pwd_title(char *t);
+private void	learn();
 
 /*
  * Accepted pathnames and their meanings are:
@@ -62,6 +65,8 @@ cmd_httpget(int ac, char **av)
 		http_bkpowered();
 	} else if (strneq(name, "ChangeSet", 9)) {
 		http_changes(name[9] == '@' ? &name[10] : 0);
+	} else if (strneq(name, "hist/", 5)) {
+		http_hist(&name[5]);
 	} else if (strneq(name, "cset@", 5)) {
 		http_cset(&name[5]);
 	} else if (strneq(name, "patch@", 6)) {
@@ -111,10 +116,10 @@ http_changes(char *rev)
 	char	*d;
 	char	*dspec = "\
 -d<tr bgcolor=#d8d8f0><td><font size=2>\
-&nbsp;:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
+&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
 &nbsp;&nbsp;\
-<a href=cset@:REV:><font color=red> [details]</font></a>\
-&nbsp;&nbsp;<a href=patch@:REV:><font color=red>[all diffs]</font></a>\
+<a href=/cset@:REV:><font color=red> [details]</font></a>\
+&nbsp;&nbsp;<a href=/patch@:REV:><font color=red>[all diffs]</font></a>\
 </td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;\
 tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}\
 $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
@@ -122,15 +127,13 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 
 	httphdr(".html");
 	out("<html><body alink=black link=black bgcolor=white>\n");
-	out("<p align=center>\n");
-	out("<a href=http://www.bitkeeper.com><img src=bkpowered.gif></a>\n");
-	out("</p>\n");
+	learn();
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 2000)) {
 		sprintf(buf, "%s<br>ChangeSet Summaries", d);
 		title(buf);
 	} else {
-		title("ChangeSet summaries");
+		pwd_title("ChangeSet summaries");
 	}
 	if (m) mdbm_close(m);
 	out("<p><table border=0 cellpadding=0 cellspacing=0 width=100% ");
@@ -148,9 +151,11 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	putenv("BK_YEAR4=1");
 	spawnvp_ex(_P_WAIT, "bk", av);
 	out("</table>\n");
-	out("<p align=center>");
-	out("<a href=http://www.bitkeeper.com><img src=bkpowered.gif></a>\n");
-	out("</body></html>\n");
+	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
+	out("<tr bgcolor=black>\n");
+	out("<td><font size=1>&nbsp;</td></tr></table>\n");
+	out("<p align=center><a href=http://www.bitkeeper.com>");
+	out("<img src=/bkpowered.gif></a></p>\n");
 }
 
 private void
@@ -164,13 +169,13 @@ http_cset(char *rev)
 	char	*d;
 	char	*dspec = "\
 <tr bgcolor=#d8d8f0><td><font size=-1>\
-&nbsp;:DPN:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
-$if(:DPN:=ChangeSet){
-&nbsp;&nbsp;<a href=patch@:REV:><font color=red>[all diffs]</font></a>}\
-$if(:DPN:!=ChangeSet){\
-&nbsp;&nbsp;<a href=anno/:DPN:@:REV:><font color=red>[annotate]</font></a>\
-&nbsp;&nbsp;<a href=diffs/:DPN:@:REV:><font color=red>[diffs]</font></a>\
-&nbsp;&nbsp;<a href=both/:DPN:@:REV:><font color=red>[both]</a>\
+&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
+$if(:GFILE:=ChangeSet){
+&nbsp;&nbsp;<a href=/patch@:REV:><font color=red>[all diffs]</font></a>}\
+$if(:GFILE:!=ChangeSet){\
+&nbsp;&nbsp;<a href=/hist/:GFILE:><font color=red>[history]</font></a>\
+&nbsp;&nbsp;<a href=/anno/:GFILE:@:REV:><font color=red>[annotate]</font></a>\
+&nbsp;&nbsp;<a href=/diffs/:GFILE:@:REV:><font color=red>[diffs]</font></a>\
 }</font></td>\
 $each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;\
 tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}\
@@ -179,18 +184,15 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 
 	httphdr("cset.html");
 	out("<html><body alink=black link=black bgcolor=white>\n");
-	out("<table width=100% cellpadding=4 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td align=middle><a href=http://www.bitkeeper.com>\n");
-	out("<font color=white>Learn more about BitKeeper</a></td></tr>");
-	out("</table><p>\n");
+	learn();
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
 		sprintf(buf, "%s<br>ChangeSet details for %s", d, rev);
+		title(buf);
 	} else {
 		sprintf(buf, "ChangeSet details for changeset %s", rev);
+		pwd_title(buf);
 	}
-	title(buf);
 	if (m) mdbm_close(m);
 	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
@@ -203,20 +205,18 @@ $each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
 	}
 	pclose(f);
 	out("</table>\n");
-	out("<p align=center>");
-	out("<a href=http://www.bitkeeper.com><img src=bkpowered.gif></a>\n");
-	out("</body></html>\n");
+	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
+	out("<tr bgcolor=black>\n");
+	out("<td><font size=1>&nbsp;</td></tr></table>\n");
+	out("<p align=center><a href=http://www.bitkeeper.com>");
+	out("<img src=/bkpowered.gif></a></p>\n");
 }
 
 private void
 header()
 {
 	out("<html><body alink=black link=black bgcolor=white>\n");
-	out("<table width=100% cellpadding=4 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td align=middle><a href=http://www.bitkeeper.com>\n");
-	out("<font color=white>Learn more about BitKeeper</a></td></tr>\n");
-	out("</table><p>\n");
+	learn();
 }
 
 private void
@@ -230,14 +230,35 @@ title(char *title)
 }
 
 private void
-trailer()
+pwd_title(char *t)
 {
-	out("</pre>\n");
+	char	pwd[MAXPATH];
+	char	buf[MAXPATH*2];
+
+	pwd[0] = 0;
+	getcwd(pwd, sizeof(pwd));
+	sprintf(buf, "%s<br>%s", pwd, t);
+	title(buf);
+}
+
+private void
+learn()
+{
 	out("<table width=100% cellpadding=4 cellspacing=0>\n");
 	out("<tr bgcolor=black>\n");
 	out("<td align=middle><a href=http://www.bitkeeper.com>\n");
-	out("<font color=white>Learn more about BitKeeper</a></td></tr>\n");
-	out("</table>\n");
+	out("<font color=white>Learn more about BitKeeper</a></td></tr>");
+	out("</table><p>\n");
+}
+private void
+trailer()
+{
+	out("</pre>\n");
+	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
+	out("<tr bgcolor=black>\n");
+	out("<td><font size=1>&nbsp;</td></tr></table>\n");
+	out("<p align=center><a href=http://www.bitkeeper.com>");
+	out("<img src=/bkpowered.gif></a></p>\n");
 	out("</body></html>\n");
 }
 
@@ -264,6 +285,57 @@ htmlify(char *from, char *html, int n)
 	return (h);
 }
 
+/* pathname[@rev] */
+private void
+http_hist(char *pathrev)
+{
+	FILE	*f;
+	char	buf[4096];
+	char	html[8192];
+	int	n;
+	char	*s, *d;
+	MDBM	*m;
+	char	*dspec =
+"<tr bgcolor=#d8d8f0><td><font size=2>\
+&nbsp;:GFILE:@:I:, :Dy:-:Dm:-:Dd: :T::TZ:, :P:$if(:HT:){@:HT:}\
+&nbsp;&nbsp;\
+<a href=/anno/:GFILE:@:REV:><font color=red> [annotate]</font></a>\
+&nbsp;&nbsp;<a href=/diffs/:GFILE:@:REV:><font color=red>[diffs]</font></a>\
+</td>$each(:TAG:){<tr bgcolor=yellow><td>&nbsp;&nbsp;&nbsp;&nbsp;\
+tag:&nbsp;&nbsp;(:TAG:)</td></tr>\n}\
+$each(:C:){<tr bgcolor=white><td>&nbsp;&nbsp;&nbsp;&nbsp;(:C:)</td></tr>}\
+<tr><td>&nbsp;&nbsp;</td></tr>\n";
+
+	httphdr(".html");
+	out("<html><body alink=black link=black bgcolor=white>\n");
+	learn();
+	m = loadConfig(".", 0);
+	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
+		sprintf(html, "%s<br>Revision history for %s", d, pathrev);
+		title(html);
+	} else {
+		sprintf(html, "Revision history for %s", pathrev);
+		pwd_title(html);
+	}
+	if (m) mdbm_close(m);
+	if (s = strrchr(pathrev, '@')) {
+		*s++ = 0;
+		sprintf(buf, "bk prs -hd'%s' -r%s %s", dspec, s, pathrev);
+	} else {
+		sprintf(buf, "bk prs -hd'%s' %s", dspec, pathrev);
+	}
+	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
+	out("bgcolor=white>\n");
+	putenv("BK_YEAR4=1");
+	system(buf);
+	out("</table>\n");
+	out("<p><table width=100% cellpadding=0 cellspacing=0>\n");
+	out("<tr bgcolor=black>\n");
+	out("<td><font size=1>&nbsp;</td></tr></table>\n");
+	out("<p align=center><a href=http://www.bitkeeper.com>");
+	out("<img src=/bkpowered.gif></a></p>\n");
+}
+
 private void
 http_anno(char *pathrev)
 {
@@ -278,10 +350,11 @@ http_anno(char *pathrev)
 	m = loadConfig(".", 0);
 	if (m && (d = mdbm_fetch_str(m, "description")) && (strlen(d) < 1900)) {
 		sprintf(html, "%s<br>Annotated listing of %s", d, pathrev);
+		title(html);
 	} else {
 		sprintf(html, "Annotated listing of %s", pathrev);
+		pwd_title(html);
 	}
-	title(html);
 	if (m) mdbm_close(m);
 	out("<pre><font size=2>\n");
 	unless (s = strrchr(pathrev, '@')) exit(1);
@@ -354,7 +427,11 @@ http_diffs(char *pathrev)
 	out("<pre><font size=2>\n");
 	unless (s = strrchr(pathrev, '@')) exit(1);
 	*s++ = 0;
-	sprintf(buf, "bk diffs -uR%s %s", s, pathrev);
+	if (strstr(s, "..")) {
+		sprintf(buf, "bk diffs -ur%s %s", s, pathrev);
+	} else {
+		sprintf(buf, "bk diffs -uR%s %s", s, pathrev);
+	}
 	f = popen(buf, "r");
 	color(0);
 	while (fgets(buf, sizeof(buf), f)) {
@@ -439,14 +516,12 @@ http_index()
 	sccs_free(s);
 	httphdr(".html");
 	out("<html><body bgcolor=white>\n");
-	out("<table width=100% cellpadding=4 cellspacing=0>\n");
-	out("<tr bgcolor=black>\n");
-	out("<td align=middle><a href=http://www.bitkeeper.com>\n");
-	out("<font color=white>Learn more about BitKeeper</a></td></tr>");
-	out("</table><p>\n");
+	learn();
 	m = loadConfig(".", 0);
 	if (m && (t = mdbm_fetch_str(m, "description")) && (strlen(t) < 1900)) {
 		title(t);
+	} else {
+		pwd_title("ChangeSet activity");
 	}
 	if (m) mdbm_close(m);
 	out("<table width=100%>\n");
@@ -479,7 +554,7 @@ http_index()
 	out("<tr bgcolor=black>\n");
 	out("<td><font size=1>&nbsp;</td></tr></table>\n");
 	out("<p align=center><a href=http://www.bitkeeper.com>");
-	out("<img src=bkpowered.gif></a></p>\n");
+	out("<img src=/bkpowered.gif></a></p>\n");
 }
 
 
