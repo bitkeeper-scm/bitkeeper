@@ -5,15 +5,15 @@ bk smerge \- smart text-based 3-way file merge
 .SH SYNOPSIS
 .\"
 .Bc bk smerge [\-2efghns] [
-.OPTreq \-A mergefcns
+.OPTreq \-A n
 .Bc ] [
-.OPTreq \-a mergefcns
+.OPTreq \-a n
 .Bc ] [
-.OPTreq \-r seqrange
+.OPTreq \-r r
 .B ] 
-.ARG local_rev
-.ARG ancestor_rev
-.ARG remote_rev
+.ARG local
+.ARG gca
+.ARG rem
 .ARG file
 .SH DESCRIPTION
 This command does a smart 3-way file merge.
@@ -38,18 +38,18 @@ except it marks added lines)
 Print examples of all 4 output formats from 
 .B smerge
 .tp
-.OPTreq \-a mergefcns
+.OPTreq \-a n
 Enable a list of merge functions seperated by commas.  'all' will enable
-all automerge algos.   Use 'bk smerge -h' to find the algos enabled by
+all automerge algorthms.   Use 'bk smerge -h' to find the algorthms enabled by
 default.
 .tp
-.OPTreq \-A mergefcns
+.OPTreq \-A n
 Display a list of merge functions seperated by commas.  See \-a.
 \-Aall will turn off all automerging.
 .tp
 .B \-f
 Enable fdiff output.  (Used internally by 
-.Bc fm3merge
+.Bc fm3tool
 )
 .tp
 .B \-s

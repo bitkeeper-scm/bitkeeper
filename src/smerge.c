@@ -345,6 +345,9 @@ push_region(region *r)
  *   The functions are not allowed to modify or delete the lines that
  *   are passed in, but they are allowed to split them into multiple
  *   regions.
+ *
+ * The numbers used below, once shipped, must always mean the same thing.
+ * If you evolve this code, use new numbers.
  */
 struct mergefcns {
 	char	*name;
@@ -352,18 +355,18 @@ struct mergefcns {
 	int	(*fcn)(region *r);
 	char	*help;
 } mergefcns[] = {
-	{"same_changes",	1, merge_same_changes,
-	"Notice when the same changes occur on both the left and the right"},
-	{"only_one",		1, merge_only_one,
-	"Notice only one side made a change and there is not merge"},
-	{"content",		1, merge_content,
-	"Merge modifications on both sides that are non-overlaping"},
-	{"common_header",	1, merge_common_header,
-	"Factor out common changes at beginning of conflict"},
-	{"common_footer",	1, merge_common_footer,
-	"Factor out common changes at end of conflict"},
-	{"common_deleted",	1, merge_common_deletes,
-	"Notice when both left and right have deleted the same lines from the gca"},
+	{"1",	1, merge_same_changes,
+	"Merge identical changes made by both sides"},
+	{"2",		1, merge_only_one,
+	"Merge when only one side changes"},
+	{"3",		1, merge_content,
+	"Merge adjacent non-overlapping modifications on both sides"},
+	{"4",	1, merge_common_header,
+	"Merge identical changes at the start of a conflict"},
+	{"5",	1, merge_common_footer,
+	"Merge identical changes at the end of a conflict"},
+	{"6",	1, merge_common_deletes,
+	"Merge identical deletions made by both sides"},
 };
 #define	N_MERGEFCNS (sizeof(mergefcns)/sizeof(struct mergefcns))
 
@@ -406,11 +409,14 @@ mergefcns_help(void)
 {
 	int	i;
 
+	fprintf(stderr,
+"The following is a list of merge algorthms which may be enabled or disabled\n\
+to change the way smerge will automerge.  Starred entries are on by default.\n");
 	for (i = 0; i < N_MERGEFCNS; i++) {
-		printf("\t%15s %8s %s\n", 
-		       mergefcns[i].name, 
-		       mergefcns[i].enable ? "enabled" : "disabled",
-		       mergefcns[i].help);
+		fprintf(stderr, "%2s%c %s\n", 
+		    mergefcns[i].name, 
+		    mergefcns[i].enable ? '*' : ' ',
+		    mergefcns[i].help);
 	}
 }
 
