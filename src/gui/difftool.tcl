@@ -471,7 +471,7 @@ proc main {} \
 	global argv0 argv argc dev_null lfile rfile tmp_dir
 
 	if {$argc < 1 || $argc > 3} {
-		puts "usage: $argv0 left [right \[done\]]"
+		puts "usage: $argv0 left \[right \[done\]\]"
 		exit
 	}
 	bk_init
