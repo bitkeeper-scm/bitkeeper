@@ -120,6 +120,10 @@ test -d RESYNC && {
 	# exit 1
 }
 echo OK
+
+cd $HERE/project
+bk lock -U
+
 # This is not portable, as it depends on OS output for making a directory
 # in a read-only directory.  But has been run. Output fixed for 3.0.3
 # BugID: 2003-02-25-001
