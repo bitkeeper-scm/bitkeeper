@@ -3,6 +3,7 @@
 #include "sccs.h"
 
 private project *proj;
+private	int	expandkeywords;
 
 private void
 mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
@@ -26,6 +27,7 @@ mkgfile(sccs *s, char *rev, char *path, char *tmpdir, char *tag,
 	check_gfile(s, 0);
 	mkdirf(tmp_path);
 	if (fix_mod_time) flags |= GET_DTIME;
+	if (expandkeywords) flags |= GET_EXPAND;
 	if (sccs_get(s, rev, 0, 0, 0, flags, "-")) {
 		fprintf(stderr, "Cannot get %s, rev %s\n",
 							s->sfile, rev);
@@ -185,8 +187,10 @@ gnupatch_main(int ac, char **av)
 		return (1);
 	}
 
-	while ((c = getopt(ac, av, "hTd|")) != -1) { 
+	while ((c = getopt(ac, av, "ehTd|")) != -1) { 
 		switch (c) {
+		    case 'e':
+			expandkeywords = 1; break;		/* doc 2.1 */
 		    case 'h':					/* doc 2.0 */
 			header = 0; break; /* disable header */
 		    case 'T':	fix_mod_time = 1; break;	/* doc 2.0 */
