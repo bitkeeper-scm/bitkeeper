@@ -84,6 +84,9 @@ _superset() {
 	done
 	shift `expr $OPTIND - 1`
 	export PAGER=cat
+	test "X$@" = X && {
+		test "X`bk parent -qp`" = "X" && exit 1
+	}
 	bk push -n -o$TMP2 $QUIET $PUSH "$@" 
 	grep -q 'Nothing to send to' $TMP2 || {
 		test $LIST = NO && {
