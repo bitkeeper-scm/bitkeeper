@@ -2470,6 +2470,11 @@ expand(sccs *s, delta *d, char *l, int *expanded)
 				t += strlen(d->hostname);
 			}
 			break;
+			
+		    case '#':	/* user */
+			strcpy(t, d->user);
+			t += strlen(d->user);
+			break;
 
 		    default:	t[0] = l[0];
 				t[1] = l[1];
