@@ -1,19 +1,21 @@
 #include "bkd.h"
+typedef void (*vfn)(char *, int);
+
 char		*http_time(void);
 private	char	*type(char *name);
 private void	httphdr(char *file);
 private	char	*url(char *path);
 private void	http_error(int status, char *fmt, ...);
 private void	http_file(char *file);
-private void	http_index();
-private void	http_changes(char *rev);
-private void	http_cset(char *rev);
-private void	http_anno(char *pathrev);
-private void	http_both(char *pathrev);
-private void	http_diffs(char *pathrev);
-private void	http_src(char *pathrev);
-private void	http_hist(char *pathrev);
-private void	http_patch(char *rev);
+private void	http_index(char *page, int embedded);
+private void	http_changes(char *rev, int embedded);
+private void	http_cset(char *rev, int embedded);
+private void	http_anno(char *pathrev, int embedded);
+private void	http_both(char *pathrev, int embedded);
+private void	http_diffs(char *pathrev, int embedded);
+private void	http_src(char *pathrev, int embedded);
+private void	http_hist(char *pathrev, int embedded);
+private void	http_patch(char *rev, int embedded);
 private void	http_gif(char *path);
 private void	title(char *title, char *desc, char *color);
 private void	pwd_title(char *t, char *color);
@@ -36,9 +38,33 @@ private	char	*root;
 
 #define BKWEB_SERVER_VERSION	"0.2"
 
-char arguments[MAXPATH] = { 0 };
-char navbar[MAXPATH] = { 0 };
-char thisPage[MAXPATH] = { 0 };
+private char arguments[MAXPATH] = { 0 };
+private char navbar[MAXPATH] = { 0 };
+private char thisPage[MAXPATH] = { 0 };
+
+private struct pageref {
+    vfn  content;
+    char *page;
+    char *name;
+    int  size;
+    int flags;
+#define HAS_ARG 0x01
+    char *arg;
+} pages[] = {
+    { http_index,   "index.html",     "index.html" },
+    { http_changes, "changeset.html", "ChangeSet", 0, HAS_ARG, 0 },
+    { http_changes, "changeset.html", "ChangeSet@", 10 },
+    { http_src,     "source.html",    "src", 0, HAS_ARG, "." },
+    { http_src,     "source.html",    "src/", 4 },
+    { http_hist,    "hist.html",      "hist/", 5 },
+    { http_cset,    "cset.html",      "cset@", 5 },
+    { http_patch,   "patch.html",     "patch@", 6 },
+    { http_both,    "both.html",      "both/", 5 },
+    { http_anno,    "anno.html",      "anno/", 5 },
+    { http_diffs,   "diffs.html",     "diffs/", 6 },
+    { 0 },
+};
+
 
 /*
  */
@@ -48,6 +74,7 @@ cmd_httpget(int ac, char **av)
 	char	buf[MAXPATH];
 	char	*name = &av[1][1];
 	int	state = 0;
+	int 	ret, i;
 	char	*s;
 
 	/*
@@ -103,30 +130,27 @@ cmd_httpget(int ac, char **av)
 		http_error(404, "get what?\n");
 	}
 	sprintf(buf, "BitKeeper/html/%s", name);
+
+	for (i = 0; pages[i].content; i++) {
+		if (pages[i].size == 0) {
+			ret = streq(pages[i].name, name);
+		} else {
+			ret = strneq(pages[i].name, name, pages[i].size);
+		}
+		if (ret) {
+			http_page(pages[i].page, pages[i].content,
+			    (pages[i].flags & HAS_ARG) ? pages[i].arg
+						       : name + pages[i].size);
+			exit(0);
+		}
+	}
+
+
+
 	if (isreg(buf)) {
 		http_file(buf);		/* XXX - doesn't respect base url */
-	} else if (streq(name, "index.html")) {
-		http_index();
 	} else if ((s = strrchr(name, '.')) && streq(s, ".gif")) {
 		http_gif(name);
-	} else if (strneq(name, "ChangeSet", 9)) {
-		http_changes(name[9] == '@' ? &name[10] : 0);
-	} else if (streq(name, "src")) {
-		http_src(".");
-	} else if (strneq(name, "src/", 4)) {
-		http_src(&name[4]);
-	} else if (strneq(name, "hist/", 5)) {
-		http_hist(&name[5]);
-	} else if (strneq(name, "cset@", 5)) {
-		http_cset(&name[5]);
-	} else if (strneq(name, "patch@", 6)) {
-		http_patch(&name[6]);
-	} else if (strneq(name, "both/", 5)) {
-		http_both(&name[5]);
-	} else if (strneq(name, "anno/", 5)) {
-		http_anno(&name[5]);
-	} else if (strneq(name, "diffs/", 6)) {
-		http_diffs(&name[6]);
 	} else {
 		http_error(404, "Page &lt;%s&gt; not found", name);
 	}
@@ -291,7 +315,7 @@ header(char *path, char *color, char *titlestr, char *headerstr, ...)
 	if (root && !streq(root, "")) {
 		out("<base href=");
 		out(root);
-		out("/>\n");
+		out(">\n");
 	}
 
 	printnavbar();
@@ -374,7 +398,7 @@ http_file(char *file)
 }
 
 private void
-http_changes(char *rev)
+http_changes(char *rev, int embedded)
 {
 	char	*av[100];
 	int	i;
@@ -404,8 +428,10 @@ http_changes(char *rev)
 		http_error(500, "buffer overflow in http_changes");
 	}
 
-	httphdr(".html");
-	header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
+	if (!embedded) {
+		httphdr(".html");
+		header(0, COLOR_CHANGES, "ChangeSet Summaries", 0);
+	}
 
 	out("<table width=100% border=1 cellpadding=2 cellspacing=0 bgcolor=white>\n"
 	    "<tr bgcolor=#d0d0d0>\n"
@@ -425,11 +451,11 @@ http_changes(char *rev)
 	putenv("BK_YEAR4=1");
 	spawnvp_ex(_P_WAIT, "bk", av);
 	out("</table>\n");
-	trailer("ChangeSet");
+	if (!embedded) trailer("ChangeSet");
 }
 
 private void
-http_cset(char *rev)
+http_cset(char *rev, int embedded)
 {
 	char	buf[2048];
 	char	path[MAXPATH];
@@ -503,9 +529,10 @@ http_cset(char *rev)
 		}
 	}
 
-	httphdr("cset.html");
-
-	header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
+	if (!embedded) {
+		httphdr("cset.html");
+		header("cset", COLOR_CSETS, "Changeset details for %s", 0, rev);
+	}
 
 	out("<table border=0 cellpadding=0 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
@@ -516,7 +543,7 @@ http_cset(char *rev)
 		unlink(path);
 	}
 	out("</table>\n");
-	trailer("cset");
+	if (!embedded) trailer("cset");
 }
 
 private void
@@ -639,7 +666,7 @@ htmlify(char *from, char *html, int n)
 
 /* pathname[@rev] */
 private void
-http_hist(char *pathrev)
+http_hist(char *pathrev, int embedded)
 {
 	char	buf[16<<10];
 	char	*s, *d;
@@ -666,8 +693,10 @@ http_hist(char *pathrev)
 		http_error(500, "buffer overflow in http_hist");
 	}
 
-	httphdr(".html");
-	header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
+	if (!embedded) {
+		httphdr(".html");
+		header("hist", COLOR_HIST, "Revision history for %s", 0, pathrev);
+	}
 
 	if (s = strrchr(pathrev, '@')) {
 		*s++ = 0;
@@ -688,12 +717,12 @@ http_hist(char *pathrev)
 	while (fnext(buf, f)) out(buf);
 	pclose(f);
 	out("</table>\n");
-	trailer("hist");
+	if (!embedded) trailer("hist");
 }
 
 /* pathname */
 private void
-http_src(char *path)
+http_src(char *path, int embedded)
 {
 	char	buf[32<<10], abuf[30];
 	char	html[MAXPATH];
@@ -735,9 +764,11 @@ http_src(char *path)
 		http_error(500, "%s: %s", path, strerror(errno));
 	}
 
-	httphdr(".html");
-	header("src", COLOR_SRC, "Source directory &lt;%s&gt;", 0,
-	    path[1] ? path : "project root");
+	if (!embedded) {
+		httphdr(".html");
+		header("src", COLOR_SRC, "Source directory &lt;%s&gt;", 0,
+		    path[1] ? path : "project root");
+	}
 
 	out("<table border=1 cellpadding=2 cellspacing=0 width=100% ");
 	out("bgcolor=white>\n");
@@ -796,11 +827,11 @@ http_src(char *path)
 	}
 	freeLines(names);
 	out("</table><br>\n");
-	trailer("src");
+	if (!embedded) trailer("src");
 }
 
 private void
-http_anno(char *pathrev)
+http_anno(char *pathrev, int embedded)
 {
 	FILE	*f;
 	char	buf[4096];
@@ -816,11 +847,12 @@ http_anno(char *pathrev)
 		http_error(503, "malformed rev %s", pathrev);
 	}
 
-	httphdr(".html");
-
 	whoami("anno/%s", pathrev);
 
-	header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
+	if (!embedded) {
+		httphdr(".html");
+		header("anno", COLOR_ANNO, "Annotated listing of %s", 0, pathrev);
+	}
 
 	*s++ = 0;
 
@@ -842,16 +874,20 @@ http_anno(char *pathrev)
 	}
 	pclose(f);
 	out("</pre>\n");
-	trailer("anno");
+	if (!embedded) trailer("anno");
 }
 
 private void
-http_both(char *pathrev)
+http_both(char *pathrev, int embedded)
 {
-	header(0, "red", "Not implemented yet, check back soon", 0);
-	out("<pre><font size=2>");
-	out("</pre>\n");
-	trailer(0);
+	if (embedded) {
+		out("Not implemented yet, check back soon");
+	} else {
+		header(0, "red", "Not implemented yet, check back soon", 0);
+		out("<pre><font size=2>");
+		out("</pre>\n");
+		trailer(0);
+	}
 }
 
 #define BLACK 1
@@ -892,7 +928,7 @@ color(char c)
 }
 
 private void
-http_diffs(char *pathrev)
+http_diffs(char *pathrev, int embedded)
 {
 	FILE	*f;
 	char	buf[16<<10];
@@ -921,8 +957,10 @@ http_diffs(char *pathrev)
 		http_error(503, "malformed rev %s", pathrev);
 	}
 
-	httphdr(".html");
-	header("diffs", COLOR_DIFFS, "Changes for %s", 0, pathrev);
+	if (!embedded) {
+		httphdr(".html");
+		header("diffs", COLOR_DIFFS, "Changes for %s", 0, pathrev);
+	}
 
 	*s++ = 0;
 	out("<table border=1 cellpadding=1 cellspacing=0 width=100% ");
@@ -956,11 +994,11 @@ http_diffs(char *pathrev)
 	}
 	pclose(f);
 	out("</pre>\n");
-	trailer("diffs");
+	if (!embedded) trailer("diffs");
 }
 
 private void
-http_patch(char *rev)
+http_patch(char *rev, int embedded)
 {
 	FILE	*f;
 	char	buf[16<<10];
@@ -969,14 +1007,15 @@ http_patch(char *rev)
 	char	*s;
 	MDBM	*m;
 
-	httphdr(".html");
-
 	whoami("patch@%s", rev);
 
-	header("rev", COLOR_PATCH,
-	    "All diffs for ChangeSet %s",
-	    0,
-	    rev, navbar, rev);
+	if (!embedded) {
+		httphdr(".html");
+		header("rev", COLOR_PATCH,
+		    "All diffs for ChangeSet %s",
+		    0,
+		    rev, navbar, rev);
+	}
 
 	out("<pre><font size=2>");
 	sprintf(buf, "bk export -T -h -x -tpatch -r%s", rev);
@@ -994,7 +1033,7 @@ http_patch(char *rev)
 	}
 	pclose(f);
 	out("</pre>\n");
-	trailer("patch");
+	if (!embedded) trailer("patch");
 }
 
 private void
@@ -1048,7 +1087,7 @@ units(char *t)
 }
 
 private void
-http_index()
+http_index(char *page, int embedded)
 {
 	sccs	*s = sccs_init(CHANGESET, INIT_NOCKSUM|INIT_NOSTAT, 0);
 	delta	*d;
@@ -1099,38 +1138,40 @@ http_index()
 		c++;
 	}
 	sccs_free(s);
-	httphdr(".html");
 
 	if (m = loadConfig(".", 0)) {
 		t = mdbm_fetch_str(m, "description");
 		mdbm_close(m);
 	}
 
-	/* don't use header() here; this is one place where the regular
-	 * header.txt is not needed
-	 */
-	out("<html><head><title>\n");
-	out(t ? t : "ChangeSet activity");
-	out("\n"
-	    "</title></head>\n"
-	    "<body alink=black link=black bgcolor=white>\n");
-	if (root && !streq(root, "")) {
-		out("<base href=");
-		out(root);
-		out("/>\n");
-	}
-
 	whoami("index.html");
 
-	printnavbar();
+	if (!embedded) {
+		httphdr(".html");
+		/* don't use header() here; this is one place where the regular
+		 * header.txt is not needed
+		 */
+		out("<html><head><title>\n");
+		out(t ? t : "ChangeSet activity");
+		out("\n"
+		    "</title></head>\n"
+		    "<body alink=black link=black bgcolor=white>\n");
+		if (root && !streq(root, "")) {
+			out("<base href=");
+			out(root);
+			out(">\n");
+		}
+		printnavbar();
 
-	unless (include(0, "homepage.txt")) {
-		if (t) {
-			title("ChangeSet activity", t, COLOR_TOP);
-		} else {
-			pwd_title("ChangeSet activity", COLOR_TOP);
+		unless (include(0, "homepage.txt")) {
+			if (t) {
+				title("ChangeSet activity", t, COLOR_TOP);
+			} else {
+				pwd_title("ChangeSet activity", COLOR_TOP);
+			}
 		}
 	}
+
 
 	out("<table width=100%>\n");
 #define	DOIT(c, l, u, t) \
@@ -1173,7 +1214,7 @@ http_index()
 	out(buf);
 	out("<td>&nbsp;</td></tr>");
 	out("</table>\n");
-	trailer(0);
+	if (!embedded) trailer(0);
 }
 
 
@@ -1287,4 +1328,29 @@ url(char *path)
 		unless (buf[strlen(buf)-1] == '/') strcat(buf, "/");
 	}
 	return buf;
+}
+
+
+private void
+http_page(char *page, vfn content, char *argument)
+{
+    static char buf[MAXPATH];
+    int i;
+    FILE *f;
+
+    i = snprintf(buf, sizeof buf, "BitKeeper/html/%s", page);
+
+    if (i != -1 && isreg(buf) && (f = fopen(buf, "r")) != 0) {
+	    httphdr(".html");
+	    while (fgets(buf, sizeof buf, f)) {
+		    if (strncmp(buf, ".CONTENT.", 9) == 0) {
+			    (*content)(argument, 1);
+		    } else {
+			    out(buf);
+		    }
+	    }
+	    fclose(f);
+    } else {
+	    (*content)(argument, 0);
+    }
 }
