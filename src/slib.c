@@ -15803,6 +15803,13 @@ generateTimestampDB(project *p)
 	MDBM	*db;
 	char	*tsname;
 	char	buf[MAXLINE];
+	char	*pref;
+
+	if ((pref = user_preference("trust_window")) &&
+	    streq(pref, "none")) {
+		return (0);
+	}
+
 	tsname = aprintf("%s/BitKeeper/etc/timestamps", p->root);
 
 	db = mdbm_mem();
