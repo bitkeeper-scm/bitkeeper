@@ -71,7 +71,14 @@ unpull(int force, int quiet)
 	s = sccs_init(cset, 0, 0);
 	assert(s && HASGRAPH(s));
 	d = sccs_top(s);
-	e = sccs_findrev(s, r);
+	unless (e = sccs_findrev(s, r)) {
+		fprintf(stderr, "unpull: stale csets-in file removed.\n");
+		sccs_free(s);
+		mclose(m);
+		unlink(CSETS_IN);
+		exit(1);
+	}
+		
 	unless (d == e) {
 		fprintf(stderr,
 		    "unpull: will not unpull local changeset %s\n", d->rev);
