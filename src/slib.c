@@ -11755,21 +11755,15 @@ isTextDelta(sccs *s, char *rev)
 }
 
 private int
-mkDiffTarget(sccs *s, char *rev, char *revM, char kind,
-			u32 flags, int here, char *target , pfile *pf)
+mkDiffTarget(sccs *s,
+	char *rev, char *revM, char kind, u32 flags, char *target , pfile *pf)
 {
 	if (streq(rev, "1.0")) {
 		strcpy(target, NULL_FILE);
 		return (0);
 	}
-
-	if (here) {
-		sprintf(target, "%s-%s", s->gfile, rev);
-	} else {
-		sprintf(target,
-		    "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), rev, getpid());
-	}
-
+	sprintf(target,
+	    "%s/%s-%s-%d", TMP_PATH, basenm(s->gfile), rev, getpid());
 	if (exists(target)) {
 		return (-1);
 	} else if (
@@ -11790,19 +11784,18 @@ normal_diff(sccs *s, char *lrev, char *lrevM,
 	char	lfile[MAXPATH], rfile[MAXPATH];
 	char	ltag[MAXPATH],	rtag[MAXPATH], 	tmp[MAXPATH];
 	char 	*lpath, *rpath;
-	int	here, rc = -1;
+	int	rc = -1;
 
 	strcpy(tmp, s->gfile);		/* because dirname stomps */
 	sprintf(tmp, "%s", dirname(tmp));
-	here = writable(tmp);
 
 	/*
 	 * Create the lfile & rfile for diff
 	 */
-	if (mkDiffTarget(s, lrev, lrevM, kind, flags, here, lfile, pf)) {
+	if (mkDiffTarget(s, lrev, lrevM, kind, flags, lfile, pf)) {
 		goto done;
 	}
-	if (mkDiffTarget(s, rrev, NULL,  kind, flags, here, rfile, 0 )) {
+	if (mkDiffTarget(s, rrev, NULL,  kind, flags, rfile, 0 )) {
 		goto done;
 	}
 
