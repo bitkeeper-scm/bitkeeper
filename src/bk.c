@@ -71,7 +71,6 @@ int	f2csets_main(int, char **);
 int	fdiff_main(int, char **);
 int	find_main(int, char **);
 int	findkey_main(int, char **);
-int	findprog_main(int, char **);
 int	fix_main(int, char **);
 int	fixlod_main(int, char **);
 int	gca_main(int, char **);
@@ -188,6 +187,7 @@ int	uudecode_main(int, char **);
 int	val_main(int, char **);
 int	version_main(int, char **);
 int	what_main(int, char **);
+int	which_main(int, char **);
 int	xflags_main(int, char **);
 int	zone_main(int, char **);
 
@@ -198,7 +198,6 @@ struct	command cmdtbl[] = {
 	{"_cleanpath", cleanpath_main},
 	{"_exists", exists_main},
 	{"_find", find_main },
-	{"_findprog", findprog_main },
 	{"_g2sccs", _g2sccs_main},
 	{"_get", get_main},
 	{"_gzip", gzip_main }, 
@@ -362,10 +361,30 @@ struct	command cmdtbl[] = {
 	{"val", val_main},			/* doc 2.0 */
 	{"version", version_main},		/* doc 2.0 */
 	{"what", what_main},			/* doc 2.0 */
+	{"which", which_main },
 	{"xflags", xflags_main},		/* doc 2.0 */
 	{"zone", zone_main},			/* doc 2.0 */
 
 	{0, 0},
+};
+
+/* Keep this sorted too */
+struct tool guis[] = {
+	{ "citool", 0 },
+	{ "csettool", "csetool" },
+	{ "difftool", 0 },
+	{ "fm3tool", "fm3" },
+	{ "fmtool", "fm" },
+	{ "fmtool", "fm2tool" },
+	{ "helptool", 0 },
+	{ "msgtool", 0 },
+	{ "renametool", 0 },
+	{ "revtool", "histool" },
+	{ "revtool", "histtool" },
+	{ "revtool", "sccstool" },
+	{ "setuptool", 0 },
+
+	{ 0, 0 }
 };
 
 private int
@@ -596,34 +615,17 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 		return (1);
 	}
 
-
 	/*
 	 * Handle Gui script
 	 */
-	if (streq(prog, "fm") ||
-	    streq(prog, "fm3") ||
-	    streq(prog, "citool") ||
-	    streq(prog, "_citool") ||
-	    streq(prog, "sccstool") ||
-	    streq(prog, "histtool") ||
-	    streq(prog, "revtool") ||
-	    streq(prog, "histool") ||
-	    streq(prog, "setuptool") ||
-	    streq(prog, "fmtool") ||
-	    streq(prog, "fm2tool") ||
-	    streq(prog, "fm3tool") ||
-	    streq(prog, "difftool") ||
-	    streq(prog, "helptool") ||
-	    streq(prog, "csettool") ||
-	    streq(prog, "renametool") ||
-	    streq(prog, "msgtool")) {
+	for (i = 0; guis[i].prog; i++) {
+		unless (streq(guis[i].prog, prog) ||
+		    (guis[i].alias && streq(guis[i].alias, prog))) {
+			continue;
+		}
+		prog = guis[i].prog;
 		sig_catch(SIG_IGN);
 		argv[0] = find_wish();
-		if (streq(prog, "fm2tool")) prog = "fmtool";
-		if (streq(prog, "sccstool")) prog = "revtool";
-		if (streq(prog, "histool")) prog = "revtool";
-		if (streq(prog, "histtool")) prog = "revtool";
-		if (streq(prog, "revtool")) prog = "revtool";
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;
 		for (i = 2, j = 1; av[j]; i++, j++) {
@@ -640,7 +642,7 @@ run_cmd(char *prog, int is_bk, char *sopts, int ac, char **av)
 	/*
 	 * Handle shell script
 	 */
-	if (streq(prog, "resync") || streq(prog, "import")) {
+	if (streq(prog, "import")) {
 		argv[0] = shell();
 		sprintf(cmd_path, "%s/%s", bin, prog);
 		argv[1] = cmd_path;

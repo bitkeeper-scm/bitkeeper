@@ -70,7 +70,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	cp.o crypto.o cset.o cset_inex.o csetprune.o csets.o cweave.o \
 	dirs.o delta.o diffs.o diffsplit.o dir_gif.o dirname.o \
 	export.o fdiff.o file_gif.o \
-	find.o findkey.o findprog.o fix.o fixlod.o \
+	find.o findkey.o fix.o fixlod.o \
 	g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \
 	gnupatch.o graft.o grep.o help.o host.o hostme.o http.o \
@@ -111,7 +111,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o applyall.o \
 	tagmerge.o takepatch.o testdates.o trigger.o \
 	unbk.o undo.o undos.o unedit.o \
 	unique.o unlink.o unlock.o unpull.o unwrap.o \
-	user.o utils.o uu.o version.o what.o xflags.o zgets.o \
+	user.o utils.o uu.o version.o what.o which.o xflags.o zgets.o \
 	zone.o
 
 MDBMOBJ	= mdbm/mdbm.o mdbm/hash.o mdbm/debug.o mdbm/byte_order.o

@@ -48,7 +48,7 @@ rcs2sccs_main(int ac, char **av)
 		if (executable("/usr/local/bin/co")) {
 			co_prog = "/usr/local/bin/co";
 		} else {
-			co_prog = prog2path("co");
+			co_prog = whichp("co", 0, 1);
 		}
 	}
 	unless (co_prog && executable(co_prog)) {

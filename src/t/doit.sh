@@ -90,9 +90,10 @@ unix_common_setup()
 	for f in awk expr sh grep egrep sed \
 	    basename dirname cat cp ln mkdir mv rm rmdir touch wc xargs \
 	    co rcs ssh rsh gzip gunzip
-	do	p=`bk _findprog $f`
+	do	p=`bk which -e $f`
 		if [ $? -eq 0 ]
-		then	ln -s $p $BK_LIMITPATH/$f
+		then	echo ln -s $p $BK_LIMITPATH/$f
+			ln -s $p $BK_LIMITPATH/$f
 		else	echo WARNING: could not find a $f binary.
 		fi
 	done
