@@ -36,7 +36,7 @@ unix_common_setup()
 	CWD="/bin/pwd"
 	if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; fi
 	BK_BIN="`cd .. && pwd`"
-	PATH=$BK_BIN:$PATH:/usr/local/bin:/usr/freeware/bin
+	PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH:/usr/local/bin:/usr/freeware/bin
 	unset CDPATH
 	if [ X$USER = X ]; then USER=`bk getuser`; fi
 	# root user is special, remap to a differnt user before we run the test
@@ -50,13 +50,13 @@ setup_env()
 	    Xcygwin32)
 		win32_common_setup
 		BK_BIN=`cd .. && ./pwd.exe -scf`
-		PATH=$BK_BIN:$PATH
+		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 		;;
 	    Xmks)
 		win32_common_setup
 		BK_BIN=`cd .. && ./pwd.exe -sf`
 		# MKS uses semi colon as path delimiter
-		PATH="$BK_BIN;$PATH"
+		PATH="$BK_BIN;$BK_BIN/gnu/bin;$PATH"
 		;;
 	    Xuwin)
 		# /dev/null in uwin does not always work
@@ -64,7 +64,7 @@ setup_env()
 		# uwin cp command adds .exe for binary files
 		win32_common_setup
 		BK_BIN=`cd .. && ./pwd.exe -sf`
-		PATH=$BK_BIN:$PATH
+		PATH=$BK_BIN:$BK_BIN/gnu/bin:$PATH
 		;;
 	    *)	# assumes everything else is unix
 		unix_common_setup

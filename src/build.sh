@@ -3,7 +3,7 @@
 CC=gcc
 LD=gcc
 MAKE=gmake
-uname -s | grep -q "_NT"
+uname -s | grep "_NT"
 if [ $?  != 0 ]
 then PATH=/opt/gnu/bin:/usr/local/bin:/usr/freeware/bin:/usr/ccs/bin:$PATH
 fi
