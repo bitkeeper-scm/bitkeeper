@@ -653,6 +653,7 @@ isIgnored(char *file)
 {
 	char *gfile, *p, *q, save;
 	struct stat sbuf;
+	int len;
 
 	gfile =  strneq("./",  file, 2) ? &file[2] : file;
 	unless (opts.aflg) {
@@ -698,12 +699,15 @@ isIgnored(char *file)
 	}
 
 	/*
-	 * HACK to hide stuff in the log directory
+	 * HACK to hide stuff in the log and locks directory
 	 * This assumes that sfind is ran from project root
 	 * If you run "bk sfind" under <project root>/BitKeeper directory,
 	 * these file will show up. It is probably OK.
 	 */
-	if (strneq("BitKeeper/log/", gfile, 14)) return (1);
+	len = strlen(gfile);
+	if ((len >= 14) && strneq("BitKeeper/log/", gfile, 14)) return (1);
+	if ((len >= 17) && strneq("BitKeeper/writer/", gfile, 17)) return (1);
+	if ((len >= 18) && strneq("BitKeeper/readers/", gfile, 18)) return (1);
 	
 	return (0);
 }
