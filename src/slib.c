@@ -101,6 +101,13 @@ isreg(char *s)
 	return (S_ISREG(sbuf.st_mode));
 }
 
+int isSymlnk(char *s)
+{
+	struct	stat sbuf;
+	if (lstat(s, &sbuf) == -1) return 0;
+	return (S_ISLNK(sbuf.st_mode));
+}
+
 inline int
 writable(char *s)
 {
