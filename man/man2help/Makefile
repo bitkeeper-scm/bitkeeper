@@ -1,3 +1,4 @@
+export GROFF_NO_SGR=1
 
 # Override Solaris make.rules
 .SCCS_GET:
