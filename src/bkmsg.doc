@@ -926,7 +926,7 @@ You are trying to synchronize with directory that does not contain a
 BitKeeper repository, it is empty.  Please check the names and try again.
 $
 #missing_dfile
-check: %s has pending deltas but no d.file, please fix by running
+check: #BKARG# has pending deltas but no d.file, please fix by running
 
     "bk -R sfiles -P"
 

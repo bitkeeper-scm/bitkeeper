@@ -287,8 +287,12 @@ cd $HERE
 bk clone $Q project bad || exit 1
 cd bad
 bk admin -D d1/a  || exit 1
-bk -r check -a 2>ERRS && {
+bk -r check -a >OUT 2>ERRS && {
 	echo check should have failed
+	exit 1
+}
+grep -q 'has pending deltas but no d.file' OUT || {
+	echo bad error message
 	exit 1
 }
 cd $HERE
