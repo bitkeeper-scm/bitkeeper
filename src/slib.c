@@ -2330,7 +2330,7 @@ delete_cset_cache(char *rootpath, int save)
 	p = buf + strlen(buf);
 	*p++ = '/';
 	EACH (files) {
-		if (files[i][0] == '@') {
+		if (strneq(files[i], "csetcache.", 10)) {
 			struct	stat statbuf;
 			strcpy(p, files[i]);
 			stat(buf, &statbuf);

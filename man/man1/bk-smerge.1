@@ -96,7 +96,7 @@ where this algorithm will successfully resolve the conflict.
 The block after the resolve will be:
 .DS
 	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, p);
-	sccs_sdelta(sc, sc->tree, file);
+	assert(HASGRAPH(sc));
 	sccs_sdelta(sc, sccs_ino(sc), file);
 .DE
 Multiple substitutions are not yet handled.
@@ -123,7 +123,7 @@ When a conflict regions is identified, then the enabled algorithms are run
 on the block repeatedly until the block is resolved or no further
 progress is made.
 .LP
-Default merge output format is as follows:
+Default conflict output format is as follows:
 .DS
 <<<<<<< gca slib.c 1.642.1.6
 	sc = sccs_init(file, INIT_NOCKSUM|INIT_SAVEPROJ, s->proj);
@@ -146,7 +146,7 @@ the form: <<<<<<<
 .ARG revision
 followed by the conflict lines from that file.  The end of the conflict region
 is indicated by ">>>>>>>".
-Examples of merge output can be viewed by using the -e option.
+Examples of conflict output can be viewed by using the -e option.
 .SH OPTIONS
 .if t .TP .6i
 .if n .TP 1i
@@ -166,7 +166,7 @@ except it marks added lines)
 .tp
 .B \-e
 Print examples of all 4 output formats from 
-.B smerge
+.BR smerge .
 .tp
 .OPTreq \-a n
 Enable merge functions
