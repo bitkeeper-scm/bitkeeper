@@ -419,18 +419,21 @@ echo ''
 	test $EXIT -eq 0 && {
 		egrep -v '^.*\.OK$|^---.*$|\.\.failed \(bug|^.*\.skipped$' \
 		    $TMPDIR/OUT.$$ > $DEV_NULL && {
-			echo
-			echo WARNING: unexpected output lines
-			BADOUTPUT="$i $BADOUTPUT"
-			test "X$FAIL_WARNING" = "XYES" && {
-				BAD=1
-			}
+			if [ "X$FAIL_WARNING" = "XYES" ]
+			then	BAD=1
+			else	echo
+				echo WARNING: unexpected output lines
+				BADOUTPUT="$i $BADOUTPUT"
+			fi
 		}
 	}
 	$RM -f $TMPDIR/OUT.$$
 	if [ $EXIT -ne 0 -o $BAD -ne 0 ]
 	then
-		echo ERROR: Test ${i#t.} failed with error $EXIT
+		if [ $EXIT -ne 0 ]
+		then	echo ERROR: Test ${i#t.} failed with error $EXIT
+		else	echo ERROR: Test ${i#t.} failed with unexpected output
+		fi
 		test $KEEP_GOING = NO && exit $EXIT
 		FAILED="$i $FAILED"
 	fi
