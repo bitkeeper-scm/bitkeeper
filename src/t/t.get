@@ -236,6 +236,8 @@ do	test -f subdir/$i || {
 done
 echo OK
 
+if [ "$PLATFORM" = "UNIX" ]
+then #-------------------------------------------------------------
 echo $N Test sccs get with foo.c -Gbar.c ............................$NL
 cp `bk bin`/bk sccs
 rm -rf subdir T
@@ -287,3 +289,4 @@ do	test -f subdir/$i || {
 	}
 done
 echo OK
+fi #---------------------------------------------------------------

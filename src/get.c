@@ -27,7 +27,7 @@ _get_main(int ac, char **av, char *out)
 
 	debug_main(av);
 	prog = strrchr(av[0], '/');
-	if (prog) name++;
+	if (prog) prog++;
 	else prog = av[0];
 	if (streq(prog, "co")) {
 		if (!isdir("SCCS") && isdir("RCS")) {
