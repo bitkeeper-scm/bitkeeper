@@ -1441,7 +1441,6 @@ proc diffs {diffs l} \
 
 proc done {} \
 {
-	#saveHistory
 	exit
 }
 
@@ -1495,8 +1494,6 @@ proc PaneCreate {} \
 	set paned 1
 }
 
-# When we get an resize event, don't resize the top canvas if it is
-# currently fitting in the window.
 proc PaneResize {} \
 {
 	global	percent preferredGraphSize
@@ -1735,7 +1732,6 @@ proc widgets {} \
 		menu $gc(current) 
 		$gc(recent) add command -label "$fname" \
 		    -command "revtool $fname"
-		getHistory
 	    if {"$fname" == "ChangeSet"} {
 		    #.menus.cset configure -command csettool
 		    pack .menus.quit .menus.help .menus.mb .menus.cset \
@@ -1986,52 +1982,6 @@ proc selectFile {} \
 	return $fname
 }
 
-# XXX: Should only save the most recent (10?) files that were looked at
-# should be a config option
-proc saveHistory {} \
-{
-	global gc
-
-	set num [$gc(recent) index end]
-	set h [open "$gc(histfile)" w]
-	if {[catch {open $gc(histfile) w} fid]} {
-		puts stderr "Cannot open $bkrc"
-	} else {
-		# Start at 3 so we skip over the "Add new" and sep entries
-		set start 3
-		set saved [expr $gc(rev.savehistory) + 2]
-		if {$num > $saved} {
-			set start [expr $num - $gc(rev.savehistory)]
-		}
-		for {set i $start} {$i <= $num} {incr i 1} {
-			set index $i
-			set fname [$gc(recent) entrycget $index -label]
-			#puts [$gc(recent) entryconfigure $index]
-			#puts "i=($i) label=($fname)"
-			puts $fid "$fname"
-		}
-		catch {close $h}
-	}
-	return
-}
-
-proc getHistory {} \
-{
-	global gc
-
-	if {![file exists $gc(histfile)]} {
-		#puts stderr "no history file exists"
-		return
-	}
-	set h [open "$gc(histfile)"]
-	while {[gets $h file] >= 0} {
-		if {$file == "ChangeSet"} {continue}
-		$gc(recent) add command -label "$file" \
-		    -command "revtool $file"
-	}
-	catch {close $h}
-}
-
 # Arguments:
 #  lfname	filename that we want to view history
 #  R		Revision, time period, or number of revs that we want to view
@@ -2041,10 +1991,13 @@ proc revtool {lfname {R {}}} \
 	global  Opts gc file rev2rev_name cdim firstnode fname
 	global  merge diffpair firstrev
 	global rev1 rev2
+	global State
 
 	# Set global so that other procs know what file we should be
 	# working on. Need this when menubutton is selected
 	set fname $lfname
+	
+	recentFile $fname 
 
 	busy 1
 	$w(graph) delete all
@@ -2277,6 +2230,14 @@ proc startup {} \
 {
 	global fname rev2rev_name w rev1 rev2 gca errorCode gc dev_null
 	global file merge diffpair dfile
+	global State percent preferredGraphSize
+
+	if {[info exists State(geometry)]} {
+		after idle [list wm geometry . $State(geometry)]
+	}
+	if {[info exists State(pane)]} {
+		set preferredGraphSize $State(pane)
+	}
 
 	if {$gca != ""} {
 		set merge(G) $gca
@@ -2292,6 +2253,12 @@ proc startup {} \
 	} 
 	if {[info exists dfile] && ($dfile != "")} {
 		printCanvas
+	}
+
+	bind . <Destroy> {
+		if {[string match %W "."]} {
+			saveState
+		}
 	}
 }
 
@@ -2322,7 +2289,81 @@ proc printCanvas {} \
 	exit
 }
 
+# the purpose of this proc is merely to load the persistent state;
+# it does not do anything with the data (such as set the window 
+# geometry). That is best done elsewhere. This proc does, however,
+# attempt to make sure the data is in a usable form.
+proc loadState {} \
+{
+	global State
+
+	catch {::appState load rev State}
+
+	# State(recent) is stored as a multiline value; convert it
+	# to a list so it's easier to manipulate
+	if {[info exists State(recent)]} {
+		set State(recent) [split $State(recent) \n]
+	} else {
+		set State(recent) {}
+	}
+}
+
+proc saveState {} \
+{
+	global State percent preferredGraphSize
+
+	if {[info exists preferredGraphSize]} {
+		set State(pane)      $preferredGraphSize
+	}
+
+	# we want to save the recent files as a multiline item,
+	# so we must convert the list to a string of newline
+	# separated items. Not that we do the reverse when loading
+	# the state...
+	array set tmp [array get State]
+	set tmp(geometry) [wm geometry .]
+	set tmp(recent)   [join $State(recent) \n]
+
+	# Generally speaking, errors at this point are no big
+	# deal. It's annoying we can't save state, but it's no 
+	# reason to stop running. So, a message to stderr is 
+	# probably sufficient. Plus, given we may have been run
+	# from a <Destroy> event on ".", it's too late to pop
+	# up a message dialog.
+	if {[catch {::appState save rev tmp} result]} {
+		puts stderr "error writing config file: $result"
+	}
+}
+
+# (potentially) add a recent file to the list, and update the
+# recent file menu
+proc recentFile {{filename {}}} \
+{
+	global State gc
+
+	if {$filename != ""} {
+		# attempt to normalize the filename
+		set filename [lindex [exec bk prs -hr+ -d:PATH: $filename] 1]
+		if {$filename == ""} return
+
+		if {![info exists State(recent)]} {
+			set State(recent) [list $filename]
+		} elseif {[lsearch -exact $State(recent) $filename] == -1} {
+			set State(recent) \
+			    [linsert $State(recent) 0 $filename]
+		}
+	}
+	set State(recent) [lrange $State(recent) 0 7]
+	$gc(recent) delete 0 end
+	foreach file $State(recent) {
+		$gc(recent) add command -label "$file" \
+		    -command "cd2root; revtool $file"
+	}
+
+}
+
 init
 arguments
 widgets
+loadState
 startup

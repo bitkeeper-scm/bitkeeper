@@ -445,9 +445,9 @@ bkdsubstr: bkd.h
 Gui GUI: $(GUI)
 
 revtool: gui/search.tcl gui/config.tcl gui/revtool.tcl gui/common.tcl \
-	port/$(SYS)_platform.tcl
+	port/$(SYS)_platform.tcl gui/appState.tcl
 	cat port/$(SYS)_platform.tcl gui/config.tcl gui/common.tcl \
-	    gui/search.tcl gui/revtool.tcl > revtool
+	    gui/search.tcl gui/appState.tcl gui/revtool.tcl > revtool
 
 citool: gui/citool.tcl gui/config.tcl gui/common.tcl gui/search.tcl \
 	gui/progress.tcl port/$(SYS)_platform.tcl gui/ciedit.tcl
