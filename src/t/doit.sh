@@ -400,7 +400,6 @@ echo ''
 	printf " %s test " ${i#t.}
 	printf "%.${LEN}s\n" "================================================"
 
-        bk lease flush -a
 	mkdir -p $BK_TMP || exit 1
 	mkdir -p $BK_DOTBK || exit 1
 
