@@ -11711,7 +11711,7 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 	}
 
 
-	if (streq(kw, "P")) {
+	if (streq(kw, "P") || streq(kw, "USER")) {
 		/* programmer */
 		if (d->user) {
 			fs(d->user);
