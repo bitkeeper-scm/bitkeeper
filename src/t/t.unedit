@@ -43,10 +43,11 @@ if [ $? -ne 0 ]; then echo failed; exit 1; fi
 echo OK
 
 echo $N checkout:edit should not touch unmodified files .............$NL
-ls -l foo.c > s1
+if [ $PLATFORM = "WIN32" ]; then LSOPT="--full-time"; else LSOPT=""; fi
+ls -l $LSOPT foo.c > s1
 sleep 2
 bk unedit foo.c
-ls -l foo.c > s2
+ls -l $LSOPT foo.c > s2
 cmp -s s1 s2 || {
 	echo something changed
 	diff -u s1 s2
