@@ -6,7 +6,7 @@ proc doNext {x} \
 {
 	global	line nTopics
 
-	if {$x == -1 && $line == 1.0} { return }
+	if {$x == -1 && $line == 2.0} { return }
 	if {$x == 1 && $line == 0.0} {
 		set l 1.0
 	} else {
@@ -14,7 +14,40 @@ proc doNext {x} \
 	}
 	if {$l > $nTopics} { return }
 	set line $l
-	doSelect
+	doSelect $x
+}
+
+proc doNextSection {x} \
+{
+	global	line nTopics
+
+	if {$x == -1 && $line == 2.0} { return }
+	if {$x == 1 && $line == 0.0} {
+		set line 1.0
+		doSelect $x
+		return
+	} 
+	set l [.text.topics index "$line + $x lines"]
+	if {$l > $nTopics} { return }
+	set topic [.text.topics get $l "$l lineend"]
+	while {[regexp {^ } $topic]} {
+		set l [.text.topics index "$l + $x lines"]
+		if {$l > $nTopics} { return }
+		set topic [.text.topics get $l "$l lineend"]
+	}
+	set line $l
+
+	# If going backwards, go back to the first line.
+	if {$x == -1 && $line != 1.0} {
+		set line [.text.topics index "$line + $x lines"]
+		set topic [.text.topics get $line "$line lineend"]
+		while {[regexp {^ } $topic]} {
+			set line [.text.topics index "$line + $x lines"]
+			set topic [.text.topics get $line "$line lineend"]
+		}
+		.text.topics see $line
+	}
+	doNext 1
 }
 
 proc doPixSelect {x y} \
@@ -22,19 +55,22 @@ proc doPixSelect {x y} \
 	global	line
 
 	set line [.text.topics index "@$x,$y linestart"]
-	doSelect
+	doSelect 1
 }
 
-proc doSelect {} \
+proc doSelect {x} \
 {
 	global	nTopics line
 
 	busy 1
 	.text.topics see $line
 	set topic [.text.topics get $line "$line lineend"]
+	if {[regexp {^ } $topic] == 0} {
+		doNext $x
+		return
+	}
 	.text.topics tag remove "select" 1.0 end
 	.text.topics tag add "select" $line "$line lineend + 1 char"
-	if {$topic == " Start here"} { set topic "" }
 	bkhelp $topic
 	busy 0
 }
@@ -46,8 +82,10 @@ proc bkhelp {topic} \
 	if {$topic == ""} {
 		set msg "BitKeeper Help"
 	} else {
-		set msg "BitKeeper help for: $topic"
+		regsub "^  " $topic "" topic
+		set msg "BitKeeper help -- $topic"
 	}
+	wm title . $msg
 	set bk [file join $bin bk]
 	set f [open "| $bk help $topic"]
 	.text.help configure -state normal
@@ -110,7 +148,7 @@ proc widgets {} \
 
 	frame .text -borderwidth 1 -relief raised
 		text .text.topics -spacing1 1 -spacing3 1 -wrap none \
-		    -background #c0c0c0 -font $font -width 12 \
+		    -background #c0c0c0 -font $font -width 14 \
 		    -xscrollcommand { .text.x1scroll set } \
 		    -yscrollcommand { .text.y1scroll set }
 		    scrollbar .text.x1scroll -orient horiz \
@@ -134,26 +172,37 @@ proc widgets {} \
 		grid .text.y2scroll -row 0 -column 3 -sticky nse -rowspan 2
 		grid .text.x2scroll -row 1 -column 2 -sticky ew
 
+	frame .menu
+	    button .menu.done -text "Dismiss" -font 7x13bold -borderwid 1 \
+		-pady 1 -background grey -command { exit }
+	    grid .menu.done -sticky ew
+
 	grid .text -row 0 -column 0 -sticky nsew
+	grid .menu -row 1 -column 0 -sticky ew
 
 	grid rowconfigure . 0 -weight 1
 	grid rowconfigure .text 0 -weight 1
+	grid rowconfigure . 1 -weight 0
+	grid rowconfigure .menu 0 -weight 0
 
 	grid columnconfigure . 0 -weight 1
 	grid columnconfigure .text 2 -weight 1
+	grid columnconfigure .menu 0 -weight 1
 
 	bind .text.topics <ButtonPress> { doPixSelect %x %y }
-	bind . <Control-e> ".text.help yview scroll 1 units; break"
-	bind . <Control-y> ".text.help yview scroll -1 units; break"
-	bind . <Control-n> "doNext 1"
-	bind . <Control-p> "doNext -1"
-	bind . <Prior> { scroll -1 }
-	bind . <Next> { scroll 1 }
-	bind . <space> { scroll 1 }
+	bind . <Control-e>	".text.help yview scroll 1 units; break"
+	bind . <Control-y>	".text.help yview scroll -1 units; break"
+	bind . <Down>		"doNext 1"
+	bind . <Up>		"doNext -1"
+	bind . <Left>		"doNextSection -1"
+	bind . <Right>		"doNextSection 1"
+	bind . <Prior>		{ scroll -1 }
+	bind . <Next>		{ scroll 1 }
+	bind . <space>		{ scroll 1 }
 
-	bind . <Home> ".text.help yview -pickplace 1.0"
-	bind . <End> ".text.help yview -pickplace end"
-	bind . <q> exit
+	bind . <Home>		 ".text.help yview -pickplace 1.0"
+	bind . <End>		 ".text.help yview -pickplace end"
+	bind . <q>		 exit
 	bind .text.help <Configure> {
 		global	height pixelsPerLine firstConfig
 
@@ -191,22 +240,22 @@ proc getHelp {} \
 {
 	global	bin nTopics argv line
 
-	busy 1
 	set nTopics 0
 	set bk [file join $bin bk]
 	set f [open "| $bk topics"]
 	.text.topics configure -state normal
-	.text.topics insert end " Start here\n"
 	while {[gets $f topic] >= 0} {
-		.text.topics insert end " $topic\n"
-		incr nTopics 1
+		.text.topics insert end "$topic\n"
+		regsub "^  " $topic "" topic
 		set lines($topic) $nTopics
+		incr nTopics 1
 	}
 	catch {close $f} dummy
 	.text.topics configure -state disabled
 	.text.help configure -state disabled
 	if {$argv != ""} {
-		set l $lines($argv)
+		set l ""
+		catch { set l $lines($argv) } dummy
 		if {"$l" == ""} {
 			puts "No help for $argv"
 			exit
@@ -215,7 +264,7 @@ proc getHelp {} \
 	} else {
 		set line 1.0
 	}
-	doSelect
+	doSelect 1
 }
 
 proc platformPath {} \

@@ -1109,91 +1109,14 @@ _sendbug() {
 # help tags are of the form help_whatever
 _gethelp() {
 	sed -n  -e '/^#'$1'$/,/^\$$/{' \
-		-e '/^#/d; /^\$/d; s#\#\##'"$2"'#; p' \
+		-e '/^#/d; /^\$/d; s|#BKARG#|'"$2"'|; p' \
 		-e '}' ${BIN}bkhelp.txt
 }
 
 # List all help and command topics, it's the combo of what is in bin and
 # what is in the help file.  This is used for helptool.
 _topics() {
-	# TODO
-	#	chksum key2rev
-	# Needs update:
-	#	backups sccstool fm differences sccscat
-	# delete:
-	#	path save
-	cat << EOF
-overview
-basics
-admin
-backups
-changes
-changesets
-check
-ci
-citool
-clean
-clone
-co
-commit
-cset
-debug
-delta
-diffr
-diffs
-edit
-export
-fix
-fm
-get
-gui
-history
-import
-info
-merge
-mv
-pending
-pmerge
-prs
-pull
-push
-ranges
-rcs2sccs
-receive
-rechksum
-renames
-renumber
-resolve
-resync
-rm
-rmdel
-root
-sccscat
-sccslog
-sccsmv
-sccsrm
-sccstool
-send
-sendbug
-setup
-sfiles
-sfio
-sids
-status
-stripdel
-tags
-takepatch
-terms
-undo
-unedit
-unget
-unlock
-unwrap
-users
-version
-what
-wrap
-EOF
+	_gethelp help_topiclist
 }
 
 _commandHelp() {
@@ -1204,20 +1127,17 @@ _commandHelp() {
 
 	for i in $*
 	do	case $i in
-		sccstool|vitool|fm|fm3)
-			_gethelp help_gui $BIN | $PAGER
-			;;
-
-		RCS|backups|basics|changes|changesets|check|clone|commit|\
-		debug|differences|diffr|export|fix|gui|history|import|\
-		info|merge|mv|overview|parent|path|pending|pull|push|\
-		ranges|receive|regression|renames|resync|rm|root|save|\
-		sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
-		tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
-		citool)
+		    RCS|backups|basics|changes|changesets|check|clone|commit|\
+		    debug|differences|diffr|export|fix|gui|history|import|\
+		    info|merge|mv|overview|parent|path|pending|pull|push|\
+		    ranges|receive|regression|renames|resync|rm|root|save|\
+		    sccsmv|sccsrm|sdiffs|send|sendbug|setup|sinfo|status|\
+		    tags|terms|undo|unedit|unlock|unwrap|users|version|wrap|\
+		    citool|sccstool|helptool|fmtool|fm|topics|new|edit|\
+		    difftool|merging)
 			_gethelp help_$i $BIN | $PAGER
 			;;
-		*)
+		    *)
 			if [ -x "${BIN}$i" -a -f "${BIN}$i" ]
 			then	echo "                -------------- $i help ---------------"
 				${BIN}$i --help 2>&1
@@ -1409,7 +1329,7 @@ shift
 
 # Run our stuff first if we can find it.
 # win32 note: we test for the tcl script first, because it has .tcl suffix
-for w in citool sccstool vitool fm fm3
+for w in citool sccstool vitool fm fmtool fm3 fm3tool difftool helptool
 do	if [ $cmd = $w ]
 	then
 		# pick up our own wish shell if it exists
