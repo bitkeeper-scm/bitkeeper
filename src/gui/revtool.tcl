@@ -328,7 +328,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 		# src/t/t.delta
 		#   1.38 01/07/18 10:24:46 awc@etp3.bitmover.com +3 -4
 		#   Make the test case for "bk delta -L" more portable
-		regexp {^\ \ ([0-9]+\.[0-9.]+)\ [0-9]+/[0-9]+/[0-9]+\ .*} \
+		regexp {^\ +([0-9]+\.[0-9.]+)\ [0-9]+/[0-9]+/[0-9]+\ .*} \
 		    $line match rev
 
 		while {![info exists rev]} {
@@ -341,9 +341,10 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 				return
 			}
 			set line [$win get $curLine "$curLine lineend"]
-			regexp {^(.*)@([0-9]+\.[0-9.]+),.*} $line m fname rev
+			regexp {^ *(.*)@([0-9]+\.[0-9.]+),.*} \
+			    $line m fname rev
 			regexp \
-			    {^\ \ ([0-9]+\.[0-9.]+)\ [0-9]+/[0-9]+/[0-9]+\ .*} \
+			    {^\ +([0-9]+\.[0-9.]+)\ [0-9]+/[0-9]+/[0-9]+\ .*} \
 			    $line m rev
 		}
 		$win see $curLine
@@ -380,6 +381,7 @@ proc selectTag {win {x {}} {y {}} {bindtype {}}} \
 	if {$ttype == "cset_prs"} {
 		set prevLine [expr $curLine - 1.0]
 		set fname [$win get $prevLine "$prevLine lineend"]
+		regsub -- {^  } $fname "" fname
 		if {($bindtype == "B1") && ($fname != "") && ($fname != "ChangeSet")} {
 			catch {exec bk revtool -l$rev $fname &} err
 		}
@@ -1123,11 +1125,12 @@ proc prs {} \
 		set base [file tail $file]
 		if {$base == "ChangeSet"} {
 			set cmd "|bk changes -vr$rev1 2>$dev_null"
+			set ttype "cset_prs"
 		} else {
 			set cmd "|bk prs {$dspec} -r$rev1 \"$file\" 2>$dev_null"
+			set ttype "file_prs"
 		}
 		set prs [open $cmd]
-		set ttype "file_prs"
 		filltext $w(aptext) $prs 1 "prs output"
 	} else {
 		set search(prompt) "Click on a revision"
@@ -1373,6 +1376,7 @@ proc csetdiff2 {{rev {}}} \
 
 	set revs [open "|bk changes -fv -r$rev1..$rev2"]
 	filltext $w(aptext) $revs 0 "sccslog for files"
+	set ttype "cset_prs"
 	catch {close $revs}
 	busy 0
 }
