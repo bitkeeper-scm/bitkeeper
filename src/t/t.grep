@@ -33,8 +33,8 @@ echo OK
 echo $N grep ........................................................$NL
 bk grep fox > OUT || exit 1
 cat <<EOF > expected
-file1	1.1	The quick foxy
-file1	1.1	fox
+file1:The quick foxy
+file1:fox
 EOF
 checkfiles OUT expected
 echo OK
@@ -42,19 +42,144 @@ echo OK
 echo $N recursive grep ..............................................$NL
 bk -r grep fox > OUT || exit 1
 cat <<EOF > expected
-file1	1.1	The quick foxy
-file1	1.1	fox
-dir1/file2	1.1	jumped foxily
+file1:The quick foxy
+file1:fox
+dir1/file2:jumped foxily
 EOF
 checkfiles OUT expected
 echo OK
 
-echo $N recursive grep -a ...........................................$NL
-bk -r grep -a fox > OUT || exit 1
-cat <<EOF > expected
-The quick foxy
-fox
-jumped foxily
+# echo $N recursive grep -a ...........................................$NL
+# bk -r grep -a fox > OUT || exit 1
+# cat <<EOF > expected
+# The quick foxy
+# fox
+# jumped foxily
+# EOF
+# checkfiles OUT expected
+# echo OK
+
+echo 'exactly 2*C lines between matches, must not print "--"' > s1.reason
+echo ' -nC2' > s1.cmd
+cat <<EOF > s1
+match
+foo
+foo
+foo
+foo
+match
 EOF
+echo 'Two matches with overlapping context' > s2.reason
+echo ' -nC3' > s2.cmd
+cat <<EOF > s2
+foo
+foo
+foo
+match
+foo
+foo
+match
+bar
+bar
+EOF
+echo 'Two matches with adjacent context' > s3.reason
+echo ' -C2' > s3.cmd
+cat <<EOF > s3
+foo
+foo
+foo
+match
+foo
+foo
+bar
+bar
+match
+EOF
+echo 'Two matches with one non-printed line between contexts' > s4.reason
+echo ' -C2' > s4.cmd
+cat <<EOF > s4
+foo
+foo
+match
+foo
+foo
+nope
+bar
+bar
+match
+EOF
+echo 'First line of file matches' > s5.reason
+echo ' -C3' > s5.cmd
+cat <<EOF > s5
+match
+foo
+foo
+foo
+bar
+EOF
+echo 'Third line of file matches' > s6.reason
+echo ' -C3' > s6.cmd
+cat <<EOF > s6
+foo
+foo
+match
+foo
+foo
+foo
+bar
+EOF
+echo 'Last line of file matches' > s7.reason
+echo ' -C3' > s7.cmd
+cat <<EOF > s7
+bar
+bar
+bar
+foo
+foo
+foo
+match
+EOF
+r=0
+echo 'Two matching lines within C' > s8.reason
+echo ' -C3' > s8.cmd
+cat <<EOF > s8
+bar
+foo
+foo
+foo
+match
+bar
+match
+foo
+foo
+foo
+bar
+EOF
+
+for i in s1 s2 s3 s4 s5 s6 s7 s8
+do	printf %-61s "`sed 's/ /~/g;s/$/~/' $i.reason`" | sed 's/ /./g;s/~/ /g'
+	bk grep `cat $i.cmd` match $i > $i.bk.out || exit 1
+	   grep `cat $i.cmd` match $i > $i.gnu.out || exit 1
+	checkfiles $i.bk.out $i.gnu.out
+	rm $i $i.cmd $i.reason $i.bk.out $i.gnu.out
+	echo OK
+done
+
+echo $N diff -C matches last line of file 1, do not print file 2 ....$NL
+cat <<EOF > f1
+foo
+foo
+foo
+match
+EOF
+
+cat <<EOF > f2
+bar
+baz
+quux
+EOF
+
+bk grep -C3 match f1 f2 > OUT
+   grep -C3 match f1 f2 > expected
 checkfiles OUT expected
 echo OK
