@@ -185,7 +185,7 @@ if [ X$USER = X ]; then USER=$LOGNAME; fi
 if [ X$USER = X ]; then USER=`getuser`; fi
 # root user is special, remap to a differnt user before we run the test
 if [ X$USER = X${ROOT} ]; then USER=${ROOT}-test; fi
-if [ X$HOSTNAME = X ]; then HOSTNAME=`gethost`; fi
+HOSTNAME=`gethost`
 REGRESSION=$TST_DIR/.regression-$USER
 export USER HOSTNAME REGRESSION
 if [ -d $REGRESSION ]; then ${RM} -rf $REGRESSION; fi

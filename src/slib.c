@@ -3073,18 +3073,18 @@ resync_locked(project *p)
 	return (p && (p->flags & PROJ_RESYNC));
 }
 
-private inline int
-locked(project *p)
+int
+sccs_locked(project *p)
 {
-	return (resync_locked(p));
+	return (resync_locked(p) && (getenv("BK_IGNORELOCK") == 0));
 }
 
 /* used to tell us who is blocking the lock */
-private void
-lockers(project *p)
+void
+sccs_lockers(project *p)
 {
 	unless (p) return;
-	if (locked(p)) {
+	if (sccs_locked(p)) {
 		fprintf(stderr, "Entire repository is locked");
 		if (resync_locked(p)) fprintf(stderr, " by RESYNC directory");
 		fprintf(stderr, ".\n");
@@ -3146,7 +3146,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	if (isreg(s->pfile)) s->state |= S_PFILE;
 	if (isreg(s->zfile)) s->state |= S_ZFILE;
 	s->proj = proj ? proj : sccs_initProject(s);
-	if (locked(s->proj)) s->state |= S_READ_ONLY;
+	if (sccs_locked(s->proj)) s->state |= S_READ_ONLY;
 	debug((stderr, "init(%s) -> %s, %s\n", name, s->sfile, s->gfile));
 	s->nextserial = 1;
 	s->fd = -1;
@@ -4431,7 +4431,7 @@ write_pfile(sccs *s, int flags, delta *d,
 	}
 	unless (sccs_lock(s, 'z')) {
 		fprintf(stderr, "get: can't zlock %s\n", s->gfile);
-		lockers(s->proj);
+		sccs_lockers(s->proj);
 		return (-1);
 	}
 	unless (sccs_lock(s, 'p')) {
@@ -9146,7 +9146,7 @@ sccs_delta(sccs *s, u32 flags, delta *prefilled, MMAP *init, MMAP *diffs, char *
 	unless(locked = sccs_lock(s, 'z')) {
 		fprintf(stderr,
 		    "delta: can't get write lock on %s\n", s->sfile);
-		lockers(s->proj);
+		sccs_lockers(s->proj);
 		error = -1; s->state |= S_WARNED;
 out:
 		if (prefilled) sccs_freetree(prefilled);
@@ -10937,6 +10937,24 @@ kw2val(FILE *out, char *vbuf, const char *prefix, int plen, const char *kw,
 		return (nullVal);
 	}
 
+	if (streq(kw, "TIP")) {
+		unless (morekids(d, 1) || (d->flags & D_MERGED)) {
+			fs(d->rev);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
+	if (streq(kw, "LODKEY")) {
+		while (d && d->r[2]) d = d->parent;
+		while (d && (d->r[1] != 1)) d = d->parent;
+		if (d) {
+			if (out) sccs_pdelta(s, d, out);
+			return (strVal);
+		}
+		return (nullVal);
+	}
+
 	if (streq(kw, "SIBLINGS")) {
 		if (d = d->siblings) {
 			fs(d->rev);
@@ -11443,8 +11461,6 @@ $if(:C:){$each(:C:){C (:C:)}\n}\
 			if (d == s->rstart) break;
 		}
 	}
-	if (flags & PRS_ALL) sccs_markMeta(s);
-
 	if (reverse) prs_reverse(s, s->table, flags, dspec, out);
 	else prs_forward(s, s->table, flags, dspec, out);
 	return (0);

@@ -9,21 +9,21 @@ BINS	= adler32 admin check chksum clean cset delta diffs fdiff g2sccs \
 	  get gethost getuser key2rev lines lod prs range rechksum renumber \
 	  rmdel sccscat sccslog sccsmv sccsrm sccssh sfiles sfio sids	 \
 	  sinfo stripdel smoosh takepatch undos what gca mtime zone	 \
-	  isascii resyncwrap r2c rename
-SCRIPTS	= rcs2sccs testfast bk import resolve resync uuwrap unuuwrap pmerge \
+	  isascii r2c rename renames names bkd
+SCRIPTS	= rcs2sccs testfast bk import resolve oldresync uuwrap unuuwrap pmerge \
 	  sccstool citool helptool difftool csettool fm fm3 mkindex \
-	  renametool mkdiffs lodset
+	  renametool mkdiffs lodset pull push clone resync
 PSCR	= t/doit
-LIBS	= zlib/libz.a mdbm/libmdbm.a libsccs.a
+LIBS	= libsccs.a zlib/libz.a mdbm/libmdbm.a
 LINKS	= ci co edit unedit unget
-GNU	= gnu
+DIRS	= gnu
 DATA	= bitkeeper.config bkhelp.txt
 
 LINKTO	= ci delta co get edit get unedit clean unget clean fmtool fm \
 	  fm3tool fm3
 BINLINKS= bk admin get delta unget rmdel prs
 
-ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) $(GNU)
+ALL	= $(LIBS) $(BINS) $(SCRIPTS) $(LINKS) $(PSCR) $(DATA) $(DIRS)
 
 CFLAGS	= -g -O -Wall -Wno-parentheses -DPURIFY -DPURIFY_FILES -DPURIFY_MDBM
 CPPFLAGS= -Izlib
@@ -47,10 +47,11 @@ ZLIBOBJ	= zlib/adler32.o zlib/compress.o zlib/crc32.o zlib/gzio.o \
 	  zlib/uncompr.o zlib/deflate.o zlib/trees.o zlib/zutil.o \
 	  zlib/inflate.o zlib/infblock.o zlib/inftrees.o zlib/infcodes.o \
 	  zlib/infutil.o zlib/inffast.o
+BKDOBJ	= bkd_misc.o bkd_root.o bkd_pull.o bkd_clone.o bkd_push.o bkd_status.o \
+	  utils.o bkd_cmdtab.o lib_tcp.o bkd.o
 BINOBJ	= $(BINS:=.o)
-
 SRCS	= $(PORTOBJ:.o=.c) $(SCCSOBJ:.o=.c) $(MDBMOBJ:.o=.c) \
-	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c)
+	  $(ZLIBOBJ:.o=.c) $(BINOBJ:.o=.c) $(BKDOBJ:.o=.c)
 HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 	  mdbm/tune.h zlib/zlib.h zlib/zutil.h zlib/zconf.h zlib/deflate.h \
 	  zlib/infblock.h zlib/infcodes.h zlib/inffast.h zlib/inffixed.h \
@@ -59,7 +60,7 @@ HDRS	= sccs.h purify.h range.h system.h mdbm/common.h mdbm/mdbm.h \
 SCRSRCS	= rcs2sccs.perl testfast.perl bk.sh import.sh \
 	  resolve.perl gui/sccstool.tcl gui/citool.tcl gui/difftool.tcl \
 	  gui/vitool.tcl gui/fm.tcl gui/fm3.tcl \
-	  gui/helptool.tcl gui/mkindex.tcl resync.perl uuwrap.sh \
+	  gui/helptool.tcl gui/mkindex.tcl oldresync.perl uuwrap.sh \
 	  unuuwrap.sh port/unix_platform.sh port/unix_platform.tcl \
 	  port/unix_platform.perl pmerge.perl gui/csettool.tcl \
 	  port/win32_platform.perl port/win32_platform.tcl \
@@ -107,7 +108,7 @@ fullwarn:
 
 # production builds
 p:
-	$(MAKE) CFLAGS="-O2 -fomit-frame-pointer $(CF)" all
+	$(MAKE) CFLAGS="-O6 -fomit-frame-pointer $(CF)" all
 ndebug:
 	$(MAKE) CFLAGS="-O2 -DNDEBUG -fomit-frame-pointer" all
 stats:
@@ -139,12 +140,16 @@ solaris:
 # Cleanup targets.
 clean-obj: FORCE
 	-/bin/rm -f $(PORTOBJ) $(SCCSOBJ) $(MDBMOBJ) $(ZLIBOBJ) $(BINOBJ) \
-		$(LIBS) a.out core
-	-cd gnu && $(MAKE) clean-obj
+		$(BKDOBJ) $(LIBS) a.out core
+	for i in $(DIRS); \
+	do	cd $$i && $(MAKE) clean-obj; cd ..; \
+	done
 
 clean-bin: FORCE
 	-/bin/rm -f $(BINS) $(SCRIPTS) $(PSCR) $(LINKS) MANIFEST
-	-cd gnu && $(MAKE) clean
+	for i in $(DIRS); \
+	do	cd $$i && $(MAKE) clean; cd ..; \
+	done
 
 clean-cfg: FORCE
 	-/bin/rm -f config.h stamp-h substvars config.status \
@@ -205,6 +210,9 @@ t/doit: t/doit.sh substvars
 
 FORCE:
 
+bkd: $(BKDOBJ)
+	$(CC) $(CFLAGS) $(BKDOBJ) $(LIBS) -o bkd
+
 gnu: FORCE
 	cd gnu && $(MAKE) BK_BIN=$(BK_BIN)
 
@@ -233,6 +241,10 @@ rechksum: rechksum.o $(LIBS)
 	$(CC) $(CFLAGS) rechksum.o $(LINK) -o rechksum
 cset: cset.o $(LIBS)
 	$(CC) $(CFLAGS) cset.o $(LINK) -o cset
+names: names.o $(LIBS)
+	$(CC) $(CFLAGS) names.o $(LINK) -o names
+renames: renames.o $(LIBS)
+	$(CC) $(CFLAGS) renames.o $(LINK) -o renames
 rename: rename.o $(LIBS)
 	$(CC) $(CFLAGS) rename.o $(LINK) -o rename
 lod: lod.o $(LIBS)
@@ -299,6 +311,8 @@ chksum: chksum.o
 	$(CC) $(CFLAGS) chksum.o -o chksum
 mtime: mtime.o
 	$(CC) $(CFLAGS) mtime.o -o mtime
+push: push.o lib_tcp.o utils.o
+	$(CC) $(CFLAGS) push.o lib_tcp.o utils.o $(LIBS) -o push
 
 # Links.
 ci: delta
@@ -374,15 +388,33 @@ resolve: resolve.perl port/unix_platform.perl substvars
 	chmod +x resolve.T
 	mv -f resolve.T resolve
 
-resync: resync.perl port/unix_platform.perl substvars
-	./substvars resync.perl port/unix_platform.perl > resync.T
-	chmod +x resync.T
-	mv -f resync.T resync
+oldresync: oldresync.perl port/unix_platform.perl substvars
+	./substvars oldresync.perl port/unix_platform.perl > oldresync.T
+	chmod +x oldresync.T
+	mv -f oldresync.T oldresync
 
 mkdiffs: mkdiffs.perl port/unix_platform.perl substvars
 	./substvars mkdiffs.perl port/unix_platform.perl > mkdiffs.T
 	chmod +x mkdiffs.T
 	mv -f mkdiffs.T mkdiffs
+
+clone: clone.sh
+	rm -f clone
+	cp clone.sh clone
+	chmod +x clone
+	chmod -w clone
+
+resync: resync.sh
+	rm -f resync
+	cp resync.sh resync
+	chmod +x resync
+	chmod -w resync
+
+pull: pull.sh
+	rm -f pull
+	cp pull.sh pull
+	chmod +x pull
+	chmod -w pull
 
 sccstool: gui/sccstool.tcl gui/common.tcl port/unix_platform.tcl substvars
 	./substvars port/unix_platform.tcl \
@@ -481,7 +513,9 @@ install: all
 	do	rm -f /usr/bin/$$file; \
 		ln -s $(BK_BIN)/$$file /usr/bin/$$file; \
 	done
-	cd gnu && $(MAKE) BK_BIN=$(BK_BIN) install
+	for i in $(DIRS); \
+	do	cd $$i && $(MAKE) BK_BIN=$(BK_BIN) install; cd ..; \
+	done
 
 # The default .c.o rule is broken with some Makes.
 .c.o:
@@ -516,7 +550,6 @@ prs.o:		prs.c $(sccsdeps) range.h
 range.o:	range.c $(sccsdeps) range.h
 rechksum.o:	rechksum.c $(sccsdeps)
 renumber.o:	renumber.c $(sccsdeps)
-resyncwrap.o:	resyncwrap.c $(commondeps)
 rmdel.o:	rmdel.c $(sccsdeps) range.h
 stripdel.o:	stripdel.c $(sccsdeps) range.h
 sccscat.o:	sccscat.c $(sccsdeps) range.h
