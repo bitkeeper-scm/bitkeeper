@@ -1,6 +1,6 @@
 # diffrtool - view differences between repositories
 # Copyright (c) 1999 by Larry McVoy; All rights reserved
-# %A% %@%
+# @(#) csettool.tcl 1.39@(#) akushner@disks.bitmover.com
 
 proc next {} \
 {
@@ -10,7 +10,8 @@ proc next {} \
 		nextFile
 		return
 	}
-	if {[visible $DiffsEnd($lastDiff)] == 0} {
+	if {[info exists DiffsEnd($lastDiff)] &&
+	    ([visible $DiffsEnd($lastDiff)] == 0)} {
 		Page "yview" 1 0
 		return
 	}
@@ -30,7 +31,8 @@ proc prev {} \
 		prevFile
 		return
 	}
-	if {[visible $Diffs($lastDiff)] == 0} {
+	if {[info exists Diffs($lastDiff)] && 
+	    ([visible $Diffs($lastDiff)] == 0)} {
 		Page "yview" -1 0
 		return
 	}
@@ -39,7 +41,8 @@ proc prev {} \
 		prevFile
 		set lastDiff $diffCount
 		dot
-		while {[visible $DiffsEnd($lastDiff)] == 0} {
+		while {[info exists Diffs($lastDiff)] &&
+		       ([visible $DiffsEnd($lastDiff)] == 0)} {
 			Page "yview" 1 0
 		}
 		return
@@ -59,6 +62,11 @@ proc visible {index} \
 proc dot {} \
 {
 	global	Diffs DiffsEnd diffCount lastDiff
+
+	# If no differences between the files, number of diffs=0, but
+	# Diffs(0) does not exist
+	if {![info exists Diffs($lastDiff)] || 
+	    ![info exists DiffsEnd($lastDiff)]} { return }
 
 	scrollDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
 	highlightDiffs $Diffs($lastDiff) $DiffsEnd($lastDiff)
@@ -434,6 +442,12 @@ proc getFiles {revs} \
 	global  RealFiles
 
 	busy 1
+
+	# Initialize these variables so that files with no differences don't
+	# cause failures
+        set Diffs(0) 1.0
+        set DiffsEnd(0) 1.0
+
 	.filelist.t configure -state normal
 	.filelist.t delete 1.0 end
 	set fileCount 0
