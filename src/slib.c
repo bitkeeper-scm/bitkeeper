@@ -6724,11 +6724,12 @@ write:
 		{
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
-			unless (*n == 'N') {
-				s->has_nonl = 1;
+			if (*n != 'N') {
 				unless (flags & GET_SUM) fputc('\n', out);
 				lf_pend = 0;
 				if (flags & NEWCKSUM) sum += '\n';
+			} else {
+				s->has_nonl = 1;
 			}
 		}
 		changestate(state, buf[1], serial);
@@ -11326,7 +11327,7 @@ finish(sccs *s, int *ip, int *pp, FILE *out, register serlist *state,
 		{
 			char	*n = &buf[3];
 			while (isdigit(*n)) n++;
-			unless (*n == 'N') {
+			if (*n != 'N') {
 				lf_pend = 0;
 				s->dsum += '\n';
 			}
