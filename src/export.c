@@ -1,6 +1,10 @@
 #include "system.h"
 #include "sccs.h"
 
+private int included(char *, char *);
+private int excluded(char *, char *);
+private int export_patch(char *, char *, char *, char *, int, int);
+
 int
 export_main(int ac,  char **av)
 {
@@ -16,7 +20,7 @@ export_main(int ac,  char **av)
 	char	src_path[MAXPATH], dst_path[MAXPATH];
 	sccs	*s;
 	delta	*d;
-	FILE	*f;
+	FILE	*f, *f1;
 	char	*type = 0;
 
 	if (ac == 2 && streq("--help", av[1])) {
@@ -24,9 +28,7 @@ export_main(int ac,  char **av)
 		return (1);
 	}
 
-	sprintf(exclude,
-		 "| egrep -v '.*\\%cBitKeeper/[^%c]*\\%c[^%c]*$' ",
-		 BK_FS, BK_FS, BK_FS, BK_FS);
+	sprintf(exclude, "*%cBitKeeper/*%c*", BK_FS, BK_FS);
 
 	while ((c = getopt(ac, av, "d:hkt:Twvi|x|r:")) != -1) {
 		switch (c) {
@@ -48,15 +50,13 @@ export_main(int ac,  char **av)
 		    case 'T':	tflag = 1; break;	/* doc 2.0 */
 		    case 'w':	wflag = 1; break;	/* doc 2.0 */
 		    case 'i':	if (optarg && *optarg) {	/* doc 2.0 */
-					sprintf(include,
-						    "| egrep '%s' ",  optarg);
+					strcpy(include, optarg);
 				} else {
 					include[0] = 0;
 				}
 				break;
 		    case 'x':	if (optarg && *optarg) {	/* doc 2.0 */
-					sprintf(exclude,
-						    "| egrep -v '%s' ", optarg);
+					strcpy(exclude, optarg);
 				} else {
 					exclude[0] = 0;
 				}
@@ -73,11 +73,8 @@ usage:			system("bk help -s export");
 	}
 	unless (type) type = "plain";
 	if (streq(type, "patch")) {
-		unless (diff_style) diff_style = "u";
-		sprintf(buf, "bk rset -hr%s %s %s | bk gnupatch -d%c %s %s",
-		    rev, include, exclude,
-		    diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
-		return (system(buf));
+		return (export_patch(diff_style,
+					rev, include, exclude, hflag, tflag));
 	}
 
 	count =  ac - optind;
@@ -101,13 +98,12 @@ usage:			system("bk help -s export");
 
 	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
 	if (rev) {
-		sprintf(buf, "bk rset -hl%s %s %s > %s",
-					rev, include, exclude, file_rev);
+		sprintf(buf, "bk rset -hl%s > %s", rev, file_rev);
 	} else {
-		sprintf(buf, "bk rset -hl+  %s %s> %s",
-						include, exclude, file_rev);
+		sprintf(buf, "bk rset -hl+ > %s", file_rev);
 	}
 	system(buf);
+
 	f = fopen(file_rev, "rt");
 	assert(f);
 	while (fgets(buf, sizeof(buf), f)) {
@@ -116,6 +112,8 @@ usage:			system("bk help -s export");
 		struct	stat sb;
 
 		chop(buf);
+		if (!included(buf, include)) continue;
+		if (excluded(buf, exclude)) continue;
 		p = strchr(buf, BK_FS);
 		assert(p);
 		*p++ = '\0';
@@ -156,4 +154,45 @@ usage:			system("bk help -s export");
 	fclose(f);
 	unlink(file_rev);
 	return (0);
+}
+
+private int
+export_patch(char *diff_style, char *rev,
+			char *include, char *exclude, int hflag, int tflag)
+{
+	FILE	*f, *f1;
+	char	buf[MAXLINE], file_rev[MAXPATH];
+
+	unless (diff_style) diff_style = "u";
+	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
+	sprintf(buf, "bk rset -hr%s > %s", rev, file_rev);
+	system(buf);
+	sprintf(buf, "bk gnupatch -d%c %s %s",
+	    diff_style[0], hflag ? "-h" : "", tflag ? "-T" : "");
+	f1 = popen(buf, "w");
+	f = fopen(file_rev, "rt");
+	assert(f);
+	while (fgets(buf, sizeof(buf), f)) {
+		chop(buf);
+		if (!included(buf, include)) continue;
+		if (excluded(buf, exclude)) continue;
+		fprintf(f1, "%s\n", buf);
+	}
+	fclose(f);
+	unlink(file_rev);
+	return (pclose(f1));
+}
+
+private int
+included(char *fname, char *include)
+{
+	unless (include && include[0]) return (1);
+	return (match_one(fname, include));
+}
+
+private int
+excluded(char *fname, char *exclude)
+{
+	unless (exclude && exclude[0]) return (0);
+	return (match_one(fname, exclude));
 }
