@@ -64,7 +64,7 @@ cmd_pull(int ac, char **av)
 	 * Get the set of keys not present in them.
 	 */
 	unless (me = csetKeys(them)) {
-		if (doit) out("OK-Nothing to send.\n");
+		out("OK-Nothing to send.\n");
 		repository_rdunlock(0);
 		out("OK-Unlocked\n");
 		goto out;
