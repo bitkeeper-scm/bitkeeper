@@ -49,17 +49,19 @@ sccs_gethost(void)
 				break;
 			}
 		}
-#ifdef sun
 		if (getdomainname(domain, sizeof(domain)) == 0) {
+#ifdef sun
 			/*
 			 * Sun's convention, strip off the first component
 			 */
 			p = strchr(domain, '.');
 			p = p ? ++p : domain;
+#else
+			p = domain;
+#endif
 			unless (*p == '.') strcat(host, ".");
 			strcat(host, p);
 		}
-#endif
 	} else if (hp) strcpy(host, hp->h_name);
 
 out:
