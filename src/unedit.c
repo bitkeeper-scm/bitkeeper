@@ -13,7 +13,7 @@ unedit_main(int ac, char **av)
 {
 	sccs	*s = 0;
 	int	flags = SILENT|CLEAN_UNEDIT;
-	int	sflags = SF_GFILE|SF_NODIREXPAND;
+	int	sflags = SF_NODIREXPAND;
 	int	ret = 0;
 	char	*name;
 	project	*proj = 0;
