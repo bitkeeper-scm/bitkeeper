@@ -5694,7 +5694,7 @@ getRegBody(sccs *s, char *printOut, int flags, delta *d,
 
 	if ((s->state & S_RCS) && (flags & GET_EXPAND)) flags |= GET_RCSEXPAND;
 	/* Think carefully before changing this */
-	if ((s->encoding != E_ASCII) || hash) {
+	if (((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) || hash) {
 		flags &= ~(GET_EXPAND|GET_RCSEXPAND|GET_PREFIX);
 	}
 	unless (s->state & S_SCCS) flags &= ~(GET_EXPAND);
@@ -7059,7 +7059,9 @@ expandnleq(sccs *s, delta *d, MMAP *gbuf, char *fbuf, int *flags)
 	char	*e = fbuf, *e1 = 0, *e2 = 0;
 	int sccs_expanded = 0 , rcs_expanded = 0, rc;
 
-	if (s->encoding != E_ASCII) return (MCMP_DIFF);
+	if ((s->encoding != E_ASCII) && (s->encoding != E_GZIP)) {
+		return (MCMP_DIFF);
+	}
 	if (!(*flags & (GET_EXPAND|GET_RCSEXPAND))) return (MCMP_DIFF);
 	if (*flags & GET_EXPAND) {
 		e = e1 = expand(s, d, e, &sccs_expanded);
@@ -7770,7 +7772,7 @@ sccs_clean(sccs *s, u32 flags)
 	}
 
 	unless (IS_EDITED(s)) { 
-		if (s->encoding == E_ASCII) {
+		if ((s->encoding == E_ASCII) || (s->encoding == E_GZIP)) {
 			flags |= GET_EXPAND;
 			if (s->state & S_RCS) flags |= GET_RCSEXPAND;
 		}
@@ -9561,9 +9563,24 @@ sccs_encoding(sccs *sc, char *encp, char *compp)
 	}
 
 	if (compp) {
-		if (streq(compp, "gzip")) comp = E_GZIP;
-		else if (streq(compp, "none")) comp = 0;
-		else {
+		if (streq(compp, "gzip")) {
+			if (enc == E_ASCII) {
+				comp = E_GZIP;
+			} else {
+				if (enc == E_UUENCODE) {
+					comp = E_GZIP;
+				} else if (enc == E_UUGZIP) {
+					comp = 0;
+				} else {
+					fprintf(stderr,
+						"bad encodind %x\n", enc);
+					return (-1);
+				}
+			}
+		} else if (streq(compp, "none")) {
+			comp = 0;
+			if (enc == E_UUGZIP) enc = E_UUENCODE;
+		} else {
 			fprintf(stderr, "admin: unknown compression format %s\n",
 				compp);
 			return (-1);
@@ -9893,6 +9910,11 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 	if (old_enc & E_GZIP) zgets_init(sc->where, sc->size - sc->data);
 	if (new_enc & E_GZIP) zputs_init();
 	if (new_enc != old_enc) {
+		if (new_enc == E_UUGZIP) {
+			fprintf(stderr,
+			    "convertion to uugzip encoding not supported\n");
+			OUT;
+		}
 		sc->encoding = old_enc;
 		while (buf = nextdata(sc)) {
 			sc->encoding = new_enc;
@@ -11023,7 +11045,7 @@ out:
 #ifdef WIN32
 	/*
 	 * Win32 note: If gfile is in use, we cannot delete
-	 * it when we are done.It is better to bail now
+	 * it when we are done. It is better to bail now
 	 */
 	if (HAS_GFILE(s) &&
 	    !(flags & DELTA_SAVEGFILE) && fileBusy(s->gfile)) {
