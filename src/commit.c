@@ -266,7 +266,7 @@ do_commit(char **av,
 	char	*cset[100] = {"bk", "cset", 0};
 	FILE 	*f, *f2;
 #define	MAX_PENDING_LOG 20
-	int	max_pending = MAX_PENDING_LOG;
+	int	max_pending = MAX_PENDING_LOG, log_quota;
 
 	if (getenv("BK_NEEDMORECSETS")) max_pending += 10;
 
@@ -298,7 +298,8 @@ out:		if (commentFile) unlink(commentFile);
 	 */
 	ptype = (l&LOG_OPEN) ? 0 : 1;
 	unless (opts.resync) {
-		if (logs_pending(ptype, 1) >= max_pending) {
+		log_quota = max_pending - logs_pending(ptype, 1);
+		if (log_quota <= 0) {
 			printf("Commit: forcing pending logs\n");
 			if (l&LOG_OPEN) {
 				system("bk _log -qc2");
@@ -328,6 +329,16 @@ out:		if (commentFile) unlink(commentFile);
 , MAX_PENDING_LOG);
 				goto out;
 			}
+		} else if (log_quota <= 10) {
+				printf(
+"============================================================================\n"
+"Warning: BitKeeper was unable to transmit log for the previous commit.\n"
+"Your log quota is now down to %d. You will not be able to commit ChangeSet\n"
+"if yor log quota is down to zero. Please check your network configuration\n"
+"and make sure logs are transmitted properly. You can test your log\n"
+"transmission with the command \"bk _log -d\".\n"
+"============================================================================\n"
+, log_quota);
 		}
 		if (!(l&LOG_OPEN) && (l&LOG_LIC_SINGLE) &&
 					!smallTree(BK_SINGLE_THRESHOLD)) {
