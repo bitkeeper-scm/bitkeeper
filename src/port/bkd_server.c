@@ -93,7 +93,8 @@ requestWebLicense()
 		if ((f = tcp_connect(LICENSE_HOST, LICENSE_PORT)) != -1) {
 			sprintf(buf, "GET %s?license=%s:%u\n\n",
 			    LICENSE_REQUEST,
-			    sccs_gethost(), Opts.port);
+			    sccs_gethost(), 
+			    Opts.port ? Opts.port : BK_PORT);
 			write(f, buf, strlen(buf));
 			read(f, buf, sizeof buf);
 			close(f);

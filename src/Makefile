@@ -49,7 +49,7 @@ OBJ =	abort.o adler32.o admin.o annotate.o approve.o \
 	bkpowered.o bkusers.o bkver.o cat.o changes.o \
 	check.o checksum.o clean.o cleanpath.o clone.o \
 	comment.o comments.o commit.o compress.o converge.o \
-	cp.o cset.o cset_inex.o csets.o cweave.o delta.o diffs.o \
+	cp.o cset.o cset_inex.o csetprune.o csets.o cweave.o delta.o diffs.o \
 	dir_gif.o dirname.o export.o fdiff.o file_gif.o \
 	find.o findkey.o fix.o g2sccs.o gca.o get.o gethelp.o \
 	gethost.o getopt.o gettemp.o getuser.o glob.o \

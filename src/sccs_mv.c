@@ -69,7 +69,7 @@ sccs_rmEmptyDirs(char *path)
 			return;
 		}
 		q = strrchr(path, '/');
-		*p = '/';
+		if (p) *p = '/';
 		p = q;
 	} while (p);
 }
