@@ -31,7 +31,7 @@ rclone_common(int ac, char **av, opts *opts)
 	}
 
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock();
+	sendServerInfoBlock(1);
 
 	p = getenv("BK_REMOTE_PROTOCOL");
 	unless (p && streq(p, BKD_VERSION)) {

@@ -626,7 +626,7 @@ getServerInfoBlock(remote *r)
 }
 
 void
-sendServerInfoBlock()
+sendServerInfoBlock(int is_rclone)
 {
 	char	buf[MAXPATH];
 
@@ -640,8 +640,15 @@ sendServerInfoBlock()
 	out(buf);
         sprintf(buf, "TIME_T=%s\n", bk_time);
 	out(buf);
-        sprintf(buf, "LEVEL=%d\n", getlevel());
-	out(buf);
+
+	/*
+	 * When we are doing a rclone, there is no tree in the bkd sode yet
+	 * Do not get to get the level of the server tree.
+	 */
+	unless (is_rclone) {
+        	sprintf(buf, "LEVEL=%d\n", getlevel());
+		out(buf);
+	}
 	out("ROOT=");
 	getcwd(buf, sizeof(buf));
 	out(buf);

@@ -128,6 +128,7 @@ doit(int verbose, char *rev, int indent, int tagOnly, int dash)
 				break;
 			    default:
 				fprintf(stderr, "Illegal line: %s", cmd);
+				fclose(f);
 				if (dashfile[0]) unlink(dashfile);
 				return (1);
 			}

@@ -148,7 +148,7 @@ cmd_push_part1(int ac, char **av)
 
 	if (debug) fprintf(stderr, "cmd_push_part1: sending server info\n");
 	setmode(0, _O_BINARY); /* needed for gzip mode */
-	sendServerInfoBlock();
+	sendServerInfoBlock(0);
 
 	if (getenv("BKD_LEVEL") && (atoi(getenv("BKD_LEVEL")) > getlevel())) {
 		/* they got sent the level so they are exiting already */
@@ -271,7 +271,7 @@ cmd_push_part2(int ac, char **av)
 		goto done;
 	}
 
-	sendServerInfoBlock();
+	sendServerInfoBlock(0);
 	buf[0] = 0;
 	getline(0, buf, sizeof(buf));
 	if (streq(buf, "@ABORT@")) {
