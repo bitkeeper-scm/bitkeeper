@@ -30,6 +30,7 @@
 #define	INIT_HASzFILE	0x00200000	/* has z.file */
 #define	INIT_ONEROOT	0x00400000	/* one root mode i.e not split root */
 #define	INIT_NOGCHK	0x00800000	/* do not fail on gfile checks */
+#define	INIT_SAVMOD	0x00010000	/* do not change mod time of s.file */
 
 /* shared across get/diffs/getdiffs */
 #define	GET_EDIT	0x10000000	/* get -e: get for editting */
@@ -573,6 +574,7 @@ typedef	struct sccs {
 	sum_t	 dsum;		/* SCCS delta chksum */
 	off_t	sumOff;		/* offset of the new delta cksum */
 	time_t	gtime;		/* gfile modidification time */
+	time_t	stime;		/* sfile modidification time */
 	MDBM	*mdbm;		/* If state & S_HASH, put answer here */
 	project	*proj;		/* If in BK mode, pointer to project */
 	u16	version;	/* file format version */
