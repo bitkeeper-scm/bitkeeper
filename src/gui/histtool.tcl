@@ -1817,14 +1817,9 @@ if {$fname == ""} {
 			displayMessage "$err" 0
 			exit 1
 		}
-	} elseif {[file exists $fname]} {
-		set file [exec bk sfiles -g $fname 2>$dev_null]
-		if {"$file" == ""} {
-			puts stderr "No such file \"$fname\""
-			exit
-		}
-	} else {
-		displayMessage "\$fname\": Not a valid file"
+	} elseif {[exec bk sfiles -g $fname] == ""} {
+		puts stderr "\"$fname\" is not a revision controlled file"
+		#displayMessage "\"$fname\" is not a revision controlled file"
 		exit
 	}
 }
