@@ -11,4 +11,4 @@ The csets command will run the csettool command on the last set of
 changesets imported into this repository with a pull, push, or resync.
 This is useful for tracking down problems.
 .SH "SEE ALSO"
-.B bk help csettool
+.SA csettool

@@ -68,7 +68,6 @@ $ bk send -wrot13 | mail user@where.ever.com
 The user at the other end needs the rot13 wrapper scripts or they will not
 be able to apply the patch.
 .SH SEE ALSO
-.B bk help send
+.SA send
 .br
-.B bk help receive
-
+.SA receive

@@ -30,9 +30,8 @@ abort without
 .B \-f
 if you have.
 .SH "SEE ALSO"
-.B bk help pull
+.SA pull
 .br
-.B bk help push
+.SA push
 .br
-.B bk help resync
-
+.SA resync

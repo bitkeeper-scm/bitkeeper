@@ -39,10 +39,10 @@ differently.
 .B bk mv
 will not move directories. 
 .SH SEE ALSO
-.B bk help commit
+.SA commit
 .br
-.B bk help rm
+.SA rm
 .br
-.B bk help resync
+.SA resync
 .\" help://Basics/sccsmv
 .\" help://Basics/renames

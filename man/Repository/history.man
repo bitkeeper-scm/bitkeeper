@@ -49,10 +49,10 @@ $ bk sfiles | bk sccslog \- | more
 .B bk sccslog 
 supports the same range notation as prs.
 .SH "SEE ALSO"
-.B bk help changes
+.SA changes
 .br
-.B bk help prs
+.SA prs
 .br
-.B bk help ranges
+.SA ranges
 .br
-.B bk help sccslog
+.SA sccslog

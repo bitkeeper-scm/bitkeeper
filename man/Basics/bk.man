@@ -39,8 +39,8 @@ bk -r get
 cd `bk -R pwd`; bk sfiles | bk get -
 .XA
 .SH SEE ALSO
-.B bk help check
+.SA check
 .br
-.B bk help diffs
+.SA diffs
 .br
-.B bk help tag
+.SA tag

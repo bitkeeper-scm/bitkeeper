@@ -39,8 +39,8 @@ point.
 If what you want is a copy of the repository, use bk clone to copy
 it, not tar, cp, or some other file by file copy.
 .SH "SEE ALSO"
-.B bk help pending
+.SA pending
 .br
-.B bk help status
+.SA status
 .\" help://Repository/copying
 .\" help://Repository/copy

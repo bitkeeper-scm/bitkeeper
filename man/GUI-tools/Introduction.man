@@ -47,20 +47,20 @@ other rev with the right button and then click on the
 "View changesets" button on the upper right corner of 
 the window.
 .SH "SEE ALSO"
-.B bk help citool
+.SA citool
 .br
-.B bk help csettool
+.SA csettool
 .br
-.B bk help difftool
+.SA difftool
 .br
-.B bk help helptool
+.SA helptool
 .br
-.B bk help fmtool
+.SA fmtool
 .br
-.B bk help fm3tool
+.SA fm3tool
 .br
-.B bk help renametool
+.SA renametool
 .br
-.B bk help sccstool
+.SA sccstool
 .\" help://GUI-tools/GUI
 .\" help://GUI-tools/gui

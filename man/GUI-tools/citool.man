@@ -189,6 +189,6 @@ repository.   After it is unlocked, the
 .B commit
 should work.
 .SH SEE ALSO
-.B bk help ci
+.SA ci
 .TP
-.B bk help ignore
+.SA ignore

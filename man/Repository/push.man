@@ -75,10 +75,10 @@ is an integer value 0-9; default is
 Compression is possible when using ssh or the BK daemon,
 but not with rsh.
 .SH "SEE ALSO"
-.B bk help pull
+.SA pull
 .br
-.B bk help parent
+.SA parent
 .br
-.B bk help resolve
+.SA resolve
 .br
-.B bk help triggers
+.SA triggers

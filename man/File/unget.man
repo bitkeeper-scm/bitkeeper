@@ -23,8 +23,8 @@ name each file you want to unedit.
 .LP
 unget is an alias for unedit; unget is the ATT SCCS compatible name.
 .SH "SEE ALSO"
-.B bk help clean
+.SA clean
 .br
-.B bk help unlock
+.SA unlock
 .\" help://File/unget
 .\" help://File/unedit

@@ -80,8 +80,8 @@ do unified diffs
 be verbose about non-matching ranges
 .SH SEE ALSO
 .LP
-.B bk help difftool
+.SA difftool
 .br
-.B bk help export
+.SA export
 .\" help://Basics/differences
 .\" help://Basics/sdiffs

@@ -37,5 +37,4 @@ mkdiffs has been replaced with
 .BR bk\ export\ -tpatch . 
 The mkdiffs command will be removed in future release.
 .SH "SEE ALSO"
-.B bk help export
-
+.SA export

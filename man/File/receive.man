@@ -64,8 +64,8 @@ All options are sent to takepatch.  With no options, takepatch is
 completely silent.  If you want to see the progress reports you
 see with resync, add -vv to the options.
 .SH "SEE ALSO"
-.B bk help send
+.SA send
 .br
-.B bk help takepatch
+.SA takepatch
 .br
-.B bk help wrap
+.SA wrap

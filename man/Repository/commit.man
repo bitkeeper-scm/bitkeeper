@@ -71,12 +71,12 @@ Get check-in comment for changeset from
 Set check-in comment of changeset to
 .IR x .
 .SH "SEE ALSO"
-.B bk help changes
+.SA changes
 .br
-.B bk help citool
+.SA citool
 .br
-.B bk help pending
+.SA pending
 .br
-.B bk help tag
+.SA tag
 .\" help://Repository/changeset
 .\" help://Repository/changesets

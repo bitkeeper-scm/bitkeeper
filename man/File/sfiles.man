@@ -66,8 +66,8 @@ not foo/bar/blech/s.*
 The \-r option can take an optional repository root but not any other
 directories.
 .SH "SEE ALSO"
-.B bk help history
+.SA history
 .br
-.B bk help ignore
+.SA ignore
 .br
-.B bk help new
+.SA new

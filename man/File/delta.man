@@ -86,10 +86,10 @@ gzip like gzip(1)
 .br
 none no compression
 .SH "SEE ALSO"
-.B bk help ci
+.SA ci
 .br
-.B bk help co
+.SA co
 .br
-.B bk help edit
+.SA edit
 .br
-.B bk help get
+.SA get

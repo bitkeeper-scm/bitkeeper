@@ -16,6 +16,6 @@ To see what needs to be committed to a change set, run:
 $ bk pending
 .XA
 .SH "SEE ALSO"
-.B bk help commit
+.SA commit
 .br
-.B bk help changes
+.SA changes

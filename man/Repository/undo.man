@@ -72,8 +72,8 @@ Remove the list of changesets specified by
 must be of the form r1,r2,r3, etc.
 .SH "SEE ALSO"
 .LP
-.B bk help cset
+.SA cset
 .br 
-.B bk help stripdel
+.SA stripdel
 .br
-.B bk help takepatch
+.SA takepatch

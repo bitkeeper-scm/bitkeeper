@@ -44,8 +44,8 @@ ChangeSet@1.605, 2000-02-20 01:32:19-08:00, lm@host.com
   An aborted attempt at key compression.
 .XA
 .SH "SEE ALSO"
-.B bk help commit
+.SA commit
 .br
-.B bk help pending
+.SA pending
 .br
-.B bk help sccstool
+.SA sccstool

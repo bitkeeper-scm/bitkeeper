@@ -223,11 +223,11 @@ Needs password support.
 .br
 Needs access control based on authenticated users.
 .SH "SEE ALSO"
-.B bk help qs_bkd
+.SA qs_bkd
 .br
-.B bk help parent
+.SA parent
 .br
-.B bk help initscripts
+.SA initscripts
 .\" help://Repository/anonymous
 .\" help://Repository/deamon
 .\" help://Repository/daemon

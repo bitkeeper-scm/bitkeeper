@@ -29,6 +29,6 @@ Run quietly.
 .B -v
 Run verbosely.  List files deleted as well as modified files.
 .SH SEE ALSO
-.B bk help unedit
+.SA unedit
 .br
-.B bk help unlock
+.SA unlock

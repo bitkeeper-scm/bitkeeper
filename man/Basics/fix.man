@@ -22,6 +22,6 @@ they may not be modified.
 run quietly
 .SH SEE ALSO
 .LP
-.B bk help ci
+.SA ci
 .br
-.B bk help edit
+.SA edit
