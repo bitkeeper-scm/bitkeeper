@@ -119,7 +119,7 @@ cmd_chg_part2(int ac, char **av)
 	new_av[j] = NULL;
 
 	/* Redirect stdout to the tmp file */
-	sprintf(cmd, "BitKeeper/tmp/chg%d", getpid());
+	sprintf(cmd, "BitKeeper/tmp/chg%u", getpid());
 	fd1 = dup(1); close(1);
 	fd = open(cmd, O_WRONLY|O_CREAT|O_TRUNC, 0666);
 	if (fd < 0) perror(cmd);

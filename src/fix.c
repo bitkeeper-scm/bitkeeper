@@ -167,7 +167,7 @@ doit(char *file, char *revs, char *qflag, char *force)
 	mode_t	mode = 0;
 	int	cset;
 
-	sprintf(fixfile, "%s-%d", file, getpid());
+	sprintf(fixfile, "%s-%u", file, getpid());
 	if (exists(fixfile)) {
 		printf("%s exists, skipping that file", fixfile);
 		return;

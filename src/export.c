@@ -97,7 +97,7 @@ usage:			system("bk help -s export");
 	}
 	strcpy(src_path, fullname(".", 0));
 
-	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
+	sprintf(file_rev, "%s/bk_file_rev%u", TMP_PATH, getpid());
 	if (rev) {
 		sprintf(buf, "bk rset -hl%s > %s", rev, file_rev);
 	} else {
@@ -181,7 +181,7 @@ export_patch(char *diff_style, char *rev,
 	int	status;
 
 	unless (diff_style) diff_style = "u";
-	sprintf(file_rev, "%s/bk_file_rev%d", TMP_PATH, getpid());
+	sprintf(file_rev, "%s/bk_file_rev%u", TMP_PATH, getpid());
 	sprintf(buf, "bk rset -hr%s > %s", rev ? rev : "+", file_rev);
 	status = system(buf);
 	unless (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
