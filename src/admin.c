@@ -30,7 +30,7 @@ admin_main(int ac, char **av)
 	int	nextf = 0, nextu = 0, nexts = 0, nextp = 0;
 	char	*comment = 0, *text = 0, *newfile = 0;
 	char	*path = 0, *merge = 0;
-	char	*name;
+	char	*name, *ckopts;
 	char	*encp = 0, *compp = 0;
 	int	error = 0;
 	int	bigpad = 0;
@@ -192,6 +192,11 @@ admin_main(int ac, char **av)
 	}
 	unless (flags & NEWFILE) init_flags |= INIT_SAVEPROJ;
 
+	ckopts = user_preference("checkout");
+	if (streq("GET", ckopts) || streq("EDIT", ckopts)) {
+		flags |= ADMIN_FIXMTIME;
+	}
+
 	/*
 	 * If we are adding exactly one symbol, do it quickly.
 	 */
@@ -267,9 +272,9 @@ admin_main(int ac, char **av)
 			if (IS_EDITED(sc)) {
 				was_edited = 1;
 				newrev(sc, &pf);
-				if (sccs_clean(sc, SILENT)) {
+				if (unlink(sc->pfile)) {
 					fprintf(stderr,
-					"admin: cannot clean %s\n", sc->gfile);
+					"admin: cannot unlink %s\n", sc->pfile);
 					goto next;
 				}
 			} else {

@@ -80,10 +80,12 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 	char 	*p, *q, *t, *destfile, *oldpath, *newpath;
 	char	*gfile, *sfile;
 	char	buf[1024], commentBuf[MAXPATH*2];
+	char	*ogfile, *osfile;
 	sccs	*s;
 	delta	*d;
-	int	error = 0;
+	int	error = 0, was_edited = 0;
 	int	flags = SILENT|DELTA_FORCE;
+	MMAP	*nulldiff;
 
 //fprintf(stderr, "sccs_mv(%s, %s, %d, %d)\n", name, dest, isDir, isDelete);
 	unless (s = sccs_init(name, INIT_NOCKSUM, 0)) return (1);
@@ -153,29 +155,26 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		fprintf(stderr, "Idcache failure\n");
 		goto out;
 	}
-	/* This is kind of bogus, we don't move the sfile back. */
-	if (!error && exists(s->gfile)) error = mv(s->gfile, gfile);
+	ogfile = strdup(s->gfile);
+	osfile = strdup(s->sfile);
 	if (HAS_PFILE(s) && !error) {
+		was_edited = 1;
 		error = mv(s->pfile, q = mkXfile(sfile, 'p'));
 		free(q);
 	}
 	if (error) goto out;
-
-	sccs_rmEmptyDirs(s->sfile);
-
-	/*
-	 * XXX TODO: we should store the rename comment
-	 * somewhere, such as a .comment file ?
-	 */
-	if (HAS_PFILE(s) && !isDelete) goto out;
 	sccs_free(s);
 	/* For split root config; We recompute sfile here */
 	/* we don't want the sPath() adjustment		  */
 	free(sfile);
 	sfile = name2sccs(destfile);
 	unless (s = sccs_init(sfile, 0, 0)) { error++; goto out; }
+
+	/*
+	 * If not in edit state, make it so
+	 */
 	unless (HAS_PFILE(s)) {
-		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_EDIT, "-")) {
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_SKIPGET|GET_EDIT, "-")) {
 			error = 1;
 			goto out;
 		}
@@ -188,14 +187,30 @@ sccs_mv(char *name, char *dest, int isDir, int isDelete)
 		goto out;
 	}
 
-	if (sccs_delta(s, flags, d, 0, 0, 0) == -1) {
+	/*
+	 * Setup a null diffs,  because we do not want to check in the
+	 * content changes when we "bk mv"
+	 */
+	nulldiff = mopen(NULL_FILE, "r");
+	if (sccs_delta(s, flags, d, 0, nulldiff, 0) == -1) {
 		error = 1;
 		goto out;
 	}
+	if (!error && exists(ogfile)) error = mv(ogfile, gfile);
+	if (was_edited) {
+		s = sccs_restart(s);
+		if (sccs_get(s, 0, 0, 0, 0, SILENT|GET_SKIPGET|GET_EDIT, "-")) {
+			error = 1;
+			goto out;
+		}
+	}
+	sccs_rmEmptyDirs(osfile);
 
 out:	if (s) sccs_free(s);
 	free(newpath);
 	free(oldpath);
+	free(ogfile);
+	free(osfile);
 	free(destfile); free(sfile); free(gfile);
 	return (error);
 }

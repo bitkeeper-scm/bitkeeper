@@ -4056,11 +4056,7 @@ sccs_init(char *name, u32 flags, project *proj)
 	} else {
 		if (check_gfile(s, flags)) return (0);
 	}
-	if (flags & INIT_SAVMOD) {
-		rc = lstat(s->sfile, &sbuf);
-	} else {
-		rc = fast_lstat(s->sfile, &sbuf, 1);
-	}
+	rc = fast_lstat(s->sfile, &sbuf, 1);
 	if (rc == 0) {
 		if (!S_ISREG(sbuf.st_mode)) {
 			verbose((stderr, "Not a regular file: %s\n", s->sfile));
@@ -4078,7 +4074,6 @@ sccs_init(char *name, u32 flags, project *proj)
 		}
 		s->state |= S_SFILE;
 		s->size = sbuf.st_size;
-		if (flags & INIT_SAVMOD) s->stime = sbuf.st_mtime;
 	}
 	s->pfile = strdup(sccsXfile(s, 'p'));
 	s->zfile = strdup(sccsXfile(s, 'z'));
@@ -9031,7 +9026,6 @@ no_config:
 		struct	stat	sb;
 		struct	utimbuf	ut;
 
-		assert(s->stime == 0);
 		/*
 		 * To prevent the "make" command from doing a "get" due to 
 		 * sfile's newer modification time, and then fail due to the
@@ -9053,8 +9047,6 @@ no_config:
 			perror(s->gfile);
 		}
 		
-	} else {
-		fix_stime(s);
 	}
 	if (BITKEEPER(s)) updatePending(s);
 	if (db) mdbm_close(db);
@@ -10504,24 +10496,25 @@ user:	for (i = 0; u && u[i].flags; ++i) {
 		OUT;
 	}
 	Chmod(sc->sfile, 0444);
-	fix_stime(sc);
+
+	if (sc->initFlags & INIT_FIXMTIME) flags |= ADMIN_FIXMTIME;
+	if (flags & ADMIN_FIXMTIME) {
+		struct  stat    sb;
+		struct  utimbuf ut;
+
+		/*
+		 * To prevent the "make" command from doing a "get" due to 
+		 * sfile's newer modification time adjust sfile's modification
+		 * to be just before that of gfile's.
+		 */
+		if (lstat(sc->gfile, &sb) == 0) {
+			ut.actime = time(0);
+			ut.modtime = sb.st_mtime - 1;
+			utime(sc->sfile, &ut);
+		}
+	}
 	goto out;
 #undef	OUT
-}
-
-private void
-fix_stime(sccs *s)
-{
-	struct  utimbuf ut;
-
-	if (s->stime) {
-		/*
-		 * Fix mod time, otherwise, it may confuse the "make" command
-		 */
-		ut.actime = time(0);
-		ut.modtime = s->stime;
-		utime(s->sfile, &ut);
-	}
 }
 
 private	char *name;
@@ -10629,7 +10622,6 @@ out:
 		OUT;
 	}
 	Chmod(s->sfile, 0444);
-	fix_stime(s);
 	goto out;
 #undef	OUT
 }
@@ -11551,7 +11543,6 @@ abort:		fclose(sfile);
 		exit(1);
 	}
 	Chmod(s->sfile, 0444);
-	fix_stime(s);
 	sccs_unlock(s, 'z');
 	return (0);
 }
@@ -11979,13 +11970,13 @@ out:
 	}
 	Chmod(s->sfile, 0444);
 	unlink(s->pfile);
+	if (s->initFlags & INIT_FIXMTIME) flags |= DELTA_FIXMTIME;
 	if ((flags & DELTA_SAVEGFILE) &&
 	    (flags & DELTA_FIXMTIME) &&
 	    HAS_GFILE(s)) {
 		struct	stat	sb;
 		struct	utimbuf	ut;
 
-		assert(s->stime == 0);
 		/*
 		 * To prevent the "make" command from doing a "get" due to 
 		 * sfile's newer modification time, and then fail due to the
@@ -12006,9 +11997,6 @@ out:
 			/* We should never get here */
 			perror(s->gfile);
 		}
-		
-	} else {
-		fix_stime(s);
 	}
 	if (BITKEEPER(s) && !(flags & DELTA_NOPENDING)) {
 		 updatePending(s);
