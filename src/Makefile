@@ -209,7 +209,7 @@ cset_todo: cset_todo.o port/platforminit.o mdbm/libmdbm.a
 zone: zone.o localtm.o port/platforminit.o
 	$(CC) $(CFLAGS) -o zone zone.o localtm.o port/platforminit.o
 fdiff: fdiff.o purify.o
-	$(CC) $(CFLAGS) fdiff.o purify.o -o fdiff
+	$(CC) $(CFLAGS) fdiff.o purify.o -o fdiff $(LMDBM)
 
 range: rangemain.o $(LIBS)
 	$(CC) $(CFLAGS) rangemain.o $(LINK) -o range
