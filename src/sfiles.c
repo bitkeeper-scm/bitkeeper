@@ -633,7 +633,11 @@ lftw_inner(char *path, char *base, struct stat *sb,
 		/* Do not cross into other project roots (e.g. RESYNC).  */
 		n = strlen(base);
 		strcat(base, "/" BKROOT);
-		if (exists(path)) continue;
+		if (exists(path)) { /* see if ChangeSet file there */
+			base[n] = '\0';
+			strcat(base, "/" CHANGESET);
+			if (exists(path)) continue;
+		}
 
 		/* Descend directory.  */
 		base[n] = '\0';
