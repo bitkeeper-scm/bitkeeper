@@ -9498,17 +9498,18 @@ sccs_isleaf(sccs *s, delta *d)
 
 /*
  * Check open branch
+ * XXX: Assumes D_RED is clear ; exits with D_RED clear
  */
 private int
 checkOpenBranch(sccs *s, int flags)
 {
-	delta	*d;
+	delta	*d, *m, *tip = 0, *symtip = 0;
 	int	ret = 0, tips = 0, symtips = 0;
 
 	/* Allow open branch for logging repository */
 	if (LOGS_ONLY(s)) return (0);
 
-	for (d = s->table; d; d = d->next) {
+	for (d = s->table; d; (d->flags &= ~D_RED), d = d->next) {
 		/*
 		 * This order is important:
 		 * Skip 1.0,
@@ -9524,27 +9525,44 @@ checkOpenBranch(sccs *s, int flags)
 				    s->sfile, d->rev));
 				ret = 1;
 			}
-			if (d->symLeaf && !(d->flags & D_GONE)) symtips++;
+			if (d->symLeaf && !(d->flags & D_GONE)) {
+				if (symtips) {
+					if (symtips == 1) {
+					    verbose((stderr,
+			    			"%s: unmerged symleaf %s\n",
+						s->sfile, symtip->rev));
+					}
+					verbose((stderr,
+			    		    "%s: unmerged symleaf %s\n",
+					    s->sfile, d->rev));
+					ret = 1;
+				}
+				symtip = d;
+				symtips++;
+			}
 		}
-		if (d->flags & D_GONE) continue;
-		if (isleaf(s, d)) tips++;
-	}
-
-	unless ((tips > 1) || (symtips > 1)) return (ret);
-
-	for (d = s->table; d; d = d->next) {
-		if (d->flags & D_GONE) continue;
-		if (streq(d->rev, "1.0")) continue;
-		if ((symtips > 1) && d->symLeaf) {
-			verbose((stderr,
-			    "%s: unmerged symleaf %s\n", s->sfile, d->rev));
-			ret = 1;
+		if ((d->flags & D_GONE) || (d->type == 'R')) continue;
+		unless (d->flags & D_RED) {
+			if (tips) {
+				if (tips == 1) {
+				    verbose((stderr,
+		    			"%s: unmerged leaf %s\n",
+					s->sfile, tip->rev));
+				}
+				verbose((stderr,
+		    		    "%s: unmerged leaf %s\n",
+				    s->sfile, d->rev));
+				ret = 1;
+			}
+			tip = d;
+			tips++;
 		}
-		if (isleaf(s, d)) {
-			verbose((stderr,
-			    "%s: unmerged leaf %s\n", s->sfile, d->rev));
+		if (d->parent) d->parent->flags |= D_RED;
+		if (d->merge) {
+			m = sfind(s, d->merge);
+			assert(m);
+			m->flags |= D_RED;
 		}
-		ret = 1;
 	}
 	return (ret);
 }
