@@ -24,13 +24,11 @@ platformInit(char **av)
 	char	*p, *t, *s;
 	MDBM	*uniq;
 	char	**newpath;
-	int	add2path = 1;
 	int	n;
 	int	flags = SILENT;	/* for debugging */
 	mode_t	m;
 	char    *paths[] = {"", "/gnu/bin", "/gui/bin", 0};
-	char	link[MAXPATH];
-
+	char	buf2[MAXPATH];
 
 	if (bin) return;
 	unless (editor || (editor = getenv("EDITOR"))) editor = EDITOR;
@@ -89,60 +87,52 @@ platformInit(char **av)
 	if (IsFullPath(av[0]) && executable(av[0])) {
 		verbose((stderr, "USING fullpath %s\n", av[0]));
 		strcpy(buf, av[0]);
-		if ((n = readlink(buf, link, sizeof(link))) != -1) {
-			link[n] = 0;
-			verbose((stderr, "LINK %s->%s\n", buf, link));
-			if  (IsFullPath(link)) {
-				strcpy(buf, link);
-			} else {
-				fprintf(stderr,
-			  "Error, link \"%s -> %s\" must be a full path name\n",
-				    buf, link);
-				exit (1);
-			}
-		}
 	} else {
 		/*
 		 * Partially specified paths are respected
 		 */
+		verbose((stderr, "av[0]='%s'\n", av[0]));
 		if (t = strchr(av[0], '/')) {
 			verbose((stderr, "USING partial %s\n", av[0]));
-			getcwd(buf, sizeof(buf));
-			strcat(buf, "/");
-			strcat(buf, av[0]);
+			strcpy(buf, av[0]);
 		} else {
-			/*
-			 * Win32 note: TODO: We need to handle both
-			 * ':' and ';' as path delimiter, becuase we
-			 * get different delimiter from bash shell and
-			 * cmd.exe.
-			 * WHS: I don't that that is true.
-			 */
 			s = p;
-			while (s) {
-				t = strchr(s, PATH_DELIM);
-				if (t) *t = 0;
+			verbose((stderr, "p='%s'\n", p));
+			while (1) {
+				if (t = strchr(s, PATH_DELIM)) *t = 0;
 				sprintf(buf, "%s/%s", s, av[0]);
-				if (t) {
-					*t = PATH_DELIM;
-					s = t + 1;
-				} else {
-					s = 0;
+				if (t) *t = PATH_DELIM;
+				if (executable(buf)) break;
+				unless (t) {
+					verbose((stderr,
+						    "Can't find bk on PATH, "
+						    "bail and pray.\n"));
+					return;
 				}
-				if (executable(buf)) {
-					verbose((stderr, "USING PATH %s\n", buf));
-					unless (IsFullPath(s)) {
-						getcwd(buf, sizeof(buf));
-						strcat(buf, "/");
-						strcat(buf, s);
-						strcat(buf, "/");
-						strcat(buf, av[0]);
-					}
-					break;
-				}
+				s = t + 1;
 			}
 		}
+		unless (IsFullPath(buf)) {
+			strcpy(buf2, buf);
+			getcwd(buf, sizeof(buf));
+			strcat(buf, "/");
+			strcat(buf, buf2);
+		}
+		verbose((stderr, "USING PATH %s\n", buf));
 	}
+	if ((n = readlink(buf, buf2, sizeof(buf2))) != -1) {
+		buf2[n] = 0;
+		verbose((stderr, "LINK %s->%s\n", buf, buf2));
+		if  (IsFullPath(buf2)) {
+			strcpy(buf, buf2);
+		} else {
+			fprintf(stderr,
+			    "Error, link \"%s->%s\" must be a full path name\n",
+			    buf, buf2);
+			exit (1);
+		}
+	}
+
 	/* Now 'buf' contains the full pathname to the bk executable */
 	t = strrchr(buf, '/');
 	*t = 0;
@@ -161,9 +151,9 @@ platformInit(char **av)
 	newpath = 0;
 
 	for (n = 0; paths[n]; n++) {
-		sprintf(link, "%s%s", bin, paths[n]);
-		unless (mdbm_store_str(uniq, link, "", MDBM_INSERT)) {
-			newpath = addLine(newpath, strdup(link));
+		sprintf(buf2, "%s%s", bin, paths[n]);
+		unless (mdbm_store_str(uniq, buf2, "", MDBM_INSERT)) {
+			newpath = addLine(newpath, strdup(buf2));
 		}
 	}
 	/*
@@ -184,9 +174,9 @@ platformInit(char **av)
 	mdbm_close(uniq);
 
 	/* joinLines wants a string */
-	link[0] = PATH_DELIM;
-	link[1] = 0;
-	p = joinLines(link, newpath);
+	buf2[0] = PATH_DELIM;
+	buf2[1] = 0;
+	p = joinLines(buf2, newpath);
 	freeLines(newpath, free);
 	safe_putenv("PATH=%s", p);
 	free(p);
