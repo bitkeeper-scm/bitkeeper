@@ -120,12 +120,59 @@ repository_mine(char type)
 {
 	char path[MAXPATH];
 
-	ldebug(("repository_locker()\n"));
+	ldebug(("repository_mine()\n"));
 	if (type == 'r') {
 		rdlockfile(".", path);
 		return (exists(path));
 	}
 	return (sccs_mylock(WRITER_LOCK));
+}
+
+private char	*
+global_wrlock(void)
+{
+	char	*p;
+
+	unless (p = getenv("BK_WRITE_LOCK")) p = "/etc/BitKeeper/locks/wrlock";
+	ldebug(("global_lock=%s\n", p));
+	return (p);
+}
+
+private char	*
+global_rdlock(void)
+{
+	char	*p;
+
+	unless (p = getenv("BK_READ_LOCK")) p = "/etc/BitKeeper/locks/rdlock";
+	ldebug(("global_lock=%s\n", p));
+	return (p);
+}
+
+private int
+global_rdlocked(void)
+{
+	int	ret = exists(global_rdlock());
+
+	ldebug(("global_rdlocked=%s\n", ret ? "YES" : "NO"));
+	return (ret);
+}
+
+private int
+global_wrlocked(void)
+{
+	int	ret = exists(global_wrlock());
+
+	ldebug(("global_wrlocked=%s\n", ret ? "YES" : "NO"));
+	return (ret);
+}
+
+int
+global_locked(void)
+{
+	int	ret = exists(global_wrlock()) || exists(global_rdlock());
+
+	ldebug(("global_locked=%s\n", ret ? "YES" : "NO"));
+	return (ret);
 }
 
 /*
@@ -145,6 +192,10 @@ repository_locked(project *p)
 		freeit = 1;
 	}
 	ldebug(("repository_locked(%s)\n", p->root));
+	if (global_locked()) {
+		ret = 1;
+		goto out;
+	}
 	ret = repository_hasLocks(p->root, READER_LOCK_DIR);
 	unless (ret) {
 		if ((s = getenv("BK_IGNORELOCK")) && streq(s, "YES")) {
@@ -159,7 +210,7 @@ repository_locked(project *p)
 			ret = exists(path);
 		}
 	}
-	ldebug(("repository_locked(%s) = %d\n", p->root, ret));
+out:	ldebug(("repository_locked(%s) = %d\n", p->root, ret));
     	if (freeit) proj_free(p);
 	return (ret);
 }
@@ -181,9 +232,20 @@ repository_lockers(project *p)
 	}
 	ldebug(("repository_lockers(%s)\n", p->root));
 
+	if (global_wrlocked()) {
+		fprintf(stderr, "Entire repository is locked by:\n");
+		n++;
+		fprintf(stderr, "\tGlobal write lock %s\n", global_wrlock());
+	}
+	if (global_rdlocked()) {
+		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
+		n++;
+		fprintf(stderr, "\tGlobal read lock %s\n", global_rdlock());
+	}
+
 	sprintf(path, "%s/%s", p->root, ROOT2RESYNC);
 	if (exists(path)) {
-		fprintf(stderr, "Entire repository is locked by:\n");
+		unless (n) fprintf(stderr, "Entire repository is locked by:\n");
 		n++;
 		fprintf(stderr, "\tRESYNC directory.\n");
 	}
@@ -249,7 +311,7 @@ rdlock(void)
 		return (LOCKERR_PERM);
 	}
 	sprintf(path, "%s/%s", p->root, WRITER_LOCK);
-	if (exists(path)) {
+	if (exists(path) || global_wrlocked()) {
 		rdlockfile(p->root, path);
 		unlink(path);
 		proj_free(p);
@@ -267,6 +329,7 @@ repository_rdlock()
 {
 	int	i, ret;
 
+	if (global_wrlocked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = rdlock()) return (0);
 		usleep(10000);
@@ -299,7 +362,7 @@ wrlock(void)
 	}
 
 	sprintf(lock, "%s/%s", p->root, WRITER_LOCK);
-	if (sccs_lockfile(lock, 0, 0)) {
+	if (global_locked() || sccs_lockfile(lock, 0, 0)) {
 		proj_free(p);
 		ldebug(("WRLOCK by %u failed, lockfile failed\n", getpid()));
 		return (LOCKERR_LOST_RACE);
@@ -337,6 +400,7 @@ repository_wrlock()
 {
 	int	i, ret;
 
+	if (global_locked()) return (LOCKERR_LOST_RACE);
 	for (i = 0; i < 10; ++i) {
 		unless (ret = wrlock()) return (0);
 		usleep(10000);
