@@ -4,7 +4,7 @@
 # %K%
 
 echo $N Create initial repository ..............................$NL
-HERE=`pwd`
+HERE=`${CWD}`
 echo "logging: /dev/null" > $HERE/c
 echo "logging_ok: t" >>$HERE/c
 bk setup -f -n'BitKeeper Test repository' -c$HERE/c project
@@ -48,7 +48,7 @@ for i in a b c
 do
 	echo "this is $i.c" > $i.c 
 	bk ci $Q -i $i.c
-	rm -f $i.c
+	${RM} -f $i.c
 done
 bk commit $S -yabc
 cd $HERE
@@ -67,13 +67,13 @@ cd $HERE/copy
 bk resolve $Q
 cd $HERE/copy/src
 bk get $Q a.c b.c c.c
-echo "this is c.c" > ref.c 
+${ECHO} "this is c.c" > ref.c 
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed a"; exit 1; fi
-echo "this is a.c" > ref.c 
+${ECHO} "this is a.c" > ref.c 
 cmp -s ref.c b.c
 if [ $? -ne 0 ]; then echo "failed b"; exit 1; fi
-echo "this is b.c" > ref.c 
+${ECHO} "this is b.c" > ref.c 
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed c"; exit 1; fi
 echo OK
@@ -91,16 +91,16 @@ bk resync -c -r1.5 $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
 bk resolve $Q
 bk get $Q a.c b.c c.c d.c
-echo "this is c.c" > ref.c 
+${ECHO} "this is c.c" > ref.c 
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo "this is a.c" > ref.c 
+${ECHO} "this is a.c" > ref.c 
 cmp -s ref.c b.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo "this is the new c.c" > ref.c 
+${ECHO} "this is the new c.c" > ref.c 
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo "this is the old c.c" > ref.c 
+${ECHO} "this is the old c.c" > ref.c 
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
@@ -112,16 +112,16 @@ bk resync -c -r1.4..1.5 $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
 bk resolve $Q
 bk get $Q a.c b.c c.c d.c
-echo "this is c.c" > ref.c 
+$ECHO "this is c.c" > ref.c 
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo "this is a.c" > ref.c 
+${ECHO} "this is a.c" > ref.c 
 cmp -s ref.c b.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo "this is the new c.c" > ref.c 
+${ECHO} "this is the new c.c" > ref.c 
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo "this is the old c.c" > ref.c 
+${ECHO} "this is the old c.c" > ref.c 
 cmp -s ref.c d.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
@@ -152,13 +152,13 @@ m
 C
 EOF
 bk get $Q
-echo "this is b.c" > ref.c 
+${ECHO} "this is b.c" > ref.c 
 cmp -s ref.c a.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo "this is c.c" > ref.c 
+${ECHO} "this is c.c" > ref.c 
 cmp -s ref.c b.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
-echo "this is a.c" > ref.c 
+${ECHO} "this is a.c" > ref.c 
 cmp -s ref.c c.c
 if [ $? -ne 0 ]; then echo "failed"; exit 1; fi
 echo OK
@@ -288,34 +288,37 @@ cd  $HERE
 rm -rf $HERE/copy
 tar xf chkpoint.tar
 cd $HERE/project/src
-cp /usr/bitkeeper/co bdata
-bk ci $Q -i bdata
+cp $binary_data data
+bk admin $Q -idata -Ebinary bdata
+bk get $Q -r1.1 bdata
+cmp -s bdata $binary_data
+if [ $? -ne 0 ]; then echo failed; fi
 bk commit $S -ybinary1
 bk get $Q -e bdata
-cp /usr/bitkeeper/ci bdata
+cp $binary_data2 bdata
 bk ci $Q -y bdata
 bk commit $S -ybinary2
 bk resync $Q $HERE/project $HERE/copy
 cd  $HERE/copy/src
 bk resolve $Q 
 bk get $Q bdata
-cmp -s bdata /usr/bitkeeper/ci
+cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; fi
 bk resync $Q -r..1.8 $HERE/copy $HERE/copy2
 bk resolve $Q $HERE/copy2 
 cd $HERE/copy2/src 
 bk get $Q bdata
-cmp -s bdata /usr/bitkeeper/co
+cmp -s bdata $binary_data
 if [ $? -ne 0 ]; then echo failed; fi
 bk resync $Q -r1.9 $Q $HERE/copy $HERE/copy2
 bk resolve $Q $HERE/copy2 
 bk get $Q bdata
-cmp -s bdata /usr/bitkeeper/ci
+cmp -s bdata $binary_data2
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 echo $N Check resync with skiped ChangeSet delta to new tree....$NL
 cd $HERE
 rm -rf  $HERE/copy2 
-bk resync $Q -r1.6 $HERE/copy $HERE/copy2  > resync.out 2>&1
+bk resync $Q -r1.5 $HERE/copy $HERE/copy2  > resync.out 2>&1
 grep -q "resync from version 1.0 forward" resync.out
 if [ $? -ne 0 ]; then echo failed; else echo OK; fi
 echo $N Check resolve w/ merge and delete event.................$NL
@@ -328,7 +331,7 @@ EOF
 echo "To be deleted" > delete.c
 bk ci $Q -i merge.c delete.c
 bk commit $S -y"abc"
-bk resync $Q $HERE/project $HERE/copy > /dev/null 2>&1
+bk resync $Q $HERE/project $HERE/copy 
 bk resolve $Q $HERE/copy
 bk rm delete.c
 bk co $Q -l merge.c
@@ -344,8 +347,8 @@ mv merge.tmp merge.c
 sleep 1
 bk ci $Q -y merge.c
 bk commit $S -y"abc"
-bk resync $Q $HERE/project $HERE/copy > /dev/null 2>&1
-bk resolve $Q -f - $HERE/copy <<EOF > /dev/null 2>&1
+bk resync $Q $HERE/project $HERE/copy 
+bk resolve $Q -f - $HERE/copy <<EOF  > /dev/null 2>&1
 m
 C
 EOF
@@ -357,7 +360,7 @@ ${CAT} > merge.ref <<EOF
 333-new
 EOF
 cmp -s merge.c merge.ref
-if [ $? -ne 0 ]; then echo failed; exit 1; fi
+if [ $? -ne 0 ]; then echo failed; diff -u merge.c merge.ref; exit 1; fi
 echo OK
 
 # TEST: Check for parallel work winds up losing a file

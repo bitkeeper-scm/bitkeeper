@@ -83,6 +83,7 @@ main(int ac, char **av)
 	int	cFile = 0, ignoreDeleted = 0;
 	RANGE_DECL;
 
+	platformSpecificInit(NULL);
 	debug_main(av);
 	if (ac > 1 && streq("--help", av[1])) {
 usage:		fprintf(stderr, "%s", cset_help);
@@ -287,15 +288,64 @@ do_checksum(void)
 	printf("# Patch checksum=%.8lx\n", sum);
 }	
 
-#ifndef WIN32
 /*
  * Spin off a subprocess and rejigger stdout to feed into its stdin.
  * The subprocess will run a checksum over the text of the patch
  * (everything from "# Patch vers:\t0.6" on down) and append a trailer
  * line.
  *
- * XXX Andrew - this needs to be ifdefed for NT.
  */
+#ifdef WIN32
+#define WIFEXITED(status) 1
+#define WEXITSTATUS(status) 0 /* XXX FIX ME */
+pid_t
+spawn_checksum_child(void)
+{
+	int p[2], fd0, rc;
+	pid_t pid;
+	char cmd[MAXPATH];
+	char *av[2] = {cmd, 0};
+
+	if (_pipe(p, 512, O_BINARY)) {
+		perror("pipe");
+		return -1;
+	}
+
+	/* save fd 0*/
+	fd0 = (dup)(0);
+	assert(fd0 > 0);
+
+
+	/* for Child.
+	 * Replace stdin with the read end of the pipe.
+	 */
+	sprintf(cmd, "%spatch_cksum.exe", getenv("BK_BIN"));
+	rc = (close)(0);
+	if (rc == -1) perror("close");
+	assert(rc != -1);
+	rc = (dup2)(p[0], 0);
+	if (rc == -1) perror("dup2");
+	assert(rc != -1);
+
+	/* Now go do the real work... */
+	pid = spawnvp_ex(_P_NOWAIT, cmd, av );
+	if (pid == -1) return -1;
+
+	/* 
+	 * for Parent
+	 * restore fd0
+	 * set stdout to write end of the pipe
+	 */
+	rc = (dup2)(fd0, 0); /* restore stdin */
+	assert(rc != -1);
+	(close)(1);
+	rc = (dup2)(p[1], 1);
+	assert(rc != -1);
+	(close)(p[0]);
+	(close)(p[1]);
+	return pid;
+}
+#else
 pid_t
 spawn_checksum_child(void)
 {
@@ -723,18 +773,17 @@ csetlist(sccs *cset)
 	}
 
 	/* checksum the output */
-#ifndef WIN32
 	if (makepatch) {
 		pid = spawn_checksum_child();
 		if (pid == -1) goto fail;
 	}
-#endif
 	if (makepatch || doDiffs) header(cset, doDiffs);
 again:	/* doDiffs can make it two pass */
 	if (!doDiffs && makepatch) {
 		printf("%s", PATCH_CURRENT);
 	}
 
+	sccs_close(cset); /* for win32 */
 	/*
 	 * Do the ChangeSet deltas first, takepatch needs it to be so.
 	 */
@@ -771,8 +820,14 @@ again:	/* doDiffs can make it two pass */
 		    "cset: marked %d revisions in %d files\n", ndeltas, nfiles);
 	}
 	if (makepatch) {
-		fclose(stdout);  /* give the child an EOF */
-#ifndef WIN32
+#ifdef WIN32
+#define EOT 0x04
+		char eot[3] = { EOT, '\n', 0 };
+
+		fputs(eot, stdout);	/* For win32, since win32 fclose()	*/
+					/* does not trigger EOF	event		*/
+#endif
+		fclose(stdout);
 		if (waitpid(pid, &status, 0) != pid) {
 			perror("waitpid");
 		}
@@ -781,7 +836,6 @@ again:	/* doDiffs can make it two pass */
 		  "makepatch: checksum process exited abnormally, status %d\n",
 				status);
 		}
-#endif
 	}
 	unlink(csort);
 	free(csetid);

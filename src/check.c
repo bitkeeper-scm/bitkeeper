@@ -20,6 +20,7 @@ char	*getFile(char *root, MDBM *idDB);
 int	verbose;
 int	all;		/* if set, check every darn entry in the ChangeSet */
 int	mixed;
+char	csetFile[] = CHANGESET;
 
 int
 main(int ac, char **av)
@@ -57,7 +58,7 @@ usage:		fprintf(stderr, "%s", check_help);
 		fprintf(stderr, "check: can not find project root.\n");
 		return (1);
 	}
-	unless (s = sccs_init(CHANGESET, 0, 0)) {
+	unless (s = sccs_init(csetFile, 0, 0)) {
 		fprintf(stderr, "Can't init ChangeSet\n");
 		exit(1);
 	}
@@ -268,7 +269,7 @@ buildKeys()
 	}
 	pclose(keys);
 	/* Add in ChangeSet keys */
-	unless (cset = sccs_init(CHANGESET, 0, 0)) {
+	unless (cset = sccs_init(csetFile, 0, 0)) {
 		fprintf(stderr, "check: ChangeSet file not inited\n");
 		exit (1);
 	}
@@ -454,15 +455,37 @@ csetFind(char *key)
 	FILE	*p;
 	char	*s;
 
-	sprintf(buf, "bk sccscat -hm ChangeSet | grep '%s'", key);
+#ifdef WIN32
+	char *k, *r =0;
+
+	sprintf(buf, "bk sccscat -hm ChangeSet");
 	unless (p = popen(buf, "r")) return (strdup("[popen failed]"));
-	unless (fnext(buf, p)) {
+	while (fnext(buf, p)) {
+		if (r) continue; 
+		chop(buf);				/* remove '\n' */
+		for (s = buf; *s && !isspace(*s); s++); /* skip rev */
+		for (k = s; *k && isspace(*k); k++);	/* skip space */
+		for (; *k && !isspace(*k); k++);	/* skip root key */
+		for (; *k && isspace(*k); k++);		/* skip space */
+		unless (*k) return (strdup("[bad data]"));
+		if (streq(key, k)) {
+			*s = 0;
+			r = strdup(buf);
+		}
+	}
+	pclose(p);
+	unless (r) return (strdup("[not found]"));
+	return (r);
+#else
+	sprintf(buf, "bk sccscat -hm ChangeSet | grep '%s'", key);
+	unless (fnext(buf, p)) {;
 		pclose(p);
-		return ("[not found]");
+		return (strdup("[not found]"));
 	}
 	pclose(p);
 	for (s = buf; *s && !isspace(*s); s++);
 	unless (s) return (strdup("[bad data]"));
 	*s = 0;
 	return (strdup(buf));
+#endif
 }
