@@ -13,6 +13,7 @@ char 		*logRoot;
 int		licenseServer[2];	/* bkweb license pipe */
 time_t		licenseEnd = 0;		/* when a temp bk license expires */
 time_t		requestEnd = 0;
+private char	**exCmds;
 
 int
 bkd_main(int ac, char **av)
@@ -236,9 +237,16 @@ do_cmds()
 				}
 			}
 		} else if (av[0]) {
+			EACH(exCmds) {
+				if (streq(av[0], exCmds[i])) break;
+			}
 			out("ERROR-BAD CMD: ");
 			out(av[0]);
-			out(", Try help\n");
+			if (i < nLines(exCmds)) {
+				out(" is disabled for this bkd using -x\n");
+			} else {
+				out(", Try help\n");
+			}
 		} else {
 			out("ERROR-Try help\n");
 		}
@@ -300,6 +308,7 @@ exclude(char *cmd_prefix, int verbose)
 			strneq(cmd_prefix, cmds[i].realname, len)) {
 			c[j++] = cmds[i];
 		} else {
+			exCmds = addLine(exCmds, strdup(cmds[i].name));
 			foundit++;
 		}
 	}
