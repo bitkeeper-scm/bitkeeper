@@ -899,11 +899,9 @@ cset_lock()
 	close(creat(uniq, 0444));
 	for (;;) {
 		unless (link(uniq, "SCCS/csetlock")) break;
-		perror(uniq);
 		stat(uniq, &sbuf);
 		if (sbuf.st_nlink == 2) break;
-		fprintf(stderr, "%u waits for cset lock\n", getpid());
-		usleep(500000);
+		usleep(50000);
 	} 
 	unlink(uniq);
 	free(uniq);
