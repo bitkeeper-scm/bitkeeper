@@ -9,21 +9,13 @@ private	char	*
 gethost(int real)
 {
 	static	char host[257];
-	static	int cache = 0;
 	struct	hostent *hp;
 	char 	*h, *p, *q, buf[MAXLINE], domain[MAXPATH];
 	FILE	*f;
 
-	if (real) {
-		host[0] = 0;
-		cache = 0;
-	}
-	if (cache) return (host[0] ? host : 0);
-
 	if (!real && (h = getenv("BK_HOST"))) {
 		assert(strlen(h) <= 256);
 		strcpy(host, h);
-		cache = 1;
 		return (host);
 	}
 	/*
@@ -138,8 +130,6 @@ out:
 		host[0] = 0;
 		return (0);
 	}
-
-	if (host[0] && !real) cache = 1;
 	return (host);
 }
 

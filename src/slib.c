@@ -394,42 +394,30 @@ strnleq(register char *s, register char *t)
 	}
 	return (0);
 }
+
+static	char	user[256];
+
 private	char *
 getuser(int real)
 {
-	static	char	*user;
+	char	*u;
 
-	if (real && user) {
-		free(user);
-		user = 0;
-	}
-	if (user) return (user);
 	if (real) {
-		user = getenv("USER");
+		u = getenv("USER");
 	} else {
-		unless (user = getenv("BK_USER")) user = getenv("USER");
+		unless (u = getenv("BK_USER")) u = getenv("USER");
 	}
-	if (!user || !user[0] ) {
-		user = getlogin();
-	}
+	unless (u && u[0]) u = getlogin();
 #ifndef WIN32
-	if (!user || !user[0] ) {
+	if (!u || !u[0] ) {
 		struct	passwd	*p = getpwuid(getuid());
 
-		user = p->pw_name;
+		u = p->pw_name;
 	}
 #endif
-	if (!user || !user[0] ) {
-		user = UNKNOWN_USER;
-	}
-	/* do not leave this set, we want to cache the other one */
-	if (real) {
-		char	*tmp = user;
-
-		user = 0;
-		return (strdup(tmp));
-	}
-	return (strdup(user));
+	unless (u && u[0]) u = UNKNOWN_USER;
+	strcpy(user, u);
+	return (user);
 }
 
 char	*
