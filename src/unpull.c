@@ -50,6 +50,11 @@ unpull(int force, int quiet)
 		fprintf(stderr, "unpull: can not find package root.\n");
 		exit(1);
 	}
+	if (isdir(ROOT2RESYNC)) {
+		fprintf(stderr, 
+		    "unpull: RESYNC exists, did you want 'bk abort'?\n");
+		exit(1);
+	}
 	unless (m = mopen(CSETS_IN, "")) {
 		fprintf(stderr, "unpull: no csets-in file, cannot unpull.\n");
 		exit(1);
